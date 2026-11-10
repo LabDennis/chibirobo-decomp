@@ -1,7 +1,7 @@
 #include "types.h"
 #include "Version.h"
 
-extern "C" u8 lbl_8025C400[];
+extern "C" u8 gGame[];
 
 extern "C" s32 CmdSetCameraScroll(s32 cmd, s32 count, s32* values);
 extern "C" void InitStage(void* arg);
@@ -15,9 +15,9 @@ struct CCameraActionScroll {
 
 #if defined(VERSION_JP)
 // 0xCE8 earlier in japan, its CGame is shorter
-#define STAGE17_UNK() (*(CCameraActionScroll**)(lbl_8025C400 + 0xE7130))
+#define STAGE17_UNK() (*(CCameraActionScroll**)(gGame + 0xE7130))
 #else
-#define STAGE17_UNK() (*(CCameraActionScroll**)(lbl_8025C400 + 0xE7E18))
+#define STAGE17_UNK() (*(CCameraActionScroll**)(gGame + 0xE7E18))
 #endif
 
 typedef void (*RelSlotFunc)(void* arg);

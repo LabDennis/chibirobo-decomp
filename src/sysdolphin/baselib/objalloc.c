@@ -23,7 +23,7 @@ void HSD_ObjSetHeap(u32 size, void* ptr)
  * @note Address: 0x801D06A0
  * @note Size: 0x30
  */
-void fn_801D06A0(u32* size, void** top)
+void GetObjectHeapBounds(u32* size, void** top)
 {
 	if (size != NULL) {
 		*size = obj_heap.size;
@@ -37,7 +37,7 @@ void fn_801D06A0(u32* size, void** top)
  * @note Address: 0x801D06D0
  * @note Size: 0x34
  */
-u32 fn_801D06D0(void)
+u32 GetObjectPoolCapacityBytes(void)
 {
 	HSD_ObjAllocData* data;
 	u32 total = 0;
@@ -52,7 +52,7 @@ u32 fn_801D06D0(void)
  * @note Address: 0x801D0704
  * @note Size: 0x38
  */
-u32 fn_801D0704(void)
+u32 GetObjectHeapRemainingBytes(void)
 {
 	if (obj_heap.top != 0) {
 		return obj_heap.remain;
@@ -64,7 +64,7 @@ u32 fn_801D0704(void)
  * @note Address: 0x801D073C
  * @note Size: 0x2C
  */
-u32 fn_801D073C(void)
+u32 GetObjectPoolUsedBytes(void)
 {
 	HSD_ObjAllocData* data;
 	u32 total = 0;
@@ -79,7 +79,7 @@ u32 fn_801D073C(void)
  * @note Address: 0x801D0768
  * @note Size: 0x2C
  */
-u32 fn_801D0768(void)
+u32 GetObjectPoolFreeBytes(void)
 {
 	HSD_ObjAllocData* data;
 	u32 total = 0;

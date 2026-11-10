@@ -38,17 +38,17 @@ struct FontCharInfo {
 #endif
 
 extern "C" {
-extern u16 lbl_8065B860;
-extern OSFontHeader* lbl_8065B864;
-extern BOOL lbl_8065B868;
-extern FontGlyphCache lbl_8065B86C;
-extern FontGlyphRange lbl_802586E0[];
-extern FontCharInfo lbl_80237AD0[];
-extern u8 lbl_802386E0[];
-extern OSFontHeader lbl_80237AA0;
+extern u16 gFontEncoding;
+extern OSFontHeader* gActiveFontHeader;
+extern BOOL gUseSingleByteFont;
+extern FontGlyphCache gDynamicFontGlyphCache;
+extern FontGlyphRange gFontGlyphRanges[];
+extern FontCharInfo gSingleByteGlyphMetrics[];
+extern u8 gSingleByteFontAtlas[];
+extern OSFontHeader gSingleByteFontHeader;
 }
 
-// todo: cleanup, cfont.h's IsSjisLead costs fn_8019E8F4 a bit
+// todo: cleanup, cfont.h's IsSjisLead costs GetFontGlyphTexture a bit
 static inline bool IsLeadByte(u8 c)
 {
 	return (c >= 0x81 && c <= 0x9F) || (c >= 0xE0 && c <= 0xFC);
@@ -57,9 +57,9 @@ static inline bool IsLeadByte(u8 c)
 static inline bool UseGlyphCache()
 {
 #if defined(VERSION_JP)
-	return lbl_8065B860 == OS_FONT_ENCODE_SJIS;
+	return gFontEncoding == OS_FONT_ENCODE_SJIS;
 #else
-	return lbl_8065B860 == OS_FONT_ENCODE_SJIS && !lbl_8065B868;
+	return gFontEncoding == OS_FONT_ENCODE_SJIS && !gUseSingleByteFont;
 #endif
 }
 
@@ -67,7 +67,7 @@ static inline bool UseGlyphCache()
  * @note Address: 0x8019E8F4
  * @note Size: 0x34C
  */
-extern "C" CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width)
+extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width)
 {
 	void* image;
 	s32 x, y, advance;
@@ -85,9 +85,9 @@ extern "C" CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width)
 			code = (code << 8) | (u8)str[1];
 		}
 		image = NULL;
-		for (s32 i = 0; lbl_802586E0[i].glyphs != NULL; i++) {
-			if (code >= lbl_802586E0[i].first && code < lbl_802586E0[i].end) {
-				FontGlyph* glyph = &lbl_802586E0[i].glyphs[code - lbl_802586E0[i].first];
+		for (s32 i = 0; gFontGlyphRanges[i].glyphs != NULL; i++) {
+			if (code >= gFontGlyphRanges[i].first && code < gFontGlyphRanges[i].end) {
+				FontGlyph* glyph = &gFontGlyphRanges[i].glyphs[code - gFontGlyphRanges[i].first];
 				image            = glyph;
 				advance          = glyph->width;
 				break;
@@ -95,30 +95,30 @@ extern "C" CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width)
 		}
 		if (image == NULL) {
 			for (s32 i = 0; i < 50; i++) {
-				if (code == lbl_8065B86C.glyphs[i].code) {
-					image   = &lbl_8065B86C.glyphs[i];
-					advance = lbl_8065B86C.glyphs[i].width;
+				if (code == gDynamicFontGlyphCache.glyphs[i].code) {
+					image   = &gDynamicFontGlyphCache.glyphs[i];
+					advance = gDynamicFontGlyphCache.glyphs[i].width;
 					break;
 				}
 			}
 			if (image == NULL) {
-				image = &lbl_8065B86C.glyphs[lbl_8065B86C.next];
+				image = &gDynamicFontGlyphCache.glyphs[gDynamicFontGlyphCache.next];
 				memset(image, 0, sizeof(FontGlyph));
 				OSGetFontTexel((char*)str, image, 0, 6, &advance);
-				lbl_8065B86C.glyphs[lbl_8065B86C.next].code  = code;
-				lbl_8065B86C.glyphs[lbl_8065B86C.next].width = advance;
-				DCFlushRange(&lbl_8065B86C.glyphs[lbl_8065B86C.next], sizeof(FontGlyph));
-				lbl_8065B86C.next = (lbl_8065B86C.next + 1) % 50;
+				gDynamicFontGlyphCache.glyphs[gDynamicFontGlyphCache.next].code  = code;
+				gDynamicFontGlyphCache.glyphs[gDynamicFontGlyphCache.next].width = advance;
+				DCFlushRange(&gDynamicFontGlyphCache.glyphs[gDynamicFontGlyphCache.next], sizeof(FontGlyph));
+				gDynamicFontGlyphCache.next = (gDynamicFontGlyphCache.next + 1) % 50;
 			}
 		}
 		y = 0;
 		x = 0;
 #if !defined(VERSION_JP)
-	} else if (lbl_8065B868) {
-		image   = lbl_802386E0;
-		x       = lbl_80237AD0[(u8)str[0]].x;
-		y       = lbl_80237AD0[(u8)str[0]].y;
-		advance = lbl_80237AD0[(u8)str[0]].width;
+	} else if (gUseSingleByteFont) {
+		image   = gSingleByteFontAtlas;
+		x       = gSingleByteGlyphMetrics[(u8)str[0]].x;
+		y       = gSingleByteGlyphMetrics[(u8)str[0]].y;
+		advance = gSingleByteGlyphMetrics[(u8)str[0]].width;
 #endif
 	} else {
 		OSGetFontTexture(str, &image, &x, &y, &advance);
@@ -149,11 +149,11 @@ extern "C" CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width)
     li       r4, 0x0
     bl       Init__5CFontFi
 .L_8019E924:
-    lhz      r0, lbl_8065B860@sda21(r0)
+    lhz      r0, gFontEncoding@sda21(r0)
     li       r3, 0x0
     cmplwi   r0, 0x1
     bne      .L_8019E944
-    lwz      r0, lbl_8065B868@sda21(r0)
+    lwz      r0, gUseSingleByteFont@sda21(r0)
     cmpwi    r0, 0x0
     bne      .L_8019E944
     li       r3, 0x1
@@ -184,8 +184,8 @@ extern "C" CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width)
     clrlwi   r30, r0, 16
 .L_8019E998:
     li       r0, 0x0
-    lis      r3, lbl_802586E0@ha
-    addi     r4, r3, lbl_802586E0@l
+    lis      r3, gFontGlyphRanges@ha
+    addi     r4, r3, gFontGlyphRanges@l
     stw      r0, 0x14(r1)
     mr       r3, r4
     clrlwi   r5, r30, 16
@@ -220,12 +220,12 @@ extern "C" CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width)
     lwz      r0, 0x14(r1)
     cmplwi   r0, 0x0
     bne      .L_8019EB18
-    lwz      r6, lbl_8065B86C@sda21(r0)
+    lwz      r6, gDynamicFontGlyphCache@sda21(r0)
     li       r0, 0x32
     clrlwi   r3, r30, 16
     li       r5, 0x0
     mr       r4, r6
-    li       r7, lbl_8065B86C@sda21
+    li       r7, gDynamicFontGlyphCache@sda21
     mtctr    r0
 .L_8019EA38:
     lhz      r0, 0x120(r4)
@@ -246,7 +246,7 @@ extern "C" CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width)
     lwz      r0, 0x14(r1)
     cmplwi   r0, 0x0
     bne      .L_8019EB18
-    li       r31, lbl_8065B86C@sda21
+    li       r31, gDynamicFontGlyphCache@sda21
     li       r4, 0x0
     lwz      r0, 0x4(r31)
     li       r5, 0x140
@@ -262,18 +262,18 @@ extern "C" CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width)
     bl       OSGetFontTexel
     lwz      r0, 0x4(r31)
     li       r4, 0x140
-    lwz      r3, lbl_8065B86C@sda21(r0)
+    lwz      r3, gDynamicFontGlyphCache@sda21(r0)
     mulli    r0, r0, 0x140
     add      r3, r3, r0
     sth      r30, 0x120(r3)
     lwz      r0, 0x4(r31)
-    lwz      r3, lbl_8065B86C@sda21(r0)
+    lwz      r3, gDynamicFontGlyphCache@sda21(r0)
     mulli    r0, r0, 0x140
     lwz      r5, 0x8(r1)
     add      r3, r3, r0
     sth      r5, 0x122(r3)
     lwz      r0, 0x4(r31)
-    lwz      r3, lbl_8065B86C@sda21(r0)
+    lwz      r3, gDynamicFontGlyphCache@sda21(r0)
     mulli    r0, r0, 0x140
     add      r3, r3, r0
     bl       DCFlushRange
@@ -292,15 +292,15 @@ extern "C" CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width)
     stw      r0, 0x10(r1)
     b        .L_8019EB88
 .L_8019EB28:
-    lwz      r0, lbl_8065B868@sda21(r0)
+    lwz      r0, gUseSingleByteFont@sda21(r0)
     cmpwi    r0, 0x0
     beq      .L_8019EB70
     lbz      r0, 0x0(r28)
-    lis      r3, lbl_80237AD0@ha
-    lis      r4, lbl_802386E0@ha
+    lis      r3, gSingleByteGlyphMetrics@ha
+    lis      r4, gSingleByteFontAtlas@ha
     mulli    r0, r0, 0xc
-    addi     r3, r3, lbl_80237AD0@l
-    addi     r4, r4, lbl_802386E0@l
+    addi     r3, r3, gSingleByteGlyphMetrics@l
+    addi     r4, r4, gSingleByteFontAtlas@l
     stw      r4, 0x14(r1)
     add      r4, r3, r0
     lwzx     r5, r3, r0
@@ -331,7 +331,7 @@ extern "C" CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width)
     xoris    r5, r5, 0x8000
     stw      r4, 0x18(r1)
     xoris    r0, r0, 0x8000
-    lfd      f4, lbl_8065F688@sda21(r0)
+    lfd      f4, sFontSignedConversionBias@sda21(r0)
     stw      r5, 0x1c(r1)
     lfs      f5, 0x2c(r27)
     lfd      f0, 0x18(r1)
@@ -339,14 +339,14 @@ extern "C" CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width)
     fsubs    f1, f0, f4
     lfs      f2, 0x30(r27)
     stw      r4, 0x20(r1)
-    lfs      f3, lbl_8065F680@sda21(r0)
+    lfs      f3, sFontZero@sda21(r0)
     lfd      f0, 0x20(r1)
     fmuls    f1, f5, f1
     fsubs    f0, f0, f4
     fmuls    f2, f2, f0
     bl       PSMTXTrans
     li       r0, 0x1
-    lfs      f3, lbl_8065F684@sda21(r0)
+    lfs      f3, sFontOne@sda21(r0)
     stw      r0, 0x74(r27)
     addi     r3, r27, 0xa8
     lfs      f1, 0x34(r27)
@@ -377,15 +377,15 @@ extern "C" void Init__5CFontFv(CFont* font)
 extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
 #endif
 {
-	if (lbl_8065B864 == NULL) {
-		lbl_8065B860 = OSGetFontEncode();
+	if (gActiveFontHeader == NULL) {
+		gFontEncoding = OSGetFontEncode();
 #if !defined(VERSION_JP)
-		lbl_8065B868 = builtin != FALSE;
+		gUseSingleByteFont = builtin != FALSE;
 #endif
 		if (UseGlyphCache()) {
-			u32 size     = UseGlyphCache() ? OS_FONT_DATA_SIZE_SJIS : OS_FONT_DATA_SIZE_ANSI;
-			lbl_8065B864 = (OSFontHeader*)mm::Alloc((size + 31) & ~31, "(font I2)");
-			if (lbl_8065B864 == NULL) {
+			u32 size          = UseGlyphCache() ? OS_FONT_DATA_SIZE_SJIS : OS_FONT_DATA_SIZE_ANSI;
+			gActiveFontHeader = (OSFontHeader*)mm::Alloc((size + 31) & ~31, "(font I2)");
+			if (gActiveFontHeader == NULL) {
 				OSReport("\n!!!HALT!!!\n");
 				OSPanic("cfont.cpp", FONT_INIT_LINE(71, 65), "%s%s", "not enough memory for ROM font\n", "Init");
 			}
@@ -395,15 +395,15 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
 				OSReport("\n!!!HALT!!!\n");
 				OSPanic("cfont.cpp", FONT_INIT_LINE(77, 71), "%s%s", "not enough memory for ROM font(temp)\n", "Init");
 			}
-			if (OSLoadFont(lbl_8065B864, temp) == 0) {
+			if (OSLoadFont(gActiveFontHeader, temp) == 0) {
 				OSReport("\n!!!HALT!!!\n");
 				OSPanic("cfont.cpp", FONT_INIT_LINE(81, 75), "%s%s", "internal error on OSLoadFont()\n", "Init");
 			}
 			mm::Free(temp, 1);
 
-			for (FontGlyphRange* range = lbl_802586E0; range->first != range->end; range++) {
+			for (FontGlyphRange* range = gFontGlyphRanges; range->first != range->end; range++) {
 				range->glyphs = (FontGlyph*)mm::Alloc((range->end - range->first) * sizeof(FontGlyph),
-				                                      fn_801911B4("(%04X~%04X)", range->first, range->end));
+				                                      FormatToStaticBuffer("(%04X~%04X)", range->first, range->end));
 				if (range->glyphs != NULL) {
 					u16 code         = range->first;
 					FontGlyph* glyph = range->glyphs;
@@ -421,31 +421,31 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
 				} else {
 					OSReport("\n!!!HALT!!!\n");
 					OSPanic("cfont.cpp", FONT_INIT_LINE(105, 99), "%s%s",
-					        fn_801911B4("not enough memory for static image (%04X~%04X)\n", range->first, range->end), "Init");
+					        FormatToStaticBuffer("not enough memory for static image (%04X~%04X)\n", range->first, range->end), "Init");
 				}
 			}
-			lbl_8065B86C.glyphs = (FontGlyph*)mm::Alloc(50 * sizeof(FontGlyph), "(dynamic)");
-			if (lbl_8065B86C.glyphs != NULL) {
-				lbl_8065B86C.next = 0;
+			gDynamicFontGlyphCache.glyphs = (FontGlyph*)mm::Alloc(50 * sizeof(FontGlyph), "(dynamic)");
+			if (gDynamicFontGlyphCache.glyphs != NULL) {
+				gDynamicFontGlyphCache.next = 0;
 				for (s32 i = 0; i < 50; i++) {
-					lbl_8065B86C.glyphs[i].code = 0;
+					gDynamicFontGlyphCache.glyphs[i].code = 0;
 				}
 			} else {
 				OSReport("\n!!!HALT!!!\n");
 				OSPanic("cfont.cpp", FONT_INIT_LINE(118, 112), "%s%s", "not enough memory for dynamic image\n", "Init");
 			}
 #if !defined(VERSION_JP)
-		} else if (lbl_8065B868) {
-			lbl_8065B864 = &lbl_80237AA0;
+		} else if (gUseSingleByteFont) {
+			gActiveFontHeader = &gSingleByteFontHeader;
 #endif
 		} else {
-			u32 size     = UseGlyphCache() ? OS_FONT_SIZE_SJIS : OS_FONT_SIZE_ANSI;
-			lbl_8065B864 = (OSFontHeader*)mm::Alloc(size, "(font I4)");
-			if (lbl_8065B864 == NULL) {
+			u32 size          = UseGlyphCache() ? OS_FONT_SIZE_SJIS : OS_FONT_SIZE_ANSI;
+			gActiveFontHeader = (OSFontHeader*)mm::Alloc(size, "(font I4)");
+			if (gActiveFontHeader == NULL) {
 				OSReport("\n!!!HALT!!!\n");
 				OSPanic("cfont.cpp", FONT_INIT_LINE(131, 120), "%s%s", "not enough memory for ROM font\n", "Init");
 			}
-			if (!OSInitFont(lbl_8065B864)) {
+			if (!OSInitFont(gActiveFontHeader)) {
 				OSReport("\n!!!HALT!!!\n");
 				OSPanic("cfont.cpp", FONT_INIT_LINE(135, 124), "%s%s", "internal error on OSInitFont()\n", "Init");
 			}
@@ -464,14 +464,14 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
 		font->mInvCellHeight  = 1.0f;
 	} else {
 		TPLHeader image       = { 0, 0, GX_TF_I4, NULL, GX_CLAMP, GX_CLAMP, GX_LINEAR, GX_LINEAR, 0.0f, 0, 0, 0, 1 };
-		image.height          = lbl_8065B864->sheetHeight;
-		image.width           = lbl_8065B864->sheetWidth;
-		image.format          = lbl_8065B864->sheetFormat;
+		image.height          = gActiveFontHeader->sheetHeight;
+		image.width           = gActiveFontHeader->sheetWidth;
+		image.format          = gActiveFontHeader->sheetFormat;
 		font->mImage          = image;
-		font->mInvSheetWidth  = 1.0f / lbl_8065B864->sheetWidth;
-		font->mInvSheetHeight = 1.0f / lbl_8065B864->sheetHeight;
-		font->mInvCellWidth   = 1.0f / (lbl_8065B864->cellWidth - 2);
-		font->mInvCellHeight  = 1.0f / (lbl_8065B864->cellHeight - 2);
+		font->mInvSheetWidth  = 1.0f / gActiveFontHeader->sheetWidth;
+		font->mInvSheetHeight = 1.0f / gActiveFontHeader->sheetHeight;
+		font->mInvCellWidth   = 1.0f / (gActiveFontHeader->cellWidth - 2);
+		font->mInvCellHeight  = 1.0f / (gActiveFontHeader->cellHeight - 2);
 	}
 }
 /*
@@ -483,17 +483,17 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     mr       r28, r3
     mr       r24, r4
     addi     r31, r5, lbl_8020ECA8@l
-    lwz      r0, lbl_8065B864@sda21(r0)
+    lwz      r0, gActiveFontHeader@sda21(r0)
     cmplwi   r0, 0x0
     bne      .L_8019F120
     bl       OSGetFontEncode
     neg      r0, r24
     clrlwi   r4, r3, 16
     or       r0, r0, r24
-    sth      r3, lbl_8065B860@sda21(r0)
+    sth      r3, gFontEncoding@sda21(r0)
     srwi     r3, r0, 31
     cmplwi   r4, 0x1
-    stw      r3, lbl_8065B868@sda21(r0)
+    stw      r3, gUseSingleByteFont@sda21(r0)
     li       r0, 0x0
     bne      .L_8019ECA0
     cmpwi    r3, 0x0
@@ -505,7 +505,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     cmplwi   r4, 0x1
     li       r3, 0x0
     bne      .L_8019ECC4
-    lwz      r0, lbl_8065B868@sda21(r0)
+    lwz      r0, gUseSingleByteFont@sda21(r0)
     cmpwi    r0, 0x0
     bne      .L_8019ECC4
     li       r3, 0x1
@@ -522,7 +522,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     clrrwi   r3, r0, 5
     bl       Alloc__2mmFUlPCc
     cmplwi   r3, 0x0
-    stw      r3, lbl_8065B864@sda21(r0)
+    stw      r3, gActiveFontHeader@sda21(r0)
     bne      .L_8019ED20
     addi     r3, r31, 0x6c
     crclr    cr1eq
@@ -530,16 +530,16 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0x88
     li       r4, 0x47
-    li       r5, lbl_8065F690@sda21
-    li       r7, lbl_8065AD68@sda21
+    li       r5, sFontPanicFormat@sda21
+    li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_8019ED20:
-    lhz      r0, lbl_8065B860@sda21(r0)
+    lhz      r0, gFontEncoding@sda21(r0)
     li       r3, 0x0
     cmplwi   r0, 0x1
     bne      .L_8019ED40
-    lwz      r0, lbl_8065B868@sda21(r0)
+    lwz      r0, gUseSingleByteFont@sda21(r0)
     cmpwi    r0, 0x0
     bne      .L_8019ED40
     li       r3, 0x1
@@ -551,7 +551,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     subi     r3, r3, 0x3000
 .L_8019ED54:
     addi     r0, r3, 0x1f
-    li       r4, lbl_8065F698@sda21
+    li       r4, sFontTempAllocationLabel@sda21
     clrrwi   r3, r0, 5
     bl       Alloc__2mmFUlPCc
     mr.      r25, r3
@@ -562,12 +562,12 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0xa8
     li       r4, 0x4d
-    li       r5, lbl_8065F690@sda21
-    li       r7, lbl_8065AD68@sda21
+    li       r5, sFontPanicFormat@sda21
+    li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_8019ED94:
-    lwz      r3, lbl_8065B864@sda21(r0)
+    lwz      r3, gActiveFontHeader@sda21(r0)
     mr       r4, r25
     bl       OSLoadFont
     cmplwi   r3, 0x0
@@ -578,22 +578,22 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0xd0
     li       r4, 0x51
-    li       r5, lbl_8065F690@sda21
-    li       r7, lbl_8065AD68@sda21
+    li       r5, sFontPanicFormat@sda21
+    li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_8019EDD0:
     mr       r3, r25
     li       r4, 0x1
     bl       Free__2mmFPvl
-    lis      r3, lbl_802586E0@ha
+    lis      r3, gFontGlyphRanges@ha
     addi     r29, r1, 0x9
-    addi     r30, r3, lbl_802586E0@l
+    addi     r30, r3, gFontGlyphRanges@l
     b        .L_8019EEF8
 .L_8019EDEC:
     addi     r3, r31, 0xf0
     crclr    cr1eq
-    bl       fn_801911B4
+    bl       FormatToStaticBuffer
     lhz      r5, 0x4(r30)
     mr       r4, r3
     lhz      r0, 0x6(r30)
@@ -654,12 +654,12 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0xfc
     lhz      r5, 0x6(r30)
     crclr    cr1eq
-    bl       fn_801911B4
+    bl       FormatToStaticBuffer
     mr       r6, r3
     addi     r3, r31, 0x7c
     li       r4, 0x69
-    li       r5, lbl_8065F690@sda21
-    li       r7, lbl_8065AD68@sda21
+    li       r5, sFontPanicFormat@sda21
+    li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_8019EEF4:
@@ -670,11 +670,11 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     cmplw    r4, r5
     bne      .L_8019EDEC
     addi     r4, r31, 0x12c
-    li       r29, lbl_8065B86C@sda21
+    li       r29, gDynamicFontGlyphCache@sda21
     li       r3, 0x3e80
     bl       Alloc__2mmFUlPCc
     cmplwi   r3, 0x0
-    stw      r3, lbl_8065B86C@sda21(r0)
+    stw      r3, gDynamicFontGlyphCache@sda21(r0)
     beq      .L_8019F034
     li       r12, 0x0
     li       r0, 0x3
@@ -753,18 +753,18 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0x138
     li       r4, 0x76
-    li       r5, lbl_8065F690@sda21
-    li       r7, lbl_8065AD68@sda21
+    li       r5, sFontPanicFormat@sda21
+    li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
     b        .L_8019F120
 .L_8019F060:
-    lwz      r3, lbl_8065B868@sda21(r0)
+    lwz      r3, gUseSingleByteFont@sda21(r0)
     cmpwi    r3, 0x0
     beq      .L_8019F07C
-    lis      r3, lbl_80237AA0@ha
-    addi     r0, r3, lbl_80237AA0@l
-    stw      r0, lbl_8065B864@sda21(r0)
+    lis      r3, gSingleByteFontHeader@ha
+    addi     r0, r3, gSingleByteFontHeader@l
+    stw      r0, gActiveFontHeader@sda21(r0)
     b        .L_8019F120
 .L_8019F07C:
     cmplwi   r4, 0x1
@@ -784,7 +784,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r4, r31, 0x160
     bl       Alloc__2mmFUlPCc
     cmplwi   r3, 0x0
-    stw      r3, lbl_8065B864@sda21(r0)
+    stw      r3, gActiveFontHeader@sda21(r0)
     bne      .L_8019F0E8
     addi     r3, r31, 0x6c
     crclr    cr1eq
@@ -792,12 +792,12 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0x88
     li       r4, 0x83
-    li       r5, lbl_8065F690@sda21
-    li       r7, lbl_8065AD68@sda21
+    li       r5, sFontPanicFormat@sda21
+    li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_8019F0E8:
-    lwz      r3, lbl_8065B864@sda21(r0)
+    lwz      r3, gActiveFontHeader@sda21(r0)
     bl       OSInitFont
     cmpwi    r3, 0x0
     bne      .L_8019F120
@@ -807,8 +807,8 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0x16c
     li       r4, 0x87
-    li       r5, lbl_8065F690@sda21
-    li       r7, lbl_8065AD68@sda21
+    li       r5, sFontPanicFormat@sda21
+    li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_8019F120:
@@ -818,12 +818,12 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     stw      r0, 0x10(r1)
     stw      r28, 0x24(r28)
     stw      r4, 0x28(r28)
-    lhz      r0, lbl_8065B860@sda21(r0)
+    lhz      r0, gFontEncoding@sda21(r0)
     stw      r4, 0x14(r1)
     cmplwi   r0, 0x1
     stw      r28, 0x10(r1)
     bne      .L_8019F15C
-    lwz      r0, lbl_8065B868@sda21(r0)
+    lwz      r0, gUseSingleByteFont@sda21(r0)
     cmpwi    r0, 0x0
     bne      .L_8019F15C
     li       r3, 0x1
@@ -843,9 +843,9 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     lhz      r3, 0x3c(r1)
     lhz      r0, 0x3e(r1)
     sth      r3, 0x0(r28)
-    lfs      f1, lbl_8065F680@sda21(r0)
+    lfs      f1, sFontZero@sda21(r0)
     sth      r0, 0x2(r28)
-    lfs      f0, lbl_8065F684@sda21(r0)
+    lfs      f0, sFontOne@sda21(r0)
     stw      r12, 0x4(r28)
     stw      r11, 0x8(r28)
     stw      r4, 0x5c(r1)
@@ -876,7 +876,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     stfs     f0, 0x38(r28)
     b        .L_8019F364
 .L_8019F218:
-    lwz      r4, lbl_8065B864@sda21(r0)
+    lwz      r4, gActiveFontHeader@sda21(r0)
     lis      r0, 0x4330
     lwz      r25, 0x3c(r31)
     lwz      r26, 0x40(r31)
@@ -891,7 +891,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     lhz      r8, 0x1e(r4)
     lhz      r7, 0x18(r4)
     stw      r3, 0x38(r1)
-    lfd      f2, lbl_8065F6A0@sda21(r0)
+    lfd      f2, sFontUnsignedConversionBias@sda21(r0)
     sth      r9, 0x0(r28)
     lbz      r6, 0x38(r1)
     sth      r8, 0x2(r28)
@@ -901,9 +901,9 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     stw      r27, 0x8(r28)
     lbz      r3, 0x3b(r1)
     stw      r30, 0xc(r28)
-    lfs      f3, lbl_8065F684@sda21(r0)
+    lfs      f3, sFontOne@sda21(r0)
     stw      r29, 0x10(r28)
-    lfd      f1, lbl_8065F688@sda21(r0)
+    lfd      f1, sFontSignedConversionBias@sda21(r0)
     stw      r10, 0x34(r1)
     stw      r12, 0x14(r28)
     lfs      f0, 0x34(r1)
@@ -913,7 +913,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     stb      r5, 0x21(r28)
     stb      r4, 0x22(r28)
     stb      r3, 0x23(r28)
-    lwz      r3, lbl_8065B864@sda21(r0)
+    lwz      r3, gActiveFontHeader@sda21(r0)
     stw      r0, 0x60(r1)
     lhz      r3, 0x1e(r3)
     stw      r25, 0x18(r1)
@@ -929,7 +929,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     stw      r30, 0x24(r1)
     stw      r29, 0x28(r1)
     stfs     f0, 0x2c(r28)
-    lwz      r3, lbl_8065B864@sda21(r0)
+    lwz      r3, gActiveFontHeader@sda21(r0)
     stw      r12, 0x2c(r1)
     lhz      r0, 0x20(r3)
     stw      r11, 0x30(r1)
@@ -941,7 +941,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     fdivs    f0, f3, f0
     stw      r7, 0x1c(r1)
     stfs     f0, 0x30(r28)
-    lwz      r3, lbl_8065B864@sda21(r0)
+    lwz      r3, gActiveFontHeader@sda21(r0)
     lhz      r3, 0x10(r3)
     subi     r0, r3, 0x2
     xoris    r0, r0, 0x8000
@@ -950,7 +950,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     fsubs    f0, f0, f1
     fdivs    f0, f3, f0
     stfs     f0, 0x34(r28)
-    lwz      r3, lbl_8065B864@sda21(r0)
+    lwz      r3, gActiveFontHeader@sda21(r0)
     lhz      r3, 0x12(r3)
     subi     r0, r3, 0x2
     xoris    r0, r0, 0x8000

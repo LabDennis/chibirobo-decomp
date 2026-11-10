@@ -3,6 +3,10 @@
 
 #include "dolphin/types.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef s32 OSHeapHandle;
 typedef void (*OSErrorHandler)(s32 error, void* context, ...);
 
@@ -174,7 +178,7 @@ OSErrorHandler OSSetErrorHandler(u16 error, OSErrorHandler handler);
 //void OSPanic ( char* file, int line, char* msg, ... );
 //void OSReport( char* msg, ... );
 //
-void OSPanic(const char* file, s32 line, const char* msg, ...);
+void OSPanic(const char* file, int line, const char* msg, ...);
 void OSRegisterVersion(char* version);
 u32 __OSUnmaskInterrupts(u32 mask);
 void DCFlushRange(void* addr, u32 nBytes);
@@ -186,5 +190,9 @@ u32 OSGetStackPointer(void);
 u16 OSGetWirelessID(s32 chan);
 void OSSetWirelessID(s32 chan, u16 id);
 //u32 OSGetConsoleSimulatedMemSize(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif  // __OS_H__

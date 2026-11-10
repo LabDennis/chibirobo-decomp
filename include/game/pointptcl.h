@@ -4,27 +4,45 @@
 #include "types.h"
 
 struct PointPtclOne {
-	s32 mState;   // _00
-	u8 _04[0x20]; // _04
+	s32 mState; // _00
+	u32 mColor;
+	f32 mFade, mAngle, mAngularSpeed, mSpeed;
+	f32 mLastScreenX, mLastScreenY;
+	f32 mLastAngle;
 };
 STATIC_ASSERT(sizeof(PointPtclOne) == 0x24);
 
-// the sparks that fly in when points change, a pool of 10 at lbl_80378300. type 0, 2 and 3
+struct PointDigit {
+	s32 glyph;
+	f32 fade;
+};
+
+struct PointDisplay {
+	s32 mState, mAmount, mCount;
+	union {
+		PointDigit digits[11];
+		struct {
+			PointDigit firstTen[10];
+			u32 mColor, mColor2;
+		} colors;
+	};
+	f32 holdFrames;
+};
+
+struct PointBurst {
+	s32 mState, mNum;
+	PointPtclOne mPtcls[40];
+};
+
+// the sparks that fly in when points change, a pool of 10 at gPointParticlePool. type 0, 2 and 3
 // have their own colors, a negative amount draws them black
 struct PointPtcl {
-	u8 _00[0x8];             // _00
-	s32 mType;               // _08
-	s32 mState;              // _0C
-	s32 mAmount;             // _10
-	u8 _14[0x54];            // _14
-	u32 mColor;              // _68
-	u32 mColor2;             // _6C
-	u8 _70[0x4];             // _70
-	s32 _74;                 // _74
-	s32 mNum;                // _78
-	PointPtclOne mPtcls[40]; // _7C
-
-	u8 IsFree() const { return mState == 0 && _74 == 0; }
+	f32 mStartY;
+	f32 mStartX;          // _00
+	s32 mType;            // _08
+	PointDisplay display; // _0C
+	PointBurst burst;     // _74
+	u8 IsFree() const { return display.mState == 0 && burst.mState == 0; }
 };
 STATIC_ASSERT(sizeof(PointPtcl) == 0x61C);
 

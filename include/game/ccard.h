@@ -34,7 +34,7 @@ public:
 	void Unmount();
 	s32 UnmountEx();
 	s32 Mount(s32 chan, CARDCallback detachCallback);
-	void Probe(s32 chan, s32* memSize, s32* sectorSize);
+	s32 Probe(s32 chan, s32* memSize, s32* sectorSize);
 	s32 ProbeEx(s32 chan, s32* memSize, s32* sectorSize);
 	void Init();
 };

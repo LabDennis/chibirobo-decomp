@@ -4,6 +4,16 @@
 #include "game/xobj.h"
 #include "game/csound.h"
 
+// one of the coins a spider knocks loose, it hops up and drops to mTarget
+struct CoinBounce {
+	XObj* mCoin; // _00
+	Vec mPos;    // _04
+	s32 mPhase;  // _10
+	s32 mCount;  // _14
+	Vec mTarget; // _18
+};
+STATIC_ASSERT(sizeof(CoinBounce) == 0x24);
+
 // a carried model, drawn with the object 0x13C model the spider claimed a slot for
 struct CarryInfo {
 	CVec mPos;      // _00
@@ -31,22 +41,22 @@ public:
 	typedef void (XObjSpider::*Func)(u32 frames);
 
 	// _00-_980 = XObj
-	f32 mDir;               // _980, the way it walks
-	f32 mSpeed;             // _984
-	f32 _988;               // _988
-	f32 _98C;               // _98C
-	f32 mTurnSpeed;         // _990
-	u8 _994[0x998 - 0x994]; // _994
-	f32 mThreadAlpha;       // _998, 0 to 1
-	f32 mRadius;            // _99C, shadow size, also kept off the area edges
-	f32 mFallSpeed;         // _9A0
-	s32 mState;             // _9A4
-	s32 mPhase;             // _9A8
-	s32 mCounter;           // _9AC
-	CStatus mFlags;         // _9B0
-	s32 mPrevState;         // _9B8
+	f32 mDir;         // _980, the way it walks
+	f32 mSpeed;       // _984
+	f32 _988;         // _988
+	f32 _98C;         // _98C
+	f32 mTurnSpeed;   // _990
+	f32 mSavedDir;    // _994
+	f32 mThreadAlpha; // _998, 0 to 1
+	f32 mRadius;      // _99C, shadow size, also kept off the area edges
+	f32 mFallSpeed;   // _9A0
+	s32 mState;       // _9A4
+	s32 mPhase;       // _9A8
+	s32 mCounter;     // _9AC
+	CStatus mFlags;   // _9B0
+	s32 mPrevState;   // _9B8
 #if defined(VERSION_PAL)
-	u8 _9BC_PAL[0x4]; // _9BC
+	f32 mAnimStartFrame; // _9BC
 #endif
 	s32 mWait;              // _9BC
 	f32 _9C0;               // _9C0
@@ -59,14 +69,14 @@ public:
 	s32 mMaxHits;           // _9EC
 	Vec mWallPos;           // _9F0
 	Vec mTarget;            // _9FC, where it walks to
-	Vec _A08;               // _A08
-	Vec _A14;               // _A14
+	Vec mShotOrigin;        // _A08
+	Vec mShotPosition;      // _A14
 	u8 _A20[0xA2C - 0xA20]; // _A20
 	Vec mShotTo;            // _A2C, where the carried model is shot at
-	f32 _A38;               // _A38
+	f32 mShotRange;         // _A38
 	u8 _A3C[0xA40 - 0xA3C]; // _A3C
-	f32 _A40;               // _A40
-	s32 _A44;               // _A44
+	f32 mShotProgress;      // _A40
+	s32 mShotState;         // _A44
 	s32 _A48;               // _A48
 	Vec mAreaPos;           // _A4C, corner of the area it stays in
 	f32 mAreaWidth;         // _A58
@@ -102,20 +112,25 @@ public:
 	u8 _D78_PAL[0x4]; // _D78
 #endif
 
-	virtual void vf90(u32 id);                         // _90
-	virtual void vf94();                               // _94
-	virtual void vf98();                               // _98
-	virtual BOOL vf9C(const CoordInfo& info);          // _9C
-	virtual void vfA4(u32 frames);                     // _A4
-	virtual void vfAC();                               // _AC
-	virtual void vfB8();                               // _B8
-	virtual void vfBC(const Vec* origin, f32 opacity); // _BC
-	virtual void vfC0();                               // _C0
-	virtual void vfC8();                               // _C8
-	virtual void vfCC();                               // _CC
-	virtual s32 vf100(s32 unused, s32 value);          // _100
-	virtual void vf138(const Vec& from, f32 strength); // _138
-	virtual void vf148();                              // _148, plays the sounds along the anim
+#if defined(VERSION_PAL)
+	void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate);
+#endif
+	virtual ~XObjSpider();
+	virtual void InitializeObject(u32 id);                           // _90
+	virtual void vf94();                                             // _94
+	virtual void ResetObjectState();                                 // _98
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);           // _9C
+	virtual void UpdateObject(u32 frames);                           // _A4
+	virtual void vfAC();                                             // _AC
+	virtual void DrawGroundShadow();                                 // _B8
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity); // _BC
+	virtual void DrawObjectEffects();                                // _C0
+	virtual void vfC8();                                             // _C8
+	virtual void DrawDebugStatus();                                  // _CC
+	virtual s32 vf100(s32 unused, s32 value);                        // _100
+	virtual s32 HandleEventCommand(s32 count, s32* args);            // _124
+	virtual void OnHitFromPosition(const Vec& from, f32 strength);   // _138
+	virtual void UpdateAnimationSounds();                            // _148, plays the sounds along the anim
 
 	// the states, Update calls them by number
 	void State0(u32 frames);
@@ -147,9 +162,12 @@ STATIC_ASSERT(sizeof(XObjSpider) == 0xD80);
 STATIC_ASSERT(sizeof(XObjSpider) == 0xD78);
 #endif
 
+extern XObjSpider::Func gSpiderStateHandlers[10];
+
 extern "C" {
+u8 HasSpiderFinishedDeathAnimation(const XObjSpider* spider);
 // draws a CarryInfo with the claimed slot's model
-void fn_800EAB58(CarryInfo* carry, u8 slot, bool sideways);
+void DrawSpiderCarryModel(CarryInfo* carry, u8 slot, bool sideways);
 }
 
 #endif

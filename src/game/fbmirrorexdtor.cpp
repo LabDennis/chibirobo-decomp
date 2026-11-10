@@ -8,3 +8,11 @@
 FbMirrorEx::~FbMirrorEx()
 {
 }
+
+/**
+ * @note Address: 0x80019700
+ * @note Size: 0x5C
+ */
+FbMirrorEx::FbMirrorEx()
+{
+}

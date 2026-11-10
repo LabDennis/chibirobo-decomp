@@ -16,6 +16,6 @@ extern "C" void vf24__5CGameFv(CGame* game)
 			if (object->mStatus.mFlags & 1ULL)
 				object->vfC8();
 		}
-		fn_8006F338(4, 0, NULL);
+		CallStageModule(4, 0, NULL);
 	}
 }

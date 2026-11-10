@@ -1,11 +1,14 @@
 #include "game/xobjspiderboss.h"
 #include "game/video.h"
 
+// MWCC pools the six reset vectors immediately after these templates.
+extern "C" const Vec sSpiderBossVectorTemplates[] = { { 1, 1, 1 }, {}, {}, { 1, 1, 1 }, {}, {} };
+
 /**
  * @note Address: 0x8010660C
  * @note Size: 0x2C8
  */
-extern "C" void fn_8010660C(XObj* object)
+extern "C" void ResetSpiderBossState(XObj* object)
 {
 	XObjSpiderBoss* spider       = (XObjSpiderBoss*)object;
 	spider->mHeading             = 0.0f;
@@ -32,14 +35,14 @@ extern "C" void fn_8010660C(XObj* object)
 		spider->mBasePos = value;
 	}
 	{
-		Vec value    = { 0.0f, 0.0f, 0.0f };
-		spider->_9F0 = value;
+		Vec value             = { 0.0f, 0.0f, 0.0f };
+		spider->mPatrolTarget = value;
 	}
 	spider->mHitStrength = 0.0f;
 	spider->_9EC         = 23;
 	spider->mNextAction  = spider->_9EC;
-	spider->_A2C         = 0;
-	spider->_A30         = 0;
+	spider->mCommand     = 0;
+	spider->mArgs[0]     = 0;
 	spider->_A44         = 0;
 	spider->_994         = 1.0f;
 	spider->mStatus.mFlags |= 8ULL;
@@ -56,18 +59,18 @@ extern "C" void fn_8010660C(XObj* object)
 	}
 	spider->_A1C = 0.0f;
 	spider->vf12C(1, 0, 0, 0, 0.0f);
-	spider->_A48 = 0.0f;
-	spider->_A4C = 0.0f;
-	spider->_A50 = 0;
-	spider->_A54 = 0.0f;
+	spider->_A48                 = 0.0f;
+	spider->mEscapeInputStrength = 0.0f;
+	spider->mDrainTimer          = 0;
+	spider->mEscapeRemaining     = 0.0f;
 	{
 		Vec value    = { 0.0f, 0.0f, 0.0f };
 		spider->_A58 = value;
 	}
 #if defined(VERSION_PAL)
-	spider->_A64 = 3 * lbl_80660D4C; // 3 seconds
+	spider->mGrabIntervalFrames = 3 * gVideoFramesPerSecond; // 3 seconds
 #else
-	spider->_A64 = 180;
+	spider->mGrabIntervalFrames = 180;
 #endif
 	spider->mAreaPos.x  = -200.0f;
 	spider->mAreaPos.y  = 0.0f;
@@ -77,15 +80,15 @@ extern "C" void fn_8010660C(XObj* object)
 	spider->_A68        = 0;
 	spider->mBlinkTimer = 0;
 	for (u32 i = 0; i < 8; ++i) {
-		spider->mParts[i]._04 = 0;
-		spider->mParts[i]._00 = 0;
+		spider->mParts[i].mObj   = NULL;
+		spider->mParts[i].mJoint = NULL;
 	}
-	if (spider->_258 == 0) {
-		fn_800EA99C(&lbl_8065B2E8);
+	if (spider->mPoolIndex == 0) {
+		ResetSpiderCoinBounces(&gSpiderBossCoinBounceContext);
 	}
-	spider->_A20       = 0;
-	spider->mAltAnimId = 0;
-	spider->_A28       = 5;
+	spider->mPatrolSelection = 0;
+	spider->mAltAnimId       = 0;
+	spider->mGrabCooldown    = 5;
 	spider->mStatus.mFlags |= 4ULL;
-	spider->_A95 = 0;
+	spider->mPatrolEffectActive = 0;
 }

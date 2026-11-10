@@ -10,9 +10,7 @@ extern "C" {
 #include "game/cgame.h"
 #include "game/xchr.h"
 
-// CGame's camera fields, by offset
-
-extern "C" f32 lbl_8022E6E8[3];
+extern "C" f32 gChaseCameraSpringSettings[3];
 
 // backwards from here, deferred inlining
 
@@ -26,7 +24,7 @@ inline void AddCopy(CVec& a, Vec b)
  * @note Address: 0x80142AF8
  * @note Size: 0x2F0
  */
-static CVec CalcSpring(CVec& eye, const CVec& target, const CVec& last, f32 dt, f32 stiffness, f32 damping, f32 rest)
+CVec CalcSpring(CVec& eye, const CVec& target, const CVec& last, f32 dt, f32 stiffness, f32 damping, f32 rest)
 {
 	CVec dir;
 	CVec vel;
@@ -57,7 +55,7 @@ void CCameraActionChase::Init()
  */
 void CCameraActionChase::vf14()
 {
-	mTarget = lbl_8025C400.GetPlayer();
+	mTarget = gGame.GetPlayer();
 	if (mTarget != NULL) {
 		mRestDistance = 105.0f;
 		Mtx mtx;
@@ -85,7 +83,7 @@ void CCameraActionChase::SetCamera(CCamera* camera)
 	SetInterest(camera->mInterest);
 	SetDistance(camera->mDistance);
 	SetFov(camera->mFov);
-	mTarget = lbl_8025C400.GetPlayer();
+	mTarget = gGame.GetPlayer();
 }
 
 /**
@@ -112,16 +110,16 @@ void CCameraActionChase::Update(u32 step)
 	mPos.z = behind.z;
 
 	CVec eye((const Vec&)mEye);
-	eye = CalcSpring(eye, mPos, mLastPos, dt, lbl_8022E6E8[0], mDamping, mRestDistance);
+	eye = CalcSpring(eye, mPos, mLastPos, dt, gChaseCameraSpringSettings[0], mDamping, mRestDistance);
 	SetEye(eye);
 	SetInterest(mTarget->GetCameraTarget());
 	mMode = 3;
 
 	CPad pad(0);
-	u32 leftButton  = (lbl_8025C400.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADLEFT : HSD_PAD_CSTICK_LEFT;
-	u32 rightButton = (lbl_8025C400.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADRIGHT : HSD_PAD_CSTICK_RIGHT;
-	u32 upButton    = (lbl_8025C400.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADUP : HSD_PAD_CSTICK_UP;
-	u32 downButton  = (lbl_8025C400.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADDOWN : HSD_PAD_CSTICK_DOWN;
+	u32 leftButton  = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADLEFT : HSD_PAD_CSTICK_LEFT;
+	u32 rightButton = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADRIGHT : HSD_PAD_CSTICK_RIGHT;
+	u32 upButton    = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADUP : HSD_PAD_CSTICK_UP;
+	u32 downButton  = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADDOWN : HSD_PAD_CSTICK_DOWN;
 
 	{
 		CVec angle = mAngle;
@@ -132,11 +130,11 @@ void CCameraActionChase::Update(u32 step)
 		} else if (pad.mPad->mButton & leftButton) {
 			yaw = -1.0f;
 		}
-		if (yaw != 0.0f) {
+		if (yaw || pitch) {
 			f32 dx = step * (pitch * 0.05235988f);
 			f32 dy = step * (yaw * 0.05235988f);
-			f32 x  = angle.x + dx;
 			f32 y  = angle.y + dy;
+			f32 x  = angle.x + dx;
 			if (x > 1.5550883f) {
 				x = 1.5550883f;
 			}

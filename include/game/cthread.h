@@ -3,8 +3,6 @@
 
 #include "Dolphin/OS/OSThread.h"
 
-// an OSThread with its stack, name and vtable from RTTI. the methods are in
-// cthread.cpp, which still has its own copy of it
 class CThread {
 public:
 	CThread()
@@ -17,7 +15,7 @@ public:
 	u32 mStackSize;   // _31C
 	// _320 vtable
 
-	virtual ~CThread() { } // _08 (weak), the DOL has no __dt__7CThreadFv, fn_8001950C is a weak copy
+	virtual ~CThread();                                                                            // _08
 	virtual BOOL Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr); // _0C
 
 	// todo: cleanup, card jobs and the movie all start threads like this
@@ -29,12 +27,18 @@ public:
 		OSResumeThread(&mThread);
 	}
 };
+#ifndef DEFER_THREAD_DESTRUCTOR
+inline CThread::~CThread()
+{
+}
+#endif
+
 typedef char CThread_size_check[sizeof(CThread) == 0x328 ? 1 : -1];
 
 extern "C" {
 // the memory card jobs run on this one
-extern CThread lbl_8036AC10;
-extern u8 lbl_8036AF38[0x1000];
+extern CThread gMemoryCardThread;
+extern u8 gMemoryCardThreadStack[0x1000];
 }
 
 #endif

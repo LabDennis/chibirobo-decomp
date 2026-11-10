@@ -193,12 +193,6 @@ inline void HSD_JObjSetupMatrix(HSD_JObj* jobj)
     HSD_JObjSetupMatrixSub(jobj);
 }
 
-inline void HSD_JObjSetMtxDirty(HSD_JObj* jobj)
-{
-    if (!jobj || HSD_JObjMtxIsDirty(jobj)) {
-        return;
-    }
-    HSD_JObjSetMtxDirtySub(jobj);
-}
+void HSD_JObjSetMtxDirty(HSD_JObj* jobj);
 
 #endif

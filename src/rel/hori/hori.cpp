@@ -113,16 +113,16 @@ s32 RandomAnimCtrl::UpdateRandomAnim()
 extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2)
 {
 	s32* args = (s32*)arg2;
-	s16 id    = args[0];
+	s16 pitch = args[0];
 	s32 time  = args[1] * 60 / 100;
-	XSound* unk;
+	XSound* sound;
 
 	if (time <= 0) {
 		time = 1;
 	}
-	unk       = &lbl_8025C400.mSound;
-	unk->_2BA = id;
-	unk->_188 = time;
+	sound                    = &gGame.mSound;
+	sound->mTargetMusicPitch = pitch;
+	sound->_188              = time;
 	return 0;
 }
 
@@ -136,7 +136,7 @@ extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, void* arg2)
 	s32 i;
 
 	for (i = 0; i < count; i++) {
-		randomAnims[randomAnimCount].Start(lbl_8025C400.mXObjs.mObjects[*ids]);
+		randomAnims[randomAnimCount].Start(gGame.mXObjs.mObjects[*ids]);
 		ids++;
 		randomAnimCount++;
 	}
@@ -149,10 +149,10 @@ extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, void* arg2)
  */
 extern "C" void UpdateStage(void* arg)
 {
-	s32 cur = lbl_8025C400.GetPlayer()->_9D4[0];
+	s32 cur = gGame.GetPlayer()->mFloorContacts[0].objectIndex;
 
 	if (prevPlayerObjNo != cur && cur == tuta_objno) {
-		lbl_8025C400.mXObjs.mObjects[tuta_objno]->SetAnim(1, 1, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+		gGame.mXObjs.mObjects[tuta_objno]->SetAnim(1, 1, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
 	}
 	prevPlayerObjNo = cur;
 }
@@ -167,8 +167,8 @@ extern "C" void Init(void* arg)
 
 	OSReport("Init\n");
 	prevPlayerObjNo = -1;
-	for (i = 0; i < lbl_8025C400.mXObjs.mObjectCount; i++) {
-		if (lbl_8025C400.mXObjs.mObjects[i]->GetKind() == 0x2EC) {
+	for (i = 0; i < gGame.mXObjs.mObjectCount; i++) {
+		if (gGame.mXObjs.mObjects[i]->GetKind() == 0x2EC) {
 			tuta_objno = i;
 			OSReport("tuta_objno = %d\n", i);
 		}

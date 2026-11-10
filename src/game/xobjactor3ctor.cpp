@@ -1,3 +1,4 @@
+#define DEFER_CSCRNCOLOR_CONSTRUCTOR
 #include "game/xobjactor.h"
 #include "game/xobjfree.h"
 #include "game/xobjflags.h"
@@ -12,8 +13,9 @@
 // down with when the game ends
 
 extern "C" {
-// two plain objects pool 5 keeps next to its XObjActor3s
-extern XObj lbl_8039BAE0[2];
+// The two plain objects in pool 4.
+extern u8 gActorsPool[sizeof(XObj) * 2];
+extern const f32 gScreenColorZero;
 }
 
 /**
@@ -30,16 +32,15 @@ XObjActor3::XObjActor3()
  */
 // 0x8013462C, CPtclDust3's ctor, the compiler emits it here
 
-extern "C" void fn_8013465C()
+extern "C" void DestroyXObjArray()
 {
-	__destroy_arr(lbl_8039BAE0, (ConstructorDestructor*)__dt__4XObjFv, sizeof(XObj), ARRAY_SIZE(lbl_8039BAE0));
+	__destroy_arr(gActorsPool, (ConstructorDestructor*)__dt__4XObjFv, sizeof(XObj), sizeof(gActorsPool) / sizeof(XObj));
 }
 
 /**
  * @note Address: 0x80134694
  * @note Size: 0x354
  */
-// NONMATCHING: the member ctors
 XObjChr::XObjChr()
 {
 }
@@ -59,6 +60,14 @@ OXMenuMark::OXMenuMark()
  * @note Size: 0x3C
  */
 XObjOX::XObjOX()
+{
+}
+
+/**
+ * @note Address: 0x80134A58
+ * @note Size: 0x3C
+ */
+XObjAttachment::XObjAttachment()
 {
 }
 
@@ -87,14 +96,6 @@ XObjCopter::XObjCopter()
 }
 
 /**
- * @note Address: 0x80134A58
- * @note Size: 0x3C
- */
-XObjAttachment::XObjAttachment()
-{
-}
-
-/**
  * @note Address: 0x80134B48
  * @note Size: 0x70
  */
@@ -108,6 +109,23 @@ XObjPlug::XObjPlug()
  */
 XObjWireEff::XObjWireEff()
 {
+}
+
+/**
+ * @note Address: 0x80134BF4
+ * @note Size: 0x2C
+ */
+XObjPlugCordNode::XObjPlugCordNode()
+{
+}
+
+/**
+ * @note Address: 0x80134C20
+ * @note Size: 0x44
+ */
+CScrnColor::CScrnColor()
+{
+	ResetChannels(gScreenColorZero);
 }
 
 /**
@@ -144,54 +162,4 @@ XObjLight::XObjLight()
  */
 XObjCamera::XObjCamera()
 {
-}
-
-/**
- * @note Address: 0x80134E4C
- * @note Size: 0x48
- */
-// todo: weak copy
-// NONMATCHING: the vtable store is scheduled later
-extern "C" CMsgQueue* fn_80134E4C(CMsgQueue* queue, s32 flags)
-{
-	if (queue != NULL) {
-		queue->CMsgQueue::~CMsgQueue();
-		if ((s16)flags > 0) {
-			operator delete(queue);
-		}
-	}
-	return queue;
-}
-
-/**
- * @note Address: 0x80134E94
- * @note Size: 0x84
- */
-XObjReadOne::~XObjReadOne()
-{
-}
-
-/**
- * @note Address: 0x80134F18
- * @note Size: 0x84
- */
-XObjReadAll::~XObjReadAll()
-{
-}
-
-/**
- * @note Address: 0x80134F9C
- * @note Size: 0x74
- */
-// todo: weak copy
-// NONMATCHING: the inlined dtors
-extern "C" XObjRead* fn_80134F9C(XObjRead* reader, s32 flags)
-{
-	if (reader != NULL) {
-		reader->XObjRead::~XObjRead();
-		if ((s16)flags > 0) {
-			operator delete(reader);
-		}
-	}
-	return reader;
 }

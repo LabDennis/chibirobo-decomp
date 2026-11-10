@@ -19,7 +19,7 @@ struct PadLibData {
 
 extern PadLibData HSD_PadLibData;
 
-HSD_RumbleData lbl_8064C778[4];
+HSD_RumbleData gPadRumbleStates[4];
 
 static HSD_RumbleData default_rumble = { 0 };
 
@@ -30,7 +30,7 @@ static HSD_RumbleData default_rumble = { 0 };
 void HSD_PadRumbleOn(u8 no)
 {
 	bool intrEnabled  = OSDisableInterrupts();
-	HSD_RumbleData* r = &lbl_8064C778[no];
+	HSD_RumbleData* r = &gPadRumbleStates[no];
 
 	r->direct_status = 2;
 	OSRestoreInterrupts(intrEnabled);
@@ -43,7 +43,7 @@ void HSD_PadRumbleOn(u8 no)
 void HSD_PadRumbleOffN(u8 no)
 {
 	bool intrEnabled  = OSDisableInterrupts();
-	HSD_RumbleData* r = &lbl_8064C778[no];
+	HSD_RumbleData* r = &gPadRumbleStates[no];
 
 	r->direct_status = 0;
 	OSRestoreInterrupts(intrEnabled);
@@ -69,7 +69,7 @@ static inline void HSD_PadRumbleFree(HSD_RumbleData* a, HSD_PadRumbleListData* b
  */
 void HSD_PadRumbleRemove(u8 no)
 {
-	HSD_RumbleData* r          = &lbl_8064C778[no];
+	HSD_RumbleData* r          = &gPadRumbleStates[no];
 	bool intrEnabled           = OSDisableInterrupts();
 	HSD_PadRumbleListData* cur = r->listdatap;
 
@@ -97,7 +97,7 @@ void HSD_PadRumbleRemoveAll(void)
 static inline void HSD_PadRumblePause(u8 no, int status)
 {
 	bool intrEnabled           = OSDisableInterrupts();
-	HSD_PadRumbleListData* cur = lbl_8064C778[no].listdatap;
+	HSD_PadRumbleListData* cur = gPadRumbleStates[no].listdatap;
 
 	while (cur != NULL) {
 		HSD_PadRumbleListData* next = cur->next;
@@ -152,7 +152,7 @@ static inline void HSD_PadRumbleInsert(HSD_PadRumbleListData** prev, HSD_PadRumb
 int HSD_PadRumbleAdd(u8 no, int id, int frame, int pri, void* listp)
 {
 	RumbleInfo* info            = &HSD_PadLibData.rumble_info;
-	HSD_RumbleData* r           = &lbl_8064C778[no];
+	HSD_RumbleData* r           = &gPadRumbleStates[no];
 	int result                  = 0;
 	bool intrEnabled            = OSDisableInterrupts();
 	HSD_PadRumbleListData* data = info->listdatap;
@@ -239,7 +239,7 @@ int HSD_PadRumbleInterpret1(HSD_PadRumbleListData* a, u8* b)
  */
 void HSD_PadRumbleInterpret(void)
 {
-	HSD_RumbleData* r30 = lbl_8064C778;
+	HSD_RumbleData* r30 = gPadRumbleStates;
 	HSD_PadRumbleListData* r29;
 	HSD_PadRumbleListData* r28;
 	int i;
@@ -290,6 +290,6 @@ void HSD_PadRumbleInit(u16 a, HSD_PadRumbleListData* b)
 		info->listdatap[i].next = NULL;
 	}
 	for (i = 0; i < 4; i++) {
-		lbl_8064C778[i] = default_rumble;
+		gPadRumbleStates[i] = default_rumble;
 	}
 }

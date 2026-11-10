@@ -7,7 +7,7 @@
 // CCameraActionAreaExM's vf64, resets the shared area camera state
 extern "C" void vf64__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
 {
-	fn_80137EB8(&lbl_805A054C);
+	LoadStageCameraAreaState(&gCameraAreaState);
 }
 
 /**

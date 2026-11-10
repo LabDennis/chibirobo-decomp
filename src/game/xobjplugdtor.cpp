@@ -5,14 +5,14 @@ void operator delete(void* object);
 extern "C" {
 extern void* __vt__8XObjPlug[];
 void* __dt__11XObjWireEffFv(XObjWireEff* wire, s32 flags);
-void* fn_800BCCF4(void* object, s32 flags);
+void* __dt__16XObjPlugCordNodeFv(void* object, s32 flags);
 }
 
 // todo: cleanup, stand-ins for the cord's own dtors
 static inline void DestroyNodes(XObjPlugCordNodes* nodes)
 {
 	if (nodes != NULL)
-		__destroy_arr(nodes, (ConstructorDestructor*)fn_800BCCF4, sizeof(XObjPlugCordNode), 10);
+		__destroy_arr(nodes, (ConstructorDestructor*)__dt__16XObjPlugCordNodeFv, sizeof(XObjPlugCordNode), 10);
 }
 
 static inline void DestroyCord(XObjPlugCord* cord)

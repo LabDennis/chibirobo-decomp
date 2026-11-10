@@ -9,6 +9,14 @@ extern "C" {
 
 // sdk ARC archive reader, a file system image already sitting in memory
 
+typedef struct ARCHeader {
+	u32 magic;      // _00
+	s32 fstStart;   // _04
+	s32 fstSize;    // _08
+	s32 fileStart;  // _0C
+	s32 reserve[4]; // _10
+} ARCHeader;
+
 typedef struct ARCHandle {
 	void* archiveStartAddr; // _00
 	void* FSTStart;         // _04

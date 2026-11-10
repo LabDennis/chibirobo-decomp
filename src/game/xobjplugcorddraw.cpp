@@ -13,18 +13,18 @@ extern "C" {
  * @note Address: 0x800DA68C
  * @note Size: 0x354
  */
-extern "C" void fn_800DA68C(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ)
+extern "C" void DrawPlugCordSegments(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ)
 {
 	CGs* graphics = CaptureGraphics();
-	fn_8019B648(graphics->mCurRenderMode, cord->mFlags & 1);
-	fn_8019B5D0(graphics->mCurRenderMode, (cord->mFlags >> 1) & 1);
-	fn_8019B3E8(graphics->mCurRenderMode, (cord->mFlags >> 2) & 1, cord->mAlpha);
-	fn_8019B464(graphics->mCurRenderMode, 1, 3, 1);
-	fn_8019B56C(graphics->mCurRenderMode, 1, 4, 5, 15);
+	SetGsColorUpdate(graphics->mCurRenderMode, cord->mFlags & 1);
+	SetGsAlphaUpdate(graphics->mCurRenderMode, (cord->mFlags >> 1) & 1);
+	SetGsDestinationAlpha(graphics->mCurRenderMode, (cord->mFlags >> 2) & 1, cord->mAlpha);
+	SetGsDepthMode(graphics->mCurRenderMode, 1, 3, 1);
+	SetGsBlendMode(graphics->mCurRenderMode, 1, 4, 5, 15);
 	FlushCaptureGraphics(graphics);
 	f32(*selectedView)[4];
 	if (view == NULL)
-		selectedView = lbl_8025C400.mGs.mCamera->mViewMtx;
+		selectedView = gGame.mGs.mCamera->mViewMtx;
 	else
 		selectedView = view;
 	Mtx combined, local;
@@ -46,7 +46,7 @@ extern "C" void fn_800DA68C(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY
 		scale.z       = 0.5f * PSVECDistance(current, next);
 		HSD_MtxSRT(local, &scale, &rotation, &position, NULL);
 		PSMTXConcat(selectedView, local, combined);
-		fn_80196C28(&lbl_8025C400.mGs, combined, cord->mColor, 6);
+		DrawGsCylinderWithMatrix(&gGame.mGs, combined, cord->mColor, 6);
 	}
 	scale.z = 0.9f * cord->mWidth;
 }

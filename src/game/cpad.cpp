@@ -6,6 +6,11 @@ extern "C" {
 #include <sysdolphin/video.h>
 }
 
+extern "C" {
+extern const f32 sPadAdcAngle;
+extern const f32 sPadAnalogNeutral;
+}
+
 static CPadEx* sPadEx;
 
 /**
@@ -48,7 +53,7 @@ void CPadEx::Init()
 	HSD_PadInit(1, &mQueue, 4, mRumble);
 	HSD_PadLibData.adc_type            = 0;
 	HSD_PadLibData.adc_th              = 50;
-	HSD_PadLibData.adc_angle           = 0.5235988f;
+	HSD_PadLibData.adc_angle           = sPadAdcAngle;
 	HSD_PadLibData.clamp_stickType     = 0;
 	HSD_PadLibData.clamp_stickShift    = 1;
 	HSD_PadLibData.clamp_stickMax      = 80;
@@ -58,7 +63,7 @@ void CPadEx::Init()
 	HSD_PadLibData.clamp_analogLRMax   = 200;
 	HSD_PadLibData.clamp_analogLRMin   = 10;
 	HSD_PadLibData.scale_analogLR      = 190;
-	fn_801CC0A0(1);
+	SetPadQueueType(1);
 	HSD_VISetUserPostRetraceCallback(PadRetraceCallback);
 	for (int i = 0; i < 4; i++) {
 		mPad[i].Init(i);
@@ -151,9 +156,9 @@ void CPadOne::Clear()
 	for (int i = 0; i < 4; i++) {
 		mRepeatTimer[i] = 24;
 	}
-	mStickX = mStickY = 0.0f;
-	mSubStickX = mSubStickY = 0.0f;
-	mAnalogL = mAnalogR = 0.0f;
+	mStickX = mStickY = sPadAnalogNeutral;
+	mSubStickX = mSubStickY = sPadAnalogNeutral;
+	mAnalogL = mAnalogR = sPadAnalogNeutral;
 }
 
 /**

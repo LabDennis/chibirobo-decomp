@@ -42,11 +42,11 @@ inline void ClearSaveSlot(MenuSaveSlot* slot)
 }
 
 extern "C" {
-bool fn_8003D7C4(const MenuSaveSlot* slot);
-void fn_8003D7DC(MenuSaveSlot* slot);
+bool IsSaveSlotIntact(const MenuSaveSlot* slot);
+void ResetSaveSlotRecord(MenuSaveSlot* slot);
 
 // the three save files as the card menus last read them
-extern MenuSaveSlot lbl_80361E8C[3];
+extern MenuSaveSlot gTitleSaveSlots[3];
 }
 
 #endif

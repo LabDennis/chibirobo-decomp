@@ -8,17 +8,17 @@ extern "C" {
 #include <sysdolphin/pobj.h>
 }
 
-static inline HSD_MObj* HSD_DObjGetMObj(HSD_DObj* dobj)
+inline HSD_MObj* HSD_DObjGetMObj(HSD_DObj* dobj)
 {
 	return dobj ? dobj->mobj : NULL;
 }
 
-static inline HSD_PObj* HSD_DObjGetPObj(HSD_DObj* dobj)
+inline HSD_PObj* HSD_DObjGetPObj(HSD_DObj* dobj)
 {
 	return dobj ? dobj->pobj : NULL;
 }
 
-static inline HSD_DObj* HSD_DObjGetNext(HSD_DObj* dobj)
+inline HSD_DObj* HSD_DObjGetNext(HSD_DObj* dobj)
 {
 	return dobj ? dobj->next : NULL;
 }

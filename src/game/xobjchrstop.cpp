@@ -1,12 +1,19 @@
 #include "game/xchr.h"
 
+// Shared with the adjacent player code in the original constant pool.
+extern "C" {
+extern const f32 lbl_8065D35C; // 0.0f
+extern const f32 lbl_8065D380; // 1.0f
+extern const f32 lbl_8065D43C; // 10.0f
+}
+
 /**
  * @note Address: 0x800BAD80
  * @note Size: 0x2C
  */
-extern "C" CVec fn_800BAD80(CJObj* object, s32 depth, s32* path)
+extern "C" CVec GetPlayerJointLocalTranslationByPath(CJObj* object, s32 depth, s32* path)
 {
-	return fn_800A0894(object, depth, path);
+	return CJObj_GetJointLocalTranslationByPath(object, depth, path);
 }
 
 /**
@@ -14,27 +21,22 @@ extern "C" CVec fn_800BAD80(CJObj* object, s32 depth, s32* path)
  * @note Size: 0xC4
  */
 // stops him where he stands
-extern "C" void fn_800BADAC(XObjChr* chr)
+extern "C" void StopPlayerMotion(XObjChr* chr)
 {
-	chr->_988.x         = 0.0f;
-	chr->_988.y         = 0.0f;
-	chr->_988.z         = 0.0f;
-	chr->_988.mTarget.x = 0.0f;
-	chr->_988.mTarget.y = 0.0f;
-	chr->_988.mTarget.z = 0.0f;
-	chr->_988.mSpeed.x  = 0.0f;
-	chr->_988.mSpeed.y  = 0.0f;
-	chr->_988.mSpeed.z  = 0.0f;
-	f32 x               = chr->mMoveRotate.mTarget.x;
-	f32 y               = chr->mMoveRotate.mTarget.y;
-	f32 z               = chr->mMoveRotate.mTarget.z;
-	chr->mMoveRotate.x  = x;
-	chr->mMoveRotate.y  = y;
-	chr->mMoveRotate.z  = z;
+	chr->_988.x         = lbl_8065D35C;
+	chr->_988.y         = lbl_8065D35C;
+	chr->_988.z         = lbl_8065D35C;
+	chr->_988.mTarget.x = lbl_8065D35C;
+	chr->_988.mTarget.y = lbl_8065D35C;
+	chr->_988.mTarget.z = lbl_8065D35C;
+	chr->_988.mSpeed.x  = lbl_8065D35C;
+	chr->_988.mSpeed.y  = lbl_8065D35C;
+	chr->_988.mSpeed.z  = lbl_8065D35C;
+	chr->mMoveRotate.Set(chr->mMoveRotate.mTarget);
 	if (chr->mPush.mState != 0) {
-		fn_800C5A00(&chr->mPush);
+		ReleasePushAction(&chr->mPush);
 		chr->mPush.mState = 0;
-		chr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+		chr->SetAnim(17, FALSE, NULL, NULL, NULL, lbl_8065D35C, lbl_8065D380, lbl_8065D35C, lbl_8065D43C);
 		chr->_A2C = 3;
 	}
 }

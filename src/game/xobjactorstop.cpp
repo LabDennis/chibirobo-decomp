@@ -1,15 +1,17 @@
 #include "game/xobjactor.h"
 
+extern "C" const f32 sActorZero;
+
 /**
  * @note Address: 0x8010706C
  * @note Size: 0x18
  */
-extern "C" void fn_8010706C(void* object)
+extern "C" void ResetActorMovementStep(void* object)
 {
 	XObjActor* actor = (XObjActor*)object;
 	actor->_990      = 0;
 	actor->_994      = 0;
-	actor->_984      = 0.0f;
+	actor->_984      = sActorZero;
 }
 
 /**
@@ -25,6 +27,6 @@ extern "C" Vec GetCameraTarget__9XObjActorFv(XObjActor* actor)
  * @note Address: 0x801070A0
  * @note Size: 0x4
  */
-extern "C" void vf130__9XObjActorFv(XObjActor* actor)
+void XObjActor::OnPushDisplacement(const Vec& displacement)
 {
 }

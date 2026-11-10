@@ -3,6 +3,7 @@
 
 #include "game/xobj.h"
 #include "game/ctrigon.h"
+#include "game/mapfloorhit.h"
 #include "game/clight.h"
 #include "game/xobjlight.h"
 #include "game/stagedata.h"
@@ -12,7 +13,7 @@
 // and 2 the light objects, data[5] has a bit per light
 static inline u8* GetEnvData()
 {
-	return *(u8**)fn_8006F4B8();
+	return *(u8**)GetStageEnvironment();
 }
 
 // a stage's map model, class name from RTTI and the vtable at 0x80225F74. its floors are
@@ -29,12 +30,12 @@ public:
 
 	XObjMap();
 
-	virtual ~XObjMap();                       // _08
-	virtual void Release();                   // _54
-	virtual void vf90(u32 id);                // _90
-	virtual void vf98();                      // _98
-	virtual BOOL vf9C(const CoordInfo& info); // _9C
-	virtual void vfA4(u32 frames);            // _A4
+	virtual ~XObjMap();                                    // _08
+	virtual void Release();                                // _54
+	virtual void InitializeObject(u32 id);                 // _90
+	virtual void ResetObjectState();                       // _98
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
+	virtual void UpdateObject(u32 frames);                 // _A4
 
 	// todo: cleanup
 	XObjLightDesc* GetLightDesc(s32 i) { return (XObjLightDesc*)mArchive.mDesc[i + 1]; }
@@ -47,9 +48,20 @@ STATIC_ASSERT(sizeof(XObjMap) == 0x2658);
 STATIC_ASSERT(sizeof(XObjMap) == 0x2668);
 #endif
 
+// the first floor at or under a height, the floors are sorted from the highest down
+static inline s32 FindFloorStart(const XObjMap* map, f32 y)
+{
+	for (int i = 0; i < map->mTrigonCount; i++) {
+		if (map->mTrigon[map->mTrigonOrder[i]].mMinY <= y) {
+			return i;
+		}
+	}
+	return 0;
+}
+
 extern "C" {
 // the floor color of one of the map's triangles, 1 to 12, 0 for none
-s32 fn_80093210(XObjMap* map, s32 trigon, s32 tri);
+s32 GetMapTriangleFloorType(XObjMap* map, s32 trigon, s32 tri);
 }
 
 #endif

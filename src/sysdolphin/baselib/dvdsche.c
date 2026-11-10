@@ -47,7 +47,7 @@ void fn_801EB614(s32 max, s32 key)
  * @note Address: 0x801EB658
  * @note Size: 0x26C
  */
-s32 fn_801EB658(void (*callback)(s32), s32 param)
+s32 AcquireDvdStreamingSlot(void (*callback)(s32), s32 param)
 {
 	s32 newid;
 	u32 enabled;
@@ -89,7 +89,7 @@ s32 fn_801EB658(void (*callback)(s32), s32 param)
 	return newid;
 }
 
-// stripped helper inlined into fn_801EB8C4, its assert string lands before the caller's in .data
+// stripped helper inlined into ReleaseDvdStreamingSlot, its assert string lands before the caller's in .data
 static void remove_order(s32 id)
 {
 	s32 i;
@@ -119,7 +119,7 @@ static void remove_order(s32 id)
  * @note Address: 0x801EB8C4
  * @note Size: 0x1EC
  */
-void fn_801EB8C4(s32 id)
+void ReleaseDvdStreamingSlot(s32 id)
 {
 	u32 enabled;
 
@@ -135,7 +135,7 @@ void fn_801EB8C4(s32 id)
  * @note Address: 0x801EBAB0
  * @note Size: 0xE0
  */
-void fn_801EBAB0(s32 id, s32 key)
+void SetDvdStreamingSlotKey(s32 id, s32 key)
 {
 	u32 enabled;
 
@@ -153,7 +153,7 @@ void fn_801EBAB0(s32 id, s32 key)
  * @note Address: 0x801EBB90
  * @note Size: 0xCC
  */
-void fn_801EBB90(s32 id, void (*callback)(s32))
+void SetDvdStreamingSlotCallback(s32 id, void (*callback)(s32))
 {
 	u32 enabled;
 

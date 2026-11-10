@@ -8,9 +8,9 @@
  * @note Address: 0x80088848
  * @note Size: 0x58
  */
-extern "C" void fn_80088848(Memcard* card)
+extern "C" void PollMemoryCardWorker(Memcard* card)
 {
-	if (card->mBusy && OSIsThreadTerminated(&lbl_8036AC10.mThread))
+	if (card->mBusy && OSIsThreadTerminated(&gMemoryCardThread.mThread))
 		card->mBusy = FALSE;
 }
 
@@ -18,14 +18,14 @@ extern "C" void fn_80088848(Memcard* card)
  * @note Address: 0x800888A0
  * @note Size: 0x278
  */
-extern "C" BOOL fn_800888A0(Memcard* card, s32 channel, s32 file)
+extern "C" BOOL DeleteMemoryCardSaveFile(Memcard* card, s32 channel, s32 file)
 {
 	if (card->Probe(channel))
 		return TRUE;
 	if (card->Mount(channel, TRUE))
 		return TRUE;
 	char name[128];
-	sprintf(name, lbl_802091D8, file);
+	sprintf(name, gSaveFileNameFormat, file);
 	if (card->Delete(name))
 		return TRUE;
 	card->mState = 3;
@@ -41,10 +41,10 @@ extern "C" BOOL fn_800888A0(Memcard* card, s32 channel, s32 file)
  * @note Address: 0x80088B18
  * @note Size: 0x34
  */
-extern "C" void* fn_80088B18(void* arg)
+extern "C" void* DeleteMemoryCardSaveThread(void* arg)
 {
 	MemcardJob* job = (MemcardJob*)arg;
-	fn_800888A0(job->mCard, job->mChannel, job->mFile);
+	DeleteMemoryCardSaveFile(job->mCard, job->mChannel, job->mFile);
 	return NULL;
 }
 
@@ -52,7 +52,7 @@ extern "C" void* fn_80088B18(void* arg)
  * @note Address: 0x80088B4C
  * @note Size: 0xAC
  */
-extern "C" BOOL fn_80088B4C(Memcard* card, s32 channel, s32 file, BOOL log)
+extern "C" BOOL StartMemoryCardSaveDeletion(Memcard* card, s32 channel, s32 file, BOOL log)
 {
 	if (card->mBusy)
 		return FALSE;
@@ -60,7 +60,7 @@ extern "C" BOOL fn_80088B4C(Memcard* card, s32 channel, s32 file, BOOL log)
 	card->mJob.mCard    = card;
 	card->mJob.mChannel = channel;
 	card->mJob.mFile    = file;
-	lbl_8036AC10.Start(fn_80088B18, &card->mJob, lbl_8036AF38, sizeof(lbl_8036AF38));
+	gMemoryCardThread.Start(DeleteMemoryCardSaveThread, &card->mJob, gMemoryCardThreadStack, sizeof(gMemoryCardThreadStack));
 	card->mBusy = TRUE;
 	return TRUE;
 }
@@ -69,7 +69,7 @@ extern "C" BOOL fn_80088B4C(Memcard* card, s32 channel, s32 file, BOOL log)
  * @note Address: 0x80088BF8
  * @note Size: 0x250
  */
-extern "C" BOOL fn_80088BF8(Memcard* card, s32 channel)
+extern "C" BOOL CheckAndFormatMemoryCard(Memcard* card, s32 channel)
 {
 	if (card->Probe(channel))
 		return TRUE;
@@ -98,10 +98,10 @@ extern "C" BOOL fn_80088BF8(Memcard* card, s32 channel)
  * @note Address: 0x80088E48
  * @note Size: 0x30
  */
-extern "C" void* fn_80088E48(void* arg)
+extern "C" void* CheckAndFormatMemoryCardThread(void* arg)
 {
 	MemcardJob* job = (MemcardJob*)arg;
-	fn_80088BF8(job->mCard, job->mChannel);
+	CheckAndFormatMemoryCard(job->mCard, job->mChannel);
 	return NULL;
 }
 
@@ -109,14 +109,14 @@ extern "C" void* fn_80088E48(void* arg)
  * @note Address: 0x80088E78
  * @note Size: 0xA8
  */
-extern "C" BOOL fn_80088E78(Memcard* card, s32 channel, BOOL log)
+extern "C" BOOL StartMemoryCardFormatCheck(Memcard* card, s32 channel, BOOL log)
 {
 	if (card->mBusy)
 		return FALSE;
 	card->mLog          = log;
 	card->mJob.mCard    = card;
 	card->mJob.mChannel = channel;
-	lbl_8036AC10.Start(fn_80088E48, &card->mJob, lbl_8036AF38, sizeof(lbl_8036AF38));
+	gMemoryCardThread.Start(CheckAndFormatMemoryCardThread, &card->mJob, gMemoryCardThreadStack, sizeof(gMemoryCardThreadStack));
 	card->mBusy = TRUE;
 	return TRUE;
 }

@@ -20,7 +20,7 @@ void memcpy(void*, void*, int);
 // the asserts call this one activeParticle, the other two arrays sit right behind it
 HSD_Particle* activeParticle[PS_NUM_LINK];
 s32 sortDirty[PS_NUM_LINK];
-HSD_Particle* lbl_8064D3F0[PS_NUM_LINK];
+HSD_Particle* translucentParticleHead[PS_NUM_LINK];
 // free list of particle structs
 HSD_Particle* freeParticle;
 
@@ -45,9 +45,9 @@ s32 _psLinkInit(s32 count)
 	HSD_Particle* pp;
 
 	for (i = 0; i < PS_NUM_LINK; i++) {
-		activeParticle[i] = NULL;
-		sortDirty[i]      = 0;
-		lbl_8064D3F0[i]   = NULL;
+		activeParticle[i]          = NULL;
+		sortDirty[i]               = 0;
+		translucentParticleHead[i] = NULL;
 	}
 	freeParticle = NULL;
 
@@ -84,9 +84,9 @@ void _psListClear(void)
 			next = pp->next;
 			HSD_Free(pp);
 		}
-		activeParticle[i] = NULL;
-		sortDirty[i]      = 0;
-		lbl_8064D3F0[i]   = NULL;
+		activeParticle[i]          = NULL;
+		sortDirty[i]               = 0;
+		translucentParticleHead[i] = NULL;
 	}
 }
 
@@ -157,7 +157,7 @@ typedef struct PSParticleBucket {
  * @note Address: N/A
  * @note Size: 0x338
  */
-HSD_Particle* particleSort(s32 linkNo, void** outHead0, void** outHead1)
+HSD_Particle* particleSort(s32 linkNo, HSD_Particle** opaqueHead, HSD_Particle** translucentHead)
 {
 	HSD_Particle* p;
 	HSD_Particle* next;
@@ -174,25 +174,25 @@ HSD_Particle* particleSort(s32 linkNo, void** outHead0, void** outHead1)
 
 	if (!sortDirty[linkNo]) {
 		if (p == NULL) {
-			*outHead0 = NULL;
-			*outHead1 = NULL;
+			*opaqueHead      = NULL;
+			*translucentHead = NULL;
 			return NULL;
 		}
 		if (p->kind & 8) {
-			*outHead0 = p;
+			*opaqueHead = p;
 		} else {
-			*outHead0 = NULL;
+			*opaqueHead = NULL;
 		}
-		*outHead1 = lbl_8064D3F0[linkNo];
+		*translucentHead = translucentParticleHead[linkNo];
 		return p;
 	}
 
 	sortDirty[linkNo] = 0;
 
 	if (p == NULL) {
-		lbl_8064D3F0[linkNo] = NULL;
-		*outHead0            = NULL;
-		*outHead1            = NULL;
+		translucentParticleHead[linkNo] = NULL;
+		*opaqueHead                     = NULL;
+		*translucentHead                = NULL;
 		return NULL;
 	}
 
@@ -255,9 +255,9 @@ HSD_Particle* particleSort(s32 linkNo, void** outHead0, void** outHead1)
 		tail1->next = NULL;
 	}
 
-	activeParticle[linkNo] = result;
-	lbl_8064D3F0[linkNo]   = head1;
-	*outHead0              = head0;
-	*outHead1              = head1;
+	activeParticle[linkNo]          = result;
+	translucentParticleHead[linkNo] = head1;
+	*opaqueHead                     = head0;
+	*translucentHead                = head1;
 	return result;
 }

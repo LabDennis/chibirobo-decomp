@@ -4,7 +4,7 @@
 // linked into both shun and stage07
 
 // CGame
-extern "C" u8 lbl_8025C400[];
+extern "C" u8 gGame[];
 
 struct ObjDesc {
 	s32 mId; // _00
@@ -41,7 +41,7 @@ typedef char FafaGame_size_check[sizeof(FafaGame) == 0x9728 ? 1 : -1];
 #else
 typedef char FafaGame_size_check[sizeof(FafaGame) == 0x9770 ? 1 : -1];
 #endif
-#define SHUN_ITEMS() (&((FafaGame*)lbl_8025C400)->mItems)
+#define SHUN_ITEMS() (&((FafaGame*)gGame)->mItems)
 
 // three levels, child then N siblings at each
 // todo: cleanup

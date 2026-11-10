@@ -1,0 +1,20 @@
+const double sPapaSignedConversionBias = 4503601774854144.0;
+const float sPapaUnitScale             = 1.0f;
+const float sPapaPickupHeightOffset    = 2.0f;
+const float sPapaPickupRotationZ       = 1.5707964f;
+const float sPapaPickupOffsetX         = -5.5f;
+const float sPapaPickupOffsetY         = 3.5f;
+const char sPapaMatrixCondition[]      = "mtx";
+
+const float sPapaShakePercentDivisor    = 100.0f;
+const float sPapaNegativeQuarterTurn    = -1.5707964f;
+const float sPapaProp1F4OffsetX         = 10.0f;
+const float sPapaProp1F4OffsetY         = -4.0f;
+const float sPapaProp360OffsetX         = -1.0f;
+const float sPapaProp360OffsetY         = -12.0f;
+const float sPapaProp360OffsetZ         = 6.0f;
+const float sPapaProp3FAOffsetY         = -10.0f;
+const float sPapaProp401OffsetY         = 4.5f;
+const float sPapaProp1D3RotationY       = 0.19634955f;
+const float sPapaProp1D3OffsetY         = 3.0f;
+const float sPapaHeldPlayerHeightOffset = 4.0f;

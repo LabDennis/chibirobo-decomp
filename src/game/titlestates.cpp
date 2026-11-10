@@ -14,13 +14,13 @@ struct TitleData {
 #if defined(VERSION_JP)
 	u8 _00[0x68]; // _00
 #else
-	u8 _00[0x7C]; // _00, lbl_80211670, then lbl_802116D8's head
+	u8 _00[0x7C]; // _00, gTitleStateData, then gTitleTextureSuffixes's head
 #endif
 	TitleStateFunc mInit[26];   // _7C, _68 in japan, the state handlers from 0x8002BB7C, last first
-	TitleStateFunc mStates[26]; // _1B4, _1A0 in japan, lbl_80211824
+	TitleStateFunc mStates[26]; // _1B4, _1A0 in japan, gTitleModeUpdates
 };
 
-extern "C" TitleData lbl_80211670;
+extern "C" TitleData gTitleStateData;
 
 // todo: title.cpp's __sinit filling the state table, goes away once Title's handlers are methods
 /**
@@ -29,8 +29,8 @@ extern "C" TitleData lbl_80211670;
  */
 extern "C" void __sinit_titlestates_cpp()
 {
-	const TitleStateFunc* init = lbl_80211670.mInit;
-	TitleStateFunc* states     = lbl_80211670.mStates;
+	const TitleStateFunc* init = gTitleStateData.mInit;
+	TitleStateFunc* states     = gTitleStateData.mStates;
 	states[0]                  = init[0];
 	states[1]                  = init[1];
 	states[2]                  = init[2];

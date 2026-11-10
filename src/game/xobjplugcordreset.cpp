@@ -10,7 +10,7 @@ extern "C" {
  * @note Address: 0x800DB810
  * @note Size: 0x26C
  */
-extern "C" void fn_800DB810(XObjPlugCord* cord, f32 x, f32 y, f32 z)
+extern "C" void ResetPlugCordPoints(XObjPlugCord* cord, f32 x, f32 y, f32 z)
 {
 	Vec center = CVec(x, y, z);
 	for (s32 i = 0; i < cord->mCount; ++i) {

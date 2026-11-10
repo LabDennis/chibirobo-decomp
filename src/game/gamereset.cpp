@@ -25,12 +25,12 @@ void VIWaitForRetrace();
 // CGame's _48, CBase's with the mic reset first
 extern "C" void Reset__5CGameFUl(CGame* game, s32 reset)
 {
-	s32 channel = lbl_80659ECC;
-	if (channel >= 0 && !lbl_8020FC3C[channel].mDeviceID)
+	s32 channel = gActiveMicChannel;
+	if (channel >= 0 && !gMicrophoneChannels[channel].mDeviceID)
 		MICReset(channel);
 #if defined(VERSION_PAL)
-	fn_801E9FA4();
-	fn_801E8CC0();
+	AXDriverStopAllStreams();
+	HSD_AudioSFXKeyOffAll();
 #else
 	AXQuit();
 	AIReset();

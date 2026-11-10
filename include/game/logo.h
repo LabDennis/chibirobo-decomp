@@ -28,9 +28,9 @@ public:
 STATIC_ASSERT(sizeof(Logo) == 0x204);
 
 extern "C" {
-void fn_80026CB0(Logo* logo);
-void fn_80027528(Logo* logo, u32 frames);
-void fn_80027A7C(Logo* logo);
+void DrawCurrentLogo(Logo* logo);
+void UpdateBootLogos(Logo* logo, u32 frames);
+void ResetLogoFadeState(Logo* logo);
 }
 
 #endif

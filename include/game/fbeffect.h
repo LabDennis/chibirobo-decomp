@@ -42,11 +42,10 @@ public:
 
 	virtual ~CFbOutline() { } // _08
 
-	void SetLineColor(u8 r, u8 g, u8 b, u8 a)
+	void SetLineColor(u8 r, u8 g, u8 b)
 	{
 		GXColor color = { r, g, b, 4 };
 		mColor0       = color;
-		mColor0.a     = a;
 	}
 	void SetColor2(u8 r, u8 g, u8 b)
 	{

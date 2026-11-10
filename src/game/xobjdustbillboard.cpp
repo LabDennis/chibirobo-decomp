@@ -53,7 +53,7 @@ extern "C" void SetAnim__8XObjDustFliPvPvPvffff(XObjDust* object, s32 id, BOOL f
 			void* shape     = shapeAnim != NULL ? shapeAnim : Shape(&object->mArchive, id);
 			f32 materialFrame;
 			if (object->mMatAnim != NULL) {
-				HSD_AObj* animation = fn_801905D4(object->mJObj);
+				HSD_AObj* animation = FindMaterialOrTextureAnimationInJointTree(object->mJObj);
 				materialFrame       = animation != NULL ? HSD_AObjGetCurrentFrame(animation) : 0.0f;
 			} else {
 				materialFrame    = 0.0f;
@@ -77,18 +77,19 @@ extern "C" void SetAnim__8XObjDustFliPvPvPvffff(XObjDust* object, s32 id, BOOL f
 	}
 }
 
-// XObjDust::vfC0
+// XObjDust::DrawObjectEffects
 /**
  * @note Address: 0x800DEAA0
  * @note Size: 0x208
  */
-extern "C" void vfC0__8XObjDustFv(XObjDust* object)
+extern "C" void DrawObjectEffects__8XObjDustFv(XObjDust* object)
 {
 	if (object->GetObjFlags() & 1) {
-		fn_8019B464(lbl_8025C400.mGs.mCurRenderMode, 1, 3, 0);
-		lbl_8025C400.mGs._29C = 1;
-		f32 width             = 8.0f * object->mMoveScale.x;
-		f32 height            = 8.0f * object->mMoveScale.y;
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
+		gGame.mGs.mBillboardEnabled = 1;
+		f32 height;
+		f32 width = 8.0f * object->mMoveScale.x;
+		height    = 8.0f * object->mMoveScale.y;
 		u32 color;
 		if (__fpclassifyf(object->mHeading) != FP_NAN) {
 			color = 0xC8C8C800;
@@ -98,24 +99,24 @@ extern "C" void vfC0__8XObjDustFv(XObjDust* object)
 			color = 0xC8C8C800;
 		}
 		s32 alpha = (s32)(255.0f * object->mFade);
-		fn_8019B56C(lbl_8025C400.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		Vec rotation = { 0.0f, 0.0f, 0.0f };
-		fn_80198258(&lbl_8025C400.mGs, 16, color | (u8)alpha, color, object->mMoveTranslate.x, object->mMoveTranslate.y,
-		            object->mMoveTranslate.z, width, height, rotation.x, rotation.y, rotation.z);
-		lbl_8025C400.mGs._29C = 0;
+		DrawGsCircle(&gGame.mGs, 16, color | (u8)alpha, color, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z,
+		             width, height, rotation.x, rotation.y, rotation.z);
+		gGame.mGs.mBillboardEnabled = 0;
 	}
 }
 
-// XObjDust::vfB0
+// XObjDust::DrawWithView
 /**
  * @note Address: 0x800DECA8
  * @note Size: 0x7C
  */
-extern "C" void vfB0__8XObjDustFPA4_f(XObjDust* object, Mtx view)
+extern "C" void DrawWithView__8XObjDustFPA4_f(XObjDust* object, Mtx view)
 {
 	if (object->GetObjFlags() & 2) {
-		vfB0__4XObjFPA4_f(object, view);
+		DrawWithView__4XObjFPA4_f(object, view);
 	} else if (object->GetObjFlags() & 4) {
-		vfB0__4XObjFPA4_f(object, view);
+		DrawWithView__4XObjFPA4_f(object, view);
 	}
 }

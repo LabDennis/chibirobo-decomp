@@ -6,14 +6,15 @@
 
 extern "C" {
 // frames per second, 50 or 60 by the video mode the player picked. europe only
-extern s32 lbl_80660D4C;
+extern s32 gVideoFramesPerSecond;
 }
 
 // what the frame based timers count in a second
 #if defined(VERSION_PAL)
-#define FRAME_RATE ((f32)lbl_80660D4C)
+#define FRAMES_PER_SECOND gVideoFramesPerSecond
 #else
-#define FRAME_RATE 60.0f
+#define FRAMES_PER_SECOND 60
 #endif
+#define FRAME_RATE ((f32)FRAMES_PER_SECOND)
 
 #endif

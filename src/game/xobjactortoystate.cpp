@@ -4,7 +4,7 @@
  * @note Address: 0x80115538
  * @note Size: 0x24
  */
-void XObjActorToy::vf150()
+void XObjActorToy::ClearStateHandler()
 {
 	mState = NULL;
 }
@@ -13,7 +13,7 @@ void XObjActorToy::vf150()
  * @note Address: 0x8011555C
  * @note Size: 0x58
  */
-void XObjActorToy::vf14C(u32 frames)
+void XObjActorToy::RunStateHandler(u32 frames)
 {
 	if (mState != NULL)
 		(this->*mState)(frames);

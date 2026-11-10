@@ -100,7 +100,7 @@ u32 CTexObj::SetChar(const char* str)
 {
 	CFont font;
 	s32 width;
-	*this = *fn_8019E8F4(&font, str, &width);
+	*this = *GetFontGlyphTexture(&font, str, &width);
 	return width;
 }
 

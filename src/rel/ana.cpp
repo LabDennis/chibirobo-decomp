@@ -22,87 +22,87 @@ public:
 	HSD_JObj* mJObj; // _00
 	u8 _04[0x30];    // _04
 	// _34 vtable
-	virtual void vf08();  // _08
-	virtual void vf0C();  // _0C
-	virtual void vf10();  // _10
-	virtual void vf14();  // _14
-	virtual void vf18();  // _18
-	virtual void vf1C();  // _1C
-	virtual void vf20();  // _20
-	virtual void vf24();  // _24
-	virtual void vf28();  // _28
-	virtual void vf2C();  // _2C
-	virtual void vf30();  // _30
-	virtual void vf34();  // _34
-	virtual void vf38();  // _38
-	virtual void vf3C();  // _3C
-	virtual void vf40();  // _40
-	virtual void vf44();  // _44
-	virtual void vf48();  // _48
-	virtual void vf4C();  // _4C
-	virtual void vf50();  // _50
-	virtual void vf54();  // _54
-	virtual void vf58();  // _58
-	virtual void vf5C();  // _5C
-	virtual void vf60();  // _60
-	virtual void vf64();  // _64
-	virtual void vf68();  // _68
-	virtual void vf6C();  // _6C
-	virtual void vf70();  // _70
-	virtual void vf74();  // _74
-	virtual void vf78();  // _78
-	virtual void vf7C();  // _7C
-	virtual void vf80();  // _80
-	virtual void vf84();  // _84
-	virtual void vf88();  // _88
-	virtual void vf8C();  // _8C
-	virtual void vf90();  // _90
-	virtual void vf94();  // _94
-	virtual void vf98();  // _98
-	virtual void vf9C();  // _9C
-	virtual void vfA0();  // _A0
-	virtual void vfA4();  // _A4
-	virtual void vfA8();  // _A8
-	virtual void vfAC();  // _AC
-	virtual void vfB0();  // _B0
-	virtual void vfB4();  // _B4
-	virtual void vfB8();  // _B8
-	virtual void vfBC();  // _BC
-	virtual void vfC0();  // _C0
-	virtual void vfC4();  // _C4
-	virtual void vfC8();  // _C8
-	virtual void vfCC();  // _CC
-	virtual void vfD0();  // _D0
-	virtual void vfD4();  // _D4
-	virtual void vfD8();  // _D8
-	virtual void vfDC();  // _DC
-	virtual void vfE0();  // _E0
-	virtual void vfE4();  // _E4
-	virtual void vfE8();  // _E8
-	virtual void vfEC();  // _EC
-	virtual void vfF0();  // _F0
-	virtual void vfF4();  // _F4
-	virtual void vfF8();  // _F8
-	virtual void vfFC();  // _FC
-	virtual void vf100(); // _100
-	virtual void vf104(); // _104
-	virtual void vf108(); // _108
-	virtual void vf10C(); // _10C
-	virtual void vf110(); // _110
-	virtual void vf114(); // _114
-	virtual void vf118(); // _118
-	virtual void vf11C(); // _11C
-	virtual void vf120(); // _120
-	virtual void vf124(); // _124
-	virtual void vf128(); // _128
-	virtual void vf12C(); // _12C
-	virtual void vf130(); // _130
-	virtual void vf134(); // _134
-	virtual void vf138(); // _138
-	virtual void vf13C(); // _13C
-	virtual void vf140(); // _140
-	virtual void vf144(); // _144
-	virtual u32 vf148();  // _148
+	virtual void vf08();                      // _08
+	virtual void Initialize();                // _0C
+	virtual void vf10();                      // _10
+	virtual void RunRequestLoop();            // _14
+	virtual void ProcessRequest();            // _18
+	virtual void vf1C();                      // _1C
+	virtual void GetItemIconTextureIndex();   // _20
+	virtual void GetItemLabel();              // _24
+	virtual void GetItemColor();              // _28
+	virtual void vf2C();                      // _2C
+	virtual void vf30();                      // _30
+	virtual void vf34();                      // _34
+	virtual void vf38();                      // _38
+	virtual void vf3C();                      // _3C
+	virtual void vf40();                      // _40
+	virtual void vf44();                      // _44
+	virtual void vf48();                      // _48
+	virtual void vf4C();                      // _4C
+	virtual void vf50();                      // _50
+	virtual void vf54();                      // _54
+	virtual void GetFollowDivisor();          // _58
+	virtual void vf5C();                      // _5C
+	virtual void vf60();                      // _60
+	virtual void vf64();                      // _64
+	virtual void vf68();                      // _68
+	virtual void vf6C();                      // _6C
+	virtual void vf70();                      // _70
+	virtual void vf74();                      // _74
+	virtual void vf78();                      // _78
+	virtual void vf7C();                      // _7C
+	virtual void vf80();                      // _80
+	virtual void vf84();                      // _84
+	virtual void vf88();                      // _88
+	virtual void vf8C();                      // _8C
+	virtual void InitializeObject();          // _90
+	virtual void vf94();                      // _94
+	virtual void ResetObjectState();          // _98
+	virtual void LoadFromPlacement();         // _9C
+	virtual void LoadAnimationArchiveAsync(); // _A0
+	virtual void UpdateObject();              // _A4
+	virtual void vfA8();                      // _A8
+	virtual void vfAC();                      // _AC
+	virtual void DrawWithView();              // _B0
+	virtual void DrawReflection();            // _B4
+	virtual void DrawGroundShadow();          // _B8
+	virtual void DrawGroundShadowAt();        // _BC
+	virtual void DrawObjectEffects();         // _C0
+	virtual void vfC4();                      // _C4
+	virtual void vfC8();                      // _C8
+	virtual void DrawDebugStatus();           // _CC
+	virtual void RegisterShadowObjects();     // _D0
+	virtual void ExpandShadowBounds();        // _D4
+	virtual void vfD8();                      // _D8
+	virtual void vfDC();                      // _DC
+	virtual void vfE0();                      // _E0
+	virtual void vfE4();                      // _E4
+	virtual void vfE8();                      // _E8
+	virtual void vfEC();                      // _EC
+	virtual void GetJointAnimation();         // _F0
+	virtual void GetMaterialAnimation();      // _F4
+	virtual void GetShapeAnimation();         // _F8
+	virtual void vfFC();                      // _FC
+	virtual void vf100();                     // _100
+	virtual void TestFloorCrossing();         // _104
+	virtual void GetShadowRadius();           // _108
+	virtual void ProjectOffsetToScreen();     // _10C
+	virtual void GetFloorXZExtent();          // _110
+	virtual void GetCollisionHeight();        // _114
+	virtual void ProjectVisibleBounds();      // _118
+	virtual void vf11C();                     // _11C
+	virtual void vf120();                     // _120
+	virtual void HandleEventCommand();        // _124
+	virtual void vf128();                     // _128
+	virtual void vf12C();                     // _12C
+	virtual void OnPushDisplacement();        // _130
+	virtual void vf134();                     // _134
+	virtual void OnHitFromPosition();         // _138
+	virtual void vf13C();                     // _13C
+	virtual void vf140();                     // _140
+	virtual void vf144();                     // _144
+	virtual u32 vf148();                      // _148
 
 #if defined(VERSION_JP)
 	u8 _38[0xC0 - 0x38]; // _38
@@ -150,7 +150,7 @@ typedef char AnaXObjViewSizeCheck[sizeof(AnaObj) == 0x988 ? 1 : -1];
 typedef char AnaRoboViewSizeCheck[sizeof(RoboView) == 0xA68 ? 1 : -1];
 #endif
 
-extern "C" CVec fn_800A0978(RoboView* mgr);
+extern "C" CVec GetPlayerCarryJointWorldPosition(RoboView* mgr);
 
 class Ana {
 public:
@@ -264,7 +264,7 @@ extern "C" void Ana_Draw(Ana* ana)
 		return;
 	}
 	if (ana->mStatus.mFlags & 8) {
-		const CVec& pos = fn_800A0978((RoboView*)lbl_8025C400.GetPlayer());
+		const CVec& pos = GetPlayerCarryJointWorldPosition((RoboView*)gGame.GetPlayer());
 		x               = pos.x;
 		y               = pos.y;
 		z               = pos.z;
@@ -444,9 +444,9 @@ extern "C" s32 AddAna(s32 id, f32 x, f32 y, f32 z)
     stw      r0, 0x0(r4)
 .L_00000AE8:
     fmr      f1, f28
-    lis      r3, lbl_7_rodata_120@ha
+    lis      r3, sAnaIdPositionFormat@ha
     fmr      f2, f29
-    addi     r3, r3, lbl_7_rodata_120@l
+    addi     r3, r3, sAnaIdPositionFormat@l
     fmr      f3, f30
     mr       r4, r29
     crset    cr1eq
@@ -474,10 +474,10 @@ extern "C" s32 AddAna(s32 id, f32 x, f32 y, f32 z)
     stw      r0, 0x14(r1)
     b        .L_00000C60
 .L_00000B60:
-    lis      r3, lbl_7_rodata_13C@ha
+    lis      r3, sAnaMinimumSpacing@ha
     lis      r4, anas@ha
     addi     r31, r4, anas@l
-    lfs      f31, lbl_7_rodata_13C@l(r3)
+    lfs      f31, sAnaMinimumSpacing@l(r3)
     li       r30, 0x0
     mr       r29, r31
 .L_00000B78:
@@ -601,10 +601,10 @@ extern "C" void InitAnas(void)
 	for (j = 0; j < ANA_NUM; j++) {
 		anas[j].mStatus.mFlags = 0;
 	}
-	num = lbl_8025C400.mXObjs.mObjectCount;
+	num = gGame.mXObjs.mObjectCount;
 
 	for (i = 0; i < num; i++) {
-		AnaObj* obj = (AnaObj*)lbl_8025C400.mXObjs.mObjects[i];
+		AnaObj* obj = (AnaObj*)gGame.mXObjs.mObjects[i];
 		if (obj->mFlags & 1) {
 			if (obj->mIdData->mId == 0x2A9) {
 				tutiAnaObj = obj;
@@ -630,9 +630,9 @@ extern "C" void InitAnas(void)
     lis      r4, anas@ha
     li       r0, 0x0
     addi     r6, r4, anas@l
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     stw      r0, 0x14(r6)
-    addi     r4, r3, lbl_8025C400@l
+    addi     r4, r3, gGame@l
     addis    r5, r4, 0x1
     lis      r3, flowerObjs@ha
     stw      r0, 0x3c(r6)
@@ -747,10 +747,10 @@ bool Ana::IsActive()
  */
 extern "C" s32 CmdDropHeldObj(s32 cmd, s32 argc, s32* args)
 {
-	AnaObj* obj = ((RoboView*)lbl_8025C400.GetPlayer())->mHeld;
+	AnaObj* obj = ((RoboView*)gGame.GetPlayer())->mHeld;
 	if (obj != NULL) {
 		obj->mFlags &= ~0x10000ULL;
-		ReleaseHeld((RoboView*)lbl_8025C400.GetPlayer());
+		ReleaseHeld((RoboView*)gGame.GetPlayer());
 		DropObj(obj);
 	}
 	return 0;
@@ -760,9 +760,9 @@ extern "C" s32 CmdDropHeldObj(s32 cmd, s32 argc, s32* args)
 /*
     stwu     r1, -0x10(r1)
     mflr     r0
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     stw      r0, 0x14(r1)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addis    r5, r3, 0x1
     stw      r31, 0xc(r1)
     lwz      r3, -0x6944(r5)
@@ -872,9 +872,9 @@ extern "C" s32 CmdPlantTane(s32 cmd, s32 argc, s32* args)
 		return 0;
 	}
 	ana->SetJObj(2, 0);
-	obj = ((RoboView*)lbl_8025C400.GetPlayer())->mHeld;
+	obj = ((RoboView*)gGame.GetPlayer())->mHeld;
 	if (obj != NULL) {
-		ReleaseHeld((RoboView*)lbl_8025C400.GetPlayer());
+		ReleaseHeld((RoboView*)gGame.GetPlayer());
 		DropObj(obj);
 	}
 	return 1;
@@ -894,7 +894,7 @@ extern "C" s32 CmdFindNearestAna(s32 cmd, s32 argc, s32* args)
 		f32 z = args[2] / 100.0f;
 		best  = GetNearestAna(x, y, z);
 	} else {
-		AnaObj* player = (AnaObj*)lbl_8025C400.mXObjs.mObjects[((RoboView*)lbl_8025C400.GetPlayer())->mPlayerIdx];
+		AnaObj* player = (AnaObj*)gGame.mXObjs.mObjects[((RoboView*)gGame.GetPlayer())->mPlayerIdx];
 		if (player != NULL) {
 			best = GetNearestAna(player->mPos.x, player->mPos.y, player->mPos.z);
 			// retail tests the player's result here and again below

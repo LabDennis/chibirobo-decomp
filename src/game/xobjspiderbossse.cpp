@@ -3,19 +3,25 @@
 #include "game/infoscrn.h"
 #include "game/hsd_cobj.h"
 
+extern "C" {
+extern const char sSpiderBossAObjFile[7];
+extern const char sSpiderBossAObjCondition[5];
+extern const f32 sSpiderBossZero;
+}
+
 /**
  * @note Address: 0x801002DC
  * @note Size: 0x148
  */
-extern "C" void vf148__14XObjSpiderBossFv(XObjSpiderBoss* spider)
+void XObjSpiderBoss::UpdateAnimationSounds()
 {
-	if (spider->mStatus.mFlags & 1ULL) {
-		if (spider->mStatus.mFlags & 0x10000ULL) {
-			if (!fn_800665E0(&lbl_8025C400.mInfoScrn)) {
-				s32 id         = (spider->mSpiderStatus.mFlags & 0x40000000) ? spider->mAltAnimId : spider->mAnimId;
-				HSD_AObj* aobj = GetAObj(spider->mJObj);
-				f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
-				spider->mAnimSfx.Update(id, frame, 255);
+	if (mStatus.mFlags & 1ULL) {
+		if (mStatus.mFlags & 0x10000ULL) {
+			if (!InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
+				s32 id         = (mSpiderStatus.mFlags & 0x40000000) ? mAltAnimId : mAnimId;
+				HSD_AObj* aobj = GetAObj(mJObj);
+				f32 frame = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj, sSpiderBossAObjFile, sSpiderBossAObjCondition) : sSpiderBossZero;
+				mAnimSfx.Update(id, frame, 255);
 			}
 		}
 	}
@@ -25,7 +31,7 @@ extern "C" void vf148__14XObjSpiderBossFv(XObjSpiderBoss* spider)
  * @note Address: 0x80100424
  * @note Size: 0xC
  */
-extern "C" bool fn_80100424(XObjSpiderBoss* spider)
+extern "C" bool IsSpiderBossProjectileHitSuppressed(XObjSpiderBoss* spider)
 {
 	return (spider->mSpiderStatus.mFlags & 0x200) != 0;
 }

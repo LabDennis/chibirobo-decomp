@@ -7,7 +7,10 @@
 #include "game/xchr.h"
 
 extern "C" void OSReport(const char* format, ...);
-extern "C" const char lbl_8020C718[];
+extern "C" const char sCameraAreaDataAddressFormat[];
+extern "C" const char sMapCameraDebugIndexFormat[];
+extern "C" const char sCameraAreaZoomResetMessage[];
+extern "C" const char sAreaCameraDebugIndexFormat[];
 extern "C" Vec lbl_805A0400[];
 extern "C" s8 lbl_8065B324;
 extern "C" s32 lbl_8065B320;
@@ -16,40 +19,15 @@ extern "C" s32 lbl_8065B328;
 
 class CGs;
 
-extern "C" void fn_80135434(CCameraActionAreaEx* state);
+extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state);
 extern "C" void fn_80135E34(CCameraActionAreaEx* state, s32 unused);
-
-/**
- * @note Address: 0x801353E4
- * @note Size: 0x50
- */
-extern "C" f32 fn_801353E4(CCameraActionAreaEx* state, s32 level)
-{
-	f32 scale;
-	switch (level) {
-	case 0:
-	default:
-		scale = 0.8f;
-		break;
-	case 1:
-		scale = 1.0f;
-		break;
-	case 2:
-		scale = 1.5f;
-		break;
-	case 3:
-		scale = 2.0f;
-		break;
-	}
-	return scale * state->_10;
-}
 
 static inline s32 AreaMode(CCameraActionAreaEx* state)
 {
 	s32 index = state->_0C;
 	if (index == -1)
 		return 7;
-	CamAreaInfo area = CamAreaInfo(&fn_8006F3CC()[index]);
+	CamAreaInfo area = CamAreaInfo(&GetStageCameraAreaRecords()[index]);
 	s32 mode;
 	switch (area._04->_2C) {
 	case 1:
@@ -74,7 +52,7 @@ static inline s32 AreaMode(CCameraActionAreaEx* state)
  * @note Address: 0x80135D28
  * @note Size: 0x10C
  */
-extern "C" s32 fn_80135D28(CCameraActionAreaEx* state)
+extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state)
 {
 	return AreaMode(state);
 }
@@ -89,7 +67,7 @@ static inline Vec AreaPoint(const CamAreaInfo& area, s32 index)
 
 static inline BOOL PointInQuad(const Vec& pos, Vec a, Vec b, Vec c, Vec d)
 {
-	return fn_8018EA50((Vec*)&pos, &a, &b, &c, &d);
+	return IsPointInsideQuadXZ((Vec*)&pos, &a, &b, &c, &d);
 }
 
 /**
@@ -113,13 +91,13 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 			if (++lbl_8065B328 >= state->_28)
 				lbl_8065B328 = state->_28 - 1;
 #if !defined(VERSION_PAL)
-			OSReport("DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n", lbl_8065B328);
+			OSReport(sAreaCameraDebugIndexFormat, lbl_8065B328);
 #endif
 		} else if (pad.mPad->mTrigger & 1) {
 			if (--lbl_8065B328 <= 0)
 				lbl_8065B328 = 0;
 #if !defined(VERSION_PAL)
-			OSReport("DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n", lbl_8065B328);
+			OSReport(sAreaCameraDebugIndexFormat, lbl_8065B328);
 #endif
 		}
 
@@ -141,7 +119,7 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		CVec axis      = CVec(1.0f, 0.0f, 0.0f);
 		CVec direction = b - a;
 		PSVECNormalize(&direction, &direction);
-		fn_80197538(&lbl_8025C400.mGs, colors[lbl_8065B328 % 5], center.x, center.y, center.z, 0.0f, 0.0f, 0.0f, width, height, depth);
+		DrawGsCube(&gGame.mGs, colors[lbl_8065B328 % 5], center.x, center.y, center.z, 0.0f, 0.0f, 0.0f, width, height, depth);
 
 		CamAreaSlot* slot   = &state->_2034[lbl_8065B328];
 		CamAreaEntry* entry = slot->_00;
@@ -153,18 +131,17 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 				next.Set(slot->_00[0]._10);
 			else
 				next.Set(entry[1]._10);
-			fn_801992BC(&lbl_8025C400.mGs, NULL, pos.x, pos.y, pos.z, colors[5], next.x, next.y, next.z, colors[5]);
-			fn_80197250(&lbl_8025C400.mGs, colors[colorIndex], 12, 16, pos.x, pos.y, pos.z, 0.0f, 0.0f, 0.0f, 3.0f, 3.0f, 3.0f);
+			DrawGsLineSegment(&gGame.mGs, NULL, pos.x, pos.y, pos.z, colors[5], next.x, next.y, next.z, colors[5]);
+			DrawGsSphere(&gGame.mGs, colors[colorIndex], 12, 16, pos.x, pos.y, pos.z, 0.0f, 0.0f, 0.0f, 3.0f, 3.0f, 3.0f);
 			CVec angle  = entry->_20;
 			f32 sine    = sin(angle.y);
 			f32 cosine  = cos(angle.y);
 			f32 offsetX = 15.0f * sine;
 			f32 offsetZ = 15.0f * cosine;
-			fn_801992BC(&lbl_8025C400.mGs, NULL, entry->_10.x, entry->_10.y, entry->_10.z, 0xFFFF, entry->_10.x + offsetX, entry->_10.y,
-			            entry->_10.z + offsetZ, 0xFFFF);
+			DrawGsLineSegment(&gGame.mGs, NULL, entry->_10.x, entry->_10.y, entry->_10.z, 0xFFFF, entry->_10.x + offsetX, entry->_10.y,
+			                  entry->_10.z + offsetZ, 0xFFFF);
 		}
-		fn_80197250(&lbl_8025C400.mGs, colors[colorIndex], 12, 16, slot->_0C.x, slot->_0C.y, slot->_0C.z, 0.0f, 0.0f, 0.0f, 3.0f, 3.0f,
-		            3.0f);
+		DrawGsSphere(&gGame.mGs, colors[colorIndex], 12, 16, slot->_0C.x, slot->_0C.y, slot->_0C.z, 0.0f, 0.0f, 0.0f, 3.0f, 3.0f, 3.0f);
 	}
 }
 
@@ -172,7 +149,7 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
  * @note Address: 0x80136A54
  * @note Size: 0x77C
  */
-extern "C" void fn_80136A54(CCameraActionAreaEx* state, s32 mode)
+extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 {
 	// callers only pass 0 or 1
 	CamAreaRecord* records;
@@ -199,11 +176,11 @@ extern "C" void fn_80136A54(CCameraActionAreaEx* state, s32 mode)
 		if (pad.mPad->mTrigger & 2) {
 			if (++lbl_8065B320 >= count)
 				lbl_8065B320 = count - 1;
-			OSReport("DEBUG:CCameraActionMap::DrawDebug3d():%d\n", lbl_8065B320);
+			OSReport(sMapCameraDebugIndexFormat, lbl_8065B320);
 		} else if (pad.mPad->mTrigger & 1) {
 			if (--lbl_8065B320 <= 0)
 				lbl_8065B320 = 0;
-			OSReport("DEBUG:CCameraActionMap::DrawDebug3d():%d\n", lbl_8065B320);
+			OSReport(sMapCameraDebugIndexFormat, lbl_8065B320);
 		}
 #endif
 		lbl_8065B320 = i;
@@ -254,7 +231,7 @@ extern "C" void fn_80136A54(CCameraActionAreaEx* state, s32 mode)
 		CVec axis      = CVec(1.0f, 0.0f, 0.0f);
 		CVec direction = b - a;
 		PSVECNormalize(&direction, &direction);
-		fn_80197538(&lbl_8025C400.mGs, colors[lbl_8065B320 % 5], center.x, center.y, center.z, 0.0f, yaw, 0.0f, width, height, depth);
+		DrawGsCube(&gGame.mGs, colors[lbl_8065B320 % 5], center.x, center.y, center.z, 0.0f, yaw, 0.0f, width, height, depth);
 	}
 }
 
@@ -276,7 +253,7 @@ static inline BOOL ContainsPoint(const CamAreaInfo& area, const Vec& pos)
  * @note Address: 0x801371D0
  * @note Size: 0x324
  */
-extern "C" s32 fn_801371D0(CCameraActionAreaEx* state, Vec pos, s32* ids)
+extern "C" s32 CollectCameraAreasContainingPoint(CCameraActionAreaEx* state, Vec pos, s32* ids)
 {
 	s32 count = 0;
 	for (s32 i = 0; i < state->_20; ++i) {
@@ -292,7 +269,7 @@ extern "C" s32 fn_801371D0(CCameraActionAreaEx* state, Vec pos, s32* ids)
  * @note Address: 0x801374F4
  * @note Size: 0x31C
  */
-extern "C" s32 fn_801374F4(CCameraActionAreaEx* state, Vec pos)
+extern "C" s32 FindFirstCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos)
 {
 	s32 index = -1;
 	for (s32 i = 0; i < state->_20; ++i) {
@@ -308,7 +285,7 @@ extern "C" s32 fn_801374F4(CCameraActionAreaEx* state, Vec pos)
  * @note Address: 0x80137810
  * @note Size: 0x348
  */
-extern "C" s32 fn_80137810(CCameraActionAreaEx* state, Vec pos)
+extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos)
 {
 	s32 index = -1;
 	for (s32 i = 1; i < state->_28; ++i) {
@@ -329,7 +306,7 @@ extern "C" s32 fn_80137810(CCameraActionAreaEx* state, Vec pos)
 extern "C" void fn_80135E34(CCameraActionAreaEx* state, s32)
 {
 	state->_08 = state->_04;
-	Vec pos    = lbl_8025C400.GetPlayer()->mMoveTranslate;
+	Vec pos    = gGame.GetPlayer()->mMoveTranslate;
 	s32 index  = -1;
 	for (s32 i = 1; i < state->_28; ++i) {
 		if (CamAreaInfo(&state->_24[i]).IsCameraOff())
@@ -348,16 +325,16 @@ extern "C" void fn_80135E34(CCameraActionAreaEx* state, s32)
  * @note Address: 0x80137B58
  * @note Size: 0x1A8
  */
-extern "C" void fn_80137B58(CCameraActionAreaEx* state, s32 index)
+extern "C" void SetCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 index)
 {
 	if (state->_24 != NULL && state->_2C != NULL) {
 		state->_0C = index;
 		state->_04 = index;
 		state->_08 = index;
 		if (AreaMode(state) == 1) {
-			state->_10 = CamInfo(&state->_2C[state->_2034[state->_0C]._00->_34]).GetFov();
+			state->mBaseFov = CamInfo(&state->_2C[state->_2034[state->_0C]._00->_34]).GetFov();
 		} else {
-			state->_10 = 30.5f;
+			state->mBaseFov = 30.5f;
 		}
 	}
 }
@@ -372,9 +349,9 @@ extern "C" void fn_80137D00(CCameraActionAreaEx* state, s32 unused)
 		fn_80135E34(state, unused);
 		if (state->_08 != state->_04 && state->_04 != -1) {
 			if (AreaMode(state) == 1) {
-				state->_10 = CamInfo(&state->_2C[state->_2034[state->_0C]._00->_34]).GetFov();
+				state->mBaseFov = CamInfo(&state->_2C[state->_2034[state->_0C]._00->_34]).GetFov();
 			} else {
-				state->_10 = 30.5f;
+				state->mBaseFov = 30.5f;
 			}
 		}
 	}
@@ -390,11 +367,11 @@ static inline bool IsAreaEnd(CamAreaRecord* record)
  * @note Address: 0x80137EB8
  * @note Size: 0x164
  */
-extern "C" void fn_80137EB8(CCameraActionAreaEx* state)
+extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 {
 	state->_1C = NULL;
 	state->_20 = 0;
-	state->_1C = fn_8006F3AC();
+	state->_1C = GetStageCameraAreaExRecords();
 	s32 count  = 0;
 	if (state->_1C != NULL) {
 		for (;;) {
@@ -406,7 +383,7 @@ extern "C" void fn_80137EB8(CCameraActionAreaEx* state)
 	state->_20 = count;
 	state->_24 = NULL;
 	state->_28 = 0;
-	state->_24 = fn_8006F3CC();
+	state->_24 = GetStageCameraAreaRecords();
 	count      = 0;
 	if (state->_24 != NULL) {
 		for (;;) {
@@ -417,14 +394,14 @@ extern "C" void fn_80137EB8(CCameraActionAreaEx* state)
 	}
 	state->_28 = count;
 	state->_2C = NULL;
-	state->_2C = fn_8006F3BC();
-	fn_80135434(state);
-	state->_04 = -1;
-	state->_08 = -1;
-	state->_0C = -1;
-	state->_10 = 30.5f;
+	state->_2C = GetStageCameraInfoRecords();
+	BuildCameraAreaGroups(state);
+	state->_04      = -1;
+	state->_08      = -1;
+	state->_0C      = -1;
+	state->mBaseFov = 30.5f;
 #if !defined(VERSION_PAL)
-	OSReport("reset zoom lv = CAM_AREA_ZOOM_LV1\n");
+	OSReport(sCameraAreaZoomResetMessage);
 #endif
 }
 
@@ -432,15 +409,15 @@ extern "C" void fn_80137EB8(CCameraActionAreaEx* state)
  * @note Address: 0x8013801C
  * @note Size: 0x138
  */
-extern "C" void fn_8013801C(CCameraActionAreaEx* state)
+extern "C" void InitCameraAreaEntries(CCameraActionAreaEx* state)
 {
 	// the compiler emits its array dtor, CamAreaEntry's dtor and ctor at 0x80135C5C to 0x80135D10
-	static CamAreaEntry entries[2048];
+	static CamAreaEntry gCameraAreaEntries[2048];
 #if !defined(VERSION_PAL)
-	OSReport(lbl_8020C718, entries);
+	OSReport(sCameraAreaDataAddressFormat, gCameraAreaEntries);
 #endif
-	for (s32 i = 0; i < 2048; ++i)
-		state->_30[i] = &entries[i];
+	for (int i = 0; i < 2048; ++i)
+		state->_30[i] = &gCameraAreaEntries[i];
 	state->_18 = 1;
 	state->_14 = 1;
 }
@@ -455,7 +432,7 @@ static inline bool IsCameraEnd(CamInfoData* record)
  * @note Address: 0x80135434
  * @note Size: 0x7E0
  */
-extern "C" void fn_80135434(CCameraActionAreaEx* state)
+extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
 {
 	if (state->_2C == NULL)
 		return;

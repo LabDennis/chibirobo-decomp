@@ -125,7 +125,7 @@ TRIGON_INFO* CTrigon::Create(HSD_JObj* jobj)
 
 	// then again into one that fits
 	u32 size = mNum * sizeof(TRIGON_INFO);
-	mTri     = (TRIGON_INFO*)mm::Alloc((size + 31) & ~31, fn_801911B4("(tri:%4d * %2d)", mNum, sizeof(TRIGON_INFO)));
+	mTri     = (TRIGON_INFO*)mm::Alloc((size + 31) & ~31, FormatToStaticBuffer("(tri:%4d * %2d)", mNum, sizeof(TRIGON_INFO)));
 	if (mTri != NULL) {
 		mNum = 0;
 		HSD_JObjWalkTree(jobj, CollectTrigons, (f32**)this);
@@ -246,7 +246,7 @@ inline bool _trigonChecker::Check()
 	// degenerate triangles never count
 	if (PSVECMag(&cross) > FLT_EPSILON) {
 		CVec normal;
-		fn_8018EE60(&v[0], &v[1], &v[2], &normal);
+		CalcTriangleNormal(&v[0], &v[1], &v[2], &normal);
 
 		// slope against the horizontal, keep anything that faces up
 		f32 xz    = sqrtf(normal.x * normal.x + normal.z * normal.z);
@@ -1244,7 +1244,7 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 		if ((u32)k < num) {
 			t = &list[k];
 			t->mGetVtx(t, v);
-			if (t->mColor != 0 && fn_8018EC6C(pos, &v[0], corner1, corner2)) {
+			if (t->mColor != 0 && IsPointInsideTriangleXZ(pos, &v[0], corner1, corner2)) {
 				found = k;
 				break;
 			}
@@ -1253,7 +1253,7 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 		if (k >= 0) {
 			t = &list[k];
 			t->mGetVtx(t, v);
-			if (t->mColor != 0 && fn_8018EC6C(pos, &v[0], corner1, corner2)) {
+			if (t->mColor != 0 && IsPointInsideTriangleXZ(pos, &v[0], corner1, corner2)) {
 				found = k;
 				break;
 			}
@@ -1265,7 +1265,7 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 	if (found >= 0) {
 		if (floorY != NULL) {
 			CVec hit;
-			fn_8018E8A4(&v[0], corner1, corner2, pos, &hit);
+			IntersectVerticalLineWithTrianglePlane(&v[0], corner1, corner2, pos, &hit);
 			*floorY = hit.y;
 		}
 		if (tri != NULL) {
@@ -1275,7 +1275,7 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 #else
 	if (found >= 0 && floorY != NULL) {
 		CVec hit;
-		fn_8018E8A4(&v[0], corner1, corner2, pos, &hit);
+		IntersectVerticalLineWithTrianglePlane(&v[0], corner1, corner2, pos, &hit);
 		*floorY = hit.y;
 	}
 #endif
@@ -1350,7 +1350,7 @@ int CTrigon::Search(Vec* pos, f32* floorY)
     mr       r5, r30
     mr       r6, r31
     addi     r4, r1, 0x18
-    bl       fn_8018EC6C
+    bl       IsPointInsideTriangleXZ
     cmpwi    r3, 0x0
     beq      .L_801A4530
     mr       r29, r21
@@ -1373,7 +1373,7 @@ int CTrigon::Search(Vec* pos, f32* floorY)
     mr       r5, r30
     mr       r6, r31
     addi     r4, r1, 0x18
-    bl       fn_8018EC6C
+    bl       IsPointInsideTriangleXZ
     cmpwi    r3, 0x0
     beq      .L_801A4588
     mr       r29, r21
@@ -1397,7 +1397,7 @@ int CTrigon::Search(Vec* pos, f32* floorY)
     mr       r6, r22
     addi     r3, r1, 0x18
     addi     r7, r1, 0x8
-    bl       fn_8018E8A4
+    bl       IntersectVerticalLineWithTrianglePlane
     lfs      f0, 0xc(r1)
     lis      r3, __vt__4CVec@ha
     addi     r0, r3, __vt__4CVec@l

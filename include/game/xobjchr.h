@@ -18,23 +18,24 @@ struct AttachmentValues;
 
 extern "C" {
 // the yes/no and number choice the msg and select commands open
-void fn_80096E38(OXMenu* menu, CPad* pad);
-s32 fn_8009C1BC(AttachmentValues* values, s32 id);
-void fn_8009C398(AttachmentValues* values);
-void fn_8009FCC4(XObjChr* chr);
-BOOL fn_8009FDE4(void* player);
-CVec fn_800A0894(const CJObj* object, s32 depth, s32* path);
-CVec fn_800A0978(CJObj* object);
-void fn_800A30EC(XObj* player, s32 arg);
-void fn_800B51FC(XObjChr* chr, s32 first, s32 second);
-void fn_800B54A4(XObjChr* chr, s32 selection);
-void fn_800B558C(XObjChr* chr);
-void fn_800B5E1C(XObjChr* chr);
-BOOL fn_800B9758(XObjChr* chr);
+void HandleOXMenuInput(OXMenu* menu, CPad* pad);
+s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
+void UpdateAttachmentAvailability(AttachmentValues* values);
+void ResetPlayerPlug(XObjChr* chr);
+BOOL IsPlayerBlockingEvents(const XObjChr* player);
+CVec CJObj_GetJointLocalTranslationByPath(const CJObj* object, s32 depth, s32* path);
+CVec GetPlayerCarryJointLocalTranslation(CJObj* object);
+CVec GetPlayerCarryJointWorldPosition(CJObj* object);
+void SetPlayerEyeCameraJointsHidden(XObj* player, BOOL hidden);
+void OpenPlayerYesNoMenu(XObjChr* chr, s32 first, s32 second);
+void SelectPlayerEquipmentRing(XObjChr* chr, s32 selection);
+void OpenPlayerEquipmentRings(XObjChr* chr);
+void ResetPlayerHeadOffset(XObjChr* chr);
+BOOL LoadPlayerAttachmentAnimation(XObjChr* chr);
 
-// two positions the player code keeps
-extern Vec lbl_8037827C;
-extern Vec lbl_80378288;
+// Initial values copied before decoding floor-record coordinates in hundredths.
+extern Vec gPlayerFloorCenterDefault;
+extern Vec gPlayerFloorExtentDefault;
 }
 
 #endif

@@ -9,8 +9,8 @@
 static inline void TriggerEvent(XObj* object, u32 first, u32 second)
 {
 	const void* script = object->vf128();
-	if (!fn_8009FDE4(lbl_8025C400.GetPlayer()))
-		fn_8007EEA4(&lbl_8025C400.mEvt, (u8*)script, (u32)object, first, second);
+	if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
+		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)object, first, second);
 }
 
 // XObjFree::Release
@@ -24,14 +24,14 @@ extern "C" void Release__8XObjFreeFv(XObjFree* object)
 	Release__4XObjFv(object);
 }
 
-// XObjFree::vf98
+// XObjFree::ResetObjectState
 /**
  * @note Address: 0x800DE060
  * @note Size: 0xEC
  */
-extern "C" void vf98__8XObjFreeFv(XObjFree* object)
+extern "C" void ResetObjectState__8XObjFreeFv(XObjFree* object)
 {
-	vf98__4XObjFv(object);
+	ResetObjectState__4XObjFv(object);
 	if (object->mAttr._00 != NULL)
 		object->mLife = (s16)object->GetObjFlags();
 	object->mMatAnim = NULL;
@@ -46,7 +46,7 @@ extern "C" void vf98__8XObjFreeFv(XObjFree* object)
  * @note Address: 0x800DE14C
  * @note Size: 0x2D8
  */
-extern "C" BOOL vf140__8XObjDustFll(XObjDust* object, const Vec* position, s32 kind)
+extern "C" BOOL vf140__8XObjDustFPC3Vecl(XObjDust* object, const Vec* position, s32 kind)
 {
 	if ((object->GetObjFlags() & 2) && kind == 16) {
 		if (object->GetObjFlags() & 0x10) {
@@ -80,21 +80,21 @@ extern "C" BOOL vf140__8XObjDustFll(XObjDust* object, const Vec* position, s32 k
 	return TRUE;
 }
 
-// XObjDust::vf138
+// XObjDust::OnHitFromPosition
 /**
  * @note Address: 0x800DE424
  * @note Size: 0x1E4
  */
-extern "C" void vf138__8XObjDustFRC3Vecf(XObjDust* object, f32 strength)
+extern "C" void OnHitFromPosition__8XObjDustFRC3Vecf(XObjDust* object, f32 strength)
 {
 	if (object->GetObjFlags() & 1) {
 		object->mStatus.mFlags |= 0x4000000000000000ULL;
-		if (strength >= (s32)fn_8006EBC8(31) / 100.0f)
+		if (strength >= (s32)GetPlayerActionParameter(31) / 100.0f)
 			object->mEventArg = 2001;
 		else
 			object->mEventArg = 2000;
 	} else if (object->mStatus.mFlags & 0x0000080000000000ULL) {
-		if (strength >= (s32)fn_8006EBC8(31) / 100.0f)
+		if (strength >= (s32)GetPlayerActionParameter(31) / 100.0f)
 			TriggerEvent(object, -1, 2001);
 		else
 			TriggerEvent(object, -1, 2000);

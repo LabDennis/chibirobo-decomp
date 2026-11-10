@@ -1,11 +1,11 @@
 #include "game/xobjmap.h"
 
-// XObjLight::vfA4
+// XObjLight::UpdateObject
 /**
  * @note Address: 0x80092E38
  * @note Size: 0xC8
  */
-extern "C" void vfA4__9XObjLightFUl(XObjLight* object, u32 frames)
+extern "C" void UpdateObject__9XObjLightFUl(XObjLight* object, u32 frames)
 {
 	if ((s32)GetEnvData()[4] == 2) {
 		for (s32 i = 0; i < object->mLightNum; ++i) {
@@ -33,14 +33,14 @@ extern "C" void Release__9XObjLightFv(XObjLight* object)
 	Release__4XObjFv(object);
 }
 
-// XObjLight::vf9C
+// XObjLight::LoadFromPlacement
 /**
  * @note Address: 0x80092F98
  * @note Size: 0x14C
  */
-extern "C" BOOL vf9C__9XObjLightFRC9CoordInfo(XObjLight* object, CoordInfo* info)
+extern "C" BOOL LoadFromPlacement__9XObjLightFRC9CoordInfo(XObjLight* object, CoordInfo* info)
 {
-	if (vf9C__4XObjFRC9CoordInfo(object, info)) {
+	if (LoadFromPlacement__4XObjFRC9CoordInfo(object, info)) {
 		if ((s32)GetEnvData()[4] == 2) {
 			HSD_LObj* previous = NULL;
 			for (s32 i = 0; i < 8; ++i) {
@@ -65,24 +65,24 @@ extern "C" BOOL vf9C__9XObjLightFRC9CoordInfo(XObjLight* object, CoordInfo* info
 	return FALSE;
 }
 
-// XObjLight::vf98
+// XObjLight::ResetObjectState
 /**
  * @note Address: 0x800930E4
  * @note Size: 0x30
  */
-extern "C" void vf98__9XObjLightFv(XObjLight* object)
+extern "C" void ResetObjectState__9XObjLightFv(XObjLight* object)
 {
 	object->mLightNum = 0;
 	for (u32 i = 0; i < 8; ++i)
 		object->mLightAnims[i] = -1;
 }
 
-// XObjLight::vf90
+// XObjLight::InitializeObject
 /**
  * @note Address: 0x80093114
  * @note Size: 0x20
  */
-extern "C" void vf90__9XObjLightFUl(XObjLight* object, u32 id)
+extern "C" void InitializeObject__9XObjLightFUl(XObjLight* object, u32 id)
 {
-	vf90__4XObjFUl(object, id);
+	InitializeObject__4XObjFUl(object, id);
 }

@@ -12,7 +12,7 @@ typedef struct _GObjFuncs GObjFuncs;
 typedef struct _HSD_AnimJoint HSD_AnimJoint;
 typedef struct _HSD_AObj HSD_AObj;
 typedef struct _HSD_AObjDesc HSD_AObjDesc;
-typedef struct _HSD_Archive HSD_Archive;
+typedef struct HSD_Archive HSD_Archive;
 typedef struct _HSD_ArchiveExternInfo HSD_ArchiveExternInfo;
 typedef struct _HSD_ArchiveHeader HSD_ArchiveHeader;
 typedef struct _HSD_ArchivePublicInfo HSD_ArchivePublicInfo;

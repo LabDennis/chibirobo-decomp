@@ -35,14 +35,14 @@ extern "C" s32 CmdNop(s32 cmd, void* arg, void* arg2)
 extern "C" void UpdateStage(void* arg)
 {
 	if (gameBotan2 != NULL) {
-		XObj* other = lbl_8025C400.GetPlayer();
+		XObj* other = gGame.GetPlayer();
 		f32 angle   = atan2(other->mMoveTranslate.x - gameBotan2->mMoveTranslate.x, other->mMoveTranslate.z - gameBotan2->mMoveTranslate.z);
 		gameBotan2->SetRotateY(angle, 0.0f);
 	} else {
 		XObj* obj;
 		s32 i;
-		for (i = 0; i < lbl_8025C400.mXObjs.mObjectCount && gameBotan2 == NULL; i++) {
-			obj = lbl_8025C400.GetObject(i);
+		for (i = 0; i < gGame.mXObjs.mObjectCount && gameBotan2 == NULL; i++) {
+			obj = gGame.GetObject(i);
 			if ((obj->mStatus.mFlags & 1) != 0 && obj->GetKind() == 0x2E9) {
 				gameBotan2 = obj;
 			}

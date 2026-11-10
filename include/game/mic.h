@@ -13,10 +13,18 @@ struct MicChannel {
 STATIC_ASSERT(sizeof(MicChannel) == 0x10);
 
 extern "C" {
+extern s16* gMicDMABuffers[2];
+extern u8 gMicDMABufferIndex;
+extern u32 gMicSamplePhase[2];
+extern void (*gPreviousAudioDMACallback)(void);
+void OnMicAudioDMA();
+
 // one per slot
-extern MicChannel lbl_8020FC3C[2];
+extern MicChannel gMicrophoneChannels[2];
 // the slot in use, -1 for none
-extern s32 lbl_80659ECC;
+extern s32 gActiveMicChannel;
+extern s32 gMicObjectPeak; // peak above 1000 delivered to stage objects
+extern s32 gMicMeterPeak;  // largest positive sample since the level bar was drawn
 }
 
 #endif

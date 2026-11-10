@@ -13,6 +13,9 @@ struct XObjArmyShot {
 	f32 mSpeed;  // _28
 	s32 mPhase;  // _2C, 0 flying, 1 bouncing off, 2 lying on the floor
 
+	XObjArmyShot();
+	~XObjArmyShot();
+
 	void Move()
 	{
 		mPos.x += mSpeed * mVel.x;
@@ -42,11 +45,14 @@ public:
 
 	XObjArmy();
 
-	virtual void vf98();                                 // _98
-	virtual void vfA4(u32 frames);                       // _A4
-	virtual void vfC0();                                 // _C0
-	virtual void vf138(const Vec& position, f32 amount); // _138
-	virtual void vf148();                                // _148, plays the anim's sounds
+	virtual void ResetObjectState();                                 // _98
+	virtual void UpdateObject(u32 frames);                           // _A4
+	virtual void DrawObjectEffects();                                // _C0
+	virtual s32 HandleEventCommand(s32 count, s32* args);            // _124
+	virtual void OnHitFromPosition(const Vec& position, f32 amount); // _138
+	virtual void UpdateAnimationSounds();                            // _148
+
+	virtual ~XObjArmy();
 
 	void StateGuard();
 	void StateFall();

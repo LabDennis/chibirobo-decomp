@@ -14,11 +14,11 @@ void PSMTXTranspose(const Mtx src, Mtx xPose);
 // first object loop's registers swap
 // draws the 0x20000000 objects mirrored in the floor with the lights flipped under it, then
 // covers the floor with a quad
-extern "C" void fn_8000DA7C(CGame* game)
+extern "C" void RenderFloorReflection(CGame* game)
 {
 	if ((game->mStatus.mFlags & 1) && (game->mStatus.mFlags & 0x2000000000)) {
 		game->mGs.mCamera = game->GetCamera();
-		if (fn_8019997C(game)) {
+		if (BeginGsCamera(game)) {
 			for (CLight* light = game->mLightList; light != NULL; light = (CLight*)light->next) {
 				light->SetPosition(light->mPosition.x, -light->mPosition.y, light->mPosition.z);
 			}
@@ -52,7 +52,7 @@ extern "C" void fn_8000DA7C(CGame* game)
 				XObj* obj = game->mDrawLists[1].mObjects[i];
 				if (!(obj->mStatus.mFlags & 0x200000) && (obj->mStatus.mFlags & 0x20000000)) {
 					obj->vf120(1);
-					obj->vfB4(view);
+					obj->DrawReflection(view);
 				}
 			}
 
@@ -60,7 +60,7 @@ extern "C" void fn_8000DA7C(CGame* game)
 				light->SetPosition(light->mPosition.x, -light->mPosition.y, light->mPosition.z);
 			}
 			game->mLightList->SetCurrent(game->GetCamera());
-			fn_80199944(&game->mGs);
+			EndGsCamera(&game->mGs);
 			for (s32 i = 0; i < game->mDrawLists[1].mCount; i++) {
 				XObj* obj = game->mDrawLists[1].mObjects[i];
 				if (!(obj->mStatus.mFlags & 0x200000) && (obj->mStatus.mFlags & 0x20000000)) {
@@ -71,7 +71,7 @@ extern "C" void fn_8000DA7C(CGame* game)
 
 		if (game->mStatus.mFlags & 0x20000002000000) {
 			game->mGs.mCamera = game->GetCamera();
-			if (fn_8019997C(game)) {
+			if (BeginGsCamera(game)) {
 				static Vec floor[4] = {
 					{ -1000.0f, -0.1f, -1000.0f },
 					{ 1000.0f, -0.1f, -1000.0f },
@@ -79,13 +79,13 @@ extern "C" void fn_8000DA7C(CGame* game)
 					{ -1000.0f, -0.1f, 1000.0f },
 				};
 				SetupAll(TRUE);
-				fn_8019B464(lbl_8025C400.mGs.mCurRenderMode, 1, 7, 1);
-				fn_8019B648(lbl_8025C400.mGs.mCurRenderMode, 0);
-				fn_80198614(&lbl_8025C400.mGs, floor[0].x, floor[0].y, floor[0].z, 0, floor[1].x, floor[1].y, floor[1].z, 0, floor[2].x,
-				            floor[2].y, floor[2].z, 0, floor[3].x, floor[3].y, floor[3].z, 0);
-				fn_8019B464(lbl_8025C400.mGs.mCurRenderMode, 1, 3, 0);
-				fn_8019B648(lbl_8025C400.mGs.mCurRenderMode, 1);
-				fn_80199944(&game->mGs);
+				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
+				SetGsColorUpdate(gGame.mGs.mCurRenderMode, 0);
+				DrawGsVertexQuad(&gGame.mGs, floor[0].x, floor[0].y, floor[0].z, floor[1].x, floor[1].y, floor[1].z, floor[2].x, floor[2].y,
+				                 floor[2].z, floor[3].x, floor[3].y, floor[3].z, 0, 0, 0, 0);
+				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
+				SetGsColorUpdate(gGame.mGs.mCurRenderMode, 1);
+				EndGsCamera(&game->mGs);
 			}
 		}
 	}

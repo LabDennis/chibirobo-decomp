@@ -49,14 +49,14 @@ void fn_801EBC5C(void);
 void HSD_DevComARAMWakeUp(void);
 void HSD_DevComDVDWakeUp(void);
 
-static HSD_DevCom* lbl_8064DE20[4];
-static HSD_DevCom* lbl_8064DE30[4];
+static HSD_DevCom* sDevComQueueHeads[4];
+static HSD_DevCom* sDevComQueueTails[4];
 static ARQRequest lbl_8064DE40[2][2];
-static int lbl_8064DEC0[2][DEVCOM_BUF_SIZE / sizeof(int)];
-static DVDFileInfo lbl_80655EC0;
+static int sDevComTransferBuffers[2][DEVCOM_BUF_SIZE / sizeof(int)] __attribute__((aligned(32)));
+static DVDFileInfo sDevComDvdFileInfo;
 
 static u8 lbl_8065BB54[2];
-static HSD_DevCom* lbl_8065BB50;
+static HSD_DevCom* sDevComActiveRequest;
 static HSD_DevCom* dvdDC;
 static HSD_DevCom* lbl_8065BB44[2];
 static s32 lbl_8065BB40;
@@ -64,7 +64,7 @@ static u8 lbl_8065BB3F;
 static u8 lbl_8065BB3E;
 static u8 lbl_8065BB3D;
 static u8 lbl_8065BB3C;
-static HSD_DevCom* lbl_8065BB38;
+static HSD_DevCom* sDevComFreeList;
 
 static int lbl_8065B0D0 = 4;
 
@@ -74,7 +74,7 @@ static int lbl_8065B0D0 = 4;
  */
 HSD_DevCom* HSD_DevComIsBusy(int idx)
 {
-	return lbl_8064DE20[idx];
+	return sDevComQueueHeads[idx];
 }
 
 // plain static, compiled right here even though every caller inlines it,
@@ -85,17 +85,17 @@ static void HSD_DevComUnlink(HSD_DevCom* dc)
 	u32 enabled = OSDisableInterrupts();
 	int i       = dc->dcReq & 3;
 
-	if (lbl_8064DE20[i] == dc) {
-		lbl_8064DE20[i] = dc->next;
-		if (lbl_8064DE30[i] == dc) {
-			lbl_8064DE30[i] = 0;
+	if (sDevComQueueHeads[i] == dc) {
+		sDevComQueueHeads[i] = dc->next;
+		if (sDevComQueueTails[i] == dc) {
+			sDevComQueueTails[i] = 0;
 		}
 	} else {
-		for (curr = lbl_8064DE20[i]; curr->next != 0; curr = curr->next) {
+		for (curr = sDevComQueueHeads[i]; curr->next != 0; curr = curr->next) {
 			if (curr->next == dc) {
 				curr->next = dc->next;
-				if (lbl_8064DE30[i] == dc) {
-					lbl_8064DE30[i] = curr;
+				if (sDevComQueueTails[i] == dc) {
+					sDevComQueueTails[i] = curr;
 				}
 				OSRestoreInterrupts(enabled);
 				return;
@@ -130,8 +130,8 @@ void HSD_DevComStdCallback(ARQRequest* request)
 static inline void HSD_DevComFree(HSD_DevCom* devcom)
 {
 	u32 enabled  = OSDisableInterrupts();
-	devcom->next = lbl_8065BB38;
-	lbl_8065BB38 = devcom;
+	devcom->next = sDevComFreeList;
+	sDevComFreeList = devcom;
 	OSRestoreInterrupts(enabled);
 }
 
@@ -144,23 +144,23 @@ void HSD_DevComARAMCallback(ARQRequest* request)
 	int i;
 	void* buf;
 
-	if (lbl_8065BB50->type == 0x1A) {
+	if (sDevComActiveRequest->type == 0x1A) {
 		if (request == &lbl_8064DE40[0][0]) {
 			i = 0;
 		} else {
 			i = 1;
 		}
-		buf = lbl_8064DEC0[i];
+		buf = sDevComTransferBuffers[i];
 	} else {
 		buf = 0;
 	}
 
-	if (lbl_8065BB50->callback != 0) {
-		lbl_8065BB50->callback(lbl_8065BB50->dcReq, lbl_8065BB50->args, buf, lbl_8065BB50->cancelflag);
+	if (sDevComActiveRequest->callback != 0) {
+		sDevComActiveRequest->callback(sDevComActiveRequest->dcReq, sDevComActiveRequest->args, buf, sDevComActiveRequest->cancelflag);
 	}
 
-	HSD_DevComUnlink(lbl_8065BB50);
-	HSD_DevComFree(lbl_8065BB50);
+	HSD_DevComUnlink(sDevComActiveRequest);
+	HSD_DevComFree(sDevComActiveRequest);
 	HSD_DevComStdCallback(request);
 }
 
@@ -194,66 +194,66 @@ void HSD_DevComARAMWakeUp(void)
 		OSRestoreInterrupts(enabled);
 		return;
 	}
-	lbl_8065BB50 = lbl_8064DE20[3];
-	if (lbl_8064DE20[3] != 0) {
-		if (lbl_8065BB50->cancelflag) {
-			if (lbl_8065BB50->callback != 0) {
-				lbl_8065BB50->callback(lbl_8065BB50->dcReq, lbl_8065BB50->args, 0, 1);
+	sDevComActiveRequest = sDevComQueueHeads[3];
+	if (sDevComQueueHeads[3] != 0) {
+		if (sDevComActiveRequest->cancelflag) {
+			if (sDevComActiveRequest->callback != 0) {
+				sDevComActiveRequest->callback(sDevComActiveRequest->dcReq, sDevComActiveRequest->args, 0, 1);
 			}
-			HSD_DevComUnlink(lbl_8065BB50);
+			HSD_DevComUnlink(sDevComActiveRequest);
 			OSRestoreInterrupts(enabled);
 			HSD_DevComARAMWakeUp();
 			return;
 		}
 		req_idx = getRelayBufIdx();
 		if (req_idx >= 0) {
-			if (lbl_8065BB50->type == 3) {
+			if (sDevComActiveRequest->type == 3) {
 				u32 xfer_size;
-				if (lbl_8065BB50->size > DEVCOM_BUF_SIZE) {
+				if (sDevComActiveRequest->size > DEVCOM_BUF_SIZE) {
 					arq_callback = HSD_DevComStdCallback;
 					xfer_size    = DEVCOM_BUF_SIZE;
 				} else {
 					arq_callback = HSD_DevComARAMCallback;
-					xfer_size    = lbl_8065BB50->size;
+					xfer_size    = sDevComActiveRequest->size;
 				}
 				for (i = 0; i < DEVCOM_BUF_SIZE / sizeof(int); i++) {
-					lbl_8064DEC0[req_idx][i] = 0;
+					sDevComTransferBuffers[req_idx][i] = 0;
 				}
-				DCStoreRange(lbl_8064DEC0[req_idx], DEVCOM_BUF_SIZE);
-				ARQPostRequest(lbl_8064DE40[req_idx], 0, 0, 1, (u32)lbl_8064DEC0[req_idx], lbl_8065BB50->dest, xfer_size, arq_callback);
-				lbl_8065BB50->dest += xfer_size;
-				lbl_8065BB50->size -= xfer_size;
+				DCStoreRange(sDevComTransferBuffers[req_idx], DEVCOM_BUF_SIZE);
+				ARQPostRequest(lbl_8064DE40[req_idx], 0, 0, 1, (u32)sDevComTransferBuffers[req_idx], sDevComActiveRequest->dest, xfer_size, arq_callback);
+				sDevComActiveRequest->dest += xfer_size;
+				sDevComActiveRequest->size -= xfer_size;
 				lbl_8065BB3C = 1;
-			} else if (lbl_8065BB50->type == 0xB) {
-				DCStoreRange((void*)lbl_8065BB50->src, lbl_8065BB50->size);
-				ARQPostRequest(lbl_8064DE40[req_idx], 0, 0, 1, lbl_8065BB50->src, lbl_8065BB50->dest, lbl_8065BB50->size,
+			} else if (sDevComActiveRequest->type == 0xB) {
+				DCStoreRange((void*)sDevComActiveRequest->src, sDevComActiveRequest->size);
+				ARQPostRequest(lbl_8064DE40[req_idx], 0, 0, 1, sDevComActiveRequest->src, sDevComActiveRequest->dest, sDevComActiveRequest->size,
 				               HSD_DevComARAMCallback);
 				lbl_8065BB3C = 1;
-			} else if (lbl_8065BB50->type == 0x19) {
-				DCInvalidateRange((void*)lbl_8065BB50->dest, lbl_8065BB50->size);
-				ARQPostRequest(lbl_8064DE40[req_idx], 0, 1, 1, lbl_8065BB50->src, lbl_8065BB50->dest, lbl_8065BB50->size,
+			} else if (sDevComActiveRequest->type == 0x19) {
+				DCInvalidateRange((void*)sDevComActiveRequest->dest, sDevComActiveRequest->size);
+				ARQPostRequest(lbl_8064DE40[req_idx], 0, 1, 1, sDevComActiveRequest->src, sDevComActiveRequest->dest, sDevComActiveRequest->size,
 				               HSD_DevComARAMCallback);
 				lbl_8065BB3C = 1;
-			} else if (lbl_8065BB50->type == 0x1A) {
-				DCInvalidateRange(lbl_8064DEC0[req_idx], DEVCOM_BUF_SIZE);
-				ARQPostRequest(lbl_8064DE40[req_idx], 0, 1, 1, lbl_8065BB50->src, (u32)lbl_8064DEC0[req_idx], lbl_8065BB50->size,
+			} else if (sDevComActiveRequest->type == 0x1A) {
+				DCInvalidateRange(sDevComTransferBuffers[req_idx], DEVCOM_BUF_SIZE);
+				ARQPostRequest(lbl_8064DE40[req_idx], 0, 1, 1, sDevComActiveRequest->src, (u32)sDevComTransferBuffers[req_idx], sDevComActiveRequest->size,
 				               HSD_DevComARAMCallback);
 				lbl_8065BB3C = 1;
-			} else if (lbl_8065BB50->type == 0x1B) {
-				DCInvalidateRange(lbl_8064DEC0[req_idx], DEVCOM_BUF_SIZE);
-				if (lbl_8065BB50->size > DEVCOM_BUF_SIZE) {
+			} else if (sDevComActiveRequest->type == 0x1B) {
+				DCInvalidateRange(sDevComTransferBuffers[req_idx], DEVCOM_BUF_SIZE);
+				if (sDevComActiveRequest->size > DEVCOM_BUF_SIZE) {
 					arq_callback2 = HSD_DevComStdCallback;
 					xfer_size2    = DEVCOM_BUF_SIZE;
 				} else {
 					arq_callback2 = HSD_DevComARAMCallback;
-					xfer_size2    = lbl_8065BB50->size;
+					xfer_size2    = sDevComActiveRequest->size;
 				}
-				ARQPostRequest(&lbl_8064DE40[req_idx][1], 0, 1, 1, lbl_8065BB50->src, (u32)lbl_8064DEC0[req_idx], xfer_size2, 0);
-				ARQPostRequest(&lbl_8064DE40[req_idx][0], 0, 0, 1, (u32)lbl_8064DEC0[req_idx], lbl_8065BB50->dest, xfer_size2,
+				ARQPostRequest(&lbl_8064DE40[req_idx][1], 0, 1, 1, sDevComActiveRequest->src, (u32)sDevComTransferBuffers[req_idx], xfer_size2, 0);
+				ARQPostRequest(&lbl_8064DE40[req_idx][0], 0, 0, 1, (u32)sDevComTransferBuffers[req_idx], sDevComActiveRequest->dest, xfer_size2,
 				               arq_callback2);
-				lbl_8065BB50->src += xfer_size2;
-				lbl_8065BB50->dest += xfer_size2;
-				lbl_8065BB50->size -= xfer_size2;
+				sDevComActiveRequest->src += xfer_size2;
+				sDevComActiveRequest->dest += xfer_size2;
+				sDevComActiveRequest->size -= xfer_size2;
 				lbl_8065BB3C = 1;
 			}
 		}
@@ -335,8 +335,8 @@ void HSD_DevComDVDMemCallback(s32 result, DVDFileInfo* fileInfo)
 	HSD_DevComUnlink(dvdDC);
 	dc           = dvdDC;
 	enabled      = OSDisableInterrupts();
-	dc->next     = lbl_8065BB38;
-	lbl_8065BB38 = dc;
+	dc->next     = sDevComFreeList;
+	sDevComFreeList = dc;
 	OSRestoreInterrupts(enabled);
 	lbl_8065BB3D = 0;
 	HSD_DevComDVDWakeUp();
@@ -361,13 +361,13 @@ void HSD_DevComDVDCallback(s32 result, DVDFileInfo* fileInfo)
 		HSD_ASSERT(0x19E, dvdDC->size <= DEVCOM_BUF_SIZE);
 		HSD_ASSERT(0x19F, dvdDC->callback);
 		if (lbl_8065BB40 == 0) {
-			dvdDC->callback(dvdDC->dcReq, dvdDC->args, lbl_8064DEC0[lbl_8065BB3E], dvdDC->cancelflag);
+			dvdDC->callback(dvdDC->dcReq, dvdDC->args, sDevComTransferBuffers[lbl_8065BB3E], dvdDC->cancelflag);
 		}
 		HSD_DevComUnlink(dvdDC);
 		dc           = dvdDC;
 		enabled      = OSDisableInterrupts();
-		dc->next     = lbl_8065BB38;
-		lbl_8065BB38 = dc;
+		dc->next     = sDevComFreeList;
+		sDevComFreeList = dc;
 		OSRestoreInterrupts(enabled);
 		lbl_8065BB3D               = 0;
 		lbl_8065BB54[lbl_8065BB3E] = 0;
@@ -376,7 +376,7 @@ void HSD_DevComDVDCallback(s32 result, DVDFileInfo* fileInfo)
 	} else if (type == 0x23) {
 		lbl_8065BB3F = lbl_8065BB3E;
 		if (dvdDC->size > DEVCOM_BUF_SIZE) {
-			ARQPostRequest(lbl_8064DE40[lbl_8065BB3F], 0, 0, 1, (u32)lbl_8064DEC0[lbl_8065BB3F], dvdDC->dest, DEVCOM_BUF_SIZE,
+			ARQPostRequest(lbl_8064DE40[lbl_8065BB3F], 0, 0, 1, (u32)sDevComTransferBuffers[lbl_8065BB3F], dvdDC->dest, DEVCOM_BUF_SIZE,
 			               HSD_DevComDVDStdCallback);
 			dvdDC->src += DEVCOM_BUF_SIZE;
 			dvdDC->dest += DEVCOM_BUF_SIZE;
@@ -385,7 +385,7 @@ void HSD_DevComDVDCallback(s32 result, DVDFileInfo* fileInfo)
 			HSD_DevComDVDWakeUp();
 		} else {
 			lbl_8065BB44[lbl_8065BB3F] = dvdDC;
-			ARQPostRequest(lbl_8064DE40[lbl_8065BB3F], 0, 0, 1, (u32)lbl_8064DEC0[lbl_8065BB3F], dvdDC->dest, dvdDC->size,
+			ARQPostRequest(lbl_8064DE40[lbl_8065BB3F], 0, 0, 1, (u32)sDevComTransferBuffers[lbl_8065BB3F], dvdDC->dest, dvdDC->size,
 			               HSD_DevComDVDARAMEndCallback);
 		}
 	}
@@ -410,12 +410,12 @@ void HSD_DevComDVDWakeUp(void)
 		return;
 	}
 	lbl_8065BB3D = 1;
-	if (lbl_8064DE20[0] == 0) {
+	if (sDevComQueueHeads[0] == 0) {
 		fn_801EBC5C();
 	}
 	lbl_8065BB3D = 0;
 	for (i = 0; i < 3; i++) {
-		if ((dvdDC = lbl_8064DE20[i])) {
+		if ((dvdDC = sDevComQueueHeads[i])) {
 			if (dvdDC->cancelflag) {
 				if (dvdDC->callback != 0) {
 					dvdDC->callback(dvdDC->dcReq, dvdDC->args, 0, 1);
@@ -425,9 +425,9 @@ void HSD_DevComDVDWakeUp(void)
 				HSD_DevComDVDWakeUp();
 				return;
 			}
-			DVDFastOpen(dvdDC->file, &lbl_80655EC0);
+			DVDFastOpen(dvdDC->file, &sDevComDvdFileInfo);
 			if (dvdDC->type == 0x21) {
-				DVDReadAsyncPrio(&lbl_80655EC0, (void*)dvdDC->dest, MIN(dvdDC->size, 0x80000), dvdDC->src, HSD_DevComDVDMemCallback, 2);
+				DVDReadAsyncPrio(&sDevComDvdFileInfo, (void*)dvdDC->dest, MIN(dvdDC->size, 0x80000), dvdDC->src, HSD_DevComDVDMemCallback, 2);
 				lbl_8065BB3D = 1;
 				OSRestoreInterrupts(enabled);
 				return;
@@ -435,7 +435,7 @@ void HSD_DevComDVDWakeUp(void)
 			buf_idx = getRelayBufIdx();
 			if (buf_idx >= 0) {
 				lbl_8065BB3E = buf_idx;
-				DVDReadAsyncPrio(&lbl_80655EC0, lbl_8064DEC0[buf_idx], MIN(dvdDC->size, DEVCOM_BUF_SIZE), dvdDC->src, HSD_DevComDVDCallback,
+				DVDReadAsyncPrio(&sDevComDvdFileInfo, sDevComTransferBuffers[buf_idx], MIN(dvdDC->size, DEVCOM_BUF_SIZE), dvdDC->src, HSD_DevComDVDCallback,
 				                 2);
 				lbl_8065BB3D = 1;
 				OSRestoreInterrupts(enabled);
@@ -465,14 +465,14 @@ static inline HSD_DevCom* HSD_DevComAlloc(void)
 	HSD_DevCom* dc;
 	u32 enabled = OSDisableInterrupts();
 
-	if ((dc = lbl_8065BB38)) {
-		lbl_8065BB38 = dc->next;
+	if ((dc = sDevComFreeList)) {
+		sDevComFreeList = dc->next;
 		OSRestoreInterrupts(enabled);
 	} else {
 		dc = HSD_AudioMalloc(sizeof(HSD_DevCom) * INIT_N_DEVCOMS);
 		DevComLinkNext(dc);
 
-		lbl_8065BB38 = &dc[1];
+		sDevComFreeList = &dc[1];
 		OSRestoreInterrupts(enabled);
 	}
 	return dc;
@@ -511,13 +511,13 @@ int HSD_DevComRequest(int file, u32 src, u32 dest, u32 size, int type, int pri, 
 	enabled = OSDisableInterrupts();
 	result = dc->dcReq = lbl_8065B0D0 + pri;
 	lbl_8065B0D0 += 4;
-	if (lbl_8064DE30[pri] != 0) {
-		lbl_8064DE30[pri]->next = dc;
+	if (sDevComQueueTails[pri] != 0) {
+		sDevComQueueTails[pri]->next = dc;
 	}
-	lbl_8064DE30[pri] = dc;
+	sDevComQueueTails[pri] = dc;
 	dc->next          = 0;
-	if (lbl_8064DE20[pri] == 0) {
-		lbl_8064DE20[pri] = dc;
+	if (sDevComQueueHeads[pri] == 0) {
+		sDevComQueueHeads[pri] = dc;
 		HSD_DevComDVDWakeUp();
 		HSD_DevComARAMWakeUp();
 	}

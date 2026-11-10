@@ -49,7 +49,7 @@ extern GXRenderModeObj GXNtsc480IntDf;
 #define assert_line_pixfmt(line, cond) ((cond) ? (void)0 : __assert("initialize.c", line, "pix_fmt != GX_PF_RGB565_Z16"))
 
 
-HSD_MemReport lbl_8064AF0C;
+HSD_MemReport gHsdMemoryReport;
 void* lbl_8064AF00[HSD_VI_XFB_MAX];
 
 volatile OSHeapHandle lbl_8065AF18 = -1;
@@ -99,7 +99,7 @@ void HSD_Init(void)
 	HSD_AllocateXFB(lbl_8065AF28, lbl_8065AF1C);
 	fifo                = HSD_AllocateFIFO(lbl_8065AF24);
 	lbl_8065BA28        = GXInit(fifo, lbl_8065AF24);
-	lbl_8064AF0C.gxfifo = lbl_8065AF24;
+	gHsdMemoryReport.gxfifo = lbl_8065AF24;
 	HSD_OSInit();
 
 	vi_status.rmode        = *lbl_8065AF1C;
@@ -143,7 +143,7 @@ void** HSD_AllocateXFB(s32 nbuffer, GXRenderModeObj* rmode)
 	}
 
 	fb_size          = (((rmode->fbWidth + 15) & 0xFFF0) * rmode->xfbHeight) << 1;
-	lbl_8064AF0C.xfb = fb_size * nbuffer;
+	gHsdMemoryReport.xfb = fb_size * nbuffer;
 
 	for (i = 0; i < nbuffer; i++) {
 		if ((lbl_8064AF00[i] = OSAllocFromArenaLo(fb_size, 0x20)) == NULL) {
@@ -200,8 +200,8 @@ void HSD_OSInit(void)
 	u32 old_arena_lo = (u32)OSGetArenaLo();
 	u32 old_arena_hi = (u32)OSGetArenaHi();
 
-	lbl_8064AF0C.total  = OSGetPhysicalMemSize();
-	lbl_8064AF0C.system = lbl_8064AF0C.total - (u32)OSGetArenaHi() + (u32)OSGetArenaLo() - lbl_8064AF0C.xfb - lbl_8064AF0C.gxfifo;
+	gHsdMemoryReport.total  = OSGetPhysicalMemSize();
+	gHsdMemoryReport.system = gHsdMemoryReport.total - (u32)OSGetArenaHi() + (u32)OSGetArenaLo() - gHsdMemoryReport.xfb - gHsdMemoryReport.gxfifo;
 
 	if (!lbl_8065BA38) {
 		HSD_MemCallbacks cb;
@@ -218,8 +218,8 @@ void HSD_OSInit(void)
 			lbl_8065BA20 = NULL;
 			lbl_8065BA24 = NULL;
 			OSSetCurrentHeap(lbl_8065AF18 = OSCreateHeap(lbl_8065BA18, lbl_8065BA1C));
-			lbl_8064AF0C.heap = (u32)lbl_8065BA1C - (u32)lbl_8065BA18;
-			HSD_ObjSetHeap(lbl_8064AF0C.heap, NULL);
+			gHsdMemoryReport.heap = (u32)lbl_8065BA1C - (u32)lbl_8065BA18;
+			HSD_ObjSetHeap(gHsdMemoryReport.heap, NULL);
 		} else {
 			new_arena_lo = OSRoundUp32B((u32)OSGetArenaLo());
 			new_arena_hi = (u32)OSGetArenaHi();
@@ -235,8 +235,8 @@ void HSD_OSInit(void)
 				lbl_8065BA1C = (void*)OSRoundDown32B(new_arena_hi);
 			}
 			OSSetCurrentHeap(lbl_8065AF18 = OSCreateHeap(lbl_8065BA18, lbl_8065BA1C));
-			lbl_8064AF0C.heap = (u32)lbl_8065BA1C - (u32)lbl_8065BA18;
-			HSD_ObjSetHeap(lbl_8064AF0C.heap, NULL);
+			gHsdMemoryReport.heap = (u32)lbl_8065BA1C - (u32)lbl_8065BA18;
+			HSD_ObjSetHeap(gHsdMemoryReport.heap, NULL);
 			OSSetArenaLo(lbl_8065BA1C);
 		}
 	}
@@ -380,7 +380,7 @@ void HSD_ClearHeap(void)
 	}
 	HSD_ObjInit();
 	_HSD_MemClear();
-	lbl_8064AF0C.heap = _HSD_MemGetRemain();
+	gHsdMemoryReport.heap = _HSD_MemGetRemain();
 }
 
 /**

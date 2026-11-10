@@ -18,13 +18,40 @@ extern "C" {
 #undef HSD_JObjSetupMatrix
 #undef HSD_JObjSetMtxDirty
 
-#define JOBJ_H_ASSERT(line, cond)            ((cond) ? ((void)0) : __assert("jobj.h", line, #cond))
+// HSD_JObjWalkTree passes the flag mask in its callback argument.
+extern "C" {
+void JObjSetMObjFlags(HSD_JObj* jobj, f32** flags, s32 type);
+void JObjClearMObjFlags(HSD_JObj* jobj, f32** flags, s32 type);
+void JObjSetPObjFlags(HSD_JObj* jobj, f32** flags, s32 type);
+void JObjClearPObjFlags(HSD_JObj* jobj, f32** flags, s32 type);
+}
+
+#ifndef JOBJ_H_ASSERT
+#define JOBJ_H_ASSERT(line, cond) ((cond) ? ((void)0) : __assert("jobj.h", line, #cond))
+#endif
+#ifndef JOBJ_H_ASSERT_TEXT
 #define JOBJ_H_ASSERT_TEXT(line, cond, text) ((cond) ? ((void)0) : __assert("jobj.h", line, text))
+#endif
+
+#ifndef JOBJ_EULER_CONDITION
+#define JOBJ_EULER_CONDITION "!(jobj->flags & JOBJ_USE_QUATERNION)"
+#endif
+#ifndef JOBJ_TRANSLATION_CONDITION
+#define JOBJ_TRANSLATION_CONDITION "translate"
+#endif
+
+#ifndef JOBJ_H_ASSERT_JOINT
+#define JOBJ_H_ASSERT_JOINT(line, joint) JOBJ_H_ASSERT(line, joint)
+#endif
+
+#ifndef JOBJ_H_ASSERT_ROTATION
+#define JOBJ_H_ASSERT_ROTATION(line, rotate) JOBJ_H_ASSERT(line, rotate)
+#endif
 
 inline bool HSD_JObjMtxIsDirty(HSD_JObj* jobj)
 {
 	bool result;
-	JOBJ_H_ASSERT(605, jobj);
+	JOBJ_H_ASSERT_JOINT(605, jobj);
 	result = false;
 	if (!(jobj->flags & USER_DEF_MTX) && (jobj->flags & MTX_DIRTY)) {
 		result = true;
@@ -50,7 +77,7 @@ inline void HSD_JObjSetMtxDirty(HSD_JObj* jobj)
 inline void HSD_JObjSetRotationX(HSD_JObj* jobj, f32 x)
 {
 	JOBJ_H_ASSERT(676, jobj);
-	JOBJ_H_ASSERT_TEXT(677, !(jobj->flags & USE_QUATERNION), "!(jobj->flags & JOBJ_USE_QUATERNION)");
+	JOBJ_H_ASSERT_TEXT(677, !(jobj->flags & USE_QUATERNION), JOBJ_EULER_CONDITION);
 	jobj->rotate.x = x;
 	if (!(jobj->flags & MTX_INDEP_SRT)) {
 		HSD_JObjSetMtxDirty(jobj);
@@ -60,7 +87,7 @@ inline void HSD_JObjSetRotationX(HSD_JObj* jobj, f32 x)
 inline void HSD_JObjSetRotationY(HSD_JObj* jobj, f32 y)
 {
 	JOBJ_H_ASSERT(696, jobj);
-	JOBJ_H_ASSERT_TEXT(697, !(jobj->flags & USE_QUATERNION), "!(jobj->flags & JOBJ_USE_QUATERNION)");
+	JOBJ_H_ASSERT_TEXT(697, !(jobj->flags & USE_QUATERNION), JOBJ_EULER_CONDITION);
 	jobj->rotate.y = y;
 	if (!(jobj->flags & MTX_INDEP_SRT)) {
 		HSD_JObjSetMtxDirty(jobj);
@@ -70,7 +97,7 @@ inline void HSD_JObjSetRotationY(HSD_JObj* jobj, f32 y)
 inline void HSD_JObjSetRotationZ(HSD_JObj* jobj, f32 z)
 {
 	JOBJ_H_ASSERT(716, jobj);
-	JOBJ_H_ASSERT_TEXT(717, !(jobj->flags & USE_QUATERNION), "!(jobj->flags & JOBJ_USE_QUATERNION)");
+	JOBJ_H_ASSERT_TEXT(717, !(jobj->flags & USE_QUATERNION), JOBJ_EULER_CONDITION);
 	jobj->rotate.z = z;
 	if (!(jobj->flags & MTX_INDEP_SRT)) {
 		HSD_JObjSetMtxDirty(jobj);
@@ -79,9 +106,15 @@ inline void HSD_JObjSetRotationZ(HSD_JObj* jobj, f32 z)
 
 inline void HSD_JObjGetRotation(HSD_JObj* jobj, Quaternion* rotate)
 {
-	JOBJ_H_ASSERT(733, jobj);
-	JOBJ_H_ASSERT(734, rotate);
+	JOBJ_H_ASSERT_JOINT(733, jobj);
+	JOBJ_H_ASSERT_ROTATION(734, rotate);
 	*rotate = jobj->rotate;
+}
+
+inline f32 HSD_JObjGetRotationX(HSD_JObj* jobj)
+{
+	JOBJ_H_ASSERT(748, jobj);
+	return jobj->rotate.x;
 }
 
 inline f32 HSD_JObjGetRotationY(HSD_JObj* jobj)
@@ -193,7 +226,7 @@ inline void HSD_JObjCopyMtx(HSD_JObj* jobj, Mtx mtx)
 
 inline void HSD_JObjClearMtxFlags(HSD_JObj* jobj)
 {
-	JOBJ_H_ASSERT(1199, jobj);
+	JOBJ_H_ASSERT_JOINT(1199, jobj);
 	jobj->flags &= ~(USER_DEF_MTX | MTX_INDEP_PARENT | MTX_INDEP_SRT);
 	HSD_JObjSetMtxDirty(jobj);
 }
@@ -201,7 +234,7 @@ inline void HSD_JObjClearMtxFlags(HSD_JObj* jobj)
 inline void HSD_JObjGetTranslation(HSD_JObj* jobj, Vec* translate)
 {
 	JOBJ_H_ASSERT(996, jobj);
-	JOBJ_H_ASSERT(997, translate);
+	JOBJ_H_ASSERT_TEXT(997, translate, JOBJ_TRANSLATION_CONDITION);
 	*translate = jobj->translate;
 }
 
@@ -225,8 +258,8 @@ inline f32 HSD_JObjGetTranslationZ(HSD_JObj* jobj)
 
 inline void HSD_JObjSetRotation(HSD_JObj* jobj, Quaternion* rotate)
 {
-	JOBJ_H_ASSERT(656, jobj);
-	JOBJ_H_ASSERT(657, rotate);
+	JOBJ_H_ASSERT_JOINT(656, jobj);
+	JOBJ_H_ASSERT_ROTATION(657, rotate);
 	jobj->rotate = *rotate;
 	if (!(jobj->flags & MTX_INDEP_SRT)) {
 		HSD_JObjSetMtxDirty(jobj);
@@ -246,7 +279,7 @@ inline void HSD_JObjSetScale(HSD_JObj* jobj, Vec* scale)
 inline void HSD_JObjSetTranslate(HSD_JObj* jobj, Vec* translate)
 {
 	JOBJ_H_ASSERT(937, jobj);
-	JOBJ_H_ASSERT(938, translate);
+	JOBJ_H_ASSERT_TEXT(938, translate, JOBJ_TRANSLATION_CONDITION);
 	jobj->translate = *translate;
 	if (!(jobj->flags & MTX_INDEP_SRT)) {
 		HSD_JObjSetMtxDirty(jobj);

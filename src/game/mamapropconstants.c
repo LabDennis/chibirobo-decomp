@@ -1,0 +1,16 @@
+const double sMamaSignedConversionBias        = 4503601774854144.0;
+const float sMamaPropRotationMinus45Degrees   = -0.7853982f;
+const float sMamaPropOffsetMinusThree         = -3.0f;
+const char sMamaMatrixCondition[]             = "mtx";
+const float sMamaPropRotationY                = 1.17809725f;
+const float sMamaPropNegativeHalfPi           = -1.5707964f;
+const float sMamaProp196OffsetX               = 2.5f;
+const float sMamaProp196OffsetZ               = -8.5f;
+const float sMamaProp45BRotationY             = -1.37444687f;
+const float sMamaProp45BRotationZ             = 1.5707964f;
+const float sMamaPropOffsetMinusFourPointFive = -4.5f;
+const float sMamaProp45BOffsetY               = -6.0f;
+const float sMamaProp1A0RotationZ             = -0.19634955f;
+const float sMamaProp1A1RotationX             = -1.17809725f;
+const float sMamaProp1A1OffsetY               = -3.5f;
+const float sMamaHeldPlayerHeightOffset       = 2.0f;

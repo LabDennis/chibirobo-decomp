@@ -31,14 +31,14 @@ typedef struct _HSD_ArchiveExternInfo {
     u32 symbol; /* 0x04 */
 } HSD_ArchiveExternInfo;
 
-typedef struct _HSD_Archive {
+typedef struct HSD_Archive {
     struct _HSD_ArchiveHeader header; /* 0x00 */
     u8* data; /* 0x20 */
     struct _HSD_ArchiveRelocationInfo* reloc_info; /* 0x24 */
     struct _HSD_ArchivePublicInfo* public_info; /* 0x28 */
     struct _HSD_ArchiveExternInfo* extern_info; /* 0x2C */
     char* symbols; /* 0x30 */
-    struct _HSD_Archive* next; /* 0x34 */
+    struct HSD_Archive* next; /* 0x34 */
     char* name; /* 0x38 */
     u32 flags; /* 0x3C */
     void* top_ptr; /* 0x40 */

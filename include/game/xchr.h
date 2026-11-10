@@ -5,6 +5,7 @@
 #include "game/ctpl.h"
 #include "game/cptcl.h"
 #include "game/xact.h"
+#include "game/xpad.h"
 #include "game/octamenu.h"
 #include "game/xobjattachment.h"
 #include "game/xobjchr.h"
@@ -27,7 +28,16 @@ public:
 	Inventory mInventory; // _3C
 	// _440 vtable
 
-	virtual ~Params(); // _08 (weak)
+	virtual ~Params() { } // _08 (weak)
+
+	void SetBattery(f32 value)
+	{
+		mBattery = value > 0.0f ? value : 0.0f;
+		if (mBattery < 0.0f)
+			mBattery = 0.0f;
+		if (mBattery > mMaxBattery)
+			mBattery = mMaxBattery;
+	}
 
 	// money and scrap stay between 0 and 99999
 	void SetMoney(s32 value)
@@ -50,25 +60,26 @@ public:
 STATIC_ASSERT(sizeof(Params) == 0x444);
 
 extern "C" {
-s32 fn_800DCE70(Params* stats, s16 id);
-void fn_800DCFCC(Params* stats, s32 delta);
-void fn_800DD044(Params* stats, s32 delta);
-void fn_800DD0BC(Params* stats, s32 delta);
-void fn_800DD0F8(Params* stats, s32 delta);
-void fn_800DD198(Params* stats, s32 delta);
-void fn_800DD234(Params* stats);
+s32 GetOwnedInventoryItemCount(Params* stats, s16 id);
+void AddPlayerScrap(Params* stats, s32 delta);
+void AdjustPlayerMoney(Params* stats, s32 delta);
+void AddPlayerRank(Params* stats, s32 delta);
+void AdjustPlayerLevel(Params* stats, s32 delta);
+void AdjustPlayerExperience(Params* stats, s32 delta);
+void ResetPlayerStats(Params* stats);
 }
 
 // where chibi robo looks, beside the three CJointRots that turn his head
 struct XObjChrLook {
-	BOOL mActive;       // _00
-	s32 mMode;          // _04
-	u8 _08[0x18 - 0x8]; // _08
-	Vec mTarget;        // _18
-	f32 mFade;          // _24, the marker fades in over 0.3 seconds
-	f32 mPhase;         // _28, degrees
-	f32 mPulse;         // _2C, 0 to 2
-	u32 _30;            // _30
+	BOOL mActive;  // _00
+	s32 mMode;     // _04
+	XObj* mObject; // _08
+	Vec mOffset;   // _0C
+	Vec mTarget;   // _18
+	f32 mFade;     // _24, the marker fades in over 0.3 seconds
+	f32 mPhase;    // _28, degrees
+	f32 mPulse;    // _2C, 0 to 2
+	u32 _30;       // _30
 };
 STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 
@@ -91,16 +102,38 @@ struct AttachmentValues {
 };
 STATIC_ASSERT(sizeof(AttachmentValues) == 0x48);
 
+struct PlayerSuits {
+	s32 mLoadStep;
+	s32 mChangeStep;
+	s32 mCurrent; // the DrsMenu pick
+	s32 mRequested;
+	s32 mSpecial;
+	u32 _14;
+	XObj mObjects[9];
+	HSD_JObj* mJoints[9];
+	u32 _55BC; // _552C in japan
+};
+#if defined(VERSION_JP)
+STATIC_ASSERT(sizeof(PlayerSuits) == 0x5530);
+#else
+STATIC_ASSERT(sizeof(PlayerSuits) == 0x55C0);
+#endif
+
 // the two ring menus side by side
 struct XObjChrMenu {
-	AtcMenu mAtc;           // _00
-	DrsMenu mDrs;           // _298, _280 in japan
-	u8 _530[0x544 - 0x530]; // _530
-	s32 mSel;               // _544, XObjChr _13388
-	s32 mPrevSel;           // _548, put back into mSel when the rings close
+	AtcMenu mAtc; // _00
+	DrsMenu mDrs; // _298, _280 in japan
+	f32 mFade;    // _530
+	f32 mCursorY; // _534
+	f32 mTargetY; // _538
+	f32 mCursorX; // _53C
+	f32 mTargetX; // _540
+	s32 mSel;     // _544, XObjChr _13388
+	s32 mPrevSel; // _548, put back into mSel when the rings close
 
 	// todo: cleanup
 	u8 IsOpen() const { return mAtc.mOpen != 0 || mDrs.mOpen != 0; }
+	bool IsOpening() const { return mAtc.mOpen > 0 || mDrs.mOpen > 0; }
 	bool IsClosing() const
 	{
 		bool ret = false;
@@ -111,79 +144,97 @@ struct XObjChrMenu {
 	}
 };
 
+struct FrameEventTime {
+	f32 mFrame;
+	f32 mLastFrame;
+};
+
 class XObjChr : public XObj {
 public:
 	// _00-_980 = XObj
-	CStatus _980;              // _980
-	CObjVec _988;              // _988, cleared whenever he stops
-	u8 _9B8[0x9D4 - 0x9B8];    // _9B8
-	s32 _9D4[5];               // _9D4, object table index of what's under each floor group, -1 for none
-	CVec _9E8;                 // _9E8
-	u32 _9F8;                  // _9F8
-	CVec _9FC;                 // _9FC
-	u8 _A0C[0xA2C - 0xA0C];    // _A0C
-	s32 _A2C;                  // _A2C, 3 after his anim goes back to standing
-	f32 _A30;                  // _A30
-	s32 _A34;                  // _A34, flash timer
-	s32 _A38;                  // _A38
-	f32 _A3C;                  // _A3C
-	f32 _A40;                  // _A40
-	XActLift mLift;            // _A44
-	XActHang mHang;            // _AC0
-	XActJump mJump;            // _B10
-	XActLadder mLadder;        // _B64
-	XActRope mRope;            // _BA8
-	XActPush mPush;            // _BE8
-	XActTumble mTumble;        // _C40
-	XActCopter mCopter;        // _C88
-	XActPopper mPopper;        // _CC0
-	XActRadar mRadar;          // _9438
-	f32 _94F8;                 // _94F8, anim frame
-	f32 _94FC;                 // _94FC, last anim frame
-	XObjChrIdleJoint _9500[4]; // _9500
-	s32 _9530;                 // _9530, idle joint cooldown
-	u8 _9534[0x953C - 0x9534]; // _9534
-	CJointRot mJointRot[3];    // _953C
-	XObjChrLook mLook;         // _959C
-	s32 mAttachment;           // _95D0, the AtcMenu pick
-	s32 mAttachmentRequest;    // _95D4, -1 when there's none
-	s32 _95D8;                 // _95D8, how far the attachment change is
-	s32 _95DC;                 // _95DC
-	s32 _95E0;                 // _95E0
-	s32 _95E4;                 // _95E4
-	u8 _95E8[0x960C - 0x95E8]; // _95E8
-	CObjVec _960C;             // _960C
-	CVec _963C;                // _963C
-	Params mParams;            // _964C
-	f32 _9A90;                 // _9A90, zeroed when he hits an XObjHBox
-	u8 _9A94[0x9AA8 - 0x9A94]; // _9A94
-	f32 _9AA8;                 // _9AA8, the cameras put _9AAC back here
-	f32 _9AAC;                 // _9AAC
-	u8 _9AB0[0x9AD0 - 0x9AB0]; // _9AB0
-	XObjPlug mPlug;            // _9AD0
-	XObjCopter mCopterObj;     // _B1B0, _B180 in japan
-	XObjPopper mPopperObj;     // _BB38, _BAF8 in japan
-	XObjRadar mRadarObj;       // _C4C0, _C470 in japan
-	XObjOX mOXObj;             // _CE58, _CDF8 in japan
-	s32 mSuitLoad;             // _D7E0, _D770 in japan
-	BOOL mSuitChanged;         // _D7E4
-	s32 mSuit;                 // _D7E8, the DrsMenu pick
-	s32 mSuitRequest;          // _D7EC
-	s32 mSuitSpecial;          // _D7F0
-	u32 _D7F4;                 // _D7F4
-	XObj mSuitObj[9];          // _D7F8, _D788 in japan
-	HSD_JObj* mSuitJoint[9];   // _12D78
-	u32 _12D9C;                // _12D9C
-	// todo: should be an XPad but japan's ctor schedules worse with it, callers cast for now
-	u8 mPad[0x54];                 // _12DA0, _12CA0 in japan
-	BOOL mPadReset;                // _12DF4, XPad's mReset
+	CStatus _980; // _980
+	CObjVec _988; // _988, cleared whenever he stops
+	f32 _9B8;     // _9B8
+	f32 _9BC[4];
+	s32 mHitObjectIndex; // _9CC
+	s32 _9D0;            // _9D0
+	union {
+		s32 objectIndex;
+		XObj* object;
+	} mFloorContacts[5];        // Slot 3 holds the supporting object. The other slots hold object indices.
+	CVec _9E8;                  // _9E8
+	s32 mLastContactFloorIndex; // _9F8
+	CVec _9FC;                  // _9FC
+	f32 mNearDistance;          // _A0C
+	s32 _A10;
+	s32 _A14;
+	u32 mLiftPlugFlags;
+	s32 _A1C;
+	s32 _A20;
+	s32 mAttachmentActionType;
+	s32 mToolActionType;                 // _A28
+	s32 _A2C;                            // _A2C, 3 after his anim goes back to standing
+	f32 _A30;                            // _A30
+	s32 _A34;                            // _A34, flash timer
+	s32 _A38;                            // _A38
+	f32 _A3C;                            // _A3C
+	f32 _A40;                            // _A40
+	XActLift mLift;                      // _A44
+	XActHang mHang;                      // _AC0
+	XActJump mJump;                      // _B10
+	XActLadder mLadder;                  // _B64
+	XActRope mRope;                      // _BA8
+	XActPush mPush;                      // _BE8
+	XActTumble mTumble;                  // _C40
+	XActCopter mCopter;                  // _C88
+	XActPopper mPopper;                  // _CC0
+	XActRadar mRadar;                    // _9438
+	FrameEventTime mFrameTime;           // _94F8
+	XObjChrIdleJoint _9500[4];           // _9500
+	s32 _9530;                           // _9530, idle joint cooldown
+	HSD_JObj* mAttachmentJoint;          // _9534
+	HSD_AnimJoint* mAttachmentJointAnim; // _9538
+	CJointRot mJointRot;                 // _953C
+	CJointRot mNeckRot;                  // _955C
+	CJointRot mHeadRot;                  // _957C
+	XObjChrLook mLook;                   // _959C
+	s32 mAttachment;                     // _95D0, the AtcMenu pick
+	s32 mAttachmentRequest;              // _95D4, -1 when there's none
+	s32 _95D8;                           // _95D8, how far the attachment change is
+	s32 _95DC;                           // _95DC
+	s32 _95E0;                           // _95E0
+	s32 _95E4;                           // _95E4
+	u8 _95E8[0x960C - 0x95E8];           // _95E8
+	CObjVec _960C;                       // _960C
+	CVec _963C;                          // _963C
+	Params mParams;                      // _964C
+	f32 _9A90;                           // _9A90, zeroed when he hits an XObjHBox
+	f32 mCameraTarget[3];                // _9A94, last camera target on each axis
+	f32 mCameraTargetMargin;             // _9AA0
+	f32 mCameraTargetMarginSetting;      // _9AA4
+	f32 _9AA8;                           // _9AA8, the cameras put _9AAC back here
+	f32 _9AAC;                           // _9AAC
+	f32 _9AB0;                           // _9AB0
+	s32 mBatteryWarningFrames;           // _9AB4
+	f32 mBatteryWarningFade;             // _9AB8
+	f32 mBatteryWarningAngle;            // _9ABC
+	s32 _9AC0;                           // _9AC0
+	f32 _9AC4;                           // _9AC4, time shown on the player gauge
+	s32 mLoadStep;
+	u8 _9ACC[4];                   // _9AC8
+	XObjPlug mPlug;                // _9AD0
+	XObjCopter mCopterObj;         // _B1B0, _B180 in japan
+	XObjPopper mPopperObj;         // _BB38, _BAF8 in japan
+	XObjRadar mRadarObj;           // _C4C0, _C470 in japan
+	XObjOX mOXObj;                 // _CE58, _CDF8 in japan
+	PlayerSuits mSuits;            // _D7E0, _D770 in japan
+	XPad mPad;                     // _12DA0, _12CA0 in japan
 	f32 _12DF8;                    // _12DF8, heading he walks towards
 	AttachmentValues mAttachments; // _12DFC, goes in the save as is
 	XObjChrMenu mMenu;             // _12E44, _12D44 in japan
 	OXMenu mOXMenu;                // _13390, _13260 in japan
 	BOOL _146D8;                   // _146D8, set while he's off the floor
-	CPtcl mPtcl;                   // _146DC, _1329C in japan
-	CPtclDust3 mPtcls[50];         // _146F0
+	DustParticlePool mDust;        // _146DC, _1329C in japan
 	CTexObj mTex[2];               // _15690
 	u32 _15890;                    // _15890
 	s16 mSavedTarget;              // _15894, _14454 in japan, the lifted object's id while he's reset
@@ -206,7 +257,7 @@ public:
 	CJAnim mAttachmentAnim; // _158D4, _14494 in japan, the attachment's anims
 	CJAnim mSuitAnim;       // _15958, _14510 in japan, the suit's anims
 
-	// out of line as fn_8014102C
+	// out of line as ResetPlayerCameraValue
 	void ResetCameraValue()
 	{
 		if (mHang.mState != 5 && mRope.mState != 5 && mLadder.mState != 5 && mPush.mState != 2) {
@@ -215,12 +266,51 @@ public:
 	}
 
 	// how far above the floor he is
-	f32 GetHeight() const { return _146D8 ? mMoveTranslate.y - _790 : 0.0f; }
+	f32 GetHeight() const { return _146D8 ? mMoveTranslate.y - mFloorHit.mHeight : 0.0f; }
 
 	// todo: cleanup
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
 
 	XObjChr();
+	virtual ~XObjChr();
+	virtual void SetAnimRate(f32 rate, u32 mask);
+	virtual void Release();
+	virtual void SetMoveDir(const Vec* dir, f32 speed);
+	virtual void UpdateAnim(u32 speed);
+	virtual void InitializeObject(u32 id);
+	virtual void vf94();
+	virtual void ResetObjectState();
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void UpdateObject(u32 frames);
+	virtual void DrawWithView(Mtx view);
+	virtual void DrawReflection(Mtx view);
+	virtual void DrawGroundShadow();
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);
+	virtual void DrawObjectEffects();
+	virtual void vfC4();
+	virtual void vfC8();
+	virtual void DrawDebugStatus();
+	virtual void RegisterShadowObjects(CShadow* shadow);
+	virtual void vfD8(u32* flags);
+	virtual void vfDC(BOOL enabled, u8 value);
+	virtual void vfE0(f32 factor);
+	virtual Vec GetCameraTarget();
+	virtual HSD_AnimJoint* GetJointAnimation(s32 id);
+	virtual HSD_MatAnimJoint* GetMaterialAnimation(s32 id);
+	virtual HSD_ShapeAnimJoint* GetShapeAnimation(s32 id);
+	virtual f32 GetCollisionHeight();
+	virtual void vf120(s32 mode);
+	virtual s32 HandleEventCommand(s32 count, s32* args);
+	virtual void vf12C(s32 blend, u8 r, u8 g, u8 b, f32 time);
+	virtual void OnHitFromPosition(const Vec& position, f32 strength);
+	virtual void vf144(s32 unused, s32 volume);
+	void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate);
 };
+
+extern "C" Vec GetPlayerFirstPersonEyePosition(XObjChr* player);
+extern "C" void StopPlayerMotion(XObjChr* chr);
+
+extern "C" void ApplyPlayerSuit(XObjChr* player);
+extern "C" void RemovePlayerSuit(XObjChr* player);
 
 #endif

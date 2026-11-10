@@ -26,7 +26,7 @@ void HSD_MObjSetCurrent(HSD_MObj* mobj)
  * @note Address: 0x801B8E5C
  * @note Size: 0x18
  */
-u32 fn_801B8E5C(HSD_MObj* mobj)
+u32 GetMaterialRenderModeFlags(HSD_MObj* mobj)
 {
 	// the flags getter, no name evidence for this revision
 	if (mobj != NULL) {
@@ -603,7 +603,7 @@ void SetToonTObj(HSD_ImageDesc* imagedesc)
  * @note Address: 0x801BA3AC
  * @note Size: 0x30
  */
-void fn_801BA3AC(HSD_MObj* mobj, u8 r, u8 g, u8 b)
+void SetMaterialAmbientColor(HSD_MObj* mobj, u8 r, u8 g, u8 b)
 {
 	// sets the ambient color, no name evidence
 	if (mobj == NULL || mobj->mat == NULL) {

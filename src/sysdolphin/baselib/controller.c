@@ -16,7 +16,7 @@ extern BOOL PADRecalibrate(u32 mask);
 extern BOOL PADInit(void);
 extern f64 atan2(f64 y, f64 x);
 
-extern HSD_RumbleData lbl_8064C778[4]; /* rumble.c per port state */
+extern HSD_RumbleData gPadRumbleStates[4]; /* rumble.c per port state */
 
 HSD_PadStatus default_status_data = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 };
 PadLibData default_libinfo_data   = { 0, 0, 0, 0, 0, 0, 0x2D, 8, 0, 0x1E, 0, 0, 0, 0x7F, 0, 0, 0xFF, 0, 0, 0xFF, 0, 0x7F, 0xFF, 0xFF };
@@ -48,8 +48,8 @@ static inline f32 controller_sqrtf(f32 x)
  * @note Address: 0x801CC0A0
  * @note Size: 0x3C
  */
-// symbols.txt calls this fn_801CC0A0 but it sets qtype, the name is off
-void fn_801CC0A0(u8 qtype)
+// symbols.txt calls this SetPadQueueType but it sets qtype, the name is off
+void SetPadQueueType(u8 qtype)
 {
 	u32 intr;
 
@@ -563,9 +563,9 @@ void HSD_PadInit(u8 qnum, HSD_PadData* queue, u16 nb_list, HSD_PadRumbleListData
  * @note Address: 0x801CD980
  * @note Size: 0x4C
  */
-u8 fn_801CD980(u8 no)
+u8 GetPadRumbleStatus(u8 no)
 {
-	HSD_RumbleData* rp = &lbl_8064C778[no];
+	HSD_RumbleData* rp = &gPadRumbleStates[no];
 	u32 intr;
 	u8 status;
 

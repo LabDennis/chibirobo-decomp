@@ -13,28 +13,23 @@ extern "C" {
  * @note Address: 0x800DA4D0
  * @note Size: 0x1BC
  */
-extern "C" void fn_800DA4D0(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ)
+extern "C" void DrawPlugCordNodes(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ)
 {
-	f32(*selectedView)[4];
-	if (view == NULL)
-		selectedView = lbl_8025C400.mGs.mCamera->mViewMtx;
-	else
-		selectedView = view;
-	fn_80199AB0(&lbl_8025C400.mGs, 0, 0);
-	fn_8019B56C(lbl_8025C400.mGs.mCurRenderMode, 1, 4, 5, 15);
-	fn_8019B464(lbl_8025C400.mGs.mCurRenderMode, 1, 3, 0);
+	Mtx combined;
+	Mtx local;
+	MtxPtr selectedView = view == NULL ? gGame.mGs.mCamera->mViewMtx : view;
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 	if (cord->mNodes.mEnabled == 1) {
 		XObjPlugCordNode* node = cord->mNodes.mNode;
-		for (s32 i = 0; (u32)i < cord->mNodes.mCount; ++i, ++node) {
-			if (node->mState != 0) {
-				Mtx local, combined;
-				Vec rotation = CVec(0.0f, 0.0f, 0.0f);
+		for (s32 i = 0; i < cord->mNodes.mCount; i++, node++) {
+			if (cord->mNodes.mNode[i].mState != 0) {
 				Vec scale    = CVec(0.7f, 0.7f, 0.7f);
+				Vec rotation = CVec(0.0f, 0.0f, 0.0f);
 				HSD_MtxSRT(local, &scale, &rotation, &node->mPos, NULL);
 				PSMTXConcat(selectedView, local, combined);
-				s32 alpha = (s32)(300.0 / pow(2.0, (f64)i));
-				u32 color = (cord->mNodes.mColor & 0xFFFFFF00) | alpha;
-				fn_801970B0(&lbl_8025C400.mGs, combined, color, 8, 8);
+				DrawGsSphereWithMatrix(&gGame.mGs, combined, (cord->mNodes.mColor & 0xFFFFFF00) | (s32)(300.0 / pow(2.0, i)), 8, 8);
 			}
 		}
 	}

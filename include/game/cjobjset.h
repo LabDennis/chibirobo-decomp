@@ -3,6 +3,12 @@
 
 #include "game/cjobj.h"
 
+extern "C" {
+extern Vec gJointTranslateZero;
+extern Vec gJointScaleZero;
+extern Vec gJointRotationZero;
+}
+
 // the three CJObj setters that compare against a Vec built on the stack. retail copies it
 // from a zeroed Vec in .bss and then fills in x, y and z. only the files that emit or
 // inline these include this
@@ -23,9 +29,8 @@ static inline Vec MakeJObjVec(const Vec& zero, f32 x, f32 y, f32 z)
 inline void CJObj::SetRotation(f32 x, f32 y, f32 z, s32 force)
 {
 	if (force == 0) {
-		static Vec zero;
 		// retail tests the cached translation here
-		if (!(mTranslate != MakeJObjVec(zero, x, y, z))) {
+		if (!(mTranslate != MakeJObjVec(gJointRotationZero, x, y, z))) {
 			return;
 		}
 	}
@@ -46,8 +51,7 @@ inline void CJObj::SetRotation(f32 x, f32 y, f32 z, s32 force)
 inline void CJObj::SetScale(f32 x, f32 y, f32 z, s32 force)
 {
 	if (force == 0) {
-		static Vec zero;
-		if (!(mScale != MakeJObjVec(zero, x, y, z))) {
+		if (!(mScale != MakeJObjVec(gJointScaleZero, x, y, z))) {
 			return;
 		}
 	}
@@ -60,8 +64,7 @@ inline void CJObj::SetScale(f32 x, f32 y, f32 z, s32 force)
 inline void CJObj::SetTranslate(f32 x, f32 y, f32 z, s32 force)
 {
 	if (force == 0) {
-		static Vec zero;
-		if (!(mTranslate != MakeJObjVec(zero, x, y, z))) {
+		if (!(mTranslate != MakeJObjVec(gJointTranslateZero, x, y, z))) {
 			return;
 		}
 	}

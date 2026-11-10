@@ -62,12 +62,18 @@ public:
 };
 typedef char CPtcl_size_check[sizeof(CPtcl) == 0x14 ? 1 : -1];
 
+struct DustParticlePool {
+	CPtcl mPtcl;           // _00
+	CPtclDust3 mPtcls[50]; // _14
+};
+typedef char DustParticlePool_size_check[sizeof(DustParticlePool) == 0xFB4 ? 1 : -1];
+
 extern "C" {
-void fn_80024CA0(CPtcl* ptcl);
-void fn_80024D84(CPtcl* ptcl, u32 frames);
-void fn_80024E0C(CPtcl* ptcl);
-CPtclOne* fn_80024E50(CPtcl* ptcl, const Vec* pos, const Vec* size, const Vec* vel, u32 color);
-void fn_80024FAC(CPtcl* ptcl, void* ptcls, s32 stride, s32 count);
+void DrawParticlePool(CPtcl* ptcl);
+void UpdateParticlePool(CPtcl* ptcl, u32 frames);
+void ClearParticlePool(CPtcl* ptcl);
+CPtclOne* SpawnPoolParticle(CPtcl* ptcl, const Vec* pos, const Vec* size, const Vec* vel, u32 color);
+void InitParticlePool(CPtcl* ptcl, void* ptcls, s32 stride, s32 count);
 }
 
 #endif

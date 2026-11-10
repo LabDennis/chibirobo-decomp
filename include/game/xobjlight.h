@@ -24,6 +24,11 @@ public:
 	CLight* GetLights() { return mLightNum > 0 ? mLights : NULL; }
 
 	XObjLight();
+	virtual void Release();
+	virtual void InitializeObject(u32 id);
+	virtual void ResetObjectState();
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void UpdateObject(u32 frames);
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(XObjLight) == 0x2458);

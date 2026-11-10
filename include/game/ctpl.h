@@ -38,7 +38,8 @@ public:
 	Mtx mMtx[4];          // _3C, the last is the first times the third times the second, loaded as the texture matrix
 	// _FC vtable
 
-	virtual ~CTexObj() { } // _08 (weak)
+	CTexObj();
+	virtual ~CTexObj(); // _08 (weak)
 
 	CTexObj& Init(void* image, u16 width, u16 height, GXTexFmt format, GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXBool mipmap);
 	CTexObj& Init(TPLDescriptor* desc, u32 tlutName);
@@ -50,11 +51,24 @@ public:
 	// inlined:
 	void Load(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType);
 };
+#ifndef DEFER_CTEXOBJ_LIFETIME
+#include "game/ctexobj_lifetime.inl"
+#endif
 typedef char CTexObj_size_check[sizeof(CTexObj) == 0x100 ? 1 : -1];
+
+// HUD and status textures start two entries earlier in the Japanese palette.
+#if defined(VERSION_JP)
+const int StatusTextureOffset = 2;
+#else
+const int StatusTextureOffset = 0;
+#endif
 
 // a .tpl file, bound once it's read in
 class CTpl : public CFile {
 public:
+#ifdef STAGE_EXTERNAL_DTOR
+	STAGE_EXTERNAL_DTOR
+#endif
 	virtual ~CTpl() { mBound = FALSE; } // _08 (weak)
 	virtual s32 GetResult();            // _18
 	virtual void Close();               // _20

@@ -676,7 +676,7 @@ void CFbOutline::Draw(u32 flags)
     addi     r3, r30, 0x8
     stw      r4, 0x254(r1)
     li       r4, 0x0
-    lfd      f1, lbl_8065F7E8@sda21(r0)
+    lfd      f1, sFbEffectUnsignedConversionBias@sda21(r0)
     stw      r5, 0x250(r1)
     lfd      f0, 0x250(r1)
     stw      r0, 0x25c(r1)
@@ -697,15 +697,15 @@ void CFbOutline::Draw(u32 flags)
     lhz      r0, 0x0(r30)
     addi     r3, r1, 0x1e0
     stw      r5, 0x264(r1)
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     stw      r4, 0x260(r1)
-    lfd      f4, lbl_8065F7E8@sda21(r0)
+    lfd      f4, sFbEffectUnsignedConversionBias@sda21(r0)
     fmr      f3, f1
     lfd      f0, 0x260(r1)
     fmr      f5, f1
     stw      r0, 0x26c(r1)
     fsubs    f2, f0, f4
-    lfs      f6, lbl_8065F7E0@sda21(r0)
+    lfs      f6, sFbEffectOne@sda21(r0)
     stw      r4, 0x268(r1)
     lfd      f0, 0x268(r1)
     fsubs    f4, f0, f4
@@ -761,7 +761,7 @@ void CFbOutline::Draw(u32 flags)
     bl       GXSetVtxAttrFmt
     rlwinm.  r0, r31, 0, 29, 29
     beq      .L_801A6D1C
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     lfs      f0, 0x3c(r30)
     fcmpu    cr0, f1, f0
     bne      .L_801A69F8
@@ -770,7 +770,7 @@ void CFbOutline::Draw(u32 flags)
     li       r5, 0x4
     li       r6, 0xf
     bl       GXSetBlendMode
-    lwz      r0, lbl_8065F7C8@sda21(r0)
+    lwz      r0, sOutlineLineWhite@sda21(r0)
     addi     r4, r1, 0x38
     li       r3, 0x1
     stw      r0, 0x38(r1)
@@ -821,9 +821,9 @@ void CFbOutline::Draw(u32 flags)
     li       r4, 0x0
     li       r5, 0x4
     bl       GXBegin
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     lis      r3, 0xcc01
-    lfs      f0, lbl_8065F7E0@sda21(r0)
+    lfs      f0, sFbEffectOne@sda21(r0)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
@@ -848,7 +848,7 @@ void CFbOutline::Draw(u32 flags)
     lis      r0, 0x4330
     stw      r0, 0x268(r1)
     addi     r3, r1, 0x150
-    lfd      f1, lbl_8065F7E8@sda21(r0)
+    lfd      f1, sFbEffectUnsignedConversionBias@sda21(r0)
     stw      r4, 0x26c(r1)
     lfs      f2, 0x3c(r30)
     lfd      f0, 0x268(r1)
@@ -860,7 +860,7 @@ void CFbOutline::Draw(u32 flags)
     lis      r0, 0x4330
     stw      r0, 0x260(r1)
     addi     r3, r1, 0x180
-    lfd      f1, lbl_8065F7E8@sda21(r0)
+    lfd      f1, sFbEffectUnsignedConversionBias@sda21(r0)
     li       r4, 0x21
     stw      r5, 0x264(r1)
     li       r5, 0x1
@@ -994,9 +994,9 @@ void CFbOutline::Draw(u32 flags)
     li       r4, 0x0
     li       r5, 0x4
     bl       GXBegin
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     lis      r9, 0xcc01
-    lfs      f0, lbl_8065F7E0@sda21(r0)
+    lfs      f0, sFbEffectOne@sda21(r0)
     li       r3, 0x1
     stfs     f1, -0x8000(r9)
     li       r4, 0x1
@@ -1024,9 +1024,9 @@ void CFbOutline::Draw(u32 flags)
     li       r4, 0x0
     li       r5, 0x4
     bl       GXBegin
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     lis      r3, 0xcc01
-    lfs      f0, lbl_8065F7E0@sda21(r0)
+    lfs      f0, sFbEffectOne@sda21(r0)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
@@ -1102,9 +1102,9 @@ void CFbOutline::Draw(u32 flags)
     li       r4, 0x0
     li       r5, 0x4
     bl       GXBegin
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     lis      r3, 0xcc01
-    lfs      f0, lbl_8065F7E0@sda21(r0)
+    lfs      f0, sFbEffectOne@sda21(r0)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
@@ -1124,7 +1124,7 @@ void CFbOutline::Draw(u32 flags)
 .L_801A6E50:
     rlwinm.  r0, r31, 0, 27, 27
     beq      .L_801A74F0
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     lfs      f0, 0x40(r30)
     fcmpu    cr0, f1, f0
     bne      .L_801A7180
@@ -1133,7 +1133,7 @@ void CFbOutline::Draw(u32 flags)
     li       r5, 0x5
     li       r6, 0xf
     bl       GXSetBlendMode
-    lwz      r0, lbl_8065F7CC@sda21(r0)
+    lwz      r0, sOutlineFillWhite@sda21(r0)
     addi     r4, r1, 0x24
     li       r3, 0x1
     stw      r0, 0x24(r1)
@@ -1158,14 +1158,14 @@ void CFbOutline::Draw(u32 flags)
     lfs      f1, 0x50(r30)
     addi     r3, r1, 0x120
     lfs      f2, 0x54(r30)
-    lfs      f3, lbl_8065F7E0@sda21(r0)
+    lfs      f3, sFbEffectOne@sda21(r0)
     bl       PSMTXScale
     lhz      r5, 0x0(r30)
     lis      r4, 0x4330
     lhz      r0, 0x2(r30)
     addi     r3, r1, 0xf0
     stw      r5, 0x26c(r1)
-    lfd      f4, lbl_8065F7E8@sda21(r0)
+    lfd      f4, sFbEffectUnsignedConversionBias@sda21(r0)
     stw      r4, 0x268(r1)
     lfs      f5, 0x48(r30)
     lfd      f0, 0x268(r1)
@@ -1173,7 +1173,7 @@ void CFbOutline::Draw(u32 flags)
     fsubs    f1, f0, f4
     lfs      f2, 0x4c(r30)
     stw      r4, 0x260(r1)
-    lfs      f3, lbl_8065F7DC@sda21(r0)
+    lfs      f3, sFbEffectZero@sda21(r0)
     lfd      f0, 0x260(r1)
     fdivs    f1, f5, f1
     fsubs    f0, f0, f4
@@ -1183,7 +1183,7 @@ void CFbOutline::Draw(u32 flags)
     addi     r4, r1, 0xf0
     mr       r5, r3
     bl       PSMTXConcat
-    lfs      f1, lbl_8065F7F0@sda21(r0)
+    lfs      f1, sFbEffectPatternRotation@sda21(r0)
     addi     r3, r1, 0xc0
     li       r4, 0x7a
     bl       PSMTXRotRad
@@ -1308,9 +1308,9 @@ void CFbOutline::Draw(u32 flags)
     li       r4, 0x0
     li       r5, 0x4
     bl       GXBegin
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     lis      r3, 0xcc01
-    lfs      f0, lbl_8065F7E0@sda21(r0)
+    lfs      f0, sFbEffectOne@sda21(r0)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
@@ -1335,7 +1335,7 @@ void CFbOutline::Draw(u32 flags)
     lis      r0, 0x4330
     stw      r0, 0x268(r1)
     addi     r3, r1, 0x60
-    lfd      f1, lbl_8065F7E8@sda21(r0)
+    lfd      f1, sFbEffectUnsignedConversionBias@sda21(r0)
     stw      r4, 0x26c(r1)
     lfs      f2, 0x40(r30)
     lfd      f0, 0x268(r1)
@@ -1344,7 +1344,7 @@ void CFbOutline::Draw(u32 flags)
     stfs     f0, 0x9c(r1)
     bl       PSMTXIdentity
     lfs      f2, 0x40(r30)
-    lfs      f0, lbl_8065F7DC@sda21(r0)
+    lfs      f0, sFbEffectZero@sda21(r0)
     fcmpo    cr0, f2, f0
     bge      .L_801A71CC
     fneg     f2, f2
@@ -1353,7 +1353,7 @@ void CFbOutline::Draw(u32 flags)
     lis      r0, 0x4330
     stw      r0, 0x260(r1)
     addi     r3, r1, 0x90
-    lfd      f1, lbl_8065F7E8@sda21(r0)
+    lfd      f1, sFbEffectUnsignedConversionBias@sda21(r0)
     li       r4, 0x21
     stw      r5, 0x264(r1)
     li       r5, 0x1
@@ -1367,7 +1367,7 @@ void CFbOutline::Draw(u32 flags)
     li       r5, 0x1
     bl       GXLoadTexMtxImm
     lfs      f1, 0x40(r30)
-    lfs      f0, lbl_8065F7DC@sda21(r0)
+    lfs      f0, sFbEffectZero@sda21(r0)
     fcmpo    cr0, f1, f0
     ble      .L_801A7238
     li       r3, 0x0
@@ -1383,7 +1383,7 @@ void CFbOutline::Draw(u32 flags)
     li       r6, 0xf
     bl       GXSetBlendMode
 .L_801A724C:
-    lwz      r0, lbl_8065F7D0@sda21(r0)
+    lwz      r0, sOutlineThickFillWhite@sda21(r0)
     addi     r4, r1, 0x1c
     li       r3, 0x1
     stw      r0, 0x1c(r1)
@@ -1503,9 +1503,9 @@ void CFbOutline::Draw(u32 flags)
     li       r4, 0x0
     li       r5, 0x4
     bl       GXBegin
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     lis      r9, 0xcc01
-    lfs      f0, lbl_8065F7E0@sda21(r0)
+    lfs      f0, sFbEffectOne@sda21(r0)
     li       r3, 0x1
     stfs     f1, -0x8000(r9)
     li       r4, 0x1
@@ -1533,9 +1533,9 @@ void CFbOutline::Draw(u32 flags)
     li       r4, 0x0
     li       r5, 0x4
     bl       GXBegin
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     lis      r3, 0xcc01
-    lfs      f0, lbl_8065F7E0@sda21(r0)
+    lfs      f0, sFbEffectOne@sda21(r0)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
@@ -1609,9 +1609,9 @@ void CFbOutline::Draw(u32 flags)
     li       r4, 0x0
     li       r5, 0x4
     bl       GXBegin
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     lis      r3, 0xcc01
-    lfs      f0, lbl_8065F7E0@sda21(r0)
+    lfs      f0, sFbEffectOne@sda21(r0)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
     stfs     f1, -0x8000(r3)
@@ -1686,7 +1686,7 @@ void CFbOutline::Draw(u32 flags)
     li       r8, 0x0
     bl       GXSetTevAlphaOp
     fsubs    f2, f31, f26
-    lfs      f1, lbl_8065F7F4@sda21(r0)
+    lfs      f1, sFbEffectHalf@sda21(r0)
     fsubs    f0, f30, f27
     li       r3, 0x80
     li       r4, 0x0
@@ -1695,10 +1695,10 @@ void CFbOutline::Draw(u32 flags)
     fmuls    f27, f0, f1
     bl       GXBegin
     lis      r5, 0xcc01
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     stfs     f26, -0x8000(r5)
     fsubs    f2, f31, f26
-    lfs      f0, lbl_8065F7E0@sda21(r0)
+    lfs      f0, sFbEffectOne@sda21(r0)
     fsubs    f3, f30, f27
     stfs     f27, -0x8000(r5)
     li       r3, 0x0
@@ -1743,13 +1743,13 @@ void CFbOutline::Draw(u32 flags)
     lwz      r3, 0x38(r30)
     lis      r0, 0x4330
     stw      r0, 0x268(r1)
-    lfd      f3, lbl_8065F7E8@sda21(r0)
+    lfd      f3, sFbEffectUnsignedConversionBias@sda21(r0)
     stw      r3, 0x3c(r1)
-    lfs      f1, lbl_8065F7FC@sda21(r0)
+    lfs      f1, sFbEffectAlphaScale@sda21(r0)
     lbz      r0, 0x3f(r1)
-    lfs      f4, lbl_8065F7F8@sda21(r0)
+    lfs      f4, sFbEffectPi@sda21(r0)
     stw      r0, 0x26c(r1)
-    lfs      f0, lbl_8065F7F4@sda21(r0)
+    lfs      f0, sFbEffectHalf@sda21(r0)
     lfd      f2, 0x268(r1)
     fsubs    f2, f2, f3
     fdivs    f1, f2, f1
@@ -1757,7 +1757,7 @@ void CFbOutline::Draw(u32 flags)
     fmuls    f1, f1, f0
     bl       sin
     frsp     f1, f1
-    lfs      f0, lbl_8065F7FC@sda21(r0)
+    lfs      f0, sFbEffectAlphaScale@sda21(r0)
     addi     r4, r1, 0x10
     li       r3, 0x1
     fmuls    f0, f0, f1
@@ -1805,9 +1805,9 @@ void CFbOutline::Draw(u32 flags)
     li       r7, 0x0
     li       r8, 0x0
     bl       GXSetTevAlphaOp
-    lfs      f0, lbl_8065F7E0@sda21(r0)
+    lfs      f0, sFbEffectOne@sda21(r0)
     li       r3, 0x80
-    lfs      f1, lbl_8065F7F4@sda21(r0)
+    lfs      f1, sFbEffectHalf@sda21(r0)
     li       r4, 0x0
     fsubs    f2, f0, f29
     li       r5, 0x4
@@ -1815,9 +1815,9 @@ void CFbOutline::Draw(u32 flags)
     fmuls    f26, f2, f1
     fmuls    f27, f0, f1
     bl       GXBegin
-    lfs      f1, lbl_8065F7DC@sda21(r0)
+    lfs      f1, sFbEffectZero@sda21(r0)
     lis      r3, 0xcc01
-    lfs      f0, lbl_8065F7E0@sda21(r0)
+    lfs      f0, sFbEffectOne@sda21(r0)
     stfs     f1, -0x8000(r3)
     fsubs    f2, f0, f26
     stfs     f1, -0x8000(r3)
@@ -1844,12 +1844,12 @@ void CFbOutline::Draw(u32 flags)
     li       r5, 0x4
     li       r6, 0xf
     bl       GXSetBlendMode
-    lwz      r0, lbl_8065F7D4@sda21(r0)
+    lwz      r0, sOutlineOffsetColor0@sda21(r0)
     addi     r4, r1, 0xc
     li       r3, 0x1
     stw      r0, 0xc(r1)
     bl       GXSetTevColor
-    lwz      r0, lbl_8065F7D8@sda21(r0)
+    lwz      r0, sOutlineOffsetColor1@sda21(r0)
     addi     r4, r1, 0x8
     li       r3, 0x2
     stw      r0, 0x8(r1)
@@ -1891,18 +1891,18 @@ void CFbOutline::Draw(u32 flags)
     li       r7, 0x0
     li       r8, 0x0
     bl       GXSetTevAlphaOp
-    lbz      r0, lbl_8065B884@sda21(r0)
+    lbz      r0, sOutlineOrbitAngleInitialized@sda21(r0)
     extsb.   r0, r0
     bne      .L_801A7A48
-    lfs      f0, lbl_8065F7DC@sda21(r0)
+    lfs      f0, sFbEffectZero@sda21(r0)
     li       r0, 0x1
-    stb      r0, lbl_8065B884@sda21(r0)
-    stfs     f0, lbl_8065B880@sda21(r0)
+    stb      r0, sOutlineOrbitAngleInitialized@sda21(r0)
+    stfs     f0, sOutlineOrbitAngle@sda21(r0)
 .L_801A7A48:
-    lis      r3, lbl_8020F130@ha
+    lis      r3, sOutlineInitialOffsets@ha
     addi     r31, r1, 0x40
-    addi     r10, r3, lbl_8020F130@l
-    lfs      f27, lbl_8065F800@sda21(r0)
+    addi     r10, r3, sOutlineInitialOffsets@l
+    lfs      f27, sFbEffectQuarterTurn@sda21(r0)
     lwz      r9, 0x0(r10)
     mr       r29, r31
     lwz      r8, 0x4(r10)
@@ -1915,9 +1915,9 @@ void CFbOutline::Draw(u32 flags)
     lwz      r3, 0x18(r10)
     lwz      r0, 0x1c(r10)
     stw      r9, 0x40(r1)
-    lfd      f29, lbl_8065F810@sda21(r0)
+    lfd      f29, sFbEffectSignedConversionBias@sda21(r0)
     stw      r8, 0x44(r1)
-    lfs      f28, lbl_8065F804@sda21(r0)
+    lfs      f28, sFbEffectOffsetRadius@sda21(r0)
     stw      r7, 0x48(r1)
     stw      r6, 0x4c(r1)
     stw      r5, 0x50(r1)
@@ -1927,7 +1927,7 @@ void CFbOutline::Draw(u32 flags)
 .L_801A7AAC:
     xoris    r0, r28, 0x8000
     stw      r30, 0x268(r1)
-    lfs      f1, lbl_8065B880@sda21(r0)
+    lfs      f1, sOutlineOrbitAngle@sda21(r0)
     stw      r0, 0x26c(r1)
     lfd      f0, 0x268(r1)
     fsubs    f0, f0, f29
@@ -1935,7 +1935,7 @@ void CFbOutline::Draw(u32 flags)
     fadds    f1, f1, f26
     bl       sin
     frsp     f2, f1
-    lfs      f0, lbl_8065B880@sda21(r0)
+    lfs      f0, sOutlineOrbitAngle@sda21(r0)
     fadds    f1, f0, f26
     fmuls    f0, f28, f2
     stfs     f0, 0x0(r29)
@@ -1947,17 +1947,17 @@ void CFbOutline::Draw(u32 flags)
     stfs     f0, 0x4(r29)
     addi     r29, r29, 0x8
     blt      .L_801A7AAC
-    lfs      f1, lbl_8065B880@sda21(r0)
+    lfs      f1, sOutlineOrbitAngle@sda21(r0)
     li       r3, 0x80
-    lfs      f0, lbl_8065F808@sda21(r0)
+    lfs      f0, sFbEffectRotationStep@sda21(r0)
     li       r4, 0x0
     li       r5, 0x10
     fadds    f0, f1, f0
-    stfs     f0, lbl_8065B880@sda21(r0)
+    stfs     f0, sOutlineOrbitAngle@sda21(r0)
     bl       GXBegin
     li       r0, 0x2
-    lfs      f5, lbl_8065F7DC@sda21(r0)
-    lfs      f2, lbl_8065F7E0@sda21(r0)
+    lfs      f5, sFbEffectZero@sda21(r0)
+    lfs      f2, sFbEffectOne@sda21(r0)
     lis      r3, 0xcc01
     mtctr    r0
 .L_801A7B38:

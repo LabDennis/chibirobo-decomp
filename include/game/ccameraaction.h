@@ -5,10 +5,11 @@
 #include "game/xobj.h"
 #include "types.h"
 #include "game/video.h"
+#include "game/scrollroomdata.h"
 
 // pal uses the current refresh rate, 50 or 60
 #if defined(VERSION_PAL)
-#define FRAME_TIME (1.0f / lbl_80660D4C)
+#define FRAME_TIME (1.0f / gVideoFramesPerSecond)
 #else
 #define FRAME_TIME (1.0f / 60.0f)
 #endif
@@ -42,6 +43,7 @@ public:
 // constant speed
 class CInterpolationLinear : public CInterfaceInterpolation {
 public:
+	CInterpolationLinear();
 	virtual ~CInterpolationLinear() { }             // _08
 	virtual bool Start(f32 from, f32 to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
@@ -58,6 +60,7 @@ STATIC_ASSERT(sizeof(CInterpolationLinear) == 0x10);
 // jumps straight to the end
 class CInterpolationNone : public CInterfaceInterpolation {
 public:
+	CInterpolationNone();
 	virtual ~CInterpolationNone() { }               // _08
 	virtual bool Start(f32 from, f32 to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
@@ -73,6 +76,7 @@ STATIC_ASSERT(sizeof(CInterpolationNone) == 0x10);
 
 class CInterpolationEaseInOut : public CInterfaceInterpolation {
 public:
+	CInterpolationEaseInOut();
 	virtual ~CInterpolationEaseInOut() { }          // _08
 	virtual bool Start(f32 from, f32 to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
@@ -91,6 +95,7 @@ STATIC_ASSERT(sizeof(CInterpolationEaseInOut) == 0x1C);
 
 class CInterpolationEaseOut : public CInterfaceInterpolation {
 public:
+	CInterpolationEaseOut();
 	virtual ~CInterpolationEaseOut() { }            // _08
 	virtual bool Start(f32 from, f32 to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
@@ -111,6 +116,7 @@ STATIC_ASSERT(sizeof(CInterpolationEaseOut) == 0x20);
 // moves 1/divisor of the way there every step, the dt is ignored
 class CInterpolationEaseOutDivide : public CInterfaceInterpolation {
 public:
+	CInterpolationEaseOutDivide();
 	virtual ~CInterpolationEaseOutDivide() { }         // _08
 	virtual bool Start(f32 from, f32 to, f32 divisor); // _0C
 	virtual bool Step(f32 dt);                         // _10, done once it moves less than 0.001
@@ -127,7 +133,7 @@ STATIC_ASSERT(sizeof(CInterpolationEaseOutDivide) == 0x10);
 // the vector ones run one scalar interpolation per axis
 class CVectorLinearInterpolation : public CInterfaceVectorInterpolation {
 public:
-	virtual ~CVectorLinearInterpolation() { }       // _08
+	virtual ~CVectorLinearInterpolation();          // _08
 	virtual bool Start(Vec from, Vec to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
 	virtual bool Update(u32 step, f32 dt);          // _14
@@ -140,7 +146,7 @@ STATIC_ASSERT(sizeof(CVectorLinearInterpolation) == 0x34);
 
 class CVectorEaseInOutInterpolation : public CInterfaceVectorInterpolation {
 public:
-	virtual ~CVectorEaseInOutInterpolation() { }    // _08
+	virtual ~CVectorEaseInOutInterpolation();       // _08
 	virtual bool Start(Vec from, Vec to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
 	virtual bool Update(u32 step, f32 dt);          // _14
@@ -154,7 +160,7 @@ STATIC_ASSERT(sizeof(CVectorEaseInOutInterpolation) == 0x5C);
 
 class CVectorEaseOutInterpolation : public CInterfaceVectorInterpolation {
 public:
-	virtual ~CVectorEaseOutInterpolation() { }      // _08
+	virtual ~CVectorEaseOutInterpolation();         // _08
 	virtual bool Start(Vec from, Vec to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
 	virtual bool Update(u32 step, f32 dt);          // _14
@@ -164,6 +170,18 @@ public:
 	CInterpolationEaseOut mAxes[3]; // _04
 };
 STATIC_ASSERT(sizeof(CVectorEaseOutInterpolation) == 0x64);
+
+#ifndef DEFER_VECTOR_INTERPOLATION_DESTRUCTORS
+inline CVectorLinearInterpolation::~CVectorLinearInterpolation()
+{
+}
+inline CVectorEaseInOutInterpolation::~CVectorEaseInOutInterpolation()
+{
+}
+inline CVectorEaseOutInterpolation::~CVectorEaseOutInterpolation()
+{
+}
+#endif
 
 class CVectorNoneInterpolation : public CInterfaceVectorInterpolation {
 public:
@@ -202,44 +220,29 @@ public:
 	u32 _38;        // _38
 	// _3C vtable
 
-	virtual ~CInterfaceCameraAction() { }       // _08
-	virtual void PreviousUpdate() { }           // _0C
-	virtual void Update(u32 step) = 0;          // _10
-	virtual void vf14() { }                     // _14
-	virtual void SetCamera(CCamera* camera) { } // _18, takes eye, interest, angle, distance and fov
-	virtual void Init() { }                     // _1C
-	virtual void vf20() { }                     // _20
-	virtual void vf24() { }                     // _24
-	virtual void vf28() { }                     // _28
-	virtual void SetEye(f32 x, f32 y, f32 z)    // _2C
-	{
-		mEye.x = x;
-		mEye.y = y;
-		mEye.z = z;
-	}
-	virtual void SetInterest(f32 x, f32 y, f32 z) // _30
-	{
-		mInterest.x = x;
-		mInterest.y = y;
-		mInterest.z = z;
-	}
-	virtual void SetAngle(f32 x, f32 y, f32 z) // _34
-	{
-		mAngle.x = x;
-		mAngle.y = y;
-		mAngle.z = z;
-	}
-	virtual void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }                               // _38
-	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _3C
-	virtual void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }                   // _40
-	virtual void SetDistance(f32 distance) { mDistance = distance; }                                   // _44
-	virtual void SetFov(f32 fov) { mFov = fov; }                                                       // _48
-	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                                                    // _4C
-	virtual u32 vf50() { return 0; }                                                                   // _50
-	virtual u32 Get_38() { return _38; }                                                               // _54
-	virtual f32 vf58();                                                                                // _58
-	virtual u32 vf5C() { return 0; }                                                                   // _5C
-	virtual XObj* GetTarget() { return NULL; }                                                         // _60
+	virtual ~CInterfaceCameraAction() { }          // _08
+	virtual void PreviousUpdate();                 // _0C
+	virtual void Update(u32 step) = 0;             // _10
+	virtual void vf14() { }                        // _14
+	virtual void SetCamera(CCamera* camera);       // _18, takes eye, interest, angle, distance and fov
+	virtual void Init();                           // _1C
+	virtual void vf20();                           // _20
+	virtual void vf24();                           // _24
+	virtual void vf28();                           // _28
+	virtual void SetEye(f32 x, f32 y, f32 z);      // _2C
+	virtual void SetInterest(f32 x, f32 y, f32 z); // _30
+	virtual void SetAngle(f32 x, f32 y, f32 z);    // _34
+	virtual void SetEye(const Vec& eye);           // _38
+	virtual void SetInterest(const Vec& interest); // _3C
+	virtual void SetAngle(const Vec& angle);       // _40
+	virtual void SetDistance(f32 distance);        // _44
+	virtual void SetFov(f32 fov);                  // _48
+	virtual void SetAngleZ(f32 z);                 // _4C
+	virtual u32 vf50();                            // _50
+	virtual u32 GetCameraFlags();                  // _54
+	virtual f32 GetFollowDivisor();                // _58
+	virtual u32 vf5C();                            // _5C
+	virtual XObj* GetTarget();                     // _60
 
 	// set the mode word along with the vector
 	void SetEye(const Vec& eye, u32 mode)
@@ -277,79 +280,80 @@ struct CamMapEntry {
 // the map action, CCameraActions holds it at _99C
 class CCameraActionMap : public CCameraActionAreaExM {
 public:
-	s32 _40;                                // _40
-	XObj* _44;                              // _44, the object the camera looks at
-	CVec _48;                               // _48
-	f32 _58;                                // _58
-	f32 _5C;                                // _5C
-	CVec _60;                               // _60
-	CVec _70;                               // _70
-	f32 _80;                                // _80
-	f32 _84;                                // _84
-	f32 _88;                                // _88
-	CObjVec _8C;                            // _8C
-	f32 _BC;                                // _BC, turn speed
-	f32 _C0;                                // _C0, wrapped target yaw
-	f32 _C4;                                // _C4
-	CInterpolationEaseOutDivide _C8;        // _C8
-	CVec _D8;                               // _D8
-	u8 _E8[0x4EC - 0xE8];                   // _E8
-	s32 _4EC;                               // _4EC
-	s32 _4F0;                               // _4F0
-	s32 _4F4;                               // _4F4
-	s32 _4F8;                               // _4F8
-	u8 _4FC[0x570 - 0x4FC];                 // _4FC
-	CamMapEntry _570[32];                   // _570
-	s32 _970;                               // _970, count of _570
-	CamMapEntry* _974;                      // _974
-	s32 _978;                               // _978
-	CamMapEntry* _97C;                      // _97C
-	s32 _980;                               // _980
-	Vec _984;                               // _984, one end of the picked side
-	Vec _990;                               // _990, the other end
-	s32 _99C;                               // _99C, 1 or -1, which way round they are
-	CamMapEntry _9A0[32];                   // _9A0
-	s32 _DA0;                               // _DA0, count of _9A0
-	s32 _DA4;                               // _DA4
-	s32 _DA8;                               // _DA8
-	s32 _DAC;                               // _DAC
-	s32 _DB0;                               // _DB0
-	CInterfaceVectorInterpolation* _DB4;    // _DB4
-	CVectorEaseInOutInterpolation _DB8;     // _DB8
-	CInterpolationEaseInOut _E14;           // _E14
-	CInterfaceInterpolation* _E30;          // _E30, camera height
-	CInterpolationEaseInOut _E34;           // _E34
-	CInterfaceInterpolation* _E50;          // _E50
-	f32 _E54;                               // _E54
-	s32 _E58;                               // _E58
-	s32 _E5C;                               // _E5C
-	f32 _E60;                               // _E60, current camera height
-	CInterfaceInterpolation* _E64;          // _E64
-	CInterpolationEaseOutDivide _E68;       // _E68
-	CInterfaceInterpolation* _E78;          // _E78
-	CInterpolationEaseInOut _E7C;           // _E7C
-	f32 _E98;                               // _E98
-	s32 _E9C;                               // _E9C
-	s32 _EA0;                               // _EA0, manual camera input this frame
-	s32 _EA4;                               // _EA4, area IDs written to _EA8
-	s32 _EA8[32];                           // _EA8, areas containing the player
-	CInterfaceVectorInterpolation* _F28;    // _F28
-	CVectorEaseOutDivideInterpolation _F2C; // _F2C
-	f32 _F64;                               // _F64, target-eye interpolation time
-	CVec _F68;                              // _F68
-	CVec _F78;                              // _F78
-	CVec _F88;                              // _F88
-	CVec _F98;                              // _F98
-	CVec _FA8;                              // _FA8
-	CVec _FB8;                              // _FB8
-	u8 _FC8[0x11D8 - 0xFC8];                // _FC8
-	CStatus _11D8;                          // _11D8, printed as CAMSTAT
-	CStatus _11E0;                          // _11E0, printed as CAMSTATPRE
-	BOOL _11E8;                             // _11E8
+	s32 _40;                                           // _40
+	XObj* _44;                                         // _44, the object the camera looks at
+	CVec mPreviousInterest;                            // _48
+	f32 _58;                                           // _58
+	f32 _5C;                                           // _5C
+	CVec _60;                                          // _60
+	CVec _70;                                          // _70
+	f32 _80;                                           // _80
+	f32 _84;                                           // _84
+	f32 _88;                                           // _88
+	CObjVec _8C;                                       // _8C
+	f32 _BC;                                           // _BC, turn speed
+	f32 _C0;                                           // _C0, wrapped target yaw
+	f32 _C4;                                           // _C4
+	CInterpolationEaseOutDivide _C8;                   // _C8
+	CVec mPreviousEye;                                 // _D8
+	u8 _E8[0x4EC - 0xE8];                              // _E8
+	s32 _4EC;                                          // _4EC
+	s32 _4F0;                                          // _4F0
+	s32 _4F4;                                          // _4F4
+	s32 _4F8;                                          // _4F8
+	u8 _4FC[0x570 - 0x4FC];                            // _4FC
+	CamMapEntry mIntersectionEntries[32];              // _570
+	s32 mIntersectionCount;                            // _970
+	CamMapEntry* _974;                                 // _974
+	s32 _978;                                          // _978
+	CamMapEntry* _97C;                                 // _97C
+	s32 _980;                                          // _980
+	Vec _984;                                          // _984, one end of the picked side
+	Vec _990;                                          // _990, the other end
+	s32 _99C;                                          // _99C, 1 or -1, which way round they are
+	CamMapEntry _9A0[32];                              // _9A0
+	s32 _DA0;                                          // _DA0, count of _9A0
+	s32 _DA4;                                          // _DA4
+	s32 _DA8;                                          // _DA8
+	s32 _DAC;                                          // _DAC
+	s32 _DB0;                                          // _DB0
+	CInterfaceVectorInterpolation* mTurnInterpolation; // _DB4
+	CVectorEaseInOutInterpolation _DB8;                // _DB8
+	CInterpolationEaseInOut _E14;                      // _E14
+	CInterfaceInterpolation* _E30;                     // _E30, camera height
+	CInterpolationEaseInOut _E34;                      // _E34
+	CInterfaceInterpolation* _E50;                     // _E50
+	f32 _E54;                                          // _E54
+	s32 _E58;                                          // _E58
+	s32 _E5C;                                          // _E5C
+	f32 _E60;                                          // _E60, current camera height
+	CInterfaceInterpolation* _E64;                     // _E64
+	CInterpolationEaseOutDivide _E68;                  // _E68
+	CInterfaceInterpolation* _E78;                     // _E78
+	CInterpolationEaseInOut _E7C;                      // _E7C
+	f32 _E98;                                          // _E98
+	s32 _E9C;                                          // _E9C
+	s32 _EA0;                                          // _EA0, manual camera input this frame
+	s32 _EA4;                                          // _EA4, area IDs written to _EA8
+	s32 _EA8[32];                                      // _EA8, areas containing the player
+	CInterfaceVectorInterpolation* _F28;               // _F28
+	CVectorEaseOutDivideInterpolation _F2C;            // _F2C
+	f32 _F64;                                          // _F64, target-eye interpolation time
+	CVec _F68;                                         // _F68
+	CVec _F78;                                         // _F78
+	CVec _F88;                                         // _F88
+	CVec _F98;                                         // _F98
+	CVec _FA8;                                         // _FA8
+	CVec _FB8;                                         // _FB8
+	u8 _FC8[0x11D8 - 0xFC8];                           // _FC8
+	CStatus mStatus;                                   // _11D8, printed as CAMSTAT
+	CStatus mPreviousStatus;                           // _11E0, printed as CAMSTATPRE
+	BOOL _11E8;                                        // _11E8
 
+	// Keep Update first so the compiler emits the vtable with the update code.
 	CCameraActionMap();            // in the dol, 0x8001A45C
-	virtual ~CCameraActionMap();   // in the dol, 0x80009F20
 	virtual void Update(u32 step); // _10
+	virtual ~CCameraActionMap();   // in the dol, 0x80009F20
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x11EC);
 
@@ -409,6 +413,7 @@ struct CamAreaSlot {
 	CVec _0C;          // _0C, representative camera position
 
 	CamAreaSlot();
+	~CamAreaSlot();
 };
 STATIC_ASSERT(sizeof(CamAreaSlot) == 0x1C);
 
@@ -423,7 +428,7 @@ public:
 	s32 _04;                 // _04
 	s32 _08;                 // _08
 	s32 _0C;                 // _0C
-	f32 _10;                 // _10
+	f32 mBaseFov;            // _10
 	s32 _14;                 // _14
 	s32 _18;                 // _18
 	CamAreaRecord* _1C;      // _1C
@@ -438,38 +443,47 @@ public:
 STATIC_ASSERT(sizeof(CCameraActionAreaEx) == 0x3C34);
 // todo: old name, the prototypes below still use it
 typedef CCameraActionAreaEx CamAreaState;
-extern "C" CCameraActionAreaEx lbl_805A054C;
+extern "C" CCameraActionAreaEx gCameraAreaState;
 
 // the area action, CCameraActions holds it at _40
 class CCameraActionArea : public CCameraActionAreaExM {
 public:
-	f32 _40;                                       // _40, transition time
-	s32 _44;                                       // _44, camera direction mode
-	BOOL _48;                                      // _48, user-selected entry
-	s32 _4C;                                       // _4C
-	s32 _50;                                       // _50
-	CamAreaEntry* _54;                             // _54
-	CamAreaEntry* _58;                             // _58
-	s32 _5C;                                       // _5C
-	BOOL _60;                                      // _60, manual camera changes enabled
-	XObj* _64;                                     // _64, the camera looks at it
-	CInterfaceVectorInterpolation* mEyeInterp;     // _68
-	CInterfaceInterpolation* mFovInterp;           // _6C
-	CVectorEaseInOutInterpolation _70;             // _70
-	CVectorLinearInterpolation _CC;                // _CC
-	CVectorEaseInOutInterpolation _100;            // _100
-	CVectorEaseOutInterpolation _15C;              // _15C
-	CVectorEaseOutDivideInterpolation _1C0;        // _1C0
-	CInterfaceVectorInterpolation* mEyeInterps[5]; // _1F8
-	CInterpolationLinear _20C;                     // _20C
-	CInterpolationEaseInOut _21C;                  // _21C
-	CInterpolationEaseOut _238;                    // _238
-	CInterpolationEaseOutDivide _258;              // _258
-	CInterfaceInterpolation* mFovInterps[5];       // _268
-	CInterfaceVectorInterpolation* _27C;           // _27C
-	CInterfaceVectorInterpolation* _280[5];        // _280, by mode
+	f32 _40;                                            // _40, transition time
+	s32 _44;                                            // _44, camera direction mode
+	BOOL _48;                                           // _48, user-selected entry
+	s32 _4C;                                            // _4C
+	s32 _50;                                            // _50
+	CamAreaEntry* _54;                                  // _54
+	CamAreaEntry* _58;                                  // _58
+	s32 _5C;                                            // _5C
+	BOOL _60;                                           // _60, manual camera changes enabled
+	XObj* mTarget;                                      // _64
+	CInterfaceVectorInterpolation* mEyeInterp;          // _68
+	CInterfaceInterpolation* mFovInterp;                // _6C
+	CVectorEaseInOutInterpolation _70;                  // _70
+	CVectorLinearInterpolation _CC;                     // _CC
+	CVectorEaseInOutInterpolation _100;                 // _100
+	CVectorEaseOutInterpolation _15C;                   // _15C
+	CVectorEaseOutDivideInterpolation _1C0;             // _1C0
+	CInterfaceVectorInterpolation* mEyeInterps[5];      // _1F8
+	CInterpolationLinear _20C;                          // _20C
+	CInterpolationEaseInOut _21C;                       // _21C
+	CInterpolationEaseOut _238;                         // _238
+	CInterpolationEaseOutDivide _258;                   // _258
+	CInterfaceInterpolation* mFovInterps[5];            // _268
+	CInterfaceVectorInterpolation* mInterestInterp;     // _27C
+	CInterfaceVectorInterpolation* mInterestInterps[5]; // _280, by mode
 
-	virtual void Update(u32 step); // _10
+	virtual void PreviousUpdate();           // _0C
+	virtual void Update(u32 step);           // _10
+	virtual void vf14();                     // _14
+	virtual void SetCamera(CCamera* camera); // _18
+	virtual void Init();                     // _1C
+	virtual void vf24();                     // _24
+	virtual void vf28();                     // _28
+	virtual u32 GetCameraFlags();            // _54
+	virtual u32 vf5C();                      // _5C
+	virtual XObj* GetTarget();               // _60
 
 	void SetEyeInterpolation(s32 mode, Vec from, Vec to, f32 time)
 	{
@@ -510,13 +524,13 @@ public:
 	void SetInte_I(s32 mode, Vec from, Vec to, f32 time)
 	{
 		if (mode == 3 || time <= 0.0f) {
-			_27C = NULL;
+			mInterestInterp = NULL;
 			SetInterest(to);
 			return;
 		}
-		_27C = _280[mode];
-		if (_27C != NULL) {
-			_27C->Start(from, to, time);
+		mInterestInterp = mInterestInterps[mode];
+		if (mInterestInterp != NULL) {
+			mInterestInterp->Start(from, to, time);
 		}
 	}
 };
@@ -529,7 +543,7 @@ public:
 	s32 mMode;                                     // _44, picks the interpolators, 3 is none
 	f32 mTime;                                     // _48
 	BOOL _4C;                                      // _4C
-	s32 _50;                                       // _50
+	s32 mNextCameraAction;                         // _50
 	s32 mState;                                    // _54
 	s32 _58;                                       // _58
 	CInterfaceVectorInterpolation* mEyeInterp;     // _5C
@@ -545,13 +559,13 @@ public:
 	CInterpolationNone mFovNone;                   // _1E8
 	CInterfaceInterpolation* mFovInterps[4];       // _1F8
 
-	virtual void PreviousUpdate();                // _0C
-	virtual void Update(u32 step);                // _10
-	virtual void SetCamera(CCamera* camera);      // _18
-	virtual void Init();                          // _1C
-	virtual f32 vf58() { return 4.0f; }           // _58
-	virtual u32 vf5C() { return _58; }            // _5C
-	virtual XObj* GetTarget() { return mTarget; } // _60
+	virtual void PreviousUpdate();           // _0C
+	virtual void Update(u32 step);           // _10
+	virtual void SetCamera(CCamera* camera); // _18
+	virtual void Init();                     // _1C
+	virtual f32 GetFollowDivisor();          // _58
+	virtual u32 vf5C();                      // _5C
+	virtual XObj* GetTarget();               // _60
 
 	void SetEye_Interp(s32 mode, const Vec& eye, f32 time)
 	{
@@ -610,6 +624,7 @@ public:
 			mDistanceInterp->Start(mDistance, distance, 15.0f);
 		}
 	}
+	virtual ~CCameraActionScroll();
 };
 STATIC_ASSERT(sizeof(CCameraActionScroll) == 0x6C);
 
@@ -618,12 +633,13 @@ class CCameraActionLadr : public CInterfaceCameraAction {
 public:
 	f32 mAngle; // _40, added to the player's y rotation
 
-	virtual void Update(u32 step);      // _10
-	virtual void vf14();                // _14
-	virtual u32 Get_38() { return 11; } // _54
-	virtual Vec GetCameraTarget();      // _64, the player
+	virtual void Update(u32 step);              // _10
+	virtual void vf14();                        // _14
+	virtual u32 GetCameraFlags() { return 11; } // _54
+	virtual Vec GetCameraTarget();              // _64, the player
 
 	void CalcEye(Vec* eye, f32 angle);
+	virtual ~CCameraActionLadr();
 };
 STATIC_ASSERT(sizeof(CCameraActionLadr) == 0x44);
 
@@ -641,13 +657,14 @@ public:
 	f32 mMaxZ;       // _64
 
 	CCameraActionLeticker() { mTarget = NULL; }
+	virtual ~CCameraActionLeticker() { }
 
-	virtual void Update(u32 step);      // _10
-	virtual void vf14();                // _14
-	virtual u32 vf50() { return 0; }    // _50 (weak)
-	virtual u32 Get_38() { return 11; } // _54 (weak)
-	virtual f32 vf58() { return 0.1f; } // _58 (weak)
-	virtual Vec GetCameraTarget();      // _64
+	virtual void Update(u32 step);                  // _10
+	virtual void vf14();                            // _14
+	virtual u32 vf50() { return 0; }                // _50 (weak)
+	virtual u32 GetCameraFlags() { return 11; }     // _54 (weak)
+	virtual f32 GetFollowDivisor() { return 0.1f; } // _58 (weak)
+	virtual Vec GetCameraTarget();                  // _64
 };
 STATIC_ASSERT(sizeof(CCameraActionLeticker) == 0x68);
 
@@ -655,6 +672,7 @@ STATIC_ASSERT(sizeof(CCameraActionLeticker) == 0x68);
 class CCameraActionDefault : public CInterfaceCameraAction {
 public:
 	virtual void Update(u32 step); // _10
+	virtual ~CCameraActionDefault();
 };
 STATIC_ASSERT(sizeof(CCameraActionDefault) == 0x40);
 
@@ -672,13 +690,15 @@ public:
 	virtual void vf14();                     // _14
 	virtual void SetCamera(CCamera* camera); // _18
 	virtual void Init();                     // _1C
-	virtual u32 Get_38() { return mMode; }   // _54
+	virtual u32 GetCameraFlags();            // _54
+	virtual ~CCameraActionChase();
 };
 STATIC_ASSERT(sizeof(CCameraActionChase) == 0x70);
 
 // the camera event scripts drive, every part eases to where the script says
 class CCameraActionEvt : public CInterfaceCameraAction {
 public:
+	CCameraActionEvt();
 	XObj* mTarget;                                      // _40, the interest follows it while nothing eases it
 	CInterfaceVectorInterpolation* mEyeInterp;          // _44
 	CInterfaceVectorInterpolation* mInterestInterp;     // _48
@@ -725,21 +745,6 @@ public:
 };
 STATIC_ASSERT(sizeof(CCameraActionEvt) == 0x4E4);
 
-// how far the room camera can pan, at its widest and its narrowest fov
-struct Scroll2Limits {
-	f32 mWideMinX;   // _00
-	f32 mWideMaxX;   // _04
-	f32 mWideMinZ;   // _08
-	f32 mWideMaxZ;   // _0C
-	f32 mNarrowMinX; // _10
-	f32 mNarrowMaxX; // _14
-	f32 mNarrowMinZ; // _18
-	f32 mNarrowMaxZ; // _1C
-	f32 mMaxFov;     // _20
-	f32 mMinFov;     // _24
-	f32 mMidFov;     // _28, z narrows only below it
-};
-
 // the room camera, it pans over the room with the stick and zooms with the c stick
 class CCameraActionScroll2 : public CInterfaceCameraAction {
 public:
@@ -758,11 +763,11 @@ public:
 	BOOL mFromStage;     // _88
 	u8 mSavedInfo[0x20]; // _8C
 
-	virtual void Update(u32 step);      // _10
-	virtual void vf14();                // _14
-	virtual void vf20();                // _20, draws the markers over the room's objects
-	virtual void vf28() { }             // _28
-	virtual u32 Get_38() { return 11; } // _54
+	virtual void Update(u32 step); // _10
+	virtual void vf14();           // _14
+	virtual void vf20();           // _20, draws the markers over the room's objects
+	virtual void vf28();           // _28
+	virtual u32 GetCameraFlags();  // _54
 
 	void SaveCamInfo(const void* info);
 	Scroll2Limits* GetLimits(s32 room);
@@ -770,6 +775,7 @@ public:
 	void HideObjs();
 	void ClearHideList();
 	BOOL AddHideObj(s32 id);
+	virtual ~CCameraActionScroll2();
 };
 STATIC_ASSERT(sizeof(CCameraActionScroll2) == 0xAC);
 
@@ -784,6 +790,7 @@ public:
 	virtual void Init();                     // _1C
 
 	void SetObj(XObjCamera* obj);
+	virtual ~CCameraActionAnim();
 };
 STATIC_ASSERT(sizeof(CCameraActionAnim) == 0x48);
 
@@ -791,32 +798,71 @@ class CMotionControlCamera;
 
 extern "C" {
 // the area camera's state, ccameraactionareaex.cpp
-f32 fn_801353E4(CamAreaState* state, s32 level);
-s32 fn_80135D28(CamAreaState* state);
+f32 GetAreaCameraFovForHeightLevel(CamAreaState* state, s32 level);
+s32 GetCameraAreaMode(CamAreaState* state);
 void DrawDebug3d__19CCameraActionAreaExFv(CamAreaState* state);
-void fn_80136A54(CamAreaState* state, s32 mode);
-s32 fn_801371D0(CamAreaState* state, Vec pos, s32* ids);
-s32 fn_801374F4(CamAreaState* state, Vec pos);
-s32 fn_80137810(CamAreaState* state, Vec pos);
-void fn_80137B58(CamAreaState* state, s32 index);
+void DrawMapCameraAreaDebug3D(CamAreaState* state, s32 mode);
+s32 CollectCameraAreasContainingPoint(CamAreaState* state, Vec pos, s32* ids);
+s32 FindFirstCameraAreaContainingPoint(CamAreaState* state, Vec pos);
+s32 FindEnabledCameraAreaContainingPoint(CamAreaState* state, Vec pos);
+void SetCameraAreaIndexAndBaseFov(CamAreaState* state, s32 index);
 void fn_80137D00(CamAreaState* state, s32 unused);
-void fn_80137EB8(CamAreaState* state);
-void fn_8013801C(CamAreaState* state);
+void LoadStageCameraAreaState(CamAreaState* state);
+void InitCameraAreaEntries(CamAreaState* state);
 
 // the area camera, ccameraactionarea.cpp
-void fn_801382D4(CCameraActionArea* area, s32 index);
-void fn_80138B2C(CCameraActionArea* area, s32 arg1, s32 arg2, s32 arg3, s32 arg4, f32 arg5);
-void fn_80138CA4(CCameraActionArea* area, s32 mode, f32 time, s32 arg);
-void fn_80138EBC(CCameraActionArea* area);
+void SetAreaCameraHeightIndices(CCameraActionArea* area, s32 index);
+void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 slot, s32 entry, s32 mode, s32 control, f32 time);
+void SelectAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32 time, s32 arg);
+void ResumeAreaCameraControl(CCameraActionArea* area);
 
 // the map camera, ccameraactionmap2.cpp
-void fn_8013A204(CCameraActionMap* map, f32 from, f32 to, f32 time);
-f32 fn_8013A558(CCameraActionMap* map);
+void StartMapCameraTargetHeightInterpolation(CCameraActionMap* map, f32 from, f32 to, f32 time);
+f32 GetMapCameraHorizontalTargetDistance(CCameraActionMap* map);
 void fn_8013BCE4(CCameraActionMap* map);
 void fn_8013BD28(CCameraActionMap* map, Vec& out, s32 mode);
-void fn_8013C510(CCameraActionMap* map, s32 index, f32 time);
+void SetMapCameraFovStep(CCameraActionMap* map, s32 index, f32 time);
 
-void fn_8014872C(CMotionControlCamera* camera, s32 mode);
+void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode);
 }
+
+#ifndef DEFINE_GAME_MEMBER_LIFETIMES
+inline CInterpolationLinear::CInterpolationLinear()
+{
+}
+inline CInterpolationNone::CInterpolationNone()
+{
+}
+inline CInterpolationEaseInOut::CInterpolationEaseInOut()
+{
+}
+inline CInterpolationEaseOut::CInterpolationEaseOut()
+{
+}
+inline CInterpolationEaseOutDivide::CInterpolationEaseOutDivide()
+{
+}
+inline CCameraActionScroll::~CCameraActionScroll()
+{
+}
+inline CCameraActionLadr::~CCameraActionLadr()
+{
+}
+inline CCameraActionDefault::~CCameraActionDefault()
+{
+}
+inline CCameraActionChase::~CCameraActionChase()
+{
+}
+inline CCameraActionEvt::CCameraActionEvt()
+{
+}
+inline CCameraActionScroll2::~CCameraActionScroll2()
+{
+}
+inline CCameraActionAnim::~CCameraActionAnim()
+{
+}
+#endif
 
 #endif

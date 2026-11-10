@@ -49,6 +49,29 @@ struct SaveCardStat {
 #endif
 STATIC_ASSERT(sizeof(SaveCardStat) == 0x6C);
 
+static inline BOOL HasSaveFileLayout(const SaveCardStat& stat)
+{
+	if (stat.length != 0xC000)
+		return FALSE;
+	if (stat.bannerFormat != 2)
+		return FALSE;
+	if (stat.iconAddr != 0x40)
+		return FALSE;
+	if (stat.iconFormat != 2)
+		return FALSE;
+	if (stat.iconSpeed != 3)
+		return FALSE;
+	if (stat.commentAddr != 0)
+		return FALSE;
+	if (stat.offsetBanner != 0x40)
+		return FALSE;
+	if (stat.offsetIcon[0] != 0x1840)
+		return FALSE;
+	if (stat.offsetData != 0x2040)
+		return FALSE;
+	return TRUE;
+}
+
 // a save file the slot list shows, its card status and the start of its save
 struct SavePreviewRecord {
 	s32 mState;         // _00, nonzero when the slot has a file
@@ -60,7 +83,7 @@ STATIC_ASSERT(sizeof(SavePreviewRecord) == 0xCC);
 
 extern "C" {
 // is the save slot's data intact
-BOOL fn_80086F24(SavePreviewRecord* save);
+BOOL IsValidSavePreview(SavePreviewRecord* save);
 }
 
 #endif

@@ -1,9 +1,12 @@
+#include "game/video.h"
 #include "game/stg.h"
 #include "game/xobjmap.h"
+#include "game/xobjread.h"
 #include "game/cgameutil.h"
+#include "game/xchr.h"
 
 extern "C" {
-void fn_8000A870(u32 frames);
+void UpdateStageMicrophone(u32 frames);
 }
 
 /**
@@ -30,18 +33,14 @@ extern "C" void Resume__5CMenuFv(CMenu* menu)
 }
 
 extern "C" {
-void fn_8001E11C(XSound* sound, BOOL pause);
+void SetMusicPlaybackPaused(XSound* sound, BOOL pause);
 s32 HSD_DevComIsBusy(s32 id);
-BOOL fn_80131D2C(void);
-void fn_80088848(void* card);
-u8* fn_8006F3EC(void);
+void PollMemoryCardWorker(void* card);
 void CMsg_Update(CMsg* msg, u32 frames);
-void fn_8001F46C(XSound* sound, u32 frames);
-void fn_8002E8D0(void* title, u32 frames);
-void fn_80031460(void* menu, u32 frames);
-void fn_8006D548(void* info, u32 frames);
+void UpdateOpenMenus(void* menu, u32 frames);
+void UpdateHudTransitionsAndIndicators(void* info, u32 frames);
 void Update__8FbMirrorFUl(FbMirror* mirror, u32 frames);
-void fn_80011270(CGame* game);
+void BuildObjectDrawList(CGame* game);
 }
 
 /**
@@ -55,14 +54,14 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 {
 	s32 i;
 	BaseUpdate(game, frames);
-	fn_80088848(&game->mMemcard);
+	PollMemoryCardWorker(&game->mMemcard);
 	if (game->mReset && !game->mMemcard.mCard.mBusy && HSD_DevComIsBusy(1) <= 0 && HSD_DevComIsBusy(2) <= 0) {
 		if (!game->mDiskOk) {
 			game->mResetHold = 0;
 			game->mReset     = FALSE;
 			HSD_PadReset();
 			game->Reset(1);
-		} else if (game->_3338 != 0x17 && game->_3338 != 0x1A && !fn_80131D2C()) {
+		} else if (game->_3338 != 0x17 && game->_3338 != 0x1A && !HasPendingObjectReads()) {
 			game->mResetHold = 0;
 			game->mReset     = FALSE;
 			HSD_PadReset();
@@ -71,7 +70,7 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 			} else if (game->_3338 <= 0x13) {
 				game->Reset(0);
 			} else {
-				fn_8000B394(game, 10000, FALSE);
+				ChangeGameStage(game, 10000, FALSE);
 			}
 		}
 	}
@@ -79,18 +78,18 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 	if (game->IsDiscError()) {
 		if (!(game->mStatus.mFlags & 8)) {
 			game->mStatus.mFlags |= 8;
-			fn_8001E5C0(&lbl_8025C400.mSound, 0xFFFF0000, 0);
+			PauseGameMusic(&gGame.mSound, 0xFFFF0000, 0);
 		}
 		return;
 	}
 	if (game->mStatus.mFlags & 8) {
 		game->mStatus.mFlags &= ~8;
-		fn_8001E504(&lbl_8025C400.mSound, 0xFFFF0000);
+		ResumeGameSfx(&gGame.mSound, 0xFFFF0000);
 	}
-	fn_8000A870(frames);
+	UpdateStageMicrophone(frames);
 	if (game->mStatus.mFlags & 0x1000) {
 		game->mStatus.mFlags &= ~0x1000;
-		fn_80011270(game);
+		BuildObjectDrawList(game);
 	}
 	if ((game->mStatus.mFlags & 1) && !(game->mStatus.mFlags & 2) && !(game->mStatus.mFlags & 0x20) && !game->mMenu.mActive
 	    && game->mEvt.mData.mScript == NULL && (game->mPad.mPad[0].mTrigger & 0x1000) && !(game->mPad.mPad[0].mButton & 0x200)
@@ -106,12 +105,16 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 					obj->mStatus.mFlags |= 0x10000000000000;
 				}
 				obj->_264 = obj->mMoveTranslate;
-				obj->vfA4(frames);
+				obj->UpdateObject(frames);
 			}
 		}
 	}
 	if (game->IsRunning() && !(game->mStatus.mFlags & 2)) {
+#if defined(VERSION_PAL)
+		game->mPlayTime += frames * (60.0f / FRAME_RATE);
+#else
 		game->mPlayTime += frames;
+#endif
 		if (game->mPlayTime >= 21600000) {
 			game->mPlayTime = 21599999;
 		}
@@ -120,23 +123,24 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 		if (game->IsRunning() && game->mEvt.mData.mScript == NULL && !game->mMenu.mActive && !(game->mStatus.mFlags & 0xC00)
 		    && game->mTimeState.mDuration > 0.0f) {
 			if (!game->mTimeState.mRunning) {
-				game->mTimeState.mTime = frames * (game->mTimeState.mDuration / 36000.0f) + game->mTimeState.mTime;
+				game->mTimeState.mTime = frames * (game->mTimeState.mDuration / (600.0f * FRAME_RATE)) + game->mTimeState.mTime;
 				if (game->mTimeState.mTime >= 1.0f) {
 					game->mTimeState.mRunning = TRUE;
 				}
 			}
 			if (game->mTimeState.mRunning == TRUE) {
-				bool idle         = false;
-				UnkPlayer* player = (UnkPlayer*)game->mXObjs.mPools[2].First();
-				if ((player->_A48 == 0 || player->_A48 == 4) && player->_AC4 == 0 && player->_B14 == 0 && player->_B68 == 0
-				    && player->_BAC == 0 && player->_BEC == 0 && player->_C44 == 0) {
+				bool idle       = false;
+				XObjChr* player = game->GetPlayer();
+				if ((player->mLift.mState == 0 || player->mLift.mState == 4) && player->mHang.mState == 0 && player->mJump.mState == 0
+				    && player->mLadder.mState == 0 && player->mRope.mState == 0 && player->mPush.mState == 0
+				    && player->mTumble.mState == 0) {
 					idle = true;
 				}
 				if (idle) {
 					game->mTimeState.mRunning = FALSE;
-					u8* script                = fn_8006F3EC();
+					u8* script                = GetStageTimerExpiredScript();
 					if (script != NULL) {
-						fn_8007EEA4(&game->mEvt, script, 0, -1, -1);
+						StartOrQueueEventScript(&game->mEvt, script, 0, -1, -1);
 					}
 				}
 			}
@@ -149,7 +153,7 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 		}
 	}
 	if (game->IsRunning()) {
-		fn_8006F338(1, frames, NULL);
+		CallStageModule(1, frames, NULL);
 	}
 	if (game->IsRunning() || (game->mStatus.mFlags & 0x20)) {
 		game->mParticle.Update(frames);
@@ -157,9 +161,9 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 	if ((game->mStatus.mFlags & 1) && !(game->mStatus.mFlags & 0x200000000000) && !game->mMenu.mActive) {
 		game->mMotionControlCamera.Update(frames);
 	}
-	fn_8001F46C(&game->mSound, frames);
+	UpdateGameSound(&game->mSound, frames);
 	if (!(game->mStatus.mFlags & 2)) {
-		fn_80023B38(&game->mFade, frames);
+		UpdateScreenFade(&game->mFade, frames);
 		game->mWipeCircle.Update(frames);
 		game->mWipeTex.Update(frames);
 		game->mWipeCustom.Update(frames);
@@ -167,27 +171,29 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 		game->mWipeTile1.Update(frames);
 		if (game->mStatus.mFlags & 1) {
 			game->mRoboeyes.Update(frames);
-			fn_800240EC(&game->mQuake, frames);
+			UpdateScreenShake(&game->mQuake, frames);
 			game->mOutline.Update(frames);
 			game->mScrnTex.mAngle = fmod(0.10471976f * frames + game->mScrnTex.mAngle, 6.2831854820251465);
 			game->mOutline.mThick = 0.0f;
-			game->mOutline.SetLineColor(0xFF, 0xFF, 0xFF, 100.0f * (f32)sin(game->mScrnTex.mAngle) + 150.0f);
-			fn_80023B38(&game->mScrnTex.mColor, frames);
+			u8 lineAlpha          = 100.0f * (f32)sin(game->mScrnTex.mAngle) + 150.0f;
+			game->mOutline.SetLineColor(0xFF, 0xFF, 0xFF);
+			game->mOutline.mColor0.a = lineAlpha;
+			UpdateScreenFade(&game->mScrnTex.mColor, frames);
 			game->mOutline.SetColor2(game->mScrnTex.mColor.mColor.r, game->mScrnTex.mColor.mColor.g, game->mScrnTex.mColor.mColor.b);
-			fn_80023B38(&game->mColor0.mColor, frames);
+			UpdateScreenFade(&game->mColor0.mColor, frames);
 			game->mOutline.SetColor3(game->mColor0.mColor.mColor.r, game->mColor0.mColor.mColor.g, game->mColor0.mColor.mColor.b,
 			                         game->mColor0.mColor.mColor.a);
 			game->mBlur.Update(frames);
 		}
 	} else if (game->mMotionControlCamera.IsAction(4)) {
-		fn_80023B38(&game->mFade, frames);
+		UpdateScreenFade(&game->mFade, frames);
 		game->mWipeCircle.Update(frames);
 		game->mWipeTex.Update(frames);
 		game->mWipeCustom.Update(frames);
 		game->mWipeTile0.Update(frames);
 		game->mWipeTile1.Update(frames);
 	}
-	fn_80023B38(&game->mColor1.mColor, frames);
+	UpdateScreenFade(&game->mColor1.mColor, frames);
 	game->mOutline.SetColor4(game->mColor1.mColor.mColor.r, game->mColor1.mColor.mColor.g, game->mColor1.mColor.mColor.b,
 	                         game->mColor1.mColor.mColor.a);
 	if (game->_4724 > 0) {
@@ -202,24 +208,23 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 		}
 		game->mOutline.mZoom = sin(3.1415927f * game->_4728 / 2.0f);
 	}
-	fn_80027528(&game->mLogo, frames);
-	fn_8002E8D0(&game->mTitle, frames);
-	fn_80031460(&game->mMenu, frames);
+	UpdateBootLogos(&game->mLogo, frames);
+	UpdateTitleScreen(&game->mTitle, frames);
+	UpdateOpenMenus(&game->mMenu, frames);
 	if ((game->mStatus.mFlags & 1) && !(game->mStatus.mFlags & 2)) {
-		fn_8006D548(&game->mInfoScrn, frames);
+		UpdateHudTransitionsAndIndicators(&game->mInfoScrn, frames);
 		game->mSubwin.Update(frames);
 		for (i = 0; i < 5; i++) {
-			if (!IsMirrorOff(&lbl_8035FA24[i])) {
-				Update__8FbMirrorFUl(&lbl_8035FA24[i], frames);
+			if (!IsMirrorOff(&gFramebufferMirrors[i])) {
+				Update__8FbMirrorFUl(&gFramebufferMirrors[i], frames);
 			}
 		}
 	}
 	if (!(game->mStatus.mFlags & 2) && game->mStageName.mActive && game->mStageName.mActive > 0) {
-		f32 grow = 0.055555556f * frames;
 		for (i = 0; i < game->mStageName.mCount; i++) {
 			if (game->mStageName.mChars[i].mWait > 0.0f) {
 				if (game->mStageName.mChars[i].mScale < 1.0f) {
-					if ((game->mStageName.mChars[i].mScale += grow) > 1.0f) {
+					if ((game->mStageName.mChars[i].mScale += (1.0f / (0.3f * FRAME_RATE)) * frames) > 1.0f) {
 						game->mStageName.mChars[i].mScale = 1.0f;
 					}
 				} else if (game->mStatus.mFlags & 1) {
@@ -228,7 +233,7 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 					}
 				}
 			} else if (game->mStageName.mChars[i].mScale > 0.0f) {
-				if ((game->mStageName.mChars[i].mScale -= grow) < 0.0f) {
+				if ((game->mStageName.mChars[i].mScale -= (1.0f / (0.3f * FRAME_RATE)) * frames) < 0.0f) {
 					game->mStageName.mChars[i].mScale = 0.0f;
 				}
 			}
@@ -250,7 +255,7 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 	if (game->mStatus.mFlags & 2) {
 		if (!(game->mStatus.mFlags & 4)) {
 			game->mStatus.mFlags |= 4;
-			fn_8001E11C(&lbl_8025C400.mSound, TRUE);
+			SetMusicPlaybackPaused(&gGame.mSound, TRUE);
 			CPadEx* pad = &game->mPad;
 			for (i = 0; i < 4; i++) {
 				if (pad->mPad[i].mConnected) {
@@ -261,13 +266,13 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 		}
 	} else if (game->mStatus.mFlags & 4) {
 		game->mStatus.mFlags &= ~4;
-		fn_8001E11C(&lbl_8025C400.mSound, FALSE);
+		SetMusicPlaybackPaused(&gGame.mSound, FALSE);
 		HSD_PadRumbleActiveAll();
 	}
 }
 
 extern "C" {
-void fn_8001146C(CGame* game);
+void SelectSceneLights(CGame* game);
 }
 
 /**
@@ -278,7 +283,7 @@ void fn_8001146C(CGame* game);
 // sorts the objects into the ones to draw and the ones mirrors show, those of pool 3 first,
 // then the plain ones, then the 0xA00000 ones, then the 0x40 ones. objects out of view are only
 // mirrored
-extern "C" void fn_80010D28(CGame* game)
+extern "C" void BuildSceneDrawLists(CGame* game)
 {
 	s32 shown;
 	XObj* obj;
@@ -349,7 +354,7 @@ extern "C" void fn_80010D28(CGame* game)
 // NONMATCHING: the object and the loop pointers get other volatile registers
 // lists the objects to draw: those with flag 0x4000 first, then the rest, then the two
 // special ones
-extern "C" void fn_80011270(CGame* game)
+extern "C" void BuildObjectDrawList(CGame* game)
 {
 	s32 count = 0;
 	s32 i;
@@ -385,16 +390,16 @@ extern "C" void fn_80011270(CGame* game)
 // NONMATCHING: the light count isn't read again for the second GetLights
 // picks the lights to draw with: an object's own when it has some, else the game's. only the
 // object lights cast shadows then
-extern "C" void fn_8001146C(CGame* game)
+extern "C" void SelectSceneLights(CGame* game)
 {
 	game->mLightList = NULL;
-	XObjMap* a       = (XObjMap*)game->mXObjs.mPools[3].mObjects;
-	if ((a->mStatus.mFlags & 1) && a->GetLights() != NULL) {
-		game->mLightList = a->GetLights();
+	XObjMap* map     = (XObjMap*)game->mXObjs.mPools[3].mObjects;
+	if ((map->mStatus.mFlags & 1) && map->GetLights() != NULL) {
+		game->mLightList = map->GetLights();
 	} else {
-		XObjLight* b = (XObjLight*)game->mXObjs.mPools[1].mObjects;
-		if (b->mStatus.mFlags & 1) {
-			game->mLightList = b->GetLights();
+		XObjLight* sceneLight = (XObjLight*)game->mXObjs.mPools[1].mObjects;
+		if (sceneLight->mStatus.mFlags & 1) {
+			game->mLightList = sceneLight->GetLights();
 		}
 	}
 

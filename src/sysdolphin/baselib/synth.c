@@ -217,9 +217,9 @@ extern void* HSD_GObjObjectLink(void* gobj, u8 kind, void* obj);
 extern void* HSD_GObjObjectUnlink(void* gobj);
 
 void fn_801EB614(s32 max, s32 key);
-s32 fn_801EB658(void (*callback)(s32, void*), s32 param);
-void fn_801EB8C4(s32 id);
-void fn_801EBAB0(s32 id, s32 key);
+s32 AcquireDvdStreamingSlot(void (*callback)(s32, void*), s32 param);
+void ReleaseDvdStreamingSlot(s32 id);
+void SetDvdStreamingSlotKey(s32 id, s32 key);
 
 extern f64 exp(f64);
 extern f64 log(f64);
@@ -317,57 +317,57 @@ typedef struct HSD_SynthPStreamRequest {
 	s16 unk2A;   // _2A
 } HSD_SynthPStreamRequest;
 
-static s32 lbl_8065BB78                         = 0;
-static void* (*lbl_8065BB7C)(s32)               = NULL;
-static void (*lbl_8065BB80)(void*)              = NULL;
+static s32 sSynthPendingVoiceFreeCount                         = 0;
+static void* (*sSynthMallocProc)(s32)               = NULL;
+static void (*sSynthFreeProc)(void*)              = NULL;
 static s32 hsd_SynthSFXBankNum                  = 0;
-static volatile s32 lbl_8065BB88                = 0;
+static volatile s32 sSynthSfxLoadQueueLength                = 0;
 static s32 lbl_8065BB8C                         = 0;
-static void (*lbl_8065BB90)(s32)                = NULL;
-static void (*lbl_8065BB94)(u32)                = NULL;
-static void (*lbl_8065BB98)(s32)                = NULL;
-static void (*lbl_8065BB9C)(void)               = NULL; /* driver pre-frame hook */
-static void (*lbl_8065BBA0)(void)               = NULL; /* driver post-frame hook */
-static HSD_SynthSFXNode* lbl_8065BBA4           = NULL; /* vol-update pending list head */
-static HSD_SynthSFXNode* lbl_8065BBA8           = NULL; /* mix-update pending list head */
-static HSD_SynthSFXNode* lbl_8065BBAC           = NULL; /* rear-link update list head */
-static s32 lbl_8065BBB0                         = 0;
-static HSD_SynthBeatMarkerBlock* lbl_8065BBB4   = NULL; /* bmb free list */
-static HSD_SynthPStreamRequest* lbl_8065BBB8    = NULL; /* request free list */
-static HSD_SynthPStreamRequest* lbl_8065BBBC    = NULL; /* request queue */
-static HSD_SynthPStream* lbl_8065BBC0           = NULL; /* pstream entry free list */
-static HSD_SynthPStream* lbl_8065BBC4           = NULL; /* pstream entry active list */
-static s32 lbl_8065BBC8                         = 0;
-static s32 lbl_8065BBCC                         = 0;
+static void (*sSynthDriverInactivatedCallback)(s32)                = NULL;
+static void (*sSynthDriverMasterClockCallback)(u32)                = NULL;
+static void (*sSynthDriverPauseCallback)(s32)                = NULL;
+static void (*sSynthPreFrameCallback)(void)               = NULL; /* driver pre-frame hook */
+static void (*sSynthPostFrameCallback)(void)               = NULL; /* driver post-frame hook */
+static HSD_SynthSFXNode* sSynthPendingVolumeUpdates           = NULL; /* vol-update pending list head */
+static HSD_SynthSFXNode* sSynthPendingMixUpdates           = NULL; /* mix-update pending list head */
+static HSD_SynthSFXNode* sSynthPendingRearPitchUpdates           = NULL; /* rear-link update list head */
+static s32 sSynthSfxIdBase                         = 0;
+static HSD_SynthBeatMarkerBlock* sSynthFreeBeatMarkerBlocks   = NULL; /* bmb free list */
+static HSD_SynthPStreamRequest* sSynthFreePStreamRequests    = NULL; /* request free list */
+static HSD_SynthPStreamRequest* sSynthQueuedPStreamRequests    = NULL; /* request queue */
+static HSD_SynthPStream* sSynthFreePStreams           = NULL; /* pstream entry free list */
+static HSD_SynthPStream* sSynthActivePStreams           = NULL; /* pstream entry active list */
+static s32 sSynthNextFreeStreamBuffer                         = 0;
+static s32 sSynthDriverFrame                         = 0;
 static s32 lbl_8065BBD0                         = 0;
-static s32 lbl_8065BBD4                         = 0;
-static s32 lbl_8065BBD8                         = 0;
-static s32 lbl_8065BBDC                         = 0; /* sound mode */
-static s32 lbl_8065BBE0                         = 0;
+static s32 sSynthStreamVolumeScale                         = 0;
+static s32 sSynthStreamBufferAramBase                         = 0;
+static s32 sSynthSoundMode                         = 0; /* sound mode */
+static s32 sSynthStreamBufferCount                         = 0;
 static void* lbl_8065BBE4                       = NULL; /* default silent sample bank base */
-static u32* lbl_8065BBE8                        = NULL; /* current SFX load source parse pointer */
-static void* lbl_8065BBEC                       = NULL; /* current SFX load dest pointer */
-static void* lbl_8065BBF0                       = NULL; /* max SFX bank heap boundary */
+static u32* sSynthSfxLoadReadCursor                        = NULL; /* current SFX load source parse pointer */
+static void* sSynthSfxLoadDestination                       = NULL; /* current SFX load dest pointer */
+static void* sSynthSfxBankHeapEnd                       = NULL; /* max SFX bank heap boundary */
 
 static u32 hsd_SynthSFXLoadBuf[8];
 static void* lbl_80655F60[0x20]; // sample lists, one per bank
-static HSD_SynthSFXLoadRequest lbl_80655FE0[0x20];
+static HSD_SynthSFXLoadRequest sSynthSfxLoadRequests[0x20];
 static s32 hsd_SynthSFXBank[0x20];
 static void* lbl_80656260[0x20]; // sfx entries hashed by id
 static s32 hsd_SynthSFXBankHead[0x21];
 // next link of each stream buffer, -2 ends a list and -1 is free
 static s32 lbl_80656364[0x17];
-static HSD_SynthPStreamHako lbl_806563C0[0x11];
-static AXVPB* lbl_80659200[0x40];
-static HSD_SynthSFXNode lbl_80656800[HSD_SYNTHSFXNODE_MAX];
-static f32 lbl_80658E00[0x100];
+static HSD_SynthPStreamHako sSynthStreamHakoBuffers[0x11];
+static AXVPB* sSynthVoicesPendingFree[0x40];
+static HSD_SynthSFXNode sSynthSfxNodes[HSD_SYNTHSFXNODE_MAX];
+static f32 sSynthSqrtLookup[0x100];
 static HSD_SynthVolFader lbl_80659300;
 static HSD_SynthVolFader lbl_80659318[0x40];
 static HSD_SynthPStream lbl_80659918[HSD_SYNTHPSTREAM_MAX];
 
 // defined further down, next to the code that first needs them in .sdata order
-static u32 lbl_8065B114[2];
-static f32 lbl_8065B11C;
+static u32 sSynthActiveChannelFaderMasks[2];
+static f32 sSynthStreamVolume;
 
 
 void HSD_SynthSFXLoadNewProc(void);
@@ -379,12 +379,12 @@ void HSD_SynthSFXUpdatePitch(HSD_SynthSFXNode* node);
 void HSD_SynthSFXUpdateVolume(HSD_SynthSFXNode* node);
 void HSD_SynthSFXInitMix(HSD_SynthSFXNode* node);
 void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate);
-void fn_801EF59C(HSD_SynthSFXNode* node);
+void ApplySynthMixTargetImmediately(HSD_SynthSFXNode* node);
 void HSD_SynthSFXLinkUpdateRearPitch(HSD_SynthSFXNode* rear, u16 unused);
-void fn_801EE938(void);
-void fn_801EF34C(void);
+void UpdateSynthVolumeFadersAndVoices(void);
+void AdvancePendingSynthMixUpdates(void);
 void HSD_SynthCallback(void);
-void fn_801F09A8(s32 result, s32 pstreamID);
+void QueueLoadedSynthStreamBuffer(s32 result, s32 pstreamID);
 void fn_801F0AB4(s32 unused, s32 id, HSD_SynthBeatMarker* markers);
 void HSD_SynthPStreamHakoHeaderCallback(s32 result, s32 pstreamID);
 void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID);
@@ -399,7 +399,7 @@ void dropcallback(void* dropped);
  */
 static inline HSD_SynthSFXNode* getNode(s32 id)
 {
-	HSD_SynthSFXNode* node = &lbl_80656800[id & (HSD_SYNTHSFXNODE_MAX - 1)];
+	HSD_SynthSFXNode* node = &sSynthSfxNodes[id & (HSD_SYNTHSFXNODE_MAX - 1)];
 	if (id > 0 && node->sfxID == id) {
 		return node;
 	}
@@ -412,8 +412,8 @@ static inline HSD_SynthSFXNode* getNode(s32 id)
  */
 void HSD_AudioSetMallocFreeProc(void* (*mallocProc)(s32), void (*freeProc)(void*))
 {
-	lbl_8065BB7C = mallocProc;
-	lbl_8065BB80 = freeProc;
+	sSynthMallocProc = mallocProc;
+	sSynthFreeProc = freeProc;
 }
 
 /**
@@ -422,7 +422,7 @@ void HSD_AudioSetMallocFreeProc(void* (*mallocProc)(s32), void (*freeProc)(void*
  */
 void* HSD_AudioMalloc(u32 size)
 {
-	void* p = lbl_8065BB7C(size);
+	void* p = sSynthMallocProc(size);
 	ASSERT_SYNTH_REPORT(0xAE, p, "audio heap overflow. size = %u\n", size);
 	return p;
 }
@@ -433,7 +433,7 @@ void* HSD_AudioMalloc(u32 size)
  */
 void HSD_AudioFree(void* ptr)
 {
-	lbl_8065BB80(ptr);
+	sSynthFreeProc(ptr);
 }
 
 // one loaded sfx file, a sample group in aram plus its sfx entries
@@ -452,7 +452,7 @@ typedef struct HSD_SynthSFXData {
 	s32 id;                        // _04
 } HSD_SynthSFXData;
 
-static s32 lbl_8065B0F4[2] = { 0, 0 }; /* devcom request ids, sample data then header */
+static s32 sSynthLoadRequestIds[2] = { 0, 0 }; /* devcom request ids, sample data then header */
 
 /**
  * @note Address: N/A
@@ -478,30 +478,30 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
 		alloc_size = hsd_SynthSFXLoadBuf[2] * 8 + sizeof(HSD_SynthSFXGroup);
 		total      = OSRoundUp32B(alloc_size + header_size);
 		for (j = (data_bytes >> 2) - 1; j >= 0; j--) {
-			((u32*)lbl_8065BBEC)[j + ((total - data_bytes) >> 2)] = ((u32*)lbl_8065BBEC)[j];
+			((u32*)sSynthSfxLoadDestination)[j + ((total - data_bytes) >> 2)] = ((u32*)sSynthSfxLoadDestination)[j];
 		}
 		dnw = total - header_size;
 		for (i = 0; i < 4; i++) {
-			((u32*)lbl_8065BBEC)[(dnw >> 2) + i] = hsd_SynthSFXLoadBuf[4 + i];
+			((u32*)sSynthSfxLoadDestination)[(dnw >> 2) + i] = hsd_SynthSFXLoadBuf[4 + i];
 		}
-		lbl_8065BBE8 = (u32*)((u8*)lbl_8065BBEC + (dnw & ~3));
+		sSynthSfxLoadReadCursor = (u32*)((u8*)sSynthSfxLoadDestination + (dnw & ~3));
 
-		bankID = lbl_80655FE0[0].bankID;
+		bankID = sSynthSfxLoadRequests[0].bankID;
 		pp     = (HSD_SynthSFXGroup**)&lbl_80655F60[bankID];
 		while (*pp != NULL) {
 			pp = &(*pp)->next;
 		}
-		*pp = lbl_8065BBEC;
+		*pp = sSynthSfxLoadDestination;
 
-		((HSD_SynthSFXGroup*)lbl_8065BBEC)->next   = NULL;
-		((HSD_SynthSFXGroup*)lbl_8065BBEC)->id     = lbl_80655FE0[0].entrynum;
-		((HSD_SynthSFXGroup*)lbl_8065BBEC)->araddr = hsd_SynthSFXBank[bankID];
-		((HSD_SynthSFXGroup*)lbl_8065BBEC)->arsize = hsd_SynthSFXLoadBuf[1];
+		((HSD_SynthSFXGroup*)sSynthSfxLoadDestination)->next   = NULL;
+		((HSD_SynthSFXGroup*)sSynthSfxLoadDestination)->id     = sSynthSfxLoadRequests[0].entrynum;
+		((HSD_SynthSFXGroup*)sSynthSfxLoadDestination)->araddr = hsd_SynthSFXBank[bankID];
+		((HSD_SynthSFXGroup*)sSynthSfxLoadDestination)->arsize = hsd_SynthSFXLoadBuf[1];
 		count                                      = hsd_SynthSFXLoadBuf[2];
 		base                                       = hsd_SynthSFXLoadBuf[3];
-		((HSD_SynthSFXGroup*)lbl_8065BBEC)->base   = base;
-		((HSD_SynthSFXGroup*)lbl_8065BBEC)->count  = count;
-		lbl_8065BBEC                               = (HSD_SynthSFXGroup*)lbl_8065BBEC + 1;
+		((HSD_SynthSFXGroup*)sSynthSfxLoadDestination)->base   = base;
+		((HSD_SynthSFXGroup*)sSynthSfxLoadDestination)->count  = count;
+		sSynthSfxLoadDestination                               = (HSD_SynthSFXGroup*)sSynthSfxLoadDestination + 1;
 		for (i = 0; i < count; i++) {
 			s32 n;
 			s32 nbytes;
@@ -509,42 +509,42 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
 			s32 id;
 			void** bucket;
 
-			n      = *lbl_8065BBE8;
+			n      = *sSynthSfxLoadReadCursor;
 			nbytes = (n << 6) + 8;
-			memcpy((u8*)lbl_8065BBEC + 8, lbl_8065BBE8, nbytes);
+			memcpy((u8*)sSynthSfxLoadDestination + 8, sSynthSfxLoadReadCursor, nbytes);
 			for (k = 0; k < n; k++) {
-				u8* e = (u8*)lbl_8065BBEC + k * 0x40;
+				u8* e = (u8*)sSynthSfxLoadDestination + k * 0x40;
 				if (e + 0x10 != NULL) {
 					*(u32*)(e + 0x14) += hsd_SynthSFXBank[bankID] * 2;
 				} else {
 					*(u32*)(e + 0x14) = (u32)lbl_8065BBE4;
 				}
-				*(u32*)((u8*)lbl_8065BBEC + k * 0x40 + 0x18) += hsd_SynthSFXBank[bankID] * 2;
-				*(u32*)((u8*)lbl_8065BBEC + k * 0x40 + 0x1C) += hsd_SynthSFXBank[bankID] * 2;
+				*(u32*)((u8*)sSynthSfxLoadDestination + k * 0x40 + 0x18) += hsd_SynthSFXBank[bankID] * 2;
+				*(u32*)((u8*)sSynthSfxLoadDestination + k * 0x40 + 0x1C) += hsd_SynthSFXBank[bankID] * 2;
 			}
 			id                                    = base + i;
-			((HSD_SynthSFXData*)lbl_8065BBEC)->id = id;
+			((HSD_SynthSFXData*)sSynthSfxLoadDestination)->id = id;
 			id &= 0x1F;
 			bucket                                  = &lbl_80656260[id];
-			((HSD_SynthSFXData*)lbl_8065BBEC)->next = *bucket;
-			*bucket                                 = lbl_8065BBEC;
-			lbl_8065BBE8 += (u32)nbytes >> 2;
-			lbl_8065BBEC = (u32*)lbl_8065BBEC + ((u32)((n << 6) + 0x10) >> 2);
+			((HSD_SynthSFXData*)sSynthSfxLoadDestination)->next = *bucket;
+			*bucket                                 = sSynthSfxLoadDestination;
+			sSynthSfxLoadReadCursor += (u32)nbytes >> 2;
+			sSynthSfxLoadDestination = (u32*)sSynthSfxLoadDestination + ((u32)((n << 6) + 0x10) >> 2);
 		}
-		if (lbl_80655FE0[0].callback != NULL) {
-			lbl_80655FE0[0].callback(lbl_80655FE0[0].entrynum, lbl_80655FE0[0].arg);
+		if (sSynthSfxLoadRequests[0].callback != NULL) {
+			sSynthSfxLoadRequests[0].callback(sSynthSfxLoadRequests[0].entrynum, sSynthSfxLoadRequests[0].arg);
 		}
 		hsd_SynthSFXBank[bankID] += hsd_SynthSFXLoadBuf[1];
 	} else {
-		if (lbl_8065BBEC != NULL) {
-			HSD_AudioFree(lbl_8065BBEC);
+		if (sSynthSfxLoadDestination != NULL) {
+			HSD_AudioFree(sSynthSfxLoadDestination);
 		}
 		lbl_8065BB8C = 0;
 	}
 	enabled = OSDisableInterrupts();
-	lbl_8065BB88 -= 1;
-	for (i = 0; i < lbl_8065BB88; i++) {
-		lbl_80655FE0[i] = lbl_80655FE0[i + 1];
+	sSynthSfxLoadQueueLength -= 1;
+	for (i = 0; i < sSynthSfxLoadQueueLength; i++) {
+		sSynthSfxLoadRequests[i] = sSynthSfxLoadRequests[i + 1];
 	}
 	HSD_SynthSFXLoadNewProc();
 	OSRestoreInterrupts(enabled);
@@ -562,8 +562,8 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     addi     r11, r1, 0x40
     bl       _savegpr_21
     lwz      r0, lbl_8065BB8C@sda21(r0)
-    lis      r3, lbl_80655F40@ha
-    addi     r31, r3, lbl_80655F40@l
+    lis      r3, hsd_SynthSFXLoadBuf@ha
+    addi     r31, r3, hsd_SynthSFXLoadBuf@l
     cmpwi    r0, 0x0
     bne      .L_801EC6BC
     addi     r3, r31, 0x0
@@ -585,7 +585,7 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     mtctr    r0
     beq      .L_801EC480
 .L_801EC394:
-    lwz      r9, lbl_8065BBEC@sda21(r0)
+    lwz      r9, sSynthSfxLoadDestination@sda21(r0)
     add      r5, r10, r8
     slwi     r0, r5, 2
     subi     r10, r10, 0x1
@@ -597,47 +597,47 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     slwi     r0, r5, 2
     add      r5, r10, r8
     subi     r10, r10, 0x1
-    lwz      r9, lbl_8065BBEC@sda21(r0)
+    lwz      r9, sSynthSfxLoadDestination@sda21(r0)
     lwzx     r6, r9, r7
     subi     r7, r7, 0x4
     stwx     r6, r9, r0
     slwi     r0, r5, 2
     add      r5, r10, r8
     subi     r10, r10, 0x1
-    lwz      r9, lbl_8065BBEC@sda21(r0)
+    lwz      r9, sSynthSfxLoadDestination@sda21(r0)
     lwzx     r6, r9, r7
     subi     r7, r7, 0x4
     stwx     r6, r9, r0
     slwi     r0, r5, 2
     add      r5, r10, r8
     subi     r10, r10, 0x1
-    lwz      r9, lbl_8065BBEC@sda21(r0)
+    lwz      r9, sSynthSfxLoadDestination@sda21(r0)
     lwzx     r6, r9, r7
     subi     r7, r7, 0x4
     stwx     r6, r9, r0
     slwi     r0, r5, 2
     add      r5, r10, r8
     subi     r10, r10, 0x1
-    lwz      r9, lbl_8065BBEC@sda21(r0)
+    lwz      r9, sSynthSfxLoadDestination@sda21(r0)
     lwzx     r6, r9, r7
     subi     r7, r7, 0x4
     stwx     r6, r9, r0
     slwi     r0, r5, 2
     add      r5, r10, r8
     subi     r10, r10, 0x1
-    lwz      r9, lbl_8065BBEC@sda21(r0)
+    lwz      r9, sSynthSfxLoadDestination@sda21(r0)
     lwzx     r6, r9, r7
     subi     r7, r7, 0x4
     stwx     r6, r9, r0
     slwi     r0, r5, 2
     add      r5, r10, r8
     subi     r10, r10, 0x1
-    lwz      r9, lbl_8065BBEC@sda21(r0)
+    lwz      r9, sSynthSfxLoadDestination@sda21(r0)
     lwzx     r6, r9, r7
     subi     r7, r7, 0x4
     stwx     r6, r9, r0
     slwi     r0, r5, 2
-    lwz      r9, lbl_8065BBEC@sda21(r0)
+    lwz      r9, sSynthSfxLoadDestination@sda21(r0)
     lwzx     r6, r9, r7
     subi     r7, r7, 0x4
     stwx     r6, r9, r0
@@ -647,7 +647,7 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
 .L_801EC480:
     mtctr    r4
 .L_801EC484:
-    lwz      r9, lbl_8065BBEC@sda21(r0)
+    lwz      r9, sSynthSfxLoadDestination@sda21(r0)
     add      r5, r10, r8
     slwi     r0, r5, 2
     subi     r10, r10, 0x1
@@ -660,7 +660,7 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     subf     r4, r11, r12
     lwz      r0, 0x10(r10)
     srwi     r7, r4, 2
-    lwz      r6, lbl_8065BBEC@sda21(r0)
+    lwz      r6, sSynthSfxLoadDestination@sda21(r0)
     clrrwi   r9, r4, 2
     addi     r5, r7, 0x1
     addi     r4, r7, 0x2
@@ -670,21 +670,21 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     slwi     r5, r4, 2
     lwz      r8, 0x14(r10)
     slwi     r0, r0, 2
-    lwz      r7, lbl_8065BBEC@sda21(r0)
+    lwz      r7, sSynthSfxLoadDestination@sda21(r0)
     addi     r4, r31, 0xa0
     addi     r11, r31, 0x20
     stwx     r8, r7, r6
     lwz      r7, 0x18(r10)
-    lwz      r6, lbl_8065BBEC@sda21(r0)
+    lwz      r6, sSynthSfxLoadDestination@sda21(r0)
     stwx     r7, r6, r5
     lwz      r6, 0x1c(r10)
-    lwz      r5, lbl_8065BBEC@sda21(r0)
+    lwz      r5, sSynthSfxLoadDestination@sda21(r0)
     stwx     r6, r5, r0
-    lwz      r5, lbl_8065BBEC@sda21(r0)
+    lwz      r5, sSynthSfxLoadDestination@sda21(r0)
     lwz      r0, 0x4(r4)
     add      r4, r5, r9
     slwi     r30, r0, 2
-    stw      r4, lbl_8065BBE8@sda21(r0)
+    stw      r4, sSynthSfxLoadReadCursor@sda21(r0)
     add      r11, r11, r30
     b        .L_801EC524
 .L_801EC520:
@@ -697,31 +697,31 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     li       r24, 0x0
     addi     r29, r31, 0x2a0
     addi     r25, r31, 0x0
-    lwz      r4, lbl_8065BBEC@sda21(r0)
+    lwz      r4, sSynthSfxLoadDestination@sda21(r0)
     addi     r28, r31, 0x320
     stw      r24, 0x0(r4)
     lwz      r0, 0xa0(r31)
-    lwz      r4, lbl_8065BBEC@sda21(r0)
+    lwz      r4, sSynthSfxLoadDestination@sda21(r0)
     stw      r0, 0x4(r4)
     lwzx     r0, r29, r30
-    lwz      r4, lbl_8065BBEC@sda21(r0)
+    lwz      r4, sSynthSfxLoadDestination@sda21(r0)
     stw      r0, 0x10(r4)
     lwz      r0, 0x4(r25)
-    lwz      r4, lbl_8065BBEC@sda21(r0)
+    lwz      r4, sSynthSfxLoadDestination@sda21(r0)
     stw      r0, 0x14(r4)
     lwz      r23, 0x8(r3)
     lwz      r22, 0xc(r25)
-    lwz      r3, lbl_8065BBEC@sda21(r0)
+    lwz      r3, sSynthSfxLoadDestination@sda21(r0)
     stw      r22, 0x8(r3)
-    lwz      r3, lbl_8065BBEC@sda21(r0)
+    lwz      r3, sSynthSfxLoadDestination@sda21(r0)
     stw      r23, 0xc(r3)
-    lwz      r3, lbl_8065BBEC@sda21(r0)
+    lwz      r3, sSynthSfxLoadDestination@sda21(r0)
     addi     r0, r3, 0x18
-    stw      r0, lbl_8065BBEC@sda21(r0)
+    stw      r0, sSynthSfxLoadDestination@sda21(r0)
     b        .L_801EC680
 .L_801EC598:
-    lwz      r4, lbl_8065BBE8@sda21(r0)
-    lwz      r3, lbl_8065BBEC@sda21(r0)
+    lwz      r4, sSynthSfxLoadReadCursor@sda21(r0)
+    lwz      r3, sSynthSfxLoadDestination@sda21(r0)
     lwz      r21, 0x0(r4)
     addi     r3, r3, 0x8
     slwi     r26, r21, 6
@@ -733,7 +733,7 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     cmpwi    r21, 0x0
     ble      .L_801EC638
 .L_801EC5C8:
-    lwz      r0, lbl_8065BBEC@sda21(r0)
+    lwz      r0, sSynthSfxLoadDestination@sda21(r0)
     add      r5, r0, r3
     addic.   r0, r5, 0x10
     beq      .L_801EC5F0
@@ -747,7 +747,7 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     lwz      r0, lbl_8065BBE4@sda21(r0)
     stw      r0, 0x14(r5)
 .L_801EC5F8:
-    lwz      r7, lbl_8065BBEC@sda21(r0)
+    lwz      r7, sSynthSfxLoadDestination@sda21(r0)
     addi     r6, r3, 0x18
     lwzx     r0, r29, r30
     addi     r5, r3, 0x1c
@@ -756,7 +756,7 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     slwi     r0, r0, 1
     add      r0, r4, r0
     stwx     r0, r7, r6
-    lwz      r6, lbl_8065BBEC@sda21(r0)
+    lwz      r6, sSynthSfxLoadDestination@sda21(r0)
     lwzx     r0, r29, r30
     lwzx     r4, r6, r5
     slwi     r0, r0, 1
@@ -764,7 +764,7 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     stwx     r0, r6, r5
     bdnz     .L_801EC5C8
 .L_801EC638:
-    lwz      r4, lbl_8065BBEC@sda21(r0)
+    lwz      r4, sSynthSfxLoadDestination@sda21(r0)
     add      r5, r22, r24
     addi     r0, r26, 0x10
     clrrwi   r3, r27, 2
@@ -773,15 +773,15 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     clrrwi   r0, r0, 2
     addi     r24, r24, 0x1
     lwzx     r5, r28, r6
-    lwz      r4, lbl_8065BBEC@sda21(r0)
+    lwz      r4, sSynthSfxLoadDestination@sda21(r0)
     stw      r5, 0x0(r4)
-    lwz      r5, lbl_8065BBEC@sda21(r0)
-    lwz      r4, lbl_8065BBE8@sda21(r0)
+    lwz      r5, sSynthSfxLoadDestination@sda21(r0)
+    lwz      r4, sSynthSfxLoadReadCursor@sda21(r0)
     add      r0, r5, r0
     stwx     r5, r28, r6
     add      r3, r4, r3
-    stw      r3, lbl_8065BBE8@sda21(r0)
-    stw      r0, lbl_8065BBEC@sda21(r0)
+    stw      r3, sSynthSfxLoadReadCursor@sda21(r0)
+    stw      r0, sSynthSfxLoadDestination@sda21(r0)
 .L_801EC680:
     cmpw     r24, r23
     blt      .L_801EC598
@@ -800,10 +800,10 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     stwx     r0, r29, r30
     b        .L_801EC6DC
 .L_801EC6BC:
-    lwz      r3, lbl_8065BBEC@sda21(r0)
+    lwz      r3, sSynthSfxLoadDestination@sda21(r0)
     cmplwi   r3, 0x0
     beq      .L_801EC6D4
-    lwz      r12, lbl_8065BB80@sda21(r0)
+    lwz      r12, sSynthFreeProc@sda21(r0)
     mtctr    r12
     bctrl
 .L_801EC6D4:
@@ -811,12 +811,12 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     stw      r0, lbl_8065BB8C@sda21(r0)
 .L_801EC6DC:
     bl       OSDisableInterrupts
-    lwz      r4, lbl_8065BB88@sda21(r0)
+    lwz      r4, sSynthSfxLoadQueueLength@sda21(r0)
     mr       r22, r3
     addi     r5, r31, 0xa0
     subi     r0, r4, 0x1
     li       r4, 0x0
-    stw      r0, lbl_8065BB88@sda21(r0)
+    stw      r0, sSynthSfxLoadQueueLength@sda21(r0)
     b        .L_801EC724
 .L_801EC6FC:
     lwz      r3, 0x10(r5)
@@ -830,7 +830,7 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
     stw      r0, 0xc(r5)
     addi     r5, r5, 0x10
 .L_801EC724:
-    lwz      r0, lbl_8065BB88@sda21(r0)
+    lwz      r0, sSynthSfxLoadQueueLength@sda21(r0)
     cmpw     r4, r0
     blt      .L_801EC6FC
     bl       HSD_SynthSFXLoadNewProc
@@ -854,22 +854,22 @@ void HSD_SynthSFXHeaderLoadCallback(s32 result, s32 length, void* addr, s32 canc
 	u32 alloc_size;
 
 	if (lbl_8065BB8C == 0) {
-		s32 bankID = lbl_80655FE0[0].bankID;
+		s32 bankID = sSynthSfxLoadRequests[0].bankID;
 
 		ASSERT_SYNTH_REPORT(0x14F, hsd_SynthSFXBankHead[bankID + 1] - hsd_SynthSFXBank[bankID] >= hsd_SynthSFXLoadBuf[1],
-		                    "Can't load SFX file; bank(id=%d) buffer overflow.\n", lbl_80655FE0[0].bankID);
+		                    "Can't load SFX file; bank(id=%d) buffer overflow.\n", sSynthSfxLoadRequests[0].bankID);
 
 		alloc_size   = hsd_SynthSFXLoadBuf[2] * 8 + sizeof(HSD_SynthSFXGroup);
 		header_size  = hsd_SynthSFXLoadBuf[0];
-		lbl_8065BBEC = HSD_AudioMalloc(OSRoundUp32B(alloc_size + header_size));
-		lbl_8065B0F4[1]
-		    = HSD_DevComRequest(lbl_80655FE0[0].entrynum, 0x20, lbl_8065BBEC, OSRoundUp32B(header_size - 0x10), 0x21, 1, NULL, 0);
-		lbl_8065B0F4[0]
-		    = HSD_DevComRequest(lbl_80655FE0[0].entrynum, OSRoundUp32B(header_size + 0x10), (void*)hsd_SynthSFXBank[lbl_80655FE0[0].bankID],
+		sSynthSfxLoadDestination = HSD_AudioMalloc(OSRoundUp32B(alloc_size + header_size));
+		sSynthLoadRequestIds[1]
+		    = HSD_DevComRequest(sSynthSfxLoadRequests[0].entrynum, 0x20, sSynthSfxLoadDestination, OSRoundUp32B(header_size - 0x10), 0x21, 1, NULL, 0);
+		sSynthLoadRequestIds[0]
+		    = HSD_DevComRequest(sSynthSfxLoadRequests[0].entrynum, OSRoundUp32B(header_size + 0x10), (void*)hsd_SynthSFXBank[sSynthSfxLoadRequests[0].bankID],
 		                        hsd_SynthSFXLoadBuf[1], 0x23, 1, (void (*)(s32, void*, s32, s32))HSD_SynthSFXSampleLoadCallback, NULL);
 		return;
 	}
-	lbl_8065BBEC = NULL;
+	sSynthSfxLoadDestination = NULL;
 	HSD_SynthSFXSampleLoadCallback(0, 0, NULL, 0);
 }
 
@@ -879,9 +879,9 @@ void HSD_SynthSFXHeaderLoadCallback(s32 result, s32 length, void* addr, s32 canc
  */
 void HSD_SynthSFXLoadNewProc(void)
 {
-	if (lbl_8065BB88 != 0) {
+	if (sSynthSfxLoadQueueLength != 0) {
 		u32 enabled     = OSDisableInterrupts();
-		lbl_8065B0F4[0] = HSD_DevComRequest(lbl_80655FE0[0].entrynum, 0, hsd_SynthSFXLoadBuf, 0x20, 0x21, 1,
+		sSynthLoadRequestIds[0] = HSD_DevComRequest(sSynthSfxLoadRequests[0].entrynum, 0, hsd_SynthSFXLoadBuf, 0x20, 0x21, 1,
 		                                    (void (*)(s32, void*, s32, s32))HSD_SynthSFXHeaderLoadCallback, NULL);
 		OSRestoreInterrupts(enabled);
 	}
@@ -901,18 +901,18 @@ s32 HSD_SynthSFXLoad(const s8* filename, s32 bankID, void (*callback)(s32, s32),
 	entrynum = DVDConvertPathToEntrynum(filename);
 	if (entrynum != -1) {
 		// spins on the assert until a load slot frees up, lol
-		while (lbl_8065BB88 >= 0x20) {
+		while (sSynthSfxLoadQueueLength >= 0x20) {
 			ASSERT_SYNTH(0x193, 0);
 		}
 
 		enabled                             = OSDisableInterrupts();
-		lbl_80655FE0[lbl_8065BB88].entrynum = entrynum;
-		lbl_80655FE0[lbl_8065BB88].bankID   = bankID;
-		lbl_80655FE0[lbl_8065BB88].callback = callback;
-		lbl_80655FE0[lbl_8065BB88].arg      = arg;
-		lbl_8065BB88 += 1;
+		sSynthSfxLoadRequests[sSynthSfxLoadQueueLength].entrynum = entrynum;
+		sSynthSfxLoadRequests[sSynthSfxLoadQueueLength].bankID   = bankID;
+		sSynthSfxLoadRequests[sSynthSfxLoadQueueLength].callback = callback;
+		sSynthSfxLoadRequests[sSynthSfxLoadQueueLength].arg      = arg;
+		sSynthSfxLoadQueueLength += 1;
 
-		if (lbl_8065BB88 == 1) {
+		if (sSynthSfxLoadQueueLength == 1) {
 			HSD_SynthSFXLoadNewProc();
 		}
 
@@ -927,7 +927,7 @@ s32 HSD_SynthSFXLoad(const s8* filename, s32 bankID, void (*callback)(s32, s32),
  */
 void HSD_SynthSFXWaitForLoadCompletion(void (*callback)(void))
 {
-	while (lbl_8065BB88 != 0) {
+	while (sSynthSfxLoadQueueLength != 0) {
 		callback();
 	}
 }
@@ -938,7 +938,7 @@ void HSD_SynthSFXWaitForLoadCompletion(void (*callback)(void))
  */
 s32 HSD_SynthSFXGetPendingLoadCount(void)
 {
-	return lbl_8065BB88 - lbl_8065BB8C;
+	return sSynthSfxLoadQueueLength - lbl_8065BB8C;
 }
 
 static inline void unlinkSFXData(s32 id)
@@ -969,7 +969,7 @@ static inline void unlinkSFXGroup(HSD_SynthSFXGroup* group)
  */
 s32 HSD_SynthSFXNewBank(s32 size)
 {
-	if (hsd_SynthSFXBankNum >= 0x20 || size + hsd_SynthSFXBankHead[hsd_SynthSFXBankNum] > (u32)lbl_8065BBF0) {
+	if (hsd_SynthSFXBankNum >= 0x20 || size + hsd_SynthSFXBankHead[hsd_SynthSFXBankNum] > (u32)sSynthSfxBankHeapEnd) {
 		return -1;
 	}
 	hsd_SynthSFXBank[hsd_SynthSFXBankNum]         = hsd_SynthSFXBankHead[hsd_SynthSFXBankNum];
@@ -1039,8 +1039,8 @@ static f32 lbl_8025BA10[0x100] = {
 
 static AXPBSRC lbl_8050932C = { 1, 0, 0, { 0, 0, 0, 0 } };
 
-static s32 lbl_8065B100 = -0x03880000;
-static s32 lbl_8065B104 = -1;
+static s32 sSynthDecibelFloor = -0x03880000;
+static s32 sSynthQueuedStreamPlaybackId = -1;
 
 /**
  * @note Address: 0x801ECC54
@@ -1051,14 +1051,14 @@ s32 HSD_SynthVolToDBx(f32 vol)
 	s32 dbx;
 
 	if (vol < 0.000030199517f) {
-		return lbl_8065B100;
+		return sSynthDecibelFloor;
 	}
 	if (vol >= 1.0f) {
 		return 0;
 	}
 	dbx = 5692384.633202305 * log(vol);
-	if (dbx < lbl_8065B100) {
-		dbx = lbl_8065B100;
+	if (dbx < sSynthDecibelFloor) {
+		dbx = sSynthDecibelFloor;
 	}
 	return dbx;
 }
@@ -1069,7 +1069,7 @@ s32 HSD_SynthVolToDBx(f32 vol)
  */
 f32 HSD_SynthDBxToVol(s32 dbx)
 {
-	if (dbx <= lbl_8065B100) {
+	if (dbx <= sSynthDecibelFloor) {
 		return 0.0f;
 	}
 	if (dbx >= 0) {
@@ -1102,16 +1102,16 @@ static void unlinkBufTable(s32* p, s32 ix)
 
 static void freeBeatMarkers(s32 buf)
 {
-	HSD_SynthBeatMarkerBlock* bmb = lbl_806563C0[buf].markers;
+	HSD_SynthBeatMarkerBlock* bmb = sSynthStreamHakoBuffers[buf].markers;
 	HSD_SynthBeatMarkerBlock* next;
 
 	while (bmb != NULL) {
 		next         = bmb->next;
-		bmb->next    = lbl_8065BBB4;
-		lbl_8065BBB4 = bmb;
+		bmb->next    = sSynthFreeBeatMarkerBlocks;
+		sSynthFreeBeatMarkerBlocks = bmb;
 		bmb          = next;
 	}
-	lbl_806563C0[buf].markers = NULL;
+	sSynthStreamHakoBuffers[buf].markers = NULL;
 }
 
 s32 HSD_SynthPStreamStart(s32 entrynum, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 vol1Clamp, u8 vol2Clamp, u8 pan, f32 pitch1,
@@ -1126,9 +1126,9 @@ static inline void releasePStream(HSD_SynthPStream* pst)
 	s32* head;
 	u32 enabled;
 
-	pit = &lbl_8065BBC4;
+	pit = &sSynthActivePStreams;
 	if (pst->schedulerSlot >= 0) {
-		fn_801EB8C4(pst->schedulerSlot);
+		ReleaseDvdStreamingSlot(pst->schedulerSlot);
 	}
 	for (; *pit != NULL && *pit != pst; pit = &(*pit)->next) { }
 	if (*pit != NULL) {
@@ -1138,28 +1138,28 @@ static inline void releasePStream(HSD_SynthPStream* pst)
 		}
 		*pit = (*pit)->next;
 	}
-	pst->next    = lbl_8065BBC0;
-	lbl_8065BBC0 = pst;
+	pst->next    = sSynthFreePStreams;
+	sSynthFreePStreams = pst;
 
-	if (pst->node->sfxID == lbl_8065B104) {
-		req = lbl_8065BBBC;
-		for (rit = &lbl_8065BBBC; *rit != NULL; rit = &(*rit)->next) {
+	if (pst->node->sfxID == sSynthQueuedStreamPlaybackId) {
+		req = sSynthQueuedPStreamRequests;
+		for (rit = &sSynthQueuedPStreamRequests; *rit != NULL; rit = &(*rit)->next) {
 			if (*rit == req) {
 				*rit = req->next;
 				break;
 			}
 		}
-		req->next    = lbl_8065BBB8;
-		lbl_8065BBB8 = req;
+		req->next    = sSynthFreePStreamRequests;
+		sSynthFreePStreamRequests = req;
 
 		enabled = OSDisableInterrupts();
-		req     = lbl_8065BBBC;
+		req     = sSynthQueuedPStreamRequests;
 		if (req != NULL) {
-			lbl_8065B104 = HSD_SynthPStreamStart(req->entrynum, req->vol, req->volMode, req->vol2, req->vol2Mode, req->priority, req->itd,
+			sSynthQueuedStreamPlaybackId = HSD_SynthPStreamStart(req->entrynum, req->vol, req->volMode, req->vol2, req->vol2Mode, req->priority, req->itd,
 			                                     req->channel, req->pitch1, req->pitch2, req->mixMain, req->mixAuxA, req->mixAuxB,
 			                                     req->unk11, req->unk28, req->unk2A);
 		} else {
-			lbl_8065B104 = -1;
+			sSynthQueuedStreamPlaybackId = -1;
 		}
 		OSRestoreInterrupts(enabled);
 	}
@@ -1171,7 +1171,7 @@ static inline void releasePStream(HSD_SynthPStream* pst)
  */
 u32 HSD_SynthGetSoundMode(void)
 {
-	return lbl_8065BBDC;
+	return sSynthSoundMode;
 }
 
 void AXSetMode(u32 mode);
@@ -1185,7 +1185,7 @@ void HSD_SynthSetSoundMode(s32 mode)
 	s32 i;
 	u32 enabled;
 
-	lbl_8065BBDC = mode;
+	sSynthSoundMode = mode;
 	if (mode == 2 || mode == 4) {
 		AXSetMode(1);
 	} else if (mode == 3) {
@@ -1196,8 +1196,8 @@ void HSD_SynthSetSoundMode(s32 mode)
 	OSSetSoundMode(mode != 0);
 	enabled = OSDisableInterrupts();
 	for (i = 0; i < HSD_SYNTHSFXNODE_MAX; i++) {
-		if (lbl_80656800[i].sfxID > 0) {
-			HSD_SynthSFXUpdateMix(&lbl_80656800[i], 1);
+		if (sSynthSfxNodes[i].sfxID > 0) {
+			HSD_SynthSFXUpdateMix(&sSynthSfxNodes[i], 1);
 		}
 	}
 	OSRestoreInterrupts(enabled);
@@ -1214,9 +1214,9 @@ void HSD_SynthInitPantable(void)
 	s32 i;
 
 	for (i = 0; i <= 0xFE; i++) {
-		lbl_80658E00[i] = sqrt(0.003937008f * i);
+		sSynthSqrtLookup[i] = sqrt(0.003937008f * i);
 	}
-	lbl_80658E00[0xFF] = lbl_80658E00[0xFE];
+	sSynthSqrtLookup[0xFF] = sSynthSqrtLookup[0xFE];
 }
 
 static inline s32 lastBuf(HSD_SynthPStream* pst)
@@ -1233,14 +1233,14 @@ static inline s32 lastBuf(HSD_SynthPStream* pst)
 static inline s32 getFreeBuf(void)
 {
 	s32 i;
-	s32 buf = lbl_8065BBC8;
+	s32 buf = sSynthNextFreeStreamBuffer;
 
-	for (i = 0; i < lbl_8065BBE0; i++) {
+	for (i = 0; i < sSynthStreamBufferCount; i++) {
 		if (lbl_80656364[i] == -1 && i != buf) {
-			lbl_8065BBC8 = i;
+			sSynthNextFreeStreamBuffer = i;
 		}
 	}
-	if (buf == lbl_8065BBC8) {
+	if (buf == sSynthNextFreeStreamBuffer) {
 		return -1;
 	}
 	return buf;
@@ -1255,12 +1255,12 @@ static inline void unlinkNode(HSD_SynthSFXNode* node)
 	HSD_SynthSFXNode** it;
 	HSD_SynthSFXNode* rear;
 
-	if (!(node->flags & 1) && node->link.pstream == NULL && lbl_8065BB90 != NULL) {
-		lbl_8065BB90(node->sfxID);
+	if (!(node->flags & 1) && node->link.pstream == NULL && sSynthDriverInactivatedCallback != NULL) {
+		sSynthDriverInactivatedCallback(node->sfxID);
 	}
 
 	if (node->volUpdatePending) {
-		for (it = &lbl_8065BBA4; *it != NULL; it = &(*it)->volUpdateNext) {
+		for (it = &sSynthPendingVolumeUpdates; *it != NULL; it = &(*it)->volUpdateNext) {
 			if (*it == node) {
 				node->volUpdatePending = 0;
 				*it                    = node->volUpdateNext;
@@ -1269,7 +1269,7 @@ static inline void unlinkNode(HSD_SynthSFXNode* node)
 		}
 	}
 	if (node->mixUpdatePending) {
-		for (it = &lbl_8065BBA8; *it != NULL; it = &(*it)->mixUpdateNext) {
+		for (it = &sSynthPendingMixUpdates; *it != NULL; it = &(*it)->mixUpdateNext) {
 			if (*it == node) {
 				node->mixUpdatePending = 0;
 				*it                    = node->mixUpdateNext;
@@ -1278,8 +1278,8 @@ static inline void unlinkNode(HSD_SynthSFXNode* node)
 		}
 	}
 	if (node->rearIndex != -1) {
-		rear = &lbl_80656800[node->rearIndex];
-		for (it = &lbl_8065BBAC; *it != NULL; it = &(*it)->link.rearNext) {
+		rear = &sSynthSfxNodes[node->rearIndex];
+		for (it = &sSynthPendingRearPitchUpdates; *it != NULL; it = &(*it)->link.rearNext) {
 			if (*it == rear) {
 				*it = rear->link.rearNext;
 				break;
@@ -1309,11 +1309,11 @@ void HSD_SynthSFXFreeVoice(HSD_SynthSFXNode* node)
 		if (i == 0) {
 			base = node;
 		} else {
-			base = &lbl_80656800[node->rearIndex];
+			base = &sSynthSfxNodes[node->rearIndex];
 		}
 		for (j = 0; j < node->voice_count; j++) {
 			AXFreeVoice(base->voice[j]);
-			lbl_80656800[base->voice[j]->index].sfxID = 0;
+			sSynthSfxNodes[base->voice[j]->index].sfxID = 0;
 		}
 	}
 	OSRestoreInterrupts(enabled);
@@ -1333,10 +1333,10 @@ void dropcallback(void* dropped)
 	s32 j;
 
 	enabled = OSDisableInterrupts();
-	node    = &lbl_80656800[voice->index];
-	for (i = 0; i < lbl_8065BB78; i++) {
-		if (lbl_80659200[i] == voice) {
-			lbl_80659200[i] = NULL;
+	node    = &sSynthSfxNodes[voice->index];
+	for (i = 0; i < sSynthPendingVoiceFreeCount; i++) {
+		if (sSynthVoicesPendingFree[i] == voice) {
+			sSynthVoicesPendingFree[i] = NULL;
 			break;
 		}
 	}
@@ -1346,10 +1346,10 @@ void dropcallback(void* dropped)
 		return;
 	}
 	if (node->sfxID == -1) {
-		node = &lbl_80656800[node->voice[0]->index];
+		node = &sSynthSfxNodes[node->voice[0]->index];
 	}
 	if (node->sfxID < -1) {
-		node = &lbl_80656800[lbl_80656800[node->voice[0]->index].rearIndex];
+		node = &sSynthSfxNodes[sSynthSfxNodes[node->voice[0]->index].rearIndex];
 	}
 	if (node->link.pstream != NULL) {
 		OSReport("Program streaming dropped.\n");
@@ -1360,12 +1360,12 @@ void dropcallback(void* dropped)
 
 	// the driver already took the dropped voice, queue the others for freeing
 	for (i = 0; i < (node->rearIndex != -1) + 1; i++) {
-		base = i == 0 ? node : &lbl_80656800[node->rearIndex];
+		base = i == 0 ? node : &sSynthSfxNodes[node->rearIndex];
 		for (j = 0; j < node->voice_count; j++) {
 			if (base->voice[j] != voice) {
-				lbl_80659200[lbl_8065BB78++] = base->voice[j];
+				sSynthVoicesPendingFree[sSynthPendingVoiceFreeCount++] = base->voice[j];
 			}
-			lbl_80656800[base->voice[j]->index].sfxID = 0;
+			sSynthSfxNodes[base->voice[j]->index].sfxID = 0;
 		}
 	}
 	OSRestoreInterrupts(enabled);
@@ -1398,7 +1398,7 @@ extern void AXSetVoiceState(AXVPB* p, u16 state);
  * @note Address: 0x801ED444
  * @note Size: 0x740
  */
-s32 fn_801ED444(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 clamp1, u8 clamp2, u8 pan, f32 mixMain, f32 mixAuxA,
+s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 clamp1, u8 clamp2, u8 pan, f32 mixMain, f32 mixAuxA,
                 f32 mixAuxB, u8 span, s32 priority, s32 channel, s32 rear, s32 unk16)
 {
 	AXVPB* voices[4] = { NULL, NULL, NULL, NULL };
@@ -1422,7 +1422,7 @@ s32 fn_801ED444(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 clam
 
 	enabled = OSDisableInterrupts();
 	entry   = (HSD_SynthSFXEntry*)lbl_80656260[sfxID & 0x1F];
-	if (lbl_8065BBDC != 4) {
+	if (sSynthSoundMode != 4) {
 		rear = 0;
 	}
 	for (; entry != NULL; entry = entry->next) {
@@ -1468,12 +1468,12 @@ s32 fn_801ED444(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 clam
 			voices[1] = NULL;
 		}
 		if (entry->count == 2) {
-			lbl_80656800[voices[1]->index].sfxID    = -1;
-			lbl_80656800[voices[1]->index].voice[0] = voices[0];
+			sSynthSfxNodes[voices[1]->index].sfxID    = -1;
+			sSynthSfxNodes[voices[1]->index].voice[0] = voices[0];
 		}
 
 		uid                = voices[0]->index;
-		node               = &lbl_80656800[uid];
+		node               = &sSynthSfxNodes[uid];
 		node->link.pstream = NULL;
 		node->next         = (HSD_SynthSFXNode*)sfxID;
 		node->flags        = 0;
@@ -1519,13 +1519,13 @@ s32 fn_801ED444(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 clam
 		node->unk16       = unk16;
 
 		if (rear != 0) {
-			rearNode            = &lbl_80656800[voices[2]->index];
+			rearNode            = &sSynthSfxNodes[voices[2]->index];
 			rearNode->sfxID     = -2;
 			rearNode->rearIndex = uid;
 			node->rearIndex     = voices[2]->index;
 			if (entry->count == 2) {
-				lbl_80656800[voices[3]->index].sfxID    = -3;
-				lbl_80656800[voices[3]->index].voice[0] = voices[2];
+				sSynthSfxNodes[voices[3]->index].sfxID    = -3;
+				sSynthSfxNodes[voices[3]->index].voice[0] = voices[2];
 			}
 			rearNode->voice_count = entry->count;
 			rearNode->voice[0]    = voices[2];
@@ -1534,7 +1534,7 @@ s32 fn_801ED444(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 clam
 			node->rearIndex = -1;
 		}
 
-		master = node->channel < 0x3F ? lbl_8065B11C * lbl_80659300.volume : lbl_8065B11C;
+		master = node->channel < 0x3F ? sSynthStreamVolume * lbl_80659300.volume : sSynthStreamVolume;
 		ve.currentVolume
 		    = 32767.0f * (node->u.user_vol[1].volume * (node->u.user_vol[0].volume * (lbl_80659318[node->channel].volume * master)));
 		ve.currentDelta = 0;
@@ -1561,7 +1561,7 @@ s32 fn_801ED444(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 clam
 				AXSetVoiceAddr(voices[k * 2 + j], entry->sample[j].addr);
 				AXSetVoiceAdpcm(voices[k * 2 + j], entry->sample[j].adpcm);
 				AXSetVoiceAdpcmLoop(voices[k * 2 + j], entry->sample[j].adpcmloop);
-				if (lbl_8065BBDC == 1) {
+				if (sSynthSoundMode == 1) {
 					AXSetVoiceItdOn(voices[k * 2 + j]);
 				}
 				if (k == 0) {
@@ -1573,12 +1573,12 @@ s32 fn_801ED444(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 clam
 		HSD_SynthSFXUpdateVolume(node);
 		HSD_SynthSFXInitMix(node);
 		HSD_SynthSFXUpdateMix(node, 0);
-		fn_801EF59C(node);
+		ApplySynthMixTargetImmediately(node);
 
-		if ((lbl_8065BBB0 += 0x40) < 0) {
-			lbl_8065BBB0 = 0x40;
+		if ((sSynthSfxIdBase += 0x40) < 0) {
+			sSynthSfxIdBase = 0x40;
 		}
-		node->sfxID = lbl_8065BBB0 + uid;
+		node->sfxID = sSynthSfxIdBase + uid;
 		OSRestoreInterrupts(enabled);
 		return node->sfxID;
 	}
@@ -1630,13 +1630,13 @@ void HSD_SynthSFXKeyOff(s32 id)
     mr       r29, r3
     bl       OSDisableInterrupts
     lwz      r0, 0x18(r29)
-    lis      r4, lbl_80659200@ha
-    lis      r5, lbl_80656800@ha
+    lis      r4, sSynthVoicesPendingFree@ha
+    lis      r5, sSynthSfxNodes@ha
     mr       r30, r3
     mulli    r6, r0, 0x98
-    addi     r4, r4, lbl_80659200@l
-    addi     r0, r5, lbl_80656800@l
-    lwz      r5, lbl_8065BB78@sda21(r0)
+    addi     r4, r4, sSynthVoicesPendingFree@l
+    addi     r0, r5, sSynthSfxNodes@l
+    lwz      r5, sSynthPendingVoiceFreeCount@sda21(r0)
     add      r31, r0, r6
     li       r6, 0x0
     mtctr    r5
@@ -1646,9 +1646,9 @@ void HSD_SynthSFXKeyOff(s32 id)
     lwz      r0, 0x0(r4)
     cmplw    r0, r29
     bne      .L_801ED1D8
-    lis      r3, lbl_80659200@ha
+    lis      r3, sSynthVoicesPendingFree@ha
     slwi     r0, r6, 2
-    addi     r3, r3, lbl_80659200@l
+    addi     r3, r3, sSynthVoicesPendingFree@l
     li       r4, 0x0
     stwx     r4, r3, r0
     b        .L_801ED1E4
@@ -1667,8 +1667,8 @@ void HSD_SynthSFXKeyOff(s32 id)
     cmpwi    r0, -0x1
     bne      .L_801ED21C
     lwz      r4, 0xc(r31)
-    lis      r3, lbl_80656800@ha
-    addi     r0, r3, lbl_80656800@l
+    lis      r3, sSynthSfxNodes@ha
+    addi     r0, r3, sSynthSfxNodes@l
     lwz      r3, 0x18(r4)
     mulli    r3, r3, 0x98
     add      r31, r0, r3
@@ -1677,8 +1677,8 @@ void HSD_SynthSFXKeyOff(s32 id)
     cmpwi    r0, -0x1
     bge      .L_801ED24C
     lwz      r3, 0xc(r31)
-    lis      r4, lbl_80656800@ha
-    addi     r4, r4, lbl_80656800@l
+    lis      r4, sSynthSfxNodes@ha
+    addi     r4, r4, sSynthSfxNodes@l
     lwz      r0, 0x18(r3)
     mulli    r0, r0, 0x98
     add      r3, r4, r0
@@ -1693,9 +1693,9 @@ void HSD_SynthSFXKeyOff(s32 id)
     addi     r3, r3, lbl_8025BE44@l
     crclr    cr1eq
     bl       OSReport
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x636
-    li       r5, lbl_8065B0FC@sda21
+    li       r5, sSynthFalseCondition@sda21
     bl       __assert
 .L_801ED278:
     lbz      r0, 0x9(r31)
@@ -1704,7 +1704,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     lwz      r0, 0x30(r31)
     cmplwi   r0, 0x0
     bne      .L_801ED2A8
-    lwz      r12, lbl_8065BB90@sda21(r0)
+    lwz      r12, sSynthDriverInactivatedCallback@sda21(r0)
     cmplwi   r12, 0x0
     beq      .L_801ED2A8
     lwz      r3, 0x0(r31)
@@ -1714,7 +1714,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     lbz      r0, 0x2e(r31)
     cmplwi   r0, 0x0
     beq      .L_801ED2E8
-    li       r3, lbl_8065BBA4@sda21
+    li       r3, sSynthPendingVolumeUpdates@sda21
     b        .L_801ED2DC
 .L_801ED2BC:
     cmplw    r4, r31
@@ -1734,7 +1734,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     lbz      r0, 0x2f(r31)
     cmplwi   r0, 0x0
     beq      .L_801ED328
-    li       r4, lbl_8065BBA8@sda21
+    li       r4, sSynthPendingMixUpdates@sda21
     b        .L_801ED31C
 .L_801ED2FC:
     cmplw    r3, r31
@@ -1755,9 +1755,9 @@ void HSD_SynthSFXKeyOff(s32 id)
     cmpwi    r0, -0x1
     beq      .L_801ED370
     mulli    r4, r0, 0x98
-    lis      r3, lbl_80656800@ha
-    li       r5, lbl_8065BBAC@sda21
-    addi     r0, r3, lbl_80656800@l
+    lis      r3, sSynthSfxNodes@ha
+    li       r5, sSynthPendingRearPitchUpdates@sda21
+    addi     r0, r3, sSynthSfxNodes@l
     add      r3, r0, r4
     b        .L_801ED364
 .L_801ED34C:
@@ -1773,11 +1773,11 @@ void HSD_SynthSFXKeyOff(s32 id)
     cmplwi   r4, 0x0
     bne      .L_801ED34C
 .L_801ED370:
-    lis      r4, lbl_80659200@ha
-    lis      r3, lbl_80656800@ha
-    addi     r6, r4, lbl_80659200@l
+    lis      r4, sSynthVoicesPendingFree@ha
+    lis      r3, sSynthSfxNodes@ha
+    addi     r6, r4, sSynthVoicesPendingFree@l
     li       r11, 0x0
-    addi     r4, r3, lbl_80656800@l
+    addi     r4, r3, sSynthSfxNodes@l
     b        .L_801ED400
 .L_801ED388:
     cmpwi    r11, 0x0
@@ -1786,8 +1786,8 @@ void HSD_SynthSFXKeyOff(s32 id)
     b        .L_801ED3A8
 .L_801ED398:
     mulli    r5, r5, 0x98
-    lis      r3, lbl_80656800@ha
-    addi     r0, r3, lbl_80656800@l
+    lis      r3, sSynthSfxNodes@ha
+    addi     r0, r3, sSynthSfxNodes@l
     add      r0, r0, r5
 .L_801ED3A8:
     li       r10, 0x0
@@ -1798,10 +1798,10 @@ void HSD_SynthSFXKeyOff(s32 id)
     lwz      r9, 0xc(r8)
     cmplw    r9, r29
     beq      .L_801ED3D8
-    lwz      r7, lbl_8065BB78@sda21(r0)
+    lwz      r7, sSynthPendingVoiceFreeCount@sda21(r0)
     addi     r3, r7, 0x1
     slwi     r0, r7, 2
-    stw      r3, lbl_8065BB78@sda21(r0)
+    stw      r3, sSynthPendingVoiceFreeCount@sda21(r0)
     stwx     r9, r6, r0
 .L_801ED3D8:
     lwz      r3, 0xc(r8)
@@ -1840,7 +1840,7 @@ void HSD_SynthSFXKeyOff(s32 id)
  * @note Address: 0x801ED444
  * @note Size: 0x740
  */
-// fn_801ED444
+// StartSynthSoundEffect
 /*
     stwu     r1, -0xa0(r1)
     mflr     r0
@@ -1856,9 +1856,9 @@ void HSD_SynthSFXKeyOff(s32 id)
     lis      r11, "@585"@ha
     lwzu     r0, "@585"@l(r11)
     lwz      r19, 0xb0(r1)
-    lis      r22, lbl_80655F40@ha
+    lis      r22, hsd_SynthSFXLoadBuf@ha
     lwz      r14, 0x4(r11)
-    addi     r29, r22, lbl_80655F40@l
+    addi     r29, r22, hsd_SynthSFXLoadBuf@l
     lwz      r12, 0x8(r11)
     fmr      f29, f1
     lwz      r11, 0xc(r11)
@@ -1887,7 +1887,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     b        .L_801EDB54
 .L_801ED4EC:
     bl       OSDisableInterrupts
-    lwz      r0, lbl_8065BBDC@sda21(r0)
+    lwz      r0, sSynthSoundMode@sda21(r0)
     clrlslwi r5, r15, 27, 2
     addi     r4, r29, 0x320
     mr       r23, r3
@@ -2036,7 +2036,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     mulli    r5, r22, 0x98
     stw      r3, 0x20(r1)
     lfd      f2, "@237"@sda21(r0)
-    lfs      f0, lbl_8065FEBC@sda21(r0)
+    lfs      f0, sSynthSampleRate@sda21(r0)
     add      r24, r24, r5
     lfs      f3, "@223"@sda21(r0)
     stw      r4, 0x30(r24)
@@ -2059,7 +2059,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     bne      .L_801ED77C
     xoris    r0, r16, 0x8000
     stw      r3, 0x20(r1)
-    lfs      f1, lbl_8065FEC0@sda21(r0)
+    lfs      f1, sSynthInverseVolumeRange@sda21(r0)
     stw      r0, 0x24(r1)
     lfd      f0, 0x20(r1)
     fsubs    f0, f0, f2
@@ -2069,7 +2069,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     stfs     f0, 0x3c(r24)
     b        .L_801ED7D0
 .L_801ED77C:
-    lwz      r0, lbl_8065B100@sda21(r0)
+    lwz      r0, sSynthDecibelFloor@sda21(r0)
     slwi     r15, r16, 16
     cmpw     r15, r0
     bgt      .L_801ED794
@@ -2104,7 +2104,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     stw      r3, 0x24(r1)
     lfd      f1, "@237"@sda21(r0)
     stw      r0, 0x20(r1)
-    lfs      f2, lbl_8065FEC0@sda21(r0)
+    lfs      f2, sSynthInverseVolumeRange@sda21(r0)
     lfd      f0, 0x20(r1)
     fsubs    f0, f0, f1
     fmuls    f0, f2, f0
@@ -2113,7 +2113,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     stfs     f0, 0x54(r24)
     b        .L_801ED878
 .L_801ED818:
-    lwz      r0, lbl_8065B100@sda21(r0)
+    lwz      r0, sSynthDecibelFloor@sda21(r0)
     slwi     r15, r18, 16
     cmpw     r15, r0
     bgt      .L_801ED830
@@ -2206,12 +2206,12 @@ void HSD_SynthSFXKeyOff(s32 id)
     lbz      r0, 0xb(r24)
     cmplwi   r0, 0x3f
     bge      .L_801ED978
-    lfs      f1, lbl_8065B11C@sda21(r0)
+    lfs      f1, sSynthStreamVolume@sda21(r0)
     lfs      f0, 0x33c0(r29)
     fmuls    f4, f1, f0
     b        .L_801ED97C
 .L_801ED978:
-    lfs      f4, lbl_8065B11C@sda21(r0)
+    lfs      f4, sSynthStreamVolume@sda21(r0)
 .L_801ED97C:
     mulli    r4, r0, 0x18
     addi     r3, r29, 0x33d8
@@ -2220,7 +2220,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     lfs      f2, 0x4c(r24)
     cmpwi    r20, 0x0
     lfsx     f0, r3, r4
-    lfs      f3, lbl_8065FEC4@sda21(r0)
+    lfs      f3, sSynthMaxMixGain@sda21(r0)
     fmuls    f0, f0, f4
     sth      r0, 0xe(r1)
     fmuls    f0, f1, f0
@@ -2234,7 +2234,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     beq      .L_801ED9CC
     sth      r0, 0x2c(r21)
 .L_801ED9CC:
-    lfs      f1, lbl_8065FEC8@sda21(r0)
+    lfs      f1, sSynthFixedPointScale@sda21(r0)
     lfs      f0, 0x18(r24)
     fmuls    f1, f1, f0
     bl       __cvt_fp2unsigned
@@ -2286,7 +2286,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     lwzx     r3, r16, r18
     addi     r4, r27, 0x48
     bl       AXSetVoiceAdpcmLoop
-    lwz      r0, lbl_8065BBDC@sda21(r0)
+    lwz      r0, sSynthSoundMode@sda21(r0)
     cmpwi    r0, 0x1
     bne      .L_801EDAA4
     lwzx     r3, r16, r18
@@ -2319,15 +2319,15 @@ void HSD_SynthSFXKeyOff(s32 id)
     li       r4, 0x0
     bl       HSD_SynthSFXUpdateMix
     mr       r3, r24
-    bl       fn_801EF59C
-    lwz      r3, lbl_8065BBB0@sda21(r0)
+    bl       ApplySynthMixTargetImmediately
+    lwz      r3, sSynthSfxIdBase@sda21(r0)
     addic.   r0, r3, 0x40
-    stw      r0, lbl_8065BBB0@sda21(r0)
+    stw      r0, sSynthSfxIdBase@sda21(r0)
     bge      .L_801EDB20
     li       r0, 0x40
-    stw      r0, lbl_8065BBB0@sda21(r0)
+    stw      r0, sSynthSfxIdBase@sda21(r0)
 .L_801EDB20:
-    lwz      r0, lbl_8065BBB0@sda21(r0)
+    lwz      r0, sSynthSfxIdBase@sda21(r0)
     mr       r3, r23
     add      r0, r0, r22
     stw      r0, 0x0(r24)
@@ -2368,9 +2368,9 @@ void HSD_SynthSFXKeyOff(s32 id)
     stw      r0, 0x34(r1)
     addi     r11, r1, 0x30
     bl       _savegpr_27
-    lis      r4, lbl_80655F40@ha
+    lis      r4, hsd_SynthSFXLoadBuf@ha
     mr       r28, r3
-    addi     r31, r4, lbl_80655F40@l
+    addi     r31, r4, hsd_SynthSFXLoadBuf@l
     bl       OSDisableInterrupts
     clrlwi   r0, r28, 26
     cmpwi    r28, 0x0
@@ -2418,10 +2418,10 @@ void HSD_SynthSFXKeyOff(s32 id)
     cmplwi   r28, 0x0
     beq      .L_801EDDE8
     lwz      r3, 0xc(r28)
-    li       r29, lbl_8065BBC4@sda21
+    li       r29, sSynthActivePStreams@sda21
     cmpwi    r3, 0x0
     blt      .L_801EDC64
-    bl       fn_801EB8C4
+    bl       ReleaseDvdStreamingSlot
     b        .L_801EDC64
 .L_801EDC60:
     mr       r29, r0
@@ -2444,9 +2444,9 @@ void HSD_SynthSFXKeyOff(s32 id)
     b        .L_801EDCB0
 .L_801EDC9C:
     lwz      r3, 0x0(r5)
-    lwz      r0, lbl_8065BBB4@sda21(r0)
+    lwz      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r0, 0x0(r5)
-    stw      r5, lbl_8065BBB4@sda21(r0)
+    stw      r5, sSynthFreeBeatMarkerBlocks@sda21(r0)
     mr       r5, r3
 .L_801EDCB0:
     cmplwi   r5, 0x0
@@ -2476,16 +2476,16 @@ void HSD_SynthSFXKeyOff(s32 id)
     lwz      r0, 0x0(r3)
     stw      r0, 0x0(r29)
 .L_801EDD0C:
-    lwz      r0, lbl_8065BBC0@sda21(r0)
+    lwz      r0, sSynthFreePStreams@sda21(r0)
     stw      r0, 0x0(r28)
-    stw      r28, lbl_8065BBC0@sda21(r0)
-    lwz      r0, lbl_8065B104@sda21(r0)
+    stw      r28, sSynthFreePStreams@sda21(r0)
+    lwz      r0, sSynthQueuedStreamPlaybackId@sda21(r0)
     lwz      r3, 0x4(r28)
     lwz      r3, 0x0(r3)
     cmpw     r3, r0
     bne      .L_801EDDE0
-    lwz      r3, lbl_8065BBBC@sda21(r0)
-    li       r4, lbl_8065BBBC@sda21
+    lwz      r3, sSynthQueuedPStreamRequests@sda21(r0)
+    li       r4, sSynthQueuedPStreamRequests@sda21
     b        .L_801EDD50
 .L_801EDD38:
     cmplw    r0, r3
@@ -2500,11 +2500,11 @@ void HSD_SynthSFXKeyOff(s32 id)
     cmplwi   r0, 0x0
     bne      .L_801EDD38
 .L_801EDD5C:
-    lwz      r0, lbl_8065BBB8@sda21(r0)
+    lwz      r0, sSynthFreePStreamRequests@sda21(r0)
     stw      r0, 0x0(r3)
-    stw      r3, lbl_8065BBB8@sda21(r0)
+    stw      r3, sSynthFreePStreamRequests@sda21(r0)
     bl       OSDisableInterrupts
-    lwz      r11, lbl_8065BBBC@sda21(r0)
+    lwz      r11, sSynthQueuedPStreamRequests@sda21(r0)
     mr       r28, r3
     cmplwi   r11, 0x0
     beq      .L_801EDDD0
@@ -2532,7 +2532,7 @@ void HSD_SynthSFXKeyOff(s32 id)
 .L_801EDDD0:
     li       r3, -0x1
 .L_801EDDD4:
-    stw      r3, lbl_8065B104@sda21(r0)
+    stw      r3, sSynthQueuedStreamPlaybackId@sda21(r0)
     mr       r3, r28
     bl       OSRestoreInterrupts
 .L_801EDDE0:
@@ -2559,7 +2559,7 @@ void HSD_SynthSFXStopRange(u32 lo, u32 hi)
 	u32 enabled = OSDisableInterrupts();
 
 	for (i = 0; i < HSD_SYNTHSFXNODE_MAX; i++) {
-		HSD_SynthSFXNode* node = &lbl_80656800[i];
+		HSD_SynthSFXNode* node = &sSynthSfxNodes[i];
 		if (node->sfxID > 0) {
 			u32 addr = AXVPB_CURRENT_ADDR(node->voice[0]);
 			if (addr >= lo && addr < hi) {
@@ -2704,10 +2704,10 @@ void HSD_SynthSetVolFader(s32 id, s32 vol, s32 fadeFrames, s32 flag, s32 dbMode)
     mr       r25, r7
     bl       OSDisableInterrupts
     clrlwi   r0, r28, 26
-    lis      r4, lbl_80656800@ha
+    lis      r4, sSynthSfxNodes@ha
     mulli    r5, r0, 0x98
     cmpwi    r28, 0x0
-    addi     r0, r4, lbl_80656800@l
+    addi     r0, r4, sSynthSfxNodes@l
     mr       r26, r3
     add      r31, r0, r5
     ble      .L_801EE138
@@ -2730,7 +2730,7 @@ void HSD_SynthSetVolFader(s32 id, s32 vol, s32 fadeFrames, s32 flag, s32 dbMode)
     cmpwi    r0, 0x0
     bne      .L_801EE178
     lis      r4, lbl_8025BE60@ha
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     addi     r5, r4, lbl_8025BE60@l
     li       r4, 0x7eb
     bl       __assert
@@ -2749,7 +2749,7 @@ void HSD_SynthSetVolFader(s32 id, s32 vol, s32 fadeFrames, s32 flag, s32 dbMode)
     mulli    r3, r24, 0x18
     lfd      f1, lbl_8065FEB0@sda21(r0)
     stw      r0, 0x8(r1)
-    lfd      f2, lbl_8065FED0@sda21(r0)
+    lfd      f2, sSynthInverseVolumeRangeDouble@sda21(r0)
     add      r3, r31, r3
     lfd      f0, 0x8(r1)
     fsub     f0, f0, f1
@@ -2770,7 +2770,7 @@ void HSD_SynthSetVolFader(s32 id, s32 vol, s32 fadeFrames, s32 flag, s32 dbMode)
     lfsu     f1, 0x34(r27)
     fcmpo    cr0, f1, f0
     bge      .L_801EE204
-    lwz      r0, lbl_8065B100@sda21(r0)
+    lwz      r0, sSynthDecibelFloor@sda21(r0)
     b        .L_801EE244
 .L_801EE204:
     lfs      f0, lbl_8065FE94@sda21(r0)
@@ -2782,7 +2782,7 @@ void HSD_SynthSetVolFader(s32 id, s32 vol, s32 fadeFrames, s32 flag, s32 dbMode)
 .L_801EE21C:
     bl       log
     lfd      f0, lbl_8065FE98@sda21(r0)
-    lwz      r3, lbl_8065B100@sda21(r0)
+    lwz      r3, sSynthDecibelFloor@sda21(r0)
     fmul     f0, f0, f1
     fctiwz   f0, f0
     stfd     f0, 0x8(r1)
@@ -2794,7 +2794,7 @@ void HSD_SynthSetVolFader(s32 id, s32 vol, s32 fadeFrames, s32 flag, s32 dbMode)
     add      r4, r31, r28
     slwi     r3, r23, 16
     stw      r0, 0x3c(r4)
-    lwz      r0, lbl_8065B100@sda21(r0)
+    lwz      r0, sSynthDecibelFloor@sda21(r0)
     stw      r3, 0x40(r4)
     lwz      r3, 0x40(r4)
     cmpw     r3, r0
@@ -2911,13 +2911,13 @@ void HSD_SynthSFXLinkUpdateRearPitch(HSD_SynthSFXNode* rearEntry, u16 unused)
 	HSD_SynthSFXNode* it;
 
 	ASSERT_SYNTH(0x845, rearEntry->sfxID == -2);
-	for (it = lbl_8065BBAC; it != NULL; it = it->link.rearNext) {
+	for (it = sSynthPendingRearPitchUpdates; it != NULL; it = it->link.rearNext) {
 		if (it == rearEntry) {
 			return;
 		}
 	}
-	rearEntry->link.rearNext = lbl_8065BBAC;
-	lbl_8065BBAC             = rearEntry;
+	rearEntry->link.rearNext = sSynthPendingRearPitchUpdates;
+	sSynthPendingRearPitchUpdates             = rearEntry;
 }
 
 #define AX_SYNC_FLAG_COPYRATIO (1 << 19)
@@ -2964,7 +2964,7 @@ void HSD_SynthSFXUpdatePitch(HSD_SynthSFXNode* node)
 		}
 	}
 	if (node->sfxID != -2 && node->rearIndex != -1) {
-		HSD_SynthSFXNode* rearEntry = &lbl_80656800[node->rearIndex];
+		HSD_SynthSFXNode* rearEntry = &sSynthSfxNodes[node->rearIndex];
 		ASSERT_SYNTH(0x86F, rearEntry->sfxID == -2);
 		rearEntry->u.rear.pitch = pitch;
 		HSD_SynthSFXLinkUpdateRearPitch(rearEntry, 0);
@@ -3028,7 +3028,7 @@ static inline s32 tickFader(HSD_SynthVolFader* f)
 	} else {
 		// in db mode the target slot holds the current dbx and dbxRaw the goal
 		f->target.i = ((f32)f->target.i * ((f32)f->duration - 1.0f)) / (f32)f->duration + (f32)f->dbxRaw / (f32)f->duration;
-		if (f->target.i <= lbl_8065B100) {
+		if (f->target.i <= sSynthDecibelFloor) {
 			vol = 0.0f;
 		} else if (f->target.i >= 0) {
 			vol = 1.0f;
@@ -3056,7 +3056,7 @@ extern void AXSetVoiceVeDelta(AXVPB* vpb, s16 delta);
  * @note Address: N/A
  * @note Size: 0x9B8
  */
-void fn_801EE938(void)
+void UpdateSynthVolumeFadersAndVoices(void)
 {
 	u32 enabled      = OSDisableInterrupts();
 	s32 masterActive = 0;
@@ -3069,19 +3069,19 @@ void fn_801EE938(void)
 
 	for (group = 0; group < 2; group++) {
 		s32 bit;
-		if (lbl_8065B114[group] != 0) {
+		if (sSynthActiveChannelFaderMasks[group] != 0) {
 			for (bit = 0; bit < 0x20; bit++) {
 				s32 chan = group * 0x20 + bit;
-				if (lbl_8065B114[group] & (1 << bit)) {
+				if (sSynthActiveChannelFaderMasks[group] & (1 << bit)) {
 					if (!tickFader(&lbl_80659318[chan])) {
-						lbl_8065B114[group] &= ~(1 << bit);
+						sSynthActiveChannelFaderMasks[group] &= ~(1 << bit);
 					}
 				}
 			}
 		}
 	}
 
-	it = &lbl_8065BBA4;
+	it = &sSynthPendingVolumeUpdates;
 	while (*it != NULL) {
 		HSD_SynthSFXNode* entry = *it;
 		s32 changed             = 0;
@@ -3116,7 +3116,7 @@ void fn_801EE938(void)
 		}
 
 		if (!(entry->flags & 3)) {
-			f32 masterVol = entry->channel < 0x3F ? lbl_8065B11C * lbl_80659300.volume : lbl_8065B11C;
+			f32 masterVol = entry->channel < 0x3F ? sSynthStreamVolume * lbl_80659300.volume : sSynthStreamVolume;
 			vol           = (s32)(32767.0f
                         * (entry->u.user_vol[1].volume
                            * (entry->u.user_vol[0].volume * (lbl_80659318[entry->channel].volume * masterVol))));
@@ -3138,7 +3138,7 @@ void fn_801EE938(void)
 		entry->curVol += delta * 160;
 
 		if (entry->rearIndex != -1) {
-			rearEntry = &lbl_80656800[entry->rearIndex];
+			rearEntry = &sSynthSfxNodes[entry->rearIndex];
 			ASSERT_SYNTH(0x920, rearEntry->sfxID == -2);
 			// the rearEntry voice plays last frame's ramp, phase flipped
 			lastVol   = rearEntry->u.rear.lastVol;
@@ -3197,8 +3197,8 @@ void fn_801EE938(void)
 					for (i = 0; i < entry->voice_count; i++) {
 						HSD_SynthSFXUpdatePitch(entry);
 					}
-					if (lbl_8065BB98 != NULL && entry->link.pstream == NULL) {
-						lbl_8065BB98(entry->sfxID);
+					if (sSynthDriverPauseCallback != NULL && entry->link.pstream == NULL) {
+						sSynthDriverPauseCallback(entry->sfxID);
 					}
 				}
 				continue;
@@ -3213,17 +3213,17 @@ void fn_801EE938(void)
  * @note Address: 0x801EE938
  * @note Size: 0x9B8
  */
-// fn_801EE938
+// UpdateSynthVolumeFadersAndVoices
 /*
     stwu     r1, -0x80(r1)
     mflr     r0
     stw      r0, 0x84(r1)
     addi     r11, r1, 0x80
     bl       _savegpr_17
-    lis      r4, lbl_8025B868@ha
-    lis      r3, lbl_80655F40@ha
-    addi     r26, r4, lbl_8025B868@l
-    addi     r27, r3, lbl_80655F40@l
+    lis      r4, sSynthHeapMessageTable@ha
+    lis      r3, hsd_SynthSFXLoadBuf@ha
+    addi     r26, r4, sSynthHeapMessageTable@l
+    addi     r27, r3, hsd_SynthSFXLoadBuf@l
     bl       OSDisableInterrupts
     addi     r23, r27, 0x33c0
     mr       r31, r3
@@ -3284,7 +3284,7 @@ void fn_801EE938(void)
     fsubs    f0, f0, f3
     lfs      f4, lbl_8065FE94@sda21(r0)
     stw      r5, 0x20(r1)
-    lwz      r0, lbl_8065B100@sda21(r0)
+    lwz      r0, sSynthDecibelFloor@sda21(r0)
     lfd      f2, 0x20(r1)
     fsubs    f1, f0, f4
     stw      r4, 0x14(r1)
@@ -3346,7 +3346,7 @@ void fn_801EE938(void)
     li       r29, 0x1
 .L_801EEB18:
     li       r18, 0x0
-    li       r24, lbl_8065B114@sda21
+    li       r24, sSynthActiveChannelFaderMasks@sda21
     li       r23, 0x0
 .L_801EEB24:
     lwz      r0, 0x0(r24)
@@ -3418,7 +3418,7 @@ void fn_801EE938(void)
     fsubs    f0, f0, f3
     lfs      f4, lbl_8065FE94@sda21(r0)
     stw      r5, 0x38(r1)
-    lwz      r0, lbl_8065B100@sda21(r0)
+    lwz      r0, sSynthDecibelFloor@sda21(r0)
     lfd      f2, 0x38(r1)
     fsubs    f1, f0, f4
     stw      r4, 0x2c(r1)
@@ -3495,7 +3495,7 @@ void fn_801EE938(void)
     cmpwi    r18, 0x2
     addi     r24, r24, 0x4
     blt      .L_801EEB24
-    li       r18, lbl_8065BBA4@sda21
+    li       r18, sSynthPendingVolumeUpdates@sda21
     b        .L_801EF2C4
 .L_801EED44:
     lwz      r0, 0x0(r20)
@@ -3592,7 +3592,7 @@ void fn_801EE938(void)
     lwz      r0, 0x14(r1)
     stw      r0, 0x3c(r23)
     lwz      r3, 0x3c(r23)
-    lwz      r0, lbl_8065B100@sda21(r0)
+    lwz      r0, sSynthDecibelFloor@sda21(r0)
     cmpw     r3, r0
     bgt      .L_801EEEC0
     lfs      f4, lbl_8065FEA0@sda21(r0)
@@ -3655,17 +3655,17 @@ void fn_801EE938(void)
     clrlwi.  r0, r0, 30
     bne      .L_801EEFC8
     cmplwi   r3, 0x3f
-    lfs      f5, lbl_8065FEC4@sda21(r0)
+    lfs      f5, sSynthMaxMixGain@sda21(r0)
     lfs      f4, 0x4c(r20)
     lfs      f3, 0x34(r20)
     lfs      f2, 0x0(r4)
     bge      .L_801EEFA4
-    lfs      f1, lbl_8065B11C@sda21(r0)
+    lfs      f1, sSynthStreamVolume@sda21(r0)
     lfs      f0, 0x33c0(r27)
     fmuls    f0, f1, f0
     b        .L_801EEFA8
 .L_801EEFA4:
-    lfs      f0, lbl_8065B11C@sda21(r0)
+    lfs      f0, sSynthStreamVolume@sda21(r0)
 .L_801EEFA8:
     fmuls    f0, f2, f0
     fmuls    f0, f3, f0
@@ -3705,7 +3705,7 @@ void fn_801EE938(void)
     rlwinm.  r0, r0, 0, 22, 22
     beq      .L_801EF038
     addi     r5, r26, 0x668
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x919
     bl       __assert
 .L_801EF038:
@@ -3732,7 +3732,7 @@ void fn_801EE938(void)
     cmpwi    r0, -0x2
     beq      .L_801EF09C
     addi     r5, r26, 0x638
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x920
     bl       __assert
 .L_801EF09C:
@@ -3767,7 +3767,7 @@ void fn_801EE938(void)
     rlwinm.  r0, r0, 0, 22, 22
     beq      .L_801EF118
     addi     r5, r26, 0x698
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x92f
     bl       __assert
 .L_801EF118:
@@ -3781,7 +3781,7 @@ void fn_801EE938(void)
     rlwinm.  r0, r0, 0, 22, 22
     beq      .L_801EF14C
     addi     r5, r26, 0x6cc
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x933
     bl       __assert
 .L_801EF14C:
@@ -3880,7 +3880,7 @@ void fn_801EE938(void)
     lbz      r0, 0xa(r19)
     cmpw     r17, r0
     blt      .L_801EF280
-    lwz      r12, lbl_8065BB98@sda21(r0)
+    lwz      r12, sSynthDriverPauseCallback@sda21(r0)
     cmplwi   r12, 0x0
     beq      .L_801EF2C4
     lwz      r0, 0x30(r20)
@@ -3915,8 +3915,8 @@ void HSD_SynthSFXUpdateVolume(HSD_SynthSFXNode* node)
 	u32 enabled = OSDisableInterrupts();
 	if (!node->volUpdatePending && !(node->flags & 8)) {
 		node->volUpdatePending = 1;
-		node->volUpdateNext    = lbl_8065BBA4;
-		lbl_8065BBA4           = node;
+		node->volUpdateNext    = sSynthPendingVolumeUpdates;
+		sSynthPendingVolumeUpdates           = node;
 	}
 	OSRestoreInterrupts(enabled);
 }
@@ -3947,7 +3947,7 @@ static inline void updateMixEnvelopeStep(u16* target, u16* current, s16* out)
 // actually touches: a packed mix with no deltas, current at 0x74 and target
 // at 0x86, and rear entries reuse 0x34 for their side plus a parked mix
 
-#define VOICE_NODE(v) (&lbl_80656800[(v)->index])
+#define VOICE_NODE(v) (&sSynthSfxNodes[(v)->index])
 
 #define AXVPB_SYNC(v)    (*(u32*)((u8*)(v) + 0x1C))
 #define AXVPB_ITDFLAG(v) (*(u16*)((u8*)(v) + 0x16E))
@@ -3960,7 +3960,7 @@ extern void AXSetVoiceMix(AXVPB* voice, AXPBMIX* mix);
  * @note Address: 0x801EF34C
  * @note Size: 0x250
  */
-void fn_801EF34C(void)
+void AdvancePendingSynthMixUpdates(void)
 {
 	HSD_SynthSFXNode* node;
 	s32 j;
@@ -3980,14 +3980,14 @@ void fn_801EF34C(void)
 	s32 moving;
 
 	enabled = OSDisableInterrupts();
-	it      = &lbl_8065BBA8;
+	it      = &sSynthPendingMixUpdates;
 	while ((node = *it) != NULL) {
 		busy = 0;
 		for (i = 0; i < (node->rearIndex != -1) + 1; i++) {
 			if (i == 0) {
 				base = node;
 			} else {
-				base = &lbl_80656800[node->rearIndex];
+				base = &sSynthSfxNodes[node->rearIndex];
 			}
 
 			for (j = 0; j < node->voice_count; j++) {
@@ -4046,9 +4046,9 @@ void fn_801EF34C(void)
  * @note Address: N/A
  * @note Size: 0x194
  */
-void fn_801EF59C(HSD_SynthSFXNode* node)
+void ApplySynthMixTargetImmediately(HSD_SynthSFXNode* node)
 {
-	HSD_SynthSFXNode** it = &lbl_8065BBA8;
+	HSD_SynthSFXNode** it = &sSynthPendingMixUpdates;
 
 	while (*it != NULL) {
 		if (node == *it) {
@@ -4060,7 +4060,7 @@ void fn_801EF59C(HSD_SynthSFXNode* node)
 				if (i == 0) {
 					base = node;
 				} else {
-					base = &lbl_80656800[node->rearIndex];
+					base = &sSynthSfxNodes[node->rearIndex];
 				}
 
 				for (j = 0; j < node->voice_count; j++) {
@@ -4107,7 +4107,7 @@ void HSD_SynthSFXInitMix(HSD_SynthSFXNode* node)
 		if (i == 0) {
 			base = node;
 		} else {
-			base = &lbl_80656800[node->rearIndex];
+			base = &sSynthSfxNodes[node->rearIndex];
 		}
 
 		base->mix.vL        = 0;
@@ -4200,12 +4200,12 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 		f32 rearL;
 
 		pan = calcPan(node);
-		if (lbl_8065BBDC == 0) {
+		if (sSynthSoundMode == 0) {
 			pan = 0x7F;
 		}
-		panL = lbl_80658E00[0xFE - pan];
-		panR = lbl_80658E00[pan];
-		if (lbl_8065BBDC == 2 || lbl_8065BBDC == 3 || lbl_8065BBDC == 4) {
+		panL = sSynthSqrtLookup[0xFE - pan];
+		panR = sSynthSqrtLookup[pan];
+		if (sSynthSoundMode == 2 || sSynthSoundMode == 3 || sSynthSoundMode == 4) {
 			span = node->userSPan[0] + node->userSPan[1];
 			if (span > 0xFF) {
 				span = 0xFF;
@@ -4214,8 +4214,8 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			sur   = lbl_8025BA10[0xFF - span];
 			if (span > 0) {
 				s32 idx = 0.527559042f * pan + 60.0f;
-				rearR   = lbl_80658E00[idx];
-				rearL   = lbl_80658E00[0xFE - idx];
+				rearR   = sSynthSqrtLookup[idx];
+				rearL   = sSynthSqrtLookup[0xFE - idx];
 			} else {
 				rearL = rearR = 0.0f;
 			}
@@ -4225,9 +4225,9 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 		}
 
 		if (node->rearIndex != -1) {
-			rearEntry = &lbl_80656800[node->rearIndex];
+			rearEntry = &sSynthSfxNodes[node->rearIndex];
 			ASSERT_SYNTH(0xA60, rearEntry->sfxID == -2);
-			if (lbl_8065BBDC == 4) {
+			if (sSynthSoundMode == 4) {
 				f32 vol;
 
 				if (rearL >= rearR) {
@@ -4261,16 +4261,16 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 				}
 			} else {
 				clearFrontMix(&rearEntry->mixDst);
-				if (lbl_8065BBDC == 2) {
+				if (sSynthSoundMode == 2) {
 					sur *= 0.70710677f;
 				}
 			}
-		} else if (lbl_8065BBDC == 2) {
+		} else if (sSynthSoundMode == 2) {
 			sur *= 0.70710677f;
 		}
 
 		m = &node->mixDst;
-		if (lbl_8065BBDC != 3) {
+		if (sSynthSoundMode != 3) {
 			f32 l     = panL * front;
 			f32 r     = panR * front;
 			m->vL     = 32767.0f * (node->mixMain * l);
@@ -4305,20 +4305,20 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 		HSD_SynthMix* m2;
 
 		pan = calcPan(node);
-		if (lbl_8065BBDC == 0) {
+		if (sSynthSoundMode == 0) {
 			pan = 0x7F;
 		}
 		if (pan <= 0x7F) {
 			gainL = 1.0f;
 		} else {
-			gainL = lbl_80658E00[0xFE - (pan - 0x7F) * 2];
+			gainL = sSynthSqrtLookup[0xFE - (pan - 0x7F) * 2];
 		}
 		if (pan >= 0x7F) {
 			gainR = 1.0f;
 		} else {
-			gainR = lbl_80658E00[pan * 2];
+			gainR = sSynthSqrtLookup[pan * 2];
 		}
-		if (lbl_8065BBDC == 2 || lbl_8065BBDC == 3 || lbl_8065BBDC == 4) {
+		if (sSynthSoundMode == 2 || sSynthSoundMode == 3 || sSynthSoundMode == 4) {
 			span = node->userSPan[0] + node->userSPan[1];
 			if (span > 0xFF) {
 				span = 0xFF;
@@ -4331,9 +4331,9 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 		}
 
 		if (node->rearIndex != -1) {
-			rearEntry = &lbl_80656800[node->rearIndex];
+			rearEntry = &sSynthSfxNodes[node->rearIndex];
 			ASSERT_SYNTH(0xB13, rearEntry->sfxID == -2);
-			if (lbl_8065BBDC == 4) {
+			if (sSynthSoundMode == 4) {
 				f64 l     = 0.38 * gainL * sur;
 				f64 r     = 0.38 * gainR * sur;
 				sur       = sur * 0.49;
@@ -4354,17 +4354,17 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			} else {
 				clearFrontMix(&rearEntry->mixDst);
 				clearFrontMix(&(VOICE_NODE(rearEntry->voice[1]))->mixDst);
-				if (lbl_8065BBDC == 2) {
+				if (sSynthSoundMode == 2) {
 					sur *= 0.5f;
 				}
 			}
-		} else if (lbl_8065BBDC == 2) {
+		} else if (sSynthSoundMode == 2) {
 			sur *= 0.5f;
 		}
 
 		m  = &node->mixDst;
 		m2 = &(VOICE_NODE(node->voice[1]))->mixDst;
-		if (lbl_8065BBDC == 0) {
+		if (sSynthSoundMode == 0) {
 			f32 l      = gainL * 0.5f;
 			f32 r      = gainR * 0.5f;
 			m->vL      = 32767.0f * (l * node->mixMain);
@@ -4385,7 +4385,7 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			m2->vS     = 0;
 			m2->vAuxAS = 0;
 			m2->vAuxBS = 0;
-		} else if (lbl_8065BBDC != 3) {
+		} else if (sSynthSoundMode != 3) {
 			f32 l      = gainL * front;
 			f32 sl     = gainL * sur;
 			f32 r      = gainR * front;
@@ -4443,7 +4443,7 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			n->mix              = n->mixDst;
 		}
 		if (node->rearIndex != -1) {
-			rearEntry = &lbl_80656800[node->rearIndex];
+			rearEntry = &sSynthSfxNodes[node->rearIndex];
 			ASSERT_SYNTH(0xBF5, rearEntry->sfxID == -2);
 			if (rearEntry->u.rear.side != rearEntry->u.rear.newSide) {
 				rearEntry->u.rear.side = rearEntry->u.rear.newSide;
@@ -4462,15 +4462,15 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 		u32 enabled = OSDisableInterrupts();
 		if (!node->mixUpdatePending && !(node->flags & 8)) {
 			node->mixUpdatePending = 1;
-			node->mixUpdateNext    = lbl_8065BBA8;
-			lbl_8065BBA8           = node;
+			node->mixUpdateNext    = sSynthPendingMixUpdates;
+			sSynthPendingMixUpdates           = node;
 		}
 		OSRestoreInterrupts(enabled);
 	}
 
 	shiftR = 0;
 	shiftL = 0;
-	if (lbl_8065BBDC == 1 && node->voice_count == 1 && node->unk16 != 0) {
+	if (sSynthSoundMode == 1 && node->voice_count == 1 && node->unk16 != 0) {
 		pan = calcPan(node);
 		if (pan < 0x7F) {
 			shiftL = lbl_8025BF68[0x7E - pan];
@@ -4529,10 +4529,10 @@ void HSD_SynthSFXUpdateAllVolume(s32 vol, u16 fadeFrames, s32 channel, s32 dbMod
 	if (changed) {
 		s32 i;
 		u32 enabled2;
-		lbl_8065B114[channel / 32] |= 1 << (channel & 0x1F);
+		sSynthActiveChannelFaderMasks[channel / 32] |= 1 << (channel & 0x1F);
 		enabled2 = OSDisableInterrupts();
 		for (i = 0; i < HSD_SYNTHSFXNODE_MAX; i++) {
-			HSD_SynthSFXNode* node = &lbl_80656800[i];
+			HSD_SynthSFXNode* node = &sSynthSfxNodes[i];
 			if (node->sfxID > 0 && node->channel == channel) {
 				HSD_SynthSFXUpdateVolume(node);
 			}
@@ -4573,7 +4573,7 @@ void HSD_SynthSFXSetMasterVolume(s32 vol, u16 fadeFrames, s32 dbMode)
 		s32 i;
 		u32 enabled2 = OSDisableInterrupts();
 		for (i = 0; i < HSD_SYNTHSFXNODE_MAX; i++) {
-			HSD_SynthSFXNode* node = &lbl_80656800[i];
+			HSD_SynthSFXNode* node = &sSynthSfxNodes[i];
 			if (node->sfxID > 0) {
 				HSD_SynthSFXUpdateVolume(node);
 			}
@@ -4589,7 +4589,7 @@ void HSD_SynthSFXSetMasterVolume(s32 vol, u16 fadeFrames, s32 dbMode)
  */
 void HSD_SynthSFXSetDriverInactivatedCallback(void (*callback)(s32))
 {
-	lbl_8065BB90 = callback;
+	sSynthDriverInactivatedCallback = callback;
 }
 
 /**
@@ -4598,7 +4598,7 @@ void HSD_SynthSFXSetDriverInactivatedCallback(void (*callback)(s32))
  */
 void HSD_SynthSFXSetDriverMasterClockCallback(void (*callback)(u32))
 {
-	lbl_8065BB94 = callback;
+	sSynthDriverMasterClockCallback = callback;
 }
 
 /**
@@ -4607,7 +4607,7 @@ void HSD_SynthSFXSetDriverMasterClockCallback(void (*callback)(u32))
  */
 void HSD_SynthSFXSetDriverPauseCallback(void (*callback)(s32))
 {
-	lbl_8065BB98 = callback;
+	sSynthDriverPauseCallback = callback;
 }
 
 // driver hooks run before and after each frame, only this function reads them
@@ -4624,27 +4624,27 @@ void HSD_SynthCallback(void)
 	u32 enabled;
 	s32 base;
 
-	base = lbl_8065BBCC % 8 * 8;
+	base = sSynthDriverFrame % 8 * 8;
 
 	enabled = OSDisableInterrupts();
-	if (lbl_8065BB9C != NULL) {
-		lbl_8065BB9C();
+	if (sSynthPreFrameCallback != NULL) {
+		sSynthPreFrameCallback();
 	}
 
-	while (lbl_8065BB78-- > 0) {
-		if (lbl_80659200[lbl_8065BB78] != NULL) {
-			AXFreeVoice(lbl_80659200[lbl_8065BB78]);
+	while (sSynthPendingVoiceFreeCount-- > 0) {
+		if (sSynthVoicesPendingFree[sSynthPendingVoiceFreeCount] != NULL) {
+			AXFreeVoice(sSynthVoicesPendingFree[sSynthPendingVoiceFreeCount]);
 		}
 	}
-	lbl_8065BB78 = 0;
+	sSynthPendingVoiceFreeCount = 0;
 
 	for (i = 0; i < 8; i++) {
-		HSD_SynthSFXNode* node = &lbl_80656800[base + i];
+		HSD_SynthSFXNode* node = &sSynthSfxNodes[base + i];
 
 		if (node->sfxID > 0 && !(node->flags & 8) && AXVPB_PB_STATE(node->voice[0]) == 0
 		    && (node->voice_count == 1 || AXVPB_PB_STATE(node->voice[1]) == 0)) {
 			if (node->rearIndex != -1) {
-				HSD_SynthSFXNode* rear = &lbl_80656800[node->rearIndex];
+				HSD_SynthSFXNode* rear = &sSynthSfxNodes[node->rearIndex];
 
 				if (AXVPB_PB_STATE(rear->voice[0]) != 0) {
 					continue;
@@ -4657,20 +4657,20 @@ void HSD_SynthCallback(void)
 		}
 	}
 
-	while (lbl_8065BBAC != NULL) {
-		HSD_SynthSFXUpdatePitch(lbl_8065BBAC);
-		lbl_8065BBAC = lbl_8065BBAC->link.rearNext;
+	while (sSynthPendingRearPitchUpdates != NULL) {
+		HSD_SynthSFXUpdatePitch(sSynthPendingRearPitchUpdates);
+		sSynthPendingRearPitchUpdates = sSynthPendingRearPitchUpdates->link.rearNext;
 	}
 
-	fn_801EF34C();
-	fn_801EE938();
-	if (lbl_8065BB94 != NULL) {
-		lbl_8065BB94(lbl_8065BBCC);
+	AdvancePendingSynthMixUpdates();
+	UpdateSynthVolumeFadersAndVoices();
+	if (sSynthDriverMasterClockCallback != NULL) {
+		sSynthDriverMasterClockCallback(sSynthDriverFrame);
 	}
 	HSD_SynthPStreamMasterClockCallback();
-	lbl_8065BBCC++;
-	if (lbl_8065BBA0 != NULL) {
-		lbl_8065BBA0();
+	sSynthDriverFrame++;
+	if (sSynthPostFrameCallback != NULL) {
+		sSynthPostFrameCallback();
 	}
 	OSRestoreInterrupts(enabled);
 }
@@ -4679,7 +4679,7 @@ void HSD_SynthCallback(void)
  * @note Address: 0x801F09A8
  * @note Size: 0x10C
  */
-void fn_801F09A8(s32 result, s32 pstreamID)
+void QueueLoadedSynthStreamBuffer(s32 result, s32 pstreamID)
 {
 	HSD_SynthSFXNode* node = getNode(pstreamID);
 	s32 buf;
@@ -4689,9 +4689,9 @@ void fn_801F09A8(s32 result, s32 pstreamID)
 		*getBufTableTail(&PSTREAM(node)->bufTableHeadIx) = buf;
 		lbl_80656364[buf]                                = -2;
 		PSTREAM(node)->_18++;
-		fn_801EBAB0(PSTREAM(node)->schedulerSlot, PSTREAM(node)->_18);
-		if (lbl_806563C0[PSTREAM(node)->_1C].next == -1) {
-			fn_801EB8C4(PSTREAM(node)->schedulerSlot);
+		SetDvdStreamingSlotKey(PSTREAM(node)->schedulerSlot, PSTREAM(node)->_18);
+		if (sSynthStreamHakoBuffers[PSTREAM(node)->_1C].next == -1) {
+			ReleaseDvdStreamingSlot(PSTREAM(node)->schedulerSlot);
 			PSTREAM(node)->schedulerSlot = -1;
 		}
 		PSTREAM(node)->_1C = -1;
@@ -4700,16 +4700,16 @@ void fn_801F09A8(s32 result, s32 pstreamID)
 
 static inline HSD_SynthBeatMarkerBlock* allocBmb(void)
 {
-	HSD_SynthBeatMarkerBlock* bmb = lbl_8065BBB4;
+	HSD_SynthBeatMarkerBlock* bmb = sSynthFreeBeatMarkerBlocks;
 	s32 i;
 
 	if (bmb != NULL) {
-		lbl_8065BBB4 = bmb->next;
+		sSynthFreeBeatMarkerBlocks = bmb->next;
 	} else {
 		bmb = HSD_AudioMalloc(0x100);
 		for (i = 0; i < 7; i++) {
-			bmb->next    = lbl_8065BBB4;
-			lbl_8065BBB4 = bmb;
+			bmb->next    = sSynthFreeBeatMarkerBlocks;
+			sSynthFreeBeatMarkerBlocks = bmb;
 			bmb++;
 		}
 	}
@@ -4728,7 +4728,7 @@ static inline void linkBeatMarkers(HSD_SynthPStream* pst, HSD_SynthBeatMarker* m
 	enabled = OSDisableInterrupts();
 	for (i = 0; i < count; i++) {
 		slot = i;
-		head = (HSD_SynthBeatMarkerBlock**)&lbl_806563C0[pst->_1C].markers;
+		head = (HSD_SynthBeatMarkerBlock**)&sSynthStreamHakoBuffers[pst->_1C].markers;
 		bmb  = *head;
 		if (bmb == NULL) {
 			bmb = allocBmb();
@@ -4777,8 +4777,8 @@ void fn_801F0AB4(s32 unused, s32 id, HSD_SynthBeatMarker* markers)
 		return;
 	}
 	buf = pst->_1C;
-	linkBeatMarkers(pst, markers, lbl_806563C0[buf].markerNum);
-	lbl_806563C0[buf].markerIx = 0;
+	linkBeatMarkers(pst, markers, sSynthStreamHakoBuffers[buf].markerNum);
+	sSynthStreamHakoBuffers[buf].markerIx = 0;
 }
 
 /**
@@ -4795,18 +4795,18 @@ void HSD_SynthPStreamHakoHeaderCallback(s32 result, s32 pstreamID)
 
 	if (node != NULL && node->link.pstream != NULL) {
 		pst    = PSTREAM(node);
-		offset = lbl_806563C0[lastBuf(pst)].next;
+		offset = sSynthStreamHakoBuffers[lastBuf(pst)].next;
 		buf    = pst->_1C;
-		if (pst->_28 != 0 && lbl_806563C0[buf].next <= offset) {
-			lbl_806563C0[buf].next = -1;
+		if (pst->_28 != 0 && sSynthStreamHakoBuffers[buf].next <= offset) {
+			sSynthStreamHakoBuffers[buf].next = -1;
 		}
-		nMarkers = lbl_806563C0[buf].markerNum;
+		nMarkers = sSynthStreamHakoBuffers[buf].markerNum;
 		if (nMarkers > 0) {
 			HSD_DevComRequest(PSTREAM(node)->entrynum, offset + 0x20, NULL, OSRoundUp32B(nMarkers * 8), 0x22, 0,
 			                  (void (*)(s32, void*, s32, s32))fn_801F0AB4, (void*)pstreamID);
 		}
-		HSD_DevComRequest(PSTREAM(node)->entrynum, offset + 0x20 + OSRoundUp32B(nMarkers * 8), (void*)(lbl_8065BBD8 + (buf << 16)),
-		                  lbl_806563C0[buf].size, 0x23, 0, (void (*)(s32, void*, s32, s32))fn_801F09A8, (void*)pstreamID);
+		HSD_DevComRequest(PSTREAM(node)->entrynum, offset + 0x20 + OSRoundUp32B(nMarkers * 8), (void*)(sSynthStreamBufferAramBase + (buf << 16)),
+		                  sSynthStreamHakoBuffers[buf].size, 0x23, 0, (void (*)(s32, void*, s32, s32))QueueLoadedSynthStreamBuffer, (void*)pstreamID);
 	}
 }
 
@@ -4823,13 +4823,13 @@ void fn_801F0F0C(s32 pstreamID)
 
 	node = getNode(pstreamID);
 	if (node != NULL && node->link.pstream != NULL) {
-		offset = lbl_806563C0[lastBuf(PSTREAM(node))].next;
+		offset = sSynthStreamHakoBuffers[lastBuf(PSTREAM(node))].next;
 		if (offset == -1) {
 			ASSERT_SYNTH(0xD7B, 0);
 		}
 		buf                = getFreeBuf();
 		PSTREAM(node)->_1C = buf;
-		HSD_DevComRequest(PSTREAM(node)->entrynum, offset, &lbl_806563C0[buf], 0x20, 0x21, 0,
+		HSD_DevComRequest(PSTREAM(node)->entrynum, offset, &sSynthStreamHakoBuffers[buf], 0x20, 0x21, 0,
 		                  (void (*)(s32, void*, s32, s32))HSD_SynthPStreamHakoHeaderCallback, (void*)pstreamID);
 	}
 	OSRestoreInterrupts(enabled);
@@ -4848,7 +4848,7 @@ void AXSetVoiceLoop(AXVPB* p, u16 loop);
 void AXSetVoiceAdpcmLoop(AXVPB* p, void* loop);
 void AXSetVoiceItdOn(AXVPB* p);
 void AXSetVoiceState(AXVPB* p, u16 state);
-void fn_801EBB90(s32 id, void (*callback)(s32, void*));
+void SetDvdStreamingSlotCallback(s32 id, void (*callback)(s32, void*));
 void fn_801F0F0C(s32 pstreamID);
 
 static inline HSD_SynthBeatMarker* getBeatMarker(HSD_SynthBeatMarkerBlock** head, s32 ix)
@@ -4884,7 +4884,7 @@ static inline BOOL isPStreamActive(HSD_SynthPStream* pstream)
 {
 	HSD_SynthPStream* p;
 
-	for (p = (HSD_SynthPStream*)lbl_8065BBC4; p != NULL; p = p->next) {
+	for (p = (HSD_SynthPStream*)sSynthActivePStreams; p != NULL; p = p->next) {
 		if (p == pstream) {
 			return TRUE;
 		}
@@ -4913,14 +4913,14 @@ void HSD_SynthPStreamMasterClockCallback(void)
 	s32 j;
 
 	lbl_8065BBD0 = 0;
-	for (pstream = (HSD_SynthPStream*)lbl_8065BBC4; pstream != NULL; pstream = next) {
+	for (pstream = (HSD_SynthPStream*)sSynthActivePStreams; pstream != NULL; pstream = next) {
 		node = pstream->node;
 		next = pstream->next;
 		if (node->flags & 8) {
 			continue;
 		}
 		cadhi  = AXVPB_CURRENT_ADDR(node->voice[0]);
-		pstbuf = lbl_8065BBD8 * 2;
+		pstbuf = sSynthStreamBufferAramBase * 2;
 		if (cadhi < pstbuf) {
 			continue;
 		}
@@ -4928,11 +4928,11 @@ void HSD_SynthPStreamMasterClockCallback(void)
 		if (a == pstream->bufTableHeadIx) {
 			if (pstream->_18 == 1) {
 				last = *getBufTableTail(&pstream->bufTableHeadIx);
-				if (lbl_806563C0[last].next != -1 && *(u32*)((u8*)node->voice[0] + 0x1AE) - cadhi < 0xE60) {
+				if (sSynthStreamHakoBuffers[last].next != -1 && *(u32*)((u8*)node->voice[0] + 0x1AE) - cadhi < 0xE60) {
 					lbl_8065BBD0 = 1;
 				}
 			}
-			hako = &lbl_806563C0[a];
+			hako = &sSynthStreamHakoBuffers[a];
 			pos  = (s32)(AXVPB_CURRENT_ADDR(node->voice[0]) - pstbuf - (a << 17)) * 14 / 16;
 			for (; hako->markerIx < hako->markerNum; hako->markerIx++) {
 				marker = getBeatMarker(&hako->markers, hako->markerIx);
@@ -4947,37 +4947,37 @@ void HSD_SynthPStreamMasterClockCallback(void)
 				}
 			}
 		} else {
-			while (lbl_806563C0[pstream->bufTableHeadIx].markerIx < lbl_806563C0[pstream->bufTableHeadIx].markerNum) {
-				marker = getBeatMarker(&lbl_806563C0[pstream->bufTableHeadIx].markers, lbl_806563C0[pstream->bufTableHeadIx].markerIx);
+			while (sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerIx < sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerNum) {
+				marker = getBeatMarker(&sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markers, sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerIx);
 				if (pstream->callback != NULL) {
 					pstream->callback(node->sfxID, marker->data, pstream->_24);
 					if (!isPStreamActive(pstream)) {
 						goto next_pstream;
 					}
 				}
-				lbl_806563C0[pstream->bufTableHeadIx].markerIx++;
+				sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerIx++;
 			}
 			freeBeatMarkers(pstream->bufTableHeadIx);
 			unlinkBufTable(&pstream->bufTableHeadIx, pstream->bufTableHeadIx);
 			if (pstream->bufTableHeadIx != a) {
 				OSReport("pst=%08x: pst->buftableheadix = %d, a=%d\n cadhi= %d pstbuf=%d\n", pstream, pstream->bufTableHeadIx, a,
-				         AXVPB_CURRENT_ADDR(node->voice[0]), lbl_8065BBD8 * 2);
+				         AXVPB_CURRENT_ADDR(node->voice[0]), sSynthStreamBufferAramBase * 2);
 				__assert(__FILE__, 0xDCB, "pstream->bufTableHeadIx == a");
 			}
 			pstream->_18--;
 			if (pstream->schedulerSlot >= 0) {
-				fn_801EBAB0(pstream->schedulerSlot, pstream->_18);
+				SetDvdStreamingSlotKey(pstream->schedulerSlot, pstream->_18);
 			}
 			for (j = 0; j < (node->rearIndex != -1) + 1; j++) {
 				if (j == 0) {
 					n = node;
 				} else {
-					n = &lbl_80656800[node->rearIndex];
+					n = &sSynthSfxNodes[node->rearIndex];
 				}
 				for (i = 0; i < node->voice_count; i++) {
-					AXSetVoiceEndAddr(n->voice[i], (lbl_8065BBD8 + (pstream->bufTableHeadIx << 16)) * 2
-					                                   + i * lbl_806563C0[pstream->bufTableHeadIx].size
-					                                   + lbl_806563C0[pstream->bufTableHeadIx].end);
+					AXSetVoiceEndAddr(n->voice[i], (sSynthStreamBufferAramBase + (pstream->bufTableHeadIx << 16)) * 2
+					                                   + i * sSynthStreamHakoBuffers[pstream->bufTableHeadIx].size
+					                                   + sSynthStreamHakoBuffers[pstream->bufTableHeadIx].end);
 				}
 			}
 		}
@@ -4988,21 +4988,21 @@ void HSD_SynthPStreamMasterClockCallback(void)
 					if (j == 0) {
 						n = node;
 					} else {
-						n = &lbl_80656800[node->rearIndex];
+						n = &sSynthSfxNodes[node->rearIndex];
 					}
 					for (i = 0; i < node->voice_count; i++) {
 						AXSetVoiceLoopAddr(n->voice[i],
-						                   (lbl_8065BBD8 + (pstream->_14 << 16)) * 2 + i * lbl_806563C0[pstream->_14].size + 2);
-						AXSetVoiceAdpcmLoop(n->voice[i], lbl_806563C0[pstream->_14].loop[i]);
+						                   (sSynthStreamBufferAramBase + (pstream->_14 << 16)) * 2 + i * sSynthStreamHakoBuffers[pstream->_14].size + 2);
+						AXSetVoiceAdpcmLoop(n->voice[i], sSynthStreamHakoBuffers[pstream->_14].loop[i]);
 					}
 				}
-			} else if (lbl_806563C0[a].next == -1) {
+			} else if (sSynthStreamHakoBuffers[a].next == -1) {
 				pstream->_14 = -2;
 				for (j = 0; j < (node->rearIndex != -1) + 1; j++) {
 					if (j == 0) {
 						n = node;
 					} else {
-						n = &lbl_80656800[node->rearIndex];
+						n = &sSynthSfxNodes[node->rearIndex];
 					}
 					for (i = 0; i < node->voice_count; i++) {
 						AXSetVoiceLoopAddr(n->voice[i], (u32)lbl_8065BBE4);
@@ -5038,7 +5038,7 @@ void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID)
 		    = 32767.0f
 		    * (node->u.user_vol[1].volume
 		       * (node->u.user_vol[0].volume
-		          * (lbl_80659318[node->channel].volume * (node->channel < 0x3F ? lbl_8065B11C * lbl_80659300.volume : lbl_8065B11C))));
+		          * (lbl_80659318[node->channel].volume * (node->channel < 0x3F ? sSynthStreamVolume * lbl_80659300.volume : sSynthStreamVolume))));
 	} else {
 		ve.currentVolume = 0;
 	}
@@ -5053,7 +5053,7 @@ void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID)
 	for (j = 0; j < (node->rearIndex != -1) + 1; j++) {
 		HSD_SynthSFXNode* rear;
 		if (j == 1) {
-			rear                   = &lbl_80656800[node->rearIndex];
+			rear                   = &sSynthSfxNodes[node->rearIndex];
 			rear->u.rear.lastVol   = ve.currentVolume;
 			rear->u.rear.lastDelta = ve.currentDelta;
 			HSD_SynthSFXLinkUpdateRearPitch(rear, 0);
@@ -5077,10 +5077,10 @@ void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID)
 			}
 			AXSetVoiceSrcType(n->voice[i], 2);
 			AXSetVoiceSrc(n->voice[i], &lbl_8050932C);
-			AXSetVoiceCurrentAddr(n->voice[i], (lbl_8065BBD8 + (buf << 16)) * 2 + i * lbl_806563C0[buf].size + 2);
-			AXSetVoiceEndAddr(n->voice[i], (lbl_8065BBD8 + (buf << 16)) * 2 + i * lbl_806563C0[buf].size + lbl_806563C0[buf].end);
-			AXSetVoiceLoopAddr(n->voice[i], (lbl_8065BBD8 + (buf << 16)) * 2 + i * lbl_806563C0[buf].size + 2);
-			if (lbl_8065BBDC == 1) {
+			AXSetVoiceCurrentAddr(n->voice[i], (sSynthStreamBufferAramBase + (buf << 16)) * 2 + i * sSynthStreamHakoBuffers[buf].size + 2);
+			AXSetVoiceEndAddr(n->voice[i], (sSynthStreamBufferAramBase + (buf << 16)) * 2 + i * sSynthStreamHakoBuffers[buf].size + sSynthStreamHakoBuffers[buf].end);
+			AXSetVoiceLoopAddr(n->voice[i], (sSynthStreamBufferAramBase + (buf << 16)) * 2 + i * sSynthStreamHakoBuffers[buf].size + 2);
+			if (sSynthSoundMode == 1) {
 				AXSetVoiceItdOn(n->voice[i]);
 			}
 			if (j == 0) {
@@ -5092,20 +5092,20 @@ void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID)
 	enabled = OSDisableInterrupts();
 	if (!node->volUpdatePending && !(node->flags & 8)) {
 		node->volUpdatePending = 1;
-		node->volUpdateNext    = lbl_8065BBA4;
-		lbl_8065BBA4           = node;
+		node->volUpdateNext    = sSynthPendingVolumeUpdates;
+		sSynthPendingVolumeUpdates           = node;
 	}
 	OSRestoreInterrupts(enabled);
 	HSD_SynthSFXInitMix(node);
 	HSD_SynthSFXUpdateMix(node, 0);
-	fn_801EF59C(node);
+	ApplySynthMixTargetImmediately(node);
 	PSTREAM(node)->_18 = 1;
-	fn_801EBAB0(PSTREAM(node)->schedulerSlot, 1);
-	if (lbl_806563C0[buf].next == -1) {
-		fn_801EB8C4(PSTREAM(node)->schedulerSlot);
+	SetDvdStreamingSlotKey(PSTREAM(node)->schedulerSlot, 1);
+	if (sSynthStreamHakoBuffers[buf].next == -1) {
+		ReleaseDvdStreamingSlot(PSTREAM(node)->schedulerSlot);
 		PSTREAM(node)->schedulerSlot = -1;
 	} else {
-		fn_801EBB90(PSTREAM(node)->schedulerSlot, (void (*)(s32, void*))fn_801F0F0C);
+		SetDvdStreamingSlotCallback(PSTREAM(node)->schedulerSlot, (void (*)(s32, void*))fn_801F0F0C);
 	}
 }
 
@@ -5121,7 +5121,7 @@ void fn_801F1DB4(s32 unused, s32 id, HSD_SynthBeatMarker* markers)
 		return;
 	}
 	// no null check on the link here, unlike fn_801F0AB4
-	linkBeatMarkers(PSTREAM(node), markers, lbl_806563C0[PSTREAM(node)->_1C].markerNum);
+	linkBeatMarkers(PSTREAM(node), markers, sSynthStreamHakoBuffers[PSTREAM(node)->_1C].markerNum);
 }
 
 /**
@@ -5136,19 +5136,19 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
 
 	if (node != NULL) {
 		buf = PSTREAM(node)->_1C;
-		if (PSTREAM(node)->_28 != 0 && lbl_806563C0[buf].next <= 0xA0) {
-			lbl_806563C0[buf].next = -1;
+		if (PSTREAM(node)->_28 != 0 && sSynthStreamHakoBuffers[buf].next <= 0xA0) {
+			sSynthStreamHakoBuffers[buf].next = -1;
 		}
-		nMarkers = lbl_806563C0[buf].markerNum;
+		nMarkers = sSynthStreamHakoBuffers[buf].markerNum;
 		if (nMarkers > 0) {
 			HSD_DevComRequest(PSTREAM(node)->entrynum, 0xA0, NULL, OSRoundUp32B(nMarkers * 8), 0x22, 0,
 			                  (void (*)(s32, void*, s32, s32))fn_801F1DB4, (void*)pstreamID);
 		}
-		HSD_DevComRequest(PSTREAM(node)->entrynum, OSRoundUp32B(nMarkers * 8) + 0xA0, (void*)(lbl_8065BBD8 + (buf << 16)),
-		                  lbl_806563C0[buf].size, 0x23, 0, (void (*)(s32, void*, s32, s32))HSD_SynthPStreamFirstHakoDataCallback,
+		HSD_DevComRequest(PSTREAM(node)->entrynum, OSRoundUp32B(nMarkers * 8) + 0xA0, (void*)(sSynthStreamBufferAramBase + (buf << 16)),
+		                  sSynthStreamHakoBuffers[buf].size, 0x23, 0, (void (*)(s32, void*, s32, s32))HSD_SynthPStreamFirstHakoDataCallback,
 		                  (void*)pstreamID);
 	}
-	lbl_806563C0[buf].markerIx = 0;
+	sSynthStreamHakoBuffers[buf].markerIx = 0;
 }
 
 /**
@@ -5163,10 +5163,10 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     addi     r11, r1, 0x40
     bl       _savegpr_21
     clrlwi   r0, r4, 26
-    lis      r3, lbl_80656800@ha
+    lis      r3, sSynthSfxNodes@ha
     mulli    r6, r0, 0x98
     cmpwi    r4, 0x0
-    addi     r0, r3, lbl_80656800@l
+    addi     r0, r3, sSynthSfxNodes@l
     mr       r21, r5
     add      r3, r0, r6
     ble      .L_801F0AF8
@@ -5183,17 +5183,17 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     cmplwi   r26, 0x0
     beq      .L_801F0D88
     lwz      r0, 0x1c(r26)
-    lis      r3, lbl_806563C0@ha
-    addi     r3, r3, lbl_806563C0@l
+    lis      r3, sSynthStreamHakoBuffers@ha
+    addi     r3, r3, sSynthStreamHakoBuffers@l
     slwi     r24, r0, 6
     add      r3, r3, r24
     lbz      r23, 0x1c(r3)
     bl       OSDisableInterrupts
-    lis      r4, lbl_806563C0@ha
+    lis      r4, sSynthStreamHakoBuffers@ha
     mr       r30, r3
     mr       r27, r21
     li       r29, 0x0
-    addi     r31, r4, lbl_806563C0@l
+    addi     r31, r4, sSynthStreamHakoBuffers@l
     b        .L_801F0D64
 .L_801F0B44:
     lwz      r0, 0x1c(r26)
@@ -5204,30 +5204,30 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     lwz      r25, 0x20(r3)
     cmplwi   r25, 0x0
     bne      .L_801F0D38
-    lwz      r25, lbl_8065BBB4@sda21(r0)
+    lwz      r25, sSynthFreeBeatMarkerBlocks@sda21(r0)
     cmplwi   r25, 0x0
     beq      .L_801F0B7C
     lwz      r0, 0x0(r25)
-    stw      r0, lbl_8065BBB4@sda21(r0)
+    stw      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     b        .L_801F0C10
 .L_801F0B7C:
-    lwz      r12, lbl_8065BB7C@sda21(r0)
+    lwz      r12, sSynthMallocProc@sda21(r0)
     li       r3, 0x100
     mtctr    r12
     bctrl
     mr.      r22, r3
     bne      .L_801F0BB8
-    lis      r3, lbl_8025B868@ha
+    lis      r3, sSynthHeapMessageTable@ha
     li       r4, 0x100
-    addi     r3, r3, lbl_8025B868@l
+    addi     r3, r3, sSynthHeapMessageTable@l
     crclr    cr1eq
     bl       OSReport
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0xae
-    li       r5, lbl_8065B0F0@sda21
+    li       r5, sSynthHeapPointerAssert@sda21
     bl       __assert
 .L_801F0BB8:
-    lwz      r0, lbl_8065BBB4@sda21(r0)
+    lwz      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r8, r22, 0x20
     addi     r7, r22, 0x40
     addi     r6, r22, 0x60
@@ -5235,26 +5235,26 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     addi     r5, r22, 0x80
     addi     r4, r22, 0xa0
     addi     r3, r22, 0xc0
-    stw      r22, lbl_8065BBB4@sda21(r0)
+    stw      r22, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r25, r22, 0xe0
     stw      r22, 0x20(r22)
-    stw      r8, lbl_8065BBB4@sda21(r0)
+    stw      r8, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r8, 0x40(r22)
-    stw      r7, lbl_8065BBB4@sda21(r0)
+    stw      r7, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r7, 0x60(r22)
-    stw      r6, lbl_8065BBB4@sda21(r0)
+    stw      r6, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r6, 0x80(r22)
-    stw      r5, lbl_8065BBB4@sda21(r0)
+    stw      r5, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r5, 0xa0(r22)
-    stw      r4, lbl_8065BBB4@sda21(r0)
+    stw      r4, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r4, 0xc0(r22)
-    stw      r3, lbl_8065BBB4@sda21(r0)
+    stw      r3, sSynthFreeBeatMarkerBlocks@sda21(r0)
 .L_801F0C10:
     cmplwi   r25, 0x0
     bne      .L_801F0C28
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x4bc
-    li       r5, lbl_8065B108@sda21
+    li       r5, sSynthBeatMarkerAssert@sda21
     bl       __assert
 .L_801F0C28:
     stw      r25, 0x0(r21)
@@ -5265,30 +5265,30 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     lwz      r21, 0x0(r25)
     cmplwi   r21, 0x0
     bne      .L_801F0D30
-    lwz      r21, lbl_8065BBB4@sda21(r0)
+    lwz      r21, sSynthFreeBeatMarkerBlocks@sda21(r0)
     cmplwi   r21, 0x0
     beq      .L_801F0C5C
     lwz      r0, 0x0(r21)
-    stw      r0, lbl_8065BBB4@sda21(r0)
+    stw      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     b        .L_801F0CF0
 .L_801F0C5C:
-    lwz      r12, lbl_8065BB7C@sda21(r0)
+    lwz      r12, sSynthMallocProc@sda21(r0)
     li       r3, 0x100
     mtctr    r12
     bctrl
     mr.      r22, r3
     bne      .L_801F0C98
-    lis      r3, lbl_8025B868@ha
+    lis      r3, sSynthHeapMessageTable@ha
     li       r4, 0x100
-    addi     r3, r3, lbl_8025B868@l
+    addi     r3, r3, sSynthHeapMessageTable@l
     crclr    cr1eq
     bl       OSReport
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0xae
-    li       r5, lbl_8065B0F0@sda21
+    li       r5, sSynthHeapPointerAssert@sda21
     bl       __assert
 .L_801F0C98:
-    lwz      r0, lbl_8065BBB4@sda21(r0)
+    lwz      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r8, r22, 0x20
     addi     r7, r22, 0x40
     addi     r6, r22, 0x60
@@ -5296,26 +5296,26 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     addi     r5, r22, 0x80
     addi     r4, r22, 0xa0
     addi     r3, r22, 0xc0
-    stw      r22, lbl_8065BBB4@sda21(r0)
+    stw      r22, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r21, r22, 0xe0
     stw      r22, 0x20(r22)
-    stw      r8, lbl_8065BBB4@sda21(r0)
+    stw      r8, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r8, 0x40(r22)
-    stw      r7, lbl_8065BBB4@sda21(r0)
+    stw      r7, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r7, 0x60(r22)
-    stw      r6, lbl_8065BBB4@sda21(r0)
+    stw      r6, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r6, 0x80(r22)
-    stw      r5, lbl_8065BBB4@sda21(r0)
+    stw      r5, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r5, 0xa0(r22)
-    stw      r4, lbl_8065BBB4@sda21(r0)
+    stw      r4, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r4, 0xc0(r22)
-    stw      r3, lbl_8065BBB4@sda21(r0)
+    stw      r3, sSynthFreeBeatMarkerBlocks@sda21(r0)
 .L_801F0CF0:
     cmplwi   r21, 0x0
     bne      .L_801F0D08
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x4c4
-    li       r5, lbl_8065B10C@sda21
+    li       r5, sSynthNextBeatMarkerAssert@sda21
     bl       __assert
 .L_801F0D08:
     stw      r21, 0x0(r25)
@@ -5348,9 +5348,9 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     blt      .L_801F0B44
     mr       r3, r30
     bl       OSRestoreInterrupts
-    lis      r3, lbl_806563C0@ha
+    lis      r3, sSynthStreamHakoBuffers@ha
     li       r4, 0x0
-    addi     r0, r3, lbl_806563C0@l
+    addi     r0, r3, sSynthStreamHakoBuffers@l
     add      r3, r0, r24
     stw      r4, 0x24(r3)
 .L_801F0D88:
@@ -5374,12 +5374,12 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     addi     r11, r1, 0x40
     bl       _savegpr_18
     li       r0, 0x0
-    lis      r4, lbl_8025B868@ha
-    lis      r3, lbl_80655F40@ha
+    lis      r4, sSynthHeapMessageTable@ha
+    lis      r3, hsd_SynthSFXLoadBuf@ha
     stw      r0, lbl_8065BBD0@sda21(r0)
-    lwz      r28, lbl_8065BBC4@sda21(r0)
-    addi     r30, r4, lbl_8025B868@l
-    addi     r31, r3, lbl_80655F40@l
+    lwz      r28, sSynthActivePStreams@sda21(r0)
+    addi     r30, r4, sSynthHeapMessageTable@l
+    addi     r31, r3, hsd_SynthSFXLoadBuf@l
     b        .L_801F198C
 .L_801F10AC:
     lwz      r29, 0x4(r28)
@@ -5388,7 +5388,7 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     rlwinm.  r0, r0, 0, 28, 28
     bne      .L_801F1988
     lwz      r7, 0xc(r29)
-    lwz      r0, lbl_8065BBD8@sda21(r0)
+    lwz      r0, sSynthStreamBufferAramBase@sda21(r0)
     lwz      r6, 0x1b2(r7)
     slwi     r0, r0, 1
     cmplw    r6, r0
@@ -5455,7 +5455,7 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     lwz      r5, 0x24(r28)
     mtctr    r12
     bctrl
-    lwz      r3, lbl_8065BBC4@sda21(r0)
+    lwz      r3, sSynthActivePStreams@sda21(r0)
     b        .L_801F11DC
 .L_801F11C8:
     cmplw    r3, r28
@@ -5483,14 +5483,14 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     lwz      r20, 0x0(r24)
     cmplwi   r20, 0x0
     bne      .L_801F13E4
-    lwz      r20, lbl_8065BBB4@sda21(r0)
+    lwz      r20, sSynthFreeBeatMarkerBlocks@sda21(r0)
     cmplwi   r20, 0x0
     beq      .L_801F1230
     lwz      r0, 0x0(r20)
-    stw      r0, lbl_8065BBB4@sda21(r0)
+    stw      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     b        .L_801F12C0
 .L_801F1230:
-    lwz      r12, lbl_8065BB7C@sda21(r0)
+    lwz      r12, sSynthMallocProc@sda21(r0)
     li       r3, 0x100
     mtctr    r12
     bctrl
@@ -5500,12 +5500,12 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     li       r4, 0x100
     crclr    cr1eq
     bl       OSReport
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0xae
-    li       r5, lbl_8065B0F0@sda21
+    li       r5, sSynthHeapPointerAssert@sda21
     bl       __assert
 .L_801F1268:
-    lwz      r0, lbl_8065BBB4@sda21(r0)
+    lwz      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r8, r18, 0x20
     addi     r7, r18, 0x40
     addi     r6, r18, 0x60
@@ -5513,26 +5513,26 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     addi     r5, r18, 0x80
     addi     r4, r18, 0xa0
     addi     r3, r18, 0xc0
-    stw      r18, lbl_8065BBB4@sda21(r0)
+    stw      r18, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r20, r18, 0xe0
     stw      r18, 0x20(r18)
-    stw      r8, lbl_8065BBB4@sda21(r0)
+    stw      r8, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r8, 0x40(r18)
-    stw      r7, lbl_8065BBB4@sda21(r0)
+    stw      r7, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r7, 0x60(r18)
-    stw      r6, lbl_8065BBB4@sda21(r0)
+    stw      r6, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r6, 0x80(r18)
-    stw      r5, lbl_8065BBB4@sda21(r0)
+    stw      r5, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r5, 0xa0(r18)
-    stw      r4, lbl_8065BBB4@sda21(r0)
+    stw      r4, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r4, 0xc0(r18)
-    stw      r3, lbl_8065BBB4@sda21(r0)
+    stw      r3, sSynthFreeBeatMarkerBlocks@sda21(r0)
 .L_801F12C0:
     cmplwi   r20, 0x0
     bne      .L_801F12D8
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x4bc
-    li       r5, lbl_8065B108@sda21
+    li       r5, sSynthBeatMarkerAssert@sda21
     bl       __assert
 .L_801F12D8:
     stw      r20, 0x0(r24)
@@ -5543,14 +5543,14 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     lwz      r19, 0x0(r20)
     cmplwi   r19, 0x0
     bne      .L_801F13DC
-    lwz      r19, lbl_8065BBB4@sda21(r0)
+    lwz      r19, sSynthFreeBeatMarkerBlocks@sda21(r0)
     cmplwi   r19, 0x0
     beq      .L_801F130C
     lwz      r0, 0x0(r19)
-    stw      r0, lbl_8065BBB4@sda21(r0)
+    stw      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     b        .L_801F139C
 .L_801F130C:
-    lwz      r12, lbl_8065BB7C@sda21(r0)
+    lwz      r12, sSynthMallocProc@sda21(r0)
     li       r3, 0x100
     mtctr    r12
     bctrl
@@ -5560,12 +5560,12 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     li       r4, 0x100
     crclr    cr1eq
     bl       OSReport
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0xae
-    li       r5, lbl_8065B0F0@sda21
+    li       r5, sSynthHeapPointerAssert@sda21
     bl       __assert
 .L_801F1344:
-    lwz      r0, lbl_8065BBB4@sda21(r0)
+    lwz      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r8, r18, 0x20
     addi     r7, r18, 0x40
     addi     r6, r18, 0x60
@@ -5573,26 +5573,26 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     addi     r5, r18, 0x80
     addi     r4, r18, 0xa0
     addi     r3, r18, 0xc0
-    stw      r18, lbl_8065BBB4@sda21(r0)
+    stw      r18, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r19, r18, 0xe0
     stw      r18, 0x20(r18)
-    stw      r8, lbl_8065BBB4@sda21(r0)
+    stw      r8, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r8, 0x40(r18)
-    stw      r7, lbl_8065BBB4@sda21(r0)
+    stw      r7, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r7, 0x60(r18)
-    stw      r6, lbl_8065BBB4@sda21(r0)
+    stw      r6, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r6, 0x80(r18)
-    stw      r5, lbl_8065BBB4@sda21(r0)
+    stw      r5, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r5, 0xa0(r18)
-    stw      r4, lbl_8065BBB4@sda21(r0)
+    stw      r4, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r4, 0xc0(r18)
-    stw      r3, lbl_8065BBB4@sda21(r0)
+    stw      r3, sSynthFreeBeatMarkerBlocks@sda21(r0)
 .L_801F139C:
     cmplwi   r19, 0x0
     bne      .L_801F13B4
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x4c4
-    li       r5, lbl_8065B10C@sda21
+    li       r5, sSynthNextBeatMarkerAssert@sda21
     bl       __assert
 .L_801F13B4:
     stw      r19, 0x0(r20)
@@ -5628,14 +5628,14 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     lwzx     r19, r25, r18
     cmplwi   r19, 0x0
     bne      .L_801F15F4
-    lwz      r19, lbl_8065BBB4@sda21(r0)
+    lwz      r19, sSynthFreeBeatMarkerBlocks@sda21(r0)
     cmplwi   r19, 0x0
     beq      .L_801F1440
     lwz      r0, 0x0(r19)
-    stw      r0, lbl_8065BBB4@sda21(r0)
+    stw      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     b        .L_801F14D0
 .L_801F1440:
-    lwz      r12, lbl_8065BB7C@sda21(r0)
+    lwz      r12, sSynthMallocProc@sda21(r0)
     li       r3, 0x100
     mtctr    r12
     bctrl
@@ -5645,12 +5645,12 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     li       r4, 0x100
     crclr    cr1eq
     bl       OSReport
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0xae
-    li       r5, lbl_8065B0F0@sda21
+    li       r5, sSynthHeapPointerAssert@sda21
     bl       __assert
 .L_801F1478:
-    lwz      r0, lbl_8065BBB4@sda21(r0)
+    lwz      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r8, r20, 0x20
     addi     r7, r20, 0x40
     addi     r6, r20, 0x60
@@ -5658,26 +5658,26 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     addi     r5, r20, 0x80
     addi     r4, r20, 0xa0
     addi     r3, r20, 0xc0
-    stw      r20, lbl_8065BBB4@sda21(r0)
+    stw      r20, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r19, r20, 0xe0
     stw      r20, 0x20(r20)
-    stw      r8, lbl_8065BBB4@sda21(r0)
+    stw      r8, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r8, 0x40(r20)
-    stw      r7, lbl_8065BBB4@sda21(r0)
+    stw      r7, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r7, 0x60(r20)
-    stw      r6, lbl_8065BBB4@sda21(r0)
+    stw      r6, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r6, 0x80(r20)
-    stw      r5, lbl_8065BBB4@sda21(r0)
+    stw      r5, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r5, 0xa0(r20)
-    stw      r4, lbl_8065BBB4@sda21(r0)
+    stw      r4, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r4, 0xc0(r20)
-    stw      r3, lbl_8065BBB4@sda21(r0)
+    stw      r3, sSynthFreeBeatMarkerBlocks@sda21(r0)
 .L_801F14D0:
     cmplwi   r19, 0x0
     bne      .L_801F14E8
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x4bc
-    li       r5, lbl_8065B108@sda21
+    li       r5, sSynthBeatMarkerAssert@sda21
     bl       __assert
 .L_801F14E8:
     stwx     r19, r25, r18
@@ -5688,14 +5688,14 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     lwz      r18, 0x0(r19)
     cmplwi   r18, 0x0
     bne      .L_801F15EC
-    lwz      r18, lbl_8065BBB4@sda21(r0)
+    lwz      r18, sSynthFreeBeatMarkerBlocks@sda21(r0)
     cmplwi   r18, 0x0
     beq      .L_801F151C
     lwz      r0, 0x0(r18)
-    stw      r0, lbl_8065BBB4@sda21(r0)
+    stw      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     b        .L_801F15AC
 .L_801F151C:
-    lwz      r12, lbl_8065BB7C@sda21(r0)
+    lwz      r12, sSynthMallocProc@sda21(r0)
     li       r3, 0x100
     mtctr    r12
     bctrl
@@ -5705,12 +5705,12 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     li       r4, 0x100
     crclr    cr1eq
     bl       OSReport
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0xae
-    li       r5, lbl_8065B0F0@sda21
+    li       r5, sSynthHeapPointerAssert@sda21
     bl       __assert
 .L_801F1554:
-    lwz      r0, lbl_8065BBB4@sda21(r0)
+    lwz      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r8, r20, 0x20
     addi     r7, r20, 0x40
     addi     r6, r20, 0x60
@@ -5718,26 +5718,26 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     addi     r5, r20, 0x80
     addi     r4, r20, 0xa0
     addi     r3, r20, 0xc0
-    stw      r20, lbl_8065BBB4@sda21(r0)
+    stw      r20, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r18, r20, 0xe0
     stw      r20, 0x20(r20)
-    stw      r8, lbl_8065BBB4@sda21(r0)
+    stw      r8, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r8, 0x40(r20)
-    stw      r7, lbl_8065BBB4@sda21(r0)
+    stw      r7, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r7, 0x60(r20)
-    stw      r6, lbl_8065BBB4@sda21(r0)
+    stw      r6, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r6, 0x80(r20)
-    stw      r5, lbl_8065BBB4@sda21(r0)
+    stw      r5, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r5, 0xa0(r20)
-    stw      r4, lbl_8065BBB4@sda21(r0)
+    stw      r4, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r4, 0xc0(r20)
-    stw      r3, lbl_8065BBB4@sda21(r0)
+    stw      r3, sSynthFreeBeatMarkerBlocks@sda21(r0)
 .L_801F15AC:
     cmplwi   r18, 0x0
     bne      .L_801F15C4
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x4c4
-    li       r5, lbl_8065B10C@sda21
+    li       r5, sSynthNextBeatMarkerAssert@sda21
     bl       __assert
 .L_801F15C4:
     stw      r18, 0x0(r19)
@@ -5767,7 +5767,7 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     lwz      r5, 0x24(r28)
     mtctr    r12
     bctrl
-    lwz      r3, lbl_8065BBC4@sda21(r0)
+    lwz      r3, sSynthActivePStreams@sda21(r0)
     b        .L_801F1644
 .L_801F1630:
     cmplw    r3, r28
@@ -5806,9 +5806,9 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     b        .L_801F16B8
 .L_801F16A4:
     lwz      r4, 0x0(r5)
-    lwz      r0, lbl_8065BBB4@sda21(r0)
+    lwz      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r0, 0x0(r5)
-    stw      r5, lbl_8065BBB4@sda21(r0)
+    stw      r5, sSynthFreeBeatMarkerBlocks@sda21(r0)
     mr       r5, r4
 .L_801F16B8:
     cmplwi   r5, 0x0
@@ -5835,7 +5835,7 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     beq      .L_801F173C
     lwz      r3, 0xc(r29)
     mr       r4, r28
-    lwz      r0, lbl_8065BBD8@sda21(r0)
+    lwz      r0, sSynthStreamBufferAramBase@sda21(r0)
     mr       r6, r27
     lwz      r7, 0x1b2(r3)
     addi     r3, r30, 0x798
@@ -5843,7 +5843,7 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     crclr    cr1eq
     bl       OSReport
     addi     r5, r30, 0x7d8
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0xdcb
     bl       __assert
 .L_801F173C:
@@ -5854,7 +5854,7 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     cmpwi    r3, 0x0
     blt      .L_801F175C
     lwz      r4, 0x18(r28)
-    bl       fn_801EBAB0
+    bl       SetDvdStreamingSlotKey
 .L_801F175C:
     li       r20, 0x0
     b        .L_801F17E0
@@ -5874,7 +5874,7 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
 .L_801F178C:
     lwz      r3, 0x10(r28)
     addi     r6, r31, 0x480
-    lwz      r5, lbl_8065BBD8@sda21(r0)
+    lwz      r5, sSynthStreamBufferAramBase@sda21(r0)
     slwi     r0, r3, 6
     slwi     r4, r3, 16
     add      r6, r6, r0
@@ -5933,7 +5933,7 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     b        .L_801F18B8
 .L_801F1860:
     lwz      r3, 0x14(r28)
-    lwz      r4, lbl_8065BBD8@sda21(r0)
+    lwz      r4, sSynthStreamBufferAramBase@sda21(r0)
     slwi     r0, r3, 6
     slwi     r3, r3, 16
     lwzx     r0, r27, r0
@@ -6040,10 +6040,10 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     addi     r11, r1, 0x30
     bl       _savegpr_22
     clrlwi   r0, r4, 26
-    lis      r3, lbl_80656800@ha
+    lis      r3, sSynthSfxNodes@ha
     mulli    r6, r0, 0x98
     cmpwi    r4, 0x0
-    addi     r0, r3, lbl_80656800@l
+    addi     r0, r3, sSynthSfxNodes@l
     mr       r22, r5
     add      r3, r0, r6
     ble      .L_801F1DF8
@@ -6057,18 +6057,18 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     cmplwi   r3, 0x0
     beq      .L_801F206C
     lwz      r26, 0x30(r3)
-    lis      r3, lbl_806563C0@ha
-    addi     r3, r3, lbl_806563C0@l
+    lis      r3, sSynthStreamHakoBuffers@ha
+    addi     r3, r3, sSynthStreamHakoBuffers@l
     lwz      r0, 0x1c(r26)
     slwi     r0, r0, 6
     add      r3, r3, r0
     lbz      r24, 0x1c(r3)
     bl       OSDisableInterrupts
-    lis      r4, lbl_806563C0@ha
+    lis      r4, sSynthStreamHakoBuffers@ha
     mr       r30, r3
     mr       r27, r22
     li       r29, 0x0
-    addi     r31, r4, lbl_806563C0@l
+    addi     r31, r4, sSynthStreamHakoBuffers@l
     b        .L_801F205C
 .L_801F1E3C:
     lwz      r0, 0x1c(r26)
@@ -6079,30 +6079,30 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     lwz      r25, 0x20(r3)
     cmplwi   r25, 0x0
     bne      .L_801F2030
-    lwz      r25, lbl_8065BBB4@sda21(r0)
+    lwz      r25, sSynthFreeBeatMarkerBlocks@sda21(r0)
     cmplwi   r25, 0x0
     beq      .L_801F1E74
     lwz      r0, 0x0(r25)
-    stw      r0, lbl_8065BBB4@sda21(r0)
+    stw      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     b        .L_801F1F08
 .L_801F1E74:
-    lwz      r12, lbl_8065BB7C@sda21(r0)
+    lwz      r12, sSynthMallocProc@sda21(r0)
     li       r3, 0x100
     mtctr    r12
     bctrl
     mr.      r23, r3
     bne      .L_801F1EB0
-    lis      r3, lbl_8025B868@ha
+    lis      r3, sSynthHeapMessageTable@ha
     li       r4, 0x100
-    addi     r3, r3, lbl_8025B868@l
+    addi     r3, r3, sSynthHeapMessageTable@l
     crclr    cr1eq
     bl       OSReport
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0xae
-    li       r5, lbl_8065B0F0@sda21
+    li       r5, sSynthHeapPointerAssert@sda21
     bl       __assert
 .L_801F1EB0:
-    lwz      r0, lbl_8065BBB4@sda21(r0)
+    lwz      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r8, r23, 0x20
     addi     r7, r23, 0x40
     addi     r6, r23, 0x60
@@ -6110,26 +6110,26 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     addi     r5, r23, 0x80
     addi     r4, r23, 0xa0
     addi     r3, r23, 0xc0
-    stw      r23, lbl_8065BBB4@sda21(r0)
+    stw      r23, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r25, r23, 0xe0
     stw      r23, 0x20(r23)
-    stw      r8, lbl_8065BBB4@sda21(r0)
+    stw      r8, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r8, 0x40(r23)
-    stw      r7, lbl_8065BBB4@sda21(r0)
+    stw      r7, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r7, 0x60(r23)
-    stw      r6, lbl_8065BBB4@sda21(r0)
+    stw      r6, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r6, 0x80(r23)
-    stw      r5, lbl_8065BBB4@sda21(r0)
+    stw      r5, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r5, 0xa0(r23)
-    stw      r4, lbl_8065BBB4@sda21(r0)
+    stw      r4, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r4, 0xc0(r23)
-    stw      r3, lbl_8065BBB4@sda21(r0)
+    stw      r3, sSynthFreeBeatMarkerBlocks@sda21(r0)
 .L_801F1F08:
     cmplwi   r25, 0x0
     bne      .L_801F1F20
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x4bc
-    li       r5, lbl_8065B108@sda21
+    li       r5, sSynthBeatMarkerAssert@sda21
     bl       __assert
 .L_801F1F20:
     stw      r25, 0x0(r22)
@@ -6140,30 +6140,30 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     lwz      r22, 0x0(r25)
     cmplwi   r22, 0x0
     bne      .L_801F2028
-    lwz      r22, lbl_8065BBB4@sda21(r0)
+    lwz      r22, sSynthFreeBeatMarkerBlocks@sda21(r0)
     cmplwi   r22, 0x0
     beq      .L_801F1F54
     lwz      r0, 0x0(r22)
-    stw      r0, lbl_8065BBB4@sda21(r0)
+    stw      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     b        .L_801F1FE8
 .L_801F1F54:
-    lwz      r12, lbl_8065BB7C@sda21(r0)
+    lwz      r12, sSynthMallocProc@sda21(r0)
     li       r3, 0x100
     mtctr    r12
     bctrl
     mr.      r23, r3
     bne      .L_801F1F90
-    lis      r3, lbl_8025B868@ha
+    lis      r3, sSynthHeapMessageTable@ha
     li       r4, 0x100
-    addi     r3, r3, lbl_8025B868@l
+    addi     r3, r3, sSynthHeapMessageTable@l
     crclr    cr1eq
     bl       OSReport
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0xae
-    li       r5, lbl_8065B0F0@sda21
+    li       r5, sSynthHeapPointerAssert@sda21
     bl       __assert
 .L_801F1F90:
-    lwz      r0, lbl_8065BBB4@sda21(r0)
+    lwz      r0, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r8, r23, 0x20
     addi     r7, r23, 0x40
     addi     r6, r23, 0x60
@@ -6171,26 +6171,26 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     addi     r5, r23, 0x80
     addi     r4, r23, 0xa0
     addi     r3, r23, 0xc0
-    stw      r23, lbl_8065BBB4@sda21(r0)
+    stw      r23, sSynthFreeBeatMarkerBlocks@sda21(r0)
     addi     r22, r23, 0xe0
     stw      r23, 0x20(r23)
-    stw      r8, lbl_8065BBB4@sda21(r0)
+    stw      r8, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r8, 0x40(r23)
-    stw      r7, lbl_8065BBB4@sda21(r0)
+    stw      r7, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r7, 0x60(r23)
-    stw      r6, lbl_8065BBB4@sda21(r0)
+    stw      r6, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r6, 0x80(r23)
-    stw      r5, lbl_8065BBB4@sda21(r0)
+    stw      r5, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r5, 0xa0(r23)
-    stw      r4, lbl_8065BBB4@sda21(r0)
+    stw      r4, sSynthFreeBeatMarkerBlocks@sda21(r0)
     stw      r4, 0xc0(r23)
-    stw      r3, lbl_8065BBB4@sda21(r0)
+    stw      r3, sSynthFreeBeatMarkerBlocks@sda21(r0)
 .L_801F1FE8:
     cmplwi   r22, 0x0
     bne      .L_801F2000
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0x4c4
-    li       r5, lbl_8065B10C@sda21
+    li       r5, sSynthNextBeatMarkerAssert@sda21
     bl       __assert
 .L_801F2000:
     stw      r22, 0x0(r25)
@@ -6232,8 +6232,8 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
     blr
 */
 
-static u32 lbl_8065B114[2] = { 0, 0 };
-static f32 lbl_8065B11C    = 1.0f;
+static u32 sSynthActiveChannelFaderMasks[2] = { 0, 0 };
+static f32 sSynthStreamVolume    = 1.0f;
 
 /**
  * @note Address: 0x801F21D0
@@ -6254,12 +6254,12 @@ void HSD_SynthPStreamHeaderCallback(s32 result, s32 pstreamID, u32* header)
 		ASSERT_SYNTH(0xE94, entry->voice[1]);
 		if (entry->rearIndex != -1) {
 			AXVPB* voice            = AXAcquireVoice(0x1F, dropcallback, 0);
-			HSD_SynthSFXNode* rear2 = &lbl_80656800[voice->index];
+			HSD_SynthSFXNode* rear2 = &sSynthSfxNodes[voice->index];
 
 			rear2->sfxID                               = -3;
-			rear2->voice[0]                            = lbl_80656800[entry->rearIndex].voice[0];
-			lbl_80656800[entry->rearIndex].voice[1]    = voice;
-			lbl_80656800[entry->rearIndex].voice_count = 2;
+			rear2->voice[0]                            = sSynthSfxNodes[entry->rearIndex].voice[0];
+			sSynthSfxNodes[entry->rearIndex].voice[1]    = voice;
+			sSynthSfxNodes[entry->rearIndex].voice_count = 2;
 			rear2->voice_count                         = 2;
 		}
 	}
@@ -6271,7 +6271,7 @@ void HSD_SynthPStreamHeaderCallback(s32 result, s32 pstreamID, u32* header)
 		AXSetVoiceAdpcm(entry->voice[i], (u8*)header + (i * 0x38 + 0x20));
 	}
 	if (entry->rearIndex != -1) {
-		HSD_SynthSFXNode* rear = &lbl_80656800[entry->rearIndex];
+		HSD_SynthSFXNode* rear = &sSynthSfxNodes[entry->rearIndex];
 
 		for (i = 0; i < entry->voice_count; i++) {
 			AXSetVoiceAddr(rear->voice[i], (u8*)header + (i * 0x38 + 0x10));
@@ -6281,7 +6281,7 @@ void HSD_SynthPStreamHeaderCallback(s32 result, s32 pstreamID, u32* header)
 	bufReading          = getFreeBuf();
 	PSTREAM(entry)->_1C = bufReading;
 	ASSERT_SYNTH(0xEB4, bufReading != -1);
-	HSD_DevComRequest(PSTREAM(entry)->entrynum, 0x80, &lbl_806563C0[bufReading], 0x20, 0x21, 0,
+	HSD_DevComRequest(PSTREAM(entry)->entrynum, 0x80, &sSynthStreamHakoBuffers[bufReading], 0x20, 0x21, 0,
 	                  (void (*)(s32, void*, s32, s32))HSD_SynthPStreamFirstHakoHeaderCallback, (void*)pstreamID);
 }
 
@@ -6304,10 +6304,10 @@ void HSD_SynthPStreamStartCallback(s32 pstreamID)
  */
 static inline HSD_SynthPStream* allocPStream(void)
 {
-	HSD_SynthPStream* pst = lbl_8065BBC0;
+	HSD_SynthPStream* pst = sSynthFreePStreams;
 
 	if (pst != NULL) {
-		lbl_8065BBC0 = pst->next;
+		sSynthFreePStreams = pst->next;
 		return pst;
 	}
 	return NULL;
@@ -6329,16 +6329,16 @@ s32 HSD_SynthPStreamStart(s32 entrynum, s32 vol, s32 volMode, s32 vol2, s32 vol2
 		return 0;
 	}
 	enabled = OSDisableInterrupts();
-	if (lbl_8065BBDC != 4) {
+	if (sSynthSoundMode != 4) {
 		useRear = 0;
 	}
 	voice = AXAcquireVoice(0x1F, dropcallback, 0);
 	index = voice->index;
-	node  = &lbl_80656800[index];
+	node  = &sSynthSfxNodes[index];
 
-	lbl_8065BBB0 += 0x40;
-	if (lbl_8065BBB0 < 0) {
-		lbl_8065BBB0 = 0x40;
+	sSynthSfxIdBase += 0x40;
+	if (sSynthSfxIdBase < 0) {
+		sSynthSfxIdBase = 0x40;
 	}
 
 	node->link.pstream            = allocPStream();
@@ -6349,10 +6349,10 @@ s32 HSD_SynthPStreamStart(s32 entrynum, s32 vol, s32 volMode, s32 vol2, s32 vol2
 	PSTREAM(node)->_24            = 0;
 	PSTREAM(node)->_28            = 0;
 	pst                           = PSTREAM(node);
-	pst->next                     = lbl_8065BBC4;
-	lbl_8065BBC4                  = pst;
+	pst->next                     = sSynthActivePStreams;
+	sSynthActivePStreams                  = pst;
 
-	node->sfxID       = lbl_8065BBB0 + index;
+	node->sfxID       = sSynthSfxIdBase + index;
 	node->next        = NULL;
 	node->flags       = 8;
 	node->voice_count = 1;
@@ -6397,7 +6397,7 @@ s32 HSD_SynthPStreamStart(s32 entrynum, s32 vol, s32 volMode, s32 vol2, s32 vol2
 	if (useRear != 0) {
 		AXVPB* rearVoice       = AXAcquireVoice(0x1F, dropcallback, 0);
 		u32 rearIdx            = rearVoice->index;
-		HSD_SynthSFXNode* rear = &lbl_80656800[rearIdx];
+		HSD_SynthSFXNode* rear = &sSynthSfxNodes[rearIdx];
 
 		rear->sfxID       = -2;
 		rear->rearIndex   = index;
@@ -6407,7 +6407,7 @@ s32 HSD_SynthPStreamStart(s32 entrynum, s32 vol, s32 volMode, s32 vol2, s32 vol2
 	} else {
 		node->rearIndex = -1;
 	}
-	PSTREAM(node)->schedulerSlot = fn_801EB658((void (*)(s32, void*))HSD_SynthPStreamStartCallback, node->sfxID);
+	PSTREAM(node)->schedulerSlot = AcquireDvdStreamingSlot((void (*)(s32, void*))HSD_SynthPStreamStartCallback, node->sfxID);
 	OSRestoreInterrupts(enabled);
 	return node->sfxID;
 }
@@ -6439,12 +6439,12 @@ void HSD_SynthStreamSetVolume(f32 volume)
 	s32 i;
 	u32 enabled;
 
-	lbl_8065B11C = volume;
-	AISetStreamVolLeft(volume * (f32)lbl_8065BBD4);
-	AISetStreamVolRight(lbl_8065B11C * (f32)lbl_8065BBD4);
+	sSynthStreamVolume = volume;
+	AISetStreamVolLeft(volume * (f32)sSynthStreamVolumeScale);
+	AISetStreamVolRight(sSynthStreamVolume * (f32)sSynthStreamVolumeScale);
 	enabled = OSDisableInterrupts();
 	for (i = 0; i < HSD_SYNTHSFXNODE_MAX; i++) {
-		HSD_SynthSFXNode* node = &lbl_80656800[i];
+		HSD_SynthSFXNode* node = &sSynthSfxNodes[i];
 		if (node->sfxID > 0) {
 			HSD_SynthSFXUpdateVolume(node);
 		}
@@ -6458,7 +6458,7 @@ void HSD_SynthStreamSetVolume(f32 volume)
  */
 s32 HSD_SynthPStreamIsActive(void)
 {
-	return lbl_8065BBC4 != NULL;
+	return sSynthActivePStreams != NULL;
 }
 
 /**
@@ -6492,16 +6492,16 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
 	ASSERT_SYNTH_REPORT(0xFDC, pstNum >= 1 && pstNum <= HSD_SYNTHPSTREAM_MAX, "HSD_AudioInit*: pstNum out of range.\n");
 	ASSERT_SYNTH_REPORT(0xFDD, pstBufNum >= 1 && pstBufNum <= 3, "HSD_AudioInit*: pstBufNum out of range.\n");
 	fn_801EB614(pstNum, pstBufNum);
-	lbl_8065BBE0 = pstNum * (pstBufNum + 1) + 1;
+	sSynthStreamBufferCount = pstNum * (pstBufNum + 1) + 1;
 	AISetDSPSampleRate(0);
 	lbl_8065BBE4 = ARAlloc(0x500);
 	HSD_DevComRequest(0, 0, lbl_8065BBE4, 0x500, 3, 0, NULL, 0);
 	lbl_8065BBE4            = (void*)((s32)lbl_8065BBE4 * 2);
 	hsd_SynthSFXBankHead[0] = (s32)ARAlloc(heapSize);
 	AXRegisterCallback(HSD_SynthCallback);
-	lbl_8065BBD4 = 0xFF;
-	AISetStreamVolLeft(lbl_8065B11C * (f32)lbl_8065BBD4);
-	AISetStreamVolRight(lbl_8065B11C * (f32)lbl_8065BBD4);
+	sSynthStreamVolumeScale = 0xFF;
+	AISetStreamVolLeft(sSynthStreamVolume * (f32)sSynthStreamVolumeScale);
+	AISetStreamVolRight(sSynthStreamVolume * (f32)sSynthStreamVolumeScale);
 
 	lbl_80659300.volume   = 1.0f;
 	lbl_80659300.target.f = 1.0f;
@@ -6512,18 +6512,18 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
 		lbl_80659318[i].duration = 0;
 	}
 
-	lbl_8065BBF0 = (void*)(hsd_SynthSFXBankHead[0] + heapSize);
-	lbl_8065BBD8 = (s32)ARAlloc(lbl_8065BBE0 << 0x10);
-	lbl_8065BBDC = OSGetSoundMode();
+	sSynthSfxBankHeapEnd = (void*)(hsd_SynthSFXBankHead[0] + heapSize);
+	sSynthStreamBufferAramBase = (s32)ARAlloc(sSynthStreamBufferCount << 0x10);
+	sSynthSoundMode = OSGetSoundMode();
 
 	HSD_SynthInitPantable();
 
 	for (i = 0; i < pstNum; i++) {
-		lbl_80659918[i].next = lbl_8065BBC0;
-		lbl_8065BBC0         = &lbl_80659918[i];
+		lbl_80659918[i].next = sSynthFreePStreams;
+		sSynthFreePStreams         = &lbl_80659918[i];
 	}
 
-	for (i = 0; i < lbl_8065BBE0; i++) {
+	for (i = 0; i < sSynthStreamBufferCount; i++) {
 		lbl_80656364[i] = -1;
 	}
 }
@@ -6578,7 +6578,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     b        .L_801F28BC
 .L_801F25DC:
     bl       OSDisableInterrupts
-    lwz      r0, lbl_8065BBDC@sda21(r0)
+    lwz      r0, sSynthSoundMode@sda21(r0)
     mr       r28, r3
     cmpwi    r0, 0x4
     beq      .L_801F25F4
@@ -6589,23 +6589,23 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     addi     r4, r4, dropcallback@l
     li       r5, 0x0
     bl       AXAcquireVoice
-    lwz      r4, lbl_8065BBB0@sda21(r0)
-    lis      r5, lbl_80656800@ha
+    lwz      r4, sSynthSfxIdBase@sda21(r0)
+    lis      r5, sSynthSfxNodes@ha
     lwz      r29, 0x18(r3)
-    addi     r5, r5, lbl_80656800@l
+    addi     r5, r5, sSynthSfxNodes@l
     addic.   r0, r4, 0x40
     mulli    r6, r29, 0x98
-    stw      r0, lbl_8065BBB0@sda21(r0)
+    stw      r0, sSynthSfxIdBase@sda21(r0)
     add      r27, r5, r6
     bge      .L_801F2634
     li       r0, 0x40
-    stw      r0, lbl_8065BBB0@sda21(r0)
+    stw      r0, sSynthSfxIdBase@sda21(r0)
 .L_801F2634:
-    lwz      r4, lbl_8065BBC0@sda21(r0)
+    lwz      r4, sSynthFreePStreams@sda21(r0)
     cmplwi   r4, 0x0
     beq      .L_801F264C
     lwz      r0, 0x0(r4)
-    stw      r0, lbl_8065BBC0@sda21(r0)
+    stw      r0, sSynthFreePStreams@sda21(r0)
     b        .L_801F2650
 .L_801F264C:
     li       r4, 0x0
@@ -6630,10 +6630,10 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     lwz      r6, 0x30(r27)
     stw      r7, 0x28(r6)
     lwz      r8, 0x30(r27)
-    lwz      r6, lbl_8065BBC4@sda21(r0)
+    lwz      r6, sSynthActivePStreams@sda21(r0)
     stw      r6, 0x0(r8)
-    lwz      r6, lbl_8065BBB0@sda21(r0)
-    stw      r8, lbl_8065BBC4@sda21(r0)
+    lwz      r6, sSynthSfxIdBase@sda21(r0)
+    stw      r8, sSynthActivePStreams@sda21(r0)
     add      r6, r6, r29
     stw      r6, 0x0(r27)
     stw      r7, 0x4(r27)
@@ -6650,7 +6650,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     stw      r3, 0xc(r1)
     lfd      f1, "@237"@sda21(r0)
     stw      r0, 0x8(r1)
-    lfs      f2, lbl_8065FEC0@sda21(r0)
+    lfs      f2, sSynthInverseVolumeRange@sda21(r0)
     lfd      f0, 0x8(r1)
     fsubs    f0, f0, f1
     fmuls    f0, f2, f0
@@ -6659,7 +6659,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     stfs     f0, 0x3c(r27)
     b        .L_801F2770
 .L_801F2710:
-    lwz      r0, lbl_8065B100@sda21(r0)
+    lwz      r0, sSynthDecibelFloor@sda21(r0)
     slwi     r25, r31, 16
     cmpw     r25, r0
     bgt      .L_801F2728
@@ -6697,7 +6697,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     stw      r3, 0xc(r1)
     lfd      f1, "@237"@sda21(r0)
     stw      r0, 0x8(r1)
-    lfs      f2, lbl_8065FEC0@sda21(r0)
+    lfs      f2, sSynthInverseVolumeRange@sda21(r0)
     lfd      f0, 0x8(r1)
     fsubs    f0, f0, f1
     fmuls    f0, f2, f0
@@ -6706,7 +6706,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     stfs     f0, 0x54(r27)
     b        .L_801F2818
 .L_801F27B8:
-    lwz      r0, lbl_8065B100@sda21(r0)
+    lwz      r0, sSynthDecibelFloor@sda21(r0)
     slwi     r18, r19, 16
     cmpw     r18, r0
     bgt      .L_801F27D0
@@ -6752,8 +6752,8 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     li       r5, 0x0
     bl       AXAcquireVoice
     lwz      r7, 0x18(r3)
-    lis      r4, lbl_80656800@ha
-    addi     r5, r4, lbl_80656800@l
+    lis      r4, sSynthSfxNodes@ha
+    addi     r5, r4, sSynthSfxNodes@l
     li       r0, 0x1
     mulli    r6, r7, 0x98
     li       r4, -0x2
@@ -6771,7 +6771,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     lis      r3, HSD_SynthPStreamStartCallback@ha
     lwz      r4, 0x0(r27)
     addi     r3, r3, HSD_SynthPStreamStartCallback@l
-    bl       fn_801EB658
+    bl       AcquireDvdStreamingSlot
     lwz      r4, 0x30(r27)
     stw      r3, 0xc(r4)
     mr       r3, r28
@@ -6811,13 +6811,13 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     psq_st   f30, 0x48(r1), 0, qr0
     addi     r11, r1, 0x40
     bl       _savegpr_27
-    lis      r7, lbl_8025B868@ha
-    lis      r6, lbl_80655F40@ha
+    lis      r7, sSynthHeapMessageTable@ha
+    lis      r6, hsd_SynthSFXLoadBuf@ha
     mr       r29, r3
     mr       r30, r4
     mr       r27, r5
-    addi     r28, r7, lbl_8025B868@l
-    addi     r31, r6, lbl_80655F40@l
+    addi     r28, r7, sSynthHeapMessageTable@l
+    addi     r31, r6, hsd_SynthSFXLoadBuf@l
     bl       fn_80176F50
     cmpwi    r30, 0x1
     li       r0, 0x0
@@ -6832,7 +6832,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     crclr    cr1eq
     bl       OSReport
     addi     r5, r28, 0x888
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0xfdc
     bl       __assert
 .L_801F2A28:
@@ -6849,7 +6849,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     crclr    cr1eq
     bl       OSReport
     addi     r5, r28, 0x8e4
-    li       r3, lbl_8065B0E8@sda21
+    li       r3, sPathSynthC@sda21
     li       r4, 0xfdd
     bl       __assert
 .L_801F2A64:
@@ -6860,7 +6860,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     li       r3, 0x0
     mullw    r4, r30, r0
     addi     r0, r4, 0x1
-    stw      r0, lbl_8065BBE0@sda21(r0)
+    stw      r0, sSynthStreamBufferCount@sda21(r0)
     bl       AISetDSPSampleRate
     li       r3, 0x500
     bl       ARAlloc
@@ -6883,22 +6883,22 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     stw      r3, 0x3a0(r31)
     addi     r3, r4, HSD_SynthCallback@l
     bl       fn_801788FC
-    lfs      f1, lbl_8065B11C@sda21(r0)
+    lfs      f1, sSynthStreamVolume@sda21(r0)
     li       r0, 0xff
-    lfs      f0, lbl_8065FF20@sda21(r0)
-    stw      r0, lbl_8065BBD4@sda21(r0)
+    lfs      f0, sSynthMaxStreamVolume@sda21(r0)
+    stw      r0, sSynthStreamVolumeScale@sda21(r0)
     fmuls    f0, f1, f0
     fctiwz   f0, f0
     stfd     f0, 0x8(r1)
     lwz      r3, 0xc(r1)
     bl       AISetStreamVolLeft
-    lwz      r3, lbl_8065BBD4@sda21(r0)
+    lwz      r3, sSynthStreamVolumeScale@sda21(r0)
     lis      r0, 0x4330
     stw      r0, 0x10(r1)
     xoris    r0, r3, 0x8000
     lfd      f1, lbl_8065FEB0@sda21(r0)
     stw      r0, 0x14(r1)
-    lfs      f2, lbl_8065B11C@sda21(r0)
+    lfs      f2, sSynthStreamVolume@sda21(r0)
     lfd      f0, 0x10(r1)
     fsubs    f0, f0, f1
     fmuls    f0, f2, f0
@@ -6968,14 +6968,14 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     addi     r5, r5, 0x180
     bdnz     .L_801F2B5C
     lwz      r3, 0x3a0(r31)
-    lwz      r0, lbl_8065BBE0@sda21(r0)
+    lwz      r0, sSynthStreamBufferCount@sda21(r0)
     add      r3, r3, r29
-    stw      r3, lbl_8065BBF0@sda21(r0)
+    stw      r3, sSynthSfxBankHeapEnd@sda21(r0)
     slwi     r3, r0, 16
     bl       ARAlloc
-    stw      r3, lbl_8065BBD8@sda21(r0)
+    stw      r3, sSynthStreamBufferAramBase@sda21(r0)
     bl       OSGetSoundMode
-    stw      r3, lbl_8065BBDC@sda21(r0)
+    stw      r3, sSynthSoundMode@sda21(r0)
     addi     r27, r31, 0x2ec0
     lfs      f30, lbl_8065FEB8@sda21(r0)
     li       r28, 0x0
@@ -7007,7 +7007,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     addi     r0, r3, 0x7
     addi     r4, r31, 0x39d8
     srwi     r0, r0, 3
-    lwz      r5, lbl_8065BBC0@sda21(r0)
+    lwz      r5, sSynthFreePStreams@sda21(r0)
     mtctr    r0
     cmpwi    r3, 0x0
     ble      .L_801F2D1C
@@ -7031,12 +7031,12 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     addi     r4, r4, 0x160
     bdnz     .L_801F2CD4
 .L_801F2D1C:
-    stw      r5, lbl_8065BBC0@sda21(r0)
+    stw      r5, sSynthFreePStreams@sda21(r0)
 .L_801F2D20:
     mulli    r3, r6, 0x2c
     addi     r5, r31, 0x39d8
     subf     r0, r6, r30
-    lwz      r4, lbl_8065BBC0@sda21(r0)
+    lwz      r4, sSynthFreePStreams@sda21(r0)
     add      r5, r5, r3
     mtctr    r0
     cmpw     r6, r30
@@ -7047,9 +7047,9 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     addi     r5, r5, 0x2c
     bdnz     .L_801F2D40
 .L_801F2D50:
-    stw      r4, lbl_8065BBC0@sda21(r0)
+    stw      r4, sSynthFreePStreams@sda21(r0)
 .L_801F2D54:
-    lwz      r3, lbl_8065BBE0@sda21(r0)
+    lwz      r3, sSynthStreamBufferCount@sda21(r0)
     li       r7, 0x0
     cmpwi    r3, 0x0
     ble      .L_801F2DE8
@@ -7076,7 +7076,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     addi     r5, r5, 0x20
     bdnz     .L_801F2D8C
 .L_801F2DB8:
-    lwz      r6, lbl_8065BBE0@sda21(r0)
+    lwz      r6, sSynthStreamBufferCount@sda21(r0)
     slwi     r4, r7, 2
     addi     r5, r31, 0x424
     li       r3, -0x1

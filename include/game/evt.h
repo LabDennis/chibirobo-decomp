@@ -254,8 +254,8 @@ public:
 	CStack mValues;                 // _44
 	u8* _54;                        // _54, WARP raises a flag deep inside it
 	s32 _58;                        // _58
-	s16 _5C;                        // _5C
-	s16 _5E;                        // _5E
+	s16 mUseValue;                  // _5C
+	s16 mHitValue;                  // _5E
 	CCameraMemento* mCameraMemento; // _60, private saved camera
 	// _64 vtable
 
@@ -272,7 +272,7 @@ public:
 	// _200 vtable
 
 	CEvtFlags() { }
-	virtual ~CEvtFlags() { } // _08
+	virtual ~CEvtFlags(); // _08
 };
 STATIC_ASSERT(sizeof(CEvtFlags) == 0x204);
 
@@ -282,7 +282,7 @@ public:
 	s32 mVars[0x800]; // _00
 	// _2000 vtable
 
-	virtual ~CEvtVars() { } // _08
+	virtual ~CEvtVars(); // _08
 };
 STATIC_ASSERT(sizeof(CEvtVars) == 0x2004);
 
@@ -293,17 +293,17 @@ public:
 	u8* mScript[0x80]; // _04
 	// _204 vtable
 
-	virtual ~CEvtQueue() { } // _08
+	virtual ~CEvtQueue(); // _08
 };
 
 // the same with each script's context and two arguments
 class CEvtQueueEx : public CEvtQueue {
 public:
-	u32 mContext[0x80]; // _208
-	s16 mArg0[0x80];    // _408
-	s16 mArg1[0x80];    // _508
+	u32 mContext[0x80];  // _208
+	s16 mUseValue[0x80]; // _408
+	s16 mHitValue[0x80]; // _508
 
-	virtual ~CEvtQueueEx() { } // _08
+	virtual ~CEvtQueueEx(); // _08
 };
 STATIC_ASSERT(sizeof(CEvtQueueEx) == 0x608);
 
@@ -314,9 +314,24 @@ public:
 	s32 mValue[10];  // _28, the script
 	// _50 vtable
 
-	virtual ~CEvtTimer() { } // _08
+	virtual ~CEvtTimer(); // _08
 };
 STATIC_ASSERT(sizeof(CEvtTimer) == 0x54);
+
+#ifndef DEFER_EVENT_DESTRUCTORS
+inline CEvtTimer::~CEvtTimer()
+{
+}
+inline CEvtQueueEx::~CEvtQueueEx()
+{
+}
+inline CEvtQueue::~CEvtQueue()
+{
+}
+inline CEvtVars::~CEvtVars()
+{
+}
+#endif
 
 class CJObj;
 class CVec;
@@ -324,21 +339,36 @@ class XObj;
 
 extern "C" {
 // script flags, one bit each, and script variables. both go in the save file
-extern u32 lbl_8036781C[0x80];
-extern s32 lbl_80367A2C[0x800];
+extern u32 gEventFlagWords[0x80];
+extern s32 gEventVariables[0x800];
 // the camera states scripts save and load
-extern CCameraMemento lbl_8036AA3C[];
+extern CCameraMemento gEventCameraMementos[];
 
 // world position of the joint a path leads to, path holds a sibling count per level
-CVec fn_8007E7C8(CJObj* obj, s32 depth, s32* path);
-CVec fn_8007E7F4(CJObj* obj, s32 depth, s32* path);
+CVec GetEventJointWorldPosition(CJObj* obj, s32 depth, s32* path);
+CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* path);
 // start a script on evt, or park it in the queue while another one runs
-void fn_8007EEA4(CEvt* evt, u8* script, u32 context, s16 argument0, s16 argument1);
-void fn_8007F040(CEvt* evt, BOOL clearTimers, BOOL clearGlobal);
+void StartOrQueueEventScript(CEvt* evt, u8* script, u32 context, s16 useValue, s16 hitValue);
+void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal);
 // runs the script on for step frames
 void CEvt_Update(CEvt* evt, s32 step);
 // the object an event refers to by id, -1 is the one running the script
-XObj* fn_8007F570(void* context, s16 id);
+XObj* ResolveEventObjectId(void* context, s16 id);
 }
+
+struct EvtBeatLatch {
+	s32 mPending; // _00
+	s32 mBeat;    // _04
+};
+
+extern "C" EvtBeatLatch gEventBeatLatch;
+struct EvtCmdEntry {
+	u8 command;                                 // _00
+	u8 _01[3];                                  // _01
+	const char* name;                           // _04
+	s32 (CEvt::*handler)(u8 command, s32 step); // _08
+};
+STATIC_ASSERT(sizeof(EvtCmdEntry) == 0x14);
+extern "C" EvtCmdEntry evtCmdTable[];
 
 #endif

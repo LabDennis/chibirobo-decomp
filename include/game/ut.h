@@ -13,20 +13,11 @@
 
 class CVec : public Vec {
 public:
-	CVec() { }
-	CVec(f32 x, f32 y, f32 z)
-	{
-		this->x = x;
-		this->y = y;
-		this->z = z;
-	}
-	CVec(const Vec& v)
-	{
-		x = v.x;
-		y = v.y;
-		z = v.z;
-	}
-	virtual ~CVec() { } // _08
+	CVec();
+	CVec(f32 x, f32 y, f32 z);
+	CVec(const Vec& v);
+	CVec(const CVec& v);
+	virtual ~CVec(); // _08
 
 	CVec operator+(Vec v) const; // in the dol, 0x8000F93C
 	CVec operator-(Vec v) const; // in the dol, 0x800244A0
@@ -50,6 +41,10 @@ public:
 
 	// _0C vtable
 };
+#ifndef DEFER_CVEC_CONSTRUCTORS
+#include "game/cvec_constructors.inl"
+#endif
+
 // size checks by hand, STATIC_ASSERT is in types.h and most includers come in through the HSD headers
 typedef char CVec_size_check[sizeof(CVec) == 0x10 ? 1 : -1];
 
@@ -69,12 +64,17 @@ public:
 	// _04 vtable
 
 	CStatus() { mFlags = 0; }
-	virtual ~CStatus() { } // _08
+	virtual ~CStatus(); // _08
 
 	// any of the mask's bits set
 	// the ternary keeps the test and branch, a plain bool folds to a bare clrlwi in shun's CmdCheckOnOffFlag
 	bool Check(u32 mask) const { return (mFlags & mask) ? true : false; }
 };
+#ifndef DEFER_CSTATUS_DESTRUCTOR
+inline CStatus::~CStatus()
+{
+}
+#endif
 typedef char CStatus_size_check[sizeof(CStatus) == 0x8 ? 1 : -1];
 
 #include "game/cstatus64.h"
@@ -89,35 +89,38 @@ struct _HSD_AObj;
 
 extern "C" {
 // walls, lines and triangles, mostly flat on the xz plane
-int fn_8018D43C(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos, Vec* contact, f32* dist,
-                f32 radius, f32 scale, int corners);
-int fn_8018E640(const Vec* a, const Vec* b, const Vec* c, const Vec* d, Vec* out, int check);
-void fn_8018E824(Vec* a, Vec* b, Vec* c, Vec* out);
-int fn_8018E8A4(Vec* a, Vec* b, Vec* c, Vec* pos, Vec* out);
-BOOL fn_8018EA50(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d);
-BOOL fn_8018EC6C(Vec* pos, Vec* a, Vec* b, Vec* c);
-f32 fn_8018EE2C(Vec* a, Vec* b, Vec* c);
-void fn_8018EE60(Vec* a, Vec* b, Vec* c, Vec* normal);
+int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
+                                 Vec* contact, f32* dist, f32 radius, f32 scale, int corners);
+int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const Vec* d, Vec* out, int check);
+void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
+int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec* out);
+BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d);
+BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c);
+f32 SignedTriangleArea2XZ(Vec* a, Vec* b, Vec* c);
+void CalcTriangleNormal(Vec* a, Vec* b, Vec* c, Vec* normal);
 
 // jobj trees: blend two poses into a third, copy a pose, back to the rest pose, all to
 // quaternions, and the first animation of each kind in a tree
-void fn_8018EEC8(_HSD_JObj* a, _HSD_JObj* b, _HSD_JObj* out, f32 t);
-void fn_8018F658(_HSD_JObj* src, _HSD_JObj* dst);
-void fn_8018F9B4(_HSD_Joint* joint, _HSD_JObj* jobj);
-void fn_8018FD80(_HSD_JObj* jobj);
-_HSD_AObj* fn_801902C4(_HSD_JObj* jobj);
-_HSD_AObj* fn_801905D4(_HSD_JObj* jobj);
-_HSD_AObj* fn_801908F8(_HSD_JObj* jobj);
+void BlendJointTreePoses(_HSD_JObj* a, _HSD_JObj* b, _HSD_JObj* out, f32 t);
+void CopyJointPoseTree(_HSD_JObj* src, _HSD_JObj* dst);
+void RestoreJointTreePose(_HSD_Joint* joint, _HSD_JObj* jobj);
+#if defined(VERSION_JP)
+void RemoveJointTreeDisplayObjects(_HSD_JObj* jobj);
+#endif
+void ConvertJointTreeRotationToQuaternion(_HSD_JObj* jobj);
+_HSD_AObj* FindPolygonAnimationInJointTree(_HSD_JObj* jobj);
+_HSD_AObj* FindMaterialOrTextureAnimationInJointTree(_HSD_JObj* jobj);
+_HSD_AObj* FindJointAnimationInTree(_HSD_JObj* jobj);
 
 // free aram, and two matrix builders for billboards
-u32 fn_80190AB0(void);
-void fn_80190AF0(Mtx src, Mtx dst, f32 angle);
-void fn_80190E60(Mtx src, Mtx dst);
+u32 GetFreeARAMSize(void);
+void BuildBillboardMatrixWithZRotation(Mtx src, Mtx dst, f32 angle);
+void BuildBillboardMatrixFromUp(Mtx src, Mtx dst);
 
 // sprintf into a static buffer, half width to full width shift jis, and hex digits
-char* fn_801911B4(const char* fmt, ...);
-char* fn_80191268(const char* src, char* dst);
-u32 fn_80191310(const char* str, s32 len);
+char* FormatToStaticBuffer(const char* fmt, ...);
+char* ConvertHalfWidthToFullWidthSJIS(const char* src, char* dst);
+u32 ParseHexDigits(const char* str, s32 len);
 }
 
 // the first shape, material or joint anim in a tree, whichever turns up first
@@ -126,13 +129,13 @@ static inline _HSD_AObj* GetAObj(_HSD_JObj* jobj)
 {
 	_HSD_AObj* aobj;
 	if (jobj != NULL) {
-		if ((aobj = fn_801908F8(jobj)) != NULL) {
+		if ((aobj = FindJointAnimationInTree(jobj)) != NULL) {
 			return aobj;
 		}
-		if ((aobj = fn_801905D4(jobj)) != NULL) {
+		if ((aobj = FindMaterialOrTextureAnimationInJointTree(jobj)) != NULL) {
 			return aobj;
 		}
-		if ((aobj = fn_801902C4(jobj)) != NULL) {
+		if ((aobj = FindPolygonAnimationInJointTree(jobj)) != NULL) {
 			return aobj;
 		}
 	}

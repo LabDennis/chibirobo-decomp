@@ -2,9 +2,20 @@
 #define _GAME_TITLE_H
 
 #include "Version.h"
+#include "game/menuhelpchar.h"
 #include "game/xobj.h"
 #include "game/xobjdemo.h"
 #include "game/ctpl.h"
+
+struct TitlePaletteEntry {
+	GXColor background, text;
+};
+extern "C" {
+extern const TitlePaletteEntry gTitlePalette[];
+extern const s32 gTitleLogoTextures[3];
+extern const Vec gTitleDemoStartPosition;
+extern s32 gTitlePaletteIndex, gTitleLogoIndex;
+}
 
 // the menus' pointer, an XObj with a little on top. class name from RTTI
 class Cursor : public XObj {
@@ -54,6 +65,33 @@ STATIC_ASSERT(sizeof(StageName) == 0x19C);
 // the title screen, CGame keeps it at _4930. class name from RTTI
 class Title {
 public:
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+	void State5(u32 frames);
+	void State6(u32 frames);
+	void State7(u32 frames);
+	void State8(u32 frames);
+	void State9(u32 frames);
+	void State10(u32 frames);
+	void State11(u32 frames);
+	void State12(u32 frames);
+	void State13(u32 frames);
+	void State14(u32 frames);
+	void State15(u32 frames);
+	void State16(u32 frames);
+	void State17(u32 frames);
+	void State18(u32 frames);
+	void State19(u32 frames);
+	void State20(u32 frames);
+	void State21(u32 frames);
+	void State22(u32 frames);
+	void State23(u32 frames);
+	void State24(u32 frames);
+	void State25(u32 frames);
+
 	s32 mState;                // _00, CGame's FrameInterval runs at 60 while it's 1 to 22
 	s32 mMode;                 // _04
 	u32 _08;                   // _08
@@ -106,9 +144,13 @@ public:
 	u8 _381A[0x3820 - 0x381A]; // _381A
 	s32 _3820;                 // _3820, frames the rumble test has left
 	TitleDust mDust[16];       // _3824
-	u8 _39A4[0x39B4 - 0x39A4]; // _39A4
-	StageName mName;           // _39B4, the letters fade out together when the title is left
-	u8 _3B50[0x3C44 - 0x3B50]; // _3B50
+	u32 mHelpFadeState;
+	f32 mHelpAlpha;
+	const char* mHelpText;
+	const char* mNextHelpText;
+	StageName mName; // _39B4, the letters fade out together when the title is left
+	s32 mHelpCount;
+	MenuHelpChar mBg[20];
 #if !defined(VERSION_JP)
 	u32 _3C44; // _3C44
 #endif
@@ -129,5 +171,12 @@ STATIC_ASSERT(sizeof(Title) == 0x3C28);
 #else
 STATIC_ASSERT(sizeof(Title) == 0x3C50);
 #endif
+
+typedef void (Title::*TitleModeUpdate)(u32 frames);
+extern "C" TitleModeUpdate gTitleModeUpdates[26];
+
+extern "C" void InitTitleScreen(Title* title);
+extern "C" void ResetTitleScreenState(Title* title);
+extern "C" void UpdateTitleScreen(Title* title, u32 frames);
 
 #endif

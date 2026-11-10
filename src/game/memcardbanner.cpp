@@ -34,29 +34,28 @@ static inline void* SaveTextureData(const CTexObj& texture)
  * @note Address: 0x800884F0
  * @note Size: 0x358
  */
-extern "C" void fn_800884F0(Memcard* card, s32 slot)
+extern "C" void BuildSaveBanner(Memcard* card, s32 slot)
 {
 	SaveBanner* data = &card->mFile.mBanner;
 #if defined(VERSION_JP)
 	sprintf(data->mTitle, lbl_80209EC8);
-	s32 time = lbl_8025C400.mPlayTime;
+	s32 time = gGame.mPlayTime;
 	sprintf(data->mComment, lbl_80209ED4, slot + 1, time / 216000, time / 3600 % 60, time / 60 % 60);
 #elif defined(VERSION_PAL)
-	sprintf(data->mTitle, fn_8006DBF0(0x102));
-	f32 time    = lbl_8025C400.mPlayTime;
+	sprintf(data->mTitle, GetLocalizedInterfaceText(0x102));
+	f32 time    = gGame.mPlayTime;
 	s32 seconds = (s32)(time / 60.0f) % 60;
-	sprintf(data->mComment, lbl_8020FB48, slot + 1, fn_8006DBF0(0x103), (s32)(time / 216000.0f), (s32)(time / 3600.0f) % 60, seconds);
+	sprintf(data->mComment, lbl_8020FB48, slot + 1, GetLocalizedInterfaceText(0x103), (s32)(time / 216000.0f), (s32)(time / 3600.0f) % 60,
+	        seconds);
 #else
-	sprintf(data->mTitle, fn_8006DBF0(0x102));
-	s32 time    = lbl_8025C400.mPlayTime;
+	sprintf(data->mTitle, GetLocalizedInterfaceText(0x102));
+	s32 time    = gGame.mPlayTime;
 	s32 seconds = time / 60 % 60;
-	sprintf(data->mComment, lbl_802091C0, slot + 1, fn_8006DBF0(0x103), time / 216000, time / 3600 % 60, seconds);
+	sprintf(data->mComment, lbl_802091C0, slot + 1, GetLocalizedInterfaceText(0x103), time / 216000, time / 3600 % 60, seconds);
 #endif
-	CTpl* resource   = &lbl_8025C400.mTpl;
-	CTexObj* texture = &resource->mTex;
-	CTexObj banner   = texture->Init(((TPLPalette*)resource->mBuffer)->descriptorArray + BANNER_TEXTURE, 0);
+	CTexObj banner = gGame.mTpl.mTex.Init(((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray + BANNER_TEXTURE, 0);
 	memcpy(data->mBanner, SaveTextureData(banner), sizeof(data->mBanner));
-	CTexObj icon = texture->Init(((TPLPalette*)resource->mBuffer)->descriptorArray + ICON_TEXTURE, 0);
+	CTexObj icon = gGame.mTpl.mTex.Init(((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray + ICON_TEXTURE, 0);
 	memcpy(data->mIcon, SaveTextureData(icon), sizeof(data->mIcon));
 
 	CARDSetCommentAddress(&card->mStat, 0);

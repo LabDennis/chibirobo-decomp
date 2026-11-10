@@ -241,7 +241,7 @@ extern u16 lbl_8065BA84;
 extern u16 lbl_8065BA86;
 extern u16 lbl_8065BA8A;
 extern u16 lbl_8065BA8C;
-extern u16 lbl_8065B090;
+extern u16 sParticleGeneratorIdCounter;
 HSD_psAppSRT* freeAppSRT;
 extern u32 lbl_8065BAB8;
 extern void (*lbl_8065BAB0)(HSD_Generator* gen, Mtx mtx);
@@ -252,15 +252,15 @@ extern HSD_Generator* lbl_8065BAA0;
 extern HSD_Generator* lbl_8065BA9C;
 extern HSD_SList* lbl_8065BA98;
 
-extern char lbl_8025B3D8[];
-extern char lbl_8025B3E4[];
+extern char sPathGeneratorC[];
+extern char sGeneratorCameraCondition[];
 
 void psKillAllGenerator(void);
 f32 generateParticle(HSD_Generator* gen);
 void psApplyGeneratorJObj(HSD_Generator* gen);
 HSD_Generator* psCreateGeneratorID(int linkNo, int bank, int kind);
 void psSetBillboardCamera(HSD_CObj* cobj);
-HSD_psAppSRT* fn_801E56F8(HSD_Generator* gp, s32 status);
+HSD_psAppSRT* CreateGeneratorAppSRT(HSD_Generator* gp, s32 status);
 s32 psRemoveParticleAppSRT(HSD_Particle* pp);
 s32 psRemoveGeneratorAppSRT(HSD_Generator* gp);
 
@@ -553,7 +553,7 @@ static inline HSD_psAppSRT* psNewAppSRT(s8 status, u16 idnum)
 	return srt;
 }
 
-HSD_psAppSRT* fn_801E56F8(HSD_Generator* gp, s32 status)
+HSD_psAppSRT* CreateGeneratorAppSRT(HSD_Generator* gp, s32 status)
 {
 	return gp->appsrt = psNewAppSRT(status, gp->idnum);
 }
@@ -588,7 +588,7 @@ s32 psAttachGeneratorAppSRT(HSD_Generator* gp, HSD_psAppSRT* srt)
  * @note Address: 0x801E5808
  * @note Size: 0x6C
  */
-s32 fn_801E5808(HSD_Particle* pp, HSD_psAppSRT* srt)
+s32 AttachParticleAppSRT(HSD_Particle* pp, HSD_psAppSRT* srt)
 {
 	if (srt == NULL || pp == NULL) {
 		return -1;
@@ -604,7 +604,7 @@ s32 fn_801E5808(HSD_Particle* pp, HSD_psAppSRT* srt)
  * @note Address: 0x801E5874
  * @note Size: 0x6C
  */
-s32 fn_801E5874(HSD_Generator* gp, HSD_psAppSRT* srt)
+s32 AttachGeneratorAppSRT(HSD_Generator* gp, HSD_psAppSRT* srt)
 {
 	if (srt == NULL || gp == NULL) {
 		return -1;

@@ -210,9 +210,11 @@ s32 CCard::Mount(s32 chan, CARDCallback detachCallback)
  * @note Address: 0x801A99F8
  * @note Size: 0x3C
  */
-void CCard::Probe(s32 chan, s32* memSize, s32* sectorSize)
+s32 CCard::Probe(s32 chan, s32* memSize, s32* sectorSize)
 {
-	mResult = CARDProbeEx(chan, memSize, sectorSize);
+	s32 result = CARDProbeEx(chan, memSize, sectorSize);
+	mResult    = result;
+	return result;
 }
 
 /**

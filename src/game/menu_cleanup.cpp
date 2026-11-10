@@ -2,26 +2,6 @@
 
 // the destructors of the menus and of the status menu's value table
 
-// a value with flags of its own, the status menu keeps tables of them
-struct MenuStatusEntry {
-	s32 mValue;      // _00
-	CStatus mStatus; // _04
-
-	MenuStatusEntry();
-	~MenuStatusEntry();
-};
-STATIC_ASSERT(sizeof(MenuStatusEntry) == 0xC);
-
-struct MenuStatusTable {
-	s32 mCount;                    // _000
-	MenuStatusEntry mEntries[256]; // _004
-	MenuStatusEntry mLeft[4];      // _C04
-	MenuStatusEntry mRight[4];     // _C34
-
-	~MenuStatusTable();
-};
-STATIC_ASSERT(sizeof(MenuStatusTable) == 0xC64);
-
 /**
  * @note Address: 0x8006331C
  * @note Size: 0x94
@@ -46,6 +26,13 @@ MenuStatusEntry::MenuStatusEntry()
 {
 }
 
+// The Japanese menu list emits its destructors in a different order.
+#if defined(VERSION_JP)
+MenuSave::~MenuSave()
+{
+}
+#endif
+
 /**
  * @note Address: 0x8006341C
  * @note Size: 0x90
@@ -62,6 +49,11 @@ MenuMCTest::~MenuMCTest()
 {
 }
 
+#if defined(VERSION_JP)
+MenuRequestClear::~MenuRequestClear()
+{
+}
+#else
 /**
  * @note Address: 0x8006353C
  * @note Size: 0x90
@@ -77,6 +69,7 @@ MenuStageSelect::~MenuStageSelect()
 MenuSave::~MenuSave()
 {
 }
+#endif
 
 /**
  * @note Address: 0x8006365C
@@ -85,6 +78,28 @@ MenuSave::~MenuSave()
 MenuPC::~MenuPC()
 {
 }
+
+#if defined(VERSION_JP)
+MenuStageSelect::~MenuStageSelect()
+{
+}
+
+MenuSound::~MenuSound()
+{
+}
+
+MenuPadControl::~MenuPadControl()
+{
+}
+
+MenuSettings::~MenuSettings()
+{
+}
+
+MenuRequest::~MenuRequest()
+{
+}
+#endif
 
 /**
  * @note Address: 0x800636EC

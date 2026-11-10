@@ -4,1098 +4,40 @@
 #include <dolphin/os.h>
 #include "Version.h"
 #include "game/csound.h"
-#include "game/xaction.h"
+#include "game/soundtracks.h"
+#include "game/xchr.h"
 
-// skips names that are already in, otherwise takes the first free slot
-inline void XSound::registerName(const char* name)
-{
-	s32 val = mStageBank;
-	if (name == NULL) {
-		return;
-	}
-	for (u32 i = 0; i < 16; i++) {
-		if (mLoadRequests[i].mName != NULL && strcmp(mLoadRequests[i].mName, name) == 0) {
-			return;
-		}
-	}
-	for (u32 i = 0; i < 16; i++) {
-		if (mLoadRequests[i].mName == NULL) {
-			mLoadRequestCount++;
-			mLoadRequests[i].mName = name;
-			mLoadRequests[i].mBank = val;
-			OSReport("Register:%s\n", name);
-			return;
-		}
-	}
-	OSReport("Ssm::Load xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
-}
-
-// a negative track means the default one
-inline s32 XSound::resolveTrack(s32 track)
-{
-	if (track < 0) {
-		track = mDefaultTrack;
-	}
-	return track;
-}
+#include "game/soundplayback.h"
 
 #if defined(VERSION_JP)
-#define SOUND_PLAYER_STATE   ((u8*)lbl_8025C400.GetPlayer() + 0xA34)
-#define SOUND_PLAYER_SURFACE (*(s32*)((u8*)lbl_8025C400.GetPlayer() + 0x14480))
+#define SOUND_PLAYER_SURFACE (*(s32*)((u8*)gGame.GetPlayer() + 0x14480))
 #else
-#define SOUND_PLAYER_STATE   ((u8*)lbl_8025C400.GetPlayer() + 0xA44)
-#define SOUND_PLAYER_SURFACE (*(s32*)((u8*)lbl_8025C400.GetPlayer() + 0x158C0))
+#define SOUND_PLAYER_SURFACE (*(s32*)((u8*)gGame.GetPlayer() + 0x158C0))
 #endif
 
 extern "C" {
-BOOL fn_801E93A8(s32 track);
-BOOL HSD_AudioSFXKeyOffTrack(s32 track);
-BOOL fn_801E9724(s32 track);
-void HSD_SynthSetSoundMode(s32 mode);
-BOOL fn_801EA028(u8 vol, u16 frames);
-BOOL fn_801EA0C4(void);
-BOOL fn_801EA134(void);
-BOOL HSD_AudioSFXSetVolumeByID(s32 sfx, u8 vol, u16 frames);
-BOOL fn_801E9604(s32 sfx);
-s32 HSD_AudioSFXCountByID(s32 sfx);
 s32 HSD_AudioSFXStartParam(u32 sfx, u8 vol, u8 pan, s32 group, s32 track);
 BOOL HSD_AudioSFXSetPitchByID(s32 sfx, s16 pitch);
 s32 HSD_AudioPStreamStartChParam(const char* path, u8 vol, s32 channel);
-s32 HSD_SynthSFXGetPendingLoadCount(void);
 s32 HSD_SynthSFXLoad(const char* name, s32 bank, void (*callback)(s32, s32), s32 arg);
-BOOL fn_801EA2E8(void);
-BOOL fn_801EA1A4(s16 pitch);
+BOOL AXDriverIsStreamActive(void);
+BOOL AXDriverSetAllStreamPitches(s16 pitch);
 }
 
-// one entry per music track, the path to the .hps stream and its volume
-struct MusicEntry {
-	const char* _00; // _00, stream path
-	u8 _04;          // _04, volume
-	u8 _05[3];       // _05
-};
-extern "C" MusicEntry musicTable[];
-
-// guess: ids with high half 0xFFFF (but not -1) mean "every sfx", stops all slots
-static inline bool isAllSfx(s32 sfx)
-{
-	if (sfx == -1) {
-		return false;
-	}
-	return (sfx & 0xFFFF0000) == 0xFFFF0000;
-}
-
-// a music id's volume from musicTable, 0 for anything that isn't music
-static inline u8 getMusicVolume(s32 sfx)
-{
-	if (!isAllSfx(sfx)) {
-		return 0;
-	}
-	u8 idx = sfx;
-	if (idx > 0x6D) {
-		idx = 0;
-	}
-	return musicTable[idx]._04;
-}
-
-// the every-sfx id goes to the master volume and remembers it, anything else to that one sfx
-static inline void setSfxVolume(XSound* sound, s32 sfx, u8 vol, u16 frames)
-{
-	if (isAllSfx(sfx)) {
-		sound->_2CC = vol;
-		fn_801EA028(vol, frames);
-	} else {
-		HSD_AudioSFXSetVolumeByID(sfx, vol, frames);
-	}
-}
-
-// the group lists sit in the sound data block, the two entry one is in small data
+// Sound-effect tables share a data pool.
 extern "C" u8 lbl_802107A0[];
-extern "C" s32 lbl_8065A1C0[2];
 extern "C" s32 HSD_Randi(s32 max);
-
-/**
- * @note Address: 0x8001DC20
- * @note Size: 0x2E0
- */
-extern "C" void fn_8001DC20(XSound* sound, u32 group, f32 strength, u8 first, u8 second)
-{
-	u8* data   = lbl_802107A0;
-	u32 volume = 255.0f * strength;
-	if (strength < 0.5f) {
-		volume *= 0.2f;
-	} else if (strength < 1.0f) {
-		volume *= 0.6;
-	}
-
-	s32* ids;
-	s32 count;
-	switch (group) {
-	case 0:
-		ids   = (s32*)(data + 0x6C4);
-		count = 7;
-		break;
-	case 1:
-		ids   = (s32*)(data + 0x9AC);
-		count = 5;
-		break;
-	case 2:
-		ids   = (s32*)(data + 0x6E0);
-		count = 10;
-		break;
-	case 3:
-		ids   = (s32*)(data + 0x730);
-		count = 10;
-		break;
-	case 4:
-		ids   = (s32*)(data + 0x708);
-		count = 10;
-		break;
-	case 7:
-		ids   = (s32*)(data + 0x794);
-		count = 10;
-		break;
-	case 8:
-		ids   = (s32*)(data + 0x780);
-		count = 5;
-		break;
-	case 9:
-		ids   = (s32*)(data + 0x758);
-		count = 10;
-		break;
-	case 10:
-		ids   = (s32*)(data + 0x7BC);
-		count = 5;
-		break;
-	case 11:
-		ids   = (s32*)(data + 0x7E8);
-		count = 5;
-		break;
-	case 12:
-		ids   = (s32*)(data + 0x7FC);
-		count = 6;
-		break;
-	case 13:
-		ids   = (s32*)(data + 0x814);
-		count = 10;
-		break;
-	case 14:
-		ids   = lbl_8065A1C0;
-		count = 2;
-		break;
-	case 15:
-		ids   = (s32*)(data + 0x83C);
-		count = 12;
-		break;
-	case 16:
-		ids   = (s32*)(data + 0x86C);
-		count = 10;
-		break;
-	case 17:
-		ids   = (s32*)(data + 0x894);
-		count = 10;
-		break;
-	case 18:
-		ids   = (s32*)(data + 0x984);
-		count = 10;
-		break;
-	case 19:
-		ids   = (s32*)(data + 0x8BC);
-		count = 10;
-		break;
-	case 20:
-		ids   = (s32*)(data + 0x8E4);
-		count = 10;
-		break;
-	case 21:
-		ids   = (s32*)(data + 0x90C);
-		count = 10;
-		break;
-	case 22:
-		ids   = (s32*)(data + 0x934);
-		count = 10;
-		break;
-	case 23:
-		ids   = (s32*)(data + 0x95C);
-		count = 10;
-		break;
-	case 24:
-		ids   = (s32*)(data + 0x9C0);
-		count = 6;
-		break;
-	case 25:
-		ids   = (s32*)(data + 0xA00);
-		count = 11;
-		break;
-	case 26:
-		ids   = (s32*)(data + 0xA2C);
-		count = 12;
-		break;
-	case 27:
-		ids   = (s32*)(data + 0x9D8);
-		count = 10;
-		break;
-	case 28:
-		ids   = (s32*)(data + 0xA5C);
-		count = 6;
-		break;
-	case 29:
-		ids   = (s32*)(data + 0x7D0);
-		count = 6;
-		break;
-	case 30:
-		ids   = (s32*)(data + 0xA74);
-		count = 8;
-		break;
-	case 31:
-		ids   = (s32*)(data + 0xA94);
-		count = 4;
-		break;
-	case 32:
-		ids   = (s32*)(data + 0xAA4);
-		count = 4;
-		break;
-	case 33:
-		ids   = (s32*)(data + 0xAB4);
-		count = 6;
-		break;
-	default:
-		return;
-	}
-	if (count > 0) {
-		for (s32 i = 0; i < count; i++) {
-			if (fn_8001E6C8(sound, ids[i])) {
-				return;
-			}
-		}
-		s32 index = HSD_Randi(count);
-		if (volume >= 512) {
-			volume = 511;
-		}
-		fn_8001E904(sound, ids[index], volume);
-		if (volume > 255) {
-			fn_8001E904(sound, ids[index], 255);
-		}
-	}
-}
-/*
-    stwu     r1, -0x40(r1)
-    mflr     r0
-    stw      r0, 0x44(r1)
-    stfd     f31, 0x30(r1)
-    psq_st   f31, 0x38(r1), 0, qr0
-    stmw     r26, 0x18(r1)
-    fmr      f31, f1
-    lfs      f0, lbl_8065C08C@sda21(r0)
-    lis      r5, lbl_802107A0@ha
-    mr       r31, r3
-    mr       r26, r4
-    fmuls    f1, f0, f31
-    addi     r30, r5, lbl_802107A0@l
-    bl       __cvt_fp2unsigned
-    lfs      f0, lbl_8065C090@sda21(r0)
-    mr       r29, r3
-    fcmpo    cr0, f31, f0
-    bge      .L_8001DC94
-    lis      r0, 0x4330
-    stw      r29, 0xc(r1)
-    lfd      f2, lbl_8065C0A8@sda21(r0)
-    stw      r0, 0x8(r1)
-    lfs      f0, lbl_8065C094@sda21(r0)
-    lfd      f1, 0x8(r1)
-    fsubs    f1, f1, f2
-    fmuls    f1, f1, f0
-    bl       __cvt_fp2unsigned
-    mr       r29, r3
-    b        .L_8001DCC8
-.L_8001DC94:
-    lfs      f0, lbl_8065C098@sda21(r0)
-    fcmpo    cr0, f31, f0
-    bge      .L_8001DCC8
-    lis      r0, 0x4330
-    stw      r29, 0xc(r1)
-    lfd      f2, lbl_8065C0A8@sda21(r0)
-    stw      r0, 0x8(r1)
-    lfd      f0, lbl_8065C0A0@sda21(r0)
-    lfd      f1, 0x8(r1)
-    fsub     f1, f1, f2
-    fmul     f1, f1, f0
-    bl       __cvt_fp2unsigned
-    mr       r29, r3
-.L_8001DCC8:
-    cmplwi   r26, 0x21
-    bgt      .L_8001DEE4
-    lis      r3, jumptable_802112C4@ha
-    slwi     r0, r26, 2
-    addi     r3, r3, jumptable_802112C4@l
-    lwzx     r0, r3, r0
-    mtctr    r0
-    bctr
-.L_8001DCE8:
-    addi     r28, r30, 0x6c4
-    li       r27, 0x7
-    b        .L_8001DE6C
-.L_8001DCF4:
-    addi     r28, r30, 0x9ac
-    li       r27, 0x5
-    b        .L_8001DE6C
-.L_8001DD00:
-    addi     r28, r30, 0x6e0
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DD0C:
-    addi     r28, r30, 0x730
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DD18:
-    addi     r28, r30, 0x708
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DD24:
-    addi     r28, r30, 0x794
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DD30:
-    addi     r28, r30, 0x780
-    li       r27, 0x5
-    b        .L_8001DE6C
-.L_8001DD3C:
-    addi     r28, r30, 0x758
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DD48:
-    addi     r28, r30, 0x7bc
-    li       r27, 0x5
-    b        .L_8001DE6C
-.L_8001DD54:
-    addi     r28, r30, 0x7e8
-    li       r27, 0x5
-    b        .L_8001DE6C
-.L_8001DD60:
-    addi     r28, r30, 0x7fc
-    li       r27, 0x6
-    b        .L_8001DE6C
-.L_8001DD6C:
-    addi     r28, r30, 0x814
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DD78:
-    li       r28, lbl_8065A1C0@sda21
-    li       r27, 0x2
-    b        .L_8001DE6C
-.L_8001DD84:
-    addi     r28, r30, 0x83c
-    li       r27, 0xc
-    b        .L_8001DE6C
-.L_8001DD90:
-    addi     r28, r30, 0x86c
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DD9C:
-    addi     r28, r30, 0x894
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DDA8:
-    addi     r28, r30, 0x984
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DDB4:
-    addi     r28, r30, 0x8bc
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DDC0:
-    addi     r28, r30, 0x8e4
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DDCC:
-    addi     r28, r30, 0x90c
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DDD8:
-    addi     r28, r30, 0x934
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DDE4:
-    addi     r28, r30, 0x95c
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DDF0:
-    addi     r28, r30, 0x9c0
-    li       r27, 0x6
-    b        .L_8001DE6C
-.L_8001DDFC:
-    addi     r28, r30, 0xa00
-    li       r27, 0xb
-    b        .L_8001DE6C
-.L_8001DE08:
-    addi     r28, r30, 0xa2c
-    li       r27, 0xc
-    b        .L_8001DE6C
-.L_8001DE14:
-    addi     r28, r30, 0x9d8
-    li       r27, 0xa
-    b        .L_8001DE6C
-.L_8001DE20:
-    addi     r28, r30, 0xa5c
-    li       r27, 0x6
-    b        .L_8001DE6C
-.L_8001DE2C:
-    addi     r28, r30, 0x7d0
-    li       r27, 0x6
-    b        .L_8001DE6C
-.L_8001DE38:
-    addi     r28, r30, 0xa74
-    li       r27, 0x8
-    b        .L_8001DE6C
-.L_8001DE44:
-    addi     r28, r30, 0xa94
-    li       r27, 0x4
-    b        .L_8001DE6C
-.L_8001DE50:
-    addi     r28, r30, 0xaa4
-    li       r27, 0x4
-    b        .L_8001DE6C
-.L_8001DE5C:
-    addi     r28, r30, 0xab4
-    li       r27, 0x6
-    b        .L_8001DE6C
-.L_8001DE68:
-    b        .L_8001DEE4
-.L_8001DE6C:
-    cmpwi    r27, 0x0
-    ble      .L_8001DEE4
-    mr       r30, r28
-    li       r26, 0x0
-    b        .L_8001DE9C
-.L_8001DE80:
-    lwz      r4, 0x0(r30)
-    mr       r3, r31
-    bl       fn_8001E6C8
-    cmpwi    r3, 0x0
-    bne      .L_8001DEE4
-    addi     r30, r30, 0x4
-    addi     r26, r26, 0x1
-.L_8001DE9C:
-    cmpw     r26, r27
-    blt      .L_8001DE80
-    mr       r3, r27
-    bl       HSD_Randi
-    cmplwi   r29, 0x200
-    blt      .L_8001DEB8
-    li       r29, 0x1ff
-.L_8001DEB8:
-    slwi     r30, r3, 2
-    clrlwi   r5, r29, 24
-    lwzx     r4, r28, r30
-    mr       r3, r31
-    bl       fn_8001E904
-    cmplwi   r29, 0xff
-    ble      .L_8001DEE4
-    lwzx     r4, r28, r30
-    mr       r3, r31
-    li       r5, 0xff
-    bl       fn_8001E904
-.L_8001DEE4:
-    psq_l    f31, 0x38(r1), 0, qr0
-    lfd      f31, 0x30(r1)
-    lmw      r26, 0x18(r1)
-    lwz      r0, 0x44(r1)
-    mtlr     r0
-    addi     r1, r1, 0x40
-    blr
-*/
-
-/**
- * @note Address: 0x8001DF00
- * @note Size: 0x10C
- */
-extern "C" u8 fn_8001DF00(XSound* sound, Vec* pos, s32 kind)
-{
-	f32 dist   = PSVECDistance(&lbl_8025C400.mMotionControlCamera.mCamera.mInterest, pos);
-	f32* range = lbl_80210C10.ranges[kind];
-
-	if (range[0] < dist) {
-		return 0;
-	}
-	if (range[1] < dist) {
-		return 127.0f - (64.0f * (dist - range[1])) / (range[0] - range[1]);
-	}
-	if (range[2] < dist) {
-		return 171.0f - (64.0f * (dist - range[2])) / (range[1] - range[2]);
-	}
-	if (range[3] < dist) {
-		return 255.0f - (64.0f * (dist - range[3])) / (range[2] - range[3]);
-	}
-	return 255;
-}
-
-/**
- * @note Address: 0x8001E00C
- * @note Size: 0x38
- */
-extern "C" void fn_8001E00C(XSound* sound, s32 stereo)
-{
-	if (stereo == 1) {
-		HSD_SynthSetSoundMode(1);
-	} else {
-		HSD_SynthSetSoundMode(0);
-	}
-}
-
-/**
- * @note Address: 0x8001E044
- * @note Size: 0xD8
- */
-extern "C" BOOL fn_8001E044(XSound* sound, const char* name)
-{
-	sound->registerName(name);
-	return FALSE;
-}
-/*
-    stwu     r1, -0x20(r1)
-    mflr     r0
-    stw      r0, 0x24(r1)
-    stmw     r27, 0xc(r1)
-    mr.      r28, r4
-    mr       r27, r3
-    lwz      r30, 0x100(r3)
-    beq      .L_8001E104
-    li       r31, 0x0
-    mr       r29, r27
-.L_8001E06C:
-    lwz      r3, 0x2e0(r29)
-    cmplwi   r3, 0x0
-    beq      .L_8001E088
-    mr       r4, r28
-    bl       strcmp
-    cmpwi    r3, 0x0
-    beq      .L_8001E104
-.L_8001E088:
-    addi     r31, r31, 0x1
-    addi     r29, r29, 0x10
-    cmplwi   r31, 0x10
-    blt      .L_8001E06C
-    li       r0, 0x10
-    mr       r4, r27
-    li       r3, 0x0
-    mtctr    r0
-.L_8001E0A8:
-    lwz      r0, 0x2e0(r4)
-    cmplwi   r0, 0x0
-    bne      .L_8001E0E8
-    lwz      r5, 0x3e0(r27)
-    slwi     r0, r3, 4
-    lis      r3, lbl_801FED84@ha
-    mr       r4, r28
-    addi     r6, r5, 0x1
-    add      r5, r27, r0
-    stw      r6, 0x3e0(r27)
-    addi     r3, r3, lbl_801FED84@l
-    stw      r28, 0x2e0(r5)
-    stw      r30, 0x2e4(r5)
-    crclr    cr1eq
-    bl       OSReport
-    b        .L_8001E104
-.L_8001E0E8:
-    addi     r4, r4, 0x10
-    addi     r3, r3, 0x1
-    bdnz     .L_8001E0A8
-    lis      r3, lbl_801FED94@ha
-    addi     r3, r3, lbl_801FED94@l
-    crclr    cr1eq
-    bl       OSReport
-.L_8001E104:
-    lmw      r27, 0xc(r1)
-    li       r3, 0x0
-    lwz      r0, 0x24(r1)
-    mtlr     r0
-    addi     r1, r1, 0x20
-    blr
-*/
-
-/**
- * @note Address: 0x8001E11C
- * @note Size: 0x88
- */
-extern "C" void fn_8001E11C(XSound* sound, BOOL on)
-{
-	if (on) {
-		XSound* game = (XSound*)&lbl_8025C400.mSound;
-		fn_801E93A8(game->resolveTrack(0));
-		fn_801EA0C4();
-		game->mDefaultTrack = 1;
-	} else {
-		XSound* game = (XSound*)&lbl_8025C400.mSound;
-		fn_801E9724(game->resolveTrack(0));
-		fn_801EA134();
-		game->mDefaultTrack = 0;
-	}
-}
-
-/**
- * @note Address: 0x8001E1A4
- * @note Size: 0x128
- */
-extern "C" void fn_8001E1A4(XSound* sound, s32 sfx, u16 frames)
-{
-	if (isAllSfx(sfx)) {
-		sound->_2C4 = (60.0f * frames) / 200.0f;
-		setSfxVolume(sound, sfx, 0, frames);
-	} else {
-		setSfxVolume(sound, sfx, 0, frames);
-	}
-}
-
-/**
- * @note Address: 0x8001E2CC
- * @note Size: 0x19C
- */
-extern "C" void fn_8001E2CC(XSound* sound, s32 sfx, u16 frames)
-{
-	if (isAllSfx(sfx)) {
-		fn_8001E904(sound, sfx, 0);
-		setSfxVolume(sound, sfx, getMusicVolume(sfx), frames);
-	} else {
-		if (!fn_8001E6C8(sound, sfx)) {
-			fn_8001E904(sound, sfx, 0xFF);
-		}
-		setSfxVolume(sound, sfx, 0xFF, frames);
-	}
-}
-/*
-    stwu     r1, -0x20(r1)
-    mflr     r0
-    stw      r0, 0x24(r1)
-    stw      r31, 0x1c(r1)
-    mr       r31, r4
-    cmpwi    r31, -0x1
-    stw      r30, 0x18(r1)
-    mr       r30, r5
-    stw      r29, 0x14(r1)
-    mr       r29, r3
-    bne      .L_8001E300
-    li       r0, 0x0
-    b        .L_8001E314
-.L_8001E300:
-    clrrwi   r3, r31, 16
-    lis      r0, 0xffff
-    subf     r0, r3, r0
-    cntlzw   r0, r0
-    srwi     r0, r0, 5
-.L_8001E314:
-    clrlwi.  r0, r0, 24
-    beq      .L_8001E3D4
-    mr       r3, r29
-    mr       r4, r31
-    li       r5, 0x0
-    bl       fn_8001E904
-    cmpwi    r31, -0x1
-    bne      .L_8001E33C
-    li       r0, 0x0
-    b        .L_8001E350
-.L_8001E33C:
-    clrrwi   r3, r31, 16
-    lis      r0, 0xffff
-    subf     r0, r3, r0
-    cntlzw   r0, r0
-    srwi     r0, r0, 5
-.L_8001E350:
-    clrlwi.  r0, r0, 24
-    bne      .L_8001E360
-    li       r4, 0x0
-    b        .L_8001E384
-.L_8001E360:
-    clrlwi   r0, r31, 24
-    cmplwi   r0, 0x6d
-    ble      .L_8001E370
-    li       r0, 0x0
-.L_8001E370:
-    lis      r3, musicTable@ha
-    clrlslwi r0, r0, 24, 3
-    addi     r3, r3, musicTable@l
-    add      r3, r3, r0
-    lbz      r4, 0x4(r3)
-.L_8001E384:
-    cmpwi    r31, -0x1
-    bne      .L_8001E394
-    li       r0, 0x0
-    b        .L_8001E3A8
-.L_8001E394:
-    clrrwi   r3, r31, 16
-    lis      r0, 0xffff
-    subf     r0, r3, r0
-    cntlzw   r0, r0
-    srwi     r0, r0, 5
-.L_8001E3A8:
-    clrlwi.  r0, r0, 24
-    beq      .L_8001E3C4
-    stb      r4, 0x2cc(r29)
-    mr       r3, r4
-    mr       r4, r30
-    bl       fn_801EA028
-    b        .L_8001E44C
-.L_8001E3C4:
-    mr       r3, r31
-    mr       r5, r30
-    bl       HSD_AudioSFXSetVolumeByID
-    b        .L_8001E44C
-.L_8001E3D4:
-    mr       r3, r29
-    mr       r4, r31
-    bl       fn_8001E6C8
-    cmpwi    r3, 0x0
-    bne      .L_8001E3F8
-    mr       r3, r29
-    mr       r4, r31
-    li       r5, 0xff
-    bl       fn_8001E904
-.L_8001E3F8:
-    cmpwi    r31, -0x1
-    bne      .L_8001E408
-    li       r0, 0x0
-    b        .L_8001E41C
-.L_8001E408:
-    clrrwi   r3, r31, 16
-    lis      r0, 0xffff
-    subf     r0, r3, r0
-    cntlzw   r0, r0
-    srwi     r0, r0, 5
-.L_8001E41C:
-    clrlwi.  r0, r0, 24
-    beq      .L_8001E43C
-    li       r0, 0xff
-    mr       r4, r30
-    stb      r0, 0x2cc(r29)
-    li       r3, 0xff
-    bl       fn_801EA028
-    b        .L_8001E44C
-.L_8001E43C:
-    mr       r3, r31
-    mr       r5, r30
-    li       r4, 0xff
-    bl       HSD_AudioSFXSetVolumeByID
-.L_8001E44C:
-    lwz      r0, 0x24(r1)
-    lwz      r31, 0x1c(r1)
-    lwz      r30, 0x18(r1)
-    lwz      r29, 0x14(r1)
-    mtlr     r0
-    addi     r1, r1, 0x20
-    blr
-*/
-
-/**
- * @note Address: 0x8001E468
- * @note Size: 0x6C
- */
-extern "C" void fn_8001E468(XSound* sound, s32 sfx, u8 vol, u16 frames)
-{
-	setSfxVolume(sound, sfx, vol, frames);
-}
-
-/**
- * @note Address: 0x8001E4D4
- * @note Size: 0x30
- */
-extern "C" void fn_8001E4D4(XSound* sound, s32 track)
-{
-	if (track < 0) {
-		track = sound->mDefaultTrack;
-	}
-	fn_801E9724(track);
-}
-
-/**
- * @note Address: 0x8001E504
- * @note Size: 0x8C
- */
-extern "C" void fn_8001E504(XSound* sound, s32 sfx)
-{
-	if (isAllSfx(sfx)) {
-		if (sound->_2C8 == sound->_2B4) {
-			fn_801EA134();
-		} else {
-			fn_8001E904(sound, sfx, 0xFF);
-		}
-		sound->_2C8 = 0;
-	} else {
-		fn_801E9604(sfx);
-	}
-}
-
-/**
- * @note Address: 0x8001E590
- * @note Size: 0x30
- */
-extern "C" void fn_8001E590(XSound* sound, s32 track)
-{
-	if (track < 0) {
-		track = sound->mDefaultTrack;
-	}
-	fn_801E93A8(track);
-}
-
-/**
- * @note Address: 0x8001E5C0
- * @note Size: 0x70
- */
-extern "C" void fn_8001E5C0(XSound* sound, s32 sfx, s32 arg2)
-{
-	if (isAllSfx(sfx)) {
-		fn_801EA0C4();
-		sound->_2C0 = arg2;
-		sound->_2C8 = sound->_2B4;
-	}
-}
-
-/**
- * @note Address: 0x8001E630
- * @note Size: 0x30
- */
-extern "C" void fn_8001E630(XSound* sound, s32 track)
-{
-	if (track < 0) {
-		track = sound->mDefaultTrack;
-	}
-	HSD_AudioSFXKeyOffTrack(track);
-}
-
-/**
- * @note Address: 0x8001E660
- * @note Size: 0x68
- */
-extern "C" BOOL fn_8001E660(XSound* sound, s32 sfx)
-{
-	if (isAllSfx(sfx)) {
-		sound->_2B4 = 0;
-		sound->_2C8 = 0;
-		fn_801E9FA4();
-		return TRUE;
-	}
-	return fn_801E62A8(sfx);
-}
-
-/**
- * @note Address: 0x8001E6C8
- * @note Size: 0x23C
- */
-extern "C" BOOL fn_8001E6C8(XSound* sound, s32 sfx)
-{
-	// steps by two so it only ever looks at every other slot, nice one
-	for (u32 i = 0; i < 32 && sound->_108[i] != 0; i += 2) {
-		if (sound->_108[i] == sfx) {
-			return TRUE;
-		}
-	}
-
-	if (isAllSfx(sfx)) {
-		if (sound->_2B4 == sfx) {
-			return TRUE;
-		}
-		if (sfx == 0xFFFF0000 && sound->_2B4 != 0) {
-			return TRUE;
-		}
-		return FALSE;
-	}
-
-	switch (sfx) {
-	case 0x1B:
-		if (HSD_AudioSFXCountByID(sfx) || HSD_AudioSFXCountByID(sfx + 1) || HSD_AudioSFXCountByID(sfx + 2)
-		    || HSD_AudioSFXCountByID(sfx + 3)) {
-			return TRUE;
-		}
-		return FALSE;
-	case 0xFD:
-		if (HSD_AudioSFXCountByID(0xFD) || HSD_AudioSFXCountByID(0xFE) || HSD_AudioSFXCountByID(0xFF) || HSD_AudioSFXCountByID(0x100)
-		    || HSD_AudioSFXCountByID(0x101) || HSD_AudioSFXCountByID(0x102) || HSD_AudioSFXCountByID(0x103) || HSD_AudioSFXCountByID(0x104)
-		    || HSD_AudioSFXCountByID(0x105) || HSD_AudioSFXCountByID(0x106) || HSD_AudioSFXCountByID(0x107) || HSD_AudioSFXCountByID(0x108)
-		    || HSD_AudioSFXCountByID(0x109) || HSD_AudioSFXCountByID(0x10A) || HSD_AudioSFXCountByID(0x10B)) {
-			return TRUE;
-		}
-		return FALSE;
-	default:
-		return HSD_AudioSFXCountByID(sfx);
-	}
-}
-/*
-    stwu     r1, -0x10(r1)
-    mflr     r0
-    li       r5, 0x0
-    stw      r0, 0x14(r1)
-    stw      r31, 0xc(r1)
-    mr       r31, r4
-    mr       r4, r3
-    b        .L_8001E704
-.L_8001E6E8:
-    lwz      r0, 0x108(r4)
-    cmpw     r0, r31
-    bne      .L_8001E6FC
-    li       r3, 0x1
-    b        .L_8001E8F0
-.L_8001E6FC:
-    addi     r4, r4, 0x8
-    addi     r5, r5, 0x2
-.L_8001E704:
-    cmplwi   r5, 0x20
-    bge      .L_8001E718
-    lwz      r0, 0x108(r4)
-    cmpwi    r0, 0x0
-    bne      .L_8001E6E8
-.L_8001E718:
-    cmpwi    r31, -0x1
-    mr       r5, r31
-    bne      .L_8001E72C
-    li       r0, 0x0
-    b        .L_8001E740
-.L_8001E72C:
-    clrrwi   r4, r31, 16
-    lis      r0, 0xffff
-    subf     r0, r4, r0
-    cntlzw   r0, r0
-    srwi     r0, r0, 5
-.L_8001E740:
-    clrlwi.  r0, r0, 24
-    beq      .L_8001E780
-    lwz      r3, 0x2b4(r3)
-    cmpw     r3, r31
-    bne      .L_8001E75C
-    li       r3, 0x1
-    b        .L_8001E8F0
-.L_8001E75C:
-    addis    r0, r31, 0x1
-    cmplwi   r0, 0x0
-    bne      .L_8001E778
-    cmpwi    r3, 0x0
-    beq      .L_8001E778
-    li       r3, 0x1
-    b        .L_8001E8F0
-.L_8001E778:
-    li       r3, 0x0
-    b        .L_8001E8F0
-.L_8001E780:
-    cmpwi    r31, 0xfd
-    beq      .L_8001E7E8
-    bge      .L_8001E8E8
-    cmpwi    r31, 0x1b
-    beq      .L_8001E798
-    b        .L_8001E8E8
-.L_8001E798:
-    mr       r3, r5
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E7D8
-    addi     r3, r31, 0x1
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E7D8
-    addi     r3, r31, 0x2
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E7D8
-    addi     r3, r31, 0x3
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    beq      .L_8001E7E0
-.L_8001E7D8:
-    li       r3, 0x1
-    b        .L_8001E8F0
-.L_8001E7E0:
-    li       r3, 0x0
-    b        .L_8001E8F0
-.L_8001E7E8:
-    li       r3, 0xfd
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0xfe
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0xff
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x100
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x101
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x102
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x103
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x104
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x105
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x106
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x107
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x108
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x109
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x10a
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    bne      .L_8001E8D8
-    li       r3, 0x10b
-    bl       HSD_AudioSFXCountByID
-    cmpwi    r3, 0x0
-    beq      .L_8001E8E0
-.L_8001E8D8:
-    li       r3, 0x1
-    b        .L_8001E8F0
-.L_8001E8E0:
-    li       r3, 0x0
-    b        .L_8001E8F0
-.L_8001E8E8:
-    mr       r3, r5
-    bl       HSD_AudioSFXCountByID
-.L_8001E8F0:
-    lwz      r0, 0x14(r1)
-    lwz      r31, 0xc(r1)
-    mtlr     r0
-    addi     r1, r1, 0x10
-    blr
-*/
-
-static inline void PauseMusic(XSound* sound, s32 frames)
-{
-	fn_801EA0C4();
-	sound->_2C0 = frames;
-	sound->_2C8 = sound->_2B4;
-}
 
 static inline s32 SelectAlternatingSound(XSound* sound, s32* stop, s32* play)
 {
 	for (u32 i = 0; i < 4; i++) {
-		if (fn_8001E6C8(sound, stop[i])) {
-			fn_8001E660(sound, stop[i]);
+		if (IsGameSoundPlaying(sound, stop[i])) {
+			stopSfx(sound, stop[i]);
 			sound->_18C = 0;
 		}
 	}
 	for (u32 i = 0; i < 4; i++) {
-		if (fn_8001E6C8(sound, play[i])) {
+		if (IsGameSoundPlaying(sound, play[i])) {
 			return -1;
 		}
 	}
@@ -1130,58 +72,61 @@ static inline s32 SelectMappedSound(s32 sfx, u8* data)
 	return ((s32*)(data + 0xACC))[((s32*)(data + 0xAF4))[index]];
 }
 
+static inline bool CanPlayNightStream()
+{
+	if (gGame.mTimeState.mMode == 1 && gGame.mTimeState.mTime > 0.5f)
+		return false;
+	return true;
+}
+
+static inline bool UseRaisedLiftPitch()
+{
+	return gGame.GetPlayer()->mLift.mState == 4 && IsLiftTargetPlug(&gGame.GetPlayer()->mLift);
+}
+
 /**
  * @note Address: 0x8001E904
  * @note Size: 0xB68
  */
-extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
+extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 {
 	u8* data = lbl_802107A0;
 	if (isAllSfx(sfx)) {
 		if (sfx == (s32)0xFFFF0000) {
 			return 0;
 		}
-		if (sfx == (s32)0xFFFF0005 && lbl_8025C400.mTimeState.mMode == 1) {
+		if (sfx == (s32)0xFFFF0005 && gGame.mTimeState.mMode == 1) {
 			sfx = 0xFFFF0010;
 		}
-		if (sfx == (s32)0xFFFF0010) {
-			bool audible = !(lbl_8025C400.mTimeState.mMode == 1 && lbl_8025C400.mTimeState.mTime > 0.5f);
-			if (!audible) {
-				fn_8001E660(sound, sfx);
-				return 1;
-			}
+		if (sfx == (s32)0xFFFF0010 && !CanPlayNightStream()) {
+			stopSfx(sound, sfx);
+			return 1;
 		}
 		u8 index = sfx;
 		if (index >= 0x6D) {
 			index = 0;
 		}
 		MusicEntry* music = (MusicEntry*)(data + 0x108) + index;
-		if (sound->_2B4 == sfx) {
+		if (sound->mCurrentMusicId == sfx) {
 			return 1;
 		}
-		sound->_2B4      = sfx;
-		bool raisedPitch = false;
-		if (sfx == (s32)0xFFFF0005) {
-			if (*(s32*)(SOUND_PLAYER_STATE + 4) == 4 && fn_800D4FE8((XActLift*)SOUND_PLAYER_STATE)) {
-				raisedPitch = true;
-			}
-		}
-		if (raisedPitch) {
-			sound->_2B8 = sound->_2BA = 200;
+		sound->mCurrentMusicId = sfx;
+		if (sfx == (s32)0xFFFF0005 && UseRaisedLiftPitch()) {
+			sound->mMusicPitch = sound->mTargetMusicPitch = 200;
 		} else {
-			sound->_2B8 = sound->_2BA = 0;
+			sound->mMusicPitch = sound->mTargetMusicPitch = 0;
 		}
-		sound->_2BC = 0;
-		sound->_2C4 = 0;
+		sound->_2BC                = 0;
+		sound->mMusicFadeOutFrames = 0;
 		if (vol == 255) {
-			vol = music->_04;
+			vol = music->volume;
 		}
-		sound->_2CC = vol;
-		s32 result  = HSD_AudioPStreamStartChParam(music->_00, vol, 31);
-		fn_801EA1A4(sound->_2B8);
+		sound->mMusicVolume = vol;
+		s32 result          = HSD_AudioPStreamStartChParam(music->path, vol, 31);
+		AXDriverSetAllStreamPitches(sound->mMusicPitch);
 		if (sfx == (s32)0xFFFF0005 || sfx == (s32)0xFFFF0010) {
-			if (fn_8001E6C8(sound, 0x18C) || fn_8001E6C8(sound, 0x18D) || fn_8001E6C8(sound, 0x18E)) {
-				if (isAllSfx(sound->_2B4)) {
+			if (IsGameSoundPlaying(sound, 0x18C) || IsGameSoundPlaying(sound, 0x18D) || IsGameSoundPlaying(sound, 0x18E)) {
+				if (isAllSfx(sound->mCurrentMusicId)) {
 					PauseMusic(sound, 120);
 				}
 			}
@@ -1218,8 +163,8 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 		if (sfx < 0) {
 			return -1;
 		}
-		if (sound->_2C0 > 10) {
-			sound->_2C0 = 10;
+		if (sound->mMusicResumeDelay > 10) {
+			sound->mMusicResumeDelay = 10;
 		}
 		break;
 	}
@@ -1242,15 +187,15 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 		}
 		break;
 	case 0x3C:
-		if (fn_8001E6C8(sound, sfx)) {
+		if (IsGameSoundPlaying(sound, sfx)) {
 			return -1;
 		}
 		break;
 	case 0xFD:
-		if (fn_8001E6C8(sound, 0xFFFF0000)) {
+		if (IsGameSoundPlaying(sound, 0xFFFF0000)) {
 			PauseMusic(sound, 120);
 		}
-		if (fn_8001E6C8(sound, 0xFD)) {
+		if (IsGameSoundPlaying(sound, 0xFD)) {
 			sfx = -1;
 		} else {
 			if (sound->_190 < 0 || (u32)sound->_190 >= 25) {
@@ -1260,10 +205,10 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 		}
 		break;
 	case 0x110:
-		if (fn_8001E6C8(sound, 0xFFFF0037)) {
+		if (IsGameSoundPlaying(sound, 0xFFFF0037)) {
 			sfx = -1;
 		} else {
-			if (fn_8001E6C8(sound, 0xFFFF0000)) {
+			if (IsGameSoundPlaying(sound, 0xFFFF0000)) {
 				PauseMusic(sound, 120);
 			}
 			if (sound->_190 < 0 || (u32)sound->_190 >= 8) {
@@ -1279,10 +224,10 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 	case 0x176:
 	case 0x177:
 	case 0x178:
-		if (fn_8001E6C8(sound, 0xFFFF0005)) {
+		if (IsGameSoundPlaying(sound, 0xFFFF0005)) {
 			PauseMusic(sound, 180);
 		}
-		if (fn_8001E6C8(sound, 0xFFFF0010)) {
+		if (IsGameSoundPlaying(sound, 0xFFFF0010)) {
 			PauseMusic(sound, 180);
 		}
 		if (sfx == 0x175) {
@@ -1314,47 +259,47 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 	case 0x18C:
 	case 0x18D:
 	case 0x18E:
-		if (fn_8001E6C8(sound, 0xFFFF0005)) {
+		if (IsGameSoundPlaying(sound, 0xFFFF0005)) {
 			PauseMusic(sound, 120);
 		}
-		if (fn_8001E6C8(sound, 0xFFFF0010)) {
+		if (IsGameSoundPlaying(sound, 0xFFFF0010)) {
 			PauseMusic(sound, 120);
 		}
-		if (fn_8001E6C8(sound, 0x18C)) {
-			fn_801E62A8(0x18C);
+		if (IsGameSoundPlaying(sound, 0x18C)) {
+			AXDriverKeyOffSfx(0x18C);
 		}
-		if (fn_8001E6C8(sound, 0x18D)) {
-			fn_801E62A8(0x18D);
+		if (IsGameSoundPlaying(sound, 0x18D)) {
+			AXDriverKeyOffSfx(0x18D);
 		}
-		if (fn_8001E6C8(sound, 0x18E)) {
-			fn_801E62A8(0x18E);
+		if (IsGameSoundPlaying(sound, 0x18E)) {
+			AXDriverKeyOffSfx(0x18E);
 		}
 		break;
 	case 0x11001C:
-		if (fn_8001E6C8(sound, sfx)) {
+		if (IsGameSoundPlaying(sound, sfx)) {
 			return -1;
 		}
 		break;
 	case 0x186:
-		if (fn_8001E6C8(sound, sfx)) {
+		if (IsGameSoundPlaying(sound, sfx)) {
 			return -1;
 		}
 		break;
 	case 0x184:
-		if (fn_8001E6C8(sound, sfx)) {
+		if (IsGameSoundPlaying(sound, sfx)) {
 			return -1;
 		}
 		break;
 	case 0x4001C:
 	case 0x4001D:
-		if (fn_8001E6C8(sound, sfx)) {
+		if (IsGameSoundPlaying(sound, sfx)) {
 			return -1;
 		}
 		break;
 	case 0x190:
 	case 0x191:
 	case 0x10001F:
-		if (fn_8001E6C8(sound, sfx)) {
+		if (IsGameSoundPlaying(sound, sfx)) {
 			return -1;
 		}
 		break;
@@ -1411,8 +356,8 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001E968:
     cmplwi   r0, 0x5
     bne      .L_8001E990
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0xe
     lwz      r0, 0x5d28(r3)
     cmpwi    r0, 0x1
@@ -1423,8 +368,8 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     addis    r0, r28, 0x1
     cmplwi   r0, 0x10
     bne      .L_8001EA28
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0xe
     lwz      r0, 0x5d28(r3)
     cmpwi    r0, 0x1
@@ -1457,10 +402,10 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     li       r0, 0x0
     stw      r0, 0x2b4(r27)
     stw      r0, 0x2c8(r27)
-    bl       fn_801E9FA4
+    bl       AXDriverStopAllStreams
     b        .L_8001EA20
 .L_8001EA1C:
-    bl       fn_801E62A8
+    bl       AXDriverKeyOffSfx
 .L_8001EA20:
     li       r3, 0x1
     b        .L_8001F458
@@ -1484,16 +429,16 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     stw      r28, 0x2b4(r27)
     cmplwi   r0, 0x5
     bne      .L_8001EAB8
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     li       r30, 0x0
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0x1
     lwz      r3, -0x6944(r3)
     lwz      r0, 0xa48(r3)
     cmpwi    r0, 0x4
     bne      .L_8001EAA0
     addi     r3, r3, 0xa44
-    bl       fn_800D4FE8
+    bl       IsLiftTargetPlug
     cmpwi    r3, 0x0
     beq      .L_8001EAA0
     li       r30, 0x1
@@ -1524,7 +469,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     bl       HSD_AudioPStreamStartChParam
     mr       r29, r3
     lha      r3, 0x2b8(r27)
-    bl       fn_801EA1A4
+    bl       AXDriverSetAllStreamPitches
     addis    r0, r28, 0x1
     cmplwi   r0, 0x5
     beq      .L_8001EB14
@@ -1533,17 +478,17 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001EB14:
     mr       r3, r27
     li       r4, 0x18c
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     bne      .L_8001EB50
     mr       r3, r27
     li       r4, 0x18d
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     bne      .L_8001EB50
     mr       r3, r27
     li       r4, 0x18e
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001EB94
 .L_8001EB50:
@@ -1561,7 +506,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001EB78:
     clrlwi.  r0, r0, 24
     beq      .L_8001EB94
-    bl       fn_801EA0C4
+    bl       AXDriverPauseAllStreams
     li       r0, 0x78
     stw      r0, 0x2c0(r27)
     lwz      r0, 0x2b4(r27)
@@ -1672,8 +617,8 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     add      r28, r28, r3
     b        .L_8001F3C4
 .L_8001ED00:
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0x1
     lwz      r3, -0x6944(r3)
     addis    r3, r3, 0x1
@@ -1754,7 +699,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001EE0C:
     lwz      r4, 0x0(r26)
     mr       r3, r27
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001EE70
     lwz      r3, 0x0(r26)
@@ -1774,10 +719,10 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     li       r0, 0x0
     stw      r0, 0x2b4(r27)
     stw      r0, 0x2c8(r27)
-    bl       fn_801E9FA4
+    bl       AXDriverStopAllStreams
     b        .L_8001EE68
 .L_8001EE64:
-    bl       fn_801E62A8
+    bl       AXDriverKeyOffSfx
 .L_8001EE68:
     li       r0, 0x0
     stw      r0, 0x18c(r27)
@@ -1791,7 +736,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001EE88:
     lwz      r4, 0x0(r26)
     mr       r3, r27
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001EEA4
     li       r0, -0x1
@@ -1828,7 +773,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001EF04:
     lwz      r4, 0x0(r26)
     mr       r3, r27
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001EF68
     lwz      r3, 0x0(r26)
@@ -1848,10 +793,10 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     li       r0, 0x0
     stw      r0, 0x2b4(r27)
     stw      r0, 0x2c8(r27)
-    bl       fn_801E9FA4
+    bl       AXDriverStopAllStreams
     b        .L_8001EF60
 .L_8001EF5C:
-    bl       fn_801E62A8
+    bl       AXDriverKeyOffSfx
 .L_8001EF60:
     li       r0, 0x0
     stw      r0, 0x18c(r27)
@@ -1865,7 +810,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001EF80:
     lwz      r4, 0x0(r26)
     mr       r3, r27
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001EF9C
     li       r0, -0x1
@@ -1899,7 +844,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001EFF4:
     mr       r3, r27
     mr       r4, r28
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F3C4
     li       r3, -0x1
@@ -1907,10 +852,10 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001F010:
     mr       r3, r27
     lis      r4, 0xffff
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F038
-    bl       fn_801EA0C4
+    bl       AXDriverPauseAllStreams
     li       r0, 0x78
     stw      r0, 0x2c0(r27)
     lwz      r0, 0x2b4(r27)
@@ -1918,7 +863,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001F038:
     mr       r3, r27
     li       r4, 0xfd
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F054
     li       r0, -0x1
@@ -1946,7 +891,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     lis      r4, 0xffff
     mr       r3, r27
     addi     r4, r4, 0x37
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F0B0
     li       r0, -0x1
@@ -1954,10 +899,10 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001F0B0:
     mr       r3, r27
     lis      r4, 0xffff
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F0D8
-    bl       fn_801EA0C4
+    bl       AXDriverPauseAllStreams
     li       r0, 0x78
     stw      r0, 0x2c0(r27)
     lwz      r0, 0x2b4(r27)
@@ -1988,10 +933,10 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     lis      r4, 0xffff
     mr       r3, r27
     addi     r4, r4, 0x5
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F14C
-    bl       fn_801EA0C4
+    bl       AXDriverPauseAllStreams
     li       r0, 0xb4
     stw      r0, 0x2c0(r27)
     lwz      r0, 0x2b4(r27)
@@ -2000,10 +945,10 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     lis      r4, 0xffff
     mr       r3, r27
     addi     r4, r4, 0x10
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F178
-    bl       fn_801EA0C4
+    bl       AXDriverPauseAllStreams
     li       r0, 0xb4
     stw      r0, 0x2c0(r27)
     lwz      r0, 0x2b4(r27)
@@ -2098,10 +1043,10 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     lis      r4, 0xffff
     mr       r3, r27
     addi     r4, r4, 0x5
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F2B4
-    bl       fn_801EA0C4
+    bl       AXDriverPauseAllStreams
     li       r0, 0x78
     stw      r0, 0x2c0(r27)
     lwz      r0, 0x2b4(r27)
@@ -2110,10 +1055,10 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
     lis      r4, 0xffff
     mr       r3, r27
     addi     r4, r4, 0x10
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F2E0
-    bl       fn_801EA0C4
+    bl       AXDriverPauseAllStreams
     li       r0, 0x78
     stw      r0, 0x2c0(r27)
     lwz      r0, 0x2b4(r27)
@@ -2121,32 +1066,32 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001F2E0:
     mr       r3, r27
     li       r4, 0x18c
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F2FC
     li       r3, 0x18c
-    bl       fn_801E62A8
+    bl       AXDriverKeyOffSfx
 .L_8001F2FC:
     mr       r3, r27
     li       r4, 0x18d
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F318
     li       r3, 0x18d
-    bl       fn_801E62A8
+    bl       AXDriverKeyOffSfx
 .L_8001F318:
     mr       r3, r27
     li       r4, 0x18e
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F3C4
     li       r3, 0x18e
-    bl       fn_801E62A8
+    bl       AXDriverKeyOffSfx
     b        .L_8001F3C4
 .L_8001F338:
     mr       r3, r27
     mr       r4, r28
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F3C4
     li       r3, -0x1
@@ -2154,7 +1099,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001F354:
     mr       r3, r27
     mr       r4, r28
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F3C4
     li       r3, -0x1
@@ -2162,7 +1107,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001F370:
     mr       r3, r27
     mr       r4, r28
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F3C4
     li       r3, -0x1
@@ -2170,7 +1115,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001F38C:
     mr       r3, r27
     mr       r4, r28
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F3C4
     li       r3, -0x1
@@ -2178,7 +1123,7 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
 .L_8001F3A8:
     mr       r3, r27
     mr       r4, r28
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F3C4
     li       r3, -0x1
@@ -2241,77 +1186,77 @@ extern "C" s32 fn_8001E904(XSound* sound, s32 sfx, u8 vol)
  * @note Address: 0x8001F46C
  * @note Size: 0x46C
  */
-extern "C" void fn_8001F46C(XSound* sound, s32 step)
+extern "C" void UpdateGameSound(XSound* sound, s32 step)
 {
 	if (!sound->mSampleReady) {
 		return;
 	}
-	if (sound->mLoadRequestCount > 0 && !HSD_SynthSFXGetPendingLoadCount()) {
+	if (sound->mLoadRequestCount > 0 && !HasPendingSoundBankLoad()) {
 		for (s32 i = 0; i < 16; i++) {
-			if (sound->mLoadRequests[i].mName != NULL && !sound->mLoadRequests[i].mLoaded) {
+			if (sound->mStageRequests.entries[i].mName != NULL && !sound->mStageRequests.entries[i].mLoaded) {
 #if !defined(VERSION_PAL)
-				OSReport("HSD_AudioSFXLoad::%s\n", sound->mLoadRequests[i].mName);
+				OSReport(sSoundBankLoadFormat, sound->mStageRequests.entries[i].mName);
 #endif
-				sound->mLoadRequests[i].mResult = HSD_SynthSFXLoad(sound->mLoadRequests[i].mName, sound->mLoadRequests[i].mBank, 0, 0);
-				sound->mLoadRequests[i].mLoaded = 1;
+				sound->mStageRequests.entries[i].mResult
+				    = HSD_SynthSFXLoad(sound->mStageRequests.entries[i].mName, sound->mStageRequests.entries[i].mBank, 0, 0);
+				sound->mStageRequests.entries[i].mLoaded = 1;
 				sound->mLoadRequestCount--;
 				break;
 			}
 		}
 	}
-	for (s32 i = 0; i < 32; i++) {
+	for (int i = 0; i < 32; i++) {
 		sound->_108[i] = 0;
 	}
-	if (sound->_2B4 != 0 && sound->_2C8 == 0 && !fn_801EA2E8()) {
-		sound->_2B4 = 0;
+	if (sound->mCurrentMusicId != 0 && sound->mPausedMusicId == 0 && !AXDriverIsStreamActive()) {
+		sound->mCurrentMusicId = 0;
 	}
-	if (sound->_188 > 0 && sound->_2B8 != sound->_2BA) {
-		sound->_2B8 += (sound->_2BA - sound->_2B8) / sound->_188;
+	const s32 pitchFrames = sound->_188;
+	if (pitchFrames > 0 && sound->mMusicPitch != sound->mTargetMusicPitch) {
+		sound->mMusicPitch += (sound->mTargetMusicPitch - sound->mMusicPitch) / pitchFrames;
 		sound->_188 -= step;
 		if (sound->_188 <= 0) {
-			sound->_2B8 = sound->_2BA;
+			sound->mMusicPitch = sound->mTargetMusicPitch;
 		}
-		fn_801EA1A4(sound->_2B8);
+		AXDriverSetAllStreamPitches(sound->mMusicPitch);
 	}
-	if (fn_8001E6C8(sound, 0xFFFF0005)) {
-		u8* state   = SOUND_PLAYER_STATE;
-		bool active = *(s32*)(state + 4) == 4 && fn_800D4FE8((XActLift*)state);
-		if (active) {
-			if (sound->_2BA != 200) {
-				sound->_2BA = 200;
-				sound->_188 = 15;
+	if (IsGameSoundPlaying(sound, 0xFFFF0005)) {
+		if (UseRaisedLiftPitch()) {
+			if (sound->mTargetMusicPitch != 200) {
+				sound->mTargetMusicPitch = 200;
+				sound->_188              = 15;
 			}
-		} else if (sound->_2BA != 0) {
-			sound->_2BA = 0;
-			sound->_188 = 15;
+		} else if (sound->mTargetMusicPitch != 0) {
+			sound->mTargetMusicPitch = 0;
+			sound->_188              = 15;
 		}
 	}
-	if (sound->mDefaultTrack == 0 && sound->_2C0 > 0) {
-		if (!fn_8001E6C8(sound, 0x18C) && !fn_8001E6C8(sound, 0x18D) && !fn_8001E6C8(sound, 0x18E)) {
-			sound->_2C0 -= step;
+	if (sound->mDefaultTrack == 0 && sound->mMusicResumeDelay > 0) {
+		if (!IsGameSoundPlaying(sound, 0x18C) && !IsGameSoundPlaying(sound, 0x18D) && !IsGameSoundPlaying(sound, 0x18E)) {
+			sound->mMusicResumeDelay -= step;
 		}
-		if (sound->_2C0 <= 0) {
-			if (sound->_2C8 == sound->_2B4) {
-				fn_801EA134();
+		if (sound->mMusicResumeDelay <= 0) {
+			if (sound->mPausedMusicId == sound->mCurrentMusicId) {
+				AXDriverResumeAllStreams();
 			} else {
-				fn_8001E904(sound, 0xFFFF0000, 255);
+				PlayGameSound(sound, 0xFFFF0000, 255);
 			}
-			sound->_2C8 = 0;
+			sound->mPausedMusicId = 0;
 		}
 	}
-	if (sound->_2B4 == 0xFFFF0010 && !(lbl_8025C400.mTimeState.mMode != 1 || lbl_8025C400.mTimeState.mTime <= 0.5f)) {
-		if (sound->_2C4 <= 0) {
-			sound->_2C4 = 180;
-			sound->_2CC = 0;
-			fn_801EA028(0, 600);
+	if (sound->mCurrentMusicId == 0xFFFF0010 && !CanPlayNightStream()) {
+		if (sound->mMusicFadeOutFrames <= 0) {
+			sound->mMusicFadeOutFrames = 180;
+			sound->mMusicVolume        = 0;
+			AXDriverSetAllStreamVolumes(0, 600);
 		}
 	}
-	if (sound->_2C4 > 0) {
-		sound->_2C4 -= step;
-		if (sound->_2C4 <= 0) {
-			sound->_2B4 = 0;
-			sound->_2C8 = 0;
-			fn_801E9FA4();
+	if (sound->mMusicFadeOutFrames > 0) {
+		sound->mMusicFadeOutFrames -= step;
+		if (sound->mMusicFadeOutFrames <= 0) {
+			sound->mCurrentMusicId = 0;
+			sound->mPausedMusicId  = 0;
+			AXDriverStopAllStreams();
 		}
 	}
 	if (sound->_198 > 0) {
@@ -2321,12 +1266,12 @@ extern "C" void fn_8001F46C(XSound* sound, s32 step)
 		if (sound->_188 > 0) {
 			sound->_188 -= step;
 		}
-		if (sound->_2AC != 0 && fn_8001E6C8(sound, sound->_2AC)) {
+		if (sound->mLastQueuedSoundId != 0 && IsGameSoundPlaying(sound, sound->mLastQueuedSoundId)) {
 			return;
 		}
 		if (sound->_188 <= 0) {
-			sound->_2AC = sound->_1AC[sound->mQueueRead];
-			fn_8001E904((XSound*)&lbl_8025C400.mSound, sound->_2AC, 255);
+			sound->mLastQueuedSoundId = sound->mQueuedSoundIds[sound->mQueueRead];
+			PlayGameSound((XSound*)&gGame.mSound, sound->mLastQueuedSoundId, 255);
 			if (++sound->mQueueRead >= 64) {
 				sound->mQueueRead = 0;
 			}
@@ -2427,7 +1372,7 @@ extern "C" void fn_8001F46C(XSound* sound, s32 step)
     lwz      r0, 0x2c8(r30)
     cmpwi    r0, 0x0
     bne      .L_8001F5E8
-    bl       fn_801EA2E8
+    bl       AXDriverIsStreamActive
     cmpwi    r3, 0x0
     bne      .L_8001F5E8
     li       r0, 0x0
@@ -2454,24 +1399,24 @@ extern "C" void fn_8001F46C(XSound* sound, s32 step)
     sth      r0, 0x2b8(r30)
 .L_8001F634:
     lha      r3, 0x2b8(r30)
-    bl       fn_801EA1A4
+    bl       AXDriverSetAllStreamPitches
 .L_8001F63C:
     lis      r4, 0xffff
     mr       r3, r30
     addi     r4, r4, 0x5
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     beq      .L_8001F6CC
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     li       r29, 0x0
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0x1
     lwz      r3, -0x6944(r3)
     lwz      r0, 0xa48(r3)
     cmpwi    r0, 0x4
     bne      .L_8001F688
     addi     r3, r3, 0xa44
-    bl       fn_800D4FE8
+    bl       IsLiftTargetPlug
     cmpwi    r3, 0x0
     beq      .L_8001F688
     li       r29, 0x1
@@ -2503,17 +1448,17 @@ extern "C" void fn_8001F46C(XSound* sound, s32 step)
     ble      .L_8001F768
     mr       r3, r30
     li       r4, 0x18c
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     bne      .L_8001F72C
     mr       r3, r30
     li       r4, 0x18d
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     bne      .L_8001F72C
     mr       r3, r30
     li       r4, 0x18e
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     bne      .L_8001F72C
     lwz      r0, 0x2c0(r30)
@@ -2527,13 +1472,13 @@ extern "C" void fn_8001F46C(XSound* sound, s32 step)
     lwz      r0, 0x2b4(r30)
     cmpw     r3, r0
     bne      .L_8001F750
-    bl       fn_801EA134
+    bl       AXDriverResumeAllStreams
     b        .L_8001F760
 .L_8001F750:
     mr       r3, r30
     lis      r4, 0xffff
     li       r5, 0xff
-    bl       fn_8001E904
+    bl       PlayGameSound
 .L_8001F760:
     li       r0, 0x0
     stw      r0, 0x2c8(r30)
@@ -2542,8 +1487,8 @@ extern "C" void fn_8001F46C(XSound* sound, s32 step)
     addis    r0, r3, 0x1
     cmplwi   r0, 0x10
     bne      .L_8001F7DC
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0xe
     lwz      r0, 0x5d28(r3)
     cmpwi    r0, 0x1
@@ -2568,7 +1513,7 @@ extern "C" void fn_8001F46C(XSound* sound, s32 step)
     li       r3, 0x0
     li       r4, 0x258
     stb      r0, 0x2cc(r30)
-    bl       fn_801EA028
+    bl       AXDriverSetAllStreamVolumes
 .L_8001F7DC:
     lwz      r0, 0x2c4(r30)
     cmpwi    r0, 0x0
@@ -2581,7 +1526,7 @@ extern "C" void fn_8001F46C(XSound* sound, s32 step)
     li       r0, 0x0
     stw      r0, 0x2b4(r30)
     stw      r0, 0x2c8(r30)
-    bl       fn_801E9FA4
+    bl       AXDriverStopAllStreams
 .L_8001F80C:
     lwz      r0, 0x198(r30)
     cmpwi    r0, 0x0
@@ -2603,7 +1548,7 @@ extern "C" void fn_8001F46C(XSound* sound, s32 step)
     cmpwi    r4, 0x0
     beq      .L_8001F860
     mr       r3, r30
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     bne      .L_8001F8BC
 .L_8001F860:
@@ -2611,8 +1556,8 @@ extern "C" void fn_8001F46C(XSound* sound, s32 step)
     cmpwi    r0, 0x0
     bgt      .L_8001F8BC
     lbz      r0, 0x1a0(r30)
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     li       r5, 0xff
     slwi     r0, r0, 2
     add      r4, r30, r0
@@ -2621,7 +1566,7 @@ extern "C" void fn_8001F46C(XSound* sound, s32 step)
     addi     r3, r3, 0x7e24
     stw      r0, 0x2ac(r30)
     lwz      r4, 0x2ac(r30)
-    bl       fn_8001E904
+    bl       PlayGameSound
     lbz      r3, 0x1a0(r30)
     addi     r3, r3, 0x1
     clrlwi   r0, r3, 24

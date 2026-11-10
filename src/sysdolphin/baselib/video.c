@@ -70,7 +70,7 @@ typedef struct _HSD_VIInfo {
 } HSD_VIInfo;
 
 HSD_VIInfo HSD_VIData;
-static u8 garbage[HSD_ANTIALIAS_GARBAGE_SIZE] __attribute__((aligned(32)));
+static u8 sAntialiasOverlapBuffer[HSD_ANTIALIAS_GARBAGE_SIZE] __attribute__((aligned(32)));
 
 #define _p (&HSD_VIData)
 
@@ -319,7 +319,7 @@ void HSD_VICopyEFB2XFBPtr(HSD_VIStatus* vi, void* buffer, HSD_RenderPass rpass)
 		GXCopyDisp((void*)((u32)buffer + offset), GX_TRUE);
 		GXSetDispCopySrc(0, 0, rmode->fbWidth, HSD_ANTIALIAS_OVERLAP);
 		GXSetCopyClamp(GX_CLAMP_TOP | GX_CLAMP_BOTTOM);
-		GXCopyDisp((void*)garbage, GX_TRUE);
+		GXCopyDisp((void*)sAntialiasOverlapBuffer, GX_TRUE);
 		break;
 
 	default:

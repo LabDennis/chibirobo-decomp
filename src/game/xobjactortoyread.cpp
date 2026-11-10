@@ -6,7 +6,7 @@
 
 extern "C" {
 // the sound tables the toys play along their anims
-extern u8 lbl_8022C7E0[];
+extern u8 gActorToyAnimationData[];
 }
 
 /**
@@ -57,25 +57,25 @@ void XObjActorToy::Release()
  * @note Address: 0x801229DC
  * @note Size: 0x1E8
  */
-BOOL XObjActorToy::vf9C(const CoordInfo& info)
+BOOL XObjActorToy::LoadFromPlacement(const CoordInfo& info)
 {
 	switch (GetKind()) {
 	case 0xF:
 		switch (mLoad) {
 		case 0:
-			if (!vf9C__9XObjActorFRC9CoordInfo(this, info)) {
+			if (!LoadFromPlacement__9XObjActorFRC9CoordInfo(this, info)) {
 				break;
 			}
 			mLoad++;
 		case 1:
-			if (!mFirst.vf9C(CoordInfo(GetSpawnData(0x2A)))) {
+			if (!mFirst.LoadFromPlacement(CoordInfo(GetSpawnData(0x2A)))) {
 				break;
 			}
 			mFirst.mStatus.mFlags &= ~0x10000ULL;
 			mFirst.SetPos(mMoveTranslate, 0);
 			mLoad++;
 		case 2:
-			if (!mSecond.vf9C(CoordInfo(GetSpawnData(0x2B)))) {
+			if (!mSecond.LoadFromPlacement(CoordInfo(GetSpawnData(0x2B)))) {
 				break;
 			}
 			mSecond.mStatus.mFlags &= ~0x10000ULL;
@@ -88,21 +88,21 @@ BOOL XObjActorToy::vf9C(const CoordInfo& info)
 		}
 		return FALSE;
 	}
-	return vf9C__9XObjActorFRC9CoordInfo(this, info) != FALSE;
+	return LoadFromPlacement__9XObjActorFRC9CoordInfo(this, info) != FALSE;
 }
 
 /**
  * @note Address: 0x80122BC4
  * @note Size: 0x174
  */
-void XObjActorToy::vf98()
+void XObjActorToy::ResetObjectState()
 {
-	u8* data = lbl_8022C7E0;
-	vf98__9XObjActorFv(this);
+	u8* data = gActorToyAnimationData;
+	ResetObjectState__9XObjActorFv(this);
 	mLoad = 0;
 	_1F90 = 0;
-	mFirst.vf98();
-	mSecond.vf98();
+	mFirst.ResetObjectState();
+	mSecond.ResetObjectState();
 	switch (GetKind()) {
 	case 0x6F:
 		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x374);
@@ -155,11 +155,11 @@ void XObjActorToy::vf94()
  * @note Address: 0x80122D98
  * @note Size: 0x74
  */
-void XObjActorToy::vf90(u32 id)
+void XObjActorToy::InitializeObject(u32 id)
 {
-	vf90__9XObjActorFUl(this, id);
+	InitializeObject__9XObjActorFUl(this, id);
 	mLoad = 0;
 	_1F90 = 0;
-	mFirst.vf90(id);
-	mSecond.vf90(id);
+	mFirst.InitializeObject(id);
+	mSecond.InitializeObject(id);
 }

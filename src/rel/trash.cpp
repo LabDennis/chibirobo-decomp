@@ -13,15 +13,15 @@ extern "C" f32 PSVECDistance(Vec* a, Vec* b);
 static inline HSD_AObj* FindAnim(HSD_JObj* jobj)
 {
 	if (jobj != NULL) {
-		HSD_AObj* aobj = fn_801908F8(jobj);
+		HSD_AObj* aobj = FindJointAnimationInTree(jobj);
 		if (aobj != NULL) {
 			return aobj;
 		}
-		aobj = fn_801905D4(jobj);
+		aobj = FindMaterialOrTextureAnimationInJointTree(jobj);
 		if (aobj != NULL) {
 			return aobj;
 		}
-		aobj = fn_801902C4(jobj);
+		aobj = FindPolygonAnimationInJointTree(jobj);
 		if (aobj != NULL) {
 			return aobj;
 		}
@@ -49,34 +49,34 @@ struct TrashObj {
 	HSD_JObj* jobj; // _00
 	u8 _04[0x30];   // _04
 	// _34 vtable
-	virtual void vf08(); // _08
-	virtual void vf0C(); // _0C
-	virtual void vf10(); // _10
-	virtual void vf14(); // _14
-	virtual void vf18(); // _18
-	virtual void vf1C(); // _1C
-	virtual void vf20(); // _20
-	virtual void vf24(); // _24
-	virtual void vf28(); // _28
-	virtual void vf2C(); // _2C
-	virtual void vf30(); // _30
-	virtual void vf34(); // _34
-	virtual void vf38(); // _38
-	virtual void vf3C(); // _3C
-	virtual void vf40(); // _40
-	virtual void vf44(); // _44
-	virtual void vf48(); // _48
-	virtual void vf4C(); // _4C
-	virtual void vf50(); // _50
-	virtual void vf54(); // _54
-	virtual void vf58(); // _58
-	virtual void vf5C(); // _5C
-	virtual void vf60(); // _60
-	virtual void vf64(); // _64
-	virtual void vf68(); // _68
-	virtual void vf6C(); // _6C
-	virtual void vf70(); // _70
-	virtual void vf74(); // _74
+	virtual void vf08();                    // _08
+	virtual void Initialize();              // _0C
+	virtual void vf10();                    // _10
+	virtual void RunRequestLoop();          // _14
+	virtual void ProcessRequest();          // _18
+	virtual void vf1C();                    // _1C
+	virtual void GetItemIconTextureIndex(); // _20
+	virtual void GetItemLabel();            // _24
+	virtual void GetItemColor();            // _28
+	virtual void vf2C();                    // _2C
+	virtual void vf30();                    // _30
+	virtual void vf34();                    // _34
+	virtual void vf38();                    // _38
+	virtual void vf3C();                    // _3C
+	virtual void vf40();                    // _40
+	virtual void vf44();                    // _44
+	virtual void vf48();                    // _48
+	virtual void vf4C();                    // _4C
+	virtual void vf50();                    // _50
+	virtual void vf54();                    // _54
+	virtual void GetFollowDivisor();        // _58
+	virtual void vf5C();                    // _5C
+	virtual void vf60();                    // _60
+	virtual void vf64();                    // _64
+	virtual void vf68();                    // _68
+	virtual void vf6C();                    // _6C
+	virtual void vf70();                    // _70
+	virtual void vf74();                    // _74
 
 	virtual void vf78(Vec* pos, f32 arg); // _78
 
@@ -84,56 +84,56 @@ struct TrashObj {
 
 	virtual void vf80(s32 arg, s32 arg2, s32 arg3, s32 arg4, s32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9); // _80
 
-	virtual void vf84();  // _84
-	virtual void vf88();  // _88
-	virtual void vf8C();  // _8C
-	virtual void vf90();  // _90
-	virtual void vf94();  // _94
-	virtual void vf98();  // _98
-	virtual void vf9C();  // _9C
-	virtual void vfA0();  // _A0
-	virtual void vfA4();  // _A4
-	virtual void vfA8();  // _A8
-	virtual void vfAC();  // _AC
-	virtual void vfB0();  // _B0
-	virtual void vfB4();  // _B4
-	virtual void vfB8();  // _B8
-	virtual void vfBC();  // _BC
-	virtual void vfC0();  // _C0
-	virtual void vfC4();  // _C4
-	virtual void vfC8();  // _C8
-	virtual void vfCC();  // _CC
-	virtual void vfD0();  // _D0
-	virtual void vfD4();  // _D4
-	virtual void vfD8();  // _D8
-	virtual void vfDC();  // _DC
-	virtual void vfE0();  // _E0
-	virtual void vfE4();  // _E4
-	virtual void vfE8();  // _E8
-	virtual void vfEC();  // _EC
-	virtual void vfF0();  // _F0
-	virtual void vfF4();  // _F4
-	virtual void vfF8();  // _F8
-	virtual void vfFC();  // _FC
-	virtual void vf100(); // _100
-	virtual void vf104(); // _104
-	virtual void vf108(); // _108
-	virtual void vf10C(); // _10C
-	virtual void vf110(); // _110
-	virtual void vf114(); // _114
-	virtual void vf118(); // _118
-	virtual void vf11C(); // _11C
-	virtual void vf120(); // _120
-	virtual void vf124(); // _124
-	virtual void vf128(); // _128
-	virtual void vf12C(); // _12C
-	virtual void vf130(); // _130
-	virtual void vf134(); // _134
-	virtual void vf138(); // _138
-	virtual void vf13C(); // _13C
-	virtual void vf140(); // _140
-	virtual void vf144(); // _144
-	virtual u32 vf148();  // _148
+	virtual void vf84();                      // _84
+	virtual void vf88();                      // _88
+	virtual void vf8C();                      // _8C
+	virtual void InitializeObject();          // _90
+	virtual void vf94();                      // _94
+	virtual void ResetObjectState();          // _98
+	virtual void LoadFromPlacement();         // _9C
+	virtual void LoadAnimationArchiveAsync(); // _A0
+	virtual void UpdateObject();              // _A4
+	virtual void vfA8();                      // _A8
+	virtual void vfAC();                      // _AC
+	virtual void DrawWithView();              // _B0
+	virtual void DrawReflection();            // _B4
+	virtual void DrawGroundShadow();          // _B8
+	virtual void DrawGroundShadowAt();        // _BC
+	virtual void DrawObjectEffects();         // _C0
+	virtual void vfC4();                      // _C4
+	virtual void vfC8();                      // _C8
+	virtual void DrawDebugStatus();           // _CC
+	virtual void RegisterShadowObjects();     // _D0
+	virtual void ExpandShadowBounds();        // _D4
+	virtual void vfD8();                      // _D8
+	virtual void vfDC();                      // _DC
+	virtual void vfE0();                      // _E0
+	virtual void vfE4();                      // _E4
+	virtual void vfE8();                      // _E8
+	virtual void vfEC();                      // _EC
+	virtual void GetJointAnimation();         // _F0
+	virtual void GetMaterialAnimation();      // _F4
+	virtual void GetShapeAnimation();         // _F8
+	virtual void vfFC();                      // _FC
+	virtual void vf100();                     // _100
+	virtual void TestFloorCrossing();         // _104
+	virtual void GetShadowRadius();           // _108
+	virtual void ProjectOffsetToScreen();     // _10C
+	virtual void GetFloorXZExtent();          // _110
+	virtual void GetCollisionHeight();        // _114
+	virtual void ProjectVisibleBounds();      // _118
+	virtual void vf11C();                     // _11C
+	virtual void vf120();                     // _120
+	virtual void HandleEventCommand();        // _124
+	virtual void vf128();                     // _128
+	virtual void vf12C();                     // _12C
+	virtual void OnPushDisplacement();        // _130
+	virtual void vf134();                     // _134
+	virtual void OnHitFromPosition();         // _138
+	virtual void vf13C();                     // _13C
+	virtual void vf140();                     // _140
+	virtual void vf144();                     // _144
+	virtual u32 vf148();                      // _148
 #if defined(VERSION_JP)
 	u8 _38[0xC0 - 0x38]; // _38
 #else
@@ -340,9 +340,9 @@ extern "C" void DrawTrashStack(void* arg)
     bne      .L_000019C0
     xoris    r3, r4, 0x8000
     lis      r0, 0x4330
-    lis      r4, lbl_7_rodata_198@ha
+    lis      r4, sTrashSignedConversionBias@ha
     stw      r3, 0x1c(r1)
-    addi     r3, r4, lbl_7_rodata_198@l
+    addi     r3, r4, sTrashSignedConversionBias@l
     lis      r5, lbl_7_rodata_168@ha
     stw      r0, 0x18(r1)
     lis      r4, lbl_7_rodata_174@ha
@@ -361,9 +361,9 @@ extern "C" void DrawTrashStack(void* arg)
     mulli    r4, r0, 0x78
     lis      r0, 0x4330
     stw      r0, 0x18(r1)
-    lis      r3, lbl_7_rodata_198@ha
+    lis      r3, sTrashSignedConversionBias@ha
     lis      r5, lbl_7_rodata_17C@ha
-    lfd      f1, lbl_7_rodata_198@l(r3)
+    lfd      f1, sTrashSignedConversionBias@l(r3)
     xoris    r0, r4, 0x8000
     lfs      f2, lbl_7_rodata_17C@l(r5)
     stw      r0, 0x1c(r1)
@@ -376,20 +376,20 @@ extern "C" void DrawTrashStack(void* arg)
     lis      r0, 0x4330
     xoris    r3, r3, 0x8000
     lis      r5, lbl_7_rodata_174@ha
-    lis      r4, lbl_7_rodata_198@ha
+    lis      r4, sTrashSignedConversionBias@ha
     stw      r3, 0x24(r1)
-    addi     r3, r4, lbl_7_rodata_198@l
+    addi     r3, r4, sTrashSignedConversionBias@l
     frsp     f5, f1
     stw      r0, 0x20(r1)
     lis      r4, lbl_7_rodata_178@ha
     lfd      f2, 0x0(r3)
-    lis      r3, lbl_7_rodata_180@ha
+    lis      r3, sTrashScalePercent@ha
     lfd      f0, 0x20(r1)
     lfs      f4, lbl_7_rodata_174@l(r5)
     fmr      f1, f27
     fsubs    f3, f0, f2
     lfs      f2, lbl_7_rodata_178@l(r4)
-    lfs      f0, lbl_7_rodata_180@l(r3)
+    lfs      f0, sTrashScalePercent@l(r3)
     fmuls    f27, f4, f5
     fmuls    f3, f4, f3
     fmadds   f26, f3, f2, f0
@@ -673,7 +673,7 @@ extern "C" void UpdateTrash(u32 frames)
 
 	if (trashTarget != NULL && trashActive) {
 		CPad pad(0);
-		robot = (TrashObj*)lbl_8025C400.GetPlayer();
+		robot = (TrashObj*)gGame.GetPlayer();
 		switch (trashState) {
 		case 0:
 			trashObj = robot->_A64;
@@ -712,9 +712,9 @@ extern "C" void UpdateTrash(u32 frames)
 			break;
 		case 3: {
 			if (30.0f <= GetAnimFrame(robot->jobj) && GetAnimFrame(robot->jobj) < 33.0f) {
-				XSound* obj = &lbl_8025C400.mSound;
-				if (!fn_8001E6C8(obj, 0x1B9)) {
-					fn_8001E904(obj, 0x1B9, 0xFF);
+				XSound* obj = &gGame.mSound;
+				if (!IsGameSoundPlaying(obj, 0x1B9)) {
+					PlayGameSound(obj, 0x1B9, 0xFF);
 				}
 			}
 			trashArc += 0.08726646f * frames;
@@ -791,10 +791,10 @@ extern "C" void UpdateTrash(u32 frames)
     li       r4, 0x0
     bl       __ct__4CPadFUc
     lis      r3, trashState@ha
-    lis      r4, lbl_8025C400@ha
+    lis      r4, gGame@ha
     addi     r5, r3, trashState@l
     lwz      r0, 0x0(r5)
-    addi     r3, r4, lbl_8025C400@l
+    addi     r3, r4, gGame@l
     addis    r3, r3, 0x1
     cmpwi    r0, 0x3
     lwz      r31, -0x6944(r3)
@@ -824,11 +824,11 @@ extern "C" void UpdateTrash(u32 frames)
     lis      r4, lbl_7_rodata_168@ha
     lwz      r12, 0x34(r31)
     lfs      f1, lbl_7_rodata_168@l(r4)
-    lis      r5, lbl_7_rodata_180@ha
+    lis      r5, sTrashScalePercent@ha
     lwz      r12, 0x80(r12)
     lis      r4, lbl_7_rodata_1A0@ha
     fmr      f3, f1
-    lfs      f2, lbl_7_rodata_180@l(r5)
+    lfs      f2, sTrashScalePercent@l(r5)
     lfs      f4, lbl_7_rodata_1A0@l(r4)
     mr       r3, r31
     li       r4, 0x9
@@ -875,21 +875,21 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r30, 0x0
     beq      .L_00001FC8
     mr       r3, r30
-    bl       fn_801908F8
+    bl       FindJointAnimationInTree
     cmplwi   r3, 0x0
     beq      .L_00001F98
     mr       r30, r3
     b        .L_00001FCC
 .L_00001F98:
     mr       r3, r30
-    bl       fn_801905D4
+    bl       FindMaterialOrTextureAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_00001FB0
     mr       r30, r3
     b        .L_00001FCC
 .L_00001FB0:
     mr       r3, r30
-    bl       fn_801902C4
+    bl       FindPolygonAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_00001FC8
     mr       r30, r3
@@ -900,9 +900,9 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r30, 0x0
     beq      .L_00001FF8
     bne      .L_00001FF0
-    lis      r3, lbl_7_rodata_1A4@ha
+    lis      r3, sStage04PathAobjH@ha
     lis      r5, lbl_7_rodata_1AC@ha
-    addi     r3, r3, lbl_7_rodata_1A4@l
+    addi     r3, r3, sStage04PathAobjH@l
     li       r4, 0x95
     addi     r5, r5, lbl_7_rodata_1AC@l
     bl       __assert
@@ -983,21 +983,21 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r29, 0x0
     beq      .L_00002158
     mr       r3, r29
-    bl       fn_801908F8
+    bl       FindJointAnimationInTree
     cmplwi   r3, 0x0
     beq      .L_00002128
     mr       r29, r3
     b        .L_0000215C
 .L_00002128:
     mr       r3, r29
-    bl       fn_801905D4
+    bl       FindMaterialOrTextureAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_00002140
     mr       r29, r3
     b        .L_0000215C
 .L_00002140:
     mr       r3, r29
-    bl       fn_801902C4
+    bl       FindPolygonAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_00002158
     mr       r29, r3
@@ -1008,9 +1008,9 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r29, 0x0
     beq      .L_00002188
     bne      .L_00002180
-    lis      r3, lbl_7_rodata_1A4@ha
+    lis      r3, sStage04PathAobjH@ha
     lis      r5, lbl_7_rodata_1AC@ha
-    addi     r3, r3, lbl_7_rodata_1A4@l
+    addi     r3, r3, sStage04PathAobjH@l
     li       r4, 0x95
     addi     r5, r5, lbl_7_rodata_1AC@l
     bl       __assert
@@ -1030,21 +1030,21 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r29, 0x0
     beq      .L_000021F8
     mr       r3, r29
-    bl       fn_801908F8
+    bl       FindJointAnimationInTree
     cmplwi   r3, 0x0
     beq      .L_000021C8
     mr       r29, r3
     b        .L_000021FC
 .L_000021C8:
     mr       r3, r29
-    bl       fn_801905D4
+    bl       FindMaterialOrTextureAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_000021E0
     mr       r29, r3
     b        .L_000021FC
 .L_000021E0:
     mr       r3, r29
-    bl       fn_801902C4
+    bl       FindPolygonAnimationInJointTree
     cmplwi   r3, 0x0
     beq      .L_000021F8
     mr       r29, r3
@@ -1055,9 +1055,9 @@ extern "C" void UpdateTrash(u32 frames)
     cmplwi   r29, 0x0
     beq      .L_00002228
     bne      .L_00002220
-    lis      r3, lbl_7_rodata_1A4@ha
+    lis      r3, sStage04PathAobjH@ha
     lis      r5, lbl_7_rodata_1AC@ha
-    addi     r3, r3, lbl_7_rodata_1A4@l
+    addi     r3, r3, sStage04PathAobjH@l
     li       r4, 0x95
     addi     r5, r5, lbl_7_rodata_1AC@l
     bl       __assert
@@ -1072,19 +1072,19 @@ extern "C" void UpdateTrash(u32 frames)
     lfs      f0, lbl_7_rodata_1C0@l(r3)
     fcmpo    cr0, f1, f0
     bge      .L_00002274
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     li       r4, 0x1b9
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addis    r29, r3, 0xe
     addi     r29, r29, 0x7e24
     mr       r3, r29
-    bl       fn_8001E6C8
+    bl       IsGameSoundPlaying
     cmpwi    r3, 0x0
     bne      .L_00002274
     mr       r3, r29
     li       r4, 0x1b9
     li       r5, 0xff
-    bl       fn_8001E904
+    bl       PlayGameSound
 .L_00002274:
     lis      r0, 0x4330
     lis      r3, lbl_7_rodata_1C8@ha
@@ -1283,9 +1283,9 @@ extern "C" void UpdateTrash(u32 frames)
     lis      r3, trashObj@ha
     lfs      f0, 0x24(r1)
     addi     r4, r3, trashObj@l
-    lis      r3, lbl_7_rodata_180@ha
+    lis      r3, sTrashScalePercent@ha
     fmadds   f0, f1, f2, f0
-    addi     r5, r3, lbl_7_rodata_180@l
+    addi     r5, r3, sTrashScalePercent@l
     lwz      r3, 0x0(r4)
     addi     r4, r1, 0x1c
     lfs      f1, 0x0(r5)
@@ -1326,7 +1326,7 @@ extern "C" void UpdateTrash(u32 frames)
 extern "C" void InitTrash(void* arg)
 {
 	TrashObj* actor;
-	CGame* game = &lbl_8025C400;
+	CGame* game = &gGame;
 	s32 count;
 	s32 i;
 
@@ -1374,7 +1374,7 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
 	if (trashboxIndex < 0) {
 		return 0;
 	}
-	game  = &lbl_8025C400;
+	game  = &gGame;
 	robot = (TrashObj*)game->GetPlayer();
 	if (trashboxIndex != robot->_9D4) {
 		return 0;
@@ -1394,8 +1394,8 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
     li       r3, 0x0
     b        .L_000027D8
 .L_0000270C:
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     addis    r4, r3, 0x1
     lwz      r7, -0x6944(r4)
     lwz      r0, 0x9d4(r7)
@@ -1460,7 +1460,7 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
  */
 extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2)
 {
-	TrashObj* robot = (TrashObj*)lbl_8025C400.GetPlayer();
+	TrashObj* robot = (TrashObj*)gGame.GetPlayer();
 
 	if (robot->_A64 != NULL) {
 		robot->_A48 = 6;
@@ -1500,7 +1500,7 @@ extern "C" s32 CmdGetTrashResult(s32 cmd, s32 arg, s32* arg2)
  */
 extern "C" s32 CmdStartTrash(s32 cmd, s32 arg, s32* arg2)
 {
-	CGame* game     = &lbl_8025C400;
+	CGame* game     = &gGame;
 	f32 scale       = arg2[2] / 100.0f;
 	s32 idx         = arg2[0];
 	s32 num         = arg2[1];

@@ -6,23 +6,23 @@
 
 extern "C" {
 
-// XObjPlug::vf9C, the plug, then its wire effect from spawn 16
+// XObjPlug::LoadFromPlacement, the plug, then its wire effect from spawn 16
 /**
  * @note Address: 0x800D9414
  * @note Size: 0x104
  */
-BOOL vf9C__8XObjPlugFRC9CoordInfo(XObjPlug* object, const CoordInfo& info)
+BOOL LoadFromPlacement__8XObjPlugFRC9CoordInfo(XObjPlug* object, const CoordInfo& info)
 {
 	switch (object->mLoadState) {
 	case 0:
-		if (!vf9C__4XObjFRC9CoordInfo(object, &info)) {
+		if (!LoadFromPlacement__4XObjFRC9CoordInfo(object, &info)) {
 			break;
 		}
 		object->mLoadState++;
 	case 1:
-		if (object->mWire.vf9C(CoordInfo(GetSpawnData(16)))) {
-			Vec pos = lbl_8025C400.GetPlayer()->mMoveTranslate;
-			fn_800DB810(&object->mCord, pos.x, pos.y, pos.z);
+		if (object->mWire.LoadFromPlacement(CoordInfo(GetSpawnData(16)))) {
+			Vec pos = gGame.GetPlayer()->mMoveTranslate;
+			ResetPlugCordPoints(&object->mCord, pos.x, pos.y, pos.z);
 			object->mLoadState++;
 		}
 		break;
@@ -44,25 +44,25 @@ void vf94__8XObjPlugFv(XObjPlug* object)
  * @note Address: 0x800D9A7C
  * @note Size: 0x8
  */
-void fn_800D9A7C(XObjPlug* object, f32 speed)
+void SetPlugCordSpeed(XObjPlug* object, f32 speed)
 {
 	object->mCord.mSpeed = speed;
 }
 
-// XObjPlug::vf90
+// XObjPlug::InitializeObject
 /**
  * @note Address: 0x800D9A84
  * @note Size: 0x8C
  */
-void vf90__8XObjPlugFUl(XObjPlug* object, u32 id)
+void InitializeObject__8XObjPlugFUl(XObjPlug* object, u32 id)
 {
-	vf90__4XObjFUl(object, id);
-	fn_800DBA7C(&object->mCord, 20, 0.0f, 0.0f, 0.0f, 0.5f);
+	InitializeObject__4XObjFUl(object, id);
+	InitPlugCord(&object->mCord, 20, 0.0f, 0.0f, 0.0f, 0.5f);
 	object->mCord.mColor = 0x141414FF;
 	object->mCord._60    = 0x141414FF;
 	object->mCord.mWidth = 0.2f;
 	object->mLoadState   = 0;
-	object->mWire.vf90(id);
+	object->mWire.InitializeObject(id);
 }
 
 } // extern "C"

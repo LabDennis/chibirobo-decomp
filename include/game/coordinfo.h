@@ -9,7 +9,7 @@ struct UnkStageObj {
 	s32 mPos[3];   // _04, in hundredths
 	s32 _10[3];    // _10
 	s32 mScale[3]; // _1C, in hundredths
-	u8 _28[0x4];   // _28
+	s32 _28;       // _28
 	s32 _2C;       // _2C
 	s32 _30;       // _30, starting anim
 	u32 _34;       // _34, flags, 0x80000000 skips the read
@@ -27,22 +27,32 @@ public:
 	    : _00((UnkStageObj*)value)
 	{
 	}
+#ifdef STAGE_EXTERNAL_DTOR
+	STAGE_EXTERNAL_DTOR
+#endif
 	virtual ~CoordInfo() { } // _08
 };
 
 // an entry of objTable or objTableEx, 0x18 bytes. the kind record an object points at
+struct XObjSource;
 struct UnkObjData {
-	u8 _00[0xC]; // _00
-	u32 _0C;     // _0C, shadow size
-	u8 _10[0x4]; // _10
-	s16 _14;     // _14, category, also which pool in XOBJS
-	s16 _16;     // _16, item index, some callers test it as flags
+	union {
+		u32 _00;
+		XObjSource* mSource;
+	}; // _00
+	u32 mModel;        // _04
+	u32 mFlags;        // _08
+	u32 _0C;           // _0C, shadow size
+	s16 mLookPriority; // _10
+	s16 mLookRange;    // _12
+	s16 _14;           // _14, category, also which pool in XOBJS
+	s16 _16;           // _16, item index, some callers test it as flags
 
 	s16 GetCategory() const { return this != NULL ? _14 : 0; }
 	s16 GetItem() const { return this != NULL ? _16 : 0; }
 };
 STATIC_ASSERT(sizeof(UnkObjData) == 0x18);
-extern "C" UnkObjData* GetObjData(CoordInfo* info);
+extern "C" UnkObjData* GetObjData(const CoordInfo* info);
 
 // todo: cleanup
 inline s32 GetObjDataPool(const UnkObjData* data)
@@ -67,9 +77,14 @@ public:
 	    , _04(info->_00)
 	{
 	}
+	AttrInfo(const CoordInfo& info)
+	    : _00(GetObjData(&info))
+	    , _04(info._00)
+	{
+	}
 	virtual ~AttrInfo() { } // _08
 };
 
-extern "C" UnkStageObj* fn_8006F4A0(s32 i);
+extern "C" UnkStageObj* GetStagePlacementByIndex(s32 i);
 
 #endif

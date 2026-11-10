@@ -38,6 +38,9 @@ extern void memset(void* ptr, s32 value, u32 size);
 extern void PSVECScale(f32 scale, Vec* src, Vec* dst);
 extern void PSMTXRotRad(Mtx m, char axis, f32 rad);
 
+// The first string starts the 32-byte-aligned .data section in each retail edition.
+static char displayfuncFile[] __attribute__((aligned(32))) = "displayfunc.c";
+
 HSD_ObjAllocData zlist_alloc_data;
 
 // .sbss comes out last declaration first, so these run backwards
@@ -349,7 +352,7 @@ void HSD_JObjMakePositionMtx(HSD_JObj* jobj, Mtx vmtx, Mtx pmtx)
 			mkRBillBoardMtx(jobj, sp8, pmtx);
 			break;
 		default:
-			HSD_Panic("displayfunc.c", 0x170, "unkown type of billboard.\n");
+			HSD_Panic(displayfuncFile, 0x170, "unkown type of billboard.\n");
 			break;
 		}
 	} else {
@@ -364,7 +367,7 @@ void HSD_JObjMakePositionMtx(HSD_JObj* jobj, Mtx vmtx, Mtx pmtx)
 static inline HSD_JObj* displayfunc_find_skeleton(HSD_JObj* jobj)
 {
 	if (jobj == NULL) {
-		__assert("displayfunc.c", 0x184, "jobj");
+		__assert(displayfuncFile, 0x184, "jobj");
 	}
 	for (; jobj != NULL; jobj = jobj->parent) {
 		if (jobj->flags & 3) {
@@ -388,7 +391,7 @@ MtxPtr _HSD_mkEnvelopeModelNodeMtx(HSD_JObj* jobj, Mtx dst)
 	}
 	x = displayfunc_find_skeleton(jobj);
 	if (x == NULL) {
-		__assert("displayfunc.c", 0x1D4, "x");
+		__assert(displayfuncFile, 0x1D4, "x");
 	}
 
 	if (x == jobj) {

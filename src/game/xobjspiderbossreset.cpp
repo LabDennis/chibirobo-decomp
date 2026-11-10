@@ -1,25 +1,9 @@
 #include "game/xobjspiderboss.h"
 
-struct XObjSpiderBossStates {
-	XObjSpiderBoss::StateFunc mFuncs[5]; // _00
-};
-typedef char XObjSpiderBossStates_size_check[sizeof(XObjSpiderBossStates) == 0x3C ? 1 : -1];
-
-// the tu's data block, the code reaches it from lbl_8022B8F0
-struct XObjSpiderBossData {
-	u8 _000[0x250];                 // _000
-	XObjSpiderBossStates mDefaults; // _250
-	XObjSpiderBossStates mStates;   // _28C, lbl_8022BB7C
-};
-
-extern "C" {
-extern XObjSpiderBossData lbl_8022B8F0;
-}
-
 // todo: cleanup
 static inline void ResetState(XObjSpiderBoss* spider)
 {
-	fn_8010660C(spider);
+	ResetSpiderBossState(spider);
 	spider->mStep      = 0;
 	spider->mTimer     = 0;
 	spider->mPrevState = spider->mState;
@@ -40,20 +24,42 @@ extern "C" void vf94__14XObjSpiderBossFv(XObjSpiderBoss* spider)
  * @note Address: 0x80106924
  * @note Size: 0x58
  */
-extern "C" void vf90__14XObjSpiderBossFUl(XObjSpiderBoss* spider, u32 id)
+extern "C" void InitializeObject__14XObjSpiderBossFUl(XObjSpiderBoss* spider, u32 id)
 {
-	vf90__4XObjFUl(spider, id);
+	InitializeObject__4XObjFUl(spider, id);
 	ResetState(spider);
 }
 
-/**
- * @note Address: 0x8010697C
- * @note Size: 0x98
- */
-// todo: the tu's __sinit, the table it copies is other units'
-extern "C" void fn_8010697C()
-{
-	lbl_8022B8F0.mStates = lbl_8022B8F0.mDefaults;
+extern "C" {
+s32 gSpiderBossStateData[26]           = { 0, 3, 0, 0, 3, 0, 0, 2, 0, 0, 2, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 3, 0 };
+static XObjFloor sSpiderBossLowFloor[] = {
+	{ 0, 0, { 0, 135, 0 }, 0, { 377, 158, 377 } },
+	{ -1 },
+};
+static XObjFloor sSpiderBossHighFloor[] = {
+	{ 0, 0, { 0, 135, 0 }, 0, { 377, 632, 377 } },
+	{ -1 },
+};
+
+AnimSfxEvent gSpiderBossAnimSfxEvents[] = {
+	{ 2, 1.0f, 0.0f, 1, 0x160019, 0xFF, 0, 0, 0 },
+	{ 8, 1.0f, 0.0f, 1, 0x160019, 0xFF, 0, 0, 0 },
+	{ 9, 1.0f, 0.0f, 1, 0x160019, 0xFF, 0, 0, 0 },
+	{ 15, 1.0f, 0.0f, 1, 0x160019, 0xFF, 0, 0, 0 },
+	{ 14, 1.0f, 0.0f, 1, 0x160019, 0xFF, 0, 0, 0 },
+	{ 24, 1.0f, 0.0f, 1, 0x160019, 0xFF, 0, 0, 0 },
+	{ 26, 1.0f, 0.0f, 1, 0x160019, 0xFF, 0, 0, 0 },
+	{ 25, 1.0f, 0.0f, 1, 0x160019, 0xFF, 0, 0, 0 },
+	{ 2, 40.0f, 0.0f, 1, 0x16001A, 0xFF, 0, 0, 0 },
+	{ 8, 15.0f, 0.0f, 1, 0x16001A, 0xFF, 0, 0, 0 },
+	{ 9, 15.0f, 0.0f, 1, 0x16001A, 0xFF, 0, 0, 0 },
+	{ 15, 15.0f, 0.0f, 1, 0x16001A, 0xFF, 0, 0, 0 },
+	{ 14, 15.0f, 0.0f, 1, 0x16001A, 0xFF, 0, 0, 0 },
+	{ 24, 20.0f, 0.0f, 1, 0x16001A, 0xFF, 0, 0, 0 },
+	{ -1 },
+};
 }
 
-__declspec(section ".ctors") extern void (*const spiderBossInit)() = fn_8010697C;
+XObjSpiderBoss::StateFunc gSpiderBossStateHandlers[5] = {
+	&XObjSpiderBoss::State0, &XObjSpiderBoss::State1, &XObjSpiderBoss::State2, &XObjSpiderBoss::State3, &XObjSpiderBoss::State4,
+};

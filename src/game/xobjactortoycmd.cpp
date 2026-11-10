@@ -4,9 +4,9 @@
  * @note Address: 0x80115F18
  * @note Size: 0xBC
  */
-extern "C" s32 vf124__12XObjActorToyFlPl(XObjActorToy* object, s32 count, s32* command)
+extern "C" s32 HandleEventCommand__12XObjActorToyFlPl(XObjActorToy* object, s32 count, s32* command)
 {
-	vf124__9XObjActorFlPl(object, count, command);
+	HandleEventCommand__9XObjActorFlPl(object, count, command);
 	if (count < 1)
 		return 0;
 	object->mCmd[0] = command[0];

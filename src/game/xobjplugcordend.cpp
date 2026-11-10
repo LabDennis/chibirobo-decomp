@@ -4,7 +4,7 @@
  * @note Address: 0x800DB7A8
  * @note Size: 0x30
  */
-extern "C" void fn_800DB7A8(XObjPlugCord* cord, BOOL enabled, u8 alpha)
+extern "C" void SetPlugCordAlphaMode(XObjPlugCord* cord, BOOL enabled, u8 alpha)
 {
 	if (enabled) {
 		cord->mFlags |= 6;
@@ -20,7 +20,7 @@ extern "C" void fn_800DB7A8(XObjPlugCord* cord, BOOL enabled, u8 alpha)
  * @note Address: 0x800DB7D8
  * @note Size: 0x38
  */
-extern "C" void fn_800DB7D8(XObjPlugCord* cord, u32 index, const Vec* source)
+extern "C" void SetPlugCordEndpointSource(XObjPlugCord* cord, u32 index, const Vec* source)
 {
 	cord->mEndSource[index] = source;
 	if (source != NULL) {

@@ -13,18 +13,18 @@ void GXCopyTex(void* image, u8 clear);
 
 static inline CGs* CaptureGraphics()
 {
-	return &lbl_8025C400.mGs;
+	return &gGame.mGs;
 }
 
 static inline void FlushCaptureGraphics(CGs* graphics)
 {
 	CGs* global = CaptureGraphics();
 	if (graphics->mCurRenderMode)
-		fn_8019B278(global->mCurRenderMode, TRUE);
+		ApplyGsRenderMode(global->mCurRenderMode, TRUE);
 	if (global->mCurTevStage)
-		fn_8019AED0(global->mCurTevStage, TRUE);
+		ApplyGsTevStage(global->mCurTevStage, TRUE);
 	if (global->mCurChannel)
-		fn_8019AE94(global->mCurChannel, TRUE);
+		ApplyGsChannel(global->mCurChannel, TRUE);
 }
 
 static inline void InvalidateCaptureGraphics(CGs* graphics)

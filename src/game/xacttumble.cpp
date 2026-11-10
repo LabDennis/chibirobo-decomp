@@ -4,8 +4,8 @@
  * @note Address: 0x800C490C
  * @note Size: 0x40
  */
-extern "C" void fn_800C490C(XActTumble* act)
+extern "C" void ResetTumbleAction(XActTumble* act)
 {
 	act->Reset();
-	act->_44 = 0;
+	act->mIdleParticle = NULL;
 }

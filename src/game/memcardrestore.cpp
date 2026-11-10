@@ -8,13 +8,13 @@
 
 static inline XObjChr* Player()
 {
-	return lbl_8025C400.GetPlayer();
+	return gGame.GetPlayer();
 }
 
 // todo: pools 4, 5 and 17 keep a save block right after XObj, no idea what class
 static inline void* PoolSaveData(s32 pool)
 {
-	return *(void**)(lbl_8025C400.mXObjs.mPools[pool + 3].mObjects + sizeof(XObj));
+	return *(void**)(gGame.mXObjs.mPools[pool + 3].mObjects + sizeof(XObj));
 }
 
 static inline Params* Stats()
@@ -49,15 +49,6 @@ static inline void SetRank(Params* stats, s32 value)
 		stats->mRank = 1000000;
 }
 
-static inline void SetBattery(Params* stats, f32 value)
-{
-	stats->mBattery = value > 0.0f ? value : 0.0f;
-	if (stats->mBattery < 0.0f)
-		stats->mBattery = 0.0f;
-	if (stats->mBattery > stats->mMaxBattery)
-		stats->mBattery = stats->mMaxBattery;
-}
-
 static inline void SetMaxBattery(Params* stats, f32 value)
 {
 	stats->mMaxBattery = value > 0.0f ? value : 0.0f;
@@ -65,7 +56,7 @@ static inline void SetMaxBattery(Params* stats, f32 value)
 		stats->mMaxBattery = 0.0f;
 	if (stats->mMaxBattery > 999.9f)
 		stats->mMaxBattery = 999.9f;
-	SetBattery(stats, stats->mBattery);
+	stats->SetBattery(stats->mBattery);
 }
 
 static inline void SetMoney(Params* stats, s32 value)
@@ -88,9 +79,9 @@ static inline void SetScrap(Params* stats, s32 value)
 
 static inline void RequestSuit(XObjChr* chr, s32 value)
 {
-	if (chr->mSuitChanged == FALSE) {
-		chr->mSuitRequest = value;
-		chr->mSuitChanged = TRUE;
+	if (chr->mSuits.mChangeStep == FALSE) {
+		chr->mSuits.mRequested  = value;
+		chr->mSuits.mChangeStep = TRUE;
 	}
 }
 
@@ -98,23 +89,23 @@ static inline void RequestSuit(XObjChr* chr, s32 value)
  * @note Address: 0x80087CC0
  * @note Size: 0x42C
  */
-extern "C" void fn_80087CC0(Memcard* card)
+extern "C" void RestoreGameSaveData(Memcard* card)
 {
 	SaveData* save = &card->mFile.mData;
 	s32 stage      = save->mHeader.mStage;
 	if (stage >= 100)
 		stage = GetStageNum() + stage - 99;
-	lbl_8025C400.mPrevStage           = lbl_8025C400.mStage;
-	lbl_8025C400.mStage               = stage;
-	lbl_8025C400.mTimeState.mMode     = save->mHeader.mTimeMode;
-	lbl_8025C400.mTimeState.mTime     = save->mHeader.mTime;
-	lbl_8025C400.mTimeState.mRunning  = 0;
-	lbl_8025C400.mTimeState.mDuration = save->mHeader.mDuration;
+	gGame.mPrevStage           = gGame.mStage;
+	gGame.mStage               = stage;
+	gGame.mTimeState.mMode     = save->mHeader.mTimeMode;
+	gGame.mTimeState.mTime     = save->mHeader.mTime;
+	gGame.mTimeState.mRunning  = 0;
+	gGame.mTimeState.mDuration = save->mHeader.mDuration;
 	SetExperience(Stats(), save->mHeader.mExp);
 	SetLevel(Stats(), save->mHeader.mLevel);
 	SetRank(Stats(), save->mHeader.mRank);
 	SetMaxBattery(Stats(), save->mHeader.mMaxBattery);
-	SetBattery(Stats(), save->mHeader.mBattery);
+	Stats()->SetBattery(save->mHeader.mBattery);
 	SetMoney(Stats(), save->mHeader.mMoney);
 	SetScrap(Stats(), save->mHeader.mScrap);
 	if (save->mHeader._34)
@@ -122,19 +113,19 @@ extern "C" void fn_80087CC0(Memcard* card)
 	else
 		Stats()->_1C[0] = 0;
 #if defined(VERSION_PAL)
-	lbl_8025C400.mPlayTime = (f32)save->mHeader.mFrames;
+	gGame.mPlayTime = (f32)save->mHeader.mFrames;
 #else
-	lbl_8025C400.mPlayTime = save->mHeader.mFrames;
+	gGame.mPlayTime = save->mHeader.mFrames;
 #endif
 	memcpy(Player()->mParams.mInventory.mItems, save->mPlayer, sizeof(save->mPlayer));
-	memcpy(lbl_8036781C, save->mEvtFlags, sizeof(save->mEvtFlags));
-	memcpy(lbl_80367A2C, save->mEvtVars, sizeof(save->mEvtVars));
+	memcpy(gEventFlagWords, save->mEvtFlags, sizeof(save->mEvtFlags));
+	memcpy(gEventVariables, save->mEvtVars, sizeof(save->mEvtVars));
 	memcpy(PoolSaveData(4), save->mObjects[0], sizeof(save->mObjects[0]));
 	memcpy(PoolSaveData(5), save->mObjects[1], sizeof(save->mObjects[1]));
 	memcpy(PoolSaveData(17), save->mObjects[2], sizeof(save->mObjects[2]));
 	memcpy(&Player()->mAttachments, save->mPlayerRecord, sizeof(save->mPlayerRecord));
 	RequestSuit(Player(), save->mSuit);
-	Player()->mSuitSpecial  = save->_2CB4;
-	Player()->_158A8        = save->_2CE8;
-	Player()->mItemTintWord = save->_2CEC;
+	Player()->mSuits.mSpecial = save->_2CB4;
+	Player()->_158A8          = save->_2CE8;
+	Player()->mItemTintWord   = save->_2CEC;
 }

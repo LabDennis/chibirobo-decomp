@@ -34,7 +34,7 @@ inline bool IsSjisLead(u8 c)
 
 extern "C" {
 // the glyph texture for one character and how wide it is
-CTexObj* fn_8019E8F4(CFont* font, const char* str, s32* width);
+CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width);
 #if defined(VERSION_JP)
 void Init__5CFontFv(CFont* font);
 #else

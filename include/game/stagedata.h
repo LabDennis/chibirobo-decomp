@@ -13,15 +13,20 @@ struct CamAreaRecord;
 
 extern "C" {
 UnkStageObj* GetSpawnData(s32 index);
-UnkStageObj* fn_8006EDB4(s32 index);
-s32 fn_8006F338(s32 function, s32 count, s32* args);
-s32 fn_8006F390(s32 index);
-CamAreaRecord* fn_8006F3AC(void);
-CamInfoData* fn_8006F3BC(void);
-CamAreaRecord* fn_8006F3CC(void);
-u8* fn_8006F490(void);
-EnvInfo* fn_8006F4B8(void);
-s32 fn_8006F654(const char* name);
+UnkStageObj* GetStageObjectPlacementByIndex(s32 index);
+s32 CallStageModule(s32 function, s32 count, s32* args);
+s32 GetStageCollectionFlagBase(s32 index);
+CamAreaRecord* GetStageCameraAreaExRecords(void);
+CamInfoData* GetStageCameraInfoRecords(void);
+CamAreaRecord* GetStageCameraAreaRecords(void);
+u8* GetStageSetupScript(void);
+u8* GetStageEntryScript(void);
+u8* GetStageBatteryDepletedScript(void);
+u8* GetStageZButtonScript(void);
+u8* GetStageTimerExpiredScript(void);
+u8* GetStageDataBuffer(void);
+EnvInfo* GetStageEnvironment(void);
+s32 FindStageIndexByName(const char* name);
 }
 
 #endif

@@ -17,18 +17,18 @@
 // down with when the game ends
 
 extern "C" {
-extern XObjFree lbl_804F41F0[0x120];
-extern XObjHBox lbl_804E1060[0x10];
-extern XObjDust lbl_804B9850[0x40];
-extern XObjSpiderSmall lbl_804ADE48[16];
-extern XObjSpider lbl_804A06B8[16];
-extern XObjArmy lbl_804924E8[21];
-extern XObjActorDeca lbl_80490B88[2];
-extern XObjActorToy lbl_8046EF00[15];
-extern XObjLeticker lbl_80467330[12];
-extern XObjItem lbl_80441120[0x40];
-extern XObjCoin lbl_80405710[0x60];
-extern XObjSound lbl_80400A00[8];
+extern XObjFree gFreePool[0x120];
+extern XObjHBox gHBoxPool[0x10];
+extern XObjDust gDustPool[0x40];
+extern XObjSpiderSmall gSpiderSmallPool[16];
+extern XObjSpider gSpiderPool[16];
+extern XObjArmy gArmyPool[21];
+extern XObjActorDeca gActorDecaPool[2];
+extern XObjActorToy gActorToyPool[15];
+extern XObjLeticker gLetickerPool[12];
+extern XObjItem gItemPool[0x40];
+extern XObjCoin gCoinPool[0x60];
+extern XObjSound gSoundPool[8];
 
 XObjFree* __dt__8XObjFreeFv(XObjFree* object, s32 flags);
 XObjHBox* __dt__8XObjHBoxFv(XObjHBox* object, s32 flags);
@@ -49,7 +49,7 @@ XObjLeticker* __dt__12XObjLetickerFv(XObjLeticker* object, s32 flags);
  * @note Size: 0x94
  */
 // vf94 on every object of the 23 pools
-extern "C" void fn_80132D08(XObjPool* pools)
+extern "C" void ResetPooledObjects(XObjPool* pools)
 {
 	XObjPool* pool = pools;
 	for (s32 index = 0; index < 23; ++index, ++pool) {
@@ -63,9 +63,9 @@ extern "C" void fn_80132D08(XObjPool* pools)
  * @note Address: 0x80133B98
  * @note Size: 0x38
  */
-extern "C" void fn_80133B98()
+extern "C" void DestroyXObjFreeArray()
 {
-	__destroy_arr(lbl_804F41F0, (ConstructorDestructor*)__dt__8XObjFreeFv, sizeof(XObjFree), ARRAY_SIZE(lbl_804F41F0));
+	__destroy_arr(gFreePool, (ConstructorDestructor*)__dt__8XObjFreeFv, sizeof(XObjFree), ARRAY_SIZE(gFreePool));
 }
 
 /**
@@ -80,9 +80,9 @@ XObjFree::XObjFree()
  * @note Address: 0x80133C0C
  * @note Size: 0x38
  */
-extern "C" void fn_80133C0C()
+extern "C" void DestroyXObjHBoxArray()
 {
-	__destroy_arr(lbl_804E1060, (ConstructorDestructor*)__dt__8XObjHBoxFv, sizeof(XObjHBox), ARRAY_SIZE(lbl_804E1060));
+	__destroy_arr(gHBoxPool, (ConstructorDestructor*)__dt__8XObjHBoxFv, sizeof(XObjHBox), ARRAY_SIZE(gHBoxPool));
 }
 
 /**
@@ -105,9 +105,9 @@ XObjHBoxPart::XObjHBoxPart()
  * @note Address: 0x80133CB8
  * @note Size: 0x38
  */
-extern "C" void fn_80133CB8()
+extern "C" void DestroyXObjDustArray()
 {
-	__destroy_arr(lbl_804B9850, (ConstructorDestructor*)__dt__8XObjDustFv, sizeof(XObjDust), ARRAY_SIZE(lbl_804B9850));
+	__destroy_arr(gDustPool, (ConstructorDestructor*)__dt__8XObjDustFv, sizeof(XObjDust), ARRAY_SIZE(gDustPool));
 }
 
 /**
@@ -116,7 +116,7 @@ extern "C" void fn_80133CB8()
  */
 XObjDust::XObjDust()
 {
-	mFlags = &lbl_8037E1DC;
+	mFlags = &gDustEventFlags;
 }
 
 /**
@@ -131,9 +131,10 @@ XObjSpiderBoss::XObjSpiderBoss()
  * @note Address: 0x80133DD8
  * @note Size: 0x38
  */
-extern "C" void fn_80133DD8()
+extern "C" void DestroyXObjSpiderSmallArray()
 {
-	__destroy_arr(lbl_804ADE48, (ConstructorDestructor*)__dt__15XObjSpiderSmallFv, sizeof(XObjSpiderSmall), ARRAY_SIZE(lbl_804ADE48));
+	__destroy_arr(gSpiderSmallPool, (ConstructorDestructor*)__dt__15XObjSpiderSmallFv, sizeof(XObjSpiderSmall),
+	              ARRAY_SIZE(gSpiderSmallPool));
 }
 
 /**
@@ -148,9 +149,9 @@ XObjSpiderSmall::XObjSpiderSmall()
  * @note Address: 0x80133E84
  * @note Size: 0x38
  */
-extern "C" void fn_80133E84()
+extern "C" void DestroyXObjSpiderArray()
 {
-	__destroy_arr(lbl_804A06B8, (ConstructorDestructor*)__dt__10XObjSpiderFv, sizeof(XObjSpider), ARRAY_SIZE(lbl_804A06B8));
+	__destroy_arr(gSpiderPool, (ConstructorDestructor*)__dt__10XObjSpiderFv, sizeof(XObjSpider), ARRAY_SIZE(gSpiderPool));
 }
 
 /**
@@ -165,9 +166,9 @@ XObjSpider::XObjSpider()
  * @note Address: 0x80133F40
  * @note Size: 0x38
  */
-extern "C" void fn_80133F40()
+extern "C" void DestroyXObjArmyArray()
 {
-	__destroy_arr(lbl_804924E8, (ConstructorDestructor*)__dt__8XObjArmyFv, sizeof(XObjArmy), ARRAY_SIZE(lbl_804924E8));
+	__destroy_arr(gArmyPool, (ConstructorDestructor*)__dt__8XObjArmyFv, sizeof(XObjArmy), ARRAY_SIZE(gArmyPool));
 }
 
 /**
@@ -184,9 +185,9 @@ XObjArmy::XObjArmy()
  */
 // 0x80134000, XObjArmyShot's ctor, the compiler emits it here
 
-extern "C" void fn_80134014()
+extern "C" void DestroyXObjActorDecaArray()
 {
-	__destroy_arr(lbl_80490B88, (ConstructorDestructor*)__dt__13XObjActorDecaFv, sizeof(XObjActorDeca), ARRAY_SIZE(lbl_80490B88));
+	__destroy_arr(gActorDecaPool, (ConstructorDestructor*)__dt__13XObjActorDecaFv, sizeof(XObjActorDeca), ARRAY_SIZE(gActorDecaPool));
 }
 
 /**
@@ -233,9 +234,9 @@ XObjActorJenny::XObjActorJenny()
  * @note Address: 0x80134248
  * @note Size: 0x38
  */
-extern "C" void fn_80134248()
+extern "C" void DestroyXObjActorToyArray()
 {
-	__destroy_arr(lbl_8046EF00, (ConstructorDestructor*)__dt__12XObjActorToyFv, sizeof(XObjActorToy), ARRAY_SIZE(lbl_8046EF00));
+	__destroy_arr(gActorToyPool, (ConstructorDestructor*)__dt__12XObjActorToyFv, sizeof(XObjActorToy), ARRAY_SIZE(gActorToyPool));
 }
 
 /**
@@ -258,9 +259,9 @@ XObjActor::XObjActor()
  * @note Address: 0x80134300
  * @note Size: 0x38
  */
-extern "C" void fn_80134300()
+extern "C" void DestroyXObjLetickerArray()
 {
-	__destroy_arr(lbl_80467330, (ConstructorDestructor*)__dt__12XObjLetickerFv, sizeof(XObjLeticker), ARRAY_SIZE(lbl_80467330));
+	__destroy_arr(gLetickerPool, (ConstructorDestructor*)__dt__12XObjLetickerFv, sizeof(XObjLeticker), ARRAY_SIZE(gLetickerPool));
 }
 
 /**
@@ -275,9 +276,9 @@ XObjLeticker::XObjLeticker()
  * @note Address: 0x80134380
  * @note Size: 0x38
  */
-extern "C" void fn_80134380()
+extern "C" void DestroyXObjItemArray()
 {
-	__destroy_arr(lbl_80441120, (ConstructorDestructor*)__dt__8XObjItemFv, sizeof(XObjItem), ARRAY_SIZE(lbl_80441120));
+	__destroy_arr(gItemPool, (ConstructorDestructor*)__dt__8XObjItemFv, sizeof(XObjItem), ARRAY_SIZE(gItemPool));
 }
 
 /**
@@ -286,16 +287,16 @@ extern "C" void fn_80134380()
  */
 XObjItem::XObjItem()
 {
-	mFlags = &lbl_8037DDBC;
+	mFlags = &gItemEventFlags;
 }
 
 /**
  * @note Address: 0x80134400
  * @note Size: 0x38
  */
-extern "C" void fn_80134400()
+extern "C" void DestroyXObjCoinArray()
 {
-	__destroy_arr(lbl_80405710, (ConstructorDestructor*)__dt__8XObjCoinFv, sizeof(XObjCoin), ARRAY_SIZE(lbl_80405710));
+	__destroy_arr(gCoinPool, (ConstructorDestructor*)__dt__8XObjCoinFv, sizeof(XObjCoin), ARRAY_SIZE(gCoinPool));
 }
 
 /**
@@ -304,7 +305,7 @@ extern "C" void fn_80134400()
  */
 XObjCoin::XObjCoin()
 {
-	mFlags = &lbl_8037DFCC;
+	mFlags = &gCoinEventFlags;
 }
 
 /**
@@ -320,9 +321,9 @@ XObjFlags::XObjFlags()
  * @note Address: 0x80134480
  * @note Size: 0x38
  */
-extern "C" void fn_80134480()
+extern "C" void DestroyXObjSoundArray()
 {
-	__destroy_arr(lbl_80400A00, (ConstructorDestructor*)__dt__9XObjSoundFv, sizeof(XObjSound), ARRAY_SIZE(lbl_80400A00));
+	__destroy_arr(gSoundPool, (ConstructorDestructor*)__dt__9XObjSoundFv, sizeof(XObjSound), ARRAY_SIZE(gSoundPool));
 }
 
 /**

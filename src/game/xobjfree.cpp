@@ -38,14 +38,14 @@ static inline HSD_ShapeAnimJoint* Shape(CJArchive* archive, s32 id)
 	return NULL;
 }
 
-// XObjFree::vf138
+// XObjFree::OnHitFromPosition
 /**
  * @note Address: 0x800DD600
  * @note Size: 0x94
  */
-extern "C" void vf138__8XObjFreeFRC3Vecf(XObjFree* object, const Vec* pos, f32 value)
+extern "C" void OnHitFromPosition__8XObjFreeFRC3Vecf(XObjFree* object, const Vec* pos, f32 value)
 {
-	vf138__4XObjFRC3Vecf(object, pos, value);
+	OnHitFromPosition__4XObjFRC3Vecf(object, pos, value);
 	if (object->mStatus.mFlags & 0x04000000ULL) {
 		f32 remaining = object->mLife - value;
 		object->mLife = remaining;
@@ -69,7 +69,7 @@ extern "C" void SetAnim__8XObjFreeFliPvPvPvffff(XObjFree* object, s32 id, BOOL f
 			void* shape     = shapeAnim != NULL ? shapeAnim : Shape(&object->mArchive, id);
 			f32 materialFrame;
 			if (object->mMatAnim != NULL) {
-				HSD_AObj* animation = fn_801905D4(object->mJObj);
+				HSD_AObj* animation = FindMaterialOrTextureAnimationInJointTree(object->mJObj);
 				materialFrame       = animation != NULL ? HSD_AObjGetCurrentFrame(animation) : 0.0f;
 			} else {
 				materialFrame    = 0.0f;
@@ -104,16 +104,16 @@ extern "C" void vfC8__8XObjFreeFv(XObjFree* object)
 	if ((object->mStatus.mFlags & 0x4000000000000000ULL) && object->mFlash > 0.0f) {
 		Vec position = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;
-		object->vf10C(&position, &x, &y, NULL, 0);
+		object->ProjectOffsetToScreen(&position, &x, &y, NULL, 0);
 		f32 effect      = object->mFlash;
 		f32 innerRadius = 400.0f * effect;
 		f32 outerRadius = 400.0f * (1.0f - effect);
-		fn_8019B464(lbl_8025C400.mGs.mCurRenderMode, 0, 7, 0);
-		fn_8019B56C(lbl_8025C400.mGs.mCurRenderMode, 1, 2, 4, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 7, 0);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 		u32 color = (u32)(255.0f * effect) | 0xFFFFFF00;
-		fn_80198258(&lbl_8025C400.mGs, 16, color, 0xFFFFFF00, x, y, 0.0f, innerRadius, innerRadius, 0.0f, 0.0f, 0.0f);
-		fn_80198258(&lbl_8025C400.mGs, 16, color, 0xFFFFFF00, x, y, 0.0f, outerRadius, outerRadius, 0.0f, 0.0f, 0.0f);
-		fn_8019B56C(lbl_8025C400.mGs.mCurRenderMode, 1, 4, 5, 15);
-		fn_8019B464(lbl_8025C400.mGs.mCurRenderMode, 1, 3, 0);
+		DrawGsCircle(&gGame.mGs, 16, color, 0xFFFFFF00, x, y, 0.0f, innerRadius, innerRadius, 0.0f, 0.0f, 0.0f);
+		DrawGsCircle(&gGame.mGs, 16, color, 0xFFFFFF00, x, y, 0.0f, outerRadius, outerRadius, 0.0f, 0.0f, 0.0f);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 	}
 }

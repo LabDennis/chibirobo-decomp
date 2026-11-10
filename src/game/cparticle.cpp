@@ -5,7 +5,7 @@ extern "C" {
 #include <dolphin/os.h>
 void OSReport(const char* msg, ...);
 HSD_Generator* psCreateGeneratorID(int linkNo, int bank, int kind);
-HSD_psAppSRT* fn_801E56F8(HSD_Generator* gen, s32 status);
+HSD_psAppSRT* CreateGeneratorAppSRT(HSD_Generator* gen, s32 status);
 void _psDispParticlesSub(s32 bankMask, s32 kind);
 void psInterpretParticles(u32 flags);
 void psExecGenerator(u32 mask);
@@ -89,9 +89,9 @@ HSD_Generator* CParticle::Create(u32 code, u8 type, HSD_JObj* jobj, BOOL keep)
 #endif
 			mGenerators[i].mId = id;
 			if (type == 0) {
-				mGenerators[i].mGen = fn_801E4380(linkNo, bank, id, jobj);
+				mGenerators[i].mGen = psCreateJointGenerator(linkNo, bank, id, jobj);
 			} else {
-				mGenerators[i].mGen = fn_801E4C58(linkNo, bank, id, jobj);
+				mGenerators[i].mGen = psCreateQueuedJointGenerator(linkNo, bank, id, jobj);
 			}
 			gen = mGenerators[i].mGen;
 			if (gen != NULL && !keep && gen->genLife != 0) {
@@ -128,7 +128,7 @@ HSD_Generator* CParticle::CreateSRT(u32 code, s32 status, const Vec& translate, 
 			mGenerators[i].mId  = id;
 			mGenerators[i].mGen = psCreateGeneratorID(linkNo, bank, id);
 			if (mGenerators[i].mGen != NULL) {
-				HSD_psAppSRT* srt = fn_801E56F8(mGenerators[i].mGen, status);
+				HSD_psAppSRT* srt = CreateGeneratorAppSRT(mGenerators[i].mGen, status);
 				if (srt != NULL) {
 					srt->scale     = scale;
 					srt->translate = translate;
@@ -218,8 +218,8 @@ void CParticle::Init()
 	psInitParticle(800);
 	psInitGenerator(100);
 	psInitAppSRT(100, 0x74); // this revision's HSD_psAppSRT is 0x74 bytes, our particle.h has a later layout
-	HSD_JObjSetSPtclCallback(fn_801E4C58);
-	HSD_JObjSetDPtclCallback(fn_801E4380);
+	HSD_JObjSetSPtclCallback(psCreateQueuedJointGenerator);
+	HSD_JObjSetDPtclCallback(psCreateJointGenerator);
 	HSD_JObjSetPtclTargetCallback(psSetPointJObjNodup);
 	if (mReadStep > 0) {
 		psInitDataBankLoad(GetBank(), mCmdBank, mTexBank, mRef, mFormBank);

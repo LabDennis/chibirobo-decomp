@@ -11,14 +11,14 @@ class XActLift;
 class XActPush;
 
 extern "C" {
-void fn_800C5A00(XActPush* action);
-void fn_800D482C(XAction* action);
-BOOL fn_800D4C78(XActLift* action);
-BOOL fn_800D4D54(XActLift* action);
-BOOL fn_800D4E30(XActLift* action);
-BOOL fn_800D4F0C(XActLift* action);
-BOOL fn_800D4FE8(XActLift* action);
-void fn_800D5034(XActLift* action);
+void ReleasePushAction(XActPush* action);
+void ApplyPlayerItemTintToTarget(XAction* action);
+BOOL IsCarryingSquirter(XActLift* action);
+BOOL IsCarryingMug(XActLift* action);
+BOOL IsCarryingSpoon(XActLift* action);
+BOOL IsCarryingToothbrush(XActLift* action);
+BOOL IsLiftTargetPlug(XActLift* action);
+void ResetPlayerLiftAction(XActLift* action);
 }
 
 #endif

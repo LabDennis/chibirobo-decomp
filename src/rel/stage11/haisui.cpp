@@ -2,7 +2,7 @@
 #include "Version.h"
 
 // CGame
-extern "C" u8 lbl_8025C400[];
+extern "C" u8 gGame[];
 
 extern "C" s32 CmdSetCameraScroll(s32 cmd, s32 count, s32* values);
 extern "C" void InitStage(void* arg);
@@ -17,9 +17,9 @@ struct CCameraActionScroll {
 // past the end of CGame's symbol size
 #if defined(VERSION_JP)
 // 0xCE8 earlier in japan, its CGame is shorter
-#define STAGE11_UNK() (*(CCameraActionScroll**)(lbl_8025C400 + 0xE7130))
+#define STAGE11_UNK() (*(CCameraActionScroll**)(gGame + 0xE7130))
 #else
-#define STAGE11_UNK() (*(CCameraActionScroll**)(lbl_8025C400 + 0xE7E18))
+#define STAGE11_UNK() (*(CCameraActionScroll**)(gGame + 0xE7E18))
 #endif
 
 typedef void (*RelSlotFunc)(void* arg);

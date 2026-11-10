@@ -11,7 +11,7 @@
 
 // 50 or 60 on pal, whatever the refresh rate is
 #if defined(VERSION_PAL)
-#define FRAME_TIME (1.0f / lbl_80660D4C)
+#define FRAME_TIME (1.0f / gVideoFramesPerSecond)
 #else
 #define FRAME_TIME (1.0f / 60.0f)
 #endif
@@ -29,7 +29,7 @@
  */
 void CCameraActionDefault::Update(u32 step)
 {
-	SetInterest(lbl_8025C400.GetPlayer()->GetCameraTarget(), 0x10002);
+	SetInterest(gGame.GetPlayer()->GetCameraTarget(), 0x10002);
 }
 
 /**
@@ -38,7 +38,7 @@ void CCameraActionDefault::Update(u32 step)
  */
 Vec CCameraActionLadr::GetCameraTarget()
 {
-	return lbl_8025C400.GetPlayer()->GetCameraTarget();
+	return gGame.GetPlayer()->GetCameraTarget();
 }
 
 /**
@@ -71,9 +71,9 @@ void CCameraActionLadr::Update(u32 step)
 void CCameraActionLadr::CalcEye(Vec* eye, f32 angle)
 {
 	*eye = GetCameraTarget();
-	eye->x -= 100.0f * (f32)sin(angle + HSD_JObjGetRotationY(lbl_8025C400.GetPlayer()->mJObj));
+	eye->x -= 100.0f * (f32)sin(angle + HSD_JObjGetRotationY(gGame.GetPlayer()->mJObj));
 	eye->y += 30.0f;
-	eye->z -= 100.0f * (f32)cos(angle + HSD_JObjGetRotationY(lbl_8025C400.GetPlayer()->mJObj));
+	eye->z -= 100.0f * (f32)cos(angle + HSD_JObjGetRotationY(gGame.GetPlayer()->mJObj));
 }
 
 /**
@@ -105,7 +105,7 @@ void CCameraActionScroll::Update(u32 step)
 	if (mStart) {
 		Vec interest;
 		Vec eye;
-		eye      = lbl_8025C400.GetPlayer()->GetCameraTarget();
+		eye      = gGame.GetPlayer()->GetCameraTarget();
 		interest = eye;
 		if (mZoom == 0) {
 			eye.z += mNearDistance;
@@ -129,8 +129,8 @@ void CCameraActionScroll::Update(u32 step)
 
 	_64 = 2;
 	CPad pad(0);
-	u32 nearButton = (lbl_8025C400.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADUP : HSD_PAD_CSTICK_UP;
-	u32 farButton  = (lbl_8025C400.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADDOWN : HSD_PAD_CSTICK_DOWN;
+	u32 nearButton = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADUP : HSD_PAD_CSTICK_UP;
+	u32 farButton  = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADDOWN : HSD_PAD_CSTICK_DOWN;
 	if (pad.mPad->mTrigger & nearButton) {
 		mZoom = 0;
 		StartZoom(mNearDistance);
@@ -143,14 +143,14 @@ void CCameraActionScroll::Update(u32 step)
 		if (!mDistanceInterp->Update(step, FRAME_TIME)) {
 			SetDistance(mDistanceInterp->Get());
 			f32 distance = mDistanceInterp->Get();
-			SetInterest(lbl_8025C400.GetPlayer()->GetCameraTarget(), 0x10006);
+			SetInterest(gGame.GetPlayer()->GetCameraTarget(), 0x10006);
 			SetDistance(distance);
 			return;
 		}
 		mDistanceInterp = NULL;
 	}
 
-	SetInterest(lbl_8025C400.GetPlayer()->GetCameraTarget(), 0x10002);
+	SetInterest(gGame.GetPlayer()->GetCameraTarget(), 0x10002);
 }
 
 /**

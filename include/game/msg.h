@@ -93,6 +93,7 @@ STATIC_ASSERT(sizeof(CMsgData) == 0x89C);
 
 // one character on screen. japan has no width adjustment, so it's 4 shorter from _29C on
 struct MsgFontGlyph {
+	MsgFontGlyph();
 	CTexObj mTexture; // _00
 	CSprite mSprite;  // _100
 	u32 mColor;       // _288
@@ -209,6 +210,8 @@ public:
 		mOtherSelection = -1;
 	}
 
+#ifdef CJOINT_SETTER_SECTION
+#endif
 	virtual ~CMsgFont() { } // _08
 };
 #if defined(VERSION_JP)
@@ -220,6 +223,7 @@ STATIC_ASSERT(sizeof(CMsgFont) == 0x43D20);
 // the message window, name from RTTI. offsets are US, japan's are 0x650 lower from the font's glyphs on
 class CMsg {
 public:
+	CMsg();
 	u8 _00;            // _00, message command
 	u8 _01[0x4 - 0x1]; // _01
 	CMsgData mData;    // _04
@@ -241,11 +245,11 @@ public:
 	s32 _445F0;                   // _445F0
 	u8 _445F4[0x445F8 - 0x445F4]; // _445F4
 	s32 _445F8;                   // _445F8
-	s32 _445FC;                   // _445FC
+	s32 mGlyphSoundGroup;         // _445FC, -1 disables glyph sounds
 	f32 _44600;                   // _44600, 320.0f at reset, maybe a screen x
 	f32 _44604;                   // _44604, 344.0f at reset, maybe a screen y
 	s32 _44608;                   // _44608
-	Vec _4460C;                   // _4460C
+	Vec mFontPosition;            // _4460C
 
 	// _44618 vtable
 
@@ -273,5 +277,14 @@ extern "C" {
 // formats the message script into msg and opens the window
 u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args);
 }
+
+#ifndef DEFINE_GAME_MEMBER_LIFETIMES
+inline MsgFontGlyph::MsgFontGlyph()
+{
+}
+inline CMsg::CMsg()
+{
+}
+#endif
 
 #endif

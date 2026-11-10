@@ -13,16 +13,17 @@ struct EvtObjIdEntry {
 
 struct EvtObjIdTable {
 	s32 mCount;                // _00
-	EvtObjIdEntry mEntry[275]; // _04
+	EvtObjIdEntry mEntry[128]; // _04
 };
+STATIC_ASSERT(sizeof(EvtObjIdTable) == 0x204);
 
 extern "C" {
-extern CEvtQueueEx lbl_80369A3C;
-extern CEvtTimer lbl_8036A050;
-// the event's own object, dtk has it inside lbl_8036A050
-extern XObj lbl_8036A0B0;
+extern CEvtQueueEx gEventScriptQueue;
+extern CEvtTimer gEventTimers;
+// The event system constructs its own XObj at startup.
+extern XObj gEventScriptObject;
 // script names for objects
-extern EvtObjIdTable lbl_802247B0;
+extern EvtObjIdTable gEventObjectIds;
 }
 
 #endif

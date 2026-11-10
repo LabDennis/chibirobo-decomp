@@ -13,8 +13,8 @@ Sections:
 	.sdata2     type:rodata align:16
 	.sbss2      type:bss align:32
 
-game/game.cpp:
-	.text       start:0x80007880 end:0x80008344
+game/cmdlineargs.cpp:
+	.data       start:0x8020FBC0 end:0x8020FBE0
 
 game/gamecgschan.cpp:
 	.text       start:0x80008344 end:0x800083D4
@@ -52,20 +52,29 @@ game/gamecmsg.cpp:
 game/gamemsgcursor.cpp:
 	.text       start:0x80008F5C end:0x80008FB0
 
-game/gameccameraactions.cpp:
-	.text       start:0x80008FB0 end:0x8000A4B8
-
 game/gameinterval.cpp:
 	.text       start:0x8000A4B8 end:0x8000A560
 
+game/micaudio.cpp:
+	.text       start:0x8000A560 end:0x8000A6D8
+
+game/gamemicrophone.cpp:
+	.text       start:0x8000A6D8 end:0x8000A858
+
+game/stagemicrophone.cpp:
+	.text       start:0x8000A858 end:0x8000AB90
+
+game/gamemovie.cpp:
+	.text       start:0x8000AB90 end:0x8000AD34
+
 game/cgame.cpp:
-	.text       start:0x8000A560 end:0x8000C398
+	.text       start:0x8000AD34 end:0x8000BE38
 
 game/gameobjupdate.cpp:
 	.text       start:0x8000C398 end:0x8000C450
 
 game/gamexobjshadow.cpp:
-	.text       start:0x8000C450 end:0x8000DA50
+	.text       start:0x8000C450 end:0x8000CB4C
 
 game/gamexobjdraw.cpp:
 	.text       start:0x8000DA50 end:0x8000DA7C
@@ -75,6 +84,12 @@ game/gamemirrorfloor.cpp:
 
 game/gameclightset.cpp:
 	.text       start:0x8000DF78 end:0x8000DFA8
+
+game/game.cpp:
+	.text       start:0x80007880 end:0x80008344
+
+game/gameccameraactions.cpp:
+	.text       start:0x80008FB0 end:0x8000A4B8
 
 game/gameccameraset.cpp:
 	.text       start:0x8000DFA8 end:0x8000FA40
@@ -112,6 +127,9 @@ game/gamefbsubwincam.cpp:
 game/gameccameraproj.cpp:
 	.text       start:0x80013784 end:0x800137C0
 
+game/fbsubwindraw.cpp:
+	.text       start:0x800137C0 end:0x800146D0
+
 game/gamefbsubwin.cpp:
 	.text       start:0x800146D0 end:0x800148C0
 
@@ -123,9 +141,6 @@ game/gamefbmirror.cpp:
 
 game/gamemain.cpp:
 	.text       start:0x80014DA4 end:0x8001580C
-
-game/gameosreport.cpp:
-	.text       start:0x8001580C end:0x8001585C
 
 game/cinterpolationnone.cpp:
 	.text       start:0x8001585C end:0x80015C54
@@ -182,13 +197,13 @@ game/cstatusdtor.cpp:
 	.text       start:0x80018CE0 end:0x80018D28
 
 game/logodtor.cpp:
-	.text       start:0x80018D28 end:0x80018FE8
+	.text       start:0x80018D28 end:0x80018E14
 
 game/xobjsdtor.cpp:
 	.text       start:0x80018FE8 end:0x80019030
 
 game/cevtdtor.cpp:
-	.text       start:0x80019030 end:0x8001915C
+	.text       start:0x800190C0 end:0x8001915C
 
 game/csounddtor.cpp:
 	.text       start:0x8001915C end:0x800191A4
@@ -220,9 +235,6 @@ game/fbmirrorexdtor.cpp:
 
 game/arcacheinfodtor.cpp:
 	.text       start:0x8001975C end:0x800197A4
-
-game/cgamector.cpp:
-	.text       start:0x800197A4 end:0x8001AE9C
 
 game/cspritedtor.cpp:
 	.text       start:0x8001AE9C end:0x8001AF40
@@ -269,12 +281,6 @@ game/ctpldtor.cpp:
 game/cfilearchivedtor.cpp:
 	.text       start:0x8001B844 end:0x8001B8A0
 
-game/cbasector.cpp:
-	.text       start:0x8001B8A0 end:0x8001B97C
-
-game/ccameractor.cpp:
-	.text       start:0x8001B97C end:0x8001B9B8
-
 game/cgsctor.cpp:
 	.text       start:0x8001B9B8 end:0x8001BB5C
 
@@ -284,6 +290,12 @@ game/ctiledtor.cpp:
 game/cgschannelctor.cpp:
 	.text       start:0x8001BC14 end:0x8001BC34
 
+game/cgamector.cpp:
+	.text       start:0x800197A4 end:0x8001AE9C
+
+game/ccameractor.cpp:
+	.text       start:0x8001B97C end:0x8001B9B8
+
 game/fbmirrorex.cpp:
 	.text       start:0x8001BC34 end:0x8001C854
 
@@ -291,20 +303,24 @@ game/cpaddtor.cpp:
 	.text       start:0x8001C854 end:0x8001C89C
 
 game/progressive.cpp:
-	.text       start:0x8001C89C end:0x8001CEA0
+	.text       start:0x8001C8C4 end:0x8001CEA0
 
 game/cfiletextdtor.cpp:
 	.text       start:0x8001CEA0 end:0x8001CEFC
 
+game/soundregister.cpp:
+	.text       start:0x8001E044 end:0x8001E11C
+
+game/sound.cpp:
+	.text       start:0x8001E904 end:0x8001F8D8
+	.rodata     start:0x801FEE04 end:0x801FEE18 align:4
+	.sdata2     start:0x8065C08C end:0x8065C0C4
+
 game/gxa.cpp:
 	.text       start:0x8001CEFC end:0x8001DC20
 
-game/sound.cpp:
-	.text       start:0x8001DC20 end:0x8001F8D8
-	.rodata     start:0x801FE3BC end:0x801FEE18
-	.data       start:0x802107A0 end:0x8021134C
-	.sdata      start:0x8065A1C0 end:0x8065A1C8
-	.sdata2     start:0x8065C08C end:0x8065C0C4
+game/gameosreport.cpp:
+	.text       start:0x8001580C end:0x8001585C
 
 game/gxb.cpp:
 	.text       start:0x8001F8D8 end:0x80031004
@@ -313,22 +329,35 @@ game/titlestates.cpp:
 	.text       start:0x80031004 end:0x8003135C
 	.ctors      start:0x801FD668 end:0x801FD66C
 
+game/dustdrawdefaults.cpp:
+	.rodata     start:0x801FF240 end:0x801FF2DC align:4
+
+game/menuwindowgeometry.c:
+	.rodata     start:0x801FF4B8 end:0x801FF74C align:4
+
+game/titlepalette.cpp:
+	.rodata     start:0x801FF3A8 end:0x801FF408 align:4
+	.sdata      start:0x8065A270 end:0x8065A278 align:4
+
 game/stg.cpp:
 	.text       start:0x8003135C end:0x80062B6C
 
 game/menu_cleanup.cpp:
 	.text       start:0x8006331C end:0x8006389C
 
+game/itemicontextures.cpp:
+	.data       start:0x80215050 end:0x802152CC align:4
+
 game/infoscrn.cpp:
 	.text       start:0x8006389C end:0x8006DAF4
 	.bss        start:0x80366E58 end:0x80367180
 
+game/infopointdtor.cpp:
+	.text       start:0x8006DB80 end:0x8006DBC8
+
 game/infopointinit.cpp:
 	.text       start:0x8006DAF4 end:0x8006DB80
 	.ctors      start:0x801FD670 end:0x801FD674
-
-game/infopointdtor.cpp:
-	.text       start:0x8006DB80 end:0x8006DBC8
 
 game/stage_data.cpp:
 	.text       start:0x8006DBC8 end:0x8006FCAC
@@ -351,6 +380,10 @@ game/evtinit.cpp:
 game/evtobj.cpp:
 	.text       start:0x8007F570 end:0x8007F664
 
+game/evtstaticinit.cpp:
+	.text       start:0x8007F664 end:0x8007FDDC
+	.ctors      start:0x801FD678 end:0x801FD67C
+
 game/evtdtor.cpp:
 	.text       start:0x8007FDDC end:0x8007FFB4
 
@@ -360,6 +393,9 @@ game/msg.cpp:
 	.data       start:0x80225450 end:0x802255F8
 	.sdata      start:0x8065A428 end:0x8065A430
 	.sdata2     start:0x8065D030 end:0x8065D158
+
+game/msgdataformat.cpp:
+	.text       start:0x800869AC end:0x80086F24
 
 game/memcardcheck.cpp:
 	.text       start:0x80086F24 end:0x80087190
@@ -397,8 +433,14 @@ game/memcardscan.cpp:
 game/memcardscanjob.cpp:
 	.text       start:0x80089258 end:0x8008933C
 
+game/memcardreadstate.cpp:
+	.text       start:0x8008933C end:0x80089860
+
 game/memcardread.cpp:
 	.text       start:0x80089860 end:0x80089D3C
+
+game/memcardwritestate.cpp:
+	.text       start:0x80089D3C end:0x8008A1C0
 
 game/memcardjob.cpp:
 	.text       start:0x8008A1C0 end:0x8008A314
@@ -406,7 +448,30 @@ game/memcardjob.cpp:
 game/memcardinit.cpp:
 	.text       start:0x8008A314 end:0x8008A360
 	.ctors      start:0x801FD67C end:0x801FD680
-	.bss        start:0x8036AC00 end:0x8036AF38
+	.bss        start:0x8036AC00 end:0x8036BF38
+
+game/xobjcameratypeinfo.c:
+	.rodata     start:0x80209320 end:0x80209338 align:4
+	.data       start:0x80225B90 end:0x80225BF0 align:4
+	.sdata      start:0x8065A470 end:0x8065A498 align:4
+	.sdata2     start:0x8065D248 end:0x8065D260 align:4
+
+game/xobjlighttypeinfo.c:
+	.rodata     start:0x80209338 end:0x80209350 align:4
+	.data       start:0x80225D38 end:0x80225D98 align:4
+	.sdata      start:0x8065A498 end:0x8065A4C0 align:4
+	.sdata2     start:0x8065D280 end:0x8065D298 align:4
+
+game/xobjtypeinfo.c:
+	.rodata     start:0x802092D8 end:0x80209320 align:4
+	.data       start:0x80225948 end:0x80225B90 align:4
+	.sdata      start:0x8065A440 end:0x8065A470 align:4
+
+game/xobjgroundconstants.c:
+	.sdata2     start:0x8065D1E8 end:0x8065D208 align:4
+
+game/xobjresponseconstants.c:
+	.sdata2     start:0x8065D168 end:0x8065D1A8 align:8
 
 game/cjanim.cpp:
 	.text       start:0x8008A360 end:0x8008C7CC
@@ -421,13 +486,19 @@ game/xobjwalk.cpp:
 	.text       start:0x80091C44 end:0x80091C80
 
 game/xobjinit.cpp:
-	.text       start:0x80091C80 end:0x80092AA4
+	.text       start:0x80091C80 end:0x800928E8
+
+game/xobjinitialize.cpp:
+	.text       start:0x800929C4 end:0x80092AA4
 
 game/xobjcameradtor.cpp:
 	.text       start:0x80092AA4 end:0x80092B80
 
 game/xobjcamera.cpp:
 	.text       start:0x80092B80 end:0x80092DBC
+
+game/stagelightframe.cpp:
+	.sdata2     start:0x8065D298 end:0x8065D2A8
 
 game/xobjlightdtor.cpp:
 	.text       start:0x80092DBC end:0x80092E38
@@ -438,8 +509,16 @@ game/xobjlight.cpp:
 game/xobjmapdtor.cpp:
 	.text       start:0x80093134 end:0x800931C8
 
+game/ctrigontypeinfo.c:
+	.sdata      start:0x8065A4E8 end:0x8065A4F0 align:4
+	.sdata2     start:0x8065D2D8 end:0x8065D2E0 align:4
+
 game/ctrigondtor.cpp:
 	.text       start:0x800931C8 end:0x80093210
+
+game/playeritemanim.cpp:
+	.rodata     start:0x80209588 end:0x802095F8
+	.data       start:0x80226130 end:0x802262D0
 
 game/obja_map.cpp:
 	.text       start:0x80093210 end:0x80093B7C
@@ -459,17 +538,30 @@ game/xobjmatcolor.cpp:
 game/obja_chr.cpp:
 	.text       start:0x80097284 end:0x800B7898
 
+game/screenwipegeometry.cpp:
+	.rodata     start:0x801FEE18 end:0x801FF1C0 align:4
+
+game/xobjcurrentedge.cpp:
+	.text       start:0x800B7898 end:0x800B78FC
+
 game/xobjchrrestore.cpp:
 	.text       start:0x800B78FC end:0x800B7B5C
 
 game/xobjchrreset.cpp:
 	.text       start:0x800B7B5C end:0x800B7D54
+	.sdata2     start:0x8065D398 end:0x8065D3B0
 
 game/xobjchritem.cpp:
 	.text       start:0x800B8EC4 end:0x800B9134
 
+game/xobjchrsuit.cpp:
+	.text       start:0x800B9134 end:0x800B9758
+
 game/xobjchratcanim.cpp:
 	.text       start:0x800B9758 end:0x800B97FC
+
+game/xobjchrplacement.cpp:
+	.text       start:0x800B97FC end:0x800BAD80
 
 game/xobjchrstop.cpp:
 	.text       start:0x800BAD80 end:0x800BAE70
@@ -479,6 +571,9 @@ game/xobjchrjointrot.cpp:
 
 game/xaction.cpp:
 	.text       start:0x800BB708 end:0x800BB77C
+
+game/xobjchrresetstate.cpp:
+	.text       start:0x800BB77C end:0x800BBD7C
 
 game/xactioninit.cpp:
 	.text       start:0x800BBD7C end:0x800BBDAC
@@ -516,9 +611,6 @@ game/xobjoxdtor.cpp:
 game/oxmenumarkdtor.cpp:
 	.text       start:0x800BCFC4 end:0x800BD01C
 
-game/xobjfloorheight.cpp:
-	.text       start:0x800BD01C end:0x800BD17C
-
 game/xpaddtor.cpp:
 	.text       start:0x800BD17C end:0x800BD268
 
@@ -527,6 +619,9 @@ game/oxmenudtor.cpp:
 
 game/cptcldtor.cpp:
 	.text       start:0x800BD2D8 end:0x800BD320
+
+game/xobjfloorheight.cpp:
+	.text       start:0x800BD01C end:0x800BD17C
 
 game/xactradar.cpp:
 	.text       start:0x800BD324 end:0x800C490C
@@ -537,8 +632,11 @@ game/xacttumble.cpp:
 game/objb_act.cpp:
 	.text       start:0x800C494C end:0x800D552C
 
+game/xobjattachmentvisibility.cpp:
+	.text       start:0x800D552C end:0x800D55BC
+
 game/objb_attach.cpp:
-	.text       start:0x800D552C end:0x800D6F98
+	.text       start:0x800D6418 end:0x800D6F98
 
 game/xobjradarinit.cpp:
 	.text       start:0x800D6F98 end:0x800D6FE8
@@ -547,13 +645,16 @@ game/xobjpopper.cpp:
 	.text       start:0x800D6FE8 end:0x800D7D3C
 
 game/objb_plug.cpp:
-	.text       start:0x800D7D3C end:0x800D93C8
+	.text       start:0x800D83CC end:0x800D93C8
 
 game/xobjplugrelease.cpp:
 	.text       start:0x800D93C8 end:0x800D9414
 
 game/xobjplugload.cpp:
 	.text       start:0x800D9414 end:0x800D9B10
+
+game/plugcordcollision.cpp:
+	.text       start:0x800D9B10 end:0x800D9F5C
 
 game/xobjplugnodedraw.cpp:
 	.text       start:0x800DA4D0 end:0x800DA68C
@@ -567,14 +668,9 @@ game/xobjplugcordend.cpp:
 game/xobjplugcordreset.cpp:
 	.text       start:0x800DB810 end:0x800DBA7C
 
-game/xobjplugcord.cpp:
-	.text       start:0x800DBA7C end:0x800DBBCC
-
-game/xobjplugcordpointpool.cpp:
-	.text       start:0x800DBBCC end:0x800DBC04
-
-game/xobjplugcordpointdtor.cpp:
-	.text       start:0x800DBC04 end:0x800DBC80
+game/plugcordconstants.c:
+	.sbss       start:0x8065B298 end:0x8065B2A0 align:4
+	.sdata2     start:0x8065D910 end:0x8065D968 align:4
 
 game/xobjplugcordpointctor.cpp:
 	.text       start:0x800DBC80 end:0x800DBC98
@@ -585,20 +681,32 @@ game/xobjplugnodes.cpp:
 game/xobjplugnode.cpp:
 	.text       start:0x800DC43C end:0x800DC62C
 
+game/xobjplugcordpointpool.cpp:
+	.text       start:0x800DBBCC end:0x800DBC04
+
+game/xobjplugcordpointdtor.cpp:
+	.text       start:0x800DBC04 end:0x800DBC80
+
 game/inventory.cpp:
 	.text       start:0x800DC62C end:0x800DCD30
 
 game/params.cpp:
 	.text       start:0x800DCD30 end:0x800DD32C
 
-game/objb_sound.cpp:
-	.text       start:0x800DD32C end:0x800DD5A0
+game/xobjdustconstants.cpp:
+	.sdata2     start:0x8065DA78 end:0x8065DAD0
 
 game/xobjfreedtor.cpp:
 	.text       start:0x800DD5A0 end:0x800DD600
 
+game/objb_sound.cpp:
+	.text       start:0x800DD32C end:0x800DD5A0
+
 game/xobjfree.cpp:
 	.text       start:0x800DD600 end:0x800DDB8C
+
+game/xobjfreeupdate.cpp:
+	.text       start:0x800DDB8C end:0x800DE038
 
 game/xobjfreeevent.cpp:
 	.text       start:0x800DE038 end:0x800DE608
@@ -627,6 +735,9 @@ game/xobjcoinfall.cpp:
 game/xobjcoinparam.cpp:
 	.text       start:0x800E13C4 end:0x800E1440
 
+game/xobjcoinupdate.cpp:
+	.text       start:0x800E1440 end:0x800E1E60
+
 game/xobjcoin.cpp:
 	.text       start:0x800E1E60 end:0x800E2240
 
@@ -645,6 +756,7 @@ game/xobjcoindtor.cpp:
 game/xobjflagsinit.cpp:
 	.text       start:0x800E2520 end:0x800E25AC
 	.ctors      start:0x801FD680 end:0x801FD684
+	.bss        start:0x8037DC70 end:0x8037E3E0
 
 game/xobjletickerdtor.cpp:
 	.text       start:0x800E25AC end:0x800E260C
@@ -660,6 +772,9 @@ game/objb_army.cpp:
 game/xobjspider.cpp:
 	.text       start:0x800EA30C end:0x800F49F0
 	.ctors      start:0x801FD68C end:0x801FD690
+
+game/smallspiderconstants.c:
+	.sdata2     start:0x8065DEB0 end:0x8065E000
 
 game/xobjspidersmall.cpp:
 	.text       start:0x800F49F0 end:0x800FFFA0
@@ -687,6 +802,9 @@ game/xobjspiderbossgetup.cpp:
 game/xobjspiderbossstate.cpp:
 	.text       start:0x80103EC0 end:0x80103F54
 
+game/xobjspiderbossattack.cpp:
+	.text       start:0x80103F54 end:0x801051A0
+
 game/xobjspiderbosshit.cpp:
 	.text       start:0x801051A0 end:0x8010535C
 
@@ -705,12 +823,30 @@ game/xobjspiderbossinit.cpp:
 game/xobjspiderbossreset.cpp:
 	.text       start:0x801068D4 end:0x80106A14
 	.ctors      start:0x801FD694 end:0x801FD698
+	.data       start:0x8022B8F0 end:0x8022BBB8
+
+game/spiderbossmath.cpp:
+	.sdata2     start:0x8065E078 end:0x8065E0A0
+
+game/spiderbossplacementconstants.cpp:
+	.sdata2     start:0x8065E0D0 end:0x8065E0FC
+
+game/actortoyhit.c:
+	.sdata2     start:0x8065E4A8 end:0x8065E4C8
+
+game/actortoyplacement.cpp:
+	.bss        start:0x8037FE58 end:0x8037FE94 align:4
+	.sbss       start:0x8065B2F8 end:0x8065B308 align:4
+	.sdata2     start:0x8065E4C8 end:0x8065E53C
 
 game/xobjactordtor.cpp:
 	.text       start:0x80106A14 end:0x80106A8C
 
 game/xobjactorse.cpp:
 	.text       start:0x80106A8C end:0x80106CA4
+
+game/xobjactorground.cpp:
+	.text       start:0x80106CA4 end:0x8010706C
 
 game/xobjactorstop.cpp:
 	.text       start:0x8010706C end:0x801070A4
@@ -739,6 +875,9 @@ game/xobjactor3update.cpp:
 game/xobjactor3release.cpp:
 	.text       start:0x8010A500 end:0x8010A574
 
+game/actor3panelconstants.c:
+	.sdata2     start:0x8065E220 end:0x8065E284 align:8
+
 game/scrc.cpp:
 	.text       start:0x8010A574 end:0x801152A0
 
@@ -764,26 +903,57 @@ game/xobjactortoydraw.cpp:
 game/xobjactortoyread.cpp:
 	.text       start:0x8012214C end:0x80122E0C
 
+game/jennystates.c:
+	.data       start:0x8022D388 end:0x8022D394
+
 game/xobjactorjenny.cpp:
 	.text       start:0x80122E0C end:0x8012641C
 
 game/xobjactormama.cpp:
-	.text       start:0x8012641C end:0x80128210
+	.text       start:0x8012684C end:0x80128210
+	.sdata2     start:0x8065E62C end:0x8065E630 align:4
+
+game/mamapropconstants.c:
+	.sdata2     start:0x8065E630 end:0x8065E674
 
 game/xobjactormamaupdate.cpp:
 	.text       start:0x80128210 end:0x80128230
 
+game/mamadrop.cpp:
+	.text       start:0x80128230 end:0x801285BC
+
 game/xobjactormamahide.cpp:
-	.text       start:0x80128230 end:0x8012931C
+	.text       start:0x801285BC end:0x8012926C
+
+game/mamareset.cpp:
+	.text       start:0x8012926C end:0x8012931C
+
+game/papapickupconstants.c:
+	.sdata2     start:0x8065E6D8 end:0x8065E728
 
 game/xobjactorpapa.cpp:
-	.text       start:0x8012931C end:0x8012C858
+	.text       start:0x80129EDC end:0x8012BB5C
+
+game/papadrop.cpp:
+	.text       start:0x8012BB5C end:0x8012BDE4
+
+game/taopickupconstants.c:
+	.sdata2     start:0x8065E770 end:0x8065E788
+
+game/actorpoolstorage.cpp:
+	.bss        start:0x804E1060 end:0x805A0400
 
 game/xobjactortao.cpp:
-	.text       start:0x8012C858 end:0x8012F428
+	.text       start:0x8012D870 end:0x8012EFF4
+
+game/taodrop.cpp:
+	.text       start:0x8012EFF4 end:0x8012F364
 
 game/xobjactordeca.cpp:
-	.text       start:0x8012F428 end:0x80131BE8
+	.text       start:0x8012F940 end:0x801308E4
+
+game/decaattachment.cpp:
+	.text       start:0x80130D18 end:0x80131AB0
 
 game/xobjreadanmdtor.cpp:
 	.text       start:0x80131BE8 end:0x80131C6C
@@ -806,7 +976,7 @@ game/xobjactor3pool.cpp:
 	.text       start:0x80134500 end:0x80134538
 
 game/xobjactor3ctor.cpp:
-	.text       start:0x80134538 end:0x80135010
+	.text       start:0x80134538 end:0x80134E4C
 
 game/xobjreadinit.cpp:
 	.text       start:0x80135010 end:0x80135118
@@ -814,6 +984,7 @@ game/xobjreadinit.cpp:
 
 game/cinterpolationeaseout.cpp:
 	.text       start:0x80135118 end:0x801353E4
+	.sdata2     start:0x8065E8D0 end:0x8065E8E0
 
 game/ccameraactionareaex.cpp:
 	.text       start:0x801353E4 end:0x80138154
@@ -825,6 +996,9 @@ game/ccameraactionareaexinit.cpp:
 
 game/ccameraactionareaexdtor.cpp:
 	.text       start:0x801381C0 end:0x80138294
+	.rodata     start:0x8020C7A8 end:0x8020C7E8
+	.data       start:0x8022E548 end:0x8022E560
+	.sdata      start:0x8065AA50 end:0x8065AA60
 
 game/ccameraactionarea.cpp:
 	.text       start:0x80138294 end:0x80139E40
@@ -852,7 +1026,7 @@ game/ccameraactionchase.cpp:
 game/ccameraactionevt.cpp:
 	.text       start:0x80142DE8 end:0x801439B4
 	.rodata     start:0x8020CE20 end:0x8020CE70
-	.data       start:0x8022E768 end:0x8022E7D8
+	.data       start:0x8022E768 end:0x8022E7D8 align:8
 	.sdata      start:0x8065AAC0 end:0x8065AAD0
 	.sdata2     start:0x8065EAE8 end:0x8065EAF8
 
@@ -1007,7 +1181,7 @@ TRK_MINNOW_DOLPHIN/UDP_Stubs.c:
 TRK_MINNOW_DOLPHIN/ddh/main.c:
 	.text       start:0x801503B0 end:0x801506F4
 	.rodata     start:0x8020D7C8 end:0x8020D8A8
-	.bss        start:0x805C8B58 end:0x805C9378
+	.bss        start:0x805C8B58 end:0x805C9374
 	.sbss       start:0x8065B380 end:0x8065B388
 
 TRK_MINNOW_DOLPHIN/CircleBuffer.c:
@@ -1016,7 +1190,7 @@ TRK_MINNOW_DOLPHIN/CircleBuffer.c:
 TRK_MINNOW_DOLPHIN/gdev/main.c:
 	.text       start:0x8015095C end:0x80150CA8
 	.rodata     start:0x8020D8A8 end:0x8020D988
-	.bss        start:0x805C9378 end:0x805C9898
+	.bss        start:0x805C9378 end:0x805C9894
 	.sbss       start:0x8065B388 end:0x8065B390
 
 TRK_MINNOW_DOLPHIN/MWTrace.c:
@@ -1032,6 +1206,20 @@ Runtime.PPCEABI.H/global_destructor_chain.c:
 	.text       start:0x80150E18 end:0x80150E78
 	.dtors      start:0x801FD6C8 end:0x801FD6CC
 	.sbss       start:0x8065B390 end:0x8065B398
+
+Runtime.PPCEABI.H/exceptiondtor.cpp:
+	extab       start:0x80005600 end:0x80005628
+	extabindex  start:0x80006680 end:0x8000668C
+	.text       start:0x80150E78 end:0x80150EEC
+
+Runtime.PPCEABI.H/delete.cpp:
+	extab       start:0x80005628 end:0x80005650
+	extabindex  start:0x8000668C end:0x80006698
+	.text       start:0x80150EEC end:0x80150F38
+
+Runtime.PPCEABI.H/exception.cpp:
+	.text       start:0x80150F38 end:0x80150F44
+	.rodata     start:0x8020D998 end:0x8020D9A8
 
 Runtime.PPCEABI.H/NMWException.cp:
 	extab       start:0x80005650 end:0x80005698
@@ -1729,6 +1917,9 @@ dolphin/gx/GXDraw.c:
 	.bss        start:0x805E5090 end:0x805E5318
 	.sdata2     start:0x8065F438 end:0x8065F468
 
+game/memblocks.cpp:
+	.bss        start:0x805E5498 end:0x80609498
+
 dolphin/gx/GXDisplayList.c:
 	.text       start:0x8018C0DC end:0x8018C14C
 
@@ -1765,7 +1956,6 @@ game/mem.cpp:
 	extabindex  start:0x80006878 end:0x800068D8
 	.text       start:0x801913D8 end:0x80192290
 	.rodata     start:0x8020E508 end:0x8020E720
-	.bss        start:0x805E5498 end:0x80609498
 	.sbss       start:0x8065B840 end:0x8065B850
 	.sdata2     start:0x8065F4C8 end:0x8065F4F0
 
@@ -1823,7 +2013,10 @@ game/cpad.cpp:
 	.data       start:0x80237A70 end:0x80237AA0
 	.sdata      start:0x8065AD60 end:0x8065AD68
 	.sbss       start:0x8065B858 end:0x8065B860
-	.sdata2     start:0x8065F670 end:0x8065F680
+	.sdata2     start:0x8065F670 end:0x8065F678
+
+game/cpadconstants.cpp:
+	.sdata2     start:0x8065F678 end:0x8065F680
 
 game/cfont.cpp:
 	extab       start:0x80005F00 end:0x80005F10
@@ -2070,7 +2263,7 @@ sysdolphin/baselib/controller.c:
 	.text       start:0x801CC0A0 end:0x801CD9CC
 	.rodata     start:0x8020FAD8 end:0x8020FAE8
 	.data       start:0x8025A5B0 end:0x8025A628
-	.bss        start:0x8064C520 end:0x8064C778
+	.bss        start:0x8064C520 end:0x8064C774
 	.sdata2     start:0x8065FB78 end:0x8065FBD8
 
 sysdolphin/baselib/rumble.c:
@@ -2084,9 +2277,6 @@ sysdolphin/baselib/spline.c:
 
 sysdolphin/baselib/mtx.c:
 	.text       start:0x801CEC78 end:0x801D04B8
-	.bss        start:0x8064C7A8 end:0x8064C800
-	.sdata      start:0x8065AF40 end:0x8065AF50
-	.sdata2     start:0x8065FC28 end:0x8065FC70
 
 sysdolphin/baselib/util.c:
 	.text       start:0x801D04B8 end:0x801D0684

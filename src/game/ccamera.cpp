@@ -109,7 +109,7 @@ void CCamera::Init(HSD_CObjDesc* desc)
 	if (HSD_CObjGetFlags(this) & 1) {
 		HSD_CObjGetUpVector(this, &mUp);
 	} else {
-		mRoll = fn_801C0DEC(this);
+		mRoll = GetCameraRoll(this);
 	}
 	CalcAngle();
 	CalcDistance();
@@ -172,7 +172,7 @@ void CCamera::Anim()
 	if (HSD_CObjGetFlags(this) & 1) {
 		HSD_CObjGetUpVector(this, &mUp);
 	} else {
-		mRoll = fn_801C0DEC(this);
+		mRoll = GetCameraRoll(this);
 	}
 	CalcAngle();
 	CalcDistance();
@@ -208,32 +208,14 @@ void CCamera::SetViewport(f32 x, f32 y, GXRenderModeObj* rmode)
  * @note Address: 0x80192A8C
  * @note Size: 0x44
  */
-void CCamera::SetScissor(GXRenderModeObj* rmode)
+void CCamera::SetScissor(GXRenderModeObj* __restrict rmode)
 {
+	u16 width       = rmode->fbWidth;
 	u16 height      = rmode->efbHeight;
-	Scissor scissor = { 0, rmode->fbWidth, 0, height };
+	Scissor scissor = { 0, width, 0, height };
 
 	HSD_CObjSetScissor(this, &scissor);
 }
-/*
-    stwu     r1, -0x10(r1)
-    mflr     r0
-    lhz      r6, 0x6(r4)
-    stw      r0, 0x14(r1)
-    lwz      r5, lbl_80660298@sda21(r0)
-    lwz      r0, lbl_8066029C@sda21(r0)
-    stw      r5, 0x8(r1)
-    lhz      r5, 0x4(r4)
-    addi     r4, r1, 0x8
-    stw      r0, 0xc(r1)
-    sth      r5, 0xa(r1)
-    sth      r6, 0xe(r1)
-    bl       HSD_CObjSetScissor
-    lwz      r0, 0x14(r1)
-    mtlr     r0
-    addi     r1, r1, 0x10
-    blr
-*/
 
 /**
  * @note Address: 0x801929AC
@@ -244,68 +226,13 @@ void CCamera::CalcEye()
 	f32 y = HALF_PI + mAngle.y;
 	f32 x = mAngle.x;
 
-	mEye.x = mInterest.x + mDistance * (f32)cos(y) * (f32)cos(x);
-	mEye.z = mInterest.z + mDistance * -(f32)sin(y) * (f32)cos(x);
-	mEye.y = mInterest.y + mDistance * (f32)sin(x);
+	mEye.x       = mInterest.x + mDistance * (f32)cos(y) * (f32)cos(x);
+	f32 cosPitch = (f32)cos(x);
+	f32 sinYaw   = (f32)sin(y);
+	f32 zOffset  = mDistance * -sinYaw;
+	mEye.z       = mInterest.z + zOffset * cosPitch;
+	mEye.y       = mInterest.y + mDistance * (f32)sin(x);
 }
-/*
-    stwu     r1, -0x40(r1)
-    mflr     r0
-    stw      r0, 0x44(r1)
-    stfd     f31, 0x30(r1)
-    psq_st   f31, 0x38(r1), 0, qr0
-    stfd     f30, 0x20(r1)
-    psq_st   f30, 0x28(r1), 0, qr0
-    stfd     f29, 0x10(r1)
-    psq_st   f29, 0x18(r1), 0, qr0
-    stw      r31, 0xc(r1)
-    mr       r31, r3
-    lfs      f1, lbl_8065F528@sda21(r0)
-    lfs      f0, 0xb8(r3)
-    lfs      f29, 0xb4(r3)
-    fadds    f30, f1, f0
-    fmr      f1, f29
-    bl       cos
-    frsp     f31, f1
-    fmr      f1, f30
-    bl       cos
-    frsp     f3, f1
-    lfs      f2, 0xe4(r31)
-    lfs      f0, 0xa4(r31)
-    fmr      f1, f29
-    fmuls    f2, f2, f3
-    fmadds   f0, f2, f31, f0
-    stfs     f0, 0x94(r31)
-    bl       cos
-    frsp     f31, f1
-    fmr      f1, f30
-    bl       sin
-    frsp     f2, f1
-    lfs      f3, 0xe4(r31)
-    lfs      f0, 0xac(r31)
-    fmr      f1, f29
-    fneg     f2, f2
-    fmuls    f2, f3, f2
-    fmadds   f0, f2, f31, f0
-    stfs     f0, 0x9c(r31)
-    bl       sin
-    frsp     f2, f1
-    lfs      f1, 0xe4(r31)
-    lfs      f0, 0xa8(r31)
-    fmadds   f0, f1, f2, f0
-    stfs     f0, 0x98(r31)
-    psq_l    f31, 0x38(r1), 0, qr0
-    lfd      f31, 0x30(r1)
-    psq_l    f30, 0x28(r1), 0, qr0
-    lfd      f30, 0x20(r1)
-    psq_l    f29, 0x18(r1), 0, qr0
-    lfd      f29, 0x10(r1)
-    lwz      r0, 0x44(r1)
-    lwz      r31, 0xc(r1)
-    mtlr     r0
-    addi     r1, r1, 0x40
-    blr
-*/
 
 /**
  * @note Address: 0x801928C4
@@ -316,9 +243,12 @@ void CCamera::CalcInterest()
 	f32 y = HALF_PI + mAngle.y;
 	f32 x = PI + mAngle.x;
 
-	mInterest.x = mEye.x + mDistance * (f32)cos(y) * (f32)cos(x);
-	mInterest.z = mEye.z + mDistance * -(f32)sin(y) * (f32)cos(x);
-	mInterest.y = mEye.y + mDistance * (f32)sin(x);
+	mInterest.x  = mEye.x + mDistance * (f32)cos(y) * (f32)cos(x);
+	f32 cosPitch = (f32)cos(x);
+	f32 sinYaw   = (f32)sin(y);
+	f32 zOffset  = mDistance * -sinYaw;
+	mInterest.z  = mEye.z + zOffset * cosPitch;
+	mInterest.y  = mEye.y + mDistance * (f32)sin(x);
 }
 /*
     stwu     r1, -0x40(r1)

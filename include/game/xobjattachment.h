@@ -2,6 +2,7 @@
 #define _GAME_XOBJATTACHMENT_H
 
 #include "game/xobj.h"
+#include "game/mapfloorhit.h"
 #include "game/ccameraaction.h"
 
 // the objects chibi robo carries around with him, class names from RTTI. XObjChr holds one
@@ -14,16 +15,16 @@ public:
 	f32 mRate;                 // _984
 	s32 mEffect;               // _988, -1 when off
 	HSD_Generator* mGenerator; // _98C
-	s32 _990;                  // _990
-	s32 _994;                  // _994
+	s32 mSparkMode;            // _990
+	s32 mSparkTimer;           // _994
 
 	XObjWireEff();
 
-	virtual ~XObjWireEff();        // _08 (weak)
-	virtual void Release();        // _54
-	virtual void vf98();           // _98
-	virtual void vfA4(u32 frames); // _A4
-	virtual void vfB0(Mtx view);   // _B0
+	virtual ~XObjWireEff();                // _08 (weak)
+	virtual void Release();                // _54
+	virtual void ResetObjectState();       // _98
+	virtual void UpdateObject(u32 frames); // _A4
+	virtual void DrawWithView(Mtx view);   // _B0
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(XObjWireEff) == 0x988);
@@ -33,6 +34,8 @@ STATIC_ASSERT(sizeof(XObjWireEff) == 0x998);
 
 // one point of the cord, it steps like a CObjVec but has no vtable of its own
 struct XObjPlugCordPoint {
+	XObjPlugCordPoint();
+
 	CVec mPos;    // _00
 	CVec mTarget; // _10
 	CVec mSpeed;  // _20
@@ -48,6 +51,9 @@ struct XObjPlugCordNode {
 	CVec mDir;                     // _34
 	s32 mState;                    // _44, 1 while running
 	s32 mMode;                     // _48, 1 starts at the far end, -1 at point 0
+
+	XObjPlugCordNode();
+	~XObjPlugCordNode();
 };
 STATIC_ASSERT(sizeof(XObjPlugCordNode) == 0x4C);
 
@@ -57,6 +63,20 @@ struct XObjPlugCordNodes {
 	u32 mCount;                 // _2FC
 	u32 mMode;                  // _300, handed to each new node
 	BOOL mEnabled;              // _304
+
+	void ClearStates()
+	{
+		mNode[0].mState = 0;
+		mNode[1].mState = 0;
+		mNode[2].mState = 0;
+		mNode[3].mState = 0;
+		mNode[4].mState = 0;
+		mNode[5].mState = 0;
+		mNode[6].mState = 0;
+		mNode[7].mState = 0;
+		mNode[8].mState = 0;
+		mNode[9].mState = 0;
+	}
 };
 STATIC_ASSERT(sizeof(XObjPlugCordNodes) == 0x308);
 
@@ -69,9 +89,7 @@ struct XObjPlugCord {
 	f32 _3C;                    // _3C
 	f32 _40;                    // _40
 	u32 _44;                    // _44
-	u32 _48;                    // _48
-	u32 _4C;                    // _4C
-	u32 _50;                    // _50
+	const f32* mEndHeight[3];   // _48, height-only constraints
 	u8 _54;                     // _54
 	u8 _55[0x58 - 0x55];        // _55
 	f32 mWidth;                 // _58
@@ -81,7 +99,7 @@ struct XObjPlugCord {
 	u8 _65[0x68 - 0x65];        // _65
 	u32 mFlags;                 // _68
 	CVec _6C;                   // _6C
-	u8 _7C[0x88 - 0x7C];        // _7C
+	XObjMapHit mFloorHit;       // _7C
 	u32 mMode;                  // _88
 	XObjPlugCordNodes mNodes;   // _8C
 };
@@ -89,27 +107,30 @@ STATIC_ASSERT(sizeof(XObjPlugCord) == 0x394);
 
 class XObjPlug : public XObj {
 public:
-	XObjPlugCord mCord;     // _980
-	u8 _D14[0xD3C - 0xD14]; // _D14
-	s32 _D3C;               // _D3C, XActLift's _54 with 0x10000 set
-	s32 mLoadState;         // _D40
-	u32 _D44;               // _D44
-	XObjWireEff mWire;      // _D48
+	XObjPlugCord mCord; // _980
+	Vec mCordAnchor;    // _D14, source for the first cord endpoint
+	Vec mCordJointPos;  // _D20
+	Vec mCordJointTip;  // _D2C
+	s32 _D38;           // _D38
+	s32 _D3C;           // _D3C, XActLift's _54 with 0x10000 set
+	s32 mLoadState;     // _D40
+	u32 _D44;           // _D44
+	XObjWireEff mWire;  // _D48
 
 	XObjPlug();
 
-	virtual ~XObjPlug();                       // _08 (weak)
-	virtual void Release();                    // _54
-	virtual void vf90(u32 id);                 // _90
-	virtual void vf94();                       // _94
-	virtual void vf98();                       // _98
-	virtual BOOL vf9C(const CoordInfo& info);  // _9C
-	virtual void vfA4(u32 frames);             // _A4
-	virtual void vfB0(Mtx view);               // _B0
-	virtual void vfB4(Mtx view);               // _B4
-	virtual void vfB8();                       // _B8
-	virtual void vfC0();                       // _C0
-	virtual void vfDC(BOOL enabled, u8 value); // _DC
+	virtual ~XObjPlug();                                   // _08 (weak)
+	virtual void Release();                                // _54
+	virtual void InitializeObject(u32 id);                 // _90
+	virtual void vf94();                                   // _94
+	virtual void ResetObjectState();                       // _98
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
+	virtual void UpdateObject(u32 frames);                 // _A4
+	virtual void DrawWithView(Mtx view);                   // _B0
+	virtual void DrawReflection(Mtx view);                 // _B4
+	virtual void DrawGroundShadow();                       // _B8
+	virtual void DrawObjectEffects();                      // _C0
+	virtual void vfDC(BOOL enabled, u8 value);             // _DC
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(XObjPlug) == 0x16C0);
@@ -125,16 +146,16 @@ public:
 
 	XObjAttachment();
 
-	virtual ~XObjAttachment();                // _08 (weak)
-	virtual void Release();                   // _54
-	virtual void vf90(u32 id);                // _90
-	virtual void vf94();                      // _94
-	virtual void vf98();                      // _98
-	virtual void vfAC();                      // _AC
-	virtual void vfB0(Mtx view);              // _B0
-	virtual void Show();                      // _148
-	virtual void Hide();                      // _14C
-	virtual void SetParent(HSD_JObj* parent); // _150
+	virtual ~XObjAttachment();                                    // _08 (weak)
+	virtual void Release();                                       // _54
+	virtual void InitializeObject(u32 id);                        // _90
+	virtual void vf94();                                          // _94
+	virtual void ResetObjectState();                              // _98
+	virtual void vfAC();                                          // _AC
+	virtual void DrawWithView(Mtx view);                          // _B0
+	virtual void Show();                                          // _148
+	virtual void Hide();                                          // _14C
+	virtual void SetParent(HSD_JObj* parent, BOOL fromPlacement); // _150
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(XObjAttachment) == 0x978);
@@ -146,16 +167,16 @@ class XObjCopter : public XObjAttachment {
 public:
 	XObjCopter();
 
-	virtual ~XObjCopter();         // _08 (weak)
-	virtual void vfA4(u32 frames); // _A4
+	virtual ~XObjCopter();                 // _08 (weak)
+	virtual void UpdateObject(u32 frames); // _A4
 };
 
 class XObjPopper : public XObjAttachment {
 public:
 	XObjPopper();
 
-	virtual ~XObjPopper();         // _08 (weak)
-	virtual void vfA4(u32 frames); // _A4
+	virtual ~XObjPopper();                 // _08 (weak)
+	virtual void UpdateObject(u32 frames); // _A4
 };
 
 class XObjRadar : public XObjAttachment {
@@ -167,37 +188,45 @@ public:
 
 	XObjRadar();
 
-	virtual ~XObjRadar();                     // _08 (weak)
-	virtual void vf90(u32 id);                // _90
-	virtual BOOL vf9C(const CoordInfo& info); // _9C
-	virtual void vfA4(u32 frames);            // _A4
+	virtual ~XObjRadar();                                  // _08 (weak)
+	virtual void InitializeObject(u32 id);                 // _90
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
+	virtual void UpdateObject(u32 frames);                 // _A4
 };
 
 class XObjOX : public XObjAttachment {
 public:
 	XObjOX();
 
-	virtual ~XObjOX();             // _08 (weak)
-	virtual void vfA4(u32 frames); // _A4
+	virtual ~XObjOX();                     // _08 (weak)
+	virtual void UpdateObject(u32 frames); // _A4
 };
 
 extern "C" {
+extern const f32 sPlugCordDefaultWidth;
+extern const f32 sPlugCordZero;
+CVec GetPlugCordPointPosition(const XObjPlugCord* cord, s32 index);
+void GetPlayerPlugCordAnchorTransform(void*, Vec* position, Vec* rotation, Vec* scale);
+void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames);
+void ResetPlayerPlugState(XObjPlug* plug, BOOL resetJoint);
 // the cord, the scale arguments go unused
-void fn_800DA4D0(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ);
-void fn_800DA68C(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ);
-void fn_800DB7A8(XObjPlugCord* cord, BOOL enabled, u8 alpha);
-void fn_800DB7D8(XObjPlugCord* cord, u32 index, const Vec* source);
-void fn_800DB810(XObjPlugCord* cord, f32 x, f32 y, f32 z);
-void fn_800DBA7C(XObjPlugCord* cord, s32 count, f32 x, f32 y, f32 z, f32 speed);
-void fn_800DBC98(XObjPlugCordNodes* nodes, XObjPlugCordPoint* points, s32 count);
-void fn_800DBDDC(XObjPlugCordNode* node, XObjPlugCordPoint* points, s32 count, f32 value);
-void fn_800DC43C(XObjPlugCordNode* node, XObjPlugCordPoint* points, s32 count, f32 time, s32 mode);
+void DrawPlugCordNodes(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ);
+void DrawPlugCordSegments(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ);
+void SetPlugCordAlphaMode(XObjPlugCord* cord, BOOL enabled, u8 alpha);
+void SetPlugCordEndpointSource(XObjPlugCord* cord, u32 index, const Vec* source);
+void ResetPlugCordPoints(XObjPlugCord* cord, f32 x, f32 y, f32 z);
+f32 FindPlugCordFloor(XObjPlugCord* cord, Vec* pos, f32 radius, f32 height);
+BOOL PushPlugCordPointFromObject(CVec* pos, XObj* object, f32 radius);
+void InitPlugCord(XObjPlugCord* cord, s32 count, f32 x, f32 y, f32 z, f32 speed);
+void UpdatePlugCordNodes(XObjPlugCordNodes* nodes, XObjPlugCordPoint* points, s32 count, u32 frames);
+void UpdatePlugCordSpark(XObjPlugCordNode* node, XObjPlugCordPoint* points, s32 count, f32 value);
+void StartPlugCordNode(XObjPlugCordNode* node, XObjPlugCordPoint* points, s32 count, f32 time, s32 mode);
 
 // the copter's anims, game/objb_attach.cpp
 void fn_800D7A78(XObjCopter* copter);
 void fn_800D7AC8(XObjCopter* copter);
-void fn_800D7B68(XObjCopter* copter);
-void fn_800D7BF0(XObjCopter* copter);
+void PlayCopterStowAnimation(XObjCopter* copter);
+void ShowAndDeployCopter(XObjCopter* copter);
 }
 
 // follows the joint it hangs from

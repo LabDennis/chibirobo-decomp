@@ -27,20 +27,27 @@ public:
 
 	virtual ~CScrnColor() { } // _08 (weak)
 
-	CScrnColor()
+#if defined(DEFER_CSCRNCOLOR_CONSTRUCTOR)
+	CScrnColor();
+#else
+	CScrnColor() { ResetChannels(0.0f); }
+#endif
+
+private:
+	void ResetChannels(f32 value)
 	{
-		mColor.r  = 0.0f;
-		mColor.g  = 0.0f;
-		mColor.b  = 0.0f;
-		mColor.a  = 0.0f;
-		mTarget.r = 0.0f;
-		mTarget.g = 0.0f;
-		mTarget.b = 0.0f;
-		mTarget.a = 0.0f;
-		mSpeed.r  = 0.0f;
-		mSpeed.g  = 0.0f;
-		mSpeed.b  = 0.0f;
-		mSpeed.a  = 0.0f;
+		mColor.r  = value;
+		mColor.g  = value;
+		mColor.b  = value;
+		mColor.a  = value;
+		mTarget.r = value;
+		mTarget.g = value;
+		mTarget.b = value;
+		mTarget.a = value;
+		mSpeed.r  = value;
+		mSpeed.g  = value;
+		mSpeed.b  = value;
+		mSpeed.a  = value;
 	}
 };
 typedef char CScrnColor_size_check[sizeof(CScrnColor) == 0x34 ? 1 : -1];
@@ -76,12 +83,19 @@ typedef char CScrnWipe_size_check[sizeof(CScrnWipe) == 0x64 ? 1 : -1];
 
 class CScrnWipeCircle : public CScrnWipe {
 public:
-	virtual ~CScrnWipeCircle() { } // _08 (weak)
+	virtual ~CScrnWipeCircle(); // _08 (weak)
 };
+
+#ifndef DEFER_CSCRNWIPECIRCLE_DESTRUCTOR
+inline CScrnWipeCircle::~CScrnWipeCircle()
+{
+}
+#endif
 
 class CScrnWipeTex : public CScrnWipe {
 public:
 	virtual ~CScrnWipeTex() { } // _08 (weak)
+	void Draw(CGs* gs, s32 mode);
 
 	CTexObj mTex; // _64
 };
@@ -90,11 +104,13 @@ typedef char CScrnWipeTex_size_check[sizeof(CScrnWipeTex) == 0x164 ? 1 : -1];
 class CScrnWipeCustom : public CScrnWipe {
 public:
 	virtual ~CScrnWipeCustom() { } // _08 (weak)
+	void Draw(CGs* gs, s32 mode);
 };
 
 class CScrnWipeTile : public CScrnWipe {
 public:
 	virtual ~CScrnWipeTile() { } // _08 (weak)
+	void Draw(CGs* gs, s32 mode);
 };
 
 // chibi robo's eyes closing over the screen
@@ -123,24 +139,24 @@ typedef char CScrnQuake_size_check[sizeof(CScrnQuake) == 0x38 ? 1 : -1];
 
 extern "C" {
 // CScrnColor
-void fn_8002390C(CScrnColor* color, CGs* gs);
-void fn_80023B38(CScrnColor* color, u32 frames);
-void fn_80023D74(CScrnColor* color, u8 r, u8 g, u8 b, u8 a, f32 time);
-void fn_80023EE0(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time);
+void DrawScreenColorOverlay(CScrnColor* color, CGs* gs);
+void UpdateScreenFade(CScrnColor* color, u32 frames);
+void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8 a, f32 time);
+void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time);
 // CScrnWipe
 void Update__9CScrnWipeFUl(CScrnWipe* wipe, u32 frames);
-void fn_80023438(CScrnWipe* wipe, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, f32 x, f32 y, f32 width0, f32 height0, f32 width1,
-                 f32 height1, f32 time, u8 a1, BOOL hideWhenDone);
-void fn_800236EC(CScrnWipe* wipe, u8 r, u8 g, u8 b, u8 a, BOOL hideWhenDone, f32 x, f32 y, f32 width0, f32 height0, f32 width1, f32 height1,
-                 f32 time);
+void StartScreenWipeColorTransition(CScrnWipe* wipe, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, f32 x, f32 y, f32 width0, f32 height0,
+                                    f32 width1, f32 height1, f32 time, u8 a1, BOOL hideWhenDone);
+void StartScreenWipe(CScrnWipe* wipe, u8 r, u8 g, u8 b, u8 a, BOOL hideWhenDone, f32 x, f32 y, f32 width0, f32 height0, f32 width1,
+                     f32 height1, f32 time);
 void Reset__9CScrnWipeFv(CScrnWipe* wipe);
 // CScrnRoboeyes
 void Update__13CScrnRoboeyesFUl(CScrnRoboeyes* eyes, u32 frames);
 void Reset__13CScrnRoboeyesFv(CScrnRoboeyes* eyes);
 // CScrnQuake
-void fn_800240EC(CScrnQuake* quake, u32 frames);
-void fn_800242A8(CScrnQuake* quake, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, f32 time);
-void fn_80024524(CScrnQuake* quake);
+void UpdateScreenShake(CScrnQuake* quake, u32 frames);
+void StartScreenShake(CScrnQuake* quake, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, f32 time);
+void ResetScreenShake(CScrnQuake* quake);
 }
 
 #endif

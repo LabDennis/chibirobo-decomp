@@ -78,8 +78,8 @@ static f64 CObjGetHalfFov(HSD_CObj* cobj)
 	return 0.5 * cobj->projection_param.perspective.fov;
 }
 
-static HSD_CObj* lbl_8065B9DC;     /* current */
-static HSD_CObjInfo* lbl_8065B9D8; /* default_class */
+static HSD_CObj* sCurrentCameraObject;     /* current */
+static HSD_CObjInfo* sDefaultCameraClass; /* default_class */
 
 int CObjLoad(HSD_CObj* cobj, HSD_CObjDesc* desc);
 int CObjInit(HSD_Class* obj);
@@ -506,7 +506,7 @@ BOOL HSD_CObjSetCurrent(HSD_CObj* cobj)
 
 	render_pass = HSD_GetCurrentRenderPass();
 	_HSD_ZListClear();
-	lbl_8065B9DC = cobj;
+	sCurrentCameraObject = cobj;
 
 	switch (render_pass) {
 	case HSD_RP_OFFSCREEN:
@@ -835,7 +835,7 @@ MtxPtr HSD_CObjGetViewingMtxPtr(HSD_CObj* cobj)
  * @note Address: 0x801C0DEC
  * @note Size: 0x218
  */
-f32 fn_801C0DEC(HSD_CObj* cobj)
+f32 GetCameraRoll(HSD_CObj* cobj)
 {
 	Vec up;
 
@@ -1260,7 +1260,7 @@ void HSD_CObjClearFlags(HSD_CObj* cobj, u32 flags)
  */
 HSD_CObj* HSD_CObjGetCurrent(void)
 {
-	return lbl_8065B9DC;
+	return sCurrentCameraObject;
 }
 
 /**
@@ -1271,7 +1271,7 @@ HSD_CObj* HSD_CObjAlloc(void)
 {
 	HSD_CObj* cobj;
 
-	cobj = hsdNew((HSD_ClassInfo*)(lbl_8065B9D8 != NULL ? lbl_8065B9D8 : &hsdCObj));
+	cobj = hsdNew((HSD_ClassInfo*)(sDefaultCameraClass != NULL ? sDefaultCameraClass : &hsdCObj));
 	ASSERT_COBJ(0x790);
 	return cobj;
 }
@@ -1439,11 +1439,11 @@ void CObjRelease(HSD_Class* obj)
  */
 void CObjAmnesia(HSD_ClassInfo* info)
 {
-	if (info == HSD_CLASS_INFO(lbl_8065B9D8)) {
-		lbl_8065B9D8 = NULL;
+	if (info == HSD_CLASS_INFO(sDefaultCameraClass)) {
+		sDefaultCameraClass = NULL;
 	}
 	if (info == HSD_CLASS_INFO(&hsdCObj)) {
-		lbl_8065B9DC = NULL;
+		sCurrentCameraObject = NULL;
 	}
 	HSD_OBJECT_PARENT_INFO(&hsdCObj)->amnesia(info);
 }

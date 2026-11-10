@@ -9,12 +9,12 @@
  * @note Address: 0x800E1E60
  * @note Size: 0xD0
  */
-extern "C" BOOL vf9C__8XObjCoinFRC9CoordInfo(XObjCoin* coin, CoordInfo* info)
+extern "C" BOOL LoadFromPlacement__8XObjCoinFRC9CoordInfo(XObjCoin* coin, CoordInfo* info)
 {
 	coin->_260 = info->_00->_2C;
 	if (coin->IsFlagSet())
 		return TRUE;
-	if (vf9C__4XObjFRC9CoordInfo(coin, info)) {
+	if (LoadFromPlacement__4XObjFRC9CoordInfo(coin, info)) {
 		coin->mStatus.mFlags |= 0x10000000ULL;
 		return TRUE;
 	}
@@ -25,9 +25,9 @@ extern "C" BOOL vf9C__8XObjCoinFRC9CoordInfo(XObjCoin* coin, CoordInfo* info)
  * @note Address: 0x800E1F30
  * @note Size: 0x1C8
  */
-extern "C" void vf98__8XObjCoinFv(XObjCoin* coin)
+extern "C" void ResetObjectState__8XObjCoinFv(XObjCoin* coin)
 {
-	vf98__4XObjFv(coin);
+	ResetObjectState__4XObjFv(coin);
 	s32 sign       = rand() & 1 ? 1 : -1;
 	coin->mSpin    = (DEG2RAD * (rand() % 360)) * sign;
 	HSD_AObj* aobj = GetAObj(coin->mJObj);
@@ -51,7 +51,7 @@ extern "C" s32 GetFlagIndex__8XObjCoinFv(XObjCoin* coin)
 {
 	s32 id = coin->_260;
 	if (id > 0)
-		return (s32)((u32)fn_8006F390(1) + (u32)id);
+		return (s32)((u32)GetStageCollectionFlagBase(1) + (u32)id);
 	return 0;
 }
 
@@ -59,9 +59,9 @@ extern "C" s32 GetFlagIndex__8XObjCoinFv(XObjCoin* coin)
  * @note Address: 0x800E213C
  * @note Size: 0xC0
  */
-extern "C" BOOL vf9C__8XObjItemFRC9CoordInfo(XObjItem* item, CoordInfo* info)
+extern "C" BOOL LoadFromPlacement__8XObjItemFRC9CoordInfo(XObjItem* item, CoordInfo* info)
 {
-	BOOL result = vf9C__4XObjFRC9CoordInfo(item, info);
+	BOOL result = LoadFromPlacement__4XObjFRC9CoordInfo(item, info);
 	if (result && item->IsFlagSet())
 		item->mStatus.mFlags &= ~0x10000ULL;
 	return result;
@@ -75,6 +75,6 @@ extern "C" s32 GetFlagIndex__8XObjItemFv(XObjItem* item)
 {
 	s32 id = item->_260;
 	if (id > 0)
-		return (s32)((u32)fn_8006F390(0) + (u32)id);
+		return (s32)((u32)GetStageCollectionFlagBase(0) + (u32)id);
 	return 0;
 }

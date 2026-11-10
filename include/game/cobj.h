@@ -20,7 +20,7 @@ public:
 	s32 mRefCount; // _130
 	// _134 vtable
 
-	CObjArchive() { mRefCount = 0; }
+	CObjArchive();
 	virtual ~CObjArchive() { } // _08 (weak)
 
 	// inlined:
@@ -37,14 +37,14 @@ struct CJArchiveModel {
 };
 
 struct CJArchiveDesc {
-	u32 _00;    // _00
-	void** _04; // _04, null terminated
+	void* mObjectDesc;  // _00
+	void** mAnimations; // _04, null terminated
 };
 
 struct CJArchiveScene {
 	CJArchiveModel** mModels; // _00
-	CJArchiveDesc* _04;       // _04
-	CJArchiveDesc** _08;      // _08, 8 of them
+	CJArchiveDesc* mCamera;   // _04
+	CJArchiveDesc** mLights;  // _08, 8 of them
 	CJArchiveDesc* _0C;       // _0C
 };
 
@@ -131,7 +131,7 @@ typedef char CJArchive_size_check[sizeof(CJArchive) == 0x80 ? 1 : -1];
 class CJAnim : public CJArchive {
 public:
 	// _00-_80 = CJArchive
-	s32 mLoading; // _80, fn_8008A38C's step
+	s32 mLoading; // _80, LoadJointAnimationAsync's step
 
 	virtual ~CJAnim() { }   // _08, inline, retail keeps a weak copy
 	virtual void Clear();   // _0C
@@ -148,6 +148,10 @@ class CObjVec : public CVec {
 public:
 	CVec mTarget; // _10
 	CVec mSpeed;  // _20
+
+#ifdef CJOINT_SETTER_SECTION
+#endif
+	virtual ~CObjVec() { }
 
 	u8 Step(u32 frames);
 
@@ -211,6 +215,9 @@ public:
 		mMoveScale.Reset(0.0f, 0.0f, 0.0f);
 	}
 
+	explicit CXObj(HSD_JObj* jobj);
+	virtual ~CXObj(); // _08
+
 	// CJObj overrides, defined in another file
 	virtual void SetTranslateX(f32 x, s32 force);                                                                     // _0C
 	virtual void SetTranslateY(f32 y, s32 force);                                                                     // _10
@@ -221,12 +228,8 @@ public:
 	virtual void SetRotationX(f32 x, s32 force);                                                                      // _24
 	virtual void SetRotationY(f32 y, s32 force);                                                                      // _28
 	virtual void SetRotationZ(f32 z, s32 force);                                                                      // _2C
-	virtual void SetTranslate(const Vec& v, s32 force);                                                               // _30
-	virtual void SetTranslate(f32 x, f32 y, f32 z, s32 force);                                                        // _34
 	virtual void SetScale(const Vec& v, s32 force);                                                                   // _38
 	virtual void SetScale(f32 x, f32 y, f32 z, s32 force);                                                            // _3C
-	virtual void SetRotation(const Vec& v, s32 force);                                                                // _40
-	virtual void SetRotation(f32 x, f32 y, f32 z, s32 force);                                                         // _44
 	virtual void SetAnimRate(f32 rate, u32 mask);                                                                     // _48
 	virtual BOOL ReadAsync(CObjArchive* archive, const char* path, u32 model, u32 flags, u32 aramAddr, u32 aramSize); // _4C
 	virtual BOOL ReadCheck();                                                                                         // _50
@@ -260,6 +263,12 @@ public:
 	HSD_JObj* FindJoint(s32 depth, s32* path);
 	void ClearQueue();
 };
+
+#ifndef DEFER_OBJECT_DESTRUCTORS
+inline CXObj::~CXObj()
+{
+}
+#endif
 #if defined(VERSION_JP)
 typedef char CXObj_size_check[sizeof(CXObj) == 0x1E0 ? 1 : -1];
 #else

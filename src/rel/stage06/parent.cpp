@@ -51,13 +51,13 @@ struct Stage06Cam {
 static Stage06Work lbl_8_bss_0;
 static Stage06Cam lbl_8_bss_24;
 
-extern "C" s32 fn_8_0(s32 cmd, void* arg, void* arg2);
+extern "C" s32 CmdParentNoOpSlot5(s32 cmd, void* arg, void* arg2);
 extern "C" s32 CmdStopRoboPreset(s32 cmd, void* arg, void* arg2);
 extern "C" s32 CmdStopRobo(s32 cmd, void* arg, void* arg2);
-extern "C" s32 fn_8_160(s32 cmd, void* arg, void* arg2);
-extern "C" s32 fn_8_168(s32 cmd, void* arg, void* arg2);
+extern "C" s32 CmdParentNoOpSlot4(s32 cmd, void* arg, void* arg2);
+extern "C" s32 CmdParentNoOpSlot2(s32 cmd, void* arg, void* arg2);
 extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2);
-extern "C" void fn_8_1C0(void* arg);
+extern "C" void ParentNoOpSlot5(void* arg);
 extern "C" void UpdateStage(void* arg);
 extern "C" void InitStage(void* arg);
 
@@ -65,8 +65,9 @@ typedef void (*RelSlotFunc)(void* arg);
 typedef s32 (*RelCmdFunc)(s32 cmd, void* arg, void* arg2);
 
 extern "C" {
-RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage, 0, 0, 0, fn_8_1C0 };
-RelCmdFunc _prolog_cmds[]    = { CmdSetSoundPitch, CmdStopRobo, fn_8_168, CmdStopRoboPreset, fn_8_160, fn_8_0, CmdDropHeldObj };
+RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage, 0, 0, 0, ParentNoOpSlot5 };
+RelCmdFunc _prolog_cmds[]
+    = { CmdSetSoundPitch, CmdStopRobo, CmdParentNoOpSlot2, CmdStopRoboPreset, CmdParentNoOpSlot4, CmdParentNoOpSlot5, CmdDropHeldObj };
 }
 
 static inline void StopPlayer(RoboView* player)
@@ -78,7 +79,7 @@ static inline void StopPlayer(RoboView* player)
 
 static inline void SetCam(f32 a, f32 b)
 {
-	RoboView* player = (RoboView*)lbl_8025C400.GetPlayer();
+	RoboView* player = (RoboView*)gGame.GetPlayer();
 
 	StopPlayer(player);
 	lbl_8_bss_24._04 = 1;
@@ -94,7 +95,7 @@ static inline void SetCam(f32 a, f32 b)
  * @note Address: stage06 .text 0x0
  * @note Size: 0x8
  */
-extern "C" s32 fn_8_0(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdParentNoOpSlot5(s32 cmd, void* arg, void* arg2)
 {
 	return 0;
 }
@@ -132,7 +133,7 @@ extern "C" s32 CmdStopRoboPreset(s32 cmd, void* arg, void* arg2)
  */
 extern "C" s32 CmdStopRobo(s32 cmd, void* arg, void* arg2)
 {
-	StopPlayer((RoboView*)lbl_8025C400.GetPlayer());
+	StopPlayer((RoboView*)gGame.GetPlayer());
 	lbl_8_bss_0._08++;
 	return 0;
 }
@@ -141,7 +142,7 @@ extern "C" s32 CmdStopRobo(s32 cmd, void* arg, void* arg2)
  * @note Address: stage06 .text 0x160
  * @note Size: 0x8
  */
-extern "C" s32 fn_8_160(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdParentNoOpSlot4(s32 cmd, void* arg, void* arg2)
 {
 	return 0;
 }
@@ -150,7 +151,7 @@ extern "C" s32 fn_8_160(s32 cmd, void* arg, void* arg2)
  * @note Address: stage06 .text 0x168
  * @note Size: 0x8
  */
-extern "C" s32 fn_8_168(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdParentNoOpSlot2(s32 cmd, void* arg, void* arg2)
 {
 	return 0;
 }
@@ -162,16 +163,16 @@ extern "C" s32 fn_8_168(s32 cmd, void* arg, void* arg2)
 extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2)
 {
 	s32* args = (s32*)arg2;
-	s16 id    = args[0];
+	s16 pitch = args[0];
 	s32 time  = args[1] * 60 / 100;
-	XSound* unk;
+	XSound* sound;
 
 	if (time <= 0) {
 		time = 1;
 	}
-	unk       = &lbl_8025C400.mSound;
-	unk->_2BA = id;
-	unk->_188 = time;
+	sound                    = &gGame.mSound;
+	sound->mTargetMusicPitch = pitch;
+	sound->_188              = time;
 	return 0;
 }
 
@@ -179,7 +180,7 @@ extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2)
  * @note Address: stage06 .text 0x1C0
  * @note Size: 0x4
  */
-extern "C" void fn_8_1C0(void* arg)
+extern "C" void ParentNoOpSlot5(void* arg)
 {
 }
 
@@ -194,11 +195,11 @@ extern "C" void UpdateStage(void* arg)
 	pos.x = 241.83f;
 	pos.y = 220.56f;
 	pos.z = 195.85f;
-	if (fn_8001E6C8(&lbl_8025C400.mSound, 0x10001D)) {
-		fn_8001E468(&lbl_8025C400.mSound, 0x10001D, fn_8001DF00(&lbl_8025C400.mSound, &pos, 0), 0);
+	if (IsGameSoundPlaying(&gGame.mSound, 0x10001D)) {
+		SetGameSfxVolume(&gGame.mSound, 0x10001D, GetSoundVolumeAtPosition(&gGame.mSound, &pos, 0), 0);
 	}
-	if (fn_8001E6C8(&lbl_8025C400.mSound, 0x10001E)) {
-		fn_8001E468(&lbl_8025C400.mSound, 0x10001E, fn_8001DF00(&lbl_8025C400.mSound, &pos, 0), 0);
+	if (IsGameSoundPlaying(&gGame.mSound, 0x10001E)) {
+		SetGameSfxVolume(&gGame.mSound, 0x10001E, GetSoundVolumeAtPosition(&gGame.mSound, &pos, 0), 0);
 	}
 }
 

@@ -36,13 +36,7 @@ public:
 		HSD_LObjSetPosition(this, &mPosition);
 	}
 	virtual void SetPosition(const Vec& position) { SetPosition(position.x, position.y, position.z); } // _1C
-	virtual void SetInterest(f32 x, f32 y, f32 z)                                                      // _20
-	{
-		mInterest.x = x;
-		mInterest.y = y;
-		mInterest.z = z;
-		HSD_LObjSetInterest(this, &mInterest);
-	}
+	virtual void SetInterest(f32 x, f32 y, f32 z);
 	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _24
 
 	void Init(u32 flags, BOOL useShadow);
@@ -54,8 +48,8 @@ typedef char CLight_size_check[sizeof(CLight) == 0x358 ? 1 : -1];
 
 extern "C" {
 // set up CBase's two light lists, cbasesetup.cpp
-CLight* fn_8001CFD0(CLight* lights);
-CLight* fn_8001CEFC(CLight* lights);
+CLight* InitFourLightSet(CLight* lights);
+CLight* InitTwoLightSet(CLight* lights);
 }
 
 #endif

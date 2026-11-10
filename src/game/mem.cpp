@@ -1,30 +1,19 @@
 #include "game/mm.h"
+#include "game/memblocks.h"
 #include <dolphin/os.h>
 #include <string.h>
 
 extern "C" {
-void fn_801D06A0(u32* size, void** top);
-u32 fn_801D06D0(void);
-u32 fn_801D0704(void);
-u32 fn_801D073C(void);
-u32 fn_801D0768(void);
+void GetObjectHeapBounds(u32* size, void** top);
+u32 GetObjectPoolCapacityBytes(void);
+u32 GetObjectHeapRemainingBytes(void);
+u32 GetObjectPoolUsedBytes(void);
+u32 GetObjectPoolFreeBytes(void);
 }
 
-// one entry per block, used or freed. a freed block keeps its address in mFree so Alloc
-// can hand it out again, the name is the tag the caller passed. MEMINFO is from the wii
-// build's "no space for MEMINFO array" message
-struct MEMINFO {
-	u8* mAddr;        // _00
-	u8* mFree;        // _04
-	u32 mSize;        // _08
-	char mName[0x80]; // _0C
-	s32 mStatic;      // _8C
-};
-STATIC_ASSERT(sizeof(MEMINFO) == 0x90);
+// The shared diagnostic pool begins with this label.
+extern "C" const char gHeapDumpFormats[] = "(static)";
 
-#define MEMINFO_MAX 0x400
-
-static MEMINFO sInfo[MEMINFO_MAX];
 static u8* sTop;
 static u8* sCur;
 static s32 sNum;
@@ -43,7 +32,7 @@ static inline u32 GetAllocSize()
 static inline s32 GetRemainSize()
 {
 	BOOL enabled = OSDisableInterrupts();
-	s32 remain   = fn_801D0704();
+	s32 remain   = GetObjectHeapRemainingBytes();
 	s32 size;
 	if (remain == -1) {
 		size = 0;
@@ -58,8 +47,8 @@ static inline s32 GetRemainSize()
 static inline s32 GetFreeSize()
 {
 	BOOL enabled = OSDisableInterrupts();
-	u32 freed    = fn_801D0768();
-	s32 remain   = fn_801D0704();
+	u32 freed    = GetObjectPoolFreeBytes();
+	s32 remain   = GetObjectHeapRemainingBytes();
 	s32 size;
 	if (remain == -1) {
 		size = 0;
@@ -83,9 +72,9 @@ void mm::Dump()
 {
 	OSReport("===============================================================================\n");
 
-	u32 total     = 0;
-	MEMINFO* info = sInfo;
-	for (int i = 0; i < MEMINFO_MAX; info++, i++) {
+	u32 total = 0;
+	for (int i = 0; i < MEMINFO_MAX; ++i) {
+		MEMINFO* info = &gMemoryBlockRecords[i];
 		if (info->mAddr != 0) {
 			total += info->mSize;
 			OSReport("-----(%4d) u %08X,%9d(%6.1f) %c %s\n", i, info->mAddr, info->mSize, KB(info->mSize),
@@ -103,18 +92,20 @@ void mm::Dump()
 	OSReport("\n");
 
 	u32 size;
-	fn_801D06A0(&size, NULL);
+	GetObjectHeapBounds(&size, NULL);
 	OSReport("ObjHeap   :%9d(%7.1fK)(%6.3fM)\n", size, KB(size), MB(size));
-	OSReport(" remain   :%9d(%7.1fK)(%6.3fM)\n", fn_801D0704(), KB(fn_801D0704()), MB(fn_801D0704()));
-	OSReport(" alloc    :%9d(%7.1fK)(%6.3fM)\n", fn_801D06D0(), KB(fn_801D06D0()), MB(fn_801D06D0()));
-	OSReport(" using    :%9d(%7.1fK)(%6.3fM)\n", fn_801D073C(), KB(fn_801D073C()), MB(fn_801D073C()));
-	OSReport(" freed    :%9d(%7.1fK)(%6.3fM)\n", fn_801D0768(), KB(fn_801D0768()), MB(fn_801D0768()));
+	OSReport(" remain   :%9d(%7.1fK)(%6.3fM)\n", GetObjectHeapRemainingBytes(), KB(GetObjectHeapRemainingBytes()),
+	         MB(GetObjectHeapRemainingBytes()));
+	OSReport(" alloc    :%9d(%7.1fK)(%6.3fM)\n", GetObjectPoolCapacityBytes(), KB(GetObjectPoolCapacityBytes()),
+	         MB(GetObjectPoolCapacityBytes()));
+	OSReport(" using    :%9d(%7.1fK)(%6.3fM)\n", GetObjectPoolUsedBytes(), KB(GetObjectPoolUsedBytes()), MB(GetObjectPoolUsedBytes()));
+	OSReport(" freed    :%9d(%7.1fK)(%6.3fM)\n", GetObjectPoolFreeBytes(), KB(GetObjectPoolFreeBytes()), MB(GetObjectPoolFreeBytes()));
 	OSReport("\n");
 
-	s32 freeHeap = GetFreeSize();
-	OSReport("FreeHeap  :%9d(%7.1fK)(%6.3fM)\n", freeHeap, KB(freeHeap), MB(freeHeap));
-	s32 remainHeap = GetRemainSize();
-	OSReport("RemainHeap:%9d(%7.1fK)(%6.3fM)\n", remainHeap, KB(remainHeap), MB(remainHeap));
+	size = GetFreeSize();
+	OSReport("FreeHeap  :%9d(%7.1fK)(%6.3fM)\n", (s32)size, KB((s32)size), MB((s32)size));
+	size = GetRemainSize();
+	OSReport("RemainHeap:%9d(%7.1fK)(%6.3fM)\n", (s32)size, KB((s32)size), MB((s32)size));
 	OSReport("\n");
 }
 /*
@@ -131,9 +122,9 @@ void mm::Dump()
     addi     r3, r31, 0xc
     crclr    cr1eq
     bl       OSReport
-    lis      r3, sInfo@ha
+    lis      r3, gMemoryBlockRecords@ha
     li       r30, 0x0
-    addi     r27, r3, sInfo@l
+    addi     r27, r3, gMemoryBlockRecords@l
     li       r28, 0x0
 .L_8019141C:
     lwz      r5, 0x0(r27)
@@ -230,7 +221,7 @@ void mm::Dump()
     bl       OSReport
     addi     r3, r1, 0x8
     li       r4, 0x0
-    bl       fn_801D06A0
+    bl       GetObjectHeapBounds
     lwz      r4, 0x8(r1)
     lis      r0, 0x4330
     stw      r0, 0x18(r1)
@@ -249,7 +240,7 @@ void mm::Dump()
     fmuls    f1, f0, f3
     crset    cr1eq
     bl       OSReport
-    bl       fn_801D0704
+    bl       GetObjectHeapRemainingBytes
     lis      r0, 0x4330
     stw      r3, 0x24(r1)
     lfd      f2, lbl_8065F4D8@sda21(r0)
@@ -258,7 +249,7 @@ void mm::Dump()
     lfd      f1, 0x20(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       fn_801D0704
+    bl       GetObjectHeapRemainingBytes
     lis      r0, 0x4330
     stw      r3, 0x2c(r1)
     lfd      f2, lbl_8065F4D8@sda21(r0)
@@ -267,14 +258,14 @@ void mm::Dump()
     lfd      f1, 0x28(r1)
     fsubs    f1, f1, f2
     fmuls    f30, f1, f0
-    bl       fn_801D0704
+    bl       GetObjectHeapRemainingBytes
     fmr      f1, f30
     mr       r4, r3
     fmr      f2, f31
     addi     r3, r31, 0x11c
     crset    cr1eq
     bl       OSReport
-    bl       fn_801D06D0
+    bl       GetObjectPoolCapacityBytes
     lis      r0, 0x4330
     stw      r3, 0x34(r1)
     lfd      f2, lbl_8065F4D8@sda21(r0)
@@ -283,7 +274,7 @@ void mm::Dump()
     lfd      f1, 0x30(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       fn_801D06D0
+    bl       GetObjectPoolCapacityBytes
     lis      r0, 0x4330
     stw      r3, 0x3c(r1)
     lfd      f2, lbl_8065F4D8@sda21(r0)
@@ -292,14 +283,14 @@ void mm::Dump()
     lfd      f1, 0x38(r1)
     fsubs    f1, f1, f2
     fmuls    f30, f1, f0
-    bl       fn_801D06D0
+    bl       GetObjectPoolCapacityBytes
     fmr      f1, f30
     mr       r4, r3
     fmr      f2, f31
     addi     r3, r31, 0x13c
     crset    cr1eq
     bl       OSReport
-    bl       fn_801D073C
+    bl       GetObjectPoolUsedBytes
     lis      r0, 0x4330
     stw      r3, 0x44(r1)
     lfd      f2, lbl_8065F4D8@sda21(r0)
@@ -308,7 +299,7 @@ void mm::Dump()
     lfd      f1, 0x40(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       fn_801D073C
+    bl       GetObjectPoolUsedBytes
     lis      r0, 0x4330
     stw      r3, 0x4c(r1)
     lfd      f2, lbl_8065F4D8@sda21(r0)
@@ -317,14 +308,14 @@ void mm::Dump()
     lfd      f1, 0x48(r1)
     fsubs    f1, f1, f2
     fmuls    f30, f1, f0
-    bl       fn_801D073C
+    bl       GetObjectPoolUsedBytes
     fmr      f1, f30
     mr       r4, r3
     fmr      f2, f31
     addi     r3, r31, 0x15c
     crset    cr1eq
     bl       OSReport
-    bl       fn_801D0768
+    bl       GetObjectPoolFreeBytes
     lis      r0, 0x4330
     stw      r3, 0x54(r1)
     lfd      f2, lbl_8065F4D8@sda21(r0)
@@ -333,7 +324,7 @@ void mm::Dump()
     lfd      f1, 0x50(r1)
     fsubs    f1, f1, f2
     fdivs    f30, f1, f0
-    bl       fn_801D0768
+    bl       GetObjectPoolFreeBytes
     lis      r0, 0x4330
     stw      r3, 0x5c(r1)
     lfd      f2, lbl_8065F4D8@sda21(r0)
@@ -342,7 +333,7 @@ void mm::Dump()
     lfd      f1, 0x58(r1)
     fsubs    f1, f1, f2
     fmuls    f31, f1, f0
-    bl       fn_801D0768
+    bl       GetObjectPoolFreeBytes
     fmr      f1, f31
     mr       r4, r3
     fmr      f2, f30
@@ -354,9 +345,9 @@ void mm::Dump()
     bl       OSReport
     bl       OSDisableInterrupts
     mr       r28, r3
-    bl       fn_801D0768
+    bl       GetObjectPoolFreeBytes
     mr       r29, r3
-    bl       fn_801D0704
+    bl       GetObjectHeapRemainingBytes
     mr       r30, r3
     cmpwi    r30, -0x1
     bne      .L_80191790
@@ -395,7 +386,7 @@ void mm::Dump()
     bl       OSReport
     bl       OSDisableInterrupts
     mr       r29, r3
-    bl       fn_801D0704
+    bl       GetObjectHeapRemainingBytes
     mr       r30, r3
     cmpwi    r30, -0x1
     bne      .L_80191824
@@ -453,8 +444,8 @@ void mm::SetName(void* ptr, const char* name)
 {
 	BOOL enabled = OSDisableInterrupts();
 	for (int i = 0; i < sNum; i++) {
-		if (sInfo[i].mAddr != 0 && sInfo[i].mAddr == ptr) {
-			strcpy(sInfo[i].mName, name);
+		if (gMemoryBlockRecords[i].mAddr != 0 && gMemoryBlockRecords[i].mAddr == ptr) {
+			strcpy(gMemoryBlockRecords[i].mName, name);
 			OSRestoreInterrupts(enabled);
 			return;
 		}
@@ -472,10 +463,10 @@ void mm::SetName(void* ptr, const char* name)
     mr       r29, r3
     bl       OSDisableInterrupts
     lwz      r0, sNum@sda21(r0)
-    lis      r4, sInfo@ha
+    lis      r4, gMemoryBlockRecords@ha
     li       r5, 0x0
     mr       r31, r3
-    addi     r4, r4, sInfo@l
+    addi     r4, r4, gMemoryBlockRecords@l
     mtctr    r0
     cmpwi    r0, 0x0
     ble      .L_80191950
@@ -486,9 +477,9 @@ void mm::SetName(void* ptr, const char* name)
     cmplw    r0, r29
     bne      .L_80191944
     mulli    r5, r5, 0x90
-    lis      r3, sInfo@ha
+    lis      r3, gMemoryBlockRecords@ha
     mr       r4, r30
-    addi     r0, r3, sInfo@l
+    addi     r0, r3, gMemoryBlockRecords@l
     add      r3, r0, r5
     addi     r3, r3, 0xc
     bl       strcpy
@@ -520,9 +511,9 @@ char* mm::GetName(void* ptr)
 {
 	BOOL enabled = OSDisableInterrupts();
 	for (int i = 0; i < sNum; i++) {
-		if (sInfo[i].mAddr != 0 && sInfo[i].mAddr == ptr) {
+		if (gMemoryBlockRecords[i].mAddr != 0 && gMemoryBlockRecords[i].mAddr == ptr) {
 			OSRestoreInterrupts(enabled);
-			return sInfo[i].mName;
+			return gMemoryBlockRecords[i].mName;
 		}
 	}
 	OSRestoreInterrupts(enabled);
@@ -537,9 +528,9 @@ char* mm::GetName(void* ptr)
     mr       r30, r3
     bl       OSDisableInterrupts
     lwz      r0, sNum@sda21(r0)
-    lis      r4, sInfo@ha
+    lis      r4, gMemoryBlockRecords@ha
     li       r31, 0x0
-    addi     r4, r4, sInfo@l
+    addi     r4, r4, gMemoryBlockRecords@l
     mtctr    r0
     cmpwi    r0, 0x0
     ble      .L_801919E8
@@ -551,8 +542,8 @@ char* mm::GetName(void* ptr)
     bne      .L_801919DC
     bl       OSRestoreInterrupts
     mulli    r4, r31, 0x90
-    lis      r3, sInfo@ha
-    addi     r0, r3, sInfo@l
+    lis      r3, gMemoryBlockRecords@ha
+    addi     r0, r3, gMemoryBlockRecords@l
     add      r3, r0, r4
     addi     r3, r3, 0xc
     b        .L_801919F0
@@ -586,12 +577,13 @@ void mm::Compact(BOOL dump)
 
 	// glue each freed block to any freed block right after it
 	for (int i = 0; i < sNum; i++) {
-		if (sInfo[i].mAddr == 0 && sInfo[i].mFree != 0) {
+		if (gMemoryBlockRecords[i].mAddr == 0 && gMemoryBlockRecords[i].mFree != 0) {
 			for (int j = 0; j < MEMINFO_MAX; j++) {
-				if (i != j && sInfo[j].mAddr == 0 && sInfo[j].mFree != 0 && sInfo[i].mFree + sInfo[i].mSize == sInfo[j].mFree) {
-					sInfo[i].mSize += sInfo[j].mSize;
-					sInfo[j].mFree = 0;
-					sInfo[j].mSize = 0;
+				if (i != j && gMemoryBlockRecords[j].mAddr == 0 && gMemoryBlockRecords[j].mFree != 0
+				    && gMemoryBlockRecords[i].mFree + gMemoryBlockRecords[i].mSize == gMemoryBlockRecords[j].mFree) {
+					gMemoryBlockRecords[i].mSize += gMemoryBlockRecords[j].mSize;
+					gMemoryBlockRecords[j].mFree = 0;
+					gMemoryBlockRecords[j].mSize = 0;
 				}
 			}
 		}
@@ -601,18 +593,18 @@ void mm::Compact(BOOL dump)
 	u8* low  = sTop;
 	s32 last = 0;
 	for (int i = 0; i < MEMINFO_MAX; i++) {
-		if (sInfo[i].mAddr != 0) {
-			if (sInfo[i].mAddr < low) {
-				low = sInfo[i].mAddr;
+		if (gMemoryBlockRecords[i].mAddr != 0) {
+			if (gMemoryBlockRecords[i].mAddr < low) {
+				low = gMemoryBlockRecords[i].mAddr;
 			}
 			last = i;
 		}
 	}
 	for (int i = 0; i < MEMINFO_MAX; i++) {
-		if (sInfo[i].mAddr == 0 && sInfo[i].mFree != 0) {
-			if (sInfo[i].mFree < low) {
-				sInfo[i].mFree = 0;
-				sInfo[i].mSize = 0;
+		if (gMemoryBlockRecords[i].mAddr == 0 && gMemoryBlockRecords[i].mFree != 0) {
+			if (gMemoryBlockRecords[i].mFree < low) {
+				gMemoryBlockRecords[i].mFree = 0;
+				gMemoryBlockRecords[i].mSize = 0;
 			}
 			if (i > last) {
 				last = i;
@@ -639,9 +631,9 @@ void mm::Compact(BOOL dump)
     bl       Dump__2mmFv
 .L_80191A2C:
     bl       OSDisableInterrupts
-    lis      r4, sInfo@ha
+    lis      r4, gMemoryBlockRecords@ha
     li       r30, 0x0
-    addi     r11, r4, sInfo@l
+    addi     r11, r4, gMemoryBlockRecords@l
     lwz      r4, sNum@sda21(r0)
     mr       r10, r11
     b        .L_80191B28
@@ -854,18 +846,18 @@ void mm::Free(void* ptr, s32 flag)
 {
 	BOOL enabled = OSDisableInterrupts();
 	for (int i = 0; i < sNum; i++) {
-		if (sInfo[i].mAddr != 0 && sInfo[i].mAddr == ptr) {
-			if (sInfo[i].mAddr == sCur) {
+		if (gMemoryBlockRecords[i].mAddr != 0 && gMemoryBlockRecords[i].mAddr == ptr) {
+			if (gMemoryBlockRecords[i].mAddr == sCur) {
 				// the lowest block, give it straight back to the arena
-				sCur           = sInfo[i].mAddr + sInfo[i].mSize;
-				sInfo[i].mFree = 0;
-				sInfo[i].mAddr = 0;
-				sInfo[i].mSize = 0;
+				sCur                         = gMemoryBlockRecords[i].mAddr + gMemoryBlockRecords[i].mSize;
+				gMemoryBlockRecords[i].mFree = 0;
+				gMemoryBlockRecords[i].mAddr = 0;
+				gMemoryBlockRecords[i].mSize = 0;
 			} else {
-				sInfo[i].mAddr = 0;
+				gMemoryBlockRecords[i].mAddr = 0;
 			}
 			if (flag) {
-				sInfo[i].mStatic = 0;
+				gMemoryBlockRecords[i].mStatic = 0;
 			}
 			Compact(FALSE);
 			OSRestoreInterrupts(enabled);
@@ -886,10 +878,10 @@ void mm::Free(void* ptr, s32 flag)
     mr       r29, r3
     bl       OSDisableInterrupts
     lwz      r0, sNum@sda21(r0)
-    lis      r4, sInfo@ha
+    lis      r4, gMemoryBlockRecords@ha
     li       r5, 0x0
     mr       r31, r3
-    addi     r4, r4, sInfo@l
+    addi     r4, r4, gMemoryBlockRecords@l
     mtctr    r0
     cmpwi    r0, 0x0
     ble      .L_80191DDC
@@ -900,9 +892,9 @@ void mm::Free(void* ptr, s32 flag)
     cmplw    r0, r29
     bne      .L_80191DD0
     mulli    r5, r5, 0x90
-    lis      r3, sInfo@ha
+    lis      r3, gMemoryBlockRecords@ha
     lwz      r0, sCur@sda21(r0)
-    addi     r4, r3, sInfo@l
+    addi     r4, r3, gMemoryBlockRecords@l
     lwzx     r6, r4, r5
     cmplw    r6, r0
     bne      .L_80191D98
@@ -921,9 +913,9 @@ void mm::Free(void* ptr, s32 flag)
 .L_80191DA0:
     cmpwi    r30, 0x0
     beq      .L_80191DBC
-    lis      r3, sInfo@ha
+    lis      r3, gMemoryBlockRecords@ha
     li       r4, 0x0
-    addi     r0, r3, sInfo@l
+    addi     r0, r3, gMemoryBlockRecords@l
     add      r3, r0, r5
     stw      r4, 0x8c(r3)
 .L_80191DBC:
@@ -950,6 +942,8 @@ void mm::Free(void* ptr, s32 flag)
     blr
 */
 
+extern "C" const char sHeapAllocationAlignmentError[] = "mm::Alloc>> alloc size must be 32byte alignment -- %s(%d)!\n";
+
 /**
  * @note Address: 0x80191E04
  * @note Size: 0x324
@@ -958,7 +952,7 @@ void* mm::Alloc(u32 size, const char* name)
 {
 	BOOL enabled = OSDisableInterrupts();
 	if (size & 31) {
-		OSReport("mm::Alloc>> alloc size must be 32byte alignment -- %s(%d)!\n", name, size);
+		OSReport(sHeapAllocationAlignmentError, name, size);
 		size = (size + 31) & ~31;
 	}
 
@@ -968,35 +962,35 @@ void* mm::Alloc(u32 size, const char* name)
 		s32 num = sNum;
 		u8* cur = sCur;
 		for (i = 0; i < sNum; i++) {
-			if (sInfo[i].mAddr == 0 && sInfo[i].mFree != 0 && sInfo[i].mSize >= size) {
-				if (sInfo[i].mStatic != 0) {
-					sInfo[i].mAddr = sInfo[i].mFree;
-					strcpy(sInfo[i].mName, name);
+			if (gMemoryBlockRecords[i].mAddr == 0 && gMemoryBlockRecords[i].mFree != 0 && gMemoryBlockRecords[i].mSize >= size) {
+				if (gMemoryBlockRecords[i].mStatic != 0) {
+					gMemoryBlockRecords[i].mAddr = gMemoryBlockRecords[i].mFree;
+					strcpy(gMemoryBlockRecords[i].mName, name);
 					found = TRUE;
 					break;
 				}
-				s32 rest = sInfo[i].mSize - size;
+				s32 rest = gMemoryBlockRecords[i].mSize - size;
 				if (rest == 0) {
-					sInfo[i].mAddr = sInfo[i].mFree;
-					strcpy(sInfo[i].mName, name);
+					gMemoryBlockRecords[i].mAddr = gMemoryBlockRecords[i].mFree;
+					strcpy(gMemoryBlockRecords[i].mName, name);
 					found = TRUE;
 					break;
 				}
 				if (rest > 0) {
 					// split it, the low part stays free in a new entry
 					for (int j = 0; j < MEMINFO_MAX; j++) {
-						if (j != i && sInfo[j].mAddr == 0 && sInfo[j].mFree == 0) {
-							sInfo[j].mAddr = 0;
-							sInfo[j].mFree = sInfo[i].mFree;
-							sInfo[j].mSize = rest;
-							strcpy(sInfo[j].mName, "(subd)");
+						if (j != i && gMemoryBlockRecords[j].mAddr == 0 && gMemoryBlockRecords[j].mFree == 0) {
+							gMemoryBlockRecords[j].mAddr = 0;
+							gMemoryBlockRecords[j].mFree = gMemoryBlockRecords[i].mFree;
+							gMemoryBlockRecords[j].mSize = rest;
+							strcpy(gMemoryBlockRecords[j].mName, "(subd)");
 							if (sNum < j + 1) {
 								sNum = j + 1;
 							}
-							sInfo[i].mAddr = sInfo[i].mFree + (sInfo[i].mSize - size);
-							sInfo[i].mFree = sInfo[i].mAddr;
-							sInfo[i].mSize = size;
-							strcpy(sInfo[i].mName, name);
+							gMemoryBlockRecords[i].mAddr = gMemoryBlockRecords[i].mFree + (gMemoryBlockRecords[i].mSize - size);
+							gMemoryBlockRecords[i].mFree = gMemoryBlockRecords[i].mAddr;
+							gMemoryBlockRecords[i].mSize = size;
+							strcpy(gMemoryBlockRecords[i].mName, name);
 							found = TRUE;
 							break;
 						}
@@ -1008,11 +1002,11 @@ void* mm::Alloc(u32 size, const char* name)
 
 		if (!found) {
 			for (i = 0; i < MEMINFO_MAX; i++) {
-				if (sInfo[i].mAddr == 0 && sInfo[i].mFree == 0) {
-					sInfo[i].mFree = sCur - size;
-					sInfo[i].mAddr = sCur - size;
-					sInfo[i].mSize = size;
-					strcpy(sInfo[i].mName, name);
+				if (gMemoryBlockRecords[i].mAddr == 0 && gMemoryBlockRecords[i].mFree == 0) {
+					gMemoryBlockRecords[i].mFree = sCur - size;
+					gMemoryBlockRecords[i].mAddr = sCur - size;
+					gMemoryBlockRecords[i].mSize = size;
+					strcpy(gMemoryBlockRecords[i].mName, name);
 					sCur -= size;
 					if (sNum < i + 1) {
 						sNum = i + 1;
@@ -1026,14 +1020,14 @@ void* mm::Alloc(u32 size, const char* name)
 		if (found) {
 			if (GetRemainSize() < 0) {
 				// out of memory, undo it
-				sCur           = cur;
-				sInfo[i].mFree = 0;
-				sInfo[i].mAddr = 0;
-				sInfo[i].mSize = 0;
-				sNum           = num;
+				sCur                         = cur;
+				gMemoryBlockRecords[i].mFree = 0;
+				gMemoryBlockRecords[i].mAddr = 0;
+				gMemoryBlockRecords[i].mSize = 0;
+				sNum                         = num;
 			} else {
 				OSRestoreInterrupts(enabled);
-				return (void*)sInfo[i].mAddr;
+				return (void*)gMemoryBlockRecords[i].mAddr;
 			}
 		}
 	}
@@ -1064,9 +1058,9 @@ void* mm::Alloc(u32 size, const char* name)
     cmplwi   r21, 0x0
     li       r0, 0x0
     beq      .L_80192108
-    lis      r3, sInfo@ha
+    lis      r3, gMemoryBlockRecords@ha
     lwz      r31, sNum@sda21(r0)
-    addi     r29, r3, sInfo@l
+    addi     r29, r3, gMemoryBlockRecords@l
     lwz      r24, sCur@sda21(r0)
     li       r25, 0x0
     mr       r4, r29
@@ -1084,8 +1078,8 @@ void* mm::Alloc(u32 size, const char* name)
     cmplw    r3, r21
     blt      .L_80191FD4
     mulli    r30, r25, 0x90
-    lis      r3, sInfo@ha
-    addi     r4, r3, sInfo@l
+    lis      r3, gMemoryBlockRecords@ha
+    addi     r4, r3, gMemoryBlockRecords@l
     add      r5, r4, r30
     lwz      r3, 0x8c(r5)
     cmpwi    r3, 0x0
@@ -1126,9 +1120,9 @@ void* mm::Alloc(u32 size, const char* name)
     cmplwi   r3, 0x0
     bne      .L_80191FC4
     mulli    r5, r23, 0x90
-    lis      r3, sInfo@ha
+    lis      r3, gMemoryBlockRecords@ha
     li       r0, 0x0
-    addi     r3, r3, sInfo@l
+    addi     r3, r3, gMemoryBlockRecords@l
     add      r6, r3, r5
     li       r4, lbl_8065F4E8@sda21
     stw      r0, 0x0(r6)
@@ -1145,9 +1139,9 @@ void* mm::Alloc(u32 size, const char* name)
     stw      r0, sNum@sda21(r0)
 .L_80191F84:
     lwzx     r4, r27, r30
-    lis      r3, sInfo@ha
+    lis      r3, gMemoryBlockRecords@ha
     lwzx     r5, r28, r30
-    addi     r0, r3, sInfo@l
+    addi     r0, r3, gMemoryBlockRecords@l
     subf     r3, r21, r4
     mr       r4, r22
     add      r6, r0, r30
@@ -1184,9 +1178,9 @@ void* mm::Alloc(u32 size, const char* name)
     bne      .L_80192064
     mulli    r5, r25, 0x90
     lwz      r0, sCur@sda21(r0)
-    lis      r3, sInfo@ha
+    lis      r3, gMemoryBlockRecords@ha
     subf     r6, r21, r0
-    addi     r0, r3, sInfo@l
+    addi     r0, r3, gMemoryBlockRecords@l
     mr       r4, r22
     add      r5, r0, r5
     stw      r6, 0x4(r5)
@@ -1214,7 +1208,7 @@ void* mm::Alloc(u32 size, const char* name)
     beq      .L_80192108
     bl       OSDisableInterrupts
     mr       r22, r3
-    bl       fn_801D0704
+    bl       GetObjectHeapRemainingBytes
     mr       r21, r3
     cmpwi    r21, -0x1
     bne      .L_80192098
@@ -1233,10 +1227,10 @@ void* mm::Alloc(u32 size, const char* name)
     cmpwi    r21, 0x0
     bge      .L_801920EC
     mulli    r5, r25, 0x90
-    lis      r3, sInfo@ha
+    lis      r3, gMemoryBlockRecords@ha
     li       r0, 0x0
     stw      r24, sCur@sda21(r0)
-    addi     r4, r3, sInfo@l
+    addi     r4, r3, gMemoryBlockRecords@l
     add      r3, r4, r5
     stw      r0, 0x4(r3)
     stwx     r0, r4, r5
@@ -1247,8 +1241,8 @@ void* mm::Alloc(u32 size, const char* name)
     mr       r3, r26
     bl       OSRestoreInterrupts
     mulli    r0, r25, 0x90
-    lis      r3, sInfo@ha
-    addi     r3, r3, sInfo@l
+    lis      r3, gMemoryBlockRecords@ha
+    addi     r3, r3, gMemoryBlockRecords@l
     lwzx     r3, r3, r0
     b        .L_80192114
 .L_80192108:
@@ -1270,18 +1264,18 @@ void* mm::Alloc(u32 size, const char* name)
 void mm::Init()
 {
 	for (int i = 0; i < MEMINFO_MAX; i++) {
-		sInfo[i].mAddr    = 0;
-		sInfo[i].mFree    = 0;
-		sInfo[i].mSize    = 0;
-		sInfo[i].mName[0] = '\0';
-		sInfo[i].mStatic  = 0;
+		gMemoryBlockRecords[i].mAddr    = 0;
+		gMemoryBlockRecords[i].mFree    = 0;
+		gMemoryBlockRecords[i].mSize    = 0;
+		gMemoryBlockRecords[i].mName[0] = '\0';
+		gMemoryBlockRecords[i].mStatic  = 0;
 	}
 	sTop = sCur = (u8*)OSGetArenaHi();
 	sNum        = 0;
 }
 
 // small container with a word buffer, class unknown
-struct Unk80192214 {
+struct WordBuffer {
 	u32* mBuf; // _00
 	s32 _04;   // _04
 	s32 mSize; // _08
@@ -1291,7 +1285,7 @@ struct Unk80192214 {
  * @note Address: 0x80192214
  * @note Size: 0x7C
  */
-extern "C" void fn_80192214(Unk80192214* p, s32 n)
+extern "C" void AllocateWordBuffer(WordBuffer* p, s32 n)
 {
 	if (p->mBuf != NULL) {
 		if (p->mBuf != NULL) {

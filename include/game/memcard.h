@@ -30,15 +30,18 @@ public:
 		u8 mBuffer[0xC000]; // _A200, the file, two SaveFile copies
 		SaveFile mFile;     // _A200
 	};
-	SavePreviewRecord mSaves[2][5]; // _16200, the save headers read off each slot's card
-	u32 _169F8;                     // _169F8
-	u32 _169FC;                     // _169FC
-	s32 _16A00;                     // _16A00, the save file's two words menus show
-	s32 _16A04;                     // _16A04
-	BOOL mBusy;                     // _16A08, a job's thread is running
-	BOOL mFound;                    // _16A0C, the scan found a save
-	MemcardJob mJob;                // _16A10
-	BOOL mLog;                      // _16A1C, print card results
+	union {
+		SavePreviewRecord mSaves[2][5];  // _16200, the save headers read off each slot's card
+		SavePreviewRecord mAllSaves[10]; // the test menu lists both slots together
+	};
+	u32 _169F8;      // _169F8
+	u32 _169FC;      // _169FC
+	s32 _16A00;      // _16A00, the save file's two words menus show
+	s32 _16A04;      // _16A04
+	BOOL mBusy;      // _16A08, a job's thread is running
+	BOOL mFound;     // _16A0C, the scan found a save
+	MemcardJob mJob; // _16A10
+	BOOL mLog;       // _16A1C, print card results
 	// _16A20 vtable
 
 	virtual ~Memcard() { } // _08
@@ -152,21 +155,23 @@ public:
 STATIC_ASSERT(sizeof(Memcard) == 0x16A24);
 
 extern "C" {
+s32 ProbeMemoryCardCapacity(Memcard* card, s32 channel, s32* memorySize, s32* sectorSize);
+BOOL StartMemoryCardScan(Memcard* card, s32 channel, BOOL logResults);
 // the card steps, TRUE when one failed. mCard.mResult says why
-BOOL fn_80087190(Memcard* card, struct SaveFile* file);
-BOOL fn_80087508(Memcard* card);
-BOOL fn_80087854(Memcard* card, char* name, BOOL create);
-BOOL fn_80088F20(Memcard* card, s32 channel);
-BOOL fn_8008933C(Memcard* card, s32 channel);
-BOOL fn_80089D3C(Memcard* card, s32 channel, s32 file);
+BOOL ReadValidatedSaveFileCopy(Memcard* card, struct SaveFile* file);
+BOOL ReadValidatedSaveIntoCardBuffer(Memcard* card);
+BOOL OpenOrCreateSaveFile(Memcard* card, char* name, BOOL create);
+BOOL ScanMemoryCardForSaveFiles(Memcard* card, s32 channel);
+BOOL ReadMemoryCardPreviews(Memcard* card, s32 channel);
+BOOL WriteMemoryCardSaveFile(Memcard* card, s32 channel, s32 file);
 // "CHIBIROBO(%d...", a slot's file name
-extern const char lbl_802091D8[];
+extern const char gSaveFileNameFormat[];
 // the card jobs, each runs on the card thread and returns FALSE while one is still busy
-BOOL fn_80088B4C(Memcard* card, s32 channel, s32 file, BOOL logResults);
-BOOL fn_80088E78(Memcard* card, s32 channel, BOOL logResults);
-BOOL fn_80089890(Memcard* card, s32 channel, BOOL logResults);
-BOOL fn_80089C90(Memcard* card, s32 channel, s32 file, BOOL logResults);
-BOOL fn_8008A1F4(Memcard* card, s32 channel, s32 file, BOOL logResults);
+BOOL StartMemoryCardSaveDeletion(Memcard* card, s32 channel, s32 file, BOOL logResults);
+BOOL StartMemoryCardFormatCheck(Memcard* card, s32 channel, BOOL logResults);
+BOOL StartMemoryCardPreviewRead(Memcard* card, s32 channel, BOOL logResults);
+BOOL StartMemoryCardSaveRead(Memcard* card, s32 channel, s32 file, BOOL logResults);
+BOOL StartMemoryCardSaveWrite(Memcard* card, s32 channel, s32 file, BOOL logResults);
 
 // the card error messages
 extern const char lbl_801FF4B8[];

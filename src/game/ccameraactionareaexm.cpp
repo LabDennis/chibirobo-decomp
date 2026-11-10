@@ -8,7 +8,7 @@
  */
 extern "C" f32 vf68__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
 {
-	return lbl_805A054C._10;
+	return gCameraAreaState.mBaseFov;
 }
 
 /**
@@ -17,7 +17,7 @@ extern "C" f32 vf68__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
  */
 extern "C" s32 vf6C__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
 {
-	return lbl_805A054C._14;
+	return gCameraAreaState._14;
 }
 
 /**
@@ -26,7 +26,7 @@ extern "C" s32 vf6C__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
  */
 extern "C" void vf70__20CCameraActionAreaExMFl(CCameraActionAreaExM* action, s32 mode)
 {
-	lbl_805A054C._14 = mode;
+	gCameraAreaState._14 = mode;
 }
 
 /**
@@ -35,5 +35,5 @@ extern "C" void vf70__20CCameraActionAreaExMFl(CCameraActionAreaExM* action, s32
  */
 extern "C" s32 vf74__20CCameraActionAreaExMF3Vec(CCameraActionAreaExM* action, const Vec& pos)
 {
-	return fn_801374F4(&lbl_805A054C, pos);
+	return FindFirstCameraAreaContainingPoint(&gCameraAreaState, pos);
 }

@@ -10,22 +10,22 @@ extern "C" {
 #include "game/evt.h"
 #include "game/xobjchr.h"
 
-extern "C" BOOL fn_800DED24(XObjDust* dust, u32 frames);
+extern "C" BOOL UpdateDustEvent(XObjDust* dust, u32 frames);
 
 /**
  * @note Address: 0x800DF0A0
  * @note Size: 0x238
  */
-extern "C" BOOL fn_800DF0A0(XObjDust* dust)
+extern "C" BOOL CheckDustScatterHeading(XObjDust* dust)
 {
 	if (__fpclassifyf(dust->mHeading) == FP_NAN) {
-		if (lbl_8025C400.GetPlayer()->mAnimId == 0x27) {
-			f32 z        = dust->mMoveTranslate.z - lbl_8025C400.GetPlayer()->mMoveTranslate.z;
-			f32 x        = dust->mMoveTranslate.x - lbl_8025C400.GetPlayer()->mMoveTranslate.x;
+		if (gGame.GetPlayer()->mAnimId == 0x27) {
+			f32 z        = dust->mMoveTranslate.z - gGame.GetPlayer()->mMoveTranslate.z;
+			f32 x        = dust->mMoveTranslate.x - gGame.GetPlayer()->mMoveTranslate.x;
 			dust->mSpeed = sqrtf(x * x + z * z);
 			if (dust->mSpeed < 20.0f) {
-				dust->mHeading = atan2(dust->mMoveTranslate.x - lbl_8025C400.GetPlayer()->mMoveTranslate.x,
-				                       dust->mMoveTranslate.z - lbl_8025C400.GetPlayer()->mMoveTranslate.z);
+				dust->mHeading = atan2(dust->mMoveTranslate.x - gGame.GetPlayer()->mMoveTranslate.x,
+				                       dust->mMoveTranslate.z - gGame.GetPlayer()->mMoveTranslate.z);
 				dust->mSpeed   = 0.2f * (25.0f - dust->mSpeed);
 				if (dust->mSpeed > 2.0f)
 					dust->mSpeed = 2.0f;
@@ -43,7 +43,7 @@ extern "C" BOOL fn_800DF0A0(XObjDust* dust)
  * @note Address: 0x800DF2D8
  * @note Size: 0x2B0
  */
-extern "C" BOOL fn_800DF2D8(XObjDust* dust, u32 frames)
+extern "C" BOOL UpdateDriftingDust(XObjDust* dust, u32 frames)
 {
 	dust->mPhase = fmod(dust->mPhaseStep * frames + dust->mPhase, TWO_PI);
 	if (0.0f != dust->mBouncePhase) {
@@ -57,7 +57,7 @@ extern "C" BOOL fn_800DF2D8(XObjDust* dust, u32 frames)
 	f32 bounce             = sin(dust->mBouncePhase);
 	f32 bob                = sin(dust->mPhase);
 	dust->mMoveTranslate.y = dust->mBounceHeight * bounce + (0.8f * bob + dust->mBaseY);
-	if (fn_800DF0A0(dust)) {
+	if (CheckDustScatterHeading(dust)) {
 		if (dust->mSpeed > 0.0f) {
 			f32 speed    = dust->mSpeed - 0.05f * frames;
 			dust->mSpeed = speed;
@@ -80,8 +80,8 @@ extern "C" BOOL fn_800DF2D8(XObjDust* dust, u32 frames)
 				s32 arg            = dust->mEventArg;
 				s32 id             = dust->mEventId;
 				const void* script = dust->vf128();
-				if (!fn_8009FDE4(lbl_8025C400.GetPlayer()))
-					fn_8007EEA4(&lbl_8025C400.mEvt, (u8*)script, (u32)dust, id, arg);
+				if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
+					StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)dust, id, arg);
 			}
 			return TRUE;
 		}
@@ -93,17 +93,17 @@ extern "C" BOOL fn_800DF2D8(XObjDust* dust, u32 frames)
  * @note Address: 0x800DF588
  * @note Size: 0x148
  */
-extern "C" void vfA4__8XObjDustFUl(XObjDust* dust, u32 frames)
+extern "C" void UpdateObject__8XObjDustFUl(XObjDust* dust, u32 frames)
 {
-	vfA4__4XObjFUl(dust, frames);
+	UpdateObject__4XObjFUl(dust, frames);
 	if (dust->GetObjFlags() & 1) {
-		if (fn_800DF2D8(dust, frames)) {
+		if (UpdateDriftingDust(dust, frames)) {
 			dust->Release();
 			dust->SetFlag();
 		}
 	}
 	if (dust->GetObjFlags() & 2) {
-		if (fn_800DED24(dust, frames)) {
+		if (UpdateDustEvent(dust, frames)) {
 			dust->Release();
 			dust->SetFlag();
 		}
@@ -124,12 +124,12 @@ extern "C" void Release__8XObjDustFv(XObjDust* dust)
  * @note Address: 0x800DF6F8
  * @note Size: 0x2A8
  */
-extern "C" BOOL vf9C__8XObjDustFRC9CoordInfo(XObjDust* dust, CoordInfo* info)
+extern "C" BOOL LoadFromPlacement__8XObjDustFRC9CoordInfo(XObjDust* dust, CoordInfo* info)
 {
 	dust->_260 = info->_00->_2C;
 	if (dust->IsFlagSet())
 		return TRUE;
-	BOOL result = vf9C__4XObjFRC9CoordInfo(dust, info);
+	BOOL result = LoadFromPlacement__4XObjFRC9CoordInfo(dust, info);
 	if (result) {
 		dust->mStatus.mFlags |= 0x18100000ULL;
 		HSD_AObj* aobj = GetAObj(dust->mJObj);

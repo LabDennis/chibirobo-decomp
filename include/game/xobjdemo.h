@@ -18,6 +18,11 @@ public:
 	s32 mLightAnims[8]; // _25E4
 
 	virtual ~XObjDemo() { } // _08
+	virtual void Release();
+	virtual void ResetObjectState();
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);
+	virtual void UpdateObject(u32 frames);
+	virtual void vfAC();
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(XObjDemo) == 0x25F8);

@@ -25,13 +25,13 @@ public:
 	CVec _10;         // _10, push keeps the offset to its target here
 	XObj* mTarget;    // _20
 	s32 _24;          // _24
-	s32 mTargetFloor; // _28, the target's _784 when it was picked
+	s32 mTargetFloor; // _28, the selected floor when the target was picked
 
 	// todo: cleanup
 	void SetTarget(XObj* target)
 	{
 		mTarget      = target;
-		mTargetFloor = mTarget->_784;
+		mTargetFloor = mTarget->mSelectedFloorIndex;
 	}
 	void SetState(s32 state, XObj* target)
 	{
@@ -46,38 +46,50 @@ STATIC_ASSERT(sizeof(XAction) == 0x2C);
 // picking things up and carrying them
 class XActLift : public XAction {
 public:
-	f32 _2C;             // _2C
-	CVec _30;            // _30
-	u8 _40[0x48 - 0x40]; // _40
-	s16 _48;             // _48, -1 when there's none
-	u8 _4A[0x54 - 0x4A]; // _4A
-	u32 _54;             // _54, copied to XObjPlug's _D3C
-	u8 _58[0x60 - 0x58]; // _58
-	u32 _60;             // _60
-	u8 _64[0x6C - 0x64]; // _64
-	u32 _6C;             // _6C
-	u32 _70;             // _70
-	u32 _74;             // _74
-	u8 _78[0x7C - 0x78]; // _78
+	f32 _2C;        // _2C
+	CVec _30;       // _30
+	f32 mYawOffset; // _40, held object yaw relative to the player
+	u8 _44[4];      // _44
+	s16 _48;        // _48, -1 when there's none
+	u8 _4A[2];
+	XObj* mPendingItem;            // _4C
+	XObj* mPlugTarget;             // _50
+	u32 _54;                       // _54, copied to XObjPlug's _D3C
+	f32 mBatteryCost;              // _58
+	s32 mContactEffectId;          // _5C
+	HSD_Generator* mContactEffect; // _60
+	BOOL mCheckContact;            // _64
+	s32 mUseEffectId;              // _68
+	HSD_Generator* mUseEffect;     // _6C
+	s32 mToolEffectId;             // _70
+	HSD_Generator* mToolEffect;    // _74
+	BOOL mCheckToolHit;            // _78
 };
 STATIC_ASSERT(sizeof(XActLift) == 0x7C);
 
+extern "C" void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end);
+extern "C" void UpdateHeldObject(XActLift* act, s32 frames);
+
 class XActHang : public XAction {
 public:
-	BOOL _2C;            // _2C, set when the stick points away
-	u8 _30[0x3C - 0x30]; // _30
-	Vec _3C;             // _3C
-	f32 _48;             // _48
-	u8 _4C[0x50 - 0x4C]; // _4C
+	BOOL _2C;             // _2C, set when the stick points away
+	Vec mHangStartOffset; // _30, player position relative to the target
+	Vec _3C;              // _3C
+	f32 _48;              // _48
+	u8 _4C[0x50 - 0x4C];  // _4C
 };
 STATIC_ASSERT(sizeof(XActHang) == 0x50);
 
 class XActJump : public XAction {
 public:
-	u8 _2C[0x48 - 0x2C]; // _2C
+	Vec mArcPosition;    // _2C, horizontal position and starting height
+	f32 mRise;           // _38
+	f32 mArcAngle;       // _3C
+	f32 mArcStep;        // _40
+	f32 mForward;        // _44
 	f32 mStrength;       // _48
 	f32 mTargetStrength; // _4C
-	u8 _50[0x54 - 0x50]; // _50
+	f32 mTargetHeight;   // _50
 };
 STATIC_ASSERT(sizeof(XActJump) == 0x54);
 
@@ -92,16 +104,18 @@ STATIC_ASSERT(sizeof(XActLadder) == 0x44);
 
 class XActRope : public XAction {
 public:
-	u8 _2C[0x40 - 0x2C]; // _2C
+	Vec mPos;   // _2C, horizontal approach point
+	f32 mDist;  // _38
+	f32 mAngle; // _3C
 };
 STATIC_ASSERT(sizeof(XActRope) == 0x40);
 
 class XActPush : public XAction {
 public:
-	u8 _2C[0x34 - 0x2C]; // _2C
-	CVec _34;            // _34
-	CVec _44;            // _44
-	u8 _54[0x58 - 0x54]; // _54
+	u8 _2C[0x34 - 0x2C];       // _2C
+	CVec _34;                  // _34
+	CVec _44;                  // _44
+	BOOL mPushPositionClamped; // _54
 };
 STATIC_ASSERT(sizeof(XActPush) == 0x58);
 
@@ -115,9 +129,9 @@ STATIC_ASSERT(sizeof(XActTumbleFade) == 0x14);
 
 class XActTumble : public XAction {
 public:
-	XActTumbleFade mFade; // _2C
-	u8 _40[0x44 - 0x40];  // _40
-	s32 _44;              // _44
+	XActTumbleFade mFade;         // _2C
+	f32 mSavedYaw;                // _40
+	HSD_Generator* mIdleParticle; // _44
 };
 STATIC_ASSERT(sizeof(XActTumble) == 0x48);
 
@@ -138,29 +152,34 @@ struct XActPopperRing {
 };
 STATIC_ASSERT(sizeof(XActPopperRing) == 0x18);
 
+struct PopperShotDust {
+	CPtcl mPtcl;           // _00
+	CPtclDust2 mPtcls[40]; // _14
+};
+
 // one popper shot, it keeps its last ten positions for the trail
 struct XActPopperShot {
 	BOOL mActive;              // _00
 	CVec mPos;                 // _04
-	f32 _14;                   // _14
-	f32 _18;                   // _18
-	f32 _1C;                   // _1C
-	f32 mPhase;                // _20
-	f32 _24;                   // _24
+	f32 mYaw;                  // _14
+	f32 mPitch;                // _18
+	f32 mSpeed;                // _1C
+	f32 mDistance;             // _20
+	f32 mRange;                // _24
 	f32 _28;                   // _28
 	f32 mStrength;             // _2C
 	s32 mKind;                 // _30, 1 for the small shot
-	void* mAttachment;         // _34
-	s32 mState;                // _38
+	XObj* mHomingTarget;       // _34
+	XObj* mHitTarget;          // _38, deferred hit during an event
 	Vec mHistory[10];          // _3C
 	XActPopperRing mRing[2];   // _B4
-	CPtcl mPtcl;               // _E4
-	CPtclDust2 mPtcls[40];     // _F8
+	PopperShotDust mDust;      // _E4
 	HSD_Generator* mGen;       // _D78
 	HSD_Generator* mChargeGen; // _D7C
 	HSD_JObj* mJoint;          // _D80
 
 	XActPopperShot();
+	~XActPopperShot();
 };
 STATIC_ASSERT(sizeof(XActPopperShot) == 0xD84);
 
@@ -168,7 +187,7 @@ STATIC_ASSERT(sizeof(XActPopperShot) == 0xD84);
 struct XActPopperCharge {
 	u32 mState;                // _00
 	f32 mTimer;                // _04
-	u8 _08[0x14 - 0x8];        // _08
+	Vec mPos;                  // _08
 	HSD_Generator* mGen;       // _14
 	HSD_Generator* mChargeGen; // _18
 	HSD_JObj* mJoint;          // _1C
@@ -178,21 +197,25 @@ STATIC_ASSERT(sizeof(XActPopperCharge) == 0x20);
 // the chibi-blaster
 class XActPopper : public XAction {
 public:
-	u32 _2C;                  // _2C
+	f32 _2C;                  // _2C
 	XActPopperShot mShot[10]; // _30
 	XActPopperCharge mCharge; // _8758
 };
 STATIC_ASSERT(sizeof(XActPopper) == 0x8778);
 
+struct RadarAimAxis {
+	f32 angle, targetAngle, reached;
+};
+
 class XActRadar : public XAction {
 public:
-	XObj* _2C;            // _2C
-	Vec _30;              // _30
-	Vec _3C;              // _3C
+	XObj* mTarget;        // _2C
+	RadarAimAxis mYaw;    // _30
+	RadarAimAxis mPitch;  // _3C
 	CScrnColor mColor[2]; // _48
 	f32 mFade;            // _B0
 	f32 mAngle[2];        // _B4
-	f32 _BC;              // _BC, NAN until it's placed
+	f32 mTargetDistance;  // _BC, surface distance or NAN when there is no target
 };
 STATIC_ASSERT(sizeof(XActRadar) == 0xC0);
 

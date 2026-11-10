@@ -10,10 +10,10 @@ extern "C" BOOL CARDSetFastMode(BOOL enable);
  * @note Address: 0x8008A1C0
  * @note Size: 0x34
  */
-extern "C" void* fn_8008A1C0(void* arg)
+extern "C" void* WriteMemoryCardSaveThread(void* arg)
 {
 	MemcardJob* job = (MemcardJob*)arg;
-	fn_80089D3C(job->mCard, job->mChannel, job->mFile);
+	WriteMemoryCardSaveFile(job->mCard, job->mChannel, job->mFile);
 	return NULL;
 }
 
@@ -21,7 +21,7 @@ extern "C" void* fn_8008A1C0(void* arg)
  * @note Address: 0x8008A1F4
  * @note Size: 0xAC
  */
-extern "C" BOOL fn_8008A1F4(Memcard* card, s32 channel, s32 file, BOOL log)
+extern "C" BOOL StartMemoryCardSaveWrite(Memcard* card, s32 channel, s32 file, BOOL log)
 {
 	if (card->mBusy)
 		return FALSE;
@@ -29,7 +29,7 @@ extern "C" BOOL fn_8008A1F4(Memcard* card, s32 channel, s32 file, BOOL log)
 	card->mJob.mCard    = card;
 	card->mJob.mChannel = channel;
 	card->mJob.mFile    = file;
-	lbl_8036AC10.Start(fn_8008A1C0, &card->mJob, lbl_8036AF38, sizeof(lbl_8036AF38));
+	gMemoryCardThread.Start(WriteMemoryCardSaveThread, &card->mJob, gMemoryCardThreadStack, sizeof(gMemoryCardThreadStack));
 	card->mBusy = TRUE;
 	return TRUE;
 }
@@ -47,7 +47,7 @@ extern "C" BOOL fn_8008A2A0(Memcard* card)
  * @note Address: 0x8008A2A8
  * @note Size: 0x6C
  */
-extern "C" void fn_8008A2A8(Memcard* card)
+extern "C" void InitMemoryCardManager(Memcard* card)
 {
 	card->mCard.Init();
 	CARDSetFastMode(TRUE);

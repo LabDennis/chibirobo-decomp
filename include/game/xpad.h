@@ -9,7 +9,7 @@ public:
 	// _00-_54 = CPadOne
 	BOOL mReset; // _54, set when chibi robo is reset
 
-	virtual ~XPad(); // _08 (weak)
+	virtual ~XPad() { } // _08 (weak)
 };
 STATIC_ASSERT(sizeof(XPad) == 0x58);
 

@@ -2,6 +2,7 @@
 #define _GAME_OCTAMENU_H
 
 #include "game/xobj.h"
+#include "game/menuhelpchar.h"
 #include "game/cptcl.h"
 
 // chibi robo's ring menus, class names from RTTI. AtcMenu picks the attachment, DrsMenu the
@@ -30,64 +31,60 @@ STATIC_ASSERT(sizeof(OctaMenuBob) == 0xD80);
 
 // one item on the ring
 struct OctaMenuItem {
-	s32 mType;           // _00, attachment or costume id
-	s32 mAvailable;      // _04
-	f32 _08;             // _08, spin, the pulse phase while it's selected
-	f32 _0C;             // _0C
-	f32 _10;             // _10
-	u8 _14[0x28 - 0x14]; // _14
+	s32 mType;             // _00, attachment or costume id
+	s32 mAvailable;        // _04
+	f32 _08;               // _08, spin, the pulse phase while it's selected
+	f32 _0C;               // _0C
+	f32 _10;               // _10
+	f32 mHighlight;        // _14
+	f32 mSlotOffset;       // _18, horizontal position in the scrolling row
+	f32 mTargetSlotOffset; // _1C
+	u8 _20[8];             // _20
 };
 STATIC_ASSERT(sizeof(OctaMenuItem) == 0x28);
-
-// one of the sparks around the ring
-struct OctaMenuSpark {
-	u32 _00; // _00
-	f32 _04; // _04
-	f32 _08; // _08
-};
-STATIC_ASSERT(sizeof(OctaMenuSpark) == 0xC);
 
 class OctaMenu {
 public:
 	s32 mOpen;              // _00, above 0 while open, below 0 while it closes
-	s32 _04;                // _04
+	s32 mCursorIndex;       // _04
 	f32 mFade;              // _08, 1 once it has all faded in
 	f32 _0C;                // _0C, glow, 1 when opened from the pad
-	u32 _10;                // _10
+	f32 _10;                // _10
 	OctaMenuItem mItems[8]; // _14
-	u32 _154;               // _154
-	f32 _158;               // _158, ring center on screen
-	f32 _15C;               // _15C
-	u8 _160[0x168 - 0x160]; // _160
+	f32 mPhase;             // _154
+	f32 mOpenScreenX;       // _158, ring center on screen
+	f32 mOpenScreenY;       // _15C
+	f32 mCursorX;           // _160
+	f32 mCursorY;           // _164
 	XObjChr* mChr;          // _168
-	f32 _16C;               // _16C, mChr's heading when it opened
-	s32 _170;               // _170
+	f32 mOpeningHeading;    // _16C, mChr's heading when it opened
+	s32 mLabelLength;       // _170
 #if defined(VERSION_JP)
-	OctaMenuSpark _174[20]; // _174
+	MenuHelpChar mLabelChars[20]; // _174
 #else
-	OctaMenuSpark _174[22]; // _174
+	MenuHelpChar mLabelChars[22]; // _174
 #endif
 	// _27C vtable, _264 in japan
 
 	OctaMenu() { mChr = NULL; }
 
-	virtual ~OctaMenu() { }       // _08 (weak)
-	virtual void Open(s32 item);  // _0C
-	virtual void Select(s32 dir); // _10
-	virtual void vf14();          // _14
-	virtual void vf18();          // _18
-	virtual void vf1C();          // _1C
-	virtual void vf20();          // _20
-	virtual void vf24();          // _24
-	virtual void vf28();          // _28
-	virtual void vf2C();          // _2C
+	virtual ~OctaMenu() { }                         // _08 (weak)
+	virtual void Open(s32 item);                    // _0C
+	virtual void Select(s32 dir);                   // _10
+	virtual void vf14();                            // _14
+	virtual void vf18();                            // _18
+	virtual void ConfirmSelection();                // _1C
+	virtual s32 GetItemIconTextureIndex(s32 index); // _20
+	virtual const char* GetItemLabel(s32 index);    // _24
+	virtual u32 GetItemColor(s32 index);            // _28
+	virtual BOOL vf2C(s32 index);                   // _2C
 
-	s32 _280;      // _280, _268 in japan
-	u32 _284;      // _284
-	s32 _288;      // _288, item to start on
-	s32 _28C;      // _28C, queued start item, -1 for none
-	s32 mFocus;    // _290, set on the menu that has the cursor
-	f32 mHeadTurn; // _294, nan to turn the head with the cursor
+	s32 _280;                     // _280, _268 in japan
+	f32 _284;                     // _284
+	s32 mFirstVisibleItem;        // _288, item to start on
+	s32 mPendingFirstVisibleItem; // _28C, queued start item, -1 for none
+	s32 mFocus;                   // _290, set on the menu that has the cursor
+	f32 mHeadTurn;                // _294, nan to turn the head with the cursor
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(OctaMenu) == 0x280);
@@ -97,26 +94,30 @@ STATIC_ASSERT(sizeof(OctaMenu) == 0x298);
 
 class AtcMenu : public OctaMenu {
 public:
-	virtual ~AtcMenu() { }       // _08 (weak)
-	virtual void Open(s32 item); // _0C
-	virtual void vf18();         // _18
-	virtual void vf1C();         // _1C
-	virtual void vf20();         // _20
-	virtual void vf24();         // _24
-	virtual void vf28();         // _28
-	virtual void vf2C();         // _2C
+	virtual ~AtcMenu() { }                          // _08 (weak)
+	virtual void Open(s32 item);                    // _0C
+	virtual void vf18();                            // _18
+	virtual void ConfirmSelection();                // _1C
+	virtual s32 GetItemIconTextureIndex(s32 index); // _20
+	virtual const char* GetItemLabel(s32 index);    // _24
+	virtual u32 GetItemColor(s32 index);            // _28
+	virtual BOOL vf2C(s32 index);                   // _2C
 };
 
 class DrsMenu : public OctaMenu {
 public:
-	virtual ~DrsMenu();          // _08
-	virtual void Open(s32 item); // _0C
-	virtual void vf18();         // _18
-	virtual void vf1C();         // _1C
-	virtual void vf20();         // _20
-	virtual void vf24();         // _24
-	virtual void vf28();         // _28
-	virtual void vf2C();         // _2C
+	virtual ~DrsMenu() { }                          // _08
+	virtual void Open(s32 item);                    // _0C
+	virtual void vf18();                            // _18
+	virtual void ConfirmSelection();                // _1C
+	virtual s32 GetItemIconTextureIndex(s32 index); // _20
+	virtual const char* GetItemLabel(s32 index);    // _24
+	virtual u32 GetItemColor(s32 index);            // _28
+	virtual BOOL vf2C(s32 index);                   // _2C
+};
+
+struct OXJointPath {
+	s32 ids[7];
 };
 
 // one of OXMenu's marks. usa and europe give each mark its own object
@@ -127,9 +128,10 @@ struct OXMenuMark {
 #if !defined(VERSION_JP)
 	u32 _0C;   // _0C
 	XObj mObj; // _10
-#endif
 
 	OXMenuMark();
+	~OXMenuMark();
+#endif
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(OXMenuMark) == 0xC);
@@ -143,22 +145,22 @@ public:
 #if !defined(VERSION_JP)
 	u32 _00; // _00
 #endif
-	BOOL mStarted; // _04
-	s32 _08;       // _08
-	s32 _0C;       // _0C
-	f32 mFade;     // _10
+	BOOL mStarted;      // _04
+	s32 mCrossMask;     // _08
+	s32 mSelectedIndex; // _0C
+	f32 mFade;          // _10
 #if !defined(VERSION_JP)
 	u32 _14; // _14
 #endif
 	OXMenuMark mMark[2]; // _18
 	XObj* mChr;          // _1338, _28 in japan
 	f32 mStartRot;       // _133C, the chr's y rotation when it opened
-	u32 _1340;           // _1340
+	u32 mConfirmedIndex; // _1340
 	// _1344 vtable, _34 in japan
 
 	OXMenu() { mChr = NULL; }
 
-	virtual ~OXMenu(); // _08 (weak)
+	virtual ~OXMenu() { } // _08 (weak)
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(OXMenu) == 0x38);

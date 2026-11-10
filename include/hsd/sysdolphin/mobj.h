@@ -174,8 +174,8 @@ HSD_MObj* HSD_MObjAlloc();
 HSD_Material* HSD_MaterialAlloc();
 
 void HSD_MObjCompileTev(HSD_MObj *mobj);
-u32 fn_801B8E5C(HSD_MObj* mobj);
-void fn_801BA3AC(HSD_MObj* mobj, u8 r, u8 g, u8 b);
+u32 GetMaterialRenderModeFlags(HSD_MObj* mobj);
+void SetMaterialAmbientColor(HSD_MObj* mobj, u8 r, u8 g, u8 b);
 void HSD_MObjSetDiffuseColor(HSD_MObj* mobj, u8 r, u8 g, u8 b);
 void HSD_MObjSetAlpha(HSD_MObj* mobj, f32 alpha);
 

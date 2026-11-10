@@ -13,38 +13,38 @@ static inline void ClearScript(CEvt* evt)
 
 static inline void ClearQueue()
 {
-	lbl_80369A3C.mRead = 0;
+	gEventScriptQueue.mRead = 0;
 	for (u32 i = 0; i < 128; ++i) {
-		lbl_80369A3C.mScript[i] = NULL;
+		gEventScriptQueue.mScript[i] = NULL;
 	}
 }
 
 static inline void ClearResults(CEvt* evt)
 {
-	evt->_10 = 0;
-	evt->_14 = 0;
-	evt->_58 = 0;
-	evt->_5C = -1;
-	evt->_5E = -1;
+	evt->_10       = 0;
+	evt->_14       = 0;
+	evt->_58       = 0;
+	evt->mUseValue = -1;
+	evt->mHitValue = -1;
 }
 
 /**
  * @note Address: 0x8007EEA4
  * @note Size: 0x194
  */
-extern "C" void fn_8007EEA4(CEvt* evt, u8* script, u32 context, s16 argument0, s16 argument1)
+extern "C" void StartOrQueueEventScript(CEvt* evt, u8* script, u32 context, s16 useValue, s16 hitValue)
 {
 	if (script == NULL)
 		return;
 	if (evt->mData.mScript != NULL && evt->_00 == 0) {
-		s32 cursor = lbl_80369A3C.mRead;
+		s32 cursor = gEventScriptQueue.mRead;
 		for (s32 i = 0; i < 128; ++i) {
 			s32 index = cursor % 128;
-			if (lbl_80369A3C.mScript[index] == NULL) {
-				lbl_80369A3C.mScript[index]  = script;
-				lbl_80369A3C.mContext[index] = context;
-				lbl_80369A3C.mArg0[index]    = argument0;
-				lbl_80369A3C.mArg1[index]    = argument1;
+			if (gEventScriptQueue.mScript[index] == NULL) {
+				gEventScriptQueue.mScript[index]   = script;
+				gEventScriptQueue.mContext[index]  = context;
+				gEventScriptQueue.mUseValue[index] = useValue;
+				gEventScriptQueue.mHitValue[index] = hitValue;
 				return;
 			}
 			++cursor;
@@ -57,8 +57,8 @@ extern "C" void fn_8007EEA4(CEvt* evt, u8* script, u32 context, s16 argument0, s
 	ClearResults(evt);
 	evt->mData.mScript = script;
 	evt->mData._04     = evt->_00 != 0 ? evt->_00 : context;
-	evt->_5C           = argument0;
-	evt->_5E           = argument1;
+	evt->mUseValue     = useValue;
+	evt->mHitValue     = hitValue;
 }
 
 /**
@@ -74,19 +74,19 @@ extern "C" BOOL fn_8007F038(CEvt* evt)
  * @note Address: 0x8007F040
  * @note Size: 0x154
  */
-extern "C" void fn_8007F040(CEvt* evt, BOOL clearTimers, BOOL clearGlobal)
+extern "C" void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal)
 {
 	ClearScript(evt);
 	if (evt->_00 == 0) {
 		if (clearTimers) {
 			for (u32 i = 0; i < 10; ++i) {
-				lbl_8036A050.mFrames[i] = 0;
-				lbl_8036A050.mValue[i]  = 0;
+				gEventTimers.mFrames[i] = 0;
+				gEventTimers.mValue[i]  = 0;
 			}
 		}
 		ClearQueue();
 		if (clearGlobal)
-			lbl_802247B0.mCount = 0;
+			gEventObjectIds.mCount = 0;
 	}
 	ClearResults(evt);
 }

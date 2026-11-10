@@ -79,6 +79,7 @@ class FbMirrorEx : public FbMirror {
 public:
 	XObj* mOwner; // _2F0
 
+	FbMirrorEx();
 	~FbMirrorEx();
 
 	virtual void Init(); // _08
@@ -86,6 +87,6 @@ public:
 STATIC_ASSERT(sizeof(FbMirrorEx) == 0x2F4);
 
 // the game's mirrors
-extern "C" FbMirrorEx lbl_8035FA24[5];
+extern "C" FbMirrorEx gFramebufferMirrors[5];
 
 #endif

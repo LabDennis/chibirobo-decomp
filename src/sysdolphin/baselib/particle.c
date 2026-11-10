@@ -30,7 +30,7 @@ static inline void particle_ref_INC(void* o)
 
 // per bank data tables, all addressed off one base in the target
 void* ptclref[64];
-s32 lbl_8064CE50[64];
+s32 psBankTextureCounts[64];
 HSD_PSTexGroup** psTexGroupArray[64];
 u8** psFormGroupArray[64];
 s32 psNumCmdList[64];
@@ -38,7 +38,7 @@ HSD_PSCmdList** psCmdListArray[64];
 HSD_JObj* psPointJObj[8];
 
 #define BANK_REF(b)       (ptclref[b])
-#define BANK_TEXCOUNT(b)  (lbl_8064CE50[b])
+#define BANK_TEXCOUNT(b)  (psBankTextureCounts[b])
 #define BANK_TEXARRAY(b)  (psTexGroupArray[b])
 #define BANK_FORMARRAY(b) (psFormGroupArray[b])
 #define BANK_CMDCOUNT(b)  (psNumCmdList[b])
@@ -65,9 +65,9 @@ void psInitDataBankLoad(s32 bank, s32* cmdBank, s32* texBank, void* ref, s32* fo
 		OSPanic("particle.c", 95, "illigal form data (strange number of group)\n");
 	}
 
-	ptclref[bank]         = ref;
-	lbl_8064CE50[bank]    = *texBank;
-	psTexGroupArray[bank] = (HSD_PSTexGroup**)(texBank + 1);
+	ptclref[bank]             = ref;
+	psBankTextureCounts[bank] = *texBank;
+	psTexGroupArray[bank]     = (HSD_PSTexGroup**)(texBank + 1);
 	if (formBank != NULL) {
 		psFormGroupArray[bank] = (u8**)(formBank + 1);
 	} else {
@@ -246,12 +246,12 @@ void psInitParticle(s32 count)
 	lbl_8065BA8E = 0;
 	lbl_8065BA88 = 0;
 	for (i = 0; i < 64; i++) {
-		psNumCmdList[i]     = 0;
-		lbl_8064CE50[i]     = 0;
-		psCmdListArray[i]   = NULL;
-		psTexGroupArray[i]  = NULL;
-		psFormGroupArray[i] = NULL;
-		ptclref[i]          = NULL;
+		psNumCmdList[i]        = 0;
+		psBankTextureCounts[i] = 0;
+		psCmdListArray[i]      = NULL;
+		psTexGroupArray[i]     = NULL;
+		psFormGroupArray[i]    = NULL;
+		ptclref[i]             = NULL;
 	}
 	lbl_8065BA80 = NULL;
 	for (i = 0; i < 8; i++) {
@@ -271,12 +271,12 @@ void psRemoveParticle(void)
 	psKillAllGenerator();
 	_psListClear();
 	for (i = 0; i < 64; i++) {
-		psNumCmdList[i]     = 0;
-		lbl_8064CE50[i]     = 0;
-		psCmdListArray[i]   = NULL;
-		psTexGroupArray[i]  = NULL;
-		psFormGroupArray[i] = NULL;
-		ptclref[i]          = NULL;
+		psNumCmdList[i]        = 0;
+		psBankTextureCounts[i] = 0;
+		psCmdListArray[i]      = NULL;
+		psTexGroupArray[i]     = NULL;
+		psFormGroupArray[i]    = NULL;
+		ptclref[i]             = NULL;
 	}
 	psClearPointJObj();
 }

@@ -1,9 +1,11 @@
+#include <math.h>
 #include "game/ccameraaction.h"
 extern "C" {
 #include <dolphin/mtx/vec.h>
 }
 #include "game/xobj.h"
 #include "game/caminfo.h"
+#include "game/cameracollisionpolygons.h"
 #include "game/cmotioncontrolcamera.h"
 #include "game/cgame.h"
 #include "game/xchr.h"
@@ -18,25 +20,26 @@ extern "C" {
 #include "game/stagedata.h"
 }
 
-extern "C" CVec lbl_805C038C;
-extern "C" CVec lbl_805C03A8;
+extern "C" CVec sMapCameraTestEye;
+extern "C" CVec sMapCameraTestCenter;
 extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(CCameraActionMap* map, const Vec& from, const Vec& to,
                                                                                 CamMapEntry* entries, s32 arg);
-extern "C" void fn_8013A2EC(CCameraActionMap* map, u32 flags);
+extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
 
-extern "C" Vec fn_8013A248(CCameraActionMap* map);
-extern "C" void fn_8013A608(CCameraActionMap* map, u32 step);
-extern "C" void fn_8013A6A0(CCameraActionMap* map, Vec to, f32 time);
-extern "C" void fn_8013A8D4(CCameraActionMap* map);
-extern "C" void fn_8013B1C4(CCameraActionMap* map, s32 unused);
-extern "C" BOOL fn_8013C09C(CCameraActionMap* map, CVec& out);
-extern "C" void fn_8013C614(CCameraActionMap* map, u32 step);
+extern "C" Vec GetMapCameraTargetWithHeightOffset(CCameraActionMap* map);
+extern "C" void UpdateCameraEyeInterpolation(CCameraActionMap* map, u32 step);
+extern "C" void StartCameraEyeInterpolation(CCameraActionMap* map, Vec to, f32 time);
+extern "C" void SetMapCameraAnglesFromEyeAndInterest(CCameraActionMap* map);
+extern "C" void StartMapCameraTurnInterpolation(CCameraActionMap* map, s32 unused);
+extern "C" BOOL GetMapCameraTargetOffsetPosition(CCameraActionMap* map, CVec& out);
+extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step);
 extern "C" BOOL fn_8013C3CC(CCameraActionMap* map, f32 yaw, f32 time, f32 unused);
 extern "C" BOOL fn_8013D2DC(CCameraActionMap* map);
-extern "C" s32 fn_8013D52C(CCameraActionMap* map, CamMapEntry* entry);
-extern "C" s32 fn_8013D5FC(CCameraActionMap* map, s32 value);
-extern "C" s32 fn_8013D634(CCameraActionMap* map, const Vec& pos);
-extern "C" CamMapEntry* fn_8013D710(CCameraActionMap* map, const Vec& pos);
+extern "C" const char sMapCameraStateFormat[];
+extern "C" s32 CountMapCameraAdjacentSideIntersections(CCameraActionMap* map, CamMapEntry* entry);
+extern "C" s32 CountMapCameraEntriesInGroup(CCameraActionMap* map, s32 value);
+extern "C" s32 FindNearestMapCameraEntry(CCameraActionMap* map, const Vec& pos);
+extern "C" CamMapEntry* GetNearestMapCameraEntry(CCameraActionMap* map, const Vec& pos);
 extern "C" s32 lbl_8065B330;
 extern "C" s32 lbl_8065B338;
 extern "C" s32 lbl_8065B33C;
@@ -44,25 +47,25 @@ extern "C" s32 lbl_8065B340;
 extern "C" s32 lbl_8065B344;
 extern "C" f32 lbl_8065B34C;
 
-extern "C" XObj* fn_8014106C(CGame* game, s32 index);
-extern "C" void fn_8014102C(XObjChr* player);
-extern "C" void fn_80140FEC(CCameraActionMap* map, const Vec& v);
-extern "C" void fn_80140FAC(CCameraActionMap* map, const Vec& v);
-extern "C" void fn_8013CB38(CCameraActionMap* map, u32 step);
-extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previous, const CVec& interest, const CVec& previousInterest,
-                            const s32* mode);
+extern "C" XObj* GetPlayerPoolObject(CGame* game, s32 index);
+extern "C" void ResetPlayerCameraValue(XObjChr* player);
+extern "C" void SetMapCameraPreviousEye(CCameraActionMap* map, const Vec& v);
+extern "C" void SetMapCameraPreviousInterest(CCameraActionMap* map, const Vec& v);
+extern "C" void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step);
+extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, const CVec& previous, const CVec& interest,
+                                             const CVec& previousInterest, const s32* mode);
 extern "C" CVec SpringDamp(CVec& position, const Vec& target, const CVec& previous, f32 step, f32 stiffness, f32 damping, f32 restDistance);
 // out of line vector helpers
 extern "C" void fn_800A2C98(CVec& dst, const Vec& src);
 extern "C" CVec __ct__4CVecFRC3Vec(const Vec& src);
 extern "C" CVec __ct__4CVecFfff(f32 x, f32 y, f32 z);
-extern "C" void fn_800B2974(CVec* v, f32 x, f32 y, f32 z);
-extern "C" f32 fn_800B259C(const Vec* from, const Vec* to); // horizontal distance
-extern "C" f32 fn_800B20CC(const Vec* from, const Vec* to); // horizontal angle
-extern "C" s32 fn_800A2BD0(f32 value);                      // floating-point classification
-extern "C" f32 lbl_8022E61C[];
-extern "C" s32 lbl_8065AA88;
-extern "C" s32 lbl_8065AA8C;
+extern "C" void SetVectorComponents(CVec* v, f32 x, f32 y, f32 z);
+extern "C" f32 GetHorizontalDistance(const Vec* from, const Vec* to);      // horizontal distance
+extern "C" f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to); // horizontal angle
+extern "C" s32 ClassifyFloatBits(f32 value);                               // floating-point classification
+extern "C" f32 sMapCameraSpringParameters[];
+extern "C" s32 sMapCameraCollisionMode0[1];
+extern "C" s32 sMapCameraCollisionMode1;
 extern "C" s32 lbl_8065B348;
 extern "C" s32 lbl_8065B350;
 extern "C" f32 lbl_8065B354;
@@ -82,32 +85,25 @@ static inline s32 ClassifyAreaHeight(f32 y, f32 bottom, f32 top)
 	return 0;
 }
 
-extern "C" void fn_8013A710(CCameraActionMap* map);
-extern "C" BOOL fn_80139E58(CCameraActionMap* map, f32 yaw);
-
-// the fifth point repeats the first so every edge is a pair
-struct CamCollisionPolygon {
-	Vec point[5]; // _00
-};
-STATIC_ASSERT(sizeof(CamCollisionPolygon) == 0x3C);
-extern "C" CamCollisionPolygon lbl_805C03B8[256];
+extern "C" void ResetMapCameraInterpolation(CCameraActionMap* map);
+extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw);
 
 static inline BOOL CameraPolygonContains(const Vec& pos, CamCollisionPolygon& polygon)
 {
-	return fn_8018EA50((Vec*)&pos, &polygon.point[0], &polygon.point[1], &polygon.point[2], &polygon.point[3]);
+	return IsPointInsideQuadXZ((Vec*)&pos, &polygon.point[0], &polygon.point[1], &polygon.point[2], &polygon.point[3]);
 }
 
 static inline BOOL CameraEdgeIntersect(const Vec& from, const Vec& to, Vec& a, Vec& b, Vec& hit, s32 segment)
 {
-	return fn_8018E640(&from, &to, &a, &b, &hit, segment);
+	return IntersectLinesXZ(&from, &to, &a, &b, &hit, segment);
 }
 
 /**
  * @note Address: 0x8013E26C
  * @note Size: 0x17CC
  */
-extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previous, const CVec& interest, const CVec& previousInterest,
-                            const s32* mode)
+extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, const CVec& previous, const CVec& interest,
+                                             const CVec& previousInterest, const s32* mode)
 {
 	CVec target((const Vec&)interest);
 	CVec old((const Vec&)previous);
@@ -115,9 +111,9 @@ extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previo
 	if (!(target != (Vec)old))
 		return false;
 
-	CamAreaRecord* records        = lbl_805A054C._1C;
-	s32 count                     = lbl_805A054C._20;
-	CamCollisionPolygon* polygons = lbl_805C03B8;
+	CamAreaRecord* records        = gCameraAreaState._1C;
+	s32 count                     = gCameraAreaState._20;
+	CamCollisionPolygon* polygons = gCameraCollisionPolygons;
 	BOOL changed                  = false;
 	BOOL targetInside             = false;
 	BOOL previousInside           = false;
@@ -167,7 +163,7 @@ extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previo
 				for (s32 side = 0; side < 4; side++) {
 					Vec& a = polygon.point[side];
 					Vec& b = polygon.point[side + 1];
-					fn_8018E824(&candidate, &a, &b, &normal);
+					GetOutwardPerpendicularToEdge(&candidate, &a, &b, &normal);
 					normal.y = 0.0f;
 					PSVECNormalize(&normal, &normal);
 					CameraEdgeIntersect(candidate, candidate + (Vec)normal, a, b, hit, 0);
@@ -215,7 +211,7 @@ extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previo
 						Vec& a = polygon.point[side];
 						Vec& b = polygon.point[side + 1];
 						if (CameraEdgeIntersect(from, old, a, b, hit, 1)) {
-							fn_8018E824(&old, &a, &b, &normal);
+							GetOutwardPerpendicularToEdge(&old, &a, &b, &normal);
 							normal.y = 0.0f;
 							PSVECNormalize(&normal, &normal);
 							CameraEdgeIntersect(old, old + (Vec)normal, a, b, hit, 0);
@@ -255,8 +251,8 @@ extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previo
 				inside = CameraPolygonContains(behind, polygon);
 			s32 crossedSide = -1;
 			for (s32 side = 0; side < 4; side++) {
-				if (fn_8018D43C(&old, &candidate, &polygon.point[side], &polygon.point[side + 1], &push, &firstHit, NULL, NULL, 2.0f, 0.0f,
-				                0)) {
+				if (ResolveCircleWallCollisionXZ(&old, &candidate, &polygon.point[side], &polygon.point[side + 1], &push, &firstHit, NULL,
+				                                 NULL, 2.0f, 0.0f, 0)) {
 					crossedSide = side;
 					break;
 				}
@@ -268,8 +264,8 @@ extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previo
 					f32 closest     = NAN;
 					s32 nearestSide = -1;
 					for (s32 side = 0; side < 4; side++) {
-						if (fn_8018D43C(&target, &candidate, &polygon.point[side], &polygon.point[side + 1], &push, &hit, NULL, NULL, 2.0f,
-						                0.0f, 0)) {
+						if (ResolveCircleWallCollisionXZ(&target, &candidate, &polygon.point[side], &polygon.point[side + 1], &push, &hit,
+						                                 NULL, NULL, 2.0f, 0.0f, 0)) {
 							f32 distance = PSVECDistance(&hit, &target);
 							if (__fpclassifyf(closest) == FP_NAN || closest > distance) {
 								closest = distance;
@@ -289,8 +285,8 @@ extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previo
 							dx                 = target.x - candidate.x;
 							dz                 = target.z - candidate.z;
 							if (sqrtf(dx * dx + dz * dz) <= playerDistance) {
-								fn_8013A710(map);
-								fn_80139E58(map, (f32)atan2(candidate.x - old.x, candidate.z - old.z));
+								ResetMapCameraInterpolation(map);
+								TrySetUnobstructedMapCameraYaw(map, (f32)atan2(candidate.x - old.x, candidate.z - old.z));
 							}
 						} else {
 							s32 difference = nearestSide - crossedSide;
@@ -301,8 +297,8 @@ extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previo
 								candidate.y = eye.y;
 							} else {
 								Vec a, b; // retail works these out and drops them
-								fn_8018E824(&target, &polygon.point[nearestSide], &polygon.point[nearestSide + 1], &a);
-								fn_8018E824(&nearest, &polygon.point[nearestSide], &polygon.point[nearestSide + 1], &b);
+								GetOutwardPerpendicularToEdge(&target, &polygon.point[nearestSide], &polygon.point[nearestSide + 1], &a);
+								GetOutwardPerpendicularToEdge(&nearest, &polygon.point[nearestSide], &polygon.point[nearestSide + 1], &b);
 								candidate.Set(nearest);
 								candidate.y = eye.y;
 							}
@@ -314,7 +310,7 @@ extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previo
 				Vec& b = polygon.point[crossedSide + 1];
 				if (*mode == 1) {
 					CVec hit;
-					fn_8018E824(&old, &a, &b, &normal);
+					GetOutwardPerpendicularToEdge(&old, &a, &b, &normal);
 					if (CameraEdgeIntersect(old, old + (Vec)normal, a, b, hit, 1)) {
 						normal.y = 0.0f;
 						PSVECNormalize(&normal, &normal);
@@ -322,11 +318,11 @@ extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previo
 						candidate.y = eye.y;
 					} else
 						candidate.Set(old);
-					fn_8013A710(map);
+					ResetMapCameraInterpolation(map);
 					changed = true;
 				} else {
 					CVec direction, hit;
-					fn_8018E824(&candidate, &a, &b, &direction);
+					GetOutwardPerpendicularToEdge(&candidate, &a, &b, &direction);
 					if (CameraEdgeIntersect(candidate, candidate + (Vec)direction, a, b, hit, 1)) {
 						direction.y = 0.0f;
 						PSVECNormalize(&direction, &direction);
@@ -355,7 +351,7 @@ extern "C" BOOL fn_8013E26C(CCameraActionMap* map, CVec& eye, const CVec& previo
 		if (insideCount > 0) {
 			candidate.Set(old);
 			if (*mode == 1) {
-				fn_8013A710(map);
+				ResetMapCameraInterpolation(map);
 				changed = true;
 			}
 		}
@@ -380,13 +376,13 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 	for (u32 i = 0; i < 32; i++)
 		map->_EA8[i] = -2;
 	pos.y += 10.0f;
-	map->_EA4 = fn_801371D0(&lbl_805A054C, pos, map->_EA8);
+	map->_EA4 = CollectCameraAreasContainingPoint(&gCameraAreaState, pos, map->_EA8);
 	f32 dt    = 0.1f * step;
 	fn_800A2C98(map->_60, map->_70);
-	fn_8013C09C(map, map->_70);
-	fn_8013C614(map, step);
-	if ((map->_11D8.mFlags & 0x20000) && !(map->_11D8.mFlags & 0x3E) && map->_70 != map->_60) {
-		fn_8013A2EC(map, 0x10000);
+	GetMapCameraTargetOffsetPosition(map, map->_70);
+	UpdateMapCameraPadControls(map, step);
+	if ((map->mStatus.mFlags & 0x20000) && !(map->mStatus.mFlags & 0x3E) && map->_70 != map->_60) {
+		SetMapCameraModeFlags(map, 0x10000);
 	}
 
 	// retail steps these twice
@@ -395,7 +391,7 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 			if (map->_E30 != NULL)
 				map->_E30->Update(step, FRAME_TIME);
 			f32 height = map->_E30->Get();
-			map->_E60  = height + fn_8014106C(&lbl_8025C400, 0)->GetCameraTarget().y;
+			map->_E60  = height + GetPlayerPoolObject(&gGame, 0)->GetCameraTarget().y;
 		}
 		if (map->_E58 == 1) {
 			if (map->_E50 != NULL)
@@ -412,7 +408,7 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 		map->_E78 = NULL;
 	}
 
-	if (map->_11D8.mFlags & 0x10000) {
+	if (map->mStatus.mFlags & 0x10000) {
 		{
 			CVec eye(map->mEye);
 			f32 previousDistance = PSVECDistance(&eye, &map->_60);
@@ -431,20 +427,19 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 		}
 		CVec eye;
 		fn_800A2C98(eye, map->mEye);
-		fn_800A2C98(eye, SpringDamp(eye, map->_70, map->_60, dt, lbl_8022E61C[0], map->_5C, map->_58));
+		fn_800A2C98(eye, SpringDamp(eye, map->_70, map->_60, dt, sMapCameraSpringParameters[0], map->_5C, map->_58));
 		map->SetEye(eye);
-		map->SetInterest(fn_8013A248(map));
-		map->SetEye(map->mEye.x, map->_D8.y, map->mEye.z);
-		fn_8013A8D4(map);
-		if (fn_800A2BD0(map->mAngle.x) == FP_NAN || fn_800A2BD0(map->mAngle.y) == FP_NAN || fn_800A2BD0(map->mAngle.z) == FP_NAN) {
+		map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
+		map->SetEye(map->mEye.x, map->mPreviousEye.y, map->mEye.z);
+		SetMapCameraAnglesFromEyeAndInterest(map);
+		if (ClassifyFloatBits(map->mAngle.x) == FP_NAN || ClassifyFloatBits(map->mAngle.y) == FP_NAN
+		    || ClassifyFloatBits(map->mAngle.z) == FP_NAN) {
 			OSPanic("ccameraactionmap2.cpp", 581, "%s%s",
-			        fn_801911B4("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER OP(%d)HANG(%d(%d))"
-			                    "TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP TURN(0x%x)"
-			                    "POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
-			                    map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z, map->mDistance,
-			                    map->_11D8.mFlags, map->_11E0.mFlags, map->_EA0, lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y,
-			                    map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z, map->_F28, map->_DB4, map->_F88.x, map->_F88.y,
-			                    map->_F88.z, map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
+			        FormatToStaticBuffer(sMapCameraStateFormat, map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y,
+			                             map->mAngle.z, map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0,
+			                             lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y,
+			                             map->_F78.z, map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z,
+			                             map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
 			        "Update");
 		}
 
@@ -459,18 +454,18 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 			facing.z = cos(map->mAngle.y);
 			f32 dot  = PSVECDotProduct(&movement, &facing);
 			CVec current(map->mEye);
-			f32 distance = fn_800B259C(&current, &map->_70);
+			f32 distance = GetHorizontalDistance(&current, &map->_70);
 			if (dot < -0.5f && distance < 20.0f)
 				lbl_8065B344 = 1;
 			else
 				lbl_8065B344 = 0;
 		}
 		lbl_8065B33C = lbl_8065B340;
-		lbl_8065B340 = ((XObjChr*)fn_8014106C(&lbl_8025C400, 0))->mHang.mState;
-		if (((XObjChr*)fn_8014106C(&lbl_8025C400, 0))->mHang.mState == 3 && lbl_8065B340 != lbl_8065B33C) {
+		lbl_8065B340 = ((XObjChr*)GetPlayerPoolObject(&gGame, 0))->mHang.mState;
+		if (((XObjChr*)GetPlayerPoolObject(&gGame, 0))->mHang.mState == 3 && lbl_8065B340 != lbl_8065B33C) {
 			Vec center = map->_44->mMoveTranslate;
 			CVec angles;
-			fn_800B2974(&angles, map->mAngle.x, PI + map->_44->mMoveRotate.mTarget.y, map->mAngle.z);
+			SetVectorComponents(&angles, map->mAngle.x, PI + map->_44->mMoveRotate.mTarget.y, map->mAngle.z);
 			f32 yaw   = HALF_PI + angles.y;
 			f32 pitch = map->mAngle.x;
 			f32 distance;
@@ -483,16 +478,17 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 			candidate.x = center.x + distance * (f32)cos(yaw) * (f32)cos(pitch);
 			candidate.z = center.z + distance * -(f32)sin(yaw) * (f32)cos(pitch);
 			candidate.y = center.y;
-			fn_800A2C98(lbl_805C038C, __ct__4CVecFRC3Vec(candidate));
-			fn_800A2C98(lbl_805C03A8, __ct__4CVecFRC3Vec(center));
-			map->_970 = CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(map, candidate, center, map->_570, 0);
-			if (map->_970 == 0 && fn_8013C3CC(map, PI + map->_44->mMoveRotate.mTarget.y, 20.0f, 0.0f)) {
-				fn_8013A2EC(map, 0x20002);
+			fn_800A2C98(sMapCameraTestEye, __ct__4CVecFRC3Vec(candidate));
+			fn_800A2C98(sMapCameraTestCenter, __ct__4CVecFRC3Vec(center));
+			map->mIntersectionCount
+			    = CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(map, candidate, center, map->mIntersectionEntries, 0);
+			if (map->mIntersectionCount == 0 && fn_8013C3CC(map, PI + map->_44->mMoveRotate.mTarget.y, 20.0f, 0.0f)) {
+				SetMapCameraModeFlags(map, 0x20002);
 				goto checkCollision;
 			}
 		}
 		if (lbl_8065B344 != 0) {
-			map->SetInterest(fn_8013A248(map));
+			map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
 			CVec angles;
 			fn_800A2C98(angles, __ct__4CVecFfff(map->mAngle.x, map->_44->mMoveRotate.y, map->mAngle.z));
 			map->SetAngle(angles);
@@ -507,33 +503,29 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 			target.z = map->_70.z + distance * -(f32)sin(yaw) * (f32)cos(pitch);
 			target.y = map->_E60;
 			map->SetEye(target);
-			fn_8014102C((XObjChr*)fn_8014106C(&lbl_8025C400, 0));
-			fn_8013A8D4(map);
-			if (fn_800A2BD0(map->mAngle.x) == FP_NAN || fn_800A2BD0(map->mAngle.y) == FP_NAN || fn_800A2BD0(map->mAngle.z) == FP_NAN) {
+			ResetPlayerCameraValue((XObjChr*)GetPlayerPoolObject(&gGame, 0));
+			SetMapCameraAnglesFromEyeAndInterest(map);
+			if (ClassifyFloatBits(map->mAngle.x) == FP_NAN || ClassifyFloatBits(map->mAngle.y) == FP_NAN
+			    || ClassifyFloatBits(map->mAngle.z) == FP_NAN) {
 				OSPanic("ccameraactionmap2.cpp", 683, "%s%s",
-				        fn_801911B4("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER OP(%d)HANG(%d(%d))"
-				                    "TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP TURN(0x%x)"
-				                    "POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
-				                    map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z, map->mDistance,
-				                    map->_11D8.mFlags, map->_11E0.mFlags, map->_EA0, lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y,
-				                    map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z, map->_F28, map->_DB4, map->_F88.x, map->_F88.y,
-				                    map->_F88.z, map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z,
-				                    lbl_8065B338),
+				        FormatToStaticBuffer(sMapCameraStateFormat, map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y,
+				                             map->mAngle.z, map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0,
+				                             lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y,
+				                             map->_F78.z, map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z,
+				                             map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
 				        "Update");
 			}
 			lbl_8065B344 = 0;
 		} else {
-			fn_8013A8D4(map);
-			if (fn_800A2BD0(map->mAngle.x) == FP_NAN || fn_800A2BD0(map->mAngle.y) == FP_NAN || fn_800A2BD0(map->mAngle.z) == FP_NAN) {
+			SetMapCameraAnglesFromEyeAndInterest(map);
+			if (ClassifyFloatBits(map->mAngle.x) == FP_NAN || ClassifyFloatBits(map->mAngle.y) == FP_NAN
+			    || ClassifyFloatBits(map->mAngle.z) == FP_NAN) {
 				OSPanic("ccameraactionmap2.cpp", 693, "%s%s",
-				        fn_801911B4("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER OP(%d)HANG(%d(%d))"
-				                    "TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP TURN(0x%x)"
-				                    "POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
-				                    map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z, map->mDistance,
-				                    map->_11D8.mFlags, map->_11E0.mFlags, map->_EA0, lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y,
-				                    map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z, map->_F28, map->_DB4, map->_F88.x, map->_F88.y,
-				                    map->_F88.z, map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z,
-				                    lbl_8065B338),
+				        FormatToStaticBuffer(sMapCameraStateFormat, map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y,
+				                             map->mAngle.z, map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0,
+				                             lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y,
+				                             map->_F78.z, map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z,
+				                             map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
 				        "Update");
 			}
 			CVec target(map->_44->mMoveTranslate);
@@ -544,15 +536,16 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 			PSVECSubtract(&target, &current, &direction);
 			PSVECNormalize(&direction, &direction);
 			target += direction * 3.0f;
-			map->_970 = CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(map, map->mEye, target, map->_570, 0);
-			map->_978 = fn_8013D634(map, map->_44->mMoveTranslate);
-			map->_974 = fn_8013D710(map, map->_44->mMoveTranslate);
-			map->_980 = fn_8013D634(map, map->mEye);
-			map->_97C = fn_8013D710(map, map->mEye);
+			map->mIntersectionCount
+			    = CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(map, map->mEye, target, map->mIntersectionEntries, 0);
+			map->_978 = FindNearestMapCameraEntry(map, map->_44->mMoveTranslate);
+			map->_974 = GetNearestMapCameraEntry(map, map->_44->mMoveTranslate);
+			map->_980 = FindNearestMapCameraEntry(map, map->mEye);
+			map->_97C = GetNearestMapCameraEntry(map, map->mEye);
 			fn_8013D2DC(map);
 			if (map->_97C != NULL) {
-				s32 count = fn_8013D5FC(map, map->_97C->_0C);
-				s32 index = fn_8013D52C(map, map->_97C);
+				s32 count = CountMapCameraEntriesInGroup(map, map->_97C->_0C);
+				s32 index = CountMapCameraAdjacentSideIntersections(map, map->_97C);
 				if (count < 2)
 					map->_E9C = 1;
 				else if (index == 0)
@@ -560,51 +553,52 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 				else {
 					bool flag;
 					{
-						CamAreaInfo area(&lbl_805A054C._1C[map->_97C->_0C]);
+						CamAreaInfo area(&gCameraAreaState._1C[map->_97C->_0C]);
 						flag = (area._04->_2E & 1) != 0;
 					}
 					map->_E9C = flag ? 0 : 1;
-					if (((XObjChr*)fn_8014106C(&lbl_8025C400, 0))->mCopter.mState != 0
-					    || ((XObjChr*)fn_8014106C(&lbl_8025C400, 0))->mJump.mState != 0) {
+					if (((XObjChr*)GetPlayerPoolObject(&gGame, 0))->mCopter.mState != 0
+					    || ((XObjChr*)GetPlayerPoolObject(&gGame, 0))->mJump.mState != 0) {
 						map->_E9C = 1;
 					}
 				}
 			}
 			if (map->_8C.y == map->_8C.mTarget.y && map->_97C != NULL && map->_E9C == 0) {
-				fn_8013B1C4(map, 0);
+				StartMapCameraTurnInterpolation(map, 0);
 			}
 		}
 	checkCollision:
 		CVec current(map->mEye);
-		CVec previous(map->_D8);
-		fn_8013E26C(map, current, previous, map->mInterest, map->_48, &lbl_8065AA88);
+		CVec previous(map->mPreviousEye);
+		ResolveMapCameraEyeCollision(map, current, previous, map->mInterest, map->mPreviousInterest, sMapCameraCollisionMode0);
 		map->SetEye(current);
 	}
 
-	if (map->_11D8.mFlags & 0x20000) {
-		map->SetInterest(fn_8013A248(map));
-		if (!(map->_11D8.mFlags & 0x400))
+	if (map->mStatus.mFlags & 0x20000) {
+		map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
+		if (!(map->mStatus.mFlags & 0x400))
 			map->_F68.y = map->_E60;
 		map->_F68.y = map->_F78.y;
-		fn_8013CB38(map, step);
+		UpdateMapCameraOrbit(map, step);
 		map->_F68.y = map->_F78.y;
 		if (lbl_8065B330 != 0) {
 			CVec previous(map->_F78);
 			fn_800A2C98(map->_F78, map->_F68);
 			CVec current;
 			fn_800A2C98(current, map->_F68);
-			fn_800A2C98(current, SpringDamp(current, map->_70, map->_60, dt, lbl_8022E61C[0], map->_5C, map->_80));
+			fn_800A2C98(current, SpringDamp(current, map->_70, map->_60, dt, sMapCameraSpringParameters[0], map->_5C, map->_80));
 			fn_800A2C98(map->_F68, current);
 			fn_800A2C98(map->_F78, previous);
 		}
-		lbl_8065B358 = fn_800B259C(&map->_F68, &map->_F78);
-		if (!(map->_11D8.mFlags & 4)) {
+		lbl_8065B358 = GetHorizontalDistance(&map->_F68, &map->_F78);
+		if (!(map->mStatus.mFlags & 4)) {
 			s32 wasBlocked = lbl_8065B348;
-			f32 before     = fn_800B20CC(&map->_F68, &map->mInterest);
-			BOOL hit       = fn_8013E26C(map, map->_F68, map->_F78, map->mInterest, map->_48, &lbl_8065AA8C);
+			f32 before     = GetHeadingBetweenPositions(&map->_F68, &map->mInterest);
+			BOOL hit       = ResolveMapCameraEyeCollision(map, map->_F68, map->_F78, map->mInterest, map->mPreviousInterest,
+			                                              &sMapCameraCollisionMode1);
 			if (lbl_8065B34C > 0.0f) {
-				f32 after = fn_800B20CC(&map->_F68, &map->mInterest);
-				fn_800B20CC(&map->_F78, &map->mInterest);
+				f32 after = GetHeadingBetweenPositions(&map->_F68, &map->mInterest);
+				GetHeadingBetweenPositions(&map->_F78, &map->mInterest);
 				before = WrapAngle(before);
 				after  = WrapAngle(after);
 				if (after - before < 0.0f) {
@@ -615,8 +609,8 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 					lbl_8065B350 = 0;
 				}
 			} else if (lbl_8065B34C < 0.0f) {
-				f32 after = fn_800B20CC(&map->_F68, &map->mInterest);
-				fn_800B20CC(&map->_F78, &map->mInterest);
+				f32 after = GetHeadingBetweenPositions(&map->_F68, &map->mInterest);
+				GetHeadingBetweenPositions(&map->_F78, &map->mInterest);
 				before = WrapAngle(before);
 				after  = WrapAngle(after);
 				if (after - before > 0.0f) {
@@ -639,29 +633,29 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 					lbl_8065B330 = 1;
 			}
 		}
-		f32 distance = fn_800B259C(&map->_F68, &map->_F78);
+		f32 distance = GetHorizontalDistance(&map->_F68, &map->_F78);
 		lbl_8065B354 = distance;
 		if (distance > lbl_8065B358)
 			map->_F64 = 0.0f;
 		else {
 			map->_F64 = 3.0f;
-			if (map->_11D8.mFlags & 0x10)
+			if (map->mStatus.mFlags & 0x10)
 				map->_F64 = 5.0f;
 		}
 		map->_F78.y = map->_F68.y = map->_E60;
 		map->SetEye(__ct__4CVecFfff(map->mEye.x, map->_F68.y, map->mEye.z));
 		Vec target = map->_F68;
 		if (map->_F78 != target)
-			fn_8013A6A0(map, target, map->_F64);
+			StartCameraEyeInterpolation(map, target, map->_F64);
 	}
 
-	fn_8013A608(map, step);
-	f32 weight = fn_800B259C(&map->mEye, &map->_70) / 60.0f;
+	UpdateCameraEyeInterpolation(map, step);
+	f32 weight = GetHorizontalDistance(&map->mEye, &map->_70) / 60.0f;
 	if (weight > 1.0f)
 		weight = 1.0f;
 	if (weight < 0.0f)
 		weight = 0.0f;
-	if (lbl_8025C400.mMotionControlCamera.GetMapDistance() <= 1.0f)
+	if (gGame.mMotionControlCamera.GetMapDistance() <= 1.0f)
 		weight = 0.0f;
 	f32 interestHeight = map->mInterest.y;
 	f32 height         = map->_E60;
@@ -680,12 +674,12 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 	eye.y   = map->_E60;
 	eye.y += map->_E98;
 	map->SetEye(eye);
-	fn_80140FEC(map, map->mEye);
+	SetMapCameraPreviousEye(map, map->mEye);
 	fn_800A2C98(map->_F78, map->_F68);
 	fn_800A2C98(map->_FA8, map->_F88);
-	fn_80140FAC(map, map->mInterest);
-	map->_11E0.mFlags = 0;
-	map->_11E0.mFlags |= map->_11D8.mFlags;
+	SetMapCameraPreviousInterest(map, map->mInterest);
+	map->mPreviousStatus.mFlags = 0;
+	map->mPreviousStatus.mFlags |= map->mStatus.mFlags;
 }
 
 // todo: cleanup, same body as fn_8013C3CC but it allocates differently out of line
@@ -732,7 +726,7 @@ static inline BOOL SetMapYaw(CCameraActionMap* map, f32 yaw, f32 time)
  * @note Address: 0x80139E58
  * @note Size: 0x3AC
  */
-extern "C" BOOL fn_80139E58(CCameraActionMap* map, f32 yaw)
+extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw)
 {
 	Vec center = map->_44->mMoveTranslate;
 	f32 pitch  = map->mAngle.x;
@@ -745,14 +739,15 @@ extern "C" BOOL fn_80139E58(CCameraActionMap* map, f32 yaw)
 		distance = PSVECDistance(&target, &eye);
 	}
 	Vec pos;
-	pos.x        = center.x + distance * (f32)cos(angle) * (f32)cos(pitch);
-	pos.z        = center.z + distance * -(f32)sin(angle) * (f32)cos(pitch);
-	pos.y        = center.y;
-	lbl_805C038C = CVec(pos);
-	lbl_805C03A8 = CVec(center);
-	map->_970    = CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(map, pos, center, map->_570, 0);
-	if (map->_970 == 0 && SetMapYaw(map, yaw, 25.0f)) {
-		fn_8013A2EC(map, 0x20002);
+	pos.x                = center.x + distance * (f32)cos(angle) * (f32)cos(pitch);
+	pos.z                = center.z + distance * -(f32)sin(angle) * (f32)cos(pitch);
+	pos.y                = center.y;
+	sMapCameraTestEye    = CVec(pos);
+	sMapCameraTestCenter = CVec(center);
+	map->mIntersectionCount
+	    = CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(map, pos, center, map->mIntersectionEntries, 0);
+	if (map->mIntersectionCount == 0 && SetMapYaw(map, yaw, 25.0f)) {
+		SetMapCameraModeFlags(map, 0x20002);
 		return TRUE;
 	}
 	return FALSE;
@@ -846,12 +841,12 @@ extern "C" BOOL fn_80139E58(CCameraActionMap* map, f32 yaw)
     fneg     f1, f0
     stw      r0, 0x24(r1)
     lfs      f0, 0x70(r1)
-    lis      r4, lbl_805C038C@ha
+    lis      r4, sMapCameraTestEye@ha
     stw      r0, 0x14(r1)
-    lis      r3, lbl_805C03A8@ha
+    lis      r3, sMapCameraTestCenter@ha
     fmuls    f1, f30, f1
-    addi     r8, r3, lbl_805C03A8@l
-    addi     r9, r4, lbl_805C038C@l
+    addi     r8, r3, sMapCameraTestCenter@l
+    addi     r9, r4, sMapCameraTestEye@l
     frsp     f2, f5
     stfs     f5, 0x58(r1)
     mr       r3, r31
@@ -987,7 +982,7 @@ extern "C" BOOL fn_80139E58(CCameraActionMap* map, f32 yaw)
     lis      r4, 0x2
     mr       r3, r31
     addi     r4, r4, 0x2
-    bl       fn_8013A2EC
+    bl       SetMapCameraModeFlags
     lis      r4, __vt__4CVec@ha
     li       r3, 0x1
     addi     r0, r4, __vt__4CVec@l
@@ -1020,7 +1015,7 @@ extern "C" BOOL fn_80139E58(CCameraActionMap* map, f32 yaw)
  * @note Address: 0x8013A204
  * @note Size: 0x44
  */
-extern "C" void fn_8013A204(CCameraActionMap* map, f32 from, f32 to, f32 time)
+extern "C" void StartMapCameraTargetHeightInterpolation(CCameraActionMap* map, f32 from, f32 to, f32 time)
 {
 	if (0.0f != time) {
 		map->_E64 = &map->_E68;
@@ -1032,7 +1027,7 @@ extern "C" void fn_8013A204(CCameraActionMap* map, f32 from, f32 to, f32 time)
  * @note Address: 0x8013A248
  * @note Size: 0xA4
  */
-extern "C" Vec fn_8013A248(CCameraActionMap* map)
+extern "C" Vec GetMapCameraTargetWithHeightOffset(CCameraActionMap* map)
 {
 	Vec target = map->_44->GetCameraTarget();
 	if (map->_E64 != NULL) {
@@ -1059,7 +1054,7 @@ static inline void ResetCenter(CCameraActionMap* map)
 	CVec eye     = map->mEye;
 	map->_58     = PSVECDistance(&eye, center);
 	lbl_8065B330 = 1;
-	map->_11D8.mFlags &= ~0x700;
+	map->mStatus.mFlags &= ~0x700;
 	if (map->_F28 != NULL) {
 		map->_F28 = NULL;
 	}
@@ -1069,21 +1064,21 @@ static inline void ResetCenter(CCameraActionMap* map)
  * @note Address: 0x8013A2EC
  * @note Size: 0x26C
  */
-extern "C" void fn_8013A2EC(CCameraActionMap* map, u32 flags)
+extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags)
 {
 	u32 eyeMode = flags & 0x3E;
-	if (!map->_11D8.Check(eyeMode)) {
-		map->_11D8.mFlags &= ~0x3E;
-		map->_11D8.mFlags |= eyeMode;
+	if (!map->mStatus.Check(eyeMode)) {
+		map->mStatus.mFlags &= ~0x3E;
+		map->mStatus.mFlags |= eyeMode;
 		if (eyeMode != 4) {
-			map->_DB4 = NULL;
+			map->mTurnInterpolation = NULL;
 		}
 	}
 
 	u32 mode = flags & 0x70000;
-	if (!map->_11D8.Check(mode)) {
-		map->_11D8.mFlags &= ~0x70000;
-		map->_11D8.mFlags |= mode;
+	if (!map->mStatus.Check(mode)) {
+		map->mStatus.mFlags &= ~0x70000;
+		map->mStatus.mFlags |= mode;
 		if (mode == 0x20000) {
 			fn_8013A7A0(map);
 			if (lbl_8065B344 == 1) {
@@ -1111,7 +1106,7 @@ extern "C" void fn_8013A2EC(CCameraActionMap* map, u32 flags)
  * @note Address: 0x8013A558
  * @note Size: 0xB0
  */
-extern "C" f32 fn_8013A558(CCameraActionMap* map)
+extern "C" f32 GetMapCameraHorizontalTargetDistance(CCameraActionMap* map)
 {
 	CVec pos = map->_44->mMoveTranslate;
 	f32 y    = map->_44->GetCameraTarget().y;
@@ -1125,14 +1120,14 @@ extern "C" f32 fn_8013A558(CCameraActionMap* map)
  * @note Address: 0x8013A608
  * @note Size: 0x98
  */
-extern "C" void fn_8013A608(CCameraActionMap* map, u32 step)
+extern "C" void UpdateCameraEyeInterpolation(CCameraActionMap* map, u32 step)
 {
 	if (map->_F28 != NULL) {
 		if (!map->_F28->Update(step, FRAME_TIME)) {
 			map->SetEye(map->_F28->Get());
 		} else {
 			map->_F28 = NULL;
-			map->_11D8.mFlags &= ~0x3E;
+			map->mStatus.mFlags &= ~0x3E;
 		}
 	}
 }
@@ -1141,20 +1136,20 @@ extern "C" void fn_8013A608(CCameraActionMap* map, u32 step)
  * @note Address: 0x8013A6A0
  * @note Size: 0x70
  */
-extern "C" void fn_8013A6A0(CCameraActionMap* map, Vec to, f32 time)
+extern "C" void StartCameraEyeInterpolation(CCameraActionMap* map, Vec to, f32 time)
 {
 	map->_F28 = &map->_F2C;
 	map->_F28->Start(map->mEye, to, time);
 }
 
-extern "C" Vec lbl_805C0374; // 0x18 bytes, only the first vec is ever touched
+extern "C" Vec sPreviousMapOrbitAngle; // saved before updating the orbit
 extern "C" f32 lbl_8065B34C;
 
 /**
  * @note Address: 0x8013A710
  * @note Size: 0x90
  */
-extern "C" void fn_8013A710(CCameraActionMap* map)
+extern "C" void ResetMapCameraInterpolation(CCameraActionMap* map)
 {
 	map->_F88    = map->mEye;
 	map->_FA8    = map->mEye;
@@ -1162,8 +1157,8 @@ extern "C" void fn_8013A710(CCameraActionMap* map)
 	map->_FB8    = map->mAngle;
 	map->_F28    = NULL;
 	lbl_8065B34C = 0.0f;
-	map->_F98.y  = lbl_805C0374.y;
-	map->_11D8.mFlags &= ~0x3E;
+	map->_F98.y  = sPreviousMapOrbitAngle.y;
+	map->mStatus.mFlags &= ~0x3E;
 }
 
 // distance from pos to v, ignoring pos's height
@@ -1195,11 +1190,11 @@ extern "C" void fn_8013A7A0(CCameraActionMap* map)
  * @note Address: 0x8013A8D4
  * @note Size: 0x288
  */
-extern "C" void fn_8013A8D4(CCameraActionMap* map)
+extern "C" void SetMapCameraAnglesFromEyeAndInterest(CCameraActionMap* map)
 {
-	f32 dz    = map->mInterest.z - map->mEye.z;
 	f32 dx    = map->mInterest.x - map->mEye.x;
 	f32 dy    = map->mInterest.y - map->mEye.y;
+	f32 dz    = map->mInterest.z - map->mEye.z;
 	f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
 	Vec angle;
 	angle.x = dy < 0.0f ? HALF_PI - pitch : pitch - HALF_PI;
@@ -1400,12 +1395,12 @@ extern "C" s32 lbl_8065B340;
  * @note Address: 0x8013AB5C
  * @note Size: 0x668
  */
-extern "C" void fn_8013AB5C(CCameraActionMap* map, u32 step)
+extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step)
 {
-	if (map->_DB4 != NULL) {
-		if (!map->_DB4->Update(step, FRAME_TIME)) {
+	if (map->mTurnInterpolation != NULL) {
+		if (!map->mTurnInterpolation->Update(step, FRAME_TIME)) {
 			f32 radius = map->_88;
-			CVec position(map->_DB4->Get());
+			CVec position(map->mTurnInterpolation->Get());
 			CVec origin(map->_70);
 			origin.y   = 0.0f;
 			position   = origin + CVec((position - origin).Normalize()) * radius;
@@ -1425,21 +1420,18 @@ extern "C" void fn_8013AB5C(CCameraActionMap* map, u32 step)
 			if (__fpclassifyf(map->mAngle.x) == FP_NAN || __fpclassifyf(map->mAngle.y) == FP_NAN
 			    || __fpclassifyf(map->mAngle.z) == FP_NAN) {
 				OSPanic("ccameraactionmap2.cpp", 3980, "%s%s",
-				        fn_801911B4("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER OP(%d)HANG(%d(%d))"
-				                    "TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP TURN(0x%x)"
-				                    "POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
-				                    map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z, map->mDistance,
-				                    map->_11D8.mFlags, map->_11E0.mFlags, map->_EA0, lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y,
-				                    map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z, map->_F28, map->_DB4, map->_F88.x, map->_F88.y,
-				                    map->_F88.z, map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z,
-				                    lbl_8065B338),
+				        FormatToStaticBuffer(sMapCameraStateFormat, map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y,
+				                             map->mAngle.z, map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0,
+				                             lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y,
+				                             map->_F78.z, map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z,
+				                             map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
 				        "UpdateTurn");
 			}
 			map->_F98 = map->mAngle;
 			map->_EA0 = 1;
 		} else {
-			map->_11D8.mFlags &= ~4;
-			map->_DB4 = NULL;
+			map->mStatus.mFlags &= ~4;
+			map->mTurnInterpolation = NULL;
 		}
 	}
 }
@@ -1812,8 +1804,8 @@ extern "C" void fn_8013AB5C(CCameraActionMap* map, u32 step)
     bne      .L_8013B164
 .L_8013B07C:
     lfs      f0, 0xf6c(r31)
-    lis      r3, lbl_8020C9F8@ha
-    addi     r3, r3, lbl_8020C9F8@l
+    lis      r3, sMapCameraStateFormat@ha
+    addi     r3, r3, sMapCameraStateFormat@l
     stfd     f0, 0x8(r1)
     lfs      f0, 0xf70(r31)
     stfd     f0, 0x10(r1)
@@ -1859,13 +1851,13 @@ extern "C" void fn_8013AB5C(CCameraActionMap* map, u32 step)
     lwz      r9, 0xf28(r31)
     lwz      r10, 0xdb4(r31)
     crset    cr1eq
-    bl       fn_801911B4
-    lis      r7, lbl_8020C9E0@ha
-    lis      r5, lbl_8022E63C@ha
+    bl       FormatToStaticBuffer
+    lis      r7, sPathCcameraactionmap2Cpp@ha
+    lis      r5, sMapCameraUpdateTurnLabel@ha
     mr       r6, r3
     li       r4, 0xf8c
-    addi     r3, r7, lbl_8020C9E0@l
-    addi     r7, r5, lbl_8022E63C@l
+    addi     r3, r7, sPathCcameraactionmap2Cpp@l
+    addi     r7, r5, sMapCameraUpdateTurnLabel@l
     li       r5, lbl_8065E9C8@sda21
     crclr    cr1eq
     bl       OSPanic
@@ -1899,13 +1891,13 @@ extern "C" void fn_8013AB5C(CCameraActionMap* map, u32 step)
 */
 
 extern "C" s32 lbl_8065B334;
-extern "C" void fn_8013A2EC(CCameraActionMap* map, u32 flags);
+extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
 
 /**
  * @note Address: 0x8013B1C4
  * @note Size: 0x204
  */
-extern "C" void fn_8013B1C4(CCameraActionMap* map, s32 unused)
+extern "C" void StartMapCameraTurnInterpolation(CCameraActionMap* map, s32 unused)
 {
 	CVec to(map->_984);
 	CVec a(map->_97C->_14);
@@ -1916,23 +1908,23 @@ extern "C" void fn_8013B1C4(CCameraActionMap* map, s32 unused)
 
 	Vec from = map->mEye;
 	from.y   = 0.0f;
-	if (map->_DB4 == NULL) {
-		map->_DB4 = &map->_DB8;
-		map->_DB4->Start(from, to, 0.7f);
+	if (map->mTurnInterpolation == NULL) {
+		map->mTurnInterpolation = &map->_DB8;
+		map->mTurnInterpolation->Start(from, to, 0.7f);
 		map->_DB0 = 0;
-		lbl_8025C400.GetPlayer()->ResetCameraValue();
+		gGame.GetPlayer()->ResetCameraValue();
 		lbl_8065B334 = map->_974->_0C;
-		fn_8013A2EC(map, 0x20004);
+		SetMapCameraModeFlags(map, 0x20004);
 	}
 }
 
 static inline f32 MapAreaHeight(s32 index)
 {
-	CamAreaInfo area = CamAreaInfo(&fn_8006F3CC()[index]);
+	CamAreaInfo area = CamAreaInfo(&GetStageCameraAreaRecords()[index]);
 	if (area._04->_2C == -1) {
-		return 0.23f * CamInfo(&lbl_805A054C._2C[lbl_805A054C._2034[index]._00->_34]).GetEye().y;
+		return 0.23f * CamInfo(&gCameraAreaState._2C[gCameraAreaState._2034[index]._00->_34]).GetEye().y;
 	}
-	return CamInfo(&lbl_805A054C._2C[lbl_805A054C._2034[index]._00->_34]).GetEye().y;
+	return CamInfo(&gCameraAreaState._2C[gCameraAreaState._2034[index]._00->_34]).GetEye().y;
 }
 
 /**
@@ -1941,7 +1933,7 @@ static inline f32 MapAreaHeight(s32 index)
  */
 extern "C" void fn_8013B3C8(CCameraActionMap* map)
 {
-	CamAreaInfo area = CamAreaInfo(&lbl_805A054C._24[map->_DA8]);
+	CamAreaInfo area = CamAreaInfo(&gCameraAreaState._24[map->_DA8]);
 	if (map->_DA8 >= 0) {
 		if (!(area._04->_2E & 1)) {
 			map->_E58 = 0;
@@ -1955,7 +1947,7 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
 		}
 		if (map->_E58 == 0) {
 			f32 height = MapAreaHeight(map->_DA8);
-			Vec target = (lbl_8025C400.GetPlayer())->GetCameraTarget();
+			Vec target = (gGame.GetPlayer())->GetCameraTarget();
 			map->_E30  = &map->_E14;
 			map->_E30->Start(map->mEye.y - target.y - map->_E98, height, 1.0f);
 			if (map->_E5C == 0) {
@@ -1979,7 +1971,7 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
 	} else if (map->_DA8 == -1) {
 		if (map->_E58 == 0 || (map->_E58 == 1 && map->_E5C == 0)) {
 			map->_E58  = 0;
-			Vec target = (lbl_8025C400.GetPlayer())->GetCameraTarget();
+			Vec target = (gGame.GetPlayer())->GetCameraTarget();
 			map->_E30  = &map->_E14;
 			map->_E30->Start(map->mEye.y - target.y - map->_E98, map->_E54, 1.0f);
 		}
@@ -1998,9 +1990,9 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
     stw      r31, 0xec(r1)
     stw      r30, 0xe8(r1)
     mr       r31, r3
-    lis      r3, lbl_805A054C@ha
+    lis      r3, gCameraAreaState@ha
     lwz      r0, 0xda8(r31)
-    addi     r4, r3, lbl_805A054C@l
+    addi     r4, r3, gCameraAreaState@l
     lis      r3, __vt__11CamAreaInfo@ha
     lwz      r5, 0x24(r4)
     mulli    r4, r0, 0x34
@@ -2043,7 +2035,7 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
     cmpwi    r0, 0x0
     bne      .L_8013B74C
     lwz      r30, 0xda8(r31)
-    bl       fn_8006F3CC
+    bl       GetStageCameraAreaRecords
     mulli    r4, r30, 0x34
     lis      r5, __vt__11CamAreaInfo@ha
     addic.   r0, r1, 0x30
@@ -2062,18 +2054,18 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
     bne      .L_8013B5D0
     mulli    r0, r30, 0x1c
     lis      r4, 0x4330
-    lis      r5, lbl_805A054C@ha
+    lis      r5, gCameraAreaState@ha
     stw      r4, 0xd8(r1)
     lis      r3, lbl_805C0190@ha
     lfd      f6, lbl_8065E9E8@sda21(r0)
-    addi     r8, r5, lbl_805A054C@l
+    addi     r8, r5, gCameraAreaState@l
     addi     r3, r3, lbl_805C0190@l
     add      r5, r8, r0
     lwz      r7, 0x4(r3)
     lwz      r6, 0x2034(r5)
-    lis      r5, lbl_8022E548@ha
+    lis      r5, __vt__7CamInfo@ha
     lwz      r10, 0x2c(r8)
-    addi     r9, r5, lbl_8022E548@l
+    addi     r9, r5, __vt__7CamInfo@l
     lwz      r5, 0x34(r6)
     addic.   r0, r1, 0x38
     lwz      r8, 0x0(r3)
@@ -2130,18 +2122,18 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
 .L_8013B5D0:
     mulli    r0, r30, 0x1c
     lis      r4, 0x4330
-    lis      r5, lbl_805A054C@ha
+    lis      r5, gCameraAreaState@ha
     stw      r4, 0xd8(r1)
     lis      r3, lbl_805C0190@ha
     lfd      f4, lbl_8065E9E8@sda21(r0)
-    addi     r8, r5, lbl_805A054C@l
+    addi     r8, r5, gCameraAreaState@l
     addi     r3, r3, lbl_805C0190@l
     add      r5, r8, r0
     lwz      r7, 0x4(r3)
     lwz      r6, 0x2034(r5)
-    lis      r5, lbl_8022E548@ha
+    lis      r5, __vt__7CamInfo@ha
     lwz      r10, 0x2c(r8)
-    addi     r9, r5, lbl_8022E548@l
+    addi     r9, r5, __vt__7CamInfo@l
     lwz      r5, 0x34(r6)
     addic.   r0, r1, 0x40
     lwz      r8, 0x0(r3)
@@ -2193,9 +2185,9 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
     addi     r0, r3, __vt__11CamAreaInfo@l
     stw      r0, 0x28(r1)
 .L_8013B6CC:
-    lis      r4, lbl_8025C400@ha
+    lis      r4, gGame@ha
     addi     r3, r1, 0xc4
-    addi     r4, r4, lbl_8025C400@l
+    addi     r4, r4, gGame@l
     addis    r4, r4, 0x1
     lwz      r4, -0x6944(r4)
     lwz      r12, 0x34(r4)
@@ -2231,7 +2223,7 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
     cmpwi    r0, 0x1
     bne      .L_8013BACC
     lwz      r30, 0xda8(r31)
-    bl       fn_8006F3CC
+    bl       GetStageCameraAreaRecords
     mulli    r4, r30, 0x34
     lis      r5, __vt__11CamAreaInfo@ha
     addic.   r0, r1, 0x10
@@ -2250,18 +2242,18 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
     bne      .L_8013B8A4
     mulli    r0, r30, 0x1c
     lis      r4, 0x4330
-    lis      r5, lbl_805A054C@ha
+    lis      r5, gCameraAreaState@ha
     stw      r4, 0xd8(r1)
     lis      r3, lbl_805C0190@ha
     lfd      f6, lbl_8065E9E8@sda21(r0)
-    addi     r8, r5, lbl_805A054C@l
+    addi     r8, r5, gCameraAreaState@l
     addi     r3, r3, lbl_805C0190@l
     add      r5, r8, r0
     lwz      r7, 0x4(r3)
     lwz      r6, 0x2034(r5)
-    lis      r5, lbl_8022E548@ha
+    lis      r5, __vt__7CamInfo@ha
     lwz      r10, 0x2c(r8)
-    addi     r9, r5, lbl_8022E548@l
+    addi     r9, r5, __vt__7CamInfo@l
     lwz      r5, 0x34(r6)
     addic.   r0, r1, 0x18
     lwz      r8, 0x0(r3)
@@ -2318,18 +2310,18 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
 .L_8013B8A4:
     mulli    r0, r30, 0x1c
     lis      r4, 0x4330
-    lis      r5, lbl_805A054C@ha
+    lis      r5, gCameraAreaState@ha
     stw      r4, 0xd8(r1)
     lis      r3, lbl_805C0190@ha
     lfd      f4, lbl_8065E9E8@sda21(r0)
-    addi     r8, r5, lbl_805A054C@l
+    addi     r8, r5, gCameraAreaState@l
     addi     r3, r3, lbl_805C0190@l
     add      r5, r8, r0
     lwz      r7, 0x4(r3)
     lwz      r6, 0x2034(r5)
-    lis      r5, lbl_8022E548@ha
+    lis      r5, __vt__7CamInfo@ha
     lwz      r10, 0x2c(r8)
-    addi     r9, r5, lbl_8022E548@l
+    addi     r9, r5, __vt__7CamInfo@l
     lwz      r5, 0x34(r6)
     addic.   r0, r1, 0x20
     lwz      r8, 0x0(r3)
@@ -2417,8 +2409,8 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
     bne      .L_8013BA84
 .L_8013BA20:
     li       r0, 0x0
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     stw      r0, 0xe58(r31)
     addis    r4, r3, 0x1
     addi     r3, r1, 0xb8
@@ -2477,7 +2469,7 @@ extern "C" void fn_8013B3C8(CCameraActionMap* map)
     blr
 */
 
-extern "C" s32 fn_8013D804(CCameraActionMap* map, const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
+extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
 
 /**
  * @note Address: 0x8013BB00
@@ -2489,15 +2481,15 @@ extern "C" s32 fn_8013BB00(CCameraActionMap* map)
 	CVec eye    = map->mEye;
 	eye.y       = target.y;
 
-	map->_DA0 = fn_8013D804(map, eye, target, map->_9A0, 1);
+	map->_DA0 = CollectMapCameraAreaIntersections(map, eye, target, map->_9A0, 1);
 
-	s32 eyeArea = fn_80137810(&lbl_805A054C, eye);
-	if (CamAreaInfo(&lbl_805A054C._24[eyeArea]).Is_2C_1()) {
+	s32 eyeArea = FindEnabledCameraAreaContainingPoint(&gCameraAreaState, eye);
+	if (CamAreaInfo(&gCameraAreaState._24[eyeArea]).Is_2C_1()) {
 		eyeArea = -1;
 	}
 
-	s32 targetArea = fn_80137810(&lbl_805A054C, target);
-	if (CamAreaInfo(&lbl_805A054C._24[targetArea]).Is_2C_1()) {
+	s32 targetArea = FindEnabledCameraAreaContainingPoint(&gCameraAreaState, target);
+	if (CamAreaInfo(&gCameraAreaState._24[targetArea]).Is_2C_1()) {
 		targetArea = -1;
 	}
 
@@ -2547,10 +2539,10 @@ extern "C" s32 fn_8013BB00(CCameraActionMap* map)
     stw      r0, 0x38(r1)
     stw      r9, 0x3c(r1)
     stfs     f0, 0x34(r1)
-    bl       fn_8013D804
+    bl       CollectMapCameraAreaIntersections
     stw      r3, 0xda0(r29)
-    lis      r3, lbl_805A054C@ha
-    addi     r3, r3, lbl_805A054C@l
+    lis      r3, gCameraAreaState@ha
+    addi     r3, r3, gCameraAreaState@l
     addi     r4, r1, 0x24
     lwz      r6, 0x30(r1)
     lwz      r5, 0x34(r1)
@@ -2558,10 +2550,10 @@ extern "C" s32 fn_8013BB00(CCameraActionMap* map)
     stw      r6, 0x24(r1)
     stw      r5, 0x28(r1)
     stw      r0, 0x2c(r1)
-    bl       fn_80137810
+    bl       FindEnabledCameraAreaContainingPoint
     mr       r30, r3
-    lis      r4, lbl_805A054C@ha
-    addi     r31, r4, lbl_805A054C@l
+    lis      r4, gCameraAreaState@ha
+    addi     r31, r4, gCameraAreaState@l
     lis      r3, __vt__11CamAreaInfo@ha
     mulli    r0, r30, 0x34
     lwz      r5, 0x24(r31)
@@ -2582,15 +2574,15 @@ extern "C" s32 fn_8013BB00(CCameraActionMap* map)
     li       r30, -0x1
 .L_8013BBF8:
     lwz      r4, 0x40(r1)
-    lis      r3, lbl_805A054C@ha
+    lis      r3, gCameraAreaState@ha
     lwz      r5, 0x44(r1)
-    addi     r3, r3, lbl_805A054C@l
+    addi     r3, r3, gCameraAreaState@l
     lwz      r0, 0x48(r1)
     stw      r4, 0x18(r1)
     addi     r4, r1, 0x18
     stw      r5, 0x1c(r1)
     stw      r0, 0x20(r1)
-    bl       fn_80137810
+    bl       FindEnabledCameraAreaContainingPoint
     mulli    r0, r3, 0x34
     lwz      r6, 0x24(r31)
     lis      r4, __vt__11CamAreaInfo@ha
@@ -2692,7 +2684,7 @@ extern "C" void fn_8013BD28(CCameraActionMap* map, Vec& out, s32 mode)
 			x = pos.x;
 			z = pos.z;
 		}
-		CMotionControlCamera* camera = &lbl_8025C400.mMotionControlCamera;
+		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		CVec eye                     = camera->mCamera.mEye;
 		CVec interest                = camera->mCamera.mInterest;
 		f32 angle                    = HALF_PI + (f32)atan2(interest.x - eye.x, interest.z - eye.z);
@@ -2858,9 +2850,9 @@ extern "C" void fn_8013BD28(CCameraActionMap* map, Vec& out, s32 mode)
     lfs      f29, 0x10(r1)
     stw      r0, 0x14(r1)
 .L_8013BF60:
-    lis      r4, lbl_8025C400@ha
+    lis      r4, gGame@ha
     lis      r3, __vt__4CVec@ha
-    addi     r4, r4, lbl_8025C400@l
+    addi     r4, r4, gGame@l
     addis    r7, r4, 0xe
     addi     r5, r3, __vt__4CVec@l
     lwz      r6, 0x5dcc(r7)
@@ -2944,7 +2936,7 @@ extern "C" void fn_8013BD28(CCameraActionMap* map, Vec& out, s32 mode)
  * @note Address: 0x8013C09C
  * @note Size: 0x138
  */
-extern "C" BOOL fn_8013C09C(CCameraActionMap* map, CVec& out)
+extern "C" BOOL GetMapCameraTargetOffsetPosition(CCameraActionMap* map, CVec& out)
 {
 	XObj* target = map->_44;
 	if (target != NULL && (target->mStatus.mFlags & 1)) {
@@ -2966,7 +2958,7 @@ extern "C" BOOL fn_8013C09C(CCameraActionMap* map, CVec& out)
  */
 extern "C" void vf28__16CCameraActionMapFv()
 {
-	fn_80136A54(&lbl_805A054C, 1);
+	DrawMapCameraAreaDebug3D(&gCameraAreaState, 1);
 }
 
 /**
@@ -2975,36 +2967,40 @@ extern "C" void vf28__16CCameraActionMapFv()
  */
 extern "C" void vf24__16CCameraActionMapFv(CCameraActionMap* map)
 {
-	CGame* game = &lbl_8025C400;
-	fn_80194FD4(game, -1, "\\B000000A0AREA(%3d,---)(%3d)\n", 408.0f, 298.0f, 0.0f, 12.0f, 12.0f, lbl_805A054C._0C, lbl_805A054C._04);
-	fn_80194FD4(game, -1, "\\B000000A0ACMAP2\n", 408.0f, 310.0f, 0.0f, 12.0f, 12.0f);
-	fn_80194FD4(game, -1, "\\B00000080CAMSTAT\t   :%8X\nCAMSTATPRE :%8X\n", 360.0f, 322.0f, 0.0f, 12.0f, 12.0f, map->_11D8.mFlags,
-	            map->_11E0.mFlags);
-	fn_80194FD4(game, -1, "\\B00000080CHR_InsideCll(%3d,%3d,%3d)\n", 324.0f, 346.0f, 0.0f, 12.0f, 12.0f, map->_EA8[0], map->_EA8[1],
-	            map->_EA8[2]);
-	fn_80194FD4(game, -1, "\\B00000080CAM_InsideCll(%3d,%3d,%3d)\n", 324.0f, 358.0f, 0.0f, 12.0f, 12.0f, map->_4F0, map->_4F4, map->_4F8);
+	CGame* game = &gGame;
+	DrawGsStrokeTextFormat(game, -1, "\\B000000A0AREA(%3d,---)(%3d)\n", 408.0f, 298.0f, 0.0f, 12.0f, 12.0f, gCameraAreaState._0C,
+	                       gCameraAreaState._04);
+	DrawGsStrokeTextFormat(game, -1, "\\B000000A0ACMAP2\n", 408.0f, 310.0f, 0.0f, 12.0f, 12.0f);
+	DrawGsStrokeTextFormat(game, -1, "\\B00000080CAMSTAT\t   :%8X\nCAMSTATPRE :%8X\n", 360.0f, 322.0f, 0.0f, 12.0f, 12.0f,
+	                       map->mStatus.mFlags, map->mPreviousStatus.mFlags);
+	DrawGsStrokeTextFormat(game, -1, "\\B00000080CHR_InsideCll(%3d,%3d,%3d)\n", 324.0f, 346.0f, 0.0f, 12.0f, 12.0f, map->_EA8[0],
+	                       map->_EA8[1], map->_EA8[2]);
+	DrawGsStrokeTextFormat(game, -1, "\\B00000080CAM_InsideCll(%3d,%3d,%3d)\n", 324.0f, 358.0f, 0.0f, 12.0f, 12.0f, map->_4F0, map->_4F4,
+	                       map->_4F8);
 	if (map->_4EC > 0) {
-		fn_80194FD4(game, -1, "\\B00000080CamHitCll(%3d,%3d,%3d)\n", 324.0f, 370.0f, 0.0f, 12.0f, 12.0f, map->_4F0, map->_4F4, map->_4F8);
+		DrawGsStrokeTextFormat(game, -1, "\\B00000080CamHitCll(%3d,%3d,%3d)\n", 324.0f, 370.0f, 0.0f, 12.0f, 12.0f, map->_4F0, map->_4F4,
+		                       map->_4F8);
 	}
 	if (map->_974 != NULL) {
-		fn_80194FD4(game, -1, "\\B00000080INTRSCT(%3d-%3d)\n", 324.0f, 382.0f, 0.0f, 12.0f, 12.0f, map->_974->_0C, map->_974->_10);
+		DrawGsStrokeTextFormat(game, -1, "\\B00000080INTRSCT(%3d-%3d)\n", 324.0f, 382.0f, 0.0f, 12.0f, 12.0f, map->_974->_0C,
+		                       map->_974->_10);
 	}
 }
 /*
     stwu     r1, -0x20(r1)
     mflr     r0
     lfs      f4, lbl_8065EA18@sda21(r0)
-    lis      r4, lbl_805A054C@ha
+    lis      r4, gCameraAreaState@ha
     stw      r0, 0x24(r1)
-    addi     r4, r4, lbl_805A054C@l
+    addi     r4, r4, gCameraAreaState@l
     lis      r6, lbl_8020C8C0@ha
-    lis      r5, lbl_8025C400@ha
+    lis      r5, gGame@ha
     stw      r31, 0x1c(r1)
     fmr      f5, f4
     addi     r31, r6, lbl_8020C8C0@l
     lfs      f1, lbl_8065EA10@sda21(r0)
     stw      r30, 0x18(r1)
-    addi     r30, r5, lbl_8025C400@l
+    addi     r30, r5, gGame@l
     lfs      f2, lbl_8065EA14@sda21(r0)
     stw      r29, 0x14(r1)
     mr       r29, r3
@@ -3015,22 +3011,22 @@ extern "C" void vf24__16CCameraActionMapFv(CCameraActionMap* map)
     lwz      r7, 0x4(r4)
     li       r4, -0x1
     crset    cr1eq
-    bl       fn_80194FD4
+    bl       DrawGsStrokeTextFormat
     lfs      f4, lbl_8065EA18@sda21(r0)
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lfs      f1, lbl_8065EA10@sda21(r0)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     fmr      f5, f4
     lfs      f2, lbl_8065EA1C@sda21(r0)
     lfs      f3, lbl_8065E994@sda21(r0)
     addi     r5, r31, 0x278
     li       r4, -0x1
     crset    cr1eq
-    bl       fn_80194FD4
+    bl       DrawGsStrokeTextFormat
     lfs      f4, lbl_8065EA18@sda21(r0)
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lfs      f1, lbl_8065EA20@sda21(r0)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     fmr      f5, f4
     lfs      f2, lbl_8065EA24@sda21(r0)
     lfs      f3, lbl_8065E994@sda21(r0)
@@ -3039,11 +3035,11 @@ extern "C" void vf24__16CCameraActionMapFv(CCameraActionMap* map)
     li       r4, -0x1
     lwz      r7, 0x11e0(r29)
     crset    cr1eq
-    bl       fn_80194FD4
+    bl       DrawGsStrokeTextFormat
     lfs      f4, lbl_8065EA18@sda21(r0)
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lfs      f1, lbl_8065EA28@sda21(r0)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     fmr      f5, f4
     lfs      f2, lbl_8065EA2C@sda21(r0)
     lfs      f3, lbl_8065E994@sda21(r0)
@@ -3053,11 +3049,11 @@ extern "C" void vf24__16CCameraActionMapFv(CCameraActionMap* map)
     lwz      r7, 0xeac(r29)
     lwz      r8, 0xeb0(r29)
     crset    cr1eq
-    bl       fn_80194FD4
+    bl       DrawGsStrokeTextFormat
     lfs      f4, lbl_8065EA18@sda21(r0)
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     lfs      f1, lbl_8065EA28@sda21(r0)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     fmr      f5, f4
     lfs      f2, lbl_8065EA30@sda21(r0)
     lfs      f3, lbl_8065E994@sda21(r0)
@@ -3067,7 +3063,7 @@ extern "C" void vf24__16CCameraActionMapFv(CCameraActionMap* map)
     lwz      r7, 0x4f4(r29)
     lwz      r8, 0x4f8(r29)
     crset    cr1eq
-    bl       fn_80194FD4
+    bl       DrawGsStrokeTextFormat
     lwz      r0, 0x4ec(r29)
     cmpwi    r0, 0x0
     ble      .L_8013C374
@@ -3083,7 +3079,7 @@ extern "C" void vf24__16CCameraActionMapFv(CCameraActionMap* map)
     lwz      r7, 0x4f4(r29)
     lwz      r8, 0x4f8(r29)
     crset    cr1eq
-    bl       fn_80194FD4
+    bl       DrawGsStrokeTextFormat
 .L_8013C374:
     lwz      r7, 0x974(r29)
     cmplwi   r7, 0x0
@@ -3099,7 +3095,7 @@ extern "C" void vf24__16CCameraActionMapFv(CCameraActionMap* map)
     lwz      r6, 0xc(r7)
     lwz      r7, 0x10(r7)
     crset    cr1eq
-    bl       fn_80194FD4
+    bl       DrawGsStrokeTextFormat
 .L_8013C3B0:
     lwz      r0, 0x24(r1)
     lwz      r31, 0x1c(r1)
@@ -3156,7 +3152,7 @@ extern "C" BOOL fn_8013C3CC(CCameraActionMap* map, f32 yaw, f32 time, f32 unused
 // eases the fov to the area's fov times one of four zoom steps. PreviousUpdate inlines it too
 inline void SetFovStep(CCameraActionMap* map, s32 index, f32 time)
 {
-	f32 fov = lbl_805A054C._10;
+	f32 fov = gCameraAreaState.mBaseFov;
 	switch (index) {
 	case 0:
 	default:
@@ -3172,38 +3168,38 @@ inline void SetFovStep(CCameraActionMap* map, s32 index, f32 time)
 		map->_C8.Start(map->mFov, 2.0f * fov, time);
 		break;
 	}
-	lbl_805A054C._14 = index;
-	lbl_805A054C._18 = index;
+	gCameraAreaState._14 = index;
+	gCameraAreaState._18 = index;
 }
 
 /**
  * @note Address: 0x8013C510
  * @note Size: 0x104
  */
-extern "C" void fn_8013C510(CCameraActionMap* map, s32 index, f32 time)
+extern "C" void SetMapCameraFovStep(CCameraActionMap* map, s32 index, f32 time)
 {
 	SetFovStep(map, index, time);
 }
 
-extern "C" void fn_8013AB5C(CCameraActionMap* map, u32 step);
+extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step);
 
 /**
  * @note Address: 0x8013C614
  * @note Size: 0x524
  */
-extern "C" void fn_8013C614(CCameraActionMap* map, u32 step)
+extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
 {
-	if (lbl_8025C400.mStatus.mFlags & 0xC00) {
+	if (gGame.mStatus.mFlags & 0xC00) {
 		map->_DAC = 0;
 	} else {
 		map->_DAC = 1;
 	}
 	map->_EA0 = 0;
 	CPad pad(0);
-	u32 left    = (lbl_8025C400.mStatus.mFlags & 0x80000000) ? 1 : 0x400000;
-	u32 right   = (lbl_8025C400.mStatus.mFlags & 0x80000000) ? 2 : 0x800000;
-	u32 zoomIn  = (lbl_8025C400.mStatus.mFlags & 0x80000000) ? 8 : 0x100000;
-	u32 zoomOut = (lbl_8025C400.mStatus.mFlags & 0x80000000) ? 4 : 0x200000;
+	u32 left    = (gGame.mStatus.mFlags & 0x80000000) ? 1 : 0x400000;
+	u32 right   = (gGame.mStatus.mFlags & 0x80000000) ? 2 : 0x800000;
+	u32 zoomIn  = (gGame.mStatus.mFlags & 0x80000000) ? 8 : 0x100000;
+	u32 zoomOut = (gGame.mStatus.mFlags & 0x80000000) ? 4 : 0x200000;
 	f32 turn    = 0.0f;
 	if ((pad.mPad->mButton & right) && map->_DAC) {
 		turn = 1.0f;
@@ -3212,20 +3208,19 @@ extern "C" void fn_8013C614(CCameraActionMap* map, u32 step)
 	}
 	if (turn != 0.0f) {
 		map->_EA0 = 1;
-		fn_8013A2EC(map, 0x20008);
-	} else if (map->_11D8.mFlags & 8) {
-		map->_11D8.mFlags &= ~8;
+		SetMapCameraModeFlags(map, 0x20008);
+	} else if (map->mStatus.mFlags & 8) {
+		map->mStatus.mFlags &= ~8;
 	}
-	if (map->_44 != NULL && map->_44->mJObj != NULL && (pad.mPad->mTrigger & 0x40) && map->_DAC
-	    && lbl_8025C400.GetPlayer()->mHang.mState != 3) {
+	if (map->_44 != NULL && map->_44->mJObj != NULL && (pad.mPad->mTrigger & 0x40) && map->_DAC && gGame.GetPlayer()->mHang.mState != 3) {
 		if (SetMapYaw(map, map->_44->mMoveRotate.mTarget.y, 10.0f)) {
-			lbl_8025C400.GetPlayer()->ResetCameraValue();
-			fn_8013A2EC(map, 0x20002);
+			gGame.GetPlayer()->ResetCameraValue();
+			SetMapCameraModeFlags(map, 0x20002);
 		}
 	}
-	fn_8013AB5C(map, step);
-	s32 mode     = lbl_805A054C._14;
-	s32 previous = lbl_805A054C._18;
+	UpdateMapCameraTurnInterpolation(map, step);
+	s32 previous = gCameraAreaState._18;
+	s32 mode     = gCameraAreaState._14;
 	if ((pad.mPad->mTrigger & zoomIn) && map->_DAC) {
 		if (mode > 1) {
 			mode--;
@@ -3245,11 +3240,11 @@ extern "C" void fn_8013C614(CCameraActionMap* map, u32 step)
 /*
     stwu     r1, -0x30(r1)
     mflr     r0
-    lis      r5, lbl_8025C400@ha
+    lis      r5, gGame@ha
     li       r6, 0xc00
     stw      r0, 0x34(r1)
     stmw     r27, 0x1c(r1)
-    addi     r27, r5, lbl_8025C400@l
+    addi     r27, r5, gGame@l
     mr       r28, r3
     li       r5, 0x0
     mr       r29, r4
@@ -3345,7 +3340,7 @@ extern "C" void fn_8013C614(CCameraActionMap* map, u32 step)
     stw      r0, 0xea0(r28)
     mr       r3, r28
     addi     r4, r4, 0x8
-    bl       fn_8013A2EC
+    bl       SetMapCameraModeFlags
     b        .L_8013C798
 .L_8013C780:
     lwz      r0, 0x11d8(r28)
@@ -3368,8 +3363,8 @@ extern "C" void fn_8013C614(CCameraActionMap* map, u32 step)
     lwz      r0, 0xdac(r28)
     cmpwi    r0, 0x0
     beq      .L_8013C988
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     addis    r5, r3, 0x1
     lwz      r3, -0x6944(r5)
     lwz      r0, 0xac4(r3)
@@ -3498,14 +3493,14 @@ extern "C" void fn_8013C614(CCameraActionMap* map, u32 step)
     lis      r4, 0x2
     mr       r3, r28
     addi     r4, r4, 0x2
-    bl       fn_8013A2EC
+    bl       SetMapCameraModeFlags
 .L_8013C988:
     mr       r3, r28
     mr       r4, r29
-    bl       fn_8013AB5C
+    bl       UpdateMapCameraTurnInterpolation
     lwz      r3, 0x8(r1)
-    lis      r4, lbl_805A054C@ha
-    addi     r27, r4, lbl_805A054C@l
+    lis      r4, gCameraAreaState@ha
+    addi     r27, r4, gCameraAreaState@l
     lwz      r5, 0x14(r3)
     lwz      r3, 0x14(r27)
     and.     r0, r5, r31
@@ -3531,9 +3526,9 @@ extern "C" void fn_8013C614(CCameraActionMap* map, u32 step)
 .L_8013C9F4:
     cmpw     r31, r4
     beq      .L_8013CACC
-    lis      r3, lbl_805A054C@ha
+    lis      r3, gCameraAreaState@ha
     cmpwi    r31, 0x2
-    addi     r3, r3, lbl_805A054C@l
+    addi     r3, r3, gCameraAreaState@l
     lfs      f2, 0x10(r3)
     beq      .L_8013CA78
     bge      .L_8013CA24
@@ -3620,535 +3615,110 @@ extern "C" void fn_8013C614(CCameraActionMap* map, u32 step)
     blr
 */
 
+static inline void RefreshOrbitPosition(CCameraActionMap* map, u32 step, bool manual)
+{
+	f32 yaw    = HALF_PI + map->mAngle.y;
+	f32 radius = FlatDistance(map->_F68, map->mInterest);
+	f32 x      = __fmadds(radius * (f32)cos(yaw), (f32)cos(0.0f), map->mInterest.x);
+	f32 z      = __fmadds(radius * -(f32)sin(yaw), (f32)cos(0.0f), map->mInterest.z);
+	// The manual turn uses the frame delta left in f31 by the retail caller.
+	f32 height = manual ? 0.1f * step : map->_F68.y;
+	map->_F88  = CVec(x, height, z);
+	map->_F68  = CVec(x, height, z);
+}
+
+// The original rounds each axis increment before adding it to the angle.
+static inline void AdvanceOrbitAngles(const CVec& angle, u32 step, f32 pitchStep, f32 yawStep, f32& pitch, f32& heading)
+{
+	pitch   = angle.x + step * pitchStep;
+	heading = angle.y + step * yawStep;
+}
+
 /**
  * @note Address: 0x8013CB38
  * @note Size: 0x7A4
  */
-// fn_8013CB38
-/*
-    stwu     r1, -0x150(r1)
-    mflr     r0
-    stw      r0, 0x154(r1)
-    stfd     f31, 0x140(r1)
-    psq_st   f31, 0x148(r1), 0, qr0
-    stfd     f30, 0x130(r1)
-    psq_st   f30, 0x138(r1), 0, qr0
-    stfd     f29, 0x120(r1)
-    psq_st   f29, 0x128(r1), 0, qr0
-    stfd     f28, 0x110(r1)
-    psq_st   f28, 0x118(r1), 0, qr0
-    stfd     f27, 0x100(r1)
-    psq_st   f27, 0x108(r1), 0, qr0
-    stfd     f26, 0xf0(r1)
-    psq_st   f26, 0xf8(r1), 0, qr0
-    stw      r31, 0xec(r1)
-    stw      r30, 0xe8(r1)
-    mr       r30, r3
-    mr       r31, r4
-    addi     r3, r1, 0x8
-    li       r4, 0x0
-    bl       fn_8019E3C8
-    lis      r4, lbl_8025C400@ha
-    lis      r3, 0x8000
-    addi     r5, r4, lbl_8025C400@l
-    li       r0, 0x0
-    lwz      r4, 0x1b10(r5)
-    lwz      r5, 0x1b14(r5)
-    and      r4, r4, r0
-    and      r6, r5, r3
-    xor      r3, r6, r0
-    xor      r0, r4, r0
-    or.      r0, r3, r0
-    beq      .L_8013CBC8
-    li       r5, 0x1
-    b        .L_8013CBCC
-.L_8013CBC8:
-    lis      r5, 0x40
-.L_8013CBCC:
-    li       r0, 0x0
-    xor      r3, r6, r0
-    xor      r0, r4, r0
-    or.      r0, r3, r0
-    beq      .L_8013CBE8
-    li       r6, 0x2
-    b        .L_8013CBEC
-.L_8013CBE8:
-    lis      r6, 0x80
-.L_8013CBEC:
-    lfs      f0, 0xf98(r30)
-    lis      r3, lbl_805C0374@ha
-    stfsu    f0, lbl_805C0374@l(r3)
-    lfs      f0, 0xf9c(r30)
-    stfs     f0, 0x4(r3)
-    lfs      f0, 0xfa0(r30)
-    stfs     f0, 0x8(r3)
-    lfs      f0, 0xf68(r30)
-    stfs     f0, 0xf88(r30)
-    lfs      f0, 0xf6c(r30)
-    stfs     f0, 0xf8c(r30)
-    lfs      f0, 0xf70(r30)
-    stfs     f0, 0xf90(r30)
-    lwz      r0, lbl_8065B348@sda21(r0)
-    cmpwi    r0, 0x0
-    bne      .L_8013CC44
-    lfs      f0, 0x20(r30)
-    stfs     f0, 0xf98(r30)
-    lfs      f0, 0x24(r30)
-    stfs     f0, 0xf9c(r30)
-    lfs      f0, 0x28(r30)
-    stfs     f0, 0xfa0(r30)
-.L_8013CC44:
-    lwz      r3, 0x8(r1)
-    lis      r4, __vt__4CVec@ha
-    addi     r0, r4, __vt__4CVec@l
-    lfs      f2, lbl_8065E994@sda21(r0)
-    lwz      r3, 0x4(r3)
-    stw      r0, 0xd0(r1)
-    and.     r0, r3, r6
-    beq      .L_8013CC78
-    lwz      r0, 0xdac(r30)
-    cmpwi    r0, 0x0
-    beq      .L_8013CC78
-    lfs      f2, lbl_8065E9A8@sda21(r0)
-    b        .L_8013CC90
-.L_8013CC78:
-    and.     r0, r3, r5
-    beq      .L_8013CC90
-    lwz      r0, 0xdac(r30)
-    cmpwi    r0, 0x0
-    beq      .L_8013CC90
-    lfs      f2, lbl_8065EA00@sda21(r0)
-.L_8013CC90:
-    lfs      f1, lbl_8065E994@sda21(r0)
-    fcmpu    cr0, f2, f1
-    bne      .L_8013CCA0
-    b        .L_8013CED0
-.L_8013CCA0:
-    lis      r0, 0x4330
-    stfs     f2, lbl_8065B34C@sda21(r0)
-    lfs      f0, lbl_8065EA60@sda21(r0)
-    stw      r31, 0xe4(r1)
-    lfd      f4, lbl_8065EA58@sda21(r0)
-    fmuls    f2, f0, f2
-    stw      r0, 0xe0(r1)
-    lfs      f7, 0xf98(r30)
-    lfd      f0, 0xe0(r1)
-    stw      r31, 0xdc(r1)
-    fsubs    f0, f0, f4
-    lfs      f6, 0xf9c(r30)
-    stw      r0, 0xd8(r1)
-    lfs      f5, 0xfa0(r30)
-    lfd      f3, 0xd8(r1)
-    fmuls    f1, f0, f1
-    lfs      f0, lbl_8065EA50@sda21(r0)
-    fsubs    f3, f3, f4
-    stfs     f7, 0xc4(r1)
-    fadds    f1, f7, f1
-    stfs     f6, 0xc8(r1)
-    fmuls    f2, f3, f2
-    fcmpo    cr0, f1, f0
-    stfs     f5, 0xcc(r1)
-    fadds    f2, f6, f2
-    ble      .L_8013CD0C
-    fmr      f1, f0
-.L_8013CD0C:
-    lfs      f0, lbl_8065EA54@sda21(r0)
-    fcmpo    cr0, f1, f0
-    bge      .L_8013CD1C
-    fmr      f1, f0
-.L_8013CD1C:
-    lwz      r12, 0x3c(r30)
-    mr       r3, r30
-    lfs      f3, 0xcc(r1)
-    lwz      r12, 0x34(r12)
-    mtctr    r12
-    bctrl
-    lfs      f0, 0xf98(r30)
-    addi     r3, r1, 0x34
-    stfs     f0, 0xfb8(r30)
-    lfs      f0, 0xf9c(r30)
-    stfs     f0, 0xfbc(r30)
-    lfs      f0, 0xfa0(r30)
-    stfs     f0, 0xfc0(r30)
-    lfs      f0, 0x20(r30)
-    stfs     f0, 0xf98(r30)
-    lfs      f0, 0x24(r30)
-    stfs     f0, 0xf9c(r30)
-    lfs      f0, 0x28(r30)
-    stfs     f0, 0xfa0(r30)
-    lwz      r4, 0x44(r30)
-    lwz      r12, 0x34(r4)
-    lwz      r12, 0xec(r12)
-    mtctr    r12
-    bctrl
-    lwz      r3, 0xe64(r30)
-    lwz      r5, 0x34(r1)
-    lwz      r4, 0x38(r1)
-    cmplwi   r3, 0x0
-    lwz      r0, 0x3c(r1)
-    stw      r5, 0x28(r1)
-    stw      r4, 0x2c(r1)
-    stw      r0, 0x30(r1)
-    beq      .L_8013CDBC
-    lwz      r12, 0x0(r3)
-    lwz      r12, 0x18(r12)
-    mtctr    r12
-    bctrl
-    lfs      f0, 0x2c(r1)
-    fadds    f0, f0, f1
-    stfs     f0, 0x2c(r1)
-.L_8013CDBC:
-    lwz      r6, 0x28(r1)
-    mr       r3, r30
-    lwz      r5, 0x2c(r1)
-    addi     r4, r1, 0xac
-    lwz      r0, 0x30(r1)
-    stw      r6, 0xac(r1)
-    stw      r5, 0xb0(r1)
-    stw      r0, 0xb4(r1)
-    lwz      r12, 0x3c(r30)
-    lwz      r12, 0x3c(r12)
-    mtctr    r12
-    bctrl
-    lfs      f1, lbl_8065E98C@sda21(r0)
-    lis      r3, __vt__4CVec@ha
-    lfs      f0, 0x24(r30)
-    addi     r0, r3, __vt__4CVec@l
-    lfs      f3, 0xf70(r30)
-    addi     r3, r1, 0x9c
-    lfs      f2, 0x14(r30)
-    fadds    f27, f1, f0
-    lfs      f0, 0xf68(r30)
-    addi     r4, r30, 0x10
-    stw      r0, 0xa8(r1)
-    stfs     f0, 0x9c(r1)
-    stfs     f2, 0xa0(r1)
-    stfs     f3, 0xa4(r1)
-    bl       PSVECDistance
-    lis      r3, __vt__4CVec@ha
-    fmr      f29, f1
-    addi     r0, r3, __vt__4CVec@l
-    lfs      f1, lbl_8065E994@sda21(r0)
-    stw      r0, 0xa8(r1)
-    bl       cos
-    frsp     f30, f1
-    fmr      f1, f27
-    bl       cos
-    frsp     f2, f1
-    lfs      f0, 0x10(r30)
-    lfs      f1, lbl_8065E994@sda21(r0)
-    fmuls    f2, f29, f2
-    fmadds   f28, f2, f30, f0
-    bl       cos
-    frsp     f30, f1
-    fmr      f1, f27
-    bl       sin
-    frsp     f2, f1
-    lfs      f1, 0x18(r30)
-    lis      r3, __vt__4CVec@ha
-    frsp     f0, f31
-    addi     r0, r3, __vt__4CVec@l
-    stfs     f28, 0xf88(r30)
-    fneg     f2, f2
-    stw      r0, 0x98(r1)
-    stw      r0, 0x88(r1)
-    fmuls    f2, f29, f2
-    stfs     f0, 0xf8c(r30)
-    fmadds   f1, f2, f30, f1
-    stfs     f28, 0x8c(r1)
-    stfs     f31, 0x90(r1)
-    stfs     f1, 0xf90(r30)
-    stfs     f28, 0xf68(r30)
-    stfs     f0, 0xf6c(r30)
-    stfs     f1, 0x94(r1)
-    stw      r0, 0x98(r1)
-    stfs     f28, 0x7c(r1)
-    stfs     f31, 0x80(r1)
-    stfs     f1, 0x84(r1)
-    stfs     f1, 0xf70(r30)
-    stw      r0, 0x88(r1)
-.L_8013CED0:
-    lwz      r0, 0x11d8(r30)
-    lis      r3, __vt__4CVec@ha
-    addi     r3, r3, __vt__4CVec@l
-    rlwinm.  r0, r0, 0, 30, 30
-    stw      r3, 0xd0(r1)
-    beq      .L_8013D288
-    lfs      f0, 0xf68(r30)
-    stfs     f0, 0xf88(r30)
-    lfs      f0, 0xf6c(r30)
-    stfs     f0, 0xf8c(r30)
-    lfs      f0, 0xf70(r30)
-    stfs     f0, 0xf90(r30)
-    lwz      r0, lbl_8065B348@sda21(r0)
-    cmpwi    r0, 0x0
-    bne      .L_8013CF24
-    lfs      f0, 0x20(r30)
-    stfs     f0, 0xf98(r30)
-    lfs      f0, 0x24(r30)
-    stfs     f0, 0xf9c(r30)
-    lfs      f0, 0x28(r30)
-    stfs     f0, 0xfa0(r30)
-.L_8013CF24:
-    lfs      f2, 0xf9c(r30)
-    lfs      f1, lbl_8065E990@sda21(r0)
-    lfs      f0, lbl_8065E994@sda21(r0)
-    b        .L_8013CF38
-.L_8013CF34:
-    fadds    f2, f2, f1
-.L_8013CF38:
-    fcmpo    cr0, f2, f0
-    blt      .L_8013CF34
-    lfs      f0, lbl_8065E990@sda21(r0)
-    b        .L_8013CF4C
-.L_8013CF48:
-    fsubs    f2, f2, f0
-.L_8013CF4C:
-    fcmpo    cr0, f2, f0
-    cror     eq, gt, eq
-    beq      .L_8013CF48
-    fmr      f31, f2
-    lfs      f3, 0xc0(r30)
-    lfs      f1, lbl_8065E990@sda21(r0)
-    lfs      f0, lbl_8065E994@sda21(r0)
-    b        .L_8013CF70
-.L_8013CF6C:
-    fadds    f3, f3, f1
-.L_8013CF70:
-    fcmpo    cr0, f3, f0
-    blt      .L_8013CF6C
-    lfs      f0, lbl_8065E990@sda21(r0)
-    b        .L_8013CF84
-.L_8013CF80:
-    fsubs    f3, f3, f0
-.L_8013CF84:
-    fcmpo    cr0, f3, f0
-    cror     eq, gt, eq
-    beq      .L_8013CF80
-    fsubs    f1, f3, f2
-    lfs      f0, lbl_8065E994@sda21(r0)
-    fmr      f30, f3
-    fcmpo    cr0, f1, f0
-    bge      .L_8013CFA8
-    fneg     f1, f1
-.L_8013CFA8:
-    lfs      f0, lbl_8065E994@sda21(r0)
-    fcmpo    cr0, f1, f0
-    ble      .L_8013CFF0
-    lfs      f0, lbl_8065E990@sda21(r0)
-    fcmpo    cr0, f1, f0
-    cror     eq, gt, eq
-    bne      .L_8013CFC8
-    fsubs    f1, f1, f0
-.L_8013CFC8:
-    lfs      f0, lbl_8065E998@sda21(r0)
-    fcmpo    cr0, f1, f0
-    ble      .L_8013CFF0
-    fcmpo    cr0, f3, f2
-    bge      .L_8013CFE8
-    lfs      f0, lbl_8065E990@sda21(r0)
-    fadds    f30, f30, f0
-    b        .L_8013CFF0
-.L_8013CFE8:
-    lfs      f0, lbl_8065E990@sda21(r0)
-    fsubs    f30, f30, f0
-.L_8013CFF0:
-    fcmpo    cr0, f2, f30
-    bge      .L_8013D030
-    lis      r0, 0x4330
-    lfs      f2, lbl_8065E9A8@sda21(r0)
-    stw      r31, 0xe4(r1)
-    lfd      f1, lbl_8065EA58@sda21(r0)
-    stw      r0, 0xe0(r1)
-    lfd      f0, 0xe0(r1)
-    stfs     f2, lbl_8065B34C@sda21(r0)
-    fsubs    f0, f0, f1
-    lfs      f1, 0xbc(r30)
-    fmadds   f31, f1, f0, f31
-    fcmpo    cr0, f31, f30
-    ble      .L_8013D068
-    fmr      f31, f30
-    b        .L_8013D068
-.L_8013D030:
-    ble      .L_8013D068
-    lis      r0, 0x4330
-    stw      r31, 0xe4(r1)
-    lfd      f1, lbl_8065EA58@sda21(r0)
-    stw      r0, 0xe0(r1)
-    lfs      f2, 0xbc(r30)
-    lfd      f0, 0xe0(r1)
-    fsubs    f0, f0, f1
-    fnmsubs  f31, f2, f0, f31
-    fcmpo    cr0, f31, f30
-    bge      .L_8013D060
-    fmr      f31, f30
-.L_8013D060:
-    lfs      f0, lbl_8065EA00@sda21(r0)
-    stfs     f0, lbl_8065B34C@sda21(r0)
-.L_8013D068:
-    fsubs    f1, f30, f31
-    lfs      f0, lbl_8065E994@sda21(r0)
-    fcmpo    cr0, f1, f0
-    bge      .L_8013D07C
-    fneg     f1, f1
-.L_8013D07C:
-    lfs      f0, lbl_8065EA4C@sda21(r0)
-    fcmpo    cr0, f1, f0
-    bge      .L_8013D08C
-    fmr      f31, f30
-.L_8013D08C:
-    lwz      r5, 0xf98(r30)
-    mr       r3, r30
-    lwz      r0, 0xf9c(r30)
-    addi     r4, r1, 0xb8
-    li       r31, 0x1
-    stw      r5, 0xb8(r1)
-    stw      r0, 0xbc(r1)
-    lwz      r0, 0xfa0(r30)
-    stw      r0, 0xc0(r1)
-    stfs     f31, 0xbc(r1)
-    lwz      r12, 0x3c(r30)
-    lwz      r12, 0x40(r12)
-    mtctr    r12
-    bctrl
-    lfs      f0, 0xf98(r30)
-    addi     r3, r1, 0x1c
-    stfs     f0, 0xfb8(r30)
-    lfs      f0, 0xf9c(r30)
-    stfs     f0, 0xfbc(r30)
-    lfs      f0, 0xfa0(r30)
-    stfs     f0, 0xfc0(r30)
-    lfs      f0, 0x20(r30)
-    stfs     f0, 0xf98(r30)
-    lfs      f0, 0x24(r30)
-    stfs     f0, 0xf9c(r30)
-    lfs      f0, 0x28(r30)
-    stfs     f0, 0xfa0(r30)
-    lwz      r4, 0x44(r30)
-    lwz      r12, 0x34(r4)
-    lwz      r12, 0xec(r12)
-    mtctr    r12
-    bctrl
-    lwz      r3, 0xe64(r30)
-    lwz      r5, 0x1c(r1)
-    lwz      r4, 0x20(r1)
-    cmplwi   r3, 0x0
-    lwz      r0, 0x24(r1)
-    stw      r5, 0x10(r1)
-    stw      r4, 0x14(r1)
-    stw      r0, 0x18(r1)
-    beq      .L_8013D14C
-    lwz      r12, 0x0(r3)
-    lwz      r12, 0x18(r12)
-    mtctr    r12
-    bctrl
-    lfs      f0, 0x14(r1)
-    fadds    f0, f0, f1
-    stfs     f0, 0x14(r1)
-.L_8013D14C:
-    lwz      r6, 0x10(r1)
-    mr       r3, r30
-    lwz      r5, 0x14(r1)
-    addi     r4, r1, 0x70
-    lwz      r0, 0x18(r1)
-    stw      r6, 0x70(r1)
-    stw      r5, 0x74(r1)
-    stw      r0, 0x78(r1)
-    lwz      r12, 0x3c(r30)
-    lwz      r12, 0x3c(r12)
-    mtctr    r12
-    bctrl
-    lfs      f1, lbl_8065E98C@sda21(r0)
-    lis      r3, __vt__4CVec@ha
-    lfs      f0, 0x24(r30)
-    addi     r0, r3, __vt__4CVec@l
-    lfs      f3, 0xf70(r30)
-    addi     r3, r1, 0x60
-    lfs      f2, 0x14(r30)
-    fadds    f26, f1, f0
-    lfs      f0, 0xf68(r30)
-    addi     r4, r30, 0x10
-    stw      r0, 0x6c(r1)
-    stfs     f0, 0x60(r1)
-    stfs     f2, 0x64(r1)
-    stfs     f3, 0x68(r1)
-    bl       PSVECDistance
-    lis      r3, __vt__4CVec@ha
-    fmr      f29, f1
-    addi     r0, r3, __vt__4CVec@l
-    lfs      f1, lbl_8065E994@sda21(r0)
-    stw      r0, 0x6c(r1)
-    bl       cos
-    frsp     f28, f1
-    fmr      f1, f26
-    bl       cos
-    frsp     f2, f1
-    lfs      f0, 0x10(r30)
-    lfs      f1, lbl_8065E994@sda21(r0)
-    fmuls    f2, f29, f2
-    fmadds   f27, f2, f28, f0
-    bl       cos
-    frsp     f28, f1
-    fmr      f1, f26
-    bl       sin
-    frsp     f1, f1
-    lfs      f2, 0xf6c(r30)
-    lfs      f0, 0x18(r30)
-    lis      r3, __vt__4CVec@ha
-    addi     r3, r3, __vt__4CVec@l
-    fcmpu    cr0, f31, f30
-    fneg     f1, f1
-    stfs     f27, 0xf88(r30)
-    li       r0, 0x1
-    stw      r3, 0x5c(r1)
-    fmuls    f1, f29, f1
-    stw      r3, 0x4c(r1)
-    fmadds   f0, f1, f28, f0
-    stfs     f2, 0xf8c(r30)
-    stfs     f27, 0x50(r1)
-    stfs     f0, 0xf90(r30)
-    stfs     f27, 0xf68(r30)
-    stfs     f2, 0xf6c(r30)
-    stfs     f0, 0xf70(r30)
-    stfs     f2, 0x54(r1)
-    stfs     f0, 0x58(r1)
-    stw      r3, 0x5c(r1)
-    stfs     f27, 0x40(r1)
-    stfs     f2, 0x44(r1)
-    stfs     f0, 0x48(r1)
-    stw      r3, 0x4c(r1)
-    stw      r0, 0xea0(r30)
-    bne      .L_8013D274
-    li       r31, 0x0
-.L_8013D274:
-    cmpwi    r31, 0x0
-    bne      .L_8013D288
-    lwz      r0, 0x11d8(r30)
-    rlwinm   r0, r0, 0, 31, 29
-    stw      r0, 0x11d8(r30)
-.L_8013D288:
-    lis      r3, __vt__4CPad@ha
-    addi     r0, r3, __vt__4CPad@l
-    stw      r0, 0xc(r1)
-    psq_l    f31, 0x148(r1), 0, qr0
-    lfd      f31, 0x140(r1)
-    psq_l    f30, 0x138(r1), 0, qr0
-    lfd      f30, 0x130(r1)
-    psq_l    f29, 0x128(r1), 0, qr0
-    lfd      f29, 0x120(r1)
-    psq_l    f28, 0x118(r1), 0, qr0
-    lfd      f28, 0x110(r1)
-    psq_l    f27, 0x108(r1), 0, qr0
-    lfd      f27, 0x100(r1)
-    psq_l    f26, 0xf8(r1), 0, qr0
-    lfd      f26, 0xf0(r1)
-    lwz      r31, 0xec(r1)
-    lwz      r0, 0x154(r1)
-    lwz      r30, 0xe8(r1)
-    mtlr     r0
-    addi     r1, r1, 0x150
-    blr
-*/
+extern "C" void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
+{
+	CPad pad(0);
+	u32 left               = (gGame.mStatus.mFlags & 0x80000000) ? 1 : 0x400000;
+	u32 right              = (gGame.mStatus.mFlags & 0x80000000) ? 2 : 0x800000;
+	sPreviousMapOrbitAngle = map->_F98;
+	map->_F88              = map->_F68;
+	if (!lbl_8065B348)
+		map->_F98 = map->mAngle;
+
+	{
+		CVec angle;
+		f32 turn = 0.0f;
+		if ((pad.mPad->mButton & right) && map->_DAC)
+			turn = 1.0f;
+		else if ((pad.mPad->mButton & left) && map->_DAC)
+			turn = -1.0f;
+		if (turn != 0.0f) {
+			lbl_8065B34C = turn;
+			angle        = map->_F98;
+			f32 pitch, heading;
+			AdvanceOrbitAngles(angle, step, 0.0f, (3.5f * DEG2RAD) * turn, pitch, heading);
+			if (pitch > 89.1f * DEG2RAD)
+				pitch = 89.1f * DEG2RAD;
+			if (pitch < -89.1f * DEG2RAD)
+				pitch = -89.1f * DEG2RAD;
+			map->SetAngle(pitch, heading, angle.z);
+			map->_FB8 = map->_F98;
+			map->_F98 = map->mAngle;
+			map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
+			RefreshOrbitPosition(map, step, true);
+		}
+	}
+
+	if (map->mStatus.mFlags & 2) {
+		map->_F88 = map->_F68;
+		if (!lbl_8065B348)
+			map->_F98 = map->mAngle;
+		f32 yaw    = WrapAngle(map->_F98.y);
+		f32 target = WrapAngle(map->_C0);
+		f32 diff   = target - yaw;
+		if (diff < 0.0f)
+			diff = -diff;
+		if (diff > 0.0f) {
+			if (diff >= TWO_PI)
+				diff -= TWO_PI;
+			if (diff > PI)
+				target = target < yaw ? target + TWO_PI : target - TWO_PI;
+		}
+		if (yaw < target) {
+			lbl_8065B34C = 1.0f;
+			yaw          = __fmadds(map->_BC, step, yaw);
+			if (yaw > target)
+				yaw = target;
+		} else if (yaw > target) {
+			yaw = __fnmsubs(map->_BC, step, yaw);
+			if (yaw < target)
+				yaw = target;
+			lbl_8065B34C = -1.0f;
+		}
+		diff = target - yaw;
+		if (diff < 0.0f)
+			diff = -diff;
+		if (diff < 0.001f)
+			yaw = target;
+		BOOL turning = TRUE;
+		Vec angle    = map->_F98;
+		angle.y      = yaw;
+		map->SetAngle(angle);
+		map->_FB8 = map->_F98;
+		map->_F98 = map->mAngle;
+		map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
+		RefreshOrbitPosition(map, step, false);
+		map->_EA0 = 1;
+
+		if (yaw == target)
+			turning = FALSE;
+		if (!turning)
+			map->mStatus.mFlags &= ~2;
+	}
+}
 
 // picks the two corners of the current entry's side, ordered by which side chibi robo is on
 extern "C" void C_VECCrossProduct(Vec* a, Vec* b, Vec* axb);
@@ -4164,8 +3734,8 @@ extern "C" BOOL fn_8013D2DC(CCameraActionMap* map)
 		s32 group          = entry->_0C;
 		s32 side           = entry->_10;
 		CVec dir           = entry->_14;
-		CamAreaRecord* rec = &lbl_805A054C._1C[group];
-		CVec toPlayer      = lbl_8025C400.GetPlayer()->mMoveTranslate;
+		CamAreaRecord* rec = &gCameraAreaState._1C[group];
+		CVec toPlayer      = gGame.GetPlayer()->mMoveTranslate;
 		toPlayer.y         = 0.0f;
 		Vec eye            = map->mEye;
 		eye.y              = 0.0f;
@@ -4223,12 +3793,12 @@ extern "C" BOOL fn_8013D2DC(CCameraActionMap* map)
     lis      r3, __vt__4CVec@ha
     lwz      r31, 0x10(r9)
     addi     r8, r3, __vt__4CVec@l
-    lis      r3, lbl_8025C400@ha
-    lis      r5, lbl_805A054C@ha
+    lis      r3, gGame@ha
+    lis      r5, gCameraAreaState@ha
     stw      r8, 0x40(r1)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addis    r4, r3, 0x1
-    addi     r6, r5, lbl_805A054C@l
+    addi     r6, r5, gCameraAreaState@l
     lfs      f0, 0x14(r9)
     addi     r3, r1, 0x24
     lwz      r7, -0x6944(r4)
@@ -4369,7 +3939,7 @@ extern "C" BOOL fn_8013D2DC(CCameraActionMap* map)
  * @note Address: 0x8013D52C
  * @note Size: 0xD0
  */
-extern "C" s32 fn_8013D52C(CCameraActionMap* map, CamMapEntry* entry)
+extern "C" s32 CountMapCameraAdjacentSideIntersections(CCameraActionMap* map, CamMapEntry* entry)
 {
 	// the two neighbours of each of the 4 sides, wraps around
 	s32 sides[4][2] = {
@@ -4378,15 +3948,15 @@ extern "C" s32 fn_8013D52C(CCameraActionMap* map, CamMapEntry* entry)
 		{ 1, 3 },
 		{ 2, 0 },
 	};
-	s32 num   = map->_970;
+	s32 num   = map->mIntersectionCount;
 	s32 group = entry->_0C;
 	s32 side  = entry->_10;
 	s32 count = 0;
 	if (num > 0) {
 		for (s32 i = 0; i < num; i++) {
-			if (map->_570[i]._0C == group) {
+			if (map->mIntersectionEntries[i]._0C == group) {
 				for (s32 j = 0; j < 2; j++) {
-					if (map->_570[i]._10 == sides[side][j]) {
+					if (map->mIntersectionEntries[i]._10 == sides[side][j]) {
 						count++;
 					}
 				}
@@ -4400,12 +3970,12 @@ extern "C" s32 fn_8013D52C(CCameraActionMap* map, CamMapEntry* entry)
  * @note Address: 0x8013D5FC
  * @note Size: 0x38
  */
-extern "C" s32 fn_8013D5FC(CCameraActionMap* map, s32 value)
+extern "C" s32 CountMapCameraEntriesInGroup(CCameraActionMap* map, s32 value)
 {
 	s32 count = 0;
-	if (map->_970 > 0) {
-		for (s32 i = 0; i < map->_970; i++) {
-			if (map->_570[i]._0C == value) {
+	if (map->mIntersectionCount > 0) {
+		for (s32 i = 0; i < map->mIntersectionCount; i++) {
+			if (map->mIntersectionEntries[i]._0C == value) {
 				count++;
 			}
 		}
@@ -4417,16 +3987,16 @@ extern "C" s32 fn_8013D5FC(CCameraActionMap* map, s32 value)
  * @note Address: 0x8013D634
  * @note Size: 0xDC
  */
-// fn_8013D634
+// FindNearestMapCameraEntry
 // index of the entry nearest to pos, -1 if there's no choice to make
-extern "C" s32 fn_8013D634(CCameraActionMap* map, const Vec& pos)
+extern "C" s32 FindNearestMapCameraEntry(CCameraActionMap* map, const Vec& pos)
 {
-	if (map->_970 > 1) {
+	if (map->mIntersectionCount > 1) {
 		CVec p      = pos;
 		s32 nearest = -1;
 		f32 minDist = 10000.0f;
-		for (s32 i = 0; i < map->_970; i++) {
-			f32 dist = PSVECDistance(&p, &map->_570[i]._00);
+		for (s32 i = 0; i < map->mIntersectionCount; i++) {
+			f32 dist = PSVECDistance(&p, &map->mIntersectionEntries[i]._00);
 			if (dist < minDist) {
 				minDist = dist;
 				nearest = i;
@@ -4441,21 +4011,21 @@ extern "C" s32 fn_8013D634(CCameraActionMap* map, const Vec& pos)
  * @note Address: 0x8013D710
  * @note Size: 0xF4
  */
-// fn_8013D710
-extern "C" CamMapEntry* fn_8013D710(CCameraActionMap* map, const Vec& pos)
+// GetNearestMapCameraEntry
+extern "C" CamMapEntry* GetNearestMapCameraEntry(CCameraActionMap* map, const Vec& pos)
 {
-	s32 idx = fn_8013D634(map, pos);
+	s32 idx = FindNearestMapCameraEntry(map, pos);
 	if (idx == -1) {
 		return NULL;
 	}
-	return &map->_570[idx];
+	return &map->mIntersectionEntries[idx];
 }
 
 /**
  * @note Address: 0x8013D804
  * @note Size: 0x468
  */
-extern "C" s32 fn_8013D804(CCameraActionMap* map, const Vec& from, const Vec& to, CamMapEntry* out, s32 type)
+extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Vec& from, const Vec& to, CamMapEntry* out, s32 type)
 {
 	if (out == NULL) {
 		return -1;
@@ -4464,12 +4034,12 @@ extern "C" s32 fn_8013D804(CCameraActionMap* map, const Vec& from, const Vec& to
 	CamAreaRecord* record;
 	s32 numRecords;
 	if (type == 0) {
-		record     = lbl_805A054C._1C;
-		numRecords = lbl_805A054C._20;
+		record     = gCameraAreaState._1C;
+		numRecords = gCameraAreaState._20;
 	}
 	if (type == 1) {
-		record     = lbl_805A054C._24;
-		numRecords = lbl_805A054C._28;
+		record     = gCameraAreaState._24;
+		numRecords = gCameraAreaState._28;
 	}
 	CamMapEntry* entry = out;
 	s32 count          = 0;
@@ -4488,32 +4058,35 @@ extern "C" s32 fn_8013D804(CCameraActionMap* map, const Vec& from, const Vec& to
 			record++;
 			continue;
 		}
-		s32* corner = record->_04[0];
+		const s32(*corner)[2] = record->_04;
 		for (s32 side = 0; side < 4; side++) {
 			Vec a, b;
-			a.x = corner[0] / 100.0f;
+			a.x = (*corner)[0] / 100.0f;
 			a.y = 0.0f;
-			a.z = corner[1] / 100.0f;
-			corner += 2;
+			a.z = (*corner)[1] / 100.0f;
+			++corner;
 			if (side == 3) {
-				corner = record->_04[0];
+				corner = record->_04;
 			}
-			b.x       = corner[0] / 100.0f;
+			b.x       = (*corner)[0] / 100.0f;
 			b.y       = 0.0f;
-			b.z       = corner[1] / 100.0f;
+			b.z       = (*corner)[1] / 100.0f;
 			Vec end   = to;
 			Vec start = from;
 			Vec hit;
-			if (fn_8018E640(&a, &b, &end, &start, &hit, 1)) {
+			if (IntersectLinesXZ(&a, &b, &end, &start, &hit, 1)) {
 				Vec down = { 0.0f, -1.0f, 0.0f };
-				Vec edge;
-				edge.x = a.x - b.x;
-				edge.z = a.z - b.z;
-				edge.y = 0.0f;
 				f32 nx, ny, nz;
 				{
-					Vec downCopy = { down.x, down.y, down.z };
 					CVec normal;
+					Vec edge;
+					edge.x = a.x - b.x;
+					edge.z = a.z - b.z;
+					edge.y = 0.0f;
+					Vec downCopy;
+					downCopy.x = down.x;
+					downCopy.y = down.y;
+					downCopy.z = down.z;
 					C_VECCrossProduct(&downCopy, &edge, &normal);
 					PSVECNormalize(&normal, &normal);
 					nx = normal.x;
@@ -4559,15 +4132,15 @@ extern "C" s32 fn_8013D804(CCameraActionMap* map, const Vec& from, const Vec& to
     bl       memset
     cmpwi    r17, 0x0
     bne      .L_8013D870
-    lis      r3, lbl_805A054C@ha
-    addi     r3, r3, lbl_805A054C@l
+    lis      r3, gCameraAreaState@ha
+    addi     r3, r3, gCameraAreaState@l
     lwz      r23, 0x1c(r3)
     lwz      r22, 0x20(r3)
 .L_8013D870:
     cmpwi    r17, 0x1
     bne      .L_8013D888
-    lis      r3, lbl_805A054C@ha
-    addi     r3, r3, lbl_805A054C@l
+    lis      r3, gCameraAreaState@ha
+    addi     r3, r3, gCameraAreaState@l
     lwz      r23, 0x24(r3)
     lwz      r22, 0x28(r3)
 .L_8013D888:
@@ -4763,12 +4336,12 @@ extern "C" s32 fn_8013D804(CCameraActionMap* map, const Vec& from, const Vec& to
     stw      r30, 0x6c(r1)
     stw      r31, 0x70(r1)
     stfs     f0, 0x88(r1)
-    bl       fn_8018E640
+    bl       IntersectLinesXZ
     cmpwi    r3, 0x0
     beq      .L_8013DC20
-    lis      r3, lbl_8020C990@ha
+    lis      r3, sMapCameraEdgeNormalDown@ha
     lfs      f0, lbl_8065E994@sda21(r0)
-    addi     r4, r3, lbl_8020C990@l
+    addi     r4, r3, sMapCameraEdgeNormalDown@l
     lis      r3, __vt__4CVec@ha
     lwz      r5, 0x0(r4)
     addi     r0, r3, __vt__4CVec@l
@@ -4858,12 +4431,12 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
 	CamAreaRecord* record;
 	s32 numRecords;
 	if (type == 0) {
-		record     = lbl_805A054C._1C;
-		numRecords = lbl_805A054C._20;
+		record     = gCameraAreaState._1C;
+		numRecords = gCameraAreaState._20;
 	}
 	if (type == 1) {
-		record     = lbl_805A054C._24;
-		numRecords = lbl_805A054C._28;
+		record     = gCameraAreaState._24;
+		numRecords = gCameraAreaState._28;
 	}
 	CamMapEntry* entry = out;
 	s32 count          = 0;
@@ -4879,7 +4452,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
 			record++;
 			continue;
 		}
-		if (map->_DB4 != NULL && i == lbl_8065B334) {
+		if (map->mTurnInterpolation != NULL && i == lbl_8065B334) {
 			record++;
 			continue;
 		}
@@ -4899,13 +4472,13 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
 			Vec end   = to;
 			Vec start = from;
 			Vec hit;
-			s32 intersects = fn_8018E640(&a, &b, &end, &start, &hit, 1);
+			s32 intersects = IntersectLinesXZ(&a, &b, &end, &start, &hit, 1);
 			if (intersects && (__fpclassifyf(hit.x) == FP_NAN || __fpclassifyf(hit.y) == FP_NAN || __fpclassifyf(hit.z) == FP_NAN)) {
-				OSPanic(
-				    "ccameraactionmap2.cpp", 2183, "%s%s",
-				    fn_801911B4("CCameraActionMap ... GetCrossPoint\np1(%f, %f, %f) p2(%f, %f, %f)\nvs(%f, %f, %f) ve(%f, %f, %f)\n(1)\n",
-				                a.x, a.y, a.z, b.x, b.y, b.z, end.x, end.y, end.z, start.x, start.y, start.z),
-				    "CalcIntersectVec");
+				OSPanic("ccameraactionmap2.cpp", 2183, "%s%s",
+				        FormatToStaticBuffer(
+				            "CCameraActionMap ... GetCrossPoint\np1(%f, %f, %f) p2(%f, %f, %f)\nvs(%f, %f, %f) ve(%f, %f, %f)\n(1)\n", a.x,
+				            a.y, a.z, b.x, b.y, b.z, end.x, end.y, end.z, start.x, start.y, start.z),
+				        "CalcIntersectVec");
 			}
 			if (intersects) {
 				Vec down = { 0.0f, -1.0f, 0.0f };
@@ -4965,15 +4538,15 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     bl       memset
     cmpwi    r17, 0x0
     bne      .L_8013DCE4
-    lis      r3, lbl_805A054C@ha
-    addi     r3, r3, lbl_805A054C@l
+    lis      r3, gCameraAreaState@ha
+    addi     r3, r3, gCameraAreaState@l
     lwz      r22, 0x1c(r3)
     lwz      r14, 0x20(r3)
 .L_8013DCE4:
     cmpwi    r17, 0x1
     bne      .L_8013DCFC
-    lis      r3, lbl_805A054C@ha
-    addi     r3, r3, lbl_805A054C@l
+    lis      r3, gCameraAreaState@ha
+    addi     r3, r3, gCameraAreaState@l
     lwz      r22, 0x24(r3)
     lwz      r14, 0x28(r3)
 .L_8013DCFC:
@@ -5162,7 +4735,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     stw      r29, 0x94(r1)
     stw      r30, 0x98(r1)
     stfs     f0, 0xb0(r1)
-    bl       fn_8018E640
+    bl       IntersectLinesXZ
     mr.      r31, r3
     beq      .L_8013E14C
     lfs      f0, 0x84(r1)
@@ -5280,10 +4853,10 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     lfs      f7, 0x9c(r1)
     lfs      f8, 0xa0(r1)
     crset    cr1eq
-    bl       fn_801911B4
-    lis      r4, lbl_8022E628@ha
+    bl       FormatToStaticBuffer
+    lis      r4, sMapCameraIntersectVecLabel@ha
     mr       r6, r3
-    addi     r7, r4, lbl_8022E628@l
+    addi     r7, r4, sMapCameraIntersectVecLabel@l
     addi     r3, r23, 0x120
     li       r4, 0x887
     li       r5, lbl_8065E9C8@sda21
@@ -5372,7 +4945,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
  * @note Address: 0x8013E26C
  * @note Size: 0x17CC
  */
-// fn_8013E26C
+// ResolveMapCameraEyeCollision
 /*
     stwu     r1, -0x370(r1)
     mflr     r0
@@ -5436,13 +5009,13 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     stw      r0, 0x2b8(r1)
     b        .L_8013FA14
 .L_8013E35C:
-    lis      r3, lbl_805A054C@ha
-    lis      r4, lbl_805C03B8@ha
-    addi     r5, r3, lbl_805A054C@l
+    lis      r3, gCameraAreaState@ha
+    lis      r4, gCameraCollisionPolygons@ha
+    addi     r5, r3, gCameraAreaState@l
     li       r29, 0x0
     lwz      r14, 0x1c(r5)
     lis      r3, __vt__11CamAreaInfo@ha
-    addi     r31, r4, lbl_805C03B8@l
+    addi     r31, r4, gCameraCollisionPolygons@l
     lwz      r30, 0x20(r5)
     mr       r17, r14
     addi     r15, r3, __vt__11CamAreaInfo@l
@@ -5612,14 +5185,14 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     fdivs    f0, f0, f2
     stfs     f0, 0x2c(r16)
     stfs     f1, 0x28(r16)
-    bl       fn_8018EA50
+    bl       IsPointInsideQuadXZ
     or       r18, r18, r3
     mr       r4, r16
     addi     r3, r1, 0x29c
     addi     r5, r16, 0xc
     addi     r6, r16, 0x18
     addi     r7, r16, 0x24
-    bl       fn_8018EA50
+    bl       IsPointInsideQuadXZ
     or       r28, r28, r3
 .L_8013E614:
     addi     r16, r16, 0x3c
@@ -5727,7 +5300,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r5, r20, 0xc
     addi     r6, r20, 0x18
     addi     r7, r20, 0x24
-    bl       fn_8018EA50
+    bl       IsPointInsideQuadXZ
     cmpwi    r3, 0x0
     beq      .L_8013E924
     lis      r3, __vt__4CVec@ha
@@ -5746,7 +5319,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r6, r1, 0x26c
     add      r19, r20, r0
     mr       r5, r19
-    bl       fn_8018E824
+    bl       GetOutwardPerpendicularToEdge
     addi     r3, r1, 0x26c
     stfs     f30, 0x270(r1)
     mr       r4, r3
@@ -5767,7 +5340,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r4, r1, 0x160
     addi     r7, r1, 0x25c
     li       r8, 0x0
-    bl       fn_8018E640
+    bl       IntersectLinesXZ
     stw      r24, 0x16c(r1)
     addi     r3, r1, 0x28c
     addi     r4, r1, 0x25c
@@ -5976,7 +5549,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r5, r16, 0xc
     addi     r6, r16, 0x18
     addi     r7, r16, 0x24
-    bl       fn_8018EA50
+    bl       IsPointInsideQuadXZ
     cmpwi    r3, 0x0
     beq      .L_8013EB10
     li       r19, 0x1
@@ -6108,14 +5681,14 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     add      r19, r17, r0
     li       r8, 0x1
     mr       r6, r19
-    bl       fn_8018E640
+    bl       IntersectLinesXZ
     cmpwi    r3, 0x0
     beq      .L_8013EE28
     mr       r4, r16
     mr       r5, r19
     addi     r3, r1, 0x29c
     addi     r6, r1, 0x23c
-    bl       fn_8018E824
+    bl       GetOutwardPerpendicularToEdge
     lfs      f0, lbl_8065E994@sda21(r0)
     addi     r3, r1, 0x23c
     mr       r4, r3
@@ -6137,7 +5710,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r4, r1, 0x118
     addi     r7, r1, 0x22c
     li       r8, 0x0
-    bl       fn_8018E640
+    bl       IntersectLinesXZ
     lis      r4, __vt__4CVec@ha
     addi     r3, r1, 0x2ac
     addi     r0, r4, __vt__4CVec@l
@@ -6380,7 +5953,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r7, r21, 0x24
     stw      r0, 0x20c(r1)
     stw      r0, 0x1fc(r1)
-    bl       fn_8018EA50
+    bl       IsPointInsideQuadXZ
     mr.      r17, r3
     bne      .L_8013F0BC
     mr       r4, r21
@@ -6388,7 +5961,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r5, r21, 0xc
     addi     r6, r21, 0x18
     addi     r7, r21, 0x24
-    bl       fn_8018EA50
+    bl       IsPointInsideQuadXZ
     mr       r17, r3
 .L_8013F0BC:
     mr       r20, r21
@@ -6409,7 +5982,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r8, r1, 0x200
     li       r9, 0x0
     li       r10, 0x0
-    bl       fn_8018D43C
+    bl       ResolveCircleWallCollisionXZ
     cmplwi   r3, 0x0
     beq      .L_8013F114
     mr       r18, r22
@@ -6425,7 +5998,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r5, r21, 0xc
     addi     r6, r21, 0x18
     addi     r7, r21, 0x24
-    bl       fn_8018EA50
+    bl       IsPointInsideQuadXZ
     cmpwi    r17, 0x0
     or       r19, r19, r3
     bne      .L_8013F58C
@@ -6455,7 +6028,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r8, r1, 0x1d0
     li       r9, 0x0
     li       r10, 0x0
-    bl       fn_8018D43C
+    bl       ResolveCircleWallCollisionXZ
     cmplwi   r3, 0x0
     beq      .L_8013F250
     addi     r3, r1, 0x1d0
@@ -6669,7 +6242,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     cror     eq, lt, eq
     bne      .L_8013F578
     mr       r3, r25
-    bl       fn_8013A710
+    bl       ResetMapCameraInterpolation
     lfs      f3, 0x28c(r1)
     lfs      f1, 0x29c(r1)
     lfs      f2, 0x294(r1)
@@ -6679,7 +6252,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     bl       atan2
     frsp     f1, f1
     mr       r3, r25
-    bl       fn_80139E58
+    bl       TrySetUnobstructedMapCameraYaw
     b        .L_8013F578
 .L_8013F4CC:
     cmpw     r20, r18
@@ -6713,12 +6286,12 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     add      r17, r21, r0
     mr       r4, r18
     mr       r5, r17
-    bl       fn_8018E824
+    bl       GetOutwardPerpendicularToEdge
     mr       r4, r18
     mr       r5, r17
     addi     r3, r1, 0x1e0
     addi     r6, r1, 0x1b8
-    bl       fn_8018E824
+    bl       GetOutwardPerpendicularToEdge
     lfs      f2, 0x1e0(r1)
     lfs      f1, 0x1e4(r1)
     lfs      f0, 0x1e8(r1)
@@ -6751,7 +6324,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     add      r18, r21, r0
     mr       r4, r17
     mr       r5, r18
-    bl       fn_8018E824
+    bl       GetOutwardPerpendicularToEdge
     lwz      r7, 0x1f0(r1)
     addi     r3, r1, 0xd0
     lwz      r6, 0x1f4(r1)
@@ -6768,7 +6341,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r4, r1, 0xd0
     addi     r7, r1, 0x1a8
     li       r8, 0x1
-    bl       fn_8018E640
+    bl       IntersectLinesXZ
     lis      r4, __vt__4CVec@ha
     cmpwi    r3, 0x0
     addi     r0, r4, __vt__4CVec@l
@@ -6815,7 +6388,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     stfs     f0, 0x294(r1)
 .L_8013F6C4:
     mr       r3, r25
-    bl       fn_8013A710
+    bl       ResetMapCameraInterpolation
     lis      r3, __vt__4CVec@ha
     li       r29, 0x1
     addi     r0, r3, __vt__4CVec@l
@@ -6835,7 +6408,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     add      r17, r21, r0
     mr       r4, r18
     mr       r5, r17
-    bl       fn_8018E824
+    bl       GetOutwardPerpendicularToEdge
     lwz      r7, 0x198(r1)
     addi     r3, r1, 0x88
     lwz      r6, 0x19c(r1)
@@ -6852,7 +6425,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r4, r1, 0x88
     addi     r7, r1, 0x188
     li       r8, 0x1
-    bl       fn_8018E640
+    bl       IntersectLinesXZ
     lis      r4, __vt__4CVec@ha
     cmpwi    r3, 0x0
     addi     r0, r4, __vt__4CVec@l
@@ -7009,7 +6582,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r5, r31, 0xc
     addi     r6, r31, 0x18
     addi     r7, r31, 0x24
-    bl       fn_8018EA50
+    bl       IsPointInsideQuadXZ
     cmpwi    r3, 0x0
     beq      .L_8013F998
     addi     r16, r16, 0x1
@@ -7032,7 +6605,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     stfs     f0, 0x294(r1)
     bne      .L_8013F9E4
     mr       r3, r25
-    bl       fn_8013A710
+    bl       ResetMapCameraInterpolation
     li       r29, 0x1
 .L_8013F9E4:
     lfs      f0, 0x28c(r1)
@@ -7092,13 +6665,13 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     cmplwi   r5, 0x0
     beq      .L_80140F64
     lwz      r8, 0xc8(r5)
-    lis      r3, lbl_805A054C@ha
+    lis      r3, gCameraAreaState@ha
     lwz      r4, 0xcc(r5)
     li       r0, 0x0
     lwz      r7, 0xd0(r5)
     li       r6, -0x2
     stw      r4, 0x2ac(r1)
-    addi     r3, r3, lbl_805A054C@l
+    addi     r3, r3, gCameraAreaState@l
     lfs      f0, lbl_8065EA44@sda21(r0)
     addi     r4, r1, 0x164
     stw      r0, 0xea4(r31)
@@ -7144,7 +6717,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     stw      r8, 0x164(r1)
     stw      r0, 0x168(r1)
     stw      r7, 0x16c(r1)
-    bl       fn_801371D0
+    bl       CollectCameraAreasContainingPoint
     lis      r0, 0x4330
     stw      r3, 0xea4(r31)
     lfd      f1, lbl_8065EA58@sda21(r0)
@@ -7160,10 +6733,10 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     bl       fn_800A2C98
     mr       r3, r31
     addi     r4, r31, 0x70
-    bl       fn_8013C09C
+    bl       GetMapCameraTargetOffsetPosition
     mr       r3, r31
     mr       r4, r30
-    bl       fn_8013C614
+    bl       UpdateMapCameraPadControls
     lwz      r3, 0x11d8(r31)
     rlwinm.  r0, r3, 0, 14, 14
     beq      .L_8013FC38
@@ -7195,7 +6768,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     beq      .L_8013FC38
     mr       r3, r31
     lis      r4, 0x1
-    bl       fn_8013A2EC
+    bl       SetMapCameraModeFlags
 .L_8013FC38:
     li       r29, 0x0
 .L_8013FC3C:
@@ -7218,10 +6791,10 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     mtctr    r12
     bctrl
     fmr      f30, f1
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     li       r4, 0x0
-    bl       fn_8014106C
+    bl       GetPlayerPoolObject
     mr       r4, r3
     addi     r3, r1, 0x14c
     lwz      r12, 0x34(r4)
@@ -7336,9 +6909,9 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r3, r1, 0x288
     stw      r0, 0x294(r1)
     bl       fn_800A2C98
-    lis      r3, lbl_8022E61C@ha
+    lis      r3, sMapCameraSpringParameters@ha
     fmr      f1, f29
-    lfs      f2, lbl_8022E61C@l(r3)
+    lfs      f2, sMapCameraSpringParameters@l(r3)
     addi     r3, r1, 0x13c
     lfs      f3, 0x5c(r31)
     addi     r4, r1, 0x288
@@ -7360,7 +6933,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     bctrl
     mr       r4, r31
     addi     r3, r1, 0x130
-    bl       fn_8013A248
+    bl       GetMapCameraTargetWithHeightOffset
     mr       r3, r31
     addi     r4, r1, 0x130
     lwz      r12, 0x3c(r31)
@@ -7376,23 +6949,23 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     mtctr    r12
     bctrl
     mr       r3, r31
-    bl       fn_8013A8D4
+    bl       SetMapCameraAnglesFromEyeAndInterest
     lfs      f1, 0x20(r31)
-    bl       fn_800A2BD0
+    bl       ClassifyFloatBits
     cmpwi    r3, 0x1
     beq      .L_8013FF0C
     lfs      f1, 0x24(r31)
-    bl       fn_800A2BD0
+    bl       ClassifyFloatBits
     cmpwi    r3, 0x1
     beq      .L_8013FF0C
     lfs      f1, 0x28(r31)
-    bl       fn_800A2BD0
+    bl       ClassifyFloatBits
     cmpwi    r3, 0x1
     bne      .L_8013FFF0
 .L_8013FF0C:
     lfs      f0, 0xf6c(r31)
-    lis      r3, lbl_8020C9F8@ha
-    addi     r3, r3, lbl_8020C9F8@l
+    lis      r3, sMapCameraStateFormat@ha
+    addi     r3, r3, sMapCameraStateFormat@l
     stfd     f0, 0x8(r1)
     lfs      f0, 0xf70(r31)
     stfd     f0, 0x10(r1)
@@ -7438,13 +7011,13 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     lwz      r9, 0xf28(r31)
     lwz      r10, 0xdb4(r31)
     crset    cr1eq
-    bl       fn_801911B4
-    lis      r4, lbl_8020C9E0@ha
+    bl       FormatToStaticBuffer
+    lis      r4, sPathCcameraactionmap2Cpp@ha
     mr       r6, r3
-    addi     r3, r4, lbl_8020C9E0@l
+    addi     r3, r4, sPathCcameraactionmap2Cpp@l
     li       r5, lbl_8065E9C8@sda21
     li       r4, 0x245
-    li       r7, lbl_8065AA90@sda21
+    li       r7, sMapCameraUpdateLabel@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_8013FFF0:
@@ -7489,7 +7062,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     lwz      r5, 0x8(r31)
     stw      r5, 0x268(r1)
     stw      r0, 0x26c(r1)
-    bl       fn_800B259C
+    bl       GetHorizontalDistance
     lfs      f0, lbl_8065EA6C@sda21(r0)
     fcmpo    cr0, f30, f0
     bge      .L_801400B8
@@ -7508,17 +7081,17 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     stw      r0, 0x26c(r1)
 .L_801400CC:
     lwz      r0, lbl_8065B340@sda21(r0)
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     li       r4, 0x0
     stw      r0, lbl_8065B33C@sda21(r0)
-    bl       fn_8014106C
+    bl       GetPlayerPoolObject
     lwz      r0, 0xac4(r3)
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     li       r4, 0x0
     stw      r0, lbl_8065B340@sda21(r0)
-    bl       fn_8014106C
+    bl       GetPlayerPoolObject
     lwz      r0, 0xac4(r3)
     cmpwi    r0, 0x3
     bne      .L_801402FC
@@ -7542,7 +7115,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     fadds    f2, f1, f0
     lfs      f1, 0x20(r31)
     lfs      f3, 0x28(r31)
-    bl       fn_800B2974
+    bl       SetVectorComponents
     lwz      r4, 0x44(r31)
     addi     r3, r1, 0x124
     lfs      f1, lbl_8065E98C@sda21(r0)
@@ -7599,9 +7172,9 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     fmadds   f0, f0, f29, f1
     stfs     f0, 0x240(r1)
     bl       __ct__4CVecFRC3Vec
-    lis      r3, lbl_805C038C@ha
+    lis      r3, sMapCameraTestEye@ha
     addi     r4, r1, 0x114
-    addi     r3, r3, lbl_805C038C@l
+    addi     r3, r3, sMapCameraTestEye@l
     bl       fn_800A2C98
     lis      r4, __vt__4CVec@ha
     addi     r3, r1, 0x104
@@ -7609,9 +7182,9 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r4, r1, 0x254
     stw      r0, 0x120(r1)
     bl       __ct__4CVecFRC3Vec
-    lis      r3, lbl_805C03A8@ha
+    lis      r3, sMapCameraTestCenter@ha
     addi     r4, r1, 0x104
-    addi     r3, r3, lbl_805C03A8@l
+    addi     r3, r3, sMapCameraTestCenter@l
     bl       fn_800A2C98
     lis      r4, __vt__4CVec@ha
     mr       r3, r31
@@ -7639,7 +7212,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     lis      r4, 0x2
     mr       r3, r31
     addi     r4, r4, 0x2
-    bl       fn_8013A2EC
+    bl       SetMapCameraModeFlags
     lis      r3, __vt__4CVec@ha
     addi     r0, r3, __vt__4CVec@l
     stw      r0, 0x250(r1)
@@ -7654,7 +7227,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     beq      .L_80140594
     mr       r4, r31
     addi     r3, r1, 0xf8
-    bl       fn_8013A248
+    bl       GetMapCameraTargetWithHeightOffset
     mr       r3, r31
     addi     r4, r1, 0xf8
     lwz      r12, 0x3c(r31)
@@ -7733,29 +7306,29 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     lwz      r12, 0x38(r12)
     mtctr    r12
     bctrl
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     li       r4, 0x0
-    addi     r3, r3, lbl_8025C400@l
-    bl       fn_8014106C
-    bl       fn_8014102C
+    addi     r3, r3, gGame@l
+    bl       GetPlayerPoolObject
+    bl       ResetPlayerCameraValue
     mr       r3, r31
-    bl       fn_8013A8D4
+    bl       SetMapCameraAnglesFromEyeAndInterest
     lfs      f1, 0x20(r31)
-    bl       fn_800A2BD0
+    bl       ClassifyFloatBits
     cmpwi    r3, 0x1
     beq      .L_80140494
     lfs      f1, 0x24(r31)
-    bl       fn_800A2BD0
+    bl       ClassifyFloatBits
     cmpwi    r3, 0x1
     beq      .L_80140494
     lfs      f1, 0x28(r31)
-    bl       fn_800A2BD0
+    bl       ClassifyFloatBits
     cmpwi    r3, 0x1
     bne      .L_80140578
 .L_80140494:
     lfs      f0, 0xf6c(r31)
-    lis      r3, lbl_8020C9F8@ha
-    addi     r3, r3, lbl_8020C9F8@l
+    lis      r3, sMapCameraStateFormat@ha
+    addi     r3, r3, sMapCameraStateFormat@l
     stfd     f0, 0x8(r1)
     lfs      f0, 0xf70(r31)
     stfd     f0, 0x10(r1)
@@ -7801,13 +7374,13 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     lwz      r9, 0xf28(r31)
     lwz      r10, 0xdb4(r31)
     crset    cr1eq
-    bl       fn_801911B4
-    lis      r4, lbl_8020C9E0@ha
+    bl       FormatToStaticBuffer
+    lis      r4, sPathCcameraactionmap2Cpp@ha
     mr       r6, r3
-    addi     r3, r4, lbl_8020C9E0@l
+    addi     r3, r4, sPathCcameraactionmap2Cpp@l
     li       r5, lbl_8065E9C8@sda21
     li       r4, 0x2ab
-    li       r7, lbl_8065AA90@sda21
+    li       r7, sMapCameraUpdateLabel@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_80140578:
@@ -7820,23 +7393,23 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     b        .L_80140918
 .L_80140594:
     mr       r3, r31
-    bl       fn_8013A8D4
+    bl       SetMapCameraAnglesFromEyeAndInterest
     lfs      f1, 0x20(r31)
-    bl       fn_800A2BD0
+    bl       ClassifyFloatBits
     cmpwi    r3, 0x1
     beq      .L_801405CC
     lfs      f1, 0x24(r31)
-    bl       fn_800A2BD0
+    bl       ClassifyFloatBits
     cmpwi    r3, 0x1
     beq      .L_801405CC
     lfs      f1, 0x28(r31)
-    bl       fn_800A2BD0
+    bl       ClassifyFloatBits
     cmpwi    r3, 0x1
     bne      .L_801406B0
 .L_801405CC:
     lfs      f0, 0xf6c(r31)
-    lis      r3, lbl_8020C9F8@ha
-    addi     r3, r3, lbl_8020C9F8@l
+    lis      r3, sMapCameraStateFormat@ha
+    addi     r3, r3, sMapCameraStateFormat@l
     stfd     f0, 0x8(r1)
     lfs      f0, 0xf70(r31)
     stfd     f0, 0x10(r1)
@@ -7882,13 +7455,13 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     lwz      r9, 0xf28(r31)
     lwz      r10, 0xdb4(r31)
     crset    cr1eq
-    bl       fn_801911B4
-    lis      r4, lbl_8020C9E0@ha
+    bl       FormatToStaticBuffer
+    lis      r4, sPathCcameraactionmap2Cpp@ha
     mr       r6, r3
-    addi     r3, r4, lbl_8020C9E0@l
+    addi     r3, r4, sPathCcameraactionmap2Cpp@l
     li       r5, lbl_8065E9C8@sda21
     li       r4, 0x2b5
-    li       r7, lbl_8065AA90@sda21
+    li       r7, sMapCameraUpdateLabel@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_801406B0:
@@ -7943,20 +7516,20 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     mr       r3, r31
     lwz      r4, 0x44(r31)
     addi     r4, r4, 0xc8
-    bl       fn_8013D634
+    bl       FindNearestMapCameraEntry
     stw      r3, 0x978(r31)
     mr       r3, r31
     lwz      r4, 0x44(r31)
     addi     r4, r4, 0xc8
-    bl       fn_8013D710
+    bl       GetNearestMapCameraEntry
     stw      r3, 0x974(r31)
     mr       r3, r31
     mr       r4, r31
-    bl       fn_8013D634
+    bl       FindNearestMapCameraEntry
     stw      r3, 0x980(r31)
     mr       r3, r31
     mr       r4, r31
-    bl       fn_8013D710
+    bl       GetNearestMapCameraEntry
     stw      r3, 0x97c(r31)
     mr       r3, r31
     bl       fn_8013D2DC
@@ -7965,11 +7538,11 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     beq      .L_801408B8
     lwz      r4, 0xc(r3)
     mr       r3, r31
-    bl       fn_8013D5FC
+    bl       CountMapCameraEntriesInGroup
     lwz      r4, 0x97c(r31)
     mr       r29, r3
     mr       r3, r31
-    bl       fn_8013D52C
+    bl       CountMapCameraAdjacentSideIntersections
     cmpwi    r29, 0x2
     bge      .L_801407FC
     li       r0, 0x1
@@ -7983,8 +7556,8 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     b        .L_801408B8
 .L_80140810:
     lwz      r4, 0x97c(r31)
-    lis      r3, lbl_805A054C@ha
-    addi     r6, r3, lbl_805A054C@l
+    lis      r3, gCameraAreaState@ha
+    addi     r6, r3, gCameraAreaState@l
     lis      r3, __vt__11CamAreaInfo@ha
     lwz      r5, 0xc(r4)
     addi     r4, r3, __vt__11CamAreaInfo@l
@@ -8011,17 +7584,17 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     li       r0, 0x1
     stw      r0, 0xe9c(r31)
 .L_80140878:
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     li       r4, 0x0
-    addi     r3, r3, lbl_8025C400@l
-    bl       fn_8014106C
+    addi     r3, r3, gGame@l
+    bl       GetPlayerPoolObject
     lwz      r0, 0xc8c(r3)
     cmpwi    r0, 0x0
     bne      .L_801408B0
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     li       r4, 0x0
-    addi     r3, r3, lbl_8025C400@l
-    bl       fn_8014106C
+    addi     r3, r3, gGame@l
+    bl       GetPlayerPoolObject
     lwz      r0, 0xb14(r3)
     cmpwi    r0, 0x0
     beq      .L_801408B8
@@ -8041,7 +7614,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     bne      .L_80140904
     mr       r3, r31
     li       r4, 0x0
-    bl       fn_8013B1C4
+    bl       StartMapCameraTurnInterpolation
     lis      r3, __vt__4CVec@ha
     addi     r0, r3, __vt__4CVec@l
     stw      r0, 0x1c8(r1)
@@ -8066,7 +7639,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r6, r31, 0x10
     addi     r7, r31, 0x48
     stw      r0, 0x1b0(r1)
-    li       r8, lbl_8065AA88@sda21
+    li       r8, sMapCameraCollisionMode0@sda21
     lwz      r0, 0x8(r31)
     stw      r0, 0x1b4(r1)
     stw      r10, 0x1b8(r1)
@@ -8077,7 +7650,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     lwz      r0, 0xe0(r31)
     stw      r0, 0x1a4(r1)
     stw      r10, 0x1a8(r1)
-    bl       fn_8013E26C
+    bl       ResolveMapCameraEyeCollision
     mr       r3, r31
     addi     r4, r1, 0x1ac
     lwz      r12, 0x3c(r31)
@@ -8095,7 +7668,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     beq      .L_80140E04
     mr       r4, r31
     addi     r3, r1, 0xcc
-    bl       fn_8013A248
+    bl       GetMapCameraTargetWithHeightOffset
     mr       r3, r31
     addi     r4, r1, 0xcc
     lwz      r12, 0x3c(r31)
@@ -8112,7 +7685,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     mr       r3, r31
     mr       r4, r30
     stfs     f0, 0xf6c(r31)
-    bl       fn_8013CB38
+    bl       UpdateMapCameraOrbit
     lfs      f0, 0xf7c(r31)
     stfs     f0, 0xf6c(r31)
     lwz      r0, lbl_8065B330@sda21(r0)
@@ -8136,9 +7709,9 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     addi     r4, r31, 0xf68
     stw      r0, 0x188(r1)
     bl       fn_800A2C98
-    lis      r3, lbl_8022E61C@ha
+    lis      r3, sMapCameraSpringParameters@ha
     fmr      f1, f31
-    lfs      f2, lbl_8022E61C@l(r3)
+    lfs      f2, sMapCameraSpringParameters@l(r3)
     addi     r3, r1, 0xbc
     lfs      f3, 0x5c(r31)
     addi     r4, r1, 0x17c
@@ -8165,7 +7738,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
 .L_80140ABC:
     addi     r3, r31, 0xf68
     addi     r4, r31, 0xf78
-    bl       fn_800B259C
+    bl       GetHorizontalDistance
     stfs     f1, lbl_8065B358@sda21(r0)
     lwz      r0, 0x11d8(r31)
     rlwinm.  r0, r0, 0, 29, 29
@@ -8173,15 +7746,15 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     lwz      r28, lbl_8065B348@sda21(r0)
     addi     r3, r31, 0xf68
     addi     r4, r31, 0x10
-    bl       fn_800B20CC
+    bl       GetHeadingBetweenPositions
     fmr      f27, f1
     mr       r3, r31
     addi     r4, r31, 0xf68
     addi     r5, r31, 0xf78
     addi     r6, r31, 0x10
     addi     r7, r31, 0x48
-    li       r8, lbl_8065AA8C@sda21
-    bl       fn_8013E26C
+    li       r8, sMapCameraCollisionMode1@sda21
+    bl       ResolveMapCameraEyeCollision
     lfs      f1, lbl_8065B34C@sda21(r0)
     mr       r29, r3
     lfs      f0, lbl_8065E994@sda21(r0)
@@ -8189,11 +7762,11 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     ble      .L_80140BD4
     addi     r3, r31, 0xf68
     addi     r4, r31, 0x10
-    bl       fn_800B20CC
+    bl       GetHeadingBetweenPositions
     fmr      f29, f1
     addi     r3, r31, 0xf78
     addi     r4, r31, 0x10
-    bl       fn_800B20CC
+    bl       GetHeadingBetweenPositions
     fmr      f2, f27
     lfs      f1, lbl_8065E990@sda21(r0)
     lfs      f0, lbl_8065E994@sda21(r0)
@@ -8246,11 +7819,11 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     bge      .L_80140C8C
     addi     r3, r31, 0xf68
     addi     r4, r31, 0x10
-    bl       fn_800B20CC
+    bl       GetHeadingBetweenPositions
     fmr      f29, f1
     addi     r3, r31, 0xf78
     addi     r4, r31, 0x10
-    bl       fn_800B20CC
+    bl       GetHeadingBetweenPositions
     fmr      f2, f27
     lfs      f1, lbl_8065E990@sda21(r0)
     lfs      f0, lbl_8065E994@sda21(r0)
@@ -8328,7 +7901,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
 .L_80140CEC:
     addi     r3, r31, 0xf68
     addi     r4, r31, 0xf78
-    bl       fn_800B259C
+    bl       GetHorizontalDistance
     frsp     f2, f1
     lfs      f0, lbl_8065B358@sda21(r0)
     stfs     f1, lbl_8065B354@sda21(r0)
@@ -8399,14 +7972,14 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     stw      r5, 0x98(r1)
     stw      r0, 0x9c(r1)
     lfs      f1, 0xf64(r31)
-    bl       fn_8013A6A0
+    bl       StartCameraEyeInterpolation
 .L_80140E04:
     mr       r3, r31
     mr       r4, r30
-    bl       fn_8013A608
+    bl       UpdateCameraEyeInterpolation
     mr       r3, r31
     addi     r4, r31, 0x70
-    bl       fn_800B259C
+    bl       GetHorizontalDistance
     lfs      f2, lbl_8065EA70@sda21(r0)
     lfs      f0, lbl_8065E9A8@sda21(r0)
     fdivs    f27, f1, f2
@@ -8419,8 +7992,8 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     bge      .L_80140E44
     fmr      f27, f0
 .L_80140E44:
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0xe
     addi     r3, r3, 0x5d38
     bl       fn_801486D8
@@ -8478,7 +8051,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     bctrl
     mr       r3, r31
     mr       r4, r31
-    bl       fn_80140FEC
+    bl       SetMapCameraPreviousEye
     addi     r3, r31, 0xf78
     addi     r4, r31, 0xf68
     bl       fn_800A2C98
@@ -8487,7 +8060,7 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
     bl       fn_800A2C98
     mr       r3, r31
     addi     r4, r31, 0x10
-    bl       fn_80140FAC
+    bl       SetMapCameraPreviousInterest
     li       r0, 0x0
     stw      r0, 0x11e0(r31)
     lwz      r3, 0x11e0(r31)
@@ -8519,25 +8092,25 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
  * @note Address: 0x80140FAC
  * @note Size: 0x40
  */
-extern "C" void fn_80140FAC(CCameraActionMap* map, const Vec& v)
+extern "C" void SetMapCameraPreviousInterest(CCameraActionMap* map, const Vec& v)
 {
-	map->_48 = v;
+	map->mPreviousInterest = v;
 }
 
 /**
  * @note Address: 0x80140FEC
  * @note Size: 0x40
  */
-extern "C" void fn_80140FEC(CCameraActionMap* map, const Vec& v)
+extern "C" void SetMapCameraPreviousEye(CCameraActionMap* map, const Vec& v)
 {
-	map->_D8 = v;
+	map->mPreviousEye = v;
 }
 
 /**
  * @note Address: 0x8014102C
  * @note Size: 0x40
  */
-extern "C" void fn_8014102C(XObjChr* player)
+extern "C" void ResetPlayerCameraValue(XObjChr* player)
 {
 	player->ResetCameraValue();
 }
@@ -8547,7 +8120,7 @@ extern "C" void fn_8014102C(XObjChr* player)
  * @note Size: 0x18
  */
 // pool 2's objects, the player's pool
-extern "C" XObj* fn_8014106C(CGame* game, s32 index)
+extern "C" XObj* GetPlayerPoolObject(CGame* game, s32 index)
 {
 	return game->mXObjs.mPools[2].Get(index);
 }
@@ -8559,17 +8132,17 @@ extern "C" XObj* fn_8014106C(CGame* game, s32 index)
 // vtable slot _0C, PreviousUpdate
 extern "C" void PreviousUpdate__16CCameraActionMapFv(CCameraActionMap* map)
 {
-	fn_80137D00(&lbl_805A054C, 0);
-	s32 arg = lbl_805A054C._0C;
-	if (lbl_805A054C._04 != lbl_805A054C._08 && lbl_805A054C._04 != -1) {
-		if (fn_80135D28(&lbl_805A054C) == 1) {
-			lbl_8025C400.mMotionControlCamera.ChangeAction(1);
-			lbl_805A054C._18 = lbl_805A054C._14;
-			fn_80138CA4((CCameraActionArea*)lbl_8025C400.mCameraActions.mTable[1], 1, 2.0f, arg);
+	fn_80137D00(&gCameraAreaState, 0);
+	s32 arg = gCameraAreaState._0C;
+	if (gCameraAreaState._04 != gCameraAreaState._08 && gCameraAreaState._04 != -1) {
+		if (GetCameraAreaMode(&gCameraAreaState) == 1) {
+			gGame.mMotionControlCamera.ChangeAction(1);
+			gCameraAreaState._18 = gCameraAreaState._14;
+			SelectAreaCameraEntryByViewDirection((CCameraActionArea*)gGame.mCameraActions.mTable[1], 1, 2.0f, arg);
 			return;
 		}
-		SetFovStep(map, lbl_805A054C._14, 15.0f);
-		fn_80138B2C((CCameraActionArea*)lbl_8025C400.mCameraActions.mTable[1], arg, 0, 3, 1, 1.0f);
+		SetFovStep(map, gCameraAreaState._14, 15.0f);
+		SelectAreaCameraEntryWithControl((CCameraActionArea*)gGame.mCameraActions.mTable[1], arg, 0, 3, 1, 1.0f);
 	}
 	map->_DA4 = map->_DA8;
 	fn_8013BB00(map);
@@ -8580,18 +8153,18 @@ extern "C" void PreviousUpdate__16CCameraActionMapFv(CCameraActionMap* map)
 /*
     stwu     r1, -0x20(r1)
     mflr     r0
-    lis      r4, lbl_805A054C@ha
+    lis      r4, gCameraAreaState@ha
     stw      r0, 0x24(r1)
     stw      r31, 0x1c(r1)
     stw      r30, 0x18(r1)
     mr       r30, r3
-    addi     r3, r4, lbl_805A054C@l
+    addi     r3, r4, gCameraAreaState@l
     li       r4, 0x0
     stw      r29, 0x14(r1)
     stw      r28, 0x10(r1)
     bl       fn_80137D00
-    lis      r3, lbl_805A054C@ha
-    addi     r3, r3, lbl_805A054C@l
+    lis      r3, gCameraAreaState@ha
+    addi     r3, r3, gCameraAreaState@l
     lwz      r4, 0x4(r3)
     lwz      r0, 0x8(r3)
     lwz      r31, 0xc(r3)
@@ -8599,31 +8172,31 @@ extern "C" void PreviousUpdate__16CCameraActionMapFv(CCameraActionMap* map)
     beq      .L_80141234
     cmpwi    r4, -0x1
     beq      .L_80141234
-    bl       fn_80135D28
+    bl       GetCameraAreaMode
     cmpwi    r3, 0x1
     bne      .L_80141130
-    lis      r3, lbl_8025C400@ha
+    lis      r3, gGame@ha
     li       r4, 0x1
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0xe
     addi     r3, r3, 0x5d38
     bl       fn_8014946C
-    lis      r4, lbl_805A054C@ha
-    lis      r3, lbl_8025C400@ha
-    addi     r6, r4, lbl_805A054C@l
+    lis      r4, gCameraAreaState@ha
+    lis      r3, gGame@ha
+    addi     r6, r4, gCameraAreaState@l
     lfs      f1, lbl_8065EA04@sda21(r0)
     lwz      r0, 0x14(r6)
-    addi     r3, r3, lbl_8025C400@l
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0xe
     mr       r5, r31
     stw      r0, 0x18(r6)
     li       r4, 0x1
     lwz      r3, 0x7df0(r3)
-    bl       fn_80138CA4
+    bl       SelectAreaCameraEntryByViewDirection
     b        .L_8014125C
 .L_80141130:
-    lis      r3, lbl_805A054C@ha
-    addi     r29, r3, lbl_805A054C@l
+    lis      r3, gCameraAreaState@ha
+    addi     r29, r3, gCameraAreaState@l
     lwz      r28, 0x14(r29)
     lfs      f2, 0x10(r29)
     cmpwi    r28, 0x2
@@ -8679,11 +8252,11 @@ extern "C" void PreviousUpdate__16CCameraActionMapFv(CCameraActionMap* map)
     mtctr    r12
     bctrl
 .L_801411FC:
-    lis      r3, lbl_8025C400@ha
-    lis      r4, lbl_805A054C@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    lis      r4, gCameraAreaState@ha
+    addi     r3, r3, gGame@l
     stw      r28, 0x14(r29)
-    addi     r4, r4, lbl_805A054C@l
+    addi     r4, r4, gCameraAreaState@l
     lfs      f1, lbl_8065E9A8@sda21(r0)
     addis    r3, r3, 0xe
     stw      r28, 0x18(r4)
@@ -8692,7 +8265,7 @@ extern "C" void PreviousUpdate__16CCameraActionMapFv(CCameraActionMap* map)
     li       r5, 0x0
     li       r6, 0x3
     li       r7, 0x1
-    bl       fn_80138B2C
+    bl       SelectAreaCameraEntryWithControl
 .L_80141234:
     lwz      r0, 0xda8(r30)
     mr       r3, r30
@@ -8734,12 +8307,12 @@ extern "C" void SetCamera__16CCameraActionMapFP7CCamera(CCameraActionMap* map, C
 {
 	map->_40 = 3;
 	map->SetEye(camera->mEye);
-	map->_D8 = CVec(camera->mEye.x, camera->mEye.y, camera->mEye.z);
+	map->mPreviousEye = CVec(camera->mEye.x, camera->mEye.y, camera->mEye.z);
 	map->SetInterest(camera->mInterest);
 	map->SetDistance(camera->mDistance);
 	map->SetFov(camera->mFov);
 	map->SetAngle(camera->mAngle);
-	map->_44 = lbl_8025C400.GetPlayer();
+	map->_44 = gGame.GetPlayer();
 	if (map->_44 != NULL) {
 		map->SetInterest(map->_44->GetCameraTarget());
 	}
@@ -8767,12 +8340,12 @@ extern "C" void SetCamera__16CCameraActionMapFP7CCamera(CCameraActionMap* map, C
 	map->_80           = 60.0f;
 	map->_58           = map->_80;
 	map->_84           = map->_80;
-	SetFovStep(map, lbl_805A054C._14, 15.0f);
-	map->_DAC = 1;
-	map->_DB0 = 1;
-	map->_DB4 = NULL;
-	map->_DB4 = NULL;
-	map->_E30 = &map->_E14;
+	SetFovStep(map, gCameraAreaState._14, 15.0f);
+	map->_DAC               = 1;
+	map->_DB0               = 1;
+	map->mTurnInterpolation = NULL;
+	map->mTurnInterpolation = NULL;
+	map->_E30               = &map->_E14;
 	map->_E30->Start(13.0f, 13.0f, 1.0f);
 	map->_DA8 = -1;
 	map->_DA4 = -1;
@@ -8783,16 +8356,16 @@ extern "C" void SetCamera__16CCameraActionMapFP7CCamera(CCameraActionMap* map, C
 	map->_E54 = 13.0f;
 	map->_E9C = 1;
 	fn_8013A7A0(map);
-	map->_11D8.mFlags = 0;
-	map->_11D8.mFlags |= 0x10000;
+	map->mStatus.mFlags = 0;
+	map->mStatus.mFlags |= 0x10000;
 	lbl_8065B344 = 0;
 	map->_E78    = &map->_E7C;
 	map->_E7C.Start(0.0f, 0.0f, 1.0f);
-	map->_E98 = 0.0f;
-	map->_48  = CVec(map->mInterest.x, map->mInterest.y, map->mInterest.z);
+	map->_E98              = 0.0f;
+	map->mPreviousInterest = CVec(map->mInterest.x, map->mInterest.y, map->mInterest.z);
 	if (!map->_11E8) {
-		map->_D8   = CVec(map->mInterest.x, map->mInterest.y, map->mInterest.z);
-		map->_11E8 = FALSE;
+		map->mPreviousEye = CVec(map->mInterest.x, map->mInterest.y, map->mInterest.z);
+		map->_11E8        = FALSE;
 	}
 }
 /*
@@ -8848,8 +8421,8 @@ extern "C" void SetCamera__16CCameraActionMapFP7CCamera(CCameraActionMap* map, C
     lwz      r12, 0x40(r12)
     mtctr    r12
     bctrl
-    lis      r3, lbl_8025C400@ha
-    addi     r3, r3, lbl_8025C400@l
+    lis      r3, gGame@ha
+    addi     r3, r3, gGame@l
     addis    r3, r3, 0x1
     lwz      r0, -0x6944(r3)
     stw      r0, 0x44(r31)
@@ -8948,9 +8521,9 @@ extern "C" void SetCamera__16CCameraActionMapFP7CCamera(CCameraActionMap* map, C
     stw      r0, 0x60(r1)
 .L_801414CC:
     lfs      f1, lbl_8065E994@sda21(r0)
-    lis      r3, lbl_805A054C@ha
+    lis      r3, gCameraAreaState@ha
     lfs      f0, lbl_8065EA70@sda21(r0)
-    addi     r30, r3, lbl_805A054C@l
+    addi     r30, r3, gCameraAreaState@l
     stfs     f1, 0x8c(r31)
     stfs     f1, 0x90(r31)
     stfs     f1, 0x94(r31)
@@ -9020,9 +8593,9 @@ extern "C" void SetCamera__16CCameraActionMapFP7CCamera(CCameraActionMap* map, C
     mtctr    r12
     bctrl
 .L_801415D8:
-    lis      r3, lbl_805A054C@ha
+    lis      r3, gCameraAreaState@ha
     lfs      f1, lbl_8065E9E4@sda21(r0)
-    addi     r5, r3, lbl_805A054C@l
+    addi     r5, r3, gCameraAreaState@l
     stw      r29, 0x14(r30)
     li       r4, 0x1
     li       r3, 0x0
@@ -9132,24 +8705,14 @@ extern "C" void Reset2__16CCameraActionMapFv(CCameraActionMap* map)
 	Vec eye;
 	fn_8013BD28(map, eye, 0);
 	map->SetEye(eye);
-	f32 dz    = map->mInterest.z - map->mEye.z;
-	f32 dx    = map->mInterest.x - map->mEye.x;
-	f32 dy    = map->mInterest.y - map->mEye.y;
-	f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
-	Vec angle;
-	angle.x = dy < 0.0f ? HALF_PI - pitch : pitch - HALF_PI;
-	angle.y = atan2(map->mInterest.x - map->mEye.x, map->mInterest.z - map->mEye.z);
-	angle.z = 0.0f;
-	map->SetAngle(angle);
+	SetMapCameraAnglesFromEyeAndInterest(map);
 	if (__fpclassifyf(map->mAngle.x) == FP_NAN || __fpclassifyf(map->mAngle.y) == FP_NAN || __fpclassifyf(map->mAngle.z) == FP_NAN) {
 		OSPanic("ccameraactionmap2.cpp", 251, "%s%s",
-		        fn_801911B4("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER OP(%d)HANG(%d(%d))"
-		                    "TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP TURN(0x%x)"
-		                    "POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
-		                    map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z, map->mDistance,
-		                    map->_11D8.mFlags, map->_11E0.mFlags, map->_EA0, lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y,
-		                    map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z, map->_F28, map->_DB4, map->_F88.x, map->_F88.y, map->_F88.z,
-		                    map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
+		        FormatToStaticBuffer(sMapCameraStateFormat, map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y,
+		                             map->mAngle.z, map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0,
+		                             lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y,
+		                             map->_F78.z, map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x,
+		                             map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
 		        "Reset2");
 	}
 }
@@ -9449,8 +9012,8 @@ extern "C" void Reset2__16CCameraActionMapFv(CCameraActionMap* map)
     bne      .L_80141C34
 .L_80141B50:
     lfs      f0, 0xf6c(r31)
-    lis      r3, lbl_8020C9F8@ha
-    addi     r3, r3, lbl_8020C9F8@l
+    lis      r3, sMapCameraStateFormat@ha
+    addi     r3, r3, sMapCameraStateFormat@l
     stfd     f0, 0x8(r1)
     lfs      f0, 0xf70(r31)
     stfd     f0, 0x10(r1)
@@ -9496,13 +9059,13 @@ extern "C" void Reset2__16CCameraActionMapFv(CCameraActionMap* map)
     lwz      r9, 0xf28(r31)
     lwz      r10, 0xdb4(r31)
     crset    cr1eq
-    bl       fn_801911B4
-    lis      r4, lbl_8020C9E0@ha
+    bl       FormatToStaticBuffer
+    lis      r4, sPathCcameraactionmap2Cpp@ha
     mr       r6, r3
-    addi     r3, r4, lbl_8020C9E0@l
+    addi     r3, r4, sPathCcameraactionmap2Cpp@l
     li       r5, lbl_8065E9C8@sda21
     li       r4, 0xfb
-    li       r7, lbl_8065AA80@sda21
+    li       r7, sMapCameraReset2Label@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_80141C34:
@@ -9526,7 +9089,7 @@ extern "C" void Reset__16CCameraActionMapFv(CCameraActionMap* map)
 {
 	OSPanic(__FILE__, 220, "%s%s", "actionMap::reset\n", "Reset");
 
-	map->_44 = lbl_8025C400.GetPlayer();
+	map->_44 = gGame.GetPlayer();
 	if (map->_44 != NULL) {
 		Mtx mtx;
 		PSMTXCopy(HSD_JObjGetMtxPtr(map->_44->mJObj), mtx);
@@ -9549,7 +9112,7 @@ extern "C" void Init__16CCameraActionMapFv(CCameraActionMap* map)
 	map->_80 = 60.0f;
 	map->_84 = 60.0f;
 	map->_C4 = 18.0f;
-	fn_8013801C(&lbl_805A054C);
+	InitCameraAreaEntries(&gCameraAreaState);
 }
 
 /**
@@ -9564,7 +9127,8 @@ extern "C" CVec SpringDamp(CVec& position, const Vec& target, const CVec& previo
 	f32 distance = sqrtf(displacement.z * displacement.z + (displacement.x * displacement.x + displacement.y * displacement.y));
 	if (__fpclassifyf(distance) == FP_NAN) {
 		OSPanic("ccameraactionmap2.cpp", 167, "%s%s",
-		        fn_801911B4("CCameraActionMap ... disp(%f, %f, %f)\\n", displacement.x, displacement.y, displacement.z), "SpringDamp");
+		        FormatToStaticBuffer("CCameraActionMap ... disp(%f, %f, %f)\n", displacement.x, displacement.y, displacement.z),
+		        "SpringDamp");
 	}
 	velocity  = (previous - target) * step;
 	f32 force = stiffness * (restDistance - distance) + damping * (PSVECDotProduct(&displacement, &velocity) / distance);
@@ -9575,8 +9139,8 @@ extern "C" CVec SpringDamp(CVec& position, const Vec& target, const CVec& previo
 	if (__fpclassifyf(position.x) == FP_NAN || __fpclassifyf(position.y) == FP_NAN || __fpclassifyf(position.z) == FP_NAN) {
 		// retail's format and args don't line up
 		OSPanic("ccameraactionmap2.cpp", 181, "%s%s",
-		        fn_801911B4("CCameraActionMap ... (%f, %f, %f), %f, %f, %f, %s\\n", displacement.x, displacement.y, displacement.z,
-		                    distance, force, velocity, 181),
+		        FormatToStaticBuffer("CCameraActionMap ... (%f, %f, %f), %f, %f, %f, %s\n", displacement.x, displacement.y, displacement.z,
+		                             distance, force, velocity, 181),
 		        "SpringDamp");
 	}
 	return position;
@@ -9732,10 +9296,10 @@ extern "C" CVec SpringDamp(CVec& position, const Vec& target, const CVec& previo
     lfs      f2, 0x94(r1)
     lfs      f3, 0x98(r1)
     crset    cr1eq
-    bl       fn_801911B4
-    lis      r4, lbl_8022E610@ha
+    bl       FormatToStaticBuffer
+    lis      r4, sMapCameraSpringDampLabel@ha
     mr       r6, r3
-    addi     r7, r4, lbl_8022E610@l
+    addi     r7, r4, sMapCameraSpringDampLabel@l
     addi     r3, r31, 0x120
     li       r4, 0xa7
     li       r5, lbl_8065E9C8@sda21
@@ -9905,10 +9469,10 @@ extern "C" CVec SpringDamp(CVec& position, const Vec& target, const CVec& previo
     li       r5, 0xb5
     stw      r0, 0x28(r1)
     crset    cr1eq
-    bl       fn_801911B4
-    lis      r4, lbl_8022E610@ha
+    bl       FormatToStaticBuffer
+    lis      r4, sMapCameraSpringDampLabel@ha
     mr       r6, r3
-    addi     r7, r4, lbl_8022E610@l
+    addi     r7, r4, sMapCameraSpringDampLabel@l
     addi     r3, r31, 0x120
     li       r4, 0xb5
     li       r5, lbl_8065E9C8@sda21
@@ -9947,96 +9511,10 @@ extern "C" CVec SpringDamp(CVec& position, const Vec& target, const CVec& previo
 */
 
 /**
- * @note Address: 0x8014232C
- * @note Size: 0x10C
- */
-// __sinit_ccameraactionmap2_cpp
-// builds these vecs and registers their dtors. the bss between them is unknown
-extern "C" {
-CVec lbl_805C02DC;
-CVec lbl_805C02F8;
-CVec lbl_805C032C;
-CVec lbl_805C0348;
-CVec lbl_805C0364;
-CVec lbl_805C038C;
-CVec lbl_805C03A8;
-}
-
-/*
-    stwu     r1, -0x10(r1)
-    mflr     r0
-    lis      r4, __dt__4CVecFv@ha
-    lis      r3, lbl_805C0190@ha
-    stw      r0, 0x14(r1)
-    lis      r5, __vt__4CVec@ha
-    addi     r0, r5, __vt__4CVec@l
-    addi     r4, r4, __dt__4CVecFv@l
-    stw      r31, 0xc(r1)
-    addi     r31, r3, lbl_805C0190@l
-    addi     r3, r31, 0x14c
-    stw      r0, 0xc(r3)
-    addi     r5, r31, 0x140
-    bl       __register_global_object
-    lis      r4, __vt__4CVec@ha
-    addi     r3, r31, 0x168
-    addi     r0, r4, __vt__4CVec@l
-    addi     r5, r31, 0x15c
-    lis      r4, __dt__4CVecFv@ha
-    stw      r0, 0xc(r3)
-    addi     r4, r4, __dt__4CVecFv@l
-    bl       __register_global_object
-    lis      r4, __vt__4CVec@ha
-    addi     r3, r31, 0x19c
-    addi     r0, r4, __vt__4CVec@l
-    addi     r5, r31, 0x190
-    lis      r4, __dt__4CVecFv@ha
-    stw      r0, 0xc(r3)
-    addi     r4, r4, __dt__4CVecFv@l
-    bl       __register_global_object
-    lis      r4, __vt__4CVec@ha
-    addi     r3, r31, 0x1b8
-    addi     r0, r4, __vt__4CVec@l
-    addi     r5, r31, 0x1ac
-    lis      r4, __dt__4CVecFv@ha
-    stw      r0, 0xc(r3)
-    addi     r4, r4, __dt__4CVecFv@l
-    bl       __register_global_object
-    lis      r4, __vt__4CVec@ha
-    addi     r3, r31, 0x1d4
-    addi     r0, r4, __vt__4CVec@l
-    addi     r5, r31, 0x1c8
-    lis      r4, __dt__4CVecFv@ha
-    stw      r0, 0xc(r3)
-    addi     r4, r4, __dt__4CVecFv@l
-    bl       __register_global_object
-    lis      r4, __vt__4CVec@ha
-    addi     r3, r31, 0x1fc
-    addi     r0, r4, __vt__4CVec@l
-    addi     r5, r31, 0x1f0
-    lis      r4, __dt__4CVecFv@ha
-    stw      r0, 0xc(r3)
-    addi     r4, r4, __dt__4CVecFv@l
-    bl       __register_global_object
-    lis      r4, __vt__4CVec@ha
-    addi     r3, r31, 0x218
-    addi     r0, r4, __vt__4CVec@l
-    addi     r5, r31, 0x20c
-    lis      r4, __dt__4CVecFv@ha
-    stw      r0, 0xc(r3)
-    addi     r4, r4, __dt__4CVecFv@l
-    bl       __register_global_object
-    lwz      r0, 0x14(r1)
-    lwz      r31, 0xc(r1)
-    mtlr     r0
-    addi     r1, r1, 0x10
-    blr
-*/
-
-/**
  * @note Address: 0x80139E40
  * @note Size: 0x8
  */
-extern "C" s32 Get_38__16CCameraActionMapFv(CCameraActionMap*)
+extern "C" s32 GetCameraFlags__16CCameraActionMapFv(CCameraActionMap*)
 {
 	return 11;
 }
@@ -10054,7 +9532,7 @@ extern "C" s32 vf5C__16CCameraActionMapFv(CCameraActionMap* map)
  * @note Address: 0x80139E50
  * @note Size: 0x8
  */
-extern "C" f32 vf58__16CCameraActionMapFv(CCameraActionMap*)
+extern "C" f32 GetFollowDivisor__16CCameraActionMapFv(CCameraActionMap*)
 {
 	return 6.0f;
 }

@@ -1,7 +1,7 @@
 #include "game/xobjspidersmall.h"
 #include "PowerPC_EABI_Support/Runtime/MWCPlusLib.h"
 
-// what the compiler made for lbl_8037E97C, CStatus[39][16]
+// what the compiler made for gSmallSpiderStatusByStage, CStatus[39][16]
 
 extern "C" {
 extern void* __vt__7CStatus[];
@@ -12,9 +12,10 @@ extern void* __vt__7CStatus[];
  * @note Size: 0x38
  */
 // todo: weak copy
-extern "C" void fn_8010011C()
+extern "C" void DestroySmallSpiderStatusTable()
 {
-	__destroy_arr(lbl_8037E97C, (ConstructorDestructor*)fn_80100154, sizeof(lbl_8037E97C[0]), 39);
+	__destroy_arr(gSmallSpiderStatusByStage, (ConstructorDestructor*)__dt__22SmallSpiderStageStatusFv, sizeof(gSmallSpiderStatusByStage[0]),
+	              39);
 }
 
 /**
@@ -22,10 +23,10 @@ extern "C" void fn_8010011C()
  * @note Size: 0x60
  */
 // todo: weak copy
-extern "C" CStatus* fn_80100154(CStatus* row, s32 flags)
+extern "C" CStatus* __dt__22SmallSpiderStageStatusFv(CStatus* row, s32 flags)
 {
 	if (row != NULL) {
-		__destroy_arr(row, (ConstructorDestructor*)fn_801001B4, sizeof(CStatus), 16);
+		__destroy_arr(row, (ConstructorDestructor*)DestroySmallSpiderStatusEntry, sizeof(CStatus), 16);
 		if ((s16)flags > 0) {
 			::operator delete(row);
 		}
@@ -38,7 +39,7 @@ extern "C" CStatus* fn_80100154(CStatus* row, s32 flags)
  * @note Size: 0x50
  */
 // todo: weak copy
-extern "C" CStatus* fn_801001B4(CStatus* status, s32 flags)
+extern "C" CStatus* DestroySmallSpiderStatusEntry(CStatus* status, s32 flags)
 {
 	if (status != NULL) {
 		status->CStatus::~CStatus();
@@ -54,9 +55,10 @@ extern "C" CStatus* fn_801001B4(CStatus* status, s32 flags)
  * @note Size: 0x48
  */
 // todo: weak copy
-extern "C" CStatus* fn_80100204(CStatus* row)
+extern "C" CStatus* __ct__22SmallSpiderStageStatusFv(CStatus* row)
 {
-	__construct_array(row, (ConstructorDestructor)__ct__7CStatusFv, (ConstructorDestructor)fn_801001B4, sizeof(CStatus), 16);
+	__construct_array(row, (ConstructorDestructor)__ct__7CStatusFv, (ConstructorDestructor)DestroySmallSpiderStatusEntry, sizeof(CStatus),
+	                  16);
 	return row;
 }
 

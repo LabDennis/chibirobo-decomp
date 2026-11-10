@@ -98,7 +98,7 @@ extern PadLibData HSD_PadLibData;
 extern HSD_PadStatus HSD_PadMasterStatus[4];
 extern HSD_PadStatus HSD_PadCopyStatus[4];
 
-void fn_801CC0A0(u8 qtype);
+void SetPadQueueType(u8 qtype);
 s32 HSD_PadGetResetSwitch(void);
 void HSD_PadRenewRawStatus(void);
 void HSD_PadRenewMasterStatus(void);

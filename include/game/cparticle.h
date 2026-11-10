@@ -13,8 +13,8 @@ extern "C" {
 void psKillGenerator(HSD_Generator* gen);
 void psKillAllGenerator(void);
 // hsd generator.c, the jobj particle and sound link callbacks
-HSD_Generator* fn_801E4380(int linkNo, int bank, int kind, HSD_JObj* jobj);
-HSD_Generator* fn_801E4C58(int linkNo, int bank, int kind, HSD_JObj* jobj);
+HSD_Generator* psCreateJointGenerator(int linkNo, int bank, int kind, HSD_JObj* jobj);
+HSD_Generator* psCreateQueuedJointGenerator(int linkNo, int bank, int kind, HSD_JObj* jobj);
 }
 
 // one generator the game keeps track of, by the id it was made from

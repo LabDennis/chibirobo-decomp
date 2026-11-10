@@ -1,3 +1,4 @@
+#include "game/xobjflags.h"
 #include "game/xact.h"
 #include "game/xobjattachment.h"
 
@@ -18,9 +19,9 @@ extern "C" void Reset__7XActionFv(XAction* action)
  * @note Address: 0x800BB720
  * @note Size: 0x8
  */
-extern "C" s32 vf148__9XObjFlagsFv(XObj* object)
+s32 XObjFlags::GetFlagIndex()
 {
-	return object->_260;
+	return _260;
 }
 
 /**

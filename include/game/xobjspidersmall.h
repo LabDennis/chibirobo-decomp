@@ -9,7 +9,7 @@
 // the units from 0x800F49F0 to 0x80100264. offsets are usa, everything past XObj sits 0x10 lower
 // in japan
 
-// the fx_spider_01 the spider carries around, drawn from lbl_8037E910
+// the fx_spider_01 the spider carries around, drawn from gSmallSpiderEffectObjects
 struct XObjSpiderSmallFx {
 	CVec mPos;       // _00
 	CVec _10;        // _10
@@ -63,11 +63,11 @@ public:
 	Vec mTargetPos;         // _A1C
 	f32 mTargetRadius;      // _A28
 	s32 mStage;             // _A2C
-	s32 mEvtArgs[6];        // _A30, from vf124
+	s32 mEvtArgs[6];        // _A30, from HandleEventCommand
 	u32 _A48;               // _A48
 	XObjSpiderSmallFx mFx;  // _A4C
 	XObj* mFxObj;           // _A84
-	u8 mFxIndex;            // _A88, into lbl_8037E910, 255 for none
+	u8 mFxIndex;            // _A88, into gSmallSpiderEffectObjects, 255 for none
 	u8 _A89[0xA8C - 0xA89]; // _A89
 	f32 _A8C;               // _A8C, the angle it sits at around the robot
 	f32 _A90;               // _A90
@@ -81,29 +81,41 @@ public:
 	u8 _AB1[0xAB4 - 0xAB1]; // _AB1
 	s32 _AB4;               // _AB4, pool index it loaded with
 	s32 mTimeMode;          // _AB8
-	s32 _ABC;               // _ABC
+	s32 mAreaGraceTimer;    // _ABC
 	s32 _AC0;               // _AC0
 	s32 _AC4;               // _AC4, the battle bgm state
 	AnimSfx mAnimSfx;       // _AC8
 
 	XObjSpiderSmall();
+	virtual ~XObjSpiderSmall();
 
-	virtual void Release();                                // _54
-	virtual void vf90(u32 id);                             // _90
-	virtual void vf94();                                   // _94
-	virtual void vf98();                                   // _98
-	virtual BOOL vf9C(const CoordInfo& info);              // _9C
-	virtual void vfA4(u32 frames);                         // _A4
-	virtual void vfAC();                                   // _AC
-	virtual void vfB8();                                   // _B8
-	virtual void vfBC(const Vec* origin, f32 opacity);     // _BC
-	virtual void vfC0();                                   // _C0
-	virtual void vfC8();                                   // _C8
-	virtual void vfCC();                                   // _CC
-	virtual s32 vf100(s32 unused, s32 value);              // _100
-	virtual s32 vf124(s32 count, s32* args);               // _124
-	virtual void vf138(const Vec& position, f32 strength); // _138
-	virtual void vf148();                                  // _148, anim sounds
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+	void State5(u32 frames);
+	void State6(u32 frames);
+	void State7(u32 frames);
+	void State8(u32 frames);
+	void State9(u32 frames);
+
+	virtual void Release();                                            // _54
+	virtual void InitializeObject(u32 id);                             // _90
+	virtual void vf94();                                               // _94
+	virtual void ResetObjectState();                                   // _98
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _9C
+	virtual void UpdateObject(u32 frames);                             // _A4
+	virtual void vfAC();                                               // _AC
+	virtual void DrawGroundShadow();                                   // _B8
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _BC
+	virtual void DrawObjectEffects();                                  // _C0
+	virtual void vfC8();                                               // _C8
+	virtual void DrawDebugStatus();                                    // _CC
+	virtual s32 vf100(s32 unused, s32 value);                          // _100
+	virtual s32 HandleEventCommand(s32 count, s32* args);              // _124
+	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _138
+	virtual void UpdateAnimationSounds();                              // _148, anim sounds
 
 	void Hide() { mSpiderStatus.mFlags |= 0x80000; }
 	u32 IsDead() const { return (mSpiderStatus.mFlags >> 19) & 1; }
@@ -158,26 +170,32 @@ STATIC_ASSERT(sizeof(XObjSpiderSmall) == 0xAC8);
 STATIC_ASSERT(sizeof(XObjSpiderSmall) == 0xAD8);
 #endif
 
-extern "C" {
-void fn_800F4DB8(XObjSpiderSmallFx* fx, const CVec& pos);
-u8 fn_800F5678(XObjSpiderSmall* spider);
-u8 fn_800F5684(XObjSpiderSmall* spider);
-void fn_800FF168(XObjSpiderSmall* spider);
-void fn_800FFB00(XObjSpiderSmall* spider);
+struct SmallSpiderStageStatus {
+	CStatus mSpiders[16];
+};
+STATIC_ASSERT(sizeof(SmallSpiderStageStatus) == 0x80);
 
-// lbl_8037E97C's construct and destroy helpers
-void fn_8010011C();
-CStatus* fn_80100154(CStatus* row, s32 flags);
-CStatus* fn_801001B4(CStatus* status, s32 flags);
-CStatus* fn_80100204(CStatus* row);
+extern "C" {
+void StartSmallSpiderWebEffect(XObjSpiderSmallFx* fx, const CVec& pos);
+u8 HasSmallSpiderEmerged(XObjSpiderSmall* spider);
+u8 IsSmallSpiderGrabbingPlayer(XObjSpiderSmall* spider);
+void ApplySmallSpiderPlacement(XObjSpiderSmall* spider);
+void ResetSmallSpiderState(XObjSpiderSmall* spider);
+
+// gSmallSpiderStatusByStage's construct and destroy helpers
+void DestroySmallSpiderStatusTable();
+CStatus* __dt__22SmallSpiderStageStatusFv(CStatus* row, s32 flags);
+CStatus* DestroySmallSpiderStatusEntry(CStatus* status, s32 flags);
+CStatus* __ct__22SmallSpiderStageStatusFv(CStatus* row);
 CStatus* __ct__7CStatusFv(CStatus* status);
 
+extern void (XObjSpiderSmall::*gSmallSpiderStateHandlers[10])(u32);
+
 // the spider file's bss
-extern XObj* lbl_8037E910[12];       // the stage's fx_spider_01 objects
-extern s32 lbl_8037E940[12];         // which spider has each, -1 for none
-extern u8 lbl_8037E970[12];          // lbl_8037E97C's DestructorChain
-extern CStatus lbl_8037E97C[39][16]; // a row per stage, a spider per pool index
-extern AnimSfxEvent lbl_8022B170[];  // the anim sound events
+extern XObj* gSmallSpiderEffectObjects[12];                  // the stage's fx_spider_01 objects
+extern s32 gSmallSpiderEffectSlotOwners[12];                 // which spider has each, -1 for none
+extern SmallSpiderStageStatus gSmallSpiderStatusByStage[39]; // a row per stage, a spider per pool index
+extern AnimSfxEvent gSmallSpiderAnimSfxEvents[];             // the anim sound events
 }
 
 #endif
