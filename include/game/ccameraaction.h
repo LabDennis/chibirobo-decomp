@@ -133,7 +133,7 @@ STATIC_ASSERT(sizeof(CInterpolationEaseOutDivide) == 0x10);
 // the vector ones run one scalar interpolation per axis
 class CVectorLinearInterpolation : public CInterfaceVectorInterpolation {
 public:
-	virtual ~CVectorLinearInterpolation();          // _08
+	virtual ~CVectorLinearInterpolation() { }       // _08
 	virtual bool Start(Vec from, Vec to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
 	virtual bool Update(u32 step, f32 dt);          // _14
@@ -146,7 +146,7 @@ STATIC_ASSERT(sizeof(CVectorLinearInterpolation) == 0x34);
 
 class CVectorEaseInOutInterpolation : public CInterfaceVectorInterpolation {
 public:
-	virtual ~CVectorEaseInOutInterpolation();       // _08
+	virtual ~CVectorEaseInOutInterpolation() { }    // _08
 	virtual bool Start(Vec from, Vec to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
 	virtual bool Update(u32 step, f32 dt);          // _14
@@ -160,7 +160,7 @@ STATIC_ASSERT(sizeof(CVectorEaseInOutInterpolation) == 0x5C);
 
 class CVectorEaseOutInterpolation : public CInterfaceVectorInterpolation {
 public:
-	virtual ~CVectorEaseOutInterpolation();         // _08
+	virtual ~CVectorEaseOutInterpolation() { }      // _08
 	virtual bool Start(Vec from, Vec to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
 	virtual bool Update(u32 step, f32 dt);          // _14
@@ -170,16 +170,6 @@ public:
 	CInterpolationEaseOut mAxes[3]; // _04
 };
 STATIC_ASSERT(sizeof(CVectorEaseOutInterpolation) == 0x64);
-
-inline CVectorLinearInterpolation::~CVectorLinearInterpolation()
-{
-}
-inline CVectorEaseInOutInterpolation::~CVectorEaseInOutInterpolation()
-{
-}
-inline CVectorEaseOutInterpolation::~CVectorEaseOutInterpolation()
-{
-}
 
 class CVectorNoneInterpolation : public CInterfaceVectorInterpolation {
 public:
@@ -218,29 +208,44 @@ public:
 	u32 _38;        // _38
 	// _3C vtable
 
-	virtual ~CInterfaceCameraAction() { }          // _08
-	virtual void PreviousUpdate();                 // _0C
-	virtual void Update(u32 step) = 0;             // _10
-	virtual void vf14() { }                        // _14
-	virtual void SetCamera(CCamera* camera);       // _18, takes eye, interest, angle, distance and fov
-	virtual void Init();                           // _1C
-	virtual void vf20();                           // _20
-	virtual void vf24();                           // _24
-	virtual void vf28();                           // _28
-	virtual void SetEye(f32 x, f32 y, f32 z);      // _2C
-	virtual void SetInterest(f32 x, f32 y, f32 z); // _30
-	virtual void SetAngle(f32 x, f32 y, f32 z);    // _34
-	virtual void SetEye(const Vec& eye);           // _38
-	virtual void SetInterest(const Vec& interest); // _3C
-	virtual void SetAngle(const Vec& angle);       // _40
-	virtual void SetDistance(f32 distance);        // _44
-	virtual void SetFov(f32 fov);                  // _48
-	virtual void SetAngleZ(f32 z);                 // _4C
-	virtual u32 vf50();                            // _50
-	virtual u32 GetCameraFlags();                  // _54
-	virtual f32 GetFollowDivisor();                // _58
-	virtual u32 vf5C();                            // _5C
-	virtual XObj* GetTarget();                     // _60
+	virtual ~CInterfaceCameraAction() { }       // _08
+	virtual void PreviousUpdate() { }           // _0C
+	virtual void Update(u32 step) = 0;          // _10
+	virtual void vf14() { }                     // _14
+	virtual void SetCamera(CCamera* camera) { } // _18, takes eye, interest, angle, distance and fov
+	virtual void Init() { }                     // _1C
+	virtual void vf20() { }                     // _20
+	virtual void vf24() { }                     // _24
+	virtual void vf28() { }                     // _28
+	virtual void SetEye(f32 x, f32 y, f32 z)    // _2C
+	{
+		mEye.x = x;
+		mEye.y = y;
+		mEye.z = z;
+	}
+	virtual void SetInterest(f32 x, f32 y, f32 z) // _30
+	{
+		mInterest.x = x;
+		mInterest.y = y;
+		mInterest.z = z;
+	}
+	virtual void SetAngle(f32 x, f32 y, f32 z) // _34
+	{
+		mAngle.x = x;
+		mAngle.y = y;
+		mAngle.z = z;
+	}
+	virtual void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }                               // _38
+	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _3C
+	virtual void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }                   // _40
+	virtual void SetDistance(f32 distance) { mDistance = distance; }                                   // _44
+	virtual void SetFov(f32 fov) { mFov = fov; }                                                       // _48
+	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                                                    // _4C
+	virtual u32 vf50() { return 0; }                                                                   // _50
+	virtual u32 GetCameraFlags() { return _38; }                                                       // _54
+	virtual f32 GetFollowDivisor();                                                                    // _58
+	virtual u32 vf5C() { return 0; }                                                                   // _5C
+	virtual XObj* GetTarget() { return NULL; }                                                         // _60
 
 	// set the mode word along with the vector
 	void SetEye(const Vec& eye, u32 mode)
