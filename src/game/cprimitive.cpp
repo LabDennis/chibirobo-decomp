@@ -1927,16 +1927,16 @@ void CCircle::Draw(Mtx view, u32 segments, u32 centerColor, u32 edgeColor)
     clrlwi   r5, r0, 16
     li       r4, 0x0
     bl       GXBegin
-    lfs      f0, sPrimitiveZero@sda21(r0)
+    lfs      f0, lbl_8065F644@sda21(r0)
     lis      r25, 0xcc01
-    lfs      f29, sPrimitiveFullTurn@sda21(r0)
+    lfs      f29, lbl_8065F648@sda21(r0)
     addi     r27, r29, 0x1
     stfs     f0, -0x8000(r25)
     li       r20, 0x1
-    lfd      f30, sPrimitiveUnsignedConversionBias@sda21(r0)
+    lfd      f30, lbl_8065F650@sda21(r0)
     lis      r26, 0x4330
     stfs     f0, -0x8000(r25)
-    lfd      f31, sPrimitiveSignedConversionBias@sda21(r0)
+    lfd      f31, lbl_8065F658@sda21(r0)
     stfs     f0, -0x8000(r25)
     stw      r30, -0x8000(r25)
     b        .L_8019C708
@@ -2138,19 +2138,19 @@ void CCircle::DrawLit(Mtx view, u32 segments, u32 centerColor, u32 edgeColor)
     clrlwi   r5, r0, 16
     li       r4, 0x0
     bl       GXBegin
-    lfs      f0, sPrimitiveZero@sda21(r0)
+    lfs      f0, lbl_8065F644@sda21(r0)
     lis      r17, 0xcc01
     li       r3, 0x0
     li       r0, 0x1
     stfs     f0, -0x8000(r17)
     addi     r15, r28, 0x1
-    lfs      f29, sPrimitiveFullTurn@sda21(r0)
+    lfs      f29, lbl_8065F648@sda21(r0)
     li       r18, 0x1
     stfs     f0, -0x8000(r17)
     lis      r16, 0x4330
-    lfd      f30, sPrimitiveUnsignedConversionBias@sda21(r0)
+    lfd      f30, lbl_8065F650@sda21(r0)
     stfs     f0, -0x8000(r17)
-    lfd      f31, sPrimitiveSignedConversionBias@sda21(r0)
+    lfd      f31, lbl_8065F658@sda21(r0)
     stb      r3, -0x8000(r17)
     stb      r3, -0x8000(r17)
     stb      r0, -0x8000(r17)
@@ -2330,7 +2330,7 @@ void CTile::Draw(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
     li       r4, 0x0
     li       r5, 0x4
     bl       GXBegin
-    lfs      f2, sPrimitiveOne@sda21(r0)
+    lfs      f2, lbl_8065F640@sda21(r0)
     lis      r3, 0xcc01
     lfs      f0, 0x178(r26)
     lfs      f1, 0x17c(r26)
@@ -2518,7 +2518,7 @@ void CTile::DrawLit(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
     li       r4, 0x0
     li       r5, 0x4
     bl       GXBegin
-    lfs      f2, sPrimitiveOne@sda21(r0)
+    lfs      f2, lbl_8065F640@sda21(r0)
     lis      r4, 0xcc01
     lfs      f0, 0x178(r27)
     li       r3, 0x0

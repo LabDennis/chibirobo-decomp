@@ -1917,7 +1917,7 @@ static inline void CEvt_End(CEvt* evt)
     lis      r4, sEvtCommandWAITName@ha
     mr       r6, r3
     addi     r7, r4, sEvtCommandWAITName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x1032
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -2378,7 +2378,7 @@ static inline void CEvt_End(CEvt* evt)
     lis      r4, sEvtCommandWAITName@ha
     mr       r6, r3
     addi     r7, r4, sEvtCommandWAITName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x10c1
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -2391,7 +2391,7 @@ static inline void CEvt_End(CEvt* evt)
     lis      r4, sEvtCommandWAITName@ha
     mr       r6, r3
     addi     r7, r4, sEvtCommandWAITName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x10c3
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -2704,7 +2704,7 @@ extern "C" s32 CEvt__cmd_SFX(CEvt* evt)
     lis      r4, sEvtCommandSFXName@ha
     mr       r6, r3
     addi     r7, r4, sEvtCommandSFXName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0xee1
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -3067,7 +3067,7 @@ extern "C" void LatchEventBeat(s32 id, s32 beat, EvtBeatLatch* latch)
     lis      r4, sEvtCommandREADName@ha
     mr       r6, r3
     addi     r7, r4, sEvtCommandREADName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0xd28
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -3946,7 +3946,7 @@ extern "C" s32 CEvt__cmd_PTCL(CEvt* evt)
     lis      r4, sEvtCommandPTCLName@ha
     mr       r6, r3
     addi     r7, r4, sEvtCommandPTCLName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0xce8
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -7105,7 +7105,7 @@ extern "C" s32 CEvt__cmd_DIR(CEvt* evt, u8 command)
     lis      r4, sEvtCommandDIRName@ha
     mr       r6, r3
     addi     r7, r4, sEvtCommandDIRName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0xa6b
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -9117,7 +9117,7 @@ extern "C" s32 CEvt__cmd_CAMERA(CEvt* evt)
     lis      r4, sEvtCommandCAMERAName@ha
     mr       r6, r3
     addi     r7, r4, sEvtCommandCAMERAName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x9cf
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -11121,7 +11121,7 @@ extern "C" s32 CEvt__cmd_CAMERA(CEvt* evt)
     addi     r6, r29, 0xa74
     addi     r7, r3, sEvtCommandCALLName@l
     li       r4, 0x86d
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
     bl       OSPanic
@@ -11564,7 +11564,7 @@ extern "C" s32 CEvt__cmd_BORN(CEvt* evt)
     lis      r4, sEvtCommandBORNName@ha
     mr       r6, r3
     addi     r7, r4, sEvtCommandBORNName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x6a9
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -13348,7 +13348,7 @@ extern "C" s32 CEvt_EvalCmp(CEvt* evt)
     crclr    cr1eq
     bl       FormatToStaticBuffer
     mr       r6, r3
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x532
     li       r5, lbl_8065CFA8@sda21
     li       r7, sEvtEvalCmpName@sda21
@@ -13713,7 +13713,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     crclr    cr1eq
     bl       FormatToStaticBuffer
     mr       r6, r3
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x532
     li       r5, lbl_8065CFA8@sda21
     li       r7, sEvtEvalCmpName@sda21
@@ -13897,7 +13897,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     crclr    cr1eq
     bl       FormatToStaticBuffer
     mr       r6, r3
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x453
     li       r5, lbl_8065CFA8@sda21
     li       r7, sEvtEvalSetName@sda21
@@ -13923,7 +13923,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     crclr    cr1eq
     bl       FormatToStaticBuffer
     mr       r6, r3
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x45c
     li       r5, lbl_8065CFA8@sda21
     li       r7, sEvtEvalSetName@sda21
@@ -13994,7 +13994,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     crclr    cr1eq
     bl       FormatToStaticBuffer
     mr       r6, r3
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x478
     li       r5, lbl_8065CFA8@sda21
     li       r7, sEvtEvalSetName@sda21
@@ -14104,7 +14104,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     crclr    cr1eq
     bl       FormatToStaticBuffer
     mr       r6, r3
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x485
     li       r5, lbl_8065CFA8@sda21
     li       r7, sEvtEvalSetName@sda21
@@ -14158,7 +14158,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     crclr    cr1eq
     bl       FormatToStaticBuffer
     mr       r6, r3
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x498
     li       r5, lbl_8065CFA8@sda21
     li       r7, sEvtEvalSetName@sda21
@@ -14189,7 +14189,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     crclr    cr1eq
     bl       FormatToStaticBuffer
     mr       r6, r3
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x4a1
     li       r5, lbl_8065CFA8@sda21
     li       r7, sEvtEvalSetName@sda21
@@ -14310,7 +14310,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     crclr    cr1eq
     bl       FormatToStaticBuffer
     mr       r6, r3
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x4d2
     li       r5, lbl_8065CFA8@sda21
     li       r7, sEvtEvalSetName@sda21
@@ -14322,7 +14322,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     crclr    cr1eq
     bl       FormatToStaticBuffer
     mr       r6, r3
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x4dd
     li       r5, lbl_8065CFA8@sda21
     li       r7, sEvtEvalSetName@sda21
@@ -15138,7 +15138,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lis      r4, sEvaluateName@ha
     mr       r6, r3
     addi     r7, r4, sEvaluateName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x2ae
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -15164,7 +15164,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lis      r4, sEvaluateName@ha
     mr       r6, r3
     addi     r7, r4, sEvaluateName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x2b6
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -15395,7 +15395,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lis      r4, sEvaluateName@ha
     mr       r6, r3
     addi     r7, r4, sEvaluateName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x2e1
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -15444,7 +15444,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lis      r4, sEvaluateName@ha
     mr       r6, r3
     addi     r7, r4, sEvaluateName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x2ee
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -15500,7 +15500,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lis      r4, sEvaluateName@ha
     mr       r6, r3
     addi     r7, r4, sEvaluateName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x301
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -15533,7 +15533,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lis      r4, sEvaluateName@ha
     mr       r6, r3
     addi     r7, r4, sEvaluateName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x30a
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -15677,7 +15677,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lis      r4, sEvaluateName@ha
     mr       r6, r3
     addi     r7, r4, sEvaluateName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x33b
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -15747,7 +15747,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lis      r4, sEvaluateName@ha
     mr       r6, r3
     addi     r7, r4, sEvaluateName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x356
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -16716,7 +16716,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lis      r4, sEvaluateName@ha
     mr       r6, r3
     addi     r7, r4, sEvaluateName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x3d1
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -16843,7 +16843,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lis      r4, sEvaluateName@ha
     mr       r6, r3
     addi     r7, r4, sEvaluateName@l
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x3ff
     li       r5, lbl_8065CFA8@sda21
     crclr    cr1eq
@@ -17731,7 +17731,7 @@ extern "C" void CEvt_Update(CEvt* evt, s32 step)
     crclr    cr1eq
     bl       FormatToStaticBuffer
     mr       r6, r3
-    li       r3, sPathEvtCpp@sda21
+    li       r3, lbl_8065CFA0@sda21
     li       r4, 0x22e
     li       r5, lbl_8065CFA8@sda21
     li       r7, sEvtUpdateName@sda21

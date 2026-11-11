@@ -2036,7 +2036,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     mulli    r5, r22, 0x98
     stw      r3, 0x20(r1)
     lfd      f2, "@237"@sda21(r0)
-    lfs      f0, sSynthSampleRate@sda21(r0)
+    lfs      f0, lbl_8065FEBC@sda21(r0)
     add      r24, r24, r5
     lfs      f3, "@223"@sda21(r0)
     stw      r4, 0x30(r24)
@@ -2059,7 +2059,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     bne      .L_801ED77C
     xoris    r0, r16, 0x8000
     stw      r3, 0x20(r1)
-    lfs      f1, sSynthInverseVolumeRange@sda21(r0)
+    lfs      f1, lbl_8065FEC0@sda21(r0)
     stw      r0, 0x24(r1)
     lfd      f0, 0x20(r1)
     fsubs    f0, f0, f2
@@ -2104,7 +2104,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     stw      r3, 0x24(r1)
     lfd      f1, "@237"@sda21(r0)
     stw      r0, 0x20(r1)
-    lfs      f2, sSynthInverseVolumeRange@sda21(r0)
+    lfs      f2, lbl_8065FEC0@sda21(r0)
     lfd      f0, 0x20(r1)
     fsubs    f0, f0, f1
     fmuls    f0, f2, f0
@@ -2220,7 +2220,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     lfs      f2, 0x4c(r24)
     cmpwi    r20, 0x0
     lfsx     f0, r3, r4
-    lfs      f3, sSynthMaxMixGain@sda21(r0)
+    lfs      f3, lbl_8065FEC4@sda21(r0)
     fmuls    f0, f0, f4
     sth      r0, 0xe(r1)
     fmuls    f0, f1, f0
@@ -2234,7 +2234,7 @@ void HSD_SynthSFXKeyOff(s32 id)
     beq      .L_801ED9CC
     sth      r0, 0x2c(r21)
 .L_801ED9CC:
-    lfs      f1, sSynthFixedPointScale@sda21(r0)
+    lfs      f1, lbl_8065FEC8@sda21(r0)
     lfs      f0, 0x18(r24)
     fmuls    f1, f1, f0
     bl       __cvt_fp2unsigned
@@ -2749,7 +2749,7 @@ void HSD_SynthSetVolFader(s32 id, s32 vol, s32 fadeFrames, s32 flag, s32 dbMode)
     mulli    r3, r24, 0x18
     lfd      f1, lbl_8065FEB0@sda21(r0)
     stw      r0, 0x8(r1)
-    lfd      f2, sSynthInverseVolumeRangeDouble@sda21(r0)
+    lfd      f2, lbl_8065FED0@sda21(r0)
     add      r3, r31, r3
     lfd      f0, 0x8(r1)
     fsub     f0, f0, f1
@@ -3655,7 +3655,7 @@ void UpdateSynthVolumeFadersAndVoices(void)
     clrlwi.  r0, r0, 30
     bne      .L_801EEFC8
     cmplwi   r3, 0x3f
-    lfs      f5, sSynthMaxMixGain@sda21(r0)
+    lfs      f5, lbl_8065FEC4@sda21(r0)
     lfs      f4, 0x4c(r20)
     lfs      f3, 0x34(r20)
     lfs      f2, 0x0(r4)
@@ -6650,7 +6650,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     stw      r3, 0xc(r1)
     lfd      f1, "@237"@sda21(r0)
     stw      r0, 0x8(r1)
-    lfs      f2, sSynthInverseVolumeRange@sda21(r0)
+    lfs      f2, lbl_8065FEC0@sda21(r0)
     lfd      f0, 0x8(r1)
     fsubs    f0, f0, f1
     fmuls    f0, f2, f0
@@ -6697,7 +6697,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     stw      r3, 0xc(r1)
     lfd      f1, "@237"@sda21(r0)
     stw      r0, 0x8(r1)
-    lfs      f2, sSynthInverseVolumeRange@sda21(r0)
+    lfs      f2, lbl_8065FEC0@sda21(r0)
     lfd      f0, 0x8(r1)
     fsubs    f0, f0, f1
     fmuls    f0, f2, f0
@@ -6885,7 +6885,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
     bl       fn_801788FC
     lfs      f1, sSynthStreamVolume@sda21(r0)
     li       r0, 0xff
-    lfs      f0, sSynthMaxStreamVolume@sda21(r0)
+    lfs      f0, lbl_8065FF20@sda21(r0)
     stw      r0, sSynthStreamVolumeScale@sda21(r0)
     fmuls    f0, f1, f0
     fctiwz   f0, f0

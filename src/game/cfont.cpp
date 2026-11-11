@@ -331,7 +331,7 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
     xoris    r5, r5, 0x8000
     stw      r4, 0x18(r1)
     xoris    r0, r0, 0x8000
-    lfd      f4, sFontSignedConversionBias@sda21(r0)
+    lfd      f4, lbl_8065F688@sda21(r0)
     stw      r5, 0x1c(r1)
     lfs      f5, 0x2c(r27)
     lfd      f0, 0x18(r1)
@@ -339,14 +339,14 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
     fsubs    f1, f0, f4
     lfs      f2, 0x30(r27)
     stw      r4, 0x20(r1)
-    lfs      f3, sFontZero@sda21(r0)
+    lfs      f3, lbl_8065F680@sda21(r0)
     lfd      f0, 0x20(r1)
     fmuls    f1, f5, f1
     fsubs    f0, f0, f4
     fmuls    f2, f2, f0
     bl       PSMTXTrans
     li       r0, 0x1
-    lfs      f3, sFontOne@sda21(r0)
+    lfs      f3, lbl_8065F684@sda21(r0)
     stw      r0, 0x74(r27)
     addi     r3, r27, 0xa8
     lfs      f1, 0x34(r27)
@@ -530,7 +530,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0x88
     li       r4, 0x47
-    li       r5, sFontPanicFormat@sda21
+    li       r5, lbl_8065F690@sda21
     li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
@@ -551,7 +551,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     subi     r3, r3, 0x3000
 .L_8019ED54:
     addi     r0, r3, 0x1f
-    li       r4, sFontTempAllocationLabel@sda21
+    li       r4, lbl_8065F698@sda21
     clrrwi   r3, r0, 5
     bl       Alloc__2mmFUlPCc
     mr.      r25, r3
@@ -562,7 +562,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0xa8
     li       r4, 0x4d
-    li       r5, sFontPanicFormat@sda21
+    li       r5, lbl_8065F690@sda21
     li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
@@ -578,7 +578,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0xd0
     li       r4, 0x51
-    li       r5, sFontPanicFormat@sda21
+    li       r5, lbl_8065F690@sda21
     li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
@@ -658,7 +658,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     mr       r6, r3
     addi     r3, r31, 0x7c
     li       r4, 0x69
-    li       r5, sFontPanicFormat@sda21
+    li       r5, lbl_8065F690@sda21
     li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
@@ -753,7 +753,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0x138
     li       r4, 0x76
-    li       r5, sFontPanicFormat@sda21
+    li       r5, lbl_8065F690@sda21
     li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
@@ -792,7 +792,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0x88
     li       r4, 0x83
-    li       r5, sFontPanicFormat@sda21
+    li       r5, lbl_8065F690@sda21
     li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
@@ -807,7 +807,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     addi     r3, r31, 0x7c
     addi     r6, r31, 0x16c
     li       r4, 0x87
-    li       r5, sFontPanicFormat@sda21
+    li       r5, lbl_8065F690@sda21
     li       r7, sFontInitFunctionName@sda21
     crclr    cr1eq
     bl       OSPanic
@@ -843,9 +843,9 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     lhz      r3, 0x3c(r1)
     lhz      r0, 0x3e(r1)
     sth      r3, 0x0(r28)
-    lfs      f1, sFontZero@sda21(r0)
+    lfs      f1, lbl_8065F680@sda21(r0)
     sth      r0, 0x2(r28)
-    lfs      f0, sFontOne@sda21(r0)
+    lfs      f0, lbl_8065F684@sda21(r0)
     stw      r12, 0x4(r28)
     stw      r11, 0x8(r28)
     stw      r4, 0x5c(r1)
@@ -891,7 +891,7 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     lhz      r8, 0x1e(r4)
     lhz      r7, 0x18(r4)
     stw      r3, 0x38(r1)
-    lfd      f2, sFontUnsignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065F6A0@sda21(r0)
     sth      r9, 0x0(r28)
     lbz      r6, 0x38(r1)
     sth      r8, 0x2(r28)
@@ -901,9 +901,9 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
     stw      r27, 0x8(r28)
     lbz      r3, 0x3b(r1)
     stw      r30, 0xc(r28)
-    lfs      f3, sFontOne@sda21(r0)
+    lfs      f3, lbl_8065F684@sda21(r0)
     stw      r29, 0x10(r28)
-    lfd      f1, sFontSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F688@sda21(r0)
     stw      r10, 0x34(r1)
     stw      r12, 0x14(r28)
     lfs      f0, 0x34(r1)

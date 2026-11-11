@@ -312,7 +312,7 @@ BOOL CJArchive::ReadAsync(CObjArchive* archive, const char* path, u32 flags, u32
     bl       OSReport
     mr       r4, r31
     mr       r5, r29
-    li       r3, sObjectReadErrorFormat@sda21
+    li       r3, lbl_8065F750@sda21
     crclr    cr1eq
     bl       FormatToStaticBuffer
     lis      r7, sPathCobjCpp@ha
@@ -321,7 +321,7 @@ BOOL CJArchive::ReadAsync(CObjArchive* archive, const char* path, u32 flags, u32
     li       r4, 0x11d
     addi     r3, r7, sPathCobjCpp@l
     addi     r7, r5, sObjectReadAsyncName@l
-    li       r5, sObjectPanicFormat@sda21
+    li       r5, lbl_8065F738@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_801A42E8:
@@ -459,7 +459,7 @@ BOOL CJArchive::ReadCheck()
     bl       OSReport
     lwz      r4, 0x0(r30)
     mr       r5, r29
-    li       r3, sObjectReadErrorFormat@sda21
+    li       r3, lbl_8065F750@sda21
     addi     r4, r4, 0x80
     crclr    cr1eq
     bl       FormatToStaticBuffer
@@ -468,7 +468,7 @@ BOOL CJArchive::ReadCheck()
     addi     r7, r4, sObjectReadCheckName@l
     addi     r3, r31, 0x74
     li       r4, 0x133
-    li       r5, sObjectPanicFormat@sda21
+    li       r5, lbl_8065F738@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_801A4030:
@@ -529,7 +529,7 @@ BOOL CJArchive::ReadCheck()
     mr       r6, r3
     addi     r3, r31, 0x74
     li       r4, 0x33
-    li       r5, sObjectPanicFormat@sda21
+    li       r5, lbl_8065F738@sda21
     li       r7, sObjectArchiveParseName@sda21
     crclr    cr1eq
     bl       OSPanic
@@ -1280,7 +1280,7 @@ u8 CObjVec::Step(u32 frames)
     lfs      f2, 0x10(r3)
     fcmpu    cr0, f3, f2
     beq      .L_801A3494
-    lfs      f1, sObjectInterpolationZero@sda21(r0)
+    lfs      f1, lbl_8065F71C@sda21(r0)
     lfs      f0, 0x20(r3)
     fcmpu    cr0, f1, f0
     bne      .L_801A34D4
@@ -1289,7 +1289,7 @@ u8 CObjVec::Step(u32 frames)
     lfs      f0, 0x14(r3)
     fcmpu    cr0, f1, f0
     beq      .L_801A34B4
-    lfs      f1, sObjectInterpolationZero@sda21(r0)
+    lfs      f1, lbl_8065F71C@sda21(r0)
     lfs      f0, 0x24(r3)
     fcmpu    cr0, f1, f0
     bne      .L_801A34D4
@@ -1298,7 +1298,7 @@ u8 CObjVec::Step(u32 frames)
     lfs      f0, 0x18(r3)
     fcmpu    cr0, f1, f0
     beq      .L_801A34D8
-    lfs      f1, sObjectInterpolationZero@sda21(r0)
+    lfs      f1, lbl_8065F71C@sda21(r0)
     lfs      f0, 0x28(r3)
     fcmpu    cr0, f1, f0
     beq      .L_801A34D8
@@ -1310,7 +1310,7 @@ u8 CObjVec::Step(u32 frames)
     bge      .L_801A3520
     lis      r0, 0x4330
     stw      r4, 0xc(r1)
-    lfd      f2, sObjectUnsignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065F730@sda21(r0)
     stw      r0, 0x8(r1)
     lfs      f3, 0x20(r3)
     lfd      f1, 0x8(r1)
@@ -1327,7 +1327,7 @@ u8 CObjVec::Step(u32 frames)
     ble      .L_801A355C
     lis      r0, 0x4330
     stw      r4, 0xc(r1)
-    lfd      f2, sObjectUnsignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065F730@sda21(r0)
     stw      r0, 0x8(r1)
     lfs      f3, 0x20(r3)
     lfd      f1, 0x8(r1)
@@ -1346,7 +1346,7 @@ u8 CObjVec::Step(u32 frames)
     bge      .L_801A35A4
     lis      r0, 0x4330
     stw      r4, 0xc(r1)
-    lfd      f1, sObjectUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F730@sda21(r0)
     stw      r0, 0x8(r1)
     lfs      f2, 0x24(r3)
     lfd      f0, 0x8(r1)
@@ -1362,7 +1362,7 @@ u8 CObjVec::Step(u32 frames)
     ble      .L_801A35DC
     lis      r0, 0x4330
     stw      r4, 0xc(r1)
-    lfd      f1, sObjectUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F730@sda21(r0)
     stw      r0, 0x8(r1)
     lfs      f2, 0x24(r3)
     lfd      f0, 0x8(r1)
@@ -1380,7 +1380,7 @@ u8 CObjVec::Step(u32 frames)
     bge      .L_801A3624
     lis      r0, 0x4330
     stw      r4, 0xc(r1)
-    lfd      f1, sObjectUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F730@sda21(r0)
     stw      r0, 0x8(r1)
     lfs      f2, 0x28(r3)
     lfd      f0, 0x8(r1)
@@ -1396,7 +1396,7 @@ u8 CObjVec::Step(u32 frames)
     ble      .L_801A365C
     lis      r0, 0x4330
     stw      r4, 0xc(r1)
-    lfd      f1, sObjectUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F730@sda21(r0)
     stw      r0, 0x8(r1)
     lfs      f2, 0x28(r3)
     lfd      f0, 0x8(r1)
@@ -1569,15 +1569,15 @@ void CXObj::Attach(HSD_JObj* jobj)
     lwz      r31, 0x0(r3)
     cmplwi   r31, 0x0
     bne      .L_801A2F74
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x3e4
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A2F74:
     addic.   r30, r29, 0x4
     bne      .L_801A2F90
     lis      r4, sObjectTranslationCondition@ha
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     addi     r5, r4, sObjectTranslationCondition@l
     li       r4, 0x3e5
     bl       __assert
@@ -1591,16 +1591,16 @@ void CXObj::Attach(HSD_JObj* jobj)
     lwz      r31, 0x0(r29)
     cmplwi   r31, 0x0
     bne      .L_801A2FC4
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x2dd
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A2FC4:
     addic.   r30, r29, 0x14
     bne      .L_801A2FDC
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x2de
-    li       r5, sObjectRotationCondition@sda21
+    li       r5, lbl_8065F710@sda21
     bl       __assert
 .L_801A2FDC:
     lfs      f0, 0x1c(r31)
@@ -1614,16 +1614,16 @@ void CXObj::Attach(HSD_JObj* jobj)
     lwz      r31, 0x0(r29)
     cmplwi   r31, 0x0
     bne      .L_801A3018
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x351
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A3018:
     addic.   r30, r29, 0x24
     bne      .L_801A3030
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x352
-    li       r5, sObjectScaleCondition@sda21
+    li       r5, lbl_8065F708@sda21
     bl       __assert
 .L_801A3030:
     lfs      f0, 0x2c(r31)
@@ -1727,21 +1727,21 @@ BOOL CXObj::ReadCheck()
     lwz      r30, 0x0(r31)
     cmplwi   r30, 0x0
     bne      .L_801A2E58
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x351
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A2E58:
     addic.   r0, r31, 0x128
     bne      .L_801A2E70
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x352
-    li       r5, sObjectScaleCondition@sda21
+    li       r5, lbl_8065F708@sda21
     bl       __assert
 .L_801A2E70:
     lfs      f1, 0x2c(r30)
     li       r0, 0x0
-    lfs      f0, sObjectInterpolationZero@sda21(r0)
+    lfs      f0, lbl_8065F71C@sda21(r0)
     stfs     f1, 0x128(r31)
     lfs      f1, 0x30(r30)
     stfs     f1, 0x12c(r31)
@@ -1910,7 +1910,7 @@ void CXObj::SetMoveDir(const Vec* dir, f32 speed)
     stw      r0, 0x40(r1)
     stw      r0, 0x24(r1)
     bl       PSVECMag
-    lfs      f0, sObjectInterpolationZero@sda21(r0)
+    lfs      f0, lbl_8065F71C@sda21(r0)
     fcmpo    cr0, f1, f0
     ble      .L_801A227C
     lfs      f1, 0x34(r1)
@@ -1919,14 +1919,14 @@ void CXObj::SetMoveDir(const Vec* dir, f32 speed)
     fneg     f1, f1
 .L_801A21C8:
     lfs      f2, 0x38(r1)
-    lfs      f0, sObjectInterpolationZero@sda21(r0)
+    lfs      f0, lbl_8065F71C@sda21(r0)
     stfs     f1, 0x34(r1)
     fcmpo    cr0, f2, f0
     bge      .L_801A21E0
     fneg     f2, f2
 .L_801A21E0:
     lfs      f1, 0x3c(r1)
-    lfs      f0, sObjectInterpolationZero@sda21(r0)
+    lfs      f0, lbl_8065F71C@sda21(r0)
     stfs     f2, 0x38(r1)
     fcmpo    cr0, f1, f0
     bge      .L_801A21F8
@@ -1945,7 +1945,7 @@ void CXObj::SetMoveDir(const Vec* dir, f32 speed)
     lfs      f2, 0xc(r1)
     addi     r0, r3, __vt__4CVec@l
     lfs      f1, 0x8(r1)
-    lfs      f0, sObjectInterpolationZero@sda21(r0)
+    lfs      f0, lbl_8065F71C@sda21(r0)
     stfs     f1, 0xe8(r31)
     stfs     f2, 0xec(r31)
     stfs     f3, 0xf0(r31)
@@ -1953,16 +1953,16 @@ void CXObj::SetMoveDir(const Vec* dir, f32 speed)
     lfs      f1, 0xe8(r31)
     fcmpo    cr0, f1, f0
     ble      .L_801A225C
-    lfs      f0, sJointRotationSnapThreshold@sda21(r0)
+    lfs      f0, lbl_8065F724@sda21(r0)
     fcmpo    cr0, f1, f0
     bge      .L_801A225C
     stfs     f0, 0xe8(r31)
 .L_801A225C:
     lfs      f1, 0xf0(r31)
-    lfs      f0, sObjectInterpolationZero@sda21(r0)
+    lfs      f0, lbl_8065F71C@sda21(r0)
     fcmpo    cr0, f1, f0
     ble      .L_801A227C
-    lfs      f0, sJointRotationSnapThreshold@sda21(r0)
+    lfs      f0, lbl_8065F724@sda21(r0)
     fcmpo    cr0, f1, f0
     bge      .L_801A227C
     stfs     f0, 0xf0(r31)
@@ -2143,7 +2143,7 @@ void CXObj::UpdateAnim(u32 speed)
     lis      r0, 0x4330
     stw      r31, 0xc(r1)
     mr       r28, r3
-    lfd      f1, sObjectUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F730@sda21(r0)
     stw      r0, 0x8(r1)
     lfs      f2, 0x15c(r3)
     lfd      f0, 0x8(r1)
@@ -2190,7 +2190,7 @@ void CXObj::UpdateAnim(u32 speed)
     beq      .L_801A1840
     lis      r0, 0x4330
     stw      r31, 0xc(r1)
-    lfd      f1, sObjectUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F730@sda21(r0)
     stw      r0, 0x8(r1)
     lfs      f2, 0x178(r29)
     lfd      f0, 0x8(r1)
@@ -2205,7 +2205,7 @@ void CXObj::UpdateAnim(u32 speed)
     lis      r4, HSD_AObjSetRate@ha
     stw      r31, 0xc(r1)
     addi     r6, r4, HSD_AObjSetRate@l
-    lfd      f1, sObjectUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F730@sda21(r0)
     li       r4, 0x6
     stw      r0, 0x8(r1)
     li       r5, 0x5a0
@@ -2270,9 +2270,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     lfs      f31, 0x178(r31)
     bne      .L_801A190C
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x3b8
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A190C:
     stfs     f31, 0x38(r30)
@@ -2282,9 +2282,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     beq      .L_801A1D84
     bne      .L_801A1938
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x25d
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1938:
     lwz      r4, 0x14(r30)
@@ -2304,9 +2304,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     lfs      f31, 0x178(r31)
     bne      .L_801A1984
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x3c6
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1984:
     stfs     f31, 0x3c(r30)
@@ -2316,9 +2316,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     beq      .L_801A1D84
     bne      .L_801A19B0
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x25d
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A19B0:
     lwz      r4, 0x14(r30)
@@ -2338,9 +2338,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     lfs      f31, 0x178(r31)
     bne      .L_801A19FC
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x3d4
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A19FC:
     stfs     f31, 0x40(r30)
@@ -2350,9 +2350,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     beq      .L_801A1D84
     bne      .L_801A1A28
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x25d
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1A28:
     lwz      r4, 0x14(r30)
@@ -2372,9 +2372,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     lfs      f31, 0x178(r31)
     bne      .L_801A1A74
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x325
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1A74:
     stfs     f31, 0x2c(r30)
@@ -2384,9 +2384,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     beq      .L_801A1D84
     bne      .L_801A1AA0
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x25d
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1AA0:
     lwz      r4, 0x14(r30)
@@ -2406,9 +2406,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     lfs      f31, 0x178(r31)
     bne      .L_801A1AEC
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x333
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1AEC:
     stfs     f31, 0x30(r30)
@@ -2418,9 +2418,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     beq      .L_801A1D84
     bne      .L_801A1B18
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x25d
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1B18:
     lwz      r4, 0x14(r30)
@@ -2440,9 +2440,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     lfs      f31, 0x178(r31)
     bne      .L_801A1B64
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x341
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1B64:
     stfs     f31, 0x34(r30)
@@ -2452,9 +2452,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     beq      .L_801A1D84
     bne      .L_801A1B90
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x25d
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1B90:
     lwz      r4, 0x14(r30)
@@ -2474,16 +2474,16 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     lfs      f31, 0x178(r31)
     bne      .L_801A1BDC
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x2a4
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1BDC:
     lwz      r0, 0x14(r30)
     rlwinm.  r0, r0, 0, 14, 14
     beq      .L_801A1BFC
     lis      r4, sObjectNoQuaternionCondition@ha
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     addi     r5, r4, sObjectNoQuaternionCondition@l
     li       r4, 0x2a5
     bl       __assert
@@ -2495,9 +2495,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     beq      .L_801A1D84
     bne      .L_801A1C28
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x25d
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1C28:
     lwz      r4, 0x14(r30)
@@ -2517,16 +2517,16 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     lfs      f31, 0x178(r31)
     bne      .L_801A1C74
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x2b8
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1C74:
     lwz      r0, 0x14(r30)
     rlwinm.  r0, r0, 0, 14, 14
     beq      .L_801A1C94
     lis      r4, sObjectNoQuaternionCondition@ha
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     addi     r5, r4, sObjectNoQuaternionCondition@l
     li       r4, 0x2b9
     bl       __assert
@@ -2538,9 +2538,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     beq      .L_801A1D84
     bne      .L_801A1CC0
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x25d
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1CC0:
     lwz      r4, 0x14(r30)
@@ -2560,16 +2560,16 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     lfs      f31, 0x178(r31)
     bne      .L_801A1D0C
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x2cc
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1D0C:
     lwz      r0, 0x14(r30)
     rlwinm.  r0, r0, 0, 14, 14
     beq      .L_801A1D2C
     lis      r4, sObjectNoQuaternionCondition@ha
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     addi     r5, r4, sObjectNoQuaternionCondition@l
     li       r4, 0x2cd
     bl       __assert
@@ -2581,9 +2581,9 @@ void CXObj::UpdateAnim(u32 speed)
     cmplwi   r30, 0x0
     beq      .L_801A1D84
     bne      .L_801A1D58
-    li       r3, sObjectJObjHeader@sda21
+    li       r3, lbl_8065F6F8@sda21
     li       r4, 0x25d
-    li       r5, sObjectJObjCondition@sda21
+    li       r5, lbl_8065F700@sda21
     bl       __assert
 .L_801A1D58:
     lwz      r4, 0x14(r30)

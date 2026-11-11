@@ -149,7 +149,7 @@ extern "C" s32 CMsg__cmd_SETFONT(CMsg* msg, u8 command)
     lis      r0, 0x4330
     stw      r4, 0xc(r1)
     addis    r3, r3, 0x4
-    lfd      f1, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D048@sda21(r0)
     stw      r0, 0x8(r1)
     lfd      f0, 0x8(r1)
     fsubs    f0, f0, f1
@@ -239,9 +239,9 @@ extern "C" s32 CMsg__cmd_SETFONT(CMsg* msg, u8 command)
     addis    r4, r3, 0x4
     lbz      r7, 0x0(r5)
     addi     r0, r5, 0x1
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     stw      r0, 0x804(r3)
-    lfs      f2, sMessageDegreesToRadians@sda21(r0)
+    lfs      f2, lbl_8065D030@sda21(r0)
     lwz      r6, 0x804(r3)
     lbz      r5, 0x0(r6)
     addi     r0, r6, 0x1
@@ -263,9 +263,9 @@ extern "C" s32 CMsg__cmd_SETFONT(CMsg* msg, u8 command)
     lbz      r7, 0x0(r5)
     addi     r5, r5, 0x1
     stw      r0, 0x10(r1)
-    lfd      f3, sMessageSignedConversionBias@sda21(r0)
+    lfd      f3, lbl_8065D050@sda21(r0)
     stw      r5, 0x804(r3)
-    lfs      f2, sMessagePercentScale@sda21(r0)
+    lfs      f2, lbl_8065D034@sda21(r0)
     lwz      r6, 0x804(r3)
     lbz      r5, 0x0(r6)
     addi     r0, r6, 0x1
@@ -303,9 +303,9 @@ extern "C" s32 CMsg__cmd_SETFONT(CMsg* msg, u8 command)
     lis      r4, sMessageSetFontCommandName@ha
     mr       r6, r3
     addi     r7, r4, sMessageSetFontCommandName@l
-    li       r3, sPathMsgCpp@sda21
+    li       r3, lbl_8065D038@sda21
     li       r4, 0x831
-    li       r5, sMessagePanicFormat@sda21
+    li       r5, lbl_80664158@sda21
     crclr    cr1eq
     bl       OSPanic
 .L_80080270:
@@ -804,14 +804,14 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
     bctrl
     lwz      r12, 0x34(r30)
     mr       r0, r3
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     mr       r3, r30
     lwz      r12, 0x80(r12)
     mr       r8, r0
     fmr      f3, f1
     mr       r6, r31
     mr       r7, r27
-    lfs      f2, sMessageOne@sda21(r0)
+    lfs      f2, lbl_8065D05C@sda21(r0)
     li       r4, 0x0
     lfs      f4, lbl_8065D060@sda21(r0)
     li       r5, 0x1
@@ -829,11 +829,11 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
     b        .L_80080854
 .L_8008081C:
     mr       r3, r30
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     lwz      r12, 0x34(r30)
     mr       r4, r29
     fmr      f3, f1
-    lfs      f2, sMessageOne@sda21(r0)
+    lfs      f2, lbl_8065D05C@sda21(r0)
     lwz      r12, 0x80(r12)
     li       r5, 0x0
     lfs      f4, lbl_8065D060@sda21(r0)
@@ -990,7 +990,7 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
     rlwimi   r0, r3, 4, 27, 27
     addis    r3, r29, 0x4
     stb      r0, 0x8a4(r29)
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     stw      r4, 0x450c(r3)
     stfs     f0, 0x4510(r3)
     lwz      r3, 0x804(r29)
@@ -1093,7 +1093,7 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
     addi     r3, r3, 0x6667
     stw      r0, 0x18(r1)
     mulhw    r5, r3, r31
-    lfd      f3, sMessageSignedConversionBias@sda21(r0)
+    lfd      f3, lbl_8065D050@sda21(r0)
     lfs      f4, lbl_8065D064@sda21(r0)
     addis    r4, r29, 0x4
     lfs      f0, lbl_8065D060@sda21(r0)
@@ -1278,7 +1278,7 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
     cmpwi    r0, 0x0
     bge      .L_80080C00
     lwz      r0, 0x45d8(r4)
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     stw      r0, 0x45d0(r4)
     lwz      r0, 0x45d0(r4)
     stw      r0, 0x458c(r4)
@@ -2138,13 +2138,13 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
     b        .L_80081C4C
 .L_800815F4:
     addis    r3, r31, 0x4
-    lfs      f2, sMessageZero@sda21(r0)
+    lfs      f2, lbl_8065D058@sda21(r0)
     lfs      f3, 0x45cc(r3)
     fcmpo    cr0, f3, f2
     ble      .L_80081640
     lis      r0, 0x4330
     stw      r30, 0x1c(r1)
-    lfd      f1, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D048@sda21(r0)
     stw      r0, 0x18(r1)
     lfd      f0, 0x18(r1)
     fsubs    f0, f0, f1
@@ -2167,7 +2167,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
     ble      .L_800816BC
     lis      r0, 0x4330
     stw      r30, 0x1c(r1)
-    lfd      f1, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D048@sda21(r0)
     stw      r0, 0x18(r1)
     lfd      f0, 0x18(r1)
     fsubs    f0, f0, f1
@@ -2316,7 +2316,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
     lis      r0, 0x4330
     stw      r3, 0x1c(r1)
     addis    r3, r31, 0x4
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     li       r25, 0x0
     stw      r0, 0x18(r1)
     lfd      f0, 0x18(r1)
@@ -2711,8 +2711,8 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
     mr       r31, r6
     li       r26, 0x1
     addis    r25, r30, 0x4
-    lfs      f1, sMessageZero@sda21(r0)
-    lfs      f0, sMessageOne@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
+    lfs      f0, lbl_8065D05C@sda21(r0)
     li       r11, -0x1
     mr       r8, r7
     mr       r9, r30
@@ -2867,7 +2867,7 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
     li       r0, 0x1
     stw      r0, 0x45c0(r7)
     li       r6, 0x0
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     addis    r9, r6, 0x4
     addi     r9, r9, 0x45dc
     li       r0, -0x1
@@ -2995,9 +2995,9 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
     lfs      f3, 0x4610(r7)
     mr       r3, r23
     lfs      f0, 0x460c(r7)
-    lfs      f2, sMessageZero@sda21(r0)
+    lfs      f2, lbl_8065D058@sda21(r0)
     stfs     f0, 0x4524(r7)
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     stfs     f3, 0x4528(r7)
     stfs     f4, 0x452c(r7)
     stfs     f2, 0x45c4(r7)
@@ -3061,9 +3061,9 @@ extern "C" void ResetMessageState(CMsg* msg)
     addis    r27, r3, 0x4
     lfs      f2, lbl_8065D06C@sda21(r0)
     li       r9, -0x1
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     li       r7, 0x32
-    lfs      f0, sMessageOne@sda21(r0)
+    lfs      f0, lbl_8065D05C@sda21(r0)
     mr       r5, r4
     mr       r6, r3
     stw      r4, 0x804(r3)
@@ -3215,7 +3215,7 @@ extern "C" void ResetMessageState(CMsg* msg)
     li       r0, 0x1
     stw      r0, 0x45c0(r5)
     li       r7, 0x0
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     addis    r6, r7, 0x4
     addi     r6, r6, 0x45dc
     li       r4, -0x1
@@ -3302,9 +3302,9 @@ extern "C" void InitMessageWindow(CMsg* msg)
     li       r12, 0x1
     addis    r27, r6, 0x4
     lfs      f2, lbl_8065D06C@sda21(r0)
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     li       r9, -0x1
-    lfs      f0, sMessageOne@sda21(r0)
+    lfs      f0, lbl_8065D05C@sda21(r0)
     li       r7, 0x32
     mr       r4, r3
     mr       r5, r6
@@ -3457,7 +3457,7 @@ extern "C" void InitMessageWindow(CMsg* msg)
     li       r0, 0x1
     stw      r0, 0x45c0(r8)
     li       r5, 0x0
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     addis    r10, r5, 0x4
     addi     r10, r10, 0x45dc
     lis      r3, sMessageDefaultFontPosition@ha
@@ -4143,10 +4143,10 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     fmuls    f19, f0, f26
     b        .L_80082BAC
 .L_80082BA8:
-    lfs      f19, sMessageZero@sda21(r0)
+    lfs      f19, lbl_8065D058@sda21(r0)
 .L_80082BAC:
     addis    r3, r30, 0x4
-    lfs      f1, sMessageOne@sda21(r0)
+    lfs      f1, lbl_8065D05C@sda21(r0)
     lfs      f0, 0x3d10(r3)
     fmr      f25, f19
     lfs      f2, lbl_8065D0B4@sda21(r0)
@@ -4154,7 +4154,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     fmuls    f1, f2, f0
     bl       sin
     addis    r3, r30, 0x4
-    lfs      f2, sMessageOne@sda21(r0)
+    lfs      f2, lbl_8065D05C@sda21(r0)
     lfs      f0, 0x3d10(r3)
     frsp     f4, f1
     lfs      f3, lbl_8065D0B8@sda21(r0)
@@ -4167,7 +4167,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     frsp     f3, f1
     lfs      f2, lbl_8065D0B8@sda21(r0)
     lfs      f1, 0x3d10(r3)
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     fmuls    f23, f2, f3
     fcmpo    cr0, f1, f0
     ble      .L_80084378
@@ -4206,7 +4206,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lfs      f30, 0x3d10(r3)
     b        .L_80082CA0
 .L_80082C9C:
-    lfs      f30, sMessageZero@sda21(r0)
+    lfs      f30, lbl_8065D058@sda21(r0)
 .L_80082CA0:
     lwz      r3, 0x290(r28)
     li       r4, 0x1
@@ -4248,7 +4248,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     stw      r3, 0x4(r5)
     stwu     r0, 0x8(r5)
     bdnz     .L_80082D28
-    lfs      f0, sMessageOne@sda21(r0)
+    lfs      f0, lbl_8065D05C@sda21(r0)
     lwz      r21, 0x54(r31)
     fadds    f4, f0, f22
     lfs      f2, lbl_8065D0BC@sda21(r0)
@@ -4353,7 +4353,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lwz      r5, 0xc0(r31)
     lwz      r4, 0xc4(r31)
     stw      r23, 0x80(r1)
-    lfd      f2, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065D048@sda21(r0)
     stw      r22, 0x84(r1)
     stw      r11, 0x74(r1)
     stw      r10, 0x78(r1)
@@ -4428,7 +4428,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     li       r5, 0x1
     li       r6, 0x1
     bl       SetGsDepthMode
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     lis      r3, gGame@ha
     lfs      f4, lbl_8065D094@sda21(r0)
     fmr      f1, f16
@@ -4442,7 +4442,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     mr       r6, r21
     li       r4, 0x10
     bl       DrawGsCircle
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     lis      r3, gGame@ha
     lfs      f4, lbl_8065D094@sda21(r0)
     fmr      f1, f17
@@ -4456,7 +4456,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     mr       r6, r21
     li       r4, 0x10
     bl       DrawGsCircle
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     lis      r3, gGame@ha
     lfs      f4, lbl_8065D094@sda21(r0)
     fmr      f1, f16
@@ -4470,7 +4470,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     mr       r6, r21
     li       r4, 0x10
     bl       DrawGsCircle
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     lis      r3, gGame@ha
     lfs      f4, lbl_8065D094@sda21(r0)
     fmr      f1, f17
@@ -4560,10 +4560,10 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     bl       DrawGsTrianglePrimitive
     lfs      f0, lbl_8065D0C0@sda21(r0)
     lis      r3, gGame@ha
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     addi     r3, r3, gGame@l
     fadds    f1, f0, f22
-    lfs      f2, sMessageOne@sda21(r0)
+    lfs      f2, lbl_8065D05C@sda21(r0)
     fadds    f0, f0, f20
     lfs      f4, lbl_8065D094@sda21(r0)
     lfs      f7, lbl_8065D0BC@sda21(r0)
@@ -4583,10 +4583,10 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     bl       DrawGsCircle
     lfs      f0, lbl_8065D0C0@sda21(r0)
     lis      r3, gGame@ha
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     fmr      f2, f16
     fadds    f5, f0, f21
-    lfs      f1, sMessageOne@sda21(r0)
+    lfs      f1, lbl_8065D05C@sda21(r0)
     lfs      f0, lbl_8065D0BC@sda21(r0)
     fmr      f6, f3
     lfs      f4, lbl_8065D094@sda21(r0)
@@ -4603,10 +4603,10 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     bl       DrawGsCircle
     lfs      f0, lbl_8065D0C0@sda21(r0)
     lis      r3, gGame@ha
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     fmr      f1, f15
     fadds    f5, f0, f19
-    lfs      f2, sMessageOne@sda21(r0)
+    lfs      f2, lbl_8065D05C@sda21(r0)
     lfs      f0, lbl_8065D0BC@sda21(r0)
     fmr      f6, f3
     lfs      f4, lbl_8065D094@sda21(r0)
@@ -4621,7 +4621,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     li       r4, 0x10
     fmr      f2, f15
     bl       DrawGsCircle
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     lis      r3, gGame@ha
     lfs      f4, lbl_8065D094@sda21(r0)
     fmr      f1, f16
@@ -4693,7 +4693,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lis      r0, 0x4330
     stw      r3, 0x50c(r1)
     addi     r3, r1, 0x404
-    lfd      f1, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D048@sda21(r0)
     stw      r0, 0x508(r1)
     lfd      f0, 0x508(r1)
     fsubs    f15, f0, f1
@@ -4705,8 +4705,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     stw      r3, 0x514(r1)
     fsubs    f9, f1, f0
     stw      r0, 0x510(r1)
-    lfs      f0, sMessageZero@sda21(r0)
-    lfd      f2, sMessageUnsignedConversionBias@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
+    lfd      f2, lbl_8065D048@sda21(r0)
     lfd      f1, 0x510(r1)
     fcmpo    cr0, f9, f0
     fsubs    f5, f1, f2
@@ -4715,7 +4715,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 .L_80083478:
     fsubs    f2, f19, f20
     lfs      f1, lbl_8065D0C8@sda21(r0)
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     fsubs    f10, f2, f1
     fcmpo    cr0, f10, f0
     bge      .L_80083494
@@ -4731,7 +4731,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     stw      r3, 0x4(r5)
     stwu     r0, 0x8(r5)
     bdnz     .L_800834A4
-    lfs      f7, sMessageOne@sda21(r0)
+    lfs      f7, lbl_8065D05C@sda21(r0)
     lfs      f2, lbl_8065D094@sda21(r0)
     fdivs    f8, f7, f15
     lfs      f13, lbl_8065D0D0@sda21(r0)
@@ -4808,16 +4808,16 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lfs      f1, 0x0(r21)
     mr       r3, r25
     lfs      f2, 0x4(r21)
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     bl       PSMTXTrans
     li       r0, 0x1
     lfs      f1, 0x8(r21)
     stw      r0, 0x43c(r1)
     mr       r3, r23
     lfs      f2, 0xc(r21)
-    lfs      f3, sMessageOne@sda21(r0)
+    lfs      f3, lbl_8065D05C@sda21(r0)
     bl       PSMTXScale
-    lfs      f6, sMessageZero@sda21(r0)
+    lfs      f6, lbl_8065D058@sda21(r0)
     li       r0, 0x1
     stw      r0, 0x43c(r1)
     mr       r3, r22
@@ -4825,7 +4825,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lfs      f1, 0x10(r21)
     fmr      f8, f6
     lfs      f2, 0x14(r21)
-    lfs      f3, sMessageOne@sda21(r0)
+    lfs      f3, lbl_8065D05C@sda21(r0)
     mr       r5, r24
     lfs      f4, 0x18(r21)
     mr       r6, r24
@@ -4880,7 +4880,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     cmplwi   r0, 0x0
     beq      .L_800837A4
     lfs      f0, lbl_8065D0BC@sda21(r0)
-    lfs      f1, sMessageOne@sda21(r0)
+    lfs      f1, lbl_8065D05C@sda21(r0)
     fadds    f2, f0, f23
     lfs      f3, lbl_8065D0E0@sda21(r0)
     lfs      f0, 0x3ca4(r29)
@@ -4890,7 +4890,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     bl       __cvt_fp2unsigned
     lfs      f1, lbl_8065D0B0@sda21(r0)
     mr       r24, r3
-    lfs      f0, sMessageOne@sda21(r0)
+    lfs      f0, lbl_8065D05C@sda21(r0)
     fadds    f1, f1, f24
     lfs      f2, lbl_8065D0E0@sda21(r0)
     fsubs    f0, f1, f0
@@ -4899,7 +4899,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lfs      f1, 0x3ca0(r29)
     mr       r23, r3
     lfs      f0, lbl_8065D0BC@sda21(r0)
-    lfs      f2, sMessageOne@sda21(r0)
+    lfs      f2, lbl_8065D05C@sda21(r0)
     fsubs    f0, f1, f0
     fsubs    f0, f0, f23
     fadds    f1, f2, f0
@@ -4909,7 +4909,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lfs      f1, 0x3c94(r29)
     lfs      f0, lbl_8065D0B0@sda21(r0)
     fnmsubs  f1, f15, f2, f1
-    lfs      f2, sMessageOne@sda21(r0)
+    lfs      f2, lbl_8065D05C@sda21(r0)
     fsubs    f0, f1, f0
     fsubs    f0, f0, f24
     fsubs    f0, f0, f29
@@ -4980,7 +4980,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lwz      r0, 0x14(r4)
     rlwinm.  r0, r0, 0, 8, 8
     beq      .L_80083888
-    lfs      f25, sMessageZero@sda21(r0)
+    lfs      f25, lbl_8065D058@sda21(r0)
     b        .L_80083C88
 .L_80083888:
     lfs      f0, lbl_8065D0C0@sda21(r0)
@@ -5018,7 +5018,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     fmr      f3, f20
     fmr      f2, f17
     bl       SetScale__5CJObjFfffl
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     addi     r3, r1, 0x254
     li       r4, 0x1
     bl       SetRotationY__5CJObjFfl
@@ -5080,7 +5080,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     li       r4, 0x1
     fmr      f3, f20
     bl       SetScale__5CJObjFfffl
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     addi     r3, r1, 0x254
     li       r4, 0x1
     bl       SetRotationY__5CJObjFfl
@@ -5354,14 +5354,14 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     ori      r21, r21, 0x1600
     li       r4, 0x0
     bl       SetGsTevMode
-    lfs      f2, sMessageOne@sda21(r0)
+    lfs      f2, lbl_8065D05C@sda21(r0)
     addis    r22, r30, 0x4
     addi     r3, r22, 0x3ad8
     lfs      f1, lbl_8065D0F8@sda21(r0)
     fmr      f3, f2
     addi     r22, r22, 0x3a6c
     bl       PSMTXScale
-    lfs      f2, sMessageZero@sda21(r0)
+    lfs      f2, lbl_8065D058@sda21(r0)
     li       r0, 0x1
     stw      r0, 0x38(r22)
     addi     r3, r22, 0x3c
@@ -5370,7 +5370,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     bl       PSMTXTrans
     lfs      f0, lbl_8065D0E0@sda21(r0)
     li       r0, 0x1
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     lis      r3, gGame@ha
     fadds    f15, f0, f15
     stw      r0, 0x38(r22)
@@ -5388,14 +5388,14 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     mr       r8, r21
     fmr      f8, f3
     bl       DrawGsTexturedQuad
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     addi     r3, r22, 0x3c
     fmr      f2, f1
     fmr      f3, f1
     bl       PSMTXTrans
     lfs      f0, lbl_8065D068@sda21(r0)
     li       r0, 0x1
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     lis      r3, gGame@ha
     fmuls    f18, f17, f0
     lfs      f0, lbl_8065D0B8@sda21(r0)
@@ -5415,13 +5415,13 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     mr       r7, r21
     mr       r8, r21
     bl       DrawGsTexturedQuad
-    lfs      f2, sMessageZero@sda21(r0)
+    lfs      f2, lbl_8065D058@sda21(r0)
     addi     r3, r22, 0x3c
     lfs      f1, lbl_8065D068@sda21(r0)
     fmr      f3, f2
     bl       PSMTXTrans
     fadds    f0, f16, f18
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     lfs      f1, lbl_8065D0B8@sda21(r0)
     li       r0, 0x1
     lis      r3, gGame@ha
@@ -5448,11 +5448,11 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     clrlwi   r3, r3, 16
     stw      r3, 0x514(r1)
     addi     r3, r21, 0x6c
-    lfd      f1, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D048@sda21(r0)
     stw      r0, 0x510(r1)
     lfs      f2, lbl_8065D068@sda21(r0)
     lfd      f0, 0x510(r1)
-    lfs      f3, sMessageOne@sda21(r0)
+    lfs      f3, lbl_8065D05C@sda21(r0)
     fsubs    f0, f0, f1
     fdivs    f0, f17, f0
     fmuls    f1, f2, f0
@@ -5464,7 +5464,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lfs      f0, 0x3d18(r3)
     fmuls    f1, f1, f0
     bl       __cvt_fp2unsigned
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     li       r0, -0x100
     lfs      f1, lbl_8065D0E0@sda21(r0)
     or       r5, r3, r0
@@ -5504,7 +5504,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     stw      r8, 0x508(r1)
     add      r4, r30, r7
     lwz      r0, 0xa8c(r4)
-    lfd      f4, sMessageSignedConversionBias@sda21(r0)
+    lfd      f4, lbl_8065D050@sda21(r0)
     lfd      f0, 0x508(r1)
     slwi     r0, r0, 2
     add      r4, r3, r0
@@ -5635,7 +5635,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lfs      f8, 0x240(r1)
     bl       DrawGsVertexQuad
     lis      r3, gGame@ha
-    lfd      f19, sMessageSignedConversionBias@sda21(r0)
+    lfd      f19, lbl_8065D050@sda21(r0)
     lfs      f17, lbl_8065D068@sda21(r0)
     addi     r22, r3, gGame@l
     addis    r25, r30, 0x4
@@ -5691,7 +5691,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     bl       MeasureGameTextWidth
     lfs      f4, 0x3cd0(r25)
     fmr      f2, f15
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     mr       r3, r22
     fsubs    f0, f4, f1
     mr       r4, r23
@@ -5716,7 +5716,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     stw      r0, 0x500(r1)
 .L_80084378:
     addis    r3, r30, 0x4
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     lfs      f1, 0x3d14(r3)
     fcmpo    cr0, f1, f0
     ble      .L_800848FC
@@ -5771,11 +5771,11 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lfs      f0, 0x3c94(r29)
     lfs      f5, lbl_8065D0E0@sda21(r0)
     fmr      f15, f2
-    lfs      f1, sMessageOne@sda21(r0)
+    lfs      f1, lbl_8065D05C@sda21(r0)
     fmuls    f16, f2, f31
     fadds    f4, f0, f17
     lfs      f0, 0x3ca0(r29)
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     fadds    f2, f1, f0
     fadds    f1, f5, f4
     bl       PSMTXTrans
@@ -5831,14 +5831,14 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     addi     r3, r1, 0x1f4
     lfs      f2, 0x3ca0(r29)
     fadds    f1, f0, f17
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     bl       PSMTXTrans
     lwz      r3, 0x44(r23)
     addi     r4, r1, 0x1f4
     addi     r5, r1, 0x1c4
     addi     r3, r3, 0xe8
     bl       PSMTXConcat
-    lfd      f19, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f19, lbl_8065D048@sda21(r0)
     mr       r25, r30
     addis    r24, r30, 0x4
     li       r22, 0x0
@@ -5884,9 +5884,9 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lis      r0, 0x4330
     stw      r0, 0x510(r1)
     xoris    r0, r3, 0x8000
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     stw      r0, 0x514(r1)
-    lfs      f2, sMessageDegreesToRadians@sda21(r0)
+    lfs      f2, lbl_8065D030@sda21(r0)
     lfd      f0, 0x510(r1)
     fsubs    f0, f0, f1
     fmuls    f1, f2, f0
@@ -5895,14 +5895,14 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lis      r0, 0x4330
     stw      r0, 0x508(r1)
     frsp     f2, f1
-    lfd      f1, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D048@sda21(r0)
     stw      r3, 0x50c(r1)
     lfd      f0, 0x508(r1)
     fsubs    f0, f0, f1
     fmuls    f20, f0, f2
     b        .L_80084634
 .L_80084630:
-    lfs      f20, sMessageZero@sda21(r0)
+    lfs      f20, lbl_8065D058@sda21(r0)
 .L_80084634:
     lbz      r0, 0xd4c(r25)
     rlwinm.  r0, r0, 0, 30, 30
@@ -5911,9 +5911,9 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lis      r0, 0x4330
     stw      r0, 0x510(r1)
     xoris    r0, r3, 0x8000
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     stw      r0, 0x514(r1)
-    lfs      f2, sMessageDegreesToRadians@sda21(r0)
+    lfs      f2, lbl_8065D030@sda21(r0)
     lfd      f0, 0x510(r1)
     fsubs    f0, f0, f1
     fmuls    f1, f2, f0
@@ -5922,14 +5922,14 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lis      r0, 0x4330
     stw      r0, 0x508(r1)
     frsp     f2, f1
-    lfd      f1, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D048@sda21(r0)
     stw      r3, 0x50c(r1)
     lfd      f0, 0x508(r1)
     fsubs    f0, f0, f1
     fmuls    f21, f0, f2
     b        .L_80084698
 .L_80084694:
-    lfs      f21, sMessageZero@sda21(r0)
+    lfs      f21, lbl_8065D058@sda21(r0)
 .L_80084698:
     lfs      f0, lbl_8065D104@sda21(r0)
     fadds    f22, f0, f17
@@ -5958,16 +5958,16 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lis      r0, 0x4330
     stw      r0, 0x510(r1)
     xoris    r0, r3, 0x8000
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     stw      r0, 0x514(r1)
-    lfs      f2, sMessageDegreesToRadians@sda21(r0)
+    lfs      f2, lbl_8065D030@sda21(r0)
     lfd      f0, 0x510(r1)
     fsubs    f0, f0, f1
     fmuls    f1, f2, f0
     bl       sin
     frsp     f1, f1
     li       r0, 0x1
-    lfs      f3, sMessageOne@sda21(r0)
+    lfs      f3, lbl_8065D05C@sda21(r0)
     addi     r3, r25, 0xbe8
     lfs      f0, lbl_8065D108@sda21(r0)
     stw      r0, 0xbac(r25)
@@ -5983,9 +5983,9 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lis      r0, 0x4330
     stw      r0, 0x510(r1)
     xoris    r0, r3, 0x8000
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     stw      r0, 0x514(r1)
-    lfs      f2, sMessageDegreesToRadians@sda21(r0)
+    lfs      f2, lbl_8065D030@sda21(r0)
     lfd      f0, 0x510(r1)
     fsubs    f0, f0, f1
     fmuls    f1, f2, f0
@@ -5993,13 +5993,13 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     frsp     f2, f1
     lfs      f0, lbl_8065D10C@sda21(r0)
     li       r0, 0x1
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     stw      r0, 0xbac(r25)
     addi     r3, r25, 0xc18
     fmuls    f21, f0, f2
     li       r4, 0x78
     bl       PSMTXRotRad
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     addi     r3, r25, 0xc48
     li       r4, 0x79
     bl       PSMTXRotRad
@@ -6011,7 +6011,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     bl       PSMTXRotRad
 .L_800847CC:
     fmr      f1, f18
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     fmr      f2, f20
     addi     r3, r1, 0x194
     bl       PSMTXTrans
@@ -6032,13 +6032,13 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     b        .L_800848B4
 .L_8008481C:
     lfs      f1, 0xd3c(r25)
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     fcmpo    cr0, f1, f0
     ble      .L_8008488C
     bl       sin
     lfs      f4, 0xd48(r25)
     frsp     f2, f1
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     addi     r3, r1, 0x134
     fneg     f0, f4
     fmr      f1, f4
@@ -6137,7 +6137,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lis      r0, 0x4330
     stw      r3, 0x514(r1)
     mr       r3, r22
-    lfd      f1, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D048@sda21(r0)
     stw      r0, 0x510(r1)
     lfd      f0, 0x510(r1)
     fsubs    f15, f0, f1
@@ -6148,7 +6148,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     addis    r3, r30, 0x4
     lwz      r0, 0x3c6c(r3)
     stw      r4, 0x508(r1)
-    lfd      f1, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D048@sda21(r0)
     cmpwi    r0, 0x2
     lfd      f0, 0x508(r1)
     fsubs    f16, f0, f1
@@ -6160,10 +6160,10 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     subi     r4, r4, 0x5d17
     lis      r0, 0x4330
     mulhw    r4, r4, r3
-    lfs      f2, sMessageOne@sda21(r0)
+    lfs      f2, lbl_8065D05C@sda21(r0)
     stw      r0, 0x510(r1)
     addi     r3, r22, 0x6c
-    lfd      f4, sMessageSignedConversionBias@sda21(r0)
+    lfd      f4, lbl_8065D050@sda21(r0)
     fmr      f3, f2
     srawi    r0, r4, 1
     lfs      f1, lbl_8065D110@sda21(r0)
@@ -6178,13 +6178,13 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lis      r0, 0x4330
     stw      r3, 0x38(r22)
     addis    r4, r30, 0x4
-    lfs      f2, sMessageZero@sda21(r0)
+    lfs      f2, lbl_8065D058@sda21(r0)
     addi     r3, r22, 0x3c
     lwz      r4, 0x3c6c(r4)
     stw      r0, 0x508(r1)
     fmr      f3, f2
     subi     r0, r4, 0x2
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     xoris    r0, r0, 0x8000
     lfs      f4, lbl_8065D110@sda21(r0)
     stw      r0, 0x50c(r1)
@@ -6222,7 +6222,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     fnmsubs  f18, f16, f3, f0
     bl       sin
     frsp     f1, f1
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     fcmpo    cr0, f1, f0
     bge      .L_80084B10
     fmr      f1, f0
@@ -6230,7 +6230,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     lfs      f0, lbl_8065D0F4@sda21(r0)
     fmuls    f1, f0, f1
     bl       __cvt_fp2unsigned
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     mr       r5, r3
     lfs      f0, lbl_8065D0E0@sda21(r0)
     lis      r3, gGame@ha
@@ -6249,7 +6249,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
     fadds    f2, f0, f18
     or       r21, r5, r0
     bl       DrawGsTexturedQuad
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     lis      r3, gGame@ha
     fmr      f1, f17
     addi     r3, r3, gGame@l
@@ -6601,7 +6601,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 .L_80085514:
     cmpwi    r0, 0x1
     bne      .L_80085524
-    lfs      f31, sMessageZero@sda21(r0)
+    lfs      f31, lbl_8065D058@sda21(r0)
     b        .L_8008553C
 .L_80085524:
     addis    r3, r29, 0x4
@@ -6677,9 +6677,9 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     lis      r0, 0x4330
     stw      r3, 0x114(r1)
     addi     r3, r1, 0x78
-    lfs      f2, sMessageOne@sda21(r0)
+    lfs      f2, lbl_8065D05C@sda21(r0)
     stw      r0, 0x110(r1)
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     fmr      f3, f2
     lfd      f0, 0x110(r1)
     fsubs    f0, f0, f1
@@ -6690,10 +6690,10 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     lis      r0, 0x4330
     stw      r3, 0x11c(r1)
     li       r4, 0x1
-    lfs      f2, sMessageZero@sda21(r0)
+    lfs      f2, lbl_8065D058@sda21(r0)
     mr       r3, r31
     stw      r0, 0x118(r1)
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     fmr      f3, f2
     lfd      f0, 0x118(r1)
     stw      r4, 0x44(r1)
@@ -6719,7 +6719,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     fdivs    f0, f1, f0
     stw      r0, 0x124(r1)
     addi     r0, r4, __vt__7CTexObj@l
-    lfd      f2, sMessageSignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065D050@sda21(r0)
     stw      r5, 0x120(r1)
     lfd      f1, 0x120(r1)
     fsubs    f1, f1, f2
@@ -6742,7 +6742,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     lwz      r3, 0x3c7c(r5)
     li       r0, 0x1
     stw      r4, 0x120(r1)
-    lfd      f2, sMessageSignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065D050@sda21(r0)
     slwi     r3, r3, 2
     lfd      f0, 0x120(r1)
     lwz      r4, 0x0(r29)
@@ -6764,11 +6764,11 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     fadds    f1, f3, f1
     stw      r0, 0x0(r3)
     fmadds   f2, f2, f4, f0
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     addi     r3, r3, 0xc
     bl       PSMTXTrans
     addis    r3, r29, 0x4
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     lfs      f2, 0x3ce0(r3)
     fcmpo    cr0, f2, f0
     cror     eq, gt, eq
@@ -6781,17 +6781,17 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     fmr      f5, f1
     b        .L_8008585C
 .L_800857D0:
-    lfs      f1, sMessagePercentScale@sda21(r0)
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D034@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     fmuls    f29, f1, f2
     fcmpo    cr0, f29, f0
     bge      .L_800857E8
     fneg     f29, f29
 .L_800857E8:
     addis    r3, r29, 0x4
-    lfs      f2, sMessagePercentScale@sda21(r0)
+    lfs      f2, lbl_8065D034@sda21(r0)
     lfs      f1, 0x3ce4(r3)
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     fmuls    f28, f2, f1
     fcmpo    cr0, f28, f0
     bge      .L_80085808
@@ -6802,20 +6802,20 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     lis      r0, 0x4330
     stw      r3, 0x124(r1)
     fsubs    f2, f28, f29
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     stw      r0, 0x120(r1)
     lfd      f0, 0x120(r1)
     fsubs    f1, f0, f1
     bl       fmod
     addis    r3, r29, 0x4
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     lfs      f2, 0x3ce0(r3)
     frsp     f1, f1
     fcmpo    cr0, f2, f0
     bge      .L_8008584C
     fneg     f2, f2
 .L_8008584C:
-    lfs      f0, sMessagePercentScale@sda21(r0)
+    lfs      f0, lbl_8065D034@sda21(r0)
     fdivs    f0, f1, f0
     fadds    f5, f2, f0
     fmr      f4, f5
@@ -6826,7 +6826,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     li       r0, 0x1
     lwz      r3, 0x3c78(r3)
     fneg     f0, f1
-    lfs      f3, sMessageOne@sda21(r0)
+    lfs      f3, lbl_8065D05C@sda21(r0)
     fmuls    f1, f1, f2
     mulli    r3, r3, 0x2ac
     fmuls    f0, f0, f2
@@ -6840,7 +6840,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     fmr      f2, f27
     bl       PSMTXScale
     addis    r3, r29, 0x4
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     lfs      f28, 0x3cdc(r3)
     fcmpo    cr0, f28, f1
     cror     eq, gt, eq
@@ -6858,7 +6858,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     lis      r0, 0x4330
     lfs      f0, lbl_8065D148@sda21(r0)
     stw      r3, 0x124(r1)
-    lfd      f1, sMessageSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D050@sda21(r0)
     fmuls    f2, f0, f28
     stw      r0, 0x120(r1)
     lfd      f0, 0x120(r1)
@@ -6866,7 +6866,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     bl       fmod
     addis    r3, r29, 0x4
     frsp     f2, f1
-    lfs      f1, sMessageDegreesToRadians@sda21(r0)
+    lfs      f1, lbl_8065D030@sda21(r0)
     lfs      f0, 0x3cdc(r3)
     fmadds   f28, f1, f2, f0
 .L_80085918:
@@ -6874,14 +6874,14 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
     li       r0, 0x1
     lwz      r3, 0x3c78(r3)
     li       r4, 0x78
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     mulli    r3, r3, 0x2ac
     addi     r30, r3, 0xbac
     add      r30, r29, r30
     stw      r0, 0x0(r30)
     addi     r3, r30, 0x6c
     bl       PSMTXRotRad
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     addi     r3, r30, 0x9c
     li       r4, 0x79
     bl       PSMTXRotRad
@@ -7142,11 +7142,11 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
     li       r4, -0x1
     lbz      r5, 0x4(r27)
     rlwimi   r5, r8, 4, 27, 27
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     li       r0, 0x32
     stb      r5, 0x4(r27)
     addi     r5, r3, 0x60b7
-    lfs      f0, sMessageOne@sda21(r0)
+    lfs      f0, lbl_8065D05C@sda21(r0)
     mr       r7, r8
     lbz      r3, 0x4(r27)
     rlwimi   r3, r12, 3, 28, 28
@@ -7351,7 +7351,7 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
     stw      r3, 0x4(r5)
     stwu     r0, 0x8(r5)
     bdnz     .L_80085F08
-    lfs      f3, sMessageZero@sda21(r0)
+    lfs      f3, lbl_8065D058@sda21(r0)
     addi     r3, r27, 0x44
     stfs     f3, 0x10c(r27)
     stfs     f3, 0x108(r27)
@@ -7366,7 +7366,7 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
     lis      r0, 0x4330
     stw      r3, 0x24(r1)
     addi     r3, r27, 0x8
-    lfd      f1, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D048@sda21(r0)
     stw      r0, 0x20(r1)
     lfd      f0, 0x20(r1)
     fsubs    f0, f0, f1
@@ -7377,9 +7377,9 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
     lis      r0, 0x4330
     stw      r3, 0x2c(r1)
     addi     r3, r27, 0x74
-    lfd      f1, sMessageUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065D048@sda21(r0)
     stw      r0, 0x28(r1)
-    lfs      f3, sMessageOne@sda21(r0)
+    lfs      f3, lbl_8065D05C@sda21(r0)
     lfd      f0, 0x28(r1)
     fsubs    f0, f0, f1
     fdivs    f0, f30, f0
@@ -7391,7 +7391,7 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
     lis      r3, msgColorTable@ha
     stw      r0, 0x40(r27)
     mr       r23, r27
-    lfs      f27, sMessageZero@sda21(r0)
+    lfs      f27, lbl_8065D058@sda21(r0)
     addi     r26, r3, msgColorTable@l
     stw      r29, 0xaa8(r27)
     li       r24, 0x0
@@ -7399,7 +7399,7 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
 .L_80085FD0:
     stfs     f27, 0x8(r1)
     addi     r3, r23, 0xbac
-    lfs      f4, sMessageOne@sda21(r0)
+    lfs      f4, lbl_8065D05C@sda21(r0)
     fmr      f1, f27
     lwz      r12, 0xd10(r23)
     fmr      f2, f27
@@ -7436,7 +7436,7 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
 .L_8008605C:
     lfs      f3, lbl_8065D068@sda21(r0)
     addis    r6, r27, 0x4
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     mr       r3, r30
     fmuls    f2, f1, f3
     lfs      f1, lbl_8065D06C@sda21(r0)
@@ -7874,7 +7874,7 @@ extern "C" void CMsgData_Measure(CMsgData* data)
     stw      r5, 0x804(r3)
     lis      r3, gGame@ha
     addi     r31, r3, gGame@l
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     lwz      r4, 0x804(r26)
     li       r3, -0x1
     li       r0, 0x1
@@ -7909,7 +7909,7 @@ extern "C" void CMsgData_Measure(CMsgData* data)
     bctr
 .L_80086530:
     lwz      r0, 0x804(r26)
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     slwi     r3, r0, 2
     addi     r0, r3, 0x858
     lfsx     f0, r26, r0
@@ -7919,7 +7919,7 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 .L_80086550:
     lwz      r3, 0x804(r26)
     li       r4, 0x0
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     addi     r0, r3, 0x1
     stw      r0, 0x804(r26)
     lwz      r0, 0x804(r26)
@@ -7937,7 +7937,7 @@ extern "C" void CMsgData_Measure(CMsgData* data)
     b        .L_8008683C
 .L_80086598:
     lwz      r0, 0x804(r26)
-    lfs      f1, sMessageZero@sda21(r0)
+    lfs      f1, lbl_8065D058@sda21(r0)
     slwi     r3, r0, 2
     addi     r0, r3, 0x858
     lfsx     f0, r26, r0
@@ -7956,7 +7956,7 @@ extern "C" void CMsgData_Measure(CMsgData* data)
     lis      r0, 0x4330
     stw      r0, 0x110(r1)
     xoris    r0, r3, 0x8000
-    lfd      f2, sMessageSignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065D050@sda21(r0)
     stw      r0, 0x114(r1)
     lfs      f0, lbl_8065D0DC@sda21(r0)
     lfd      f1, 0x110(r1)
@@ -8197,7 +8197,7 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 .L_80086920:
     cmpwi    r27, 0x0
     beq      .L_8008650C
-    lfs      f0, sMessageZero@sda21(r0)
+    lfs      f0, lbl_8065D058@sda21(r0)
     mr       r3, r26
     li       r4, 0x0
     stfs     f0, 0x880(r26)

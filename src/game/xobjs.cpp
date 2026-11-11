@@ -186,7 +186,7 @@ BOOL XObjRead::QueueRead(void* object, void* info)
     addi     r7, r5, sObjectReadStartName@l
     addi     r3, r3, sPathXobjsCpp@l
     addi     r6, r6, sObjectReaderFullMessage@l
-    li       r5, sObjectReaderErrorFormat@sda21
+    li       r5, lbl_8065E828@sda21
     crclr    cr1eq
     bl       OSPanic
     li       r3, 0x0
@@ -403,7 +403,7 @@ extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 unus
     addi     r7, r5, sObjectReadStartName@l
     addi     r3, r3, sPathXobjsCpp@l
     addi     r6, r6, sObjectReaderFullMessage@l
-    li       r5, sObjectReaderErrorFormat@sda21
+    li       r5, lbl_8065E828@sda21
     crclr    cr1eq
     bl       OSPanic
     b        .L_80132898
@@ -567,7 +567,7 @@ extern "C" void ReadAll__5XOBJSFv(XOBJS* list)
     lis      r4, sPathXobjsCpp@ha
     mr       r6, r3
     addi     r3, r4, sPathXobjsCpp@l
-    li       r5, sObjectReaderErrorFormat@sda21
+    li       r5, lbl_8065E828@sda21
     li       r4, 0xa1
     li       r7, lbl_8065A9A8@sda21
     crclr    cr1eq

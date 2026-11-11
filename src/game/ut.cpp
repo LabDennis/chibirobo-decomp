@@ -1105,15 +1105,15 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
     stw      r30, 0x58(r1)
     stw      r29, 0x54(r1)
     fmr      f30, f1
-    lfs      f0, sGeometryOne@sda21(r0)
+    lfs      f0, lbl_8065F494@sda21(r0)
     mr.      r29, r3
     mr       r30, r4
     mr       r31, r5
     fsubs    f31, f0, f30
     bne      .L_8018F1B8
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x3e4
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F1B8:
     cmplwi   r30, 0x0
@@ -1121,9 +1121,9 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
     lfs      f28, 0x3c(r29)
     lfs      f27, 0x40(r29)
     bne      .L_8018F1DC
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x3e4
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F1DC:
     lfs      f0, 0x3c(r30)
@@ -1140,9 +1140,9 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
     stfs     f2, 0x38(r1)
     stfs     f0, 0x40(r1)
     bne      .L_8018F224
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x3a9
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F224:
     lfs      f0, 0x38(r1)
@@ -1157,9 +1157,9 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
     cmplwi   r31, 0x0
     beq      .L_8018F290
     bne      .L_8018F264
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x25d
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F264:
     lwz      r4, 0x14(r31)
@@ -1177,9 +1177,9 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
 .L_8018F290:
     cmplwi   r29, 0x0
     bne      .L_8018F2A8
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x351
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F2A8:
     cmplwi   r30, 0x0
@@ -1187,9 +1187,9 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
     lfs      f28, 0x30(r29)
     lfs      f29, 0x34(r29)
     bne      .L_8018F2CC
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x351
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F2CC:
     lfs      f0, 0x30(r30)
@@ -1206,9 +1206,9 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
     stfs     f2, 0x38(r1)
     stfs     f0, 0x40(r1)
     bne      .L_8018F314
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x316
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F314:
     lfs      f0, 0x38(r1)
@@ -1223,9 +1223,9 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
     cmplwi   r31, 0x0
     beq      .L_8018F380
     bne      .L_8018F354
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x25d
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F354:
     lwz      r4, 0x14(r31)
@@ -1246,9 +1246,9 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
     beq      .L_8018F3C8
     cmplwi   r29, 0x0
     bne      .L_8018F3A4
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x2dd
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F3A4:
     lfs      f0, 0x1c(r29)
@@ -1263,16 +1263,16 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
 .L_8018F3C8:
     cmplwi   r29, 0x0
     bne      .L_8018F3E0
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x2dd
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F3E0:
     addic.   r0, r1, 0x38
     bne      .L_8018F3F8
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x2de
-    li       r5, sJointPoseAssertRotation@sda21
+    li       r5, lbl_8065F4A8@sda21
     bl       __assert
 .L_8018F3F8:
     lfs      f0, 0x1c(r29)
@@ -1292,9 +1292,9 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
     beq      .L_8018F46C
     cmplwi   r30, 0x0
     bne      .L_8018F448
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x2dd
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F448:
     lfs      f0, 0x1c(r30)
@@ -1309,16 +1309,16 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
 .L_8018F46C:
     cmplwi   r30, 0x0
     bne      .L_8018F484
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x2dd
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F484:
     addic.   r0, r1, 0x38
     bne      .L_8018F49C
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x2de
-    li       r5, sJointPoseAssertRotation@sda21
+    li       r5, lbl_8065F4A8@sda21
     bl       __assert
 .L_8018F49C:
     lfs      f0, 0x1c(r30)
@@ -1381,9 +1381,9 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
     bl       QuatSlerp
     cmplwi   r31, 0x0
     bne      .L_8018F594
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x290
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F594:
     lfs      f0, 0x28(r1)
@@ -1400,9 +1400,9 @@ void BlendJointPose(HSD_JObj* a, HSD_JObj* b, HSD_JObj* out, f32 t)
     cmplwi   r31, 0x0
     beq      .L_8018F608
     bne      .L_8018F5DC
-    li       r3, sJointPoseAssertFile@sda21
+    li       r3, lbl_8065F498@sda21
     li       r4, 0x25d
-    li       r5, sJointPoseAssertJoint@sda21
+    li       r5, lbl_8065F4A0@sda21
     bl       __assert
 .L_8018F5DC:
     lwz      r4, 0x14(r31)
@@ -1567,7 +1567,7 @@ BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
     lwzu     r5, sTriangleEdgeTestDown@l(r3)
     fsubs    f1, f1, f0
     lfs      f0, 0x8(r28)
-    lfs      f2, sGeometryZero@sda21(r0)
+    lfs      f2, lbl_8065F478@sda21(r0)
     addi     r4, r1, 0x20
     fsubs    f0, f4, f0
     lwz      r7, 0x4(r3)
@@ -1587,7 +1587,7 @@ BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
     addi     r3, r1, 0x2c
     addi     r4, r1, 0x8
     bl       PSVECDotProduct
-    lfs      f5, sGeometryZero@sda21(r0)
+    lfs      f5, lbl_8065F478@sda21(r0)
     fcmpo    cr0, f1, f5
     ble      .L_8018ED28
     li       r3, 0x0
@@ -1616,7 +1616,7 @@ BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
     addi     r3, r1, 0x2c
     addi     r4, r1, 0x8
     bl       PSVECDotProduct
-    lfs      f5, sGeometryZero@sda21(r0)
+    lfs      f5, lbl_8065F478@sda21(r0)
     fcmpo    cr0, f1, f5
     ble      .L_8018ED98
     li       r3, 0x0
@@ -1645,7 +1645,7 @@ BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
     addi     r3, r1, 0x2c
     addi     r4, r1, 0x8
     bl       PSVECDotProduct
-    lfs      f0, sGeometryZero@sda21(r0)
+    lfs      f0, lbl_8065F478@sda21(r0)
     fcmpo    cr0, f1, f0
     mfcr     r0
     extrwi   r0, r0, 1, 1
@@ -1742,7 +1742,7 @@ BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
     lfs      f1, 0x0(r5)
     stmw     r27, 0x3c(r1)
     mr       r27, r3
-    lfs      f2, sGeometryZero@sda21(r0)
+    lfs      f2, lbl_8065F478@sda21(r0)
     mr       r29, r5
     fsubs    f5, f3, f1
     lfs      f0, 0x0(r27)
@@ -1775,7 +1775,7 @@ BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
     addi     r3, r1, 0x2c
     addi     r4, r1, 0x8
     bl       PSVECDotProduct
-    lfs      f5, sGeometryZero@sda21(r0)
+    lfs      f5, lbl_8065F478@sda21(r0)
     fcmpo    cr0, f1, f5
     ble      .L_8018EB04
     li       r3, 0x0
@@ -1804,7 +1804,7 @@ BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
     addi     r3, r1, 0x2c
     addi     r4, r1, 0x8
     bl       PSVECDotProduct
-    lfs      f5, sGeometryZero@sda21(r0)
+    lfs      f5, lbl_8065F478@sda21(r0)
     fcmpo    cr0, f1, f5
     ble      .L_8018EB74
     li       r3, 0x0
@@ -1833,7 +1833,7 @@ BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
     addi     r3, r1, 0x2c
     addi     r4, r1, 0x8
     bl       PSVECDotProduct
-    lfs      f5, sGeometryZero@sda21(r0)
+    lfs      f5, lbl_8065F478@sda21(r0)
     fcmpo    cr0, f1, f5
     ble      .L_8018EBE4
     li       r3, 0x0
@@ -1862,7 +1862,7 @@ BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
     addi     r3, r1, 0x2c
     addi     r4, r1, 0x8
     bl       PSVECDotProduct
-    lfs      f0, sGeometryZero@sda21(r0)
+    lfs      f0, lbl_8065F478@sda21(r0)
     fcmpo    cr0, f1, f0
     mfcr     r0
     extrwi   r0, r0, 1, 1
@@ -1959,7 +1959,7 @@ int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec
     addi     r4, r1, 0x50
     bl       PSVECDotProduct
     fdivs    f0, f1, f31
-    lfs      f1, sGeometryNegativeOne@sda21(r0)
+    lfs      f1, lbl_8065F48C@sda21(r0)
     mr       r4, r31
     addi     r3, r1, 0x14
     fmuls    f31, f1, f0
@@ -1969,7 +1969,7 @@ int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec
     mr       r5, r31
     addi     r4, r1, 0x44
     bl       PSVECAdd
-    lfs      f0, sGeometryZero@sda21(r0)
+    lfs      f0, lbl_8065F478@sda21(r0)
     fcmpo    cr0, f31, f0
     bge      .L_8018E9CC
     fneg     f1, f31
@@ -1977,18 +1977,18 @@ int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec
 .L_8018E9CC:
     fmr      f1, f31
 .L_8018E9D0:
-    lfs      f0, sLinePlaneEndpointTolerance@sda21(r0)
+    lfs      f0, lbl_8065F490@sda21(r0)
     fcmpo    cr0, f1, f0
     cror     eq, lt, eq
     beq      .L_8018EA08
-    lfs      f1, sGeometryOne@sda21(r0)
-    lfs      f0, sGeometryZero@sda21(r0)
+    lfs      f1, lbl_8065F494@sda21(r0)
+    lfs      f0, lbl_8065F478@sda21(r0)
     fsubs    f1, f1, f31
     fcmpo    cr0, f1, f0
     bge      .L_8018E9F8
     fneg     f1, f1
 .L_8018E9F8:
-    lfs      f0, sLinePlaneEndpointTolerance@sda21(r0)
+    lfs      f0, lbl_8065F490@sda21(r0)
     fcmpo    cr0, f1, f0
     cror     eq, lt, eq
     bne      .L_8018EA10
@@ -1996,10 +1996,10 @@ int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec
     li       r3, 0x1
     b        .L_8018EA34
 .L_8018EA10:
-    lfs      f0, sGeometryZero@sda21(r0)
+    lfs      f0, lbl_8065F478@sda21(r0)
     fcmpo    cr0, f31, f0
     ble      .L_8018EA30
-    lfs      f0, sGeometryOne@sda21(r0)
+    lfs      f0, lbl_8065F494@sda21(r0)
     fcmpo    cr0, f31, f0
     bge      .L_8018EA30
     li       r3, 0x2
@@ -2122,7 +2122,7 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
     fmsubs   f3, f31, f1, f0
     bne      .L_8018E718
     fmuls    f0, f5, f4
-    lfs      f1, sGeometryZero@sda21(r0)
+    lfs      f1, lbl_8065F478@sda21(r0)
     li       r0, 0x0
     fcmpo    cr0, f0, f1
     cror     eq, lt, eq
@@ -2191,7 +2191,7 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
     stfs     f2, 0x0(r7)
     stfs     f0, 0x8(r7)
 .L_8018E7E0:
-    lfs      f0, sGeometryZero@sda21(r0)
+    lfs      f0, lbl_8065F478@sda21(r0)
     li       r3, 0x1
     stfs     f0, 0x4(r7)
     b        .L_8018E7F4

@@ -766,7 +766,7 @@ void CMotionControlCamera::Update(u32 step)
     lis      r4, sPathCmotioncontrolcameraCpp@ha
     mr       r6, r3
     addi     r3, r4, sPathCmotioncontrolcameraCpp@l
-    li       r5, sMotionCameraPanicFormat@sda21
+    li       r5, lbl_8065ECA4@sda21
     li       r4, 0xf9
     li       r7, sMotionCameraUpdateName@sda21
     crclr    cr1eq
@@ -1166,8 +1166,8 @@ void CMotionControlCamera::Interpolate(u32 step)
     addi     r3, r1, 0xdc
     lfs      f3, 0x98(r31)
     lfs      f2, 0x94(r31)
-    lfs      f1, sMotionCameraZero@sda21(r0)
-    lfs      f0, sMotionCameraOne@sda21(r0)
+    lfs      f1, lbl_8065EC78@sda21(r0)
+    lfs      f0, lbl_8065EC74@sda21(r0)
     stw      r5, 0xcc(r1)
     stfs     f2, 0xdc(r1)
     stfs     f3, 0xe0(r1)
@@ -1208,9 +1208,9 @@ void CMotionControlCamera::Interpolate(u32 step)
     addi     r0, r3, __vt__4CVec@l
     lfs      f2, 0xa4(r31)
     mr       r4, r30
-    lfs      f1, sMotionCameraZero@sda21(r0)
+    lfs      f1, lbl_8065EC78@sda21(r0)
     addi     r3, r1, 0xdc
-    lfs      f0, sMotionCameraOne@sda21(r0)
+    lfs      f0, lbl_8065EC74@sda21(r0)
     stw      r0, 0xbc(r1)
     stfs     f2, 0xdc(r1)
     stfs     f3, 0xe0(r1)
@@ -1319,7 +1319,7 @@ void CMotionControlCamera::Interpolate(u32 step)
     fcmpo    cr0, f1, f31
     cror     eq, lt, eq
     beq      .L_80149ACC
-    lfs      f0, sMotionCameraInterpolationSnapDistance@sda21(r0)
+    lfs      f0, lbl_8065ECA0@sda21(r0)
     fcmpo    cr0, f1, f0
     bge      .L_80149AF0
 .L_80149ACC:
@@ -1411,7 +1411,7 @@ void CMotionControlCamera::Interpolate(u32 step)
     fcmpo    cr0, f1, f31
     cror     eq, lt, eq
     beq      .L_80149C2C
-    lfs      f0, sMotionCameraInterpolationSnapDistance@sda21(r0)
+    lfs      f0, lbl_8065ECA0@sda21(r0)
     fcmpo    cr0, f1, f0
     bge      .L_80149C50
 .L_80149C2C:
@@ -1511,7 +1511,7 @@ void CMotionControlCamera::Interpolate(u32 step)
     fcmpo    cr0, f1, f31
     cror     eq, lt, eq
     beq      .L_80149DA0
-    lfs      f0, sMotionCameraInterpolationSnapDistance@sda21(r0)
+    lfs      f0, lbl_8065ECA0@sda21(r0)
     fcmpo    cr0, f1, f0
     bge      .L_80149DC4
 .L_80149DA0:
@@ -2050,14 +2050,14 @@ extern "C" f32 GetAreaCameraFovRatio(CMotionControlCamera* camera)
     lwz      r12, 0x68(r12)
     mtctr    r12
     bctrl
-    lfs      f0, sMotionCameraZero@sda21(r0)
+    lfs      f0, lbl_8065EC78@sda21(r0)
     fcmpu    cr0, f1, f0
     beq      .L_801487B4
     lfs      f0, 0xd8(r31)
     fdivs    f1, f0, f1
     b        .L_801487B8
 .L_801487B4:
-    lfs      f1, sMotionCameraOne@sda21(r0)
+    lfs      f1, lbl_8065EC74@sda21(r0)
 .L_801487B8:
     lwz      r0, 0x14(r1)
     lwz      r31, 0xc(r1)
@@ -2102,11 +2102,11 @@ f32 CMotionControlCamera::GetMapDistance()
     srwi.    r0, r0, 5
     beq      .L_80148718
     bl       GetMapCameraHorizontalTargetDistance
-    lfs      f0, sMotionCameraMapDistanceOffset@sda21(r0)
+    lfs      f0, lbl_8065EC70@sda21(r0)
     fsubs    f1, f1, f0
     b        .L_8014871C
 .L_80148718:
-    lfs      f1, sMotionCameraOne@sda21(r0)
+    lfs      f1, lbl_8065EC74@sda21(r0)
 .L_8014871C:
     lwz      r0, 0x14(r1)
     mtlr     r0

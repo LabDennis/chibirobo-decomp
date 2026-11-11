@@ -1007,7 +1007,7 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     li       r3, 0x1
     li       r4, 0x0
     bl       GXSetPixelFmt
-    lwz      r3, sGsDefaultClearColor@sda21(r0)
+    lwz      r3, lbl_8065F5A0@sda21(r0)
     lis      r5, 0x100
     lis      r4, HSD_VIData@ha
     li       r0, 0x0
@@ -1037,10 +1037,10 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     addi     r8, r1, 0x1c
     stw      r0, 0x48(r30)
     addi     r9, r1, 0xd0
-    lwz      r26, sGsDefaultPointSize@sda21(r0)
-    lwz      r3, sGsDefaultPointTexOffset@sda21(r0)
-    lwz      r25, sGsDefaultLineSize@sda21(r0)
-    lwz      r24, sGsDefaultLineTexOffset@sda21(r0)
+    lwz      r26, lbl_8065F5B4@sda21(r0)
+    lwz      r3, lbl_8065F5B8@sda21(r0)
+    lwz      r25, lbl_8065F5AC@sda21(r0)
+    lwz      r24, lbl_8065F5B0@sda21(r0)
     lwz      r23, 0x48(r31)
     lwz      r22, 0x4c(r31)
     lwz      r21, 0x50(r31)
@@ -1054,11 +1054,11 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     lwz      r12, 0x28(r31)
     lwz      r11, 0x2c(r31)
     lwz      r0, 0x30(r31)
-    lbz      r10, sGsDefaultDepthCompareBeforeTexture@sda21(r0)
+    lbz      r10, lbl_8065F5A5@sda21(r0)
     lbz      r5, sGsDefaultAlphaUpdate@sda21(r0)
-    lbz      r4, sGsDefaultColorUpdate@sda21(r0)
-    lwz      r28, sGsDefaultCullMode@sda21(r0)
-    lbz      r27, sGsDefaultDither@sda21(r0)
+    lbz      r4, lbl_8065F5A4@sda21(r0)
+    lwz      r28, lbl_8065F5A8@sda21(r0)
+    lbz      r27, lbl_8065F5A6@sda21(r0)
     stw      r26, 0x58(r1)
     stw      r29, 0x290(r30)
     stw      r26, 0x50(r1)
@@ -1202,7 +1202,7 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     lwz      r3, 0xac(r31)
     lwz      r0, 0xb0(r31)
     stw      r4, 0xdc(r1)
-    lwz      r4, sGsSecondaryTevStage@sda21(r0)
+    lwz      r4, lbl_8065F5BC@sda21(r0)
     stw      r23, 0xe0(r1)
     stw      r22, 0xe4(r1)
     stw      r21, 0xe8(r1)
@@ -1280,9 +1280,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     stw      r29, 0x70(r1)
     lwz      r3, 0x294(r30)
     bl       InitializeGsTevStageDescriptor
-    lwz      r5, sGsColor0DefaultMaterial@sda21(r0)
+    lwz      r5, lbl_8065F5C4@sda21(r0)
     mr       r3, r30
-    lwz      r15, sGsColor0DefaultAmbient@sda21(r0)
+    lwz      r15, lbl_8065F5C0@sda21(r0)
     addi     r6, r1, 0x1fc
     lwz      r14, 0xfc(r31)
     addi     r7, r1, 0x44
@@ -1303,9 +1303,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     stw      r9, 0x20c(r1)
     stw      r0, 0x210(r1)
     bl       ConfigureGsChannel
-    lwz      r5, sGsAlpha0DefaultMaterial@sda21(r0)
+    lwz      r5, lbl_8065F5D0@sda21(r0)
     mr       r3, r30
-    lwz      r15, sGsAlpha0DefaultAmbient@sda21(r0)
+    lwz      r15, lbl_8065F5CC@sda21(r0)
     addi     r6, r1, 0x1e4
     lwz      r14, 0x114(r31)
     addi     r7, r1, 0x3c
@@ -1317,7 +1317,7 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     lwz      r9, 0x124(r31)
     lwz      r0, 0x128(r31)
     stw      r5, 0x38(r1)
-    lwz      r5, sGsDefaultAlpha0Channel@sda21(r0)
+    lwz      r5, lbl_8065F5C8@sda21(r0)
     stw      r15, 0x3c(r1)
     stw      r14, 0x1e4(r1)
     stw      r12, 0x1e8(r1)
@@ -1326,9 +1326,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     stw      r9, 0x1f4(r1)
     stw      r0, 0x1f8(r1)
     bl       ConfigureGsChannel
-    lwz      r5, sGsColor1DefaultMaterial@sda21(r0)
+    lwz      r5, lbl_8065F5DC@sda21(r0)
     mr       r3, r30
-    lwz      r15, sGsColor1DefaultAmbient@sda21(r0)
+    lwz      r15, lbl_8065F5D8@sda21(r0)
     addi     r6, r1, 0x1cc
     lwz      r14, 0x12c(r31)
     addi     r7, r1, 0x34
@@ -1340,7 +1340,7 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     lwz      r9, 0x13c(r31)
     lwz      r0, 0x140(r31)
     stw      r5, 0x30(r1)
-    lwz      r5, sGsDefaultColor1Channel@sda21(r0)
+    lwz      r5, lbl_8065F5D4@sda21(r0)
     stw      r15, 0x34(r1)
     stw      r14, 0x1cc(r1)
     stw      r12, 0x1d0(r1)
@@ -1349,9 +1349,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     stw      r9, 0x1dc(r1)
     stw      r0, 0x1e0(r1)
     bl       ConfigureGsChannel
-    lwz      r5, sGsAlpha1DefaultMaterial@sda21(r0)
+    lwz      r5, lbl_8065F5E8@sda21(r0)
     mr       r3, r30
-    lwz      r15, sGsAlpha1DefaultAmbient@sda21(r0)
+    lwz      r15, lbl_8065F5E4@sda21(r0)
     addi     r6, r1, 0x1b4
     lwz      r14, 0x144(r31)
     addi     r7, r1, 0x2c
@@ -1363,7 +1363,7 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     lwz      r9, 0x154(r31)
     lwz      r0, 0x158(r31)
     stw      r5, 0x28(r1)
-    lwz      r5, sGsDefaultAlpha1Channel@sda21(r0)
+    lwz      r5, lbl_8065F5E0@sda21(r0)
     stw      r15, 0x2c(r1)
     stw      r14, 0x1b4(r1)
     stw      r12, 0x1b8(r1)
@@ -1373,10 +1373,10 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     stw      r0, 0x1c8(r1)
     bl       ConfigureGsChannel
     li       r0, 0x0
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     stw      r0, 0x29c(r30)
     addi     r3, r30, 0x4e0
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     fmr      f2, f1
     stfs     f1, 0x8(r1)
     fmr      f3, f1
@@ -1389,10 +1389,10 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     mtctr    r12
     bctrl
     addi     r0, r30, 0x3e0
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     stw      r0, 0x648(r30)
     addi     r3, r30, 0x668
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     fmr      f2, f1
     stfs     f1, 0x8(r1)
     fmr      f3, f1
@@ -1404,9 +1404,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     fmr      f8, f1
     mtctr    r12
     bctrl
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     addi     r3, r30, 0x7d4
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     stfs     f1, 0x8(r1)
     fmr      f2, f1
     fmr      f3, f1
@@ -1418,9 +1418,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     fmr      f8, f1
     mtctr    r12
     bctrl
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     addi     r3, r30, 0x940
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     stfs     f1, 0x8(r1)
     fmr      f2, f1
     fmr      f3, f1
@@ -1432,9 +1432,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     fmr      f8, f1
     mtctr    r12
     bctrl
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     addi     r3, r30, 0xabc
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     stfs     f1, 0x8(r1)
     fmr      f2, f1
     fmr      f3, f1
@@ -1446,9 +1446,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     fmr      f8, f1
     mtctr    r12
     bctrl
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     addi     r3, r30, 0xc40
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     stfs     f1, 0x8(r1)
     fmr      f2, f1
     fmr      f3, f1
@@ -1460,9 +1460,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     fmr      f8, f1
     mtctr    r12
     bctrl
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     addi     r3, r30, 0xdc8
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     stfs     f1, 0x8(r1)
     fmr      f2, f1
     fmr      f3, f1
@@ -1474,9 +1474,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     fmr      f8, f1
     mtctr    r12
     bctrl
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     addi     r3, r30, 0xf30
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     stfs     f1, 0x8(r1)
     fmr      f2, f1
     fmr      f3, f1
@@ -1488,9 +1488,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     fmr      f8, f1
     mtctr    r12
     bctrl
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     addi     r3, r30, 0x1098
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     stfs     f1, 0x8(r1)
     fmr      f2, f1
     fmr      f3, f1
@@ -1502,9 +1502,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     fmr      f8, f1
     mtctr    r12
     bctrl
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     addi     r3, r30, 0x1200
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     stfs     f1, 0x8(r1)
     fmr      f2, f1
     fmr      f3, f1
@@ -1516,9 +1516,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     fmr      f8, f1
     mtctr    r12
     bctrl
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     addi     r3, r30, 0x1368
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     stfs     f1, 0x8(r1)
     fmr      f2, f1
     fmr      f3, f1
@@ -1530,9 +1530,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     fmr      f8, f1
     mtctr    r12
     bctrl
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     addi     r3, r30, 0x14d0
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     stfs     f1, 0x8(r1)
     fmr      f2, f1
     fmr      f3, f1
@@ -1544,9 +1544,9 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     fmr      f8, f1
     mtctr    r12
     bctrl
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     addi     r3, r30, 0x1638
-    lfs      f4, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F5F0@sda21(r0)
     stfs     f1, 0x8(r1)
     fmr      f2, f1
     fmr      f3, f1
@@ -1559,7 +1559,7 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     mtctr    r12
     bctrl
     li       r0, 0x5
-    lfs      f0, sGsScalarOne@sda21(r0)
+    lfs      f0, lbl_8065F5F0@sda21(r0)
     stw      r0, 0x17a0(r30)
     lwz      r0, 0x18(r1)
     stw      r0, 0x17a4(r30)
@@ -2411,7 +2411,7 @@ extern "C" void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1
     stw      r0, 0x30(r3)
     bl       HSD_SetupChannelAll
 .L_80197B10:
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     fcmpo    cr0, f27, f0
     bge      .L_80197B40
     mr       r3, r27
@@ -2419,12 +2419,12 @@ extern "C" void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1
     clrlwi   r3, r3, 16
     lis      r0, 0x4330
     stw      r3, 0x14(r1)
-    lfd      f1, sGsUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F630@sda21(r0)
     stw      r0, 0x10(r1)
     lfd      f0, 0x10(r1)
     fsubs    f27, f0, f1
 .L_80197B40:
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     fcmpo    cr0, f28, f0
     bge      .L_80197B70
     mr       r3, r27
@@ -2432,7 +2432,7 @@ extern "C" void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1
     clrlwi   r3, r3, 16
     lis      r0, 0x4330
     stw      r3, 0x14(r1)
-    lfd      f1, sGsUnsignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F630@sda21(r0)
     stw      r0, 0x10(r1)
     lfd      f0, 0x10(r1)
     fsubs    f28, f0, f1
@@ -2449,9 +2449,9 @@ extern "C" void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1
     addi     r3, r26, 0xc4c
     bl       PSMTXTrans
     fneg     f0, f28
-    lfs      f2, sGsScalarHalf@sda21(r0)
+    lfs      f2, lbl_8065F5F4@sda21(r0)
     li       r0, 0x1
-    lfs      f3, sGsScalarOne@sda21(r0)
+    lfs      f3, lbl_8065F5F0@sda21(r0)
     fmuls    f1, f27, f2
     stw      r0, 0xc40(r26)
     fmuls    f2, f0, f2
@@ -2480,12 +2480,12 @@ extern "C" void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1
     fmr      f3, f26
     addi     r3, r26, 0xc4c
     bl       PSMTXTrans
-    lfs      f0, sGsScalarHalf@sda21(r0)
+    lfs      f0, lbl_8065F5F4@sda21(r0)
     li       r0, 0x1
     stw      r0, 0xc40(r26)
     addi     r3, r26, 0xc7c
     fmuls    f1, f27, f0
-    lfs      f3, sGsScalarOne@sda21(r0)
+    lfs      f3, lbl_8065F5F0@sda21(r0)
     fmuls    f2, f28, f0
     bl       PSMTXScale
     li       r0, 0x1
@@ -2810,7 +2810,7 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
     stw      r30, 0x178(r1)
     stw      r29, 0x174(r1)
     fmr      f30, f1
-    lfs      f0, sGsScalarHalf@sda21(r0)
+    lfs      f0, lbl_8065F5F4@sda21(r0)
     lwz      r6, sGsInitialLineWidth@sda21(r0)
     lis      r8, __vt__5CFont@ha
     lwz      r0, sGsInitialMaxLineWidth@sda21(r0)
@@ -2835,7 +2835,7 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
     extsb    r0, r3
     cmpwi    r0, 0xa
     bne      .L_80196954
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     stfs     f0, 0xc(r1)
     b        .L_80196A84
 .L_80196954:
@@ -2843,7 +2843,7 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
     addi     r4, r1, 0x14
     addi     r5, r1, 0x8
     bl       GetFontGlyphTexture
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     fcmpo    cr0, f30, f0
     ble      .L_80196A44
     cmpwi    r30, 0x0
@@ -2852,9 +2852,9 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
     lis      r0, 0x4330
     stw      r0, 0x160(r1)
     xoris    r0, r3, 0x8000
-    lfd      f2, sGsSignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065F620@sda21(r0)
     stw      r0, 0x164(r1)
-    lfs      f0, sGsFontCellSize@sda21(r0)
+    lfs      f0, lbl_8065F628@sda21(r0)
     lfd      f1, 0x160(r1)
     lfs      f3, 0xc(r1)
     fsubs    f1, f1, f2
@@ -2910,7 +2910,7 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
     lis      r0, 0x4330
     stw      r0, 0x160(r1)
     xoris    r0, r3, 0x8000
-    lfd      f1, sGsSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F620@sda21(r0)
     stw      r0, 0x164(r1)
     lfs      f2, 0xc(r1)
     lfd      f0, 0x160(r1)
@@ -3066,26 +3066,26 @@ extern "C" f32 MeasureGameTextHeight(CGs* gs, const char* text, f32 size)
     stw      r31, 0xc(r1)
     stw      r30, 0x8(r1)
     fmr      f30, f1
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     mr       r30, r3
     fcmpo    cr0, f30, f0
     ble      .L_80196748
     fmr      f31, f30
     b        .L_80196778
 .L_80196748:
-    lfs      f31, sGsFontCellSize@sda21(r0)
+    lfs      f31, lbl_8065F628@sda21(r0)
     b        .L_80196778
 .L_80196750:
     extsb    r0, r3
     cmpwi    r0, 0xa
     bne      .L_80196778
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     fcmpo    cr0, f30, f0
     ble      .L_80196770
     fmr      f0, f30
     b        .L_80196774
 .L_80196770:
-    lfs      f0, sGsFontCellSize@sda21(r0)
+    lfs      f0, lbl_8065F628@sda21(r0)
 .L_80196774:
     fadds    f31, f31, f0
 .L_80196778:
@@ -3470,7 +3470,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     li       r0, 0x1
     stb      r0, lbl_8065B850@sda21(r0)
 .L_80195204:
-    lfs      f0, sGsScalarHalf@sda21(r0)
+    lfs      f0, lbl_8065F5F4@sda21(r0)
     lis      r5, __vt__5CFont@ha
     lwz      r3, sGsInitialLineWidth@sda21(r0)
     lis      r4, __vt__7CTexObj@ha
@@ -3493,7 +3493,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     extsb    r0, r3
     cmpwi    r0, 0xa
     bne      .L_80195268
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     stfs     f0, 0x14(r1)
     b        .L_80195398
 .L_80195268:
@@ -3501,7 +3501,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     addi     r4, r1, 0x1c
     addi     r5, r1, 0x10
     bl       GetFontGlyphTexture
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     fcmpo    cr0, f30, f0
     ble      .L_80195358
     cmpwi    r25, 0x0
@@ -3510,9 +3510,9 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     lis      r0, 0x4330
     stw      r0, 0x178(r1)
     xoris    r0, r3, 0x8000
-    lfd      f2, sGsSignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065F620@sda21(r0)
     stw      r0, 0x17c(r1)
-    lfs      f0, sGsFontCellSize@sda21(r0)
+    lfs      f0, lbl_8065F628@sda21(r0)
     lfd      f1, 0x178(r1)
     lfs      f3, 0x14(r1)
     fsubs    f1, f1, f2
@@ -3568,7 +3568,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     lis      r0, 0x4330
     stw      r0, 0x178(r1)
     xoris    r0, r3, 0x8000
-    lfd      f1, sGsSignedConversionBias@sda21(r0)
+    lfd      f1, lbl_8065F620@sda21(r0)
     stw      r0, 0x17c(r1)
     lfs      f2, 0x14(r1)
     lfd      f0, 0x178(r1)
@@ -3676,7 +3676,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 .L_801954CC:
     cmplwi   r30, 0x0
     bne      .L_80195244
-    lfs      f0, sGsScalarHalf@sda21(r0)
+    lfs      f0, lbl_8065F5F4@sda21(r0)
     lis      r3, __vt__5CFont@ha
     lfs      f26, 0x18(r1)
     lis      r4, __vt__7CTexObj@ha
@@ -3731,12 +3731,12 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     or       r0, r0, r4
     srwi     r5, r0, 31
     beq      .L_801955C8
-    lfs      f0, sGsFontCellSize@sda21(r0)
+    lfs      f0, lbl_8065F628@sda21(r0)
     xoris    r4, r3, 0x8000
     lis      r0, 0x4330
     stw      r4, 0x17c(r1)
     fdivs    f0, f30, f0
-    lfd      f2, sGsSignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065F620@sda21(r0)
     stw      r0, 0x178(r1)
     lfd      f1, 0x178(r1)
     fsubs    f1, f1, f2
@@ -3752,13 +3752,13 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     fmuls    f16, f30, f0
     b        .L_8019560C
 .L_801955E8:
-    lfs      f1, sGsScalarHalf@sda21(r0)
+    lfs      f1, lbl_8065F5F4@sda21(r0)
     lfs      f0, 0x17a8(r31)
     fmuls    f0, f1, f0
     fmuls    f16, f30, f0
     b        .L_8019560C
 .L_801955FC:
-    lfs      f1, sGsScalarHalf@sda21(r0)
+    lfs      f1, lbl_8065F5F4@sda21(r0)
     lfs      f0, 0x17ac(r31)
     fmuls    f0, f1, f0
     fmuls    f16, f30, f0
@@ -3766,9 +3766,9 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     fsubs    f23, f22, f27
     lwz      r0, 0x17a4(r31)
     fsubs    f0, f21, f28
-    lfs      f4, sGsScalarTwo@sda21(r0)
+    lfs      f4, lbl_8065F62C@sda21(r0)
     fdivs    f1, f26, f30
-    lfs      f3, sGsScalarOne@sda21(r0)
+    lfs      f3, lbl_8065F5F0@sda21(r0)
     cmpwi    r0, 0x0
     fdivs    f2, f23, f30
     fneg     f0, f0
@@ -3784,14 +3784,14 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x17c(r1)
-    lfd      f2, sGsSignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065F620@sda21(r0)
     stw      r0, 0x178(r1)
     lfd      f0, 0x178(r1)
     fsubs    f0, f0, f2
     fcmpo    cr0, f0, f30
     bge      .L_801956D8
     stw      r3, 0x17c(r1)
-    lfs      f0, sGsScalarHalf@sda21(r0)
+    lfs      f0, lbl_8065F5F4@sda21(r0)
     stw      r0, 0x178(r1)
     lfd      f1, 0x178(r1)
     fsubs    f1, f1, f2
@@ -3806,9 +3806,9 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x17c(r1)
-    lfd      f2, sGsSignedConversionBias@sda21(r0)
+    lfd      f2, lbl_8065F620@sda21(r0)
     stw      r0, 0x178(r1)
-    lfs      f0, sGsScalarHalf@sda21(r0)
+    lfs      f0, lbl_8065F5F4@sda21(r0)
     lfd      f1, 0x178(r1)
     fsubs    f1, f1, f2
     fsubs    f1, f30, f1
@@ -3827,7 +3827,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     lwz      r3, lbl_8065B854@sda21(r0)
     li       r0, 0x1
     fmr      f1, f18
-    lfs      f3, sGsScalarOne@sda21(r0)
+    lfs      f3, lbl_8065F5F0@sda21(r0)
     fmr      f2, f17
     stw      r0, 0x100(r3)
     addi     r3, r3, 0x13c
@@ -3850,7 +3850,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     li       r4, 0x7a
     bl       PSMTXRotRad
     lwz      r3, lbl_8065B854@sda21(r0)
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     stfs     f15, 0x27c(r3)
     stfs     f31, 0x280(r3)
     stfs     f0, 0x284(r3)
@@ -3887,12 +3887,12 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     stw      r5, 0x288(r3)
     addi     r3, r3, 0x294
     bl       PSMTXTrans
-    lfs      f0, sGsScalarHalf@sda21(r0)
+    lfs      f0, lbl_8065F5F4@sda21(r0)
     fmr      f2, f17
     lwz      r3, lbl_8065B854@sda21(r0)
     li       r0, 0x1
     fmuls    f1, f16, f0
-    lfs      f3, sGsScalarOne@sda21(r0)
+    lfs      f3, lbl_8065F5F0@sda21(r0)
     stw      r0, 0x288(r3)
     addi     r3, r3, 0x2c4
     bl       PSMTXScale
@@ -3914,10 +3914,10 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
     li       r4, 0x7a
     bl       PSMTXRotRad
     fdivs    f3, f23, f16
-    lfs      f4, sGsScalarTwo@sda21(r0)
-    lfs      f2, sGsScalarOne@sda21(r0)
+    lfs      f4, lbl_8065F62C@sda21(r0)
+    lfs      f2, lbl_8065F5F0@sda21(r0)
     lwz      r3, lbl_8065B854@sda21(r0)
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     fdivs    f1, f26, f16
     fmadds   f2, f4, f3, f2
     fsubs    f1, f2, f1
@@ -5136,12 +5136,12 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     extsb    r0, r30
     cmpwi    r0, 0xa
     bne      .L_8019465C
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     stfs     f0, 0x8(r1)
     b        .L_8019467C
 .L_8019465C:
     lfs      f2, 0x8(r1)
-    lfs      f1, sGsScalarOne@sda21(r0)
+    lfs      f1, lbl_8065F5F0@sda21(r0)
     lfs      f0, 0xc(r1)
     fadds    f1, f2, f1
     fcmpo    cr0, f1, f0
@@ -5233,7 +5233,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     bne      .L_8019463C
     lfs      f22, 0xc(r1)
     fmr      f2, f24
-    lfs      f0, sGsScalarHalf@sda21(r0)
+    lfs      f0, lbl_8065F5F4@sda21(r0)
     fmr      f3, f23
     fmuls    f1, f22, f20
     addi     r3, r1, 0x154
@@ -5256,14 +5256,14 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     cmplwi   r0, 0x3
     bne      .L_80194804
     fmr      f1, f20
-    lfs      f3, sGsScalarOne@sda21(r0)
+    lfs      f3, lbl_8065F5F0@sda21(r0)
     fmr      f2, f21
     addi     r3, r1, 0x94
     bl       PSMTXScale
     b        .L_80194818
 .L_80194804:
     fmr      f1, f20
-    lfs      f3, sGsScalarOne@sda21(r0)
+    lfs      f3, lbl_8065F5F0@sda21(r0)
     fneg     f2, f21
     addi     r3, r1, 0x94
     bl       PSMTXScale
@@ -5295,17 +5295,17 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     addi     r3, r1, 0x64
     mr       r4, r3
     bl       BuildBillboardMatrixFromUp
-    lfs      f0, sGsScalarHalf@sda21(r0)
-    lfs      f21, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5F4@sda21(r0)
+    lfs      f21, lbl_8065F5EC@sda21(r0)
     fmuls    f19, f22, f0
-    lfs      f20, sGsScalarNegativeOne@sda21(r0)
+    lfs      f20, lbl_8065F5F8@sda21(r0)
     fmr      f22, f19
     b        .L_801948B4
 .L_8019489C:
     fneg     f1, f22
-    lfs      f0, sGsScalarHalf@sda21(r0)
-    lfs      f21, sGsScalarZero@sda21(r0)
-    lfs      f20, sGsScalarOne@sda21(r0)
+    lfs      f0, lbl_8065F5F4@sda21(r0)
+    lfs      f21, lbl_8065F5EC@sda21(r0)
+    lfs      f20, lbl_8065F5F0@sda21(r0)
     fmuls    f19, f1, f0
     fmr      f22, f19
 .L_801948B4:
@@ -5359,14 +5359,14 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     bl       GXSetVtxAttrFmtv
     addi     r3, r1, 0x1c
     bl       GXSetVtxDescv
-    lfs      f1, sGsStrokePeriodX@sda21(r0)
+    lfs      f1, lbl_8065F5FC@sda21(r0)
     li       r0, 0x0
-    lfs      f0, sGsStrokeInnerPoint@sda21(r0)
-    lfs      f2, sGsStrokeOuterPoint@sda21(r0)
+    lfs      f0, lbl_8065F600@sda21(r0)
+    lfs      f2, lbl_8065F604@sda21(r0)
     fmuls    f27, f1, f20
-    lfs      f1, sGsStrokePercentHigh@sda21(r0)
+    lfs      f1, lbl_8065F608@sda21(r0)
     fmuls    f26, f0, f20
-    lfs      f0, sGsStrokePercentLow@sda21(r0)
+    lfs      f0, lbl_8065F60C@sda21(r0)
     fmuls    f25, f2, f20
     fmuls    f24, f1, f20
     fmuls    f23, f0, f20
@@ -5380,7 +5380,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     extsb    r0, r3
     cmpwi    r0, 0xa
     bne      .L_801949DC
-    lfs      f0, sGsScalarOne@sda21(r0)
+    lfs      f0, lbl_8065F5F0@sda21(r0)
     fmr      f22, f19
     fadds    f21, f21, f0
     b        .L_80194E10
@@ -5393,10 +5393,10 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     li       r5, 0x4
     bl       GXBegin
     lis      r3, 0xcc01
-    lfs      f0, sGsScalarOne@sda21(r0)
+    lfs      f0, lbl_8065F5F0@sda21(r0)
     stfs     f22, -0x8000(r3)
     fadds    f2, f22, f20
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     fadds    f0, f0, f21
     stfs     f21, -0x8000(r3)
     lwz      r0, 0x18(r1)
@@ -5471,10 +5471,10 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     li       r4, 0x0
     li       r5, 0x1
     bl       GXBegin
-    lfs      f1, sGsStrokePeriodY@sda21(r0)
+    lfs      f1, lbl_8065F610@sda21(r0)
     fadds    f2, f22, f27
     lis      r3, 0xcc01
-    lfs      f0, sGsScalarZero@sda21(r0)
+    lfs      f0, lbl_8065F5EC@sda21(r0)
     fadds    f1, f1, f21
     lwz      r0, 0x14(r1)
     stfs     f2, -0x8000(r3)
@@ -5487,12 +5487,12 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     li       r4, 0x0
     li       r5, 0x2
     bl       GXBegin
-    lfs      f1, sGsStrokeInnerPoint@sda21(r0)
+    lfs      f1, lbl_8065F600@sda21(r0)
     fadds    f3, f22, f26
     lis      r3, 0xcc01
-    lfs      f0, sGsStrokeOuterPoint@sda21(r0)
+    lfs      f0, lbl_8065F604@sda21(r0)
     fadds    f2, f1, f21
-    lfs      f1, sGsScalarZero@sda21(r0)
+    lfs      f1, lbl_8065F5EC@sda21(r0)
     stfs     f3, -0x8000(r3)
     lwz      r0, 0x14(r1)
     fadds    f0, f0, f21
@@ -5509,12 +5509,12 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     li       r4, 0x0
     li       r5, 0x2
     bl       GXBegin
-    lfs      f1, sGsStrokeInnerPoint@sda21(r0)
+    lfs      f1, lbl_8065F600@sda21(r0)
     fadds    f4, f22, f26
     lis      r6, 0xcc01
-    lfs      f0, sGsStrokeOuterPoint@sda21(r0)
+    lfs      f0, lbl_8065F604@sda21(r0)
     fadds    f3, f1, f21
-    lfs      f2, sGsScalarZero@sda21(r0)
+    lfs      f2, lbl_8065F5EC@sda21(r0)
     stfs     f4, -0x8000(r6)
     lwz      r0, 0x14(r1)
     fadds    f1, f22, f25
@@ -5530,12 +5530,12 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     stfs     f2, -0x8000(r6)
     stw      r0, -0x8000(r6)
     bl       GXBegin
-    lfs      f1, sGsStrokePercentLow@sda21(r0)
+    lfs      f1, lbl_8065F60C@sda21(r0)
     fadds    f4, f22, f24
     lis      r3, 0xcc01
-    lfs      f0, sGsStrokePercentHigh@sda21(r0)
+    lfs      f0, lbl_8065F608@sda21(r0)
     fadds    f3, f1, f21
-    lfs      f2, sGsScalarZero@sda21(r0)
+    lfs      f2, lbl_8065F5EC@sda21(r0)
     stfs     f4, -0x8000(r3)
     lwz      r0, 0x14(r1)
     fadds    f1, f22, f23
@@ -5610,13 +5610,13 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     blt      .L_80194E0C
     mulli    r4, r21, 0xd
     lis      r3, gGlyphStrokeTable@ha
-    lfs      f28, sGsStrokeInset@sda21(r0)
+    lfs      f28, lbl_8065F614@sda21(r0)
     li       r30, 0x0
     addi     r0, r3, gGlyphStrokeTable@l
-    lfs      f29, sGsStrokeGridStep@sda21(r0)
-    lfd      f30, sGsSignedConversionBias@sda21(r0)
+    lfs      f29, lbl_8065F618@sda21(r0)
+    lfd      f30, lbl_8065F620@sda21(r0)
     add      r28, r0, r4
-    lfs      f31, sGsScalarZero@sda21(r0)
+    lfs      f31, lbl_8065F5EC@sda21(r0)
     lis      r25, 0x4330
     lwz      r31, 0x14(r1)
     lis      r26, 0xcc01
