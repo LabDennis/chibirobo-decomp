@@ -1,5 +1,6 @@
 #include "game/cgame.h"
 #include "game/mm.h"
+#include "game/video.h"
 
 extern "C" {
 u32 GXGetTexBufferSize(u16 width, u16 height, u32 format, GXBool mipmap, u8 maxLod);
@@ -60,13 +61,13 @@ extern "C" void Update__8FbSubwinFUl(FbSubwin* subwin, u32 frames)
 {
 	if (subwin->mEnabled) {
 		if (subwin->mAmount < 1.0f) {
-			if ((subwin->mAmount += frames * (1.0f / 18.0f)) >= 1.0f) {
+			if ((subwin->mAmount += (1.0f / (0.3f * FRAME_RATE)) * frames) >= 1.0f) {
 				subwin->mAmount = 1.0f;
 			}
 		}
 	} else {
 		if (subwin->mAmount > 0.0f) {
-			if ((subwin->mAmount -= frames * (1.0f / 18.0f)) <= 0.0f) {
+			if ((subwin->mAmount -= (1.0f / (0.3f * FRAME_RATE)) * frames) <= 0.0f) {
 				subwin->mAmount = 0.0f;
 			}
 		}

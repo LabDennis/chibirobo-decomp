@@ -13,6 +13,12 @@ void PSMTXMultVec(Mtx m, Vec* src, Vec* dst);
 // CGame, accessed by offset
 extern "C" u8 gGame[];
 #define GAME_AT(off) (gGame + (off))
+// an offset into CGame: japan lays it out differently from the others
+#if defined(VERSION_JP)
+#define GAME_OFS(other, japan) (japan)
+#else
+#define GAME_OFS(other, japan) (other)
+#endif
 
 // loaded model object, vtable at 0x34
 class XObj {
@@ -162,15 +168,26 @@ void Init(void);
 } // namespace Car
 
 struct RoboView {
+#if defined(VERSION_JP)
+	u8 _00[0x970];    // _00
+	u32 _980;         // _970
+	u8 _984[0x12380]; // _974
+	s32 _12DF4;       // _12CF4
+#else
 	u8 _00[0x980];    // _00
 	u32 _980;         // _980
 	u8 _984[0x12470]; // _984
 	s32 _12DF4;       // _12DF4
+#endif
 };
 
 struct Stage02Main {
-	u8 _00[0x9860];        // _00
-	XObj* mObjects[0x400]; // _9860
+#if defined(VERSION_JP)
+	u8 _00[0x9818]; // _00
+#else
+	u8 _00[0x9860]; // _00
+#endif
+	XObj* mObjects[0x400]; // _9860, _9818 in japan
 	s32 mObjectCount;      // _A860
 
 	XObj* GetObject(s32 index) const { return mObjects[index]; }
@@ -182,13 +199,9 @@ struct ObjTable {
 	void* _00; // _00
 };
 
-#define OBJ_TABLE() ((ObjTable*)GAME_AT(0x5D080))
-#define GAME_OBJ()  (*(RoboView**)GAME_AT(0x96BC))
-#if defined(VERSION_JP)
-#define SOUND() GAME_AT(0xE713C)
-#else
-#define SOUND() GAME_AT(0xE7E24)
-#endif
+#define OBJ_TABLE() ((ObjTable*)GAME_AT(GAME_OFS(0x5D080, 0x5D038)))
+#define GAME_OBJ()  (*(RoboView**)GAME_AT(GAME_OFS(0x96BC, 0x9674)))
+#define SOUND()     GAME_AT(GAME_OFS(0xE7E24, 0xE713C))
 
 static XObj* takiObj;
 static Car::CCameraActionCar carCamera;
@@ -207,7 +220,7 @@ public:
 	BOOL AddHideObj(s32 id);
 };
 
-#define SCROLL2() (*(CCameraActionScroll2**)GAME_AT(0xE7DFC))
+#define SCROLL2() (*(CCameraActionScroll2**)GAME_AT(GAME_OFS(0xE7DFC, 0xE7114)))
 static Car::PlayerCarRoot playerCar;
 static Car::CarRoot racerCar;
 static u8 carsStarted;
@@ -336,7 +349,9 @@ inline void JObjInline1199(HSD_JObj* jobj)
 
 inline void Car::CarRoot::Register(XObj* a, XObj* b, XObj* c)
 {
+#if !defined(VERSION_PAL)
 	OSReport("Car::Register\n");
+#endif
 	_04 = a;
 	_08 = b;
 	_0C = c;
@@ -392,7 +407,9 @@ inline void RoboView_ResetFlags(RoboView* game)
 // body of Car::Init, inlined into Terminate
 inline void Car_Init(void)
 {
+#if !defined(VERSION_PAL)
 	OSReport("Car::Init\n");
+#endif
 	playerCar._08       = NULL;
 	playerCar._04       = NULL;
 	playerCar._80       = 0.0f;
@@ -443,7 +460,7 @@ RelCmdFunc _prolog_cmds[] = {
  */
 extern "C" s32 CmdGetTimer(s32 cmd, s32 argc, s32* argv)
 {
-	return InfoScrn_GetTimerHundredths(GAME_AT(0x8F38));
+	return InfoScrn_GetTimerHundredths(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)));
 }
 
 /**
@@ -452,7 +469,7 @@ extern "C" s32 CmdGetTimer(s32 cmd, s32 argc, s32* argv)
  */
 extern "C" s32 CmdSetTimer(s32 cmd, s32 argc, s32* argv)
 {
-	InfoScrn_SetTimerHundredths(GAME_AT(0x8F38), argv[0]);
+	InfoScrn_SetTimerHundredths(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)), argv[0]);
 	return 0;
 }
 
@@ -463,9 +480,9 @@ extern "C" s32 CmdSetTimer(s32 cmd, s32 argc, s32* argv)
 extern "C" s32 CmdSetTimerRunning(s32 cmd, s32 argc, s32* argv)
 {
 	if (argv[0] != 0) {
-		InfoScrn_ShowTimer(GAME_AT(0x8F38));
+		InfoScrn_ShowTimer(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)));
 	} else {
-		InfoScrn_HideTimer(GAME_AT(0x8F38));
+		InfoScrn_HideTimer(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)));
 	}
 	return 0;
 }
@@ -477,9 +494,9 @@ extern "C" s32 CmdSetTimerRunning(s32 cmd, s32 argc, s32* argv)
 extern "C" s32 CmdShowTimer(s32 cmd, s32 argc, s32* argv)
 {
 	if (argv[0] != 0) {
-		InfoScrn_ApplyTimerHudCommand(GAME_AT(0x8F38), 1, 1);
+		InfoScrn_ApplyTimerHudCommand(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)), 1, 1);
 	} else {
-		InfoScrn_ApplyTimerHudCommand(GAME_AT(0x8F38), 0, 1);
+		InfoScrn_ApplyTimerHudCommand(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)), 0, 1);
 	}
 	return 0;
 }
@@ -873,17 +890,25 @@ extern "C" s32 CmdAddMato(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6AA0
  * @note Size: 0xFC
  */
+// NONMATCHING: europe's empty loop compares i with argc where this tests argc alone
 extern "C" s32 CmdStartFighter(s32 cmd, s32 argc, s32* argv)
 {
 	XObj* objs[3];
 	s32 i;
 	u32 j;
 
+// europe has the loop without its prints
+#if !defined(VERSION_PAL)
 	OSReport("args = ");
+#endif
 	for (i = 0; i < argc; i++) {
+#if !defined(VERSION_PAL)
 		OSReport("%d ", argv[i]);
+#endif
 	}
+#if !defined(VERSION_PAL)
 	OSReport("\n");
+#endif
 	for (j = 0; j < 3 && (s32)j - 1 < argc; j++) {
 		objs[j] = ObjTable_Find(OBJ_TABLE(), argv[j]);
 	}
@@ -1039,7 +1064,8 @@ extern "C" void InitStage(void* arg)
 extern "C" void RestoreDefaultCamera(void)
 {
 	JObjInline1199(((XObj*)GAME_OBJ())->jobj);
-	((CMotionControlCamera*)GAME_AT(0xE5D38))->ChangeAction(*(CInterfaceCameraAction**)GAME_AT(0xE5F0C));
+	((CMotionControlCamera*)GAME_AT(GAME_OFS(0xE5D38, 0xE5050)))
+	    ->ChangeAction(*(CInterfaceCameraAction**)GAME_AT(GAME_OFS(0xE5F0C, 0xE5224)));
 }
 
 /**
@@ -1048,7 +1074,9 @@ extern "C" void RestoreDefaultCamera(void)
  */
 extern "C" void Terminate(void)
 {
+#if !defined(VERSION_PAL)
 	OSReport("Terminate\n");
+#endif
 	JObjInline1199(playerCar._04->jobj);
 	if (playerCar._0C != NULL) {
 		JObjInline1199(playerCar._0C->jobj);
@@ -1063,7 +1091,8 @@ extern "C" void Terminate(void)
 	racerCar._7C = 0;
 	RoboView_ResetFlags(GAME_OBJ());
 	JObjInline1199(((XObj*)GAME_OBJ())->jobj);
-	((CMotionControlCamera*)GAME_AT(0xE5D38))->ChangeAction(*(CInterfaceCameraAction**)GAME_AT(0xE5F0C));
+	((CMotionControlCamera*)GAME_AT(GAME_OFS(0xE5D38, 0xE5050)))
+	    ->ChangeAction(*(CInterfaceCameraAction**)GAME_AT(GAME_OFS(0xE5F0C, 0xE5224)));
 	Car_Init();
 }
 
@@ -1718,7 +1747,7 @@ extern "C" void StartCarCamera(void)
 	game->_980 = 0;
 	game->_980 |= 0x40000000;
 	game->_12DF4 = 0;
-	((CMotionControlCamera*)GAME_AT(0xE5D38))->ChangeAction(&carCamera);
+	((CMotionControlCamera*)GAME_AT(GAME_OFS(0xE5D38, 0xE5050)))->ChangeAction(&carCamera);
 	v.x = 0.0f;
 	v.y = 30.0f;
 	v.z = -120.0f;

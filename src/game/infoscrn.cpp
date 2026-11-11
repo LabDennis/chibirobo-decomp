@@ -2030,6 +2030,10 @@ extern "C" void UpdateHudPointValue(InfoPoint* point, u32 frames)
 	if (0.0f == gGame.GetPlayer()->_A30) {
 		empty = true;
 	}
+#if defined(VERSION_JP)
+	// japan looks the bedroom up here and drops the result
+	FindStageIndexByName("stage19");
+#endif
 	if (point->mSuppressIdleDisplay) {
 		empty = false;
 	}

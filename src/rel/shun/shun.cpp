@@ -48,13 +48,15 @@ extern "C" void InfoScrn_HideTimer(void* obj);
 extern "C" void InfoScrn_ApplyTimerHudCommand(void* obj, s32, s32);
 extern "C" void SetFafaPartVisibility(s32 arg);
 
-#if defined(VERSION_GGTJ01_01)
-#define SHUN_OBJ_LIST() ((ShunObjList*)(gGame + 0x5D038))
+// an offset into CGame: japan lays it out differently from the others
+#if defined(VERSION_JP)
+#define GAME_OFS(other, japan) (japan)
 #else
-#define SHUN_OBJ_LIST() ((ShunObjList*)(gGame + 0x5D080))
+#define GAME_OFS(other, japan) (other)
 #endif
-#define SHUN_8F38() ((void*)(gGame + 0x8F38))
-#define SHUN_96BC() (*(RoboView**)(gGame + 0x96BC))
+#define SHUN_OBJ_LIST() ((ShunObjList*)(gGame + GAME_OFS(0x5D080, 0x5D038)))
+#define SHUN_8F38()     ((void*)(gGame + GAME_OFS(0x8F38, 0x8EF0)))
+#define SHUN_96BC()     (*(RoboView**)(gGame + GAME_OFS(0x96BC, 0x9674)))
 
 inline ShunObj* ShunFindObj(s16 id)
 {
@@ -83,10 +85,17 @@ public:
 	virtual void vf_7C();
 	virtual void vf_80(s32, s32, s32, s32, s32, f32, f32, f32, f32);
 
+#if defined(VERSION_JP)
+	u8 _38[0x970 - 0x38];     // _38
+	u32 _980;                 // _970
+	u8 _984[0x12CF4 - 0x974]; // _974
+	s32 _12DF4;               // _12CF4
+#else
 	u8 _38[0x980 - 0x38];     // _38
 	u32 _980;                 // _980
 	u8 _984[0x12DF4 - 0x984]; // _984
 	s32 _12DF4;               // _12DF4
+#endif
 };
 
 struct OnOffWork {

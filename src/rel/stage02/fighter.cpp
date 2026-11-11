@@ -17,6 +17,20 @@ extern "C" void DrawGsCircle(void* game, s32 kind, s32 color, s32 color2, f32 x,
 
 // CGame, with the fields past the symbol's 0xA6C30 size
 #define GAME_FIELD(type, offset) (*(type*)(gGame + (offset)))
+// an offset into CGame: japan lays it out differently from the others
+#if defined(VERSION_JP)
+#define GAME_OFS(other, japan) (japan)
+#else
+#define GAME_OFS(other, japan) (other)
+#endif
+// CGame::mStage
+#if defined(VERSION_JP)
+#define GAME_STAGE 0x342C
+#elif defined(VERSION_PAL)
+#define GAME_STAGE 0x344C
+#else
+#define GAME_STAGE 0x3444
+#endif
 
 struct _GXTexObj {
 	u32 dummy[8]; // _00
@@ -63,17 +77,21 @@ struct UnkDolObj {
 	HSD_JObj* _00;       // _00
 	u8 _04[0x30];        // _04
 	UnkDolObjVtbl* vtbl; // _34
-	u8 _38[0x90];        // _38
-	CVec _C8;            // _C8
-	u8 _D8[0x150];       // _D8
-	u64 _228;            // _228
-	u8 _230[0x14];       // _230
-	s32* _244;           // _244
-	u8 _248[0x804];      // _248
-	u32* _A4C;           // _A4C
-	u8 _A50[0x1C];       // _A50
-	u8 _A6C[0x100];      // _A6C
-	s32 _B6C;            // _B6C
+#if defined(VERSION_JP)
+	u8 _38[0x88]; // _38
+#else
+	u8 _38[0x90]; // _38
+#endif
+	CVec _C8;       // _C8, japan has it and what follows 8 bytes earlier
+	u8 _D8[0x150];  // _D8
+	u64 _228;       // _228
+	u8 _230[0x14];  // _230
+	s32* _244;      // _244
+	u8 _248[0x804]; // _248
+	u32* _A4C;      // _A4C
+	u8 _A50[0x1C];  // _A50
+	u8 _A6C[0x100]; // _A6C
+	s32 _B6C;       // _B6C
 };
 
 class CCamera;
@@ -267,7 +285,7 @@ struct ShotList {
 		}
 		if (i < 5) {
 			_00[i].Start(from, to, item);
-			PlayGameSound(gGame + 0xE7E24, 11, 0xFF);
+			PlayGameSound(gGame + GAME_OFS(0xE7E24, 0xE713C), 11, 0xFF);
 		}
 	}
 
@@ -366,14 +384,22 @@ extern "C" f64 atan2(f64 y, f64 x);
 
 // hangs off CGame, stage model jobj at _00
 struct UnkGame_96BC {
-	HSD_JObj* _00;    // _00
-	u8 _04[0x97C];    // _04
-	u32 _980;         // _980
-	u8 _984[0x8CD4];  // _984
-	f32 _9658;        // _9658
-	f32 _965C;        // _965C
+	HSD_JObj* _00; // _00
+#if defined(VERSION_JP)
+	u8 _04[0x96C]; // _04
+#else
+	u8 _04[0x97C]; // _04
+#endif
+	u32 _980;        // _980, _970 in japan
+	u8 _984[0x8CD4]; // _984
+	f32 _9658;       // _9658
+	f32 _965C;       // _965C
+#if defined(VERSION_JP)
+	u8 _9660[0x96A4]; // _9660
+#else
 	u8 _9660[0x9794]; // _9660
-	s32 _12DF4;       // _12DF4
+#endif
+	s32 _12DF4; // _12DF4, _12CF4 in japan
 };
 
 inline void ResetModelFlags(UnkGame_96BC* model)
@@ -644,9 +670,9 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 	if (time >= 100) {
 		time = 99;
 	}
-	if (FindStageIndexByName("stage02") == GAME_FIELD(s32, 0x3444)) {
+	if (FindStageIndexByName("stage02") == GAME_FIELD(s32, GAME_STAGE)) {
 		for (i = 0; i < 48; i++) {
-			UnkDolObj* obj = (UnkDolObj*)(GAME_FIELD(u8*, 0x96F8) + i * GAME_FIELD(s32, 0x9708));
+			UnkDolObj* obj = (UnkDolObj*)(GAME_FIELD(u8*, GAME_OFS(0x96F8, 0x96B0)) + i * GAME_FIELD(s32, GAME_OFS(0x9708, 0x96C0)));
 			s32 kind       = obj->_244 != NULL ? *obj->_244 : -1;
 			if (kind != 0x149) {
 				continue;
@@ -2315,7 +2341,7 @@ extern "C" void DrawFighterHud(void)
 		}
 	}
 	DrawScoreHud(matoList._10, matoList._1C, 100.0f * matoList._18);
-	FighterAim_Draw(&fighterWork._F4, (UnkGame_E5D38*)(gGame + 0xE5D38), fighterWork._0C);
+	FighterAim_Draw(&fighterWork._F4, (UnkGame_E5D38*)(gGame + GAME_OFS(0xE5D38, 0xE5050)), fighterWork._0C);
 	FighterPanels_Draw(&panels);
 }
 
@@ -2775,7 +2801,7 @@ extern "C" void UpdateFighter(u32 arg)
 			item->_20 += 1.0f;
 		}
 	}
-	se = gGame + 0xE7E24;
+	se = gGame + GAME_OFS(0xE7E24, 0xE713C);
 	if (IsGameSoundPlaying(se, 0x20006) == 0 && 0.01f < fighterWork._A0 / fighterWork._A8) {
 		Vec pos;
 		best                = NULL;
@@ -3274,11 +3300,12 @@ extern "C" void EndFighter(void)
 	if (fighterWork._00 == NULL) {
 		return;
 	}
-	ResetModelFlags(GAME_FIELD(UnkGame_96BC*, 0x96BC));
-	HSD_JObjClearMtxFlags(GAME_FIELD(UnkGame_96BC*, 0x96BC)->_00);
-	((CMotionControlCamera*)(gGame + 0xE5D38))->ChangeAction(GAME_FIELD(CInterfaceCameraAction*, 0xE5F0C));
-	if (IsGameSoundPlaying(gGame + 0xE7E24, 0x20004)) {
-		StopGameSfx(gGame + 0xE7E24, 0x20004);
+	ResetModelFlags(GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674)));
+	HSD_JObjClearMtxFlags(GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674))->_00);
+	((CMotionControlCamera*)(gGame + GAME_OFS(0xE5D38, 0xE5050)))
+	    ->ChangeAction(GAME_FIELD(CInterfaceCameraAction*, GAME_OFS(0xE5F0C, 0xE5224)));
+	if (IsGameSoundPlaying(gGame + GAME_OFS(0xE7E24, 0xE713C), 0x20004)) {
+		StopGameSfx(gGame + GAME_OFS(0xE7E24, 0xE713C), 0x20004);
 	}
 	if (fighterWork._00 != NULL) {
 		HSD_JObjClearMtxFlags(fighterWork._00->_00);
@@ -3803,11 +3830,11 @@ extern "C" void StartFighter(UnkDolObj* a, UnkDolObj* b, void* c)
 	matoList._18 = 0.0f;
 	matoList._1C = 6000;
 	matoList._28 = NULL;
-	model        = GAME_FIELD(UnkGame_96BC*, 0x96BC);
+	model        = GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674));
 	model->_980  = 0;
 	model->_980 |= 0x40000000;
 	model->_12DF4 = 0;
-	((CMotionControlCamera*)(gGame + 0xE5D38))->ChangeAction(&fighterCamera);
+	((CMotionControlCamera*)(gGame + GAME_OFS(0xE5D38, 0xE5050)))->ChangeAction(&fighterCamera);
 	{
 		fighterCamera.SetView(MakeVec(0.0f, 40.0f, -180.0f), MakeVec(0.0f, 0.0f, 120.0f), fighterWork._0C);
 	}
@@ -4315,7 +4342,7 @@ extern "C" void Fighter_Fire(Fighter* hole, s32 n)
 		hole->_110 = NULL;
 		hole->_114.Add(item->GetPos(), dir, item);
 	}
-	model        = GAME_FIELD(UnkGame_96BC*, 0x96BC);
+	model        = GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674));
 	model->_9658 = model->_9658 - n > 0.0f ? model->_9658 - n : 0.0f;
 	if (model->_9658 < 0.0f) {
 		model->_9658 = 0.0f;
@@ -4935,7 +4962,7 @@ extern "C" void Fighter_Update(Fighter* hole, u32 dt)
 	PSMTXConcat(m, rot, m);
 	jobj = GetJointByPath(hole->_00->_00, path2, 1);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), m, hole->_3C);
-	HSD_JObjCopyMtx(GAME_FIELD(UnkGame_96BC*, 0x96BC)->_00, hole->_3C);
+	HSD_JObjCopyMtx(GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674))->_00, hole->_3C);
 	if (hole->_08 != NULL) {
 		PSMTXTrans(m, 0.0f, 4.11f, -1.0f);
 		PSMTXConcat(hole->_0C, m, hole->_6C);
@@ -5675,9 +5702,9 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 	CTexObj tex;
 	s32 i;
 
-	if (FindStageIndexByName("stage02") == GAME_FIELD(s32, 0x3444)) {
+	if (FindStageIndexByName("stage02") == GAME_FIELD(s32, GAME_STAGE)) {
 		for (i = 0; i < 48; i++) {
-			UnkDolObj* obj = (UnkDolObj*)(GAME_FIELD(u8*, 0x96F8) + i * GAME_FIELD(s32, 0x9708));
+			UnkDolObj* obj = (UnkDolObj*)(GAME_FIELD(u8*, GAME_OFS(0x96F8, 0x96B0)) + i * GAME_FIELD(s32, GAME_OFS(0x9708, 0x96C0)));
 			s32 kind       = obj->_244 != NULL ? *obj->_244 : -1;
 			f32 y;
 			f32 half;
@@ -6651,7 +6678,7 @@ extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx m)
 	s32 i;
 	s32 j;
 
-	if (IsGameSoundPlaying(gGame + 0xE7E24, 0x20006) == 0 && aim->_18 == NULL) {
+	if (IsGameSoundPlaying(gGame + GAME_OFS(0xE7E24, 0xE713C), 0x20006) == 0 && aim->_18 == NULL) {
 		return;
 	}
 	PSMTXMultVec(m, &aim->_00, &pos);
@@ -6703,9 +6730,10 @@ extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx m)
 			u16 w;
 			u16 h;
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
-			tex = ((CTexObj*)(gGame + 0x3D6C))->Init((TPLDescriptor*)(GAME_FIELD(u32*, 0x3D4C)[2] + 0x400), 0);
-			w   = GXGetTexObjWidth(&tex);
-			h   = GXGetTexObjHeight(&tex);
+			tex = ((CTexObj*)(gGame + GAME_OFS(0x3D6C, 0x3D4C)))
+			          ->Init((TPLDescriptor*)(GAME_FIELD(u32*, GAME_OFS(0x3D4C, 0x3D2C))[2] + 0x400), 0);
+			w = GXGetTexObjWidth(&tex);
+			h = GXGetTexObjHeight(&tex);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, dist * s + cx, dist * c + cy, 0.0f, 1.1f * w, h, 0.0f, 0.0f, angle);
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
 		}
