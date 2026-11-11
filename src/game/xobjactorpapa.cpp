@@ -14,6 +14,235 @@ void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
 CVec GetStagePlacementScale(XObj* object); // the object's scale as it is drawn
 }
 
+static inline void LockPlayer(XObjChr* player)
+{
+	player->_980.mFlags = 0;
+	player->_980.mFlags |= 0x40000000;
+	player->mPad.mReset = FALSE;
+}
+
+/**
+ * @note Address: 0x8012931C
+ * @note Size: 0x24
+ */
+void XObjActorPapa::ClearStateHandler()
+{
+	mState = NULL;
+}
+
+/**
+ * @note Address: 0x80129340
+ * @note Size: 0x58
+ */
+void XObjActorPapa::RunStateHandler(u32 frames)
+{
+	if (mState != NULL) {
+		(this->*mState)(frames);
+	}
+}
+
+/**
+ * @note Address: 0x80129398
+ * @note Size: 0x78
+ */
+XObjActorPapa::~XObjActorPapa()
+{
+}
+
+/**
+ * @note Address: 0x80129410
+ * @note Size: 0xA4
+ */
+HSD_JObj* XObjActorPapa::GetHeadJoint()
+{
+	s32 path[3] = { 0, 2, 0 };
+	return FindJointByPath(mJObj, path, 3);
+}
+
+/**
+ * @note Address: 0x801294B4
+ * @note Size: 0x54
+ */
+CVec XObjActorPapa::GetHeadWorldPosition()
+{
+	s32 path[3] = { 0, 2, 0 };
+	return GetEventJointWorldPosition(this, 3, path);
+}
+
+/**
+ * @note Address: 0x80129508
+ * @note Size: 0x44
+ */
+bool XObjActorPapa::IsFree()
+{
+	if ((mStatus.mFlags & 1) == 0) {
+		return true;
+	}
+	return !(_998.mFlags & 0x2000);
+}
+
+/**
+ * @note Address: 0x8012954C
+ * @note Size: 0x8
+ */
+f32 XObjActorPapa::GetMinHeadPitch()
+{
+	return -0.17453292f;
+}
+
+/**
+ * @note Address: 0x80129554
+ * @note Size: 0x8
+ */
+f32 XObjActorPapa::GetMaxHeadPitch()
+{
+	return 0.17453292f;
+}
+
+/**
+ * @note Address: 0x8012955C
+ * @note Size: 0x210
+ */
+s32 XObjActorPapa::HandleEventCommand(s32 count, s32* command)
+{
+	XObjActor::HandleEventCommand(count, command);
+	switch (command[0]) {
+	case 1:
+		switch (command[1]) {
+		case 0:
+			ResetActorLook(this, 0.08726646f);
+			break;
+		case 1:
+			SetActorLookAtPosition(this, &gGame.GetPlayer()->mMoveTranslate, 0.08726646f);
+			break;
+		case 2:
+			if (FindObj(command[2]) != NULL) {
+				SetActorLookAtPosition(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
+			}
+			break;
+		case 3:
+			SetActorLookAngle(this, DEG2RAD * command[2], DEG2RAD * command[3]);
+			break;
+		}
+		break;
+	default:
+		if (count < 1) {
+			return 0;
+		}
+		mCmd[0] = command[0];
+		if (count < 2) {
+			mCmd[1] = 0;
+		} else {
+			mCmd[1] = command[1];
+		}
+		mCmd[2] = command[2];
+		mCmd[3] = command[3];
+		mCmd[4] = command[4];
+		mCmd[5] = command[5];
+		mCmd[6] = command[6];
+		mCmd[7] = command[7];
+		mCmd[8] = command[8];
+		mCmd[9] = command[9];
+		break;
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x8012976C
+ * @note Size: 0x76C
+ */
+// picks up the object _A4C names and holds it in his hand
+void XObjActorPapa::StatePickUp(u32 frames)
+{
+	switch (_990) {
+	case 0: {
+		XObjActorTao* tao = ((XObjActorTao*)gGame.mXObjs.mPools[14].mObjects);
+		if ((tao->mStatus.mFlags & 1) && !tao->IsFree()) {
+			return;
+		}
+		bool busy = false;
+		for (s32 i = 0; i < 15; i++) {
+			XObjActorToy* toy = (XObjActorToy*)gGame.mXObjs.mPools[10].Get(i);
+			if (toy->GetKind() == 0x159) {
+				if (!(toy->mStatus.mFlags & 1)) {
+					break;
+				}
+				if (!toy->IsFree()) {
+					busy = true;
+					break;
+				}
+			}
+		}
+		if (busy) {
+			return;
+		}
+		if (_A50 != NULL) {
+			_A50->Release();
+		}
+		if (_A4C >= 0) {
+			_A50 = ReadObj(_A4C);
+		} else {
+			_A50 = NULL;
+		}
+		_998.mFlags |= 0x2000;
+		_990++;
+	}
+	case 1:
+		if (_A50 != NULL) {
+			if (_A50->mStatus.mFlags & 0x0040000000000000ULL) {
+				return;
+			}
+			gGame.mStatus.mFlags |= 0x1000;
+		}
+		_990++;
+	case 2:
+		if (_A4C >= 0 && _A50 != NULL) {
+			_A50->SetScale(1.0f, 1.0f, 1.0f, 0);
+			CJObj jobj;
+			s32 path[6] = { 0, 2, 2, 0, 0, 0 };
+			jobj.Attach(FindJointByPath(mJObj, path, 6));
+			Vec pos;
+			pos = GetJointPosition(jobj.mJObj);
+			Vec scale;
+			scale.x = pos.x;
+			scale.y = pos.y;
+			scale.z = pos.z;
+			_A50->SetPos(pos.x, pos.y + 2.0f, pos.z, 0);
+			PSMTXCopy(jobj.GetMtx(), _A54);
+			HSD_MtxGetScale(_A54, &scale);
+			scale.x = GetStagePlacementScale(_A50).x / scale.x;
+			scale.y = GetStagePlacementScale(_A50).y / scale.y;
+			scale.z = GetStagePlacementScale(_A50).z / scale.z;
+			Mtx scaleMtx;
+			Mtx rotMtx;
+			Mtx transMtx;
+			Mtx m;
+			PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
+			PSMTXConcat(_A54, scaleMtx, m);
+			PSMTXRotRad(rotMtx, 'z', 1.5707964f);
+			PSMTXConcat(m, rotMtx, m);
+			PSMTXTrans(transMtx, -5.5f, 3.5f, 0.0f);
+			PSMTXConcat(m, transMtx, m);
+			HSD_JObj* joint = _A50->mJObj;
+			MtxPtr mp       = m;
+			HSD_JObjCopyMtx(joint, mp);
+
+			_A50->mStatus.mFlags &= ~0x0200000000000000ULL;
+		}
+		_998.mFlags &= ~0x2000;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x80129ED8
+ * @note Size: 0x4
+ */
+void XObjActorPapa::StateNone(u32 frames)
+{
+}
+
 // Carries the selected prop at its hand joint and positions the player when held.
 void XObjActorPapa::vf148(u32 frames)
 {
@@ -164,3 +393,182 @@ void XObjActorPapa::vf148(u32 frames)
  * @note Address: 0x8012BB5C
  * @note Size: 0x288
  */
+
+/**
+ * @note Address: 0x8012BDE4
+ * @note Size: 0x9BC
+ */
+void XObjActorPapa::ProcessPendingEvents(u32 frames)
+{
+	CJObj jobj;
+	if (_998.Check(0x400)) {
+		_998.mFlags &= ~0x400;
+		mHeadPitch = 0.0f;
+	}
+	if (_998.Check(2)) {
+		_998.mFlags &= ~2;
+		PlayGameSound(&gGame.mSound, rand() % 10 + 0xB7, 0xFF);
+	}
+	switch (mCmd[0]) {
+	case 2:
+		Drop();
+		switch (mCmd[1]) {
+		case 0x1F4:
+		case 0x360:
+		case 0x3FA:
+		case 0x401:
+			for (s32 i = 0; i < 288; i++) {
+				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+				if (mCmd[1] == obj->GetKind()) {
+					mHeldObjects[0] = obj;
+					obj->mStatus.mFlags |= 0x10000ULL;
+					switch (mCmd[1]) {
+					case 0x1F4:
+						_C8C.mFlags |= 1;
+						break;
+					case 0x360:
+						_C8C.mFlags |= 2;
+						break;
+					case 0x3FA:
+						_C8C.mFlags |= 0x10;
+						break;
+					case 0x401:
+						_C8C.mFlags |= 0x20;
+						break;
+					}
+				}
+			}
+			break;
+		case 0x1D3:
+			for (s32 i = 0; i < 15; i++) {
+				XObj* obj = gGame.mXObjs.mPools[10].Get(i);
+				if (mCmd[1] == obj->GetKind()) {
+					obj->mStatus.mFlags |= 0x10000ULL;
+					mHeldObjects[0] = obj;
+					switch (mCmd[1]) {
+					case 0x1D3:
+						_C8C.mFlags |= 4;
+						break;
+					}
+				}
+			}
+			break;
+		case 0x375:
+			for (s32 i = 0; i < 64; i++) {
+				XObj* obj = gGame.mXObjs.mPools[8].Get(i);
+				if (mCmd[1] == obj->GetKind()) {
+					obj->mStatus.mFlags |= 0x10000ULL;
+					mHeldObjects[0] = obj;
+					switch (mCmd[1]) {
+					case 0x375:
+						_C8C.mFlags |= 8;
+						break;
+					}
+				}
+			}
+			break;
+		default:
+			if (mHeldObjects[0] != NULL) {
+				HSD_JObj* held = mHeldObjects[0]->mJObj;
+				HSD_JObjClearMtxFlags(held);
+				mHeldObjects[0] = NULL;
+			}
+			break;
+		}
+		mCmd[0] = 0;
+		break;
+	case 3:
+		switch (mCmd[1]) {
+		case 1: {
+			_998.mFlags |= 0x100;
+			LockPlayer(gGame.GetPlayer());
+			gGame.GetPlayer()->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+
+			break;
+		}
+		default: {
+			_998.mFlags &= ~0x100;
+			s32 path[6] = { 0, 2, 2, 0, 0, 0 };
+			jobj.Attach(FindJointByPath(mJObj, path, 6));
+			Vec pos;
+			pos = GetJointPosition(jobj.mJObj);
+			Vec target;
+			target.x = pos.x;
+			target.y = pos.y;
+			target.z = pos.z;
+			target.y = mMoveTranslate.y;
+			gGame.GetPlayer()->SetPos(target, 0);
+			XObjChr* player     = gGame.GetPlayer();
+			player->_980.mFlags = 0;
+			player->_980.mFlags |= 0x20000000;
+			player->_980.mFlags |= 7;
+			player->mPad.mReset = TRUE;
+			break;
+		}
+		}
+		mCmd[0] = 0;
+		break;
+	case 4:
+		StartScreenShake(&gGame.mQuake, mCmd[1], mCmd[2], mCmd[3], 0.0f, 0.0f, 0.0f, mCmd[4] / 100.0f);
+		mCmd[0] = 0;
+		break;
+	case 5: {
+		HSD_AnimJoint* joint      = GetJointAnimation(mCmd[1]);
+		HSD_MatAnimJoint* mat     = GetMaterialAnimation(mCmd[2]);
+		HSD_ShapeAnimJoint* shape = GetShapeAnimation(mCmd[1]);
+		SetAnim(0, TRUE, joint, mat, shape, 0.0f, 1.0f, 1.0f, 10.0f);
+		mStatus.mFlags |= 0x0008000000000000ULL;
+		mCmd[0] = 0;
+		break;
+	}
+	case 6:
+		_A4C   = mCmd[1];
+		mState = &XObjActorPapa::StatePickUp;
+		ResetActorMovementStep(this);
+		mCmd[0] = 0;
+		break;
+	case 7:
+		_A4C = -1;
+		if (_A50 != NULL) {
+			_A50->Release();
+		}
+		mCmd[0] = 0;
+		break;
+	case 8:
+		switch (mCmd[1]) {
+		case 1:
+			_C94 = 1;
+			break;
+		default:
+			_C94 = 0;
+			break;
+		}
+		mCmd[0] = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8012C7A0
+ * @note Size: 0xB8
+ */
+void XObjActorPapa::ResetActorState()
+{
+	XObjChr* player = gGame.GetPlayer();
+	if (player->_980.mFlags & 0x40000000) {
+		player->_980.mFlags = 0;
+		player->_980.mFlags |= 0x20000000;
+		player->_980.mFlags |= 7;
+		player->mPad.mReset = TRUE;
+	}
+	_998.mFlags = 0;
+	_C8C.mFlags = 0;
+	_980        = 0.0f;
+	_984        = 0.0f;
+	_988        = 0.0f;
+	_C84        = _988;
+	_C88        = 0;
+	_C94        = 1;
+	mState      = &XObjActorPapa::StateNone;
+	ResetActorMovementStep(this);
+}
