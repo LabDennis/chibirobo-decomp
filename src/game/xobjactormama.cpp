@@ -2,7 +2,140 @@
 #include "game/xchr.h"
 #include "game/gmath.h"
 #include "game/heldpropmatrix.h"
+#include "game/evt.h"
 #include <math.h>
+
+/**
+ * @note Address: 0x80126440
+ * @note Size: 0x58
+ */
+void XObjActorMama::RunStateHandler(u32 frames)
+{
+	if (mState != NULL) {
+		(this->*mState)(frames);
+	}
+}
+
+/**
+ * @note Address: 0x80126498
+ * @note Size: 0x78
+ */
+XObjActorMama::~XObjActorMama()
+{
+}
+
+/**
+ * @note Address: 0x80126510
+ * @note Size: 0xAC
+ */
+HSD_JObj* XObjActorMama::GetHeadJoint()
+{
+	s32 path[4] = { 0, 4, 0, 0 };
+	return FindJointByPath(mJObj, path, 4);
+}
+
+/**
+ * @note Address: 0x801265BC
+ * @note Size: 0x5C
+ */
+CVec XObjActorMama::GetHeadWorldPosition()
+{
+	s32 path[4] = { 0, 4, 0, 0 };
+	return GetEventJointWorldPosition(this, 4, path);
+}
+
+/**
+ * @note Address: 0x80126618
+ * @note Size: 0x8
+ */
+f32 XObjActorMama::GetMinHeadPitch()
+{
+	return -0.17453292f;
+}
+
+/**
+ * @note Address: 0x80126620
+ * @note Size: 0x8
+ */
+f32 XObjActorMama::GetMaxHeadPitch()
+{
+	return 0.17453292f;
+}
+
+/**
+ * @note Address: 0x80126628
+ * @note Size: 0x8
+ */
+f32 XObjActorMama::GetMinHeadYaw()
+{
+	return -0.6981317f;
+}
+
+/**
+ * @note Address: 0x80126630
+ * @note Size: 0x8
+ */
+f32 XObjActorMama::GetMaxHeadYaw()
+{
+	return 0.6981317f;
+}
+
+/**
+ * @note Address: 0x80126638
+ * @note Size: 0x210
+ */
+s32 XObjActorMama::HandleEventCommand(s32 count, s32* command)
+{
+	XObjActor::HandleEventCommand(count, command);
+	switch (command[0]) {
+	case 1:
+		switch (command[1]) {
+		case 0:
+			ResetActorLook(this, 0.08726646f);
+			break;
+		case 1:
+			SetActorLookAtPosition(this, &gGame.GetPlayer()->mMoveTranslate, 0.08726646f);
+			break;
+		case 2:
+			if (FindObj(command[2]) != NULL) {
+				SetActorLookAtPosition(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
+			}
+			break;
+		case 3:
+			SetActorLookAngle(this, DEG2RAD * command[2], DEG2RAD * command[3]);
+			break;
+		}
+		break;
+	default:
+		if (count < 1) {
+			return 0;
+		}
+		mCmd[0] = command[0];
+		if (count < 2) {
+			mCmd[1] = 0;
+		} else {
+			mCmd[1] = command[1];
+		}
+		mCmd[2] = command[2];
+		mCmd[3] = command[3];
+		mCmd[4] = command[4];
+		mCmd[5] = command[5];
+		mCmd[6] = command[6];
+		mCmd[7] = command[7];
+		mCmd[8] = command[8];
+		mCmd[9] = command[9];
+		break;
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x80126848
+ * @note Size: 0x4
+ */
+void XObjActorMama::StateNone(u32 frames)
+{
+}
 
 void XObjActorMama::vf148(u32 frames)
 {
