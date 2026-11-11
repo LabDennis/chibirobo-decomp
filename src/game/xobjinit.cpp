@@ -182,3 +182,30 @@ extern "C" BOOL LoadFromPlacement__4XObjFRC9CoordInfo(XObj* object, const CoordI
 	}
 	return object->mStatus.mFlags & 1ULL;
 }
+
+/**
+ * @note Address: 0x800928E8
+ * @note Size: 0xDC
+ */
+extern "C" void ResetObjectState__4XObjFv(XObj* object)
+{
+	object->_80C                = 0;
+	object->mFloorHit.mTriangle = -1;
+	object->mFloorHit.mTrigon   = 0;
+	object->mFloorHit.mHeight   = 0.0f;
+	object->_794.x              = 0.0f;
+	object->_794.y              = 0.0f;
+	object->_794.z              = 0.0f;
+	object->mAnmQueue.Clear();
+	object->mAnchorX = object->mAnchorZ = NAN;
+	object->_8B0                        = 0;
+	object->_8B0 |= 0x80000000;
+	object->mColorStep[0].mValue.x = object->mColorStep[0].mValue.y = object->mColorStep[0].mValue.z = 255.0f;
+	object->mColorStep[0].mTarget.x = object->mColorStep[0].mTarget.y = object->mColorStep[0].mTarget.z = 255.0f;
+	object->mColorStep[0].mSpeed.x = object->mColorStep[0].mSpeed.y = object->mColorStep[0].mSpeed.z = 0.0f;
+	object->mColorStep[1].mValue.x = object->mColorStep[1].mValue.y = object->mColorStep[1].mValue.z = 0.0f;
+	object->mColorStep[1].mTarget.x = object->mColorStep[1].mTarget.y = object->mColorStep[1].mTarget.z = 0.0f;
+	object->mColorStep[1].mSpeed.x = object->mColorStep[1].mSpeed.y = object->mColorStep[1].mSpeed.z = 0.0f;
+}
+
+// XObj::vf90
