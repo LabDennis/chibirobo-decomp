@@ -2104,3 +2104,215 @@ extern "C" void UpdateSpiderCoinBounces(void* unused, u32 frames)
 		}
 	}
 }
+
+// takes all the coins back
+static inline void ResetCoins()
+{
+	gSpiderCoinBounceCount = 0;
+	for (int i = 0; i < 11; i++) {
+		gSpiderCoinBounces[i].mCoin  = NULL;
+		gSpiderCoinBounces[i].mPhase = 0;
+		gSpiderCoinBounces[i].mCount = 0;
+	}
+	for (int i = 0; i < 96; i++) {
+		XObjCoin* coin = (XObjCoin*)gGame.mXObjs.mPools[7].Get(i);
+		if (coin->GetKind() == 0x104) {
+			coin->mBouncing = 0;
+		}
+	}
+}
+
+/**
+ * @note Address: 0x800EB928
+ * @note Size: 0x108
+ */
+void PlaySpiderVariantSound(XObjSpider* spider)
+{
+	switch (spider->mPoolIndex % 5) {
+	case 0:
+		PlayGameSound(&gGame.mSound, 0x12B, 255);
+		break;
+	case 1:
+		PlayGameSound(&gGame.mSound, 0x12C, 255);
+		break;
+	case 2:
+		PlayGameSound(&gGame.mSound, 0x12D, 255);
+		break;
+	case 3:
+		PlayGameSound(&gGame.mSound, 0x12E, 255);
+		break;
+	case 4:
+		PlayGameSound(&gGame.mSound, 0x12F, 255);
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x800EBA30
+ * @note Size: 0x1C0
+ */
+// the index of another spider that dropped down closer than 24, -1 when there is none
+s32 FindNearbyDroppedSpider(XObjSpider* spider)
+{
+	for (int i = 0; i < 16; i++) {
+		XObj* obj = gGame.mXObjs.mPools[17].Get(i);
+		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+			XObjSpider* other = (XObjSpider*)obj;
+			if ((other->mFlags.mFlags & 0x100000) && other->mPoolIndex != spider->mPoolIndex) {
+				f32 x = other->mMoveTranslate.x - spider->mMoveTranslate.x;
+				f32 y = other->mMoveTranslate.y - spider->mMoveTranslate.y;
+				f32 z = other->mMoveTranslate.z - spider->mMoveTranslate.z;
+				if (sqrtf(x * x + y * y + z * z) < 24.0f) {
+					return other->mPoolIndex;
+				}
+			}
+		}
+	}
+	return -1;
+}
+
+/**
+ * @note Address: 0x800EBBF0
+ * @note Size: 0x1C0
+ */
+// whether another spider that dropped down is closer than 24
+bool HasNearbyDroppedSpider(XObjSpider* spider)
+{
+	for (int i = 0; i < 16; i++) {
+		XObj* obj = gGame.mXObjs.mPools[17].Get(i);
+		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+			XObjSpider* other = (XObjSpider*)obj;
+			if ((other->mFlags.mFlags & 0x100000) && other->mPoolIndex != spider->mPoolIndex) {
+				f32 x = other->mMoveTranslate.x - spider->mMoveTranslate.x;
+				f32 y = other->mMoveTranslate.y - spider->mMoveTranslate.y;
+				f32 z = other->mMoveTranslate.z - spider->mMoveTranslate.z;
+				if (sqrtf(x * x + y * y + z * z) < 24.0f) {
+					return TRUE;
+				}
+			}
+		}
+	}
+	return FALSE;
+}
+
+/**
+ * @note Address: 0x800EBDB0
+ * @note Size: 0xC
+ */
+u8 HasSpiderFinishedDeathAnimation(const XObjSpider* spider)
+{
+	return (spider->mFlags.mFlags >> 19) & 1;
+}
+
+/**
+ * @note Address: 0x800EBDBC
+ * @note Size: 0x64
+ */
+// whether it is inside its area, kept mRadius off the edges
+bool IsSpiderInsideMovementArea(XObjSpider* spider)
+{
+	f32 left  = spider->mAreaPos.x + spider->mRadius;
+	f32 right = (spider->mAreaPos.x + spider->mAreaWidth) - spider->mRadius;
+	f32 near  = spider->mAreaPos.z + spider->mRadius;
+	f32 far   = (spider->mAreaPos.z + spider->mAreaDepth) - spider->mRadius;
+	if (left > spider->mMoveTranslate.x || right < spider->mMoveTranslate.x || near > spider->mMoveTranslate.z
+	    || far < spider->mMoveTranslate.z)
+		return FALSE;
+	return TRUE;
+}
+
+/**
+ * @note Address: 0x800F4350
+ * @note Size: 0x4C8
+ */
+// NONMATCHING: .rodata, retail has six more Vecs in front of the zero Vecs
+// puts everything back to how it starts
+void ResetSpiderState(XObjSpider* spider)
+{
+	spider->mDir          = 0.0f;
+	spider->mSpeed        = 0.0f;
+	spider->_988          = 0.0f;
+	spider->_98C          = 0.0f;
+	spider->mTurnSpeed    = 0.1f;
+	spider->mFallSpeed    = 0.0f;
+	spider->mState        = 0;
+	spider->mPrevState    = 0;
+	spider->mPhase        = 0;
+	spider->mCounter      = 0;
+	spider->mFlags.mFlags = 0;
+	spider->mWait         = 0;
+	spider->_9C0          = 1.0f;
+	spider->_9C4          = 1.0f;
+	Vec hitPos            = { 0.0f, 0.0f, 0.0f };
+	spider->mHitPos       = hitPos;
+	Vec home              = { 0.0f, 0.0f, 0.0f };
+	spider->mHome         = home;
+	Vec wallPos           = { 0.0f, 0.0f, 0.0f };
+	spider->mWallPos      = wallPos;
+	Vec target            = { 0.0f, 0.0f, 0.0f };
+	spider->mTarget       = target;
+	Vec v08               = { 0.0f, 0.0f, 0.0f };
+	spider->mShotOrigin   = v08;
+	Vec v14               = { 0.0f, 0.0f, 0.0f };
+	spider->mShotPosition = v14;
+	spider->mShotRange    = 0.0f;
+	spider->mShotProgress = 0.0f;
+	spider->mShotState    = 0;
+	spider->_A48          = 0;
+	spider->mHitStrength  = 0.0f;
+	spider->mWall         = 0;
+	spider->mMaxHits      = 3;
+	spider->mHits         = spider->mMaxHits;
+	spider->mCommand      = 0;
+	spider->mArgs[0]      = 0;
+	spider->_A88          = 0;
+	spider->mThreadAlpha  = 1.0f;
+	spider->mStatus.mFlags |= 8;
+	spider->mCarry.mPos.x        = 0.0f;
+	spider->mCarry.mPos.y        = 0.0f;
+	spider->mCarry.mPos.z        = 0.0f;
+	spider->mCarry._10.x         = 0.0f;
+	spider->mCarry._10.y         = 0.0f;
+	spider->mCarry._10.z         = 0.0f;
+	spider->mCarry.mAngle        = 0.0f;
+	spider->mCarry._24           = 0.0f;
+	spider->mCarry.mState        = 0;
+	spider->mCarry._2C           = 0;
+	spider->mCarry.mFlags.mFlags = 0;
+	spider->mCarry.mObj          = NULL;
+	spider->mRadius              = 20.0f;
+	spider->_AC8.mObj            = NULL;
+	spider->mSlot                = 255;
+	Vec areaPos                  = { 0.0f, 0.0f, 0.0f };
+	spider->mAreaPos             = areaPos;
+	spider->mAreaWidth           = 0.0f;
+	spider->mAreaDepth           = 0.0f;
+	Vec startPos                 = { 0.0f, 0.0f, 0.0f };
+	spider->mStartPos            = startPos;
+	spider->_A6C                 = 0.0f;
+	spider->_B10                 = 2;
+	spider->_B14[0]              = 0;
+	spider->_B14[1]              = 0;
+	spider->_B14[2]              = 0;
+	spider->_B14[3]              = 0;
+	spider->_B24[0]              = 100;
+	spider->_B24[1]              = 100;
+	spider->_B24[2]              = 100;
+	spider->_B54                 = 0;
+	spider->_B50                 = 0;
+	spider->mEffect              = NULL;
+	spider->mEffectId            = 0;
+	spider->mEffectOn            = 0;
+	for (int i = 0; i < 8; i++) {
+		spider->mTies[i].mObj   = NULL;
+		spider->mTies[i].mJoint = NULL;
+	}
+	if (spider->mPoolIndex == 0) {
+		ResetCoins();
+	}
+	spider->mHitState    = 0;
+	spider->mHitTimer    = 0;
+	spider->_B9C         = -1;
+	spider->mRumble      = 0;
+	spider->mRumbleTimer = 0;
+}
