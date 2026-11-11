@@ -68,13 +68,13 @@ game/gamemovie.cpp:
 	.text       start:0x8000AB94 end:0x8000AD38
 
 game/cgame.cpp:
-	.text       start:0x8000AD38 end:0x8000BE0C
+	.text       start:0x8000AD38 end:0x8000C36C
 
 game/gameobjupdate.cpp:
 	.text       start:0x8000C36C end:0x8000C424
 
 game/gamexobjshadow.cpp:
-	.text       start:0x8000C424 end:0x8000CB20
+	.text       start:0x8000C424 end:0x8000DA24
 
 game/gamexobjdraw.cpp:
 	.text       start:0x8000DA24 end:0x8000DA50
@@ -197,13 +197,13 @@ game/cstatusdtor.cpp:
 	.text       start:0x80018C64 end:0x80018CAC
 
 game/logodtor.cpp:
-	.text       start:0x80018CAC end:0x80018D98
+	.text       start:0x80018CAC end:0x80018F6C
 
 game/xobjsdtor.cpp:
 	.text       start:0x80018F6C end:0x80018FB4
 
 game/cevtdtor.cpp:
-	.text       start:0x80019044 end:0x800190E0
+	.text       start:0x80018FB4 end:0x800190E0
 
 game/csounddtor.cpp:
 	.text       start:0x800190E0 end:0x80019128
@@ -281,6 +281,9 @@ game/ctpldtor.cpp:
 game/cfilearchivedtor.cpp:
 	.text       start:0x8001B7C0 end:0x8001B81C
 
+game/cbasector.cpp:
+	.text       start:0x8001B81C end:0x8001B8F8
+
 game/cgsctor.cpp:
 	.text       start:0x8001B934 end:0x8001BAD8
 
@@ -303,17 +306,16 @@ game/cpaddtor.cpp:
 	.text       start:0x8001C79C end:0x8001C7E4
 
 game/progressive.cpp:
-	.text       start:0x8001C80C end:0x8001CDE8
+	.text       start:0x8001C7E4 end:0x8001CDE8
 
 game/cfiletextdtor.cpp:
 	.text       start:0x8001CDE8 end:0x8001CE44
 
-game/soundregister.cpp:
-	.text       start:0x8001E028 end:0x8001E100
-
 game/sound.cpp:
-	.text       start:0x8001E8E8 end:0x8001F8BC
-	.rodata     start:0x802006C0 end:0x802006D0 align:4
+	.text       start:0x8001DC04 end:0x8001F8BC
+	.rodata     start:0x801FFC7C end:0x802006D0
+	.data       start:0x802114A0 end:0x8021204C
+	.sdata      start:0x806345E0 end:0x806345E8
 	.sdata2     start:0x806364A4 end:0x806364DC
 
 game/gxa.cpp:
@@ -487,7 +489,7 @@ game/xobjwalk.cpp:
 	.text       start:0x80093A3C end:0x80093A78
 
 game/xobjinit.cpp:
-	.text       start:0x80093A78 end:0x800946E0
+	.text       start:0x80093A78 end:0x800947BC
 
 game/xobjinitialize.cpp:
 	.text       start:0x800947BC end:0x8009489C
@@ -631,7 +633,7 @@ game/xobjattachmentvisibility.cpp:
 	.text       start:0x800D72C4 end:0x800D7354
 
 game/objb_attach.cpp:
-	.text       start:0x800D81B0 end:0x800D8D30
+	.text       start:0x800D7354 end:0x800D8D30
 
 game/xobjradarinit.cpp:
 	.text       start:0x800D8D30 end:0x800D8D80
@@ -640,7 +642,7 @@ game/xobjpopper.cpp:
 	.text       start:0x800D8D80 end:0x800D9AD4
 
 game/objb_plug.cpp:
-	.text       start:0x800DA164 end:0x800DB160
+	.text       start:0x800D9AD4 end:0x800DB160
 
 game/xobjplugrelease.cpp:
 	.text       start:0x800DB160 end:0x800DB1AC
@@ -662,6 +664,9 @@ game/xobjplugcordend.cpp:
 
 game/xobjplugcordreset.cpp:
 	.text       start:0x800DD5A8 end:0x800DD814
+
+game/xobjplugcord.cpp:
+	.text       start:0x800DD814 end:0x800DD964
 
 game/plugcordconstants.c:
 	.sbss       start:0x806356B0 end:0x806356B8 align:4
@@ -771,10 +776,11 @@ game/xobjspider.cpp:
 game/smallspiderconstants.c:
 	.sdata2     start:0x80638178 end:0x806382C8
 
-game/smallspideranimsound.cpp:
-	.text       start:0x800F67F0 end:0x800F6954
-
 game/xobjspidersmall.cpp:
+	.text       start:0x800F6734 end:0x80101CE0
+	.bss        start:0x8035CD98 end:0x8035E2B8
+
+game/xobjspidersmallinit.cpp:
 	.text       start:0x80101CE0 end:0x80101E5C
 	.ctors      start:0x801FEF50 end:0x801FEF54
 
@@ -904,7 +910,7 @@ game/xobjactorjenny.cpp:
 	.text       start:0x801249EC end:0x80127FFC
 
 game/xobjactormama.cpp:
-	.text       start:0x8012842C end:0x80129DF0
+	.text       start:0x80127FFC end:0x80129DF0
 	.sdata2     start:0x806388F4 end:0x806388F8 align:4
 
 game/mamapropconstants.c:
@@ -926,10 +932,7 @@ game/papapickupconstants.c:
 	.sdata2     start:0x806389A0 end:0x806389F0
 
 game/xobjactorpapa.cpp:
-	.text       start:0x8012BABC end:0x8012D73C
-
-game/papadrop.cpp:
-	.text       start:0x8012D73C end:0x8012D9C4
+	.text       start:0x8012AEFC end:0x8012E438
 
 game/taopickupconstants.c:
 	.sdata2     start:0x80638A38 end:0x80638A50
@@ -938,16 +941,10 @@ game/actorpoolstorage.cpp:
 	.bss        start:0x804BC890 end:0x8057A830
 
 game/xobjactortao.cpp:
-	.text       start:0x8012F450 end:0x80130BD4
-
-game/taodrop.cpp:
-	.text       start:0x80130BD4 end:0x80130F44
+	.text       start:0x8012E438 end:0x80131008
 
 game/xobjactordeca.cpp:
-	.text       start:0x80131520 end:0x801324C4
-
-game/decaattachment.cpp:
-	.text       start:0x801328F8 end:0x80133690
+	.text       start:0x80131008 end:0x801337C8
 
 game/xobjreadanmdtor.cpp:
 	.text       start:0x801337C8 end:0x8013384C
@@ -956,7 +953,12 @@ game/xobjreadwait.cpp:
 	.text       start:0x8013384C end:0x80133C20
 
 game/xobjs.cpp:
-	.text       start:0x80134278 end:0x80134778
+	.text       start:0x80133C20 end:0x801348E8
+	.rodata     start:0x8020D160 end:0x8020D218
+	.data       start:0x8022D588 end:0x8022D594
+	.bss        start:0x8035E5A8 end:0x80364660
+	.sdata      start:0x80634DD8 end:0x80634DE0
+	.sdata2     start:0x80638AF0 end:0x80638AF8
 
 game/actor_pool.cpp:
 	.text       start:0x801348E8 end:0x801360DC
@@ -965,7 +967,7 @@ game/xobjactor3pool.cpp:
 	.text       start:0x801360DC end:0x80136114
 
 game/xobjactor3ctor.cpp:
-	.text       start:0x80136114 end:0x801369CC
+	.text       start:0x80136114 end:0x80136B90
 
 game/xobjreadinit.cpp:
 	.text       start:0x80136B90 end:0x80136C98
@@ -1169,7 +1171,7 @@ TRK_MINNOW_DOLPHIN/UDP_Stubs.c:
 TRK_MINNOW_DOLPHIN/ddh/main.c:
 	.text       start:0x80151F50 end:0x80152294
 	.rodata     start:0x8020E4D0 end:0x8020E5B0
-	.bss        start:0x805A2F70 end:0x805A378C
+	.bss        start:0x805A2F70 end:0x805A3790
 	.sbss       start:0x80635798 end:0x806357A0
 
 TRK_MINNOW_DOLPHIN/CircleBuffer.c:
@@ -1178,7 +1180,7 @@ TRK_MINNOW_DOLPHIN/CircleBuffer.c:
 TRK_MINNOW_DOLPHIN/gdev/main.c:
 	.text       start:0x801524FC end:0x80152848
 	.rodata     start:0x8020E5B0 end:0x8020E690
-	.bss        start:0x805A3790 end:0x805A3CAC
+	.bss        start:0x805A3790 end:0x805A3CB0
 	.sbss       start:0x806357A0 end:0x806357A8
 
 TRK_MINNOW_DOLPHIN/MWTrace.c:
@@ -2251,7 +2253,7 @@ sysdolphin/baselib/controller.c:
 	.text       start:0x801CD950 end:0x801CF27C
 	.rodata     start:0x802107D0 end:0x802107E0
 	.data       start:0x80238F70 end:0x80238FE8
-	.bss        start:0x80626940 end:0x80626B94
+	.bss        start:0x80626940 end:0x80626B98
 	.sdata2     start:0x80639E40 end:0x80639EA0
 
 sysdolphin/baselib/rumble.c:
@@ -2265,6 +2267,9 @@ sysdolphin/baselib/spline.c:
 
 sysdolphin/baselib/mtx.c:
 	.text       start:0x801D0528 end:0x801D1D68
+	.bss        start:0x80626BC8 end:0x80626C20
+	.sdata      start:0x80635370 end:0x80635380
+	.sdata2     start:0x80639EF0 end:0x80639F38
 
 sysdolphin/baselib/util.c:
 	.text       start:0x801D1D68 end:0x801D1F34
