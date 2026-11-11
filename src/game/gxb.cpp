@@ -4392,3 +4392,233 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	if (title->mState != 0 && title->mState != 22 && title->mState != 23)
 		HSD_VIData.current.vi.clear_clr = gTitlePalette[gTitlePaletteIndex].background;
 }
+
+extern "C" {
+s32 HSD_SynthSFXNewBank(s32 size);
+s32 HSD_SynthSFXBankClear(s32 bank);
+void HSD_JObjSetJSoundCallback(void (*callback)(s32));
+extern "C" void PlayGameSfxAtFullVolume(s32 sfx);
+void InitAudio(void* owner, u32 heapSize, u32 voices, u32 groups);
+BOOL LoadSoundSampleMetadata(void* data);
+s32 HSD_SynthSFXLoad(const char* name, s32 bank, void (*callback)(s32, s32), s32 arg);
+}
+
+// drops every sfx name waiting to load and empties the stage bank
+static inline void ClearStageBank(XSound* sound)
+{
+	for (u32 i = 0; i < 16; ++i) {
+		SfxLoadRequest* request = &sound->mStageRequests.entries[i];
+		request->mName          = NULL;
+		request->mResult        = -1;
+		request->mLoaded        = 0;
+	}
+	sound->mLoadRequestCount = 0;
+	HSD_SynthSFXBankClear(sound->mStageBank);
+}
+
+// queues a name for the stage bank unless it is already there, sound.cpp has the same
+static inline void RegisterStageSoundName(XSound* sound, const char* name)
+{
+	s32 bank = sound->mStageBank;
+	if (name == NULL) {
+		return;
+	}
+	for (u32 i = 0; i < 16; ++i) {
+		if (sound->mStageRequests.entries[i].mName != NULL && strcmp(sound->mStageRequests.entries[i].mName, name) == 0) {
+			return;
+		}
+	}
+	for (u32 i = 0; i < 16; ++i) {
+		if (sound->mStageRequests.entries[i].mName == NULL) {
+			++sound->mLoadRequestCount;
+			sound->mStageRequests.entries[i].mName = name;
+			sound->mStageRequests.entries[i].mBank = bank;
+#if !defined(VERSION_PAL)
+			OSReport("Register:%s\n", name);
+#endif
+			return;
+		}
+	}
+#if !defined(VERSION_PAL)
+	OSReport("Ssm::Load xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
+#endif
+}
+
+/**
+ * @note Address: 0x8001F8D8
+ * @note Size: 0xA4
+ */
+// NONMATCHING: the requests are reached through an object at _2D0
+extern "C" void ClearStageSoundBank(XSound* sound)
+{
+	ClearStageBank(sound);
+}
+
+/**
+ * @note Address: 0x8001F97C
+ * @note Size: 0x2D8
+ */
+// NONMATCHING: the strings are in sound.cpp's rodata
+// a negative stage loads the shared samples a step per call, TRUE once they're in
+extern "C" BOOL LoadGameSoundBank(XSound* sound, s32 stage)
+{
+	if (stage < 0) {
+		switch (sound->mLoadState) {
+		case 0:
+			sound->mSampleReady = 0;
+			if (sound->mFile.ReadAsync("sfx_sample.sem", 0, 0, FALSE) >= 0) {
+				++sound->mLoadState;
+			} else {
+#if defined(VERSION_JP)
+				OSPanic("sound.cpp", 0xED, "%s%s", "", "Read");
+#else
+				OSPanic("sound.cpp", 0xF1, "%s%s", "", "Read");
+#endif
+			}
+			break;
+		case 1: {
+			s32 result = sound->mFile.GetResult();
+			if (result == 0) {
+				++sound->mLoadState;
+			} else if (result < 0) {
+#if defined(VERSION_JP)
+				OSPanic("sound.cpp", 0xF5, "%s%s", "", "Read");
+#else
+				OSPanic("sound.cpp", 0xF9, "%s%s", "", "Read");
+#endif
+			}
+			break;
+		}
+		case 2:
+			LoadSoundSampleMetadata(sound->mFile.mBuffer);
+			HSD_SynthSFXLoad("sfx_sample.ssm", sound->mSampleBank, 0, 0);
+			++sound->mLoadState;
+			break;
+		case 3:
+			if (!(bool)HSD_SynthSFXGetPendingLoadCount()) {
+				sound->mLoadState   = 0;
+				sound->mSampleReady = 1;
+				return TRUE;
+			}
+			break;
+		default:
+			sound->mLoadState = 0;
+			break;
+		}
+		return FALSE;
+	}
+	sound->mDefaultTrack = 0;
+	ClearStageBank(sound);
+#if !defined(VERSION_PAL)
+	OSReport(">>>%s\n", stageSfxTable[stage]);
+#endif
+	RegisterStageSoundName(sound, stageSfxTable[stage]);
+	return TRUE;
+}
+
+/**
+ * @note Address: 0x8001FC54
+ * @note Size: 0x68
+ */
+extern "C" void InitGameSound(XSound* sound)
+{
+	InitAudio(sound, 0x700000, 0x60, 0x20);
+	sound->mSampleBank  = HSD_SynthSFXNewBank(0x480000);
+	sound->mStageBank   = HSD_SynthSFXNewBank(0x280000);
+	sound->mLoadState   = 0;
+	sound->mSampleReady = 0;
+	HSD_JObjSetJSoundCallback(PlayGameSfxAtFullVolume);
+}
+
+/**
+ * @note Address: 0x8001FCBC
+ * @note Size: 0x38
+ */
+// particle sounds from joint anims
+extern "C" void PlayGameSfxAtFullVolume(s32 sfx)
+{
+	PlayGameSound(&gGame.mSound, sfx, 255);
+}
+
+/**
+ * @note Address: 0x80030CE8
+ * @note Size: 0x1FC
+ */
+extern "C" void ResetTitleScreenState(Title* title)
+{
+	title->mState   = 0;
+	title->mMode    = 0;
+	title->mTimeout = -1;
+	title->_10      = 0.0f;
+	title->_14      = 0.0f;
+	title->_18      = 90.0f;
+	title->_1C      = 0;
+	title->_20      = 0;
+	title->mCursor.InitializeObject(0);
+	title->mCursor.mAngle      = 0.0f;
+	title->mCursor.mAngleSpeed = 0.0f;
+	title->_37A8               = 0;
+	title->mFile               = 0;
+	title->mChoice             = 0;
+	title->_37E4               = 0.0f;
+	title->mAlpha              = 0.0f;
+	title->mPrevMode           = 0;
+	title->mPhase              = 0;
+	title->mDelay              = 0;
+	title->_37B0               = -10.0f;
+	title->_37B4               = -200.0f;
+	title->_37B8               = -10.0f;
+	title->_37BC               = -200.0f;
+	title->_37C0               = 0.0f;
+	title->_37C4               = 0.0f;
+	title->_37C8               = 0.0f;
+	title->mOffset             = 0.0f;
+	title->_380C               = 0;
+	title->_08                 = 0;
+	title->_3810               = 0.0f;
+	title->_3814               = 0.0f;
+	CPad pad(0);
+	if (pad.mPad->mConnected != 0) {
+		if (gGame.mStatus.mFlags & 0x800000000ULL)
+			title->_3818 = 1;
+		else
+			title->_3818 = 0;
+	} else {
+		title->_3818 = 0;
+	}
+	if (gGame.mStatus.mFlags & 0x1000000000ULL)
+		title->_3819 = 1;
+	else
+		title->_3819 = 0;
+	title->mChannel = 0;
+	for (s32 i = 0; i < 3; ++i)
+		ResetSaveSlotRecord(&gTitleSaveSlots[i]);
+	title->_37AC = 0.0f;
+	title->_3809 = 0;
+	title->_3808 = 0;
+	KeyOffGameSoundTrack(&gGame.mSound, 1);
+#if !defined(VERSION_JP)
+	title->_3C44 = 0;
+#endif
+}
+
+/**
+ * @note Address: 0x80030EE4
+ * @note Size: 0x120
+ */
+extern "C" void InitTitleScreen(Title* title)
+{
+	ResetTitleScreenState(title);
+	title->mDemo.InitializeObject(0);
+	for (s32 i = 0; i < 16; ++i) {
+		title->mDust[i].mState  = 0;
+		title->mDust[i].mTimer  = 0;
+		title->mDust[i].mX      = rand() % 640;
+		title->mDust[i].mY      = rand() % 480;
+		title->mDust[i].mSpeedX = 0.0f;
+		title->mDust[i].mSpeedY = 0.0f;
+	}
+#if !defined(VERSION_JP)
+	title->_3C44 = 0;
+#endif
+}
