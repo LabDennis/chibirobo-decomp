@@ -314,8 +314,8 @@ static inline void DrawPCChoiceHighlight(MenuPC* menu, CTexObj& tex, f32 center,
 
 enum PCIconAnchor { PCIconCenter, PCIconCorner, PCIconCursor };
 
-template <PCIconAnchor anchor, int scalePercent>
-static inline void DrawPCHeadingIcon(MenuPC* menu, CTexObj& tex, s32 icon, f32 x, f32 y, f32 rotation)
+static inline void DrawPCHeadingIcon(MenuPC* menu, CTexObj& tex, s32 icon, f32 x, f32 y, f32 rotation, PCIconAnchor anchor,
+                                     int scalePercent)
 {
 	CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, icon - StatusTextureOffset));
 	SetMenuTevMode(GetGameGraphics(&gGame), 0);
@@ -438,8 +438,7 @@ static inline void DrawPCDepositLabel(MenuPC* menu, const char* text, f32 x, f32
 {
 	DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(menu->mAlpha * 255.0f) | 0xC8C8C800, text, x, y, 0, 18, 18);
 }
-template <bool setDepth>
-static inline void DrawPCDepositRect(MenuPC* menu, f32 left, f32 top, f32 right, f32 bottom)
+static inline void DrawPCDepositRect(MenuPC* menu, f32 left, f32 top, f32 right, f32 bottom, bool setDepth)
 {
 	f32 coord0     = left;
 	f32 coord1     = top;
@@ -462,8 +461,7 @@ static inline f32 PCDigitDivisor(s32 i)
 }
 
 enum PCDepositField { DepositBalance, DepositEntry, DepositReceipt };
-template <PCDepositField field>
-static inline void DrawPCDepositDigits(MenuPC* menu, CTexObj& tex, s32 amount)
+static inline void DrawPCDepositDigits(MenuPC* menu, CTexObj& tex, s32 amount, PCDepositField field)
 {
 	const f32 scale = field == DepositEntry ? 1.4f : 1.2f;
 
@@ -670,6 +668,7 @@ static inline void DrawPCHeadingTip(MenuPC* menu, f32 top, f32 inset, u32 color)
 	DrawGsLineStrip(GetGameGraphics(&gGame), points, color, 4);
 }
 
+// NONMATCHING: retail is 0x91C bytes longer, it calls CTexObj's constructor where this inlines it
 BOOL MenuPC::Draw()
 {
 	if (Draw__5CMenuFv(this)) {
@@ -688,11 +687,11 @@ BOOL MenuPC::Draw()
 			SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
 			DrawMenuTriangleFan(GetGameGraphics(&gGame), panel, (u32)(255.0f * this->mAlpha) | 0xFFB62800, 5);
 			DrawGsLineStrip(GetGameGraphics(&gGame), panel, (u32)(255.0f * this->mAlpha) | 0xC8C8C800, 5);
-			DrawPCHeadingIcon<PCIconCenter, 140>(this, tex, 142, 320, 193, 0);
+			DrawPCHeadingIcon(this, tex, 142, 320, 193, 0, PCIconCenter, 140);
 #if !defined(VERSION_JP)
 			if (GetGameLanguage(&gGame) == 6)
 #endif
-				DrawPCHeadingIcon<PCIconCenter, 100>(this, tex, 143, 320, 227, 0);
+				DrawPCHeadingIcon(this, tex, 143, 320, 227, 0, PCIconCenter, 100);
 
 			SetGsChannelEnabled(GetGameGraphics(&gGame), 0, 0);
 			SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
@@ -819,17 +818,17 @@ BOOL MenuPC::Draw()
 		case 9: {
 			sprintf(labelText, "%.255s", GetPCMenuLabelText(7));
 			DrawPCDepositLabel(this, labelText, 224, 148);
-			DrawPCDepositDigits<DepositBalance>(this, tex, this->mDepositBalance);
+			DrawPCDepositDigits(this, tex, this->mDepositBalance, DepositBalance);
 			switch (this->mPhase) {
 			case 0: {
 				sprintf(labelText, "%.255s", GetPCMenuLabelText(8));
 				DrawPCDepositLabel(this, labelText, 224, 212);
-				DrawPCDepositDigits<DepositEntry>(this, tex, this->mAmount);
+				DrawPCDepositDigits(this, tex, this->mAmount, DepositEntry);
 				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
 				f32 w    = 1.4f * GetMenuTextureWidth(&tex);
 				f32 h    = 1.4f * (GetMenuTextureHeight(&tex) / 10);
 				f32 left = (388.0f - this->mMoneyDigit * (1.0f + w)) - 8.0f;
-				DrawPCDepositRect<true>(this, left, 242, left + w, 242.0f + h);
+				DrawPCDepositRect(this, left, 242, left + w, 242.0f + h, true);
 				break;
 			}
 			case 1: {
@@ -838,11 +837,11 @@ BOOL MenuPC::Draw()
 				sprintf(labelText, "%.255s", GetPCMenuLabelText(10));
 				DrawPCDepositLabel(this, labelText, 260, 260);
 				f32 x = this->mYesNo ? 302.0f : 242.0f;
-				DrawPCDepositRect<false>(this, x, 251, x + 68.0f, 283);
+				DrawPCDepositRect(this, x, 251, x + 68.0f, 283, false);
 				break;
 			}
 			case 2:
-				DrawPCDepositDigits<DepositReceipt>(this, tex, this->mAmount);
+				DrawPCDepositDigits(this, tex, this->mAmount, DepositReceipt);
 				sprintf(labelText, "%.255s", GetPCMenuLabelText(11));
 				DrawPCDepositLabel(this, labelText, 244, 260);
 				break;
@@ -1063,23 +1062,23 @@ BOOL MenuPC::Draw()
 					}
 
 					{
-						DrawPCHeadingIcon<PCIconCursor, 100>(this, tex, 147, 0, 0, rotation);
-						DrawPCHeadingIcon<PCIconCorner, 80>(this, tex, 142, 184, 60, 0);
+						DrawPCHeadingIcon(this, tex, 147, 0, 0, rotation, PCIconCursor, 100);
+						DrawPCHeadingIcon(this, tex, 142, 184, 60, 0, PCIconCorner, 80);
 #if !defined(VERSION_JP)
 						if (GetGameLanguage(&gGame) == 6)
 #endif
-							DrawPCHeadingIcon<PCIconCorner, 100>(this, tex, 143, 220, 66, 0);
+							DrawPCHeadingIcon(this, tex, 143, 220, 66, 0, PCIconCorner, 100);
 					}
 				}
 				{
 
-					DrawPCHeadingIcon<PCIconCorner, 100>(this, tex, 140, 204, 335, 0);
+					DrawPCHeadingIcon(this, tex, 140, 204, 335, 0, PCIconCorner, 100);
 					if (this->mMode == 2)
 						sprintf(labelText, "%.255s", GetPCMenuLabelText(12));
 					else
 						sprintf(labelText, "%.255s", GetPCMenuLabelText(13));
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha), labelText, 224, 334, 0, 20, 20);
-					DrawPCHeadingIcon<PCIconCorner, 100>(this, tex, 139, 344, 335, 0);
+					DrawPCHeadingIcon(this, tex, 139, 344, 335, 0, PCIconCorner, 100);
 					PCSecondaryPrompt(this, labelText);
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha), labelText, 364, 334, 0, 20, 20);
 				}
@@ -3187,8 +3186,7 @@ static inline void SelectDiscardQuantity(MenuStatus* menu, CPad& pad)
 	}
 }
 
-template <bool inventoryTab>
-static inline void ConfirmDiscardQuantity(MenuStatus* menu, CPad& pad)
+static inline void ConfirmDiscardQuantity(MenuStatus* menu, CPad& pad, bool inventoryTab)
 {
 	if (pad.mPad->mRepeat & 0x40001) {
 		if (menu->mChoice > 0) {
@@ -3279,7 +3277,7 @@ void MenuStatus::State3(u32)
 		SelectDiscardQuantity(menu, pad);
 		break;
 	case 2:
-		ConfirmDiscardQuantity<false>(menu, pad);
+		ConfirmDiscardQuantity(menu, pad, false);
 		break;
 	}
 }
@@ -9410,8 +9408,7 @@ StatusGridTextures gStatusGridTextures[24] = {
 };
 extern "C" u8* GetStatusIconDescription(s32 id);
 
-template <bool selected>
-static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32 bob, f32& width, f32& height)
+static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32 bob, f32& width, f32& height, bool selected)
 {
 	width  = GXGetTexObjWidth(&tex);
 	width  = 0.8f * width;
@@ -9428,8 +9425,7 @@ static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32
 }
 
 extern "C" u8* GetStatusOverviewDescription(s32);
-template <bool iconGrid>
-static inline void DrawStatusGridDescription(MenuStatus* menu)
+static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 {
 	s32 id    = iconGrid ? menu->mIconSelection : menu->mOverviewSelection;
 	f32 scale = menu->_66C;
@@ -9485,9 +9481,9 @@ extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			f32 width, height;
 			if (selected == i)
-				DrawStatusGridIcon<true>(tex, color, x, y, bob, width, height);
+				DrawStatusGridIcon(tex, color, x, y, bob, width, height, true);
 			else
-				DrawStatusGridIcon<false>(tex, color, x, y, bob, width, height);
+				DrawStatusGridIcon(tex, color, x, y, bob, width, height, false);
 			if (selected == i) {
 				SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
@@ -9501,7 +9497,7 @@ extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 			}
 		}
-		DrawStatusGridDescription<true>(menu);
+		DrawStatusGridDescription(menu, true);
 	}
 }
 
@@ -9587,7 +9583,7 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		DrawStatusOverviewEntry(menu, 0xAF, 10, selected, right, row1);
 		DrawStatusOverviewEntry(menu, 0xB0, 11, selected, right, row2);
 		DrawStatusOverviewEntry(menu, 0xB1, 12, selected, right, row3);
-		DrawStatusGridDescription<false>(menu);
+		DrawStatusGridDescription(menu, false);
 	}
 }
 
@@ -10295,7 +10291,7 @@ void MenuStatus::State2(u32)
 		SelectDiscardQuantity(menu, pad);
 		break;
 	case 2:
-		ConfirmDiscardQuantity<true>(menu, pad);
+		ConfirmDiscardQuantity(menu, pad, true);
 		break;
 	case 10:
 		if (menu->mY == menu->_5E4) {
@@ -10694,8 +10690,7 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 
 extern "C" u8* fn_8006DF54(s32 index);
 
-template <bool rank>
-static inline void DrawPCRankingDigits(CTexObj& tex, const s32& value, f32 x, f32 y, f32 scale, u32 upper, u32 lower)
+static inline void DrawPCRankingDigits(CTexObj& tex, const s32& value, f32 x, f32 y, f32 scale, u32 upper, u32 lower, bool rank)
 {
 	tex   = InitPCPanelTexture(125);
 	f32 w = scale * GXGetTexObjWidth(&tex), h = scale * (GXGetTexObjHeight(&tex) / 10);
@@ -10733,8 +10728,7 @@ static inline void LoadRankingRow(MenuPC* menu, int slot, int offset)
 	menu->mRankingRows[slot].score     = gPCRankingRows[menu->mRankingEnd - offset].score;
 }
 
-template <bool first>
-static inline void DrawPCRankingMask(f32 left, f32 top, f32 right, f32 bottom, f32 alpha, u32& color)
+static inline void DrawPCRankingMask(f32 left, f32 top, f32 right, f32 bottom, f32 alpha, u32& color, bool first)
 {
 	Vec vertices[5] = { (Vec) { left, top, -10 }, (Vec) { right, top, -10 }, (Vec) { right, bottom, -10 }, (Vec) { left, bottom, -10 },
 		                (Vec) { left, top, -10 } };
@@ -10815,7 +10809,7 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 #endif
 			char text[256];
 			if (rankValue > 0 && rankValue <= 1000000) {
-				DrawPCRankingDigits<true>(tex, rankValue, left, rowY, scale, a | 0xBFDDFB00, a | 0x0E72D600);
+				DrawPCRankingDigits(tex, rankValue, left, rowY, scale, a | 0xBFDDFB00, a | 0x0E72D600, true);
 				sprintf(text, "%.255s", GetLocalizedInterfaceText(rankLabel));
 				DrawGsProportionalTextFormat(&gGame.mGs, a | 0xBFDDFB00, text, 103.0f * scale + left, rowY, 0, 18.0f * scale,
 				                             18.0f * scale);
@@ -10823,7 +10817,7 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 				sprintf(text, "%.255s", GetLocalizedInterfaceText(unrankedLabel));
 				DrawGsProportionalTextFormat(&gGame.mGs, a | 0xBFDDFB00, text, 48.0f * scale + left, rowY, 0, 18.0f * scale, 18.0f * scale);
 			}
-			DrawPCRankingDigits<false>(tex, row.score, left, rowY, scale, a | 0xCECEFF00, a | 0xE037EE00);
+			DrawPCRankingDigits(tex, row.score, left, rowY, scale, a | 0xCECEFF00, a | 0xE037EE00, false);
 			tex = InitPCPanelTexture(154);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			u16 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
@@ -10834,8 +10828,8 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 		}
 	}
 	u32 mask;
-	DrawPCRankingMask<true>(130, 100, 510, 140, alpha, mask);
-	DrawPCRankingMask<false>(130, 290, 510, 330, alpha, mask);
+	DrawPCRankingMask(130, 100, 510, 140, alpha, mask, true);
+	DrawPCRankingMask(130, 290, 510, 330, alpha, mask, false);
 }
 
 static inline void DrawInventoryDigit(CTexObj& tex, s32 digit, u32 color, f32 x, f32 y, f32 width, f32 height)

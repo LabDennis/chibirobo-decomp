@@ -69,16 +69,13 @@ static inline void SetToyBlinkVisibility(XObjActorToy* toy, CJObj& joint)
 	} while (0)
 
 // Retail repeats the hide on the last joint visited, once for every path in this phase.
-template <int count>
-static inline void HideToyJoints(CJObj& joint)
+static inline void HideToyJoints(CJObj& joint, int count)
 {
-	HSD_JObjSetFlags(joint.mJObj, 0x10);
-	HideToyJoints<count - 1>(joint);
+	for (int i = 0; i < count; i++)
+		HSD_JObjSetFlags(joint.mJObj, 0x10);
 }
-template <>
-inline void HideToyJoints<0>(CJObj&)
-{
-}
+
+// NONMATCHING: retail has HideToyJoints' calls one after the other and is 0x30 bytes longer
 void XObjActorToy::ProcessPendingEvents(u32 frames)
 {
 	XObjActorToy* toy = this;
@@ -344,7 +341,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints<1>(joint);
+				HideToyJoints(joint, 1);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -355,7 +352,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints<1>(joint);
+				HideToyJoints(joint, 1);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -367,7 +364,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints<2>(joint);
+				HideToyJoints(joint, 2);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -379,7 +376,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints<2>(joint);
+				HideToyJoints(joint, 2);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -395,7 +392,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints<6>(joint);
+				HideToyJoints(joint, 6);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -410,7 +407,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints<5>(joint);
+				HideToyJoints(joint, 5);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -421,7 +418,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints<1>(joint);
+				HideToyJoints(joint, 1);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -432,7 +429,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints<1>(joint);
+				HideToyJoints(joint, 1);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -443,7 +440,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints<1>(joint);
+				HideToyJoints(joint, 1);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -459,7 +456,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints<6>(joint);
+				HideToyJoints(joint, 6);
 				toy->mStatus.mFlags &= ~0x10000ULL;
 				return;
 			}

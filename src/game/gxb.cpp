@@ -193,8 +193,7 @@ struct RoboeyesValue {
 	}
 };
 
-template <bool right>
-static inline void DrawRoboeyesLens(CGs* gs, Vec* points, f32 x, f32 y, f32 rx, f32 ry, u32 color, const f32* angles)
+static inline void DrawRoboeyesLens(CGs* gs, Vec* points, f32 x, f32 y, f32 rx, f32 ry, u32 color, const f32* angles, bool right)
 {
 	for (s32 i = 0; i < 65; ++i) {
 		f32 a  = .09817477f * i;
@@ -302,8 +301,8 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	f32 offset = separation.value;
 	f32 rx = .6f * (rw.value * .5f), ry = .6f * (rh.value * .5f);
 	Vec points[65];
-	DrawRoboeyesLens<false>(gs, points, x - offset, y, .6f * (lw.value * .5f), .6f * (lh.value * .5f), color, trail);
-	DrawRoboeyesLens<true>(gs, points, x + offset, y, rx, ry, color, trail);
+	DrawRoboeyesLens(gs, points, x - offset, y, .6f * (lw.value * .5f), .6f * (lh.value * .5f), color, trail, false);
+	DrawRoboeyesLens(gs, points, x + offset, y, rx, ry, color, trail, true);
 	if (state == 2) {
 		CTexObj tex;
 		static s32 frame;

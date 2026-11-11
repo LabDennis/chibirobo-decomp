@@ -39,8 +39,7 @@ static inline s32 DrawPromptLines(const char* const* lines, u32 color)
 	return count;
 }
 
-template <bool alternate>
-static inline void DrawScanModeConfirmation(u32 color)
+static inline void DrawScanModeConfirmation(u32 color, bool alternate)
 {
 #if defined(VERSION_PAL)
 	const s32 first     = alternate ? 0x112 : 0x10f;
@@ -111,9 +110,9 @@ extern "C" void DrawScanModePrompt()
 	case 4:
 	case 40: {
 		if (gVideoModePrompt.useStandardMode == 0)
-			DrawScanModeConfirmation<false>(color);
+			DrawScanModeConfirmation(color, false);
 		else
-			DrawScanModeConfirmation<true>(color);
+			DrawScanModeConfirmation(color, true);
 		break;
 	}
 	}

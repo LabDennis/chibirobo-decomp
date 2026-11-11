@@ -53,8 +53,7 @@ static inline void GroupDigits(MessageFormatBuffers& buffers)
 }
 #endif
 
-template <int N>
-static inline void CopyMessageBytes(u8*& dst, u8*& src)
+static inline void CopyMessageBytes(u8*& dst, u8*& src, int N)
 {
 	for (int i = 0; i < N; ++i)
 		*dst++ = *src++;
@@ -128,7 +127,7 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 		case 10:
 		case 11:
 		case 24:
-			CopyMessageBytes<1>(dst, src);
+			CopyMessageBytes(dst, src, 1);
 			break;
 		case 1:
 		case 2:
@@ -138,34 +137,34 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 		case 16:
 		case 17:
 		case 19:
-			CopyMessageBytes<2>(dst, src);
+			CopyMessageBytes(dst, src, 2);
 			break;
 		case 20:
 		case 23:
-			CopyMessageBytes<3>(dst, src);
+			CopyMessageBytes(dst, src, 3);
 			break;
 		case 21:
-			CopyMessageBytes<5>(dst, src);
+			CopyMessageBytes(dst, src, 5);
 			break;
 		case 18:
 		case 22:
-			CopyMessageBytes<4>(dst, src);
+			CopyMessageBytes(dst, src, 4);
 			break;
 		case 6:
-			CopyMessageBytes<6>(dst, src);
+			CopyMessageBytes(dst, src, 6);
 			break;
 		case 3:
-			CopyMessageBytes<8>(dst, src);
+			CopyMessageBytes(dst, src, 8);
 			break;
 		case 4:
-			CopyMessageBytes<6>(dst, src);
+			CopyMessageBytes(dst, src, 6);
 			if (dst[-1] == 2 || dst[-1] == 3)
-				CopyMessageBytes<2>(dst, src);
+				CopyMessageBytes(dst, src, 2);
 			else if (dst[-1] == 4)
-				CopyMessageBytes<3>(dst, src);
+				CopyMessageBytes(dst, src, 3);
 			break;
 		case 15:
-			CopyMessageBytes<5>(dst, src);
+			CopyMessageBytes(dst, src, 5);
 			break;
 		default:
 #if defined(VERSION_JP)
@@ -173,7 +172,7 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 #else
 			if (gGame.mLanguage == 6 && IsSjisLead(*src)) {
 #endif
-				CopyMessageBytes<2>(dst, src);
+				CopyMessageBytes(dst, src, 2);
 			} else if (*src == '$') {
 				++src;
 #if defined(VERSION_JP)
