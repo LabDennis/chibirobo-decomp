@@ -1949,3 +1949,397 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	DrawClockQuad(tex, 0xffffff00 | (u32)(255 * badgeAlpha), 80 - 22 * scale, 80 - 22 * scale, 0, 1.1f * (scale * tw), 1.1f * (scale * th));
 }
+
+extern "C" BOOL fn_80051C60();
+
+// a quarter of the way there each frame, at least 1
+static inline f32 ApproachStep(f32 cur, f32 target)
+{
+	f32 step = (target - cur) / 4;
+	if (step < 0.0f) {
+		step = -step;
+	}
+	if (step <= 1.0f) {
+		step = 1.0f;
+	}
+	return step;
+}
+
+// the chibi-pc menu is open, the counters stay hidden under it. japan has more menus and
+// no empty slots
+static inline BOOL IsPCOpen()
+{
+#if defined(VERSION_JP)
+	return (gGame.mMenu.mMenus[8])->IsOpen();
+#else
+	CMenu* menu = gGame.mMenu.mMenus[3];
+	return menu ? menu->IsOpen() : FALSE;
+#endif
+}
+
+// the right edge the corner counters line up on
+static inline f32 GetRight()
+{
+	return (gGame.mWipeTile1.mHeight / 2 + gGame.mWipeTile1.mY >= 418.0f) ? 418.0f : gGame.mWipeTile1.mHeight / 2 + gGame.mWipeTile1.mY;
+}
+
+/**
+ * @note Address: 0x800643A4
+ * @note Size: 0xD08
+ */
+extern "C" void UpdateHudPointValue(InfoPoint* point, u32 frames)
+{
+	switch (point->mIndex) {
+	case INFOPOINT_ID + 2:
+		point->mValue[1] = gGame.GetPlayer()->mParams.mExperience;
+		break;
+	case INFOPOINT_ID:
+		point->mValue[1] = gGame.GetPlayer()->mParams.mMoney;
+		break;
+	case INFOPOINT_ID + 1:
+		point->mValue[1] = gGame.GetPlayer()->mParams.mScrap;
+		break;
+	}
+
+	bool changed = false;
+	if (point->mValue[1] - point->mValue[0]) {
+		changed = true;
+	}
+	if (IsPCOpen()) {
+		point->mValue[0]   = point->mValue[1];
+		point->mValue[2]   = point->mValue[3];
+		point->mPos[1].x   = -220.0f;
+		point->mPos[0].x   = -220.0f;
+		point->mPos[3].x   = -220.0f;
+		point->mPos[2].x   = -220.0f;
+		point->mPos[5].x   = -220.0f;
+		point->mPos[4].x   = -220.0f;
+		point->mSlideState = 0;
+		changed            = false;
+	} else {
+		f32 step = (point->mValue[1] - point->mValue[0]) / 4;
+		if (step < 0.0f) {
+			step = -step;
+		}
+		f32 speed = step;
+		if (step <= 1.0f) {
+			speed = 1.0f;
+		}
+		Approach(&point->mValue[0], &point->mValue[1], speed);
+		Approach(&point->mValue[2], &point->mValue[3], 1.0f);
+	}
+	Approach(&point->mPos[0].x, &point->mPos[1].x, ApproachStep(point->mPos[0].x, point->mPos[1].x));
+	Approach(&point->mPos[2].x, &point->mPos[3].x, ApproachStep(point->mPos[2].x, point->mPos[3].x));
+	Approach(&point->mPos[4].x, &point->mPos[5].x, ApproachStep(point->mPos[4].x, point->mPos[5].x));
+
+	bool empty = false;
+	if (0.0f == gGame.GetPlayer()->_A30) {
+		empty = true;
+	}
+	if (point->mSuppressIdleDisplay) {
+		empty = false;
+	}
+	switch (point->mIndex) {
+	case INFOPOINT_ID + 2:
+		point->mPos[0].y = GetRight() - 64.0f - 40.0f;
+		point->mPos[1].y = GetRight() - 64.0f - 40.0f;
+		break;
+	case INFOPOINT_ID:
+		point->mPos[0].y = GetRight() - 64.0f;
+		point->mPos[1].y = GetRight() - 64.0f;
+		break;
+	case INFOPOINT_ID + 1:
+		point->mPos[0].y = 40.0f + (GetRight() - 64.0f);
+		point->mPos[1].y = 40.0f + (GetRight() - 64.0f);
+		break;
+	}
+
+	switch (point->mSlideState) {
+	case 0:
+		if (IsPCOpen()) {
+			break;
+		}
+		if (empty) {
+			point->mPos[1].x   = 60.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState++;
+		} else if (changed) {
+			point->mPos[1].x   = 60.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState = 10;
+		}
+		break;
+	case 1:
+		point->mSlideDelay++;
+		if (point->mSlideDelay > 6) {
+			point->mPos[3].x   = 60.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState++;
+		}
+		break;
+	case 2:
+		point->mSlideDelay++;
+		if (point->mSlideDelay > 6) {
+			point->mPos[5].x = 60.0f;
+			point->mSlideState++;
+		}
+		break;
+	case 3:
+		if (!empty) {
+			point->mPos[1].x   = -220.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState++;
+		}
+		break;
+	case 4:
+		if (changed) {
+			point->mPos[1].x   = 60.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState = 10;
+		} else {
+			point->mSlideDelay++;
+			if (point->mSlideDelay > 6) {
+				point->mPos[5].x   = -220.0f;
+				point->mSlideDelay = 0;
+				point->mSlideState++;
+			}
+		}
+		break;
+	case 5:
+		if (changed) {
+			point->mPos[1].x   = 60.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState = 10;
+		} else {
+			point->mSlideDelay++;
+			if (point->mSlideDelay > 6) {
+				point->mPos[3].x   = -220.0f;
+				point->mSlideState = 0;
+			}
+		}
+		break;
+	case 10:
+		point->mSlideDelay++;
+		if (point->mSlideDelay > 3) {
+			point->mPos[3].x   = 60.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState++;
+		}
+		break;
+	case 11:
+		point->mSlideDelay++;
+		if (point->mSlideDelay > 3) {
+			point->mPos[5].x   = 60.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState++;
+		}
+		break;
+	case 12:
+		if (empty) {
+			point->mSlideState = 3;
+		} else {
+			point->mSlideDelay++;
+			if (changed) {
+				point->mSlideDelay = 0;
+			}
+			if (point->mSlideDelay > 90) {
+				point->mPos[1].x   = -220.0f;
+				point->mSlideDelay = 0;
+				point->mSlideState++;
+			}
+		}
+		break;
+	case 13:
+		if (changed) {
+			point->mPos[1].x   = 60.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState = 10;
+		} else {
+			point->mSlideDelay++;
+			if (point->mSlideDelay > 6) {
+				point->mPos[5].x   = -220.0f;
+				point->mSlideDelay = 0;
+				point->mSlideState++;
+			}
+		}
+		break;
+	case 14:
+		if (changed) {
+			point->mPos[1].x   = 60.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState = 10;
+		} else {
+			point->mSlideDelay++;
+			if (point->mSlideDelay > 6) {
+				point->mPos[3].x   = -220.0f;
+				point->mSlideState = 0;
+			}
+		}
+		break;
+	}
+
+	if (point->mVisible) {
+		point->mPos[1].x   = 60.0f;
+		point->mPos[3].x   = 60.0f;
+		point->mPos[5].x   = 60.0f;
+		point->mSlideDelay = 0;
+		point->mSlideState = 3;
+	}
+
+	switch (point->mFadeState) {
+	case 0:
+		point->mOpacity = 1.0f;
+		break;
+	case 1:
+		point->mOpacity = 1.0f;
+		break;
+	case 2:
+		point->mOpacity = 0.0f;
+		break;
+	case 3:
+		point->mOpacity += 0.08f * frames;
+		if (point->mOpacity >= 1.0f) {
+			point->mOpacity = 1.0f;
+		}
+		if (gGame.mEvt.mData.mScript) {
+			point->mFadeState = 4;
+		}
+		break;
+	case 4:
+		point->mOpacity -= 0.08f * frames;
+		if (point->mOpacity < 0.0f) {
+			point->mOpacity = 0.0f;
+		}
+		if (!gGame.mEvt.mData.mScript) {
+			point->mFadeState = 3;
+		}
+		break;
+	}
+
+	point->mIconAlphaScale = 1.0f;
+	switch (point->mIndex) {
+	case INFOPOINT_ID + 1:
+		if (fn_80051C60()) {
+			point->mState          = 0;
+			point->mPulseFrames    = 0;
+			point->mIconAlphaScale = 1.0f;
+			break;
+		}
+		switch (point->mState) {
+		case 0:
+			if (point->mValue[1] >= 300.0f) {
+				point->mState++;
+				point->mPulseFrames = 0;
+			}
+			break;
+		case 1:
+			point->mPulseFrames += frames;
+			point->mIconAlphaScale = sin(0.017453292f * ((point->mPulseFrames * 6) % 360));
+			if (point->mIconAlphaScale > 0.0f) {
+				PlayGameSound(&gGame.mSound, 0x183, 0xFF);
+				point->mState++;
+			}
+			break;
+		case 2:
+			point->mPulseFrames += frames;
+			point->mIconAlphaScale = sin(0.017453292f * ((point->mPulseFrames * 6) % 360));
+			if (point->mValue[1] < 300.0f) {
+				point->mState = 0;
+			}
+			break;
+		case 3:
+			if (point->mValue[1] < 300.0f) {
+				point->mState = 0;
+			}
+			break;
+		}
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x800650AC
+ * @note Size: 0x214
+ */
+extern "C" void InitHudPointCounter(InfoPoint* point, s32 id)
+{
+	point->mIndex       = id;
+	point->mPulseFrames = 0;
+	point->mSlideState  = 0;
+	point->mFadeState   = 0;
+	point->mSlideDelay  = 0;
+	point->mOpacity     = 0.0f;
+	for (int i = 0; i < 6; i++) {
+		point->mPos[i].x = -220.0f;
+	}
+	for (int i = 0; i < 4; i++) {
+		point->mValue[i] = 0.0f;
+	}
+	point->mVisible             = 0;
+	point->mSuppressIdleDisplay = 0;
+	switch (point->mIndex) {
+	case INFOPOINT_ID + 2:
+		point->mResource = point->mIndex;
+		point->mPos[0].y = GetRight() - 64.0f - 40.0f;
+		point->mPos[1].y = GetRight() - 64.0f - 40.0f;
+		break;
+	case INFOPOINT_ID:
+		point->mResource = point->mIndex;
+		point->mPos[0].y = GetRight() - 64.0f;
+		point->mPos[1].y = GetRight() - 64.0f;
+		break;
+	case INFOPOINT_ID + 1:
+		point->mResource = point->mIndex;
+		point->mPos[0].y = 40.0f + (GetRight() - 64.0f);
+		point->mPos[1].y = 40.0f + (GetRight() - 64.0f);
+		break;
+	}
+	point->mState          = 0;
+	point->mIconAlphaScale = 0.0f;
+	point->_80             = 0;
+}
+
+/**
+ * @note Address: 0x80066630
+ * @note Size: 0xE4
+ */
+static const char* sAscii = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}";
+static const char* sWide  = "\x81\x40\x81\x49\x81\x68\x81\x94\x81\x90\x81\x93\x81\x95\x81\x66"
+                            "\x81\x69\x81\x6A\x81\x96\x81\x7B\x81\x43\x81\x5B\x81\x44\x81\x5E"
+                            "\x82\x4F\x82\x50\x82\x51\x82\x52\x82\x53\x82\x54\x82\x55\x82\x56"
+                            "\x82\x57\x82\x58\x81\x46\x81\x47\x81\x83\x81\x81\x81\x84\x81\x48"
+                            "\x81\x97\x82\x60\x82\x61\x82\x62\x82\x63\x82\x64\x82\x65\x82\x66"
+                            "\x82\x67\x82\x68\x82\x69\x82\x6A\x82\x6B\x82\x6C\x82\x6D\x82\x6E"
+                            "\x82\x6F\x82\x70\x82\x71\x82\x72\x82\x73\x82\x74\x82\x75\x82\x76"
+                            "\x82\x77\x82\x78\x82\x79\x81\x6D\x81\x8F\x81\x6E\x81\x4F\x81\x51"
+                            "\x81\x65\x82\x81\x82\x82\x82\x83\x82\x84\x82\x85\x82\x86\x82\x87"
+                            "\x82\x88\x82\x89\x82\x8A\x82\x8B\x82\x8C\x82\x8D\x82\x8E\x82\x8F"
+                            "\x82\x90\x82\x91\x82\x92\x82\x93\x82\x94\x82\x95\x82\x96\x82\x97"
+                            "\x82\x98\x82\x99\x82\x9A\x81\x6F\x81\x62\x81\x70";
+
+extern "C" s32 ConvertHudTextToFullWidth(char* text)
+{
+	char buf[0x200];
+	char* out = buf;
+	char* dst;
+	char* p;
+	s32 count = 0;
+	for (p = text, dst = out; *p != '\0'; p++) {
+		BOOL found = FALSE;
+		for (s32 i = 0; sAscii[i] != '\0'; i++) {
+			if (*p == sAscii[i]) {
+				strncpy(dst, &sWide[i * 2], 2)[2] = '\0';
+				found                             = TRUE;
+				count++;
+				dst += 2;
+				break;
+			}
+		}
+		if (!found) {
+			strncpy(dst, p, 1)[1] = '\0';
+			dst++;
+		}
+	}
+	strcpy(text, out);
+	return count;
+}
