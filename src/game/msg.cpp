@@ -320,7 +320,6 @@ extern "C" s32 CMsg__cmd_SETFONT(CMsg* msg, u8 command)
  * @note Address: 0x80080284
  * @note Size: 0x2FC
  */
-#pragma optimize_for_size on
 extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 {
 	s32 sfx = ReadMsgU8(msg);

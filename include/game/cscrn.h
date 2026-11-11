@@ -27,11 +27,7 @@ public:
 
 	virtual ~CScrnColor() { } // _08 (weak)
 
-#if defined(DEFER_CSCRNCOLOR_CONSTRUCTOR)
-	CScrnColor();
-#else
 	CScrnColor() { ResetChannels(0.0f); }
-#endif
 
 private:
 	void ResetChannels(f32 value)
@@ -86,11 +82,9 @@ public:
 	virtual ~CScrnWipeCircle(); // _08 (weak)
 };
 
-#ifndef DEFER_CSCRNWIPECIRCLE_DESTRUCTOR
 inline CScrnWipeCircle::~CScrnWipeCircle()
 {
 }
-#endif
 
 class CScrnWipeTex : public CScrnWipe {
 public:

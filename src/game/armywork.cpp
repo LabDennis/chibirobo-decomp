@@ -1,4 +1,3 @@
-#define DEFER_CSTATUS_DESTRUCTOR
 #include "game/xobj.h"
 
 extern "C" {

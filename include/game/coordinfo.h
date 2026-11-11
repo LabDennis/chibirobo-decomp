@@ -27,9 +27,6 @@ public:
 	    : _00((UnkStageObj*)value)
 	{
 	}
-#ifdef STAGE_EXTERNAL_DTOR
-	STAGE_EXTERNAL_DTOR
-#endif
 	virtual ~CoordInfo() { } // _08
 };
 

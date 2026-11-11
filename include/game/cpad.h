@@ -44,11 +44,9 @@ public:
 };
 STATIC_ASSERT(sizeof(CPad) == 0x8);
 
-#ifndef DEFER_CPAD_DESTRUCTOR
 inline CPad::~CPad()
 {
 }
-#endif
 
 #endif
 

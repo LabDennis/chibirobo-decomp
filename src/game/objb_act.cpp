@@ -1,4 +1,3 @@
-#define DEFER_CVEC_CONSTRUCTORS
 #include "game/xchr.h"
 #include "game/xact.h"
 #include "game/xaction.h"
@@ -685,8 +684,6 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 }
 }
 
-#undef DEFER_CVEC_CONSTRUCTORS
-#include "game/cvec_constructors.inl"
 #include "game/cjobjinlineattach.h"
 
 // the part of a particle the item tint callback writes

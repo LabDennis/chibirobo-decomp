@@ -39,8 +39,6 @@ static inline BOOL WriteSaveCopies(Memcard* card)
  * @note Address: 0x80089D3C
  * @note Size: 0x484
  */
-#pragma push
-#pragma optimize_for_size on
 extern "C" BOOL WriteMemoryCardSaveFile(Memcard* card, s32 channel, s32 slot)
 {
 	if (card->Probe(channel))
@@ -67,4 +65,3 @@ extern "C" BOOL WriteMemoryCardSaveFile(Memcard* card, s32 channel, s32 slot)
 	OSTicksToCalendarTime(OSSecondsToTicks((OSTime)card->mStat.time), &calendar);
 	return FALSE;
 }
-#pragma pop

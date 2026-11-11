@@ -93,11 +93,9 @@ public:
 	void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); }
 	void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }
 };
-#ifndef DEFER_CAMERA_MEMENTO_CONSTRUCTOR
 inline CCameraMemento::CCameraMemento()
 {
 }
-#endif
 STATIC_ASSERT(sizeof(CCameraMemento) == 0x40);
 
 // the game's camera, a CCamera with whichever action drives it. CGame keeps it at +0xE5D38

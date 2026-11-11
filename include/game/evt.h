@@ -318,7 +318,6 @@ public:
 };
 STATIC_ASSERT(sizeof(CEvtTimer) == 0x54);
 
-#ifndef DEFER_EVENT_DESTRUCTORS
 inline CEvtTimer::~CEvtTimer()
 {
 }
@@ -331,7 +330,6 @@ inline CEvtQueue::~CEvtQueue()
 inline CEvtVars::~CEvtVars()
 {
 }
-#endif
 
 class CJObj;
 class CVec;

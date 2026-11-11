@@ -1,5 +1,3 @@
-// MenuPC::Draw calls both texture lifetime functions out of line.
-#define DEFER_CTEXOBJ_LIFETIME
 #include "game/menuselectionbar.h"
 #include "game/drawhelptext.h"
 #include "game/hsd_jobj.h"
@@ -1106,9 +1104,6 @@ BOOL MenuPC::Draw()
 	}
 	return FALSE;
 }
-
-#undef DEFER_CTEXOBJ_LIFETIME
-#include "game/ctexobj_lifetime.inl"
 
 static void (MenuStatus::*gStatusStepHandlers[])(u32)
     = { &MenuStatus::State0, &MenuStatus::State1, &MenuStatus::State2, &MenuStatus::State3, &MenuStatus::State4,

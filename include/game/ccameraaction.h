@@ -171,7 +171,6 @@ public:
 };
 STATIC_ASSERT(sizeof(CVectorEaseOutInterpolation) == 0x64);
 
-#ifndef DEFER_VECTOR_INTERPOLATION_DESTRUCTORS
 inline CVectorLinearInterpolation::~CVectorLinearInterpolation()
 {
 }
@@ -181,7 +180,6 @@ inline CVectorEaseInOutInterpolation::~CVectorEaseInOutInterpolation()
 inline CVectorEaseOutInterpolation::~CVectorEaseOutInterpolation()
 {
 }
-#endif
 
 class CVectorNoneInterpolation : public CInterfaceVectorInterpolation {
 public:

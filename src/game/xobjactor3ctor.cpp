@@ -1,4 +1,3 @@
-#define DEFER_CSCRNCOLOR_CONSTRUCTOR
 #include "game/xobjactor.h"
 #include "game/xobjfree.h"
 #include "game/xobjflags.h"
@@ -15,7 +14,6 @@
 extern "C" {
 // The two plain objects in pool 4.
 extern u8 gActorsPool[sizeof(XObj) * 2];
-extern const f32 gScreenColorZero;
 }
 
 /**
@@ -117,15 +115,6 @@ XObjWireEff::XObjWireEff()
  */
 XObjPlugCordNode::XObjPlugCordNode()
 {
-}
-
-/**
- * @note Address: 0x80134C20
- * @note Size: 0x44
- */
-CScrnColor::CScrnColor()
-{
-	ResetChannels(gScreenColorZero);
 }
 
 /**

@@ -1,6 +1,3 @@
-// The movement routine calls the out-of-line CVec constructors.
-#define DEFER_CVEC_CONSTRUCTORS
-#define DEFER_CPAD_DESTRUCTOR
 #include "game/hsd_jobj.h"
 #include "game/xchr.h"
 #include "game/playeranimationdata.h"
@@ -1513,8 +1510,6 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 		ChooseHangDirection(player, target, actionMode);
 	ApplyMovementChoice(player, target, actionMode, frames);
 }
-#undef DEFER_CVEC_CONSTRUCTORS
-#include "game/cvec_constructors.inl"
 
 #include "game/video.h"
 #include "game/xobjchrstate.h"
@@ -1934,10 +1929,6 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 	UpdatePlayerEquipmentRings(&player->mMenu, frames);
 	UpdateOXMenuTransition(&player->mOXMenu, frames);
 	return speed == -1.f ? 1.f : speed;
-}
-
-inline CPad::~CPad()
-{
 }
 
 // XObjChr, chibi robo himself, and the menus he opens. most of the small functions at the end

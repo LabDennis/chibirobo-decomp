@@ -58,11 +58,7 @@ public:
 	    : mTri(NULL)
 	{
 	}
-#if defined(DEFER_CTRIGON_DESTRUCTOR)
-	virtual ~CTrigon(); // _08
-#else
 	virtual ~CTrigon() { } // _08
-#endif
 
 	TRIGON_INFO* Create(HSD_JObj* jobj);
 	void Release();

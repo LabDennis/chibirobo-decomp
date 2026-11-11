@@ -27,11 +27,9 @@ public:
 		OSResumeThread(&mThread);
 	}
 };
-#ifndef DEFER_THREAD_DESTRUCTOR
 inline CThread::~CThread()
 {
 }
-#endif
 
 typedef char CThread_size_check[sizeof(CThread) == 0x328 ? 1 : -1];
 

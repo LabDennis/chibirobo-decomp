@@ -54,26 +54,18 @@ public:
 	{
 		HSD_ForeachAnim(this, COBJ_TYPE, (HSD_TypeMask)(COBJ_MASK | WOBJ_MASK), HSD_AObjSetRate, AOBJ_ARG_AF, rate);
 	}
-	virtual void Anim();                                            // _28
-	virtual void SetViewport(f32 x, f32 y, GXRenderModeObj* rmode); // _2C
-#if defined(DEFER_CAMERA_RECT_SETTERS)
-	virtual void SetViewport(f32 left, f32 right, f32 top, f32 bottom);
-#else
+	virtual void Anim();                                                                                                           // _28
+	virtual void SetViewport(f32 x, f32 y, GXRenderModeObj* rmode);                                                                // _2C
 	virtual void SetViewport(f32 left, f32 right, f32 top, f32 bottom) { HSD_CObjSetViewportfx4(this, left, right, top, bottom); } // _30
-#endif
-	virtual void SetViewport(HSD_RectF32* viewport) { HSD_CObjSetViewportf(this, viewport); } // _34
+	virtual void SetViewport(HSD_RectF32* viewport) { HSD_CObjSetViewportf(this, viewport); }                                      // _34
 #if !defined(VERSION_JP)
 	// japan doesn't have this one yet, so its slots after it are 4 lower
 	virtual void SetViewport(HSD_RectS16* viewport) { HSD_CObjSetViewport(this, viewport); } // _38
 #endif
-	virtual void SetScissor(GXRenderModeObj* rmode); // _3C
-#if defined(DEFER_CAMERA_RECT_SETTERS)
-	virtual void SetScissor(s32 left, u16 right, s32 top, u16 bottom);
-#else
+	virtual void SetScissor(GXRenderModeObj* rmode);                                                                            // _3C
 	virtual void SetScissor(s32 left, u16 right, s32 top, u16 bottom) { HSD_CObjSetScissorx4(this, left, right, top, bottom); } // _40
-#endif
-	virtual void SetScissor(Scissor* scissor) { HSD_CObjSetScissor(this, scissor); } // _44
-	virtual void SetFov(f32 fov)                                                     // _48
+	virtual void SetScissor(Scissor* scissor) { HSD_CObjSetScissor(this, scissor); }                                            // _44
+	virtual void SetFov(f32 fov)                                                                                                // _48
 	{
 		mFov = fov;
 		HSD_CObjSetFov(this, fov);

@@ -41,9 +41,32 @@ public:
 
 	// _0C vtable
 };
-#ifndef DEFER_CVEC_CONSTRUCTORS
-#include "game/cvec_constructors.inl"
-#endif
+inline CVec::CVec()
+{
+}
+
+inline CVec::CVec(f32 x, f32 y, f32 z)
+{
+	this->x = x;
+	this->y = y;
+	this->z = z;
+}
+
+inline CVec::CVec(const Vec& v)
+{
+	x = v.x;
+	y = v.y;
+	z = v.z;
+}
+
+inline CVec::CVec(const CVec& v)
+    : Vec(v)
+{
+}
+
+inline CVec::~CVec()
+{
+}
 
 // size checks by hand, STATIC_ASSERT is in types.h and most includers come in through the HSD headers
 typedef char CVec_size_check[sizeof(CVec) == 0x10 ? 1 : -1];
@@ -70,11 +93,9 @@ public:
 	// the ternary keeps the test and branch, a plain bool folds to a bare clrlwi in shun's CmdCheckOnOffFlag
 	bool Check(u32 mask) const { return (mFlags & mask) ? true : false; }
 };
-#ifndef DEFER_CSTATUS_DESTRUCTOR
 inline CStatus::~CStatus()
 {
 }
-#endif
 typedef char CStatus_size_check[sizeof(CStatus) == 0x8 ? 1 : -1];
 
 #include "game/cstatus64.h"

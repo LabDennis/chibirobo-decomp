@@ -51,9 +51,12 @@ public:
 	// inlined:
 	void Load(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType);
 };
-#ifndef DEFER_CTEXOBJ_LIFETIME
-#include "game/ctexobj_lifetime.inl"
-#endif
+inline CTexObj::CTexObj()
+{
+}
+inline CTexObj::~CTexObj()
+{
+}
 typedef char CTexObj_size_check[sizeof(CTexObj) == 0x100 ? 1 : -1];
 
 // HUD and status textures start two entries earlier in the Japanese palette.
@@ -66,9 +69,6 @@ const int StatusTextureOffset = 0;
 // a .tpl file, bound once it's read in
 class CTpl : public CFile {
 public:
-#ifdef STAGE_EXTERNAL_DTOR
-	STAGE_EXTERNAL_DTOR
-#endif
 	virtual ~CTpl() { mBound = FALSE; } // _08 (weak)
 	virtual s32 GetResult();            // _18
 	virtual void Close();               // _20
