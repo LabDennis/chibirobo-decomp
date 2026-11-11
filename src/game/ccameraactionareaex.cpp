@@ -502,3 +502,28 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
 		}
 	}
 }
+
+/**
+ * @note Address: 0x801353E4
+ * @note Size: 0x50
+ */
+extern "C" f32 GetAreaCameraFovForHeightLevel(CCameraActionAreaEx* state, s32 level)
+{
+	f32 scale;
+	switch (level) {
+	case 0:
+	default:
+		scale = 0.8f;
+		break;
+	case 1:
+		scale = 1.0f;
+		break;
+	case 2:
+		scale = 1.5f;
+		break;
+	case 3:
+		scale = 2.0f;
+		break;
+	}
+	return scale * state->mBaseFov;
+}
