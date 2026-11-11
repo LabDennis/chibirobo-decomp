@@ -35,6 +35,9 @@ void HSD_MtxGetScale(Mtx mat, Vec* vec);
 void PSMTXRotRad(Mtx m, char axis, f32 rad);
 void LaunchSpiderBossPart(XObjActor3* actor);
 void CarryRiderAtActorJoint(XObjActor3* actor, u32 frames);
+void InitParticlePool(CPtcl* pool, void* particles, s32 count, s32 stride);
+void ResetActor3Fields(XObjActor3* actor);
+extern AnimSfxEvent gHaisuiNezumiAnimSfxEvents[];
 
 Vec gActor3PlacementPosition;
 Vec gActor3PlacementRotation;
@@ -527,6 +530,103 @@ BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
 		}
 	}
 	return FALSE;
+}
+
+/**
+ * @note Address: 0x8010AD00
+ * @note Size: 0x20
+ */
+void XObjActor3::vf94()
+{
+	ResetActor3Fields(this);
+}
+
+/**
+ * @note Address: 0x8010AD20
+ * @note Size: 0x34
+ */
+void XObjActor3::ResetObjectState()
+{
+	XObj::ResetObjectState();
+	ResetActor3Fields(this);
+}
+
+/**
+ * @note Address: 0x8010AD54
+ * @note Size: 0x34
+ */
+void XObjActor3::InitializeObject(u32 id)
+{
+	XObj::InitializeObject(id);
+	ResetActor3Fields(this);
+}
+
+/**
+ * @note Address: 0x8010AD88
+ * @note Size: 0x1EC
+ */
+extern "C" void ResetActor3Fields(XObjActor3* actor)
+{
+	actor->_B70        = 0.0f;
+	actor->_B74        = 0.0f;
+	actor->_B78        = 0.0f;
+	actor->_B7C        = 0.0f;
+	actor->_B80        = 0;
+	actor->_B88        = 0;
+	actor->_B8C.mFlags = 0;
+	actor->_B8C.mFlags |= 4;
+	actor->mEventCommand = 0;
+	actor->mEventArg1    = 0;
+	actor->mEventArg2    = 0;
+	actor->mEventArg3    = 0;
+	actor->_BA4[0]       = 0;
+	actor->_BA4[1]       = 0;
+	actor->_BA4[2]       = 0;
+	actor->_BA4[3]       = 0;
+	actor->_BA4[4]       = 0;
+	actor->_BA4[5]       = 0;
+	actor->_BA4[6]       = 0;
+	actor->_BC0          = 0.0f;
+	actor->_BC4          = 0.0f;
+	actor->_BC8          = 0.0f;
+	Vec zero             = { 0.0f, 0.0f, 0.0f };
+	actor->_BCC          = zero.x;
+	actor->_BD0          = zero.y;
+	actor->_BD4          = zero.z;
+	for (int i = 0; i < 8; i++) {
+		actor->mParts[i].Clear();
+	}
+	if (actor->mPoolIndex == 0) {
+		gSpiderBossVolleySlot          = 0;
+		gActor3Kind15ActivationCounter = 0;
+	}
+	actor->vf12C(1, 0, 0, 0, 0.0f);
+	actor->_BDC.x             = 0.0f;
+	actor->_BDC.y             = 0.0f;
+	actor->_BDC.z             = 0.0f;
+	actor->_BEC               = 0;
+	actor->mTimerPanelAlpha   = 0.0f;
+	actor->mCountdownFrames   = 0.0f;
+	actor->mCountdownRunning  = 0;
+	actor->mCounterFadeMode   = 0;
+	actor->mCounterPanelAlpha = 0.0f;
+	actor->mSpiderCount       = 0;
+	actor->_C08               = 0;
+	if (actor->GetKind() == 0x31B) {
+		InitParticlePool(&actor->mDust.mPtcl, actor->mDust.mPtcls, 0x50, 0x32);
+		actor->mAnimSfx.mEvents = gHaisuiNezumiAnimSfxEvents;
+	}
+	actor->_1DC0[0]     = 0;
+	actor->_1DC0[1]     = 0;
+	actor->_1DC0[2]     = 0;
+	actor->_1DC0[3]     = 0;
+	actor->_1DC0[4]     = 0;
+	actor->_1DC0[5]     = 0;
+	actor->mRumble      = 0;
+	actor->mRumbleTimer = 0;
+	actor->mHeld        = NULL;
+	actor->_1DE4        = 0;
+	actor->mSe          = -1;
 }
 
 /**
