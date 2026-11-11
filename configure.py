@@ -488,7 +488,6 @@ config.libs = [
             Object(Matching, "game/menu_cleanup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/infoscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             Object(NonMatching, "game/stage_data.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/globalresourcetables.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/itemicontextures.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/jointanimationload.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjcameratypeinfo.c", cflags=cflags_game, padding="small_data+rodata"),
