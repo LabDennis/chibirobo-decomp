@@ -36,7 +36,13 @@ public:
 		HSD_LObjSetPosition(this, &mPosition);
 	}
 	virtual void SetPosition(const Vec& position) { SetPosition(position.x, position.y, position.z); } // _1C
-	virtual void SetInterest(f32 x, f32 y, f32 z);
+	virtual void SetInterest(f32 x, f32 y, f32 z)                                                      // _20
+	{
+		mInterest.x = x;
+		mInterest.y = y;
+		mInterest.z = z;
+		HSD_LObjSetInterest(this, &mInterest);
+	}
 	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _24
 
 	void Init(u32 flags, BOOL useShadow);

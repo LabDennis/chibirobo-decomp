@@ -99,7 +99,12 @@ public:
 		mInterest.y = y;
 		mInterest.z = z;
 	}
-	virtual void SetAngle(f32 x, f32 y, f32 z);
+	virtual void SetAngle(f32 x, f32 y, f32 z) // _60
+	{
+		mAngle.x = x;
+		mAngle.y = y;
+		mAngle.z = z;
+	}
 	virtual void SetUp(f32 x, f32 y, f32 z) // _64
 	{
 		mUp.x = x;
@@ -114,7 +119,13 @@ public:
 	virtual void SetAngleY(f32 y) { mAngle.y = y; }                                                    // _7C
 	virtual void SetAngleX(f32 x) { mAngle.x = x; }                                                    // _80
 	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                                                    // _84
-	virtual void SetScale(f32 x, f32 y, f32 z);
+	virtual void SetScale(f32 x, f32 y, f32 z)                                                         // _88
+	{
+		mScale.x = x;
+		mScale.y = y;
+		mScale.z = z;
+		PSMTXScale(mScaleMtx, x, y, z);
+	}
 	virtual void SetMtx(Mtx mtx) // _8C
 	{
 		mUseMtx = TRUE;
