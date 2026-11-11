@@ -4,10 +4,6 @@ extern "C" {
 }
 #include "game/cvec.h"
 
-extern "C" {
-// Keep the shared constant pool at its original addresses.
-}
-
 // todo: cleanup
 static inline void CopyPosition(XObjPlugCordNode* node, XObjPlugCordPoint* point)
 {

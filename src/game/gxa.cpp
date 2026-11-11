@@ -218,14 +218,14 @@ extern "C" void InitGameRenderState(CBase* base)
 	GXSetClipMode(0);
 	HSD_SetZSortMode(1, 1);
 
-	ConfigureGsRenderMode(gs, NULL, (u8) { GX_TRUE }, (u8) { GX_FALSE }, (GsBlendMode) { 1, 4, 5, 15 },
-	                      (GsAlphaCompare) { 4, 0, 0, 3, 255 }, (GsDstAlpha) { 0, 0 }, (GsZMode) { 1, 7, 1 }, (u8) { GX_TRUE },
-	                      (u8) { GX_TRUE }, (s32) { 2 }, (GsLineWidth) { 12, 5 }, (GsLineWidth) { 24, 5 });
+	ConfigureGsRenderMode(gs, NULL, GX_TRUE, GX_FALSE, (GsBlendMode) { 1, 4, 5, 15 }, (GsAlphaCompare) { 4, 0, 0, 3, 255 },
+	                      (GsDstAlpha) { 0, 0 }, (GsZMode) { 1, 7, 1 }, GX_TRUE, GX_TRUE, 2, (GsLineWidth) { 12, 5 },
+	                      (GsLineWidth) { 24, 5 });
 	ConfigureGsPrimaryTevStage(gs);
-	ConfigureGsChannel(gs, NULL, (s32) { GX_COLOR0 }, (GsChanCtrl) { GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0, 2, 2 },
-	                   (GXColor) { 0, 0, 0, 255 }, (GXColor) { 255, 255, 255, 255 });
-	ConfigureGsChannel(gs, NULL, (s32) { GX_ALPHA0 }, (GsChanCtrl) { GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0, 0, 2 },
-	                   (GXColor) { 0, 0, 0, 255 }, (GXColor) { 255, 255, 255, 255 });
+	ConfigureGsChannel(gs, NULL, GX_COLOR0, (GsChanCtrl) { GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0, 2, 2 }, (GXColor) { 0, 0, 0, 255 },
+	                   (GXColor) { 255, 255, 255, 255 });
+	ConfigureGsChannel(gs, NULL, GX_ALPHA0, (GsChanCtrl) { GX_DISABLE, GX_SRC_REG, GX_SRC_REG, 0, 0, 2 }, (GXColor) { 0, 0, 0, 255 },
+	                   (GXColor) { 255, 255, 255, 255 });
 	if (gs->mCurRenderMode)
 		ApplyGsRenderMode(gs->mCurRenderMode, TRUE);
 	if (gs->mCurTevStage)

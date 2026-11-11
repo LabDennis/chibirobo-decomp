@@ -52,9 +52,6 @@ void* gSavedScrollCameraInfo;
 s32 gScrollCameraHiddenObjectIds[256];
 s32 gScrollCameraHiddenObjectStates[256];
 
-Vec gScrollCameraEyeInitializer ATTRIBUTE_ALIGN(8);
-Vec gScrollCameraInterestInitializer;
-
 // draws one blinking marker centred on a screen point
 // todo: cleanup
 /**

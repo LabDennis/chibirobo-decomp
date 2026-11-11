@@ -15,13 +15,6 @@ extern "C" {
 
 extern "C" {
 
-extern f32 gToy6FSpinAngle;
-extern s8 gToy6FSpinAngleInitialized;
-extern f32 gToyJointExtensionProgress;
-extern s8 gToyJointExtensionProgressInitialized;
-extern Vec gToyFirstJointRestPosition;
-extern Vec gToySecondJointRestPosition;
-
 // the kinds' own updates
 void UpdateToy1FBJointScales(XObjActorToy* object, u32 frames);
 void UpdateToy159JointScales(XObjActorToy* object, u32 frames);
@@ -967,19 +960,16 @@ void UpdateToy6FJointSpin(XObjActorToy* object, u32)
 		HSD_JObjClearFlags(joint.mJObj, 0x10);
 	}
 
-	if (!gToy6FSpinAngleInitialized) {
-		gToy6FSpinAngle            = 0.0f;
-		gToy6FSpinAngleInitialized = 1;
-	}
+	static f32 sAngle = 0.0f;
 	if (object->_990 == 1) {
 		s32 path[] = { 0, 3, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 4, path));
-		gToy6FSpinAngle += 0.4f;
-		if (gToy6FSpinAngle >= TWO_PI) {
-			object->_990    = 0;
-			gToy6FSpinAngle = 0.0f;
+		sAngle += 0.4f;
+		if (sAngle >= TWO_PI) {
+			object->_990 = 0;
+			sAngle       = 0.0f;
 		}
-		joint.SetRotationZ(gToy6FSpinAngle, 0);
+		joint.SetRotationZ(sAngle, 0);
 	}
 }
 
@@ -1082,59 +1072,58 @@ extern "C" void UpdateToyJointVerticalOffset(XObjActorToy* object, u32 frames)
 extern "C" void UpdateToyJointExtension(XObjActorToy* object, u32 frames)
 {
 	CJObj joint;
-	if (!gToyJointExtensionProgressInitialized) {
-		gToyJointExtensionProgress            = 0.0f;
-		gToyJointExtensionProgressInitialized = 1;
-	}
+	static f32 sTime = 0.0f;
+	static Vec sPos0;
+	static Vec sPos1;
 	switch (object->_990) {
 	case 1: {
 		s32 path0[4] = { 0, 2, 0, 1 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 4, path0));
-		gToyFirstJointRestPosition.x = HSD_JObjGetTranslationX(joint.mJObj);
-		gToyFirstJointRestPosition.y = HSD_JObjGetTranslationY(joint.mJObj);
-		gToyFirstJointRestPosition.z = HSD_JObjGetTranslationZ(joint.mJObj);
-		s32 path1[5]                 = { 0, 2, 0, 0, 0 };
+		sPos0.x      = HSD_JObjGetTranslationX(joint.mJObj);
+		sPos0.y      = HSD_JObjGetTranslationY(joint.mJObj);
+		sPos0.z      = HSD_JObjGetTranslationZ(joint.mJObj);
+		s32 path1[5] = { 0, 2, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 5, path1));
-		gToySecondJointRestPosition.x = HSD_JObjGetTranslationX(joint.mJObj);
-		gToySecondJointRestPosition.y = HSD_JObjGetTranslationY(joint.mJObj);
-		gToySecondJointRestPosition.z = HSD_JObjGetTranslationZ(joint.mJObj);
+		sPos1.x = HSD_JObjGetTranslationX(joint.mJObj);
+		sPos1.y = HSD_JObjGetTranslationY(joint.mJObj);
+		sPos1.z = HSD_JObjGetTranslationZ(joint.mJObj);
 		object->_990++;
 		break;
 	}
 	case 2: {
-		gToyJointExtensionProgress += 0.16f;
-		if (gToyJointExtensionProgress >= 1.0f) {
+		sTime += 0.16f;
+		if (sTime >= 1.0f) {
 			object->_990++;
 		}
 		s32 path0[4] = { 0, 2, 0, 1 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 4, path0));
-		joint.SetTranslateZ(gToyFirstJointRestPosition.z + 16.0f * gToyJointExtensionProgress, 0);
+		joint.SetTranslateZ(sPos0.z + 16.0f * sTime, 0);
 		s32 path1[5] = { 0, 2, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 5, path1));
-		joint.SetTranslateZ(gToySecondJointRestPosition.z + 16.0f * gToyJointExtensionProgress, 0);
+		joint.SetTranslateZ(sPos1.z + 16.0f * sTime, 0);
 		break;
 	}
 	case 3: {
 		s32 path0[4] = { 0, 2, 0, 1 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 4, path0));
-		joint.SetTranslateZ(gToyFirstJointRestPosition.z + 16.0f * gToyJointExtensionProgress, 0);
+		joint.SetTranslateZ(sPos0.z + 16.0f * sTime, 0);
 		s32 path1[5] = { 0, 2, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 5, path1));
-		joint.SetTranslateZ(gToySecondJointRestPosition.z + 16.0f * gToyJointExtensionProgress, 0);
-		gToyJointExtensionProgress -= 0.16f;
-		if (gToyJointExtensionProgress <= 0.0f) {
+		joint.SetTranslateZ(sPos1.z + 16.0f * sTime, 0);
+		sTime -= 0.16f;
+		if (sTime <= 0.0f) {
 			object->_990 = 0;
 			s32 path2[4] = { 0, 2, 0, 1 };
 			joint.Attach(GetJointFromRoot(object->mJObj, 4, path2));
-			joint.SetTranslateX(gToyFirstJointRestPosition.x, 0);
-			joint.SetTranslateY(gToyFirstJointRestPosition.y, 0);
-			joint.SetTranslateZ(gToyFirstJointRestPosition.z, 0);
+			joint.SetTranslateX(sPos0.x, 0);
+			joint.SetTranslateY(sPos0.y, 0);
+			joint.SetTranslateZ(sPos0.z, 0);
 			s32 path3[5] = { 0, 2, 0, 0, 0 };
 			joint.Attach(GetJointFromRoot(object->mJObj, 5, path3));
-			joint.SetTranslateX(gToySecondJointRestPosition.x, 0);
-			joint.SetTranslateY(gToySecondJointRestPosition.y, 0);
-			joint.SetTranslateZ(gToySecondJointRestPosition.z, 0);
-			gToyJointExtensionProgress = 0.0f;
+			joint.SetTranslateX(sPos1.x, 0);
+			joint.SetTranslateY(sPos1.y, 0);
+			joint.SetTranslateZ(sPos1.z, 0);
+			sTime = 0.0f;
 		}
 		break;
 	}

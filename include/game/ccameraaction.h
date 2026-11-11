@@ -353,10 +353,9 @@ public:
 	CStatus mPreviousStatus;                           // _11E0, printed as CAMSTATPRE
 	BOOL _11E8;                                        // _11E8
 
-	// Keep Update first so the compiler emits the vtable with the update code.
 	CCameraActionMap();            // in the dol, 0x8001A45C
-	virtual void Update(u32 step); // _10
 	virtual ~CCameraActionMap();   // in the dol, 0x80009F20
+	virtual void Update(u32 step); // _10
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x11EC);
 

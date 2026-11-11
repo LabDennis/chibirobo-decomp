@@ -210,9 +210,8 @@ void CCamera::SetViewport(f32 x, f32 y, GXRenderModeObj* rmode)
  */
 void CCamera::SetScissor(GXRenderModeObj* rmode)
 {
-	u16 width       = rmode->fbWidth;
 	u16 height      = rmode->efbHeight;
-	Scissor scissor = { 0, width, 0, height };
+	Scissor scissor = { 0, rmode->fbWidth, 0, height };
 
 	HSD_CObjSetScissor(this, &scissor);
 }

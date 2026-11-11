@@ -9527,6 +9527,92 @@ extern "C" CVec SpringDamp(CVec& position, const Vec& target, const CVec& previo
 */
 
 /**
+ * @note Address: 0x8014232C
+ * @note Size: 0x10C
+ */
+// __sinit_ccameraactionmap2_cpp
+// builds these vecs and registers their dtors. the bss between them is unknown
+extern "C" {
+CVec lbl_805C02DC;
+CVec lbl_805C02F8;
+CVec lbl_805C032C;
+CVec lbl_805C0348;
+CVec lbl_805C0364;
+CVec sMapCameraTestEye;
+CVec sMapCameraTestCenter;
+}
+
+/*
+    stwu     r1, -0x10(r1)
+    mflr     r0
+    lis      r4, __dt__4CVecFv@ha
+    lis      r3, lbl_805C0190@ha
+    stw      r0, 0x14(r1)
+    lis      r5, __vt__4CVec@ha
+    addi     r0, r5, __vt__4CVec@l
+    addi     r4, r4, __dt__4CVecFv@l
+    stw      r31, 0xc(r1)
+    addi     r31, r3, lbl_805C0190@l
+    addi     r3, r31, 0x14c
+    stw      r0, 0xc(r3)
+    addi     r5, r31, 0x140
+    bl       __register_global_object
+    lis      r4, __vt__4CVec@ha
+    addi     r3, r31, 0x168
+    addi     r0, r4, __vt__4CVec@l
+    addi     r5, r31, 0x15c
+    lis      r4, __dt__4CVecFv@ha
+    stw      r0, 0xc(r3)
+    addi     r4, r4, __dt__4CVecFv@l
+    bl       __register_global_object
+    lis      r4, __vt__4CVec@ha
+    addi     r3, r31, 0x19c
+    addi     r0, r4, __vt__4CVec@l
+    addi     r5, r31, 0x190
+    lis      r4, __dt__4CVecFv@ha
+    stw      r0, 0xc(r3)
+    addi     r4, r4, __dt__4CVecFv@l
+    bl       __register_global_object
+    lis      r4, __vt__4CVec@ha
+    addi     r3, r31, 0x1b8
+    addi     r0, r4, __vt__4CVec@l
+    addi     r5, r31, 0x1ac
+    lis      r4, __dt__4CVecFv@ha
+    stw      r0, 0xc(r3)
+    addi     r4, r4, __dt__4CVecFv@l
+    bl       __register_global_object
+    lis      r4, __vt__4CVec@ha
+    addi     r3, r31, 0x1d4
+    addi     r0, r4, __vt__4CVec@l
+    addi     r5, r31, 0x1c8
+    lis      r4, __dt__4CVecFv@ha
+    stw      r0, 0xc(r3)
+    addi     r4, r4, __dt__4CVecFv@l
+    bl       __register_global_object
+    lis      r4, __vt__4CVec@ha
+    addi     r3, r31, 0x1fc
+    addi     r0, r4, __vt__4CVec@l
+    addi     r5, r31, 0x1f0
+    lis      r4, __dt__4CVecFv@ha
+    stw      r0, 0xc(r3)
+    addi     r4, r4, __dt__4CVecFv@l
+    bl       __register_global_object
+    lis      r4, __vt__4CVec@ha
+    addi     r3, r31, 0x218
+    addi     r0, r4, __vt__4CVec@l
+    addi     r5, r31, 0x20c
+    lis      r4, __dt__4CVecFv@ha
+    stw      r0, 0xc(r3)
+    addi     r4, r4, __dt__4CVecFv@l
+    bl       __register_global_object
+    lwz      r0, 0x14(r1)
+    lwz      r31, 0xc(r1)
+    mtlr     r0
+    addi     r1, r1, 0x10
+    blr
+*/
+
+/**
  * @note Address: 0x80139E40
  * @note Size: 0x8
  */

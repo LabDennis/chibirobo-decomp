@@ -3823,13 +3823,13 @@ extern "C" s32 FindPlayerSupportingFloor(XObjChr* chr, s32 group, s32 preferred)
 {
 	s32 result = -1;
 	if (chr->mFloorContacts[group].objectIndex >= 0) {
-		XObj* owner        = gGame.mXObjs.mObjects[chr->mFloorContacts[group].objectIndex];
-		f32 best           = NAN;
-		const f32* heights = owner->mFloorHeights;
+		XObj* owner = gGame.mXObjs.mObjects[chr->mFloorContacts[group].objectIndex];
+		f32 best    = NAN;
 		for (int i = 0; owner->mFloors[i].mId != -1; i++) {
 			if (owner->_250[group] & (1 << i)) {
-				if ((fpclassify(best) == FP_NAN || heights[i] >= best) && heights[i] <= 1.0f + chr->mMoveTranslate.y) {
-					best   = heights[i];
+				if ((fpclassify(best) == FP_NAN || owner->mFloorHeights[i] >= best)
+				    && owner->mFloorHeights[i] <= 1.0f + chr->mMoveTranslate.y) {
+					best   = owner->mFloorHeights[i];
 					result = i;
 					if (i == preferred)
 						break;

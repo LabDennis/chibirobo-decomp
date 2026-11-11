@@ -366,10 +366,6 @@ game/evtinit.cpp:
 game/evtobj.cpp:
 	.text       start:0x8007F570 end:0x8007F664
 
-game/evtstaticinit.cpp:
-	.text       start:0x8007F664 end:0x8007FDDC
-	.ctors      start:0x801FD678 end:0x801FD67C
-
 game/evtdtor.cpp:
 	.text       start:0x8007FDDC end:0x8007FFB4
 

@@ -6,7 +6,7 @@
 
 static inline void ConfigureGsPrimaryTevStage(CGs* gs)
 {
-	ConfigureGsTevStage(gs, NULL, (u32) { 0 }, (GsTevOrder) { 0xFF, GX_TEXMAP_NULL, GX_COLOR0A0 },
+	ConfigureGsTevStage(gs, NULL, 0, (GsTevOrder) { 0xFF, GX_TEXMAP_NULL, GX_COLOR0A0 },
 	                    (GsTevOp) { GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, 0 }, (GsTevIn) { 0xA, 0xF, 0xF, 0xF },
 	                    (GsTevOp) { GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, 0 }, (GsTevIn) { 5, 7, 7, 7 });
 }

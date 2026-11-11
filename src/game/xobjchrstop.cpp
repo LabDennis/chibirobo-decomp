@@ -1,6 +1,5 @@
 #include "game/xchr.h"
 
-// Shared with the adjacent player code in the original constant pool.
 /**
  * @note Address: 0x800BAD80
  * @note Size: 0x2C

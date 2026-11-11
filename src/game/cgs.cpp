@@ -949,24 +949,24 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
 	gs->mCamera = NULL;
 	gs->mLight  = NULL;
 
-	ConfigureGsRenderMode(gs, NULL, (u8) { GX_TRUE }, (u8) { GX_FALSE }, (GsBlendMode) { 1, 4, 5, 15 },
-	                      (GsAlphaCompare) { 4, 0, 0, 3, 0xFF }, (GsDstAlpha) { 0, 0 }, (GsZMode) { 0, 3, 0 }, (u8) { GX_TRUE },
-	                      (u8) { GX_TRUE }, (s32) { 2 }, (GsLineWidth) { 12, 5 }, (GsLineWidth) { 24, 5 });
+	ConfigureGsRenderMode(gs, NULL, GX_TRUE, GX_FALSE, (GsBlendMode) { 1, 4, 5, 15 }, (GsAlphaCompare) { 4, 0, 0, 3, 0xFF },
+	                      (GsDstAlpha) { 0, 0 }, (GsZMode) { 0, 3, 0 }, GX_TRUE, GX_TRUE, 2, (GsLineWidth) { 12, 5 },
+	                      (GsLineWidth) { 24, 5 });
 
 	ConfigureGsPrimaryTevStage(gs);
 
 	// The second stage adds its result to the previous stage's color and alpha.
-	ConfigureGsTevStage(gs, &gs->mTevStages[1], (u32) { 1 }, (GsTevOrder) { 0xFF, GX_TEXMAP_NULL, GX_COLOR1A1 },
+	ConfigureGsTevStage(gs, &gs->mTevStages[1], 1, (GsTevOrder) { 0xFF, GX_TEXMAP_NULL, GX_COLOR1A1 },
 	                    (GsTevOp) { GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, 0 }, (GsTevIn) { 0xF, 0xA, 0xC, 0 },
 	                    (GsTevOp) { GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, 0 }, (GsTevIn) { 7, 5, 6, 0 });
 
-	ConfigureGsChannel(gs, NULL, (s32) { GX_COLOR0 }, (GsChanCtrl) { 0, 0, 0, 0, 2, 2 }, (GXColor) { 0, 0, 0, 0xFF },
+	ConfigureGsChannel(gs, NULL, GX_COLOR0, (GsChanCtrl) { 0, 0, 0, 0, 2, 2 }, (GXColor) { 0, 0, 0, 0xFF },
 	                   (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
-	ConfigureGsChannel(gs, NULL, (s32) { GX_ALPHA0 }, (GsChanCtrl) { 0, 0, 0, 0, 0, 2 }, (GXColor) { 0, 0, 0, 0xFF },
+	ConfigureGsChannel(gs, NULL, GX_ALPHA0, (GsChanCtrl) { 0, 0, 0, 0, 0, 2 }, (GXColor) { 0, 0, 0, 0xFF },
 	                   (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
-	ConfigureGsChannel(gs, NULL, (s32) { GX_COLOR1 }, (GsChanCtrl) { 1, 0, 0, 0, 0, 0 }, (GXColor) { 0, 0, 0, 0xFF },
+	ConfigureGsChannel(gs, NULL, GX_COLOR1, (GsChanCtrl) { 1, 0, 0, 0, 0, 0 }, (GXColor) { 0, 0, 0, 0xFF },
 	                   (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
-	ConfigureGsChannel(gs, NULL, (s32) { GX_ALPHA1 }, (GsChanCtrl) { 0, 0, 0, 0, 0, 2 }, (GXColor) { 0, 0, 0, 0xFF },
+	ConfigureGsChannel(gs, NULL, GX_ALPHA1, (GsChanCtrl) { 0, 0, 0, 0, 0, 2 }, (GXColor) { 0, 0, 0, 0xFF },
 	                   (GXColor) { 0xFF, 0xFF, 0xFF, 0xFF });
 
 	gs->mBillboardEnabled = 0;

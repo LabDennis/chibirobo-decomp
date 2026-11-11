@@ -50,8 +50,6 @@ InfoPoint gHudHappyPointCounter;
 InfoPoint gHudScrapCounter;
 extern "C" {
 f32 gHudScanlineHistory[10];
-extern f32 gHudScanlineOffset;
-extern s8 gHudScanlineOffsetInitialized;
 }
 
 // how bright the hud is, the counters and gauges multiply their alpha by it
@@ -1080,14 +1078,11 @@ extern "C" void DrawHudScanlines(InfoScrn* scrn)
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 		u32 a = 255.0f * alpha;
 
-		if (!gHudScanlineOffsetInitialized) {
-			gHudScanlineOffset            = 0.0f;
-			gHudScanlineOffsetInitialized = 1;
-		}
+		static f32 sScanline = 0.0f;
 		if (!gGame.mMenu.mActive) {
-			gHudScanlineOffset = 1.0f + gHudScanlineOffset;
-			if (gHudScanlineOffset >= 4.0f) {
-				gHudScanlineOffset = 0.0f;
+			sScanline = 1.0f + sScanline;
+			if (sScanline >= 4.0f) {
+				sScanline = 0.0f;
 			}
 		}
 
@@ -1095,7 +1090,7 @@ extern "C" void DrawHudScanlines(InfoScrn* scrn)
 		SetGsLineWidth(gGame.mGs.mCurRenderMode, 12, 5);
 		u32 color = a | 0x30303000;
 		for (s32 y = 0; y < 448; y += 4.0f) {
-			DrawGsLineSegment(&gGame.mGs, NULL, 0.0f, y + gHudScanlineOffset, 0.0f, color, 640.0f, y + gHudScanlineOffset, 0.0f, color);
+			DrawGsLineSegment(&gGame.mGs, NULL, 0.0f, y + sScanline, 0.0f, color, 640.0f, y + sScanline, 0.0f, color);
 		}
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		SetGsLineWidth(gGame.mGs.mCurRenderMode, 12, 5);

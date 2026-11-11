@@ -194,6 +194,7 @@ extern void (XObjSpiderSmall::*gSmallSpiderStateHandlers[10])(u32);
 // the spider file's bss
 extern XObj* gSmallSpiderEffectObjects[12];                  // the stage's fx_spider_01 objects
 extern s32 gSmallSpiderEffectSlotOwners[12];                 // which spider has each, -1 for none
+extern u8 gSmallSpiderStatusDestructorChain[12];             // gSmallSpiderStatusByStage's DestructorChain
 extern SmallSpiderStageStatus gSmallSpiderStatusByStage[39]; // a row per stage, a spider per pool index
 extern AnimSfxEvent gSmallSpiderAnimSfxEvents[];             // the anim sound events
 }

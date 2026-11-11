@@ -601,7 +601,6 @@ config.libs = [
             Object(NonMatching, "game/xobjplugnode.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjchritem.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/fbsubwindraw.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/evtstaticinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(MatchingFor(JP), "game/msgdataformat.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/memcardreadstate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/memcardwritestate.cpp", cflags=with_hsd_headers(cflags_game)),

@@ -281,8 +281,8 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 			SetGsDestinationAlpha(gGame.mGs.mCurRenderMode, 0, 0);
 			SetupAll(TRUE);
 			Vec quad[4] = { { 0.0f, 0.0f, 0.0f }, { 640.0f, 0.0f, 0.0f }, { 640.0f, 448.0f, 0.0f }, { 0.0f, 448.0f, 0.0f } };
-			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, 4, quad[1].x, quad[1].y, quad[1].z, 4, quad[2].x, quad[2].y,
-			                 quad[2].z, 4, quad[3].x, quad[3].y, quad[3].z, 4);
+			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y, quad[2].z,
+			                 quad[3].x, quad[3].y, quad[3].z, 4, 4, 4, 4);
 			SetGsColorUpdate(gGame.mGs.mCurRenderMode, 1);
 			InvalidateAll();
 			EndGsCamera(&game->mGs);
