@@ -149,8 +149,6 @@ public:
 	CVec mTarget; // _10
 	CVec mSpeed;  // _20
 
-#ifdef CJOINT_SETTER_SECTION
-#endif
 	virtual ~CObjVec() { }
 
 	u8 Step(u32 frames);
@@ -264,11 +262,9 @@ public:
 	void ClearQueue();
 };
 
-#ifndef DEFER_OBJECT_DESTRUCTORS
 inline CXObj::~CXObj()
 {
 }
-#endif
 #if defined(VERSION_JP)
 typedef char CXObj_size_check[sizeof(CXObj) == 0x1E0 ? 1 : -1];
 #else

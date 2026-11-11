@@ -39,7 +39,7 @@ inline void* operator new(size_t, void* storage)
 	return storage;
 }
 
-static inline void InstallEventHandlers(EvtCmdEntry* __restrict commands, const EventHandler* handlers)
+static inline void InstallEventHandlers(EvtCmdEntry* commands, const EventHandler* handlers)
 {
 	commands[0].handler = handlers[0];
 	commands[1].handler = handlers[1];

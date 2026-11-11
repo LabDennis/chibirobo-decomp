@@ -210,8 +210,6 @@ void DrawPCShopList(s32, f32, f32, f32, f32, f32);
 void DrawPCShopList(s32, f32, f32, f32, f32, f32, f32);
 #endif
 
-#pragma inline_max_total_size(65535)
-
 extern "C" {
 f32 gItemHelpOutlineX[4]  = { -1.0f, 1.0f, 1.0f, -1.0f };
 f32 gItemHelpOutlineY[4]  = { -1.0f, -1.0f, 1.0f, 1.0f };

@@ -208,7 +208,7 @@ void CCamera::SetViewport(f32 x, f32 y, GXRenderModeObj* rmode)
  * @note Address: 0x80192A8C
  * @note Size: 0x44
  */
-void CCamera::SetScissor(GXRenderModeObj* __restrict rmode)
+void CCamera::SetScissor(GXRenderModeObj* rmode)
 {
 	u16 width       = rmode->fbWidth;
 	u16 height      = rmode->efbHeight;

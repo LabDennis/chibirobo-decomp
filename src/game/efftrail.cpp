@@ -126,7 +126,7 @@ extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
 	case 0:
 		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
 		ptcl->display.colors.mColor2 = amount >= 0 ? 0xE037EE00 : 0xFF000000;
-		ptcl->burst.mNum             = __abs(amount);
+		ptcl->burst.mNum             = abs(amount);
 		if (ptcl->burst.mNum > 40)
 			ptcl->burst.mNum = 40;
 		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
@@ -135,7 +135,7 @@ extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
 	case 2:
 		ptcl->display.colors.mColor  = amount >= 0 ? 0xEFEBC500 : 0xFF000000;
 		ptcl->display.colors.mColor2 = amount >= 0 ? 0xEDA83600 : 0xFF000000;
-		ptcl->burst.mNum             = __abs(amount);
+		ptcl->burst.mNum             = abs(amount);
 		if (ptcl->burst.mNum > 40)
 			ptcl->burst.mNum = 40;
 		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
@@ -144,7 +144,7 @@ extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
 	case 3:
 		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
 		ptcl->display.colors.mColor2 = amount >= 0 ? 0x5959FF00 : 0xFF000000;
-		ptcl->burst.mNum             = __abs(amount);
+		ptcl->burst.mNum             = abs(amount);
 		if (ptcl->burst.mNum > 40)
 			ptcl->burst.mNum = 40;
 		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
@@ -166,7 +166,7 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 	PointBurst& burst     = ptcl->burst;
 	switch (display.mState) {
 	case 1: {
-		s32 value      = __abs(display.mAmount);
+		s32 value      = abs(display.mAmount);
 		display.mCount = 0;
 		while (display.mCount < 10) {
 			display.digits[display.mCount].glyph = value % 10;

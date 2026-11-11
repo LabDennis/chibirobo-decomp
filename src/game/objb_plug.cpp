@@ -34,8 +34,6 @@ static inline void UpdateCordJoint(XObjPlug* plug, CJObj& joint)
 	plug->mCordJointTip = tip;
 }
 
-#pragma push
-#pragma pool_data off
 void UpdateObject__8XObjPlugFUl(XObjPlug* plug, u32 frames)
 {
 	UpdateObject__4XObjFUl(plug, frames);
@@ -99,7 +97,6 @@ void UpdateObject__8XObjPlugFUl(XObjPlug* plug, u32 frames)
 		}
 	}
 }
-#pragma pop
 
 /**
  * @note Address: 0x800D9068

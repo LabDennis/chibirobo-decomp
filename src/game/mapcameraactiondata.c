@@ -9,10 +9,7 @@ char sMapCameraUpdateTurnLabel[]   = "UpdateTurn";
 
 char sMapCameraResetLabel[]  = "Reset";
 char sMapCameraReset2Label[] = "Reset2";
-#pragma push
-#pragma dont_zero_bss on
-int sMapCameraCollisionMode0[1] = { 0 };
-#pragma pop
+int sMapCameraCollisionMode0[1];
 int sMapCameraCollisionMode1 = 1;
 char sMapCameraUpdateLabel[] = "Update";
 

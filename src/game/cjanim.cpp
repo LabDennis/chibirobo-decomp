@@ -431,7 +431,7 @@ extern "C" const Vec gDefaultFloorContactOffset;
  * @note Address: 0x8008C274
  * @note Size: 0x558
  */
-extern "C" CVec GetFloorContactPosition(XObj* __restrict object, s32 index, const Vec* offset)
+extern "C" CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offset)
 {
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return object->mMoveTranslate;

@@ -108,7 +108,7 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 			PSMTXConcat(transform, scaling, transform);
 			PSMTXMultVecArray(transform, corners, corners, 4);
 			object->mFloorHeights[i] = object->mFloorHeights[i + 1] = object->mFloorHeights[i + 2] = object->mFloorHeights[i + 3]
-			    = __fmadds(extent.y, 0.5f, corners[0].y) - 0.01f;
+			    = extent.y * 0.5f + corners[0].y - 0.01f;
 			i += 3;
 			break;
 		}
@@ -489,11 +489,11 @@ u32 XObj::vfFC(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push
 				hit.z     = to->z;
 			}
 			if (collision) {
-				if (to->y <= mFloorHeights[i] && to->y >= (__fnmsubs(2.f, extent.y * h, world[0].y) - height)) {
+				if (to->y <= mFloorHeights[i] && to->y >= (world[0].y - 2.f * (extent.y * h) - height)) {
 					StoreSweepContact(from, to, contact, dest, hit, mFloorHeights[i]);
 					collision = 3;
 				} else
-					collision = to->y < (__fnmsubs(2.f, extent.y * h, world[0].y) - height) ? 0 : 1;
+					collision = to->y < (world[0].y - 2.f * (extent.y * h) - height) ? 0 : 1;
 			}
 			break;
 		}
@@ -548,11 +548,11 @@ u32 XObj::vfFC(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push
 				hit.z     = to->z;
 			}
 			if (collision) {
-				if (to->y <= mFloorHeights[i] && to->y >= (__fnmsubs(extent.y, .5f, quad[0].y) - height)) {
+				if (to->y <= mFloorHeights[i] && to->y >= (quad[0].y - extent.y * .5f - height)) {
 					StoreSweepContact(from, to, contact, dest, hit, mFloorHeights[i]);
 					collision = 3;
 				} else
-					collision = to->y < (__fnmsubs(extent.y, .5f, quad[0].y) - height) ? 0 : 1;
+					collision = to->y < (quad[0].y - extent.y * .5f - height) ? 0 : 1;
 			}
 			i += 3;
 			break;

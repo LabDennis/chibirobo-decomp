@@ -11,8 +11,6 @@
 #include "game/video.h"
 #include <math.h>
 
-#pragma inline_max_total_size(65535)
-
 extern "C" {
 s32 GetObjectAnimationId(const CXObj* object);
 s32 ClassifyFloatBits(f32 value);
@@ -3822,7 +3820,7 @@ extern "C" s32 GetPlayerGroundType(XObjChr* chr)
  * @note Address: 0x8009DC84
  * @note Size: 0x134
  */
-extern "C" s32 FindPlayerSupportingFloor(XObjChr* __restrict chr, s32 group, s32 preferred)
+extern "C" s32 FindPlayerSupportingFloor(XObjChr* chr, s32 group, s32 preferred)
 {
 	s32 result = -1;
 	if (chr->mFloorContacts[group].objectIndex >= 0) {
@@ -4104,10 +4102,10 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			f32 span   = 7.f * scale;
 			f32 radius = 20.f * item._10 + 60.f;
 			if (item.mSlotOffset >= 3.02f) {
-				x     = __fnmsubs(span, radius, x);
+				x     = x - span * radius;
 				alpha = Abs(item.mSlotOffset - 3.f);
 			} else {
-				x     = __fmadds(span, radius, x);
+				x     = x + span * radius;
 				alpha = Abs(3.f + item.mSlotOffset);
 			}
 			menu->GetItemColor(i);
@@ -4873,7 +4871,7 @@ Vec XObjChr::GetCameraTarget()
 			f32 frame    = GetJointAnimationCurrentFrame(this);
 			f32 duration = GetJointAnimationEndFrame(this);
 			f32 t        = frame / duration;
-			f32 x = __fmadds(t, end.x - start.x, start.x), z = __fmadds(t, end.z - start.z, start.z);
+			f32 x = start.x + t * (end.x - start.x), z = start.z + t * (end.z - start.z);
 			f32 threshold = .91f * duration;
 			f32 elapsed   = GetJointAnimationCurrentFrame(this) - threshold;
 			f32 remaining = GetJointAnimationEndFrame(this) - threshold;

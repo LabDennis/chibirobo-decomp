@@ -2780,7 +2780,7 @@ static inline f32 GetTextWidth(CGs* gs, const char* text, BOOL proportional, f32
 			} else if (IsSjisLead(glyph.mStr[0]) & 1) {
 				width[0] += size;
 			} else {
-				width[0] = __fmadds(size, 0.5f, width[0]);
+				width[0] += size * 0.5f;
 			}
 #else
 			} else if (gs->mUseShiftJis) {

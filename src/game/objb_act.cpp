@@ -1,5 +1,4 @@
 #define DEFER_CVEC_CONSTRUCTORS
-#define DEFER_OBJECT_DESTRUCTORS
 #include "game/xchr.h"
 #include "game/xact.h"
 #include "game/xaction.h"
@@ -2968,14 +2967,6 @@ void UpdateHeldObject(XActLift* act, s32)
 	}
 }
 
-} // extern "C"
-
-// The lift routines above call the shared joint destructor.
-inline CJObj::~CJObj()
-{
-}
-
-extern "C" {
 /**
  * @note Address: 0x800C7810
  * @note Size: 0x2B4
@@ -3474,7 +3465,7 @@ void InitializePlayerLiftAction(XActLift* act, XObjChr* owner)
  * @note Address: 0x800D5190
  * @note Size: 0x39C
  */
-Vec GetTargetFloorPosition(XAction* __restrict act)
+Vec GetTargetFloorPosition(XAction* act)
 {
 	if (act->mTarget != NULL) {
 		CVec position = act->mTarget->mMoveTranslate;

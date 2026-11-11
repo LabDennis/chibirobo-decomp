@@ -1,5 +1,3 @@
-#define DEFER_OBJECT_DESTRUCTORS
-#define ACTOR_TOY_JOINT_CTOR_SECTION
 #include "game/xobjactor.h"
 #include "game/actortoyanimation.h"
 #include "game/cjobjset.h"
@@ -537,11 +535,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 }
 
 #undef BLINK_TOY_JOINT
-
-// The event handler above calls the shared joint destructor.
-inline CJObj::~CJObj()
-{
-}
 
 static inline void MountAnimatedToyProp(XObjActorToy* toy, CJObj& joint, f32 angle, f32 x, f32 y, f32 z)
 {

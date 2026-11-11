@@ -10,24 +10,6 @@
 
 extern "C" s32 EulerToQuat(Vec* euler, Quaternion* q);
 
-// CJObj methods pool data addresses in shun and stage07, the REL code around them doesn't
-#pragma push
-#pragma pool_data on
-
-#ifdef CJOINT_SETTER_SECTION
-#define CJOINT_SETTER
-#else
-#define CJOINT_SETTER
-#endif
-
-#ifdef CJOINT_AXIS_SETTER_SECTION
-#define CJOINT_ANIM_RATE
-#define CJOINT_AXIS_SETTER
-#else
-#define CJOINT_ANIM_RATE   CJOINT_SETTER
-#define CJOINT_AXIS_SETTER CJOINT_SETTER
-#endif
-
 class CJObj {
 public:
 	HSD_JObj* mJObj; // _00
@@ -36,8 +18,6 @@ public:
 	CVec mScale;     // _24
 	                 // _34 vtable
 
-#ifdef ACTOR_TOY_JOINT_CTOR_SECTION
-#endif
 	CJObj()
 	{
 		mJObj        = NULL;
@@ -54,11 +34,9 @@ public:
 
 	CJObj(HSD_JObj* jobj); // in the dol, 0x80084C78, game/msg.cpp
 
-#ifdef CJOINT_SETTER_SECTION
-#endif
 	virtual ~CJObj(); // _08
 
-	CJOINT_AXIS_SETTER virtual void SetTranslateX(f32 x, s32 force) // _0C
+	virtual void SetTranslateX(f32 x, s32 force) // _0C
 	{
 		if (force == 0 && x == mTranslate.x) {
 			return;
@@ -66,7 +44,7 @@ public:
 		mTranslate.x = x;
 		HSD_JObjSetTranslateX(mJObj, x);
 	}
-	CJOINT_AXIS_SETTER virtual void SetTranslateY(f32 y, s32 force) // _10
+	virtual void SetTranslateY(f32 y, s32 force) // _10
 	{
 		if (force == 0 && y == mTranslate.y) {
 			return;
@@ -74,7 +52,7 @@ public:
 		mTranslate.y = y;
 		HSD_JObjSetTranslateY(mJObj, y);
 	}
-	CJOINT_AXIS_SETTER virtual void SetTranslateZ(f32 z, s32 force) // _14
+	virtual void SetTranslateZ(f32 z, s32 force) // _14
 	{
 		if (force == 0 && z == mTranslate.z) {
 			return;
@@ -82,7 +60,7 @@ public:
 		mTranslate.z = z;
 		HSD_JObjSetTranslateZ(mJObj, z);
 	}
-	CJOINT_AXIS_SETTER virtual void SetScaleX(f32 x, s32 force) // _18
+	virtual void SetScaleX(f32 x, s32 force) // _18
 	{
 		if (force == 0 && x == mScale.x) {
 			return;
@@ -90,7 +68,7 @@ public:
 		mScale.x = x;
 		HSD_JObjSetScaleX(mJObj, x);
 	}
-	CJOINT_AXIS_SETTER virtual void SetScaleY(f32 y, s32 force) // _1C
+	virtual void SetScaleY(f32 y, s32 force) // _1C
 	{
 		if (force == 0 && y == mScale.y) {
 			return;
@@ -98,7 +76,7 @@ public:
 		mScale.y = y;
 		HSD_JObjSetScaleY(mJObj, y);
 	}
-	CJOINT_AXIS_SETTER virtual void SetScaleZ(f32 z, s32 force) // _20
+	virtual void SetScaleZ(f32 z, s32 force) // _20
 	{
 		if (force == 0 && z == mScale.z) {
 			return;
@@ -106,7 +84,7 @@ public:
 		mScale.z = z;
 		HSD_JObjSetScaleZ(mJObj, z);
 	}
-	CJOINT_SETTER virtual void SetRotationX(f32 x, s32 force) // _24
+	virtual void SetRotationX(f32 x, s32 force) // _24
 	{
 		if (force == 0 && x == mRotate.x) {
 			return;
@@ -120,7 +98,7 @@ public:
 			HSD_JObjSetRotationX(mJObj, x);
 		}
 	}
-	CJOINT_SETTER virtual void SetRotationY(f32 y, s32 force) // _28
+	virtual void SetRotationY(f32 y, s32 force) // _28
 	{
 		if (force == 0 && y == mRotate.y) {
 			return;
@@ -134,7 +112,7 @@ public:
 			HSD_JObjSetRotationY(mJObj, y);
 		}
 	}
-	CJOINT_SETTER virtual void SetRotationZ(f32 z, s32 force) // _2C
+	virtual void SetRotationZ(f32 z, s32 force) // _2C
 	{
 		if (force == 0 && z == mRotate.z) {
 			return;
@@ -148,7 +126,7 @@ public:
 			HSD_JObjSetRotationZ(mJObj, z);
 		}
 	}
-	CJOINT_SETTER virtual void SetTranslate(const Vec& v, s32 force) // _30
+	virtual void SetTranslate(const Vec& v, s32 force) // _30
 	{
 		if (force == 0 && !(mTranslate != v)) {
 			return;
@@ -158,8 +136,8 @@ public:
 		mTranslate.z = v.z;
 		HSD_JObjSetTranslate(mJObj, &mTranslate);
 	}
-	CJOINT_SETTER virtual void SetTranslate(f32 x, f32 y, f32 z, s32 force); // _34, in game/cjobjset.h
-	CJOINT_SETTER virtual void SetScale(const Vec& v, s32 force)             // _38
+	virtual void SetTranslate(f32 x, f32 y, f32 z, s32 force); // _34, in game/cjobjset.h
+	virtual void SetScale(const Vec& v, s32 force)             // _38
 	{
 		if (force == 0 && !(mScale != v)) {
 			return;
@@ -169,8 +147,8 @@ public:
 		mScale.z = v.z;
 		HSD_JObjSetScale(mJObj, &mScale);
 	}
-	CJOINT_SETTER virtual void SetScale(f32 x, f32 y, f32 z, s32 force); // _3C, in game/cjobjset.h
-	CJOINT_SETTER virtual void SetRotation(const Vec& v, s32 force)      // _40
+	virtual void SetScale(f32 x, f32 y, f32 z, s32 force); // _3C, in game/cjobjset.h
+	virtual void SetRotation(const Vec& v, s32 force)      // _40
 	{
 		if (force == 0 && !(mRotate != v)) {
 			return;
@@ -187,8 +165,8 @@ public:
 			HSD_JObjSetRotation(mJObj, (Quaternion*)&mRotate);
 		}
 	}
-	CJOINT_SETTER virtual void SetRotation(f32 x, f32 y, f32 z, s32 force); // _44, in game/cjobjset.h
-	CJOINT_ANIM_RATE virtual void SetAnimRate(f32 rate, u32 mask)           // _48
+	virtual void SetRotation(f32 x, f32 y, f32 z, s32 force); // _44, in game/cjobjset.h
+	virtual void SetAnimRate(f32 rate, u32 mask)              // _48
 	{
 		HSD_JObj* jobj;
 
@@ -231,17 +209,10 @@ public:
 	MtxPtr GetMtx() const { return HSD_JObjGetMtxPtr(mJObj); }
 	Vec GetPos() const { return GetJointPosition(mJObj); }
 };
-#undef CJOINT_ANIM_RATE
-#undef CJOINT_AXIS_SETTER
-#undef CJOINT_SETTER
 
-#ifndef DEFER_OBJECT_DESTRUCTORS
 inline CJObj::~CJObj()
 {
 }
-#endif
 typedef char CJObj_size_check[sizeof(CJObj) == 0x38 ? 1 : -1];
-
-#pragma pop
 
 #endif

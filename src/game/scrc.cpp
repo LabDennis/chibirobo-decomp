@@ -1607,7 +1607,6 @@ static inline Vec BossJointPosition(CJObj& joint, XObj* boss, s32 (&path)[depth]
  * @note Address: 0x8010C304
  * @note Size: 0xAD8
  */
-#pragma use_lmw_stmw off
 void XObjActor3::Kind16(u32 frames)
 {
 	CJObj joint;

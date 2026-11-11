@@ -267,9 +267,8 @@ extern "C" void SetRotation__5CJObjFfffl(CJObj* jobj, f32 x, f32 y, f32 z, s32 f
 	Quaternion q;
 
 	if (force == 0) {
-		static Vec zero;
 		// retail tests the cached translation here
-		if (!(jobj->mTranslate != MakeJObjVec(zero, x, y, z))) {
+		if (!(jobj->mTranslate != CVec(x, y, z))) {
 			return;
 		}
 	}

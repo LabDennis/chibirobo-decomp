@@ -3619,8 +3619,8 @@ static inline void RefreshOrbitPosition(CCameraActionMap* map, u32 step, bool ma
 {
 	f32 yaw    = HALF_PI + map->mAngle.y;
 	f32 radius = FlatDistance(map->_F68, map->mInterest);
-	f32 x      = __fmadds(radius * (f32)cos(yaw), (f32)cos(0.0f), map->mInterest.x);
-	f32 z      = __fmadds(radius * -(f32)sin(yaw), (f32)cos(0.0f), map->mInterest.z);
+	f32 x      = radius * (f32)cos(yaw) + map->mInterest.x;
+	f32 z      = radius * -(f32)sin(yaw) + map->mInterest.z;
 	// The manual turn uses the frame delta left in f31 by the retail caller.
 	f32 height = manual ? 0.1f * step : map->_F68.y;
 	map->_F88  = CVec(x, height, z);
@@ -3689,11 +3689,11 @@ extern "C" void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 		}
 		if (yaw < target) {
 			lbl_8065B34C = 1.0f;
-			yaw          = __fmadds(map->_BC, step, yaw);
+			yaw          = map->_BC * step + yaw;
 			if (yaw > target)
 				yaw = target;
 		} else if (yaw > target) {
-			yaw = __fnmsubs(map->_BC, step, yaw);
+			yaw = yaw - map->_BC * step;
 			if (yaw < target)
 				yaw = target;
 			lbl_8065B34C = -1.0f;

@@ -17,8 +17,8 @@ extern "C" f32 Get__21CInterpolationEaseOutFv(CInterpolationEaseOut* interp)
 extern "C" bool Step__21CInterpolationEaseOutFf(CInterpolationEaseOut* interp, f32 dt)
 {
 	interp->mTime -= dt;
-	f32 elapsed    = interp->mDuration - interp->mTime;
-	interp->mSpeed = __fmadds(interp->mAccel * dt, 0.5f, interp->mSpeed);
+	f32 elapsed = interp->mDuration - interp->mTime;
+	interp->mSpeed += interp->mAccel * dt * 0.5f;
 	if (interp->mTime <= 0.0f) {
 		interp->mValue = interp->mTarget;
 	} else {

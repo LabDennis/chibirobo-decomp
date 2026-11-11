@@ -210,8 +210,6 @@ public:
 		mOtherSelection = -1;
 	}
 
-#ifdef CJOINT_SETTER_SECTION
-#endif
 	virtual ~CMsgFont() { } // _08
 };
 #if defined(VERSION_JP)

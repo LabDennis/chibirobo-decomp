@@ -455,9 +455,9 @@ void CScrnWipeCustom::Draw(CGs* gs, s32 mode)
 		return;
 	BeginWipe(gs, mode);
 	for (s32 row = 0; row < 448.0f / 40.0f; ++row) {
-		f32 y = __fmadds((f32)row, 40.0f, 20.0f);
+		f32 y = (f32)row * 40.0f + 20.0f;
 		for (s32 col = 0; col < 640.0f / 40.0f; ++col) {
-			f32 x = __fmadds((f32)col, 40.0f, 20.0f);
+			f32 x = (f32)col * 40.0f + 20.0f;
 			f32 extra;
 			if (col < 8.0f)
 				extra = 0.2f * col;
@@ -523,9 +523,9 @@ void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 	Vec vertices[18] = {};
 	const f32 dx = edgeWidth * 0.5f, dy = edgeHeight * 0.5f;
 	f32 left = -mWidth * 0.5f, right = mWidth * 0.5f;
-	f32 outerLeft = __fmsubs(-mWidth, 0.5f, dx), outerRight = __fmadds(mWidth, 0.5f, dx);
+	f32 outerLeft = -mWidth * 0.5f - dx, outerRight = mWidth * 0.5f + dx;
 	f32 top = -mHeight * 0.5f, bottom = mHeight * 0.5f;
-	f32 outerTop = __fmsubs(-mHeight, 0.5f, dy), outerBottom = __fmadds(mHeight, 0.5f, dy);
+	f32 outerTop = -mHeight * 0.5f - dy, outerBottom = mHeight * 0.5f + dy;
 	SetTileEdge(vertices, left, top, outerLeft, outerTop, outerRight, outerTop);
 	SetTileEdge(vertices + 4, right, top, outerRight, outerTop, outerRight, outerBottom);
 	SetTileEdge(vertices + 8, right, bottom, outerRight, outerBottom, outerLeft, outerBottom);
@@ -736,8 +736,6 @@ static inline bool HasColor(CScrnColor* color)
  * @note Size: 0x22C
  */
 // NONMATCHING: the quad template's address is loaded first
-#pragma use_lmw_stmw off
-#pragma no_register_save_helpers on
 extern "C" void DrawScreenColorOverlay(CScrnColor* color, CGs* gs)
 {
 	const WipeQuad* shape = &gScreenWipeGeometry.colorCorners;
@@ -800,7 +798,6 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
  * @note Address: 0x80023EE0
  * @note Size: 0x20C
  */
-#pragma dont_inline on
 extern "C" void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time)
 {
 	color->mColor.r  = r0;
@@ -4083,7 +4080,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 				if (glyph.mWait > 0) {
 					if (glyph.mScale < 1) {
 #if defined(VERSION_PAL)
-						glyph.mScale = __fmadds(1.f / (.3f * gVideoFramesPerSecond), (f32)frames, glyph.mScale);
+						glyph.mScale += (1.f / (.3f * gVideoFramesPerSecond)) * frames;
 #else
 						glyph.mScale += (1.f / 18.f) * frames;
 #endif
@@ -4092,7 +4089,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 					}
 				} else if (glyph.mScale > 0) {
 #if defined(VERSION_PAL)
-					glyph.mScale = __fnmsubs(1.f / (.3f * gVideoFramesPerSecond), (f32)frames, glyph.mScale);
+					glyph.mScale -= (1.f / (.3f * gVideoFramesPerSecond)) * frames;
 #else
 					glyph.mScale -= (1.f / 18.f) * frames;
 #endif
@@ -4226,12 +4223,12 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	case 10: {
 
 		if (title->_10 < 1) {
-			title->_10 = __fmadds(1.f / (.5f * FRAME_RATE), (f32)frames, title->_10);
+			title->_10 += (1.f / (.5f * FRAME_RATE)) * frames;
 			if (title->_10 > 1)
 				title->_10 = 1;
 		}
 		if (title->_14 < 1) {
-			title->_14 = __fmadds(1.f / FRAME_RATE, (f32)frames, title->_14);
+			title->_14 += (1.f / FRAME_RATE) * frames;
 			if (title->_14 > 1)
 				title->_14 = 1;
 		}
@@ -4362,12 +4359,12 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	case 14: {
 
 		if (title->_10 > 0) {
-			title->_10 = __fnmsubs(1.f / (.5f * FRAME_RATE), (f32)frames, title->_10);
+			title->_10 -= (1.f / (.5f * FRAME_RATE)) * frames;
 			if (title->_10 < 0)
 				title->_10 = 0;
 		}
 		if (title->_14 > 0) {
-			title->_14 = __fnmsubs(1.f / (.5f * FRAME_RATE), (f32)frames, title->_14);
+			title->_14 -= (1.f / (.5f * FRAME_RATE)) * frames;
 			if (title->_14 < 0)
 				title->_14 = 0;
 		}
