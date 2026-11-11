@@ -5,7 +5,76 @@
 extern "C" {
 extern XObjActorDeca::StateFunc sDecaHoldState;
 extern XObjActorDeca::StateFunc sDecaPickupState;
+extern XObjActorDeca::StateFunc sDecaResetState;
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
+}
+
+/**
+ * @note Address: 0x8012F428
+ * @note Size: 0x24
+ */
+void XObjActorDeca::ClearStateHandler()
+{
+	mState = NULL;
+}
+
+/**
+ * @note Address: 0x8012F44C
+ * @note Size: 0x58
+ */
+void XObjActorDeca::RunStateHandler(u32 frames)
+{
+	if (mState != NULL) {
+		(this->*mState)(frames);
+	}
+}
+
+/**
+ * @note Address: 0x8012F4A4
+ * @note Size: 0x8C
+ */
+XObjActorDeca::~XObjActorDeca()
+{
+}
+
+/**
+ * @note Address: 0x8012F530
+ * @note Size: 0xA4
+ */
+HSD_JObj* XObjActorDeca::GetHeadJoint()
+{
+	s32 path[3] = { 0, 3, 0 };
+	return FindJointByPath(mJObj, path, 3);
+}
+
+/**
+ * @note Address: 0x8012F5D4
+ * @note Size: 0x54
+ */
+CVec XObjActorDeca::GetHeadWorldPosition()
+{
+	s32 path[3] = { 0, 3, 0 };
+	return GetEventJointWorldPosition(this, 3, path);
+}
+
+/**
+ * @note Address: 0x8012F628
+ * @note Size: 0x318
+ */
+Vec XObjActorDeca::GetCameraTarget()
+{
+	if (_C90.mFlags & 4) {
+		CJObj jobj;
+		s32 path[2] = { 0, 3 };
+		jobj.Attach(FindJointByPath(mJObj, path, 2));
+		Vec pos;
+		pos = GetJointPosition(jobj.mJObj);
+		Vec target;
+		target = pos;
+		target.y -= 0.5f;
+		return target;
+	}
+	return XObjActor::GetCameraTarget();
 }
 
 /**
@@ -238,5 +307,88 @@ void XObjActorDeca::StatePickUp(u32 frames)
 		mState = sDecaHoldState;
 		ResetActorMovementStep(this);
 		break;
+	}
+}
+
+/**
+ * @note Address: 0x801308E4
+ * @note Size: 0x434
+ */
+// keeps what it carries in its hand
+void XObjActorDeca::StateHold(u32 frames)
+{
+	if (_A4C >= 0 && _A50 != NULL) {
+		_A50->SetScale(1.0f, 1.0f, 1.0f, 0);
+		CJObj jobj;
+		s32 path[2] = { 0, 5 };
+		jobj.Attach(FindJointByPath(mJObj, path, 2));
+		Mtx m;
+		Mtx transMtx;
+		Mtx hand;
+		PSMTXCopy(jobj.GetMtx(), m);
+		PSMTXTrans(transMtx, 0.0f, -3.0f, -4.0f);
+		PSMTXConcat(m, transMtx, hand);
+		HSD_JObj* joint = _A50->mJObj;
+		MtxPtr mp       = hand;
+		HSD_JObjCopyMtx(joint, mp);
+		if (mStatus.mFlags & 0x10000) {
+			_A50->mStatus.mFlags |= 0x10000ULL;
+		} else {
+			_A50->mStatus.mFlags &= ~0x10000ULL;
+		}
+		_A50->mStatus.mFlags &= ~0x0200000000000000ULL;
+	}
+}
+
+/**
+ * @note Address: 0x80131AB0
+ * @note Size: 0x20
+ */
+void XObjActorDeca::UpdateAnim(u32 frames)
+{
+	CXObjIntp::UpdateAnim(frames);
+}
+
+/**
+ * @note Address: 0x80131AD0
+ * @note Size: 0x20
+ */
+void XObjActorDeca::UpdateObject(u32 frames)
+{
+	XObjActor::UpdateObject(frames);
+}
+
+/**
+ * @note Address: 0x80131AF0
+ * @note Size: 0x1C
+ */
+void XObjActorDeca::ProcessPendingEvents(u32 frames)
+{
+	if (_998.Check(2)) {
+		_998.mFlags &= ~2;
+	}
+}
+
+/**
+ * @note Address: 0x80131B0C
+ * @note Size: 0xDC
+ */
+void XObjActorDeca::ResetActorState()
+{
+	_998.mFlags = 0;
+	_C90.mFlags = 0;
+	_C98.mFlags = 0;
+	_980        = 0.0f;
+	_984        = 0.0f;
+	_988        = 0.0f;
+	_C84        = _988;
+	_C88        = 0.0f;
+	_C8C        = 0;
+	_CA0        = PI;
+	_CA4        = PI;
+	mState      = sDecaResetState;
+	ResetActorMovementStep(this);
+	for (u32 i = 0; i < 20; i++) {
+		mCmd[i] = 0;
 	}
 }
