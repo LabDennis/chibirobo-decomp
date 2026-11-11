@@ -5,6 +5,137 @@
 #include <stdlib.h>
 #include <math.h>
 
+void XObjActorJenny::ClearStateHandler()
+{
+	mState = NULL;
+}
+
+/**
+ * @note Address: 0x80122E30
+ * @note Size: 0x58
+ */
+void XObjActorJenny::RunStateHandler(u32 frames)
+{
+	if (mState != NULL) {
+		(this->*mState)(frames);
+	}
+}
+
+/**
+ * @note Address: 0x80122E88
+ * @note Size: 0x8C
+ */
+XObjActorJenny::~XObjActorJenny()
+{
+}
+
+/**
+ * @note Address: 0x80122F14
+ * @note Size: 0xA4
+ */
+HSD_JObj* XObjActorJenny::GetHeadJoint()
+{
+	s32 path[3] = { 0, 3, 0 };
+	return FindJointByPath(mJObj, path, 3);
+}
+
+/**
+ * @note Address: 0x80122FB8
+ * @note Size: 0x54
+ */
+CVec XObjActorJenny::GetHeadWorldPosition()
+{
+	s32 path[3] = { 0, 3, 0 };
+	return GetEventJointWorldPosition(this, 3, path);
+}
+
+/**
+ * @note Address: 0x8012300C
+ * @note Size: 0x28
+ */
+f32 XObjActorJenny::GetMinHeadPitch()
+{
+	switch (mAnimId) {
+	case 0x412:
+	case 0x413:
+	case 0x414:
+		return 0.34906584f;
+	default:
+		return -0.34906584f;
+	}
+}
+
+/**
+ * @note Address: 0x80123034
+ * @note Size: 0x28
+ */
+f32 XObjActorJenny::GetMaxHeadPitch()
+{
+	switch (mAnimId) {
+	case 0x412:
+	case 0x413:
+	case 0x414:
+		return 1.0471976f;
+	default:
+		return 0.17453292f;
+	}
+}
+
+/**
+ * @note Address: 0x8012305C
+ * @note Size: 0x24C
+ */
+s32 XObjActorJenny::HandleEventCommand(s32 count, s32* command)
+{
+	XObjActor::HandleEventCommand(count, command);
+	switch (command[0]) {
+	case 1:
+		switch (command[1]) {
+		case 0:
+			ResetActorLook(this, 0.08726646f);
+			break;
+		case 1:
+			SetActorLookAtPosition(this, &gGame.GetPlayer()->mMoveTranslate, 0.08726646f);
+			break;
+		case 2:
+			if (FindObj(command[2]) != NULL) {
+				SetActorLookTarget(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
+			}
+			break;
+		case 3:
+			SetActorLookAngle(this, DEG2RAD * command[2], DEG2RAD * command[3]);
+			break;
+		}
+		break;
+	default:
+		if (count < 1) {
+			return 0;
+		}
+		mCmd[0] = command[0];
+		if (count < 2) {
+			mCmd[1] = 0;
+		} else {
+			mCmd[1] = command[1];
+		}
+		for (int i = 0; i < 8; i++) {
+			mCmd[i + 2] = command[i + 2];
+		}
+		if (mCmd[1] == 0xD0) {
+			mCmd[19] = (s32)FindObj(mCmd[2]);
+		}
+		break;
+	}
+	return 0;
+}
+
+/**
+ * @note Address: 0x801232A8
+ * @note Size: 0x4
+ */
+void XObjActorJenny::StateNone(u32 frames)
+{
+}
+
 /**
  * @note Address: 0x80124980
  * @note Size: 0x430
@@ -188,4 +319,85 @@ void XObjActorJenny::vf148(u32 frames)
 		pos = joint.GetPos();
 		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
 	}
+}
+
+/**
+ * @note Address: 0x8012527C
+ * @note Size: 0x298
+ */
+// lets go of what she carries
+void XObjActorJenny::Drop()
+{
+	s32 kind = -1;
+	if (_C98.Check(1)) {
+		_C98.mFlags &= ~1;
+		kind = 0x3D;
+	} else if (_C98.Check(2)) {
+		_C98.mFlags &= ~2;
+		kind = 0x3E;
+	} else if (_C98.Check(4)) {
+		_C98.mFlags &= ~4;
+		kind = 0x3F;
+	} else if (_C98.Check(8)) {
+		_C98.mFlags &= ~8;
+		kind = 0x3B;
+	} else if (_C98.Check(0x10)) {
+		_C98.mFlags &= ~0x10;
+		kind = 0x401;
+	}
+	if (kind < 0) {
+		return;
+	}
+	switch (kind) {
+	case 0x3B:
+	case 0x3D:
+	case 0x3E:
+	case 0x3F:
+		for (s32 i = 0; i < 64; i++) {
+			XObj* obj = gGame.mXObjs.mPools[8].Get(i);
+			if (kind == obj->GetKind()) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+		break;
+	case 0x401:
+		for (s32 i = 0; i < 288; i++) {
+			XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+			if (kind == obj->GetKind()) {
+				obj->mStatus.mFlags &= ~0x10000ULL;
+			}
+		}
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x801262F0
+ * @note Size: 0x12C
+ */
+void XObjActorJenny::ResetActorState()
+{
+	XObjChr* player = gGame.GetPlayer();
+	if (player->_980.mFlags & 0x40000000) {
+		player->_980.mFlags = 0;
+		player->_980.mFlags |= 0x20000000;
+		player->_980.mFlags |= 7;
+		player->mPad.mReset = TRUE;
+	}
+	_998.mFlags = 0;
+	_C90.mFlags = 0;
+	_C98.mFlags = 0;
+	_980        = 0.0f;
+	_984        = 0.0f;
+	_988        = 0.0f;
+	_C84        = _988;
+	_C88        = 0.0f;
+	_C8C        = 0;
+	_CA0        = 0;
+	mState      = &XObjActorJenny::StateNone;
+	ResetActorMovementStep(this);
+	for (u32 i = 0; i < 20; i++) {
+		mCmd[i] = 0;
+	}
+	_C90.mFlags &= ~8;
 }
