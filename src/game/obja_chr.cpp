@@ -2000,9 +2000,6 @@ static inline f32 CurrentFrame(HSD_JObj* joint)
 }
 
 // joints that follow an item's own anim
-extern "C" {
-}
-
 struct PlayerTurnState {
 	f32 heading, previousHeading;
 	f32 change, previousChange;
@@ -2026,6 +2023,15 @@ extern "C" void UpdateTumbleFade(XActTumbleFade*, BOOL, u32);
 extern "C" void UpdateRadarBeamAnimation(XActRadar*, u32);
 extern "C" void UpdatePointParticleDisplay(PointPtcl*, u32);
 extern "C" void UpdateSpiralTrail(SuitChangeEffect*, u32);
+
+// the joints an item's animation runs on, by item
+XObjChrItemAnim gPlayerItemAnimationTable[] = {
+	{ 3, 8, { 0, 1, 0, 1, 2, 0, 1, 0 }, 0.0f },
+	{ 3, 9, { 0, 1, 0, 1, 2, 0, 1, 0, 0 }, 0.0f },
+	{ 4, 6, { 0, 1, 0, 1, 0, 0 }, 0.0f },
+	{ 4, 6, { 0, 1, 0, 1, 0, 1 }, 0.0f },
+	{ -1, 0, { 0 }, 0.0f },
+};
 
 void XObjChr::UpdateObject(u32 frames)
 {
@@ -2681,12 +2687,14 @@ extern "C" void ClosePlayerEquipmentRings(XObjChrMenu* menu, s32 result)
 }
 
 extern "C" {
-extern const float sEquipmentCursorRadius;
-extern const float sEquipmentHintSlideAngle;
-extern const float sEquipmentHintRightEdge;
-extern const float sEquipmentHintIconWidth;
 void DrawEquipmentRing(OctaMenu* ring);
 }
+
+#if defined(VERSION_JP)
+#define HINT_ICON_WIDTH (1.0f / 14.0f)
+#else
+#define HINT_ICON_WIDTH (1.0f / 17.0f)
+#endif
 
 /**
  * @note Address: 0x80097378
@@ -2721,7 +2729,7 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 			menu->mCursorY += 0.7f * (menu->mTargetY - menu->mCursorY);
 			menu->mCursorX += 0.7f * (menu->mTargetX - menu->mCursorX);
 		}
-		f32 radius = sEquipmentCursorRadius * menu->mFade;
+		f32 radius = 40.0f * menu->mFade;
 		f32 y      = menu->mCursorY;
 		f32 x      = menu->mCursorX;
 		f32 left   = 8.0f + (x - radius);
@@ -2752,7 +2760,7 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 	hints[2].label  = GetLocalizedInterfaceText(ATC_LABEL(11));
 	s32 order[2][2] = { { 0, 1 }, { 0, 2 } };
 
-	f32 edge            = sEquipmentHintRightEdge + 100.0f * (1.0f - (f32)sin(sEquipmentHintSlideAngle * menu->mFade));
+	f32 edge            = 608.0f + 100.0f * (1.0f - (f32)sin(1.5707964f * menu->mFade));
 	const Hint* rowHint = hints;
 	for (s32 row = 0; row < 2; ++row, ++rowHint) {
 		Hint& hint    = hints[order[menu->mSel][row]];
@@ -2767,9 +2775,9 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 		u32 color = 0xFFFFFF00 | (u32)(255.0f * menu->mFade);
 		DrawGsProportionalTextFormat(&gGame.mGs, color, hint.label, x, y, 0.0f, 20.0f, 20.0f);
 		CTexObj tex = tpl->mTex.Init(&((TPLPalette*)tpl->mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
-		PSMTXScale(tex.mMtx[1], sEquipmentHintIconWidth, 1.0f, 1.0f);
+		PSMTXScale(tex.mMtx[1], HINT_ICON_WIDTH, 1.0f, 1.0f);
 		tex.mMtxDirty = TRUE;
-		PSMTXTrans(tex.mMtx[0], sEquipmentHintIconWidth * hint.icon, 0.0f, 0.0f);
+		PSMTXTrans(tex.mMtx[0], HINT_ICON_WIDTH * hint.icon, 0.0f, 0.0f);
 		tex.mMtxDirty = TRUE;
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		color = 0xFFFFFF00 | (u32)(255.0f * menu->mFade);

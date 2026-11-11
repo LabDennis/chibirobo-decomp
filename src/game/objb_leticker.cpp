@@ -25,11 +25,6 @@ BOOL TurnLetickerLinkedPartAndTrackJoint(XObjLeticker* leticker, f32 angle);
 BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle);
 bool IsLetickerJointClearOfObjects(XObj* obj, HSD_JObj* jobj);
 #if !defined(VERSION_PAL)
-extern const char sLetickerEyeXZFormat[];
-extern const char sLetickerTurnAngleFormat[];
-extern const char sLetickerUninitializedMessage[];
-extern const char sLetickerLevelEntryFormat[];
-extern const char sLetickerCameraResetMessage[];
 #endif
 extern AnimSfxEvent sLetickerAnimSfxEvents[];
 extern const f32 sLetickerLeftTurnSpeed, sLetickerRightTurnSpeed;
@@ -98,11 +93,11 @@ static inline bool CanTurn(CCameraActionLeticker* camera, f32 angle)
 	Vec eye;
 	camera->CalcEye(&eye, angle);
 #if !defined(VERSION_PAL)
-	OSReport(sLetickerEyeXZFormat, eye.x, eye.z);
+	OSReport("%4.2f %4.2f\n", eye.x, eye.z);
 #endif
 	if (eye.x < camera->mMinX || camera->mMaxX < eye.x || eye.z < camera->mMinZ || camera->mMaxZ < eye.z) {
 #if !defined(VERSION_PAL)
-		OSReport(sLetickerTurnAngleFormat, eye.x, eye.z, (s32)(57.295776f * camera->mTurnTo));
+		OSReport("CCameraActionLeticker::Update %4.2f %4.2f %d\n", eye.x, eye.z, (s32)(57.295776f * camera->mTurnTo));
 #endif
 		return false;
 	}
@@ -443,7 +438,8 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 		bool setHeight = count >= 4 && args[3] != 0;
 		if (mLinkedCount == 0) {
 #if !defined(VERSION_PAL)
-			OSReport(sLetickerUninitializedMessage);
+			OSReport("\x83\x8C\x83\x60\x83\x62\x83\x4A\x81\x5B\x83\x59\x82\xAA\x8F\x89\x8A\xFA\x89\xBB\x82\xB3\x82\xEA\x82\xC4\x82\xDC\x82"
+			         "\xB9\x82\xF1\n");
 #endif
 			break;
 		}
@@ -507,7 +503,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 				mLevelBySide[i] = args[i + 2];
 #if !defined(VERSION_PAL)
 			for (u32 i = 0; i < 4; ++i)
-				OSReport(sLetickerLevelEntryFormat, i, mLevelBySide[i]);
+				OSReport("m_level_table[%d]=%d\n", i, mLevelBySide[i]);
 #endif
 			break;
 		case 2:
@@ -939,7 +935,7 @@ void CCameraActionLeticker::Update(u32 step)
 void CCameraActionLeticker::vf14()
 {
 #if !defined(VERSION_PAL)
-	OSReport(sLetickerCameraResetMessage);
+	OSReport("CCameraActionLeticker::Reset\n");
 #endif
 	CCameraActionLadr::vf14();
 	mTurnTo     = 0.0f;

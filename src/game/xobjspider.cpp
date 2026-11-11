@@ -1269,8 +1269,6 @@ static inline void RetreatTarget(XObjSpider* spider)
 	spider->mTarget.z = spider->mMoveTranslate.z + 48.0f * (f32)cos(PI + spider->mDir);
 }
 
-extern "C" const f32 sSpiderCombatTurnAngle;
-
 static inline void TurnSpiderInCombat(XObjSpider* spider, u32 frames, f32 turn)
 {
 	spider->mDir += turn;
@@ -1443,10 +1441,10 @@ void XObjSpider::State4(u32 frames)
 		}
 		break;
 	case 10:
-		TurnSpiderInCombat(this, frames, -sSpiderCombatTurnAngle);
+		TurnSpiderInCombat(this, frames, -0.10471976f);
 		break;
 	case 11:
-		TurnSpiderInCombat(this, frames, sSpiderCombatTurnAngle);
+		TurnSpiderInCombat(this, frames, 0.10471976f);
 		break;
 	case 20:
 #if defined(VERSION_PAL)

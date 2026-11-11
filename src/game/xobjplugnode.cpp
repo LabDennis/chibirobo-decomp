@@ -6,7 +6,6 @@ extern "C" {
 
 extern "C" {
 // Keep the shared constant pool at its original addresses.
-extern const f32 lbl_8065D968;
 }
 
 // todo: cleanup
@@ -28,20 +27,20 @@ extern "C" void StartPlugCordNode(XObjPlugCordNode* node, XObjPlugCordPoint* poi
 	case 1:
 		node->mIndex = (s32)((u32)count - 2);
 		CopyPosition(node, &points[node->mIndex]);
-		node->mStep.Start(lbl_8065D968, sPlugCordDefaultWidth, time);
+		node->mStep.Start(0.5f, 0.2f, time);
 		node->mDir = points[node->mIndex - 1].mPos - points[node->mIndex].mPos;
 		node->mDir.Normalize();
 		node->mState    = 1;
-		node->mDistance = sPlugCordZero;
+		node->mDistance = 0.0f;
 		break;
 	case -1:
 		node->mIndex = 0;
 		CopyPosition(node, &points[node->mIndex]);
-		node->mStep.Start(lbl_8065D968, sPlugCordDefaultWidth, time);
+		node->mStep.Start(0.5f, 0.2f, time);
 		node->mDir = points[node->mIndex + 1].mPos - points[node->mIndex].mPos;
 		node->mDir.Normalize();
 		node->mState    = 1;
-		node->mDistance = sPlugCordZero;
+		node->mDistance = 0.0f;
 		break;
 	}
 }

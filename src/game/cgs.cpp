@@ -160,9 +160,6 @@ enum {
 	GX_PASSCLR  = 4,
 };
 
-extern "C" {
-}
-
 // one character's sprite and its background tile, the text draw keeps 256 of them
 struct TextChar {
 	CTexObj mTex;    // _00

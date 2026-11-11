@@ -35,7 +35,6 @@ extern "C" BOOL GetMapCameraTargetOffsetPosition(CCameraActionMap* map, CVec& ou
 extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step);
 extern "C" BOOL fn_8013C3CC(CCameraActionMap* map, f32 yaw, f32 time, f32 unused);
 extern "C" BOOL fn_8013D2DC(CCameraActionMap* map);
-extern "C" const char sMapCameraStateFormat[];
 extern "C" s32 CountMapCameraAdjacentSideIntersections(CCameraActionMap* map, CamMapEntry* entry);
 extern "C" s32 CountMapCameraEntriesInGroup(CCameraActionMap* map, s32 value);
 extern "C" s32 FindNearestMapCameraEntry(CCameraActionMap* map, const Vec& pos);
@@ -64,26 +63,9 @@ extern "C" f32 GetHorizontalDistance(const Vec* from, const Vec* to);      // ho
 extern "C" f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to); // horizontal angle
 extern "C" s32 ClassifyFloatBits(f32 value);                               // floating-point classification
 extern "C" {
-const char sTypeNameCCameraActionMap[]          = "CCameraActionMap";
-const char sMapTypeNameCInterfaceCameraAction[] = "CInterfaceCameraAction";
-const char sMapTypeNameCCameraActionAreaExM[]   = "CCameraActionAreaExM";
-
-char sMapCameraSpringDampLabel[]   = "SpringDamp";
-f32 sMapCameraSpringParameters[]   = { 0.5f, 2.5f, 4.5f };
-char sMapCameraIntersectVecLabel[] = "CalcIntersectVec";
-char sMapCameraUpdateTurnLabel[]   = "UpdateTurn";
-
-char sMapCameraResetLabel[]  = "Reset";
-char sMapCameraReset2Label[] = "Reset2";
+f32 sMapCameraSpringParameters[] = { 0.5f, 2.5f, 4.5f };
 s32 sMapCameraCollisionMode0[1];
 s32 sMapCameraCollisionMode1 = 1;
-char sMapCameraUpdateLabel[] = "Update";
-
-const void* gMapTypeInfoCInterfaceCameraAction[] = { sMapTypeNameCInterfaceCameraAction, 0 };
-const void* sMapBaseTypesCCameraActionAreaExM[]  = { gMapTypeInfoCInterfaceCameraAction, 0, 0 };
-const void* gMapTypeInfoCCameraActionAreaExM[]   = { sMapTypeNameCCameraActionAreaExM, sMapBaseTypesCCameraActionAreaExM };
-const void* sBaseTypesCCameraActionMap[]         = { gMapTypeInfoCInterfaceCameraAction, 0, gMapTypeInfoCCameraActionAreaExM, 0, 0 };
-const void* gTypeInfoCCameraActionMap[]          = { sTypeNameCCameraActionMap, sBaseTypesCCameraActionMap };
 }
 extern "C" s32 lbl_8065B348;
 extern "C" s32 lbl_8065B350;
@@ -454,11 +436,14 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 		if (ClassifyFloatBits(map->mAngle.x) == FP_NAN || ClassifyFloatBits(map->mAngle.y) == FP_NAN
 		    || ClassifyFloatBits(map->mAngle.z) == FP_NAN) {
 			OSPanic("ccameraactionmap2.cpp", 581, "%s%s",
-			        FormatToStaticBuffer(sMapCameraStateFormat, map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y,
-			                             map->mAngle.z, map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0,
-			                             lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y,
-			                             map->_F78.z, map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z,
-			                             map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
+			        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
+			                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
+			                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
+			                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z, map->mDistance,
+			                             map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0, lbl_8065B340, lbl_8065B33C,
+			                             map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z, map->_F28,
+			                             map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x, map->_F98.y,
+			                             map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
 			        "Update");
 		}
 
@@ -527,11 +512,14 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 			if (ClassifyFloatBits(map->mAngle.x) == FP_NAN || ClassifyFloatBits(map->mAngle.y) == FP_NAN
 			    || ClassifyFloatBits(map->mAngle.z) == FP_NAN) {
 				OSPanic("ccameraactionmap2.cpp", 683, "%s%s",
-				        FormatToStaticBuffer(sMapCameraStateFormat, map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y,
-				                             map->mAngle.z, map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0,
-				                             lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y,
-				                             map->_F78.z, map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z,
-				                             map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
+				        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
+				                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
+				                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
+				                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z,
+				                             map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0, lbl_8065B340,
+				                             lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z,
+				                             map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x,
+				                             map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
 				        "Update");
 			}
 			lbl_8065B344 = 0;
@@ -540,11 +528,14 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 			if (ClassifyFloatBits(map->mAngle.x) == FP_NAN || ClassifyFloatBits(map->mAngle.y) == FP_NAN
 			    || ClassifyFloatBits(map->mAngle.z) == FP_NAN) {
 				OSPanic("ccameraactionmap2.cpp", 693, "%s%s",
-				        FormatToStaticBuffer(sMapCameraStateFormat, map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y,
-				                             map->mAngle.z, map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0,
-				                             lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y,
-				                             map->_F78.z, map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z,
-				                             map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
+				        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
+				                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
+				                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
+				                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z,
+				                             map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0, lbl_8065B340,
+				                             lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z,
+				                             map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x,
+				                             map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
 				        "Update");
 			}
 			CVec target(map->_44->mMoveTranslate);
@@ -1439,11 +1430,14 @@ extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step
 			if (__fpclassifyf(map->mAngle.x) == FP_NAN || __fpclassifyf(map->mAngle.y) == FP_NAN
 			    || __fpclassifyf(map->mAngle.z) == FP_NAN) {
 				OSPanic("ccameraactionmap2.cpp", 3980, "%s%s",
-				        FormatToStaticBuffer(sMapCameraStateFormat, map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y,
-				                             map->mAngle.z, map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0,
-				                             lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y,
-				                             map->_F78.z, map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z,
-				                             map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
+				        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
+				                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
+				                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
+				                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z,
+				                             map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0, lbl_8065B340,
+				                             lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z,
+				                             map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x,
+				                             map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
 				        "UpdateTurn");
 			}
 			map->_F98 = map->mAngle;
@@ -8727,11 +8721,14 @@ extern "C" void Reset2__16CCameraActionMapFv(CCameraActionMap* map)
 	SetMapCameraAnglesFromEyeAndInterest(map);
 	if (__fpclassifyf(map->mAngle.x) == FP_NAN || __fpclassifyf(map->mAngle.y) == FP_NAN || __fpclassifyf(map->mAngle.z) == FP_NAN) {
 		OSPanic("ccameraactionmap2.cpp", 251, "%s%s",
-		        FormatToStaticBuffer(sMapCameraStateFormat, map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y,
-		                             map->mAngle.z, map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0,
-		                             lbl_8065B340, lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y,
-		                             map->_F78.z, map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x,
-		                             map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
+		        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER OP(%d)HANG(%d(%d))TGTEYE(%f, "
+		                             "%f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, "
+		                             "%f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
+		                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z, map->mDistance,
+		                             map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0, lbl_8065B340, lbl_8065B33C, map->_F68.x,
+		                             map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z, map->_F28, map->mTurnInterpolation,
+		                             map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y,
+		                             map->_FB8.z, lbl_8065B338),
 		        "Reset2");
 	}
 }

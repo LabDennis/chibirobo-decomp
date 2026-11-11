@@ -13,7 +13,6 @@ extern "C" {
 #include "game/cgame.h"
 #include "game/cgs.h"
 #include "game/cptcl.h"
-#include "game/dustdrawdefaults.h"
 #include "game/cscrn.h"
 #include "game/screenwipegeometry.h"
 #include "game/csound.h"
@@ -25,7 +24,6 @@ extern "C" {
 #include "game/menuselectionbar.h"
 #include "game/menupanelbackground.h"
 #include "game/title.h"
-#include "game/titleresources.h"
 #include "game/video.h"
 #include "game/xobjdemo.h"
 #include "game/xobjs.h"
@@ -735,13 +733,12 @@ static inline bool HasColor(CScrnColor* color)
  * @note Address: 0x8002390C
  * @note Size: 0x22C
  */
-// NONMATCHING: the quad template's address is loaded first
+// NONMATCHING: retail loads the corners' address before it tests the color
 extern "C" void DrawScreenColorOverlay(CScrnColor* color, CGs* gs)
 {
-	const WipeQuad* shape = &gScreenWipeGeometry.colorCorners;
 	if (HasColor(color)) {
-		const Vec* corners = shape->vertices;
-		WipeQuad quad      = { { corners[0], corners[1], corners[2], corners[3] } };
+		static const Vec corners[4] = { { 0, 0, 0 }, { 640, 0, 0 }, { 640, 448, 0 }, { 0, 448, 0 } };
+		WipeQuad quad               = { { corners[0], corners[1], corners[2], corners[3] } };
 		u32 packed = ((u32)color->mColor.r << 24) | ((u32)color->mColor.g << 16) | ((u32)color->mColor.b << 8) | (u32)color->mColor.a;
 		SetGsChannelEnabled(gs, 0, 0);
 		SetGsBlendMode(gs->mCurRenderMode, 1, 4, 5, 15);
@@ -931,12 +928,12 @@ void CPtclDust3::Draw(CGs* gs)
 	u32 color     = (mColor & 0xFFFFFF00) | ((u32)(s32)((f32)(mColor & 0xFF) * mAlpha) & 0xFF);
 	if (mTex != NULL) {
 		SetGsTevMode(gs->mCurTevStage, 0);
-		Vec rot = gDust3TexturedRotation;
+		Vec rot = { 0.0f, 0.0f, 0.0f };
 		rot.z   = mAngle;
 		DrawGsTexturedQuad(gs, mTex, color, color, color, color, mPos.x, mPos.y, mPos.z, width, height, rot.x, rot.y, rot.z);
 		SetGsTevMode(gs->mCurTevStage, 4);
 	} else {
-		Vec rot = gDust3CircleRotation;
+		Vec rot = { 0.0f, 0.0f, 0.0f };
 		rot.z   = mAngle;
 		DrawGsCircle(gs, 8, color, edgeColor, mPos.x, mPos.y, mPos.z, width, height, rot.x, rot.y, rot.z);
 	}
@@ -1703,12 +1700,12 @@ extern "C" void UpdateBootLogos(Logo* logo, u32 frames)
 	case 2: {
 #if defined(VERSION_PAL)
 		static const char* const suffix[] = { "_en", "_ge", "_fr", "_sp", "_it" };
-		sprintf(path, gBootLogoTexturePath, suffix[gGame.mLanguage]);
+		sprintf(path, "tpl/logo%s.tpl", suffix[gGame.mLanguage]);
 #elif defined(VERSION_US)
 		const char* suffix = "_us";
-		sprintf(path, gBootLogoTexturePath, suffix);
+		sprintf(path, "tpl/logo%s.tpl", suffix);
 #else
-		const char* path = gBootLogoTexturePath;
+		const char* path = "tpl/logo.tpl";
 #endif
 		if (!logo->mTpl.ReadEx(path, 0, 0)) {
 			break;
@@ -2031,6 +2028,20 @@ BOOL XObjDemo::LoadFromPlacement(const CoordInfo& info)
 	}
 	return FALSE;
 }
+
+// the title screen's background and text colors, the logo's textures and which of each is in use
+const TitlePaletteEntry gTitlePalette[] = {
+	{ { 0, 0, 128, 0 }, {} },     { { 128, 0, 0, 0 }, {} },     { { 0, 128, 0, 0 }, {} },
+	{ { 200, 200, 200, 0 }, {} }, { { 128, 128, 128, 0 }, {} }, { { 0, 207, 233, 0 }, {} },
+	{ { 255, 220, 133, 0 }, {} }, { { 255, 220, 0, 0 }, {} },   { {}, { 255, 255, 255, 0 } },
+};
+#if defined(VERSION_JP)
+const s32 gTitleLogoTextures[3] = { 0, 3, 4 };
+#else
+const s32 gTitleLogoTextures[3] = {};
+#endif
+s32 gTitlePaletteIndex = 3;
+s32 gTitleLogoIndex    = 1;
 
 /**
  * @note Address: 0x800284E0
@@ -4194,10 +4205,10 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		break;
 	case 5: {
 #if defined(VERSION_JP)
-		const char* path = gTitleTexturePath;
+		const char* path = "tpl/title.tpl";
 #else
 		char path[64];
-		sprintf(path, gTitleTexturePath, gTitleTextureSuffixes[gGame.mLanguage]);
+		sprintf(path, "tpl/title%s.tpl", gTitleTextureSuffixes[gGame.mLanguage]);
 #endif
 		if (!title->mTpl.ReadEx(path, 0, 0))
 			break;
@@ -4218,7 +4229,11 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, color.r, color.g, color.b, 0, .5f);
 		title->mDemo.mState = 1;
 		title->mDemo.mLoop  = TRUE;
-		Vec pos             = gTitleDemoStartPosition;
+#if defined(VERSION_PAL)
+		Vec pos = { 0.0f, 4.0f, 0.0f };
+#else
+		Vec pos = { 0.0f, 8.0f, 0.0f };
+#endif
 		title->mDemo.SetPos(pos, 0);
 		title->mDemo.SetAnim(0, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 		// The first animation frame runs immediately after loading.

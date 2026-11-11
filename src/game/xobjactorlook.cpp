@@ -2,11 +2,6 @@
 
 extern "C" {
 extern Vec sActorHitPositionZero;
-extern const f32 sActorZero;
-extern const f32 sActorMinHeadPitch;
-extern const f32 sActorMaxHeadPitch;
-extern const f32 sActorMinHeadYaw;
-extern const f32 sActorMaxHeadYaw;
 }
 
 /**
@@ -84,7 +79,7 @@ extern "C" void vfAC__9XObjActorFv(XObjActor* actor)
 // the head's turn limits
 f32 XObjActor::GetMinHeadPitch()
 {
-	return sActorMinHeadPitch;
+	return -0.34906584f;
 }
 
 /**
@@ -93,7 +88,7 @@ f32 XObjActor::GetMinHeadPitch()
  */
 f32 XObjActor::GetMaxHeadPitch()
 {
-	return sActorMaxHeadPitch;
+	return 0.34906584f;
 }
 
 /**
@@ -102,7 +97,7 @@ f32 XObjActor::GetMaxHeadPitch()
  */
 f32 XObjActor::GetMinHeadYaw()
 {
-	return sActorMinHeadYaw;
+	return -1.3962634f;
 }
 
 /**
@@ -111,7 +106,7 @@ f32 XObjActor::GetMinHeadYaw()
  */
 f32 XObjActor::GetMaxHeadYaw()
 {
-	return sActorMaxHeadYaw;
+	return 1.3962634f;
 }
 
 /**
@@ -166,7 +161,7 @@ extern "C" void ResetActorLook(CXObj* object, f32 rate)
 	actor->_998.mFlags |= 0x80;
 	actor->mLookMode  = 0;
 	actor->mLookRate  = rate;
-	actor->mLookAngle = sActorZero;
+	actor->mLookAngle = 0.0f;
 	actor->_998.mFlags &= ~0x400;
-	actor->mHeadPitch = sActorZero;
+	actor->mHeadPitch = 0.0f;
 }

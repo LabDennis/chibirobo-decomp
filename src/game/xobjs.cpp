@@ -8,15 +8,6 @@
 
 extern "C" void ReadAll__5XOBJSFv(XOBJS* list);
 
-extern "C" {
-extern const char sPathXobjsCpp[];
-extern const char sObjectReaderFullMessage[];
-extern char sObjectReadStartName[];
-extern char sObjectReadAllName[8];
-extern const char sObjectPoolCapacityFormat[];
-extern const char sObjectReaderErrorFormat[5];
-}
-
 inline BOOL XObjRead::ReadStart(void* obj, void* info)
 {
 	for (s32 i = 0; i < 8; i++) {
@@ -27,7 +18,7 @@ inline BOOL XObjRead::ReadStart(void* obj, void* info)
 			return TRUE;
 		}
 	}
-	OSPanic(sPathXobjsCpp, 356, sObjectReaderErrorFormat, sObjectReaderFullMessage, sObjectReadStartName);
+	OSPanic(__FILE__, 356, "%s%s", "no more space for XObjRead thread!\n", __FUNCTION__);
 	return FALSE;
 }
 
@@ -155,19 +146,9 @@ void XObjRead::RunRequestLoop()
  * @note Address: 0x80132468
  * @note Size: 0x9C
  */
-// out of line XObjRead::ReadStart
 BOOL XObjRead::QueueRead(void* object, void* info)
 {
-	for (s32 i = 0; i < 8; i++) {
-		if (mReqs[i].mObj == NULL) {
-			mReqs[i].mObj  = object;
-			mReqs[i].mInfo = info;
-			OSSendMessage(&mQueue.mQueue, &mReqs[i], OS_MESSAGE_BLOCK);
-			return TRUE;
-		}
-	}
-	OSPanic(sPathXobjsCpp, 356, sObjectReaderErrorFormat, sObjectReaderFullMessage, sObjectReadStartName);
-	return FALSE;
+	return ReadStart(object, info);
 }
 
 // XObjRead::QueueRead
@@ -484,8 +465,8 @@ inline void XOBJS::ReadAll()
 		if (mObjects[i] == NULL) {
 			XObjPool& pool = mPools[GetObjData(&info)->_14];
 			if (pool.mUsed >= pool.mCount) {
-				OSPanic(sPathXobjsCpp, 161, sObjectReaderErrorFormat,
-				        FormatToStaticBuffer(sObjectPoolCapacityFormat, pool.mName, pool.mUsed, pool.mCount), sObjectReadAllName);
+				OSPanic(__FILE__, 161, "%s%s", FormatToStaticBuffer("%s:: cnt=%d, max=%d\n", pool.mName, pool.mUsed, pool.mCount),
+				        __FUNCTION__);
 			}
 			mObjects[i]             = pool.Get(pool.mUsed);
 			mObjects[i]->mPoolIndex = pool.mUsed;

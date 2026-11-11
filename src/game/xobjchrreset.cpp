@@ -1,11 +1,5 @@
-extern "C" {
-extern const double sPlayerSignedIntToDoubleBias = 4503601774854144.0;
-extern const char sPlayerJObjFile[]              = "jobj.h";
-extern const char sPlayerJObjCondition[]         = "jobj";
-}
-
 // These joint diagnostics are shared by the player routines in the retail object.
-#define JOBJ_H_ASSERT_JOINT(line, joint) ((joint) ? (void)0 : __assert(sPlayerJObjFile, line, sPlayerJObjCondition))
+#define JOBJ_H_ASSERT_JOINT(line, joint) ((joint) ? (void)0 : __assert("jobj.h", line, "jobj"))
 #include "game/xchr.h"
 #include "game/evt.h"
 

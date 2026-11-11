@@ -12,19 +12,10 @@ extern "C" {
 #include "game/cgs.h"
 }
 
-extern "C" {
-extern const char sAreaCameraSourceFile[];
-extern const char sAreaCameraSetEyeError[];
-extern const char sAreaCameraUnknownTarget[];
-extern const char sAreaCameraSelectionFormat[];
-extern const char sAreaCameraOverlayTitle[];
-extern char sAreaCameraSetEyeLabel[];
-}
-
 inline void CCameraActionArea::SetEye_I(s32 mode, Vec from, Vec to, f32 time)
 {
 	if (mode == 5) {
-		OSPanic(sAreaCameraSourceFile, 660, "%s%s", sAreaCameraSetEyeError, sAreaCameraSetEyeLabel);
+		OSPanic("ccameraactionarea.cpp", 660, "%s%s", "error ! : CCameraActionArea::SetEye_I()\n", "SetEye_I");
 		return;
 	}
 	CVec zero(0.0f, 0.0f, 0.0f); // retail builds this and never reads it
@@ -729,7 +720,7 @@ extern "C" void SetAreaCameraInterestTarget(CCameraActionArea* area, s32 mode, X
 {
 	if (target == NULL) {
 #if !defined(VERSION_PAL)
-		OSReport(sAreaCameraUnknownTarget);
+		OSReport("SetInte_I( unknown data )\n");
 #endif
 		return;
 	}
@@ -1597,9 +1588,9 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
  */
 extern "C" void vf24__17CCameraActionAreaFv(CCameraActionArea* area)
 {
-	DrawGsStrokeTextFormat(&gGame.mGs, -1, sAreaCameraSelectionFormat, 324.0f, 298.0f, 0.0f, 12.0f, 12.0f, gCameraAreaState._0C, area->_4C,
-	                       gCameraAreaState._04);
-	DrawGsStrokeTextFormat(&gGame.mGs, -1, sAreaCameraOverlayTitle, 324.0f, 310.0f, 0.0f, 12.0f, 12.0f);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,%3d)(%3d)\n", 324.0f, 298.0f, 0.0f, 12.0f, 12.0f, gCameraAreaState._0C,
+	                       area->_4C, gCameraAreaState._04);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0ACAREA\n", 324.0f, 310.0f, 0.0f, 12.0f, 12.0f);
 }
 
 /**

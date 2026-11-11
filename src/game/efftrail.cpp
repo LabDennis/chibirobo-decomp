@@ -448,13 +448,6 @@ static inline void DrawOXModel(XObj& model, u32 diffuse, u32 ambient, f32& alpha
 	BeginGsCamera(&gGame);
 }
 
-struct OXDrawData {
-	u8 prefix[0x88];
-	OXJointPath path;
-	Vec offset;
-};
-extern "C" const OXDrawData gOXMenuDrawData;
-
 extern "C" void DrawOXMenu(OXMenu* menu)
 {
 	if (!(menu->mFade > 0.0f))
@@ -465,8 +458,8 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		screenY = 418.0f;
 	} else {
 		XObj* chr        = menu->mChr;
-		Vec offset       = gOXMenuDrawData.offset;
-		OXJointPath path = gOXMenuDrawData.path;
+		Vec offset       = { 0.0f, 0.0f, 0.0f };
+		OXJointPath path = { { 0, 1, 0, 1, 2, 0, 1 } };
 		offset.y         = GetEventJointWorldPosition(chr, 7, path.ids).y - chr->mMoveTranslate.y;
 		Vec anchor       = offset;
 		menu->mChr->ProjectOffsetToScreen(&anchor, &screenX, &screenY, NULL, NULL);

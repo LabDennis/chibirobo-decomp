@@ -326,13 +326,13 @@ inline void XSound::registerName(const char* name, s32 bank)
 			mStageRequests.entries[i].mName = name;
 			mStageRequests.entries[i].mBank = bank;
 #if !defined(VERSION_PAL)
-			OSReport(sSoundRegisterFormat, name);
+			OSReport("Register:%s\n", name);
 #endif
 			return;
 		}
 	}
 #if !defined(VERSION_PAL)
-	OSReport(sSoundLoadQueueFull);
+	OSReport("Ssm::Load xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
 #endif
 }
 
@@ -1641,7 +1641,7 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 		for (s32 i = 0; i < 16; i++) {
 			if (sound->mStageRequests.entries[i].mName != NULL && !sound->mStageRequests.entries[i].mLoaded) {
 #if !defined(VERSION_PAL)
-				OSReport(sSoundBankLoadFormat, sound->mStageRequests.entries[i].mName);
+				OSReport("HSD_AudioSFXLoad::%s\n", sound->mStageRequests.entries[i].mName);
 #endif
 				sound->mStageRequests.entries[i].mResult
 				    = HSD_SynthSFXLoad(sound->mStageRequests.entries[i].mName, sound->mStageRequests.entries[i].mBank, 0, 0);

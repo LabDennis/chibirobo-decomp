@@ -1,9 +1,6 @@
 #include "game/xobjspiderboss.h"
 #include "game/video.h"
 
-// MWCC pools the six reset vectors immediately after these templates.
-extern "C" const Vec sSpiderBossVectorTemplates[] = { { 1, 1, 1 }, {}, {}, { 1, 1, 1 }, {}, {} };
-
 /**
  * @note Address: 0x8010660C
  * @note Size: 0x2C8

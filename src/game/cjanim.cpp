@@ -399,12 +399,10 @@ static inline void CountCrossedEdge(Vec& from, Vec& to, Vec* a, Vec* b, s32& out
 	}
 }
 
-extern "C" const f32 sXObjRadiansPerDegree;
-
 // Polygon rotation rounds to single precision before adding the object yaw.
 static inline f32 FloorRotationRadians(const s32& degrees)
 {
-	return sXObjRadiansPerDegree * degrees;
+	return 0.017453292f * degrees;
 }
 
 BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
@@ -523,8 +521,6 @@ CVec CVec::operator*(Vec other) const
 	return result;
 }
 
-extern "C" const Vec gDefaultFloorContactOffset;
-
 /**
  * @note Address: 0x8008C274
  * @note Size: 0x558
@@ -534,7 +530,8 @@ extern "C" CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offs
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return object->mMoveTranslate;
 
-	Vec displacement       = offset ? Vec(*offset) : Vec(gDefaultFloorContactOffset);
+	Vec none               = { 0.0f, 0.0f, 0.0f };
+	Vec displacement       = offset ? Vec(*offset) : Vec(none);
 	Vec position           = object->mMoveTranslate + displacement;
 	Vec center             = object->mMoveScale * (object->_794 + ReadObjectFloorOffset(object->mFloors[index]));
 	Vec extent             = object->mMoveScale * ReadObjectFloorExtent(object->mFloors[index]);

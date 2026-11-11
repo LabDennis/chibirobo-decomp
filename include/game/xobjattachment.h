@@ -203,8 +203,6 @@ public:
 };
 
 extern "C" {
-extern const f32 sPlugCordDefaultWidth;
-extern const f32 sPlugCordZero;
 CVec GetPlugCordPointPosition(const XObjPlugCord* cord, s32 index);
 void GetPlayerPlugCordAnchorTransform(void*, Vec* position, Vec* rotation, Vec* scale);
 void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames);

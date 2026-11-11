@@ -66,20 +66,14 @@ static inline bool IsJapanese()
 #endif
 }
 
-extern "C" {
-extern char sMainMenuMemoryCardLabel[12];
-extern const char sCardTestLoadLabel[], sCardTestSaveLabel[], sCardTestDeleteLabel[];
-extern char sMenuRowSeparator[];
-}
-
 // the fixed lines of the pause menu, MemCard's ? becomes the slot letter
 #if defined(VERSION_JP)
 enum { MainMemCardAction = 10, MainSelectStageAction = 7, MainPCAction = 8, MainSaveAction = 12 };
 
 static MenuMainItem sMainLines[] = {
 	{ "\x83\x58\x83\x65\x81\x5B\x83\x5E\x83\x58", 1 },
-	{ sMenuRowSeparator, -1 },
-	{ sMainMenuMemoryCardLabel, MainMemCardAction },
+	{ "\x01", -1 },
+	{ "\x83\x81\x83\x82\x83\x4A (?)", MainMemCardAction },
 	{ "\x83\x7D\x83\x62\x83\x76\x91\x49\x91\xF0", MainSelectStageAction },
 	{ NULL, 0 },
 };
@@ -87,11 +81,7 @@ static MenuMainItem sMainLines[] = {
 enum { MainMemCardAction = 6, MainSelectStageAction = 5, MainPCAction = 3, MainSaveAction = 4 };
 
 static MenuMainItem sMainLines[] = {
-	{ "StatusMenu", 1 },
-	{ sMenuRowSeparator, -1 },
-	{ sMainMenuMemoryCardLabel, MainMemCardAction },
-	{ "SelectStage", MainSelectStageAction },
-	{ NULL, 0 },
+	{ "StatusMenu", 1 }, { "\x01", -1 }, { "MemCard(?)", MainMemCardAction }, { "SelectStage", MainSelectStageAction }, { NULL, 0 },
 };
 #endif
 
@@ -99,8 +89,12 @@ static MenuMainItem sMainLines[] = {
 static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
 
 // the card test popup's rows
+#if defined(VERSION_JP)
 static MenuMCTestAction sMCTestSubLines[]
-    = { { sCardTestLoadLabel, 4 }, { sCardTestSaveLabel, 2 }, { sMenuRowSeparator, -1 }, { sCardTestDeleteLabel, 6 } };
+    = { { "\x83\x8D\x81\x5B\x83\x68", 4 }, { "\x83\x5A\x81\x5B\x83\x75", 2 }, { "\x01", -1 }, { "\x8D\xED\x8F\x9C", 6 } };
+#else
+static MenuMCTestAction sMCTestSubLines[] = { { "load", 4 }, { "save", 2 }, { "\x01", -1 }, { "delete", 6 } };
+#endif
 
 // the file's statics in .bss order, what the first ones hold isn't known yet
 u8 lbl_80361F68[0xD4];

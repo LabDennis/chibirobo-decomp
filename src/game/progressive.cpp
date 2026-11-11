@@ -52,7 +52,7 @@ extern "C" void LoadBootConfig()
 
 	CFileText file;
 	file.mPos  = 0;
-	s32 result = file.Read(sBootConfigPath, 0, 0);
+	s32 result = file.Read("/qp.ini", 0, 0);
 	if (result == 0) {
 		char line[256];
 		BOOL restricted = FALSE;
@@ -62,12 +62,12 @@ extern "C" void LoadBootConfig()
 					*p = 0;
 					break;
 				}
-			char* key = strtok(line, sBootConfigDelimiters);
+			char* key = strtok(line, " \t,=");
 			if (!key)
 				continue;
-			if (strcmp(key, sBootConfigRestrictionMarker) == 0)
+			if (strcmp(key, "&") == 0)
 				restricted = TRUE;
-			char* text = strtok(NULL, sBootConfigDelimiters);
+			char* text = strtok(NULL, " \t,=");
 			if (!text)
 				continue;
 			for (s32 i = 0; gBootConfigEntries[i].name; ++i) {
@@ -97,7 +97,7 @@ extern "C" void LoadBootConfig()
 				case BootCrosshair: {
 					flags |= entry->value;
 					s32 x = atoi(text);
-					text  = strtok(NULL, sBootConfigDelimiters);
+					text  = strtok(NULL, " \t,=");
 					if (text) {
 						gCmdLineArgs.mCrosshairX = x;
 						gCmdLineArgs.mCrosshairY = atoi(text);

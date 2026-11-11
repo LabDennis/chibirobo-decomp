@@ -22,7 +22,6 @@
 #define TIMER_MAX ((s32)((u32)TIMER_RATE * 6000U - 1U))
 
 extern "C" {
-#include "game/hudtransformdefaults.inc"
 u16 GXGetTexObjWidth(const GXTexObj* obj);
 u16 GXGetTexObjHeight(const GXTexObj* obj);
 void PSMTXTrans(Mtx m, f32 x, f32 y, f32 z);

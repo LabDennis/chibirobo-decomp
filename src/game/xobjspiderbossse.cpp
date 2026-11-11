@@ -3,12 +3,6 @@
 #include "game/infoscrn.h"
 #include "game/hsd_cobj.h"
 
-extern "C" {
-extern const char sSpiderBossAObjFile[7];
-extern const char sSpiderBossAObjCondition[5];
-extern const f32 sSpiderBossZero;
-}
-
 /**
  * @note Address: 0x801002DC
  * @note Size: 0x148
@@ -20,7 +14,7 @@ void XObjSpiderBoss::UpdateAnimationSounds()
 			if (!InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 				s32 id         = (mSpiderStatus.mFlags & 0x40000000) ? mAltAnimId : mAnimId;
 				HSD_AObj* aobj = GetAObj(mJObj);
-				f32 frame = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj, sSpiderBossAObjFile, sSpiderBossAObjCondition) : sSpiderBossZero;
+				f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj, "aobj.h", "aobj") : 0.0f;
 				mAnimSfx.Update(id, frame, 255);
 			}
 		}

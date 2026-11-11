@@ -1,7 +1,6 @@
 #include "game/cobj.h"
 
 extern "C" {
-extern const f32 gGameFloatZero;
 extern void* __vt__9CXObjIntp[];
 extern void* __vt__5CJObj[];
 extern void* __vt__4CVec[];
@@ -25,7 +24,7 @@ extern "C" CXObjIntp* __ct__9CXObjIntpFv(CXObjIntp* obj)
 	*(void***)((u8*)&obj->mIntp.mRotate + 0xC)    = __vt__4CVec;
 	*(void***)((u8*)&obj->mIntp.mScale + 0xC)     = __vt__4CVec;
 	obj->mIntp.mJObj                              = NULL;
-	const f32 zero                                = gGameFloatZero;
+	const f32 zero                                = 0.0f;
 	obj->mIntp.mTranslate.x                       = zero;
 	obj->mIntp.mTranslate.y                       = zero;
 	obj->mIntp.mTranslate.z                       = zero;
@@ -50,7 +49,7 @@ extern "C" CXObj* __ct__5CXObjFv(CXObj* obj)
 	*(void***)((u8*)&obj->mRotate + 0xC)                    = __vt__4CVec;
 	*(void***)((u8*)&obj->mScale + 0xC)                     = __vt__4CVec;
 	obj->mJObj                                              = NULL;
-	const f32 zero                                          = gGameFloatZero;
+	const f32 zero                                          = 0.0f;
 	obj->mTranslate.x                                       = zero;
 	obj->mTranslate.y                                       = zero;
 	obj->mTranslate.z                                       = zero;

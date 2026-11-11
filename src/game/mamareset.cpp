@@ -3,7 +3,6 @@
 
 extern "C" {
 extern XObjActorMama::StateFunc sMamaIdleState;
-extern const float sMamaZero;
 }
 
 /**
@@ -21,9 +20,9 @@ void XObjActorMama::ResetActorState()
 	}
 	_998.mFlags = 0;
 	_C8C.mFlags = 0;
-	_980        = sMamaZero;
-	_984        = sMamaZero;
-	_988        = sMamaZero;
+	_980        = 0.0f;
+	_984        = 0.0f;
+	_988        = 0.0f;
 	_C84        = _988;
 	_C88        = 0;
 	mState      = sMamaIdleState;

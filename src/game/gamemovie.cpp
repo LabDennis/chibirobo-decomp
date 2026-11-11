@@ -6,10 +6,6 @@ extern "C" {
 void* UpdateMovie(void* arg);
 extern CThread gMovieUpdateThread;
 extern u8 gMovieUpdateThreadStack[0x1000];
-extern const char sPathGameCpp[];
-extern const char sMoviePlaybackError[];
-extern const char sMoviePanicFormat[5];
-extern const char sMovieUpdateName[];
 }
 
 #if defined(VERSION_JP)
@@ -62,8 +58,7 @@ extern "C" void* UpdateMovie(void* arg)
 			result = movie->Update();
 			if (result < 0) {
 				movie->Stop();
-				OSPanic(sPathGameCpp, MovieErrorLine, sMoviePanicFormat, FormatToStaticBuffer(sMoviePlaybackError, result),
-				        sMovieUpdateName);
+				OSPanic("game.cpp", MovieErrorLine, "%s%s", FormatToStaticBuffer("error on play movie! - %d\n", result), __FUNCTION__);
 			}
 		}
 	} while (movie->mState != 0);

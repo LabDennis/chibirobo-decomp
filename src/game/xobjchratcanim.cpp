@@ -1,6 +1,9 @@
 #include "game/xchr.h"
 
-extern "C" const char* gAttachmentAnimationPaths[];
+// the animation file of each attachment
+const char* gAttachmentAnimationPaths[] = {
+	NULL, "cb_robo_6.dat", "cb_robo_7.dat", "cb_robo_8.dat", "cb_robo_9.dat", "cb_robo_10.dat", "cb_robo_11.dat", "cb_robo_12.dat", NULL,
+};
 
 /**
  * @note Address: 0x800B9758

@@ -45,17 +45,15 @@ extern s32 gEventVariables[]; // the script's variables
 
 s32 gSpiderBossVolleySlot;
 s32 gActor3Kind15ActivationCounter;
-extern const f32 gActor3DegreesToRadians;
 }
 
 static inline Vec ActorPlacementRotation(const XObjActor3* actor)
 {
-	Vec rot                    = gActor3PlacementRotation;
-	const UnkStageObj* p       = actor->mCoord._00;
-	const f32 degreesToRadians = gActor3DegreesToRadians;
-	rot.x                      = degreesToRadians * p->_10[0];
-	rot.y                      = degreesToRadians * p->_10[1];
-	rot.z                      = degreesToRadians * p->_10[2];
+	Vec rot              = gActor3PlacementRotation;
+	const UnkStageObj* p = actor->mCoord._00;
+	rot.x                = DEG2RAD * p->_10[0];
+	rot.y                = DEG2RAD * p->_10[1];
+	rot.z                = DEG2RAD * p->_10[2];
 	return rot;
 }
 

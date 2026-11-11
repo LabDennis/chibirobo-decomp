@@ -13,7 +13,6 @@ struct TitlePaletteEntry {
 extern "C" {
 extern const TitlePaletteEntry gTitlePalette[];
 extern const s32 gTitleLogoTextures[3];
-extern const Vec gTitleDemoStartPosition;
 extern s32 gTitlePaletteIndex, gTitleLogoIndex;
 }
 

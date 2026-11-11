@@ -16,7 +16,6 @@ extern "C" {
 #include "game/ut.h"
 #include <stdio.h>
 #include "game/evtqueue.h"
-#include "game/eventhudcommands.h"
 #include "game/msg.h"
 #include "game/gmath.h"
 #include "game/globals.h"
@@ -34,21 +33,8 @@ extern "C" {
 #include "game/cmovie.h"
 
 extern "C" {
-#include "game/eventconstantpool.inc"
-extern char sEvtCommandBORNName[];
-extern char sEvtCommandCALLName[];
-extern char sEvtCommandCAMERAName[];
-extern char sEvtCommandDIRName[];
-extern char sEvtCommandLIGHTName[];
-extern char sEvtCommandPTCLName[];
-extern char sEvtCommandREADName[];
-extern char sEvtCommandSFXName[];
-extern char sEvtCommandWAITName[];
 extern GXColor sEvtWindowColorTemplate;
 extern GXColor sEvtWindowDefaultColor;
-extern char sEvtEvalCmpName[8];
-extern char sEvtEvalSetName[8];
-extern char sEvtUpdateName[8];
 }
 
 class CJObj;
@@ -2522,9 +2508,9 @@ extern "C" s32 CEvt__cmd_SFX(CEvt* evt)
 		break;
 	default:
 #if defined(VERSION_PAL)
-		OSPanic("evt.cpp", 3820, "%s%s", FormatToStaticBuffer(sEvtSfxUnresolved, sfx, type), sEvtCommandSFXName);
+		OSPanic(__FILE__, 3820, "%s%s", FormatToStaticBuffer("sfx(%d,%d) - unresolved!\n", sfx, type), __FUNCTION__);
 #else
-		OSPanic("evt.cpp", 3809, "%s%s", FormatToStaticBuffer(sEvtSfxUnresolved, sfx, type), sEvtCommandSFXName);
+		OSPanic(__FILE__, 3809, "%s%s", FormatToStaticBuffer("sfx(%d,%d) - unresolved!\n", sfx, type), __FUNCTION__);
 #endif
 		break;
 	}
@@ -3244,7 +3230,7 @@ extern "C" s32 CEvt__cmd_PTCL(CEvt* evt)
 			rotation.y   = DEG2RAD * angle;
 			(&gGame.mParticle)->CreateSRT(code, 1, translate, scale, rotation, TRUE);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtParticleObjectKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("ptcl(..., @OBJ, %d, ...) obj(%d) killed!", id, id));
 		}
 	} else if (type == EVT_ATOM_LEAD) {
 		s16 id    = CEvt_Evaluate(evt);
@@ -3258,11 +3244,11 @@ extern "C" s32 CEvt__cmd_PTCL(CEvt* evt)
 		}
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL) {
-				CEvt_Warn(FormatToStaticBuffer(sEvtParticleLeadCollision, code, id, id));
+				CEvt_Warn(FormatToStaticBuffer("ptcl(%d, @LEAD, %d, ...) ... obj(%d) is collision!\n", code, id, id));
 			}
 			(&gGame.mParticle)->Create(code, 0, GetJointByPath(obj->mJObj, path, depth), TRUE);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtParticleLeadKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("ptcl(..., @LEAD, %d, ...) obj(%d) killed!", id, id));
 		}
 		for (s32 i = 0; i < depth; i++) { }
 	} else if (type == EVT_ATOM_KILL) {
@@ -3273,7 +3259,7 @@ extern "C" s32 CEvt__cmd_PTCL(CEvt* evt)
 #else
 		const s32 line = 3304;
 #endif
-		OSPanic("evt.cpp", line, "%s%s", FormatToStaticBuffer(sEvtParticleInvalidType, type), sEvtCommandPTCLName);
+		OSPanic("evt.cpp", line, "%s%s", FormatToStaticBuffer("ptcl(...) - invalid type - %d!\n", type), "_cmd_PTCL");
 	}
 	return 0;
 }
@@ -3993,13 +3979,14 @@ extern "C" s32 CEvt__cmd_SCALE(CEvt* evt, u8 cmd)
 			UpdateObjectFloorHeights(obj);
 			UpdateObjectFloorXZExtent(obj);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtScaleKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("scale(%d, ...) obj(%d) killed!", id, id));
 		}
 	} else {
 		f32 time = CEvt_Evaluate(evt) / 100.0f;
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL) {
-				CEvt_Warn(FormatToStaticBuffer(sEvtMscaleCollision, id, (s32)(100.0f * x), (s32)(100.0f * y), (s32)(100.0f * z), id));
+				CEvt_Warn(FormatToStaticBuffer("mscale(%d, %d,%d,%d) ... obj(%d) is collision!", id, (s32)(100.0f * x), (s32)(100.0f * y),
+				                               (s32)(100.0f * z), id));
 			}
 			if (time == 0.0f) {
 				obj->SetScale(x, y, z, 0);
@@ -4018,7 +4005,7 @@ extern "C" s32 CEvt__cmd_SCALE(CEvt* evt, u8 cmd)
 				obj->mMoveScale.mSpeed.Set(step);
 			}
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtMscaleKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("mscale(%d, ...) obj(%d) killed!", id, id));
 		}
 	}
 	return 0;
@@ -4496,7 +4483,7 @@ extern "C" s32 CEvt__cmd_READ(CEvt* evt)
 		char* path = (char*)CEvt_Evaluate(evt);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL) {
-				CEvt_Warn(FormatToStaticBuffer(sEvtReadAnimCollision, id, path, id));
+				CEvt_Warn(FormatToStaticBuffer("read(@ANIM, %d, %s) ... obj(%d) is collision!", id, path, id));
 			}
 			if (obj->mStatus.mFlags & 0x0008000000000000) {
 				HSD_AObj* anim = GetAObj(obj->mJObj);
@@ -4506,7 +4493,7 @@ extern "C" s32 CEvt__cmd_READ(CEvt* evt)
 			}
 			QueueObjectAnimationRead(obj, path);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtReadAnimKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("read(@ANIM, %d, ...) obj(%d) killed!", id, id));
 		}
 		break;
 	}
@@ -4525,7 +4512,7 @@ extern "C" s32 CEvt__cmd_READ(CEvt* evt)
 #else
 		const s32 line = 3368;
 #endif
-		OSPanic("evt.cpp", line, "%s%s", FormatToStaticBuffer(sEvtReadInvalidType, type), sEvtCommandREADName);
+		OSPanic("evt.cpp", line, "%s%s", FormatToStaticBuffer("read(...) - invalid type - %d!\n", type), "_cmd_READ");
 		break;
 	}
 	return 0;
@@ -4597,7 +4584,7 @@ extern "C" s32 CEvt__cmd_WIN(CEvt* evt)
 				pos->offset.z       = z;
 			}
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtWinObjectKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("win(@OBJ, %d, ...) obj(%d) killed!", id, id));
 		}
 		break;
 	}
@@ -4677,7 +4664,7 @@ extern "C" s32 CEvt__cmd_POS(CEvt* evt)
 			CancelPlayerPushAction(player + PLAYER_BE8);
 		}
 	} else {
-		CEvt_Warn(FormatToStaticBuffer(sEvtPosKilled, id, id));
+		CEvt_Warn(FormatToStaticBuffer("pos(%d, ...) obj(%d) killed!", id, id));
 	}
 	return 0;
 }
@@ -5146,8 +5133,8 @@ extern "C" s32 CEvt__cmd_MOVETO(CEvt* evt)
 	s16 dir   = CEvt_Evaluate(evt);
 	if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 		if (obj->mJObj == NULL) {
-			CEvt_Warn(FormatToStaticBuffer(sEvtMoveToCollision, id, (s32)(x * 100.0f), (s32)(y * 100.0f), (s32)(z * 100.0f),
-			                               (s32)(time * 100.0f), anim, dir, id));
+			CEvt_Warn(FormatToStaticBuffer("moveto(%d, %d,%d,%d, %d, %d, %d) ... obj(%d) is collision!", id, (s32)(x * 100.0f),
+			                               (s32)(y * 100.0f), (s32)(z * 100.0f), (s32)(time * 100.0f), anim, dir, id));
 		}
 		u8* player = (u8*)gGame.GetPlayer();
 		if (obj == (XObj*)player) {
@@ -5197,7 +5184,7 @@ extern "C" s32 CEvt__cmd_MOVETO(CEvt* evt)
 			}
 		}
 	} else if (obj == NULL || !(obj->mStatus.mFlags & 1)) {
-		CEvt_Warn(FormatToStaticBuffer(sEvtMoveToKilled, id, id));
+		CEvt_Warn(FormatToStaticBuffer("moveto(%d, ...) obj(%d) killed!", id, id));
 	}
 	return 0;
 }
@@ -5729,7 +5716,8 @@ extern "C" s32 CEvt__cmd_MOVE(CEvt* evt)
 	if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 		if (obj->mJObj == NULL) {
 			// retail's format says %d but passes a float
-			CEvt_Warn(FormatToStaticBuffer(sEvtMoveCollision, id, distance, (s32)(time * 100.0f), anim, dir, id));
+			CEvt_Warn(FormatToStaticBuffer("move(%d, %d, %d, %d, %d) ... obj(%d) is collision!", id, distance, (s32)(time * 100.0f), anim,
+			                               dir, id));
 		}
 		u8* player = (u8*)gGame.GetPlayer();
 		if (obj == (XObj*)player) {
@@ -5764,7 +5752,7 @@ extern "C" s32 CEvt__cmd_MOVE(CEvt* evt)
 			obj->UpdateAnim(1);
 		}
 	} else if (obj == NULL || !(obj->mStatus.mFlags & 1)) {
-		CEvt_Warn(FormatToStaticBuffer(sEvtMoveKilled, id, id));
+		CEvt_Warn(FormatToStaticBuffer("move(%d, ...) obj(%d) killed!", id, id));
 	}
 	return 0;
 }
@@ -6330,9 +6318,9 @@ extern "C" s32 CEvt__cmd_LIGHT(CEvt* evt)
 	}
 	default:
 #if defined(VERSION_PAL)
-		OSPanic("evt.cpp", 2846, "%s%s", FormatToStaticBuffer(sEvtLightUnresolved, index, type), sEvtCommandLIGHTName);
+		OSPanic(__FILE__, 2846, "%s%s", FormatToStaticBuffer("light(%d, %d,...) - unresolved!\n", index, type), __FUNCTION__);
 #else
-		OSPanic("evt.cpp", 2842, "%s%s", FormatToStaticBuffer(sEvtLightUnresolved, index, type), sEvtCommandLIGHTName);
+		OSPanic(__FILE__, 2842, "%s%s", FormatToStaticBuffer("light(%d, %d,...) - unresolved!\n", index, type), __FUNCTION__);
 #endif
 		break;
 	}
@@ -6351,7 +6339,7 @@ extern "C" s32 CEvt__cmd_KILL(CEvt* evt)
 		XObj* held = *(XObj**)((u8*)gGame.GetPlayer() + PLAYER_HELD_OBJ);
 		if (held != NULL && obj == held && (obj->mStatus.mFlags & 0x0000400000000000)) {
 			// chibi is carrying it, can't kill that
-			CEvt_Warn(FormatToStaticBuffer(sEvtKillLifted, id, id));
+			CEvt_Warn(FormatToStaticBuffer("kill(%d) ... obj(%d) lifted!", id, id));
 		} else {
 			obj->Release();
 			CEvt_ForgetObjId(id);
@@ -6385,14 +6373,14 @@ extern "C" s32 CEvt__cmd_DISP(CEvt* evt)
 		XObj* held = *(XObj**)((u8*)gGame.GetPlayer() + PLAYER_HELD_OBJ);
 		if (held != NULL && obj == held && (obj->mStatus.mFlags & 0x0000400000000000)) {
 			// chibi is carrying it, leave it be
-			CEvt_Warn(FormatToStaticBuffer(sEvtDispLifted, id, on, id));
+			CEvt_Warn(FormatToStaticBuffer("disp(%d, %d) ... obj(%d) lifted!", id, on, id));
 		} else if (on) {
 			obj->mStatus.mFlags |= 0x10000;
 		} else {
 			obj->mStatus.mFlags &= ~0x10000;
 		}
 	} else {
-		CEvt_Warn(FormatToStaticBuffer(sEvtDispKilled, id, on, id));
+		CEvt_Warn(FormatToStaticBuffer("disp(%d, %d) ... obj(%d) killed!", id, on, id));
 	}
 	return 0;
 }
@@ -6438,7 +6426,7 @@ extern "C" s32 CEvt__cmd_DIR(CEvt* evt, u8 command)
 			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 				direction = RAD2DEG * (f32)atan2(x - obj->mMoveTranslate.x, z - obj->mMoveTranslate.z);
 			} else {
-				CEvt_Warn(FormatToStaticBuffer(sEvtMdirPositionKilled, id, id));
+				CEvt_Warn(FormatToStaticBuffer("mdir(%d, @POS, ...): obj(%d) killed!", id, id));
 			}
 			break;
 		}
@@ -6451,11 +6439,11 @@ extern "C" s32 CEvt__cmd_DIR(CEvt* evt, u8 command)
 					    = RAD2DEG
 					    * (f32)atan2(target->mMoveTranslate.x - obj->mMoveTranslate.x, target->mMoveTranslate.z - obj->mMoveTranslate.z);
 				} else {
-					CEvt_Warn(FormatToStaticBuffer(sEvtMdirTargetKilled, id, targetId, targetId));
+					CEvt_Warn(FormatToStaticBuffer("mdir(%d, @OBJ, %d, ...): obj(%d) killed!", id, targetId, targetId));
 					direction = RAD2DEG * obj->mMoveRotate.y;
 				}
 			} else {
-				CEvt_Warn(FormatToStaticBuffer(sEvtMdirObjectKilled, id, id));
+				CEvt_Warn(FormatToStaticBuffer("mdir(%d, @OBJ, ...): obj(%d) killed!", id, id));
 			}
 			break;
 		}
@@ -6464,7 +6452,7 @@ extern "C" s32 CEvt__cmd_DIR(CEvt* evt, u8 command)
 				CCamera* camera = &gGame.mMotionControlCamera.mCamera;
 				direction       = RAD2DEG * (f32)atan2(camera->mEye.x - obj->mMoveTranslate.x, camera->mEye.z - obj->mMoveTranslate.z);
 			} else {
-				CEvt_Warn(FormatToStaticBuffer(sEvtMdirCameraKilled, id, id));
+				CEvt_Warn(FormatToStaticBuffer("mdir(%d, @CAM, ...): obj(%d) killed!", id, id));
 			}
 			break;
 		default:
@@ -6473,14 +6461,15 @@ extern "C" s32 CEvt__cmd_DIR(CEvt* evt, u8 command)
 #else
 			const s32 line = 2667;
 #endif
-			OSPanic("evt.cpp", line, "%s%s", FormatToStaticBuffer(sEvtMdirUnresolved, mode), sEvtCommandDIRName);
+			OSPanic("evt.cpp", line, "%s%s", FormatToStaticBuffer("mdir(obj, %d,...) - unresolved!\n", mode), "_cmd_DIR");
 			break;
 		}
 		f32 time = CEvt_Evaluate(evt) / 100.0f;
 		s32 anim = CEvt_Evaluate(evt);
 		if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 			if (obj->mJObj == NULL) {
-				CEvt_Warn(FormatToStaticBuffer(sEvtMdirCollision, id, mode, (s16)direction, (s32)(100.0f * time), anim, id));
+				CEvt_Warn(FormatToStaticBuffer("mdir(%d, %d, %d, %d, %d) ... obj(%d) is collision!", id, mode, (s16)direction,
+				                               (s32)(100.0f * time), anim, id));
 			}
 			f32 yaw        = DEG2RAD * (s16)direction;
 			f32 difference = obj->mMoveRotate.y - yaw;
@@ -7401,9 +7390,11 @@ extern "C" s32 CEvt__cmd_COLOR(CEvt* evt)
 	} else if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 		if (obj->mJObj == NULL) {
 			if (mode == EVT_ATOM_MODULATE) {
-				CEvt_Warn(FormatToStaticBuffer(sEvtColorModulateCollision, id, r, g, b, (s32)(100.0f * time), id));
+				CEvt_Warn(FormatToStaticBuffer("color(%d, @MODULATE, %d,%d,%d, %d) ... obj(%d) is collision!", id, r, g, b,
+				                               (s32)(100.0f * time), id));
 			} else {
-				CEvt_Warn(FormatToStaticBuffer(sEvtColorBlendCollision, id, r, g, b, (s32)(100.0f * time), id));
+				CEvt_Warn(FormatToStaticBuffer("color(%d, @BLEND, %d,%d,%d, %d) ... obj(%d) is collision!", id, r, g, b,
+				                               (s32)(100.0f * time), id));
 			}
 		}
 		if (mode == EVT_ATOM_MODULATE) {
@@ -7413,9 +7404,10 @@ extern "C" s32 CEvt__cmd_COLOR(CEvt* evt)
 		}
 	} else {
 		if (mode == EVT_ATOM_MODULATE) {
-			CEvt_Warn(FormatToStaticBuffer(sEvtColorModulateKilled, id, r, g, b, (s32)(100.0f * time), id));
+			CEvt_Warn(
+			    FormatToStaticBuffer("color(%d, @MODULATE, %d,%d,%d, %d) ... obj(%d) killed!", id, r, g, b, (s32)(100.0f * time), id));
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtColorBlendKilled, id, r, g, b, (s32)(100.0f * time), id));
+			CEvt_Warn(FormatToStaticBuffer("color(%d, @BLEND, %d,%d,%d, %d) ... obj(%d) killed!", id, r, g, b, (s32)(100.0f * time), id));
 		}
 	}
 	return 0;
@@ -7984,7 +7976,7 @@ extern "C" s32 CEvt__cmd_CAMERA(CEvt* evt)
 			Vec interest = target;
 			action->SetInterest_Interp(mode, interest, time);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtCameraObjectKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("cam(@OBJ, %d, ...): obj(%d) killed!", id, id));
 		}
 		break;
 	}
@@ -7996,7 +7988,7 @@ extern "C" s32 CEvt__cmd_CAMERA(CEvt* evt)
 			action->_38 = 11;
 			action->SetInterest_Interp(3, obj, 0.0f);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtCameraLeadKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("cam(@LEAD, %d): obj(%d) killed!", id, id));
 		}
 		break;
 	}
@@ -8111,9 +8103,9 @@ extern "C" s32 CEvt__cmd_CAMERA(CEvt* evt)
 		break;
 	default:
 #if defined(VERSION_PAL)
-		OSPanic("evt.cpp", 2515, "%s%s", FormatToStaticBuffer(sEvtCameraUnresolved, command), sEvtCommandCAMERAName);
+		OSPanic("evt.cpp", 2515, "%s%s", FormatToStaticBuffer("cam(%d,...) - unresolved!\n", command), "_cmd_CAMERA");
 #else
-		OSPanic("evt.cpp", 2511, "%s%s", FormatToStaticBuffer(sEvtCameraUnresolved, command), sEvtCommandCAMERAName);
+		OSPanic("evt.cpp", 2511, "%s%s", FormatToStaticBuffer("cam(%d,...) - unresolved!\n", command), "_cmd_CAMERA");
 #endif
 		break;
 	}
@@ -11271,7 +11263,7 @@ extern "C" s32 CEvt__cmd_BORN(CEvt* evt)
 			gEventObjectIds.mCount++;
 		}
 	} else {
-		OSPanic("evt.cpp", 1705, "%s%s", FormatToStaticBuffer(sEvtBornCapacity, id), sEvtCommandBORNName);
+		OSPanic(__FILE__, 1705, "%s%s", FormatToStaticBuffer("No more space for born(%d,...)-command!\n", id), __FUNCTION__);
 	}
 	return 0;
 }
@@ -11661,7 +11653,7 @@ extern "C" s32 CEvt__cmd_ATTACH(CEvt* evt, u8 command)
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			CEvt_Attach(&obj->mEvt, script, evt->_00);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtAttachKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("attach(%d, ...): obj(%d) killed!", id, id));
 		}
 	} else if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 		obj->mEvt.mData.mScript = NULL;
@@ -11673,7 +11665,7 @@ extern "C" s32 CEvt__cmd_ATTACH(CEvt* evt, u8 command)
 		inventory->mCompact  = TRUE;
 		CompactInventory(inventory);
 	} else {
-		CEvt_Warn(FormatToStaticBuffer(sEvtDetachKilled, id, id));
+		CEvt_Warn(FormatToStaticBuffer("detach(%d, ...): obj(%d) killed!", id, id));
 	}
 	return 0;
 }
@@ -12069,7 +12061,7 @@ extern "C" s32 CEvt__cmd_ANIM2(CEvt* evt, u8 command)
 		s16 rate  = CEvt_Evaluate(evt);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL) {
-				CEvt_Warn(FormatToStaticBuffer(sEvtAnim2Collision, id, anim, frame, rate, id));
+				CEvt_Warn(FormatToStaticBuffer("anim2(%d, %d,%d,%d) ... obj(%d) is collision!", id, anim, frame, rate, id));
 			} else if (count == 0) {
 				obj->mAnmQueue.Clear();
 				if (anim & 0xFFFF0000) {
@@ -12090,7 +12082,7 @@ extern "C" s32 CEvt__cmd_ANIM2(CEvt* evt, u8 command)
 				CEvt_QueueAnim(obj, anim, frame, rate);
 			}
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtAnim2Killed, id, anim, frame, rate, id));
+			CEvt_Warn(FormatToStaticBuffer("anim2(%d, %d,%d,%d) ... obj(%d) killed!", id, anim, frame, rate, id));
 		}
 	}
 	return 0;
@@ -12546,7 +12538,7 @@ extern "C" s32 CEvt__cmd_ANIM(CEvt* evt, u8 command)
 		}
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL) {
-				CEvt_Warn(FormatToStaticBuffer(sEvtAnimCollision, id, anim, id));
+				CEvt_Warn(FormatToStaticBuffer("anim(%d, %d) ... obj(%d) is collision!", id, anim, id));
 			} else if (count == 0) {
 				obj->mAnmQueue.Clear();
 				if (anim & 0xFFFF0000) {
@@ -12575,7 +12567,7 @@ extern "C" s32 CEvt__cmd_ANIM(CEvt* evt, u8 command)
 				}
 			}
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtAnimKilled, id, anim, id));
+			CEvt_Warn(FormatToStaticBuffer("anim(%d, %d) ... obj(%d) killed!", id, anim, id));
 		}
 	}
 	return 0;
@@ -13226,7 +13218,7 @@ static inline bool EvalCmp(CEvt* evt)
 		break;
 	}
 	default:
-		OSPanic("evt.cpp", 1330, "%s%s", FormatToStaticBuffer(sEvtUnknownComparison, op), sEvtEvalCmpName);
+		OSPanic(__FILE__, 1330, "%s%s", FormatToStaticBuffer("Unknown EvalCmp op - %d\n", op), __FUNCTION__);
 		break;
 	}
 
@@ -13469,7 +13461,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 					gEventFlagWords[(u32)index >> 5] &= ~(1U << (index & 31));
 				}
 			} else if (index != -1 && index != -2 && index != -3) {
-				OSPanic("evt.cpp", 1107, "%s%s", FormatToStaticBuffer(sEvtInvalidSetFlag, index, 4096), sEvtEvalSetName);
+				OSPanic("evt.cpp", 1107, "%s%s", FormatToStaticBuffer("Invalid EvalSet flag[%d] - 0~%d\n", index, 4096), "EvalSet");
 			}
 			break;
 		case EVT_EXPR_VAR:
@@ -13477,7 +13469,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			if (index >= 0 && index < 2048) {
 				gEventVariables[index] = value;
 			} else {
-				OSPanic("evt.cpp", 1116, "%s%s", FormatToStaticBuffer(sEvtInvalidSetVariable, index, 2048), sEvtEvalSetName);
+				OSPanic("evt.cpp", 1116, "%s%s", FormatToStaticBuffer("Invalid EvalSet var[%d] - 0~%d\n", index, 2048), "EvalSet");
 			}
 			break;
 		case EVT_EXPR_RESULT1:
@@ -13504,7 +13496,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 					}
 				}
 			} else {
-				OSPanic("evt.cpp", 1144, "%s%s", FormatToStaticBuffer(sEvtInvalidSetPad, index, 7), sEvtEvalSetName);
+				OSPanic("evt.cpp", 1144, "%s%s", FormatToStaticBuffer("Invalid EvalSet pad[%d] - %d\n", index, 7), "EvalSet");
 			}
 			break;
 		case EVT_EXPR_BATTERY:
@@ -13521,7 +13513,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 					stats->mMaxBattery = 999.9f;
 				stats->SetBattery(stats->mBattery);
 			} else {
-				OSPanic("evt.cpp", 1157, "%s%s", FormatToStaticBuffer(sEvtInvalidSetBattery, index), sEvtEvalSetName);
+				OSPanic("evt.cpp", 1157, "%s%s", FormatToStaticBuffer("Invalid EvalSet battery[%d] - 0~1\n", index), "EvalSet");
 			}
 			break;
 		case EVT_EXPR_MONEY:
@@ -13535,7 +13527,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			if (index >= 0 && index < 159) {
 				SetOrAddInventoryItemCount(&EVT_PLAYER.mParams.mInventory, index, value, 0);
 			} else {
-				OSPanic("evt.cpp", 1176, "%s%s", FormatToStaticBuffer(sEvtInvalidSetItem, index, 159), sEvtEvalSetName);
+				OSPanic("evt.cpp", 1176, "%s%s", FormatToStaticBuffer("Invalid EvalSet item[%d] - 0~%d\n", index, 159), "EvalSet");
 			}
 			break;
 		case EVT_EXPR_ATC:
@@ -13543,7 +13535,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			if (index >= 0 && index < 9) {
 				SetAttachmentCountById(&EVT_PLAYER.mAttachments, index, value);
 			} else {
-				OSPanic("evt.cpp", 1185, "%s%s", FormatToStaticBuffer(sEvtInvalidSetAttachment, index, 9), sEvtEvalSetName);
+				OSPanic("evt.cpp", 1185, "%s%s", FormatToStaticBuffer("Invalid EvalSet atc[%d] - 0~%d\n", index, 9), "EvalSet");
 			}
 			break;
 		case EVT_EXPR_CURRENT_SUIT: {
@@ -13583,7 +13575,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			} else if (index == 2) {
 				gGame.mTimeState.mDuration = value / 100.0f;
 			} else {
-				OSPanic("evt.cpp", 1234, "%s%s", FormatToStaticBuffer(sEvtInvalidSetTime, index), sEvtEvalSetName);
+				OSPanic("evt.cpp", 1234, "%s%s", FormatToStaticBuffer("Invalid EvalSet time[%d] - 0~2\n", index), "EvalSet");
 			}
 			break;
 		case EVT_EXPR_HOLD:
@@ -13599,7 +13591,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 		case EVT_EXPR_COS:
 			break;
 		default:
-			OSPanic("evt.cpp", 1245, "%s%s", FormatToStaticBuffer(sEvtUnknownAssignment, op), sEvtEvalSetName);
+			OSPanic("evt.cpp", 1245, "%s%s", FormatToStaticBuffer("Unknown EvalSet op - %d\n", op), "EvalSet");
 			break;
 		}
 	}
@@ -14353,8 +14345,6 @@ static inline s32 EvtRead16(const u8* p)
 	return p[0] + (p[1] << 8);
 }
 
-extern "C" char sEvaluateName[];
-
 /**
  * @note Address: 0x8007CAAC
  * @note Size: 0x1D1C
@@ -14455,14 +14445,14 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		else if (result == -3)
 			result = (gGame.mStatus.mFlags & 0x8000000000000ULL) ? 1 : 0;
 		else
-			OSPanic("evt.cpp", 686, "%s%s", FormatToStaticBuffer(sEvtInvalidFlag, result, 4096), sEvaluateName);
+			OSPanic("evt.cpp", 686, "%s%s", FormatToStaticBuffer("Invalid Evaluate flg[%d] - 0~%d\n", result, 4096), "Evaluate");
 		break;
 	case EVT_EXPR_VAR:
 		result = CEvt_Evaluate(evt);
 		if (result >= 0 && result < 2048)
 			result = gEventVariables[result];
 		else
-			OSPanic("evt.cpp", 694, "%s%s", FormatToStaticBuffer(sEvtInvalidVariable, result, 2048), sEvaluateName);
+			OSPanic("evt.cpp", 694, "%s%s", FormatToStaticBuffer("Invalid Evaluate var[%d] - 0~%d\n", result, 2048), "Evaluate");
 		break;
 	case EVT_EXPR_RESULT1:
 		result = evt->_10;
@@ -14512,7 +14502,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 				result = 0;
 			break;
 		default:
-			OSPanic("evt.cpp", 737, "%s%s", FormatToStaticBuffer(sEvtInvalidPad, result), sEvaluateName);
+			OSPanic("evt.cpp", 737, "%s%s", FormatToStaticBuffer("Invalid Evaluate pad[%d] - 0~7\n", result), "Evaluate");
 			break;
 		}
 		break;
@@ -14524,7 +14514,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		else if (result == 1)
 			result = 100.0f * EVT_PLAYER.mParams.mMaxBattery;
 		else
-			OSPanic("evt.cpp", 750, "%s%s", FormatToStaticBuffer(sEvtInvalidBattery, result), sEvaluateName);
+			OSPanic("evt.cpp", 750, "%s%s", FormatToStaticBuffer("Invalid Evaluate battery[%d] - 0~1\n", result), "Evaluate");
 		break;
 	case EVT_EXPR_MONEY:
 		result = EVT_PLAYER.mParams.mMoney;
@@ -14538,7 +14528,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 			s32 index = FindOwnedInventoryItemIndex(EVT_PLAYER.mParams.mInventory.mItems, result);
 			result    = index >= 0 ? EVT_PLAYER.mParams.mInventory.mItems[index].mCount : 0;
 		} else
-			OSPanic("evt.cpp", 769, "%s%s", FormatToStaticBuffer(sEvtInvalidItem, result, 159), sEvaluateName);
+			OSPanic("evt.cpp", 769, "%s%s", FormatToStaticBuffer("Invalid Evaluate item[%d] - 0~%d\n", result, 159), "Evaluate");
 		break;
 	case EVT_EXPR_ATC:
 		result = CEvt_Evaluate(evt);
@@ -14547,7 +14537,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 			if (result < 0)
 				result = 0;
 		} else
-			OSPanic("evt.cpp", 778, "%s%s", FormatToStaticBuffer(sEvtInvalidAttachment, result, 9), sEvaluateName);
+			OSPanic("evt.cpp", 778, "%s%s", FormatToStaticBuffer("Invalid Evaluate atc[%d] - 0~%d\n", result, 9), "Evaluate");
 		break;
 	case EVT_EXPR_CURRENT_SUIT:
 		result = EVT_PLAYER.mSuits.mCurrent;
@@ -14591,7 +14581,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 			if (stage > GetStageNum())
 				result = stage - GetStageNum() + 99;
 		} else
-			OSPanic("evt.cpp", 827, "%s%s", FormatToStaticBuffer(sEvtInvalidMap, result), sEvaluateName);
+			OSPanic("evt.cpp", 827, "%s%s", FormatToStaticBuffer("Invalid Evaluate map[%d] - 0~1\n", result), "Evaluate");
 		break;
 	case EVT_EXPR_ACTOR_NAME:
 		result = CEvt_Evaluate(evt);
@@ -14614,7 +14604,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		else if (result == 2)
 			result = 100.0f * gGame.mTimeState.mDuration;
 		else
-			OSPanic("evt.cpp", 854, "%s%s", FormatToStaticBuffer(sEvtInvalidTime, result), sEvaluateName);
+			OSPanic("evt.cpp", 854, "%s%s", FormatToStaticBuffer("Invalid Evaluate time[%d] - 0~2\n", result), "Evaluate");
 		break;
 	case EVT_EXPR_OBJ:
 		result = CEvt_Evaluate(evt);
@@ -14649,14 +14639,14 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 					result = (obj->mStatus.mFlags & 0x10000) ? 1 : 0;
 					break;
 				case 247: {
-					Vec pos = sEvtEvaluateScreenXOrigin;
+					Vec pos = { 0.0f, 0.0f, 0.0f };
 					f32 x;
 					obj->ProjectOffsetToScreen(&pos, &x, NULL, NULL, 0);
 					result = 100.0f * x;
 					break;
 				}
 				case 248: {
-					Vec pos = sEvtEvaluateScreenYOrigin;
+					Vec pos = { 0.0f, 0.0f, 0.0f };
 					f32 y;
 					obj->ProjectOffsetToScreen(&pos, NULL, &y, NULL, 0);
 					result = 100.0f * y;
@@ -14732,7 +14722,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 			break;
 		}
 		default:
-			OSPanic("evt.cpp", 977, "%s%s", FormatToStaticBuffer(sEvtInvalidObject, result), sEvaluateName);
+			OSPanic("evt.cpp", 977, "%s%s", FormatToStaticBuffer("Invalid Evaluate obj(...,%d)\n", result), "Evaluate");
 			break;
 		}
 		break;
@@ -14778,7 +14768,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		break;
 	}
 	default:
-		OSPanic("evt.cpp", 1023, "%s%s", FormatToStaticBuffer(sEvtUnknownExpression, op), sEvaluateName);
+		OSPanic("evt.cpp", 1023, "%s%s", FormatToStaticBuffer("Unknown Evaluate op - %d\n", op), "Evaluate");
 		break;
 	}
 	return result;
@@ -17098,7 +17088,7 @@ extern "C" s32 CEvt__cmd_CALL(CEvt* evt)
 			gGame.mSubwin._13C = args[3];
 			gGame.mSubwin._140 = args[4];
 		} else if (args[0] == 225) {
-			Vec pos = sEvtSubwindowCameraOrigin;
+			Vec pos = { 0.0f, 0.0f, 0.0f };
 			pos.x   = args[1] / 100.0f;
 			pos.y   = args[2] / 100.0f;
 			pos.z   = args[3] / 100.0f;
@@ -17244,7 +17234,7 @@ extern "C" s32 CEvt__cmd_CALL(CEvt* evt)
 				}
 			}
 		} else
-			CEvt_Warn(FormatToStaticBuffer(sEvtSetObjectStatusKilled, id, bit, id));
+			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_SET_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
 		break;
 	}
 	case -27: {
@@ -17273,7 +17263,7 @@ extern "C" s32 CEvt__cmd_CALL(CEvt* evt)
 				}
 			}
 		} else
-			CEvt_Warn(FormatToStaticBuffer(sEvtClearObjectStatusKilled, id, bit, id));
+			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_CLR_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
 		break;
 	}
 	case -28: {
@@ -17284,7 +17274,7 @@ extern "C" s32 CEvt__cmd_CALL(CEvt* evt)
 		if (obj != NULL)
 			evt->_10 = (obj->mStatus.mFlags & mask) ? 1 : 0;
 		else
-			CEvt_Warn(FormatToStaticBuffer(sEvtCheckObjectStatusKilled, id, bit, id));
+			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_CHK_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
 		break;
 	}
 	case -29:
@@ -17372,10 +17362,10 @@ extern "C" s32 CEvt__cmd_CALL(CEvt* evt)
 			evt->_10 = CallStageModule(args[0] + 7, count - 1, &args[1]);
 #if defined(VERSION_PAL)
 		else
-			OSPanic("evt.cpp", 2161, "%s%s", sEvtStageFunctionNoArgs, sEvtCommandCALLName);
+			OSPanic("evt.cpp", 2161, "%s%s", "SYSCALL_STGFUNC, noargs\n", "_cmd_CALL");
 #else
 		else
-			OSPanic("evt.cpp", 2157, "%s%s", sEvtStageFunctionNoArgs, sEvtCommandCALLName);
+			OSPanic("evt.cpp", 2157, "%s%s", "SYSCALL_STGFUNC, noargs\n", "_cmd_CALL");
 #endif
 		break;
 	case -200:
@@ -17454,7 +17444,7 @@ extern "C" s32 CEvt__cmd_WAIT(CEvt* evt, u8 command, s32 step)
 		f32 frame = CEvt_Evaluate(evt);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
-				CEvt_Warn(FormatToStaticBuffer(sEvtWaitAnimCollision, id, id));
+				CEvt_Warn(FormatToStaticBuffer("wait(@ANIM, %d) ... obj(%d) is collision!", id, id));
 			HSD_AObj* anim = GetAObj(obj->mJObj);
 			if (anim != NULL) {
 				if (frame >= 0.0f) {
@@ -17466,7 +17456,7 @@ extern "C" s32 CEvt__cmd_WAIT(CEvt* evt, u8 command, s32 step)
 			} else if (command == EVT_CMD_CHECK)
 				evt->_10 = 1;
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtWaitAnimKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("wait(@ANIM, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
 				evt->_10 = 1;
 		}
@@ -17477,10 +17467,10 @@ extern "C" s32 CEvt__cmd_WAIT(CEvt* evt, u8 command, s32 step)
 		XObj* obj = CEvt_GetObj(evt, id);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
-				CEvt_Warn(FormatToStaticBuffer(sEvtWaitDirCollision, id, id));
+				CEvt_Warn(FormatToStaticBuffer("wait(@DIR, %d) ... obj(%d) is collision!", id, id));
 			EvtWaitFor(evt, command, start, obj->mMoveRotate.y == obj->mMoveRotate.mTarget.y, yield);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtWaitDirKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("wait(@DIR, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
 				evt->_10 = 1;
 		}
@@ -17491,11 +17481,11 @@ extern "C" s32 CEvt__cmd_WAIT(CEvt* evt, u8 command, s32 step)
 		XObj* obj = CEvt_GetObj(evt, id);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
-				CEvt_Warn(FormatToStaticBuffer(sEvtWaitMoveCollision, id, id));
+				CEvt_Warn(FormatToStaticBuffer("wait(@MOVE, %d) ... obj(%d) is collision!", id, id));
 			const Vec& target = *(Vec*)((u8*)&obj->mMoveTranslate + sizeof(CVec));
 			EvtWaitFor(evt, command, start, !(obj->mMoveTranslate != target), yield);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtWaitMoveKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("wait(@MOVE, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
 				evt->_10 = 1;
 		}
@@ -17506,10 +17496,10 @@ extern "C" s32 CEvt__cmd_WAIT(CEvt* evt, u8 command, s32 step)
 		XObj* obj = CEvt_GetObj(evt, id);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
-				CEvt_Warn(FormatToStaticBuffer(sEvtWaitScaleCollision, id, id));
+				CEvt_Warn(FormatToStaticBuffer("wait(@SCALE, %d) ... obj(%d) is collision!", id, id));
 			EvtWaitFor(evt, command, start, obj->mMoveScale.y == obj->mMoveScale.mTarget.y, yield);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtWaitScaleKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("wait(@SCALE, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
 				evt->_10 = 1;
 		}
@@ -17523,10 +17513,10 @@ extern "C" s32 CEvt__cmd_WAIT(CEvt* evt, u8 command, s32 step)
 		XObj* obj = CEvt_GetObj(evt, id);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
-				CEvt_Warn(FormatToStaticBuffer(sEvtWaitColorCollision, id, id));
+				CEvt_Warn(FormatToStaticBuffer("wait(@COLOR, %d) ... obj(%d) is collision!", id, id));
 			EvtWaitFor(evt, command, start, EvtZero3(&obj->mColorStep[0].mSpeed.x) && EvtZero3(&obj->mColorStep[1].mSpeed.x), yield);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtWaitColorKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("wait(@COLOR, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
 				evt->_10 = 1;
 		}
@@ -17538,9 +17528,9 @@ extern "C" s32 CEvt__cmd_WAIT(CEvt* evt, u8 command, s32 step)
 			EvtWaitFor(evt, command, start, InfoScrn_IsBatteryGaugeFull(&gGame.mInfoScrn), yield);
 		else {
 #if defined(VERSION_PAL)
-			OSPanic("evt.cpp", 4157, "%s%s", FormatToStaticBuffer(sEvtWaitRealUnresolved, index), sEvtCommandWAITName);
+			OSPanic("evt.cpp", 4157, "%s%s", FormatToStaticBuffer("wait(@REAL, %d) - unresolved!\n", index), "_cmd_WAIT");
 #else
-			OSPanic("evt.cpp", 4146, "%s%s", FormatToStaticBuffer(sEvtWaitRealUnresolved, index), sEvtCommandWAITName);
+			OSPanic("evt.cpp", 4146, "%s%s", FormatToStaticBuffer("wait(@REAL, %d) - unresolved!\n", index), "_cmd_WAIT");
 #endif
 		}
 		break;
@@ -17572,11 +17562,11 @@ extern "C" s32 CEvt__cmd_WAIT(CEvt* evt, u8 command, s32 step)
 		XObj* obj = CEvt_GetObj(evt, id);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
-				CEvt_Warn(FormatToStaticBuffer(sEvtWaitReadCollision, id, id));
+				CEvt_Warn(FormatToStaticBuffer("wait(@READ, %d) ... obj(%d) is collision!", id, id));
 			EvtWaitFor(evt, command, start, !(obj->mStatus.mFlags & 0x40000000000000ULL) && !(obj->mStatus.mFlags & 0x80000000000000ULL),
 			           yield);
 		} else {
-			CEvt_Warn(FormatToStaticBuffer(sEvtWaitReadKilled, id, id));
+			CEvt_Warn(FormatToStaticBuffer("wait(@READ, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
 				evt->_10 = 1;
 		}
@@ -17617,15 +17607,15 @@ extern "C" s32 CEvt__cmd_WAIT(CEvt* evt, u8 command, s32 step)
 	default:
 		if (command == EVT_CMD_WAIT) {
 #if defined(VERSION_PAL)
-			OSPanic("evt.cpp", 4300, "%s%s", FormatToStaticBuffer(sEvtWaitUnresolved, mode), sEvtCommandWAITName);
+			OSPanic("evt.cpp", 4300, "%s%s", FormatToStaticBuffer("wait(%d,...) - unresolved!\n", mode), "_cmd_WAIT");
 #else
-			OSPanic("evt.cpp", 4289, "%s%s", FormatToStaticBuffer(sEvtWaitUnresolved, mode), sEvtCommandWAITName);
+			OSPanic("evt.cpp", 4289, "%s%s", FormatToStaticBuffer("wait(%d,...) - unresolved!\n", mode), "_cmd_WAIT");
 #endif
 		} else {
 #if defined(VERSION_PAL)
-			OSPanic("evt.cpp", 4302, "%s%s", FormatToStaticBuffer(sEvtCheckUnresolved, mode), sEvtCommandWAITName);
+			OSPanic("evt.cpp", 4302, "%s%s", FormatToStaticBuffer("check(%d,...) - unresolved!\n", mode), "_cmd_WAIT");
 #else
-			OSPanic("evt.cpp", 4291, "%s%s", FormatToStaticBuffer(sEvtCheckUnresolved, mode), sEvtCommandWAITName);
+			OSPanic("evt.cpp", 4291, "%s%s", FormatToStaticBuffer("check(%d,...) - unresolved!\n", mode), "_cmd_WAIT");
 #endif
 		}
 		break;
@@ -17650,7 +17640,7 @@ extern "C" void CEvt_Update(CEvt* evt, s32 step)
 					goto next;
 				}
 			}
-			OSPanic("evt.cpp", 558, "%s%s", FormatToStaticBuffer(sEvtUnknownCommand, command), sEvtUpdateName);
+			OSPanic("evt.cpp", 558, "%s%s", FormatToStaticBuffer("Unknown event cmd - %d\n", command), "Update");
 		next:;
 		}
 	}
@@ -18055,6 +18045,11 @@ void InfoScrn_SetTimerHundredths(InfoScrn* scrn, s32 hundredths);
 void InfoScrn_ShowTimer(InfoScrn* scrn);
 void InfoScrn_HideTimer(InfoScrn* scrn);
 }
+
+struct EvtHudCommand {
+	u8 enabled; // _00
+	s32 mode;   // _04
+};
 
 /**
  * @note Address: 0x80072224

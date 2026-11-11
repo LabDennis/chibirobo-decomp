@@ -8,9 +8,6 @@
 
 extern "C" void OSReport(const char* format, ...);
 extern "C" const char sCameraAreaDataAddressFormat[];
-extern "C" const char sMapCameraDebugIndexFormat[];
-extern "C" const char sCameraAreaZoomResetMessage[];
-extern "C" const char sAreaCameraDebugIndexFormat[];
 extern "C" Vec lbl_805A0400[];
 extern "C" s8 lbl_8065B324;
 extern "C" s32 lbl_8065B320;
@@ -91,13 +88,13 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 			if (++lbl_8065B328 >= state->_28)
 				lbl_8065B328 = state->_28 - 1;
 #if !defined(VERSION_PAL)
-			OSReport(sAreaCameraDebugIndexFormat, lbl_8065B328);
+			OSReport("DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n", lbl_8065B328);
 #endif
 		} else if (pad.mPad->mTrigger & 1) {
 			if (--lbl_8065B328 <= 0)
 				lbl_8065B328 = 0;
 #if !defined(VERSION_PAL)
-			OSReport(sAreaCameraDebugIndexFormat, lbl_8065B328);
+			OSReport("DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n", lbl_8065B328);
 #endif
 		}
 
@@ -176,11 +173,11 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 		if (pad.mPad->mTrigger & 2) {
 			if (++lbl_8065B320 >= count)
 				lbl_8065B320 = count - 1;
-			OSReport(sMapCameraDebugIndexFormat, lbl_8065B320);
+			OSReport("DEBUG:CCameraActionMap::DrawDebug3d():%d\n", lbl_8065B320);
 		} else if (pad.mPad->mTrigger & 1) {
 			if (--lbl_8065B320 <= 0)
 				lbl_8065B320 = 0;
-			OSReport(sMapCameraDebugIndexFormat, lbl_8065B320);
+			OSReport("DEBUG:CCameraActionMap::DrawDebug3d():%d\n", lbl_8065B320);
 		}
 #endif
 		lbl_8065B320 = i;
@@ -401,7 +398,7 @@ extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 	state->_0C      = -1;
 	state->mBaseFov = 30.5f;
 #if !defined(VERSION_PAL)
-	OSReport(sCameraAreaZoomResetMessage);
+	OSReport("reset zoom lv = CAM_AREA_ZOOM_LV1\n");
 #endif
 }
 

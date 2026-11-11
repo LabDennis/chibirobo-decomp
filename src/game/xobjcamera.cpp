@@ -1,7 +1,6 @@
 #include "game/xobj.h"
 
 extern "C" {
-extern const f32 sCameraAnimFallbackFrame;
 extern const char sCameraAnimAObjFile[7], sCameraAnimAObjCondition[5];
 }
 
@@ -34,10 +33,9 @@ void XObjCamera::UpdateObject(u32 frames)
 	if (mCameraAnim >= 0) {
 		mCamera.SetAnimRate((f32)frames);
 		mCamera.Anim();
-		f32 end     = mCamera.mLongestAObj ? HSD_AObjGetEndFrame(mCamera.mLongestAObj, sCameraAnimAObjFile, sCameraAnimAObjCondition)
-		                                   : sCameraAnimFallbackFrame;
-		f32 current = mCamera.mLongestAObj ? HSD_AObjGetCurrentFrame(mCamera.mLongestAObj, sCameraAnimAObjFile, sCameraAnimAObjCondition)
-		                                   : sCameraAnimFallbackFrame;
+		f32 end = mCamera.mLongestAObj ? HSD_AObjGetEndFrame(mCamera.mLongestAObj, sCameraAnimAObjFile, sCameraAnimAObjCondition) : 0.0f;
+		f32 current
+		    = mCamera.mLongestAObj ? HSD_AObjGetCurrentFrame(mCamera.mLongestAObj, sCameraAnimAObjFile, sCameraAnimAObjCondition) : 0.0f;
 		if (current >= end)
 			mCameraAnim = -1;
 	}
