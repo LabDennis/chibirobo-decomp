@@ -49,10 +49,7 @@ extern "C" void ResetObjectState__8XObjCoinFv(XObjCoin* coin)
  */
 extern "C" s32 GetFlagIndex__8XObjCoinFv(XObjCoin* coin)
 {
-	s32 id = coin->_260;
-	if (id > 0)
-		return (s32)((u32)GetStageCollectionFlagBase(1) + (u32)id);
-	return 0;
+	return coin->GetPlacementFlagIndex(1);
 }
 
 /**
@@ -73,8 +70,5 @@ extern "C" BOOL LoadFromPlacement__8XObjItemFRC9CoordInfo(XObjItem* item, CoordI
  */
 extern "C" s32 GetFlagIndex__8XObjItemFv(XObjItem* item)
 {
-	s32 id = item->_260;
-	if (id > 0)
-		return (s32)((u32)GetStageCollectionFlagBase(0) + (u32)id);
-	return 0;
+	return item->GetPlacementFlagIndex(0);
 }

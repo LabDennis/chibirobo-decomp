@@ -33,11 +33,11 @@ HSD_MObj* HSD_DObjGetMObj__FP9_HSD_DObj(HSD_DObj* dobj);
 }
 
 // half width characters and their full width twins, two bytes each in shift jis
-static const char* sHalfWidthCharacters = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklm"
-                                          "nopqrstuvwxyz{|}~\xA1\xA2\xA3\xA4\xA5\xA6\xA7\xA8\xA9\xAA\xAB\xAC\xAD\xAE\xAF\xB0"
-                                          "\xB1\xB2\xB3\xB4\xB5\xB6\xB7\xB8\xB9\xBA\xBB\xBC\xBD\xBE\xBF\xC0\xC1\xC2\xC3\xC4"
-                                          "\xC5\xC6\xC7\xC8\xC9\xCA\xCB\xCC\xCD\xCE\xCF\xD0\xD1\xD2\xD3\xD4\xD5\xD6\xD7\xD8"
-                                          "\xD9\xDA\xDB\xDC\xDD";
+static const u8* sHalfWidthCharacters = (const u8*)" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklm"
+                                                   "nopqrstuvwxyz{|}~\xA1\xA2\xA3\xA4\xA5\xA6\xA7\xA8\xA9\xAA\xAB\xAC\xAD\xAE\xAF\xB0"
+                                                   "\xB1\xB2\xB3\xB4\xB5\xB6\xB7\xB8\xB9\xBA\xBB\xBC\xBD\xBE\xBF\xC0\xC1\xC2\xC3\xC4"
+                                                   "\xC5\xC6\xC7\xC8\xC9\xCA\xCB\xCC\xCD\xCE\xCF\xD0\xD1\xD2\xD3\xD4\xD5\xD6\xD7\xD8"
+                                                   "\xD9\xDA\xDB\xDC\xDD";
 static const char* sFullWidthCharacters
     = "\x81\x40\x81\x49\x81\x68\x81\x94\x81\x90\x81\x93\x81\x95\x81\x66\x81\x69\x81\x6A\x81\x96\x81\x7B\x81\x43\x81\x7C\x81\x44\x81\x5E"
       "\x82\x4F\x82\x50\x82\x51\x82\x52\x82\x53\x82\x54\x82\x55\x82\x56\x82\x57\x82\x58\x81\x46\x81\x47\x81\x83\x81\x81\x81\x84\x81\x48"
@@ -161,8 +161,8 @@ extern "C" char* ConvertHalfWidthToFullWidthSJIS(const char* src, char* dst)
 	const u8* in = (const u8*)src;
 	while (*in != 0) {
 		*out = *in;
-		for (int i = 0; sHalfWidthCharacters[i] != 0; i++) {
-			if (*in == (u8)sHalfWidthCharacters[i]) {
+		for (int i = 0; sHalfWidthCharacters[i] != '\0'; i++) {
+			if (*in == sHalfWidthCharacters[i]) {
 				*out   = sFullWidthCharacters[i * 2];
 				*++out = sFullWidthCharacters[i * 2 + 1];
 				break;

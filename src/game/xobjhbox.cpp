@@ -47,10 +47,7 @@ extern "C" void ResetObjectState__8XObjDustFv(XObjDust* dust)
  */
 extern "C" s32 GetFlagIndex__8XObjDustFv(XObjDust* dust)
 {
-	s32 id = dust->_260;
-	if (id > 0)
-		return (s32)((u32)GetStageCollectionFlagBase(2) + (u32)id);
-	return 0;
+	return dust->GetPlacementFlagIndex(2);
 }
 
 /**

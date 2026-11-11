@@ -1269,9 +1269,9 @@ static inline void RetreatTarget(XObjSpider* spider)
 	spider->mTarget.z = spider->mMoveTranslate.z + 48.0f * (f32)cos(PI + spider->mDir);
 }
 
-static inline void TurnSpiderInCombat(XObjSpider* spider, u32 frames, f32 turn)
+// once the turn's anim is through, the spider faces the way it did before and attacks again
+static inline void EndSpiderCombatTurn(XObjSpider* spider, u32 frames)
 {
-	spider->mDir += turn;
 	if (CombatAnimDone(spider, frames)) {
 		spider->mDir = spider->mSavedDir;
 		CombatAnim(spider, 15);
@@ -1441,10 +1441,12 @@ void XObjSpider::State4(u32 frames)
 		}
 		break;
 	case 10:
-		TurnSpiderInCombat(this, frames, -0.10471976f);
+		mDir -= 0.10471976f;
+		EndSpiderCombatTurn(this, frames);
 		break;
 	case 11:
-		TurnSpiderInCombat(this, frames, 0.10471976f);
+		mDir += 0.10471976f;
+		EndSpiderCombatTurn(this, frames);
 		break;
 	case 20:
 #if defined(VERSION_PAL)

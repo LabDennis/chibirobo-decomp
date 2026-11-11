@@ -14,6 +14,8 @@ extern "C" void UpdateFallingCoin(XObjCoin* coin, u32 frames)
 {
 	CVec step;
 	switch (coin->mState) {
+	case 0:
+		break;
 	case 1:
 		++coin->mFallFrames;
 		coin->mFallSpeed -= 0.09f * frames;
