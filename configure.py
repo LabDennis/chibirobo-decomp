@@ -708,8 +708,6 @@ config.libs = [
         "objects": [
             Object(Matching, "Runtime.PPCEABI.H/__va_arg.c"),
             Object(Matching, "Runtime.PPCEABI.H/global_destructor_chain.c"),
-            Object(Matching, "Runtime.PPCEABI.H/exception.cpp"),
-            Object(Matching, "Runtime.PPCEABI.H/exceptiondtor.cpp", extra_cflags=["-Cpp_exceptions on"]),
             Object(Matching, "Runtime.PPCEABI.H/delete.cpp", extra_cflags=["-Cpp_exceptions on"]),
             Object(Matching, "Runtime.PPCEABI.H/NMWException.cp", extra_cflags=["-Cpp_exceptions on"]),
             Object(Matching, "Runtime.PPCEABI.H/ptmf.c"),
@@ -1065,7 +1063,7 @@ config.libs = [
             Object(NonMatching, "sysdolphin/baselib/lobj.c"),
             Object(Matching, "sysdolphin/baselib/cobj.c"),
             Object(Matching, "sysdolphin/baselib/fobj.c", padding="small_data+data"),
-            Object(Matching, "sysdolphin/baselib/jobj.c"),
+            Object(NonMatching, "sysdolphin/baselib/jobj.c"),
             Object(Matching, "sysdolphin/baselib/displayfunc.c", padding="small_data+data"),
             Object(Matching, "sysdolphin/baselib/initialize.c"),
             Object(NonMatching, "sysdolphin/baselib/video.c"),

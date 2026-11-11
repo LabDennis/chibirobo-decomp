@@ -1,5 +1,15 @@
-#include "PowerPC_EABI_Support/Runtime/ptmf.h"
+#include "types.h"
 
+// presumably, ptmf = pointer to member function
+
+typedef struct PTMF {
+	s32 this_delta; // self-explanatory
+	s32 v_offset;   // vtable offset
+	union {
+		void* f_addr;  // function address
+		s32 ve_offset; // virtual function entry offset (of vtable)
+	} f_data;
+} PTMF;
 
 const PTMF __ptmf_null = { 0, 0, 0 };
 

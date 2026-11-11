@@ -60,7 +60,7 @@ STATIC_ASSERT(sizeof(CCameraActions) == 0x1E74);
 // what CreateMemento saves of the camera, the class name is RTTI
 class CCameraMemento {
 public:
-	CCameraMemento();
+	CCameraMemento() { }
 	// _00 vtable
 	virtual ~CCameraMemento() { } // _08
 
@@ -93,9 +93,6 @@ public:
 	void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); }
 	void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }
 };
-inline CCameraMemento::CCameraMemento()
-{
-}
 STATIC_ASSERT(sizeof(CCameraMemento) == 0x40);
 
 // the game's camera, a CCamera with whichever action drives it. CGame keeps it at +0xE5D38

@@ -385,8 +385,8 @@ static inline void StepChannel(f32& current, f32& target, f32& speed, u32 frames
 static inline void DrawWipeQuad(CGs* gs, const WipeQuad& shape, u32 color)
 {
 	const Vec* quad = shape.vertices;
-	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y, quad[2].z, quad[3].x,
-	                 quad[3].y, quad[3].z, color, color, color, color);
+	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y, quad[2].z,
+	                 color, quad[3].x, quad[3].y, quad[3].z, color);
 }
 
 static inline void BeginWipe(CGs* gs, s32 mode)

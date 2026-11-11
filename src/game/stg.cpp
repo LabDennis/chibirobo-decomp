@@ -1290,17 +1290,11 @@ inline void MenuTitle::Set(const char* text, u32 color)
 	}
 }
 
-#if defined(VERSION_JP)
-#define MENU_GROUP_CODE
-#else
-#define MENU_GROUP_CODE
-#endif
-
 /**
  * @note Address: 0x800313D8
  * @note Size: 0x88
  */
-extern "C" MENU_GROUP_CODE void DrawOpenMenus(MenuEx* ex)
+extern "C" void DrawOpenMenus(MenuEx* ex)
 {
 	if (ex->mActive) {
 		for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
@@ -1319,7 +1313,7 @@ extern "C" MENU_GROUP_CODE void DrawOpenMenus(MenuEx* ex)
  * @note Address: 0x80031460
  * @note Size: 0xB0
  */
-extern "C" MENU_GROUP_CODE void UpdateOpenMenus(MenuEx* ex, u32 frames)
+extern "C" void UpdateOpenMenus(MenuEx* ex, u32 frames)
 {
 	ex->mActive = FALSE;
 	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
@@ -1338,7 +1332,7 @@ extern "C" MENU_GROUP_CODE void UpdateOpenMenus(MenuEx* ex, u32 frames)
  * @note Address: 0x80031510
  * @note Size: 0x74
  */
-extern "C" MENU_GROUP_CODE void ResetMenuGroup(MenuEx* ex)
+extern "C" void ResetMenuGroup(MenuEx* ex)
 {
 	ex->mCursor.ResetObjectState();
 	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
@@ -1355,7 +1349,7 @@ extern "C" MENU_GROUP_CODE void ResetMenuGroup(MenuEx* ex)
  * @note Address: 0x80031584
  * @note Size: 0xC8
  */
-extern "C" MENU_GROUP_CODE BOOL LoadMenuGroupResources(MenuEx* ex)
+extern "C" BOOL LoadMenuGroupResources(MenuEx* ex)
 {
 	if (ex->mCursor.LoadFromPlacement(CoordInfo(GetSpawnData(12)))) {
 		for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
@@ -1376,7 +1370,7 @@ extern "C" MENU_GROUP_CODE BOOL LoadMenuGroupResources(MenuEx* ex)
  * @note Address: 0x8003164C
  * @note Size: 0xF4
  */
-extern "C" MENU_GROUP_CODE void InitGameMenus(MenuEx* ex)
+extern "C" void InitGameMenus(MenuEx* ex)
 {
 	ex->mActive = FALSE;
 #if !defined(VERSION_JP)
@@ -1419,7 +1413,7 @@ extern "C" MENU_GROUP_CODE void InitGameMenus(MenuEx* ex)
  * @note Address: 0x80031740
  * @note Size: 0x398
  */
-extern "C" MENU_GROUP_CODE BOOL Draw__13MenuMCTestSubFv(MenuMCTestSub* menu)
+extern "C" BOOL Draw__13MenuMCTestSubFv(MenuMCTestSub* menu)
 {
 	if (menu->CMenu::Draw()) {
 		f32 x, y, width, step, height, maxW, lines, lineH;
@@ -1457,8 +1451,6 @@ extern "C" MENU_GROUP_CODE BOOL Draw__13MenuMCTestSubFv(MenuMCTestSub* menu)
 	}
 	return FALSE;
 }
-
-#undef MENU_GROUP_CODE
 
 /**
  * @note Address: 0x80031AD8
@@ -2504,8 +2496,8 @@ extern "C" void SetMenuTextureScale(CTexObj* tex, f32 x, f32 y)
 // NONMATCHING: scheduling
 extern "C" void DrawSolidQuad(CGs* gs, Vec* quad, u32 color)
 {
-	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y, quad[2].z, quad[3].x,
-	                 quad[3].y, quad[3].z, color, color, color, color);
+	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y, quad[2].z,
+	                 color, quad[3].x, quad[3].y, quad[3].z, color);
 }
 
 /**
@@ -2811,12 +2803,7 @@ extern "C" s16 GetPlayerItemCount(s16 id)
  * @note Address: 0x80034248
  * @note Size: 0x360
  */
-#if defined(VERSION_JP)
-#define MENU_STATUS_CODE
-#else
-#define MENU_STATUS_CODE
-#endif
-extern "C" MENU_STATUS_CODE void MarkAvailableStatusEntries(u8* available)
+extern "C" void MarkAvailableStatusEntries(u8* available)
 {
 	available[0] = 1;
 	available[1] = 1;
@@ -2847,8 +2834,6 @@ extern "C" MENU_STATUS_CODE void MarkAvailableStatusEntries(u8* available)
  * @note Address: 0x80035184
  * @note Size: 0x70
  */
-#undef MENU_STATUS_CODE
-
 extern "C" s32 IndexOfLargestOfThree(s64 a, s64 b, s64 c)
 {
 	if (a >= b) {

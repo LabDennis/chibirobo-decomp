@@ -79,12 +79,8 @@ typedef char CScrnWipe_size_check[sizeof(CScrnWipe) == 0x64 ? 1 : -1];
 
 class CScrnWipeCircle : public CScrnWipe {
 public:
-	virtual ~CScrnWipeCircle(); // _08 (weak)
+	virtual ~CScrnWipeCircle() { } // _08 (weak)
 };
-
-inline CScrnWipeCircle::~CScrnWipeCircle()
-{
-}
 
 class CScrnWipeTex : public CScrnWipe {
 public:

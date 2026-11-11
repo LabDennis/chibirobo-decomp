@@ -282,7 +282,7 @@ public:
 	s32 mVars[0x800]; // _00
 	// _2000 vtable
 
-	virtual ~CEvtVars(); // _08
+	virtual ~CEvtVars() { } // _08
 };
 STATIC_ASSERT(sizeof(CEvtVars) == 0x2004);
 
@@ -293,7 +293,7 @@ public:
 	u8* mScript[0x80]; // _04
 	// _204 vtable
 
-	virtual ~CEvtQueue(); // _08
+	virtual ~CEvtQueue() { } // _08
 };
 
 // the same with each script's context and two arguments
@@ -303,7 +303,7 @@ public:
 	s16 mUseValue[0x80]; // _408
 	s16 mHitValue[0x80]; // _508
 
-	virtual ~CEvtQueueEx(); // _08
+	virtual ~CEvtQueueEx() { } // _08
 };
 STATIC_ASSERT(sizeof(CEvtQueueEx) == 0x608);
 
@@ -314,22 +314,9 @@ public:
 	s32 mValue[10];  // _28, the script
 	// _50 vtable
 
-	virtual ~CEvtTimer(); // _08
+	virtual ~CEvtTimer() { } // _08
 };
 STATIC_ASSERT(sizeof(CEvtTimer) == 0x54);
-
-inline CEvtTimer::~CEvtTimer()
-{
-}
-inline CEvtQueueEx::~CEvtQueueEx()
-{
-}
-inline CEvtQueue::~CEvtQueue()
-{
-}
-inline CEvtVars::~CEvtVars()
-{
-}
 
 class CJObj;
 class CVec;

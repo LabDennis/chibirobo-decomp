@@ -2100,8 +2100,8 @@ extern "C" void DrawGsTriangleVertices(CGs* gs, GXPrimitive type, Mtx view, Prim
  * @note Address: 0x80198614
  * @note Size: 0x2D8
  */
-extern "C" void DrawGsVertexQuad(CGs* gs, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, f32 x2, f32 y2, f32 z2, f32 x3, f32 y3, f32 z3,
-                                 u32 color0, u32 color1, u32 color2, u32 color3)
+extern "C" void DrawGsVertexQuad(CGs* gs, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1, f32 x2, f32 y2, f32 z2,
+                                 u32 color2, f32 x3, f32 y3, f32 z3, u32 color3)
 {
 	PrimVertex vtx[4] = {
 		{ { x0, y0, z0 }, color0 },

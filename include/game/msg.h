@@ -93,7 +93,7 @@ STATIC_ASSERT(sizeof(CMsgData) == 0x89C);
 
 // one character on screen. japan has no width adjustment, so it's 4 shorter from _29C on
 struct MsgFontGlyph {
-	MsgFontGlyph();
+	MsgFontGlyph() { }
 	CTexObj mTexture; // _00
 	CSprite mSprite;  // _100
 	u32 mColor;       // _288
@@ -221,7 +221,7 @@ STATIC_ASSERT(sizeof(CMsgFont) == 0x43D20);
 // the message window, name from RTTI. offsets are US, japan's are 0x650 lower from the font's glyphs on
 class CMsg {
 public:
-	CMsg();
+	CMsg() { }
 	u8 _00;            // _00, message command
 	u8 _01[0x4 - 0x1]; // _01
 	CMsgData mData;    // _04
@@ -275,14 +275,5 @@ extern "C" {
 // formats the message script into msg and opens the window
 u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args);
 }
-
-#ifndef DEFINE_GAME_MEMBER_LIFETIMES
-inline MsgFontGlyph::MsgFontGlyph()
-{
-}
-inline CMsg::CMsg()
-{
-}
-#endif
 
 #endif

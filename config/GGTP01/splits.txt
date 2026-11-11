@@ -1105,19 +1105,10 @@ Runtime.PPCEABI.H/global_destructor_chain.c:
 	.dtors      start:0x802000C8 end:0x802000CC
 	.sbss       start:0x80662230 end:0x80662238
 
-Runtime.PPCEABI.H/exceptiondtor.cpp:
-	extab       start:0x80005600 end:0x80005628
-	extabindex  start:0x80006680 end:0x8000668C
-	.text       start:0x80153728 end:0x8015379C
-
 Runtime.PPCEABI.H/delete.cpp:
 	extab       start:0x80005628 end:0x80005650
 	extabindex  start:0x8000668C end:0x80006698
 	.text       start:0x8015379C end:0x801537E8
-
-Runtime.PPCEABI.H/exception.cpp:
-	.text       start:0x801537E8 end:0x801537F4
-	.rodata     start:0x802140A0 end:0x802140B0
 
 Runtime.PPCEABI.H/NMWException.cp:
 	extab       start:0x80005650 end:0x80005698

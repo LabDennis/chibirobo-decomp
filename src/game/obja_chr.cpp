@@ -2739,8 +2739,8 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 		Vec quad[] = { { left, top, 0.0f }, { right, top, 0.0f }, { right, bottom, 0.0f }, { left, bottom, 0.0f }, { left, top, 0.0f } };
 		SetGsDepthMode(gs->mCurRenderMode, 1, 5, 0);
 		u32 color = (u32)(255.0f * menu->mFade);
-		DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y, quad[2].z,
-		                 quad[3].x, quad[3].y, quad[3].z, color, color, color, color);
+		DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y,
+		                 quad[2].z, color, quad[3].x, quad[3].y, quad[3].z, color);
 		SetGsDepthMode(gs->mCurRenderMode, 1, 1, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		CTexObj tex = tpl->mTex.Init(&((TPLPalette*)tpl->mBuffer)->descriptorArray[110 - StatusTextureOffset], 0);

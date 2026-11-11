@@ -16,14 +16,8 @@ public:
 	virtual void vf14();           // _14
 	virtual void Init();           // _1C
 	virtual u32 GetCameraFlags();  // _54
-	virtual ~CCameraActionEye();
+	virtual ~CCameraActionEye() { }
 };
 STATIC_ASSERT(sizeof(CCameraActionEye) == 0x80);
-
-#ifndef DEFINE_GAME_MEMBER_LIFETIMES
-inline CCameraActionEye::~CCameraActionEye()
-{
-}
-#endif
 
 #endif

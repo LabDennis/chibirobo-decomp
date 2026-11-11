@@ -111,8 +111,8 @@ void JObjResetRST(HSD_JObj* jobj, HSD_Joint* joint)
 	jobj->rotate.z  = joint->rotation.z;
 	jobj->scale     = joint->scale;
 	jobj->translate = joint->position;
-	if (!(jobj->flags & MTX_INDEP_SRT) && !HSD_JObjMtxIsDirty(jobj)) {
-		HSD_JObjSetMtxDirtySub(jobj);
+	if (!(jobj->flags & MTX_INDEP_SRT)) {
+		HSD_JObjSetMtxDirty(jobj);
 	}
 }
 
@@ -150,13 +150,7 @@ void HSD_JObjResetRST(HSD_JObj* jobj, HSD_Joint* joint)
  * @note Address: 0x801C3CD0
  * @note Size: 0x70
  */
-__declspec(weak) void HSD_JObjSetMtxDirty(HSD_JObj* jobj)
-{
-	if (jobj == NULL || HSD_JObjMtxIsDirty(jobj)) {
-		return;
-	}
-	HSD_JObjSetMtxDirtySub(jobj);
-}
+// HSD_JObjSetMtxDirty, the jobj.h inline, its out of line copy lands here
 
 /**
  * @note Address: 0x801C3D40

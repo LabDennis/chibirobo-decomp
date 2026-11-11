@@ -38,8 +38,8 @@ public:
 	Mtx mMtx[4];          // _3C, the last is the first times the third times the second, loaded as the texture matrix
 	// _FC vtable
 
-	CTexObj();
-	virtual ~CTexObj(); // _08 (weak)
+	CTexObj() { }
+	virtual ~CTexObj() { } // _08 (weak)
 
 	CTexObj& Init(void* image, u16 width, u16 height, GXTexFmt format, GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXBool mipmap);
 	CTexObj& Init(TPLDescriptor* desc, u32 tlutName);
@@ -51,12 +51,6 @@ public:
 	// inlined:
 	void Load(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType);
 };
-inline CTexObj::CTexObj()
-{
-}
-inline CTexObj::~CTexObj()
-{
-}
 typedef char CTexObj_size_check[sizeof(CTexObj) == 0x100 ? 1 : -1];
 
 // HUD and status textures start two entries earlier in the Japanese palette.

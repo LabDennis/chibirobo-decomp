@@ -15,7 +15,7 @@ public:
 	u32 mStackSize;   // _31C
 	// _320 vtable
 
-	virtual ~CThread();                                                                            // _08
+	virtual ~CThread() { }                                                                         // _08
 	virtual BOOL Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr); // _0C
 
 	// todo: cleanup, card jobs and the movie all start threads like this
@@ -27,9 +27,6 @@ public:
 		OSResumeThread(&mThread);
 	}
 };
-inline CThread::~CThread()
-{
-}
 
 typedef char CThread_size_check[sizeof(CThread) == 0x328 ? 1 : -1];
 

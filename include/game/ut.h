@@ -13,11 +13,24 @@
 
 class CVec : public Vec {
 public:
-	CVec();
-	CVec(f32 x, f32 y, f32 z);
-	CVec(const Vec& v);
-	CVec(const CVec& v);
-	virtual ~CVec(); // _08
+	CVec() { }
+	CVec(f32 x, f32 y, f32 z)
+	{
+		this->x = x;
+		this->y = y;
+		this->z = z;
+	}
+	CVec(const Vec& v)
+	{
+		x = v.x;
+		y = v.y;
+		z = v.z;
+	}
+	CVec(const CVec& v)
+	    : Vec(v)
+	{
+	}
+	virtual ~CVec() { } // _08
 
 	CVec operator+(Vec v) const; // in the dol, 0x8000F93C
 	CVec operator-(Vec v) const; // in the dol, 0x800244A0
@@ -41,32 +54,6 @@ public:
 
 	// _0C vtable
 };
-inline CVec::CVec()
-{
-}
-
-inline CVec::CVec(f32 x, f32 y, f32 z)
-{
-	this->x = x;
-	this->y = y;
-	this->z = z;
-}
-
-inline CVec::CVec(const Vec& v)
-{
-	x = v.x;
-	y = v.y;
-	z = v.z;
-}
-
-inline CVec::CVec(const CVec& v)
-    : Vec(v)
-{
-}
-
-inline CVec::~CVec()
-{
-}
 
 // size checks by hand, STATIC_ASSERT is in types.h and most includers come in through the HSD headers
 typedef char CVec_size_check[sizeof(CVec) == 0x10 ? 1 : -1];
@@ -87,15 +74,12 @@ public:
 	// _04 vtable
 
 	CStatus() { mFlags = 0; }
-	virtual ~CStatus(); // _08
+	virtual ~CStatus() { } // _08
 
 	// any of the mask's bits set
 	// the ternary keeps the test and branch, a plain bool folds to a bare clrlwi in shun's CmdCheckOnOffFlag
 	bool Check(u32 mask) const { return (mFlags & mask) ? true : false; }
 };
-inline CStatus::~CStatus()
-{
-}
 typedef char CStatus_size_check[sizeof(CStatus) == 0x8 ? 1 : -1];
 
 #include "game/cstatus64.h"

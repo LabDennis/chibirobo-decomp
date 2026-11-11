@@ -214,7 +214,7 @@ public:
 	}
 
 	explicit CXObj(HSD_JObj* jobj);
-	virtual ~CXObj(); // _08
+	virtual ~CXObj() { } // _08
 
 	// CJObj overrides, defined in another file
 	virtual void SetTranslateX(f32 x, s32 force);                                                                     // _0C
@@ -262,9 +262,6 @@ public:
 	void ClearQueue();
 };
 
-inline CXObj::~CXObj()
-{
-}
 #if defined(VERSION_JP)
 typedef char CXObj_size_check[sizeof(CXObj) == 0x1E0 ? 1 : -1];
 #else

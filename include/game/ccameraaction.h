@@ -43,7 +43,7 @@ public:
 // constant speed
 class CInterpolationLinear : public CInterfaceInterpolation {
 public:
-	CInterpolationLinear();
+	CInterpolationLinear() { }
 	virtual ~CInterpolationLinear() { }             // _08
 	virtual bool Start(f32 from, f32 to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
@@ -60,7 +60,7 @@ STATIC_ASSERT(sizeof(CInterpolationLinear) == 0x10);
 // jumps straight to the end
 class CInterpolationNone : public CInterfaceInterpolation {
 public:
-	CInterpolationNone();
+	CInterpolationNone() { }
 	virtual ~CInterpolationNone() { }               // _08
 	virtual bool Start(f32 from, f32 to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
@@ -76,7 +76,7 @@ STATIC_ASSERT(sizeof(CInterpolationNone) == 0x10);
 
 class CInterpolationEaseInOut : public CInterfaceInterpolation {
 public:
-	CInterpolationEaseInOut();
+	CInterpolationEaseInOut() { }
 	virtual ~CInterpolationEaseInOut() { }          // _08
 	virtual bool Start(f32 from, f32 to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
@@ -95,7 +95,7 @@ STATIC_ASSERT(sizeof(CInterpolationEaseInOut) == 0x1C);
 
 class CInterpolationEaseOut : public CInterfaceInterpolation {
 public:
-	CInterpolationEaseOut();
+	CInterpolationEaseOut() { }
 	virtual ~CInterpolationEaseOut() { }            // _08
 	virtual bool Start(f32 from, f32 to, f32 time); // _0C
 	virtual bool Step(f32 dt);                      // _10
@@ -116,7 +116,7 @@ STATIC_ASSERT(sizeof(CInterpolationEaseOut) == 0x20);
 // moves 1/divisor of the way there every step, the dt is ignored
 class CInterpolationEaseOutDivide : public CInterfaceInterpolation {
 public:
-	CInterpolationEaseOutDivide();
+	CInterpolationEaseOutDivide() { }
 	virtual ~CInterpolationEaseOutDivide() { }         // _08
 	virtual bool Start(f32 from, f32 to, f32 divisor); // _0C
 	virtual bool Step(f32 dt);                         // _10, done once it moves less than 0.001
@@ -626,7 +626,7 @@ public:
 			mDistanceInterp->Start(mDistance, distance, 15.0f);
 		}
 	}
-	virtual ~CCameraActionScroll();
+	virtual ~CCameraActionScroll() { }
 };
 STATIC_ASSERT(sizeof(CCameraActionScroll) == 0x6C);
 
@@ -641,7 +641,7 @@ public:
 	virtual Vec GetCameraTarget();              // _64, the player
 
 	void CalcEye(Vec* eye, f32 angle);
-	virtual ~CCameraActionLadr();
+	virtual ~CCameraActionLadr() { }
 };
 STATIC_ASSERT(sizeof(CCameraActionLadr) == 0x44);
 
@@ -674,7 +674,7 @@ STATIC_ASSERT(sizeof(CCameraActionLeticker) == 0x68);
 class CCameraActionDefault : public CInterfaceCameraAction {
 public:
 	virtual void Update(u32 step); // _10
-	virtual ~CCameraActionDefault();
+	virtual ~CCameraActionDefault() { }
 };
 STATIC_ASSERT(sizeof(CCameraActionDefault) == 0x40);
 
@@ -693,14 +693,14 @@ public:
 	virtual void SetCamera(CCamera* camera); // _18
 	virtual void Init();                     // _1C
 	virtual u32 GetCameraFlags();            // _54
-	virtual ~CCameraActionChase();
+	virtual ~CCameraActionChase() { }
 };
 STATIC_ASSERT(sizeof(CCameraActionChase) == 0x70);
 
 // the camera event scripts drive, every part eases to where the script says
 class CCameraActionEvt : public CInterfaceCameraAction {
 public:
-	CCameraActionEvt();
+	CCameraActionEvt() { }
 	XObj* mTarget;                                      // _40, the interest follows it while nothing eases it
 	CInterfaceVectorInterpolation* mEyeInterp;          // _44
 	CInterfaceVectorInterpolation* mInterestInterp;     // _48
@@ -777,7 +777,7 @@ public:
 	void HideObjs();
 	void ClearHideList();
 	BOOL AddHideObj(s32 id);
-	virtual ~CCameraActionScroll2();
+	virtual ~CCameraActionScroll2() { }
 };
 STATIC_ASSERT(sizeof(CCameraActionScroll2) == 0xAC);
 
@@ -792,7 +792,7 @@ public:
 	virtual void Init();                     // _1C
 
 	void SetObj(XObjCamera* obj);
-	virtual ~CCameraActionAnim();
+	virtual ~CCameraActionAnim() { }
 };
 STATIC_ASSERT(sizeof(CCameraActionAnim) == 0x48);
 
@@ -827,44 +827,5 @@ void SetMapCameraFovStep(CCameraActionMap* map, s32 index, f32 time);
 
 void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode);
 }
-
-#ifndef DEFINE_GAME_MEMBER_LIFETIMES
-inline CInterpolationLinear::CInterpolationLinear()
-{
-}
-inline CInterpolationNone::CInterpolationNone()
-{
-}
-inline CInterpolationEaseInOut::CInterpolationEaseInOut()
-{
-}
-inline CInterpolationEaseOut::CInterpolationEaseOut()
-{
-}
-inline CInterpolationEaseOutDivide::CInterpolationEaseOutDivide()
-{
-}
-inline CCameraActionScroll::~CCameraActionScroll()
-{
-}
-inline CCameraActionLadr::~CCameraActionLadr()
-{
-}
-inline CCameraActionDefault::~CCameraActionDefault()
-{
-}
-inline CCameraActionChase::~CCameraActionChase()
-{
-}
-inline CCameraActionEvt::CCameraActionEvt()
-{
-}
-inline CCameraActionScroll2::~CCameraActionScroll2()
-{
-}
-inline CCameraActionAnim::~CCameraActionAnim()
-{
-}
-#endif
 
 #endif

@@ -81,8 +81,8 @@ extern "C" void RenderFloorReflection(CGame* game)
 				SetupAll(TRUE);
 				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 				SetGsColorUpdate(gGame.mGs.mCurRenderMode, 0);
-				DrawGsVertexQuad(&gGame.mGs, floor[0].x, floor[0].y, floor[0].z, floor[1].x, floor[1].y, floor[1].z, floor[2].x, floor[2].y,
-				                 floor[2].z, floor[3].x, floor[3].y, floor[3].z, 0, 0, 0, 0);
+				DrawGsVertexQuad(&gGame.mGs, floor[0].x, floor[0].y, floor[0].z, 0, floor[1].x, floor[1].y, floor[1].z, 0, floor[2].x,
+				                 floor[2].y, floor[2].z, 0, floor[3].x, floor[3].y, floor[3].z, 0);
 				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 				SetGsColorUpdate(gGame.mGs.mCurRenderMode, 1);
 				EndGsCamera(&game->mGs);

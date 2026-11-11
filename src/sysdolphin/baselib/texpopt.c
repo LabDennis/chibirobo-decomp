@@ -2,7 +2,7 @@
 #include <dolphin/gx/gx.h>
 #include <sysdolphin/class.h>
 #include <sysdolphin/gobjproc.h>
-#include <sysdolphin/texpdag.h>
+#include <sysdolphin/texp.h>
 #include <sysdolphin/tev.h>
 #include <sysdolphin/tobj.h>
 
@@ -127,6 +127,15 @@ extern void memset(void* ptr, s32 value, u32 size);
 #define GX_DISABLE 0
 #define GX_TRUE    1
 #define GX_FALSE   0
+
+struct HSD_TExpDag {
+	HSD_TETev* tev;
+	u8 idx;
+	u8 nb_dep;
+	u8 nb_ref;
+	u8 dist;
+	struct HSD_TExpDag* depend[8];
+};
 
 struct HSD_TExpRes {
 	s32 failed;

@@ -1389,8 +1389,8 @@ extern "C" void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 
 	f32 top    = y - 8.0f - sy;
 	f32 bottom = sy + (8.0f + (y + height));
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-	DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 9.0f + (8.0f + right),
-	                 9.0f + (8.0f + bottom), -1.0f, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, 0xFF000000, 0xFF000000,
+	DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 0xFF000000,
+	                 9.0f + (8.0f + right), 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f,
 	                 0xFF000000);
 	Vec pos[10] = {
 		(Vec) { x, y, 0.0f },
@@ -1456,8 +1456,8 @@ extern "C" void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-	DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 9.0f + (8.0f + right),
-	                 9.0f + (8.0f + bottom), -1.0f, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, 0xFF000000, 0xFF000000,
+	DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 0xFF000000,
+	                 9.0f + (8.0f + right), 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f,
 	                 0xFF000000);
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 }

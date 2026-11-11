@@ -3615,8 +3615,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 		f32 outerRight  = 9.0f + (8.0f + right);
 		f32 outerBottom = 9.0f + (8.0f + bottom);
-		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, outerRight, top - 8.0f, -1.0f, outerRight, outerBottom, -1.0f,
-		                 left - 8.0f, outerBottom, -1.0f, 0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000);
+		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, outerRight, top - 8.0f, -1.0f, 0xFF000000, outerRight,
+		                 outerBottom, -1.0f, 0xFF000000, left - 8.0f, outerBottom, -1.0f, 0xFF000000);
 
 		f32 innerLeft = 1.0f + left, innerRight = right - 1.0f;
 		f32 innerTop = 1.0f + top, innerBottom = bottom - 1.0f;
@@ -3714,8 +3714,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		}
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, outerRight, top - 8.0f, -1.0f, outerRight, outerBottom, -1.0f,
-		                 left - 8.0f, outerBottom, -1.0f, 0xFF000000, 0xFF000000, 0xFF000000, 0xFF000000);
+		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, outerRight, top - 8.0f, -1.0f, 0xFF000000, outerRight,
+		                 outerBottom, -1.0f, 0xFF000000, left - 8.0f, outerBottom, -1.0f, 0xFF000000);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 
 		if (font->mMode >= 0 && font->mMode < 1) {
@@ -3853,8 +3853,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 			Vec quad[4] = { (Vec) { x, y, 0.0f }, (Vec) { x + font->mSize, y, 0.0f }, (Vec) { x + font->mSize, y + font->mSize, 0.0f },
 				            (Vec) { x, y + font->mSize, 0.0f } };
 			u32 color   = 0xFF00 | (u32)(200.0f * font->mHighlightAlpha);
-			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, quad[1].x, quad[1].y, quad[1].z, quad[2].x, quad[2].y, quad[2].z,
-			                 quad[3].x, quad[3].y, quad[3].z, color, color, color, color);
+			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x,
+			                 quad[2].y, quad[2].z, color, quad[3].x, quad[3].y, quad[3].z, color);
 			for (s32 i = 0; i < font->mDigitCount; i++) {
 				f32 digitX = ((font->mDigitCount * font->mSize) * 0.5f + center) - (i + 1) * font->mSize;
 				u32 color;

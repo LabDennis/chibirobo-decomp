@@ -12,11 +12,8 @@ public:
 	u64 mFlags; // _00
 	// _08 vtable
 
-	virtual ~CStatus64(); // _08
+	virtual ~CStatus64() { } // _08
 };
-inline CStatus64::~CStatus64()
-{
-}
 typedef char CStatus64_size_check[sizeof(CStatus64) == 0x10 ? 1 : -1];
 
 #endif
