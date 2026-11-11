@@ -1699,11 +1699,11 @@ extern "C" MtxPtr BeginGsCamera(CBase* base)
 		}
 #if !defined(VERSION_JP)
 		// todo: cleanup, the only spelling that matched, the original was probably an inline
-		Vec zero       = { 0.0f, 0.0f, 0.0f };
-		zero.x         = 0.0f;
-		zero.y         = 0.0f;
-		zero.z         = 0.0f;
-		base->mTextRot = zero;
+		Vec zero     = { 0.0f, 0.0f, 0.0f };
+		zero.x       = 0.0f;
+		zero.y       = 0.0f;
+		zero.z       = 0.0f;
+		gs->mTextRot = zero;
 #endif
 	}
 	return mtx;
@@ -3204,7 +3204,7 @@ extern "C" f32 MeasureGameTextHeight(CGs* gs, const char* text, f32 size)
  * @note Size: 0xF8
  */
 // same, with each character as wide as its glyph
-extern "C" void DrawGsProportionalTextFormat(CBase* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...)
+extern "C" void DrawGsProportionalTextFormat(CGs* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...)
 {
 	char buf[256];
 	va_list args;
@@ -3218,7 +3218,7 @@ extern "C" void DrawGsProportionalTextFormat(CBase* gs, u32 color, const char* f
  * @note Size: 0xF8
  */
 // printf into a buffer and draw it with fixed width characters
-extern "C" void DrawGsFixedWidthTextFormat(CBase* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...)
+extern "C" void DrawGsFixedWidthTextFormat(CGs* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...)
 {
 	char buf[256];
 	va_list args;
@@ -3248,9 +3248,8 @@ extern "C" void DrawGsFixedWidthTextFormat(CBase* gs, u32 color, const char* for
  */
 // draws text with one sprite per character and a background tile behind each when the
 // background color isn't zero
-extern "C" void DrawGsText(CBase* base, u32 color, BOOL proportional, const char* text, f32 x, f32 y, f32 z, f32 size, f32 height)
+extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* text, f32 x, f32 y, f32 z, f32 size, f32 height)
 {
-	CGs* gs = &base->mGs;
 	f32 offsX;
 	f32 curX = x;
 	f32 curY = y;
@@ -3329,7 +3328,7 @@ extern "C" void DrawGsText(CBase* base, u32 color, BOOL proportional, const char
 #if defined(VERSION_JP)
 		sCurrentTextChar->mSprite.SetRot(0.0f, 0.0f, 0.0f);
 #else
-		sCurrentTextChar->mSprite.SetRot(base->mTextRot.x, base->mTextRot.y, base->mTextRot.z);
+		sCurrentTextChar->mSprite.SetRot(gs->mTextRot.x, gs->mTextRot.y, gs->mTextRot.z);
 #endif
 		SetCenter(&sCurrentTextChar->mSprite, u, v, 0.0f);
 		SetColor(&sCurrentTextChar->mSprite, glyph.mColor);
@@ -3341,7 +3340,7 @@ extern "C" void DrawGsText(CBase* base, u32 color, BOOL proportional, const char
 #if defined(VERSION_JP)
 			sCurrentTextChar->mBg.SetRot(0.0f, 0.0f, 0.0f);
 #else
-			sCurrentTextChar->mBg.SetRot(base->mTextRot.x, base->mTextRot.y, base->mTextRot.z);
+			sCurrentTextChar->mBg.SetRot(gs->mTextRot.x, gs->mTextRot.y, gs->mTextRot.z);
 #endif
 			SetCenter(&sCurrentTextChar->mBg, 2.0f * (offsX / advance) + 1.0f - textWidth / advance, v, 0.0f);
 			SetColor(&sCurrentTextChar->mBg, glyph.mBgColor);
@@ -4778,7 +4777,7 @@ extern "C" void DrawGsText(CBase* base, u32 color, BOOL proportional, const char
  * @note Address: 0x80194FD4
  * @note Size: 0xF4
  */
-extern "C" void DrawGsStrokeTextFormat(CBase* gs, u32 color, const char* fmt, f32 x, f32 y, f32 z, f32 w, f32 h, ...)
+extern "C" void DrawGsStrokeTextFormat(CGs* gs, u32 color, const char* fmt, f32 x, f32 y, f32 z, f32 w, f32 h, ...)
 {
 	char buf[256];
 	va_list args;
@@ -4810,9 +4809,8 @@ static inline f32 MeasureStrokeTextWidth(CGs* gs, const char* text)
  * @note Address: 0x801943FC
  * @note Size: 0xBD8
  */
-extern "C" void DrawGsStrokeText(CBase* base, u32 color, const char* text, f32 x, f32 y, f32 z, f32 w, f32 h)
+extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f32 y, f32 z, f32 w, f32 h)
 {
-	CGs* gs = &base->mGs;
 	if (gs->mCurRenderMode == &gs->mRenderMode) {
 		gs->mRenderMode.mLineWidth    = 12;
 		gs->mRenderMode.mLineTexOffs  = 5;
@@ -4845,9 +4843,9 @@ extern "C" void DrawGsStrokeText(CBase* base, u32 color, const char* text, f32 x
 	Mtx scale;
 	Mtx mtx;
 	PSMTXTrans(trans, x + width * w * 0.5f, y, z);
-	PSMTXRotRad(rotX, 'x', base->mTextRot.x);
-	PSMTXRotRad(rotY, 'y', base->mTextRot.y);
-	PSMTXRotRad(rotZ, 'z', base->mTextRot.z);
+	PSMTXRotRad(rotX, 'x', gs->mTextRot.x);
+	PSMTXRotRad(rotY, 'y', gs->mTextRot.y);
+	PSMTXRotRad(rotZ, 'z', gs->mTextRot.z);
 	if (gs->mCamera->projection_type == PROJ_ORTHO) {
 		PSMTXScale(scale, w, h, 1.0f);
 	} else {

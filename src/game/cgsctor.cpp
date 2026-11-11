@@ -35,7 +35,11 @@ CGsChannel* __dt__10CGsChannelFv(CGsChannel* channel, s32 flags);
 // todo: weak copy
 extern "C" CGs* __ct__3CGsFv(CGs* gs)
 {
-	*(void***)((u8*)gs + sizeof(CGs) - 4)                 = __vt__3CGs;
+#if defined(VERSION_JP)
+	*(void***)((u8*)gs + sizeof(CGs) - 4) = __vt__3CGs;
+#else
+	*(void***)((u8*)&gs->mTextRot - 4) = __vt__3CGs;
+#endif
 	*(void***)((u8*)&gs->mScreen + sizeof(CGsScreen) - 4) = __vt__9CGsScreen;
 	gs->mScreen.mMode                                     = -1;
 	*(void***)((u8*)&gs->mRenderMode + 0x30)              = __vt__13CGsRenderMode;

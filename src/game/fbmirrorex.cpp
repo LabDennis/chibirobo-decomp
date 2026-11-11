@@ -34,7 +34,7 @@ static inline s32 DrawPromptLines(const char* const* lines, u32 color)
 	f32 top    = 224.0f - height * 0.5f;
 	for (s32 i = 0; i < count; ++i) {
 		f32 width = MeasureGameTextWidth(&gGame.mGs, lines[i], TRUE, 24.0f);
-		DrawGsProportionalTextFormat(&gGame, color, lines[i], 320.0f - width * 0.5f, 24.0f * i + top, 0.0f, 24.0f, 24.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, lines[i], 320.0f - width * 0.5f, 24.0f * i + top, 0.0f, 24.0f, 24.0f);
 	}
 	return count;
 }
@@ -105,7 +105,7 @@ extern "C" void DrawScanModePrompt()
 		f32 width           = MeasureGameTextWidth(&gs, choices, TRUE, 24.0f);
 
 		const f32 y = 24.0f * (count - 1) + (224.0f - (24.0f * count) * 0.5f);
-		DrawGsProportionalTextFormat(&gGame, color, choices, 320.0f - width * 0.5f, y, 0.0f, 24.0f, 24.0f, yes, no);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, choices, 320.0f - width * 0.5f, y, 0.0f, 24.0f, 24.0f, yes, no);
 		break;
 	}
 	case 4:

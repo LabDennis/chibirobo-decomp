@@ -490,7 +490,7 @@ void CCameraActionScroll2::vf20()
 			DrawTexturedWindowFrame(0x141414A0, -1, MeasureGameTextWidth(&gGame.mGs, name, 1, 18.0f) * 0.5f + nameX, nameY - 18.0f, width,
 			                        18.0f, 1.0f, 1.0f, 1.0f);
 #endif
-			DrawGsProportionalTextFormat(&gGame, -1, name, nameX, nameY - 18.0f, 0.0f, 18.0f, 18.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, -1, name, nameX, nameY - 18.0f, 0.0f, 18.0f, 18.0f);
 			break;
 		}
 		}
@@ -526,11 +526,11 @@ void CCameraActionScroll2::vf20()
 			f32 markY = y;
 #if defined(VERSION_PAL)
 			for (s32 j = 0; j < 4; j++) {
-				DrawGsProportionalTextFormat(&gGame, fadedAlpha, GetLocalizedInterfaceText(0x115), markX + gScrollRoomData.markerX[j],
+				DrawGsProportionalTextFormat(&gGame.mGs, fadedAlpha, GetLocalizedInterfaceText(0x115), markX + gScrollRoomData.markerX[j],
 				                             (-20.8f + (markY + gScrollRoomData.markerY[j])) - 11.0f, 0.0f, 22.0f, 22.0f);
 			}
-			DrawGsProportionalTextFormat(&gGame, markerColor, GetLocalizedInterfaceText(0x115), markX, (markY - 20.8f) - 11.0f, 0.0f, 22.0f,
-			                             22.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, markerColor, GetLocalizedInterfaceText(0x115), markX, (markY - 20.8f) - 11.0f, 0.0f,
+			                             22.0f, 22.0f);
 #else
 			CTexObj tex;
 			tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[161 - StatusTextureOffset], 0);
@@ -602,10 +602,10 @@ void CCameraActionScroll2::vf20()
 	s32 line     = 0;
 	f32 captionY = 24.0f * line + 62.0f;
 	for (s32 i = 0; i < 4; i++) {
-		DrawGsProportionalTextFormat(&gGame, alpha, msg.mText, captionX + CAPTION_OUTLINE_X[i], captionY + CAPTION_OUTLINE_Y[i], 0.0f,
+		DrawGsProportionalTextFormat(&gGame.mGs, alpha, msg.mText, captionX + CAPTION_OUTLINE_X[i], captionY + CAPTION_OUTLINE_Y[i], 0.0f,
 		                             20.0f, 20.0f);
 	}
-	DrawGsProportionalTextFormat(&gGame, white, msg.mText, captionX, captionY, 0.0f, 20.0f, 20.0f);
+	DrawGsProportionalTextFormat(&gGame.mGs, white, msg.mText, captionX, captionY, 0.0f, 20.0f, 20.0f);
 
 	CTexObj icon;
 	icon = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);

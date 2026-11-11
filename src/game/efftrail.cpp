@@ -527,16 +527,17 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 1, 1);
-		Vec textRot    = { rx, ry, rz };
-		gGame.mTextRot = textRot;
-		Vec pos        = GetEventJObjWorldPosition(&model, model.mJObj->child);
-		f32 fontSize   = 2.0f * (30.0f * size * size);
-		f32 left       = pos.x - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x104 + kind), TRUE, fontSize);
-		f32 top        = pos.y - 0.5f * fontSize;
+		Vec textRot        = { rx, ry, rz };
+		gGame.mGs.mTextRot = textRot;
+		Vec pos            = GetEventJObjWorldPosition(&model, model.mJObj->child);
+		f32 fontSize       = 2.0f * (30.0f * size * size);
+		f32 left           = pos.x - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x104 + kind), TRUE, fontSize);
+		f32 top            = pos.y - 0.5f * fontSize;
 		for (s32 j = 0; j < 4; ++j)
-			DrawGsProportionalTextFormat(&gGame, alpha, GetLocalizedInterfaceText(0x104 + kind), 2.0f + (left + gOXMenuLabelOutlineX[j]),
-			                             2.0f + (top + gOXMenuLabelOutlineY[j]), pos.z, fontSize, fontSize);
-		DrawGsProportionalTextFormat(&gGame, textColor, GetLocalizedInterfaceText(0x104 + kind), left, top, pos.z, fontSize, fontSize);
+			DrawGsProportionalTextFormat(&gGame.mGs, alpha, GetLocalizedInterfaceText(0x104 + kind),
+			                             2.0f + (left + gOXMenuLabelOutlineX[j]), 2.0f + (top + gOXMenuLabelOutlineY[j]), pos.z, fontSize,
+			                             fontSize);
+		DrawGsProportionalTextFormat(&gGame.mGs, textColor, GetLocalizedInterfaceText(0x104 + kind), left, top, pos.z, fontSize, fontSize);
 	}
 	SetGsChannelEnabled(&gGame.mGs, 0, 0);
 	SetGsCullMode(gGame.mGs.mCurRenderMode, 2);

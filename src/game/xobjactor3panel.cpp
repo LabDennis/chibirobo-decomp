@@ -90,9 +90,9 @@ static inline void DrawTimerLabel(f32 scale)
 	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 40.0f, 0.0f, (width - 4.0f) * scale, 12.0f, 0.0f, 0.0f, 0.0f);
 	f32 left = 320.0f - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size) * 0.5f;
 	for (int i = 0; i < 4; ++i)
-		DrawGsProportionalTextFormat(&gGame, 0xFF, GetLocalizedInterfaceText(0x5B), left + gStage02TimerOutlineX[i],
+		DrawGsProportionalTextFormat(&gGame.mGs, 0xFF, GetLocalizedInterfaceText(0x5B), left + gStage02TimerOutlineX[i],
 		                             27.0f + gStage02TimerOutlineY[i], 0.0f, size, size);
-	DrawGsProportionalTextFormat(&gGame, -1, GetLocalizedInterfaceText(0x5B), left, 27.0f, 0.0f, size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, -1, GetLocalizedInterfaceText(0x5B), left, 27.0f, 0.0f, size, size);
 }
 #endif
 extern "C" void DrawStage02TimerPanel(XObjActor3* actor)

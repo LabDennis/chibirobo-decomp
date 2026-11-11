@@ -174,7 +174,7 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, left + 16, endY - 16, 0, 32, 32, 0, 0, 0);
 				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-				DrawGsProportionalTextFormat(base, -1, name, left + 32, (endY - 20) - 6, 0, 20, 20);
+				DrawGsProportionalTextFormat(&base->mGs, -1, name, left + 32, (endY - 20) - 6, 0, 20, 20);
 			}
 		}
 		work.used = 0;
@@ -2372,7 +2372,7 @@ static inline s32 LoadStatusLines(Title* title, s32 id, f32 panelX, f32 panelY)
 static inline void DrawLoadText(const char* text, f32 center, f32 y, u32 color)
 {
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, 1, 21.0f);
-	DrawGsProportionalTextFormat(&gGame, color, text, center - width * 0.5f, y, 0.0f, 21.0f, 21.0f);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, center - width * 0.5f, y, 0.0f, 21.0f, 21.0f);
 }
 #endif
 static inline const char* LoadPromptText(s32 western, s32 japanese)
@@ -2435,10 +2435,10 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			u32 cells  = strlen(text) / 2;
 			f32 center = 320.0f + panelX, top = 8.0f + (356.0f - panelY);
 			f32 x = center - LoadHalfWidth(cells), y = (top - 6.0f) + title->_37C4;
-			DrawGsProportionalTextFormat(&gGame, LoadTextColor(title->_37E4), text, x, y, 0.0f, 21.0f, 21.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->_37E4), text, x, y, 0.0f, 21.0f, 21.0f);
 			sprintf(text, "%.255s", LoadPromptText(0x95, 0x16));
 			cells = strlen(text) / 2;
-			DrawGsProportionalTextFormat(&gGame, LoadTextColor(title->_37E4), text, center - LoadHalfWidth(cells),
+			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->_37E4), text, center - LoadHalfWidth(cells),
 			                             (21.0f + top) + title->_37C4, 0.0f, 21.0f, 21.0f);
 #else
 			f32 top   = 8.0f + (356.0f - panelY);
@@ -2534,7 +2534,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	if (showMessage) {
 #if defined(VERSION_JP)
 		u32 cells = strlen(text) / 2;
-		DrawGsProportionalTextFormat(&gGame, LoadTextColor(title->_37E4), text, (320.0f + panelX) - LoadHalfWidth(cells),
+		DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->_37E4), text, (320.0f + panelX) - LoadHalfWidth(cells),
 		                             LoadPromptY(title, panelY), 0.0f, 21.0f, 21.0f);
 #else
 		DrawLoadText(text, 320.0f, LoadPromptY(title, panelY), LoadTextColor(title->_37E4));
@@ -2570,8 +2570,8 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		}
 		f32 y = extra + (base + title->_37C4);
 #if defined(VERSION_JP)
-		DrawGsProportionalTextFormat(&gGame, LoadTextColor(title->_37E4), text, 10.0f + ((320.0f + panelX) - LoadHalfWidth(cells)), y, 0.0f,
-		                             21.0f, 21.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->_37E4), text, 10.0f + ((320.0f + panelX) - LoadHalfWidth(cells)), y,
+		                             0.0f, 21.0f, 21.0f);
 #else
 		if (HelpTextIsJapanese()) {
 			DrawLoadChoice(title, 0x65, 281.25f, y);
@@ -2589,7 +2589,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		sprintf(text, "%.255s", LoadPromptText(0, 0x36));
 		{
 			u32 cells = strlen(text) / 2;
-			DrawGsProportionalTextFormat(&gGame, LoadTextColor(title->_3810), text, (320.0f + panelX) - LoadHalfWidth(cells),
+			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->_3810), text, (320.0f + panelX) - LoadHalfWidth(cells),
 			                             LoadPromptY(title, panelY), 0.0f, 21.0f, 21.0f);
 		}
 #else
@@ -2632,7 +2632,7 @@ extern "C" void DrawTitleOptions(Title* title)
 #if !defined(VERSION_JP)
 		text = GetLocalizedInterfaceText(0x60);
 #endif
-		DrawGsProportionalTextFormat(&gGame, normal, text, 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, titleSize) / 2.0f,
+		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, titleSize) / 2.0f,
 		                             titleSize + top, 0.0f, titleSize, titleSize);
 #endif
 		f32 size = 24.0f * title->_3810;
@@ -2648,29 +2648,30 @@ extern "C" void DrawTitleOptions(Title* title)
 		f32 half = size * 0.5f;
 		f32 left = 320.0f - 9.0f * half;
 		f32 y    = size + (4.0f * half + top);
-		DrawGsProportionalTextFormat(&gGame, color, text, size + left, y, 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, size + left, y, 0.0f, size, size);
 		if (title->_3818) {
 			text = GetLocalizedInterfaceText(0x4a);
-			DrawGsProportionalTextFormat(&gGame, normal, text, size + (5.0f * size + left), y, 0.0f, size, size);
+			DrawGsProportionalTextFormat(&gGame.mGs, normal, text, size + (5.0f * size + left), y, 0.0f, size, size);
 		} else {
 			text = GetLocalizedInterfaceText(0x4b);
-			DrawGsProportionalTextFormat(&gGame, normal, text, half + (5.0f * size + left), y, 0.0f, size, size);
+			DrawGsProportionalTextFormat(&gGame.mGs, normal, text, half + (5.0f * size + left), y, 0.0f, size, size);
 		}
 		color = IsLineLit(title, 1) ? lit : normal;
 		text  = GetLocalizedInterfaceText(0x4c);
 		y     = size + (4.0f * (2.0f * half) + top);
-		DrawGsProportionalTextFormat(&gGame, color, text, left, y, 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, left, y, 0.0f, size, size);
 		text = title->_3819 ? GetLocalizedInterfaceText(0x4d) : GetLocalizedInterfaceText(0x4e);
-		DrawGsProportionalTextFormat(&gGame, normal, text, 5.0f * size + left, y, 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, 5.0f * size + left, y, 0.0f, size, size);
 #else
 		text  = GetLocalizedInterfaceText(0x10);
 		f32 x = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f - 8.0f;
 		f32 y;
-		DrawGsProportionalTextFormat(&gGame, color, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f,
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f,
 		                             y = size + (4.0f * (size / 2.0f) + top), 0.0f, size, size);
 		text = title->_3818 ? GetLocalizedInterfaceText(0x11) : GetLocalizedInterfaceText(0x12);
 		x    = 8.0f + (MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f + 320.0f);
-		DrawGsProportionalTextFormat(&gGame, normal, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f, y, 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f, y, 0.0f, size,
+		                             size);
 
 		color = normal;
 		if (IsLineLit(title, 1)) {
@@ -2678,11 +2679,12 @@ extern "C" void DrawTitleOptions(Title* title)
 		}
 		text = GetLocalizedInterfaceText(0x13);
 		x    = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f - 8.0f;
-		DrawGsProportionalTextFormat(&gGame, color, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f,
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f,
 		                             y = size + (4.0f * (2.0f * (size / 2.0f)) + top), 0.0f, size, size);
 		text = title->_3819 ? GetLocalizedInterfaceText(0x14) : GetLocalizedInterfaceText(0x15);
 		x    = 8.0f + (MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f + 320.0f);
-		DrawGsProportionalTextFormat(&gGame, normal, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f, y, 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f, y, 0.0f, size,
+		                             size);
 #endif
 
 		f32 t        = title->mCursor.mAnimId == 1 ? GetAnimProgress(title) : 0.0f;
@@ -2693,12 +2695,12 @@ extern "C" void DrawTitleOptions(Title* title)
 		}
 #if defined(VERSION_JP)
 		text = GetLocalizedInterfaceText(0x4f);
-		DrawGsProportionalTextFormat(&gGame, normal, text, 320.0f - 3.0f * half,
+		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, 320.0f - 3.0f * half,
 		                             (backSize - size) / 2.0f + ((2.0f * size + (4.0f * (3.0f * half) + top)) - backSize), 0.0f, size,
 		                             backSize);
 #else
 		text = GetLocalizedInterfaceText(0x16);
-		DrawGsProportionalTextFormat(&gGame, normal, text, 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f,
+		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f,
 		                             (backSize - size) / 2.0f + ((2.0f * size + (4.0f * (3.0f * (size / 2.0f)) + top)) - backSize), 0.0f,
 		                             size, size);
 #endif
@@ -2750,13 +2752,14 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32
 		if (selected)
 			tint = lit;
 		if (title->_3809)
-			DrawGsProportionalTextFormat(&gGame, tint, text, 320.0f - width * .5f, (size - 24.0f) * .5f + (y - size), 0.0f, 24.0f, size);
+			DrawGsProportionalTextFormat(&gGame.mGs, tint, text, 320.0f - width * .5f, (size - 24.0f) * .5f + (y - size), 0.0f, 24.0f,
+			                             size);
 	} else {
 		f32 x = 320.0f - width * .5f, top = (size - 24.0f) * .5f + (y - size);
 		bool selected = false;
 		if (title->_37A8 == entry && (f32)title->_1C >= FRAME_RATE)
 			selected = true;
-		DrawGsProportionalTextFormat(&gGame, selected ? lit : normal, text, x, top, 0.0f, 24.0f, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, selected ? lit : normal, text, x, top, 0.0f, 24.0f, size);
 	}
 	return width;
 }

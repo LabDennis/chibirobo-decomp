@@ -287,30 +287,34 @@ public:
 	s32 mUseShiftJis;          // _17A4, Init's argument
 	f32 mShiftJisWidthScale;   // _17A8
 	f32 mSingleByteWidthScale; // _17AC
-	                           // _17B0 vtable
+	                           // _17B0 vtable, _17B4 in europe
 #endif
 
 	CGs();
 	virtual ~CGs(); // _08
+
+#if !defined(VERSION_JP)
+	Vec mTextRot; // _17B4, _17B8 in europe, the text rotation, cleared by the light setup
+#endif
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(CGs) == 0x17A8);
 #elif defined(VERSION_PAL)
-STATIC_ASSERT(sizeof(CGs) == 0x17B8);
+STATIC_ASSERT(sizeof(CGs) == 0x17C4);
 #else
-STATIC_ASSERT(sizeof(CGs) == 0x17B4);
+STATIC_ASSERT(sizeof(CGs) == 0x17C0);
 #endif
 
-// game/cgame.h, its text rotation sits right after the CGs
+// game/cgame.h, the game base holds a CGs first
 class CBase;
 
 extern "C" {
 // text, plain and printf style
-void DrawGsStrokeText(CBase* gs, u32 color, const char* text, f32 x, f32 y, f32 z, f32 w, f32 h);
-void DrawGsStrokeTextFormat(CBase* gs, u32 color, const char* fmt, f32 x, f32 y, f32 z, f32 w, f32 h, ...);
-void DrawGsText(CBase* gs, u32 color, BOOL proportional, const char* text, f32 x, f32 y, f32 z, f32 size, f32 height);
-void DrawGsFixedWidthTextFormat(CBase* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...);
-void DrawGsProportionalTextFormat(CBase* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...);
+void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f32 y, f32 z, f32 w, f32 h);
+void DrawGsStrokeTextFormat(CGs* gs, u32 color, const char* fmt, f32 x, f32 y, f32 z, f32 w, f32 h, ...);
+void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* text, f32 x, f32 y, f32 z, f32 size, f32 height);
+void DrawGsFixedWidthTextFormat(CGs* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...);
+void DrawGsProportionalTextFormat(CGs* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...);
 // text widths
 f32 MeasureGameTextHeight(CGs* gs, const char* text, f32 size);
 f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size);

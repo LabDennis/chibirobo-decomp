@@ -442,8 +442,7 @@ static inline void DrawPCSubwindowMenu(MenuPC* menu)
 
 static inline void DrawPCDepositLabel(MenuPC* menu, const char* text, f32 x, f32 y)
 {
-	DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), (u32)(menu->mAlpha * 255.0f) | 0xC8C8C800, text, x, y,
-	                             0, 18, 18);
+	DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(menu->mAlpha * 255.0f) | 0xC8C8C800, text, x, y, 0, 18, 18);
 }
 template <bool setDepth>
 static inline void DrawPCDepositRect(MenuPC* menu, f32 left, f32 top, f32 right, f32 bottom)
@@ -511,13 +510,12 @@ static inline void DrawPCExchangeLabel(MenuPC* menu, char* text, s32 id, f32 y)
 	sprintf(text, "%.255s", GetPCMenuLabelText(id));
 	u32 chars = strlen(text) / 2;
 	f32 x     = (320.0f - ((chars - 1) * 20.0f) * 0.5f) - 10.0f;
-	DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00, text, x, y,
-	                             0, 20, 20);
+	DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00, text, x, y, 0, 20, 20);
 #else
 	const char* localized = GetLocalizedInterfaceText(id + 45);
 	u32 color             = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
 	f32 x                 = 320.0f - 0.5f * MeasureGameTextWidth(GetGameGraphics(&gGame), GetLocalizedInterfaceText(id + 45), TRUE, 20);
-	DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), color, localized, x, y, 0, 20, 20);
+	DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, localized, x, y, 0, 20, 20);
 #endif
 }
 
@@ -621,8 +619,8 @@ static inline void DrawPCDialogue(MenuPC* menu, const char* text)
 			menu->mCharFlags[i] = 0;
 		}
 		u32 color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
-		DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), color, (const char*)&menu->mCharCopies[i],
-		                             menu->mCharX[i], 370.0f, 0.0f, 22.0f, 22.0f);
+		DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, (const char*)&menu->mCharCopies[i], menu->mCharX[i], 370.0f, 0.0f,
+		                             22.0f, 22.0f);
 	}
 }
 #else
@@ -645,19 +643,19 @@ static inline void DrawPCDialogue(MenuPC* menu, const char* text)
 	chunks[2][sizeof(chunks[2]) - 1] = '\0';
 #endif
 	gPCDialogueX -= 3.0f;
-	u32 color       = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
-	CBase* graphics = reinterpret_cast<CBase*>(GetGameGraphics(&gGame));
+	u32 color     = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
+	CGs* graphics = GetGameGraphics(&gGame);
 	DrawGsProportionalTextFormat(graphics, color, chunks[0], gPCDialogueX, 370.0f, 0.0f, 22.0f, 22.0f);
 	color          = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
 	f32 firstWidth = MeasureGameTextWidth(GetGameGraphics(&gGame), chunks[0], 1, 22.0f);
 	f32 x          = gPCDialogueX + firstWidth;
-	DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), color, chunks[1], x, 370.0f, 0.0f, 22.0f, 22.0f);
+	DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, chunks[1], x, 370.0f, 0.0f, 22.0f, 22.0f);
 #if defined(VERSION_PAL)
 	color           = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
 	f32 secondWidth = MeasureGameTextWidth(GetGameGraphics(&gGame), chunks[1], 1, 22.0f);
 	firstWidth      = MeasureGameTextWidth(GetGameGraphics(&gGame), chunks[0], 1, 22.0f);
 	x               = (gPCDialogueX + firstWidth) + secondWidth;
-	DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), color, chunks[2], x, 370.0f, 0.0f, 22.0f, 22.0f);
+	DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, chunks[2], x, 370.0f, 0.0f, 22.0f, 22.0f);
 #endif
 	f32 width = MeasureGameTextWidth(GetGameGraphics(&gGame), text, 1, 22.0f);
 	if (gPCDialogueX + width <= 0)
@@ -800,15 +798,14 @@ BOOL MenuPC::Draw()
 				if (PCUsesFixedChoiceLabels()) {
 #if defined(VERSION_JP)
 					sprintf(labelText, "%.255s", GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label));
-					DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), color, labelText, 224, rowY, 0, 20, 20);
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, labelText, 224, rowY, 0, 20, 20);
 #else
-					DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), color,
-					                             GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label), 224, rowY, 0, 20, 20);
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label),
+					                             224, rowY, 0, 20, 20);
 #endif
 				} else {
-					DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), color,
-					                             GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label), 6.0f + (204.0f + w), rowY, 0, 20,
-					                             20);
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label),
+					                             6.0f + (204.0f + w), rowY, 0, 20, 20);
 				}
 			}
 		} break;
@@ -903,8 +900,8 @@ BOOL MenuPC::Draw()
 #if defined(VERSION_JP)
 				DrawPCBlueNumber(false, 164, 178, this->mAlpha, 1, 1);
 				sprintf(labelText, "%.255s", GetPCMenuLabelText(34));
-				DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), (u32)(255.0f * this->mAlpha) | 0xC8C8C800,
-				                             labelText, 313, 169, 0, 18, 18);
+				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha) | 0xC8C8C800, labelText, 313, 169, 0, 18,
+				                             18);
 				s32 digits = CountDecimalDigits(rate);
 				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
 				DrawPCGoldNumber(false, 212.0f + digits * (1.4f * GetMenuTextureWidth(&tex)), 178, this->mAlpha, 1, rate);
@@ -1007,8 +1004,8 @@ BOOL MenuPC::Draw()
 						break;
 					}
 #endif
-					DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)),
-					                             0xFFB62800 | (u32)(255.0f * this->mAlpha), labelText, x, y, 0, 18.0f, 18.0f);
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), 0xFFB62800 | (u32)(255.0f * this->mAlpha), labelText, x, y, 0,
+					                             18.0f, 18.0f);
 				}
 				if (!this->_3A0) {
 					f32 rotation = 0;
@@ -1087,12 +1084,10 @@ BOOL MenuPC::Draw()
 						sprintf(labelText, "%.255s", GetPCMenuLabelText(12));
 					else
 						sprintf(labelText, "%.255s", GetPCMenuLabelText(13));
-					DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), (u32)(255.0f * this->mAlpha), labelText,
-					                             224, 334, 0, 20, 20);
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha), labelText, 224, 334, 0, 20, 20);
 					DrawPCHeadingIcon<PCIconCorner, 100>(this, tex, 139, 344, 335, 0);
 					PCSecondaryPrompt(this, labelText);
-					DrawGsProportionalTextFormat(reinterpret_cast<CBase*>(GetGameGraphics(&gGame)), (u32)(255.0f * this->mAlpha), labelText,
-					                             364, 334, 0, 20, 20);
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha), labelText, 364, 334, 0, 20, 20);
 				}
 			}
 		}
@@ -1458,7 +1453,7 @@ extern "C" MENU_GROUP_CODE BOOL Draw__13MenuMCTestSubFv(MenuMCTestSub* menu)
 				DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + left, 1.0f + lineY, 0.0f, light, 1.0f + (left + width), 1.0f + lineY, 0.0f,
 				                  light);
 			} else {
-				DrawGsFixedWidthTextFormat(&gGame, color, menu->mText[i], x - menu->mTextWidth[i] / 2, y - height / 2 + step * i, 0.0f,
+				DrawGsFixedWidthTextFormat(&gGame.mGs, color, menu->mText[i], x - menu->mTextWidth[i] / 2, y - height / 2 + step * i, 0.0f,
 				                           lineH, lineH);
 			}
 		}
@@ -1621,11 +1616,11 @@ extern "C" BOOL Draw__10MenuMCTestFv(MenuMCTest* menu)
 				DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + left, 1.0f + lineY, 0.0f, light, 1.0f + (left + width), 1.0f + lineY, 0.0f,
 				                  light);
 			} else if (result == 0 || result == -1 || result == -4 || result == -7 || result == -128 || i >= menu->mFileCount) {
-				DrawGsFixedWidthTextFormat(&gGame, color, menu->mText[i], x - menu->mMaxWidth / 2, y - height / 2 + step * i, 0.0f, lineH,
-				                           lineH);
+				DrawGsFixedWidthTextFormat(&gGame.mGs, color, menu->mText[i], x - menu->mMaxWidth / 2, y - height / 2 + step * i, 0.0f,
+				                           lineH, lineH);
 			} else {
 				f32 textW = MeasureGameTextWidth(&gGame.mGs, menu->mText[i], 0, menu->mFontSize);
-				DrawGsFixedWidthTextFormat(&gGame, (u32)(255.0f * menu->mAlpha) | 0x20202000, menu->mText[i], x - textW / 2,
+				DrawGsFixedWidthTextFormat(&gGame.mGs, (u32)(255.0f * menu->mAlpha) | 0x20202000, menu->mText[i], x - textW / 2,
 				                           y - height / 2 + step * i, 0.0f, lineH, lineH);
 			}
 		}
@@ -2017,8 +2012,8 @@ extern "C" BOOL Draw__8MenuMainFv(MenuMain* menu)
 				DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + left, 1.0f + lineY, 0.0f, light, 1.0f + (left + width), 1.0f + lineY, 0.0f,
 				                  light);
 			} else {
-				DrawGsFixedWidthTextFormat(&gGame, color, menu->mText[i], x - menu->mMaxWidth / 2, y - height / 2 + step * i, 0.0f, lineH,
-				                           lineH);
+				DrawGsFixedWidthTextFormat(&gGame.mGs, color, menu->mText[i], x - menu->mMaxWidth / 2, y - height / 2 + step * i, 0.0f,
+				                           lineH, lineH);
 			}
 		}
 		f32 cx = x - maxW / 2;
@@ -4652,7 +4647,7 @@ extern "C" void DrawDoubleByteMenuText(const char* text, f32 x, f32 y, f32 z, f3
 				break;
 			}
 		}
-		DrawGsProportionalTextFormat(&gGame, color, c, shift + left - w / 2, y - h / 2, 0.0f, w, h);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, c, shift + left - w / 2, y - h / 2, 0.0f, w, h);
 	}
 }
 
@@ -6018,7 +6013,7 @@ static inline void DrawMenuHelpLine(s32 id, f32 y, f32 size, u32 color)
 {
 	char* text = GetLocalizedInterfaceText(id);
 	f32 width  = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
-	DrawGsProportionalTextFormat(&gGame, color, text, MenuTextCenter(width, 0.5f, 320.0f), y, 0.0f, size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, MenuTextCenter(width, 0.5f, 320.0f), y, 0.0f, size, size);
 }
 
 /**
@@ -6596,13 +6591,13 @@ extern "C" void DrawStatusItemDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale
 	sprintf(text, "%s", GetItemDescription(id));
 	f32 width   = MeasureGameTextWidth(&gGame.mGs, text, 1, fontSize);
 	f32 padding = 6.0f * scale;
-	DrawGsProportionalTextFormat(&gGame, color, text, x - width / 2.0f, (4.0f * scale + (textOffset + (5.0f * fontSize + y))) - padding,
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f, (4.0f * scale + (textOffset + (5.0f * fontSize + y))) - padding,
 	                             0.0f, fontSize, fontSize);
 	sprintf(text, "%s", GetItemName(id));
 	f32 helpSize = 2.0f * scale + fontSize;
 	width        = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
-	DrawGsProportionalTextFormat(&gGame, opacity | 0xFFAA0000, text, x - width / 2.0f, ((4.0f * fontSize + y) + textOffset) - padding, 0.0f,
-	                             helpSize, helpSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, x - width / 2.0f, ((4.0f * fontSize + y) + textOffset) - padding,
+	                             0.0f, helpSize, helpSize);
 	s32 icon       = GetItemIconTextureIndex(id);
 	tex            = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[icon], 0);
 	f32 iconWidth  = scale * GXGetTexObjWidth(&tex);
@@ -6868,7 +6863,7 @@ extern "C" BOOL Draw__15MenuStageSelectFv(MenuStageSelect* menu)
 					DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + (x - 15.0f), 1.0f + (fontSize / 2 + y), 0.0f, light,
 					                  1.0f + ((x - 15.0f) + (30.0f + maxWidth)), 1.0f + (fontSize / 2 + y), 0.0f, light);
 				} else {
-					DrawGsFixedWidthTextFormat(&gGame, color, menu->mLabels[index], x, y, 0.0f, fontSize, fontSize);
+					DrawGsFixedWidthTextFormat(&gGame.mGs, color, menu->mLabels[index], x, y, 0.0f, fontSize, fontSize);
 				}
 				y += step;
 			}
@@ -7445,7 +7440,7 @@ BOOL MenuSound::Draw()
 			f32 textX = x - mMaxWidth / 2.0f;
 			char text[64];
 			sprintf(text, mText[i], GetSoundMenuSelection(&gGame.mSound, i));
-			DrawGsProportionalTextFormat(&gGame, color, text, textX, step * i + (y - height / 2.0f), 0.0f, fontSize, fontSize);
+			DrawGsProportionalTextFormat(&gGame.mGs, color, text, textX, step * i + (y - height / 2.0f), 0.0f, fontSize, fontSize);
 		}
 		DrawMenuSelectionCursor(mCursor, x - maxWidth / 2.0f, step * mSelection + (y - height / 2.0f), maxWidth, fontSize, mAlpha, mAlpha);
 		return TRUE;
@@ -7607,7 +7602,8 @@ BOOL MenuSettings::Draw()
 					sprintf(text, mText[i], prefix, mValues[i] ? "\x97L" : "\x96\xb3", suffix);
 				else if (i == 4)
 					sprintf(text, mText[i], prefix, ConvertHalfWidthToFullWidthSJIS(FormatToStaticBuffer("%d", mValues[i]), NULL), suffix);
-				DrawGsFixedWidthTextFormat(&gGame, color, text, x - mTextWidth[i] / 2, y - height / 2 + step * i, 0.0f, fontSize, fontSize);
+				DrawGsFixedWidthTextFormat(&gGame.mGs, color, text, x - mTextWidth[i] / 2, y - height / 2 + step * i, 0.0f, fontSize,
+				                           fontSize);
 			}
 		}
 		DrawMenuSelectionCursor(mCursor, x - maxWidth / 2, y - height / 2 + step * mSelection, maxWidth, fontSize, mAlpha, mAlpha);
@@ -7729,7 +7725,7 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 	char text[256];
 	sprintf(text, "%s", GetUtilibotName(id));
 	color = (count <= 0 ? (u32)(0.4f * alpha) : opacity) | 0xFFFFFF00;
-	DrawGsProportionalTextFormat(&gGame, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[digitTexture], 0);
 	w   = scale * GXGetTexObjWidth(&tex);
 	h   = scale * (GXGetTexObjHeight(&tex) / 10);
@@ -7803,7 +7799,7 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, bool attachment
 	else
 		sprintf(text, "%s", GetItemName(id));
 	color = (count <= 0 ? (u32)(0.4f * alpha) : opacity) | 0xFFFFFF00;
-	DrawGsProportionalTextFormat(&gGame, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[digitTexture], 0);
 	w   = scale * GXGetTexObjWidth(&tex);
 	h   = scale * (GXGetTexObjHeight(&tex) / 10);
@@ -8398,9 +8394,10 @@ extern "C" void DrawStatusCallout(MenuStatus*, s32 id, f32 x, f32 y, f32 targetX
 	f32 alpha   = 255.0f;
 	u32 opacity = (u32)alpha;
 	for (int i = 0; i < 4; i++)
-		DrawGsProportionalTextFormat(&gGame, opacity, labels[id].text, x + gStatusOutlineX[i], y + gStatusOutlineY[i], 0.0f, 18.0f, 18.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, opacity, labels[id].text, x + gStatusOutlineX[i], y + gStatusOutlineY[i], 0.0f, 18.0f,
+		                             18.0f);
 	u32 white = opacity | 0xFFFFFF00;
-	DrawGsProportionalTextFormat(&gGame, white, labels[id].text, x, y, 0.0f, 18.0f, 18.0f);
+	DrawGsProportionalTextFormat(&gGame.mGs, white, labels[id].text, x, y, 0.0f, 18.0f, 18.0f);
 	DrawCalloutIcon(tex, labels[id].cell, white, x, y);
 	x = (x - 21.6f) - 10.8f;
 	y += 10.8f;
@@ -8803,7 +8800,7 @@ static inline void DrawCenteredSaveLine(const char* text, f32 x, f32 y, f32 size
 {
 	f32 top   = (y + offsetY) - size / 2.0f;
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
-	DrawGsProportionalTextFormat(&gGame, color, text, x - width / 2.0f, top, 0.0f, size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f, top, 0.0f, size, size);
 }
 static inline void DrawColoredSlotCaption(const char* text, f32 x, f32 y, f32 size, u32 shadow, u32 color)
 {
@@ -9044,7 +9041,7 @@ static inline void DrawSaveChoiceLabel(MenuSave* menu, s32 id, f32 x, f32 y)
 	u32 color        = (u32)(255.0f * menu->_264);
 	const char* text = GetLocalizedInterfaceText(id);
 	f32 width        = MeasureGameTextWidth(&gGame.mGs, text, 1, 21.0f);
-	DrawGsProportionalTextFormat(&gGame, color, text, x - width / 2, y, 0.0f, 21.0f, 21.0f);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2, y, 0.0f, 21.0f, 21.0f);
 }
 #endif
 
@@ -9168,7 +9165,7 @@ extern "C" BOOL Draw__8MenuSaveFv(MenuSave* menu)
 			u32 color = (u32)(255.0f * menu->_264);
 			f32 x     = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, 21.0f) / 2;
 #endif
-			DrawGsProportionalTextFormat(&gGame, color, text, x, y, 0.0f, 21.0f, 21.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, color, text, x, y, 0.0f, 21.0f, 21.0f);
 		}
 		switch (menu->mMode) {
 		case 3:
@@ -9204,7 +9201,7 @@ extern "C" BOOL Draw__8MenuSaveFv(MenuSave* menu)
 			labelY = lineOffset + (baseLabelY + menu->_16C);
 #if defined(VERSION_JP)
 			f32 labelX = 320.0f + panelX - SavePromptHalfWidth(cells);
-			DrawGsProportionalTextFormat(&gGame, (u32)(255.0f * menu->_264), text, 10.0f + labelX, labelY, 0.0f, 21.0f, 21.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * menu->_264), text, 10.0f + labelX, labelY, 0.0f, 21.0f, 21.0f);
 #else
 			if (IsJapanese()) {
 				DrawSaveChoiceLabel(menu, 0x65, 281.25f, labelY);
@@ -9232,7 +9229,7 @@ static u32 SavePromptCells(const char* text)
 static inline void DrawJapaneseCardLine(char* text, f32 x, f32 y, f32 size, u32 color)
 {
 	u32 gaps = strlen(text) / 2 - 1;
-	DrawGsProportionalTextFormat(&gGame, color, text, x - (gaps * size) / 2.0f, y, 0.0f, size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - (gaps * size) / 2.0f, y, 0.0f, size, size);
 }
 
 static inline void DrawJapaneseCardLine(char (&text)[256], s32 id, f32 x, f32 y, f32 size, u32 color)
@@ -9476,12 +9473,12 @@ static inline void DrawStatusGridDescription(MenuStatus* menu)
 	sprintf(text, "%.255s", iconGrid ? GetStatusIconDescription(id) : GetStatusOverviewDescription(id));
 	f32 w       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
 	f32 padding = 6.0f * scale;
-	DrawGsProportionalTextFormat(&gGame, color, text, 320.0f - w / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding, 0.0f,
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - w / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding, 0.0f,
 	                             size, size);
 	sprintf(text, "%.255s", iconGrid ? GetStatusIconName(id) : GetStatusOverviewLabel(id));
 	f32 helpSize = 2.0f * scale + size;
 	w            = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
-	DrawGsProportionalTextFormat(&gGame, opacity | 0xFFAA0000, text, 320.0f - w / 2.0f, ((4.0f * size + y) + offset) - padding, 0.0f,
+	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - w / 2.0f, ((4.0f * size + y) + offset) - padding, 0.0f,
 	                             helpSize, helpSize);
 }
 
@@ -10391,7 +10388,7 @@ static inline void DrawPCRecycleLabel(s32 id, f32 x, f32 offset, f32 margin, f32
 	const char* text = GetLocalizedInterfaceText(id);
 	x -= MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), 1, size) * 0.5f;
 #endif
-	DrawGsProportionalTextFormat(&gGame, color, text, x, y, 0, size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x, y, 0, size, size);
 }
 
 static inline void DrawPCRecycleUnit(f32 originX, f32 originY, f32 scale, f32 alpha)
@@ -10399,8 +10396,8 @@ static inline void DrawPCRecycleUnit(f32 originX, f32 originY, f32 scale, f32 al
 #if defined(VERSION_JP)
 	char units[256];
 	sprintf(units, "%.255s", GetLocalizedInterfaceText(0x88));
-	DrawGsProportionalTextFormat(&gGame, (u32)(255.0f * alpha) | 0xC8C8C800, units, 216.0f * scale + originX, 147.0f * scale + originY, 0,
-	                             18.0f * scale, 18.0f * scale);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xC8C8C800, units, 216.0f * scale + originX, 147.0f * scale + originY,
+	                             0, 18.0f * scale, 18.0f * scale);
 #else
 	{
 		f32 unitAlpha = alpha;
@@ -10503,7 +10500,7 @@ extern "C" u8* GetUtilibotDescription(s32 id);
 static inline void DrawPCShopCenteredText(const char* text, u32 color, f32 x, f32 y, f32 size)
 {
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
-	DrawGsProportionalTextFormat(&gGame, color, text, x - width / 2.0f, y, 0, size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f, y, 0, size, size);
 }
 
 extern "C" u8* GetAttachmentDescription(s32 id);
@@ -10573,7 +10570,7 @@ static inline void DrawPCPurchaseResult(char (&text)[256], s32 bought, f32 x, f3
 	DrawPCShopCenteredText(text, white, x, y, size);
 #else
 	f32 labelWidth = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(bought), 1, size);
-	DrawGsProportionalTextFormat(&gGame, white, GetLocalizedInterfaceText(bought), x - labelWidth / 2.0f, y, 0, size, size);
+	DrawGsProportionalTextFormat(&gGame.mGs, white, GetLocalizedInterfaceText(bought), x - labelWidth / 2.0f, y, 0, size, size);
 #endif
 }
 
@@ -10841,10 +10838,11 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 			if (rankValue > 0 && rankValue <= 1000000) {
 				DrawPCRankingDigits<true>(tex, rankValue, left, rowY, scale, a | 0xBFDDFB00, a | 0x0E72D600);
 				sprintf(text, "%.255s", GetLocalizedInterfaceText(rankLabel));
-				DrawGsProportionalTextFormat(&gGame, a | 0xBFDDFB00, text, 103.0f * scale + left, rowY, 0, 18.0f * scale, 18.0f * scale);
+				DrawGsProportionalTextFormat(&gGame.mGs, a | 0xBFDDFB00, text, 103.0f * scale + left, rowY, 0, 18.0f * scale,
+				                             18.0f * scale);
 			} else {
 				sprintf(text, "%.255s", GetLocalizedInterfaceText(unrankedLabel));
-				DrawGsProportionalTextFormat(&gGame, a | 0xBFDDFB00, text, 48.0f * scale + left, rowY, 0, 18.0f * scale, 18.0f * scale);
+				DrawGsProportionalTextFormat(&gGame.mGs, a | 0xBFDDFB00, text, 48.0f * scale + left, rowY, 0, 18.0f * scale, 18.0f * scale);
 			}
 			DrawPCRankingDigits<false>(tex, row.score, left, rowY, scale, a | 0xCECEFF00, a | 0xE037EE00);
 			tex = InitPCPanelTexture(154);
@@ -10852,7 +10850,7 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 			u16 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
 			DrawOverviewTexture(tex, light, 140.0f * scale + left, rowY + 10.0f * scale, 0.6f * (scale * iw), 0.6f * (scale * ih));
 			sprintf(text, "%.255s", fn_8006DF54(row.nameIndex));
-			DrawGsProportionalTextFormat(&gGame, (u32)(255.0f * menu->mAlpha) | 0xC8C8C800, text, 48.0f * scale + left,
+			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * menu->mAlpha) | 0xC8C8C800, text, 48.0f * scale + left,
 			                             rowY + 20.0f * scale, 0, 18.0f * scale, 18.0f * scale);
 		}
 	}

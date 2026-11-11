@@ -3870,7 +3870,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 #endif
 				f32 width = MeasureGameTextWidth(&gGame.mGs, text, TRUE, font->mSize);
 				digitX += (font->mSize - width) * 0.5f;
-				DrawGsProportionalTextFormat(&gGame, color, text, digitX, y, 0.0f, font->mSize, font->mSize);
+				DrawGsProportionalTextFormat(&gGame.mGs, color, text, digitX, y, 0.0f, font->mSize, font->mSize);
 			}
 		}
 		SetGsLineWidth(gGame.mGs.mCurRenderMode, 12, 5);

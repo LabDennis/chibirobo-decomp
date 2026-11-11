@@ -445,7 +445,7 @@ extern "C" void DrawObjectLoadingProgress(InfoScrn* scrn)
 		}
 		const char* text = GetLocalizedInterfaceText(0x59);
 		f32 w            = MeasureGameTextWidth(&gGame.mGs, text, 1, 16.0f);
-		DrawGsProportionalTextFormat(&gGame, -1, text, 320.0f - w / 2, 386.0f, 0.0f, 16.0f, 16.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, -1, text, 320.0f - w / 2, 386.0f, 0.0f, 16.0f, 16.0f);
 	}
 }
 
@@ -459,7 +459,7 @@ extern "C" void DrawHudPauseLabel(InfoScrn* scrn)
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 3, 0);
 		const char* text = "\\B00000080 PAUSE ";
 		f32 w            = MeasureGameTextWidth(&gGame.mGs, text, 1, 24.0f);
-		DrawGsProportionalTextFormat(&gGame, -1, text, 320.0f - w / 2, 200.0f, 0.0f, 24.0f, 24.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, -1, text, 320.0f - w / 2, 200.0f, 0.0f, 24.0f, 24.0f);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 	}
 }

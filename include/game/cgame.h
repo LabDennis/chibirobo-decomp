@@ -130,10 +130,7 @@ struct GameScrnColor {
 // 0x18 shorter from mFont on, europe is 4 longer from mFont and 8 from mStatus
 class CBase {
 public:
-	CGs mGs; // _0000
-#if !defined(VERSION_JP)
-	Vec mTextRot; // _17B4, the text rotation, cleared by the light setup
-#endif
+	CGs mGs;                  // _0000
 	CFont mFont;              // _17C0, _17A8 in japan
 	CPadEx mPad;              // _1900
 	u32 mLastRetrace;         // _1B08, VIGetRetraceCount at the start of the frame

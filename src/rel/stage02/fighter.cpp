@@ -355,7 +355,8 @@ extern "C" s32 FindStageIndexByName(const char* name);
 extern "C" const char* GetLocalizedInterfaceText(s32 id);
 extern "C" f32 MeasureGameTextWidth(void* game, const char* text, s32 a, f32 size);
 extern "C" void DrawGsQuad(void* game, s32 r, s32 g, s32 b, s32 a, f32 x, f32 y, f32 z, f32 w, f32 h, f32 u, f32 v, f32 rot);
-extern "C" void DrawGsProportionalTextFormat(void* game, s32 color, const char* text, f32 x, f32 y, f32 z, f32 sx, f32 sy, ...);
+class CGs;
+extern "C" void DrawGsProportionalTextFormat(CGs* game, s32 color, const char* text, f32 x, f32 y, f32 z, f32 sx, f32 sy, ...);
 extern "C" f64 sin(f64 x);
 extern "C" f64 cos(f64 x);
 
@@ -619,10 +620,10 @@ inline void DrawCaption(s32 id, f32 x, f32 y)
 	cx = x - MeasureGameTextWidth(gGame, GetLocalizedInterfaceText(id), 1, 20.0f) * 0.5f;
 	cy = y - 13.0f;
 	for (i = 0; i < 4; i++) {
-		DrawGsProportionalTextFormat(gGame, 0xFF, GetLocalizedInterfaceText(id), cx + captionShadowX[i], cy + captionShadowY[i], 0.0f,
+		DrawGsProportionalTextFormat((CGs*)gGame, 0xFF, GetLocalizedInterfaceText(id), cx + captionShadowX[i], cy + captionShadowY[i], 0.0f,
 		                             20.0f, 20.0f);
 	}
-	DrawGsProportionalTextFormat(gGame, -1, GetLocalizedInterfaceText(id), cx, cy, 0.0f, 20.0f, 20.0f);
+	DrawGsProportionalTextFormat((CGs*)gGame, -1, GetLocalizedInterfaceText(id), cx, cy, 0.0f, 20.0f, 20.0f);
 }
 
 extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)

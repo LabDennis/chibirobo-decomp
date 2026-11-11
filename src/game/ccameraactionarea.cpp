@@ -1551,9 +1551,9 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
  */
 extern "C" void vf24__17CCameraActionAreaFv(CCameraActionArea* area)
 {
-	DrawGsStrokeTextFormat(&gGame, -1, sAreaCameraSelectionFormat, 324.0f, 298.0f, 0.0f, 12.0f, 12.0f, gCameraAreaState._0C, area->_4C,
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, sAreaCameraSelectionFormat, 324.0f, 298.0f, 0.0f, 12.0f, 12.0f, gCameraAreaState._0C, area->_4C,
 	                       gCameraAreaState._04);
-	DrawGsStrokeTextFormat(&gGame, -1, sAreaCameraOverlayTitle, 324.0f, 310.0f, 0.0f, 12.0f, 12.0f);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, sAreaCameraOverlayTitle, 324.0f, 310.0f, 0.0f, 12.0f, 12.0f);
 }
 
 /**

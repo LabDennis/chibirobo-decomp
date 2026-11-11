@@ -2762,10 +2762,10 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 		const f32* dy = gEquipmentHintOutlineY;
 		for (s32 j = 0; j < 4; ++j, ++dx, ++dy) {
 			u32 alpha = (u32)(255.0f * menu->mFade);
-			DrawGsProportionalTextFormat(&gGame, alpha, hint.label, x + *dx, y + *dy, 0.0f, 20.0f, 20.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, alpha, hint.label, x + *dx, y + *dy, 0.0f, 20.0f, 20.0f);
 		}
 		u32 color = 0xFFFFFF00 | (u32)(255.0f * menu->mFade);
-		DrawGsProportionalTextFormat(&gGame, color, hint.label, x, y, 0.0f, 20.0f, 20.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, hint.label, x, y, 0.0f, 20.0f, 20.0f);
 		CTexObj tex = tpl->mTex.Init(&((TPLPalette*)tpl->mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
 		PSMTXScale(tex.mMtx[1], sEquipmentHintIconWidth, 1.0f, 1.0f);
 		tex.mMtxDirty = TRUE;
@@ -5572,7 +5572,7 @@ void XObjChr::DrawDebugStatus()
 	s32 anim       = player->mAnimId;
 	HSD_AObj* aobj = GetAObj(player->mJObj);
 	f32 endFrame   = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
-	DrawGsStrokeTextFormat(&gGame, -56,
+	DrawGsStrokeTextFormat(&gGame.mGs, -56,
 	                       "\\B00000080POS(%6.2f,%6.2f,%6.2f) %3d %6.3f %6.3f\n%3d(%6.2f/%6.2f), %d\n\n"
 	                       "NEAR:%3d(%6.2f)\nHIT :%3d(%02X)\n    :%3d(%.2f)\nRIDE:%3d\nEVT :%3d\n\nACT :%2d\n"
 	                       "LIFT:%2d(%d)\nHANG:%2d(%d)\nJUMP:%2d(%d)\nLADR:%2d(%d)\nROPE:%2d(%d)\nPUSH:%2d(%d)\n"
