@@ -98,6 +98,193 @@ void UpdateObject__8XObjPlugFUl(XObjPlug* plug, u32 frames)
 	}
 }
 
+static inline void ClearWireAnim(XObjWireEff* object)
+{
+	object->mStatus.mFlags &= ~0x10000ULL;
+	object->mAnim   = -1;
+	object->mEffect = -1;
+}
+
+static inline void KillWireEffect(XObjWireEff* object)
+{
+	if (object->mGenerator != NULL) {
+		gGame.mParticle.Kill(object->mGenerator);
+		object->mGenerator = NULL;
+	}
+}
+
+extern "C" {
+
+/**
+ * @note Address: 0x800D7D3C
+ * @note Size: 0x7C
+ */
+void ClearWireEffect(XObjWireEff* object)
+{
+	ClearWireAnim(object);
+	KillWireEffect(object);
+}
+
+/**
+ * @note Address: 0x800D7DB8
+ * @note Size: 0x16C
+ */
+void ConfigurePlugWireEffect(XObjWireEff* object, s32 anim, s32 effect, f32 rate, u32 color)
+{
+	object->mAnim   = anim;
+	object->mEffect = effect;
+	object->mRate   = rate;
+	if (object->mAnim >= 0) {
+		object->mStatus.mFlags |= 0x10000ULL;
+		object->SetAnim(object->mAnim, FALSE, NULL, NULL, NULL, 0.0f, object->mRate, 0.0f, 10.0f);
+	} else {
+		object->mStatus.mFlags &= ~0x10000ULL;
+	}
+	if (object->mEffect >= 0) {
+		KillWireEffect(object);
+		object->mGenerator = gGame.mParticle.Create(0x10052, 0, object->mJObj, FALSE);
+	} else {
+		KillWireEffect(object);
+	}
+	object->vf12C(0, color >> 24, color >> 16, color >> 8, 0.0f);
+}
+}
+
+// XObjWireEff::DrawWithView
+/**
+ * @note Address: 0x800D7F24
+ * @note Size: 0x60
+ */
+void XObjWireEff::DrawWithView(Mtx view)
+{
+	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000)) {
+		XObj::DrawWithView(view);
+	}
+}
+
+// XObjWireEff::UpdateObject
+/**
+ * @note Address: 0x800D7F84
+ * @note Size: 0x60
+ */
+void XObjWireEff::UpdateObject(u32 frames)
+{
+	if ((mStatus.mFlags & 1) && (mAnim >= 0 || mEffect >= 0)) {
+		XObj::UpdateObject(frames);
+	}
+}
+
+// XObjWireEff::Release
+/**
+ * @note Address: 0x800D7FE4
+ * @note Size: 0x84
+ */
+void XObjWireEff::Release()
+{
+	ClearWireAnim(this);
+	KillWireEffect(this);
+	XObj::Release();
+}
+
+// XObjWireEff::ResetObjectState
+/**
+ * @note Address: 0x800D8068
+ * @note Size: 0x60
+ */
+void XObjWireEff::ResetObjectState()
+{
+	XObj::ResetObjectState();
+	ClearWireAnim(this);
+	mGenerator = NULL;
+}
+
+/**
+ * @note Address: 0x800D80C8
+ * @note Size: 0xC
+ */
+extern "C" void DisablePlugSparkEffect(XObjPlug* object)
+{
+	object->mWire.mSparkMode = -1;
+}
+
+/**
+ * @note Address: 0x800D80D4
+ * @note Size: 0x10
+ */
+extern "C" void SetPlugSparkMode(XObjPlug* object, s32 value)
+{
+	object->mWire.mSparkMode  = value;
+	object->mWire.mSparkTimer = -1;
+}
+
+// XObjPlug::vfDC
+/**
+ * @note Address: 0x800D80E4
+ * @note Size: 0x54
+ */
+void XObjPlug::vfDC(BOOL enabled, u8 value)
+{
+	XObj::vfDC(enabled, value);
+	SetPlugCordAlphaMode(&mCord, enabled, value);
+}
+
+// XObjPlug::DrawObjectEffects
+/**
+ * @note Address: 0x800D8138
+ * @note Size: 0x4C
+ */
+void XObjPlug::DrawObjectEffects()
+{
+	if (mJObj != NULL) {
+		DrawPlugCordNodes(&mCord, gGame.mGs.mCamera->mViewMtx, 1.0f, 1.0f, 1.0f);
+	}
+}
+
+// XObjPlug::DrawGroundShadow, the cord's shadow
+/**
+ * @note Address: 0x800D8184
+ * @note Size: 0x1A8
+ */
+void XObjPlug::DrawGroundShadow()
+{
+	mCord.mColor = 0x14141440;
+	mCord._60    = 0x14141440;
+	mCord.mWidth = 0.15f;
+	if (mJObj != NULL) {
+		CGs* gs = &gGame.mGs;
+		FlushCaptureGraphics(gs);
+		DrawPlugCordSegments(&mCord, NULL, 1.0f, 1.0f, 1.0f);
+		InvalidateCaptureGraphics(gs);
+	}
+	mCord.mColor = 0x141414FF;
+	mCord._60    = 0x141414FF;
+	mCord.mWidth = 0.2f;
+}
+
+// XObjPlug::DrawReflection
+/**
+ * @note Address: 0x800D832C
+ * @note Size: 0x2C
+ */
+void XObjPlug::DrawReflection(Mtx view)
+{
+	DrawWithView(view);
+}
+
+// XObjPlug::DrawWithView
+/**
+ * @note Address: 0x800D8358
+ * @note Size: 0x74
+ */
+void XObjPlug::DrawWithView(Mtx view)
+{
+	XObj::DrawWithView(view);
+	mWire.DrawWithView(view);
+	if (mJObj != NULL) {
+		DrawPlugCordSegments(&mCord, view, 1.0f, 1.0f, 1.0f);
+	}
+}
+
 /**
  * @note Address: 0x800D9068
  * @note Size: 0x34
