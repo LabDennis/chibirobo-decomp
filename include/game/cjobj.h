@@ -10,6 +10,10 @@
 
 extern "C" s32 EulerToQuat(Vec* euler, Quaternion* q);
 
+// CJObj methods pool data addresses in shun and stage07, the REL code around them doesn't
+#pragma push
+#pragma pool_data on
+
 class CJObj {
 public:
 	HSD_JObj* mJObj; // _00
@@ -34,7 +38,7 @@ public:
 
 	CJObj(HSD_JObj* jobj); // in the dol, 0x80084C78, game/msg.cpp
 
-	virtual ~CJObj(); // _08
+	virtual ~CJObj() { } // _08
 
 	virtual void SetTranslateX(f32 x, s32 force) // _0C
 	{
@@ -209,10 +213,8 @@ public:
 	MtxPtr GetMtx() const { return HSD_JObjGetMtxPtr(mJObj); }
 	Vec GetPos() const { return GetJointPosition(mJObj); }
 };
-
-inline CJObj::~CJObj()
-{
-}
 typedef char CJObj_size_check[sizeof(CJObj) == 0x38 ? 1 : -1];
+
+#pragma pop
 
 #endif

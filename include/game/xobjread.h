@@ -54,7 +54,7 @@ public:
 		OSResumeThread(&mThread);
 	}
 
-	virtual ~XObjRead(); // _08
+	virtual ~XObjRead() { } // _08 (weak)
 	virtual BOOL Create(OSThreadStartFunction func, void* param, u32 stackSize, OSPriority priority,
 	                    u16 attr);                    // _0C, makes the thread and its queue
 	virtual BOOL QueueRead(void* object, void* info); // _10

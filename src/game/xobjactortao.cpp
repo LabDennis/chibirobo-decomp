@@ -291,7 +291,22 @@ void XObjActorTao::StatePickUp(u32 frames)
 			jobj.Attach(FindJointByPath(mJObj, path, 6));
 			Vec pos = jobj.GetPos();
 			_A50->SetPos(pos.x, HSD_JObjGetTranslationY(mJObj), pos.z, 0);
-			PlaceInTaoMouth(jobj, _A50, _C94, 0.0f);
+			Vec scale;
+			PSMTXCopy(jobj.GetMtx(), _C94);
+			HSD_MtxGetScale(_C94, &scale);
+			scale.x = GetStagePlacementScale(_A50).x / scale.x;
+			scale.y = GetStagePlacementScale(_A50).y / scale.y;
+			scale.z = GetStagePlacementScale(_A50).z / scale.z;
+			Mtx scaleMtx;
+			Mtx transMtx;
+			Mtx m;
+			PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
+			PSMTXConcat(_C94, scaleMtx, m);
+			PSMTXTrans(transMtx, 0.0f, -10.0f, 0.0f);
+			PSMTXConcat(m, transMtx, m);
+			HSD_JObj* joint = _A50->mJObj;
+			MtxPtr mp       = m;
+			HSD_JObjCopyMtx(joint, mp);
 			_A50->mStatus.mFlags &= ~0x0200000000000000ULL;
 		}
 		break;

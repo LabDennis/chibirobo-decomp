@@ -63,15 +63,15 @@ public:
 	}
 	~CFile() { }
 	virtual void vf08();                                         // _08
-	virtual void Initialize();                                   // _0C
+	virtual void vf0C();                                         // _0C
 	virtual void vf10();                                         // _10
-	virtual void RunRequestLoop();                               // _14
-	virtual void ProcessRequest();                               // _18
+	virtual void vf14();                                         // _14
+	virtual void vf18();                                         // _18
 	virtual void vf1C();                                         // _1C
-	virtual void GetItemIconTextureIndex();                      // _20
+	virtual void vf20();                                         // _20
 	virtual BOOL ReadEx(const char* path, u32 offset, u32 size); // _24
 
-	void Release() { GetItemIconTextureIndex(); }
+	void Release() { vf20(); }
 };
 
 class CTpl : public CFile {
@@ -81,8 +81,8 @@ public:
 
 	CTpl() { }
 	~CTpl() { _1EC = 0; }
-	virtual void ProcessRequest();          // _18
-	virtual void GetItemIconTextureIndex(); // _20
+	virtual void vf18(); // _18
+	virtual void vf20(); // _20
 };
 
 struct UnkObj {

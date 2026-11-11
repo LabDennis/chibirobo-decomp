@@ -33,7 +33,7 @@ public:
 	    , mNumNg(0)
 	{
 	}
-	virtual ~_trigonChecker(); // _08
+	virtual ~_trigonChecker() { } // _08
 
 	bool Check();
 

@@ -6,6 +6,15 @@
 #include <math.h>
 
 /**
+ * @note Address: 0x8012641C
+ * @note Size: 0x24
+ */
+void XObjActorMama::ClearStateHandler()
+{
+	mState = NULL;
+}
+
+/**
  * @note Address: 0x80126440
  * @note Size: 0x58
  */

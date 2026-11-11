@@ -13,9 +13,6 @@ struct XObjArmyShot {
 	f32 mSpeed;  // _28
 	s32 mPhase;  // _2C, 0 flying, 1 bouncing off, 2 lying on the floor
 
-	XObjArmyShot();
-	~XObjArmyShot();
-
 	void Move()
 	{
 		mPos.x += mSpeed * mVel.x;

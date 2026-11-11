@@ -20,14 +20,14 @@ public:
 	HSD_JObj* jobj; // _00
 	u8 _04[0x30];   // _04
 	virtual void vf08();
-	virtual void Initialize();
+	virtual void vf0C();
 	virtual void vf10();
-	virtual void RunRequestLoop();
-	virtual void ProcessRequest();
+	virtual void vf14();
+	virtual void vf18();
 	virtual void vf1C();
-	virtual void GetItemIconTextureIndex();
-	virtual void GetItemLabel();
-	virtual void GetItemColor();
+	virtual void vf20();
+	virtual void vf24();
+	virtual void vf28();
 	virtual void vf2C();
 	virtual void vf30();
 	virtual void vf34();
@@ -87,14 +87,14 @@ public:
 	u8 _30[0xC]; // _30
 	CInterfaceCameraAction() { }
 	virtual ~CInterfaceCameraAction() { }
-	virtual void Initialize();
+	virtual void vf0C();
 	virtual void vf10() = 0;
-	virtual void RunRequestLoop();
-	virtual void ProcessRequest();
+	virtual void vf14();
+	virtual void vf18();
 	virtual void vf1C();
-	virtual void GetItemIconTextureIndex();
-	virtual void GetItemLabel();
-	virtual void GetItemColor();
+	virtual void vf20();
+	virtual void vf24();
+	virtual void vf28();
 	virtual void vf2C(f32 x, f32 y, f32 z);
 	virtual void vf30();
 	virtual void vf34();
@@ -130,7 +130,7 @@ public:
 class CarRoot {
 public:
 	virtual void Update(u32 arg);
-	virtual void Initialize();
+	virtual void vf0C();
 	virtual void vf10();
 
 	void Register(XObj* a, XObj* b, XObj* c);
@@ -151,7 +151,7 @@ class PlayerCarRoot : public CarRoot {
 public:
 	virtual void Update(u32 arg);
 	virtual void vf10();
-	virtual void RunRequestLoop();
+	virtual void vf14();
 
 	f32 _80; // _80
 };
@@ -1771,7 +1771,7 @@ extern "C" void Update__Q23Car13PlayerCarRootFUl(Car::PlayerCarRoot* car, u32 ar
 	CPad pad(0);
 	void* sound;
 	if (!car->_7C && (pad.mPad->mTrigger & 0x200)) {
-		car->Initialize();
+		car->vf0C();
 		car->_80 = car->_10;
 		sound    = SOUND();
 		StopGameSfx(sound, 0x2000D);

@@ -85,13 +85,13 @@ static inline f32 GetAngleY(const Vec& from, const Vec& to)
 }
 
 extern "C" {
-extern Vec gArmyPatrolMin;
-extern Vec gArmyPatrolMax;
-extern XObj* gArmyShotModel;
-extern s32 gArmyNextShotSound;
-extern s32 gArmyKnockdownCount;
-extern XObj* gArmyShotTarget;
-extern CStatus gArmyShotStatus;
+Vec gArmyPatrolMin;
+Vec gArmyPatrolMax;
+XObj* gArmyShotModel;    // the leader's model draws the shots
+s32 gArmyNextShotSound;  // the next of the four shot sounds
+s32 gArmyKnockdownCount; // soldiers knocked over
+XObj* gArmyShotTarget;   // shot at instead of chibi robo
+CStatus gArmyShotStatus; // 1 once a shot hits, 2 keeps them from shooting
 }
 
 // fires a shot from pos along dir
@@ -776,9 +776,5 @@ void XObjArmy::ResetObjectState()
 }
 
 XObjArmy::~XObjArmy()
-{
-}
-
-XObjArmyShot::~XObjArmyShot()
 {
 }

@@ -9,6 +9,15 @@
 
 #include "game/soundplayback.h"
 
+// a negative track means the default one
+inline s32 XSound::resolveTrack(s32 track)
+{
+	if (track < 0) {
+		track = mDefaultTrack;
+	}
+	return track;
+}
+
 #if defined(VERSION_JP)
 #define SOUND_PLAYER_SURFACE (*(s32*)((u8*)gGame.GetPlayer() + 0x14480))
 #else

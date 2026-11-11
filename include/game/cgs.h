@@ -291,7 +291,7 @@ public:
 #endif
 
 	CGs();
-	virtual ~CGs(); // _08
+	virtual ~CGs() { } // _08
 
 #if !defined(VERSION_JP)
 	Vec mTextRot; // _17B4, _17B8 in europe, the text rotation, cleared by the light setup

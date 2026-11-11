@@ -126,7 +126,7 @@ extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
 	case 0:
 		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
 		ptcl->display.colors.mColor2 = amount >= 0 ? 0xE037EE00 : 0xFF000000;
-		ptcl->burst.mNum             = abs(amount);
+		ptcl->burst.mNum             = __abs(amount);
 		if (ptcl->burst.mNum > 40)
 			ptcl->burst.mNum = 40;
 		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
@@ -135,7 +135,7 @@ extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
 	case 2:
 		ptcl->display.colors.mColor  = amount >= 0 ? 0xEFEBC500 : 0xFF000000;
 		ptcl->display.colors.mColor2 = amount >= 0 ? 0xEDA83600 : 0xFF000000;
-		ptcl->burst.mNum             = abs(amount);
+		ptcl->burst.mNum             = __abs(amount);
 		if (ptcl->burst.mNum > 40)
 			ptcl->burst.mNum = 40;
 		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
@@ -144,7 +144,7 @@ extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
 	case 3:
 		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
 		ptcl->display.colors.mColor2 = amount >= 0 ? 0x5959FF00 : 0xFF000000;
-		ptcl->burst.mNum             = abs(amount);
+		ptcl->burst.mNum             = __abs(amount);
 		if (ptcl->burst.mNum > 40)
 			ptcl->burst.mNum = 40;
 		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
@@ -711,7 +711,7 @@ void ShowOXCross(XObjOX* object);
  * @note Address: 0x80096B90
  * @note Size: 0x2A8
  */
-extern "C" void fn_80096B90(OXMenu* menu, u32 frames)
+extern "C" void UpdateOXMenuTransition(OXMenu* menu, u32 frames)
 {
 	if (menu->mStarted > 0) {
 		if (menu->mFade < 1.0f) {
@@ -770,7 +770,7 @@ extern "C" void fn_80096B90(OXMenu* menu, u32 frames)
  * @note Address: 0x80096E38
  * @note Size: 0x2AC
  */
-extern "C" void fn_80096E38(OXMenu* menu, CPad* pad)
+extern "C" void HandleOXMenuInput(OXMenu* menu, CPad* pad)
 {
 	if (menu->mStarted > 0) {
 		if (!(gGame.mStatus.mFlags & 0x100ULL)) {

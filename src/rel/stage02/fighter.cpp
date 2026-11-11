@@ -90,12 +90,12 @@ public:
 	virtual ~CInterfaceCameraAction() { }       // _08
 	virtual void PreviousUpdate() { }           // _0C
 	virtual void Update() = 0;                  // _10
-	virtual void RunRequestLoop() { }           // _14
+	virtual void vf14() { }                     // _14
 	virtual void SetCamera(CCamera* camera) { } // _18
 	virtual void Init() { }                     // _1C
-	virtual void GetItemIconTextureIndex() { }  // _20
-	virtual void GetItemLabel() { }             // _24
-	virtual void GetItemColor() { }             // _28
+	virtual void vf20() { }                     // _20
+	virtual void vf24() { }                     // _24
+	virtual void vf28() { }                     // _28
 	virtual void SetEye(f32 x, f32 y, f32 z)    // _2C
 	{
 		_00.x = x;

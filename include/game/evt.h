@@ -272,7 +272,7 @@ public:
 	// _200 vtable
 
 	CEvtFlags() { }
-	virtual ~CEvtFlags(); // _08
+	virtual ~CEvtFlags() { } // _08
 };
 STATIC_ASSERT(sizeof(CEvtFlags) == 0x204);
 

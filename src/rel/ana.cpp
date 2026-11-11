@@ -23,14 +23,14 @@ public:
 	u8 _04[0x30];    // _04
 	// _34 vtable
 	virtual void vf08();                      // _08
-	virtual void Initialize();                // _0C
+	virtual void vf0C();                      // _0C
 	virtual void vf10();                      // _10
-	virtual void RunRequestLoop();            // _14
-	virtual void ProcessRequest();            // _18
+	virtual void vf14();                      // _14
+	virtual void vf18();                      // _18
 	virtual void vf1C();                      // _1C
-	virtual void GetItemIconTextureIndex();   // _20
-	virtual void GetItemLabel();              // _24
-	virtual void GetItemColor();              // _28
+	virtual void vf20();                      // _20
+	virtual void vf24();                      // _24
+	virtual void vf28();                      // _28
 	virtual void vf2C();                      // _2C
 	virtual void vf30();                      // _30
 	virtual void vf34();                      // _34

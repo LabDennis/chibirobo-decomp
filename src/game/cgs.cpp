@@ -64,24 +64,14 @@ static inline void SetupDrawState(CGs* gs)
 
 // one character out of a text string, \C and \B followed by eight hex digits set the text
 // and background colors and give no character
-// Line and stroke-width measurement only need the leading byte.
-template <bool includeTrail>
 struct TextGlyph {
 	char mStr[4]; // _00, one or two bytes and a terminator
 	u32 mColor;   // _04
 	u32 mBgColor; // _08
-
-	void SetTrail(char ch)
-	{
-		if (includeTrail) {
-			char* const trail = &mStr[1];
-			*trail            = ch;
-		}
-	}
 };
 
-template <bool includeTrail>
-static inline const char* GetGlyph(CGs* gs, const char* text, TextGlyph<includeTrail>* glyph)
+// fills glyph with the next character, returns where the one after starts or null at the end
+static inline const char* GetGlyph(CGs* gs, const char* text, TextGlyph* glyph)
 {
 	switch (*text) {
 	case '\0':
@@ -111,7 +101,7 @@ static inline const char* GetGlyph(CGs* gs, const char* text, TextGlyph<includeT
 		default:
 #if !defined(VERSION_JP)
 			glyph->mStr[0] = *text;
-			glyph->SetTrail('\0');
+			glyph->mStr[1] = '\0';
 #endif
 			break;
 		}
@@ -126,10 +116,10 @@ static inline const char* GetGlyph(CGs* gs, const char* text, TextGlyph<includeT
 		if (gs->mUseShiftJis && (IsSjisLead(*text) & 1)) {
 #endif
 			glyph->mStr[0] = *text;
-			glyph->SetTrail(*++text);
+			glyph->mStr[1] = *++text;
 		} else {
 			glyph->mStr[0] = *text;
-			glyph->SetTrail('\0');
+			glyph->mStr[1] = '\0';
 		}
 		break;
 	}
@@ -2761,7 +2751,7 @@ static inline f32 GetTextWidth(CGs* gs, const char* text, BOOL proportional, f32
 	CFont font;
 	s32 charWidth;
 	f32 width[2] = { 0.0f, 0.0f };
-	TextGlyph<true> glyph;
+	TextGlyph glyph;
 	const char* p = text;
 
 	while ((p = GetGlyph(gs, p, &glyph)) != NULL) {
@@ -3059,7 +3049,7 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
 // how tall the text is, one line height per line
 extern "C" f32 MeasureGameTextHeight(CGs* gs, const char* text, f32 size)
 {
-	TextGlyph<false> glyph;
+	TextGlyph glyph;
 	f32 height = size > 0.0f ? size : 24.0f;
 	while ((text = GetGlyph(gs, text, &glyph)) != NULL) {
 		if (glyph.mStr[0] == '\n') {
@@ -3253,7 +3243,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	f32 offsX;
 	f32 curX = x;
 	f32 curY = y;
-	TextGlyph<true> glyph;
+	TextGlyph glyph;
 	s32 i;
 
 	// an ortho camera has y going up
@@ -4790,7 +4780,7 @@ static inline f32 MeasureStrokeTextWidth(CGs* gs, const char* text)
 {
 	f32 len[2]    = { 0.0f, 0.0f };
 	const char* p = text;
-	TextGlyph<false> glyph;
+	TextGlyph glyph;
 	while ((p = GetGlyph(gs, p, &glyph)) != NULL) {
 		if (glyph.mStr[0] != '\0') {
 			if (glyph.mStr[0] == '\n') {
@@ -4891,7 +4881,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 	GXSetVtxDescv(descs);
 
 	// second pass draws, each character is one unit wide in the scaled space
-	TextGlyph<true> glyph;
+	TextGlyph glyph;
 	glyph.mColor   = color;
 	glyph.mBgColor = 0;
 	while ((text = GetGlyph(gs, text, &glyph)) != NULL) {

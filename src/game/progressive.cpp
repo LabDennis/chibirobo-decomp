@@ -12,6 +12,19 @@ const char* GetStageFileName(s32);
 s32 GetDefaultStageIndex();
 }
 
+/**
+ * @note Address: 0x8001C89C
+ * @note Size: 0x28
+ */
+extern "C" void ResetProgressiveScanPrompt(void)
+{
+	gVideoModePrompt.step              = 0;
+	gVideoModePrompt.pendingMode       = -1;
+	gVideoModePrompt.framesRemaining   = 0.0f;
+	gVideoModePrompt.restoredSelection = 0;
+	gVideoModePrompt.useStandardMode   = 0;
+}
+
 extern "C" void LoadBootConfig()
 {
 	CGame& game = gGame;
@@ -137,17 +150,4 @@ extern "C" void LoadBootConfig()
 		gCmdLineArgs.mStage = stage;
 		gGame.SetStage(stage);
 	}
-}
-
-/**
- * @note Address: 0x8001C89C
- * @note Size: 0x28
- */
-extern "C" void fn_8001C89C(void)
-{
-	gVideoModePrompt.step              = 0;
-	gVideoModePrompt.pendingMode       = -1;
-	gVideoModePrompt.framesRemaining   = 0.0f;
-	gVideoModePrompt.restoredSelection = 0;
-	gVideoModePrompt.useStandardMode   = 0;
 }

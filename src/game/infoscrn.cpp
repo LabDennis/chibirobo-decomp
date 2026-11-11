@@ -1950,7 +1950,7 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 	DrawClockQuad(tex, 0xffffff00 | (u32)(255 * badgeAlpha), 80 - 22 * scale, 80 - 22 * scale, 0, 1.1f * (scale * tw), 1.1f * (scale * th));
 }
 
-extern "C" BOOL fn_80051C60();
+extern "C" bool fn_80051C60();
 
 // a quarter of the way there each frame, at least 1
 static inline f32 ApproachStep(f32 cur, f32 target)
