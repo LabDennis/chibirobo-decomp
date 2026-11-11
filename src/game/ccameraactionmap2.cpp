@@ -63,9 +63,28 @@ extern "C" void SetVectorComponents(CVec* v, f32 x, f32 y, f32 z);
 extern "C" f32 GetHorizontalDistance(const Vec* from, const Vec* to);      // horizontal distance
 extern "C" f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to); // horizontal angle
 extern "C" s32 ClassifyFloatBits(f32 value);                               // floating-point classification
-extern "C" f32 sMapCameraSpringParameters[];
-extern "C" s32 sMapCameraCollisionMode0[1];
-extern "C" s32 sMapCameraCollisionMode1;
+extern "C" {
+const char sTypeNameCCameraActionMap[]          = "CCameraActionMap";
+const char sMapTypeNameCInterfaceCameraAction[] = "CInterfaceCameraAction";
+const char sMapTypeNameCCameraActionAreaExM[]   = "CCameraActionAreaExM";
+
+char sMapCameraSpringDampLabel[]   = "SpringDamp";
+f32 sMapCameraSpringParameters[]   = { 0.5f, 2.5f, 4.5f };
+char sMapCameraIntersectVecLabel[] = "CalcIntersectVec";
+char sMapCameraUpdateTurnLabel[]   = "UpdateTurn";
+
+char sMapCameraResetLabel[]  = "Reset";
+char sMapCameraReset2Label[] = "Reset2";
+s32 sMapCameraCollisionMode0[1];
+s32 sMapCameraCollisionMode1 = 1;
+char sMapCameraUpdateLabel[] = "Update";
+
+const void* gMapTypeInfoCInterfaceCameraAction[] = { sMapTypeNameCInterfaceCameraAction, 0 };
+const void* sMapBaseTypesCCameraActionAreaExM[]  = { gMapTypeInfoCInterfaceCameraAction, 0, 0 };
+const void* gMapTypeInfoCCameraActionAreaExM[]   = { sMapTypeNameCCameraActionAreaExM, sMapBaseTypesCCameraActionAreaExM };
+const void* sBaseTypesCCameraActionMap[]         = { gMapTypeInfoCInterfaceCameraAction, 0, gMapTypeInfoCCameraActionAreaExM, 0, 0 };
+const void* gTypeInfoCCameraActionMap[]          = { sTypeNameCCameraActionMap, sBaseTypesCCameraActionMap };
+}
 extern "C" s32 lbl_8065B348;
 extern "C" s32 lbl_8065B350;
 extern "C" f32 lbl_8065B354;

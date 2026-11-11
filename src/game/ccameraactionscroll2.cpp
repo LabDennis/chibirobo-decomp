@@ -47,6 +47,14 @@ void PSMTXRotRad(Mtx m, char axis, f32 rad);
 }
 
 void* gSavedScrollCameraInfo;
+
+// the objects hidden while this camera runs and what they were before
+s32 gScrollCameraHiddenObjectIds[256];
+s32 gScrollCameraHiddenObjectStates[256];
+
+Vec gScrollCameraEyeInitializer ATTRIBUTE_ALIGN(8);
+Vec gScrollCameraInterestInitializer;
+
 // draws one blinking marker centred on a screen point
 // todo: cleanup
 /**
@@ -66,6 +74,35 @@ inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, u32 color)
 	f32 cy   = -h * half;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + cx, y + cy, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+}
+
+// in reverse order, same deferred inlining thing
+/**
+ * @note Address: 0x801469A8
+ * @note Size: 0x38
+ */
+BOOL CCameraActionScroll2::AddHideObj(s32 id)
+{
+	s32* slot = gScrollCameraHiddenObjectIds;
+	for (s32 i = 0; i < 256; i++, slot++) {
+		if (*slot == -1) {
+			*slot = id;
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+/**
+ * @note Address: 0x801468FC
+ * @note Size: 0xAC
+ */
+void CCameraActionScroll2::ClearHideList()
+{
+	for (int i = 0; i < 256; i++) {
+		gScrollCameraHiddenObjectIds[i]    = -1;
+		gScrollCameraHiddenObjectStates[i] = -1;
+	}
 }
 
 /**
@@ -2519,3 +2556,26 @@ void CCameraActionScroll2::vf20()
     addi     r1, r1, 0xa70
     blr
 */
+
+/**
+ * @note Address: 0x801439C0
+ * @note Size: 0x40
+ */
+void CCameraActionScroll2::SaveCamInfo(const void* info)
+{
+	if (info == NULL) {
+		gSavedScrollCameraInfo = NULL;
+	} else {
+		gSavedScrollCameraInfo = mSavedInfo;
+		memmove(mSavedInfo, info, sizeof(mSavedInfo));
+	}
+}
+
+u32 CCameraActionScroll2::GetCameraFlags()
+{
+	return 11;
+}
+
+void CCameraActionScroll2::vf28()
+{
+}

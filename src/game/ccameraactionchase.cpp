@@ -10,7 +10,7 @@ extern "C" {
 #include "game/cgame.h"
 #include "game/xchr.h"
 
-extern "C" f32 gChaseCameraSpringSettings[3];
+extern "C" f32 gChaseCameraSpringSettings[3] = { 0.5f, 2.5f, 4.5f };
 
 // backwards from here, deferred inlining
 
@@ -162,4 +162,13 @@ void CCameraActionChase::Update(u32 step)
 		mRestDistance = distance;
 		mMode         = 0x80006;
 	}
+}
+
+/**
+ * @note Address: 0x80142438
+ * @note Size: 0x8
+ */
+u32 CCameraActionChase::GetCameraFlags()
+{
+	return mMode;
 }

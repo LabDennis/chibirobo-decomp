@@ -9,6 +9,7 @@
 #include "game/xchr.h"
 #include "game/infoscrn.h"
 #include "game/stagedata.h"
+#include "game/ctpl.h"
 #include "game/ut.h"
 #include "game/gmath.h"
 #include "game/animframe.h"
@@ -41,6 +42,18 @@ extern s32 gEventVariables[]; // the script's variables
 
 s32 gSpiderBossVolleySlot;
 s32 gActor3Kind15ActivationCounter;
+extern const f32 gActor3DegreesToRadians;
+}
+
+static inline Vec ActorPlacementRotation(const XObjActor3* actor)
+{
+	Vec rot                    = gActor3PlacementRotation;
+	const UnkStageObj* p       = actor->mCoord._00;
+	const f32 degreesToRadians = gActor3DegreesToRadians;
+	rot.x                      = degreesToRadians * p->_10[0];
+	rot.y                      = degreesToRadians * p->_10[1];
+	rot.z                      = degreesToRadians * p->_10[2];
+	return rot;
 }
 
 // the robot is out of reach, past the front edge or in one of its climbing anims
@@ -448,6 +461,72 @@ static inline void AttachClockHand(XObjActor3* hand, CJObj& joint, f32 angle)
 			return;
 		}
 	}
+}
+
+/**
+ * @note Address: 0x8010A574
+ * @note Size: 0x78C
+ */
+BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
+{
+	if (XObj::LoadFromPlacement(info)) {
+		bool ready = false;
+		_B74       = 0.0f;
+		_B78       = 0.0f;
+
+		_B80        = 0;
+		_B88        = 0;
+		_B8C.mFlags = 0;
+		_B8C.mFlags |= 4;
+		mEventCommand = 0;
+		mEventArg1    = 0;
+		mEventArg2    = 0;
+		mEventArg3    = 0;
+		_BA4[0]       = 0;
+		_BA4[1]       = 0;
+		_BA4[2]       = 0;
+		_BA4[3]       = 0;
+		_BA4[4]       = 0;
+		_BA4[5]       = 0;
+		_BA4[6]       = 0;
+		_BC0          = 0.0f;
+		_BC4          = 0.0f;
+		_BC8          = 0.0f;
+		Vec zero      = { 0.0f, 0.0f, 0.0f };
+		_BCC          = zero.x;
+		_BD0          = zero.y;
+		_BD4          = zero.z;
+
+		mMoveTranslate.x = PlacementPosition(mCoord, gActor3PlacementPosition).x;
+		mMoveTranslate.y = PlacementPosition(mCoord, gActor3PlacementPosition).y;
+		mMoveTranslate.z = PlacementPosition(mCoord, gActor3PlacementPosition).z;
+		mMoveRotate.x    = ActorPlacementRotation(this).x;
+		mMoveRotate.y    = ActorPlacementRotation(this).y;
+		mMoveRotate.z    = ActorPlacementRotation(this).z;
+		_B7C             = ActorPlacementRotation(this).y;
+		for (int i = 0; i < 8; ++i)
+			mParts[i].Clear();
+		if (mPoolIndex == 0) {
+			gSpiderBossVolleySlot          = 0;
+			gActor3Kind15ActivationCounter = 0;
+		}
+		switch (GetKind()) {
+		case 0x42B:
+		case 0x149:
+			if (_980.ReadEx("tpl/stage02.tpl", 0, 0))
+				ready = true;
+			return ready;
+		case 0x31B: {
+
+			mTex[0] = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[122 - StatusTextureOffset], 0);
+			mTex[1] = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[123 - StatusTextureOffset], 0);
+			return TRUE;
+		}
+		default:
+			return TRUE;
+		}
+	}
+	return FALSE;
 }
 
 /**
@@ -1943,4 +2022,32 @@ extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 		actor->mEventArg1    = 0;
 		break;
 	}
+}
+
+/**
+ * @note Address: 0x801151E0
+ * @note Size: 0xBC
+ */
+void XObjActor3::UpdateObjectGauge(u32 frames)
+{
+	switch (mEventCommand) {
+	case 0:
+		break;
+	case 1:
+		InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, gGame.mXObjs.mPools[5].Get(mPoolIndex), 1, 1);
+		mEventCommand = 0;
+		break;
+	case 2:
+		InfoScrn_ApplyObjectGaugeCommand(&gGame.mInfoScrn, gGame.mXObjs.mPools[5].Get(mPoolIndex), 0, 1);
+		mEventCommand = 0;
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8011529C
+ * @note Size: 0x4
+ */
+void XObjActor3::Kind0(u32 frames)
+{
 }

@@ -6,6 +6,10 @@
 #include "game/hsd_dobj.h"
 #include "game/globals.h"
 #include "game/xobjchr.h"
+#include "game/cobj.h"
+#include "game/cfile.h"
+
+extern "C" CObjArchive* FindFreeObjectArchive(CObjArchive* archives);
 
 extern "C" {
 void GXProject(f32 x, f32 y, f32 z, const Mtx view, const f32* projection, const f32* viewport, f32* screenX, f32* screenY, f32* screenZ);
@@ -22,6 +26,58 @@ static inline void TriggerObjectEvent(CXObj* object, u32 first, u32 second)
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
 		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)object, first, second);
 	}
+}
+
+/**
+ * @note Address: 0x8008A360
+ * @note Size: 0x2C
+ */
+// CJAnim::Release
+extern "C" void Release__6CJAnimFv(CJAnim* anim)
+{
+	if (anim->mArchive != NULL)
+		anim->CJArchive::Release();
+}
+
+/**
+ * @note Address: 0x8008A38C
+ * @note Size: 0x170
+ */
+// starts the read, then sets it up once it's in, TRUE when done
+extern "C" BOOL LoadJointAnimationAsync(CJAnim* anim, const char* path)
+{
+	if (anim->mLoading == 0) {
+		anim->Release();
+		if (path == NULL || *path == '\0')
+			return TRUE;
+		CFile file;
+		if (file.ConvertPathToEntrynum(path) < 0)
+			return TRUE;
+		CObjArchive* storage = FindFreeObjectArchive(gGame.mObjArchives.mArchives);
+		if (storage != NULL) {
+			anim->ReadAsync(storage, path, 0, 0, 0);
+			anim->mLoading++;
+		} else {
+			return TRUE;
+		}
+	} else {
+		if (anim->ReadCheck()) {
+			anim->SetupScene(0, 0);
+			anim->mLoading = 0;
+		}
+	}
+	return anim->mLoading == 0;
+}
+
+/**
+ * @note Address: 0x8008A4FC
+ * @note Size: 0x34
+ */
+// CJAnim::Clear
+extern "C" void Clear__6CJAnimFv(CJAnim* anim)
+{
+	anim->CJArchive::Clear();
+	anim->mLoading = 0;
 }
 
 /**
@@ -106,6 +162,48 @@ extern "C" void vf12C__4XObjFlUcUcUcf(XObj* object, s32 index, u8 red, u8 green,
 		object->mColorStep[index].mSpeed.z = ((f32)blue - object->mColorStep[index].mValue.z) / (60.0f * time);
 #endif
 	}
+}
+
+/**
+ * @note Address: 0x8008A944
+ * @note Size: 0x45C
+ */
+extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
+{
+	Vec* pos     = &self->mMoveTranslate;
+	XObjMap* map = (XObjMap*)gGame.mXObjs.mPools[3].mObjects;
+	if (!FindMapFloor(map, pos, &self->mFloorHit, NULL)) {
+		self->mFloorHit.mTriangle = -1;
+		self->mFloorHit.mTrigon   = -1;
+		self->mFloorHit.mHeight   = pos->y;
+	}
+	f32 highest = self->mFloorHit.mHeight;
+	CVec contact, push;
+	for (int i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+		XObj* object = gGame.GetObject(i);
+		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || (object->mStatus.mFlags & 0x100000))
+			continue;
+		if (self->mId == object->mId)
+			continue;
+		f32 dx = object->mMoveTranslate.x - pos->x;
+		f32 dz = object->mMoveTranslate.z - pos->z;
+		if (sqrtf(dx * dx + dz * dz) > 100.0f + (radius + object->mFloorXZExtent))
+			continue;
+		s32 floor = 0;
+		while (floor != -1) {
+			f32 z = pos->z;
+			f32 y = pos->y;
+			f32 x = pos->x;
+			if (ProbeObjectFloor(object, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, &floor) & 1) {
+				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
+				if (__fpclassifyf(floorHeight) != FP_NAN && pos->y + 1.0f >= floorHeight && floorHeight >= highest)
+					highest = floorHeight;
+			}
+		}
+	}
+	if (highest > self->mFloorHit.mHeight)
+		self->mFloorHit.mHeight = highest;
+	return self->mFloorHit.mHeight;
 }
 
 /**

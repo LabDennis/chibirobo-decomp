@@ -69,6 +69,52 @@ inline s32 FindFacing(const Vec& dir, s32 arg)
 extern "C" void SelectAreaCameraEntry(CCameraActionArea* area, s32 arg1, s32 arg2, s32 arg3, f32 arg4);
 extern "C" void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 arg2, s32 arg3, f32 arg4);
 
+/**
+ * @note Address: 0x80138294
+ * @note Size: 0x8
+ */
+u32 CCameraActionArea::GetCameraFlags()
+{
+	return 11;
+}
+
+/**
+ * @note Address: 0x8013829C
+ * @note Size: 0x8
+ */
+u32 CCameraActionArea::vf5C()
+{
+	return 2;
+}
+
+/**
+ * @note Address: 0x801382A4
+ * @note Size: 0x8
+ */
+XObj* CCameraActionArea::GetTarget()
+{
+	return mTarget;
+}
+
+/**
+ * @note Address: 0x801382AC
+ * @note Size: 0x28
+ */
+void CCameraActionArea::vf28()
+{
+	DrawDebug3d__19CCameraActionAreaExFv(&gCameraAreaState);
+}
+
+/**
+ * @note Address: 0x801382D4
+ * @note Size: 0x14
+ */
+extern "C" void SetAreaCameraHeightIndices(CCameraActionArea*, s32 index)
+{
+	gCameraAreaState._14 = index;
+	gCameraAreaState._18 = index;
+}
+
 // the game object's camera and map action, japan's sit 0xCE8 lower
 /**
  * @note Address: 0x801382E8
