@@ -345,6 +345,28 @@ BOOL AXDriverKeyOffSfx(s32 sfx)
 	return FALSE;
 }
 
+#if defined(VERSION_PAL)
+/**
+ * @note Address: PAL 0x801E8CC0
+ * @note Size: 0xF8
+ */
+// Europe's reset keys off every sound instead of stopping the AX library
+BOOL HSD_AudioSFXKeyOffAll(void)
+{
+	BOOL enabled;
+	HSD_SM* v;
+
+	enabled = OSDisableInterrupts();
+	for (v = sAXActiveVVoices; v != NULL; v = v->next) {
+		if (v->flags & SMSTATE_MASK) {
+			AXDriverKeyOff(v);
+		}
+	}
+	OSRestoreInterrupts(enabled);
+	return TRUE;
+}
+#endif
+
 /**
  * @note Address: 0x801E63C4
  * @note Size: 0x124
