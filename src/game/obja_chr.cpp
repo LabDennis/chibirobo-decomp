@@ -546,28 +546,6 @@ static inline void ClearPlayerMoveFloor(XObjChr* player, const Vec& position)
 	SetVectorComponents(&player->_963C, 0, 0, 0);
 }
 
-static inline BOOL FindPlayerMoveFloor(XObjChr* player, Vec& position, void* map)
-{
-	BOOL hit = fn_800B2ABC(static_cast<const XObjMap*>(map), &position, &player->mFloorHit, reinterpret_cast<Vec*>(player->_95E8));
-	if (hit) {
-		SetVectorX(&player->mMoveTranslate, position.x);
-		SetVectorZ(&player->mMoveTranslate, position.z);
-		Vec* triangle = reinterpret_cast<Vec*>(player->_95E8);
-		CVec normal;
-		CalcTriangleNormal(triangle, triangle + 1, triangle + 2, &normal);
-		NormalizeVectorInPlace(&normal);
-		Vec down   = { 0, -1, 0 };
-		Vec origin = { 0, 0, 0 };
-		GetOutwardPerpendicularToEdge(&down, &origin, &normal, &player->_963C);
-		SetPlayerSlopeTarget(player);
-		if (player->mFloorHit.mHeight > 1.0f + player->mMoveTranslate.y)
-			ClearPlayerMoveFloor(player, position);
-	} else {
-		ClearPlayerMoveFloor(player, position);
-	}
-	return hit;
-}
-
 static inline void GetPlayerCollisionBounds(XObjChr* player, f32& radius, f32& height, s32& liftState22, Vec& offset)
 {
 	radius      = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
@@ -846,34 +824,6 @@ static inline BOOL PushContactBlocksMovement(XObjChr* player, XObj* object, cons
 	SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->_264);
 	SetObjectVectorAndTargetFromVec(&player->mMoveRotate, savedRotation);
 	return true;
-}
-
-static inline void CheckPushedObjectContacts(XObjChr* player, const PushContactBounds& bounds, const Vec& savedRotation, CVec& push,
-                                             CVec& contact)
-{
-	for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
-		XObj* object = GetDrawListObject(&gGame, 0, i);
-
-		if (!IsObjectActive(object) || !(GetMaskedObjectStatus(object, 0x10000)) || (GetMaskedObjectStatus(object, 0x08000000)))
-			continue;
-		if ((GetMaskedObjectStatus(object, 0x0004000000100000ULL)) && !(GetMaskedObjectStatus(object, 0x40000000)))
-			continue;
-		if ((s16)GetObjectPoolId(object) == 7 || (s16)GetObjectPoolId(object) == 20 || object == player)
-			continue;
-		u32 id = GetObjectId(object);
-		if (GetObjectId(GetPlayerActionTarget(&player->mPush)) == id)
-			continue;
-		f32 range = 100.0f + (bounds.radius + GetObjectFloorXZExtent(object));
-		if (GetHorizontalDistance(GetObjectMoveTranslation(object), &bounds.center) > range)
-			continue;
-		if (PushContactBlocksMovement(player, object, bounds.center, bounds, savedRotation, push, contact))
-			return;
-		if (bounds.depth / bounds.radius > 8.0f) {
-			if (PushContactBlocksMovement(player, object, bounds.rear, bounds, savedRotation, push, contact)
-			    || PushContactBlocksMovement(player, object, bounds.front, bounds, savedRotation, push, contact))
-				return;
-		}
-	}
 }
 
 static inline void HandlePlayerDrop(XObjChr* p, f32 drop)
@@ -1257,22 +1207,6 @@ static inline BOOL IsPreviousLookContact(XObjChr* p, s32 index)
 	    && p->mLastContactFloorIndex == GetSelectedFloorIndex(GetGameObjectByIndex(&gGame, index));
 }
 
-static inline u32 SelectMovementMarker(XObjChr* p, u32& available)
-{
-	if (p->_A10 >= 0)
-		available |= 0x80;
-	if (!available && p->mHitObjectIndex >= 0 && !IsPreviousLookContact(p, p->mHitObjectIndex) && p->mFloorContacts[2].objectIndex >= 0
-	    && !IsPreviousLookContact(p, p->mFloorContacts[2].objectIndex)) {
-		p->mFloorContacts[4].objectIndex = -1;
-		p->mNearDistance                 = 2;
-	}
-	u32 actions = 0;
-	SelectObjectMarkerBits(p->mFloorContacts[2].objectIndex, available, 0xff, actions);
-	SelectObjectMarkerBits(p->mHitObjectIndex, available, 0xfe, actions);
-	SelectObjectMarkerBits(p->_A10, available, 0x80, actions);
-	return actions;
-}
-
 static inline void SetMovementMarker(XObjChr* p, u32 actions)
 {
 	u32 count = 0;
@@ -1445,7 +1379,25 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 	PreparePlayerMoveCandidate(player, frames, floor, hang, ladder, rope, position, map);
 	ApplyCordMotion(player, frames, position);
 	ApplyPlayerExternalMotion(player, frames, position);
-	FindPlayerMoveFloor(player, position, map);
+	{
+		BOOL hit = fn_800B2ABC(static_cast<const XObjMap*>(map), &position, &player->mFloorHit, reinterpret_cast<Vec*>(player->_95E8));
+		if (hit) {
+			SetVectorX(&player->mMoveTranslate, position.x);
+			SetVectorZ(&player->mMoveTranslate, position.z);
+			Vec* triangle = reinterpret_cast<Vec*>(player->_95E8);
+			CVec normal;
+			CalcTriangleNormal(triangle, triangle + 1, triangle + 2, &normal);
+			NormalizeVectorInPlace(&normal);
+			Vec down   = { 0, -1, 0 };
+			Vec origin = { 0, 0, 0 };
+			GetOutwardPerpendicularToEdge(&down, &origin, &normal, &player->_963C);
+			SetPlayerSlopeTarget(player);
+			if (player->mFloorHit.mHeight > 1.0f + player->mMoveTranslate.y)
+				ClearPlayerMoveFloor(player, position);
+		} else {
+			ClearPlayerMoveFloor(player, position);
+		}
+	}
 
 	f32 radius, height;
 	s32 liftState22;
@@ -1466,9 +1418,30 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 		else
 			CheckPlayerHangContacts(player, hang, savedRotation, radius, height, push, contact);
 		PushContactBounds pushed;
-		if (GetPushContactBounds(player, pushed))
-			CheckPushedObjectContacts(player, pushed, savedRotation, push, contact);
-		else
+		if (GetPushContactBounds(player, pushed)) {
+			for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
+				XObj* object = GetDrawListObject(&gGame, 0, i);
+
+				if (!IsObjectActive(object) || !(GetMaskedObjectStatus(object, 0x10000)) || (GetMaskedObjectStatus(object, 0x08000000)))
+					continue;
+				if ((GetMaskedObjectStatus(object, 0x0004000000100000ULL)) && !(GetMaskedObjectStatus(object, 0x40000000)))
+					continue;
+				if ((s16)GetObjectPoolId(object) == 7 || (s16)GetObjectPoolId(object) == 20 || object == player)
+					continue;
+				u32 id = GetObjectId(object);
+				if (GetObjectId(GetPlayerActionTarget(&player->mPush)) == id)
+					continue;
+				f32 range = 100.0f + (pushed.radius + GetObjectFloorXZExtent(object));
+				if (GetHorizontalDistance(GetObjectMoveTranslation(object), &pushed.center) > range)
+					continue;
+				if (PushContactBlocksMovement(player, object, pushed.center, pushed, savedRotation, push, contact))
+					break;
+				if (pushed.depth / pushed.radius > 8.0f
+				    && (PushContactBlocksMovement(player, object, pushed.rear, pushed, savedRotation, push, contact)
+				        || PushContactBlocksMovement(player, object, pushed.front, pushed, savedRotation, push, contact)))
+					break;
+			}
+		} else
 			CheckPlayerRopeContact(player, hang, savedRotation, push, contact);
 	} else {
 		SetObjectVectorAndTargetXYZ(&player->_960C, 0, 0, 0);
@@ -1503,7 +1476,18 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 	if (BeginMovementLook(player)) {
 		available = GetEventContactActions(player);
 		GetTaggedContactActions(player, available, target, actionMode);
-		marker = SelectMovementMarker(player, available);
+		{
+			if (player->_A10 >= 0)
+				available |= 0x80;
+			if (!available && player->mHitObjectIndex >= 0 && !IsPreviousLookContact(player, player->mHitObjectIndex)
+			    && player->mFloorContacts[2].objectIndex >= 0 && !IsPreviousLookContact(player, player->mFloorContacts[2].objectIndex)) {
+				player->mFloorContacts[4].objectIndex = -1;
+				player->mNearDistance                 = 2;
+			}
+			SelectObjectMarkerBits(player->mFloorContacts[2].objectIndex, available, 0xff, marker);
+			SelectObjectMarkerBits(player->mHitObjectIndex, available, 0xfe, marker);
+			SelectObjectMarkerBits(player->_A10, available, 0x80, marker);
+		}
 	}
 	SetMovementMarker(player, marker);
 	if (!marker)
