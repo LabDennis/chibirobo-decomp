@@ -579,7 +579,7 @@ game/xobjfloorheight.cpp:
 	.text       start:0x800BED14 end:0x800BEE74
 
 game/xactradar.cpp:
-	.text       start:0x800BEFF4 end:0x800C65DC
+	.text       start:0x800BEFF0 end:0x800C65DC
 
 game/xacttumble.cpp:
 	.text       start:0x800C65DC end:0x800C661C
