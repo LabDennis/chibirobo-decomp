@@ -300,8 +300,7 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 		}
 	}
 
-	mirrored = 0;
-	shown    = 0;
+	shown = mirrored = 0;
 	for (i = 0; i < game->mXObjs.mPools[3].mUsed; i++) {
 		obj = game->mXObjs.mPools[3].Get(i);
 		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && !(obj->mStatus.mFlags & 0xA00040)) {
