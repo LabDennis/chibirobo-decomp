@@ -920,7 +920,7 @@ void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 void CheckPopperShotImpact(XActPopperShot* shot)
 {
 	Vec pos  = shot->mPos;
-	bool hit = false;
+	BOOL hit = FALSE;
 	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.GetObject(i);
 		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || (object->mStatus.mFlags & 0x40000)
@@ -931,7 +931,7 @@ void CheckPopperShotImpact(XActPopperShot* shot)
 			continue;
 		CVec push, contact;
 		if ((ProbeObjectFloor(object, pos, pos, 0.8f, 0.8f, &push, &contact, NULL) & 3) == 3) {
-			hit = true;
+			hit = TRUE;
 			shot->mPos.Set(contact);
 			if (gGame.mEvt.mData.mScript != NULL)
 				shot->mHitTarget = object;
@@ -943,7 +943,7 @@ void CheckPopperShotImpact(XActPopperShot* shot)
 		XObjMapHit ground;
 		XObjMap* map = (XObjMap*)gGame.mXObjs.mPools[3].First();
 		if (FindMapFloor(map, &pos, &ground, NULL) && pos.y <= ground.mHeight) {
-			hit = true;
+			hit = TRUE;
 			shot->mPos.Set(CVec(pos));
 			shot->mPos.y = ground.mHeight;
 		}
