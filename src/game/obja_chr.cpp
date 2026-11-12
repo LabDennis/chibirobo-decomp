@@ -8725,7 +8725,7 @@ extern "C" void SpawnPlayerDust(XObjChr* player, const Vec* origin)
 {
 	f32 angle = DEG2RAD * (rand() % 360);
 	f32 vx    = (rand() % 100) * (f32)sin(angle) / 1000.0f;
-	f32 vz    = (f32)cos(angle) * (rand() % 100) / 1000.0f;
+	f32 vz    = (rand() % 100) * (f32)cos(angle) / 1000.0f;
 	f32 vy    = (rand() % 100) / 800.0f;
 	Vec position;
 	position.x = origin->x + 16.0f * (vx * (rand() % 100) / 100.0f);
@@ -8739,7 +8739,7 @@ extern "C" void SpawnPlayerDust(XObjChr* player, const Vec* origin)
 	Vec velocity   = { vx, vy, vz };
 	CPtclOne* dust = SpawnPoolParticle(&player->mDust.mPtcl, &position, &size, &velocity, 0xFFFFFFA0);
 	if (dust != NULL) {
-		if (player->_158C0 == 10) {
+		if ((s32)player->_158C0 == 10) {
 			dust->mAngle      = DEG2RAD * (rand() % 360);
 			dust->mAngleSpeed = DEG2RAD * (10 - rand() % 20);
 			dust->mColor      = 0xFFFFFFC8;
