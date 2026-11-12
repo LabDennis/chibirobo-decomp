@@ -36,15 +36,15 @@ static inline void DrawSubwindowObjects(const XOBJS& objects, CCamera* camera)
 {
 	for (s32 i = 0; i < objects.mObjectCount; ++i) {
 		XObj* object = objects.mObjects[i];
-		bool draw    = false;
+		BOOL draw    = FALSE;
 		if ((object->mStatus.mFlags & 1) && (object->mStatus.mFlags & 0x10000)) {
 			if (object->mStatus.mFlags & 0x02000000)
-				draw = true;
+				draw = TRUE;
 			else {
 				f32 radius = object->GetFloorXZExtent() * .5f;
 				f32 height = object->GetCollisionHeight();
 				if (object->ProjectVisibleBounds(NULL, NULL, camera, radius, height))
-					draw = true;
+					draw = TRUE;
 			}
 		}
 		if (draw)
