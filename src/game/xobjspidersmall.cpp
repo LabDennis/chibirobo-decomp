@@ -1836,37 +1836,37 @@ void XObjSpiderSmall::OnHitFromPosition(const Vec& pos, f32 f)
  * @note Address: 0x800FDABC
  * @note Size: 0xF4
  */
-extern "C" s32 HandleEventCommand__15XObjSpiderSmallFlPl(XObjSpiderSmall* spider, s32 n, s32* args)
+s32 XObjSpiderSmall::HandleEventCommand(s32 n, s32* args)
 {
 	for (int i = 0; i < n; i++) { }
 	if (n < 1) {
 		return 0;
 	}
-	spider->mEvtArgs[0] = args[0];
+	mEvtArgs[0] = args[0];
 	if (n < 2) {
-		spider->mEvtArgs[1] = 0;
+		mEvtArgs[1] = 0;
 	} else {
-		spider->mEvtArgs[1] = args[1];
+		mEvtArgs[1] = args[1];
 	}
 	if (n < 3) {
-		spider->mEvtArgs[2] = 0;
+		mEvtArgs[2] = 0;
 	} else {
-		spider->mEvtArgs[2] = args[2];
+		mEvtArgs[2] = args[2];
 	}
 	if (n < 4) {
-		spider->mEvtArgs[3] = 0;
+		mEvtArgs[3] = 0;
 	} else {
-		spider->mEvtArgs[3] = args[3];
+		mEvtArgs[3] = args[3];
 	}
 	if (n < 5) {
-		spider->mEvtArgs[4] = 0;
+		mEvtArgs[4] = 0;
 	} else {
-		spider->mEvtArgs[4] = args[4];
+		mEvtArgs[4] = args[4];
 	}
 	if (n < 6) {
-		spider->mEvtArgs[5] = 0;
+		mEvtArgs[5] = 0;
 	} else {
-		spider->mEvtArgs[5] = args[5];
+		mEvtArgs[5] = args[5];
 	}
 	return 0;
 }
