@@ -14,12 +14,12 @@ extern void* __vt__5CFile[];
 extern void* __vt__7CThread[];
 CGame* __ct__5CGameFv(CGame* game);
 CGame* __dt__5CGameFv(CGame* game, s32 flags);
-ARCacheInfo* fn_8001975C(ARCacheInfo* info, s32 flags);
+ARCacheInfo* __dt__11ARCacheInfoFv(ARCacheInfo* info, s32 flags);
 FbMirrorEx* __ct__10FbMirrorExFv(FbMirrorEx* mirror);
-FbMirrorEx* fn_80019600(FbMirrorEx* mirror, s32 flags);
+FbMirrorEx* __dt__10FbMirrorExFv(FbMirrorEx* mirror, s32 flags);
 void DestroyFbMirrorExArray(void);
-ARPreCache* fn_80019554(ARPreCache* cache, s32 flags);
-CThread* fn_8001950C(CThread* thread, s32 flags);
+ARPreCache* __dt__10ARPreCacheFv(ARPreCache* cache, s32 flags);
+CThread* __dt__7CThreadFv(CThread* thread, s32 flags);
 }
 
 // past the game object, ARCacheInfo then FbMirrorEx[5], ARPreCache and CThread, each after
@@ -45,10 +45,10 @@ extern "C" void __sinit_cgameinit_cpp(void)
 	info->mBaseAddress             = 0;
 	*(void***)((u8*)info + 0x4008) = __vt__11ARCacheInfo;
 	info->mCount                   = 0;
-	__register_global_object(info, (void*)fn_8001975C, (u8*)info - 0xC);
+	__register_global_object(info, (void*)__dt__11ARCacheInfoFv, (u8*)info - 0xC);
 
-	__construct_array(GLOBALS + 0x41B4, (ConstructorDestructor)__ct__10FbMirrorExFv, (ConstructorDestructor)fn_80019600, sizeof(FbMirrorEx),
-	                  5);
+	__construct_array(GLOBALS + 0x41B4, (ConstructorDestructor)__ct__10FbMirrorExFv, (ConstructorDestructor)__dt__10FbMirrorExFv,
+	                  sizeof(FbMirrorEx), 5);
 	__register_global_object(NULL, (void*)DestroyFbMirrorExArray, GLOBALS + 0x41A8);
 
 	ARPreCache* cache                      = (ARPreCache*)(GLOBALS + 0x5084);
@@ -66,10 +66,10 @@ extern "C" void __sinit_cgameinit_cpp(void)
 	cache->mFile1.mResult                  = 0;
 	cache->mFile1.mState                   = 1;
 	cache->_00                             = 0;
-	__register_global_object(cache, (void*)fn_80019554, (u8*)cache - 0xC);
+	__register_global_object(cache, (void*)__dt__10ARPreCacheFv, (u8*)cache - 0xC);
 
 	CThread* thread                 = (CThread*)(GLOBALS + 0x5278);
 	*(void***)((u8*)thread + 0x320) = __vt__7CThread;
 	thread->mStack                  = NULL;
-	__register_global_object(thread, (void*)fn_8001950C, (u8*)thread - 0xC);
+	__register_global_object(thread, (void*)__dt__7CThreadFv, (u8*)thread - 0xC);
 }
