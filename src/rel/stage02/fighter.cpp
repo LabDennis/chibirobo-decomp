@@ -688,10 +688,12 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, x, 40.0f, 0.0f, w, 1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+#if !defined(VERSION_JP)
 			{
 				CTexObj unused;
 				DrawCaption(0x5A, x, 40.0f);
 			}
+#endif
 			tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 8), 0);
 			left = 20.0f + (x - 12.0f - 88.0f);
 			digW = 0.8f * (1.0f * (GXGetTexObjWidth(&tex) / 11));
@@ -726,10 +728,12 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, 1.0f * GXGetTexObjWidth(&tex),
 			                   1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+#if !defined(VERSION_JP)
 			{
 				CTexObj unused;
 				DrawCaption(0x5B, 320.0f, 40.0f);
 			}
+#endif
 			tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 8), 0);
 			digW = 1.4f * (1.0f * (GXGetTexObjWidth(&tex) / 11));
 			digH = 1.4f * (1.0f * GXGetTexObjHeight(&tex));
@@ -775,10 +779,12 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, 1.0f * GXGetTexObjWidth(&tex),
 			                   1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+#if !defined(VERSION_JP)
 			{
 				CTexObj unused;
 				DrawCaption(0x5C, 100.0f, 44.0f);
 			}
+#endif
 			tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x30), 0);
 			w    = 1.0f * GXGetTexObjWidth(&tex);
 			digH = 1.0f * GXGetTexObjHeight(&tex);
@@ -5695,6 +5701,9 @@ extern "C" void Fighter_Init(Fighter* hole, UnkDolObj* a, UnkDolObj* b, void* c)
  * @note Address: stage02 .text 0x44F0
  * @note Size: 0xCB4
  */
+// NONMATCHING: retail reads the 1.0f-scale operands and the 32.0f panel offset as named .rodata
+// objects (gFighterHudTextureScale, gFighterPanelYOffset), so it keeps a real lfs+fmuls where
+// literals fold away. No source form reproduces both the loads and their placement.
 extern "C" void FighterPanels_Draw(FighterPanels* fade)
 {
 	CTexObj tex;
