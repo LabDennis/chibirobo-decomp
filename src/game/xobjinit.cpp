@@ -37,32 +37,32 @@ static inline bool FitsInAram(CObjArchive* archive)
 	return gARAMCacheInfo.mBaseAddress + ((size + 31) & ~31u) < capacity;
 }
 
-extern "C" BOOL LoadFromPlacement__4XObjFRC9CoordInfo(XObj* object, const CoordInfo* info)
+BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ready = FALSE;
-	if ((u64)info->_00->_34 & 0x80000000ULL)
+	if ((u64)info._00->_34 & 0x80000000ULL)
 		return TRUE;
 
-	AttrInfo& attr = object->mAttr;
-	if (object->mStatus.mFlags & 1)
+	AttrInfo& attr = mAttr;
+	if (mStatus.mFlags & 1)
 		ready = TRUE;
 	else {
 		if (!attr._00) {
-			object->mCoord._00 = info->_00;
-			attr._00           = GetObjData(info);
-			attr._04           = info->_00;
+			mCoord._00 = info._00;
+			attr._00   = GetObjData(&info);
+			attr._04   = info._00;
 			if (!(HasSource(attr) ? attr._00->mSource->mArchive : NULL) && ModelName(attr)) {
 				CObjArchive* archive = FindFreeObjectArchive(gGame.mObjArchives.mArchives);
 				if (attr._00 && attr._00->mSource)
 					attr._00->mSource->mArchive = archive;
 			}
 		}
-		if (!object->mFloors) {
-			object->mFloors = (XObjFloor*)GetGlobalTextEntry(info->_00->_00);
-			object->_250[1] = object->_250[0] = 0;
-			BOOL empty                        = object->mFloors ? object->mFloors->mId == -1 : FALSE;
+		if (!mFloors) {
+			mFloors = (XObjFloor*)GetGlobalTextEntry(info._00->_00);
+			_250[1] = _250[0] = 0;
+			BOOL empty        = mFloors ? mFloors->mId == -1 : FALSE;
 			if (empty)
-				object->mFloors = NULL;
+				mFloors = NULL;
 		}
 		if (!ModelName(attr))
 			ready = TRUE;
@@ -86,7 +86,7 @@ extern "C" BOOL LoadFromPlacement__4XObjFRC9CoordInfo(XObj* object, const CoordI
 			}
 			char path[64];
 			sprintf(path, "%s.dat", name);
-			ready = object->Load(archive, path, model, flags, address, size);
+			ready = Load(archive, path, model, flags, address, size);
 			if (ready) {
 				if ((flags & 2) && FitsInAram(archive) && attr._00 && attr._00->mSource) {
 					attr._00->mSource->mCache.address = gARAMCacheInfo.mBaseAddress;
@@ -124,84 +124,84 @@ extern "C" BOOL LoadFromPlacement__4XObjFRC9CoordInfo(XObj* object, const CoordI
 	}
 	if (ready) {
 		static Vec initial[3];
-		object->SetPos(PlacementPosition(*info, initial[0]), 1);
-		object->SetRot(PlacementRotation(*info, initial[2]), 1);
-		object->SetScale(PlacementScale(*info, initial[1]), 1);
-		object->mMoveTranslate.mSpeed.Set(0, 0, 0);
-		object->mMoveRotate.mSpeed.Set(0, 0, 0);
-		object->mStatus.mFlags = 0;
-		object->mStatus.mFlags |= (attr._00 ? attr._00->mFlags : 0) | (1ULL | ((u64)info->_00->_34 << 16));
-		if (object->mFloors)
-			object->mStatus.mFlags |= 0x0200000000000000ULL;
+		SetPos(PlacementPosition(info, initial[0]), 1);
+		SetRot(PlacementRotation(info, initial[2]), 1);
+		SetScale(PlacementScale(info, initial[1]), 1);
+		mMoveTranslate.mSpeed.Set(0, 0, 0);
+		mMoveRotate.mSpeed.Set(0, 0, 0);
+		mStatus.mFlags = 0;
+		mStatus.mFlags |= (attr._00 ? attr._00->mFlags : 0) | (1ULL | ((u64)info._00->_34 << 16));
+		if (mFloors)
+			mStatus.mFlags |= 0x0200000000000000ULL;
 		else
-			object->mStatus.mFlags &= ~0x0200000000000000ULL;
-		object->_25C = object->mCoord._00->_28;
-		object->_260 = object->mCoord._00->_2C;
-		if (object->mJObj)
-			object->SetAnim(object->mCoord._00->_30, TRUE, NULL, NULL, NULL, 0, 1, 1, 10);
-		object->ResetObjectState();
-		object->_264.x     = object->mMoveTranslate.x;
-		object->_264.y     = object->mMoveTranslate.y;
-		object->_264.z     = object->mMoveTranslate.z;
-		object->mColors[1] = 0xffffff00;
-		object->mColors[0] = 0;
-		if (object->mJObj) {
+			mStatus.mFlags &= ~0x0200000000000000ULL;
+		_25C = mCoord._00->_28;
+		_260 = mCoord._00->_2C;
+		if (mJObj)
+			SetAnim(mCoord._00->_30, TRUE, NULL, NULL, NULL, 0, 1, 1, 10);
+		ResetObjectState();
+		_264.x     = mMoveTranslate.x;
+		_264.y     = mMoveTranslate.y;
+		_264.z     = mMoveTranslate.z;
+		mColors[1] = 0xffffff00;
+		mColors[0] = 0;
+		if (mJObj) {
 			u32 material[5] = { 0, 0, 0, 0, 0 };
-			material[0]     = object->mStatus.mFlags & 0x800000ULL;
-			material[1]     = object->mStatus.mFlags & 0x200000ULL;
-			material[2]     = object->mStatus.mFlags & 0x40ULL;
-			material[3]     = object->mStatus.mFlags & 0x20000ULL;
-			material[4]     = object->mStatus.mFlags & 0x400000ULL;
-			object->vfD8(material);
-			if ((object->mStatus.mFlags & 0x1000000) && IsStageDataLoaded())
-				object->vfE0(GetEnvData()[9] / 100.f);
-			if ((object->mStatus.mFlags & 2) && object->mJObj)
-				HSD_JObjWalkTree(object->mJObj, JObjSetMObjFlags, (f32**)0x04000000);
-			UnkStageObj* place = object->mCoord._00;
+			material[0]     = mStatus.mFlags & 0x800000ULL;
+			material[1]     = mStatus.mFlags & 0x200000ULL;
+			material[2]     = mStatus.mFlags & 0x40ULL;
+			material[3]     = mStatus.mFlags & 0x20000ULL;
+			material[4]     = mStatus.mFlags & 0x400000ULL;
+			vfD8(material);
+			if ((mStatus.mFlags & 0x1000000) && IsStageDataLoaded())
+				vfE0(GetEnvData()[9] / 100.f);
+			if ((mStatus.mFlags & 2) && mJObj)
+				HSD_JObjWalkTree(mJObj, JObjSetMObjFlags, (f32**)0x04000000);
+			UnkStageObj* place = mCoord._00;
 			s32 index          = place - GetStagePlacementByIndex(0);
 			if (index > 0)
-				object->_80C = (u32)GetStageScriptByIndex(index);
+				_80C = (u32)GetStageScriptByIndex(index);
 		}
-		UpdateObjectFloorHeights(object);
-		UpdateObjectFloorXZExtent(object);
-		if ((__fpclassifyf(object->mFloorXZExtent) != FP_NAN && object->mFloorXZExtent < 40.0f) || (object->mStatus.mFlags & 0x400)) {
-			s32 kind = object->GetPool();
+		UpdateObjectFloorHeights(this);
+		UpdateObjectFloorXZExtent(this);
+		if ((__fpclassifyf(mFloorXZExtent) != FP_NAN && mFloorXZExtent < 40.0f) || (mStatus.mFlags & 0x400)) {
+			s32 kind = GetPool();
 			if ((u16)(kind - 7) <= 1 || (u16)(kind - 20) <= 1 || (s16)kind == 22)
-				object->mStatus.mFlags |= 0x80000000ULL;
+				mStatus.mFlags |= 0x80000000ULL;
 		}
-		if (object->mStatus.mFlags & 0x2000)
-			object->mStatus.mFlags &= ~0x80000000ULL;
-		if (object->mStatus.mFlags & 0x8100000000ULL)
-			object->mStatus.mFlags |= 0x4000;
-		object->mSelectedFloorHeight = NAN;
-		object->mSelectedFloorIndex  = 0;
+		if (mStatus.mFlags & 0x2000)
+			mStatus.mFlags &= ~0x80000000ULL;
+		if (mStatus.mFlags & 0x8100000000ULL)
+			mStatus.mFlags |= 0x4000;
+		mSelectedFloorHeight = NAN;
+		mSelectedFloorIndex  = 0;
 	}
-	return object->mStatus.mFlags & 1ULL;
+	return mStatus.mFlags & 1ULL;
 }
 
 /**
  * @note Address: 0x800928E8
  * @note Size: 0xDC
  */
-extern "C" void ResetObjectState__4XObjFv(XObj* object)
+void XObj::ResetObjectState()
 {
-	object->_80C                = 0;
-	object->mFloorHit.mTriangle = -1;
-	object->mFloorHit.mTrigon   = 0;
-	object->mFloorHit.mHeight   = 0.0f;
-	object->_794.x              = 0.0f;
-	object->_794.y              = 0.0f;
-	object->_794.z              = 0.0f;
-	object->mAnmQueue.Clear();
-	object->mAnchorX = object->mAnchorZ = NAN;
-	object->_8B0                        = 0;
-	object->_8B0 |= 0x80000000;
-	object->mColorStep[0].mValue.x = object->mColorStep[0].mValue.y = object->mColorStep[0].mValue.z = 255.0f;
-	object->mColorStep[0].mTarget.x = object->mColorStep[0].mTarget.y = object->mColorStep[0].mTarget.z = 255.0f;
-	object->mColorStep[0].mSpeed.x = object->mColorStep[0].mSpeed.y = object->mColorStep[0].mSpeed.z = 0.0f;
-	object->mColorStep[1].mValue.x = object->mColorStep[1].mValue.y = object->mColorStep[1].mValue.z = 0.0f;
-	object->mColorStep[1].mTarget.x = object->mColorStep[1].mTarget.y = object->mColorStep[1].mTarget.z = 0.0f;
-	object->mColorStep[1].mSpeed.x = object->mColorStep[1].mSpeed.y = object->mColorStep[1].mSpeed.z = 0.0f;
+	_80C                = 0;
+	mFloorHit.mTriangle = -1;
+	mFloorHit.mTrigon   = 0;
+	mFloorHit.mHeight   = 0.0f;
+	_794.x              = 0.0f;
+	_794.y              = 0.0f;
+	_794.z              = 0.0f;
+	mAnmQueue.Clear();
+	mAnchorX = mAnchorZ = NAN;
+	_8B0                = 0;
+	_8B0 |= 0x80000000;
+	mColorStep[0].mValue.x = mColorStep[0].mValue.y = mColorStep[0].mValue.z = 255.0f;
+	mColorStep[0].mTarget.x = mColorStep[0].mTarget.y = mColorStep[0].mTarget.z = 255.0f;
+	mColorStep[0].mSpeed.x = mColorStep[0].mSpeed.y = mColorStep[0].mSpeed.z = 0.0f;
+	mColorStep[1].mValue.x = mColorStep[1].mValue.y = mColorStep[1].mValue.z = 0.0f;
+	mColorStep[1].mTarget.x = mColorStep[1].mTarget.y = mColorStep[1].mTarget.z = 0.0f;
+	mColorStep[1].mSpeed.x = mColorStep[1].mSpeed.y = mColorStep[1].mSpeed.z = 0.0f;
 }
 
 // XObj::vf90
