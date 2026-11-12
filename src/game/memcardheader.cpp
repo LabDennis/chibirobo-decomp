@@ -14,13 +14,13 @@ static inline BOOL ReadFailed(Memcard* card)
  */
 extern "C" BOOL ReadValidatedSaveFileCopy(Memcard* card, SaveFile* file)
 {
-	card->mState     = 12;
-	SaveHeader* save = &file->mData.mHeader;
+	card->mState = 12;
 	for (s32 copy = 0; copy < 2; ++copy) {
 		card->mCard.Read(file, sizeof(SaveFile), copy * (s32)sizeof(SaveFile));
 		card->LogResult();
 		if (card->mCard.mResult != CARD_RESULT_READY)
 			return ReadFailed(card);
+		SaveHeader* save = &file->mData.mHeader;
 		if (save->mSignature != SAVE_SIGNATURE)
 			card->mCard.mResult = -128;
 		card->LogResult();
