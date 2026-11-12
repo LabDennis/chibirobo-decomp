@@ -482,6 +482,8 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				return;
 			}
 			break;
+		case 20:
+			break;
 		}
 		break;
 	}
