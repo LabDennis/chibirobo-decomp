@@ -191,7 +191,7 @@ static inline void StunKind9Actor(XObjActor3* actor)
 	actor->_B80 = 20;
 }
 
-static inline bool Kind9AnimFinished(XObjActor3* actor, u32 frames)
+static inline BOOL Kind9AnimFinished(XObjActor3* actor, u32 frames)
 {
 	f32 end     = GetAnimEndFrame(actor->mJObj);
 	f32 current = GetAnimFrame(actor->mJObj);
