@@ -22,9 +22,14 @@ rel/module.c:
 	.text       start:0x00000C5C end:0x00000E14
 	.rodata     start:0x00000070 end:0x000000E0
 
+rel/fafa.cpp:
+	.text       start:0x00000E14 end:0x00000E5C
+	.rodata     start:0x000000E0 end:0x000000F0
+	.data       start:0x00000358 end:0x00000380
+
 rel/ana.cpp:
-	.text       start:0x00000E14 end:0x000023A8
+	.text       start:0x00000E5C end:0x000023A8
 	.ctors      start:0x00000004 end:0x00000008
-	.rodata     start:0x000000E0 end:0x000001D8
-	.data       start:0x00000358 end:0x000003E8
+	.rodata     start:0x000000F0 end:0x000001D8
+	.data       start:0x00000380 end:0x000003E8
 	.bss        start:0x00000090 end:0x00000408
