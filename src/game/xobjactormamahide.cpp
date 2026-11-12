@@ -28,8 +28,11 @@ void XObjActorMama::ProcessPendingEvents(u32)
 				if (mCmd[1] == obj->GetKind()) {
 					mHeldObjects[0] = obj;
 					obj->mStatus.mFlags |= 0x10000ULL;
-					if (mCmd[1] == 0x40)
+					switch (mCmd[1]) {
+					case 0x40:
 						_C8C.mFlags |= 1;
+						break;
+					}
 				}
 			}
 			break;
