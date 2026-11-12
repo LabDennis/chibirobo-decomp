@@ -5,13 +5,13 @@
  * @note Address: 0x80092E38
  * @note Size: 0xC8
  */
-extern "C" void UpdateObject__9XObjLightFUl(XObjLight* object, u32 frames)
+void XObjLight::UpdateObject(u32 frames)
 {
 	if ((s32)GetEnvData()[4] == 2) {
-		for (s32 i = 0; i < object->mLightNum; ++i) {
-			if (object->GetLightDesc(i) && object->GetLightAnimNum(i) > 0) {
-				object->mLights[i].SetAnimRate((f32)frames);
-				object->mLights[i].Anim();
+		for (s32 i = 0; i < mLightNum; ++i) {
+			if (GetLightDesc(i) && GetLightAnimNum(i) > 0) {
+				mLights[i].SetAnimRate((f32)frames);
+				mLights[i].Anim();
 			}
 		}
 	}
@@ -39,28 +39,28 @@ extern "C" void Release__9XObjLightFv(XObjLight* object)
  * @note Size: 0x14C
  */
 // NONMATCHING: regalloc — retail keeps one more copy of the object pointer live.
-extern "C" BOOL LoadFromPlacement__9XObjLightFRC9CoordInfo(XObjLight* object, CoordInfo* info)
+BOOL XObjLight::LoadFromPlacement(const CoordInfo& info)
 {
-	if (LoadFromPlacement__4XObjFRC9CoordInfo(object, info)) {
+	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
 		if ((s32)GetEnvData()[4] == 2) {
 			HSD_LObj* previous = NULL;
 			for (s32 i = 0; i < 8; ++i) {
-				if (object->GetLightDesc(i)) {
-					object->mLights[i].Init(object->GetLightDesc(i)->mDesc, GetEnvData()[5] & (1 << (7 - i)));
-					if (object->GetLightAnimNum(i) > 0) {
-						object->mLightAnims[i] = 0;
-						object->mLights[i].SetAnim(object->GetLightDesc(i)->mAnims[object->mLightAnims[i]], 0.0f);
+				if (GetLightDesc(i)) {
+					mLights[i].Init(GetLightDesc(i)->mDesc, GetEnvData()[5] & (1 << (7 - i)));
+					if (GetLightAnimNum(i) > 0) {
+						mLightAnims[i] = 0;
+						mLights[i].SetAnim(GetLightDesc(i)->mAnims[mLightAnims[i]], 0.0f);
 					}
-					++object->mLightNum;
+					++mLightNum;
 					if (previous)
-						previous->next = &object->mLights[i];
-					previous = &object->mLights[i];
+						previous->next = &mLights[i];
+					previous = &mLights[i];
 				}
 			}
 			if (previous)
 				previous->next = NULL;
 		}
-		object->mStatus.mFlags &= ~0x10000ULL;
+		mStatus.mFlags &= ~0x10000ULL;
 		return TRUE;
 	}
 	return FALSE;
@@ -71,11 +71,11 @@ extern "C" BOOL LoadFromPlacement__9XObjLightFRC9CoordInfo(XObjLight* object, Co
  * @note Address: 0x800930E4
  * @note Size: 0x30
  */
-extern "C" void ResetObjectState__9XObjLightFv(XObjLight* object)
+void XObjLight::ResetObjectState()
 {
-	object->mLightNum = 0;
+	mLightNum = 0;
 	for (u32 i = 0; i < 8; ++i)
-		object->mLightAnims[i] = -1;
+		mLightAnims[i] = -1;
 }
 
 // XObjLight::InitializeObject
@@ -83,7 +83,7 @@ extern "C" void ResetObjectState__9XObjLightFv(XObjLight* object)
  * @note Address: 0x80093114
  * @note Size: 0x20
  */
-extern "C" void InitializeObject__9XObjLightFUl(XObjLight* object, u32 id)
+void XObjLight::InitializeObject(u32 id)
 {
-	InitializeObject__4XObjFUl(object, id);
+	InitializeObject__4XObjFUl(this, id);
 }
