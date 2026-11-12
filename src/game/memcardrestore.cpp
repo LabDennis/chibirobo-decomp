@@ -93,8 +93,10 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 {
 	SaveData* save = &card->mFile.mData;
 	s32 stage      = save->mHeader.mStage;
-	if (stage >= 100)
-		stage = GetStageNum() + stage - 99;
+	if (stage >= 100) {
+		stage += GetStageNum();
+		stage -= 99;
+	}
 	gGame.mPrevStage           = gGame.mStage;
 	gGame.mStage               = stage;
 	gGame.mTimeState.mMode     = save->mHeader.mTimeMode;
