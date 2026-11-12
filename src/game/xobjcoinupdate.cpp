@@ -93,10 +93,17 @@ void XObjCoin::UpdateObject(u32 frames)
 		if (IsCoinItemInRange(this, 0, 100)) {
 			s32 anim       = mAnimId;
 			HSD_AObj* aobj = GetAObj(mJObj);
-			if (anim == 0)
+			switch (anim) {
+			case 0:
 				SetAnim(2, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			else if (anim == 2 && (aobj->flags & 0x44000000))
-				Release();
+				break;
+			case 1:
+				break;
+			case 2:
+				if (aobj->flags & 0x44000000)
+					Release();
+				break;
+			}
 		} else {
 			if (mMoveScale.x == 0.0f && mMoveScale.y == 0.0f && mMoveScale.z == 0.0f)
 				Release();
@@ -106,13 +113,15 @@ void XObjCoin::UpdateObject(u32 frames)
 			PSVECScale(&mMoveScale, &mMoveScale, 1.12f * _98C);
 		}
 	}
-	if (mParam0 == 1) {
+	switch (mParam0) {
+	case 1:
 		mState      = 1;
 		mFallFrames = 0;
 		mParam0     = 0;
 		mHeading    = radians * (s32)mParam1;
 		mFallSpeed  = (s32)mParams[0] / 100.0f;
 		mStatus.mFlags |= 0x100000;
+		break;
 	}
 	UpdateFallingCoin(this, frames);
 }
