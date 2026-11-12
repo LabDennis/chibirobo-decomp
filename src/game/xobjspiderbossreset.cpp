@@ -24,10 +24,10 @@ extern "C" void vf94__14XObjSpiderBossFv(XObjSpiderBoss* spider)
  * @note Address: 0x80106924
  * @note Size: 0x58
  */
-extern "C" void InitializeObject__14XObjSpiderBossFUl(XObjSpiderBoss* spider, u32 id)
+void XObjSpiderBoss::InitializeObject(u32 id)
 {
-	InitializeObject__4XObjFUl(spider, id);
-	ResetState(spider);
+	InitializeObject__4XObjFUl(this, id);
+	ResetState(this);
 }
 
 extern "C" {
