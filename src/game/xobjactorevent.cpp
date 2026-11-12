@@ -8,12 +8,12 @@ extern "C" void OSReport(const char*, ...);
  * @note Address: 0x801070A4
  * @note Size: 0x498
  */
-// NONMATCHING: identical instruction stream; only regalloc and scheduling differ
 s32 XObjActor::HandleEventCommand(s32 count, s32* args)
 {
 	switch (args[0]) {
-	case 100:
-		if (args[1] == 0) {
+	case 100: {
+		s32 id = args[1];
+		if (id == 0) {
 			_998.mFlags &= ~0x1000;
 			for (u32 i = 0; i < 8; i++) {
 				if (mParts[i].mObj != NULL) {
@@ -27,7 +27,7 @@ s32 XObjActor::HandleEventCommand(s32 count, s32* args)
 			for (i = 0; mParts[i].mObj != NULL && i < 8; i++) { }
 			if (i < 8) {
 #if !defined(VERSION_PAL)
-				OSReport("id = %d, argv[1]=%d\n", i);
+				OSReport("id = %d, argv[1]=%d\n", i, id);
 #endif
 				_998.mFlags |= 0x1000;
 				if (args[1] >= 10000) {
@@ -50,6 +50,7 @@ s32 XObjActor::HandleEventCommand(s32 count, s32* args)
 			}
 		}
 		break;
+	}
 	case 101:
 		if (args[1] == 0) {
 			_998.mFlags &= ~0x800;
