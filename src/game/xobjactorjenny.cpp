@@ -257,7 +257,10 @@ void XObjActorJenny::vf148(u32 frames)
 				}
 			}
 			break;
-		default:
+		case 0x3b:
+		case 0x3d:
+		case 0x3e:
+		case 0x3f:
 			for (s32 i = 0; i < 64; ++i) {
 				XObj* prop = gGame.mXObjs.mPools[8].Get(i);
 				if (kind == prop->GetKind()) {
