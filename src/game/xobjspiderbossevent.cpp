@@ -18,8 +18,9 @@ void CommandSpiderBossProjectiles(s32);
 s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 {
 	switch (args[0]) {
-	case 100:
-		if (args[1] == 0) {
+	case 100: {
+		s32 id = args[1];
+		if (id == 0) {
 			mSpiderStatus.mFlags &= ~0x20000000;
 			for (u32 i = 0; i < 8; i++) {
 				if (mParts[i].mObj != NULL) {
@@ -33,7 +34,7 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 			for (i = 0; mParts[i].mObj != NULL && i < 8; i++) { }
 			if (i < 8) {
 #if !defined(VERSION_PAL)
-				OSReport("id = %d, argv[1]=%d\n", i);
+				OSReport("id = %d, argv[1]=%d\n", i, id);
 #endif
 				mSpiderStatus.mFlags |= 0x20000000;
 				if (args[1] >= 10000) {
@@ -56,6 +57,7 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 			}
 		}
 		return 0;
+	}
 	}
 	if (count < 1)
 		return 0;
