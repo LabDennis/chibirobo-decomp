@@ -24,14 +24,16 @@ extern "C" BOOL WriteMemoryCardSaveFile(Memcard* card, s32 channel, s32 slot)
 	CaptureGameSaveData(card);
 	card->mState = 13;
 	BOOL failed  = FALSE;
-	for (s32 copy = 0, offset = 0; copy < 2 && !failed; ++copy, offset += sizeof(SaveFile)) {
+	for (s32 copy = 0, offset = 0; copy < 2; ++copy, offset += sizeof(SaveFile)) {
 		card->mCard.Write(card->mBuffer, sizeof(SaveFile), offset);
 		card->LogResult();
 		if (card->mCard.mResult != CARD_RESULT_READY) {
 			card->mCard.Close();
 			card->mCard.Unmount();
 			failed = TRUE;
-		} else if (copy == 1) {
+			break;
+		}
+		if (copy == 1) {
 			CARDStat stat;
 			card->mCard.GetStatus(&stat);
 			if (!HasSaveFileLayout(stat)) {
@@ -42,6 +44,7 @@ extern "C" BOOL WriteMemoryCardSaveFile(Memcard* card, s32 channel, s32 slot)
 					card->mCard.Close();
 					card->mCard.Unmount();
 					failed = TRUE;
+					break;
 				}
 			}
 		}
