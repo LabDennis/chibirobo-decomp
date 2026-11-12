@@ -10,7 +10,7 @@ void LaunchSpiderBossPartByIndex(s32 index);
 void LaunchSpiderBossCenterPart();
 void ResetSpiderBossAttachment();
 BOOL IsUsingMug(XActLift* lift);
-u8 IsPlayerFlashingFromHit(XObjChr* player);
+BOOL IsPlayerFlashingFromHit(XObjChr* player);
 f32 GetPlayerCollisionRadius(XObjChr* player);
 void ApplyPlayerHitReaction(XObjChr* player, BOOL react, BOOL stop, f32 time);
 extern s32 gSpiderDrainFlashTimers[2];
@@ -138,7 +138,10 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 		}
 		break;
 	case 1:
-		spider->vf12C(1, spider->mBlinkTimer % 30 < 15 ? 128 : 0, 0, 0, 0.0f);
+		if (spider->mBlinkTimer % 30 < 15)
+			spider->vf12C(1, 0x80, 0, 0, 0.0f);
+		else
+			spider->vf12C(1, 0, 0, 0, 0.0f);
 		if (++spider->mBlinkTimer > 20) {
 			spider->mSpiderStatus.mFlags &= ~0x10;
 			spider->vf12C(1, 0, 0, 0, 0.0f);
