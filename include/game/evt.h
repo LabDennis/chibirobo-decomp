@@ -260,6 +260,45 @@ public:
 	// _64 vtable
 
 	virtual ~CEvt() { } // _08
+
+	// the command handlers, evtCmdTable names the opcodes of each
+	s32 _cmd_ABORT(u8 command, s32 step);
+	s32 _cmd_RETURN(u8 command, s32 step);
+	s32 _cmd_GOTO(u8 command, s32 step);
+	s32 _cmd_SET(u8 command, s32 step);
+	s32 _cmd_IF(u8 command, s32 step);
+	s32 _cmd_RUN(u8 command, s32 step);
+	s32 _cmd_LIB(u8 command, s32 step);
+	s32 _cmd_PUSHBP(u8 command, s32 step);
+	s32 _cmd_POPBP(u8 command, s32 step);
+	s32 _cmd_SETSP(u8 command, s32 step);
+	s32 _cmd_ANIM(u8 command, s32 step);
+	s32 _cmd_ANIM2(u8 command, s32 step);
+	s32 _cmd_ATTACH(u8 command, s32 step);
+	s32 _cmd_BORN(u8 command, s32 step);
+	s32 _cmd_CALL(u8 command, s32 step);
+	s32 _cmd_CAMERA(u8 command, s32 step);
+	s32 _cmd_WAIT(u8 command, s32 step);
+	s32 _cmd_COLOR(u8 command, s32 step);
+	s32 _cmd_DIR(u8 command, s32 step);
+	s32 _cmd_DISP(u8 command, s32 step);
+	s32 _cmd_KILL(u8 command, s32 step);
+	s32 _cmd_LIGHT(u8 command, s32 step);
+	s32 _cmd_MENU(u8 command, s32 step);
+	s32 _cmd_MOVE(u8 command, s32 step);
+	s32 _cmd_MOVETO(u8 command, s32 step);
+	s32 _cmd_MOVIE(u8 command, s32 step);
+	s32 _cmd_MSG(u8 command, s32 step);
+	s32 _cmd_POS(u8 command, s32 step);
+	s32 _cmd_PRINTF(u8 command, s32 step);
+	s32 _cmd_PTCL(u8 command, s32 step);
+	s32 _cmd_READ(u8 command, s32 step);
+	s32 _cmd_SCALE(u8 command, s32 step);
+	s32 _cmd_SCRN(u8 command, s32 step);
+	s32 _cmd_SFX(u8 command, s32 step);
+	s32 _cmd_TIMER(u8 command, s32 step);
+	s32 _cmd_WARP(u8 command, s32 step);
+	s32 _cmd_WIN(u8 command, s32 step);
 };
 STATIC_ASSERT(sizeof(CEvt) == 0x68);
 
@@ -349,7 +388,7 @@ struct EvtBeatLatch {
 extern "C" EvtBeatLatch gEventBeatLatch;
 struct EvtCmdEntry {
 	u8 command;                                 // _00
-	u8 _01[3];                                  // _01
+	u8 _01;                                     // _01
 	const char* name;                           // _04
 	s32 (CEvt::*handler)(u8 command, s32 step); // _08
 };
