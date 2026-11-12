@@ -353,24 +353,14 @@ game/stage_data.cpp:
 	.ctors      start:0x801FD674 end:0x801FD678
 
 game/evt.cpp:
-	.text       start:0x8006FCAC end:0x8007EEA4
+	.text       start:0x8006FCAC end:0x8007FFB4
+	.ctors      start:0x801FD678 end:0x801FD67C
 	.rodata     start:0x80207FA0 end:0x80208DF0
-	.data       start:0x80224C00 end:0x80225318
+	.data       start:0x80224748 end:0x80225318
+	.bss        start:0x803676D0 end:0x8036AB3C
 	.sdata      start:0x8065A3C0 end:0x8065A3DC
-	.sbss       start:0x8065B240 end:0x8065B244
+	.sbss       start:0x8065B240 end:0x8065B250
 	.sdata2     start:0x8065CE10 end:0x8065D020
-
-game/evtqueue.cpp:
-	.text       start:0x8007EEA4 end:0x8007F194
-
-game/evtinit.cpp:
-	.text       start:0x8007F194 end:0x8007F570
-
-game/evtobj.cpp:
-	.text       start:0x8007F570 end:0x8007F664
-
-game/evtdtor.cpp:
-	.text       start:0x8007FDDC end:0x8007FFB4
 
 game/msg.cpp:
 	.text       start:0x8007FFB4 end:0x800869AC

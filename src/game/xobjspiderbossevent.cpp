@@ -100,9 +100,9 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 		break;
 	case 3:
 		if (mSpiderStatus.mFlags & 0x80000)
-			gEventVariables[mArgs[0]] = 1;
+			gEventVars.mVars[mArgs[0]] = 1;
 		else
-			gEventVariables[mArgs[0]] = 0;
+			gEventVars.mVars[mArgs[0]] = 0;
 		mCommand = 0;
 		break;
 	case 4:

@@ -612,7 +612,7 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 	anim |= ReadMsgU8(msg) << 16;
 	anim |= ReadMsgU8(msg) << 24;
 	if (flags & 1) {
-		anim = gEventVariables[anim];
+		anim = gEventVars.mVars[anim];
 	}
 	void* state = &gGame.mEvt.mData;
 	XObj* obj   = *(void**)state != NULL ? ResolveEventObjectId(state, id) : NULL;
@@ -696,9 +696,9 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
     stw      r3, 0x804(r28)
     or       r29, r29, r0
     beq      .L_80080638
-    lis      r3, gEventVariables@ha
+    lis      r3, gEventVars@ha
     slwi     r0, r29, 2
-    addi     r3, r3, gEventVariables@l
+    addi     r3, r3, gEventVars@l
     lwzx     r29, r3, r0
 .L_80080638:
     lis      r3, gGame@ha
@@ -2014,7 +2014,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			value |= ReadMsgU8(msg) << 16;
 			value |= ReadMsgU8(msg) << 24;
 			if (flags & 1) {
-				value = gEventVariables[value];
+				value = gEventVars.mVars[value];
 			}
 			msg->_445D8 = value;
 			waiting     = FALSE;
@@ -2364,9 +2364,9 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
     stw      r3, 0x804(r31)
     or       r5, r5, r0
     beq      .L_8008193C
-    lis      r3, gEventVariables@ha
+    lis      r3, gEventVars@ha
     slwi     r0, r5, 2
-    addi     r3, r3, gEventVariables@l
+    addi     r3, r3, gEventVars@l
     lwzx     r5, r3, r0
 .L_8008193C:
     addis    r3, r31, 0x4

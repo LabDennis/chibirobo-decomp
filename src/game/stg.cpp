@@ -54,7 +54,6 @@ u16 GXGetTexObjWidth(const GXTexObj* obj);
 u16 GXGetTexObjHeight(const GXTexObj* obj);
 CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width);
 }
-extern "C" u32 gEventFlagWords[];
 
 // japan has no language setting, its text is always japanese
 static inline bool IsJapanese()
@@ -2866,7 +2865,7 @@ extern "C" BOOL fn_80051C60()
 {
 	BOOL found = FALSE;
 	u32 id     = GetStatusIconEventFlagId(3);
-	if (gEventFlagWords[id / 32] & (1u << (id % 32))) {
+	if (gEventFlags.mFlags[id / 32] & (1u << (id % 32))) {
 		found = TRUE;
 	}
 	return found;
@@ -2981,14 +2980,14 @@ extern "C" void MarkAvailableStatusEntries(u8* available)
 		available[7] = 1;
 	if (GetPlayerItemCount(0x9E) > 0)
 		available[8] = 1;
-	if (GetPlayerItemCount(8) > 0 || (gEventFlagWords[0] & 0x20000000))
+	if (GetPlayerItemCount(8) > 0 || (gEventFlags.mFlags[0] & 0x20000000))
 		available[9] = 1;
-	if (GetPlayerItemCount(0x30) > 0 || (gEventFlagWords[0] & 0x40000000))
+	if (GetPlayerItemCount(0x30) > 0 || (gEventFlags.mFlags[0] & 0x40000000))
 		available[10] = 1;
-	if (GetPlayerItemCount(0x6D) > 0 || (gEventFlagWords[0] & 0x10000000))
+	if (GetPlayerItemCount(0x6D) > 0 || (gEventFlags.mFlags[0] & 0x10000000))
 		available[11] = 1;
-	if (gEventFlagWords[0x84 / 4] & 0x01000000) {
-		if (GetPlayerItemCount(0x7C) > 0 || (gEventFlagWords[0x54 / 4] & 0x01000000))
+	if (gEventFlags.mFlags[0x84 / 4] & 0x01000000) {
+		if (GetPlayerItemCount(0x7C) > 0 || (gEventFlags.mFlags[0x54 / 4] & 0x01000000))
 			available[12] = 1;
 	}
 }
@@ -5239,8 +5238,6 @@ void MenuPC::State0(u32)
 	}
 }
 
-extern "C" s32 gEventVariables[];
-
 static inline s16 MenuHistoryValue(int i)
 {
 	return sShopHistoryEntries[i].mCount;
@@ -5250,9 +5247,9 @@ static inline void RestorePCHistory(MenuPC* menu)
 {
 	if (menu->mHistoryCount > 0) {
 		for (int i = 0; i < menu->mHistoryCount; i++) {
-			gEventVariables[menu->mHistoryStart + i + menu->mHistoryCount] = MenuHistoryValue(i);
+			gEventVars.mVars[menu->mHistoryStart + i + menu->mHistoryCount] = MenuHistoryValue(i);
 		}
-		gEventVariables[196] = menu->mDepositBalance;
+		gEventVars.mVars[196] = menu->mDepositBalance;
 	}
 }
 
@@ -5803,11 +5800,11 @@ void MenuPC::State7(u32 frames)
 					menu->mScrapDisplay.target = scrap;
 					menu->mYesNo               = 2;
 					PlayGameSound(&gGame.mSound, 0x30009, 0xFF);
-					gEventVariables[menu->mCatalogBase + entry->mItem] = 1;
-					menu->mExitState                                   = item;
-					s16& quantity                                      = entry->mCount;
-					s16 value                                          = quantity;
-					s32 remaining                                      = value;
+					gEventVars.mVars[menu->mCatalogBase + entry->mItem] = 1;
+					menu->mExitState                                    = item;
+					s16& quantity                                       = entry->mCount;
+					s16 value                                           = quantity;
+					s32 remaining                                       = value;
 					if (value > 0)
 						remaining = value - 1;
 					quantity = remaining;
@@ -8302,20 +8299,20 @@ extern "C" void Open__10MenuStatusFv(MenuStatus* menu)
 	menu->mSavedBgmVolume = gGame.mSound.mMusicVolume;
 	if (!menu->_674 && menu->mSelection >= 3)
 		menu->mSelection = 0;
-	if (gEventFlagWords[0] & 4)
+	if (gEventFlags.mFlags[0] & 4)
 		menu->_67C = TRUE;
 	else
 		menu->_67C = FALSE;
-	if ((gEventFlagWords[0] & 0x20000000) && (gEventFlagWords[0] & 0x40000000))
+	if ((gEventFlags.mFlags[0] & 0x20000000) && (gEventFlags.mFlags[0] & 0x40000000))
 		menu->_679 = TRUE;
 	else
 		menu->_679 = FALSE;
-	menu->_680 = gEventVariables[0x220 / 4] / 10000.0f;
+	menu->_680 = gEventVars.mVars[0x220 / 4] / 10000.0f;
 	for (int i = 0; i < 24; i++)
 		gStatusIconUnlocked[i] = 0;
 	for (int i = 0; i < 24; i++) {
 		int flag = GetStatusIconEventFlagId(i);
-		if (flag >= 0 && (gEventFlagWords[flag >> 5] & (1u << (flag & 31))))
+		if (flag >= 0 && (gEventFlags.mFlags[flag >> 5] & (1u << (flag & 31))))
 			gStatusIconUnlocked[i] = 1;
 	}
 	for (int i = 0; i < 13; i++)
@@ -8415,9 +8412,9 @@ extern "C" void Open__6MenuPCFv(MenuPC* menu)
 	if (menu->mHistoryCount > 0) {
 		for (int i = 0; i < menu->mHistoryCount; i++) {
 			MenuPCItem* row = &sShopHistoryEntries[i];
-			s32 id          = gEventVariables[menu->mHistoryStart + i];
+			s32 id          = gEventVars.mVars[menu->mHistoryStart + i];
 			row->mItem      = id;
-			row->mCount     = gEventVariables[menu->mHistoryStart + (menu->mHistoryCount + i)];
+			row->mCount     = gEventVars.mVars[menu->mHistoryStart + (menu->mHistoryCount + i)];
 			if (id != -1) {
 				if (id & 0x10000) {
 					id &= ~0x10000;
@@ -8440,9 +8437,9 @@ extern "C" void Open__6MenuPCFv(MenuPC* menu)
 	if (menu->mCatalogCount > 0) {
 		for (int i = 0; i < menu->mCatalogCount; i++) {
 			MenuPCItem* row = &sShopCatalogEntries[i];
-			s32 id          = gEventVariables[menu->mCatalogBase + i];
+			s32 id          = gEventVars.mVars[menu->mCatalogBase + i];
 			row->mItem      = id;
-			row->mCount     = gEventVariables[menu->mCatalogBase + (menu->mCatalogCount + i)];
+			row->mCount     = gEventVars.mVars[menu->mCatalogBase + (menu->mCatalogCount + i)];
 			if (id != -1) {
 				row->mPrice = GetUtilibotPrice(id);
 				count++;
@@ -8455,7 +8452,7 @@ extern "C" void Open__6MenuPCFv(MenuPC* menu)
 	menu->mChoiceCount++;
 	int flag      = GetStatusIconEventFlagId(3);
 	bool unlocked = false;
-	if (gEventFlagWords[flag >> 5] & (1u << (flag & 31)))
+	if (gEventFlags.mFlags[flag >> 5] & (1u << (flag & 31)))
 		unlocked = true;
 	if (unlocked) {
 		menu->mChoices[menu->mChoiceCount] = 10;
@@ -9738,7 +9735,7 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		f32 center = ((180.0f + (x - 24.0f)) - 24.0f) - 12.0f;
 		f32 middle = (y - 18.0f) + 14.0f;
 		DrawOverviewTexture(tex, color, center, middle, w, h);
-		if (gEventFlagWords[0] & 0x10000000) {
+		if (gEventFlags.mFlags[0] & 0x10000000) {
 			LoadOverviewTexture(tex, 245);
 			width  = GXGetTexObjWidth(&tex);
 			height = GXGetTexObjHeight(&tex);
@@ -10769,7 +10766,7 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	s32 icon = 238;
-	if (id && (gEventFlagWords[0x28 / 4] & 0x8000))
+	if (id && (gEventFlags.mFlags[0x28 / 4] & 0x8000))
 		icon = 239;
 	tex   = InitPCPanelTexture(icon);
 	u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);

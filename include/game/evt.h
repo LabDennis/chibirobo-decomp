@@ -363,8 +363,8 @@ class XObj;
 
 extern "C" {
 // script flags, one bit each, and script variables. both go in the save file
-extern u32 gEventFlagWords[0x80];
-extern s32 gEventVariables[0x800];
+extern CEvtFlags gEventFlags;
+extern CEvtVars gEventVars;
 // the camera states scripts save and load
 extern CCameraMemento gEventCameraMementos[];
 
@@ -383,6 +383,8 @@ XObj* ResolveEventObjectId(void* context, s16 id);
 struct EvtBeatLatch {
 	s32 mPending; // _00
 	s32 mBeat;    // _04
+
+	EvtBeatLatch() { mPending = 0; }
 };
 
 extern "C" EvtBeatLatch gEventBeatLatch;

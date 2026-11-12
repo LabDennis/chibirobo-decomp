@@ -12,9 +12,9 @@ extern "C" void InitBatteryGauge(InfoScrn*, f32);
 inline void CGame::ResetNewGameState()
 {
 	for (int i = 0; i < 128; ++i)
-		gEventFlagWords[i] = 0;
+		gEventFlags.mFlags[i] = 0;
 	for (int i = 0; i < 2048; ++i)
-		gEventVariables[i] = 0;
+		gEventVars.mVars[i] = 0;
 
 	mMemcardLoaded       = FALSE;
 	mTimeState.mMode     = 0;

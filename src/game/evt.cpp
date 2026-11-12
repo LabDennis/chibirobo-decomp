@@ -43,6 +43,18 @@ extern "C" void CEvt_EvalSet(CEvt* evt);
 extern "C" s32 CEvt_Evaluate(CEvt* evt);
 extern "C" void OSPanic(const char* file, int line, const char* msg, ...);
 
+// the event globals, in the order the file's static initializer builds them
+CEvtFlags gEventFlags;
+CEvtVars gEventVars;
+CEvtQueueEx gEventScriptQueue;
+CEvtTimer gEventTimers;
+
+// script names for objects
+EvtObjIdTable gEventObjectIds = { 0 };
+
+// the stream's beat callback latches the beat here for WAIT
+EvtBeatLatch gEventBeatLatch;
+
 // the handler of each command. Update looks an opcode up here; nothing reads the second byte
 EvtCmdEntry evtCmdTable[] = {
 	{ EVT_CMD_ABORT, 3, "ABORT", &CEvt::_cmd_ABORT },
@@ -96,6 +108,10 @@ EvtCmdEntry evtCmdTable[] = {
 	{ EVT_CMD_WIN, 3, "WIN", &CEvt::_cmd_WIN },
 	{ 0 },
 };
+
+// the event system's own object, and the camera states scripts save and load
+XObj gEventScriptObject;
+CCameraMemento gEventCameraMementos[4];
 
 // the game object
 
@@ -13510,9 +13526,9 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			index = CEvt_Evaluate(evt);
 			if (index >= 0 && index < 4096) {
 				if (value != 0) {
-					gEventFlagWords[(u32)index >> 5] |= 1U << (index & 31);
+					gEventFlags.mFlags[(u32)index >> 5] |= 1U << (index & 31);
 				} else {
-					gEventFlagWords[(u32)index >> 5] &= ~(1U << (index & 31));
+					gEventFlags.mFlags[(u32)index >> 5] &= ~(1U << (index & 31));
 				}
 			} else if (index != -1 && index != -2 && index != -3) {
 				OSPanic("evt.cpp", 1107, "%s%s", FormatToStaticBuffer("Invalid EvalSet flag[%d] - 0~%d\n", index, 4096), "EvalSet");
@@ -13521,7 +13537,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 		case EVT_EXPR_VAR:
 			index = CEvt_Evaluate(evt);
 			if (index >= 0 && index < 2048) {
-				gEventVariables[index] = value;
+				gEventVars.mVars[index] = value;
 			} else {
 				OSPanic("evt.cpp", 1116, "%s%s", FormatToStaticBuffer("Invalid EvalSet var[%d] - 0~%d\n", index, 2048), "EvalSet");
 			}
@@ -13918,9 +13934,9 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     bge      .L_8007C448
     cmpwi    r31, 0x0
     beq      .L_8007C420
-    lis      r4, gEventFlagWords@ha
+    lis      r4, gEventFlags@ha
     rlwinm   r6, r3, 29, 3, 29
-    addi     r5, r4, gEventFlagWords@l
+    addi     r5, r4, gEventFlags@l
     clrlwi   r0, r3, 27
     li       r3, 0x1
     lwzx     r4, r5, r6
@@ -13929,9 +13945,9 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     stwx     r0, r5, r6
     b        .L_8007CA98
 .L_8007C420:
-    lis      r4, gEventFlagWords@ha
+    lis      r4, gEventFlags@ha
     rlwinm   r6, r3, 29, 3, 29
-    addi     r5, r4, gEventFlagWords@l
+    addi     r5, r4, gEventFlags@l
     clrlwi   r0, r3, 27
     li       r3, 0x1
     lwzx     r4, r5, r6
@@ -13965,9 +13981,9 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     blt      .L_8007C4BC
     cmpwi    r3, 0x800
     bge      .L_8007C4BC
-    lis      r4, gEventVariables@ha
+    lis      r4, gEventVars@ha
     slwi     r0, r3, 2
-    addi     r3, r4, gEventVariables@l
+    addi     r3, r4, gEventVars@l
     stwx     r31, r3, r0
     b        .L_8007CA98
 .L_8007C4BC:
@@ -14491,7 +14507,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_FLAG:
 		result = CEvt_Evaluate(evt);
 		if (result >= 0 && result < 4096) {
-			result = (gEventFlagWords[(u32)result >> 5] & (1U << (result & 31))) ? 1 : 0;
+			result = (gEventFlags.mFlags[(u32)result >> 5] & (1U << (result & 31))) ? 1 : 0;
 		} else if (result == -1)
 			result = 0;
 		else if (result == -2)
@@ -14504,7 +14520,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_VAR:
 		result = CEvt_Evaluate(evt);
 		if (result >= 0 && result < 2048)
-			result = gEventVariables[result];
+			result = gEventVars.mVars[result];
 		else
 			OSPanic("evt.cpp", 694, "%s%s", FormatToStaticBuffer("Invalid Evaluate var[%d] - 0~%d\n", result, 2048), "Evaluate");
 		break;
@@ -15123,9 +15139,9 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     blt      .L_8007CEF8
     cmpwi    r31, 0x1000
     bge      .L_8007CEF8
-    lis      r3, gEventFlagWords@ha
+    lis      r3, gEventFlags@ha
     rlwinm   r0, r31, 29, 3, 29
-    addi     r3, r3, gEventFlagWords@l
+    addi     r3, r3, gEventFlags@l
     clrlwi   r4, r31, 27
     li       r5, 0x1
     lwzx     r0, r3, r0
@@ -15204,9 +15220,9 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     blt      .L_8007CFF8
     cmpwi    r31, 0x800
     bge      .L_8007CFF8
-    lis      r3, gEventVariables@ha
+    lis      r3, gEventVars@ha
     slwi     r0, r31, 2
-    addi     r3, r3, gEventVariables@l
+    addi     r3, r3, gEventVars@l
     lwzx     r31, r3, r0
     b        .L_8007E7A4
 .L_8007CFF8:
@@ -18305,4 +18321,184 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 		break;
 	}
 	return 0;
+}
+
+static inline void ClearScript(CEvt* evt)
+{
+	evt->mData.mScript  = NULL;
+	evt->_18            = 0;
+	evt->_1C            = 0;
+	evt->_20            = 0;
+	evt->mCalls.mCount  = 0;
+	evt->mFrames.mCount = 0;
+	evt->mValues.mCount = 0;
+}
+
+static inline void ClearQueue()
+{
+	gEventScriptQueue.mRead = 0;
+	for (u32 i = 0; i < 128; ++i) {
+		gEventScriptQueue.mScript[i] = NULL;
+	}
+}
+
+static inline void ClearResults(CEvt* evt)
+{
+	evt->_10       = 0;
+	evt->_14       = 0;
+	evt->_58       = 0;
+	evt->mUseValue = -1;
+	evt->mHitValue = -1;
+}
+
+/**
+ * @note Address: 0x8007EEA4
+ * @note Size: 0x194
+ */
+extern "C" void StartOrQueueEventScript(CEvt* evt, u8* script, u32 context, s16 useValue, s16 hitValue)
+{
+	if (script == NULL)
+		return;
+	if (evt->mData.mScript != NULL && evt->_00 == 0) {
+		s32 cursor = gEventScriptQueue.mRead;
+		for (s32 i = 0; i < 128; ++i) {
+			s32 index = cursor % 128;
+			if (gEventScriptQueue.mScript[index] == NULL) {
+				gEventScriptQueue.mScript[index]   = script;
+				gEventScriptQueue.mContext[index]  = context;
+				gEventScriptQueue.mUseValue[index] = useValue;
+				gEventScriptQueue.mHitValue[index] = hitValue;
+				return;
+			}
+			++cursor;
+		}
+		return;
+	}
+	ClearScript(evt);
+	if (evt->_00 == 0)
+		ClearQueue();
+	ClearResults(evt);
+	evt->mData.mScript = script;
+	evt->mData._04     = evt->_00 != 0 ? evt->_00 : context;
+	evt->mUseValue     = useValue;
+	evt->mHitValue     = hitValue;
+}
+
+/**
+ * @note Address: 0x8007F038
+ * @note Size: 0x8
+ */
+extern "C" BOOL fn_8007F038(CEvt* evt)
+{
+	return TRUE;
+}
+
+/**
+ * @note Address: 0x8007F040
+ * @note Size: 0x154
+ */
+extern "C" void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal)
+{
+	ClearScript(evt);
+	if (evt->_00 == 0) {
+		if (clearTimers) {
+			for (u32 i = 0; i < 10; ++i) {
+				gEventTimers.mFrames[i] = 0;
+				gEventTimers.mValue[i]  = 0;
+			}
+		}
+		ClearQueue();
+		if (clearGlobal)
+			gEventObjectIds.mCount = 0;
+	}
+	ClearResults(evt);
+}
+
+// allocates a stack's buffer
+extern "C" void AllocateWordBuffer(CStack* stack, s32 capacity);
+
+static inline void ClearTimers()
+{
+	for (u32 i = 0; i < 10; ++i) {
+		gEventTimers.mFrames[i] = 0;
+		gEventTimers.mValue[i]  = 0;
+	}
+}
+
+/**
+ * @note Address: 0x8007F194
+ * @note Size: 0x3DC
+ */
+extern "C" void InitializeEventScriptContext(CEvt* evt, u8* context, void* owner)
+{
+	evt->_00 = (u32)owner;
+	evt->_54 = context;
+	if (evt->_00 == 0) {
+		for (u32 i = 0; i < 128; ++i)
+			gEventFlags.mFlags[i] = 0;
+		for (u32 i = 0; i < 2048; ++i)
+			gEventVars.mVars[i] = 0;
+		ClearQueue();
+		ClearTimers();
+		InitializeObject__4XObjFUl(&gEventScriptObject, 0);
+	}
+	AllocateWordBuffer(&evt->mCalls, 32);
+	AllocateWordBuffer(&evt->mFrames, 64);
+	AllocateWordBuffer(&evt->mValues, 128);
+	evt->mCameraMemento = NULL;
+	evt->mData.mScript  = NULL;
+	evt->_18            = 0;
+	evt->_1C            = 0;
+	evt->_20            = 0;
+	evt->mCalls.mCount  = 0;
+	evt->mFrames.mCount = 0;
+	evt->mValues.mCount = 0;
+	if (evt->_00 == 0) {
+		ClearTimers();
+		ClearQueue();
+		gEventObjectIds.mCount = 0;
+	}
+	evt->_10       = 0;
+	evt->_14       = 0;
+	evt->_58       = 0;
+	evt->mUseValue = -1;
+	evt->mHitValue = -1;
+}
+
+// what ResolveEventObjectId gets as its context
+struct EvtContext {
+	u32 _00;       // _00
+	XObj* mObject; // _04, the one running the script
+};
+
+static inline XObj* NamedObject(s16 id)
+{
+	for (s32 i = 0; i < gEventObjectIds.mCount; ++i) {
+		if (gEventObjectIds.mEntry[i].mId == id) {
+			XObj* object = gGame.GetObject(gEventObjectIds.mEntry[i].mIndex);
+			if (object != NULL && (object->mStatus.mFlags & 1ULL))
+				return object;
+			return NULL;
+		}
+	}
+	return NULL;
+}
+
+/**
+ * @note Address: 0x8007F570
+ * @note Size: 0xF4
+ */
+extern "C" XObj* ResolveEventObjectId(void* context, s16 id)
+{
+	if (id >= 10000) {
+		XObj* object = NamedObject(id);
+		if (object != NULL)
+			return object;
+		return NULL;
+	}
+	if (id >= 0)
+		return gGame.GetObject(id);
+	if (id == -1)
+		return ((EvtContext*)context)->mObject;
+	return (XObj*)(s32)id;
 }

@@ -657,7 +657,7 @@ void CCameraActionScroll2::vf20()
 		static const s32 sRoomBaseCounts[10] = { 0, 9, 11, 4, 7, 0, 12, 9, 0, 8 };
 		s32 base                             = sRoomBaseCounts[gGame.mStage];
 		// script variables from 0x603 on hold a count per room
-		s32 count = gEventVariables[0x603 + gGame.mStage];
+		s32 count = gEventVars.mVars[0x603 + gGame.mStage];
 		if (base > 0) {
 			DrawSeparatedStatusValue(0xAB - StatusTextureOffset, base + count * 100, false, 56.0f, 378.0f, 1.0f);
 		}
@@ -2513,9 +2513,9 @@ void CCameraActionScroll2::vf20()
     blt      .L_801455EC
     cmpwi    r0, 0xa
     bge      .L_801455EC
-    lis      r3, gEventVariables@ha
+    lis      r3, gEventVars@ha
     slwi     r5, r0, 2
-    addi     r0, r3, gEventVariables@l
+    addi     r0, r3, gEventVars@l
     addi     r3, r31, 0x48
     add      r4, r0, r5
     lwzx     r3, r3, r5

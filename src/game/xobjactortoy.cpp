@@ -544,7 +544,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			break;
 		case 1:
 			if (toy->_2098.mFlags & 2)
-				gEventVariables[toy->mCmd[1]] = 1;
+				gEventVars.mVars[toy->mCmd[1]] = 1;
 			toy->mCmd[0] = 0;
 			break;
 		}
@@ -1402,7 +1402,7 @@ extern "C" void HandleToyKind16CCommand(XObjActorToy* object, u32 frames)
 		break;
 	case 2:
 		if (object->mStatus.mFlags & 0x10000) {
-			gEventVariables[object->mCmd[1]] = 1;
+			gEventVars.mVars[object->mCmd[1]] = 1;
 		}
 		object->mCmd[0] = 0;
 		break;
@@ -1421,13 +1421,13 @@ extern "C" void HandleToyKind156Command(XObjActorToy* object, u32 frames)
 		break;
 	case 2:
 		if (object->mMoveTranslate.y <= 2.0f) {
-			gEventVariables[object->mCmd[1]] = 1;
+			gEventVars.mVars[object->mCmd[1]] = 1;
 		}
 		object->mCmd[0] = 0;
 		break;
 	case 3:
 		if (object->_2098.mFlags & 0x10) {
-			gEventVariables[object->mCmd[1]] = 1;
+			gEventVars.mVars[object->mCmd[1]] = 1;
 		}
 		object->mCmd[0] = 0;
 		break;
@@ -1547,8 +1547,8 @@ extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
 		object->mCmd[0] = 0;
 		break;
 	case 3:
-		gEventVariables[object->mCmd[1]] = CountSmallSpidersGrabbingPlayer();
-		object->mCmd[0]                  = 0;
+		gEventVars.mVars[object->mCmd[1]] = CountSmallSpidersGrabbingPlayer();
+		object->mCmd[0]                   = 0;
 		break;
 	case 4:
 		count = 0;
@@ -1593,8 +1593,8 @@ extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
 		object->mCmd[0] = 0;
 		break;
 	case 8:
-		gEventVariables[object->mCmd[1]] = CountEmergedSmallSpiders();
-		object->mCmd[0]                  = 0;
+		gEventVars.mVars[object->mCmd[1]] = CountEmergedSmallSpiders();
+		object->mCmd[0]                   = 0;
 		break;
 	}
 }

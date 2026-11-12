@@ -41,7 +41,6 @@ extern AnimSfxEvent gHaisuiNezumiAnimSfxEvents[];
 
 Vec gActor3PlacementPosition;
 Vec gActor3PlacementRotation;
-extern s32 gEventVariables[]; // the script's variables
 
 s32 gSpiderBossVolleySlot;
 s32 gActor3Kind15ActivationCounter;
@@ -1980,7 +1979,7 @@ extern "C" void HandleKind9ActorCommand(XObjActor3* actor)
 		break;
 	case 2:
 		if ((actor->_B8C.mFlags & 0x80) && !(actor->_B8C.mFlags & 4)) {
-			gEventVariables[actor->mEventArg1] = 1;
+			gEventVars.mVars[actor->mEventArg1] = 1;
 		}
 		actor->mEventCommand = 0;
 		actor->mEventArg1    = 0;
@@ -1993,7 +1992,7 @@ extern "C" void HandleKind9ActorCommand(XObjActor3* actor)
 	case 4:
 		XObjChr* player = gGame.GetPlayer();
 		if (!IsBusyAnim(player->mAnimId) && player->mAttachmentRequest < 0) {
-			gEventVariables[actor->mEventArg1] = 1;
+			gEventVars.mVars[actor->mEventArg1] = 1;
 		}
 		actor->mEventCommand = 0;
 		actor->mEventArg1    = 0;
@@ -2071,9 +2070,9 @@ extern "C" void HandleSpiderCounterCommand(XObjActor3* actor)
 		actor->mEventArg1       = 0;
 		break;
 	case 4:
-		gEventVariables[actor->mEventArg1] = TimerFramesToHundredths(actor->mCountdownFrames);
-		actor->mEventCommand               = 0;
-		actor->mEventArg1                  = 0;
+		gEventVars.mVars[actor->mEventArg1] = TimerFramesToHundredths(actor->mCountdownFrames);
+		actor->mEventCommand                = 0;
+		actor->mEventArg1                   = 0;
 		break;
 	case 5:
 		if (actor->mEventArg1 != 0) {
@@ -2090,9 +2089,9 @@ extern "C" void HandleSpiderCounterCommand(XObjActor3* actor)
 		actor->mEventArg1    = 0;
 		break;
 	case 7:
-		gEventVariables[actor->mEventArg1] = actor->mSpiderCount;
-		actor->mEventCommand               = 0;
-		actor->mEventArg1                  = 0;
+		gEventVars.mVars[actor->mEventArg1] = actor->mSpiderCount;
+		actor->mEventCommand                = 0;
+		actor->mEventArg1                   = 0;
 		break;
 	}
 }

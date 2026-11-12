@@ -118,8 +118,8 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	gGame.mPlayTime = save->mHeader.mFrames;
 #endif
 	memcpy(Player()->mParams.mInventory.mItems, save->mPlayer, sizeof(save->mPlayer));
-	memcpy(gEventFlagWords, save->mEvtFlags, sizeof(save->mEvtFlags));
-	memcpy(gEventVariables, save->mEvtVars, sizeof(save->mEvtVars));
+	memcpy(gEventFlags.mFlags, save->mEvtFlags, sizeof(save->mEvtFlags));
+	memcpy(gEventVars.mVars, save->mEvtVars, sizeof(save->mEvtVars));
 	memcpy(PoolSaveData(4), save->mObjects[0], sizeof(save->mObjects[0]));
 	memcpy(PoolSaveData(5), save->mObjects[1], sizeof(save->mObjects[1]));
 	memcpy(PoolSaveData(17), save->mObjects[2], sizeof(save->mObjects[2]));

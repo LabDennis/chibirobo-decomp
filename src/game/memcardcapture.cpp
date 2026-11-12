@@ -55,8 +55,8 @@ extern "C" void CaptureGameSaveData(Memcard* card)
 	save->mHeader.mFrames = gGame.mPlayTime;
 #endif
 	memcpy(save->mPlayer, Player()->mParams.mInventory.mItems, sizeof(save->mPlayer));
-	memcpy(save->mEvtFlags, gEventFlagWords, sizeof(save->mEvtFlags));
-	memcpy(save->mEvtVars, gEventVariables, sizeof(save->mEvtVars));
+	memcpy(save->mEvtFlags, gEventFlags.mFlags, sizeof(save->mEvtFlags));
+	memcpy(save->mEvtVars, gEventVars.mVars, sizeof(save->mEvtVars));
 	memcpy(save->mObjects[0], PoolSaveData(4), sizeof(save->mObjects[0]));
 	memcpy(save->mObjects[1], PoolSaveData(5), sizeof(save->mObjects[1]));
 	memcpy(save->mObjects[2], PoolSaveData(17), sizeof(save->mObjects[2]));
