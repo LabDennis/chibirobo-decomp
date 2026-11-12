@@ -527,11 +527,12 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
 					        FormatToStaticBuffer("not enough memory for static image (%04X~%04X)\n", range->first, range->end), "Init");
 				}
 			}
-			gDynamicFontGlyphCache.glyphs = (FontGlyph*)mm::Alloc(50 * sizeof(FontGlyph), "(dynamic)");
-			if (gDynamicFontGlyphCache.glyphs != NULL) {
-				gDynamicFontGlyphCache.next = 0;
+			FontGlyphCache* cache = &gDynamicFontGlyphCache;
+			cache->glyphs         = (FontGlyph*)mm::Alloc(50 * sizeof(FontGlyph), "(dynamic)");
+			if (cache->glyphs != NULL) {
+				cache->next = 0;
 				for (s32 i = 0; i < 50; i++) {
-					gDynamicFontGlyphCache.glyphs[i].code = 0;
+					cache->glyphs[i].code = 0;
 				}
 			} else {
 				OSReport("\n!!!HALT!!!\n");
