@@ -489,7 +489,6 @@ config.libs = [
             Object(NonMatching, "game/xactradar.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xacttumble.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/objb_act.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/xobjattachmentvisibility.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/objb_attach.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjradarinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjpopper.cpp", cflags=with_hsd_headers(cflags_game)),

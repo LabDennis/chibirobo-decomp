@@ -592,11 +592,8 @@ game/xacttumble.cpp:
 game/objb_act.cpp:
 	.text       start:0x800C494C end:0x800D552C
 
-game/xobjattachmentvisibility.cpp:
-	.text       start:0x800D552C end:0x800D55BC
-
 game/objb_attach.cpp:
-	.text       start:0x800D55BC end:0x800D6F98
+	.text       start:0x800D552C end:0x800D6F98
 
 game/xobjradarinit.cpp:
 	.text       start:0x800D6F98 end:0x800D6FE8
