@@ -2212,12 +2212,13 @@ u8 HasSpiderFinishedDeathAnimation(const XObjSpider* spider)
 // whether it is inside its area, kept mRadius off the edges
 bool IsSpiderInsideMovementArea(XObjSpider* spider)
 {
+	f32 x     = spider->mMoveTranslate.x;
+	f32 z     = spider->mMoveTranslate.z;
 	f32 left  = spider->mAreaPos.x + spider->mRadius;
 	f32 right = (spider->mAreaPos.x + spider->mAreaWidth) - spider->mRadius;
 	f32 near  = spider->mAreaPos.z + spider->mRadius;
 	f32 far   = (spider->mAreaPos.z + spider->mAreaDepth) - spider->mRadius;
-	if (left > spider->mMoveTranslate.x || right < spider->mMoveTranslate.x || near > spider->mMoveTranslate.z
-	    || far < spider->mMoveTranslate.z)
+	if (left > x || right < x || near > z || far < z)
 		return FALSE;
 	return TRUE;
 }
