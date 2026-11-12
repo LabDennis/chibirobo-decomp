@@ -3145,11 +3145,10 @@ extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
 	s32 count;
 	s32 n;
 	s16 price;
-	int i;
 	ClearShopHistoryRows(list);
 	count = 0;
 	n     = 0;
-	for (i = 0; i < 20; i++) {
+	for (int i = 0; i < 20; i++) {
 		const MenuPCItem* entry = sShopHistoryEntries + i;
 		s16 itemId              = entry->mItem;
 		s16 stock               = entry->mCount;
@@ -3177,7 +3176,7 @@ extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
 	list->mNext[0].mIsAttachment = 0;
 	count                        = 0;
 	n                            = 0;
-	for (i = 0; i < 20; i++) {
+	for (int i = 0; i < 20; i++) {
 		const MenuPCItem* entry = sShopHistoryEntries + i;
 		s16 itemId              = entry->mItem;
 		s16 stock               = entry->mCount;
@@ -3198,7 +3197,7 @@ extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
 	}
 	count = 0;
 	n     = 0;
-	for (i = 0; i < 20; i++) {
+	for (int i = 0; i < 20; i++) {
 		const MenuPCItem* entry = sShopHistoryEntries + i;
 		s16 itemId              = entry->mItem;
 		s16 stock               = entry->mCount;
