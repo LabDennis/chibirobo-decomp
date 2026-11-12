@@ -4195,8 +4195,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		f32 highlight      = item.mHighlight;
 		const char* source = menu->GetItemLabel(i);
 		char label[128];
-		strncpy(label, source, sizeof(label) - 1);
-		label[sizeof(label) - 1] = 0;
+		strcpy(label, source);
 		MeasureGameTextWidth(&gGame.mGs, label, TRUE, 22.f);
 		f32 baseline = 52.f + y;
 		f32 tileSize = 30.f;
