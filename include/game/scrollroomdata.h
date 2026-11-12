@@ -28,11 +28,6 @@ struct ScrollRoomData {
 	f32 markerY[4];
 };
 STATIC_ASSERT(sizeof(ScrollRoomData) == 0x90);
-extern ScrollRoomData gScrollRoomData;
-#else
-extern Scroll2Limits* gScrollCameraLimitTables[20];
-extern f32 gScrollCaptionOutlineX[4];
-extern f32 gScrollCaptionOutlineY[4];
 #endif
 
 #endif
