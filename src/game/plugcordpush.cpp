@@ -26,7 +26,6 @@ static inline Vec FloorExtent(XObj* obj, int i)
  * @note Size: 0x574
  */
 // Retail rounds the floor rotation before adding the object rotation.
-// NONMATCHING: only regalloc/scheduling remains after splitting the yaw product out
 extern "C" BOOL PushPlugCordPointFromObject(CVec* pos, XObj* object, f32 radius)
 {
 	static f32 margin = 1.0f;
@@ -46,8 +45,8 @@ extern "C" BOOL PushPlugCordPointFromObject(CVec* pos, XObj* object, f32 radius)
 		CVec origin(object->mMoveTranslate);
 		Vec centerOffset = object->mMoveScale * FloorOffset(object, i);
 		Vec size         = object->mMoveScale * FloorExtent(object, i);
-		f32 yawDegrees   = DEG2RAD * object->mFloors[i].mYawDegrees;
-		f32 angle        = object->mMoveRotate.y + yawDegrees;
+		f32 yaw          = DEG2RAD * object->mFloors[i].mYawDegrees;
+		f32 angle        = object->mMoveRotate.y + yaw;
 		switch (object->mFloors[i].mId) {
 		case 0:
 		case 1: {
