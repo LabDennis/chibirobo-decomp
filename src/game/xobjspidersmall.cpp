@@ -345,7 +345,7 @@ static inline void Catch(XObjSpiderSmall* spider)
 	spider->mStep            = 4;
 	spider->mSpiderStatus.mFlags |= 0x800000;
 	gAttachedSmallSpiderCount++;
-	gGame.GetPlayer()->_A40 = 0.4f;
+	gGame.GetPlayer()->mMoveSpeedScale = 0.4f;
 	spider->SetAnim(5, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
 
@@ -1134,7 +1134,7 @@ extern "C" void DetachSmallSpiderFromPlayer(XObjSpiderSmall* spider)
 		gAttachedSmallSpiderCount = 0;
 	}
 	if (gAttachedSmallSpiderCount == 0) {
-		gGame.GetPlayer()->_A40 = 1.0f;
+		gGame.GetPlayer()->mMoveSpeedScale = 1.0f;
 	}
 }
 

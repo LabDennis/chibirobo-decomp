@@ -523,7 +523,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			NormalizeVectorInPlace(&normal);
 			Vec down   = { 0, -1, 0 };
 			Vec origin = { 0, 0, 0 };
-			GetOutwardPerpendicularToEdge(&down, &origin, &normal, &player->_963C);
+			GetOutwardPerpendicularToEdge(&down, &origin, &normal, &player->mFloorSlope);
 			{
 				if (!CanLiftActionSlideOnSlope(&player->mLift) || !IsHangActionIdle(&player->mHang)
 				    || !CanJumpActionSlideOnSlope(&player->mJump) || !CanLadderActionSlideOnSlope(&player->mLadder)
@@ -532,7 +532,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				    || !CanPopperActionSlideOnSlope(&player->mPopper) || !CanRadarActionSlideOnSlope(&player->mRadar)) {
 					SetObjectVectorAndTargetXYZ(&player->_960C, 0, 0, 0);
 				} else {
-					CVec slopeDir = player->_963C;
+					CVec slopeDir = player->mFloorSlope;
 					if (GetVectorMagnitude(&slopeDir) > 0.3f) {
 						f32 vertical = slopeDir.y < 0 ? -slopeDir.y : slopeDir.y;
 						slopeDir.y   = 0;
@@ -555,7 +555,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				SetVectorX(&player->mMoveTranslate, position.x);
 				SetVectorZ(&player->mMoveTranslate, position.z);
 				SetObjectVectorAndTargetXYZ(&player->_960C, 0, 0, 0);
-				SetVectorComponents(&player->_963C, 0, 0, 0);
+				SetVectorComponents(&player->mFloorSlope, 0, 0, 0);
 			}
 		} else {
 			{
@@ -565,7 +565,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				SetVectorX(&player->mMoveTranslate, position.x);
 				SetVectorZ(&player->mMoveTranslate, position.z);
 				SetObjectVectorAndTargetXYZ(&player->_960C, 0, 0, 0);
-				SetVectorComponents(&player->_963C, 0, 0, 0);
+				SetVectorComponents(&player->mFloorSlope, 0, 0, 0);
 			}
 		}
 	}
@@ -924,7 +924,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		}
 	} else {
 		SetObjectVectorAndTargetXYZ(&player->_960C, 0, 0, 0);
-		SetVectorComponents(&player->_963C, 0, 0, 0);
+		SetVectorComponents(&player->mFloorSlope, 0, 0, 0);
 	}
 	if (1.0f + player->mMoveTranslate.y >= floorHeight)
 		canRise = TRUE;
@@ -942,7 +942,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	if (floorHeight > player->mFloorHit.mHeight) {
 		player->mFloorHit.mHeight = floorHeight;
 		SetObjectVectorAndTargetXYZ(&player->_960C, 0, 0, 0);
-		SetVectorComponents(&player->_963C, 0, 0, 0);
+		SetVectorComponents(&player->mFloorSlope, 0, 0, 0);
 	}
 	if (player->_146D8) {
 		CObjVec& motion = player->mMoveTranslate;
@@ -8211,7 +8211,7 @@ extern "C" f32 PlayerActionCosine(f32 angle)
  */
 extern "C" f32 GetPlayerMoveSpeedScale(const XObjChr* chr)
 {
-	return chr->_A40;
+	return chr->mMoveSpeedScale;
 }
 
 /**

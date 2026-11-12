@@ -1172,7 +1172,7 @@ void UpdateCopterBobbing(XActCopter* act, u32 frames, f32 speed)
  */
 CVec GetPlayerFloorSlope(XObjChr* chr)
 {
-	return chr->_963C;
+	return chr->mFloorSlope;
 }
 
 /**

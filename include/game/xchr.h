@@ -186,7 +186,7 @@ public:
 	s32 _A34;                            // _A34, flash timer
 	s32 _A38;                            // _A38
 	f32 _A3C;                            // _A3C
-	f32 _A40;                            // _A40
+	f32 mMoveSpeedScale;                 // _A40
 	XActLift mLift;                      // _A44
 	XActHang mHang;                      // _AC0
 	XActJump mJump;                      // _B10
@@ -213,7 +213,7 @@ public:
 	s32 _95E4;                           // _95E4
 	u8 _95E8[0x960C - 0x95E8];           // _95E8
 	CObjVec _960C;                       // _960C
-	CVec _963C;                          // _963C
+	CVec mFloorSlope;                    // _963C
 	Params mParams;                      // _964C
 	f32 _9A90;                           // _9A90, zeroed when he hits an XObjHBox
 	f32 mCameraTarget[3];                // _9A94, last camera target on each axis

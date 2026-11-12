@@ -36,9 +36,9 @@ void XObjChr::ResetObjectState()
 	_A1C = _A20 = 0;
 	_A2C        = 0;
 	_A30        = 0.0f;
-	_A38 = _A34 = 0;
-	_A3C        = 0.0f;
-	_A40        = 1.0f;
+	_A38 = _A34     = 0;
+	_A3C            = 0.0f;
+	mMoveSpeedScale = 1.0f;
 	mHang.Init(this);
 	mHang._2C = FALSE;
 	mJump.Init(this);
