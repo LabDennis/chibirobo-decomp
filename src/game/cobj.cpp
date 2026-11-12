@@ -44,7 +44,7 @@ struct XCObj {
 void XCObjInfoInit();
 HSD_TExp* XCObjMakeTExp(HSD_MObj* mobj, HSD_TObj* tobj_top, HSD_TExp** list);
 void XCObjSetColors(HSD_JObj* jobj, u32* colors, s32);
-extern HSD_MObjInfo xCObj;
+HSD_MObjInfo xCObj = { { { XCObjInfoInit } } };
 
 void ObjectArchiveReadDone(s32, s32* state);
 
