@@ -63,20 +63,6 @@ struct XObjPlugCordNodes {
 	u32 mCount;                 // _2FC
 	u32 mMode;                  // _300, handed to each new node
 	BOOL mEnabled;              // _304
-
-	void ClearStates()
-	{
-		mNode[0].mState = 0;
-		mNode[1].mState = 0;
-		mNode[2].mState = 0;
-		mNode[3].mState = 0;
-		mNode[4].mState = 0;
-		mNode[5].mState = 0;
-		mNode[6].mState = 0;
-		mNode[7].mState = 0;
-		mNode[8].mState = 0;
-		mNode[9].mState = 0;
-	}
 };
 STATIC_ASSERT(sizeof(XObjPlugCordNodes) == 0x308);
 

@@ -18,10 +18,6 @@ u8* GetGlobalTextEntry(s32);
 u8* GetStageScriptByIndex(s32);
 BOOL IsStageDataLoaded();
 }
-static inline XObjSource* PlacementSource(const AttrInfo& attr)
-{
-	return attr._00 ? attr._00->mSource : NULL;
-}
 static inline bool HasSource(const AttrInfo& attr)
 {
 	return attr._00 && attr._00->mSource;
@@ -70,7 +66,7 @@ extern "C" BOOL LoadFromPlacement__4XObjFRC9CoordInfo(XObj* object, const CoordI
 		}
 		if (!ModelName(attr))
 			ready = TRUE;
-		else if (PlacementSource(attr)) {
+		else if (attr._00 ? attr._00->mSource : NULL) {
 			CObjArchive* archive = HasSource(attr) ? attr._00->mSource->mArchive : NULL;
 			const char* name     = ModelName(attr);
 			u32 model            = attr._00 ? attr._00->mModel : 0;

@@ -40,20 +40,6 @@ public:
 
 	BOOL ReadStart(void* obj, void* info);
 
-	void StartReader(OSThreadStartFunction func, void* param, u32 stackSize, OSPriority priority, u16 attr)
-	{
-		mQueue.Initialize(8);
-		for (s32 i = 0; i < 8; i++) {
-			mReqs[i].mObj = NULL;
-		}
-		mStack     = (u8*)OSAllocFromHeap(__OSCurrHeap, stackSize);
-		mStackSize = stackSize;
-		if (OSCreateThread(&mThread, func, param, mStack + mStackSize, mStackSize, priority, attr)) {
-			mStackSize = stackSize;
-		}
-		OSResumeThread(&mThread);
-	}
-
 	virtual ~XObjRead() { } // _08 (weak)
 	virtual BOOL Create(OSThreadStartFunction func, void* param, u32 stackSize, OSPriority priority,
 	                    u16 attr);                    // _0C, makes the thread and its queue

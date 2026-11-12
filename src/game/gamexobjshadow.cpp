@@ -9,14 +9,6 @@
 
 extern "C" void FindHighestJointBelowHeightLimit(HSD_JObj* jobj, f32* limits);
 
-static inline XObj* GetShadowSupportObject(XObjChr* player)
-{
-	if (player->mFloorContacts[3].object) {
-		return player->mFloorContacts[3].object;
-	}
-	return NULL;
-}
-
 // an object that is drawn into the shadow, or onto it with the mask
 static inline bool IsShadowObj(XObj* obj, u64 mask)
 {
@@ -41,8 +33,12 @@ extern "C" void RenderSceneShadow(CGame* game)
 	s32 i;
 	XObj* obj;
 	if (game->mStatus.mFlags & 1) {
-		player        = gGame.GetPlayer();
-		target        = GetShadowSupportObject(player);
+		player = gGame.GetPlayer();
+		if (player->mFloorContacts[3].object) {
+			target = player->mFloorContacts[3].object;
+		} else {
+			target = NULL;
+		}
 		f32 limits[2] = { 1.0f + player->mMoveTranslate.y, NAN };
 		for (i = 0; i < game->mDrawLists[1].mCount; i++) {
 			obj = game->mDrawLists[1].mObjects[i];

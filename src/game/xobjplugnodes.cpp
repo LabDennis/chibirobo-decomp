@@ -18,7 +18,16 @@ extern "C" void UpdatePlugCordNodes(XObjPlugCordNodes* nodes, XObjPlugCordPoint*
 			}
 		}
 	} else {
-		nodes->ClearStates();
+		nodes->mNode[0].mState = 0;
+		nodes->mNode[1].mState = 0;
+		nodes->mNode[2].mState = 0;
+		nodes->mNode[3].mState = 0;
+		nodes->mNode[4].mState = 0;
+		nodes->mNode[5].mState = 0;
+		nodes->mNode[6].mState = 0;
+		nodes->mNode[7].mState = 0;
+		nodes->mNode[8].mState = 0;
+		nodes->mNode[9].mState = 0;
 	}
 
 	for (s32 i = 0; i < 10; ++i) {

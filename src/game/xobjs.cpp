@@ -204,7 +204,16 @@ BOOL XObjRead::QueueRead(void* object, void* info)
 // XObjRead::vf0C
 BOOL XObjRead::Create(OSThreadStartFunction func, void* param, u32 stackSize, OSPriority priority, u16 attr)
 {
-	StartReader(func, param, stackSize, priority, attr);
+	mQueue.Initialize(8);
+	for (s32 i = 0; i < 8; i++) {
+		mReqs[i].mObj = NULL;
+	}
+	mStack     = (u8*)OSAllocFromHeap(__OSCurrHeap, stackSize);
+	mStackSize = stackSize;
+	if (OSCreateThread(&mThread, func, param, mStack + mStackSize, mStackSize, priority, attr)) {
+		mStackSize = stackSize;
+	}
+	OSResumeThread(&mThread);
 	return 0;
 }
 

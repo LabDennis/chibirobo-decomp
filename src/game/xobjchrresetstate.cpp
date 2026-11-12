@@ -67,8 +67,14 @@ void XObjChr::ResetObjectState()
 	mNeckRot.Init(this, 5, neck, 'y');
 	s32 head[] = { 0, 1, 0, 1, 2 };
 	mHeadRot.Init(this, 5, head, 'z');
-	ResetPlayerLook(mLook, this);
-	mAttachmentRequest = -1;
+	mLook.mActive = FALSE;
+	mLook.mMode   = -1;
+	mLook.mObject = NULL;
+	Vec zero      = { 0.0f, 0.0f, 0.0f };
+	mLook.mOffset = zero;
+	mLook.mFade = mLook.mPhase = mLook.mPulse = 0.0f;
+	mLook.mObject                             = this;
+	mAttachmentRequest                        = -1;
 	_95D8 = _95DC = _95E4 = _95E0 = 0;
 	_9A90                         = 0.0f;
 	mCameraTarget[2] = mCameraTarget[1] = mCameraTarget[0] = NAN;
@@ -93,7 +99,18 @@ void XObjChr::ResetObjectState()
 	mOXMenu.mFade                                 = 0.0f;
 	_146D8                                        = TRUE;
 	InitParticlePool(&mDust.mPtcl, mDust.mPtcls, sizeof(mDust.mPtcls[0]), ARRAY_SIZE(mDust.mPtcls));
-	ResetPlayerEffects(true);
+	for (s32 i = 0; i < 10; ++i) {
+		PointPtcl& p = gPointParticlePool[i];
+		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
+		p.display.mState = p.burst.mState = 0;
+		gPointParticleSlots[i]            = NULL;
+	}
+	gPlayerSuitChangeEffect.active = FALSE;
+	for (s32 i = 0; i < 2; ++i)
+		for (s32 j = 0; j < 10; ++j) {
+			gPlayerSuitChangeEffect.rings[i][j].scale = 0.0f;
+			gPlayerSuitChangeEffect.rings[i][j].angle = 0.0f;
+		}
 	_158B8 = _158BC = _158C0 = 0;
 	_158C4.Set(0.0f, 0.0f, 0.0f);
 	mHeadOffset      = 5.0f;

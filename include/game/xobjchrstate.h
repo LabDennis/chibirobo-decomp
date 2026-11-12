@@ -25,31 +25,4 @@ extern PointPtcl* gPointParticleSlots[10];
 void GetHudPointParticleOrigin(InfoScrn*, f32*, f32*);
 }
 
-static inline void ResetPlayerEffects(bool clearPool)
-{
-	for (s32 i = 0; i < 10; ++i) {
-		PointPtcl& p = gPointParticlePool[i];
-		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
-		p.display.mState = p.burst.mState = 0;
-		if (clearPool)
-			gPointParticleSlots[i] = NULL;
-	}
-	gPlayerSuitChangeEffect.active = FALSE;
-	for (s32 i = 0; i < 2; ++i)
-		for (s32 j = 0; j < 10; ++j) {
-			gPlayerSuitChangeEffect.rings[i][j].scale = 0.0f;
-			gPlayerSuitChangeEffect.rings[i][j].angle = 0.0f;
-		}
-}
-
-static inline void ResetPlayerLook(XObjChrLook& look, XObj* target)
-{
-	look.mActive = FALSE;
-	look.mMode   = -1;
-	look.mObject = NULL;
-	Vec zero     = { 0.0f, 0.0f, 0.0f };
-	look.mOffset = zero;
-	look.mFade = look.mPhase = look.mPulse = 0.0f;
-	look.mObject                           = target;
-}
 #endif
