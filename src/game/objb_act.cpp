@@ -99,16 +99,6 @@ static inline void LoadLiftItem(XActLift* act, s32 next)
 	act->mPendingItem = act->_48 >= 0 ? SpawnObjectFromPlacementIndex(&gGame, act->_48) : NULL;
 	SetLiftActionState(act, next);
 }
-static inline bool LiftItemReady(XActLift* act, s32 next)
-{
-	if (act->mPendingItem) {
-		if (!fn_800D3CDC(act->mPendingItem))
-			return false;
-		gGame.mStatus.mFlags |= 0x1000;
-	}
-	SetLiftActionState(act, next);
-	return true;
-}
 static inline void TakeLiftItem(XActLift* act, s32 anim, HSD_AObj* aobj, bool useCount)
 {
 	s32 wanted = useCount ? 11 : 0xec;
@@ -457,8 +447,12 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		LoadLiftItem(act, 21);
 		// fall through
 	case 21:
-		if (!LiftItemReady(act, 22))
-			return;
+		if (act->mPendingItem) {
+			if (!fn_800D3CDC(act->mPendingItem))
+				return;
+			gGame.mStatus.mFlags |= 0x1000;
+		}
+		SetLiftActionState(act, 22);
 		// fall through
 	case 22:
 		TakeLiftItem(act, anim, aobj, true);
@@ -477,8 +471,12 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		LoadLiftItem(act, 25);
 		// fall through
 	case 25:
-		if (!LiftItemReady(act, 26))
-			return;
+		if (act->mPendingItem) {
+			if (!fn_800D3CDC(act->mPendingItem))
+				return;
+			gGame.mStatus.mFlags |= 0x1000;
+		}
+		SetLiftActionState(act, 26);
 		// fall through
 	case 26:
 		TakeLiftItem(act, anim, aobj, false);
