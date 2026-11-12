@@ -6,35 +6,6 @@
 extern "C" void CaptureGameSaveData(Memcard*);
 extern "C" void BuildSaveBanner(Memcard*, s32);
 
-static inline BOOL WriteSaveCopies(Memcard* card)
-{
-	card->mState = 13;
-	for (s32 copy = 0, offset = 0; copy < 2; ++copy, offset += sizeof(SaveFile)) {
-		card->mCard.Write(card->mBuffer, sizeof(SaveFile), offset);
-		card->LogResult();
-		if (card->mCard.mResult != CARD_RESULT_READY) {
-			card->mCard.Close();
-			card->mCard.Unmount();
-			return TRUE;
-		}
-		if (copy == 1) {
-			CARDStat stat;
-			card->mCard.GetStatus(&stat);
-			if (!HasSaveFileLayout(stat)) {
-				card->mState = 11;
-				card->mCard.SetStatus(&card->mStat);
-				card->LogResult();
-				if (card->mCard.mResult != CARD_RESULT_READY) {
-					card->mCard.Close();
-					card->mCard.Unmount();
-					return TRUE;
-				}
-			}
-		}
-	}
-	return FALSE;
-}
-
 /**
  * @note Address: 0x80089D3C
  * @note Size: 0x484
@@ -51,7 +22,31 @@ extern "C" BOOL WriteMemoryCardSaveFile(Memcard* card, s32 channel, s32 slot)
 		return TRUE;
 	BuildSaveBanner(card, slot);
 	CaptureGameSaveData(card);
-	if (WriteSaveCopies(card))
+	card->mState = 13;
+	BOOL failed  = FALSE;
+	for (s32 copy = 0, offset = 0; copy < 2 && !failed; ++copy, offset += sizeof(SaveFile)) {
+		card->mCard.Write(card->mBuffer, sizeof(SaveFile), offset);
+		card->LogResult();
+		if (card->mCard.mResult != CARD_RESULT_READY) {
+			card->mCard.Close();
+			card->mCard.Unmount();
+			failed = TRUE;
+		} else if (copy == 1) {
+			CARDStat stat;
+			card->mCard.GetStatus(&stat);
+			if (!HasSaveFileLayout(stat)) {
+				card->mState = 11;
+				card->mCard.SetStatus(&card->mStat);
+				card->LogResult();
+				if (card->mCard.mResult != CARD_RESULT_READY) {
+					card->mCard.Close();
+					card->mCard.Unmount();
+					failed = TRUE;
+				}
+			}
+		}
+	}
+	if (failed)
 		return TRUE;
 	if (card->Close())
 		return TRUE;
