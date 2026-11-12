@@ -365,6 +365,7 @@ extern "C" s32 AddAna(s32 id, f32 x, f32 y, f32 z)
 
 	if (id >= 0 && id < ARRAY_COUNT(anas)) {
 #if defined(VERSION_GGTP01)
+		// europe has no prints here and keeps the entry's address; indexing the table again does not give its code
 		Ana* ana = &anas[id];
 		if (!(ana->mStatus.mFlags & 1)) {
 			activeAnaNum++;
