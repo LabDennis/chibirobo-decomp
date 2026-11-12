@@ -327,117 +327,120 @@ void XObjActorTao::vf148(u32 frames)
 			s32 path[3] = { 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, path, 3));
 		}
-		switch (kind) {
-		case 0x102:
-			for (s32 i = 0; i < 64; ++i) {
-				XObj* obj = gGame.mXObjs.mPools[8].Get(i);
-				if (kind == obj->GetKind()) {
-					switch (kind) {
-					case 0x102:
-						PlaceInTaoMouth(joint, obj, _C94, 0);
-						break;
-					default: {
-						MtxPtr matrix  = joint.GetMtx();
-						HSD_JObj* root = obj->mJObj;
-						HSD_JObjCopyMtx(root, matrix);
-					} break;
-					}
-				}
-				if (mStatus.mFlags & 0x10000)
-					obj->mStatus.mFlags |= 0x10000ULL;
-				else
-					obj->mStatus.mFlags &= ~0x10000ULL;
-			}
-			break;
-		case 0x159:
-			for (s32 i = 0; i < 15; ++i) {
-				XObj* obj = gGame.mXObjs.mPools[10].Get(i);
-				if (kind == obj->GetKind()) {
-					switch (kind) {
-					case 0x159:
-						PSMTXCopy(joint.GetMtx(), _C94);
-						Vec scale;
-						HSD_MtxGetScale(_C94, &scale);
-						scale.x = GetStagePlacementScale(obj).x / scale.x;
-						scale.y = GetStagePlacementScale(obj).y / scale.y;
-						scale.z = GetStagePlacementScale(obj).z / scale.z;
-						Mtx scaling;
-						PSMTXScale(scaling, scale.x, scale.y, scale.z);
-						PSMTXConcat(_C94, scaling, _C94);
-						HSD_JObjCopyMtx(obj->mJObj, _C94);
-						break;
-					default: {
-						MtxPtr matrix  = joint.GetMtx();
-						HSD_JObj* root = obj->mJObj;
-						HSD_JObjCopyMtx(root, matrix);
-					} break;
+		if (kind >= 0)
+			switch (kind) {
+			case 0x102:
+				for (s32 i = 0; i < 64; ++i) {
+					XObj* obj = gGame.mXObjs.mPools[8].Get(i);
+					if (kind == obj->GetKind()) {
+						switch (kind) {
+						case 0x102:
+							PlaceInTaoMouth(joint, obj, _C94, 0);
+							break;
+						default: {
+							MtxPtr matrix  = joint.GetMtx();
+							HSD_JObj* root = obj->mJObj;
+							HSD_JObjCopyMtx(root, matrix);
+						} break;
+						}
 					}
 					if (mStatus.mFlags & 0x10000)
 						obj->mStatus.mFlags |= 0x10000ULL;
 					else
 						obj->mStatus.mFlags &= ~0x10000ULL;
 				}
-			}
-			break;
-		case 0xf8: {
-			s32 ordinal = -1;
-			for (s32 i = 0; i < 21; ++i) {
-				XObj* obj = gGame.mXObjs.mPools[16].Get(i);
-				if (kind == obj->GetKind()) {
-					switch (kind) {
-					case 0xf8:
-						if (++ordinal != mCmd[2])
+				break;
+			case 0x159:
+				for (s32 i = 0; i < 15; ++i) {
+					XObj* obj = gGame.mXObjs.mPools[10].Get(i);
+					if (kind == obj->GetKind()) {
+						switch (kind) {
+						case 0x159:
+							PSMTXCopy(joint.GetMtx(), _C94);
+							Vec scale;
+							HSD_MtxGetScale(_C94, &scale);
+							scale.x = GetStagePlacementScale(obj).x / scale.x;
+							scale.y = GetStagePlacementScale(obj).y / scale.y;
+							scale.z = GetStagePlacementScale(obj).z / scale.z;
+							Mtx scaling;
+							PSMTXScale(scaling, scale.x, scale.y, scale.z);
+							PSMTXConcat(_C94, scaling, _C94);
+							HSD_JObjCopyMtx(obj->mJObj, _C94);
 							break;
-						PlaceInTaoMouth(joint, obj, _C94, 3);
-						return;
-					default: {
-						MtxPtr matrix  = joint.GetMtx();
-						HSD_JObj* root = obj->mJObj;
-						HSD_JObjCopyMtx(root, matrix);
+						default: {
+							MtxPtr matrix  = joint.GetMtx();
+							HSD_JObj* root = obj->mJObj;
+							HSD_JObjCopyMtx(root, matrix);
+						} break;
+						}
 						if (mStatus.mFlags & 0x10000)
 							obj->mStatus.mFlags |= 0x10000ULL;
 						else
 							obj->mStatus.mFlags &= ~0x10000ULL;
-						break;
-					}
 					}
 				}
-			}
-			break;
-		}
-		case 0x2a3:
-		case 0x46f:
-			for (s32 i = 0; i < 288; ++i) {
-				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
-				if (kind == obj->GetKind()) {
-					// The original dispatches the two stage prop kinds separately.
-					switch (kind) {
-					case 0x2a3: {
-						MtxPtr matrix  = joint.GetMtx();
-						HSD_JObj* root = obj->mJObj;
-						HSD_JObjCopyMtx(root, matrix);
-					} break;
-					case 0x46f: {
-						MtxPtr matrix  = joint.GetMtx();
-						HSD_JObj* root = obj->mJObj;
-						HSD_JObjCopyMtx(root, matrix);
-					} break;
-					default: {
-						MtxPtr matrix  = joint.GetMtx();
-						HSD_JObj* root = obj->mJObj;
-						HSD_JObjCopyMtx(root, matrix);
-					} break;
+				break;
+			case 0xf8: {
+				s32 ordinal = -1;
+				for (s32 i = 0; i < 21; ++i) {
+					XObj* obj = gGame.mXObjs.mPools[16].Get(i);
+					if (kind == obj->GetKind()) {
+						switch (kind) {
+						case 0xf8:
+							if (++ordinal != mCmd[2])
+								break;
+							PlaceInTaoMouth(joint, obj, _C94, 3);
+							return;
+						default: {
+							MtxPtr matrix  = joint.GetMtx();
+							HSD_JObj* root = obj->mJObj;
+							HSD_JObjCopyMtx(root, matrix);
+							if (mStatus.mFlags & 0x10000)
+								obj->mStatus.mFlags |= 0x10000ULL;
+							else
+								obj->mStatus.mFlags &= ~0x10000ULL;
+							break;
+						}
+						}
 					}
-					if (mStatus.mFlags & 0x10000)
-						obj->mStatus.mFlags |= 0x10000ULL;
-					else
-						obj->mStatus.mFlags &= ~0x10000ULL;
 				}
+				break;
 			}
-			break;
-		}
+			case 0x2a3:
+			case 0x46f:
+				for (s32 i = 0; i < 288; ++i) {
+					XObj* obj = gGame.mXObjs.mPools[22].Get(i);
+					if (kind == obj->GetKind()) {
+						// The original dispatches the two stage prop kinds separately.
+						switch (kind) {
+						case 0x2a3: {
+							MtxPtr matrix  = joint.GetMtx();
+							HSD_JObj* root = obj->mJObj;
+							HSD_JObjCopyMtx(root, matrix);
+						} break;
+						case 0x46f: {
+							MtxPtr matrix  = joint.GetMtx();
+							HSD_JObj* root = obj->mJObj;
+							HSD_JObjCopyMtx(root, matrix);
+						} break;
+						default: {
+							MtxPtr matrix  = joint.GetMtx();
+							HSD_JObj* root = obj->mJObj;
+							HSD_JObjCopyMtx(root, matrix);
+						} break;
+						}
+						if (mStatus.mFlags & 0x10000)
+							obj->mStatus.mFlags |= 0x10000ULL;
+						else
+							obj->mStatus.mFlags &= ~0x10000ULL;
+					}
+				}
+				break;
+			}
 	}
 	switch (_CF8) {
+	case 0:
+		break;
 	case 1:
 		if (_CFC)
 			_CFC->Release();
