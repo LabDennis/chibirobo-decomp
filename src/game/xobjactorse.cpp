@@ -81,6 +81,6 @@ HSD_JObj* XObjActor::GetHeadJoint()
  * @note Address: 0x80106A8C
  * @note Size: 0x4
  */
-extern "C" void ResetActorState__9XObjActorFv(XObjActor* actor)
+void XObjActor::ResetActorState()
 {
 }
