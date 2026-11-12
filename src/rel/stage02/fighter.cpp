@@ -762,8 +762,11 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			PSMTXTrans(tex._3C._00, 0.90909094f, 0.0f, 0.0f);
 			tex._38 = 1;
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
-			DrawGsTexturedQuad(gGame, &tex, lo, lo, hi, hi, 7.0f * digW + (left - (time < 10 ? 1 : 2) * (digW - 8.0f)) - 32.0f, 76.0f, 0.0f,
-			                   digW, digH, 0.0f, 0.0f, 0.0f);
+			s32 lead = 2;
+			if (time < 10)
+				lead = 1;
+			DrawGsTexturedQuad(gGame, &tex, lo, lo, hi, hi, 7.0f * digW + (left - lead * (digW - 8.0f)) - 32.0f, 76.0f, 0.0f, digW, digH,
+			                   0.0f, 0.0f, 0.0f);
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
 
 			// gauge
