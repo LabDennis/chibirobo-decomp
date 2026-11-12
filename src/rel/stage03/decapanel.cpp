@@ -403,6 +403,7 @@ extern "C" s32 CmdCloseDecaPanel(s32 cmd, s32 argc, s32* args)
  * @note Address: stage03 .text 0x60
  * @note Size: 0x94
  */
+// NONMATCHING: regalloc
 extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 argc, s32* args)
 {
 	decaPanel.ResetInput();
@@ -1686,6 +1687,7 @@ extern "C" void UpdateStage(s32 frames)
  * @note Address: stage03 .text 0x141C
  * @note Size: 0x84
  */
+// NONMATCHING: regalloc
 extern "C" void InitStage(void* arg)
 {
 	decaPanel.mActive = 0;

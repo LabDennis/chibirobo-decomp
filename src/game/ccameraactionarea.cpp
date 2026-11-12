@@ -716,6 +716,7 @@ extern "C" void SelectAreaCameraEntryWithControl(CCameraActionArea* area, s32 sl
  * @note Address: 0x80138B50
  * @note Size: 0x154
  */
+// NONMATCHING: pool name and the two Vecs' stack-slot order
 extern "C" void SetAreaCameraInterestTarget(CCameraActionArea* area, s32 mode, XObj* target, f32 time)
 {
 	if (target == NULL) {

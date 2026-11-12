@@ -34,6 +34,8 @@ extern "C" BOOL BeforeUpdate__5CBaseFv(CBase* base)
  * @note Address: 0x80015534
  * @note Size: 0x100
  */
+// NONMATCHING: pool symbol names (sGameVectorDefaults) and regalloc in the
+// language-map loop
 // CBase's Start
 extern "C" void Start__5CBaseFv(CBase* base)
 {

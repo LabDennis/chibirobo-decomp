@@ -9,6 +9,7 @@
  * @note Address: 0x800E1E60
  * @note Size: 0xD0
  */
+// NONMATCHING: retail issues the coord-info dereference one insn earlier.
 extern "C" BOOL LoadFromPlacement__8XObjCoinFRC9CoordInfo(XObjCoin* coin, CoordInfo* info)
 {
 	coin->_260 = info->_00->_2C;

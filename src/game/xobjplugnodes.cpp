@@ -6,6 +6,7 @@
  * @note Address: 0x800DBC98
  * @note Size: 0x144
  */
+// NONMATCHING: retail issues the wrapped game-pointer subtract one insn later.
 extern "C" void UpdatePlugCordNodes(XObjPlugCordNodes* nodes, XObjPlugCordPoint* points, s32 count, u32)
 {
 	if (nodes->mEnabled) {

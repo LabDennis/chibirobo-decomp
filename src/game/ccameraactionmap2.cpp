@@ -9530,6 +9530,8 @@ extern "C" CVec SpringDamp(CVec& position, const Vec& target, const CVec& previo
  * @note Address: 0x8014232C
  * @note Size: 0x10C
  */
+// NONMATCHING: the sinit's objects sit behind 0x140 bytes of the unit's other
+// bss in retail; this build starts the blob with them.
 // __sinit_ccameraactionmap2_cpp
 // builds these vecs and registers their dtors. the bss between them is unknown
 extern "C" {

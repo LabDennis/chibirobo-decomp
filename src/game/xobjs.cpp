@@ -146,6 +146,8 @@ void XObjRead::RunRequestLoop()
  * @note Address: 0x80132468
  * @note Size: 0x9C
  */
+// NONMATCHING: regalloc — the inlined ReadStart loop lands its slot counter
+// in a different arg slot, costing one extra mr.
 BOOL XObjRead::QueueRead(void* object, void* info)
 {
 	return ReadStart(object, info);

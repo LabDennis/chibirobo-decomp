@@ -148,12 +148,13 @@ static inline void SetMode(XObjArmy* army, s32 mode)
  * @note Address: 0x800E6A5C
  * @note Size: 0x114
  */
-// NONMATCHING: regalloc
+// NONMATCHING: retail schedules the joint-tree root load after the
+// volume store; this build issues it first.
 
 void XObjArmy::UpdateAnimationSounds()
 {
 	s32 anim;
-	u32 volume;
+	u8 volume;
 	if (mFlags.mFlags & 0x100) {
 		volume = 0xFF;
 	} else {

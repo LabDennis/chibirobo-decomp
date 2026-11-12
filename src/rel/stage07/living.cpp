@@ -256,6 +256,8 @@ extern "C" void DrawStage(void* arg)
  * @note Address: stage07 .text 0x10D0
  * @note Size: 0x110
  */
+// NONMATCHING: retail splits the field address into a hoisted addis and an
+// in-loop addi; this build folds it into one pointer.
 extern "C" void UpdateStage(void* arg)
 {
 	Stage07Actor* actor;

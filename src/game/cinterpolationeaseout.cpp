@@ -14,6 +14,7 @@ extern "C" f32 Get__21CInterpolationEaseOutFv(CInterpolationEaseOut* interp)
  * @note Address: 0x80135120
  * @note Size: 0x7C
  */
+// NONMATCHING: regalloc
 extern "C" bool Step__21CInterpolationEaseOutFf(CInterpolationEaseOut* interp, f32 dt)
 {
 	interp->mTime -= dt;

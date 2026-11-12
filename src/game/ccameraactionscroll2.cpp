@@ -134,6 +134,7 @@ void CCameraActionScroll2::HideObjs()
  * @note Address: 0x80146738
  * @note Size: 0xE8
  */
+// NONMATCHING: regalloc
 void CCameraActionScroll2::ShowObjs()
 {
 	s32* id    = gScrollCameraHiddenObjectIds;

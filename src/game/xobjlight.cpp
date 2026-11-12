@@ -38,6 +38,7 @@ extern "C" void Release__9XObjLightFv(XObjLight* object)
  * @note Address: 0x80092F98
  * @note Size: 0x14C
  */
+// NONMATCHING: regalloc — retail keeps one more copy of the object pointer live.
 extern "C" BOOL LoadFromPlacement__9XObjLightFRC9CoordInfo(XObjLight* object, CoordInfo* info)
 {
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(object, info)) {

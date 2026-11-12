@@ -49,6 +49,7 @@ static inline s32 AreaMode(CCameraActionAreaEx* state)
  * @note Address: 0x80135D28
  * @note Size: 0x10C
  */
+// NONMATCHING: regalloc
 extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state)
 {
 	return AreaMode(state);

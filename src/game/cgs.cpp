@@ -664,6 +664,7 @@ extern "C" void ApplyGsRenderMode(CGsRenderMode* mode, BOOL force)
  * @note Address: 0x8019B128
  * @note Size: 0x150
  */
+// NONMATCHING: retail orders the field stores and the 0x3c immediate differently.
 extern "C" void InitializeGsTevStageDescriptor(CGsTevStage* stage, u32 id, GsTevOrder order, GsTevOp colorOp, GsTevIn colorIn,
                                                GsTevOp alphaOp, GsTevIn alphaIn)
 {
@@ -3235,6 +3236,8 @@ extern "C" void DrawGsFixedWidthTextFormat(CGs* gs, u32 color, const char* forma
  */
 // draws text with one sprite per character and a background tile behind each when the
 // background color isn't zero
+// NONMATCHING: japan's build hoists size * 0.5f out of the loop where retail
+// fuses it into the curX accumulate; float regalloc differs throughout.
 extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* text, f32 x, f32 y, f32 z, f32 size, f32 height)
 {
 	f32 offsX;

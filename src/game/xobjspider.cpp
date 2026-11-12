@@ -70,6 +70,8 @@ extern s32 lbl_8065B2BC;
 extern u8 lbl_8065B2C0;
 }
 
+// NONMATCHING: the sinit's copy source sits at another offset in retail's
+// sSpiderStateData block; data layout differs.
 // the state handlers by number, Update calls them
 XObjSpider::Func gSpiderStateHandlers[10] = {
 	&XObjSpider::State0, &XObjSpider::State1, &XObjSpider::State2, &XObjSpider::State3, &XObjSpider::State4,
@@ -305,6 +307,7 @@ BOOL XObjSpider::LoadFromPlacement(const CoordInfo& info)
  * @note Address: 0x800F373C
  * @note Size: 0x15C
  */
+// NONMATCHING: regalloc
 void XObjSpider::ResetObjectState()
 {
 	ResetObjectState__4XObjFv(this);

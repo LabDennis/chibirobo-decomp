@@ -1792,6 +1792,7 @@ extern "C" void Open__15MenuStageSelectFv(MenuStageSelect* menu)
  * @note Address: 0x8003D350
  * @note Size: 0x3AC
  */
+// NONMATCHING: regalloc
 extern "C" void Open__8MenuSaveFv(MenuSave* menu)
 {
 	menu->mState = 1;
@@ -4374,6 +4375,7 @@ static const int PCBlueNumberIcon = 153, PCGoldNumberIcon = 152, PCNumberDigits 
  * @note Size: 0x56C
  */
 // a number of up to 7 digits, right aligned, and the money icon in front
+// NONMATCHING: regalloc
 extern "C" void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value)
 {
 	CTexObj tex;
@@ -4431,6 +4433,7 @@ extern "C" void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, 
  * @note Size: 0x56C
  */
 // the same with the other icon and colors
+// NONMATCHING: regalloc
 extern "C" void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value)
 {
 	CTexObj tex;
@@ -4709,6 +4712,7 @@ extern "C" void Open__8MenuItemFv(MenuItem* menu)
  * @note Size: 0x700
  */
 // moving the cursor over the map grid, each cell names its place once it's been visited
+// NONMATCHING: regalloc
 void MenuStatus::State9(u32)
 {
 	MenuStatus* menu = this;
@@ -4808,6 +4812,7 @@ void MenuStatus::State9(u32)
  * @note Size: 0x728
  */
 // the same on the 6 by 4 grid, it wraps around
+// NONMATCHING: regalloc
 void MenuStatus::State8(u32)
 {
 	MenuStatus* menu = this;
@@ -4916,6 +4921,7 @@ void MenuStatus::State8(u32)
  * @note Address: 0x80058764
  * @note Size: 0x458
  */
+// NONMATCHING: regalloc
 void MenuStatus::State5(u32)
 {
 	MenuStatus* menu = this;

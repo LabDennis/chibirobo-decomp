@@ -3277,6 +3277,7 @@ s32 OctaMenu::GetItemIconTextureIndex(s32 index)
  * @note Address: 0x8009AFEC
  * @note Size: 0x130
  */
+// NONMATCHING: regalloc
 u32 OctaMenu::GetItemColor(s32 index)
 {
 	s32 green, blue, red;
@@ -4536,6 +4537,7 @@ extern "C" void ResetPlayerPlug(XObjChr* chr)
  * @note Address: 0x8009FDE4
  * @note Size: 0xF8
  */
+// NONMATCHING: regalloc
 extern "C" BOOL IsPlayerBlockingEvents(const XObjChr* player)
 {
 	return IsEventBlocked(player);
@@ -7129,6 +7131,7 @@ extern "C" f32 GetObjectMaxFloorHeight(XObj* object)
  * @note Address: 0x800B1EC0
  * @note Size: 0x144
  */
+// NONMATCHING: retail issues the point loads in a different order.
 extern "C" f32 GetObjectEdgeOutwardYaw(const XObj* object, Vec* point, s32 index)
 {
 	Vec first  = FirstEdgePoint(object, index, point->y);
@@ -8510,6 +8513,7 @@ extern "C" void SetLiftActionState(XActLift* act, s32 state)
  * @note Address: 0x800B504C
  * @note Size: 0x130
  */
+// NONMATCHING: regalloc
 extern "C" void TryStartObjectEvent(CGame* game, const void* script, void* context, s16 first, s16 second)
 {
 	if (!IsEventBlocked(game->GetPlayer())) {

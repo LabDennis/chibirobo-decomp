@@ -1742,6 +1742,7 @@ void XObjActor3::Kind15(u32 frames)
  * @note Address: 0x8010CDDC
  * @note Size: 0xA4
  */
+// NONMATCHING: regalloc
 extern "C" void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z)
 {
 	XObjActor3* obj;

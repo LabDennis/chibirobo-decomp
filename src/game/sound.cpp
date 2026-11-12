@@ -340,6 +340,7 @@ inline void XSound::registerName(const char* name, s32 bank)
  * @note Address: 0x8001E044
  * @note Size: 0xD8
  */
+// NONMATCHING: regalloc
 extern "C" BOOL RegisterGameSoundName(XSound* sound, const char* name)
 {
 	sound->registerName(name, sound->mStageBank);

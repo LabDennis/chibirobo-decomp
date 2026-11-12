@@ -611,6 +611,7 @@ extern "C" void Update__9CScrnWipeFUl(CScrnWipe* wipe, u32 frames)
  * @note Size: 0x2B4
  */
 // starts a wipe, the color and the hole size both go from the first values to the second
+// NONMATCHING: regalloc
 extern "C" void StartScreenWipeColorTransition(CScrnWipe* wipe, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, f32 x, f32 y, f32 width0,
                                                f32 height0, f32 width1, f32 height1, f32 time, u8 a1, BOOL hideWhenDone)
 {
@@ -762,6 +763,7 @@ extern "C" void UpdateScreenFade(CScrnColor* color, u32 frames)
  * @note Address: 0x80023D74
  * @note Size: 0x16C
  */
+// NONMATCHING: regalloc
 extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8 a, f32 time)
 {
 	color->mTarget.r = r;
@@ -794,6 +796,7 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
  * @note Address: 0x80023EE0
  * @note Size: 0x20C
  */
+// NONMATCHING: regalloc
 extern "C" void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time)
 {
 	color->mColor.r  = r0;

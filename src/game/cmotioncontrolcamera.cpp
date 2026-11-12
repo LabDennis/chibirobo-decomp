@@ -1568,6 +1568,7 @@ void CMotionControlCamera::Draw()
  * @note Address: 0x801496A0
  * @note Size: 0xB4
  */
+// NONMATCHING: regalloc
 s32 CMotionControlCamera::GetActionType()
 {
 	CInterfaceCameraAction* action = mAction;
