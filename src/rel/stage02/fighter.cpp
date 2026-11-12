@@ -236,7 +236,7 @@ struct Shot {
 
 	void Start(Vec from, Vec to, Mato* item)
 	{
-		s32 i;
+		u32 i;
 		_00   = true;
 		_04   = from;
 		_10   = to;
@@ -4354,7 +4354,11 @@ extern "C" void Fighter_Fire(Fighter* hole, s32 n)
 	if (model->_9658 > model->_965C) {
 		model->_9658 = model->_965C;
 	}
-	dist = sqrtf((pos.x - dir.x) * (pos.x - dir.x) + (pos.z - dir.z) * (pos.z - dir.z));
+	{
+		f32 dx = pos.x - dir.x;
+		f32 dz = pos.z - dir.z;
+		dist   = sqrtf(dx * dx + dz * dz);
+	}
 	if (dist != 0.0f) {
 		f32 angle = atan2(dir.x - pos.x, dir.z - pos.z);
 		while (angle < 0.0f) {
