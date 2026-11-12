@@ -33,14 +33,14 @@ extern XObjActorToy::StateFunc gToy25EPickUpState;
 extern XObjActorToy::StateFunc gToyPostHitState;
 extern XObjActorToy::StateFunc gToyPostPickUpState;
 void ApproachHudValue(f32*, f32*, f32);
-void HandleToyKind0FCommand(XObjActorToy*);
-void HandleToyKind110Command(XObjActorToy*);
-void HandleToyKind156Command(XObjActorToy*);
-void HandleToyKind16CCommand(XObjActorToy*);
-void HandleToyKind159Command(XObjActorToy*);
-void HandleToyKind1FCCommand(XObjActorToy*);
-void HandleToyScreenShakeCommand(XObjActorToy*);
-void HandleToyKind25ECommand(XObjActorToy*);
+void HandleToyKind0FCommand(XObjActorToy*, u32 frames);
+void HandleToyKind110Command(XObjActorToy*, u32 frames);
+void HandleToyKind156Command(XObjActorToy*, u32 frames);
+void HandleToyKind16CCommand(XObjActorToy*, u32 frames);
+void HandleToyKind159Command(XObjActorToy*, u32 frames);
+void HandleToyKind1FCCommand(XObjActorToy*, u32 frames);
+void HandleToyScreenShakeCommand(XObjActorToy*, u32 frames);
+void HandleToyKind25ECommand(XObjActorToy*, u32 frames);
 }
 
 extern "C" HSD_JObj* GetObjectJointByPath(const CJObj*, s32, s32*);
@@ -68,14 +68,8 @@ static inline void SetToyBlinkVisibility(XObjActorToy* toy, CJObj& joint)
 		SetToyBlinkVisibility(toy, joint);                                       \
 	} while (0)
 
-// Retail repeats the hide on the last joint visited, once for every path in this phase.
-static inline void HideToyJoints(CJObj& joint, int count)
-{
-	for (int i = 0; i < count; i++)
-		HSD_JObjSetFlags(joint.mJObj, 0x10);
-}
-
-// NONMATCHING: retail has HideToyJoints' calls one after the other and is 0x30 bytes longer
+// NONMATCHING: retail calls CJObj's destructor at every return where the build inlines it, gives each burst a scale
+// of its own and copies the burst's rotation from the six Vecs its .rodata starts with
 void XObjActorToy::ProcessPendingEvents(u32 frames)
 {
 	XObjActorToy* toy = this;
@@ -83,12 +77,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		toy->_998.mFlags &= ~2;
 		toy->_9A4 = 5 * frames;
 		switch (toy->GetKind()) {
-		case 0x157:
-		case 0x158:
-		case 0x16c:
-		case 0x25e:
-			break;
-
 		case 0xF:
 			toy->_9AC = 20.0f;
 			if (!toy->_998.Check(0x40) && !toy->_2098.Check(2)) {
@@ -98,8 +86,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			}
 			break;
 		case 0x6F:
-		case 0x1FC:
-		case 0x26D:
 			if (!toy->_990)
 				toy->_990 = 1;
 			break;
@@ -107,11 +93,17 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			toy->_9A4 = 30 * frames;
 			break;
 		case 0x117:
-		case 0x159:
 			toy->_9AC = 3.0f;
 			break;
 		case 0x156:
 			toy->_9AC = 2.0f;
+			break;
+		case 0x158:
+			break;
+		case 0x159:
+			toy->_9AC = 3.0f;
+			break;
+		case 0x16c:
 			break;
 		case 0x1D3:
 			PlayGameSound(&gGame.mSound, 0x6B + rand() % 12, 255);
@@ -119,10 +111,20 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		case 0x1FB:
 			toy->_9AC = 2.5f;
 			break;
+		case 0x1FC:
+			if (!toy->_990)
+				toy->_990 = 1;
+			break;
+		case 0x25e:
+			break;
 		case 0x26C:
 		case 0x485:
 			toy->_9A4 = 30 * frames;
 			toy->_9AC = 4.0f;
+			break;
+		case 0x26D:
+			if (!toy->_990)
+				toy->_990 = 1;
 			break;
 		}
 	}
@@ -138,7 +140,6 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 	CJObj joint;
 	switch (toy->GetKind()) {
 	case 0x6f:
-	case 0x158:
 	case 0x159:
 	case 0x1d3:
 	case 0x1fb:
@@ -163,38 +164,27 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			toy->mFirst.UpdateObject(frames);
 		if (toy->mSecond.mStatus.mFlags & 0x10000)
 			toy->mSecond.UpdateObject(frames);
-		s32 anim   = toy->mAnimId;
-		bool first = anim == 0x13 || anim == 0x3fb;
-
+		s32 anim = toy->mAnimId;
 		switch (toy->_1F90) {
 		case 0:
-			switch (anim) {
-			case 0x13:
-			case 0x3fb: {
+			if (anim == 0x13 || anim == 0x3fb) {
 				toy->mFirst.SetPos(toy->mMoveTranslate, 0);
 				toy->mFirst.SetRotationY(toy->GetRotationY(), 0);
 				toy->mFirst.mStatus.mFlags |= 0x10000;
 				toy->mFirst.SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 				toy->_1F90 = 1;
-				break;
-			}
-			case 0xe:
-			case 0x14:
-			case 0x3f6:
-			case 0x3fc: {
+			} else if (anim == 0xe || anim == 0x14 || anim == 0x3f6 || anim == 0x3fc) {
 				toy->mSecond.SetPos(toy->mMoveTranslate, 0);
 				toy->mSecond.SetRotationY(toy->GetRotationY(), 0);
 				toy->mSecond.SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 				toy->mSecond.mStatus.mFlags |= 0x10000;
 				toy->_1F90 = 2;
-				break;
-			}
 			}
 			break;
 		case 1:
 			toy->mFirst.SetPos(toy->mMoveTranslate, 0);
 			toy->mFirst.SetRotationY(toy->GetRotationY(), 0);
-			if (!first) {
+			if (anim != 0x13 && anim != 0x3fb) {
 				toy->mFirst.mStatus.mFlags &= ~0x10000ULL;
 				toy->_1F90 = 0;
 			}
@@ -222,6 +212,8 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		if (!(toy->_2098.mFlags & 1))
 			break;
 		switch (toy->_990) {
+		case 0:
+			break;
 		case 1:
 			++toy->_990;
 			toy->mMovePhase = 0;
@@ -311,7 +303,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 	case 0x16c:
 		switch (toy->_990) {
 		case 0:
-			if (toy->_2098.mFlags & 4) {
+			if (toy->_2098.Check(4)) {
 				toy->_2098.mFlags &= ~4;
 				toy->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 				++toy->_990;
@@ -327,7 +319,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			break;
 		}
 		case 2:
-			if (toy->_2098.mFlags & 8) {
+			if (toy->_2098.Check(8)) {
 				toy->_2098.mFlags &= ~8;
 				toy->SetAnim(2, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 				toy->_990 = 10;
@@ -341,7 +333,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints(joint, 1);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -352,7 +344,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints(joint, 1);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -364,7 +356,8 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints(joint, 2);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -376,7 +369,8 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints(joint, 2);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -392,7 +386,12 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints(joint, 6);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -407,7 +406,11 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints(joint, 5);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -418,7 +421,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints(joint, 1);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -429,7 +432,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints(joint, 1);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -440,7 +443,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints(joint, 1);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				EmitToyBurst(toy);
 				return;
 			}
@@ -456,7 +459,12 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if ((s32)toy->_994 > 4) {
 				++toy->_990;
 				toy->_994 = 0;
-				HideToyJoints(joint, 6);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
+				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				toy->mStatus.mFlags &= ~0x10000ULL;
 				return;
 			}
@@ -472,54 +480,75 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		break;
 
 	case 0xF:
-		HandleToyKind0FCommand(toy);
+		HandleToyKind0FCommand(toy, frames);
 		break;
 	case 0x6F:
-		if (toy->mCmd[0] == 1 && (toy->mCmd[1] == 0 || toy->mCmd[1] == 1)) {
-			if (toy->mCmd[1] == 0)
+		switch (toy->mCmd[0]) {
+		case 0:
+			break;
+		case 1:
+			switch (toy->mCmd[1]) {
+			case 0:
 				toy->_2098.mFlags |= 1;
-			else
+				toy->mCmd[0] = 0;
+				break;
+			case 1:
 				toy->_2098.mFlags &= ~1;
-			toy->mCmd[0] = 0;
+				toy->mCmd[0] = 0;
+				break;
+			}
+			break;
 		}
 		break;
 	case 0x110:
-		HandleToyKind110Command(toy);
+		HandleToyKind110Command(toy, frames);
 		break;
 	case 0x117:
-		if (toy->mCmd[0] == 1) {
-			if (toy->mCmd[1] == 8)
+		switch (toy->mCmd[0]) {
+		case 0:
+			break;
+		case 1:
+			switch (toy->mCmd[1]) {
+			case 8:
 				toy->_2098.mFlags |= 8;
-			else
+				break;
+			default:
 				toy->_2098.mFlags &= ~8;
+				break;
+			}
 			toy->mCmd[0] = 0;
+			break;
 		}
 		break;
 	case 0x156:
-		HandleToyKind156Command(toy);
+		HandleToyKind156Command(toy, frames);
 		break;
 	case 0x157:
-		if (toy->mCmd[0] == 1) {
+		switch (toy->mCmd[0]) {
+		case 0:
+			break;
+		case 1:
 			if (toy->_2098.mFlags & 2)
 				gEventVariables[toy->mCmd[1]] = 1;
 			toy->mCmd[0] = 0;
+			break;
 		}
 		break;
 	case 0x16C:
-		HandleToyKind16CCommand(toy);
+		HandleToyKind16CCommand(toy, frames);
 		break;
 	case 0x159:
-		HandleToyKind159Command(toy);
+		HandleToyKind159Command(toy, frames);
 		break;
 	case 0x1FC:
-		HandleToyKind1FCCommand(toy);
+		HandleToyKind1FCCommand(toy, frames);
 		break;
 	case 0x26C:
 	case 0x485:
-		HandleToyScreenShakeCommand(toy);
+		HandleToyScreenShakeCommand(toy, frames);
 		break;
 	case 0x25E:
-		HandleToyKind25ECommand(toy);
+		HandleToyKind25ECommand(toy, frames);
 		break;
 	}
 }
@@ -1216,7 +1245,7 @@ extern "C" void HideToyDroppedItem(XObjActorToy* object)
  * @note Address: 0x8011E688
  * @note Size: 0x254
  */
-extern "C" void HandleToyKind25ECommand(XObjActorToy* object)
+extern "C" void HandleToyKind25ECommand(XObjActorToy* object, u32 frames)
 {
 	switch (object->mCmd[0]) {
 	case 0:
@@ -1267,7 +1296,7 @@ extern "C" void HandleToyKind25ECommand(XObjActorToy* object)
  * @note Address: 0x8011E8DC
  * @note Size: 0xD0
  */
-extern "C" void HandleToyScreenShakeCommand(XObjActorToy* object)
+extern "C" void HandleToyScreenShakeCommand(XObjActorToy* object, u32 frames)
 {
 	switch (object->mCmd[0]) {
 	case 1:
@@ -1281,7 +1310,7 @@ extern "C" void HandleToyScreenShakeCommand(XObjActorToy* object)
  * @note Address: 0x8011E9AC
  * @note Size: 0x140
  */
-extern "C" void HandleToyKind1FCCommand(XObjActorToy* object)
+extern "C" void HandleToyKind1FCCommand(XObjActorToy* object, u32 frames)
 {
 	switch (object->mCmd[0]) {
 	case 0:
@@ -1310,7 +1339,7 @@ extern "C" void HandleToyKind1FCCommand(XObjActorToy* object)
  * @note Address: 0x8011EAEC
  * @note Size: 0xAC
  */
-extern "C" void HandleToyKind159Command(XObjActorToy* object)
+extern "C" void HandleToyKind159Command(XObjActorToy* object, u32 frames)
 {
 	switch (object->mCmd[0]) {
 	case 0:
@@ -1335,7 +1364,7 @@ extern "C" void HandleToyKind159Command(XObjActorToy* object)
  * @note Address: 0x8011EB98
  * @note Size: 0x80
  */
-extern "C" void HandleToyKind16CCommand(XObjActorToy* object)
+extern "C" void HandleToyKind16CCommand(XObjActorToy* object, u32 frames)
 {
 	switch (object->mCmd[0]) {
 	case 0:
@@ -1357,7 +1386,7 @@ extern "C" void HandleToyKind16CCommand(XObjActorToy* object)
  * @note Address: 0x8011EC18
  * @note Size: 0x130
  */
-extern "C" void HandleToyKind156Command(XObjActorToy* object)
+extern "C" void HandleToyKind156Command(XObjActorToy* object, u32 frames)
 {
 	switch (object->mCmd[0]) {
 	case 1:
@@ -1395,7 +1424,7 @@ extern "C" void HandleToyKind156Command(XObjActorToy* object)
  * @note Address: 0x8011ED48
  * @note Size: 0x144
  */
-extern "C" void HandleToyKind110Command(XObjActorToy* object)
+extern "C" void HandleToyKind110Command(XObjActorToy* object, u32 frames)
 {
 	switch (object->mCmd[0]) {
 	case 0:
@@ -1427,7 +1456,7 @@ extern "C" void HandleToyKind110Command(XObjActorToy* object)
  * @note Address: 0x8011EE8C
  * @note Size: 0x410
  */
-extern "C" void HandleToyKind0FCommand(XObjActorToy* object)
+extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
 {
 	s32 count;
 	switch (object->mCmd[0]) {
