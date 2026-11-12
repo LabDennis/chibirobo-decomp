@@ -57,9 +57,8 @@ extern "C" s32 RemoveInventoryItemCount(Inventory* inventory, s16 id, s32 amount
 {
 	s32 index = FindItem(inventory, id);
 	if (index >= 0) {
-		s16 count = inventory->mItems[index].mCount;
-		if (count > 0) {
-			count -= amount;
+		if (inventory->mItems[index].mCount > 0) {
+			s16 count = inventory->mItems[index].mCount - amount;
 			if (count < 0)
 				count = 0;
 			inventory->mItems[index].mCount = count;
