@@ -559,7 +559,7 @@ void CScrnWipe::Draw(CGs* gs, s32 mode)
 
 	DrawGsCircle(gs, 64, 255, 255, mX, mY, 0.0f, mWidth, mHeight, 0.0f, 0.0f, 0.0f);
 	PrimVertex vertices[130];
-	for (s32 i = 0; i <= 64; i++) {
+	for (s32 i = 0; i < 65; i++) {
 		f32 angle     = (TWO_PI / 64.0f) * i;
 		PrimVertex* v = &vertices[2 * i];
 		v[0].pos.x    = mX - mWidth * 0.5f * (f32)sin(angle);
