@@ -95,19 +95,19 @@ extern "C" BOOL UpdateDriftingDust(XObjDust* dust, u32 frames)
  * @note Address: 0x800DF588
  * @note Size: 0x148
  */
-extern "C" void UpdateObject__8XObjDustFUl(XObjDust* dust, u32 frames)
+void XObjDust::UpdateObject(u32 frames)
 {
-	UpdateObject__4XObjFUl(dust, frames);
-	if (dust->GetObjFlags() & 1) {
-		if (UpdateDriftingDust(dust, frames)) {
-			dust->Release();
-			dust->SetFlag();
+	UpdateObject__4XObjFUl(this, frames);
+	if (GetObjFlags() & 1) {
+		if (UpdateDriftingDust(this, frames)) {
+			Release();
+			SetFlag();
 		}
 	}
-	if (dust->GetObjFlags() & 2) {
-		if (UpdateDustEvent(dust, frames)) {
-			dust->Release();
-			dust->SetFlag();
+	if (GetObjFlags() & 2) {
+		if (UpdateDustEvent(this, frames)) {
+			Release();
+			SetFlag();
 		}
 	}
 }
@@ -126,31 +126,31 @@ extern "C" void Release__8XObjDustFv(XObjDust* dust)
  * @note Address: 0x800DF6F8
  * @note Size: 0x2A8
  */
-extern "C" BOOL LoadFromPlacement__8XObjDustFRC9CoordInfo(XObjDust* dust, CoordInfo* info)
+BOOL XObjDust::LoadFromPlacement(const CoordInfo& info)
 {
-	dust->_260 = info->_00->_2C;
-	if (dust->IsFlagSet())
+	_260 = info._00->_2C;
+	if (IsFlagSet())
 		return TRUE;
-	BOOL result = LoadFromPlacement__4XObjFRC9CoordInfo(dust, info);
+	BOOL result = LoadFromPlacement__4XObjFRC9CoordInfo(this, &info);
 	if (result) {
-		dust->mStatus.mFlags |= 0x18100000ULL;
-		HSD_AObj* aobj = GetAObj(dust->mJObj);
+		mStatus.mFlags |= 0x18100000ULL;
+		HSD_AObj* aobj = GetAObj(mJObj);
 		f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
 		if (end > 0.0f) {
 			f32 frame              = fmod((f32)rand(), end);
-			UnkStageObj* placement = dust->mCoord._00;
-			dust->SetAnim(placement->_30, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
+			UnkStageObj* placement = mCoord._00;
+			SetAnim(placement->_30, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
 		}
-		dust->mAnimId2   = dust->mAnimId;
-		dust->mAnimCount = dust->mArchive.mNum[0];
-		if (dust->GetObjFlags() & 1) {
+		mAnimId2   = mAnimId;
+		mAnimCount = mArchive.mNum[0];
+		if (GetObjFlags() & 1) {
 			f32 scale = (rand() % 100 + 100) / 100.0f;
-			PSVECScale((Vec*)&dust->mMoveScale, (Vec*)&dust->mMoveScale, scale);
+			PSVECScale((Vec*)&mMoveScale, (Vec*)&mMoveScale, scale);
 		}
-		if (dust->GetObjFlags() & 2) {
-			dust->mStartScale.x = dust->mMoveScale.x;
-			dust->mStartScale.y = dust->mMoveScale.y;
-			dust->mStartScale.z = dust->mMoveScale.z;
+		if (GetObjFlags() & 2) {
+			mStartScale.x = mMoveScale.x;
+			mStartScale.y = mMoveScale.y;
+			mStartScale.z = mMoveScale.z;
 		}
 	}
 	return result;
