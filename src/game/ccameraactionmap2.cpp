@@ -9614,7 +9614,7 @@ CamCollisionPolygon gCameraCollisionPolygons[256];
  * @note Address: 0x80139E40
  * @note Size: 0x8
  */
-extern "C" s32 GetCameraFlags__16CCameraActionMapFv(CCameraActionMap*)
+u32 CCameraActionMap::GetCameraFlags()
 {
 	return 11;
 }
@@ -9632,7 +9632,7 @@ extern "C" s32 vf5C__16CCameraActionMapFv(CCameraActionMap* map)
  * @note Address: 0x80139E50
  * @note Size: 0x8
  */
-extern "C" f32 GetFollowDivisor__16CCameraActionMapFv(CCameraActionMap*)
+f32 CCameraActionMap::GetFollowDivisor()
 {
 	return 6.0f;
 }
