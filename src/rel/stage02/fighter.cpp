@@ -2517,32 +2517,33 @@ extern "C" void DrawShots(void)
 	if (fighterWork._00 == NULL) {
 		return;
 	}
-	for (i = 0; i < 5; i++) {
-		Shot* entry = &fighterWork._114._00[i];
+	Shot* entry = fighterWork._114._00;
+	for (i = 0; i < 5; i++, entry++) {
 		if (!entry->_00) {
 			continue;
 		}
 		GAME_FIELD(s32, 0x29C) = 1;
 		SetGsBlendMode(GAME_FIELD(void*, 0x290), 1, 4, 5, 15);
 		for (j = 0; j < 10; j++) {
+			Vec* pos  = &entry->_38[j];
 			Vec up    = { 0.0f, 1.0f, 0.0f };
 			u32 alpha = 96.0f * (1.0f - 0.1f * j);
-			DrawGsCircle(gGame, 16, alpha | 0xFFFFFF00, 0xFFFFFF00, entry->_38[j].x, entry->_38[j].y, entry->_38[j].z, 4.0f, 4.0f, up.x,
-			             up.y, up.z);
+			DrawGsCircle(gGame, 16, alpha | 0xFFFFFF00, 0xFFFFFF00, pos->x, pos->y, pos->z, 4.0f, 4.0f, up.x, up.y, up.z);
 		}
+		Vec* pos = &entry->_1C;
 		SetGsBlendMode(GAME_FIELD(void*, 0x290), 1, 2, 4, 15);
 		{
 			Vec up = { 0.0f, 1.0f, 0.0f };
-			DrawGsCircle(gGame, 16, 0xFFFFFF80, 0xFFFFFF00, entry->_1C.x, entry->_1C.y, entry->_1C.z, 4.0f, 4.0f, up.x, up.y, up.z);
+			DrawGsCircle(gGame, 16, 0xFFFFFF80, 0xFFFFFF00, pos->x, pos->y, pos->z, 4.0f, 4.0f, up.x, up.y, up.z);
 		}
 		{
 			Vec up = { 0.0f, 1.0f, 0.0f };
-			DrawGsCircle(gGame, 16, 0xFFFFFF80, 0xFFFFFF00, entry->_1C.x, entry->_1C.y, entry->_1C.z, 5.0f, 5.0f, up.x, up.y, up.z);
+			DrawGsCircle(gGame, 16, 0xFFFFFF80, 0xFFFFFF00, pos->x, pos->y, pos->z, 5.0f, 5.0f, up.x, up.y, up.z);
 		}
 		SetGsBlendMode(GAME_FIELD(void*, 0x290), 1, 4, 5, 15);
 		{
 			Vec up = { 0.0f, 1.0f, 0.0f };
-			DrawGsCircle(gGame, 16, 0x64FF64C8, 0x64FF6400, entry->_1C.x, entry->_1C.y, entry->_1C.z, 5.0f, 5.0f, up.x, up.y, up.z);
+			DrawGsCircle(gGame, 16, 0x64FF64C8, 0x64FF6400, pos->x, pos->y, pos->z, 5.0f, 5.0f, up.x, up.y, up.z);
 		}
 		GAME_FIELD(s32, 0x29C) = 0;
 	}
