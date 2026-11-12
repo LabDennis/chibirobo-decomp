@@ -8,6 +8,7 @@
 #include "game/cgs.h"
 #include "game/ccamera.h"
 #include "game/cjobjset.h"
+#include "game/cvec.h"
 #include "game/cparticle.h"
 #include "game/cscrn.h"
 #include "game/csound.h"

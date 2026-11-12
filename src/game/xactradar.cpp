@@ -6,6 +6,7 @@
 #include "game/cgame.h"
 #include "game/stagedata.h"
 #include "game/cjobjset.h"
+#include "game/cvec.h"
 #include "game/globals.h"
 #include "game/hsd_dobj.h"
 

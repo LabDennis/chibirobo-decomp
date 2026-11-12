@@ -1039,7 +1039,7 @@ static f32 lbl_8025BA10[0x100] = {
 
 static AXPBSRC lbl_8050932C = { 1, 0, 0, { 0, 0, 0, 0 } };
 
-static s32 sSynthDecibelFloor = -0x03880000;
+s32 sSynthDecibelFloor = -0x03880000;
 static s32 sSynthQueuedStreamPlaybackId = -1;
 
 /**

@@ -1385,12 +1385,12 @@ void XObj::OnPushDisplacement(const Vec& displacement)
  * @note Size: 0xD8
  */
 // CXObj's SetTranslateX
-extern "C" void SetTranslateX__5CXObjFfl(CXObj* object, f32 x, s32 force)
+void CXObj::SetTranslateX(f32 x, s32 force)
 {
-	object->mMoveTranslate.x         = x;
-	object->mMoveTranslate.mTarget.x = x;
-	if (object->mJObj != NULL) {
-		object->CJObj::SetTranslateX(x, force);
+	mMoveTranslate.x         = x;
+	mMoveTranslate.mTarget.x = x;
+	if (mJObj != NULL) {
+		CJObj::SetTranslateX(x, force);
 	}
 }
 
@@ -1399,12 +1399,12 @@ extern "C" void SetTranslateX__5CXObjFfl(CXObj* object, f32 x, s32 force)
  * @note Size: 0xD8
  */
 // CXObj's SetTranslateY
-extern "C" void SetTranslateY__5CXObjFfl(CXObj* object, f32 y, s32 force)
+void CXObj::SetTranslateY(f32 y, s32 force)
 {
-	object->mMoveTranslate.y         = y;
-	object->mMoveTranslate.mTarget.y = y;
-	if (object->mJObj != NULL) {
-		object->CJObj::SetTranslateY(y, force);
+	mMoveTranslate.y         = y;
+	mMoveTranslate.mTarget.y = y;
+	if (mJObj != NULL) {
+		CJObj::SetTranslateY(y, force);
 	}
 }
 
@@ -1413,12 +1413,12 @@ extern "C" void SetTranslateY__5CXObjFfl(CXObj* object, f32 y, s32 force)
  * @note Size: 0xD8
  */
 // CXObj's SetTranslateZ
-extern "C" void SetTranslateZ__5CXObjFfl(CXObj* object, f32 z, s32 force)
+void CXObj::SetTranslateZ(f32 z, s32 force)
 {
-	object->mMoveTranslate.z         = z;
-	object->mMoveTranslate.mTarget.z = z;
-	if (object->mJObj != NULL) {
-		object->CJObj::SetTranslateZ(z, force);
+	mMoveTranslate.z         = z;
+	mMoveTranslate.mTarget.z = z;
+	if (mJObj != NULL) {
+		CJObj::SetTranslateZ(z, force);
 	}
 }
 
@@ -1427,12 +1427,12 @@ extern "C" void SetTranslateZ__5CXObjFfl(CXObj* object, f32 z, s32 force)
  * @note Size: 0xD8
  */
 // CXObj's SetScaleX
-extern "C" void SetScaleX__5CXObjFfl(CXObj* object, f32 x, s32 force)
+void CXObj::SetScaleX(f32 x, s32 force)
 {
-	object->mMoveScale.x         = x;
-	object->mMoveScale.mTarget.x = x;
-	if (object->mJObj != NULL) {
-		object->CJObj::SetScaleX(x, force);
+	mMoveScale.x         = x;
+	mMoveScale.mTarget.x = x;
+	if (mJObj != NULL) {
+		CJObj::SetScaleX(x, force);
 	}
 }
 
@@ -1441,12 +1441,12 @@ extern "C" void SetScaleX__5CXObjFfl(CXObj* object, f32 x, s32 force)
  * @note Size: 0xD8
  */
 // CXObj's SetScaleZ
-extern "C" void SetScaleZ__5CXObjFfl(CXObj* object, f32 z, s32 force)
+void CXObj::SetScaleZ(f32 z, s32 force)
 {
-	object->mMoveScale.z         = z;
-	object->mMoveScale.mTarget.z = z;
-	if (object->mJObj != NULL) {
-		object->CJObj::SetScaleZ(z, force);
+	mMoveScale.z         = z;
+	mMoveScale.mTarget.z = z;
+	if (mJObj != NULL) {
+		CJObj::SetScaleZ(z, force);
 	}
 }
 
@@ -1455,12 +1455,12 @@ extern "C" void SetScaleZ__5CXObjFfl(CXObj* object, f32 z, s32 force)
  * @note Size: 0x1B0
  */
 // CXObj's SetRotationX
-extern "C" void SetRotationX__5CXObjFfl(CXObj* object, f32 x, s32 force)
+void CXObj::SetRotationX(f32 x, s32 force)
 {
-	object->mMoveRotate.x         = x;
-	object->mMoveRotate.mTarget.x = x;
-	if (object->mJObj != NULL) {
-		object->CJObj::SetRotationX(x, force);
+	mMoveRotate.x         = x;
+	mMoveRotate.mTarget.x = x;
+	if (mJObj != NULL) {
+		CJObj::SetRotationX(x, force);
 	}
 }
 
@@ -1469,12 +1469,12 @@ extern "C" void SetRotationX__5CXObjFfl(CXObj* object, f32 x, s32 force)
  * @note Size: 0x1B0
  */
 // CXObj's SetRotationY
-extern "C" void SetRotationY__5CXObjFfl(CXObj* object, f32 y, s32 force)
+void CXObj::SetRotationY(f32 y, s32 force)
 {
-	object->mMoveRotate.y         = y;
-	object->mMoveRotate.mTarget.y = y;
-	if (object->mJObj != NULL) {
-		object->CJObj::SetRotationY(y, force);
+	mMoveRotate.y         = y;
+	mMoveRotate.mTarget.y = y;
+	if (mJObj != NULL) {
+		CJObj::SetRotationY(y, force);
 	}
 }
 
@@ -1483,12 +1483,12 @@ extern "C" void SetRotationY__5CXObjFfl(CXObj* object, f32 y, s32 force)
  * @note Size: 0x1B0
  */
 // CXObj's SetRotationZ
-extern "C" void SetRotationZ__5CXObjFfl(CXObj* object, f32 z, s32 force)
+void CXObj::SetRotationZ(f32 z, s32 force)
 {
-	object->mMoveRotate.z         = z;
-	object->mMoveRotate.mTarget.z = z;
-	if (object->mJObj != NULL) {
-		object->CJObj::SetRotationZ(z, force);
+	mMoveRotate.z         = z;
+	mMoveRotate.mTarget.z = z;
+	if (mJObj != NULL) {
+		CJObj::SetRotationZ(z, force);
 	}
 }
 
@@ -1497,25 +1497,25 @@ extern "C" void SetRotationZ__5CXObjFfl(CXObj* object, f32 z, s32 force)
  * @note Size: 0x190
  */
 // CXObj's SetPos(x, y, z)
-extern "C" void SetPos__5CXObjFfffl(CXObj* obj, f32 x, f32 y, f32 z, s32 force)
+void CXObj::SetPos(f32 x, f32 y, f32 z, s32 force)
 {
-	obj->mMoveTranslate.x         = x;
-	obj->mMoveTranslate.y         = y;
-	obj->mMoveTranslate.z         = z;
-	obj->mMoveTranslate.mTarget.x = x;
-	obj->mMoveTranslate.mTarget.y = y;
-	obj->mMoveTranslate.mTarget.z = z;
-	if (obj->mJObj) {
+	mMoveTranslate.x         = x;
+	mMoveTranslate.y         = y;
+	mMoveTranslate.z         = z;
+	mMoveTranslate.mTarget.x = x;
+	mMoveTranslate.mTarget.y = y;
+	mMoveTranslate.mTarget.z = z;
+	if (mJObj) {
 		if (force == 0) {
 			Vec v = { x, y, z };
-			if (!(obj->mTranslate != v)) {
+			if (!(mTranslate != v)) {
 				return;
 			}
 		}
-		obj->mTranslate.x = x;
-		obj->mTranslate.y = y;
-		obj->mTranslate.z = z;
-		HSD_JObjSetTranslate(obj->mJObj, &obj->mTranslate);
+		mTranslate.x = x;
+		mTranslate.y = y;
+		mTranslate.z = z;
+		HSD_JObjSetTranslate(mJObj, &mTranslate);
 	}
 }
 
@@ -1524,12 +1524,12 @@ extern "C" void SetPos__5CXObjFfffl(CXObj* obj, f32 x, f32 y, f32 z, s32 force)
  * @note Size: 0x17C
  */
 // CXObj's SetPos(pos)
-extern "C" void SetPos__5CXObjFRC3Vecl(CXObj* obj, const Vec& v, s32 force)
+void CXObj::SetPos(const Vec& v, s32 force)
 {
-	obj->mMoveTranslate.Set(v);
-	obj->mMoveTranslate.mTarget.Set(v);
-	if (obj->mJObj) {
-		obj->CJObj::SetTranslate(v, force);
+	mMoveTranslate.Set(v);
+	mMoveTranslate.mTarget.Set(v);
+	if (mJObj) {
+		CJObj::SetTranslate(v, force);
 	}
 }
 
@@ -1538,26 +1538,26 @@ extern "C" void SetPos__5CXObjFRC3Vecl(CXObj* obj, const Vec& v, s32 force)
  * @note Size: 0x240
  */
 // CXObj's SetRot(x, y, z)
-extern "C" void SetRot__5CXObjFfffl(CXObj* obj, f32 x, f32 y, f32 z, s32 force)
+void CXObj::SetRot(f32 x, f32 y, f32 z, s32 force)
 {
-	obj->mMoveRotate.x         = x;
-	obj->mMoveRotate.y         = y;
-	obj->mMoveRotate.z         = z;
-	obj->mMoveRotate.mTarget.x = x;
-	obj->mMoveRotate.mTarget.y = y;
-	obj->mMoveRotate.mTarget.z = z;
-	if (obj->mJObj) {
+	mMoveRotate.x         = x;
+	mMoveRotate.y         = y;
+	mMoveRotate.z         = z;
+	mMoveRotate.mTarget.x = x;
+	mMoveRotate.mTarget.y = y;
+	mMoveRotate.mTarget.z = z;
+	if (mJObj) {
 		if (force == 0) {
 			Vec v = { x, y, z };
 			// tests the cached translation, as CJObj's does
-			if (!(obj->mTranslate != v)) {
+			if (!(mTranslate != v)) {
 				return;
 			}
 		}
-		obj->mRotate.x = x;
-		obj->mRotate.y = y;
-		obj->mRotate.z = z;
-		obj->UpdateRotation();
+		mRotate.x = x;
+		mRotate.y = y;
+		mRotate.z = z;
+		UpdateRotation();
 	}
 }
 
@@ -1566,12 +1566,12 @@ extern "C" void SetRot__5CXObjFfffl(CXObj* obj, f32 x, f32 y, f32 z, s32 force)
  * @note Size: 0x22C
  */
 // CXObj's SetRot(rot)
-extern "C" void SetRot__5CXObjFRC3Vecl(CXObj* obj, const Vec& v, s32 force)
+void CXObj::SetRot(const Vec& v, s32 force)
 {
-	obj->mMoveRotate.Set(v);
-	obj->mMoveRotate.mTarget.Set(v);
-	if (obj->mJObj) {
-		obj->CJObj::SetRotation(v, force);
+	mMoveRotate.Set(v);
+	mMoveRotate.mTarget.Set(v);
+	if (mJObj) {
+		CJObj::SetRotation(v, force);
 	}
 }
 
@@ -1841,12 +1841,12 @@ extern "C" void ResetLogoFadeState(Logo* logo)
  * @note Size: 0xD8
  */
 // CXObj's SetScaleY
-extern "C" void SetScaleY__5CXObjFfl(CXObj* object, f32 value, s32 force)
+void CXObj::SetScaleY(f32 value, s32 force)
 {
-	object->mMoveScale.y         = value;
-	object->mMoveScale.mTarget.y = value;
-	if (object->mJObj != NULL) {
-		object->CJObj::SetScaleY(value, force);
+	mMoveScale.y         = value;
+	mMoveScale.mTarget.y = value;
+	if (mJObj != NULL) {
+		CJObj::SetScaleY(value, force);
 	}
 }
 
@@ -1855,29 +1855,29 @@ extern "C" void SetScaleY__5CXObjFfl(CXObj* object, f32 value, s32 force)
  * @note Size: 0x18C
  */
 // CXObj's SetScale(scale)
-extern "C" void SetScale__5CXObjFfl(CXObj* obj, f32 scale, s32 force)
+void CXObj::SetScale(f32 scale, s32 force)
 {
 	f32 x = scale;
 	f32 y = scale;
 	f32 z = scale;
 
-	obj->mMoveScale.x         = x;
-	obj->mMoveScale.y         = y;
-	obj->mMoveScale.z         = z;
-	obj->mMoveScale.mTarget.x = x;
-	obj->mMoveScale.mTarget.y = y;
-	obj->mMoveScale.mTarget.z = z;
-	if (obj->mJObj) {
+	mMoveScale.x         = x;
+	mMoveScale.y         = y;
+	mMoveScale.z         = z;
+	mMoveScale.mTarget.x = x;
+	mMoveScale.mTarget.y = y;
+	mMoveScale.mTarget.z = z;
+	if (mJObj) {
 		if (force == 0) {
 			Vec v = { x, y, z };
-			if (!(obj->mScale != v)) {
+			if (!(mScale != v)) {
 				return;
 			}
 		}
-		obj->mScale.x = x;
-		obj->mScale.y = y;
-		obj->mScale.z = z;
-		HSD_JObjSetScale(obj->mJObj, &obj->mScale);
+		mScale.x = x;
+		mScale.y = y;
+		mScale.z = z;
+		HSD_JObjSetScale(mJObj, &mScale);
 	}
 }
 
@@ -1886,25 +1886,25 @@ extern "C" void SetScale__5CXObjFfl(CXObj* obj, f32 scale, s32 force)
  * @note Size: 0x18C
  */
 // CXObj's SetScale(x, y, z)
-extern "C" void SetScale__5CXObjFfffl(CXObj* obj, f32 x, f32 y, f32 z, s32 force)
+void CXObj::SetScale(f32 x, f32 y, f32 z, s32 force)
 {
-	obj->mMoveScale.x         = x;
-	obj->mMoveScale.y         = y;
-	obj->mMoveScale.z         = z;
-	obj->mMoveScale.mTarget.x = x;
-	obj->mMoveScale.mTarget.y = y;
-	obj->mMoveScale.mTarget.z = z;
-	if (obj->mJObj) {
+	mMoveScale.x         = x;
+	mMoveScale.y         = y;
+	mMoveScale.z         = z;
+	mMoveScale.mTarget.x = x;
+	mMoveScale.mTarget.y = y;
+	mMoveScale.mTarget.z = z;
+	if (mJObj) {
 		if (force == 0) {
 			Vec v = { x, y, z };
-			if (!(obj->mScale != v)) {
+			if (!(mScale != v)) {
 				return;
 			}
 		}
-		obj->mScale.x = x;
-		obj->mScale.y = y;
-		obj->mScale.z = z;
-		HSD_JObjSetScale(obj->mJObj, &obj->mScale);
+		mScale.x = x;
+		mScale.y = y;
+		mScale.z = z;
+		HSD_JObjSetScale(mJObj, &mScale);
 	}
 }
 
@@ -1913,12 +1913,12 @@ extern "C" void SetScale__5CXObjFfffl(CXObj* obj, f32 x, f32 y, f32 z, s32 force
  * @note Size: 0x178
  */
 // CXObj's SetScale(v)
-extern "C" void SetScale__5CXObjFRC3Vecl(CXObj* obj, const Vec& scale, s32 force)
+void CXObj::SetScale(const Vec& scale, s32 force)
 {
-	obj->mMoveScale.Set(scale);
-	obj->mMoveScale.mTarget.Set(scale);
-	if (obj->mJObj) {
-		obj->CJObj::SetScale(scale, force);
+	mMoveScale.Set(scale);
+	mMoveScale.mTarget.Set(scale);
+	if (mJObj) {
+		CJObj::SetScale(scale, force);
 	}
 }
 
