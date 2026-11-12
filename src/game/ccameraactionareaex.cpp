@@ -235,7 +235,9 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 
 static inline BOOL BothAreaTests(BOOL polygon, BOOL height)
 {
-	return polygon && height;
+	if (polygon && height)
+		return TRUE;
+	return FALSE;
 }
 
 static inline BOOL ContainsPoint(const CamAreaInfo& area, const Vec& pos)
