@@ -364,18 +364,28 @@ extern "C" s32 AddAna(s32 id, f32 x, f32 y, f32 z)
 	u32 i;
 
 	if (id >= 0 && id < ARRAY_COUNT(anas)) {
+#if defined(VERSION_GGTP01)
+		Ana* ana = &anas[id];
+		if (!(ana->mStatus.mFlags & 1)) {
+			activeAnaNum++;
+		}
+		ana->mStatus.mFlags |= 1;
+		ana->mPos.x = x;
+		ana->mPos.y = y;
+		ana->mPos.z = z;
+		ana->mId    = id;
+#else
 		if (!(anas[id].mStatus.mFlags & 1)) {
 			activeAnaNum++;
 		}
-#if !defined(VERSION_GGTP01)
 		OSReport("id=%d,%4.2f,%4.2f,%4.2f\n", id, x, y, z);
 		OSReport("Ana::%4.2f, %4.2f, %4.2f\n", x, y, z);
-#endif
 		anas[id].mStatus.mFlags |= 1;
 		anas[id].mPos.x = x;
 		anas[id].mPos.y = y;
 		anas[id].mPos.z = z;
 		anas[id].mId    = id;
+#endif
 		return id;
 	}
 

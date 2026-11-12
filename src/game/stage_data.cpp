@@ -615,6 +615,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		strcpy(stage->mDataPath, FormatToStaticBuffer("bin/%s.bin", stageTable[index].fileName));
 #elif defined(VERSION_PAL)
 		StageDesc* desc = &stageTable[index];
+		// NONMATCHING: retail schedules the language index and the table pointer differently here
 		strcpy(stage->mDataPath, FormatToStaticBuffer("bin%s/%s.bin", gResourceDirectorySuffixByLanguage[gGame.mLanguage], desc->fileName));
 #else
 		strcpy(stage->mDataPath,

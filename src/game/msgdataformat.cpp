@@ -10,6 +10,8 @@ struct MessageFormatBuffers {
 };
 
 #if !defined(VERSION_JP)
+// NONMATCHING: retail stores the separator without sign extension and sets up
+// the loop counters with separate li instructions.
 static inline void GroupDigits(MessageFormatBuffers& buffers)
 {
 	u8 separator = ',';
@@ -31,10 +33,11 @@ static inline void GroupDigits(MessageFormatBuffers& buffers)
 #endif
 	s32 len   = strlen(buffers.text);
 	s32 count = 0;
+	s32 i;
 #if defined(VERSION_PAL)
 	u8 lang = gGame.mLanguage;
 #endif
-	for (s32 i = 0; i < len; ++i, ++count) {
+	for (i = 0; i < len; ++i, ++count) {
 		buffers.format[count] = buffers.text[(len - 1) - i];
 		if ((i + 1) % 3 == 0 && i + 1 < len) {
 #if defined(VERSION_PAL)
@@ -47,7 +50,7 @@ static inline void GroupDigits(MessageFormatBuffers& buffers)
 	}
 	// When the formatted value is empty, retail reverses the format string left in the scratch buffer.
 	count = strlen(buffers.format);
-	for (s32 i = 0; i < count; ++i)
+	for (i = 0; i < count; ++i)
 		buffers.text[i] = buffers.format[(count - 1) - i];
 	buffers.text[count] = 0;
 }
