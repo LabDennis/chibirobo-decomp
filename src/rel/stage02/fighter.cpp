@@ -6724,7 +6724,7 @@ extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx m)
 				f32 c     = cos(angle + reticleSpin[j]);
 				DrawGsLineSegment(gGame, 0, color, color, s * radius + cx, c * radius + cy, 0.0f, s * inner + cx, c * inner + cy, 0.0f);
 			}
-			color = ~0xFF | (u8)(s32)(0.5f * (255.0f * (10 - j) / 10.0f));
+			color = 0xFFFFFF00 | (u8)(s32)(0.5f * (255.0f * (10 - j) / 10.0f));
 		}
 	}
 	{
