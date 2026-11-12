@@ -2071,7 +2071,7 @@ void XObjSpiderSmall::UpdateObject(u32 frames)
 			dir.y = _984;
 			SetRotateY(_980, _98C);
 		} else {
-			if (mSpiderStatus.mFlags & 0x10) {
+			if (mSpiderStatus.mFlags & 8) {
 				mMoveTranslate.y += _99C;
 			} else {
 				mMoveTranslate.y = mHome.y;
