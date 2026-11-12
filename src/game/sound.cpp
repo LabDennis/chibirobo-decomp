@@ -33,9 +33,234 @@ BOOL AXDriverIsStreamActive(void);
 BOOL AXDriverSetAllStreamPitches(s16 pitch);
 }
 
-// Sound-effect tables share a data pool.
-extern "C" u8 lbl_802107A0[];
-extern "C" s32 sMessageGroup14SoundIds[2];
+// the file's tables. retail reaches them through one base, the first of them
+// not read by anything in the game
+s32 lbl_802107A0[26] = {
+	0, 3, 0, 0, 3, 0, 0, 2, 0, 0, 2, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 3, 0,
+};
+
+// the sound bank of each stage
+const char* stageSfxTable[40] = {
+	NULL,
+	"sfx_kitchen.ssm",
+	"sfx_stage02.ssm",
+	"sfx_souko.ssm",
+	"sfx_jennyroom.ssm",
+	"sfx_stage05.ssm",
+	"sfx_papamama.ssm",
+	"sfx_stage07.ssm",
+	NULL,
+	"sfx_uraniwa.ssm",
+	NULL,
+	"sfx_pipe.ssm",
+	NULL,
+	"sfx_manual.ssm",
+	"sfx_stage07.ssm",
+	NULL,
+	"sfx_ufo.ssm",
+	NULL,
+	"sfx_ufo.ssm",
+	"sfx_stage07.ssm",
+	NULL,
+	NULL,
+	"sfx_martial.ssm",
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	"sfx_manual.ssm",
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+	NULL,
+};
+
+// the streamed tracks and how loud each plays
+MusicEntry musicTable[109] = {
+	{ "streaming/sample.hps", 255 },
+	{ "streaming/sample.hps", 255 },
+	{ "streaming/funk.hps", 255 },
+	{ "streaming/theme.hps", 150 },
+	{ "streaming/menu.hps", 150 },
+	{ "streaming/bgm.hps", 180 },
+	{ "streaming/k_sabi.hps", 180 },
+	{ "streaming/k_theme1.hps", 255 },
+	{ "streaming/UFOBGM.hps", 255 },
+	{ "streaming/blues.hps", 255 },
+	{ "streaming/party.hps", 255 },
+	{ "streaming/dokodaka.hps", 120 },
+	{ "streaming/spider.hps", 255 },
+	{ "streaming/appearance.hps", 255 },
+	{ "streaming/recollection_intro.hps", 255 },
+	{ "streaming/recollection.hps", 255 },
+	{ "streaming/bgm_night.hps", 180 },
+	{ "streaming/army_theme.hps", 255 },
+	{ "streaming/prelude.hps", 255 },
+	{ "streaming/nosehair.hps", 255 },
+	{ "streaming/angry.hps", 255 },
+#if defined(VERSION_JP)
+	{ "streaming/gicco.hps", 255 },
+#else
+	{ "streaming/gicco_us.hps", 255 },
+#endif
+	{ "streaming/reminiscence.hps", 255 },
+	{ "streaming/teriyaki.hps", 255 },
+	{ "streaming/zobin.hps", 255 },
+	{ "streaming/dexy.hps", 255 },
+	{ "streaming/ds.hps", 180 },
+	{ "streaming/tpds.hps", 180 },
+	{ "streaming/ship.hps", 150 },
+	{ "streaming/toy_BGM1.hps", 255 },
+	{ "streaming/toy_BGM2.hps", 255 },
+	{ "streaming/toy_BGM3.hps", 255 },
+	{ "streaming/spider2.hps", 255 },
+	{ "streaming/training.hps", 255 },
+	{ "streaming/army_training.hps", 255 },
+	{ "streaming/mission_success.hps", 255 },
+	{ "streaming/mission_failure.hps", 255 },
+	{ "streaming/snare_loop.hps", 255 },
+	{ "streaming/army_escape_j1.hps", 255 },
+	{ "streaming/army_escape_j2.hps", 255 },
+	{ "streaming/ennui.hps", 255 },
+	{ "streaming/tao.hps", 255 },
+	{ "streaming/shadow.hps", 255 },
+	{ "streaming/reunion.hps", 255 },
+	{ "streaming/kaimono.hps", 255 },
+	{ "streaming/chip.hps", 255 },
+	{ "streaming/hiru.hps", 255 },
+	{ "streaming/hiru_wipe.hps", 255 },
+	{ "streaming/yoru.hps", 255 },
+	{ "streaming/yoru_wipe.hps", 255 },
+	{ "streaming/rankup_j1.hps", 255 },
+	{ "streaming/rankup_j2.hps", 255 },
+	{ "streaming/super_robo.hps", 255 },
+	{ "streaming/capsule.hps", 255 },
+	{ "streaming/kako.hps", 255 },
+	{ "streaming/cooking.hps", 255 },
+	{ "streaming/timeslip.hps", 155 },
+	{ "streaming/faceoff.hps", 255 },
+	{ "streaming/bb.hps", 150 },
+	{ "streaming/love.hps", 220 },
+	{ "streaming/heaven.hps", 255 },
+	{ "streaming/papa1.hps", 255 },
+	{ "streaming/papa2.hps", 255 },
+	{ "streaming/papa3.hps", 255 },
+	{ "streaming/m_spd1.hps", 255 },
+	{ "streaming/m_spd2.hps", 255 },
+	{ "streaming/martial_law.hps", 255 },
+	{ "streaming/fear.hps", 255 },
+	{ "streaming/blue.hps", 255 },
+	{ "streaming/battle1.hps", 255 },
+	{ "streaming/battle2.hps", 255 },
+	{ "streaming/violin.hps", 255 },
+	{ "streaming/wrench.hps", 60 },
+	{ "streaming/peach.hps", 255 },
+	{ "streaming/peach2.hps", 255 },
+	{ "streaming/present.hps", 180 },
+	{ "streaming/toyrex.hps", 255 },
+	{ "streaming/ff.hps", 255 },
+	{ "streaming/kofunk1.hps", 255 },
+	{ "streaming/kofunk2.hps", 255 },
+	{ "streaming/death.hps", 255 },
+	{ "streaming/tea_party.hps", 150 },
+	{ "streaming/arise.hps", 255 },
+	{ "streaming/grief.hps", 255 },
+	{ "streaming/fake.hps", 255 },
+	{ "streaming/memory.hps", 255 },
+	{ "streaming/hock.hps", 255 },
+	{ "streaming/yodomi.hps", 200 },
+	{ "streaming/yodomi2.hps", 220 },
+	{ "streaming/departure.hps", 220 },
+	{ "streaming/abare.hps", 255 },
+	{ "streaming/sanpoo.hps", 255 },
+	{ "streaming/conquest.hps", 255 },
+	{ "streaming/change.hps", 255 },
+	{ "streaming/sunmida.hps", 255 },
+	{ "streaming/dupe.hps", 255 },
+	{ "streaming/ecstasy.hps", 255 },
+	{ "streaming/rain.hps", 255 },
+	{ "streaming/car.hps", 230 },
+	{ "streaming/chicken.hps", 255 },
+	{ "streaming/american.hps", 255 },
+	{ "streaming/pipe.hps", 255 },
+	{ "streaming/nwing.hps", 255 },
+	{ "streaming/victory.hps", 180 },
+	{ "streaming/mugen.hps", 255 },
+	{ "streaming/yusho.hps", 255 },
+	{ "streaming/souko.hps", 255 },
+	{ "streaming/living.hps", 255 },
+	{ "streaming/entrance.hps", 255 },
+};
+
+f32 gSoundFalloffRanges[5][4] = {
+	{ 100.0f, 75.0f, 50.0f, 25.0f }, { 300.0f, 200.0f, 200.0f, 150.0f }, { 75.0f, 40.0f, 30.0f, 25.0f },
+	{ 30.0f, 20.0f, 10.0f, 5.0f },   { 600.0f, 300.0f, 200.0f, 150.0f },
+};
+
+// five footstep sounds for each kind of floor
+static s32 sSurfaceSoundIds[13][5] = {
+	{ 0x21, 0x22, 0x23, 0x24, 0x25 }, { 0x26, 0x27, 0x28, 0x29, 0x2A }, { 0x21, 0x22, 0x23, 0x24, 0x25 }, { 0x2B, 0x2C, 0x2D, 0x2E, 0x2F },
+	{ 0x30, 0x31, 0x32, 0x33, 0x34 }, { 0x21, 0x22, 0x23, 0x24, 0x25 }, { 0x21, 0x22, 0x23, 0x24, 0x25 }, { 0x2B, 0x2C, 0x2D, 0x2E, 0x2F },
+	{ 0x2B, 0x2C, 0x2D, 0x2E, 0x2F }, { 0x21, 0x22, 0x23, 0x24, 0x25 }, { 0x30, 0x31, 0x32, 0x33, 0x34 }, { 0x2B, 0x2C, 0x2D, 0x2E, 0x2F },
+	{ 0x21, 0x22, 0x23, 0x24, 0x25 },
+};
+
+static s32 sAlternatingSound11[4]     = { 0x11, 0x12, 0x13, 0x14 };
+static s32 sAlternatingSound15[4]     = { 0x15, 0x16, 0x17, 0x18 };
+static s32 sSoundFDSequence[25]       = { 0xFD,  0xFE,  0xFF,  0x100, 0xFD,  0xFE,  0xFF,  0x100, 0x101, 0x101, 0x102, 0x102, 0x103,
+	                                      0x103, 0x104, 0x105, 0x106, 0x101, 0x107, 0x102, 0x108, 0x103, 0x109, 0x10A, 0x10B };
+static s32 sSound110Sequence[8]       = { 0x110, 0x111, 0x112, 0x113, 0x114, 0x115, 0x116, 0x117 };
+static s32 sSound137Sequence[11]      = { 0x137, 0x138, 0x139, 0x13A, 0x13B, 0x13C, 0x13D, 0x13E, 0x13F, 0x140, 0x141 };
+static s32 sSound176Variants[6]       = { 0x176, 0x177, 0x178, 0x179, 0x17A, 0x17B };
+static s32 sSound175Variants[6]       = { 0x16F, 0x170, 0x171, 0x172, 0x173, 0x174 };
+static s32 sMessageGroup0SoundIds[7]  = { 0xC1, 0xC2, 0xC3, 0xC4, 0xC5, 0xC6, 0xC7 };
+static s32 sMessageGroup2SoundIds[10] = { 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9A, 0x9B };
+static s32 sMessageGroup4SoundIds[10] = { 0x9E, 0x9F, 0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7 };
+static s32 sMessageGroup3SoundIds[10] = { 0xB7, 0xB8, 0xB9, 0xBA, 0xBB, 0xBC, 0xBD, 0xBE, 0xBF, 0xC0 };
+static s32 sMessageGroup9SoundIds[10]
+    = { 0x110000, 0x110001, 0x110002, 0x110003, 0x110004, 0x110005, 0x110006, 0x110007, 0x110008, 0x110009 };
+static s32 sMessageGroup8SoundIds[5]   = { 0xC0000, 0xC0001, 0xC0002, 0xC0003, 0xC0004 };
+static s32 sMessageGroup7SoundIds[10]  = { 0xD0000, 0xD0001, 0xD0002, 0xD0003, 0xD0004, 0xD0005, 0xD0006, 0xD0007, 0xD0008, 0xD0009 };
+static s32 sMessageGroup10SoundIds[5]  = { 0x50, 0x51, 0x52, 0x53, 0x54 };
+static s32 sMessageGroup29SoundIds[6]  = { 0x55, 0x56, 0x57, 0x58, 0x59, 0x5A };
+static s32 sMessageGroup11SoundIds[5]  = { 0xE0000, 0xE0001, 0xE0002, 0xE0003, 0xE0004 };
+static s32 sMessageGroup12SoundIds[6]  = { 0x5B, 0x5C, 0x5D, 0x5E, 0x5F, 0x60 };
+static s32 sMessageGroup13SoundIds[10] = { 0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6A };
+static s32 sMessageGroup15SoundIds[12] = { 0x6B, 0x6C, 0x6D, 0x6E, 0x6F, 0x70, 0x71, 0x72, 0x73, 0x74, 0x75, 0x76 };
+static s32 sMessageGroup16SoundIds[10] = { 0xC8, 0xC9, 0xCA, 0xCB, 0xCC, 0xCD, 0xCE, 0xCF, 0xD0, 0xD1 };
+static s32 sMessageGroup17SoundIds[10] = { 0x77, 0x78, 0x79, 0x7A, 0x7B, 0x7C, 0x7D, 0x7E, 0x7F, 0x80 };
+static s32 sMessageGroup19SoundIds[10]
+    = { 0x100000, 0x100001, 0x100002, 0x100003, 0x100004, 0x100005, 0x100006, 0x100007, 0x100008, 0x100009 };
+static s32 sMessageGroup20SoundIds[10] = { 0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF, 0xE0, 0xE1 };
+static s32 sMessageGroup21SoundIds[10] = { 0xE2, 0xE3, 0xE4, 0xE5, 0xE6, 0xE7, 0xE8, 0xE9, 0xEA, 0xEB };
+static s32 sMessageGroup22SoundIds[10] = { 0xF0000, 0xF0001, 0xF0002, 0xF0003, 0xF0004, 0xF0005, 0xF0006, 0xF0007, 0xF0008, 0xF0009 };
+static s32 sMessageGroup23SoundIds[10] = { 0xF000A, 0xF000B, 0xF000C, 0xF000D, 0xF000E, 0xF000F, 0xF0010, 0xF0011, 0xF0012, 0xF0013 };
+static s32 sMessageGroup18SoundIds[10] = { 0x14C, 0x14D, 0x14E, 0x14F, 0x150, 0x151, 0x152, 0x153, 0x154, 0x155 };
+static s32 sMessageGroup1SoundIds[5]   = { 0x156, 0x157, 0x158, 0x159, 0x15A };
+static s32 sMessageGroup24SoundIds[6]  = { 0x10000A, 0x10000B, 0x10000C, 0x10000D, 0x10000E, 0x10000F };
+static s32 sMessageGroup27SoundIds[10] = { 0x163, 0x164, 0x165, 0x166, 0x167, 0x168, 0x169, 0x16A, 0x16B, 0x16C };
+static s32 sMessageGroup25SoundIds[11]
+    = { 0x120000, 0x120001, 0x120002, 0x120003, 0x120004, 0x120005, 0x120006, 0x120007, 0x120008, 0x120009, 0x12000A };
+static s32 sMessageGroup26SoundIds[12]
+    = { 0x12000B, 0x12000C, 0x12000D, 0x12000E, 0x12000F, 0x120010, 0x120011, 0x120012, 0x120013, 0x120014, 0x120015, 0x120016 };
+static s32 sMessageGroup28SoundIds[6] = { 0x90014, 0x90015, 0x90016, 0x90017, 0x90018, 0x90019 };
+static s32 sMessageGroup30SoundIds[8] = { 0x60010, 0x60011, 0x60012, 0x60013, 0x60014, 0x60015, 0x60016, 0x60017 };
+static s32 sMessageGroup31SoundIds[4] = { 0x1AD, 0x1AE, 0x1AF, 0x1B0 };
+static s32 sMessageGroup32SoundIds[4] = { 0x1B1, 0x1B2, 0x1B3, 0x1B4 };
+static s32 sMessageGroup33SoundIds[6] = { 0x10027, 0x10028, 0x10029, 0x1002A, 0x1002B, 0x1002C };
+static s32 gSoundMenuEffects[10]      = { 0xEE, 0xEF, 0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7 };
+static s32 gSoundMenuSelections[5]    = { 8, 9, 7, 0, 4 };
+
+static s32 sMessageGroup14SoundIds[2] = { 0x9C, 0x9D };
+
 extern "C" s32 HSD_Randi(s32 max);
 extern "C" void HSD_SynthSetSoundMode(s32 mode);
 
@@ -58,7 +283,7 @@ static inline s32 SelectAlternatingSound(XSound* sound, s32* stop, s32* play)
 	return play[sound->_18C++];
 }
 
-static inline s32 SelectMappedSound(s32 sfx, u8* data)
+static inline s32 SelectMappedSound(s32 sfx)
 {
 	s32 index;
 	switch (sfx) {
@@ -80,7 +305,7 @@ static inline s32 SelectMappedSound(s32 sfx, u8* data)
 	default:
 		return sfx;
 	}
-	return ((s32*)(data + 0xACC))[((s32*)(data + 0xAF4))[index]];
+	return gSoundMenuEffects[gSoundMenuSelections[index]];
 }
 
 // a music id's volume from musicTable, 0 for anything that isn't music
@@ -114,7 +339,6 @@ static inline bool UseRaisedLiftPitch()
  */
 extern "C" void PlayMessageGlyphSound(XSound* sound, u32 group, f32 strength, u8 first, u8 second)
 {
-	u8* data   = lbl_802107A0;
 	u32 volume = 255.0f * strength;
 	if (strength < 0.5f) {
 		volume *= 0.2f;
@@ -126,51 +350,51 @@ extern "C" void PlayMessageGlyphSound(XSound* sound, u32 group, f32 strength, u8
 	s32 count;
 	switch (group) {
 	case 0:
-		ids   = (s32*)(data + 0x6C4);
+		ids   = sMessageGroup0SoundIds;
 		count = 7;
 		break;
 	case 1:
-		ids   = (s32*)(data + 0x9AC);
+		ids   = sMessageGroup1SoundIds;
 		count = 5;
 		break;
 	case 2:
-		ids   = (s32*)(data + 0x6E0);
+		ids   = sMessageGroup2SoundIds;
 		count = 10;
 		break;
 	case 3:
-		ids   = (s32*)(data + 0x730);
+		ids   = sMessageGroup3SoundIds;
 		count = 10;
 		break;
 	case 4:
-		ids   = (s32*)(data + 0x708);
+		ids   = sMessageGroup4SoundIds;
 		count = 10;
 		break;
 	case 7:
-		ids   = (s32*)(data + 0x794);
+		ids   = sMessageGroup7SoundIds;
 		count = 10;
 		break;
 	case 8:
-		ids   = (s32*)(data + 0x780);
+		ids   = sMessageGroup8SoundIds;
 		count = 5;
 		break;
 	case 9:
-		ids   = (s32*)(data + 0x758);
+		ids   = sMessageGroup9SoundIds;
 		count = 10;
 		break;
 	case 10:
-		ids   = (s32*)(data + 0x7BC);
+		ids   = sMessageGroup10SoundIds;
 		count = 5;
 		break;
 	case 11:
-		ids   = (s32*)(data + 0x7E8);
+		ids   = sMessageGroup11SoundIds;
 		count = 5;
 		break;
 	case 12:
-		ids   = (s32*)(data + 0x7FC);
+		ids   = sMessageGroup12SoundIds;
 		count = 6;
 		break;
 	case 13:
-		ids   = (s32*)(data + 0x814);
+		ids   = sMessageGroup13SoundIds;
 		count = 10;
 		break;
 	case 14:
@@ -178,79 +402,79 @@ extern "C" void PlayMessageGlyphSound(XSound* sound, u32 group, f32 strength, u8
 		count = 2;
 		break;
 	case 15:
-		ids   = (s32*)(data + 0x83C);
+		ids   = sMessageGroup15SoundIds;
 		count = 12;
 		break;
 	case 16:
-		ids   = (s32*)(data + 0x86C);
+		ids   = sMessageGroup16SoundIds;
 		count = 10;
 		break;
 	case 17:
-		ids   = (s32*)(data + 0x894);
+		ids   = sMessageGroup17SoundIds;
 		count = 10;
 		break;
 	case 18:
-		ids   = (s32*)(data + 0x984);
+		ids   = sMessageGroup18SoundIds;
 		count = 10;
 		break;
 	case 19:
-		ids   = (s32*)(data + 0x8BC);
+		ids   = sMessageGroup19SoundIds;
 		count = 10;
 		break;
 	case 20:
-		ids   = (s32*)(data + 0x8E4);
+		ids   = sMessageGroup20SoundIds;
 		count = 10;
 		break;
 	case 21:
-		ids   = (s32*)(data + 0x90C);
+		ids   = sMessageGroup21SoundIds;
 		count = 10;
 		break;
 	case 22:
-		ids   = (s32*)(data + 0x934);
+		ids   = sMessageGroup22SoundIds;
 		count = 10;
 		break;
 	case 23:
-		ids   = (s32*)(data + 0x95C);
+		ids   = sMessageGroup23SoundIds;
 		count = 10;
 		break;
 	case 24:
-		ids   = (s32*)(data + 0x9C0);
+		ids   = sMessageGroup24SoundIds;
 		count = 6;
 		break;
 	case 25:
-		ids   = (s32*)(data + 0xA00);
+		ids   = sMessageGroup25SoundIds;
 		count = 11;
 		break;
 	case 26:
-		ids   = (s32*)(data + 0xA2C);
+		ids   = sMessageGroup26SoundIds;
 		count = 12;
 		break;
 	case 27:
-		ids   = (s32*)(data + 0x9D8);
+		ids   = sMessageGroup27SoundIds;
 		count = 10;
 		break;
 	case 28:
-		ids   = (s32*)(data + 0xA5C);
+		ids   = sMessageGroup28SoundIds;
 		count = 6;
 		break;
 	case 29:
-		ids   = (s32*)(data + 0x7D0);
+		ids   = sMessageGroup29SoundIds;
 		count = 6;
 		break;
 	case 30:
-		ids   = (s32*)(data + 0xA74);
+		ids   = sMessageGroup30SoundIds;
 		count = 8;
 		break;
 	case 31:
-		ids   = (s32*)(data + 0xA94);
+		ids   = sMessageGroup31SoundIds;
 		count = 4;
 		break;
 	case 32:
-		ids   = (s32*)(data + 0xAA4);
+		ids   = sMessageGroup32SoundIds;
 		count = 4;
 		break;
 	case 33:
-		ids   = (s32*)(data + 0xAB4);
+		ids   = sMessageGroup33SoundIds;
 		count = 6;
 		break;
 	default:
@@ -537,7 +761,6 @@ extern "C" BOOL IsGameSoundPlaying(XSound* sound, s32 sfx)
  */
 extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 {
-	u8* data = lbl_802107A0;
 	if (isAllSfx(sfx)) {
 		if (sfx == (s32)0xFFFF0000) {
 			return 0;
@@ -553,7 +776,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		if (index >= 0x6D) {
 			index = 0;
 		}
-		MusicEntry* music = (MusicEntry*)(data + 0x108) + index;
+		MusicEntry* music = musicTable + index;
 		if (sound->mCurrentMusicId == sfx) {
 			return 1;
 		}
@@ -605,7 +828,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 				HSD_AudioSFXStartParam(0x19E, 50, 127, 0, 0);
 				break;
 			}
-			sfx = ((s32(*)[5])(data + 0x4C0))[surface][HSD_Randi(5)];
+			sfx = sSurfaceSoundIds[surface][HSD_Randi(5)];
 		}
 		if (sfx < 0) {
 			return -1;
@@ -622,13 +845,13 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		sound->_18C = 0;
 		break;
 	case 0x11:
-		sfx = SelectAlternatingSound(sound, (s32*)(data + 0x5D4), (s32*)(data + 0x5C4));
+		sfx = SelectAlternatingSound(sound, sAlternatingSound15, sAlternatingSound11);
 		if (sfx < 0) {
 			return -1;
 		}
 		break;
 	case 0x15:
-		sfx = SelectAlternatingSound(sound, (s32*)(data + 0x5C4), (s32*)(data + 0x5D4));
+		sfx = SelectAlternatingSound(sound, sAlternatingSound11, sAlternatingSound15);
 		if (sfx < 0) {
 			return -1;
 		}
@@ -648,7 +871,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 			if (sound->_190 < 0 || (u32)sound->_190 >= 25) {
 				sound->_190 = 0;
 			}
-			sfx = ((s32*)(data + 0x5E4))[sound->_190++];
+			sfx = sSoundFDSequence[sound->_190++];
 		}
 		break;
 	case 0x110:
@@ -661,7 +884,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 			if (sound->_190 < 0 || (u32)sound->_190 >= 8) {
 				sound->_190 = 0;
 			}
-			sfx = ((s32*)(data + 0x648))[sound->_190++];
+			sfx = sSound110Sequence[sound->_190++];
 		}
 		if (sfx < 0) {
 			return -1;
@@ -678,23 +901,23 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 			PauseMusic(sound, 180);
 		}
 		if (sfx == 0x175) {
-			sfx = ((s32*)(data + 0x6AC))[HSD_Randi(6)];
+			sfx = sSound175Variants[HSD_Randi(6)];
 		} else {
-			sfx = ((s32*)(data + 0x694))[HSD_Randi(6)];
+			sfx = sSound176Variants[HSD_Randi(6)];
 		}
 		break;
 	case 0x137:
 		if (sound->_194 < 0 || (u32)sound->_194 >= 11) {
 			sound->_194 = 0;
 		}
-		sfx = ((s32*)(data + 0x668))[sound->_194++];
+		sfx = sSound137Sequence[sound->_194++];
 		break;
 	case 0x84:
 	case 0x85:
 	case 0x86:
 	case 0x87:
 	case 0x88:
-		sfx = SelectMappedSound(sfx, data);
+		sfx = SelectMappedSound(sfx);
 		break;
 	case 0x11D:
 		if (sound->_198 > 0) {
