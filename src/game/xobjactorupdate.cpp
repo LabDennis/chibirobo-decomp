@@ -29,26 +29,26 @@ extern "C" void UpdateObject__9XObjActorFUl(XObj* object, u32 frames)
  * @note Address: 0x80107F18
  * @note Size: 0xFC
  */
-extern "C" BOOL LoadFromPlacement__9XObjActorFRC9CoordInfo(XObjActor* actor, const CoordInfo& info)
+BOOL XObjActor::LoadFromPlacement(const CoordInfo& info)
 {
-	if (LoadFromPlacement__4XObjFRC9CoordInfo(actor, &info)) {
-		actor->_980 = 0.0f;
-		actor->_984 = 0.0f;
-		actor->_988 = 0.0f;
+	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
+		_980 = 0.0f;
+		_984 = 0.0f;
+		_988 = 0.0f;
 		for (u32 i = 0; i < 20; ++i) {
-			actor->mCmd[i] = 0;
+			mCmd[i] = 0;
 		}
-		actor->_A4C            = -1;
-		actor->_A50            = NULL;
-		actor->mHeldObjects[0] = NULL;
-		actor->mHeldObjects[1] = NULL;
-		actor->ClearStateHandler();
-		actor->ResetActorState();
-		actor->mLookMode   = 0;
-		actor->mHeadYaw    = 0.0f;
-		actor->mLookAngle  = 0.0f;
-		actor->mLookRate   = 0.0f;
-		actor->mLookTarget = 0;
+		_A4C            = -1;
+		_A50            = NULL;
+		mHeldObjects[0] = NULL;
+		mHeldObjects[1] = NULL;
+		ClearStateHandler();
+		ResetActorState();
+		mLookMode   = 0;
+		mHeadYaw    = 0.0f;
+		mLookAngle  = 0.0f;
+		mLookRate   = 0.0f;
+		mLookTarget = 0;
 		return TRUE;
 	}
 	return FALSE;
@@ -119,69 +119,69 @@ extern "C" void vf94__9XObjActorFv(XObjActor* actor)
  * @note Address: 0x801081F0
  * @note Size: 0x200
  */
-extern "C" void ResetObjectState__9XObjActorFv(XObjActor* actor)
+void XObjActor::ResetObjectState()
 {
 	const Vec* reset = gActorUpdateConstants.mReset;
-	ResetObjectState__4XObjFv(actor);
-	actor->_980         = 0.0f;
-	actor->_984         = 0.0f;
-	actor->_988         = 0.0f;
-	actor->_98C         = PI;
-	actor->_990         = 0;
-	actor->_994         = 0;
-	actor->_998.mFlags  = 0;
-	actor->_9A0         = 0;
-	actor->_9A4         = 0;
-	actor->_9A8         = 1.0f;
-	actor->_9AC         = 1.0f;
-	Vec v0              = reset[0];
-	actor->mHitPos.x    = v0.x;
-	actor->mHitPos.y    = v0.y;
-	actor->mHitPos.z    = v0.z;
-	Vec v1              = reset[1];
-	actor->_9BC.x       = v1.x;
-	actor->_9BC.y       = v1.y;
-	actor->_9BC.z       = v1.z;
-	Vec v2              = reset[2];
-	actor->_9C8.x       = v2.x;
-	actor->_9C8.y       = v2.y;
-	actor->_9C8.z       = v2.z;
-	Vec v3              = reset[3];
-	actor->_A40.x       = v3.x;
-	actor->_A40.y       = v3.y;
-	actor->_A40.z       = v3.z;
-	actor->mHitStrength = 0.0f;
-	actor->_9D8         = 0.0f;
-	actor->_9DC         = 0.0f;
-	actor->mCmd[0]      = 0;
-	actor->mCmd[1]      = 0;
-	actor->mCmd[18]     = 0;
+	ResetObjectState__4XObjFv(this);
+	_980         = 0.0f;
+	_984         = 0.0f;
+	_988         = 0.0f;
+	_98C         = PI;
+	_990         = 0;
+	_994         = 0;
+	_998.mFlags  = 0;
+	_9A0         = 0;
+	_9A4         = 0;
+	_9A8         = 1.0f;
+	_9AC         = 1.0f;
+	Vec v0       = reset[0];
+	mHitPos.x    = v0.x;
+	mHitPos.y    = v0.y;
+	mHitPos.z    = v0.z;
+	Vec v1       = reset[1];
+	_9BC.x       = v1.x;
+	_9BC.y       = v1.y;
+	_9BC.z       = v1.z;
+	Vec v2       = reset[2];
+	_9C8.x       = v2.x;
+	_9C8.y       = v2.y;
+	_9C8.z       = v2.z;
+	Vec v3       = reset[3];
+	_A40.x       = v3.x;
+	_A40.y       = v3.y;
+	_A40.z       = v3.z;
+	mHitStrength = 0.0f;
+	_9D8         = 0.0f;
+	_9DC         = 0.0f;
+	mCmd[0]      = 0;
+	mCmd[1]      = 0;
+	mCmd[18]     = 0;
 	for (u32 i = 0; i < 16; ++i) {
-		actor->mCmd[i + 2] = 0;
+		mCmd[i + 2] = 0;
 	}
-	actor->_A38 = 0.0f;
-	actor->_A3C = 0.0f;
+	_A38 = 0.0f;
+	_A3C = 0.0f;
 	for (u32 i = 0; i < 8; ++i) {
-		actor->mParts[i].mObj   = NULL;
-		actor->mParts[i].mJoint = NULL;
+		mParts[i].mObj   = NULL;
+		mParts[i].mJoint = NULL;
 	}
-	actor->_A4C            = -1;
-	actor->_A50            = NULL;
-	actor->mHeldObjects[0] = NULL;
-	actor->mHeldObjects[1] = NULL;
-	actor->mLookMode       = 0;
-	actor->mHeadYaw        = 0.0f;
-	actor->mLookAngle      = 0.0f;
-	actor->mLookRate       = 0.0f;
-	actor->mLookTarget     = 0;
+	_A4C            = -1;
+	_A50            = NULL;
+	mHeldObjects[0] = NULL;
+	mHeldObjects[1] = NULL;
+	mLookMode       = 0;
+	mHeadYaw        = 0.0f;
+	mLookAngle      = 0.0f;
+	mLookRate       = 0.0f;
+	mLookTarget     = 0;
 }
 
 /**
  * @note Address: 0x801083F0
  * @note Size: 0x34
  */
-extern "C" void InitializeObject__9XObjActorFUl(XObjActor* actor, u32 id)
+void XObjActor::InitializeObject(u32 id)
 {
-	InitializeObject__4XObjFUl(actor, id);
-	actor->mAnimSfx.mEvents = NULL;
+	InitializeObject__4XObjFUl(this, id);
+	mAnimSfx.mEvents = NULL;
 }
