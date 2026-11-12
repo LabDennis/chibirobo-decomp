@@ -3084,8 +3084,8 @@ extern "C" void PopulateShopCatalogPage(MenuPCPage* list)
 	list->mNext[0].mItem  = -1;
 	list->mNext[0].mCount = -1;
 	list->mNext[0].mPrice = -1;
-	count                 = 0;
 	n                     = 0;
+	count                 = 0;
 	for (i = 0; i < 20; i++) {
 		const MenuPCItem* entry = sShopCatalogEntries + i;
 		s16 itemId              = entry->mItem;
@@ -3103,8 +3103,8 @@ extern "C" void PopulateShopCatalogPage(MenuPCPage* list)
 			count++;
 		}
 	}
-	count = 0;
 	n     = 0;
+	count = 0;
 	for (i = 0; i < 20; i++) {
 		const MenuPCItem* entry = sShopCatalogEntries + i;
 		s16 itemId              = entry->mItem;
