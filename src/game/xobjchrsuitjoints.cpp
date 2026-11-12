@@ -5,15 +5,6 @@
 
 extern "C" void SetPlayerPopperMountHidden(XObj* player, BOOL hidden);
 
-static inline void MountSuitSkeleton(XObjChr* player, s32 suit)
-{
-	s32 suitPath[]  = { 0, 1, 0 };
-	HSD_JObj* mount = FindJointByPath(player->mJObj, suitPath, 3);
-	mount->child    = player->mSuits.mJoints[suit];
-	for (HSD_JObj* child = mount->child; child; child = child->next)
-		child->parent = mount;
-}
-
 static inline HSD_JObj* FindPlayerToolMount(HSD_JObj* root)
 {
 	s32 tool[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
@@ -41,7 +32,11 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 	player->ApplyTransform();
 	if (player->GetAttachment() == 2)
 		SetPlayerPopperMountHidden(player, FALSE);
-	MountSuitSkeleton(player, player->mSuits.mCurrent);
+	s32 suitPath[]  = { 0, 1, 0 };
+	HSD_JObj* mount = FindJointByPath(player->mJObj, suitPath, 3);
+	mount->child    = player->mSuits.mJoints[player->mSuits.mCurrent];
+	for (HSD_JObj* child = mount->child; child; child = child->next)
+		child->parent = mount;
 	struct JointPath {
 		s32 depth;
 		s32* indices;
@@ -89,7 +84,11 @@ extern "C" void RemovePlayerSuit(XObjChr* player)
 	player->ClearAnim();
 	player->ApplyTransform();
 
-	MountSuitSkeleton(player, 0);
+	s32 suitPath[]  = { 0, 1, 0 };
+	HSD_JObj* mount = FindJointByPath(player->mJObj, suitPath, 3);
+	mount->child    = player->mSuits.mJoints[0];
+	for (HSD_JObj* child = mount->child; child; child = child->next)
+		child->parent = mount;
 	player->SetAnim(anim, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
 
 	{

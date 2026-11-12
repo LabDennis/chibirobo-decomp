@@ -192,14 +192,6 @@ static inline void PulseSpiderArena(XObjSpiderBoss* boss)
 	}
 }
 
-static inline void ReadGrabJoint(XObjSpiderBoss* boss, CJObj& joint)
-{
-	s32 path[] = { 0, 2, 0, 1, 1, 0, 0 };
-	joint.Attach(FindJointByPath(boss->mJObj, path, 7));
-	// Retail updates the joint matrix here and discards the resulting position.
-	joint.GetPos();
-}
-
 static inline bool IsGrabBlocked(s32 anim)
 {
 	switch (anim) {
@@ -304,7 +296,10 @@ extern "C" void State3__14XObjSpiderBossFUl(XObjSpiderBoss* boss, u32 frames)
 			if (boss->mGrabIntervalFrames >= (s32)(3 * BOSS_FPS)) {
 				boss->mStep = 10;
 				SetAttackAnim(boss, 16);
-				ReadGrabJoint(boss, joint);
+				s32 path[] = { 0, 2, 0, 1, 1, 0, 0 };
+				joint.Attach(FindJointByPath(boss->mJObj, path, 7));
+				// Retail updates the joint matrix here and discards the resulting position.
+				joint.GetPos();
 			}
 			PulseSpiderArena(boss);
 		} else if (--boss->mTimer < 0) {
@@ -347,7 +342,10 @@ extern "C" void State3__14XObjSpiderBossFUl(XObjSpiderBoss* boss, u32 frames)
 		if (--boss->mTimer < 0) {
 			boss->mTimer = 3 * BOSS_FPS / frames + (BOSS_FPS / frames) / 2;
 			boss->_9C0   = rand() % 30 + 30;
-			ReadGrabJoint(boss, joint);
+			s32 path[]   = { 0, 2, 0, 1, 1, 0, 0 };
+			joint.Attach(FindJointByPath(boss->mJObj, path, 7));
+			// Retail updates the joint matrix here and discards the resulting position.
+			joint.GetPos();
 			PlaySpiderBossAttachmentAnimation(2);
 			PlayGameSound(&gGame.mSound, 0x16001f, 255);
 			++boss->mStep;

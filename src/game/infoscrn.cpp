@@ -524,14 +524,6 @@ static inline void ApproachHudScale(f32& current, f32 target)
 	Approach(&current, &target, step);
 }
 
-static inline void ProjectJointPosition(InfoScrn* h, CVec& position)
-{
-	Vec offset = { position.x - h->_19C->GetTranslateX(), position.y - h->_19C->GetTranslateY(), position.z - h->_19C->GetTranslateZ() };
-	h->_19C->ProjectOffsetToScreen(&offset, &position.x, &position.y, NULL, NULL);
-	position.z = 0;
-	h->_190    = position;
-}
-
 /**
  * @note Address: 0x8006AF34
  * @note Size: 0x1B5C
@@ -705,7 +697,11 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			s32 path[] = { 0, 0 };
 			joint.Attach(FindJointByPath(h->_19C->mJObj, path, 2));
 			position = CVec(joint.GetPos());
-			ProjectJointPosition(h, position);
+			Vec offset
+			    = { position.x - h->_19C->GetTranslateX(), position.y - h->_19C->GetTranslateY(), position.z - h->_19C->GetTranslateZ() };
+			h->_19C->ProjectOffsetToScreen(&offset, &position.x, &position.y, NULL, NULL);
+			position.z = 0;
+			h->_190    = position;
 		}
 		break;
 	case 2:
@@ -717,7 +713,11 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			s32 path[] = { 0, 0 };
 			joint.Attach(FindJointByPath(h->_19C->mJObj, path, 2));
 			position = CVec(joint.GetPos());
-			ProjectJointPosition(h, position);
+			Vec offset
+			    = { position.x - h->_19C->GetTranslateX(), position.y - h->_19C->GetTranslateY(), position.z - h->_19C->GetTranslateZ() };
+			h->_19C->ProjectOffsetToScreen(&offset, &position.x, &position.y, NULL, NULL);
+			position.z = 0;
+			h->_190    = position;
 		}
 		break;
 	case 4:

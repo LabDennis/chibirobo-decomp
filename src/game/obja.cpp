@@ -70,7 +70,7 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 		Vec center
 		    = object->mMoveScale * (object->_794 + ReadFloorCoordinates(object->mFloors[i].mCenterOffset, gObjectFloorOffsetTemplate));
 		Vec extent = object->mMoveScale * ReadFloorCoordinates(object->mFloors[i].mExtent, lbl_80378148);
-		f32 yaw    = FloorYaw(object, i);
+		f32 yaw    = object->mMoveRotate.y + (f32)((f64)DEG2RAD * (f32)object->mFloors[i].mYawDegrees);
 		switch (object->mFloors[i].mId) {
 		case 0:
 		case 1: {
@@ -99,7 +99,7 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 			for (s32 j = 0; j < 4; ++j)
 				corners[j] = object->_794 + ReadFloorCoordinates(object->mFloors[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
 			Vec scale = object->mMoveScale * ReadFloorCoordinates(object->mFloors[i].mExtent, lbl_80378148);
-			f32 angle = FloorYaw(object, i);
+			f32 angle = object->mMoveRotate.y + (f32)((f64)DEG2RAD * (f32)object->mFloors[i].mYawDegrees);
 			Mtx translate, rotate, scaling, transform;
 			PSMTXTrans(translate, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
 			PSMTXScale(scaling, scale.x, scale.y, scale.z);
@@ -221,7 +221,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 			for (int j = 0; j < 4; ++j)
 				corners[j] = object->_794 + ReadObjectFloorOffset(object, i + j);
 			Vec extent = object->mMoveScale * ReadObjectFloorExtent(object, i);
-			f32 angle  = FloorYaw(object, i);
+			f32 angle  = object->mMoveRotate.y + (f32)((f64)DEG2RAD * (f32)object->mFloors[i].mYawDegrees);
 
 			PSMTXTrans(geometry.polygonWorld, origin.x, origin.y, origin.z);
 			PSMTXScale(geometry.polygonScale, extent.x, extent.y, extent.z);
@@ -317,7 +317,7 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 			corners[j] = object->_794 + ReadObjectFloorOffset(object->mFloors[index - 3 + j]);
 		Vec scale = object->mMoveScale * ReadObjectFloorExtent(object->mFloors[index]);
 
-		f32 angleY = FloorYaw(object, index);
+		f32 angleY = object->mMoveRotate.y + (f32)((f64)DEG2RAD * (f32)object->mFloors[index].mYawDegrees);
 		PSMTXTrans(translate, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
 		PSMTXScale(scaling, scale.x, scale.y, scale.z);
 		PSMTXRotRad(rotate, 'y', angleY);

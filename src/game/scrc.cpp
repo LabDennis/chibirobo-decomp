@@ -1399,11 +1399,6 @@ static inline XObjSpiderBoss* ProjectileOwner()
 	return (XObjSpiderBoss*)gGame.mXObjs.mPools[19].mObjects;
 }
 
-static inline bool IsProjectileOwnerActive(XObjSpiderBoss* boss)
-{
-	return (boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000);
-}
-
 static inline void PlaceBossProjectile(XObjActor3* actor, XObjSpiderBoss* boss, int spread)
 {
 	actor->mMoveTranslate.x = HSD_JObjGetTranslationX(boss->mJObj);
@@ -1432,12 +1427,6 @@ static inline void AimBossVolley(XObjActor3* actor, const Vec& center, f32 radiu
 	}
 	++gSpiderBossVolleySlot;
 	++actor->_B80;
-}
-
-static inline void ProjectileBurst(XObjActor3* actor, s32 id, f32 yaw)
-{
-	Vec scale       = { 1, 1, 1 };
-	actor->_1DC0[0] = (s32)gGame.mParticle.CreateSRT(id, 1, actor->mMoveTranslate, scale, (Vec) { 0, yaw, 0 }, TRUE);
 }
 
 static inline bool BossProjectileLanded(XObjActor3* actor, u32 frames)
@@ -1476,7 +1465,7 @@ void XObjActor3::Kind13(u32 frames)
 	case 0:
 		if (!(_B8C.mFlags & 4)) {
 			XObjSpiderBoss* boss = ProjectileOwner();
-			if (IsProjectileOwnerActive(boss)) {
+			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				PlaceBossProjectile(this, boss, 64);
 				_B78   = 16;
 				f32 dx = pos.x - mMoveTranslate.x, dz = pos.z - mMoveTranslate.z;
@@ -1491,7 +1480,7 @@ void XObjActor3::Kind13(u32 frames)
 		break;
 	case 1: {
 		XObjSpiderBoss* boss = ProjectileOwner();
-		bool blocked         = IsProjectileOwnerActive(boss) && IsSpiderBossProjectileHitSuppressed(boss);
+		bool blocked = ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) && IsSpiderBossProjectileHitSuppressed(boss);
 		f32 dx = pos.x - mMoveTranslate.x, dy = pos.y - mMoveTranslate.y, dz = pos.z - mMoveTranslate.z;
 		if (sqrtf(dx * dx + dy * dy + dz * dz) < 8 && !IsPlayerFlashingFromHit(player) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)
 		    && !blocked) {
@@ -1499,7 +1488,8 @@ void XObjActor3::Kind13(u32 frames)
 			mRumble = 1;
 			_B88    = 30;
 			gGame.mParticle.Kill((HSD_Generator*)_1DC0[0]);
-			ProjectileBurst(this, 0xb1, 0);
+			Vec scale = { 1, 1, 1 };
+			_1DC0[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
 			PlayGameSound(&gGame.mSound, 0x127, 255);
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			_B80 = 2;
@@ -1510,7 +1500,8 @@ void XObjActor3::Kind13(u32 frames)
 			mMoveTranslate.y = 0;
 			_B88             = 30;
 			if (_BEC == 0) {
-				ProjectileBurst(this, 0xb1, 0);
+				Vec scale = { 1, 1, 1 };
+				_1DC0[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
 				PlayGameSound(&gGame.mSound, 0x127, 255);
 			}
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
@@ -1526,7 +1517,7 @@ void XObjActor3::Kind13(u32 frames)
 	case 10:
 		if (!(_B8C.mFlags & 4)) {
 			XObjSpiderBoss* boss = ProjectileOwner();
-			if (IsProjectileOwnerActive(boss)) {
+			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				mMoveTranslate.x = HSD_JObjGetTranslationX(boss->mJObj);
 				mMoveTranslate.y = 10 + HSD_JObjGetTranslationY(boss->mJObj);
 				mMoveTranslate.z = HSD_JObjGetTranslationZ(boss->mJObj);
@@ -1546,9 +1537,10 @@ void XObjActor3::Kind13(u32 frames)
 		f32 dx = pos.x - mMoveTranslate.x, dz = pos.z - mMoveTranslate.z;
 		if (sqrtf(dx * dx + 0.f + dz * dz) < 8 && !IsPlayerFlashingFromHit(player) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 			player->OnHitFromPosition(pos, 6);
-			mRumble = 1;
-			_B88    = 30;
-			ProjectileBurst(this, 0xb2, _B7C);
+			mRumble   = 1;
+			_B88      = 30;
+			Vec scale = { 1, 1, 1 };
+			_1DC0[0]  = (s32)gGame.mParticle.CreateSRT(0xb2, 1, mMoveTranslate, scale, (Vec) { 0, _B7C, 0 }, TRUE);
 			PlayGameSound(&gGame.mSound, 0x127, 255);
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			_B80 = 12;
@@ -1565,7 +1557,7 @@ void XObjActor3::Kind13(u32 frames)
 	case 20:
 		if (!(_B8C.mFlags & 4)) {
 			XObjSpiderBoss* boss = ProjectileOwner();
-			if (IsProjectileOwnerActive(boss)) {
+			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				PlaceBossProjectile(this, boss, 16);
 				_B78 = 10;
 				Vec center
@@ -1581,8 +1573,9 @@ void XObjActor3::Kind13(u32 frames)
 			mMoveTranslate.y = 0;
 			_B88             = 30;
 			if (_BEC == 0) {
-				ProjectileBurst(this, 0xb1, 0);
-				mRumble = 1;
+				Vec scale = { 1, 1, 1 };
+				_1DC0[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
+				mRumble   = 1;
 			}
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			_B80 = 22;

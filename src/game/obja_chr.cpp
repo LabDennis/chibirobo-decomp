@@ -1636,16 +1636,6 @@ void ApplyPopperMovementWeight(XActPopper*, const CPadOne*, f32*);
 void ApplyRadarMovementWeight(XActRadar*, const CPadOne*, f32*);
 }
 
-static inline BOOL PlayerActionsIdle(XObjChr* player)
-{
-	return IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
-	    && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
-	    && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0) && IsRadarActionState(&player->mRadar, 0);
-}
-static inline BOOL PlayerLiftIsFree(XObjChr* player)
-{
-	return IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4);
-}
 static inline void ReleaseCarriedTarget(XObjChr* player)
 {
 	if (fn_800B1B24(player))
@@ -1701,85 +1691,6 @@ static inline void ChooseClimbAction(XObjChr* player, XObj* object, s32 mode, bo
 		StopPlayerMotion(player);
 	}
 }
-static inline bool CanUseAttachment(XObjChr* player)
-{
-	return !(gGame.mStatus.mFlags & 0x100) && player->mAttachmentRequest < 0;
-}
-static inline void UseEquippedAttachment(XObjChr* player, const CPadOne* pad, f32* speed)
-{
-	if (IsPlayerAttachmentEquipped(player, 0)) {
-		if (!(gGame.mStatus.mFlags & 0x100)) {
-			if (player->mPlug._D3C && (pad->mTrigger & 0x300)) {
-				if (player->mLift.mPlugTarget) {
-					StartInteractionEvent(player->mLift.mPlugTarget);
-					StopPlayerMotion(player);
-					*speed = 0;
-				}
-			} else if (IsLiftActionState(&player->mLift, 0) && IsPushActionState(&player->mPush, 0) && !player->mPlug._D3C
-			           && player->mFloorContacts[4].objectIndex < 0 && (pad->mButton & 0x100))
-				player->mLiftPlugFlags |= 0x80;
-		}
-	} else if (IsPlayerAttachmentEquipped(player, 1)) {
-		if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100)) {
-			SetCopterActionState(&player->mCopter, 3);
-			player->SetAnim(39, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			fn_800D7B18(&player->mCopterObj);
-			StopPlayerMotion(player);
-		}
-	} else if (IsPlayerAttachmentEquipped(player, 2)) {
-		if (pad->mTrigger & 0x100) {
-			SetPopperActionState(&player->mPopper, 7);
-			SetObjectVectorTarget(&player->mMoveRotate, player->mMoveRotate);
-		}
-	} else if (IsPlayerAttachmentEquipped(player, 3)) {
-		if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100)) {
-			SetRadarActionState(&player->mRadar, 3);
-			fn_800D6340(&player->mRadarObj);
-		}
-	} else if (IsPlayerAttachmentEquipped(player, 4) && !IsLiftActionState(&player->mLift, 0) && IsCarryingToothbrush(&player->mLift)) {
-		if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100))
-			SetLiftActionState(&player->mLift, 27);
-	} else if (IsPlayerAttachmentEquipped(player, 5) && !IsLiftActionState(&player->mLift, 0) && IsCarryingSpoon(&player->mLift)) {
-		if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100) && player->mAnimId != 0x8ae)
-			SetLiftActionState(&player->mLift, 29);
-	} else if (IsPlayerAttachmentEquipped(player, 6) && !IsLiftActionState(&player->mLift, 0) && IsCarryingMug(&player->mLift)) {
-		if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100))
-			SetLiftActionState(&player->mLift, 31);
-	} else if (IsPlayerAttachmentEquipped(player, 7) && !IsLiftActionState(&player->mLift, 0) && IsCarryingSquirter(&player->mLift)) {
-		if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100))
-			SetLiftActionState(&player->mLift, 35);
-	} else
-		IsPlayerAttachmentEquipped(player, 8);
-}
-
-static inline void UpdatePlugLiftInput(XObjChr* player, const CPadOne* pad, u32 frames)
-{
-	if (player->mLiftPlugFlags & 0x80) {
-		bool lift = false;
-		if (player->_A20)
-			player->_A1C += frames;
-		else {
-			player->_A1C = 0;
-			player->_A20 = (pad->mTrigger >> 8) & 1;
-		}
-		if ((player->mLiftPlugFlags & 2) && player->_A1C >= FRAME_RATE * ((s32)fn_8006E9AC(3) / 100.f)) {
-			if (player->_A20)
-				lift = true;
-		} else if (player->mLiftPlugFlags & 1) {
-			s32 path[] = { 0 };
-			Vec joint  = GetJointMatrixTranslation(player, GetObjectJointByPath(&player->mPlug, 1, path));
-			f32 angle  = WrapPlayerActionAngle(player->mMoveRotate.y - GetHeadingBetweenPositions(&player->mMoveTranslate, &joint));
-			if ((angle < PI * .5f || angle > PI * 1.5f) && player->_A20)
-				lift = true;
-		} else if (!(player->mLiftPlugFlags & 2))
-			lift = true;
-		if (lift) {
-			LiftInteractionTarget(player, &player->mPlug);
-			player->_A1C = 0;
-		}
-	} else
-		player->_A1C = player->_A20 = 0;
-}
 
 /**
  * @note Address: 0x800B35CC
@@ -1790,8 +1701,12 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 		return 0;
 	f32 speed          = -1;
 	const CPadOne* pad = &player->mPad;
-	if (IsGameRunning(&gGame) && !IsEventScriptActive(&gGame) && (player->_980.mFlags & 0x20000000) && PlayerLiftIsFree(player)
-	    && PlayerActionsIdle(player)) {
+	if (IsGameRunning(&gGame) && !IsEventScriptActive(&gGame) && (player->_980.mFlags & 0x20000000)
+	    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+	    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
+	        && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+	        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+	        && IsRadarActionState(&player->mRadar, 0))) {
 		CPad controller(0);
 		if (!gGame.mMenu.mActive) {
 			if ((controller.mPad->mTrigger & 0x400) && !(controller.mPad->mButton & 0x1000) && (gGame.mStatus.mFlags & 0x800000000000ULL)
@@ -1801,7 +1716,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 				else
 					PlayGameSound(&gGame.mSound, 0x85, 255);
 			} else if (!IsPlayerAttachmentEquipped(player, 0) && (pad->mTrigger & 0x200) && !(pad->mButton & 0x1000)
-			           && CanUseAttachment(player)) {
+			           && (!(gGame.mStatus.mFlags & 0x100) && player->mAttachmentRequest < 0)) {
 				RequestPlayerUnequipAttachment(player);
 				return 0;
 			}
@@ -1847,7 +1762,8 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 					    && player->mFloorContacts[2].objectIndex != player->mFloorContacts[0].objectIndex) {
 						XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContacts[2].objectIndex);
 						if (fn_800B2048(object)) {
-							if (PlayerLiftIsFree(player) && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
+							if ((IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+							    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
 								ReleaseCarriedTarget(player);
 								LiftInteractionTarget(player, object);
 								handled = true;
@@ -1866,7 +1782,8 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 							handled = true;
 						}
 					}
-					if (!handled && PlayerLiftIsFree(player) && player->mHitObjectIndex >= 0) {
+					if (!handled && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+					    && player->mHitObjectIndex >= 0) {
 						XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
 						if (emptyHands && fn_800B2048(object) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex
 						    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
@@ -1907,8 +1824,12 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 #endif
 							if ((IsLiftActionState(&player->mLift, 0)
 							     || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift)))
-							    && PlayerActionsIdle(player) && fn_800B2014(object)
-							    && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex) {
+							    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0)
+							        && IsLadderActionState(&player->mLadder, 0) && IsRopeActionState(&player->mRope, 0)
+							        && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+							        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+							        && IsRadarActionState(&player->mRadar, 0))
+							    && fn_800B2014(object) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex) {
 								ReleaseCarriedTarget(player);
 								StopPlayerMotion(player);
 								SetPushActionState(&player->mPush, 1);
@@ -1919,17 +1840,91 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 				}
 			}
 		}
-		if (!IsEventScriptActive(&gGame) && !(gGame.mStatus.mFlags & 0x400) && player->mAttachmentRequest < 0 && PlayerLiftIsFree(player)
-		    && PlayerActionsIdle(player))
-			UseEquippedAttachment(player, pad, &speed);
+		if (!IsEventScriptActive(&gGame) && !(gGame.mStatus.mFlags & 0x400) && player->mAttachmentRequest < 0
+		    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+		    && (IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
+		        && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+		        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+		        && IsRadarActionState(&player->mRadar, 0))) {
+			if (IsPlayerAttachmentEquipped(player, 0)) {
+				if (!(gGame.mStatus.mFlags & 0x100)) {
+					if (player->mPlug._D3C && (pad->mTrigger & 0x300)) {
+						if (player->mLift.mPlugTarget) {
+							StartInteractionEvent(player->mLift.mPlugTarget);
+							StopPlayerMotion(player);
+							speed = 0;
+						}
+					} else if (IsLiftActionState(&player->mLift, 0) && IsPushActionState(&player->mPush, 0) && !player->mPlug._D3C
+					           && player->mFloorContacts[4].objectIndex < 0 && (pad->mButton & 0x100))
+						player->mLiftPlugFlags |= 0x80;
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 1)) {
+				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100)) {
+					SetCopterActionState(&player->mCopter, 3);
+					player->SetAnim(39, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+					fn_800D7B18(&player->mCopterObj);
+					StopPlayerMotion(player);
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 2)) {
+				if (pad->mTrigger & 0x100) {
+					SetPopperActionState(&player->mPopper, 7);
+					SetObjectVectorTarget(&player->mMoveRotate, player->mMoveRotate);
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 3)) {
+				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100)) {
+					SetRadarActionState(&player->mRadar, 3);
+					fn_800D6340(&player->mRadarObj);
+				}
+			} else if (IsPlayerAttachmentEquipped(player, 4) && !IsLiftActionState(&player->mLift, 0)
+			           && IsCarryingToothbrush(&player->mLift)) {
+				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100))
+					SetLiftActionState(&player->mLift, 27);
+			} else if (IsPlayerAttachmentEquipped(player, 5) && !IsLiftActionState(&player->mLift, 0) && IsCarryingSpoon(&player->mLift)) {
+				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100) && player->mAnimId != 0x8ae)
+					SetLiftActionState(&player->mLift, 29);
+			} else if (IsPlayerAttachmentEquipped(player, 6) && !IsLiftActionState(&player->mLift, 0) && IsCarryingMug(&player->mLift)) {
+				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100))
+					SetLiftActionState(&player->mLift, 31);
+			} else if (IsPlayerAttachmentEquipped(player, 7) && !IsLiftActionState(&player->mLift, 0)
+			           && IsCarryingSquirter(&player->mLift)) {
+				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100))
+					SetLiftActionState(&player->mLift, 35);
+			} else
+				IsPlayerAttachmentEquipped(player, 8);
+		}
 	}
-	UpdatePlugLiftInput(player, pad, frames);
+	if (player->mLiftPlugFlags & 0x80) {
+		bool lift = false;
+		if (player->_A20)
+			player->_A1C += frames;
+		else {
+			player->_A1C = 0;
+			player->_A20 = (pad->mTrigger >> 8) & 1;
+		}
+		if ((player->mLiftPlugFlags & 2) && player->_A1C >= FRAME_RATE * ((s32)fn_8006E9AC(3) / 100.f)) {
+			if (player->_A20)
+				lift = true;
+		} else if (player->mLiftPlugFlags & 1) {
+			s32 path[] = { 0 };
+			Vec joint  = GetJointMatrixTranslation(player, GetObjectJointByPath(&player->mPlug, 1, path));
+			f32 angle  = WrapPlayerActionAngle(player->mMoveRotate.y - GetHeadingBetweenPositions(&player->mMoveTranslate, &joint));
+			if ((angle < PI * .5f || angle > PI * 1.5f) && player->_A20)
+				lift = true;
+		} else if (!(player->mLiftPlugFlags & 2))
+			lift = true;
+		if (lift) {
+			LiftInteractionTarget(player, &player->mPlug);
+			player->_A1C = 0;
+		}
+	} else
+		player->_A1C = player->_A20 = 0;
 	if (IsPlayerAttachmentEquipped(player, 2) && !IsEventScriptActive(&gGame)
 	    && (IsPopperActionState(&player->mPopper, 7) || IsPopperActionState(&player->mPopper, 8))
 	    && IsPopperFireAnimationSelected(&player->mPopperObj) && (pad->mTrigger & 0x100))
 		SetPopperActionState(&player->mPopper, 5);
 	if ((pad->mTrigger & 0x10) && !IsEventScriptActive(&gGame) && !(gGame.mStatus.mFlags & 0x400) && player->mAttachmentRequest < 0
-	    && !(gGame.mStatus.mFlags & 0x20) && !(gGame.mStatus.mFlags & 0x100) && PlayerLiftIsFree(player)
+	    && !(gGame.mStatus.mFlags & 0x20) && !(gGame.mStatus.mFlags & 0x100)
+	    && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
 	    && (IsHangActionState(&player->mHang, 0) || IsHangActionState(&player->mHang, 5)) && IsJumpActionState(&player->mJump, 0)
 	    && (IsLadderActionState(&player->mLadder, 0) || IsLadderActionState(&player->mLadder, 5))
 	    && (IsRopeActionState(&player->mRope, 0) || IsRopeActionState(&player->mRope, 5))
@@ -1938,7 +1933,12 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 		TryStartObjectEvent(&gGame, GetStageZButtonScript(), NULL, -1, -1);
 	if (player->mFloorContacts[4].objectIndex >= 0) {
 		bool clear = false;
-		if (IsEventScriptActive(&gGame) || (gGame.mStatus.mFlags & 0x400) || !PlayerLiftIsFree(player) || !PlayerActionsIdle(player))
+		if (IsEventScriptActive(&gGame) || (gGame.mStatus.mFlags & 0x400)
+		    || !(IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
+		    || !(IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
+		         && IsRopeActionState(&player->mRope, 0) && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
+		         && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
+		         && IsRadarActionState(&player->mRadar, 0)))
 			clear = true;
 		else if (player->mHitObjectIndex >= 0) {
 			if (player->mHitObjectIndex != player->mFloorContacts[0].objectIndex)
@@ -5306,16 +5306,6 @@ static inline void FindPlayerAnimVariant(s32& id, PlayerAnimVariant variant)
 	}
 }
 
-static inline void SelectPlayerAnimation(XObjChr* chr, s32& id)
-{
-	if (IsCarryingToothbrush(&chr->mLift) || IsCarryingSpoon(&chr->mLift) || IsCarryingSquirter(&chr->mLift))
-		FindPlayerAnimVariant(id, CarryingAnim);
-	else if (chr->mLift.mState == 4)
-		FindPlayerAnimVariant(id, LiftedAnim);
-	else if (chr->mLift.mState == 0 && (chr->GetAttachment() == 1 || chr->GetAttachment() == 3))
-		FindPlayerAnimVariant(id, AttachmentAnim);
-}
-
 // 1.135 times faster in lift state 4, like SetAnimRate
 static inline f32 PlayerAnimRateMultiplier(XObjChr* chr)
 {
@@ -5341,7 +5331,12 @@ static inline void ApplyPlayerAnimation(XObjChr* chr, CJAnim* archive, s32 local
  */
 void XObjChr::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate)
 {
-	SelectPlayerAnimation(this, id);
+	if (IsCarryingToothbrush(&mLift) || IsCarryingSpoon(&mLift) || IsCarryingSquirter(&mLift))
+		FindPlayerAnimVariant(id, CarryingAnim);
+	else if (mLift.mState == 4)
+		FindPlayerAnimVariant(id, LiftedAnim);
+	else if (mLift.mState == 0 && (GetAttachment() == 1 || GetAttachment() == 3))
+		FindPlayerAnimVariant(id, AttachmentAnim);
 	if (SuitAnimGroup(this, id) == 1) {
 		ApplyPlayerAnimation(this, &mSuitAnim, id % 3000, id, force, jointAnim, matAnim, shapeAnim, frame, rate, blend, blendRate);
 	} else if (AtcAnimGroup(this, id) == 1) {
@@ -6615,13 +6610,6 @@ extern s32 lbl_8065B268;
 extern s32 gPlayerSuitIdleAnimations[9];
 }
 
-static inline bool CanUpdateLocomotion(XObjChr* p)
-{
-	return (p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mHang.mState && !p->mJump.mState && !p->mLadder.mState && !p->mRope.mState
-	    && !p->mPush.mState && !p->mTumble.mState && !p->mCopter.mState
-	    && (p->mPopper.mState == 0 || p->mPopper.mState == 8 || p->mPopper.mState == 4) && !p->mRadar.mState;
-}
-
 static inline f32 PlayerGaitRate(f32 speed, bool slow)
 {
 	f32 rate = slow ? speed : 0.5f * speed;
@@ -6678,7 +6666,9 @@ extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim,
 	} else {
 		speed = p->_9B8 / GetPlayerAnimationRateMultiplier(p);
 	}
-	if (CanUpdateLocomotion(p)) {
+	if ((p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mHang.mState && !p->mJump.mState && !p->mLadder.mState && !p->mRope.mState
+	    && !p->mPush.mState && !p->mTumble.mState && !p->mCopter.mState
+	    && (p->mPopper.mState == 0 || p->mPopper.mState == 8 || p->mPopper.mState == 4) && !p->mRadar.mState) {
 		f32 distance = PSVECDistance(&p->_988, &p->_988.mTarget);
 		if (distance / GetPlayerAnimationRateMultiplier(p) >= 3.0f) {
 			p->SetAnim(0x79, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 30.0f);
@@ -6687,7 +6677,9 @@ extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim,
 			p->_A2C = 3;
 		}
 	}
-	if (!CanUpdateLocomotion(p))
+	if (!((p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mHang.mState && !p->mJump.mState && !p->mLadder.mState && !p->mRope.mState
+	      && !p->mPush.mState && !p->mTumble.mState && !p->mCopter.mState
+	      && (p->mPopper.mState == 0 || p->mPopper.mState == 8 || p->mPopper.mState == 4) && !p->mRadar.mState))
 		return;
 
 	switch (p->mAnimId) {

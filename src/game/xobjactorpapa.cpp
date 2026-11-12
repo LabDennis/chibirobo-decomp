@@ -322,7 +322,10 @@ void XObjActorPapa::vf148(u32 frames)
 						SetHeldPropMatrix(prop, joint.GetMtx());
 						break;
 					}
-					CopyHeldPropVisibility(this, prop);
+					if (mStatus.mFlags & 0x10000)
+						prop->mStatus.mFlags |= 0x10000ULL;
+					else
+						prop->mStatus.mFlags &= ~0x10000ULL;
 				}
 			}
 			break;
@@ -342,7 +345,10 @@ void XObjActorPapa::vf148(u32 frames)
 						SetHeldPropMatrix(prop, joint.GetMtx());
 						break;
 					}
-					CopyHeldPropVisibility(this, prop);
+					if (mStatus.mFlags & 0x10000)
+						prop->mStatus.mFlags |= 0x10000ULL;
+					else
+						prop->mStatus.mFlags &= ~0x10000ULL;
 				}
 			}
 			break;
@@ -361,7 +367,10 @@ void XObjActorPapa::vf148(u32 frames)
 						SetHeldPropMatrix(prop, joint.GetMtx());
 						break;
 					}
-					CopyHeldPropVisibility(this, prop);
+					if (mStatus.mFlags & 0x10000)
+						prop->mStatus.mFlags |= 0x10000ULL;
+					else
+						prop->mStatus.mFlags &= ~0x10000ULL;
 				}
 			}
 			break;

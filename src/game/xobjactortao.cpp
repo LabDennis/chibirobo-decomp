@@ -9,16 +9,10 @@ CVec GetStagePlacementScale(XObj* object); // the object's scale as it is drawn
 }
 
 extern "C" void Attach__5CJObjFP9_HSD_JObj(CJObj*, HSD_JObj*);
-static inline void CopyTaoVisibility(const XObjActorTao* tao, XObj* carried)
-{
-	if (tao->mStatus.mFlags & 0x10000)
-		carried->mStatus.mFlags |= 0x10000ULL;
-	else
-		carried->mStatus.mFlags &= ~0x10000ULL;
-}
 
-static inline void ScaleTaoMount(CJObj& joint, XObj* carried, Mtx mount, Mtx result)
+static inline void PlaceInTaoMouth(CJObj& joint, XObj* carried, Mtx mount, f32 z)
 {
+	Mtx result, translation;
 	PSMTXCopy(joint.GetMtx(), mount);
 	Vec scale;
 	HSD_MtxGetScale(mount, &scale);
@@ -28,23 +22,10 @@ static inline void ScaleTaoMount(CJObj& joint, XObj* carried, Mtx mount, Mtx res
 	Mtx scaling;
 	PSMTXScale(scaling, scale.x, scale.y, scale.z);
 	PSMTXConcat(mount, scaling, result);
-}
-
-static inline void PlaceInTaoMouth(CJObj& joint, XObj* carried, Mtx mount, f32 z)
-{
-	Mtx result, translation;
-	ScaleTaoMount(joint, carried, mount, result);
 	PSMTXTrans(translation, 0, -10, z);
 	PSMTXConcat(result, translation, result);
 	HSD_JObj* root = carried->mJObj;
 	MtxPtr matrix  = result;
-	HSD_JObjCopyMtx(root, matrix);
-}
-
-static inline void CopyTaoJoint(CJObj& joint, XObj* obj)
-{
-	MtxPtr matrix  = joint.GetMtx();
-	HSD_JObj* root = obj->mJObj;
 	HSD_JObjCopyMtx(root, matrix);
 }
 
@@ -355,12 +336,17 @@ void XObjActorTao::vf148(u32 frames)
 					case 0x102:
 						PlaceInTaoMouth(joint, obj, _C94, 0);
 						break;
-					default:
-						CopyTaoJoint(joint, obj);
-						break;
+					default: {
+						MtxPtr matrix  = joint.GetMtx();
+						HSD_JObj* root = obj->mJObj;
+						HSD_JObjCopyMtx(root, matrix);
+					} break;
 					}
 				}
-				CopyTaoVisibility(this, obj);
+				if (mStatus.mFlags & 0x10000)
+					obj->mStatus.mFlags |= 0x10000ULL;
+				else
+					obj->mStatus.mFlags &= ~0x10000ULL;
 			}
 			break;
 		case 0x159:
@@ -369,14 +355,27 @@ void XObjActorTao::vf148(u32 frames)
 				if (kind == obj->GetKind()) {
 					switch (kind) {
 					case 0x159:
-						ScaleTaoMount(joint, obj, _C94, _C94);
+						PSMTXCopy(joint.GetMtx(), _C94);
+						Vec scale;
+						HSD_MtxGetScale(_C94, &scale);
+						scale.x = GetStagePlacementScale(obj).x / scale.x;
+						scale.y = GetStagePlacementScale(obj).y / scale.y;
+						scale.z = GetStagePlacementScale(obj).z / scale.z;
+						Mtx scaling;
+						PSMTXScale(scaling, scale.x, scale.y, scale.z);
+						PSMTXConcat(_C94, scaling, _C94);
 						HSD_JObjCopyMtx(obj->mJObj, _C94);
 						break;
-					default:
-						CopyTaoJoint(joint, obj);
-						break;
+					default: {
+						MtxPtr matrix  = joint.GetMtx();
+						HSD_JObj* root = obj->mJObj;
+						HSD_JObjCopyMtx(root, matrix);
+					} break;
 					}
-					CopyTaoVisibility(this, obj);
+					if (mStatus.mFlags & 0x10000)
+						obj->mStatus.mFlags |= 0x10000ULL;
+					else
+						obj->mStatus.mFlags &= ~0x10000ULL;
 				}
 			}
 			break;
@@ -391,10 +390,16 @@ void XObjActorTao::vf148(u32 frames)
 							break;
 						PlaceInTaoMouth(joint, obj, _C94, 3);
 						return;
-					default:
-						CopyTaoJoint(joint, obj);
-						CopyTaoVisibility(this, obj);
+					default: {
+						MtxPtr matrix  = joint.GetMtx();
+						HSD_JObj* root = obj->mJObj;
+						HSD_JObjCopyMtx(root, matrix);
+						if (mStatus.mFlags & 0x10000)
+							obj->mStatus.mFlags |= 0x10000ULL;
+						else
+							obj->mStatus.mFlags &= ~0x10000ULL;
 						break;
+					}
 					}
 				}
 			}
@@ -407,17 +412,26 @@ void XObjActorTao::vf148(u32 frames)
 				if (kind == obj->GetKind()) {
 					// The original dispatches the two stage prop kinds separately.
 					switch (kind) {
-					case 0x2a3:
-						CopyTaoJoint(joint, obj);
-						break;
-					case 0x46f:
-						CopyTaoJoint(joint, obj);
-						break;
-					default:
-						CopyTaoJoint(joint, obj);
-						break;
+					case 0x2a3: {
+						MtxPtr matrix  = joint.GetMtx();
+						HSD_JObj* root = obj->mJObj;
+						HSD_JObjCopyMtx(root, matrix);
+					} break;
+					case 0x46f: {
+						MtxPtr matrix  = joint.GetMtx();
+						HSD_JObj* root = obj->mJObj;
+						HSD_JObjCopyMtx(root, matrix);
+					} break;
+					default: {
+						MtxPtr matrix  = joint.GetMtx();
+						HSD_JObj* root = obj->mJObj;
+						HSD_JObjCopyMtx(root, matrix);
+					} break;
 					}
-					CopyTaoVisibility(this, obj);
+					if (mStatus.mFlags & 0x10000)
+						obj->mStatus.mFlags |= 0x10000ULL;
+					else
+						obj->mStatus.mFlags &= ~0x10000ULL;
 				}
 			}
 			break;
@@ -446,11 +460,22 @@ void XObjActorTao::vf148(u32 frames)
 			s32 path[3] = { 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&extra, FindJointByPath(mJObj, path, 3));
 			Mtx result;
-			ScaleTaoMount(extra, _CFC, _CC4, result);
+			PSMTXCopy(extra.GetMtx(), _CC4);
+			Vec scale;
+			HSD_MtxGetScale(_CC4, &scale);
+			scale.x = GetStagePlacementScale(_CFC).x / scale.x;
+			scale.y = GetStagePlacementScale(_CFC).y / scale.y;
+			scale.z = GetStagePlacementScale(_CFC).z / scale.z;
+			Mtx scaling;
+			PSMTXScale(scaling, scale.x, scale.y, scale.z);
+			PSMTXConcat(_CC4, scaling, result);
 			HSD_JObj* root = _CFC->mJObj;
 			MtxPtr matrix  = result;
 			HSD_JObjCopyMtx(root, matrix);
-			CopyTaoVisibility(this, _CFC);
+			if (mStatus.mFlags & 0x10000)
+				_CFC->mStatus.mFlags |= 0x10000ULL;
+			else
+				_CFC->mStatus.mFlags &= ~0x10000ULL;
 			_CFC->mStatus.mFlags &= ~0x0200000000000000ULL;
 		}
 		_998.mFlags &= ~0x2000;

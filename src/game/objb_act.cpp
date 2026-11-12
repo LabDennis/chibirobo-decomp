@@ -2602,10 +2602,6 @@ static inline HSD_JObj* HeldItemJoint(XActLift* act)
 	s32 path[] = { 0, 0 };
 	return GetObjectJointByPath(act->mOwner, 2, path);
 }
-static inline bool CarryOnJoint(XActLift* act)
-{
-	return IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act);
-}
 static inline s32 HeldItemVariant(XActLift* act)
 {
 	return lbl_8020A5E8[(s16)GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38)];
@@ -2715,7 +2711,7 @@ void UpdateHeldObject(XActLift* act, s32)
 		break;
 	}
 	case 3:
-		if (CarryOnJoint(act)) {
+		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
 			HSD_JObj* root = obj->mJObj;
 			HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(root, HSD_JObjGetMtxPtr(HeldItemJoint(act)));
 			if (IsCarryingSpoon(act))
@@ -2736,7 +2732,7 @@ void UpdateHeldObject(XActLift* act, s32)
 			obj->mStatus.mFlags &= ~0x800000ULL;
 			obj->vfDC(FALSE, 0);
 		}
-		if (CarryOnJoint(act)) {
+		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
 			HSD_JObj* root = obj->mJObj;
 			HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(root, HSD_JObjGetMtxPtr(HeldItemJoint(act)));
 			HeldAnim(obj, HeldIdleAnim(act));
@@ -2896,7 +2892,7 @@ void UpdateHeldObject(XActLift* act, s32)
 		}
 		break;
 	case 14:
-		if (CarryOnJoint(act)) {
+		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
 			HSD_JObj* root = obj->mJObj;
 			HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(root, HSD_JObjGetMtxPtr(HeldItemJoint(act)));
 			if (IsCarryingSpoon(act))

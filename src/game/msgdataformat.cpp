@@ -9,53 +9,6 @@ struct MessageFormatBuffers {
 	char text[128];
 };
 
-#if !defined(VERSION_JP)
-// NONMATCHING: retail stores the separator without sign extension and sets up
-// the loop counters with separate li instructions.
-static inline void GroupDigits(MessageFormatBuffers& buffers)
-{
-	u8 separator = ',';
-#if defined(VERSION_PAL)
-	switch (gGame.mLanguage) {
-	case 1:
-	case 2:
-	case 3:
-		separator = ' ';
-		break;
-	case 4:
-		separator = '.';
-		break;
-	case 0:
-	default:
-		separator = ',';
-		break;
-	}
-#endif
-	s32 len   = strlen(buffers.text);
-	s32 count = 0;
-	s32 i;
-#if defined(VERSION_PAL)
-	u8 lang = gGame.mLanguage;
-#endif
-	for (i = 0; i < len; ++i, ++count) {
-		buffers.format[count] = buffers.text[(len - 1) - i];
-		if ((i + 1) % 3 == 0 && i + 1 < len) {
-#if defined(VERSION_PAL)
-			if ((lang == 1 || lang == 3 || lang == 4) && len < 5)
-				continue;
-#endif
-			buffers.format[++count] = separator;
-		}
-		buffers.format[count + 1] = 0;
-	}
-	// When the formatted value is empty, retail reverses the format string left in the scratch buffer.
-	count = strlen(buffers.format);
-	for (i = 0; i < count; ++i)
-		buffers.text[i] = buffers.format[(count - 1) - i];
-	buffers.text[count] = 0;
-}
-#endif
-
 static inline void CopyMessageBytes(u8*& dst, u8*& src, int N)
 {
 	for (int i = 0; i < N; ++i)
@@ -66,6 +19,8 @@ static inline void CopyMessageBytes(u8*& dst, u8*& src, int N)
  * @note Address: 0x800869AC
  * @note Size: 0x578
  */
+// NONMATCHING: Europe's copy stores the digit separator as it is, the build sign-extends it first and keeps the
+// counters in other registers. America's matches
 extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 {
 	u8* src = input;
@@ -116,7 +71,44 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 #else
 			sprintf(buffers.text, buffers.format, args->values[--args->count]);
 			if (grouped) {
-				GroupDigits(buffers);
+				u8 separator = ',';
+#if defined(VERSION_PAL)
+				switch (gGame.mLanguage) {
+				case 1:
+				case 2:
+				case 3:
+					separator = ' ';
+					break;
+				case 4:
+					separator = '.';
+					break;
+				case 0:
+				default:
+					separator = ',';
+					break;
+				}
+#endif
+				s32 len = strlen(buffers.text);
+				s32 i, count;
+#if defined(VERSION_PAL)
+				u8 lang = gGame.mLanguage;
+#endif
+				for (i = 0, count = 0; i < len; ++i, ++count) {
+					buffers.format[count] = buffers.text[(len - 1) - i];
+					if ((i + 1) % 3 == 0 && i + 1 < len) {
+#if defined(VERSION_PAL)
+						if ((lang == 1 || lang == 3 || lang == 4) && len < 5)
+							continue;
+#endif
+						buffers.format[++count] = separator;
+					}
+					buffers.format[count + 1] = 0;
+				}
+				// When the formatted value is empty, retail reverses the format string left in the scratch buffer.
+				count = strlen(buffers.format);
+				for (i = 0; i < count; ++i)
+					buffers.text[i] = buffers.format[(count - 1) - i];
+				buffers.text[count] = 0;
 				strcpy((char*)dst, buffers.text);
 			}
 			if (wide && gGame.mLanguage == 6)

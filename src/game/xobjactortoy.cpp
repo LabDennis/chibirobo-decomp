@@ -47,13 +47,6 @@ extern "C" HSD_JObj* GetObjectJointByPath(const CJObj*, s32, s32*);
 extern "C" f32 GetJointAnimationCurrentFrame(CJObj*);
 extern "C" f32 GetJointAnimationEndFrame(CJObj*);
 
-static inline void EmitToyBurst(XObjActorToy* toy)
-{
-	PlayGameSound(&gGame.mSound, 0xe0007, 255);
-	Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
-	gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
-}
-
 static inline void SetToyBlinkVisibility(XObjActorToy* toy, CJObj& joint)
 {
 	if ((s32)(toy->_994 & 3) < 2)
@@ -68,8 +61,8 @@ static inline void SetToyBlinkVisibility(XObjActorToy* toy, CJObj& joint)
 		SetToyBlinkVisibility(toy, joint);                                       \
 	} while (0)
 
-// NONMATCHING: retail calls CJObj's destructor at every return where the build inlines it, gives each burst a scale
-// of its own and copies the burst's rotation from the six Vecs its .rodata starts with
+// NONMATCHING: retail calls CJObj's destructor at every return where the build inlines it, and copies each burst's
+// rotation from the six Vecs its .rodata starts with
 void XObjActorToy::ProcessPendingEvents(u32 frames)
 {
 	XObjActorToy* toy = this;
@@ -324,7 +317,9 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				toy->SetAnim(2, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 				toy->_990 = 10;
 				toy->_994 = 0;
-				EmitToyBurst(toy);
+				PlayGameSound(&gGame.mSound, 0xe0007, 255);
+				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
+				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
 			}
 			break;
 		case 10:
@@ -334,7 +329,9 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				++toy->_990;
 				toy->_994 = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
-				EmitToyBurst(toy);
+				PlayGameSound(&gGame.mSound, 0xe0007, 255);
+				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
+				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
 				return;
 			}
 			break;
@@ -345,7 +342,9 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				++toy->_990;
 				toy->_994 = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
-				EmitToyBurst(toy);
+				PlayGameSound(&gGame.mSound, 0xe0007, 255);
+				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
+				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
 				return;
 			}
 			break;
@@ -358,7 +357,9 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				toy->_994 = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
-				EmitToyBurst(toy);
+				PlayGameSound(&gGame.mSound, 0xe0007, 255);
+				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
+				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
 				return;
 			}
 			break;
@@ -371,7 +372,9 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				toy->_994 = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
-				EmitToyBurst(toy);
+				PlayGameSound(&gGame.mSound, 0xe0007, 255);
+				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
+				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
 				return;
 			}
 			break;
@@ -392,7 +395,9 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
-				EmitToyBurst(toy);
+				PlayGameSound(&gGame.mSound, 0xe0007, 255);
+				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
+				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
 				return;
 			}
 			break;
@@ -411,7 +416,9 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
-				EmitToyBurst(toy);
+				PlayGameSound(&gGame.mSound, 0xe0007, 255);
+				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
+				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
 				return;
 			}
 			break;
@@ -422,7 +429,9 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				++toy->_990;
 				toy->_994 = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
-				EmitToyBurst(toy);
+				PlayGameSound(&gGame.mSound, 0xe0007, 255);
+				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
+				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
 				return;
 			}
 			break;
@@ -433,7 +442,9 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				++toy->_990;
 				toy->_994 = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
-				EmitToyBurst(toy);
+				PlayGameSound(&gGame.mSound, 0xe0007, 255);
+				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
+				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
 				return;
 			}
 			break;
@@ -444,7 +455,9 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				++toy->_990;
 				toy->_994 = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
-				EmitToyBurst(toy);
+				PlayGameSound(&gGame.mSound, 0xe0007, 255);
+				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
+				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
 				return;
 			}
 			break;
@@ -593,7 +606,10 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 			break;
 		}
 		}
-		CopyHeldPropVisibility(this, _A50);
+		if (mStatus.mFlags & 0x10000)
+			_A50->mStatus.mFlags |= 0x10000ULL;
+		else
+			_A50->mStatus.mFlags &= ~0x10000ULL;
 	}
 	switch (_990) {
 	case 0: {
@@ -656,7 +672,10 @@ extern "C" void HSD_MtxGetScale(Mtx matrix, Vec* scale);
 
 static inline void FinishToyMount(XObjActorToy* toy)
 {
-	CopyHeldPropVisibility(toy, toy->_A50);
+	if (toy->mStatus.mFlags & 0x10000)
+		toy->_A50->mStatus.mFlags |= 0x10000ULL;
+	else
+		toy->_A50->mStatus.mFlags &= ~0x10000ULL;
 	toy->_A50->mStatus.mFlags &= ~0x0200000000000000ULL;
 }
 
@@ -900,7 +919,10 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 					SetHeldPropMatrix(prop, joint.GetMtx());
 					break;
 				}
-				CopyHeldPropVisibility(toy, prop);
+				if (toy->mStatus.mFlags & 0x10000)
+					prop->mStatus.mFlags |= 0x10000ULL;
+				else
+					prop->mStatus.mFlags &= ~0x10000ULL;
 			}
 		}
 	}
@@ -929,7 +951,10 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 				s32 path[7] = { 0, 3, 0, 0, 0, 0, 0 };
 				mount.Attach(FindJointByPath(toy->mJObj, path, 7));
 				MountToyPiece(mount, piece.mObj, piece.mMount);
-				CopyHeldPropVisibility(toy, piece.mObj);
+				if (toy->mStatus.mFlags & 0x10000)
+					piece.mObj->mStatus.mFlags |= 0x10000ULL;
+				else
+					piece.mObj->mStatus.mFlags &= ~0x10000ULL;
 				piece.mObj->mStatus.mFlags &= ~0x0200000000000000ULL;
 			}
 			break;

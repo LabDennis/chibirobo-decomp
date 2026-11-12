@@ -5,14 +5,6 @@
 
 extern "C" void PSMTXTrans(Mtx matrix, f32 x, f32 y, f32 z);
 
-static inline void CopyHeldPropVisibility(const XObj* actor, XObj* prop)
-{
-	if (actor->mStatus.mFlags & 0x10000)
-		prop->mStatus.mFlags |= 0x10000ULL;
-	else
-		prop->mStatus.mFlags &= ~0x10000ULL;
-}
-
 static inline void SetHeldPropMatrix(XObj* prop, MtxPtr const& matrix)
 {
 	HSD_JObjCopyMtx(prop->mJObj, matrix);

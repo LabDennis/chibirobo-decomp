@@ -26,11 +26,6 @@ void DrawOpenMenus(MenuEx*);
 void ClearActiveObjectFloors(XObj*);
 }
 
-static inline bool IsFlaggedOverlayObject(const XObj* obj)
-{
-	return (obj->mStatus.mFlags & 0x0400000000000000ULL) && (obj->mStatus.mFlags & 0x400000000000ULL);
-}
-
 static inline void DrawFrameQuad(const Vec (&v)[4], u32 color)
 {
 	DrawGsVertexQuad(&gGame.mGs, v[0].x, v[0].y, v[0].z, v[1].x, v[1].y, v[1].z, v[2].x, v[2].y, v[2].z, v[3].x, v[3].y, v[3].z, color,
@@ -125,7 +120,9 @@ void CGame::Draw()
 			for (s32 i = 0; i < mDrawLists[2].mCount; ++i) {
 				XObj* object = mDrawLists[2].mObjects[i];
 				if ((object->mStatus.mFlags & 1)
-				    && !(mColor0.mColor.mColor.a > 0 && ((object->mStatus.mFlags & 0x200) || IsFlaggedOverlayObject(object))))
+				    && !(mColor0.mColor.mColor.a > 0
+				         && ((object->mStatus.mFlags & 0x200)
+				             || ((object->mStatus.mFlags & 0x0400000000000000ULL) && (object->mStatus.mFlags & 0x400000000000ULL)))))
 					object->DrawObjectEffects();
 			}
 			CallStageModule(3, 0, NULL);
@@ -143,7 +140,7 @@ void CGame::Draw()
 				XObj* object = mDrawLists[1].mObjects[i];
 				if (object->mStatus.mFlags & 0x200)
 					object->vfAC();
-				else if (IsFlaggedOverlayObject(object))
+				else if ((object->mStatus.mFlags & 0x0400000000000000ULL) && (object->mStatus.mFlags & 0x400000000000ULL))
 					object->vfAC();
 			}
 			EndGsCamera(&mGs);
@@ -161,7 +158,7 @@ void CGame::Draw()
 					continue;
 				if (object->mStatus.mFlags & 0x200)
 					object->DrawObjectEffects();
-				else if (IsFlaggedOverlayObject(object))
+				else if ((object->mStatus.mFlags & 0x0400000000000000ULL) && (object->mStatus.mFlags & 0x400000000000ULL))
 					object->DrawObjectEffects();
 			}
 		}

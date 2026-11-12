@@ -56,12 +56,6 @@ static inline void MakeFloorTransform(const XObj* object, const Vec& center, con
 	PSMTXConcat(result, scale, result);
 }
 
-// The floor angle is rounded to single precision before adding the object's rotation.
-static inline f32 FloorYaw(const XObj* object, s32 index)
-{
-	return object->mMoveRotate.y + (f32)((f64)DEG2RAD * (f32)object->mFloors[index].mYawDegrees);
-}
-
 static inline BOOL FindMapFloor(const XObjMap* map, const Vec* pos, XObjMapHit* hit, Vec* tri)
 {
 	s32 start = FindFloorStart(map, 0.2f + pos->y);

@@ -189,7 +189,10 @@ void XObjActorMama::vf148(u32 frames)
 						SetHeldPropMatrix(prop, hand.GetMtx());
 						break;
 					}
-					CopyHeldPropVisibility(this, prop);
+					if (mStatus.mFlags & 0x10000)
+						prop->mStatus.mFlags |= 0x10000ULL;
+					else
+						prop->mStatus.mFlags &= ~0x10000ULL;
 				}
 			}
 			break;
@@ -234,7 +237,10 @@ void XObjActorMama::vf148(u32 frames)
 					SetHeldPropMatrix(prop, hand.GetMtx());
 					break;
 				}
-				CopyHeldPropVisibility(this, prop);
+				if (mStatus.mFlags & 0x10000)
+					prop->mStatus.mFlags |= 0x10000ULL;
+				else
+					prop->mStatus.mFlags &= ~0x10000ULL;
 			}
 			break;
 		case 0x1a1:
@@ -245,14 +251,20 @@ void XObjActorMama::vf148(u32 frames)
 					RotateHeldProp(mount, result, rotation, 'z', -.19634955f);
 					OffsetHeldProp(result, translation, 0, -4.5f, 0);
 					SetHeldPropMatrix(prop, result);
-					CopyHeldPropVisibility(this, prop);
+					if (mStatus.mFlags & 0x10000)
+						prop->mStatus.mFlags |= 0x10000ULL;
+					else
+						prop->mStatus.mFlags &= ~0x10000ULL;
 				} else if (prop->GetKind() == 0x1a1) {
 					PSMTXCopy(hand.GetMtx(), mount);
 					RotateHeldProp(mount, result, rotation, 'x', -1.17809725f);
 					OffsetHeldProp(result, translation, 0, -3.5f, -3);
 					RotateHeldProp(result, result, rotation, 'z', -HALF_PI);
 					SetHeldPropMatrix(prop, result);
-					CopyHeldPropVisibility(this, prop);
+					if (mStatus.mFlags & 0x10000)
+						prop->mStatus.mFlags |= 0x10000ULL;
+					else
+						prop->mStatus.mFlags &= ~0x10000ULL;
 				}
 			}
 			break;
