@@ -665,15 +665,15 @@ extern "C" void vfC4__4XObjFv(XObj*)
  * @note Address: 0x8009056C
  * @note Size: 0x2F8
  */
-extern "C" void DrawGroundShadowAt__4XObjFPC3Vecf(XObj* object, const Vec* origin, f32 opacity)
+void XObj::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 {
-	if (!(object->mStatus.mFlags & 8ULL))
+	if (!(mStatus.mFlags & 8ULL))
 		return;
-	if (ShadowSize(object) == 0)
+	if (ShadowSize(this) == 0)
 		return;
 	Vec position = *origin;
 	Vec rotation = { -HALF_PI, 0.0f, 0.0f };
-	Vec size     = object->mMoveScale * (f32)ShadowSize(object);
+	Vec size     = mMoveScale * (f32)ShadowSize(this);
 	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 	u32 edge   = (u32)(128.0f * opacity);
 	u32 center = (u32)(160.0f * opacity);
@@ -687,8 +687,8 @@ extern "C" void DrawGroundShadowAt__4XObjFPC3Vecf(XObj* object, const Vec* origi
 		vertices[i * 2].pos.z     = position.z + halfHeight * (f32)cos(angle);
 		vertices[i * 2].pos.y     = position.y;
 		vertices[i * 2].color     = edge;
-		vertices[i * 2 + 1].pos.x = position.x - (1.5f * object->mMoveScale.x + halfWidth) * (f32)sin(angle);
-		vertices[i * 2 + 1].pos.z = position.z + (1.5f * object->mMoveScale.z + halfHeight) * (f32)cos(angle);
+		vertices[i * 2 + 1].pos.x = position.x - (1.5f * mMoveScale.x + halfWidth) * (f32)sin(angle);
+		vertices[i * 2 + 1].pos.z = position.z + (1.5f * mMoveScale.z + halfHeight) * (f32)cos(angle);
 		vertices[i * 2 + 1].pos.y = position.y;
 		vertices[i * 2 + 1].color = 0;
 	}
@@ -699,10 +699,10 @@ extern "C" void DrawGroundShadowAt__4XObjFPC3Vecf(XObj* object, const Vec* origi
  * @note Address: 0x80090864
  * @note Size: 0x5C
  */
-extern "C" void DrawGroundShadow__4XObjFv(XObj* object)
+void XObj::DrawGroundShadow()
 {
-	if (object->mStatus.mFlags & 8ULL) {
-		object->DrawGroundShadowAt(&object->mMoveTranslate, 1.0f);
+	if (mStatus.mFlags & 8ULL) {
+		DrawGroundShadowAt(&mMoveTranslate, 1.0f);
 	}
 }
 
@@ -710,31 +710,31 @@ extern "C" void DrawGroundShadow__4XObjFv(XObj* object)
  * @note Address: 0x800908C0
  * @note Size: 0x3C4
  */
-extern "C" void DrawWithView__4XObjFPA4_f(XObj* object, Mtx view)
+void XObj::DrawWithView(Mtx view)
 {
-	HSD_AObj* animation = GetAObj(object->mJObj);
-	if (animation != NULL && (animation->flags & (AOBJ_NO_ANIM | AOBJ_REWINDED)) && object->HasQueuedAnim()) {
+	HSD_AObj* animation = GetAObj(mJObj);
+	if (animation != NULL && (animation->flags & (AOBJ_NO_ANIM | AOBJ_REWINDED)) && HasQueuedAnim()) {
 		s32 id;
 		u16 frame;
 		s16 rate;
-		object->PopAnim(id, frame, rate);
+		PopAnim(id, frame, rate);
 		if (id & 0xFFFF0000) {
 			s32 jointId             = id & 0xFFFF;
 			s32 materialId          = id >> 16;
-			void* jointAnimation    = object->GetJointAnimation(jointId);
-			void* materialAnimation = object->GetMaterialAnimation(materialId);
-			void* shapeAnimation    = object->GetShapeAnimation(jointId);
-			object->SetAnim(0, TRUE, jointAnimation, materialAnimation, shapeAnimation, (f32)frame, rate / 100.0f, 0.0f, 10.0f);
+			void* jointAnimation    = GetJointAnimation(jointId);
+			void* materialAnimation = GetMaterialAnimation(materialId);
+			void* shapeAnimation    = GetShapeAnimation(jointId);
+			SetAnim(0, TRUE, jointAnimation, materialAnimation, shapeAnimation, (f32)frame, rate / 100.0f, 0.0f, 10.0f);
 			if (jointId >= 1000 || materialId >= 1000)
-				object->mStatus.mFlags |= 0x0008000000000000ULL;
+				mStatus.mFlags |= 0x0008000000000000ULL;
 		} else {
-			object->SetAnim(id, FALSE, NULL, NULL, NULL, (f32)frame, rate / 100.0f, 0.0f, 10.0f);
+			SetAnim(id, FALSE, NULL, NULL, NULL, (f32)frame, rate / 100.0f, 0.0f, 10.0f);
 		}
-		object->UpdateAnim(1);
+		UpdateAnim(1);
 	}
-	if (!(object->mStatus.mFlags & 0x800ULL)) {
-		if (object->mJObj != NULL)
-			HSD_JObjDispAll(object->mJObj, view, 7, 0);
+	if (!(mStatus.mFlags & 0x800ULL)) {
+		if (mJObj != NULL)
+			HSD_JObjDispAll(mJObj, view, 7, 0);
 	}
 }
 
@@ -762,50 +762,50 @@ extern "C" void vfA8__4XObjFUl(XObj* object, u32 frames)
  * @note Address: 0x80090ED4
  * @note Size: 0x2EC
  */
-extern "C" void UpdateObject__4XObjFUl(XObj* object, u32 frames)
+void XObj::UpdateObject(u32 frames)
 {
-	if (object->mJObj != NULL) {
-		object->vfA8(frames);
-		if (object->mStatus.mFlags & 0x1000000000000000ULL) {
-			if (object->mMoveTranslate.y + object->_794.y > object->mFloorHit.mHeight) {
-				object->mMoveTranslate.mTarget.y = object->mFloorHit.mHeight;
-				f32 speed                        = 0.15f + object->mMoveTranslate.mSpeed.y;
+	if (mJObj != NULL) {
+		vfA8(frames);
+		if (mStatus.mFlags & 0x1000000000000000ULL) {
+			if (mMoveTranslate.y + _794.y > mFloorHit.mHeight) {
+				mMoveTranslate.mTarget.y = mFloorHit.mHeight;
+				f32 speed                = 0.15f + mMoveTranslate.mSpeed.y;
 				if (speed > 10.0f)
 					speed = 10.0f;
-				object->mMoveTranslate.mSpeed.y = speed;
+				mMoveTranslate.mSpeed.y = speed;
 			} else {
-				object->mMoveTranslate.mSpeed.y = 0.0f;
-				object->mMoveTranslate.x += object->_794.x;
-				object->mMoveTranslate.z += object->_794.z;
-				object->mMoveTranslate.y = object->mFloorHit.mHeight;
-				object->_794.x           = 0.0f;
-				object->_794.y           = 0.0f;
-				object->_794.z           = 0.0f;
-				object->SetRotationX(0.0f, 0);
-				object->SetRotationZ(0.0f, 0);
-				object->mStatus.mFlags &= ~0x1000000000000000ULL;
-				if ((s16)object->GetPool() == 21) {
-					object->mStatus.mFlags |= 0x2000000000000000ULL;
-				} else if ((s16)object->GetPool() == 22) {
-					if (object->mStatus.mFlags & 0x04000000ULL)
-						object->mStatus.mFlags |= 0x2000000000000000ULL;
+				mMoveTranslate.mSpeed.y = 0.0f;
+				mMoveTranslate.x += _794.x;
+				mMoveTranslate.z += _794.z;
+				mMoveTranslate.y = mFloorHit.mHeight;
+				_794.x           = 0.0f;
+				_794.y           = 0.0f;
+				_794.z           = 0.0f;
+				SetRotationX(0.0f, 0);
+				SetRotationZ(0.0f, 0);
+				mStatus.mFlags &= ~0x1000000000000000ULL;
+				if ((s16)GetPool() == 21) {
+					mStatus.mFlags |= 0x2000000000000000ULL;
+				} else if ((s16)GetPool() == 22) {
+					if (mStatus.mFlags & 0x04000000ULL)
+						mStatus.mFlags |= 0x2000000000000000ULL;
 				}
 			}
 		}
-		object->CXObjIntp::StepRotate(frames);
-		object->CXObjIntp::StepTranslate(frames);
-		if (object->CXObjIntp::StepScale(frames)) {
-			UpdateObjectFloorHeights((XObj*)object);
-			UpdateObjectFloorXZExtent((XObj*)object);
+		CXObjIntp::StepRotate(frames);
+		CXObjIntp::StepTranslate(frames);
+		if (CXObjIntp::StepScale(frames)) {
+			UpdateObjectFloorHeights((XObj*)this);
+			UpdateObjectFloorXZExtent((XObj*)this);
 		}
-		object->UpdateAnim(frames);
-		HSD_JObjSetupMatrix(object->mJObj);
+		UpdateAnim(frames);
+		HSD_JObjSetupMatrix(mJObj);
 	}
-	if ((object->mStatus.mFlags & 0x0010000000000000ULL) || object->mMoveTranslate.y != object->_264.y) {
-		UpdateObjectFloorHeights((XObj*)object);
+	if ((mStatus.mFlags & 0x0010000000000000ULL) || mMoveTranslate.y != _264.y) {
+		UpdateObjectFloorHeights((XObj*)this);
 	}
-	if (object->mEvt.mData.mScript != NULL)
-		CEvt_Update(&object->mEvt, frames);
+	if (mEvt.mData.mScript != NULL)
+		CEvt_Update(&mEvt, frames);
 }
 
 /**
