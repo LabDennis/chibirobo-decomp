@@ -1585,8 +1585,7 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 
 static inline CTexObj& HudTexture(s32 id)
 {
-	CTpl& tpl = gGame.mTpl;
-	return tpl.mTex.Init(&((TPLPalette*)tpl.mBuffer)->descriptorArray[id - StatusTextureOffset], 0);
+	return gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[id - StatusTextureOffset], 0);
 }
 
 extern "C" CTexObj* CopyMenuTextureObject(CTexObj*, const CTexObj*);
