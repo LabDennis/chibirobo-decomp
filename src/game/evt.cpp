@@ -33,8 +33,8 @@ extern "C" {
 #include "game/cmovie.h"
 
 extern "C" {
-extern GXColor sEvtWindowColorTemplate;
-extern GXColor sEvtWindowDefaultColor;
+GXColor sEvtWindowColorTemplate;
+GXColor sEvtWindowDefaultColor = { 0x00, 0x00, 0x00, 0x80 };
 }
 
 class CJObj;
