@@ -3990,11 +3990,11 @@ extern "C" void PilotNwing_Update(PilotNwing* link, u32 dt, f32 frame)
 {
 	Mtx scale;
 	Mtx m;
-	s32 path[2] = { 0, 0 };
 	HSD_JObj* jobj;
 
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	jobj = GetJointByPath(link->_04->_00, path, 2);
+	s32 path[2] = { 0, 0 };
+	jobj        = GetJointByPath(link->_04->_00, path, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, link->_10);
 	HSD_JObjCopyMtx(link->_00->_00, link->_10);
 	link->_A0 = frame;
@@ -4949,14 +4949,14 @@ extern "C" void Fighter_Update(Fighter* hole, u32 dt)
 	Mtx m;
 	Mtx rot;
 	Vec zero;
-	s32 path[2]  = { 0, 0 };
-	s32 path2[1] = { 0 };
 	HSD_JObj* jobj;
 	f32 rate;
 
 	hole->_BC -= dt;
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	jobj = GetJointByPath(hole->_04->_00, path, 2);
+	s32 path[2]  = { 0, 0 };
+	s32 path2[1] = { 0 };
+	jobj         = GetJointByPath(hole->_04->_00, path, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, hole->_0C);
 	HSD_JObjCopyMtx(hole->_00->_00, hole->_0C);
 	zero.x = zero.y = zero.z = 0.0f;
