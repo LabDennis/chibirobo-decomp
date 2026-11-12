@@ -348,11 +348,13 @@ extern "C" void fn_80137D00(CCameraActionAreaEx* state, s32 unused)
 	if (state->_24 != NULL && state->_2C != NULL) {
 		fn_80135E34(state, unused);
 		if (state->_08 != state->_04 && state->_04 != -1) {
+			f32 fov;
 			if (AreaMode(state) == 1) {
-				state->mBaseFov = CamInfo(&state->_2C[state->_2034[state->_0C]._00->_34]).GetFov();
+				fov = CamInfo(&state->_2C[state->_2034[state->_0C]._00->_34]).GetFov();
 			} else {
-				state->mBaseFov = 30.5f;
+				fov = 30.5f;
 			}
+			state->mBaseFov = fov;
 		}
 	}
 }
