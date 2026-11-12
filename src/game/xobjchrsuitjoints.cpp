@@ -5,12 +5,6 @@
 
 extern "C" void SetPlayerPopperMountHidden(XObj* player, BOOL hidden);
 
-static inline HSD_JObj* FindPlayerToolMount(HSD_JObj* root)
-{
-	s32 tool[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
-	return FindJointByPath(root, tool, 8);
-}
-
 static inline void BindRotationJoint(CJointRot& rotation)
 {
 	if (rotation.mObj) {
@@ -55,11 +49,20 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 	{
 		s32 attachment[]         = { 0, 1, 0, 1, 2, 0, 0, 5 };
 		player->mAttachmentJoint = FindJointByPath(player->mJObj, attachment, 8);
-		player->mCopterObj.SetParent(FindPlayerToolMount(player->mJObj), FALSE);
+		{
+			s32 tool[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
+			player->mCopterObj.SetParent(FindJointByPath(player->mJObj, tool, 8), FALSE);
+		}
 		s32 popper[] = { 0, 1, 0, 1, 3 };
 		player->mPopperObj.SetParent(FindJointByPath(player->mJObj, popper, 5), FALSE);
-		player->mRadarObj.SetParent(FindPlayerToolMount(player->mJObj), FALSE);
-		player->mOXObj.SetParent(FindPlayerToolMount(player->mJObj), FALSE);
+		{
+			s32 tool[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
+			player->mRadarObj.SetParent(FindJointByPath(player->mJObj, tool, 8), FALSE);
+		}
+		{
+			s32 tool[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
+			player->mOXObj.SetParent(FindJointByPath(player->mJObj, tool, 8), FALSE);
+		}
 	}
 	BindRotationJoint(player->mJointRot);
 	BindRotationJoint(player->mHeadTurn.mNeck);
@@ -94,11 +97,20 @@ extern "C" void RemovePlayerSuit(XObjChr* player)
 	{
 		s32 attachment[]         = { 0, 1, 0, 1, 2, 0, 0, 5 };
 		player->mAttachmentJoint = FindJointByPath(player->mJObj, attachment, 8);
-		player->mCopterObj.SetParent(FindPlayerToolMount(player->mJObj), FALSE);
+		{
+			s32 tool[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
+			player->mCopterObj.SetParent(FindJointByPath(player->mJObj, tool, 8), FALSE);
+		}
 		s32 popper[] = { 0, 1, 0, 1, 3 };
 		player->mPopperObj.SetParent(FindJointByPath(player->mJObj, popper, 5), FALSE);
-		player->mRadarObj.SetParent(FindPlayerToolMount(player->mJObj), FALSE);
-		player->mOXObj.SetParent(FindPlayerToolMount(player->mJObj), FALSE);
+		{
+			s32 tool[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
+			player->mRadarObj.SetParent(FindJointByPath(player->mJObj, tool, 8), FALSE);
+		}
+		{
+			s32 tool[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
+			player->mOXObj.SetParent(FindJointByPath(player->mJObj, tool, 8), FALSE);
+		}
 	}
 
 	XObj& suit = player->mSuits.mObjects[player->mSuits.mCurrent];
