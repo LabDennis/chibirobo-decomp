@@ -314,7 +314,6 @@ static inline BOOL StopSfx(XSound* sound, s32 sfx)
  * @note Address: 0x8001D9B0
  * @note Size: 0x194
  */
-// NONMATCHING: the stop's sound fields are addressed off the game object, not the sound
 void AnimSfx::Update(s32 anim, f32 frame, u8 vol)
 {
 	s32 prev = mAnimId;
@@ -324,13 +323,14 @@ void AnimSfx::Update(s32 anim, f32 frame, u8 vol)
 		mFrame  = 0.0f;
 	}
 	AnimSfxEvent* event;
+	XSound* sound = &gGame.mSound;
 	for (s32 i = 0; mEvents != NULL && (event = &mEvents[i])->mAnim >= 0; i++) {
 		if (event->mAnim == anim || event->mAnim == prev) {
 			if (prev != anim && event->mAnim == prev && CheckStop(event)) {
-				StopSfx(&gGame.mSound, GetSfx(event));
+				StopSfx(sound, GetSfx(event));
 			}
 			if (event->mAnim == anim && CheckStart(event, mFrame, frame)) {
-				PlayGameSound(&gGame.mSound, GetSfx(event), vol);
+				PlayGameSound(sound, GetSfx(event), vol);
 			}
 		}
 	}
