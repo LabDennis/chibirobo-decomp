@@ -18224,8 +18224,7 @@ extern "C" s32 CEvt__cmd_SCRN(CEvt* evt)
 			gGame.mBlur.mAlpha = start;
 		if (end >= 0.0f)
 			gGame.mBlur.mTarget = end;
-		if (step < 0.0f)
-			step = -step;
+		step                 = step < 0.0f ? -step : step;
 		gGame.mBlur.mSpeed   = step;
 		gGame.mBlur.mOffsetX = near;
 		gGame.mBlur.mOffsetY = far;
