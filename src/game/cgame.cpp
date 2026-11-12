@@ -96,7 +96,7 @@ void ResetGameHudState(void* info);
 u8* GetStageDisplayName(s32 index);
 int rand(void);
 }
-extern "C" GXColor lbl_80659EC0;
+extern "C" GXColor gMessageFontDefaultColor;
 
 // a lead byte of a two byte shift jis character
 static inline bool IsSJISByte(char c)
@@ -153,7 +153,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	for (s32 i = 0; i < 2; i++) {
 		ResetMessageState(&game->mCMsgs[i]);
 		CMsg_ResetPos(&game->mCMsgs[i]);
-		game->mCMsgs[i].SetColor(lbl_80659EC0);
+		game->mCMsgs[i].SetColor(gMessageFontDefaultColor);
 	}
 	for (s32 i = 0; i < 5; i++) {
 		FbMirrorEx* mirror = &gFramebufferMirrors[i];
