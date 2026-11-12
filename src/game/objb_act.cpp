@@ -2175,36 +2175,6 @@ static inline bool AdvanceJumpArc(XActJump* act, u32 frames)
 	}
 	return true;
 }
-static inline void CheckJumpClearance(XActJump* act)
-{
-	XObjChr* p = act->mOwner;
-	f32 radius = p->mMoveScale.x * GetFloorExtent(p->mFloors).x;
-	f32 height = .5f * (p->mMoveScale.x * (GetFloorOffset(p->mFloors).y + GetFloorExtent(p->mFloors).y));
-	Mtx rot;
-	PSMTXRotRad(rot, 'y', p->mMoveRotate.y);
-	Vec offset = act->mOwner->mMoveScale * GetFloorOffset(act->mOwner->mFloors);
-	PSMTXMultVec(rot, &offset, &offset);
-	f32 yaw = act->mOwner->mMoveRotate.y;
-	f32 x   = 3.f * (f32)sin(yaw) + (offset.x + act->mOwner->mMoveTranslate.x);
-	f32 z   = 3.f * (f32)cos(yaw) + (offset.z + act->mOwner->mMoveTranslate.z);
-	f32 y   = .5f + act->mTargetHeight;
-	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
-		XObj* obj = gGame.GetObject(i);
-		if (!(obj->mStatus.mFlags & 1) || !(obj->mStatus.mFlags & 0x10000) || obj->mStatus.mFlags & 0x100000)
-			continue;
-		if (obj->GetCategory() == 7 || obj->GetCategory() == 20 || act->mOwner->mId == obj->mId || obj->GetKind() >= 10000)
-			continue;
-		f32 dx = obj->mMoveTranslate.x - x, dz = obj->mMoveTranslate.z - z;
-		if (sqrtf(dx * dx + dz * dz) > 100.f + (radius + obj->mFloorXZExtent))
-			continue;
-		CVec push, contact, from(x, y, z), to(x, y, z);
-		if ((obj->vfFC(&from, &to, radius, height, &push, &contact, 0, 0) & 3) == 3) {
-			act->mForward = 0;
-			act->mRise *= .8f;
-			break;
-		}
-	}
-}
 
 static inline bool IsJumpAnim(s32 anim, s32 base, s32 first, s32 second)
 {
@@ -2387,7 +2357,35 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				act->mArcAngle    = 0;
 				act->mArcStep     = act->mRise > 6 ? .8f * (HALF_PI / act->mRise) : DEG2RAD * 12;
 				act->mForward     = 5;
-				CheckJumpClearance(act);
+				{
+					XObjChr* p = act->mOwner;
+					f32 radius = p->mMoveScale.x * GetFloorExtent(p->mFloors).x;
+					f32 height = .5f * (p->mMoveScale.x * (GetFloorOffset(p->mFloors).y + GetFloorExtent(p->mFloors).y));
+					Mtx rot;
+					PSMTXRotRad(rot, 'y', p->mMoveRotate.y);
+					Vec offset = act->mOwner->mMoveScale * GetFloorOffset(act->mOwner->mFloors);
+					PSMTXMultVec(rot, &offset, &offset);
+					f32 yaw = act->mOwner->mMoveRotate.y;
+					f32 x   = 3.f * (f32)sin(yaw) + (offset.x + act->mOwner->mMoveTranslate.x);
+					f32 z   = 3.f * (f32)cos(yaw) + (offset.z + act->mOwner->mMoveTranslate.z);
+					f32 y   = .5f + act->mTargetHeight;
+					for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+						XObj* obj = gGame.GetObject(i);
+						if (!(obj->mStatus.mFlags & 1) || !(obj->mStatus.mFlags & 0x10000) || obj->mStatus.mFlags & 0x100000)
+							continue;
+						if (obj->GetCategory() == 7 || obj->GetCategory() == 20 || act->mOwner->mId == obj->mId || obj->GetKind() >= 10000)
+							continue;
+						f32 dx = obj->mMoveTranslate.x - x, dz = obj->mMoveTranslate.z - z;
+						if (sqrtf(dx * dx + dz * dz) > 100.f + (radius + obj->mFloorXZExtent))
+							continue;
+						CVec push, contact, from(x, y, z), to(x, y, z);
+						if ((obj->vfFC(&from, &to, radius, height, &push, &contact, 0, 0) & 3) == 3) {
+							act->mForward = 0;
+							act->mRise *= .8f;
+							break;
+						}
+					}
+				}
 				AdvanceJumpArc(act, frames);
 			}
 			if (!act->mTarget || act->mRise <= 0) {
