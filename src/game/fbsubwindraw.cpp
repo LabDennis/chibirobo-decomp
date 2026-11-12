@@ -23,7 +23,9 @@ static inline void DrawCorner(u32 color, f32 x, f32 y, f32 z, f32 w, f32 h)
 // NaN dimensions select the circular frame. Explicit dimensions select the tiled frame.
 void FbSubwin::Draw()
 {
-	if ((mFlags.mFlags & 4) || mAmount == 0)
+	if (mFlags.mFlags & 4)
+		return;
+	if (mAmount == 0.0f)
 		return;
 
 	SetGsChannelEnabled(&gGame.mGs, 4, 0);
