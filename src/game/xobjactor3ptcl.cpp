@@ -4,7 +4,7 @@
  * @note Address: 0x80109004
  * @note Size: 0x4
  */
-extern "C" void DrawDebugStatus__10XObjActor3Fv(XObjActor3* actor)
+void XObjActor3::DrawDebugStatus()
 {
 }
 
@@ -12,9 +12,9 @@ extern "C" void DrawDebugStatus__10XObjActor3Fv(XObjActor3* actor)
  * @note Address: 0x80109008
  * @note Size: 0x44
  */
-extern "C" void DrawObjectEffects__10XObjActor3Fv(XObjActor3* actor)
+void XObjActor3::DrawObjectEffects()
 {
-	if (actor->GetKind() == 0x31B) {
-		DrawParticlePool(&actor->mDust.mPtcl);
+	if (GetKind() == 0x31B) {
+		DrawParticlePool(&mDust.mPtcl);
 	}
 }
