@@ -403,7 +403,8 @@ extern "C" s32 CmdCloseDecaPanel(s32 cmd, s32 argc, s32* args)
  * @note Address: stage03 .text 0x60
  * @note Size: 0x94
  */
-// NONMATCHING: regalloc
+// NONMATCHING: regalloc — the key-index offset and the decaPanel
+// base swap r6/r8; instruction sequence is identical.
 extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 argc, s32* args)
 {
 	decaPanel.ResetInput();
@@ -457,7 +458,9 @@ extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 argc, s32* args)
  * @note Address: stage03 .text 0xF4
  * @note Size: 0xBC8
  */
-// NONMATCHING: retail keeps gGame's address in a saved register from the first pad read on
+// NONMATCHING: regalloc/scheduling through the draw section. Retail keeps one fewer fp callee
+// save live, associates the digit-code accumulation differently, does not fuse the
+// 0.9f * pos->y multiply into an fmadds, and addresses key->mChar through a dedicated pointer.
 extern "C" void DecaPanel_Update(DecaPanel* work)
 {
 	if (work->mState != 2) {
@@ -473,31 +476,32 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 	}
 
 	if (work->mFade >= 1.0f) {
-		u8 cur = decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar;
-		if (gGame.mPadHeld & 0x100) {
+		CGameS03View* game = &gGame;
+		u8 cur             = decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar;
+		if (game->mPadHeld & 0x100) {
 			work->mLocked = 1;
 		} else {
 			work->mLocked = 0;
-			if (gGame.mPadRepeat & 1) {
+			if (game->mPadRepeat & 1) {
 				do {
 					if (--work->mCursorX < 0) {
 						work->mCursorX = 2;
 					}
 				} while (cur == decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar);
-			} else if (gGame.mPadRepeat & 2) {
+			} else if (game->mPadRepeat & 2) {
 				do {
 					if (++work->mCursorX > 2) {
 						work->mCursorX = 0;
 					}
 				} while (cur == decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar);
 			}
-			if (gGame.mPadRepeat & 8) {
+			if (game->mPadRepeat & 8) {
 				do {
 					if (--work->mCursorY < 0) {
 						work->mCursorY = 3;
 					}
 				} while (cur == decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar);
-			} else if (gGame.mPadRepeat & 4) {
+			} else if (game->mPadRepeat & 4) {
 				do {
 					if (++work->mCursorY > 3) {
 						work->mCursorY = 0;
@@ -506,7 +510,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			}
 		}
 
-		if (gGame.mPadTrig & 0x100) {
+		if (game->mPadTrig & 0x100) {
 			u8 ch = decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar;
 			PlayGameSound(gGame.mSound, decaPanelKeySounds[work->mCursorX + work->mCursorY * 3], 0xFF);
 			if (ch == 'C') {
@@ -555,7 +559,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 				}
 			}
 		}
-		if (gGame.mPadTrig & 0x200) {
+		if (game->mPadTrig & 0x200) {
 			work->mCode   = -1;
 			work->mActive = 0;
 			gGame.mFlags &= ~2ULL;
@@ -1687,7 +1691,8 @@ extern "C" void UpdateStage(s32 frames)
  * @note Address: stage03 .text 0x141C
  * @note Size: 0x84
  */
-// NONMATCHING: regalloc
+// NONMATCHING: regalloc — the key-index offset and the ' '/1
+// constants land in different scratch regs; sequence is identical.
 extern "C" void InitStage(void* arg)
 {
 	decaPanel.mActive = 0;
