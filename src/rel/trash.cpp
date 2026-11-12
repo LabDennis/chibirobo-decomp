@@ -1351,8 +1351,13 @@ extern "C" void InitTrash(void* arg)
 // needed as an inline for the stack layout of the two CVec copies
 static inline s32 IsNearXZ(const Vec& p, const Vec& q)
 {
-	CVec a(p);
-	CVec b(q);
+	CVec a, b;
+	a.x = p.x;
+	a.y = p.y;
+	a.z = p.z;
+	b.x = q.x;
+	b.y = q.y;
+	b.z = q.z;
 	b.y = 0.0f;
 	a.y = 0.0f;
 	if (11.5f < PSVECDistance(&a, &b)) {
@@ -1367,6 +1372,8 @@ static inline s32 IsNearXZ(const Vec& p, const Vec& q)
  */
 extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
 {
+	// NONMATCHING: arg regs — the instruction sequence is identical, but trashboxIndex,
+	// the gGame+0x10000 base, robot and the CVec vtable land one slot over.
 	CGame* game;
 	TrashObj* robot;
 	TrashObj* box;
