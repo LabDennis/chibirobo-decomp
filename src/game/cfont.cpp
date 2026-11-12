@@ -140,11 +140,15 @@ u8 gSingleByteFontAtlas[0x20000] ATTRIBUTE_ALIGN(32) = {
 #endif
 
 extern "C" {
-extern u16 gFontEncoding;
-extern OSFontHeader* gActiveFontHeader;
-extern BOOL gUseSingleByteFont;
-extern FontGlyphCache gDynamicFontGlyphCache;
-extern FontGlyphRange gFontGlyphRanges[];
+u16 gFontEncoding;
+OSFontHeader* gActiveFontHeader;
+#if !defined(VERSION_JP)
+BOOL gUseSingleByteFont;
+#endif
+FontGlyphCache gDynamicFontGlyphCache;
+FontGlyphRange gFontGlyphRanges[] = {
+	{ NULL, 0x0020, 0x007F }, { NULL, 0x8140, 0x81F8 }, { NULL, 0x824F, 0x82F2 }, { NULL, 0x8340, 0x8397 }, { NULL, 0, 0 },
+};
 }
 
 // todo: cleanup, cfont.h's IsSjisLead costs GetFontGlyphTexture a bit
