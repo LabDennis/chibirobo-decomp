@@ -66,7 +66,10 @@ void XObjChr::vf94()
 		p.display.mState = p.burst.mState = 0;
 	}
 	gPlayerSuitChangeEffect.active = FALSE;
-	// both rings of ten in one run, as retail has it
+	// NONMATCHING: retail emits the clear as two branch-free straight-line runs
+	// (one base for rings[0], a second base at +0xf0 for rings[1]). Nested loops
+	// and two separate loops both keep a bound check under MWCC, so the flat
+	// loop stays as the honest form.
 	for (s32 i = 0; i < 20; ++i) {
 		gPlayerSuitChangeEffect.rings[0][i].scale = 0.0f;
 		gPlayerSuitChangeEffect.rings[0][i].angle = 0.0f;
