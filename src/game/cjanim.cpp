@@ -84,14 +84,14 @@ extern "C" void Clear__6CJAnimFv(CJAnim* anim)
  * @note Address: 0x8008A530
  * @note Size: 0xD4
  */
-extern "C" BOOL vf140__4XObjFPC3Vecl(XObj* object, const Vec* position, s32 value)
+BOOL XObj::vf140(const Vec* position, s32 value)
 {
-	if (object->mStatus.mFlags & 0x0000040000000000ULL) {
+	if (mStatus.mFlags & 0x0000040000000000ULL) {
 		if (value == 56)
 			return FALSE;
-		const void* script = ObjectScript(object);
+		const void* script = ObjectScript(this);
 		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)object, (s16)value, -1);
+			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)this, (s16)value, -1);
 		}
 		return TRUE;
 	}
@@ -102,12 +102,12 @@ extern "C" BOOL vf140__4XObjFPC3Vecl(XObj* object, const Vec* position, s32 valu
  * @note Address: 0x8008A604
  * @note Size: 0xBC
  */
-extern "C" void vf13C__4XObjFPC3Vecll(XObj* object, const Vec* contact, s32 value, s32 tint)
+void XObj::vf13C(const Vec* contact, s32 value, s32 tint)
 {
-	if (object->mStatus.mFlags & 0x0000080000000000ULL) {
-		const void* script = ObjectScript(object);
+	if (mStatus.mFlags & 0x0000080000000000ULL) {
+		const void* script = ObjectScript(this);
 		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)object, -1, (s16)((u32)value + 3000));
+			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)this, -1, (s16)((u32)value + 3000));
 		}
 	}
 }
@@ -116,13 +116,13 @@ extern "C" void vf13C__4XObjFPC3Vecll(XObj* object, const Vec* contact, s32 valu
  * @note Address: 0x8008A6C0
  * @note Size: 0x158
  */
-extern "C" void OnHitFromPosition__4XObjFRC3Vecf(XObj* object, const Vec* position, f32 strength)
+void XObj::OnHitFromPosition(const Vec& position, f32 strength)
 {
-	if (object->mStatus.mFlags & 0x0000080000000000ULL) {
+	if (mStatus.mFlags & 0x0000080000000000ULL) {
 		if (strength >= (s32)GetPlayerActionParameter(31) / 100.0f) {
-			TriggerObjectEvent(object, -1, 2001);
+			TriggerObjectEvent(this, -1, 2001);
 		} else {
-			TriggerObjectEvent(object, -1, 2000);
+			TriggerObjectEvent(this, -1, 2000);
 		}
 	}
 }
