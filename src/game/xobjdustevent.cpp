@@ -11,6 +11,14 @@ static inline BOOL AnimDone(HSD_JObj* joint)
 	return aobj != NULL ? (aobj->flags & 0x44000000) != 0 : TRUE;
 }
 
+// todo: cleanup, game/xobjfreeevent.cpp and game/xobjdust.cpp have the same
+static inline void TriggerEvent(XObj* object, u32 first, u32 second)
+{
+	const void* script = object->vf128();
+	if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
+		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)object, first, second);
+}
+
 /**
  * @note Address: 0x800DED24
  * @note Size: 0x37C
@@ -24,11 +32,7 @@ extern "C" BOOL UpdateDustEvent(XObjDust* dust, u32 frames)
 			if (aobj != NULL) {
 				if (aobj->flags & 0x44000000) {
 					if (dust->mStatus.mFlags & 0xC0000000000ULL) {
-						s32 arg            = dust->mEventArg;
-						s32 id             = dust->mEventId;
-						const void* script = dust->vf128();
-						if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
-							StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)dust, id, arg);
+						TriggerEvent(dust, dust->mEventId, dust->mEventArg);
 					}
 					return TRUE;
 				}

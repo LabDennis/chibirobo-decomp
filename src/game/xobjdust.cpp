@@ -12,6 +12,14 @@ extern "C" {
 
 extern "C" BOOL UpdateDustEvent(XObjDust* dust, u32 frames);
 
+// todo: cleanup, game/xobjfreeevent.cpp and game/xobjdustevent.cpp have the same
+static inline void TriggerEvent(XObj* object, u32 first, u32 second)
+{
+	const void* script = object->vf128();
+	if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
+		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)object, first, second);
+}
+
 /**
  * @note Address: 0x800DF0A0
  * @note Size: 0x238
@@ -47,9 +55,7 @@ extern "C" BOOL UpdateDriftingDust(XObjDust* dust, u32 frames)
 {
 	dust->mPhase = fmod(dust->mPhaseStep * frames + dust->mPhase, TWO_PI);
 	if (0.0f != dust->mBouncePhase) {
-		f32 phase          = 0.02f * frames + dust->mBouncePhase;
-		dust->mBouncePhase = phase;
-		if (phase > PI) {
+		if ((dust->mBouncePhase += 0.02f * frames) > PI) {
 			dust->mBouncePhase  = 0.0f;
 			dust->mBounceHeight = 0.0f;
 		}
@@ -77,11 +83,7 @@ extern "C" BOOL UpdateDriftingDust(XObjDust* dust, u32 frames)
 		PSVECScale((Vec*)&dust->mMoveScale, (Vec*)&dust->mMoveScale, 1.12f * dust->mFade);
 		if (0.0f == PSVECMag((Vec*)&dust->mMoveScale)) {
 			if (dust->mStatus.mFlags & 0xC0000000000ULL) {
-				s32 arg            = dust->mEventArg;
-				s32 id             = dust->mEventId;
-				const void* script = dust->vf128();
-				if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
-					StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)dust, id, arg);
+				TriggerEvent(dust, dust->mEventId, dust->mEventArg);
 			}
 			return TRUE;
 		}

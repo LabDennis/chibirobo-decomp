@@ -4073,8 +4073,8 @@ static inline void TitleSelectionConfirmed(Title* title)
 /**
  * @note Address: 0x8002E8D0
  */
-// NONMATCHING: retail calls StartScreenFade where this file inlines it, and it reaches the card's
-// busy and found flags in two steps
+// NONMATCHING: retail reaches the card's busy and found flags in two steps and turns the result of
+// the shift-jis test into 0 or 1 before it tests it
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {
 
@@ -4231,13 +4231,13 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		title->_10 = title->_14 = 0;
 		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, gTitlePalette[gTitlePaletteIndex].background.r,
 		                gTitlePalette[gTitlePaletteIndex].background.g, gTitlePalette[gTitlePaletteIndex].background.b, 0, .5f);
-		title->mDemo.mState = 1;
-		title->mDemo.mLoop  = TRUE;
 #if defined(VERSION_PAL)
 		Vec pos = { 0.0f, 4.0f, 0.0f };
 #else
 		Vec pos = { 0.0f, 8.0f, 0.0f };
 #endif
+		title->mDemo.mState = 1;
+		title->mDemo.mLoop  = TRUE;
 		title->mDemo.SetPos(pos, 0);
 		title->mDemo.SetAnim(0, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 		// The first animation frame runs immediately after loading.
