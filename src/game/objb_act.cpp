@@ -3005,10 +3005,9 @@ void HSD_JObjClearMtxFlags__FP9_HSD_JObj(HSD_JObj* jobj)
 // Both retail call sites read the result before the next call.
 extern "C" const Vec* GetScaledTargetFloorExtent(const XAction* act)
 {
-	static Vec extent;
 	const XObj* target = act->mTarget;
 	const Vec& scaled  = target->mMoveScale * GetFloorExtent(&target->mFloors[act->mTargetFloor]);
-	return static_cast<Vec*>(memcpy(&extent, &scaled, sizeof(extent)));
+	return &scaled;
 }
 
 /**
