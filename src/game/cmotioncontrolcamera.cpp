@@ -155,10 +155,7 @@ void CMotionControlCamera::Update(u32 step)
 	if (((pad.mPad->mTrigger & 0x800) || (pad.mPad->mTrigger & 0x200)) && gGame.mEvt.mData.mScript == NULL) {
 		bool free = false;
 		if ((gGame.mStatus.mFlags & 1) && !(gGame.mStatus.mFlags & 0x22)) {
-			bool blocked = false;
-			if ((gGame.mDvdStatus != 0 || gGame.mPrevDvdStatus != 0) && gGame.mDiskOk == 0) {
-				blocked = true;
-			}
+			bool blocked = (gGame.mDvdStatus != 0 || gGame.mPrevDvdStatus != 0) && gGame.mDiskOk == 0;
 			if (!blocked) {
 				free = true;
 			}
