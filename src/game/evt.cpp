@@ -11703,11 +11703,9 @@ static inline void CEvt_Attach(CEvt* evt, u8* script, u32 owner, s16 useValue = 
 	evt->mUseValue     = -1;
 	evt->mHitValue     = -1;
 	evt->mData.mScript = script;
-	if (evt->_00 != 0)
-		owner = evt->_00;
-	evt->mData._04 = owner;
-	evt->mUseValue = useValue;
-	evt->mHitValue = hitValue;
+	evt->mData._04     = (evt->_00 == 0) ? owner : evt->_00;
+	evt->mUseValue     = useValue;
+	evt->mHitValue     = hitValue;
 }
 
 /**
