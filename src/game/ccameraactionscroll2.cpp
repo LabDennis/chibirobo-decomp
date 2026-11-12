@@ -101,6 +101,15 @@ f32 gScrollCaptionOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 #define PLAYER     gGame.GetPlayer()
 #define MARK_SCALE 0.65f
 
+// the overlay caption: Japan's text table has it at 72, and its icon strip has 14 frames, not 17
+#if defined(VERSION_JP)
+#define CAPTION_TEXT       72
+#define CAPTION_ICON_FRAME 0.071428575f
+#else
+#define CAPTION_TEXT       15
+#define CAPTION_ICON_FRAME 0.05882353f
+#endif
+
 // a message id with its text, the caption over the room camera
 struct CaptionMsg {
 	s32 mId;           // _00
@@ -696,13 +705,13 @@ void CCameraActionScroll2::vf20()
 
 	// the caption in the corner, with a dark outline
 	CaptionMsg msg = { 7, NULL };
-	msg.mText      = GetLocalizedInterfaceText(15);
+	msg.mText      = GetLocalizedInterfaceText(CAPTION_TEXT);
 	f32 slide      = HALF_PI; // a slide in, always at its end here
 	f32 captionX   = 100.0f * (1.0f - (f32)sin(slide)) + 576.0f;
 	f32 fade       = 255.0f;
 	u32 alpha      = (u32)fade;
 	u32 white      = alpha | 0xFFFFFF00;
-	f32 frame      = 0.05882353f * msg.mId;
+	f32 frame      = CAPTION_ICON_FRAME * msg.mId;
 	captionX -= MeasureGameTextWidth(&gGame.mGs, msg.mText, 1, 20.0f);
 	s32 line     = 0;
 	f32 captionY = 24.0f * line + 62.0f;
@@ -714,7 +723,7 @@ void CCameraActionScroll2::vf20()
 
 	CTexObj icon;
 	icon = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
-	PSMTXScale(icon.mMtx[1], 0.05882353f, 1.0f, 1.0f);
+	PSMTXScale(icon.mMtx[1], CAPTION_ICON_FRAME, 1.0f, 1.0f);
 	icon.mMtxDirty = TRUE;
 	PSMTXTrans(icon.mMtx[0], frame, 0.0f, 0.0f);
 	icon.mMtxDirty = TRUE;
