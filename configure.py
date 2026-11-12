@@ -509,7 +509,7 @@ config.libs = [
             Object(NonMatching, "game/memcardrestore.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardcapture.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/evtinit.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/memcardbanner.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-opt nodeadstore"]),
+            Object(NonMatching, "game/memcardbanner.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjchrjointrot.cpp", cflags=with_hsd_headers(cflags_game)),
             *([Object(Matching, "game/oxmenumarkdtor.cpp", cflags=with_hsd_headers(cflags_game))]
               if config.version != JP else []),
