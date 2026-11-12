@@ -329,11 +329,13 @@ extern "C" void SetCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 ind
 		state->_0C = index;
 		state->_04 = index;
 		state->_08 = index;
+		f32 fov;
 		if (AreaMode(state) == 1) {
-			state->mBaseFov = CamInfo(&state->_2C[state->_2034[state->_0C]._00->_34]).GetFov();
+			fov = CamInfo(&state->_2C[state->_2034[state->_0C]._00->_34]).GetFov();
 		} else {
-			state->mBaseFov = 30.5f;
+			fov = 30.5f;
 		}
+		state->mBaseFov = fov;
 	}
 }
 
