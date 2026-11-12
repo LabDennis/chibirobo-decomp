@@ -22,6 +22,7 @@ extern "C" {
 
 extern "C" CVec sMapCameraTestEye;
 extern "C" CVec sMapCameraTestCenter;
+extern "C" CamCollisionPolygon gCameraCollisionPolygons[256];
 extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(CCameraActionMap* map, const Vec& from, const Vec& to,
                                                                                 CamMapEntry* entries, s32 arg);
 extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
@@ -39,12 +40,20 @@ extern "C" s32 CountMapCameraAdjacentSideIntersections(CCameraActionMap* map, Ca
 extern "C" s32 CountMapCameraEntriesInGroup(CCameraActionMap* map, s32 value);
 extern "C" s32 FindNearestMapCameraEntry(CCameraActionMap* map, const Vec& pos);
 extern "C" CamMapEntry* GetNearestMapCameraEntry(CCameraActionMap* map, const Vec& pos);
-extern "C" s32 lbl_8065B330;
-extern "C" s32 lbl_8065B338;
-extern "C" s32 lbl_8065B33C;
-extern "C" s32 lbl_8065B340;
-extern "C" s32 lbl_8065B344;
-extern "C" f32 lbl_8065B34C;
+
+extern "C" {
+s32 lbl_8065B330;
+s32 lbl_8065B334;
+s32 lbl_8065B338;
+s32 lbl_8065B33C;
+s32 lbl_8065B340;
+s32 lbl_8065B344;
+s32 lbl_8065B348;
+f32 lbl_8065B34C;
+s32 lbl_8065B350;
+f32 lbl_8065B354;
+f32 lbl_8065B358;
+}
 
 extern "C" XObj* GetPlayerPoolObject(CGame* game, s32 index);
 extern "C" void ResetPlayerCameraValue(XObjChr* player);
@@ -67,10 +76,6 @@ f32 sMapCameraSpringParameters[] = { 0.5f, 2.5f, 4.5f };
 s32 sMapCameraCollisionMode0[1];
 s32 sMapCameraCollisionMode1 = 1;
 }
-extern "C" s32 lbl_8065B348;
-extern "C" s32 lbl_8065B350;
-extern "C" f32 lbl_8065B354;
-extern "C" f32 lbl_8065B358;
 
 static inline s32 ClassifyAreaHeight(f32 y, f32 bottom, f32 top)
 {
@@ -1049,8 +1054,6 @@ extern "C" Vec GetMapCameraTargetWithHeightOffset(CCameraActionMap* map)
 	return target;
 }
 
-extern "C" s32 lbl_8065B330;
-extern "C" s32 lbl_8065B344;
 extern "C" void fn_8013A7A0(CCameraActionMap* map);
 
 // _60 follows _70
@@ -1156,7 +1159,6 @@ extern "C" void StartCameraEyeInterpolation(CCameraActionMap* map, Vec to, f32 t
 }
 
 extern "C" Vec sPreviousMapOrbitAngle; // saved before updating the orbit
-extern "C" f32 lbl_8065B34C;
 
 /**
  * @note Address: 0x8013A710
@@ -1399,10 +1401,6 @@ extern "C" void SetMapCameraAnglesFromEyeAndInterest(CCameraActionMap* map)
     addi     r1, r1, 0x40
     blr
 */
-
-extern "C" s32 lbl_8065B338;
-extern "C" s32 lbl_8065B33C;
-extern "C" s32 lbl_8065B340;
 
 /**
  * @note Address: 0x8013AB5C
@@ -1906,7 +1904,6 @@ extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step
     blr
 */
 
-extern "C" s32 lbl_8065B334;
 extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
 
 /**
@@ -8313,8 +8310,6 @@ extern "C" void fn_8014127C(CCameraActionMap* map)
 	map->_11E8 = TRUE;
 }
 
-extern "C" s32 lbl_8065B344;
-
 /**
  * @note Address: 0x80141288
  * @note Size: 0x4CC
@@ -8706,10 +8701,6 @@ extern "C" void SetCamera__16CCameraActionMapFP7CCamera(CCameraActionMap* map, C
     addi     r1, r1, 0xb0
     blr
 */
-
-extern "C" s32 lbl_8065B338;
-extern "C" s32 lbl_8065B33C;
-extern "C" s32 lbl_8065B340;
 
 /**
  * @note Address: 0x80141754
@@ -9543,8 +9534,10 @@ CVec lbl_805C02F8;
 CVec lbl_805C032C;
 CVec lbl_805C0348;
 CVec lbl_805C0364;
+Vec sPreviousMapOrbitAngle;
 CVec sMapCameraTestEye;
 CVec sMapCameraTestCenter;
+CamCollisionPolygon gCameraCollisionPolygons[256];
 }
 
 /*
