@@ -40,17 +40,6 @@ static inline void SetAttachmentParent(XObjChr* player, XObjAttachment& attachme
 	attachment.SetParent(FindJointByPath(player->mJObj, path, depth), TRUE);
 }
 
-#if !defined(VERSION_JP)
-static inline BOOL LoadMenuMark(OXMenuMark& mark, s32 id)
-{
-	if (!LoadPlayerModel(mark.mObj, id))
-		return FALSE;
-	if (mark.mObj.mJObj)
-		HSD_JObjWalkTree(mark.mObj.mJObj, EnableJointMaterialTranslucency, NULL);
-	return TRUE;
-}
-#endif
-
 /**
  * @note Address: 0x800B97FC
  * @note Size: 0x1584
@@ -150,12 +139,16 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 #if !defined(VERSION_JP)
 		switch (mOXMenu._00) {
 		case 0:
-			if (!LoadMenuMark(mOXMenu.mMark[0], 45))
+			if (!LoadPlayerModel(mOXMenu.mMark[0].mObj, 45))
 				break;
+			if (mOXMenu.mMark[0].mObj.mJObj)
+				HSD_JObjWalkTree(mOXMenu.mMark[0].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
 			++mOXMenu._00;
 		case 1:
-			if (!LoadMenuMark(mOXMenu.mMark[1], 46))
+			if (!LoadPlayerModel(mOXMenu.mMark[1].mObj, 46))
 				break;
+			if (mOXMenu.mMark[1].mObj.mJObj)
+				HSD_JObjWalkTree(mOXMenu.mMark[1].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
 			++mOXMenu._00;
 		case 2:
 			++mOXMenu._00;
