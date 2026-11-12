@@ -1660,10 +1660,14 @@ extern "C" void DrawCurrentLogo(Logo* logo)
 			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 320.0f, y, 0.0f, shineW, shineH, 0.0f, 0.0f, 0.0f);
 		}
 		if (logo->mState == 6 || logo->mState == 7 || logo->mState == 8) {
-			tex       = logo->mTpl.mTex.Init(logo->GetDesc(0), 0);
-			u16 w     = GXGetTexObjWidth(&tex);
-			f32 h     = GXGetTexObjHeight(&tex);
+			tex   = logo->mTpl.mTex.Init(logo->GetDesc(0), 0);
+			u16 w = GXGetTexObjWidth(&tex);
+			f32 h = GXGetTexObjHeight(&tex);
+#if defined(VERSION_JP)
+			u32 color = (u32)(255.0f * logo->mAlpha) | 0x0046FF00;
+#else
 			u32 color = (u32)(255.0f * logo->mAlpha) | 0xDC000000;
+#endif
 			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 320.0f, h / 2.0f + 154.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 		}
 		if (logo->mState == 9 || logo->mState == 10 || logo->mState == 11) {
