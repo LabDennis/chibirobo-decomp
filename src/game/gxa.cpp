@@ -399,6 +399,34 @@ BOOL AnimSfx::CheckStart(AnimSfxEvent* event, f32 min, f32 max)
  * @note Size: 0x10
  */
 // empties the sound's queue
+#if defined(VERSION_JP)
+/**
+ * @note Address: JP 0x8001DB48
+ * @note Size: 0x80
+ */
+// the japanese sound menu: plays the effect picked for a row and remembers the pick
+extern "C" void SetSoundMenuSelection(XSound* sound, s32 index, s32 selection)
+{
+	if (index < 0 || index >= ARRAY_SIZE(gSoundMenuSelections))
+		return;
+	if (selection < 0 || selection >= ARRAY_SIZE(gSoundMenuEffects))
+		return;
+	PlayGameSound(sound, gSoundMenuEffects[selection], 0xFF);
+	gSoundMenuSelections[index] = selection;
+}
+
+/**
+ * @note Address: JP 0x8001DBC8
+ * @note Size: 0x2C
+ */
+extern "C" s32 GetSoundMenuSelection(XSound*, s32 index)
+{
+	if (index < 0 || index >= ARRAY_SIZE(gSoundMenuSelections))
+		return -1;
+	return gSoundMenuSelections[index];
+}
+#endif
+
 extern "C" void ClearGameSoundQueue(XSound* sound)
 {
 	sound->mQueueWrite = 0;

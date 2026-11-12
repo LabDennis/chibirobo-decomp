@@ -11,6 +11,18 @@
 extern "C" {
 
 /**
+ * @note Address: 0x800D5C58
+ * @note Size: 0x33C
+ */
+// turns the dish by angle from where the radar points
+void SetRadarDishYaw(XObjRadar* object, f32 angle)
+{
+	s32 path[] = { 0 };
+	CJObj joint(FindJointByPath(object->mJObj, path, 1));
+	joint.SetRotationY(object->mYaw + angle, FALSE);
+}
+
+/**
  * @note Address: 0x800D6418
  * @note Size: 0x6A8
  */

@@ -109,6 +109,9 @@ game/gamecoordinfo.cpp:
 game/gamecounter.cpp:
 	.text       start:0x80012BF8 end:0x80012C08
 
+game/gamestart.cpp:
+	.text       start:0x80012C08 end:0x80013718
+
 game/gameccameraview.cpp:
 	.text       start:0x80013718 end:0x80013758
 
@@ -497,6 +500,9 @@ game/xobjchrreset.cpp:
 	.text       start:0x800BA0CC end:0x800BA2C4
 	.sdata2     start:0x806644C8 end:0x806644E0
 
+game/xobjchrsuitjoints.cpp:
+	.text       start:0x800BA2C4 end:0x800BB434
+
 game/xobjchritem.cpp:
 	.text       start:0x800BB434 end:0x800BB6A4
 
@@ -512,6 +518,9 @@ game/xobjchrplacement.cpp:
 game/xobjchrstop.cpp:
 	.text       start:0x800BD314 end:0x800BD404
 
+game/xobjchrattachmentchange.cpp:
+	.text       start:0x800BD404 end:0x800BD964
+
 game/xobjchrjointrot.cpp:
 	.text       start:0x800BD964 end:0x800BDC9C
 
@@ -524,8 +533,14 @@ game/xobjchrresetstate.cpp:
 game/xactioninit.cpp:
 	.text       start:0x800BE32C end:0x800BE35C
 
+game/xobjchrdisplay.cpp:
+	.text       start:0x800BE35C end:0x800BEA30
+
 game/atcmenudtor.cpp:
 	.text       start:0x800BEA30 end:0x800BEAD4
+
+game/xobjchrdtor.cpp:
+	.text       start:0x800BEAD4 end:0x800BF168
 
 game/xactpoppershotdtor.cpp:
 	.text       start:0x800BF168 end:0x800BF1FC
@@ -602,11 +617,17 @@ game/xobjplugload.cpp:
 game/plugcordcollision.cpp:
 	.text       start:0x800DC1E0 end:0x800DC62C
 
+game/plugcordpush.cpp:
+	.text       start:0x800DC62C end:0x800DCBA0
+
 game/xobjplugnodedraw.cpp:
 	.text       start:0x800DCBA0 end:0x800DCD5C
 
 game/xobjplugcorddraw.cpp:
 	.text       start:0x800DCD5C end:0x800DD0B0
+
+game/plugcordsimulation.cpp:
+	.text       start:0x800DD0B0 end:0x800DDE78
 
 game/xobjplugcordend.cpp:
 	.text       start:0x800DDE78 end:0x800DDEE0
@@ -622,6 +643,9 @@ game/xobjplugcordpointctor.cpp:
 
 game/xobjplugnodes.cpp:
 	.text       start:0x800DE368 end:0x800DE4AC
+
+game/plugcordpoints.cpp:
+	.text       start:0x800DE4AC end:0x800DEB0C
 
 game/xobjplugnode.cpp:
 	.text       start:0x800DEB0C end:0x800DECFC
@@ -667,6 +691,9 @@ game/xobjdust.cpp:
 
 game/xobjhbox.cpp:
 	.text       start:0x800E2070 end:0x800E26A4
+
+game/xobjhboxupdate.cpp:
+	.text       start:0x800E26A4 end:0x800E3610
 
 game/xobjhboxpart.cpp:
 	.text       start:0x800E3610 end:0x800E3888
@@ -732,6 +759,9 @@ game/xobjspiderbossdtor.cpp:
 game/xobjspiderbossse.cpp:
 	.text       start:0x80102B44 end:0x80102C98
 
+game/xobjspiderbossstates34.cpp:
+	.text       start:0x80102C98 end:0x8010639C
+
 game/xobjspiderbossstop.cpp:
 	.text       start:0x8010639C end:0x801063F4
 
@@ -747,6 +777,9 @@ game/xobjspiderbossattack.cpp:
 game/xobjspiderbosshit.cpp:
 	.text       start:0x80107A28 end:0x80107BE4
 
+game/xobjspiderbossevent.cpp:
+	.text       start:0x80107BE4 end:0x80108530
+
 game/xobjspiderbossdraw.cpp:
 	.text       start:0x80108530 end:0x801085AC
 
@@ -755,6 +788,9 @@ game/xobjspiderbossupdate.cpp:
 
 game/xobjspiderbossload.cpp:
 	.text       start:0x80108854 end:0x801088DC
+
+game/xobjspiderbossplacement.cpp:
+	.text       start:0x801088DC end:0x80108E60
 
 game/xobjspiderbossinit.cpp:
 	.text       start:0x80108E60 end:0x8010912C
@@ -776,8 +812,14 @@ game/xobjactorground.cpp:
 game/xobjactorstop.cpp:
 	.text       start:0x801098C4 end:0x801098FC
 
+game/xobjactorevent.cpp:
+	.text       start:0x801098FC end:0x80109D60
+
 game/xobjactorlook.cpp:
 	.text       start:0x80109D60 end:0x80109F74
+
+game/xobjactorjointupdate.cpp:
+	.text       start:0x80109F74 end:0x8010A604
 
 game/xobjactorupdate.cpp:
 	.text       start:0x8010A604 end:0x8010AC48

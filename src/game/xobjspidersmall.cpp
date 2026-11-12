@@ -2243,8 +2243,14 @@ static inline void SetSmallSpiderTarget(XObjSpiderSmall* spider)
 extern "C" void ApplySmallSpiderPlacement(XObjSpiderSmall* spider)
 {
 	spider->vf12C(1, 0, 0, 0, 0.0f);
-	ReadSpiderPlacement(spider, spider->mHome, spider->_980, spider->mRadius, 16.0f, gSmallSpiderPosition, gSmallSpiderRotation,
-	                    gSmallSpiderScale);
+	spider->mMoveTranslate.x = PlacementPosition(spider->mCoord, gSmallSpiderPosition).x;
+	spider->mMoveTranslate.y = PlacementPosition(spider->mCoord, gSmallSpiderPosition).y;
+	spider->mMoveTranslate.z = PlacementPosition(spider->mCoord, gSmallSpiderPosition).z;
+	spider->mHome.x          = PlacementPosition(spider->mCoord, gSmallSpiderPosition).x;
+	spider->mHome.y          = PlacementPosition(spider->mCoord, gSmallSpiderPosition).y;
+	spider->mHome.z          = PlacementPosition(spider->mCoord, gSmallSpiderPosition).z;
+	spider->_980             = PlacementRotation(spider->mCoord, gSmallSpiderRotation).y;
+	spider->mRadius          = 16.0f * PlacementScale(spider->mCoord, gSmallSpiderScale).x;
 	switch (spider->_25C) {
 	case 0:
 		spider->SetState(3);

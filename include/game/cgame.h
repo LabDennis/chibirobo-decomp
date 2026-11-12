@@ -88,6 +88,13 @@ struct XObjDrawList {
 	XObj* mObjects[0x400]; // _0000
 	s16 mIndices[0x400];   // _1000, each one's slot in XOBJS's mObjects
 	s32 mCount;            // _1800
+
+	void ClearObjects()
+	{
+		for (int i = 0; i < 1024; ++i)
+			mObjects[i] = NULL;
+		mCount = 0;
+	}
 };
 STATIC_ASSERT(sizeof(XObjDrawList) == 0x1804);
 

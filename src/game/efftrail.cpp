@@ -801,3 +801,16 @@ extern "C" void HandleOXMenuInput(OXMenu* menu, CPad* pad)
 		}
 	}
 }
+
+#if defined(VERSION_JP)
+/**
+ * @note Address: JP 0x80098CF8
+ * @note Size: 0xC
+ */
+// the japanese settings menu sets both rings' option at once
+extern "C" void SetRingMenuOption(XObjChrMenu* menu, s32 value)
+{
+	menu->mAtc._280 = value;
+	menu->mDrs._280 = value;
+}
+#endif

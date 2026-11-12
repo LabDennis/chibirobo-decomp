@@ -34,17 +34,4 @@ static inline Vec PlacementScale(const CoordInfo& coord, const Vec& initial)
 	return scale;
 }
 
-static inline void ReadSpiderPlacement(XObj* spider, Vec& home, f32& heading, f32& radius, f32 baseRadius, const Vec& position,
-                                       const Vec& rotation, const Vec& scale)
-{
-	spider->mMoveTranslate.x = PlacementPosition(spider->mCoord, position).x;
-	spider->mMoveTranslate.y = PlacementPosition(spider->mCoord, position).y;
-	spider->mMoveTranslate.z = PlacementPosition(spider->mCoord, position).z;
-	home.x                   = PlacementPosition(spider->mCoord, position).x;
-	home.y                   = PlacementPosition(spider->mCoord, position).y;
-	home.z                   = PlacementPosition(spider->mCoord, position).z;
-	heading                  = PlacementRotation(spider->mCoord, rotation).y;
-	radius                   = baseRadius * PlacementScale(spider->mCoord, scale).x;
-}
-
 #endif

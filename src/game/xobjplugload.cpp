@@ -1,4 +1,5 @@
 #include "game/xchr.h"
+#include "game/cjobjinlineattach.h"
 #include "game/texturecopy.h"
 #include "game/stagedata.h"
 
@@ -28,6 +29,31 @@ BOOL LoadFromPlacement__8XObjPlugFRC9CoordInfo(XObjPlug* object, const CoordInfo
 		break;
 	}
 	return object->mLoadState > 1;
+}
+
+// XObjPlug::ResetObjectState, the cord goes back to the player and the plug's joint is straightened
+/**
+ * @note Address: 0x800D9518
+ * @note Size: 0x53C
+ */
+void ResetObjectState__8XObjPlugFv(XObjPlug* object)
+{
+	ResetObjectState__4XObjFv(object);
+	object->_D3C = 0;
+	if (object->mStatus.mFlags & 1) {
+		Vec position = gGame.GetPlayer()->mMoveTranslate;
+		ResetPlugCordPoints(&object->mCord, position.x, position.y, position.z);
+		s32 path[] = { 0 };
+		CJObj joint(FindJointByPath(object->mJObj, path, 1));
+		joint.SetRotationX(0.0f, FALSE);
+		joint.SetRotationZ(0.0f, FALSE);
+	}
+	SetPlugCordEndpointSource(&object->mCord, 0, &object->mCordAnchor);
+	SetPlugCordEndpointSource(&object->mCord, 1, NULL);
+	SetPlugCordEndpointSource(&object->mCord, 2, NULL);
+	object->_D38 = 0;
+	object->mWire.ResetObjectState();
+	object->mWire.mSparkMode = -1;
 }
 
 // XObjPlug::vf94
