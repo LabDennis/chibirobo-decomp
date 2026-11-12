@@ -463,15 +463,6 @@ extern "C" void DrawHudPauseLabel(InfoScrn* scrn)
 	}
 }
 
-static inline bool FadeHudOut(f32& alpha, u32 frames)
-{
-	alpha -= 0.08f * frames;
-	bool done = alpha < 0;
-	if (done)
-		alpha = 0;
-	return done;
-}
-
 static inline void StepHudVisibility(s32& state, f32& alpha, u32 frames)
 {
 	switch (state) {
@@ -491,7 +482,9 @@ static inline void StepHudVisibility(s32& state, f32& alpha, u32 frames)
 			alpha = 1;
 		break;
 	case 4:
-		FadeHudOut(alpha, frames);
+		alpha -= 0.08f * frames;
+		if (alpha < 0)
+			alpha = 0;
 		break;
 	}
 }
@@ -547,8 +540,11 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			++h->_9C;
 		break;
 	case 3:
-		if (FadeHudOut(h->_A8, frames))
+		h->_A8 -= 0.08f * frames;
+		if (h->_A8 < 0) {
+			h->_A8 = 0;
 			++h->_9C;
+		}
 		break;
 	case 4:
 		if (!gGame.mEvt.mData.mScript)
@@ -576,8 +572,11 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			++h->_A0;
 		break;
 	case 3:
-		if (FadeHudOut(h->_AC, frames))
+		h->_AC -= 0.08f * frames;
+		if (h->_AC < 0) {
+			h->_AC = 0;
 			h->_A0 = 0;
+		}
 		break;
 	}
 	static s32 previousAttachment = HighlightedAttachment();
@@ -609,8 +608,11 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			++h->_A4;
 		break;
 	case 3:
-		if (FadeHudOut(h->_B0, frames))
+		h->_B0 -= 0.08f * frames;
+		if (h->_B0 < 0) {
+			h->_B0 = 0;
 			h->_A4 = 0;
+		}
 		break;
 	}
 	switch (h->_BC) {
@@ -631,7 +633,9 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			h->_C0 = 1;
 		break;
 	case 4:
-		FadeHudOut(h->_C0, frames);
+		h->_C0 -= 0.08f * frames;
+		if (h->_C0 < 0)
+			h->_C0 = 0;
 		break;
 	case 5:
 		ApproachHudScale(h->_DC, 1.4f + 0.25f * (f32)sin(0.017453292f * ((s32)((u32)h->_B4 * 16) % 360)));
@@ -668,12 +672,16 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		h->mItemMaxAlpha = h->_14C;
 		break;
 	case 4:
-		FadeHudOut(h->_14C, frames);
+		h->_14C -= 0.08f * frames;
+		if (h->_14C < 0)
+			h->_14C = 0;
 		h->mItemMaxAlpha = h->_14C;
 		break;
 	case 5:
-		if (FadeHudOut(h->mItemMaxAlpha, frames)) {
-			h->mItemMax = h->mNextItemMax;
+		h->mItemMaxAlpha -= 0.08f * frames;
+		if (h->mItemMaxAlpha < 0) {
+			h->mItemMaxAlpha = 0;
+			h->mItemMax      = h->mNextItemMax;
 			PlayGameSound(&gGame.mSound, 0xb6, 255);
 			++h->_148;
 		}
@@ -733,7 +741,9 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		}
 		break;
 	case 4:
-		FadeHudOut(h->_18C, frames);
+		h->_18C -= 0.08f * frames;
+		if (h->_18C < 0)
+			h->_18C = 0;
 		break;
 	}
 	StepHudVisibility(h->_1A0, h->_1A4, frames);
