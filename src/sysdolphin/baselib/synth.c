@@ -349,7 +349,7 @@ static u32* sSynthSfxLoadReadCursor                        = NULL; /* current SF
 static void* sSynthSfxLoadDestination                       = NULL; /* current SFX load dest pointer */
 static void* sSynthSfxBankHeapEnd                       = NULL; /* max SFX bank heap boundary */
 
-static u32 hsd_SynthSFXLoadBuf[8];
+static u32 hsd_SynthSFXLoadBuf[8] __attribute__((aligned(32))); // read from disc, which wants 32 byte alignment
 static void* lbl_80655F60[0x20]; // sample lists, one per bank
 static HSD_SynthSFXLoadRequest sSynthSfxLoadRequests[0x20];
 static s32 hsd_SynthSFXBank[0x20];
