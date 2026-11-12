@@ -6667,7 +6667,6 @@ extern "C" void FighterPanels_Update(FighterPanels* fade, u32 dt)
 extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx m)
 {
 	Vec pos;
-	CTexObj tex;
 	Vec ring[65];
 	f32 cx;
 	f32 cy;
@@ -6699,8 +6698,10 @@ extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx m)
 		s32 color;
 		for (i = 0; i < 65; i++) {
 			f32 angle = 0.09817477f * i;
-			ring[i].x = sin(angle) * radius + cx;
-			ring[i].y = cos(angle) * radius + cy;
+			f32 s     = sin(angle);
+			f32 c     = cos(angle);
+			ring[i].x = s * radius + cx;
+			ring[i].y = c * radius + cy;
 			ring[i].z = 0.0f;
 		}
 		DrawGsLineStrip(gGame, ring, -1, 65);
@@ -6713,17 +6714,20 @@ extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx m)
 				f32 c     = cos(angle + reticleSpin[j]);
 				DrawGsLineSegment(gGame, 0, color, color, s * radius + cx, c * radius + cy, 0.0f, s * inner + cx, c * inner + cy, 0.0f);
 			}
-			color = (color & ~0xFF) | (u8)(s32)(0.5f * (255.0f * (10 - j) / 10.0f));
+			color = ~0xFF | (u8)(s32)(0.5f * (255.0f * (10 - j) / 10.0f));
 		}
 	}
 	{
+		CTexObj tex;
 		static s32 frame = 0;
 		frame++;
 		for (i = 0; i < 4; i++) {
 			f32 angle = HALF_PI * i;
-			f32 dist  = 30.000002f + 3.0f * sin(DEG2RAD * ((frame * 24) % 360));
-			f32 s     = sin(angle);
-			f32 c     = cos(angle);
+			f32 ds    = sin(DEG2RAD * ((frame * 24) % 360));
+			f32 dist  = ds * 3.0f;
+			dist += 30.000002f;
+			f32 s = sin(angle);
+			f32 c = cos(angle);
 			u16 w;
 			u16 h;
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
