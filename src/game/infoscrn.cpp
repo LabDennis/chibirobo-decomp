@@ -45,9 +45,11 @@ u8 gHudPointCounterStorage[0x134];
 u8 gHudPointCounterStorage[0x140];
 #endif
 }
-InfoPoint gHudMoneyCounter;
-InfoPoint gHudHappyPointCounter;
-InfoPoint gHudScrapCounter;
+// todo: the three counters are infopointinit.cpp's, which is cut from this file. These are the file's own
+// copies, as on main, so that its code reaches them the way retail does
+static InfoPoint gHudMoneyCounter;
+static InfoPoint gHudHappyPointCounter;
+static InfoPoint gHudScrapCounter;
 extern "C" {
 f32 gHudScanlineHistory[10];
 }
