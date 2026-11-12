@@ -1720,7 +1720,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 		        || IsPlayerAttachmentEquipped(player, 3) || IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5)
 		        || IsPlayerAttachmentEquipped(player, 6) || IsPlayerAttachmentEquipped(player, 7)
 		        || IsPlayerAttachmentEquipped(player, 8))) {
-			bool press = (pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x500) && player->mAttachmentRequest < 0;
+			BOOL press = (pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x500) && player->mAttachmentRequest < 0;
 			s32 mode;
 			if (IsPlayerAttachmentEquipped(player, 1) || IsPlayerAttachmentEquipped(player, 2) || IsPlayerAttachmentEquipped(player, 3)) {
 				switch (player->mAttachmentActionType) {
@@ -1737,11 +1737,14 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 				mode = 0;
 			else if (IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5) || IsPlayerAttachmentEquipped(player, 7)
 			         || IsPlayerAttachmentEquipped(player, 8))
-				mode = player->mToolActionType == 1 ? 1 : 0;
+				if (player->mToolActionType == 1)
+					mode = 1;
+				else
+					mode = 0;
 			else
 				mode = 2;
 			{
-				bool emptyHands = IsPlayerAttachmentEquipped(player, 0);
+				BOOL emptyHands = IsPlayerAttachmentEquipped(player, 0);
 				if (press && player->_A10 >= 0) {
 					XObj* object = GetGameObjectByIndex(&gGame, player->_A10);
 					if (object->mStatus.mFlags & 0x10000000000ULL)
@@ -1750,7 +1753,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 				           || (player->mFloorContacts[4].objectIndex >= 0
 				               && player->mFloorContacts[4].objectIndex == player->mHitObjectIndex)
 				           || player->_95E0) {
-					bool handled  = false;
+					BOOL handled  = FALSE;
 					player->_95E0 = 0;
 					if (emptyHands && player->mFloorContacts[2].objectIndex >= 0
 					    && player->mFloorContacts[2].objectIndex != player->mFloorContacts[0].objectIndex) {
@@ -6158,15 +6161,10 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			index = 14;
 			break;
 		case 5:
-			switch (p->mHang._0C) {
-			case -1:
-			case 1:
+			if (p->mHang._0C == -1 || p->mHang._0C == 1)
 				index = 11;
-				break;
-			default:
+			else
 				index = 0;
-				break;
-			}
 			break;
 		case 6:
 		case 7:
@@ -6221,8 +6219,10 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 		case 5:
 			if (p->mRope._0C == 1 || p->mRope._0C == 2)
 				index = 23;
+			else if (p->mRope._0C == -1)
+				index = 24;
 			else
-				index = p->mRope._0C == -1 ? 24 : 0;
+				index = 0;
 			break;
 		case 6:
 			index = 25;
@@ -6233,15 +6233,10 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 		}
 	} else if (p->mPush.mState) {
 		if (p->mPush.mState == 2) {
-			switch (p->mPush._0C) {
-			case 1:
-			case -1:
+			if (p->mPush._0C == 1 || p->mPush._0C == -1)
 				index = 27;
-				break;
-			default:
+			else
 				index = 0;
-				break;
-			}
 		}
 	} else if (p->mCopter.mState) {
 		switch (p->mCopter.mState) {
@@ -6361,7 +6356,7 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 	        || InAnimRange(p->mAnimId, 0xCF7, 0xCFD) || InAnimRange(p->mAnimId, 5, 11) || InAnimRange(p->mAnimId, 0x894, 0x895)
 	        || InAnimRange(p->mAnimId, 0x8AE, 0x8AF) || InAnimRange(p->mAnimId, 0x8B1, 0x8B3) || p->mAnimId == 0x14
 	        || InAnimRange(p->mAnimId, 0x67, 0x68) || p->mAnimId == 0x8A || p->mAnimId == 0x8C || p->mAnimId == 0x3F || p->mAnimId == 0x4A
-	        || p->mAnimId == 0xA1 || p->mAnimId == 0x822 || InAnimRange(p->mAnimId, 0x5D, 0x5F))) {
+	        || p->mAnimId == 0xA1 || p->mAnimId == 0x822 || InAnimRange(p->mAnimId, 0x5D, 0x5E) || p->mAnimId == 0x5F)) {
 		if (p->_A30 > 0.0f) {
 			p->_A30 -= (f32)frames;
 			if (p->_A30 < 0.0f)
