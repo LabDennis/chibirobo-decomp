@@ -40,7 +40,8 @@ extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32)
 		player->SetPos(position, 0);
 		if (gGame.IsRunning() && (pad.mPad->mButton & 0xF0000)) {
 			player->SetAnim(4, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			heading = -(f32)atan2(pad.mPad->mStickX, pad.mPad->mStickY) + gGame.mMotionControlCamera.mCamera.mAngle.y;
+			heading = (f32)atan2(pad.mPad->mStickX, pad.mPad->mStickY);
+			heading = -heading + gGame.mMotionControlCamera.mCamera.mAngle.y;
 		} else if (radius < 2.0f)
 			player->SetAnim(0xE6, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 		else
