@@ -18,19 +18,19 @@ extern "C" bool vf160__9XObjActorFv(XObjActor* actor)
  * @note Size: 0xA0
  */
 // OnHitFromPosition, knocked from pos
-extern "C" void OnHitFromPosition__9XObjActorFRC3Vecf(XObjActor* actor, const Vec* pos, f32 strength)
+void XObjActor::OnHitFromPosition(const Vec& pos, f32 strength)
 {
-	OnHitFromPosition__4XObjFRC3Vecf(actor, pos, strength);
-	actor->_998.mFlags |= 2;
-	f32 x               = pos->x;
-	f32 y               = pos->y;
-	f32 z               = pos->z;
-	Vec hit             = sActorHitPositionZero;
-	hit.x               = x;
-	hit.y               = y;
-	hit.z               = z;
-	actor->mHitPos      = hit;
-	actor->mHitStrength = strength;
+	OnHitFromPosition__4XObjFRC3Vecf(this, &pos, strength);
+	_998.mFlags |= 2;
+	f32 x        = pos.x;
+	f32 y        = pos.y;
+	f32 z        = pos.z;
+	Vec hit      = sActorHitPositionZero;
+	hit.x        = x;
+	hit.y        = y;
+	hit.z        = z;
+	mHitPos      = hit;
+	mHitStrength = strength;
 }
 
 /**
@@ -47,7 +47,7 @@ extern "C" s32 vf100__9XObjActorFll(XObjActor* actor, s32 unused, s32 value)
  * @note Address: 0x801075FC
  * @note Size: 0x4
  */
-extern "C" void DrawDebugStatus__9XObjActorFv(XObjActor* actor)
+void XObjActor::DrawDebugStatus()
 {
 }
 
