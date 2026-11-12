@@ -259,7 +259,7 @@ public:
 	BOOL mHeadOffsetReady;  // _158B4
 	s32 _158B8;             // _158B8, idle mode, 1 looks at the camera, 2 fidgets
 	s32 _158BC;             // _158BC, idle timer
-	u32 _158C0;             // _158C0
+	s32 _158C0;             // _158C0, the ground type under the player
 	CVec _158C4;            // _158C4
 	CJAnim mAttachmentAnim; // _158D4, _14494 in japan, the attachment's anims
 	CJAnim mSuitAnim;       // _15958, _14510 in japan, the suit's anims

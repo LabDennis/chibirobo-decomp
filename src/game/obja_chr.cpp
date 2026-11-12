@@ -8739,7 +8739,7 @@ extern "C" void SpawnPlayerDust(XObjChr* player, const Vec* origin)
 	Vec velocity   = { vx, vy, vz };
 	CPtclOne* dust = SpawnPoolParticle(&player->mDust.mPtcl, &position, &size, &velocity, 0xFFFFFFA0);
 	if (dust != NULL) {
-		if ((s32)player->_158C0 == 10) {
+		if (player->_158C0 == 10) {
 			dust->mAngle      = DEG2RAD * (rand() % 360);
 			dust->mAngleSpeed = DEG2RAD * (10 - rand() % 20);
 			dust->mColor      = 0xFFFFFFC8;
