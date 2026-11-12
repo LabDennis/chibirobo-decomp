@@ -613,15 +613,13 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 	case 0: {
 #if defined(VERSION_JP)
 		strcpy(stage->mDataPath, FormatToStaticBuffer("bin/%s.bin", stageTable[index].fileName));
-#elif defined(VERSION_PAL)
-		StageDesc* desc = &stageTable[index];
-		// NONMATCHING: retail schedules the language index and the table pointer differently here
-		strcpy(stage->mDataPath, FormatToStaticBuffer("bin%s/%s.bin", gResourceDirectorySuffixByLanguage[gGame.mLanguage], desc->fileName));
 #else
 		strcpy(stage->mDataPath,
 		       FormatToStaticBuffer("bin%s/%s.bin", gResourceDirectorySuffixByLanguage[gGame.mLanguage], stageTable[index].fileName));
 #endif
 #if defined(VERSION_PAL)
+		// europe's table has the module's name apart from the data file's
+		StageDesc* desc = &stageTable[index];
 		strcpy(stage->mModulePath, FormatToStaticBuffer("rel/%s%s.rel", desc->moduleName, ""));
 #else
 		strcpy(stage->mModulePath, FormatToStaticBuffer("rel/%s%s.rel", stageTable[index].fileName, ""));
