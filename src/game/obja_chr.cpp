@@ -6050,300 +6050,6 @@ void SetAreaCameraInterestTarget(CCameraActionArea*, s32, XObj*, f32);
 void SelectCurrentCameraAreaByViewDirection(CCameraActionArea*, s32, f32);
 }
 
-static inline void LiftBatteryCost(const XObjChr* p, s32 state, s32& index)
-{
-	switch (state) {
-	case 1:
-	case 2:
-	case 20:
-		index = 7;
-		return;
-	case 6:
-	case 19:
-		index = 8;
-		return;
-	case 3:
-	case 4:
-		switch (p->mAnimId) {
-		case 0x89:
-		case 0xE0:
-			index = 5;
-			return;
-		case 0x896:
-		case 0xC:
-			index = 2;
-			return;
-		case 0x897:
-		case 0x88:
-			index = 3;
-			return;
-		case 0x898:
-		case 0xD:
-			index = 4;
-			return;
-		case 0x895:
-			index = 34;
-			return;
-		case 0x8B7:
-		case 0x8AE:
-			index = 35;
-			return;
-		case 0x8B1:
-			index = 36;
-			return;
-		default:
-			index = 0;
-			return;
-		}
-	case 13:
-		index = 9;
-		return;
-	case 27:
-	case 28:
-		if (p->mAnimId == 0x895)
-			index = 34;
-		return;
-	case 29:
-	case 30:
-		if (p->mAnimId == 0x8B7)
-			index = 35;
-		return;
-	case 31:
-	case 32:
-		if (p->mAnimId == 0x8B1)
-			index = 36;
-		return;
-	case 35:
-	case 36:
-		switch (p->mAnimId) {
-		case 0x8C0:
-		case 0x8C1:
-			index = 37;
-			break;
-		case 0x8C2:
-		case 0x8C3:
-		case 0x8C4:
-		case 0x8C5:
-			index = 38;
-			break;
-		}
-	}
-}
-
-static inline void HangBatteryCost(const XObjChr* p, s32& index)
-{
-	switch (p->mHang.mState) {
-	case 1:
-	case 2:
-		index = 10;
-		return;
-	case 4:
-		index = 14;
-		return;
-	case 5:
-		switch (p->mHang._0C) {
-		case -1:
-		case 1:
-			index = 11;
-			break;
-		default:
-			index = 0;
-			break;
-		}
-		return;
-	case 6:
-	case 7:
-		index = 12;
-		return;
-	case 9:
-		index = 13;
-		return;
-	}
-}
-
-static inline void JumpBatteryCost(const XObjChr* p, s32& index)
-{
-	switch (p->mJump.mState) {
-	case 8:
-	case 9:
-	case 11:
-	case 12:
-	case 14:
-	case 15:
-		index = 15;
-		return;
-	case 6:
-		index = 16;
-		return;
-	}
-}
-
-static inline void LadderBatteryCost(const XObjChr* p, s32& index)
-{
-	switch (p->mLadder.mState) {
-	case 1:
-	case 2:
-		index = 17;
-		return;
-	case 5:
-		if (p->mLadder._0C == 1) {
-			index = 18;
-			return;
-		}
-		if (p->mLadder._0C == -1) {
-			index = 19;
-			return;
-		}
-		index = 0;
-		return;
-	case 6:
-		index = 20;
-		return;
-	case 7:
-	case 9:
-		index = 21;
-		return;
-	}
-}
-
-static inline void RopeBatteryCost(const XObjChr* p, s32& index)
-{
-	switch (p->mRope.mState) {
-	case 1:
-	case 2:
-		index = 22;
-		return;
-	case 5:
-		if (p->mRope._0C == 1 || p->mRope._0C == 2) {
-			index = 23;
-			return;
-		}
-		index = p->mRope._0C == -1 ? 24 : 0;
-		return;
-	case 6:
-		index = 25;
-		return;
-	case 8:
-		index = 26;
-		return;
-	}
-}
-
-static inline void PushBatteryCost(const XObjChr* p, s32& index)
-{
-	if (p->mPush.mState != 2)
-		return;
-	switch (p->mPush._0C) {
-	case 1:
-	case -1:
-		index = 27;
-		break;
-	default:
-		index = 0;
-		break;
-	}
-}
-
-static inline void CopterBatteryCost(const XObjChr* p, s32& index)
-{
-	switch (p->mCopter.mState) {
-	case 1:
-	case 2:
-		index = 6;
-		return;
-	case 3:
-		index = 28;
-		return;
-	case 4:
-		index = 29;
-		return;
-	}
-}
-
-static inline void ToolOrMotionBatteryCost(const XObjChr* p, s32& index)
-{
-	if (p->mPopper.mState != 0 && p->mPopper.mState != 4) {
-		switch (p->mPopper.mState) {
-		case 1:
-		case 2:
-		case 9:
-		case 10:
-			index = 6;
-			return;
-		case 3:
-			index = 0;
-			return;
-		case 6:
-		case 7:
-		case 8:
-			if (p->mPopper._2C != 0.0f)
-				index = 30;
-			return;
-		default:
-			return;
-		}
-	}
-	if (p->mRadar.mState != 0) {
-		switch (p->mRadar.mState) {
-		case 1:
-		case 2:
-			index = 6;
-			return;
-		case 3:
-		case 4:
-		case 5:
-			index = 32;
-			return;
-		default:
-			if (p->mRadar.mTarget)
-				index = 33;
-			return;
-		}
-	}
-	if (p->mRadar.mTarget) {
-		index = 33;
-		return;
-	}
-	s32 anim = p->mAnimId;
-	switch (anim) {
-	case 0x79:
-		index = 5;
-		return;
-	case 3:
-	case 0xA3:
-	case 0x818:
-	case 0x874:
-		index = 2;
-		return;
-	case 0x77:
-	case 0x882:
-		index = 3;
-		return;
-	case 4:
-	case 0x819:
-		index = 4;
-		return;
-	case 1:
-	case 0x11:
-	case 0x4A:
-	case 0xA1:
-	case 0x822:
-		index = 0;
-		return;
-	case 2:
-	case 0x12:
-	case 0xCF7:
-	case 0xCF8:
-	case 0xCF9:
-	case 0xCFA:
-	case 0xCFB:
-	case 0xCFC:
-	case 0xCFD:
-		index = 1;
-		return;
-	}
-}
-
 static inline bool InAnimRange(s32 anim, s32 first, s32 last)
 {
 	return (u32)anim - (u32)first <= (u32)(last - first);
@@ -6370,22 +6076,272 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 {
 	s32 index = -1;
 	s32 lift  = p->mLift.mState;
-	if (lift && !p->mJump.mState)
-		LiftBatteryCost(p, lift, index);
-	else if (p->mHang.mState)
-		HangBatteryCost(p, index);
-	else if (p->mJump.mState)
-		JumpBatteryCost(p, index);
-	else if (p->mLadder.mState)
-		LadderBatteryCost(p, index);
-	else if (p->mRope.mState)
-		RopeBatteryCost(p, index);
-	else if (p->mPush.mState)
-		PushBatteryCost(p, index);
-	else if (p->mCopter.mState)
-		CopterBatteryCost(p, index);
-	else
-		ToolOrMotionBatteryCost(p, index);
+	if (lift && !p->mJump.mState) {
+		switch (lift) {
+		case 1:
+		case 2:
+		case 20:
+			index = 7;
+			break;
+		case 6:
+		case 19:
+			index = 8;
+			break;
+		case 3:
+		case 4:
+			switch (p->mAnimId) {
+			case 0x89:
+			case 0xE0:
+				index = 5;
+				break;
+			case 0x896:
+			case 0xC:
+				index = 2;
+				break;
+			case 0x897:
+			case 0x88:
+				index = 3;
+				break;
+			case 0x898:
+			case 0xD:
+				index = 4;
+				break;
+			case 0x895:
+				index = 34;
+				break;
+			case 0x8B7:
+			case 0x8AE:
+				index = 35;
+				break;
+			case 0x8B1:
+				index = 36;
+				break;
+			default:
+				index = 0;
+				break;
+			}
+			break;
+		case 13:
+			index = 9;
+			break;
+		case 27:
+		case 28:
+			if (p->mAnimId == 0x895)
+				index = 34;
+			break;
+		case 29:
+		case 30:
+			if (p->mAnimId == 0x8B7)
+				index = 35;
+			break;
+		case 31:
+		case 32:
+			if (p->mAnimId == 0x8B1)
+				index = 36;
+			break;
+		case 35:
+		case 36:
+			switch (p->mAnimId) {
+			case 0x8C0:
+			case 0x8C1:
+				index = 37;
+				break;
+			case 0x8C2:
+			case 0x8C3:
+			case 0x8C4:
+			case 0x8C5:
+				index = 38;
+				break;
+			}
+			break;
+		}
+	} else if (p->mHang.mState) {
+		switch (p->mHang.mState) {
+		case 1:
+		case 2:
+			index = 10;
+			break;
+		case 4:
+			index = 14;
+			break;
+		case 5:
+			switch (p->mHang._0C) {
+			case -1:
+			case 1:
+				index = 11;
+				break;
+			default:
+				index = 0;
+				break;
+			}
+			break;
+		case 6:
+		case 7:
+			index = 12;
+			break;
+		case 9:
+			index = 13;
+			break;
+		}
+	} else if (p->mJump.mState) {
+		switch (p->mJump.mState) {
+		case 8:
+		case 9:
+		case 11:
+		case 12:
+		case 14:
+		case 15:
+			index = 15;
+			break;
+		case 6:
+			index = 16;
+			break;
+		}
+	} else if (p->mLadder.mState) {
+		switch (p->mLadder.mState) {
+		case 1:
+		case 2:
+			index = 17;
+			break;
+		case 5:
+			if (p->mLadder._0C == 1)
+				index = 18;
+			else if (p->mLadder._0C == -1)
+				index = 19;
+			else
+				index = 0;
+			break;
+		case 6:
+			index = 20;
+			break;
+		case 7:
+		case 9:
+			index = 21;
+			break;
+		}
+	} else if (p->mRope.mState) {
+		switch (p->mRope.mState) {
+		case 1:
+		case 2:
+			index = 22;
+			break;
+		case 5:
+			if (p->mRope._0C == 1 || p->mRope._0C == 2)
+				index = 23;
+			else
+				index = p->mRope._0C == -1 ? 24 : 0;
+			break;
+		case 6:
+			index = 25;
+			break;
+		case 8:
+			index = 26;
+			break;
+		}
+	} else if (p->mPush.mState) {
+		if (p->mPush.mState == 2) {
+			switch (p->mPush._0C) {
+			case 1:
+			case -1:
+				index = 27;
+				break;
+			default:
+				index = 0;
+				break;
+			}
+		}
+	} else if (p->mCopter.mState) {
+		switch (p->mCopter.mState) {
+		case 1:
+		case 2:
+			index = 6;
+			break;
+		case 3:
+			index = 28;
+			break;
+		case 4:
+			index = 29;
+			break;
+		}
+	} else {
+		if (p->mPopper.mState != 0 && p->mPopper.mState != 4) {
+			switch (p->mPopper.mState) {
+			case 1:
+			case 2:
+			case 9:
+			case 10:
+				index = 6;
+				break;
+			case 3:
+				index = 0;
+				break;
+			case 6:
+			case 7:
+			case 8:
+				if (p->mPopper._2C != 0.0f)
+					index = 30;
+				break;
+			default:
+				break;
+			}
+		} else if (p->mRadar.mState != 0) {
+			switch (p->mRadar.mState) {
+			case 1:
+			case 2:
+				index = 6;
+				break;
+			case 3:
+			case 4:
+			case 5:
+				index = 32;
+				break;
+			default:
+				if (p->mRadar.mTarget)
+					index = 33;
+				break;
+			}
+		} else if (p->mRadar.mTarget) {
+			index = 33;
+		} else {
+			switch (p->mAnimId) {
+			case 0x79:
+				index = 5;
+				break;
+			case 3:
+			case 0xA3:
+			case 0x818:
+			case 0x874:
+				index = 2;
+				break;
+			case 0x77:
+			case 0x882:
+				index = 3;
+				break;
+			case 4:
+			case 0x819:
+				index = 4;
+				break;
+			case 1:
+			case 0x11:
+			case 0x4A:
+			case 0xA1:
+			case 0x822:
+				index = 0;
+				break;
+			case 2:
+			case 0x12:
+			case 0xCF7:
+			case 0xCF8:
+			case 0xCF9:
+			case 0xCFA:
+			case 0xCFB:
+			case 0xCFC:
+			case 0xCFD:
+				index = 1;
+				break;
+			}
+		}
+	}
 	f32 drain = 0.0f;
 	if (index >= 0) {
 		if (index == 9)
