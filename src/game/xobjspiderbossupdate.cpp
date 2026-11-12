@@ -14,7 +14,7 @@ static inline void SetPosAndTarget(CObjVec* vec, const Vec& value)
  * @note Size: 0x2A8
  */
 // UpdateObject, the update
-extern "C" void UpdateObject__14XObjSpiderBossFUl(XObjSpiderBoss* spider, u32 frames)
+void XObjSpiderBoss::UpdateObject(u32 frames)
 {
 	CPad pad(0); // retail does this
 	if (gGame.mStatus.mFlags & 0x400ULL) {
@@ -24,29 +24,29 @@ extern "C" void UpdateObject__14XObjSpiderBossFUl(XObjSpiderBoss* spider, u32 fr
 		move.z    = 0.0f;
 		return;
 	}
-	if (spider->mPoolIndex == 0) {
+	if (mPoolIndex == 0) {
 		UpdateSpiderCoinBounces(&gSpiderBossCoinBounceContext, frames);
 	}
-	if (!(spider->mStatus.mFlags & 0x10000ULL) && spider->mState != 1) {
+	if (!(mStatus.mFlags & 0x10000ULL) && mState != 1) {
 		return;
 	}
-	spider->UpdateAnimationSounds();
-	UpdateSpiderBossDamage(spider, frames);
-	if (!(spider->mSpiderStatus.mFlags & 0x02000000)) {
-		(spider->*gSpiderBossStateHandlers[spider->mState])(frames);
+	UpdateAnimationSounds();
+	UpdateSpiderBossDamage(this, frames);
+	if (!(mSpiderStatus.mFlags & 0x02000000)) {
+		(this->*gSpiderBossStateHandlers[mState])(frames);
 		CVec step;
-		if (spider->mSpiderStatus.mFlags & 8) {
-			spider->mMoveTranslate.y += spider->mSpeedY;
+		if (mSpiderStatus.mFlags & 8) {
+			mMoveTranslate.y += mSpeedY;
 		} else {
-			spider->mMoveTranslate.y = spider->mBasePos.y;
+			mMoveTranslate.y = mBasePos.y;
 		}
-		step.x = spider->mSpeed * (f32)sin(spider->mHeading);
-		step.z = spider->mSpeed * (f32)cos(spider->mHeading);
+		step.x = mSpeed * (f32)sin(mHeading);
+		step.z = mSpeed * (f32)cos(mHeading);
 		step.y = 0.0f;
-		spider->SetRotateY(spider->mTargetRotY, spider->mRotSpeed);
-		SetPosAndTarget(&spider->mMoveTranslate, spider->mMoveTranslate + step * (f32)frames);
-		spider->SetPos(spider->mMoveTranslate, 0);
+		SetRotateY(mTargetRotY, mRotSpeed);
+		SetPosAndTarget(&mMoveTranslate, mMoveTranslate + step * (f32)frames);
+		SetPos(mMoveTranslate, 0);
 	}
-	UpdateObject__4XObjFUl(spider, frames);
-	UpdateSpiderBossAttachments(spider, frames);
+	UpdateObject__4XObjFUl(this, frames);
+	UpdateSpiderBossAttachments(this, frames);
 }
