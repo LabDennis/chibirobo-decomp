@@ -25,7 +25,7 @@ extern "C" u8 gGame[];
 #define STAGE07_FIELD_E5DDC (&MAINGAME_AT(Vec, 0xE5DDC))
 #endif
 
-extern "C" void fn_801469A8(void* obj, s32 value);
+extern "C" void AddHideObj__20CCameraActionScroll2Fl(void* obj, s32 value);
 extern "C" s32 IsGameSoundPlaying(void* obj, s32 id);
 extern "C" s32 GetSoundVolumeAtPosition(void* obj, Vec* pos, s32 arg);
 extern "C" void SetGameSfxVolume(void* obj, s32 id, s32 arg, s32 arg2);
@@ -138,7 +138,7 @@ extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* values)
 	s32 i;
 
 	for (i = 0; i < count; i++) {
-		fn_801469A8(STAGE07_FLAG_LIST, values[i]);
+		AddHideObj__20CCameraActionScroll2Fl(STAGE07_FLAG_LIST, values[i]);
 	}
 	return 0;
 }

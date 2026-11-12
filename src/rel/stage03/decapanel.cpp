@@ -157,8 +157,8 @@ UnkObj* ResolveEventObjectId(UnkObjTable* mgr, s16 id);
 BOOL IsGameSoundPlaying(void* sound, s32 id);
 void PlayGameSound(void* sound, s32 id, s32 vol);
 void AXDriverSetAllStreamPitches(s32 x);
-void fn_801468FC(void* p);
-void fn_801469A8(void* p, s32 id);
+void ClearHideList__20CCameraActionScroll2Fv(void* p);
+void AddHideObj__20CCameraActionScroll2Fl(void* p, s32 id);
 void SetGsBlendMode(void* p, s32, s32, s32, s32);
 void SetGsTevMode(void* p, s32);
 void DrawGsTexturedQuad(CGameS03View* game, CTexObj* tex, u32 c0, u32 c1, u32 c2, u32 c3, f32 x, f32 y, f32 z, f32 w, f32 h, f32, f32, f32);
@@ -1607,7 +1607,7 @@ extern "C" s32 CmdClearSavedObjFlags(s32 cmd, s32 argc, s32* args)
  */
 extern "C" s32 CmdClearObjFlagList(s32 cmd, s32 argc, s32* args)
 {
-	fn_801468FC(gGame._E7DFC);
+	ClearHideList__20CCameraActionScroll2Fv(gGame._E7DFC);
 	return 0;
 }
 
@@ -1619,7 +1619,7 @@ extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 argc, s32* args)
 {
 	s32 i;
 	for (i = 0; i < argc; i++) {
-		fn_801469A8(gGame._E7DFC, args[i]);
+		AddHideObj__20CCameraActionScroll2Fl(gGame._E7DFC, args[i]);
 	}
 	return 0;
 }
