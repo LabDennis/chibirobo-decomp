@@ -20,7 +20,7 @@ BOOL gMicRecording;
 OSTime gMicButtonReleaseTime;
 s32 gMicObjectPeak; // peak above 1000 delivered to stage objects
 s32 gMicMeterPeak;  // largest positive sample since the level bar was drawn
-s16* gMicDMABuffers[2] ATTRIBUTE_ALIGN(32);
+s16* gMicDMABuffers[2];
 u8 gMicDMABufferIndex;
 u32 gMicSamplePhase[2];
 void (*gPreviousAudioDMACallback)(void);

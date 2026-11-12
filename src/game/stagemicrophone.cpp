@@ -24,8 +24,6 @@ void M2SClose(void);
 void M2SStart(void);
 void M2SStop(void);
 }
-extern "C" BOOL gMicRecording;
-extern "C" OSTime gMicButtonReleaseTime;
 
 // whether the stage takes the mic, which ended up true either way
 static inline BOOL IsMicStage()
