@@ -1649,17 +1649,13 @@ static inline void StartInteractionEvent(XObj* target)
 {
 	TryStartObjectEvent(&gGame, target->vf128(), target, -1, -1);
 }
-static inline bool FacingClimbTarget(XObjChr* player, XObj* object)
-{
-	f32 angle = WrapPlayerActionAngle(player->mMoveRotate.y - object->mMoveRotate.y);
-	return angle <= PI * .5f || angle >= PI * 1.5f;
-}
 static inline void ChooseClimbAction(XObjChr* player, XObj* object, s32 mode, bool ladder)
 {
 	s32 dir = 0;
 	if (object->mSelectedFloorIndex == 0) {
 		if (player->mHitObjectIndex == player->mFloorContacts[0].objectIndex) {
-			if (FacingClimbTarget(player, object))
+			f32 angle = WrapPlayerActionAngle(player->mMoveRotate.y - object->mMoveRotate.y);
+			if (angle <= PI * .5f || angle >= PI * 1.5f)
 				dir = -1;
 		} else if (object->mSelectedFloorHeight > player->mMaxFloorHeight
 		           && (!ladder || IsPositionBehindObject(&player->mLadder, &player->mMoveTranslate, object)))
