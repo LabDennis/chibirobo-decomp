@@ -4,6 +4,8 @@
 
 extern "C" char gSaveScanFileName[];
 
+const char gSaveFileNameFormat[] = "CHIBIROBO(%d)";
+
 /**
  * @note Address: 0x80088F20
  * @note Size: 0x338
