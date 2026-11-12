@@ -7722,6 +7722,7 @@ static inline s32 MsgCommandLength(u8* p)
 		return 1;
 	case 1:
 	case 2:
+	case 5:
 		return 2;
 	case 6:
 		return 6;
@@ -7734,7 +7735,6 @@ static inline s32 MsgCommandLength(u8* p)
 			return 9;
 		}
 		return 6;
-	case 5:
 	case 13:
 	case 14:
 	case 16:
