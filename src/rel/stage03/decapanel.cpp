@@ -1,5 +1,6 @@
 #include "game/hsd_jobj.h"
 #include "game/gmath.h"
+#include "game/video.h"
 #include "Version.h"
 
 extern "C" {
@@ -105,13 +106,17 @@ struct UnkObjTable {
 
 // partial MainGame layout
 struct CGameS03View {
+#if defined(VERSION_GGTP01)
+	u8 _00000[0x294]; // _00000, the screen is 4 longer in europe
+#else
 	u8 _00000[0x290]; // _00000
-	void* _290;       // _00290
-	void* _294;       // _00294
+#endif
+	void* _290; // _00290, PAL _00294
+	void* _294; // _00294, PAL _00298
 #if defined(VERSION_GGTJ01_01)
 	u8 _00298[0x19A0 - 0x298]; // _00298
 #elif defined(VERSION_GGTP01)
-	u8 _00298[0x19BC - 0x298]; // _00298
+	u8 _00298[0x19BC - 0x29C]; // _0029C
 #else
 	u8 _00298[0x19B8 - 0x298]; // _00298
 #endif
@@ -451,6 +456,7 @@ extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 argc, s32* args)
  * @note Address: stage03 .text 0xF4
  * @note Size: 0xBC8
  */
+// NONMATCHING: retail keeps gGame's address in a saved register from the first pad read on
 extern "C" void DecaPanel_Update(DecaPanel* work)
 {
 	if (work->mState != 2) {
@@ -458,10 +464,10 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 	}
 
 	if (work->mActive) {
-		if (work->mFade < 1.0f && (work->mFade += 1.0f / 6.0f) > 1.0f) {
+		if (work->mFade < 1.0f && (work->mFade += (1.0f / (0.2f * FRAME_RATE)) * 2.0f) > 1.0f) {
 			work->mFade = 1.0f;
 		}
-	} else if (work->mFade > 0.0f && (work->mFade -= 1.0f / 6.0f) < 0.0f) {
+	} else if (work->mFade > 0.0f && (work->mFade -= (1.0f / (0.2f * FRAME_RATE)) * 2.0f) < 0.0f) {
 		work->mFade = 0.0f;
 	}
 

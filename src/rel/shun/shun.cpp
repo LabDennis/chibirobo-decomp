@@ -1,5 +1,6 @@
 #include "game/cjobj.h"
 #include "game/cjobjset.h"
+#include "game/video.h"
 #include "Version.h"
 extern "C" {
 #include <sysdolphin/aobj.h>
@@ -493,7 +494,7 @@ extern "C" s32 CmdStartOnOff0(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdResetOnOff(s32 cmd, s32 count, s32* args)
 {
-	onOffWork._00        = 0x708;
+	onOffWork._00        = (FRAMES_PER_SECOND * 60) / 2; // half a minute
 	onOffWork._08        = 0;
 	onOffWork._78        = 0;
 	onOffWork._7C        = 0;
