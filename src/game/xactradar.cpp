@@ -479,9 +479,9 @@ void DrawPopperShotRings(XActPopper* act)
 				ProjectWorldPositionToScreen(&gGame, shot->mRing[j].mPos, &x, &y, NULL, NULL);
 				u32 color  = shot->mRing[j].mColor;
 				u32 edge   = color & 0xFFFFFF00;
-				u32 center = (color & 0xFFFFFF00) | (u8)((color & 0xFF) * shot->mRing[j].mAmount);
 				f32 inner  = shot->mRing[j].mRadius * shot->mRing[j].mAmount;
 				f32 outer  = shot->mRing[j].mRadius * (1.0f - shot->mRing[j].mAmount);
+				u32 center = (color & 0xFFFFFF00) | (u8)((color & 0xFF) * shot->mRing[j].mAmount);
 				f32 glow;
 				SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 				glow = 2.0f * inner;
