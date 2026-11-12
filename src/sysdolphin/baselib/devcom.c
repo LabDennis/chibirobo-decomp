@@ -52,7 +52,7 @@ void HSD_DevComDVDWakeUp(void);
 static HSD_DevCom* sDevComQueueHeads[4];
 static HSD_DevCom* sDevComQueueTails[4];
 static ARQRequest lbl_8064DE40[2][2];
-static int sDevComTransferBuffers[2][DEVCOM_BUF_SIZE / sizeof(int)];
+static int sDevComTransferBuffers[2][DEVCOM_BUF_SIZE / sizeof(int)] __attribute__((aligned(32))); // read from disc
 static DVDFileInfo sDevComDvdFileInfo;
 
 static u8 lbl_8065BB54[2];
