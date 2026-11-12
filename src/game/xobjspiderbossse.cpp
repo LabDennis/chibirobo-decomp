@@ -14,7 +14,7 @@ void XObjSpiderBoss::UpdateAnimationSounds()
 			if (!InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 				s32 id         = (mSpiderStatus.mFlags & 0x40000000) ? mAltAnimId : mAnimId;
 				HSD_AObj* aobj = GetAObj(mJObj);
-				f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj, "aobj.h", "aobj") : 0.0f;
+				f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
 				mAnimSfx.Update(id, frame, 255);
 			}
 		}

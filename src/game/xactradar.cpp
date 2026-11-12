@@ -921,8 +921,6 @@ void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 	FadePopperRing(shot->mRing[1], frames);
 }
 
-extern const Vec lbl_8020A6A8, lbl_8020A6B4;
-
 void CheckPopperShotImpact(XActPopperShot* shot)
 {
 	Vec pos  = shot->mPos;
@@ -965,7 +963,7 @@ void CheckPopperShotImpact(XActPopperShot* shot)
 		f32 vy       = (50 + rand() % 80) / 100.0f;
 		f32 width    = (200 + rand() % 300) / 500.0f;
 		f32 height   = (10 + rand() % 200) / 500.0f;
-		Vec velocity = lbl_8020A6B4, size = lbl_8020A6A8;
+		Vec velocity = { 0.0f, 0.0f, 0.0f }, size = { 0.0f, 0.0f, 1.0f };
 		velocity.x      = vx;
 		velocity.y      = vy;
 		velocity.z      = vz;

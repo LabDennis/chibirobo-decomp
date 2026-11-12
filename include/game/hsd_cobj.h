@@ -43,6 +43,7 @@ typedef struct HSD_CObjPerspectiveDesc {
 typedef char HSD_CObjPerspectiveDesc_size_check[sizeof(HSD_CObjPerspectiveDesc) == 0x38 ? 1 : -1];
 
 #define COBJ_H_ASSERT(line, cond) ((cond) ? ((void)0) : __assert("cobj.h", line, #cond))
+#define AOBJ_H_ASSERT(line, cond) ((cond) ? ((void)0) : __assert("aobj.h", line, #cond))
 
 // hands the camera a finished view matrix. bit 1 makes hsd use it as is, bit 31 marks the
 // inverse dirty
@@ -83,28 +84,16 @@ inline void HSD_CObjUnref(HSD_CObj* cobj)
 	}
 }
 
-inline f32 HSD_AObjGetEndFrame(HSD_AObj* aobj, const char* file, const char* condition)
-{
-	if (!aobj)
-		__assert(file, 0xAB, condition);
-	return aobj->end_frame;
-}
-
 inline f32 HSD_AObjGetEndFrame(HSD_AObj* aobj)
 {
-	return HSD_AObjGetEndFrame(aobj, "aobj.h", "aobj");
-}
-
-inline f32 HSD_AObjGetCurrentFrame(HSD_AObj* aobj, const char* file, const char* condition)
-{
-	if (!aobj)
-		__assert(file, 0x95, condition);
-	return aobj->curr_frame;
+	AOBJ_H_ASSERT(0xAB, aobj);
+	return aobj->end_frame;
 }
 
 inline f32 HSD_AObjGetCurrentFrame(HSD_AObj* aobj)
 {
-	return HSD_AObjGetCurrentFrame(aobj, "aobj.h", "aobj");
+	AOBJ_H_ASSERT(0x95, aobj);
+	return aobj->curr_frame;
 }
 
 #endif

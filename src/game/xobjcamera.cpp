@@ -1,9 +1,5 @@
 #include "game/xobj.h"
 
-extern "C" {
-extern const char sCameraAnimAObjFile[7], sCameraAnimAObjCondition[5];
-}
-
 // the camera archive's first desc list, the cobj then its anims
 static inline HSD_CObjDesc* GetCObjDesc(XObjCamera* object)
 {
@@ -33,9 +29,8 @@ void XObjCamera::UpdateObject(u32 frames)
 	if (mCameraAnim >= 0) {
 		mCamera.SetAnimRate((f32)frames);
 		mCamera.Anim();
-		f32 end = mCamera.mLongestAObj ? HSD_AObjGetEndFrame(mCamera.mLongestAObj, sCameraAnimAObjFile, sCameraAnimAObjCondition) : 0.0f;
-		f32 current
-		    = mCamera.mLongestAObj ? HSD_AObjGetCurrentFrame(mCamera.mLongestAObj, sCameraAnimAObjFile, sCameraAnimAObjCondition) : 0.0f;
+		f32 end     = mCamera.mLongestAObj ? HSD_AObjGetEndFrame(mCamera.mLongestAObj) : 0.0f;
+		f32 current = mCamera.mLongestAObj ? HSD_AObjGetCurrentFrame(mCamera.mLongestAObj) : 0.0f;
 		if (current >= end)
 			mCameraAnim = -1;
 	}

@@ -24,10 +24,7 @@ BOOL HSD_AudioSFXSetPitchByID(s32 sfx, s16 pitch);
 BOOL TurnLetickerLinkedPartAndTrackJoint(XObjLeticker* leticker, f32 angle);
 BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle);
 bool IsLetickerJointClearOfObjects(XObj* obj, HSD_JObj* jobj);
-#if !defined(VERSION_PAL)
-#endif
 extern AnimSfxEvent sLetickerAnimSfxEvents[];
-extern const f32 sLetickerLeftTurnSpeed, sLetickerRightTurnSpeed;
 void SelectHighestActiveFloor(XObj* obj);
 extern CCameraActionLeticker gLetickerCameraAction;
 extern XObjFloor* sLetickerFloorsByLevel[];
@@ -906,13 +903,13 @@ void CCameraActionLeticker::Update(u32 step)
 		if (pad.mPad->mTrigger & leftButton) {
 			if (CanTurn(this, mTurnTo - 1.5707964f)) {
 				mTurnTo -= 1.5707964f;
-				mTurnSpeed  = sLetickerLeftTurnSpeed;
+				mTurnSpeed  = -0.08726646f;
 				mTurnFrames = 18;
 			}
 		} else if (pad.mPad->mTrigger & rightButton) {
 			if (CanTurn(this, 1.5707964f + mTurnTo)) {
 				mTurnTo += 1.5707964f;
-				mTurnSpeed  = sLetickerRightTurnSpeed;
+				mTurnSpeed  = 0.08726646f;
 				mTurnFrames = 18;
 			}
 		}
