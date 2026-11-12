@@ -691,13 +691,13 @@ void AXDriverInterp(HSD_SM* v, BOOL exec)
 				v->_20  = (u8)CLAMP(0, cmd_val, 0xFF);
 			}
 			break;
-		case 8:
+		case 23:
 			v->flags |= 0x4;
 			v->_1E  = 1;
 			cmd_val = (s16)(u16)*v->_3C;
 			v->_20  = CLAMP(sSynthDecibelFloor >> 16, cmd_val, 0);
 			break;
-		case 9:
+		case 24:
 			v->flags |= 0x4;
 			if (v->_1E == 1) {
 				cmd_val = v->_20 + (s16)(u16)*v->_3C;
@@ -708,80 +708,80 @@ void AXDriverInterp(HSD_SM* v, BOOL exec)
 				v->_20 = CLAMP(sSynthDecibelFloor >> 16, (s16)(u16)*v->_3C + db, 0);
 			}
 			break;
-		case 10:
+		case 25:
 			v->flags |= 0x18;
 			v->_28 = *v->_3C;
 			AXDriverUpdateAngle(v);
 			break;
-		case 11:
+		case 26:
 			v->flags |= 0x18;
 			v->_28 += (s16)(u16)*v->_3C;
 			AXDriverUpdateAngle(v);
 			break;
-		case 12:
+		case 8:
 			v->flags |= 0x8;
 			v->_26 = *v->_3C;
 			break;
-		case 13:
+		case 9:
 			v->flags |= 0x8;
 			cmd_val = v->_26 + (s8)(u8)*v->_3C;
 			v->_26  = CLAMP(0, cmd_val, 0xFE);
 			break;
-		case 14:
+		case 10:
 			v->flags |= 0x10;
 			v->_2C = *v->_3C;
 			break;
-		case 15:
+		case 11:
 			v->flags |= 0x10;
 			cmd_val = v->_2C + (s8)(u8)*v->_3C;
 			v->_2C  = CLAMP(0, cmd_val, 0xFF);
 			break;
-		case 16:
+		case 12:
 			v->flags |= 0x20;
 			v->_30 = *v->_3C;
 			break;
-		case 17:
+		case 13:
 			v->flags |= 0x20;
 			cmd_val = v->_30 + (s16)(u16)*v->_3C;
 			v->_30  = CLAMP(-0x2A30, cmd_val, 0x960);
 			break;
-		case 20:
+		case 16:
 			if (!(sAXAuxConfig & 1)) {
 				v->flags |= 0x40;
 				v->_34[0] = *v->_3C;
 			}
 			break;
-		case 24:
+		case 20:
 			if (!(sAXAuxConfig & 1)) {
 				v->_36 = *v->_3C;
 			}
 			break;
-		case 25:
+		case 21:
 			if (!((sAXAuxConfig >> 1) & 1)) {
 				v->_37 = *v->_3C;
 			}
 			break;
-		case 21:
+		case 17:
 			if (!(sAXAuxConfig & 1)) {
 				v->flags |= 0x40;
 				cmd_val   = v->_34[0] + (s8)(u8)*v->_3C;
 				v->_34[0] = CLAMP(0, cmd_val, 0xFF);
 			}
 			break;
-		case 22:
+		case 18:
 			if (!((sAXAuxConfig >> 1) & 1)) {
 				v->flags |= 0x40;
 				v->_34[1] = *v->_3C;
 			}
 			break;
-		case 23:
+		case 19:
 			if (!((sAXAuxConfig >> 1) & 1)) {
 				v->flags |= 0x40;
 				cmd_val   = v->_34[1] + (s8)(u8)*v->_3C;
 				v->_34[1] = CLAMP(0, cmd_val, 0xFF);
 			}
 			break;
-		case 26:
+		case 22:
 			v->_2E = (u8)*v->_3C;
 			break;
 		case 27:
@@ -790,13 +790,13 @@ void AXDriverInterp(HSD_SM* v, BOOL exec)
 		case 28:
 			v->_2B = *v->_3C;
 			break;
-		case 19:
+		case 15:
 			v->flags |= 0x100;
 			if (wait == 0) {
 				AXDriverExec(v);
 			}
 			return;
-		case 18:
+		case 14:
 			v->flags |= 0x80;
 			if (wait == 0) {
 				AXDriverExec(v);
