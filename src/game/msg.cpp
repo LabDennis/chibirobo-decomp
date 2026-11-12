@@ -7712,7 +7712,7 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
     blr
 */
 
-static inline s32 MsgCommandLength(const u8* p)
+static inline s32 MsgCommandLength(u8* p)
 {
 	switch (*p) {
 	case 0:
