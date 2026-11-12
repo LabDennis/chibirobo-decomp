@@ -284,7 +284,8 @@ BOOL XObjLeticker::vf134(f32 amount)
 	}
 	if (mWaiting) {
 		if (!(pad.mPad->mButton & HSD_PAD_STICK_DOWN)) {
-			if (--_A30 <= 0)
+			_A30 -= 1;
+			if (_A30 <= 0)
 				return FALSE;
 			return TRUE;
 		}
