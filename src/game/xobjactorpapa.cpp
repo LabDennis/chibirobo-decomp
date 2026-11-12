@@ -284,97 +284,98 @@ void XObjActorPapa::vf148(u32 frames)
 			position = joint.GetPos();
 		}
 		Mtx mount, translation, rotation, result;
-		switch (kind) {
-		case 0x1f4:
-		case 0x360:
-		case 0x3fa:
-		case 0x401:
-			for (s32 i = 0; i < 288; ++i) {
-				XObj* prop = gGame.mXObjs.mPools[22].Get(i);
-				if (kind == prop->GetKind()) {
-					switch (kind) {
-					case 0x1f4:
-						PSMTXCopy(joint.GetMtx(), mount);
-						RotateHeldProp(mount, result, rotation, 'z', -HALF_PI);
-						OffsetHeldProp(result, translation, 10, -4, 0);
-						SetHeldPropMatrix(prop, result);
-						break;
-					case 0x360:
-						PSMTXCopy(joint.GetMtx(), mount);
-						RotateHeldProp(mount, result, rotation, 'x', -HALF_PI);
-						RotateHeldProp(result, result, rotation, 'y', -HALF_PI);
-						OffsetHeldProp(result, translation, -1, -12, 6);
-						SetHeldPropMatrix(prop, result);
-						break;
-					case 0x3fa:
-						PSMTXCopy(joint.GetMtx(), mount);
-						RotateHeldProp(mount, result, rotation, 'z', -HALF_PI);
-						OffsetHeldProp(result, translation, 0, -10, 2);
-						SetHeldPropMatrix(prop, result);
-						break;
-					case 0x401:
-						PSMTXCopy(joint.GetMtx(), mount);
-						RotateHeldProp(mount, result, rotation, 'z', HALF_PI);
-						OffsetHeldProp(result, translation, -4, 4.5f, 0);
-						SetHeldPropMatrix(prop, result);
-						break;
-					default:
-						SetHeldPropMatrix(prop, joint.GetMtx());
-						break;
+		if (kind >= 0)
+			switch (kind) {
+			case 0x1f4:
+			case 0x360:
+			case 0x3fa:
+			case 0x401:
+				for (s32 i = 0; i < 288; ++i) {
+					XObj* prop = gGame.mXObjs.mPools[22].Get(i);
+					if (kind == prop->GetKind()) {
+						switch (kind) {
+						case 0x1f4:
+							PSMTXCopy(joint.GetMtx(), mount);
+							RotateHeldProp(mount, result, rotation, 'z', -HALF_PI);
+							OffsetHeldProp(result, translation, 10, -4, 0);
+							SetHeldPropMatrix(prop, result);
+							break;
+						case 0x360:
+							PSMTXCopy(joint.GetMtx(), mount);
+							RotateHeldProp(mount, result, rotation, 'x', -HALF_PI);
+							RotateHeldProp(result, result, rotation, 'y', -HALF_PI);
+							OffsetHeldProp(result, translation, -1, -12, 6);
+							SetHeldPropMatrix(prop, result);
+							break;
+						case 0x3fa:
+							PSMTXCopy(joint.GetMtx(), mount);
+							RotateHeldProp(mount, result, rotation, 'z', -HALF_PI);
+							OffsetHeldProp(result, translation, 0, -10, 2);
+							SetHeldPropMatrix(prop, result);
+							break;
+						case 0x401:
+							PSMTXCopy(joint.GetMtx(), mount);
+							RotateHeldProp(mount, result, rotation, 'z', HALF_PI);
+							OffsetHeldProp(result, translation, -4, 4.5f, 0);
+							SetHeldPropMatrix(prop, result);
+							break;
+						default:
+							SetHeldPropMatrix(prop, joint.GetMtx());
+							break;
+						}
+						if (mStatus.mFlags & 0x10000)
+							prop->mStatus.mFlags |= 0x10000ULL;
+						else
+							prop->mStatus.mFlags &= ~0x10000ULL;
 					}
-					if (mStatus.mFlags & 0x10000)
-						prop->mStatus.mFlags |= 0x10000ULL;
-					else
-						prop->mStatus.mFlags &= ~0x10000ULL;
 				}
-			}
-			break;
-		case 0x1d3:
-			for (s32 i = 0; i < 15; ++i) {
-				XObj* prop = gGame.mXObjs.mPools[10].Get(i);
-				if (kind == prop->GetKind()) {
-					switch (kind) {
-					case 0x1d3:
-						PSMTXCopy(joint.GetMtx(), mount);
-						RotateHeldProp(mount, result, rotation, 'z', HALF_PI);
-						RotateHeldProp(result, result, rotation, 'y', .19634955f);
-						OffsetHeldProp(result, translation, -1, 3, -4);
-						SetHeldPropMatrix(prop, result);
-						break;
-					default:
-						SetHeldPropMatrix(prop, joint.GetMtx());
-						break;
+				break;
+			case 0x1d3:
+				for (s32 i = 0; i < 15; ++i) {
+					XObj* prop = gGame.mXObjs.mPools[10].Get(i);
+					if (kind == prop->GetKind()) {
+						switch (kind) {
+						case 0x1d3:
+							PSMTXCopy(joint.GetMtx(), mount);
+							RotateHeldProp(mount, result, rotation, 'z', HALF_PI);
+							RotateHeldProp(result, result, rotation, 'y', .19634955f);
+							OffsetHeldProp(result, translation, -1, 3, -4);
+							SetHeldPropMatrix(prop, result);
+							break;
+						default:
+							SetHeldPropMatrix(prop, joint.GetMtx());
+							break;
+						}
+						if (mStatus.mFlags & 0x10000)
+							prop->mStatus.mFlags |= 0x10000ULL;
+						else
+							prop->mStatus.mFlags &= ~0x10000ULL;
 					}
-					if (mStatus.mFlags & 0x10000)
-						prop->mStatus.mFlags |= 0x10000ULL;
-					else
-						prop->mStatus.mFlags &= ~0x10000ULL;
 				}
-			}
-			break;
-		case 0x375:
-			for (s32 i = 0; i < 64; ++i) {
-				XObj* prop = gGame.mXObjs.mPools[8].Get(i);
-				if (kind == prop->GetKind()) {
-					switch (kind) {
-					case 0x375:
-						PSMTXCopy(joint.GetMtx(), mount);
-						RotateHeldProp(mount, result, rotation, 'z', HALF_PI);
-						OffsetHeldProp(result, translation, -5.5f, 3.5f, 0);
-						SetHeldPropMatrix(prop, result);
-						break;
-					default:
-						SetHeldPropMatrix(prop, joint.GetMtx());
-						break;
+				break;
+			case 0x375:
+				for (s32 i = 0; i < 64; ++i) {
+					XObj* prop = gGame.mXObjs.mPools[8].Get(i);
+					if (kind == prop->GetKind()) {
+						switch (kind) {
+						case 0x375:
+							PSMTXCopy(joint.GetMtx(), mount);
+							RotateHeldProp(mount, result, rotation, 'z', HALF_PI);
+							OffsetHeldProp(result, translation, -5.5f, 3.5f, 0);
+							SetHeldPropMatrix(prop, result);
+							break;
+						default:
+							SetHeldPropMatrix(prop, joint.GetMtx());
+							break;
+						}
+						if (mStatus.mFlags & 0x10000)
+							prop->mStatus.mFlags |= 0x10000ULL;
+						else
+							prop->mStatus.mFlags &= ~0x10000ULL;
 					}
-					if (mStatus.mFlags & 0x10000)
-						prop->mStatus.mFlags |= 0x10000ULL;
-					else
-						prop->mStatus.mFlags &= ~0x10000ULL;
 				}
+				break;
 			}
-			break;
-		}
 	}
 	if ((_998.mFlags & 0x100) && (player->_980.mFlags & 0x40000000)) {
 		s32 held[6] = { 0, 2, 2, 0, 0, 0 };
