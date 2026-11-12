@@ -12,7 +12,6 @@ extern "C" {
  * @note Address: 0x800DD32C
  * @note Size: 0x60
  */
-// NONMATCHING: control flow
 XObjSound* __dt__9XObjSoundFv(XObjSound* object, s32 flags)
 {
 	if (object != NULL) {

@@ -254,7 +254,6 @@ extern "C" void Reset__8FbMirrorFv(void)
  * @note Address: 0x80014DA4
  * @note Size: 0x2BC
  */
-// NONMATCHING: the surface check is a compare where the original tests a bool
 // FbMirror::Update, puts the mirror camera at the main camera's eye reflected in the surface,
 // looking at the surface through a frustum that just fits it
 extern "C" void Update__8FbMirrorFUl(FbMirror* mirror, u32 frames)
