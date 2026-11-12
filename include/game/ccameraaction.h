@@ -284,7 +284,7 @@ struct CamMapEntry {
 class CCameraActionMap : public CCameraActionAreaExM {
 public:
 	s32 _40;                                           // _40
-	XObj* _44;                                         // _44, the object the camera looks at
+	XObj* mTarget;                                     // _44, the object the camera looks at
 	CVec mPreviousInterest;                            // _48
 	f32 _58;                                           // _58
 	f32 _5C;                                           // _5C
@@ -351,7 +351,7 @@ public:
 	u8 _FC8[0x11D8 - 0xFC8];                           // _FC8
 	CStatus mStatus;                                   // _11D8, printed as CAMSTAT
 	CStatus mPreviousStatus;                           // _11E0, printed as CAMSTATPRE
-	BOOL _11E8;                                        // _11E8
+	BOOL mKeepPreviousEye;                             // _11E8
 
 	CCameraActionMap();                      // in the dol, 0x8001A45C
 	virtual ~CCameraActionMap();             // in the dol, 0x80009F20
