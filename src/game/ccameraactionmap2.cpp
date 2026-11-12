@@ -561,12 +561,15 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 				else if (index == 0)
 					map->_E9C = 1;
 				else {
-					bool flag;
+					s32 flag;
 					{
 						CamAreaInfo area(&gCameraAreaState._1C[map->_97C->_0C]);
 						flag = (area._04->_2E & 1) != 0;
 					}
-					map->_E9C = flag ? 0 : 1;
+					if (flag)
+						map->_E9C = 0;
+					else
+						map->_E9C = 1;
 					if (((XObjChr*)GetPlayerPoolObject(&gGame, 0))->mCopter.mState != 0
 					    || ((XObjChr*)GetPlayerPoolObject(&gGame, 0))->mJump.mState != 0) {
 						map->_E9C = 1;
