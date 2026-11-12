@@ -5457,8 +5457,7 @@ extern "C" void Fighter_Update(Fighter* hole, u32 dt)
  */
 extern "C" void Fighter_Init(Fighter* hole, UnkDolObj* a, UnkDolObj* b, void* c)
 {
-	HSD_JObj* jobj;
-	void* aobj;
+	HSD_AObj* aobj;
 	f32 x;
 	f32 y;
 	f32 z;
@@ -5470,14 +5469,8 @@ extern "C" void Fighter_Init(Fighter* hole, UnkDolObj* a, UnkDolObj* b, void* c)
 	hole->_00->_228 |= 0x10000;
 	hole->_00->_228 |= 0x40000;
 	hole->_04->_228 &= ~0x10000ULL;
-	hole->_A0 = 0.0f;
-	jobj      = hole->_04->_00;
-	if (jobj == NULL) {
-		aobj = NULL;
-	} else if ((aobj = FindJointAnimationInTree(jobj)) == NULL && (aobj = FindMaterialOrTextureAnimationInJointTree(jobj)) == NULL
-	           && (aobj = FindPolygonAnimationInJointTree(jobj)) == NULL) {
-		aobj = NULL;
-	}
+	hole->_A0       = 0.0f;
+	aobj            = GetAObj(hole->_04->_00);
 	hole->_A8       = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
 	hole->_AC       = 1.0f;
 	hole->_B8       = 0;
