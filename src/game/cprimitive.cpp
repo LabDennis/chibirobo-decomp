@@ -1847,7 +1847,8 @@ void CCircle::Draw(Mtx view, u32 segments, u32 centerColor, u32 edgeColor)
 	HSD_StateInvalidate(HSD_STATE_VTX_ATTR);
 	SetVtxPosClr();
 	GXBegin(GX_TRIANGLEFAN, GX_VTXFMT0, segments + 2);
-	GXPosition3f32(0.0f, 0.0f, 0.0f);
+	f32 zero = 0.0f;
+	GXPosition3f32(zero, zero, zero);
 	GXColor1u32(centerColor);
 	for (int i = 1; i <= segments + 1; i++) {
 		f32 angle = (TWO_PI / segments) * i;
