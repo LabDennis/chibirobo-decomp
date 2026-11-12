@@ -25,20 +25,6 @@ extern "C" void Init__10FbMirrorExFv(FbMirrorEx* mirror)
 	mirror->mOwner = NULL;
 }
 
-static inline s32 DrawPromptLines(const char* const* lines, u32 color)
-{
-	s32 count = 0;
-	for (const char* const* line = lines; *line; ++line)
-		++count;
-	f32 height = 24.0f * count;
-	f32 top    = 224.0f - height * 0.5f;
-	for (s32 i = 0; i < count; ++i) {
-		f32 width = MeasureGameTextWidth(&gGame.mGs, lines[i], TRUE, 24.0f);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, lines[i], 320.0f - width * 0.5f, 24.0f * i + top, 0.0f, 24.0f, 24.0f);
-	}
-	return count;
-}
-
 static inline void DrawScanModeConfirmation(u32 color, bool alternate)
 {
 #if defined(VERSION_PAL)
@@ -52,7 +38,15 @@ static inline void DrawScanModeConfirmation(u32 color, bool alternate)
 	const char* lines[]
 	    = { GetLocalizedInterfaceText(first), GetLocalizedInterfaceText(first + 1), GetLocalizedInterfaceText(first + 2), NULL };
 #endif
-	DrawPromptLines(lines, color);
+	s32 count = 0;
+	for (const char* const* line = lines; *line; ++line)
+		++count;
+	f32 height = 24.0f * count;
+	f32 top    = 224.0f - height * 0.5f;
+	for (s32 i = 0; i < count; ++i) {
+		f32 width = MeasureGameTextWidth(&gGame.mGs, lines[i], TRUE, 24.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, lines[i], 320.0f - width * 0.5f, 24.0f * i + top, 0.0f, 24.0f, 24.0f);
+	}
 }
 
 /**
@@ -93,7 +87,15 @@ extern "C" void DrawScanModePrompt()
 		const char* lines[]  = { GetLocalizedInterfaceText(0), GetLocalizedInterfaceText(1), "", "", NULL };
 		const s32 choiceText = 2;
 #endif
-		s32 count           = DrawPromptLines(lines, color);
+		s32 count = 0;
+		for (const char* const* line = lines; *line; ++line)
+			++count;
+		f32 height = 24.0f * count;
+		f32 top    = 224.0f - height * 0.5f;
+		for (s32 i = 0; i < count; ++i) {
+			f32 width = MeasureGameTextWidth(&gGame.mGs, lines[i], TRUE, 24.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, color, lines[i], 320.0f - width * 0.5f, 24.0f * i + top, 0.0f, 24.0f, 24.0f);
+		}
 		const char* format  = GetLocalizedInterfaceText(choiceText);
 		const s32 selected  = gVideoModePrompt.useStandardMode;
 		const char* yes     = selected == 0 ? "\\B404040" : "\\B000000";
