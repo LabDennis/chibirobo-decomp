@@ -1091,8 +1091,6 @@ BOOL MenuPC::Draw()
 						case 10:
 							switch (this->mPhase) {
 							case 0:
-							case 10:
-							case 20:
 								sprintf(labelText, "%.255s", GetPCMenuLabelText(16));
 								break;
 							case 1:
@@ -4862,7 +4860,7 @@ extern "C" void Open__8MenuItemFv(MenuItem* menu)
 		menu->mHelp     = NULL;
 	}
 	menu->_350 = 0;
-	for (int i = 0; i < 20; i++) {
+	for (int i = 0; i < (int)ARRAY_SIZE(menu->mBg); i++) {
 		menu->mBg[i].mAngle0 = 0.017453292f * (rand() % 360);
 		menu->mBg[i].mAngle1 = 0.017453292f * (rand() % 360);
 	}
