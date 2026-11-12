@@ -82,27 +82,27 @@ extern "C" void SetAnim__8XObjDustFliPvPvPvffff(XObjDust* object, s32 id, BOOL f
  * @note Address: 0x800DEAA0
  * @note Size: 0x208
  */
-extern "C" void DrawObjectEffects__8XObjDustFv(XObjDust* object)
+void XObjDust::DrawObjectEffects()
 {
-	if (object->GetObjFlags() & 1) {
+	if (GetObjFlags() & 1) {
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 		gGame.mGs.mBillboardEnabled = 1;
 		f32 height;
-		f32 width = 8.0f * object->mMoveScale.x;
-		height    = 8.0f * object->mMoveScale.y;
+		f32 width = 8.0f * mMoveScale.x;
+		height    = 8.0f * mMoveScale.y;
 		u32 color;
-		if (__fpclassifyf(object->mHeading) != FP_NAN) {
+		if (__fpclassifyf(mHeading) != FP_NAN) {
 			color = 0xC8C8C800;
-		} else if (object->mStatus.mFlags & 0x4000000000000000ULL) {
+		} else if (mStatus.mFlags & 0x4000000000000000ULL) {
 			color = 0xC8646400;
 		} else {
 			color = 0xC8C8C800;
 		}
-		s32 alpha = (s32)(255.0f * object->mFade);
+		s32 alpha = (s32)(255.0f * mFade);
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		Vec rotation = { 0.0f, 0.0f, 0.0f };
-		DrawGsCircle(&gGame.mGs, 16, color | (u8)alpha, color, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z,
-		             width, height, rotation.x, rotation.y, rotation.z);
+		DrawGsCircle(&gGame.mGs, 16, color | (u8)alpha, color, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z, width, height,
+		             rotation.x, rotation.y, rotation.z);
 		gGame.mGs.mBillboardEnabled = 0;
 	}
 }
@@ -112,11 +112,11 @@ extern "C" void DrawObjectEffects__8XObjDustFv(XObjDust* object)
  * @note Address: 0x800DECA8
  * @note Size: 0x7C
  */
-extern "C" void DrawWithView__8XObjDustFPA4_f(XObjDust* object, Mtx view)
+void XObjDust::DrawWithView(Mtx view)
 {
-	if (object->GetObjFlags() & 2) {
-		DrawWithView__4XObjFPA4_f(object, view);
-	} else if (object->GetObjFlags() & 4) {
-		DrawWithView__4XObjFPA4_f(object, view);
+	if (GetObjFlags() & 2) {
+		DrawWithView__4XObjFPA4_f(this, view);
+	} else if (GetObjFlags() & 4) {
+		DrawWithView__4XObjFPA4_f(this, view);
 	}
 }
