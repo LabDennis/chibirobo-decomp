@@ -955,34 +955,6 @@ static inline bool ReadBossMount(XObjSpiderBoss* boss, Vec& position)
 	return true;
 }
 
-static inline void AttachToBoss(XObjActor3* actor, XObjSpiderBoss* boss, f32 x, f32 y, f32 z)
-{
-	actor->SetScale(1, 1, 1, 0);
-	CJObj joint;
-	s32 path[] = { 0 };
-	joint.Attach(GetJointFromRoot(boss->mJObj, 1, path));
-	Mtx scaleMtx, translation, result, mount;
-	PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), mount);
-	Vec scale;
-	HSD_MtxGetScale(mount, &scale);
-	scale.x = GetStagePlacementScale(actor).x / scale.x;
-	scale.y = GetStagePlacementScale(actor).y / scale.y;
-	scale.z = GetStagePlacementScale(actor).z / scale.z;
-	PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
-	PSMTXConcat(mount, scaleMtx, result);
-	PSMTXTrans(translation, x, y, z);
-	PSMTXConcat(result, translation, result);
-	HSD_JObj* jobj = actor->mJObj;
-	MtxPtr matrix  = result;
-	HSD_JObjCopyMtx(jobj, matrix);
-	if (boss->mBlinkTimer) {
-		if (boss->mBlinkTimer % 30 < 15)
-			actor->vf12C(1, 128, 0, 0, 0);
-		else
-			actor->vf12C(1, 0, 0, 0, 0);
-	}
-}
-
 // Each impact has its own entry in the original action table.
 static inline void BounceBossPart(XObjActor3* part, f32 speed)
 {
@@ -1061,8 +1033,32 @@ void XObjActor3::Kind11(u32 frames)
 	}
 	case 1: {
 		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
-		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000))
-			AttachToBoss(this, boss, _BCC, _BD0, _BD4);
+		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+			SetScale(1, 1, 1, 0);
+			CJObj joint;
+			s32 path[] = { 0 };
+			joint.Attach(GetJointFromRoot(boss->mJObj, 1, path));
+			Mtx scaleMtx, translation, result, mount;
+			PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), mount);
+			Vec scale;
+			HSD_MtxGetScale(mount, &scale);
+			scale.x = GetStagePlacementScale(this).x / scale.x;
+			scale.y = GetStagePlacementScale(this).y / scale.y;
+			scale.z = GetStagePlacementScale(this).z / scale.z;
+			PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
+			PSMTXConcat(mount, scaleMtx, result);
+			PSMTXTrans(translation, _BCC, _BD0, _BD4);
+			PSMTXConcat(result, translation, result);
+			HSD_JObj* jobj = mJObj;
+			MtxPtr matrix  = result;
+			HSD_JObjCopyMtx(jobj, matrix);
+			if (boss->mBlinkTimer) {
+				if (boss->mBlinkTimer % 30 < 15)
+					vf12C(1, 128, 0, 0, 0);
+				else
+					vf12C(1, 0, 0, 0, 0);
+			}
+		}
 		break;
 	}
 	case 2: {
