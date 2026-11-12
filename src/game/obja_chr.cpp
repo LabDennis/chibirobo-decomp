@@ -2006,8 +2006,6 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 
 extern "C" s32 GetPlayerAttachmentCount(XObjChr* chr, s32 type);
 
-extern "C" const char lbl_8065D4AC[1]; // ""
-
 // todo: cleanup
 static inline s32 FindAttachment(const AttachmentValues* values, s32 id)
 {
@@ -3310,7 +3308,7 @@ extern "C" s32 GetPlayerAttachmentCount(XObjChr* chr, s32 type)
  */
 const char* OctaMenu::GetItemLabel(s32 index)
 {
-	return lbl_8065D4AC;
+	return "";
 }
 
 // OctaMenu::vf2C

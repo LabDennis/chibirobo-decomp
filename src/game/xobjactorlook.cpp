@@ -1,9 +1,5 @@
 #include "game/xobjactor.h"
 
-extern "C" {
-extern Vec sActorHitPositionZero;
-}
-
 /**
  * @note Address: 0x8010753C
  * @note Size: 0xC
@@ -22,13 +18,7 @@ void XObjActor::OnHitFromPosition(const Vec& pos, f32 strength)
 {
 	OnHitFromPosition__4XObjFRC3Vecf(this, &pos, strength);
 	_998.mFlags |= 2;
-	f32 x        = pos.x;
-	f32 y        = pos.y;
-	f32 z        = pos.z;
-	Vec hit      = sActorHitPositionZero;
-	hit.x        = x;
-	hit.y        = y;
-	hit.z        = z;
+	Vec hit      = { pos.x, pos.y, pos.z };
 	mHitPos      = hit;
 	mHitStrength = strength;
 }

@@ -7,7 +7,6 @@
 #include "game/xchr.h"
 
 extern "C" void OSReport(const char* format, ...);
-extern "C" const char sCameraAreaDataAddressFormat[];
 extern "C" Vec lbl_805A0400[];
 extern "C" s8 lbl_8065B324;
 extern "C" s32 lbl_8065B320;
@@ -418,7 +417,10 @@ extern "C" void InitCameraAreaEntries(CCameraActionAreaEx* state)
 	// the compiler emits its array dtor, CamAreaEntry's dtor and ctor at 0x80135C5C to 0x80135D10
 	static CamAreaEntry gCameraAreaEntries[2048];
 #if !defined(VERSION_PAL)
-	OSReport(sCameraAreaDataAddressFormat, gCameraAreaEntries);
+	OSReport("CCameraActionAreaEx :: "
+	         "\x83\x4A\x83\x81\x83\x89\x83\x66\x81\x5B\x83\x5E\x82\xCC\x83\x41\x83\x68\x83\x8C\x83\x58\x82\xCD"
+	         "0x%x\x82\xC5\x82\xB7\x81\x42\n",
+	         gCameraAreaEntries);
 #endif
 	for (int i = 0; i < 2048; ++i)
 		state->_30[i] = &gCameraAreaEntries[i];
