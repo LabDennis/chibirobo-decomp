@@ -9,7 +9,6 @@
  * @note Address: 0x800E1E60
  * @note Size: 0xD0
  */
-// NONMATCHING: retail issues the coord-info dereference one insn earlier.
 BOOL XObjCoin::LoadFromPlacement(const CoordInfo& info)
 {
 	_260 = info._00->_2C;
