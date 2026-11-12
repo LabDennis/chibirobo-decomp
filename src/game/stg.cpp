@@ -760,6 +760,8 @@ BOOL MenuPC::Draw()
 			}
 			DrawPCBlueNumber(true, 339, 316, this->mAlpha, 1, this->mScrapDisplay.shown);
 		} break;
+		case 11:
+			break;
 		}
 		static bool topInitialized, bottomInitialized;
 		static f32 textureScrollU, textureScrollV, topScanPhase, bottomScanPhase;
@@ -8693,7 +8695,7 @@ extern "C" BOOL Update__8MenuItemFUl(MenuItem* menu, u32 frames)
 					PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 				} else if (pad.mPad->mRepeat & 0x80002) {
 					s32 next = ++menu->mSelection;
-					if ((u32)next >= ARRAY_SIZE(sStatusItemTable.mItems) || sStatusItemTable.mItems[next].mItem < 0)
+					if (sStatusItemTable.mItems[next].mItem < 0)
 						menu->mSelection = 0;
 					PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 				}
@@ -8725,15 +8727,13 @@ extern "C" BOOL Update__8MenuItemFUl(MenuItem* menu, u32 frames)
 					}
 				}
 			}
-			if (menu->mSelection >= 0 && sStatusItemTable.mItems[menu->mSelection].mItem < 0) {
+			if (sStatusItemTable.mItems[menu->mSelection].mItem < 0) {
 				do {
 					--menu->mSelection;
-				} while (menu->mSelection > 0 && sStatusItemTable.mItems[menu->mSelection].mItem < 0);
+				} while (sStatusItemTable.mItems[menu->mSelection].mItem < 0 && menu->mSelection != 0);
 			}
 			if (menu->mSelection != menu->_19C) {
-				s16 id = -1;
-				if (menu->mSelection >= 0)
-					id = sStatusItemTable.mItems[menu->mSelection].mItem;
+				s16 id = sStatusItemTable.mItems[menu->mSelection].mItem;
 				if (id >= 0 && CountMenuItems() > 0) {
 					char* text      = GetItemName(id);
 					menu->mShowHelp = 1;
@@ -10160,11 +10160,6 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 extern "C" s32 GetAttachmentCountById(AttachmentValues*, s32);
 extern "C" void SetAttachmentCountById(AttachmentValues*, s32, s32);
 
-static inline bool IsPCExclusiveItem(s16 id)
-{
-	return id == 0x57 || id == 0x59 || id == 0x5A;
-}
-
 void MenuPC::State3(u32 frames)
 {
 	MenuPC* menu = this;
@@ -10284,10 +10279,11 @@ void MenuPC::State3(u32 frames)
 					}
 					if (entry->mCount > 0)
 						entry->mCount--;
-					if (IsPCExclusiveItem(entry->mItem)) {
+					if (entry->mItem != 0x58 && entry->mItem >= 0x57 && entry->mItem < 0x5B) {
 						for (s32 i = 0; i < 20; i++) {
 							MenuPCItem& other = table[i];
-							if (other.mItem >= 0 && !other.mIsAttachment && IsPCExclusiveItem(other.mItem) && other.mItem != entry->mItem) {
+							if (other.mItem >= 0 && !other.mIsAttachment && other.mItem != 0x58 && other.mItem >= 0x57 && other.mItem < 0x5B
+							    && other.mItem != entry->mItem) {
 								other.mCount = 0;
 								SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, other.mItem, 0, FALSE);
 							}
@@ -10359,14 +10355,14 @@ static inline void FinishStatusItemScroll(MenuStatus* menu)
 
 static inline void UpdateOwnedItemHelp(MenuStatus* menu)
 {
-	if (menu->mItem >= 0 && sStatusItemTable.mItems[menu->mItem].mItem < 0) {
+	if (sStatusItemTable.mItems[menu->mItem].mItem < 0) {
 		do {
 			--menu->mItem;
-		} while (menu->mItem > 0 && sStatusItemTable.mItems[menu->mItem].mItem < 0);
+		} while (sStatusItemTable.mItems[menu->mItem].mItem < 0 && menu->mItem != 0);
 	}
 	if (menu->mItem != menu->mPreviousItem) {
 		char* help = NULL;
-		if (menu->mItem >= 0) {
+		{
 			s16 id = sStatusItemTable.mItems[menu->mItem].mItem;
 			if (id >= 0 && CountMenuItems() > 0)
 				help = GetItemName(id);
@@ -10390,7 +10386,7 @@ void MenuStatus::State2(u32)
 					menu->mItem = count - 1;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			} else if (pad.mPad->mRepeat & 0x80002) {
-				if (++menu->mItem >= (int)ARRAY_SIZE(sStatusItemTable.mItems) || sStatusItemTable.mItems[menu->mItem].mItem < 0)
+				if (sStatusItemTable.mItems[++menu->mItem].mItem < 0)
 					menu->mItem = 0;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			}
