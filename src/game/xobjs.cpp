@@ -5,6 +5,22 @@
 #include "Dolphin/OS/OSMessage.h"
 #include "Dolphin/OS/OSThread.h"
 #include "game/xobjchr.h"
+#include "game/xobjactor.h"
+#include "game/xobjfree.h"
+#include "game/xobjhbox.h"
+#include "game/xobjflags.h"
+#include "game/xobjspiderboss.h"
+#include "game/xobjspider.h"
+#include "game/xobjspidersmall.h"
+#include "game/xobjarmy.h"
+#include "game/xobjleticker.h"
+#include "game/xobjsound.h"
+#include "game/xobjmap.h"
+
+// the three reader threads, built by the file's static initializer
+XObjReadAll gAllObjectsReader;
+XObjReadOne gSingleObjectReader;
+XObjReadAnm gObjectAnimationReader;
 
 extern "C" void ReadAll__5XOBJSFv(XOBJS* list);
 
@@ -697,4 +713,387 @@ extern "C" u8 UpdateStageObjectLoading(XOBJS* list)
 		list->mLoadState = 0;
 	}
 	return list->mLoadState == 0;
+}
+
+// the objects XOBJS hands out and their constructors
+
+/**
+ * @note Address: 0x80132D08
+ * @note Size: 0x94
+ */
+// vf94 on every object of the 23 pools
+extern "C" void ResetPooledObjects(XObjPool* pools)
+{
+	XObjPool* pool = pools;
+	for (s32 index = 0; index < 23; ++index, ++pool) {
+		for (s32 i = 0; i < pool->mCount; ++i) {
+			pools[index].Get(i)->vf94();
+		}
+	}
+}
+
+// one pool: its objects, its entry in the list and an id for each object. retail builds the pools
+// of one object as arrays of one as well, and gives every pool its own loop counter
+#define XOBJ_POOL(slot, type, count, name)                       \
+	{                                                            \
+		static type objs[count];                                 \
+		list->mPools[slot].Set(objs, count, name, sizeof(type)); \
+		for (s32 i = 0; i < count; i++) {                        \
+			objs[i].InitializeObject(id);                        \
+			id++;                                                \
+		}                                                        \
+	}
+
+/**
+ * @note Address: 0x80132D9C
+ * @note Size: 0xDFC
+ */
+// builds the 23 pools, numbers every object and starts the three reader threads
+// NONMATCHING: retail keeps the frame of the empty loop near the end (li r3, 21 ... bdnz), so what
+// left 21 in its counter was not a constant; and two pairs of saved registers are swapped
+extern "C" void InitializeObjectPools(XOBJS* list)
+{
+	s32 id = 0;
+
+	XOBJ_POOL(0, XObjCamera, 1, "CAMERA");
+	XOBJ_POOL(1, XObjLight, 1, "LIGHT");
+	XOBJ_POOL(3, XObjMap, 1, "MAP");
+	XOBJ_POOL(2, XObjChr, 1, "CHR");
+	XOBJ_POOL(4, XObj, 2, "ACTOR2");
+	XOBJ_POOL(5, XObjActor3, 48, "ACTOR3");
+	XOBJ_POOL(6, XObjSound, 8, "SOUND");
+	XOBJ_POOL(7, XObjCoin, 96, "COIN");
+	XOBJ_POOL(8, XObjItem, 64, "ITEM");
+	XOBJ_POOL(9, XObjLeticker, 12, "LETICKER");
+	XOBJ_POOL(10, XObjActorToy, 15, "ACTOR_TOY");
+	XOBJ_POOL(11, XObjActorJenny, 1, "ACTOR_JENNY");
+	XOBJ_POOL(12, XObjActorMama, 1, "ACTOR_MAMA");
+	XOBJ_POOL(13, XObjActorPapa, 1, "ACTOR_PAPA");
+	XOBJ_POOL(14, XObjActorTao, 1, "ACTOR_TAO");
+	XOBJ_POOL(15, XObjActorDeca, 2, "ACTOR_DECA");
+	XOBJ_POOL(16, XObjArmy, 21, "ARMY");
+	XOBJ_POOL(17, XObjSpider, 16, "SPIDER");
+	XOBJ_POOL(18, XObjSpiderSmall, 16, "SPIDER_SMALL");
+	XOBJ_POOL(19, XObjSpiderBoss, 1, "SPIDER_BOSS");
+	XOBJ_POOL(20, XObjDust, 64, "DUST");
+	XOBJ_POOL(21, XObjHBox, 16, "HBOX");
+	XOBJ_POOL(22, XObjFree, 288, "FREE");
+
+	// nothing is left of this loop over the last two pools but its counter
+	for (s32 i = 21; i < 23; i++) { }
+	list->mLoadState = 0;
+
+	gAllObjectsReader.Create(ReadObjectListThread, NULL, 0x2000, 17, OS_THREAD_ATTR_DETACH);
+	gSingleObjectReader.Create(ReadSingleObjectThread, NULL, 0x2000, 16, OS_THREAD_ATTR_DETACH);
+	gObjectAnimationReader.Create(ReadObjectAnimationsThread, NULL, 0x2000, 16, OS_THREAD_ATTR_DETACH);
+}
+
+/**
+ * @note Address: 0x80133BD0
+ * @note Size: 0x3C
+ */
+XObjFree::XObjFree()
+{
+}
+
+/**
+ * @note Address: 0x80133C44
+ * @note Size: 0x44
+ */
+XObjHBox::XObjHBox()
+{
+}
+
+/**
+ * @note Address: 0x80133C88
+ * @note Size: 0x30
+ */
+XObjHBoxPart::XObjHBoxPart()
+{
+}
+
+/**
+ * @note Address: 0x80133CF0
+ * @note Size: 0x48
+ */
+XObjDust::XObjDust()
+{
+	mFlags = &gDustEventFlags;
+}
+
+/**
+ * @note Address: 0x80133D7C
+ * @note Size: 0x5C
+ */
+XObjSpiderBoss::XObjSpiderBoss()
+{
+}
+
+/**
+ * @note Address: 0x80133E10
+ * @note Size: 0x74
+ */
+XObjSpiderSmall::XObjSpiderSmall()
+{
+}
+
+/**
+ * @note Address: 0x80133EBC
+ * @note Size: 0x84
+ */
+XObjSpider::XObjSpider()
+{
+}
+
+/**
+ * @note Address: 0x80133F78
+ * @note Size: 0x88
+ */
+XObjArmy::XObjArmy()
+{
+}
+
+// 0x80134000, XObjArmyShot's ctor, the compiler emits it here
+
+/**
+ * @note Address: 0x8013404C
+ * @note Size: 0x58
+ */
+XObjActorDeca::XObjActorDeca()
+{
+}
+
+/**
+ * @note Address: 0x80134100
+ * @note Size: 0x50
+ */
+XObjActorTao::XObjActorTao()
+{
+}
+
+/**
+ * @note Address: 0x80134150
+ * @note Size: 0x50
+ */
+XObjActorPapa::XObjActorPapa()
+{
+}
+
+/**
+ * @note Address: 0x801341A0
+ * @note Size: 0x50
+ */
+XObjActorMama::XObjActorMama()
+{
+}
+
+/**
+ * @note Address: 0x801341F0
+ * @note Size: 0x58
+ */
+XObjActorJenny::XObjActorJenny()
+{
+}
+
+/**
+ * @note Address: 0x80134280
+ * @note Size: 0x80
+ */
+XObjActorToy::XObjActorToy()
+{
+}
+
+/**
+ * @note Address: 0x801340A4
+ * @note Size: 0x5C
+ */
+XObjActor::XObjActor()
+{
+}
+
+/**
+ * @note Address: 0x80134338
+ * @note Size: 0x48
+ */
+XObjLeticker::XObjLeticker()
+{
+}
+
+/**
+ * @note Address: 0x801343B8
+ * @note Size: 0x48
+ */
+XObjItem::XObjItem()
+{
+	mFlags = &gItemEventFlags;
+}
+
+/**
+ * @note Address: 0x80134438
+ * @note Size: 0x48
+ */
+XObjCoin::XObjCoin()
+{
+	mFlags = &gCoinEventFlags;
+}
+
+/**
+ * @note Address: 0x80133D38
+ * @note Size: 0x44
+ */
+XObjFlags::XObjFlags()
+{
+	mFlags = NULL;
+}
+
+/**
+ * @note Address: 0x801344B8
+ * @note Size: 0x48
+ */
+XObjSound::XObjSound()
+{
+}
+
+/**
+ * @note Address: 0x80134538
+ * @note Size: 0xF4
+ */
+XObjActor3::XObjActor3()
+{
+}
+
+// 0x8013462C, CPtclDust3's ctor, the compiler emits it here
+
+/**
+ * @note Address: 0x80134694
+ * @note Size: 0x354
+ */
+XObjChr::XObjChr()
+{
+}
+
+#if !defined(VERSION_JP)
+/**
+ * @note Address: 0x801349E8
+ * @note Size: 0x34
+ */
+OXMenuMark::OXMenuMark()
+{
+}
+#endif
+
+/**
+ * @note Address: 0x80134A1C
+ * @note Size: 0x3C
+ */
+XObjOX::XObjOX()
+{
+}
+
+/**
+ * @note Address: 0x80134A58
+ * @note Size: 0x3C
+ */
+XObjAttachment::XObjAttachment()
+{
+}
+
+/**
+ * @note Address: 0x80134A94
+ * @note Size: 0x3C
+ */
+XObjRadar::XObjRadar()
+{
+}
+
+/**
+ * @note Address: 0x80134AD0
+ * @note Size: 0x3C
+ */
+XObjPopper::XObjPopper()
+{
+}
+
+/**
+ * @note Address: 0x80134B0C
+ * @note Size: 0x3C
+ */
+XObjCopter::XObjCopter()
+{
+}
+
+/**
+ * @note Address: 0x80134B48
+ * @note Size: 0x70
+ */
+XObjPlug::XObjPlug()
+{
+}
+
+/**
+ * @note Address: 0x80134BB8
+ * @note Size: 0x3C
+ */
+XObjWireEff::XObjWireEff()
+{
+}
+
+/**
+ * @note Address: 0x80134BF4
+ * @note Size: 0x2C
+ */
+XObjPlugCordNode::XObjPlugCordNode()
+{
+}
+
+/**
+ * @note Address: 0x80134C64
+ * @note Size: 0x64
+ */
+XActPopperShot::XActPopperShot()
+{
+}
+
+/**
+ * @note Address: 0x80134CF8
+ * @note Size: 0x7C
+ */
+// 0x80134CC8, CPtclDust2's ctor, the compiler emits it here
+
+XObjMap::XObjMap()
+{
+}
+
+/**
+ * @note Address: 0x80134D8C
+ * @note Size: 0x5C
+ */
+// 0x80134D74, CTrigon's ctor, the compiler emits it here
+
+XObjLight::XObjLight()
+{
+}
+
+/**
+ * @note Address: 0x80134DE8
+ * @note Size: 0x64
+ */
+XObjCamera::XObjCamera()
+{
+}
+
+/**
+ * @note Address: 0x80134E94
+ * @note Size: 0x84
+ */
+XObjReadOne::~XObjReadOne()
+{
+}
+
+/**
+ * @note Address: 0x80134F18
+ * @note Size: 0x84
+ */
+XObjReadAll::~XObjReadAll()
+{
 }

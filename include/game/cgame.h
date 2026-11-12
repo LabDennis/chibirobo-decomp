@@ -51,6 +51,15 @@ struct XObjPool {
 	const char* mName; // _0C
 	s32 mStride;       // _10, size of one object
 
+	void Set(void* objects, s32 count, const char* name, s32 stride)
+	{
+		mObjects = (u8*)objects;
+		mUsed    = 0;
+		mCount   = count;
+		mName    = name;
+		mStride  = stride;
+	}
+
 	XObj* First() const { return (XObj*)mObjects; }
 	XObj* Get(s32 i) const { return (XObj*)(mObjects + i * mStride); }
 
