@@ -17407,8 +17407,9 @@ extern "C" s32 CEvt__cmd_WAIT(CEvt* evt, u8 command, s32 step)
 				evt->mData.mScript = start;
 				yield              = 1;
 			} else {
-				evt->_18 -= step * 100;
-				if (evt->_18 <= 0)
+				s32 remain = evt->_18 - step * 100;
+				evt->_18   = remain;
+				if (remain <= 0)
 					evt->_18 = 0;
 				else {
 					evt->mData.mScript = start;
