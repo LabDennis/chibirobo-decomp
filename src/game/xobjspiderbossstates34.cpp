@@ -57,98 +57,98 @@ static inline void TurnTowardPoint(XObjSpiderBoss* boss, s32 readyStep)
 }
 
 // NONMATCHING: retail's frame is 0x20 smaller, it sets the patrol effect's rotation in the copy it passes
-extern "C" void State4__14XObjSpiderBossFUl(XObjSpiderBoss* boss, u32 frames)
+void XObjSpiderBoss::State4(u32 frames)
 {
 	CPad pad(0);
 	CVec player = gGame.GetPlayer()->mMoveTranslate;
-	if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && boss->mStep != 30) {
-		PlayPatrolAnim(boss, 0x17);
-		boss->mSpeed = 0;
-		boss->mStep  = 30;
+	if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && mStep != 30) {
+		PlayPatrolAnim(this, 0x17);
+		mSpeed = 0;
+		mStep  = 30;
 	}
-	switch (boss->mStep) {
+	switch (mStep) {
 	case 0: {
-		boss->mTimer = (rand() % 30 + 30) / frames;
-		boss->mSpeed = 0;
-		PlayPatrolAnim(boss, 0x17);
-		boss->mSpiderStatus.mFlags |= 0x1000;
+		mTimer = (rand() % 30 + 30) / frames;
+		mSpeed = 0;
+		PlayPatrolAnim(this, 0x17);
+		mSpiderStatus.mFlags |= 0x1000;
 		Vec candidates[25];
 		Vec* next = candidates;
 		for (s32 i = 0; i < 25; ++i)
-			if (boss->mPatrolSelection != i)
+			if (mPatrolSelection != i)
 				*next++ = sSpiderBossPatrolPoints[i];
-		s32 pick               = rand() % 24;
-		boss->mPatrolTarget    = candidates[pick];
-		boss->mPatrolSelection = pick;
-		FacePatrolPoint(boss, boss->mPatrolTarget, 1, 2);
+		s32 pick         = rand() % 24;
+		mPatrolTarget    = candidates[pick];
+		mPatrolSelection = pick;
+		FacePatrolPoint(this, mPatrolTarget, 1, 2);
 		break;
 	}
 	case 1:
-		TurnTowardPoint(boss, 2);
+		TurnTowardPoint(this, 2);
 		break;
 	case 2:
-		if (--boss->mTimer < 0) {
-			boss->mSpeed = 1;
-			PlayPatrolAnim(boss, 0x18);
+		if (--mTimer < 0) {
+			mSpeed = 1;
+			PlayPatrolAnim(this, 0x18);
 			{
 				Vec rotation = {};
 				Vec scale    = { 1, 1, 1 };
-				rotation.y   = boss->mTargetRotY;
-				gGame.mParticle.CreateSRT(0xb6, 1, boss->mMoveTranslate, scale, rotation, TRUE);
-				boss->mPatrolEffectActive = 1;
+				rotation.y   = mTargetRotY;
+				gGame.mParticle.CreateSRT(0xb6, 1, mMoveTranslate, scale, rotation, TRUE);
+				mPatrolEffectActive = 1;
 			}
-			boss->mTimer = rand() % 30 + 30;
-			++boss->mStep;
+			mTimer = rand() % 30 + 30;
+			++mStep;
 		}
 		break;
 	case 3:
-		if (boss->mAltAnimId == 0x18) {
-			if (!boss->mPatrolEffectActive) {
+		if (mAltAnimId == 0x18) {
+			if (!mPatrolEffectActive) {
 				Vec rotation = {};
 				Vec scale    = { 1, 1, 1 };
-				rotation.y   = boss->mTargetRotY;
-				gGame.mParticle.CreateSRT(0xb6, 1, boss->mMoveTranslate, scale, rotation, TRUE);
-				boss->mPatrolEffectActive = 1;
+				rotation.y   = mTargetRotY;
+				gGame.mParticle.CreateSRT(0xb6, 1, mMoveTranslate, scale, rotation, TRUE);
+				mPatrolEffectActive = 1;
 			}
-			if (GetAnimEndFrame(boss->mJObj) - frames <= GetAnimFrame(boss->mJObj)) {
-				boss->mPatrolEffectActive = 0;
+			if (GetAnimEndFrame(mJObj) - frames <= GetAnimFrame(mJObj)) {
+				mPatrolEffectActive = 0;
 				gGame.mParticle.Kill(0xb6);
 			}
 		}
-		boss->mHeading    = atan2(boss->mPatrolTarget.x - boss->mMoveTranslate.x, boss->mPatrolTarget.z - boss->mMoveTranslate.z);
-		boss->mTargetRotY = boss->mHeading;
-		if (SpiderContactDistance(&boss->mPatrolTarget, &boss->mMoveTranslate) < 2) {
-			boss->mPatrolEffectActive = 0;
+		mHeading    = atan2(mPatrolTarget.x - mMoveTranslate.x, mPatrolTarget.z - mMoveTranslate.z);
+		mTargetRotY = mHeading;
+		if (SpiderContactDistance(&mPatrolTarget, &mMoveTranslate) < 2) {
+			mPatrolEffectActive = 0;
 			gGame.mParticle.Kill(0xb6);
-			PlayPatrolAnim(boss, 0x17);
-			boss->mSpeed = 0;
-			boss->_9C0   = 5;
-			boss->mStep  = 4;
+			PlayPatrolAnim(this, 0x17);
+			mSpeed = 0;
+			_9C0   = 5;
+			mStep  = 4;
 		}
 		break;
 	case 4:
-		FacePatrolPoint(boss, player, 5, 6);
+		FacePatrolPoint(this, player, 5, 6);
 		break;
 	case 5:
-		TurnTowardPoint(boss, 6);
+		TurnTowardPoint(this, 6);
 		break;
 	case 6:
-		if ((s32)--boss->_9C0 < 0)
-			boss->mStep = 0;
+		if ((s32)--_9C0 < 0)
+			mStep = 0;
 		else {
-			PlayPatrolAnim(boss, 0x1b);
+			PlayPatrolAnim(this, 0x1b);
 			CommandSpiderBossProjectiles(1);
 			PlayGameSound(&gGame.mSound, 0x16001b, 255);
-			++boss->mStep;
+			++mStep;
 		}
 		break;
 	case 7:
-		if (GetAnimEndFrame(boss->mJObj) - frames <= GetAnimFrame(boss->mJObj))
-			boss->mStep = 4;
+		if (GetAnimEndFrame(mJObj) - frames <= GetAnimFrame(mJObj))
+			mStep = 4;
 		break;
 	case 30:
 		if (!InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && gGame.IsRunning() && !gGame.mEvt.mData.mScript)
-			boss->mStep = 0;
+			mStep = 0;
 		break;
 	}
 }
@@ -225,193 +225,193 @@ static inline bool IsGrabBlocked(s32 anim)
 }
 
 // NONMATCHING: same code; retail orders the vector-constant loads (@2029) and a few lfs differently
-extern "C" void State3__14XObjSpiderBossFUl(XObjSpiderBoss* boss, u32 frames)
+void XObjSpiderBoss::State3(u32 frames)
 {
 	CPad pad(0);
 	Vec player = gGame.GetPlayer()->mMoveTranslate;
 	CVec position(player);
 	CJObj joint;
-	switch (boss->mStep) {
+	switch (mStep) {
 	case 100:
-		boss->mTimer = 3 * BOSS_FPS / frames;
-		SetAttackAnim(boss, 7);
-		gSpiderBossSavedTargetYaw = boss->mTargetRotY;
-		boss->mStep               = 101;
+		mTimer = 3 * BOSS_FPS / frames;
+		SetAttackAnim(this, 7);
+		gSpiderBossSavedTargetYaw = mTargetRotY;
+		mStep                     = 101;
 		break;
 	case 101: {
-		boss->mHeading = atan2(player.x - boss->mMoveTranslate.x, player.z - boss->mMoveTranslate.z);
-		f32 delta      = boss->mTargetRotY - boss->mHeading;
+		mHeading  = atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
+		f32 delta = mTargetRotY - mHeading;
 		if (delta > PI)
-			boss->mHeading = TWO_PI + boss->mHeading;
+			mHeading = TWO_PI + mHeading;
 		else if (delta < -PI)
-			boss->mHeading -= TWO_PI;
-		ApproachHudValue(&boss->mTargetRotY, &boss->mHeading, .018f);
-		if (boss->mHeading > boss->mTargetRotY) {
-			if (AttackAnimEnding(boss, frames))
-				SetAttackAnim(boss, 9, TRUE);
+			mHeading -= TWO_PI;
+		ApproachHudValue(&mTargetRotY, &mHeading, .018f);
+		if (mHeading > mTargetRotY) {
+			if (AttackAnimEnding(this, frames))
+				SetAttackAnim(this, 9, TRUE);
 			else
-				SetAttackAnim(boss, 9);
-		} else if (boss->mHeading < boss->mTargetRotY) {
-			if (AttackAnimEnding(boss, frames))
-				SetAttackAnim(boss, 8, TRUE);
+				SetAttackAnim(this, 9);
+		} else if (mHeading < mTargetRotY) {
+			if (AttackAnimEnding(this, frames))
+				SetAttackAnim(this, 8, TRUE);
 			else
-				SetAttackAnim(boss, 8);
+				SetAttackAnim(this, 8);
 		} else
-			SetAttackAnim(boss, 7);
+			SetAttackAnim(this, 7);
 	}
-		if (--boss->mTimer < 0)
-			boss->mStep = 0;
+		if (--mTimer < 0)
+			mStep = 0;
 		break;
 	case 0:
-		boss->mTimer = rand() % 90 + 90;
-		boss->_9C0   = rand() % 30 + 30;
-		SetAttackAnim(boss, 7);
-		++boss->mStep;
-		gSpiderBossSavedTargetYaw = boss->mTargetRotY;
+		mTimer = rand() % 90 + 90;
+		_9C0   = rand() % 30 + 30;
+		SetAttackAnim(this, 7);
+		++mStep;
+		gSpiderBossSavedTargetYaw = mTargetRotY;
 		break;
 	case 1:
-		boss->mGrabIntervalFrames += frames;
+		mGrabIntervalFrames += frames;
 		{
-			boss->mHeading = atan2(player.x - boss->mMoveTranslate.x, player.z - boss->mMoveTranslate.z);
-			f32 delta      = boss->mTargetRotY - boss->mHeading;
+			mHeading  = atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
+			f32 delta = mTargetRotY - mHeading;
 			if (delta > PI)
-				boss->mHeading = TWO_PI + boss->mHeading;
+				mHeading = TWO_PI + mHeading;
 			else if (delta < -PI)
-				boss->mHeading -= TWO_PI;
-			ApproachHudValue(&boss->mTargetRotY, &boss->mHeading, .018f);
-			if (boss->mHeading > boss->mTargetRotY) {
-				if (AttackAnimEnding(boss, frames))
-					SetAttackAnim(boss, 9, TRUE);
+				mHeading -= TWO_PI;
+			ApproachHudValue(&mTargetRotY, &mHeading, .018f);
+			if (mHeading > mTargetRotY) {
+				if (AttackAnimEnding(this, frames))
+					SetAttackAnim(this, 9, TRUE);
 				else
-					SetAttackAnim(boss, 9);
-			} else if (boss->mHeading < boss->mTargetRotY) {
-				if (AttackAnimEnding(boss, frames))
-					SetAttackAnim(boss, 8, TRUE);
+					SetAttackAnim(this, 9);
+			} else if (mHeading < mTargetRotY) {
+				if (AttackAnimEnding(this, frames))
+					SetAttackAnim(this, 8, TRUE);
 				else
-					SetAttackAnim(boss, 8);
+					SetAttackAnim(this, 8);
 			} else
-				SetAttackAnim(boss, 7);
+				SetAttackAnim(this, 7);
 		}
-		if (SpiderContactDistance(&position, &boss->mMoveTranslate) <= 220) {
-			if (boss->mGrabIntervalFrames >= (s32)(3 * BOSS_FPS)) {
-				boss->mStep = 10;
-				SetAttackAnim(boss, 16);
+		if (SpiderContactDistance(&position, &mMoveTranslate) <= 220) {
+			if (mGrabIntervalFrames >= (s32)(3 * BOSS_FPS)) {
+				mStep = 10;
+				SetAttackAnim(this, 16);
 				s32 path[] = { 0, 2, 0, 1, 1, 0, 0 };
-				joint.Attach(FindJointByPath(boss->mJObj, path, 7));
+				joint.Attach(FindJointByPath(mJObj, path, 7));
 				// Retail updates the joint matrix here and discards the resulting position.
 				joint.GetPos();
 			}
-			PulseSpiderArena(boss);
-		} else if (--boss->mTimer < 0) {
-			boss->mTimer = 30;
-			boss->mStep  = 20;
+			PulseSpiderArena(this);
+		} else if (--mTimer < 0) {
+			mTimer = 30;
+			mStep  = 20;
 			ShakeSpiderArena();
 			CommandSpiderBossProjectiles(0);
 		}
 		break;
 	case 10:
-		if (AttackAnimEnding(boss, frames)) {
+		if (AttackAnimEnding(this, frames)) {
 			PlaySpiderBossAttachmentAnimation(1);
-			boss->mTimer = BOSS_FPS / frames;
-			SetAttackAnim(boss, 17);
-			boss->mGrabCooldown = 5;
-			++boss->mStep;
+			mTimer = BOSS_FPS / frames;
+			SetAttackAnim(this, 17);
+			mGrabCooldown = 5;
+			++mStep;
 		}
 		break;
 	case 11: {
-		boss->mHeading = atan2(player.x - boss->mMoveTranslate.x, player.z - boss->mMoveTranslate.z);
-		f32 delta      = boss->mTargetRotY - boss->mHeading;
+		mHeading  = atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
+		f32 delta = mTargetRotY - mHeading;
 		if (delta > PI)
-			boss->mHeading = TWO_PI + boss->mHeading;
+			mHeading = TWO_PI + mHeading;
 		else if (delta < -PI)
-			boss->mHeading -= TWO_PI;
-		ApproachHudValue(&boss->mTargetRotY, &boss->mHeading, .018f);
-		if (boss->mHeading > boss->mTargetRotY) {
-			if (AttackAnimEnding(boss, frames))
-				SetAttackAnim(boss, 18, TRUE);
+			mHeading -= TWO_PI;
+		ApproachHudValue(&mTargetRotY, &mHeading, .018f);
+		if (mHeading > mTargetRotY) {
+			if (AttackAnimEnding(this, frames))
+				SetAttackAnim(this, 18, TRUE);
 			else
-				SetAttackAnim(boss, 18);
-		} else if (boss->mHeading < boss->mTargetRotY) {
-			if (AttackAnimEnding(boss, frames))
-				SetAttackAnim(boss, 19, TRUE);
+				SetAttackAnim(this, 18);
+		} else if (mHeading < mTargetRotY) {
+			if (AttackAnimEnding(this, frames))
+				SetAttackAnim(this, 19, TRUE);
 			else
-				SetAttackAnim(boss, 19);
+				SetAttackAnim(this, 19);
 		} else
-			SetAttackAnim(boss, 17);
+			SetAttackAnim(this, 17);
 	}
-		if (--boss->mTimer < 0) {
-			boss->mTimer = 3 * BOSS_FPS / frames + (BOSS_FPS / frames) / 2;
-			boss->_9C0   = rand() % 30 + 30;
-			s32 path[]   = { 0, 2, 0, 1, 1, 0, 0 };
-			joint.Attach(FindJointByPath(boss->mJObj, path, 7));
+		if (--mTimer < 0) {
+			mTimer     = 3 * BOSS_FPS / frames + (BOSS_FPS / frames) / 2;
+			_9C0       = rand() % 30 + 30;
+			s32 path[] = { 0, 2, 0, 1, 1, 0, 0 };
+			joint.Attach(FindJointByPath(mJObj, path, 7));
 			// Retail updates the joint matrix here and discards the resulting position.
 			joint.GetPos();
 			PlaySpiderBossAttachmentAnimation(2);
 			PlayGameSound(&gGame.mSound, 0x16001f, 255);
-			++boss->mStep;
+			++mStep;
 		}
 		break;
 	case 12: {
 		{
-			boss->mHeading = atan2(player.x - boss->mMoveTranslate.x, player.z - boss->mMoveTranslate.z);
-			f32 delta      = boss->mTargetRotY - boss->mHeading;
+			mHeading  = atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
+			f32 delta = mTargetRotY - mHeading;
 			if (delta > PI)
-				boss->mHeading = TWO_PI + boss->mHeading;
+				mHeading = TWO_PI + mHeading;
 			else if (delta < -PI)
-				boss->mHeading -= TWO_PI;
-			ApproachHudValue(&boss->mTargetRotY, &boss->mHeading, .018f);
-			if (boss->mHeading > boss->mTargetRotY) {
-				if (AttackAnimEnding(boss, frames))
-					SetAttackAnim(boss, 18, TRUE);
+				mHeading -= TWO_PI;
+			ApproachHudValue(&mTargetRotY, &mHeading, .018f);
+			if (mHeading > mTargetRotY) {
+				if (AttackAnimEnding(this, frames))
+					SetAttackAnim(this, 18, TRUE);
 				else
-					SetAttackAnim(boss, 18);
-			} else if (boss->mHeading < boss->mTargetRotY) {
-				if (AttackAnimEnding(boss, frames))
-					SetAttackAnim(boss, 19, TRUE);
+					SetAttackAnim(this, 18);
+			} else if (mHeading < mTargetRotY) {
+				if (AttackAnimEnding(this, frames))
+					SetAttackAnim(this, 19, TRUE);
 				else
-					SetAttackAnim(boss, 19);
+					SetAttackAnim(this, 19);
 			} else
-				SetAttackAnim(boss, 17);
+				SetAttackAnim(this, 17);
 		}
-		if (--boss->mGrabCooldown < 0)
-			boss->mGrabCooldown = 0;
+		if (--mGrabCooldown < 0)
+			mGrabCooldown = 0;
 		if (IsGrabBlocked(gGame.GetPlayer()->mAnimId))
-			boss->mGrabCooldown = 5;
-		f32 distance = SpiderContactDistance(&position, &boss->mMoveTranslate);
+			mGrabCooldown = 5;
+		f32 distance = SpiderContactDistance(&position, &mMoveTranslate);
 		if (distance <= 70 && !IsUsingMug(&gGame.GetPlayer()->mLift) && !IsGrabBlocked(gGame.GetPlayer()->mAnimId)
-		    && gGame.GetPlayer()->mAttachmentRequest < 0 && boss->mGrabCooldown == 0) {
-			boss->mStatus.mFlags |= 0x100000;
+		    && gGame.GetPlayer()->mAttachmentRequest < 0 && mGrabCooldown == 0) {
+			mStatus.mFlags |= 0x100000;
 			ShakeSpiderArena();
-			boss->mSpiderStatus.mFlags |= 0x20000;
+			mSpiderStatus.mFlags |= 0x20000;
 			gGame.GetPlayer()->_980.mFlags = 0;
 			gGame.GetPlayer()->_980.mFlags |= 0x80000000;
 			gGame.GetPlayer()->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			boss->mEscapeInputStrength = 1;
-			boss->mEscapeRemaining     = 450;
-			++boss->mStep;
+			mEscapeInputStrength = 1;
+			mEscapeRemaining     = 450;
+			++mStep;
 			InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 1, 1);
-			boss->mSpiderStatus.mFlags &= ~0x200;
+			mSpiderStatus.mFlags &= ~0x200;
 			PlayGameSound(&gGame.mSound, 0x16001d, 255);
 			PlayGameSound(&gGame.mSound, 0x16001e, 255);
 			break;
 		}
 		if (distance <= 220) {
-			boss->mSpiderStatus.mFlags |= 0x200;
-			PulseSpiderArena(boss);
+			mSpiderStatus.mFlags |= 0x200;
+			PulseSpiderArena(this);
 		} else {
-			boss->mGrabIntervalFrames = 0;
-			SetAttackAnim(boss, 7);
-			boss->mSpiderStatus.mFlags &= ~0x200;
+			mGrabIntervalFrames = 0;
+			SetAttackAnim(this, 7);
+			mSpiderStatus.mFlags &= ~0x200;
 			StopGameSfx(&gGame.mSound, 0x16001f);
 			ResetSpiderBossAttachment();
 			StopGameSfx(&gGame.mSound, 0x16001f);
-			boss->mStep = 0;
+			mStep = 0;
 		}
-		if (--boss->mTimer < 0) {
-			boss->mGrabIntervalFrames = 0;
-			SetAttackAnim(boss, 7);
-			boss->mSpiderStatus.mFlags &= ~0x200;
-			boss->mStep = 0;
+		if (--mTimer < 0) {
+			mGrabIntervalFrames = 0;
+			SetAttackAnim(this, 7);
+			mSpiderStatus.mFlags &= ~0x200;
+			mStep = 0;
 			ResetSpiderBossAttachment();
 			StopGameSfx(&gGame.mSound, 0x16001f);
 		}
@@ -419,45 +419,45 @@ extern "C" void State3__14XObjSpiderBossFUl(XObjSpiderBoss* boss, u32 frames)
 	}
 	case 13:
 		if (gGame.IsRunning() && (pad.mPad->mButton & 0xf0000)) {
-			boss->mEscapeRemaining -= boss->mEscapeInputStrength;
-			boss->mEscapeInputStrength = 8;
+			mEscapeRemaining -= mEscapeInputStrength;
+			mEscapeInputStrength = 8;
 		}
-		if (boss->mEscapeInputStrength > 1)
-			boss->mEscapeInputStrength -= 1;
-		if (boss->mEscapeRemaining <= 0) {
-			if (boss->mSpiderStatus.mFlags & 0x1000000) {
-				boss->mSpiderStatus.mFlags &= ~0x1000000;
+		if (mEscapeInputStrength > 1)
+			mEscapeInputStrength -= 1;
+		if (mEscapeRemaining <= 0) {
+			if (mSpiderStatus.mFlags & 0x1000000) {
+				mSpiderStatus.mFlags &= ~0x1000000;
 				gSpiderDrainFlashClaimed = 0;
 				gGame.GetPlayer()->vf12C(1, 0, 0, 0, 0);
 			}
-			boss->mStatus.mFlags &= ~0x100000ULL;
-			boss->mSpiderStatus.mFlags &= ~0x20000;
+			mStatus.mFlags &= ~0x100000ULL;
+			mSpiderStatus.mFlags &= ~0x20000;
 			XObjChr* chr     = gGame.GetPlayer();
 			chr->_980.mFlags = 0;
 			chr->_980.mFlags |= 0x20000000;
 			chr->_980.mFlags |= 7;
-			chr->mPad.mReset          = TRUE;
-			boss->mGrabIntervalFrames = 0;
-			SetAttackAnim(boss, 7);
-			boss->mStep = 0;
+			chr->mPad.mReset    = TRUE;
+			mGrabIntervalFrames = 0;
+			SetAttackAnim(this, 7);
+			mStep = 0;
 			InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 0, 1);
 			ResetSpiderBossAttachment();
 			StopGameSfx(&gGame.mSound, 0x16001f);
 		}
 		if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
-			SetAttackAnim(boss, 7);
-			boss->mStep = 30;
+			SetAttackAnim(this, 7);
+			mStep = 30;
 			ResetSpiderBossAttachment();
 			StopGameSfx(&gGame.mSound, 0x16001f);
 		}
 		break;
 	case 20:
-		if (--boss->mTimer < 0)
-			boss->mStep = 0;
+		if (--mTimer < 0)
+			mStep = 0;
 		break;
 	case 30:
 		if (!InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && gGame.IsRunning() && !gGame.mEvt.mData.mScript)
-			boss->mStep = 0;
+			mStep = 0;
 		break;
 	}
 }
