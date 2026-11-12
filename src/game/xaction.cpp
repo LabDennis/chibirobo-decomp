@@ -9,10 +9,10 @@
 // XAction::Reset
 extern "C" void Reset__7XActionFv(XAction* action)
 {
-	action->mState  = 0;
-	action->_0C     = 0;
-	action->mTarget = NULL;
-	action->_24     = 0;
+	action->mState         = 0;
+	action->mMoveDirection = 0;
+	action->mTarget        = NULL;
+	action->mTargetState   = 0;
 }
 
 /**

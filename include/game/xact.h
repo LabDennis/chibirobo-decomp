@@ -21,11 +21,11 @@ public:
 	virtual void Init(XObjChr* owner); // _08, 0x800BBD7C
 	virtual void Reset();              // _0C, 0x800BB708
 
-	s32 _0C;          // _0C
-	CVec _10;         // _10, push keeps the offset to its target here
-	XObj* mTarget;    // _20
-	s32 _24;          // _24
-	s32 mTargetFloor; // _28, the selected floor when the target was picked
+	s32 mMoveDirection; // _0C
+	CVec _10;           // _10, push keeps the offset to its target here
+	XObj* mTarget;      // _20
+	s32 mTargetState;   // _24
+	s32 mTargetFloor;   // _28, the selected floor when the target was picked
 
 	// todo: cleanup
 	void SetTarget(XObj* target)
@@ -74,8 +74,8 @@ class XActHang : public XAction {
 public:
 	BOOL _2C;             // _2C, set when the stick points away
 	Vec mHangStartOffset; // _30, player position relative to the target
-	Vec _3C;              // _3C
-	f32 _48;              // _48
+	Vec mFloorCenter;     // _3C
+	f32 mDistance;        // _48
 	u8 _4C[0x50 - 0x4C];  // _4C
 };
 STATIC_ASSERT(sizeof(XActHang) == 0x50);

@@ -537,7 +537,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 			case 3:
 				if (count <= 2 || args[2]) {
 					player->mLift.SetState(1, &player->mPlug);
-					player->mLift._24 = 0;
+					player->mLift.mTargetState = 0;
 				} else if (player->mLift.mTarget) {
 					player->mLift.mState = 6;
 				}

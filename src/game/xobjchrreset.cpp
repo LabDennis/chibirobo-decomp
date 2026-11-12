@@ -25,7 +25,7 @@ extern "C" void Release__7XObjChrFv(XObjChr* chr)
 			if ((s16)target->GetPool() == 8) {
 				chr->mSavedTarget      = target->GetObjFlags();
 				chr->mSavedTargetAnim  = chr->mLift.mTarget->mAnimId;
-				chr->mSavedTargetState = chr->mLift._24;
+				chr->mSavedTargetState = chr->mLift.mTargetState;
 			}
 		}
 	} else {

@@ -2171,28 +2171,28 @@ void XObjChr::UpdateObject(u32 frames)
 			f32 yaw   = mMoveRotate.y;
 			f32 angle = WrapAngle((_9BC[2] + gGame.mMotionControlCamera.mCamera.mAngle.y) - yaw);
 			if (angle >= 30 * DEG2RAD && angle < 150 * DEG2RAD) {
-				direction = TWO_PI + WrapAngle(HALF_PI + yaw);
-				mHang._0C = -1;
-				speed     = 0.5f;
+				direction            = TWO_PI + WrapAngle(HALF_PI + yaw);
+				mHang.mMoveDirection = -1;
+				speed                = 0.5f;
 			} else if (angle >= 210 * DEG2RAD && angle < 330 * DEG2RAD) {
-				direction = TWO_PI + WrapAngle(yaw - HALF_PI);
-				mHang._0C = 1;
-				speed     = 0.5f;
+				direction            = TWO_PI + WrapAngle(yaw - HALF_PI);
+				mHang.mMoveDirection = 1;
+				speed                = 0.5f;
 			} else {
-				direction = NAN;
-				speed     = 0;
-				mHang._0C = 0;
+				direction            = NAN;
+				speed                = 0;
+				mHang.mMoveDirection = 0;
 			}
 		} else if (mCopter.mState == 3) {
-			mCopter._0C = 1;
-			direction   = WrapAngle((_9BC[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
+			mCopter.mMoveDirection = 1;
+			direction              = WrapAngle((_9BC[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
 		} else if (mCopter.mState == 4 || mCopter.mState == 7 || mCopter.mState == 8) {
 			if ((gGame.mStatus.mFlags & 0x40000000) && mParams.mBattery <= 0 && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 				direction = NAN;
 				speed     = 0;
 			} else {
-				mCopter._0C = 1;
-				direction   = WrapAngle((_9BC[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
+				mCopter.mMoveDirection = 1;
+				direction              = WrapAngle((_9BC[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
 				speed *= 0.75f;
 			}
 		} else if (mPopper.mState == 3 || mPopper.mState == 4 || mPopper.mState == 8) {
@@ -2200,7 +2200,7 @@ void XObjChr::UpdateObject(u32 frames)
 		} else if (mRope.mState == 5) {
 			direction = NAN;
 			if (mPad.mStickY > 0.1f) {
-				mRope._0C = 1;
+				mRope.mMoveDirection = 1;
 				if (mAnimId == 139.0f || mAnimId == 138.0f)
 					speed = 0.32f;
 				else if (mAnimId == 141.0f || mAnimId == 140.0f)
@@ -2208,26 +2208,26 @@ void XObjChr::UpdateObject(u32 frames)
 				else
 					speed = 0;
 			} else if (mPad.mStickY < -0.1f) {
-				mRope._0C = -1;
-				speed     = 0.4f;
+				mRope.mMoveDirection = -1;
+				speed                = 0.4f;
 			} else {
-				mRope._0C = 0;
+				mRope.mMoveDirection = 0;
 			}
 		} else if (mLadder.mState == 5) {
 			direction = NAN;
 			if (mPad.mStickY > 0.1f || mPad.mStickY < -0.1f) {
-				mLadder._0C = mPad.mStickY > 0 ? 1 : -1;
-				speed       = 0;
+				mLadder.mMoveDirection = mPad.mStickY > 0 ? 1 : -1;
+				speed                  = 0;
 			} else {
-				mLadder._0C = 0;
+				mLadder.mMoveDirection = 0;
 			}
 		} else if (mPush.mState == 2) {
 			f32 yaw      = mMoveRotate.y;
 			f32 relative = WrapAngle(HALF_PI + ((_9BC[2] + gGame.mMotionControlCamera.mCamera.mAngle.y) - yaw));
 			if (relative >= 0 && relative < PI) {
-				mPush._0C = 1;
+				mPush.mMoveDirection = 1;
 			} else {
-				mPush._0C = -1;
+				mPush.mMoveDirection = -1;
 				yaw += PI;
 			}
 			direction = TWO_PI + WrapAngle(yaw);
@@ -2240,24 +2240,24 @@ void XObjChr::UpdateObject(u32 frames)
 		_9AAC = direction;
 	} else {
 		direction = NAN;
-		if (mHang.mState == 5 && mHang._0C)
-			mHang._0C = 0;
-		else if (mCopter.mState == 3 && mCopter._0C)
-			mCopter._0C = 0;
+		if (mHang.mState == 5 && mHang.mMoveDirection)
+			mHang.mMoveDirection = 0;
+		else if (mCopter.mState == 3 && mCopter.mMoveDirection)
+			mCopter.mMoveDirection = 0;
 		else if (mRope.mState == 5) {
 			if (mAnimId == 139) {
-				speed     = 0.32f;
-				mRope._0C = 2;
+				speed                = 0.32f;
+				mRope.mMoveDirection = 2;
 			} else if (mAnimId == 141) {
-				speed     = 0.12f;
-				mRope._0C = 2;
-			} else if (mRope._0C != 0) {
-				mRope._0C = 0;
+				speed                = 0.12f;
+				mRope.mMoveDirection = 2;
+			} else if (mRope.mMoveDirection != 0) {
+				mRope.mMoveDirection = 0;
 			}
-		} else if (mLadder.mState == 5 && mLadder._0C)
-			mLadder._0C = 0;
-		else if (mPush.mState == 2 && mPush._0C)
-			mPush._0C = 0;
+		} else if (mLadder.mState == 5 && mLadder.mMoveDirection)
+			mLadder.mMoveDirection = 0;
+		else if (mPush.mState == 2 && mPush.mMoveDirection)
+			mPush.mMoveDirection = 0;
 		_9AAC = _9AA8 = NAN;
 	}
 	if (__fpclassifyf(_9AA8) == FP_NAN)
@@ -6176,7 +6176,7 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			index = 14;
 			break;
 		case 5:
-			if (p->mHang._0C == -1 || p->mHang._0C == 1)
+			if (p->mHang.mMoveDirection == -1 || p->mHang.mMoveDirection == 1)
 				index = 11;
 			else
 				index = 0;
@@ -6210,9 +6210,9 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			index = 17;
 			break;
 		case 5:
-			if (p->mLadder._0C == 1)
+			if (p->mLadder.mMoveDirection == 1)
 				index = 18;
-			else if (p->mLadder._0C == -1)
+			else if (p->mLadder.mMoveDirection == -1)
 				index = 19;
 			else
 				index = 0;
@@ -6232,9 +6232,9 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			index = 22;
 			break;
 		case 5:
-			if (p->mRope._0C == 1 || p->mRope._0C == 2)
+			if (p->mRope.mMoveDirection == 1 || p->mRope.mMoveDirection == 2)
 				index = 23;
-			else if (p->mRope._0C == -1)
+			else if (p->mRope.mMoveDirection == -1)
 				index = 24;
 			else
 				index = 0;
@@ -6248,7 +6248,7 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 		}
 	} else if (p->mPush.mState) {
 		if (p->mPush.mState == 2) {
-			if (p->mPush._0C == 1 || p->mPush._0C == -1)
+			if (p->mPush.mMoveDirection == 1 || p->mPush.mMoveDirection == -1)
 				index = 27;
 			else
 				index = 0;
@@ -6935,7 +6935,7 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
  */
 extern "C" void SetPushTargetState(XActPush* act, s32 value)
 {
-	act->_24 = value;
+	act->mTargetState = value;
 }
 
 /**
@@ -7535,7 +7535,7 @@ extern "C" f32 GetHorizontalDistance(const Vec* a, const Vec* b)
  */
 extern "C" BOOL IsPlayerActionMoveDirection(const XAction* action, s32 wanted)
 {
-	return action->_0C == wanted;
+	return action->mMoveDirection == wanted;
 }
 
 /**
@@ -8103,7 +8103,7 @@ extern "C" f32 WrapPlayerActionAngle(f32 angle)
  */
 extern "C" u32 GetPlayerActionMoveDirection(const XAction* action)
 {
-	return action->_0C;
+	return action->mMoveDirection;
 }
 
 /**
@@ -8112,7 +8112,7 @@ extern "C" u32 GetPlayerActionMoveDirection(const XAction* action)
  */
 extern "C" f32 GetHangDistance(const XActHang* act)
 {
-	return act->_48;
+	return act->mDistance;
 }
 
 /**
@@ -8121,7 +8121,7 @@ extern "C" f32 GetHangDistance(const XActHang* act)
  */
 extern "C" Vec* GetHangFloorCenter(XActHang* act)
 {
-	return &act->_3C;
+	return &act->mFloorCenter;
 }
 
 /**
@@ -8479,7 +8479,7 @@ extern "C" void SetLadderActionState(XActLadder* act, s32 state)
  */
 extern "C" void SetLiftTargetState(XActLift* act, s32 value)
 {
-	act->_24 = value;
+	act->mTargetState = value;
 }
 
 /**
@@ -8686,9 +8686,9 @@ extern "C" void UpdatePlayerHeadOffset(XObjChr* chr, u32 frames)
 		chr->mHeadOffsetReady = 1;
 	f32 current, target, rate;
 	if (chr->mPush.mState == 1 || chr->mPush.mState == 2) {
-		if (chr->mPush._0C == 1)
+		if (chr->mPush.mMoveDirection == 1)
 			target = 8.0f;
-		else if (chr->mPush._0C == -1)
+		else if (chr->mPush.mMoveDirection == -1)
 			target = -5.0f;
 		else
 			target = 0.0f;

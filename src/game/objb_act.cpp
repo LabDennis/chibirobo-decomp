@@ -727,7 +727,7 @@ static inline bool IsHoldingKind(XAction* act, s16 pool, s16 kind)
 static inline bool IsCarrying(XAction* act, s16 kind)
 {
 	bool result = false;
-	if (IsHoldingKind(act, 8, kind) && act->_24 != 15) {
+	if (IsHoldingKind(act, 8, kind) && act->mTargetState != 15) {
 		result = true;
 	}
 	return result;
@@ -801,8 +801,8 @@ static inline void PutAway(XActLift* act)
 	act->mOwner->mAttachment = 0;
 	act->mTarget->mStatus.mFlags &= ~0x0200000000000000ULL;
 	act->mTarget->SetAnim(7, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-	act->_24       = 20;
-	XObjItem* item = (XObjItem*)act->mTarget;
+	act->mTargetState = 20;
+	XObjItem* item    = (XObjItem*)act->mTarget;
 	SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, item->GetItem(), 1, TRUE);
 	item->SetFlag();
 	PlayGameSound(&gGame.mSound, 0x39, 0xFF);
@@ -844,12 +844,12 @@ static inline f32 FacingPushEdge(XObj* edgeObject, XObjChr* owner)
 }
 void UpdatePushedObject(XActPush* act)
 {
-	if (!act->_24)
+	if (!act->mTargetState)
 		return;
 	XObj* target = act->mTarget;
 	if (!target || !(target->mStatus.mFlags & 1))
 		return;
-	switch (act->_24) {
+	switch (act->mTargetState) {
 	case 1: {
 		target->mStatus.mFlags |= 0x0800000000000000ULL;
 		Vec hand         = GetPlayerCarryJointWorldPosition(act->mOwner);
@@ -863,7 +863,7 @@ void UpdatePushedObject(XActPush* act)
 		f32 angle        = WrapAngle(FacingPushEdge(edgeObject, act->mOwner) - edgeObject->mMoveRotate.y);
 		Mtx rotate;
 		PSMTXRotRad(rotate, 'y', angle);
-		CVec direction(0, 0, act->_0C);
+		CVec direction(0, 0, act->mMoveDirection);
 		PSMTXMultVec(rotate, &direction, &direction);
 		if ((angle > (90 * DEG2RAD - pushAngleTolerance) && angle < (90 * DEG2RAD + pushAngleTolerance))
 		    || (angle > (270 * DEG2RAD - pushAngleTolerance) && angle < (270 * DEG2RAD + pushAngleTolerance)))
@@ -937,34 +937,34 @@ void UpdatePushActionAnimation(XActPush* act, s32 anim, HSD_AObj* aobj, u32 fram
 			}
 		} else if (aobj->flags & 0x44000000) {
 			act->mOwner->SetAnim(0x3F, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-			act->mState = 2;
-			act->_24    = 1;
+			act->mState       = 2;
+			act->mTargetState = 1;
 		}
 		break;
 	case 2:
-		if (act->_0C == 1) {
+		if (act->mMoveDirection == 1) {
 			if (anim == 0x4B) {
 				if (aobj->flags & 0x44000000) {
 					act->mOwner->SetAnim(0x40, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-					act->_24 = 2;
+					act->mTargetState = 2;
 				}
 			} else if (anim != 0x40) {
 				act->mOwner->SetAnim(0x4B, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-				act->_24 = 0;
+				act->mTargetState = 0;
 			}
-		} else if (act->_0C == -1) {
+		} else if (act->mMoveDirection == -1) {
 			if (anim == 0x4C) {
 				if (aobj->flags & 0x44000000) {
 					act->mOwner->SetAnim(0x41, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-					act->_24 = 2;
+					act->mTargetState = 2;
 				}
 			} else if (anim != 0x41) {
 				act->mOwner->SetAnim(0x4C, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-				act->_24 = 0;
+				act->mTargetState = 0;
 			}
 		} else if (anim != 0x3F) {
 			act->mOwner->SetAnim(0x3F, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			act->_24 = 0;
+			act->mTargetState = 0;
 		}
 		break;
 	case 3:
@@ -1205,19 +1205,19 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 	case 5:
 		if (anim == 0x8b) {
 			if (aobj->flags & 0x44000000) {
-				if (act->_0C == 1)
+				if (act->mMoveDirection == 1)
 					RopeAnim(act, 0x8d, 1);
 				else
 					RopeAnim(act, 0x8c, 1);
 			}
 		} else if (anim == 0x8d) {
 			if (aobj->flags & 0x44000000) {
-				if (act->_0C == 1)
+				if (act->mMoveDirection == 1)
 					RopeAnim(act, 0x8b, 1);
 				else
 					RopeAnim(act, 0x8a, 1);
 			}
-		} else if (act->_0C == 1 || act->_0C == 2) {
+		} else if (act->mMoveDirection == 1 || act->mMoveDirection == 2) {
 			if (anim == 0x8a)
 				RopeAnim(act, 0x8b, 1);
 			else if (anim == 0x8c)
@@ -1226,7 +1226,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			else if (anim == 0x23)
 				RopeAnim(act, 0x8c, 0);
 #endif
-		} else if (act->_0C == -1) {
+		} else if (act->mMoveDirection == -1) {
 			if (act->mOwner->GetHeight() > 0) {
 				if (anim != 0x23)
 					RopeAnim(act, 0x23, 0);
@@ -1236,7 +1236,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			}
 		} else if (anim == 0x23)
 			RopeAnim(act, 0x8c, 0);
-		if (act->_0C == 1 || act->_0C == 2) {
+		if (act->mMoveDirection == 1 || act->mMoveDirection == 2) {
 			s32 path[] = { 0, 0 };
 			if (act->mTarget && GetEventJointWorldPosition(act->mOwner, 2, path).y >= act->mTarget->mFloorHeights[0]) {
 				act->mOwner->SetTranslateY(act->mTarget->mFloorHeights[0] - act->_10.y, 0);
@@ -1245,7 +1245,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				break;
 			}
 			PlayGameSound(&gGame.mSound, 0x11, 0xff);
-		} else if (act->_0C == -1)
+		} else if (act->mMoveDirection == -1)
 			PlayGameSound(&gGame.mSound, 0x15, 0xff);
 		if (act->mTarget) {
 			f32 target = WrapAngle(PI + act->mTarget->mMoveRotate.y);
@@ -1549,8 +1549,8 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			s32 path3[] = { 0 };
 			SetObjectJointTranslationByPath(act->mOwner, 1, path3, 0.0f, 0.0f, 0.0f);
 			act->mOwner->SetAnim(0x68, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-			act->mState = 5;
-			act->_0C    = 0;
+			act->mState         = 5;
+			act->mMoveDirection = 0;
 		} else if (act->mTarget != NULL) {
 			Vec move = act->mTarget->mMoveTranslate - act->mTarget->_264;
 			act->mPos.x += move.x;
@@ -1587,7 +1587,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				RecordObjectPositionAndHeightChange(act->mOwner);
 				s32 path4[] = { 0 };
 				SetObjectJointTranslationByPath(act->mOwner, 1, path4, 0.0f, 0.0f, 0.0f);
-				if (act->_0C == 1) {
+				if (act->mMoveDirection == 1) {
 					if (AtLadderTop(act)) {
 						act->mState = 6;
 					} else if (anim == 0x69 || anim == 0x6B) {
@@ -1595,7 +1595,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 					} else if (anim == 0x6A || anim == 0x6C) {
 						act->mOwner->SetAnim(0x69, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 					}
-				} else if (act->_0C == -1) {
+				} else if (act->mMoveDirection == -1) {
 					if (act->mOwner->GetHeight() <= 2.0f) {
 						act->mState = 7;
 					} else if (anim == 0x69 || anim == 0x6B) {
@@ -1613,7 +1613,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				}
 			}
 		} else {
-			if (act->_0C == 1) {
+			if (act->mMoveDirection == 1) {
 				if (AtLadderTop(act)) {
 					act->mState = 6;
 				} else if (anim == 0x67) {
@@ -1621,7 +1621,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				} else if (anim == 0x68) {
 					act->mOwner->SetAnim(0x6A, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 				}
-			} else if (act->_0C == -1) {
+			} else if (act->mMoveDirection == -1) {
 				if (act->mOwner->GetHeight() <= 2.0f) {
 					act->mState = 7;
 				} else if (anim == 0x67) {
@@ -1776,9 +1776,9 @@ static inline void SaveHangDistance(XActHang* act)
 	CVec owner(act->mOwner->mMoveTranslate);
 	owner.y = 0;
 	CVec floor(GetTargetFloorPosition(act));
-	floor.y  = 0;
-	act->_3C = floor;
-	act->_48 = PSVECDistance(&owner, &floor);
+	floor.y           = 0;
+	act->mFloorCenter = floor;
+	act->mDistance    = PSVECDistance(&owner, &floor);
 }
 static inline void RefreshHangFloor(XActHang* act)
 {
@@ -1836,8 +1836,8 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			ReleaseHangPlug(act);
 		} else if (aobj->flags & 0x44000000) {
 			HangAnim(act, 0x14);
-			act->mState = 5;
-			act->_0C    = 0;
+			act->mState         = 5;
+			act->mMoveDirection = 0;
 			if (act->mTarget) {
 				if (RoundHangFloor(act))
 					SaveHangDistance(act);
@@ -2001,8 +2001,8 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			s32 p3[]   = { 0 };
 			SetJointTranslationFromVectorByPath(act->mOwner, 1, p3, local);
 			HangAnim(act, 0x14);
-			act->mState = 5;
-			act->_0C    = 0;
+			act->mState         = 5;
+			act->mMoveDirection = 0;
 			if (act->mTarget && RoundHangFloor(act))
 				SaveHangDistance(act);
 		}
@@ -2023,15 +2023,15 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			act->mOwner->SetPos(
 			    act->mOwner->mMoveTranslate + (act->mOwner->mMoveTranslate - GetEventJointWorldPosition(act->mOwner, 1, child)), 1);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			act->mState = 5;
-			act->_0C    = 0;
+			act->mState         = 5;
+			act->mMoveDirection = 0;
 		}
 		break;
 	case 5:
-		if (act->_0C == -1) {
+		if (act->mMoveDirection == -1) {
 			if (anim != 0x16)
 				HangAnim(act, 0x16);
-		} else if (act->_0C == 1) {
+		} else if (act->mMoveDirection == 1) {
 			if (anim != 0x15)
 				HangAnim(act, 0x15);
 		} else if (anim != 0x14)
@@ -2515,13 +2515,13 @@ void HandleHangActionInput(XActHang* act, const CPadOne* pad, f32* weight)
 			if (pad->mTrigger & 0x100) {
 				if (act->mTarget == NULL || (act->mTarget->mStatus.mFlags & 0x400000000ULL)) {
 					TryLeaveHang(act);
-					act->_0C = 0;
+					act->mMoveDirection = 0;
 				}
 				*weight = 0.0f;
 			} else if (pad->mTrigger & 0x200) {
-				act->mState = 9;
-				act->_0C    = 0;
-				*weight     = 0.0f;
+				act->mState         = 9;
+				act->mMoveDirection = 0;
+				*weight             = 0.0f;
 			}
 		}
 	} else if (act->mState != 0) {
@@ -2681,13 +2681,13 @@ static inline HSD_JObj* HeldPlugEndJoint(XObj* obj)
  */
 void UpdateHeldObject(XActLift* act, s32)
 {
-	if (!act->_24)
+	if (!act->mTargetState)
 		return;
 	XObj* obj = act->mTarget;
 	if (!obj || !(obj->mStatus.mFlags & 1))
 		return;
 	f32 frame = GetJointAnimationCurrentFrame(act->mOwner), end = GetJointAnimationEndFrame(act->mOwner);
-	switch (act->_24) {
+	switch (act->mTargetState) {
 	case 1:
 		obj->mStatus.mFlags |= 0x0400000000000000ULL;
 		act->_30        = obj->mMoveTranslate - GetPlayerCarryJointWorldPosition(act->mOwner);
@@ -2703,7 +2703,7 @@ void UpdateHeldObject(XActLift* act, s32)
 			act->mYawOffset = 0;
 			obj->SetRotateY(act->mYawOffset + act->mOwner->mMoveRotate.y, DEG2RAD * 6);
 		}
-		act->_24 = 2;
+		act->mTargetState = 2;
 		// fall through
 	case 2: {
 		CVec offset(GetLiftTargetContactOffset(act, obj));
@@ -2818,7 +2818,7 @@ void UpdateHeldObject(XActLift* act, s32)
 			XObjPlug* plug = (XObjPlug*)obj;
 			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
 			if (anim->flags & 0x44000000)
-				act->_24 = 4;
+				act->mTargetState = 4;
 			else if ((anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 80)
 				end.SetRotationZ(0, 0);
 			else if (plug->_D3C && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 76) {
@@ -2836,7 +2836,7 @@ void UpdateHeldObject(XActLift* act, s32)
 			XObjPlug* plug = (XObjPlug*)obj;
 			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
 			if (anim->flags & 0x44000000)
-				act->_24 = 9;
+				act->mTargetState = 9;
 			else if (!plug->_D3C && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 24)
 				plug->_D3C = -1;
 		}
@@ -2850,7 +2850,7 @@ void UpdateHeldObject(XActLift* act, s32)
 			XObjPlug* plug = (XObjPlug*)obj;
 			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
 			if (anim->flags & 0x44000000)
-				act->_24 = 4;
+				act->mTargetState = 4;
 			else if (plug->_D3C && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 0)
 				ResetPlayerPlugState(plug, FALSE);
 		}
@@ -2865,7 +2865,7 @@ void UpdateHeldObject(XActLift* act, s32)
 			XObjPlug* plug = (XObjPlug*)obj;
 			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
 			if (anim->flags & 0x44000000)
-				act->_24 = 12;
+				act->mTargetState = 12;
 			else if (!plug->_D3C && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 24)
 				plug->_D3C = 0x10400;
 		}
@@ -2889,7 +2889,7 @@ void UpdateHeldObject(XActLift* act, s32)
 			XObjPlug* plug = (XObjPlug*)obj;
 			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
 			if (anim->flags & 0x44000000)
-				act->_24 = 4;
+				act->mTargetState = 4;
 			else if (plug->_D3C && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 0)
 				ResetPlayerPlugState(plug, FALSE);
 		}
@@ -2945,7 +2945,7 @@ void UpdateHeldObject(XActLift* act, s32)
 		obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y, 0);
 		UpdateCarriedObjectPosition(act, obj);
 		ScaleHeldItem(act, obj);
-		act->_24 = 4;
+		act->mTargetState = 4;
 		break;
 	case 20:
 		if (GetAObj(obj->mJObj)->flags & 0x44000000) {
