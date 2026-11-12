@@ -66,11 +66,11 @@ void XObjChr::vf94()
 		p.display.mState = p.burst.mState = 0;
 	}
 	gPlayerSuitChangeEffect.active = FALSE;
-	for (s32 i = 0; i < 2; ++i)
-		for (s32 j = 0; j < 10; ++j) {
-			gPlayerSuitChangeEffect.rings[i][j].scale = 0.0f;
-			gPlayerSuitChangeEffect.rings[i][j].angle = 0.0f;
-		}
+	// both rings of ten in one run, as retail has it
+	for (s32 i = 0; i < 20; ++i) {
+		gPlayerSuitChangeEffect.rings[0][i].scale = 0.0f;
+		gPlayerSuitChangeEffect.rings[0][i].angle = 0.0f;
+	}
 	_980.mFlags = 0;
 	_980.mFlags = 0;
 	_980.mFlags |= 0x20000000;
