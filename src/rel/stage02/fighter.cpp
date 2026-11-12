@@ -737,7 +737,11 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 8), 0);
 			digW = 1.4f * (1.0f * (GXGetTexObjWidth(&tex) / 11));
 			digH = 1.4f * (1.0f * GXGetTexObjHeight(&tex));
+#if defined(VERSION_JP)
+			left = 110.0f;
+#else
 			left = 110.0f + 11.0f;
+#endif
 			PSMTXScale(tex._3C._30, 0.09090909f, 1.0f, 1.0f);
 			hi      = base | 0x1F33FF00;
 			lo      = base | 0xFFFFFF00;
@@ -762,7 +766,11 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			}
 			digW = 1.4f * (1.0f * (GXGetTexObjWidth(&tex) / 11));
 			digH = 1.4f * (1.0f * GXGetTexObjHeight(&tex));
+#if defined(VERSION_JP)
+			left = 110.0f;
+#else
 			left = 110.0f + 11.0f;
+#endif
 			PSMTXTrans(tex._3C._00, 0.90909094f, 0.0f, 0.0f);
 			tex._38 = 1;
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
