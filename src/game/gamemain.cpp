@@ -259,8 +259,8 @@ extern "C" void Reset__8FbMirrorFv(void)
 // looking at the surface through a frustum that just fits it
 extern "C" void Update__8FbMirrorFUl(FbMirror* mirror, u32 frames)
 {
-	HSD_JObj* jobj = mirror->mJoint;
-	if (jobj != NULL) {
+	if (mirror->IsUsed()) {
+		HSD_JObj* jobj = mirror->mJoint;
 		Mtx mtx;
 		Mtx view;
 		Vec eye;
