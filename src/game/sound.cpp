@@ -33,8 +33,10 @@ BOOL AXDriverIsStreamActive(void);
 BOOL AXDriverSetAllStreamPitches(s16 pitch);
 }
 
-// the file's tables. retail reaches them through one base, the first of them
-// not read by anything in the game
+// todo: these 26 words are not this file's. they are the joint paths of eight inline functions of
+// the family's actor classes (two each for Jenny, Papa, Mama and Deca), which retail has in a
+// header: every file that includes it starts its data with them. they stand here until the header
+// makes them, because the tables below are reached through this address
 s32 lbl_802107A0[26] = {
 	0, 3, 0, 0, 3, 0, 0, 2, 0, 0, 2, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 3, 0,
 };
