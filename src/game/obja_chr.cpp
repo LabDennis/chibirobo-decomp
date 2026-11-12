@@ -2184,9 +2184,9 @@ void XObjChr::UpdateObject(u32 frames)
 			direction = NAN;
 			if (mPad.mStickY > 0.1f) {
 				mRope._0C = 1;
-				if (mAnimId == 139 || mAnimId == 138)
+				if (mAnimId == 139.0f || mAnimId == 138.0f)
 					speed = 0.32f;
-				else if (mAnimId == 141 || mAnimId == 140)
+				else if (mAnimId == 141.0f || mAnimId == 140.0f)
 					speed = 0.12f;
 				else
 					speed = 0;
@@ -2228,11 +2228,15 @@ void XObjChr::UpdateObject(u32 frames)
 		else if (mCopter.mState == 3 && mCopter._0C)
 			mCopter._0C = 0;
 		else if (mRope.mState == 5) {
-			if (mAnimId == 139 || mAnimId == 141) {
-				speed     = mAnimId == 139 ? 0.32f : 0.12f;
+			if (mAnimId == 139) {
+				speed     = 0.32f;
 				mRope._0C = 2;
-			} else
+			} else if (mAnimId == 141) {
+				speed     = 0.12f;
+				mRope._0C = 2;
+			} else if (mRope._0C != 0) {
 				mRope._0C = 0;
+			}
 		} else if (mLadder.mState == 5 && mLadder._0C)
 			mLadder._0C = 0;
 		else if (mPush.mState == 2 && mPush._0C)
@@ -2340,7 +2344,7 @@ void XObjChr::UpdateObject(u32 frames)
 				turn.total = 0.0f;
 		}
 		s32 turns = (s32)(turn.total / TWO_PI);
-		if (turns >= 5 || turns <= -5) {
+		if ((turns < 0 ? -turns : turns) >= 5) {
 			mTumble.mState = 10;
 			turn.total     = 0.0f;
 		}
@@ -4403,23 +4407,18 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 	case 451:
 		return mSuits.mSpecial;
 	case 503:
-		switch (args[1]) {
-		case 16:
+		if (args[1] == 16) {
 			RequestScriptAttachment(this, 4);
 			_95DC = 1;
-			break;
-		case 21:
+		} else if (args[1] == 21) {
 			RequestScriptAttachment(this, 5);
 			_95DC = 1;
-			break;
-		case 22:
+		} else if (args[1] == 22) {
 			RequestScriptAttachment(this, 6);
 			_95DC = 1;
-			break;
-		default:
+		} else {
 			mLift.mState = 24;
 			mLift._48    = args[1];
-			break;
 		}
 		result = -1;
 		break;
@@ -4427,23 +4426,17 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 		return ScriptLiftReady(this);
 	case 500:
 		if (FindOwnedInventoryItemIndex(mParams.mInventory.mItems, args[1]) >= 0) {
-			switch (args[1]) {
-			case 16:
+			if (args[1] == 16) {
 				RequestScriptAttachment(this, 4);
-				break;
-			case 21:
+			} else if (args[1] == 21) {
 				RequestScriptAttachment(this, 5);
-				break;
-			case 22:
+			} else if (args[1] == 22) {
 				RequestScriptAttachment(this, 6);
-				break;
-			case 56:
+			} else if (args[1] == 56) {
 				RequestScriptAttachment(this, 7);
-				break;
-			default:
+			} else {
 				mLift.mState = 20;
 				mLift._48    = args[1];
-				break;
 			}
 		}
 		result = -1;
@@ -4877,7 +4870,7 @@ Vec XObjChr::GetCameraTarget()
 				if (t > 1.f)
 					t = 1.f;
 				target = start + (joint - start) * t + (Vec) { 0, 10, 0 };
-			} else if (anim >= 0x72 && anim <= 0x74) {
+			} else if (anim == 0x72 || anim == 0x73 || anim == 0x74) {
 				s32 path[] = { 0 };
 				target     = GetEventJointWorldPosition(this, 1, path) + (Vec) { 0, 10, 0 };
 			} else {
@@ -4890,7 +4883,7 @@ Vec XObjChr::GetCameraTarget()
 				f32 t      = GetJointAnimationCurrentFrame(this) / end;
 				target     = start + (joint - start) * t + (Vec) { 0, 10, 0 };
 			}
-		} else if ((anim >= 0x13 && anim <= 0x16) || (anim >= 0x19 && anim <= 0x1b)) {
+		} else if (anim == 0x13 || anim == 0x14 || anim == 0x15 || anim == 0x16 || anim == 0x19 || anim == 0x1a || anim == 0x1b) {
 			s32 path[] = { 0 };
 			CVec joint = GetEventJointWorldPosition(this, 1, path);
 			CVec start = mMoveTranslate;
