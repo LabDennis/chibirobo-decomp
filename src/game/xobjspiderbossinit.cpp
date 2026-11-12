@@ -1,6 +1,8 @@
 #include "game/xobjspiderboss.h"
 #include "game/video.h"
 
+u32 gSpiderBossCoinBounceContext; // the boss's coin bounce context, it has no data of its own
+
 /**
  * @note Address: 0x8010660C
  * @note Size: 0x2C8

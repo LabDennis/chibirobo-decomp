@@ -64,10 +64,10 @@ AnimSfxEvent gSpiderAnimSfxEvents[] = {
 	{ 12, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
 	{ -1 },
 }; // the spider's anim sounds
-extern u8 gSpiderCoinBounceUpdateContext[4]; // the coins' manager, it has no data of its own
-extern s32 gSpiderCoinBounceCount;           // how many coins are out
-extern s32 lbl_8065B2BC;
-extern u8 lbl_8065B2C0;
+u8 gSpiderCoinBounceUpdateContext[4]; // the coins' manager, it has no data of its own
+s32 lbl_8065B2BC;
+u8 lbl_8065B2C0;
+s32 gSpiderCoinBounceCount; // how many coins are out
 }
 
 // NONMATCHING: the sinit's copy source sits at another offset in retail's

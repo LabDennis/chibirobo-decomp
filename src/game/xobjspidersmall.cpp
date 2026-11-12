@@ -31,12 +31,12 @@ void ApplyPlayerHitReaction(XObjChr* chr, BOOL react, BOOL stop, f32 time);
 void DetachSmallSpiderFromPlayer(XObjSpiderSmall* spider);
 void HandleSmallSpiderEventCommand(XObjSpiderSmall* spider, u32 frames);
 
-extern u8 gSpiderCoinBounceManager[4]; // the coins' manager, it has no data of its own
-extern s32 gSpiderDrainFlashTimers[2];
-extern u8 gSpiderDrainFlashClaimed;
-extern s32 gAttachedSmallSpiderCount; // how many spiders hold on to the robot
-extern XObj* lbl_8065B2DC;
-extern u8 lbl_8065B2E0[8];
+u8 gSpiderCoinBounceManager[4]; // the coins' manager, it has no data of its own
+s32 gSpiderDrainFlashTimers[2];
+u8 gSpiderDrainFlashClaimed;
+s32 gAttachedSmallSpiderCount; // how many spiders hold on to the robot
+XObj* lbl_8065B2DC;
+u8 lbl_8065B2E0[8];
 
 u8 gSmallSpiderPlacementWork[0xD4];
 Vec gSmallSpiderPosition, gSmallSpiderScale, gSmallSpiderRotation;
@@ -59,7 +59,7 @@ extern "C" XObjFloor sSmallSpiderHighFloor[] = {
 	{ 0, 0, { 0, 135, 0 }, 0, { 377, 632, 377 } },
 	{ -1 },
 };
-extern "C" XObjFloor* sSmallSpiderFloors[2];
+extern "C" XObjFloor* sSmallSpiderFloors[2] = { sSmallSpiderLowFloor, sSmallSpiderHighFloor };
 extern "C" {
 AnimSfxEvent gSmallSpiderAnimSfxEvents[] = {
 	{ 2, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },

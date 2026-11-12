@@ -154,7 +154,7 @@ void XObjSpiderBoss::State4(u32 frames)
 }
 
 extern "C" {
-extern f32 gSpiderBossSavedTargetYaw;
+f32 gSpiderBossSavedTargetYaw;
 extern u8 gSpiderDrainFlashClaimed;
 void PlaySpiderBossAttachmentAnimation(s32);
 void ResetSpiderBossAttachment();
