@@ -62,8 +62,8 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 		player->mOXObj.SetParent(FindPlayerToolMount(player->mJObj), FALSE);
 	}
 	BindRotationJoint(player->mJointRot);
-	BindRotationJoint(player->mNeckRot);
-	BindRotationJoint(player->mHeadRot);
+	BindRotationJoint(player->mHeadTurn.mNeck);
+	BindRotationJoint(player->mHeadTurn.mHead);
 	if (!(gGame.mStatus.mFlags & 0x100))
 		SetPlayerEyeCameraJointsHidden(player, FALSE);
 	if (player->GetAttachment() == 2)

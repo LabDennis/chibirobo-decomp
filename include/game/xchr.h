@@ -149,6 +149,14 @@ struct FrameEventTime {
 	f32 mLastFrame;
 };
 
+// the two joints that turn his head. retail's destructor tests this object's address before it destroys the two,
+// so they sit in an object of their own
+struct PlayerHeadTurn {
+	CJointRot mNeck; // _00
+	CJointRot mHead; // _20
+};
+STATIC_ASSERT(sizeof(PlayerHeadTurn) == 0x40);
+
 class XObjChr : public XObj {
 public:
 	// _00-_980 = XObj
@@ -195,8 +203,7 @@ public:
 	HSD_JObj* mAttachmentJoint;          // _9534
 	HSD_AnimJoint* mAttachmentJointAnim; // _9538
 	CJointRot mJointRot;                 // _953C
-	CJointRot mNeckRot;                  // _955C
-	CJointRot mHeadRot;                  // _957C
+	PlayerHeadTurn mHeadTurn;            // _955C
 	XObjChrLook mLook;                   // _959C
 	s32 mAttachment;                     // _95D0, the AtcMenu pick
 	s32 mAttachmentRequest;              // _95D4, -1 when there's none

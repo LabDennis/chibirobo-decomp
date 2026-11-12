@@ -195,10 +195,17 @@ struct XActPopperCharge {
 STATIC_ASSERT(sizeof(XActPopperCharge) == 0x20);
 
 // the chibi-blaster
+// the popper's ten shots. retail's destructor tests this object's address before it destroys them, so they sit in
+// an object of their own
+struct PopperShots {
+	XActPopperShot mShot[10]; // _00
+};
+STATIC_ASSERT(sizeof(PopperShots) == 0x8728);
+
 class XActPopper : public XAction {
 public:
 	f32 _2C;                  // _2C
-	XActPopperShot mShot[10]; // _30
+	PopperShots mShots;       // _30
 	XActPopperCharge mCharge; // _8758
 };
 STATIC_ASSERT(sizeof(XActPopper) == 0x8778);
@@ -207,15 +214,22 @@ struct RadarAimAxis {
 	f32 angle, targetAngle, reached;
 };
 
+// the beam's two colours. retail's destructor tests this object's address before it destroys them, so they sit
+// in an object of their own. whether it holds more than the colours is not known
+struct RadarBeamColors {
+	CScrnColor mColor[2]; // _00
+};
+STATIC_ASSERT(sizeof(RadarBeamColors) == 0x68);
+
 class XActRadar : public XAction {
 public:
-	XObj* mTarget;        // _2C
-	RadarAimAxis mYaw;    // _30
-	RadarAimAxis mPitch;  // _3C
-	CScrnColor mColor[2]; // _48
-	f32 mFade;            // _B0
-	f32 mAngle[2];        // _B4
-	f32 mTargetDistance;  // _BC, surface distance or NAN when there is no target
+	XObj* mTarget;         // _2C
+	RadarAimAxis mYaw;     // _30
+	RadarAimAxis mPitch;   // _3C
+	RadarBeamColors mBeam; // _48
+	f32 mFade;             // _B0
+	f32 mAngle[2];         // _B4
+	f32 mTargetDistance;   // _BC, surface distance or NAN when there is no target
 };
 STATIC_ASSERT(sizeof(XActRadar) == 0xC0);
 

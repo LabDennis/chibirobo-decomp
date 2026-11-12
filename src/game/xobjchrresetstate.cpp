@@ -64,9 +64,9 @@ void XObjChr::ResetObjectState()
 	s32 joint[]          = { 0, 1, 0, 1, 2 };
 	mJointRot.Init(this, 5, joint, 'y');
 	s32 neck[] = { 0, 1, 0, 1, 2 };
-	mNeckRot.Init(this, 5, neck, 'y');
+	mHeadTurn.mNeck.Init(this, 5, neck, 'y');
 	s32 head[] = { 0, 1, 0, 1, 2 };
-	mHeadRot.Init(this, 5, head, 'z');
+	mHeadTurn.mHead.Init(this, 5, head, 'z');
 	mLook.mActive = FALSE;
 	mLook.mMode   = -1;
 	mLook.mObject = NULL;

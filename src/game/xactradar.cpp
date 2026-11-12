@@ -98,7 +98,7 @@ extern "C" void DrawRadarTargetBeam(XActRadar* act)
 		}
 	}
 	PSMTXMultVecArray(model, vertices, vertices, n);
-	u32 back = PackRadarColor(act->mColor[0].mColor), front = PackRadarColor(act->mColor[1].mColor);
+	u32 back = PackRadarColor(act->mBeam.mColor[0].mColor), front = PackRadarColor(act->mBeam.mColor[1].mColor);
 	SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
 	n = ShadeRadarBeam(act, colors, back);
 	DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, colors, n);
@@ -237,8 +237,8 @@ static inline void StartRadarTone(XActRadar* act, s32 tone, u8 r0, u8 g0, u8 b0,
 	XSound& sound = gGame.mSound;
 	if (!IsGameSoundPlaying(&sound, tone)) {
 		PlayGameSound(&sound, tone, 255);
-		SetScreenFadeTargetColor(&act->mColor[0], r0, g0, b0, 0, .5f);
-		SetScreenFadeTargetColor(&act->mColor[1], r1, g1, b1, 0, .5f);
+		SetScreenFadeTargetColor(&act->mBeam.mColor[0], r0, g0, b0, 0, .5f);
+		SetScreenFadeTargetColor(&act->mBeam.mColor[1], r1, g1, b1, 0, .5f);
 	}
 }
 
@@ -377,8 +377,8 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 				StartRadarTone(act, 0x18c, 150, 150, 255, 50, 50, 255);
 			}
 		}
-		UpdateScreenFade(&act->mColor[0], frames);
-		UpdateScreenFade(&act->mColor[1], frames);
+		UpdateScreenFade(&act->mBeam.mColor[0], frames);
+		UpdateScreenFade(&act->mBeam.mColor[1], frames);
 	} else
 		act->mTargetDistance = NAN;
 }
@@ -445,8 +445,8 @@ void ResetPlayerRadarAction(XActRadar* act)
 	act->mYaw.angle = act->mYaw.targetAngle = act->mYaw.reached = 0.0f;
 	act->mPitch.angle = act->mPitch.targetAngle = act->mPitch.reached = 0.0f;
 	act->mTargetDistance                                              = NAN;
-	StartScreenFade(&act->mColor[0], 0, 0, 0, 0, 0xFF, 0x19, 0xFF, 0, 0.0f);
-	StartScreenFade(&act->mColor[1], 0, 0, 0, 0, 0xFF, 0x19, 0xFF, 0, 0.0f);
+	StartScreenFade(&act->mBeam.mColor[0], 0, 0, 0, 0, 0xFF, 0x19, 0xFF, 0, 0.0f);
+	StartScreenFade(&act->mBeam.mColor[1], 0, 0, 0, 0, 0xFF, 0x19, 0xFF, 0, 0.0f);
 	act->mFade = 0.0f;
 }
 
@@ -470,7 +470,7 @@ void DrawPopperShotRings(XActPopper* act)
 {
 	int i;
 	XActPopperShot* shot;
-	for (i = 0, shot = act->mShot; i < 10; i++, shot++) {
+	for (i = 0, shot = act->mShots.mShot; i < 10; i++, shot++) {
 		for (int j = 0; j < 2; j++) {
 			if (shot->mRing[j].mAmount > 0.0f) {
 				f32 y;
@@ -504,7 +504,7 @@ void DrawPopperShotParticles(XActPopper* act)
 {
 	int i;
 	XActPopperShot* shot;
-	for (i = 0, shot = act->mShot; i < 10; i++, shot++) {
+	for (i = 0, shot = act->mShots.mShot; i < 10; i++, shot++) {
 		DrawParticlePool(&shot->mDust.mPtcl);
 	}
 }
@@ -557,7 +557,7 @@ static inline int ActivePopperShots(XActPopper* act)
 {
 	int count = 0;
 	for (int i = 0; i < 10; ++i)
-		if (act->mShot[i].mActive)
+		if (act->mShots.mShot[i].mActive)
 			++count;
 	return count;
 }
@@ -566,8 +566,8 @@ static inline void StartAvailablePopperShot(XActPopper* act, const Vec& origin, 
                                             f32 speed, f32 range)
 {
 	for (int i = 0; i < 10; ++i)
-		if (!act->mShot[i].mActive) {
-			StartPopperShot(&act->mShot[i], origin, kind, target, yaw, pitch, power, speed, range, act->_2C);
+		if (!act->mShots.mShot[i].mActive) {
+			StartPopperShot(&act->mShots.mShot[i], origin, kind, target, yaw, pitch, power, speed, range, act->_2C);
 			break;
 		}
 }
@@ -758,7 +758,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 		}
 		break;
 	}
-	XActPopperShot* shot = act->mShot;
+	XActPopperShot* shot = act->mShots.mShot;
 	for (int i = 0; i < 10; i++, shot++)
 		UpdatePopperShotFlight(shot, frames);
 	if (charge.mState) {
@@ -816,7 +816,7 @@ void InitializePlayerPopperAction(XActPopper* act, XObjChr* owner)
 	act->Init(owner);
 	XActPopperShot* shot;
 	int i;
-	for (i = 0, shot = act->mShot; i < 10; shot++, i++) {
+	for (i = 0, shot = act->mShots.mShot; i < 10; shot++, i++) {
 		ResetShot(shot);
 		InitParticlePool(&shot->mDust.mPtcl, shot->mDust.mPtcls, sizeof(CPtclDust2), 40);
 		shot->mRing[0].mAmount = 0.0f;

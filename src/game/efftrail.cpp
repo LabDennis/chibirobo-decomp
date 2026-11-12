@@ -780,10 +780,10 @@ extern "C" void HandleOXMenuInput(OXMenu* menu, CPad* pad)
 				PlayGameSound(&gGame.mSound, 0x87, 255);
 			}
 		}
-		f32 angle             = menu->mSelectedIndex == 0 ? -(DEG2RAD * 20.0f) : DEG2RAD * 20.0f;
-		XObjChr* chr          = (XObjChr*)menu->mChr;
-		chr->mNeckRot.mMode   = 1;
-		chr->mNeckRot.mTarget = angle;
+		f32 angle                    = menu->mSelectedIndex == 0 ? -(DEG2RAD * 20.0f) : DEG2RAD * 20.0f;
+		XObjChr* chr                 = (XObjChr*)menu->mChr;
+		chr->mHeadTurn.mNeck.mMode   = 1;
+		chr->mHeadTurn.mNeck.mTarget = angle;
 		if (!(gGame.mStatus.mFlags & 0x20ULL) && 1.0f == menu->mFade && (pad->mPad->mTrigger & 0x100)) {
 			menu->mStarted = -1;
 			PlayGameSound(&gGame.mSound, 0x88, 255);
@@ -794,10 +794,10 @@ extern "C" void HandleOXMenuInput(OXMenu* menu, CPad* pad)
 			} else {
 				ShowOXCross(&((XObjChr*)menu->mChr)->mOXObj);
 			}
-			chr                   = (XObjChr*)menu->mChr;
-			chr->mNeckRot.mMode   = 2;
-			chr->mNeckRot.mTarget = 0.0f;
-			chr->mNeckRot.mLookAt = NULL;
+			chr                          = (XObjChr*)menu->mChr;
+			chr->mHeadTurn.mNeck.mMode   = 2;
+			chr->mHeadTurn.mNeck.mTarget = 0.0f;
+			chr->mHeadTurn.mNeck.mLookAt = NULL;
 		}
 	}
 }

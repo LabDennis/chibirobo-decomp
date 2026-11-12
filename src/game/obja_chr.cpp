@@ -2363,9 +2363,9 @@ void XObjChr::UpdateObject(u32 frames)
 	if (_158B8 > 0 && _158BC == 0) {
 		switch (_158B8) {
 		case 1:
-			mNeckRot.mMode   = 2;
-			mNeckRot.mTarget = 0.0f;
-			mNeckRot.mLookAt = NULL;
+			mHeadTurn.mNeck.mMode   = 2;
+			mHeadTurn.mNeck.mTarget = 0.0f;
+			mHeadTurn.mNeck.mLookAt = NULL;
 			break;
 		case 2:
 			mTumble.mState = 13;
@@ -2606,7 +2606,7 @@ static inline BOOL HasItem(XObjChr* chr, s16 id)
 // stops every popper shot he has flying
 static inline void StopShots(XObjChr* chr)
 {
-	XActPopperShot* shot = chr->mPopper.mShot;
+	XActPopperShot* shot = chr->mPopper.mShots.mShot;
 	for (int i = 0; i < 10; i++, shot++) {
 		ResetPopperShot(shot);
 	}
@@ -3059,8 +3059,8 @@ extern "C" void Open__8OctaMenuFl(OctaMenu* menu, s32 focus)
 {
 	if (menu->mOpen == 0) {
 		menu->mOpeningHeading = menu->mChr->mMoveRotate.y;
-		SetTurn(&menu->mChr->mNeckRot, 0.0f);
-		SetTurn(&menu->mChr->mHeadRot, -1.52f);
+		SetTurn(&menu->mChr->mHeadTurn.mNeck, 0.0f);
+		SetTurn(&menu->mChr->mHeadTurn.mHead, -1.52f);
 	}
 	menu->mOpen  = 1;
 	menu->mFocus = focus;
@@ -3514,11 +3514,11 @@ extern "C" s32 HandleEquipmentRingInput(OctaMenu* menu, BOOL active)
 				cursor = menu->mCursorIndex;
 		}
 		if (menu->_280 != 3) {
-			TurnJoint(DEG2RAD * gEquipmentHeadYaw[cursor + 1], &menu->mChr->mNeckRot);
+			TurnJoint(DEG2RAD * gEquipmentHeadYaw[cursor + 1], &menu->mChr->mHeadTurn.mNeck);
 			if (fpclassify(menu->mHeadTurn) == FP_NAN)
-				TurnJoint(DEG2RAD * gEquipmentHeadPitch[cursor + 1] + -1.52f, &menu->mChr->mHeadRot);
+				TurnJoint(DEG2RAD * gEquipmentHeadPitch[cursor + 1] + -1.52f, &menu->mChr->mHeadTurn.mHead);
 			else
-				TurnJoint(menu->mHeadTurn, &menu->mChr->mHeadRot);
+				TurnJoint(menu->mHeadTurn, &menu->mChr->mHeadTurn.mHead);
 		}
 		if (menu->mCursorIndex != cursor)
 			PlayGameSound(&gGame.mSound, 0x87, 255);
@@ -3567,11 +3567,11 @@ extern "C" void Select__8OctaMenuFl(OctaMenu* menu, s32 result)
 	if (menu->mChr->mTumble.mState == 0) {
 		menu->mChr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		menu->mChr->SetRotateY(menu->mOpeningHeading, DEG2RAD * 12.0f);
-		CJointRot* neck = &menu->mChr->mNeckRot;
+		CJointRot* neck = &menu->mChr->mHeadTurn.mNeck;
 		neck->mMode     = 2;
 		neck->mTarget   = 0.0f;
 		neck->mLookAt   = NULL;
-		CJointRot* head = &menu->mChr->mHeadRot;
+		CJointRot* head = &menu->mChr->mHeadTurn.mHead;
 		head->mMode     = 2;
 		head->mTarget   = -1.52f;
 		head->mLookAt   = NULL;
@@ -3788,28 +3788,28 @@ extern "C" void vf144__7XObjChrFll(XObjChr* chr, s32 input, s32 elapsed)
 			}
 			chr->mLift.mState = 0;
 		}
-		chr->mNeckRot.mMode        = 2;
-		chr->mNeckRot.mTarget      = 0.0f;
-		chr->mNeckRot.mLookAt      = NULL;
-		chr->mTumble.mState        = 15;
-		chr->mTumble.mFade.mActive = 1;
-		chr->mTumble.mFade.mAmount = 0.0f;
-		chr->_158BC                = 3 * IDLE_SECOND;
+		chr->mHeadTurn.mNeck.mMode   = 2;
+		chr->mHeadTurn.mNeck.mTarget = 0.0f;
+		chr->mHeadTurn.mNeck.mLookAt = NULL;
+		chr->mTumble.mState          = 15;
+		chr->mTumble.mFade.mActive   = 1;
+		chr->mTumble.mFade.mAmount   = 0.0f;
+		chr->_158BC                  = 3 * IDLE_SECOND;
 	} else if (elapsed > 3000) {
-		chr->mTumble.mState   = 12;
-		chr->mNeckRot.mMode   = 2;
-		chr->mNeckRot.mTarget = 0.0f;
-		chr->mNeckRot.mLookAt = NULL;
-		chr->_158B8           = 2;
-		chr->_158BC           = IDLE_SECOND;
+		chr->mTumble.mState          = 12;
+		chr->mHeadTurn.mNeck.mMode   = 2;
+		chr->mHeadTurn.mNeck.mTarget = 0.0f;
+		chr->mHeadTurn.mNeck.mLookAt = NULL;
+		chr->_158B8                  = 2;
+		chr->_158BC                  = IDLE_SECOND;
 	} else {
 		f32 angle = (f32)atan2(gGame.mMotionControlCamera.mCamera.mEye.x - chr->mMoveTranslate.x,
 		                       gGame.mMotionControlCamera.mCamera.mEye.z - chr->mMoveTranslate.z)
 		          - chr->mMoveRotate.y;
-		chr->mNeckRot.mMode   = 1;
-		chr->mNeckRot.mTarget = angle;
-		chr->_158B8           = 1;
-		chr->_158BC           = IDLE_SECOND;
+		chr->mHeadTurn.mNeck.mMode   = 1;
+		chr->mHeadTurn.mNeck.mTarget = angle;
+		chr->_158B8                  = 1;
+		chr->_158BC                  = IDLE_SECOND;
 	}
 }
 
@@ -4343,41 +4343,41 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 	case 200:
 		switch (args[1]) {
 		case 205:
-			TurnJoint(DEG2RAD * args[2], &mNeckRot);
+			TurnJoint(DEG2RAD * args[2], &mHeadTurn.mNeck);
 			break;
 		case 207: {
 			Vec target = { 0, 0, 0 };
 			target.x   = args[2] / 100.f;
 			target.z   = args[3] / 100.f;
-			TurnJoint((f32)atan2(target.x - mMoveTranslate.x, target.z - mMoveTranslate.z) - mMoveRotate.y, &mNeckRot);
+			TurnJoint((f32)atan2(target.x - mMoveTranslate.x, target.z - mMoveTranslate.z) - mMoveRotate.y, &mHeadTurn.mNeck);
 			break;
 		}
 		case 208: {
 			XObj* target = FindObj(args[2]);
 			TurnJoint((f32)atan2(target->mMoveTranslate.x - mMoveTranslate.x, target->mMoveTranslate.z - mMoveTranslate.z) - mMoveRotate.y,
-			          &mNeckRot);
+			          &mHeadTurn.mNeck);
 			break;
 		}
 		case 220: {
-			XObj* target     = FindObj(args[2]);
-			mNeckRot.mMode   = 1;
-			mNeckRot.mLookAt = target;
+			XObj* target            = FindObj(args[2]);
+			mHeadTurn.mNeck.mMode   = 1;
+			mHeadTurn.mNeck.mLookAt = target;
 			break;
 		}
 		case 225: {
 			CVec& eye = gGame.mMotionControlCamera.mCamera.mEye;
-			TurnJoint((f32)atan2(eye.x - mMoveTranslate.x, eye.z - mMoveTranslate.z) - mMoveRotate.y, &mNeckRot);
+			TurnJoint((f32)atan2(eye.x - mMoveTranslate.x, eye.z - mMoveTranslate.z) - mMoveRotate.y, &mHeadTurn.mNeck);
 			break;
 		}
 		}
 		return 0;
 	case 201:
-		mNeckRot.mMode   = 2;
-		mNeckRot.mTarget = 0;
-		mNeckRot.mLookAt = NULL;
+		mHeadTurn.mNeck.mMode   = 2;
+		mHeadTurn.mNeck.mTarget = 0;
+		mHeadTurn.mNeck.mLookAt = NULL;
 		return 0;
 	case 202:
-		return mNeckRot.mMode <= 0;
+		return mHeadTurn.mNeck.mMode <= 0;
 	case 300:
 		mRope.SetState(4, FindObj(args[1]));
 		result = -1;
@@ -6825,8 +6825,8 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 		}
 	}
 	UpdatePlayerLookAtObjects(player, frames);
-	player->mNeckRot.Update(frames);
-	player->mHeadRot.Update(frames);
+	player->mHeadTurn.mNeck.Update(frames);
+	player->mHeadTurn.mHead.Update(frames);
 	if (player->_A34 > 0) {
 		if ((player->_A34 -= frames) < 0)
 			player->_A34 = 0;
