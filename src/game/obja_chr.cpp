@@ -1544,11 +1544,17 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 						SetPlayerActionTarget(&player->mPush, hit);
 						fn_800B1B0C(&player->mPush, 0);
 					}
+					player->_9AC0 = 0;
+					player->_9AC4 = 0;
 				}
+			} else {
+				player->_9AC0 = 0;
+				player->_9AC4 = 0;
 			}
+		} else {
+			player->_9AC0 = 0;
+			player->_9AC4 = 0;
 		}
-		player->_9AC0 = 0;
-		player->_9AC4 = 0;
 	}
 }
 
