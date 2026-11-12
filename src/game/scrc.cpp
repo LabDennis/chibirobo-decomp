@@ -445,25 +445,6 @@ void XObjActor3::Kind9(u32 frames)
 	}
 }
 
-static inline void AttachClockHand(XObjActor3* hand, CJObj& joint, f32 angle)
-{
-	for (s32 i = 0; i < 0x120; i++) {
-		XObj* clock = gGame.mXObjs.mPools[22].Get(i);
-		if (clock->GetKind() == 0x2A1) {
-			s32 path[] = { 0, 0, 3, 0 };
-			joint.Attach(GetJointFromRoot(clock->mJObj, 4, path));
-			Mtx mount, translate, rotation, result;
-			PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), mount);
-			PSMTXRotRad(rotation, 'z', angle);
-			PSMTXConcat(mount, rotation, result);
-			PSMTXTrans(translate, 0.0f, 0.0f, 1.0f);
-			PSMTXConcat(result, translate, result);
-			HSD_JObjCopyMtx(hand->mJObj, result);
-			return;
-		}
-	}
-}
-
 /**
  * @note Address: 0x8010A574
  * @note Size: 0x78C
@@ -636,8 +617,24 @@ void XObjActor3::Kind2(u32)
 	CJObj joint;
 	f32 time = gGame.mTimeState.mTime;
 	switch (GetKind()) {
-	case 0x411:
-		return AttachClockHand(this, joint, PI * (2.0f * -(12.0f * time)));
+	case 0x411: {
+		for (s32 i = 0; i < 0x120; i++) {
+			XObj* clock = gGame.mXObjs.mPools[22].Get(i);
+			if (clock->GetKind() == 0x2A1) {
+				s32 path[] = { 0, 0, 3, 0 };
+				joint.Attach(GetJointFromRoot(clock->mJObj, 4, path));
+				Mtx mount, translate, rotation, result;
+				PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), mount);
+				PSMTXRotRad(rotation, 'z', PI * (2.0f * -(12.0f * time)));
+				PSMTXConcat(mount, rotation, result);
+				PSMTXTrans(translate, 0.0f, 0.0f, 1.0f);
+				PSMTXConcat(result, translate, result);
+				HSD_JObjCopyMtx(mJObj, result);
+				return;
+			}
+		}
+		return;
+	}
 	case 0x413:
 		mMoveRotate.z = PI * (2.0f * -(12.0f * time));
 		break;
@@ -658,8 +655,24 @@ void XObjActor3::Kind3(u32)
 	CJObj joint;
 	f32 time = gGame.mTimeState.mTime;
 	switch (GetKind()) {
-	case 0x412:
-		return AttachClockHand(this, joint, PI * (2.0f * -time) + 2.617994f);
+	case 0x412: {
+		for (s32 i = 0; i < 0x120; i++) {
+			XObj* clock = gGame.mXObjs.mPools[22].Get(i);
+			if (clock->GetKind() == 0x2A1) {
+				s32 path[] = { 0, 0, 3, 0 };
+				joint.Attach(GetJointFromRoot(clock->mJObj, 4, path));
+				Mtx mount, translate, rotation, result;
+				PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), mount);
+				PSMTXRotRad(rotation, 'z', PI * (2.0f * -time) + 2.617994f);
+				PSMTXConcat(mount, rotation, result);
+				PSMTXTrans(translate, 0.0f, 0.0f, 1.0f);
+				PSMTXConcat(result, translate, result);
+				HSD_JObjCopyMtx(mJObj, result);
+				return;
+			}
+		}
+		return;
+	}
 	case 0x414:
 		mMoveRotate.z = PI * (2.0f * -time) + 2.617994f;
 		break;
