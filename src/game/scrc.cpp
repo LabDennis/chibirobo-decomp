@@ -942,19 +942,6 @@ static inline void AdvanceActorAlongHeading(XObjActor3* actor, u32 frames, const
 	actor->SetPos(actor->mMoveTranslate, 0);
 }
 
-static inline bool ReadBossMount(XObjSpiderBoss* boss, Vec& position)
-{
-	if (!(boss->mStatus.mFlags & 1) || !(boss->mStatus.mFlags & 0x10000))
-		return false;
-	position.x = HSD_JObjGetTranslationX(boss->mJObj);
-	position.y = HSD_JObjGetTranslationY(boss->mJObj);
-	position.z = HSD_JObjGetTranslationZ(boss->mJObj);
-	HSD_JObjGetRotationX(boss->mJObj);
-	HSD_JObjGetRotationY(boss->mJObj);
-	HSD_JObjGetRotationZ(boss->mJObj);
-	return true;
-}
-
 // Each impact has its own entry in the original action table.
 static inline void BounceBossPart(XObjActor3* part, f32 speed)
 {
@@ -968,8 +955,16 @@ void XObjActor3::Kind11(u32 frames)
 	case 0: {
 		if (_B8C.mFlags & 4)
 			break;
-		Vec origin = { 0, 0, 0 };
-		ReadBossMount((XObjSpiderBoss*)gGame.mXObjs.mPools[19].First(), origin);
+		Vec origin           = { 0, 0, 0 };
+		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
+			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
+			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
+			HSD_JObjGetRotationX(boss->mJObj);
+			HSD_JObjGetRotationY(boss->mJObj);
+			HSD_JObjGetRotationZ(boss->mJObj);
+		}
 		switch (GetKind()) {
 		case 0x3cd:
 			_BD8 = 16;
@@ -1145,8 +1140,15 @@ void XObjActor3::Kind11(u32 frames)
 	case 5: {
 		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
 		Vec origin           = { 0, 0, 0 };
-		if (ReadBossMount(boss, origin))
+		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
+			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
+			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
+			HSD_JObjGetRotationX(boss->mJObj);
+			HSD_JObjGetRotationY(boss->mJObj);
+			HSD_JObjGetRotationZ(boss->mJObj);
 			_B7C = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
+		}
 		f32 dx = origin.x - mMoveTranslate.x, dy = origin.y - mMoveTranslate.y, dz = origin.z - mMoveTranslate.z;
 		if (sqrtf(dx * dx + dy * dy + dz * dz) < 16)
 			_B80 = 6;
@@ -1154,8 +1156,16 @@ void XObjActor3::Kind11(u32 frames)
 		break;
 	}
 	case 6: {
-		Vec origin = { 0, 0, 0 };
-		ReadBossMount((XObjSpiderBoss*)gGame.mXObjs.mPools[19].First(), origin);
+		Vec origin           = { 0, 0, 0 };
+		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
+			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
+			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
+			HSD_JObjGetRotationX(boss->mJObj);
+			HSD_JObjGetRotationY(boss->mJObj);
+			HSD_JObjGetRotationZ(boss->mJObj);
+		}
 		_BC8 = DEG2RAD * (rand() % 360);
 		_BCC = 32 * (f32)sin(_BC8);
 		_BD0 = (48.f - (rand() % 1800) / 100) * .5f;
