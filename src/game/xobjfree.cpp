@@ -43,14 +43,14 @@ static inline HSD_ShapeAnimJoint* Shape(CJArchive* archive, s32 id)
  * @note Address: 0x800DD600
  * @note Size: 0x94
  */
-extern "C" void OnHitFromPosition__8XObjFreeFRC3Vecf(XObjFree* object, const Vec* pos, f32 value)
+void XObjFree::OnHitFromPosition(const Vec& pos, f32 value)
 {
-	OnHitFromPosition__4XObjFRC3Vecf(object, pos, value);
-	if (object->mStatus.mFlags & 0x04000000ULL) {
-		f32 remaining = object->mLife - value;
-		object->mLife = remaining;
+	OnHitFromPosition__4XObjFRC3Vecf(this, &pos, value);
+	if (mStatus.mFlags & 0x04000000ULL) {
+		f32 remaining = mLife - value;
+		mLife         = remaining;
 		if (remaining <= 0.0f)
-			object->mStatus.mFlags |= 0x2000000000000000ULL;
+			mStatus.mFlags |= 0x2000000000000000ULL;
 	}
 }
 
