@@ -62,10 +62,10 @@ inline bool PlayerCanLook()
 {
 	bool result = false;
 	bool busy   = false;
-	if (EYE_PLAYER->mLift.mState == 7 || EYE_PLAYER->mLift.mState == 8 || EYE_PLAYER->mLift.mState == 9 || EYE_PLAYER->mLift.mState == 10
-	    || EYE_PLAYER->mLift.mState == 11 || EYE_PLAYER->mLift.mState == 12 || EYE_PLAYER->mLift.mState == 13
-	    || EYE_PLAYER->mLift.mState == 14 || EYE_PLAYER->mLift.mState == 15 || EYE_PLAYER->mLift.mState == 16
-	    || EYE_PLAYER->mLift.mState == 17 || EYE_PLAYER->mLift.mState == 18) {
+	if (!(EYE_PLAYER->mLift.mState != 7 && EYE_PLAYER->mLift.mState != 8 && EYE_PLAYER->mLift.mState != 9 && EYE_PLAYER->mLift.mState != 10
+	      && EYE_PLAYER->mLift.mState != 11 && EYE_PLAYER->mLift.mState != 12 && EYE_PLAYER->mLift.mState != 13
+	      && EYE_PLAYER->mLift.mState != 14 && EYE_PLAYER->mLift.mState != 15 && EYE_PLAYER->mLift.mState != 16
+	      && EYE_PLAYER->mLift.mState != 17 && EYE_PLAYER->mLift.mState != 18)) {
 		busy = true;
 	}
 	if (!busy && EYE_PLAYER->mHang.mState == 0 && EYE_PLAYER->mJump.mState == 0 && EYE_PLAYER->mLadder.mState == 0
