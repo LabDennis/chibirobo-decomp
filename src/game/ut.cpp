@@ -335,8 +335,8 @@ extern "C" HSD_AObj* FindMaterialOrTextureAnimationInJointTree(HSD_JObj* jobj)
 {
 	HSD_AObj* aobj = NULL;
 	for (; jobj != NULL; jobj = jobj->child) {
-		for (HSD_DObj* dobj = HSD_JObjGetDObj(jobj); dobj != NULL; dobj = HSD_DObjGetNext__FP9_HSD_DObj(dobj)) {
-			HSD_MObj* mobj = HSD_DObjGetMObj__FP9_HSD_DObj(dobj);
+		for (HSD_DObj* dobj = HSD_JObjGetDObj(jobj); dobj != NULL; dobj = HSD_DObjGetNext(dobj)) {
+			HSD_MObj* mobj = HSD_DObjGetMObj(dobj);
 			if (mobj != NULL) {
 				if (mobj->aobj != NULL) {
 					return mobj->aobj;
@@ -627,8 +627,8 @@ extern "C" HSD_AObj* FindPolygonAnimationInJointTree(HSD_JObj* jobj)
 {
 	HSD_AObj* aobj = NULL;
 	for (; jobj != NULL; jobj = jobj->child) {
-		for (HSD_DObj* dobj = HSD_JObjGetDObj(jobj); dobj != NULL; dobj = HSD_DObjGetNext__FP9_HSD_DObj(dobj)) {
-			HSD_PObj* pobj = HSD_DObjGetPObj__FP9_HSD_DObj(dobj);
+		for (HSD_DObj* dobj = HSD_JObjGetDObj(jobj); dobj != NULL; dobj = HSD_DObjGetNext(dobj)) {
+			HSD_PObj* pobj = HSD_DObjGetPObj(dobj);
 			if (pobj != NULL && (aobj = pobj->aobj) != NULL) {
 				return aobj;
 			}
