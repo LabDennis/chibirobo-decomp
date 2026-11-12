@@ -8,6 +8,7 @@ extern "C" void OSReport(const char*, ...);
  * @note Address: 0x801070A4
  * @note Size: 0x498
  */
+// NONMATCHING: identical instruction stream; only regalloc and scheduling differ
 s32 XObjActor::HandleEventCommand(s32 count, s32* args)
 {
 	switch (args[0]) {

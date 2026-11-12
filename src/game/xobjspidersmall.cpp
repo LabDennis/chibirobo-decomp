@@ -2240,6 +2240,7 @@ static inline void SetSmallSpiderTarget(XObjSpiderSmall* spider)
  * @note Address: 0x800FF168
  * @note Size: 0x998
  */
+// NONMATCHING: retail keeps a second fdivs where this code reuses the quotient; different spill-store ordering
 extern "C" void ApplySmallSpiderPlacement(XObjSpiderSmall* spider)
 {
 	spider->vf12C(1, 0, 0, 0, 0.0f);

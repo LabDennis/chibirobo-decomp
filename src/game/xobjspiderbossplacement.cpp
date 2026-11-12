@@ -7,6 +7,7 @@ Vec gSpiderBossPosition, gSpiderBossScale, gSpiderBossRotation;
  * @note Address: 0x80106088
  * @note Size: 0x584
  */
+// NONMATCHING: retail keeps a second fdivs where this code reuses the quotient; different spill-store ordering
 extern "C" void ApplySpiderBossPlacement(XObjSpiderBoss* spider)
 {
 	spider->vf12C(1, 0, 0, 0, 0.0f);

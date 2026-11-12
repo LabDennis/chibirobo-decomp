@@ -14,6 +14,7 @@ void CommandSpiderBossProjectiles(s32);
  * @note Address: 0x8010535C
  * @note Size: 0x980
  */
+// NONMATCHING: same work; different load ordering around the gGame accesses and the float reloads
 s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 {
 	switch (args[0]) {

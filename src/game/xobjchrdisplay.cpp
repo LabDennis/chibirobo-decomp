@@ -26,6 +26,7 @@ static inline void ResetRingMode(OctaMenu& ring)
  * @note Address: 0x800BBDAC
  * @note Size: 0x338
  */
+// NONMATCHING: retail writes gPlayerSuitChangeEffect without the extra compare/branch this source produces
 void XObjChr::vf94()
 {
 	ResetPlayerStats(&mParams);
@@ -103,6 +104,7 @@ static inline void SetRingItems(OctaMenu& ring, s32 a, s32 b, s32 c, s32 d, s32 
  * @note Address: 0x800BC0E4
  * @note Size: 0x39C
  */
+// NONMATCHING: same code size; only regalloc and store ordering differ
 void XObjChr::InitializeObject(u32 id)
 {
 	InitializeObject__4XObjFUl(this, id);

@@ -61,6 +61,8 @@ static inline void DrawSubwindowObjects(const XOBJS& objects, CCamera* camera)
  * @note Address: 0x8000DFA8
  * @note Size: 0x194C (US, JP), 0x196C (PAL)
  */
+// NONMATCHING: retail does the float-to-int conversions without __cvt_fp2unsigned calls,
+// a different cast form than the current source
 void CGame::Draw()
 {
 	CVec interest = GetCamera()->mInterest;

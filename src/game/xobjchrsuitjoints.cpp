@@ -32,6 +32,7 @@ static inline void BindRotationJoint(CJointRot& rotation)
  * @note Address: 0x800B7D54
  * @note Size: 0xAFC
  */
+// NONMATCHING: retail inverts one tail branch (beq vs bne) and pulls an argument load earlier; rest matches
 extern "C" void ApplyPlayerSuit(XObjChr* player)
 {
 	if (!(player->mStatus.mFlags & 1) || !player->mSuits.mJoints[player->mSuits.mCurrent])
@@ -80,6 +81,7 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
  * @note Address: 0x800B8850
  * @note Size: 0x674
  */
+// NONMATCHING: identical instruction stream; only regalloc and scheduling differ
 extern "C" void RemovePlayerSuit(XObjChr* player)
 {
 	s32 anim  = player->mAnimId;

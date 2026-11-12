@@ -56,6 +56,8 @@ static inline void ResetSparks(XObjPlugCordNodes& nodes, u32 color, s32 mode, s3
 	nodes.mEnabled = enabled;
 }
 
+// NONMATCHING: retail emits an extra compare/clamp sequence (cmpw/bge/cmpwi/subi) in the point loop
+// that the current source doesn't produce; the rest is scheduling
 extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 {
 	XObjPlugCordPoint* points = cord->mPoints;

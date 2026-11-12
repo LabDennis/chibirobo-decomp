@@ -26,6 +26,7 @@ static inline void SpawnBoxEffect(XObjHBox* box, u32 id)
 	gGame.mParticle.CreateSRT(id, 1, box->mMoveTranslate, box->mMoveScale, rotation, FALSE);
 }
 
+// NONMATCHING: same work; different spill/restore scheduling and argument setup order
 void XObjHBox::UpdateObject(u32 frames)
 {
 	UpdateObject__4XObjFUl(this, frames);

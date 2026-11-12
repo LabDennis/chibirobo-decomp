@@ -232,6 +232,7 @@ static inline bool IsGrabBlocked(s32 anim)
 	return false;
 }
 
+// NONMATCHING: same code; retail orders the vector-constant loads (@2029) and a few lfs differently
 extern "C" void State3__14XObjSpiderBossFUl(XObjSpiderBoss* boss, u32 frames)
 {
 	CPad pad(0);
