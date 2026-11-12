@@ -5858,22 +5858,6 @@ extern "C" void UpdatePlayerFrameEffects(XObjChr* player)
 		ProcessPlayerFrameEvents(&player->mCopterObj, NULL, gCopterAnimationFrameEvents);
 }
 
-static inline void PlayPlayerFrameSound(const FrameEvent& event, s32 anim, XObjChr* player)
-{
-	if (event.mId == 7 && anim == 7 && player->mLift.mTarget != NULL) {
-		XObj* held = player->mLift.mTarget;
-		if ((s16)held->GetPool() == 8) {
-			s8 material = GetItemSoundIndex((s16)held->GetItem(), 0);
-			if (material >= 0)
-				PlayGameSound(&gGame.mSound, GetMaterialSoundId(material), event.mVolume);
-		} else {
-			PlayGameSound(&gGame.mSound, GetMaterialSoundId(held->mFloors->mType >> 8), event.mVolume);
-		}
-	} else {
-		PlayGameSound(&gGame.mSound, event.mId, event.mVolume);
-	}
-}
-
 /**
  * @note Address: 0x800A7E1C
  * @note Size: 0x638
@@ -5910,7 +5894,18 @@ extern "C" PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, const Fram
 			result = event->mWhenAnimDiffers(&aobj->flags, &time, event);
 		if (result > 0) {
 			XObjChr* player = gGame.GetPlayer();
-			PlayPlayerFrameSound(*event, anim, player);
+			if (event->mId == 7 && anim == 7 && player->mLift.mTarget != NULL) {
+				XObj* held = player->mLift.mTarget;
+				if ((s16)held->GetPool() == 8) {
+					s8 material = GetItemSoundIndex((s16)held->GetItem(), 0);
+					if (material >= 0)
+						PlayGameSound(&gGame.mSound, GetMaterialSoundId(material), event->mVolume);
+				} else {
+					PlayGameSound(&gGame.mSound, GetMaterialSoundId(held->mFloors->mType >> 8), event->mVolume);
+				}
+			} else {
+				PlayGameSound(&gGame.mSound, event->mId, event->mVolume);
+			}
 			if (event->mId == 5) {
 				SetFrameParticleAtJoint(particle, player, 0x18);
 			} else if (event->mId == 6) {
@@ -6320,14 +6315,6 @@ static inline bool InAnimRange(s32 anim, s32 first, s32 last)
 	return (u32)anim - (u32)first <= (u32)(last - first);
 }
 
-static inline bool CountsDownBatteryTimer(s32 anim)
-{
-	return InAnimRange(anim, 1, 2) || InAnimRange(anim, 0x11, 0x12) || InAnimRange(anim, 0xCF7, 0xCFD) || InAnimRange(anim, 5, 11)
-	    || InAnimRange(anim, 0x894, 0x895) || InAnimRange(anim, 0x8AE, 0x8AF) || InAnimRange(anim, 0x8B1, 0x8B3) || anim == 0x14
-	    || InAnimRange(anim, 0x67, 0x68) || anim == 0x8A || anim == 0x8C || anim == 0x3F || anim == 0x4A || anim == 0xA1 || anim == 0x822
-	    || InAnimRange(anim, 0x5D, 0x5F);
-}
-
 static inline void StopBatterySound(s32 id)
 {
 	if (IsGameSoundPlaying(&gGame.mSound, id))
@@ -6386,7 +6373,12 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 	}
 	if (drain > 0.0f)
 		drain /= (f32)IDLE_SECOND;
-	if (!gGame.mEvt.mData.mScript && (p->mAttachmentRequest >= 0 || CountsDownBatteryTimer(p->mAnimId))) {
+	if (!gGame.mEvt.mData.mScript
+	    && (p->mAttachmentRequest >= 0 || InAnimRange(p->mAnimId, 1, 2) || InAnimRange(p->mAnimId, 0x11, 0x12)
+	        || InAnimRange(p->mAnimId, 0xCF7, 0xCFD) || InAnimRange(p->mAnimId, 5, 11) || InAnimRange(p->mAnimId, 0x894, 0x895)
+	        || InAnimRange(p->mAnimId, 0x8AE, 0x8AF) || InAnimRange(p->mAnimId, 0x8B1, 0x8B3) || p->mAnimId == 0x14
+	        || InAnimRange(p->mAnimId, 0x67, 0x68) || p->mAnimId == 0x8A || p->mAnimId == 0x8C || p->mAnimId == 0x3F || p->mAnimId == 0x4A
+	        || p->mAnimId == 0xA1 || p->mAnimId == 0x822 || InAnimRange(p->mAnimId, 0x5D, 0x5F))) {
 		if (p->_A30 > 0.0f) {
 			p->_A30 -= (f32)frames;
 			if (p->_A30 < 0.0f)

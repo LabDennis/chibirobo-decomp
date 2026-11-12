@@ -1113,26 +1113,6 @@ static inline void SyncRopePosition(XObjChr* owner)
 	owner->_264.Set(owner->mMoveTranslate);
 }
 
-static inline void TurnOnRope(XActRope* act, s32 anim, u32 frames)
-{
-	if (!act->mTarget)
-		return;
-	f32 target = WrapAngle(PI + act->mTarget->mMoveRotate.y);
-	f32 angle  = act->mOwner->mMoveRotate.y;
-	if (WrapAngle(target - angle) >= PI) {
-		angle -= DEG2RAD * 2.f * frames;
-		if (WrapAngle(target - angle) < PI)
-			angle = target;
-	} else {
-		angle += DEG2RAD * 2.f * frames;
-		if (WrapAngle(target - angle) > PI)
-			angle = target;
-	}
-	if (anim == 0x34 || anim == 0x8b || anim == 0x8d || anim == 0x23)
-		act->mOwner->SetRotationY(angle, 0);
-	PositionPlayerAroundRopeTarget(act, angle);
-}
-
 /**
  * @note Address: 0x800C5B98
  * @note Size: 0x1C78 (US)
@@ -1264,7 +1244,22 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			PlayGameSound(&gGame.mSound, 0x11, 0xff);
 		} else if (act->_0C == -1)
 			PlayGameSound(&gGame.mSound, 0x15, 0xff);
-		TurnOnRope(act, anim, frames);
+		if (act->mTarget) {
+			f32 target = WrapAngle(PI + act->mTarget->mMoveRotate.y);
+			f32 angle  = act->mOwner->mMoveRotate.y;
+			if (WrapAngle(target - angle) >= PI) {
+				angle -= DEG2RAD * 2.f * frames;
+				if (WrapAngle(target - angle) < PI)
+					angle = target;
+			} else {
+				angle += DEG2RAD * 2.f * frames;
+				if (WrapAngle(target - angle) > PI)
+					angle = target;
+			}
+			if (anim == 0x34 || anim == 0x8b || anim == 0x8d || anim == 0x23)
+				act->mOwner->SetRotationY(angle, 0);
+			PositionPlayerAroundRopeTarget(act, angle);
+		}
 		break;
 	case 6:
 		if (anim != 0x24)
