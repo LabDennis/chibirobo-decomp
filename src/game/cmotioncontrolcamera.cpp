@@ -45,9 +45,9 @@ inline bool PlayerCanLook()
 {
 	bool result = false;
 	bool busy   = false;
-	if (PLAYER->mLift.mState == 7 || PLAYER->mLift.mState == 8 || PLAYER->mLift.mState == 9 || PLAYER->mLift.mState == 10
-	    || PLAYER->mLift.mState == 11 || PLAYER->mLift.mState == 12 || PLAYER->mLift.mState == 13 || PLAYER->mLift.mState == 14
-	    || PLAYER->mLift.mState == 15 || PLAYER->mLift.mState == 16 || PLAYER->mLift.mState == 17 || PLAYER->mLift.mState == 18) {
+	if (!(PLAYER->mLift.mState != 7 && PLAYER->mLift.mState != 8 && PLAYER->mLift.mState != 9 && PLAYER->mLift.mState != 10
+	      && PLAYER->mLift.mState != 11 && PLAYER->mLift.mState != 12 && PLAYER->mLift.mState != 13 && PLAYER->mLift.mState != 14
+	      && PLAYER->mLift.mState != 15 && PLAYER->mLift.mState != 16 && PLAYER->mLift.mState != 17 && PLAYER->mLift.mState != 18)) {
 		busy = true;
 	}
 	if (!busy && PLAYER->mHang.mState == 0 && PLAYER->mJump.mState == 0 && PLAYER->mLadder.mState == 0 && PLAYER->mRope.mState == 0
