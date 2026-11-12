@@ -274,8 +274,8 @@ enum PCDepositField { DepositBalance, DepositEntry, DepositReceipt };
 #if defined(VERSION_JP)
 static inline void SetPCDialogueGlyph(MenuPC* menu, u16 code)
 {
-	menu->mCharCopies[menu->mNextGlyph].code       = code;
-	menu->mCharCopies[menu->mNextGlyph].terminator = 0;
+	*(u16*)menu->mCharCopies[menu->mNextGlyph] = code;
+	menu->mCharCopies[menu->mNextGlyph][2]     = 0;
 }
 
 static inline u16 ReadPCDialogueGlyph(const char* text)
@@ -1210,8 +1210,8 @@ BOOL MenuPC::Draw()
 						this->mCharFlags[i] = 0;
 					}
 					u32 color = (u32)(255.0f * this->mAlpha) | 0xC8C8C800;
-					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, (const char*)&this->mCharCopies[i], this->mCharX[i],
-					                             370.0f, 0.0f, 22.0f, 22.0f);
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, this->mCharCopies[i], this->mCharX[i], 370.0f, 0.0f, 22.0f,
+					                             22.0f);
 				}
 #else
 				// Buffers are persistent; original strncpy calls leave the rest of each chunk intact.
@@ -5121,15 +5121,15 @@ static inline void ResetPCCharacters(MenuPC* menu)
 	menu->mCharIndex     = 0;
 	menu->mNumberOffset  = 0;
 	menu->mInsertsNumber = 0;
-	PCTextChar space     = { 0x8140, 0 };
+	char space[]         = "\x81\x40"; // a full-width space
 	for (int i = 0; i < 40; i++)
-		menu->mChars[i] = space.code;
+		menu->mChars[i] = *(u16*)space;
 	menu->mTerminator = 0;
 	for (int i = 0; i < 40; i++) {
-		menu->mCharX[i]                 = 640.0f;
-		menu->mCharFlags[i]             = 0;
-		menu->mCharCopies[i].code       = space.code;
-		menu->mCharCopies[i].terminator = 0;
+		menu->mCharX[i]             = 640.0f;
+		menu->mCharFlags[i]         = 0;
+		*(u16*)menu->mCharCopies[i] = *(u16*)space;
+		menu->mCharCopies[i][2]     = 0;
 	}
 	menu->mGlyphFrames = 0;
 	menu->mNextGlyph   = 0;

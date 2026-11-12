@@ -456,15 +456,6 @@ STATIC_ASSERT(sizeof(MenuItem) == 0x45C);
 STATIC_ASSERT(sizeof(MenuItem) == 0x444);
 #endif
 
-// A two-byte Shift-JIS character followed by its string terminator.
-#pragma pack(push, 1)
-struct PCTextChar {
-	u16 code;
-	u8 terminator;
-};
-#pragma pack(pop)
-STATIC_ASSERT(sizeof(PCTextChar) == 3);
-
 struct PCRankingRow {
 	s32 rank;
 	s32 nameIndex;
@@ -533,7 +524,7 @@ public:
 	u8 _221[0x224 - 0x221];       // _221
 	f32 mCharX[40];               // _224
 	u8 mCharFlags[40];            // _2C4
-	PCTextChar mCharCopies[40];   // _2EC
+	char mCharCopies[40][3];      // _2EC, each character again as a string of its own
 	u32 mGlyphFrames;             // _364
 	u32 mNextGlyph;               // _368
 	s32 _36C;                     // _36C, the shopkeeper's anim step
