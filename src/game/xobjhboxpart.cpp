@@ -16,26 +16,26 @@ extern "C" void Release__8XObjHBoxFv(XObjHBox* box)
  * @note Address: 0x800E0F8C
  * @note Size: 0x14C
  */
-extern "C" BOOL LoadFromPlacement__8XObjHBoxFRC9CoordInfo(XObjHBox* box, CoordInfo* info)
+BOOL XObjHBox::LoadFromPlacement(const CoordInfo& info)
 {
-	switch (box->mLoadState) {
+	switch (mLoadState) {
 	case 0:
-		if (!LoadFromPlacement__4XObjFRC9CoordInfo(box, info))
+		if (!LoadFromPlacement__4XObjFRC9CoordInfo(this, &info))
 			break;
-		box->_80C = 0;
-		++box->mLoadState;
+		_80C = 0;
+		++mLoadState;
 		// fall through, the part starts reading right away
 	case 1:
-		if (!box->mPart.mObj.LoadFromPlacement(CoordInfo(GetSpawnData(36))))
+		if (!mPart.mObj.LoadFromPlacement(CoordInfo(GetSpawnData(36))))
 			break;
-		box->mPart.mObj.mStatus.mFlags &= ~0x10000ULL;
-		box->mPart.mObj.SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-		box->mPart.mObj.SetPos(box->mMoveTranslate, 0);
-		++box->mLoadState;
+		mPart.mObj.mStatus.mFlags &= ~0x10000ULL;
+		mPart.mObj.SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+		mPart.mObj.SetPos(mMoveTranslate, 0);
+		++mLoadState;
 		break;
 	}
-	if (box->mLoadState > 1) {
-		box->mLoadState = 0;
+	if (mLoadState > 1) {
+		mLoadState = 0;
 		return TRUE;
 	}
 	return FALSE;
@@ -45,14 +45,14 @@ extern "C" BOOL LoadFromPlacement__8XObjHBoxFRC9CoordInfo(XObjHBox* box, CoordIn
  * @note Address: 0x800E10D8
  * @note Size: 0x60
  */
-extern "C" void ResetObjectState__8XObjHBoxFv(XObjHBox* box)
+void XObjHBox::ResetObjectState()
 {
-	ResetObjectState__4XObjFv(box);
-	box->mLoadState = 0;
-	box->mRing      = 0.0f;
-	box->mPart.mObj.ResetObjectState();
-	box->mPart.mHit   = 0.0f;
-	box->mPart.mRange = 5.0f;
+	ResetObjectState__4XObjFv(this);
+	mLoadState = 0;
+	mRing      = 0.0f;
+	mPart.mObj.ResetObjectState();
+	mPart.mHit   = 0.0f;
+	mPart.mRange = 5.0f;
 }
 
 /**
@@ -68,8 +68,8 @@ extern "C" void vf94__8XObjHBoxFv(XObjHBox* box)
  * @note Address: 0x800E1168
  * @note Size: 0x50
  */
-extern "C" void InitializeObject__8XObjHBoxFUl(XObjHBox* box, u32 id)
+void XObjHBox::InitializeObject(u32 id)
 {
-	InitializeObject__4XObjFUl(box, id);
-	box->mPart.mObj.InitializeObject(id);
+	InitializeObject__4XObjFUl(this, id);
+	mPart.mObj.InitializeObject(id);
 }
