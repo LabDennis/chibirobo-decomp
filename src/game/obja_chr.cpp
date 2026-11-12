@@ -3436,16 +3436,18 @@ extern "C" void UpdateEquipmentRingAnimation(OctaMenu* ring, u32 frames)
 			} else {
 				item._08 += (DEG2RAD * 8.0f) * frames;
 				item._0C += (DEG2RAD * 3.0f) * frames;
-				if (ring->_280 == 3)
-					item._10 = i == ring->mCursorIndex ? 0.5f : 0.4f;
-				else if (i == ring->mCursorIndex)
+				if (ring->_280 == 3) {
+					if (i == ring->mCursorIndex)
+						item._10 = 0.5f;
+					else
+						item._10 = 0.4f;
+				} else if (i == ring->mCursorIndex)
 					ApproachItemScale(item._10, 0.7f, 0.03f * frames);
 				else
 					ApproachItemScale(item._10, 0.5f, 0.02f * frames);
 			}
 		}
-		ring->mPhase += (1.0f / (0.3f * IDLE_SECOND)) * frames;
-		if (ring->mPhase >= 2.0f)
+		if ((ring->mPhase += (1.0f / (0.3f * IDLE_SECOND)) * frames) >= 2.0f)
 			ring->mPhase = fmod(ring->mPhase, 2.0);
 	}
 	if (ring->mFade > 0.0f) {
