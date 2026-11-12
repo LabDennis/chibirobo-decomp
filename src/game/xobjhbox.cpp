@@ -19,25 +19,25 @@ extern "C" {
  * @note Address: 0x800DF9A0
  * @note Size: 0x184
  */
-extern "C" void ResetObjectState__8XObjDustFv(XObjDust* dust)
+void XObjDust::ResetObjectState()
 {
-	ResetObjectState__4XObjFv(dust);
-	if (dust->GetObjFlags() & 1) {
-		dust->mBaseY        = dust->mMoveTranslate.y;
-		dust->mPhase        = fmod((f32)rand(), TWO_PI);
-		dust->mPhaseStep    = (rand() % 200 + 200) / 10000.0f;
-		dust->mBouncePhase  = 0.0f;
-		dust->mBounceHeight = 0.0f;
-		dust->mHeading      = NAN;
-		dust->mSpeed        = 0.0f;
-		dust->mFade         = 1.0f;
+	ResetObjectState__4XObjFv(this);
+	if (GetObjFlags() & 1) {
+		mBaseY        = mMoveTranslate.y;
+		mPhase        = fmod((f32)rand(), TWO_PI);
+		mPhaseStep    = (rand() % 200 + 200) / 10000.0f;
+		mBouncePhase  = 0.0f;
+		mBounceHeight = 0.0f;
+		mHeading      = NAN;
+		mSpeed        = 0.0f;
+		mFade         = 1.0f;
 	}
-	dust->mEventId  = -1;
-	dust->mEventArg = -1;
-	dust->mMatAnim  = NULL;
-	if (dust->mJObj != NULL && (dust->mStatus.mFlags & 0x1000ULL)) {
-		UnkStageObj* placement = dust->mCoord._00;
-		dust->SetAnim(placement->_30, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+	mEventId  = -1;
+	mEventArg = -1;
+	mMatAnim  = NULL;
+	if (mJObj != NULL && (mStatus.mFlags & 0x1000ULL)) {
+		UnkStageObj* placement = mCoord._00;
+		SetAnim(placement->_30, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 	}
 }
 
@@ -76,12 +76,12 @@ extern "C" u32 vf100__8XObjHBoxFll(XObjHBox* box, s32 unused, u32 flags)
  * @note Address: 0x800DFC68
  * @note Size: 0xBC
  */
-extern "C" void OnHitFromPosition__8XObjHBoxFRC3Vecf(XObjHBox* box, const Vec* pos, f32 strength)
+void XObjHBox::OnHitFromPosition(const Vec& pos, f32 strength)
 {
-	if (box->mAnimId <= 0) {
-		OnHitFromPosition__4XObjFRC3Vecf(box, pos, strength);
-		if ((box->mStatus.mFlags & 0x04000000ULL) && strength >= (s32)GetPlayerActionParameter(31) / 100.0f)
-			box->mStatus.mFlags |= 0x2000000000000000ULL;
+	if (mAnimId <= 0) {
+		OnHitFromPosition__4XObjFRC3Vecf(this, &pos, strength);
+		if ((mStatus.mFlags & 0x04000000ULL) && strength >= (s32)GetPlayerActionParameter(31) / 100.0f)
+			mStatus.mFlags |= 0x2000000000000000ULL;
 	}
 }
 
@@ -114,19 +114,19 @@ extern "C" void vfC8__8XObjHBoxFv(XObjHBox* box)
  * @note Address: 0x800DFF14
  * @note Size: 0x48
  */
-extern "C" void DrawGroundShadowAt__8XObjHBoxFPC3Vecf(XObjHBox* box, const Vec* origin, f32 opacity)
+void XObjHBox::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 {
-	if (box->mPart.mObj.mStatus.mFlags & 0x10000ULL)
-		DrawGroundShadowAt__4XObjFPC3Vecf(box, origin, opacity);
+	if (mPart.mObj.mStatus.mFlags & 0x10000ULL)
+		DrawGroundShadowAt__4XObjFPC3Vecf(this, origin, opacity);
 }
 
 /**
  * @note Address: 0x800DFF5C
  * @note Size: 0x78
  */
-extern "C" void DrawWithView__8XObjHBoxFPA4_f(XObjHBox* box, Mtx view)
+void XObjHBox::DrawWithView(Mtx view)
 {
-	DrawWithView__4XObjFPA4_f(box, view);
-	if (box->mPart.mObj.mStatus.mFlags & 0x10000ULL)
-		box->mPart.mObj.DrawWithView(view);
+	DrawWithView__4XObjFPA4_f(this, view);
+	if (mPart.mObj.mStatus.mFlags & 0x10000ULL)
+		mPart.mObj.DrawWithView(view);
 }
