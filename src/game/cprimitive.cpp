@@ -535,8 +535,9 @@ void CLine::Draw(Mtx view, PrimVertex* vtx, u16 count)
 	SetVtxPosClr();
 	GXBegin(GX_LINESTRIP, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
-		GXPosition3f32(vtx[i].pos.x, vtx[i].pos.y, vtx[i].pos.z);
-		GXColor1u32(vtx[i].color);
+		PrimVertex* v = vtx + i;
+		GXPosition3f32(v->pos.x, v->pos.y, v->pos.z);
+		GXColor1u32(v->color);
 	}
 }
 /*
@@ -1463,8 +1464,9 @@ void CTriangle::Draw(Mtx view, PrimVertex* vtx, u16 count, GXPrimitive type)
 	SetVtxPosClr();
 	GXBegin(type, GX_VTXFMT0, count);
 	for (int i = 0; i < count; i++) {
-		GXPosition3f32(vtx[i].pos.x, vtx[i].pos.y, vtx[i].pos.z);
-		GXColor1u32(vtx[i].color);
+		PrimVertex* v = vtx + i;
+		GXPosition3f32(v->pos.x, v->pos.y, v->pos.z);
+		GXColor1u32(v->color);
 	}
 }
 /*
