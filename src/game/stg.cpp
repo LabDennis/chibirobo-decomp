@@ -2891,10 +2891,10 @@ void MenuStatus::State6(u32)
  * @note Address: 0x80062390
  * @note Size: 0x48
  */
-extern "C" void UpdateObject__10MenuCursorFUl(MenuCursor* cursor, s32 a)
+void MenuCursor::UpdateObject(u32 a)
 {
-	if (cursor->mStatus.mFlags & 1) {
-		UpdateObject__6CursorFUl(cursor, a);
+	if (mStatus.mFlags & 1) {
+		UpdateObject__6CursorFUl(this, a);
 	}
 }
 
@@ -2902,9 +2902,9 @@ extern "C" void UpdateObject__10MenuCursorFUl(MenuCursor* cursor, s32 a)
  * @note Address: 0x800623D8
  * @note Size: 0x20
  */
-extern "C" void ResetObjectState__10MenuCursorFv(MenuCursor* cursor)
+void MenuCursor::ResetObjectState()
 {
-	ResetObjectState__4XObjFv(cursor);
+	ResetObjectState__4XObjFv(this);
 }
 
 /**
@@ -6979,52 +6979,51 @@ static inline u32 StageRowBlue(int row, u8 normal, u8 current)
  * @note Size: 0x5F8
  */
 // NONMATCHING: register allocation and loop scheduling
-extern "C" BOOL Draw__15MenuStageSelectFv(MenuStageSelect* menu)
+BOOL MenuStageSelect::Draw()
 {
-	if (menu->CMenu::Draw()) {
-		f32 cx       = menu->mWindow.mX;
-		f32 cy       = menu->mWindow.mY;
-		f32 maxWidth = menu->mMaxWidth;
-		f32 fontSize = menu->mFontSize;
+	if (CMenu::Draw()) {
+		f32 cx       = mWindow.mX;
+		f32 cy       = mWindow.mY;
+		f32 maxWidth = mMaxWidth;
+		f32 fontSize = mFontSize;
 		f32 step     = 2.0f + fontSize;
-		f32 x        = 30.0f + (cx - menu->mWindow.mWidth / 2);
+		f32 x        = 30.0f + (cx - mWindow.mWidth / 2);
 		for (int column = 0; column < 2; column++) {
-			f32 y = 12.0f + (cy - menu->mWindow.mHeight / 2);
+			f32 y = 12.0f + (cy - mWindow.mHeight / 2);
 			for (int row = 0; row < 20; row++) {
 				int index = column * 20 + row;
-				if (index > menu->mCount)
+				if (index > mCount)
 					break;
 				u32 color;
-				if (index == menu->mSelection)
-					color = (0x20200000 | (StageRowBlue(index, 0x20, 0x80) << 8)) | (u32)(255.0f * menu->mAlpha);
+				if (index == mSelection)
+					color = (0x20200000 | (StageRowBlue(index, 0x20, 0x80) << 8)) | (u32)(255.0f * mAlpha);
 				else
-					color = (0x64640000 | (StageRowBlue(index, 0x64, 0xC8) << 8)) | (u32)(255.0f * menu->mAlpha);
-				if (menu->mLabels[index][0] == *"\x01") {
+					color = (0x64640000 | (StageRowBlue(index, 0x64, 0xC8) << 8)) | (u32)(255.0f * mAlpha);
+				if (mLabels[index][0] == *"\x01") {
 
-					u32 shadow = (u32)(255.0f * menu->mAlpha) | 0x64646400;
+					u32 shadow = (u32)(255.0f * mAlpha) | 0x64646400;
 					DrawGsLineSegment(&gGame.mGs, NULL, (x - 15.0f), (fontSize / 2 + y), 0.0f, shadow, ((x - 15.0f) + (30.0f + maxWidth)),
 					                  (fontSize / 2 + y), 0.0f, shadow);
-					u32 light = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
+					u32 light = (u32)(255.0f * mAlpha) | 0xC8C8C800;
 					DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + (x - 15.0f), 1.0f + (fontSize / 2 + y), 0.0f, light,
 					                  1.0f + ((x - 15.0f) + (30.0f + maxWidth)), 1.0f + (fontSize / 2 + y), 0.0f, light);
 				} else {
-					DrawGsFixedWidthTextFormat(&gGame.mGs, color, menu->mLabels[index], x, y, 0.0f, fontSize, fontSize);
+					DrawGsFixedWidthTextFormat(&gGame.mGs, color, mLabels[index], x, y, 0.0f, fontSize, fontSize);
 				}
 				y += step;
 			}
-			x += 60.0f + menu->mMaxWidth;
+			x += 60.0f + mMaxWidth;
 		}
 		if (!(gGame.mStatus.mFlags & 0x0008000000000000ULL)) {
-			f32 top    = 12.0f + (cy - menu->mWindow.mHeight / 2);
-			u32 shadow = (u32)(255.0f * menu->mAlpha) | 0x64646400;
+			f32 top    = 12.0f + (cy - mWindow.mHeight / 2);
+			u32 shadow = (u32)(255.0f * mAlpha) | 0x64646400;
 			f32 bottom = 20.0f * step + top;
 			DrawGsLineSegment(&gGame.mGs, NULL, cx, top, 0.0f, shadow, cx, bottom, 0.0f, shadow);
-			u32 light = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
+			u32 light = (u32)(255.0f * mAlpha) | 0xC8C8C800;
 			DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + cx, 1.0f + top, 0.0f, light, 1.0f + cx, 1.0f + bottom, 0.0f, light);
 		}
-		DrawMenuSelectionCursor(
-		    menu->mCursor, (menu->mSelection / 20) * (60.0f + menu->mMaxWidth) + (30.0f + (cx - menu->mWindow.mWidth / 2)),
-		    (menu->mSelection % 20) * step + (12.0f + (cy - menu->mWindow.mHeight / 2)), maxWidth, fontSize, menu->mAlpha, menu->mAlpha);
+		DrawMenuSelectionCursor(mCursor, (mSelection / 20) * (60.0f + mMaxWidth) + (30.0f + (cx - mWindow.mWidth / 2)),
+		                        (mSelection % 20) * step + (12.0f + (cy - mWindow.mHeight / 2)), maxWidth, fontSize, mAlpha, mAlpha);
 		return TRUE;
 	}
 	return FALSE;
@@ -7133,21 +7132,21 @@ extern "C" void DrawMenuWindow(MenuWindow* window)
  * @note Size: 0x750
  */
 // NONMATCHING: register allocation and popup coordinate scheduling
-extern "C" BOOL Update__10MenuMCTestFUl(MenuMCTest* menu, u32 frames)
+BOOL MenuMCTest::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(menu, frames) == 4) {
+	if (Update__5CMenuFUl(this, frames) == 4) {
 		Memcard* card = &gGame.mMemcard.mCard;
 		if (card->mBusy)
-			return menu->IsOpen();
+			return IsOpen();
 		s32 result = card->mCard.mResult;
-		switch (menu->mOperation) {
+		switch (mOperation) {
 		case 1:
-			for (int i = 0; i < menu->mFileCount; i++) {
+			for (int i = 0; i < mFileCount; i++) {
 				if (result == 0) {
 					SavePreviewRecord* save = &card->mAllSaves[i];
 					if (save->mState) {
 						if (save->mStatus != 0 || !IsValidSavePreview(save)) {
-							sprintf(menu->mText[i], "(%d) broken [%d,%d]", i, (s32)(save->mStatus != 0), (s32)!IsValidSavePreview(save));
+							sprintf(mText[i], "(%d) broken [%d,%d]", i, (s32)(save->mStatus != 0), (s32)!IsValidSavePreview(save));
 						} else {
 							OSCalendarTime cal;
 							OSTicksToCalendarTime((OSTime)save->mStat.time * OS_TIMER_CLOCK, &cal);
@@ -7155,76 +7154,75 @@ extern "C" BOOL Update__10MenuMCTestFUl(MenuMCTest* menu, u32 frames)
 							const char* name = GetStageName(stage);
 							if (!name)
 								name = GetStageFileName(stage);
-							sprintf(menu->mText[i], "(%d) %02d/%02d/%02d %2d:%02d [%2d:%02d] (%3d)%s", i, cal.year % 100, cal.mon + 1,
-							        cal.mday, cal.hour, cal.min, save->mHeader.mFrames / 216000, (save->mHeader.mFrames / 3600) % 60, stage,
-							        name);
+							sprintf(mText[i], "(%d) %02d/%02d/%02d %2d:%02d [%2d:%02d] (%3d)%s", i, cal.year % 100, cal.mon + 1, cal.mday,
+							        cal.hour, cal.min, save->mHeader.mFrames / 216000, (save->mHeader.mFrames / 3600) % 60, stage, name);
 						}
 					} else
-						sprintf(menu->mText[i], "(%d) none", i);
+						sprintf(mText[i], "(%d) none", i);
 				} else {
-					if (i == menu->mFileCount / 2)
-						strcpy(menu->mText[i], card->mCard.GetResultString(card->mCard.mResult));
+					if (i == mFileCount / 2)
+						strcpy(mText[i], card->mCard.GetResultString(card->mCard.mResult));
 					else
-						strcpy(menu->mText[i], "");
+						strcpy(mText[i], "");
 				}
 			}
 			if (result == 0)
-				sprintf(menu->mText[menu->mFileCount + 1], "SLOT: %c   FREE BLOCKS: %d   FREE ENTRIES: %d", sMenuMain.mChannel + 'A',
-				        card->_16A04, card->_16A00);
-			menu->mOperation = 0;
+				sprintf(mText[mFileCount + 1], "SLOT: %c   FREE BLOCKS: %d   FREE ENTRIES: %d", sMenuMain.mChannel + 'A', card->_16A04,
+				        card->_16A00);
+			mOperation = 0;
 			break;
 		case 3:
 		case 7:
 			if (result == 0) {
 				StartMemoryCardPreviewRead(card, sMenuMain.mChannel, 1);
-				menu->mOperation = 1;
+				mOperation = 1;
 			} else {
-				menu->mOperation = 0;
-				for (int i = 0; i < menu->mFileCount; i++) {
-					if (i == menu->mFileCount / 2)
-						strcpy(menu->mText[i], card->mCard.GetResultString(card->mCard.mResult));
+				mOperation = 0;
+				for (int i = 0; i < mFileCount; i++) {
+					if (i == mFileCount / 2)
+						strcpy(mText[i], card->mCard.GetResultString(card->mCard.mResult));
 					else
-						strcpy(menu->mText[i], "");
+						strcpy(mText[i], "");
 				}
 			}
-			return menu->IsOpen();
+			return IsOpen();
 		case 5:
-			menu->mOperation = 0;
+			mOperation = 0;
 			if (result == 0) {
-				menu->Close();
+				Close();
 				sMenuMain.CMenu::Close();
 				PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 				gGame.mStatus.mFlags &= ~2ULL;
 				ChangeGameStage(&gGame, 20000, 1);
 			} else {
-				for (int i = 0; i < menu->mFileCount; i++) {
-					if (i == menu->mFileCount / 2)
-						strcpy(menu->mText[i], card->mCard.GetResultString(card->mCard.mResult));
+				for (int i = 0; i < mFileCount; i++) {
+					if (i == mFileCount / 2)
+						strcpy(mText[i], card->mCard.GetResultString(card->mCard.mResult));
 					else
-						strcpy(menu->mText[i], "");
+						strcpy(mText[i], "");
 				}
 			}
-			return menu->IsOpen();
+			return IsOpen();
 		}
 		CPad pad(0);
 		if (pad.mPad->mRepeat & 0x10008) {
 			if (result == 0) {
 				do {
-					if (--menu->mSelection < 0)
-						menu->mSelection = menu->mFileCount - 1;
-				} while (*menu->mText[menu->mSelection] == *"\x01");
+					if (--mSelection < 0)
+						mSelection = mFileCount - 1;
+				} while (*mText[mSelection] == *"\x01");
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			}
 		} else if (pad.mPad->mRepeat & 0x20004) {
 			if (result == 0) {
 				do {
-					if (++menu->mSelection > menu->mFileCount - 1)
-						menu->mSelection = 0;
-				} while (*menu->mText[menu->mSelection] == *"\x01");
+					if (++mSelection > mFileCount - 1)
+						mSelection = 0;
+				} while (*mText[mSelection] == *"\x01");
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			}
 		} else if (pad.mPad->mTrigger & 0x200) {
-			menu->Close();
+			Close();
 			if (sMenuMain.mSuspended)
 				gGame.mStatus.mFlags |= 2;
 			sMenuMain.mSuspended   = FALSE;
@@ -7232,17 +7230,16 @@ extern "C" BOOL Update__10MenuMCTestFUl(MenuMCTest* menu, u32 frames)
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 		} else if (pad.mPad->mTrigger & 0x100) {
 			if (result == 0) {
-				sMenuMCTestSub.mWindow.mY = (2.0f + menu->mFontSize) * (menu->mSelection + 1)
-				                          + (menu->mWindow.mY - ((2.0f + menu->mFontSize) * menu->mRowCount) * 0.5f);
-				sMenuMCTestSub.mWindow.mX = 3.0f * menu->mFontSize + (menu->mTextWidth[menu->mSelection] * 0.5f + menu->mWindow.mX);
+				sMenuMCTestSub.mWindow.mY = (2.0f + mFontSize) * (mSelection + 1) + (mWindow.mY - ((2.0f + mFontSize) * mRowCount) * 0.5f);
+				sMenuMCTestSub.mWindow.mX = 3.0f * mFontSize + (mTextWidth[mSelection] * 0.5f + mWindow.mX);
 				sMenuMCTestSub.CMenu::Open();
 				sMenuMCTestSub.mSelection = 0;
-				menu->Suspend(FALSE);
+				Suspend(FALSE);
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			}
 		}
 	}
-	return menu->IsOpen();
+	return IsOpen();
 }
 
 /**
@@ -7250,14 +7247,14 @@ extern "C" BOOL Update__10MenuMCTestFUl(MenuMCTest* menu, u32 frames)
  * @note Size: 0x730
  */
 // NONMATCHING: register allocation and floating-point scheduling
-extern "C" BOOL Draw__8MenuItemFv(MenuItem* menu)
+BOOL MenuItem::Draw()
 {
-	if (menu->CMenu::Draw()) {
-		DrawPanelBackground<ItemStatusPanel>(menu->mAlpha);
-		f32 x = menu->_160 - 42.0f;
-		f32 y = 180.0f + menu->_164;
+	if (CMenu::Draw()) {
+		DrawPanelBackground<ItemStatusPanel>(mAlpha);
+		f32 x = _160 - 42.0f;
+		f32 y = 180.0f + _164;
 		SetScissor(104, 248);
-		DrawInventoryGrid(menu->mSelection, x, y, menu->mAlpha, 1.0f, menu->mItemPhase);
+		DrawInventoryGrid(mSelection, x, y, mAlpha, 1.0f, mItemPhase);
 		char text[256];
 #if defined(VERSION_JP)
 		sprintf(text, "%s", GetLocalizedInterfaceText(0x51));
@@ -7265,9 +7262,9 @@ extern "C" BOOL Draw__8MenuItemFv(MenuItem* menu)
 		sprintf(text, "%s", GetLocalizedInterfaceText(0x18));
 #endif
 		SetScissor(0, 448);
-		DrawItemMenuTitle(menu);
-		if (menu->mName) {
-			f32 alpha   = menu->mAlpha * menu->_1A4;
+		DrawItemMenuTitle(this);
+		if (mName) {
+			f32 alpha   = mAlpha * _1A4;
 			f32 spacing = 30.0f;
 #if defined(VERSION_PAL)
 			spacing *= 0.9f;
@@ -7275,8 +7272,8 @@ extern "C" BOOL Draw__8MenuItemFv(MenuItem* menu)
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			CTexObj blob = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[109 - StatusTextureOffset], 0);
-			menu->_350   = 0;
-			const char* text = menu->mName;
+			_350         = 0;
+			const char* text = mName;
 			if (text) {
 #if defined(VERSION_PAL)
 				const int limit = 22;
@@ -7284,16 +7281,16 @@ extern "C" BOOL Draw__8MenuItemFv(MenuItem* menu)
 				const int limit = 20;
 #endif
 				for (int i = 0; i < limit && *text; i++, text++) {
-					menu->mBg[i].mText = text;
-					menu->_350++;
+					mBg[i].mText = text;
+					_350++;
 					if (IsJapanese() && (IsSjisLead(*text) & 1))
 						text++;
 				}
 			}
 			f32 zero    = 0.0f;
 			f32 opacity = 255.0f * alpha;
-			for (int i = 0; i < menu->_350; i++) {
-				MenuHelpChar* glyph = &menu->mBg[i];
+			for (int i = 0; i < _350; i++) {
+				MenuHelpChar* glyph = &mBg[i];
 #if !defined(VERSION_JP)
 				if (strncmp(glyph->mText, " ", 1) != 0)
 #endif
@@ -7306,7 +7303,7 @@ extern "C" BOOL Draw__8MenuItemFv(MenuItem* menu)
 					f32 s1       = sin(3.1415927f * alpha);
 					f32 s2       = sin(1.5707964f * alpha);
 					f32 scale    = 0.2f * s1 + s2;
-					f32 x        = 0.5f * spacing + (i * spacing + (320.0f - menu->_350 * spacing * 0.5f));
+					f32 x        = 0.5f * spacing + (i * spacing + (320.0f - _350 * spacing * 0.5f));
 					f32 y        = 384.0f + bob;
 					rotation     = -(0.017453292f * (10.0f * rotation));
 					u32 color    = (u32)opacity | 0xFFFFFF00;
@@ -8559,57 +8556,57 @@ extern "C" void DrawStatusCallout(MenuStatus*, s32 id, f32 x, f32 y, f32 targetX
 	DrawStatusDot(tex, white, targetX, targetY, 10.0f);
 }
 
-extern "C" BOOL Update__10MenuStatusFUl(MenuStatus* menu, u32 frames)
+BOOL MenuStatus::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(menu, frames) == 4) {
-		menu->mAnimationFrame++;
-		menu->_694 += (1.0f / (0.3f * FRAME_RATE)) * frames;
-		if (menu->_694 >= 2.0f)
-			menu->_694 = fmod(menu->_694, 2.0);
+	if (Update__5CMenuFUl(this, frames) == 4) {
+		mAnimationFrame++;
+		_694 += (1.0f / (0.3f * FRAME_RATE)) * frames;
+		if (_694 >= 2.0f)
+			_694 = fmod(_694, 2.0);
 		CPad pad(0);
-		PCEase(menu->mOffsetX, menu->_540);
-		PCEase(menu->mOffsetY, menu->_544);
-		PCEase(menu->_548, menu->_550);
-		PCEase(menu->_54C, menu->mSlide);
+		PCEase(mOffsetX, _540);
+		PCEase(mOffsetY, _544);
+		PCEase(_548, _550);
+		PCEase(_54C, mSlide);
 		for (int i = 0; i < 4; i++) {
-			PCEase(menu->mTabs[i]._00, menu->mTabs[i].mX);
-			PCEase(menu->mTabs[i]._04, menu->mTabs[i]._0C);
-			PCEase(menu->mTabs2[i]._00, menu->mTabs2[i].mX);
-			PCEase(menu->mTabs2[i]._04, menu->mTabs2[i]._0C);
+			PCEase(mTabs[i]._00, mTabs[i].mX);
+			PCEase(mTabs[i]._04, mTabs[i]._0C);
+			PCEase(mTabs2[i]._00, mTabs2[i].mX);
+			PCEase(mTabs2[i]._04, mTabs2[i]._0C);
 		}
-		PCEase(menu->mX, menu->_5E0);
-		ApproachHudValue(&menu->mY, &menu->_5E4, 20.0f);
-		PCEase(menu->_5E8, menu->_5F0);
-		ApproachHudValue(&menu->_66C, &menu->_670, 0.08f * frames);
-		PCEase(menu->_5F8, menu->_600);
-		ApproachHudValue(&menu->_5FC, &menu->_604, 20.0f);
-		PCEase(menu->mDiagramX, menu->_610);
-		ApproachHudValue(&menu->mDiagramY, &menu->_614, 20.0f);
-		UpdateMenuTitle(menu, frames);
-		switch (menu->mShowHelp) {
+		PCEase(mX, _5E0);
+		ApproachHudValue(&mY, &_5E4, 20.0f);
+		PCEase(_5E8, _5F0);
+		ApproachHudValue(&_66C, &_670, 0.08f * frames);
+		PCEase(_5F8, _600);
+		ApproachHudValue(&_5FC, &_604, 20.0f);
+		PCEase(mDiagramX, _610);
+		ApproachHudValue(&mDiagramY, &_614, 20.0f);
+		UpdateMenuTitle(this, frames);
+		switch (mShowHelp) {
 		case 1:
-			menu->mHelpAlpha = 0;
-			menu->mShowHelp++;
-			menu->mHelpText = menu->mHelp;
+			mHelpAlpha = 0;
+			mShowHelp++;
+			mHelpText = mHelp;
 			break;
 		case 2:
-			menu->mHelpAlpha += 0.04f * frames;
-			if (menu->mHelpAlpha >= 1.0f) {
-				menu->mHelpAlpha = 1.0f;
-				menu->mShowHelp  = 0;
+			mHelpAlpha += 0.04f * frames;
+			if (mHelpAlpha >= 1.0f) {
+				mHelpAlpha = 1.0f;
+				mShowHelp  = 0;
 			}
 			break;
 		}
-		if (menu->mAlpha > 0.0f) {
+		if (mAlpha > 0.0f) {
 			f32 spinX = 0.08726646f * frames, spinY = 0.05235988f * frames;
-			for (int i = 0; i < (int)ARRAY_SIZE(menu->mHelpChars); i++) {
-				menu->mHelpChars[i].mAngle0 += spinX;
-				menu->mHelpChars[i].mAngle1 += spinY;
+			for (int i = 0; i < (int)ARRAY_SIZE(mHelpChars); i++) {
+				mHelpChars[i].mAngle0 += spinX;
+				mHelpChars[i].mAngle1 += spinY;
 			}
 		}
-		(menu->*gStatusStepHandlers[menu->mMode])(frames);
+		(this->*gStatusStepHandlers[mMode])(frames);
 	}
-	return menu->IsOpen();
+	return IsOpen();
 }
 
 extern "C" void ResumeGameSfx(XSound*, s32);
@@ -8635,115 +8632,115 @@ static inline void FinishItemMenuScroll(MenuItem* menu)
 	menu->_19C      = menu->mSelection;
 }
 
-extern "C" BOOL Update__8MenuItemFUl(MenuItem* menu, u32 frames)
+BOOL MenuItem::Update(u32 frames)
 {
 	static s32 selectedItem = -1;
-	if (Update__5CMenuFUl(menu, frames) == 4) {
+	if (Update__5CMenuFUl(this, frames) == 4) {
 		CPad pad(0);
-		if ((menu->mItemPhase += (1.0f / (0.3f * FRAME_RATE)) * frames) >= 2.0f)
-			menu->mItemPhase = fmod(menu->mItemPhase, 2.0);
-		PCEase(menu->_160, menu->_168);
-		ApproachHudValue(&menu->_164, &menu->_16C, 20.0f);
-		PCEase(menu->_170, menu->_178);
-		PCEase(menu->_174, menu->_17C);
-		ApproachHudValue(&menu->_190, &menu->_194, 0.08f * frames);
-		UpdateMenuTitle(menu, frames);
-		switch (menu->mShowHelp) {
+		if ((mItemPhase += (1.0f / (0.3f * FRAME_RATE)) * frames) >= 2.0f)
+			mItemPhase = fmod(mItemPhase, 2.0);
+		PCEase(_160, _168);
+		ApproachHudValue(&_164, &_16C, 20.0f);
+		PCEase(_170, _178);
+		PCEase(_174, _17C);
+		ApproachHudValue(&_190, &_194, 0.08f * frames);
+		UpdateMenuTitle(this, frames);
+		switch (mShowHelp) {
 		case 0:
 			break;
 		case 1:
-			menu->_1A4 = 0;
-			menu->mShowHelp++;
-			menu->mName = menu->mHelp;
+			_1A4 = 0;
+			mShowHelp++;
+			mName = mHelp;
 			break;
 		case 2:
-			menu->_1A4 += 0.04f * frames;
-			if (menu->_1A4 >= 1.0f) {
-				menu->_1A4      = 1.0f;
-				menu->mShowHelp = 0;
+			_1A4 += 0.04f * frames;
+			if (_1A4 >= 1.0f) {
+				_1A4      = 1.0f;
+				mShowHelp = 0;
 			}
 			break;
 		}
-		if (menu->mAlpha > 0.0f) {
+		if (mAlpha > 0.0f) {
 			f32 spinX = 0.08726646f * frames, spinY = 0.05235988f * frames;
-			for (int i = 0; i < (int)ARRAY_SIZE(menu->mBg); i++) {
-				menu->mBg[i].mAngle0 += spinX;
-				menu->mBg[i].mAngle1 += spinY;
+			for (int i = 0; i < (int)ARRAY_SIZE(mBg); i++) {
+				mBg[i].mAngle0 += spinX;
+				mBg[i].mAngle1 += spinY;
 			}
 		}
 		s32 count = CountMenuItems();
-		switch (menu->_158) {
+		switch (_158) {
 		case 0:
-			menu->mSavedBgm = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
-			PauseGameMusic(&gGame.mSound, menu->mSavedBgm, 0);
+			mSavedBgm = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
+			PauseGameMusic(&gGame.mSound, mSavedBgm, 0);
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			menu->_158++;
+			_158++;
 			break;
 		case 1:
-			if (menu->_160 == menu->_168)
-				menu->_158++;
+			if (_160 == _168)
+				_158++;
 			break;
 		case 2:
 			if (count > 1) {
 				if (pad.mPad->mRepeat & 0x40001) {
-					if (--menu->mSelection < 0)
-						menu->mSelection = count - 1;
+					if (--mSelection < 0)
+						mSelection = count - 1;
 					PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 				} else if (pad.mPad->mRepeat & 0x80002) {
-					s32 next = ++menu->mSelection;
+					s32 next = ++mSelection;
 					if (sStatusItemTable.mItems[next].mItem < 0)
-						menu->mSelection = 0;
+						mSelection = 0;
 					PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 				}
 			}
 			if (count > 4) {
-				if (menu->mSelection >= 4) {
+				if (mSelection >= 4) {
 					if (pad.mPad->mRepeat & 0x10008) {
-						if ((menu->mSelection -= 4) < 0)
-							menu->mSelection = count - 1;
+						if ((mSelection -= 4) < 0)
+							mSelection = count - 1;
 						PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 					}
 					if ((pad.mPad->mRepeat & 0x20004) && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
-						menu->_16C = -56.0f;
-						menu->_158 = 10;
+						_16C = -56.0f;
+						_158 = 10;
 						break;
 					}
 				} else {
-					if ((pad.mPad->mRepeat & 0x20004) && menu->mSelection + 4 <= count - 1) {
-						menu->mSelection += 4;
+					if ((pad.mPad->mRepeat & 0x20004) && mSelection + 4 <= count - 1) {
+						mSelection += 4;
 						PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 					}
 					if (pad.mPad->mRepeat & 0x10008) {
 						CountMenuItems();
 						if (sStatusItemTable.mPage > 0) {
-							menu->_16C = 128.0f;
-							menu->_158 = 20;
+							_16C = 128.0f;
+							_158 = 20;
 							break;
 						}
 					}
 				}
 			}
-			if (sStatusItemTable.mItems[menu->mSelection].mItem < 0) {
+			if (sStatusItemTable.mItems[mSelection].mItem < 0) {
 				do {
-					--menu->mSelection;
-				} while (sStatusItemTable.mItems[menu->mSelection].mItem < 0 && menu->mSelection != 0);
+					--mSelection;
+				} while (sStatusItemTable.mItems[mSelection].mItem < 0 && mSelection != 0);
 			}
-			if (menu->mSelection != menu->_19C) {
-				s16 id = sStatusItemTable.mItems[menu->mSelection].mItem;
+			if (mSelection != _19C) {
+				s16 id = sStatusItemTable.mItems[mSelection].mItem;
 				if (id >= 0 && CountMenuItems() > 0) {
-					char* text      = GetItemName(id);
-					menu->mShowHelp = 1;
-					menu->mHelp     = text;
+					char* text = GetItemName(id);
+					mShowHelp  = 1;
+					mHelp      = text;
 				} else {
-					menu->mShowHelp = 1;
-					menu->mHelp     = NULL;
+					mShowHelp = 1;
+					mHelp     = NULL;
 				}
-				menu->_19C = menu->mSelection;
+				_19C = mSelection;
 			}
 			if (pad.mPad->mTrigger & 0x100) {
 				s16 id = -1, amount = 0;
-				if (menu->mSelection >= 0) {
-					const MenuStatusEntry& item = sStatusItemTable.mItems[menu->mSelection];
+				if (mSelection >= 0) {
+					const MenuStatusEntry& item = sStatusItemTable.mItems[mSelection];
 					id                          = item.mItem;
 					amount                      = item.mCount;
 				}
@@ -8751,49 +8748,49 @@ extern "C" BOOL Update__8MenuItemFUl(MenuItem* menu, u32 frames)
 					selectedItem = id;
 				else
 					selectedItem = -1;
-				BeginItemMenuClose(menu, frames);
+				BeginItemMenuClose(this, frames);
 			} else if (pad.mPad->mTrigger & 0x200) {
 				selectedItem = -1;
-				BeginItemMenuClose(menu, frames);
+				BeginItemMenuClose(this, frames);
 			}
 			break;
 		case 3:
-			if (--menu->_15C < 0) {
+			if (--_15C < 0) {
 				gGame.mEvt._10 = selectedItem;
 				gGame.mStatus.mFlags &= ~2ULL;
-				menu->Close();
+				Close();
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-				if (menu->mSavedBgm)
-					ResumeGameSfx(&gGame.mSound, menu->mSavedBgm);
-				menu->_158++;
+				if (mSavedBgm)
+					ResumeGameSfx(&gGame.mSound, mSavedBgm);
+				_158++;
 			}
 			break;
 		case 10:
-			if (menu->_164 == menu->_16C) {
-				menu->_158 = 2;
+			if (_164 == _16C) {
+				_158 = 2;
 				if (sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
 					++sStatusItemTable.mPage;
 					PopulateOwnedItemPage(&sStatusItemTable);
 					PlayGameSound(&gGame.mSound, 0x87, 0xff);
 				}
-				FinishItemMenuScroll(menu);
+				FinishItemMenuScroll(this);
 			}
 			break;
 		case 20:
-			if (menu->_164 == menu->_16C) {
-				menu->_158 = 2;
+			if (_164 == _16C) {
+				_158 = 2;
 				CountMenuItems();
 				if (sStatusItemTable.mPage > 0) {
 					--sStatusItemTable.mPage;
 					PopulateOwnedItemPage(&sStatusItemTable);
 					PlayGameSound(&gGame.mSound, 0x87, 0xff);
 				}
-				FinishItemMenuScroll(menu);
+				FinishItemMenuScroll(this);
 			}
 			break;
 		}
 	}
-	return menu->IsOpen();
+	return IsOpen();
 }
 
 #if defined(VERSION_JP)
@@ -9188,11 +9185,11 @@ static inline void DrawSaveChoiceLabel(MenuSave* menu, s32 id, f32 x, f32 y)
 }
 #endif
 
-extern "C" BOOL Draw__8MenuSaveFv(MenuSave* menu)
+BOOL MenuSave::Draw()
 {
-	if (menu->CMenu::Draw()) {
-		DrawPanelBackground<SavePanel>(menu->_264);
-		switch (menu->mMode) {
+	if (CMenu::Draw()) {
+		DrawPanelBackground<SavePanel>(_264);
+		switch (mMode) {
 		case 2:
 		case 3:
 		case 4:
@@ -9206,19 +9203,19 @@ extern "C" BOOL Draw__8MenuSaveFv(MenuSave* menu)
 				f32 x     = 49.0f + (width / 2.0f + i * (40.0f + width)) - (3.0f * gSaveSlotSpacing) * 0.5f;
 #endif
 				u8 selected = 0, emptyMessage = 0;
-				if (menu->mFile == i)
+				if (mFile == i)
 					selected = 1;
-				if (menu->_250 >= 6 && menu->_254 > 0)
+				if (_250 >= 6 && _254 > 0)
 					emptyMessage = 1;
-				DrawSaveSlotDetails(&menu->mSlots[i], emptyMessage, i, selected, x, 223.0f, width, 230.0f, menu->_264, 1.0f, 1.0f);
+				DrawSaveSlotDetails(&mSlots[i], emptyMessage, i, selected, x, 223.0f, width, 230.0f, _264, 1.0f, 1.0f);
 			}
-			DrawSaveHelpText(menu);
+			DrawSaveHelpText(this);
 			break;
 		}
-		f32 panelX = menu->_158;
-		f32 panelY = menu->_15C - 8.0f;
-		DrawMenuBannerPanels(NULL, panelX, panelY, menu->_264, menu->_16C);
-		DrawSaveMenuTitle(menu);
+		f32 panelX = _158;
+		f32 panelY = _15C - 8.0f;
+		DrawMenuBannerPanels(NULL, panelX, panelY, _264, _16C);
+		DrawSaveMenuTitle(this);
 #if defined(VERSION_JP)
 		enum { selectMessage = 0x23, confirmMessage = 0xE, writeMessage = 0x16 };
 #else
@@ -9228,10 +9225,10 @@ extern "C" BOOL Draw__8MenuSaveFv(MenuSave* menu)
 		bool showMessage = false;
 		char text[256];
 
-		switch (menu->mMode) {
+		switch (mMode) {
 		case 1:
-			if (menu->mSaved == 1)
-				lines = SaveStatusLines(menu, 4, panelX, panelY);
+			if (mSaved == 1)
+				lines = SaveStatusLines(this, 4, panelX, panelY);
 			break;
 		case 2:
 			sprintf(text, "%.255s", GetLocalizedInterfaceText(selectMessage));
@@ -9242,53 +9239,53 @@ extern "C" BOOL Draw__8MenuSaveFv(MenuSave* menu)
 			showMessage = true;
 			break;
 		case 4:
-			if (menu->mPhase == 0)
-				lines = SaveStatusLines(menu, 4, panelX, panelY);
+			if (mPhase == 0)
+				lines = SaveStatusLines(this, 4, panelX, panelY);
 			else {
 				sprintf(text, "%.255s", GetLocalizedInterfaceText(writeMessage));
 				showMessage = true;
 			}
 			break;
 		case 5:
-			lines = SaveStatusLines(menu, 4, panelX, panelY);
+			lines = SaveStatusLines(this, 4, panelX, panelY);
 			break;
 		case 8:
-			lines = DrawSavePhaseMessage(menu, 5, 6, panelX, panelY);
+			lines = DrawSavePhaseMessage(this, 5, 6, panelX, panelY);
 			break;
 		case 9:
-			lines = SaveStatusLines(menu, 7, panelX, panelY);
+			lines = SaveStatusLines(this, 7, panelX, panelY);
 			break;
 		case 10:
-			lines = DrawSavePhaseMessage(menu, 7, 9, panelX, panelY);
+			lines = DrawSavePhaseMessage(this, 7, 9, panelX, panelY);
 			break;
 		case 6:
 		case 11: {
-			f32 y = SaveMessageY(menu, panelY);
+			f32 y = SaveMessageY(this, panelY);
 #if defined(VERSION_JP)
-			lines = DrawJapaneseCardErrorMessage(menu->mChannel, menu->mResult, 0, 320.0f + panelX, y, 21.0f, menu->_264);
+			lines = DrawJapaneseCardErrorMessage(mChannel, mResult, 0, 320.0f + panelX, y, 21.0f, _264);
 #else
-			lines = DrawCardErrorMessage(menu->mChannel, menu->mResult, 0, 0.0f, y, 21.0f, menu->_264);
+			lines = DrawCardErrorMessage(mChannel, mResult, 0, 0.0f, y, 21.0f, _264);
 #endif
 			break;
 		}
 		case 12:
-			lines = SaveStatusLines(menu, menu->mMessage, panelX, panelY);
+			lines = SaveStatusLines(this, mMessage, panelX, panelY);
 			break;
 		case 13:
 #if defined(VERSION_JP)
-			lines = SaveStatusLines(menu, 13, panelX, panelY);
+			lines = SaveStatusLines(this, 13, panelX, panelY);
 #else
-			if (menu->_538 == 1)
-				lines = SaveStatusLines(menu, 17, panelX, panelY);
+			if (_538 == 1)
+				lines = SaveStatusLines(this, 17, panelX, panelY);
 			else
-				lines = SaveStatusLines(menu, 13, panelX, panelY);
+				lines = SaveStatusLines(this, 13, panelX, panelY);
 #endif
 			break;
 		case 14:
-			lines = SaveStatusLines(menu, menu->mMessage, panelX, panelY);
+			lines = SaveStatusLines(this, mMessage, panelX, panelY);
 			break;
 		case 15:
-			lines = SaveStatusLines(menu, menu->mMessage, panelX, panelY);
+			lines = SaveStatusLines(this, mMessage, panelX, panelY);
 			break;
 		case 16:
 		case 17:
@@ -9296,21 +9293,21 @@ extern "C" BOOL Draw__8MenuSaveFv(MenuSave* menu)
 		}
 		if (lines < 2)
 			lines = 2;
-		menu->mOffset = -(lines - 2) * 21;
+		mOffset = -(lines - 2) * 21;
 		if (showMessage) {
 #if defined(VERSION_JP)
 			u32 cells = SavePromptCells(text);
-			u32 color = (u32)(255.0f * menu->_264);
-			f32 y     = SaveMessageY(menu, panelY);
+			u32 color = (u32)(255.0f * _264);
+			f32 y     = SaveMessageY(this, panelY);
 			f32 x     = 320.0f + panelX - SavePromptHalfWidth(cells);
 #else
-			f32 y     = SaveMessageY(menu, panelY);
-			u32 color = (u32)(255.0f * menu->_264);
+			f32 y     = SaveMessageY(this, panelY);
+			u32 color = (u32)(255.0f * _264);
 			f32 x     = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, 21.0f) / 2;
 #endif
 			DrawGsProportionalTextFormat(&gGame.mGs, color, text, x, y, 0.0f, 21.0f, 21.0f);
 		}
-		switch (menu->mMode) {
+		switch (mMode) {
 		case 3:
 		case 8: {
 			f32 lineOffset = 0;
@@ -9322,36 +9319,36 @@ extern "C" BOOL Draw__8MenuSaveFv(MenuSave* menu)
 			f32 center = 320.0f + panelX;
 
 			f32 barX;
-			if (menu->mChoice == 0)
+			if (mChoice == 0)
 				barX = ((32.0f + center) - SavePromptHalfWidth(cells)) - 2.0f;
 			else
 				barX = 60.0f + (10.0f + ((32.0f + center) - SavePromptHalfWidth(cells)));
 			f32 barWidth = 56.7f;
 #else
-			f32 barX     = menu->mChoice == 0 ? 281.25f : 358.75f;
+			f32 barX     = mChoice == 0 ? 281.25f : 358.75f;
 			f32 barWidth = 61.5f;
 #endif
 			f32 baseLabelY = (24.0f + (12.0f + (356.0f - panelY))) - 6.0f;
-			f32 labelY     = lineOffset + (baseLabelY + menu->_16C);
+			f32 labelY     = lineOffset + (baseLabelY + _16C);
 
 			{
 				CTexObj tex;
-				f32 opacity = menu->_264, textureOffset = menu->_2A4;
+				f32 opacity = _264, textureOffset = _2A4;
 				u32 barColor = (u32)(200.0f * opacity) | 0x181CC600;
 				InitMenuSelectionBar(tex);
 				DrawMenuSelectionBar(tex, barX, 2.0f + (8.0f + labelY), barWidth, 22.0f, opacity, textureOffset, barColor);
 			}
-			labelY = lineOffset + (baseLabelY + menu->_16C);
+			labelY = lineOffset + (baseLabelY + _16C);
 #if defined(VERSION_JP)
 			f32 labelX = 320.0f + panelX - SavePromptHalfWidth(cells);
-			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * menu->_264), text, 10.0f + labelX, labelY, 0.0f, 21.0f, 21.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * _264), text, 10.0f + labelX, labelY, 0.0f, 21.0f, 21.0f);
 #else
 			if (IsJapanese()) {
-				DrawSaveChoiceLabel(menu, 0x65, 281.25f, labelY);
-				DrawSaveChoiceLabel(menu, 0x66, 358.75f, labelY);
+				DrawSaveChoiceLabel(this, 0x65, 281.25f, labelY);
+				DrawSaveChoiceLabel(this, 0x66, 358.75f, labelY);
 			} else {
-				DrawSaveChoiceLabel(menu, 0x65, 283.25f, labelY - 1.0f);
-				DrawSaveChoiceLabel(menu, 0x66, 360.75f, labelY - 1.0f);
+				DrawSaveChoiceLabel(this, 0x65, 283.25f, labelY - 1.0f);
+				DrawSaveChoiceLabel(this, 0x66, 360.75f, labelY - 1.0f);
 			}
 #endif
 			break;
