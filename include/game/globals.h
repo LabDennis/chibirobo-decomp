@@ -34,8 +34,8 @@ u8* GetStatusIconName(s32 index);
 u8* GetCostumeName(s32 index);    // a costume's name
 u8* GetAttachmentName(s32 index); // an attachment's name
 u8* GetActorName(s32 index);
-s16 fn_8006E28C(s32 index);
-s16 fn_8006E2D4(s32 index);
+s16 GetItemHappyPointValue(s32 index);
+s16 GetItemScrapValue(s32 index);
 void ClearItemFlags(s32 index, u16 mask);
 void SetItemFlags(s32 index, u16 mask);
 u16 GetItemFlagsMasked(s32 index, u16 mask);
@@ -51,7 +51,7 @@ BOOL IsGlobalEventScript(u8* script);
 // the same for an entry of an offset table
 u8* GetGlobalScriptByIndex(s32 index);
 u8* GetGlobalScriptTable(s32);
-u32 fn_8006E9AC(s32 index);
+u32 GetInteractionParameter(s32 index);
 u32 GetCopterParameter(s32 index);
 u32 GetStageEntryTimeComponent(s32 index);
 u32 GetPlayerActionParameter(s32 index);

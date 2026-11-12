@@ -104,7 +104,7 @@ void CCameraActionReset::PreviousUpdate()
 	}
 
 	_38 = 0xB;
-	fn_80137D00(&gCameraAreaState, 0);
+	UpdateCameraAreaIndexAndBaseFov(&gCameraAreaState, 0);
 	s32 arg           = gCameraAreaState._0C;
 	mNextCameraAction = GetCameraAreaMode(&gCameraAreaState);
 	if (_4C == TRUE) {
@@ -114,7 +114,7 @@ void CCameraActionReset::PreviousUpdate()
 			SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState._14);
 		} else {
 			SetMapCameraFovStep((CCameraActionMap*)gGame.mCameraActions.mTable[7], gCameraAreaState._14, 15.0f);
-			fn_8013BCE4((CCameraActionMap*)gGame.mCameraActions.mTable[7]);
+			RefreshMapCameraArea((CCameraActionMap*)gGame.mCameraActions.mTable[7]);
 			f32 dy = camera->mCamera.mInterest.y - mTarget->GetCameraTarget().y;
 			if (0.0f != dy) {
 				StartMapCameraTargetHeightInterpolation((CCameraActionMap*)gGame.mCameraActions.mTable[7], dy, 0.0f, 8.0f);
@@ -136,7 +136,7 @@ void CCameraActionReset::PreviousUpdate()
 	}
 
 	if (mNextCameraAction == 7) {
-		fn_8013BD28((CCameraActionMap*)gGame.mCameraActions.mTable[7], eye, 1);
+		GetMapCameraEyeBehindTarget((CCameraActionMap*)gGame.mCameraActions.mTable[7], eye, 1);
 		if (fpclassify(eye.x) == FP_NAN || fpclassify(eye.y) == FP_NAN || fpclassify(eye.z) == FP_NAN) {
 			CVec cameraEye      = gGame.mMotionControlCamera.mCamera.mEye;
 			CVec cameraInterest = gGame.mMotionControlCamera.mCamera.mInterest;
@@ -216,7 +216,7 @@ void CCameraActionReset::PreviousUpdate()
     stw      r0, 0x38(r31)
     addi     r3, r3, gCameraAreaState@l
     li       r4, 0x0
-    bl       fn_80137D00
+    bl       UpdateCameraAreaIndexAndBaseFov
     lis      r3, gCameraAreaState@ha
     addi     r3, r3, gCameraAreaState@l
     lwz      r30, 0xc(r3)
@@ -255,7 +255,7 @@ void CCameraActionReset::PreviousUpdate()
     lwz      r4, 0x14(r4)
     bl       SetMapCameraFovStep
     lwz      r3, 0x7e08(r30)
-    bl       fn_8013BCE4
+    bl       RefreshMapCameraArea
     lwz      r4, 0x40(r31)
     addi     r3, r1, 0x44
     lwz      r12, 0x34(r4)
@@ -313,7 +313,7 @@ void CCameraActionReset::PreviousUpdate()
     li       r5, 0x1
     addis    r3, r3, 0xe
     lwz      r3, 0x7e08(r3)
-    bl       fn_8013BD28
+    bl       GetMapCameraEyeBehindTarget
     lfs      f0, 0x70(r1)
     lis      r0, 0x7f80
     stfs     f0, 0x10(r1)

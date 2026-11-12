@@ -216,7 +216,7 @@ extern s32 HSD_DevComRequest(s32 entrynum, s32 offset, void* dst, u32 length, s3
 extern void* HSD_GObjObjectLink(void* gobj, u8 kind, void* obj);
 extern void* HSD_GObjObjectUnlink(void* gobj);
 
-void fn_801EB614(s32 max, s32 key);
+void SetDvdStreamingLimits(s32 max, s32 key);
 s32 AcquireDvdStreamingSlot(void (*callback)(s32, void*), s32 param);
 void ReleaseDvdStreamingSlot(s32 id);
 void SetDvdStreamingSlotKey(s32 id, s32 key);
@@ -385,10 +385,10 @@ void UpdateSynthVolumeFadersAndVoices(void);
 void AdvancePendingSynthMixUpdates(void);
 void HSD_SynthCallback(void);
 void QueueLoadedSynthStreamBuffer(s32 result, s32 pstreamID);
-void fn_801F0AB4(s32 unused, s32 id, HSD_SynthBeatMarker* markers);
+void HSD_SynthPStreamHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMarker* markers);
 void HSD_SynthPStreamHakoHeaderCallback(s32 result, s32 pstreamID);
 void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID);
-void fn_801F1DB4(s32 unused, s32 id, HSD_SynthBeatMarker* markers);
+void HSD_SynthPStreamFirstHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMarker* markers);
 void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID);
 void HSD_SynthPStreamHeaderCallback(s32 result, s32 pstreamID, u32* header);
 void dropcallback(void* dropped);
@@ -4763,7 +4763,7 @@ static inline void linkBeatMarkers(HSD_SynthPStream* pst, HSD_SynthBeatMarker* m
  * @note Address: N/A
  * @note Size: 0x2EC
  */
-void fn_801F0AB4(s32 unused, s32 id, HSD_SynthBeatMarker* markers)
+void HSD_SynthPStreamHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMarker* markers)
 {
 	HSD_SynthSFXNode* node = getNode(id);
 	HSD_SynthPStream* pst;
@@ -4803,7 +4803,7 @@ void HSD_SynthPStreamHakoHeaderCallback(s32 result, s32 pstreamID)
 		nMarkers = sSynthStreamHakoBuffers[buf].markerNum;
 		if (nMarkers > 0) {
 			HSD_DevComRequest(PSTREAM(node)->entrynum, offset + 0x20, NULL, OSRoundUp32B(nMarkers * 8), 0x22, 0,
-			                  (void (*)(s32, void*, s32, s32))fn_801F0AB4, (void*)pstreamID);
+			                  (void (*)(s32, void*, s32, s32))HSD_SynthPStreamHakoMarkerCallback, (void*)pstreamID);
 		}
 		HSD_DevComRequest(PSTREAM(node)->entrynum, offset + 0x20 + OSRoundUp32B(nMarkers * 8), (void*)(sSynthStreamBufferAramBase + (buf << 16)),
 		                  sSynthStreamHakoBuffers[buf].size, 0x23, 0, (void (*)(s32, void*, s32, s32))QueueLoadedSynthStreamBuffer, (void*)pstreamID);
@@ -4814,7 +4814,7 @@ void HSD_SynthPStreamHakoHeaderCallback(s32 result, s32 pstreamID)
  * @note Address: 0x801F0F0C
  * @note Size: 0x16C
  */
-void fn_801F0F0C(s32 pstreamID)
+void HSD_SynthPStreamNextHakoCallback(s32 pstreamID)
 {
 	HSD_SynthSFXNode* node;
 	s32 offset;
@@ -4849,7 +4849,7 @@ void AXSetVoiceAdpcmLoop(AXVPB* p, void* loop);
 void AXSetVoiceItdOn(AXVPB* p);
 void AXSetVoiceState(AXVPB* p, u16 state);
 void SetDvdStreamingSlotCallback(s32 id, void (*callback)(s32, void*));
-void fn_801F0F0C(s32 pstreamID);
+void HSD_SynthPStreamNextHakoCallback(s32 pstreamID);
 
 static inline HSD_SynthBeatMarker* getBeatMarker(HSD_SynthBeatMarkerBlock** head, s32 ix)
 {
@@ -5105,7 +5105,7 @@ void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID)
 		ReleaseDvdStreamingSlot(PSTREAM(node)->schedulerSlot);
 		PSTREAM(node)->schedulerSlot = -1;
 	} else {
-		SetDvdStreamingSlotCallback(PSTREAM(node)->schedulerSlot, (void (*)(s32, void*))fn_801F0F0C);
+		SetDvdStreamingSlotCallback(PSTREAM(node)->schedulerSlot, (void (*)(s32, void*))HSD_SynthPStreamNextHakoCallback);
 	}
 }
 
@@ -5113,14 +5113,14 @@ void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID)
  * @note Address: N/A
  * @note Size: 0x2D0
  */
-void fn_801F1DB4(s32 unused, s32 id, HSD_SynthBeatMarker* markers)
+void HSD_SynthPStreamFirstHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMarker* markers)
 {
 	HSD_SynthSFXNode* node = getNode(id);
 
 	if (node == NULL) {
 		return;
 	}
-	// no null check on the link here, unlike fn_801F0AB4
+	// no null check on the link here, unlike HSD_SynthPStreamHakoMarkerCallback
 	linkBeatMarkers(PSTREAM(node), markers, sSynthStreamHakoBuffers[PSTREAM(node)->_1C].markerNum);
 }
 
@@ -5142,7 +5142,7 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
 		nMarkers = sSynthStreamHakoBuffers[buf].markerNum;
 		if (nMarkers > 0) {
 			HSD_DevComRequest(PSTREAM(node)->entrynum, 0xA0, NULL, OSRoundUp32B(nMarkers * 8), 0x22, 0,
-			                  (void (*)(s32, void*, s32, s32))fn_801F1DB4, (void*)pstreamID);
+			                  (void (*)(s32, void*, s32, s32))HSD_SynthPStreamFirstHakoMarkerCallback, (void*)pstreamID);
 		}
 		HSD_DevComRequest(PSTREAM(node)->entrynum, OSRoundUp32B(nMarkers * 8) + 0xA0, (void*)(sSynthStreamBufferAramBase + (buf << 16)),
 		                  sSynthStreamHakoBuffers[buf].size, 0x23, 0, (void (*)(s32, void*, s32, s32))HSD_SynthPStreamFirstHakoDataCallback,
@@ -5155,7 +5155,7 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
  * @note Address: 0x801F0AB4
  * @note Size: 0x2EC
  */
-// fn_801F0AB4
+// HSD_SynthPStreamHakoMarkerCallback
 /*
     stwu     r1, -0x40(r1)
     mflr     r0
@@ -6032,7 +6032,7 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
  * @note Address: 0x801F1DB4
  * @note Size: 0x2D0
  */
-// fn_801F1DB4
+// HSD_SynthPStreamFirstHakoMarkerCallback
 /*
     stwu     r1, -0x30(r1)
     mflr     r0
@@ -6491,7 +6491,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
 	AXInit();
 	ASSERT_SYNTH_REPORT(0xFDC, pstNum >= 1 && pstNum <= HSD_SYNTHPSTREAM_MAX, "HSD_AudioInit*: pstNum out of range.\n");
 	ASSERT_SYNTH_REPORT(0xFDD, pstBufNum >= 1 && pstBufNum <= 3, "HSD_AudioInit*: pstBufNum out of range.\n");
-	fn_801EB614(pstNum, pstBufNum);
+	SetDvdStreamingLimits(pstNum, pstBufNum);
 	sSynthStreamBufferCount = pstNum * (pstBufNum + 1) + 1;
 	AISetDSPSampleRate(0);
 	lbl_8065BBE4 = ARAlloc(0x500);
@@ -6855,7 +6855,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
 .L_801F2A64:
     mr       r3, r30
     mr       r4, r27
-    bl       fn_801EB614
+    bl       SetDvdStreamingLimits
     addi     r0, r27, 0x1
     li       r3, 0x0
     mullw    r4, r30, r0

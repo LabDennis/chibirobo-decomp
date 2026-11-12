@@ -172,7 +172,7 @@ extern "C" u8* GetUtilibotName(s32 index)
  * @note Address: 0x8006DF54
  * @note Size: 0x70
  */
-extern "C" u8* fn_8006DF54(s32 index)
+extern "C" u8* GetPCRankingName(s32 index)
 {
 	return ResourcePointer(0x44, index, 4, 0);
 }
@@ -244,7 +244,7 @@ extern "C" u8 GetItemSoundIndex(s32 index, s32 member)
  * @note Address: 0x8006E28C
  * @note Size: 0x48
  */
-extern "C" s16 fn_8006E28C(s32 index)
+extern "C" s16 GetItemHappyPointValue(s32 index)
 {
 	return *(s16*)(ResourceField(0x28, index, 20, 16));
 }
@@ -253,7 +253,7 @@ extern "C" s16 fn_8006E28C(s32 index)
  * @note Address: 0x8006E2D4
  * @note Size: 0x48
  */
-extern "C" s16 fn_8006E2D4(s32 index)
+extern "C" s16 GetItemScrapValue(s32 index)
 {
 	return *(s16*)(ResourceField(0x28, index, 20, 14));
 }
@@ -271,7 +271,7 @@ extern "C" s16 GetItemShopPrice(s32 index)
  * @note Address: 0x8006E364
  * @note Size: 0x48
  */
-extern "C" s16 fn_8006E364(s32 index)
+extern "C" s16 GetItemPickupHoldTime(s32 index)
 {
 	return *(s16*)(ResourceField(0x28, index, 20, 10));
 }
@@ -436,7 +436,7 @@ extern "C" u32 GetStartingAttachmentLevel(s32 index)
  * @note Address: 0x8006E9AC
  * @note Size: 0x6C
  */
-extern "C" u32 fn_8006E9AC(s32 index)
+extern "C" u32 GetInteractionParameter(s32 index)
 {
 	return ReadResourceOffset(ResourceField(0x14, index, 4, 0));
 }

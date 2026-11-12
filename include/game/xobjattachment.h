@@ -207,8 +207,8 @@ void UpdatePlugCordSpark(XObjPlugCordNode* node, XObjPlugCordPoint* points, s32 
 void StartPlugCordNode(XObjPlugCordNode* node, XObjPlugCordPoint* points, s32 count, f32 time, s32 mode);
 
 // the copter's anims, game/objb_attach.cpp
-void fn_800D7A78(XObjCopter* copter);
-void fn_800D7AC8(XObjCopter* copter);
+void PlayCopterLandingAnimation(XObjCopter* copter);
+void PlayCopterDescentAnimation(XObjCopter* copter);
 void PlayCopterStowAnimation(XObjCopter* copter);
 void ShowAndDeployCopter(XObjCopter* copter);
 }

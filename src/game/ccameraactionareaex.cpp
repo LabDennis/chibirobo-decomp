@@ -17,7 +17,7 @@ extern "C" s32 lbl_8065B328;
 class CGs;
 
 extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state);
-extern "C" void fn_80135E34(CCameraActionAreaEx* state, s32 unused);
+extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32 unused);
 
 static inline s32 AreaMode(CCameraActionAreaEx* state)
 {
@@ -303,7 +303,7 @@ extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, 
  * @note Address: 0x80135E34
  * @note Size: 0x390
  */
-extern "C" void fn_80135E34(CCameraActionAreaEx* state, s32)
+extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 {
 	state->_08 = state->_04;
 	Vec pos    = gGame.GetPlayer()->mMoveTranslate;
@@ -345,10 +345,10 @@ extern "C" void SetCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 ind
  * @note Address: 0x80137D00
  * @note Size: 0x1B8
  */
-extern "C" void fn_80137D00(CCameraActionAreaEx* state, s32 unused)
+extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 unused)
 {
 	if (state->_24 != NULL && state->_2C != NULL) {
-		fn_80135E34(state, unused);
+		UpdateCameraAreaIndexFromPlayer(state, unused);
 		if (state->_08 != state->_04 && state->_04 != -1) {
 			f32 fov;
 			if (AreaMode(state) == 1) {

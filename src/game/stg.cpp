@@ -2861,7 +2861,7 @@ void MenuPC::State6(u32)
  * @note Address: 0x80051C60
  * @note Size: 0x5C
  */
-extern "C" BOOL fn_80051C60()
+extern "C" BOOL IsUtilibotStatusIconUnlocked()
 {
 	BOOL found = FALSE;
 	u32 id     = GetStatusIconEventFlagId(3);
@@ -10847,7 +10847,7 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	DrawOverviewTexture(tex, white, 52.0f * scale + left, 48.0f * scale + top, w, h);
 }
 
-extern "C" u8* fn_8006DF54(s32 index);
+extern "C" u8* GetPCRankingName(s32 index);
 
 static inline void DrawPCRankingDigits(CTexObj& tex, const s32& value, f32 x, f32 y, f32 scale, u32 upper, u32 lower, bool rank)
 {
@@ -10981,7 +10981,7 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			u16 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
 			DrawOverviewTexture(tex, light, 140.0f * scale + left, rowY + 10.0f * scale, 0.6f * (scale * iw), 0.6f * (scale * ih));
-			sprintf(text, "%.255s", fn_8006DF54(row.nameIndex));
+			sprintf(text, "%.255s", GetPCRankingName(row.nameIndex));
 			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * menu->mAlpha) | 0xC8C8C800, text, 48.0f * scale + left,
 			                             rowY + 20.0f * scale, 0, 18.0f * scale, 18.0f * scale);
 		}

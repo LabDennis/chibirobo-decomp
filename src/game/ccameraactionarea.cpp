@@ -2041,14 +2041,14 @@ extern "C" void Update__17CCameraActionAreaFUl(CCameraActionArea* area, u32 step
 void CCameraActionArea::PreviousUpdate()
 {
 	if (_5C == 1) {
-		fn_80137D00(&gCameraAreaState, 0);
+		UpdateCameraAreaIndexAndBaseFov(&gCameraAreaState, 0);
 	}
 	if (gCameraAreaState._04 != gCameraAreaState._08 && gCameraAreaState._04 != -1 && GetCameraAreaMode(&gCameraAreaState) == 7) {
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		camera->ChangeAction(7);
 		gCameraAreaState._18 = gCameraAreaState._14;
 		SetMapCameraFovStep((CCameraActionMap*)gGame.mCameraActions.mTable[7], gCameraAreaState._14, 15.0f);
-		fn_8013BCE4((CCameraActionMap*)gGame.mCameraActions.mTable[7]);
+		RefreshMapCameraArea((CCameraActionMap*)gGame.mCameraActions.mTable[7]);
 		f32 dy = camera->mCamera.mInterest.y - mTarget->GetCameraTarget().y;
 		if (0.0f != dy) {
 			StartMapCameraTargetHeightInterpolation((CCameraActionMap*)gGame.mCameraActions.mTable[7], dy, 0.0f, 8.0f);

@@ -181,7 +181,7 @@ extern "C" void ShowIdlePlayerRadar(XObjRadar* object)
  * @note Address: 0x800D6340
  * @note Size: 0x4
  */
-extern "C" void fn_800D6340(XObjRadar* object)
+extern "C" void StartPlayerRadarScan(XObjRadar* object)
 {
 }
 

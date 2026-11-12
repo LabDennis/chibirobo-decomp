@@ -29,8 +29,8 @@ XObj* GetPlayerActionTarget(const XAction* action);
 XObj* GetGameObjectByIndex(const CGame* game, s32 index);
 CVec* GetObjectPreviousMoveTranslation(XObj* object);
 CObjVec* GetObjectMoveTranslation(CXObj* object);
-void fn_800A2C98(Vec* dst, const Vec* src);
-f32 fn_800B30FC(const XObjChr* chr);
+void CopyVecToCVec(Vec* dst, const Vec* src);
+f32 GetPlayerMoveSpeedScale(const XObjChr* chr);
 void SetObjectVectorTargetX(CObjVec* value, f32 x);
 void SetObjectVectorTargetZ(CObjVec* value, f32 z);
 CVec* GetObjectVectorTarget(CObjVec* value);
@@ -40,25 +40,25 @@ void SetObjectVectorSpeedZ(CObjVec* value, f32 z);
 void SetVectorX(CVec* value, f32 x);
 void SetVectorZ(CVec* value, f32 z);
 void SetObjectVectorAndTargetXYZ(CObjVec* value, f32 x, f32 y, f32 z);
-Vec* fn_800B305C(XActHang* act);
-f32 fn_800B3054(const XActHang* act);
-u32 fn_800B304C(const XAction* action);
+Vec* GetHangFloorCenter(XActHang* act);
+f32 GetHangDistance(const XActHang* act);
+u32 GetPlayerActionMoveDirection(const XAction* action);
 BOOL IsLiftActionState(const XActLift* act, s32 wanted);
 BOOL IsTumbleActionState(const XActTumble* act, s32 wanted);
 BOOL IsJumpActionState(const XAction* action, s32 state);
-CVec* fn_800B2D54(XObjPlug* plug);
-BOOL fn_800B2D64(const XActPopper*);
-BOOL fn_800B2D5C(const XActRadar*);
-BOOL fn_800B2A80(const XActLift*);
+CVec* GetPlayerPlugCordPull(XObjPlug* plug);
+BOOL CanFallDuringPopperAction(const XActPopper*);
+BOOL CanFallDuringRadarAction(const XActRadar*);
+BOOL CanLiftActionSlideOnSlope(const XActLift*);
 BOOL IsHangActionIdle(const XActHang* act);
-BOOL fn_800B2A4C(const XActJump* act);
-BOOL fn_800B2A28(const XActLadder* act);
-BOOL fn_800B2A04(const XActRope* act);
-BOOL fn_800B29FC(const XActPush*);
-BOOL fn_800B29F4(const XActTumble*);
-BOOL fn_800B29C8(const XActCopter* act);
-BOOL fn_800B29C0(const XActPopper*);
-BOOL fn_800B29B8(const XActRadar*);
+BOOL CanJumpActionSlideOnSlope(const XActJump* act);
+BOOL CanLadderActionSlideOnSlope(const XActLadder* act);
+BOOL CanRopeActionSlideOnSlope(const XActRope* act);
+BOOL CanPushActionSlideOnSlope(const XActPush*);
+BOOL CanTumbleActionSlideOnSlope(const XActTumble*);
+BOOL CanCopterActionSlideOnSlope(const XActCopter* act);
+BOOL CanPopperActionSlideOnSlope(const XActPopper*);
+BOOL CanRadarActionSlideOnSlope(const XActRadar*);
 void SetObjectVelocity(CObjVec* value, f32 x, f32 y, f32 z);
 void SetObjectVectorTarget(CObjVec* value, const Vec& target);
 void SetVectorComponents(CVec* value, f32 x, f32 y, f32 z);
@@ -66,18 +66,18 @@ BOOL IsRadarActionState(const XActRadar* act, s32 wanted);
 BOOL IsPopperActionState(const XActPopper* act, s32 wanted);
 s32 IsGameMenuActive(const CGame* game);
 u32 CheckCurrentStageFlags(const CGame* game, u32 mask);
-BOOL fn_800B2E80(const XActHang* act);
-BOOL fn_800B2E44(const XActJump* act);
-BOOL fn_800B2E18(const XActLadder* act);
-BOOL fn_800B2DE4(const XActRope* act);
-BOOL fn_800B2DC0(const XActTumble* act);
-BOOL fn_800B2D6C(const XActCopter* act);
+BOOL CanFallDuringHangAction(const XActHang* act);
+BOOL CanFallDuringJumpAction(const XActJump* act);
+BOOL CanFallDuringLadderAction(const XActLadder* act);
+BOOL CanFallDuringRopeAction(const XActRope* act);
+BOOL CanFallDuringTumbleAction(const XActTumble* act);
+BOOL CanFallDuringCopterAction(const XActCopter* act);
 XSound* GetGameSound(CGame* game);
 void SpawnPlayerDust(XObjChr* player, const Vec* origin);
 void SetTumbleStateAndFade(XObjChr* chr, s32 state, BOOL restart);
 BOOL IsObjectActive(XObj* object);
-BOOL fn_800B26A0(const XAction* action, s32 wanted);
-u32 fn_800B253C(const XObjChr* chr, u32 mask);
+BOOL IsPlayerActionMoveDirection(const XAction* action, s32 wanted);
+u32 GetMaskedPlayerStatusFlags(const XObjChr* chr, u32 mask);
 u64 GetMaskedObjectStatus(const XObj* object, u64 mask);
 u32 GetObjectId(const CXObj* object);
 void SetObjectStatusFlags(XObj* object, u64 mask);
@@ -97,11 +97,11 @@ f32 GetCopterDescentSpeedLimit();
 BOOL IsPlayerRingMenuOpen(const XObjChrMenu* menu);
 void ClosePlayerEquipmentRings(XObjChrMenu* menu, s32 result);
 void SetCopterActionState(XAction* action, s32 state);
-BOOL fn_800B2294(const XObj* object);
-s32 fn_800B2284(const XObj* object, s32 index);
-BOOL fn_800B2250(const XObj* object);
-BOOL fn_800B21B8(const XObj* object);
-BOOL fn_800B2164(const XObj* object);
+BOOL HasObjectCustomLedgeHeight(const XObj* object);
+s32 GetObjectPlacementParam(const XObj* object, s32 index);
+BOOL IsObjectClimbableLedge(const XObj* object);
+BOOL IsObjectLadder(const XObj* object);
+BOOL IsObjectRope(const XObj* object);
 void ReleasePlayerLiftTarget(XObjChr* chr);
 void SetPlayerActionState(XAction* action, s32 state);
 void SetPlayerHangState(XObjChr* chr, s32 state, XObj* target);
@@ -118,28 +118,28 @@ bool IsPlayerLookMarkerVisible(const XObjChrLook* look);
 void EnablePlayerLook(XObjChrLook* look);
 void SetPlayerLookMode(XObjChrLook* look, s32 mode);
 void SetLookTargetPosition(XObjChrLook* look, f32 x, f32 y, f32 z);
-BOOL fn_800B200C(const XObj*);
+BOOL IsObjectPushableFromBack(const XObj*);
 s32 GetSelectedFloorIndex(const XObj* object);
 f32 GetObjectEdgeOutwardYaw(const XObj* object, Vec* point, s32 index);
 s32 fn_800B1E04(void*);
 f32 GetObjectMaxFloorHeight(XObj* object);
-BOOL fn_800B1D50(XObj* object);
+BOOL IsObjectClimbableFromHang(XObj* object);
 CVec* GetCameraAngles(CCamera* camera);
 f32 GetControlStickMagnitude(const CPadOne* pad);
-f32 fn_800B1C14();
-f32 fn_800B1BCC();
-f32 fn_800B1B84();
-BOOL fn_800B1B24(const XObjChr* chr);
+f32 GetAutoActionHoldTime();
+f32 GetAutoActionChargeRate();
+f32 GetAutoActionSoftTiltCap();
+BOOL IsPlayerCarryingPlug(const XObjChr* chr);
 void SetHangActionState(XActHang* act, s32 state);
 void TryLeaveHang(XActHang*);
 void StopPlayerMotion(XObjChr*);
 void SetPushActionState(XActPush* act, s32 state);
 void SetPlayerActionTarget(XAction* action, XObj* target);
-void fn_800B1B0C(XActPush* act, s32 value);
+void SetPushTargetState(XActPush* act, s32 value);
 f32 WrapPlayerActionAngle(f32 angle);
 extern s32 lbl_8065B268;
 f32 GetPlayerAnimationRateMultiplier(XObjChr* chr);
-Vec* fn_800B2FC0(CObjVec* value);
+Vec* GetObjectVectorCurrent(CObjVec* value);
 void* GetMapPoolEntry(const CGame* game, s32 index);
 void SetObjectXAndTarget(CObjVec* value, f32 x);
 void SetObjectZAndTarget(CObjVec* value, f32 z);
@@ -148,9 +148,9 @@ BOOL IsPlayerAttachmentEquipped(const XObjChr* chr, s32 wanted);
 CPadOne* GetPadForPort(CGame* game, u8 port);
 u32 GetHeldPadButtons(const CPadOne* pad, u32 mask);
 void SetObjectVectorAndTargetFromVec(CObjVec* value, const Vec& v);
-u32 fn_800B2EB0(const XObjPlug* plug);
+u32 GetPlayerPlugConnection(const XObjPlug* plug);
 CVec* NormalizeVectorInPlace(CVec* value);
-BOOL fn_800B2ABC(const XObjMap* map, const Vec* pos, XObjMapHit* hit, Vec* tri);
+BOOL FindMapFloorBelow(const XObjMap* map, const Vec* pos, XObjMapHit* hit, Vec* tri);
 void ScaleVectorInPlace(Vec* value, f32 scale);
 Vec GetFloorCenterOffset(XObjFloor* const* floors, s32 index);
 Vec GetFloorExtent(XObjFloor* const* floors, s32 index);
@@ -160,17 +160,17 @@ f32 GetHorizontalDistance(const Vec* a, const Vec* b);
 s32 GetObjectPoolId(const XObj* object);
 f32 GetFloorYawRadians(XObjFloor* const* floors, s32 index);
 f32 SquareRootFloat(f32 value);
-BOOL fn_800B2390(const XActPush*);
+BOOL CanFallDuringPushAction(const XActPush*);
 void SelectHighestActiveFloor(XObj*);
 f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to);
-BOOL fn_800B2048(const XObj* object);
+BOOL IsObjectLiftable(const XObj* object);
 s32 GetCharacterObjectApproachResult(const XObjChr* chr, const XObj* target);
-BOOL fn_800B2014(const XObj* object);
+BOOL IsObjectPushable(const XObj* object);
 BOOL IsPositionBehindObject(void*, const Vec* pos, CXObj* object);
-u32 fn_800B1DFC(XObj* object);
-u32 fn_800B1DF0(XObj* object, u32 mask);
+u32 GetObjectMarkerOverride(XObj* object);
+u32 GetMaskedObjectMarkerOverride(XObj* object, u32 mask);
 Vec& __as__3VecFRC3Vec(Vec* dst, const Vec* src);
-u32 fn_800B31AC(const XObjChr* chr, u32 mask);
+u32 GetMaskedPlayerStatus(const XObjChr* chr, u32 mask);
 }
 
 struct PushContactBounds {
@@ -179,9 +179,9 @@ struct PushContactBounds {
 };
 
 // Update the player movement, contacts and context-sensitive actions.
-extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 direction)
+extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32 speed, f32 direction)
 {
-	if (fn_800B31AC(player, 0x80000000))
+	if (GetMaskedPlayerStatus(player, 0x80000000))
 		return;
 	CVec floor(0, 0, 0);
 	{
@@ -194,7 +194,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 				XObj* support     = GetGameObjectByIndex(&gGame, player->mFloorContacts[0].objectIndex);
 				Vec previous      = *GetObjectPreviousMoveTranslation(support);
 				const CVec& delta = *GetObjectMoveTranslation(support) - previous;
-				fn_800A2C98(&floor, &delta);
+				CopyVecToCVec(&floor, &delta);
 			}
 		}
 		player->mFloorContacts[1].objectIndex = player->mFloorContacts[0].objectIndex;
@@ -206,7 +206,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 			XObj* support     = GetPlayerActionTarget(&player->mHang);
 			Vec previous      = *GetObjectPreviousMoveTranslation(support);
 			const CVec& delta = *GetObjectMoveTranslation(support) - previous;
-			fn_800A2C98(&hang, &delta);
+			CopyVecToCVec(&hang, &delta);
 		}
 	}
 	CVec ladder(0, 0, 0);
@@ -221,7 +221,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 			} else {
 				Vec previous      = *GetObjectPreviousMoveTranslation(target);
 				const CVec& delta = *GetObjectMoveTranslation(target) - previous;
-				fn_800A2C98(&ladder, &delta);
+				CopyVecToCVec(&ladder, &delta);
 			}
 		}
 	}
@@ -236,7 +236,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 			} else {
 				Vec previous      = *GetObjectPreviousMoveTranslation(target);
 				const CVec& delta = *GetObjectMoveTranslation(target) - previous;
-				fn_800A2C98(&rope, &delta);
+				CopyVecToCVec(&rope, &delta);
 			}
 		}
 	}
@@ -252,15 +252,15 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 				f32 scale = 1.0f - 0.15f * lbl_8065B268;
 				if (scale < 0.7f)
 					scale = 0.7f;
-				f32 factor = fn_800B30FC(player);
+				f32 factor = GetPlayerMoveSpeedScale(player);
 				targetX    = movementFrames * (scale * ((speed * PlayerActionSine(angle)) * factor));
-				factor     = fn_800B30FC(player);
+				factor     = GetPlayerMoveSpeedScale(player);
 				targetZ    = movementFrames * (scale * ((speed * PlayerActionCosine(angle)) * factor));
 			} else {
-				f32 factor = fn_800B30FC(player);
+				f32 factor = GetPlayerMoveSpeedScale(player);
 				f32 xSpeed = (speed * PlayerActionSine(angle)) * factor;
 				targetX    = movementFrames * (GetPlayerAnimationRateMultiplier(player) * xSpeed);
-				factor     = fn_800B30FC(player);
+				factor     = GetPlayerMoveSpeedScale(player);
 				f32 zSpeed = (speed * PlayerActionCosine(angle)) * factor;
 				targetZ    = movementFrames * (GetPlayerAnimationRateMultiplier(player) * zSpeed);
 			}
@@ -280,10 +280,11 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 				SetObjectVectorSpeedX(&motion, 0);
 				SetObjectVectorSpeedZ(&motion, 0);
 				if (HasPlayerActionTarget(&hangAction) && IsActionTargetFloorId(&hangAction, 0)) {
-					Vec center = *fn_800B305C(&hangAction);
-					f32 radius = fn_800B3054(&hangAction);
+					Vec center = *GetHangFloorCenter(&hangAction);
+					f32 radius = GetHangDistance(&hangAction);
 					f32 period = (6.2831855f * radius) / (0.3f * speed);
-					f32 angle  = movementFrames * ((6.2831855f / period) * (s32)fn_800B304C(&hangAction)) + player->mMoveRotate.y;
+					f32 angle
+					    = movementFrames * ((6.2831855f / period) * (s32)GetPlayerActionMoveDirection(&hangAction)) + player->mMoveRotate.y;
 					player->SetRotationY(WrapPlayerActionAngle(angle), 0);
 					f32 facing = 3.1415927f + angle;
 					SetVectorX(&motion, (radius * PlayerActionSine(facing) + center.x) - player->mMoveTranslate.x);
@@ -314,7 +315,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 				SetObjectVectorSpeedZ(&motion, 0);
 				SetVectorX(&motion, 0);
 				SetVectorZ(&motion, 0);
-				f32 sign = (s32)fn_800B304C(&player->mRope);
+				f32 sign = (s32)GetPlayerActionMoveDirection(&player->mRope);
 				if (sign > 0)
 					sign = 1;
 				if (sign < 0)
@@ -329,7 +330,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 				SetObjectVectorSpeedZ(&motion, 0);
 				SetVectorX(&motion, 0);
 				SetVectorZ(&motion, 0);
-				f32 climbDir = (s32)fn_800B304C(&player->mLadder);
+				f32 climbDir = (s32)GetPlayerActionMoveDirection(&player->mLadder);
 				SetObjectYAndTarget(&player->mMoveTranslate, player->mMoveTranslate.y + speed * climbDir);
 			} else {
 				SetObjectVectorAndTargetXYZ(&motion, 0, 0, 0);
@@ -337,7 +338,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 		} else {
 			f32 step = 1.56f * (0.05f * movementFrames);
 			if (!(GetMaskedGameStatus(&gGame, 0x100))) {
-				Vec* current = fn_800B2FC0(&motion);
+				Vec* current = GetObjectVectorCurrent(&motion);
 				Vec* target  = GetObjectVectorTarget(&motion);
 				f32 rate     = GetPlayerAnimationRateMultiplier(player);
 				f32 distance = GetVectorDistance(current, target) / rate;
@@ -445,12 +446,13 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 		position.z += player->_960C.z + (rope.z + (ladder.z + (hang.z + dz)));
 	}
 	{
-		if (fn_800B2EB0(&player->mPlug)) {
-			if (!IsEventScriptActive(&gGame) && !IsGameMenuActive(&gGame) && fn_800B2E80(&player->mHang) && fn_800B2E44(&player->mJump)
-			    && fn_800B2E18(&player->mLadder) && fn_800B2DE4(&player->mRope) && IsPushActionState(&player->mPush, 0)
-			    && fn_800B2DC0(&player->mTumble) && fn_800B2D6C(&player->mCopter) && fn_800B2D64(&player->mPopper)
-			    && fn_800B2D5C(&player->mRadar)) {
-				CVec pull((const Vec&)*fn_800B2D54(&player->mPlug));
+		if (GetPlayerPlugConnection(&player->mPlug)) {
+			if (!IsEventScriptActive(&gGame) && !IsGameMenuActive(&gGame) && CanFallDuringHangAction(&player->mHang)
+			    && CanFallDuringJumpAction(&player->mJump) && CanFallDuringLadderAction(&player->mLadder)
+			    && CanFallDuringRopeAction(&player->mRope) && IsPushActionState(&player->mPush, 0)
+			    && CanFallDuringTumbleAction(&player->mTumble) && CanFallDuringCopterAction(&player->mCopter)
+			    && CanFallDuringPopperAction(&player->mPopper) && CanFallDuringRadarAction(&player->mRadar)) {
+				CVec pull((const Vec&)*GetPlayerPlugCordPull(&player->mPlug));
 				CVec combined = player->_988 + pull;
 				combined.y    = 0;
 				f32 strength  = GetVectorMagnitude(&pull);
@@ -490,9 +492,11 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 	}
 	{
 		if (GetVectorMagnitude(&player->_158C4) > 0 && !IsEventScriptActive(&gGame) && !IsGameMenuActive(&gGame)
-		    && fn_800B2E80(&player->mHang) && fn_800B2E44(&player->mJump) && fn_800B2E18(&player->mLadder) && fn_800B2DE4(&player->mRope)
-		    && IsPushActionState(&player->mPush, 0) && fn_800B2DC0(&player->mTumble) && fn_800B2D6C(&player->mCopter)
-		    && fn_800B2D64(&player->mPopper) && fn_800B2D5C(&player->mRadar)) {
+		    && CanFallDuringHangAction(&player->mHang) && CanFallDuringJumpAction(&player->mJump)
+		    && CanFallDuringLadderAction(&player->mLadder) && CanFallDuringRopeAction(&player->mRope)
+		    && IsPushActionState(&player->mPush, 0) && CanFallDuringTumbleAction(&player->mTumble)
+		    && CanFallDuringCopterAction(&player->mCopter) && CanFallDuringPopperAction(&player->mPopper)
+		    && CanFallDuringRadarAction(&player->mRadar)) {
 			CVec extPush  = player->_158C4;
 			extPush.y     = 0;
 			CVec combined = player->_988 + extPush;
@@ -508,7 +512,8 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 		}
 	}
 	{
-		BOOL hit = fn_800B2ABC(static_cast<const XObjMap*>(map), &position, &player->mFloorHit, reinterpret_cast<Vec*>(player->_95E8));
+		BOOL hit
+		    = FindMapFloorBelow(static_cast<const XObjMap*>(map), &position, &player->mFloorHit, reinterpret_cast<Vec*>(player->_95E8));
 		if (hit) {
 			SetVectorX(&player->mMoveTranslate, position.x);
 			SetVectorZ(&player->mMoveTranslate, position.z);
@@ -520,10 +525,11 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 			Vec origin = { 0, 0, 0 };
 			GetOutwardPerpendicularToEdge(&down, &origin, &normal, &player->_963C);
 			{
-				if (!fn_800B2A80(&player->mLift) || !IsHangActionIdle(&player->mHang) || !fn_800B2A4C(&player->mJump)
-				    || !fn_800B2A28(&player->mLadder) || !fn_800B2A04(&player->mRope) || !fn_800B29FC(&player->mPush)
-				    || !fn_800B29F4(&player->mTumble) || !fn_800B29C8(&player->mCopter) || !fn_800B29C0(&player->mPopper)
-				    || !fn_800B29B8(&player->mRadar)) {
+				if (!CanLiftActionSlideOnSlope(&player->mLift) || !IsHangActionIdle(&player->mHang)
+				    || !CanJumpActionSlideOnSlope(&player->mJump) || !CanLadderActionSlideOnSlope(&player->mLadder)
+				    || !CanRopeActionSlideOnSlope(&player->mRope) || !CanPushActionSlideOnSlope(&player->mPush)
+				    || !CanTumbleActionSlideOnSlope(&player->mTumble) || !CanCopterActionSlideOnSlope(&player->mCopter)
+				    || !CanPopperActionSlideOnSlope(&player->mPopper) || !CanRadarActionSlideOnSlope(&player->mRadar)) {
 					SetObjectVectorAndTargetXYZ(&player->_960C, 0, 0, 0);
 				} else {
 					CVec slopeDir = player->_963C;
@@ -593,14 +599,14 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 	CVec push, contact;
 	lbl_8065B268 = 0;
 	if (player->_146D8) {
-		if (fn_800B2E80(&player->mHang) || IsHangActionState(&player->mHang, 9)) {
+		if (CanFallDuringHangAction(&player->mHang) || IsHangActionState(&player->mHang, 9)) {
 			for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
 				XObj* object = GetDrawListObject(&gGame, 0, i);
 				{
 					BOOL checkable = IsObjectActive(object) && (GetMaskedObjectStatus(object, 0x10000))
 					              && !(GetMaskedObjectStatus(object, 0x0004000000100000ULL)) && GetObjectId(object) != GetObjectId(player);
 					if (checkable && (GetMaskedObjectStatus(object, 0x08000000)) && IsPushActionState(&player->mPush, 2)
-					    && fn_800B26A0(&player->mPush, 1)) {
+					    && IsPlayerActionMoveDirection(&player->mPush, 1)) {
 						s32 floorIdx = player->mFloorContacts[1].objectIndex;
 						if (floorIdx < 0 || GetGameObjectByIndex(&gGame, floorIdx) != object)
 							checkable = false;
@@ -648,7 +654,8 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 								blocked = true;
 							}
 						}
-						if (blocked && fn_800B253C(player, 1) && fn_800B2E18(&player->mLadder) && fn_800B2DE4(&player->mRope)) {
+						if (blocked && GetMaskedPlayerStatusFlags(player, 1) && CanFallDuringLadderAction(&player->mLadder)
+						    && CanFallDuringRopeAction(&player->mRope)) {
 							if (IsPushActionState(&player->mPush, 2) && HasPlayerActionTarget(&player->mPush)) {
 								SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->_264);
 							} else {
@@ -690,7 +697,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 			}
 		} else {
 			if (IsHangActionState(&player->mHang, 5) && HasPlayerActionTarget(&player->mHang)) {
-				f32 side  = player->mMoveRotate.y + HALF_PI * (s32)(0u - fn_800B304C(&player->mHang));
+				f32 side  = player->mMoveRotate.y + HALF_PI * (s32)(0u - GetPlayerActionMoveDirection(&player->mHang));
 				s32 path  = 0;
 				Vec joint = GetEventJointWorldPosition(player, 1, &path);
 				Vec body;
@@ -761,13 +768,13 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 		BOOL gotBounds = false;
 		{
 			XActPush& pushAction = player->mPush;
-			if (IsPushActionState(&pushAction, 2) && !fn_800B26A0(&pushAction, 0) && HasPlayerActionTarget(&pushAction)) {
+			if (IsPushActionState(&pushAction, 2) && !IsPlayerActionMoveDirection(&pushAction, 0) && HasPlayerActionTarget(&pushAction)) {
 				XObj* target  = GetPlayerActionTarget(&pushAction);
 				Vec targetPos = *GetObjectMoveTranslation(target);
 				f32 angle     = 0;
-				if (fn_800B26A0(&pushAction, 1))
+				if (IsPlayerActionMoveDirection(&pushAction, 1))
 					angle = GetObjectMoveRotation(player)->y;
-				else if (fn_800B26A0(&pushAction, -1))
+				else if (IsPlayerActionMoveDirection(&pushAction, -1))
 					angle = PI + GetObjectMoveRotation(player)->y;
 				targetPos.x += 2.5f * (0.4f * PlayerActionSine(angle));
 				targetPos.z += 2.5f * (0.4f * PlayerActionCosine(angle));
@@ -897,7 +904,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 			}
 		} else {
 			XActRope& ropeAction = player->mRope;
-			if (IsRopeActionState(&ropeAction, 5) && fn_800B26A0(&ropeAction, -1) && HasPlayerActionTarget(&ropeAction)) {
+			if (IsRopeActionState(&ropeAction, 5) && IsPlayerActionMoveDirection(&ropeAction, -1) && HasPlayerActionTarget(&ropeAction)) {
 				s32 path   = 0;
 				CVec joint = GetEventJointWorldPosition(player, 1, &path);
 				Vec point;
@@ -943,10 +950,11 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 		if (motion.y == floor) {
 			SetObjectYAndTarget(&motion, floor);
 			SetObjectVerticalSpeed(&motion, 0);
-		} else if (motion.y > floor && fn_800B2E80(&player->mHang) && fn_800B2E44(&player->mJump) && fn_800B2E18(&player->mLadder)
-		           && fn_800B2DE4(&player->mRope) && fn_800B2390(&player->mPush) && fn_800B2DC0(&player->mTumble)
-		           && fn_800B2D6C(&player->mCopter) && fn_800B2D64(&player->mPopper) && fn_800B2D5C(&player->mRadar)
-		           && fn_800B253C(player, 2)) {
+		} else if (motion.y > floor && CanFallDuringHangAction(&player->mHang) && CanFallDuringJumpAction(&player->mJump)
+		           && CanFallDuringLadderAction(&player->mLadder) && CanFallDuringRopeAction(&player->mRope)
+		           && CanFallDuringPushAction(&player->mPush) && CanFallDuringTumbleAction(&player->mTumble)
+		           && CanFallDuringCopterAction(&player->mCopter) && CanFallDuringPopperAction(&player->mPopper)
+		           && CanFallDuringRadarAction(&player->mRadar) && GetMaskedPlayerStatusFlags(player, 2)) {
 			SetObjectTargetY(&motion, player->mFloorHit.mHeight);
 			f32 speed;
 			if (IsCopterActionState(&player->mCopter, 4) || IsCopterActionState(&player->mCopter, 7)
@@ -987,11 +995,11 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 							XObj* support = NULL;
 							if (player->mFloorContacts[1].objectIndex >= 0) {
 								support       = GetGameObjectByIndex(&gGame, player->mFloorContacts[1].objectIndex);
-								s32 supHeight = fn_800B2294(support) ? fn_800B2284(support, 0) : 12;
+								s32 supHeight = HasObjectCustomLedgeHeight(support) ? GetObjectPlacementParam(support, 0) : 12;
 								if (!(drop > 0.5f + supHeight))
 									support = NULL;
 							}
-							if (!support || !fn_800B2250(support)) {
+							if (!support || !IsObjectClimbableLedge(support)) {
 								SetPlayerActionState(&player->mJump, 2);
 								SetObjectVerticalSpeed(&player->mMoveTranslate, 0);
 							} else if (ClassifyFloatBits(player->_12DF8) == FP_NAN) {
@@ -1008,9 +1016,9 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 								} else {
 									if (!IsLiftActionState(&player->mLift, 0))
 										ReleasePlayerLiftTarget(player);
-									if (fn_800B21B8(support))
+									if (IsObjectLadder(support))
 										SetPlayerLadderState(player, 3, support);
-									else if (fn_800B2164(support))
+									else if (IsObjectRope(support))
 										SetPlayerRopeState(player, 3, support);
 									else
 										SetPlayerHangState(player, 3, support);
@@ -1044,7 +1052,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 		    && (IsPopperActionState(&player->mPopper, 0) || IsPopperActionState(&player->mPopper, 8)
 		        || IsPopperActionState(&player->mPopper, 4))
 		    && IsRadarActionState(&player->mRadar, 0)) {
-			const Vec* current    = fn_800B2FC0(&player->_988);
+			const Vec* current    = GetObjectVectorCurrent(&player->_988);
 			const Vec* dustTarget = GetObjectVectorTarget(&player->_988);
 			f32 rate              = GetPlayerAnimationRateMultiplier(player);
 			f32 dustDistance      = GetVectorDistance(current, dustTarget) / rate;
@@ -1153,7 +1161,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 			if (index >= 0 && index != player->mFloorContacts[0].objectIndex) {
 				XObj* object = GetGameObjectByIndex(&gGame, index);
 				if (!player->_A14 || !GetMaskedObjectStatus(object, 0x100000)) {
-					if (fn_800B2048(object))
+					if (IsObjectLiftable(object))
 						available |= 4;
 					else if (GetMaskedObjectStatus(object, 0x0000010000000000ULL))
 						available |= 1;
@@ -1172,9 +1180,9 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 			s32 index = player->_9D0;
 			if (index >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, index);
-				if (fn_800B2048(object) && index != player->mFloorContacts[0].objectIndex)
+				if (IsObjectLiftable(object) && index != player->mFloorContacts[0].objectIndex)
 					available |= 4;
-				if (fn_800B2014(object) && index != player->mFloorContacts[0].objectIndex) {
+				if (IsObjectPushable(object) && index != player->mFloorContacts[0].objectIndex) {
 					if (IsLiftActionState(&player->mLift, 0) || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift)))
 						available |= 2;
 #if defined(VERSION_JP)
@@ -1183,7 +1191,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 						actionMode = 9;
 					}
 #endif
-				} else if (fn_800B200C(object) && index != player->mFloorContacts[0].objectIndex) {
+				} else if (IsObjectPushableFromBack(object) && index != player->mFloorContacts[0].objectIndex) {
 					f32 yaw   = GetObjectMoveRotation(object)->y;
 					s32 edge  = GetSelectedFloorIndex(object);
 					f32 angle = GetObjectEdgeOutwardYaw(object, GetObjectMoveTranslation(player), edge) - yaw;
@@ -1196,7 +1204,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 					}
 #endif
 				}
-				if (fn_800B2250(object)) {
+				if (IsObjectClimbableLedge(object)) {
 					f32 climbHeight = GetSelectedFloorHeight(object) - player->mMoveTranslate.y;
 					if (climbHeight < 0)
 						climbHeight = -climbHeight;
@@ -1249,7 +1257,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 							}
 						}
 					}
-				} else if (fn_800B21B8(object)) {
+				} else if (IsObjectLadder(object)) {
 					{
 						BOOL inReach = GetSelectedFloorIndex(object) == 0;
 						if (inReach) {
@@ -1266,7 +1274,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 						if (inReach)
 							available |= 0x10;
 					}
-				} else if (fn_800B2164(object)) {
+				} else if (IsObjectRope(object)) {
 					{
 						BOOL inReach = GetSelectedFloorIndex(object) == 0;
 						if (inReach) {
@@ -1309,106 +1317,106 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 			if (player->mFloorContacts[2].objectIndex >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContacts[2].objectIndex);
 				if (0xff & 1)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 1))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 1)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 1))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 1)))
 						marker |= 1;
 				if (0xff & 2)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 2))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 2)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 2))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 2)))
 						marker |= 2;
 				if (0xff & 4)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 4))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 4)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 4))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 4)))
 						marker |= 4;
 				if (0xff & 8)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 8))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 8)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 8))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 8)))
 						marker |= 8;
 				if (0xff & 0x10)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x10))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x10)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x10))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x10)))
 						marker |= 0x10;
 				if (0xff & 0x20)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x20))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x20)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x20))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x20)))
 						marker |= 0x20;
 				if (0xff & 0x40)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x40))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x40)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x40))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x40)))
 						marker |= 0x40;
 				if (0xff & 0x80)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x80))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x80)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x80))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x80)))
 						marker |= 0x80;
 			}
 			if (player->mHitObjectIndex >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
 				if (0xfe & 1)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 1))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 1)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 1))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 1)))
 						marker |= 1;
 				if (0xfe & 2)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 2))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 2)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 2))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 2)))
 						marker |= 2;
 				if (0xfe & 4)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 4))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 4)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 4))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 4)))
 						marker |= 4;
 				if (0xfe & 8)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 8))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 8)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 8))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 8)))
 						marker |= 8;
 				if (0xfe & 0x10)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x10))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x10)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x10))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x10)))
 						marker |= 0x10;
 				if (0xfe & 0x20)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x20))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x20)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x20))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x20)))
 						marker |= 0x20;
 				if (0xfe & 0x40)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x40))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x40)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x40))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x40)))
 						marker |= 0x40;
 				if (0xfe & 0x80)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x80))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x80)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x80))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x80)))
 						marker |= 0x80;
 			}
 			if (player->_A10 >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, player->_A10);
 				if (0x80 & 1)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 1))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 1)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 1))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 1)))
 						marker |= 1;
 				if (0x80 & 2)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 2))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 2)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 2))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 2)))
 						marker |= 2;
 				if (0x80 & 4)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 4))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 4)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 4))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 4)))
 						marker |= 4;
 				if (0x80 & 8)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 8))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 8)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 8))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 8)))
 						marker |= 8;
 				if (0x80 & 0x10)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x10))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x10)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x10))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x10)))
 						marker |= 0x10;
 				if (0x80 & 0x20)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x20))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x20)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x20))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x20)))
 						marker |= 0x20;
 				if (0x80 & 0x40)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x40))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x40)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x40))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x40)))
 						marker |= 0x40;
 				if (0x80 & 0x80)
-					if ((fn_800B1DFC(object) == 0x80000000 && (available & 0x80))
-					    || (fn_800B1DFC(object) != 0x80000000 && fn_800B1DF0(object, 0x80)))
+					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x80))
+					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x80)))
 						marker |= 0x80;
 			}
 		}
@@ -1455,7 +1463,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 		if (!IsHangActionState(&player->mHang, 0)) {
 			if (IsHangActionState(&player->mHang, 5) && (player->_9BC[0] > 0) && HasPlayerActionTarget(&player->mHang)) {
 				f32 angle = WrapPlayerActionAngle((player->_9BC[2] + GetCameraAngles(gGame.GetCamera())->y) - player->mMoveRotate.y);
-				if ((angle < 0.52359879f || angle > 5.7595863f) && fn_800B1D50(GetPlayerActionTarget(&player->mHang))) {
+				if ((angle < 0.52359879f || angle > 5.7595863f) && IsObjectClimbableFromHang(GetPlayerActionTarget(&player->mHang))) {
 					target     = GetPlayerActionTarget(&player->mHang);
 					actionMode = 5;
 				}
@@ -1497,13 +1505,13 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 				magnitude = 0.8f;
 			if (target && !GetMaskedObjectStatus(target, 0x0002000000000000ULL) && !GetHeldPadButtons(&player->mPad, 0x200)
 			    && magnitude > 0) {
-				f32 threshold = FRAME_RATE * fn_800B1C14();
+				f32 threshold = FRAME_RATE * GetAutoActionHoldTime();
 				if ((s32)target == player->_9AC0) {
-					if (fn_800B1BCC() > 0)
-						player->_9AC4 += frames * fn_800B1BCC();
+					if (GetAutoActionChargeRate() > 0)
+						player->_9AC4 += frames * GetAutoActionChargeRate();
 					else
 						player->_9AC4 += magnitude * frames;
-					f32 cap = fn_800B1B84();
+					f32 cap = GetAutoActionSoftTiltCap();
 					if (cap > 0 && magnitude <= 0.7f && player->_9AC4 > threshold * cap)
 						player->_9AC4 = threshold * cap;
 				} else {
@@ -1522,27 +1530,27 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 						SetPlayerActionState(&player->mJump, 14);
 						SetPlayerActionTarget(&player->mJump, hit);
 					} else if (actionMode == 4) {
-						if (fn_800B1B24(player))
+						if (IsPlayerCarryingPlug(player))
 							ReleasePlayerLiftTarget(player);
 						SetHangActionState(&player->mHang, 1);
 						SetPlayerActionTarget(&player->mHang, hit);
 					} else if (actionMode == 5) {
-						if (fn_800B1B24(player))
+						if (IsPlayerCarryingPlug(player))
 							ReleasePlayerLiftTarget(player);
 						TryLeaveHang(&player->mHang);
 						StopPlayerMotion(player);
 					} else if (actionMode == 6) {
-						if (fn_800B1B24(player))
+						if (IsPlayerCarryingPlug(player))
 							ReleasePlayerLiftTarget(player);
 						SetHangActionState(&player->mHang, 9);
 						StopPlayerMotion(player);
 					} else if (actionMode == 9) {
-						if (fn_800B1B24(player))
+						if (IsPlayerCarryingPlug(player))
 							ReleasePlayerLiftTarget(player);
 						StopPlayerMotion(player);
 						SetPushActionState(&player->mPush, 1);
 						SetPlayerActionTarget(&player->mPush, hit);
-						fn_800B1B0C(&player->mPush, 0);
+						SetPushTargetState(&player->mPush, 0);
 					}
 					player->_9AC0 = 0;
 					player->_9AC4 = 0;
@@ -1594,21 +1602,21 @@ BOOL IsJumpActionState(const XAction* action, s32 state);
 BOOL IsLadderActionState(const XAction* action, s32 state);
 BOOL IsRopeActionState(const XAction* action, s32 state);
 BOOL IsObjectActive(XObj* object);
-void fn_800B1B0C(XActPush* act, s32 value);
-BOOL fn_800B1B24(const XObjChr* chr);
+void SetPushTargetState(XActPush* act, s32 value);
+BOOL IsPlayerCarryingPlug(const XObjChr* chr);
 BOOL IsPositionBehindObject(void*, const Vec* pos, CXObj* object);
-BOOL fn_800B2014(const XObj* object);
-BOOL fn_800B2048(const XObj* object);
-BOOL fn_800B2164(const XObj* object);
-BOOL fn_800B21B8(const XObj* object);
+BOOL IsObjectPushable(const XObj* object);
+BOOL IsObjectLiftable(const XObj* object);
+BOOL IsObjectRope(const XObj* object);
+BOOL IsObjectLadder(const XObj* object);
 void ReleasePlayerLiftTarget(XObjChr* chr);
-BOOL fn_800B2250(const XObj* object);
+BOOL IsObjectClimbableLedge(const XObj* object);
 void SetCopterActionState(XAction* action, s32 state);
 f32 WrapPlayerActionAngle(f32 angle);
 BOOL IsHangActionState(const XActHang* act, s32 wanted);
 XObj* GetGameObjectByIndex(const CGame* game, s32 index);
 BOOL IsPushActionState(const XActPush* act, s32 wanted);
-u32 fn_800B31AC(const XObjChr* chr, u32 mask);
+u32 GetMaskedPlayerStatus(const XObjChr* chr, u32 mask);
 void UpdatePlayerAttachmentRequest(XObjChr* chr, f32* speed);
 void OpenPlayerEquipmentRings(XObjChr* chr);
 BOOL IsGameRunning(CGame*);
@@ -1621,13 +1629,13 @@ void SetLadderActionState(XActLadder*, s32);
 void SetRopeActionState(XActRope*, s32);
 void SetRadarActionState(XActRadar*, s32);
 void SetPopperActionState(XActPopper*, s32);
-void fn_800B503C(XActLift*, s32);
+void SetLiftTargetState(XActLift*, s32);
 void RequestPlayerUnequipAttachment(XObjChr*);
 BOOL VectorsDiffer(const Vec*, const Vec*);
 Vec GetJointMatrixTranslation(void*, HSD_JObj*);
 BOOL IsPopperFireAnimationSelected(XObjPopper*);
-void fn_800D6340(XObjRadar*);
-void fn_800D7B18(XObjCopter*);
+void StartPlayerRadarScan(XObjRadar*);
+void PlayCopterFlightAnimation(XObjCopter*);
 void HandleLiftActionInput(XActLift*, const CPadOne*, f32*);
 void HandleHangActionInput(XActHang*, const CPadOne*, f32*);
 void SuppressMovementDuringJump(XActJump*, const CPadOne*, f32*);
@@ -1642,14 +1650,14 @@ void ApplyRadarMovementWeight(XActRadar*, const CPadOne*, f32*);
 
 static inline void ReleaseCarriedTarget(XObjChr* player)
 {
-	if (fn_800B1B24(player))
+	if (IsPlayerCarryingPlug(player))
 		ReleasePlayerLiftTarget(player);
 }
 static inline void LiftInteractionTarget(XObjChr* player, XObj* target)
 {
 	SetLiftActionState(&player->mLift, 1);
 	SetPlayerActionTarget(&player->mLift, target);
-	fn_800B503C(&player->mLift, 0);
+	SetLiftTargetState(&player->mLift, 0);
 }
 static inline void StartInteractionEvent(XObj* target)
 {
@@ -1697,7 +1705,7 @@ static inline void ChooseClimbAction(XObjChr* player, XObj* object, s32 mode, bo
  */
 extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 {
-	if (fn_800B31AC(player, 0x80000000))
+	if (GetMaskedPlayerStatus(player, 0x80000000))
 		return 0;
 	f32 speed          = -1;
 	const CPadOne* pad = &player->mPad;
@@ -1764,7 +1772,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 					if (emptyHands && player->mFloorContacts[2].objectIndex >= 0
 					    && player->mFloorContacts[2].objectIndex != player->mFloorContacts[0].objectIndex) {
 						XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContacts[2].objectIndex);
-						if (fn_800B2048(object)) {
+						if (IsObjectLiftable(object)) {
 							if ((IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
 							    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
 								ReleaseCarriedTarget(player);
@@ -1788,13 +1796,13 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 					if (!handled && (IsLiftActionState(&player->mLift, 0) || IsLiftActionState(&player->mLift, 4))
 					    && player->mHitObjectIndex >= 0) {
 						XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
-						if (emptyHands && fn_800B2048(object) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex
+						if (emptyHands && IsObjectLiftable(object) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex
 						    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
 							ReleaseCarriedTarget(player);
 							SetLiftActionState(&player->mLift, 1);
 							SetPlayerActionTarget(&player->mLift, GetGameObjectByIndex(&gGame, player->mHitObjectIndex));
-							fn_800B503C(&player->mLift, 0);
-						} else if (emptyHands && fn_800B2250(object)) {
+							SetLiftTargetState(&player->mLift, 0);
+						} else if (emptyHands && IsObjectClimbableLedge(object)) {
 // Only the Japanese release starts a hang or a jump from this height check.
 #if defined(VERSION_JP)
 							f32 height = Abs(object->mSelectedFloorHeight - player->mMoveTranslate.y);
@@ -1818,9 +1826,9 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 								}
 							}
 #endif
-						} else if (fn_800B21B8(object))
+						} else if (IsObjectLadder(object))
 							ChooseClimbAction(player, object, mode, true);
-						else if (fn_800B2164(object))
+						else if (IsObjectRope(object))
 							ChooseClimbAction(player, object, mode, false);
 #if defined(VERSION_JP)
 						if (!(gGame.mStatus.mFlags & 0x80000000000ULL))
@@ -1832,12 +1840,12 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 							        && IsPushActionState(&player->mPush, 0) && IsTumbleActionState(&player->mTumble, 0)
 							        && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0)
 							        && IsRadarActionState(&player->mRadar, 0))
-							    && fn_800B2014(object) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex) {
+							    && IsObjectPushable(object) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex) {
 								ReleaseCarriedTarget(player);
 								StopPlayerMotion(player);
 								SetPushActionState(&player->mPush, 1);
 								SetPlayerActionTarget(&player->mPush, object);
-								fn_800B1B0C(&player->mPush, 0);
+								SetPushTargetState(&player->mPush, 0);
 							}
 					}
 				}
@@ -1865,7 +1873,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100)) {
 					SetCopterActionState(&player->mCopter, 3);
 					player->SetAnim(39, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-					fn_800D7B18(&player->mCopterObj);
+					PlayCopterFlightAnimation(&player->mCopterObj);
 					StopPlayerMotion(player);
 				}
 			} else if (IsPlayerAttachmentEquipped(player, 2)) {
@@ -1876,7 +1884,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 			} else if (IsPlayerAttachmentEquipped(player, 3)) {
 				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100)) {
 					SetRadarActionState(&player->mRadar, 3);
-					fn_800D6340(&player->mRadarObj);
+					StartPlayerRadarScan(&player->mRadarObj);
 				}
 			} else if (IsPlayerAttachmentEquipped(player, 4) && !IsLiftActionState(&player->mLift, 0)
 			           && IsCarryingToothbrush(&player->mLift)) {
@@ -1904,7 +1912,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 			player->_A1C = 0;
 			player->_A20 = (pad->mTrigger >> 8) & 1;
 		}
-		if ((player->mLiftPlugFlags & 2) && player->_A1C >= FRAME_RATE * ((s32)fn_8006E9AC(3) / 100.f)) {
+		if ((player->mLiftPlugFlags & 2) && player->_A1C >= FRAME_RATE * ((s32)GetInteractionParameter(3) / 100.f)) {
 			if (player->_A20)
 				lift = true;
 		} else if (player->mLiftPlugFlags & 1) {
@@ -2059,7 +2067,7 @@ extern "C" f32 GetControlStickMagnitude(const CPadOne*);
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr*, f32);
 extern "C" const Vec* GetCurrentEdgeWorldOffsetPosition(const XObj*);
 extern "C" void UpdatePlayerSuitChange(XObjChr*);
-extern "C" void fn_800AC660(XObjChr*, u32, f32, f32);
+extern "C" void UpdatePlayerMovementAndContacts(XObjChr*, u32, f32, f32);
 extern "C" void UpdatePlayerActionAnimations(XObjChr*, u32);
 extern "C" void UpdatePlayerHeadOffset(XObjChr*, u32);
 extern "C" void UpdatePlayerBattery(XObjChr*, u32);
@@ -2268,7 +2276,7 @@ void XObjChr::UpdateObject(u32 frames)
 		speed *= scale;
 	}
 	UpdatePlayerSuitChange(this);
-	fn_800AC660(this, frames, speed, direction);
+	UpdatePlayerMovementAndContacts(this, frames, speed, direction);
 	UpdatePlayerActionAnimations(this, frames);
 	XObj::UpdateObject(frames);
 
@@ -3896,7 +3904,7 @@ extern "C" s32 FindPlayerSupportingFloor(XObjChr* chr, s32 group, s32 preferred)
 }
 
 extern "C" {
-void fn_800CE334(XActLift*, u32, BOOL);
+void SetLiftPlugConnection(XActLift*, u32, BOOL);
 void ResetPlayerAttachment(XObjChr*, s32);
 void SetPlugSparkMode(XObjPlug*, s32);
 void DisablePlugSparkEffect(XObjPlug*);
@@ -4274,7 +4282,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 		XObj* target      = FindObj(args[1]);
 		mLift.mState      = 7;
 		mLift.mPlugTarget = target;
-		fn_800CE334(&mLift, value, FALSE);
+		SetLiftPlugConnection(&mLift, value, FALSE);
 		result = -1;
 		break;
 	}
@@ -4286,7 +4294,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 		if (anim) {
 			mLift.mState      = 7;
 			mLift.mPlugTarget = target;
-			fn_800CE334(&mLift, args[2], FALSE);
+			SetLiftPlugConnection(&mLift, args[2], FALSE);
 			do {
 				f32 end   = anim ? HSD_AObjGetEndFrame(anim) : 0;
 				f32 frame = anim ? HSD_AObjGetCurrentFrame(anim) : 0;
@@ -4346,7 +4354,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 		break;
 	}
 	case 111:
-		fn_800CE334(&mLift, args[1], TRUE);
+		SetLiftPlugConnection(&mLift, args[1], TRUE);
 		break;
 	case 120:
 		if (args[1])
@@ -5072,7 +5080,7 @@ extern "C" BOOL IsLadderActionState(const XAction* action, s32 state)
  * @note Address: 0x800A2C98
  * @note Size: 0x1C
  */
-extern "C" void fn_800A2C98(Vec* dst, const Vec* src)
+extern "C" void CopyVecToCVec(Vec* dst, const Vec* src)
 {
 	dst->x = src->x;
 	dst->y = src->y;
@@ -5512,7 +5520,7 @@ void XObjChr::vfC4()
 }
 
 extern "C" void DrawPopperShotRings(XActPopper* act);
-extern "C" void fn_800BD320(XActRadar* act);
+extern "C" void DrawPlayerRadarEffects(XActRadar* act);
 extern "C" void DrawPointParticleDisplay(PointPtcl* points, f32 row);
 
 static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction, u32 color)
@@ -5542,7 +5550,7 @@ void XObjChr::vfC8()
 {
 	vfC8__4XObjFv(this);
 	DrawPopperShotRings(&mPopper);
-	fn_800BD320(&mRadar);
+	DrawPlayerRadarEffects(&mRadar);
 	if (!(gGame.mStatus.mFlags & 0x100))
 		DrawPlayerLookMarker(&mLook);
 
@@ -5552,7 +5560,7 @@ void XObjChr::vfC8()
 		f32 x, y;
 		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
 		x -= 31.0f;
-		f32 duration = (f32)(s32)fn_8006E9AC(0) / 100.0f;
+		f32 duration = (f32)(s32)GetInteractionParameter(0) / 100.0f;
 		DrawPlayerGauge(x, y, 62.0f, _9AC4 / (IDLE_SECOND * duration), 0x00FF0064);
 	}
 	if (!camera->IsAction(4) && (mAnimId == 0x7A || mAnimId == 0xCA)) {
@@ -6925,7 +6933,7 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
  * @note Address: 0x800B1B0C
  * @note Size: 0x8
  */
-extern "C" void fn_800B1B0C(XActPush* act, s32 value)
+extern "C" void SetPushTargetState(XActPush* act, s32 value)
 {
 	act->_24 = value;
 }
@@ -6952,7 +6960,7 @@ extern "C" void SetHangActionState(XActHang* act, s32 state)
  * @note Address: 0x800B1B24
  * @note Size: 0x4C
  */
-extern "C" BOOL fn_800B1B24(const XObjChr* chr)
+extern "C" BOOL IsPlayerCarryingPlug(const XObjChr* chr)
 {
 	return chr->mLift.mState == 4 && IsLiftTargetPlug((XActLift*)&chr->mLift);
 }
@@ -6970,27 +6978,27 @@ extern "C" void SetPlayerActionTarget(XAction* action, XObj* target)
  * @note Address: 0x800B1B84
  * @note Size: 0x48
  */
-extern "C" f32 fn_800B1B84()
+extern "C" f32 GetAutoActionSoftTiltCap()
 {
-	return (f32)(s32)fn_8006E9AC(2) / 100.0f;
+	return (f32)(s32)GetInteractionParameter(2) / 100.0f;
 }
 
 /**
  * @note Address: 0x800B1BCC
  * @note Size: 0x48
  */
-extern "C" f32 fn_800B1BCC()
+extern "C" f32 GetAutoActionChargeRate()
 {
-	return (f32)(s32)fn_8006E9AC(1) / 100.0f;
+	return (f32)(s32)GetInteractionParameter(1) / 100.0f;
 }
 
 /**
  * @note Address: 0x800B1C14
  * @note Size: 0x48
  */
-extern "C" f32 fn_800B1C14()
+extern "C" f32 GetAutoActionHoldTime()
 {
-	return (f32)(s32)fn_8006E9AC(0) / 100.0f;
+	return (f32)(s32)GetInteractionParameter(0) / 100.0f;
 }
 
 /**
@@ -7008,7 +7016,7 @@ extern "C" f32 GetControlStickMagnitude(const CPadOne* pad)
  * @note Address: 0x800B1D50
  * @note Size: 0x34
  */
-extern "C" BOOL fn_800B1D50(XObj* object)
+extern "C" BOOL IsObjectClimbableFromHang(XObj* object)
 {
 	return (u8)((object->mStatus.mFlags & 0x0000000400000000ULL) != 0);
 }
@@ -7057,7 +7065,7 @@ extern "C" void EnablePlayerLook(XObjChrLook* look)
  * @note Address: 0x800B1DF0
  * @note Size: 0xC
  */
-extern "C" u32 fn_800B1DF0(XObj* object, u32 mask)
+extern "C" u32 GetMaskedObjectMarkerOverride(XObj* object, u32 mask)
 {
 	return object->_8B0 & mask;
 }
@@ -7066,7 +7074,7 @@ extern "C" u32 fn_800B1DF0(XObj* object, u32 mask)
  * @note Address: 0x800B1DFC
  * @note Size: 0x8
  */
-extern "C" u32 fn_800B1DFC(XObj* object)
+extern "C" u32 GetObjectMarkerOverride(XObj* object)
 {
 	return object->_8B0;
 }
@@ -7130,7 +7138,7 @@ extern "C" s32 GetSelectedFloorIndex(const XObj* object)
  * @note Address: 0x800B200C
  * @note Size: 0x8
  */
-extern "C" BOOL fn_800B200C(const XObj*)
+extern "C" BOOL IsObjectPushableFromBack(const XObj*)
 {
 	return false;
 }
@@ -7139,7 +7147,7 @@ extern "C" BOOL fn_800B200C(const XObj*)
  * @note Address: 0x800B2014
  * @note Size: 0x34
  */
-extern "C" BOOL fn_800B2014(const XObj* object)
+extern "C" BOOL IsObjectPushable(const XObj* object)
 {
 	return TestStatus(object, 0x0000008000000000ULL);
 }
@@ -7148,7 +7156,7 @@ extern "C" BOOL fn_800B2014(const XObj* object)
  * @note Address: 0x800B2048
  * @note Size: 0x34
  */
-extern "C" BOOL fn_800B2048(const XObj* object)
+extern "C" BOOL IsObjectLiftable(const XObj* object)
 {
 	return TestStatus(object, 0x0000000100000000ULL);
 }
@@ -7256,7 +7264,7 @@ extern "C" void SetPlayerRopeState(XObjChr* chr, s32 state, XObj* target)
  * @note Address: 0x800B2164
  * @note Size: 0x34
  */
-extern "C" BOOL fn_800B2164(const XObj* object)
+extern "C" BOOL IsObjectRope(const XObj* object)
 {
 	return TestStatus(object, 0x0000001000000000ULL);
 }
@@ -7274,7 +7282,7 @@ extern "C" void SetPlayerLadderState(XObjChr* chr, s32 state, XObj* target)
  * @note Address: 0x800B21B8
  * @note Size: 0x34
  */
-extern "C" BOOL fn_800B21B8(const XObj* object)
+extern "C" BOOL IsObjectLadder(const XObj* object)
 {
 	return TestStatus(object, 0x0000000800000000ULL);
 }
@@ -7306,7 +7314,7 @@ extern "C" void SetPlayerHangState(XObjChr* chr, s32 state, XObj* target)
  * @note Address: 0x800B2250
  * @note Size: 0x34
  */
-extern "C" BOOL fn_800B2250(const XObj* object)
+extern "C" BOOL IsObjectClimbableLedge(const XObj* object)
 {
 	return TestStatus(object, 0x0000000200000000ULL);
 }
@@ -7315,7 +7323,7 @@ extern "C" BOOL fn_800B2250(const XObj* object)
  * @note Address: 0x800B2284
  * @note Size: 0x10
  */
-extern "C" s32 fn_800B2284(const XObj* object, s32 index)
+extern "C" s32 GetObjectPlacementParam(const XObj* object, s32 index)
 {
 	const s32* entries = &object->_25C;
 	return entries[index];
@@ -7325,7 +7333,7 @@ extern "C" s32 fn_800B2284(const XObj* object, s32 index)
  * @note Address: 0x800B2294
  * @note Size: 0x34
  */
-extern "C" BOOL fn_800B2294(const XObj* object)
+extern "C" BOOL HasObjectCustomLedgeHeight(const XObj* object)
 {
 	return TestStatus(object, 0x0000002000000000ULL);
 }
@@ -7379,7 +7387,7 @@ extern "C" void SetObjectTargetY(CObjVec* value, f32 y)
  * @note Address: 0x800B2390
  * @note Size: 0x8
  */
-extern "C" BOOL fn_800B2390(const XActPush*)
+extern "C" BOOL CanFallDuringPushAction(const XActPush*)
 {
 	return true;
 }
@@ -7469,7 +7477,7 @@ extern "C" void ClearObjectStatusFlags(XObj* object, u64 mask)
  * @note Address: 0x800B253C
  * @note Size: 0xC
  */
-extern "C" u32 fn_800B253C(const XObjChr* chr, u32 mask)
+extern "C" u32 GetMaskedPlayerStatusFlags(const XObjChr* chr, u32 mask)
 {
 	return chr->_980.mFlags & mask;
 }
@@ -7525,7 +7533,7 @@ extern "C" f32 GetHorizontalDistance(const Vec* a, const Vec* b)
  * @note Address: 0x800B26A0
  * @note Size: 0x14
  */
-extern "C" BOOL fn_800B26A0(const XAction* action, s32 wanted)
+extern "C" BOOL IsPlayerActionMoveDirection(const XAction* action, s32 wanted)
 {
 	return action->_0C == wanted;
 }
@@ -7615,7 +7623,7 @@ extern "C" void ScaleVectorInPlace(Vec* value, f32 scale)
  * @note Address: 0x800B29B8
  * @note Size: 0x8
  */
-extern "C" BOOL fn_800B29B8(const XActRadar*)
+extern "C" BOOL CanRadarActionSlideOnSlope(const XActRadar*)
 {
 	return true;
 }
@@ -7624,7 +7632,7 @@ extern "C" BOOL fn_800B29B8(const XActRadar*)
  * @note Address: 0x800B29C0
  * @note Size: 0x8
  */
-extern "C" BOOL fn_800B29C0(const XActPopper*)
+extern "C" BOOL CanPopperActionSlideOnSlope(const XActPopper*)
 {
 	return true;
 }
@@ -7633,7 +7641,7 @@ extern "C" BOOL fn_800B29C0(const XActPopper*)
  * @note Address: 0x800B29C8
  * @note Size: 0x2C
  */
-extern "C" BOOL fn_800B29C8(const XActCopter* act)
+extern "C" BOOL CanCopterActionSlideOnSlope(const XActCopter* act)
 {
 	return act->mState == 0 || act->mState == 6 || act->mState == 9;
 }
@@ -7642,7 +7650,7 @@ extern "C" BOOL fn_800B29C8(const XActCopter* act)
  * @note Address: 0x800B29F4
  * @note Size: 0x8
  */
-extern "C" BOOL fn_800B29F4(const XActTumble*)
+extern "C" BOOL CanTumbleActionSlideOnSlope(const XActTumble*)
 {
 	return true;
 }
@@ -7651,7 +7659,7 @@ extern "C" BOOL fn_800B29F4(const XActTumble*)
  * @note Address: 0x800B29FC
  * @note Size: 0x8
  */
-extern "C" BOOL fn_800B29FC(const XActPush*)
+extern "C" BOOL CanPushActionSlideOnSlope(const XActPush*)
 {
 	return true;
 }
@@ -7660,7 +7668,7 @@ extern "C" BOOL fn_800B29FC(const XActPush*)
  * @note Address: 0x800B2A04
  * @note Size: 0x24
  */
-extern "C" BOOL fn_800B2A04(const XActRope* act)
+extern "C" BOOL CanRopeActionSlideOnSlope(const XActRope* act)
 {
 	return act->mState == 0 || act->mState == 10;
 }
@@ -7669,7 +7677,7 @@ extern "C" BOOL fn_800B2A04(const XActRope* act)
  * @note Address: 0x800B2A28
  * @note Size: 0x24
  */
-extern "C" BOOL fn_800B2A28(const XActLadder* act)
+extern "C" BOOL CanLadderActionSlideOnSlope(const XActLadder* act)
 {
 	return act->mState == 0 || act->mState == 11;
 }
@@ -7678,7 +7686,7 @@ extern "C" BOOL fn_800B2A28(const XActLadder* act)
  * @note Address: 0x800B2A4C
  * @note Size: 0x24
  */
-extern "C" BOOL fn_800B2A4C(const XActJump* act)
+extern "C" BOOL CanJumpActionSlideOnSlope(const XActJump* act)
 {
 	return act->mState == 0 || act->mState == 4;
 }
@@ -7696,7 +7704,7 @@ extern "C" BOOL IsHangActionIdle(const XActHang* act)
  * @note Address: 0x800B2A80
  * @note Size: 0x8
  */
-extern "C" BOOL fn_800B2A80(const XActLift*)
+extern "C" BOOL CanLiftActionSlideOnSlope(const XActLift*)
 {
 	return true;
 }
@@ -7715,7 +7723,7 @@ extern "C" CVec* NormalizeVectorInPlace(CVec* value)
  * @note Address: 0x800B2ABC
  * @note Size: 0xF4
  */
-extern "C" BOOL fn_800B2ABC(const XObjMap* map, const Vec* pos, XObjMapHit* hit, Vec* tri)
+extern "C" BOOL FindMapFloorBelow(const XObjMap* map, const Vec* pos, XObjMapHit* hit, Vec* tri)
 {
 	s32 start = FindFloorStart(map, 0.2f + pos->y);
 	for (int i = 0; i < map->mTrigonCount; i++) {
@@ -7792,7 +7800,7 @@ extern "C" BOOL IsPopperActionState(const XActPopper* act, s32 wanted)
  * @note Address: 0x800B2D54
  * @note Size: 0x8
  */
-extern "C" CVec* fn_800B2D54(XObjPlug* plug)
+extern "C" CVec* GetPlayerPlugCordPull(XObjPlug* plug)
 {
 	return &plug->mCord._6C;
 }
@@ -7801,7 +7809,7 @@ extern "C" CVec* fn_800B2D54(XObjPlug* plug)
  * @note Address: 0x800B2D5C
  * @note Size: 0x8
  */
-extern "C" BOOL fn_800B2D5C(const XActRadar*)
+extern "C" BOOL CanFallDuringRadarAction(const XActRadar*)
 {
 	return true;
 }
@@ -7810,7 +7818,7 @@ extern "C" BOOL fn_800B2D5C(const XActRadar*)
  * @note Address: 0x800B2D64
  * @note Size: 0x8
  */
-extern "C" BOOL fn_800B2D64(const XActPopper*)
+extern "C" BOOL CanFallDuringPopperAction(const XActPopper*)
 {
 	return true;
 }
@@ -7819,7 +7827,7 @@ extern "C" BOOL fn_800B2D64(const XActPopper*)
  * @note Address: 0x800B2D6C
  * @note Size: 0x54
  */
-extern "C" BOOL fn_800B2D6C(const XActCopter* act)
+extern "C" BOOL CanFallDuringCopterAction(const XActCopter* act)
 {
 	s32 state = act->mState;
 	return (state == 0 || state == 3 || state == 4 || state == 7 || state == 8 || state == 5 || state == 6 || state == 9);
@@ -7829,7 +7837,7 @@ extern "C" BOOL fn_800B2D6C(const XActCopter* act)
  * @note Address: 0x800B2DC0
  * @note Size: 0x24
  */
-extern "C" BOOL fn_800B2DC0(const XActTumble* act)
+extern "C" BOOL CanFallDuringTumbleAction(const XActTumble* act)
 {
 	return (act->mState != 8 && act->mState != 9);
 }
@@ -7838,7 +7846,7 @@ extern "C" BOOL fn_800B2DC0(const XActTumble* act)
  * @note Address: 0x800B2DE4
  * @note Size: 0x34
  */
-extern "C" BOOL fn_800B2DE4(const XActRope* act)
+extern "C" BOOL CanFallDuringRopeAction(const XActRope* act)
 {
 	s32 state = act->mState;
 	return (state == 0 || state == 9 || state == 10 || state == 11);
@@ -7848,7 +7856,7 @@ extern "C" BOOL fn_800B2DE4(const XActRope* act)
  * @note Address: 0x800B2E18
  * @note Size: 0x2C
  */
-extern "C" BOOL fn_800B2E18(const XActLadder* act)
+extern "C" BOOL CanFallDuringLadderAction(const XActLadder* act)
 {
 	s32 state = act->mState;
 	return (state == 0 || state == 10 || state == 11);
@@ -7858,7 +7866,7 @@ extern "C" BOOL fn_800B2E18(const XActLadder* act)
  * @note Address: 0x800B2E44
  * @note Size: 0x3C
  */
-extern "C" BOOL fn_800B2E44(const XActJump* act)
+extern "C" BOOL CanFallDuringJumpAction(const XActJump* act)
 {
 	s32 state = act->mState;
 	return (state == 0 || state == 2 || state == 3 || state == 4 || state == 17);
@@ -7868,7 +7876,7 @@ extern "C" BOOL fn_800B2E44(const XActJump* act)
  * @note Address: 0x800B2E80
  * @note Size: 0x24
  */
-extern "C" BOOL fn_800B2E80(const XActHang* act)
+extern "C" BOOL CanFallDuringHangAction(const XActHang* act)
 {
 	return (act->mState == 0 || act->mState == 10);
 }
@@ -7886,7 +7894,7 @@ extern "C" s32 IsGameMenuActive(const CGame* game)
  * @note Address: 0x800B2EB0
  * @note Size: 0x8
  */
-extern "C" u32 fn_800B2EB0(const XObjPlug* plug)
+extern "C" u32 GetPlayerPlugConnection(const XObjPlug* plug)
 {
 	return plug->_D3C;
 }
@@ -8014,7 +8022,7 @@ extern "C" f32 GetVectorDistance(const Vec* a, const Vec* b)
  * @note Address: 0x800B2FC0
  * @note Size: 0x4
  */
-extern "C" Vec* fn_800B2FC0(CObjVec* value)
+extern "C" Vec* GetObjectVectorCurrent(CObjVec* value)
 {
 	return value;
 }
@@ -8093,7 +8101,7 @@ extern "C" f32 WrapPlayerActionAngle(f32 angle)
  * @note Address: 0x800B304C
  * @note Size: 0x8
  */
-extern "C" u32 fn_800B304C(const XAction* action)
+extern "C" u32 GetPlayerActionMoveDirection(const XAction* action)
 {
 	return action->_0C;
 }
@@ -8102,7 +8110,7 @@ extern "C" u32 fn_800B304C(const XAction* action)
  * @note Address: 0x800B3054
  * @note Size: 0x8
  */
-extern "C" f32 fn_800B3054(const XActHang* act)
+extern "C" f32 GetHangDistance(const XActHang* act)
 {
 	return act->_48;
 }
@@ -8111,7 +8119,7 @@ extern "C" f32 fn_800B3054(const XActHang* act)
  * @note Address: 0x800B305C
  * @note Size: 0x8
  */
-extern "C" Vec* fn_800B305C(XActHang* act)
+extern "C" Vec* GetHangFloorCenter(XActHang* act)
 {
 	return &act->_3C;
 }
@@ -8201,7 +8209,7 @@ extern "C" f32 PlayerActionCosine(f32 angle)
  * @note Address: 0x800B30FC
  * @note Size: 0x8
  */
-extern "C" f32 fn_800B30FC(const XObjChr* chr)
+extern "C" f32 GetPlayerMoveSpeedScale(const XObjChr* chr)
 {
 	return chr->_A40;
 }
@@ -8291,7 +8299,7 @@ extern "C" CVec __ct__4CVecFfff(f32 x, f32 y, f32 z)
  * @note Address: 0x800B31AC
  * @note Size: 0xC
  */
-extern "C" u32 fn_800B31AC(const XObjChr* chr, u32 mask)
+extern "C" u32 GetMaskedPlayerStatus(const XObjChr* chr, u32 mask)
 {
 	return chr->_980.mFlags & mask;
 }
@@ -8469,7 +8477,7 @@ extern "C" void SetLadderActionState(XActLadder* act, s32 state)
  * @note Address: 0x800B503C
  * @note Size: 0x8
  */
-extern "C" void fn_800B503C(XActLift* act, s32 value)
+extern "C" void SetLiftTargetState(XActLift* act, s32 value)
 {
 	act->_24 = value;
 }

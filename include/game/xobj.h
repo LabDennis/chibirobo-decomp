@@ -278,7 +278,7 @@ void UpdateObject__4XObjFUl(XObj* object, u32 frames);
 void Release__4XObjFv(XObj* object);
 void vfDC__4XObjFiUc(CXObj* object, BOOL enabled, u8 mode);
 // walk callback, sets up each material's pe and toon flags
-void fn_80091888(HSD_JObj* joint, f32** arguments, s32 type);
+void ApplyJointMaterialPEPresets(HSD_JObj* joint, f32** arguments, s32 type);
 // the default LoadFromPlacement, reads the object's coord info
 BOOL LoadFromPlacement__4XObjFRC9CoordInfo(XObj* object, const CoordInfo* info);
 void ResetObjectState__4XObjFv(XObj* object);

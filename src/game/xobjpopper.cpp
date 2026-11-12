@@ -55,7 +55,7 @@ void UpdateObject__10XObjPopperFUl(XObjPopper* object, u32 frames)
  * @note Address: 0x800D7380
  * @note Size: 0xCC
  */
-void fn_800D7380(XObjPopper* object)
+void ShowIdlePlayerPopper(XObjPopper* object)
 {
 	object->SetAnim(2, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	object->UpdateAnim(0);
@@ -69,7 +69,7 @@ void fn_800D7380(XObjPopper* object)
  * @note Address: 0x800D744C
  * @note Size: 0x50
  */
-void fn_800D744C(XObjPopper* object)
+void PlayPopperLowerAnimation(XObjPopper* object)
 {
 	object->SetAnim(6, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
@@ -96,7 +96,7 @@ void PlayPopperFireAnimation(XObjPopper* object)
  * @note Address: 0x800D7500
  * @note Size: 0x50
  */
-void fn_800D7500(XObjPopper* object)
+void PlayPopperRaiseAnimation(XObjPopper* object)
 {
 	object->SetAnim(3, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
@@ -179,7 +179,7 @@ void ShowIdlePlayerCopter(XObjCopter* object)
  * @note Address: 0x800D7A78
  * @note Size: 0x50
  */
-void fn_800D7A78(XObjCopter* object)
+void PlayCopterLandingAnimation(XObjCopter* object)
 {
 	object->SetAnim(7, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
@@ -188,7 +188,7 @@ void fn_800D7A78(XObjCopter* object)
  * @note Address: 0x800D7AC8
  * @note Size: 0x50
  */
-void fn_800D7AC8(XObjCopter* object)
+void PlayCopterDescentAnimation(XObjCopter* object)
 {
 	object->SetAnim(3, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
@@ -197,7 +197,7 @@ void fn_800D7AC8(XObjCopter* object)
  * @note Address: 0x800D7B18
  * @note Size: 0x50
  */
-void fn_800D7B18(XObjCopter* object)
+void PlayCopterFlightAnimation(XObjCopter* object)
 {
 	object->SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }

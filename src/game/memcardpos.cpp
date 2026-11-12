@@ -5,7 +5,7 @@
 #include "game/cmotioncontrolcamera.h"
 #include "game/xobjchr.h"
 
-extern "C" void fn_8014127C(CInterfaceCameraAction* action);
+extern "C" void SetMapCameraKeepPreviousEye(CInterfaceCameraAction* action);
 
 /**
  * @note Address: 0x80087A4C
@@ -36,7 +36,7 @@ extern "C" void RestoreSavedPlayerAndCamera(Memcard* card)
 			memento.mDistance = save->mCameraDistance;
 			memento.mFov      = save->mCameraFov;
 			memento.mAction   = gGame.mCameraActions.mTable[save->mCameraAction];
-			fn_8014127C(gGame.mCameraActions.mTable[CAMACTION_MAP]);
+			SetMapCameraKeepPreviousEye(gGame.mCameraActions.mTable[CAMACTION_MAP]);
 			motion->SetMemento(&memento);
 		}
 	}

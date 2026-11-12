@@ -38,7 +38,7 @@ extern "C" BOOL StartMemoryCardSaveWrite(Memcard* card, s32 channel, s32 file, B
  * @note Address: 0x8008A2A0
  * @note Size: 0x8
  */
-extern "C" BOOL fn_8008A2A0(Memcard* card)
+extern "C" BOOL LoadMemoryCardResources(Memcard* card)
 {
 	return TRUE;
 }

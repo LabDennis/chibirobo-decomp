@@ -18,7 +18,7 @@ void DrawPlayerEquipmentRings(XObjChrMenu*);
 void DrawOXMenu(OXMenu*);
 void DrawScanModePrompt();
 void CMsg_Draw(CMsg*);
-void fn_8007E978();
+void CEvt_Draw();
 void DrawObjectLoadingProgress(InfoScrn*);
 void DrawHudWithTransitions(InfoScrn*);
 void DrawHudPauseLabel(InfoScrn*);
@@ -201,7 +201,7 @@ void CGame::Draw()
 		if (mStatus.mFlags & 0x800)
 			DrawOXMenu(&GetPlayer()->mOXMenu);
 		if (!gGame.mMotionControlCamera.IsAction(4)) {
-			fn_8007E978();
+			CEvt_Draw();
 			for (s32 i = 0; i < 2; ++i)
 				CMsg_Draw(&mCMsgs[i]);
 		}

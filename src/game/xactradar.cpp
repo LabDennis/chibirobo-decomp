@@ -16,7 +16,7 @@
  * @note Address: 0x800BD320
  * @note Size: 0x4
  */
-extern "C" void fn_800BD320(XActRadar*)
+extern "C" void DrawPlayerRadarEffects(XActRadar*)
 {
 }
 
@@ -115,7 +115,7 @@ void SetObjectJointTranslationByPath(CXObj* obj, s32 depth, const s32* path, f32
 BOOL IsPlayerStopped(XObjChr* chr);
 void CheckPopperShotImpact(XActPopperShot* shot);
 void UpdateCopterBobbing(XActCopter* act, u32 frames, f32 speed);
-CVec fn_800C35F0(XObjChr* chr);
+CVec GetPlayerFloorSlope(XObjChr* chr);
 }
 
 // how far the stick is pushed
@@ -180,7 +180,7 @@ XObj* FindNearestRadarTarget(XActRadar* act);
 
 void ActivatePlayerRadar(XObjRadar*);
 void DeactivatePlayerRadar(XObjRadar*);
-void fn_800D6340(XObjRadar*);
+void StartPlayerRadarScan(XObjRadar*);
 void SetRadarDishPitch(XObjRadar*, f32);
 void SetRadarDishYaw(XObjRadar*, f32);
 u32 GetRadarParameter(s32);
@@ -264,7 +264,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 		XObjChr* owner = act->mOwner;
 		owner->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 		owner->_A2C = 3;
-		fn_800D6340(&act->mOwner->mRadarObj);
+		StartPlayerRadarScan(&act->mOwner->mRadarObj);
 		act->mState  = 4;
 		act->mTarget = FindNearestRadarTarget(act);
 		if (gGame.mPad.mPad[0].mButton & 8)
@@ -511,11 +511,11 @@ void DrawPopperShotParticles(XActPopper* act)
 }
 
 void SetPlayerPopperMountHidden(XObj*, BOOL);
-void fn_800D7380(XObjPopper*);
-void fn_800D744C(XObjPopper*);
+void ShowIdlePlayerPopper(XObjPopper*);
+void PlayPopperLowerAnimation(XObjPopper*);
 BOOL IsPopperFireAnimationSelected(XObjPopper*);
 void PlayPopperFireAnimation(XObjPopper*);
-void fn_800D7500(XObjPopper*);
+void PlayPopperRaiseAnimation(XObjPopper*);
 void PlayPopperStowAnimation(XObjPopper*);
 void ShowAndDeployPopper(XObjPopper*);
 static inline void ClearPopperCharge(XActPopperCharge* charge)
@@ -630,17 +630,17 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 	case 2:
 		if (anim != 0x821) {
 			act->mOwner->SetAnim(0x821, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			fn_800D7500(&act->mOwner->mPopperObj);
+			PlayPopperRaiseAnimation(&act->mOwner->mPopperObj);
 		} else if (aobj->flags & 0x44000000) {
 			act->mOwner->SetAnim(0x822, FALSE, NULL, NULL, NULL, 0, 1, 1, 10);
-			fn_800D7380(&act->mOwner->mPopperObj);
+			ShowIdlePlayerPopper(&act->mOwner->mPopperObj);
 			act->mState = 0;
 		}
 		break;
 	case 3:
 		if (anim != 0x822) {
 			act->mOwner->SetAnim(0x822, FALSE, NULL, NULL, NULL, 0, 1, 1, 10);
-			fn_800D7380(&act->mOwner->mPopperObj);
+			ShowIdlePlayerPopper(&act->mOwner->mPopperObj);
 		}
 		act->mState = 0;
 		break;
@@ -725,20 +725,20 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 			act->mState = 8;
 		} else if (aobj->flags & 0x44000000) {
 			act->mOwner->SetAnim(0x822, FALSE, NULL, NULL, NULL, 0, 1, 1, 10);
-			fn_800D7380(&act->mOwner->mPopperObj);
+			ShowIdlePlayerPopper(&act->mOwner->mPopperObj);
 			act->mState = 0;
 		}
 		break;
 	case 8:
 		if (!IsPopperFireAnimationSelected(&act->mOwner->mPopperObj)) {
-			fn_800D7380(&act->mOwner->mPopperObj);
+			ShowIdlePlayerPopper(&act->mOwner->mPopperObj);
 			act->mState = 0;
 		}
 		break;
 	case 9:
 		if (anim != 0x824) {
 			act->mOwner->SetAnim(0x824, FALSE, NULL, NULL, NULL, 0, 1, 1, 10);
-			fn_800D744C(&act->mOwner->mPopperObj);
+			PlayPopperLowerAnimation(&act->mOwner->mPopperObj);
 			break;
 		}
 		if (!(aobj->flags & 0x44000000))
@@ -1082,11 +1082,11 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, HSD_AObj* aobj, u32 fra
 		UpdateCopterBobbing(act, frames, -1.0f);
 		if (anim != 0x28) {
 			act->mOwner->SetAnim(0x28, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			fn_800D7AC8(&act->mOwner->mCopterObj);
+			PlayCopterDescentAnimation(&act->mOwner->mCopterObj);
 		}
 		if (act->mOwner->GetHeight() <= 0.1f) {
 			act->mOwner->SetAnim(0x816, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-			fn_800D7A78(&act->mOwner->mCopterObj);
+			PlayCopterLandingAnimation(&act->mOwner->mCopterObj);
 			act->mState = 6;
 		}
 		break;
@@ -1096,9 +1096,9 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, HSD_AObj* aobj, u32 fra
 			act->mOwner->SetAnim(0x28, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			act->mOwner->mCopterObj.SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		}
-		if (act->mOwner->GetHeight() <= 0.0f || (act->mOwner->GetHeight() <= 1.0f && fn_800C35F0(act->mOwner).Length() > 0.5f)) {
+		if (act->mOwner->GetHeight() <= 0.0f || (act->mOwner->GetHeight() <= 1.0f && GetPlayerFloorSlope(act->mOwner).Length() > 0.5f)) {
 			act->mOwner->SetAnim(0x816, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-			fn_800D7A78(&act->mOwner->mCopterObj);
+			PlayCopterLandingAnimation(&act->mOwner->mCopterObj);
 			act->mState = 6;
 		}
 		break;
@@ -1114,22 +1114,22 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, HSD_AObj* aobj, u32 fra
 	case 7:
 		if (anim != 0x38) {
 			act->mOwner->SetAnim(0x38, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			fn_800D7AC8(&act->mOwner->mCopterObj);
+			PlayCopterDescentAnimation(&act->mOwner->mCopterObj);
 		}
 		if (act->mOwner->GetHeight() <= 0.1f) {
 			act->mOwner->SetAnim(0x59, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-			fn_800D7A78(&act->mOwner->mCopterObj);
+			PlayCopterLandingAnimation(&act->mOwner->mCopterObj);
 			act->mState = 9;
 		}
 		break;
 	case 8:
 		if (anim != 0x1A) {
 			act->mOwner->SetAnim(0x1A, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			fn_800D7AC8(&act->mOwner->mCopterObj);
+			PlayCopterDescentAnimation(&act->mOwner->mCopterObj);
 		}
 		if (act->mOwner->GetHeight() <= 0.1f) {
 			act->mOwner->SetAnim(0x1B, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-			fn_800D7A78(&act->mOwner->mCopterObj);
+			PlayCopterLandingAnimation(&act->mOwner->mCopterObj);
 			act->mState = 9;
 		}
 		break;
@@ -1170,7 +1170,7 @@ void UpdateCopterBobbing(XActCopter* act, u32 frames, f32 speed)
  * @note Address: 0x800C35F0
  * @note Size: 0x2C
  */
-CVec fn_800C35F0(XObjChr* chr)
+CVec GetPlayerFloorSlope(XObjChr* chr)
 {
 	return chr->_963C;
 }
@@ -1184,7 +1184,7 @@ void HandleCopterActionInput(XActCopter* act, const CPadOne* pad, f32* weight)
 	if (act->mState == 3) {
 		if ((pad->mTrigger & 0x200) || IsPlayerStopped(act->mOwner)) {
 			act->mState = 4;
-			fn_800D7AC8(&act->mOwner->mCopterObj);
+			PlayCopterDescentAnimation(&act->mOwner->mCopterObj);
 		}
 		*weight = 1.0f;
 	} else if (act->mState == 4 || act->mState == 7 || act->mState == 8) {

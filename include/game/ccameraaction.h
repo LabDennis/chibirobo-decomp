@@ -818,7 +818,7 @@ s32 CollectCameraAreasContainingPoint(CamAreaState* state, Vec pos, s32* ids);
 s32 FindFirstCameraAreaContainingPoint(CamAreaState* state, Vec pos);
 s32 FindEnabledCameraAreaContainingPoint(CamAreaState* state, Vec pos);
 void SetCameraAreaIndexAndBaseFov(CamAreaState* state, s32 index);
-void fn_80137D00(CamAreaState* state, s32 unused);
+void UpdateCameraAreaIndexAndBaseFov(CamAreaState* state, s32 unused);
 void LoadStageCameraAreaState(CamAreaState* state);
 void InitCameraAreaEntries(CamAreaState* state);
 
@@ -831,8 +831,8 @@ void ResumeAreaCameraControl(CCameraActionArea* area);
 // the map camera, ccameraactionmap2.cpp
 void StartMapCameraTargetHeightInterpolation(CCameraActionMap* map, f32 from, f32 to, f32 time);
 f32 GetMapCameraHorizontalTargetDistance(CCameraActionMap* map);
-void fn_8013BCE4(CCameraActionMap* map);
-void fn_8013BD28(CCameraActionMap* map, Vec& out, s32 mode);
+void RefreshMapCameraArea(CCameraActionMap* map);
+void GetMapCameraEyeBehindTarget(CCameraActionMap* map, Vec& out, s32 mode);
 void SetMapCameraFovStep(CCameraActionMap* map, s32 index, f32 time);
 
 void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode);

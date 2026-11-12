@@ -142,8 +142,8 @@ extern "C" {
 BOOL UpdateProgressiveScanPrompt(u32);
 BOOL LoadGameSoundBank(XSound*, s32);
 BOOL LoadMenuGroupResources(MenuEx*);
-BOOL fn_8008A2A0(Memcard*);
-BOOL fn_8007F038(CEvt*);
+BOOL LoadMemoryCardResources(Memcard*);
+BOOL LoadEventResources(CEvt*);
 BOOL LoadMessageCursorObject(CMsg*);
 BOOL HideHudPointCounters(InfoScrn*);
 BOOL LoadGlobalResourceData();
@@ -288,13 +288,13 @@ BOOL CGame::BeforeUpdate()
 			break;
 		++_3338;
 	case 11:
-		if (!fn_8008A2A0(&mMemcard.mCard))
+		if (!LoadMemoryCardResources(&mMemcard.mCard))
 			break;
 		++_3338;
 	case 12:
 		++_3338;
 	case 13:
-		if (!fn_8007F038(&mEvt))
+		if (!LoadEventResources(&mEvt))
 			break;
 		++_3338;
 	case 14:

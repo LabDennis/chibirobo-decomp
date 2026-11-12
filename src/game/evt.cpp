@@ -11166,13 +11166,13 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007A474
 .L_8007A2F8:
     lwz      r3, 0x40(r1)
-    bl       fn_8006E2D4
+    bl       GetItemScrapValue
     extsh    r0, r3
     stw      r0, 0x10(r31)
     b        .L_8007A474
 .L_8007A30C:
     lwz      r3, 0x40(r1)
-    bl       fn_8006E28C
+    bl       GetItemHappyPointValue
     extsh    r0, r3
     stw      r0, 0x10(r31)
     b        .L_8007A474
@@ -17026,7 +17026,7 @@ extern "C" CVec GetEventJObjWorldPosition(CJObj* obj, HSD_JObj* jobj)
  * @note Address: 0x8007E978
  * @note Size: 0x4
  */
-extern "C" void fn_8007E978(void)
+extern "C" void CEvt_Draw(void)
 {
 }
 
@@ -17416,7 +17416,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		break;
 	}
 	case -39: {
-		s16 result = fn_8006E2D4(args[0]);
+		s16 result = GetItemScrapValue(args[0]);
 #if defined(VERSION_PAL)
 		if (result == 1)
 			result = 2;
@@ -17425,7 +17425,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		break;
 	}
 	case -40:
-		_10 = (s16)fn_8006E28C(args[0]);
+		_10 = (s16)GetItemHappyPointValue(args[0]);
 		break;
 	case -100:
 		if (count > 0)
@@ -18390,7 +18390,7 @@ extern "C" void StartOrQueueEventScript(CEvt* evt, u8* script, u32 context, s16 
  * @note Address: 0x8007F038
  * @note Size: 0x8
  */
-extern "C" BOOL fn_8007F038(CEvt* evt)
+extern "C" BOOL LoadEventResources(CEvt* evt)
 {
 	return TRUE;
 }

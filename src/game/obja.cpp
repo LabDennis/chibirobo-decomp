@@ -837,7 +837,7 @@ extern "C" void Release__4XObjFv(XObj* object)
  * @note Address: 0x800912B4
  * @note Size: 0xB8
  */
-extern "C" void fn_800912B4(HSD_JObj* joint, f32** arguments, s32 type)
+extern "C" void SetJointMaterialOpaque(HSD_JObj* joint, f32** arguments, s32 type)
 {
 	HSD_JObjModifyFlags(joint, 0x40000, 0x1C0000);
 	for (HSD_DObj* draw = HSD_JObjGetDObj(joint); draw != NULL; draw = HSD_DObjGetNext(draw)) {
@@ -855,7 +855,7 @@ extern "C" void fn_800912B4(HSD_JObj* joint, f32** arguments, s32 type)
  * @note Address: 0x8009136C
  * @note Size: 0x100
  */
-extern "C" void fn_8009136C(HSD_JObj* joint, f32** arguments, s32 type)
+extern "C" void SetJointMaterialTranslucent(HSD_JObj* joint, f32** arguments, s32 type)
 {
 	CXObj* object = (CXObj*)arguments[0];
 	f32 alpha     = *arguments[1];
@@ -882,7 +882,7 @@ extern "C" void vfE8__4XObjFv(CXObj* object)
 	void* arguments[1] = { NULL };
 	arguments[0]       = object;
 	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, fn_800912B4, (f32**)arguments);
+		HSD_JObjWalkTree(object->mJObj, SetJointMaterialOpaque, (f32**)arguments);
 	HSD_JObjModifyFlags(object->mJObj, 0x10000000, 0x70000000);
 }
 
@@ -896,7 +896,7 @@ extern "C" void vfE4__4XObjFf(CXObj* object, f32 alpha)
 	arguments[0]       = object;
 	arguments[1]       = &alpha;
 	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, fn_8009136C, (f32**)arguments);
+		HSD_JObjWalkTree(object->mJObj, SetJointMaterialTranslucent, (f32**)arguments);
 	HSD_JObjModifyFlags(object->mJObj, 0x20000000, 0x70000000);
 }
 
@@ -947,7 +947,7 @@ extern "C" void vfE0__4XObjFf(CXObj* object, f32 factor)
  * @note Address: 0x80091784
  * @note Size: 0xB0
  */
-extern "C" void fn_80091784(HSD_JObj* joint, f32** arguments, s32 type)
+extern "C" void SetJointMaterialDestAlpha(HSD_JObj* joint, f32** arguments, s32 type)
 {
 	BOOL enabled = (BOOL)arguments[0];
 	u8 alpha     = (u32)arguments[1];
@@ -973,7 +973,7 @@ extern "C" void vfDC__4XObjFiUc(CXObj* object, BOOL enabled, u8 value)
 	arguments[0]       = (void*)enabled;
 	arguments[1]       = (void*)value;
 	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, fn_80091784, (f32**)arguments);
+		HSD_JObjWalkTree(object->mJObj, SetJointMaterialDestAlpha, (f32**)arguments);
 }
 
 // joint walk callback for XObj::vfD8, the args are five on/off flags
@@ -981,7 +981,7 @@ extern "C" void vfDC__4XObjFiUc(CXObj* object, BOOL enabled, u8 value)
  * @note Address: 0x80091888
  * @note Size: 0x3BC
  */
-extern "C" void fn_80091888(HSD_JObj* joint, f32** arguments, s32 type)
+extern "C" void ApplyJointMaterialPEPresets(HSD_JObj* joint, f32** arguments, s32 type)
 {
 	const XObjPEPresets* presets = &gObjectPixelEnginePresets;
 	HSD_DObj* draw;

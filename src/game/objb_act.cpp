@@ -46,21 +46,21 @@ Vec GetTargetFloorPosition(XAction* act); // where the held floor of the target 
 u32 CheckStageFlag(s32 stage, u32 mask);
 s32 GetObjectPoolId(const XObj*);
 s16 GetObjectItemId(XObj*);
-s16 fn_8006E364(s32);
+s16 GetItemPickupHoldTime(s32);
 f32 GetHeadingBetweenPositions(const Vec*, const Vec*);
 void SetPlugCordSpeed(XObjPlug*, f32);
 void SetLiftActionState(XActLift*, s32);
-void fn_800B503C(XActLift*, s32);
+void SetLiftTargetState(XActLift*, s32);
 XObj* GetGameObjectByIndex(const CGame*, s32);
 void TryStartObjectEvent(CGame*, const void*, void*, s16, s16);
 BOOL IsEventScriptActive(const CGame*);
 Params* GetPlayerParamsByIndex(CGame*, s32);
 s32 GetInventoryCountByIndex(Params*, u32);
-void fn_800D4294(XObjChr*, s32, f32);
+void SetPlayerStandAnim(XObjChr*, s32, f32);
 void SetClampedPlayerBattery(Params*, f32);
 HSD_Generator* CreateParticleByBankAndId(CGame*, s32, s32, u8, HSD_JObj*, BOOL);
 XObj* SpawnObjectFromPlacementIndex(CGame*, s16);
-BOOL fn_800D3CDC(XObj*);
+BOOL IsObjectLoaded(XObj*);
 void ClearObjectStatusFlags(XObj*, u64);
 void SetPlayerActionTarget(XAction*, XObj*);
 s32 RemovePlayerInventoryItemCount(Params*, s16, s32);
@@ -71,7 +71,7 @@ HSD_Generator* CreateParticleAtPosition(CGame*, u32, u32, s32, const Vec&, BOOL)
 struct HSD_PSUserFunc;
 extern HSD_PSUserFunc lbl_80228270;
 void psSetUserFunc(HSD_Generator*, HSD_PSUserFunc*);
-void fn_800D3EB0(CGame*, f32, f32, f32, f32);
+void SetSubwindowRect(CGame*, f32, f32, f32, f32);
 void SetSubwindowCamera(CGame*, const Vec&, f32, f32, f32, f32);
 void EnableSubwindowWithFlags(CGame*, u32);
 Vec GetObjectJointWorldPosition(const CJObj*);
@@ -105,7 +105,7 @@ static inline void TakeLiftItem(XActLift* act, s32 anim, HSD_AObj* aobj, bool us
 	s32 wanted = useCount ? 11 : 0xec;
 	if (anim != wanted) {
 		HeldAnim(act->mOwner, wanted, TRUE, 1);
-		fn_800B503C(act, useCount ? 3 : 18);
+		SetLiftTargetState(act, useCount ? 3 : 18);
 		if (IsLiftTargetPlug(act)) {
 			ClearObjectStatusFlags(act->mTarget, 0x0400000000000000ULL);
 			act->mTarget = NULL;
@@ -128,7 +128,7 @@ static inline void TakeLiftItem(XActLift* act, s32 anim, HSD_AObj* aobj, bool us
 	} else if (aobj->flags & 0x44000000) {
 		HeldAnim(act->mOwner, 8);
 		SetLiftActionState(act, 4);
-		fn_800B503C(act, useCount ? 4 : 19);
+		SetLiftTargetState(act, useCount ? 4 : 19);
 	}
 }
 static inline void ReleasePlugTarget(XActLift* act, s32 anim, HSD_AObj* aobj, s32 next)
@@ -136,7 +136,7 @@ static inline void ReleasePlugTarget(XActLift* act, s32 anim, HSD_AObj* aobj, s3
 	if (anim != next) {
 		HeldAnim(act->mOwner, next, FALSE, 1);
 		act->mOwner->UpdateAnim(0);
-		fn_800B503C(act, 13);
+		SetLiftTargetState(act, 13);
 	} else if (aobj->flags & 0x44000000) {
 		HeldAnim(act->mOwner, 8);
 		SetLiftActionState(act, 4);
@@ -177,7 +177,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			act->_2C = 0;
 			PlayGameSound(&gGame.mSound, 0x3a, 255);
 		} else if ((s16)GetObjectPoolId(act->mTarget) == 8) {
-			act->_2C = FRAME_RATE * ((f32)fn_8006E364(GetObjectItemId(act->mTarget)) / 100.0f);
+			act->_2C = FRAME_RATE * ((f32)GetItemPickupHoldTime(GetObjectItemId(act->mTarget)) / 100.0f);
 		} else {
 			act->_2C = 0.5f * FRAME_RATE;
 		}
@@ -191,7 +191,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	case 3:
 		if (anim != 7) {
 			if (!act->mTarget || (s16)GetObjectPoolId(act->mTarget) != 8 || HasRoomForItem(act->mTarget)) {
-				fn_800B503C(act, 1);
+				SetLiftTargetState(act, 1);
 				HeldAnim(act->mOwner, 7, TRUE, 1);
 			} else {
 				SetLiftActionState(act, 5);
@@ -209,7 +209,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 					SetLiftActionState(act, 19);
 				else
 					SetLiftActionState(act, 4);
-				fn_800B503C(act, 4);
+				SetLiftTargetState(act, 4);
 			}
 		}
 		break;
@@ -256,7 +256,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 					SetLiftActionState(act, 19);
 				else {
 					SetLiftActionState(act, 0);
-					fn_800D4294(act->mOwner, 17, 0);
+					SetPlayerStandAnim(act->mOwner, 17, 0);
 					act->mTarget = NULL;
 				}
 			} else {
@@ -267,9 +267,9 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	case 6:
 		if (anim != 9) {
 			HeldAnim(act->mOwner, 9);
-			fn_800B503C(act, 5);
+			SetLiftTargetState(act, 5);
 		} else if (aobj->flags & 0x44000000) {
-			fn_800D4294(act->mOwner, 17, 0);
+			SetPlayerStandAnim(act->mOwner, 17, 0);
 			SetLiftActionState(act, 0);
 		}
 		break;
@@ -295,17 +295,17 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			ClearObjectAnimationQueue(act->mOwner);
 			if (IsLiftActionState(act, 7)) {
 				HeldAnim(act->mOwner, 0x9f);
-				fn_800B503C(act, 6);
+				SetLiftTargetState(act, 6);
 			} else if (IsLiftActionState(act, 8)) {
 				HeldAnim(act->mOwner, 0xa0);
-				fn_800B503C(act, 8);
+				SetLiftTargetState(act, 8);
 			} else {
 				HeldAnim(act->mOwner, 0xbc);
-				fn_800B503C(act, 11);
+				SetLiftTargetState(act, 11);
 			}
 		} else if (aobj->flags & 0x44000000) {
 			if (IsLiftActionState(act, 7)) {
-				fn_800D4294(act->mOwner, 17, 0);
+				SetPlayerStandAnim(act->mOwner, 17, 0);
 				SetLiftActionState(act, 0);
 				if (act->mPlugTarget)
 					act->mPlugTarget->vf134(0);
@@ -323,7 +323,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			HeldAnim(act->mOwner, 0xad, FALSE, 1);
 			act->mOwner->UpdateAnim(0);
 			SetPlayerActionTarget(act, &act->mOwner->mPlug);
-			fn_800B503C(act, 7);
+			SetLiftTargetState(act, 7);
 			act->mYawOffset = 0;
 		} else if (aobj->flags & 0x44000000) {
 			s32 path[] = { 0 };
@@ -347,7 +347,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			HeldAnim(act->mOwner, 0xab);
 			SetLiftActionState(act, 13);
 			if (act->mPlugTarget && !GetObjectItemId(act->mPlugTarget)) {
-				fn_800D3EB0(&gGame, NAN, NAN, NAN, NAN);
+				SetSubwindowRect(&gGame, NAN, NAN, NAN, NAN);
 				s32 path[] = { 0 };
 				CJObj joint(GetObjectJointByPath(&act->mOwner->mPlug, 1, path));
 				Vec at = act->mOwner->mMoveTranslate + (act->mPlugTarget->mMoveTranslate - act->mOwner->mMoveTranslate) * 0.3f;
@@ -379,7 +379,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		if (anim != 0xac) {
 			HeldAnim(act->mOwner, 0xac);
 			act->mOwner->UpdateAnim(0);
-			fn_800B503C(act, 10);
+			SetLiftTargetState(act, 10);
 			gGame.mSubwin.mEnabled = FALSE;
 			if (act->mPlugTarget && GetObjData(&act->mPlugTarget->mCoord)->_14 == 9)
 				((XObjLeticker*)act->mPlugTarget)->vf148();
@@ -398,7 +398,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		} else if (aobj->flags & 0x44000000) {
 			HeldAnim(act->mOwner, 8);
 			SetLiftActionState(act, 4);
-			fn_800B503C(act, 4);
+			SetLiftTargetState(act, 4);
 			act->mPlugTarget = NULL;
 			ResetPlayerPlugState((XObjPlug*)act->mTarget, TRUE);
 		} else if (frame > 142.0f) {
@@ -423,7 +423,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	case 19:
 		if (anim != 10) {
 			HeldAnim(act->mOwner, 10);
-			fn_800B503C(act, 14);
+			SetLiftTargetState(act, 14);
 			if (act->mContactEffect) {
 				gGame.mParticle.Kill(act->mContactEffectId);
 				act->mContactEffect = NULL;
@@ -435,8 +435,8 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			}
 		} else if (aobj->flags & 0x44000000) {
 			SetLiftActionState(act, 0);
-			fn_800B503C(act, 15);
-			fn_800D4294(act->mOwner, 17, 0);
+			SetLiftTargetState(act, 15);
+			SetPlayerStandAnim(act->mOwner, 17, 0);
 			if (act->mTarget && (s16)GetObjectPoolId(act->mTarget) == 8) {
 				s8 sound = (s8)GetItemSoundIndex(GetObjectItemId(act->mTarget), 1);
 				if (sound >= 0)
@@ -449,7 +449,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		// fall through
 	case 21:
 		if (act->mPendingItem) {
-			if (!fn_800D3CDC(act->mPendingItem))
+			if (!IsObjectLoaded(act->mPendingItem))
 				return;
 			gGame.mStatus.mFlags |= 0x1000;
 		}
@@ -461,11 +461,11 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	case 23:
 		if (anim != 0xdd) {
 			HeldAnim(act->mOwner, 0xdd);
-			fn_800B503C(act, 16);
+			SetLiftTargetState(act, 16);
 		} else if (aobj->flags & 0x44000000) {
-			fn_800D4294(act->mOwner, 17, 0);
+			SetPlayerStandAnim(act->mOwner, 17, 0);
 			SetLiftActionState(act, 0);
-			fn_800B503C(act, 17);
+			SetLiftTargetState(act, 17);
 		}
 		break;
 	case 24:
@@ -473,7 +473,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		// fall through
 	case 25:
 		if (act->mPendingItem) {
-			if (!fn_800D3CDC(act->mPendingItem))
+			if (!IsObjectLoaded(act->mPendingItem))
 				return;
 			gGame.mStatus.mFlags |= 0x1000;
 		}
@@ -2129,7 +2129,7 @@ void HandleLadderActionInput(XActLadder* act, const CPadOne* pad, f32* weight)
 	}
 }
 
-CVec fn_800C35F0(XObjChr*);
+CVec GetPlayerFloorSlope(XObjChr*);
 extern Vec lbl_8037C334;
 
 static inline Vec GetFloorOffset(const XObjFloor* floor)
@@ -2143,7 +2143,7 @@ static inline Vec GetFloorOffset(const XObjFloor* floor)
 
 static inline f32 JumpMotionLength(XObjChr* owner)
 {
-	CVec motion = fn_800C35F0(owner);
+	CVec motion = GetPlayerFloorSlope(owner);
 	return PSVECMag(&motion);
 }
 
@@ -2533,7 +2533,7 @@ void HandleHangActionInput(XActHang* act, const CPadOne* pad, f32* weight)
  * @note Address: 0x800CE334
  * @note Size: 0x20
  */
-void fn_800CE334(XActLift* act, u32 value, BOOL apply)
+void SetLiftPlugConnection(XActLift* act, u32 value, BOOL apply)
 {
 	act->_54 = value;
 	if (apply) {
@@ -3084,7 +3084,7 @@ s32 RemovePlayerInventoryItemCount(Params* params, s16 id, s32 amount)
  * @note Address: 0x800D3CDC
  * @note Size: 0x30
  */
-BOOL fn_800D3CDC(XObj* obj)
+BOOL IsObjectLoaded(XObj* obj)
 {
 	return !(obj->mStatus.mFlags & 0x0040000000000000ULL);
 }
@@ -3144,7 +3144,7 @@ Vec GetObjectJointWorldPosition(const CJObj* obj)
  * @note Address: 0x800D3EB0
  * @note Size: 0x14
  */
-void fn_800D3EB0(CGame* game, f32 a, f32 b, f32 c, f32 d)
+void SetSubwindowRect(CGame* game, f32 a, f32 b, f32 c, f32 d)
 {
 	game->mSubwin._134 = a;
 	game->mSubwin._138 = b;
@@ -3203,7 +3203,7 @@ f32 GetObjectJointRotationY(CJObj* obj)
  * @note Address: 0x800D4294
  * @note Size: 0x60
  */
-void fn_800D4294(XObjChr* chr, s32 anim, f32 blend)
+void SetPlayerStandAnim(XObjChr* chr, s32 anim, f32 blend)
 {
 	chr->SetAnim(anim, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, blend, 10.0f);
 	chr->_A2C = 3;

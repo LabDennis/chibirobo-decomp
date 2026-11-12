@@ -44,7 +44,7 @@ void DCInvalidateRange(void* addr, u32 nBytes);
 void DCStoreRange(void* addr, u32 nBytes);
 BOOL DVDFastOpen(s32 entrynum, DVDFileInfo* fileInfo);
 BOOL DVDReadAsyncPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset, DVDCallback callback, s32 prio);
-void fn_801EBC5C(void);
+void ServiceNextDvdStreamingSlot(void);
 
 void HSD_DevComARAMWakeUp(void);
 void HSD_DevComDVDWakeUp(void);
@@ -411,7 +411,7 @@ void HSD_DevComDVDWakeUp(void)
 	}
 	lbl_8065BB3D = 1;
 	if (sDevComQueueHeads[0] == 0) {
-		fn_801EBC5C();
+		ServiceNextDvdStreamingSlot();
 	}
 	lbl_8065BB3D = 0;
 	for (i = 0; i < 3; i++) {
