@@ -231,41 +231,6 @@ struct PCScreenAnimation {
 	f32 topPhase, bottomPhase;
 };
 
-static inline u32 DrawPCScreenBand(f32 top, f32 bottom, MenuPC* menu, u32 rgb)
-{
-	f32 coord0     = 130;
-	f32 coord1     = top;
-	f32 coord2     = 510;
-	f32 coord3     = bottom;
-	Vec vertices[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
-		               (Vec) { coord0, coord3, -10 }, (Vec) { coord0, coord1, -10 } };
-	SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
-	u32 color = (u32)(255.0f * menu->mAlpha) | rgb;
-	DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, color, 5);
-	return color;
-}
-
-static inline void DrawPCScanlines(f32 start, f32 height, f32& phase, bool& initialized, u32 color)
-{
-
-	SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 0);
-	if (!initialized) {
-		phase       = 0.0f;
-		initialized = true;
-	}
-	phase += 1.0f;
-	if (phase >= 4.0f)
-		phase = 0.0f;
-	SetMenuBlendMode(GetGameGraphics(&gGame), 3, 4, 5, 15);
-	SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
-	for (s32 row = (s32)start; row < (s32)(start + height); row += 4.0f) {
-		f32 y = row + phase;
-		DrawMenuLine(GetGameGraphics(&gGame), color, 130, y, 0, 510, y, 0);
-	}
-	SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
-	SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
-}
-
 struct PCChoiceArt {
 	s32 icon, label;
 };
@@ -292,164 +257,8 @@ static inline bool PCUsesFixedChoiceLabels()
 #endif
 }
 
-static inline void DrawPCChoiceHighlight(MenuPC* menu, CTexObj& tex, f32 center, f32 y, f32 width)
-{
-	u32 color = 0x181CC600 | (u32)(200.0f * menu->mAlpha);
-	SetMenuTevMode(GetGameGraphics(&gGame), 0);
-	CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 117 - StatusTextureOffset));
-	SetMenuTextureScale(&tex, 0.25f, 1.0f);
-	SetMenuTextureTranslation(&tex, 0.25f, 0);
-	DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, center, y, 0, width, 24, 0, 0, 0);
-	SetMenuTextureTranslation(&tex, 0, 0);
-	DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, (center - width * 0.5f) - 4.0f, y, 0, 8, 24, 0, 0, 0);
-	SetMenuTextureTranslation(&tex, 0.5f, 0);
-	DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 4.0f + (center + width * 0.5f), y, 0, 8, 24, 0, 0, 0);
-	CTexObj* fill = LoadMenuPaletteTexture(&gGame, 118 - StatusTextureOffset);
-	SetMenuTextureTranslation(fill, menu->_44C, 0);
-	SetMenuTextureScale(fill, 0.5f * (width / GetMenuTextureWidth(fill)), 0.5f);
-	color = 0xFFFFFF00 | (u32)(40.0f * menu->mAlpha);
-	DrawMenuTexturedQuad(GetGameGraphics(&gGame), fill, color, 2.0f + center, y, 0, width, 20, 0, 0, 0);
-	SetMenuTevMode(GetGameGraphics(&gGame), 4);
-}
-
 enum PCIconAnchor { PCIconCenter, PCIconCorner, PCIconCursor };
 
-static inline void DrawPCHeadingIcon(MenuPC* menu, CTexObj& tex, s32 icon, f32 x, f32 y, f32 rotation, PCIconAnchor anchor,
-                                     int scalePercent)
-{
-	CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, icon - StatusTextureOffset));
-	SetMenuTevMode(GetGameGraphics(&gGame), 0);
-	const f32 scale = scalePercent / 100.0f;
-	f32 width       = scale * (1.1f * GetMenuTextureWidth(&tex));
-	f32 height      = scale * GetMenuTextureHeight(&tex);
-
-	if (anchor == PCIconCursor) {
-		x = menu->mTextX;
-		y = menu->mTextY;
-	} else if (anchor == PCIconCorner) {
-		x = width * 0.5f + x;
-		y = height * 0.5f + y;
-	}
-	u32 color = 0xC8C8C800 | (u32)(255.0f * menu->mAlpha);
-	DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, rotation);
-	SetMenuTevMode(GetGameGraphics(&gGame), 4);
-}
-
-static inline void PCSecondaryPrompt(const MenuPC* menu, char* text)
-{
-	switch (menu->mMode) {
-	case 4:
-		sprintf(text, "%.255s", GetPCMenuLabelText(14));
-		return;
-	case 3:
-		switch (menu->mPhase) {
-		case 0:
-		case 10:
-		case 20:
-			sprintf(text, "%.255s", GetPCMenuLabelText(16));
-			return;
-		case 1:
-			sprintf(text, "%.255s", GetPCMenuLabelText(15));
-			return;
-		default:
-			sprintf(text, "%.255s", GetPCMenuLabelText(13));
-			return;
-		}
-	case 7:
-		switch (menu->mPhase) {
-		case 0:
-		case 10:
-		case 20:
-			sprintf(text, "%.255s", GetPCMenuLabelText(16));
-			return;
-		case 1:
-			sprintf(text, "%.255s", GetPCMenuLabelText(25));
-			return;
-		default:
-			sprintf(text, "%.255s", GetPCMenuLabelText(13));
-			return;
-		}
-	case 10:
-		switch (menu->mPhase) {
-		case 0:
-			sprintf(text, "%.255s", GetPCMenuLabelText(16));
-			return;
-		case 1:
-			sprintf(text, "%.255s", GetPCMenuLabelText(37));
-			return;
-		default:
-			sprintf(text, "%.255s", GetPCMenuLabelText(13));
-			return;
-		}
-	default:
-		sprintf(text, "%.255s", GetPCMenuLabelText(16));
-		return;
-	}
-}
-
-template <PCShopListKind kind>
-static inline void DrawPCCatalogMode(MenuPC* menu)
-{
-#if defined(VERSION_JP)
-	const f32 scroll = 0.0f;
-#else
-	const f32 scroll = 8.0f;
-#endif
-	const bool items = kind == ItemPriceList;
-	MenuPCPage* page = items ? &gShopHistoryPage : &gShopCatalogPage;
-	s32 selected     = items ? menu->mPurchaseSelection : menu->mShopSelection;
-	f32 alpha        = items ? menu->_398 : 1.0f;
-#if defined(VERSION_JP)
-	DrawPCShopList<kind>(selected, 320.0f, 215.0f + menu->mScroll, menu->_44C, alpha, 1.0f);
-#else
-	DrawPCShopList<kind>(selected, 320.0f, 215.0f + menu->mScroll, menu->_44C, alpha, 1.0f, scroll);
-#endif
-	if (items)
-		DrawPCGoldNumber(true, 339.0f, 316.0f, menu->mAlpha, 1.0f, menu->mMoneyDisplay.shown);
-	else
-		DrawPCBlueNumber(true, 339.0f, 316.0f, menu->mAlpha, 1.0f, menu->mScrapDisplay.shown);
-	s32 positions = (items ? CountShopHistoryEntries(page) : CountShopCatalogEntries(page)) - 8;
-	f32 first, last;
-	if (positions <= 1) {
-		first = 0.f;
-		last  = 1.f;
-	} else {
-		s32 start = items ? GetShopHistoryFirstRow(page) : GetShopCatalogFirstRow(page);
-		f32 step  = 1.0f / (f32)positions;
-		f32 row   = (f32)start;
-		first     = step * row;
-		last      = step * (1.f + row);
-	}
-	DrawPCShopScrollBar(460.0f, 76.0f - scroll, first, last, menu->mAlpha, 1.0f);
-}
-
-static inline void DrawPCSubwindowMenu(MenuPC* menu)
-{
-	CTexObj* tex = GetSubwindowTexture(&gGame);
-	f32 w        = 0.6f * (1.1f * GetMenuTextureWidth(tex));
-	f32 h        = 0.6f * GetMenuTextureHeight(tex);
-
-	SetMenuTevMode(GetGameGraphics(&gGame), 0);
-	DrawMenuTexturedQuad(GetGameGraphics(&gGame), tex, 0xC8C8C800 | (u32)(255.0f * menu->mAlpha), 320, 200, 0, w, h, 0, 0, 0);
-	SetMenuTevMode(GetGameGraphics(&gGame), 4);
-}
-
-static inline void DrawPCDepositLabel(MenuPC* menu, const char* text, f32 x, f32 y)
-{
-	DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(menu->mAlpha * 255.0f) | 0xC8C8C800, text, x, y, 0, 18, 18);
-}
-static inline void DrawPCDepositRect(MenuPC* menu, f32 left, f32 top, f32 right, f32 bottom, bool setDepth)
-{
-	f32 coord0     = left;
-	f32 coord1     = top;
-	f32 coord2     = right;
-	f32 coord3     = bottom;
-	Vec vertices[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
-		               (Vec) { coord0, coord3, -10 }, (Vec) { coord0, coord1, -10 } };
-	if (setDepth)
-		SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
-	DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, 0x1F24F800 | (u32)(80.0f * menu->mAlpha), 5);
-}
 static inline f32 PCDigitDivisor(s32 i)
 {
 	f32 divisor = 1.0f;
@@ -461,104 +270,6 @@ static inline f32 PCDigitDivisor(s32 i)
 }
 
 enum PCDepositField { DepositBalance, DepositEntry, DepositReceipt };
-static inline void DrawPCDepositDigits(MenuPC* menu, CTexObj& tex, s32 amount, PCDepositField field)
-{
-	const f32 scale = field == DepositEntry ? 1.4f : 1.2f;
-
-	CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
-	f32 w = scale * GetMenuTextureWidth(&tex);
-	f32 h = scale * (GetMenuTextureHeight(&tex) / 10);
-
-	PCAmount entry = {};
-	if (field == DepositBalance) {
-		menu->mDepositDisplay.target = amount;
-		PCEaseCall(menu->mDepositDisplay.shown, menu->mDepositDisplay.target);
-	} else {
-		entry.shown = entry.target = amount;
-	}
-	SetMenuTextureScale(&tex, 1, 0.1f);
-
-	f32 step   = field == DepositEntry ? w + 1.4f : w - 2.4f;
-	f32 start  = field == DepositEntry ? 256 : field == DepositBalance ? 276 : 372;
-	f32 offset = field == DepositEntry ? 30.8f : field == DepositBalance ? 9.6f : 136.8f;
-	f32 y      = field == DepositEntry ? 256 : field == DepositBalance ? 184 : 240;
-	u32 rgb    = field == DepositEntry ? 0xC8C8C800 : field == DepositBalance ? 0xFFB62800 : 0xFFFFFF00;
-
-	for (int i = 0; i < 5; i++) {
-		f32 divisor = PCDigitDivisor(i);
-		s32 digit   = (s32)((field == DepositBalance ? menu->mDepositDisplay.shown : entry.shown) / divisor) % 10;
-		SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
-		SetMenuTevMode(GetGameGraphics(&gGame), 0);
-		f32 x = (7.0f * w + (start - i * step)) - offset;
-		DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, rgb | (u32)(255.0f * menu->mAlpha), x, y, 0, w, h, 0, 0, 0);
-		SetMenuTevMode(GetGameGraphics(&gGame), 4);
-	}
-	SetMenuTevMode(GetGameGraphics(&gGame), 4);
-}
-
-static inline void DrawPCExchangeLabel(MenuPC* menu, char* text, s32 id, f32 y)
-{
-#if defined(VERSION_JP)
-	sprintf(text, "%.255s", GetPCMenuLabelText(id));
-	u32 chars = strlen(text) / 2;
-	f32 x     = (320.0f - ((chars - 1) * 20.0f) * 0.5f) - 10.0f;
-	DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00, text, x, y, 0, 20, 20);
-#else
-	const char* localized = GetLocalizedInterfaceText(id + 45);
-	u32 color             = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
-	f32 x                 = 320.0f - 0.5f * MeasureGameTextWidth(GetGameGraphics(&gGame), GetLocalizedInterfaceText(id + 45), TRUE, 20);
-	DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, localized, x, y, 0, 20, 20);
-#endif
-}
-
-// The caller skips the dialogue branch for modes below 2.
-static inline const char* SelectPCDialogue(MenuPC* menu)
-{
-
-	switch (menu->mMode) {
-	case 2:
-		switch (menu->_1BC) {
-		case 0:
-			return GetPCDialogueText(20) + menu->mCharIndex;
-		case 1:
-			return GetPCDialogueText(0) + menu->mCharIndex;
-		case 2:
-			return GetPCDialogueText(1) + menu->mCharIndex;
-		default:
-			return GetPCDialogueText(20) + menu->mCharIndex;
-		}
-	case 4: {
-		s32 level        = GetPlayerLevel(GetPlayerParamsByIndex(&gGame, 0));
-		const char* text = GetPCDialogueText(gPCLevelDialogueIds[level]) + menu->mCharIndex;
-		if (*text == '\t') {
-			menu->mInsertsNumber = 1;
-			++menu->mCharIndex;
-		}
-		return text;
-	}
-	case 5:
-		if (GetPCDialogueText(2)[menu->mCharIndex] == '\a') {
-			++menu->_36C;
-			++menu->mCharIndex;
-			menu->_374 = 1;
-		}
-		return GetPCDialogueText(2) + menu->mCharIndex;
-	case 3:
-		DrawPCItemPurchasePanel(menu->mPurchaseSelection, menu->mYesNo, 320.0f, 215.0f + menu->mScroll, menu->_44C, menu->mAlpha,
-		                        menu->mPanelAlpha);
-		return GetPCDialogueText(15) + menu->mCharIndex;
-	case 9:
-		return GetPCDialogueText(16) + menu->mCharIndex;
-	case 7:
-		DrawPCScrapPurchasePanel(menu->mShopSelection, menu->mYesNo, 320.0f, 215.0f + menu->mScroll, menu->_44C, menu->mAlpha,
-		                         menu->mPanelAlpha);
-		return GetPCDialogueText(17) + menu->mCharIndex;
-	case 10:
-		return GetPCDialogueText(18) + menu->mCharIndex;
-	default:
-		return GetPCDialogueText(19) + menu->mCharIndex;
-	}
-}
 
 #if defined(VERSION_JP)
 static inline void SetPCDialogueGlyph(MenuPC* menu, u16 code)
@@ -572,109 +283,25 @@ static inline u16 ReadPCDialogueGlyph(const char* text)
 	const u8* bytes = reinterpret_cast<const u8*>(text);
 	return (bytes[0] << 8) | bytes[1];
 }
-
-static inline void DrawPCDialogue(MenuPC* menu, const char* text)
-{
-	if ((s32)++menu->mGlyphFrames >= 8) {
-		menu->mGlyphFrames                 = 0;
-		menu->mCharFlags[menu->mNextGlyph] = 1;
-
-		if (menu->mInsertsNumber) {
-			char number[32];
-			sprintf(number, "%d", (s32)GetPCDialogueNumber(menu));
-			ConvertHudTextToFullWidth(number);
-			SetPCDialogueGlyph(menu, ReadPCDialogueGlyph(number + menu->mNumberOffset));
-			menu->mNumberOffset += 2;
-			if (!number[menu->mNumberOffset]) {
-				menu->mNumberOffset  = 0;
-				menu->mInsertsNumber = 0;
-			}
-		} else if (!*text) {
-			SetPCDialogueGlyph(menu, 0x8140);
-			menu->mCharIndex    = 0;
-			menu->mNumberOffset = 0;
-			menu->_36C          = 0;
-		} else {
-			SetPCDialogueGlyph(menu, ReadPCDialogueGlyph(text));
-			menu->mCharIndex += 2;
-		}
-
-		if ((s32)++menu->mNextGlyph >= 40)
-			menu->mNextGlyph = 0;
-	}
-	for (int i = 0; i < 40; ++i) {
-		if (!menu->mCharFlags[i])
-			continue;
-		menu->mCharX[i] -= 3.0f;
-		if (menu->mCharX[i] <= -22.0f) {
-			menu->mCharX[i]     = 640.0f;
-			menu->mCharFlags[i] = 0;
-		}
-		u32 color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
-		DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, (const char*)&menu->mCharCopies[i], menu->mCharX[i], 370.0f, 0.0f,
-		                             22.0f, 22.0f);
-	}
-}
-#else
-// Buffers are persistent; original strncpy calls leave the rest of each chunk intact.
-static inline void DrawPCDialogue(MenuPC* menu, const char* text)
-{
-	char(*chunks)[256] = gPCDialogueChunks;
-#if defined(VERSION_PAL)
-	const size_t length = strlen(text), span = length / 3;
-#else
-	const size_t span = strlen(text) / 2;
-#endif
-	// Keep a terminator in each buffer even for a longer replacement translation.
-	const size_t n = span < 255 ? span : 255;
-	strncpy(chunks[0], text, n);
-	strncpy(chunks[1], text + span, n);
-#if defined(VERSION_PAL)
-	const size_t tailSize = length - 2 * span + 1;
-	memcpy(chunks[2], text + 2 * span, tailSize < sizeof(chunks[2]) ? tailSize : sizeof(chunks[2]) - 1);
-	chunks[2][sizeof(chunks[2]) - 1] = '\0';
-#endif
-	gPCDialogueX -= 3.0f;
-	u32 color     = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
-	CGs* graphics = GetGameGraphics(&gGame);
-	DrawGsProportionalTextFormat(graphics, color, chunks[0], gPCDialogueX, 370.0f, 0.0f, 22.0f, 22.0f);
-	color          = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
-	f32 firstWidth = MeasureGameTextWidth(GetGameGraphics(&gGame), chunks[0], 1, 22.0f);
-	f32 x          = gPCDialogueX + firstWidth;
-	DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, chunks[1], x, 370.0f, 0.0f, 22.0f, 22.0f);
-#if defined(VERSION_PAL)
-	color           = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
-	f32 secondWidth = MeasureGameTextWidth(GetGameGraphics(&gGame), chunks[1], 1, 22.0f);
-	firstWidth      = MeasureGameTextWidth(GetGameGraphics(&gGame), chunks[0], 1, 22.0f);
-	x               = (gPCDialogueX + firstWidth) + secondWidth;
-	DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, chunks[2], x, 370.0f, 0.0f, 22.0f, 22.0f);
-#endif
-	f32 width = MeasureGameTextWidth(GetGameGraphics(&gGame), text, 1, 22.0f);
-	if (gPCDialogueX + width <= 0)
-		gPCDialogueX = 640.0f;
-}
 #endif
 
-static inline void DrawPCHeadingTip(MenuPC* menu, f32 top, f32 inset, u32 color)
-{
-	f32 startX       = 210.0f;
-	const f32 left   = startX - inset;
-	const f32 bottom = top + 172.0f;
-	Vec start        = { startX, top, -10 };
-	Vec upperLeft    = { left, top, -10 };
-	Vec lowerLeft    = { left, bottom, -10 };
-	Vec tip          = { menu->mTextX, bottom, -10 };
-	Vec points[]     = { start, upperLeft, lowerLeft, tip };
-	DrawGsLineStrip(GetGameGraphics(&gGame), points, color, 4);
-}
-
-// NONMATCHING: retail is 0x91C bytes longer, it calls CTexObj's constructor where this inlines it
+// NONMATCHING: same code size but retail schedules the large mode switch differently,
+// load/store order and regalloc differ throughout
 BOOL MenuPC::Draw()
 {
 	if (Draw__5CMenuFv(this)) {
 		CTexObj tex;
 		char labelText[256];
-		DrawPCScreenBand(40, 360, this, 0);
+		{
+			f32 coord0     = 130;
+			f32 coord1     = 40;
+			f32 coord2     = 510;
+			f32 coord3     = 360;
+			Vec vertices[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
+				               (Vec) { coord0, coord3, -10 }, (Vec) { coord0, coord1, -10 } };
+			SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
+			DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, (u32)(255.0f * this->mAlpha), 5);
+		}
 		switch (mMode) {
 		case 1: {
 
@@ -687,11 +314,28 @@ BOOL MenuPC::Draw()
 			SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
 			DrawMenuTriangleFan(GetGameGraphics(&gGame), panel, (u32)(255.0f * this->mAlpha) | 0xFFB62800, 5);
 			DrawGsLineStrip(GetGameGraphics(&gGame), panel, (u32)(255.0f * this->mAlpha) | 0xC8C8C800, 5);
-			DrawPCHeadingIcon(this, tex, 142, 320, 193, 0, PCIconCenter, 140);
+			{
+				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 142 - StatusTextureOffset));
+				SetMenuTevMode(GetGameGraphics(&gGame), 0);
+				const f32 scale = 1.4f;
+				f32 width       = scale * (1.1f * GetMenuTextureWidth(&tex));
+				f32 height      = scale * GetMenuTextureHeight(&tex);
+				u32 color       = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 320, 193, 0, width, height, 0, 0, 0);
+				SetMenuTevMode(GetGameGraphics(&gGame), 4);
+			}
 #if !defined(VERSION_JP)
 			if (GetGameLanguage(&gGame) == 6)
 #endif
-				DrawPCHeadingIcon(this, tex, 143, 320, 227, 0, PCIconCenter, 100);
+			{
+				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 143 - StatusTextureOffset));
+				SetMenuTevMode(GetGameGraphics(&gGame), 0);
+				f32 width  = 1.1f * GetMenuTextureWidth(&tex);
+				f32 height = GetMenuTextureHeight(&tex);
+				u32 color  = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 320, 227, 0, width, height, 0, 0, 0);
+				SetMenuTevMode(GetGameGraphics(&gGame), 4);
+			}
 
 			SetGsChannelEnabled(GetGameGraphics(&gGame), 0, 0);
 			SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
@@ -770,7 +414,24 @@ BOOL MenuPC::Draw()
 				center = 204.0f + width * 0.5f;
 			}
 			f32 y = 2.0f + (step * this->mChoice + (8.0f + top));
-			DrawPCChoiceHighlight(this, tex, center, y, width);
+			{
+				u32 color = 0x181CC600 | (u32)(200.0f * this->mAlpha);
+				SetMenuTevMode(GetGameGraphics(&gGame), 0);
+				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 117 - StatusTextureOffset));
+				SetMenuTextureScale(&tex, 0.25f, 1.0f);
+				SetMenuTextureTranslation(&tex, 0.25f, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, center, y, 0, width, 24, 0, 0, 0);
+				SetMenuTextureTranslation(&tex, 0, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, (center - width * 0.5f) - 4.0f, y, 0, 8, 24, 0, 0, 0);
+				SetMenuTextureTranslation(&tex, 0.5f, 0);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 4.0f + (center + width * 0.5f), y, 0, 8, 24, 0, 0, 0);
+				CTexObj* fill = LoadMenuPaletteTexture(&gGame, 118 - StatusTextureOffset);
+				SetMenuTextureTranslation(fill, this->_44C, 0);
+				SetMenuTextureScale(fill, 0.5f * (width / GetMenuTextureWidth(fill)), 0.5f);
+				color = 0xFFFFFF00 | (u32)(40.0f * this->mAlpha);
+				DrawMenuTexturedQuad(GetGameGraphics(&gGame), fill, color, 2.0f + center, y, 0, width, 20, 0, 0, 0);
+				SetMenuTevMode(GetGameGraphics(&gGame), 4);
+			}
 			for (s32 i = 0; i < this->mChoiceCount; ++i) {
 				s32 choice = this->mChoices[i];
 				if (choice == -1)
@@ -802,48 +463,207 @@ BOOL MenuPC::Draw()
 				}
 			}
 		} break;
-		case 3:
-			DrawPCCatalogMode<ItemPriceList>(this);
-			break;
+		case 3: {
+#if defined(VERSION_JP)
+			const f32 scroll = 0.0f;
+#else
+			const f32 scroll = 8.0f;
+#endif
+			MenuPCPage* page = &gShopHistoryPage;
+			s32 selected     = this->mPurchaseSelection;
+			f32 alpha        = this->_398;
+#if defined(VERSION_JP)
+			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + this->mScroll, this->_44C, alpha, 1.0f);
+#else
+			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + this->mScroll, this->_44C, alpha, 1.0f, scroll);
+#endif
+			DrawPCGoldNumber(true, 339.0f, 316.0f, this->mAlpha, 1.0f, this->mMoneyDisplay.shown);
+			s32 positions = CountShopHistoryEntries(page) - 8;
+			f32 first, last;
+			if (positions <= 1) {
+				first = 0.f;
+				last  = 1.f;
+			} else {
+				s32 start = GetShopHistoryFirstRow(page);
+				f32 step  = 1.0f / (f32)positions;
+				f32 row   = (f32)start;
+				first     = step * row;
+				last      = step * (1.f + row);
+			}
+			DrawPCShopScrollBar(460.0f, 76.0f - scroll, first, last, this->mAlpha, 1.0f);
+		} break;
 		case 4:
 			DrawPCRankings(this, -30, -20, mAlpha, 1);
 			break;
-		case 7:
-			DrawPCCatalogMode<PriceList>(this);
-			break;
-		case 5:
-			DrawPCSubwindowMenu(this);
-			break;
+		case 7: {
+#if defined(VERSION_JP)
+			const f32 scroll = 0.0f;
+#else
+			const f32 scroll = 8.0f;
+#endif
+			MenuPCPage* page = &gShopCatalogPage;
+			s32 selected     = this->mShopSelection;
+#if defined(VERSION_JP)
+			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + this->mScroll, this->_44C, 1.0f, 1.0f);
+#else
+			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + this->mScroll, this->_44C, 1.0f, 1.0f, scroll);
+#endif
+			DrawPCBlueNumber(true, 339.0f, 316.0f, this->mAlpha, 1.0f, this->mScrapDisplay.shown);
+			s32 positions = CountShopCatalogEntries(page) - 8;
+			f32 first, last;
+			if (positions <= 1) {
+				first = 0.f;
+				last  = 1.f;
+			} else {
+				s32 start = GetShopCatalogFirstRow(page);
+				f32 step  = 1.0f / (f32)positions;
+				f32 row   = (f32)start;
+				first     = step * row;
+				last      = step * (1.f + row);
+			}
+			DrawPCShopScrollBar(460.0f, 76.0f - scroll, first, last, this->mAlpha, 1.0f);
+		} break;
+		case 5: {
+			CTexObj* subwindow = GetSubwindowTexture(&gGame);
+			f32 w              = 0.6f * (1.1f * GetMenuTextureWidth(subwindow));
+			f32 h              = 0.6f * GetMenuTextureHeight(subwindow);
+
+			SetMenuTevMode(GetGameGraphics(&gGame), 0);
+			DrawMenuTexturedQuad(GetGameGraphics(&gGame), subwindow, 0xC8C8C800 | (u32)(255.0f * this->mAlpha), 320, 200, 0, w, h, 0, 0, 0);
+			SetMenuTevMode(GetGameGraphics(&gGame), 4);
+		} break;
 
 		case 9: {
 			sprintf(labelText, "%.255s", GetPCMenuLabelText(7));
-			DrawPCDepositLabel(this, labelText, 224, 148);
-			DrawPCDepositDigits(this, tex, this->mDepositBalance, DepositBalance);
+			DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 224, 148, 0, 18,
+			                             18);
+			{
+				const f32 scale = 1.2f;
+
+				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
+				f32 w = scale * GetMenuTextureWidth(&tex);
+				f32 h = scale * (GetMenuTextureHeight(&tex) / 10);
+
+				mDepositDisplay.target = this->mDepositBalance;
+				PCEaseCall(mDepositDisplay.shown, mDepositDisplay.target);
+				SetMenuTextureScale(&tex, 1, 0.1f);
+
+				f32 step   = w - 2.4f;
+				f32 start  = 276;
+				f32 offset = 9.6f;
+				f32 y      = 184;
+				u32 rgb    = 0xFFB62800;
+
+				for (int i = 0; i < 5; i++) {
+					f32 divisor = PCDigitDivisor(i);
+					s32 digit   = (s32)(mDepositDisplay.shown / divisor) % 10;
+					SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
+					SetMenuTevMode(GetGameGraphics(&gGame), 0);
+					f32 x = (7.0f * w + (start - i * step)) - offset;
+					DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, rgb | (u32)(255.0f * mAlpha), x, y, 0, w, h, 0, 0, 0);
+					SetMenuTevMode(GetGameGraphics(&gGame), 4);
+				}
+				SetMenuTevMode(GetGameGraphics(&gGame), 4);
+			}
 			switch (this->mPhase) {
 			case 0: {
 				sprintf(labelText, "%.255s", GetPCMenuLabelText(8));
-				DrawPCDepositLabel(this, labelText, 224, 212);
-				DrawPCDepositDigits(this, tex, this->mAmount, DepositEntry);
+				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 224, 212, 0, 18,
+				                             18);
+				{
+					const f32 scale = 1.4f;
+
+					CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
+					f32 w = scale * GetMenuTextureWidth(&tex);
+					f32 h = scale * (GetMenuTextureHeight(&tex) / 10);
+
+					PCAmount entry = {};
+					entry.shown = entry.target = this->mAmount;
+					SetMenuTextureScale(&tex, 1, 0.1f);
+
+					f32 step   = w + 1.4f;
+					f32 start  = 256;
+					f32 offset = 30.8f;
+					f32 y      = 256;
+					u32 rgb    = 0xC8C8C800;
+
+					for (int i = 0; i < 5; i++) {
+						f32 divisor = PCDigitDivisor(i);
+						s32 digit   = (s32)(entry.shown / divisor) % 10;
+						SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
+						SetMenuTevMode(GetGameGraphics(&gGame), 0);
+						f32 x = (7.0f * w + (start - i * step)) - offset;
+						DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, rgb | (u32)(255.0f * mAlpha), x, y, 0, w, h, 0, 0, 0);
+						SetMenuTevMode(GetGameGraphics(&gGame), 4);
+					}
+					SetMenuTevMode(GetGameGraphics(&gGame), 4);
+				}
 				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
 				f32 w    = 1.4f * GetMenuTextureWidth(&tex);
 				f32 h    = 1.4f * (GetMenuTextureHeight(&tex) / 10);
 				f32 left = (388.0f - this->mMoneyDigit * (1.0f + w)) - 8.0f;
-				DrawPCDepositRect(this, left, 242, left + w, 242.0f + h, true);
+				{
+					f32 coord0     = left;
+					f32 coord1     = 242;
+					f32 coord2     = left + w;
+					f32 coord3     = 242.0f + h;
+					Vec vertices[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
+						               (Vec) { coord0, coord3, -10 }, (Vec) { coord0, coord1, -10 } };
+					SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
+					DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, 0x1F24F800 | (u32)(80.0f * this->mAlpha), 5);
+				}
 				break;
 			}
 			case 1: {
 				sprintf(labelText, "%.255s", GetPCMenuLabelText(9));
-				DrawPCDepositLabel(this, labelText, 224, 212);
+				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 224, 212, 0, 18,
+				                             18);
 				sprintf(labelText, "%.255s", GetPCMenuLabelText(10));
-				DrawPCDepositLabel(this, labelText, 260, 260);
+				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 260, 260, 0, 18,
+				                             18);
 				f32 x = this->mYesNo ? 302.0f : 242.0f;
-				DrawPCDepositRect(this, x, 251, x + 68.0f, 283, false);
+				{
+					f32 coord0     = x;
+					f32 coord1     = 251;
+					f32 coord2     = x + 68.0f;
+					f32 coord3     = 283;
+					Vec vertices[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
+						               (Vec) { coord0, coord3, -10 }, (Vec) { coord0, coord1, -10 } };
+					DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, 0x1F24F800 | (u32)(80.0f * this->mAlpha), 5);
+				}
 				break;
 			}
-			case 2:
-				DrawPCDepositDigits(this, tex, this->mAmount, DepositReceipt);
+			case 2: {
+				const f32 scale = 1.2f;
+
+				CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
+				f32 w = scale * GetMenuTextureWidth(&tex);
+				f32 h = scale * (GetMenuTextureHeight(&tex) / 10);
+
+				PCAmount entry = {};
+				entry.shown = entry.target = this->mAmount;
+				SetMenuTextureScale(&tex, 1, 0.1f);
+
+				f32 step   = w - 2.4f;
+				f32 start  = 372;
+				f32 offset = 136.8f;
+				f32 y      = 240;
+				u32 rgb    = 0xFFFFFF00;
+
+				for (int i = 0; i < 5; i++) {
+					f32 divisor = PCDigitDivisor(i);
+					s32 digit   = (s32)(entry.shown / divisor) % 10;
+					SetMenuTextureTranslation(&tex, 0, 0.1f * digit);
+					SetMenuTevMode(GetGameGraphics(&gGame), 0);
+					f32 x = (7.0f * w + (start - i * step)) - offset;
+					DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, rgb | (u32)(255.0f * mAlpha), x, y, 0, w, h, 0, 0, 0);
+					SetMenuTevMode(GetGameGraphics(&gGame), 4);
+				}
+				SetMenuTevMode(GetGameGraphics(&gGame), 4);
+			}
 				sprintf(labelText, "%.255s", GetPCMenuLabelText(11));
-				DrawPCDepositLabel(this, labelText, 244, 260);
+				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 244, 260, 0, 18,
+				                             18);
 				break;
 			}
 			DrawPCGoldNumber(true, 339, 316, this->mAlpha, 1, this->mMoneyDisplay.shown);
@@ -852,8 +672,34 @@ BOOL MenuPC::Draw()
 			s32 rate = (s32)this->mScrapRate;
 			switch (this->mPhase) {
 			case 0: {
-				DrawPCExchangeLabel(this, labelText, 29, 148);
-				DrawPCExchangeLabel(this, labelText, 30, 220);
+				{
+#if defined(VERSION_JP)
+					sprintf(labelText, "%.255s", GetPCMenuLabelText(29));
+					u32 chars = strlen(labelText) / 2;
+					f32 x     = (320.0f - ((chars - 1) * 20.0f) * 0.5f) - 10.0f;
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha) | 0xFFFFFF00, labelText, x, 148, 0,
+					                             20, 20);
+#else
+					const char* localized = GetLocalizedInterfaceText(29 + 45);
+					u32 color             = (u32)(255.0f * this->mAlpha) | 0xFFFFFF00;
+					f32 x = 320.0f - 0.5f * MeasureGameTextWidth(GetGameGraphics(&gGame), GetLocalizedInterfaceText(29 + 45), TRUE, 20);
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, localized, x, 148, 0, 20, 20);
+#endif
+				}
+				{
+#if defined(VERSION_JP)
+					sprintf(labelText, "%.255s", GetPCMenuLabelText(30));
+					u32 chars = strlen(labelText) / 2;
+					f32 x     = (320.0f - ((chars - 1) * 20.0f) * 0.5f) - 10.0f;
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha) | 0xFFFFFF00, labelText, x, 220, 0,
+					                             20, 20);
+#else
+					const char* localized = GetLocalizedInterfaceText(30 + 45);
+					u32 color             = (u32)(255.0f * this->mAlpha) | 0xFFFFFF00;
+					f32 x = 320.0f - 0.5f * MeasureGameTextWidth(GetGameGraphics(&gGame), GetLocalizedInterfaceText(30 + 45), TRUE, 20);
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, localized, x, 220, 0, 20, 20);
+#endif
+				}
 				{
 					s32 amount = this->mAmount;
 					CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
@@ -921,7 +767,16 @@ BOOL MenuPC::Draw()
 			textureScrollU -= 0.008f;
 			textureScrollV -= 0.008f;
 			f32 height = this->mFade;
-			DrawPCScreenBand(40.0f, 40.0f + height, this, 0xFFB62800);
+			{
+				f32 coord0     = 130;
+				f32 coord1     = 40.0f;
+				f32 coord2     = 510;
+				f32 coord3     = 40.0f + height;
+				Vec vertices[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
+					               (Vec) { coord0, coord3, -10 }, (Vec) { coord0, coord1, -10 } };
+				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
+				DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, (u32)(255.0f * this->mAlpha) | 0xFFB62800, 5);
+			}
 
 			CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 138 - StatusTextureOffset));
 			SetMenuTextureTranslation(&tex, textureScrollU, textureScrollV);
@@ -937,11 +792,58 @@ BOOL MenuPC::Draw()
 			SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
 			SetMenuDepthMode(GetGameGraphics(&gGame), 0, 3, 0);
 
-			f32 half      = height * 0.5f;
-			u32 bandColor = DrawPCScreenBand(360.0f - half, 360.0f, this, 0xFFB62800);
-			u32 gray      = (bandColor & 0xFF) | 0x30303000;
-			DrawPCScanlines((40.0f + half) - half, height, topScanPhase, topInitialized, gray);
-			DrawPCScanlines((360.0f - half * 0.5f) - half * 0.5f, half, bottomScanPhase, bottomInitialized, gray);
+			f32 half = height * 0.5f;
+			u32 bandColor;
+			{
+				f32 coord0     = 130;
+				f32 coord1     = 360.0f - half;
+				f32 coord2     = 510;
+				f32 coord3     = 360.0f;
+				Vec vertices[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
+					               (Vec) { coord0, coord3, -10 }, (Vec) { coord0, coord1, -10 } };
+				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
+				bandColor = (u32)(255.0f * this->mAlpha) | 0xFFB62800;
+				DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, bandColor, 5);
+			}
+			u32 gray = (bandColor & 0xFF) | 0x30303000;
+			{
+				f32 start = (40.0f + half) - half;
+				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 0);
+				if (!topInitialized) {
+					topScanPhase   = 0.0f;
+					topInitialized = true;
+				}
+				topScanPhase += 1.0f;
+				if (topScanPhase >= 4.0f)
+					topScanPhase = 0.0f;
+				SetMenuBlendMode(GetGameGraphics(&gGame), 3, 4, 5, 15);
+				SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
+				for (s32 row = (s32)start; row < (s32)(start + height); row += 4.0f) {
+					f32 y = row + topScanPhase;
+					DrawMenuLine(GetGameGraphics(&gGame), gray, 130, y, 0, 510, y, 0);
+				}
+				SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
+				SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
+			}
+			{
+				f32 start = (360.0f - half * 0.5f) - half * 0.5f;
+				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 0);
+				if (!bottomInitialized) {
+					bottomScanPhase   = 0.0f;
+					bottomInitialized = true;
+				}
+				bottomScanPhase += 1.0f;
+				if (bottomScanPhase >= 4.0f)
+					bottomScanPhase = 0.0f;
+				SetMenuBlendMode(GetGameGraphics(&gGame), 3, 4, 5, 15);
+				SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
+				for (s32 row = (s32)start; row < (s32)(start + half); row += 4.0f) {
+					f32 y = row + bottomScanPhase;
+					DrawMenuLine(GetGameGraphics(&gGame), gray, 130, y, 0, 510, y, 0);
+				}
+				SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
+				SetMenuLineWidth(GetGameGraphics(&gGame), 12, 5);
+			}
 		}
 		{
 			if (this->mMode != 0 && this->mMode != 1 && this->mMode != 11) {
@@ -1051,42 +953,301 @@ BOOL MenuPC::Draw()
 					}
 					case 3:
 						rotation = -3.14159274;
-						DrawPCHeadingTip(this, top, inset, color);
+						{
+							f32 startX       = 210.0f;
+							const f32 left   = startX - inset;
+							const f32 bottom = top + 172.0f;
+							Vec start        = { startX, top, -10 };
+							Vec upperLeft    = { left, top, -10 };
+							Vec lowerLeft    = { left, bottom, -10 };
+							Vec tip          = { this->mTextX, bottom, -10 };
+							Vec points[]     = { start, upperLeft, lowerLeft, tip };
+							DrawGsLineStrip(GetGameGraphics(&gGame), points, color, 4);
+						}
 						break;
 					case 4:
 						rotation = -3.14159274;
-						DrawPCHeadingTip(this, top, inset, color);
+						{
+							f32 startX       = 210.0f;
+							const f32 left   = startX - inset;
+							const f32 bottom = top + 172.0f;
+							Vec start        = { startX, top, -10 };
+							Vec upperLeft    = { left, top, -10 };
+							Vec lowerLeft    = { left, bottom, -10 };
+							Vec tip          = { this->mTextX, bottom, -10 };
+							Vec points[]     = { start, upperLeft, lowerLeft, tip };
+							DrawGsLineStrip(GetGameGraphics(&gGame), points, color, 4);
+						}
 						break;
 					default:
 						break;
 					}
 
 					{
-						DrawPCHeadingIcon(this, tex, 147, 0, 0, rotation, PCIconCursor, 100);
-						DrawPCHeadingIcon(this, tex, 142, 184, 60, 0, PCIconCorner, 80);
+						{
+							CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 147 - StatusTextureOffset));
+							SetMenuTevMode(GetGameGraphics(&gGame), 0);
+							f32 width  = 1.1f * GetMenuTextureWidth(&tex);
+							f32 height = GetMenuTextureHeight(&tex);
+							f32 x      = this->mTextX;
+							f32 y      = this->mTextY;
+							u32 color  = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
+							DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, rotation);
+							SetMenuTevMode(GetGameGraphics(&gGame), 4);
+						}
+						{
+							CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 142 - StatusTextureOffset));
+							SetMenuTevMode(GetGameGraphics(&gGame), 0);
+							const f32 scale = 0.8f;
+							f32 width       = scale * (1.1f * GetMenuTextureWidth(&tex));
+							f32 height      = scale * GetMenuTextureHeight(&tex);
+							f32 x           = width * 0.5f + 184;
+							f32 y           = height * 0.5f + 60;
+							u32 color       = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
+							DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, 0);
+							SetMenuTevMode(GetGameGraphics(&gGame), 4);
+						}
 #if !defined(VERSION_JP)
 						if (GetGameLanguage(&gGame) == 6)
 #endif
-							DrawPCHeadingIcon(this, tex, 143, 220, 66, 0, PCIconCorner, 100);
+						{
+							CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 143 - StatusTextureOffset));
+							SetMenuTevMode(GetGameGraphics(&gGame), 0);
+							f32 width  = 1.1f * GetMenuTextureWidth(&tex);
+							f32 height = GetMenuTextureHeight(&tex);
+							f32 x      = width * 0.5f + 220;
+							f32 y      = height * 0.5f + 66;
+							u32 color  = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
+							DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, 0);
+							SetMenuTevMode(GetGameGraphics(&gGame), 4);
+						}
 					}
 				}
 				{
 
-					DrawPCHeadingIcon(this, tex, 140, 204, 335, 0, PCIconCorner, 100);
+					{
+						CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 140 - StatusTextureOffset));
+						SetMenuTevMode(GetGameGraphics(&gGame), 0);
+						f32 width  = 1.1f * GetMenuTextureWidth(&tex);
+						f32 height = GetMenuTextureHeight(&tex);
+						f32 x      = width * 0.5f + 204;
+						f32 y      = height * 0.5f + 335;
+						u32 color  = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
+						DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, 0);
+						SetMenuTevMode(GetGameGraphics(&gGame), 4);
+					}
 					if (this->mMode == 2)
 						sprintf(labelText, "%.255s", GetPCMenuLabelText(12));
 					else
 						sprintf(labelText, "%.255s", GetPCMenuLabelText(13));
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha), labelText, 224, 334, 0, 20, 20);
-					DrawPCHeadingIcon(this, tex, 139, 344, 335, 0, PCIconCorner, 100);
-					PCSecondaryPrompt(this, labelText);
+					{
+						CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 139 - StatusTextureOffset));
+						SetMenuTevMode(GetGameGraphics(&gGame), 0);
+						f32 width  = 1.1f * GetMenuTextureWidth(&tex);
+						f32 height = GetMenuTextureHeight(&tex);
+						f32 x      = width * 0.5f + 344;
+						f32 y      = height * 0.5f + 335;
+						u32 color  = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
+						DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, 0);
+						SetMenuTevMode(GetGameGraphics(&gGame), 4);
+					}
+					{
+						switch (this->mMode) {
+						case 4:
+							sprintf(labelText, "%.255s", GetPCMenuLabelText(14));
+							break;
+						case 3:
+							switch (this->mPhase) {
+							case 0:
+							case 10:
+							case 20:
+								sprintf(labelText, "%.255s", GetPCMenuLabelText(16));
+								break;
+							case 1:
+								sprintf(labelText, "%.255s", GetPCMenuLabelText(15));
+								break;
+							default:
+								sprintf(labelText, "%.255s", GetPCMenuLabelText(13));
+								break;
+							}
+							break;
+						case 7:
+							switch (this->mPhase) {
+							case 0:
+							case 10:
+							case 20:
+								sprintf(labelText, "%.255s", GetPCMenuLabelText(16));
+								break;
+							case 1:
+								sprintf(labelText, "%.255s", GetPCMenuLabelText(25));
+								break;
+							default:
+								sprintf(labelText, "%.255s", GetPCMenuLabelText(13));
+								break;
+							}
+							break;
+						case 10:
+							switch (this->mPhase) {
+							case 0:
+							case 10:
+							case 20:
+								sprintf(labelText, "%.255s", GetPCMenuLabelText(16));
+								break;
+							case 1:
+								sprintf(labelText, "%.255s", GetPCMenuLabelText(37));
+								break;
+							default:
+								sprintf(labelText, "%.255s", GetPCMenuLabelText(13));
+								break;
+							}
+							break;
+						default:
+							sprintf(labelText, "%.255s", GetPCMenuLabelText(16));
+							break;
+						}
+					}
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha), labelText, 364, 334, 0, 20, 20);
 				}
 			}
 		}
+		// The dialogue branch only runs for modes at or above 2.
 		if (mMode >= 2) {
-			const char* text = SelectPCDialogue(this);
-			DrawPCDialogue(this, text);
+			const char* text;
+			{
+				switch (this->mMode) {
+				case 2:
+					switch (this->_1BC) {
+					case 0:
+						text = GetPCDialogueText(20) + this->mCharIndex;
+						break;
+					case 1:
+						text = GetPCDialogueText(0) + this->mCharIndex;
+						break;
+					case 2:
+						text = GetPCDialogueText(1) + this->mCharIndex;
+						break;
+					default:
+						text = GetPCDialogueText(20) + this->mCharIndex;
+						break;
+					}
+					break;
+				case 4: {
+					s32 level = GetPlayerLevel(GetPlayerParamsByIndex(&gGame, 0));
+					text      = GetPCDialogueText(gPCLevelDialogueIds[level]) + this->mCharIndex;
+					if (*text == '\t') {
+						this->mInsertsNumber = 1;
+						++this->mCharIndex;
+					}
+					break;
+				}
+				case 5:
+					if (GetPCDialogueText(2)[this->mCharIndex] == '\a') {
+						++this->_36C;
+						++this->mCharIndex;
+						this->_374 = 1;
+					}
+					text = GetPCDialogueText(2) + this->mCharIndex;
+					break;
+				case 3:
+					DrawPCItemPurchasePanel(this->mPurchaseSelection, this->mYesNo, 320.0f, 215.0f + this->mScroll, this->_44C,
+					                        this->mAlpha, this->mPanelAlpha);
+					text = GetPCDialogueText(15) + this->mCharIndex;
+					break;
+				case 9:
+					text = GetPCDialogueText(16) + this->mCharIndex;
+					break;
+				case 7:
+					DrawPCScrapPurchasePanel(this->mShopSelection, this->mYesNo, 320.0f, 215.0f + this->mScroll, this->_44C, this->mAlpha,
+					                         this->mPanelAlpha);
+					text = GetPCDialogueText(17) + this->mCharIndex;
+					break;
+				case 10:
+					text = GetPCDialogueText(18) + this->mCharIndex;
+					break;
+				default:
+					text = GetPCDialogueText(19) + this->mCharIndex;
+					break;
+				}
+			}
+			{
+#if defined(VERSION_JP)
+				if ((s32)++ this->mGlyphFrames >= 8) {
+					this->mGlyphFrames                 = 0;
+					this->mCharFlags[this->mNextGlyph] = 1;
+
+					if (this->mInsertsNumber) {
+						char number[32];
+						sprintf(number, "%d", (s32)GetPCDialogueNumber(this));
+						ConvertHudTextToFullWidth(number);
+						SetPCDialogueGlyph(this, ReadPCDialogueGlyph(number + this->mNumberOffset));
+						this->mNumberOffset += 2;
+						if (!number[this->mNumberOffset]) {
+							this->mNumberOffset  = 0;
+							this->mInsertsNumber = 0;
+						}
+					} else if (!*text) {
+						SetPCDialogueGlyph(this, 0x8140);
+						this->mCharIndex    = 0;
+						this->mNumberOffset = 0;
+						this->_36C          = 0;
+					} else {
+						SetPCDialogueGlyph(this, ReadPCDialogueGlyph(text));
+						this->mCharIndex += 2;
+					}
+
+					if ((s32)++ this->mNextGlyph >= 40)
+						this->mNextGlyph = 0;
+				}
+				for (int i = 0; i < 40; ++i) {
+					if (!this->mCharFlags[i])
+						continue;
+					this->mCharX[i] -= 3.0f;
+					if (this->mCharX[i] <= -22.0f) {
+						this->mCharX[i]     = 640.0f;
+						this->mCharFlags[i] = 0;
+					}
+					u32 color = (u32)(255.0f * this->mAlpha) | 0xC8C8C800;
+					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, (const char*)&this->mCharCopies[i], this->mCharX[i],
+					                             370.0f, 0.0f, 22.0f, 22.0f);
+				}
+#else
+				// Buffers are persistent; original strncpy calls leave the rest of each chunk intact.
+				char(*chunks)[256] = gPCDialogueChunks;
+#if defined(VERSION_PAL)
+				const size_t length = strlen(text), span = length / 3;
+#else
+				const size_t span = strlen(text) / 2;
+#endif
+				// Keep a terminator in each buffer even for a longer replacement translation.
+				const size_t n = span < 255 ? span : 255;
+				strncpy(chunks[0], text, n);
+				strncpy(chunks[1], text + span, n);
+#if defined(VERSION_PAL)
+				const size_t tailSize = length - 2 * span + 1;
+				memcpy(chunks[2], text + 2 * span, tailSize < sizeof(chunks[2]) ? tailSize : sizeof(chunks[2]) - 1);
+				chunks[2][sizeof(chunks[2]) - 1] = '\0';
+#endif
+				gPCDialogueX -= 3.0f;
+				u32 color     = (u32)(255.0f * this->mAlpha) | 0xC8C8C800;
+				CGs* graphics = GetGameGraphics(&gGame);
+				DrawGsProportionalTextFormat(graphics, color, chunks[0], gPCDialogueX, 370.0f, 0.0f, 22.0f, 22.0f);
+				color          = (u32)(255.0f * this->mAlpha) | 0xC8C8C800;
+				f32 firstWidth = MeasureGameTextWidth(GetGameGraphics(&gGame), chunks[0], 1, 22.0f);
+				f32 x          = gPCDialogueX + firstWidth;
+				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, chunks[1], x, 370.0f, 0.0f, 22.0f, 22.0f);
+#if defined(VERSION_PAL)
+				color           = (u32)(255.0f * this->mAlpha) | 0xC8C8C800;
+				f32 secondWidth = MeasureGameTextWidth(GetGameGraphics(&gGame), chunks[1], 1, 22.0f);
+				firstWidth      = MeasureGameTextWidth(GetGameGraphics(&gGame), chunks[0], 1, 22.0f);
+				x               = (gPCDialogueX + firstWidth) + secondWidth;
+				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, chunks[2], x, 370.0f, 0.0f, 22.0f, 22.0f);
+#endif
+				f32 width = MeasureGameTextWidth(GetGameGraphics(&gGame), text, 1, 22.0f);
+				if (gPCDialogueX + width <= 0)
+					gPCDialogueX = 640.0f;
+#endif
+			}
 		}
 		return TRUE;
 	}
