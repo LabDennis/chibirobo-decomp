@@ -333,7 +333,7 @@ game/titlestates.cpp:
 	.ctors      start:0x8020006C end:0x80200070
 
 game/stg.cpp:
-	.text       start:0x80031C98 end:0x800648F0
+	.text       start:0x80031C98 end:0x800650A0
 
 game/menu_cleanup.cpp:
 	.text       start:0x800650A0 end:0x80065620

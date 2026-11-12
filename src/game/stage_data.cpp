@@ -970,4 +970,5 @@ extern "C" s32 GetStageNum()
  * @note Address: 0x8006F94C
  * @note Size: 0x128
  */
-// __sinit_stage_cpp, builds gStageResources and gGlobalScriptResources
+// __sinit_stage_data_cpp, builds gStageResources and gGlobalScriptResources
+// NONMATCHING: only the offsets differ, retail's .bss has 0x140 bytes ahead of these two objects
