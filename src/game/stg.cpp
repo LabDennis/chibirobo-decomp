@@ -8311,7 +8311,7 @@ extern "C" void Open__10MenuStatusFv(MenuStatus* menu)
 		gStatusIconUnlocked[i] = 0;
 	for (int i = 0; i < 24; i++) {
 		int flag = GetStatusIconEventFlagId(i);
-		if (flag >= 0 && (gEventFlags.mFlags[flag >> 5] & (1u << (flag & 31))))
+		if (flag >= 0 && (gEventFlags.mFlags[(u32)flag / 32] & (1u << (flag & 31))))
 			gStatusIconUnlocked[i] = 1;
 	}
 	for (int i = 0; i < 13; i++)
