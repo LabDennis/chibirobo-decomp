@@ -1014,7 +1014,10 @@ void UpdateToy6FJointSpin(XObjActorToy* object, u32)
 	}
 
 	static f32 sAngle = 0.0f;
-	if (object->_990 == 1) {
+	switch (object->_990) {
+	case 0:
+		break;
+	case 1: {
 		s32 path[] = { 0, 3, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 4, path));
 		sAngle += 0.4f;
@@ -1023,6 +1026,8 @@ void UpdateToy6FJointSpin(XObjActorToy* object, u32)
 			sAngle       = 0.0f;
 		}
 		joint.SetRotationZ(sAngle, 0);
+		break;
+	}
 	}
 }
 
