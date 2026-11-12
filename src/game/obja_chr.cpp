@@ -3231,11 +3231,11 @@ extern "C" u8 vf2C__7AtcMenuFl(AtcMenu* menu, s32 index)
  * @note Address: 0x80098DD4
  * @note Size: 0x74
  */
-extern "C" void ConfirmSelection__7AtcMenuFv(AtcMenu* menu)
+void AtcMenu::ConfirmSelection()
 {
-	XObjChr* chr = menu->mChr;
+	XObjChr* chr = mChr;
 	s32 current  = chr->GetAttachment();
-	s32 type     = menu->mItems[menu->mCursorIndex].mType;
+	s32 type     = mItems[mCursorIndex].mType;
 	if (type == current) {
 		if (chr->mAttachment != 0) {
 			chr->mAttachmentRequest = 0;
@@ -3556,7 +3556,7 @@ extern "C" s32 HandleEquipmentRingInput(OctaMenu* menu, BOOL active)
  * @note Address: 0x8009BE18
  * @note Size: 0x4
  */
-extern "C" void ConfirmSelection__8OctaMenuFv(OctaMenu* menu)
+void OctaMenu::ConfirmSelection()
 {
 }
 
@@ -4595,13 +4595,13 @@ extern "C" BOOL IsPlayerStopped(const XObjChr* chr)
  * @note Address: 0x8009FF40
  * @note Size: 0xC0
  */
-extern "C" void OnHitFromPosition__7XObjChrFRC3Vecf(XObjChr* chr, const Vec&, f32 strength)
+void XObjChr::OnHitFromPosition(const Vec&, f32 strength)
 {
-	if (IsCarryingMug(&chr->mLift)) {
-		chr->mLift.mTarget->vf12C(1, 150, 150, 0, 0.0f);
-		chr->mLift.mTarget->vf12C(1, 0, 0, 0, 0.2f);
-	} else if (chr->_A34 <= 0) {
-		ApplyPlayerHitReaction(chr, TRUE, TRUE, strength);
+	if (IsCarryingMug(&mLift)) {
+		mLift.mTarget->vf12C(1, 150, 150, 0, 0.0f);
+		mLift.mTarget->vf12C(1, 0, 0, 0, 0.2f);
+	} else if (_A34 <= 0) {
+		ApplyPlayerHitReaction(this, TRUE, TRUE, strength);
 	}
 }
 
@@ -5216,21 +5216,21 @@ extern "C" void SetAnimRate__7XObjChrFfUl(XObjChr* chr, f32 rate, u32 mask)
  * @note Address: 0x800A388C
  * @note Size: 0x254
  */
-extern "C" HSD_ShapeAnimJoint* GetShapeAnimation__7XObjChrFl(XObjChr* chr, s32 id)
+HSD_ShapeAnimJoint* XObjChr::GetShapeAnimation(s32 id)
 {
-	if (SuitAnimGroup(chr, id)) {
-		HSD_ShapeAnimJoint** anims = chr->mSuitAnim.mShapeAnimJoint;
+	if (SuitAnimGroup(this, id)) {
+		HSD_ShapeAnimJoint** anims = mSuitAnim.mShapeAnimJoint;
 		return anims != NULL ? anims[(id % 3000) % 1000] : NULL;
 	}
-	if (AtcAnimGroup(chr, id)) {
-		HSD_ShapeAnimJoint** anims = chr->mAttachmentAnim.mShapeAnimJoint;
+	if (AtcAnimGroup(this, id)) {
+		HSD_ShapeAnimJoint** anims = mAttachmentAnim.mShapeAnimJoint;
 		return anims != NULL ? anims[(id % 2000) % 1000] : NULL;
 	}
-	if (AnimGroup(chr, id)) {
-		HSD_ShapeAnimJoint** anims = chr->mAnim.mShapeAnimJoint;
+	if (AnimGroup(this, id)) {
+		HSD_ShapeAnimJoint** anims = mAnim.mShapeAnimJoint;
 		return anims != NULL ? anims[(id % 1000) % 1000] : NULL;
 	}
-	HSD_ShapeAnimJoint** anims = chr->mArchive.mShapeAnimJoint;
+	HSD_ShapeAnimJoint** anims = mArchive.mShapeAnimJoint;
 	return anims != NULL ? anims[id % 1000] : NULL;
 }
 
@@ -5239,21 +5239,21 @@ extern "C" HSD_ShapeAnimJoint* GetShapeAnimation__7XObjChrFl(XObjChr* chr, s32 i
  * @note Address: 0x800A3AE0
  * @note Size: 0x254
  */
-extern "C" HSD_MatAnimJoint* GetMaterialAnimation__7XObjChrFl(XObjChr* chr, s32 id)
+HSD_MatAnimJoint* XObjChr::GetMaterialAnimation(s32 id)
 {
-	if (SuitAnimGroup(chr, id)) {
-		HSD_MatAnimJoint** anims = chr->mSuitAnim.mMatAnimJoint;
+	if (SuitAnimGroup(this, id)) {
+		HSD_MatAnimJoint** anims = mSuitAnim.mMatAnimJoint;
 		return anims != NULL ? anims[(id % 3000) % 1000] : NULL;
 	}
-	if (AtcAnimGroup(chr, id)) {
-		HSD_MatAnimJoint** anims = chr->mAttachmentAnim.mMatAnimJoint;
+	if (AtcAnimGroup(this, id)) {
+		HSD_MatAnimJoint** anims = mAttachmentAnim.mMatAnimJoint;
 		return anims != NULL ? anims[(id % 2000) % 1000] : NULL;
 	}
-	if (AnimGroup(chr, id)) {
-		HSD_MatAnimJoint** anims = chr->mAnim.mMatAnimJoint;
+	if (AnimGroup(this, id)) {
+		HSD_MatAnimJoint** anims = mAnim.mMatAnimJoint;
 		return anims != NULL ? anims[(id % 1000) % 1000] : NULL;
 	}
-	HSD_MatAnimJoint** anims = chr->mArchive.mMatAnimJoint;
+	HSD_MatAnimJoint** anims = mArchive.mMatAnimJoint;
 	return anims != NULL ? anims[id % 1000] : NULL;
 }
 
@@ -5262,21 +5262,21 @@ extern "C" HSD_MatAnimJoint* GetMaterialAnimation__7XObjChrFl(XObjChr* chr, s32 
  * @note Address: 0x800A3D34
  * @note Size: 0x254
  */
-extern "C" HSD_AnimJoint* GetJointAnimation__7XObjChrFl(XObjChr* chr, s32 id)
+HSD_AnimJoint* XObjChr::GetJointAnimation(s32 id)
 {
-	if (SuitAnimGroup(chr, id)) {
-		HSD_AnimJoint** anims = chr->mSuitAnim.mAnimJoint;
+	if (SuitAnimGroup(this, id)) {
+		HSD_AnimJoint** anims = mSuitAnim.mAnimJoint;
 		return anims != NULL ? anims[(id % 3000) % 1000] : NULL;
 	}
-	if (AtcAnimGroup(chr, id)) {
-		HSD_AnimJoint** anims = chr->mAttachmentAnim.mAnimJoint;
+	if (AtcAnimGroup(this, id)) {
+		HSD_AnimJoint** anims = mAttachmentAnim.mAnimJoint;
 		return anims != NULL ? anims[(id % 2000) % 1000] : NULL;
 	}
-	if (AnimGroup(chr, id)) {
-		HSD_AnimJoint** anims = chr->mAnim.mAnimJoint;
+	if (AnimGroup(this, id)) {
+		HSD_AnimJoint** anims = mAnim.mAnimJoint;
 		return anims != NULL ? anims[(id % 1000) % 1000] : NULL;
 	}
-	HSD_AnimJoint** anims = chr->mArchive.mAnimJoint;
+	HSD_AnimJoint** anims = mArchive.mAnimJoint;
 	return anims != NULL ? anims[id % 1000] : NULL;
 }
 
@@ -5363,16 +5363,16 @@ extern "C" f32 GetPlayerAnimationRateMultiplier(XObjChr* chr)
  * @note Address: 0x800A45B8
  * @note Size: 0xC0
  */
-extern "C" void RegisterShadowObjects__7XObjChrFP7CShadow(XObjChr* chr, CShadow* shadow)
+void XObjChr::RegisterShadowObjects(CShadow* shadow)
 {
-	HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)chr->mJObj);
+	HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)mJObj);
 	if (gGame.mStatus.mFlags & 0x0040000000000000ULL) {
-		HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)chr->mPlug.mJObj);
+		HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)mPlug.mJObj);
 	}
-	HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)chr->mCopterObj.mJObj);
-	HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)chr->mPopperObj.mJObj);
-	HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)chr->mRadarObj.mJObj);
-	HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)chr->mOXObj.mJObj);
+	HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)mCopterObj.mJObj);
+	HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)mPopperObj.mJObj);
+	HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)mRadarObj.mJObj);
+	HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)mOXObj.mJObj);
 }
 
 // XObjChr::UpdateAnim
@@ -5429,28 +5429,28 @@ static inline void DrawPlayerLiftCylinder(const Vec& pos, const Vec& size, u32 c
  * @note Address: 0x800A4A60
  * @note Size: 0xA9C
  */
-extern "C" void vfC4__7XObjChrFv(XObjChr* player)
+void XObjChr::vfC4()
 {
 	CGs* gs = &gGame.mGs;
 	SetPlayerCylinderDrawState(gs);
-	if (player->mLift.mState != 0) {
-		if (IsCarryingToothbrush(&player->mLift)) {
+	if (mLift.mState != 0) {
+		if (IsCarryingToothbrush(&mLift)) {
 			s32 path[] = { 0, 0, 0, 0, 0 };
-			Vec pos    = CJObj_GetJointWorldPositionByPath(player->mLift.mTarget, 5, path);
+			Vec pos    = CJObj_GetJointWorldPositionByPath(mLift.mTarget, 5, path);
 			Vec size   = { 3.0f, 3.0f, 1.0f };
 			DrawPlayerLiftCylinder(pos, size, 0x00FFFF80);
 		}
-		if (IsCarryingSpoon(&player->mLift)) {
-			f32 yaw = player->mMoveRotate.y;
-			Vec pos = player->mMoveTranslate;
+		if (IsCarryingSpoon(&mLift)) {
+			f32 yaw = mMoveRotate.y;
+			Vec pos = mMoveTranslate;
 			pos.x += 3.0f * (f32)sin(yaw);
 			pos.z += 3.0f * (f32)cos(yaw);
 			Vec size = { 1.0f, 1.0f, 1.0f };
 			DrawPlayerLiftCylinder(pos, size, 0x00FFFF80);
 		}
-		if (IsCarryingSquirter(&player->mLift)) {
-			f32 yaw = player->mMoveRotate.y;
-			Vec pos = player->mMoveTranslate;
+		if (IsCarryingSquirter(&mLift)) {
+			f32 yaw = mMoveRotate.y;
+			Vec pos = mMoveTranslate;
 			pos.x += 2.0f * (f32)sin(yaw);
 			pos.z += 2.0f * (f32)cos(yaw);
 			Vec lowerSize = { 2.0f, 2.0f, 1.0f };
@@ -5460,8 +5460,8 @@ extern "C" void vfC4__7XObjChrFv(XObjChr* player)
 			pos.y += 7.0f;
 			Vec upperSize = { 2.0f, 2.0f, 3.0f };
 			DrawPlayerLiftCylinder(pos, upperSize, 0x00FFFF80);
-			if (IsCarryingSquirter(&player->mLift) && player->mAnimId >= 0x8C2 && player->mAnimId <= 0x8C5) {
-				XObj* object          = player->mLift.mTarget;
+			if (IsCarryingSquirter(&mLift) && mAnimId >= 0x8C2 && mAnimId <= 0x8C5) {
+				XObj* object          = mLift.mTarget;
 				s32 rootPath[]        = { 0, 0 };
 				HSD_JObj* const joint = FindJointByPath(object->mJObj, rootPath, 2);
 				Vec origin            = GetJointPosition(joint);
@@ -5471,20 +5471,20 @@ extern "C" void vfC4__7XObjChrFv(XObjChr* player)
 					Vec scale;
 					HSD_MtxGetScale(HSD_JObjGetMtxPtr(joint), &scale);
 					Vec size = { scale.x, scale.z, scale.y * 0.5f };
-					DrawPlayerLiftCylinder(origin, size, player->mItemTintWord);
+					DrawPlayerLiftCylinder(origin, size, mItemTintWord);
 				}
 			}
 		}
 	}
-	if (player->mStatus.mFlags & 0x0200000000000000ULL) {
+	if (mStatus.mFlags & 0x0200000000000000ULL) {
 		SetPlayerCylinderDrawState(gs);
-		CVec pos(player->mMoveTranslate);
-		Vec offset   = player->mMoveScale * GetFloorCenterOffset(&player->mFloors, 0);
-		Vec extent   = player->mMoveScale * GetFloorExtent(&player->mFloors, 0);
-		f32 floorYaw = DEG2RAD * player->mFloors->mYawDegrees;
-		f32 yaw      = player->mMoveRotate.y + floorYaw;
-		pos.x        = player->mMoveTranslate.x + 0.5f * extent.x * (f32)sin(player->mMoveRotate.y);
-		pos.z        = player->mMoveTranslate.z + 0.5f * extent.z * (f32)cos(player->mMoveRotate.y);
+		CVec pos(mMoveTranslate);
+		Vec offset   = mMoveScale * GetFloorCenterOffset(&mFloors, 0);
+		Vec extent   = mMoveScale * GetFloorExtent(&mFloors, 0);
+		f32 floorYaw = DEG2RAD * mFloors->mYawDegrees;
+		f32 yaw      = mMoveRotate.y + floorYaw;
+		pos.x        = mMoveTranslate.x + 0.5f * extent.x * (f32)sin(mMoveRotate.y);
+		pos.z        = mMoveTranslate.z + 0.5f * extent.z * (f32)cos(mMoveRotate.y);
 
 		Mtx translate, shift, turn, tilt, scale, model, view;
 		PSMTXTrans(translate, pos.x, pos.y, pos.z);
@@ -5498,8 +5498,8 @@ extern "C" void vfC4__7XObjChrFv(XObjChr* player)
 		PSMTXConcat(model, tilt, model);
 		PSMTXConcat(gs->mCamera->mViewMtx, model, view);
 		DrawGsCylinderWithMatrix(gs, view, 0x9696FF60, 16);
-		vfC4__4XObjFv(player);
-		XObj* plug = &player->mPlug;
+		vfC4__4XObjFv(this);
+		XObj* plug = &mPlug;
 		if (gGame.mStatus.mFlags & 0x0040000000000000ULL)
 			plug->vfC4();
 		ClearActiveObjectFloors(plug);
@@ -5533,30 +5533,30 @@ static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction,
  * @note Address: 0x800A551C
  * @note Size: 0x73C
  */
-extern "C" void vfC8__7XObjChrFv(XObjChr* player)
+void XObjChr::vfC8()
 {
-	vfC8__4XObjFv(player);
-	DrawPopperShotRings(&player->mPopper);
-	fn_800BD320(&player->mRadar);
+	vfC8__4XObjFv(this);
+	DrawPopperShotRings(&mPopper);
+	fn_800BD320(&mRadar);
 	if (!(gGame.mStatus.mFlags & 0x100))
-		DrawPlayerLookMarker(&player->mLook);
+		DrawPlayerLookMarker(&mLook);
 
 	CMotionControlCamera* camera = &gGame.mMotionControlCamera;
-	if (!camera->IsAction(4) && player->_9AC4 > 0.0f) {
+	if (!camera->IsAction(4) && _9AC4 > 0.0f) {
 		Vec offset = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;
-		player->ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
+		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
 		x -= 31.0f;
 		f32 duration = (f32)(s32)fn_8006E9AC(0) / 100.0f;
-		DrawPlayerGauge(x, y, 62.0f, player->_9AC4 / (IDLE_SECOND * duration), 0x00FF0064);
+		DrawPlayerGauge(x, y, 62.0f, _9AC4 / (IDLE_SECOND * duration), 0x00FF0064);
 	}
-	if (!camera->IsAction(4) && (player->mAnimId == 0x7A || player->mAnimId == 0xCA)) {
+	if (!camera->IsAction(4) && (mAnimId == 0x7A || mAnimId == 0xCA)) {
 		Vec offset = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;
-		player->ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
+		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
 		x -= 36.0f;
-		f32 frame    = GetAnimFrame(player->mJObj);
-		f32 fraction = frame / GetAnimEndFrame(player->mJObj);
+		f32 frame    = GetAnimFrame(mJObj);
+		f32 fraction = frame / GetAnimEndFrame(mJObj);
 		u32 color;
 		if (fraction <= 0.6f)
 			color = 0xFFC80064;
@@ -5662,23 +5662,23 @@ static inline Vec WarningJointPosition(HSD_JObj* root, s32* path, s32 depth)
  * @note Address: 0x800A5C58
  * @note Size: 0x16A0
  */
-extern "C" void DrawObjectEffects__7XObjChrFv(XObjChr* player)
+void XObjChr::DrawObjectEffects()
 {
 	if (gGame.mStatus.mFlags & 0x0040000000000000ULL)
-		player->mPlug.DrawObjectEffects();
-	player->mCopterObj.DrawObjectEffects();
-	player->mPopperObj.DrawObjectEffects();
-	player->mRadarObj.DrawObjectEffects();
-	player->mOXObj.DrawObjectEffects();
-	if (player->mBatteryWarningFade > 0) {
-		f32 radius     = 1.2f * PlayerCollisionRadius(player);
+		mPlug.DrawObjectEffects();
+	mCopterObj.DrawObjectEffects();
+	mPopperObj.DrawObjectEffects();
+	mRadarObj.DrawObjectEffects();
+	mOXObj.DrawObjectEffects();
+	if (mBatteryWarningFade > 0) {
+		f32 radius     = 1.2f * PlayerCollisionRadius(this);
 		s32 fromPath[] = { 0, 1, 0, 0, 0 };
-		CVec from(WarningJointPosition(player->mJObj, fromPath, 5));
+		CVec from(WarningJointPosition(mJObj, fromPath, 5));
 		s32 toPath[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
-		CVec to(WarningJointPosition(player->mJObj, toPath, 8));
-		if (player->mLift.mState && IsCarryingMug(&player->mLift)) {
-			from.x = player->mLift.mTarget->mMoveTranslate.x;
-			from.z = player->mLift.mTarget->mMoveTranslate.z;
+		CVec to(WarningJointPosition(mJObj, toPath, 8));
+		if (mLift.mState && IsCarryingMug(&mLift)) {
+			from.x = mLift.mTarget->mMoveTranslate.x;
+			from.z = mLift.mTarget->mMoveTranslate.z;
 			Vec up = { 0, 1, 0 };
 			to     = from + up;
 		}
@@ -5696,14 +5696,14 @@ extern "C" void DrawObjectEffects__7XObjChrFv(XObjChr* player)
 		PSMTXConcat(model, scale, model);
 		Vec vertices[256];
 		u32 colors[256];
-		f32 z = -3, phase = player->mBatteryWarningAngle;
+		f32 z = -3, phase = mBatteryWarningAngle;
 		u16 n = 0;
 		for (int turn = 0; turn < 8; ++turn)
 			for (int step = 0; step < 16; ++step) {
 				f32 a    = (TWO_PI / 16) * step;
 				Vec& v   = vertices[n];
-				v.x      = (2.f * (1.f - player->mBatteryWarningFade) + radius) * (f32)sin(a);
-				v.y      = (2.f * (1.f - player->mBatteryWarningFade) + radius) * (f32)cos(a);
+				v.x      = (2.f * (1.f - mBatteryWarningFade) + radius) * (f32)sin(a);
+				v.y      = (2.f * (1.f - mBatteryWarningFade) + radius) * (f32)cos(a);
 				v.z      = z;
 				f32 wave = WrapAngle(phase);
 				if (wave > PI)
@@ -5717,50 +5717,50 @@ extern "C" void DrawObjectEffects__7XObjChrFv(XObjChr* player)
 			}
 		PSMTXMultVecArray(model, vertices, vertices, n);
 		CGs& gs = gGame.mGs;
-		n       = ShadeBatteryWarning(colors, 0xff000000, 200, player);
+		n       = ShadeBatteryWarning(colors, 0xff000000, 200, this);
 		SetGsCullMode(gs.mCurRenderMode, 0);
 		SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
 		DrawGsColoredTrianglePrimitive(&gs, GX_TRIANGLESTRIP, gs.mCamera->mViewMtx, vertices, colors, n);
-		n = ShadeBatteryWarning(colors, 0xffffff00, 255, player);
+		n = ShadeBatteryWarning(colors, 0xffffff00, 255, this);
 		SetGsBlendMode(gs.mCurRenderMode, 1, 2, 4, 15);
 		DrawGsColoredTrianglePrimitive(&gs, GX_TRIANGLESTRIP, gs.mCamera->mViewMtx, vertices, colors, n);
 		SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
 		SetGsCullMode(gs.mCurRenderMode, 2);
 	}
-	Vec ground = { player->mMoveTranslate.x, player->mFloorHit.mHeight, player->mMoveTranslate.z };
-	DrawTumbleRing(&player->mTumble.mFade, ground, player->mMoveRotate.y);
-	DrawRadarTargetBeam(&player->mRadar);
-	DrawPopperShotParticles(&player->mPopper);
-	DrawParticlePool(&player->mDust.mPtcl);
-	DrawSpiralTrail(&gPlayerSuitChangeEffect, player->mMoveTranslate);
+	Vec ground = { mMoveTranslate.x, mFloorHit.mHeight, mMoveTranslate.z };
+	DrawTumbleRing(&mTumble.mFade, ground, mMoveRotate.y);
+	DrawRadarTargetBeam(&mRadar);
+	DrawPopperShotParticles(&mPopper);
+	DrawParticlePool(&mDust.mPtcl);
+	DrawSpiralTrail(&gPlayerSuitChangeEffect, mMoveTranslate);
 }
 
 /**
  * @note Address: 0x800A72F8
  * @note Size: 0x4DC
  */
-extern "C" void DrawGroundShadowAt__7XObjChrFPC3Vecf(XObjChr* player, const Vec*, f32 opacity)
+void XObjChr::DrawGroundShadowAt(const Vec*, f32 opacity)
 {
 	if (gGame.mMotionControlCamera.GetMapDistance() < 1.0f)
 		return;
-	if (player->mStatus.mFlags & 4) {
+	if (mStatus.mFlags & 4) {
 		if (gGame.mStatus.mFlags & 0x0040000000000000ULL)
-			player->mPlug.DrawGroundShadow();
+			mPlug.DrawGroundShadow();
 		return;
 	}
 	s32 rootPath[] = { 0 };
-	Vec position   = GetEventJointWorldPosition(player, 1, rootPath);
-	if (!player->mLift.mState || !IsCarryingMug(&player->mLift)) {
-		DrawGroundShadowAt__4XObjFPC3Vecf(player, &position, opacity);
+	Vec position   = GetEventJointWorldPosition(this, 1, rootPath);
+	if (!mLift.mState || !IsCarryingMug(&mLift)) {
+		DrawGroundShadowAt__4XObjFPC3Vecf(this, &position, opacity);
 		return;
 	}
 
 	s32 path[] = { 0, 0 };
 	CVec jointScale;
-	HSD_JObjGetScale(FindJointByPath(player->mJObj, path, 2), &jointScale);
+	HSD_JObjGetScale(FindJointByPath(mJObj, path, 2), &jointScale);
 	Vec rotation   = { -HALF_PI, 0.0f, 0.0f };
-	u32 shadowSize = player->mAttr._00 != NULL ? player->mAttr._00->_0C : 0;
-	Vec size       = (player->mMoveScale * (f32)shadowSize) + ((jointScale * 2.5f) * 3.0f);
+	u32 shadowSize = mAttr._00 != NULL ? mAttr._00->_0C : 0;
+	Vec size       = (mMoveScale * (f32)shadowSize) + ((jointScale * 2.5f) * 3.0f);
 	CGs& gs        = gGame.mGs;
 	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
 	u32 edge   = (u32)(128.0f * opacity);
@@ -5789,18 +5789,18 @@ extern "C" void DrawGroundShadowAt__7XObjChrFPC3Vecf(XObjChr* player, const Vec*
  * @note Address: 0x800A77D4
  * @note Size: 0xC0
  */
-extern "C" void DrawGroundShadow__7XObjChrFv(XObjChr* player)
+void XObjChr::DrawGroundShadow()
 {
 	CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 	if (camera->GetMapDistance() < 1.0f)
 		return;
-	if (player->mStatus.mFlags & 4ULL) {
+	if (mStatus.mFlags & 4ULL) {
 		if (gGame.mStatus.mFlags & 0x0040000000000000ULL) {
-			XObj* plug = &player->mPlug;
+			XObj* plug = &mPlug;
 			plug->DrawGroundShadow();
 		}
 	} else {
-		DrawGroundShadow__4XObjFv(player);
+		DrawGroundShadow__4XObjFv(this);
 	}
 }
 
@@ -5809,22 +5809,22 @@ extern "C" void DrawGroundShadow__7XObjChrFv(XObjChr* player)
  * @note Address: 0x800A7894
  * @note Size: 0x198
  */
-extern "C" void DrawReflection__7XObjChrFPA4_f(XObjChr* player, Mtx view)
+void XObjChr::DrawReflection(Mtx view)
 {
 	CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 	if (camera->GetMapDistance() < 1.0f)
 		return;
 	if (gGame.mStatus.mFlags & 0x100ULL)
-		SetPlayerEyeCameraJointsHidden(player, 0);
-	player->DrawWithView(view);
+		SetPlayerEyeCameraJointsHidden(this, 0);
+	DrawWithView(view);
 	if (gGame.mStatus.mFlags & 0x100ULL)
-		SetPlayerEyeCameraJointsHidden(player, 1);
+		SetPlayerEyeCameraJointsHidden(this, 1);
 	if (gGame.mStatus.mFlags & 0x0040000000000000ULL)
-		player->mPlug.DrawReflection(view);
-	player->mCopterObj.DrawReflection(view);
-	player->mPopperObj.DrawReflection(view);
-	player->mRadarObj.DrawReflection(view);
-	player->mOXObj.DrawReflection(view);
+		mPlug.DrawReflection(view);
+	mCopterObj.DrawReflection(view);
+	mPopperObj.DrawReflection(view);
+	mRadarObj.DrawReflection(view);
+	mOXObj.DrawReflection(view);
 }
 
 // XObjChr::DrawWithView, himself then the attachments, the popper turned to face the camera on flag 0x100
@@ -5832,18 +5832,18 @@ extern "C" void DrawReflection__7XObjChrFPA4_f(XObjChr* player, Mtx view)
  * @note Address: 0x800A7A2C
  * @note Size: 0x218
  */
-extern "C" void DrawWithView__7XObjChrFPA4_f(XObjChr* player, Mtx view)
+void XObjChr::DrawWithView(Mtx view)
 {
 	CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 	if (camera->GetMapDistance() < 1.0f)
 		return;
-	DrawWithView__4XObjFPA4_f(player, view);
-	if ((gGame.mStatus.mFlags & 0x100ULL) && player->mLift.mState == 4 && IsLiftTargetPlug(&player->mLift)) {
+	DrawWithView__4XObjFPA4_f(this, view);
+	if ((gGame.mStatus.mFlags & 0x100ULL) && mLift.mState == 4 && IsLiftTargetPlug(&mLift)) {
 		// no plug in this lift state
 	} else if (gGame.mStatus.mFlags & 0x0040000000000000ULL) {
-		player->mPlug.DrawWithView(view);
+		mPlug.DrawWithView(view);
 	}
-	player->mCopterObj.DrawWithView(view);
+	mCopterObj.DrawWithView(view);
 	if (gGame.mStatus.mFlags & 0x100ULL) {
 		Mtx rotation, combined;
 		PSMTXRotRad(rotation, 'x', -camera->mCamera.mAngle.x);
@@ -5853,12 +5853,12 @@ extern "C" void DrawWithView__7XObjChrFPA4_f(XObjChr* player, Mtx view)
 			CCamera* current = ((CBase*)&gGame)->GetCamera();
 			PSMTXConcat(rotation, current->mViewMtx, combined);
 		}
-		player->mPopperObj.DrawWithView(combined);
+		mPopperObj.DrawWithView(combined);
 	} else {
-		player->mPopperObj.DrawWithView(view);
+		mPopperObj.DrawWithView(view);
 	}
-	player->mRadarObj.DrawWithView(view);
-	player->mOXObj.DrawWithView(view);
+	mRadarObj.DrawWithView(view);
+	mOXObj.DrawWithView(view);
 }
 
 // XObjAttachment::DrawWithView
@@ -5866,10 +5866,10 @@ extern "C" void DrawWithView__7XObjChrFPA4_f(XObjChr* player, Mtx view)
  * @note Address: 0x800A7C44
  * @note Size: 0x2C
  */
-extern "C" void DrawWithView__14XObjAttachmentFPA4_f(XObjAttachment* object, Mtx view)
+void XObjAttachment::DrawWithView(Mtx view)
 {
-	if (object->mVisible != 0)
-		DrawWithView__4XObjFPA4_f(object, view);
+	if (mVisible != 0)
+		DrawWithView__4XObjFPA4_f(this, view);
 }
 
 // steps the anim frame and fires the particles the frame tables ask for
