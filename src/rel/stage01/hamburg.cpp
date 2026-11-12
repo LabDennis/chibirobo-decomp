@@ -1305,6 +1305,7 @@ extern "C" s32 PutHeldHamObjOnDish(s32 id)
  */
 extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
 {
+	// NONMATCHING: regalloc
 	HamObj* best = FindStackBase(slot->mActor->_C8, slot->_08, slot->_30, 10.0f);
 
 	if (best != NULL) {
@@ -1596,6 +1597,10 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
  */
 extern "C" void UpdateHamPickupFlags(void)
 {
+	// NONMATCHING: regalloc — retail keeps two zeroed locals (best and the inner
+	// loop counter) in adjacent callee-saved slots so the inner counter is formed
+	// by copying the pointer slot instead of a fresh li; the built code uses
+	// independent li forms and different callee registers throughout
 	u32 i;
 	u32 j;
 
@@ -2148,6 +2153,9 @@ extern "C" HamObj* FindHamObj(s32 id)
  */
 extern "C" HamObj* RegisterHamObj(s32 id)
 {
+	// NONMATCHING: regalloc — retail forms the mActor field address once and
+	// reloads the pointer through it for both flag updates; the built code uses
+	// the field offset form and different callee registers
 	s32 i;
 	HamObj* slot = FindHamObj(id);
 	if (slot != NULL) {
@@ -2382,6 +2390,9 @@ extern "C" void ExitHamburg(void)
  */
 extern "C" void InitHamburg(void)
 {
+	// NONMATCHING: regalloc/scheduling — the unrolled hamDishes init, the
+	// zero/one constant slots and the gasPlate scan setup are interleaved
+	// differently and land in different callee registers
 	s32 i;
 	s32 count;
 
