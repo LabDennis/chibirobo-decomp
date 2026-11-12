@@ -3,9 +3,6 @@
 #include "game/gmath.h"
 
 extern "C" {
-extern XObjActorDeca::StateFunc sDecaHoldState;
-extern XObjActorDeca::StateFunc sDecaPickupState;
-extern XObjActorDeca::StateFunc sDecaResetState;
 void PSMTXTrans(Mtx mtx, f32 x, f32 y, f32 z);
 void ApproachHudValue(f32* value, f32* target, f32 step);
 CVec GetStagePlacementScale(XObj* object);
@@ -159,7 +156,7 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 			break;
 		case 4:
 			_A4C   = mCmd[1];
-			mState = sDecaPickupState;
+			mState = &XObjActorDeca::StatePickUp;
 			ResetActorMovementStep(this);
 			mCmd[0] = 0;
 			break;
@@ -307,7 +304,7 @@ void XObjActorDeca::StatePickUp(u32 frames)
 			_A50->mStatus.mFlags &= ~0x0200000000000000ULL;
 		}
 		_998.mFlags &= ~0x2000;
-		mState = sDecaHoldState;
+		mState = &XObjActorDeca::StateHold;
 		ResetActorMovementStep(this);
 		break;
 	}
@@ -439,7 +436,7 @@ void XObjActorDeca::ResetActorState()
 	_C8C        = 0;
 	_CA0        = PI;
 	_CA4        = PI;
-	mState      = sDecaResetState;
+	mState      = &XObjActorDeca::StateHold;
 	ResetActorMovementStep(this);
 	for (u32 i = 0; i < 20; i++) {
 		mCmd[i] = 0;
