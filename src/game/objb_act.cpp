@@ -223,8 +223,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		}
 		break;
 	case 4:
-		switch (anim) {
-		case 0x895:
+		if (anim == 0x895) {
 			if (aobj->flags & 0x44000000) {
 				HeldAnim(act->mOwner, 0x894);
 				if (act->mContactEffect) {
@@ -245,12 +244,9 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 					    = CreateParticleByBankAndId(&gGame, 1, act->mContactEffectId, 0, GetObjectJointByPath(act->mTarget, 5, path), TRUE);
 				}
 			}
-			break;
-		case 0x8ae:
-		case 0x8af:
+		} else if (anim == 0x8ae || anim == 0x8af) {
 			if (aobj->flags & 0x44000000)
 				HeldAnim(act->mOwner, 0x894);
-			break;
 		}
 		if (IsCarryingToothbrush(act)) {
 			if (anim != 0x895 && act->mContactEffect) {
@@ -1209,11 +1205,19 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 		break;
 	case 5:
 		if (anim == 0x8b) {
-			if (aobj->flags & 0x44000000)
-				RopeAnim(act, act->_0C == 1 ? 0x8d : 0x8c, 1);
+			if (aobj->flags & 0x44000000) {
+				if (act->_0C == 1)
+					RopeAnim(act, 0x8d, 1);
+				else
+					RopeAnim(act, 0x8c, 1);
+			}
 		} else if (anim == 0x8d) {
-			if (aobj->flags & 0x44000000)
-				RopeAnim(act, act->_0C == 1 ? 0x8b : 0x8a, 1);
+			if (aobj->flags & 0x44000000) {
+				if (act->_0C == 1)
+					RopeAnim(act, 0x8b, 1);
+				else
+					RopeAnim(act, 0x8a, 1);
+			}
 		} else if (act->_0C == 1 || act->_0C == 2) {
 			if (anim == 0x8a)
 				RopeAnim(act, 0x8b, 1);
