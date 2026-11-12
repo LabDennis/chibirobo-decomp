@@ -14371,33 +14371,33 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_XOR: {
 		s32 rhs = CEvt_Evaluate(evt);
 		s32 lhs = CEvt_Evaluate(evt);
-		if (op == EVT_EXPR_EQUAL)
+		if ((u8)op == EVT_EXPR_EQUAL)
 			result = lhs == rhs;
-		if (op == EVT_EXPR_NOT_EQUAL)
+		if ((u8)op == EVT_EXPR_NOT_EQUAL)
 			result = lhs != rhs;
-		if (op == EVT_EXPR_LESS)
+		if ((u8)op == EVT_EXPR_LESS)
 			result = lhs < rhs;
-		if (op == EVT_EXPR_LESS_EQUAL)
+		if ((u8)op == EVT_EXPR_LESS_EQUAL)
 			result = lhs <= rhs;
-		if (op == EVT_EXPR_GREATER)
+		if ((u8)op == EVT_EXPR_GREATER)
 			result = lhs > rhs;
-		if (op == EVT_EXPR_GREATER_EQUAL)
+		if ((u8)op == EVT_EXPR_GREATER_EQUAL)
 			result = lhs >= rhs;
-		if (op == EVT_EXPR_ADD)
+		if ((u8)op == EVT_EXPR_ADD)
 			result = lhs + rhs;
-		if (op == EVT_EXPR_SUB)
+		if ((u8)op == EVT_EXPR_SUB)
 			result = lhs - rhs;
-		if (op == EVT_EXPR_MUL)
+		if ((u8)op == EVT_EXPR_MUL)
 			result = lhs * rhs;
-		if (op == EVT_EXPR_DIV)
+		if ((u8)op == EVT_EXPR_DIV)
 			result = lhs / rhs;
-		if (op == EVT_EXPR_MOD)
+		if ((u8)op == EVT_EXPR_MOD)
 			result = lhs % rhs;
-		if (op == EVT_EXPR_AND)
+		if ((u8)op == EVT_EXPR_AND)
 			result = lhs & rhs;
-		if (op == EVT_EXPR_OR)
+		if ((u8)op == EVT_EXPR_OR)
 			result = lhs | rhs;
-		if (op == EVT_EXPR_XOR)
+		if ((u8)op == EVT_EXPR_XOR)
 			result = lhs ^ rhs;
 		break;
 	}
