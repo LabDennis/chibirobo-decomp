@@ -22,7 +22,10 @@ extern "C" {
 #include <sysdolphin/aobj.h>
 }
 
-extern u32 msgColorTable[];
+// the colours a message can switch its text to
+u32 msgColorTable[] = {
+	0xFFFFFFFF, 0x808080FF, 0x101010FF, 0x00FFFFFF, 0x00E000FF, 0x0000E0FF, 0xFF00FFFF, 0xE00000FF, 0xFFFF00FF, 0xFF8000FF,
+};
 
 extern "C" {
 void CMsg_ResetPos(CMsg* msg);
@@ -3268,7 +3271,9 @@ extern "C" BOOL LoadMessageCursorObject(CMsg* msg)
 	return FALSE;
 }
 
-extern "C" GXColor gMessageWindowDefaultColor;
+extern "C" {
+GXColor gMessageWindowDefaultColor = { 0, 0, 0, 0x80 };
+}
 
 /**
  * @note Address: 0x800825A8
