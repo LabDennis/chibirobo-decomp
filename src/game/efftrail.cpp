@@ -164,9 +164,8 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 {
 	PointDisplay& display = ptcl->display;
 	PointBurst& burst     = ptcl->burst;
-	switch (display.mState) {
-	case 1: {
-		s32 value      = abs(display.mAmount);
+	if (display.mState == 1) {
+		s32 value      = display.mAmount < 0 ? -display.mAmount : display.mAmount;
 		display.mCount = 0;
 		while (display.mCount < 10) {
 			display.digits[display.mCount].glyph = value % 10;
@@ -202,9 +201,7 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 			particle.mAngle     = DEG2RAD * ((360 / burst.mNum) * i);
 			particle.mLastAngle = 0;
 		}
-		break;
-	}
-	case 2: {
+	} else if (display.mState == 2) {
 		s32 moving = 0;
 		for (s32 i = display.mCount - 1; i >= 0; --i) {
 			f32& fade = display.digits[i].fade;
@@ -225,9 +222,7 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 			display.holdFrames = 12.f;
 #endif
 		}
-		break;
-	}
-	case 3:
+	} else if (display.mState == 3) {
 		if (display.holdFrames > 0.f) {
 			display.holdFrames -= frames;
 			if (display.holdFrames <= 0.f)
@@ -246,7 +241,6 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 			if (!moving)
 				display.mState = 0;
 		}
-		break;
 	}
 	if (burst.mState == 1) {
 		s32 moving = 0;
