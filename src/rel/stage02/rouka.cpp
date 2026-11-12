@@ -85,30 +85,55 @@ public:
 	s32* m_values; // _04
 };
 
+class CCamera;
+
 class CInterfaceCameraAction {
 public:
-	CVec _00;    // _00
-	CVec _10;    // _10
-	CVec _20;    // _20
-	u8 _30[0xC]; // _30
-	CInterfaceCameraAction() { }
-	virtual ~CInterfaceCameraAction() { }
-	virtual void vf0C();
-	virtual void vf10() = 0;
-	virtual void vf14();
-	virtual void vf18();
-	virtual void vf1C();
-	virtual void vf20();
-	virtual void vf24();
-	virtual void vf28();
-	virtual void vf2C(f32 x, f32 y, f32 z);
-	virtual void vf30();
-	virtual void vf34();
-	virtual void vf38();
-	virtual void vf3C(Vec* pos);
-	virtual void vf40();
-	virtual void vf44();
-	virtual void vf48(f32 v);
+	CVec _00; // _00
+	CVec _10; // _10
+	CVec _20; // _20
+	f32 _30;  // _30
+	f32 _34;  // _34
+	s32 _38;  // _38
+
+	virtual ~CInterfaceCameraAction() { }       // _08
+	virtual void PreviousUpdate() { }           // _0C
+	virtual void Update() = 0;                  // _10
+	virtual void Reset() { }                    // _14
+	virtual void SetCamera(CCamera* camera) { } // _18
+	virtual void Init() { }                     // _1C
+	virtual void vf20() { }                     // _20
+	virtual void vf24() { }                     // _24
+	virtual void vf28() { }                     // _28
+	virtual void SetEye(f32 x, f32 y, f32 z)    // _2C
+	{
+		_00.x = x;
+		_00.y = y;
+		_00.z = z;
+	}
+	virtual void SetInterest(f32 x, f32 y, f32 z) // _30
+	{
+		_10.x = x;
+		_10.y = y;
+		_10.z = z;
+	}
+	virtual void SetAngle(f32 x, f32 y, f32 z) // _34
+	{
+		_20.x = x;
+		_20.y = y;
+		_20.z = z;
+	}
+	virtual void SetEye(const Vec& v) { SetEye(v.x, v.y, v.z); }           // _38
+	virtual void SetInterest(const Vec& v) { SetInterest(v.x, v.y, v.z); } // _3C
+	virtual void SetAngle(const Vec& v) { SetAngle(v.x, v.y, v.z); }       // _40
+	virtual void SetDistance(f32 v) { _30 = v; }                           // _44
+	virtual void SetFov(f32 v) { _34 = v; }                                // _48
+	virtual void SetAngleZ(f32 v) { _20.z = v; }                           // _4C
+	virtual s32 GetMode() { return 0; }                                    // _50
+	virtual s32 GetFlags() { return _38; }                                 // _54
+	virtual f32 GetEaseDivisor() { return 12.0f; }                         // _58
+	virtual s32 vf5C() { return 0; }                                       // _5C
+	virtual s32 GetTarget() { return 0; }                                  // _60
 };
 
 namespace Car {
@@ -122,10 +147,14 @@ public:
 		_50.x = _50.y = _50.z = 0.0f;
 	}
 	virtual ~CCameraActionCar() { }
-	virtual void vf10();
 
 	void SetTarget(Vec pos) { _50 = pos; }
 	void SetOffset(Vec pos) { _44 = pos; }
+
+	virtual void Update();
+	virtual s32 GetMode() { return 0; }
+	virtual s32 GetFlags() { return 11; }
+	virtual f32 GetEaseDivisor() { return 0.1f; }
 
 	MtxPtr _40;  // _40
 	Vec _44;     // _44
@@ -135,9 +164,9 @@ public:
 
 class CarRoot {
 public:
-	virtual void Update(u32 arg);
-	virtual void vf0C();
-	virtual void vf10();
+	virtual void Update(u32 arg); // _08
+	virtual void Brake();         // _0C
+	virtual void Start();         // _10
 
 	void Register(XObj* a, XObj* b, XObj* c);
 
@@ -155,9 +184,9 @@ public:
 
 class PlayerCarRoot : public CarRoot {
 public:
-	virtual void Update(u32 arg);
-	virtual void vf10();
-	virtual void vf14();
+	virtual void Update(u32 arg); // _08
+	virtual void Start();         // _10
+	virtual void Clear();         // _14
 
 	f32 _80; // _80
 };
@@ -306,16 +335,6 @@ void UpdateCars(u32 arg);
 void StartCars(void);
 void StartCarCamera(void);
 s32 RegisterCar(XObj* a, XObj* b, XObj* c);
-void Update__Q23Car13PlayerCarRootFUl(Car::PlayerCarRoot* car, u32 arg);
-void Start__Q23Car13PlayerCarRootFv(Car::PlayerCarRoot* car);
-void Clear__Q23Car13PlayerCarRootFv(Car::PlayerCarRoot* car);
-void Brake__Q23Car7CarRootFv(Car::CarRoot* car);
-void Update__Q23Car7CarRootFUl(Car::CarRoot* car, u32 arg);
-void Update__Q23Car16CCameraActionCarFv(Car::CCameraActionCar* cam);
-void Start__Q23Car7CarRootFv(Car::CarRoot* car);
-s32 GetMode__Q23Car16CCameraActionCarFv(Car::CCameraActionCar* cam);
-s32 GetFlags__Q23Car16CCameraActionCarFv(Car::CCameraActionCar* cam);
-f32 GetEaseDivisor__Q23Car16CCameraActionCarFv(Car::CCameraActionCar* cam);
 }
 
 inline XObj* ObjTable_Find(ObjTable* table, s16 id)
@@ -364,7 +383,7 @@ inline void Car::CarRoot::Register(XObj* a, XObj* b, XObj* c)
 	_7D = 0;
 }
 
-// inline virtuals in the original, so direct calls get inlined
+// what Brake does. the copy retail has of the virtual holds this one inline level down
 inline void CarRoot_Brake(Car::CarRoot* car)
 {
 	s32 i;
@@ -385,15 +404,28 @@ inline void CarRoot_Brake(Car::CarRoot* car)
 	}
 }
 
-inline void CarRoot_Start(Car::CarRoot* car)
+// the inline virtuals: called on the object itself they are inlined
+inline void Car::CarRoot::Brake()
 {
-	car->_7D = 1;
+	CarRoot_Brake(this);
 }
 
-inline void PlayerCarRoot_Start(Car::PlayerCarRoot* car)
+inline void Car::CarRoot::Start()
 {
-	car->_7D = 1;
+	_7D = 1;
+}
+
+inline void Car::PlayerCarRoot::Start()
+{
+	_7D = 1;
 	PlayGameSound(SOUND(), 0x2000D, 0xFF);
+}
+
+inline void Car::PlayerCarRoot::Clear()
+{
+	_08 = NULL;
+	_04 = NULL;
+	_80 = 0.0f;
 }
 
 inline void RoboView_ResetFlags(RoboView* game)
@@ -1441,8 +1473,8 @@ extern "C" void UpdateCars(u32 arg)
 	if (racerCar._04 == NULL) {
 		return;
 	}
-	Update__Q23Car13PlayerCarRootFUl(&playerCar, arg);
-	Update__Q23Car7CarRootFUl(&racerCar, arg);
+	playerCar.Update(arg);
+	racerCar.Update(arg);
 	if (!playerCar._7D) {
 		done = false;
 	} else {
@@ -1464,13 +1496,13 @@ extern "C" void UpdateCars(u32 arg)
 			prev += 32;
 		}
 		CInterfaceCameraAction* cam = &carCamera;
-		cam->vf2C(carCameraTrail[prev].x, carCameraTrail[prev].y, carCameraTrail[prev].z);
+		cam->SetEye(carCameraTrail[prev].x, carCameraTrail[prev].y, carCameraTrail[prev].z);
 		if (++carCameraTrailIndex >= 32) {
 			carCameraTrailIndex = 0;
 		}
 	}
 	if (!racerCar._7C && ReadS32LE(carParams + 0xC) <= racerCar._10) {
-		CarRoot_Brake(&racerCar);
+		racerCar.Brake();
 	}
 }
 
@@ -1731,8 +1763,8 @@ extern "C" void UpdateCars(u32 arg)
 extern "C" void StartCars(void)
 {
 	carsStarted = 1;
-	PlayerCarRoot_Start(&playerCar);
-	CarRoot_Start(&racerCar);
+	playerCar.Start();
+	racerCar.Start();
 }
 
 /**
@@ -1789,22 +1821,22 @@ void Car::Init(void)
  * @note Address: stage02 .text 0x7BB0
  * @note Size: 0x3A8
  */
-extern "C" void Update__Q23Car13PlayerCarRootFUl(Car::PlayerCarRoot* car, u32 arg)
+void Car::PlayerCarRoot::Update(u32 arg)
 {
 	s32 i;
 
-	Update__Q23Car7CarRootFUl(car, arg);
-	if (!car->_7D) {
+	CarRoot::Update(arg);
+	if (!_7D) {
 		return;
 	}
 	CPad pad(0);
 	void* sound;
-	if (!car->_7C && (pad.mPad->mTrigger & 0x200)) {
-		car->vf0C();
-		car->_80 = car->_10;
-		sound    = SOUND();
+	if (!_7C && (pad.mPad->mTrigger & 0x200)) {
+		Brake();
+		_80   = _10;
+		sound = SOUND();
 		StopGameSfx(sound, 0x2000D);
-		if (car->_80 < ReadS32LE(carParams + 8)) {
+		if (_80 < ReadS32LE(carParams + 8)) {
 			PlayGameSound(sound, 0x2000E, 0xFF);
 		} else {
 			PlayGameSound(sound, 0x20011, 0xFF);
@@ -1814,7 +1846,7 @@ extern "C" void Update__Q23Car13PlayerCarRootFUl(Car::PlayerCarRoot* car, u32 ar
 	for (i = 0; ReadS32LE(carSoundCues + i * 8) > 0; i++) {
 		s32 frame = ReadS32LE(carSoundCues + i * 8);
 		s32 id    = ReadS32LE(carSoundCues + (i * 2 + 1) * 4);
-		if (car->_14 < frame && frame <= car->_10) {
+		if (_14 < frame && frame <= _10) {
 			PlayGameSound(sound, id, 0xFF);
 			if (id == 0x2001F) {
 				FadeOutGameSfx(sound, -0x10000, 20);
@@ -1823,10 +1855,10 @@ extern "C" void Update__Q23Car13PlayerCarRootFUl(Car::PlayerCarRoot* car, u32 ar
 			}
 		}
 	}
-	if (ReadS32LE(carParams + 4) <= car->_10) {
-		car->_18 = 1.0f;
-		if (car->_7C && car->_04->_158 != 4) {
-			car->_04->vf80(4, 0, 0.0f, 1.0f, 0.0f, 10.0f, 0, 0, 0);
+	if (ReadS32LE(carParams + 4) <= _10) {
+		_18 = 1.0f;
+		if (_7C && _04->_158 != 4) {
+			_04->vf80(4, 0, 0.0f, 1.0f, 0.0f, 10.0f, 0, 0, 0);
 		}
 	}
 }
@@ -1835,30 +1867,19 @@ extern "C" void Update__Q23Car13PlayerCarRootFUl(Car::PlayerCarRoot* car, u32 ar
  * @note Address: stage02 .text 0x7F58
  * @note Size: 0x44
  */
-extern "C" void Start__Q23Car13PlayerCarRootFv(Car::PlayerCarRoot* car)
-{
-	PlayerCarRoot_Start(car);
-}
+// Car::PlayerCarRoot::Start, inline above
 
 /**
  * @note Address: stage02 .text 0x7F9C
  * @note Size: 0x1C
  */
-extern "C" void Clear__Q23Car13PlayerCarRootFv(Car::PlayerCarRoot* car)
-{
-	car->_08 = NULL;
-	car->_04 = NULL;
-	car->_80 = 0.0f;
-}
+// Car::PlayerCarRoot::Clear, inline above
 
 /**
  * @note Address: stage02 .text 0x7FB8
  * @note Size: 0xE8
  */
-extern "C" void Brake__Q23Car7CarRootFv(Car::CarRoot* car)
-{
-	CarRoot_Brake(car);
-}
+// Car::CarRoot::Brake, inline above
 
 // Brake__Q23Car7CarRootFv
 /*
@@ -1929,40 +1950,40 @@ extern "C" void Brake__Q23Car7CarRootFv(Car::CarRoot* car)
  * @note Address: stage02 .text 0x80A0
  * @note Size: 0x490
  */
-extern "C" void Update__Q23Car7CarRootFUl(Car::CarRoot* car, u32 arg)
+void Car::CarRoot::Update(u32 arg)
 {
 	HSD_JObj* jobj;
 	Mtx scale;
 	Mtx m;
 
-	if (car->_04 == NULL || car->_08 == NULL) {
+	if (_04 == NULL || _08 == NULL) {
 		return;
 	}
 	s32 path[2] = { 0, 0 };
-	jobj        = GetJointByPath(car->_08->jobj, path, 1);
+	jobj        = GetJointByPath(_08->jobj, path, 1);
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, car->_1C);
-	HSD_JObjCopyMtx(car->_04->jobj, car->_1C);
-	if (car->_0C != NULL) {
+	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, _1C);
+	HSD_JObjCopyMtx(_04->jobj, _1C);
+	if (_0C != NULL) {
 		PSMTXTrans(m, 3.75f, 5.0f, -1.0f);
-		PSMTXConcat(car->_1C, m, car->_4C);
-		HSD_JObjCopyMtx(car->_0C->jobj, car->_4C);
+		PSMTXConcat(_1C, m, _4C);
+		HSD_JObjCopyMtx(_0C->jobj, _4C);
 	}
-	if (car->_7D) {
-		car->_14 = car->_10;
-		car->_10 = car->_18 * arg + car->_10;
+	if (_7D) {
+		_14 = _10;
+		_10 = _18 * arg + _10;
 	}
-	car->_08->vf80(0, 1, car->_10, 1.0f, 0.0f, 10.0f, 0, 0, 0);
-	if (!car->_7C) {
-		car->_04->vf80(1, 1, car->_10, 1.0f, 0.0f, 10.0f, 0, 0, 0);
+	_08->vf80(0, 1, _10, 1.0f, 0.0f, 10.0f, 0, 0, 0);
+	if (!_7C) {
+		_04->vf80(1, 1, _10, 1.0f, 0.0f, 10.0f, 0, 0, 0);
 		return;
 	}
-	if (0.0f < car->_18) {
-		f32 rate = car->_18 - ReadS32LE(carParams) / 1000.0f;
+	if (0.0f < _18) {
+		f32 rate = _18 - ReadS32LE(carParams) / 1000.0f;
 		if (rate < 0.0f) {
 			rate = 0.0f;
 		}
-		car->_18 = rate;
+		_18 = rate;
 	}
 }
 
@@ -2295,14 +2316,14 @@ extern "C" void Update__Q23Car7CarRootFUl(Car::CarRoot* car, u32 arg)
  * @note Address: stage02 .text 0x8530
  * @note Size: 0x74
  */
-extern "C" void Update__Q23Car16CCameraActionCarFv(Car::CCameraActionCar* cam)
+void Car::CCameraActionCar::Update()
 {
 	Vec pos;
 
-	if (cam->_40 != NULL) {
-		cam->vf48(40.0f);
-		PSMTXMultVec(cam->_40, &cam->_44, &pos);
-		cam->vf3C(&pos);
+	if (_40 != NULL) {
+		SetFov(40.0f);
+		PSMTXMultVec(_40, &_44, &pos);
+		SetInterest(pos);
 	}
 }
 
@@ -2310,10 +2331,7 @@ extern "C" void Update__Q23Car16CCameraActionCarFv(Car::CCameraActionCar* cam)
  * @note Address: stage02 .text 0x85A4
  * @note Size: 0xC
  */
-extern "C" void Start__Q23Car7CarRootFv(Car::CarRoot* car)
-{
-	CarRoot_Start(car);
-}
+// Car::CarRoot::Start, inline above
 
 /**
  * @note Address: stage02 .text 0x85B0
@@ -2325,28 +2343,19 @@ extern "C" void Start__Q23Car7CarRootFv(Car::CarRoot* car)
  * @note Address: stage02 .text 0x8648
  * @note Size: 0x8
  */
-extern "C" s32 GetMode__Q23Car16CCameraActionCarFv(Car::CCameraActionCar* cam)
-{
-	return 0;
-}
+// Car::CCameraActionCar::GetMode, inline in the class
 
 /**
  * @note Address: stage02 .text 0x8650
  * @note Size: 0x8
  */
-extern "C" s32 GetFlags__Q23Car16CCameraActionCarFv(Car::CCameraActionCar* cam)
-{
-	return 11;
-}
+// Car::CCameraActionCar::GetFlags, inline in the class
 
 /**
  * @note Address: stage02 .text 0x8658
  * @note Size: 0xC
  */
-extern "C" f32 GetEaseDivisor__Q23Car16CCameraActionCarFv(Car::CCameraActionCar* cam)
-{
-	return 0.1f;
-}
+// Car::CCameraActionCar::GetEaseDivisor, inline in the class
 
 /**
  * @note Address: stage02 .text 0x8664
