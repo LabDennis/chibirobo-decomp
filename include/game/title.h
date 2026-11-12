@@ -23,7 +23,17 @@ public:
 	f32 mAngle;      // _980, _970 in japan
 	f32 mAngleSpeed; // _984, it spins, the scale setters flip y for screen space
 
-	virtual ~Cursor() { } // _08
+	virtual ~Cursor() { }                                  // _08
+	virtual void SetScaleY(f32 y, s32 force);              // _1C
+	virtual void SetScale(const Vec& scale, s32 force);    // _38
+	virtual void SetScale(f32 x, f32 y, f32 z, s32 force); // _3C
+	virtual void SetScale(f32 scale, s32 force);           // _6C
+	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
+	                     f32 blendRate);                   // _80
+	virtual void InitializeObject(u32 id);                 // _90
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
+	virtual void UpdateObject(u32 frames);                 // _A4
+	virtual void vfAC();                                   // _AC
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(Cursor) == 0x978);

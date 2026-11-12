@@ -50,56 +50,55 @@ void BuildObjectDrawList(CGame* game);
 // NONMATCHING: the frame count and the inlined base update's pad pointer swap registers
 // CGame::Update: the base's disc and reset checks, the reset itself, then everything that
 // runs each frame. while the disc can't be read only the sound is paused
-extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
+void CGame::Update(u32 frames)
 {
 	s32 i;
-	BaseUpdate(game, frames);
-	PollMemoryCardWorker(&game->mMemcard);
-	if (game->mReset && !game->mMemcard.mCard.mBusy && HSD_DevComIsBusy(1) <= 0 && HSD_DevComIsBusy(2) <= 0) {
-		if (!game->mDiskOk) {
-			game->mResetHold = 0;
-			game->mReset     = FALSE;
+	BaseUpdate(this, frames);
+	PollMemoryCardWorker(&mMemcard);
+	if (mReset && !mMemcard.mCard.mBusy && HSD_DevComIsBusy(1) <= 0 && HSD_DevComIsBusy(2) <= 0) {
+		if (!mDiskOk) {
+			mResetHold = 0;
+			mReset     = FALSE;
 			HSD_PadReset();
-			game->Reset(1);
-		} else if (game->_3338 != 0x17 && game->_3338 != 0x1A && !HasPendingObjectReads()) {
-			game->mResetHold = 0;
-			game->mReset     = FALSE;
+			Reset(1);
+		} else if (_3338 != 0x17 && _3338 != 0x1A && !HasPendingObjectReads()) {
+			mResetHold = 0;
+			mReset     = FALSE;
 			HSD_PadReset();
-			if (!game->mDiskOk) {
-				game->Reset(1);
-			} else if (game->_3338 <= 0x13) {
-				game->Reset(0);
+			if (!mDiskOk) {
+				Reset(1);
+			} else if (_3338 <= 0x13) {
+				Reset(0);
 			} else {
-				ChangeGameStage(game, 10000, FALSE);
+				ChangeGameStage(this, 10000, FALSE);
 			}
 		}
 	}
 
-	if (game->IsDiscError()) {
-		if (!(game->mStatus.mFlags & 8)) {
-			game->mStatus.mFlags |= 8;
+	if (IsDiscError()) {
+		if (!(mStatus.mFlags & 8)) {
+			mStatus.mFlags |= 8;
 			PauseGameMusic(&gGame.mSound, 0xFFFF0000, 0);
 		}
 		return;
 	}
-	if (game->mStatus.mFlags & 8) {
-		game->mStatus.mFlags &= ~8;
+	if (mStatus.mFlags & 8) {
+		mStatus.mFlags &= ~8;
 		ResumeGameSfx(&gGame.mSound, 0xFFFF0000);
 	}
 	UpdateStageMicrophone(frames);
-	if (game->mStatus.mFlags & 0x1000) {
-		game->mStatus.mFlags &= ~0x1000;
-		BuildObjectDrawList(game);
+	if (mStatus.mFlags & 0x1000) {
+		mStatus.mFlags &= ~0x1000;
+		BuildObjectDrawList(this);
 	}
-	if ((game->mStatus.mFlags & 1) && !(game->mStatus.mFlags & 2) && !(game->mStatus.mFlags & 0x20) && !game->mMenu.mActive
-	    && game->mEvt.mData.mScript == NULL && (game->mPad.mPad[0].mTrigger & 0x1000) && !(game->mPad.mPad[0].mButton & 0x200)
-	    && game->mMenu.mMenus[1] != NULL) {
-		game->mMenu.mMenus[1]->Open();
-		game->mMenu.mActive = TRUE;
+	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 2) && !(mStatus.mFlags & 0x20) && !mMenu.mActive && mEvt.mData.mScript == NULL
+	    && (mPad.mPad[0].mTrigger & 0x1000) && !(mPad.mPad[0].mButton & 0x200) && mMenu.mMenus[1] != NULL) {
+		mMenu.mMenus[1]->Open();
+		mMenu.mActive = TRUE;
 	}
-	if ((game->mStatus.mFlags & 1) && !(game->mStatus.mFlags & 2)) {
-		for (i = 0; i < game->mDrawLists[0].mCount; i++) {
-			XObj* obj = game->mDrawLists[0].mObjects[i];
+	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 2)) {
+		for (i = 0; i < mDrawLists[0].mCount; i++) {
+			XObj* obj = mDrawLists[0].mObjects[i];
 			if (obj->mStatus.mFlags & 1) {
 				if (obj->mMoveTranslate.y != obj->_264.y) {
 					obj->mStatus.mFlags |= 0x10000000000000;
@@ -109,154 +108,151 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 			}
 		}
 	}
-	if (game->IsRunning() && !(game->mStatus.mFlags & 2)) {
+	if (IsRunning() && !(mStatus.mFlags & 2)) {
 #if defined(VERSION_PAL)
-		game->mPlayTime += frames * (60.0f / FRAME_RATE);
+		mPlayTime += frames * (60.0f / FRAME_RATE);
 #else
-		game->mPlayTime += frames;
+		mPlayTime += frames;
 #endif
-		if (game->mPlayTime >= 21600000) {
-			game->mPlayTime = 21599999;
+		if (mPlayTime >= 21600000) {
+			mPlayTime = 21599999;
 		}
 	}
-	if (game->mStatus.mFlags & 0x2000000000000) {
-		if (game->IsRunning() && game->mEvt.mData.mScript == NULL && !game->mMenu.mActive && !(game->mStatus.mFlags & 0xC00)
-		    && game->mTimeState.mDuration > 0.0f) {
-			if (!game->mTimeState.mRunning) {
-				game->mTimeState.mTime = frames * (game->mTimeState.mDuration / (600.0f * FRAME_RATE)) + game->mTimeState.mTime;
-				if (game->mTimeState.mTime >= 1.0f) {
-					game->mTimeState.mRunning = TRUE;
+	if (mStatus.mFlags & 0x2000000000000) {
+		if (IsRunning() && mEvt.mData.mScript == NULL && !mMenu.mActive && !(mStatus.mFlags & 0xC00) && mTimeState.mDuration > 0.0f) {
+			if (!mTimeState.mRunning) {
+				mTimeState.mTime = frames * (mTimeState.mDuration / (600.0f * FRAME_RATE)) + mTimeState.mTime;
+				if (mTimeState.mTime >= 1.0f) {
+					mTimeState.mRunning = TRUE;
 				}
 			}
-			if (game->mTimeState.mRunning == TRUE) {
+			if (mTimeState.mRunning == TRUE) {
 				bool idle       = false;
-				XObjChr* player = game->GetPlayer();
+				XObjChr* player = GetPlayer();
 				if ((player->mLift.mState == 0 || player->mLift.mState == 4) && player->mHang.mState == 0 && player->mJump.mState == 0
 				    && player->mLadder.mState == 0 && player->mRope.mState == 0 && player->mPush.mState == 0
 				    && player->mTumble.mState == 0) {
 					idle = true;
 				}
 				if (idle) {
-					game->mTimeState.mRunning = FALSE;
-					u8* script                = GetStageTimerExpiredScript();
+					mTimeState.mRunning = FALSE;
+					u8* script          = GetStageTimerExpiredScript();
 					if (script != NULL) {
-						StartOrQueueEventScript(&game->mEvt, script, 0, -1, -1);
+						StartOrQueueEventScript(&mEvt, script, 0, -1, -1);
 					}
 				}
 			}
 		}
 	}
-	if (!(game->mStatus.mFlags & 2)) {
-		CEvt_Update(&game->mEvt, frames);
+	if (!(mStatus.mFlags & 2)) {
+		CEvt_Update(&mEvt, frames);
 		for (i = 0; i < 2; i++) {
-			CMsg_Update(&game->mCMsgs[i], frames);
+			CMsg_Update(&mCMsgs[i], frames);
 		}
 	}
-	if (game->IsRunning()) {
+	if (IsRunning()) {
 		CallStageModule(1, frames, NULL);
 	}
-	if (game->IsRunning() || (game->mStatus.mFlags & 0x20)) {
-		game->mParticle.Update(frames);
+	if (IsRunning() || (mStatus.mFlags & 0x20)) {
+		mParticle.Update(frames);
 	}
-	if ((game->mStatus.mFlags & 1) && !(game->mStatus.mFlags & 0x200000000000) && !game->mMenu.mActive) {
-		game->mMotionControlCamera.Update(frames);
+	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 0x200000000000) && !mMenu.mActive) {
+		mMotionControlCamera.Update(frames);
 	}
-	UpdateGameSound(&game->mSound, frames);
-	if (!(game->mStatus.mFlags & 2)) {
-		UpdateScreenFade(&game->mFade, frames);
-		game->mWipeCircle.Update(frames);
-		game->mWipeTex.Update(frames);
-		game->mWipeCustom.Update(frames);
-		game->mWipeTile0.Update(frames);
-		game->mWipeTile1.Update(frames);
-		if (game->mStatus.mFlags & 1) {
-			game->mRoboeyes.Update(frames);
-			UpdateScreenShake(&game->mQuake, frames);
-			game->mOutline.Update(frames);
-			game->mScrnTex.mAngle = fmod(0.10471976f * frames + game->mScrnTex.mAngle, 6.2831854820251465);
-			game->mOutline.mThick = 0.0f;
-			u8 lineAlpha          = 100.0f * (f32)sin(game->mScrnTex.mAngle) + 150.0f;
-			game->mOutline.SetLineColor(0xFF, 0xFF, 0xFF);
-			game->mOutline.mColor0.a = lineAlpha;
-			UpdateScreenFade(&game->mScrnTex.mColor, frames);
-			game->mOutline.SetColor2(game->mScrnTex.mColor.mColor.r, game->mScrnTex.mColor.mColor.g, game->mScrnTex.mColor.mColor.b);
-			UpdateScreenFade(&game->mColor0.mColor, frames);
-			game->mOutline.SetColor3(game->mColor0.mColor.mColor.r, game->mColor0.mColor.mColor.g, game->mColor0.mColor.mColor.b,
-			                         game->mColor0.mColor.mColor.a);
-			game->mBlur.Update(frames);
+	UpdateGameSound(&mSound, frames);
+	if (!(mStatus.mFlags & 2)) {
+		UpdateScreenFade(&mFade, frames);
+		mWipeCircle.Update(frames);
+		mWipeTex.Update(frames);
+		mWipeCustom.Update(frames);
+		mWipeTile0.Update(frames);
+		mWipeTile1.Update(frames);
+		if (mStatus.mFlags & 1) {
+			mRoboeyes.Update(frames);
+			UpdateScreenShake(&mQuake, frames);
+			mOutline.Update(frames);
+			mScrnTex.mAngle = fmod(0.10471976f * frames + mScrnTex.mAngle, 6.2831854820251465);
+			mOutline.mThick = 0.0f;
+			u8 lineAlpha    = 100.0f * (f32)sin(mScrnTex.mAngle) + 150.0f;
+			mOutline.SetLineColor(0xFF, 0xFF, 0xFF);
+			mOutline.mColor0.a = lineAlpha;
+			UpdateScreenFade(&mScrnTex.mColor, frames);
+			mOutline.SetColor2(mScrnTex.mColor.mColor.r, mScrnTex.mColor.mColor.g, mScrnTex.mColor.mColor.b);
+			UpdateScreenFade(&mColor0.mColor, frames);
+			mOutline.SetColor3(mColor0.mColor.mColor.r, mColor0.mColor.mColor.g, mColor0.mColor.mColor.b, mColor0.mColor.mColor.a);
+			mBlur.Update(frames);
 		}
-	} else if (game->mMotionControlCamera.IsAction(4)) {
-		UpdateScreenFade(&game->mFade, frames);
-		game->mWipeCircle.Update(frames);
-		game->mWipeTex.Update(frames);
-		game->mWipeCustom.Update(frames);
-		game->mWipeTile0.Update(frames);
-		game->mWipeTile1.Update(frames);
+	} else if (mMotionControlCamera.IsAction(4)) {
+		UpdateScreenFade(&mFade, frames);
+		mWipeCircle.Update(frames);
+		mWipeTex.Update(frames);
+		mWipeCustom.Update(frames);
+		mWipeTile0.Update(frames);
+		mWipeTile1.Update(frames);
 	}
-	UpdateScreenFade(&game->mColor1.mColor, frames);
-	game->mOutline.SetColor4(game->mColor1.mColor.mColor.r, game->mColor1.mColor.mColor.g, game->mColor1.mColor.mColor.b,
-	                         game->mColor1.mColor.mColor.a);
-	if (game->_4724 > 0) {
-		if (game->mPad.mPad[0].mSubStickY > 0.0f) {
-			if ((game->_4728 -= 0.01f * frames) < 0.04f) {
-				game->_4728 = 0.04f;
+	UpdateScreenFade(&mColor1.mColor, frames);
+	mOutline.SetColor4(mColor1.mColor.mColor.r, mColor1.mColor.mColor.g, mColor1.mColor.mColor.b, mColor1.mColor.mColor.a);
+	if (_4724 > 0) {
+		if (mPad.mPad[0].mSubStickY > 0.0f) {
+			if ((_4728 -= 0.01f * frames) < 0.04f) {
+				_4728 = 0.04f;
 			}
-		} else if (game->mPad.mPad[0].mSubStickY < 0.0f) {
-			if ((game->_4728 += 0.01f * frames) > 0.5f) {
-				game->_4728 = 0.5f;
+		} else if (mPad.mPad[0].mSubStickY < 0.0f) {
+			if ((_4728 += 0.01f * frames) > 0.5f) {
+				_4728 = 0.5f;
 			}
 		}
-		game->mOutline.mZoom = sin(3.1415927f * game->_4728 / 2.0f);
+		mOutline.mZoom = sin(3.1415927f * _4728 / 2.0f);
 	}
-	UpdateBootLogos(&game->mLogo, frames);
-	UpdateTitleScreen(&game->mTitle, frames);
-	UpdateOpenMenus(&game->mMenu, frames);
-	if ((game->mStatus.mFlags & 1) && !(game->mStatus.mFlags & 2)) {
-		UpdateHudTransitionsAndIndicators(&game->mInfoScrn, frames);
-		game->mSubwin.Update(frames);
+	UpdateBootLogos(&mLogo, frames);
+	UpdateTitleScreen(&mTitle, frames);
+	UpdateOpenMenus(&mMenu, frames);
+	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 2)) {
+		UpdateHudTransitionsAndIndicators(&mInfoScrn, frames);
+		mSubwin.Update(frames);
 		for (i = 0; i < 5; i++) {
 			if (!IsMirrorOff(&gFramebufferMirrors[i])) {
 				Update__8FbMirrorFUl(&gFramebufferMirrors[i], frames);
 			}
 		}
 	}
-	if (!(game->mStatus.mFlags & 2) && game->mStageName.mActive && game->mStageName.mActive > 0) {
-		for (i = 0; i < game->mStageName.mCount; i++) {
-			if (game->mStageName.mChars[i].mWait > 0.0f) {
-				if (game->mStageName.mChars[i].mScale < 1.0f) {
-					if ((game->mStageName.mChars[i].mScale += (1.0f / (0.3f * FRAME_RATE)) * frames) > 1.0f) {
-						game->mStageName.mChars[i].mScale = 1.0f;
+	if (!(mStatus.mFlags & 2) && mStageName.mActive && mStageName.mActive > 0) {
+		for (i = 0; i < mStageName.mCount; i++) {
+			if (mStageName.mChars[i].mWait > 0.0f) {
+				if (mStageName.mChars[i].mScale < 1.0f) {
+					if ((mStageName.mChars[i].mScale += (1.0f / (0.3f * FRAME_RATE)) * frames) > 1.0f) {
+						mStageName.mChars[i].mScale = 1.0f;
 					}
-				} else if (game->mStatus.mFlags & 1) {
-					if ((game->mStageName.mChars[i].mWait -= frames) < 0.0f) {
-						game->mStageName.mChars[i].mWait = 0.0f;
+				} else if (mStatus.mFlags & 1) {
+					if ((mStageName.mChars[i].mWait -= frames) < 0.0f) {
+						mStageName.mChars[i].mWait = 0.0f;
 					}
 				}
-			} else if (game->mStageName.mChars[i].mScale > 0.0f) {
-				if ((game->mStageName.mChars[i].mScale -= (1.0f / (0.3f * FRAME_RATE)) * frames) < 0.0f) {
-					game->mStageName.mChars[i].mScale = 0.0f;
+			} else if (mStageName.mChars[i].mScale > 0.0f) {
+				if ((mStageName.mChars[i].mScale -= (1.0f / (0.3f * FRAME_RATE)) * frames) < 0.0f) {
+					mStageName.mChars[i].mScale = 0.0f;
 				}
 			}
 		}
 		s32 moving = 0;
 		f32 bob    = 0.08726646f * frames;
 		f32 tilt   = 0.05235988f * frames;
-		for (i = 0; i < game->mStageName.mCount; i++) {
-			if (0.0f != game->mStageName.mChars[i].mScale) {
+		for (i = 0; i < mStageName.mCount; i++) {
+			if (0.0f != mStageName.mChars[i].mScale) {
 				moving++;
-				game->mStageName.mChars[i].mBob += bob;
-				game->mStageName.mChars[i].mTilt += tilt;
+				mStageName.mChars[i].mBob += bob;
+				mStageName.mChars[i].mTilt += tilt;
 			}
 		}
 		if (moving == 0) {
-			game->mStageName.mActive = FALSE;
+			mStageName.mActive = FALSE;
 		}
 	}
-	if (game->mStatus.mFlags & 2) {
-		if (!(game->mStatus.mFlags & 4)) {
-			game->mStatus.mFlags |= 4;
+	if (mStatus.mFlags & 2) {
+		if (!(mStatus.mFlags & 4)) {
+			mStatus.mFlags |= 4;
 			SetMusicPlaybackPaused(&gGame.mSound, TRUE);
-			CPadEx* pad = &game->mPad;
+			CPadEx* pad = &mPad;
 			for (i = 0; i < 4; i++) {
 				if (pad->mPad[i].mConnected) {
 					HSD_PadRumbleOffN(pad->mPad[i].mPort);
@@ -264,8 +260,8 @@ extern "C" void Update__5CGameFUl(CGame* game, u32 frames)
 			}
 			HSD_PadRumblePauseAll();
 		}
-	} else if (game->mStatus.mFlags & 4) {
-		game->mStatus.mFlags &= ~4;
+	} else if (mStatus.mFlags & 4) {
+		mStatus.mFlags &= ~4;
 		SetMusicPlaybackPaused(&gGame.mSound, FALSE);
 		HSD_PadRumbleActiveAll();
 	}

@@ -271,10 +271,18 @@ public:
 	f32 mMovieRect[4];    // _FF460, _FE660 in japan, where the movie draws
 
 	CGame();
-	virtual ~CGame();            // _08
-	virtual void Start();        // _10
-	virtual BOOL BeforeUpdate(); // _14
-	virtual void Draw();         // _1C
+	virtual ~CGame();                               // _08
+	virtual void Initialize(int argc, char** argv); // _0C
+	virtual void Start();                           // _10
+	virtual BOOL BeforeUpdate();                    // _14
+	virtual void Update(u32 frames);                // _18
+	virtual void Draw();                            // _1C
+	virtual void vf20();                            // _20
+	virtual void vf24();                            // _24
+	virtual s32 FrameInterval();                    // _28
+	virtual CCamera* GetCamera();                   // _38
+	virtual CLight* GetLight();                     // _44
+	virtual void Reset(u32 code);                   // _48
 	void ResetNewGameState();
 
 	XObj* GetObject(s32 index) const { return mXObjs.mObjects[index]; }

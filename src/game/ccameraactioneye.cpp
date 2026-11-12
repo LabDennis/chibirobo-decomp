@@ -23,7 +23,7 @@ void CCameraActionEye::Init()
  * @note Address: 0x80147358
  * @note Size: 0x108
  */
-void CCameraActionEye::vf14()
+void CCameraActionEye::Reset()
 {
 	mLook.x         = 0.0f;
 	mLook.y         = 0.0f;

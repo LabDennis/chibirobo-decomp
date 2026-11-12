@@ -184,7 +184,7 @@ inline void CalcLimits(CCameraActionScroll2* camera, Scroll2Limits* limits)
  * @note Address: 0x80145FE8
  * @note Size: 0x750
  */
-void CCameraActionScroll2::vf14()
+void CCameraActionScroll2::Reset()
 {
 	if (gGame.mStage == 11) {
 		mTurned = TRUE;

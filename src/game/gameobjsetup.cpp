@@ -50,7 +50,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		mode                                                           = GetStageInfo()->mCameraMode;
 		((CCameraActionScroll*)gGame.mCameraActions.mTable[11])->mZoom = 1;
 		if (GetStageCameraAreaRecords() && GetStageCameraInfoRecords()) {
-			game->mCameraActions.mTable[1]->vf14();
+			game->mCameraActions.mTable[1]->Reset();
 		}
 		if (GetStageCameraAreaRecords() && GetStageCameraInfoRecords()) {
 			((CCameraActionAreaExM*)game->mCameraActions.mTable[1])->vf64();

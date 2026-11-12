@@ -53,7 +53,7 @@ void CCameraActionChase::Init()
  * @note Address: 0x8014295C
  * @note Size: 0x188
  */
-void CCameraActionChase::vf14()
+void CCameraActionChase::Reset()
 {
 	mTarget = gGame.GetPlayer();
 	if (mTarget != NULL) {

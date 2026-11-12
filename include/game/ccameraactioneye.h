@@ -13,7 +13,7 @@ public:
 	CVec mOverride; // _70, a non zero part replaces the target the stick gives
 
 	virtual void Update(u32 step); // _10
-	virtual void vf14();           // _14
+	virtual void Reset();          // _14
 	virtual void Init();           // _1C
 	virtual u32 GetCameraFlags();  // _54
 	virtual ~CCameraActionEye() { }

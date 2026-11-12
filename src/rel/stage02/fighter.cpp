@@ -108,7 +108,7 @@ public:
 	virtual ~CInterfaceCameraAction() { }       // _08
 	virtual void PreviousUpdate() { }           // _0C
 	virtual void Update() = 0;                  // _10
-	virtual void vf14() { }                     // _14
+	virtual void Reset() { }                    // _14
 	virtual void SetCamera(CCamera* camera) { } // _18
 	virtual void Init() { }                     // _1C
 	virtual void vf20() { }                     // _20

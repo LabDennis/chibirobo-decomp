@@ -124,7 +124,6 @@ f32 GetObjectEdgeOutwardYaw(const XObj* object, Vec* point, s32 index);
 s32 fn_800B1E04(void*);
 f32 GetObjectMaxFloorHeight(XObj* object);
 BOOL fn_800B1D50(XObj* object);
-void* GetCamera__5CGameFv(CGame*);
 CVec* GetCameraAngles(CCamera* camera);
 f32 GetControlStickMagnitude(const CPadOne* pad);
 f32 fn_800B1C14();
@@ -1455,8 +1454,7 @@ extern "C" void fn_800AC660(XObjChr* player, u32 frames, f32 speed, f32 directio
 	if (!marker) {
 		if (!IsHangActionState(&player->mHang, 0)) {
 			if (IsHangActionState(&player->mHang, 5) && (player->_9BC[0] > 0) && HasPlayerActionTarget(&player->mHang)) {
-				f32 angle = WrapPlayerActionAngle((player->_9BC[2] + GetCameraAngles(static_cast<CCamera*>(GetCamera__5CGameFv(&gGame)))->y)
-				                                  - player->mMoveRotate.y);
+				f32 angle = WrapPlayerActionAngle((player->_9BC[2] + GetCameraAngles(gGame.GetCamera())->y) - player->mMoveRotate.y);
 				if ((angle < 0.52359879f || angle > 5.7595863f) && fn_800B1D50(GetPlayerActionTarget(&player->mHang))) {
 					target     = GetPlayerActionTarget(&player->mHang);
 					actionMode = 5;

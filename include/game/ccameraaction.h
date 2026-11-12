@@ -211,7 +211,7 @@ public:
 	virtual ~CInterfaceCameraAction() { }       // _08
 	virtual void PreviousUpdate() { }           // _0C
 	virtual void Update(u32 step) = 0;          // _10
-	virtual void vf14() { }                     // _14
+	virtual void Reset() { }                    // _14
 	virtual void SetCamera(CCamera* camera) { } // _18, takes eye, interest, angle, distance and fov
 	virtual void Init() { }                     // _1C
 	virtual void vf20() { }                     // _20
@@ -353,9 +353,19 @@ public:
 	CStatus mPreviousStatus;                           // _11E0, printed as CAMSTATPRE
 	BOOL _11E8;                                        // _11E8
 
-	CCameraActionMap();            // in the dol, 0x8001A45C
-	virtual ~CCameraActionMap();   // in the dol, 0x80009F20
-	virtual void Update(u32 step); // _10
+	CCameraActionMap();                      // in the dol, 0x8001A45C
+	virtual ~CCameraActionMap();             // in the dol, 0x80009F20
+	virtual void PreviousUpdate();           // _0C
+	virtual void Update(u32 step);           // _10
+	virtual void Reset();                    // _14
+	virtual void SetCamera(CCamera* camera); // _18
+	virtual void Init();                     // _1C
+	virtual void vf24();                     // _24
+	virtual void vf28();                     // _28
+	virtual u32 GetCameraFlags();            // _54
+	virtual f32 GetFollowDivisor();          // _58
+	virtual u32 vf5C();                      // _5C
+	virtual XObj* GetTarget();               // _60
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x11EC);
 
@@ -478,7 +488,7 @@ public:
 
 	virtual void PreviousUpdate();           // _0C
 	virtual void Update(u32 step);           // _10
-	virtual void vf14();                     // _14
+	virtual void Reset();                    // _14
 	virtual void SetCamera(CCamera* camera); // _18
 	virtual void Init();                     // _1C
 	virtual void vf24();                     // _24
@@ -610,7 +620,7 @@ public:
 	s32 mZoom;                                 // _68, 0 near, 1 far
 
 	virtual void Update(u32 step);           // _10
-	virtual void vf14();                     // _14
+	virtual void Reset();                    // _14
 	virtual void SetCamera(CCamera* camera); // _18
 	virtual u32 vf5C() { return _64; }       // _5C
 
@@ -636,7 +646,7 @@ public:
 	f32 mAngle; // _40, added to the player's y rotation
 
 	virtual void Update(u32 step);              // _10
-	virtual void vf14();                        // _14
+	virtual void Reset();                       // _14
 	virtual u32 GetCameraFlags() { return 11; } // _54
 	virtual Vec GetCameraTarget();              // _64, the player
 
@@ -662,7 +672,7 @@ public:
 	virtual ~CCameraActionLeticker() { }
 
 	virtual void Update(u32 step);                  // _10
-	virtual void vf14();                            // _14
+	virtual void Reset();                           // _14
 	virtual u32 vf50() { return 0; }                // _50 (weak)
 	virtual u32 GetCameraFlags() { return 11; }     // _54 (weak)
 	virtual f32 GetFollowDivisor() { return 0.1f; } // _58 (weak)
@@ -689,7 +699,7 @@ public:
 	u32 mMode;         // _6C
 
 	virtual void Update(u32 step);           // _10
-	virtual void vf14();                     // _14
+	virtual void Reset();                    // _14
 	virtual void SetCamera(CCamera* camera); // _18
 	virtual void Init();                     // _1C
 	virtual u32 GetCameraFlags();            // _54
@@ -766,7 +776,7 @@ public:
 	u8 mSavedInfo[0x20]; // _8C
 
 	virtual void Update(u32 step); // _10
-	virtual void vf14();           // _14
+	virtual void Reset();          // _14
 	virtual void vf20();           // _20, draws the markers over the room's objects
 	virtual void vf28();           // _28
 	virtual u32 GetCameraFlags();  // _54

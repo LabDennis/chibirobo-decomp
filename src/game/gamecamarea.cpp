@@ -15,6 +15,6 @@ extern "C" void vf64__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
  * @note Size: 0x4
  */
 // todo: weak copy
-extern "C" void vf14__22CInterfaceCameraActionFv(CInterfaceCameraAction* action)
+extern "C" void Reset__22CInterfaceCameraActionFv(CInterfaceCameraAction* action)
 {
 }

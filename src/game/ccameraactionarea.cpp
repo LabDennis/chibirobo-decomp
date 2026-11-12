@@ -2060,7 +2060,7 @@ void CCameraActionArea::PreviousUpdate()
  * @note Address: 0x80139C98
  * @note Size: 0x78
  */
-void CCameraActionArea::vf14()
+void CCameraActionArea::Reset()
 {
 	LoadStageCameraAreaState(&gCameraAreaState);
 	_5C                 = 1;

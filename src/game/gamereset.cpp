@@ -3,8 +3,7 @@
 #include "Dolphin/mic.h"
 #include "game/csound.h"
 #include "game/mic.h"
-
-class CGame;
+#include "game/cgame.h"
 
 extern "C" {
 void AXQuit();
@@ -23,7 +22,7 @@ void VIWaitForRetrace();
  * @note Size: 0x8C
  */
 // CGame's _48, CBase's with the mic reset first
-extern "C" void Reset__5CGameFUl(CGame* game, s32 reset)
+void CGame::Reset(u32 code)
 {
 	s32 channel = gActiveMicChannel;
 	if (channel >= 0 && !gMicrophoneChannels[channel].mDeviceID)
@@ -45,5 +44,5 @@ extern "C" void Reset__5CGameFUl(CGame* game, s32 reset)
 	AXQuit();
 	AIStopDMA();
 #endif
-	OSResetSystem(reset, 0, FALSE);
+	OSResetSystem(code, 0, FALSE);
 }

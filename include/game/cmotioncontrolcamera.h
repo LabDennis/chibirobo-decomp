@@ -221,12 +221,12 @@ public:
 	{
 		if (mAction != NULL) {
 			if (mAction == GetAction(CAMACTION_CHASE) || mAction == GetAction(CAMACTION_10)) {
-				mAction->vf14();
+				mAction->Reset();
 			} else if (mAction == GetAction(CAMACTION_EVT) || mAction == GetAction(CAMACTION_AREA) || mAction == GetAction(CAMACTION_MAP)
 			           || mAction == GetAction(CAMACTION_RESET) || mAction == GetAction(CAMACTION_ANIM)) {
 				mAction->SetCamera(&mCamera);
 			} else {
-				mAction->vf14();
+				mAction->Reset();
 			}
 		}
 	}

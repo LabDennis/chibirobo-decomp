@@ -1136,13 +1136,13 @@ extern "C" void InitParticlePool(CPtcl* ptcl, void* ptcls, s32 stride, s32 count
  * @note Size: 0xD8
  */
 // Cursor's SetScaleY
-extern "C" void SetScaleY__6CursorFfl(Cursor* cursor, f32 y, s32 force)
+void Cursor::SetScaleY(f32 y, s32 force)
 {
-	y                            = -y;
-	cursor->mMoveScale.y         = y;
-	cursor->mMoveScale.mTarget.y = y;
-	if (cursor->mJObj != NULL) {
-		cursor->CJObj::SetScaleY(y, force);
+	y                    = -y;
+	mMoveScale.y         = y;
+	mMoveScale.mTarget.y = y;
+	if (mJObj != NULL) {
+		CJObj::SetScaleY(y, force);
 	}
 }
 
@@ -1151,29 +1151,29 @@ extern "C" void SetScaleY__6CursorFfl(Cursor* cursor, f32 y, s32 force)
  * @note Size: 0x190
  */
 // Cursor's SetScale(scale)
-extern "C" void SetScale__6CursorFfl(Cursor* cursor, f32 scale, s32 force)
+void Cursor::SetScale(f32 scale, s32 force)
 {
 	f32 x = scale;
 	f32 y = -scale;
 	f32 z = scale;
 
-	cursor->mMoveScale.x         = x;
-	cursor->mMoveScale.y         = y;
-	cursor->mMoveScale.z         = z;
-	cursor->mMoveScale.mTarget.x = x;
-	cursor->mMoveScale.mTarget.y = y;
-	cursor->mMoveScale.mTarget.z = z;
-	if (cursor->mJObj) {
+	mMoveScale.x         = x;
+	mMoveScale.y         = y;
+	mMoveScale.z         = z;
+	mMoveScale.mTarget.x = x;
+	mMoveScale.mTarget.y = y;
+	mMoveScale.mTarget.z = z;
+	if (mJObj) {
 		if (force == 0) {
 			Vec v = { x, y, z };
-			if (!(cursor->mScale != v)) {
+			if (!(mScale != v)) {
 				return;
 			}
 		}
-		cursor->mScale.x = x;
-		cursor->mScale.y = y;
-		cursor->mScale.z = z;
-		HSD_JObjSetScale(cursor->mJObj, &cursor->mScale);
+		mScale.x = x;
+		mScale.y = y;
+		mScale.z = z;
+		HSD_JObjSetScale(mJObj, &mScale);
 	}
 }
 
@@ -1182,27 +1182,27 @@ extern "C" void SetScale__6CursorFfl(Cursor* cursor, f32 scale, s32 force)
  * @note Size: 0x190
  */
 // Cursor's SetScale(x, y, z)
-extern "C" void SetScale__6CursorFfffl(Cursor* cursor, f32 x, f32 y, f32 z, s32 force)
+void Cursor::SetScale(f32 x, f32 y, f32 z, s32 force)
 {
 	y = -y;
 
-	cursor->mMoveScale.x         = x;
-	cursor->mMoveScale.y         = y;
-	cursor->mMoveScale.z         = z;
-	cursor->mMoveScale.mTarget.x = x;
-	cursor->mMoveScale.mTarget.y = y;
-	cursor->mMoveScale.mTarget.z = z;
-	if (cursor->mJObj) {
+	mMoveScale.x         = x;
+	mMoveScale.y         = y;
+	mMoveScale.z         = z;
+	mMoveScale.mTarget.x = x;
+	mMoveScale.mTarget.y = y;
+	mMoveScale.mTarget.z = z;
+	if (mJObj) {
 		if (force == 0) {
 			Vec v = { x, y, z };
-			if (!(cursor->mScale != v)) {
+			if (!(mScale != v)) {
 				return;
 			}
 		}
-		cursor->mScale.x = x;
-		cursor->mScale.y = y;
-		cursor->mScale.z = z;
-		HSD_JObjSetScale(cursor->mJObj, &cursor->mScale);
+		mScale.x = x;
+		mScale.y = y;
+		mScale.z = z;
+		HSD_JObjSetScale(mJObj, &mScale);
 	}
 }
 
@@ -1211,29 +1211,29 @@ extern "C" void SetScale__6CursorFfffl(Cursor* cursor, f32 x, f32 y, f32 z, s32 
  * @note Size: 0x19C
  */
 // Cursor's SetScale(v)
-extern "C" void SetScale__6CursorFRC3Vecl(Cursor* cursor, const Vec& scale, s32 force)
+void Cursor::SetScale(const Vec& scale, s32 force)
 {
 	f32 x = scale.x;
 	f32 y = -scale.y;
 	f32 z = scale.z;
 
-	cursor->mMoveScale.x         = x;
-	cursor->mMoveScale.y         = y;
-	cursor->mMoveScale.z         = z;
-	cursor->mMoveScale.mTarget.x = x;
-	cursor->mMoveScale.mTarget.y = y;
-	cursor->mMoveScale.mTarget.z = z;
-	if (cursor->mJObj) {
+	mMoveScale.x         = x;
+	mMoveScale.y         = y;
+	mMoveScale.z         = z;
+	mMoveScale.mTarget.x = x;
+	mMoveScale.mTarget.y = y;
+	mMoveScale.mTarget.z = z;
+	if (mJObj) {
 		if (force == 0) {
 			Vec v = { x, y, z };
-			if (!(cursor->mScale != v)) {
+			if (!(mScale != v)) {
 				return;
 			}
 		}
-		cursor->mScale.x = x;
-		cursor->mScale.y = y;
-		cursor->mScale.z = z;
-		HSD_JObjSetScale(cursor->mJObj, &cursor->mScale);
+		mScale.x = x;
+		mScale.y = y;
+		mScale.z = z;
+		HSD_JObjSetScale(mJObj, &mScale);
 	}
 }
 
@@ -1253,11 +1253,10 @@ static inline s32 AnimationGroup(XObj* object, s32 id)
  * @note Size: 0x38
  */
 // Cursor's SetAnim, keeps the classical scale
-extern "C" void SetAnim__6CursorFliPvPvPvffff(Cursor* object, s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim,
-                                              f32 frame, f32 rate, f32 blend, f32 blendRate)
+void Cursor::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate)
 {
-	SetAnim__4XObjFliPvPvPvffff(object, id, force, jointAnim, matAnim, shapeAnim, frame, rate, blend, blendRate);
-	HSD_JObjSetFlags(object->mJObj, CLASSICAL_SCALE);
+	XObj::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, rate, blend, blendRate);
+	HSD_JObjSetFlags(mJObj, CLASSICAL_SCALE);
 }
 
 /**
@@ -1581,10 +1580,10 @@ extern "C" void SetRot__5CXObjFRC3Vecl(CXObj* obj, const Vec& v, s32 force)
  * @note Size: 0x38
  */
 // Cursor's vfAC
-extern "C" void vfAC__6CursorFv(Cursor* cursor)
+void Cursor::vfAC()
 {
-	if (cursor->mJObj != NULL) {
-		HSD_JObjDispAll(cursor->mJObj, NULL, 7, 0);
+	if (mJObj != NULL) {
+		HSD_JObjDispAll(mJObj, NULL, 7, 0);
 	}
 }
 
@@ -1593,21 +1592,21 @@ extern "C" void vfAC__6CursorFv(Cursor* cursor)
  * @note Size: 0x90
  */
 // Cursor's update, spins it
-extern "C" void UpdateObject__6CursorFUl(Cursor* cursor, u32 frames)
+void Cursor::UpdateObject(u32 frames)
 {
-	cursor->mAngle = fmod(cursor->mAngleSpeed * (f32)frames + cursor->mAngle, TWO_PI);
-	cursor->SetRotationZ(cursor->mAngle, 0);
-	UpdateObject__4XObjFUl(cursor, frames);
+	mAngle = fmod(mAngleSpeed * (f32)frames + mAngle, TWO_PI);
+	SetRotationZ(mAngle, 0);
+	XObj::UpdateObject(frames);
 }
 
 /**
  * @note Address: 0x80026C2C
  * @note Size: 0x4C
  */
-extern "C" BOOL LoadFromPlacement__6CursorFRC9CoordInfo(Cursor* cursor, CoordInfo* info)
+BOOL Cursor::LoadFromPlacement(const CoordInfo& info)
 {
-	if (LoadFromPlacement__4XObjFRC9CoordInfo(cursor, info)) {
-		HSD_JObjSetFlags(cursor->mJObj, CLASSICAL_SCALE);
+	if (XObj::LoadFromPlacement(info)) {
+		HSD_JObjSetFlags(mJObj, CLASSICAL_SCALE);
 		return TRUE;
 	}
 	return FALSE;
@@ -1617,11 +1616,11 @@ extern "C" BOOL LoadFromPlacement__6CursorFRC9CoordInfo(Cursor* cursor, CoordInf
  * @note Address: 0x80026C78
  * @note Size: 0x38
  */
-extern "C" void InitializeObject__6CursorFUl(Cursor* cursor, u32 id)
+void Cursor::InitializeObject(u32 id)
 {
-	InitializeObject__4XObjFUl(cursor, id);
-	cursor->mAngleSpeed = 0.0f;
-	cursor->mAngle      = 0.0f;
+	XObj::InitializeObject(id);
+	mAngleSpeed = 0.0f;
+	mAngle      = 0.0f;
 }
 
 /**

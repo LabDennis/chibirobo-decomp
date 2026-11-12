@@ -929,12 +929,12 @@ void CCameraActionLeticker::Update(u32 step)
  * @note Address: 0x800E6790
  * @note Size: 0x68
  */
-void CCameraActionLeticker::vf14()
+void CCameraActionLeticker::Reset()
 {
 #if !defined(VERSION_PAL)
 	OSReport("CCameraActionLeticker::Reset\n");
 #endif
-	CCameraActionLadr::vf14();
+	CCameraActionLadr::Reset();
 	mTurnTo     = 0.0f;
 	mTurnFrames = 0;
 	mBounded    = false;

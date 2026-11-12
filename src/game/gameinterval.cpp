@@ -28,9 +28,9 @@ static inline u8 IntroActive(CGame* game)
  * @note Size: 0x68
  */
 // CGame's FrameInterval, the logo and title run at 60, the game at 30
-extern "C" s32 FrameInterval__5CGameFv(CGame* game)
+s32 CGame::FrameInterval()
 {
-	return IntroActive(game) ? 1 : 2;
+	return IntroActive(this) ? 1 : 2;
 }
 
 /**
@@ -38,18 +38,18 @@ extern "C" s32 FrameInterval__5CGameFv(CGame* game)
  * @note Size: 0xC
  */
 // CGame's GetCamera
-extern "C" void* GetCamera__5CGameFv(CGame* game)
+CCamera* CGame::GetCamera()
 {
-	return &game->mMotionControlCamera;
+	return &mMotionControlCamera.mCamera;
 }
 
 /**
  * @note Address: 0x8000A52C
  * @note Size: 0xC
  */
-extern "C" CLight* GetLight__5CGameFv(CGame* game)
+CLight* CGame::GetLight()
 {
-	return game->mLightList;
+	return mLightList;
 }
 
 /**

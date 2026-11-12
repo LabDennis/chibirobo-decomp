@@ -45,7 +45,7 @@ Vec CCameraActionLadr::GetCameraTarget()
  * @note Address: 0x80148550
  * @note Size: 0xC
  */
-void CCameraActionLadr::vf14()
+void CCameraActionLadr::Reset()
 {
 	mAngle = 0.0f;
 }
@@ -88,7 +88,7 @@ void CCameraActionScroll::SetCamera(CCamera* camera)
  * @note Address: 0x80148280
  * @note Size: 0x24
  */
-void CCameraActionScroll::vf14()
+void CCameraActionScroll::Reset()
 {
 	mStart        = TRUE;
 	mFarDistance  = 150.0f;
@@ -165,7 +165,7 @@ void CCameraActionScroll::Update(u32 step)
  */
 // UNUSED FUNCTION
 // stands in for a stripped function. retail's .sdata2 starts with the 0.0f that only
-// CCameraActionLadr::vf14 uses, and with deferred inlining the last function's constants come first
+// CCameraActionLadr::Reset uses, and with deferred inlining the last function's constants come first
 extern "C" void UnusedLadrReset(CCameraActionLadr* ladr)
 {
 	ladr->mAngle = 0.0f;

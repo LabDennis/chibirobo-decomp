@@ -12,7 +12,7 @@ int strcmp(const char* a, const char* b);
  * @note Size: 0xCC
  */
 // reads /stage:name and /slot:letter off the command line
-extern "C" void Initialize__5CGameFiPPc(CGame* game, int argc, char** argv)
+void CGame::Initialize(int argc, char** argv)
 {
 	for (s32 i = 1; i < argc; i++) {
 		switch (argv[i][0]) {

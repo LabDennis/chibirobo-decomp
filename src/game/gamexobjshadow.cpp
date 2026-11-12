@@ -187,28 +187,28 @@ void XObj::DrawObjectEffects()
  * @note Size: 0x28C
  */
 // CGame::vf20, draws the objects in _C074 from the main camera, kind 3 ones first
-extern "C" void vf20__5CGameFv(CGame* game)
+void CGame::vf20()
 {
-	if (game->mStatus.mFlags & 1) {
+	if (mStatus.mFlags & 1) {
 		s32 i;
-		game->mGs.mCamera = game->GetCamera();
-		if (BeginGsCamera(game)) {
-			for (i = 0; i < game->mDrawLists[1].mCount; i++) {
-				if (game->mDrawLists[1].mObjects[i]->GetCategory() == 3) {
-					game->mDrawLists[1].mObjects[i]->vfAC();
+		mGs.mCamera = GetCamera();
+		if (BeginGsCamera(this)) {
+			for (i = 0; i < mDrawLists[1].mCount; i++) {
+				if (mDrawLists[1].mObjects[i]->GetCategory() == 3) {
+					mDrawLists[1].mObjects[i]->vfAC();
 				}
 			}
-			EndGsCamera(&game->mGs);
+			EndGsCamera(&mGs);
 		}
-		game->mGs.mCamera = game->GetCamera();
-		if (BeginGsCamera(game)) {
-			for (i = 0; i < game->mDrawLists[1].mCount; i++) {
-				if (game->mDrawLists[1].mObjects[i]->GetCategory() != 3) {
-					game->mDrawLists[1].mObjects[i]->vfAC();
+		mGs.mCamera = GetCamera();
+		if (BeginGsCamera(this)) {
+			for (i = 0; i < mDrawLists[1].mCount; i++) {
+				if (mDrawLists[1].mObjects[i]->GetCategory() != 3) {
+					mDrawLists[1].mObjects[i]->vfAC();
 				}
 			}
 			CallStageModule(2, 0, NULL);
-			EndGsCamera(&game->mGs);
+			EndGsCamera(&mGs);
 		}
 		InvalidateAll();
 	}
