@@ -317,8 +317,6 @@ static inline s32 PulseMarkColor(s32 channel, f32 spin)
 	return channel * (0.8f + 0.1f * (f32)sin(1.2f * spin));
 }
 
-extern "C" const Vec sOXMenuAnchorOffset;
-extern "C" const OXJointPath sOXMenuAnchorJointPath;
 extern "C" void DrawOXMenu(OXMenu* menu)
 {
 	if (!(menu->mFade > 0.0f))
@@ -330,8 +328,8 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		screenY = 418.0f;
 	} else {
 		XObj* chr        = menu->mChr;
-		Vec offset       = sOXMenuAnchorOffset;
-		OXJointPath path = sOXMenuAnchorJointPath;
+		Vec offset       = { 0.0f, 0.0f, 0.0f };
+		OXJointPath path = { { 0, 1, 0, 1, 2, 0, 1 } };
 		offset.y         = GetEventJointWorldPosition(chr, 7, path.ids).y - chr->mMoveTranslate.y;
 		Vec anchor       = offset;
 		menu->mChr->ProjectOffsetToScreen(&anchor, &screenX, &screenY, NULL, NULL);

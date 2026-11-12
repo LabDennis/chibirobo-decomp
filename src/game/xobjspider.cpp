@@ -51,8 +51,6 @@ void UpdateSpiderHitReaction(XObjSpider* spider, u32 frames);
 void ApplySpiderPlacement(XObjSpider* spider);
 void ResetSpiderState(XObjSpider* spider);
 
-extern const s32 sSpiderThreadJointIndex;
-extern const s32 sSpiderHoldJointIndex;
 CVec GetStagePlacementScale(XObj* obj);
 void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z);
 s32 GetAttachmentCountById(AttachmentValues* values, s32 id);
@@ -534,7 +532,7 @@ void XObjSpider::DrawObjectEffects()
 		Vec top;
 		CJObj joint;
 		u32 color        = (u32)(90.0f * mThreadAlpha) | 0xFFFFFF00;
-		s32 threadPath[] = { sSpiderThreadJointIndex };
+		s32 threadPath[] = { 0 };
 		joint.Attach(FindJointByPath(mJObj, threadPath, 1));
 		top = GetJointPosition(joint.mJObj);
 		CVec pos(top);
@@ -876,7 +874,7 @@ extern "C" void UpdateSpiderAttachments(XObjSpider* spider, u32 frames)
 		}
 		spider->mEffect->SetScale(1.0f, 1.0f, 1.0f, 0);
 		CJObj joint;
-		s32 holdPath[] = { sSpiderHoldJointIndex };
+		s32 holdPath[] = { 0 };
 		joint.Attach(FindJointByPath(spider->mJObj, holdPath, 1));
 		PSMTXCopy(HSD_JObjGetMtxPtr(joint.mJObj), spider->mEffectMtx);
 		Vec scale;

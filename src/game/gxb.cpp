@@ -3977,9 +3977,6 @@ extern const char* gTitleTextureSuffixes[5];
 #endif
 }
 
-extern "C" {
-extern const GXColor gTitleExitClearColor;
-}
 static inline void KeepTitleSoundPlaying(XSound* sound)
 {
 	if (!IsGameSoundPlaying(sound, (s32)0xffff0003))
@@ -3988,30 +3985,27 @@ static inline void KeepTitleSoundPlaying(XSound* sound)
 
 static inline void ShowTitleChoice(Title* title, s32 id)
 {
-	u32 tint         = 0xffffff00 | (u32)(255.f * title->_37E4);
-	const char* text = GetTitleAndSaveMenuText(id);
-	StageName& name  = title->mName;
-	name.mActive     = 1;
-	name.mCount      = 0;
-	if (!text)
-		return;
-	name.mColor = tint;
-	s32 i       = 0;
-	for (; i < 20 && *text; ++i, ++text) {
-		StageNameChar& letter = name.mChars[i];
-		letter.mText          = text;
-		letter.mScale         = -.2f * i;
-		letter.mWait          = FRAME_RATE;
-		letter.mBob           = DEG2RAD * (rand() % 360);
-		letter.mTilt          = DEG2RAD * (rand() % 360);
-		++name.mCount;
-		if (HelpTextIsJapanese() && IsSjisLead((u8)*text))
-			++text;
-	}
-	for (; i < 20; ++i) {
-		StageNameChar& letter = name.mChars[i];
-		letter.mText          = NULL;
-		letter.mScale = letter.mWait = 0;
+	u32 tint             = 0xffffff00 | (u32)(255.f * title->_37E4);
+	const char* text     = GetTitleAndSaveMenuText(id);
+	title->mName.mActive = 1;
+	title->mName.mCount  = 0;
+	if (text != NULL) {
+		title->mName.mColor = tint;
+		for (s32 i = 0; i < 20 && *text; i++, text++) {
+			title->mName.mChars[i].mText  = text;
+			title->mName.mChars[i].mScale = -.2f * i;
+			title->mName.mChars[i].mWait  = FRAME_RATE;
+			title->mName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
+			title->mName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
+			title->mName.mCount++;
+			if (HelpTextIsJapanese() && IsSjisLead(*text))
+				text++;
+		}
+		for (s32 i = title->mName.mCount; i < 20; i++) {
+			title->mName.mChars[i].mText  = NULL;
+			title->mName.mChars[i].mScale = 0;
+			title->mName.mChars[i].mWait  = 0;
+		}
 	}
 }
 static inline void UpdateTitleDust(Title* title, u32 frames)
@@ -4076,6 +4070,8 @@ static inline void TitleSelectionConfirmed(Title* title)
 /**
  * @note Address: 0x8002E8D0
  */
+// NONMATCHING: retail calls StartScreenFade where this file inlines it, and it reaches the card's
+// busy and found flags in two steps
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {
 
@@ -4085,44 +4081,32 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	ApproachHudValue(&title->_3810, &title->_3814, .08f * frames);
 	title->_37AC -= .008f * frames;
 	if (title->mState != 0 && title->mState != 1 && title->mState != 23) {
-		StageName& name = title->mName;
-		if (name.mActive > 0) {
-
-			for (s32 i = 0; i < name.mCount; ++i) {
-				StageNameChar& glyph = name.mChars[i];
-				if (glyph.mWait > 0) {
-					if (glyph.mScale < 1) {
-#if defined(VERSION_PAL)
-						glyph.mScale += (1.f / (.3f * gVideoFramesPerSecond)) * frames;
-#else
-						glyph.mScale += (1.f / 18.f) * frames;
-#endif
-						if (glyph.mScale > 1)
-							glyph.mScale = 1;
+		if (title->mName.mActive && title->mName.mActive > 0) {
+			for (s32 i = 0; i < title->mName.mCount; ++i) {
+				if (title->mName.mChars[i].mWait > 0) {
+					if (title->mName.mChars[i].mScale < 1) {
+						if ((title->mName.mChars[i].mScale += (1.f / (.3f * FRAME_RATE)) * frames) > 1)
+							title->mName.mChars[i].mScale = 1;
 					}
-				} else if (glyph.mScale > 0) {
-#if defined(VERSION_PAL)
-					glyph.mScale -= (1.f / (.3f * gVideoFramesPerSecond)) * frames;
-#else
-					glyph.mScale -= (1.f / 18.f) * frames;
-#endif
-					if (glyph.mScale < 0)
-						glyph.mScale = 0;
+				} else if (title->mName.mChars[i].mScale > 0) {
+					if ((title->mName.mChars[i].mScale -= (1.f / (.3f * FRAME_RATE)) * frames) < 0)
+						title->mName.mChars[i].mScale = 0;
 				}
 			}
 			s32 visible = 0;
-			for (s32 i = 0; i < name.mCount; ++i) {
-				StageNameChar& glyph = name.mChars[i];
-				if (glyph.mScale != 0) {
+			for (s32 i = 0; i < title->mName.mCount; ++i) {
+				if (0 != title->mName.mChars[i].mScale) {
 					++visible;
-					glyph.mBob += (5.f * DEG2RAD) * frames;
-					glyph.mTilt += (3.f * DEG2RAD) * frames;
+					title->mName.mChars[i].mBob += (5.f * DEG2RAD) * frames;
+					title->mName.mChars[i].mTilt += (3.f * DEG2RAD) * frames;
 				}
 			}
 			if (!visible)
-				name.mActive = 0;
+				title->mName.mActive = 0;
 		}
 		switch (title->mHelpFadeState) {
+		case 0:
+			break;
 		case 1:
 			title->mHelpAlpha = 0;
 			++title->mHelpFadeState;
@@ -4142,36 +4126,50 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 				title->mBg[i].mAngle1 += (3.f * DEG2RAD) * frames;
 			}
 		}
-		Memcard& card = gGame.mMemcard.mCard;
 		if (title->mMode != 1 && title->mMode != 8 && title->mMode != 12 && title->mMode != 15) {
-			s32 capacity, sector;
+			Memcard& card = gGame.mMemcard.mCard;
+			s32 sector, capacity;
 			title->mReady = 0;
 			title->_37E2  = 0;
 			switch (ProbeMemoryCardCapacity(&card, title->mChannel, &capacity, &sector)) {
-			case -2:
+			case CARD_RESULT_WRONGDEVICE:
 				title->_37E2 = 1;
 				break;
-			case 0:
+			case CARD_RESULT_READY:
 				if (sector == 8192)
 					title->mReady = 1;
 				break;
+			case CARD_RESULT_NOCARD:
+			case CARD_RESULT_FATAL_ERROR:
+				break;
 			}
-			if (!title->mReady) {
+			if (!title->mReady)
 				title->mShowMessage = 0;
+			if (!title->mReady) {
 				if (title->mState != 20 && title->_37A8 == 1)
 					title->_37A8 = 0;
-				title->_3809 = title->_3808 = 0;
+				title->_3809 = 0;
+				title->_3808 = 0;
 #if !defined(VERSION_JP)
 				title->_3C44 = 0;
 #endif
-			} else if (title->_3808 == 0) {
-				StartMemoryCardScan(&card, title->mChannel, FALSE);
-				title->_3808 = 1;
-			} else if (title->_3808 == 1 && !title->_3809 && card.mFound) {
-				title->_3809 = 1;
+			} else {
+				switch (title->_3808) {
+				case 0:
+					StartMemoryCardScan(&card, title->mChannel, FALSE);
+					title->_3808 = 1;
+					break;
+				case 1:
+					if (!title->_3809 && card.mFound)
+						title->_3809 = 1;
+					break;
+				}
 			}
 		}
-		if (!(title->mState >= 1 && title->mState < 23) || card.mBusy)
+		bool running = title->mState >= 1 && title->mState < 23;
+		if (!running)
+			return;
+		if (gGame.mMemcard.mCard.mBusy)
 			return;
 	}
 	switch (title->mState) {
@@ -4192,7 +4190,11 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 			ApplyTitleControllerSetting(title);
 		}
 		title->mState = 3;
-		title->_20    = (gCmdLineArgs.mTitleCursor < 0 ? rand() : gCmdLineArgs.mTitleCursor) % 11;
+		if (gCmdLineArgs.mTitleCursor < 0) {
+			title->_20 = rand() % 11;
+		} else {
+			title->_20 = gCmdLineArgs.mTitleCursor % 11;
+		}
 		// fall through: loading starts on the same frame as cursor selection
 	case 3:
 		if (title->mCursor.LoadFromPlacement(CoordInfo(GetSpawnData(title->_20))))
@@ -4224,8 +4226,8 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		title->mTex[5] = title->mTpl.mTex.Init(&((TPLPalette*)title->mTpl.mBuffer)->descriptorArray[5], 0);
 #endif
 		title->_10 = title->_14 = 0;
-		GXColor color           = gTitlePalette[gTitlePaletteIndex].background;
-		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, color.r, color.g, color.b, 0, .5f);
+		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, gTitlePalette[gTitlePaletteIndex].background.r,
+		                gTitlePalette[gTitlePaletteIndex].background.g, gTitlePalette[gTitlePaletteIndex].background.b, 0, .5f);
 		title->mDemo.mState = 1;
 		title->mDemo.mLoop  = TRUE;
 #if defined(VERSION_PAL)
@@ -4240,13 +4242,11 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	case 10: {
 
 		if (title->_10 < 1) {
-			title->_10 += (1.f / (.5f * FRAME_RATE)) * frames;
-			if (title->_10 > 1)
+			if ((title->_10 += (1.f / (.5f * FRAME_RATE)) * frames) > 1)
 				title->_10 = 1;
 		}
 		if (title->_14 < 1) {
-			title->_14 += (1.f / FRAME_RATE) * frames;
-			if (title->_14 > 1)
+			if ((title->_14 += (1.f / FRAME_RATE) * frames) > 1)
 				title->_14 = 1;
 		}
 		title->mCursor.UpdateObject(frames);
@@ -4369,26 +4369,27 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		break;
 	case 13: {
 		title->mState = 14;
-		GXColor color = gTitlePalette[gTitlePaletteIndex].background;
-		StartScreenFade(&gGame.mFade, color.r, color.g, color.b, 0, 0, 0, 0, 255, .5f);
+		StartScreenFade(&gGame.mFade, gTitlePalette[gTitlePaletteIndex].background.r, gTitlePalette[gTitlePaletteIndex].background.g,
+		                gTitlePalette[gTitlePaletteIndex].background.b, 0, 0, 0, 0, 255, .5f);
 		title->mDemo.mState = 0;
 	}
 	case 14: {
 
 		if (title->_10 > 0) {
-			title->_10 -= (1.f / (.5f * FRAME_RATE)) * frames;
-			if (title->_10 < 0)
+			if ((title->_10 -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
 				title->_10 = 0;
 		}
 		if (title->_14 > 0) {
-			title->_14 -= (1.f / (.5f * FRAME_RATE)) * frames;
-			if (title->_14 < 0)
+			if ((title->_14 -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
 				title->_14 = 0;
 		}
-		const ScrnColorF& velocity = gGame.mFade.mSpeed;
-		if (title->_10 == 0 && velocity.r == 0 && velocity.g == 0 && velocity.b == 0 && velocity.a == 0) {
-			title->mState                   = 22;
-			HSD_VIData.current.vi.clear_clr = gTitleExitClearColor;
+		if (title->_10 == 0) {
+			bool faded = gGame.mFade.mSpeed.r == 0 && gGame.mFade.mSpeed.g == 0 && gGame.mFade.mSpeed.b == 0 && gGame.mFade.mSpeed.a == 0;
+			if (faded) {
+				GXColor black                   = { 0, 0, 0, 0 };
+				title->mState                   = 22;
+				HSD_VIData.current.vi.clear_clr = black;
+			}
 		}
 		break;
 	}
@@ -4402,9 +4403,13 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		}
 		title->mState = 23;
 		break;
+	case 23:
+		break;
 	}
-	if (title->mState != 0 && title->mState != 22 && title->mState != 23)
-		HSD_VIData.current.vi.clear_clr = gTitlePalette[gTitlePaletteIndex].background;
+	if (title->mState != 0 && title->mState != 22 && title->mState != 23) {
+		GXColor color                   = gTitlePalette[gTitlePaletteIndex].background;
+		HSD_VIData.current.vi.clear_clr = color;
+	}
 }
 
 extern "C" {
@@ -4420,12 +4425,7 @@ s32 HSD_SynthSFXLoad(const char* name, s32 bank, void (*callback)(s32, s32), s32
 // drops every sfx name waiting to load and empties the stage bank
 static inline void ClearStageBank(XSound* sound)
 {
-	for (u32 i = 0; i < 16; ++i) {
-		SfxLoadRequest* request = &sound->mStageRequests.entries[i];
-		request->mName          = NULL;
-		request->mResult        = -1;
-		request->mLoaded        = 0;
-	}
+	sound->mStageRequests.Clear();
 	sound->mLoadRequestCount = 0;
 	HSD_SynthSFXBankClear(sound->mStageBank);
 }
@@ -4462,7 +4462,6 @@ static inline void RegisterStageSoundName(XSound* sound, const char* name)
  * @note Address: 0x8001F8D8
  * @note Size: 0xA4
  */
-// NONMATCHING: the requests are reached through an object at _2D0
 extern "C" void ClearStageSoundBank(XSound* sound)
 {
 	ClearStageBank(sound);
@@ -4509,7 +4508,7 @@ extern "C" BOOL LoadGameSoundBank(XSound* sound, s32 stage)
 			++sound->mLoadState;
 			break;
 		case 3:
-			if (!(bool)HSD_SynthSFXGetPendingLoadCount()) {
+			if (!HasPendingSoundBankLoad()) {
 				sound->mLoadState   = 0;
 				sound->mSampleReady = 1;
 				return TRUE;

@@ -1044,7 +1044,7 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     lwz      r23, 0x48(r31)
     lwz      r22, 0x4c(r31)
     lwz      r21, 0x50(r31)
-    lhz      r20, sGsDefaultDestinationAlpha@sda21(r0)
+    lhz      r20, lbl_806602A4@sda21(r0)
     lwz      r19, 0x34(r31)
     lwz      r18, 0x38(r31)
     lwz      r17, 0x3c(r31)
@@ -1055,7 +1055,7 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     lwz      r11, 0x2c(r31)
     lwz      r0, 0x30(r31)
     lbz      r10, lbl_8065F5A5@sda21(r0)
-    lbz      r5, sGsDefaultAlphaUpdate@sda21(r0)
+    lbz      r5, lbl_806602A0@sda21(r0)
     lbz      r4, lbl_8065F5A4@sda21(r0)
     lwz      r28, lbl_8065F5A8@sda21(r0)
     lbz      r27, lbl_8065F5A6@sda21(r0)
@@ -1131,7 +1131,7 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     lwz      r10, 0x54(r31)
     lwz      r14, 0x58(r31)
     stw      r0, 0x27c(r1)
-    lwz      r4, sGsPrimaryTevStage@sda21(r0)
+    lwz      r4, lbl_806602A8@sda21(r0)
     lwz      r0, 0x278(r1)
     stw      r15, 0x108(r1)
     stw      r0, 0x294(r30)
@@ -1294,7 +1294,7 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
     lwz      r9, 0x10c(r31)
     lwz      r0, 0x110(r31)
     stw      r5, 0x40(r1)
-    lwz      r5, sGsDefaultColor0Channel@sda21(r0)
+    lwz      r5, lbl_806602AC@sda21(r0)
     stw      r15, 0x44(r1)
     stw      r14, 0x1fc(r1)
     stw      r12, 0x200(r1)
@@ -1787,7 +1787,7 @@ extern "C" s32 SetGsChannelMaterialAndLighting(CGs* gs, s32 matSrc, u32 rgba)
     lwz      r0, 0x8(r1)
     subi     r9, r3, 0x7f7f
     stw      r4, 0x2c(r1)
-    lwz      r11, sGsTransparentBlack@sda21(r0)
+    lwz      r11, lbl_806602B0@sda21(r0)
     stw      r0, 0x28(r1)
     lbz      r3, 0x2c(r1)
     lbz      r0, 0x28(r1)
@@ -2811,9 +2811,9 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
     stw      r29, 0x174(r1)
     fmr      f30, f1
     lfs      f0, lbl_8065F5F4@sda21(r0)
-    lwz      r6, sGsInitialLineWidth@sda21(r0)
+    lwz      r6, lbl_806602B4@sda21(r0)
     lis      r8, __vt__5CFont@ha
-    lwz      r0, sGsInitialMaxLineWidth@sda21(r0)
+    lwz      r0, lbl_806602B8@sda21(r0)
     lis      r7, __vt__7CTexObj@ha
     addi     r9, r8, __vt__5CFont@l
     addi     r8, r7, __vt__7CTexObj@l
@@ -3472,9 +3472,9 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 .L_80195204:
     lfs      f0, lbl_8065F5F4@sda21(r0)
     lis      r5, __vt__5CFont@ha
-    lwz      r3, sGsInitialLineWidth@sda21(r0)
+    lwz      r3, lbl_806602B4@sda21(r0)
     lis      r4, __vt__7CTexObj@ha
-    lwz      r0, sGsInitialMaxLineWidth@sda21(r0)
+    lwz      r0, lbl_806602B8@sda21(r0)
     addi     r6, r5, __vt__5CFont@l
     addi     r5, r4, __vt__7CTexObj@l
     li       r4, 0x0
@@ -5124,9 +5124,9 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
     stw      r0, 0x30(r3)
     bl       HSD_SetupChannelAll
 .L_80194624:
-    lwz      r3, sGsInitialStrokeLineWidth@sda21(r0)
+    lwz      r3, lbl_806602BC@sda21(r0)
     mr       r31, r29
-    lwz      r0, sGsInitialMaxStrokeLineWidth@sda21(r0)
+    lwz      r0, lbl_806602C0@sda21(r0)
     stw      r3, 0x8(r1)
     stw      r0, 0xc(r1)
     b        .L_8019467C

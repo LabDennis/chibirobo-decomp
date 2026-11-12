@@ -5922,7 +5922,7 @@ static inline void UpdateMenuTitle(MenuType* menu, u32 frames)
  * @note Address: 0x8003CE18
  * @note Size: 0x538
  */
-// NONMATCHING: regalloc
+// NONMATCHING: regalloc, and retail reaches the card's busy flag in two steps
 extern "C" BOOL Update__8MenuSaveFUl(MenuSave* menu, u32 frames)
 {
 	if (Update__5CMenuFUl(menu, frames) == 4) {
@@ -5932,6 +5932,8 @@ extern "C" BOOL Update__8MenuSaveFUl(MenuSave* menu, u32 frames)
 		menu->_2A4 -= 0.008f * frames;
 		UpdateMenuTitle(menu, frames);
 		switch (menu->_294) {
+		case 0:
+			break;
 		case 1:
 			menu->_298 = 0.0f;
 			menu->_294++;
@@ -5954,20 +5956,21 @@ extern "C" BOOL Update__8MenuSaveFUl(MenuSave* menu, u32 frames)
 			}
 		}
 		if (menu->mMode != 1 && menu->mMode != 5 && menu->mMode != 9) {
-			s32 size;
 			s32 sector;
+			s32 size;
 			menu->mReady = FALSE;
 			menu->_262   = FALSE;
 			switch (ProbeMemoryCardCapacity(&gGame.mMemcard.mCard, menu->mChannel, &size, &sector)) {
-			case -2:
+			case CARD_RESULT_WRONGDEVICE:
 				menu->_262 = TRUE;
 				break;
-			case 0:
+			case CARD_RESULT_READY:
 				if (sector == 0x2000) {
 					menu->mReady = TRUE;
 				}
 				break;
-			case -128:
+			case CARD_RESULT_NOCARD:
+			case CARD_RESULT_FATAL_ERROR:
 				break;
 			}
 			if (!menu->mReady) {
