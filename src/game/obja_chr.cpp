@@ -1701,90 +1701,6 @@ static inline void ChooseClimbAction(XObjChr* player, XObj* object, s32 mode, bo
 		StopPlayerMotion(player);
 	}
 }
-static inline void ChooseObjectInteraction(XObjChr* player, bool pressed, s32 climbMode, bool emptyHands)
-{
-	if (pressed && player->_A10 >= 0) {
-		XObj* object = GetGameObjectByIndex(&gGame, player->_A10);
-		if (object->mStatus.mFlags & 0x10000000000ULL)
-			StartInteractionEvent(object);
-	} else if (pressed || (player->mFloorContacts[4].objectIndex >= 0 && player->mFloorContacts[4].objectIndex == player->mHitObjectIndex)
-	           || player->_95E0) {
-		bool handled  = false;
-		player->_95E0 = 0;
-		if (emptyHands && player->mFloorContacts[2].objectIndex >= 0
-		    && player->mFloorContacts[2].objectIndex != player->mFloorContacts[0].objectIndex) {
-			XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContacts[2].objectIndex);
-			if (fn_800B2048(object)) {
-				if (PlayerLiftIsFree(player) && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
-					ReleaseCarriedTarget(player);
-					LiftInteractionTarget(player, object);
-					handled = true;
-				}
-			} else if (object->mStatus.mFlags & 0x10000000000ULL) {
-				StartInteractionEvent(object);
-				handled = true;
-			}
-		} else if (emptyHands && player->mFloorContacts[2].objectIndex >= 0
-		           && player->mFloorContacts[2].objectIndex == player->mFloorContacts[0].objectIndex
-		           && player->mHitObjectIndex == player->mFloorContacts[2].objectIndex) {
-			XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContacts[2].objectIndex);
-			if ((object->mStatus.mFlags & 0x10000000000ULL) && !(object->mStatus.mFlags & 0x100000000000ULL)
-			    && (s16)GetObjectPoolId(object) != 8) {
-				StartInteractionEvent(object);
-				handled = true;
-			}
-		}
-		if (!handled && PlayerLiftIsFree(player) && player->mHitObjectIndex >= 0) {
-			XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
-			if (emptyHands && fn_800B2048(object) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex
-			    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
-				ReleaseCarriedTarget(player);
-				SetLiftActionState(&player->mLift, 1);
-				SetPlayerActionTarget(&player->mLift, GetGameObjectByIndex(&gGame, player->mHitObjectIndex));
-				fn_800B503C(&player->mLift, 0);
-			} else if (emptyHands && fn_800B2250(object)) {
-// Only the Japanese release starts a hang or a jump from this height check.
-#if defined(VERSION_JP)
-				f32 height = Abs(object->mSelectedFloorHeight - player->mMoveTranslate.y);
-				if (height != 0 && (gGame.mStatus.mFlags & 0x80000000000ULL)) {
-					if (height >= 12 && height <= 12.5f) {
-						ReleaseCarriedTarget(player);
-						SetHangActionState(&player->mHang, 1);
-						SetPlayerActionTarget(&player->mHang, object);
-					} else if (height <= 4) {
-						ReleaseCarriedTarget(player);
-						SetPlayerActionState(&player->mJump, 8);
-						SetPlayerActionTarget(&player->mJump, object);
-					} else if (height <= 8) {
-						ReleaseCarriedTarget(player);
-						SetPlayerActionState(&player->mJump, 11);
-						SetPlayerActionTarget(&player->mJump, object);
-					} else if (height <= 12.5f) {
-						ReleaseCarriedTarget(player);
-						SetPlayerActionState(&player->mJump, 14);
-						SetPlayerActionTarget(&player->mJump, object);
-					}
-				}
-#endif
-			} else if (fn_800B21B8(object))
-				ChooseClimbAction(player, object, climbMode, true);
-			else if (fn_800B2164(object))
-				ChooseClimbAction(player, object, climbMode, false);
-#if defined(VERSION_JP)
-			if (gGame.mStatus.mFlags & 0x80000000000ULL)
-				return;
-#endif
-			if ((IsLiftActionState(&player->mLift, 0) || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift)))
-			    && PlayerActionsIdle(player) && fn_800B2014(object) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex) {
-				ReleaseCarriedTarget(player);
-				StopPlayerMotion(player);
-				SetPushActionState(&player->mPush, 1);
-				SetPlayerActionTarget(&player->mPush, object);
-				fn_800B1B0C(&player->mPush, 0);
-			}
-		}
-	}
-}
 static inline bool CanUseAttachment(XObjChr* player)
 {
 	return !(gGame.mStatus.mFlags & 0x100) && player->mAttachmentRequest < 0;
@@ -1915,7 +1831,93 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 				mode = player->mToolActionType == 1 ? 1 : 0;
 			else
 				mode = 2;
-			ChooseObjectInteraction(player, press, mode, IsPlayerAttachmentEquipped(player, 0));
+			{
+				bool emptyHands = IsPlayerAttachmentEquipped(player, 0);
+				if (press && player->_A10 >= 0) {
+					XObj* object = GetGameObjectByIndex(&gGame, player->_A10);
+					if (object->mStatus.mFlags & 0x10000000000ULL)
+						StartInteractionEvent(object);
+				} else if (press
+				           || (player->mFloorContacts[4].objectIndex >= 0
+				               && player->mFloorContacts[4].objectIndex == player->mHitObjectIndex)
+				           || player->_95E0) {
+					bool handled  = false;
+					player->_95E0 = 0;
+					if (emptyHands && player->mFloorContacts[2].objectIndex >= 0
+					    && player->mFloorContacts[2].objectIndex != player->mFloorContacts[0].objectIndex) {
+						XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContacts[2].objectIndex);
+						if (fn_800B2048(object)) {
+							if (PlayerLiftIsFree(player) && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
+								ReleaseCarriedTarget(player);
+								LiftInteractionTarget(player, object);
+								handled = true;
+							}
+						} else if (object->mStatus.mFlags & 0x10000000000ULL) {
+							StartInteractionEvent(object);
+							handled = true;
+						}
+					} else if (emptyHands && player->mFloorContacts[2].objectIndex >= 0
+					           && player->mFloorContacts[2].objectIndex == player->mFloorContacts[0].objectIndex
+					           && player->mHitObjectIndex == player->mFloorContacts[2].objectIndex) {
+						XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContacts[2].objectIndex);
+						if ((object->mStatus.mFlags & 0x10000000000ULL) && !(object->mStatus.mFlags & 0x100000000000ULL)
+						    && (s16)GetObjectPoolId(object) != 8) {
+							StartInteractionEvent(object);
+							handled = true;
+						}
+					}
+					if (!handled && PlayerLiftIsFree(player) && player->mHitObjectIndex >= 0) {
+						XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
+						if (emptyHands && fn_800B2048(object) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex
+						    && object->mMaxFloorHeight > 1.f + player->mMoveTranslate.y) {
+							ReleaseCarriedTarget(player);
+							SetLiftActionState(&player->mLift, 1);
+							SetPlayerActionTarget(&player->mLift, GetGameObjectByIndex(&gGame, player->mHitObjectIndex));
+							fn_800B503C(&player->mLift, 0);
+						} else if (emptyHands && fn_800B2250(object)) {
+// Only the Japanese release starts a hang or a jump from this height check.
+#if defined(VERSION_JP)
+							f32 height = Abs(object->mSelectedFloorHeight - player->mMoveTranslate.y);
+							if (height != 0 && (gGame.mStatus.mFlags & 0x80000000000ULL)) {
+								if (height >= 12 && height <= 12.5f) {
+									ReleaseCarriedTarget(player);
+									SetHangActionState(&player->mHang, 1);
+									SetPlayerActionTarget(&player->mHang, object);
+								} else if (height <= 4) {
+									ReleaseCarriedTarget(player);
+									SetPlayerActionState(&player->mJump, 8);
+									SetPlayerActionTarget(&player->mJump, object);
+								} else if (height <= 8) {
+									ReleaseCarriedTarget(player);
+									SetPlayerActionState(&player->mJump, 11);
+									SetPlayerActionTarget(&player->mJump, object);
+								} else if (height <= 12.5f) {
+									ReleaseCarriedTarget(player);
+									SetPlayerActionState(&player->mJump, 14);
+									SetPlayerActionTarget(&player->mJump, object);
+								}
+							}
+#endif
+						} else if (fn_800B21B8(object))
+							ChooseClimbAction(player, object, mode, true);
+						else if (fn_800B2164(object))
+							ChooseClimbAction(player, object, mode, false);
+#if defined(VERSION_JP)
+						if (!(gGame.mStatus.mFlags & 0x80000000000ULL))
+#endif
+							if ((IsLiftActionState(&player->mLift, 0)
+							     || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift)))
+							    && PlayerActionsIdle(player) && fn_800B2014(object)
+							    && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex) {
+								ReleaseCarriedTarget(player);
+								StopPlayerMotion(player);
+								SetPushActionState(&player->mPush, 1);
+								SetPlayerActionTarget(&player->mPush, object);
+								fn_800B1B0C(&player->mPush, 0);
+							}
+					}
+				}
+			}
 		}
 		if (!IsEventScriptActive(&gGame) && !(gGame.mStatus.mFlags & 0x400) && player->mAttachmentRequest < 0 && PlayerLiftIsFree(player)
 		    && PlayerActionsIdle(player))
