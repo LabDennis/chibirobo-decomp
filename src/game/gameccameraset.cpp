@@ -28,8 +28,8 @@ void ClearActiveObjectFloors(XObj*);
 
 static inline void DrawFrameQuad(const Vec (&v)[4], u32 color)
 {
-	DrawGsVertexQuad(&gGame.mGs, v[0].x, v[0].y, v[0].z, v[1].x, v[1].y, v[1].z, v[2].x, v[2].y, v[2].z, v[3].x, v[3].y, v[3].z, color,
-	                 color, color, color);
+	DrawGsVertexQuad(&gGame.mGs, v[0].x, v[0].y, v[0].z, color, v[1].x, v[1].y, v[1].z, color, v[2].x, v[2].y, v[2].z, color, v[3].x,
+	                 v[3].y, v[3].z, color);
 }
 
 static inline void DrawSubwindowObjects(const XOBJS& objects, CCamera* camera)
