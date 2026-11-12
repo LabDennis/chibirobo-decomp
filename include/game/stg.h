@@ -544,7 +544,7 @@ public:
 	f32 _39C;                     // _39C
 	u8 _3A0;                      // _3A0
 	u8 _3A1[0x3A4 - 0x3A1];       // _3A1
-	u32 _3A4;                     // _3A4
+	u32 mDialogueNumber;          // _3A4
 	f32 mRankingOffsets[5];       // _3A8
 	PCRankingRow mRankingRows[5]; // _3BC
 	s32 mRankingEnd;              // _3F8

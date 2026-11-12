@@ -2032,7 +2032,7 @@ void MenuPC::Init()
 	MenuPC* menu = this;
 	menu->CMenu::Init();
 	menu->mDepositBalance = 0;
-	menu->_3A4            = 0;
+	menu->mDialogueNumber = 0;
 }
 
 /**
@@ -6481,7 +6481,7 @@ extern "C" s32 DrawCardErrorMessage(s32, s32 id, u8 retry, f32 x, f32 y, f32 siz
 // These menu entry points only exist in the Japanese edition.
 extern "C" u32 GetPCDialogueNumber(MenuPC* menu)
 {
-	return menu->_3A4;
+	return menu->mDialogueNumber;
 }
 
 void MenuRequestClear::Init()
