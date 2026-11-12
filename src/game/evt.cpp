@@ -18263,9 +18263,11 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 				case -2:
 					InfoScrn_HideTimer(&gGame.mInfoScrn);
 					break;
-				case -3:
-					InfoScrn_SetTimerHundredths(&gGame.mInfoScrn, CEvt_Evaluate(this));
+				case -3: {
+					s32 hundredths = CEvt_Evaluate(this);
+					InfoScrn_SetTimerHundredths(&gGame.mInfoScrn, hundredths);
 					break;
+				}
 				case -4:
 					_10 = InfoScrn_GetTimerHundredths(&gGame.mInfoScrn);
 					break;
