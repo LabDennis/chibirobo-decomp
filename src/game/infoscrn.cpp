@@ -463,15 +463,6 @@ extern "C" void DrawHudPauseLabel(InfoScrn* scrn)
 	}
 }
 
-static inline bool FadeHudIn(f32& alpha, u32 frames)
-{
-	alpha += 0.08f * frames;
-	bool done = alpha >= 1;
-	if (done)
-		alpha = 1;
-	return done;
-}
-
 static inline bool FadeHudOut(f32& alpha, u32 frames)
 {
 	alpha -= 0.08f * frames;
@@ -495,7 +486,9 @@ static inline void StepHudVisibility(s32& state, f32& alpha, u32 frames)
 		alpha = 0;
 		break;
 	case 3:
-		FadeHudIn(alpha, frames);
+		alpha += 0.08f * frames;
+		if (alpha >= 1)
+			alpha = 1;
 		break;
 	case 4:
 		FadeHudOut(alpha, frames);
@@ -543,8 +536,11 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		++h->_9C;
 		break;
 	case 1:
-		if (FadeHudIn(h->_A8, frames))
+		h->_A8 += 0.08f * frames;
+		if (h->_A8 >= 1) {
+			h->_A8 = 1;
 			++h->_9C;
+		}
 		break;
 	case 2:
 		if (gGame.mEvt.mData.mScript)
@@ -569,8 +565,11 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		}
 		break;
 	case 1:
-		if (FadeHudIn(h->_AC, frames))
+		h->_AC += 0.08f * frames;
+		if (h->_AC >= 1) {
+			h->_AC = 1;
 			++h->_A0;
+		}
 		break;
 	case 2:
 		if (h->_B8 != -1 || !gGame.GetPlayer()->GetAttachment())
@@ -592,8 +591,11 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		}
 		break;
 	case 1:
-		if (FadeHudIn(h->_B0, frames))
+		h->_B0 += 0.08f * frames;
+		if (h->_B0 >= 1) {
+			h->_B0 = 1;
 			++h->_A4;
+		}
 		AdvanceHudIcon(h);
 		break;
 	case 2:
@@ -624,7 +626,9 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		h->_C0 = 0;
 		break;
 	case 3:
-		FadeHudIn(h->_C0, frames);
+		h->_C0 += 0.08f * frames;
+		if (h->_C0 >= 1)
+			h->_C0 = 1;
 		break;
 	case 4:
 		FadeHudOut(h->_C0, frames);
@@ -658,7 +662,9 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		h->mItemMaxAlpha = h->_14C;
 		break;
 	case 3:
-		FadeHudIn(h->_14C, frames);
+		h->_14C += 0.08f * frames;
+		if (h->_14C >= 1)
+			h->_14C = 1;
 		h->mItemMaxAlpha = h->_14C;
 		break;
 	case 4:
@@ -673,7 +679,9 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		}
 		break;
 	case 6:
-		FadeHudIn(h->mItemMaxAlpha, frames);
+		h->mItemMaxAlpha += 0.08f * frames;
+		if (h->mItemMaxAlpha >= 1)
+			h->mItemMaxAlpha = 1;
 		break;
 	case 7:
 		ApproachHudScale(h->_16C, 1.0f + 0.125f * (f32)sin(0.017453292f * ((s32)((u32)h->_B4 * 16) % 360)));
@@ -710,7 +718,9 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		h->_18C = 0;
 		break;
 	case 3:
-		FadeHudIn(h->_18C, frames);
+		h->_18C += 0.08f * frames;
+		if (h->_18C >= 1)
+			h->_18C = 1;
 		if (h->_19C && (h->_19C->mStatus.mFlags & 1)) {
 			s32 path[] = { 0, 0 };
 			joint.Attach(FindJointByPath(h->_19C->mJObj, path, 2));
