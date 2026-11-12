@@ -572,69 +572,6 @@ static inline void StartAvailablePopperShot(XActPopper* act, const Vec& origin, 
 		}
 }
 
-static inline void FirePopperShot(XActPopper* act, BOOL rangeUpgrade)
-{
-	PlayPopperFireAnimation(&act->mOwner->mPopperObj);
-	if (act->_2C == 0) {
-		if (act->mState == 6)
-			act->_2C = (s32)GetPlayerActionParameter(31) / 100.f;
-		else
-			act->_2C = (s32)GetPlayerActionParameter(30) / 100.f;
-	}
-	CVec origin;
-	PopperMuzzle(act->mOwner, origin);
-	f32 yaw, pitch;
-	if (gGame.mStatus.mFlags & 0x100) {
-		yaw   = gGame.mMotionControlCamera.mCamera.mAngle.y;
-		pitch = gGame.mMotionControlCamera.mCamera.mAngle.x;
-	} else {
-		yaw   = act->mOwner->mMoveRotate.y;
-		pitch = 0;
-	}
-	f32 power = act->mState == 6 ? 3 : 1;
-	f32 speed = (s32)GetPopperParameter(2) / 10.f, range = (s32)GetPopperParameter(rangeUpgrade) / 10.f;
-	XObj* target = NULL;
-	for (int i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
-		XObj* obj = gGame.GetObject(i);
-		u64 flags = obj->mStatus.mFlags;
-		if (!(flags & 1) || !(flags & 0x10000) || !(flags & 0x100) || (flags & 0x40000) || (flags & 0x100000))
-			continue;
-		Vec aim   = AddScalarToVectorComponents(obj->mMoveTranslate, obj->GetCollisionHeight() * .5f);
-		f32 delta = WrapAngle((f32)atan2(aim.x - origin.x, aim.z - origin.z) - yaw);
-		if (delta > PI)
-			delta = TWO_PI - delta;
-		if (delta > DEG2RAD * 60)
-			continue;
-		delta = WrapAngle(TargetPitch(origin, aim) - pitch);
-		if (delta > PI)
-			delta = TWO_PI - delta;
-		if (delta > DEG2RAD * 30)
-			continue;
-		f32 distance = PSVECDistance(&origin, &obj->mMoveTranslate);
-		if (target == NULL) {
-			if (distance < range)
-				target = obj;
-		} else if (distance < PSVECDistance(&origin, &target->mMoveTranslate))
-			target = obj;
-	}
-	XObjChr* p = act->mOwner;
-	if (p->_158A4) {
-		f32 battery = p->mParams.mBattery - act->_2C;
-		if (battery < 0)
-			battery = 0;
-		p->mParams.mBattery = battery > 0 ? battery : 0;
-		if (p->mParams.mBattery < 0)
-			p->mParams.mBattery = 0;
-		if (p->mParams.mBattery > p->mParams.mMaxBattery)
-			p->mParams.mBattery = p->mParams.mMaxBattery;
-	}
-	s32 kind = GetAttachmentCountById(&act->mOwner->mAttachments, 2);
-	if (target)
-		StartAvailablePopperShot(act, origin, kind, target, yaw, pitch, power, speed, range);
-	else
-		StartAvailablePopperShot(act, origin, kind, NULL, yaw, pitch, power, speed, range);
-}
-
 static inline void StartPopperTone(int sound)
 {
 	if (!IsGameSoundPlaying(&gGame.mSound, sound))
@@ -722,8 +659,67 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 			if (act->mState != 6)
 				act->mState = 8;
 			s32 limit = GetPopperParameter(3);
-			if (ActivePopperShots(act) < limit)
-				FirePopperShot(act, rangeUpgrade);
+			if (ActivePopperShots(act) < limit) {
+				PlayPopperFireAnimation(&act->mOwner->mPopperObj);
+				if (act->_2C == 0) {
+					if (act->mState == 6)
+						act->_2C = (s32)GetPlayerActionParameter(31) / 100.f;
+					else
+						act->_2C = (s32)GetPlayerActionParameter(30) / 100.f;
+				}
+				CVec origin;
+				PopperMuzzle(act->mOwner, origin);
+				f32 yaw, pitch;
+				if (gGame.mStatus.mFlags & 0x100) {
+					yaw   = gGame.mMotionControlCamera.mCamera.mAngle.y;
+					pitch = gGame.mMotionControlCamera.mCamera.mAngle.x;
+				} else {
+					yaw   = act->mOwner->mMoveRotate.y;
+					pitch = 0;
+				}
+				f32 power = act->mState == 6 ? 3 : 1;
+				f32 speed = (s32)GetPopperParameter(2) / 10.f, range = (s32)GetPopperParameter(rangeUpgrade) / 10.f;
+				XObj* target = NULL;
+				for (int i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+					XObj* obj = gGame.GetObject(i);
+					u64 flags = obj->mStatus.mFlags;
+					if (!(flags & 1) || !(flags & 0x10000) || !(flags & 0x100) || (flags & 0x40000) || (flags & 0x100000))
+						continue;
+					Vec aim   = AddScalarToVectorComponents(obj->mMoveTranslate, obj->GetCollisionHeight() * .5f);
+					f32 delta = WrapAngle((f32)atan2(aim.x - origin.x, aim.z - origin.z) - yaw);
+					if (delta > PI)
+						delta = TWO_PI - delta;
+					if (delta > DEG2RAD * 60)
+						continue;
+					delta = WrapAngle(TargetPitch(origin, aim) - pitch);
+					if (delta > PI)
+						delta = TWO_PI - delta;
+					if (delta > DEG2RAD * 30)
+						continue;
+					f32 distance = PSVECDistance(&origin, &obj->mMoveTranslate);
+					if (target == NULL) {
+						if (distance < range)
+							target = obj;
+					} else if (distance < PSVECDistance(&origin, &target->mMoveTranslate))
+						target = obj;
+				}
+				XObjChr* p = act->mOwner;
+				if (p->_158A4) {
+					f32 battery = p->mParams.mBattery - act->_2C;
+					if (battery < 0)
+						battery = 0;
+					p->mParams.mBattery = battery > 0 ? battery : 0;
+					if (p->mParams.mBattery < 0)
+						p->mParams.mBattery = 0;
+					if (p->mParams.mBattery > p->mParams.mMaxBattery)
+						p->mParams.mBattery = p->mParams.mMaxBattery;
+				}
+				s32 kind = GetAttachmentCountById(&act->mOwner->mAttachments, 2);
+				if (target)
+					StartAvailablePopperShot(act, origin, kind, target, yaw, pitch, power, speed, range);
+				else
+					StartAvailablePopperShot(act, origin, kind, NULL, yaw, pitch, power, speed, range);
+			}
 			ClearPopperCharge(&charge);
 			act->mState = 8;
 		} else if (aobj->flags & 0x44000000) {
