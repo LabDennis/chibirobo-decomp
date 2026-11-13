@@ -31,6 +31,16 @@ extern "C" void DrawGsCircle(void* game, s32 kind, s32 color, s32 color2, f32 x,
 #else
 #define GAME_STAGE 0x3444
 #endif
+// CGs::mCurRenderMode, mCurTevStage and mBillboardEnabled; europe's CGsScreen is 4 bytes longer
+#if defined(VERSION_PAL)
+#define GS_RENDER_MODE 0x294
+#define GS_TEV_STAGE   0x298
+#define GS_BILLBOARD   0x2A0
+#else
+#define GS_RENDER_MODE 0x290
+#define GS_TEV_STAGE   0x294
+#define GS_BILLBOARD   0x29C
+#endif
 
 struct _GXTexObj {
 	u32 dummy[8]; // _00
@@ -82,12 +92,16 @@ struct UnkDolObj {
 #else
 	u8 _38[0x90]; // _38
 #endif
-	CVec _C8;       // _C8, japan has it and what follows 8 bytes earlier
-	u8 _D8[0x150];  // _D8
-	u64 _228;       // _228
-	u8 _230[0x14];  // _230
-	s32* _244;      // _244
+	CVec _C8;      // _C8, japan has it and what follows 8 bytes earlier
+	u8 _D8[0x150]; // _D8
+	u64 _228;      // _228
+	u8 _230[0x14]; // _230
+	s32* _244;     // _244
+#if defined(VERSION_JP)
+	u8 _248[0x7FC]; // _248, japan's is 8 bytes shorter
+#else
 	u8 _248[0x804]; // _248
+#endif
 	u32* _A4C;      // _A4C
 	u8 _A50[0x1C];  // _A50
 	u8 _A6C[0x100]; // _A6C
@@ -685,9 +699,9 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x18), 0);
 			w   = 1.0f * GXGetTexObjWidth(&tex);
 			x   = 640.0f - w * 0.5f - 40.0f;
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, x, 40.0f, 0.0f, w, 1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 #if !defined(VERSION_JP)
 			{
 				CTexObj unused;
@@ -715,19 +729,19 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				if (d == 0 || digit != 0) {
 					PSMTXTrans(tex._3C._00, 0.09090909f * (digit % 10), 0.0f, 0.0f);
 					tex._38 = 1;
-					SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 					DrawGsTexturedQuad(gGame, &tex, hi, hi, lo, lo, step + (left - d * digW) - 32.0f, 68.0f, 0.0f, digW, digH, 0.0f, 0.0f,
 					                   0.0f);
-					SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				}
 			}
 
 			// time
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x20), 0);
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, 1.0f * GXGetTexObjWidth(&tex),
 			                   1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 #if !defined(VERSION_JP)
 			{
 				CTexObj unused;
@@ -758,10 +772,10 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				if (d == 0 || digit != 0) {
 					PSMTXTrans(tex._3C._00, 0.09090909f * (digit % 10), 0.0f, 0.0f);
 					tex._38 = 1;
-					SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 					DrawGsTexturedQuad(gGame, &tex, lo, lo, hi, hi, step + (left - d * (digW - 8.0f)) - 32.0f, 76.0f, 0.0f, digW, digH,
 					                   0.0f, 0.0f, 0.0f);
-					SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				}
 			}
 			digW = 1.4f * (1.0f * (GXGetTexObjWidth(&tex) / 11));
@@ -773,20 +787,20 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 #endif
 			PSMTXTrans(tex._3C._00, 0.90909094f, 0.0f, 0.0f);
 			tex._38 = 1;
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			s32 lead = 2;
 			if (time < 10)
 				lead = 1;
 			DrawGsTexturedQuad(gGame, &tex, lo, lo, hi, hi, 7.0f * digW + (left - lead * (digW - 8.0f)) - 32.0f, 76.0f, 0.0f, digW, digH,
 			                   0.0f, 0.0f, 0.0f);
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 
 			// gauge
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x28), 0);
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, 1.0f * GXGetTexObjWidth(&tex),
 			                   1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 #if !defined(VERSION_JP)
 			{
 				CTexObj unused;
@@ -796,14 +810,14 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x30), 0);
 			w    = 1.0f * GXGetTexObjWidth(&tex);
 			digH = 1.0f * GXGetTexObjHeight(&tex);
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 72.0f, 0.0f, w, digH, 0.0f, 0.0f, 0.0f);
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x38), 0);
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f - w * 0.5f + gauge * w / 100.0f, 72.0f, 0.0f,
 			                   1.0f * GXGetTexObjWidth(&tex), 1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 			break;
 		}
 	}
@@ -2536,8 +2550,8 @@ extern "C" void DrawShots(void)
 		if (!entry->_00) {
 			continue;
 		}
-		GAME_FIELD(s32, 0x29C) = 1;
-		SetGsBlendMode(GAME_FIELD(void*, 0x290), 1, 4, 5, 15);
+		GAME_FIELD(s32, GS_BILLBOARD) = 1;
+		SetGsBlendMode(GAME_FIELD(void*, GS_RENDER_MODE), 1, 4, 5, 15);
 		for (j = 0; j < 10; j++) {
 			Vec* pos  = &entry->_38[j];
 			Vec up    = { 0.0f, 1.0f, 0.0f };
@@ -2545,7 +2559,7 @@ extern "C" void DrawShots(void)
 			DrawGsCircle(gGame, 16, alpha | 0xFFFFFF00, 0xFFFFFF00, pos->x, pos->y, pos->z, 4.0f, 4.0f, up.x, up.y, up.z);
 		}
 		Vec* pos = &entry->_1C;
-		SetGsBlendMode(GAME_FIELD(void*, 0x290), 1, 2, 4, 15);
+		SetGsBlendMode(GAME_FIELD(void*, GS_RENDER_MODE), 1, 2, 4, 15);
 		{
 			Vec up = { 0.0f, 1.0f, 0.0f };
 			DrawGsCircle(gGame, 16, 0xFFFFFF80, 0xFFFFFF00, pos->x, pos->y, pos->z, 4.0f, 4.0f, up.x, up.y, up.z);
@@ -2554,12 +2568,12 @@ extern "C" void DrawShots(void)
 			Vec up = { 0.0f, 1.0f, 0.0f };
 			DrawGsCircle(gGame, 16, 0xFFFFFF80, 0xFFFFFF00, pos->x, pos->y, pos->z, 5.0f, 5.0f, up.x, up.y, up.z);
 		}
-		SetGsBlendMode(GAME_FIELD(void*, 0x290), 1, 4, 5, 15);
+		SetGsBlendMode(GAME_FIELD(void*, GS_RENDER_MODE), 1, 4, 5, 15);
 		{
 			Vec up = { 0.0f, 1.0f, 0.0f };
 			DrawGsCircle(gGame, 16, 0x64FF64C8, 0x64FF6400, pos->x, pos->y, pos->z, 5.0f, 5.0f, up.x, up.y, up.z);
 		}
-		GAME_FIELD(s32, 0x29C) = 0;
+		GAME_FIELD(s32, GS_BILLBOARD) = 0;
 	}
 }
 
@@ -5733,34 +5747,34 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 				w    = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
 				y    = 320.0f - 32.0f;
 				half = fade->_08 * (1.0f * GXGetTexObjHeight(&tex));
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, half, 0.0f, 0.0f, 0.0f);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + (fade->_10 + 25) * 8), 0);
 				w   = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
 				h   = fade->_08 * (1.0f * GXGetTexObjHeight(&tex));
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x58), 0);
 				half *= 0.5f;
 				w = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
 				h = 1.0f * GXGetTexObjHeight(&tex);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y - half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y + half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 			}
 			if (fade->_0C > 0.0f) {
 				u16 texW;
 				tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x40), 0);
 				texW = GXGetTexObjWidth(&tex);
 				half = fade->_0C * (1.0f * GXGetTexObjHeight(&tex));
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 180.0f, 0.0f, 1.1f * (1.0f * texW), half, 0.0f, 0.0f, 0.0f);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				if (fade->_20 == 0) {
 					tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + (fade->_14 + 12) * 8), 0);
 				} else {
@@ -5768,19 +5782,19 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 				}
 				w = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
 				h = fade->_0C * (1.0f * GXGetTexObjHeight(&tex));
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 180.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x48), 0);
 				half *= 0.5f;
 				w = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
 				h = 1.0f * GXGetTexObjHeight(&tex);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 180.0f - half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 180.0f + half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
-				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 			}
 		}
 	}
@@ -6704,8 +6718,8 @@ extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx m)
 		cx = aim->_18->_08;
 		cy = aim->_18->_0C;
 	}
-	SetGsBlendMode(GAME_FIELD(void*, 0x290), 1, 4, 5, 15);
-	SetGsLineWidth(GAME_FIELD(void*, 0x290), 12, 5);
+	SetGsBlendMode(GAME_FIELD(void*, GS_RENDER_MODE), 1, 4, 5, 15);
+	SetGsLineWidth(GAME_FIELD(void*, GS_RENDER_MODE), 12, 5);
 	for (i = 9; i > 0; i--) {
 		reticleSpin[i] = reticleSpin[i - 1];
 	}
@@ -6748,13 +6762,13 @@ extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx m)
 			f32 c = cos(angle);
 			u16 w;
 			u16 h;
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			tex = ((CTexObj*)(gGame + GAME_OFS(0x3D6C, 0x3D4C)))
-			          ->Init((TPLDescriptor*)(GAME_FIELD(u32*, GAME_OFS(0x3D4C, 0x3D2C))[2] + 0x400), 0);
+			          ->Init((TPLDescriptor*)(GAME_FIELD(u32*, GAME_OFS(0x3D4C, 0x3D2C))[2] + GAME_OFS(0x400, 0x3F0)), 0);
 			w = GXGetTexObjWidth(&tex);
 			h = GXGetTexObjHeight(&tex);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, dist * s + cx, dist * c + cy, 0.0f, 1.1f * w, h, 0.0f, 0.0f, angle);
-			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 		}
 	}
 }
