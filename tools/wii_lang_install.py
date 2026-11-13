@@ -6,16 +6,19 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 
-def install(files, target):
+def install(files, target, codes=("en", "de", "fr", "es", "it")):
+    """Install the generated languages `codes` as `target` (a mod's files/lang)."""
     source = files / "lang"
-    for code in ("en", "de", "fr", "es", "it"):
+    for code in codes:
         if not (source / code).is_dir():
             raise ValueError(f"Missing generated language directory: {source / code}")
     # Only the generated lang subtree belongs to this rule. Keep sibling mod files.
     target.parent.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(dir=target.parent) as tmp:
         staged = Path(tmp) / "lang"
-        shutil.copytree(source, staged)
+        staged.mkdir()
+        for code in codes:
+            shutil.copytree(source / code, staged / code)
         old = Path(tmp) / "old"
         if target.exists():
             target.rename(old)
@@ -29,4 +32,4 @@ def install(files, target):
 
 
 if __name__ == "__main__":
-    install(Path(sys.argv[1]), Path(sys.argv[2]))
+    install(Path(sys.argv[1]), Path(sys.argv[2]), sys.argv[3:] or ("en", "de", "fr", "es", "it"))
