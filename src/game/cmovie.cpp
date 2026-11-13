@@ -62,7 +62,7 @@ s32 CMovie::Update()
 			mState = CMOVIE_STATE_INFO;
 		} else {
 			OSReport("file not found - %s\n", mPath);
-			mState = -2;
+			mState = -2; // negative states are error codes
 			break;
 		}
 		// fall through
@@ -78,7 +78,7 @@ s32 CMovie::Update()
 				THPSimpleSetBuffer(mBuffer);
 			} else {
 				OSReport("Cannot allocate the memory for movie - %d\n", size);
-				mState = -1;
+				mState = -1; // out of memory
 			}
 			mLastFrame = THPSimpleGetTotalFrame() - 1;
 			OSReport("[%-26s] (%dx%d) %7d(%6.1fK)(%5.3fM)\n", mPath, mVideoInfo.xSize, mVideoInfo.ySize, size, size / 1024.0f,
@@ -111,7 +111,7 @@ s32 CMovie::Update()
 		THPSimpleAudioStart();
 		// fall through
 	case CMOVIE_STATE_PLAY:
-		if (mFrame >= mLastFrame && !mLoop) {
+		if (mFrame >= mLastFrame && !mLoop) { // the last frame ends a non-loop
 			Stop();
 		} else {
 			switch (THPSimpleDecode(mAudioInfo.sndNumTracks - 1)) {
