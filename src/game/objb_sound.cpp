@@ -1,5 +1,6 @@
 #include "game/xobjsound.h"
 #include "game/cgame.h"
+#include "game/animframe.h"
 
 // XObjSound, an object that plays sounds along with its anim
 
@@ -9,21 +10,42 @@ AnimSfxEvent gSoundObjectAnimEvents[] = {
 	{ 3, 14.0f, 27.0f, 1, 0x11000e, 255, 4, 0, 0 },
 	{ -1 },
 };
+} // extern "C"
 
-// the weak destructor
 /**
- * @note Address: 0x800DD32C
- * @note Size: 0x60
+ * @note Address: 0x800DD56C
+ * @note Size: 0x34
  */
-XObjSound* __dt__9XObjSoundFv(XObjSound* object, s32 flags)
+void XObjSound::InitializeObject(u32 id)
 {
-	if (object != NULL) {
-		object->XObjSound::~XObjSound();
-		if ((s16)flags > 0) {
-			::operator delete(object);
-		}
+	XObj::InitializeObject(id);
+	mSfx.mEvents = NULL;
+}
+
+/**
+ * @note Address: 0x800DD504
+ * @note Size: 0x68
+ */
+void XObjSound::ResetObjectState()
+{
+	XObj::ResetObjectState();
+	_990 = 0;
+	_994 = 0;
+	switch (GetKind()) {
+	case 0x1D2:
+		mSfx.mEvents = gSoundObjectAnimEvents;
+		break;
 	}
-	return object;
+}
+
+/**
+ * @note Address: 0x800DD43C
+ * @note Size: 0xC8
+ */
+void XObjSound::UpdateObject(u32 frames)
+{
+	XObj::UpdateObject(frames);
+	UpdateSfx(GetAnimFrame(mJObj));
 }
 
 /**
@@ -38,40 +60,9 @@ void XObjSound::UpdateSfx(f32 frame)
 }
 
 /**
- * @note Address: 0x800DD43C
- * @note Size: 0xC8
+ * @note Address: 0x800DD32C
+ * @note Size: 0x60
  */
-void XObjSound::UpdateObject(u32 frames)
+XObjSound::~XObjSound()
 {
-	UpdateObject__4XObjFUl(this, frames);
-	HSD_AObj* aobj = GetAObj(mJObj);
-	UpdateSfx(aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f);
 }
-
-/**
- * @note Address: 0x800DD504
- * @note Size: 0x68
- */
-void XObjSound::ResetObjectState()
-{
-	ResetObjectState__4XObjFv(this);
-	_990 = 0;
-	_994 = 0;
-	switch (GetKind()) {
-	case 0x1D2:
-		mSfx.mEvents = gSoundObjectAnimEvents;
-		break;
-	}
-}
-
-/**
- * @note Address: 0x800DD56C
- * @note Size: 0x34
- */
-void XObjSound::InitializeObject(u32 id)
-{
-	InitializeObject__4XObjFUl(this, id);
-	mSfx.mEvents = NULL;
-}
-
-} // extern "C"

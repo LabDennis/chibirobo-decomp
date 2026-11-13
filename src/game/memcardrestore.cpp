@@ -53,24 +53,6 @@ static inline void SetMaxBattery(Params* stats, f32 value)
 	stats->SetBattery(stats->mBattery);
 }
 
-static inline void SetMoney(Params* stats, s32 value)
-{
-	stats->mMoney = value > 0 ? value : 0;
-	if (stats->mMoney < 0)
-		stats->mMoney = 0;
-	if (stats->mMoney > 99999)
-		stats->mMoney = 99999;
-}
-
-static inline void SetScrap(Params* stats, s32 value)
-{
-	stats->mScrap = value > 0 ? value : 0;
-	if (stats->mScrap < 0)
-		stats->mScrap = 0;
-	if (stats->mScrap > 99999)
-		stats->mScrap = 99999;
-}
-
 static inline void RequestSuit(XObjChr* chr, s32 value)
 {
 	if (chr->mSuits.mChangeStep == FALSE) {
@@ -102,8 +84,8 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	SetRank(Stats(), save->mHeader.mRank);
 	SetMaxBattery(Stats(), save->mHeader.mMaxBattery);
 	Stats()->SetBattery(save->mHeader.mBattery);
-	SetMoney(Stats(), save->mHeader.mMoney);
-	SetScrap(Stats(), save->mHeader.mScrap);
+	Stats()->SetMoney(save->mHeader.mMoney);
+	Stats()->SetScrap(save->mHeader.mScrap);
 	if (save->mHeader.mActive)
 		Stats()->_1C[0] = 1;
 	else
