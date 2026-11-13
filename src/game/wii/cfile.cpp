@@ -7,16 +7,9 @@
 // always the current one, and a buffer handed in by the caller is never freed.
 
 extern "C" {
-s32 fn_80190238(const char* path); // DVDConvertPathToEntrynum
-BOOL fn_80190540(s32 entrynum, DVDFileInfo* info);
-BOOL fn_801905A8(DVDFileInfo* info);
-BOOL fn_80190618(DVDFileInfo* info, void* addr, s32 length, s32 offset, DVDCallback callback, s32 prio);
-BOOL fn_801FEAB4(void* arcStart, ARCHandle* handle); // ARCInitHandle
 BOOL fn_801FEDF8(ARCHandle* handle, s32 entrynum, ARCFileInfo* info);
-s32 fn_801FEE48(ARCHandle* handle, const char* path); // ARCConvertPathToEntrynum
 u32 fn_801FF288(ARCFileInfo* info);
 u32 fn_801FF290(ARCFileInfo* info);
-BOOL fn_801FF298(ARCFileInfo* info);
 }
 
 // the archive files get read out of, set by CFileArchive::ReadAsync
@@ -27,7 +20,7 @@ static void ReadCallback(s32 result, DVDFileInfo* info);
 s32 CFile::Open(const char* path)
 {
 	if (mInArchive) {
-		mEntrynum = fn_801FEE48(&gCurrentFileArchive->mHandle, path);
+		mEntrynum = ARCConvertPathToEntrynum(&gCurrentFileArchive->mHandle, path);
 		if (mEntrynum < 0) {
 			return -3;
 		}
@@ -36,11 +29,11 @@ s32 CFile::Open(const char* path)
 		}
 		mSize = fn_801FF290(&mArcInfo);
 	} else {
-		mEntrynum = fn_80190238(path);
+		mEntrynum = DVDConvertPathToEntrynum((char*)path);
 		if (mEntrynum < 0) {
 			return -3;
 		}
-		if (!fn_80190540(mEntrynum, this)) {
+		if (!DVDFastOpen(mEntrynum, this)) {
 			return -4;
 		}
 		mSize = length;
@@ -53,10 +46,10 @@ s32 CFile::CloseHandle()
 	if (mEntrynum >= 0) {
 		mEntrynum = -1;
 		if (mInArchive) {
-			if (!fn_801FF298(&mArcInfo)) {
+			if (!ARCClose(&mArcInfo)) {
 				return -5;
 			}
-		} else if (!fn_801905A8(this)) {
+		} else if (!DVDClose(this)) {
 			return -5;
 		}
 	}
@@ -71,7 +64,7 @@ s32 CFile::StartRead(u32 size, u32 offset)
 	}
 	mResult         = 1;
 	cBlock.userData = &mResult;
-	fn_80190618(this, mBuffer, size, offset, ReadCallback, 2);
+	DVDReadAsyncPrio(this, mBuffer, size, offset, ReadCallback, 2);
 	return 0;
 }
 
@@ -123,17 +116,17 @@ void CFileA::Free()
 
 BOOL CFile::IsInArchive(const char* path)
 {
-	return gCurrentFileArchive != NULL ? fn_801FEE48(&gCurrentFileArchive->mHandle, path) >= 0 : FALSE;
+	return gCurrentFileArchive != NULL ? ARCConvertPathToEntrynum(&gCurrentFileArchive->mHandle, path) >= 0 : FALSE;
 }
 
 s32 CFile::ConvertPathToEntrynum(const char* path)
 {
 	s32 entrynum = -1;
 	if (gCurrentFileArchive != NULL) {
-		entrynum = fn_801FEE48(&gCurrentFileArchive->mHandle, path);
+		entrynum = ARCConvertPathToEntrynum(&gCurrentFileArchive->mHandle, path);
 	}
 	if (entrynum < 0) {
-		entrynum = fn_80190238(path);
+		entrynum = DVDConvertPathToEntrynum((char*)path);
 	}
 	return entrynum;
 }
@@ -273,7 +266,7 @@ s32 CFileArchive::ReadAsync(const char* path, u32 offset, u32 size, BOOL fromAra
 s32 CFileArchive::GetResult()
 {
 	s32 result = CFile::GetResult();
-	if (result == 0 && !fn_801FEAB4(mBuffer, &mHandle)) {
+	if (result == 0 && !ARCInitHandle(mBuffer, &mHandle)) {
 		OSReport("cannot open - '%s'!\n", mPath);
 		CFile::Close();
 		result = -4;
