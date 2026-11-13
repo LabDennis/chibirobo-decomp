@@ -97,17 +97,29 @@ ninja
 
 The output DOL is written to `build/GGTE01/main.dol`, or to the folder for the version you built.
 
-### Wii localization mods
+### Wii mods
 
-Build a US or European localization from your Japanese Wii disc. For example:
+Two options build a mod of your Japanese Wii disc, alone or together:
+
+- `--gcncon`: GameCube controller support. On the first screen, the first A
+  press picks the controls: A on a GameCube controller in port 1 plays with the
+  GameCube controller alone, and the game stops asking for the Wii Remote; A on
+  the Wii Remote plays as the Wii release does, pointer, motion and speaker
+  included. The game already maps the GameCube buttons; the release only left
+  them switched off.
+- `--langpack <locale>`: the game's text in another language (see below).
 
 ```sh
-python3 configure.py --version R24J01 --wii-locale en-US
+python3 configure.py --version R24J01 --gcncon --langpack en-US
 ninja
 ```
 
-Choose `en-US`, `en-GB`, `de-DE`, `fr-FR`, `es-ES` or `it-IT`. Open
-`build/wii-en-US/game.json` in Dolphin, substituting your chosen locale.
+Open `build/wii-en-US-gcncon/game.json` in Dolphin (the folder is named after the
+options: `wii-gcncon`, `wii-en-US`, …). Dolphin applies the mod to your original
+disc image; on a Wii, Riivolution does the same with the folder's
+`riivolution.xml` and `main.dol`.
+
+For `--langpack`, choose `en-US`, `en-GB`, `de-DE`, `fr-FR`, `es-ES` or `it-IT`.
 The starter translations cover the Wii title, save banner and three Wii Remote
 messages. Other text and assets fall back to the Japanese release.
 For new translations, edit `mods/wii-localization/interface.json` or place
