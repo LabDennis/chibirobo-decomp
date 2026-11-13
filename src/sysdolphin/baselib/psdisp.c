@@ -2,6 +2,7 @@
 #include <dolphin/gx/gxtypes.h>
 #include <dolphin/mtx/mtxtypes.h>
 #include <sysdolphin/forward.h>
+#include <sysdolphin/pslist.h>
 #include <sysdolphin/jobj.h>
 #include <sysdolphin/memory.h>
 #include <sysdolphin/lobj.h>
@@ -279,7 +280,6 @@ typedef struct {
 	u8 count;
 } TrailStripHdr;
 
-extern void particleSort(s32 bank, void** opaHead, void** xluHead);
 extern void psSetupTevCommon(void);
 extern void psSetupTevInvalidState(void);
 extern void psSetupTev(HSD_Particle* pp);
@@ -3276,8 +3276,8 @@ void psDispSub(HSD_Particle* pp, u32* cmdList)
 void _psDispParticlesSub(s32 bankMask, s32 kind)
 {
 	s32 i;
-	void* opaHead;
-	void* xluHead;
+	HSD_Particle* opaHead;
+	HSD_Particle* xluHead;
 	HSD_Particle* pp;
 	void* prevTex;
 	u32 prevKind;
@@ -3313,10 +3313,10 @@ void _psDispParticlesSub(s32 bankMask, s32 kind)
 
 			switch (kind) {
 			case 1:
-				pp = (HSD_Particle*)opaHead;
+				pp = opaHead;
 				break;
 			case 2:
-				pp = (HSD_Particle*)xluHead;
+				pp = xluHead;
 				break;
 			default:
 				continue;
