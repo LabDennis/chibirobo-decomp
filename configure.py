@@ -1093,7 +1093,7 @@ config.libs = [
             Object(Matching, "sysdolphin/baselib/class.c"),
             Object(Matching, "sysdolphin/baselib/hash.c"),
             Object(NonMatching, "sysdolphin/baselib/texp.c"),
-            Object(NonMatching, "sysdolphin/baselib/texpdag.c"),
+            Object(Matching, "sysdolphin/baselib/texpdag.c"),
             Object(Matching, "sysdolphin/baselib/texpopt.c"),
             Object(Matching, "sysdolphin/baselib/debug.c", padding="small_data+data"),
             Object(Matching, "sysdolphin/baselib/particle.c"),
