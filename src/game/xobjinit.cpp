@@ -40,7 +40,7 @@ static inline bool FitsInAram(CObjArchive* archive)
 BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ready = FALSE;
-	if ((u64)info.mPlacement->mFlags & 0x80000000ULL)
+	if ((u64)info.mPlacement->mFlags & 0x80000000ULL) // placement already handled
 		return TRUE;
 
 	AttrInfo& attr = mAttr;
@@ -61,7 +61,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			mFloors        = (XObjFloor*)GetGlobalTextEntry(info.mPlacement->mObjectId);
 			mFloorMasks[1] = mFloorMasks[0] = 0;
 			BOOL empty                      = mFloors ? mFloors->mId == -1 : FALSE;
-			if (empty)
+			if (empty) // a -1 id means no floor list
 				mFloors = NULL;
 		}
 		if (!ModelName(attr))
@@ -71,15 +71,15 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			const char* name     = ModelName(attr);
 			u32 model            = attr.mObjData ? attr.mObjData->mModel : 0;
 			u32 flags            = 0;
-			if ((u64)(attr.mObjData ? attr.mObjData->mFlags : 0) & 0x80)
+			if ((u64)(attr.mObjData ? attr.mObjData->mFlags : 0) & 0x80) // obj flag 0x80 becomes load flag 0x10000
 				flags = 0x10000;
 			XObjSource::Cache* cache = HasSource(attr) ? &attr.mObjData->mSource->mCache : NULL;
 			u32 address = cache->address, size = cache->size;
-			if (gGame.mStatus.mFlags & 0x20000000000ULL) {
+			if (gGame.mStatus.mFlags & 0x20000000000ULL) { // ARAM caching on
 				if (address)
-					flags |= 4;
+					flags |= 4; // an ARAM address is already known
 				else if (size == 1) {
-					flags |= 2;
+					flags |= 2; // load into ARAM
 					address = gARAMCacheInfo.mBaseAddress;
 					size    = archive->mFile.mSize;
 				}
@@ -89,22 +89,22 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			ready = Load(archive, path, model, flags, address, size);
 			if (ready) {
 				if ((flags & 2) && FitsInAram(archive) && attr.mObjData && attr.mObjData->mSource) {
-					attr.mObjData->mSource->mCache.address = gARAMCacheInfo.mBaseAddress;
+					attr.mObjData->mSource->mCache.address = gARAMCacheInfo.mBaseAddress; // remember the ARAM copy
 					attr.mObjData->mSource->mCache.size    = archive->mFile.mSize;
 				}
-				if (mm::GetName(archive->mFile.mBuffer)[1] != ' ') {
+				if (mm::GetName(archive->mFile.mBuffer)[1] != ' ') { // untagged archives get a state tag
 					char label[64];
 					sprintf(label, "  %s", mm::GetName(archive->mFile.mBuffer));
 					if (flags & 2) {
 						if (FitsInAram(archive)) {
-							label[0] = 'o';
+							label[0] = 'o'; // cached into ARAM
 							mm::SetName(archive->mFile.mBuffer, label);
 						} else {
-							label[0] = 'x';
+							label[0] = 'x'; // wouldn't fit
 							mm::SetName(archive->mFile.mBuffer, label);
 						}
 					} else if (flags & 4)
-						label[0] = '>';
+						label[0] = '>'; // reused an ARAM address
 					mm::SetName(archive->mFile.mBuffer, label);
 				}
 				if ((flags & 2) && FitsInAram(archive)) {
@@ -143,7 +143,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		mLastPos.x = mMoveTranslate.x;
 		mLastPos.y = mMoveTranslate.y;
 		mLastPos.z = mMoveTranslate.z;
-		mColors[1] = 0xffffff00;
+		mColors[1] = 0xffffff00; // opaque white
 		mColors[0] = 0;
 		if (mJObj) {
 			u32 material[5] = { 0, 0, 0, 0, 0 };
@@ -152,13 +152,13 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			material[2]     = mStatus.mFlags & 0x40ULL;
 			material[3]     = mStatus.mFlags & 0x20000ULL;
 			material[4]     = mStatus.mFlags & 0x400000ULL;
-			ApplyMaterialPresets(material);
+			ApplyMaterialPresets(material); // the status bits pick the material presets
 			if ((mStatus.mFlags & 0x1000000) && IsStageDataLoaded())
-				EnableLighting(GetEnvData()[9] / 100.f);
+				EnableLighting(GetEnvData()[9] / 100.f); // env slot 9 is the light level in percent
 			if ((mStatus.mFlags & 2) && mJObj)
 				HSD_JObjWalkTree(mJObj, JObjSetMObjFlags, (f32**)0x04000000);
 			UnkStageObj* place = mCoord.mPlacement;
-			s32 index          = place - GetStagePlacementByIndex(0);
+			s32 index          = place - GetStagePlacementByIndex(0); // the placement's index in the stage
 			if (index > 0)
 				mEventScript = (u32)GetStageScriptByIndex(index);
 		}
@@ -166,12 +166,12 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		UpdateObjectFloorXZExtent(this);
 		if ((__fpclassifyf(mFloorXZExtent) != FP_NAN && mFloorXZExtent < 40.0f) || (mStatus.mFlags & 0x400)) {
 			s32 kind = GetPool();
-			if ((u16)(kind - 7) <= 1 || (u16)(kind - 20) <= 1 || (s16)kind == 22)
+			if ((u16)(kind - 7) <= 1 || (u16)(kind - 20) <= 1 || (s16)kind == 22) // pools 7/8, 20/21 and 22
 				mStatus.mFlags |= 0x80000000ULL;
 		}
-		if (mStatus.mFlags & 0x2000)
+		if (mStatus.mFlags & 0x2000) // flag 0x2000 overrides the small-extent flag
 			mStatus.mFlags &= ~0x80000000ULL;
-		if (mStatus.mFlags & 0x8100000000ULL)
+		if (mStatus.mFlags & 0x8100000000ULL) // either high bit maps to flag 0x4000
 			mStatus.mFlags |= 0x4000;
 		mSelectedFloorHeight = NAN;
 		mSelectedFloorIndex  = 0;
@@ -195,7 +195,7 @@ void XObj::ResetObjectState()
 	mAnmQueue.Clear();
 	mAnchorX = mAnchorZ = NAN;
 	mMarkerOverride     = 0;
-	mMarkerOverride |= 0x80000000;
+	mMarkerOverride |= 0x80000000; // no marker override
 	mColorStep[0].mValue.x = mColorStep[0].mValue.y = mColorStep[0].mValue.z = 255.0f;
 	mColorStep[0].mTarget.x = mColorStep[0].mTarget.y = mColorStep[0].mTarget.z = 255.0f;
 	mColorStep[0].mSpeed.x = mColorStep[0].mSpeed.y = mColorStep[0].mSpeed.z = 0.0f;

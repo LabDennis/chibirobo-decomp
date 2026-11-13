@@ -108,7 +108,7 @@ void CCameraActionEye::Update(u32 step)
 	if (!(gGame.mStatus.mFlags & 0xC00)) {
 		if (gGame.IsRunning()) {
 			if ((pad.mPad->mTrigger & 0x40) && (pad.mPad->mButton & 0x20) && (gGame.mStatus.mFlags & 0x80000000)) {
-				gGame.mStatus.mFlags ^= 0x200;
+				gGame.mStatus.mFlags ^= 0x200; // toggle the free-look mode
 				if (gGame.mStatus.mFlags & 0x200) {
 					StartScreenWipeColorTransition(&gGame.mRoboeyes, 0x80, 0x80, 0xFF, 0xFF, 0x80, 0x80, 0xFF, 320.0f, 224.0f, 430.0f,
 					                               400.0f, 430.0f, 400.0f, 0.0f, 0xFF, 0);
@@ -119,7 +119,7 @@ void CCameraActionEye::Update(u32 step)
 			}
 
 			f32 zoom;
-			if (gGame.mStatus.mFlags & 0x200) {
+			if (gGame.mStatus.mFlags & 0x200) { // free-look: the C-stick aims
 				f32 x = pad.mPad->mSubStickX;
 				ClampStick(x);
 				f32 y = pad.mPad->mSubStickY;
@@ -128,7 +128,7 @@ void CCameraActionEye::Update(u32 step)
 					y = 0.0f;
 					x = y;
 				}
-				mLook.mTarget.y = -1.5707964f * x;
+				mLook.mTarget.y = -HALF_PI * x;
 				mLook.mTarget.x = -0.87266463f * y;
 			} else {
 				f32 turn = pad.mPad->mStickX;
@@ -142,14 +142,14 @@ void CCameraActionEye::Update(u32 step)
 				f32 pitch       = 0.0f;
 				mLook.mTarget.y = 0.0f;
 				if (tilt > 0.0f) {
-					pitch = mLook.x + 0.06981317f * Abs(tilt);
+					pitch = mLook.x + 0.06981317f * Abs(tilt); // 4 degrees per step
 					if (pitch > 0.87266463f) {
-						pitch = 0.87266463f;
+						pitch = 0.87266463f; // 50 degrees up
 					}
 				} else if (tilt < 0.0f) {
 					pitch = mLook.x - 0.06981317f * Abs(tilt);
 					if (pitch < -0.87266463f) {
-						pitch = -0.87266463f;
+						pitch = -0.87266463f; // 50 degrees down
 					}
 				}
 				if (mOverride.y != 0.0f) {
@@ -164,14 +164,14 @@ void CCameraActionEye::Update(u32 step)
 				} else {
 					mLook.mTarget.x = mOverride.x;
 				}
-				gGame.GetPlayer()->SetRotationY(EYE_PLAYER->mMoveRotate.y - 0.034906585f * turn * step, 0);
+				gGame.GetPlayer()->SetRotationY(EYE_PLAYER->mMoveRotate.y - 0.034906585f * turn * step, 0); // 2 degrees per step
 
 				zoom = pad.mPad->mSubStickY;
 				if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
 					zoom = 0.0f;
 				}
 				if (mOverride.z == 0.0f) {
-					mLook.mTarget.z = -30.0f * zoom;
+					mLook.mTarget.z = -30.0f * zoom; // the C-stick zooms the fov
 				} else {
 					mLook.mTarget.z = mOverride.z;
 				}
@@ -183,7 +183,7 @@ void CCameraActionEye::Update(u32 step)
 			mLook.mSpeed.x = speedX;
 			mLook.mSpeed.y = speedY;
 			mLook.mSpeed.z = speedZ;
-			if (57.295776f * speedY > 0.6f || 57.295776f * speedX > 0.6f) {
+			if (57.295776f * speedY > 0.6f || 57.295776f * speedX > 0.6f) { // still turning fast: keep the sound on
 				PlayEyeCameraTurnSound();
 			}
 			mLook.Step(step);
@@ -194,11 +194,11 @@ void CCameraActionEye::Update(u32 step)
 
 			static f32 sPreviousZoomSpeed = 0.0f;
 			f32 stick                     = pad.mPad->mSubStickY;
-			if (Abs(speedZ - sPreviousZoomSpeed) < 0.02f) {
+			if (Abs(speedZ - sPreviousZoomSpeed) < 0.02f) { // zoom settled
 				gGame.mBlur.mTarget  = 0.0f;
 				gGame.mBlur.mSpeed   = 0.1f;
 				gGame.mBlur.mOffsetY = gGame.mBlur.mOffsetX = 2.0f * -stick;
-			} else {
+			} else { // zooming: fade in the motion blur
 				gGame.mBlur.mAlpha   = 0.8f;
 				gGame.mBlur.mTarget  = 0.0f;
 				gGame.mBlur.mSpeed   = 0.1f;
