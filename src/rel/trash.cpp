@@ -1,6 +1,7 @@
-#include "Version.h"
 #include "game/hsd_jobj.h"
-#include "game/ut.h"
+#include "game/animframe.h"
+#include "game/xchr.h"
+#include "game/xobjflags.h"
 #include "game/cgame.h"
 #include "game/gmath.h"
 
@@ -11,173 +12,10 @@ extern "C" {
 #include <dolphin/mtx/vec.h>
 }
 
-// first aobj on the jobj or below it
-static inline HSD_AObj* FindAnim(HSD_JObj* jobj)
-{
-	if (jobj != NULL) {
-		HSD_AObj* aobj = FindJointAnimationInTree(jobj);
-		if (aobj != NULL) {
-			return aobj;
-		}
-		aobj = FindMaterialOrTextureAnimationInJointTree(jobj);
-		if (aobj != NULL) {
-			return aobj;
-		}
-		aobj = FindPolygonAnimationInJointTree(jobj);
-		if (aobj != NULL) {
-			return aobj;
-		}
-	}
-	return NULL;
-}
-
-static inline f32 GetAnimFrame(HSD_JObj* jobj)
-{
-	HSD_AObj* aobj = FindAnim(jobj);
-	if (aobj != NULL) {
-		return HSD_AObjGetCurrentFrame(aobj);
-	}
-	return 0.0f;
-}
-
-struct TrashObj;
-
-struct UnkKindData {
-	u8 _00[0x14]; // _00
-	s16 _14;      // _14
-};
-
-struct TrashObj {
-	HSD_JObj* jobj; // _00
-	u8 _04[0x30];   // _04
-	// _34 vtable
-	virtual void vf08();             // _08
-	virtual void vf0C();             // _0C
-	virtual void vf10();             // _10
-	virtual void vf14();             // _14
-	virtual void vf18();             // _18
-	virtual void vf1C();             // _1C
-	virtual void vf20();             // _20
-	virtual void vf24();             // _24
-	virtual void vf28();             // _28
-	virtual void vf2C();             // _2C
-	virtual void vf30();             // _30
-	virtual void vf34();             // _34
-	virtual void vf38();             // _38
-	virtual void vf3C();             // _3C
-	virtual void vf40();             // _40
-	virtual void vf44();             // _44
-	virtual void vf48();             // _48
-	virtual void vf4C();             // _4C
-	virtual void vf50();             // _50
-	virtual void vf54();             // _54
-	virtual void GetFollowDivisor(); // _58
-	virtual void vf5C();             // _5C
-	virtual void vf60();             // _60
-	virtual void vf64();             // _64
-	virtual void vf68();             // _68
-	virtual void vf6C();             // _6C
-	virtual void vf70();             // _70
-	virtual void vf74();             // _74
-
-	virtual void vf78(Vec* pos, f32 arg); // _78
-
-	virtual void vf7C(); // _7C
-
-	virtual void vf80(s32 arg, s32 arg2, s32 arg3, s32 arg4, s32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9); // _80
-
-	virtual void vf84();                      // _84
-	virtual void vf88();                      // _88
-	virtual void vf8C();                      // _8C
-	virtual void InitializeObject();          // _90
-	virtual void vf94();                      // _94
-	virtual void ResetObjectState();          // _98
-	virtual void LoadFromPlacement();         // _9C
-	virtual void LoadAnimationArchiveAsync(); // _A0
-	virtual void UpdateObject();              // _A4
-	virtual void vfA8();                      // _A8
-	virtual void vfAC();                      // _AC
-	virtual void DrawWithView();              // _B0
-	virtual void DrawReflection();            // _B4
-	virtual void DrawGroundShadow();          // _B8
-	virtual void DrawGroundShadowAt();        // _BC
-	virtual void DrawObjectEffects();         // _C0
-	virtual void vfC4();                      // _C4
-	virtual void vfC8();                      // _C8
-	virtual void DrawDebugStatus();           // _CC
-	virtual void RegisterShadowObjects();     // _D0
-	virtual void ExpandShadowBounds();        // _D4
-	virtual void vfD8();                      // _D8
-	virtual void vfDC();                      // _DC
-	virtual void vfE0();                      // _E0
-	virtual void vfE4();                      // _E4
-	virtual void vfE8();                      // _E8
-	virtual void vfEC();                      // _EC
-	virtual void GetJointAnimation();         // _F0
-	virtual void GetMaterialAnimation();      // _F4
-	virtual void GetShapeAnimation();         // _F8
-	virtual void vfFC();                      // _FC
-	virtual void vf100();                     // _100
-	virtual void TestFloorCrossing();         // _104
-	virtual void GetShadowRadius();           // _108
-	virtual void ProjectOffsetToScreen();     // _10C
-	virtual void GetFloorXZExtent();          // _110
-	virtual void GetCollisionHeight();        // _114
-	virtual void ProjectVisibleBounds();      // _118
-	virtual void vf11C();                     // _11C
-	virtual void vf120();                     // _120
-	virtual void HandleEventCommand();        // _124
-	virtual void vf128();                     // _128
-	virtual void vf12C();                     // _12C
-	virtual void OnPushDisplacement();        // _130
-	virtual void vf134();                     // _134
-	virtual void OnHitFromPosition();         // _138
-	virtual void vf13C();                     // _13C
-	virtual void vf140();                     // _140
-	virtual void vf144();                     // _144
-	virtual u32 vf148();                      // _148
-#if defined(VERSION_JP)
-	u8 _38[0xC0 - 0x38]; // _38
-#else
-	u8 _38[0xC8 - 0x38]; // _38
-#endif
-	Vec _C8;           // _C8 in Japan _C0
-	u8 _D4[0x28];      // _D4 in Japan _CC
-	f32 _FC;           // _FC in Japan _F4
-	u8 _100[0xC];      // _100 in Japan _F8
-	f32 _10C;          // _10C in Japan _104
-	u8 _110[0x118];    // _110 in Japan _108
-	u64 _228;          // _228 in Japan _220
-	u8 _230[0x8];      // _230 in Japan _228
-	s32* _238;         // _238 in Japan _230
-	u8 _23C[0x4];      // _23C in Japan _234
-	UnkKindData* _240; // _240 in Japan _238
-#if defined(VERSION_JP)
-	u8 _244[0x970 - 0x23C]; // _244 in Japan _23C
-#else
-	u8 _244[0x980 - 0x244]; // _244
-#endif
-	u32* _980;      // _980 in Japan _970
-	u8 _984[0x50];  // _984 in Japan _974
-	s32 _9D4;       // _9D4 in Japan _9C4
-	u8 _9D8[0x70];  // _9D8 in Japan _9C8
-	s32 _A48;       // _A48 in Japan _A38
-	u8 _A4C[0x18];  // _A4C in Japan _A3C
-	TrashObj* _A64; // _A64 in Japan _A54
-
-	Vec* GetPos() { return &_C8; }
-};
-
-#if defined(VERSION_JP)
-typedef char TrashXObjViewSizeCheck[sizeof(TrashObj) == 0xA58 ? 1 : -1];
-#else
-typedef char TrashXObjViewSizeCheck[sizeof(TrashObj) == 0xA68 ? 1 : -1];
-#endif
-
-static TrashObj* trashTarget;
+static XObj* trashTarget;
 static s32 trashStackNum;
 static f32 trashStackScale;
-static TrashObj* trashObj;
+static XObj* trashObj;
 static s32 trashState;
 static Vec trashPos;
 static Vec trashDest;
@@ -203,7 +41,7 @@ extern "C" s32 CmdStartTrash(s32 cmd, s32 arg, s32* arg2);
 extern "C" void DrawTrashStack(void* arg)
 {
 	// NONMATCHING: regalloc
-	TrashObj* actor;
+	XObj* actor;
 	HSD_JObj* jobj;
 	f32 a;
 	f32 angle;
@@ -217,7 +55,7 @@ extern "C" void DrawTrashStack(void* arg)
 		return;
 	}
 	actor = trashObj;
-	if (actor == NULL || !(actor->_228 & 1)) {
+	if (actor == NULL || !(actor->mStatus.mFlags & 1)) {
 		return;
 	}
 	if (!trashActive) {
@@ -225,9 +63,9 @@ extern "C" void DrawTrashStack(void* arg)
 	}
 
 	count   = trashStackNum;
-	Vec pos = actor->_C8;
-	angle   = 1.0471976f + actor->_FC;
-	jobj    = actor->jobj;
+	Vec pos = actor->mMoveTranslate;
+	angle   = 1.0471976f + actor->mMoveRotate.y;
+	jobj    = actor->mJObj;
 	if (count < 0) {
 		count = 0;
 	}
@@ -657,12 +495,6 @@ extern "C" void DrawTrashStack(void* arg)
     blr
 */
 
-// the kind id, -1 without kind data
-static inline s16 GetKindId(TrashObj* obj)
-{
-	return obj->_240 != NULL ? (obj->_240 != NULL ? obj->_240->_14 : 0) : -1;
-}
-
 /**
  * @note Address: stage04 .text 0x1DF4
  * @note Size: 0x7E0
@@ -671,16 +503,16 @@ extern "C" void UpdateTrash(u32 frames)
 {
 	// NONMATCHING: regalloc
 	Vec impactPos;
-	TrashObj* robot;
+	XObjChr* robot;
 
 	if (trashTarget != NULL && trashActive) {
 		CPad pad(0);
-		robot = (TrashObj*)gGame.GetPlayer();
+		robot = gGame.GetPlayer();
 		switch (trashState) {
 		case 0:
-			trashObj = robot->_A64;
+			trashObj = robot->mLift.mTarget;
 			if (pad.mPad->mButton & 0x100) {
-				robot->vf80(9, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+				robot->SetAnim(9, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				trashState++;
 			} else if (pad.mPad->mTrigger & 0x200) {
 				trashResult = 4;
@@ -688,23 +520,19 @@ extern "C" void UpdateTrash(u32 frames)
 			}
 			break;
 		case 1:
-			if (robot->_FC == robot->_10C) {
-				robot->_A48 = 6;
-				trashTarget->_228 |= 0x10000000000ULL;
+			if (robot->mMoveRotate.y == robot->mMoveRotate.mTarget.y) {
+				robot->mLift.mState = 6;
+				trashTarget->mStatus.mFlags |= 0x10000000000ULL;
 				trashState++;
 			}
 			break;
 		case 2:
-			if (15.0f <= GetAnimFrame(robot->jobj)) {
-				robot->_A64 = NULL;
-				trashObj->_228 &= ~0x400000000000000ULL;
-				trashDest.x = trashTarget->GetPos()->x;
-				trashDest.y = trashTarget->GetPos()->y;
-				trashDest.z = trashTarget->GetPos()->z;
+			if (15.0f <= GetAnimFrame(robot->mJObj)) {
+				robot->mLift.mTarget = NULL;
+				trashObj->mStatus.mFlags &= ~0x400000000000000ULL;
+				trashDest = trashTarget->mMoveTranslate;
 				trashDest.y += 30.0f;
-				trashPos.x  = trashObj->GetPos()->x;
-				trashPos.y  = trashObj->GetPos()->y;
-				trashPos.z  = trashObj->GetPos()->z;
+				trashPos    = trashObj->mMoveTranslate;
 				trashStep.x = (trashDest.x - trashPos.x) / 36.0f;
 				trashArc    = 0.0f;
 				trashState++;
@@ -713,7 +541,7 @@ extern "C" void UpdateTrash(u32 frames)
 			}
 			break;
 		case 3: {
-			if (30.0f <= GetAnimFrame(robot->jobj) && GetAnimFrame(robot->jobj) < 33.0f) {
+			if (30.0f <= GetAnimFrame(robot->mJObj) && GetAnimFrame(robot->mJObj) < 33.0f) {
 				XSound* obj = &gGame.mSound;
 				if (!IsGameSoundPlaying(obj, 0x1B9)) {
 					PlayGameSound(obj, 0x1B9, 0xFF);
@@ -721,32 +549,25 @@ extern "C" void UpdateTrash(u32 frames)
 			}
 			trashArc += 0.08726646f * frames;
 			if ((f32)sin(trashArc) < 0.0f) {
-				trashResult    = 2;
-				TrashObj* held = trashObj;
-				if (GetKindId(held) == 8) {
-					u32 bit = held->vf148();
-					held->_980[bit >> 5] |= 1 << (bit & 31);
+				trashResult = 2;
+				if (trashObj->GetCategory() == 8) {
+					static_cast<XObjItem*>(trashObj)->SetFlag();
 				}
-				trashObj->vf54();
+				trashObj->Release();
 				trashObj   = NULL;
 				trashState = 99;
 			} else {
-				Vec pos;
-				pos.x = trashObj->GetPos()->x;
-				pos.y = trashObj->GetPos()->y;
-				pos.z = trashObj->GetPos()->z;
-				pos.y = trashTarget->GetPos()->y;
-				if (PSVECDistance(&trashTarget->_C8, &pos) < 15.0f && trashObj->GetPos()->y < 30.0f) {
+				Vec pos = trashObj->mMoveTranslate;
+				pos.y   = trashTarget->mMoveTranslate.y;
+				if (PSVECDistance(&trashTarget->mMoveTranslate, &pos) < 15.0f && trashObj->mMoveTranslate.y < 30.0f) {
 					trashState = 10;
 				} else {
 					trashPos.x += trashStep.x * frames;
 					trashPos.y += trashStep.y * frames;
 					trashPos.z += trashStep.z * frames;
-					pos.x = trashPos.x;
-					pos.y = trashPos.y;
-					pos.z = trashPos.z;
+					pos = trashPos;
 					pos.y += 10.0f * (f32)sin(trashArc);
-					trashObj->vf78(&pos, 10.0f);
+					trashObj->SetMoveDir(&pos, 10.0f);
 				}
 			}
 			break;
@@ -754,14 +575,12 @@ extern "C" void UpdateTrash(u32 frames)
 		case 10: {
 			f32 angle;
 			trashResult = 3;
-			impactPos.x = trashObj->GetPos()->x;
-			impactPos.y = trashObj->GetPos()->y;
-			impactPos.z = trashObj->GetPos()->z;
-			angle       = atan2(impactPos.x - trashTarget->GetPos()->x, impactPos.z - trashTarget->GetPos()->z);
+			impactPos   = trashObj->mMoveTranslate;
+			angle       = atan2(impactPos.x - trashTarget->mMoveTranslate.x, impactPos.z - trashTarget->mMoveTranslate.z);
 			impactPos.x += 2.0f * (f32)sin(angle);
 			impactPos.y = 0.0f;
 			impactPos.z += 2.0f * (f32)cos(angle);
-			trashObj->vf78(&impactPos, 1.0f);
+			trashObj->SetMoveDir(&impactPos, 1.0f);
 			trashState = 99;
 			break;
 		}
@@ -1327,7 +1146,7 @@ extern "C" void UpdateTrash(u32 frames)
  */
 extern "C" void InitTrash(void* arg)
 {
-	TrashObj* actor;
+	XObj* actor;
 	CGame* game = &gGame;
 	s32 count;
 	s32 i;
@@ -1338,12 +1157,12 @@ extern "C" void InitTrash(void* arg)
 	trashActive   = 0;
 	count         = game->mXObjs.mObjectCount;
 	for (i = 0; trashboxIndex < 0 && i < count; i++) {
-		actor = (TrashObj*)game->mXObjs.mObjects[i];
-		if (actor->_228 & 1) {
-			if (*actor->_238 == 0x12D) {
+		actor = game->mXObjs.mObjects[i];
+		if (actor->mStatus.mFlags & 1) {
+			if (actor->mCoord._00->_00 == 0x12D) {
 				trashboxIndex = i;
 			}
-			if (*actor->_238 == 0x477) {
+			if (actor->mCoord._00->_00 == 0x477) {
 				trashboxIndex = i;
 			}
 		}
@@ -1374,22 +1193,21 @@ static inline s32 IsNearXZ(const Vec& p, const Vec& q)
  */
 extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
 {
-	// NONMATCHING: arg regs — the instruction sequence is identical, but trashboxIndex,
-	// the gGame+0x10000 base, robot and the CVec vtable land one slot over.
+	// NONMATCHING: register allocation
 	CGame* game;
-	TrashObj* robot;
-	TrashObj* box;
+	XObjChr* robot;
+	XObj* box;
 
 	if (trashboxIndex < 0) {
 		return 0;
 	}
 	game  = &gGame;
-	robot = (TrashObj*)game->GetPlayer();
-	if (trashboxIndex != robot->_9D4) {
+	robot = game->GetPlayer();
+	if (trashboxIndex != robot->mFloorContacts[0].objectIndex) {
 		return 0;
 	}
-	box = (TrashObj*)game->mXObjs.mObjects[trashboxIndex];
-	return IsNearXZ(robot->_C8, box->_C8);
+	box = game->mXObjs.mObjects[trashboxIndex];
+	return IsNearXZ(robot->mMoveTranslate, box->mMoveTranslate);
 }
 // CmdIsNearTrashbox
 /*
@@ -1469,13 +1287,13 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
  */
 extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2)
 {
-	TrashObj* robot = (TrashObj*)gGame.GetPlayer();
+	XObjChr* robot = gGame.GetPlayer();
 
-	if (robot->_A64 != NULL) {
-		robot->_A48 = 6;
+	if (robot->mLift.mTarget != NULL) {
+		robot->mLift.mState = 6;
 	}
-	if (trashObj != NULL && (trashObj->_228 & 1)) {
-		trashObj->vf54();
+	if (trashObj != NULL && (trashObj->mStatus.mFlags & 1)) {
+		trashObj->Release();
 		trashObj = NULL;
 	}
 	return 0;
@@ -1513,7 +1331,7 @@ extern "C" s32 CmdStartTrash(s32 cmd, s32 arg, s32* arg2)
 	f32 scale       = arg2[2] / 100.0f;
 	s32 idx         = arg2[0];
 	s32 num         = arg2[1];
-	trashTarget     = (TrashObj*)game->mXObjs.mObjects[idx];
+	trashTarget     = game->mXObjs.mObjects[idx];
 	trashStackNum   = num;
 	trashStackScale = scale;
 	if (trashTarget != NULL) {
