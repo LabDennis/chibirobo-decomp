@@ -31,17 +31,17 @@ typedef struct HSD_SynthMix {
 	u16 vAuxAS; // _10
 } HSD_SynthMix;
 
-typedef struct HSD_SynthUserVol {
-	f32 volume; // _00
-	s32 mode;   // _04
+typedef struct {
+	f32 volume;
+	s32 mode;
 	union {
 		f32 f;
 		s32 i;
-	} target;      // _08
-	s32 dbxRaw;    // _0C
-	s32 fadeCount; // _10
-	u8 _14[4];     // _14
-} HSD_SynthUserVol;
+	} target;
+	s32 dbxRaw;
+	s32 duration;
+	s32 delay;
+} HSD_SynthVolFader;
 
 // a rear node shares the pool with the front ones, but keeps its own
 // state where a front node has its user volumes
@@ -54,7 +54,7 @@ typedef struct HSD_SynthSFXNode {
 	u8 channel;                             // _0B
 	AXVPB* voice[2];                        // _0C
 	s16 rearIndex;                          // _14
-	s8 panItd;                               // _16
+	s8 panItd;                              // _16
 	s8 unk17;                               // _17
 	f32 freqBase;                           // _18
 	f32 pitch[2];                           // _1C
@@ -68,7 +68,7 @@ typedef struct HSD_SynthSFXNode {
 		struct HSD_SynthSFXNode* rearNext; // rear nodes, the pitch update list
 	} link;                                // _30
 	union {
-		HSD_SynthUserVol user_vol[2]; // front nodes
+		HSD_SynthVolFader user_vol[2]; // front nodes
 		struct {
 			s16 side;         // _34
 			s16 newSide;      // _36
@@ -200,18 +200,6 @@ typedef struct HSD_SynthPStream {
 
 #define PSTREAM(node) ((HSD_SynthPStream*)(node)->link.pstream)
 
-typedef struct {
-	f32 volume;
-	s32 mode;
-	union {
-		f32 f;
-		s32 i;
-	} target;
-	s32 dbxRaw;
-	s32 duration;
-	s32 delay;
-} HSD_SynthVolFader;
-
 #define HSD_SYNTHPSTREAM_MAX 4
 
 // a queued stream start, kicked off when the current stream goes away
@@ -280,8 +268,8 @@ static HSD_SynthPStreamHako sSynthStreamHakoBuffers[0x11];
 static AXVPB* sSynthVoicesPendingFree[0x40];
 static HSD_SynthSFXNode sSynthSfxNodes[HSD_SYNTHSFXNODE_MAX];
 static f32 sSynthSqrtLookup[0x100];
-static HSD_SynthVolFader lbl_80659300;
-static HSD_SynthVolFader lbl_80659318[0x40];
+static HSD_SynthVolFader sSynthMasterFader;
+static HSD_SynthVolFader sSynthChannelFaders[0x40];
 static HSD_SynthPStream lbl_80659918[HSD_SYNTHPSTREAM_MAX];
 
 // defined further down, next to the code that first needs them in .sdata order
@@ -1389,25 +1377,25 @@ s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mod
 			node->u.user_vol[0].volume   = 0.003921569f * vol;
 			node->u.user_vol[0].target.f = node->u.user_vol[0].volume;
 		} else {
-			raw                          = vol << 16;
+			raw                          = (s32)((u32)vol << 16);
 			node->u.user_vol[0].volume   = HSD_SynthDBxToVol(raw);
 			node->u.user_vol[0].target.i = raw;
 			node->u.user_vol[0].dbxRaw   = raw;
 		}
 		node->u.user_vol[0].mode      = volMode;
-		node->u.user_vol[0].fadeCount = 0;
+		node->u.user_vol[0].duration = 0;
 
 		if (vol2Mode == 0) {
 			node->u.user_vol[1].volume   = 0.003921569f * vol2;
 			node->u.user_vol[1].target.f = node->u.user_vol[1].volume;
 		} else {
-			raw                          = vol2 << 16;
+			raw                          = (s32)((u32)vol2 << 16);
 			node->u.user_vol[1].volume   = HSD_SynthDBxToVol(raw);
 			node->u.user_vol[1].target.i = raw;
 			node->u.user_vol[1].dbxRaw   = raw;
 		}
 		node->u.user_vol[1].mode      = vol2Mode;
-		node->u.user_vol[1].fadeCount = 0;
+		node->u.user_vol[1].duration = 0;
 
 		node->userPan[0]  = clamp1 < 0xFE ? clamp1 : 0xFE;
 		node->userPan[1]  = clamp2 < 0xFE ? clamp2 : 0xFE;
@@ -1438,8 +1426,8 @@ s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mod
 		ve.currentVolume = 32767.0f
 		                 * (node->u.user_vol[1].volume
 		                    * (node->u.user_vol[0].volume
-		                       * (lbl_80659318[node->channel].volume
-		                          * (node->channel < 0x3F ? sSynthStreamVolume * lbl_80659300.volume : sSynthStreamVolume))));
+		                       * (sSynthChannelFaders[node->channel].volume
+		                          * (node->channel < 0x3F ? sSynthStreamVolume * sSynthMasterFader.volume : sSynthStreamVolume))));
 		ve.currentDelta = 0;
 		node->curVol    = ve.currentVolume;
 		if (rear != 0) {
@@ -2574,15 +2562,15 @@ void HSD_SynthSetVolFader(s32 id, s32 vol, s32 fadeFrames, s32 flag, s32 dbMode)
 		if (dbMode == 0) {
 			node->u.user_vol[flag].target.f = (f32)(0.00392156862745098 * (f64)vol);
 			if (node->u.user_vol[flag].volume != node->u.user_vol[flag].target.f) {
-				node->u.user_vol[flag].fadeCount = frames;
+				node->u.user_vol[flag].duration = frames;
 				changed                          = 1;
 			}
 		} else {
 			node->u.user_vol[flag].target.i = HSD_SynthVolToDBx(node->u.user_vol[flag].volume);
-			node->u.user_vol[flag].dbxRaw   = vol << 0x10;
+			node->u.user_vol[flag].dbxRaw   = (s32)((u32)vol << 16);
 			if (node->u.user_vol[flag].volume != HSD_SynthDBxToVol(node->u.user_vol[flag].dbxRaw)) {
 				changed                          = 1;
-				node->u.user_vol[flag].fadeCount = frames;
+				node->u.user_vol[flag].duration = frames;
 			}
 		}
 		node->u.user_vol[flag].mode = dbMode;
@@ -2947,7 +2935,6 @@ static inline s32 tickFader(HSD_SynthVolFader* f)
 #define AX_SYNC_USER_VE      0x200
 #define AX_SYNC_USER_VEDELTA 0x400
 
-// current output volume, the header only has padding here
 // a rear node reuses the user volume area for last frame's ramp
 
 /**
@@ -2974,7 +2961,7 @@ void UpdateSynthVolumeFadersAndVoices(void)
 
 	enabled      = OSDisableInterrupts();
 	masterActive = 0;
-	if (lbl_80659300.duration != 0 && tickFader(&lbl_80659300)) {
+	if (sSynthMasterFader.duration != 0 && tickFader(&sSynthMasterFader)) {
 		masterActive = 1;
 	}
 
@@ -2982,9 +2969,9 @@ void UpdateSynthVolumeFadersAndVoices(void)
 		if (sSynthActiveChannelFaderMasks[group] != 0) {
 			for (i = 0; i < 0x20; i++) {
 				chan = group * 0x20 + i;
-				if (sSynthActiveChannelFaderMasks[group] & (1 << i)) {
-					if (!tickFader(&lbl_80659318[chan])) {
-						sSynthActiveChannelFaderMasks[group] &= ~(1 << i);
+				if (sSynthActiveChannelFaderMasks[group] & (1u << i)) {
+					if (!tickFader(&sSynthChannelFaders[chan])) {
+						sSynthActiveChannelFaderMasks[group] &= ~(1u << i);
 					}
 				}
 			}
@@ -3002,13 +2989,13 @@ void UpdateSynthVolumeFadersAndVoices(void)
 		}
 
 		for (i = 0; i < USERVOL_NUM; i++) {
-			if (entry->u.user_vol[i].fadeCount != 0) {
-				if (tickFader((HSD_SynthVolFader*)&entry->u.user_vol[i])) {
+			if (entry->u.user_vol[i].duration != 0) {
+				if (tickFader(&entry->u.user_vol[i])) {
 					changed = 1;
 				}
 			}
 		}
-		if (lbl_80659318[entry->channel].duration != 0) {
+		if (sSynthChannelFaders[entry->channel].duration != 0) {
 			changed = 1;
 		}
 		if (masterActive && entry->channel < 0x3F) {
@@ -3019,8 +3006,8 @@ void UpdateSynthVolumeFadersAndVoices(void)
 			vol = 32767.0f
 			    * (entry->u.user_vol[1].volume
 			       * (entry->u.user_vol[0].volume
-			          * (lbl_80659318[entry->channel].volume
-			             * (entry->channel < 0x3F ? sSynthStreamVolume * lbl_80659300.volume : sSynthStreamVolume))));
+			          * (sSynthChannelFaders[entry->channel].volume
+			             * (entry->channel < 0x3F ? sSynthStreamVolume * sSynthMasterFader.volume : sSynthStreamVolume))));
 		} else {
 			vol     = 0;
 			changed = 0;
@@ -4389,7 +4376,7 @@ void HSD_SynthSFXUpdateAllVolume(s32 vol, u16 fadeFrames, s32 channel, s32 dbMod
 	if (channel < 0 || channel >= 0x40) {
 		return;
 	}
-	f       = &lbl_80659318[channel];
+	f       = &sSynthChannelFaders[channel];
 	enabled = OSDisableInterrupts();
 	frames  = fadeFrames < 1 ? 1 : fadeFrames;
 	if (dbMode == 0) {
@@ -4401,7 +4388,7 @@ void HSD_SynthSFXUpdateAllVolume(s32 vol, u16 fadeFrames, s32 channel, s32 dbMod
 		f->target.f = target;
 	} else {
 		f->target.i = HSD_SynthVolToDBx(f->volume);
-		f->dbxRaw   = vol << 0x10;
+		f->dbxRaw   = (s32)((u32)vol << 16);
 		if (f->volume != HSD_SynthDBxToVol(f->dbxRaw)) {
 			changed     = 1;
 			f->duration = frames;
@@ -4411,7 +4398,7 @@ void HSD_SynthSFXUpdateAllVolume(s32 vol, u16 fadeFrames, s32 channel, s32 dbMod
 	if (changed) {
 		s32 i;
 		u32 enabled2;
-		sSynthActiveChannelFaderMasks[channel / 32] |= 1 << (channel & 0x1F);
+		sSynthActiveChannelFaderMasks[channel / 32] |= 1u << (channel & 0x1F);
 		enabled2 = OSDisableInterrupts();
 		for (i = 0; i < HSD_SYNTHSFXNODE_MAX; i++) {
 			HSD_SynthSFXNode* node = &sSynthSfxNodes[i];
@@ -4437,20 +4424,20 @@ void HSD_SynthSFXSetMasterVolume(s32 vol, u16 fadeFrames, s32 dbMode)
 	frames = fadeFrames == 0 ? 1 : fadeFrames;
 	if (dbMode == 0) {
 		f32 target            = (f32)(0.00392156862745098 * (f64)vol);
-		lbl_80659300.target.f = target;
-		if (lbl_80659300.volume != target) {
-			lbl_80659300.duration = frames;
+		sSynthMasterFader.target.f = target;
+		if (sSynthMasterFader.volume != target) {
+			sSynthMasterFader.duration = frames;
 			changed               = 1;
 		}
 	} else {
-		lbl_80659300.target.i = HSD_SynthVolToDBx(lbl_80659300.volume);
-		lbl_80659300.dbxRaw   = vol << 0x10;
-		if (lbl_80659300.volume != HSD_SynthDBxToVol(lbl_80659300.dbxRaw)) {
-			lbl_80659300.duration = frames;
+		sSynthMasterFader.target.i = HSD_SynthVolToDBx(sSynthMasterFader.volume);
+		sSynthMasterFader.dbxRaw   = (s32)((u32)vol << 16);
+		if (sSynthMasterFader.volume != HSD_SynthDBxToVol(sSynthMasterFader.dbxRaw)) {
+			sSynthMasterFader.duration = frames;
 			changed               = 1;
 		}
 	}
-	lbl_80659300.mode = dbMode;
+	sSynthMasterFader.mode = dbMode;
 	if (changed) {
 		s32 i;
 		u32 enabled2 = OSDisableInterrupts();
@@ -4873,7 +4860,7 @@ void HSD_SynthPStreamFirstHakoDataCallback(int request, s32 pstreamID, void* buf
 		    = 32767.0f
 		    * (node->u.user_vol[1].volume
 		       * (node->u.user_vol[0].volume
-		          * (lbl_80659318[node->channel].volume * (node->channel < 0x3F ? sSynthStreamVolume * lbl_80659300.volume : sSynthStreamVolume))));
+		          * (sSynthChannelFaders[node->channel].volume * (node->channel < 0x3F ? sSynthStreamVolume * sSynthMasterFader.volume : sSynthStreamVolume))));
 	} else {
 		ve.currentVolume = 0;
 	}
@@ -6203,25 +6190,25 @@ s32 HSD_SynthPStreamStart(s32 entrynum, s32 vol, s32 volMode, s32 vol2, s32 vol2
 		node->u.user_vol[0].volume   = 0.003921569f * vol;
 		node->u.user_vol[0].target.f = node->u.user_vol[0].volume;
 	} else {
-		s32 raw                      = vol << 16;
+		s32 raw                      = (s32)((u32)vol << 16);
 		node->u.user_vol[0].volume   = HSD_SynthDBxToVol(raw);
 		node->u.user_vol[0].target.i = raw;
 		node->u.user_vol[0].dbxRaw   = raw;
 	}
 	node->u.user_vol[0].mode      = volMode;
-	node->u.user_vol[0].fadeCount = 0;
+	node->u.user_vol[0].duration = 0;
 
 	if (vol2Mode == 0) {
 		node->u.user_vol[1].volume   = 0.003921569f * vol2;
 		node->u.user_vol[1].target.f = node->u.user_vol[1].volume;
 	} else {
-		s32 raw                      = vol2 << 16;
+		s32 raw                      = (s32)((u32)vol2 << 16);
 		node->u.user_vol[1].volume   = HSD_SynthDBxToVol(raw);
 		node->u.user_vol[1].target.i = raw;
 		node->u.user_vol[1].dbxRaw   = raw;
 	}
 	node->u.user_vol[1].mode      = vol2Mode;
-	node->u.user_vol[1].fadeCount = 0;
+	node->u.user_vol[1].duration = 0;
 
 	node->userPan[0]  = vol1Clamp;
 	node->userPan[1]  = vol2Clamp;
@@ -6338,13 +6325,13 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
 	AISetStreamVolLeft(sSynthStreamVolume * (f32)sSynthStreamVolumeScale);
 	AISetStreamVolRight(sSynthStreamVolume * (f32)sSynthStreamVolumeScale);
 
-	lbl_80659300.volume   = 1.0f;
-	lbl_80659300.target.f = 1.0f;
-	lbl_80659300.duration = 0;
-	for (i = 0; i < ARRAY_SIZE(lbl_80659318); i++) {
-		lbl_80659318[i].volume   = 1.0f;
-		lbl_80659318[i].target.f = 1.0f;
-		lbl_80659318[i].duration = 0;
+	sSynthMasterFader.volume   = 1.0f;
+	sSynthMasterFader.target.f = 1.0f;
+	sSynthMasterFader.duration = 0;
+	for (i = 0; i < ARRAY_SIZE(sSynthChannelFaders); i++) {
+		sSynthChannelFaders[i].volume   = 1.0f;
+		sSynthChannelFaders[i].target.f = 1.0f;
+		sSynthChannelFaders[i].duration = 0;
 	}
 
 	sSynthSfxBankHeapEnd = (void*)(hsd_SynthSFXBankHead[0] + heapSize);
