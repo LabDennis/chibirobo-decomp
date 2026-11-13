@@ -59,8 +59,8 @@ extern "C" XObjFloor sSmallSpiderHighFloor[] = {
 	{ 0, 0, { 0, 135, 0 }, 0, { 377, 632, 377 } },
 	{ -1 },
 };
-extern "C" XObjFloor* sSmallSpiderFloors[2];
 extern "C" {
+XObjFloor* sSmallSpiderFloors[]          = { sSmallSpiderLowFloor, sSmallSpiderHighFloor };
 AnimSfxEvent gSmallSpiderAnimSfxEvents[] = {
 	{ 2, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
 	{ 7, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
