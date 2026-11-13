@@ -34,6 +34,20 @@ class WiiLocaleTests(unittest.TestCase):
                         self.assertIn(", ".join(units + ["0"]), header)
                     self.assertIn(strings[3], header)
 
+    def test_wii_slots_and_five_translations(self):
+        mapping = json.loads(self.source.with_name("text_map.json").read_text())
+        records = json.loads(self.source.with_name("wii_text.json").read_text())
+        for record in records:
+            self.assertEqual(set(record["translations"]), {"en", "de", "fr", "es", "it"})
+            for index in record["indices"]:
+                self.assertIsNone(mapping["interface"][index])
+        with tempfile.TemporaryDirectory() as tmp:
+            write_localization(self.source, "de-DE", Path(tmp))
+            header = (Path(tmp) / "include/wii_text.h").read_text()
+            for name, length in (("Interface", 301), ("PC", 24)):
+                values = header.split(f"s{name}Map[] = {{ ")[1].split(" };")[0]
+                self.assertEqual(len(values.split(", ")), length)
+
     def test_gamecube_pad_mod_without_localization(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "wii-gcpad"

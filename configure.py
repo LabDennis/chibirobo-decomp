@@ -236,7 +236,8 @@ if wii_mod:
     config.check_sha_path = None
     config.progress = False
     translations = Path("mods/wii-localization/interface.json")
-    config.reconfig_deps = [translations, Path("tools/wii_locale.py")]
+    config.reconfig_deps = [translations, translations.with_name("text_map.json"),
+                            translations.with_name("wii_text.json"), Path("tools/wii_locale.py")]
     features = [f"{args.wii_locale} localization"] if args.wii_locale else []
     if args.wii_gamecube_pad:
         features.append("GameCube controller")

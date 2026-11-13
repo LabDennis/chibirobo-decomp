@@ -44,8 +44,46 @@ def write_header(translations: Path, locale: str, output: Path) -> None:
         output.write_text(text, encoding="ascii")
 
 
+LANGUAGES = ("en", "de", "fr", "es", "it")
+
+
+def write_text_tables(folder: Path, output: Path) -> None:
+    mapping = json.loads((folder / "text_map.json").read_text())
+    records = json.loads((folder / "wii_text.json").read_text(encoding="utf-8"))
+    # Two damaged-card prompts repeat. Slots 256-258 and 263 are blank.
+    interface = mapping["interface"][:301]
+    for index, target in {254: 248, 255: 249, 260: 248, 261: 249}.items():
+        interface[index] = target
+    lines = []
+    for name, entries in (("Interface", interface), ("PC", mapping["pc"])):
+        values = ", ".join(str(i if i is not None else -1) for i in entries)
+        lines.append(f"static const s16 s{name}Map[] = {{ {values} }};")
+    lines.append("static const char* WiiOnlyText(u8 language, s32 index) {")
+    lines.append("    switch (index) {")
+    seen = set()
+    for record in records:
+        for index in record["indices"]:
+            if index in seen or not 6 <= index < 301 or interface[index] is not None:
+                raise ValueError(f"unexpected Wii-only index {index}")
+            seen.add(index)
+            lines.append(f"    case {index}:")
+        strings = []
+        for lang in LANGUAGES:
+            value = record["translations"][lang]
+            if not value or any(ord(c) < 32 for c in value):
+                raise ValueError(f"invalid Wii-only text at {index}")
+            strings.append('"' + ''.join(f'\\{c:03o}' for c in value.encode("cp1252")) + '"')
+        lines.append("        { static const char* const text[] = { " + ", ".join(strings)
+                     + " }; return text[language - 1]; }")
+    lines.extend(["    }", "    return 0;", "}"])
+    text = "\n".join(lines) + "\n"
+    if not output.exists() or output.read_text() != text:
+        output.write_text(text, encoding="ascii")
+
+
 def write_localization(translations: Path, locale: str, output: Path) -> None:
     write_header(translations, locale, output / "include/wii_locale.h")
+    write_text_tables(translations.parent, output / "include/wii_text.h")
 
 
 def write_mod(output: Path, base: Path, features: str) -> None:
