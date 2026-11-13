@@ -13,7 +13,7 @@ class CFile : public DVDFileInfo {
 public:
 	CFile()
 	{
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
+#if defined(VERSION_R24J01)
 		mFromMemory = mInArchive = 0;
 #else
 		mArchive = NULL;
@@ -31,8 +31,9 @@ public:
 	u32 mSize;        // _C8
 	void* mBuffer;    // _CC
 	s32 mResult;      // _D0, 1 while the read is running, then 0 or an error
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-	u8 mFromMemory, mInArchive;
+#if defined(VERSION_R24J01)
+	u8 mFromMemory; // _D4, mBuffer is the caller's memory, not read from disc
+	u8 mInArchive;  // _D5, read out of the current CFileArchive
 	u8 _D6[2];
 #else
 	CFileArchive* mArchive; // _D4
@@ -49,16 +50,24 @@ public:
 	virtual s32 Read(const char* path, u32 offset, u32 size);                     // _1C
 	virtual void Close();                                                         // _20
 	virtual BOOL ReadEx(const char* path, u32 offset, u32 size);                  // _24
+#if defined(VERSION_R24J01)
+	virtual BOOL IsLoaded() { return mBuffer != NULL && mState == 0; } // _28 (weak)
+#endif
 
 	s32 ConvertPathToEntrynum(const char* path);
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
+#if defined(VERSION_R24J01)
+	s32 Open(const char* path);
+	s32 CloseHandle();
+	s32 StartRead(u32 size, u32 offset);
+	BOOL IsInArchive(const char* path);
 	s32 OpenPath(const char* path);
-#endif
+#else
 	s32 CloseHandle(); // in ctpl.cpp
 
 	// inlined:
 	s32 Open();
 	s32 StartRead(BOOL fromAram);
+#endif
 };
 // size checks by hand, STATIC_ASSERT lives in types.h
 typedef char CFile_size_check[sizeof(CFile) == 0xEC ? 1 : -1];
