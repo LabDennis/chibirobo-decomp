@@ -4586,23 +4586,13 @@ s32 CEvt::_cmd_WIN(u8, s32)
 		f32 x = CEvt_Evaluate(this);
 		f32 y = CEvt_Evaluate(this);
 		if (mMsg != NULL) {
-			mMsg->mWindowX        = x;
-			mMsg->mWindowY        = y;
-			mMsg->mPlacement      = NULL;
-			mMsg->mFontPosition.x = 0.0f;
-			mMsg->mFontPosition.y = 0.0f;
-			mMsg->mFontPosition.z = 0.0f;
+			mMsg->SetWindowPosition(x, y);
 		}
 		break;
 	}
 	case EVT_ATOM_LETTERBOX:
 		if (mMsg != NULL) {
-			mMsg->mWindowX        = 320.0f;
-			mMsg->mWindowY        = 378.5f;
-			mMsg->mPlacement      = NULL;
-			mMsg->mFontPosition.x = 0.0f;
-			mMsg->mFontPosition.y = 0.0f;
-			mMsg->mFontPosition.z = 0.0f;
+			mMsg->SetWindowPosition(320.0f, 378.5f);
 		}
 		break;
 	case EVT_ATOM_OBJ: {
@@ -4613,10 +4603,7 @@ s32 CEvt::_cmd_WIN(u8, s32)
 		f32 z     = CEvt_Evaluate(this) / 100.0f;
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (mMsg != NULL) {
-				mMsg->mPlacement      = obj;
-				mMsg->mFontPosition.x = x;
-				mMsg->mFontPosition.y = y;
-				mMsg->mFontPosition.z = z;
+				mMsg->SetWindowAnchor(obj, x, y, z);
 			}
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("win(@OBJ, %d, ...) obj(%d) killed!", id, id));
@@ -12053,20 +12040,6 @@ s32 CEvt::_cmd_ATTACH(u8 command, s32)
     blr
 */
 
-// puts an anim in the first free slot after the one playing
-static inline void CEvt_QueueAnim(XObj* obj, s32 anim, u16 frame, s16 rate)
-{
-	for (int i = 0; i < 16; i++) {
-		int index = (obj->mAnmQueue.mNext + i) % 16;
-		if (obj->mAnmQueue.mEntry[index].mId == -1) {
-			obj->mAnmQueue.mEntry[index].mId    = anim;
-			obj->mAnmQueue.mEntry[index].mFrame = frame;
-			obj->mAnmQueue.mEntry[index].mRate  = rate;
-			return;
-		}
-	}
-}
-
 /**
  * @note Address: 0x8007AE5C
  * @note Size: 0x630
@@ -12102,7 +12075,7 @@ s32 CEvt::_cmd_ANIM2(u8 command, s32)
 				}
 				obj->UpdateAnim(1);
 			} else {
-				CEvt_QueueAnim(obj, anim, frame, rate);
+				obj->PushAnim(anim, frame, rate);
 			}
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("anim2(%d, %d,%d,%d) ... obj(%d) killed!", id, anim, frame, rate, id));
@@ -12579,15 +12552,7 @@ s32 CEvt::_cmd_ANIM(u8 command, s32)
 				}
 				obj->UpdateAnim(1);
 			} else {
-				for (s32 i = 0; i < 16; i++) {
-					s32 index = (obj->mAnmQueue.mNext + i) % 16;
-					if (obj->mAnmQueue.mEntry[index].mId == -1) {
-						obj->mAnmQueue.mEntry[index].mId    = anim;
-						obj->mAnmQueue.mEntry[index].mFrame = 0;
-						obj->mAnmQueue.mEntry[index].mRate  = 100;
-						break;
-					}
-				}
+				obj->PushAnim(anim, 0, 100);
 			}
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("anim(%d, %d) ... obj(%d) killed!", id, anim, id));
