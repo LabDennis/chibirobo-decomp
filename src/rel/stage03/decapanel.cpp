@@ -1,4 +1,5 @@
 #include "game/hsd_jobj.h"
+#include "game/ctpl.h"
 #include "game/gmath.h"
 #include "game/video.h"
 #include "Version.h"
@@ -9,82 +10,6 @@ s32 HSD_Randi(s32 max);
 void PSMTXScale(Mtx m, f32 x, f32 y, f32 z);
 void PSMTXTrans(Mtx m, f32 x, f32 y, f32 z);
 }
-
-struct _GXTexObj {
-	u32 dummy[8];
-};
-
-extern "C" u16 GXGetTexObjWidth(_GXTexObj* obj);
-extern "C" u16 GXGetTexObjHeight(_GXTexObj* obj);
-
-struct UnkPair {
-	u32 _00; // _00
-	u32 _04; // _04
-};
-
-struct TPLDescriptor;
-
-class CTexObj : public _GXTexObj {
-public:
-	u32 _20;     // _20
-	u32 _24;     // _24
-	UnkPair _28; // _28
-	u32 _30;     // _30
-	u32 _34;     // _34
-	s32 _38;     // _38
-	Mtx mMtx[4]; // _3C
-	// _FC vtable
-
-	CTexObj() { }
-	virtual ~CTexObj() { }
-
-	CTexObj& Init(TPLDescriptor* desc, u32 tlutName);
-};
-
-// vtable is in the dol
-class CFile {
-public:
-	u8 _00[0xC0]; // _00
-	s32 _C0;      // _C0
-	u8 _C4[0x8];  // _C4
-	u8* mData;    // _CC
-	u32 _D0;      // _D0
-	u32 _D4;      // _D4
-	u8 _D8[0xC];  // _D8
-	u32 _E4;      // _E4
-	// _E8 vtable
-
-	CFile()
-	{
-		_C0   = -1;
-		_D4   = 0;
-		mData = NULL;
-		_D0   = 0;
-		_E4   = 1;
-	}
-	~CFile() { }
-	virtual void vf08();                                         // _08
-	virtual void vf0C();                                         // _0C
-	virtual void vf10();                                         // _10
-	virtual void vf14();                                         // _14
-	virtual void vf18();                                         // _18
-	virtual void vf1C();                                         // _1C
-	virtual void vf20();                                         // _20
-	virtual BOOL ReadEx(const char* path, u32 offset, u32 size); // _24
-
-	void Release() { vf20(); }
-};
-
-class CTpl : public CFile {
-public:
-	CTexObj mTex; // _EC
-	u32 _1EC;     // _1EC
-
-	CTpl() { }
-	~CTpl() { _1EC = 0; }
-	virtual void vf18(); // _18
-	virtual void vf20(); // _20
-};
 
 struct UnkObj {
 #if defined(VERSION_GGTJ01_01)
@@ -199,6 +124,11 @@ public:
 
 	void ResetInput();
 	void LoadTextures();
+	void Close()
+	{
+		mState = 0;
+		mTpl.Close();
+	}
 };
 
 struct SavedObjFlag {
@@ -306,7 +236,7 @@ inline void DecaPanel::LoadTextures()
 	case 1:
 		if (mTpl.ReadEx("tpl/stage03.tpl", 0, 0)) {
 			for (i = 0; i < 5; i++) {
-				mTexs[i] = mTpl.mTex.Init((TPLDescriptor*)(*(u8**)(mTpl.mData + 8) + i * 8), 0);
+				mTexs[i] = mTpl.mTex.Init(&((TPLPalette*)mTpl.mBuffer)->descriptorArray[i], 0);
 			}
 			mState  = 2;
 			mActive = 0;
@@ -631,9 +561,9 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			}
 			tex = &work->mTexs[draws[i].mTex];
 			PSMTXScale(tex->mMtx[1], draws[i].mScale, 1.0f, 1.0f);
-			tex->_38 = 1;
+			tex->mMtxDirty = 1;
 			PSMTXTrans(tex->mMtx[0], draws[i].mTrans, 0.0f, 0.0f);
-			tex->_38          = 1;
+			tex->mMtxDirty    = 1;
 			DecaPanelKey* pos = &decaPanelKeys[draws[i].mKey];
 			f32 x             = 0.9f * pos->x;
 			u32 color         = FadeColor(work->mFade);
@@ -643,15 +573,15 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 
 		tex = &work->mTexs[4];
 		PSMTXScale(tex->mMtx[1], 0.1f, 1.0f, 1.0f);
-		tex->_38 = 1;
-		keyW     = 0.9f * (GXGetTexObjWidth(tex) / 10);
-		keyH     = 0.9f * GXGetTexObjHeight(tex);
+		tex->mMtxDirty = 1;
+		keyW           = 0.9f * (GXGetTexObjWidth(tex) / 10);
+		keyH           = 0.9f * GXGetTexObjHeight(tex);
 		for (i = 0; i < 6; i++) {
 			u8 ch = work->mDigits[i];
 			if (ch != ' ') {
 				PSMTXTrans(tex->mMtx[0], 0.1f * decaPanelDigitCells[ch - '0'], 0.0f, 0.0f);
-				tex->_38  = 1;
-				u32 color = FadeColor(work->mFade);
+				tex->mMtxDirty = 1;
+				u32 color      = FadeColor(work->mFade);
 				DrawGsTexturedQuad(&gGame, tex, color, color, color, color, 320.0f + 0.9f * decaPanelDigitPos[i][0],
 				                   200.0f + 0.9f * decaPanelDigitPos[i][1], 0.0f, keyW, keyH, 0.0f, 0.0f, 0.0f);
 			}
@@ -1639,8 +1569,7 @@ extern "C" s32 CmdNop(s32 cmd, s32 argc, s32* args)
  */
 extern "C" void ExitStage(void* arg)
 {
-	decaPanel.mState = 0;
-	decaPanel.mTpl.Release();
+	decaPanel.Close();
 }
 
 /**
