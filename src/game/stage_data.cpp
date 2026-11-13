@@ -30,39 +30,6 @@ extern XObjSource gObjectSources[];
 // HSD_VIInfo, its header needs the hsd include path
 extern u8 HSD_VIData[];
 BOOL LoadGameSoundBank(XSound* sound, s32 stage);
-extern XObjSource gCbCannonLv2Source;
-extern XObjSource gCbPropellerLv2Source;
-extern XObjSource gCbRadarSource;
-extern XObjSource gChargeFx01Source;
-extern XObjSource gExclamationSource;
-extern XObjSource gKisekaePartsKaeruSource;
-extern XObjSource gKisekaePartsKeathSource;
-extern XObjSource gKisekaePartsKegaSource;
-extern XObjSource gKisekaePartsObakeSource;
-extern XObjSource gKisekaePartsPajama01Source;
-extern XObjSource gKisekaePartsPajama02Source;
-extern XObjSource gKisekaePartsPajamaSource;
-extern XObjSource gKisekaePartsSuperSource;
-extern XObjSource gKisekaePartsTaoSource10021;
-extern XObjSource gKisekaePartsTaoSource10023;
-extern XObjSource gMaruBatuSource;
-extern XObjSource gTestShortplayTitleSource;
-extern XObjSource gTestWardrobeSource10029;
-extern XObjSource gTestWardrobeSource10030;
-extern XObjSource gTitleIconIconArmy2Source;
-extern XObjSource gTitleIconIconArmySource;
-extern XObjSource gTitleIconIconBbSource;
-extern XObjSource gTitleIconIconFafaSource;
-extern XObjSource gTitleIconIconFunkySource;
-extern XObjSource gTitleIconIconHockSource;
-extern XObjSource gTitleIconIconKeathSource;
-extern XObjSource gTitleIconIconPeetsSource;
-extern XObjSource gTitleIconIconSunmidaSource;
-extern XObjSource gTitleIconIconTrexSource;
-extern XObjSource gTitleIconIconZobinSource;
-extern XObjSource gUsBatuModelSource;
-extern XObjSource gUsMaruBatuSource;
-extern XObjSource gUsMaruModelSource;
 }
 
 UnkStageObj gStageObjectPlacements[] = {
@@ -2589,6 +2556,45 @@ UnkObjData objTable[] = {
 	{ (u32)&gObjectSources[1160], 0x00000000, 0x00004001, 0, 0, 0, 22, 0 },
 	{ (u32)&gObjectSources[1161], 0x00000000, 0x00000001, 0, 0, 0, 22, 0 },
 };
+
+// the source records objTableEx points at
+extern "C" {
+XObjSource gTestShortplayTitleSource   = { "test/shortplay_title", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gChargeFx01Source           = { "charge_fx01", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gCbPropellerLv2Source       = { "cb_propeller_lv2", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gCbCannonLv2Source          = { "cb_cannon_lv2", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gCbRadarSource              = { "cb_radar", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gMaruBatuSource             = { "maru_batu", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gExclamationSource          = { "exclamation", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gKisekaePartsKeathSource    = { "kisekae/parts_keath", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gKisekaePartsKaeruSource    = { "kisekae/parts_kaeru", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gKisekaePartsTaoSource10021 = { "kisekae/parts_tao", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gKisekaePartsKegaSource     = { "kisekae/parts_kega", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gKisekaePartsTaoSource10023 = { "kisekae/parts_tao", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gKisekaePartsObakeSource    = { "kisekae/parts_obake", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gKisekaePartsPajamaSource   = { "kisekae/parts_pajama", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gKisekaePartsSuperSource    = { "kisekae/parts_super", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gKisekaePartsPajama01Source = { "kisekae/parts_pajama_01", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gKisekaePartsPajama02Source = { "kisekae/parts_pajama_02", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTitleIconIconBbSource      = { "title_icon/icon_bb", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTitleIconIconArmySource    = { "title_icon/icon_army", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTitleIconIconFafaSource    = { "title_icon/icon_fafa", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTitleIconIconFunkySource   = { "title_icon/icon_funky", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTitleIconIconHockSource    = { "title_icon/icon_hock", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTitleIconIconKeathSource   = { "title_icon/icon_keath", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTitleIconIconPeetsSource   = { "title_icon/icon_peets", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTitleIconIconSunmidaSource = { "title_icon/icon_sunmida", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTitleIconIconTrexSource    = { "title_icon/icon_trex", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTitleIconIconZobinSource   = { "title_icon/icon_zobin", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTitleIconIconArmy2Source   = { "title_icon/icon_army2", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+#if !defined(VERSION_JP)
+XObjSource gUsMaruBatuSource  = { "us_maru_batu", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gUsMaruModelSource = { "us_maru_model", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gUsBatuModelSource = { "us_batu_model", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+#endif
+XObjSource gTestWardrobeSource10029 = { "test/wardrobe", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+XObjSource gTestWardrobeSource10030 = { "test/wardrobe", 0, 0x00000000, { 0x00000000, 0x00000000 } };
+} // extern "C"
 
 UnkObjData objTableEx[] = {
 #if defined(VERSION_JP)
