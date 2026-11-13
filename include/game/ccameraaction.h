@@ -272,7 +272,7 @@ public:
 	virtual BOOL vf7C(s32 index); // _7C
 };
 
-// an entry in CCameraActionMap's _570 and _9A0 lists
+// an entry in CCameraActionMap's mIntersectionEntries and mAreaIntersections lists
 struct CamMapEntry {
 	Vec mPos;         // _00, a position
 	s32 mRecordIndex; // _0C
@@ -286,11 +286,11 @@ public:
 	s32 _40;                                             // _40
 	XObj* mTarget;                                       // _44, the object the camera looks at
 	CVec mPreviousInterest;                              // _48
-	f32 mResetDistance;                                  // _58
+	f32 mRestDistance;                                   // _58
 	f32 mSpringDamping;                                  // _5C
 	CVec mSpringPrevTarget;                              // _60
 	CVec mSpringTarget;                                  // _70
-	f32 mRestDistance;                                   // _80
+	f32 mTargetRestDistance;                             // _80, the rest distance mRestDistance eases toward
 	f32 mFlatDistance;                                   // _84
 	f32 mOrbitRadius;                                    // _88
 	CObjVec _8C;                                         // _8C
@@ -343,7 +343,7 @@ public:
 	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _F2C
 	f32 mEyeInterpTime;                                  // _F64, target-eye interpolation time
 	CVec mTargetEye;                                     // _F68
-	CVec mDesiredEye;                                    // _F78
+	CVec mPrevTargetEye;                                 // _F78
 	CVec mOrbitEye;                                      // _F88
 	CVec mOrbitAngle;                                    // _F98
 	CVec mPrevOrbitEye;                                  // _FA8
@@ -461,14 +461,14 @@ extern "C" CCameraActionAreaEx gCameraAreaState;
 class CCameraActionArea : public CCameraActionAreaExM {
 public:
 	f32 mTransitionTime;                                 // _40, transition time
-	s32 mDirectionMode;                                  // _44, camera direction mode
-	BOOL mUserSelected;                                  // _48, user-selected entry
+	s32 mKeepViewDirection;                              // _44, set by SetCamera: pick entries by the current view until one is applied
+	BOOL mForceApply;                                    // _48, apply mEntry even if its id is unchanged
 	s32 mEntryIndex;                                     // _4C
 	s32 mPrevEntryIndex;                                 // _50
 	CamAreaEntry* mEntry;                                // _54
 	CamAreaEntry* mPrevEntry;                            // _58
 	s32 mControlEnabled;                                 // _5C
-	BOOL mManualControl;                                 // _60, manual camera changes enabled
+	BOOL mPadControlEnabled;                             // _60, the pad may pick entries, as CCameraActionMap's
 	XObj* mTarget;                                       // _64
 	CInterfaceVectorInterpolation* mEyeInterp;           // _68
 	CInterfaceInterpolation* mFovInterp;                 // _6C

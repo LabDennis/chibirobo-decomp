@@ -1014,7 +1014,7 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 			gCameraAreaState._14 = height + 1;
 			return area->mEntry->_34;
 		}
-	} else if (area->mDirectionMode == 1 && (buttons & next)) {
+	} else if (area->mKeepViewDirection == 1 && (buttons & next)) {
 		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		f32 best = TWO_PI;
 		s32 index;
@@ -1028,9 +1028,9 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 				index = i;
 			}
 		}
-		area->mEntryIndex   = index;
-		area->mUserSelected = TRUE;
-	} else if (area->mDirectionMode == 1 && (buttons & previous)) {
+		area->mEntryIndex = index;
+		area->mForceApply = TRUE;
+	} else if (area->mKeepViewDirection == 1 && (buttons & previous)) {
 		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		f32 best = TWO_PI;
 		s32 index;
@@ -1047,8 +1047,8 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		if (--index < 0) {
 			index = slot->_08 - 1;
 		}
-		area->mEntryIndex   = index;
-		area->mUserSelected = TRUE;
+		area->mEntryIndex = index;
+		area->mForceApply = TRUE;
 	} else if (buttons & next) {
 		if (++area->mEntryIndex >= gCameraAreaState._2034[slotIndex]._08) {
 			area->mEntryIndex = 0;
@@ -1059,7 +1059,7 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		}
 	} else if (currentArea != previousArea && currentArea != -1) {
 		CVec dir;
-		if (area->mDirectionMode != 0) {
+		if (area->mKeepViewDirection != 0) {
 			CVec delta = area->mInterest - area->mEye;
 			delta.Normalize();
 			dir.Set(delta);
@@ -1600,7 +1600,7 @@ void CCameraActionArea::vf24()
  */
 void CCameraActionArea::Update(u32 step)
 {
-	mManualControl = (gGame.mStatus.mFlags & 0xC00) ? FALSE : TRUE;
+	mPadControlEnabled = (gGame.mStatus.mFlags & 0xC00) ? FALSE : TRUE;
 	// retail does this, nothing reads the result
 	if (mTarget != NULL && mTarget->mJObj != NULL) {
 		CPad pad(0);
@@ -1612,19 +1612,19 @@ void CCameraActionArea::Update(u32 step)
 		CVec localEye(0.0f, mEye.y - flatEye.y, -distance);
 		PSMTXMultVec(mtx, &localEye, &localEye);
 	}
-	if (mControlEnabled == 1 && mManualControl) {
+	if (mControlEnabled == 1 && mPadControlEnabled) {
 		UpdateAreaCameraEntrySelection(this);
 	}
 	s32 currentArea  = gCameraAreaState._04;
 	s32 previousArea = gCameraAreaState._08;
-	if (mEntry->_34 != mPrevEntry->_34 || mUserSelected) {
+	if (mEntry->_34 != mPrevEntry->_34 || mForceApply) {
 		if (currentArea != previousArea && currentArea != -1) {
 			mTransitionTime = 2.0f;
 			ApplyAreaCameraEntry(this, mEntry, 1, 1, mTransitionTime);
-		} else if (mUserSelected) {
+		} else if (mForceApply) {
 			mTransitionTime = 15.0f;
 			ApplyAreaCameraEntry(this, mEntry, 5, 1, mTransitionTime);
-			mUserSelected = FALSE;
+			mForceApply = FALSE;
 		} else if (currentArea == previousArea) {
 			mTransitionTime = 15.0f;
 			ApplyAreaCameraEntry(this, mEntry, 5, 1, mTransitionTime);
@@ -1632,8 +1632,8 @@ void CCameraActionArea::Update(u32 step)
 		gGame.GetPlayer()->ResetCameraValue();
 		mPrevEntryIndex = mEntryIndex;
 		mPrevEntry      = mEntry;
-		if (mDirectionMode != 0) {
-			mDirectionMode = 0;
+		if (mKeepViewDirection != 0) {
+			mKeepViewDirection = 0;
 		}
 	}
 	s32 height = gCameraAreaState._14;
@@ -2064,14 +2064,14 @@ void CCameraActionArea::Reset()
 {
 	LoadStageCameraAreaState(&gCameraAreaState);
 	mControlEnabled     = 1;
-	mManualControl      = TRUE;
+	mPadControlEnabled  = TRUE;
 	mEntryIndex         = 0;
 	CamAreaEntry* entry = gCameraAreaState._2034[0]._00;
 	mEntry              = entry;
 	mPrevEntry          = entry;
 	mTarget             = (XObj*)gGame.GetPlayer();
-	mDirectionMode      = 0;
-	mUserSelected       = FALSE;
+	mKeepViewDirection  = 0;
+	mForceApply         = FALSE;
 }
 
 /**
@@ -2084,7 +2084,7 @@ void CCameraActionArea::SetCamera(CCamera* camera)
 	SetInterest(camera->mInterest);
 	SetDistance(camera->mDistance);
 	SetFov(camera->mFov);
-	mDirectionMode = 1;
+	mKeepViewDirection = 1;
 }
 
 /**
