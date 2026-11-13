@@ -5,7 +5,7 @@
  * @note Size: 0x9C
  */
 // todo: weak copy
-extern "C" void vf94__9XObjFlagsFv(XObjFlags* obj)
+extern "C" void ResetForNewGame__9XObjFlagsFv(XObjFlags* obj)
 {
 	u32* flags = obj->mFlags->mFlags;
 	for (u32 i = 0; i < ARRAY_SIZE(obj->mFlags->mFlags); ++i) {

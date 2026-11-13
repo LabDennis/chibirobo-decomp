@@ -432,7 +432,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			if (mSpiderStatus.Check(0x1000000)) {
 				mSpiderStatus.mFlags &= ~0x1000000;
 				gSpiderDrainFlashClaimed = 0;
-				gGame.GetPlayer()->vf12C(1, 0, 0, 0, 0);
+				gGame.GetPlayer()->SetColor(1, 0, 0, 0, 0);
 			}
 			mStatus.mFlags &= ~0x100000ULL;
 			mSpiderStatus.mFlags &= ~0x20000;

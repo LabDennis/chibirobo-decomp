@@ -48,7 +48,7 @@ static inline void DrawSubwindowObjects(const XOBJS& objects, CCamera* camera)
 			}
 		}
 		if (draw)
-			object->vfAC();
+			object->DrawObject();
 	}
 }
 
@@ -139,9 +139,9 @@ void CGame::Draw()
 			for (s32 i = 0; i < mDrawLists[1].mCount; ++i) {
 				XObj* object = mDrawLists[1].mObjects[i];
 				if (object->mStatus.mFlags & 0x200)
-					object->vfAC();
+					object->DrawObject();
 				else if ((object->mStatus.mFlags & 0x0400000000000000ULL) && (object->mStatus.mFlags & 0x400000000000ULL))
-					object->vfAC();
+					object->DrawObject();
 			}
 			EndGsCamera(&mGs);
 		}

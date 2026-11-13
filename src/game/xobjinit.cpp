@@ -152,9 +152,9 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			material[2]     = mStatus.mFlags & 0x40ULL;
 			material[3]     = mStatus.mFlags & 0x20000ULL;
 			material[4]     = mStatus.mFlags & 0x400000ULL;
-			vfD8(material);
+			ApplyMaterialPresets(material);
 			if ((mStatus.mFlags & 0x1000000) && IsStageDataLoaded())
-				vfE0(GetEnvData()[9] / 100.f);
+				EnableLighting(GetEnvData()[9] / 100.f);
 			if ((mStatus.mFlags & 2) && mJObj)
 				HSD_JObjWalkTree(mJObj, JObjSetMObjFlags, (f32**)0x04000000);
 			UnkStageObj* place = mCoord._00;

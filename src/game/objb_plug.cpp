@@ -146,7 +146,7 @@ void ConfigurePlugWireEffect(XObjWireEff* object, s32 anim, s32 effect, f32 rate
 	} else {
 		KillWireEffect(object);
 	}
-	object->vf12C(0, color >> 24, color >> 16, color >> 8, 0.0f);
+	object->SetColor(0, color >> 24, color >> 16, color >> 8, 0.0f);
 }
 }
 
@@ -217,14 +217,14 @@ extern "C" void SetPlugSparkMode(XObjPlug* object, s32 value)
 	object->mWire.mSparkTimer = -1;
 }
 
-// XObjPlug::vfDC
+// XObjPlug::SetDestinationAlpha
 /**
  * @note Address: 0x800D80E4
  * @note Size: 0x54
  */
-void XObjPlug::vfDC(BOOL enabled, u8 value)
+void XObjPlug::SetDestinationAlpha(BOOL enabled, u8 value)
 {
-	XObj::vfDC(enabled, value);
+	XObj::SetDestinationAlpha(enabled, value);
 	SetPlugCordAlphaMode(&mCord, enabled, value);
 }
 

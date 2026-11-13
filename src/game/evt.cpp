@@ -7451,9 +7451,9 @@ s32 CEvt::_cmd_COLOR(u8, s32)
 			XObj* current = gGame.mXObjs.mObjects[i];
 			if ((current->mStatus.mFlags & 1) && current->mJObj != NULL) {
 				if (mode == EVT_ATOM_MODULATE) {
-					current->vf12C(0, r, g, b, time);
+					current->SetColor(0, r, g, b, time);
 				} else if (mode == EVT_ATOM_BLEND) {
-					current->vf12C(1, r, g, b, time);
+					current->SetColor(1, r, g, b, time);
 				}
 			}
 		}
@@ -7468,9 +7468,9 @@ s32 CEvt::_cmd_COLOR(u8, s32)
 			}
 		}
 		if (mode == EVT_ATOM_MODULATE) {
-			obj->vf12C(0, r, g, b, time);
+			obj->SetColor(0, r, g, b, time);
 		} else if (mode == EVT_ATOM_BLEND) {
-			obj->vf12C(1, r, g, b, time);
+			obj->SetColor(1, r, g, b, time);
 		}
 	} else {
 		if (mode == EVT_ATOM_MODULATE) {
@@ -17268,7 +17268,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 				flags[2]     = obj->mStatus.mFlags & 0x40;
 				flags[3]     = obj->mStatus.mFlags & 0x20000;
 				flags[4]     = obj->mStatus.mFlags & 0x400000;
-				obj->vfD8(flags);
+				obj->ApplyMaterialPresets(flags);
 			}
 			if (mask & ((u64)0x4000 << 32)) {
 				XObjChr* player = gGame.GetPlayer();
@@ -17313,7 +17313,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		if (obj != NULL) {
 			obj->mStatus.mFlags &= ~mask;
 			if (mask & 0x20000)
-				obj->vfDC(0, 0);
+				obj->SetDestinationAlpha(0, 0);
 			if (mask & ((u64)0x4000 << 32)) {
 				XObjChr* player = gGame.GetPlayer();
 				if ((s16)obj->GetPool() == 8 && obj == player->mLift.mTarget) {

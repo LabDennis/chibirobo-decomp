@@ -16,10 +16,10 @@ void XObjActor::UpdateObject(u32 frames)
 	actor->ProcessPendingEvents(frames);
 	actor->RunStateHandler(frames);
 	if (actor->_998.mFlags & 4) {
-		actor->vf154(frames);
+		actor->UpdateGroundMovement(frames);
 	}
 	UpdateObject__4XObjFUl(actor, frames);
-	actor->vf148(frames);
+	actor->UpdateAfterAnim(frames);
 	HSD_AObj* aobj = GetAObj(actor->mJObj);
 	f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
 	actor->UpdateAnimationSounds(frame);
@@ -58,7 +58,7 @@ BOOL XObjActor::LoadFromPlacement(const CoordInfo& info)
  * @note Address: 0x80108014
  * @note Size: 0x1DC
  */
-void XObjActor::vf94()
+void XObjActor::ResetForNewGame()
 {
 	XObjActorLiterals* lit = &gActorUpdateConstants;
 	_980                   = 0.0f;

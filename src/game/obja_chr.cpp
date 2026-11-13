@@ -644,7 +644,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					u32 hit;
 					{
 						CVec from(position), to(position);
-						hit = object->vfFC(&from, &to, radius, height, &push, &contact, (s32)&floor, queryFlags | 1);
+						hit = object->TestFloorCollision(&from, &to, radius, height, &push, &contact, (s32)&floor, queryFlags | 1);
 					}
 					if (hit & 1) {
 						touched = true;
@@ -697,8 +697,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						continue;
 					ClearObjectStatusFlags(object, 0x10ULL);
 					for (s32 floor = 0; floor != -1;) {
-						u32 hit = object->vfFC(&player->mMoveTranslate, &player->mMoveTranslate, radius, height, &push, &contact,
-						                       (s32)&floor, 0);
+						u32 hit = object->TestFloorCollision(&player->mMoveTranslate, &player->mMoveTranslate, radius, height, &push,
+						                                     &contact, (s32)&floor, 0);
 						if ((hit & 3) != 3)
 							continue;
 						f32 top = GetObjectHitFloorHeight(object);
@@ -746,7 +746,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						u32 bodyHit;
 						{
 							CVec from(body), to(body);
-							bodyHit = object->vfFC(&from, &to, 0.5f, height, &push, &contact, 0, 0);
+							bodyHit = object->TestFloorCollision(&from, &to, 0.5f, height, &push, &contact, 0, 0);
 						}
 						if ((bodyHit & 3) == 3) {
 							SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->_264 + hang);
@@ -757,7 +757,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						u32 upperHit;
 						{
 							CVec from(upper), to(upper);
-							upperHit = object->vfFC(&from, &to, 0.1f, 0.1f, &push, &contact, 0, 0);
+							upperHit = object->TestFloorCollision(&from, &to, 0.1f, 0.1f, &push, &contact, 0, 0);
 						}
 						if ((upperHit & 3) == 3) {
 							SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->_264 + hang);
@@ -771,7 +771,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						u32 lowerHit;
 						{
 							CVec from(lower), to(lower);
-							lowerHit = object->vfFC(&from, &to, 0.5f, 0.5f, &push, &contact, 0, 0);
+							lowerHit = object->TestFloorCollision(&from, &to, 0.5f, 0.5f, &push, &contact, 0, 0);
 						}
 						if ((lowerHit & 3) == 3)
 							supported = true;
@@ -855,7 +855,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						u32 hit;
 						{
 							CVec from(pushed.center), to(pushed.center);
-							hit = object->vfFC(&from, &to, pushed.radius, pushed.height, &push, &contact, 0, 0);
+							hit = object->TestFloorCollision(&from, &to, pushed.radius, pushed.height, &push, &contact, 0, 0);
 						}
 						if ((hit & 3) == 3) {
 							f32 top   = GetObjectHitFloorHeight(object);
@@ -880,7 +880,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						u32 hit;
 						{
 							CVec from(pushed.rear), to(pushed.rear);
-							hit = object->vfFC(&from, &to, pushed.radius, pushed.height, &push, &contact, 0, 0);
+							hit = object->TestFloorCollision(&from, &to, pushed.radius, pushed.height, &push, &contact, 0, 0);
 						}
 						if ((hit & 3) == 3) {
 							f32 top   = GetObjectHitFloorHeight(object);
@@ -901,7 +901,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						u32 hit;
 						{
 							CVec from(pushed.front), to(pushed.front);
-							hit = object->vfFC(&from, &to, pushed.radius, pushed.height, &push, &contact, 0, 0);
+							hit = object->TestFloorCollision(&from, &to, pushed.radius, pushed.height, &push, &contact, 0, 0);
 						}
 						if ((hit & 3) == 3) {
 							f32 top   = GetObjectHitFloorHeight(object);
@@ -933,7 +933,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				u32 hit;
 				{
 					CVec from(point), to(point);
-					hit = GetPlayerActionTarget(&ropeAction)->vfFC(&from, &to, 0.5f, 0.5f, &push, &contact, 0, 0);
+					hit = GetPlayerActionTarget(&ropeAction)->TestFloorCollision(&from, &to, 0.5f, 0.5f, &push, &contact, 0, 0);
 				}
 				if ((hit & 3) != 3) {
 					SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->_264 + hang);
@@ -1103,7 +1103,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			u32 hit;
 			{
 				CVec from(probePoint), to(probePoint);
-				hit = object->vfFC(&from, &to, probeRadius, height, &push, &contact, 0, queryFlags);
+				hit = object->TestFloorCollision(&from, &to, probeRadius, height, &push, &contact, 0, queryFlags);
 			}
 			if ((hit & 3) != 3) {
 				ClearObjectStatusFlags(object, 0x8000000000000000ULL);
@@ -1114,12 +1114,12 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			if (highest) {
 				player->mHitObjectIndex = i;
 				best                    = GetSelectedFloorHeight(object);
-				if ((object->vf128()
+				if ((object->GetEventScript()
 				     && (!GetMaskedObjectStatus(object, 0x20)
 				         || (IsLiftTargetPlug(&player->mLift) && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex))))
 					player->mFloorContacts[2].objectIndex = i;
 			} else if (player->mFloorContacts[2].objectIndex < 0
-			           && (object->vf128()
+			           && (object->GetEventScript()
 			               && (!GetMaskedObjectStatus(object, 0x20)
 			                   || (IsLiftTargetPlug(&player->mLift)
 			                       && player->mFloorContacts[2].objectIndex != player->mFloorContacts[0].objectIndex)))) {
@@ -1146,7 +1146,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			for (s32 i = 0; i < GetObjectPoolUsedCount(&gGame, 9); ++i) {
 				XObj* object = (XObj*)GetObjectFromPool(&gGame, 9, i);
 				if (!IsObjectActive(object) || !GetMaskedObjectStatus(object, 0x10000) || !GetMaskedObjectStatus(object, 0x20)
-				    || !object->vf128())
+				    || !object->GetEventScript())
 					continue;
 				if (GetVectorDistance(GetObjectMoveTranslation(object), GetObjectMoveTranslation(player)) >= 18.0f)
 					continue;
@@ -1593,7 +1593,7 @@ static inline void LiftInteractionTarget(XObjChr* player, XObj* target)
 }
 static inline void StartInteractionEvent(XObj* target)
 {
-	TryStartObjectEvent(&gGame, target->vf128(), target, -1, -1);
+	TryStartObjectEvent(&gGame, target->GetEventScript(), target, -1, -1);
 }
 static inline void ChooseClimbAction(XObjChr* player, XObj* object, s32 mode, bool ladder)
 {
@@ -2208,7 +2208,7 @@ void XObjChr::UpdateObject(u32 frames)
 	static_cast<XObj&>(mRadarObj).UpdateObject(frames);
 	static_cast<XObj&>(mOXObj).UpdateObject(frames);
 	for (s32 i = 0; i < 9; ++i)
-		mSuits.mObjects[i].vfA8(frames);
+		mSuits.mObjects[i].StepColors(frames);
 
 	if (IsCarryingToothbrush(&mLift) || IsCarryingSpoon(&mLift) || IsCarryingSquirter(&mLift)) {
 		for (s32 i = 0; i < 2; ++i) {
@@ -3910,13 +3910,13 @@ extern "C" void UpdatePlayerLookMarker(XObjChrLook* look, u32 frames)
 	}
 }
 
-// XObjChr::vf144, what chibi robo does when he's left alone: looks at the camera first,
+// XObjChr::OnMicrophonePeak, what chibi robo does when he's left alone: looks at the camera first,
 // then two longer idles at 3000 and 6000
 /**
  * @note Address: 0x8009D778
  * @note Size: 0x330
  */
-void XObjChr::vf144(s32 input, s32 elapsed)
+void XObjChr::OnMicrophonePeak(s32 input, s32 elapsed)
 {
 	s32 idle;
 	if (gGame.mEvt.mData.mScript != NULL || !InputEnabled(&gGame) || (gGame.mStatus.mFlags & 0xC00) || (gGame.mStatus.mFlags & 0x100)
@@ -4730,8 +4730,8 @@ extern "C" BOOL IsPlayerStopped(const XObjChr* chr)
 void XObjChr::OnHitFromPosition(const Vec&, f32 strength)
 {
 	if (IsCarryingMug(&mLift)) {
-		mLift.mTarget->vf12C(1, 150, 150, 0, 0.0f);
-		mLift.mTarget->vf12C(1, 0, 0, 0, 0.2f);
+		mLift.mTarget->SetColor(1, 150, 150, 0, 0.0f);
+		mLift.mTarget->SetColor(1, 0, 0, 0, 0.2f);
 	} else if (mFlashTimer <= 0) {
 		ApplyPlayerHitReaction(this, TRUE, TRUE, strength);
 	}
@@ -4785,13 +4785,13 @@ extern "C" void ApplyPlayerHitReaction(XObjChr* chr, BOOL start, BOOL cancel, f3
 	}
 }
 
-// XObjChr::vf12C, the color goes to everything he wears and carries too. while a costume
+// XObjChr::SetColor, the color goes to everything he wears and carries too. while a costume
 // change is running, blend 2 turns into 1 and 1 is dropped
 /**
  * @note Address: 0x800A0234
  * @note Size: 0x1E0
  */
-void XObjChr::vf12C(s32 blend, u8 red, u8 green, u8 blue, f32 time)
+void XObjChr::SetColor(s32 blend, u8 red, u8 green, u8 blue, f32 time)
 {
 	if (mSuits.mChangeStep != 0) {
 		if (blend == 2)
@@ -4799,16 +4799,16 @@ void XObjChr::vf12C(s32 blend, u8 red, u8 green, u8 blue, f32 time)
 		else if (blend == 1)
 			return;
 	}
-	XObj::vf12C(blend, red, green, blue, time);
-	mPlug.vf12C(blend, red, green, blue, time);
-	mCopterObj.vf12C(blend, red, green, blue, time);
-	mPopperObj.vf12C(blend, red, green, blue, time);
-	mRadarObj.vf12C(blend, red, green, blue, time);
-	mOXObj.vf12C(blend, red, green, blue, time);
+	XObj::SetColor(blend, red, green, blue, time);
+	mPlug.SetColor(blend, red, green, blue, time);
+	mCopterObj.SetColor(blend, red, green, blue, time);
+	mPopperObj.SetColor(blend, red, green, blue, time);
+	mRadarObj.SetColor(blend, red, green, blue, time);
+	mOXObj.SetColor(blend, red, green, blue, time);
 	for (s32 i = 0; i < 9; ++i)
-		mSuits.mObjects[i].vf12C(blend, red, green, blue, time);
+		mSuits.mObjects[i].SetColor(blend, red, green, blue, time);
 	if (IsCarryingMug(&mLift))
-		mLift.mTarget->vf12C(blend, red, green, blue, time);
+		mLift.mTarget->SetColor(blend, red, green, blue, time);
 }
 
 static inline f32 PlayerCollisionRadius(XObjChr* chr)
@@ -5561,7 +5561,7 @@ static inline void DrawPlayerLiftCylinder(const Vec& pos, const Vec& size, u32 c
  * @note Address: 0x800A4A60
  * @note Size: 0xA9C
  */
-void XObjChr::vfC4()
+void XObjChr::DrawCollisionShapes()
 {
 	CGs* gs = &gGame.mGs;
 	SetPlayerCylinderDrawState(gs);
@@ -5630,10 +5630,10 @@ void XObjChr::vfC4()
 		PSMTXConcat(model, tilt, model);
 		PSMTXConcat(gs->mCamera->mViewMtx, model, view);
 		DrawGsCylinderWithMatrix(gs, view, 0x9696FF60, 16);
-		XObj::vfC4();
+		XObj::DrawCollisionShapes();
 		XObj* plug = &mPlug;
 		if (gGame.mStatus.mFlags & 0x0040000000000000ULL)
-			plug->vfC4();
+			plug->DrawCollisionShapes();
 		ClearActiveObjectFloors(plug);
 	}
 }
@@ -5665,9 +5665,9 @@ static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction,
  * @note Address: 0x800A551C
  * @note Size: 0x73C
  */
-void XObjChr::vfC8()
+void XObjChr::DrawScreenOverlay()
 {
-	XObj::vfC8();
+	XObj::DrawScreenOverlay();
 	DrawPopperShotRings(&mPopper);
 	DrawPlayerRadarEffects(&mRadar);
 	if (!(gGame.mStatus.mFlags & 0x100))
@@ -6194,8 +6194,8 @@ static inline void StopBatterySound(s32 id)
 
 static inline void FlashBatteryWarning(XObjChr* p, u8 green, f32 duration)
 {
-	p->vf12C(1, 255, green, 0, 0.0f);
-	p->vf12C(1, 0, 0, 0, duration);
+	p->SetColor(1, 255, green, 0, 0.0f);
+	p->SetColor(1, 0, 0, 0, duration);
 	StartScreenFade(&gGame.mScrnTex.mColor, 255, green, 0, 0, 100, 100, 200, 0, duration);
 }
 
@@ -6956,10 +6956,10 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 		++player->mFlashCount;
 		if (player->mFlashTimer > 0) {
 			f32 red = 128.0f * ((f32)player->mFlashTimer / IDLE_SECOND);
-			player->vf12C(1, (s32)red, 0, 0, 0.0f);
+			player->SetColor(1, (s32)red, 0, 0, 0.0f);
 			StartScreenFade(&gGame.mScrnTex.mColor, (s32)red, 0, 0, 0, (s32)red, 0, 0, 0, 0.0f);
 		} else {
-			player->vf12C(1, 0, 0, 0, 0.0f);
+			player->SetColor(1, 0, 0, 0, 0.0f);
 			StartScreenFade(&gGame.mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
 		}
 	}
@@ -6969,7 +6969,7 @@ extern "C" void SelectHighestActiveFloor(XObj* object);
 
 static inline bool IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 minHeight)
 {
-	if (object->vf128() != NULL)
+	if (object->GetEventScript() != NULL)
 		return true;
 	u64 flags     = object->mStatus.mFlags;
 	bool eligible = (flags & 0x0000000100000000ULL) && object->mMaxFloorHeight > minHeight;
@@ -7035,7 +7035,7 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 		u32 hit;
 		{
 			CVec from(x, y, z), to(x, y, z);
-			hit = object->vfFC(&from, &to, radius + extraRadius, height, &push, &contact, 0, 0);
+			hit = object->TestFloorCollision(&from, &to, radius + extraRadius, height, &push, &contact, 0, 0);
 		}
 		if ((hit & 3) != 3)
 			continue;
@@ -8712,7 +8712,7 @@ extern "C" void OpenPlayerEquipmentRings(XObjChr* chr)
  * @note Address: 0x800B5808
  * @note Size: 0x4
  */
-void XObjChr::vfE0(f32 factor)
+void XObjChr::EnableLighting(f32 factor)
 {
 }
 
@@ -8720,22 +8720,22 @@ void XObjChr::vfE0(f32 factor)
  * @note Address: 0x800B580C
  * @note Size: 0x168
  */
-void XObjChr::vfDC(BOOL enabled, u8 value)
+void XObjChr::SetDestinationAlpha(BOOL enabled, u8 value)
 {
-	XObj::vfDC(enabled, value);
+	XObj::SetDestinationAlpha(enabled, value);
 	if (mPlug.mJObj != NULL)
-		mPlug.vfDC(enabled, value);
+		mPlug.SetDestinationAlpha(enabled, value);
 	if (mCopterObj.mJObj != NULL)
-		mCopterObj.vfDC(enabled, value);
+		mCopterObj.SetDestinationAlpha(enabled, value);
 	if (mPopperObj.mJObj != NULL)
-		mPopperObj.vfDC(enabled, value);
+		mPopperObj.SetDestinationAlpha(enabled, value);
 	if (mRadarObj.mJObj != NULL)
-		mRadarObj.vfDC(enabled, value);
+		mRadarObj.SetDestinationAlpha(enabled, value);
 	if (mOXObj.mJObj != NULL)
-		mOXObj.vfDC(enabled, value);
+		mOXObj.SetDestinationAlpha(enabled, value);
 	for (s32 i = 0; i < 9; ++i) {
 		if (mSuits.mObjects[i].mJObj != NULL)
-			mSuits.mObjects[i].vfDC(enabled, value);
+			mSuits.mObjects[i].SetDestinationAlpha(enabled, value);
 	}
 }
 
@@ -8743,22 +8743,22 @@ void XObjChr::vfDC(BOOL enabled, u8 value)
  * @note Address: 0x800B5974
  * @note Size: 0x144
  */
-void XObjChr::vfD8(u32* flags)
+void XObjChr::ApplyMaterialPresets(u32* flags)
 {
-	XObj::vfD8(flags);
+	XObj::ApplyMaterialPresets(flags);
 	if (mPlug.mJObj != NULL)
-		mPlug.vfD8(flags);
+		mPlug.ApplyMaterialPresets(flags);
 	if (mCopterObj.mJObj != NULL)
-		mCopterObj.vfD8(flags);
+		mCopterObj.ApplyMaterialPresets(flags);
 	if (mPopperObj.mJObj != NULL)
-		mPopperObj.vfD8(flags);
+		mPopperObj.ApplyMaterialPresets(flags);
 	if (mRadarObj.mJObj != NULL)
-		mRadarObj.vfD8(flags);
+		mRadarObj.ApplyMaterialPresets(flags);
 	if (mOXObj.mJObj != NULL)
-		mOXObj.vfD8(flags);
+		mOXObj.ApplyMaterialPresets(flags);
 	for (s32 i = 0; i < 9; ++i) {
 		if (mSuits.mObjects[i].mJObj != NULL)
-			mSuits.mObjects[i].vfD8(flags);
+			mSuits.mObjects[i].ApplyMaterialPresets(flags);
 	}
 }
 
@@ -8766,14 +8766,14 @@ void XObjChr::vfD8(u32* flags)
  * @note Address: 0x800B5AB8
  * @note Size: 0xC4
  */
-void XObjChr::vf120(s32 mode)
+void XObjChr::SetCullMode(s32 mode)
 {
-	XObj::vf120(mode);
-	mPlug.vf120(mode);
-	mCopterObj.vf120(mode);
-	mPopperObj.vf120(mode);
-	mRadarObj.vf120(mode);
-	mOXObj.vf120(mode);
+	XObj::SetCullMode(mode);
+	mPlug.SetCullMode(mode);
+	mCopterObj.SetCullMode(mode);
+	mPopperObj.SetCullMode(mode);
+	mRadarObj.SetCullMode(mode);
+	mOXObj.SetCullMode(mode);
 }
 
 /**

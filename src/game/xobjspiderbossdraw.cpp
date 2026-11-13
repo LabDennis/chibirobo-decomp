@@ -20,7 +20,7 @@ void XObjSpiderBoss::DrawDebugStatus()
  * @note Address: 0x80105CE4
  * @note Size: 0x4
  */
-void XObjSpiderBoss::vfC8()
+void XObjSpiderBoss::DrawScreenOverlay()
 {
 }
 
@@ -46,7 +46,7 @@ void XObjSpiderBoss::DrawGroundShadow()
  * @note Address: 0x80105D28
  * @note Size: 0x30
  */
-void XObjSpiderBoss::vfAC()
+void XObjSpiderBoss::DrawObject()
 {
 	DrawWithView(NULL);
 }

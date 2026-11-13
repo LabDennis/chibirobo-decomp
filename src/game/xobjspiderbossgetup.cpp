@@ -18,9 +18,9 @@ void XObjSpiderBoss::State1(u32 frames)
 		break;
 	case 1: {
 		if (mBlinkTimer % 30 < 15) {
-			vf12C(1, 128, 0, 0, 0.0f);
+			SetColor(1, 128, 0, 0, 0.0f);
 		} else {
-			vf12C(1, 0, 0, 0, 0.0f);
+			SetColor(1, 0, 0, 0, 0.0f);
 		}
 		++mBlinkTimer;
 		HSD_AObj* aobj = GetAObj(mJObj);
@@ -30,7 +30,7 @@ void XObjSpiderBoss::State1(u32 frames)
 		if (end - frames <= frame) {
 			SetAnim(7, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			mBlinkTimer = 0;
-			vf12C(1, 0, 0, 0, 0.0f);
+			SetColor(1, 0, 0, 0, 0.0f);
 			mStep      = 0;
 			mTimer     = 0;
 			mPrevState = mState;

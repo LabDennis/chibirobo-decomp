@@ -146,9 +146,9 @@ void XObjActorMama::StateNone(u32 frames)
 {
 }
 
-void XObjActorMama::vf148(u32 frames)
+void XObjActorMama::UpdateAfterAnim(u32 frames)
 {
-	vf148__9XObjActorFUl(this, frames);
+	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj hand;
 	XObjChr* player = gGame.GetPlayer();
 	if (_C8C.mFlags & 0x3f) {

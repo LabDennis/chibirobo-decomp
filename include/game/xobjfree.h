@@ -20,7 +20,7 @@ public:
 	                     f32 blendRate);                               // _80
 	virtual void ResetObjectState();                                   // _98
 	virtual void UpdateObject(u32 frames);                             // _A4
-	virtual void vfC8();                                               // _C8
+	virtual void DrawScreenOverlay();                                  // _C8
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _138
 };
 #if defined(VERSION_JP)

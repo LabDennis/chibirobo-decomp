@@ -721,13 +721,13 @@ extern "C" u8 UpdateStageObjectLoading(XOBJS* list)
  * @note Address: 0x80132D08
  * @note Size: 0x94
  */
-// vf94 on every object of the 23 pools
+// ResetForNewGame on every object of the 23 pools
 extern "C" void ResetPooledObjects(XObjPool* pools)
 {
 	XObjPool* pool = pools;
 	for (s32 index = 0; index < 23; ++index, ++pool) {
 		for (s32 i = 0; i < pool->mCount; ++i) {
-			pools[index].Get(i)->vf94();
+			pools[index].Get(i)->ResetForNewGame();
 		}
 	}
 }

@@ -244,9 +244,9 @@ void XObjActorPapa::StateNone(u32 frames)
 }
 
 // Carries the selected prop at its hand joint and positions the player when held.
-void XObjActorPapa::vf148(u32 frames)
+void XObjActorPapa::UpdateAfterAnim(u32 frames)
 {
-	vf148__9XObjActorFUl(this, frames);
+	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj joint;
 	XObjChr* player = gGame.GetPlayer();
 	if (_C8C.mFlags & 0x3f) {

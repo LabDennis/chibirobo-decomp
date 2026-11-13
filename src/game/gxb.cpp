@@ -1262,8 +1262,8 @@ void Cursor::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* s
  * @note Address: 0x8002571C
  * @note Size: 0x4
  */
-// XObj's vf94
-void XObj::vf94()
+// XObj's ResetForNewGame
+void XObj::ResetForNewGame()
 {
 }
 
@@ -1345,8 +1345,8 @@ HSD_ShapeAnimJoint* XObj::GetShapeAnimation(s32 id)
  * @note Address: 0x80025A40
  * @note Size: 0x8
  */
-// XObj's vf100
-s32 XObj::vf100(s32 unused, s32 value)
+// XObj's OnPlayerContact
+s32 XObj::OnPlayerContact(s32 unused, s32 value)
 {
 	return value;
 }
@@ -1365,8 +1365,8 @@ s32 XObj::HandleEventCommand(s32 count, s32* args)
  * @note Address: 0x80025A98
  * @note Size: 0x8
  */
-// XObj's vf128
-extern "C" s32 vf128__4XObjFv(XObj* object)
+// XObj's GetEventScript
+extern "C" s32 GetEventScript__4XObjFv(XObj* object)
 {
 	return object->_80C;
 }
@@ -1578,8 +1578,8 @@ void CXObj::SetRot(const Vec& v, s32 force)
  * @note Address: 0x80026B64
  * @note Size: 0x38
  */
-// Cursor's vfAC
-void Cursor::vfAC()
+// Cursor's DrawObject
+void Cursor::DrawObject()
 {
 	if (mJObj != NULL) {
 		HSD_JObjDispAll(mJObj, NULL, 7, 0);
@@ -1929,8 +1929,8 @@ void CXObj::SetScale(const Vec& scale, s32 force)
  * @note Address: 0x80028000
  * @note Size: 0xB4
  */
-// XObjDemo's vfAC, draws through its own camera and lights when it has them
-void XObjDemo::vfAC()
+// XObjDemo's DrawObject, draws through its own camera and lights when it has them
+void XObjDemo::DrawObject()
 {
 	if (mState != 0) {
 		CCamera* camera = mArchive.mDesc[0] != NULL ? &mCamera : &gGame.mCameras[0];
@@ -2756,10 +2756,10 @@ static inline void DrawTitleCursors(Title* title, f32 halfWidth, f32 y)
 #endif
 	title->mCursor.SetPos((320.0f - halfWidth) - gap, y, 10.0f, 0);
 	title->mCursor.SetRotationY(0.2617994f, 0);
-	title->mCursor.vfAC();
+	title->mCursor.DrawObject();
 	title->mCursor.SetPos(gap + (320.0f + halfWidth), y, 10.0f, 0);
 	title->mCursor.SetRotationY(-0.2617994f, 0);
-	title->mCursor.vfAC();
+	title->mCursor.DrawObject();
 }
 
 static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32 progress, u32 normal, u32 lit)
@@ -2847,7 +2847,7 @@ extern "C" void DrawTitleScreen(Title* title)
 			gs.mCurTevStage->Invalidate();
 		if (gs.mCurChannel && !gs.mCurChannel->mDirty)
 			gs.mCurChannel->mDirty = TRUE;
-		title->mDemo.vfAC();
+		title->mDemo.DrawObject();
 	}
 	gGame.mGs.mCamera = game.vf34();
 	if (!BeginGsCamera(&game))

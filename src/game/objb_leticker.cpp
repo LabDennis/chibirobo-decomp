@@ -256,7 +256,7 @@ BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle)
 		if (sqrtf(dx * dx + dz * dz) > 100.0f + (5.0f + target->mFloorXZExtent))
 			continue;
 		CVec hit, normal;
-		u32 flags = target->vfFC(&pos, &pos, 5.5f, 6.0f, &hit, &normal, 0, 0);
+		u32 flags = target->TestFloorCollision(&pos, &pos, 5.5f, 6.0f, &hit, &normal, 0, 0);
 		if (flags & 2)
 			return FALSE;
 		if (flags & 1) {
@@ -283,10 +283,10 @@ void XObjLeticker::OnPushDisplacement(const Vec& displacement)
 		part->SetTranslateZ(mMoveTranslate.z, 0);
 	}
 	if (0.0f < PSVECMag(&displacement)) {
-		vf12C(1, 0, 0, 0, 0.5f);
+		SetColor(1, 0, 0, 0, 0.5f);
 		SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	} else {
-		vf12C(1, 0xFF, 0, 0, 1.0f);
+		SetColor(1, 0xFF, 0, 0, 1.0f);
 		SetAnim(7, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	}
 	if (mPtcl) {
@@ -299,7 +299,7 @@ void XObjLeticker::OnPushDisplacement(const Vec& displacement)
  * @note Address: 0x800E3050
  * @note Size: 0x1DC
  */
-void XObjLeticker::vf148()
+void XObjLeticker::OnUnplugged()
 {
 	if (mState != 3) {
 		gGame.mStatus.mFlags &= ~0x80ULL;
@@ -312,7 +312,7 @@ void XObjLeticker::vf148()
 		mMaxLevelProgress = 10.0f * mMaxLevel;
 		mLevelProgress    = 10.0f * mCurrentLevel;
 	}
-	vf12C(1, 0, 0, 0, 0.5f);
+	SetColor(1, 0, 0, 0, 0.5f);
 	SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
 
@@ -320,7 +320,7 @@ void XObjLeticker::vf148()
  * @note Address: 0x800E322C
  * @note Size: 0x8C4
  */
-BOOL XObjLeticker::vf134(f32 amount)
+BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 {
 	if (gGame.GetPlayer()->mMoveTranslate.y < mMoveTranslate.y - 5.0f)
 		return FALSE;
@@ -390,7 +390,7 @@ BOOL XObjLeticker::vf134(f32 amount)
 			if (mHeight == 4.0f * (s32)(mLevelProgress / 3.0f) + 0.5f) {
 				XObj* part = gGame.GetObject(mLinked[1]);
 				PlayGameSound(&gGame.mSound, 0x191, 255);
-				vf12C(1, 255, 0, 0, 0.5f);
+				SetColor(1, 255, 0, 0, 0.5f);
 				SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				part->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				PushAnim(part, 0, 0, 100);
@@ -697,7 +697,7 @@ bool IsLetickerJointClearOfObjects(XObj* obj, HSD_JObj* jobj)
 			continue;
 		}
 		CVec hit, normal;
-		if (target->vfFC(&pos, &pos, 5.0f, 12.0f, &hit, &normal, 0, 0) & 2) {
+		if (target->TestFloorCollision(&pos, &pos, 5.0f, 12.0f, &hit, &normal, 0, 0) & 2) {
 			return false;
 		}
 	}
@@ -787,7 +787,7 @@ void XObjLeticker::DrawObjectEffects()
  * @note Size: 0x324
  */
 // NONMATCHING: control flow
-void XObjLeticker::vfAC()
+void XObjLeticker::DrawObject()
 {
 	DrawWithView(0);
 	switch (mState) {
@@ -851,7 +851,7 @@ void XObjLeticker::StateCount()
 		SetFloors(part, sLetickerFloorsByLevel[mCurrentLevel]);
 	}
 	if (!(mStatus.mFlags & 0x0800000000000000ULL)) {
-		vf12C(1, 0, 0, 0, 0.5f);
+		SetColor(1, 0, 0, 0, 0.5f);
 		SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	}
 }
@@ -916,7 +916,7 @@ void XObjLeticker::StateLift()
 		base->_250[0]            = 0;
 		UpdateObjectFloorHeights(base);
 		SetFloors(this, sLetickerLiftFloors[1]);
-		vf12C(1, 0, 0, 0, 0.5f);
+		SetColor(1, 0, 0, 0, 0.5f);
 		SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	}
 }

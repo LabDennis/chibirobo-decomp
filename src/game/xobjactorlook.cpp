@@ -4,7 +4,7 @@
  * @note Address: 0x8010753C
  * @note Size: 0xC
  */
-extern "C" bool vf160__9XObjActorFv(XObjActor* actor)
+extern "C" bool IsHitPending__9XObjActorFv(XObjActor* actor)
 {
 	return (actor->_998.mFlags & 2) != 0;
 }
@@ -27,7 +27,7 @@ void XObjActor::OnHitFromPosition(const Vec& pos, f32 strength)
  * @note Address: 0x801075E8
  * @note Size: 0x14
  */
-s32 XObjActor::vf100(s32 unused, s32 value)
+s32 XObjActor::OnPlayerContact(s32 unused, s32 value)
 {
 	_998.mFlags |= 1;
 	return value;
@@ -45,16 +45,16 @@ void XObjActor::DrawDebugStatus()
  * @note Address: 0x80107600
  * @note Size: 0x20
  */
-void XObjActor::vfC8()
+void XObjActor::DrawScreenOverlay()
 {
-	XObj::vfC8();
+	XObj::DrawScreenOverlay();
 }
 
 /**
  * @note Address: 0x80107620
  * @note Size: 0x70
  */
-void XObjActor::vfAC()
+void XObjActor::DrawObject()
 {
 	if (_998.mFlags & 0x80) {
 		Push(GetHeadJoint(), 0x80, mHeadYaw);

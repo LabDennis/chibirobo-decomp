@@ -9,7 +9,7 @@ void DrawStage02ActorCounterPanel(XObjActor3* actor);
  * @note Address: 0x80109DD8
  * @note Size: 0x6C
  */
-void XObjActor3::vfC8()
+void XObjActor3::DrawScreenOverlay()
 {
 	UnkObjData* data = mAttr._00;
 	s16 type         = data != NULL ? (data != NULL ? data->_16 : 0) : -1; // todo: cleanup, probably an inline
@@ -25,7 +25,7 @@ void XObjActor3::vfC8()
  * @note Address: 0x80109E44
  * @note Size: 0x3C
  */
-void XObjActor3::vfAC()
+void XObjActor3::DrawObject()
 {
 	if (!(_B8C.mFlags & 0x10)) {
 		DrawWithView(NULL);

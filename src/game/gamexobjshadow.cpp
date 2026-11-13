@@ -195,7 +195,7 @@ void CGame::vf20()
 		if (BeginGsCamera(this)) {
 			for (i = 0; i < mDrawLists[1].mCount; i++) {
 				if (mDrawLists[1].mObjects[i]->GetCategory() == 3) {
-					mDrawLists[1].mObjects[i]->vfAC();
+					mDrawLists[1].mObjects[i]->DrawObject();
 				}
 			}
 			EndGsCamera(&mGs);
@@ -204,7 +204,7 @@ void CGame::vf20()
 		if (BeginGsCamera(this)) {
 			for (i = 0; i < mDrawLists[1].mCount; i++) {
 				if (mDrawLists[1].mObjects[i]->GetCategory() != 3) {
-					mDrawLists[1].mObjects[i]->vfAC();
+					mDrawLists[1].mObjects[i]->DrawObject();
 				}
 			}
 			CallStageModule(2, 0, NULL);
@@ -218,7 +218,7 @@ void CGame::vf20()
  * @note Address: 0x8000D02C
  * @note Size: 0x30
  */
-void XObj::vfAC()
+void XObj::DrawObject()
 {
 	DrawWithView(NULL);
 }
@@ -306,10 +306,10 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 			for (i = 0; i < game->mDrawLists[1].mCount; i++) {
 				obj = game->mDrawLists[1].mObjects[i];
 				if (obj->mStatus.mFlags & 0x40) {
-					obj->vfDC(1, 0);
-					obj->vfAC();
+					obj->SetDestinationAlpha(1, 0);
+					obj->DrawObject();
 				} else if ((targets[0] == obj || targets[1] == obj) && !(obj->mStatus.mFlags & 0x800000)) {
-					obj->vfAC();
+					obj->DrawObject();
 				}
 			}
 			EndGsCamera(&game->mGs);
@@ -319,9 +319,9 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 			obj = game->mDrawLists[1].mObjects[i];
 			if (obj->mStatus.mFlags & 0x40) {
 				if (obj->mStatus.mFlags & 0x800000) {
-					obj->vfDC(1, 8);
+					obj->SetDestinationAlpha(1, 8);
 				} else {
-					obj->vfDC(1, 4);
+					obj->SetDestinationAlpha(1, 4);
 				}
 			}
 		}

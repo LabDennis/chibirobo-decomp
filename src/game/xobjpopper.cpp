@@ -254,7 +254,7 @@ void XObjAttachment::SetParent(HSD_JObj* parent, BOOL fromPlacement)
  * @note Address: 0x800D7CC8
  * @note Size: 0x34
  */
-void XObjAttachment::vf94()
+void XObjAttachment::ResetForNewGame()
 {
 	mParent = NULL;
 	Hide();
@@ -267,7 +267,7 @@ void XObjAttachment::vf94()
 void XObjAttachment::InitializeObject(u32 id)
 {
 	InitializeObject__4XObjFUl(this, id);
-	vf94();
+	ResetForNewGame();
 }
 
 } // extern "C"

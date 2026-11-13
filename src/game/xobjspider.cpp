@@ -176,7 +176,7 @@ static inline f32 DistXZ(const Vec* first, const Vec* second)
  * @note Address: 0x800F4818
  * @note Size: 0x50
  */
-void XObjSpider::vf94()
+void XObjSpider::ResetForNewGame()
 {
 	ResetSpiderState(this);
 	SetState(0);
@@ -447,7 +447,7 @@ void XObjSpider::UpdateObject(u32 frames)
  * @note Address: 0x800F3184
  * @note Size: 0x5C
  */
-void XObjSpider::vfAC()
+void XObjSpider::DrawObject()
 {
 	DrawWithView(NULL);
 	bool sideways = false;
@@ -511,7 +511,7 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
  * @note Address: 0x800F2E40
  * @note Size: 0x4
  */
-void XObjSpider::vfC8()
+void XObjSpider::DrawScreenOverlay()
 {
 }
 
@@ -709,7 +709,7 @@ void XObjSpider::OnHitFromPosition(const Vec& from, f32 strength)
  * @note Address: 0x800F2350
  * @note Size: 0x14
  */
-s32 XObjSpider::vf100(s32 unused, s32 value)
+s32 XObjSpider::OnPlayerContact(s32 unused, s32 value)
 {
 	mFlags.mFlags |= 1;
 	return value;
@@ -945,14 +945,14 @@ extern "C" void UpdateSpiderHitReaction(XObjSpider* spider, u32 frames)
 		break;
 	case 1:
 		if (spider->mCounter % 30 < 15) {
-			spider->vf12C(1, 0x80, 0, 0, 0.0f);
+			spider->SetColor(1, 0x80, 0, 0, 0.0f);
 		} else {
-			spider->vf12C(1, 0, 0, 0, 0.0f);
+			spider->SetColor(1, 0, 0, 0, 0.0f);
 		}
 		spider->mHitTimer++;
 		if (spider->mHitTimer > 20) {
 			spider->mFlags.mFlags &= ~0x10;
-			spider->vf12C(1, 0, 0, 0, 0.0f);
+			spider->SetColor(1, 0, 0, 0, 0.0f);
 			spider->mHitTimer = 0;
 			spider->mHitState = 0;
 		}
@@ -1155,9 +1155,9 @@ void XObjSpider::State3(u32 frames)
 {
 	mCounter++;
 	if (mCounter % 30 < 15) {
-		vf12C(1, 0, 0x80, 0, 0.0f);
+		SetColor(1, 0, 0x80, 0, 0.0f);
 	} else {
-		vf12C(1, 0, 0, 0, 0.0f);
+		SetColor(1, 0, 0, 0, 0.0f);
 	}
 	Vec pos;
 	switch (mPhase) {

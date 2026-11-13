@@ -14,7 +14,7 @@ static inline BOOL AnimDone(HSD_JObj* joint)
 // todo: cleanup, game/xobjfreeevent.cpp and game/xobjdust.cpp have the same
 static inline void TriggerEvent(XObj* object, u32 first, u32 second)
 {
-	const void* script = object->vf128();
+	const void* script = object->GetEventScript();
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
 		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)object, first, second);
 }

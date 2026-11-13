@@ -59,25 +59,25 @@ public:
 
 	virtual ~XObjActor() { }
 	virtual void InitializeObject(u32 id);
-	virtual void vf94();
+	virtual void ResetForNewGame();
 	virtual void ResetObjectState();
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);
 	virtual void UpdateObject(u32 frames);
-	virtual void vfAC();
-	virtual void vfC8();
+	virtual void DrawObject();
+	virtual void DrawScreenOverlay();
 	virtual void DrawDebugStatus();
 	virtual Vec GetCameraTarget();
-	virtual s32 vf100(s32 unused, s32 value);
+	virtual s32 OnPlayerContact(s32 unused, s32 value);
 	virtual s32 HandleEventCommand(s32 count, s32* args);
 	virtual void OnPushDisplacement(const Vec& delta);
 	virtual void OnHitFromPosition(const Vec& position, f32 strength);
-	virtual void vf148(u32 frames);                    // _148, the kind's own update
+	virtual void UpdateAfterAnim(u32 frames);          // _148, after the animation step: head look, held props, attached parts
 	virtual void RunStateHandler(u32 frames) = 0;      // _14C, runs the subclass's mState
 	virtual void ClearStateHandler()         = 0;      // _150, clears mState
-	virtual void vf154(u32 frames);                    // _154
+	virtual void UpdateGroundMovement(u32 frames);     // _154, walks along the heading and follows the floor
 	virtual void ProcessPendingEvents(u32 frames) = 0; // _158, works off the queued flags
 	virtual void ResetActorState();                    // _15C, resets the actor
-	virtual void vf160();                              // _160
+	virtual bool IsHitPending();                       // _160, a hit waits for the kind's ProcessPendingEvents
 	virtual void UpdateAnimationSounds(f32 frame);     // _164
 	virtual HSD_JObj* GetHeadJoint();                  // _168, the head joint
 	virtual CVec GetHeadWorldPosition();               // _16C, the head joint's position
@@ -123,14 +123,14 @@ public:
 	virtual ~XObjActorToy();                               // _08
 	virtual void Release();                                // _54
 	virtual void InitializeObject(u32 id);                 // _90
-	virtual void vf94();                                   // _94
+	virtual void ResetForNewGame();                        // _94
 	virtual void ResetObjectState();                       // _98
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
-	virtual void vfAC();                                   // _AC
-	virtual void vfC8();                                   // _C8
+	virtual void DrawObject();                             // _AC
+	virtual void DrawScreenOverlay();                      // _C8
 	virtual s32 HandleEventCommand(s32 count, s32* args);  // _124
 	virtual void OnPushDisplacement(const Vec& delta);     // _130
-	virtual void vf148(u32 frames);                        // _148
+	virtual void UpdateAfterAnim(u32 frames);              // _148
 	virtual void RunStateHandler(u32 frames);              // _14C
 	virtual void ClearStateHandler();                      // _150
 	virtual void ProcessPendingEvents(u32 frames);         // _158
@@ -169,7 +169,7 @@ public:
 	virtual void UpdateAnim(u32 frames);                  // _88
 	virtual void UpdateObject(u32 frames);                // _A4
 	virtual s32 HandleEventCommand(s32 count, s32* args); // _124
-	virtual void vf148(u32 frames);                       // _148
+	virtual void UpdateAfterAnim(u32 frames);             // _148
 	virtual void RunStateHandler(u32 frames);             // _14C
 	virtual void ClearStateHandler();                     // _150
 	virtual void ProcessPendingEvents(u32 frames);        // _158
@@ -205,7 +205,7 @@ public:
 	virtual ~XObjActorMama();                             // _08
 	virtual void UpdateObject(u32 frames);                // _A4
 	virtual s32 HandleEventCommand(s32 count, s32* args); // _124
-	virtual void vf148(u32 frames);                       // _148
+	virtual void UpdateAfterAnim(u32 frames);             // _148
 	virtual void RunStateHandler(u32 frames);             // _14C
 	virtual void ClearStateHandler();                     // _150
 	virtual void ProcessPendingEvents(u32 frames);        // _158
@@ -243,7 +243,7 @@ public:
 
 	virtual ~XObjActorPapa();                             // _08
 	virtual s32 HandleEventCommand(s32 count, s32* args); // _124
-	virtual void vf148(u32 frames);                       // _148
+	virtual void UpdateAfterAnim(u32 frames);             // _148
 	virtual void RunStateHandler(u32 frames);             // _14C
 	virtual void ClearStateHandler();                     // _150
 	virtual void ProcessPendingEvents(u32 frames);        // _158
@@ -285,7 +285,7 @@ public:
 
 	virtual ~XObjActorTao();                              // _08
 	virtual s32 HandleEventCommand(s32 count, s32* args); // _124
-	virtual void vf148(u32 frames);                       // _148
+	virtual void UpdateAfterAnim(u32 frames);             // _148
 	virtual void RunStateHandler(u32 frames);             // _14C
 	virtual void ClearStateHandler();                     // _150
 	virtual void ProcessPendingEvents(u32 frames);        // _158
@@ -326,7 +326,7 @@ public:
 	virtual void UpdateObject(u32 frames);                // _A4
 	virtual Vec GetCameraTarget();                        // _EC
 	virtual s32 HandleEventCommand(s32 count, s32* args); // _124
-	virtual void vf148(u32 frames);                       // _148
+	virtual void UpdateAfterAnim(u32 frames);             // _148
 	virtual void RunStateHandler(u32 frames);             // _14C
 	virtual void ClearStateHandler();                     // _150
 	virtual void ProcessPendingEvents(u32 frames);        // _158
@@ -345,7 +345,7 @@ STATIC_ASSERT(sizeof(XObjActorDeca) == 0xCA8);
 
 // XObjActor's own virtuals, the ones the subclasses call through to
 extern "C" {
-void vf148__9XObjActorFUl(XObjActor* object, u32 frames);                                  // vf148
+void UpdateAfterAnim__9XObjActorFUl(XObjActor* object, u32 frames);                        // UpdateAfterAnim
 BOOL LoadFromPlacement__9XObjActorFRC9CoordInfo(XObjActor* object, const CoordInfo& info); // LoadFromPlacement
 void ResetObjectState__9XObjActorFv(XObjActor* object);                                    // ResetObjectState
 void InitializeObject__9XObjActorFUl(XObjActor* object, u32 id);                           // InitializeObject
@@ -466,12 +466,12 @@ public:
 	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
 	                     f32 blendRate);
 	virtual void InitializeObject(u32 id);
-	virtual void vf94();
+	virtual void ResetForNewGame();
 	virtual void ResetObjectState();
 	virtual void UpdateObject(u32 frames);
-	virtual void vfAC();
+	virtual void DrawObject();
 	virtual void DrawObjectEffects();
-	virtual void vfC8();
+	virtual void DrawScreenOverlay();
 	virtual void DrawDebugStatus();
 	virtual s32 HandleEventCommand(s32 count, s32* args);
 	virtual void OnHitFromPosition(const Vec& position, f32 strength);

@@ -101,9 +101,9 @@ ActorToyAnimationData gActorToyAnimationData = {
  * @note Address: 0x8012214C
  * @note Size: 0x82C
  */
-void XObjActorToy::vfAC()
+void XObjActorToy::DrawObject()
 {
-	XObjActor::vfAC();
+	XObjActor::DrawObject();
 	if (mFirst.mStatus.mFlags & 0x10000) {
 		mFirst.CJObj::SetTranslate(GetTranslateX(), GetTranslateY(), GetTranslateZ(), 1);
 		mFirst.CJObj::SetScale(GetScaleX(), GetScaleY(), GetScaleZ(), 1);
@@ -113,7 +113,7 @@ void XObjActorToy::vfAC()
 		} else {
 			HSD_JObjClearFlags(mFirst.mJObj, 8);
 		}
-		mFirst.vfAC();
+		mFirst.DrawObject();
 	}
 	if (mSecond.mStatus.mFlags & 0x10000) {
 		mSecond.CJObj::SetTranslate(GetTranslateX(), GetTranslateY(), GetTranslateZ(), 1);
@@ -124,7 +124,7 @@ void XObjActorToy::vfAC()
 		} else {
 			HSD_JObjClearFlags(mSecond.mJObj, 8);
 		}
-		mSecond.vfAC();
+		mSecond.DrawObject();
 	}
 }
 
@@ -230,13 +230,13 @@ void XObjActorToy::ResetObjectState()
  * @note Address: 0x80122D38
  * @note Size: 0x60
  */
-void XObjActorToy::vf94()
+void XObjActorToy::ResetForNewGame()
 {
-	XObjActor::vf94();
+	XObjActor::ResetForNewGame();
 	mLoad = 0;
 	_1F90 = 0;
-	mFirst.vf94();
-	mSecond.vf94();
+	mFirst.ResetForNewGame();
+	mSecond.ResetForNewGame();
 }
 
 /**

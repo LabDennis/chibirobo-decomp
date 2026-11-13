@@ -27,7 +27,7 @@ static inline void ResetRingMode(OctaMenu& ring)
  * @note Size: 0x338
  */
 // NONMATCHING: retail writes gPlayerSuitChangeEffect without the extra compare/branch this source produces
-void XObjChr::vf94()
+void XObjChr::ResetForNewGame()
 {
 	ResetPlayerStats(&mParams);
 	mAttachment           = 0;
@@ -36,14 +36,14 @@ void XObjChr::vf94()
 	mToolActionType       = gCmdLineArgs.mToolActionType;
 	SetPlayerPopperMountHidden(this, FALSE);
 	InitializePlayerLiftAction(&mLift, this);
-	mPlug.vf94();
-	mCopterObj.vf94();
-	mPopperObj.vf94();
-	mRadarObj.vf94();
-	mOXObj.vf94();
+	mPlug.ResetForNewGame();
+	mCopterObj.ResetForNewGame();
+	mPopperObj.ResetForNewGame();
+	mRadarObj.ResetForNewGame();
+	mOXObj.ResetForNewGame();
 	mSuits.mLoadStep = mSuits.mChangeStep = mSuits.mRequested = mSuits.mCurrent = mSuits.mSpecial = 0;
 	for (s32 i = 0; i < 9; ++i)
-		mSuits.mObjects[i].vf94();
+		mSuits.mObjects[i].ResetForNewGame();
 	ApplyPlayerSuit(this);
 	mPad.mReset = TRUE;
 	RefreshAttachmentMenuEntries(&mAttachments);
@@ -155,7 +155,7 @@ void XObjChr::InitializeObject(u32 id)
 		mSuits.mJoints[i] = NULL;
 	}
 	mPad.Init(0);
-	vf94();
+	ResetForNewGame();
 	mAttachmentAnim.Clear();
 	mSuitAnim.Clear();
 }

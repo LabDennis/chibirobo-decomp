@@ -18,7 +18,7 @@ static inline bool IsCoinItemInRange(const XObjCoin* coin, s32 first, s32 end)
  * @note Address: 0x800E1440
  * @note Size: 0x540
  */
-s32 XObjCoin::vf100(s32 unused, s32 value)
+s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 {
 	if ((value & 3U) == 1)
 		return value;
@@ -26,8 +26,8 @@ s32 XObjCoin::vf100(s32 unused, s32 value)
 		return 0;
 
 	XObjChr* player = gGame.GetPlayer();
-	player->vf12C(1, 0, 120, 120, 0.0f);
-	player->vf12C(1, 0, 0, 0, 0.2f);
+	player->SetColor(1, 0, 120, 120, 0.0f);
+	player->SetColor(1, 0, 0, 0, 0.2f);
 	player->mFallDistance = 0.0f;
 	mStatus.mFlags |= 0x4000000000000000ULL;
 	SetFlag();

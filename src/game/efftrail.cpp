@@ -433,7 +433,7 @@ static inline void DrawOXModel(XObj& model, u32 diffuse, u32 ambient, f32& alpha
 	f32* args[] = { (f32*)&diffuse, (f32*)&ambient, &alpha };
 	if (model.mJObj)
 		HSD_JObjWalkTree(model.mJObj, SetJointMaterialColorsAndAlpha, args);
-	model.vfAC();
+	model.DrawObject();
 	EndGsCamera(&gGame.mGs);
 	CBase* game       = &gGame;
 	gGame.mGs.mCamera = game->vf34();
@@ -476,12 +476,12 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		s32 kind = (menu->mCrossMask & (1 << i)) != 0;
 
 		if (i == menu->mSelectedIndex) {
-			menu->mMark[kind].mObj.vf12C(0, 255, 255, 255, 0);
+			menu->mMark[kind].mObj.SetColor(0, 255, 255, 255, 0);
 			u8 pulse = (s32)(64.0f * (0.5f * (f32)sin(1.2f * mark.mSpin) + 0.5f));
-			menu->mMark[kind].mObj.vf12C(1, pulse, pulse, pulse, 0);
+			menu->mMark[kind].mObj.SetColor(1, pulse, pulse, pulse, 0);
 		} else {
-			menu->mMark[kind].mObj.vf12C(0, 175, 175, 175, 0);
-			menu->mMark[kind].mObj.vf12C(1, 0, 0, 0, 0);
+			menu->mMark[kind].mObj.SetColor(0, 175, 175, 175, 0);
+			menu->mMark[kind].mObj.SetColor(1, 0, 0, 0, 0);
 		}
 		XObj& model = menu->mMark[kind].mObj;
 		model.UpdateObject(1);

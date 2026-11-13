@@ -1601,9 +1601,9 @@ extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
  * @note Size: 0x220
  */
 // NONMATCHING: regalloc
-void XObjActorToy::vf148(u32 frames)
+void XObjActorToy::UpdateAfterAnim(u32 frames)
 {
-	vf148__9XObjActorFUl(this, frames);
+	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	switch (GetKind()) {
 	case 0xF:
 		UpdateToy0FCarriedObjects(this, frames);

@@ -20,7 +20,7 @@ static inline void SetTargetPitch(XObjActor* actor, const CVec& target, const CV
  * @note Address: 0x80107750
  * @note Size: 0x690
  */
-void XObjActor::vf148(u32 frames)
+void XObjActor::UpdateAfterAnim(u32 frames)
 {
 	if (_998.mFlags & 0x80) {
 		switch (mLookMode) {

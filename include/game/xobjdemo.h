@@ -22,7 +22,7 @@ public:
 	virtual void ResetObjectState();
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);
 	virtual void UpdateObject(u32 frames);
-	virtual void vfAC();
+	virtual void DrawObject();
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(XObjDemo) == 0x25F8);

@@ -302,9 +302,9 @@ void XObjActorTao::StateNone(u32 frames)
 {
 }
 
-void XObjActorTao::vf148(u32 frames)
+void XObjActorTao::UpdateAfterAnim(u32 frames)
 {
-	vf148__9XObjActorFUl(this, frames);
+	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj joint;
 	if (_C8C.mFlags & 0x2f) {
 		s32 mouth[6] = { 0, 0, 0, 0, 0, 0 };

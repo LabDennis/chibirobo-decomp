@@ -33,7 +33,7 @@ public:
 	virtual void InitializeObject(u32 id);                 // _90
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
 	virtual void UpdateObject(u32 frames);                 // _A4
-	virtual void vfAC();                                   // _AC
+	virtual void DrawObject();                             // _AC
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(Cursor) == 0x978);

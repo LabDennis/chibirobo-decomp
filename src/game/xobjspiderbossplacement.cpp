@@ -11,7 +11,7 @@ Vec gSpiderBossPosition, gSpiderBossScale, gSpiderBossRotation;
 // split unit lacks, so every load from them has another offset; the code is otherwise the same
 extern "C" void ApplySpiderBossPlacement(XObjSpiderBoss* spider)
 {
-	spider->vf12C(1, 0, 0, 0, 0.0f);
+	spider->SetColor(1, 0, 0, 0, 0.0f);
 	spider->mMoveTranslate.x = PlacementPosition(spider->mCoord, gSpiderBossPosition).x;
 	spider->mMoveTranslate.y = PlacementPosition(spider->mCoord, gSpiderBossPosition).y;
 	spider->mMoveTranslate.z = PlacementPosition(spider->mCoord, gSpiderBossPosition).z;

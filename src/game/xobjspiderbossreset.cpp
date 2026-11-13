@@ -15,7 +15,7 @@ static inline void ResetState(XObjSpiderBoss* spider)
  * @note Address: 0x801068D4
  * @note Size: 0x50
  */
-void XObjSpiderBoss::vf94()
+void XObjSpiderBoss::ResetForNewGame()
 {
 	ResetState(this);
 }

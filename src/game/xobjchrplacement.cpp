@@ -162,9 +162,9 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 	case 8:
 		++mLoadStep;
 	case 9:
-		vfD8(flags);
+		ApplyMaterialPresets(flags);
 		if ((mStatus.mFlags & 0x01000000) && IsStageDataLoaded())
-			vfE0(GetEnvData()[9] / 100.0f);
+			EnableLighting(GetEnvData()[9] / 100.0f);
 		++mLoadStep;
 	case 10: {
 		CTpl& tpl               = gGame.mTpl;

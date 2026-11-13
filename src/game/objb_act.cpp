@@ -196,14 +196,14 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			} else {
 				SetLiftActionState(act, 5);
 			}
-			if (act->mTarget && act->mTarget->vf128() && (act->mTarget->mStatus.mFlags & 0x10000000000ULL)) {
+			if (act->mTarget && act->mTarget->GetEventScript() && (act->mTarget->mStatus.mFlags & 0x10000000000ULL)) {
 				XObj* target = act->mTarget;
-				TryStartObjectEvent(&gGame, GetGameObjectByIndex(&gGame, placement)->vf128(), target, -1, -1);
+				TryStartObjectEvent(&gGame, GetGameObjectByIndex(&gGame, placement)->GetEventScript(), target, -1, -1);
 			}
 		} else if (aobj->flags & 0x44000000) {
 			HeldAnim(act->mOwner, 8);
 			if (act->mTarget) {
-				if (act->mTarget->vf128())
+				if (act->mTarget->GetEventScript())
 					SetLiftActionState(act, 5);
 				else if ((s16)GetObjectPoolId(act->mTarget) == 8 && !(act->mTarget->mStatus.mFlags & 0x400000000000ULL))
 					SetLiftActionState(act, 19);
@@ -308,7 +308,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 				SetPlayerStandAnim(act->mOwner, 17, 0);
 				SetLiftActionState(act, 0);
 				if (act->mPlugTarget)
-					act->mPlugTarget->vf134(0);
+					act->mPlugTarget->ReceivePlugPower(0);
 			} else if (IsLiftActionState(act, 8)) {
 				SetLiftActionState(act, 12);
 				act->_2C = 0.2f * FRAME_RATE;
@@ -340,7 +340,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		act->_2C -= frames;
 		if (act->_2C <= 0) {
 			act->_2C = 0;
-			if (act->mPlugTarget && !act->mPlugTarget->vf134(0)) {
+			if (act->mPlugTarget && !act->mPlugTarget->ReceivePlugPower(0)) {
 				SetLiftActionState(act, 14);
 				break;
 			}
@@ -368,7 +368,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		}
 		if (act->mPlugTarget) {
 			act->mBatteryCost = (f32)frames * (((s32)GetPlayerActionParameter(9) / 100.0f) / FRAME_RATE);
-			if (!act->mPlugTarget->vf134(act->mBatteryCost)) {
+			if (!act->mPlugTarget->ReceivePlugPower(act->mBatteryCost)) {
 				act->mBatteryCost = 0;
 				SetLiftActionState(act, 14);
 			}
@@ -382,7 +382,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			SetLiftTargetState(act, 10);
 			gGame.mSubwin.mEnabled = FALSE;
 			if (act->mPlugTarget && GetObjData(&act->mPlugTarget->mCoord)->_14 == 9)
-				((XObjLeticker*)act->mPlugTarget)->vf148();
+				((XObjLeticker*)act->mPlugTarget)->OnUnplugged();
 		} else if (aobj->flags & 0x44000000) {
 			HeldAnim(act->mOwner, 8);
 			SetLiftActionState(act, 4);
@@ -1302,8 +1302,8 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				RopeAnim(act, 0x91, 1);
 				act->mState = 11;
 				ApplyPlayerJumpStrength(&act->mOwner->mJump, act->mOwner->mFallDistance);
-				act->mOwner->vf12C(1, 255, 0, 0, 0);
-				act->mOwner->vf12C(1, 0, 0, 0, .3f);
+				act->mOwner->SetColor(1, 255, 0, 0, 0);
+				act->mOwner->SetColor(1, 0, 0, 0, .3f);
 				StartScreenFade(&gGame.mScrnTex.mColor, 255, 0, 0, 0, 100, 100, 200, 0, .3f);
 			} else {
 				RopeAnim(act, 0x59, 1);
@@ -1726,8 +1726,8 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mOwner->SetAnim(0x8E, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 				act->mOwner->mJump.mState = 5;
 				ApplyPlayerJumpStrength(&act->mOwner->mJump, act->mOwner->mFallDistance);
-				act->mOwner->vf12C(1, 0xFF, 0, 0, 0.0f);
-				act->mOwner->vf12C(1, 0, 0, 0, 0.3f);
+				act->mOwner->SetColor(1, 0xFF, 0, 0, 0.0f);
+				act->mOwner->SetColor(1, 0, 0, 0, 0.3f);
 				StartScreenFade(&gGame.mScrnTex.mColor, 0xFF, 0, 0, 0, 100, 100, 200, 0, 0.3f);
 			} else {
 				act->mOwner->SetAnim(0x75, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
@@ -2069,8 +2069,8 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 				HangAnim(act, 0x8e);
 				act->mOwner->mJump.mState = 5;
 				ApplyPlayerJumpStrength(&act->mOwner->mJump, act->mOwner->mFallDistance);
-				act->mOwner->vf12C(1, 255, 0, 0, 0);
-				act->mOwner->vf12C(1, 0, 0, 0, .3f);
+				act->mOwner->SetColor(1, 255, 0, 0, 0);
+				act->mOwner->SetColor(1, 0, 0, 0, .3f);
 				StartScreenFade(&gGame.mScrnTex.mColor, 255, 0, 0, 0, 100, 100, 200, 0, .3f);
 			} else {
 				HangAnim(act, 0x1b);
@@ -2234,8 +2234,8 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				JumpAnim(act, 0x8e);
 				act->mState = 5;
 				ApplyPlayerJumpStrength(act, act->mOwner->mFallDistance);
-				act->mOwner->vf12C(1, 255, 0, 0, 0);
-				act->mOwner->vf12C(1, 0, 0, 0, .3f);
+				act->mOwner->SetColor(1, 255, 0, 0, 0);
+				act->mOwner->SetColor(1, 0, 0, 0, .3f);
 				StartScreenFade(&gGame.mScrnTex.mColor, 255, 0, 0, 0, 100, 100, 200, 0, .3f);
 			} else if (act->mOwner->mFallDistance > 11.5f) {
 				JumpAnim(act, 0x1e);
@@ -2380,7 +2380,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 						if (sqrtf(dx * dx + dz * dz) > 100.f + (radius + obj->mFloorXZExtent))
 							continue;
 						CVec push, contact, from(x, y, z), to(x, y, z);
-						if ((obj->vfFC(&from, &to, radius, height, &push, &contact, 0, 0) & 3) == 3) {
+						if ((obj->TestFloorCollision(&from, &to, radius, height, &push, &contact, 0, 0) & 3) == 3) {
 							act->mForward = 0;
 							act->mRise *= .8f;
 							break;
@@ -2542,7 +2542,7 @@ void SetLiftPlugConnection(XActLift* act, u32 value, BOOL apply)
 static inline bool CarriedObjectTouches(XObj* object, const Vec& pos, f32 radius, f32 height, CVec& hit, CVec& contact)
 {
 	CVec from(pos), to(pos);
-	return (object->vfFC(&from, &to, radius, height, &hit, &contact, 0, 0) & 3) == 3;
+	return (object->TestFloorCollision(&from, &to, radius, height, &hit, &contact, 0, 0) & 3) == 3;
 }
 
 /**
@@ -2564,7 +2564,7 @@ BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 h
 			continue;
 		CVec hit, contact;
 		if (checkItem && (object->mStatus.mFlags & 0x40000000000ULL)) {
-			if (CarriedObjectTouches(object, *pos, radius, height, hit, contact) && object->vf140(pos, item)) {
+			if (CarriedObjectTouches(object, *pos, radius, height, hit, contact) && object->OnItemUsed(pos, item)) {
 				found = TRUE;
 				if (result)
 					*result = contact;
@@ -2572,7 +2572,7 @@ BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 h
 		}
 		if (checkEvent && (object->mStatus.mFlags & 0x80000000000ULL)) {
 			if (CarriedObjectTouches(object, *pos, radius, height, hit, contact)) {
-				object->vf13C(&contact, act->mOwner->_158A8, act->mOwner->mItemTintWord);
+				object->OnSquirterHit(&contact, act->mOwner->_158A8, act->mOwner->mItemTintWord);
 				found = TRUE;
 				if (result)
 					*result = contact;
@@ -2580,7 +2580,7 @@ BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 h
 		} else if (checkOthers && !(object->mStatus.mFlags & 0x2000000000000ULL) && !(object->mStatus.mFlags & 0x100000)
 		           && object != act->mTarget && object != act->mOwner) {
 			if (CarriedObjectTouches(object, *pos, radius, height, hit, contact)) {
-				object->vf13C(&contact, act->mOwner->_158A8, act->mOwner->mItemTintWord);
+				object->OnSquirterHit(&contact, act->mOwner->_158A8, act->mOwner->mItemTintWord);
 				found = TRUE;
 				if (result)
 					*result = contact;
@@ -2731,7 +2731,7 @@ void UpdateHeldObject(XActLift* act, s32)
 	case 4: {
 		if (obj->mStatus.mFlags & 0x800000) {
 			obj->mStatus.mFlags &= ~0x800000ULL;
-			obj->vfDC(FALSE, 0);
+			obj->SetDestinationAlpha(FALSE, 0);
 		}
 		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
 			HSD_JObj* root = obj->mJObj;
@@ -2777,7 +2777,8 @@ void UpdateHeldObject(XActLift* act, s32)
 		XObjChr* owner = act->mOwner;
 		f32 radius     = GetFirstFloorCollisionRadius(owner);
 		f32 height     = owner->GetCollisionHeight();
-		if (obj->vfFC(&act->mOwner->mMoveTranslate, &act->mOwner->mMoveTranslate, radius, height, &push, &contact, 0, 0) & 1) {
+		if (obj->TestFloorCollision(&act->mOwner->mMoveTranslate, &act->mOwner->mMoveTranslate, radius, height, &push, &contact, 0, 0)
+		    & 1) {
 			f32 distance = PSVECDistance(&act->mOwner->mMoveTranslate, &contact);
 			obj->SetTranslateX(distance * (f32)sin(act->mOwner->mMoveRotate.y) + obj->mMoveTranslate.x, 0);
 			obj->SetTranslateZ(distance * (f32)cos(act->mOwner->mMoveRotate.y) + obj->mMoveTranslate.z, 0);
@@ -3480,7 +3481,7 @@ Vec GetTargetFloorPosition(XAction* act)
  */
 static inline u32 CheckHangClearance(XObj* obj, const CVec& from, const CVec& to, f32 radius, f32 height, Vec& push, Vec& contact)
 {
-	return obj->vfFC(&from, &to, radius, height, &push, &contact, 0, 0);
+	return obj->TestFloorCollision(&from, &to, radius, height, &push, &contact, 0, 0);
 }
 
 void TryLeaveHang(XActHang* act)

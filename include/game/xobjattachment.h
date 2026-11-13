@@ -105,18 +105,18 @@ public:
 
 	XObjPlug();
 
-	virtual ~XObjPlug();                                   // _08 (weak)
-	virtual void Release();                                // _54
-	virtual void InitializeObject(u32 id);                 // _90
-	virtual void vf94();                                   // _94
-	virtual void ResetObjectState();                       // _98
-	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
-	virtual void UpdateObject(u32 frames);                 // _A4
-	virtual void DrawWithView(Mtx view);                   // _B0
-	virtual void DrawReflection(Mtx view);                 // _B4
-	virtual void DrawGroundShadow();                       // _B8
-	virtual void DrawObjectEffects();                      // _C0
-	virtual void vfDC(BOOL enabled, u8 value);             // _DC
+	virtual ~XObjPlug();                                      // _08 (weak)
+	virtual void Release();                                   // _54
+	virtual void InitializeObject(u32 id);                    // _90
+	virtual void ResetForNewGame();                           // _94
+	virtual void ResetObjectState();                          // _98
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);    // _9C
+	virtual void UpdateObject(u32 frames);                    // _A4
+	virtual void DrawWithView(Mtx view);                      // _B0
+	virtual void DrawReflection(Mtx view);                    // _B4
+	virtual void DrawGroundShadow();                          // _B8
+	virtual void DrawObjectEffects();                         // _C0
+	virtual void SetDestinationAlpha(BOOL enabled, u8 value); // _DC
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(XObjPlug) == 0x16C0);
@@ -135,9 +135,9 @@ public:
 	virtual ~XObjAttachment() { }                                 // _08 (weak)
 	virtual void Release();                                       // _54
 	virtual void InitializeObject(u32 id);                        // _90
-	virtual void vf94();                                          // _94
+	virtual void ResetForNewGame();                               // _94
 	virtual void ResetObjectState();                              // _98
-	virtual void vfAC();                                          // _AC
+	virtual void DrawObject();                                    // _AC
 	virtual void DrawWithView(Mtx view);                          // _B0
 	virtual void Show();                                          // _148
 	virtual void Hide();                                          // _14C

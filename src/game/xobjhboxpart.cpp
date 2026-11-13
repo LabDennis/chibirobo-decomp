@@ -59,9 +59,9 @@ void XObjHBox::ResetObjectState()
  * @note Address: 0x800E1138
  * @note Size: 0x30
  */
-void XObjHBox::vf94()
+void XObjHBox::ResetForNewGame()
 {
-	mPart.mObj.vf94();
+	mPart.mObj.ResetForNewGame();
 }
 
 /**

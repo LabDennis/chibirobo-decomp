@@ -8,7 +8,7 @@
 // todo: cleanup
 static inline void TriggerEvent(XObj* object, u32 first, u32 second)
 {
-	const void* script = object->vf128();
+	const void* script = object->GetEventScript();
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
 		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)object, first, second);
 }
@@ -41,12 +41,12 @@ void XObjFree::ResetObjectState()
 	}
 }
 
-// XObjDust::vf140
+// XObjDust::OnItemUsed
 /**
  * @note Address: 0x800DE14C
  * @note Size: 0x2D8
  */
-BOOL XObjDust::vf140(const Vec* position, s32 kind)
+BOOL XObjDust::OnItemUsed(const Vec* position, s32 kind)
 {
 	if ((GetObjFlags() & 2) && kind == 16) {
 		if (GetObjFlags() & 0x10) {

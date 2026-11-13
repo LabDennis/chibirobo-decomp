@@ -59,7 +59,7 @@ extern "C" void ResetSpiderBossState(XObj* object)
 		spider->_A10 = value;
 	}
 	spider->_A1C = 0.0f;
-	spider->vf12C(1, 0, 0, 0, 0.0f);
+	spider->SetColor(1, 0, 0, 0, 0.0f);
 	spider->_A48                 = 0.0f;
 	spider->mEscapeInputStrength = 0.0f;
 	spider->mDrainTimer          = 0;

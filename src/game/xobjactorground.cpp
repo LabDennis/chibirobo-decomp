@@ -21,7 +21,7 @@ static inline void GetGroundPosition(XObj* object, Vec* out)
  * @note Address: 0x80106CA4
  * @note Size: 0x3C8
  */
-void XObjActor::vf154(u32 frames)
+void XObjActor::UpdateGroundMovement(u32 frames)
 {
 	// Retail uses the origin for the floor probe before filling it with the actor's final position.
 	Vec pos = { 0.0f, 0.0f, 0.0f };

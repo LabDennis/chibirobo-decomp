@@ -514,7 +514,7 @@ BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
  * @note Address: 0x8010AD00
  * @note Size: 0x20
  */
-void XObjActor3::vf94()
+void XObjActor3::ResetForNewGame()
 {
 	ResetActor3Fields(this);
 }
@@ -578,7 +578,7 @@ extern "C" void ResetActor3Fields(XObjActor3* actor)
 		gSpiderBossVolleySlot          = 0;
 		gActor3Kind15ActivationCounter = 0;
 	}
-	actor->vf12C(1, 0, 0, 0, 0.0f);
+	actor->SetColor(1, 0, 0, 0, 0.0f);
 	actor->_BDC.x             = 0.0f;
 	actor->_BDC.y             = 0.0f;
 	actor->_BDC.z             = 0.0f;
@@ -1048,15 +1048,15 @@ void XObjActor3::Kind11(u32 frames)
 			HSD_JObjCopyMtx(jobj, matrix);
 			if (boss->mBlinkTimer) {
 				if (boss->mBlinkTimer % 30 < 15)
-					vf12C(1, 128, 0, 0, 0);
+					SetColor(1, 128, 0, 0, 0);
 				else
-					vf12C(1, 0, 0, 0, 0);
+					SetColor(1, 0, 0, 0, 0);
 			}
 		}
 		break;
 	}
 	case 2: {
-		vf12C(1, 0, 0, 0, 0);
+		SetColor(1, 0, 0, 0, 0);
 		_B78 -= .09f * frames;
 		mMoveTranslate.y += _B78;
 		f32 floor = 0;
@@ -1279,15 +1279,15 @@ void XObjActor3::Kind12(u32 frames)
 			HSD_JObjCopyMtx(jobj, matrix);
 			if (boss->mBlinkTimer) {
 				if (boss->mBlinkTimer % 30 < 15)
-					vf12C(1, 128, 0, 0, 0.0f);
+					SetColor(1, 128, 0, 0, 0.0f);
 				else
-					vf12C(1, 0, 0, 0, 0.0f);
+					SetColor(1, 0, 0, 0, 0.0f);
 			}
 		}
 		break;
 	}
 	case 2: {
-		vf12C(1, 0, 0, 0, 0.0f);
+		SetColor(1, 0, 0, 0, 0.0f);
 		f32 end = GetAnimEndFrame(mJObj);
 		if (end - frames <= GetAnimFrame(mJObj)) {
 			mStatus.mFlags &= ~0x10000ULL;

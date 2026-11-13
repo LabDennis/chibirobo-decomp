@@ -151,13 +151,13 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 		break;
 	case 1:
 		if (spider->mBlinkTimer % 30 < 15)
-			spider->vf12C(1, 0x80, 0, 0, 0.0f);
+			spider->SetColor(1, 0x80, 0, 0, 0.0f);
 		else
-			spider->vf12C(1, 0, 0, 0, 0.0f);
+			spider->SetColor(1, 0, 0, 0, 0.0f);
 		spider->mBlinkTimer++;
 		if (spider->mBlinkTimer > 20) {
 			spider->mSpiderStatus.mFlags &= ~0x10;
-			spider->vf12C(1, 0, 0, 0, 0.0f);
+			spider->SetColor(1, 0, 0, 0, 0.0f);
 			spider->mBlinkTimer = 0;
 			spider->mDamageStep = 0;
 		}
@@ -208,10 +208,10 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 			gSpiderDrainFlashTimers[1]++;
 			if (gSpiderDrainFlashTimers[0] > 0) {
 				f32 red = 128.0f * (gSpiderDrainFlashTimers[0] / FRAME_RATE);
-				player->vf12C(1, red, 0, 0, 0.0f);
+				player->SetColor(1, red, 0, 0, 0.0f);
 				StartScreenFade(&gGame.mScrnTex.mColor, red, 0, 0, 0, red, 0, 0, 0, 0.0f);
 			} else {
-				player->vf12C(1, 0, 0, 0, 0.0f);
+				player->SetColor(1, 0, 0, 0, 0.0f);
 				StartScreenFade(&gGame.mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
 			}
 		}

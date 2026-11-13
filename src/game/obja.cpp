@@ -406,7 +406,7 @@ static inline void StoreSweepContact(const Vec* from, const Vec* to, Vec* contac
  * @note Address: 0x8008ED50
  * @note Size: 0x1498
  */
-u32 XObj::vfFC(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 floorCursor, s32 flags)
+u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 floorCursor, s32 flags)
 {
 	s32* cursor = (s32*)floorCursor;
 	if (!(mStatus.mFlags & 0x0200000000000000ULL)) {
@@ -579,13 +579,13 @@ u32 XObj::vfFC(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push
 			    && player->mAttachmentRequest < 0
 			    && (!(gGame.mStatus.mFlags & 0x40000000) || !IsPlayerStopped(player) || !player->_158A4 || (mStatus.mFlags & 0x8000))) {
 				mStatus.mFlags |= 0x8000000000000000ULL;
-				StartOrQueueEventScript(&gGame.mEvt, (u8*)vf128(), (u32)this, -1, -1);
+				StartOrQueueEventScript(&gGame.mEvt, (u8*)GetEventScript(), (u32)this, -1, -1);
 			}
 		}
 		if (flags & 1) {
 			const CVec& delta = CVec(*contact) - *from;
 			PSVECMag(push);
-			result = vf100((s32)&delta, result);
+			result = OnPlayerContact((s32)&delta, result);
 		}
 	} else
 		mStatus.mFlags &= ~0x0100000000000000ULL;
@@ -638,7 +638,7 @@ void XObj::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* sha
  * @note Address: 0x8009047C
  * @note Size: 0xEC
  */
-void XObj::vfC8()
+void XObj::DrawScreenOverlay()
 {
 	if ((mStatus.mFlags & 0x800ULL) && (mStatus.mFlags & 0x10000ULL)) {
 		HSD_JObjSetFlags(mJObj, CLASSICAL_SCALE);
@@ -654,7 +654,7 @@ void XObj::vfC8()
  * @note Address: 0x80090568
  * @note Size: 0x4
  */
-void XObj::vfC4()
+void XObj::DrawCollisionShapes()
 {
 }
 
@@ -739,7 +739,7 @@ void XObj::DrawWithView(Mtx view)
  * @note Address: 0x80090C84
  * @note Size: 0x250
  */
-void XObj::vfA8(u32 frames)
+void XObj::StepColors(u32 frames)
 {
 	if (mJObj != NULL) {
 		for (s32 i = 0; i < 2; ++i) {
@@ -760,7 +760,7 @@ void XObj::vfA8(u32 frames)
 void XObj::UpdateObject(u32 frames)
 {
 	if (mJObj != NULL) {
-		vfA8(frames);
+		StepColors(frames);
 		if (mStatus.mFlags & 0x1000000000000000ULL) {
 			if (mMoveTranslate.y + _794.y > mFloorHit.mHeight) {
 				mMoveTranslate.mTarget.y = mFloorHit.mHeight;
@@ -872,7 +872,7 @@ extern "C" void SetJointMaterialTranslucent(HSD_JObj* joint, f32** arguments, s3
  * @note Address: 0x8009146C
  * @note Size: 0x60
  */
-void XObj::vfE8()
+void XObj::SetOpaque()
 {
 	void* arguments[1] = { NULL };
 	arguments[0]       = this;
@@ -885,7 +885,7 @@ void XObj::vfE8()
  * @note Address: 0x800914CC
  * @note Size: 0x74
  */
-void XObj::vfE4(f32 alpha)
+void XObj::SetTranslucent(f32 alpha)
 {
 	void* arguments[2] = { NULL, NULL };
 	arguments[0]       = this;
@@ -929,7 +929,7 @@ extern "C" void ScaleJointMaterialDiffuse(HSD_JObj* joint, f32** arguments, s32 
  * @note Address: 0x8009172C
  * @note Size: 0x58
  */
-void XObj::vfE0(f32 factor)
+void XObj::EnableLighting(f32 factor)
 {
 	void* arguments[2] = { NULL, NULL };
 	arguments[0]       = this;
@@ -962,7 +962,7 @@ extern "C" void SetJointMaterialDestAlpha(HSD_JObj* joint, f32** arguments, s32 
  * @note Address: 0x80091834
  * @note Size: 0x54
  */
-void XObj::vfDC(BOOL enabled, u8 value)
+void XObj::SetDestinationAlpha(BOOL enabled, u8 value)
 {
 	void* arguments[2] = { NULL, NULL };
 	arguments[0]       = (void*)enabled;
@@ -971,7 +971,7 @@ void XObj::vfDC(BOOL enabled, u8 value)
 		HSD_JObjWalkTree(mJObj, SetJointMaterialDestAlpha, (f32**)arguments);
 }
 
-// joint walk callback for XObj::vfD8, the args are five on/off flags
+// joint walk callback for XObj::ApplyMaterialPresets, the args are five on/off flags
 /**
  * @note Address: 0x80091888
  * @note Size: 0x3BC

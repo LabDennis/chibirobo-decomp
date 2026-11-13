@@ -17,7 +17,7 @@ void GXProject(f32 x, f32 y, f32 z, const Mtx view, const f32* projection, const
 
 static inline const void* ObjectScript(CXObj* object)
 {
-	return ((XObj*)object)->vf128();
+	return ((XObj*)object)->GetEventScript();
 }
 
 static inline void TriggerObjectEvent(CXObj* object, u32 first, u32 second)
@@ -84,7 +84,7 @@ void CJAnim::Clear()
  * @note Address: 0x8008A530
  * @note Size: 0xD4
  */
-BOOL XObj::vf140(const Vec* position, s32 value)
+BOOL XObj::OnItemUsed(const Vec* position, s32 value)
 {
 	if (mStatus.mFlags & 0x0000040000000000ULL) {
 		if (value == 56)
@@ -102,7 +102,7 @@ BOOL XObj::vf140(const Vec* position, s32 value)
  * @note Address: 0x8008A604
  * @note Size: 0xBC
  */
-void XObj::vf13C(const Vec* contact, s32 value, s32 tint)
+void XObj::OnSquirterHit(const Vec* contact, s32 value, s32 tint)
 {
 	if (mStatus.mFlags & 0x0000080000000000ULL) {
 		const void* script = ObjectScript(this);
@@ -131,7 +131,7 @@ void XObj::OnHitFromPosition(const Vec& position, f32 strength)
  * @note Address: 0x8008A818
  * @note Size: 0x8
  */
-BOOL XObj::vf134(f32 amount)
+BOOL XObj::ReceivePlugPower(f32 amount)
 {
 	return TRUE;
 }
@@ -140,7 +140,7 @@ BOOL XObj::vf134(f32 amount)
  * @note Address: 0x8008A820
  * @note Size: 0x124
  */
-void XObj::vf12C(s32 index, u8 red, u8 green, u8 blue, f32 time)
+void XObj::SetColor(s32 index, u8 red, u8 green, u8 blue, f32 time)
 {
 	mColorStep[index].mTarget.x = red;
 	mColorStep[index].mTarget.y = green;
@@ -259,7 +259,7 @@ extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 
  * @note Address: 0x8008B0D8
  * @note Size: 0x14C
  */
-void XObj::vf120(s32 mode)
+void XObj::SetCullMode(s32 mode)
 {
 	switch (mode) {
 	case 0:
@@ -293,7 +293,7 @@ void XObj::vf120(s32 mode)
  * @note Address: 0x8008B224
  * @note Size: 0x114
  */
-extern "C" BOOL vf11C__4XObjFP7CCamera(const XObj* object, CCamera* camera)
+extern "C" BOOL IsOutsideCameraDepth__4XObjFP7CCamera(const XObj* object, CCamera* camera)
 {
 	HSD_JObj* joint = object->mJObj;
 	if (joint != NULL) {

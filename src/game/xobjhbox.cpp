@@ -54,7 +54,7 @@ s32 XObjDust::GetFlagIndex()
  * @note Address: 0x800DFB68
  * @note Size: 0x100
  */
-extern "C" u32 vf100__8XObjHBoxFll(XObjHBox* box, s32 unused, u32 flags)
+extern "C" u32 OnPlayerContact__8XObjHBoxFll(XObjHBox* box, s32 unused, u32 flags)
 {
 	if ((flags & 3) == 1)
 		return flags;
@@ -64,7 +64,7 @@ extern "C" u32 vf100__8XObjHBoxFll(XObjHBox* box, s32 unused, u32 flags)
 	box->mStatus.mFlags |= 0x4000000000000000ULL;
 	box->mPart.mHit = 1.0f;
 	PlayGameSound(&gGame.mSound, 285, 255);
-	const void* script = box->vf128();
+	const void* script = box->GetEventScript();
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
 		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)box, -1, -1);
 	}
@@ -89,7 +89,7 @@ void XObjHBox::OnHitFromPosition(const Vec& pos, f32 strength)
  * @note Address: 0x800DFD24
  * @note Size: 0x1F0
  */
-void XObjHBox::vfC8()
+void XObjHBox::DrawScreenOverlay()
 {
 	if (mRing > 0.0f) {
 		Vec pos = { 0.0f, 0.0f, 0.0f };

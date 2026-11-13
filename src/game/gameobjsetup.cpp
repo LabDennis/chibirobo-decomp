@@ -130,7 +130,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			f32 fade  = GetStageInfo()->mMirrorFade / 100.0f;
 			XObj* obj = game->mXObjs.mPools[3].First();
 			if ((obj->mStatus.mFlags & 1) && fade > 0.0f && fade < 1.0f) {
-				obj->vfE4(fade);
+				obj->SetTranslucent(fade);
 			}
 		}
 		return TRUE;

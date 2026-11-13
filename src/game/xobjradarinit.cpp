@@ -9,6 +9,6 @@
 void XObjRadar::InitializeObject(u32 id)
 {
 	InitializeObject__4XObjFUl(this, id);
-	vf94();
+	ResetForNewGame();
 	mYaw = mPitch = NAN;
 }

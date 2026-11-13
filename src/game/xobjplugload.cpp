@@ -56,12 +56,12 @@ void XObjPlug::ResetObjectState()
 	mWire.mSparkMode = -1;
 }
 
-// XObjPlug::vf94
+// XObjPlug::ResetForNewGame
 /**
  * @note Address: 0x800D9A54
  * @note Size: 0x28
  */
-void XObjPlug::vf94()
+void XObjPlug::ResetForNewGame()
 {
 	mStatus.mFlags &= ~0x0400000000000000ULL;
 }

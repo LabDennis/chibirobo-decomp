@@ -344,9 +344,9 @@ void XObjActorDeca::StateHold(u32 frames)
  * @note Address: 0x80130D18
  * @note Size: 0xD98
  */
-void XObjActorDeca::vf148(u32 frames)
+void XObjActorDeca::UpdateAfterAnim(u32 frames)
 {
-	vf148__9XObjActorFUl(this, frames);
+	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj joint;
 	XObjChr* player = gGame.GetPlayer();
 	if (_C90.mFlags & 1) {

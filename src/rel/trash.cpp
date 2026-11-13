@@ -88,51 +88,51 @@ struct TrashObj {
 	virtual void vf88();                      // _88
 	virtual void vf8C();                      // _8C
 	virtual void InitializeObject();          // _90
-	virtual void vf94();                      // _94
+	virtual void ResetForNewGame();           // _94
 	virtual void ResetObjectState();          // _98
 	virtual void LoadFromPlacement();         // _9C
 	virtual void LoadAnimationArchiveAsync(); // _A0
 	virtual void UpdateObject();              // _A4
-	virtual void vfA8();                      // _A8
-	virtual void vfAC();                      // _AC
+	virtual void StepColors();                // _A8
+	virtual void DrawObject();                // _AC
 	virtual void DrawWithView();              // _B0
 	virtual void DrawReflection();            // _B4
 	virtual void DrawGroundShadow();          // _B8
 	virtual void DrawGroundShadowAt();        // _BC
 	virtual void DrawObjectEffects();         // _C0
-	virtual void vfC4();                      // _C4
-	virtual void vfC8();                      // _C8
+	virtual void DrawCollisionShapes();       // _C4
+	virtual void DrawScreenOverlay();         // _C8
 	virtual void DrawDebugStatus();           // _CC
 	virtual void RegisterShadowObjects();     // _D0
 	virtual void ExpandShadowBounds();        // _D4
-	virtual void vfD8();                      // _D8
-	virtual void vfDC();                      // _DC
-	virtual void vfE0();                      // _E0
-	virtual void vfE4();                      // _E4
-	virtual void vfE8();                      // _E8
+	virtual void ApplyMaterialPresets();      // _D8
+	virtual void SetDestinationAlpha();       // _DC
+	virtual void EnableLighting();            // _E0
+	virtual void SetTranslucent();            // _E4
+	virtual void SetOpaque();                 // _E8
 	virtual void vfEC();                      // _EC
 	virtual void GetJointAnimation();         // _F0
 	virtual void GetMaterialAnimation();      // _F4
 	virtual void GetShapeAnimation();         // _F8
-	virtual void vfFC();                      // _FC
-	virtual void vf100();                     // _100
+	virtual void TestFloorCollision();        // _FC
+	virtual void OnPlayerContact();           // _100
 	virtual void TestFloorCrossing();         // _104
 	virtual void GetShadowRadius();           // _108
 	virtual void ProjectOffsetToScreen();     // _10C
 	virtual void GetFloorXZExtent();          // _110
 	virtual void GetCollisionHeight();        // _114
 	virtual void ProjectVisibleBounds();      // _118
-	virtual void vf11C();                     // _11C
-	virtual void vf120();                     // _120
+	virtual void IsOutsideCameraDepth();      // _11C
+	virtual void SetCullMode();               // _120
 	virtual void HandleEventCommand();        // _124
-	virtual void vf128();                     // _128
-	virtual void vf12C();                     // _12C
+	virtual void GetEventScript();            // _128
+	virtual void SetColor();                  // _12C
 	virtual void OnPushDisplacement();        // _130
-	virtual void vf134();                     // _134
+	virtual void ReceivePlugPower();          // _134
 	virtual void OnHitFromPosition();         // _138
-	virtual void vf13C();                     // _13C
-	virtual void vf140();                     // _140
-	virtual void vf144();                     // _144
+	virtual void OnSquirterHit();             // _13C
+	virtual void OnItemUsed();                // _140
+	virtual void OnMicrophonePeak();          // _144
 	virtual u32 vf148();                      // _148
 #if defined(VERSION_JP)
 	u8 _38[0xC0 - 0x38]; // _38

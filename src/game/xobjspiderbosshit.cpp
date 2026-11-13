@@ -7,7 +7,7 @@
  * @note Address: 0x801051A0
  * @note Size: 0x14
  */
-s32 XObjSpiderBoss::vf100(s32 unused, s32 value)
+s32 XObjSpiderBoss::OnPlayerContact(s32 unused, s32 value)
 {
 	mSpiderStatus.mFlags |= 1;
 	return value;

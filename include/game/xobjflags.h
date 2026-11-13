@@ -12,8 +12,8 @@ public:
 
 	XObjFlags();
 
-	virtual void vf94();        // _94 (weak), clears every flag
-	virtual s32 GetFlagIndex(); // _148, the bit in mFlags, 0 and below have none
+	virtual void ResetForNewGame(); // _94 (weak), clears every flag
+	virtual s32 GetFlagIndex();     // _148, the bit in mFlags, 0 and below have none
 
 	s32 GetPlacementFlagIndex(s32 group) const
 	{
@@ -77,9 +77,9 @@ public:
 	virtual void UpdateObject(u32 frames);
 	virtual void DrawWithView(Mtx view);
 	virtual void DrawObjectEffects();
-	virtual s32 vf100(s32 unused, s32 value);
+	virtual s32 OnPlayerContact(s32 unused, s32 value);
 	virtual void OnHitFromPosition(const Vec& position, f32 strength);
-	virtual BOOL vf140(const Vec* position, s32 value);
+	virtual BOOL OnItemUsed(const Vec* position, s32 value);
 	virtual s32 GetFlagIndex();
 };
 #if defined(VERSION_JP)
@@ -106,7 +106,7 @@ public:
 
 	XObjCoin();
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
-	virtual s32 vf100(s32 unused, s32 value);
+	virtual s32 OnPlayerContact(s32 unused, s32 value);
 	virtual void UpdateObject(u32 frames);
 	virtual void ResetObjectState();
 	virtual s32 HandleEventCommand(s32 count, s32* args);

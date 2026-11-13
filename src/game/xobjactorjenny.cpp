@@ -198,9 +198,9 @@ static inline void JennyPropVisibility(XObjActorJenny* jenny, XObj* object)
 }
 
 // Positions the props Jenny holds and turns the carried player toward her head.
-void XObjActorJenny::vf148(u32 frames)
+void XObjActorJenny::UpdateAfterAnim(u32 frames)
 {
-	vf148__9XObjActorFUl(this, frames);
+	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj joint;
 	XObjChr* player = gGame.GetPlayer();
 	if (_C98.mFlags & 0x1f) {

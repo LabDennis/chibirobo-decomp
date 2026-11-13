@@ -501,14 +501,14 @@ void XObjSpiderSmall::State8(u32 frames)
 	case 6: {
 		mTimer++;
 		if (mTimer % 30 < 15) {
-			vf12C(1, 0, 0x80, 0, 0.0f);
-			vf12C(1, 0x80, 0, 0, 0.0f);
+			SetColor(1, 0, 0x80, 0, 0.0f);
+			SetColor(1, 0x80, 0, 0, 0.0f);
 		} else {
-			vf12C(1, 0, 0, 0, 0.0f);
+			SetColor(1, 0, 0, 0, 0.0f);
 		}
 		f32 end = GetAnimEndFrame(mJObj);
 		if (end - frames <= GetAnimFrame(mJObj)) {
-			vf12C(1, 0, 0, 0, 0.0f);
+			SetColor(1, 0, 0, 0, 0.0f);
 			mTimer = 0;
 			if (--_9E8 <= 0) {
 				_9E8 = 0;
@@ -1029,14 +1029,14 @@ void XObjSpiderSmall::State3(u32 frames)
 	case 6: {
 		mTimer++;
 		if (mTimer % 30 < 15) {
-			vf12C(1, 0, 0x80, 0, 0.0f);
-			vf12C(1, 0x80, 0, 0, 0.0f);
+			SetColor(1, 0, 0x80, 0, 0.0f);
+			SetColor(1, 0x80, 0, 0, 0.0f);
 		} else {
-			vf12C(1, 0, 0, 0, 0.0f);
+			SetColor(1, 0, 0, 0, 0.0f);
 		}
 		f32 end = GetAnimEndFrame(mJObj);
 		if (end - frames <= GetAnimFrame(mJObj)) {
-			vf12C(1, 0, 0, 0, 0.0f);
+			SetColor(1, 0, 0, 0, 0.0f);
 			mTimer = 0;
 			if (--_9E8 <= 0) {
 				_9E8 = 0;
@@ -1127,7 +1127,7 @@ extern "C" void DetachSmallSpiderFromPlayer(XObjSpiderSmall* spider)
 	if (spider->mSpiderStatus.Check(0x1000000)) {
 		spider->mSpiderStatus.mFlags &= ~0x1000000;
 		gSpiderDrainFlashClaimed = 0;
-		gGame.GetPlayer()->vf12C(1, 0, 0, 0, 0.0f);
+		gGame.GetPlayer()->SetColor(1, 0, 0, 0, 0.0f);
 		InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 0, 1);
 	}
 	if (--gAttachedSmallSpiderCount < 0) {
@@ -1533,9 +1533,9 @@ void XObjSpiderSmall::State1(u32 frames)
 {
 	mTimer++;
 	if (mTimer % 30 < 15) {
-		vf12C(1, 0, 0x80, 0, 0.0f);
+		SetColor(1, 0, 0x80, 0, 0.0f);
 	} else {
-		vf12C(1, 0, 0, 0, 0.0f);
+		SetColor(1, 0, 0, 0, 0.0f);
 	}
 	switch (mStep) {
 	case 0:
@@ -1792,10 +1792,10 @@ extern "C" void UpdatePlayerCaughtInSpiderWeb(XObjSpiderSmall* spider, u32 frame
 				gSpiderDrainFlashTimers[1]++;
 				if (gSpiderDrainFlashTimers[0] > 0) {
 					f32 red = 128.0f * (gSpiderDrainFlashTimers[0] / FRAME_RATE);
-					player->vf12C(1, red, 0, 0, 0.0f);
+					player->SetColor(1, red, 0, 0, 0.0f);
 					StartScreenFade(&gGame.mScrnTex.mColor, red, 0, 0, 0, red, 0, 0, 0, 0.0f);
 				} else {
-					player->vf12C(1, 0, 0, 0, 0.0f);
+					player->SetColor(1, 0, 0, 0, 0.0f);
 					StartScreenFade(&gGame.mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
 				}
 			}
@@ -1808,7 +1808,7 @@ extern "C" void UpdatePlayerCaughtInSpiderWeb(XObjSpiderSmall* spider, u32 frame
  * @note Address: 0x800FD9EC
  * @note Size: 0x14
  */
-s32 XObjSpiderSmall::vf100(s32 unused, s32 value)
+s32 XObjSpiderSmall::OnPlayerContact(s32 unused, s32 value)
 {
 	mSpiderStatus.mFlags |= 1;
 	return value;
@@ -1891,7 +1891,7 @@ void XObjSpiderSmall::DrawDebugStatus()
  * @note Address: 0x800FDBB8
  * @note Size: 0x4
  */
-void XObjSpiderSmall::vfC8()
+void XObjSpiderSmall::DrawScreenOverlay()
 {
 }
 
@@ -1944,7 +1944,7 @@ void XObjSpiderSmall::DrawGroundShadowAt(const Vec* pos, f32 scale)
  * @note Address: 0x800FDEF0
  * @note Size: 0x28C
  */
-void XObjSpiderSmall::vfAC()
+void XObjSpiderSmall::DrawObject()
 {
 	DrawWithView(0);
 	if (mFxIndex != 0xFF && (mFx.mStatus.mFlags & 1) && gSmallSpiderEffectObjects[mFxIndex] != NULL) {
@@ -2177,7 +2177,7 @@ BOOL XObjSpiderSmall::LoadFromPlacement(const CoordInfo& info)
  * @note Address: 0x800FFDE0
  * @note Size: 0xDC
  */
-void XObjSpiderSmall::vf94()
+void XObjSpiderSmall::ResetForNewGame()
 {
 	mStage = -1;
 	ResetSmallSpiderState(this);
@@ -2243,7 +2243,7 @@ static inline void SetSmallSpiderTarget(XObjSpiderSmall* spider)
 // NONMATCHING: retail keeps a second fdivs where this code reuses the quotient; different spill-store ordering
 extern "C" void ApplySmallSpiderPlacement(XObjSpiderSmall* spider)
 {
-	spider->vf12C(1, 0, 0, 0, 0.0f);
+	spider->SetColor(1, 0, 0, 0, 0.0f);
 	spider->mMoveTranslate.x = PlacementPosition(spider->mCoord, gSmallSpiderPosition).x;
 	spider->mMoveTranslate.y = PlacementPosition(spider->mCoord, gSmallSpiderPosition).y;
 	spider->mMoveTranslate.z = PlacementPosition(spider->mCoord, gSmallSpiderPosition).z;
@@ -2370,7 +2370,7 @@ extern "C" void ResetSmallSpiderState(XObjSpiderSmall* spider)
 	Vec v6                = { 0.0f, 0.0f, 0.0f };
 	spider->mTargetPos    = v6;
 	spider->mTargetRadius = 0.0f;
-	spider->vf12C(1, 0, 0, 0, 0.0f);
+	spider->SetColor(1, 0, 0, 0, 0.0f);
 	spider->mAreaGraceTimer = 0;
 	spider->_AC0            = 0;
 	spider->_AC4            = 0;

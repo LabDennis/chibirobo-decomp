@@ -26,13 +26,13 @@ public:
 	virtual void UpdateObject(u32 frames); // _A4
 	virtual void Release();
 	virtual void InitializeObject(u32 id);
-	virtual void vf94();
+	virtual void ResetForNewGame();
 	virtual void ResetObjectState();
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);
 	virtual void DrawWithView(Mtx view);
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);
-	virtual void vfC8();
-	virtual s32 vf100(s32 unused, s32 value);
+	virtual void DrawScreenOverlay();
+	virtual s32 OnPlayerContact(s32 unused, s32 value);
 	virtual void OnHitFromPosition(const Vec& position, f32 strength);
 };
 #if defined(VERSION_JP)

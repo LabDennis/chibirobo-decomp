@@ -3780,7 +3780,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 					s32 oldMode                                       = *(s32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x164));
 					*(u32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x168)) = 0xFFFFFF00;
 					*(s32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x164)) = 0;
-					portrait->vfAC();
+					portrait->DrawObject();
 #if defined(VERSION_US)
 					joint.CJObj::SetTranslate(oldPosition, 1);
 					joint.CJObj::SetScale(oldScale, 1);
@@ -3798,7 +3798,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 			} else {
 				font->mCursor[0].mCursor.SetPos(portraitX, portraitY, 80.0f * portraitScale, 0);
 				font->mCursor[0].mCursor.SetScale((9.0f * portraitScale) * font->mAlpha, 0);
-				font->mCursor[0].mCursor.vfAC();
+				font->mCursor[0].mCursor.DrawObject();
 			}
 #if defined(VERSION_JP) || defined(VERSION_PAL)
 			InvalidateMessageDrawState((u8*)&gGame);
