@@ -11,12 +11,6 @@ static inline XObjChr* Player()
 	return gGame.GetPlayer();
 }
 
-// todo: pools 4, 5 and 17 keep a save block right after XObj, no idea what class
-static inline void* PoolSaveData(s32 pool)
-{
-	return *(void**)(gGame.mXObjs.mPools[pool + 3].mObjects + sizeof(XObj));
-}
-
 static inline Params* Stats()
 {
 	return &Player()->mParams;
@@ -122,9 +116,9 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	memcpy(Player()->mParams.mInventory.mItems, save->mPlayer, sizeof(save->mPlayer));
 	memcpy(gEventFlags.mFlags, save->mEvtFlags, sizeof(save->mEvtFlags));
 	memcpy(gEventVars.mVars, save->mEvtVars, sizeof(save->mEvtVars));
-	memcpy(PoolSaveData(4), save->mObjects[0], sizeof(save->mObjects[0]));
-	memcpy(PoolSaveData(5), save->mObjects[1], sizeof(save->mObjects[1]));
-	memcpy(PoolSaveData(17), save->mObjects[2], sizeof(save->mObjects[2]));
+	memcpy(gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags, save->mCoinFlags, sizeof(save->mCoinFlags));
+	memcpy(gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags, save->mItemFlags, sizeof(save->mItemFlags));
+	memcpy(gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags, save->mDustFlags, sizeof(save->mDustFlags));
 	memcpy(&Player()->mAttachments, save->mPlayerRecord, sizeof(save->mPlayerRecord));
 	RequestSuit(Player(), save->mSuit);
 	Player()->mSuits.mSpecial = save->_2CB4;
