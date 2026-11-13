@@ -2,7 +2,9 @@
 #include "game/cjobj.h"
 #include "game/cjobjset.h"
 
-extern "C" f32 PSVECDistance(Vec* a, Vec* b);
+extern "C" {
+#include <dolphin/mtx/vec.h>
+}
 
 // unused, but they sit at the start of this file's rodata
 static const f32 sStage07VectorTemplates[2][9] = {
