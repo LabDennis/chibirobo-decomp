@@ -1,3 +1,5 @@
+Start__5CBaseFv = .text:0x800354DC; // type:function size:0x118
+SCGetLanguage = .text:0x801B8174; // type:function size:0x6C
 PlayWiiSoundEffect = .text:0x8003714C; // type:function size:0x640
 LoadWiiSoundBankByName = .text:0x8003AA58; // type:function size:0xA8
 ResetLensState__13CScrnRoboeyesFff = .text:0x80040E08; // type:function size:0x44

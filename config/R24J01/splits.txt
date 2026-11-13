@@ -13,6 +13,11 @@ Sections:
 	.sdata2     type:rodata align:32
 	.sbss2      type:bss align:32
 
+game/wii/gamemain.cpp:
+	extab start:0x80008E54 end:0x80008E5C
+	extabindex start:0x80011F48 end:0x80011F54
+	.text start:0x800354DC end:0x800355F4
+
 game/wii/soundbank.cpp:
 	extab start:0x80009064 end:0x8000906C
 	extabindex start:0x800120B0 end:0x800120BC

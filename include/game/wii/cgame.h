@@ -23,6 +23,7 @@ public:
 	u8 _4170[0x41E4 - 0x4170];
 	// _41E4 vtable
 
+	void Start();
 	virtual ~CBase(); // _08
 	virtual void vf0C();
 	virtual void vf10();

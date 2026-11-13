@@ -1241,7 +1241,8 @@ if wii:
     if args.warn:
         wii_cflags.append(f"-W {args.warn}")
     if args.wii_locale:
-        wii_cflags.extend(["-DWII_LOCALIZATION", f"-i {config.out_path().as_posix()}/include"])
+        wii_cflags.extend([("-DWII_LANGUAGE_SYSTEM" if args.wii_locale == "global" else
+                           f"-DWII_LANGUAGE={('en', 'de', 'fr', 'es', 'it').index(args.wii_locale[:2]) + 1}"), f"-i {config.out_path().as_posix()}/include"])
     if args.wii_gamecube_pad:
         wii_cflags.append("-DWII_GAMECUBE_PAD")
     wii_cflags.append("-DDEBUG=1" if args.debug else "-DNDEBUG=1")
@@ -1258,6 +1259,7 @@ if wii:
                 Object(Equivalent, "game/roboeyeslens.cpp"),
                 Object(Equivalent, "game/stage_data.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/atcmenuselection.cpp"),
+                Object(bool(args.wii_locale), "game/wii/gamemain.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/cpad.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
