@@ -87,7 +87,7 @@ bool XObjActorPapa::IsFree()
  */
 f32 XObjActorPapa::GetMinHeadPitch()
 {
-	return -0.17453292f;
+	return -(DEG2RAD * 10.0f);
 }
 
 /**
@@ -96,7 +96,7 @@ f32 XObjActorPapa::GetMinHeadPitch()
  */
 f32 XObjActorPapa::GetMaxHeadPitch()
 {
-	return 0.17453292f;
+	return DEG2RAD * 10.0f;
 }
 
 /**
@@ -107,25 +107,26 @@ s32 XObjActorPapa::HandleEventCommand(s32 count, s32* command)
 {
 	XObjActor::HandleEventCommand(count, command);
 	switch (command[0]) {
-	case 1:
+	case 1: // where to look
 		switch (command[1]) {
-		case 0:
-			ResetActorLook(this, 0.08726646f);
+		case 0: // nowhere
+			ResetActorLook(this, DEG2RAD * 5.0f);
 			break;
-		case 1:
-			SetActorLookAtPosition(this, &gGame.GetPlayer()->mMoveTranslate, 0.08726646f);
+		case 1: // at the player
+			SetActorLookAtPosition(this, &gGame.GetPlayer()->mMoveTranslate, DEG2RAD * 5.0f);
 			break;
-		case 2:
+		case 2: // at another object
 			if (FindObj(command[2]) != NULL) {
 				SetActorLookAtPosition(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
 			}
 			break;
-		case 3:
+		case 3: // at an angle
 			SetActorLookAngle(this, DEG2RAD * command[2], DEG2RAD * command[3]);
 			break;
 		}
 		break;
-	default:
+	default: // the rest is queued for ProcessPendingEvents
+
 		if (count < 1) {
 			return 0;
 		}
@@ -156,7 +157,7 @@ s32 XObjActorPapa::HandleEventCommand(s32 count, s32* command)
 void XObjActorPapa::StatePickUp(u32 frames)
 {
 	switch (mKindStep) {
-	case 0: {
+	case 0: { // wait for tao and the target toy to be free, then attach
 		XObjActorTao* tao = ((XObjActorTao*)gGame.mXObjs.mPools[14].mObjects);
 		if ((tao->mStatus.mFlags & 1) && !tao->IsFree()) {
 			return;
@@ -185,12 +186,12 @@ void XObjActorPapa::StatePickUp(u32 frames)
 		} else {
 			mAttached = NULL;
 		}
-		mActorStatus.mFlags |= 0x2000;
+		mActorStatus.mFlags |= 0x2000; // busy, IsFree says no
 		mKindStep++;
 	}
 	case 1:
 		if (mAttached != NULL) {
-			if (mAttached->mStatus.mFlags & 0x0040000000000000ULL) {
+			if (mAttached->mStatus.mFlags & 0x0040000000000000ULL) { // not ready yet
 				return;
 			}
 			gGame.mStatus.mFlags |= 0x1000;
@@ -220,7 +221,7 @@ void XObjActorPapa::StatePickUp(u32 frames)
 			Mtx m;
 			PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
 			PSMTXConcat(mAttachedMtx, scaleMtx, m);
-			PSMTXRotRad(rotMtx, 'z', 1.5707964f);
+			PSMTXRotRad(rotMtx, 'z', HALF_PI);
 			PSMTXConcat(m, rotMtx, m);
 			PSMTXTrans(transMtx, -5.5f, 3.5f, 0.0f);
 			PSMTXConcat(m, transMtx, m);
@@ -323,7 +324,7 @@ void XObjActorPapa::UpdateAfterAnim(u32 frames)
 							SetHeldPropMatrix(prop, joint.GetMtx());
 							break;
 						}
-						if (mStatus.mFlags & 0x10000)
+						if (mStatus.mFlags & 0x10000) // flag 0x10000 follows him
 							prop->mStatus.mFlags |= 0x10000ULL;
 						else
 							prop->mStatus.mFlags &= ~0x10000ULL;
@@ -346,7 +347,7 @@ void XObjActorPapa::UpdateAfterAnim(u32 frames)
 							SetHeldPropMatrix(prop, joint.GetMtx());
 							break;
 						}
-						if (mStatus.mFlags & 0x10000)
+						if (mStatus.mFlags & 0x10000) // flag 0x10000 follows him
 							prop->mStatus.mFlags |= 0x10000ULL;
 						else
 							prop->mStatus.mFlags &= ~0x10000ULL;
@@ -368,7 +369,7 @@ void XObjActorPapa::UpdateAfterAnim(u32 frames)
 							SetHeldPropMatrix(prop, joint.GetMtx());
 							break;
 						}
-						if (mStatus.mFlags & 0x10000)
+						if (mStatus.mFlags & 0x10000) // flag 0x10000 follows him
 							prop->mStatus.mFlags |= 0x10000ULL;
 						else
 							prop->mStatus.mFlags &= ~0x10000ULL;
@@ -377,6 +378,7 @@ void XObjActorPapa::UpdateAfterAnim(u32 frames)
 				break;
 			}
 	}
+	// while carrying the player: park him on the hand joint and turn him toward the joint
 	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
 		s32 held[6] = { 0, 2, 2, 0, 0, 0 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, held, 6));
@@ -391,11 +393,11 @@ void XObjActorPapa::UpdateAfterAnim(u32 frames)
 	if (!mJointShown) {
 		s32 path[5] = { 0, 2, 0, 0, 1 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, path, 5));
-		HSD_JObjSetFlags(joint.mJObj, 0x10);
+		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
 	} else {
 		s32 path[5] = { 0, 2, 0, 0, 1 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, path, 5));
-		HSD_JObjClearFlags(joint.mJObj, 0x10);
+		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
 	}
 }
 
@@ -464,16 +466,16 @@ void XObjActorPapa::Drop()
 void XObjActorPapa::ProcessPendingEvents(u32 frames)
 {
 	CJObj jobj;
-	if (mActorStatus.Check(0x400)) {
+	if (mActorStatus.Check(0x400)) { // level the head again
 		mActorStatus.mFlags &= ~0x400;
 		mHeadPitch = 0.0f;
 	}
-	if (mActorStatus.Check(2)) {
+	if (mActorStatus.Check(2)) { // a random sound
 		mActorStatus.mFlags &= ~2;
 		PlayGameSound(&gGame.mSound, rand() % 10 + 0xB7, 0xFF);
 	}
 	switch (mCmd[0]) {
-	case 2:
+	case 2: // swap what he carries
 		Drop();
 		switch (mCmd[1]) {
 		case 0x1F4:
@@ -542,14 +544,14 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 		break;
 	case 3:
 		switch (mCmd[1]) {
-		case 1: {
+		case 1: { // take the player onto his hand
 			mActorStatus.mFlags |= 0x100;
 			LockPlayer(gGame.GetPlayer());
 			gGame.GetPlayer()->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 
 			break;
 		}
-		default: {
+		default: { // put the player down at the hand joint
 			mActorStatus.mFlags &= ~0x100;
 			s32 path[6] = { 0, 2, 2, 0, 0, 0 };
 			jobj.Attach(FindJointByPath(mJObj, path, 6));
@@ -571,11 +573,11 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 		}
 		mCmd[0] = 0;
 		break;
-	case 4:
+	case 4: // shake the screen
 		StartScreenShake(&gGame.mQuake, mCmd[1], mCmd[2], mCmd[3], 0.0f, 0.0f, 0.0f, mCmd[4] / 100.0f);
 		mCmd[0] = 0;
 		break;
-	case 5: {
+	case 5: { // play a one-off animation
 		HSD_AnimJoint* joint      = GetJointAnimation(mCmd[1]);
 		HSD_MatAnimJoint* mat     = GetMaterialAnimation(mCmd[2]);
 		HSD_ShapeAnimJoint* shape = GetShapeAnimation(mCmd[1]);
@@ -584,20 +586,20 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 		mCmd[0] = 0;
 		break;
 	}
-	case 6:
+	case 6: // pick up the object whose id follows
 		mAttachedId = mCmd[1];
 		mState      = &XObjActorPapa::StatePickUp;
 		ResetActorMovementStep(this);
 		mCmd[0] = 0;
 		break;
-	case 7:
+	case 7: // let go of the attached object
 		mAttachedId = -1;
 		if (mAttached != NULL) {
 			mAttached->Release();
 		}
 		mCmd[0] = 0;
 		break;
-	case 8:
+	case 8: // show or hide the joint
 		switch (mCmd[1]) {
 		case 1:
 			mJointShown = 1;
