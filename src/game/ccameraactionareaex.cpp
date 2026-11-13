@@ -18,13 +18,12 @@ class CGs;
 extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state);
 extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32 unused);
 
-static inline s32 AreaMode(CCameraActionAreaEx* state)
+// inlined in retail: only an inlined copy puts the CamAreaInfo copy below its temporary on the stack
+static inline s32 GetAreaMode(s32 index)
 {
-	s32 index = state->_0C;
-	if (index == -1)
-		return 7;
-	CamAreaInfo area = CamAreaInfo(&GetStageCameraAreaRecords()[index]);
 	s32 mode;
+	CamAreaRecord* records = GetStageCameraAreaRecords();
+	CamAreaInfo area       = CamAreaInfo(&records[index]);
 	switch (area._04->_2C) {
 	case 1:
 		mode = 1;
@@ -48,10 +47,12 @@ static inline s32 AreaMode(CCameraActionAreaEx* state)
  * @note Address: 0x80135D28
  * @note Size: 0x10C
  */
-// NONMATCHING: regalloc
 extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state)
 {
-	return AreaMode(state);
+	s32 index = state->_0C;
+	if (index == -1)
+		return 7;
+	return GetAreaMode(index);
 }
 
 static inline Vec AreaPoint(const CamAreaInfo& area, s32 index)
@@ -71,6 +72,8 @@ static inline BOOL PointInQuad(const Vec& pos, Vec a, Vec b, Vec c, Vec d)
  * @note Address: 0x801361C4
  * @note Size: 0x890
  */
+// NONMATCHING: retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands in for
+// them until the whole file is built, and keeps top - bottom and the height in f26/f27 the other way round
 extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 {
 	if (state->_24 == NULL)
@@ -78,7 +81,8 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 	u32 colors[7] = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
 	f32 scale     = 2.0f / sqrtf(3.0f);
 	for (s32 i = 0; i < state->_28; ++i) {
-		if ((CamAreaInfo(&state->_24[i])._04->_2E & 4) == 0)
+		u16 flags = CamAreaInfo(&state->_24[i])._04->_2E & 4;
+		if (flags == 0)
 			continue;
 		if (lbl_8065B32C == 0)
 			lbl_8065B32C = 1;
@@ -112,24 +116,20 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		width /= scale;
 		height /= scale;
 		depth /= scale;
-		center.y       = (top - bottom) * 0.5f + bottom;
+		center.y       = (top - bottom) / 2.0f + bottom;
 		CVec axis      = CVec(1.0f, 0.0f, 0.0f);
 		CVec direction = b - a;
 		PSVECNormalize(&direction, &direction);
 		DrawGsCube(&gGame.mGs, colors[lbl_8065B328 % 5], center.x, center.y, center.z, 0.0f, 0.0f, 0.0f, width, height, depth);
 
-		CamAreaSlot* slot   = &state->_2034[lbl_8065B328];
-		CamAreaEntry* entry = slot->_00;
-		s32 colorIndex      = lbl_8065B328 % 5;
-		for (s32 j = 0; j < slot->_08; ++j, ++entry) {
-			CVec pos = (Vec)entry->_10;
-			CVec next;
-			if (j == slot->_08 - 1)
-				next.Set(slot->_00[0]._10);
-			else
-				next.Set(entry[1]._10);
+		s32 index           = lbl_8065B328;
+		CamAreaEntry* entry = state->_2034[index]._00;
+		for (s32 j = 0; j < state->_2034[index]._08; ++j, ++entry) {
+			CVec pos, next;
+			pos  = entry->_10;
+			next = j == state->_2034[index]._08 - 1 ? state->_2034[index]._00[0]._10 : entry[1]._10;
 			DrawGsLineSegment(&gGame.mGs, NULL, pos.x, pos.y, pos.z, colors[5], next.x, next.y, next.z, colors[5]);
-			DrawGsSphere(&gGame.mGs, colors[colorIndex], 12, 16, pos.x, pos.y, pos.z, 0.0f, 0.0f, 0.0f, 3.0f, 3.0f, 3.0f);
+			DrawGsSphere(&gGame.mGs, colors[index % 5], 12, 16, pos.x, pos.y, pos.z, 0.0f, 0.0f, 0.0f, 3.0f, 3.0f, 3.0f);
 			CVec angle  = entry->_20;
 			f32 sine    = sin(angle.y);
 			f32 cosine  = cos(angle.y);
@@ -138,7 +138,8 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 			DrawGsLineSegment(&gGame.mGs, NULL, entry->_10.x, entry->_10.y, entry->_10.z, 0xFFFF, entry->_10.x + offsetX, entry->_10.y,
 			                  entry->_10.z + offsetZ, 0xFFFF);
 		}
-		DrawGsSphere(&gGame.mGs, colors[colorIndex], 12, 16, slot->_0C.x, slot->_0C.y, slot->_0C.z, 0.0f, 0.0f, 0.0f, 3.0f, 3.0f, 3.0f);
+		DrawGsSphere(&gGame.mGs, colors[index % 5], 12, 16, state->_2034[index]._0C.x, state->_2034[index]._0C.y, state->_2034[index]._0C.z,
+		             0.0f, 0.0f, 0.0f, 3.0f, 3.0f, 3.0f);
 	}
 }
 
@@ -146,6 +147,8 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
  * @note Address: 0x80136A54
  * @note Size: 0x77C
  */
+// NONMATCHING: retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands in for
+// them until the whole file is built, and rotates the yaw, top - bottom and the height among f29-f31
 extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 {
 	// callers only pass 0 or 1
@@ -163,7 +166,7 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 		return;
 	u32 colors[7] = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
 	f32 scale     = 2.0f / sqrtf(3.0f);
-	for (s32 i = 0; i < count; ++i, ++records) {
+	for (s32 i = 0; i < count; ++records, ++i) {
 		if (lbl_8065B324 == 0) {
 			lbl_8065B320 = 0;
 			lbl_8065B324 = 1;
@@ -190,25 +193,29 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 		CVec d     = AreaPoint(area, 3);
 		f32 top    = area.GetTop();
 		f32 bottom = area.GetBottom();
-		Vec from, to, edge;
-		from.x = b.x;
+		f32 ax     = a.x;
+		f32 az     = a.z;
+		f32 bx     = b.x;
+		f32 bz     = b.z;
+		Vec edge, from, to;
+		from.x = bx;
 		from.y = top;
-		from.z = b.z;
+		from.z = bz;
 		to.x   = c.x;
 		to.y   = top;
 		to.z   = c.z;
 		PSVECSubtract(&from, &to, &edge);
 		PSVECMag(&edge);
-		from.x = a.x;
+		from.x = ax;
 		from.y = top;
-		from.z = a.z;
-		to.x   = b.x;
+		from.z = az;
+		to.x   = bx;
 		to.y   = top;
-		to.z   = b.z;
+		to.z   = bz;
 		PSVECSubtract(&to, &from, &edge);
 		PSVECMag(&edge);
 		f32 yaw;
-		if (a.z - 0.01f < b.z && b.z < a.z + 0.01f) {
+		if (az - 0.01f < bz && bz < az + 0.01f) {
 			yaw = 0.0f;
 		} else {
 			from.x = 1.0f;
@@ -224,7 +231,7 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 		width /= scale;
 		height /= scale;
 		depth /= scale;
-		center.y       = (top - bottom) * 0.5f + bottom;
+		center.y       = (top - bottom) / 2.0f + bottom;
 		CVec axis      = CVec(1.0f, 0.0f, 0.0f);
 		CVec direction = b - a;
 		PSVECNormalize(&direction, &direction);
@@ -284,6 +291,8 @@ extern "C" s32 FindFirstCameraAreaContainingPoint(CCameraActionAreaEx* state, Ve
  * @note Address: 0x80137810
  * @note Size: 0x348
  */
+// NONMATCHING: retail tests the camera-off bit as !(flags & 4) (rlwinm/cntlzw), CamAreaInfo::IsCameraOff compares == 0
+// (extrwi/xori); the rest is the same
 extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos)
 {
 	s32 index = -1;
@@ -302,6 +311,9 @@ extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, 
  * @note Address: 0x80135E34
  * @note Size: 0x390
  */
+// NONMATCHING: retail tests the camera-off bit as !(flags & 4) (rlwinm/cntlzw), CamAreaInfo::IsCameraOff compares == 0
+// (extrwi/xori); retail also swaps the stack slots of the two CamAreaInfo temporaries and the registers of i and the
+// record offset, though its loop is FindEnabledCameraAreaContainingPoint's
 extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 {
 	state->_08 = state->_04;
@@ -331,7 +343,7 @@ extern "C" void SetCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 ind
 		state->_04 = index;
 		state->_08 = index;
 		f32 fov;
-		if (AreaMode(state) == 1) {
+		if (GetCameraAreaMode(state) == 1) {
 			fov = CamInfo(&state->_2C[state->_2034[state->_0C]._00->_34]).GetFov();
 		} else {
 			fov = 30.5f;
@@ -344,13 +356,14 @@ extern "C" void SetCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 ind
  * @note Address: 0x80137D00
  * @note Size: 0x1B8
  */
+// NONMATCHING: retail has the two loads of the -1 test in r0 and r3 the other way round (as for a -1L compare)
 extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 unused)
 {
 	if (state->_24 != NULL && state->_2C != NULL) {
 		UpdateCameraAreaIndexFromPlayer(state, unused);
 		if (state->_08 != state->_04 && state->_04 != -1) {
 			f32 fov;
-			if (AreaMode(state) == 1) {
+			if (GetCameraAreaMode(state) == 1) {
 				fov = CamInfo(&state->_2C[state->_2034[state->_0C]._00->_34]).GetFov();
 			} else {
 				fov = 30.5f;
@@ -370,6 +383,8 @@ static inline bool IsAreaEnd(CamAreaRecord* record)
  * @note Address: 0x80137EB8
  * @note Size: 0x164
  */
+// NONMATCHING: retail reloads _1C and _24 from the state on every pass of the counting loops, as for a helper
+// that takes the table by reference; these loops keep the pointer in a register
 extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 {
 	state->_1C = NULL;
@@ -428,12 +443,6 @@ extern "C" void InitCameraAreaEntries(CCameraActionAreaEx* state)
 	state->_14 = 1;
 }
 
-static inline bool IsCameraEnd(CamInfoData* record)
-{
-	CamInfo camera(record);
-	return camera.mData->_00 == -1;
-}
-
 /**
  * @note Address: 0x80135434
  * @note Size: 0x7E0
@@ -445,7 +454,7 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
 
 	CamAreaEntry* entry = state->_30[0];
 	for (s32 i = 0;; ++i, ++entry) {
-		if (IsCameraEnd(&state->_2C[i]))
+		if (CamInfo(&state->_2C[i]).mData->_00 == -1)
 			break;
 		entry->_00 = CamInfo(&state->_2C[i]).GetInterest();
 		entry->_10 = CamInfo(&state->_2C[i]).GetEye();
@@ -454,23 +463,21 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
 		entry->_34 = i;
 	}
 
-	CamInfoData* data = state->_2C;
-	CamAreaSlot* slot = state->_2034;
 	s32 first         = 0;
+	CamInfoData* data = state->_2C;
 	s32 group         = 0;
 	for (;;) {
 		if (data->_00 == -1)
 			break;
-		slot->_00 = state->_30[first];
-		slot->_04 = group;
-		s32 count = 0;
+		state->_2034[group]._00 = state->_30[first];
+		state->_2034[group]._04 = group;
+		s32 count               = 0;
 		while (data->_00 == group) {
 			++count;
 			++data;
 		}
-		slot->_08 = count;
+		state->_2034[group]._08 = count;
 		first += count;
-		++slot;
 		++group;
 	}
 	state->_2030 = group;
@@ -480,28 +487,36 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
 		switch (slot->_08) {
 		case 0:
 			break;
-		case 1:
-			slot->_0C = (Vec)slot->_00[0]._10;
+		case 1: {
+			CVec center = (Vec)slot->_00[0]._10;
+			slot->_0C   = center;
 			break;
+		}
 		case 2: {
+			CVec center;
 			CamAreaEntry* entries = slot->_00;
-			slot->_0C             = (Vec)(entries[0]._10 + (entries[1]._10 - entries[0]._10) / 2.0f);
+			center                = entries[0]._10 + (entries[1]._10 - entries[0]._10) / 2.0f;
+			slot->_0C             = center;
 			break;
 		}
 		case 3: {
+			CVec center;
 			CamAreaEntry* entries = slot->_00;
-			CVec center           = (Vec)(entries[0]._10 + (entries[1]._10 - entries[0]._10) / 2.0f);
+			center                = entries[0]._10 + (entries[1]._10 - entries[0]._10) / 2.0f;
 			slot->_0C             = center + (entries[2]._10 - center) / 3.0f;
 			break;
 		}
 		case 4: {
+			CVec center;
 			CamAreaEntry* entries = slot->_00;
-			slot->_0C             = (Vec)(entries[0]._10 + (entries[2]._10 - entries[0]._10) / 2.0f);
+			center                = entries[0]._10 + (entries[2]._10 - entries[0]._10) / 2.0f;
+			slot->_0C             = center;
 			break;
 		}
 		default: {
+			CVec center;
 			CamAreaEntry* entries = slot->_00;
-			CVec center           = (Vec)(entries[0]._10 + (entries[1]._10 - entries[0]._10) / 2.0f);
+			center                = entries[0]._10 + (entries[1]._10 - entries[0]._10) / 2.0f;
 			slot->_0C             = center + (entries[2]._10 - center) / 3.0f;
 			break;
 		}
