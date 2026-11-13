@@ -2,6 +2,7 @@
 #include "game/ccard.h"
 #include "game/memcard.h"
 #include <stdio.h>
+#include <string.h>
 
 extern "C" {
 extern char gSaveReadFileName[];
@@ -14,7 +15,9 @@ extern SaveFile gSavePreviewFileBuffer[2];
  */
 extern "C" BOOL ReadMemoryCardPreviews(Memcard* card, s32 channel)
 {
-	if (card->Probe(channel) || card->Mount(channel, TRUE))
+	if (card->Probe(channel))
+		return TRUE;
+	if (card->Mount(channel, TRUE))
 		return TRUE;
 	for (s32 slot = 0; slot < 10; ++slot) {
 		sprintf(gSaveReadFileName, gSaveFileNameFormat, slot);
@@ -48,7 +51,7 @@ extern "C" BOOL ReadMemoryCardPreviews(Memcard* card, s32 channel)
 			record.mStatus = -1;
 		}
 		record.mState = 1;
-		record.mStat  = card->mStat;
+		memcpy(&record.mStat, &card->mStat, sizeof(record.mStat));
 	}
 	card->mState = 14;
 	card->_16A04 = card->mCard.GetFreeBlocks((s32*)&card->_169FC, &card->_16A00);

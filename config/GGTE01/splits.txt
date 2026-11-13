@@ -388,10 +388,7 @@ game/memcardfile.cpp:
 	.text       start:0x80087854 end:0x80087A4C
 
 game/memcardpos.cpp:
-	.text       start:0x80087A4C end:0x80087C88
-
-game/memcardcamera.cpp:
-	.text       start:0x80087C88 end:0x80087CC0
+	.text       start:0x80087A4C end:0x80087CC0
 
 game/memcardrestore.cpp:
 	.text       start:0x80087CC0 end:0x800880EC
