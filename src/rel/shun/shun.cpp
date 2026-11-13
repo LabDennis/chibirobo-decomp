@@ -12,11 +12,11 @@ extern "C" u8 gGame[];
 
 struct ShunObj {
 #if defined(VERSION_GGTJ01_01)
-	u8 _00[0x220]; // _00
+	u8 _00[0x220]; // _00, set to half a minute in frames (FRAMES_PER_SECOND * 30) by CmdResetOnOff; never read, shun's UpdateStage is empty
 #else
 	u8 _00[0x228]; // _00
 #endif
-	u64 _228; // _228, JP _220
+	u64 mFlags; // _228, JP _220
 };
 #if defined(VERSION_GGTJ01_01)
 typedef char ShunObjViewSizeCheck[sizeof(ShunObj) == 0x228 ? 1 : -1];
@@ -25,7 +25,8 @@ typedef char ShunObjViewSizeCheck[sizeof(ShunObj) == 0x230 ? 1 : -1];
 #endif
 
 struct ShunObjList {
-	void* _00; // _00
+	void* mScript; // _00, CEvtData::mScript of gGame.mEvt (CGame + 0x5D080 = mEvt _5D07C + mData _04); objects are looked up only while a
+	               // script is loaded
 };
 
 struct SavedObjFlag {
@@ -62,7 +63,7 @@ extern "C" void SetFafaPartVisibility(s32 arg);
 inline ShunObj* ShunFindObj(s16 id)
 {
 	ShunObjList* list = SHUN_OBJ_LIST();
-	if (list->_00 != NULL) {
+	if (list->mScript != NULL) {
 		return ResolveEventObjectId(list, id);
 	}
 	return NULL;
@@ -87,31 +88,32 @@ public:
 	virtual void vf_80(s32, s32, s32, s32, s32, f32, f32, f32, f32);
 
 #if defined(VERSION_JP)
-	u8 _38[0x970 - 0x38];     // _38
-	u32 _980;                 // _970
+	u8 _38[0x970 - 0x38];     // _38, three CVecs, no access in any edition
+	u32 mPlayerStatus;        // _970
 	u8 _984[0x12CF4 - 0x974]; // _974
-	s32 _12DF4;               // _12CF4
+	s32 mPadReset;            // _12CF4
 #else
-	u8 _38[0x980 - 0x38];     // _38
-	u32 _980;                 // _980
+	u8 _38[0x980 - 0x38]; // _38
+	u32 mPlayerStatus; // _980, XObjChr::mPlayerStatus.mFlags (JP _970); 0x40000000 hands him to a script, 0x20000000 | 7 gives control back
 	u8 _984[0x12DF4 - 0x984]; // _984
-	s32 _12DF4;               // _12DF4
+	s32 mPadReset; // _12DF4, XObjChr::mPad.mReset (XPad at _12DA0, mReset at +0x54; JP _12CF4); 1 with the give-back flags, 0 with the
+	               // script flags
 #endif
 };
 
 struct OnOffWork {
-	s32 _00;      // _00
-	u8 _04[0x4];  // _04
-	s32 _08;      // _08
-	u8 _0C[0x2C]; // _0C
-	CVec _38[3];  // _38
-	s32 _68;      // _68
-	u8 _6C[0xC];  // _6C
-	s32 _78;      // _78
-	s32 _7C;      // _7C
-	u8 _80[0x4];  // _80
-	s32 _84;      // _84
-	CStatus _88;  // _88
+	s32 _00;         // _00
+	u8 _04[0x4];     // _04
+	s32 _08;         // _08, zeroed by CmdResetOnOff, never read
+	u8 _0C[0x2C];    // _0C
+	CVec _38[3];     // _38
+	s32 _68;         // _68, zeroed by each CmdStartOnOff0/1/2, never read
+	u8 _6C[0xC];     // _6C
+	s32 _78;         // _78, zeroed by CmdResetOnOff, never read
+	s32 _7C;         // _7C, zeroed by CmdResetOnOff, never read
+	u8 _80[0x4];     // _80
+	s32 _84;         // _84, which start command ran: 0, 1 or 2 from CmdStartOnOff0/1/2; never read
+	CStatus mStatus; // _88, CStatus; bit 1 is what CmdCheckOnOffFlag reports, cleared by CmdResetOnOff
 };
 
 static SavedObjFlagList savedObjFlags;
@@ -168,7 +170,7 @@ inline void SavedObjFlagList::Apply(s32 mode)
 				}
 				obj = ShunFindObj(mEntries[j].mId);
 				if (mEntries[j].mFlag & 1) {
-					obj->_228 |= 0x10000;
+					obj->mFlags |= 0x10000;
 				}
 			}
 		}
@@ -179,7 +181,7 @@ inline void SavedObjFlagList::Apply(s32 mode)
 					break;
 				}
 				obj = ShunFindObj(mEntries[i].mId);
-				obj->_228 &= ~0x10000ULL;
+				obj->mFlags &= ~0x10000ULL;
 			}
 		}
 	}
@@ -321,8 +323,8 @@ extern "C" s32 CmdSaveObjFlag(s32 cmd, s32 count, s32* args)
 	if (savedObjFlags.mCount < 0x100) {
 		savedObjFlags.mEntries[savedObjFlags.mCount].mId = id;
 		obj                                              = ShunFindObj(savedObjFlags.mEntries[savedObjFlags.mCount].mId);
-		if (obj != NULL && (obj->_228 & 1)) {
-			if (obj->_228 & 0x10000) {
+		if (obj != NULL && (obj->mFlags & 1)) {
+			if (obj->mFlags & 0x10000) {
 				savedObjFlags.mEntries[savedObjFlags.mCount].mFlag |= 1;
 			}
 			savedObjFlags.mCount++;
@@ -431,7 +433,7 @@ extern "C" s32 CmdSetFafaPartVisibility(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdCheckOnOffFlag(s32 cmd, s32 count, s32* args)
 {
-	if (onOffWork._88.Check(1)) {
+	if (onOffWork.mStatus.Check(1)) {
 		return 1;
 	}
 	return 0;
@@ -445,9 +447,9 @@ extern "C" s32 CmdStartOnOff2(s32 cmd, s32 count, s32* args)
 {
 	RoboView* obj = SHUN_96BC();
 
-	obj->_980 = 0;
-	obj->_980 |= 0x40000000;
-	obj->_12DF4 = 0;
+	obj->mPlayerStatus = 0;
+	obj->mPlayerStatus |= 0x40000000;
+	obj->mPadReset = 0;
 	obj->vf_80(0x3E, 0, 0, 0, 0, 0.0f, 2.0f, 0.0f, 10.0f);
 	onOffWork._68 = 0;
 	onOffWork._84 = 2;
@@ -462,9 +464,9 @@ extern "C" s32 CmdStartOnOff1(s32 cmd, s32 count, s32* args)
 {
 	RoboView* obj = SHUN_96BC();
 
-	obj->_980 = 0;
-	obj->_980 |= 0x40000000;
-	obj->_12DF4 = 0;
+	obj->mPlayerStatus = 0;
+	obj->mPlayerStatus |= 0x40000000;
+	obj->mPadReset = 0;
 	obj->vf_80(0x3E, 0, 0, 0, 0, 0.0f, 2.0f, 0.0f, 10.0f);
 	onOffWork._68 = 0;
 	onOffWork._84 = 1;
@@ -479,9 +481,9 @@ extern "C" s32 CmdStartOnOff0(s32 cmd, s32 count, s32* args)
 {
 	RoboView* obj = SHUN_96BC();
 
-	obj->_980 = 0;
-	obj->_980 |= 0x40000000;
-	obj->_12DF4 = 0;
+	obj->mPlayerStatus = 0;
+	obj->mPlayerStatus |= 0x40000000;
+	obj->mPadReset = 0;
 	obj->vf_80(0x3E, 0, 0, 0, 0, 0.0f, 2.0f, 0.0f, 10.0f);
 	onOffWork._68 = 0;
 	onOffWork._84 = 0;
@@ -494,11 +496,11 @@ extern "C" s32 CmdStartOnOff0(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdResetOnOff(s32 cmd, s32 count, s32* args)
 {
-	onOffWork._00        = (FRAMES_PER_SECOND * 60) / 2; // half a minute
-	onOffWork._08        = 0;
-	onOffWork._78        = 0;
-	onOffWork._7C        = 0;
-	onOffWork._88.mFlags = 0;
+	onOffWork._00            = (FRAMES_PER_SECOND * 60) / 2; // half a minute
+	onOffWork._08            = 0;
+	onOffWork._78            = 0;
+	onOffWork._7C            = 0;
+	onOffWork.mStatus.mFlags = 0;
 	return 0;
 }
 

@@ -141,7 +141,7 @@ struct RoboView {
 #endif
 	s32 mPlayerIdx; // _9DC (JP: _9CC)
 	u8 _9E0[0x68];  // _9E0 (JP: _9D0)
-	s32 _A48;       // _A48 (JP: _A38)
+	s32 mLiftState; // _A48 (JP: _A38)
 	u8 _A4C[0x18];  // _A4C (JP: _A3C)
 	AnaObj* mHeld;  // _A64 (JP: _A54)
 };
@@ -210,7 +210,7 @@ inline void ReleaseHeld(RoboView* mgr)
 		mgr->mHeld->mFlags &= ~0x0400000000000000ULL;
 		mgr->mHeld = NULL;
 	}
-	mgr->_A48 = 0;
+	mgr->mLiftState = 0;
 }
 
 // caller checks too, retail tests the pointer twice

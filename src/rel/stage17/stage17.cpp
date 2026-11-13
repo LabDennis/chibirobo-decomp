@@ -7,10 +7,10 @@ extern "C" s32 CmdSetCameraScroll(s32 cmd, s32 count, s32* values);
 extern "C" void InitStage(void* arg);
 
 struct CCameraActionScroll {
-	u8 _00[0x44]; // _00
-	f32 _44;      // _44
-	f32 _48;      // _48
-	f32 _4C;      // _4C
+	u8 _00[0x44];      // _00
+	f32 mFarDistance;  // _44, CCameraActionScroll::mFarDistance
+	f32 mNearDistance; // _48, CCameraActionScroll::mNearDistance
+	f32 mScrollFov;    // _4C, CCameraActionScroll::mScrollFov
 };
 
 #if defined(VERSION_JP)
@@ -43,13 +43,13 @@ extern "C" s32 CmdSetCameraScroll(s32 cmd, s32 count, s32* values)
 		}
 		switch (i) {
 		case 0:
-			STAGE17_UNK()->_48 = v;
+			STAGE17_UNK()->mNearDistance = v;
 			break;
 		case 1:
-			STAGE17_UNK()->_44 = v;
+			STAGE17_UNK()->mFarDistance = v;
 			break;
 		case 2:
-			STAGE17_UNK()->_4C = v;
+			STAGE17_UNK()->mScrollFov = v;
 			break;
 		}
 	}

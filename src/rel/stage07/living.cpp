@@ -68,11 +68,11 @@ struct Stage07Actor {
 #else
 	u8 _00[0xC8]; // _00
 #endif
-	Vec _C8;       // _C8 (JP: _C0)
-	u8 _D4[0x154]; // _D4 (JP: _CC)
-	u64 _228;      // _228 (JP: _220)
-	u8 _230[0x8];  // _230 (JP: _228)
-	s32* _238;     // _238 (JP: _230)
+	Vec mMoveTranslate; // _C8 (JP: _C0)
+	u8 _D4[0x154];      // _D4 (JP: _CC)
+	u64 mStatus;        // _228 (JP: _220)
+	u8 _230[0x8];       // _230 (JP: _228)
+	s32* mCoord;        // _238 (JP: _230)
 };
 
 struct Stage07Game {
@@ -99,7 +99,7 @@ struct Stage07PoolEntry {
 #else
 	u8 _04[0x240]; // _04
 #endif
-	s32* _244; // _244 (JP: _23C)
+	s32* mPlacement; // _244 (JP: _23C)
 };
 
 extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* values);
@@ -156,7 +156,7 @@ extern "C" void SetObj37PartVisibility(s32 mode)
 
 	for (i = 0; i < 0x120; i++) {
 		Stage07PoolEntry* entry = (Stage07PoolEntry*)(pool + i * size);
-		s32* type               = entry->_244;
+		s32* type               = entry->mPlacement;
 		if ((type != NULL ? *type : -1) != 0x37) {
 			continue;
 		}
@@ -267,9 +267,9 @@ extern "C" void UpdateStage(void* arg)
 	if (IsGameSoundPlaying(obj, 0x1000D)) {
 		for (i = 0; i < STAGE07_GAME->mActorCount; i++) {
 			actor = STAGE07_GAME->GetActor(i);
-			if ((actor->_228 & 1) && (actor->_228 & 0x10000) && *actor->_238 == 0xD0) {
-				PSVECDistance(STAGE07_FIELD_E5DDC, &actor->_C8);
-				SetGameSfxVolume(obj, 0x1000D, GetSoundVolumeAtPosition(obj, &actor->_C8, 1), 0);
+			if ((actor->mStatus & 1) && (actor->mStatus & 0x10000) && *actor->mCoord == 0xD0) {
+				PSVECDistance(STAGE07_FIELD_E5DDC, &actor->mMoveTranslate);
+				SetGameSfxVolume(obj, 0x1000D, GetSoundVolumeAtPosition(obj, &actor->mMoveTranslate, 1), 0);
 			}
 		}
 	}

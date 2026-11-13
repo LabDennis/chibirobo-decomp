@@ -18,21 +18,21 @@ extern "C" u16 GXGetTexObjWidth(_GXTexObj* obj);
 extern "C" u16 GXGetTexObjHeight(_GXTexObj* obj);
 
 struct UnkPair {
-	u32 _00; // _00
-	u32 _04; // _04
+	u32 _00; // _00, first word of the GXTlutObj inside CTexObj::mTlutObj (GXTlutObjPriv::unk0); not accessed
+	u32 _04; // _04, second word of the GXTlutObj inside CTexObj::mTlutObj (GXTlutObjPriv::unk4); not accessed
 };
 
 struct TPLDescriptor;
 
 class CTexObj : public _GXTexObj {
 public:
-	u32 _20;     // _20
-	u32 _24;     // _24
-	UnkPair _28; // _28
-	u32 _30;     // _30
-	u32 _34;     // _34
-	s32 _38;     // _38
-	Mtx mMtx[4]; // _3C
+	u32 mImage;    // _20, TPLHeader* in the dol CTexObj, kept as u32 here, unused in the REL
+	u32 mClut;     // _24, TPLClutHeader* in the dol CTexObj, kept as u32 here, unused in the REL
+	UnkPair _28;   // _28, first word of the dol CTexObj's GXTlutObj mTlutObj (_28-_33), unused in the REL
+	u32 _30;       // _30, third word of the dol CTexObj's GXTlutObj mTlutObj (_28-_33), unused in the REL
+	u32 mTlutName; // _34, the palette's tlut name, as in the dol CTexObj. Unused in the REL
+	s32 mMtxDirty; // _38, set to 1 after the matrices change so the next draw rebuilds mMtx[3]
+	Mtx mMtx[4];   // _3C
 	// _FC vtable
 
 	CTexObj() { }
@@ -44,23 +44,23 @@ public:
 // vtable is in the dol
 class CFile {
 public:
-	u8 _00[0xC0]; // _00
-	s32 _C0;      // _C0
-	u8 _C4[0x8];  // _C4
-	u8* mData;    // _CC
-	u32 _D0;      // _D0
-	u32 _D4;      // _D4
-	u8 _D8[0xC];  // _D8
-	u32 _E4;      // _E4
+	u8 _00[0xC0];  // _00
+	s32 mEntrynum; // _C0, CFile::mEntrynum, DVD entry number, -1 until opened
+	u8 _C4[0x8];   // _C4
+	u8* mData;     // _CC
+	u32 mResult;   // _D0, CFile::mResult: 1 while the read runs, then 0 or an error
+	u32 mArchive;  // _D4, CFile::mArchive, the CFileArchive the file is read from, NULL for the disc
+	u8 _D8[0xC];   // _D8
+	u32 mState;    // _E4, CFile::mState, ReadEx's step, starts at 1
 	// _E8 vtable
 
 	CFile()
 	{
-		_C0   = -1;
-		_D4   = 0;
-		mData = NULL;
-		_D0   = 0;
-		_E4   = 1;
+		mEntrynum = -1;
+		mArchive  = 0;
+		mData     = NULL;
+		mResult   = 0;
+		mState    = 1;
 	}
 	~CFile() { }
 	virtual void vf08();                                                          // _08
@@ -78,10 +78,10 @@ public:
 class CTpl : public CFile {
 public:
 	CTexObj mTex; // _EC
-	u32 _1EC;     // _1EC
+	u32 mBound;   // _1EC, CTpl::mBound, set once the read file is bound to mTex; the destructor clears it
 
 	CTpl() { }
-	~CTpl() { _1EC = 0; }
+	~CTpl() { mBound = 0; }
 	virtual s32 GetResult(); // _18
 	virtual void Close();    // _20
 };
@@ -111,8 +111,8 @@ struct CGameS03View {
 #else
 	u8 _00000[0x290]; // _00000
 #endif
-	void* _290; // _00290, PAL _00294
-	void* _294; // _00294, PAL _00298
+	void* mCurRenderMode; // _00290, PAL _00294
+	void* mCurTevStage;   // _00294, PAL _00298
 #if defined(VERSION_GGTJ01_01)
 	u8 _00298[0x19A0 - 0x298]; // _00298
 #elif defined(VERSION_GGTP01)
@@ -140,9 +140,9 @@ struct CGameS03View {
 #else
 	u8 _5D084[0xE7DFC - 0x5D084]; // _5D084
 #endif
-	void* _E7DFC;    // _E7DFC, JP _E7114
-	u8 _E7E00[0x24]; // _E7E00, JP _E7118
-	u8 mSound[4];    // _E7E24, JP _E713C
+	void* mScroll2Action; // _E7DFC, JP _E7114
+	u8 _E7E00[0x24];      // _E7E00, JP _E7118
+	u8 mSound[4];         // _E7E24, JP _E713C
 };
 #if defined(VERSION_GGTJ01_01)
 typedef char CGameS03View_size_check[sizeof(CGameS03View) == 0xE7140 ? 1 : -1];
@@ -572,8 +572,8 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		f32 keyW, keyH, wideW, wideH;
 		s32 i;
 
-		SetGsBlendMode(gGame._290, 1, 4, 5, 15);
-		SetGsTevMode(gGame._294, 0);
+		SetGsBlendMode(gGame.mCurRenderMode, 1, 4, 5, 15);
+		SetGsTevMode(gGame.mCurTevStage, 0);
 
 		key            = &decaPanelKeys[work->mCursorX + work->mCursorY * 3];
 		work->mTargetX = key->x;
@@ -631,9 +631,9 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			}
 			tex = &work->mTexs[draws[i].mTex];
 			PSMTXScale(tex->mMtx[1], draws[i].mScale, 1.0f, 1.0f);
-			tex->_38 = 1;
+			tex->mMtxDirty = 1;
 			PSMTXTrans(tex->mMtx[0], draws[i].mTrans, 0.0f, 0.0f);
-			tex->_38          = 1;
+			tex->mMtxDirty    = 1;
 			DecaPanelKey* pos = &decaPanelKeys[draws[i].mKey];
 			f32 x             = 0.9f * pos->x;
 			u32 color         = FadeColor(work->mFade);
@@ -643,15 +643,15 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 
 		tex = &work->mTexs[4];
 		PSMTXScale(tex->mMtx[1], 0.1f, 1.0f, 1.0f);
-		tex->_38 = 1;
-		keyW     = 0.9f * (GXGetTexObjWidth(tex) / 10);
-		keyH     = 0.9f * GXGetTexObjHeight(tex);
+		tex->mMtxDirty = 1;
+		keyW           = 0.9f * (GXGetTexObjWidth(tex) / 10);
+		keyH           = 0.9f * GXGetTexObjHeight(tex);
 		for (i = 0; i < 6; i++) {
 			u8 ch = work->mDigits[i];
 			if (ch != ' ') {
 				PSMTXTrans(tex->mMtx[0], 0.1f * decaPanelDigitCells[ch - '0'], 0.0f, 0.0f);
-				tex->_38  = 1;
-				u32 color = FadeColor(work->mFade);
+				tex->mMtxDirty = 1;
+				u32 color      = FadeColor(work->mFade);
 				DrawGsTexturedQuad(&gGame, tex, color, color, color, color, 320.0f + 0.9f * decaPanelDigitPos[i][0],
 				                   200.0f + 0.9f * decaPanelDigitPos[i][1], 0.0f, keyW, keyH, 0.0f, 0.0f, 0.0f);
 			}
@@ -665,7 +665,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			DrawGsTexturedQuad(&gGame, tex, color, color, color, color, keyW / 3.0f + (320.0f + 0.9f * work->mCurX),
 			                   keyH / 3.0f + (200.0f + 0.9f * work->mCurY), 0.0f, keyW, keyH, 0.0f, 0.0f, 0.0f);
 		}
-		SetGsTevMode(gGame._294, 4);
+		SetGsTevMode(gGame.mCurTevStage, 4);
 	}
 }
 
@@ -1607,7 +1607,7 @@ extern "C" s32 CmdClearSavedObjFlags(s32 cmd, s32 argc, s32* args)
  */
 extern "C" s32 CmdClearObjFlagList(s32 cmd, s32 argc, s32* args)
 {
-	ClearHideList__20CCameraActionScroll2Fv(gGame._E7DFC);
+	ClearHideList__20CCameraActionScroll2Fv(gGame.mScroll2Action);
 	return 0;
 }
 
@@ -1619,7 +1619,7 @@ extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 argc, s32* args)
 {
 	s32 i;
 	for (i = 0; i < argc; i++) {
-		AddHideObj__20CCameraActionScroll2Fl(gGame._E7DFC, args[i]);
+		AddHideObj__20CCameraActionScroll2Fl(gGame.mScroll2Action, args[i]);
 	}
 	return 0;
 }

@@ -41,8 +41,8 @@ static inline f32 GetAnimFrame(HSD_JObj* jobj)
 struct TrashObj;
 
 struct UnkKindData {
-	u8 _00[0x14]; // _00
-	s16 _14;      // _14
+	u8 _00[0x14];  // _00
+	s16 mCategory; // _14, UnkObjData::mCategory, the object's category
 };
 
 struct TrashObj {
@@ -140,31 +140,31 @@ struct TrashObj {
 #else
 	u8 _38[0xC8 - 0x38]; // _38
 #endif
-	Vec _C8;           // _C8 in Japan _C0
-	u8 _D4[0x28];      // _D4 in Japan _CC
-	f32 _FC;           // _FC in Japan _F4
-	u8 _100[0xC];      // _100 in Japan _F8
-	f32 _10C;          // _10C in Japan _104
-	u8 _110[0x118];    // _110 in Japan _108
-	u64 _228;          // _228 in Japan _220
-	u8 _230[0x8];      // _230 in Japan _228
-	s32* _238;         // _238 in Japan _230
-	u8 _23C[0x4];      // _23C in Japan _234
-	UnkKindData* _240; // _240 in Japan _238
+	Vec mMoveTranslate;     // _C8 in Japan _C0
+	u8 _D4[0x28];           // _D4 in Japan _CC
+	f32 mMoveRotateY;       // _FC in Japan _F4
+	u8 _100[0xC];           // _100 in Japan _F8
+	f32 mMoveRotateTargetY; // _10C in Japan _104
+	u8 _110[0x118];         // _110 in Japan _108
+	u64 mStatus;            // _228 in Japan _220
+	u8 _230[0x8];           // _230 in Japan _228
+	s32* mCoord;            // _238 in Japan _230
+	u8 _23C[0x4];           // _23C in Japan _234
+	UnkKindData* mAttr;     // _240 in Japan _238
 #if defined(VERSION_JP)
 	u8 _244[0x970 - 0x23C]; // _244 in Japan _23C
 #else
 	u8 _244[0x980 - 0x244]; // _244
 #endif
-	u32* _980;      // _980 in Japan _970
-	u8 _984[0x50];  // _984 in Japan _974
-	s32 _9D4;       // _9D4 in Japan _9C4
-	u8 _9D8[0x70];  // _9D8 in Japan _9C8
-	s32 _A48;       // _A48 in Japan _A38
-	u8 _A4C[0x18];  // _A4C in Japan _A3C
-	TrashObj* _A64; // _A64 in Japan _A54
+	u32* mFlags;           // _980 in Japan _970
+	u8 _984[0x50];         // _984 in Japan _974
+	s32 mFloorContacts;    // _9D4 in Japan _9C4
+	u8 _9D8[0x70];         // _9D8 in Japan _9C8
+	s32 mLiftState;        // _A48 in Japan _A38
+	u8 _A4C[0x18];         // _A4C in Japan _A3C
+	TrashObj* mLiftTarget; // _A64 in Japan _A54
 
-	Vec* GetPos() { return &_C8; }
+	Vec* GetPos() { return &mMoveTranslate; }
 };
 
 #if defined(VERSION_JP)
@@ -216,7 +216,7 @@ extern "C" void DrawTrashStack(void* arg)
 		return;
 	}
 	actor = trashObj;
-	if (actor == NULL || !(actor->_228 & 1)) {
+	if (actor == NULL || !(actor->mStatus & 1)) {
 		return;
 	}
 	if (!trashActive) {
@@ -224,8 +224,8 @@ extern "C" void DrawTrashStack(void* arg)
 	}
 
 	count   = trashStackNum;
-	Vec pos = actor->_C8;
-	angle   = 1.0471976f + actor->_FC;
+	Vec pos = actor->mMoveTranslate;
+	angle   = 1.0471976f + actor->mMoveRotateY;
 	jobj    = actor->jobj;
 	if (count < 0) {
 		count = 0;
@@ -659,7 +659,7 @@ extern "C" void DrawTrashStack(void* arg)
 // the kind id, -1 without kind data
 static inline s16 GetKindId(TrashObj* obj)
 {
-	return obj->_240 != NULL ? (obj->_240 != NULL ? obj->_240->_14 : 0) : -1;
+	return obj->mAttr != NULL ? (obj->mAttr != NULL ? obj->mAttr->mCategory : 0) : -1;
 }
 
 /**
@@ -677,7 +677,7 @@ extern "C" void UpdateTrash(u32 frames)
 		robot = (TrashObj*)gGame.GetPlayer();
 		switch (trashState) {
 		case 0:
-			trashObj = robot->_A64;
+			trashObj = robot->mLiftTarget;
 			if (pad.mPad->mButton & 0x100) {
 				robot->SetAnim(9, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				trashState++;
@@ -687,16 +687,16 @@ extern "C" void UpdateTrash(u32 frames)
 			}
 			break;
 		case 1:
-			if (robot->_FC == robot->_10C) {
-				robot->_A48 = 6;
-				trashTarget->_228 |= 0x10000000000ULL;
+			if (robot->mMoveRotateY == robot->mMoveRotateTargetY) {
+				robot->mLiftState = 6;
+				trashTarget->mStatus |= 0x10000000000ULL;
 				trashState++;
 			}
 			break;
 		case 2:
 			if (15.0f <= GetAnimFrame(robot->jobj)) {
-				robot->_A64 = NULL;
-				trashObj->_228 &= ~0x400000000000000ULL;
+				robot->mLiftTarget = NULL;
+				trashObj->mStatus &= ~0x400000000000000ULL;
 				trashDest.x = trashTarget->GetPos()->x;
 				trashDest.y = trashTarget->GetPos()->y;
 				trashDest.z = trashTarget->GetPos()->z;
@@ -724,7 +724,7 @@ extern "C" void UpdateTrash(u32 frames)
 				TrashObj* held = trashObj;
 				if (GetKindId(held) == 8) {
 					u32 bit = held->vf148();
-					held->_980[bit >> 5] |= 1 << (bit & 31);
+					held->mFlags[bit >> 5] |= 1 << (bit & 31);
 				}
 				trashObj->Release();
 				trashObj   = NULL;
@@ -735,7 +735,7 @@ extern "C" void UpdateTrash(u32 frames)
 				pos.y = trashObj->GetPos()->y;
 				pos.z = trashObj->GetPos()->z;
 				pos.y = trashTarget->GetPos()->y;
-				if (PSVECDistance(&trashTarget->_C8, &pos) < 15.0f && trashObj->GetPos()->y < 30.0f) {
+				if (PSVECDistance(&trashTarget->mMoveTranslate, &pos) < 15.0f && trashObj->GetPos()->y < 30.0f) {
 					trashState = 10;
 				} else {
 					trashPos.x += trashStep.x * frames;
@@ -1338,11 +1338,11 @@ extern "C" void InitTrash(void* arg)
 	count         = game->mXObjs.mObjectCount;
 	for (i = 0; trashboxIndex < 0 && i < count; i++) {
 		actor = (TrashObj*)game->mXObjs.mObjects[i];
-		if (actor->_228 & 1) {
-			if (*actor->_238 == 0x12D) {
+		if (actor->mStatus & 1) {
+			if (*actor->mCoord == 0x12D) {
 				trashboxIndex = i;
 			}
-			if (*actor->_238 == 0x477) {
+			if (*actor->mCoord == 0x477) {
 				trashboxIndex = i;
 			}
 		}
@@ -1384,11 +1384,11 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
 	}
 	game  = &gGame;
 	robot = (TrashObj*)game->GetPlayer();
-	if (trashboxIndex != robot->_9D4) {
+	if (trashboxIndex != robot->mFloorContacts) {
 		return 0;
 	}
 	box = (TrashObj*)game->mXObjs.mObjects[trashboxIndex];
-	return IsNearXZ(robot->_C8, box->_C8);
+	return IsNearXZ(robot->mMoveTranslate, box->mMoveTranslate);
 }
 // CmdIsNearTrashbox
 /*
@@ -1470,10 +1470,10 @@ extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2)
 {
 	TrashObj* robot = (TrashObj*)gGame.GetPlayer();
 
-	if (robot->_A64 != NULL) {
-		robot->_A48 = 6;
+	if (robot->mLiftTarget != NULL) {
+		robot->mLiftState = 6;
 	}
-	if (trashObj != NULL && (trashObj->_228 & 1)) {
+	if (trashObj != NULL && (trashObj->mStatus & 1)) {
 		trashObj->Release();
 		trashObj = NULL;
 	}

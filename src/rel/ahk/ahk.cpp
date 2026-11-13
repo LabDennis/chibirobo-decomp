@@ -7,9 +7,10 @@
 class Laser {
 public:
 	f32 _00[20][2]; // _00
-	f32 _A0;        // _A0
-	f32 _A4;        // _A4
-	u32 _A8;        // _A8
+	f32 _A0; // _A0, 6 * sin of the random angle the ctor picks, the x part of a length-6 step; only the ctor writes it, ahk's update and
+	         // draw slots are empty
+	f32 _A4; // _A4, 6 * cos of the same random angle, the other part of the length-6 step; written by the ctor only, never read
+	u32 _A8; // _A8, colour packed as 0xRRGGBB00, three random 0x40-0xFF channels with a zero low byte; written by the ctor only, never read
 
 	Laser();
 	virtual ~Laser(); // _08

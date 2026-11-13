@@ -20,7 +20,7 @@ extern "C" u8 gGame[];
 class XObj {
 public:
 	HSD_JObj* jobj; // _00
-	u8 _04[0x30];   // _04
+	u8 _04[0x30];   // _04, padding over CJObj's mTranslate/mRotate/mScale (_04-_34); not accessed
 	virtual void vf08();
 	virtual void vf0C();
 	virtual void vf10();
@@ -58,19 +58,19 @@ public:
 #else
 	u8 _38[0x90]; // _38
 #endif
-	u8 _C8[0x90];   // _C8 (JP: _C0)
-	s32 _158;       // _158 (JP: _150)
-	u8 _15C[0xCC];  // _15C (JP: _154)
-	u64 _228;       // _228 (JP: _220)
-	u8 _230[0x8];   // _230 (JP: _228)
-	s32* _238;      // _238 (JP: _230)
-	u8 _23C[0x5D4]; // _23C (JP: _234)
-	s32 _810;       // _810 (JP: _808)
+	u8 _C8[0x90];      // _C8 (JP: _C0)
+	s32 mAnimId;       // _158 (JP: _150)
+	u8 _15C[0xCC];     // _15C (JP: _154)
+	u64 mStatus;       // _228 (JP: _220)
+	u8 _230[0x8];      // _230 (JP: _228)
+	s32* mCoord;       // _238 (JP: _230)
+	u8 _23C[0x5D4];    // _23C (JP: _234)
+	s32 mAnmQueueNext; // _810 (JP: _808)
 	struct {
-		s32 type; // _00
-		s16 _04;  // _04
-		s16 _06;  // _06
-	} _814[16];   // _814 (JP: _80C)
+		s32 type;  // _00
+		s16 _04;   // _04, CJObj's mTranslate, mRotate and mScale (three CVecs, _04-_34) as one byte block; not accessed in the REL
+		s16 mRate; // _06, queued anim rate in hundredths (CAnmQueueEntry::mRate)
+	} _814[16];    // _814 (JP: _80C)
 };
 
 class CamInfo {
@@ -104,7 +104,8 @@ struct Stage02Main {
 #define MAIN() ((Stage02Main*)gGame)
 
 struct ObjTable {
-	void* _00; // _00
+	void* mScript; // _00, CGame::mEvt.mData.mScript (CEvtData::_00 at gGame+0x5D080, JP 0x5D038), the running event script's read pointer;
+	               // objects are resolved by id only while it is set
 };
 
 #define OBJ_TABLE() ((ObjTable*)GAME_AT(GAME_OFS(0x5D080, 0x5D038)))
@@ -203,7 +204,7 @@ s32 RegisterCar(XObj* a, XObj* b, XObj* c);
 
 inline XObj* ObjTable_Find(ObjTable* table, s16 id)
 {
-	return table->_00 != NULL ? (XObj*)ResolveEventObjectId(table, id) : NULL;
+	return table->mScript != NULL ? (XObj*)ResolveEventObjectId(table, id) : NULL;
 }
 
 typedef void (*RelSlotFunc)(void* arg);
@@ -256,7 +257,7 @@ extern "C" void InitStage(void* arg)
 	count   = MAIN()->mObjectCount;
 	for (i = 0; takiObj == NULL && i < count; i++) {
 		obj = MAIN()->GetObject(i);
-		if ((obj->_228 & 1) != 0 && obj->_238[0] == 0x254) {
+		if ((obj->mStatus & 1) != 0 && obj->mCoord[0] == 0x254) {
 			takiObj = obj;
 		}
 	}
@@ -323,7 +324,7 @@ extern "C" void UpdateStage(void* arg)
 	UpdateFighter(arg);
 	UpdateCars((u32)arg);
 	if (takiObj != NULL) {
-		if (takiObj->_158 == 0) {
+		if (takiObj->mAnimId == 0) {
 			void* sound = SOUND();
 			if (IsGameSoundPlaying(sound, 0x20019) == 0) {
 				PlayGameSound(sound, 0x20019, 0xFF);
