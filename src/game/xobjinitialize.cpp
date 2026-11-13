@@ -15,7 +15,7 @@ void XObj::InitializeObject(u32 id)
 	mFloors        = NULL;
 	mPoolIndex     = 0;
 	ResetObjectState();
-	InitializeEventScriptContext(&mEvt, (u8*)gGame.GetMsg(1), this);
+	InitializeEventScriptContext(&mEvt, gGame.GetMsg(1), this);
 	mAnmQueue.Clear();
 	mAnim.Clear();
 }

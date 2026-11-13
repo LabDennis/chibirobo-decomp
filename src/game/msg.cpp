@@ -28,7 +28,6 @@ u32 msgColorTable[] = {
 };
 
 extern "C" {
-void CMsg_ResetPos(CMsg* msg);
 void CMsgFont_Draw(void* p, f32 t);
 void ClearGameSoundQueue(void* sound, s32 id);
 }
@@ -1175,13 +1174,13 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 						msg->mFont.mSelectedLine = msg->_445D0;
 						PlayGameSound(&gGame.mSound, 0x87, 255);
 					} else if (pad.mPad->mTrigger & 0x100) {
-						msg->_445D4              = msg->_445D0;
+						msg->mSelectionResult    = msg->_445D0;
 						msg->_445D0              = -1;
 						msg->mFont.mFadeOut      = 1;
 						msg->mFont.mSelectedLine = -1;
 						PlayGameSound(&gGame.mSound, 0x88, 255);
 					} else if (pad.mPad->mTrigger & 0x200) {
-						msg->_445D4              = -1;
+						msg->mSelectionResult    = -1;
 						msg->_445D0              = -1;
 						msg->mFont.mFadeOut      = 1;
 						msg->mFont.mSelectedLine = -1;
@@ -1239,10 +1238,10 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 						gGame.mEvt._10 = -1;
 					}
 				}
-			} else if (msg->_445F8 != 0) {
-				if (msg->_445F8 == 1) {
+			} else if (msg->mStayState != 0) {
+				if (msg->mStayState == 1) {
 					if (gGame.GetPlayer()->mOXMenu.mStarted < 0) {
-						msg->_445F8++;
+						msg->mStayState++;
 					}
 				} else {
 					msg->mFont.mFadeOut = 1;
@@ -2086,8 +2085,8 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			break;
 		}
 		case 24:
-			msg->_445F8 = 1;
-			waiting     = FALSE;
+			msg->mStayState = 1;
+			waiting         = FALSE;
 			break;
 		default: {
 			char text[3];
@@ -2619,7 +2618,7 @@ static inline void ResetMsgState(CMsg* msg)
 	msg->mFont._04_04     = 1;
 	msg->mFont.mCharCount = 0;
 	msg->mFont.mLine      = 0;
-	msg->mFont.mPlacement = 0;
+	msg->mFont.mAnchor    = NULL;
 	Vec zero              = { 0.0f, 0.0f, 0.0f };
 	msg->mFont.mPosition  = zero;
 #if defined(VERSION_JP)
@@ -2644,12 +2643,12 @@ static inline void ResetMsgState(CMsg* msg)
 	for (int i = 0; i < 400; i++) {
 		msg->mFont.mGlyphs[i].mPhaseX = msg->mFont.mGlyphs[i].mPhaseY = (i * 75) % 360;
 	}
-	msg->_445C0 = 1;
-	msg->_445C8 = 0.0f;
-	msg->_445C4 = 0.0f;
-	msg->_445D4 = -1;
-	msg->_445D0 = -1;
-	msg->_445D8 = 0;
+	msg->mCanOpen         = 1;
+	msg->_445C8           = 0.0f;
+	msg->_445C4           = 0.0f;
+	msg->mSelectionResult = -1;
+	msg->_445D0           = -1;
+	msg->_445D8           = 0;
 	for (int i = 0; i < 9; i += 3) {
 		for (int j = 0; j < 3; j++) {
 			msg->_445DC[i + j] = 0;
@@ -2658,13 +2657,13 @@ static inline void ResetMsgState(CMsg* msg)
 	msg->_445F0           = 0;
 	msg->_445EC           = 0;
 	msg->_445E8           = 0;
-	msg->_445F8           = 0;
+	msg->mStayState       = 0;
 	msg->mGlyphSoundGroup = -1;
 }
 
 extern "C" void CMsgData_Format(u8* data, u8* script, MsgFormatArgs* args);
 extern "C" void CMsgData_Measure(CMsgData* data);
-extern "C" void CMsgFont_Init(CMsgFont* font, u8* data, f32 x, f32 y, s32 mode, s32 style, s32 align);
+extern "C" void CMsgFont_Init(CMsgFont* font, u8* data, f32 x, f32 y, XObj* anchor, s32 style, s32 align);
 
 /**
  * @note Address: 0x80081C74
@@ -2688,7 +2687,7 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
 	}
 #endif
 	u8* cursor = msg->mData.mCursor;
-	CMsgFont_Init(&msg->mFont, msg->mData.mText, msg->_44600, msg->_44604, msg->_44608, msg->mData.mAlignment, msg->mData.mStyle);
+	CMsgFont_Init(&msg->mFont, msg->mData.mText, msg->mWindowX, msg->mWindowY, msg->mAnchor, msg->mData.mAlignment, msg->mData.mStyle);
 	msg->SetFontPosition(msg->mFontPosition.x, msg->mFontPosition.y, msg->mFontPosition.z);
 	msg->_445C4 = 0.0f;
 	msg->_445C8 = msg->_00 == 35 ? 2 : 0;
@@ -3029,9 +3028,9 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
  */
 extern "C" void CMsg_ResetPos(CMsg* msg)
 {
-	msg->_44600          = 320.0f;
-	msg->_44604          = 344.0f;
-	msg->_44608          = 0;
+	msg->mWindowX        = 320.0f;
+	msg->mWindowY        = 344.0f;
+	msg->mAnchor         = NULL;
 	Vec zero             = { 0.0f, 0.0f, 0.0f };
 	msg->mFontPosition.x = zero.x;
 	msg->mFontPosition.y = zero.y;
@@ -3581,7 +3580,7 @@ struct MsgWindowSlice {
 extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 {
 	CMsgFont* font = (CMsgFont*)p;
-	XObj* anchor   = (XObj*)font->mPlacement;
+	XObj* anchor   = font->mAnchor;
 	if (anchor != NULL && (anchor->mStatus.mFlags & 1) && (anchor->mStatus.mFlags & 0x10000)) {
 		anchor->ProjectOffsetToScreen(&font->mPosition, &font->mWindowX, &font->mWindowY, NULL, 0);
 		font->mWindowY -= font->mHeight;
@@ -7019,7 +7018,7 @@ extern "C" u16 GXGetTexObjHeight(const GXTexObj* obj);
  * @note Address: 0x80085B34
  * @note Size: 0x950
  */
-extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 placement, s32 fitLine, s32 mode)
+extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, XObj* anchor, s32 fitLine, s32 mode)
 {
 	CMsgFont* font    = (CMsgFont*)window;
 	font->mData       = (CMsgData*)data;
@@ -7031,7 +7030,7 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
 	font->_04_04      = TRUE;
 	font->mCharCount  = 0;
 	font->mLine       = 0;
-	font->mPlacement  = 0;
+	font->mAnchor     = NULL;
 	Vec origin        = { 0.0f, 0.0f, 0.0f };
 	font->mPosition.x = origin.x;
 	font->mPosition.y = origin.y;
@@ -7087,7 +7086,7 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
 		font->mGlyphs[i].mColor       = msgColorTable[0];
 		font->mGlyphs[i].mLine        = 0;
 	}
-	font->mPlacement                 = placement;
+	font->mAnchor                    = anchor;
 	font->mCursorX                   = -((font->mFitLine ? font->mData->mWidths[font->mLine] : width) * 0.5f);
 	font->mWindowX                   = x;
 	font->mWidth                     = width;
