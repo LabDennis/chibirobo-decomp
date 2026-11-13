@@ -2465,8 +2465,8 @@ UnkObjData objTableEx[] = {
 #endif
 };
 
-// Object IDs from 10000 reuse these global entries. A negative entry has no resource.
-s32 gGlobalTextIdRemap[] = {
+// Object IDs from 10000 reuse these collision lists. A negative entry has no list.
+s32 gObjectCollisionIdRemap[] = {
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 19, 19, 312, 313,
 #if !defined(VERSION_JP)
 	-1, -1, -1,

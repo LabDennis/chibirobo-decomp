@@ -14,7 +14,6 @@ extern "C" {
 
 CObjArchive* FindFreeObjectArchive(CObjArchive*);
 u32 ARGetSize(void);
-u8* GetGlobalTextEntry(s32);
 u8* GetStageScriptByIndex(s32);
 BOOL IsStageDataLoaded();
 }
@@ -58,7 +57,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			}
 		}
 		if (!mFloors) {
-			mFloors        = (XObjFloor*)GetGlobalTextEntry(info.mPlacement->mObjectId);
+			mFloors        = GetObjectCollisionList(info.mPlacement->mObjectId);
 			mFloorMasks[1] = mFloorMasks[0] = 0;
 			BOOL empty                      = mFloors ? mFloors->mId == -1 : FALSE;
 			if (empty)

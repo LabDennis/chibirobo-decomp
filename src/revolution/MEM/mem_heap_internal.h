@@ -23,6 +23,11 @@ static void* SubU32ToPtr(const void* p, u32 ofs)
 	return (void*)(GetUIntPtr(p) - ofs);
 }
 
+static int ComparePtr(const void* p0, const void* p1)
+{
+	return (const u8*)p0 - (const u8*)p1;
+}
+
 static s32 GetOffsetFromPtr(const void* start, const void* end)
 {
 	return GetUIntPtr(end) - GetUIntPtr(start);

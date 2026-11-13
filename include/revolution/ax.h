@@ -31,10 +31,47 @@ typedef enum {
 
 typedef void (*AXAuxCallback)(void* chans, void* context);
 
+#define AX_SAMPLES_PER_FRAME_RMT 18
+#define AX_RMT_MAX               4
+#define AX_FRAME_SIZE            (AX_SAMPLES_PER_FRAME * AX_SAMPLE_DEPTH_BYTES)
+#define AX_CL_SIZE               (64 * sizeof(u16))
+
+typedef void (*AXOutCallback)(void);
+typedef void (*AXExceedCallback)(u32 cycles);
+
+typedef struct _AXPROFILE {
+	s64 timeBegin;
+	s64 timeProcessAuxBegin;
+	s64 timeProcessAuxEnd;
+	s64 timeUserFrameBegin;
+	s64 timeUserFrameEnd;
+	s64 timeEnd;
+	s32 numVoices;
+} AXPROFILE;
+
+AXPROFILE* __AXGetCurrentProfile(void);
+AXOutCallback AXRegisterCallback(AXOutCallback callback);
+s32 AXRmtGetSamplesLeft(void);
+s32 AXRmtGetSamples(s32 channel, s16* out, s32 count);
+s32 AXRmtAdvancePtr(s32 count);
+
 void AXInit(void);
 void AXQuit(void);
 BOOL AXIsInit(void);
+void AXSetMode(u32 mode);
 u32 AXGetMode(void);
+
+u16 AXGetAuxAReturnVolume(void);
+u16 AXGetAuxBReturnVolume(void);
+u16 AXGetAuxCReturnVolume(void);
+void AXSetMasterVolume(u16 volume);
+void AXSetAuxAReturnVolume(u16 volume);
+void AXSetAuxBReturnVolume(u16 volume);
+void AXSetAuxCReturnVolume(u16 volume);
+
+u32 __AXGetCommandListCycles(void);
+void* __AXGetCommandListAddress(void);
+void __AXNextFrame(void* surround, void* lr, void* rmt);
 
 extern u32 __AXClMode;
 
