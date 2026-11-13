@@ -190,7 +190,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 							SetHeldPropMatrix(prop, hand.GetMtx());
 							break;
 						}
-						if (mStatus.mFlags & 0x10000) // the prop hides with her
+						if (mStatus.mFlags & 0x10000) // the prop draws only while her flag is set
 							prop->mStatus.mFlags |= 0x10000ULL;
 						else
 							prop->mStatus.mFlags &= ~0x10000ULL;
@@ -238,7 +238,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 						SetHeldPropMatrix(prop, hand.GetMtx());
 						break;
 					}
-					if (mStatus.mFlags & 0x10000) // the prop hides with her
+					if (mStatus.mFlags & 0x10000) // the prop draws only while her flag is set
 						prop->mStatus.mFlags |= 0x10000ULL;
 					else
 						prop->mStatus.mFlags &= ~0x10000ULL;
@@ -252,7 +252,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 						RotateHeldProp(mount, result, rotation, 'z', -.19634955f); // 11.25 degrees
 						OffsetHeldProp(result, translation, 0, -4.5f, 0);
 						SetHeldPropMatrix(prop, result);
-						if (mStatus.mFlags & 0x10000) // the prop hides with her
+						if (mStatus.mFlags & 0x10000) // the prop draws only while her flag is set
 							prop->mStatus.mFlags |= 0x10000ULL;
 						else
 							prop->mStatus.mFlags &= ~0x10000ULL;
@@ -262,7 +262,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 						OffsetHeldProp(result, translation, 0, -3.5f, -3);
 						RotateHeldProp(result, result, rotation, 'z', -HALF_PI);
 						SetHeldPropMatrix(prop, result);
-						if (mStatus.mFlags & 0x10000) // the prop hides with her
+						if (mStatus.mFlags & 0x10000) // the prop draws only while her flag is set
 							prop->mStatus.mFlags |= 0x10000ULL;
 						else
 							prop->mStatus.mFlags &= ~0x10000ULL;
