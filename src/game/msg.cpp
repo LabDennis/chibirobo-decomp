@@ -7771,8 +7771,8 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 	data->mStyle                     = -1;
 	data->mAlignment                 = 1;
 	f32 size                         = 22.0f;
-	BOOL proportional                = TRUE;
 	u8* p                            = data->mText;
+	BOOL proportional                = TRUE;
 	s32 done                         = 0;
 	while (!done) {
 		switch (*p) {
