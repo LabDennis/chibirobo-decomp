@@ -24,10 +24,12 @@ BOOL HSD_AudioSFXSetPitchByID(s32 sfx, s16 pitch);
 BOOL TurnLetickerLinkedPartAndTrackJoint(XObjLeticker* leticker, f32 angle);
 BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle);
 bool IsLetickerJointClearOfObjects(XObj* obj, HSD_JObj* jobj);
-extern AnimSfxEvent sLetickerAnimSfxEvents[];
 void SelectHighestActiveFloor(XObj* obj);
 extern CCameraActionLeticker gLetickerCameraAction;
 }
+
+// nothing reads it, the table many units start their .data with
+static s32 sUnused[26] = { 0, 3, 0, 0, 3, 0, 0, 2, 0, 0, 2, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 3, 0 };
 
 static XObjFloor sLetickerLiftFloor0[2] = {
 	{ 2, 0, { 0, 0, 0 }, 0, { 1200, 5000, 1200 } },
@@ -110,6 +112,11 @@ static XObjFloor* sLetickerFloorsByLevel[] = {
 	sLetickerLevel0Floors, sLetickerLevel1Floors, sLetickerLevel2Floors,  sLetickerLevel3Floors,
 	sLetickerLevel4Floors, sLetickerLevel5Floors, sLetickerLevel6Floors,  sLetickerLevel7Floors,
 	sLetickerLevel8Floors, sLetickerLevel9Floors, sLetickerLevel10Floors,
+};
+
+static AnimSfxEvent sLetickerAnimSfxEvents[] = {
+	{ 7, 10.0f, -1.0f, 1, 0x190, 0xFF, 0, 0, 0 },
+	{ -1 },
 };
 
 static XObjFloor* sLetickerLiftFloors[2] = { sLetickerLiftFloor0, sLetickerLiftFloor1 };
