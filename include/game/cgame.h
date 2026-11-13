@@ -21,6 +21,7 @@
 #include "game/infoscrn.h"
 #include "game/cparticle.h"
 #include "game/xobj.h"
+#include "game/xobjflags.h"
 #include "game/cobj.h"
 #include "game/evt.h"
 #include "game/msg.h"
@@ -79,6 +80,12 @@ STATIC_ASSERT(sizeof(XObjPool) == 0x14);
 // the objects: a pool per kind and the table of the ones in use, name from RTTI
 class XOBJS {
 public:
+	enum CollectionPool {
+		COINS = 7,
+		ITEMS = 8,
+		DUST  = 20,
+	};
+
 	XObjPool mPools[0x17]; // _000
 	XObj* mObjects[0x400]; // _1CC, the object table
 	s32 mObjectCount;      // _11CC
@@ -87,6 +94,8 @@ public:
 	// _11D8 vtable
 
 	virtual ~XOBJS() { } // _08
+
+	CEvtFlags& GetCollectionFlags(CollectionPool pool) const { return *static_cast<XObjFlags*>(mPools[pool].First())->mFlags; }
 
 	inline void ReadAll();
 };
