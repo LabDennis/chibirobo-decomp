@@ -4,101 +4,15 @@
 #include "game/cparticle.h"
 #include "game/cgame.h"
 #include "game/gmath.h"
+#include "game/spiderplacement.h"
+#include "game/xaction.h"
+#include "game/xchr.h"
 
 extern "C" {
 double atan2(double y, double x);
 double cos(double x);
 double sin(double x);
 }
-
-struct Stage01Actor;
-
-struct Stage01ActorKind {
-	s32 _00; // _00
-	s32 _04; // _04
-	s32 _08; // _08
-	s32 _0C; // _0C
-};
-
-struct Stage01KindRef {
-	Vec GetSize() const;
-
-	Stage01ActorKind* mKind; // _00
-};
-
-// non-virtual base, so the vtable pointer ends up at _34
-struct Stage01ActorBase {
-	HSD_JObj* _00;      // _00
-	u8 _04[0x34 - 0x4]; // _04
-};
-
-struct Stage01ActorVirt : public Stage01ActorBase {
-	virtual void vf_08();                                                              // _08
-	virtual void vf_0C();                                                              // _0C
-	virtual void vf_10(f32 y, s32 arg);                                                // _10
-	virtual void vf_14();                                                              // _14
-	virtual void vf_18();                                                              // _18
-	virtual void vf_1C();                                                              // _1C
-	virtual void vf_20();                                                              // _20
-	virtual void vf_24();                                                              // _24
-	virtual void vf_28();                                                              // _28
-	virtual void vf_2C(f32 rot, s32 arg);                                              // _2C
-	virtual void vf_30();                                                              // _30
-	virtual void vf_34();                                                              // _34
-	virtual void vf_38();                                                              // _38
-	virtual void vf_3C();                                                              // _3C
-	virtual void vf_40();                                                              // _40
-	virtual void vf_44();                                                              // _44
-	virtual void vf_48();                                                              // _48
-	virtual void vf_4C();                                                              // _4C
-	virtual void vf_50();                                                              // _50
-	virtual void vf_54();                                                              // _54
-	virtual void vf_58();                                                              // _58
-	virtual void vf_5C();                                                              // _5C
-	virtual void vf_60();                                                              // _60
-	virtual void vf_64();                                                              // _64
-	virtual void vf_68(s32 arg, f32 x, f32 y, f32 z);                                  // _68
-	virtual void vf_6C();                                                              // _6C
-	virtual void vf_70();                                                              // _70
-	virtual void vf_74();                                                              // _74
-	virtual void vf_78(Vec* pos, f32 f);                                               // _78
-	virtual void vf_7C();                                                              // _7C
-	virtual void vf_80(s32 a, s32 b, s32 c, s32 d, s32 e, f32 f, f32 g, f32 h, f32 i); // _80
-	                                                                                   // _34 vtable
-};
-
-struct Stage01Actor : public Stage01ActorVirt {
-	Stage01KindRef& GetKindRef();
-	Vec* GetPos();
-
-#if defined(VERSION_JP)
-	u8 _38[0xC0 - 0x38]; // _38
-#else
-	u8 _38[0xC8 - 0x38]; // _38
-#endif
-	Vec _C8;                // _C8 (JP: _C0)
-	u8 _D4[0x4];            // _D4 (JP: _CC)
-	Vec _D8;                // _D8 (JP: _D0)
-	u8 _E4[0xFC - 0xE4];    // _E4 (JP: _DC)
-	f32 _FC;                // _FC (JP: _F4)
-	u8 _100[0x158 - 0x100]; // _100 (JP: _F8)
-	s32 _158;               // _158 (JP: _150)
-	u8 _15C[0x228 - 0x15C]; // _15C (JP: _154)
-	u64 _228;               // _228 (JP: _220)
-	u8 _230[0x238 - 0x230]; // _230 (JP: _228)
-	Stage01KindRef _238;    // _238 (JP: _230)
-	u8 _23C[0x258 - 0x23C]; // _23C (JP: _234)
-	s32 _258;               // _258 (JP: _250)
-#if defined(VERSION_JP)
-	u8 _254[0xA34 - 0x254]; // _254
-#else
-	u8 _25C[0xA44 - 0x25C]; // _25C
-#endif
-	u8 _A44[0x4];           // _A44 (JP: _A34)
-	s32 _A48;               // _A48 (JP: _A38)
-	u8 _A4C[0xA64 - 0xA4C]; // _A4C (JP: _A3C)
-	Stage01Actor* _A64;     // _A64 (JP: _A54)
-};
 
 struct HamDish;
 
@@ -111,7 +25,7 @@ struct HamObj {
 	void StateFlip();
 
 	Vec* GetPos();
-	Stage01Actor* GetActor();
+	XObj* GetActor();
 	f32 GetStackHeight();
 
 	void SetState(StateFunc func)
@@ -133,32 +47,32 @@ struct HamObj {
 	void SetRot(f32 rot)
 	{
 		_10 = rot;
-		mActor->vf_2C(_10, 0);
+		mActor->SetRotationZ(_10, 0);
 	}
 
-	HamObj* _00;          // _00
-	Stage01Actor* mActor; // _04
-	s32 _08;              // _08
-	s32 _0C;              // _0C
-	f32 _10;              // _10
-	f32 _14;              // _14
-	f32 _18;              // _18
-	f32 _1C;              // _1C
-	f32 _20;              // _20
-	s32 _24;              // _24
-	s32 _28[2];           // _28
-	s32 _30;              // _30
-	HamDish* _34;         // _34
-	u8 _38;               // _38
-	HSD_Generator* _3C;   // _3C
-	StateFunc mState;     // _40
-	s32 mStateTime;       // _4C
+	HamObj* _00;        // _00
+	XObj* mActor;       // _04
+	s32 _08;            // _08
+	s32 _0C;            // _0C
+	f32 _10;            // _10
+	f32 _14;            // _14
+	f32 _18;            // _18
+	f32 _1C;            // _1C
+	f32 _20;            // _20
+	s32 _24;            // _24
+	s32 _28[2];         // _28
+	s32 _30;            // _30
+	HamDish* _34;       // _34
+	u8 _38;             // _38
+	HSD_Generator* _3C; // _3C
+	StateFunc mState;   // _40
+	s32 mStateTime;     // _4C
 };
 
 struct HamDish {
-	Stage01Actor* _00; // _00
-	s32 _04;           // _04
-	HamObj* _08[4];    // _08
+	XObj* _00;      // _00
+	s32 _04;        // _04
+	HamObj* _08[4]; // _08
 };
 
 static inline void AddToHamDish(HamDish* group, HamObj* slot)
@@ -172,17 +86,12 @@ static inline void AddToHamDish(HamDish* group, HamObj* slot)
 	}
 }
 
-#define STAGE01_PLAYER   ((Stage01Actor*)gGame.GetPlayer())
-#define STAGE01_ACTORS   ((Stage01Actor**)gGame.mXObjs.mObjects)
-#define STAGE01_EVT_DATA (&gGame.mEvt.mData)
 #define STAGE01_PARTICLE (&gGame.mParticle)
-#define STAGE01_OBJ_8F38 (&gGame.mInfoScrn)
 #define STAGE01_SOUND    (&gGame.mSound)
 
 extern "C" {
-void AllowIdleHudCounters(void* obj);
-void SuppressIdleHudCounters(void* obj);
-s32 IsLiftTargetPlug(void* obj);
+void AllowIdleHudCounters(InfoScrn* scrn);
+void SuppressIdleHudCounters(InfoScrn* scrn);
 void psKillAllParticle(void);
 
 // ana.cpp
@@ -233,13 +142,13 @@ void ClearTempActors(void);
 HamDish* FindHamDish(s32 id);
 HamDish* RegisterHamDish(s32 id);
 s32 CountHamDishObjs(HamDish* group);
-void SetYakiRates(u8* data);
+void SetYakiRates(const u8* data);
 s32 PutHeldHamObjOnDish(s32 id);
 bool HamObj_CheckSlideHit(HamObj* slot);
 void UpdateHamPickupFlags(void);
 HamObj* FindFreeHamObj(void);
 HamObj* FindFacingHamburg(void);
-HamObj* FindHamObjByActor(Stage01Actor* actor);
+HamObj* FindHamObjByActor(XObj* actor);
 HamObj* FindHamObj(s32 id);
 HamObj* RegisterHamObj(s32 id);
 void ExitHamburg(void);
@@ -247,9 +156,6 @@ void InitHamburg(void);
 void UpdateHamObjs(u32 arg);
 void ResetYakiRates(void);
 void PlayYakiSound(void);
-void GetPos(HamObj* slot);
-void GetSize(HamObj* slot);
-void GetStackHeight(HamObj* slot);
 void HamObj_SetRot(HamObj* slot, f32 angle);
 void HamObj_StartPutDown(HamObj* slot);
 void HamObj_Respawn(HamObj* slot);
@@ -302,44 +208,44 @@ RelCmdFunc _prolog_cmds[]    = {
 };
 }
 
-// zero vec, only used to seed GetSize
+// Initial vector for the placement transform.
 static Vec sHamPlacementPosition;
 static f32 yakiRates[6];
 static u32 yakiLoopLevel;
 static u8 playerOffGasPlate;
 static u8 yakiSoundPlayed;
 static HamObj hamObjs[9];
-static Stage01Actor* gasPlate;
+static XObj* gasPlate;
 static HamDish hamDishes[4];
-static Stage01Actor* tempActors[4];
+static XObj* tempActors[4];
 static CStatus yakiResultFlags;
 static u8 putDownActive;
 
-static inline bool IsActive(Stage01Actor* actor)
+static inline bool IsActive(XObj* actor)
 {
 	if (actor == NULL) {
 		return false;
 	}
-	if (!(actor->_228 & 0x10000)) {
+	if (!(actor->mStatus.mFlags & 0x10000)) {
 		return false;
 	}
 	return true;
 }
 
-static inline bool IsHeld(Stage01Actor* actor)
+static inline bool IsHeld(XObj* actor)
 {
-	Stage01Actor* player = STAGE01_PLAYER;
-	bool held            = false;
-	if (player->_A48 != 0 && player->_A64 == actor) {
+	XObjChr* player = gGame.GetPlayer();
+	bool held       = false;
+	if (player->mLift.mState != 0 && player->mLift.mTarget == actor) {
 		held = true;
 	}
 	return held;
 }
 
-static inline bool IsOnGasPlate(Stage01Actor* actor)
+static inline bool IsOnGasPlate(XObj* actor)
 {
-	f32 x = actor->_C8.x;
-	f32 z = actor->_C8.z;
+	f32 x = actor->mMoveTranslate.x;
+	f32 z = actor->mMoveTranslate.z;
 	if (x < -289.0f || -239.0f < x || z < 21.4f || 62.6f < z) {
 		return false;
 	}
@@ -363,15 +269,15 @@ static inline bool IsSamePos(const Vec& a, Vec b)
 	return a.x == b.x && a.y == b.y && a.z == b.z;
 }
 
-static inline HamObj* FindHamObjByActorInline(Stage01Actor* actor)
+static inline HamObj* FindHamObjByActorInline(XObj* actor)
 {
 	s32 i;
 	if (actor == NULL) {
 		return NULL;
 	}
 	for (i = 0; i < 9; i++) {
-		Stage01Actor* current = hamObjs[i].mActor;
-		if (current != NULL && current->_258 == actor->_258) {
+		XObj* current = hamObjs[i].mActor;
+		if (current != NULL && current->mPoolIndex == actor->mPoolIndex) {
 			return &hamObjs[i];
 		}
 	}
@@ -380,8 +286,8 @@ static inline HamObj* FindHamObjByActorInline(Stage01Actor* actor)
 
 static inline bool IsLeavingGasPlate(HamObj* slot)
 {
-	f32 x = slot->mActor->_C8.x;
-	f32 z = slot->mActor->_C8.z;
+	f32 x = slot->mActor->mMoveTranslate.x;
+	f32 z = slot->mActor->mMoveTranslate.z;
 	if ((62.6f < z && 0.0f < (f32)cos(slot->_18)) || (z < 21.4f && (f32)cos(slot->_18) < 0.0f)
 	    || (-239.0f < x && 0.0f < (f32)sin(slot->_18)) || (x < -289.0f && (f32)sin(slot->_18) < 0.0f)) {
 		return true;
@@ -391,36 +297,17 @@ static inline bool IsLeavingGasPlate(HamObj* slot)
 
 inline Vec* HamObj::GetPos()
 {
-	return mActor->GetPos();
+	return &mActor->mMoveTranslate;
 }
 
-inline Vec Stage01KindRef::GetSize() const
-{
-	Vec size = sHamPlacementPosition;
-	size.x   = mKind->_04 / 100.0f;
-	size.y   = mKind->_08 / 100.0f;
-	size.z   = mKind->_0C / 100.0f;
-	return size;
-}
-
-inline Stage01KindRef& Stage01Actor::GetKindRef()
-{
-	return _238;
-}
-
-inline Stage01Actor* HamObj::GetActor()
+inline XObj* HamObj::GetActor()
 {
 	return mActor;
 }
 
-inline Vec* Stage01Actor::GetPos()
-{
-	return &_C8;
-}
-
 inline f32 HamObj::GetStackHeight()
 {
-	return GetActor()->GetKindRef().GetSize().y + 2.0f * _30;
+	return PlacementPosition(mActor->mCoord, sHamPlacementPosition).y + 2.0f * _30;
 }
 
 // yaw on the XZ plane
@@ -437,8 +324,8 @@ static inline HamObj* FindStackBase(Vec pos, s32 id, s32 level, f32 maxDist)
 	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		HamObj* other = &hamObjs[i];
 		if (IsActive(other->mActor) && id != other->_08 && level == other->_30 && other->_34 == NULL && !IsHeld(other->mActor)) {
-			pos.y    = other->mActor->_C8.y;
-			f32 dist = PSVECDistance(&other->mActor->_C8, &pos);
+			pos.y    = other->mActor->mMoveTranslate.y;
+			f32 dist = PSVECDistance(&other->mActor->mMoveTranslate, &pos);
 			if (dist < maxDist) {
 				best    = other;
 				maxDist = dist;
@@ -454,9 +341,9 @@ static inline HamObj* FindStackBase(Vec pos, s32 id, s32 level, f32 maxDist)
  */
 extern "C" s32 CmdPlaySoundAtActor(s32 cmd, s32 count, s32* args)
 {
-	Stage01Actor* actor = STAGE01_ACTORS[args[1]];
-	Vec pos             = actor->_C8;
-	s32 id              = args[0];
+	XObj* actor = gGame.GetObject(args[1]);
+	Vec pos     = actor->mMoveTranslate;
+	s32 id      = args[0];
 	PlayGameSound(STAGE01_SOUND, id, GetSoundVolumeAtPosition(STAGE01_SOUND, &pos, 0));
 	return 0;
 }
@@ -486,7 +373,7 @@ extern "C" s32 CmdPlayYakiSound(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdSetYakiRates(s32 cmd, s32 count, s32* args)
 {
-	SetYakiRates((u8*)args[0]);
+	SetYakiRates((const u8*)args[0]);
 	return 0;
 }
 
@@ -519,7 +406,7 @@ extern "C" s32 CmdExitHamburg(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdGetHeldHamObjId(s32 cmd, s32 count, s32* args)
 {
-	HamObj* slot = FindHamObjByActor(STAGE01_PLAYER->_A64);
+	HamObj* slot = FindHamObjByActor(gGame.GetPlayer()->mLift.mTarget);
 	if (slot != NULL) {
 		return slot->_08;
 	}
@@ -620,7 +507,8 @@ extern "C" s32 CmdPushHamObj(s32 cmd, s32 count, s32* args)
 		return 0;
 	}
 
-	f32 angle = atan2(slot->mActor->_C8.x - STAGE01_PLAYER->_C8.x, slot->mActor->_C8.z - STAGE01_PLAYER->_C8.z);
+	f32 angle = atan2(slot->mActor->mMoveTranslate.x - gGame.GetPlayer()->mMoveTranslate.x,
+	                  slot->mActor->mMoveTranslate.z - gGame.GetPlayer()->mMoveTranslate.z);
 	HamObj_StartSlide(slot, args[1], 0.2f, angle);
 	return 1;
 }
@@ -685,7 +573,7 @@ extern "C" s32 CmdGetHamObjKind(s32 cmd, s32 count, s32* args)
 {
 	HamObj* slot = FindHamObj(args[0]);
 	if (slot != NULL) {
-		return slot->mActor->_238.mKind->_00;
+		return slot->mActor->mCoord._00->_00;
 	}
 	return -1;
 }
@@ -827,15 +715,16 @@ extern "C" s32 CheckYakiResult(void)
 {
 	u32 i;
 	s32 result;
-	Stage01Actor* player;
+	XObjChr* player;
 	HamObj* slot;
 
 	if (gGame.mEvt.mData.mScript != NULL) {
 		return 0;
 	}
 
-	player = STAGE01_PLAYER;
-	if (player->_C8.x < -295.0f || -225.0 < player->_C8.x || player->_C8.z < 10.0f || 74.0f < player->_C8.z) {
+	player = gGame.GetPlayer();
+	if (player->mMoveTranslate.x < -295.0f || -225.0 < player->mMoveTranslate.x || player->mMoveTranslate.z < 10.0f
+	    || 74.0f < player->mMoveTranslate.z) {
 		return 9;
 	}
 
@@ -843,7 +732,7 @@ extern "C" s32 CheckYakiResult(void)
 	if (result == 0 && !(yakiResultFlags.mFlags & 2)) {
 		for (i = 0; i < 9 && result == 0; i++) {
 			slot = &hamObjs[i];
-			if (IsActive(slot->mActor) && slot->mActor->_238.mKind->_00 == 0x1F9 && slot->_28[0] / 600 + 1 >= 3
+			if (IsActive(slot->mActor) && slot->mActor->mCoord._00->_00 == 0x1F9 && slot->_28[0] / 600 + 1 >= 3
 			    && slot->_28[1] / 600 + 1 >= 3) {
 				result = 1;
 			}
@@ -856,7 +745,7 @@ extern "C" s32 CheckYakiResult(void)
 	if (result == 0 && !(yakiResultFlags.mFlags & 4)) {
 		for (i = 0; i < 9 && result == 0; i++) {
 			slot = &hamObjs[i];
-			if (IsActive(slot->mActor) && slot->mActor->_238.mKind->_00 == 0x1F9
+			if (IsActive(slot->mActor) && slot->mActor->mCoord._00->_00 == 0x1F9
 			    && (slot->_28[0] / 600 + 1 >= 5 || slot->_28[1] / 600 + 1 >= 5)) {
 				result = 2;
 			}
@@ -1060,14 +949,8 @@ extern "C" void AddTempActor(s32 id)
 	s32 i;
 	for (i = 0; i < 4; i++) {
 		if (tempActors[i] == NULL) {
-			Stage01Actor* actor;
-			if (gGame.mEvt.mData.mScript != NULL) {
-				actor = (Stage01Actor*)ResolveEventObjectId(STAGE01_EVT_DATA, id);
-			} else {
-				actor = NULL;
-			}
-			tempActors[i] = actor;
-			tempActors[i]->_228 |= 0x10000;
+			tempActors[i] = FindObj(id);
+			tempActors[i]->mStatus.mFlags |= 0x10000;
 			return;
 		}
 	}
@@ -1082,7 +965,7 @@ extern "C" void ClearTempActors(void)
 	s32 i;
 	for (i = 0; i < 4; i++) {
 		if (tempActors[i] != NULL) {
-			tempActors[i]->_228 &= ~0x10000ULL;
+			tempActors[i]->mStatus.mFlags &= ~0x10000ULL;
 			tempActors[i] = NULL;
 		}
 	}
@@ -1119,7 +1002,7 @@ extern "C" HamDish* RegisterHamDish(s32 id)
 		if (hamDishes[i]._00 == NULL) {
 			group         = &hamDishes[i];
 			group->_04    = id;
-			group->_00    = STAGE01_ACTORS[id];
+			group->_00    = gGame.GetObject(id);
 			group->_08[0] = NULL;
 			group->_08[1] = NULL;
 			group->_08[2] = NULL;
@@ -1149,11 +1032,11 @@ extern "C" s32 CountHamDishObjs(HamDish* group)
  * @note Address: stage01 .text 0xDD8
  * @note Size: 0x180
  */
-extern "C" void SetYakiRates(u8* data)
+extern "C" void SetYakiRates(const u8* data)
 {
 	s32 i;
 	for (i = 0; i < 5; i++) {
-		yakiRates[i + 1] = (s32)(data[0] + data[1] * 0x100 + data[2] * 0x10000 + data[3] * 0x1000000) / 100.0f;
+		yakiRates[i + 1] = (s32)(data[0] + data[1] * 0x100 + data[2] * 0x10000 + data[3] * 0x1000000u) / 100.0f;
 		data += 4;
 	}
 }
@@ -1165,15 +1048,15 @@ extern "C" void SetYakiRates(u8* data)
 extern "C" s32 PutHeldHamObjOnDish(s32 id)
 {
 	// NONMATCHING: regalloc
-	Stage01Actor* player = STAGE01_PLAYER;
+	XObjChr* player = gGame.GetPlayer();
 	HamObj* slot;
 	HamDish* group;
 
-	if (IsLiftTargetPlug(player->_A44)) {
+	if (IsLiftTargetPlug(&player->mLift)) {
 		return -1;
 	}
 
-	slot = FindHamObjByActorInline(player->_A64);
+	slot = FindHamObjByActorInline(player->mLift.mTarget);
 	if (slot == NULL) {
 		return -1;
 	}
@@ -1182,8 +1065,8 @@ extern "C" s32 PutHeldHamObjOnDish(s32 id)
 	slot->_34 = group;
 	AddToHamDish(group, slot);
 
-	if (player->_A48 == 4) {
-		player->_A48 = 6;
+	if (player->mLift.mState == 4) {
+		player->mLift.mState = 6;
 	}
 	return slot->_08;
 }
@@ -1306,14 +1189,14 @@ extern "C" s32 PutHeldHamObjOnDish(s32 id)
 extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
 {
 	// NONMATCHING: regalloc
-	HamObj* best = FindStackBase(slot->mActor->_C8, slot->_08, slot->_30, 10.0f);
+	HamObj* best = FindStackBase(slot->mActor->mMoveTranslate, slot->_08, slot->_30, 10.0f);
 
 	if (best != NULL) {
-		f32 angle = AngleFrom(&slot->mActor->_C8, &best->mActor->_C8);
+		f32 angle = AngleFrom(&slot->mActor->mMoveTranslate, &best->mActor->mMoveTranslate);
 		f32 c     = cos(angle - slot->_18);
 		if ((f32)cos(45.0) < c) {
 			f32 speed;
-			angle = AngleFrom(&slot->mActor->_C8, &best->mActor->_C8);
+			angle = AngleFrom(&slot->mActor->mMoveTranslate, &best->mActor->mMoveTranslate);
 			speed = slot->_1C * 0.5f;
 			if (10.0f < speed) {
 				speed = 10.0f;
@@ -1597,7 +1480,7 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
  */
 extern "C" void UpdateHamPickupFlags(void)
 {
-	// NONMATCHING: regalloc — retail keeps two zeroed locals (best and the inner
+	// NONMATCHING: regalloc â€” retail keeps two zeroed locals (best and the inner
 	// loop counter) in adjacent callee-saved slots so the inner counter is formed
 	// by copying the pointer slot instead of a fresh li; the built code uses
 	// independent li forms and different callee registers throughout
@@ -1611,10 +1494,10 @@ extern "C" void UpdateHamPickupFlags(void)
 			continue;
 		}
 		if (slot->_34 != NULL) {
-			slot->mActor->_228 &= ~0x100000000ULL;
-			slot->mActor->_228 &= ~0x10000000000ULL;
+			slot->mActor->mStatus.mFlags &= ~0x100000000ULL;
+			slot->mActor->mStatus.mFlags &= ~0x10000000000ULL;
 		} else {
-			Vec pos      = slot->mActor->_C8;
+			Vec pos      = slot->mActor->mMoveTranslate;
 			HamObj* best = NULL;
 			s32 id       = slot->_08;
 			s32 level    = slot->_30 + 1;
@@ -1622,8 +1505,8 @@ extern "C" void UpdateHamPickupFlags(void)
 			for (j = 0; j < ARRAY_SIZE(hamObjs); j++) {
 				HamObj* other = &hamObjs[j];
 				if (IsActive(other->mActor) && id != other->_08 && level == other->_30 && other->_34 == NULL && !IsHeld(other->mActor)) {
-					pos.y    = other->mActor->_C8.y;
-					f32 dist = PSVECDistance(&other->mActor->_C8, &pos);
+					pos.y    = other->mActor->mMoveTranslate.y;
+					f32 dist = PSVECDistance(&other->mActor->mMoveTranslate, &pos);
 					if (dist < bestDist) {
 						best     = other;
 						bestDist = dist;
@@ -1631,7 +1514,7 @@ extern "C" void UpdateHamPickupFlags(void)
 				}
 			}
 			if (best == NULL) {
-				slot->mActor->_228 |= 0x100000000ULL;
+				slot->mActor->mStatus.mFlags |= 0x100000000ULL;
 			}
 		}
 	}
@@ -1871,14 +1754,14 @@ extern "C" HamObj* FindFacingHamburg(void)
 	u32 i;
 
 	for (i = 0; i < 9; i++) {
-		HamObj* slot        = &hamObjs[i];
-		Stage01Actor* actor = slot->mActor;
-		if (IsActive(actor) && (actor->_228 & 0x100000000ULL) && slot->_30 <= 0 && actor->_238.mKind->_00 == 0x1F9) {
-			dist      = PSVECDistance(&STAGE01_PLAYER->_C8, &actor->_C8);
+		HamObj* slot = &hamObjs[i];
+		XObj* actor  = slot->mActor;
+		if (IsActive(actor) && (actor->mStatus.mFlags & 0x100000000ULL) && slot->_30 <= 0 && actor->mCoord._00->_00 == 0x1F9) {
+			dist      = PSVECDistance(&gGame.GetPlayer()->mMoveTranslate, &actor->mMoveTranslate);
 			Vec* pos  = slot->GetPos();
-			Vec* ppos = &STAGE01_PLAYER->_C8;
+			Vec* ppos = &gGame.GetPlayer()->mMoveTranslate;
 			f32 angle = atan2(pos->x - ppos->x, pos->z - ppos->z);
-			c         = cos(angle - STAGE01_PLAYER->_FC);
+			c         = cos(angle - gGame.GetPlayer()->mMoveRotate.y);
 			if ((f32)cos(0.7853982f) < c && dist < 15.0f && (best == NULL || dist < bestDist)) {
 				best     = slot;
 				bestDist = dist;
@@ -2016,15 +1899,15 @@ extern "C" HamObj* FindFacingHamburg(void)
  * @note Address: stage01 .text 0x19B4
  * @note Size: 0x68
  */
-extern "C" HamObj* FindHamObjByActor(Stage01Actor* actor)
+extern "C" HamObj* FindHamObjByActor(XObj* actor)
 {
 	s32 i;
 	if (actor == NULL) {
 		return NULL;
 	}
 	for (i = 0; i < 9; i++) {
-		Stage01Actor* current = hamObjs[i].mActor;
-		if (current != NULL && current->_258 == actor->_258) {
+		XObj* current = hamObjs[i].mActor;
+		if (current != NULL && current->mPoolIndex == actor->mPoolIndex) {
 			return &hamObjs[i];
 		}
 	}
@@ -2073,7 +1956,7 @@ extern "C" HamObj* FindHamObj(s32 id)
 	// NONMATCHING: regalloc
 	s32 i;
 	if (id < 0) {
-		return FindHamObjByActorInline(STAGE01_PLAYER->_A64);
+		return FindHamObjByActorInline(gGame.GetPlayer()->mLift.mTarget);
 	}
 	for (i = 0; i < 9; i++) {
 		if (hamObjs[i].mActor != NULL && id == hamObjs[i]._08) {
@@ -2153,7 +2036,7 @@ extern "C" HamObj* FindHamObj(s32 id)
  */
 extern "C" HamObj* RegisterHamObj(s32 id)
 {
-	// NONMATCHING: regalloc — retail forms the mActor field address once and
+	// NONMATCHING: regalloc â€” retail forms the mActor field address once and
 	// reloads the pointer through it for both flag updates; the built code uses
 	// the field offset form and different callee registers
 	s32 i;
@@ -2166,11 +2049,11 @@ extern "C" HamObj* RegisterHamObj(s32 id)
 		if (hamObjs[i].mActor == NULL) {
 			slot         = &hamObjs[i];
 			slot->_08    = id;
-			slot->mActor = STAGE01_ACTORS[id];
+			slot->mActor = gGame.GetObject(id);
 			slot->_24    = 0;
 			slot->_34    = NULL;
 			slot->_00    = NULL;
-			switch (slot->mActor->_238.mKind->_00) {
+			switch (slot->mActor->mCoord._00->_00) {
 			case 0x1F9:
 				slot->_28[1] = 0;
 				slot->_28[0] = 0;
@@ -2191,8 +2074,8 @@ extern "C" HamObj* RegisterHamObj(s32 id)
 				break;
 			}
 			if (slot->mActor != NULL) {
-				slot->mActor->_228 |= 0x100000000ULL;
-				slot->mActor->_228 |= 0x10000000000ULL;
+				slot->mActor->mStatus.mFlags |= 0x100000000ULL;
+				slot->mActor->mStatus.mFlags |= 0x10000000000ULL;
 			}
 			return slot;
 		}
@@ -2363,7 +2246,7 @@ extern "C" void ExitHamburg(void)
 	s32 i;
 
 	if (gasPlate != NULL) {
-		gasPlate->_228 |= 0x200000000ULL;
+		gasPlate->mStatus.mFlags |= 0x200000000ULL;
 	}
 
 	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
@@ -2381,7 +2264,7 @@ extern "C" void ExitHamburg(void)
 	psKillAllParticle();
 	StopGameSfx(STAGE01_SOUND, 0x4001C);
 	StopGameSfx(STAGE01_SOUND, 0x4001D);
-	AllowIdleHudCounters(STAGE01_OBJ_8F38);
+	AllowIdleHudCounters(&gGame.mInfoScrn);
 }
 
 /**
@@ -2390,7 +2273,7 @@ extern "C" void ExitHamburg(void)
  */
 extern "C" void InitHamburg(void)
 {
-	// NONMATCHING: regalloc/scheduling — the unrolled hamDishes init, the
+	// NONMATCHING: regalloc/scheduling â€” the unrolled hamDishes init, the
 	// zero/one constant slots and the gasPlate scan setup are interleaved
 	// differently and land in different callee registers
 	s32 i;
@@ -2412,13 +2295,13 @@ extern "C" void InitHamburg(void)
 	count       = game->mXObjs.mObjectCount;
 	gasPlate    = NULL;
 	for (i = 0; gasPlate == NULL && i < count; i++) {
-		Stage01Actor* actor = (Stage01Actor*)game->mXObjs.mObjects[i];
-		if ((actor->_228 & 1) && actor->_238.mKind->_00 == 0x200) {
+		XObj* actor = game->GetObject(i);
+		if ((actor->mStatus.mFlags & 1) && actor->mCoord._00->_00 == 0x200) {
 			gasPlate = actor;
 		}
 	}
 	if (gasPlate != NULL) {
-		gasPlate->_228 &= ~0x200000000ULL;
+		gasPlate->mStatus.mFlags &= ~0x200000000ULL;
 	}
 
 	for (i = 0; i < 4; i++) {
@@ -2426,7 +2309,7 @@ extern "C" void InitHamburg(void)
 	}
 	yakiResultFlags.mFlags = 0;
 	putDownActive          = 0;
-	SuppressIdleHudCounters(STAGE01_OBJ_8F38);
+	SuppressIdleHudCounters(&gGame.mInfoScrn);
 }
 
 // InitHamburg
@@ -2560,9 +2443,9 @@ extern "C" void UpdateHamObjs(u32 arg)
 		return;
 	}
 
-	Stage01Actor* player = STAGE01_PLAYER;
-	f32 x                = player->_C8.x;
-	f32 z                = player->_C8.z;
+	XObjChr* player = gGame.GetPlayer();
+	f32 x           = player->mMoveTranslate.x;
+	f32 z           = player->mMoveTranslate.z;
 	if (x < -289.0f || -239.0f < x || z < 21.4f || 62.6f < z) {
 		playerOffGasPlate = 1;
 	} else {
@@ -2622,9 +2505,9 @@ extern "C" void PlayYakiSound(void)
  */
 void HamObj::StateStackLand()
 {
-	f32 dist = PSVECDistance(&mActor->_C8, &mActor->_D8);
+	f32 dist = PSVECDistance(&mActor->mMoveTranslate, &mActor->mMoveTranslate.mTarget);
 	if (HamObj_CheckSlideHit(this)) {
-		mActor->vf_78(&mActor->_C8, 0.0f);
+		mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
 		SetState(NULL);
 	} else if (dist <= 0.001f) {
 		SetState(NULL);
@@ -2638,38 +2521,38 @@ void HamObj::StateStackLand()
 void HamObj::StatePutDown()
 {
 	// NONMATCHING: regalloc
-	Stage01Actor* player = STAGE01_PLAYER;
+	XObjChr* player = gGame.GetPlayer();
 	s32 level;
 
 	switch (mStateTime) {
 	case 0: {
-		if (player->_A48 != 6 || player->_158 != 9) {
+		if (player->mLift.mState != 6 || player->mAnimId != 9) {
 			break;
 		}
-		HSD_AObj* aobj = GetAObj(player->_00);
+		HSD_AObj* aobj = GetAObj(player->mJObj);
 		f32 frame      = aobj != NULL ? HSD_AObjGetCurrFrame(aobj) : 0.0f;
 		if (frame < 15.0f) {
 			break;
 		}
 
 		if (IsHeld(mActor)) {
-			STAGE01_PLAYER->_A64 = NULL;
+			gGame.GetPlayer()->mLift.mTarget = NULL;
 		}
-		mActor->_228 &= ~0x400000000000000ULL;
-		_18     = player->_FC;
+		mActor->mStatus.mFlags &= ~0x400000000000000ULL;
+		_18     = player->mMoveRotate.y;
 		_20     = 2.0f;
-		Vec pos = mActor->_C8;
+		Vec pos = mActor->mMoveTranslate;
 		pos.x += 5.0f * (f32)sin(_18);
 		pos.z += 5.0f * (f32)cos(_18);
 
 		if (_34 != NULL) {
 			PlayGameSound(STAGE01_SOUND, 0x4001E, 0xFF);
-			pos.x = _34->_00->_C8.x;
-			pos.y = _34->_00->_C8.y;
-			pos.z = _34->_00->_C8.z;
+			pos.x = _34->_00->mMoveTranslate.x;
+			pos.y = _34->_00->mMoveTranslate.y;
+			pos.z = _34->_00->mMoveTranslate.z;
 			_30   = CountHamDishObjs(_34);
 			pos.y = GetStackHeight();
-			mActor->vf_78(&pos, _20);
+			mActor->SetMoveDir(&pos, _20);
 			SetState(NULL);
 			STAGE01_PARTICLE->Kill(_3C);
 			_3C = 0;
@@ -2684,11 +2567,11 @@ void HamObj::StatePutDown()
 		for (level = 4; level >= 0; level--) {
 			HamObj* base = FindStackBase(pos, _08, level, 5.0f);
 			if (base != NULL) {
-				pos.y     = base->mActor->_C8.y;
+				pos.y     = base->mActor->mMoveTranslate.y;
 				base->_00 = this;
 				_30       = base->_30 + 1;
 				pos.y     = GetStackHeight();
-				mActor->vf_78(&pos, _20);
+				mActor->SetMoveDir(&pos, _20);
 				SetState(&HamObj::StateStackLand);
 				UpdateHamPickupFlags();
 				return;
@@ -2698,17 +2581,17 @@ void HamObj::StatePutDown()
 		UpdateHamPickupFlags();
 		_30   = 0;
 		pos.y = GetStackHeight();
-		mActor->vf_78(&pos, _20);
+		mActor->SetMoveDir(&pos, _20);
 		mStateTime++;
 		break;
 	}
 	case 1:
-		if (PSVECDistance(&mActor->_C8, &mActor->_D8) <= 0.001f) {
+		if (PSVECDistance(&mActor->mMoveTranslate, &mActor->mMoveTranslate.mTarget) <= 0.001f) {
 			UpdateHamPickupFlags();
 			if (IsOnGasPlate(mActor)) {
-				Vec pos = mActor->_C8;
-				pos.y   = mActor->_238.GetSize().y;
-				mActor->vf_78(&pos, 10.0f);
+				Vec pos = mActor->mMoveTranslate;
+				pos.y   = PlacementPosition(mActor->mCoord, sHamPlacementPosition).y;
+				mActor->SetMoveDir(&pos, 10.0f);
 				StartSlide(5.0f, 0.2f, _18);
 			} else {
 				_30 = 1;
@@ -3389,15 +3272,15 @@ void HamObj::StateSlide()
 
 	switch (mStateTime) {
 	case 0:
-		pos.x = mActor->_C8.x;
-		pos.y = mActor->_C8.y;
-		pos.z = mActor->_C8.z;
+		pos.x = mActor->mMoveTranslate.x;
+		pos.y = mActor->mMoveTranslate.y;
+		pos.z = mActor->mMoveTranslate.z;
 		pos.x += _1C * (f32)sin(_18);
-		pos.y = mActor->_238.GetSize().y;
+		pos.y = PlacementPosition(mActor->mCoord, sHamPlacementPosition).y;
 		pos.z += _1C * (f32)cos(_18);
-		mActor->vf_78(&pos, _20);
+		mActor->SetMoveDir(&pos, _20);
 		if (HamObj_CheckSlideHit(this)) {
-			mActor->vf_78(&mActor->_C8, 0.0f);
+			mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
 			SetState(NULL);
 		}
 		if (mStateTime == 0) {
@@ -3406,12 +3289,12 @@ void HamObj::StateSlide()
 		break;
 	case 1:
 		if (HamObj_CheckSlideHit(this)) {
-			mActor->vf_78(&mActor->_C8, 0.0f);
+			mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
 			SetState(NULL);
-		} else if (IsSamePos(mActor->_C8, mActor->_D8)) {
+		} else if (IsSamePos(mActor->mMoveTranslate, mActor->mMoveTranslate.mTarget)) {
 			SetState(NULL);
 		}
-		if (_00 != NULL && 8.0f < PSVECDistance(&mActor->_C8, &_00->mActor->_C8)) {
+		if (_00 != NULL && 8.0f < PSVECDistance(&mActor->mMoveTranslate, &_00->mActor->mMoveTranslate)) {
 			HamObj_LowerStack(_00);
 			_00 = NULL;
 		}
@@ -3427,7 +3310,7 @@ void HamObj::StateFlip()
 {
 	switch (mStateTime) {
 	case 0:
-		if (0.0f < (f32)cos(HSD_JObjGetRotationZ(mActor->_00))) {
+		if (0.0f < (f32)cos(HSD_JObjGetRotationZ(mActor->mJObj))) {
 			_10 = PI;
 		} else {
 			_10 = 0.0f;
@@ -3437,8 +3320,8 @@ void HamObj::StateFlip()
 	case 1:
 		_14 -= 1.0f;
 		if (0.0f < _14) {
-			f32 rot = HSD_JObjGetRotationZ(mActor->_00);
-			mActor->vf_2C(rot + (_10 - rot) / _14, 0);
+			f32 rot = HSD_JObjGetRotationZ(mActor->mJObj);
+			mActor->SetRotationZ(rot + (_10 - rot) / _14, 0);
 		} else {
 			s32 level;
 			PlayYakiSound();
@@ -3446,7 +3329,7 @@ void HamObj::StateFlip()
 			if (level >= 5) {
 				level = 4;
 			}
-			mActor->vf_80(level, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+			mActor->SetAnim(level, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			_24 = 1 - _24;
 			SetState(NULL);
 		}
@@ -3614,7 +3497,7 @@ extern "C" void HamObj_LowerStack(HamObj* slot)
 		slot->_30--;
 		Vec pos = *slot->GetPos();
 		pos.y   = slot->GetStackHeight();
-		slot->GetActor()->vf_78(&pos, 0.1f);
+		slot->GetActor()->SetMoveDir(&pos, 0.1f);
 		if (slot->_00 != NULL) {
 			HamObj_LowerStack(slot->_00);
 		}
@@ -3667,22 +3550,22 @@ extern "C" void HamObj_SetRot(HamObj* slot, f32 rot)
 extern "C" void HamObj_StartPutDown(HamObj* slot)
 {
 	s32 i;
-	Stage01Actor* player = STAGE01_PLAYER;
+	XObjChr* player = gGame.GetPlayer();
 
 	if (IsHeld(slot->mActor)) {
 		HamObj* other;
 		putDownActive = 1;
 		for (i = 0, other = hamObjs; i < 9; i++, other++) {
 			if (IsActive(other->mActor)) {
-				other->mActor->_228 &= ~0x100000000ULL;
+				other->mActor->mStatus.mFlags &= ~0x100000000ULL;
 				if (IsOnTopOf(other, slot)) {
 					other->_00 = NULL;
 				}
 			}
 		}
 		slot->SetState(&HamObj::StatePutDown);
-	} else if (player->_A48 == 4) {
-		player->_A48 = 6;
+	} else if (player->mLift.mState == 4) {
+		player->mLift.mState = 6;
 	}
 }
 
@@ -3693,7 +3576,7 @@ extern "C" void HamObj_StartPutDown(HamObj* slot)
 extern "C" void HamObj_Respawn(HamObj* slot)
 {
 	if (putDownActive) {
-		slot->mActor->_228 &= ~0x100000000ULL;
+		slot->mActor->mStatus.mFlags &= ~0x100000000ULL;
 	}
 
 	if (slot->_0C == 1) {
@@ -3705,8 +3588,8 @@ extern "C" void HamObj_Respawn(HamObj* slot)
 		PlayGameSound(STAGE01_SOUND, 0x4001E, 0xFF);
 	}
 
-	slot->mActor->vf_68(0, -231.8f, 77.5f, 50.0f);
-	slot->mActor->vf_80(0, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+	slot->mActor->SetPos(-231.8f, 77.5f, 50.0f, 0);
+	slot->mActor->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	slot->SetRot(0.0f);
 
 	f32 speed;
@@ -3734,7 +3617,7 @@ extern "C" void HamObj_StartSlide(HamObj* slot, f32 speed, f32 f, f32 angle)
 extern "C" void HamObj_StartFlip(HamObj* slot, u32 time)
 {
 	slot->_14 = time;
-	slot->_18 = AngleFrom(&STAGE01_PLAYER->_C8, &slot->mActor->_C8);
+	slot->_18 = AngleFrom(&gGame.GetPlayer()->mMoveTranslate, &slot->mActor->mMoveTranslate);
 	slot->SetState(&HamObj::StateFlip);
 }
 
@@ -3814,9 +3697,9 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 
 		Vec scale;
 		Vec pos;
-		pos.x = slot->mActor->_C8.x;
-		pos.y = slot->mActor->_C8.y;
-		pos.z = slot->mActor->_C8.z;
+		pos.x = slot->mActor->mMoveTranslate.x;
+		pos.y = slot->mActor->mMoveTranslate.y;
+		pos.z = slot->mActor->mMoveTranslate.z;
 		pos.y += 2.5f;
 		scale.x = scale.y = scale.z = 1.0f;
 
@@ -3847,7 +3730,7 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 
 		if (slot->_3C == 0) {
 			s32 path[]     = { 0 };
-			HSD_JObj* jobj = GetJointByPath(slot->mActor->_00, path, 1);
+			HSD_JObj* jobj = GetJointByPath(slot->mActor->mJObj, path, 1);
 			slot->_3C      = STAGE01_PARTICLE->Create(0x78, 0, jobj, 1);
 		}
 	}
@@ -3855,27 +3738,27 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 	if (slot->mState != NULL) {
 		(slot->*(slot->mState))();
 	} else if (slot->_38 && slot->_34 == NULL) {
-		f32 angle = atan2(-263.9f - slot->mActor->_C8.x, 42.0f - slot->mActor->_C8.z);
+		f32 angle = atan2(-263.9f - slot->mActor->mMoveTranslate.x, 42.0f - slot->mActor->mMoveTranslate.z);
 		if (!IsOnGasPlate(slot->mActor)) {
 			slot->StartSlide(5.0f, 0.2f, angle);
 			slot->_30 = 0;
 		} else if (slot->_30 == 0 && playerOffGasPlate) {
-			if (PSVECDistance(&STAGE01_PLAYER->_C8, &slot->mActor->_C8) < 8.0f) {
+			if (PSVECDistance(&gGame.GetPlayer()->mMoveTranslate, &slot->mActor->mMoveTranslate) < 8.0f) {
 				slot->StartSlide(5.0f, 0.2f, angle);
 			}
-		} else if (slot->mActor->_238.GetSize().y + 2.0f * slot->_30 < slot->mActor->_C8.y) {
+		} else if (PlacementPosition(slot->mActor->mCoord, sHamPlacementPosition).y + 2.0f * slot->_30 < slot->mActor->mMoveTranslate.y) {
 			slot->StartSlide(0.0f, 0.5f, angle);
 		}
 
-		if (!putDownActive && !(slot->mActor->_228 & 0x100000000ULL)
+		if (!putDownActive && !(slot->mActor->mStatus.mFlags & 0x100000000ULL)
 		    && (slot->_00 == NULL || (slot->_00 != NULL && slot->_30 == slot->_00->_30))) {
-			slot->mActor->_228 |= 0x100000000ULL;
+			slot->mActor->mStatus.mFlags |= 0x100000000ULL;
 		}
 	}
 
-	if (slot->_38 && slot->mActor->_C8.y < 77.5f) {
-		slot->mActor->vf_10(78.0f, 0);
-		slot->mActor->vf_2C(slot->_10, 0);
+	if (slot->_38 && slot->mActor->mMoveTranslate.y < 77.5f) {
+		slot->mActor->SetTranslateY(78.0f, 0);
+		slot->mActor->SetRotationZ(slot->_10, 0);
 	}
 }
 
