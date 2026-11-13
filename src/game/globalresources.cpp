@@ -9,7 +9,7 @@
 #include "game/globals.h"
 #include "game/stage.h"
 #include <stdio.h>
-#if defined(WII_LOCALIZATION)
+#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
 #include "wii_locale.h"
 #endif
 
@@ -84,7 +84,11 @@ extern "C" const char* GetLocalizedPCDialogue(s32 index)
 #if defined(VERSION_JP)
 	return gJapanesePCDialogue[index];
 #else
+#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
+	return gPCDialogueByLanguage[0][index];
+#else
 	return gPCDialogueByLanguage[gGame.mLanguage][index];
+#endif
 #endif
 }
 
@@ -94,14 +98,18 @@ extern "C" const char* GetLocalizedPCDialogue(s32 index)
  */
 extern "C" const char* GetLocalizedInterfaceText(s32 index)
 {
-#if defined(WII_LOCALIZATION)
-	if ((u32)index < ARRAY_SIZE(sLocalizedWiiInterface))
+#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
+	if (gGame.mLanguage && (u32)index < ARRAY_SIZE(sLocalizedWiiInterface))
 		return sLocalizedWiiInterface[index];
 #endif
 #if defined(VERSION_JP)
 	return gJapaneseInterfaceText[index];
 #else
+#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
+	return gInterfaceTextByLanguage[0][index];
+#else
 	return gInterfaceTextByLanguage[gGame.mLanguage][index];
+#endif
 #endif
 }
 
