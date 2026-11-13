@@ -14,7 +14,7 @@ void ShowIdlePlayerRadar(XObjRadar* radar);
 static inline void SamplePlayerPose(XObjChr* player, s32 anim)
 {
 	player->SetAnim(anim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-	if (anim == 0x13) {
+	if (anim == 0x13) { // sampled at the anim's last frame
 		HSD_AObj* jointAnim = GetAObj(player->mJObj);
 		f32 end             = jointAnim != NULL ? HSD_AObjGetEndFrame(jointAnim) : 0.0f;
 		player->SetAnim(anim, TRUE, NULL, NULL, NULL, end, 1.0f, 1.0f, 10.0f);
@@ -25,7 +25,7 @@ static inline void SamplePlayerPose(XObjChr* player, s32 anim)
 static inline void SampleRootOffset(XObjChr* player, s32 anim, CVec& offset)
 {
 	SamplePlayerPose(player, anim);
-	s32 root[] = { 0 };
+	s32 root[] = { 0 }; // the root joint
 	offset.Set(GetPlayerJointLocalTranslationByPath(player, 1, root));
 	SetObjectJointTranslationByPath(player, 1, root, 0.0f, 0.0f, 0.0f);
 }
@@ -76,7 +76,7 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 				s32* nodes;
 			};
 			JointPath joints[] = { { 9, branch1Child0 }, { 9, branch1Child1 }, { 9, branch3Child0 }, { 9, branch3Child1 } };
-			for (int i = 0; i < 4; ++i) {
+			for (int i = 0; i < 4; ++i) { // two branch tips each on branches 1 and 3
 				XObjChrIdleJoint& idle = mIdleJoints[i];
 				idle.mJObj             = FindJointByPath(mJObj, joints[i].nodes, joints[i].depth);
 				idle.mAnimJoint        = mArchive.GetAnimJoint(14, joints[i].depth, joints[i].nodes);
@@ -94,11 +94,11 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 		mStatus.mFlags |= 0x0000200000000000ULL;
 		++mLoadStep;
 	}
-	case 1:
+	case 1: // the plug
 		if (!LoadPlayerModel(mPlug, 15))
 			break;
 		++mLoadStep;
-	case 2: {
+	case 2: { // the copter
 
 		if (!LoadPlayerModel(mCopterObj, 17))
 			break;
@@ -106,7 +106,7 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 		SetAttachmentParent(this, mCopterObj, path, 8);
 		++mLoadStep;
 	}
-	case 3: {
+	case 3: { // the popper
 
 		if (!LoadPlayerModel(mPopperObj, 18))
 			break;
@@ -114,7 +114,7 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 		SetAttachmentParent(this, mPopperObj, path, 5);
 		++mLoadStep;
 	}
-	case 4: {
+	case 4: { // the radar
 
 		if (!LoadPlayerModel(mRadarObj, 19))
 			break;
@@ -142,13 +142,13 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 			if (!LoadPlayerModel(mOXMenu.mMark[0].mObj, 45))
 				break;
 			if (mOXMenu.mMark[0].mObj.mJObj)
-				HSD_JObjWalkTree(mOXMenu.mMark[0].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
+				HSD_JObjWalkTree(mOXMenu.mMark[0].mObj.mJObj, EnableJointMaterialTranslucency, NULL); // the mark draws translucent
 			++mOXMenu.mLoadStep;
 		case 1:
 			if (!LoadPlayerModel(mOXMenu.mMark[1].mObj, 46))
 				break;
 			if (mOXMenu.mMark[1].mObj.mJObj)
-				HSD_JObjWalkTree(mOXMenu.mMark[1].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
+				HSD_JObjWalkTree(mOXMenu.mMark[1].mObj.mJObj, EnableJointMaterialTranslucency, NULL); // the circle draws translucent
 			++mOXMenu.mLoadStep;
 		case 2:
 			++mOXMenu.mLoadStep;

@@ -15,7 +15,7 @@ void XObjActor::UpdateObject(u32 frames)
 	XObjActor* actor = (XObjActor*)this;
 	actor->ProcessPendingEvents(frames);
 	actor->RunStateHandler(frames);
-	if (actor->mActorStatus.mFlags & 4) {
+	if (actor->mActorStatus.mFlags & 4) { // flag 4: moves on the ground
 		actor->UpdateGroundMovement(frames);
 	}
 	UpdateObject__4XObjFUl(actor, frames);
@@ -72,7 +72,7 @@ void XObjActor::ResetForNewGame()
 	_9A4                   = 0;
 	_9A8                   = 1.0f;
 	_9AC                   = 1.0f;
-	Vec v0                 = lit->mInit[0];
+	Vec v0                 = lit->mInit[0]; // the init table: hit pos, home, velocity and a spare
 	mHitPos.x              = v0.x;
 	mHitPos.y              = v0.y;
 	mHitPos.z              = v0.z;
@@ -95,7 +95,7 @@ void XObjActor::ResetForNewGame()
 	mCmd[1]                = 0;
 	mCmd[18]               = 0;
 	for (u32 i = 0; i < 16; ++i) {
-		mCmd[i + 2] = 0;
+		mCmd[i + 2] = 0; // commands 2..17
 	}
 	_A38 = 0.0f;
 	_A3C = 0.0f;
@@ -134,7 +134,7 @@ void XObjActor::ResetObjectState()
 	_9A4                = 0;
 	_9A8                = 1.0f;
 	_9AC                = 1.0f;
-	Vec v0              = reset[0];
+	Vec v0              = reset[0]; // the reset table mirrors mInit above
 	mHitPos.x           = v0.x;
 	mHitPos.y           = v0.y;
 	mHitPos.z           = v0.z;
@@ -157,7 +157,7 @@ void XObjActor::ResetObjectState()
 	mCmd[1]             = 0;
 	mCmd[18]            = 0;
 	for (u32 i = 0; i < 16; ++i) {
-		mCmd[i + 2] = 0;
+		mCmd[i + 2] = 0; // commands 2..17
 	}
 	_A38 = 0.0f;
 	_A3C = 0.0f;
