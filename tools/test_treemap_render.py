@@ -39,6 +39,10 @@ def embedded_data(page):
 
 
 class RenderTests(unittest.TestCase):
+    def test_wii_sdk_group(self):
+        self.assertEqual(treemap.library_for("revolution/WPAD/WPADMem"), "SDK")
+        self.assertEqual(treemap.library_for("game/wii/cpadact"), "game")
+
     def test_readme_rectangles_match_embedded_usa_map(self):
         source = payload()
         page = treemap.render_page(copy.deepcopy(source))

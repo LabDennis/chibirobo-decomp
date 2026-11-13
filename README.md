@@ -4,6 +4,7 @@ A work in progress decompilation of Chibi-Robo! for the GameCube and Wii.
 
 [![Linked](https://cleosp.com/chibirobo-decomp/badges/linked.svg)](https://cleosp.com/chibirobo-decomp/)
 [![Data](https://cleosp.com/chibirobo-decomp/badges/data.svg)](https://cleosp.com/chibirobo-decomp/)
+[![Wii JP linked](https://cleosp.com/chibirobo-decomp/badges/wii-linked.svg)](https://cleosp.com/chibirobo-decomp/#v=R24J01)
 
 [![Decompilation progress](https://cleosp.com/chibirobo-decomp/progress.svg)](https://cleosp.com/chibirobo-decomp/)
 
@@ -111,5 +112,18 @@ Wii-compatible replacement assets under the build's `files/` folder, using
 their original disc paths (for example `files/bin/stage14.bin`).
 These mods share the Japanese title's save files. Use a separate Dolphin user
 directory to keep a development save. Retail progress is measured against `R24J01`.
+
+To import actor, costume and stage names, extract the desired language's
+`globals.bin` from your GameCube disc's `qp.bin`. Pass that file and the
+original Wii file to the importer. For an English build:
+
+```sh
+python3 tools/wii_stage_names.py path/to/gc/globals.bin orig/R24J01/files/bin/globals.bin build/wii-en-US/files/bin/globals.bin
+```
+
+The importer lists skipped IDs and keeps their Japanese names. It accepts
+printable ASCII by default. Add `--fold-cp1252` to convert supported Western
+accents to ASCII. Object collisions, stage descriptions and event scripts
+come from the Wii file.
 
 [Credits and license notices](NOTICE)

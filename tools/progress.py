@@ -125,8 +125,7 @@ def us_units(payload):
     raise ValueError("no usa report in data.json, run update with GGTE01")
 
 
-def percentages(payload):
-    units = us_units(payload)
+def percentages(units):
     code = sum(u["code"] for u in units)
     data = sum(u["data"] for u in units)
     return {
@@ -149,12 +148,11 @@ def svg(payload):
     return "\n".join(parts)
 
 
-def badge(label, percent):
+def badge(label, percent, meaning):
     value = f"{percent:.1f}%"
     left = len(label) * 7 + 12
     right = len(value) * 7 + 12
     width = left + right
-    meaning = "US code linked from source" if label == "linked" else "US data matched"
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="20" role="img" aria-label="{meaning}: {value}">
 <title>{meaning}: {value}</title>
 <linearGradient id="shade" x2="0" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
@@ -172,7 +170,7 @@ def render(output=OUTPUT, snapshot=SNAPSHOT):
     payload = json.loads(raw)
     if payload.get("schema") != 1:
         raise ValueError("data.json is from a different schema")
-    measures = percentages(payload)
+    measures = percentages(us_units(payload))
     digest = source_hash()
     payload["live"] = False
     for release in payload["versions"]:
@@ -189,7 +187,13 @@ def render(output=OUTPUT, snapshot=SNAPSHOT):
     (output / "progress.svg").write_text(svg(payload), encoding="utf-8")
     (output / "badges").mkdir(exist_ok=True)
     for label, percent in measures.items():
-        (output / "badges" / f"{label}.svg").write_text(badge(label, percent), encoding="utf-8")
+        meaning = "US code linked from source" if label == "linked" else "US data matched"
+        (output / "badges" / f"{label}.svg").write_text(badge(label, percent, meaning), encoding="utf-8")
+    for release in payload["versions"]:
+        if release["version"] == "R24J01":
+            linked = percentages(release["units"])["linked"]
+            (output / "badges/wii-linked.svg").write_text(
+                badge("Wii JP linked", linked, "Japanese Wii code linked from source"), encoding="utf-8")
     print(f"rendered treemap and README badges in {output}")
 
 

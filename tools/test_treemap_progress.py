@@ -56,6 +56,9 @@ class SnapshotTests(unittest.TestCase):
         self.assertEqual(sum(u["code"] for u in wii["units"] if u["complete"]), 16)
         # An auto chunk that happens to contain original instructions is never source-linked.
         self.assertEqual(sum(u["code"] for u in wii["units"]), 64)
+        # Give the two platforms different linked fractions to check badge selection.
+        merged["versions"][0]["units"][0]["complete"] = False
+        progress.write_snapshot(self.snapshot, merged)
         with patch.object(progress, "source_hash", return_value="new-checkout"):
             progress.render(self.root / "site", self.snapshot)
         page = (self.root / "site/index.html").read_text(encoding="utf-8")
@@ -65,6 +68,8 @@ class SnapshotTests(unittest.TestCase):
         self.assertTrue(all("earlier" in r["source"] for r in rendered["versions"][:3]))
         self.assertEqual(rendered["versions"][-1]["source"], "locally verified build report")
         self.assertEqual(self.snapshot.read_bytes(), (self.root / "site/data.json").read_bytes())
+        badge = (self.root / "site/badges/wii-linked.svg").read_text(encoding="utf-8")
+        self.assertIn("Japanese Wii code linked from source: 25.0%", badge)
 
     def test_invalid_or_incomplete_build_leaves_snapshot_unchanged(self):
         self.seed_legacy()
