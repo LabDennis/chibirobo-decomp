@@ -324,9 +324,7 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 		PSMTXConcat(translate, rotate, transform);
 		PSMTXConcat(transform, scaling, transform);
 		PSMTXMultVecArray(transform, corners, corners, 4);
-		// A degenerate polygon has no center from which to select a facing edge.
-		if (!IntersectLinesXZ(&corners[0], &corners[2], &corners[1], &corners[3], &middle, 1))
-			break;
+		IntersectLinesXZ(&corners[0], &corners[2], &corners[1], &corners[3], &middle, 1);
 		for (s32 i = 0; i < 4; ++i) {
 			Vec& a = corners[i];
 			Vec& b = corners[(i + 1) % 4];
