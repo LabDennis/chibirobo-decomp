@@ -12,6 +12,7 @@ extern void* __vt__9CXObjIntp[];
 extern void* __vt__5CXObj[];
 extern void* __vt__8XObjDemo[];
 extern void* __vt__7CTexObj[];
+// the title-screen classes' deleting destructors, emitted here as weak copies
 CLight* __dt__6CLightFv(CLight* light, s32 flags);
 void* __dt__7CTexObjFv(void* tex, s32 flags);
 XObjDemo* __dt__8XObjDemoFv(XObjDemo* demo, s32 flags);

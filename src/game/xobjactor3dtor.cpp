@@ -54,13 +54,13 @@ s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
 			}
 		} else {
 			u32 i;
-			for (i = 0; mParts[i].mObj != NULL && i < 8; i++) { }
+			for (i = 0; mParts[i].mObj != NULL && i < 8; i++) { } // first free part slot
 			if (i < 8) {
 #if !defined(VERSION_PAL)
 				OSReport("id = %d, argv[1]=%d\n", i);
 #endif
 				mActorFlags.mFlags |= 2;
-				if (argv[1] >= 10000) {
+				if (argv[1] >= 10000) { // a placement id vs a slot index
 					mParts[i].mObj = FindObj(argv[1]);
 				} else {
 					mParts[i].mObj = gGame.GetObject((s16)argv[1]);
@@ -121,7 +121,7 @@ s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
 				break;
 			case 1:
 				s32 kind = -1;
-				if (mActorFlags.Check(0x100)) {
+				if (mActorFlags.Check(0x100)) { // a 0x40B item is on show
 					kind = 0x40B;
 					mActorFlags.mFlags &= ~0x100;
 				}
@@ -195,7 +195,7 @@ void XObjActor3::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, voi
 	if (GetKind() == 0x31B) {
 		if (mAnimId == 7) {
 			mSe = PlayGameSound(&gGame.mSound, 0xB0000, 0xFF);
-		} else if (HSD_AudioSFXCheck(mSe)) {
+		} else if (HSD_AudioSFXCheck(mSe)) { // leaving anim 7: key the sound off
 			HSD_AudioSFXKeyOff(mSe);
 		}
 	}
@@ -207,7 +207,7 @@ void XObjActor3::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, voi
  */
 void XObjActor3::OnHitFromPosition(const Vec& position, f32 strength)
 {
-	if (GetItem() == 1) {
+	if (GetItem() == 1) { // item 1's hits go to the base class
 		XObj::OnHitFromPosition(position, strength);
 	} else if (!mActorFlags.Check(1)) {
 		mActorFlags.mFlags |= 1;

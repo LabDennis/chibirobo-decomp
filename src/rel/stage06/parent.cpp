@@ -164,7 +164,7 @@ extern "C" s32 CmdParentNoOpSlot2(s32 cmd, s32 count, s32* args)
 extern "C" s32 CmdSetSoundPitch(s32 cmd, s32 count, s32* args)
 {
 	s16 pitch = args[0];
-	s32 time  = args[1] * 60 / 100;
+	s32 time  = args[1] * 60 / 100; // centiseconds to frames
 	XSound* sound;
 
 	if (time <= 0) {
@@ -194,7 +194,7 @@ extern "C" void UpdateStage(void* arg)
 
 	pos.x = 241.83f;
 	pos.y = 220.56f;
-	pos.z = 195.85f;
+	pos.z = 195.85f; // both sounds sit at this fixed spot
 	if (IsGameSoundPlaying(&gGame.mSound, 0x10001D)) {
 		SetGameSfxVolume(&gGame.mSound, 0x10001D, GetSoundVolumeAtPosition(&gGame.mSound, &pos, 0), 0);
 	}

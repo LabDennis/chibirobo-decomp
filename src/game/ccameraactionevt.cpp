@@ -13,7 +13,7 @@ extern "C" {
  */
 void CCameraActionEvt::Init()
 {
-	mEyeInterps[0]      = &mEyeLinear;
+	mEyeInterps[0]      = &mEyeLinear; // slot 0 linear, 1 ease-in-out, 2 ease-out
 	mEyeInterps[1]      = &mEyeEaseInOut;
 	mEyeInterps[2]      = &mEyeEaseOut;
 	mInterestInterps[0] = &mInterestLinear;
@@ -71,7 +71,7 @@ void CCameraActionEvt::Update(u32 step)
 		} else {
 			mInterestInterp = NULL;
 		}
-	} else if (mTarget != NULL) {
+	} else if (mTarget != NULL) { // no interp: keep tracking the target
 		SetInterest(mTarget->GetCameraTarget());
 	}
 	if (mDistanceInterp != NULL) {
@@ -103,7 +103,7 @@ void CCameraActionEvt::Update(u32 step)
  */
 void CCameraActionEvt::SetEye_Interp(s32 mode, const Vec& eye, f32 time)
 {
-	if (mode == 3 || time <= 0.0f) {
+	if (mode == 3 || time <= 0.0f) { // mode 3 or no time means snap
 		mEyeInterp = NULL;
 		SetEye(eye);
 		return;
@@ -184,7 +184,7 @@ inline void TurnShortWay(f32& to, f32& from)
 		if (diff >= TWO_PI) {
 			diff -= TWO_PI;
 		}
-		if (diff > PI) {
+		if (diff > PI) { // more than half a turn: wrap the other way
 			if (t < f) {
 				to = TWO_PI + t;
 			} else {
@@ -208,7 +208,7 @@ void CCameraActionEvt::SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32
 	} else if (type == 2) {
 		mCameraFlags = 0x20011;
 	}
-	if (relative) {
+	if (relative) { // relative angles add to the current ones
 		dest = mAngle;
 		PSVECAdd(&dest, (Vec*)&angle, &dest);
 	}

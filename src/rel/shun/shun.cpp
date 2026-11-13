@@ -31,7 +31,7 @@ struct ShunObjList {
 
 struct SavedObjFlag {
 	s32 mId;  // _00
-	u8 mFlag; // _04
+	u8 mFlag; // _04, bit 0: the object's drawn flag (0x10000) was set
 };
 
 struct SavedObjFlagList {
@@ -56,9 +56,9 @@ extern "C" void SetFafaPartVisibility(s32 arg);
 #else
 #define GAME_OFS(other, japan) (other)
 #endif
-#define SHUN_OBJ_LIST() ((ShunObjList*)(gGame + GAME_OFS(0x5D080, 0x5D038)))
-#define SHUN_8F38()     ((void*)(gGame + GAME_OFS(0x8F38, 0x8EF0)))
-#define SHUN_96BC()     (*(RoboView**)(gGame + GAME_OFS(0x96BC, 0x9674)))
+#define SHUN_OBJ_LIST()  ((ShunObjList*)(gGame + GAME_OFS(0x5D080, 0x5D038)))
+#define SHUN_INFO_SCRN() ((void*)(gGame + GAME_OFS(0x8F38, 0x8EF0))) // CGame::mInfoScrn, the HUD that owns the timer
+#define SHUN_PLAYER()    (*(RoboView**)(gGame + GAME_OFS(0x96BC, 0x9674)))
 
 inline ShunObj* ShunFindObj(s16 id)
 {
@@ -103,7 +103,7 @@ public:
 };
 
 struct OnOffWork {
-	s32 _00;         // _00
+	s32 _00;         // _00, half a minute in frames, written by CmdResetOnOff and never read
 	u8 _04[0x4];     // _04
 	s32 _08;         // _08, zeroed by CmdResetOnOff, never read
 	u8 _0C[0x2C];    // _0C
@@ -162,15 +162,16 @@ inline void SavedObjFlagList::Apply(s32 mode)
 	s32 i;
 	ShunObj* obj;
 
+	// mode 0 clears the drawn bit, anything else restores the bits CmdSaveObjFlag saw
 	if (mode != 0) {
 		if (mCount > 0) {
 			s32 j;
 			for (j = 0; j < mCount; j++) {
-				if (mEntries[j].mId == -1) {
+				if (mEntries[j].mId == -1) { // -1 ends the list
 					break;
 				}
 				obj = ShunFindObj(mEntries[j].mId);
-				if (mEntries[j].mFlag & 1) {
+				if (mEntries[j].mFlag & 1) { // its drawn bit was saved
 					obj->mFlags |= 0x10000;
 				}
 			}
@@ -178,7 +179,7 @@ inline void SavedObjFlagList::Apply(s32 mode)
 	} else {
 		if (mCount > 0) {
 			for (i = 0; i < mCount; i++) {
-				if (mEntries[i].mId == -1) {
+				if (mEntries[i].mId == -1) { // -1 ends the list
 					break;
 				}
 				obj = ShunFindObj(mEntries[i].mId);
@@ -324,8 +325,8 @@ extern "C" s32 CmdSaveObjFlag(s32 cmd, s32 count, s32* args)
 	if (savedObjFlags.mCount < 0x100) {
 		savedObjFlags.mEntries[savedObjFlags.mCount].mId = id;
 		obj                                              = ShunFindObj(savedObjFlags.mEntries[savedObjFlags.mCount].mId);
-		if (obj != NULL && (obj->mFlags & 1)) {
-			if (obj->mFlags & 0x10000) {
+		if (obj != NULL && (obj->mFlags & 1)) { // objects without flag 1 are skipped
+			if (obj->mFlags & 0x10000) {        // drawn now: remember it
 				savedObjFlags.mEntries[savedObjFlags.mCount].mFlag |= 1;
 			}
 			savedObjFlags.mCount++;
@@ -382,10 +383,11 @@ extern "C" s32 CmdSetOrGetTimer(s32 cmd, s32 count, s32* args)
 {
 	s32 ret = 0;
 
+	// args[0] != 0 writes args[1] hundredths, 0 reads them
 	if (args[0] != 0) {
-		InfoScrn_SetTimerHundredths(SHUN_8F38(), args[1]);
+		InfoScrn_SetTimerHundredths(SHUN_INFO_SCRN(), args[1]);
 	} else {
-		ret = InfoScrn_GetTimerHundredths(SHUN_8F38());
+		ret = InfoScrn_GetTimerHundredths(SHUN_INFO_SCRN());
 	}
 	return ret;
 }
@@ -396,10 +398,11 @@ extern "C" s32 CmdSetOrGetTimer(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdSetTimerRunning(s32 cmd, s32 count, s32* args)
 {
+	// starts or stops the timer counting (InfoScrn::mTimerShown gates mTimer += frames)
 	if (args[0] != 0) {
-		InfoScrn_ShowTimer(SHUN_8F38());
+		InfoScrn_ShowTimer(SHUN_INFO_SCRN());
 	} else {
-		InfoScrn_HideTimer(SHUN_8F38());
+		InfoScrn_HideTimer(SHUN_INFO_SCRN());
 	}
 	return 0;
 }
@@ -410,10 +413,11 @@ extern "C" s32 CmdSetTimerRunning(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdShowTimer(s32 cmd, s32 count, s32* args)
 {
+	// args[0] becomes the hud command's first arg
 	if (args[0] != 0) {
-		InfoScrn_ApplyTimerHudCommand(SHUN_8F38(), 1, 1);
+		InfoScrn_ApplyTimerHudCommand(SHUN_INFO_SCRN(), 1, 1);
 	} else {
-		InfoScrn_ApplyTimerHudCommand(SHUN_8F38(), 0, 1);
+		InfoScrn_ApplyTimerHudCommand(SHUN_INFO_SCRN(), 0, 1);
 	}
 	return 0;
 }
@@ -446,12 +450,12 @@ extern "C" s32 CmdCheckOnOffFlag(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdStartOnOff2(s32 cmd, s32 count, s32* args)
 {
-	RoboView* obj = SHUN_96BC();
+	RoboView* player = SHUN_PLAYER();
 
-	obj->mPlayerStatus = 0;
-	obj->mPlayerStatus |= 0x40000000;
-	obj->mPadReset = 0;
-	obj->SetAnim(0x3E, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f);
+	player->mPlayerStatus = 0;
+	player->mPlayerStatus |= 0x40000000; // hand him to the script
+	player->mPadReset = 0;
+	player->SetAnim(0x3E, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f); // anim 0x3E at double rate
 	onOffWork._68 = 0;
 	onOffWork._84 = 2;
 	return 0;
@@ -463,12 +467,12 @@ extern "C" s32 CmdStartOnOff2(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdStartOnOff1(s32 cmd, s32 count, s32* args)
 {
-	RoboView* obj = SHUN_96BC();
+	RoboView* player = SHUN_PLAYER();
 
-	obj->mPlayerStatus = 0;
-	obj->mPlayerStatus |= 0x40000000;
-	obj->mPadReset = 0;
-	obj->SetAnim(0x3E, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f);
+	player->mPlayerStatus = 0;
+	player->mPlayerStatus |= 0x40000000; // hand him to the script
+	player->mPadReset = 0;
+	player->SetAnim(0x3E, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f); // anim 0x3E at double rate
 	onOffWork._68 = 0;
 	onOffWork._84 = 1;
 	return 0;
@@ -480,12 +484,12 @@ extern "C" s32 CmdStartOnOff1(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdStartOnOff0(s32 cmd, s32 count, s32* args)
 {
-	RoboView* obj = SHUN_96BC();
+	RoboView* player = SHUN_PLAYER();
 
-	obj->mPlayerStatus = 0;
-	obj->mPlayerStatus |= 0x40000000;
-	obj->mPadReset = 0;
-	obj->SetAnim(0x3E, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f);
+	player->mPlayerStatus = 0;
+	player->mPlayerStatus |= 0x40000000; // hand him to the script
+	player->mPadReset = 0;
+	player->SetAnim(0x3E, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f); // anim 0x3E at double rate
 	onOffWork._68 = 0;
 	onOffWork._84 = 0;
 	return 0;

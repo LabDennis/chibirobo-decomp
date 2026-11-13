@@ -211,7 +211,7 @@ void main(int argc, char** argv)
 		VIWaitForRetrace();
 		gGame.mRetraceStep = VIGetRetraceCount() - gGame.mLastRetrace;
 		gGame.mLastRetrace = VIGetRetraceCount();
-		if (gGame.mRetraceStep > 4) {
+		if (gGame.mRetraceStep > 4) { // a hitch only counts four frames
 			gGame.mRetraceStep = 4;
 		}
 		OSResetStopwatch(&gGame.mStopwatch[0]);
@@ -237,7 +237,7 @@ void main(int argc, char** argv)
 #else
 		s32 interval = ((CBase*)&gGame)->FrameInterval();
 		u32 wait     = interval * 60 / 60 - 1;
-		while (VIGetRetraceCount() - gGame.mLastRetrace < wait) { }
+		while (VIGetRetraceCount() - gGame.mLastRetrace < wait) { } // pads the frame to the interval
 #endif
 	}
 }
@@ -276,7 +276,7 @@ void FbMirror::Update(u32 frames)
 		y.x = mtx[0][1];
 		y.y = mtx[1][1];
 		y.z = mtx[2][1];
-		PSVECScale(&x, &x, -1.0f);
+		PSVECScale(&x, &x, -1.0f); // the surface normal is -x cross y
 		PSVECCrossProduct(&x, &y, &normal);
 		PSVECNormalize(&normal, &normal);
 		mtx[0][0] = x.x;
@@ -293,17 +293,17 @@ void FbMirror::Update(u32 frames)
 		HSD_MtxGetTranslate(mtx, &pos);
 		PSVECSubtract(&pos, &eye, &diff);
 		f32 dist = PSVECDotProduct(&normal, &diff);
-		if (dist <= 0.0f) {
+		if (dist <= 0.0f) { // behind the surface, the mirror hides
 			mVisible = FALSE;
 		} else {
-			PSVECScale(&normal, &diff, 2.0f * dist);
+			PSVECScale(&normal, &diff, 2.0f * dist); // the eye mirrored across the plane
 			PSVECAdd(&diff, &eye, &diff);
 			mtx[0][3] = diff.x;
 			mtx[1][3] = diff.y;
 			mtx[2][3] = diff.z;
 			PSMTXInverse(mtx, view);
 			PSMTXMultVec(view, &pos, &pos);
-			mCamera.SetNear(0.1f - pos.z);
+			mCamera.SetNear(0.1f - pos.z); // near starts at the surface's depth, far 32768 beyond it
 			mCamera.SetFar(32768.0f + (0.1f - pos.z));
 			mCamera.SetFrustum(0.5f + pos.y, -0.5f + pos.y, -0.5f + pos.x, 0.5f + pos.x);
 			mCamera.SetEye(diff);
@@ -323,7 +323,7 @@ void FbMirror::Init()
 {
 	mJoint = NULL;
 	mCamera.Init(0.1f, 32768.0f, 0.5f, -0.5f, -0.5f, 0.5f, &gGame.mGs.mScreen);
-	mCamera.SetViewport(0.0f, 256.0f, 0.0f, 256.0f);
+	mCamera.SetViewport(0.0f, 256.0f, 0.0f, 256.0f); // the mirror renders a 256 square
 	mCamera.SetScissor(0, 256, 0, 256);
 	Reset();
 }

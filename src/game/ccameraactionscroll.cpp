@@ -71,7 +71,7 @@ void CCameraActionLadr::Update(u32 step)
 void CCameraActionLadr::CalcEye(Vec* eye, f32 angle)
 {
 	*eye = GetCameraTarget();
-	eye->x -= 100.0f * (f32)sin(angle + HSD_JObjGetRotationY(gGame.GetPlayer()->mJObj));
+	eye->x -= 100.0f * (f32)sin(angle + HSD_JObjGetRotationY(gGame.GetPlayer()->mJObj)); // 100 back, 30 up, orbiting the yaw
 	eye->y += 30.0f;
 	eye->z -= 100.0f * (f32)cos(angle + HSD_JObjGetRotationY(gGame.GetPlayer()->mJObj));
 }
@@ -107,7 +107,7 @@ void CCameraActionScroll::Update(u32 step)
 		Vec eye;
 		eye      = gGame.GetPlayer()->GetCameraTarget();
 		interest = eye;
-		if (mZoom == 0) {
+		if (mZoom == 0) { // 0 near, 1 far
 			eye.z += mNearDistance;
 		}
 		if (mZoom == 1) {
@@ -129,7 +129,7 @@ void CCameraActionScroll::Update(u32 step)
 
 	mInterestMode = 2;
 	CPad pad(0);
-	u32 nearButton = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADUP : HSD_PAD_CSTICK_UP;
+	u32 nearButton = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADUP : HSD_PAD_CSTICK_UP; // the flag picks the pad layout
 	u32 farButton  = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADDOWN : HSD_PAD_CSTICK_DOWN;
 	if (pad.mPad->mTrigger & nearButton) {
 		mZoom = 0;
@@ -147,7 +147,7 @@ void CCameraActionScroll::Update(u32 step)
 			SetDistance(distance);
 			return;
 		}
-		mDistanceInterp = NULL;
+		mDistanceInterp = NULL; // zoom done
 	}
 
 	SetInterest(gGame.GetPlayer()->GetCameraTarget(), 0x10002);

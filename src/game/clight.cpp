@@ -16,7 +16,7 @@ void CLight::Init(u32 flags, BOOL useShadow)
 		HSD_LObjSetFlags(this, LOBJ_AMBIENT | LOBJ_DIFFUSE);
 		mColor.r = 0;
 		mColor.g = 0;
-		mColor.b = 0;
+		mColor.b = 0; // ambient starts black
 		mColor.a = 255;
 		HSD_LObjSetColor(this, mColor);
 		break;
@@ -35,7 +35,7 @@ void CLight::Init(u32 flags, BOOL useShadow)
 		mColor.b = 255;
 		mColor.a = 255;
 		HSD_LObjSetColor(this, mColor);
-		HSD_LObjSetDistAttn(this, 10000.0f, 0.99f, 3);
+		HSD_LObjSetDistAttn(this, 10000.0f, 0.99f, 3); // a far reference distance
 		break;
 	case LOBJ_SPOT:
 		HSD_LObjSetFlags(this, LOBJ_SPOT | LOBJ_DIFFUSE);
@@ -45,11 +45,11 @@ void CLight::Init(u32 flags, BOOL useShadow)
 		mColor.a = 255;
 		HSD_LObjSetColor(this, mColor);
 		HSD_LObjSetDistAttn(this, 10000.0f, 0.99f, 3);
-		HSD_LObjSetSpot(this, 29.999956f, 3);
+		HSD_LObjSetSpot(this, 29.999956f, 3); // a ~30-degree cone
 		break;
 	}
 
-	if (specular) {
+	if (specular) { // specular reuses the color the type case set
 		GXColor color = this->color;
 
 		HSD_LObjSetFlags(this, LOBJ_SPECULAR);
@@ -70,7 +70,7 @@ void CLight::Init(u32 flags, BOOL useShadow)
 	interest->aobj                                      = NULL;
 	interest->robj                                      = NULL;
 	mLongestAObj                                        = NULL;
-	if (useShadow && HSD_LObjGetType(this) != LOBJ_AMBIENT) {
+	if (useShadow && HSD_LObjGetType(this) != LOBJ_AMBIENT) { // ambient lights get no shadow
 		mShadow.Init(this);
 		mShadow.SetActive(TRUE);
 	}
@@ -127,7 +127,7 @@ void CLight::SetAnim(HSD_LightAnim* anim, f32 frame)
 
 	end  = 0.0f;
 	aobj = this->aobj;
-	if (aobj != NULL && (endFrame = HSD_AObjGetEndFrame(aobj)) > end) {
+	if (aobj != NULL && (endFrame = HSD_AObjGetEndFrame(aobj)) > end) { // keep the longest aobj
 		end          = endFrame;
 		mLongestAObj = aobj;
 	}

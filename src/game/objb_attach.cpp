@@ -47,12 +47,12 @@ BOOL XObjRadar::LoadFromPlacement(const CoordInfo& info)
 	BOOL loaded = XObj::LoadFromPlacement(info);
 	if (loaded) {
 		CJObj joint;
-		if (__fpclassifyf(mYaw) == FP_NAN) {
+		if (__fpclassifyf(mYaw) == FP_NAN) { // unset: the placement's joint supplies it
 			s32 path[] = { 0 };
 			joint.Attach(FindJointByPath(mJObj, path, 1));
 			mYaw = HSD_JObjGetRotationY(joint.mJObj);
 		}
-		if (__fpclassifyf(mPitch) == FP_NAN) {
+		if (__fpclassifyf(mPitch) == FP_NAN) { // same for the pitch
 			s32 path[] = { 0, 0, 0, 0 };
 			joint.Attach(FindJointByPath(mJObj, path, 4));
 			mPitch = HSD_JObjGetRotationX(joint.mJObj);
@@ -74,7 +74,7 @@ void XObjOX::UpdateObject(u32 frames)
 		f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
 		f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
 		switch (anim) {
-		case 0:
+		case 0: // the mark plays once, then hides
 			if (aobj->flags & 0x44000000) {
 				Hide();
 			}
@@ -142,20 +142,20 @@ void XObjRadar::UpdateObject(u32 frames)
 		CopyParentMtx(this);
 		HSD_AObj* aobj = GetAObj(mJObj);
 		switch (mState) {
-		case 1:
+		case 1: // deployed: settle to idle
 			if (aobj->flags & 0x44000000) {
 				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				mState = 10;
 			}
 			break;
-		case 2:
+		case 2: // stowed: hide
 			if (aobj->flags & 0x44000000) {
 				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				Hide();
 				mState = 0;
 			}
 			break;
-		case 10:
+		case 10: // idle
 			break;
 		}
 		XObj::UpdateObject(frames);
@@ -206,7 +206,7 @@ void XObjAttachment::Show()
 {
 	mVisible = TRUE;
 	if (mStatus.mFlags & 1) {
-		HSD_JObjClearFlagsAll(mJObj, 0x10);
+		HSD_JObjClearFlagsAll(mJObj, HIDDEN);
 	}
 }
 

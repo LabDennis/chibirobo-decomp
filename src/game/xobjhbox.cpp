@@ -22,7 +22,7 @@ extern "C" {
 void XObjDust::ResetObjectState()
 {
 	ResetObjectState__4XObjFv(this);
-	if (GetObjFlags() & 1) {
+	if (GetObjFlags() & 1) { // flag 1: the drifting dust gets a random phase
 		mBaseY        = mMoveTranslate.y;
 		mPhase        = fmod((f32)rand(), TWO_PI);
 		mPhaseStep    = (rand() % 200 + 200) / 10000.0f;
@@ -32,7 +32,7 @@ void XObjDust::ResetObjectState()
 		mSpeed        = 0.0f;
 		mFade         = 1.0f;
 	}
-	mEventId  = -1;
+	mEventId  = -1; // no event
 	mEventArg = -1;
 	mMatAnim  = NULL;
 	if (mJObj != NULL && (mStatus.mFlags & 0x1000ULL)) {
@@ -56,7 +56,7 @@ s32 XObjDust::GetFlagIndex()
  */
 extern "C" u32 OnPlayerContact__8XObjHBoxFll(XObjHBox* box, s32 unused, u32 flags)
 {
-	if ((flags & 3) == 1)
+	if ((flags & 3) == 1) // not a new touch
 		return flags;
 	if (box->mAnimId == 0)
 		return flags;
@@ -80,8 +80,8 @@ void XObjHBox::OnHitFromPosition(const Vec& pos, f32 strength)
 {
 	if (mAnimId <= 0) {
 		OnHitFromPosition__4XObjFRC3Vecf(this, &pos, strength);
-		if ((mStatus.mFlags & 0x04000000ULL) && strength >= (s32)GetPlayerActionParameter(31) / 100.0f)
-			mStatus.mFlags |= 0x2000000000000000ULL;
+		if ((mStatus.mFlags & 0x04000000ULL) && strength >= (s32)GetPlayerActionParameter(31) / 100.0f) // param 31, in 1/100
+			mStatus.mFlags |= 0x2000000000000000ULL;                                                    // strong enough hits open it
 	}
 }
 
@@ -116,7 +116,7 @@ void XObjHBox::DrawScreenOverlay()
  */
 void XObjHBox::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 {
-	if (mPart.mObj.mStatus.mFlags & 0x10000ULL)
+	if (mPart.mObj.mStatus.mFlags & 0x10000ULL) // only when the part is drawn
 		DrawGroundShadowAt__4XObjFPC3Vecf(this, origin, opacity);
 }
 
@@ -127,6 +127,6 @@ void XObjHBox::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 void XObjHBox::DrawWithView(Mtx view)
 {
 	DrawWithView__4XObjFPA4_f(this, view);
-	if (mPart.mObj.mStatus.mFlags & 0x10000ULL)
+	if (mPart.mObj.mStatus.mFlags & 0x10000ULL) // only when the part is drawn
 		mPart.mObj.DrawWithView(view);
 }

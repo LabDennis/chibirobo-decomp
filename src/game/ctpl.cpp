@@ -48,7 +48,7 @@ CTexObj& CTexObj::Init(TPLDescriptor* desc, u32 tlutName)
 {
 	mImage        = desc->textureHeader;
 	mClut         = desc->CLUTHeader;
-	GXBool mipmap = mImage->minLOD == mImage->maxLOD ? GX_FALSE : GX_TRUE;
+	GXBool mipmap = mImage->minLOD == mImage->maxLOD ? GX_FALSE : GX_TRUE; // one lod level means no mipmaps
 	if (mClut == NULL) {
 		GXInitTexObj(this, mImage->data, mImage->width, mImage->height, (GXTexFmt)mImage->format, mImage->wrapS, mImage->wrapT, mipmap);
 	} else {
@@ -143,7 +143,7 @@ void CTexObj::Draw(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType, const Vec* p
 	GXSetVtxAttrFmtv(GX_VTXFMT0, fmt);
 	GXSetVtxDescv(desc);
 
-	GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
+	GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4); // a two-unit quad around pos, a color per corner
 	GXPosition3f32(pos->x - 1.0f, pos->y + 1.0f, pos->z);
 	GXColor1u32(color0);
 	GXTexCoord2u8(0, 0);
@@ -178,7 +178,7 @@ void CTexObj::DrawLit(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType, const Vec
 	GXSetVtxAttrFmtv(GX_VTXFMT0, fmt);
 	GXSetVtxDescv((GXVtxDescList*)desc);
 
-	GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
+	GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4); // same quad, every normal faces +z
 	GXPosition3f32(pos->x - 1.0f, pos->y + 1.0f, pos->z);
 	GXNormal3s8(0, 0, 1);
 	GXColor1u32(color0);
@@ -253,7 +253,7 @@ void CTpl::Close()
 // closes the disc or archive handle but keeps the buffer
 s32 CFile::CloseHandle()
 {
-	if (mEntrynum >= 0) {
+	if (mEntrynum >= 0) { // only when a file is open
 		mEntrynum = -1;
 		if (mArchive != NULL) {
 			if (!ARCClose(&mArcInfo)) {

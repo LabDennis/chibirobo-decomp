@@ -99,7 +99,7 @@ struct Stage07PoolEntry {
 #else
 	u8 _04[0x240]; // _04
 #endif
-	s32* mPlacement; // _244 (JP: _23C)
+	s32* mPlacement; // _244 (JP: _23C), the placement record; [0] is the object kind
 };
 
 extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* values);
@@ -115,7 +115,7 @@ typedef void (*RelSlotFunc)(void* arg);
 typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
-RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage, DrawStage };
+RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage, DrawStage }; // only the first three slots are used
 RelCmdFunc _prolog_cmds[]    = {
     CmdNop,
     CmdSetFafaPartVisibility,
@@ -138,7 +138,7 @@ extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* values)
 	s32 i;
 
 	for (i = 0; i < count; i++) {
-		AddHideObj__20CCameraActionScroll2Fl(STAGE07_FLAG_LIST, values[i]);
+		AddHideObj__20CCameraActionScroll2Fl(STAGE07_FLAG_LIST, values[i]); // every arg is an id for the hide list
 	}
 	return 0;
 }
@@ -157,11 +157,12 @@ extern "C" void SetObj37PartVisibility(s32 mode)
 	for (i = 0; i < 0x120; i++) {
 		Stage07PoolEntry* entry = (Stage07PoolEntry*)(pool + i * size);
 		s32* type               = entry->mPlacement;
-		if ((type != NULL ? *type : -1) != 0x37) {
+		if ((type != NULL ? *type : -1) != 0x37) { // only kind-0x37 placements
 			continue;
 		}
+		// the mode picks which of the object's two parts shows
 		switch (mode) {
-		case 0: {
+		case 0: { // 0: both hidden
 			s32 path0[2] = { 0, 1 };
 			jobj.Attach(GetJObjByPath(entry->jobj, path0, 2));
 			HSD_JObjSetFlags(jobj.mJObj, HIDDEN);
@@ -170,7 +171,7 @@ extern "C" void SetObj37PartVisibility(s32 mode)
 			HSD_JObjSetFlags(jobj.mJObj, HIDDEN);
 			break;
 		}
-		case 1: {
+		case 1: { // 1: the first part shows
 			s32 path0[2] = { 0, 1 };
 			jobj.Attach(GetJObjByPath(entry->jobj, path0, 2));
 			HSD_JObjClearFlags(jobj.mJObj, HIDDEN);
@@ -179,7 +180,7 @@ extern "C" void SetObj37PartVisibility(s32 mode)
 			HSD_JObjSetFlags(jobj.mJObj, HIDDEN);
 			break;
 		}
-		case 2: {
+		case 2: { // 2: the second part shows
 			s32 path0[2] = { 0, 1 };
 			jobj.Attach(GetJObjByPath(entry->jobj, path0, 2));
 			HSD_JObjSetFlags(jobj.mJObj, HIDDEN);
@@ -188,7 +189,7 @@ extern "C" void SetObj37PartVisibility(s32 mode)
 			HSD_JObjClearFlags(jobj.mJObj, HIDDEN);
 			break;
 		}
-		case 3: {
+		case 3: { // 3: both show
 			s32 path0[2] = { 0, 1 };
 			jobj.Attach(GetJObjByPath(entry->jobj, path0, 2));
 			HSD_JObjClearFlags(jobj.mJObj, HIDDEN);
@@ -198,7 +199,7 @@ extern "C" void SetObj37PartVisibility(s32 mode)
 			break;
 		}
 		}
-		break;
+		break; // only the first kind-0x37 entry
 	}
 }
 
@@ -267,8 +268,9 @@ extern "C" void UpdateStage(void* arg)
 	if (IsGameSoundPlaying(obj, 0x1000D)) {
 		for (i = 0; i < STAGE07_GAME->mActorCount; i++) {
 			actor = STAGE07_GAME->GetActor(i);
+			// live, drawn objects of kind 0xD0 drive the loop's volume
 			if ((actor->mStatus & 1) && (actor->mStatus & 0x10000) && *actor->mCoord == 0xD0) {
-				PSVECDistance(STAGE07_FIELD_E5DDC, &actor->mMoveTranslate);
+				PSVECDistance(STAGE07_FIELD_E5DDC, &actor->mMoveTranslate); // its result is unused
 				SetGameSfxVolume(obj, 0x1000D, GetSoundVolumeAtPosition(obj, &actor->mMoveTranslate, 1), 0);
 			}
 		}

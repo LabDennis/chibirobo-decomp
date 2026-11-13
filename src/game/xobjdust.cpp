@@ -27,14 +27,14 @@ static inline void TriggerEvent(XObj* object, u32 first, u32 second)
 extern "C" BOOL CheckDustScatterHeading(XObjDust* dust)
 {
 	if (__fpclassifyf(dust->mHeading) == FP_NAN) {
-		if (gGame.GetPlayer()->mAnimId == 0x27) {
+		if (gGame.GetPlayer()->mAnimId == 0x27) { // the player's anim that scatters dust
 			f32 z        = dust->mMoveTranslate.z - gGame.GetPlayer()->mMoveTranslate.z;
 			f32 x        = dust->mMoveTranslate.x - gGame.GetPlayer()->mMoveTranslate.x;
 			dust->mSpeed = sqrtf(x * x + z * z);
-			if (dust->mSpeed < 20.0f) {
+			if (dust->mSpeed < 20.0f) { // only close dust scatters
 				dust->mHeading = atan2(dust->mMoveTranslate.x - gGame.GetPlayer()->mMoveTranslate.x,
 				                       dust->mMoveTranslate.z - gGame.GetPlayer()->mMoveTranslate.z);
-				dust->mSpeed   = 0.2f * (25.0f - dust->mSpeed);
+				dust->mSpeed   = 0.2f * (25.0f - dust->mSpeed); // away from the player, capped at 2
 				if (dust->mSpeed > 2.0f)
 					dust->mSpeed = 2.0f;
 				dust->mStatus.mFlags |= 0x4000000000000000ULL;
@@ -55,7 +55,7 @@ extern "C" BOOL UpdateDriftingDust(XObjDust* dust, u32 frames)
 {
 	dust->mPhase = fmod(dust->mPhaseStep * frames + dust->mPhase, TWO_PI);
 	if (0.0f != dust->mBouncePhase) {
-		if ((dust->mBouncePhase += 0.02f * frames) > PI) {
+		if ((dust->mBouncePhase += 0.02f * frames) > PI) { // one half-sine bounce
 			dust->mBouncePhase  = 0.0f;
 			dust->mBounceHeight = 0.0f;
 		}
@@ -75,15 +75,15 @@ extern "C" BOOL UpdateDriftingDust(XObjDust* dust, u32 frames)
 		f32 z = cos(dust->mHeading);
 		dust->mMoveTranslate.z += dust->mSpeed * z;
 	}
-	if (dust->mStatus.mFlags & 0x4000000000000000ULL) {
+	if (dust->mStatus.mFlags & 0x4000000000000000ULL) { // scattered dust fades out
 		f32 opacity = dust->mFade - 0.02f * frames;
 		dust->mFade = opacity;
 		if (opacity <= 0.0f)
 			dust->mFade = 0.0f;
 		PSVECScale((Vec*)&dust->mMoveScale, (Vec*)&dust->mMoveScale, 1.12f * dust->mFade);
-		if (0.0f == PSVECMag((Vec*)&dust->mMoveScale)) {
+		if (0.0f == PSVECMag((Vec*)&dust->mMoveScale)) { // fully gone
 			if (dust->mStatus.mFlags & 0xC0000000000ULL) {
-				TriggerEvent(dust, dust->mEventId, dust->mEventArg);
+				TriggerEvent(dust, dust->mEventId, dust->mEventArg); // flagged dust fires its event on removal
 			}
 			return TRUE;
 		}
@@ -137,14 +137,14 @@ BOOL XObjDust::LoadFromPlacement(const CoordInfo& info)
 		HSD_AObj* aobj = GetAObj(mJObj);
 		f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
 		if (end > 0.0f) {
-			f32 frame              = fmod((f32)rand(), end);
+			f32 frame              = fmod((f32)rand(), end); // a random start frame
 			UnkStageObj* placement = mCoord.mPlacement;
 			SetAnim(placement->mStartAnim, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
 		}
 		mAnimId2   = mAnimId;
 		mAnimCount = mArchive.mNum[0];
 		if (GetObjFlags() & 1) {
-			f32 scale = (rand() % 100 + 100) / 100.0f;
+			f32 scale = (rand() % 100 + 100) / 100.0f; // scale 1.00-1.99
 			PSVECScale((Vec*)&mMoveScale, (Vec*)&mMoveScale, scale);
 		}
 		if (GetObjFlags() & 2) {

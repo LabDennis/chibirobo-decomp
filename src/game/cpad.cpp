@@ -48,7 +48,7 @@ void CPadEx::Init()
 	HSD_PadInit(1, &mQueue, 4, mRumble);
 	HSD_PadLibData.adc_type            = 0;
 	HSD_PadLibData.adc_th              = 50;
-	HSD_PadLibData.adc_angle           = 0.5235988f;
+	HSD_PadLibData.adc_angle           = 0.5235988f; // 30 degrees
 	HSD_PadLibData.clamp_stickType     = 0;
 	HSD_PadLibData.clamp_stickShift    = 1;
 	HSD_PadLibData.clamp_stickMax      = 80;
@@ -56,7 +56,7 @@ void CPadEx::Init()
 	HSD_PadLibData.scale_stick         = 70;
 	HSD_PadLibData.clamp_analogLRShift = 1;
 	HSD_PadLibData.clamp_analogLRMax   = 200;
-	HSD_PadLibData.clamp_analogLRMin   = 10;
+	HSD_PadLibData.clamp_analogLRMin   = 10; // analog triggers: deadzone 10, clamp 200
 	HSD_PadLibData.scale_analogLR      = 190;
 	SetPadQueueType(1);
 	HSD_VISetUserPostRetraceCallback(PadRetraceCallback);
@@ -87,7 +87,7 @@ CPadEx::CPadEx()
 void CPadOne::Update(s32 frames)
 {
 	mButton = mDirButton = HSD_PadCopyStatus[mPort].button;
-	if (mButton & (HSD_PAD_STICK_UP | HSD_PAD_CSTICK_UP)) {
+	if (mButton & (HSD_PAD_STICK_UP | HSD_PAD_CSTICK_UP)) { // both sticks fold into the dpad
 		mDirButton |= HSD_PAD_DPADUP;
 	}
 	if (mButton & (HSD_PAD_STICK_DOWN | HSD_PAD_CSTICK_DOWN)) {
@@ -100,7 +100,7 @@ void CPadOne::Update(s32 frames)
 		mDirButton |= HSD_PAD_DPADRIGHT;
 	}
 
-	mTrigger = mRepeat = (mButton ^ mLastButton) & ~mLastButton;
+	mTrigger = mRepeat = (mButton ^ mLastButton) & ~mLastButton; // newly pressed this frame
 	mDirTrigger = mDirRepeat = (mDirButton ^ mLastDirButton) & ~mLastDirButton;
 
 	// held directions repeat after 24 frames, then every 6

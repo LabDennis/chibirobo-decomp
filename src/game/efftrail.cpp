@@ -47,7 +47,7 @@ extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 		}
 	}
 
-	f32 size = 15.0f * peak;
+	f32 size = 15.0f * peak; // the halo at the trail's top
 
 	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 	Vec outerRotation = { 0.0f, 0.0f, 0.0f };
@@ -61,11 +61,12 @@ extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 	for (s32 i = 0; i < 2; ++i) {
 		for (s32 j = 0; j < 10; ++j) {
 			SuitParticle& point = trail->rings[i][j];
-			Vec pos             = origin + point.position;
-			f32 radius          = 4.0f * point.scale;
-			f32 angle           = 4.0f * point.angle;
-			const u32 edge      = point.color;
-			u32 center          = edge | (u8)(s32)(255.0f * point.scale);
+			// each point: a wide glow disc under a solid core
+			Vec pos        = origin + point.position;
+			f32 radius     = 4.0f * point.scale;
+			f32 angle      = 4.0f * point.angle;
+			const u32 edge = point.color;
+			u32 center     = edge | (u8)(s32)(255.0f * point.scale);
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 			Vec glowRotation = { 0.0f, 0.0f, 0.0f };
 			glowRotation.z   = angle;
@@ -90,13 +91,14 @@ extern "C" void UpdateSpiralTrail(SuitChangeEffect* trail, u32 frames)
 		f32 total = 0.0f;
 		for (int i = 0; i < 2; i++) {
 			SuitParticle* point = trail->rings[i];
-			for (int j = 9; j > 0; j--) {
+			for (int j = 9; j > 0; j--) { // the ring shifts down one slot
 				point[j].position.x = point[j - 1].position.x;
 				point[j].position.y = point[j - 1].position.y;
 				point[j].position.z = point[j - 1].position.z;
 				point[j].scale      = point[j - 1].scale;
 				point[j].angle      = point[j - 1].angle;
 			}
+			// the head shrinks and rises until nothing is left
 			if ((point[0].scale -= 0.02f * frames) <= 0.0f)
 				point[0].scale = 0.0f;
 			point[0].angle += DEG2RAD * 9.0f * frames;
@@ -123,14 +125,14 @@ extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
 	ptcl->display.mState  = 1;
 	ptcl->display.mAmount = amount;
 	switch (ptcl->mType) {
-	case 0:
+	case 0: // a negative amount draws in red
 		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
 		ptcl->display.colors.mColor2 = amount >= 0 ? 0xE037EE00 : 0xFF000000;
 		ptcl->burst.mNum             = __abs(amount);
 		if (ptcl->burst.mNum > 40)
 			ptcl->burst.mNum = 40;
 		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
-			ptcl->burst.mPtcls[i].mState = -1;
+			ptcl->burst.mPtcls[i].mState = -1; // -1 draws texture 154
 		break;
 	case 2:
 		ptcl->display.colors.mColor  = amount >= 0 ? 0xEFEBC500 : 0xFF000000;
@@ -139,7 +141,7 @@ extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
 		if (ptcl->burst.mNum > 40)
 			ptcl->burst.mNum = 40;
 		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
-			ptcl->burst.mPtcls[i].mState = -2;
+			ptcl->burst.mPtcls[i].mState = -2; // -2 draws texture 152
 		break;
 	case 3:
 		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
@@ -148,14 +150,14 @@ extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
 		if (ptcl->burst.mNum > 40)
 			ptcl->burst.mNum = 40;
 		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
-			ptcl->burst.mPtcls[i].mState = -3;
+			ptcl->burst.mPtcls[i].mState = -3; // -3 draws texture 153
 		break;
 	default:
 		ptcl->display.colors.mColor  = 0xFFFFFF00;
 		ptcl->display.colors.mColor2 = 0xFFFFFF00;
 		ptcl->burst.mNum             = 40;
 		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
-			ptcl->burst.mPtcls[i].mState = 5;
+			ptcl->burst.mPtcls[i].mState = 5; // a positive state is a polygon's sides
 		break;
 	}
 }
@@ -164,7 +166,7 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 {
 	PointDisplay& display = ptcl->display;
 	PointBurst& burst     = ptcl->burst;
-	if (display.mState == 1) {
+	if (display.mState == 1) { // build the digit strip
 		s32 value      = display.mAmount < 0 ? -display.mAmount : display.mAmount;
 		display.mCount = 0;
 		while (display.mCount < 10) {
@@ -175,11 +177,11 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 				break;
 		}
 		if (ptcl->mType == 1) {
-			display.digits[display.mCount].glyph = 76;
+			display.digits[display.mCount].glyph = 76; // glyph 76 is the icon
 			++display.mCount;
 		}
 		for (s32 i = display.mCount - 1; i >= 0; --i)
-			display.digits[display.mCount - 1 - i].fade = 0.15f * -i;
+			display.digits[display.mCount - 1 - i].fade = 0.15f * -i; // the digits come in staggered
 		display.mState = 2;
 		burst.mState   = 1;
 		for (s32 i = 0; i < burst.mNum; ++i) {
@@ -201,7 +203,7 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 			particle.mAngle     = DEG2RAD * ((360 / burst.mNum) * i);
 			particle.mLastAngle = 0;
 		}
-	} else if (display.mState == 2) {
+	} else if (display.mState == 2) { // fading in
 		s32 moving = 0;
 		for (s32 i = display.mCount - 1; i >= 0; --i) {
 			f32& fade = display.digits[i].fade;
@@ -222,7 +224,7 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 			display.holdFrames = 12.f;
 #endif
 		}
-	} else if (display.mState == 3) {
+	} else if (display.mState == 3) { // hold, then fade out
 		if (display.holdFrames > 0.f) {
 			display.holdFrames -= frames;
 			if (display.holdFrames <= 0.f)
@@ -562,7 +564,7 @@ static inline void DrawPointQuad(CTexObj& tex, u32 top, u32 bottom, f32 x, f32 y
 extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 {
 	CMotionControlCamera& camera = gGame.mMotionControlCamera;
-	if (camera.IsAction(4))
+	if (camera.IsAction(4)) // that camera action hides the points
 		return;
 	PointDisplay& display = ptcl->display;
 	PointBurst& burst     = ptcl->burst;
@@ -596,7 +598,7 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 			f32 phase = p.mFade;
 			if (phase > 1)
 				phase = 1;
-			f32 alpha = sin(PI * p.mFade);
+			f32 alpha = sin(PI * p.mFade); // strongest halfway through the fade
 			if (alpha > 1)
 				alpha = 1;
 			f32 angle = PI * phase, arc = 1.5f * (f32)sin(angle);
@@ -610,13 +612,13 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 			f32 dx = p.mSpeed * (arc * (f32)sin(p.mAngle)), dy = p.mSpeed * (arc * (f32)cos(p.mAngle));
 			f32 shrink = 1 - (f32)sin(angle * .5f), rotation = PI * p.mAngle;
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-			if (p.mState > 0) {
+			if (p.mState > 0) { // a polygon with mState sides
 				u32 color = p.mColor | (u8)(s32)(128 * alpha);
 				DrawGsCircle(&gGame.mGs, p.mState, color, color, px + dx, py + dy, 0, (2 + radius) - shrink * radius,
 				             (2 + radius) - shrink * radius, 0, 0, rotation);
 			} else if (p.mState < 0) {
 				CTexObj tex;
-				if (p.mState == -1) {
+				if (p.mState == -1) { // texture 154, turned toward where it was last frame
 					tex = PointTexture(texture, 154);
 					if (p.mLastScreenX == px + dx && p.mLastScreenY == py + dy)
 						rotation = p.mLastAngle;
@@ -648,6 +650,7 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		CTexObj& texture = gGame.mTpl.mTex;
 		CTexObj icon = PointTexture(texture, 127), digits = PointTexture(texture, 125);
+		// the digit atlas is the digits 0-9 in a column
 		PSMTXScale(digits.mMtx[1], 1, .1f, 1);
 		digits.mMtxDirty = TRUE;
 		for (int i = display.mCount - 1; i >= 0; --i) {
@@ -664,7 +667,7 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 				expand = 0;
 			u8 alpha = (u8)(s32)(255 * fade);
 			u32 top = display.colors.mColor | alpha, bottom = display.colors.mColor2 | alpha;
-			if (digit.glyph == 76) {
+			if (digit.glyph == 76) { // the icon
 				DrawPointQuad(icon, alpha, alpha, px, y - rise, 1.2f * (19 + expand), 24 + expand, 0);
 				DrawPointQuad(icon, top, bottom, px, y - rise, 19 + expand, .8f * (24 + expand), 0);
 			} else {
@@ -696,14 +699,14 @@ void ShowOXCross(XObjOX* object);
  */
 extern "C" void UpdateOXMenuTransition(OXMenu* menu, u32 frames)
 {
-	if (menu->mStarted > 0) {
+	if (menu->mStarted > 0) { // coming up
 		if (menu->mFade < 1.0f) {
 			f32 fade    = menu->mFade + OX_FADE_STEP * frames;
 			menu->mFade = fade;
 			if (fade >= 1.0f)
 				menu->mFade = 1.0f;
 		}
-	} else if (menu->mStarted < 0) {
+	} else if (menu->mStarted < 0) { // going down
 		if (menu->mFade > 0.0f) {
 			f32 fade    = menu->mFade - OX_FADE_STEP * frames;
 			menu->mFade = fade;
@@ -759,6 +762,7 @@ extern "C" void HandleOXMenuInput(OXMenu* menu, CPad* pad)
 		if (!(gGame.mStatus.mFlags & 0x100ULL)) {
 			menu->mChr->SetRotateY(PI + gGame.mMotionControlCamera.mCamera.mAngle.y, DEG2RAD * 8.0f);
 		}
+		// the flag decides whether the dpad counts too or just the stick
 		u32 next     = (gGame.mStatus.mFlags & 0x80000000ULL) ? 0x80000 : 0x80002;
 		u32 previous = (gGame.mStatus.mFlags & 0x80000000ULL) ? 0x40000 : 0x40001;
 		if (pad->mPad->mRepeat & next) {
@@ -772,11 +776,12 @@ extern "C" void HandleOXMenuInput(OXMenu* menu, CPad* pad)
 				PlayGameSound(&gGame.mSound, 0x87, 255);
 			}
 		}
+		// the neck turns twenty degrees toward the picked side
 		f32 angle                    = menu->mSelectedIndex == 0 ? -(DEG2RAD * 20.0f) : DEG2RAD * 20.0f;
 		XObjChr* chr                 = (XObjChr*)menu->mChr;
 		chr->mHeadTurn.mNeck.mMode   = 1;
 		chr->mHeadTurn.mNeck.mTarget = angle;
-		if (!(gGame.mStatus.mFlags & 0x20ULL) && 1.0f == menu->mFade && (pad->mPad->mTrigger & 0x100)) {
+		if (!(gGame.mStatus.mFlags & 0x20ULL) && 1.0f == menu->mFade && (pad->mPad->mTrigger & 0x100)) { // the A button
 			menu->mStarted = -1;
 			PlayGameSound(&gGame.mSound, 0x88, 255);
 			menu->mConfirmedIndex = menu->mSelectedIndex;

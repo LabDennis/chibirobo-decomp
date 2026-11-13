@@ -78,6 +78,13 @@ XObjSpider::Func gSpiderStateHandlers[10] = {
 	&XObjSpider::State5, &XObjSpider::State6, &XObjSpider::State7, &XObjSpider::State8, &XObjSpider::State9,
 };
 
+// mFlags: 2 a hit to handle, 8 falls by mFallSpeed, 0x10 can't be hit for now, 0x40 hangs
+// from its thread, 0x80 draws the thread, 0x100 mSpeed moves it up and down, 0x400 kept in
+// its area, 0x800 its shot is out, 0x1000 charging, 0x8000 out of reach of hits, 0x10000 out
+// of hits, 0x80000 death anim over, 0x100000 dropped from the ceiling, 0x200000 and 0x400000
+// event cues for variant 11, 0x04000000 not placed yet, 0x08000000 held still (no state
+// update), 0x20000000 has tied objects
+
 // puts a CObjVec at a value and its target there too
 static inline void SetNow(CObjVec& vec, const Vec& v)
 {
@@ -224,12 +231,12 @@ extern "C" void ApplySpiderPlacement(XObjSpider* spider)
 	spider->mDir             = PlacementRotation(spider->mCoord, gSpiderRotation).y;
 	spider->mRadius          = 20.0f * PlacementScale(spider->mCoord, gSpiderScale).x;
 	switch (spider->mPlacementParam0) {
-	case 0:
+	case 0: // held still until event command 7 lets it go
 		spider->SetState(0);
 		spider->mFlags.mFlags |= 0x08000000;
 		TakeSlot(spider);
 		break;
-	case 1:
+	case 1: // hangs from the ceiling and drops down when the robot comes near
 		spider->SetState(6);
 		spider->mFlags.mFlags |= 0x40;
 		spider->mFlags.mFlags |= 0x400;
@@ -240,6 +247,7 @@ extern "C" void ApplySpiderPlacement(XObjSpider* spider)
 			spider->mAreaPos.z = 63.0f;
 			spider->mAreaWidth = 221.0f;
 			spider->mAreaDepth = 216.0f;
+			// shrinks the area to 90% around its center
 			f32 width          = spider->mAreaWidth;
 			f32 depth          = spider->mAreaDepth;
 			f32 centerX        = width * 0.5f + spider->mAreaPos.x;
@@ -271,7 +279,7 @@ extern "C" void ApplySpiderPlacement(XObjSpider* spider)
 			spider->mDir = 0.0f;
 		spider->mDir = PlacementRotation(spider->mCoord, gSpiderRotation).z;
 		break;
-	default:
+	default: // fights the robot inside a fixed area
 		spider->SetState(4);
 		spider->mFlags.mFlags |= 0x400;
 		spider->mAreaPos.x = -50.0f;
@@ -281,6 +289,7 @@ extern "C" void ApplySpiderPlacement(XObjSpider* spider)
 		spider->mAreaDepth = 134.0f;
 		break;
 	}
+	// a hanging one shows its thread and starts mPlacementParam1 above its home
 	if (spider->mFlags.mFlags & 0x40) {
 		spider->mFlags.mFlags |= 0x80;
 		spider->mFlags.mFlags |= 0x100;
@@ -312,6 +321,7 @@ void XObjSpider::ResetObjectState()
 {
 	ResetObjectState__4XObjFv(this);
 	mSfx.mEvents = gSpiderAnimSfxEvents;
+	// the first spider collects the shared carry slot models, the first 16 objects with id 0x13C
 	if (mPoolIndex == 0) {
 		for (u32 i = 0; i < 16; ++i) {
 			gSpiderCarryModels[i]     = NULL;
@@ -345,11 +355,12 @@ void XObjSpider::UpdateObject(u32 frames)
 {
 	CPad pad(0);
 
+	// set to 1 when a charge hits the robot, rumbles the pad for 24 frames if rumble is turned on
 	switch (mRumble) {
 	case 0:
 		break;
 	case 1:
-		if (gGame.mStatus.mFlags & 0x800000000ULL) {
+		if (gGame.mStatus.mFlags & 0x800000000ULL) { // the rumble option
 			CPadOne* rumble = &gGame.mPad.mPad[0];
 			if (rumble->mConnected) {
 				HSD_PadRumbleOn(rumble->mPort);
@@ -374,12 +385,13 @@ void XObjSpider::UpdateObject(u32 frames)
 		break;
 	}
 
-	if (gGame.mStatus.mFlags & 0x400) {
+	if (gGame.mStatus.mFlags & 0x400) { // the robot's menu is open
 		return;
 	}
 	if (mPoolIndex == 0) {
 		UpdateSpiderCoinBounces(&gSpiderCoinBounceUpdateContext, frames);
 	}
+	// a spider that isn't drawn stands still, unless it is taking a hit (state 1)
 	if (!(mStatus.mFlags & 0x10000) && mState != 1) {
 		return;
 	}
@@ -542,7 +554,8 @@ void XObjSpider::DrawObjectEffects()
 		f32 endX = pos.x;
 		f32 endZ = pos.z;
 		CGs* gs  = &gGame.mGs;
-		HSD_StateInvalidate(-1);
+		// HSD forgets its cached GX state, so the CGs state is marked dirty and sent again
+		HSD_StateInvalidate(HSD_STATE_ALL);
 		CGs* gs2 = &gGame.mGs;
 		if (gs2->mCurRenderMode != NULL) {
 			CGsRenderMode* mode = gs->mCurRenderMode;
@@ -695,6 +708,7 @@ void XObjSpider::OnHitFromPosition(const Vec& from, f32 strength)
 		return;
 	if (mFlags.mFlags & 0x8000)
 		return;
+	// only the robot's blaster (attachment 2) at level 2 or up hurts it
 	if (GetAttachmentCountById(&gGame.GetPlayer()->mAttachments, 2) < 2)
 		return;
 	OnHitFromPosition__4XObjFRC3Vecf(this, &from, strength);
@@ -849,6 +863,8 @@ extern "C" void LaunchSpiderShot(XObjSpider* spider)
 // along with their joints
 extern "C" void UpdateSpiderAttachments(XObjSpider* spider, u32 frames)
 {
+	// the object from event command 14: 1 reads it once pool 14's Tao is free, 2 waits for the
+	// read, 3 holds it on joint 0
 	switch (spider->mEffectOn) {
 	case 0:
 		break;
@@ -995,25 +1011,25 @@ extern "C" void ExecuteSpiderCommand(XObjSpider* spider, u32 frames)
 		spider->SetState(3);
 		spider->mCommand = 0;
 		break;
-	case 2:
+	case 2: // tells the script whether it ran out of hits
 		if (spider->mFlags.mFlags & 0x10000)
 			gGame.mEvt.mSelectResult = 1;
 		else
 			gGame.mEvt.mSelectResult = 0;
 		spider->mCommand = 0;
 		break;
-	case 3:
+	case 3: // tells the script whether its death anim is over
 		if (spider->mFlags.mFlags & 0x80000)
 			gGame.mEvt.mSelectResult = 1;
 		else
 			gGame.mEvt.mSelectResult = 0;
 		spider->mCommand = 0;
 		break;
-	case 4:
+	case 4: // cues a variant 11 spider to drop from the ceiling (State6)
 		spider->mFlags.mFlags |= 0x00200000;
 		spider->mCommand = 0;
 		break;
-	case 5:
+	case 5: // cues a variant 11 spider to start fighting (State0)
 		spider->mFlags.mFlags |= 0x00400000;
 		spider->mCommand = 0;
 		break;
@@ -1064,12 +1080,12 @@ extern "C" void ExecuteSpiderCommand(XObjSpider* spider, u32 frames)
 		spider->mFlags.mFlags |= 0x10000000;
 		spider->mCommand = 0;
 		break;
-	case 14:
+	case 14: // holds stage object mArgs[0] on its joint
 		spider->mEffectId = spider->mArgs[0];
 		spider->mEffectOn = 1;
 		spider->mCommand  = 0;
 		break;
-	case 15:
+	case 15: // lets go of it
 		spider->mEffectOn = 0;
 		spider->mEffectId = -1;
 		if (spider->mEffect != NULL)
@@ -1294,6 +1310,7 @@ void XObjSpider::State4(u32 frames)
 	CVec chr(pos);
 	f32 dist   = GetSpiderDistanceXZ(&chr, &mMoveTranslate);
 	BOOL event = gGame.mEvt.mData.mScript != NULL;
+	// during an event, or once it leaves its area, it goes back home (State7)
 	if (event) {
 		SetState(7);
 		return;
@@ -1302,6 +1319,9 @@ void XObjSpider::State4(u32 frames)
 		SetState(7);
 		return;
 	}
+	// phases: 0 waits for the robot to come within 120, 1 turns to face it, 2 and 3 rear up and
+	// aim, 20 and 21 shoot and 4 recovers, 5 to 7 charge, 30 to 32 back away from a spider that
+	// dropped in, 40 and 41 walk at the robot
 	switch (mPhase) {
 	case 0:
 		CombatAnim(this, 1);
@@ -1444,11 +1464,11 @@ void XObjSpider::State4(u32 frames)
 		}
 		break;
 	case 10:
-		mDir -= 0.10471976f;
+		mDir -= PI / 30;
 		EndSpiderCombatTurn(this, frames);
 		break;
 	case 11:
-		mDir += 0.10471976f;
+		mDir += PI / 30;
 		EndSpiderCombatTurn(this, frames);
 		break;
 	case 20:
@@ -1595,6 +1615,8 @@ void XObjSpider::State6(u32 frames)
 	Vec pos = GetChrPos();
 	CVec chr(pos);
 	CPad pad(0);
+	// phases: 0 and 10 wait a random time, 1 swings until the robot comes within 68, 2 to 4 slide
+	// down the thread, 5 lands and starts to fight
 	switch (mPhase) {
 	case 0:
 		mCounter = rand() % 30;
@@ -1687,7 +1709,7 @@ void XObjSpider::State6(u32 frames)
 			SetState(4);
 		}
 		break;
-	case 6:
+	case 6: // a test, B hangs it back up 48 above its home
 		if (pad.mPad->mTrigger & 0x200) {
 			mFlags.mFlags = 0;
 			mFlags.mFlags |= 0x40;
@@ -1833,7 +1855,7 @@ extern "C" void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s3
 void XObjSpider::State9(u32 frames)
 {
 	CPad pad(0);
-	if (pad.mPad->mTrigger & 0x20) {
+	if (pad.mPad->mTrigger & 0x20) { // R puts it back home
 		mPhase           = 0;
 		mSpeed           = 0.0f;
 		mMoveTranslate.x = mHome.x;
@@ -1844,6 +1866,7 @@ void XObjSpider::State9(u32 frames)
 	}
 	switch (mPhase) {
 	case 0:
+		// B with up, down, left or right held (8, 4, 1, 2) sends it 60 toward -z, +z, -x or +x
 		if (pad.mPad->mTrigger & 0x200) {
 			u32 button = pad.mPad->mButton;
 			if (button & 8) {
@@ -2204,7 +2227,7 @@ bool HasNearbyDroppedSpider(XObjSpider* spider)
  */
 u8 HasSpiderFinishedDeathAnimation(const XObjSpider* spider)
 {
-	return (spider->mFlags.mFlags >> 19) & 1;
+	return (spider->mFlags.mFlags >> 19) & 1; // 0x80000, State3 sets it when the death anim is over
 }
 
 /**
@@ -2255,10 +2278,10 @@ void ResetSpiderState(XObjSpider* spider)
 	spider->mWallPos      = wallPos;
 	Vec target            = { 0.0f, 0.0f, 0.0f };
 	spider->mTarget       = target;
-	Vec v08               = { 0.0f, 0.0f, 0.0f };
-	spider->mShotOrigin   = v08;
-	Vec v14               = { 0.0f, 0.0f, 0.0f };
-	spider->mShotPosition = v14;
+	Vec shotOrigin        = { 0.0f, 0.0f, 0.0f };
+	spider->mShotOrigin   = shotOrigin;
+	Vec shotPosition      = { 0.0f, 0.0f, 0.0f };
+	spider->mShotPosition = shotPosition;
 	spider->mShotRange    = 0.0f;
 	spider->mShotProgress = 0.0f;
 	spider->mShotState    = 0;

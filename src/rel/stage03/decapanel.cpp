@@ -173,7 +173,7 @@ struct DecaPanelKey {
 struct DecaPanelKeySprite {
 	s32 mTex;   // _00
 	f32 mScale; // _04
-	f32 mTrans; // _08
+	f32 mTrans; // _08, uv x offset — the cell on strip textures
 	s32 mKey;   // _0C
 	f32 mW;     // _10
 	f32 mH;     // _14
@@ -242,13 +242,14 @@ RelCmdFunc _prolog_cmds[]
 	    CmdOpenDecaPanel,  CmdCloseDecaPanel,   CmdIsDecaPanelOpen,    CmdGetDecaPassword };
 }
 
-// 4 rows of 3 keys
+// 4 rows of 3 keys; the last row's 'C' spans columns 0-1 and '0' gets column 2
 static DecaPanelKey decaPanelKeys[12] = {
 	{ -58.0f, -40.0f, '7' }, { -1.0f, -40.0f, '8' },  { 56.0f, -40.0f, '9' },  { -58.0f, 17.0f, '4' },
 	{ -1.0f, 17.0f, '5' },   { 56.0f, 17.0f, '6' },   { -58.0f, 74.0f, '1' },  { -1.0f, 74.0f, '2' },
 	{ 56.0f, 74.0f, '3' },   { -29.0f, 131.0f, 'C' }, { -29.0f, 131.0f, 'C' }, { 56.0f, 131.0f, '0' },
 };
 
+// one sound id per key cell
 static s32 decaPanelKeySounds[12] = {
 	0x5000E, 0x5000F, 0x50010, 0x5000B, 0x5000C, 0x5000D, 0x50008, 0x50009, 0x5000A, 0x50012, 0x50012, 0x50011,
 };
@@ -274,7 +275,7 @@ inline void DecaPanel::ResetInput()
 	mDigitNum  = 0;
 	mCode      = 0;
 	mCursorX   = 0;
-	mCursorY   = 3;
+	mCursorY   = 3; // row 3 column 0, the 'C'
 	mLocked    = 0;
 	mCurX = mTargetX = decaPanelKeys[mCursorX + mCursorY * 3].x;
 	mCurY = mTargetY = decaPanelKeys[mCursorX + mCursorY * 3].y;
@@ -288,6 +289,7 @@ inline UnkObj* GetObjById(s16 id)
 	return NULL;
 }
 
+// white at fade alpha
 inline u32 FadeColor(f32 fade)
 {
 	return (u32)(255.0f * fade) | 0xFFFFFF00;
@@ -302,7 +304,7 @@ inline void DecaPanel::LoadTextures()
 {
 	s32 i;
 
-	switch (mState) {
+	switch (mState) { // 1: grab the tpl once, 2: ready
 	case 1:
 		if (mTpl.ReadEx("tpl/stage03.tpl", 0, 0)) {
 			for (i = 0; i < 5; i++) {
@@ -352,7 +354,7 @@ inline void SavedObjFlagList::Apply(s32 mode)
 				break;
 			}
 			UnkObj* obj = GetObjById(mEntries[j].mId);
-			if (mEntries[j].mFlags & 1) {
+			if (mEntries[j].mFlags & 1) { // only entries saved with the flag get it back
 				obj->mFlags |= 0x10000ULL;
 			}
 		}
@@ -395,7 +397,7 @@ extern "C" s32 CmdIsDecaPanelOpen(s32 cmd, s32 count, s32* args)
 extern "C" s32 CmdCloseDecaPanel(s32 cmd, s32 count, s32* args)
 {
 	decaPanel.mActive = 0;
-	gGame.mFlags &= ~2ULL;
+	gGame.mFlags &= ~2ULL; // the panel's game flag
 	return 0;
 }
 
@@ -478,30 +480,30 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 	if (work->mFade >= 1.0f) {
 		CGameS03View* game = &gGame;
 		u8 cur             = decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar;
-		if (game->mPadHeld & 0x100) {
+		if (game->mPadHeld & 0x100) { // A
 			work->mLocked = 1;
 		} else {
 			work->mLocked = 0;
-			if (game->mPadRepeat & 1) {
-				do {
+			if (game->mPadRepeat & 1) { // left
+				do {                    // skip cells that show the same glyph
 					if (--work->mCursorX < 0) {
 						work->mCursorX = 2;
 					}
 				} while (cur == decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar);
-			} else if (game->mPadRepeat & 2) {
+			} else if (game->mPadRepeat & 2) { // right
 				do {
 					if (++work->mCursorX > 2) {
 						work->mCursorX = 0;
 					}
 				} while (cur == decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar);
 			}
-			if (game->mPadRepeat & 8) {
+			if (game->mPadRepeat & 8) { // up
 				do {
 					if (--work->mCursorY < 0) {
 						work->mCursorY = 3;
 					}
 				} while (cur == decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar);
-			} else if (game->mPadRepeat & 4) {
+			} else if (game->mPadRepeat & 4) { // down
 				do {
 					if (++work->mCursorY > 3) {
 						work->mCursorY = 0;
@@ -510,10 +512,10 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			}
 		}
 
-		if (game->mPadTrig & 0x100) {
+		if (game->mPadTrig & 0x100) { // A confirms the key
 			u8 ch = decaPanelKeys[work->mCursorX + work->mCursorY * 3].mChar;
 			PlayGameSound(gGame.mSound, decaPanelKeySounds[work->mCursorX + work->mCursorY * 3], 0xFF);
-			if (ch == 'C') {
+			if (ch == 'C') { // clear
 				work->mDigits[0] = ' ';
 				work->mDigits[1] = ' ';
 				work->mDigits[2] = ' ';
@@ -524,7 +526,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 				work->mCode      = 0;
 			} else {
 				if (work->mDigitNum < 6) {
-					if (work->mDigitNum != 0) {
+					if (work->mDigitNum != 0) { // shift left, the new digit lands last
 						work->mDigits[0] = work->mDigits[1];
 						work->mDigits[1] = work->mDigits[2];
 						work->mDigits[2] = work->mDigits[3];
@@ -534,7 +536,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 					work->mDigits[5] = ch;
 					work->mDigitNum++;
 				}
-				if (work->mDigitNum >= 6) {
+				if (work->mDigitNum >= 6) { // full entry, build the code
 					work->mCode = 0;
 					if (work->mDigits[0] != ' ') {
 						work->mCode = work->mCode * 10 + work->mDigits[0] - '0';
@@ -559,7 +561,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 				}
 			}
 		}
-		if (game->mPadTrig & 0x200) {
+		if (game->mPadTrig & 0x200) { // B cancels
 			work->mCode   = -1;
 			work->mActive = 0;
 			gGame.mFlags &= ~2ULL;
@@ -578,6 +580,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		key            = &decaPanelKeys[work->mCursorX + work->mCursorY * 3];
 		work->mTargetX = key->x;
 		work->mTargetY = key->y;
+		// the cursor sprite chases the current key
 		work->mCurX += 0.8f * (work->mTargetX - work->mCurX);
 		work->mCurY += 0.8f * (work->mTargetY - work->mCurY);
 
@@ -589,11 +592,13 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			DrawGsTexturedQuad(&gGame, tex, color, color, color, color, 320.0f, 200.0f, 0.0f, 0.9f * w, 0.9f * h, 0.0f, 0.0f, 0.0f);
 		}
 
+		// tex1 is a 10-cell digit strip, one cell per key
 		keyW  = 0.9f * (GXGetTexObjWidth(&work->mTexs[1]) / 10);
 		keyH  = 0.9f * GXGetTexObjHeight(&work->mTexs[1]);
 		wideW = 0.9f * GXGetTexObjWidth(&work->mTexs[2]);
 		wideH = 0.9f * GXGetTexObjHeight(&work->mTexs[2]);
 
+		// tex1's cell picks the digit, tex2 is the wide 'C'
 		DecaPanelKeySprite draws[12] = {
 			{ 1, 0.1f, 0.6f, 0, 0.0f, 0.0f }, { 1, 0.1f, 0.7f, 1, 0.0f, 0.0f },  { 1, 0.1f, 0.8f, 2, 0.0f, 0.0f },
 			{ 1, 0.1f, 0.3f, 3, 0.0f, 0.0f }, { 1, 0.1f, 0.4f, 4, 0.0f, 0.0f },  { 1, 0.1f, 0.5f, 5, 0.0f, 0.0f },
@@ -627,7 +632,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 
 		for (i = 0; i < 12; i++) {
 			if (work->mLocked && key->mChar == decaPanelKeys[i].mChar) {
-				continue;
+				continue; // the held key stays hidden
 			}
 			tex = &work->mTexs[draws[i].mTex];
 			PSMTXScale(tex->mMtx[1], draws[i].mScale, 1.0f, 1.0f);
@@ -641,6 +646,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			                   0.0f, 0.0f, 0.0f);
 		}
 
+		// tex4 is the digit strip for the typed entry
 		tex = &work->mTexs[4];
 		PSMTXScale(tex->mMtx[1], 0.1f, 1.0f, 1.0f);
 		tex->mMtxDirty = 1;
@@ -657,6 +663,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			}
 		}
 
+		// tex3 is the cursor
 		tex  = &work->mTexs[3];
 		keyW = 0.9f * GXGetTexObjWidth(tex);
 		keyH = 0.9f * GXGetTexObjHeight(tex);
@@ -1581,7 +1588,7 @@ extern "C" s32 CmdSaveObjFlag(s32 cmd, s32 count, s32* args)
 	if (savedObjFlags.mNum < 300) {
 		savedObjFlags.mEntries[savedObjFlags.mNum].mId = id;
 		UnkObj* obj                                    = GetObjById(savedObjFlags.mEntries[savedObjFlags.mNum].mId);
-		if (obj != NULL && (obj->mFlags & 1)) {
+		if (obj != NULL && (obj->mFlags & 1)) { // flag 1 gates whether it saves
 			if (obj->mFlags & 0x10000) {
 				savedObjFlags.mEntries[savedObjFlags.mNum].mFlags |= 1;
 			}
@@ -1662,11 +1669,12 @@ extern "C" void UpdateStage(s32 frames)
 
 	sTimer += frames;
 	if (IsGameSoundPlaying(gGame.mSound, 0xFFFF000E)) {
-		AXDriverSetAllStreamPitches(5.0f * (f32)sin(DEG2RAD * sTimer));
+		AXDriverSetAllStreamPitches(5.0f * (f32)sin(DEG2RAD * sTimer)); // wobble the stream's pitch
 	}
 	if (IsGameSoundPlaying(gGame.mSound, 0xFFFF000F)) {
 		AXDriverSetAllStreamPitches(5.0f * (f32)sin(DEG2RAD * sTimer));
 	}
+	// a rare ambient sound, only while no event script is loaded
 	if (gGame.mObjTable.mList == NULL && HSD_Randi(5000) < 10) {
 		switch (HSD_Randi(4)) {
 		case 0:

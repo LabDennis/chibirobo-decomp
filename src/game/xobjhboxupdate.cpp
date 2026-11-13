@@ -30,7 +30,7 @@ static inline void SpawnBoxEffect(XObjHBox* box, u32 id)
 void XObjHBox::UpdateObject(u32 frames)
 {
 	UpdateObject__4XObjFUl(this, frames);
-	if (mStatus.mFlags & 0x1000000000000000ULL) {
+	if (mStatus.mFlags & 0x1000000000000000ULL) { // rebuild the joint matrix from the trs
 		Mtx translation, scale, yaw, pitch, roll, result;
 		PSMTXTrans(translation, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
 		PSMTXScale(scale, mMoveScale.x, mMoveScale.y, mMoveScale.z);
@@ -44,7 +44,7 @@ void XObjHBox::UpdateObject(u32 frames)
 		HSD_JObjCopyMtx(mJObj, result);
 	}
 	XObj* part = &mPart.mObj;
-	if (mStatus.mFlags & 0x2000000000000000ULL) {
+	if (mStatus.mFlags & 0x2000000000000000ULL) { // the opening hit
 		mStatus.mFlags &= ~0x2000000000000000ULL;
 		HSD_JObjClearMtxFlags(mJObj);
 		mPart.mSfx = PlayGameSound(&gGame.mSound, 0x122, 255);
@@ -69,14 +69,14 @@ void XObjHBox::UpdateObject(u32 frames)
 			mEventScript = (u32)GetStageScriptByIndex(index);
 	} else if (mAnimId == 1) {
 		HSD_AObj* anim = GetAObj(mJObj);
-		if (anim && (anim->flags & 0x44000000))
+		if (anim && (anim->flags & 0x44000000)) // animation done
 			PlayBoxAnim(this, 3);
 	} else if (mAnimId == 3) {
 		HSD_AObj* anim = GetAObj(mJObj);
-		if (anim && (anim->flags & 0x44000000))
+		if (anim && (anim->flags & 0x44000000)) // animation done
 			HSD_JObjSetFlagsAll(mJObj, 0x10);
 	}
-	if (mRing > 0) {
+	if (mRing > 0) { // the hit ring fades
 		mRing -= 0.04f;
 		if (mRing <= 0)
 			mRing = 0;
@@ -120,7 +120,7 @@ void XObjHBox::UpdateObject(u32 frames)
 			break;
 		}
 	}
-	if (mStatus.mFlags & 0x4000000000000000ULL) {
+	if (mStatus.mFlags & 0x4000000000000000ULL) { // shrinking out
 		part->SetAnimRate(0, 0x5a0);
 		mPart.mHit -= 0.04f * frames;
 		if (mPart.mHit <= 0) {

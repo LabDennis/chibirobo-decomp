@@ -17,7 +17,7 @@ static inline void ResetRingMode(OctaMenu& ring)
 	if (mode <= 3)
 		ring.mMenuType = mode;
 	else
-		ring.mMenuType = 0;
+		ring.mMenuType = 0; // types above 3 fall back to 0
 	ring.mFocus    = 0;
 	ring.mHeadTurn = NAN;
 }
@@ -77,7 +77,7 @@ void XObjChr::ResetForNewGame()
 	mPlayerStatus.mFlags = 0;
 	mPlayerStatus.mFlags = 0;
 	mPlayerStatus.mFlags |= 0x20000000;
-	mPlayerStatus.mFlags |= 7;
+	mPlayerStatus.mFlags |= 7; // the give-control-back flags
 	mPad.mReset = TRUE;
 }
 
@@ -126,16 +126,16 @@ void XObjChr::InitializeObject(u32 id)
 	mOXObj.InitializeObject(id);
 	InitializeAttachmentMenuEntries(&mAttachments);
 	{
-		OctaMenu& ring = mMenu.mAtc;
+		OctaMenu& ring = mMenu.mAtc; // the attachment ring
 		SetupPlayerRing(ring, this, -1.0f);
-		SetRingItems(ring, 1, 2, 3, 4, 6, 5, 7, 8);
+		SetRingItems(ring, 1, 2, 3, 4, 6, 5, 7, 8); // the items in ring order
 		ring.mRowOffset        = -1.5f;
 		ring.mFirstVisibleItem = 4;
 	}
 	{
-		OctaMenu& ring = mMenu.mDrs;
+		OctaMenu& ring = mMenu.mDrs; // the costume ring
 		SetupPlayerRing(ring, this, 1.0f);
-		if (ring.mMenuType == 3) {
+		if (ring.mMenuType == 3) { // menu type 3 gets its own order
 			SetRingItems(ring, 1, 4, 6, 3, 2, 7, 8, 5);
 		} else {
 			SetRingItems(ring, 3, 5, 4, 1, 6, 8, 7, 2);
@@ -150,7 +150,7 @@ void XObjChr::InitializeObject(u32 id)
 #if !defined(VERSION_JP)
 	mOXMenu.mLoadStep = 0;
 #endif
-	for (s32 i = 0; i < 9; ++i) {
+	for (s32 i = 0; i < 9; ++i) { // every suit model
 		mSuits.mObjects[i].InitializeObject(id);
 		mSuits.mJoints[i] = NULL;
 	}

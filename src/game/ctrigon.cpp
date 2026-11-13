@@ -65,7 +65,7 @@ void HSD_JObjCountVertices(HSD_JObj* jobj, u32* verts, u32* polys)
 	u32 totalVerts = 0;
 	u32 totalPolys = 0;
 	if (jobj != NULL) {
-		if (jobj->flags & INSTANCE) {
+		if (jobj->flags & INSTANCE) { // instanced joints share the child's tree
 			HSD_JObjCountVertices(jobj->child, &totalVerts, &totalPolys);
 		} else {
 			if (union_type_dobj(jobj)) {
@@ -198,7 +198,7 @@ static void CollectTrigons(HSD_JObj* jobj, f32** args, s32 type)
 		if (mobj == NULL || mobj->mat == NULL) {
 			continue;
 		}
-		u32 color = *(u32*)&mobj->mat->diffuse >> 8;
+		u32 color = *(u32*)&mobj->mat->diffuse >> 8; // the material's diffuse rgb, alpha shifted out
 		for (HSD_PObj* pobj = HSD_DObjGetPObj(dobj); pobj != NULL; pobj = HSD_PObjGetNext(pobj)) {
 			u32 n          = ParsePObj(pobj, &tri[trigon->mNum], mtx);
 			TRIGON_INFO* t = &tri[trigon->mNum];
@@ -206,6 +206,7 @@ static void CollectTrigons(HSD_JObj* jobj, f32** args, s32 type)
 				Vec v[3];
 				Vec center;
 				t->mGetVtx(t, v);
+				// the sort key is the centroid's distance from the origin
 				center.x  = (v[0].x + v[1].x + v[2].x) / 3.0f;
 				center.y  = (v[0].y + v[1].y + v[2].y) / 3.0f;
 				center.z  = (v[0].z + v[1].z + v[2].z) / 3.0f;
@@ -350,14 +351,14 @@ static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx)
 	int i;
 
 	while (dl < end) {
-		u8 cmd = dl[0];
-		int n  = dl[1] << 8 | dl[2];
+		u8 cmd = dl[0];              // the display list opcode
+		int n  = dl[1] << 8 | dl[2]; // the big-endian vertex count
 		dl += 3;
 
 		switch (cmd & GX_OPCODE_MASK) {
-		case GX_NOP:
+		case GX_NOP: // a nop ends the list
 			return num;
-		case GX_POINTS:
+		case GX_POINTS: // not triangles: skip the verts
 			dl += stride * n;
 			break;
 		case GX_LINES:
@@ -387,7 +388,7 @@ static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx)
 			dl += stride * 2;
 			break;
 		case GX_TRIANGLEFAN: {
-			void* first = getIdx(vtx, dl);
+			void* first = getIdx(vtx, dl); // the fan's hub vertex
 			for (i = 2; i < n; i++) {
 				SET_TRIGON(first, getIdx(vtx, dl + stride), getIdx(vtx, dl + stride * 2));
 				ADD_TRIGON();
@@ -396,7 +397,7 @@ static int ParsePObj(HSD_PObj* pobj, TRIGON_INFO* out, MtxPtr mtx)
 			dl += stride * 2;
 			break;
 		}
-		case GX_QUADS:
+		case GX_QUADS: // each quad becomes two triangles
 			for (i = 0; i < n / 4; i++) {
 				SET_TRIGON(getIdx(vtx, dl), getIdx(vtx, dl + stride), getIdx(vtx, dl + stride * 2));
 				ADD_TRIGON();
@@ -922,7 +923,7 @@ static int GetVtxSize(HSD_VtxDescList* desc, int* pos, int* nrm, int* tex, int* 
 
 	for (; desc != NULL && (attr = desc->attr) != GX_VA_NULL; desc++) {
 		switch (attr) {
-		case GX_VA_PNMTXIDX:
+		case GX_VA_PNMTXIDX: // matrix indices take a byte
 		case GX_VA_TEX0MTXIDX:
 		case GX_VA_TEX1MTXIDX:
 		case GX_VA_TEX2MTXIDX:
@@ -933,7 +934,7 @@ static int GetVtxSize(HSD_VtxDescList* desc, int* pos, int* nrm, int* tex, int* 
 		case GX_VA_TEX7MTXIDX:
 			size += 1;
 			break;
-		case GX_VA_POS:
+		case GX_VA_POS: // the index's own size, not the attribute's
 			if (desc->attr_type == GX_INDEX16) {
 				posSize = 2;
 				size += 2;
@@ -968,7 +969,7 @@ static int GetVtxSize(HSD_VtxDescList* desc, int* pos, int* nrm, int* tex, int* 
 				size += 1;
 			}
 			break;
-		case GX_VA_CLR0:
+		case GX_VA_CLR0: // indexed, or a direct color's format size
 		case GX_VA_CLR1:
 			if (desc->attr_type == GX_INDEX16) {
 				clrSize = 2;
@@ -1113,6 +1114,7 @@ static void TrigonGetVtxU8(const TRIGON_INFO* tri, Vec* out)
 	int i;
 	int scale = 1 << tri->mFrac;
 
+	// frac is the fixed point's fraction bits
 	for (i = 0; i < 3; i++) {
 		out[i].x = (f32)((u8*)tri->mVtx[i])[0] / (f32)scale;
 		out[i].y = (f32)((u8*)tri->mVtx[i])[1] / (f32)scale;
@@ -1244,6 +1246,7 @@ int CTrigon::Search(Vec* pos, f32* floorY)
 		if ((u32)k < num) {
 			t = &list[k];
 			t->mGetVtx(t, v);
+			// triangles whose material rgb is black don't count
 			if (t->mColor != 0 && IsPointInsideTriangleXZ(pos, &v[0], corner1, corner2)) {
 				found = k;
 				break;

@@ -28,7 +28,7 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 		SetPlayerPopperMountHidden(player, FALSE);
 	s32 suitPath[]  = { 0, 1, 0 };
 	HSD_JObj* mount = FindJointByPath(player->mJObj, suitPath, 3);
-	mount->child    = player->mSuits.mJoints[player->mSuits.mCurrent];
+	mount->child    = player->mSuits.mJoints[player->mSuits.mCurrent]; // graft the suit's joint tree
 	for (HSD_JObj* child = mount->child; child; child = child->next)
 		child->parent = mount;
 	struct JointPath {
@@ -44,9 +44,9 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 	joints[1].indices  = path1;
 	s32 path0[]        = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
 	joints[0].indices  = path0;
-	for (s32 i = 0; i < 4; ++i)
+	for (s32 i = 0; i < 4; ++i) // the suit's four idle joints
 		player->mIdleJoints[i].mJObj = FindJointByPath(player->mJObj, joints[i].indices, joints[i].depth);
-	{
+	{ // the suit's attachment, tool and popper mount points
 		s32 attachment[]         = { 0, 1, 0, 1, 2, 0, 0, 5 };
 		player->mAttachmentJoint = FindJointByPath(player->mJObj, attachment, 8);
 		{
@@ -69,7 +69,7 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 	BindRotationJoint(player->mHeadTurn.mHead);
 	if (!(gGame.mStatus.mFlags & 0x100))
 		SetPlayerEyeCameraJointsHidden(player, FALSE);
-	if (player->GetAttachment() == 2)
+	if (player->GetAttachment() == 2) // hide the popper mount again
 		SetPlayerPopperMountHidden(player, TRUE);
 	player->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 	player->mIdleLoops = 3;
@@ -89,7 +89,7 @@ extern "C" void RemovePlayerSuit(XObjChr* player)
 
 	s32 suitPath[]  = { 0, 1, 0 };
 	HSD_JObj* mount = FindJointByPath(player->mJObj, suitPath, 3);
-	mount->child    = player->mSuits.mJoints[0];
+	mount->child    = player->mSuits.mJoints[0]; // restore slot 0's joints
 	for (HSD_JObj* child = mount->child; child; child = child->next)
 		child->parent = mount;
 	player->SetAnim(anim, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
@@ -114,7 +114,7 @@ extern "C" void RemovePlayerSuit(XObjChr* player)
 	}
 
 	XObj& suit = player->mSuits.mObjects[player->mSuits.mCurrent];
-	if (suit.mStatus.mFlags & 1)
+	if (suit.mStatus.mFlags & 1) // release the suit object if loaded
 		suit.Release();
 	if (player->mSuits.mJoints[player->mSuits.mCurrent])
 		player->mSuits.mJoints[player->mSuits.mCurrent] = NULL;

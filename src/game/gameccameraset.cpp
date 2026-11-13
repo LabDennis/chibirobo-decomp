@@ -38,7 +38,7 @@ static inline void DrawSubwindowObjects(const XOBJS& objects, CCamera* camera)
 		XObj* object = objects.mObjects[i];
 		BOOL draw    = FALSE;
 		if ((object->mStatus.mFlags & 1) && (object->mStatus.mFlags & 0x10000)) {
-			if (object->mStatus.mFlags & 0x02000000)
+			if (object->mStatus.mFlags & 0x02000000) // flag 0x02000000 draws sight-unseen
 				draw = TRUE;
 			else {
 				f32 radius = object->GetFloorXZExtent() * .5f;
@@ -61,7 +61,7 @@ static inline void DrawSubwindowObjects(const XOBJS& objects, CCamera* camera)
 void CGame::Draw()
 {
 	CVec interest = GetCamera()->mInterest;
-	if (mQuake.mShake[0].x != 0 || mQuake.mShake[0].y != 0 || mQuake.mShake[0].z != 0) {
+	if (mQuake.mShake[0].x != 0 || mQuake.mShake[0].y != 0 || mQuake.mShake[0].z != 0) { // the shake nudges the interest
 		GetCamera()->SetInterest(interest + mQuake.mShake[0] * (f32)mQuake.mSign);
 		GetCamera()->CalcEye();
 	}
@@ -73,7 +73,7 @@ void CGame::Draw()
 	RenderSceneShadow(this);
 	HSD_StartRender(HSD_RP_SCREEN);
 	gGame.mGs.mLight = mLightList;
-	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000000000ULL) && mSubwin.mAmount > 0) {
+	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000000000ULL) && mSubwin.mAmount > 0) { // the subwindow's own pass
 		CCamera* camera = &mSubwin.mCamera;
 		mGs.mCamera     = camera;
 		if (BeginGsCamera(this)) {
@@ -96,7 +96,7 @@ void CGame::Draw()
 	mGs.mCamera = GetScreenCamera();
 	if (BeginGsCamera(this)) {
 		if (mStatus.mFlags & 1) {
-			if (mStatus.mFlags & 0x4000000000ULL) {
+			if (mStatus.mFlags & 0x4000000000ULL) { // the player's flag picks the outline
 				if (GetPlayer()->mStatus.mFlags & 0x200000)
 					mOutline.Draw(9);
 				else
@@ -120,7 +120,7 @@ void CGame::Draw()
 			for (s32 i = 0; i < mDrawLists[2].mCount; ++i) {
 				XObj* object = mDrawLists[2].mObjects[i];
 				if ((object->mStatus.mFlags & 1)
-				    && !(mColor0.mColor.mColor.a > 0
+				    && !(mColor0.mColor.mColor.a > 0 // the overlay suppresses flagged effects
 				         && ((object->mStatus.mFlags & 0x200)
 				             || ((object->mStatus.mFlags & 0x0400000000000000ULL) && (object->mStatus.mFlags & 0x400000000000ULL)))))
 					object->DrawObjectEffects();
@@ -131,7 +131,7 @@ void CGame::Draw()
 		SetupAll(TRUE);
 		EndGsCamera(&mGs);
 	}
-	if (mColor0.mColor.mColor.a > 0 && (mStatus.mFlags & 1)) {
+	if (mColor0.mColor.mColor.a > 0 && (mStatus.mFlags & 1)) { // under it the flagged objects draw again
 		mOutline.Draw(0x22);
 		mGs.mCamera = GetCamera();
 		if (BeginGsCamera(this)) {
@@ -176,7 +176,7 @@ void CGame::Draw()
 		SetGsColorUpdate(gGame.mGs.mCurRenderMode, 0);
 		SetGsAlphaUpdate(gGame.mGs.mCurRenderMode, 0);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-		DrawFrameQuad(corners, 0);
+		DrawFrameQuad(corners, 0); // an invisible quad writes the depth plane
 		SetGsColorUpdate(gGame.mGs.mCurRenderMode, 1);
 		SetGsAlphaUpdate(gGame.mGs.mCurRenderMode, 0);
 		if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000000000ULL) && mSubwin.mAmount > 0 && !(mSubwin.mFlags.mFlags & 4))
@@ -185,7 +185,7 @@ void CGame::Draw()
 		DrawHudWithTransitions(&mInfoScrn);
 		if (mStatus.mFlags & 1)
 			mMotionControlCamera.Draw();
-		if (mMovieFlags & 2)
+		if (mMovieFlags & 2) // flag 2 draws the movie under the wipes
 			DrawGameMovie(this);
 		DrawScreenColorOverlay(&mFade, &gGame.mGs);
 		mWipeCircle.Draw(&gGame.mGs, 0);
@@ -196,9 +196,9 @@ void CGame::Draw()
 		if (!(mMovieFlags & 2))
 			DrawGameMovie(this);
 		DrawStageNameBubbles(this);
-		if (mStatus.mFlags & 0x400)
+		if (mStatus.mFlags & 0x400) // flag 0x400: the equipment rings
 			DrawPlayerEquipmentRings(&GetPlayer()->mMenu);
-		if (mStatus.mFlags & 0x800)
+		if (mStatus.mFlags & 0x800) // flag 0x800: the ox menu
 			DrawOXMenu(&GetPlayer()->mOXMenu);
 		if (!gGame.mMotionControlCamera.IsAction(4)) {
 			CEvt_Draw();
@@ -208,7 +208,8 @@ void CGame::Draw()
 		DrawScanModePrompt();
 		EndGsCamera(&mGs);
 	}
-	if (mColor1.mColor.mColor.a > 0) {
+	if (mColor1.mColor.mColor.a > 0) { // a blur copy, then texture 121 full-screen at up to 48 alpha scaled by the overlay's alpha
+
 #if defined(VERSION_PAL)
 		mBlur.Copy();
 #else
@@ -239,7 +240,7 @@ void CGame::Draw()
 		DrawCurrentLogo(&mLogo);
 		DrawOpenMenus(&mMenu);
 		if (gActiveMicChannel >= 0 && (gGame.mStatus.mFlags & 0x80000000) && gMicMeterPeak > 0) {
-			gMicMeterPeak = (s32)(gMicMeterPeak * .0608f);
+			gMicMeterPeak = (s32)(gMicMeterPeak * .0608f); // the mic meter's bar
 			if (gMicMeterPeak > 608)
 				gMicMeterPeak = 608;
 			SetGsChannelEnabled(&gGame.mGs, 0, 0);
@@ -257,7 +258,9 @@ void CGame::Draw()
 #else
 			const int first = 84;
 #endif
-			s32 errors[][2]  = { { 5, first }, { 4, first + 1 }, { 6, first + 2 }, { 11, first + 3 }, { 1, first + 4 }, { 0, -1 } };
+			s32 errors[][2] = {
+				{ 5, first }, { 4, first + 1 }, { 6, first + 2 }, { 11, first + 3 }, { 1, first + 4 }, { 0, -1 }
+			}; // dvd status -> text id
 			const char* text = NULL;
 			for (s32 i = 0; errors[i][1] >= 0; ++i)
 				if (errors[i][0] == mDvdStatus)
@@ -280,9 +283,9 @@ void CGame::Draw()
 	for (s32 i = 0; i < mXObjs.mObjectCount; ++i) {
 		XObj* object = mXObjs.mObjects[i];
 		if ((object->mStatus.mFlags & 1) && (object->mStatus.mFlags & 0x10000))
-			ClearActiveObjectFloors(object);
+			ClearActiveObjectFloors(object); // the frame's floor contacts clear at the end
 	}
-	GetCamera()->SetInterest(interest);
+	GetCamera()->SetInterest(interest); // and the shake's nudge comes off
 }
 
 /**

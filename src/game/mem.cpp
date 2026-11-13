@@ -18,7 +18,7 @@ struct MEMINFO {
 	u8* mFree;        // _04
 	u32 mSize;        // _08
 	char mName[0x80]; // _0C
-	s32 mStatic;      // _8C
+	s32 mStatic;      // _8C, set blocks get reused whole instead of split
 };
 STATIC_ASSERT(sizeof(MEMINFO) == 0x90);
 
@@ -34,7 +34,7 @@ namespace mm {
 static inline u32 GetAllocSize()
 {
 	BOOL enabled = OSDisableInterrupts();
-	u32 size     = sTop - sCur;
+	u32 size     = sTop - sCur; // the arena grows down from sTop
 	OSRestoreInterrupts(enabled);
 	return size;
 }
@@ -86,7 +86,7 @@ void mm::Dump()
 	u32 total = 0;
 	for (int i = 0; i < MEMINFO_MAX; ++i) {
 		MEMINFO* info = &sInfo[i];
-		if (info->mAddr != 0) {
+		if (info->mAddr != 0) { // u lines are used blocks, f freed
 			total += info->mSize;
 			OSReport("-----(%4d) u %08X,%9d(%6.1f) %c %s\n", i, info->mAddr, info->mSize, KB(info->mSize),
 			         (s8)(info->mStatic != 0 ? '*' : ' '), info->mName);
@@ -859,6 +859,7 @@ void mm::Free(void* ptr, s32 flag)
 		if (sInfo[i].mAddr != 0 && sInfo[i].mAddr == ptr) {
 			if (sInfo[i].mAddr == sCur) {
 				// the lowest block, give it straight back to the arena
+				// (sCur only ever points at the lowest used block)
 				sCur           = sInfo[i].mAddr + sInfo[i].mSize;
 				sInfo[i].mFree = 0;
 				sInfo[i].mAddr = 0;
@@ -866,7 +867,7 @@ void mm::Free(void* ptr, s32 flag)
 			} else {
 				sInfo[i].mAddr = 0;
 			}
-			if (flag) {
+			if (flag) { // also clears the static marker
 				sInfo[i].mStatic = 0;
 			}
 			Compact(FALSE);
@@ -874,6 +875,7 @@ void mm::Free(void* ptr, s32 flag)
 			return;
 		}
 	}
+	// freeing a pointer it doesn't track dumps the table
 	Dump();
 	OSRestoreInterrupts(enabled);
 }
@@ -959,7 +961,7 @@ void mm::Free(void* ptr, s32 flag)
 void* mm::Alloc(u32 size, const char* name)
 {
 	BOOL enabled = OSDisableInterrupts();
-	if (size & 31) {
+	if (size & 31) { // blocks are 32-byte aligned
 		OSReport("mm::Alloc>> alloc size must be 32byte alignment -- %s(%d)!\n", name, size);
 		size = (size + 31) & ~31;
 	}
@@ -971,7 +973,7 @@ void* mm::Alloc(u32 size, const char* name)
 		u8* cur = sCur;
 		for (i = 0; i < sNum; i++) {
 			if (sInfo[i].mAddr == 0 && sInfo[i].mFree != 0 && sInfo[i].mSize >= size) {
-				if (sInfo[i].mStatic != 0) {
+				if (sInfo[i].mStatic != 0) { // a static block is reused whole
 					sInfo[i].mAddr = sInfo[i].mFree;
 					strcpy(sInfo[i].mName, name);
 					found = TRUE;
@@ -1009,6 +1011,7 @@ void* mm::Alloc(u32 size, const char* name)
 		}
 
 		if (!found) {
+			// nothing reusable: carve a fresh block off the arena's bottom
 			for (i = 0; i < MEMINFO_MAX; i++) {
 				if (sInfo[i].mAddr == 0 && sInfo[i].mFree == 0) {
 					sInfo[i].mFree = sCur - size;
@@ -1278,7 +1281,7 @@ void mm::Init()
 		sInfo[i].mName[0] = '\0';
 		sInfo[i].mStatic  = 0;
 	}
-	sTop = sCur = (u8*)OSGetArenaHi();
+	sTop = sCur = (u8*)OSGetArenaHi(); // the arena fills downward from here
 	sNum        = 0;
 }
 
@@ -1296,7 +1299,7 @@ struct WordBuffer {
 extern "C" void AllocateWordBuffer(WordBuffer* p, s32 n)
 {
 	if (p->mBuf != NULL) {
-		if (p->mBuf != NULL) {
+		if (p->mBuf != NULL) { // the inner check is redundant
 			OSFreeToHeap(__OSCurrHeap, p->mBuf);
 			p->mBuf = NULL;
 		}

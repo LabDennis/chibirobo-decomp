@@ -67,7 +67,7 @@ s32 RandomAnimCtrl::UpdateRandomAnim()
 	switch (mState) {
 	case 0:
 		mTimer = HSD_Randi(180) + 180;
-		if (rnd < 0.333f) {
+		if (rnd < 0.333f) { // a third each
 			mState = 10;
 		} else if (rnd < 0.666f) {
 			mState = 20;
@@ -113,7 +113,7 @@ s32 RandomAnimCtrl::UpdateRandomAnim()
 extern "C" s32 CmdSetSoundPitch(s32 cmd, s32 count, s32* args)
 {
 	s16 pitch = args[0];
-	s32 time  = args[1] * 60 / 100;
+	s32 time  = args[1] * 60 / 100; // centiseconds to frames
 	XSound* sound;
 
 	if (time <= 0) {
@@ -134,7 +134,7 @@ extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, s32* args)
 	s32* ids = args;
 	s32 i;
 
-	for (i = 0; i < count; i++) {
+	for (i = 0; i < count; i++) { // each arg id gets a controller
 		randomAnims[randomAnimCount].Start(gGame.mXObjs.mObjects[*ids]);
 		ids++;
 		randomAnimCount++;
@@ -150,7 +150,7 @@ extern "C" void UpdateStage(void* arg)
 {
 	s32 cur = gGame.GetPlayer()->mFloorContacts[0].objectIndex;
 
-	if (prevPlayerObjNo != cur && cur == tuta_objno) {
+	if (prevPlayerObjNo != cur && cur == tuta_objno) { // stepping onto tuta runs its anim
 		gGame.mXObjs.mObjects[tuta_objno]->SetAnim(1, 1, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
 	}
 	prevPlayerObjNo = cur;
@@ -167,7 +167,7 @@ extern "C" void Init(void* arg)
 	OSReport("Init\n");
 	prevPlayerObjNo = -1;
 	for (i = 0; i < gGame.mXObjs.mObjectCount; i++) {
-		if (gGame.mXObjs.mObjects[i]->GetKind() == 0x2EC) {
+		if (gGame.mXObjs.mObjects[i]->GetKind() == 0x2EC) { // kind 0x2EC is tuta
 			tuta_objno = i;
 			OSReport("tuta_objno = %d\n", i);
 		}

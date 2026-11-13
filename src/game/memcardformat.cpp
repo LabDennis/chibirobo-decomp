@@ -10,7 +10,7 @@
  */
 extern "C" void PollMemoryCardWorker(Memcard* card)
 {
-	if (card->mBusy && OSIsThreadTerminated(&gMemoryCardThread.mThread))
+	if (card->mBusy && OSIsThreadTerminated(&gMemoryCardThread.mThread)) // the busy flag clears when the worker exits
 		card->mBusy = FALSE;
 }
 
@@ -54,7 +54,7 @@ extern "C" void* DeleteMemoryCardSaveThread(void* arg)
  */
 extern "C" BOOL StartMemoryCardSaveDeletion(Memcard* card, s32 channel, s32 file, BOOL log)
 {
-	if (card->mBusy)
+	if (card->mBusy) // one job at a time
 		return FALSE;
 	card->mLog          = log;
 	card->mJob.mCard    = card;
@@ -76,7 +76,7 @@ extern "C" BOOL CheckAndFormatMemoryCard(Memcard* card, s32 channel)
 	if (card->Mount(channel, FALSE)) {
 		switch (card->mCard.mResult) {
 		case CARD_RESULT_BROKEN:
-		case CARD_RESULT_ENCODING:
+		case CARD_RESULT_ENCODING: // a broken or wrong-encoding card gets reformatted
 			if (card->Format())
 				return TRUE;
 			break;
@@ -85,12 +85,12 @@ extern "C" BOOL CheckAndFormatMemoryCard(Memcard* card, s32 channel)
 			return TRUE;
 		}
 	}
-	card->mState = 3;
+	card->mState = 3; // 3: unmounting
 	card->mCard.UnmountEx();
 	card->LogResult();
 	if (card->mCard.mResult != CARD_RESULT_READY)
 		return TRUE;
-	card->mState = 0;
+	card->mState = 0; // back to idle
 	return FALSE;
 }
 

@@ -22,35 +22,35 @@ public:
 	HSD_JObj* jobj; // _00
 	u8 _04[0x30];   // _04, padding over CJObj's mTranslate/mRotate/mScale (_04-_34); not accessed
 	virtual void vf08();
-	virtual void vf0C();
-	virtual void vf10();
-	virtual void vf14();
-	virtual void vf18();
-	virtual void vf1C();
-	virtual void vf20();
-	virtual void vf24();
-	virtual void vf28();
-	virtual void vf2C();
-	virtual void vf30();
-	virtual void vf34();
-	virtual void vf38();
-	virtual void vf3C();
-	virtual void vf40();
-	virtual void vf44();
-	virtual void vf48();
-	virtual void vf4C();
-	virtual void vf50();
+	virtual void SetTranslateX();
+	virtual void SetTranslateY();
+	virtual void SetTranslateZ();
+	virtual void SetScaleX();
+	virtual void SetScaleY();
+	virtual void SetScaleZ();
+	virtual void SetRotationX();
+	virtual void SetRotationY();
+	virtual void SetRotationZ();
+	virtual void SetTranslate(const Vec& v, s32 force);
+	virtual void SetTranslate(f32 x, f32 y, f32 z, s32 force);
+	virtual void SetScale(const Vec& v, s32 force);
+	virtual void SetScale(f32 x, f32 y, f32 z, s32 force);
+	virtual void SetRotation(const Vec& v, s32 force);
+	virtual void SetRotation(f32 x, f32 y, f32 z, s32 force);
+	virtual void SetAnimRate();
+	virtual void ReadAsync();
+	virtual void ReadCheck();
 	virtual void Release();
-	virtual void GetFollowDivisor();
-	virtual void vf5C();
-	virtual void vf60();
-	virtual void vf64();
-	virtual void vf68();
-	virtual void vf6C();
-	virtual void vf70();
-	virtual void vf74();
+	virtual void StepRotate();
+	virtual void StepTranslate();
+	virtual void StepScale();
+	virtual void SetPos(const Vec& pos, s32 force);
+	virtual void SetPos(f32 x, f32 y, f32 z, s32 force);
+	virtual void SetScale(f32 scale, s32 force);
+	virtual void SetRot(const Vec& rot, s32 force);
+	virtual void SetRot(f32 x, f32 y, f32 z, s32 force);
 	virtual void SetMoveDir(const Vec* dir, f32 speed);
-	virtual void vf7C();
+	virtual void SetRotateY();
 	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
 	                     f32 blendRate);
 #if defined(VERSION_JP)
@@ -58,7 +58,8 @@ public:
 #else
 	u8 _38[0x90]; // _38
 #endif
-	u8 _C8[0x90];      // _C8 (JP: _C0)
+	Vec mPos;          // _C8 (JP: _C0)
+	u8 _D4[0x84];      // _D4 (JP: _CC)
 	s32 mAnimId;       // _158 (JP: _150)
 	u8 _15C[0xCC];     // _15C (JP: _154)
 	u64 mStatus;       // _228 (JP: _220)
@@ -255,7 +256,7 @@ extern "C" void InitStage(void* arg)
 	Car::Init();
 	takiObj = NULL;
 	count   = MAIN()->mObjectCount;
-	for (i = 0; takiObj == NULL && i < count; i++) {
+	for (i = 0; takiObj == NULL && i < count; i++) { // find the waterfall
 		obj = MAIN()->GetObject(i);
 		if ((obj->mStatus & 1) != 0 && obj->mCoord[0] == 0x254) {
 			takiObj = obj;
@@ -324,7 +325,7 @@ extern "C" void UpdateStage(void* arg)
 	UpdateFighter(arg);
 	UpdateCars((u32)arg);
 	if (takiObj != NULL) {
-		if (takiObj->mAnimId == 0) {
+		if (takiObj->mAnimId == 0) { // its ambient water sounds follow it
 			void* sound = SOUND();
 			if (IsGameSoundPlaying(sound, 0x20019) == 0) {
 				PlayGameSound(sound, 0x20019, 0xFF);
@@ -334,9 +335,9 @@ extern "C" void UpdateStage(void* arg)
 				PlayGameSound(sound, 0x2001A, 0xFF);
 				HSD_AudioSFXSetPanByID(0x2001A, 0xFE);
 			}
-			SetGameSfxVolume(sound, 0x20019, GetSoundVolumeAtPosition(sound, takiObj->_C8, 1), 0);
-			SetGameSfxVolume(sound, 0x2001A, GetSoundVolumeAtPosition(sound, takiObj->_C8, 1), 0);
-		} else {
+			SetGameSfxVolume(sound, 0x20019, GetSoundVolumeAtPosition(sound, &takiObj->mPos, 1), 0);
+			SetGameSfxVolume(sound, 0x2001A, GetSoundVolumeAtPosition(sound, &takiObj->mPos, 1), 0);
+		} else { // another anim: silence it
 			void* sound = SOUND();
 			StopGameSfx(sound, 0x20019);
 			StopGameSfx(sound, 0x2001A);
@@ -480,7 +481,7 @@ extern "C" s32 CmdEndFighter(s32 cmd, s32 count, s32* args)
 extern "C" s32 CmdSetFighterData(s32 cmd, s32 count, s32* args)
 {
 	switch (args[0]) {
-	case 0:
+	case 0: // speed rates, params, optional sound cues
 		SetSpeedRateTable(args[1]);
 		SetFighterParams(args[2]);
 		if (count >= 4) {
@@ -501,19 +502,19 @@ extern "C" s32 CmdQueryFighter(s32 cmd, s32 count, s32* args)
 	u32 flag    = GetTimeLeft();
 
 	switch (args[0]) {
-	case 0:
+	case 0: // still flying
 		if (percent < 100 && flag != 0) {
 			return 1;
 		}
 		return 0;
-	case 1:
+	case 1: // the score
 		return GetScore();
 		break;
-	case 2:
+	case 2: // the time left
 		return flag;
-	case 3:
+	case 3: // the progress in hundredths of a percent
 		return percent * 100;
-	case 4:
+	case 4: // the last destroyed target's id
 		return TakeDestroyedMatoId();
 	}
 	if (args[0] == 0) {
@@ -656,7 +657,7 @@ extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* args)
 {
 	s32 i;
 	for (i = 0; i < count; i++) {
-		SCROLL2()->AddHideObj(args[i]);
+		SCROLL2()->AddHideObj(args[i]); // objects the scroll camera hides
 	}
 	return 0;
 }
@@ -683,6 +684,7 @@ extern "C" s32 CmdClearObjFlagList(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdSetCamInfo(s32 cmd, s32 count, s32* args)
 {
+	// the hallway camera preset
 	s32 info[8];
 	{
 		CamInfo c(info);
@@ -750,7 +752,7 @@ extern "C" s32 CmdStartCars(s32 cmd, s32 count, s32* args)
 		return 0;
 	}
 	switch (args[0]) {
-	case 1:
+	case 1: // just the camera
 		StartCarCamera();
 		break;
 	}
@@ -764,10 +766,10 @@ extern "C" s32 CmdStartCars(s32 cmd, s32 count, s32* args)
 extern "C" s32 CmdGetCarState(s32 cmd, s32 count, s32* args)
 {
 	if (count == 0) {
-		return GetPlayerCarResult();
+		return GetPlayerCarResult(); // no arg: the race result
 	}
 	switch (args[0]) {
-	case 1:
+	case 1: // the player's frame
 		return GetPlayerCarFrame();
 	}
 	return -1;

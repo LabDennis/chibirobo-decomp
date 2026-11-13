@@ -100,7 +100,7 @@ void CMotionControlCamera::Init()
 	mFollowDivide = 12.0f;
 	((CCameraActionScroll2*)GetAction(CAMACTION_SCROLL2))->ClearHideList();
 	((CCameraActionScroll2*)GetAction(CAMACTION_SCROLL2))->SaveCamInfo(NULL);
-	gGame.mStatus.mFlags |= 0x1000000000000ULL;
+	gGame.mStatus.mFlags |= 0x1000000000000ULL; // lets Update open the room camera
 }
 
 /**
@@ -126,24 +126,26 @@ void CMotionControlCamera::Update(u32 step)
 	if (gGame.mEvt.mData.mScript == NULL && (gGame.mStatus.mFlags & 0x1000000000000ULL)) {
 		CCameraActionScroll2* room = (CCameraActionScroll2*)GetAction(CAMACTION_SCROLL2);
 		if (room->GetLimits(gGame.mStage) != NULL && !(gGame.mStatus.mFlags & 0xC00)) {
+			// R opens the room camera over the area, scroll and map cameras, R or B closes it again
 			if (mAction == GetAction(CAMACTION_AREA) || mAction == GetAction(CAMACTION_SCROLL) || mAction == GetAction(CAMACTION_MAP)) {
-				if ((pad.mPad->mTrigger & 0x20) && !(pad.mPad->mButton & 0x200)) {
+				if ((pad.mPad->mTrigger & PAD_TRIGGER_R) && !(pad.mPad->mButton & PAD_BUTTON_B)) {
 					PushAction(GetAction(CAMACTION_SCROLL2));
 					((CCameraActionScroll2*)GetAction(CAMACTION_SCROLL2))->HideObjs();
-					gGame.mStatus.mFlags |= 2;
+					gGame.mStatus.mFlags |= 2; // gGame.IsRunning() is false while the room camera is up
 				}
 			} else if (mAction == GetAction(CAMACTION_SCROLL2)) {
-				if ((pad.mPad->mTrigger & 0x20) || (pad.mPad->mTrigger & 0x200)) {
+				if ((pad.mPad->mTrigger & PAD_TRIGGER_R) || (pad.mPad->mTrigger & PAD_BUTTON_B)) {
 					PopAction();
 					((CCameraActionScroll2*)GetAction(CAMACTION_SCROLL2))->ShowObjs();
 					gGame.mStatus.mFlags &= ~2ULL;
+					// read the player's pad again so the press that closed it doesn't reach the player too
 					PLAYER->mPad.Update(0);
 				}
 			}
 		}
 	}
 
-	if ((gGame.mStatus.mFlags & 0x80000000) && (pad.mPad->mTrigger & 0x40) && (pad.mPad->mButton & 0x200)) {
+	if ((gGame.mStatus.mFlags & 0x80000000) && (pad.mPad->mTrigger & PAD_TRIGGER_L) && (pad.mPad->mButton & PAD_BUTTON_B)) {
 		if (mAction != GetAction(CAMACTION_CHASE)) {
 			ChangeAction(CAMACTION_CHASE);
 		} else {
@@ -152,25 +154,28 @@ void CMotionControlCamera::Update(u32 step)
 	}
 
 	BOOL look = FALSE;
-	if (((pad.mPad->mTrigger & 0x800) || (pad.mPad->mTrigger & 0x200)) && gGame.mEvt.mData.mScript == NULL) {
-		bool free = false;
+	if (((pad.mPad->mTrigger & PAD_BUTTON_Y) || (pad.mPad->mTrigger & PAD_BUTTON_B)) && gGame.mEvt.mData.mScript == NULL) {
+		// CBase::IsRunning's test, written out
+		bool running = false;
 		if ((gGame.mStatus.mFlags & 1) && !(gGame.mStatus.mFlags & 0x22)) {
-			bool blocked = (gGame.mDvdStatus != 0 || gGame.mPrevDvdStatus != 0) && gGame.mDiskOk == 0;
-			if (!blocked) {
-				free = true;
+			bool discError = (gGame.mDvdStatus != 0 || gGame.mPrevDvdStatus != 0) && gGame.mDiskOk == 0;
+			if (!discError) {
+				running = true;
 			}
 		}
-		if (free && (PLAYER->mPlayerStatus.mFlags & 0x20000000) && !(gGame.mStatus.mFlags & 0x80)) {
+		if (running && (PLAYER->mPlayerStatus.mFlags & 0x20000000) && !(gGame.mStatus.mFlags & 0x80)) {
 			if (!(gGame.mStatus.mFlags & 0xC00) && PLAYER->mAttachmentRequest < 0 && PLAYER->mSuits.mChangeStep == 0
 			    && (PLAYER->mLift.mState == 0 || IsCarryingMug(&PLAYER->mLift) == 0)) {
-				if (pad.mPad->mTrigger & 0x200) {
+				// Y toggles the eye camera, B only takes it down
+				if (pad.mPad->mTrigger & PAD_BUTTON_B) {
 					if (gGame.mStatus.mFlags & 0x100) {
 						look = TRUE;
 					}
 				} else {
 					look = TRUE;
 				}
-			} else if (pad.mPad->mTrigger & 0x800) {
+			} else if (pad.mPad->mTrigger & PAD_BUTTON_Y) {
+				// 0x85 is the buzz the menus play for a choice that isn't available
 				PlayGameSound(&gGame.mSound, 0x85, 0xFF);
 			}
 		}
@@ -247,6 +252,7 @@ void CMotionControlCamera::Update(u32 step)
 		// can't get here, the interest bit was already ruled out a branch ago
 		mCamera.CalcEye();
 	}
+	// 0x40000 comes with CAMFLAG_ANGLE (anim, evt, reset), CalcUp rolls the up vector by the angle's z
 	if (mFlags.mFlags & 0x40000) {
 		mCamera.CalcUp();
 	}
@@ -1073,7 +1079,7 @@ void CMotionControlCamera::Interpolate(u32 step)
 			mCamera.SetInterest(mFollowValue);
 			break;
 		case 3: {
-			// keep the height, only follow it round
+			// take the target's height at once, ease in only across x and z
 			Vec interest = mCamera.mInterest;
 			interest.y   = mInterest.y;
 			mCamera.SetInterest(interest);
@@ -1085,6 +1091,7 @@ void CMotionControlCamera::Interpolate(u32 step)
 	}
 
 	if (mFlags.mFlags & CAMFLAG_EYE) {
+		// Init and ReadAction only ever set mEyeMode to 0, so only case 0 runs
 		switch (mEyeMode) {
 		case 0:
 			mCamera.SetEye(mEye);
@@ -1937,9 +1944,10 @@ void CMotionControlCamera::StartEye()
 void CMotionControlCamera::EndEye()
 {
 	if (gGame.mStatus.mFlags & 0x100) {
-		gGame.mStatus.mFlags &= ~0x300ULL;
+		gGame.mStatus.mFlags &= ~0x300ULL; // and 0x200, the eye action's c stick look
 		PopAction();
 		SetPlayerEyeCameraJointsHidden(gGame.GetPlayer(), 0);
+		// the hole grows back to 550x500 as the white fades out, then the wipe hides
 		StartScreenWipeColorTransition(&gGame.mRoboeyes, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 224.0f, 430.0f, 400.0f, 550.0f,
 		                               500.0f, 0.2f, 0, 1);
 		PlayGameSound(&gGame.mSound, 2, 0xFF);
@@ -1952,14 +1960,14 @@ void CMotionControlCamera::EndEye()
  */
 CCameraMemento* CMotionControlCamera::CreateMemento(CCameraMemento* memento)
 {
-	CCameraMemento* m = (memento != NULL) ? memento : &mMemento;
-	m->SetEye(mCamera.mEye);
-	m->SetInterest(mCamera.mInterest);
-	m->SetAngle(mCamera.mAngle);
-	m->mDistance = mCamera.mDistance;
-	m->mFov      = mCamera.mFov;
-	m->mAction   = mAction;
-	return m;
+	CCameraMemento* saved = (memento != NULL) ? memento : &mMemento;
+	saved->SetEye(mCamera.mEye);
+	saved->SetInterest(mCamera.mInterest);
+	saved->SetAngle(mCamera.mAngle);
+	saved->mDistance = mCamera.mDistance;
+	saved->mFov      = mCamera.mFov;
+	saved->mAction   = mAction;
+	return saved;
 }
 // fn_80148B00
 /*
@@ -2027,9 +2035,9 @@ BOOL CMotionControlCamera::SetMemento(const CCameraMemento* memento)
  */
 extern "C" f32 GetAreaCameraFovRatio(CMotionControlCamera* camera)
 {
-	f32 zoom = ((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->GetBaseFov();
-	if (zoom) {
-		return camera->mCamera.mFov / zoom;
+	f32 baseFov = ((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->GetBaseFov();
+	if (baseFov) {
+		return camera->mCamera.mFov / baseFov;
 	}
 	return 1.0f;
 }

@@ -33,7 +33,7 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		CTexObj bubble = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[138 - StatusTextureOffset], 0);
 		f32 zero       = 0.0f;
-		u32 color      = game->mStageName.mColor & 0xFFFFFF00;
+		u32 color      = game->mStageName.mColor & 0xFFFFFF00; // rgb only; alpha comes from the scale
 		for (s32 i = 0; i < game->mStageName.mCount; i++) {
 			f32 scale = game->mStageName.mChars[i].mScale;
 			if (scale <= zero) {
@@ -144,7 +144,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		}
 	}
 
-	if (game->mMovie.mMovie.mState != 0) {
+	if (game->mMovie.mMovie.mState != 0) { // cut any playing movie
 		game->mMovie.mMovie.Stop();
 	}
 	ClearMainMenuExtraRows(game->mMenu.mMenus[0]);
@@ -154,7 +154,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		CMsg_ResetPos(&game->mCMsgs[i]);
 		game->mCMsgs[i].SetColor(gMessageFontDefaultColor);
 	}
-	for (s32 i = 0; i < 5; i++) {
+	for (s32 i = 0; i < 5; i++) { // release the mirrors' joints and textures
 		FbMirrorEx* mirror = &gFramebufferMirrors[i];
 		if (mirror->IsUsed()) {
 			if (mirror->mJoint != NULL) {
@@ -171,10 +171,10 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	UnloadStageDataAndModule();
 	game->mLightList = game->mLights;
 	ReleaseStageObjectList(&game->mXObjs);
-	gActiveMicChannel = -1;
+	gActiveMicChannel = -1; // no mic channel survives the stage change
 	game->mParticle.KillAll();
 	psKillAllParticle();
-	if (game->mStatus.mFlags & 4) {
+	if (game->mStatus.mFlags & 4) { // flag 4 kept the music paused: resume it
 		if (game->mStatus.mFlags & 4) {
 			game->mStatus.mFlags &= ~4;
 			SetMusicPlaybackPaused(&gGame.mSound, FALSE);
@@ -235,12 +235,12 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		if (cur < GetStageNum()) {
 			char* name = (char*)GetStageDisplayName(game->mStage);
 			if (name != NULL) {
-				game->mStageName.mColor = 0x80FFFF00;
+				game->mStageName.mColor = 0x80FFFF00; // pale cyan; the alpha byte is filled from each letter's scale
 				for (s32 i = 0; i < 20 && *name != '\0'; i++, name++) {
 					game->mStageName.mChars[i].mText  = name;
-					game->mStageName.mChars[i].mScale = -0.2f * i;
+					game->mStageName.mChars[i].mScale = -0.2f * i; // later letters start hidden
 					game->mStageName.mChars[i].mWait  = 2.0f * FRAME_RATE;
-					game->mStageName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
+					game->mStageName.mChars[i].mBob   = DEG2RAD * (rand() % 360); // a random phase
 					game->mStageName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
 					game->mStageName.mCount++;
 #if defined(VERSION_JP)
@@ -253,7 +253,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 					}
 #endif
 				}
-				for (s32 i = game->mStageName.mCount; i < 20; i++) {
+				for (s32 i = game->mStageName.mCount; i < 20; i++) { // the rest of the slots stay blank
 					game->mStageName.mChars[i].mText  = NULL;
 					game->mStageName.mChars[i].mScale = 0.0f;
 					game->mStageName.mChars[i].mWait  = 0.0f;

@@ -21,6 +21,27 @@ public:
 STATIC_ASSERT(sizeof(Globals) == 0x100);
 extern "C" Globals gGlobalScriptResources;
 
+// the globals.bin offset table: one u32 offset to each table (0x3C and 0x40 aren't used)
+#define GLOBAL_PLAYER_ACTION_PARAMS 0x00
+#define GLOBAL_POPPER_PARAMS        0x04
+#define GLOBAL_COPTER_PARAMS        0x08
+#define GLOBAL_RADAR_PARAMS         0x0C
+#define GLOBAL_STAGE_ENTRY_TIMES    0x10
+#define GLOBAL_INTERACTION_PARAMS   0x14
+#define GLOBAL_ATTACHMENT_LEVELS    0x18
+#define GLOBAL_PICKUP_REWARDS       0x1C
+#define GLOBAL_MATERIAL_SOUNDS      0x20
+#define GLOBAL_ITEM_RELEASE_SOUNDS  0x24
+#define GLOBAL_ITEMS                0x28
+#define GLOBAL_ACTOR_NAMES          0x2C
+#define GLOBAL_ATTACHMENTS          0x30
+#define GLOBAL_COSTUME_NAMES        0x34
+#define GLOBAL_STAGE_NAMES          0x38
+#define GLOBAL_PC_RANKING_NAMES     0x44
+#define GLOBAL_UTILIBOTS            0x48
+#define GLOBAL_STATUS_ICONS         0x4C
+#define GLOBAL_STATUS_OVERVIEW      0x50
+
 // the files' offsets and tables are little endian, a few record fields are native and
 // don't go through this
 static inline u32 ReadResourceOffset(const u8* p)

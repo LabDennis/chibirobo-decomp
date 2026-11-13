@@ -20,7 +20,7 @@ void XObjActor3::UpdateObject(u32 frames)
 {
 	switch (GetItem()) {
 	case 8:
-		mActorFlags.mFlags |= 4;
+		mActorFlags.mFlags |= 4; // flag 4 skips the heading/pos write below
 		break;
 	case 9:
 		UpdateAnimationSounds();
@@ -58,7 +58,7 @@ void XObjActor3::UpdateObject(u32 frames)
 			break;
 		case 2:
 			mKindStep     = 2;
-			mKindTimer    = mEventArg2 / 100.0f;
+			mKindTimer    = mEventArg2 / 100.0f; // script units are 1/100
 			mEventCommand = 0;
 			mEventArg1    = 0;
 			break;
@@ -68,7 +68,7 @@ void XObjActor3::UpdateObject(u32 frames)
 		switch (mRumble) {
 		case 0:
 			break;
-		case 1:
+		case 1: // start the rumble
 			if (gGame.mStatus.mFlags & 0x800000000ULL) {
 				CPadOne* rumble = &gGame.mPad.mPad[0];
 				if (rumble->mConnected) {
@@ -111,7 +111,7 @@ void XObjActor3::UpdateObject(u32 frames)
 		HandleSpiderCounterCommand(this);
 		break;
 	}
-	if (mActorFlags.mFlags & 0x10) {
+	if (mActorFlags.mFlags & 0x10) { // flag 0x10 skips the update
 		return;
 	}
 	(this->*gActor3UpdateHandlers[GetItem()])(frames);
@@ -120,13 +120,13 @@ void XObjActor3::UpdateObject(u32 frames)
 		SetPos(mMoveTranslate, 0);
 	}
 	UpdateObject__4XObjFUl(this, frames);
-	if (GetKind() == 0x31B) {
+	if (GetKind() == 0x31B) { // 0x31B (haisui_nezumi) runs its dust particles
 		UpdateParticlePool(&mDust.mPtcl, frames);
 	}
-	if (GetKind() == 0x2C3) {
+	if (GetKind() == 0x2C3) { // carries a rider at a joint
 		CarryRiderAtActorJoint(this, frames);
 	}
-	if (mActorFlags.mFlags & 2) {
+	if (mActorFlags.mFlags & 2) { // flag 2: carried parts follow their joints
 		for (u32 i = 0; i < 8; i++) {
 			if (mParts[i].mJoint != NULL && mParts[i].mObj != NULL) {
 				Mtx t;

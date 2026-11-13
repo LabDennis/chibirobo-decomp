@@ -66,14 +66,14 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return;
 	object->mStatus.mFlags &= ~0x0010000000000000ULL;
-	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
+	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) { // the list ends at id -1
 		Vec center = object->mMoveScale
 		           * (object->mToppleOffset + ReadFloorCoordinates(object->mFloors[i].mCenterOffset, gObjectFloorOffsetTemplate));
 		Vec extent = object->mMoveScale * ReadFloorCoordinates(object->mFloors[i].mExtent, lbl_80378148);
 		f32 yaw    = object->mMoveRotate.y + DEG2RAD * object->mFloors[i].mYawDegrees;
 		switch (object->mFloors[i].mId) {
 		case 0:
-		case 1: {
+		case 1: { // a disc: the top of its column
 			CVec point(0.0f, 0.0f, 0.0f);
 			Mtx transform;
 			MakeFloorTransform(object, center, extent, yaw, transform);
@@ -81,10 +81,10 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 			object->mFloorHeights[i] = point.y + extent.y;
 			break;
 		}
-		case 2: {
+		case 2: { // a box: the top of its cube
 			Mtx transform;
 			MakeFloorTransform(object, center, extent, yaw, transform);
-			f32 h = (2.0f / sqrtf(3.0f)) * 0.5f;
+			f32 h = (2.0f / sqrtf(3.0f)) * 0.5f; // cube corners at unit radius
 			static Vec corners[8]
 			    = { { -h, h, -h }, { h, h, -h }, { h, h, -h }, { h, h, h }, { h, h, h }, { -h, h, h }, { -h, h, h }, { -h, h, -h } };
 			Vec world[8];
@@ -92,9 +92,9 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 			object->mFloorHeights[i] = world[0].y - 0.01f;
 			break;
 		}
-		case 3:
+		case 3: // a wall has no floor height
 			break;
-		case 5: {
+		case 5: { // a quad: it and the three records after it share one height
 			Vec corners[4];
 			for (s32 j = 0; j < 4; ++j)
 				corners[j] = object->mToppleOffset + ReadFloorCoordinates(object->mFloors[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
@@ -168,7 +168,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 		f32 yaw        = baseYaw + floorAngle;
 		switch (object->mFloors[i].mId) {
 		case 0:
-		case 1: {
+		case 1: { // a disc
 			CVec point(0, 0, 0);
 			PSMTXTrans(geometry.roundWorld, origin.x, origin.y, origin.z);
 			PSMTXTrans(geometry.roundLocal, center.x, center.y, center.z);
@@ -181,7 +181,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 			ExpandRadius(point.x + extent.x, point.z + extent.z, maxX, maxZ);
 			break;
 		}
-		case 2: {
+		case 2: { // a box
 			PSMTXTrans(geometry.prismWorld, origin.x, origin.y, origin.z);
 			PSMTXTrans(geometry.prismLocal, center.x, center.y, center.z);
 			PSMTXScale(geometry.prismScale, extent.x, extent.y, extent.z);
@@ -198,7 +198,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 				ExpandRadius(world[j].x, world[j].z, maxX, maxZ);
 			break;
 		}
-		case 3: {
+		case 3: { // a wall segment
 
 			PSMTXTrans(geometry.segmentWorld, origin.x, origin.y, origin.z);
 			PSMTXTrans(geometry.segmentLocal, center.x, center.y, center.z);
@@ -216,7 +216,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 				ExpandRadius(geometry.samples[j].x, geometry.samples[j].z, maxX, maxZ);
 			break;
 		}
-		case 5: {
+		case 5: { // a quad from this and the next three records
 			Vec* corners = geometry.samples + 2;
 			for (int j = 0; j < 4; ++j)
 				corners[j] = object->mToppleOffset + ReadObjectFloorOffset(object, i + j);
@@ -264,7 +264,7 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 	f32 yaw    = (object->mMoveRotate.y + DEG2RAD * floorRecord.mYawDegrees);
 	switch (floorRecord.mId) {
 	case 0:
-	case 1: {
+	case 1: { // a disc: face its center
 		Mtx transform;
 		MakeFloorTransform(object, center, extent, yaw, transform);
 
@@ -273,7 +273,7 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 		angle    = atan2(middle.x - from.x, middle.z - from.z);
 		break;
 	}
-	case 2: {
+	case 2: { // a box: face the wall edge the ray crosses
 		Mtx transform;
 		MakeFloorTransform(object, center, extent, yaw, transform);
 
@@ -310,7 +310,7 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 	}
 	case 3:
 		break;
-	case 5: {
+	case 5: { // a quad: face the edge the ray crosses
 		Mtx translate, rotate, scaling, transform;
 		Vec corners[4];
 		for (s32 j = 0; j < 4; ++j)
@@ -430,7 +430,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 	CVec dest(*to);
 	dest.y = 0;
 	CVec hit;
-	s32 i = cursor ? *cursor : 0;
+	s32 i = cursor ? *cursor : 0; // a cursor lets a caller resume after a hit
 	for (; mFloors[i].mId != -1; ++i) {
 		u32 collision          = 0;
 		const XObjFloor& floor = mFloors[i];
@@ -441,7 +441,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 		f32 yaw                = objYaw + angle;
 		switch (floor.mId) {
 		case 0:
-		case 1: {
+		case 1: { // a disc
 			CVec middle(0, 0, 0);
 			Mtx transform;
 			MakeFloorTransform(this, center, extent, yaw, transform);
@@ -449,7 +449,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			const f32 y = middle.y;
 			middle.y    = 0;
 			f32 reach   = radius + extent.x;
-			if (PSVECDistance(&middle, &dest) < reach) {
+			if (PSVECDistance(&middle, &dest) < reach) { // inside the disc's radius
 				CVec travel              = (dest - start).Normalize();
 				CVec normal              = (dest - middle).Normalize();
 				CVec reflect             = ReflectVectorAboutNormal(&travel, &normal);
@@ -458,13 +458,13 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 				mEdges[i].mContactOffset = (middle + normal * extent.x) - mMoveTranslate;
 				if (to->y <= mFloorHeights[i] && to->y >= ((y - extent.y) - height)) {
 					StoreSweepContact(from, to, contact, dest, hit, mFloorHeights[i]);
-					collision = 3;
+					collision = 3; // touching it within its height span
 				} else
-					collision = to->y < ((y - extent.y) - height) ? 0 : 1;
+					collision = to->y < ((y - extent.y) - height) ? 0 : 1; // above it
 			}
 			break;
 		}
-		case 2: {
+		case 2: { // a box
 			Mtx transform;
 			MakeFloorTransform(this, center, extent, yaw, transform);
 			f32 h = (2.f / sqrtf(3.f)) * .5f;
@@ -476,13 +476,13 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 				collision = ResolveCircleWallCollisionXZ(&start, &dest, &world[side * 2], &world[side * 2 + 1], push, &hit,
 				                                         &mEdges[i].mContactOffset, NULL, radius, 0, 0);
 				if (collision) {
-					collision = 8;
+					collision = 8; // a wall hit
 					StoreFloorEdge(mEdges[i], mMoveTranslate, world[side * 2], world[side * 2 + 1]);
 					break;
 				}
 			}
 			if (!collision && IsPointInsideQuadXZ(&dest, &world[0], &world[2], &world[4], &world[6])) {
-				collision = 4;
+				collision = 4; // inside it
 				hit.x     = to->x;
 				hit.z     = to->z;
 			}
@@ -491,11 +491,11 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 					StoreSweepContact(from, to, contact, dest, hit, mFloorHeights[i]);
 					collision = 3;
 				} else
-					collision = to->y < (world[0].y - 2.f * (extent.y * h) - height) ? 0 : 1;
+					collision = to->y < (world[0].y - 2.f * (extent.y * h) - height) ? 0 : 1; // above it
 			}
 			break;
 		}
-		case 3: {
+		case 3: { // a wall segment
 			Mtx base, local, rot, extra, scale, transform;
 			PSMTXTrans(base, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
 			PSMTXTrans(local, center.x, center.y, center.z);
@@ -511,13 +511,13 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			PSMTXMultVecArray(transform, ends, wall, 2);
 			if (ResolveCircleWallCollisionXZ(&start, &dest, &wall[0], &wall[1], push, contact, &mEdges[i].mContactOffset, NULL, radius, 0,
 			                                 1)) {
-				collision  = 3;
+				collision  = 3; // the wall stops the sweep
 				contact->y = from->y;
 				StoreFloorEdge(mEdges[i], mMoveTranslate, wall[0], wall[1]);
 			}
 			break;
 		}
-		case 5: {
+		case 5: { // a quad from this and the next three records
 			Vec quad[4];
 			for (s32 j = 0; j < 4; ++j)
 				quad[j] = mToppleOffset + ReadObjectFloorOffset(mFloors[i + j]);
@@ -550,14 +550,14 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 					StoreSweepContact(from, to, contact, dest, hit, mFloorHeights[i]);
 					collision = 3;
 				} else
-					collision = to->y < (quad[0].y - extent.y * .5f - height) ? 0 : 1;
+					collision = to->y < (quad[0].y - extent.y * .5f - height) ? 0 : 1; // above it
 			}
 			i += 3;
 			break;
 		}
 		}
 		if (collision) {
-			mFloorMasks[0] |= 1u << i;
+			mFloorMasks[0] |= 1u << i; // mark the floor touched
 			result |= collision;
 			mHitFloorIndex = i;
 			if (cursor) {
@@ -573,7 +573,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 	}
 	if (result) {
 		mStatus.mFlags |= 0x0100000000000000ULL;
-		if ((flags & 2) && (result & 3) == 3) {
+		if ((flags & 2) && (result & 3) == 3) { // any contact (3) can start its event script
 			XObjChr* player = gGame.GetPlayer();
 			if ((mStatus.mFlags & 0x20000000000ULL) && !(mStatus.mFlags & 0x8000000000000000ULL) && !(gGame.mStatus.mFlags & 0x400)
 			    && player->mAttachmentRequest < 0
@@ -583,7 +583,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 				StartOrQueueEventScript(&gGame.mEvt, (u8*)GetEventScript(), this, -1, -1);
 			}
 		}
-		if (flags & 1) {
+		if (flags & 1) { // let the object's own handler react and adjust the result
 			const CVec& delta = CVec(*contact) - *from;
 			PSVECMag(push);
 			result = OnPlayerContact((s32)&delta, result);
@@ -628,7 +628,7 @@ void XObj::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* sha
 		matAnim   = matAnim != NULL ? matAnim : mAnim.GetMatAnimJoint(index);
 		shapeAnim = shapeAnim != NULL ? shapeAnim : mAnim.GetShapeAnimJoint(index);
 		CXObjIntp::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, ANIMATION_RATE(rate), blend, blendRate);
-		mStatus.mFlags |= 0x0008000000000000ULL;
+		mStatus.mFlags |= 0x0008000000000000ULL; // the anim has a matching set
 	} else {
 		CXObjIntp::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, ANIMATION_RATE(rate), blend, blendRate);
 		mStatus.mFlags &= ~0x0008000000000000ULL;
@@ -644,7 +644,7 @@ void XObj::DrawScreenOverlay()
 	if ((mStatus.mFlags & 0x800ULL) && (mStatus.mFlags & 0x10000ULL)) {
 		HSD_JObjSetFlags(mJObj, CLASSICAL_SCALE);
 		Vec scale = mMoveScale;
-		SetScale(scale.x, -scale.y, scale.z, 0);
+		SetScale(scale.x, -scale.y, scale.z, 0); // drawn flipped
 		if (mJObj != NULL)
 			HSD_JObjDispAll(mJObj, NULL, 7, 0);
 		SetScale(scale, 0);
@@ -676,7 +676,7 @@ void XObj::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 	u32 edge   = (u32)(128.0f * opacity);
 	u32 center = (u32)(160.0f * opacity);
 	DrawGsCircle(&gGame.mGs, 12, center, edge, position.x, position.y, position.z, size.x, size.z, rotation.x, rotation.y, rotation.z);
-	PrimVertex vertices[26];
+	PrimVertex vertices[26]; // a rim of transparent vertices fades the edge out
 	f32 halfWidth  = size.x * 0.5f;
 	f32 halfHeight = size.z * 0.5f;
 	for (s32 i = 0; i < 13; i++) {
@@ -716,7 +716,7 @@ void XObj::DrawWithView(Mtx view)
 		u16 frame;
 		s16 rate;
 		PopAnim(id, frame, rate);
-		if (id & 0xFFFF0000) {
+		if (id & 0xFFFF0000) { // packed ids: material in the high half, joint in the low
 			s32 jointId             = id & 0xFFFF;
 			s32 materialId          = id >> 16;
 			void* jointAnimation    = GetJointAnimation(jointId);
@@ -749,6 +749,7 @@ void XObj::StepColors(u32 frames)
 			StepColor(color.mValue.y, color.mTarget.y, color.mSpeed.y, frames);
 			StepColor(color.mValue.z, color.mTarget.z, color.mSpeed.z, frames);
 		}
+		// the stepped channels get packed back into the color words
 		mColors[1] = ((u32)mColorStep[0].mValue.x << 24) | ((u32)mColorStep[0].mValue.y << 16) | ((u32)mColorStep[0].mValue.z << 8);
 		mColors[0] = ((u32)mColorStep[1].mValue.x << 24) | ((u32)mColorStep[1].mValue.y << 16) | ((u32)mColorStep[1].mValue.z << 8);
 	}
@@ -762,14 +763,14 @@ void XObj::UpdateObject(u32 frames)
 {
 	if (mJObj != NULL) {
 		StepColors(frames);
-		if (mStatus.mFlags & 0x1000000000000000ULL) {
+		if (mStatus.mFlags & 0x1000000000000000ULL) { // toppling: sink onto the floor hit
 			if (mMoveTranslate.y + mToppleOffset.y > mFloorHit.mHeight) {
 				mMoveTranslate.mTarget.y = mFloorHit.mHeight;
-				f32 speed                = 0.15f + mMoveTranslate.mSpeed.y;
+				f32 speed                = 0.15f + mMoveTranslate.mSpeed.y; // fall faster, capped at 10
 				if (speed > 10.0f)
 					speed = 10.0f;
 				mMoveTranslate.mSpeed.y = speed;
-			} else {
+			} else { // landed: take over the offset and stand straight
 				mMoveTranslate.mSpeed.y = 0.0f;
 				mMoveTranslate.x += mToppleOffset.x;
 				mMoveTranslate.z += mToppleOffset.z;
@@ -788,6 +789,7 @@ void XObj::UpdateObject(u32 frames)
 				}
 			}
 		}
+		// move, scale and turn toward their targets, then animate
 		CXObjIntp::StepRotate(frames);
 		CXObjIntp::StepTranslate(frames);
 		if (CXObjIntp::StepScale(frames)) {
@@ -797,7 +799,7 @@ void XObj::UpdateObject(u32 frames)
 		UpdateAnim(frames);
 		HSD_JObjSetupMatrix(mJObj);
 	}
-	if ((mStatus.mFlags & 0x0010000000000000ULL) || mMoveTranslate.y != mLastPos.y) {
+	if ((mStatus.mFlags & 0x0010000000000000ULL) || mMoveTranslate.y != mLastPos.y) { // floor heights track the height
 		UpdateObjectFloorHeights((XObj*)this);
 	}
 	if (mEvt.mData.mScript != NULL)
@@ -819,7 +821,7 @@ void XObj::Release()
 		UnkObjData* data = mAttr.mObjData;
 		if (data != NULL && data->mSource != NULL) {
 			XObjSource* source = data->mSource;
-			if (source->mArchive != NULL && source->mArchive->mRefCount <= 0)
+			if (source->mArchive != NULL && source->mArchive->mRefCount <= 0) // its last user is gone
 				source->mArchive = NULL;
 		}
 	}
@@ -840,8 +842,8 @@ extern "C" void SetJointMaterialOpaque(HSD_JObj* joint, f32** arguments, s32 typ
 		HSD_DObjModifyFlags(draw, 2, 0xE);
 		HSD_MObj* material = HSD_DObjGetMObj(draw);
 		if (material != NULL) {
-			HSD_MObjClearFlags(material, 0x68000000);
-			HSD_MObjSetFlags(material, 0x2000);
+			HSD_MObjClearFlags(material, RENDER_XLU | RENDER_NO_ZUPDATE | RENDER_ZMODE_ALWAYS);
+			HSD_MObjSetFlags(material, RENDER_ALPHA_MAT);
 			HSD_MObjCompileTev(material);
 		}
 	}
@@ -860,8 +862,8 @@ extern "C" void SetJointMaterialTranslucent(HSD_JObj* joint, f32** arguments, s3
 		HSD_DObjModifyFlags(draw, 4, 0xE);
 		HSD_MObj* material = HSD_DObjGetMObj(draw);
 		if (material != NULL) {
-			HSD_MObjSetFlags(material, 0x60000000);
-			HSD_MObjSetFlags(material, 0x2000);
+			HSD_MObjSetFlags(material, RENDER_XLU | RENDER_NO_ZUPDATE);
+			HSD_MObjSetFlags(material, RENDER_ALPHA_MAT);
 			HSD_MObjCompileTev(material);
 			if (material->mat != NULL)
 				HSD_MObjSetAlpha(material, alpha * object->GetMObjAlpha(material));
