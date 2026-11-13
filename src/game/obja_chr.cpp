@@ -2062,7 +2062,14 @@ struct PlayerTurnState {
 	f32 total;
 };
 
-extern "C" PlayerTurnState gPlayerTurnState;
+extern "C" {
+PointPtcl gPointParticlePool[10];
+PointPtcl* gPointParticleSlots[10];
+SuitChangeEffect gPlayerSuitChangeEffect;
+PlayerTurnState gPlayerTurnState;
+f32 gEquipmentIconWidth[8];
+f32 gEquipmentIconHeight[8];
+}
 extern "C" f32 GetControlStickMagnitude(const CPadOne*);
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr*, f32);
 extern "C" const Vec* GetCurrentEdgeWorldOffsetPosition(const XObj*);
@@ -2581,8 +2588,6 @@ static inline void OpenMenus(XObjChr* chr)
 extern "C" {
 void vfD8__4XObjFPUl(CXObj* object, u32* flags);
 void vf120__4XObjFl(CXObj* object, s32 mode);
-extern PointPtcl gPointParticlePool[10];
-extern PointPtcl* gPointParticleSlots[10];
 }
 
 // todo: cleanup
@@ -3938,9 +3943,6 @@ static inline CTexObj& RingTexture(OctaMenu* menu, s32 index)
 {
 	s32 id = menu->GetItemIconTextureIndex(index);
 	return gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[id], 0);
-}
-extern "C" {
-extern f32 gEquipmentIconWidth[8], gEquipmentIconHeight[8];
 }
 
 static inline void DrawRingBandLines(f32 x0, f32 x1, f32 x2, f32 x3, f32 y0, f32 y1, u32 ink)
