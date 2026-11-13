@@ -54,7 +54,7 @@ void CGame::Start()
 
 	MICInit();
 	M2SInit();
-	M2SSetBuffer((s16*)OSAllocFromHeap(__OSCurrHeap, 256));
+	M2SSetBuffer((s16*)OSAllocFromHeap(__OSCurrHeap, 256)); // the mic sample buffer
 	gMicSamplePhase[0]        = 0;
 	gMicSamplePhase[1]        = 0;
 	gMicDMABuffers[0]         = (s16*)OSAllocFromHeap(__OSCurrHeap, 640);
@@ -65,9 +65,9 @@ void CGame::Start()
 	gMicDMABufferIndex = 1;
 	AIStartDMA();
 
-	gARAMCacheInfo.mBaseAddress = ARAlloc(GetFreeARAMSize());
+	gARAMCacheInfo.mBaseAddress = ARAlloc(GetFreeARAMSize()); // claim all free aram for the cache
 	ARGetSize();
-	mLoadStep  = 1;
+	mLoadStep  = 1; // the staged load starts
 	mStage     = GetDefaultStageIndex();
 	mRoomCount = GetStageNum();
 	LoadBootConfig();
@@ -100,7 +100,7 @@ void CGame::Start()
 		FbMirrorEx& mirror = gFramebufferMirrors[i];
 		mirror.mJoint      = NULL;
 		mirror.mCamera.Init(0.1f, 32768.0f, 0.5f, -0.5f, -0.5f, 0.5f, &gGame.mGs.mScreen);
-		mirror.mCamera.SetViewport(0, 256, 0, 256);
+		mirror.mCamera.SetViewport(0, 256, 0, 256); // a 256x256 mirror view
 		mirror.mCamera.SetScissor(0, 256, 0, 256);
 		mirror.Reset();
 		mirror.mOwner = NULL;
@@ -121,13 +121,13 @@ void CGame::Start()
 	mDrawLists[2].ClearObjects();
 
 	InitializeEventScriptContext(&mEvt, (u8*)&mCMsgs[0], NULL);
-	for (int i = 0; i < 2; ++i)
+	for (int i = 0; i < 2; ++i) // two message windows
 		InitMessageWindow(&mCMsgs[i]);
 	ResetNewGameState();
 
-	StartScreenFade(&mFade, 0, 0, 0, 255, 0, 0, 0, 255, 0.0f);
+	StartScreenFade(&mFade, 0, 0, 0, 255, 0, 0, 0, 255, 0.0f); // open on a fade and a tile wipe
 	StartScreenWipeColorTransition(&mWipeTile1, 0, 0, 0, 0, 0, 0, 0, 320, 224, 640, 448, 640, 448, 0, 0, TRUE);
 
 	mMovie.mMovie.Init();
-	mMovieRect[0] = mMovieRect[1] = mMovieRect[2] = mMovieRect[3] = NAN;
+	mMovieRect[0] = mMovieRect[1] = mMovieRect[2] = mMovieRect[3] = NAN; // no movie rect
 }

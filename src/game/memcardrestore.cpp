@@ -79,7 +79,7 @@ static inline void SetScrap(Params* stats, s32 value)
 
 static inline void RequestSuit(XObjChr* chr, s32 value)
 {
-	if (chr->mSuits.mChangeStep == FALSE) {
+	if (chr->mSuits.mChangeStep == FALSE) { // only when no suit change is in progress
 		chr->mSuits.mRequested  = value;
 		chr->mSuits.mChangeStep = TRUE;
 	}
@@ -93,7 +93,7 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 {
 	SaveData* save = &card->mFile.mData;
 	s32 stage      = save->mHeader.mStage;
-	if (stage >= 100) {
+	if (stage >= 100) { // stages >= 100 are relative to the current stage count
 		stage += GetStageNum();
 		stage -= 99;
 	}
@@ -101,7 +101,7 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	gGame.mStage               = stage;
 	gGame.mTimeState.mMode     = save->mHeader.mTimeMode;
 	gGame.mTimeState.mTime     = save->mHeader.mTime;
-	gGame.mTimeState.mRunning  = 0;
+	gGame.mTimeState.mRunning  = 0; // the clock starts stopped
 	gGame.mTimeState.mDuration = save->mHeader.mDuration;
 	SetExperience(Stats(), save->mHeader.mExp);
 	SetLevel(Stats(), save->mHeader.mLevel);
@@ -122,7 +122,7 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	memcpy(Player()->mParams.mInventory.mItems, save->mPlayer, sizeof(save->mPlayer));
 	memcpy(gEventFlags.mFlags, save->mEvtFlags, sizeof(save->mEvtFlags));
 	memcpy(gEventVars.mVars, save->mEvtVars, sizeof(save->mEvtVars));
-	memcpy(PoolSaveData(4), save->mObjects[0], sizeof(save->mObjects[0]));
+	memcpy(PoolSaveData(4), save->mObjects[0], sizeof(save->mObjects[0])); // mObjects[0..2] -> pools 4, 5, 17
 	memcpy(PoolSaveData(5), save->mObjects[1], sizeof(save->mObjects[1]));
 	memcpy(PoolSaveData(17), save->mObjects[2], sizeof(save->mObjects[2]));
 	memcpy(&Player()->mAttachments, save->mPlayerRecord, sizeof(save->mPlayerRecord));

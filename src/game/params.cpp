@@ -38,10 +38,10 @@ extern "C" void AddPlayerScrap(Params* stats, s32 delta)
 	stats->mScrap += delta;
 	if (stats->mScrap < 0)
 		stats->mScrap = 0;
-	if (stats->mScrap > 99999)
+	if (stats->mScrap > 99999) // the 5-digit cap
 		stats->mScrap = 99999;
 	if (delta != 0)
-		SpawnPlayerPointParticles(gGame.GetPlayer(), 3, delta);
+		SpawnPlayerPointParticles(gGame.GetPlayer(), 3, delta); // type 3 is the scrap particle
 }
 
 /**
@@ -114,8 +114,8 @@ extern "C" void ResetPlayerStats(Params* stats)
 {
 	stats->mExperience = 0;
 	stats->mLevel      = 0;
-	stats->mRank       = 1000000;
-	stats->mMaxBattery = 80.0f;
+	stats->mRank       = 1000000; // rank counts down from the max
+	stats->mMaxBattery = 80.0f;   // a fresh battery
 	stats->mBattery    = stats->mMaxBattery;
 	stats->mMoney      = 0;
 	stats->mScrap      = 0;

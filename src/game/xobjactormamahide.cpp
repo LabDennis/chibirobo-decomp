@@ -10,20 +10,20 @@ void XObjActorMama::ProcessPendingEvents(u32)
 	CJObj jobj;
 	XObjChr* player = gGame.GetPlayer();
 	CVec pos;
-	if (mActorStatus.Check(0x400)) {
+	if (mActorStatus.Check(0x400)) { // 0x400: reset the head pitch
 		mActorStatus.mFlags &= ~0x400;
 		mHeadPitch = 0.0f;
 	}
-	if (mActorStatus.Check(2)) {
+	if (mActorStatus.Check(2)) { // 2: a random sound from the 10-entry range at 0x9E
 		mActorStatus.mFlags &= ~2;
 		PlayGameSound(&gGame.mSound, HSD_Randi(10) + 0x9E, 0xFF);
 	}
 	switch (mCmd[0]) {
-	case 2:
+	case 2: // hold a scripted kind
 		Drop();
 		switch (mCmd[1]) {
 		case 0x40:
-			for (s32 i = 0; i < 64; i++) {
+			for (s32 i = 0; i < 64; i++) { // the kind's own pool
 				XObj* obj = gGame.mXObjs.mPools[8].Get(i);
 				if (mCmd[1] == obj->GetKind()) {
 					mHeldObjects[0] = obj;
@@ -62,7 +62,7 @@ void XObjActorMama::ProcessPendingEvents(u32)
 				}
 			}
 			break;
-		case 0x1A1:
+		case 0x1A1: // a pair: 0x1A0 into hand 0, 0x1A1 into hand 1
 			for (s32 i = 0; i < 288; i++) {
 				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 				if (obj->GetKind() == 0x1A0) {
@@ -75,7 +75,7 @@ void XObjActorMama::ProcessPendingEvents(u32)
 			}
 			mHideKinds.mFlags |= 0x10;
 			break;
-		default:
+		default: // hold nothing
 			for (int i = 0; i < 2; ++i) {
 				XObj*& held = mHeldObjects[i];
 				if (held) {
@@ -87,7 +87,7 @@ void XObjActorMama::ProcessPendingEvents(u32)
 		}
 		mCmd[0] = 0;
 		break;
-	case 3:
+	case 3: // grab or set down the player
 		switch (mCmd[1]) {
 		case 1: {
 			mActorStatus.mFlags |= 0x100;
@@ -114,11 +114,11 @@ void XObjActorMama::ProcessPendingEvents(u32)
 		}
 		mCmd[0] = 0;
 		break;
-	case 4:
+	case 4: // shake the screen, arg in 1/100 units
 		StartScreenShake(&gGame.mQuake, mCmd[1], mCmd[2], mCmd[3], 0.0f, 0.0f, 0.0f, mCmd[4] / 100.0f);
 		mCmd[0] = 0;
 		break;
-	case 5: {
+	case 5: { // play a scripted animation
 		void* joint = GetJointAnimation(mCmd[1]);
 		void* mat   = GetMaterialAnimation(mCmd[2]);
 		void* shape = GetShapeAnimation(mCmd[1]);
@@ -127,7 +127,7 @@ void XObjActorMama::ProcessPendingEvents(u32)
 		mCmd[0] = 0;
 		break;
 	}
-	case 6: {
+	case 6: { // a particle burst 8 units ahead
 		s32 path[] = { 0, 4, 0, 0, 0 };
 		jobj.Attach(FindJointByPath(mJObj, path, 5));
 		pos = CVec(jobj.GetPos());
