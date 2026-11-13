@@ -57,11 +57,7 @@ void PSMTXMultVecArraySR(const Mtx, f32*, f32*, f32*);
 ////////////////////////////////////////////
 
 ///////////  MATRIX44 FUNCTIONS ////////////
-void PSMTX44Identity(Mtx44 m);
-void PSMTX44Copy(const Mtx44 src, Mtx44 dest);
-void PSMTX44Concat(const Mtx44 a, const Mtx44 b, Mtx44 out);
-u32 C_MTX44Inverse(const Mtx44 src, Mtx44 inverse);
-void C_MTXFrustum(Mtx44 mtx, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f);
+void PSMTX44Copy(Mtx44 src, Mtx44 dest);
 void C_MTXPerspective(Mtx44 mtx, f32 fovY, f32 aspect, f32 n, f32 f);
 void C_MTXOrtho(Mtx44 mtx, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f);
 ////////////////////////////////////////////

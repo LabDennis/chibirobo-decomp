@@ -38,9 +38,9 @@ AXSTUDIO* __AXGetStudio(void)
 {
 	return &__AXStudio;
 }
-static void WriteDepopChannel(s32* level, u16* valueWords, s16* delta, s32 samples)
+void __AXDepopFadeMain(s32* level, u16* valueWords, s16* delta)
 {
-	s32 average = *level / samples;
+	s32 average = *level / AX_SAMPLES_PER_FRAME;
 	if (average != 0) {
 		if (average > DEPOP_MAX)
 			average = DEPOP_MAX;
@@ -48,7 +48,7 @@ static void WriteDepopChannel(s32* level, u16* valueWords, s16* delta, s32 sampl
 			average = DEPOP_MIN;
 		valueWords[0] = (u32)*level >> 16;
 		valueWords[1] = (u16)*level;
-		*level -= average * samples;
+		*level -= average * AX_SAMPLES_PER_FRAME;
 		*delta = -average;
 	} else {
 		*level        = 0;
@@ -58,14 +58,24 @@ static void WriteDepopChannel(s32* level, u16* valueWords, s16* delta, s32 sampl
 	}
 }
 
-void __AXDepopFadeMain(s32* level, u16* valueWords, s16* delta)
-{
-	WriteDepopChannel(level, valueWords, delta, AX_SAMPLES_PER_FRAME);
-}
-
 void __AXDepopFadeRmt(s32* level, u16* valueWords, s16* delta)
 {
-	WriteDepopChannel(level, valueWords, delta, AX_SAMPLES_PER_FRAME_RMT);
+	s32 average = *level / AX_SAMPLES_PER_FRAME_RMT;
+	if (average != 0) {
+		if (average > DEPOP_MAX)
+			average = DEPOP_MAX;
+		if (average < DEPOP_MIN)
+			average = DEPOP_MIN;
+		valueWords[0] = (u32)*level >> 16;
+		valueWords[1] = (u16)*level;
+		*level -= average * AX_SAMPLES_PER_FRAME_RMT;
+		*delta = -average;
+	} else {
+		*level        = 0;
+		valueWords[0] = 0;
+		valueWords[1] = 0;
+		*delta        = 0;
+	}
 }
 
 void __AXPrintStudio(void)

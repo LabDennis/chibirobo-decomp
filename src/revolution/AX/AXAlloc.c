@@ -34,7 +34,7 @@ void __AXServiceCallbackStack(void)
 	}
 }
 
-static void __AXInitVoiceStacks(void)
+void __AXAllocInit(void)
 {
 	u32 prio;
 
@@ -45,14 +45,15 @@ static void __AXInitVoiceStacks(void)
 	}
 }
 
-void __AXAllocInit(void)
-{
-	__AXInitVoiceStacks();
-}
-
 void __AXAllocQuit(void)
 {
-	__AXInitVoiceStacks();
+	u32 prio;
+
+	__AXCallbackStack = NULL;
+
+	for (prio = 0; prio < STACK_MAX; prio++) {
+		__AXStackHead[prio] = __AXStackTail[prio] = NULL;
+	}
 }
 
 void __AXPushFreeStack(AXVPB* vpb)
