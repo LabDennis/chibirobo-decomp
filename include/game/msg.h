@@ -222,7 +222,7 @@ STATIC_ASSERT(sizeof(CMsgFont) == 0x43D20);
 class CMsg {
 public:
 	CMsg() { }
-	u8 _00;            // _00, message command
+	u8 mCommand;       // _00, message command
 	u8 _01[0x4 - 0x1]; // _01
 	CMsgData mData;    // _04
 #if defined(VERSION_JP)

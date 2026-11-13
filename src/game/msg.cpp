@@ -898,7 +898,7 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
 	s32 command = ReadMsgU8(msg);
 	// 252 to 255 wait for a button instead of a time
 	if (!(command != 255 && command != 254 && command != 253 && command != 252)) {
-		if (msg->_00 == 0x23) {
+		if (msg->mCommand == 0x23) {
 			if (!msg->mFont.mBlink) {
 				s32 mode = -1;
 				if (command == 255) {
@@ -1153,7 +1153,7 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 {
 	if (msg->mFont.mActive) {
 		if (!msg->mFont.mFadeOut) {
-			if (msg->_00 == 0x2B) {
+			if (msg->mCommand == 0x2B) {
 				if (msg->_445D0 < 0) {
 					msg->_445D0              = msg->_445D8;
 					msg->mFont.mSelectedLine = msg->_445D0;
@@ -1991,7 +1991,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 		case 1: {
 			s32 time = ReadMsgU8(msg);
 			if (time == 255) {
-				if (msg->_00 == 0x23) {
+				if (msg->mCommand == 0x23) {
 					time = 2;
 				} else {
 					time = 0;
@@ -2674,7 +2674,7 @@ extern "C" void CMsgFont_Init(CMsgFont* font, u8* data, f32 x, f32 y, s32 mode, 
 extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
 {
 	ResetMsgState(msg);
-	msg->_00       = command;
+	msg->mCommand  = command;
 	s32 savedCount = args->count;
 	CMsgData_Format(msg->mData.mText, script, args);
 	CMsgData_Measure(&msg->mData);
@@ -2692,7 +2692,7 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
 	CMsgFont_Init(&msg->mFont, msg->mData.mText, msg->_44600, msg->_44604, msg->_44608, msg->mData.mAlignment, msg->mData.mStyle);
 	msg->SetFontPosition(msg->mFontPosition.x, msg->mFontPosition.y, msg->mFontPosition.z);
 	msg->_445C4 = 0.0f;
-	msg->_445C8 = msg->_00 == 35 ? 2 : 0;
+	msg->_445C8 = msg->mCommand == 35 ? 2 : 0;
 	msg->_445CC = 0.0f;
 	return cursor;
 }
