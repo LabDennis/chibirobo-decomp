@@ -157,7 +157,7 @@ s32 XObjActorPapa::HandleEventCommand(s32 count, s32* command)
 void XObjActorPapa::StatePickUp(u32 frames)
 {
 	switch (mKindStep) {
-	case 0: { // wait for tao and the target toy to be free, then attach
+	case 0: { // wait until tao and toy 0x159 are free, then load the object
 		XObjActorTao* tao = ((XObjActorTao*)gGame.mXObjs.mPools[14].mObjects);
 		if ((tao->mStatus.mFlags & 1) && !tao->IsFree()) {
 			return;
@@ -592,7 +592,7 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 		ResetActorMovementStep(this);
 		mCmd[0] = 0;
 		break;
-	case 7: // let go of the attached object
+	case 7: // release (unload) the attached object
 		mAttachedId = -1;
 		if (mAttached != NULL) {
 			mAttached->Release();

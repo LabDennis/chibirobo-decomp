@@ -163,11 +163,11 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 		}
 		break;
 	}
-	if (spider->mSpiderStatus.mFlags & 0x200) { // it pushes the player away
+	if (spider->mSpiderStatus.mFlags & 0x200) { // it pulls the player in toward it
 		f32 heading, speed, x, z;
 		Vec p = gGame.GetPlayer()->mMoveTranslate;
 		CVec position(p);
-		speed = 0.4f * (220.0f - SpiderContactDistance(&position, &spider->mMoveTranslate)); // the push weakens with distance
+		speed = 0.4f * (220.0f - SpiderContactDistance(&position, &spider->mMoveTranslate)); // the pull weakens with distance
 		if (speed > 4.0f)
 			speed = 4.0f;
 		heading = PI + (f32)atan2(p.x - spider->mMoveTranslate.x, p.z - spider->mMoveTranslate.z);

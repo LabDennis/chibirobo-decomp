@@ -497,7 +497,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 				mBox[0].mYawDegrees      = 0;
 				mBox[0].mExtent[0]       = 400;
 				mBox[0].mExtent[1]       = 1000;
-				mBox[0].mExtent[2]       = 200; // the base's floor box, 1620 units up
+				mBox[0].mExtent[2]       = 200; // the base's floor box, 16.2 units up
 				s32 path[]               = { 0 };
 				HSD_JObjSetFlagsAll(FindJointByPath(part->mJObj, path, 1), HIDDEN);
 				break;

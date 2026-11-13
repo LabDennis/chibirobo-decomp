@@ -63,7 +63,7 @@ CVec XObjActorDeca::GetHeadWorldPosition()
  */
 Vec XObjActorDeca::GetCameraTarget()
 {
-	if (mJointFlags.mFlags & 4) { // joint flag 4 aims the camera lower
+	if (mJointFlags.mFlags & 4) { // joint flag 4 aims the camera at joint {0,3}, half a unit below it
 		CJObj jobj;
 		s32 path[2] = { 0, 3 };
 		jobj.Attach(FindJointByPath(mJObj, path, 2));

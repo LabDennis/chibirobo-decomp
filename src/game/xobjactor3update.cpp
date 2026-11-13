@@ -120,7 +120,7 @@ void XObjActor3::UpdateObject(u32 frames)
 		SetPos(mMoveTranslate, 0);
 	}
 	UpdateObject__4XObjFUl(this, frames);
-	if (GetKind() == 0x31B) { // the dust kind
+	if (GetKind() == 0x31B) { // 0x31B (haisui_nezumi) runs its dust particles
 		UpdateParticlePool(&mDust.mPtcl, frames);
 	}
 	if (GetKind() == 0x2C3) { // carries a rider at a joint

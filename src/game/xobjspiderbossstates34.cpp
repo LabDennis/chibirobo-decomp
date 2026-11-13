@@ -76,8 +76,9 @@ void XObjSpiderBoss::State4(u32 frames)
 		mSpiderStatus.mFlags |= 0x1000;
 		Vec candidates[25];
 		Vec* next = candidates;
+		// skips the point at the stored index (pick indexes the shortened list, so not always the last target)
 		for (s32 i = 0; i < 25; ++i)
-			if (mPatrolSelection != i) // drops the previous pick
+			if (mPatrolSelection != i)
 				*next++ = sSpiderBossPatrolPoints[i];
 		s32 pick         = rand() % 24;
 		mPatrolTarget    = candidates[pick];
@@ -297,7 +298,8 @@ void XObjSpiderBoss::State3(u32 frames)
 				SetAttackAnim(this, 7);
 		}
 		if (SpiderContactDistance(&position, &mMoveTranslate) <= 220) {
-			if (mGrabIntervalFrames >= (s32)(3 * BOSS_FPS)) { // three seconds into the approach
+			// after three seconds spent approaching, counted across rounds until a grab ends
+			if (mGrabIntervalFrames >= (s32)(3 * BOSS_FPS)) {
 
 				mStep = 10;
 				SetAttackAnim(this, 16);
@@ -424,7 +426,7 @@ void XObjSpiderBoss::State3(u32 frames)
 		}
 		break;
 	}
-	case 13: // the grab: mashing drains the escape meter
+	case 13: // the grab: holding the stick in any direction drains the escape meter
 		if (gGame.IsRunning() && (pad.mPad->mButton & 0xf0000)) {
 			mEscapeRemaining -= mEscapeInputStrength;
 			mEscapeInputStrength = 8;

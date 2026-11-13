@@ -64,7 +64,7 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 	Vec tip                   = GetPlugCordPointPosition(cord, 18);
 	tip.y                     = gGame.GetPlayer()->mMoveTranslate.y;
 	Vec probe                 = tip;
-	lbl_8065B28C              = FindPlugCordFloor(cord, &probe, -1, 0); // the floor under the player
+	lbl_8065B28C              = FindPlugCordFloor(cord, &probe, -1, 0); // the floor under cord point 18, probed from the player's height
 	Vec anchor;
 	GetPlayerPlugCordAnchorTransform(&gGame.GetPlayer()->mPlug, &anchor, NULL, NULL);
 	if (lbl_8065B28C > anchor.y) // above the plug anchor: use the player's own floor

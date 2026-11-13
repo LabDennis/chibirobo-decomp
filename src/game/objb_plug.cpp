@@ -88,7 +88,7 @@ void XObjPlug::UpdateObject(u32 frames)
 			}
 			XSound* sound = &gGame.mSound;
 			if (IsGameSoundPlaying(sound, 0xfb) != 1 && IsGameSoundPlaying(sound, 0xfc) != 1) {
-				if (mWire.mSparkTimer % 2) // alternate the two spark sounds
+				if (mWire.mSparkTimer % 2) // the timer's parity picks one of the two spark sounds
 					PlayGameSound(sound, 0xfb, 255);
 				else
 					PlayGameSound(sound, 0xfc, 255);

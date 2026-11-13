@@ -141,14 +141,14 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 		case 0:
 			if (!LoadPlayerModel(mOXMenu.mMark[0].mObj, 45))
 				break;
-			if (mOXMenu.mMark[0].mObj.mJObj)
-				HSD_JObjWalkTree(mOXMenu.mMark[0].mObj.mJObj, EnableJointMaterialTranslucency, NULL); // the mark draws translucent
+			if (mOXMenu.mMark[0].mObj.mJObj) // the circle (O) model draws translucent
+				HSD_JObjWalkTree(mOXMenu.mMark[0].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
 			++mOXMenu.mLoadStep;
 		case 1:
 			if (!LoadPlayerModel(mOXMenu.mMark[1].mObj, 46))
 				break;
-			if (mOXMenu.mMark[1].mObj.mJObj)
-				HSD_JObjWalkTree(mOXMenu.mMark[1].mObj.mJObj, EnableJointMaterialTranslucency, NULL); // the circle draws translucent
+			if (mOXMenu.mMark[1].mObj.mJObj) // the cross (X) model draws translucent
+				HSD_JObjWalkTree(mOXMenu.mMark[1].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
 			++mOXMenu.mLoadStep;
 		case 2:
 			++mOXMenu.mLoadStep;

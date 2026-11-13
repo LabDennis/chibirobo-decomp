@@ -280,6 +280,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 		s32 face[5] = { 0, 4, 0, 0, 0 };
 		hand.Attach(FindJointByPath(mJObj, face, 5));
 		pos = hand.GetPos();
-		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0); // face the way her palm points
+		// turn the player toward her head joint
+		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
 	}
 }

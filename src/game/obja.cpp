@@ -458,7 +458,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 				mEdges[i].mContactOffset = (middle + normal * extent.x) - mMoveTranslate;
 				if (to->y <= mFloorHeights[i] && to->y >= ((y - extent.y) - height)) {
 					StoreSweepContact(from, to, contact, dest, hit, mFloorHeights[i]);
-					collision = 3; // a top contact
+					collision = 3; // touching it within its height span
 				} else
 					collision = to->y < ((y - extent.y) - height) ? 0 : 1; // above it
 			}
@@ -573,7 +573,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 	}
 	if (result) {
 		mStatus.mFlags |= 0x0100000000000000ULL;
-		if ((flags & 2) && (result & 3) == 3) { // a top contact can fire the step event
+		if ((flags & 2) && (result & 3) == 3) { // any contact (3) can start its event script
 			XObjChr* player = gGame.GetPlayer();
 			if ((mStatus.mFlags & 0x20000000000ULL) && !(mStatus.mFlags & 0x8000000000000000ULL) && !(gGame.mStatus.mFlags & 0x400)
 			    && player->mAttachmentRequest < 0
@@ -583,7 +583,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 				StartOrQueueEventScript(&gGame.mEvt, (u8*)GetEventScript(), (u32)this, -1, -1);
 			}
 		}
-		if (flags & 1) { // the caller can take the contact too
+		if (flags & 1) { // let the object's own handler react and adjust the result
 			const CVec& delta = CVec(*contact) - *from;
 			PSVECMag(push);
 			result = OnPlayerContact((s32)&delta, result);

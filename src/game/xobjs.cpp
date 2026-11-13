@@ -508,7 +508,7 @@ inline void XOBJS::ReadAll()
 	for (s32 i = 0; i < mObjectCount; i++) {
 		UnkStageObj* obj = GetStagePlacementByIndex(i);
 		CoordInfo info(obj);
-		if ((obj->mFlags & 0x80000000ULL) == 0) { // flag 63 skips the placement load
+		if ((obj->mFlags & 0x80000000ULL) == 0) { // 0x80000000 (bit 31) skips the placement load
 			while (!mObjects[mLoadObjectIndex]->LoadFromPlacement(info)) { }
 		}
 		mLoadObjectIndex++;

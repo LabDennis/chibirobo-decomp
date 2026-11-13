@@ -10,7 +10,7 @@ void XObjActorMama::ProcessPendingEvents(u32)
 	CJObj jobj;
 	XObjChr* player = gGame.GetPlayer();
 	CVec pos;
-	if (mActorStatus.Check(0x400)) { // 0x400: reset the head pitch
+	if (mActorStatus.Check(0x400)) { // drop the player pitch-tracking and level the head
 		mActorStatus.mFlags &= ~0x400;
 		mHeadPitch = 0.0f;
 	}

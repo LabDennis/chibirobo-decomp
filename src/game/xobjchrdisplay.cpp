@@ -126,14 +126,14 @@ void XObjChr::InitializeObject(u32 id)
 	mOXObj.InitializeObject(id);
 	InitializeAttachmentMenuEntries(&mAttachments);
 	{
-		OctaMenu& ring = mMenu.mAtc; // the attachment ring spins one way
+		OctaMenu& ring = mMenu.mAtc; // the attachment ring
 		SetupPlayerRing(ring, this, -1.0f);
 		SetRingItems(ring, 1, 2, 3, 4, 6, 5, 7, 8); // the items in ring order
 		ring._284              = -1.5f;
 		ring.mFirstVisibleItem = 4;
 	}
 	{
-		OctaMenu& ring = mMenu.mDrs; // the drawer ring the other way
+		OctaMenu& ring = mMenu.mDrs; // the costume ring
 		SetupPlayerRing(ring, this, 1.0f);
 		if (ring.mMenuType == 3) { // menu type 3 gets its own order
 			SetRingItems(ring, 1, 4, 6, 3, 2, 7, 8, 5);

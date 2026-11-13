@@ -196,7 +196,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 		ResetActorMovementStep(this);
 		mCmd[0] = 0;
 		break;
-	case 4: // let go of the attached object
+	case 4: // release (unload) the attached object
 		mAttachedId = -1;
 		if (mAttached != NULL) {
 			mAttached->Release();

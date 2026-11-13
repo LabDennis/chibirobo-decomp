@@ -344,7 +344,7 @@ s32 XObjArmy::HandleEventCommand(s32 argc, s32* args)
 			break;
 		}
 		break;
-	case 3: // stand guard at a spot
+	case 3: // fire once at a spot
 		mGuardPos.x = args[1] / 100.0f;
 		mGuardPos.y = args[2] / 100.0f;
 		mGuardPos.z = args[3] / 100.0f;
@@ -560,7 +560,7 @@ void XObjArmy::StateMarch()
 					mStep = 10;
 				else
 					mStep = 10;
-			} else if (distance < 40) // facing away but close: a short step
+			} else if (distance < 40) // not facing him but close: step aside
 				++mStep;
 		}
 		break;

@@ -40,7 +40,7 @@ static inline bool FitsInAram(CObjArchive* archive)
 BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ready = FALSE;
-	if ((u64)info.mPlacement->mFlags & 0x80000000ULL) // placement already handled
+	if ((u64)info.mPlacement->mFlags & 0x80000000ULL) // the placement opts out of loading
 		return TRUE;
 
 	AttrInfo& attr = mAttr;
@@ -143,7 +143,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		mLastPos.x = mMoveTranslate.x;
 		mLastPos.y = mMoveTranslate.y;
 		mLastPos.z = mMoveTranslate.z;
-		mColors[1] = 0xffffff00; // opaque white
+		mColors[1] = 0xffffff00; // times white: untinted
 		mColors[0] = 0;
 		if (mJObj) {
 			u32 material[5] = { 0, 0, 0, 0, 0 };

@@ -46,7 +46,7 @@ extern "C" s32 GetMapTriangleFloorType(XObjMap* map, s32 trigon, s32 tri)
 			return i;
 		}
 	}
-	return 0; // black and unknown colors are type 0
+	return 0; // colors in no slot are type 0 (black matches slot 3)
 }
 
 /**
@@ -126,10 +126,8 @@ BOOL XObjMap::LoadFromPlacement(const CoordInfo& info)
 			CLight* prev = NULL;
 			for (i = 0; i < 8; i++) {
 				if (GetLightDesc(i) != NULL) {
-					mLights[i].Init(
-					    GetLightDesc(i)->mDesc,
-					    GetEnvData()[5]
-					        & (1 << (7 - i))); // env slot 5 picks which lights cast shadows // env slot 5 picks which lights cast shadows
+					// env slot 5 picks which lights cast shadows
+					mLights[i].Init(GetLightDesc(i)->mDesc, GetEnvData()[5] & (1 << (7 - i)));
 					if (GetLightAnimNum(i) > 0) {
 						mLightAnims[i] = 0;
 						mLights[i].SetAnim(GetLightDesc(i)->mAnims[mLightAnims[i]], 0.0f);

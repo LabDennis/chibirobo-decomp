@@ -184,7 +184,7 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 	for (int i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.GetObject(i);
 		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || (object->mStatus.mFlags & 0x100000))
-			continue; // inactive, no floors, or skipped
+			continue; // inactive, not shown, or skipped
 		if (self->mId == object->mId)
 			continue;
 		f32 dx = object->mMoveTranslate.x - pos->x;
@@ -323,7 +323,7 @@ BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 ra
 	f32* projection = camera->mProjection;
 	f32* viewport   = camera->mViewport;
 	f32 left, right, bottom, top, unusedX, unusedY, depth;
-	// four points on the circle around the object give its screen extent
+	// three points on the circle and one raised by the height give its screen extent
 	f32 angle  = (PI + HALF_PI) + heading;
 	f32 cosine = (f32)cos(angle);
 	f32 sine   = (f32)sin(angle);
@@ -543,7 +543,7 @@ extern "C" CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offs
 	f32 height;
 	switch (floor.mId) {
 	case 0:
-	case 1: // points touch one unit down
+	case 1: // a disc touches at its bottom, one unit down
 		height = -1.0f;
 		break;
 	case 2: { // a box touches at its underside, half an edge down
@@ -553,7 +553,7 @@ extern "C" CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offs
 		break;
 	}
 	default:
-		height = NAN; // other shapes just return the position
+		height = NAN; // other shapes return the object's translation, offset ignored
 	}
 	if (__fpclassifyf(height) != FP_NAN) {
 		Mtx translate, local, rotate, scale, result;

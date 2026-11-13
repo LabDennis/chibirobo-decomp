@@ -140,7 +140,7 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 		mMoveTranslate.SetTarget(mMoveTranslate);
 		mCommand = 0;
 		break;
-	case 10: // set the patrol area, same units
+	case 10: // the area it walks in: corner in 1/100 units, width and depth as given
 		mAreaPos.x = mArgs[0] / 100.0f;
 		mAreaPos.y = mArgs[1] / 100.0f;
 		mAreaPos.z = mArgs[2] / 100.0f;
@@ -155,7 +155,7 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 	case 12:
 		mCommand = 0;
 		break;
-	case 16: // reattach all eleven parts and the center
+	case 16: // re-enable the eleven item-0xB actors and the center (clears their flag 4)
 		for (int i = 0; i < 11; ++i)
 			EnableSpiderBossPartByIndex(i);
 		EnableSpiderBossCenterPart();

@@ -111,7 +111,7 @@ extern "C" void SetActorLookAtPosition(CXObj* object, const Vec* target, f32 rat
 	actor->mLookMode   = 1;
 	actor->mLookRate   = rate;
 	actor->mLookTarget = target;
-	actor->mActorStatus.mFlags |= 0x400; // at a point
+	actor->mActorStatus.mFlags |= 0x400; // 0x400: also pitch the head toward the player
 }
 
 /**
