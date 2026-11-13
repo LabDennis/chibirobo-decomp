@@ -48,8 +48,12 @@ public:
 	virtual s32 ReadAsync(const char* path, u32 offset, u32 size, BOOL fromAram); // _14
 	virtual s32 GetResult();                                                      // _18
 	virtual s32 Read(const char* path, u32 offset, u32 size);                     // _1C
-	virtual void Close();                                                         // _20
-	virtual BOOL ReadEx(const char* path, u32 offset, u32 size);                  // _24
+#if defined(VERSION_R24J01)
+	virtual BOOL Close(); // _20, the Wii version reports TRUE
+#else
+	virtual void Close(); // _20
+#endif
+	virtual BOOL ReadEx(const char* path, u32 offset, u32 size); // _24
 #if defined(VERSION_R24J01)
 	virtual BOOL IsLoaded() { return mBuffer != NULL && mState == 0; } // _28 (weak)
 #endif

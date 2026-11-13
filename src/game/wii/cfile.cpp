@@ -269,13 +269,13 @@ s32 CFile::Read(const char* path, u32 offset, u32 size)
 	return result;
 }
 
-// NONMATCHING: retail ends with li r3, 1: the Wii Close returns TRUE (CTpl::Close does the same), but
-// ctpl.h and stg.h still override it as void, so the return type stays void here
-void CFile::Close()
+// The Wii Close reports TRUE: fn_802B63E0 drops its file pointer only when it does.
+BOOL CFile::Close()
 {
 	CloseHandle();
 	Free();
 	mState = 1;
+	return TRUE;
 }
 
 BOOL CFile::ReadEx(const char* path, u32 offset, u32 size)
