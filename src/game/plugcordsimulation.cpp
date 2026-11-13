@@ -64,22 +64,22 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 	Vec tip                   = GetPlugCordPointPosition(cord, 18);
 	tip.y                     = gGame.GetPlayer()->mMoveTranslate.y;
 	Vec probe                 = tip;
-	lbl_8065B28C              = FindPlugCordFloor(cord, &probe, -1, 0);
+	lbl_8065B28C              = FindPlugCordFloor(cord, &probe, -1, 0); // the floor under the player
 	Vec anchor;
 	GetPlayerPlugCordAnchorTransform(&gGame.GetPlayer()->mPlug, &anchor, NULL, NULL);
-	if (lbl_8065B28C > anchor.y)
+	if (lbl_8065B28C > anchor.y) // above the plug anchor: use the player's own floor
 		lbl_8065B28C = gGame.GetPlayer()->mFloorHit.mHeight;
 	for (u32 frame = 0; frame < frames; ++frame) {
 		static f32 gravity = 0.25f;
 		for (s32 i = 0; i < cord->mCount; ++i) {
 			if (i < 4)
-				points[i].mPos.y += 0.0049f;
+				points[i].mPos.y += 0.0049f; // the near ends drift up
 			else if (i < 10)
-				points[i].mPos.y += 0.98f * -gravity * 0.5f;
+				points[i].mPos.y += 0.98f * -gravity * 0.5f; // half gravity on the middle
 			else
 				points[i].mPos.y += 0.98f * -gravity;
 		}
-		for (s32 pass = 0; pass < 10; ++pass) {
+		for (s32 pass = 0; pass < 10; ++pass) { // ten relaxation passes
 			PinCordEnds(cord, points);
 			for (s32 i = 0; i < cord->mCount - 1; ++i) {
 				CVec& a = points[i].mPos;
@@ -87,12 +87,12 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 				static CVec delta;
 				delta          = b - a;
 				f32 distance   = PSVECDistance(&b, &a);
-				f32 correction = 0.7f * (cord->mSpeed - distance);
-				if (i == 0 && cord->mEndSource[0]) {
+				f32 correction = 0.7f * (cord->mSpeed - distance); // relax toward the rest length
+				if (i == 0 && cord->mEndSource[0]) {               // the pinned end pulls instead of moving
 					CopyCordPos(a, *cord->mEndSource[0]);
 					AddStep(b, delta / distance * correction);
 					cord->mPull = delta / distance * correction * -1.0f;
-				} else if (i == cord->mCount - 2) {
+				} else if (i == cord->mCount - 2) { // the last segment relaxes to 5.0
 					correction = 0.7f * (5.0f - distance);
 					SubStep(a, delta / distance * correction);
 					AddStep(b, delta / distance * correction);
@@ -105,10 +105,10 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 		}
 		for (s32 i = 0; i < cord->mCount; ++i) {
 			f32 floor = 0.2f + lbl_8065B28C;
-			if (points[i].mPos.y < floor)
+			if (points[i].mPos.y < floor) // bounce, damped
 				points[i].mPos.y = floor - 0.8f * points[i].mSpeed.y;
 		}
-		if (cord->mFlags & 8) {
+		if (cord->mFlags & 8) { // flag 8: objects push the cord aside
 			for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 				XObj* object = gGame.GetObject(i);
 				if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || object->mStatus.mFlags & 0x100000
@@ -116,7 +116,7 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 					continue;
 				Vec pos = gGame.GetPlayer()->mMoveTranslate;
 				f32 dx = object->mMoveTranslate.x - pos.x, dz = object->mMoveTranslate.z - pos.z;
-				if (sqrtf(dx * dx + dz * dz) > 150.0f)
+				if (sqrtf(dx * dx + dz * dz) > 150.0f) // only nearby objects
 					continue;
 				for (s32 j = 0; j < cord->mCount; ++j)
 					PushPlugCordPointFromObject(&cord->mPoints[j].mPos, object, 0);
