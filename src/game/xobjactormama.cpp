@@ -39,8 +39,8 @@ XObjActorMama::~XObjActorMama()
  */
 HSD_JObj* XObjActorMama::GetHeadJoint()
 {
-	s32 path[4] = { 0, 4, 0, 0 };
-	return FindJointByPath(mJObj, path, 4);
+	s32 headPath[4] = { 0, 4, 0, 0 };
+	return FindJointByPath(mJObj, headPath, 4);
 }
 
 /**
@@ -49,8 +49,8 @@ HSD_JObj* XObjActorMama::GetHeadJoint()
  */
 CVec XObjActorMama::GetHeadWorldPosition()
 {
-	s32 path[4] = { 0, 4, 0, 0 };
-	return GetEventJointWorldPosition(this, 4, path);
+	s32 headPath[4] = { 0, 4, 0, 0 };
+	return GetEventJointWorldPosition(this, 4, headPath);
 }
 
 /**
@@ -59,7 +59,7 @@ CVec XObjActorMama::GetHeadWorldPosition()
  */
 f32 XObjActorMama::GetMinHeadPitch()
 {
-	return -0.17453292f;
+	return -DEG2RAD * 10;
 }
 
 /**
@@ -68,7 +68,7 @@ f32 XObjActorMama::GetMinHeadPitch()
  */
 f32 XObjActorMama::GetMaxHeadPitch()
 {
-	return 0.17453292f;
+	return DEG2RAD * 10;
 }
 
 /**
@@ -77,7 +77,7 @@ f32 XObjActorMama::GetMaxHeadPitch()
  */
 f32 XObjActorMama::GetMinHeadYaw()
 {
-	return -0.6981317f;
+	return -DEG2RAD * 40;
 }
 
 /**
@@ -86,7 +86,7 @@ f32 XObjActorMama::GetMinHeadYaw()
  */
 f32 XObjActorMama::GetMaxHeadYaw()
 {
-	return 0.6981317f;
+	return DEG2RAD * 40;
 }
 
 /**
@@ -97,13 +97,13 @@ s32 XObjActorMama::HandleEventCommand(s32 count, s32* command)
 {
 	XObjActor::HandleEventCommand(count, command);
 	switch (command[0]) {
-	case 1:
+	case 1: // command 1 steers her head
 		switch (command[1]) {
 		case 0:
-			ResetActorLook(this, 0.08726646f);
+			ResetActorLook(this, DEG2RAD * 5);
 			break;
 		case 1:
-			SetActorLookAtPosition(this, &gGame.GetPlayer()->mMoveTranslate, 0.08726646f);
+			SetActorLookAtPosition(this, &gGame.GetPlayer()->mMoveTranslate, DEG2RAD * 5);
 			break;
 		case 2:
 			if (FindObj(command[2]) != NULL) {
@@ -115,7 +115,7 @@ s32 XObjActorMama::HandleEventCommand(s32 count, s32* command)
 			break;
 		}
 		break;
-	default:
+	default: // stash other commands in mCmd
 		if (count < 1) {
 			return 0;
 		}
@@ -151,7 +151,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj hand;
 	XObjChr* player = gGame.GetPlayer();
-	if (mHideKinds.mFlags & 0x3f) {
+	if (mHideKinds.mFlags & 0x3f) { // a held prop kind is set
 		CVec position;
 		CJObj other;
 		s32 first[6] = { 0, 4, 2, 0, 0, 0 };
@@ -159,7 +159,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 		s32 second[6] = { 0, 4, 1, 0, 0, 0 };
 		other.Attach(FindJointByPath(mJObj, second, 6));
 		position = hand.GetPos();
-		s32 kind = -1;
+		s32 kind = -1; // bits 0 to 5 pick the prop's kind
 		if (mHideKinds.Check(1))
 			kind = 0x40;
 		else if (mHideKinds.Check(2))
@@ -176,7 +176,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 		if (kind >= 0)
 			switch (kind) {
 			case 0x40:
-				for (s32 i = 0; i < 64; ++i) {
+				for (s32 i = 0; i < 64; ++i) { // pool 8 holds 64 props
 					XObj* prop = gGame.mXObjs.mPools[8].Get(i);
 					if (kind == prop->GetKind()) {
 						switch (kind) {
@@ -190,7 +190,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 							SetHeldPropMatrix(prop, hand.GetMtx());
 							break;
 						}
-						if (mStatus.mFlags & 0x10000)
+						if (mStatus.mFlags & 0x10000) // the prop hides with her
 							prop->mStatus.mFlags |= 0x10000ULL;
 						else
 							prop->mStatus.mFlags &= ~0x10000ULL;
@@ -201,7 +201,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 			case 0x7d:
 			case 0x196:
 			case 0x45b:
-				for (s32 i = 0; i < 288; ++i) {
+				for (s32 i = 0; i < 288; ++i) { // pool 22 holds 288
 					XObj* prop = gGame.mXObjs.mPools[22].Get(i);
 					if (kind != prop->GetKind())
 						continue;
@@ -214,21 +214,21 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 						break;
 					case 0x7d:
 						PSMTXCopy(hand.GetMtx(), mount);
-						RotateHeldProp(mount, result, rotation, 'y', 1.17809725f);
+						RotateHeldProp(mount, result, rotation, 'y', 1.17809725f); // 67.5 degrees
 						SetHeldPropMatrix(prop, result);
 						break;
 					case 0x196:
-						sin(DEG2RAD * ((s32)(mKindCounter * 16) % 360));
+						sin(DEG2RAD * ((s32)(mKindCounter * 16) % 360)); // the sine is unused; only the counter counts
 						++mKindCounter;
 						PSMTXCopy(hand.GetMtx(), mount);
 						RotateHeldProp(mount, result, rotation, 'x', -HALF_PI);
 						OffsetHeldProp(result, translation, 2.5f, -3, -8.5f);
-						RotateHeldProp(result, result, rotation, 'y', 1.17809725f);
+						RotateHeldProp(result, result, rotation, 'y', 1.17809725f); // 67.5 degrees
 						SetHeldPropMatrix(prop, result);
 						break;
 					case 0x45b:
 						PSMTXCopy(hand.GetMtx(), mount);
-						RotateHeldProp(mount, result, rotation, 'y', -1.37444687f);
+						RotateHeldProp(mount, result, rotation, 'y', -1.37444687f); // 78.75 degrees
 						RotateHeldProp(result, result, rotation, 'z', HALF_PI);
 						RotateHeldProp(result, result, rotation, 'x', 0);
 						OffsetHeldProp(result, translation, -4.5f, -6, 0);
@@ -238,7 +238,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 						SetHeldPropMatrix(prop, hand.GetMtx());
 						break;
 					}
-					if (mStatus.mFlags & 0x10000)
+					if (mStatus.mFlags & 0x10000) // the prop hides with her
 						prop->mStatus.mFlags |= 0x10000ULL;
 					else
 						prop->mStatus.mFlags &= ~0x10000ULL;
@@ -249,20 +249,20 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 					XObj* prop = gGame.mXObjs.mPools[22].Get(i);
 					if (prop->GetKind() == 0x1a0) {
 						PSMTXCopy(other.GetMtx(), mount);
-						RotateHeldProp(mount, result, rotation, 'z', -.19634955f);
+						RotateHeldProp(mount, result, rotation, 'z', -.19634955f); // 11.25 degrees
 						OffsetHeldProp(result, translation, 0, -4.5f, 0);
 						SetHeldPropMatrix(prop, result);
-						if (mStatus.mFlags & 0x10000)
+						if (mStatus.mFlags & 0x10000) // the prop hides with her
 							prop->mStatus.mFlags |= 0x10000ULL;
 						else
 							prop->mStatus.mFlags &= ~0x10000ULL;
 					} else if (prop->GetKind() == 0x1a1) {
 						PSMTXCopy(hand.GetMtx(), mount);
-						RotateHeldProp(mount, result, rotation, 'x', -1.17809725f);
+						RotateHeldProp(mount, result, rotation, 'x', -1.17809725f); // 67.5 degrees
 						OffsetHeldProp(result, translation, 0, -3.5f, -3);
 						RotateHeldProp(result, result, rotation, 'z', -HALF_PI);
 						SetHeldPropMatrix(prop, result);
-						if (mStatus.mFlags & 0x10000)
+						if (mStatus.mFlags & 0x10000) // the prop hides with her
 							prop->mStatus.mFlags |= 0x10000ULL;
 						else
 							prop->mStatus.mFlags &= ~0x10000ULL;
@@ -271,15 +271,15 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 				break;
 			}
 	}
-	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
+	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) { // she carries the player
 		s32 hold[6] = { 0, 4, 2, 0, 0, 0 };
 		hand.Attach(FindJointByPath(mJObj, hold, 6));
 		CVec pos = hand.GetPos();
-		pos.y += 2;
+		pos.y += 2; // two units above the hand
 		player->SetPos(pos, 0);
 		s32 face[5] = { 0, 4, 0, 0, 0 };
 		hand.Attach(FindJointByPath(mJObj, face, 5));
 		pos = hand.GetPos();
-		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
+		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0); // face the way her palm points
 	}
 }
