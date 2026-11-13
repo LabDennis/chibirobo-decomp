@@ -1263,7 +1263,9 @@ if wii:
                 Object(Equivalent, "game/stage_data.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/atcmenuselection.cpp"),
                 Object(bool(args.wii_locale), "game/wii/homemenu.cpp", extra_cflags=["-Cpp_exceptions on"]),
-                Object(bool(args.wii_locale), "game/wii/cfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                # its switches are binary-search trees, which only the GC compilers emit, and none of its
+                # small functions is inlined into the callers that follow them
+                Object(bool(args.wii_locale), "game/wii/cfile.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(bool(args.wii_locale), "game/wii/gamemain.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/cpad.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", extra_cflags=["-Cpp_exceptions on"]),
