@@ -133,59 +133,59 @@ extern "C" void InitInfoScreen(InfoScrn* scrn)
 {
 	scrn->mFade.Reset();
 	scrn->mWipe.Reset();
-	scrn->_A8           = 0.0f;
-	scrn->_AC           = 0.0f;
-	scrn->_B0           = 0.0f;
-	scrn->_140          = 0.0f;
-	scrn->_144          = 0.0f;
-	scrn->_98           = 0;
-	scrn->_9C           = 0;
-	scrn->_A0           = 0;
-	scrn->_A4           = 0;
-	scrn->_B4           = 0;
-	scrn->mBatteryGauge = 0.0f;
-	scrn->_B8           = 0;
-	scrn->_17C          = 0;
-	scrn->_180          = 0;
+	scrn->mHudAlpha        = 0.0f;
+	scrn->mAttachmentAlpha = 0.0f;
+	scrn->mMenuHudAlpha    = 0.0f;
+	scrn->mDimAlpha        = 0.0f;
+	scrn->mTargetDimAlpha  = 0.0f;
+	scrn->_98              = 0;
+	scrn->mHudState        = 0;
+	scrn->mAttachmentState = 0;
+	scrn->mMenuHudState    = 0;
+	scrn->mFrameCount      = 0;
+	scrn->mBatteryGauge    = 0.0f;
+	scrn->_B8              = 0;
+	scrn->mIconFrameTimer  = 0;
+	scrn->mIconFrame       = 0;
 	InitHudPointCounter(&gHudHappyPointCounter, INFOPOINT_ID + 2);
 	InitHudPointCounter(&gHudMoneyCounter, INFOPOINT_ID);
 	InitHudPointCounter(&gHudScrapCounter, INFOPOINT_ID + 1);
 	gHudHappyPointCounter.mVisible = FALSE;
 	gHudMoneyCounter.mVisible      = FALSE;
 	gHudScrapCounter.mVisible      = FALSE;
-	scrn->_BC                      = 0;
-	scrn->_C0                      = 0.0f;
-	scrn->_C4                      = 0.0f;
-	scrn->_C8                      = 0.0f;
+	scrn->mBatteryState            = 0;
+	scrn->mBatteryAlpha            = 0.0f;
+	scrn->mBatteryOffsetY          = 0.0f;
+	scrn->mTargetBatteryOffsetY    = 0.0f;
 	const Vec v0                   = { 0.0f, 0.0f, 0.0f };
 	scrn->_128.x                   = v0.x;
 	scrn->_128.y                   = v0.y;
 	scrn->_128.z                   = v0.z;
-	scrn->_148                     = 0;
-	scrn->_14C                     = 0.0f;
-	scrn->_150                     = 0;
-	scrn->_154                     = 0;
-	scrn->_158                     = 0;
+	scrn->mItemMaxState            = 0;
+	scrn->mItemMaxFade             = 0.0f;
+	scrn->mTimeWarningBeeps        = 0;
+	scrn->mTimeWarningTick         = 0;
+	scrn->mTimeWarningBeeped       = 0;
 	const Vec v1                   = { 0.0f, 0.0f, 0.0f };
 	scrn->_170.x                   = v1.x;
 	scrn->_170.y                   = v1.y;
 	scrn->_170.z                   = v1.z;
-	scrn->_16C                     = 1.0f;
-	scrn->_188                     = 0;
-	scrn->_18C                     = 0.0f;
+	scrn->mItemMaxScale            = 1.0f;
+	scrn->mObjectGaugeState        = 0;
+	scrn->mObjectGaugeAlpha        = 0.0f;
 	const Vec v2                   = { 0.0f, 0.0f, 0.0f };
-	scrn->_190.x                   = v2.x;
-	scrn->_190.y                   = v2.y;
-	scrn->_190.z                   = v2.z;
-	scrn->_19C                     = NULL;
-	scrn->_1A0                     = 0;
-	scrn->_1A4                     = 0.0f;
+	scrn->mObjectGaugePos.x        = v2.x;
+	scrn->mObjectGaugePos.y        = v2.y;
+	scrn->mObjectGaugePos.z        = v2.z;
+	scrn->mGaugeTarget             = NULL;
+	scrn->mPlayerIconState         = 0;
+	scrn->mPlayerIconAlpha         = 0.0f;
 	const Vec v3                   = { 0.0f, 0.0f, 0.0f };
 	scrn->_1A8.x                   = v3.x;
 	scrn->_1A8.y                   = v3.y;
 	scrn->_1A8.z                   = v3.z;
-	scrn->_1B4                     = 0;
-	scrn->_1B8                     = 0.0f;
+	scrn->mTimerState              = 0;
+	scrn->mTimerAlpha              = 0.0f;
 	scrn->mTimer                   = 0.0f;
 	scrn->mTimerShown              = 0;
 	scrn->mScanlineVisibilityState = 0;
@@ -193,25 +193,25 @@ extern "C" void InitInfoScreen(InfoScrn* scrn)
 	scrn->_1CC                     = 0.0f;
 	scrn->_184                     = 0;
 	scrn->mSelectedSaveSlot        = 0;
-	scrn->_CC                      = 0.0f;
-	scrn->_D0                      = 0.0f;
-	scrn->_D4                      = 0;
-	scrn->_D8                      = 0;
-	scrn->_DC                      = 1.4f;
-	f32 d                          = scrn->_CC - scrn->_D0;
+	scrn->mBatteryValue            = 0.0f;
+	scrn->mBatteryTarget           = 0.0f;
+	scrn->mBatteryEmptyTimer       = 0;
+	scrn->mBatteryEmptyStep        = 0;
+	scrn->mBatteryScale            = 1.4f;
+	f32 d                          = scrn->mBatteryValue - scrn->mBatteryTarget;
 	for (int i = 0; i < 4; i++) {
-		scrn->_E0[i]  = 0.0f;
-		scrn->_F0[i]  = 0;
-		scrn->_100[i] = 0;
-		scrn->_104[i] = d;
-		scrn->_114[i] = 0.0f;
+		scrn->mDigitRoll[i]      = 0.0f;
+		scrn->mDigitValue[i]     = 0;
+		scrn->mDigitRolling[i]   = 0;
+		scrn->mDigitDelta[i]     = d;
+		scrn->mDigitLastDelta[i] = 0.0f;
 	}
-	scrn->_124       = 0;
-	scrn->_134       = 0;
-	scrn->_138       = 0.0f;
-	scrn->_13C       = 0.0f;
-	gHudOpacityScale = 1.0f;
-	scrn->mItemMax   = 5;
+	scrn->mBatteryEmpty          = 0;
+	scrn->mBatteryDim            = 0;
+	scrn->mBatteryDimAlpha       = 0.0f;
+	scrn->mTargetBatteryDimAlpha = 0.0f;
+	gHudOpacityScale             = 1.0f;
+	scrn->mItemMax               = 5;
 }
 
 /**
@@ -232,59 +232,59 @@ extern "C" BOOL HideHudPointCounters(InfoScrn* scrn)
  */
 extern "C" void ResetGameHudState(InfoScrn* scrn)
 {
-	scrn->_A8           = 0.0f;
-	scrn->_AC           = 0.0f;
-	scrn->_B0           = 0.0f;
-	scrn->_140          = 0.0f;
-	scrn->_144          = 0.0f;
-	scrn->_98           = 0;
-	scrn->_9C           = 0;
-	scrn->_A0           = 0;
-	scrn->_A4           = 0;
-	scrn->_B4           = 0;
-	scrn->mBatteryGauge = 0.0f;
-	scrn->_B8           = 0;
-	scrn->_17C          = 0;
-	scrn->_180          = 0;
+	scrn->mHudAlpha        = 0.0f;
+	scrn->mAttachmentAlpha = 0.0f;
+	scrn->mMenuHudAlpha    = 0.0f;
+	scrn->mDimAlpha        = 0.0f;
+	scrn->mTargetDimAlpha  = 0.0f;
+	scrn->_98              = 0;
+	scrn->mHudState        = 0;
+	scrn->mAttachmentState = 0;
+	scrn->mMenuHudState    = 0;
+	scrn->mFrameCount      = 0;
+	scrn->mBatteryGauge    = 0.0f;
+	scrn->_B8              = 0;
+	scrn->mIconFrameTimer  = 0;
+	scrn->mIconFrame       = 0;
 	InitHudPointCounter(&gHudHappyPointCounter, INFOPOINT_ID + 2);
 	InitHudPointCounter(&gHudMoneyCounter, INFOPOINT_ID);
 	InitHudPointCounter(&gHudScrapCounter, INFOPOINT_ID + 1);
 	gHudHappyPointCounter.mVisible = FALSE;
 	gHudMoneyCounter.mVisible      = FALSE;
 	gHudScrapCounter.mVisible      = FALSE;
-	scrn->_BC                      = 0;
-	scrn->_C0                      = 0.0f;
-	scrn->_C4                      = 0.0f;
-	scrn->_C8                      = 0.0f;
+	scrn->mBatteryState            = 0;
+	scrn->mBatteryAlpha            = 0.0f;
+	scrn->mBatteryOffsetY          = 0.0f;
+	scrn->mTargetBatteryOffsetY    = 0.0f;
 	const Vec v0                   = { 0.0f, 0.0f, 0.0f };
 	scrn->_128.x                   = v0.x;
 	scrn->_128.y                   = v0.y;
 	scrn->_128.z                   = v0.z;
-	scrn->_148                     = 0;
-	scrn->_14C                     = 0.0f;
-	scrn->_150                     = 0;
-	scrn->_154                     = 0;
-	scrn->_158                     = 0;
+	scrn->mItemMaxState            = 0;
+	scrn->mItemMaxFade             = 0.0f;
+	scrn->mTimeWarningBeeps        = 0;
+	scrn->mTimeWarningTick         = 0;
+	scrn->mTimeWarningBeeped       = 0;
 	const Vec v1                   = { 0.0f, 0.0f, 0.0f };
 	scrn->_170.x                   = v1.x;
 	scrn->_170.y                   = v1.y;
 	scrn->_170.z                   = v1.z;
-	scrn->_16C                     = 1.0f;
-	scrn->_188                     = 0;
-	scrn->_18C                     = 0.0f;
+	scrn->mItemMaxScale            = 1.0f;
+	scrn->mObjectGaugeState        = 0;
+	scrn->mObjectGaugeAlpha        = 0.0f;
 	const Vec v2                   = { 0.0f, 0.0f, 0.0f };
-	scrn->_190.x                   = v2.x;
-	scrn->_190.y                   = v2.y;
-	scrn->_190.z                   = v2.z;
-	scrn->_19C                     = NULL;
-	scrn->_1A0                     = 0;
-	scrn->_1A4                     = 0.0f;
+	scrn->mObjectGaugePos.x        = v2.x;
+	scrn->mObjectGaugePos.y        = v2.y;
+	scrn->mObjectGaugePos.z        = v2.z;
+	scrn->mGaugeTarget             = NULL;
+	scrn->mPlayerIconState         = 0;
+	scrn->mPlayerIconAlpha         = 0.0f;
 	const Vec v3                   = { 0.0f, 0.0f, 0.0f };
 	scrn->_1A8.x                   = v3.x;
 	scrn->_1A8.y                   = v3.y;
 	scrn->_1A8.z                   = v3.z;
-	scrn->_1B4                     = 0;
-	scrn->_1B8                     = 0.0f;
+	scrn->mTimerState              = 0;
+	scrn->mTimerAlpha              = 0.0f;
 	scrn->mTimer                   = 0.0f;
 	scrn->mTimerShown              = 0;
 	scrn->mScanlineVisibilityState = 0;
@@ -292,25 +292,25 @@ extern "C" void ResetGameHudState(InfoScrn* scrn)
 	scrn->_1CC                     = 0.0f;
 	scrn->_184                     = 0;
 	scrn->mSelectedSaveSlot        = 0;
-	scrn->_CC                      = 0.0f;
-	scrn->_D0                      = 0.0f;
-	scrn->_D4                      = 0;
-	scrn->_D8                      = 0;
-	scrn->_DC                      = 1.4f;
-	f32 d                          = scrn->_CC - scrn->_D0;
+	scrn->mBatteryValue            = 0.0f;
+	scrn->mBatteryTarget           = 0.0f;
+	scrn->mBatteryEmptyTimer       = 0;
+	scrn->mBatteryEmptyStep        = 0;
+	scrn->mBatteryScale            = 1.4f;
+	f32 d                          = scrn->mBatteryValue - scrn->mBatteryTarget;
 	for (int i = 0; i < 4; i++) {
-		scrn->_E0[i]  = 0.0f;
-		scrn->_F0[i]  = 0;
-		scrn->_100[i] = 0;
-		scrn->_104[i] = d;
-		scrn->_114[i] = 0.0f;
+		scrn->mDigitRoll[i]      = 0.0f;
+		scrn->mDigitValue[i]     = 0;
+		scrn->mDigitRolling[i]   = 0;
+		scrn->mDigitDelta[i]     = d;
+		scrn->mDigitLastDelta[i] = 0.0f;
 	}
-	scrn->_124       = 0;
-	scrn->_134       = 0;
-	scrn->_138       = 0.0f;
-	scrn->_13C       = 0.0f;
-	gHudOpacityScale = 1.0f;
-	scrn->mItemMax   = 5;
+	scrn->mBatteryEmpty          = 0;
+	scrn->mBatteryDim            = 0;
+	scrn->mBatteryDimAlpha       = 0.0f;
+	scrn->mTargetBatteryDimAlpha = 0.0f;
+	gHudOpacityScale             = 1.0f;
+	scrn->mItemMax               = 5;
 }
 
 /**
@@ -501,10 +501,10 @@ static inline s32 HighlightedAttachment()
 
 static inline void AdvanceHudIcon(InfoScrn* h)
 {
-	if (++h->_17C > 1) {
-		if (++h->_180 >= 9)
-			h->_180 = 9;
-		h->_17C = 0;
+	if (++h->mIconFrameTimer > 1) {
+		if (++h->mIconFrame >= 9)
+			h->mIconFrame = 9;
+		h->mIconFrameTimer = 0;
 	}
 }
 
@@ -527,159 +527,159 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 	UpdateHudPointValue(&gHudHappyPointCounter, frames);
 	UpdateHudPointValue(&gHudMoneyCounter, frames);
 	UpdateHudPointValue(&gHudScrapCounter, frames);
-	++h->_B4;
-	switch (h->_9C) {
+	++h->mFrameCount;
+	switch (h->mHudState) {
 	case 0:
-		++h->_9C;
+		++h->mHudState;
 		break;
 	case 1:
-		h->_A8 += 0.08f * frames;
-		if (h->_A8 >= 1) {
-			h->_A8 = 1;
-			++h->_9C;
+		h->mHudAlpha += 0.08f * frames;
+		if (h->mHudAlpha >= 1) {
+			h->mHudAlpha = 1;
+			++h->mHudState;
 		}
 		break;
 	case 2:
 		if (gGame.mEvt.mData.mScript)
-			++h->_9C;
+			++h->mHudState;
 		break;
 	case 3:
-		h->_A8 -= 0.08f * frames;
-		if (h->_A8 < 0) {
-			h->_A8 = 0;
-			++h->_9C;
+		h->mHudAlpha -= 0.08f * frames;
+		if (h->mHudAlpha < 0) {
+			h->mHudAlpha = 0;
+			++h->mHudState;
 		}
 		break;
 	case 4:
 		if (!gGame.mEvt.mData.mScript)
-			h->_9C = 1;
+			h->mHudState = 1;
 		break;
 	}
-	h->_A8 = 1;
+	h->mHudAlpha = 1;
 	CPad pad(0);
-	switch (h->_A0) {
+	switch (h->mAttachmentState) {
 	case 0:
 		if (gGame.GetPlayer()->GetAttachment()) {
 			h->_B8 = -1;
-			++h->_A0;
+			++h->mAttachmentState;
 		}
 		break;
 	case 1:
-		h->_AC += 0.08f * frames;
-		if (h->_AC >= 1) {
-			h->_AC = 1;
-			++h->_A0;
+		h->mAttachmentAlpha += 0.08f * frames;
+		if (h->mAttachmentAlpha >= 1) {
+			h->mAttachmentAlpha = 1;
+			++h->mAttachmentState;
 		}
 		break;
 	case 2:
 		if (h->_B8 != -1 || !gGame.GetPlayer()->GetAttachment())
-			++h->_A0;
+			++h->mAttachmentState;
 		break;
 	case 3:
-		h->_AC -= 0.08f * frames;
-		if (h->_AC < 0) {
-			h->_AC = 0;
-			h->_A0 = 0;
+		h->mAttachmentAlpha -= 0.08f * frames;
+		if (h->mAttachmentAlpha < 0) {
+			h->mAttachmentAlpha = 0;
+			h->mAttachmentState = 0;
 		}
 		break;
 	}
 	static s32 previousAttachment = HighlightedAttachment();
-	switch (h->_A4) {
+	switch (h->mMenuHudState) {
 	case 0:
 		if (gGame.mStatus.mFlags & 0x400) {
-			++h->_A4;
+			++h->mMenuHudState;
 			previousAttachment = HighlightedAttachment();
-			h->_17C            = 0;
-			h->_180            = 0;
+			h->mIconFrameTimer = 0;
+			h->mIconFrame      = 0;
 		}
 		break;
 	case 1:
-		h->_B0 += 0.08f * frames;
-		if (h->_B0 >= 1) {
-			h->_B0 = 1;
-			++h->_A4;
+		h->mMenuHudAlpha += 0.08f * frames;
+		if (h->mMenuHudAlpha >= 1) {
+			h->mMenuHudAlpha = 1;
+			++h->mMenuHudState;
 		}
 		AdvanceHudIcon(h);
 		break;
 	case 2:
 		if (previousAttachment != HighlightedAttachment()) {
-			h->_17C = 0;
-			h->_180 = 0;
+			h->mIconFrameTimer = 0;
+			h->mIconFrame      = 0;
 		}
 		previousAttachment = HighlightedAttachment();
 		AdvanceHudIcon(h);
 		if (!(gGame.mStatus.mFlags & 0x400))
-			++h->_A4;
+			++h->mMenuHudState;
 		break;
 	case 3:
-		h->_B0 -= 0.08f * frames;
-		if (h->_B0 < 0) {
-			h->_B0 = 0;
-			h->_A4 = 0;
+		h->mMenuHudAlpha -= 0.08f * frames;
+		if (h->mMenuHudAlpha < 0) {
+			h->mMenuHudAlpha = 0;
+			h->mMenuHudState = 0;
 		}
 		break;
 	}
-	switch (h->_BC) {
+	switch (h->mBatteryState) {
 	case 0:
-		h->_BC = 3;
-		h->_C0 = 0;
-		h->_DC = 1.4f;
+		h->mBatteryState = 3;
+		h->mBatteryAlpha = 0;
+		h->mBatteryScale = 1.4f;
 		break;
 	case 1:
-		h->_C0 = 1;
+		h->mBatteryAlpha = 1;
 		break;
 	case 2:
-		h->_C0 = 0;
+		h->mBatteryAlpha = 0;
 		break;
 	case 3:
-		h->_C0 += 0.08f * frames;
-		if (h->_C0 >= 1)
-			h->_C0 = 1;
+		h->mBatteryAlpha += 0.08f * frames;
+		if (h->mBatteryAlpha >= 1)
+			h->mBatteryAlpha = 1;
 		break;
 	case 4:
-		h->_C0 -= 0.08f * frames;
-		if (h->_C0 < 0)
-			h->_C0 = 0;
+		h->mBatteryAlpha -= 0.08f * frames;
+		if (h->mBatteryAlpha < 0)
+			h->mBatteryAlpha = 0;
 		break;
 	case 5:
-		ApproachHudScale(h->_DC, 1.4f + 0.25f * (f32)sin(0.017453292f * ((s32)((u32)h->_B4 * 16) % 360)));
+		ApproachHudScale(h->mBatteryScale, 1.4f + 0.25f * (f32)sin(0.017453292f * ((s32)((u32)h->mFrameCount * 16) % 360)));
 		break;
 	case 6:
-		ApproachHudScale(h->_DC, 1.4f);
+		ApproachHudScale(h->mBatteryScale, 1.4f);
 		break;
 	}
-	f32 step = (h->_C8 - h->_C4) * 0.25f;
+	f32 step = (h->mTargetBatteryOffsetY - h->mBatteryOffsetY) * 0.25f;
 	if (step < 0)
 		step = -step;
-	Approach(&h->_C4, &h->_C8, step);
-	Approach(&h->_140, &h->_144, 0.08f * frames);
-	switch (h->_148) {
+	Approach(&h->mBatteryOffsetY, &h->mTargetBatteryOffsetY, step);
+	Approach(&h->mDimAlpha, &h->mTargetDimAlpha, 0.08f * frames);
+	switch (h->mItemMaxState) {
 	case 0:
-		h->_148          = 3;
-		h->_14C          = 0;
-		h->mItemMaxAlpha = h->_14C;
+		h->mItemMaxState = 3;
+		h->mItemMaxFade  = 0;
+		h->mItemMaxAlpha = h->mItemMaxFade;
 		h->mItemMax      = ItemMax();
-		h->_16C          = 1;
+		h->mItemMaxScale = 1;
 		break;
 	case 1:
-		h->_14C          = 1;
-		h->mItemMaxAlpha = h->_14C;
+		h->mItemMaxFade  = 1;
+		h->mItemMaxAlpha = h->mItemMaxFade;
 		break;
 	case 2:
-		h->_14C          = 0;
-		h->mItemMaxAlpha = h->_14C;
+		h->mItemMaxFade  = 0;
+		h->mItemMaxAlpha = h->mItemMaxFade;
 		break;
 	case 3:
-		h->_14C += 0.08f * frames;
-		if (h->_14C >= 1)
-			h->_14C = 1;
-		h->mItemMaxAlpha = h->_14C;
+		h->mItemMaxFade += 0.08f * frames;
+		if (h->mItemMaxFade >= 1)
+			h->mItemMaxFade = 1;
+		h->mItemMaxAlpha = h->mItemMaxFade;
 		break;
 	case 4:
-		h->_14C -= 0.08f * frames;
-		if (h->_14C < 0)
-			h->_14C = 0;
-		h->mItemMaxAlpha = h->_14C;
+		h->mItemMaxFade -= 0.08f * frames;
+		if (h->mItemMaxFade < 0)
+			h->mItemMaxFade = 0;
+		h->mItemMaxAlpha = h->mItemMaxFade;
 		break;
 	case 5:
 		h->mItemMaxAlpha -= 0.08f * frames;
@@ -687,7 +687,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			h->mItemMaxAlpha = 0;
 			h->mItemMax      = h->mNextItemMax;
 			PlayGameSound(&gGame.mSound, 0xb6, 255);
-			++h->_148;
+			++h->mItemMaxState;
 		}
 		break;
 	case 6:
@@ -696,62 +696,62 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			h->mItemMaxAlpha = 1;
 		break;
 	case 7:
-		ApproachHudScale(h->_16C, 1.0f + 0.125f * (f32)sin(0.017453292f * ((s32)((u32)h->_B4 * 16) % 360)));
+		ApproachHudScale(h->mItemMaxScale, 1.0f + 0.125f * (f32)sin(0.017453292f * ((s32)((u32)h->mFrameCount * 16) % 360)));
 		break;
 	case 8:
-		ApproachHudScale(h->_16C, 1);
+		ApproachHudScale(h->mItemMaxScale, 1);
 		break;
 	}
 	if ((IsHudOn() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00) && gGame.mTimeState.mDuration > 0
 	     && !gGame.mTimeState.mRunning)
 	    || gGame.mTimeState.mTime >= 1)
-		++h->_154;
+		++h->mTimeWarningTick;
 	CJObj joint;
 	CVec position;
-	switch (h->_188) {
+	switch (h->mObjectGaugeState) {
 	case 0:
-		h->_188 = 4;
-		h->_18C = 0;
+		h->mObjectGaugeState = 4;
+		h->mObjectGaugeAlpha = 0;
 		break;
 	case 1:
-		h->_18C = 1;
-		if (h->_19C && (h->_19C->mStatus.mFlags & 1)) {
+		h->mObjectGaugeAlpha = 1;
+		if (h->mGaugeTarget && (h->mGaugeTarget->mStatus.mFlags & 1)) {
 			s32 path[] = { 0, 0 };
-			joint.Attach(FindJointByPath(h->_19C->mJObj, path, 2));
-			position = CVec(joint.GetPos());
-			Vec offset
-			    = { position.x - h->_19C->GetTranslateX(), position.y - h->_19C->GetTranslateY(), position.z - h->_19C->GetTranslateZ() };
-			h->_19C->ProjectOffsetToScreen(&offset, &position.x, &position.y, NULL, NULL);
-			position.z = 0;
-			h->_190    = position;
+			joint.Attach(FindJointByPath(h->mGaugeTarget->mJObj, path, 2));
+			position   = CVec(joint.GetPos());
+			Vec offset = { position.x - h->mGaugeTarget->GetTranslateX(), position.y - h->mGaugeTarget->GetTranslateY(),
+				           position.z - h->mGaugeTarget->GetTranslateZ() };
+			h->mGaugeTarget->ProjectOffsetToScreen(&offset, &position.x, &position.y, NULL, NULL);
+			position.z         = 0;
+			h->mObjectGaugePos = position;
 		}
 		break;
 	case 2:
-		h->_18C = 0;
+		h->mObjectGaugeAlpha = 0;
 		break;
 	case 3:
-		h->_18C += 0.08f * frames;
-		if (h->_18C >= 1)
-			h->_18C = 1;
-		if (h->_19C && (h->_19C->mStatus.mFlags & 1)) {
+		h->mObjectGaugeAlpha += 0.08f * frames;
+		if (h->mObjectGaugeAlpha >= 1)
+			h->mObjectGaugeAlpha = 1;
+		if (h->mGaugeTarget && (h->mGaugeTarget->mStatus.mFlags & 1)) {
 			s32 path[] = { 0, 0 };
-			joint.Attach(FindJointByPath(h->_19C->mJObj, path, 2));
-			position = CVec(joint.GetPos());
-			Vec offset
-			    = { position.x - h->_19C->GetTranslateX(), position.y - h->_19C->GetTranslateY(), position.z - h->_19C->GetTranslateZ() };
-			h->_19C->ProjectOffsetToScreen(&offset, &position.x, &position.y, NULL, NULL);
-			position.z = 0;
-			h->_190    = position;
+			joint.Attach(FindJointByPath(h->mGaugeTarget->mJObj, path, 2));
+			position   = CVec(joint.GetPos());
+			Vec offset = { position.x - h->mGaugeTarget->GetTranslateX(), position.y - h->mGaugeTarget->GetTranslateY(),
+				           position.z - h->mGaugeTarget->GetTranslateZ() };
+			h->mGaugeTarget->ProjectOffsetToScreen(&offset, &position.x, &position.y, NULL, NULL);
+			position.z         = 0;
+			h->mObjectGaugePos = position;
 		}
 		break;
 	case 4:
-		h->_18C -= 0.08f * frames;
-		if (h->_18C < 0)
-			h->_18C = 0;
+		h->mObjectGaugeAlpha -= 0.08f * frames;
+		if (h->mObjectGaugeAlpha < 0)
+			h->mObjectGaugeAlpha = 0;
 		break;
 	}
-	StepHudVisibility(h->_1A0, h->_1A4, frames);
-	StepHudVisibility(h->_1B4, h->_1B8, frames);
+	StepHudVisibility(h->mPlayerIconState, h->mPlayerIconAlpha, frames);
+	StepHudVisibility(h->mTimerState, h->mTimerAlpha, frames);
 	if (h->mTimerShown) {
 		h->mTimer += frames;
 		if (h->mTimer >= TIMER_MAX) {
@@ -780,10 +780,10 @@ extern "C" void DrawGameHud(InfoScrn* scrn)
 		DrawHudPointCounter(&gHudScrapCounter);
 		DrawHudBatteryGauge(scrn);
 		DrawHudClock(scrn);
-		f32 alpha = scrn->_18C * gHudOpacityScale;
+		f32 alpha = scrn->mObjectGaugeAlpha * gHudOpacityScale;
 		if (alpha > 0.0f) {
 			CTexObj tex;
-			if (scrn->_B4 % 32 >= 8) {
+			if (scrn->mFrameCount % 32 >= 8) {
 				tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[150 - StatusTextureOffset], 0);
 			} else {
 				tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[149 - StatusTextureOffset], 0);
@@ -796,8 +796,8 @@ extern "C" void DrawGameHud(InfoScrn* scrn)
 			w      = 0.8f * (1.1f * tw);
 			u16 th = GXGetTexObjHeight(&tex);
 			h      = 0.8f * th;
-			x      = 6.0f + (w / 2 + scrn->_190.x);
-			y      = scrn->_190.y - h / 2 - 6.0f;
+			x      = 6.0f + (w / 2 + scrn->mObjectGaugePos.x);
+			y      = scrn->mObjectGaugePos.y - h / 2 - 6.0f;
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
@@ -924,10 +924,10 @@ extern "C" void AllowIdleHudCounters(InfoScrn* scrn)
  */
 extern "C" void InfoScrn_DrawPlayerHudIcon(InfoScrn* scrn)
 {
-	f32 alpha = scrn->_1A4 * gHudOpacityScale;
+	f32 alpha = scrn->mPlayerIconAlpha * gHudOpacityScale;
 	if (alpha > 0.0f) {
 		CTexObj tex;
-		s32 frame = scrn->_B4 % 8;
+		s32 frame = scrn->mFrameCount % 8;
 		if (frame < 2) {
 			tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[149 - StatusTextureOffset], 0);
 		} else if (frame < 4) {
@@ -964,7 +964,7 @@ extern "C" void InfoScrn_DrawPlayerHudIcon(InfoScrn* scrn)
  */
 extern "C" void InfoScrn_DrawTimer(InfoScrn* scrn)
 {
-	f32 alpha = scrn->_1B8 * gHudOpacityScale;
+	f32 alpha = scrn->mTimerAlpha * gHudOpacityScale;
 	CTexObj tex;
 	if (alpha > 0.0f) {
 		u32 a      = 255.0f * alpha;
@@ -1153,13 +1153,13 @@ extern "C" BOOL InfoScrn_IsBatteryGaugeEmpty(InfoScrn* scrn)
 extern "C" void InitBatteryGauge(InfoScrn* scrn, f32 x)
 {
 	for (int i = 0; i < 5; i++) {
-		scrn->_E0[i]  = 1.0f;
-		scrn->_100[i] = 0;
-		scrn->_104[i] = 0.0f;
-		scrn->_114[i] = 0.0f;
+		scrn->mDigitRoll[i]      = 1.0f;
+		scrn->mDigitRolling[i]   = 0;
+		scrn->mDigitDelta[i]     = 0.0f;
+		scrn->mDigitLastDelta[i] = 0.0f;
 	}
-	scrn->_D0 = 10.0f * x;
-	scrn->_CC = scrn->_D0;
+	scrn->mBatteryTarget = 10.0f * x;
+	scrn->mBatteryValue  = scrn->mBatteryTarget;
 }
 
 /**
@@ -1171,30 +1171,30 @@ extern "C" void InfoScrn_ApplyBatteryHudCommand(InfoScrn* scrn, u8 show, s32 mod
 	switch (mode) {
 	case 0:
 		if (show) {
-			scrn->_BC = 1;
+			scrn->mBatteryState = 1;
 		} else {
-			scrn->_BC = 2;
+			scrn->mBatteryState = 2;
 		}
 		break;
 	case 1:
 		if (show) {
-			scrn->_BC = 3;
+			scrn->mBatteryState = 3;
 		} else {
-			scrn->_BC = 4;
+			scrn->mBatteryState = 4;
 		}
 		break;
 	case 2:
 		if (show) {
-			scrn->_C8 = -52.0f;
+			scrn->mTargetBatteryOffsetY = -52.0f;
 		} else {
-			scrn->_C8 = 0.0f;
+			scrn->mTargetBatteryOffsetY = 0.0f;
 		}
 		break;
 	case 3:
 		if (show) {
-			scrn->_BC = 5;
+			scrn->mBatteryState = 5;
 		} else {
-			scrn->_BC = 6;
+			scrn->mBatteryState = 6;
 		}
 		break;
 	}
@@ -1210,30 +1210,30 @@ extern "C" void InfoScrn_ApplyClockHudCommand(InfoScrn* scrn, u8 show, s32 mode,
 	switch (mode) {
 	case 0:
 		if (show) {
-			scrn->_148 = 1;
+			scrn->mItemMaxState = 1;
 		} else {
-			scrn->_148 = 2;
+			scrn->mItemMaxState = 2;
 		}
 		break;
 	case 1:
 		if (show) {
-			scrn->_148 = 3;
+			scrn->mItemMaxState = 3;
 		} else {
-			scrn->_148 = 4;
+			scrn->mItemMaxState = 4;
 		}
 		break;
 	case 2:
 		scrn->mItemMax = ItemMax();
 		break;
 	case 3:
-		scrn->_148         = 5;
-		scrn->mNextItemMax = ItemMax();
+		scrn->mItemMaxState = 5;
+		scrn->mNextItemMax  = ItemMax();
 		break;
 	case 4:
 		if (show) {
-			scrn->_148 = 7;
+			scrn->mItemMaxState = 7;
 		} else {
-			scrn->_148 = 8;
+			scrn->mItemMaxState = 8;
 		}
 		break;
 	}
@@ -1245,24 +1245,24 @@ extern "C" void InfoScrn_ApplyClockHudCommand(InfoScrn* scrn, u8 show, s32 mode,
  */
 extern "C" void InfoScrn_ApplyObjectGaugeCommand(InfoScrn* scrn, XObj* obj, u8 show, s32 mode)
 {
-	scrn->_19C = NULL;
+	scrn->mGaugeTarget = NULL;
 	switch (mode) {
 	case 0:
 		if (show) {
-			scrn->_188 = 1;
-			scrn->_19C = obj;
+			scrn->mObjectGaugeState = 1;
+			scrn->mGaugeTarget      = obj;
 		} else {
-			scrn->_188 = 2;
-			scrn->_19C = NULL;
+			scrn->mObjectGaugeState = 2;
+			scrn->mGaugeTarget      = NULL;
 		}
 		break;
 	case 1:
 		if (show) {
-			scrn->_188 = 3;
-			scrn->_19C = obj;
+			scrn->mObjectGaugeState = 3;
+			scrn->mGaugeTarget      = obj;
 		} else {
-			scrn->_188 = 4;
-			scrn->_19C = NULL;
+			scrn->mObjectGaugeState = 4;
+			scrn->mGaugeTarget      = NULL;
 		}
 		break;
 	}
@@ -1277,16 +1277,16 @@ extern "C" void InfoScrn_ApplyScoreHudCommand(InfoScrn* scrn, u8 show, s32 mode)
 	switch (mode) {
 	case 0:
 		if (show) {
-			scrn->_1A0 = 1;
+			scrn->mPlayerIconState = 1;
 		} else {
-			scrn->_1A0 = 2;
+			scrn->mPlayerIconState = 2;
 		}
 		break;
 	case 1:
 		if (show) {
-			scrn->_1A0 = 3;
+			scrn->mPlayerIconState = 3;
 		} else {
-			scrn->_1A0 = 4;
+			scrn->mPlayerIconState = 4;
 		}
 		break;
 	}
@@ -1301,16 +1301,16 @@ extern "C" void InfoScrn_ApplyTimerHudCommand(InfoScrn* scrn, u8 show, s32 mode)
 	switch (mode) {
 	case 0:
 		if (show) {
-			scrn->_1B4 = 1;
+			scrn->mTimerState = 1;
 		} else {
-			scrn->_1B4 = 2;
+			scrn->mTimerState = 2;
 		}
 		break;
 	case 1:
 		if (show) {
-			scrn->_1B4 = 3;
+			scrn->mTimerState = 3;
 		} else {
-			scrn->_1B4 = 4;
+			scrn->mTimerState = 4;
 		}
 		break;
 	}
@@ -1653,29 +1653,29 @@ static inline u32 BatteryDigitColor(int whole, u32 low, u32 active, u32 inactive
 }
 extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 {
-	f32 alpha = h->_C0 * gHudOpacityScale;
+	f32 alpha = h->mBatteryAlpha * gHudOpacityScale;
 	if (gGame.mStatus.mFlags & 0x400)
-		h->_144 = 1;
+		h->mTargetDimAlpha = 1;
 	else
-		h->_144 = 0;
+		h->mTargetDimAlpha = 0;
 	f32 target = 10.f * gGame.GetPlayer()->mParams.mBattery;
 	f32 y      = 22.f + (GetHudBottomEdge() - 50.f);
-	if (target <= 0 && h->_CC > 0) {
-		h->_124 = 1;
-		h->_D4 = h->_D8 = 0;
+	if (target <= 0 && h->mBatteryValue > 0) {
+		h->mBatteryEmpty      = 1;
+		h->mBatteryEmptyTimer = h->mBatteryEmptyStep = 0;
 	}
 	if (target > 0)
-		h->_124 = 0;
+		h->mBatteryEmpty = 0;
 	if ((s32)gGame.GetPlayer()->mParams._1C[0] > 0) {
-		h->_134 = 1;
-		h->_13C = 1;
+		h->mBatteryDim            = 1;
+		h->mTargetBatteryDimAlpha = 1;
 	} else {
-		h->_134 = 0;
-		h->_13C = 0;
+		h->mBatteryDim            = 0;
+		h->mTargetBatteryDimAlpha = 0;
 	}
-	ApproachHudValue(&h->_138, &h->_13C, .18f);
-	const f32 fade = 1.f - h->_138;
-	f32 scale      = h->_DC;
+	ApproachHudValue(&h->mBatteryDimAlpha, &h->mTargetBatteryDimAlpha, .18f);
+	const f32 fade = 1.f - h->mBatteryDimAlpha;
+	f32 scale      = h->mBatteryScale;
 	CTexObj tex;
 	CopyMenuTextureObject(&tex, &HudTexture(124));
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
@@ -1685,16 +1685,16 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	CopyMenuTextureObject(&tex, &HudTexture(125));
 	PSMTXScale(tex.mMtx[1], 1, .1f, 1);
-	tex.mMtxDirty = TRUE;
-	h->_D0        = target;
-	f32 change    = h->_CC - h->_D0;
-	f32 step      = Abs((h->_D0 - h->_CC) / 20.f);
+	tex.mMtxDirty     = TRUE;
+	h->mBatteryTarget = target;
+	f32 change        = h->mBatteryValue - h->mBatteryTarget;
+	f32 step          = Abs((h->mBatteryTarget - h->mBatteryValue) / 20.f);
 	if (step >= 53.999996f)
 		step = 53.999996f;
 	if (step <= 1)
 		step = 1;
-	ApproachHudValue(&h->_CC, &h->_D0, step);
-	h->mBatteryGauge = h->_CC;
+	ApproachHudValue(&h->mBatteryValue, &h->mBatteryTarget, step);
+	h->mBatteryGauge = h->mBatteryValue;
 	u32 digitAlpha   = (u32)(opacity * fade);
 	u32 red          = 0xff646400 | digitAlpha;
 	u32 green        = 0x89ff2900 | digitAlpha;
@@ -1703,58 +1703,58 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 	f32 smallScale = .9f * scale, smallX = 7.9f * scale, largeX = 2.f * scale;
 	for (int i = 0; i < 4; ++i) {
 		f32 digitScale = scale, offset = largeX;
-		if (target <= 0 && h->_CC <= 0 && h->_124 == 1)
+		if (target <= 0 && h->mBatteryValue <= 0 && h->mBatteryEmpty == 1)
 			break;
 		if (i == 0) {
 			digitScale = smallScale;
 			offset     = smallX;
 		}
-		if (!h->_100[i])
-			h->_104[i] = change;
+		if (!h->mDigitRolling[i])
+			h->mDigitDelta[i] = change;
 		if (change != 0)
-			h->_114[i] = change;
+			h->mDigitLastDelta[i] = change;
 		int divisor = 1;
 		for (int p = 0; p < i; ++p)
 			divisor *= 10;
-		int whole = (s32)h->_CC / divisor, digit = whole % 10;
-		if (h->_F0[i] != digit) {
-			h->_E0[i]  = 0;
-			h->_100[i] = 1;
+		int whole = (s32)h->mBatteryValue / divisor, digit = whole % 10;
+		if (h->mDigitValue[i] != digit) {
+			h->mDigitRoll[i]    = 0;
+			h->mDigitRolling[i] = 1;
 		}
 		if (!(gGame.mStatus.mFlags & 0x200000000000ULL))
-			h->_E0[i] += .08f;
-		if (h->_E0[i] > 1) {
-			h->_E0[i]  = 1;
-			h->_100[i] = 0;
+			h->mDigitRoll[i] += .08f;
+		if (h->mDigitRoll[i] > 1) {
+			h->mDigitRoll[i]    = 1;
+			h->mDigitRolling[i] = 0;
 		}
-		h->_F0[i] = digit;
+		h->mDigitValue[i] = digit;
 		f32 amount;
 		if (!i) {
-			f32 value = h->_CC / divisor;
+			f32 value = h->mBatteryValue / divisor;
 			amount    = 1.f - (value - (s32)value);
 		} else
-			amount = h->_E0[i];
+			amount = h->mDigitRoll[i];
 		u32 color;
 
-		if (h->_104[i] > 0) {
+		if (h->mDigitDelta[i] > 0) {
 			color = BatteryDigitColor(whole, red, green, gray);
 			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit + (1.f - amount) / 10.f, amount,
 			                     (1.f - amount), true);
 			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount), .1f * ((whole + 1) % 10), (1.f - amount),
 			                     amount);
-		} else if (h->_104[i] < 0) {
+		} else if (h->mDigitDelta[i] < 0) {
 			color = BatteryDigitColor(whole, red, green, gray);
 			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit, amount, (1.f - amount));
 			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount), .1f * ((whole - 1) % 10) + amount / 10.f,
 			                     (1.f - amount), amount, true);
 		} else {
 			color = BatteryDigitColor(whole, red, green, gray);
-			if (h->_114[i] > 0) {
+			if (h->mDigitLastDelta[i] > 0) {
 				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit + (1.f - amount) / 10.f, amount,
 				                     (1.f - amount), true);
 				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount), .1f * ((whole + 1) % 10),
 				                     (1.f - amount), amount);
-			} else if (h->_114[i] < 0) {
+			} else if (h->mDigitLastDelta[i] < 0) {
 				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit, amount, (1.f - amount));
 				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount),
 				                     .1f * ((whole - 1) % 10) + amount / 10.f, (1.f - amount), amount, true);
@@ -1763,13 +1763,13 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 			}
 		}
 	}
-	if (target <= 0 && h->_CC <= 0 && h->_124 == 1) {
-		++h->_D4;
-		if (h->_D4 > 1) {
-			++h->_D8;
-			if (h->_D8 >= 9)
-				h->_D8 = 9;
-			h->_D4 = 0;
+	if (target <= 0 && h->mBatteryValue <= 0 && h->mBatteryEmpty == 1) {
+		++h->mBatteryEmptyTimer;
+		if (h->mBatteryEmptyTimer > 1) {
+			++h->mBatteryEmptyStep;
+			if (h->mBatteryEmptyStep >= 9)
+				h->mBatteryEmptyStep = 9;
+			h->mBatteryEmptyTimer = 0;
 		}
 		for (int i = 0; i < 4; ++i) {
 			f32 digitScale = scale, offset = largeX;
@@ -1778,7 +1778,7 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 				offset     = smallX;
 			}
 
-			int frame = h->_D8 % 10 + 1;
+			int frame = h->mBatteryEmptyStep % 10 + 1;
 			CopyMenuTextureObject(&tex, &HudTexture(125));
 			f32 fill = .1f * frame;
 			SetBatterySlice(tex, .1f * (1.f - fill), 0);
@@ -1799,7 +1799,7 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 			DrawBatteryOverlay(tex, emptyColor, i, offset, y, w, ht, gap, fill, rest);
 		}
 	}
-	if (h->_134 == 1) {
+	if (h->mBatteryDim == 1) {
 		for (int i = 0; i < 4; ++i) {
 
 			f32 digitScale = scale, offset = largeX, verticalOffset = -2.f;
@@ -1814,7 +1814,7 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 			f32 digitW     = digitScale * GXGetTexObjWidth(&tex);
 			u16 texH       = GXGetTexObjHeight(&tex);
 			f32 digitH     = digitScale * texH / 10.f;
-			u32 digitColor = (u32)(h->_138 * opacity) | 0x50505000;
+			u32 digitColor = (u32)(h->mBatteryDimAlpha * opacity) | 0x50505000;
 			DrawBatteryQuad(tex, digitColor, BatteryDigitX(i, offset, digitW + gap), (y + verticalOffset) + digitH * .5f, digitW,
 			                digitH * 0.f);
 
@@ -1827,7 +1827,7 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 			CopyMenuTextureObject(&tex, &HudTexture(167));
 			f32 w = digitScale * GXGetTexObjWidth(&tex), ht = digitScale * GXGetTexObjHeight(&tex);
 			SetBatterySlice(tex, 1, 0);
-			u32 overlayColor = (u32)(h->_138 * opacity) | 0x89ff2900;
+			u32 overlayColor = (u32)(h->mBatteryDimAlpha * opacity) | 0x89ff2900;
 			DrawBatteryOverlay(tex, overlayColor, i, offset, y + verticalOffset, w, ht, gap, 1.f, 0.f);
 		}
 	}
@@ -1844,7 +1844,7 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 		Vec points[]
 		    = { (Vec) { x, top, 0 }, (Vec) { x + w, top, 0 }, (Vec) { x + w, top + ht, 0 }, (Vec) { x, top + ht, 0 }, (Vec) { x, top, 0 } };
 		DrawGsTrianglePrimitive(&gGame.mGs, (GXPrimitive)0xa0, gGame.mGs.mCamera->mViewMtx, points,
-		                        0x0a0a0a00 | (u32)((120.f * alpha) * h->_140), 5);
+		                        0x0a0a0a00 | (u32)((120.f * alpha) * h->mDimAlpha), 5);
 	}
 }
 
@@ -1869,11 +1869,11 @@ static inline void DrawClockQuad(CTexObj& tex, u32 color, f32 x, f32 y, f32 z, f
 
 extern "C" void DrawHudClock(InfoScrn* scrn)
 {
-	f32 alpha = scrn->_14C * gHudOpacityScale;
+	f32 alpha = scrn->mItemMaxFade * gHudOpacityScale;
 	if (!(alpha > 0.0f))
 		return;
 	CTexObj tex;
-	f32 scale = 1.1f * scrn->_16C;
+	f32 scale = 1.1f * scrn->mItemMaxScale;
 	u32 color;
 	if (gGame.mTimeState.mMode == 0) {
 		tex   = HudTexture(156);
@@ -1907,28 +1907,28 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 	else {
 		f32 warning = 1.0f - (TIMER_RATE * 5) / ((TIMER_RATE * 600) / gGame.mTimeState.mDuration);
 		if (time < warning) {
-			scrn->_158 = 0;
-			scrn->_150 = 5;
+			scrn->mTimeWarningBeeped = 0;
+			scrn->mTimeWarningBeeps  = 5;
 		}
 		if (time >= warning) {
-			f32 wave     = sin(0.017453292f * ((s32)((u32)scrn->_154 * 12) % 360));
+			f32 wave     = sin(0.017453292f * ((s32)((u32)scrn->mTimeWarningTick * 12) % 360));
 			bool running = gGame.IsRunning() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00)
 			            && gGame.mTimeState.mDuration > 0 && !gGame.mTimeState.mRunning;
 			if (running || time >= 1) {
 				if (wave > 0) {
-					if (scrn->_150 >= 0 && !scrn->_158) {
-						if (scrn->_150 == 0 || time >= 0.999f) {
+					if (scrn->mTimeWarningBeeps >= 0 && !scrn->mTimeWarningBeeped) {
+						if (scrn->mTimeWarningBeeps == 0 || time >= 0.999f) {
 							PlayGameSound(&gGame.mSound, 0xb6, 255);
-							scrn->_150 = 0;
+							scrn->mTimeWarningBeeps = 0;
 						} else
 							PlayGameSound(&gGame.mSound, 0xb5, 255);
-						--scrn->_150;
-						scrn->_158 = 1;
+						--scrn->mTimeWarningBeeps;
+						scrn->mTimeWarningBeeped = 1;
 					}
 				} else
-					scrn->_158 = 0;
+					scrn->mTimeWarningBeeped = 0;
 			}
-			color = (wave > 0 || scrn->_150 < 0 ? 0xffffff00 : 0xa0a0a000) | opacity;
+			color = (wave > 0 || scrn->mTimeWarningBeeps < 0 ? 0xffffff00 : 0xa0a0a000) | opacity;
 		} else
 			color = 0xffffff00 | opacity;
 	}
