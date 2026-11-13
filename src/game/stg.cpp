@@ -3331,9 +3331,9 @@ static inline void SelectDiscardQuantity(MenuStatus* menu, CPad& pad)
 			menu->mPhase++;
 		} else if (pad.mPad->mTrigger & 0x200) {
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
-			menu->_570   = 725.0f;
-			menu->_580   = 937.0f;
-			menu->mPhase = 0;
+			menu->mTargetItemPanelX    = 725.0f;
+			menu->mTargetDiscardPanelX = 937.0f;
+			menu->mPhase               = 0;
 		}
 	}
 }
@@ -3358,18 +3358,18 @@ static inline void ConfirmDiscardQuantity(MenuStatus* menu, CPad& pad, bool inve
 		if (menu->mChoice == 0) {
 			MenuStatusEntry* entry = &sStatusItemTable.mItems[menu->mItem];
 			RemoveInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, entry->mItem, menu->mCount);
-			menu->_570   = 725.0f;
-			menu->_580   = 937.0f;
-			menu->mPhase = 0;
+			menu->mTargetItemPanelX    = 725.0f;
+			menu->mTargetDiscardPanelX = 937.0f;
+			menu->mPhase               = 0;
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			menu->mItem = 0;
 			PopulateOwnedItemPage(&sStatusItemTable);
-			menu->_5E0 = 360.0f - (CountMenuItems() - 1) * 54;
+			menu->mTargetX = 360.0f - (CountMenuItems() - 1) * 54;
 			if (CountMenuItems() == 0) {
-				menu->_5E0 = 360.0f;
+				menu->mTargetX = 360.0f;
 			}
 			if (inventoryTab)
-				menu->_5E0 = 207.0f;
+				menu->mTargetX = 207.0f;
 		} else {
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			menu->mPhase = 1;
@@ -3411,17 +3411,17 @@ void MenuStatus::State3(u32)
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; i++) {
 				menu->mTabs2[i].mPosX = 0.0f;
-				if (menu->_674) {
+				if (menu->mHasFourthTab) {
 					menu->mTabs2[i].mX = 198.0f + i * 108 - 8.0f;
 				} else {
 					menu->mTabs2[i].mX = 252.0f + i * 108;
 				}
 			}
-			menu->_5E0 = 758.0f;
+			menu->mTargetX = 758.0f;
 		} else if ((pad.mPad->mTrigger & 0x100) && sStatusItemTable.mItems[menu->mItem].mCount >= 1) {
-			menu->_570   = 336.0f;
-			menu->_580   = 336.0f;
-			menu->mCount = 1;
+			menu->mTargetItemPanelX    = 336.0f;
+			menu->mTargetDiscardPanelX = 336.0f;
+			menu->mCount               = 1;
 			menu->mPhase++;
 		}
 		break;
@@ -3473,7 +3473,7 @@ void MenuStatus::State1(u32 frames)
 	case 0:
 		if (pad.mPad->mRepeat & 0x40001) {
 			if (--menu->mSelection < 0) {
-				if (menu->_674) {
+				if (menu->mHasFourthTab) {
 					menu->mSelection = 3;
 				} else {
 					menu->mSelection = 2;
@@ -3484,7 +3484,7 @@ void MenuStatus::State1(u32 frames)
 			menu->mHelp     = msg;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		} else if (pad.mPad->mRepeat & 0x80002) {
-			if (menu->_674) {
+			if (menu->mHasFourthTab) {
 				if (++menu->mSelection > 3) {
 					menu->mSelection = 0;
 				}
@@ -3520,7 +3520,7 @@ void MenuStatus::State1(u32 frames)
 				}
 				for (int i = 0; i < 4; i++) {
 					menu->mTabs2[i].mPosX = 758.0f;
-					if (menu->_674) {
+					if (menu->mHasFourthTab) {
 						menu->mTabs2[i].mX = 198.0f + i * 108 - 8.0f;
 					} else {
 						menu->mTabs2[i].mX = 252.0f + i * 108;
@@ -3530,12 +3530,12 @@ void MenuStatus::State1(u32 frames)
 				for (int i = 0; i < 4; i++) {
 					menu->mTabs2[i].mX = 0.0f;
 				}
-				menu->_5E0 = 360.0f - (count - 1) * 51;
+				menu->mTargetX = 360.0f - (count - 1) * 51;
 				if (count == 0) {
-					menu->_5E0 = 360.0f;
+					menu->mTargetX = 360.0f;
 				}
-				menu->_5E0 = 207.0f;
-				u32 color  = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
+				menu->mTargetX = 207.0f;
+				u32 color      = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
 				menu->mTitle.Set(GetLocalizedInterfaceText(StatusTitleText + 1), color);
 				s16 id              = sStatusItemTable.mItems[menu->mItem].mItem;
 				menu->mPreviousItem = menu->mItem;
@@ -3550,11 +3550,11 @@ void MenuStatus::State1(u32 frames)
 				break;
 			}
 			case 1: {
-				menu->_5F0      = 360.0f;
-				menu->mPrevMode = menu->mMode;
-				menu->mMode     = 4;
-				menu->mNextMode = 9;
-				menu->mPhase    = 0;
+				menu->mTargetOverviewX = 360.0f;
+				menu->mPrevMode        = menu->mMode;
+				menu->mMode            = 4;
+				menu->mNextMode        = 9;
+				menu->mPhase           = 0;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				for (int i = 0; i < 4; i++) {
 					menu->mTabs[i].mX = -102.0f;
@@ -3573,11 +3573,11 @@ void MenuStatus::State1(u32 frames)
 				break;
 			}
 			case 2: {
-				menu->_610      = 360.0f;
-				menu->mPrevMode = menu->mMode;
-				menu->mMode     = 4;
-				menu->mNextMode = 5;
-				menu->mPhase    = 0;
+				menu->mTargetDiagramX = 360.0f;
+				menu->mPrevMode       = menu->mMode;
+				menu->mMode           = 4;
+				menu->mNextMode       = 5;
+				menu->mPhase          = 0;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				for (int i = 0; i < 4; i++) {
 					menu->mTabs[i].mX = -102.0f;
@@ -3589,11 +3589,11 @@ void MenuStatus::State1(u32 frames)
 				break;
 			}
 			case 3: {
-				menu->_600      = 360.0f;
-				menu->mPrevMode = menu->mMode;
-				menu->mMode     = 4;
-				menu->mNextMode = 8;
-				menu->mPhase    = 0;
+				menu->mTargetGridX = 360.0f;
+				menu->mPrevMode    = menu->mMode;
+				menu->mMode        = 4;
+				menu->mNextMode    = 8;
+				menu->mPhase       = 0;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				for (int i = 0; i < 4; i++) {
 					menu->mTabs[i].mX = -102.0f;
@@ -4690,8 +4690,8 @@ BOOL MenuStatus::Draw()
 			f32 x    = (mX - 42.0f) + mOffsetX;
 			f32 y    = (180.0f + mY) + mOffsetY;
 			s32 item = mPhase == 100 ? -1 : mItem;
-			DrawInventoryGrid(item, x, y, mAlpha, 1.0f, _694);
-			DrawStatusItemDetails(sStatusItemTable.mItems[mItem].mItem, 320.0f, 224.0f, mAlpha, _66C);
+			DrawInventoryGrid(item, x, y, mAlpha, 1.0f, mPulsePhase);
+			DrawStatusItemDetails(sStatusItemTable.mItems[mItem].mItem, 320.0f, 224.0f, mAlpha, mDetailScale);
 			CheckPlayerInventoryFlags();
 			DrawDiscardCountPanel(this);
 			SetScissor(0, 448);
@@ -4925,11 +4925,11 @@ void MenuStatus::State9(u32)
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		}
 		if (pad.mPad->mTrigger & 0x200) {
-			menu->_5F0 = 1086.0f;
+			menu->mTargetOverviewX = 1086.0f;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; i++) {
 				menu->mTabs[i].mPosX = 0.0f;
-				if (menu->_674) {
+				if (menu->mHasFourthTab) {
 					menu->mTabs[i].mX = 198.0f + i * 108 - 8.0f;
 				} else {
 					menu->mTabs[i].mX = 252.0f + i * 108;
@@ -4951,8 +4951,8 @@ void MenuStatus::State9(u32)
 	case 100:
 		if (pad.mPad->mTrigger & 0x300) {
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			menu->mPhase = 0;
-			menu->_670   = 0.0f;
+			menu->mPhase             = 0;
+			menu->mTargetDetailScale = 0.0f;
 		}
 		break;
 	}
@@ -5036,11 +5036,11 @@ void MenuStatus::State8(u32)
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		}
 		if (pad.mPad->mTrigger & 0x200) {
-			menu->_600 = 959.0f;
+			menu->mTargetGridX = 959.0f;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; i++) {
 				menu->mTabs[i].mPosX = 0.0f;
-				if (menu->_674) {
+				if (menu->mHasFourthTab) {
 					menu->mTabs[i].mX = 198.0f + i * 108 - 8.0f;
 				} else {
 					menu->mTabs[i].mX = 252.0f + i * 108;
@@ -5061,8 +5061,8 @@ void MenuStatus::State8(u32)
 	case 100:
 		if (pad.mPad->mTrigger & 0x300) {
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			menu->mPhase = 0;
-			menu->_670   = 0.0f;
+			menu->mPhase             = 0;
+			menu->mTargetDetailScale = 0.0f;
 		}
 		break;
 	}
@@ -5078,11 +5078,11 @@ void MenuStatus::State5(u32)
 	MenuStatus* menu = this;
 	CPad pad(0);
 	if (pad.mPad->mTrigger & 0x200) {
-		menu->_610 = 1086.0f;
+		menu->mTargetDiagramX = 1086.0f;
 		PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 		for (int i = 0; i < 4; i++) {
 			menu->mTabs[i].mPosX = 0.0f;
-			if (menu->_674) {
+			if (menu->mHasFourthTab) {
 				menu->mTabs[i].mX = 198.0f + i * 108 - 8.0f;
 			} else {
 				menu->mTabs[i].mX = 252.0f + i * 108;
@@ -7324,7 +7324,7 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 	for (int i = 0; i < 4; i++) {
-		if (!menu->_674 && i == 3)
+		if (!menu->mHasFourthTab && i == 3)
 			continue;
 		f32 bob;
 		if (menu->mSelection == i && menu->mMode == 1)
@@ -7364,7 +7364,7 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 		if (menu->mSelection == i && menu->mMode == 1) {
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-			f32 pulse = menu->mAlpha * (0.2f * (f32)sin(3.1415927f * menu->_694) + 0.2f);
+			f32 pulse = menu->mAlpha * (0.2f * (f32)sin(3.1415927f * menu->mPulsePhase) + 0.2f);
 			if (pulse < 0.0f)
 				pulse = 0.0f;
 			color = (u32)(255.0f * pulse) | 0xFFFFFF00;
@@ -8214,30 +8214,30 @@ void MenuStatus::Open()
 {
 	CMenu::Open();
 	gGame.mStatus.mFlags |= 2;
-	mFontSize      = 22;
-	mRowCount      = 14;
-	mMaxWidth      = 0;
-	mOffsetX       = 0;
-	mOffsetY       = 0;
-	_540           = 0;
-	_544           = 0;
-	_548           = -10;
-	_54C           = -200;
-	_550           = -10;
-	mSlide         = 0;
-	_568           = 725;
-	_56C           = 100;
-	_570           = 725;
-	_574           = 100;
-	mDiscardPanelX = 937;
-	mDiscardPanelY = 100;
-	_580           = 937;
-	_584           = 100;
-	_674           = TRUE;
+	mFontSize            = 22;
+	mRowCount            = 14;
+	mMaxWidth            = 0;
+	mOffsetX             = 0;
+	mOffsetY             = 0;
+	mTargetOffsetX       = 0;
+	mTargetOffsetY       = 0;
+	mPanelX              = -10;
+	mPanelY              = -200;
+	mTargetPanelX        = -10;
+	mSlide               = 0;
+	mItemPanelX          = 725;
+	mItemPanelY          = 100;
+	mTargetItemPanelX    = 725;
+	mTargetItemPanelY    = 100;
+	mDiscardPanelX       = 937;
+	mDiscardPanelY       = 100;
+	mTargetDiscardPanelX = 937;
+	mTargetDiscardPanelY = 100;
+	mHasFourthTab        = TRUE;
 	for (int i = 0; i < 4; i++) {
 		mTabs[i].mPosX = 758;
 		mTabs[i].mPosY = 36;
-		if (_674)
+		if (mHasFourthTab)
 			mTabs[i].mX = (198.0f + i * 108) - 8.0f;
 		else
 			mTabs[i].mX = 252.0f + i * 108;
@@ -8247,22 +8247,22 @@ void MenuStatus::Open()
 		mTabs2[i].mX       = 758;
 		mTabs2[i].mTargetY = 36;
 	}
-	mX        = 758;
-	mY        = 36;
-	_5E0      = 758;
-	_5E4      = 36;
-	_5E8      = 1086;
-	_5EC      = 36;
-	_5F0      = 1086;
-	_5F4      = 36;
-	_5F8      = 959;
-	_5FC      = 36;
-	_600      = 959;
-	_604      = 36;
-	mDiagramX = 1086;
-	mDiagramY = 36;
-	_610      = 1086;
-	_614      = 36;
+	mX               = 758;
+	mY               = 36;
+	mTargetX         = 758;
+	mTargetY         = 36;
+	mOverviewX       = 1086;
+	mOverviewY       = 36;
+	mTargetOverviewX = 1086;
+	mTargetOverviewY = 36;
+	mGridX           = 959;
+	mGridY           = 36;
+	mTargetGridX     = 959;
+	mTargetGridY     = 36;
+	mDiagramX        = 1086;
+	mDiagramY        = 36;
+	mTargetDiagramX  = 1086;
+	mTargetDiagramY  = 36;
 	mWindow.SetSize(0, 0);
 	mWindow.SetPos(0, 0);
 	mMode              = 0;
@@ -8280,21 +8280,21 @@ void MenuStatus::Open()
 	ClearStatusTable(&sStatusItemTable);
 	PopulateOwnedItemPage(&sStatusItemTable);
 	SetMode(0);
-	_66C            = 0;
-	_670            = 0;
-	mSavedBgm       = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
-	mSavedBgmVolume = gGame.mSound.mMusicVolume;
-	if (!_674 && mSelection >= 3)
+	mDetailScale       = 0;
+	mTargetDetailScale = 0;
+	mSavedBgm          = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
+	mSavedBgmVolume    = gGame.mSound.mMusicVolume;
+	if (!mHasFourthTab && mSelection >= 3)
 		mSelection = 0;
 	if (gEventFlags.mFlags[0] & 4)
-		_67C = TRUE;
+		mIconLit = TRUE;
 	else
-		_67C = FALSE;
+		mIconLit = FALSE;
 	if ((gEventFlags.mFlags[0] & 0x20000000) && (gEventFlags.mFlags[0] & 0x40000000))
-		_679 = TRUE;
+		mShowGauge = TRUE;
 	else
-		_679 = FALSE;
-	_680 = gEventVars.mVars[0x220 / 4] / 10000.0f;
+		mShowGauge = FALSE;
+	mGaugeValue = gEventVars.mVars[0x220 / 4] / 10000.0f;
 	for (int i = 0; i < 24; i++)
 		gStatusIconUnlocked[i] = 0;
 	for (int i = 0; i < 24; i++) {
@@ -8551,28 +8551,28 @@ BOOL MenuStatus::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
 		mAnimationFrame++;
-		_694 += (1.0f / (0.3f * FRAME_RATE)) * frames;
-		if (_694 >= 2.0f)
-			_694 = fmod(_694, 2.0);
+		mPulsePhase += (1.0f / (0.3f * FRAME_RATE)) * frames;
+		if (mPulsePhase >= 2.0f)
+			mPulsePhase = fmod(mPulsePhase, 2.0);
 		CPad pad(0);
-		PCEase(mOffsetX, _540);
-		PCEase(mOffsetY, _544);
-		PCEase(_548, _550);
-		PCEase(_54C, mSlide);
+		PCEase(mOffsetX, mTargetOffsetX);
+		PCEase(mOffsetY, mTargetOffsetY);
+		PCEase(mPanelX, mTargetPanelX);
+		PCEase(mPanelY, mSlide);
 		for (int i = 0; i < 4; i++) {
 			PCEase(mTabs[i].mPosX, mTabs[i].mX);
 			PCEase(mTabs[i].mPosY, mTabs[i].mTargetY);
 			PCEase(mTabs2[i].mPosX, mTabs2[i].mX);
 			PCEase(mTabs2[i].mPosY, mTabs2[i].mTargetY);
 		}
-		PCEase(mX, _5E0);
-		ApproachHudValue(&mY, &_5E4, 20.0f);
-		PCEase(_5E8, _5F0);
-		ApproachHudValue(&_66C, &_670, 0.08f * frames);
-		PCEase(_5F8, _600);
-		ApproachHudValue(&_5FC, &_604, 20.0f);
-		PCEase(mDiagramX, _610);
-		ApproachHudValue(&mDiagramY, &_614, 20.0f);
+		PCEase(mX, mTargetX);
+		ApproachHudValue(&mY, &mTargetY, 20.0f);
+		PCEase(mOverviewX, mTargetOverviewX);
+		ApproachHudValue(&mDetailScale, &mTargetDetailScale, 0.08f * frames);
+		PCEase(mGridX, mTargetGridX);
+		ApproachHudValue(&mGridY, &mTargetGridY, 20.0f);
+		PCEase(mDiagramX, mTargetDiagramX);
+		ApproachHudValue(&mDiagramY, &mTargetDiagramY, 20.0f);
 		UpdateMenuTitle(this, frames);
 		switch (mShowHelp) {
 		case 1:
@@ -9582,7 +9582,7 @@ extern "C" u8* GetStatusOverviewDescription(s32);
 static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 {
 	s32 id    = iconGrid ? menu->mIconSelection : menu->mOverviewSelection;
-	f32 scale = menu->_66C;
+	f32 scale = menu->mDetailScale;
 	f32 alpha = menu->mAlpha;
 	// The original constructs a texture and advances its panel counter even when closed.
 	static u32 frame = 0;
@@ -9614,8 +9614,8 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 {
 	if (menu->mMode == 8 || menu->mMode == 4) {
-		f32 left     = ((menu->_5F8 - 42.0f) + menu->mOffsetX) - 201.0f;
-		f32 top      = ((180.0f + menu->_5FC) + menu->mOffsetY) - 81.0f;
+		f32 left     = ((menu->mGridX - 42.0f) + menu->mOffsetX) - 201.0f;
+		f32 top      = ((180.0f + menu->mGridY) + menu->mOffsetY) - 81.0f;
 		s32 selected = menu->mPhase == 100 ? -1 : menu->mIconSelection;
 		CTexObj tex;
 		static u32 frame = 0;
@@ -9641,7 +9641,7 @@ extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 			if (selected == i) {
 				SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-				f32 wave  = (f32)sin(3.1415927f * menu->_694);
+				f32 wave  = (f32)sin(3.1415927f * menu->mPulsePhase);
 				f32 pulse = (0.2f * wave + 0.2f) * menu->mAlpha;
 				if (pulse < 0)
 					pulse = 0;
@@ -9676,26 +9676,27 @@ static inline void DrawOverviewTexture(CTexObj& tex, u32 color, f32 x, f32 y, f3
 }
 static inline void DrawStatusOverviewEntry(MenuStatus* menu, s32 icon, s32 cell, s32 selected, f32 x, f32 y)
 {
-	DrawPlayerStatusIcon(icon - StatusTextureOffset, gStatusEntryAvailable[cell], cell == selected, x, y, menu->mAlpha, 0.8f, menu->_694);
+	DrawPlayerStatusIcon(icon - StatusTextureOffset, gStatusEntryAvailable[cell], cell == selected, x, y, menu->mAlpha, 0.8f,
+	                     menu->mPulsePhase);
 }
 static inline void DrawOverviewStats(MenuStatus* menu, s32 selected, f32 x, f32 y)
 {
 	f32 statX = 20.0f + (x - 280.0f);
 	DrawPlayerStatusValue(0xB4 - StatusTextureOffset, gGame.GetPlayer()->mParams.mRank, selected == 0, statX, (y - 80.0f) + 8.0f,
-	                      menu->mAlpha, menu->_694);
+	                      menu->mAlpha, menu->mPulsePhase);
 	DrawPlayerStatusValue(0x9A - StatusTextureOffset, gGame.GetPlayer()->mParams.mExperience, selected == 2, statX,
-	                      40.0f + (8.0f + ((y - 80.0f) + 44.0f)), menu->mAlpha, menu->_694);
+	                      40.0f + (8.0f + ((y - 80.0f) + 44.0f)), menu->mAlpha, menu->mPulsePhase);
 	DrawPlayerStatusValue(0x98 - StatusTextureOffset, gGame.GetPlayer()->mParams.mMoney, selected == 3, statX,
-	                      40.0f + (8.0f + ((y - 80.0f) + 88.0f)), menu->mAlpha, menu->_694);
+	                      40.0f + (8.0f + ((y - 80.0f) + 88.0f)), menu->mAlpha, menu->mPulsePhase);
 	DrawPlayerStatusValue(0x99 - StatusTextureOffset, gGame.GetPlayer()->mParams.mScrap, selected == 4, statX,
-	                      40.0f + (8.0f + ((y - 80.0f) + 132.0f)), menu->mAlpha, menu->_694);
+	                      40.0f + (8.0f + ((y - 80.0f) + 132.0f)), menu->mAlpha, menu->mPulsePhase);
 }
 extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 {
 	if (menu->mMode == 9 || menu->mMode == 4) {
 		CTexObj tex;
-		f32 x        = (menu->_5E8 - 42.0f) + menu->mOffsetX;
-		f32 y        = (180.0f + menu->_5EC) + menu->mOffsetY;
+		f32 x        = (menu->mOverviewX - 42.0f) + menu->mOffsetX;
+		f32 y        = (180.0f + menu->mOverviewY) + menu->mOffsetY;
 		s32 selected = menu->mPhase == 100 ? -1 : menu->mOverviewSelection;
 		DrawOverviewStats(menu, selected, x, y);
 		LoadOverviewTexture(tex, 173);
@@ -9715,7 +9716,7 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		LoadOverviewTexture(tex, 178);
 		f32 w = 1.4f * (1.1f * GXGetTexObjWidth(&tex)), h = 1.4f * GXGetTexObjHeight(&tex);
 		BeginOverviewTexture(tex);
-		if (menu->_67C)
+		if (menu->mIconLit)
 			color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
 		else
 			color = (u32)(255.0f * menu->mAlpha);
@@ -9730,8 +9731,8 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 			color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
 			DrawOverviewTexture(tex, color, 18.0f + center, 56.5f + middle, 1.4f * (1.1f * width), 1.4f * height);
 		}
-		if (menu->_679)
-			DrawStatusGauge(menu->_680, (11.0f + ((140.0f + x) - 120.0f)) - 12.0f, (114.0f + y) - 22.0f, menu->mAlpha);
+		if (menu->mShowGauge)
+			DrawStatusGauge(menu->mGaugeValue, (11.0f + ((140.0f + x) - 120.0f)) - 12.0f, (114.0f + y) - 22.0f, menu->mAlpha);
 		f32 right = (192.0f + (72.0f + x)) - 12.0f;
 		DrawStatusOverviewEntry(menu, 0xAE, 9, selected, right, row0);
 		DrawStatusOverviewEntry(menu, 0xAF, 10, selected, right, row1);
@@ -10330,7 +10331,7 @@ void MenuPC::State3(u32 frames)
 static inline void FinishStatusItemScroll(MenuStatus* menu)
 {
 	menu->mY            = 36.0f;
-	menu->_5E4          = 36.0f;
+	menu->mTargetY      = 36.0f;
 	char* help          = GetItemName(sStatusItemTable.mItems[menu->mItem].mItem);
 	menu->mShowHelp     = 1;
 	menu->mHelp         = help;
@@ -10383,8 +10384,8 @@ void MenuStatus::State2(u32)
 					PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 				}
 				if ((pad.mPad->mRepeat & 0x20004) && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
-					menu->_5E4   = -56.0f;
-					menu->mPhase = 10;
+					menu->mTargetY = -56.0f;
+					menu->mPhase   = 10;
 					break;
 				}
 			} else {
@@ -10395,8 +10396,8 @@ void MenuStatus::State2(u32)
 				if (pad.mPad->mRepeat & 0x10008) {
 					CountMenuItems();
 					if (sStatusItemTable.mPage > 0) {
-						menu->_5E4   = 128.0f;
-						menu->mPhase = 20;
+						menu->mTargetY = 128.0f;
+						menu->mPhase   = 20;
 						break;
 					}
 				}
@@ -10411,12 +10412,12 @@ void MenuStatus::State2(u32)
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; ++i) {
 				menu->mTabs2[i].mPosX = 0.0f;
-				menu->mTabs2[i].mX    = menu->_674 ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
+				menu->mTabs2[i].mX    = menu->mHasFourthTab ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
 			}
-			menu->_5E0 = 758.0f;
+			menu->mTargetX = 758.0f;
 			for (int i = 0; i < 4; ++i) {
 				menu->mTabs[i].mPosX = 0.0f;
-				menu->mTabs[i].mX    = menu->_674 ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
+				menu->mTabs[i].mX    = menu->mHasFourthTab ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
 			}
 			for (int i = 0; i < 4; ++i)
 				menu->mTabs2[i].mX = 758.0f;
@@ -10429,7 +10430,7 @@ void MenuStatus::State2(u32)
 			menu->mAnimationFrame = 0;
 		} else if (pad.mPad->mTrigger & 0x100) {
 			if (count > 0) {
-				menu->_670 = 1.0f;
+				menu->mTargetDetailScale = 1.0f;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				menu->mPhase = 100;
 			} else {
@@ -10444,7 +10445,7 @@ void MenuStatus::State2(u32)
 		ConfirmDiscardQuantity(menu, pad, true);
 		break;
 	case 10:
-		if (menu->mY == menu->_5E4) {
+		if (menu->mY == menu->mTargetY) {
 			menu->mPhase = 0;
 			if (sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
 				++sStatusItemTable.mPage;
@@ -10455,7 +10456,7 @@ void MenuStatus::State2(u32)
 		}
 		break;
 	case 20:
-		if (menu->mY == menu->_5E4) {
+		if (menu->mY == menu->mTargetY) {
 			menu->mPhase = 0;
 			CountMenuItems();
 			if (sStatusItemTable.mPage > 0) {
@@ -10469,8 +10470,8 @@ void MenuStatus::State2(u32)
 	case 100:
 		if (pad.mPad->mTrigger & 0x300) {
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			menu->mPhase = 0;
-			menu->_670   = 0.0f;
+			menu->mPhase             = 0;
+			menu->mTargetDetailScale = 0.0f;
 		}
 		break;
 	}

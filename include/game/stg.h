@@ -305,75 +305,75 @@ public:
 	virtual BOOL Draw();             // _18
 	virtual void Open();             // _1C
 
-	u8 _158[0x510 - 0x158];  // _158
-	s32 mMode;               // _510
-	s32 mPrevMode;           // _514
-	s32 mNextMode;           // _518, where a wait mode goes after
-	s32 mAnimationFrame;     // _51C
-	s32 mItem;               // _520, the one shown in the middle
-	s32 mPreviousItem;       // _524
-	s32 mOverviewSelection;  // _528
-	s32 mIconSelection;      // _52C, selected cell in the 6 by 4 icon grid
-	s32 mChoice;             // _530, 0 yes, 1 no
-	s32 mCount;              // _534, how many of the item to throw away
-	f32 mOffsetX;            // _538
-	f32 mOffsetY;            // _53C
-	f32 _540;                // _540
-	f32 _544;                // _544
-	f32 _548;                // _548
-	f32 _54C;                // _54C
-	f32 _550;                // _550
-	f32 mSlide;              // _554
-	u8 _558[0x568 - 0x558];  // _558
-	f32 _568;                // _568
-	f32 _56C;                // _56C
-	f32 _570;                // _570
-	f32 _574;                // _574
-	f32 mDiscardPanelX;      // _578
-	f32 mDiscardPanelY;      // _57C
-	f32 _580;                // _580
-	f32 _584;                // _584
-	u8 _588[0x598 - 0x588];  // _588
-	MenuStatusTab mTabs[4];  // _598
-	f32 mX;                  // _5D8
-	f32 mY;                  // _5DC
-	f32 _5E0;                // _5E0
-	f32 _5E4;                // _5E4
-	f32 _5E8;                // _5E8
-	f32 _5EC;                // _5EC
-	f32 _5F0;                // _5F0
-	f32 _5F4;                // _5F4
-	f32 _5F8;                // _5F8
-	f32 _5FC;                // _5FC
-	f32 _600;                // _600
-	f32 _604;                // _604
-	f32 mDiagramX;           // _608
-	f32 mDiagramY;           // _60C
-	f32 _610;                // _610
-	f32 _614;                // _614
-	MenuStatusTab mTabs2[4]; // _618
-	f32 _658;                // _658
-	s32 mPhase;              // _65C
-	s32 mDelay;              // _660
-	s32 mSavedBgm;           // _664, put back on the way out
-	u8 mSavedBgmVolume;      // _668
-	u8 _669[0x66C - 0x669];  // _669
-	f32 _66C;                // _66C
-	f32 _670;                // _670
-	u8 _674;                 // _674, the fourth tab is there
-	u8 _675[4];              // _675
-	u8 _679;                 // _679
-	u8 _67A[2];              // _67A
-	u8 _67C;                 // _67C
-	u8 _67D[3];              // _67D
-	f32 _680;                // _680
-	s32 mShowHelp;           // _684
-	f32 mHelpAlpha;          // _688
-	const char* mHelpText;   // _68C
-	char* mHelp;             // _690, the line at the bottom
-	f32 _694;                // _694
-	MenuTitle mTitle;        // _698
-	s32 mHelpCount;          // _834
+	u8 _158[0x510 - 0x158];   // _158
+	s32 mMode;                // _510
+	s32 mPrevMode;            // _514
+	s32 mNextMode;            // _518, where a wait mode goes after
+	s32 mAnimationFrame;      // _51C
+	s32 mItem;                // _520, the one shown in the middle
+	s32 mPreviousItem;        // _524
+	s32 mOverviewSelection;   // _528
+	s32 mIconSelection;       // _52C, selected cell in the 6 by 4 icon grid
+	s32 mChoice;              // _530, 0 yes, 1 no
+	s32 mCount;               // _534, how many of the item to throw away
+	f32 mOffsetX;             // _538
+	f32 mOffsetY;             // _53C
+	f32 mTargetOffsetX;       // _540
+	f32 mTargetOffsetY;       // _544
+	f32 mPanelX;              // _548
+	f32 mPanelY;              // _54C
+	f32 mTargetPanelX;        // _550
+	f32 mSlide;               // _554
+	u8 _558[0x568 - 0x558];   // _558
+	f32 mItemPanelX;          // _568
+	f32 mItemPanelY;          // _56C
+	f32 mTargetItemPanelX;    // _570
+	f32 mTargetItemPanelY;    // _574
+	f32 mDiscardPanelX;       // _578
+	f32 mDiscardPanelY;       // _57C
+	f32 mTargetDiscardPanelX; // _580
+	f32 mTargetDiscardPanelY; // _584
+	u8 _588[0x598 - 0x588];   // _588
+	MenuStatusTab mTabs[4];   // _598
+	f32 mX;                   // _5D8
+	f32 mY;                   // _5DC
+	f32 mTargetX;             // _5E0
+	f32 mTargetY;             // _5E4
+	f32 mOverviewX;           // _5E8
+	f32 mOverviewY;           // _5EC
+	f32 mTargetOverviewX;     // _5F0
+	f32 mTargetOverviewY;     // _5F4
+	f32 mGridX;               // _5F8
+	f32 mGridY;               // _5FC
+	f32 mTargetGridX;         // _600
+	f32 mTargetGridY;         // _604
+	f32 mDiagramX;            // _608
+	f32 mDiagramY;            // _60C
+	f32 mTargetDiagramX;      // _610
+	f32 mTargetDiagramY;      // _614
+	MenuStatusTab mTabs2[4];  // _618
+	f32 _658;                 // _658
+	s32 mPhase;               // _65C
+	s32 mDelay;               // _660
+	s32 mSavedBgm;            // _664, put back on the way out
+	u8 mSavedBgmVolume;       // _668
+	u8 _669[0x66C - 0x669];   // _669
+	f32 mDetailScale;         // _66C
+	f32 mTargetDetailScale;   // _670
+	u8 mHasFourthTab;         // _674, the fourth tab is there
+	u8 _675[4];               // _675
+	u8 mShowGauge;            // _679
+	u8 _67A[2];               // _67A
+	u8 mIconLit;              // _67C
+	u8 _67D[3];               // _67D
+	f32 mGaugeValue;          // _680
+	s32 mShowHelp;            // _684
+	f32 mHelpAlpha;           // _688
+	const char* mHelpText;    // _68C
+	char* mHelp;              // _690, the line at the bottom
+	f32 mPulsePhase;          // _694
+	MenuTitle mTitle;         // _698
+	s32 mHelpCount;           // _834
 #if defined(VERSION_JP)
 	MenuHelpChar mHelpChars[20]; // _838
 #else
