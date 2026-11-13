@@ -6714,10 +6714,10 @@ extern "C" void FighterAim_Draw(FighterAim* aim, UnkGame_E5D38* cam, Mtx m)
 			u16 w;
 			u16 h;
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
-			tex = ((CTexObj*)(gGame + GAME_OFS(0x3D6C, 0x3D4C)))
-			          ->Init((TPLDescriptor*)(GAME_FIELD(u32*, GAME_OFS(0x3D4C, 0x3D2C))[2] + 0x400), 0);
-			w = GXGetTexObjWidth(&tex);
-			h = GXGetTexObjHeight(&tex);
+			TPLPalette* palette = GAME_FIELD(TPLPalette*, GAME_OFS(0x3D4C, 0x3D2C));
+			tex = GAME_FIELD(CTexObj, GAME_OFS(0x3D6C, 0x3D4C)).Init(&palette->descriptorArray[128 - StatusTextureOffset], 0);
+			w   = GXGetTexObjWidth(&tex);
+			h   = GXGetTexObjHeight(&tex);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, dist * s + cx, dist * c + cy, 0.0f, 1.1f * w, h, 0.0f, 0.0f, angle);
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
 		}
