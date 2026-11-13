@@ -45,7 +45,7 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 	s32 path0[]        = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
 	joints[0].indices  = path0;
 	for (s32 i = 0; i < 4; ++i)
-		player->_9500[i].mJObj = FindJointByPath(player->mJObj, joints[i].indices, joints[i].depth);
+		player->mIdleJoints[i].mJObj = FindJointByPath(player->mJObj, joints[i].indices, joints[i].depth);
 	{
 		s32 attachment[]         = { 0, 1, 0, 1, 2, 0, 0, 5 };
 		player->mAttachmentJoint = FindJointByPath(player->mJObj, attachment, 8);
@@ -72,7 +72,7 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 	if (player->GetAttachment() == 2)
 		SetPlayerPopperMountHidden(player, TRUE);
 	player->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-	player->_A2C = 3;
+	player->mStandTimer = 3;
 }
 
 /**

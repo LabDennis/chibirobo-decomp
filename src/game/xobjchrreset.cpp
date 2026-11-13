@@ -10,9 +10,9 @@
 // puts him back to a clean state, keeps what he was holding to pick it up again after
 void XObjChr::Release()
 {
-	_980.mFlags = 0;
-	_980.mFlags |= 0x20000000;
-	_980.mFlags |= 7;
+	mPlayerStatus.mFlags = 0;
+	mPlayerStatus.mFlags |= 0x20000000;
+	mPlayerStatus.mFlags |= 7;
 	mPad.mReset    = TRUE;
 	HSD_JObj* jobj = mJObj;
 	if (jobj != NULL) {

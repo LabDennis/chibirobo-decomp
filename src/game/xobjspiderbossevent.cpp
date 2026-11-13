@@ -164,17 +164,17 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 	case 17:
 		if (mArgs[0] == 1) {
 			mSpiderStatus.mFlags |= 0x20000;
-			XObjChr* player     = gGame.GetPlayer();
-			player->_980.mFlags = 0;
-			player->_980.mFlags |= 0x40000000;
+			XObjChr* player              = gGame.GetPlayer();
+			player->mPlayerStatus.mFlags = 0;
+			player->mPlayerStatus.mFlags |= 0x40000000;
 			player->mPad.mReset = FALSE;
 			gGame.GetPlayer()->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		} else {
 			mSpiderStatus.mFlags &= ~0x20000;
-			XObjChr* player     = gGame.GetPlayer();
-			player->_980.mFlags = 0;
-			player->_980.mFlags |= 0x20000000;
-			player->_980.mFlags |= 7;
+			XObjChr* player              = gGame.GetPlayer();
+			player->mPlayerStatus.mFlags = 0;
+			player->mPlayerStatus.mFlags |= 0x20000000;
+			player->mPlayerStatus.mFlags |= 7;
 			player->mPad.mReset = TRUE;
 		}
 		mCommand = 0;

@@ -271,7 +271,7 @@ void XObjActorMama::vf148(u32 frames)
 				break;
 			}
 	}
-	if ((_998.mFlags & 0x100) && (player->_980.mFlags & 0x40000000)) {
+	if ((_998.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
 		s32 hold[6] = { 0, 4, 2, 0, 0, 0 };
 		hand.Attach(FindJointByPath(mJObj, hold, 6));
 		CVec pos = hand.GetPos();

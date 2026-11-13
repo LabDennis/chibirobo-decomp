@@ -28,7 +28,7 @@ s32 XObjCoin::vf100(s32 unused, s32 value)
 	XObjChr* player = gGame.GetPlayer();
 	player->vf12C(1, 0, 120, 120, 0.0f);
 	player->vf12C(1, 0, 0, 0, 0.2f);
-	player->_9A90 = 0.0f;
+	player->mFallDistance = 0.0f;
 	mStatus.mFlags |= 0x4000000000000000ULL;
 	SetFlag();
 

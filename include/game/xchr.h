@@ -71,15 +71,15 @@ void ResetPlayerStats(Params* stats);
 
 // where chibi robo looks, beside the three CJointRots that turn his head
 struct XObjChrLook {
-	BOOL mActive;  // _00
-	s32 mMode;     // _04
-	XObj* mObject; // _08
-	Vec mOffset;   // _0C
-	Vec mTarget;   // _18
-	f32 mFade;     // _24, the marker fades in over 0.3 seconds
-	f32 mPhase;    // _28, degrees
-	f32 mPulse;    // _2C, 0 to 2
-	u32 _30;       // _30
+	BOOL mActive;     // _00
+	s32 mMode;        // _04
+	XObj* mObject;    // _08
+	Vec mOffset;      // _0C
+	Vec mTarget;      // _18
+	f32 mFade;        // _24, the marker fades in over 0.3 seconds
+	f32 mPhase;       // _28, degrees
+	f32 mPulse;       // _2C, 0 to 2
+	u32 mMarkerCount; // _30, visible look markers the update found
 };
 STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 
@@ -87,7 +87,7 @@ STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 struct XObjChrIdleJoint {
 	HSD_JObj* mJObj;           // _00
 	HSD_AnimJoint* mAnimJoint; // _04
-	u8* _08;                   // _08, the fobj's ad_head last frame
+	u8* mLastAdHead;           // _08, the fobj's ad_head last frame
 };
 STATIC_ASSERT(sizeof(XObjChrIdleJoint) == 0xC);
 
@@ -160,32 +160,32 @@ STATIC_ASSERT(sizeof(PlayerHeadTurn) == 0x40);
 class XObjChr : public XObj {
 public:
 	// _00-_980 = XObj
-	CStatus _980; // _980
-	CObjVec _988; // _988, cleared whenever he stops
-	f32 _9B8;     // _9B8
-	f32 _9BC[4];
-	s32 mHitObjectIndex; // _9CC
-	s32 _9D0;            // _9D0
+	CStatus mPlayerStatus;  // _980
+	CObjVec mMotion;        // _988, cleared whenever he stops
+	f32 mMoveSpeed;         // _9B8
+	f32 mStick[4];          // _9BC, stick magnitude and angle, current then previous
+	s32 mHitObjectIndex;    // _9CC
+	s32 mTaggedObjectIndex; // _9D0, highest object with the tag mask under him
 	union {
 		s32 objectIndex;
 		XObj* object;
 	} mFloorContacts[5];        // Slot 3 holds the supporting object. The other slots hold object indices.
-	CVec _9E8;                  // _9E8
+	CVec mContactPos;           // _9E8, where the contact-4 object stood
 	s32 mLastContactFloorIndex; // _9F8
-	CVec _9FC;                  // _9FC
+	CVec mEdgePos;              // _9FC, the climb edge's world offset
 	f32 mNearDistance;          // _A0C
-	s32 _A10;
+	s32 mOutletIndex;           // _A10, the plug target in front of him
 	s32 _A14;
 	u32 mLiftPlugFlags;
-	s32 _A1C;
-	s32 _A20;
+	s32 mHoldTimer; // _A1C, frames the button has been held on a plug
+	s32 mAHeld;     // _A20, pad trigger bit 8
 	s32 mAttachmentActionType;
 	s32 mToolActionType;                 // _A28
-	s32 _A2C;                            // _A2C, 3 after his anim goes back to standing
-	f32 _A30;                            // _A30
-	s32 _A34;                            // _A34, flash timer
-	s32 _A38;                            // _A38
-	f32 _A3C;                            // _A3C
+	s32 mStandTimer;                     // _A2C, 3 after his anim goes back to standing
+	f32 mIdleTimer;                      // _A30
+	s32 mFlashTimer;                     // _A34
+	s32 mFlashCount;                     // _A38, frames the flash has run
+	f32 mBatteryCost;                    // _A3C, charge the tumble takes when it ends
 	f32 mMoveSpeedScale;                 // _A40
 	XActLift mLift;                      // _A44
 	XActHang mHang;                      // _AC0
@@ -198,8 +198,8 @@ public:
 	XActPopper mPopper;                  // _CC0
 	XActRadar mRadar;                    // _9438
 	FrameEventTime mFrameTime;           // _94F8
-	XObjChrIdleJoint _9500[4];           // _9500
-	s32 _9530;                           // _9530, idle joint cooldown
+	XObjChrIdleJoint mIdleJoints[4];     // _9500
+	s32 mIdleJointCooldown;              // _9530
 	HSD_JObj* mAttachmentJoint;          // _9534
 	HSD_AnimJoint* mAttachmentJointAnim; // _9538
 	CJointRot mJointRot;                 // _953C
@@ -207,21 +207,21 @@ public:
 	XObjChrLook mLook;                   // _959C
 	s32 mAttachment;                     // _95D0, the AtcMenu pick
 	s32 mAttachmentRequest;              // _95D4, -1 when there's none
-	s32 _95D8;                           // _95D8, how far the attachment change is
-	s32 _95DC;                           // _95DC
-	s32 _95E0;                           // _95E0
-	s32 _95E4;                           // _95E4
+	s32 mAttachmentStep;                 // _95D8, how far the attachment change is
+	s32 mScriptAttach;                   // _95DC, the request came from an event command
+	s32 mClimbType;                      // _95E0, climb queued after the swap, 1 ladder, 2 hang
+	s32 mNextClimbType;                  // _95E4
 	u8 _95E8[0x960C - 0x95E8];           // _95E8
-	CObjVec _960C;                       // _960C
+	CObjVec mSlopeMotion;                // _960C, slide speed down a floor slope
 	CVec mFloorSlope;                    // _963C
 	Params mParams;                      // _964C
-	f32 _9A90;                           // _9A90, zeroed when he hits an XObjHBox
+	f32 mFallDistance;                   // _9A90, zeroed when he hits an XObjHBox
 	f32 mCameraTarget[3];                // _9A94, last camera target on each axis
 	f32 mCameraTargetMargin;             // _9AA0
 	f32 mCameraTargetMarginSetting;      // _9AA4
-	f32 _9AA8;                           // _9AA8, the cameras put _9AAC back here
-	f32 _9AAC;                           // _9AAC
-	f32 _9AB0;                           // _9AB0
+	f32 mCamDirection;                   // _9AA8, the cameras put mMoveDirection back here
+	f32 mMoveDirection;                  // _9AAC, the direction he walks this frame, NAN idle
+	f32 mCamStickAngle;                  // _9AB0, the stick angle mCamDirection was taken at
 	s32 mBatteryWarningFrames;           // _9AB4
 	f32 mBatteryWarningFade;             // _9AB8
 	f32 mBatteryWarningAngle;            // _9ABC
@@ -268,7 +268,7 @@ public:
 	void ResetCameraValue()
 	{
 		if (mHang.mState != 5 && mRope.mState != 5 && mLadder.mState != 5 && mPush.mState != 2) {
-			_9AA8 = _9AAC;
+			mCamDirection = mMoveDirection;
 		}
 	}
 

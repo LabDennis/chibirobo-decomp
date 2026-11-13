@@ -160,7 +160,7 @@ void CMotionControlCamera::Update(u32 step)
 				free = true;
 			}
 		}
-		if (free && (PLAYER->_980.mFlags & 0x20000000) && !(gGame.mStatus.mFlags & 0x80)) {
+		if (free && (PLAYER->mPlayerStatus.mFlags & 0x20000000) && !(gGame.mStatus.mFlags & 0x80)) {
 			if (!(gGame.mStatus.mFlags & 0xC00) && PLAYER->mAttachmentRequest < 0 && PLAYER->mSuits.mChangeStep == 0
 			    && (PLAYER->mLift.mState == 0 || IsCarryingMug(&PLAYER->mLift) == 0)) {
 				if (pad.mPad->mTrigger & 0x200) {
@@ -187,7 +187,7 @@ void CMotionControlCamera::Update(u32 step)
 			EndEye();
 		}
 		if (PLAYER->mHang.mState != 5 && PLAYER->mRope.mState != 5 && PLAYER->mLadder.mState != 5 && PLAYER->mPush.mState != 2) {
-			PLAYER->_9AA8 = PLAYER->_9AAC;
+			PLAYER->mCamDirection = PLAYER->mMoveDirection;
 		}
 	}
 

@@ -29,9 +29,9 @@ public:
 	u8 _A25[0xA28 - 0xA25];                                 // _A25
 	f32 mHeading;                                           // _A28
 	u8 mPtcl;                                               // _A2C, particle 165 is running
-	u8 _A2D;                                                // _A2D
+	u8 mPushing;                                            // _A2D, a push is running
 	u8 mWaiting;                                            // _A2E
-	s32 _A30;                                               // _A30
+	s32 mPushTimer;                                         // _A30
 	f32 mSpeedScale;                                        // _A34, movement and sound pitch scale
 	s32 mState;                                             // _A38, 1 draws the stack, 2 and 3 skip the camera pop
 	AnimSfx mSfx;                                           // _A3C

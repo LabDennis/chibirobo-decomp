@@ -293,7 +293,7 @@ void XObjActorJenny::vf148(u32 frames)
 			break;
 		}
 	}
-	if ((_998.mFlags & 0x200) && (player->_980.mFlags & 0x40000000)) {
+	if ((_998.mFlags & 0x200) && (player->mPlayerStatus.mFlags & 0x40000000)) {
 		s32 hand[6] = { 0, 3, 2, 0, 0, 0 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
 		CVec pos = joint.GetPos();
@@ -311,7 +311,7 @@ void XObjActorJenny::vf148(u32 frames)
 		pos = joint.GetPos();
 		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
 	}
-	if ((_998.mFlags & 0x100) && (player->_980.mFlags & 0x40000000)) {
+	if ((_998.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
 		s32 hand[6] = { 0, 3, 2, 0, 0, 0 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
 		CVec pos = joint.GetPos();
@@ -376,8 +376,8 @@ void XObjActorJenny::Drop()
 
 static inline void HoldPlayerForJenny(XObjChr* player)
 {
-	player->_980.mFlags = 0;
-	player->_980.mFlags |= 0x40000000;
+	player->mPlayerStatus.mFlags = 0;
+	player->mPlayerStatus.mFlags |= 0x40000000;
 	player->mPad.mReset = FALSE;
 	player->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
@@ -385,9 +385,9 @@ static inline void HoldPlayerForJenny(XObjChr* player)
 static inline void ReleasePlayerAt(XObjChr* player, const Vec& position)
 {
 	player->SetPos(position, 0);
-	player->_980.mFlags = 0;
-	player->_980.mFlags |= 0x20000000;
-	player->_980.mFlags |= 7;
+	player->mPlayerStatus.mFlags = 0;
+	player->mPlayerStatus.mFlags |= 0x20000000;
+	player->mPlayerStatus.mFlags |= 7;
 	player->mPad.mReset = TRUE;
 }
 
@@ -524,10 +524,10 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 void XObjActorJenny::ResetActorState()
 {
 	XObjChr* player = gGame.GetPlayer();
-	if (player->_980.mFlags & 0x40000000) {
-		player->_980.mFlags = 0;
-		player->_980.mFlags |= 0x20000000;
-		player->_980.mFlags |= 7;
+	if (player->mPlayerStatus.mFlags & 0x40000000) {
+		player->mPlayerStatus.mFlags = 0;
+		player->mPlayerStatus.mFlags |= 0x20000000;
+		player->mPlayerStatus.mFlags |= 7;
 		player->mPad.mReset = TRUE;
 	}
 	_998.mFlags = 0;

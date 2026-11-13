@@ -133,7 +133,7 @@ static inline void TakeSlot(XObjSpider* spider)
 {
 	for (int i = 0; i < 16; i++) {
 		if (gSpiderCarrySlotOwners[i] == -1) {
-			spider->_AC8.mObj         = gSpiderCarryModels[i];
+			spider->mSlotCarry.mObj   = gSpiderCarryModels[i];
 			spider->mSlot             = i;
 			gSpiderCarrySlotOwners[i] = spider->mPoolIndex;
 			return;
@@ -1165,11 +1165,11 @@ void XObjSpider::State3(u32 frames)
 		StopGameSfx(&gGame.mSound, 0x132);
 		SetAnim(0x19, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		if (mSlot != 255) {
-			if (_AC8.mObj != NULL) {
-				_AC8.mObj->mStatus.mFlags &= ~0x10000ULL;
+			if (mSlotCarry.mObj != NULL) {
+				mSlotCarry.mObj->mStatus.mFlags &= ~0x10000ULL;
 			}
 			gSpiderCarrySlotOwners[mSlot] = -1;
-			_AC8.mObj                     = NULL;
+			mSlotCarry.mObj               = NULL;
 			mSlot                         = 255;
 		}
 		mWait = 44;
@@ -1278,7 +1278,7 @@ static inline void EndSpiderCombatTurn(XObjSpider* spider, u32 frames)
 	if (CombatAnimDone(spider, frames)) {
 		spider->mDir = spider->mSavedDir;
 		CombatAnim(spider, 15);
-		spider->_988       = spider->mDir;
+		spider->mFacing    = spider->mDir;
 		spider->mTurnSpeed = .1f;
 		spider->mPhase     = 1;
 	}
@@ -1307,10 +1307,10 @@ void XObjSpider::State4(u32 frames)
 		CombatAnim(this, 1);
 		mSpeed = 0.0f;
 		if (dist <= 120.0f) {
-			_988     = mDir;
+			mFacing  = mDir;
 			mCounter = (rand() % 30 + 30) / frames;
 			++mPhase;
-			_98C = _988;
+			_98C = mFacing;
 		}
 		break;
 	case 1:
@@ -1319,17 +1319,17 @@ void XObjSpider::State4(u32 frames)
 			break;
 		}
 		mDir = CombatHeading(this, chr);
-		if (_988 - mDir > PI)
+		if (mFacing - mDir > PI)
 			mDir = mDir + TWO_PI;
-		else if (_988 - mDir < -PI)
+		else if (mFacing - mDir < -PI)
 			mDir = mDir - TWO_PI;
-		ApproachHudValue(&_988, &mDir, 0.018f);
-		if (mDir > _988) {
+		ApproachHudValue(&mFacing, &mDir, 0.018f);
+		if (mDir > mFacing) {
 			if (CombatAnimDone(this, frames))
 				CombatAnim(this, 6, TRUE);
 			else
 				CombatAnim(this, 6);
-		} else if (mDir < _988) {
+		} else if (mDir < mFacing) {
 			if (CombatAnimDone(this, frames))
 				CombatAnim(this, 7, TRUE);
 			else
@@ -1355,7 +1355,7 @@ void XObjSpider::State4(u32 frames)
 		break;
 	case 3: {
 		mDir     = CombatHeading(this, chr);
-		f32 diff = mDir - _988;
+		f32 diff = mDir - mFacing;
 		if (diff < 0) {
 			if (CombatAnimDone(this, frames))
 				CombatAnim(this, 14, TRUE);
@@ -1364,7 +1364,7 @@ void XObjSpider::State4(u32 frames)
 				CombatAnim(this, 13, TRUE);
 		} else if (CombatAnimDone(this, frames))
 			CombatAnim(this, 10);
-		_988 = mDir;
+		mFacing = mDir;
 		if (--mCounter < 0 && SpiderInView(this)) {
 			CombatAnim(this, 24);
 			PlayGameSound(&gGame.mSound, 0x1A0, 255);
@@ -1386,8 +1386,8 @@ void XObjSpider::State4(u32 frames)
 		mSpeed = 0.0f;
 		if (CombatAnimDone(this, frames)) {
 			CombatAnim(this, 1);
-			_988   = mDir;
-			mPhase = 1;
+			mFacing = mDir;
+			mPhase  = 1;
 		}
 		break;
 	case 5:
@@ -1420,8 +1420,8 @@ void XObjSpider::State4(u32 frames)
 				mFlags.mFlags &= ~0x1000;
 				mPhase = 7;
 			} else if (FindNearbyDroppedSpider(this) != -1) {
-				_B9C   = FindNearbyDroppedSpider(this);
-				mPhase = 30;
+				mDroppedSpiderIndex = FindNearbyDroppedSpider(this);
+				mPhase              = 30;
 			}
 		}
 		break;
@@ -1481,7 +1481,7 @@ void XObjSpider::State4(u32 frames)
 	case 31:
 		if (CombatAnimDone(this, frames)) {
 			CombatAnim(this, 8);
-			Vec other = gGame.mXObjs.mPools[17].Get(_B9C)->mMoveTranslate;
+			Vec other = gGame.mXObjs.mPools[17].Get(mDroppedSpiderIndex)->mMoveTranslate;
 			mDir      = CombatHeading(this, other);
 			RetreatTarget(this);
 			mCounter = 24 / frames;
@@ -1536,8 +1536,8 @@ void XObjSpider::State4(u32 frames)
 				}
 			}
 			if (FindNearbyDroppedSpider(this) != -1) {
-				_B9C   = FindNearbyDroppedSpider(this);
-				mPhase = 30;
+				mDroppedSpiderIndex = FindNearbyDroppedSpider(this);
+				mPhase              = 30;
 			}
 		}
 		break;
@@ -1649,9 +1649,9 @@ void XObjSpider::State6(u32 frames)
 			StopGameSfx(&gGame.mSound, 0x131);
 			mPhase++;
 			SetAnim(0x12, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			mDir   = atan2(mTarget.x - mMoveTranslate.x, mTarget.z - mMoveTranslate.z);
-			_988   = mDir;
-			mSpeed = 0.0f;
+			mDir    = atan2(mTarget.x - mMoveTranslate.x, mTarget.z - mMoveTranslate.z);
+			mFacing = mDir;
+			mSpeed  = 0.0f;
 		}
 		break;
 	case 3:
@@ -1659,9 +1659,9 @@ void XObjSpider::State6(u32 frames)
 		if (end - frames <= GetAnimFrame(mJObj)) {
 			mPhase++;
 			SetAnim(0x13, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			mDir   = atan2(mTarget.x - mMoveTranslate.x, mTarget.z - mMoveTranslate.z);
-			_988   = mDir;
-			mSpeed = -0.5f;
+			mDir    = atan2(mTarget.x - mMoveTranslate.x, mTarget.z - mMoveTranslate.z);
+			mFacing = mDir;
+			mSpeed  = -0.5f;
 		}
 		break;
 	case 4:
@@ -2235,7 +2235,7 @@ void ResetSpiderState(XObjSpider* spider)
 {
 	spider->mDir          = 0.0f;
 	spider->mSpeed        = 0.0f;
-	spider->_988          = 0.0f;
+	spider->mFacing       = 0.0f;
 	spider->_98C          = 0.0f;
 	spider->mTurnSpeed    = 0.1f;
 	spider->mFallSpeed    = 0.0f;
@@ -2285,7 +2285,7 @@ void ResetSpiderState(XObjSpider* spider)
 	spider->mCarry.mFlags.mFlags = 0;
 	spider->mCarry.mObj          = NULL;
 	spider->mRadius              = 20.0f;
-	spider->_AC8.mObj            = NULL;
+	spider->mSlotCarry.mObj      = NULL;
 	spider->mSlot                = 255;
 	Vec areaPos                  = { 0.0f, 0.0f, 0.0f };
 	spider->mAreaPos             = areaPos;
@@ -2314,9 +2314,9 @@ void ResetSpiderState(XObjSpider* spider)
 	if (spider->mPoolIndex == 0) {
 		ResetCoins();
 	}
-	spider->mHitState    = 0;
-	spider->mHitTimer    = 0;
-	spider->_B9C         = -1;
-	spider->mRumble      = 0;
-	spider->mRumbleTimer = 0;
+	spider->mHitState           = 0;
+	spider->mHitTimer           = 0;
+	spider->mDroppedSpiderIndex = -1;
+	spider->mRumble             = 0;
+	spider->mRumbleTimer        = 0;
 }

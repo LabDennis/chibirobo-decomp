@@ -8,10 +8,10 @@
 void XObjActorMama::ResetActorState()
 {
 	XObjChr* player = gGame.GetPlayer();
-	if (player->_980.mFlags & 0x40000000) {
-		player->_980.mFlags = 0;
-		player->_980.mFlags |= 0x20000000;
-		player->_980.mFlags |= 7;
+	if (player->mPlayerStatus.mFlags & 0x40000000) {
+		player->mPlayerStatus.mFlags = 0;
+		player->mPlayerStatus.mFlags |= 0x20000000;
+		player->mPlayerStatus.mFlags |= 7;
 		player->mPad.mReset = TRUE;
 	}
 	_998.mFlags = 0;

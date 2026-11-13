@@ -16,8 +16,8 @@ CVec GetStagePlacementScale(XObj* object); // the object's scale as it is drawn
 
 static inline void LockPlayer(XObjChr* player)
 {
-	player->_980.mFlags = 0;
-	player->_980.mFlags |= 0x40000000;
+	player->mPlayerStatus.mFlags = 0;
+	player->mPlayerStatus.mFlags |= 0x40000000;
 	player->mPad.mReset = FALSE;
 }
 
@@ -377,7 +377,7 @@ void XObjActorPapa::vf148(u32 frames)
 				break;
 			}
 	}
-	if ((_998.mFlags & 0x100) && (player->_980.mFlags & 0x40000000)) {
+	if ((_998.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
 		s32 held[6] = { 0, 2, 2, 0, 0, 0 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, held, 6));
 		CVec pos = joint.GetPos();
@@ -561,10 +561,10 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 			target.z = pos.z;
 			target.y = mMoveTranslate.y;
 			gGame.GetPlayer()->SetPos(target, 0);
-			XObjChr* player     = gGame.GetPlayer();
-			player->_980.mFlags = 0;
-			player->_980.mFlags |= 0x20000000;
-			player->_980.mFlags |= 7;
+			XObjChr* player              = gGame.GetPlayer();
+			player->mPlayerStatus.mFlags = 0;
+			player->mPlayerStatus.mFlags |= 0x20000000;
+			player->mPlayerStatus.mFlags |= 7;
 			player->mPad.mReset = TRUE;
 			break;
 		}
@@ -618,10 +618,10 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 void XObjActorPapa::ResetActorState()
 {
 	XObjChr* player = gGame.GetPlayer();
-	if (player->_980.mFlags & 0x40000000) {
-		player->_980.mFlags = 0;
-		player->_980.mFlags |= 0x20000000;
-		player->_980.mFlags |= 7;
+	if (player->mPlayerStatus.mFlags & 0x40000000) {
+		player->mPlayerStatus.mFlags = 0;
+		player->mPlayerStatus.mFlags |= 0x20000000;
+		player->mPlayerStatus.mFlags |= 7;
 		player->mPad.mReset = TRUE;
 	}
 	_998.mFlags = 0;

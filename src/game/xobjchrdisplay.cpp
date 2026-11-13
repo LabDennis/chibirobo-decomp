@@ -74,10 +74,10 @@ void XObjChr::vf94()
 		gPlayerSuitChangeEffect.rings[0][i].scale = 0.0f;
 		gPlayerSuitChangeEffect.rings[0][i].angle = 0.0f;
 	}
-	_980.mFlags = 0;
-	_980.mFlags = 0;
-	_980.mFlags |= 0x20000000;
-	_980.mFlags |= 7;
+	mPlayerStatus.mFlags = 0;
+	mPlayerStatus.mFlags = 0;
+	mPlayerStatus.mFlags |= 0x20000000;
+	mPlayerStatus.mFlags |= 7;
 	mPad.mReset = TRUE;
 }
 

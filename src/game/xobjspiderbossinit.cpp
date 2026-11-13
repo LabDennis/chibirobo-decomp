@@ -24,7 +24,7 @@ extern "C" void ResetSpiderBossState(XObj* object)
 	spider->mStep                = 0;
 	spider->mTimer               = 0;
 	spider->mSpiderStatus.mFlags = 0;
-	spider->_9C0                 = 0;
+	spider->mActionTimer         = 0;
 	spider->_9C4                 = 1.0f;
 	spider->_9C8                 = 1.0f;
 	{
@@ -40,8 +40,8 @@ extern "C" void ResetSpiderBossState(XObj* object)
 		spider->mPatrolTarget = value;
 	}
 	spider->mHitStrength = 0.0f;
-	spider->_9EC         = 23;
-	spider->mNextAction  = spider->_9EC;
+	spider->mMaxHits     = 23;
+	spider->mNextAction  = spider->mMaxHits;
 	spider->mCommand     = 0;
 	spider->mArgs[0]     = 0;
 	spider->_A44         = 0;
@@ -78,7 +78,7 @@ extern "C" void ResetSpiderBossState(XObj* object)
 	spider->mAreaPos.z  = -200.0f;
 	spider->mAreaWidth  = 400.0f;
 	spider->mAreaDepth  = 400.0f;
-	spider->_A68        = 0;
+	spider->mDamageStep = 0;
 	spider->mBlinkTimer = 0;
 	for (u32 i = 0; i < 8; ++i) {
 		spider->mParts[i].mObj   = NULL;

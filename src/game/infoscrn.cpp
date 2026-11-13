@@ -2048,7 +2048,7 @@ extern "C" void UpdateHudPointValue(InfoPoint* point, u32 frames)
 	Approach(&point->mPos[4].x, &point->mPos[5].x, ApproachStep(point->mPos[4].x, point->mPos[5].x));
 
 	bool empty = false;
-	if (0.0f == gGame.GetPlayer()->_A30) {
+	if (0.0f == gGame.GetPlayer()->mIdleTimer) {
 		empty = true;
 	}
 #if defined(VERSION_JP)

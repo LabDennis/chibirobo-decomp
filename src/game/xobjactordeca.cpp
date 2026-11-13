@@ -179,8 +179,8 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 			switch (mCmd[1]) {
 			case 1:
 				_998.mFlags |= 0x100;
-				player->_980.mFlags = 0;
-				player->_980.mFlags |= 0x40000000;
+				player->mPlayerStatus.mFlags = 0;
+				player->mPlayerStatus.mFlags |= 0x40000000;
 				player->mPad.mReset = FALSE;
 				break;
 			default: {
@@ -192,9 +192,9 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 				CVec target(position);
 				target.y = 0.0f;
 				player->SetPos(target, 0);
-				player->_980.mFlags = 0;
-				player->_980.mFlags |= 0x20000000;
-				player->_980.mFlags |= 7;
+				player->mPlayerStatus.mFlags = 0;
+				player->mPlayerStatus.mFlags |= 0x20000000;
+				player->mPlayerStatus.mFlags |= 7;
 				player->mPad.mReset = TRUE;
 				HSD_JObjClearMtxFlags(player->mJObj);
 				break;
@@ -368,7 +368,7 @@ void XObjActorDeca::vf148(u32 frames)
 	s32 head[5] = { 0, 1, 0, 0, 0 };
 	joint.Attach(FindJointByPath(mJObj, head, 5));
 	joint.SetRotationY(_CA0, 0);
-	if ((_998.mFlags & 0x100) && (player->_980.mFlags & 0x40000000)) {
+	if ((_998.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
 		s32 mount[2] = { 0, 3 };
 		joint.Attach(FindJointByPath(mJObj, mount, 2));
 		Mtx scaling, rotation, translation, result, matrix;

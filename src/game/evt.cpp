@@ -13627,7 +13627,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			XObjChr& player = EVT_PLAYER;
 			if (value != player.mAttachment) {
 				player.mAttachmentRequest = value;
-				player._95D8              = 0;
+				player.mAttachmentStep    = 0;
 			}
 			break;
 		}

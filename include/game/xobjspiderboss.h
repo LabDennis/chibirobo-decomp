@@ -27,14 +27,14 @@ public:
 	s32 mTimer;               // _9B0
 	CStatus mSpiderStatus;    // _9B4, 1 hit, 2 knocked over, 8 airborne, 0x2000000 frozen
 	s32 mPrevState;           // _9BC
-	u32 _9C0;                 // _9C0
+	u32 mActionTimer;         // _9C0, countdown the states pace their moves on
 	f32 _9C4;                 // _9C4
 	f32 _9C8;                 // _9C8
 	Vec mHitPos;              // _9CC
 	Vec mBasePos;             // _9D8
 	f32 mHitStrength;         // _9E4
 	s32 mNextAction;          // _9E8
-	s32 _9EC;                 // _9EC
+	s32 mMaxHits;             // _9EC, seeds mNextAction, the hit counter
 	Vec mPatrolTarget;        // _9F0
 	Vec mAreaPos;             // _9FC, corner of the area it walks in
 	f32 mAreaWidth;           // _A08
@@ -53,7 +53,7 @@ public:
 	f32 mEscapeRemaining;     // _A54
 	Vec _A58;                 // _A58
 	s32 mGrabIntervalFrames;  // _A64, a grab is available after three seconds
-	u32 _A68;                 // _A68
+	u32 mDamageStep;          // _A68, 0 watching for a hit, 1 blinking it off
 	s32 mBlinkTimer;          // _A6C
 	u8 _A70[0xA95 - 0xA70];   // _A70
 	u8 mPatrolEffectActive;   // _A95

@@ -24,21 +24,21 @@ void XObjChr::ResetObjectState()
 {
 	ResetObjectState__4XObjFv(this);
 	SetPlayerEyeCameraJointsHidden(this, FALSE);
-	_988.Reset(0.0f, 0.0f, 0.0f);
-	_9BC[1] = _9BC[0] = _9BC[3] = _9BC[2] = 0.0f;
-	mHitObjectIndex = _9D0        = -1;
+	mMotion.Reset(0.0f, 0.0f, 0.0f);
+	mStick[1] = mStick[0] = mStick[3] = mStick[2] = 0.0f;
+	mHitObjectIndex = mTaggedObjectIndex = -1;
 	mFloorContacts[1].objectIndex = mFloorContacts[0].objectIndex = mFloorContacts[2].objectIndex = mFloorContacts[4].objectIndex = -1;
 	mLastContactFloorIndex                                                                                                        = -1;
 	mNearDistance                                                                                                                 = 2.0f;
-	_A10                                                                                                                          = -1;
+	mOutletIndex                                                                                                                  = -1;
 	_A14                                                                                                                          = 0;
 	mLiftPlugFlags &= ~0x80;
-	_A1C = _A20 = 0;
-	_A2C        = 0;
-	_A30        = 0.0f;
-	_A38 = _A34     = 0;
-	_A3C            = 0.0f;
-	mMoveSpeedScale = 1.0f;
+	mHoldTimer = mAHeld = 0;
+	mStandTimer         = 0;
+	mIdleTimer          = 0.0f;
+	mFlashCount = mFlashTimer = 0;
+	mBatteryCost              = 0.0f;
+	mMoveSpeedScale           = 1.0f;
 	mHang.Init(this);
 	mHang._2C = FALSE;
 	mJump.Init(this);
@@ -54,11 +54,11 @@ void XObjChr::ResetObjectState()
 	InitRadarAction(&mRadar, this);
 	mFrameTime.mLastFrame = mFrameTime.mFrame = -1.0f;
 	for (s32 i = 0; i < 4; ++i) {
-		_9500[i].mJObj      = NULL;
-		_9500[i].mAnimJoint = NULL;
-		_9500[i]._08        = NULL;
+		mIdleJoints[i].mJObj       = NULL;
+		mIdleJoints[i].mAnimJoint  = NULL;
+		mIdleJoints[i].mLastAdHead = NULL;
 	}
-	_9530                = 0;
+	mIdleJointCooldown   = 0;
 	mAttachmentJoint     = NULL;
 	mAttachmentJointAnim = NULL;
 	s32 joint[]          = { 0, 1, 0, 1, 2 };
@@ -75,12 +75,12 @@ void XObjChr::ResetObjectState()
 	mLook.mFade = mLook.mPhase = mLook.mPulse = 0.0f;
 	mLook.mObject                             = this;
 	mAttachmentRequest                        = -1;
-	_95D8 = _95DC = _95E4 = _95E0 = 0;
-	_9A90                         = 0.0f;
+	mAttachmentStep = mScriptAttach = mNextClimbType = mClimbType = 0;
+	mFallDistance                                                 = 0.0f;
 	mCameraTarget[2] = mCameraTarget[1] = mCameraTarget[0] = NAN;
 	mCameraTargetMarginSetting = mCameraTargetMargin = 1.0f;
-	_9AB0 = _9AAC = _9AA8 = NAN;
-	mBatteryWarningFrames = 0;
+	mCamStickAngle = mMoveDirection = mCamDirection = NAN;
+	mBatteryWarningFrames                           = 0;
 	mBatteryWarningFade = mBatteryWarningAngle = 0.0f;
 	_9AC0                                      = 0;
 	_9AC4                                      = 0.0f;

@@ -123,9 +123,9 @@ void XObjSpiderBoss::State4(u32 frames)
 			mPatrolEffectActive = 0;
 			gGame.mParticle.Kill(0xb6);
 			PlayPatrolAnim(this, 0x17);
-			mSpeed = 0;
-			_9C0   = 5;
-			mStep  = 4;
+			mSpeed       = 0;
+			mActionTimer = 5;
+			mStep        = 4;
 		}
 		break;
 	case 4:
@@ -135,7 +135,7 @@ void XObjSpiderBoss::State4(u32 frames)
 		TurnTowardPoint(this, 6);
 		break;
 	case 6:
-		if ((s32)--_9C0 < 0)
+		if ((s32)--mActionTimer < 0)
 			mStep = 0;
 		else {
 			PlayPatrolAnim(this, 0x1b);
@@ -186,8 +186,8 @@ static inline void ShakeSpiderArena()
 
 static inline void PulseSpiderArena(XObjSpiderBoss* boss)
 {
-	if ((s32)--boss->_9C0 < 0) {
-		boss->_9C0 = rand() % 60 + 60;
+	if ((s32)--boss->mActionTimer < 0) {
+		boss->mActionTimer = rand() % 60 + 60;
 		ShakeSpiderArena();
 		CommandSpiderBossProjectiles(0);
 	}
@@ -266,8 +266,8 @@ void XObjSpiderBoss::State3(u32 frames)
 			mStep = 0;
 		break;
 	case 0:
-		mTimer = rand() % 90 + 90;
-		_9C0   = rand() % 30 + 30;
+		mTimer       = rand() % 90 + 90;
+		mActionTimer = rand() % 30 + 30;
 		SetAttackAnim(this, 7);
 		++mStep;
 		gSpiderBossSavedTargetYaw = mTargetRotY;
@@ -343,9 +343,9 @@ void XObjSpiderBoss::State3(u32 frames)
 			SetAttackAnim(this, 17);
 	}
 		if (--mTimer < 0) {
-			mTimer     = 3 * BOSS_FPS / frames + (BOSS_FPS / frames) / 2;
-			_9C0       = rand() % 30 + 30;
-			s32 path[] = { 0, 2, 0, 1, 1, 0, 0 };
+			mTimer       = 3 * BOSS_FPS / frames + (BOSS_FPS / frames) / 2;
+			mActionTimer = rand() % 30 + 30;
+			s32 path[]   = { 0, 2, 0, 1, 1, 0, 0 };
 			joint.Attach(FindJointByPath(mJObj, path, 7));
 			// Retail updates the joint matrix here and discards the resulting position.
 			joint.GetPos();
@@ -386,9 +386,9 @@ void XObjSpiderBoss::State3(u32 frames)
 			mStatus.mFlags |= 0x100000;
 			ShakeSpiderArena();
 			mSpiderStatus.mFlags |= 0x20000;
-			XObjChr* chr     = gGame.GetPlayer();
-			chr->_980.mFlags = 0;
-			chr->_980.mFlags |= 0x80000000;
+			XObjChr* chr              = gGame.GetPlayer();
+			chr->mPlayerStatus.mFlags = 0;
+			chr->mPlayerStatus.mFlags |= 0x80000000;
 			gGame.GetPlayer()->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mEscapeInputStrength = 1;
 			mEscapeRemaining     = 450;
@@ -436,10 +436,10 @@ void XObjSpiderBoss::State3(u32 frames)
 			}
 			mStatus.mFlags &= ~0x100000ULL;
 			mSpiderStatus.mFlags &= ~0x20000;
-			XObjChr* chr     = gGame.GetPlayer();
-			chr->_980.mFlags = 0;
-			chr->_980.mFlags |= 0x20000000;
-			chr->_980.mFlags |= 7;
+			XObjChr* chr              = gGame.GetPlayer();
+			chr->mPlayerStatus.mFlags = 0;
+			chr->mPlayerStatus.mFlags |= 0x20000000;
+			chr->mPlayerStatus.mFlags |= 7;
 			chr->mPad.mReset    = TRUE;
 			mGrabIntervalFrames = 0;
 			SetAttackAnim(this, 7);

@@ -60,7 +60,7 @@ extern "C" u32 vf100__8XObjHBoxFll(XObjHBox* box, s32 unused, u32 flags)
 		return flags;
 	if (box->mAnimId == 0)
 		return flags;
-	gGame.GetPlayer()->_9A90 = 0.0f;
+	gGame.GetPlayer()->mFallDistance = 0.0f;
 	box->mStatus.mFlags |= 0x4000000000000000ULL;
 	box->mPart.mHit = 1.0f;
 	PlayGameSound(&gGame.mSound, 285, 255);

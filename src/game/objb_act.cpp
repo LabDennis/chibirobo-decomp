@@ -877,8 +877,8 @@ void UpdatePushedObject(XActPush* act)
 			Release(act);
 			XObjChr* owner = act->mOwner;
 			owner->SetAnim(17, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			owner->_A2C = 3;
-			act->mState = 0;
+			owner->mStandTimer = 3;
+			act->mState        = 0;
 			target->mStatus.mFlags |= 0x1000000000000000ULL;
 
 			Vec rotation = target->mMoveRotate, speed = target->mMoveRotate.mSpeed;
@@ -973,8 +973,8 @@ void UpdatePushActionAnimation(XActPush* act, s32 anim, HSD_AObj* aobj, u32 fram
 		} else if (aobj->flags & 0x44000000) {
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-			chr->_A2C   = 3;
-			act->mState = 0;
+			chr->mStandTimer = 3;
+			act->mState      = 0;
 		}
 		break;
 	}
@@ -1013,8 +1013,8 @@ void HandlePushActionInput(XActPush* act, const CPadOne* pad, f32* weight)
 			Release(act);
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			chr->_A2C   = 3;
-			act->mState = 0;
+			chr->mStandTimer = 3;
+			act->mState      = 0;
 		}
 		*weight = 0.0f;
 	}
@@ -1031,7 +1031,7 @@ void CancelPlayerPushAction(XActPush* act)
 		act->mState  = 0;
 		XObjChr* chr = act->mOwner;
 		chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-		chr->_A2C = 3;
+		chr->mStandTimer = 3;
 	}
 }
 
@@ -1275,9 +1275,9 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			SetObjectJointTranslationByPath(act->mOwner, 1, p2, 0, 0, 0);
 			XObjChr* owner = act->mOwner;
 			owner->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			owner->_A2C  = 3;
-			act->mState  = 0;
-			act->mTarget = NULL;
+			owner->mStandTimer = 3;
+			act->mState        = 0;
+			act->mTarget       = NULL;
 		}
 		break;
 	case 7:
@@ -1300,10 +1300,10 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 		break;
 	case 9:
 		if (act->mOwner->GetHeight() <= 0) {
-			if (act->mOwner->_9A90 > 30) {
+			if (act->mOwner->mFallDistance > 30) {
 				RopeAnim(act, 0x91, 1);
 				act->mState = 11;
-				ApplyPlayerJumpStrength(&act->mOwner->mJump, act->mOwner->_9A90);
+				ApplyPlayerJumpStrength(&act->mOwner->mJump, act->mOwner->mFallDistance);
 				act->mOwner->vf12C(1, 255, 0, 0, 0);
 				act->mOwner->vf12C(1, 0, 0, 0, .3f);
 				StartScreenFade(&gGame.mScrnTex.mColor, 255, 0, 0, 0, 100, 100, 200, 0, .3f);
@@ -1317,8 +1317,8 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 		if (aobj->flags & 0x44000000) {
 			XObjChr* owner = act->mOwner;
 			owner->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			owner->_A2C = 3;
-			act->mState = 0;
+			owner->mStandTimer = 3;
+			act->mState        = 0;
 		}
 		break;
 	case 11:
@@ -1654,9 +1654,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			chr->_A2C    = 3;
-			act->mState  = 0;
-			act->mTarget = NULL;
+			chr->mStandTimer = 3;
+			act->mState      = 0;
+			act->mTarget     = NULL;
 		}
 		break;
 	case 7:
@@ -1678,9 +1678,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			chr->_A2C    = 3;
-			act->mState  = 0;
-			act->mTarget = NULL;
+			chr->mStandTimer = 3;
+			act->mState      = 0;
+			act->mTarget     = NULL;
 		}
 		break;
 	case 8:
@@ -1723,11 +1723,11 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 		break;
 	case 10:
 		if (act->mOwner->GetHeight() <= 0.0f) {
-			if (act->mOwner->_9A90 > 30.0f) {
+			if (act->mOwner->mFallDistance > 30.0f) {
 				act->mState = 0;
 				act->mOwner->SetAnim(0x8E, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 				act->mOwner->mJump.mState = 5;
-				ApplyPlayerJumpStrength(&act->mOwner->mJump, act->mOwner->_9A90);
+				ApplyPlayerJumpStrength(&act->mOwner->mJump, act->mOwner->mFallDistance);
 				act->mOwner->vf12C(1, 0xFF, 0, 0, 0.0f);
 				act->mOwner->vf12C(1, 0, 0, 0, 0.3f);
 				StartScreenFade(&gGame.mScrnTex.mColor, 0xFF, 0, 0, 0, 100, 100, 200, 0, 0.3f);
@@ -1741,8 +1741,8 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 		if (aobj->flags & 0x44000000) {
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			chr->_A2C   = 3;
-			act->mState = 0;
+			chr->mStandTimer = 3;
+			act->mState      = 0;
 		}
 		break;
 	}
@@ -1806,8 +1806,8 @@ static inline void FinishHang(XActHang* act, f32 loop)
 {
 	XObjChr* p = act->mOwner;
 	p->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, loop, 10);
-	p->_A2C     = 3;
-	act->mState = 0;
+	p->mStandTimer = 3;
+	act->mState    = 0;
 }
 
 /**
@@ -2066,11 +2066,11 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 	// fall through
 	case 10:
 		if (act->mOwner->GetHeight() <= 0) {
-			if (act->mOwner->_9A90 > 30) {
+			if (act->mOwner->mFallDistance > 30) {
 				act->mState = 0;
 				HangAnim(act, 0x8e);
 				act->mOwner->mJump.mState = 5;
-				ApplyPlayerJumpStrength(&act->mOwner->mJump, act->mOwner->_9A90);
+				ApplyPlayerJumpStrength(&act->mOwner->mJump, act->mOwner->mFallDistance);
 				act->mOwner->vf12C(1, 255, 0, 0, 0);
 				act->mOwner->vf12C(1, 0, 0, 0, .3f);
 				StartScreenFade(&gGame.mScrnTex.mColor, 255, 0, 0, 0, 100, 100, 200, 0, .3f);
@@ -2159,8 +2159,8 @@ static inline void EndJump(XActJump* act)
 {
 	XObjChr* owner = act->mOwner;
 	owner->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-	owner->_A2C = 3;
-	act->mState = 0;
+	owner->mStandTimer = 3;
+	act->mState        = 0;
 }
 static inline bool AdvanceJumpArc(XActJump* act, u32 frames)
 {
@@ -2232,19 +2232,19 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				act->mState = 0;
 				return;
 			}
-			if (act->mOwner->_9A90 > 30) {
+			if (act->mOwner->mFallDistance > 30) {
 				JumpAnim(act, 0x8e);
 				act->mState = 5;
-				ApplyPlayerJumpStrength(act, act->mOwner->_9A90);
+				ApplyPlayerJumpStrength(act, act->mOwner->mFallDistance);
 				act->mOwner->vf12C(1, 255, 0, 0, 0);
 				act->mOwner->vf12C(1, 0, 0, 0, .3f);
 				StartScreenFade(&gGame.mScrnTex.mColor, 255, 0, 0, 0, 100, 100, 200, 0, .3f);
-			} else if (act->mOwner->_9A90 > 11.5f) {
+			} else if (act->mOwner->mFallDistance > 11.5f) {
 				JumpAnim(act, 0x1e);
 				act->mState = 4;
-				if (act->mOwner->_9A90 > 12.5f)
+				if (act->mOwner->mFallDistance > 12.5f)
 					gGame.mParticle.Create(0x10006, 0, act->mOwner->mJObj, FALSE);
-			} else if (act->mOwner->_9A90 > 7.5f) {
+			} else if (act->mOwner->mFallDistance > 7.5f) {
 				JumpAnim(act, 0x1f);
 				act->mState = 18;
 			} else {
@@ -3206,7 +3206,7 @@ f32 GetObjectJointRotationY(CJObj* obj)
 void SetPlayerStandAnim(XObjChr* chr, s32 anim, f32 blend)
 {
 	chr->SetAnim(anim, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, blend, 10.0f);
-	chr->_A2C = 3;
+	chr->mStandTimer = 3;
 }
 
 /**

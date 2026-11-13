@@ -25,7 +25,7 @@ extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32)
 	CJObj joint;
 	XObjChr* player = gGame.GetPlayer();
 	CPad pad(0);
-	if ((spider->mSpiderStatus.mFlags & 0x20000) && (player->_980.mFlags & 0x80000000)) {
+	if ((spider->mSpiderStatus.mFlags & 0x20000) && (player->mPlayerStatus.mFlags & 0x80000000)) {
 		s32 path[] = { 0, 2, 0, 1, 1, 0, 0 };
 		joint.Attach(FindJointByPath(spider->mJObj, path, 7));
 		CVec position(GetJointPosition(joint.mJObj));
@@ -82,7 +82,7 @@ static inline void DrainPlayerBattery(f32 amount)
 extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 {
 	CPad pad(0);
-	switch (spider->_A68) {
+	switch (spider->mDamageStep) {
 	case 0:
 		if ((spider->mSpiderStatus.mFlags & 2) && !(spider->mSpiderStatus.mFlags & 0x10)) {
 			StopGameSfx(&gGame.mSound, 0x12A);
@@ -143,7 +143,7 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 					spider->mState     = 1;
 				}
 			} else {
-				spider->_A68        = 1;
+				spider->mDamageStep = 1;
 				spider->mBlinkTimer = 0;
 				spider->mSpiderStatus.mFlags |= 0x10;
 			}
@@ -159,7 +159,7 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 			spider->mSpiderStatus.mFlags &= ~0x10;
 			spider->vf12C(1, 0, 0, 0, 0.0f);
 			spider->mBlinkTimer = 0;
-			spider->_A68        = 0;
+			spider->mDamageStep = 0;
 		}
 		break;
 	}
@@ -219,10 +219,10 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 	if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && (spider->mSpiderStatus.mFlags & 0x20000)) {
 		InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 0, 1);
 		spider->mSpiderStatus.mFlags &= ~0x20000;
-		XObjChr* player     = gGame.GetPlayer();
-		player->_980.mFlags = 0;
-		player->_980.mFlags |= 0x20000000;
-		player->_980.mFlags |= 7;
+		XObjChr* player              = gGame.GetPlayer();
+		player->mPlayerStatus.mFlags = 0;
+		player->mPlayerStatus.mFlags |= 0x20000000;
+		player->mPlayerStatus.mFlags |= 7;
 		player->mPad.mReset = TRUE;
 	}
 }

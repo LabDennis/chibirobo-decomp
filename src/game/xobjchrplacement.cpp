@@ -65,7 +65,7 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 		mTumble.mFade.mAmount = 0.0f;
 		CJObj::SetRotationY(mMoveRotate.y, TRUE);
 		SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-		_A2C = 3;
+		mStandTimer = 3;
 		{
 			s32 branch1Child0[] = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
 			s32 branch1Child1[] = { 0, 1, 0, 1, 2, 0, 0, 1, 1 };
@@ -77,10 +77,10 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 			};
 			JointPath joints[] = { { 9, branch1Child0 }, { 9, branch1Child1 }, { 9, branch3Child0 }, { 9, branch3Child1 } };
 			for (int i = 0; i < 4; ++i) {
-				XObjChrIdleJoint& idle = _9500[i];
+				XObjChrIdleJoint& idle = mIdleJoints[i];
 				idle.mJObj             = FindJointByPath(mJObj, joints[i].nodes, joints[i].depth);
 				idle.mAnimJoint        = mArchive.GetAnimJoint(14, joints[i].depth, joints[i].nodes);
-				idle._08               = NULL;
+				idle.mLastAdHead       = NULL;
 			}
 			s32 attachment[]     = { 0, 1, 0, 1, 2, 0, 0, 5 };
 			mAttachmentJoint     = FindJointByPath(mJObj, attachment, 8);
