@@ -2877,10 +2877,10 @@ void MenuStatus::State6(u32)
  * @note Address: 0x80062390
  * @note Size: 0x48
  */
-void MenuCursor::UpdateObject(u32 a)
+void MenuCursor::UpdateObject(u32 frames)
 {
 	if (mStatus.mFlags & 1) {
-		UpdateObject__6CursorFUl(this, a);
+		UpdateObject__6CursorFUl(this, frames);
 	}
 }
 
@@ -2966,14 +2966,14 @@ extern "C" void MarkAvailableStatusEntries(u8* available)
 		available[7] = 1;
 	if (GetPlayerItemCount(0x9E) > 0)
 		available[8] = 1;
-	if (GetPlayerItemCount(8) > 0 || (gEventFlags.mFlags[0] & 0x20000000))
+	if (GetPlayerItemCount(8) > 0 || (gEventFlags.mFlags[29 / 32] & (1u << (29 % 32))))
 		available[9] = 1;
-	if (GetPlayerItemCount(0x30) > 0 || (gEventFlags.mFlags[0] & 0x40000000))
+	if (GetPlayerItemCount(0x30) > 0 || (gEventFlags.mFlags[30 / 32] & (1u << (30 % 32))))
 		available[10] = 1;
-	if (GetPlayerItemCount(0x6D) > 0 || (gEventFlags.mFlags[0] & 0x10000000))
+	if (GetPlayerItemCount(0x6D) > 0 || (gEventFlags.mFlags[28 / 32] & (1u << (28 % 32))))
 		available[11] = 1;
-	if (gEventFlags.mFlags[0x84 / 4] & 0x01000000) {
-		if (GetPlayerItemCount(0x7C) > 0 || (gEventFlags.mFlags[0x54 / 4] & 0x01000000))
+	if (gEventFlags.mFlags[1080 / 32] & (1u << (1080 % 32))) {
+		if (GetPlayerItemCount(0x7C) > 0 || (gEventFlags.mFlags[696 / 32] & (1u << (696 % 32))))
 			available[12] = 1;
 	}
 }
@@ -3444,8 +3444,10 @@ void MenuStatus::State4(u32 frameCount)
 		menu->mTargetPanelY = -200.0f;
 		menu->mDelay        = wait * 4;
 		menu->mPhase++;
+		// fall through
 	case 1:
 		if (--menu->mDelay < 0) {
+			// every page but the diagram (mode 5) brings the panel back
 			if (menu->mNextMode != 5) {
 				menu->mTargetPanelY = 0.0f;
 			}
@@ -3492,6 +3494,7 @@ void MenuStatus::State1(u32 frames)
 			menu->mHelp     = msg;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		}
+		// B or Start closes the menu, A opens the selected tab
 		if (pad.mPad->mTrigger & 0x1200) {
 			menu->mTargetPanelY = -200.0f;
 			for (int i = 0; i < 4; i++) {
@@ -3613,9 +3616,9 @@ void MenuStatus::State1(u32 frames)
 			}
 		}
 		break;
-	case 2:
+	case 2: // closed
 		break;
-	case 1:
+	case 1: // closing, waits for the panel to slide away
 		if (--menu->mDelay < 0) {
 			gGame.mStatus.mFlags &= ~2ULL;
 			menu->Close();
@@ -3650,6 +3653,7 @@ void MenuStatus::State0(u32)
  * @note Address: 0x8003B9B8
  * @note Size: 0x160
  */
+// waits for the format to finish, then mode 10 says so
 void MenuSave::State9(u32 frameCount)
 {
 	MenuSave* menu = this;
@@ -3697,7 +3701,7 @@ void MenuSave::State9(u32 frameCount)
 		case -13:
 		case -14:
 		case -128:
-			if (result == -6 || result == -13) {
+			if (result == CARD_RESULT_BROKEN || result == CARD_RESULT_ENCODING) {
 				menu->SetMode(13);
 				menu->mShowMessage = TRUE;
 			} else {
@@ -3825,10 +3829,11 @@ void MenuSave::State1(u32 frameCount)
 		case -13:
 		case -14:
 		case -128:
-			if (result == -6 || result == -13) {
+			// broken or formatted for another region: offer to format it
+			if (result == CARD_RESULT_BROKEN || result == CARD_RESULT_ENCODING) {
 				menu->SetMode(8);
 				menu->mChoice = 1;
-			} else if (result == -5) {
+			} else if (result == CARD_RESULT_IOERROR) {
 				menu->SetMode(13);
 				menu->mShowMessage = TRUE;
 			} else {
@@ -3942,11 +3947,12 @@ void MenuSave::State5(u32 frameCount)
 		case -13:
 		case -14:
 		case -128:
-			if (state == 2 && (result == -6 || result == -13)) {
+			// the mount (card state 2) found a broken or foreign card: offer to format it
+			if (state == 2 && (result == CARD_RESULT_BROKEN || result == CARD_RESULT_ENCODING)) {
 				menu->SetMode(8);
 				menu->mChoice      = 1;
 				menu->mShowMessage = TRUE;
-			} else if (result == -3 || result == -5) {
+			} else if (result == CARD_RESULT_NOCARD || result == CARD_RESULT_IOERROR) {
 				menu->SetMode(14);
 				menu->mMessage     = 3;
 				menu->mShowMessage = TRUE;
@@ -4001,7 +4007,7 @@ void MenuSave::State13(u32)
 {
 	MenuSave* menu = this;
 	CPad pad(0);
-	if (menu->mResult == -3) {
+	if (menu->mResult == CARD_RESULT_NOCARD) {
 		if (menu->mReady == TRUE) {
 			for (int i = 0; i < 3; i++) {
 				ClearSaveSlot(&menu->mSlots[i]);
@@ -4044,7 +4050,7 @@ void MenuSave::State12(u32)
 {
 	MenuSave* menu = this;
 	CPad pad(0);
-	if (menu->mResult == -2) {
+	if (menu->mResult == CARD_RESULT_WRONGDEVICE) {
 		if (!menu->mWrongDevice) {
 			menu->ResetResults();
 			return;
@@ -4141,7 +4147,7 @@ void MenuSave::State14(u32)
 {
 	MenuSave* menu = this;
 	CPad pad(0);
-	if (menu->mResult == -3) {
+	if (menu->mResult == CARD_RESULT_NOCARD) {
 		if (menu->mReady == TRUE) {
 			for (int i = 0; i < 3; i++) {
 				ClearSaveSlot(&menu->mSlots[i]);
@@ -4156,9 +4162,9 @@ void MenuSave::State14(u32)
 		return;
 	}
 	if (pad.mPad->mTrigger & 0x100) {
-		if (menu->mResult == -3) {
+		if (menu->mResult == CARD_RESULT_NOCARD) {
 			menu->ResetResults();
-		} else if (menu->mResult == -5) {
+		} else if (menu->mResult == CARD_RESULT_IOERROR) {
 			menu->SetMode(13);
 			menu->mShowMessage = TRUE;
 		} else {
@@ -4230,12 +4236,12 @@ void MenuSave::State2(u32)
 		if (menu->mSlots[menu->mFile].mUsed == 1) {
 			menu->mChoice = 1;
 			menu->SetMode(3);
-		} else if (menu->mFreeBlocks >= 6 && menu->mFreeEntries > 0) {
+		} else if (menu->mFreeBlocks >= 6 && menu->mFreeEntries > 0) { // a new file needs six blocks and a directory entry
 			StartMemoryCardSaveWrite(&gGame.mMemcard.mCard, menu->mChannel, menu->mFile, 1);
 			menu->SetMode(5);
 			menu->mDelay = 1.5f * FRAME_RATE;
 		} else {
-			menu->mResult = -9;
+			menu->mResult = CARD_RESULT_INSSPACE;
 			menu->SetMode(11);
 			menu->mOffset = -32.0f;
 		}
@@ -4250,6 +4256,7 @@ void MenuSave::State2(u32)
  * @note Address: 0x8003BB18
  * @note Size: 0x378
  */
+// format the card? asked twice, a second yes starts it in mode 9
 void MenuSave::State8(u32)
 {
 	MenuSave* menu = this;
@@ -4329,7 +4336,7 @@ void MenuSave::State11(u32)
 {
 	MenuSave* menu = this;
 	CPad pad(0);
-	if (menu->mResult == -3) {
+	if (menu->mResult == CARD_RESULT_NOCARD) {
 		if (menu->mWrongDevice == TRUE) {
 			for (int i = 0; i < 3; i++) {
 				ClearSaveSlot(&menu->mSlots[i]);
@@ -4350,7 +4357,7 @@ void MenuSave::State11(u32)
 			menu->mOffset = 0.0f;
 			return;
 		}
-	} else if (menu->mResult == -2) {
+	} else if (menu->mResult == CARD_RESULT_WRONGDEVICE) {
 		if (!menu->mWrongDevice) {
 			menu->ResetResults();
 			return;
@@ -4360,7 +4367,7 @@ void MenuSave::State11(u32)
 		return;
 	}
 	if (pad.mPad->mTrigger & 0x100) {
-		if (menu->mResult == -9) {
+		if (menu->mResult == CARD_RESULT_INSSPACE) {
 			menu->SetMode(12);
 			menu->mMessage = 2;
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
@@ -4685,7 +4692,7 @@ BOOL MenuStatus::Draw()
 			SetScissor(104, 248);
 			f32 x    = (mX - 42.0f) + mOffsetX;
 			f32 y    = (180.0f + mY) + mOffsetY;
-			s32 item = mPhase == 100 ? -1 : mItem;
+			s32 item = mPhase == 100 ? -1 : mItem; // no cursor while the close-up (phase 100) is open
 			DrawInventoryGrid(item, x, y, mAlpha, 1.0f, mPulsePhase);
 			DrawStatusItemDetails(sStatusItemTable.mItems[mItem].mItem, 320.0f, 224.0f, mAlpha, mDetailScale);
 			CheckPlayerInventoryFlags();
@@ -4864,6 +4871,7 @@ void MenuStatus::State9(u32)
 {
 	MenuStatus* menu = this;
 	CPad pad(0);
+	// each entry's neighbour up, down, left and right
 	s32 neighbors[13][4] = {
 		{ 4, 2, 9, 5 },  { 0, 2, 10, 6 }, { 0, 3, 10, 6 },  { 2, 4, 11, 7 }, { 3, 0, 12, 8 },  { 8, 6, 0, 9 },  { 5, 7, 2, 10 },
 		{ 6, 8, 3, 11 }, { 7, 5, 4, 12 }, { 12, 10, 5, 0 }, { 9, 11, 6, 2 }, { 10, 12, 7, 3 }, { 11, 9, 8, 4 },
@@ -5257,6 +5265,7 @@ void MenuPC::State2(u32)
 		PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 	} else if (pad.mPad->mTrigger & 0x100) {
 		s32 step = menu->mChoices[menu->mChoice];
+		// the catalog (mode 7) only buzzes while it has nothing in it
 		if (step == 7) {
 			if (menu->mCanSelect) {
 				ResetPCText(menu, 7);
@@ -5269,6 +5278,7 @@ void MenuPC::State2(u32)
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 		}
 	} else if (pad.mPad->mTrigger & 0x200) {
+		// B: shrink the frame, mode 11 closes the pc once it is shut
 		ResetPCText(menu, 11);
 		menu->mTargetFrameHeight = 0.0f;
 		RestorePCHistory(menu);
@@ -5325,6 +5335,7 @@ static inline void RecyclePCAmount(MenuPC* menu)
  * @note Address: 0x8004A188
  * @note Size: 0x9B4
  */
+// depositing money: left and right pick one of five digits, up and down change it, then yes or no
 void MenuPC::State9(u32)
 {
 	MenuPC* menu = this;
@@ -5452,6 +5463,7 @@ void MenuPC::State9(u32)
  * @note Address: 0x80049508
  * @note Size: 0xC80
  */
+// recycling scrap into money at mScrapRate, the same digit entry
 void MenuPC::State10(u32)
 {
 	MenuPC* menu = this;
@@ -5622,28 +5634,29 @@ extern "C" void PopulateShopCatalogPage(MenuPCPage*);
 
 static inline s32 CountPCShopItems(MenuPCItem* table)
 {
-	s16 x;
-	s16 y;
+	s16 item;
+	s16 quantity;
 	int i;
 	s32 count;
 	count = 0;
 	for (i = 0; i < 20; i++) {
-		x = table[i].mItem;
-		y = table[i].mCount;
-		if (x >= 0 && y >= 0)
+		item     = table[i].mItem;
+		quantity = table[i].mCount;
+		if (item >= 0 && quantity >= 0)
 			count++;
 	}
 	return count;
 }
+// how many rows the nine-row list can start at: the filled rows less eight, at least one
 static inline s32 PCShopMaxPage(MenuPCItem*& table)
 {
-	s16 x, y;
+	s16 item, quantity;
 	int i;
 	s32 pages = 0;
 	for (i = 0; i < 20; table++, i++) {
-		x = table->mItem;
-		y = table->mCount;
-		if (x >= 0 && y >= 0)
+		item     = table->mItem;
+		quantity = table->mCount;
+		if (item >= 0 && quantity >= 0)
 			pages++;
 	}
 	pages -= 8;
@@ -5653,15 +5666,15 @@ static inline s32 PCShopMaxPage(MenuPCItem*& table)
 }
 static inline s32 ResetPCShopPage(MenuPC* menu, MenuPCItem*& table)
 {
-	s16 x, y;
+	s16 item, quantity;
 	int i;
 	s32 pages    = 0;
 	i            = 0;
 	menu->mPhase = 0;
 	for (; i < 20; table++, i++) {
-		x = table->mItem;
-		y = table->mCount;
-		if (x >= 0 && y >= 0)
+		item     = table->mItem;
+		quantity = table->mCount;
+		if (item >= 0 && quantity >= 0)
 			pages++;
 	}
 	pages -= 8;
@@ -5687,7 +5700,7 @@ void MenuPC::State7(u32 frames)
 	count             = CountPCShopItems(table);
 	ApproachHudValue(&menu->mPanelAlpha, &menu->mPanelTarget, 0.08f * frames);
 	switch (menu->mPhase) {
-	case 0:
+	case 0: // browsing the catalog: up and down pick a row, A asks to buy it, B goes back
 		if (count > 1) {
 			if (menu->mShopSelection == 0) {
 				if (pad.mPad->mRepeat & 0x20004) {
@@ -5735,6 +5748,7 @@ void MenuPC::State7(u32 frames)
 				}
 			}
 		}
+		// on an empty row, step back to the last filled one
 		if (PCShopEntryId(menu->mShopSelection) < 0) {
 			do {
 				menu->mShopSelection--;
@@ -5760,7 +5774,7 @@ void MenuPC::State7(u32 frames)
 			menu->mPanelTarget = 0.0f;
 		}
 		break;
-	case 1:
+	case 1: // the yes/no asking whether to buy the selected item
 		if (pad.mPad->mRepeat & 0x10008) {
 			menu->mYesNo--;
 			if (menu->mYesNo < 0)
@@ -5787,10 +5801,10 @@ void MenuPC::State7(u32 frames)
 					gEventVars.mVars[menu->mCatalogBase + entry->mItem] = 1;
 					menu->mExitState                                    = item;
 					s16& quantity                                       = entry->mCount;
-					s16 value                                           = quantity;
-					s32 remaining                                       = value;
-					if (value > 0)
-						remaining = value - 1;
+					s16 stock                                           = quantity;
+					s32 remaining                                       = stock;
+					if (stock > 0)
+						remaining = stock - 1;
 					quantity = remaining;
 					menu->mPhase++;
 					return;
@@ -5808,7 +5822,7 @@ void MenuPC::State7(u32 frames)
 			menu->mPanelTarget = 0.0f;
 		}
 		break;
-	case 2:
+	case 2: // bought: A or B closes the PC, and State11 passes mExitState to the script
 		if (pad.mPad->mTrigger & 0x300) {
 			menu->mPhase       = 0;
 			menu->mPanelTarget = 0.0f;
@@ -5819,7 +5833,7 @@ void MenuPC::State7(u32 frames)
 			RestorePCHistory(menu);
 		}
 		break;
-	case 10:
+	case 10: // sliding to the next row; once there the list starts a row later
 		if (menu->mScroll == menu->mScrollTarget) {
 			if (gShopCatalogPage.mStart < ResetPCShopPage(menu, table) - 1) {
 				gShopCatalogPage.mStart++;
@@ -5830,7 +5844,7 @@ void MenuPC::State7(u32 frames)
 			menu->mScrollTarget = 0.0f;
 		}
 		break;
-	case 20:
+	case 20: // sliding to the previous row; once there the list starts a row earlier
 		if (menu->mScroll == menu->mScrollTarget) {
 			menu->mPhase = 0;
 			CountPCShopItems(table);
@@ -6001,13 +6015,14 @@ BOOL MenuPC::Update(u32 frames)
 			for (s32 i = 0; i < 288; i++) {
 				XObj* obj = PCWorldObject(i);
 				switch (obj->GetKind()) {
-				case 120:
+				case 120: // the shopkeeper
 					obj->SetAnim(mKeeperAnimId, 0, 0, 0, 0, 0.0f, frames, 1.0f, 10.0f);
 					break;
 				}
 			}
 			mPlayKeeperAnim = 0;
 		}
+		// these steps play once: four frames before their end the next step starts
 		switch (mKeeperAnimStep) {
 		case 1:
 		case 2:
@@ -6361,21 +6376,21 @@ extern "C" s32 DrawSaveStatusMessage(s32, s32 id, f32 x, f32 y, f32 size, f32 al
  * @note Address: 0x800362C4
  * @note Size: 0xAA8
  */
-extern "C" s32 DrawCardErrorMessage(s32, s32 id, u8 retry, f32 x, f32 y, f32 size, f32 alpha)
+extern "C" s32 DrawCardErrorMessage(s32 channel, s32 result, u8 retry, f32 x, f32 y, f32 size, f32 alpha)
 {
 	s32 lines = 0;
 	u32 color = (u32)(255.0f * alpha);
-	switch (id) {
-	case -128:
-	case -14:
-	case -12:
-	case -11:
-	case -10:
-	case -8:
-	case -7:
-	case -4:
-	case -1:
-	case 0:
+	switch (result) {
+	case CARD_RESULT_FATAL_ERROR:
+	case CARD_RESULT_CANCELED:
+	case CARD_RESULT_NAMETOOLONG:
+	case CARD_RESULT_LIMIT:
+	case CARD_RESULT_NOPERM:
+	case CARD_RESULT_NOENT:
+	case CARD_RESULT_EXIST:
+	case CARD_RESULT_NOFILE:
+	case CARD_RESULT_BUSY:
+	case CARD_RESULT_READY:
 		if (IsJapanese()) {
 			DrawMenuHelpLine(0xC6, y, size, color);
 			lines = 1;
@@ -6386,12 +6401,12 @@ extern "C" s32 DrawCardErrorMessage(s32, s32 id, u8 retry, f32 x, f32 y, f32 siz
 			lines = 3;
 		}
 		break;
-	case -5:
+	case CARD_RESULT_IOERROR:
 		DrawMenuHelpLine(0xF3, y, size, color);
 		DrawMenuHelpLine(0xF4, y + size, size, color);
 		lines = 2;
 		break;
-	case -3: {
+	case CARD_RESULT_NOCARD: {
 		s32 n;
 		if (IsJapanese()) {
 			DrawMenuHelpLine(0x67, y, size, color);
@@ -6408,14 +6423,14 @@ extern "C" s32 DrawCardErrorMessage(s32, s32 id, u8 retry, f32 x, f32 y, f32 siz
 		lines = n;
 		break;
 	}
-	case -9:
+	case CARD_RESULT_INSSPACE:
 		DrawMenuHelpLine(0xA3, y, size, color);
 		DrawMenuHelpLine(0xA4, y + size, size, color);
 		DrawMenuHelpLine(0xA5, 2.0f * size + y, size, color);
 		DrawMenuHelpLine(0xA6, 3.0f * size + y, size, color);
 		lines = 4;
 		break;
-	case -2:
+	case CARD_RESULT_WRONGDEVICE:
 		if (retry) {
 
 			if (IsJapanese()) {
@@ -6455,8 +6470,8 @@ extern "C" s32 DrawCardErrorMessage(s32, s32 id, u8 retry, f32 x, f32 y, f32 siz
 		}
 		break;
 
-	case -13:
-	case -6:
+	case CARD_RESULT_ENCODING:
+	case CARD_RESULT_BROKEN:
 		break;
 	}
 	return lines;
@@ -6923,6 +6938,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		menu->mLabels[i][0]  = 0;
 		menu->mLabelWidth[i] = 0.0f;
 	}
+	// with this status bit only the stages in sStageOrder; without it every room, a rule, then stages 100 and up
 	if (gGame.mStatus.mFlags & 0x0008000000000000ULL) {
 		for (s32* stage = sStageOrder; *stage >= 0; stage++) {
 			char* line         = menu->mLabels[menu->mCount];
@@ -6988,7 +7004,7 @@ BOOL MenuStageSelect::Draw()
 				else
 					color = (0x64640000 | (StageRowBlue(index, 0x64, 0xC8) << 8)) | (u32)(255.0f * mAlpha);
 				if (mLabels[index][0] == *"\x01") {
-
+					// a "\x01" row is a rule: a dark line with a light one under it
 					u32 shadow = (u32)(255.0f * mAlpha) | 0x64646400;
 					DrawGsLineSegment(&gGame.mGs, NULL, (x - 15.0f), (fontSize / 2 + y), 0.0f, shadow, ((x - 15.0f) + (30.0f + maxWidth)),
 					                  (fontSize / 2 + y), 0.0f, shadow);
@@ -7128,7 +7144,7 @@ BOOL MenuMCTest::Update(u32 frames)
 			return IsOpen();
 		s32 result = card->mCard.mResult;
 		switch (mOperation) {
-		case 1:
+		case 1: // the preview read finished: one line per file
 			for (int i = 0; i < mFileCount; i++) {
 				if (result == 0) {
 					SavePreviewRecord* save = &card->mAllSaves[i];
@@ -7159,7 +7175,7 @@ BOOL MenuMCTest::Update(u32 frames)
 				        card->mFreeEntries);
 			mOperation = 0;
 			break;
-		case 3:
+		case 3: // a save or a delete finished: read the list again
 		case 7:
 			if (result == 0) {
 				StartMemoryCardPreviewRead(card, sMenuMain.mChannel, 1);
@@ -7174,7 +7190,7 @@ BOOL MenuMCTest::Update(u32 frames)
 				}
 			}
 			return IsOpen();
-		case 5:
+		case 5: // a load finished: stage 20000 starts the game from the card
 			mOperation = 0;
 			if (result == 0) {
 				Close();
@@ -7992,6 +8008,7 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	if (!(alpha > 0.0f))
 		return;
 	CTexObj tex;
+	// drawn as four digits, hhmm, up to 99:59
 	s32 value = hours * 100 + minutes;
 	if (value >= 9959)
 		value = 9959;
@@ -8015,8 +8032,8 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	h   = 1.2f * (GXGetTexObjHeight(&tex) / 10);
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
-	u8 a          = opacity;
-	u32 top = a | 0xEFEBC500, bottom = a | 0xEDA83600;
+	u8 alphaByte  = opacity;
+	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
 
 	f32 offset = 12.0f + ((6.0f * (w - 3.0f * 1.2f) - 98.0f * 1.2f) - 12.0f);
 	for (int i = 0; i < 4; i++) {
@@ -8091,8 +8108,8 @@ extern "C" void DrawSaveStat(s32 icon, s32 value, u8, f32 x, f32 y, f32 alpha, f
 	u32 color = (u32)alpha | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y + iconOffset, 0.0f, iconScale * iw, iconScale * ih, 0.0f, 0.0f,
 	                   0.0f);
-	u8 a    = alpha;
-	u32 top = a | 0xEFEBC500, bottom = a | 0xEDA83600;
+	u8 alphaByte = alpha;
+	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
 	if (missing) {
 		tex   = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[missingTexture], 0);
 		f32 w = 1.2f * GXGetTexObjWidth(&tex);

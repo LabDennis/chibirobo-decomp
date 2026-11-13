@@ -197,13 +197,17 @@ static inline BOOL Kind9AnimFinished(XObjActor3* actor, u32 frames)
 	return end - frames <= current;
 }
 
+// Kind9 runs haisui_nezumi (GetKind 0x31B): it paces its window, charges the robot when it comes near and grabs it or ends
+// up stunned
 void XObjActor3::Kind9(u32 frames)
 {
 	XObjChr* player = gGame.GetPlayer();
 	CJObj joint;
 	Vec pos = player->mMoveTranslate;
+	// the lunge window step 5 opened runs out while it paces
 	if ((mActorFlags.mFlags & 0x20) && mKindStep < 5 && mKindStep >= 1 && (s32)--mExtraEventArgs[6] < 0)
 		mActorFlags.mFlags &= ~0x20;
+	// the robot stands on top of it
 	if (mKindStep != 0 && mKindStep < 20 && Abs(pos.x - mMoveTranslate.x) <= 10 && pos.y >= 4 + mMoveTranslate.y
 	    && pos.y <= 8 + mMoveTranslate.y)
 		StunKind9Actor(this);
@@ -214,7 +218,7 @@ void XObjActor3::Kind9(u32 frames)
 			++mKindStep;
 		}
 		break;
-	case 1:
+	case 1: // stands, then walks off to a random side
 		SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 		if (--mFrameCount < 0) {
 			mFrameCount = rand() % 120 + 120;
@@ -224,7 +228,7 @@ void XObjActor3::Kind9(u32 frames)
 		if (IsPlayerWithinActorReach(this))
 			mKindStep = 5;
 		break;
-	case 2:
+	case 2: // walks along its window, turning at the edges; with the lunge window open it rests once its walk time is up
 		SetAnim(3, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 		if (mHeading == -HALF_PI)
 			mMoveTranslate.x -= 0.1f * frames;
@@ -249,7 +253,7 @@ void XObjActor3::Kind9(u32 frames)
 		if (IsPlayerWithinActorReach(this))
 			mKindStep = 5;
 		break;
-	case 3:
+	case 3: // turns round to face away from the edge it reached
 		if (_B70 == HALF_PI) {
 			mHeading -= 0.04f * frames;
 			if (mHeading <= -HALF_PI) {
@@ -276,7 +280,7 @@ void XObjActor3::Kind9(u32 frames)
 			gGame.mParticle.Kill((HSD_Generator*)mGens[0]);
 		}
 		break;
-	case 5:
+	case 5: // the robot came near: opens the 10-second lunge window and turns to it
 #ifdef VERSION_PAL
 		mExtraEventArgs[6] = (10 * gVideoFramesPerSecond) / frames;
 #else
@@ -316,7 +320,7 @@ void XObjActor3::Kind9(u32 frames)
 			mKindStep   = 8;
 		}
 		break;
-	case 8:
+	case 8: // runs at the robot kicking up dust until it is within 32, rests at the window's edge
 		if (mHeading == -HALF_PI)
 			mMoveTranslate.x -= 0.6f * frames;
 		else
@@ -351,7 +355,7 @@ void XObjActor3::Kind9(u32 frames)
 			PlayGameSound(&gGame.mSound, 0xb0002, 255);
 		}
 		break;
-	case 10: {
+	case 10: { // charges: stunned at the window's edge or by the robot's mug, grabs the robot if it is free
 		f32 radius = GetPlayerCollisionRadius(gGame.GetPlayer());
 		f32 offset;
 		if (mHeading == -HALF_PI) {
@@ -373,12 +377,12 @@ void XObjActor3::Kind9(u32 frames)
 			if (sqrtf(dz * dz + (dx * dx + dy * dy)) < 10 && !IsPlayerFlashingFromHit(player)
 			    && !IsPlayerAway(gGame.GetPlayer(), gGame.GetPlayer()->mMoveTranslate)) {
 				CPad pad(0);
-				if (radius < 2) {
+				if (radius < 2) { // the robot isn't holding up its mug
 					SetAnim(11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 					if (!IsBusyAnim(gGame.GetPlayer()->mAnimId) && gGame.GetPlayer()->mAttachmentRequest < 0
 					    && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 						mActorFlags.mFlags |= 0x80;
-						gGame.mStatus.mFlags &= ~0x800000000000ULL;
+						gGame.mStatus.mFlags &= ~0x800000000000ULL; // the robot can't open its equipment rings
 					} else {
 						PlayGameSound(&gGame.mSound, 0xb0004, 255);
 						mActorFlags.mFlags |= 0x200;
@@ -412,7 +416,7 @@ void XObjActor3::Kind9(u32 frames)
 			}
 		}
 		break;
-	case 21: {
+	case 21: { // waits until no script runs, its time is up and the robot is 12 away
 		if (gGame.mEvt.mData.mScript)
 			break;
 		f32 distance = Abs(pos.x - mMoveTranslate.x);
@@ -612,6 +616,7 @@ extern "C" void ResetActor3Fields(XObjActor3* actor)
  * @note Address: 0x80114CC8
  * @note Size: 0x518
  */
+// a clock's minute hand, it turns twelve times as fast as Kind3's hour hand; kind 0x411 rides a joint of clock 0x2A1
 void XObjActor3::Kind2(u32)
 {
 	CJObj joint;
@@ -650,6 +655,7 @@ void XObjActor3::Kind2(u32)
  * @note Address: 0x801147C0
  * @note Size: 0x508
  */
+// a clock's hour hand, 2.617994 and 3.6651917 are 150 and 210 degrees; kind 0x412 rides a joint of clock 0x2A1
 void XObjActor3::Kind3(u32)
 {
 	CJObj joint;
@@ -691,12 +697,12 @@ void XObjActor3::Kind3(u32)
 void XObjActor3::Kind4(u32 frames)
 {
 	mFrameCount++;
-	f32 s     = sin(0.017453292f * ((mFrameCount * 6) % 360));
+	f32 wave  = sin(DEG2RAD * ((mFrameCount * 6) % 360));
 	f32 swing = 0.25f;
 	if (GetKind() == 0x437) {
-		mMoveRotate.x = s * swing;
+		mMoveRotate.x = wave * swing;
 	} else {
-		mMoveRotate.z = s * swing;
+		mMoveRotate.z = wave * swing;
 	}
 }
 
@@ -892,7 +898,7 @@ extern "C" BOOL IsPlayerWithinActorReach(XObjActor3* actor)
 			return FALSE;
 		}
 		if (pos.y >= actor->mMoveTranslate.y - 16.0f && pos.y <= actor->mMoveTranslate.y + 16.0f) {
-			if (actor->mHeading == 1.5707964f) {
+			if (actor->mHeading == HALF_PI) {
 				if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mWindowRight) {
 					return TRUE;
 				}
@@ -948,6 +954,8 @@ static inline void BounceBossPart(XObjActor3* part, f32 speed)
 	part->mKindTimer = speed;
 	++part->mFrameCount;
 }
+
+// the spider boss's parts: each rides the boss at its orbit offset until launched, then bounces to a stop and blinks out
 void XObjActor3::Kind11(u32 frames)
 {
 	CPad pad(0);
@@ -1056,7 +1064,7 @@ void XObjActor3::Kind11(u32 frames)
 		}
 		break;
 	}
-	case 2: {
+	case 2: { // launched: falls along its heading and bounces, it stays down at the tenth landing
 		SetColor(1, 0, 0, 0, 0);
 		mKindTimer -= .09f * frames;
 		mMoveTranslate.y += mKindTimer;
@@ -1337,7 +1345,7 @@ extern "C" void LaunchSpiderBossPart(XObjActor3* actor)
 		actor->mMoveTranslate.z = z + HSD_JObjGetTranslationZ(holder->mJObj);
 		actor->SetPos(actor->mMoveTranslate, 0);
 		actor->mHeading = (f32)atan2(holder->mMoveTranslate.x - actor->mMoveTranslate.x, holder->mMoveTranslate.z - actor->mMoveTranslate.z)
-		                + 3.1415927f;
+		                + PI; // facing away from the holder
 		PlayGameSound(&gGame.mSound, 0x160021, 0xFF);
 	}
 }
@@ -1394,7 +1402,7 @@ extern "C" void LaunchSpiderBossCenterPart(void)
 				obj->SetPos(obj->mMoveTranslate, 0);
 				obj->mHeading
 				    = (f32)atan2(holder->mMoveTranslate.x - obj->mMoveTranslate.x, holder->mMoveTranslate.z - obj->mMoveTranslate.z)
-				    + 3.1415927f;
+				    + PI; // facing away from the holder
 				obj->SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				PlayGameSound(&gGame.mSound, 0x160021, 0xFF);
 			}
@@ -1477,6 +1485,7 @@ void XObjActor3::Kind13(u32 frames)
 		if (!(mActorFlags.mFlags & 4)) {
 			XObjSpiderBoss* boss = ProjectileOwner();
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+				// lobbed at the robot: the first lands on it, the rest in a ring of 24 round it
 				PlaceBossProjectile(this, boss, 64);
 				mKindTimer = 16;
 				f32 dx = pos.x - mMoveTranslate.x, dz = pos.z - mMoveTranslate.z;
@@ -1525,7 +1534,7 @@ void XObjActor3::Kind13(u32 frames)
 		if (GetAnimEndFrame(mJObj) - frames <= GetAnimFrame(mJObj))
 			HideBossProjectile(this, false);
 		break;
-	case 10:
+	case 10: // fired straight at the robot, gone after 120 frames
 		if (!(mActorFlags.mFlags & 4)) {
 			XObjSpiderBoss* boss = ProjectileOwner();
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
@@ -1569,6 +1578,7 @@ void XObjActor3::Kind13(u32 frames)
 		if (!(mActorFlags.mFlags & 4)) {
 			XObjSpiderBoss* boss = ProjectileOwner();
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+				// lobbed round the boss: the first onto its centre, the rest in a ring of 36
 				PlaceBossProjectile(this, boss, 16);
 				mKindTimer = 10;
 				Vec center
@@ -1604,6 +1614,8 @@ void XObjActor3::Kind13(u32 frames)
  * @note Address: 0x8010D390
  * @note Size: 0x2CC
  */
+// the script's orders to the boss's projectiles (kind 0x3E0, run by Kind13): 0 lobs all of them at the robot, 2 lobs the idle
+// ones round the boss, anything else fires the next idle one straight at the robot
 extern "C" void CommandSpiderBossProjectiles(s32 mode)
 {
 	if (mode == 0) {
@@ -1962,6 +1974,8 @@ void XObjActor3::Kind19(u32 frames)
  * @note Address: 0x8010B528
  * @note Size: 0x28C
  */
+// the script's commands to haisui_nezumi: 1 starts it pacing between arg2 and arg3 (hundredths) or, with arg1 0, stops it;
+// 2 sets event var arg1 if it holds the robot; 3 lets go of it; 4 sets event var arg1 if the robot is free to be grabbed
 extern "C" void HandleKind9ActorCommand(XObjActor3* actor)
 {
 	switch (actor->mEventCommand) {
