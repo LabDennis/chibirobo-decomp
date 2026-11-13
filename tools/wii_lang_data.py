@@ -382,11 +382,62 @@ def extract_script_entries(b: bytes, is_globals: bool) -> Tuple[int, Dict[str, i
     return 0, entries
 
 
+def map_globals_slots(bytes_a: bytes, bytes_b: bytes) -> Dict[str, str]:
+    """Map globals.bin script slots from bytes_a to bytes_b, handling insertions/deletions."""
+    base_a, ent_a = extract_script_entries(bytes_a, is_globals=True)
+    base_b, ent_b = extract_script_entries(bytes_b, is_globals=True)
+    keys_a = sorted(ent_a.keys(), key=lambda x: int(x[1:]))
+    keys_b = sorted(ent_b.keys(), key=lambda x: int(x[1:]))
+
+    def _sigs(b: bytes, base: int, ent: Dict[str, int], keys: List[str]):
+        out = []
+        for k in keys:
+            insts, _, _, msgs = parse_script_from(b, [ent[k]], base, follow_run=False)
+            toks = tuple(x[1] for x in insts)
+            calls = sum(1 for x in insts if x[3] is not None)
+            out.append((toks, len(msgs), calls))
+        return out
+
+    sigs_a = _sigs(bytes_a, base_a, ent_a, keys_a)
+    sigs_b = _sigs(bytes_b, base_b, ent_b, keys_b)
+    mapping: Dict[str, str] = {}
+    sm = difflib.SequenceMatcher(None, sigs_a, sigs_b, autojunk=False)
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag == "equal":
+            for k in range(i2 - i1):
+                mapping[keys_a[i1 + k]] = keys_b[j1 + k]
+        elif tag == "replace":
+            if (i2 - i1) == (j2 - j1):
+                for k in range(i2 - i1):
+                    r = difflib.SequenceMatcher(
+                        None, sigs_a[i1 + k][0], sigs_b[j1 + k][0], autojunk=False
+                    ).ratio()
+                    if r >= 0.5:
+                        mapping[keys_a[i1 + k]] = keys_b[j1 + k]
+            else:
+                used_b: set[int] = set()
+                for ia in range(i1, i2):
+                    best_r, best_jb = 0.0, None
+                    for jb in range(j1, j2):
+                        if jb in used_b:
+                            continue
+                        r = difflib.SequenceMatcher(
+                            None, sigs_a[ia][0], sigs_b[jb][0], autojunk=False
+                        ).ratio()
+                        if r > best_r:
+                            best_r, best_jb = r, jb
+                    if best_r >= 0.8 and best_jb is not None:
+                        mapping[keys_a[ia]] = keys_b[best_jb]
+                        used_b.add(best_jb)
+    return mapping
+
+
 def align_by_structure(
     bytes_a: bytes,
     bytes_b: bytes,
     is_globals: bool,
     require_same_msg_bytes: bool = False,
+    slot_map: Optional[Dict[str, str]] = None,
 ) -> Dict[int, Tuple[int, bytes]]:
     """Align messages from bytes_a to bytes_b via entry slots + RUN pairing.
 
@@ -394,6 +445,12 @@ def align_by_structure(
     """
     base_a, ent_a = extract_script_entries(bytes_a, is_globals)
     base_b, ent_b = extract_script_entries(bytes_b, is_globals)
+    if slot_map is None:
+        if is_globals:
+            slot_map = map_globals_slots(bytes_a, bytes_b)
+        else:
+            slot_map = {slot: slot for slot in ent_a if slot in ent_b}
+
     cache_a: Dict[int, list] = {}
     cache_b: Dict[int, list] = {}
 
@@ -409,9 +466,9 @@ def align_by_structure(
 
     pair_q: List[Tuple[int, int]] = []
     seen_pairs = set()
-    for slot, off_a in ent_a.items():
-        if slot in ent_b:
-            pair = (off_a, ent_b[slot])
+    for slot_a, slot_b in slot_map.items():
+        if slot_a in ent_a and slot_b in ent_b:
+            pair = (ent_a[slot_a], ent_b[slot_b])
             if pair not in seen_pairs:
                 seen_pairs.add(pair)
                 pair_q.append(pair)
@@ -635,15 +692,26 @@ def translate_globals_bin(
     _, _, _, wii_msgs = parse_script_from(wii_bytes, list(ent_wii.values()), 0x18 + w_hdr[4], follow_run=True)
 
     if jp_bytes is not None:
-        m_wj = align_by_structure(wii_bytes, jp_bytes, is_globals=True, require_same_msg_bytes=True)
-        m_jt = align_by_structure(jp_bytes, target_bytes, is_globals=True, require_same_msg_bytes=False)
+        slot_map_wj = map_globals_slots(wii_bytes, jp_bytes)
+        slot_map_jt = map_globals_slots(jp_bytes, target_bytes)
+        m_wj = align_by_structure(
+            wii_bytes, jp_bytes, is_globals=True, require_same_msg_bytes=True, slot_map=slot_map_wj
+        )
+        m_jt = align_by_structure(
+            jp_bytes, target_bytes, is_globals=True, require_same_msg_bytes=False, slot_map=slot_map_jt
+        )
         repl: Dict[int, bytes] = {}
         for m_start, (j_start, _) in m_wj.items():
             if j_start in m_jt:
                 repl[m_start] = m_jt[j_start][1]
+        slots_mapped = len(set(slot_map_wj.values()) & set(slot_map_jt.keys()))
     else:
-        m_wt = align_by_structure(wii_bytes, target_bytes, is_globals=True, require_same_msg_bytes=False)
+        slot_map_wt = map_globals_slots(wii_bytes, target_bytes)
+        m_wt = align_by_structure(
+            wii_bytes, target_bytes, is_globals=True, require_same_msg_bytes=False, slot_map=slot_map_wt
+        )
         repl = {m_start: txt for m_start, (_, txt) in m_wt.items()}
+        slots_mapped = len(slot_map_wt)
 
     untranslated_indices = [
         idx for idx, (_, _, _, m_start, _) in enumerate(wii_msgs) if m_start not in repl
@@ -684,6 +752,8 @@ def translate_globals_bin(
         "untranslated_indices": untranslated_indices,
         "table_strings_total": tbl_total,
         "table_strings_translated": tbl_translated,
+        "slots_total": len(ent_wii),
+        "slots_mapped": slots_mapped,
     }
     return bytes(out), stats
 
