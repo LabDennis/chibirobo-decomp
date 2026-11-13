@@ -603,6 +603,65 @@ extern "C" XObjSource* GetObjectSources()
 	return gObjectSources;
 }
 
+#if defined(VERSION_PAL)
+#define STAGE(file, message, flags) { file, file, message, flags }
+#else
+#define STAGE(file, message, flags) { file, message, flags }
+#endif
+
+StageDesc stageTable[] = {
+	STAGE("stage00", 0, 5),
+	STAGE("stage01", 1, 5),
+	STAGE("stage02", 2, 5),
+	STAGE("stage03", 3, 5),
+	STAGE("stage04", 4, 5),
+	STAGE("stage05", 5, 4),
+	STAGE("stage06", 6, 5),
+	STAGE("stage07", 7, 5),
+	STAGE("stage08", 8, 5),
+	STAGE("stage09", 9, 5),
+	STAGE("stage10", 10, 1),
+	STAGE("stage11", 11, 5),
+	STAGE("stage12", 12, 5),
+	STAGE("stage13", 13, 5),
+	STAGE("stage14", 14, 5),
+	STAGE("stage15", 15, 5),
+	STAGE("stage16", 16, 5),
+	STAGE("stage17", 17, 5),
+	STAGE("stage18", 18, 5),
+	STAGE("stage19", 19, 5),
+	STAGE("stage20", 20, 5),
+	STAGE("stage21", 21, 5),
+	STAGE("stage22", 22, 5),
+	STAGE("stage23", 23, 5),
+	STAGE("stage24", 24, 5),
+	STAGE("stage25", 25, 5),
+	STAGE("stage26", 26, 5),
+	STAGE("stage27", 27, 5),
+#if defined(VERSION_PAL)
+	{ "stage28", "stage07", 28, 5 },
+	{ "stage29", "stage07", 29, 5 },
+#else
+	STAGE("stage28", 28, 5),
+	STAGE("stage29", 29, 5),
+#endif
+	STAGE(NULL, -1, 0),
+
+	// FindStageIndexByName assigns these stages IDs starting at 100.
+	STAGE("shun", -1, 5),
+	STAGE("hori", -1, 5),
+	STAGE("ahk", -1, 5),
+	STAGE("junko", -1, 5),
+	STAGE("sayoko", -1, 5),
+	STAGE("mory", -1, 5),
+	STAGE("ryosuke", -1, 5),
+	STAGE("takanabe", -1, 5),
+	STAGE("mariko", -1, 5),
+	STAGE(NULL, 0, 0),
+};
+
+#undef STAGE
+
 /**
  * @note Address: 0x8006EE24
  * @note Size: 0x514
