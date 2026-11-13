@@ -1,5 +1,5 @@
 #include "game/xobjflags.h"
-#include "game/hsd_cobj.h"
+#include "game/animframe.h"
 #include <math.h>
 #include <stdlib.h>
 #include "game/gmath.h"
@@ -14,7 +14,7 @@ BOOL XObjCoin::LoadFromPlacement(const CoordInfo& info)
 	mPlacementParam1 = info.mPlacement->mParam1;
 	if (IsFlagSet())
 		return TRUE;
-	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
+	if (XObj::LoadFromPlacement(info)) {
 		mStatus.mFlags |= 0x10000000ULL;
 		return TRUE;
 	}
@@ -27,11 +27,11 @@ BOOL XObjCoin::LoadFromPlacement(const CoordInfo& info)
  */
 void XObjCoin::ResetObjectState()
 {
-	ResetObjectState__4XObjFv(this);
-	s32 sign       = rand() & 1 ? 1 : -1;
-	mSpin          = (DEG2RAD * (rand() % 360)) * sign;
-	HSD_AObj* aobj = GetAObj(mJObj);
-	f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
+	XObj::ResetObjectState();
+	s32 direction = rand() & 1 ? 1 : -1;
+	f32 angle     = DEG2RAD * (rand() % 360);
+	mSpin         = angle * direction;
+	f32 end       = GetAnimEndFrame(mJObj);
 	if (end > 0.0f) {
 		f32 frame              = fmod((f32)rand(), end);
 		UnkStageObj* placement = mCoord.mPlacement;
@@ -58,7 +58,7 @@ s32 XObjCoin::GetFlagIndex()
  */
 BOOL XObjItem::LoadFromPlacement(const CoordInfo& info)
 {
-	BOOL result = LoadFromPlacement__4XObjFRC9CoordInfo(this, &info);
+	BOOL result = XObj::LoadFromPlacement(info);
 	if (result && IsFlagSet())
 		mStatus.mFlags &= ~0x10000ULL;
 	return result;

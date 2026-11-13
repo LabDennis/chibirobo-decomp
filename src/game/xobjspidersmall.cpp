@@ -326,11 +326,11 @@ extern "C" f32 GetSmallSpiderContactDistance(Vec* a, Vec* b)
  * @note Size: 0x40
  */
 // state 2, dead
-extern "C" void State2__15XObjSpiderSmallFUl(XObjSpiderSmall* spider)
+void XObjSpiderSmall::State2(u32)
 {
-	spider->mStatus.mFlags &= ~0x10000ULL;
-	spider->mSpiderStatus.mFlags |= 0x80000;
-	spider->mSpiderStatus.mFlags &= ~0x100000;
+	mStatus.mFlags &= ~0x10000ULL;
+	mSpiderStatus.mFlags |= 0x80000;
+	mSpiderStatus.mFlags &= ~0x100000;
 }
 
 // jumps onto the robot
@@ -685,7 +685,7 @@ void XObjSpiderSmall::State8(u32 frames)
 				mWarpsLeft       = 0;
 				mTimer           = 0;
 				if (mSpiderStatus.mFlags & 0x40000) {
-					State2__15XObjSpiderSmallFUl(this);
+					State2(frames);
 					if (mFxIndex != 0xFF) {
 						gSmallSpiderEffectSlotOwners[mFxIndex] = -1;
 						mFxObj                                 = NULL;
@@ -1232,7 +1232,7 @@ void XObjSpiderSmall::State9(u32 frames)
 	case 12:
 		if (IsSmallSpiderEffectAnimationFinished(&mFx, mFxIndex, frames)) {
 			mTimer = 0;
-			State2__15XObjSpiderSmallFUl(this);
+			State2(frames);
 			if (mFxIndex != 0xFF) {
 				gSmallSpiderEffectSlotOwners[mFxIndex] = -1;
 				mFxObj                                 = NULL;
@@ -1420,7 +1420,7 @@ void XObjSpiderSmall::State7(u32 frames)
 			if (IsSmallSpiderEffectAnimationFinished(&mFx, mFxIndex, frames)) {
 				mStep++;
 				mTimer = 0;
-				State2__15XObjSpiderSmallFUl(this);
+				State2(frames);
 				if (mFxIndex != 0xFF) {
 					gSmallSpiderEffectSlotOwners[mFxIndex] = -1;
 					mFxObj                                 = NULL;
@@ -1558,7 +1558,7 @@ void XObjSpiderSmall::State1(u32 frames)
 	case 1: {
 		mStep++;
 		mTimer = 0;
-		State2__15XObjSpiderSmallFUl(this);
+		State2(frames);
 		Vec pos;
 		pos.x = mMoveTranslate.x;
 		pos.y = mMoveTranslate.y;
