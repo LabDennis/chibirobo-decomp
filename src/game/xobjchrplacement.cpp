@@ -65,7 +65,7 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 		mTumble.mFade.mAmount = 0.0f;
 		CJObj::SetRotationY(mMoveRotate.y, TRUE);
 		SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-		mStandTimer = 3;
+		mIdleLoops = 3;
 		{
 			s32 branch1Child0[] = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
 			s32 branch1Child1[] = { 0, 1, 0, 1, 2, 0, 0, 1, 1 };

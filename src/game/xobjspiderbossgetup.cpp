@@ -40,7 +40,7 @@ void XObjSpiderBoss::State1(u32 frames)
 			mSpiderStatus.mFlags |= 0x40000000;
 			mSpiderStatus.mFlags &= ~0x10;
 			mSpiderStatus.mFlags |= 0x80000;
-			mNextAction = 16;
+			mHits = 16;
 		}
 		break;
 	}

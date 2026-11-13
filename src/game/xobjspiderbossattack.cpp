@@ -88,45 +88,45 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 			StopGameSfx(&gGame.mSound, 0x12A);
 			spider->mSpiderStatus.mFlags &= ~2;
 			if (spider->mHitStrength >= (s32)GetPlayerActionParameter(31) / 100.0f) {
-				spider->mNextAction -= 3;
-				if (spider->mNextAction <= 0)
-					spider->mNextAction = 0;
-			} else if (--spider->mNextAction <= 0)
-				spider->mNextAction = 0;
+				spider->mHits -= 3;
+				if (spider->mHits <= 0)
+					spider->mHits = 0;
+			} else if (--spider->mHits <= 0)
+				spider->mHits = 0;
 			if (gGame.GetPlayer()->mParams.mBattery <= 30.0f && (spider->mSpiderStatus.mFlags & 0x40000000))
-				spider->mNextAction = 0;
+				spider->mHits = 0;
 			if (!(spider->mSpiderStatus.mFlags & 0x40000000)) {
-				if (spider->mNextAction < 22) {
+				if (spider->mHits < 22) {
 					LaunchSpiderBossPartByIndex(0);
 				}
-				if (spider->mNextAction < 19) {
+				if (spider->mHits < 19) {
 					LaunchSpiderBossPartByIndex(1);
 				}
-				if (spider->mNextAction < 16) {
+				if (spider->mHits < 16) {
 					LaunchSpiderBossPartByIndex(2);
 					LaunchSpiderBossPartByIndex(8);
 				}
-				if (spider->mNextAction < 13) {
+				if (spider->mHits < 13) {
 					LaunchSpiderBossPartByIndex(3);
 				}
-				if (spider->mNextAction < 11) {
+				if (spider->mHits < 11) {
 					LaunchSpiderBossPartByIndex(4);
 					LaunchSpiderBossPartByIndex(9);
 				}
-				if (spider->mNextAction < 9) {
+				if (spider->mHits < 9) {
 					LaunchSpiderBossPartByIndex(5);
 				}
-				if (spider->mNextAction < 6) {
+				if (spider->mHits < 6) {
 					LaunchSpiderBossPartByIndex(6);
 					LaunchSpiderBossPartByIndex(10);
 				}
-				if (spider->mNextAction < 3) {
+				if (spider->mHits < 3) {
 					LaunchSpiderBossPartByIndex(7);
 				}
-				if (spider->mNextAction < 1)
+				if (spider->mHits < 1)
 					LaunchSpiderBossCenterPart();
 			}
-			if (spider->mNextAction <= 0) {
+			if (spider->mHits <= 0) {
 				ResetSpiderBossAttachment();
 				StopGameSfx(&gGame.mSound, 0x16001F);
 				spider->mSpeed = 0;

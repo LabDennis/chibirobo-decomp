@@ -92,7 +92,7 @@ extern "C" void ResetPlayerAttachment(XObjChr* player, s32 nextAnimation)
 	player->mNextClimbType                = 0;
 	player->mClimbType                    = 0;
 	player->mHitObjectIndex               = -1;
-	player->mTaggedObjectIndex            = -1;
+	player->mActionObjectIndex            = -1;
 	player->mFloorContacts[2].objectIndex = -1;
 	gGame.mParticle.Kill(0x15);
 	if (nextAnimation >= 0)

@@ -33,8 +33,8 @@ public:
 	Vec mHitPos;              // _9CC
 	Vec mBasePos;             // _9D8
 	f32 mHitStrength;         // _9E4
-	s32 mNextAction;          // _9E8
-	s32 mMaxHits;             // _9EC, seeds mNextAction, the hit counter
+	s32 mHits;                // _9E8, hits left; each hit takes one and launches parts as it falls
+	s32 mMaxHits;             // _9EC, 23, mHits starts here
 	Vec mPatrolTarget;        // _9F0
 	Vec mAreaPos;             // _9FC, corner of the area it walks in
 	f32 mAreaWidth;           // _A08

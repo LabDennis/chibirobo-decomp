@@ -30,6 +30,6 @@ extern "C" void StopPlayerMotion(XObjChr* chr)
 		ReleasePushAction(&chr->mPush);
 		chr->mPush.mState = 0;
 		chr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-		chr->mStandTimer = 3;
+		chr->mIdleLoops = 3;
 	}
 }

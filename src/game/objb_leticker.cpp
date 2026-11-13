@@ -204,7 +204,7 @@ BOOL TurnLetickerLinkedPartAndTrackJoint(XObjLeticker* leticker, f32 angle)
 	f32 c      = cos(HSD_JObjGetRotationY(part->mJObj) - (angle + my));
 	if (c < (f32)cos(0.08726646f)) {
 		leticker->mLevelProgress = 0.0f;
-		leticker->mPushTimer     = 0;
+		leticker->mPowerTimer    = 0;
 		if (part->mAnimId == 0) {
 			part->SetRotateY(angle + HSD_JObjGetRotationY(leticker->mJObj), 0.1f);
 			leticker->mHeading = angle;
@@ -305,8 +305,8 @@ void XObjLeticker::vf148()
 		gGame.mStatus.mFlags &= ~0x80ULL;
 		gGame.mMotionControlCamera.PopAction();
 	}
-	mPushing   = FALSE;
-	mPushTimer = 0;
+	mPowered    = FALSE;
+	mPowerTimer = 0;
 	if (mState == 2) {
 		mMaxLevel         = mLevelBySide[GetSide(mHeading)];
 		mMaxLevelProgress = 10.0f * mMaxLevel;
@@ -343,8 +343,8 @@ BOOL XObjLeticker::vf134(f32 amount)
 		angle = -HALF_PI;
 		break;
 	}
-	if (!mPushing) {
-		mPushing = TRUE;
+	if (!mPowered) {
+		mPowered = TRUE;
 		mWaiting = FALSE;
 		if (mState != 3) {
 			CCameraActionLeticker& camera = gLetickerCameraAction;
@@ -374,16 +374,16 @@ BOOL XObjLeticker::vf134(f32 amount)
 	}
 	if (mWaiting) {
 		if (!(pad.mPad->mButton & HSD_PAD_STICK_DOWN)) {
-			mPushTimer -= 1;
-			if (mPushTimer <= 0)
+			mPowerTimer -= 1;
+			if (mPowerTimer <= 0)
 				return FALSE;
 			return TRUE;
 		}
 		mWaiting = FALSE;
 	}
-	++mPushTimer;
+	++mPowerTimer;
 	f32 delta     = amount * mSpeedScale;
-	BOOL starting = mPushTimer < 40;
+	BOOL starting = mPowerTimer < 40;
 	switch (mState) {
 	case 1:
 		if (!(u8)TurnLetickerAndCheckClearance(this, angle)) {
@@ -394,8 +394,8 @@ BOOL XObjLeticker::vf134(f32 amount)
 				SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				part->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				PushAnim(part, 0, 0, 100);
-				mPushTimer = 30;
-				mWaiting   = TRUE;
+				mPowerTimer = 30;
+				mWaiting    = TRUE;
 			}
 			return TRUE;
 		}
@@ -576,7 +576,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 		case 2:
 			return !(mLevelProgress < mMaxLevelProgress);
 		case 3:
-			return mPushing != 0;
+			return mPowered != 0;
 		case 4:
 			return (s32)(100.0f * mSpeedScale);
 		}
@@ -749,7 +749,7 @@ void XObjLeticker::DrawObjectEffects()
 	XObj* part = gGame.GetObject(mLinked[0]);
 	switch (mState) {
 	case 3:
-		if (!(0.0f < mLevelProgress) || (!mPushing && part->mAnimId != 1)) {
+		if (!(0.0f < mLevelProgress) || (!mPowered && part->mAnimId != 1)) {
 			break;
 		}
 		Mtx mtx;
@@ -830,11 +830,11 @@ void XObjLeticker::StateCount()
 			if (mCurrentLevel < count) {
 				mCurrentLevel++;
 				f32 rate = 1.0f;
-				if (!mPushing) {
+				if (!mPowered) {
 					rate = 8.0f;
 				}
 				part->SetAnim(mCurrentLevel, FALSE, NULL, NULL, NULL, 0.0f, rate, 0.0f, 10.0f);
-			} else if (mPushing) {
+			} else if (mPowered) {
 				mCurrentLevel--;
 				part->SetAnim(24 - mCurrentLevel, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f);
 				if (mCurrentLevel == 0) {
@@ -843,7 +843,7 @@ void XObjLeticker::StateCount()
 			} else {
 				mLevelProgress = (mCurrentLevel - 1) * 10;
 			}
-			if (mPushing) {
+			if (mPowered) {
 				PlayGameSound(&gGame.mSound, 0xAC, 0xFF);
 				HSD_AudioSFXSetPitchByID(0xAC, 600.0f * (mSpeedScale - 1.0f));
 			}
@@ -970,8 +970,8 @@ void XObjLeticker::ResetObjectState()
 	mLevelProgress = 0.0f;
 	mHeight        = 0.0f;
 	mPtcl          = TRUE;
-	mPushing       = FALSE;
-	mPushTimer     = 0;
+	mPowered       = FALSE;
+	mPowerTimer    = 0;
 	mState         = 0;
 	mHeading       = 0.0f;
 	mBox[0].mId    = -1;

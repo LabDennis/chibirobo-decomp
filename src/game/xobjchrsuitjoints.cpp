@@ -72,7 +72,7 @@ extern "C" void ApplyPlayerSuit(XObjChr* player)
 	if (player->GetAttachment() == 2)
 		SetPlayerPopperMountHidden(player, TRUE);
 	player->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-	player->mStandTimer = 3;
+	player->mIdleLoops = 3;
 }
 
 /**

@@ -163,29 +163,29 @@ public:
 	CStatus mPlayerStatus;  // _980
 	CObjVec mMotion;        // _988, cleared whenever he stops
 	f32 mMoveSpeed;         // _9B8
-	f32 mStick[4];          // _9BC, stick magnitude and angle, current then previous
+	f32 mStick[4];          // _9BC, [0] stick magnitude, [1] last frame's, [2] stick angle (-1 centred), [3] last frame's
 	s32 mHitObjectIndex;    // _9CC
-	s32 mTaggedObjectIndex; // _9D0, highest object with the tag mask under him
+	s32 mActionObjectIndex; // _9D0, highest object ahead of him with an action flag in status bits 32-39 (liftable, pushable, ...)
 	union {
 		s32 objectIndex;
 		XObj* object;
 	} mFloorContacts[5];        // Slot 3 holds the supporting object. The other slots hold object indices.
 	CVec mContactPos;           // _9E8, where the contact-4 object stood
 	s32 mLastContactFloorIndex; // _9F8
-	CVec mEdgePos;              // _9FC, the climb edge's world offset
+	CVec mEdgePos;              // _9FC, world position of the near object's selected edge contact; he walks toward it
 	f32 mNearDistance;          // _A0C
-	s32 mOutletIndex;           // _A10, the plug target in front of him
+	s32 mLetickerIndex;         // _A10, the XObjLeticker (pool 9) within 18 in front of him the carried plug can go into, -1 for none
 	s32 _A14;
 	u32 mLiftPlugFlags;
-	s32 mHoldTimer; // _A1C, frames the button has been held on a plug
-	s32 mAHeld;     // _A20, pad trigger bit 8
+	s32 mPressTimer; // _A1C, frames since mAPressed latched; the plug lifts once it reaches interaction parameter 3
+	s32 mAPressed;   // _A20, latched when A is pressed while mLiftPlugFlags has 0x80
 	s32 mAttachmentActionType;
 	s32 mToolActionType;                 // _A28
-	s32 mStandTimer;                     // _A2C, 3 after his anim goes back to standing
+	s32 mIdleLoops;                      // _A2C, idle loops before he may fidget; 3 after he goes back to standing, 5-14 after a fidget
 	f32 mIdleTimer;                      // _A30
 	s32 mFlashTimer;                     // _A34
 	s32 mFlashCount;                     // _A38, frames the flash has run
-	f32 mBatteryCost;                    // _A3C, charge the tumble takes when it ends
+	f32 mHitStrength;                    // _A3C, the last hit's strength, taken off the battery once while he flinches (tumble 8/9)
 	f32 mMoveSpeedScale;                 // _A40
 	XActLift mLift;                      // _A44
 	XActHang mHang;                      // _AC0
@@ -209,8 +209,8 @@ public:
 	s32 mAttachmentRequest;              // _95D4, -1 when there's none
 	s32 mAttachmentStep;                 // _95D8, how far the attachment change is
 	s32 mScriptAttach;                   // _95DC, the request came from an event command
-	s32 mClimbType;                      // _95E0, climb queued after the swap, 1 ladder, 2 hang
-	s32 mNextClimbType;                  // _95E4
+	s32 mClimbType;                      // _95E0, mNextClimbType after the swap; nonzero re-runs the A-press handling once
+	s32 mNextClimbType;                  // _95E4, climb to start once the swap ends, 1 ladder, 2 rope
 	u8 _95E8[0x960C - 0x95E8];           // _95E8
 	CObjVec mSlopeMotion;                // _960C, slide speed down a floor slope
 	CVec mFloorSlope;                    // _963C
@@ -219,9 +219,9 @@ public:
 	f32 mCameraTarget[3];                // _9A94, last camera target on each axis
 	f32 mCameraTargetMargin;             // _9AA0
 	f32 mCameraTargetMarginSetting;      // _9AA4
-	f32 mCamDirection;                   // _9AA8, the cameras put mMoveDirection back here
-	f32 mMoveDirection;                  // _9AAC, the direction he walks this frame, NAN idle
-	f32 mCamStickAngle;                  // _9AB0, the stick angle mCamDirection was taken at
+	f32 mHeldMoveAngle;                  // _9AA8, mMoveAngle kept across a camera change, the cameras put it back
+	f32 mMoveAngle;                      // _9AAC, the angle he walks at this frame, NAN idle
+	f32 mHeldStickAngle;                 // _9AB0, the stick angle mHeldMoveAngle was taken at
 	s32 mBatteryWarningFrames;           // _9AB4
 	f32 mBatteryWarningFade;             // _9AB8
 	f32 mBatteryWarningAngle;            // _9ABC
@@ -268,7 +268,7 @@ public:
 	void ResetCameraValue()
 	{
 		if (mHang.mState != 5 && mRope.mState != 5 && mLadder.mState != 5 && mPush.mState != 2) {
-			mCamDirection = mMoveDirection;
+			mHeldMoveAngle = mMoveAngle;
 		}
 	}
 

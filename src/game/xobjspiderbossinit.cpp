@@ -41,7 +41,7 @@ extern "C" void ResetSpiderBossState(XObj* object)
 	}
 	spider->mHitStrength = 0.0f;
 	spider->mMaxHits     = 23;
-	spider->mNextAction  = spider->mMaxHits;
+	spider->mHits        = spider->mMaxHits;
 	spider->mCommand     = 0;
 	spider->mArgs[0]     = 0;
 	spider->_A44         = 0;

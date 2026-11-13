@@ -197,9 +197,9 @@ static inline void FinishRadarAnimation(XActRadar* act)
 {
 	XObjChr* owner = act->mOwner;
 	owner->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, 1, 10);
-	owner->mStandTimer = 3;
-	act->mState        = 0;
-	act->mTarget       = NULL;
+	owner->mIdleLoops = 3;
+	act->mState       = 0;
+	act->mTarget      = NULL;
 	act->mYaw.angle = act->mYaw.targetAngle = act->mYaw.reached = 0;
 	act->mPitch.angle = act->mPitch.targetAngle = act->mPitch.reached = 0;
 	StopRadarTones();
@@ -263,7 +263,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 	case 3: {
 		XObjChr* owner = act->mOwner;
 		owner->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-		owner->mStandTimer = 3;
+		owner->mIdleLoops = 3;
 		StartPlayerRadarScan(&act->mOwner->mRadarObj);
 		act->mState  = 4;
 		act->mTarget = FindNearestRadarTarget(act);
@@ -754,8 +754,8 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 		} else if (aobj->flags & 0x44000000) {
 			XObjChr* p = act->mOwner;
 			p->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			p->mStandTimer = 3;
-			act->mState    = 0;
+			p->mIdleLoops = 3;
+			act->mState   = 0;
 		}
 		break;
 	}
@@ -1071,8 +1071,8 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, HSD_AObj* aobj, u32 fra
 		} else if (aobj->flags & 0x44000000) {
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-			chr->mStandTimer = 3;
-			act->mState      = 0;
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
 		}
 		break;
 	case 3:
@@ -1107,8 +1107,8 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, HSD_AObj* aobj, u32 fra
 		if (aobj->flags & 0x44000000) {
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-			chr->mStandTimer = 3;
-			act->mState      = 0;
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
 		}
 		break;
 	case 7:
@@ -1137,8 +1137,8 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, HSD_AObj* aobj, u32 fra
 		if (aobj->flags & 0x44000000) {
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			chr->mStandTimer = 3;
-			act->mState      = 0;
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
 		}
 		break;
 	}
@@ -1263,8 +1263,8 @@ static inline void FinishTumble(XActTumble* act, f32 blend)
 {
 	XObjChr* owner = act->mOwner;
 	PlayTumbleAnimation(owner, 17, blend);
-	owner->mStandTimer = 3;
-	act->mState        = 0;
+	owner->mIdleLoops = 3;
+	act->mState       = 0;
 }
 
 static inline void StartTumble(XActTumble* act, s32 anim, HSD_AObj* aobj, s32 next)

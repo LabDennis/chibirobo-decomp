@@ -877,8 +877,8 @@ void UpdatePushedObject(XActPush* act)
 			Release(act);
 			XObjChr* owner = act->mOwner;
 			owner->SetAnim(17, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			owner->mStandTimer = 3;
-			act->mState        = 0;
+			owner->mIdleLoops = 3;
+			act->mState       = 0;
 			target->mStatus.mFlags |= 0x1000000000000000ULL;
 
 			Vec rotation = target->mMoveRotate, speed = target->mMoveRotate.mSpeed;
@@ -973,8 +973,8 @@ void UpdatePushActionAnimation(XActPush* act, s32 anim, HSD_AObj* aobj, u32 fram
 		} else if (aobj->flags & 0x44000000) {
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-			chr->mStandTimer = 3;
-			act->mState      = 0;
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
 		}
 		break;
 	}
@@ -1013,8 +1013,8 @@ void HandlePushActionInput(XActPush* act, const CPadOne* pad, f32* weight)
 			Release(act);
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			chr->mStandTimer = 3;
-			act->mState      = 0;
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
 		}
 		*weight = 0.0f;
 	}
@@ -1031,7 +1031,7 @@ void CancelPlayerPushAction(XActPush* act)
 		act->mState  = 0;
 		XObjChr* chr = act->mOwner;
 		chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-		chr->mStandTimer = 3;
+		chr->mIdleLoops = 3;
 	}
 }
 
@@ -1275,9 +1275,9 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			SetObjectJointTranslationByPath(act->mOwner, 1, p2, 0, 0, 0);
 			XObjChr* owner = act->mOwner;
 			owner->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			owner->mStandTimer = 3;
-			act->mState        = 0;
-			act->mTarget       = NULL;
+			owner->mIdleLoops = 3;
+			act->mState       = 0;
+			act->mTarget      = NULL;
 		}
 		break;
 	case 7:
@@ -1317,8 +1317,8 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 		if (aobj->flags & 0x44000000) {
 			XObjChr* owner = act->mOwner;
 			owner->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			owner->mStandTimer = 3;
-			act->mState        = 0;
+			owner->mIdleLoops = 3;
+			act->mState       = 0;
 		}
 		break;
 	case 11:
@@ -1654,9 +1654,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			chr->mStandTimer = 3;
-			act->mState      = 0;
-			act->mTarget     = NULL;
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
+			act->mTarget    = NULL;
 		}
 		break;
 	case 7:
@@ -1678,9 +1678,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			chr->mStandTimer = 3;
-			act->mState      = 0;
-			act->mTarget     = NULL;
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
+			act->mTarget    = NULL;
 		}
 		break;
 	case 8:
@@ -1741,8 +1741,8 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 		if (aobj->flags & 0x44000000) {
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			chr->mStandTimer = 3;
-			act->mState      = 0;
+			chr->mIdleLoops = 3;
+			act->mState     = 0;
 		}
 		break;
 	}
@@ -1806,8 +1806,8 @@ static inline void FinishHang(XActHang* act, f32 loop)
 {
 	XObjChr* p = act->mOwner;
 	p->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, loop, 10);
-	p->mStandTimer = 3;
-	act->mState    = 0;
+	p->mIdleLoops = 3;
+	act->mState   = 0;
 }
 
 /**
@@ -2159,8 +2159,8 @@ static inline void EndJump(XActJump* act)
 {
 	XObjChr* owner = act->mOwner;
 	owner->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-	owner->mStandTimer = 3;
-	act->mState        = 0;
+	owner->mIdleLoops = 3;
+	act->mState       = 0;
 }
 static inline bool AdvanceJumpArc(XActJump* act, u32 frames)
 {
@@ -3206,7 +3206,7 @@ f32 GetObjectJointRotationY(CJObj* obj)
 void SetPlayerStandAnim(XObjChr* chr, s32 anim, f32 blend)
 {
 	chr->SetAnim(anim, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, blend, 10.0f);
-	chr->mStandTimer = 3;
+	chr->mIdleLoops = 3;
 }
 
 /**

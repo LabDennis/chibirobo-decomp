@@ -187,7 +187,7 @@ void CMotionControlCamera::Update(u32 step)
 			EndEye();
 		}
 		if (PLAYER->mHang.mState != 5 && PLAYER->mRope.mState != 5 && PLAYER->mLadder.mState != 5 && PLAYER->mPush.mState != 2) {
-			PLAYER->mCamDirection = PLAYER->mMoveDirection;
+			PLAYER->mHeldMoveAngle = PLAYER->mMoveAngle;
 		}
 	}
 

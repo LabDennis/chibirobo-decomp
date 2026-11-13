@@ -29,13 +29,13 @@ public:
 	u8 _A25[0xA28 - 0xA25];                                 // _A25
 	f32 mHeading;                                           // _A28
 	u8 mPtcl;                                               // _A2C, particle 165 is running
-	u8 mPushing;                                            // _A2D, a push is running
+	u8 mPowered;                                            // _A2D, set on the first vf134 feed from the plug, cleared by vf148
 	u8 mWaiting;                                            // _A2E
-	s32 mPushTimer;                                         // _A30
-	f32 mSpeedScale;                                        // _A34, movement and sound pitch scale
-	s32 mState;                                             // _A38, 1 draws the stack, 2 and 3 skip the camera pop
-	AnimSfx mSfx;                                           // _A3C
-	u8 _A4C[0xA50 - 0xA4C];                                 // _A4C
+	s32 mPowerTimer;        // _A30, frames it has been fed; under 40 counts as starting, 30 and counting down while waiting
+	f32 mSpeedScale;        // _A34, movement and sound pitch scale
+	s32 mState;             // _A38, 1 draws the stack, 2 and 3 skip the camera pop
+	AnimSfx mSfx;           // _A3C
+	u8 _A4C[0xA50 - 0xA4C]; // _A4C
 
 	XObjLeticker();
 
