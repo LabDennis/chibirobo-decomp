@@ -136,7 +136,7 @@ public:
 	void PopAction();
 	void RestoreAction();
 	void ApplyAction();
-	bool IsAction(s32 type);
+	BOOL IsAction(s32 type);
 	s32 GetActionType();
 	void UpdateTarget(XObj* obj);
 	void StartEye();

@@ -114,7 +114,7 @@ UnkStageObj* GetIndexedCoordPlacement(const CoordInfo* info, s32 index);
 s32 GetStageObjectCount(const CGame* game);
 f32 GetSelectedFloorHeight(const XObj* object);
 void DisablePlayerLook(XObjChrLook* look);
-bool IsPlayerLookMarkerVisible(const XObjChrLook* look);
+BOOL IsPlayerLookMarkerVisible(const XObjChrLook* look);
 void EnablePlayerLook(XObjChrLook* look);
 void SetPlayerLookMode(XObjChrLook* look, s32 mode);
 void SetLookTargetPosition(XObjChrLook* look, f32 x, f32 y, f32 z);
@@ -1631,7 +1631,7 @@ void SetRadarActionState(XActRadar*, s32);
 void SetPopperActionState(XActPopper*, s32);
 void SetLiftTargetState(XActLift*, s32);
 void RequestPlayerUnequipAttachment(XObjChr*);
-BOOL VectorsDiffer(const Vec*, const Vec*);
+bool VectorsDiffer(const Vec*, const Vec*);
 Vec GetJointMatrixTranslation(void*, HSD_JObj*);
 BOOL IsPopperFireAnimationSelected(XObjPopper*);
 void StartPlayerRadarScan(XObjRadar*);
@@ -7174,7 +7174,7 @@ extern "C" void DisablePlayerLook(XObjChrLook* look)
  * @note Address: 0x800B2088
  * @note Size: 0x18
  */
-extern "C" bool IsPlayerLookMarkerVisible(const XObjChrLook* look)
+extern "C" BOOL IsPlayerLookMarkerVisible(const XObjChrLook* look)
 {
 	return look->mFade > 0.0f;
 }
@@ -8418,12 +8418,9 @@ extern "C" void UpdatePlayerAttachmentRequest(XObjChr* chr, f32* speed)
  * @note Address: 0x800B4F28
  * @note Size: 0x40
  */
-extern "C" BOOL VectorsDiffer(const Vec* a, const Vec* b)
+extern "C" bool VectorsDiffer(const Vec* a, const Vec* b)
 {
-	BOOL different = FALSE;
-	if (a->x != b->x || a->y != b->y || a->z != b->z)
-		different = TRUE;
-	return different;
+	return a->x != b->x || a->y != b->y || a->z != b->z;
 }
 
 /**
