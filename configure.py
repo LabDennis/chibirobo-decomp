@@ -1227,6 +1227,7 @@ if wii:
                 Object(Equivalent, "revolution/OS/OSArena.c"),
                 Object(Matching, "dolphin/os/OSMessage.c"),
                 Object(Matching, "dolphin/os/OSMutex.c"),
+                Object(Equivalent, "dolphin/mtx/mtx44.c"),
                 Object(Matching, "revolution/AX/AXAux.c"),
                 Object(Matching, "revolution/AXFX/AXFXHooks.c"),
                 Object(Matching, "revolution/AX/AXCL.c"),
@@ -1284,6 +1285,7 @@ if wii:
             "objects": [
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c", mw_version="GC/2.6"),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/rand.c"),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_tan.c", extra_cflags=["-Cpp_exceptions off"]),
             ],
         },
     ]

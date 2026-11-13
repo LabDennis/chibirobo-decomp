@@ -110,6 +110,10 @@ revolution/OS/OSStateFlags.c:
 	.data start:0x8031CF98 end:0x8031CFC0
 	.bss start:0x804CD5A0 end:0x804CD5C0
 
+dolphin/mtx/mtx44.c:
+	.text start:0x8018F3E4 end:0x8018FA40
+	.sdata2 start:0x805A6498 end:0x805A64B0
+
 revolution/AX/AX.c:
 	.text start:0x8019F470 end:0x8019F514
 	.data start:0x8031FCC8 end:0x8031FD10
@@ -203,6 +207,10 @@ MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c:
 MSL_C.PPCEABI.bare.H/MSL_Common/rand.c:
 	.text start:0x8022C924 end:0x8022C94C
 	.sdata start:0x805A18A0 end:0x805A18A4
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_tan.c:
+	.text start:0x802316EC end:0x80231764
+	.sdata2 start:0x805A6D60 end:0x805A6D68
 
 Runtime.PPCEABI.H/global_destructor_chain.c:
 	.text start:0x80231B24 end:0x80231B84
