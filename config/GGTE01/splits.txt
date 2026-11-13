@@ -66,6 +66,8 @@ game/gamemovie.cpp:
 
 game/cgame.cpp:
 	.text       start:0x8000AD34 end:0x8000C398
+	.data       start:0x8020FC10 end:0x8020FC30
+	.sdata      start:0x80659EC0 end:0x80659EC4
 
 game/gameobjupdate.cpp:
 	.text       start:0x8000C398 end:0x8000C450
@@ -320,12 +322,14 @@ game/sound.cpp:
 
 game/gxa.cpp:
 	.text       start:0x8001CEFC end:0x8001DC20
+	.bss        start:0x80361E10 end:0x80361E30
 
 game/gameosreport.cpp:
 	.text       start:0x8001580C end:0x8001585C
 
 game/gxb.cpp:
 	.text       start:0x8001F8D8 end:0x80031004
+	.bss        start:0x80361E8C end:0x80361F64 align:4
 
 game/titlestates.cpp:
 	.text       start:0x80031004 end:0x8003135C
@@ -335,6 +339,7 @@ game/titlestates.cpp:
 
 game/stg.cpp:
 	.text       start:0x8003135C end:0x8006331C
+	.bss        start:0x80361F68 end:0x80366E54
 
 game/menu_cleanup.cpp:
 	.text       start:0x8006331C end:0x8006389C
@@ -628,6 +633,7 @@ game/xobjplugcordreset.cpp:
 
 game/xobjplugcord.cpp:
 	.text       start:0x800DBA7C end:0x800DBBCC
+	.bss        start:0x8037C448 end:0x8037DC54
 
 game/xobjplugcordpointctor.cpp:
 	.text       start:0x800DBC80 end:0x800DBC98
