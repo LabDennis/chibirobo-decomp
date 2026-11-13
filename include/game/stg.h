@@ -636,25 +636,25 @@ public:
 	virtual BOOL Draw();             // _18
 	virtual void Open();             // _1C
 
-	f32 _158;                  // _158
-	f32 _15C;                  // _15C
-	f32 _160;                  // _160
-	f32 _164;                  // _164
+	f32 mPanelX;               // _158
+	f32 mPanelY;               // _15C
+	f32 mTargetPanelX;         // _160
+	f32 mTargetPanelY;         // _164
 	f32 _168;                  // _168
-	f32 _16C;                  // _16C
+	f32 mBannerSlide;          // _16C
 	f32 _170;                  // _170
 	f32 mOffset;               // _174
 	MenuSaveSlot mSlots[3];    // _178, the three save files
-	s32 _250;                  // _250, the card's _16A04
-	s32 _254;                  // _254, the card's _16A00
+	s32 mFreeBlocks;           // _250, the card's _16A04
+	s32 mFreeFiles;            // _254, the card's _16A00
 	s32 mResult;               // _258, the card result
 	s32 mMessage;              // _25C
 	u8 mReady;                 // _260, a card is in the slot
 	u8 mShowMessage;           // _261
-	u8 _262;                   // _262, checked instead of mReady after a -2
+	u8 mWrongDevice;           // _262, checked instead of mReady after a -2
 	u8 mSaved;                 // _263
-	f32 _264;                  // _264
-	f32 mTargetAlpha;          // _268, _264 goes to it
+	f32 mDrawAlpha;            // _264
+	f32 mTargetAlpha;          // _268, mDrawAlpha goes to it
 	s32 mMode;                 // _26C
 	s32 mPrevMode;             // _270
 	u32 _274;                  // _274
@@ -665,16 +665,16 @@ public:
 	s32 mChoice;               // _288, 0 yes, 1 no
 	s32 mLastFile;             // _28C, -1 until something's saved
 	s32 mChannel;              // _290
-	s32 _294;                  // _294
-	f32 _298;                  // _298
+	s32 mShowHelp;             // _294
+	f32 mHelpAlpha;            // _298
 	const char* mHelpText;     // _29C
 	const char* mNextHelpText; // _2A0
-	f32 _2A4;                  // _2A4
+	f32 mTexScroll;            // _2A4
 	MenuTitle mTitle;          // _2A8
 	s32 mHelpCount;            // _444
 	MenuHelpChar mBg[20];      // _448
 #if !defined(VERSION_JP)
-	BOOL _538; // _538
+	BOOL mFormatCancelled; // _538
 #endif
 
 	void SetMode(s32 mode)

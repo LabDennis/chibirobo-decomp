@@ -1954,21 +1954,21 @@ void MenuSave::Open()
 	gGame.mStatus.mFlags |= 2;
 	mWindow.SetSize(0.0f, 0.0f);
 	mWindow.SetPos(0.0f, 0.0f);
-	_158         = -10.0f;
-	_15C         = -200.0f;
-	_160         = -10.0f;
-	_164         = 0.0f;
-	_168         = 0.0f;
-	_16C         = 0.0f;
-	_170         = 0.0f;
-	mOffset      = 0.0f;
-	_264         = 0.0f;
-	mTargetAlpha = 1.0f;
-	mMode        = 0;
-	mPrevMode    = mMode;
-	mPhase       = 0;
-	mTime        = 0.0f;
-	mDelay       = 0;
+	mPanelX       = -10.0f;
+	mPanelY       = -200.0f;
+	mTargetPanelX = -10.0f;
+	mTargetPanelY = 0.0f;
+	_168          = 0.0f;
+	mBannerSlide  = 0.0f;
+	_170          = 0.0f;
+	mOffset       = 0.0f;
+	mDrawAlpha    = 0.0f;
+	mTargetAlpha  = 1.0f;
+	mMode         = 0;
+	mPrevMode     = mMode;
+	mPhase        = 0;
+	mTime         = 0.0f;
+	mDelay        = 0;
 	if (mLastFile == -1) {
 		mFile = gGame.mInfoScrn.mSelectedSaveSlot;
 	} else {
@@ -1979,13 +1979,13 @@ void MenuSave::Open()
 	mMessage     = 0;
 	mReady       = 0;
 	mShowMessage = 0;
-	_262         = 0;
+	mWrongDevice = 0;
 	mSaved       = 0;
 	mChannel     = 0;
-	_2A4         = 0.0f;
+	mTexScroll   = 0.0f;
 #if !defined(VERSION_JP)
 #if !defined(VERSION_JP)
-	_538 = 0;
+	mFormatCancelled = 0;
 #endif
 #endif
 	PlayGameSound(&gGame.mSound, 0x14B, 0xFF);
@@ -2476,7 +2476,7 @@ extern "C" void Init__5CMenuFv(CMenu* menu)
 void MenuSave::State17(u32)
 {
 	MenuSave* menu = this;
-	if (menu->_264 <= 0.0f) {
+	if (menu->mDrawAlpha <= 0.0f) {
 		StopGameSfx(&gGame.mSound, 0x14B);
 		PlayGameSound(&gGame.mSound, 0x185, 0xFF);
 		gGame.mStatus.mFlags &= ~2ULL;
@@ -2496,9 +2496,9 @@ void MenuSave::State16(u32)
 	for (int i = 0; i < 20; i++) {
 		menu->mTitle.mChars[i].mHold = 0.0f;
 	}
-	menu->mTargetAlpha = 0.0f;
-	menu->_164         = -200.0f;
-	menu->_16C         = 0.0f;
+	menu->mTargetAlpha  = 0.0f;
+	menu->mTargetPanelY = -200.0f;
+	menu->mBannerSlide  = 0.0f;
 	menu->SetMode(0x11);
 }
 
@@ -2911,7 +2911,7 @@ void MenuSave::State0(u32)
 	menu->SetMode(1);
 #if !defined(VERSION_JP)
 #if !defined(VERSION_JP)
-	menu->_538 = 0;
+	menu->mFormatCancelled = 0;
 #endif
 #endif
 }
@@ -3664,8 +3664,8 @@ void MenuSave::State9(u32 frameCount)
 	}
 	switch (gGame.mMemcard.mCard.mState) {
 	case 0:
-		menu->_250 = gGame.mMemcard.mCard.mFreeSectors;
-		menu->_254 = gGame.mMemcard.mCard.mFreeFiles;
+		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		menu->mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
 		menu->SetMode(10);
 		break;
 	case 1:
@@ -3786,8 +3786,8 @@ void MenuSave::State1(u32 frameCount)
 				}
 			}
 		}
-		menu->_250 = gGame.mMemcard.mCard.mFreeSectors;
-		menu->_254 = gGame.mMemcard.mCard.mFreeFiles;
+		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		menu->mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
 		if (menu->mSaved == TRUE) {
 			menu->SetMode(4);
 			menu->mTime  = 0.5f * FRAME_RATE;
@@ -3904,8 +3904,8 @@ void MenuSave::State5(u32 frameCount)
 				menu->mSlots[menu->mFile].mActive = 0;
 			}
 		}
-		menu->_250 = gGame.mMemcard.mCard.mFreeSectors;
-		menu->_254 = gGame.mMemcard.mCard.mFreeFiles;
+		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		menu->mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
 		StartMemoryCardPreviewRead(card, menu->mChannel, 1);
 		menu->SetMode(1);
 		menu->mLastFile = menu->mFile;
@@ -4015,7 +4015,7 @@ void MenuSave::State13(u32)
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 #if !defined(VERSION_JP)
 #if !defined(VERSION_JP)
-			menu->_538 = 0;
+			menu->mFormatCancelled = 0;
 #endif
 #endif
 			return;
@@ -4024,7 +4024,7 @@ void MenuSave::State13(u32)
 		menu->ResetResults();
 #if !defined(VERSION_JP)
 #if !defined(VERSION_JP)
-		menu->_538 = 0;
+		menu->mFormatCancelled = 0;
 #endif
 #endif
 		return;
@@ -4034,7 +4034,7 @@ void MenuSave::State13(u32)
 		PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 #if !defined(VERSION_JP)
 #if !defined(VERSION_JP)
-		menu->_538 = 0;
+		menu->mFormatCancelled = 0;
 #endif
 #endif
 	}
@@ -4049,7 +4049,7 @@ void MenuSave::State12(u32)
 	MenuSave* menu = this;
 	CPad pad(0);
 	if (menu->mResult == -2) {
-		if (!menu->_262) {
+		if (!menu->mWrongDevice) {
 			menu->ResetResults();
 			return;
 		}
@@ -4180,7 +4180,7 @@ void MenuSave::State6(u32)
 {
 	MenuSave* menu = this;
 	CPad pad(0);
-	if (menu->_262 == TRUE) {
+	if (menu->mWrongDevice == TRUE) {
 		for (int i = 0; i < 3; i++) {
 			ClearSaveSlot(&menu->mSlots[i]);
 		}
@@ -4234,7 +4234,7 @@ void MenuSave::State2(u32)
 		if (menu->mSlots[menu->mFile].mUsed == 1) {
 			menu->mChoice = 1;
 			menu->SetMode(3);
-		} else if (menu->_250 >= 6 && menu->_254 > 0) {
+		} else if (menu->mFreeBlocks >= 6 && menu->mFreeFiles > 0) {
 			StartMemoryCardSaveWrite(&gGame.mMemcard.mCard, menu->mChannel, menu->mFile, 1);
 			menu->SetMode(5);
 			menu->mDelay = 1.5f * FRAME_RATE;
@@ -4285,7 +4285,7 @@ void MenuSave::State8(u32)
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 #if !defined(VERSION_JP)
 #if !defined(VERSION_JP)
-				menu->_538 = 1;
+				menu->mFormatCancelled = 1;
 #endif
 #endif
 			}
@@ -4315,7 +4315,7 @@ void MenuSave::State8(u32)
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 #if !defined(VERSION_JP)
 #if !defined(VERSION_JP)
-				menu->_538 = 1;
+				menu->mFormatCancelled = 1;
 #endif
 #endif
 			}
@@ -4334,7 +4334,7 @@ void MenuSave::State11(u32)
 	MenuSave* menu = this;
 	CPad pad(0);
 	if (menu->mResult == -3) {
-		if (menu->_262 == TRUE) {
+		if (menu->mWrongDevice == TRUE) {
 			for (int i = 0; i < 3; i++) {
 				ClearSaveSlot(&menu->mSlots[i]);
 			}
@@ -4355,7 +4355,7 @@ void MenuSave::State11(u32)
 			return;
 		}
 	} else if (menu->mResult == -2) {
-		if (!menu->_262) {
+		if (!menu->mWrongDevice) {
 			menu->ResetResults();
 			return;
 		}
@@ -6081,24 +6081,24 @@ static inline void UpdateMenuTitle(MenuType* menu, u32 frames)
 BOOL MenuSave::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
-		PCEaseCall(_15C, _164);
-		ApproachHudValue(&_264, &mTargetAlpha, 0.08f * frames);
-		PCEaseCall(_16C, mOffset);
-		_2A4 -= 0.008f * frames;
+		PCEaseCall(mPanelY, mTargetPanelY);
+		ApproachHudValue(&mDrawAlpha, &mTargetAlpha, 0.08f * frames);
+		PCEaseCall(mBannerSlide, mOffset);
+		mTexScroll -= 0.008f * frames;
 		UpdateMenuTitle(this, frames);
-		switch (_294) {
+		switch (mShowHelp) {
 		case 0:
 			break;
 		case 1:
-			_298 = 0.0f;
-			_294++;
+			mHelpAlpha = 0.0f;
+			mShowHelp++;
 			mHelpText = mNextHelpText;
 			break;
 		case 2:
-			_298 += 0.04f * frames;
-			if (_298 >= 1.0f) {
-				_298 = 1.0f;
-				_294 = 0;
+			mHelpAlpha += 0.04f * frames;
+			if (mHelpAlpha >= 1.0f) {
+				mHelpAlpha = 1.0f;
+				mShowHelp  = 0;
 			}
 			break;
 		}
@@ -6113,11 +6113,11 @@ BOOL MenuSave::Update(u32 frames)
 		if (mMode != 1 && mMode != 5 && mMode != 9) {
 			s32 sector;
 			s32 size;
-			mReady = FALSE;
-			_262   = FALSE;
+			mReady       = FALSE;
+			mWrongDevice = FALSE;
 			switch (ProbeMemoryCardCapacity(&gGame.mMemcard.mCard, mChannel, &size, &sector)) {
 			case CARD_RESULT_WRONGDEVICE:
-				_262 = TRUE;
+				mWrongDevice = TRUE;
 				break;
 			case CARD_RESULT_READY:
 				if (sector == 0x2000) {
@@ -7790,7 +7790,7 @@ extern "C" void DrawMenuGradientText(const char* text, f32 x, f32 y, f32 size, f
  */
 extern "C" void DrawSaveHelpText(MenuSave* menu)
 {
-	f32 alpha   = menu->mAlpha * menu->_298;
+	f32 alpha   = menu->mAlpha * menu->mHelpAlpha;
 	f32 spacing = 30.0f;
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
@@ -9130,7 +9130,7 @@ extern "C" s32 DrawJapaneseCardErrorMessage(s32 channel, s32 id, u8 retry, f32 x
 
 static inline f32 SaveMessageY(MenuSave* menu, f32 panelY)
 {
-	return ((8.0f + (356.0f - panelY)) - 6.0f) + menu->_16C;
+	return ((8.0f + (356.0f - panelY)) - 6.0f) + menu->mBannerSlide;
 }
 static inline f32 SaveMessageX(f32 panelX)
 {
@@ -9143,9 +9143,9 @@ static inline f32 SaveMessageX(f32 panelX)
 static inline s32 DrawSaveLinesAt(MenuSave* menu, s32 id, f32 x, f32 y)
 {
 #if defined(VERSION_JP)
-	return DrawJapaneseSaveStatusMessage(menu->mChannel, id, x, y, 21.0f, menu->_264);
+	return DrawJapaneseSaveStatusMessage(menu->mChannel, id, x, y, 21.0f, menu->mDrawAlpha);
 #else
-	return DrawSaveStatusMessage(menu->mChannel, id, x, y, 21.0f, menu->_264);
+	return DrawSaveStatusMessage(menu->mChannel, id, x, y, 21.0f, menu->mDrawAlpha);
 #endif
 }
 static inline s32 SaveStatusLines(MenuSave* menu, s32 id, f32 panelX, f32 panelY)
@@ -9169,7 +9169,7 @@ static inline u32 SavePromptHalfWidth(u32 cells)
 #else
 static inline void DrawSaveChoiceLabel(MenuSave* menu, s32 id, f32 x, f32 y)
 {
-	u32 color        = (u32)(255.0f * menu->_264);
+	u32 color        = (u32)(255.0f * menu->mDrawAlpha);
 	const char* text = GetLocalizedInterfaceText(id);
 	f32 width        = MeasureGameTextWidth(&gGame.mGs, text, 1, 21.0f);
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2, y, 0.0f, 21.0f, 21.0f);
@@ -9179,7 +9179,7 @@ static inline void DrawSaveChoiceLabel(MenuSave* menu, s32 id, f32 x, f32 y)
 BOOL MenuSave::Draw()
 {
 	if (CMenu::Draw()) {
-		DrawPanelBackground<SavePanel>(_264);
+		DrawPanelBackground<SavePanel>(mDrawAlpha);
 		switch (mMode) {
 		case 2:
 		case 3:
@@ -9196,16 +9196,16 @@ BOOL MenuSave::Draw()
 				u8 selected = 0, emptyMessage = 0;
 				if (mFile == i)
 					selected = 1;
-				if (_250 >= 6 && _254 > 0)
+				if (mFreeBlocks >= 6 && mFreeFiles > 0)
 					emptyMessage = 1;
-				DrawSaveSlotDetails(&mSlots[i], emptyMessage, i, selected, x, 223.0f, width, 230.0f, _264, 1.0f, 1.0f);
+				DrawSaveSlotDetails(&mSlots[i], emptyMessage, i, selected, x, 223.0f, width, 230.0f, mDrawAlpha, 1.0f, 1.0f);
 			}
 			DrawSaveHelpText(this);
 			break;
 		}
-		f32 panelX = _158;
-		f32 panelY = _15C - 8.0f;
-		DrawMenuBannerPanels(NULL, panelX, panelY, _264, _16C);
+		f32 panelX = mPanelX;
+		f32 panelY = mPanelY - 8.0f;
+		DrawMenuBannerPanels(NULL, panelX, panelY, mDrawAlpha, mBannerSlide);
 		DrawSaveMenuTitle(this);
 #if defined(VERSION_JP)
 		enum { selectMessage = 0x23, confirmMessage = 0xE, writeMessage = 0x16 };
@@ -9253,9 +9253,9 @@ BOOL MenuSave::Draw()
 		case 11: {
 			f32 y = SaveMessageY(this, panelY);
 #if defined(VERSION_JP)
-			lines = DrawJapaneseCardErrorMessage(mChannel, mResult, 0, 320.0f + panelX, y, 21.0f, _264);
+			lines = DrawJapaneseCardErrorMessage(mChannel, mResult, 0, 320.0f + panelX, y, 21.0f, mDrawAlpha);
 #else
-			lines = DrawCardErrorMessage(mChannel, mResult, 0, 0.0f, y, 21.0f, _264);
+			lines = DrawCardErrorMessage(mChannel, mResult, 0, 0.0f, y, 21.0f, mDrawAlpha);
 #endif
 			break;
 		}
@@ -9266,7 +9266,7 @@ BOOL MenuSave::Draw()
 #if defined(VERSION_JP)
 			lines = SaveStatusLines(this, 13, panelX, panelY);
 #else
-			if (_538 == 1)
+			if (mFormatCancelled == 1)
 				lines = SaveStatusLines(this, 17, panelX, panelY);
 			else
 				lines = SaveStatusLines(this, 13, panelX, panelY);
@@ -9288,12 +9288,12 @@ BOOL MenuSave::Draw()
 		if (showMessage) {
 #if defined(VERSION_JP)
 			u32 cells = SavePromptCells(text);
-			u32 color = (u32)(255.0f * _264);
+			u32 color = (u32)(255.0f * mDrawAlpha);
 			f32 y     = SaveMessageY(this, panelY);
 			f32 x     = 320.0f + panelX - SavePromptHalfWidth(cells);
 #else
 			f32 y     = SaveMessageY(this, panelY);
-			u32 color = (u32)(255.0f * _264);
+			u32 color = (u32)(255.0f * mDrawAlpha);
 			f32 x     = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, 21.0f) / 2;
 #endif
 			DrawGsProportionalTextFormat(&gGame.mGs, color, text, x, y, 0.0f, 21.0f, 21.0f);
@@ -9320,19 +9320,19 @@ BOOL MenuSave::Draw()
 			f32 barWidth = 61.5f;
 #endif
 			f32 baseLabelY = (24.0f + (12.0f + (356.0f - panelY))) - 6.0f;
-			f32 labelY     = lineOffset + (baseLabelY + _16C);
+			f32 labelY     = lineOffset + (baseLabelY + mBannerSlide);
 
 			{
 				CTexObj tex;
-				f32 opacity = _264, textureOffset = _2A4;
+				f32 opacity = mDrawAlpha, textureOffset = mTexScroll;
 				u32 barColor = (u32)(200.0f * opacity) | 0x181CC600;
 				InitMenuSelectionBar(tex);
 				DrawMenuSelectionBar(tex, barX, 2.0f + (8.0f + labelY), barWidth, 22.0f, opacity, textureOffset, barColor);
 			}
-			labelY = lineOffset + (baseLabelY + _16C);
+			labelY = lineOffset + (baseLabelY + mBannerSlide);
 #if defined(VERSION_JP)
 			f32 labelX = 320.0f + panelX - SavePromptHalfWidth(cells);
-			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * _264), text, 10.0f + labelX, labelY, 0.0f, 21.0f, 21.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * mDrawAlpha), text, 10.0f + labelX, labelY, 0.0f, 21.0f, 21.0f);
 #else
 			if (IsJapanese()) {
 				DrawSaveChoiceLabel(this, 0x65, 281.25f, labelY);
