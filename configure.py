@@ -1219,6 +1219,9 @@ if wii:
             "cflags": [*wii_cflags, "-Cpp_exceptions off", "-fp_contract off", "-common off", "-ipa file", "-use_lmw_stmw off"],
             "progress_category": "sdk",
             "objects": [
+                Object(Matching, "revolution/AX/AX.c"),
+                Object(Matching, "revolution/AX/AXAux.c"),
+                Object(Matching, "revolution/AXFX/AXFXHooks.c"),
                 Object(Matching, "revolution/AXFX/AXFXReverbHi.c"),
                 Object(Equivalent, "revolution/AXFX/AXFXReverbHiExp.c"),
                 Object(Equivalent, "revolution/AXFX/AXFXReverbHiExpDpl2.c"),

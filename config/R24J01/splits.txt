@@ -91,6 +91,17 @@ revolution/MEM/mem_allocator.c:
 revolution/MEM/mem_list.c:
 	.text start:0x801AF898 end:0x801AF9AC
 
+revolution/AX/AX.c:
+	.text start:0x8019F470 end:0x8019F514
+	.data start:0x8031FCC8 end:0x8031FD10
+	.sdata start:0x805A14F8 end:0x805A1500
+	.sbss start:0x805A2220 end:0x805A2228
+
+revolution/AX/AXAux.c:
+	.text start:0x8019FA7C end:0x801A02A8
+	.bss start:0x804D2B20 end:0x804D5CA0
+	.sbss start:0x805A2230 end:0x805A2278
+
 revolution/AXFX/AXFXReverbHi.c:
 	.text start:0x801A27C0 end:0x801A284C
 	.sdata2 start:0x805A64F8 end:0x805A6500
@@ -104,6 +115,10 @@ revolution/AXFX/AXFXReverbHiExpDpl2.c:
 	.text start:0x801A3834 end:0x801A48E8
 	.data start:0x80322F00 end:0x803230C0
 	.sdata2 start:0x805A6540 end:0x805A6580
+
+revolution/AXFX/AXFXHooks.c:
+	.text start:0x801A48E8 end:0x801A4920
+	.sdata start:0x805A1508 end:0x805A1510
 
 revolution/WENC/wenc.c:
 	.text start:0x80202D64 end:0x8020303C
