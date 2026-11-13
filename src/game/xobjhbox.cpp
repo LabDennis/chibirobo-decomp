@@ -66,7 +66,7 @@ extern "C" u32 vf100__8XObjHBoxFll(XObjHBox* box, s32 unused, u32 flags)
 	PlayGameSound(&gGame.mSound, 285, 255);
 	const void* script = box->vf128();
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)box, -1, -1);
+		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, box, -1, -1);
 	}
 	HSD_AudioSFXKeyOff(box->mPart.mSfx);
 	return 0;

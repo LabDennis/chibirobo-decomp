@@ -3228,7 +3228,7 @@ static inline XObj* CEvt_GetObj(CEvt* evt, s16 id)
 		return gGame.mXObjs.mObjects[id];
 	}
 	if (id == -1) {
-		return (XObj*)evt->mData._04;
+		return evt->mData.mOwner;
 	}
 	return (XObj*)id;
 }
@@ -11660,14 +11660,14 @@ s32 CEvt::_cmd_BORN(u8, s32)
     blr
 */
 
-static inline void EvtQueue_Push(u8* script, u32 owner, s16 useValue, s16 hitValue)
+static inline void EvtQueue_Push(u8* script, XObj* owner, s16 useValue, s16 hitValue)
 {
 	s32 cursor = gEventScriptQueue.mRead;
 	for (s32 i = 0; i < 128; i++, cursor++) {
 		s32 index = cursor % 128;
 		if (gEventScriptQueue.mScript[index] == NULL) {
 			gEventScriptQueue.mScript[index]   = script;
-			gEventScriptQueue.mContext[index]  = owner;
+			gEventScriptQueue.mOwners[index]   = owner;
 			gEventScriptQueue.mUseValue[index] = useValue;
 			gEventScriptQueue.mHitValue[index] = hitValue;
 			break;
@@ -11675,12 +11675,12 @@ static inline void EvtQueue_Push(u8* script, u32 owner, s16 useValue, s16 hitVal
 	}
 }
 
-static inline void CEvt_Attach(CEvt* evt, u8* script, u32 owner, s16 useValue = -1, s16 hitValue = -1)
+static inline void CEvt_Attach(CEvt* evt, u8* script, XObj* owner, s16 useValue = -1, s16 hitValue = -1)
 {
 	if (script == NULL) {
 		return;
 	}
-	if (evt->mData.mScript != NULL && evt->_00 == 0) {
+	if (evt->mData.mScript != NULL && evt->mOwner == NULL) {
 		EvtQueue_Push(script, owner, useValue, hitValue);
 		return;
 	}
@@ -11691,7 +11691,7 @@ static inline void CEvt_Attach(CEvt* evt, u8* script, u32 owner, s16 useValue = 
 	evt->mCalls.mCount  = 0;
 	evt->mFrames.mCount = 0;
 	evt->mValues.mCount = 0;
-	if (evt->_00 == 0) {
+	if (evt->mOwner == NULL) {
 		gEventScriptQueue.mRead = 0;
 		for (u32 i = 0; i < 128; i++) {
 			gEventScriptQueue.mScript[i] = NULL;
@@ -11703,11 +11703,11 @@ static inline void CEvt_Attach(CEvt* evt, u8* script, u32 owner, s16 useValue = 
 	evt->mUseValue     = -1;
 	evt->mHitValue     = -1;
 	evt->mData.mScript = script;
-	if (evt->_00 != 0)
-		owner = evt->_00;
-	evt->mData._04 = owner;
-	evt->mUseValue = useValue;
-	evt->mHitValue = hitValue;
+	if (evt->mOwner != NULL)
+		owner = evt->mOwner;
+	evt->mData.mOwner = owner;
+	evt->mUseValue    = useValue;
+	evt->mHitValue    = hitValue;
 }
 
 /**
@@ -11721,7 +11721,7 @@ s32 CEvt::_cmd_ATTACH(u8 command, s32)
 	if (command == EVT_CMD_ATTACH) {
 		u8* script = (u8*)CEvt_Evaluate(this);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
-			CEvt_Attach(&obj->mEvt, script, _00);
+			CEvt_Attach(&obj->mEvt, script, mOwner);
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("attach(%d, ...): obj(%d) killed!", id, id));
 		}
@@ -13068,18 +13068,18 @@ s32 CEvt::_cmd_ANIM(u8 command, s32)
  */
 s32 CEvt::_cmd_ABORT(u8, s32)
 {
-	if (_00 == 0) {
+	if (mOwner == NULL) {
 		CEvtQueueEx* queue  = &gEventScriptQueue;
 		s32 idx             = queue->mRead;
 		u8* script          = queue->mScript[idx];
-		u32 context         = queue->mContext[idx];
+		XObj* owner         = queue->mOwners[idx];
 		s16 useValue        = queue->mUseValue[idx];
 		s16 hitValue        = queue->mHitValue[idx];
 		queue->mScript[idx] = 0;
 		queue->mRead        = (queue->mRead + 1) % 0x80;
 		if (script != 0) {
 			mData.mScript = script;
-			mData._04     = context;
+			mData.mOwner  = owner;
 			mUseValue     = useValue;
 			mHitValue     = hitValue;
 			return 0;
@@ -13100,18 +13100,18 @@ s32 CEvt::_cmd_RETURN(u8, s32)
 		return 0;
 	}
 	// nothing to return to, end the script like ABORT
-	if (_00 == 0) {
+	if (mOwner == NULL) {
 		CEvtQueueEx* queue  = &gEventScriptQueue;
 		s32 idx             = queue->mRead;
 		u8* script          = queue->mScript[idx];
-		u32 context         = queue->mContext[idx];
+		XObj* owner         = queue->mOwners[idx];
 		s16 useValue        = queue->mUseValue[idx];
 		s16 hitValue        = queue->mHitValue[idx];
 		queue->mScript[idx] = 0;
 		queue->mRead        = (queue->mRead + 1) % 0x80;
 		if (script != 0) {
 			mData.mScript = script;
-			mData._04     = context;
+			mData.mOwner  = owner;
 			mUseValue     = useValue;
 			mHitValue     = hitValue;
 			return 0;
@@ -17715,7 +17715,7 @@ extern "C" void CEvt_Update(CEvt* evt, s32 step)
 		next:;
 		}
 	}
-	if (evt->_00 == 0 && !(gGame.mStatus.mFlags & 0xC00)) {
+	if (evt->mOwner == NULL && !(gGame.mStatus.mFlags & 0xC00)) {
 		if (evt->mData.mScript == NULL) {
 			for (u32 i = 0; i < 10; i++) {
 				if (gEventTimers.mFrames[i] > 0) {
@@ -17739,7 +17739,7 @@ extern "C" void CEvt_Update(CEvt* evt, s32 step)
 			CEvtQueueEx* queue    = &gEventScriptQueue;
 			s32 index             = queue->mRead;
 			u8* script            = queue->mScript[index];
-			u32 owner             = queue->mContext[index];
+			XObj* owner           = queue->mOwners[index];
 			s16 useValue          = queue->mUseValue[index];
 			s16 hitValue          = queue->mHitValue[index];
 			queue->mScript[index] = NULL;
@@ -18357,17 +18357,17 @@ static inline void ClearResults(CEvt* evt)
  * @note Address: 0x8007EEA4
  * @note Size: 0x194
  */
-extern "C" void StartOrQueueEventScript(CEvt* evt, u8* script, u32 context, s16 useValue, s16 hitValue)
+extern "C" void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* owner, s16 useValue, s16 hitValue)
 {
 	if (script == NULL)
 		return;
-	if (evt->mData.mScript != NULL && evt->_00 == 0) {
+	if (evt->mData.mScript != NULL && evt->mOwner == NULL) {
 		s32 cursor = gEventScriptQueue.mRead;
 		for (s32 i = 0; i < 128; ++i) {
 			s32 index = cursor % 128;
 			if (gEventScriptQueue.mScript[index] == NULL) {
 				gEventScriptQueue.mScript[index]   = script;
-				gEventScriptQueue.mContext[index]  = context;
+				gEventScriptQueue.mOwners[index]   = owner;
 				gEventScriptQueue.mUseValue[index] = useValue;
 				gEventScriptQueue.mHitValue[index] = hitValue;
 				return;
@@ -18377,11 +18377,11 @@ extern "C" void StartOrQueueEventScript(CEvt* evt, u8* script, u32 context, s16 
 		return;
 	}
 	ClearScript(evt);
-	if (evt->_00 == 0)
+	if (evt->mOwner == NULL)
 		ClearQueue();
 	ClearResults(evt);
 	evt->mData.mScript = script;
-	evt->mData._04     = evt->_00 != 0 ? evt->_00 : context;
+	evt->mData.mOwner  = evt->mOwner != NULL ? evt->mOwner : owner;
 	evt->mUseValue     = useValue;
 	evt->mHitValue     = hitValue;
 }
@@ -18402,7 +18402,7 @@ extern "C" BOOL LoadEventResources(CEvt* evt)
 extern "C" void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal)
 {
 	ClearScript(evt);
-	if (evt->_00 == 0) {
+	if (evt->mOwner == NULL) {
 		if (clearTimers) {
 			for (u32 i = 0; i < 10; ++i) {
 				gEventTimers.mFrames[i] = 0;
@@ -18431,11 +18431,11 @@ static inline void ClearTimers()
  * @note Address: 0x8007F194
  * @note Size: 0x3DC
  */
-extern "C" void InitializeEventScriptContext(CEvt* evt, u8* context, void* owner)
+extern "C" void InitializeEventScriptContext(CEvt* evt, u8* context, XObj* owner)
 {
-	evt->_00 = (u32)owner;
-	evt->_54 = context;
-	if (evt->_00 == 0) {
+	evt->mOwner = owner;
+	evt->_54    = context;
+	if (evt->mOwner == NULL) {
 		for (u32 i = 0; i < 128; ++i)
 			gEventFlags.mFlags[i] = 0;
 		for (u32 i = 0; i < 2048; ++i)
@@ -18455,7 +18455,7 @@ extern "C" void InitializeEventScriptContext(CEvt* evt, u8* context, void* owner
 	evt->mCalls.mCount  = 0;
 	evt->mFrames.mCount = 0;
 	evt->mValues.mCount = 0;
-	if (evt->_00 == 0) {
+	if (evt->mOwner == NULL) {
 		ClearTimers();
 		ClearQueue();
 		gEventObjectIds.mCount = 0;
@@ -18466,12 +18466,6 @@ extern "C" void InitializeEventScriptContext(CEvt* evt, u8* context, void* owner
 	evt->mUseValue = -1;
 	evt->mHitValue = -1;
 }
-
-// what ResolveEventObjectId gets as its context
-struct EvtContext {
-	u32 _00;       // _00
-	XObj* mObject; // _04, the one running the script
-};
 
 static inline XObj* NamedObject(s16 id)
 {
@@ -18490,7 +18484,7 @@ static inline XObj* NamedObject(s16 id)
  * @note Address: 0x8007F570
  * @note Size: 0xF4
  */
-extern "C" XObj* ResolveEventObjectId(void* context, s16 id)
+extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id)
 {
 	if (id >= 10000) {
 		XObj* object = NamedObject(id);
@@ -18501,6 +18495,6 @@ extern "C" XObj* ResolveEventObjectId(void* context, s16 id)
 	if (id >= 0)
 		return gGame.GetObject(id);
 	if (id == -1)
-		return ((EvtContext*)context)->mObject;
+		return data->mOwner;
 	return (XObj*)(s32)id;
 }

@@ -36,7 +36,7 @@ extern "C" XObj* __ct__4XObjFv(XObj* obj)
 	*(void***)((u8*)&obj->mEvt + 0x64)                   = __vt__4CEvt;
 	*(void***)((u8*)&obj->mEvt + 0xC)                    = __vt__8CEvtData;
 	obj->mEvt.mData.mScript                              = NULL;
-	obj->mEvt.mData._04                                  = 0;
+	obj->mEvt.mData.mOwner                               = NULL;
 	*(void***)((u8*)&obj->mEvt + 0x30)                   = __vt__6CStack;
 	obj->mEvt.mCalls.mBuf                                = NULL;
 	obj->mEvt.mCalls.mSize                               = 0;

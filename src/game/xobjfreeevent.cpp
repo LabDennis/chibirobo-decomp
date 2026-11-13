@@ -10,7 +10,7 @@ static inline void TriggerEvent(XObj* object, u32 first, u32 second)
 {
 	const void* script = object->vf128();
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
-		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)object, first, second);
+		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, object, first, second);
 }
 
 // XObjFree::Release

@@ -15,16 +15,16 @@ extern "C" {
 void GXProject(f32 x, f32 y, f32 z, const Mtx view, const f32* projection, const f32* viewport, f32* screenX, f32* screenY, f32* screenZ);
 }
 
-static inline const void* ObjectScript(CXObj* object)
+static inline const void* ObjectScript(XObj* object)
 {
-	return ((XObj*)object)->vf128();
+	return object->vf128();
 }
 
-static inline void TriggerObjectEvent(CXObj* object, u32 first, u32 second)
+static inline void TriggerObjectEvent(XObj* object, u32 first, u32 second)
 {
 	const void* script = ObjectScript(object);
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)object, first, second);
+		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, object, first, second);
 	}
 }
 
@@ -91,7 +91,7 @@ BOOL XObj::vf140(const Vec* position, s32 value)
 			return FALSE;
 		const void* script = ObjectScript(this);
 		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)this, (s16)value, -1);
+			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, (s16)value, -1);
 		}
 		return TRUE;
 	}
@@ -107,7 +107,7 @@ void XObj::vf13C(const Vec* contact, s32 value, s32 tint)
 	if (mStatus.mFlags & 0x0000080000000000ULL) {
 		const void* script = ObjectScript(this);
 		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)this, -1, (s16)((u32)value + 3000));
+			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, -1, (s16)((u32)value + 3000));
 		}
 	}
 }

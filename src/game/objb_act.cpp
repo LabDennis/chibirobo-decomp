@@ -52,7 +52,7 @@ void SetPlugCordSpeed(XObjPlug*, f32);
 void SetLiftActionState(XActLift*, s32);
 void SetLiftTargetState(XActLift*, s32);
 XObj* GetGameObjectByIndex(const CGame*, s32);
-void TryStartObjectEvent(CGame*, const void*, void*, s16, s16);
+void TryStartObjectEvent(CGame*, const void*, XObj*, s16, s16);
 BOOL IsEventScriptActive(const CGame*);
 Params* GetPlayerParamsByIndex(CGame*, s32);
 s32 GetInventoryCountByIndex(Params*, u32);

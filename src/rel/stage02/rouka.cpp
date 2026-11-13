@@ -5,6 +5,7 @@
 
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
+#include "game/evt.h"
 
 // CGame, accessed by offset
 extern "C" u8 gGame[];
@@ -102,12 +103,7 @@ struct Stage02Main {
 
 #define MAIN() ((Stage02Main*)gGame)
 
-struct ObjTable {
-	void* _00; // _00
-};
-
-#define OBJ_TABLE() ((ObjTable*)GAME_AT(GAME_OFS(0x5D080, 0x5D038)))
-#define SOUND()     GAME_AT(GAME_OFS(0xE7E24, 0xE713C))
+#define SOUND() GAME_AT(GAME_OFS(0xE7E24, 0xE713C))
 
 static XObj* takiObj;
 
@@ -127,7 +123,6 @@ void InfoScrn_SetTimerHundredths(void* p, s32 v);
 void InfoScrn_HideTimer(void* p);
 void InfoScrn_ShowTimer(void* p);
 void InfoScrn_ApplyTimerHudCommand(void* p, s32 a, s32 b);
-void* ResolveEventObjectId(void* table, s16 id);
 void SetJunkUnkoFlag(s32 v);
 s32 IsGameSoundPlaying(void* p, s32 id);
 void PlayGameSound(void* p, s32 id, s32 v);
@@ -200,9 +195,10 @@ void StartCarCamera(void);
 s32 RegisterCar(XObj* a, XObj* b, XObj* c);
 }
 
-inline XObj* ObjTable_Find(ObjTable* table, s16 id)
+inline XObj* FindEventObject(s16 id)
 {
-	return table->_00 != NULL ? (XObj*)ResolveEventObjectId(table, id) : NULL;
+	const CEvtData* data = (const CEvtData*)GAME_AT(GAME_OFS(0x5D080, 0x5D038));
+	return data->mScript != NULL ? ResolveEventObjectId(data, id) : NULL;
 }
 
 typedef void (*RelSlotFunc)(void* arg);
@@ -404,7 +400,7 @@ extern "C" s32 CmdStartFighter(s32 cmd, s32 argc, s32* argv)
 	OSReport("\n");
 #endif
 	for (j = 0; j < 3 && (s32)j - 1 < argc; j++) {
-		objs[j] = ObjTable_Find(OBJ_TABLE(), argv[j]);
+		objs[j] = FindEventObject(argv[j]);
 	}
 	StartFighter(objs[0], objs[1], objs[2]);
 	return 0;
@@ -542,7 +538,7 @@ extern "C" s32 CmdRegisterFighterLink(s32 cmd, s32 argc, s32* argv)
 		objs[i] = NULL;
 	}
 	for (i = 0; i < 4 && (s32)i - 1 < argc; i++) {
-		objs[i] = ObjTable_Find(OBJ_TABLE(), argv[i]);
+		objs[i] = FindEventObject(argv[i]);
 	}
 	InitPilotNwing(objs[0], objs[1], objs[2], objs[3]);
 	return 0;
@@ -732,9 +728,9 @@ extern "C" s32 CmdRegisterCar(s32 cmd, s32 argc, s32* argv)
 {
 	XObj* c = NULL;
 	if (argc >= 3) {
-		c = ObjTable_Find(OBJ_TABLE(), argv[2]);
+		c = FindEventObject(argv[2]);
 	}
-	return RegisterCar(ObjTable_Find(OBJ_TABLE(), argv[0]), ObjTable_Find(OBJ_TABLE(), argv[1]), c);
+	return RegisterCar(FindEventObject(argv[0]), FindEventObject(argv[1]), c);
 }
 
 /**
