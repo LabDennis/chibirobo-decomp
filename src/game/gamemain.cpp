@@ -55,9 +55,9 @@ void CBase::Start()
 	mLanguage = 0;
 #endif
 #if defined(VERSION_JP)
-	Init__5CFontFv(&mFont);
+	mFont.Init();
 #else
-	Init__5CFontFi(&mFont, gGame.mLanguage != 6);
+	mFont.Init(gGame.mLanguage != 6);
 #endif
 	mPad.Init();
 	mLastRetrace   = 0;
