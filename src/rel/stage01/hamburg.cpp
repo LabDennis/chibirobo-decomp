@@ -34,38 +34,39 @@ struct Stage01ActorBase {
 };
 
 struct Stage01ActorVirt : public Stage01ActorBase {
-	virtual void vf_08();                                                              // _08
-	virtual void vf_0C();                                                              // _0C
-	virtual void vf_10(f32 y, s32 arg);                                                // _10
-	virtual void vf_14();                                                              // _14
-	virtual void vf_18();                                                              // _18
-	virtual void vf_1C();                                                              // _1C
-	virtual void vf_20();                                                              // _20
-	virtual void vf_24();                                                              // _24
-	virtual void vf_28();                                                              // _28
-	virtual void vf_2C(f32 rot, s32 arg);                                              // _2C
-	virtual void vf_30();                                                              // _30
-	virtual void vf_34();                                                              // _34
-	virtual void vf_38();                                                              // _38
-	virtual void vf_3C();                                                              // _3C
-	virtual void vf_40();                                                              // _40
-	virtual void vf_44();                                                              // _44
-	virtual void vf_48();                                                              // _48
-	virtual void vf_4C();                                                              // _4C
-	virtual void vf_50();                                                              // _50
-	virtual void vf_54();                                                              // _54
-	virtual void vf_58();                                                              // _58
-	virtual void vf_5C();                                                              // _5C
-	virtual void vf_60();                                                              // _60
-	virtual void vf_64();                                                              // _64
-	virtual void vf_68(s32 arg, f32 x, f32 y, f32 z);                                  // _68
-	virtual void vf_6C();                                                              // _6C
-	virtual void vf_70();                                                              // _70
-	virtual void vf_74();                                                              // _74
-	virtual void vf_78(Vec* pos, f32 f);                                               // _78
-	virtual void vf_7C();                                                              // _7C
-	virtual void vf_80(s32 a, s32 b, s32 c, s32 d, s32 e, f32 f, f32 g, f32 h, f32 i); // _80
-	                                                                                   // _34 vtable
+	virtual void vf_08();                                // _08
+	virtual void vf_0C();                                // _0C
+	virtual void SetTranslateY(f32 y, s32 force);        // _10
+	virtual void vf_14();                                // _14
+	virtual void vf_18();                                // _18
+	virtual void vf_1C();                                // _1C
+	virtual void vf_20();                                // _20
+	virtual void vf_24();                                // _24
+	virtual void vf_28();                                // _28
+	virtual void SetRotationZ(f32 z, s32 force);         // _2C
+	virtual void vf_30();                                // _30
+	virtual void vf_34();                                // _34
+	virtual void vf_38();                                // _38
+	virtual void vf_3C();                                // _3C
+	virtual void vf_40();                                // _40
+	virtual void vf_44();                                // _44
+	virtual void vf_48();                                // _48
+	virtual void vf_4C();                                // _4C
+	virtual void vf_50();                                // _50
+	virtual void vf_54();                                // _54
+	virtual void vf_58();                                // _58
+	virtual void vf_5C();                                // _5C
+	virtual void vf_60();                                // _60
+	virtual void vf_64();                                // _64
+	virtual void SetPos(f32 x, f32 y, f32 z, s32 force); // _68
+	virtual void vf_6C();                                // _6C
+	virtual void vf_70();                                // _70
+	virtual void vf_74();                                // _74
+	virtual void SetMoveDir(const Vec* dir, f32 speed);  // _78
+	virtual void vf_7C();                                // _7C
+	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
+	                     f32 blendRate); // _80
+	                                     // _34 vtable
 };
 
 struct Stage01Actor : public Stage01ActorVirt {
@@ -134,7 +135,7 @@ struct HamObj {
 	void SetRot(f32 rot)
 	{
 		mRotZ = rot;
-		mActor->vf_2C(mRotZ, 0);
+		mActor->SetRotationZ(mRotZ, 0);
 	}
 
 	HamObj* mAbove;       // _00, the HamObj stacked on this one, NULL for none
@@ -2629,7 +2630,7 @@ void HamObj::StateStackLand()
 {
 	f32 dist = PSVECDistance(&mActor->mMoveTranslate, &mActor->mMoveTarget);
 	if (HamObj_CheckSlideHit(this)) {
-		mActor->vf_78(&mActor->mMoveTranslate, 0.0f);
+		mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
 		SetState(NULL);
 	} else if (dist <= 0.001f) {
 		SetState(NULL);
@@ -2674,7 +2675,7 @@ void HamObj::StatePutDown()
 			pos.z       = mDish->mActor->mMoveTranslate.z;
 			mStackLevel = CountHamDishObjs(mDish);
 			pos.y       = GetStackHeight();
-			mActor->vf_78(&pos, mMoveSpeed);
+			mActor->SetMoveDir(&pos, mMoveSpeed);
 			SetState(NULL);
 			STAGE01_PARTICLE->Kill(mYakiEffect);
 			mYakiEffect = 0;
@@ -2693,7 +2694,7 @@ void HamObj::StatePutDown()
 				base->mAbove = this;
 				mStackLevel  = base->mStackLevel + 1;
 				pos.y        = GetStackHeight();
-				mActor->vf_78(&pos, mMoveSpeed);
+				mActor->SetMoveDir(&pos, mMoveSpeed);
 				SetState(&HamObj::StateStackLand);
 				UpdateHamPickupFlags();
 				return;
@@ -2703,7 +2704,7 @@ void HamObj::StatePutDown()
 		UpdateHamPickupFlags();
 		mStackLevel = 0;
 		pos.y       = GetStackHeight();
-		mActor->vf_78(&pos, mMoveSpeed);
+		mActor->SetMoveDir(&pos, mMoveSpeed);
 		mStateTime++;
 		break;
 	}
@@ -2713,7 +2714,7 @@ void HamObj::StatePutDown()
 			if (IsOnGasPlate(mActor)) {
 				Vec pos = mActor->mMoveTranslate;
 				pos.y   = mActor->mCoord.GetSize().y;
-				mActor->vf_78(&pos, 10.0f);
+				mActor->SetMoveDir(&pos, 10.0f);
 				StartSlide(5.0f, 0.2f, mMoveAngle);
 			} else {
 				mStackLevel = 1;
@@ -3400,9 +3401,9 @@ void HamObj::StateSlide()
 		pos.x += mSlideDistance * (f32)sin(mMoveAngle);
 		pos.y = mActor->mCoord.GetSize().y;
 		pos.z += mSlideDistance * (f32)cos(mMoveAngle);
-		mActor->vf_78(&pos, mMoveSpeed);
+		mActor->SetMoveDir(&pos, mMoveSpeed);
 		if (HamObj_CheckSlideHit(this)) {
-			mActor->vf_78(&mActor->mMoveTranslate, 0.0f);
+			mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
 			SetState(NULL);
 		}
 		if (mStateTime == 0) {
@@ -3411,7 +3412,7 @@ void HamObj::StateSlide()
 		break;
 	case 1:
 		if (HamObj_CheckSlideHit(this)) {
-			mActor->vf_78(&mActor->mMoveTranslate, 0.0f);
+			mActor->SetMoveDir(&mActor->mMoveTranslate, 0.0f);
 			SetState(NULL);
 		} else if (IsSamePos(mActor->mMoveTranslate, mActor->mMoveTarget)) {
 			SetState(NULL);
@@ -3443,7 +3444,7 @@ void HamObj::StateFlip()
 		mFlipFrames -= 1.0f;
 		if (0.0f < mFlipFrames) {
 			f32 rot = HSD_JObjGetRotationZ(mActor->mJObj);
-			mActor->vf_2C(rot + (mRotZ - rot) / mFlipFrames, 0);
+			mActor->SetRotationZ(rot + (mRotZ - rot) / mFlipFrames, 0);
 		} else {
 			s32 level;
 			PlayYakiSound();
@@ -3451,7 +3452,7 @@ void HamObj::StateFlip()
 			if (level >= 5) {
 				level = 4;
 			}
-			mActor->vf_80(level, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+			mActor->SetAnim(level, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			mSide = 1 - mSide;
 			SetState(NULL);
 		}
@@ -3619,7 +3620,7 @@ extern "C" void HamObj_LowerStack(HamObj* slot)
 		slot->mStackLevel--;
 		Vec pos = *slot->GetPos();
 		pos.y   = slot->GetStackHeight();
-		slot->GetActor()->vf_78(&pos, 0.1f);
+		slot->GetActor()->SetMoveDir(&pos, 0.1f);
 		if (slot->mAbove != NULL) {
 			HamObj_LowerStack(slot->mAbove);
 		}
@@ -3710,8 +3711,8 @@ extern "C" void HamObj_Respawn(HamObj* slot)
 		PlayGameSound(STAGE01_SOUND, 0x4001E, 0xFF);
 	}
 
-	slot->mActor->vf_68(0, -231.8f, 77.5f, 50.0f);
-	slot->mActor->vf_80(0, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+	slot->mActor->SetPos(-231.8f, 77.5f, 50.0f, 0);
+	slot->mActor->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	slot->SetRot(0.0f);
 
 	f32 speed;
@@ -3879,8 +3880,8 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 	}
 
 	if (slot->mSpawned && slot->mActor->mMoveTranslate.y < 77.5f) {
-		slot->mActor->vf_10(78.0f, 0);
-		slot->mActor->vf_2C(slot->mRotZ, 0);
+		slot->mActor->SetTranslateY(78.0f, 0);
+		slot->mActor->SetRotationZ(slot->mRotZ, 0);
 	}
 }
 

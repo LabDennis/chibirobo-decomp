@@ -79,13 +79,14 @@ public:
 	virtual void vf_5C();
 	virtual void vf_60();
 	virtual void vf_64();
-	virtual void vf_68();
+	virtual void SetPos(f32 x, f32 y, f32 z, s32 force);
 	virtual void vf_6C();
 	virtual void vf_70();
 	virtual void vf_74();
-	virtual void vf_78();
+	virtual void SetMoveDir(const Vec* dir, f32 speed);
 	virtual void vf_7C();
-	virtual void vf_80(s32, s32, s32, s32, s32, f32, f32, f32, f32);
+	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
+	                     f32 blendRate);
 
 #if defined(VERSION_JP)
 	u8 _38[0x970 - 0x38];     // _38, three CVecs, no access in any edition
@@ -450,7 +451,7 @@ extern "C" s32 CmdStartOnOff2(s32 cmd, s32 count, s32* args)
 	obj->mPlayerStatus = 0;
 	obj->mPlayerStatus |= 0x40000000;
 	obj->mPadReset = 0;
-	obj->vf_80(0x3E, 0, 0, 0, 0, 0.0f, 2.0f, 0.0f, 10.0f);
+	obj->SetAnim(0x3E, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f);
 	onOffWork._68 = 0;
 	onOffWork._84 = 2;
 	return 0;
@@ -467,7 +468,7 @@ extern "C" s32 CmdStartOnOff1(s32 cmd, s32 count, s32* args)
 	obj->mPlayerStatus = 0;
 	obj->mPlayerStatus |= 0x40000000;
 	obj->mPadReset = 0;
-	obj->vf_80(0x3E, 0, 0, 0, 0, 0.0f, 2.0f, 0.0f, 10.0f);
+	obj->SetAnim(0x3E, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f);
 	onOffWork._68 = 0;
 	onOffWork._84 = 1;
 	return 0;
@@ -484,7 +485,7 @@ extern "C" s32 CmdStartOnOff0(s32 cmd, s32 count, s32* args)
 	obj->mPlayerStatus = 0;
 	obj->mPlayerStatus |= 0x40000000;
 	obj->mPadReset = 0;
-	obj->vf_80(0x3E, 0, 0, 0, 0, 0.0f, 2.0f, 0.0f, 10.0f);
+	obj->SetAnim(0x3E, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f);
 	onOffWork._68 = 0;
 	onOffWork._84 = 0;
 	return 0;
