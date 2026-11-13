@@ -389,9 +389,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					f32 difference = desired - current;
 					if (difference < 0)
 						difference = -difference;
-					if (difference <= 0.008726646f) {
-						rate = 0.017453292f;
-					} else {
+					if (difference > 0.008726646f) {
 						if (difference >= TWO_PI)
 							difference -= TWO_PI;
 						if (difference > PI)
@@ -407,6 +405,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							rate = turn * 0.1f;
 						else
 							rate = turn * 0.2f;
+					} else {
+						rate = 0.017453292f;
 					}
 				}
 				XActLift& lift  = player->mLift;
