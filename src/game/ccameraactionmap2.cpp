@@ -1946,8 +1946,8 @@ static inline f32 MapAreaHeight(s32 index)
  */
 extern "C" void StartMapCameraAreaHeightInterpolation(CCameraActionMap* map)
 {
-	CamAreaInfo area = CamAreaInfo(&gCameraAreaState._24[map->_DA8]);
 	if (map->_DA8 >= 0) {
+		CamAreaInfo area(&gCameraAreaState._24[map->_DA8]);
 		if (!(area._04->_2E & 1)) {
 			map->_E58 = 0;
 		} else {
