@@ -97,7 +97,7 @@ public:
 
 	CEvtFlags& GetCollectionFlags(CollectionPool pool) const { return *static_cast<XObjFlags*>(mPools[pool].First())->mFlags; }
 
-	inline void ReadAll();
+	void ReadAll();
 };
 STATIC_ASSERT(sizeof(XOBJS) == 0x11DC);
 
@@ -165,7 +165,7 @@ public:
 	BOOL mDiskOk;       // _3324, DVDCheckDisk
 	BOOL mDvdError;     // _3328, rumble is paused while set
 	s32 mResetHold;     // _332C, frames the reset combo is held
-	BOOL mReset;        // _3330, stops ReadAll__5XOBJSFv's read loop when set
+	BOOL mReset;        // _3330, stops XOBJS::ReadAll when set
 	// _3334 vtable
 
 	CBase();

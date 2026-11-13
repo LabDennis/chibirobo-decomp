@@ -22,8 +22,6 @@ XObjReadAll gAllObjectsReader;
 XObjReadOne gSingleObjectReader;
 XObjReadAnm gObjectAnimationReader;
 
-extern "C" void ReadAll__5XOBJSFv(XOBJS* list);
-
 inline BOOL XObjRead::ReadStart(void* obj, void* info)
 {
 	for (s32 i = 0; i < 8; i++) {
@@ -36,6 +34,54 @@ inline BOOL XObjRead::ReadStart(void* obj, void* info)
 	}
 	OSPanic(__FILE__, 356, "%s%s", "no more space for XObjRead thread!\n", __FUNCTION__);
 	return FALSE;
+}
+
+/**
+ * @note Address: 0x80131BE8
+ * @note Size: 0x84
+ */
+XObjReadAnm::~XObjReadAnm()
+{
+}
+
+/**
+ * @note Address: 0x80131C6C
+ * @note Size: 0xC0
+ */
+// any read still waiting
+BOOL XObjRead::HasPendingReads()
+{
+	for (s32 i = 0; i < 8; ++i) {
+		if (mReqs[i].mObj != NULL) {
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+/**
+ * @note Address: 0x80131D2C
+ * @note Size: 0x280
+ */
+extern "C" BOOL HasPendingObjectReads()
+{
+	return gAllObjectsReader.HasPendingReads() || gSingleObjectReader.HasPendingReads() || gObjectAnimationReader.HasPendingReads();
+}
+
+/**
+ * @note Address: 0x80131FAC
+ * @note Size: 0x94
+ */
+// XObjReadAnm::ProcessRequest, reads the object's anim archive
+void XObjReadAnm::ProcessRequest(XObjReadReq* req)
+{
+	XObj* object     = (XObj*)req->mObj;
+	const char* path = (const char*)req->mInfo;
+	while (!object->LoadAnimationArchiveAsync(path)) {
+		OSYieldThread();
+	}
+	req->mObj = NULL;
+	object->mStatus.mFlags &= ~0x0080000000000000ULL;
 }
 
 /**
@@ -127,7 +173,7 @@ extern "C" void* ReadSingleObjectThread(void* arg)
  */
 void XObjReadAll::ProcessRequest(XObjReadReq* req)
 {
-	ReadAll__5XOBJSFv((XOBJS*)req->mInfo);
+	static_cast<XOBJS*>(req->mInfo)->ReadAll();
 	req->mObj = NULL;
 }
 
@@ -480,7 +526,7 @@ extern "C" void ReleaseStageObjectList(XOBJS* list)
  * @note Size: 0x248
  */
 // grabs an object from its pool for every stage entry, then reads them in order
-inline void XOBJS::ReadAll()
+void XOBJS::ReadAll()
 {
 	for (s32 i = 0; i < (s32)ARRAY_SIZE(mPools); i++) {
 		mPools[i].mUsed = 0;
@@ -515,12 +561,6 @@ inline void XOBJS::ReadAll()
 		}
 	}
 	mLoadState = 2;
-}
-
-// out of line XOBJS::ReadAll
-extern "C" void ReadAll__5XOBJSFv(XOBJS* list)
-{
-	list->ReadAll();
 }
 
 // ReadAll__5XOBJSFv
@@ -749,8 +789,6 @@ extern "C" void ResetPooledObjects(XObjPool* pools)
  * @note Size: 0xDFC
  */
 // builds the 23 pools, numbers every object and starts the three reader threads
-// NONMATCHING: retail keeps the frame of the empty loop near the end (li r3, 21 ... bdnz), so what
-// left 21 in its counter was not a constant; and two pairs of saved registers are swapped
 extern "C" void InitializeObjectPools(XOBJS* list)
 {
 	s32 id = 0;
@@ -779,8 +817,6 @@ extern "C" void InitializeObjectPools(XOBJS* list)
 	XOBJ_POOL(21, XObjHBox, 16, "HBOX");
 	XOBJ_POOL(22, XObjFree, 288, "FREE");
 
-	// nothing is left of this loop over the last two pools but its counter
-	for (s32 i = 21; i < 23; i++) { }
 	list->mLoadState = 0;
 
 	gAllObjectsReader.Create(ReadObjectListThread, NULL, 0x2000, 17, OS_THREAD_ATTR_DETACH);
