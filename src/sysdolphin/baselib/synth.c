@@ -1,87 +1,21 @@
 #include <global.h>
+#include <sysdolphin/axdriver.h>
+#include <string.h>
 #include <dolphin/types.h>
+#include <sdk/dolphin/ax.h>
 #include <sysdolphin/objalloc.h>
 #include <sysdolphin/devcom.h>
 #include <sysdolphin/dvdsche.h>
 
-typedef struct _AXPBMIX {
-	u16 vL;
-	u16 vDeltaL;
-	u16 vR;
-	u16 vDeltaR;
-	u16 vAuxAL;
-	u16 vDeltaAuxAL;
-	u16 vAuxAR;
-	u16 vDeltaAuxAR;
-	u16 vAuxBL;
-	u16 vDeltaAuxBL;
-	u16 vAuxBR;
-	u16 vDeltaAuxBR;
-	u16 vAuxBS;
-	u16 vDeltaAuxBS;
-	u16 vS;
-	u16 vDeltaS;
-	u16 vAuxAS;
-	u16 vDeltaAuxAS;
-} AXPBMIX;
+static inline u32 getVoiceCurrentAddress(const AXVPB* voice)
+{
+	return ((u32)voice->pb.addr.currentAddressHi << 16) | voice->pb.addr.currentAddressLo;
+}
 
-typedef struct _AXPBVE {
-	u16 currentVolume;
-	s16 currentDelta;
-} AXPBVE;
-
-typedef struct _AXPBADDR {
-	u16 loopFlag;
-	u16 format;
-	u32 loopAddressHi;
-	u32 loopAddressLo;
-	u32 endAddressHi;
-	u32 endAddressLo;
-	u32 currentAddressHi;
-	u32 currentAddressLo;
-} AXPBADDR;
-
-typedef struct _AXPBADPCM {
-	s16 coefs[16];
-	u16 gain;
-	u16 pred_scale;
-	u16 yn1;
-	u16 yn2;
-} AXPBADPCM;
-
-typedef struct _AXPBADPCMLOOP {
-	u16 loop_pred_scale;
-	u16 loop_yn1;
-	u16 loop_yn2;
-} AXPBADPCMLOOP;
-
-typedef struct _AXPBSRC {
-	u16 ratioHi;
-	u16 ratioLo;
-	u16 currentAddressFrac;
-	u16 pad[4];
-} AXPBSRC;
-
-typedef struct _AXVPB {
-	struct _AXVPB* next;
-	struct _AXVPB* prev;
-	void* next1;
-	u32 priority;
-	void* callback;
-	u32 userContext;
-	u32 index;
-	u32 sync;
-	/* remaining PB fields not accessed directly by this unit */
-	u8 pad20[0x1D6 - 0x20];
-} AXVPB;
-
-#define AXVPB_PB_STATE(v)         (*(u16*)((u8*)(v) + 0x146))
-#define AXVPB_CURRENT_ADDR(v)     (*(u32*)((u8*)(v) + 0x1B2))
-#define AXVPB_ITD_FLAG(v)         (*(u16*)((u8*)(v) + 0x166))
-#define AXVPB_ITD_SHIFTL(v)       (*(u16*)((u8*)(v) + 0x16C))
-#define AXVPB_ITD_SHIFTR(v)       (*(u16*)((u8*)(v) + 0x16E))
-#define AXVPB_ITD_TARGETSHIFTL(v) (*(u16*)((u8*)(v) + 0x170))
-#define AXVPB_ITD_TARGETSHIFTR(v) (*(u16*)((u8*)(v) + 0x172))
+static inline u32 getVoiceEndAddress(const AXVPB* voice)
+{
+	return ((u32)voice->pb.addr.endAddressHi << 16) | voice->pb.addr.endAddressLo;
+}
 
 struct HSD_SynthPStream;
 
@@ -180,7 +114,6 @@ extern void OSPanic(const char*, s32, const char*, ...);
 extern u32 OSGetSoundMode(void);
 extern void OSSetSoundMode(u32 mode);
 #define OSRoundUp32B(x) (((u32)(x) + 32 - 1) & ~(32 - 1))
-extern void* memcpy(void*, const void*, u32);
 extern f64 sin(f64);
 extern f64 sqrt(f64);
 
@@ -189,32 +122,6 @@ extern void AISetStreamPlayState(s32);
 extern void AISetStreamVolLeft(u8 vol);
 extern void AISetStreamVolRight(u8 vol);
 extern void* ARAlloc(s32);
-extern void AXFreeVoice(AXVPB*);
-extern AXVPB* AXAcquireVoice(u32 priority, void* callback, u32 userContext);
-extern u64 AXInitEx(void*, s8*);
-extern void AXRegisterCallback(void (*)(void));
-
-extern void fn_803ED0CC(s32);
-extern void fn_803ED76C(void (*)(void), void (*)(void));
-extern void fn_803EE7F4(AXVPB*, s32);
-extern void fn_803EEB68(AXVPB*);
-extern void fn_803EEBCC(u16, u16);
-extern void fn_803EEC28(AXVPB*, s16*);
-extern void fn_803EEC80(AXVPB*, s16);
-extern void fn_803EECCC(AXVPB*, void*);
-extern void fn_803EEDDC(AXVPB*, u32);
-extern void fn_803EEE28(AXVPB*, void*, s32);
-extern void fn_803EEE7C(AXVPB*, s32, s32, s32);
-extern void fn_803EEED0(AXVPB*, s32, s32);
-extern void fn_803EEF24(AXVPB*, void*);
-extern void fn_803EEFC8(AXVPB*, u32*);
-extern void fn_803EF0F8(AXVPB*, void*);
-extern void hwSetPitch(f32);
-extern void hwSetVolume(u16*, s32, s32, u16);
-
-extern void* HSD_GObjObjectLink(void* gobj, u8 kind, void* obj);
-extern void* HSD_GObjObjectUnlink(void* gobj);
-
 
 extern f64 exp(f64);
 extern f64 log(f64);
@@ -247,12 +154,29 @@ typedef struct HSD_SynthSFXLoadRequest {
 	s32 arg;                    // _0C
 } HSD_SynthSFXLoadRequest;
 
-// one 0x40 byte header per stream buffer
+typedef struct HSD_SynthStreamFormat {
+	AXPBADDR addr;
+	AXPBADPCM adpcm;
+} HSD_SynthStreamFormat;
+
+typedef struct HSD_SynthStreamHeader {
+	char signature[8];
+	u32 sampleRate;
+	u32 channels;
+	HSD_SynthStreamFormat format[2];
+} HSD_SynthStreamHeader;
+
+typedef struct HSD_SynthLoopState {
+	AXPBADPCMLOOP adpcm;
+	u16 reserved;
+} HSD_SynthLoopState;
+
+// A 0x20-byte chunk header is read into each 0x40-byte streaming buffer record.
 typedef struct HSD_SynthPStreamHako {
 	s32 size;                          // _00
 	s32 end;                           // _04
 	s32 next;                          // _08
-	u32 loop[2][2];                    // _0C
+	HSD_SynthLoopState loop[2];        // _0C
 	u8 markerNum;                      // _1C
 	HSD_SynthBeatMarkerBlock* markers; // _20
 	s32 markerIx;                      // _24
@@ -269,8 +193,8 @@ typedef struct HSD_SynthPStream {
 	s32 _14;                         // _14
 	s32 _18;                         // _18
 	s32 _1C;                         // _1C
-	void (*callback)(s32, s32, s32); // _20
-	s32 _24;                         // _24
+	HSD_AudioBeatCallback callback;  // _20
+	void* beatContext;               // _24
 	s32 _28;                         // _28
 } HSD_SynthPStream;
 
@@ -363,7 +287,6 @@ static HSD_SynthPStream lbl_80659918[HSD_SYNTHPSTREAM_MAX];
 // defined further down, next to the code that first needs them in .sdata order
 static u32 sSynthActiveChannelFaderMasks[2];
 static f32 sSynthStreamVolume;
-
 
 void HSD_SynthSFXLoadNewProc(void);
 void HSD_SynthSFXFreeVoice(HSD_SynthSFXNode* node);
@@ -1161,8 +1084,6 @@ u32 HSD_SynthGetSoundMode(void)
 	return sSynthSoundMode;
 }
 
-void AXSetMode(u32 mode);
-
 /**
  * @note Address: 0x801ECD30
  * @note Size: 0xC8
@@ -1369,21 +1290,11 @@ typedef struct HSD_SynthSFXEntry {
 	int count;                      // _08
 	s32 rate;                       // _0C
 	struct {
-		u8 addr[0x10];      // _00
-		u8 adpcm[0x28];     // _10
-		u8 adpcmloop[0x08]; // _38
+		AXPBADDR addr;                // _00
+		AXPBADPCM adpcm;              // _10
+		HSD_SynthLoopState adpcmloop; // _38
 	} sample[1];            // _10
 } HSD_SynthSFXEntry;
-
-extern void AXSetVoicePriority(AXVPB* p, u32 priority);
-extern void AXSetVoiceVe(AXVPB* p, AXPBVE* ve);
-extern void AXSetVoiceSrcType(AXVPB* p, u32 type);
-extern void AXSetVoiceSrc(AXVPB* p, AXPBSRC* src);
-extern void AXSetVoiceAddr(AXVPB* p, void* addr);
-extern void AXSetVoiceAdpcm(AXVPB* p, void* adpcm);
-extern void AXSetVoiceAdpcmLoop(AXVPB* p, void* loop);
-extern void AXSetVoiceItdOn(AXVPB* p);
-extern void AXSetVoiceState(AXVPB* p, u16 state);
 
 /**
  * @note Address: 0x801ED444
@@ -1550,9 +1461,9 @@ s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mod
 				AXSetVoiceVe(voices[k * 2 + j], &ve);
 				AXSetVoiceSrcType(voices[k * 2 + j], 2);
 				AXSetVoiceSrc(voices[k * 2 + j], &lbl_8050932C);
-				AXSetVoiceAddr(voices[k * 2 + j], entry->sample[j].addr);
-				AXSetVoiceAdpcm(voices[k * 2 + j], entry->sample[j].adpcm);
-				AXSetVoiceAdpcmLoop(voices[k * 2 + j], entry->sample[j].adpcmloop);
+				AXSetVoiceAddr(voices[k * 2 + j], &entry->sample[j].addr);
+				AXSetVoiceAdpcm(voices[k * 2 + j], &entry->sample[j].adpcm);
+				AXSetVoiceAdpcmLoop(voices[k * 2 + j], &entry->sample[j].adpcmloop.adpcm);
 				if (sSynthSoundMode == 1) {
 					AXSetVoiceItdOn(voices[k * 2 + j]);
 				}
@@ -2553,7 +2464,7 @@ void HSD_SynthSFXStopRange(u32 lo, u32 hi)
 	for (i = 0; i < HSD_SYNTHSFXNODE_MAX; i++) {
 		HSD_SynthSFXNode* node = &sSynthSfxNodes[i];
 		if (node->sfxID > 0) {
-			u32 addr = AXVPB_CURRENT_ADDR(node->voice[0]);
+			u32 addr = getVoiceCurrentAddress(node->voice[0]);
 			if (addr >= lo && addr < hi) {
 				HSD_SynthSFXFreeVoice(node);
 			}
@@ -2628,7 +2539,7 @@ s32 HSD_SynthSFXCheck(s32 id)
 			result = -1;
 		} else if (!(node->flags & 8)) {
 			for (i = 0; i < node->voice_count; i++) {
-				if (AXVPB_PB_STATE(node->voice[i]) == 0) {
+				if (node->voice[i]->pb.state == 0) {
 					result = -1;
 				}
 			}
@@ -2915,9 +2826,6 @@ void HSD_SynthSFXLinkUpdateRearPitch(HSD_SynthSFXNode* rearEntry)
 #define AX_SYNC_FLAG_COPYRATIO (1 << 19)
 #define AX_SYNC_FLAG_COPYSRC   (1 << 18)
 
-void AXSetVoiceState(AXVPB* p, u16 state);
-void AXSetVoiceSrcRatio(AXVPB* p, f32 ratio);
-
 /**
  * @note Address: 0x801EE5BC
  * @note Size: 0x1D0
@@ -2935,7 +2843,7 @@ void HSD_SynthSFXUpdatePitch(HSD_SynthSFXNode* node)
 		}
 	} else {
 		pitch = node->u.rear.pitch;
-		if (AXVPB_PB_STATE(node->voice[0]) == 0) {
+		if (node->voice[0]->pb.state == 0) {
 			for (i = 0; i < node->voice_count; i++) {
 				AXSetVoiceState(node->voice[i], 1);
 			}
@@ -3038,9 +2946,6 @@ static inline s32 tickFader(HSD_SynthVolFader* f)
 
 #define AX_SYNC_USER_VE      0x200
 #define AX_SYNC_USER_VEDELTA 0x400
-
-extern void AXSetVoiceVe(AXVPB* vpb, AXPBVE* ve);
-extern void AXSetVoiceVeDelta(AXVPB* vpb, s16 delta);
 
 // current output volume, the header only has padding here
 // a rear node reuses the user volume area for last frame's ramp
@@ -3945,13 +3850,6 @@ static inline void updateMixEnvelopeStep(u16* target, u16* current, s16* out)
 
 #define VOICE_NODE(v) (&sSynthSfxNodes[(v)->index])
 
-#define AXVPB_SYNC(v)    (*(u32*)((u8*)(v) + 0x1C))
-#define AXVPB_ITDFLAG(v) (*(u16*)((u8*)(v) + 0x16E))
-#define AXVPB_SHIFTL(v)  (*(u16*)((u8*)(v) + 0x174))
-#define AXVPB_SHIFTR(v)  (*(u16*)((u8*)(v) + 0x176))
-
-extern void AXSetVoiceMix(AXVPB* voice, AXPBMIX* mix);
-
 /**
  * @note Address: 0x801EF34C
  * @note Size: 0x250
@@ -4138,8 +4036,6 @@ void HSD_SynthSFXInitMix(HSD_SynthSFXNode* node)
 		}
 	}
 }
-
-void AXSetVoiceItdTarget(AXVPB* v, u16 shiftL, u16 shiftR);
 
 // itd shift by pan distance from center
 static u8 lbl_8025BF68[0x80] = {
@@ -4465,13 +4361,13 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 		}
 	}
 	for (i = 0; i < node->voice_count; i++) {
-		if (AXVPB_ITDFLAG(node->voice[i]) == 1) {
-			if ((AXVPB_SYNC(node->voice[i]) & 0x20) || interpolate == 0) {
+		if (node->voice[i]->pb.itd.flag == 1) {
+			if ((node->voice[i]->sync & AX_SYNC_FLAG_COPYITD) || interpolate == 0) {
 				AXSetVoiceItdTarget(node->voice[i], shiftL, shiftR);
-				AXVPB_SHIFTR(node->voice[i]) = shiftR;
-				AXVPB_SHIFTL(node->voice[i]) = shiftL;
-				AXVPB_SYNC(node->voice[i]) &= ~0x40;
-				AXVPB_SYNC(node->voice[i]) |= 0x20;
+				node->voice[i]->pb.itd.shiftR = shiftR;
+				node->voice[i]->pb.itd.shiftL = shiftL;
+				node->voice[i]->sync &= ~AX_SYNC_FLAG_COPYTSHIFT;
+				node->voice[i]->sync |= AX_SYNC_FLAG_COPYITD;
 			} else {
 				AXSetVoiceItdTarget(node->voice[i], shiftL, shiftR);
 			}
@@ -4627,15 +4523,15 @@ void HSD_SynthCallback(void)
 	for (i = 0; i < 8; i++) {
 		HSD_SynthSFXNode* node = &sSynthSfxNodes[base + i];
 
-		if (node->sfxID > 0 && !(node->flags & 8) && AXVPB_PB_STATE(node->voice[0]) == 0
-		    && (node->voice_count == 1 || AXVPB_PB_STATE(node->voice[1]) == 0)) {
+		if (node->sfxID > 0 && !(node->flags & 8) && node->voice[0]->pb.state == 0
+		    && (node->voice_count == 1 || node->voice[1]->pb.state == 0)) {
 			if (node->rearIndex != -1) {
 				HSD_SynthSFXNode* rear = &sSynthSfxNodes[node->rearIndex];
 
-				if (AXVPB_PB_STATE(rear->voice[0]) != 0) {
+				if (rear->voice[0]->pb.state != 0) {
 					continue;
 				}
-				if (node->voice_count != 1 && AXVPB_PB_STATE(rear->voice[1]) != 0) {
+				if (node->voice_count != 1 && rear->voice[1]->pb.state != 0) {
 					continue;
 				}
 			}
@@ -4824,16 +4720,6 @@ void HSD_SynthPStreamNextHakoCallback(s32 pstreamID)
 /* pstream bookkeeping as these two functions see it, the shared header
    struct is missing most of these fields */
 
-void AXSetVoiceVe(AXVPB* p, AXPBVE* ve);
-void AXSetVoiceSrcType(AXVPB* p, u32 type);
-void AXSetVoiceSrc(AXVPB* p, AXPBSRC* src);
-void AXSetVoiceCurrentAddr(AXVPB* p, u32 addr);
-void AXSetVoiceEndAddr(AXVPB* p, u32 addr);
-void AXSetVoiceLoopAddr(AXVPB* p, u32 addr);
-void AXSetVoiceLoop(AXVPB* p, u16 loop);
-void AXSetVoiceAdpcmLoop(AXVPB* p, void* loop);
-void AXSetVoiceItdOn(AXVPB* p);
-void AXSetVoiceState(AXVPB* p, u16 state);
 void HSD_SynthPStreamNextHakoCallback(s32 pstreamID);
 
 static inline BOOL isPStreamActive(HSD_SynthPStream* pstream)
@@ -4872,21 +4758,21 @@ void HSD_SynthPStreamMasterClockCallback(void)
 		if (node->flags & 8) {
 			continue;
 		}
-		if (AXVPB_CURRENT_ADDR(node->voice[0]) < sSynthStreamBufferAramBase * 2) {
+		if (getVoiceCurrentAddress(node->voice[0]) < sSynthStreamBufferAramBase * 2) {
 			continue;
 		}
-		a = (AXVPB_CURRENT_ADDR(node->voice[0]) - sSynthStreamBufferAramBase * 2) >> 17;
+		a = (getVoiceCurrentAddress(node->voice[0]) - sSynthStreamBufferAramBase * 2) >> 17;
 		if (a == pstream->bufTableHeadIx) {
 			if (pstream->_18 == 1 && sSynthStreamHakoBuffers[lastBuf(pstream)].next != -1
-			    && *(u32*)((u8*)node->voice[0] + 0x1AE) - AXVPB_CURRENT_ADDR(node->voice[0]) < 0xE60) {
+			    && getVoiceEndAddress(node->voice[0]) - getVoiceCurrentAddress(node->voice[0]) < 0xE60) {
 				lbl_8065BBD0 = 1;
 			}
-			pos = AXVPB_CURRENT_ADDR(node->voice[0]) - sSynthStreamBufferAramBase * 2 - (a << 17);
+			pos = getVoiceCurrentAddress(node->voice[0]) - sSynthStreamBufferAramBase * 2 - (a << 17);
 			if (sSynthStreamHakoBuffers[a].markerIx < sSynthStreamHakoBuffers[a].markerNum) {
 				while (sSynthStreamHakoBuffers[a].markerIx < sSynthStreamHakoBuffers[a].markerNum
 				       && (marker = getBeatMarker(a, sSynthStreamHakoBuffers[a].markerIx))->pos < pos * 14 / 16) {
 					if (pstream->callback != NULL) {
-						pstream->callback(node->sfxID, marker->data, pstream->_24);
+						pstream->callback(node->sfxID, marker->data, pstream->beatContext);
 						if (!isPStreamActive(pstream)) {
 							goto next_pstream;
 						}
@@ -4898,7 +4784,7 @@ void HSD_SynthPStreamMasterClockCallback(void)
 			while (sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerIx < sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerNum) {
 				marker = getBeatMarker(pstream->bufTableHeadIx, sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerIx);
 				if (pstream->callback != NULL) {
-					pstream->callback(node->sfxID, marker->data, pstream->_24);
+					pstream->callback(node->sfxID, marker->data, pstream->beatContext);
 					if (!isPStreamActive(pstream)) {
 						goto next_pstream;
 					}
@@ -4910,7 +4796,7 @@ void HSD_SynthPStreamMasterClockCallback(void)
 			unlinkBufTable(&pstream->bufTableHeadIx, buf);
 			if (pstream->bufTableHeadIx != a) {
 				OSReport("pst=%08x: pst->buftableheadix = %d, a=%d\n cadhi= %d pstbuf=%d\n", pstream, pstream->bufTableHeadIx, a,
-				         AXVPB_CURRENT_ADDR(node->voice[0]), sSynthStreamBufferAramBase * 2);
+				         getVoiceCurrentAddress(node->voice[0]), sSynthStreamBufferAramBase * 2);
 				__assert(__FILE__, 0xDCB, "pstream->bufTableHeadIx == a");
 			}
 			pstream->_18--;
@@ -4942,7 +4828,7 @@ void HSD_SynthPStreamMasterClockCallback(void)
 					for (i = 0; i < node->voice_count; i++) {
 						AXSetVoiceLoopAddr(n->voice[i],
 						                   (sSynthStreamBufferAramBase + (pstream->_14 << 16)) * 2 + i * sSynthStreamHakoBuffers[pstream->_14].size + 2);
-						AXSetVoiceAdpcmLoop(n->voice[i], sSynthStreamHakoBuffers[pstream->_14].loop[i]);
+						AXSetVoiceAdpcmLoop(n->voice[i], &sSynthStreamHakoBuffers[pstream->_14].loop[i].adpcm);
 					}
 				}
 			} else if (sSynthStreamHakoBuffers[a].next == -1) {
@@ -6192,15 +6078,15 @@ static f32 sSynthStreamVolume    = 1.0f;
  */
 void HSD_SynthPStreamHeaderCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled)
 {
-	u32* header = buffer;
-	HSD_SynthSFXNode* entry = getNode(pstreamID);
+	HSD_SynthStreamHeader* header = buffer;
+	HSD_SynthSFXNode* entry       = getNode(pstreamID);
 	s32 i;
 	s32 bufReading;
 
 	if (entry == NULL) {
 		return;
 	}
-	entry->voice_count = header[3];
+	entry->voice_count = header->channels;
 	if (entry->voice_count == 2) {
 		entry->voice[1] = AXAcquireVoice(0x1F, dropcallback, 0);
 		ASSERT_SYNTH(0xE94, entry->voice[1]);
@@ -6215,19 +6101,19 @@ void HSD_SynthPStreamHeaderCallback(int request, s32 pstreamID, void* buffer, BO
 			rear2->voice_count                         = 2;
 		}
 	}
-	entry->freqBase = 0.00003125f * header[2];
+	entry->freqBase = 0.00003125f * header->sampleRate;
 	for (i = 0; i < entry->voice_count; i++) {
 		// ratioHi and ratioLo go out as one word
 		*(u32*)&lbl_8050932C = 65536.0f * entry->freqBase;
-		AXSetVoiceAddr(entry->voice[i], &header[i * 14 + 4]);
-		AXSetVoiceAdpcm(entry->voice[i], &header[i * 14 + 8]);
+		AXSetVoiceAddr(entry->voice[i], &header->format[i].addr);
+		AXSetVoiceAdpcm(entry->voice[i], &header->format[i].adpcm);
 	}
 	if (entry->rearIndex != -1) {
 		HSD_SynthSFXNode* rear = &sSynthSfxNodes[entry->rearIndex];
 
 		for (i = 0; i < entry->voice_count; i++) {
-			AXSetVoiceAddr(rear->voice[i], &header[i * 14 + 4]);
-			AXSetVoiceAdpcm(rear->voice[i], &header[i * 14 + 8]);
+			AXSetVoiceAddr(rear->voice[i], &header->format[i].addr);
+			AXSetVoiceAdpcm(rear->voice[i], &header->format[i].adpcm);
 		}
 	}
 	bufReading          = getFreeBuf();
@@ -6296,8 +6182,8 @@ s32 HSD_SynthPStreamStart(s32 entrynum, s32 vol, s32 volMode, s32 vol2, s32 vol2
 	PSTREAM(node)->entrynum       = entrynum;
 	PSTREAM(node)->node           = node;
 	PSTREAM(node)->bufTableHeadIx = -2;
-	PSTREAM(node)->callback       = 0;
-	PSTREAM(node)->_24            = 0;
+	PSTREAM(node)->callback       = NULL;
+	PSTREAM(node)->beatContext    = NULL;
 	PSTREAM(node)->_28            = 0;
 	pst                           = PSTREAM(node);
 	pst->next                     = sSynthActivePStreams;
@@ -6416,20 +6302,18 @@ s32 HSD_SynthPStreamIsActive(void)
  * @note Address: 0x801F2910
  * @note Size: 0x98
  */
-void HSD_SynthPStreamSetBeatCallback(s32 id, s32 a, s32 b)
+void HSD_SynthPStreamSetBeatCallback(s32 id, HSD_AudioBeatCallback callback, void* context)
 {
 	HSD_SynthSFXNode* node;
 	u32 enabled = OSDisableInterrupts();
 
 	node = getNode(id);
 	if (node != NULL && node->link.pstream != NULL) {
-		PSTREAM(node)->callback = (void (*)(s32, s32, s32))a;
-		PSTREAM(node)->_24      = b;
+		PSTREAM(node)->callback    = callback;
+		PSTREAM(node)->beatContext = context;
 	}
 	OSRestoreInterrupts(enabled);
 }
-
-extern void AXInit(void);
 
 /**
  * @note Address: N/A

@@ -3,6 +3,7 @@ extern "C" {
 #include <sysdolphin/mtx_transform.h>
 #include <sysdolphin/aobj.h>
 #include <sysdolphin/rumble.h>
+#include <sysdolphin/axdriver.h>
 }
 #include "game/clight.h"
 #include "game/ccameraaction.h"
@@ -2503,10 +2504,9 @@ s32 CEvt::_cmd_TIMER(u8, s32)
 }
 
 extern "C" s32 HSD_AudioPStreamStartChParam(const char* path, u8 vol, s32 channel);
-extern "C" BOOL AXDriverSetAllStreamParams(s32 a, s32 b);
 
 // LatchEventBeat is the stream beat callback, it latches the beat here for WAIT
-extern "C" void LatchEventBeat(s32 id, s32 beat, EvtBeatLatch* latch);
+extern "C" void LatchEventBeat(s32 id, s32 beat, void* context);
 
 /**
  * @note Address: 0x80071F38
@@ -2528,13 +2528,13 @@ s32 CEvt::_cmd_SFX(u8, s32)
 	case 1:
 		PlayGameSound(&gGame.mSound, sfx, 0xFF);
 		gEventBeatLatch.mPending = 0;
-		AXDriverSetAllStreamParams((s32)LatchEventBeat, (s32)&gEventBeatLatch);
+		AXDriverSetAllStreamParams(LatchEventBeat, &gEventBeatLatch);
 		break;
 	case 0xF5:
 		// here the value is a stream path, not an id
 		HSD_AudioPStreamStartChParam((const char*)sfx, 0xFF, 0x1F);
 		gEventBeatLatch.mPending = 0;
-		AXDriverSetAllStreamParams((s32)LatchEventBeat, (s32)&gEventBeatLatch);
+		AXDriverSetAllStreamParams(LatchEventBeat, &gEventBeatLatch);
 		break;
 	case 2:
 		FadeOutGameSfx(&gGame.mSound, sfx, CEvt_Evaluate(this) * 2);
@@ -2791,10 +2791,11 @@ s32 CEvt::_cmd_SFX(u8, s32)
  * @note Address: 0x80072214
  * @note Size: 0x10
  */
-extern "C" void LatchEventBeat(s32 id, s32 beat, EvtBeatLatch* latch)
+extern "C" void LatchEventBeat(s32 id, s32 beat, void* context)
 {
-	latch->mPending = 1;
-	latch->mBeat    = beat;
+	EvtBeatLatch* latch = static_cast<EvtBeatLatch*>(context);
+	latch->mPending     = 1;
+	latch->mBeat        = beat;
 }
 
 /**
