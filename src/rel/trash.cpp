@@ -68,7 +68,7 @@ struct TrashObj {
 	virtual void vf48();             // _48
 	virtual void vf4C();             // _4C
 	virtual void vf50();             // _50
-	virtual void vf54();             // _54
+	virtual void Release();          // _54
 	virtual void GetFollowDivisor(); // _58
 	virtual void vf5C();             // _5C
 	virtual void vf60();             // _60
@@ -78,11 +78,12 @@ struct TrashObj {
 	virtual void vf70();             // _70
 	virtual void vf74();             // _74
 
-	virtual void vf78(Vec* pos, f32 arg); // _78
+	virtual void SetMoveDir(const Vec* dir, f32 speed); // _78
 
 	virtual void vf7C(); // _7C
 
-	virtual void vf80(s32 arg, s32 arg2, s32 arg3, s32 arg4, s32 arg5, f32 arg6, f32 arg7, f32 arg8, f32 arg9); // _80
+	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
+	                     f32 blendRate); // _80
 
 	virtual void vf84();                      // _84
 	virtual void vf88();                      // _88
@@ -678,7 +679,7 @@ extern "C" void UpdateTrash(u32 frames)
 		case 0:
 			trashObj = robot->_A64;
 			if (pad.mPad->mButton & 0x100) {
-				robot->vf80(9, 0, 0, 0, 0, 0.0f, 1.0f, 0.0f, 10.0f);
+				robot->SetAnim(9, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				trashState++;
 			} else if (pad.mPad->mTrigger & 0x200) {
 				trashResult = 4;
@@ -725,7 +726,7 @@ extern "C" void UpdateTrash(u32 frames)
 					u32 bit = held->vf148();
 					held->_980[bit >> 5] |= 1 << (bit & 31);
 				}
-				trashObj->vf54();
+				trashObj->Release();
 				trashObj   = NULL;
 				trashState = 99;
 			} else {
@@ -744,7 +745,7 @@ extern "C" void UpdateTrash(u32 frames)
 					pos.y = trashPos.y;
 					pos.z = trashPos.z;
 					pos.y += 10.0f * (f32)sin(trashArc);
-					trashObj->vf78(&pos, 10.0f);
+					trashObj->SetMoveDir(&pos, 10.0f);
 				}
 			}
 			break;
@@ -759,7 +760,7 @@ extern "C" void UpdateTrash(u32 frames)
 			impactPos.x += 2.0f * (f32)sin(angle);
 			impactPos.y = 0.0f;
 			impactPos.z += 2.0f * (f32)cos(angle);
-			trashObj->vf78(&impactPos, 1.0f);
+			trashObj->SetMoveDir(&impactPos, 1.0f);
 			trashState = 99;
 			break;
 		}
@@ -1473,7 +1474,7 @@ extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2)
 		robot->_A48 = 6;
 	}
 	if (trashObj != NULL && (trashObj->_228 & 1)) {
-		trashObj->vf54();
+		trashObj->Release();
 		trashObj = NULL;
 	}
 	return 0;

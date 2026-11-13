@@ -50,7 +50,7 @@ public:
 	virtual void vf48();
 	virtual void vf4C();
 	virtual void vf50();
-	virtual void vf54();
+	virtual void Release();
 	virtual void GetFollowDivisor();
 	virtual void vf5C();
 	virtual void vf60();
@@ -59,9 +59,10 @@ public:
 	virtual void vf6C();
 	virtual void vf70();
 	virtual void vf74();
-	virtual void vf78();
+	virtual void SetMoveDir(const Vec* dir, f32 speed);
 	virtual void vf7C();
-	virtual void vf80(s32 a, s32 b, f32 c, f32 d, f32 e, f32 f, s32 g, s32 h, s32 i);
+	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
+	                     f32 blendRate);
 #if defined(VERSION_JP)
 	u8 _38[0x88]; // _38
 #else
@@ -292,7 +293,7 @@ inline void CarRoot_Brake(Car::CarRoot* car)
 	XObj* obj;
 
 	car->_7C = 1;
-	car->_04->vf80(2, 0, 0.0f, 1.0f, 0.0f, 10.0f, 0, 0, 0);
+	car->_04->SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	obj = car->_04;
 	// takes the first free slot in the request ring
 	for (i = 0; i < 16; i++) {
@@ -397,9 +398,9 @@ void Car::CarRoot::Update(u32 arg)
 		_14 = _10;
 		_10 = _18 * arg + _10;
 	}
-	_08->vf80(0, 1, _10, 1.0f, 0.0f, 10.0f, 0, 0, 0);
+	_08->SetAnim(0, TRUE, NULL, NULL, NULL, _10, 1.0f, 0.0f, 10.0f);
 	if (!_7C) {
-		_04->vf80(1, 1, _10, 1.0f, 0.0f, 10.0f, 0, 0, 0);
+		_04->SetAnim(1, TRUE, NULL, NULL, NULL, _10, 1.0f, 0.0f, 10.0f);
 		return;
 	}
 	if (0.0f < _18) {
@@ -872,7 +873,7 @@ void Car::PlayerCarRoot::Update(u32 arg)
 	if (ReadS32LE(carParams + 4) <= _10) {
 		_18 = 1.0f;
 		if (_7C && _04->_158 != 4) {
-			_04->vf80(4, 0, 0.0f, 1.0f, 0.0f, 10.0f, 0, 0, 0);
+			_04->SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		}
 	}
 }

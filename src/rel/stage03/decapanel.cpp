@@ -63,16 +63,16 @@ public:
 		_E4   = 1;
 	}
 	~CFile() { }
-	virtual void vf08();                                         // _08
-	virtual void vf0C();                                         // _0C
-	virtual void vf10();                                         // _10
-	virtual void vf14();                                         // _14
-	virtual void vf18();                                         // _18
-	virtual void vf1C();                                         // _1C
-	virtual void vf20();                                         // _20
-	virtual BOOL ReadEx(const char* path, u32 offset, u32 size); // _24
+	virtual void vf08();                                                          // _08
+	virtual void* Alloc(u32 size);                                                // _0C
+	virtual void Free();                                                          // _10
+	virtual s32 ReadAsync(const char* path, u32 offset, u32 size, BOOL fromAram); // _14
+	virtual s32 GetResult();                                                      // _18
+	virtual s32 Read(const char* path, u32 offset, u32 size);                     // _1C
+	virtual void Close();                                                         // _20
+	virtual BOOL ReadEx(const char* path, u32 offset, u32 size);                  // _24
 
-	void Release() { vf20(); }
+	void Release() { Close(); }
 };
 
 class CTpl : public CFile {
@@ -82,8 +82,8 @@ public:
 
 	CTpl() { }
 	~CTpl() { _1EC = 0; }
-	virtual void vf18(); // _18
-	virtual void vf20(); // _20
+	virtual s32 GetResult(); // _18
+	virtual void Close();    // _20
 };
 
 struct UnkObj {

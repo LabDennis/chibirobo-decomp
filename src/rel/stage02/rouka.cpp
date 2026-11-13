@@ -40,7 +40,7 @@ public:
 	virtual void vf48();
 	virtual void vf4C();
 	virtual void vf50();
-	virtual void vf54();
+	virtual void Release();
 	virtual void GetFollowDivisor();
 	virtual void vf5C();
 	virtual void vf60();
@@ -49,9 +49,10 @@ public:
 	virtual void vf6C();
 	virtual void vf70();
 	virtual void vf74();
-	virtual void vf78();
+	virtual void SetMoveDir(const Vec* dir, f32 speed);
 	virtual void vf7C();
-	virtual void vf80(s32 a, s32 b, f32 c, f32 d, f32 e, f32 f, s32 g, s32 h, s32 i);
+	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
+	                     f32 blendRate);
 #if defined(VERSION_JP)
 	u8 _38[0x88]; // _38
 #else

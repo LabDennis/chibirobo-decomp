@@ -6261,17 +6261,17 @@ s32 CEvt::_cmd_MOVE(u8, s32)
     blr
 */
 
-// an entry in the game object's menu table
+// an entry in the game object's menu table, a CMenu (game/stg.h) with the same vtable
 struct UnkEvtMenu {
 	u8 _00[0x148]; // _00
 	// _148 vtable
 
-	virtual void vf08();
-	virtual void vf0C();
-	virtual void vf10();
-	virtual void vf14();
-	virtual void vf18();
-	virtual void vf1C(); // _1C, MENU opens it with this
+	virtual void Init();             // _08
+	virtual BOOL LoadTexture();      // _0C
+	virtual void Reset();            // _10
+	virtual BOOL Update(u32 frames); // _14
+	virtual BOOL Draw();             // _18
+	virtual void Open();             // _1C, MENU opens it with this
 };
 
 #if defined(VERSION_JP)
@@ -6328,11 +6328,11 @@ s32 CEvt::_cmd_MENU(u8, s32)
 		UnkEvtMenu* menu = (UnkEvtMenu*)gGame.mMenu.mMenus[id];
 #if defined(VERSION_JP)
 		// no null check in japan
-		menu->vf1C();
+		menu->Open();
 		gGame.mMenu.mActive = 1;
 #else
 		if (menu != 0) {
-			menu->vf1C();
+			menu->Open();
 			gGame.mMenu.mActive = 1;
 		}
 #endif
