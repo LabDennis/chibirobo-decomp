@@ -6,6 +6,7 @@
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
 #include "game/evt.h"
+#include "game/infoscrn.h"
 
 // CGame, accessed by offset
 extern "C" u8 gGame[];
@@ -105,6 +106,11 @@ struct Stage02Main {
 
 #define SOUND() GAME_AT(GAME_OFS(0xE7E24, 0xE713C))
 
+static inline InfoScrn* StageHud()
+{
+	return reinterpret_cast<InfoScrn*>(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)));
+}
+
 static XObj* takiObj;
 
 // see game/ccameraaction.h
@@ -118,12 +124,7 @@ public:
 #define SCROLL2() (*(CCameraActionScroll2**)GAME_AT(GAME_OFS(0xE7DFC, 0xE7114)))
 
 extern "C" {
-s32 InfoScrn_GetTimerHundredths(void* p);
-void InfoScrn_SetTimerHundredths(void* p, s32 v);
-void InfoScrn_HideTimer(void* p);
-void InfoScrn_ShowTimer(void* p);
-void InfoScrn_ApplyTimerHudCommand(void* p, s32 a, s32 b);
-void SetJunkUnkoFlag(s32 v);
+void SetJunkUnkoFlag(u8 on);
 s32 IsGameSoundPlaying(void* p, s32 id);
 void PlayGameSound(void* p, s32 id, s32 v);
 void HSD_AudioSFXSetPanByID(s32 id, s32 v);
@@ -798,9 +799,9 @@ extern "C" s32 CmdSetCarData(s32 cmd, s32 argc, s32* argv)
 extern "C" s32 CmdShowTimer(s32 cmd, s32 argc, s32* argv)
 {
 	if (argv[0] != 0) {
-		InfoScrn_ApplyTimerHudCommand(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)), 1, 1);
+		InfoScrn_ApplyTimerHudCommand(StageHud(), 1, 1);
 	} else {
-		InfoScrn_ApplyTimerHudCommand(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)), 0, 1);
+		InfoScrn_ApplyTimerHudCommand(StageHud(), 0, 1);
 	}
 	return 0;
 }
@@ -812,9 +813,9 @@ extern "C" s32 CmdShowTimer(s32 cmd, s32 argc, s32* argv)
 extern "C" s32 CmdSetTimerRunning(s32 cmd, s32 argc, s32* argv)
 {
 	if (argv[0] != 0) {
-		InfoScrn_ShowTimer(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)));
+		InfoScrn_ShowTimer(StageHud());
 	} else {
-		InfoScrn_HideTimer(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)));
+		InfoScrn_HideTimer(StageHud());
 	}
 	return 0;
 }
@@ -825,7 +826,7 @@ extern "C" s32 CmdSetTimerRunning(s32 cmd, s32 argc, s32* argv)
  */
 extern "C" s32 CmdSetTimer(s32 cmd, s32 argc, s32* argv)
 {
-	InfoScrn_SetTimerHundredths(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)), argv[0]);
+	InfoScrn_SetTimerHundredths(StageHud(), argv[0]);
 	return 0;
 }
 
@@ -835,5 +836,5 @@ extern "C" s32 CmdSetTimer(s32 cmd, s32 argc, s32* argv)
  */
 extern "C" s32 CmdGetTimer(s32 cmd, s32 argc, s32* argv)
 {
-	return InfoScrn_GetTimerHundredths(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)));
+	return InfoScrn_GetTimerHundredths(StageHud());
 }
