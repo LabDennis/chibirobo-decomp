@@ -143,7 +143,7 @@ void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 out)
 		for (col = 0; col < 4; ++col) {
 			f32 sum = b[0][col] * a[row][0];
 			for (k = 1; k < 4; ++k) {
-				sum = __fmadds(b[k][col], a[row][k], sum);
+				sum += b[k][col] * a[row][k];
 			}
 			product[row][col] = sum;
 		}
@@ -155,7 +155,7 @@ void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 out)
  * @note Wii JP address: 0x8018F780
  * @note Size: 0x2C0
  */
-// NONMATCHING: the control flow and the loads of the float constants differ from retail
+// NONMATCHING: the inlined PSMTX44Identity is the loop version here; retail's is the psq_st and stfs stores
 u32 C_MTX44Inverse(Mtx44 src, Mtx44 inverse)
 {
 	Mtx44 work;
@@ -168,7 +168,7 @@ u32 C_MTX44Inverse(Mtx44 src, Mtx44 inverse)
 		f32 largest = 0.0f;
 		f32 scale;
 		for (row = col; row < 4; ++row) {
-			f32 magnitude = __fabsf(work[row][col]);
+			f32 magnitude = fabs(work[row][col]);
 			if (magnitude > largest) {
 				largest = magnitude;
 				pivot = row;

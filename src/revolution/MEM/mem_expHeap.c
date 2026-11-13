@@ -345,7 +345,8 @@ void MEMFreeToExpHeap(MEMiHeapHead* heap, void* memBlock)
 	UnlockHeap(heap);
 }
 
-// NONMATCHING: the saved registers and register allocation differ from retail
+// NONMATCHING: register allocation and the scheduling of the |align| computation around the register saves
+// differ from retail
 u32 MEMGetAllocatableSizeForExpHeapEx(MEMiHeapHead* heap, s32 align)
 {
 	MEMiExpHeapMBlock* it;
