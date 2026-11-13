@@ -81,6 +81,9 @@ revolution/MEM/mem_heapCommon.c:
 	.bss start:0x804E8C70 end:0x804E8C98
 	.sbss start:0x805A23E0 end:0x805A23E4
 
+revolution/MEM/mem_expHeap.c:
+	.text start:0x801AEC14 end:0x801AF448
+
 revolution/MEM/mem_frameHeap.c:
 	.text start:0x801AF448 end:0x801AF844
 
@@ -90,6 +93,22 @@ revolution/MEM/mem_allocator.c:
 
 revolution/MEM/mem_list.c:
 	.text start:0x801AF898 end:0x801AF9AC
+
+revolution/OS/OSArena.c:
+	.text start:0x80181740 end:0x801817D4
+	.sdata start:0x805A13E0 end:0x805A13E8
+	.sbss start:0x805A1ED8 end:0x805A1EE0
+
+dolphin/os/OSMessage.c:
+	.text start:0x801878C4 end:0x80187B98
+
+dolphin/os/OSMutex.c:
+	.text start:0x801882D0 end:0x801885D4
+
+revolution/OS/OSStateFlags.c:
+	.text start:0x8018C708 end:0x8018C914
+	.data start:0x8031CF98 end:0x8031CFC0
+	.bss start:0x804CD5A0 end:0x804CD5C0
 
 revolution/AX/AX.c:
 	.text start:0x8019F470 end:0x8019F514
@@ -101,6 +120,40 @@ revolution/AX/AXAux.c:
 	.text start:0x8019FA7C end:0x801A02A8
 	.bss start:0x804D2B20 end:0x804D5CA0
 	.sbss start:0x805A2230 end:0x805A2278
+
+revolution/AX/AXCL.c:
+	.text start:0x801A02A8 end:0x801A0D50
+	.bss start:0x804D5CA0 end:0x804D5DA0
+	.sbss start:0x805A2278 end:0x805A22A0
+
+revolution/AX/AXComp.c:
+	.data start:0x8031FDA0 end:0x80320D60
+
+revolution/AX/AXAlloc.c:
+	.text start:0x8019F514 end:0x8019FA7C
+	.bss start:0x804D2A20 end:0x804D2B20
+	.sbss start:0x805A2228 end:0x805A2230
+
+revolution/AX/AXOut.c:
+	.text start:0x801A0D50 end:0x801A15B0
+	.bss start:0x804D5DA0 end:0x804D6BA0
+	.sbss start:0x805A22A0 end:0x805A22E0
+
+revolution/AX/AXProf.c:
+	.text start:0x801A2780 end:0x801A27C0
+	.sbss start:0x805A2350 end:0x805A2360
+
+revolution/AX/AXVPB.c:
+	.text start:0x801A19D4 end:0x801A2780
+	.bss start:0x804D6C20 end:0x804E8320
+	.sbss start:0x805A2330 end:0x805A2350
+	.data start:0x8031FD10 end:0x8031FDA0
+	.sdata2 start:0x805A64D8 end:0x805A64F8
+
+revolution/AX/AXSPB.c:
+	.text start:0x801A15B0 end:0x801A19D4
+	.bss start:0x804D6BA0 end:0x804D6C20
+	.sbss start:0x805A22E0 end:0x805A2330
 
 revolution/AXFX/AXFXReverbHi.c:
 	.text start:0x801A27C0 end:0x801A284C

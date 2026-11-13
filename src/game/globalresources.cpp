@@ -23,7 +23,7 @@ extern const char** gPCDialogueByLanguage[];
 extern const char** gInterfaceTextByLanguage[];
 const char* gGlobalResourceFileName = "globals.bin";
 #endif
-extern s32 gGlobalTextIdRemap[];
+extern s32 gObjectCollisionIdRemap[];
 }
 
 // globals.bin offsets are measured from the end of its header.
@@ -34,7 +34,7 @@ struct GlobalResourceSection {
 
 struct GlobalResourceHeader {
 	GlobalResourceSection data;
-	GlobalResourceSection text;
+	GlobalResourceSection collision;
 	GlobalResourceSection scripts;
 };
 STATIC_ASSERT(sizeof(GlobalResourceHeader) == 0x18);
@@ -372,22 +372,22 @@ extern "C" u8* GetGlobalScriptTable(s32)
 	return gGlobalScriptResources.mScripts;
 }
 
-// a text entry, ids from 10000 go through a remap table first
+// Object IDs from 10000 share collision lists with base objects.
 /**
  * @note Address: 0x8006E734
  * @note Size: 0x88
  */
-extern "C" u8* GetGlobalTextEntry(s32 index)
+extern "C" XObjFloor* GetObjectCollisionList(s32 objectId)
 {
-	if (index >= 10000) {
-		index = gGlobalTextIdRemap[index - 10000];
-		if (index < 0)
+	if (objectId >= 10000) {
+		objectId = gObjectCollisionIdRemap[objectId - 10000];
+		if (objectId < 0)
 			return NULL;
 	}
-	u8* text  = gGlobalScriptResources.mText;
-	u8* entry = text + index * 4;
+	u8* collision = gGlobalScriptResources.mCollision;
+	u8* entry     = collision + objectId * 4;
 	if (*(u32*)entry != 0)
-		return text + ReadResourceOffset(entry);
+		return reinterpret_cast<XObjFloor*>(collision + ReadResourceOffset(entry));
 	return NULL;
 }
 
@@ -521,12 +521,12 @@ extern "C" BOOL LoadGlobalResourceData()
 	CFile* file = &gGlobalScriptResources.mFile;
 	if (file->ReadEx(path, 0, 0)) {
 		gGlobalScriptResources.mFile.CloseHandle();
-		gGlobalScriptResources.mHeader  = (GlobalResourceHeader*)gGlobalScriptResources.mFile.mBuffer;
-		GlobalResourceHeader* header    = gGlobalScriptResources.mHeader;
-		u8* buffer                      = (u8*)header;
-		gGlobalScriptResources.mData    = buffer + ReadResourceOffset(header->data.offset) + sizeof(*header);
-		gGlobalScriptResources.mText    = buffer + ReadResourceOffset(header->text.offset) + sizeof(*header);
-		gGlobalScriptResources.mScripts = buffer + ReadResourceOffset(header->scripts.offset) + sizeof(*header);
+		gGlobalScriptResources.mHeader    = (GlobalResourceHeader*)gGlobalScriptResources.mFile.mBuffer;
+		GlobalResourceHeader* header      = gGlobalScriptResources.mHeader;
+		u8* buffer                        = (u8*)header;
+		gGlobalScriptResources.mData      = buffer + ReadResourceOffset(header->data.offset) + sizeof(*header);
+		gGlobalScriptResources.mCollision = buffer + ReadResourceOffset(header->collision.offset) + sizeof(*header);
+		gGlobalScriptResources.mScripts   = buffer + ReadResourceOffset(header->scripts.offset) + sizeof(*header);
 		return TRUE;
 	}
 	return FALSE;

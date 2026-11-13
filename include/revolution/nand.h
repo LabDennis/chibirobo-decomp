@@ -3,6 +3,8 @@
 
 #include "types.h"
 
+typedef enum NANDAccessType { NAND_ACCESS_NONE, NAND_ACCESS_READ, NAND_ACCESS_WRITE, NAND_ACCESS_RW } NANDAccessType;
+
 enum NANDResult {
 	NAND_RESULT_FATAL_ERROR    = -128,
 	NAND_RESULT_UNKNOWN        = -64,
@@ -61,6 +63,8 @@ s32 NANDDelete(const char* path);
 s32 NANDCheck(u32 blocks, u32 inodes, u32* answer);
 s32 fn_801B6050(u32* freeBlocks, u32* freeFiles);
 s32 NANDSecretGetUsage(const char* path, s32* blocks, s32* inodes);
+s32 NANDOpen(const char* path, NANDFileInfo* file, u8 access);
+s32 NANDClose(NANDFileInfo* file);
 s32 NANDRead(NANDFileInfo* file, void* buffer, u32 length);
 s32 NANDWrite(NANDFileInfo* file, const void* buffer, u32 length);
 s32 NANDGetLength(NANDFileInfo* file, u32* length);

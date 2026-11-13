@@ -4,6 +4,7 @@
 #include "game/cfile.h"
 
 struct GlobalResourceHeader;
+struct XObjFloor;
 
 // the loaded globals file and its sections, class name from RTTI
 class Globals {
@@ -11,7 +12,7 @@ public:
 	CFile mFile;                   // _00
 	GlobalResourceHeader* mHeader; // _EC
 	u8* mData;                     // _F0
-	u8* mText;                     // _F4
+	u8* mCollision;                // _F4
 	u8* mScripts;                  // _F8
 	// _FC vtable
 
@@ -53,6 +54,7 @@ BOOL IsGlobalEventScript(u8* script);
 // the same for an entry of an offset table
 u8* GetGlobalScriptByIndex(s32 index);
 u8* GetGlobalScriptTable(s32);
+XObjFloor* GetObjectCollisionList(s32 objectId);
 u32 GetInteractionParameter(s32 index);
 u32 GetCopterParameter(s32 index);
 u32 GetStageEntryTimeComponent(s32 index);

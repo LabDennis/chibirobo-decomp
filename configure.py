@@ -1219,9 +1219,23 @@ if wii:
             "cflags": [*wii_cflags, "-Cpp_exceptions off", "-fp_contract off", "-common off", "-ipa file", "-use_lmw_stmw off"],
             "progress_category": "sdk",
             "objects": [
+                Object(
+                    Matching, "revolution/OS/OSStateFlags.c", mw_version="GC/3.0a5.2",
+                    extra_cflags=["-Cpp_exceptions off", "-ipa file", "-use_lmw_stmw off"],
+                ),
                 Object(Matching, "revolution/AX/AX.c"),
+                Object(Equivalent, "revolution/OS/OSArena.c"),
+                Object(Matching, "dolphin/os/OSMessage.c"),
+                Object(Matching, "dolphin/os/OSMutex.c"),
                 Object(Matching, "revolution/AX/AXAux.c"),
                 Object(Matching, "revolution/AXFX/AXFXHooks.c"),
+                Object(Matching, "revolution/AX/AXCL.c"),
+                Object(Matching, "revolution/AX/AXComp.c"),
+                Object(Matching, "revolution/AX/AXAlloc.c"),
+                Object(Matching, "revolution/AX/AXOut.c"),
+                Object(Matching, "revolution/AX/AXProf.c"),
+                Object(Equivalent, "revolution/AX/AXVPB.c"),
+                Object(Equivalent, "revolution/AX/AXSPB.c"),
                 Object(Matching, "revolution/AXFX/AXFXReverbHi.c"),
                 Object(Equivalent, "revolution/AXFX/AXFXReverbHiExp.c"),
                 Object(Equivalent, "revolution/AXFX/AXFXReverbHiExpDpl2.c"),
@@ -1239,6 +1253,10 @@ if wii:
             "objects": [
                 Object(
                     Matching, "revolution/MEM/mem_heapCommon.c", mw_version="GC/3.0a5.2",
+                    extra_cflags=["-Cpp_exceptions off", "-ipa file", "-use_lmw_stmw off"],
+                ),
+                Object(
+                    Equivalent, "revolution/MEM/mem_expHeap.c", mw_version="GC/3.0a5.2",
                     extra_cflags=["-Cpp_exceptions off", "-ipa file", "-use_lmw_stmw off"],
                 ),
                 Object(
