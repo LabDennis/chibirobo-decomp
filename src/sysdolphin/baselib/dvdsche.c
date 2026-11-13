@@ -1,5 +1,5 @@
 #include <global.h>
-#include <dolphin/types.h>
+#include <sysdolphin/dvdsche.h>
 
 u32 OSDisableInterrupts(void);
 u32 OSRestoreInterrupts(u32 level);
@@ -28,8 +28,6 @@ static s32 lbl_8065BB64;
 static s32 hsd_DVDScheNStreaming;
 static s32 lbl_8065BB5C;
 static s32 hsd_DVDScheNStreamingMax;
-
-void ServiceNextDvdStreamingSlot(void);
 
 /**
  * @note Address: 0x801EB614

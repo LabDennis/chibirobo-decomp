@@ -1,6 +1,8 @@
 #include <global.h>
 #include <dolphin/types.h>
 #include <sysdolphin/objalloc.h>
+#include <sysdolphin/devcom.h>
+#include <sysdolphin/dvdsche.h>
 
 typedef struct _AXPBMIX {
 	u16 vL;
@@ -210,16 +212,9 @@ extern void fn_803EF0F8(AXVPB*, void*);
 extern void hwSetPitch(f32);
 extern void hwSetVolume(u16*, s32, s32, u16);
 
-extern s32 HSD_DevComRequest(s32 entrynum, s32 offset, void* dst, u32 length, s32 priority, s32 sync,
-                             void (*callback)(s32, void*, s32, s32), void* userdata);
-
 extern void* HSD_GObjObjectLink(void* gobj, u8 kind, void* obj);
 extern void* HSD_GObjObjectUnlink(void* gobj);
 
-void SetDvdStreamingLimits(s32 max, s32 key);
-s32 AcquireDvdStreamingSlot(void (*callback)(s32, void*), s32 param);
-void ReleaseDvdStreamingSlot(s32 id);
-void SetDvdStreamingSlotKey(s32 id, s32 key);
 
 extern f64 exp(f64);
 extern f64 log(f64);
@@ -384,13 +379,13 @@ void HSD_SynthSFXLinkUpdateRearPitch(HSD_SynthSFXNode* rear);
 void UpdateSynthVolumeFadersAndVoices(void);
 void AdvancePendingSynthMixUpdates(void);
 void HSD_SynthCallback(void);
-void QueueLoadedSynthStreamBuffer(s32 result, s32 pstreamID);
-void HSD_SynthPStreamHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMarker* markers);
-void HSD_SynthPStreamHakoHeaderCallback(s32 result, s32 pstreamID);
-void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID);
-void HSD_SynthPStreamFirstHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMarker* markers);
-void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID);
-void HSD_SynthPStreamHeaderCallback(s32 result, s32 pstreamID, u32* header);
+void QueueLoadedSynthStreamBuffer(int request, s32 pstreamID, void* buffer, BOOL cancelled);
+void HSD_SynthPStreamHakoMarkerCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled);
+void HSD_SynthPStreamHakoHeaderCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled);
+void HSD_SynthPStreamFirstHakoDataCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled);
+void HSD_SynthPStreamFirstHakoMarkerCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled);
+void HSD_SynthPStreamFirstHakoHeaderCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled);
+void HSD_SynthPStreamHeaderCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled);
 void dropcallback(void* dropped);
 
 /**
@@ -458,7 +453,7 @@ static s32 sSynthLoadRequestIds[2] = { 0, 0 }; /* devcom request ids, sample dat
  * @note Address: N/A
  * @note Size: 0x430
  */
-void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 cancelflag)
+void HSD_SynthSFXSampleLoadCallback(int request, s32 args, void* buffer, BOOL cancelled)
 {
 	u32 enabled;
 	s32 i;
@@ -840,7 +835,7 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
  * @note Address: 0x801EC754
  * @note Size: 0x17C
  */
-void HSD_SynthSFXHeaderLoadCallback(s32 result, s32 length, void* addr, s32 cancelflag)
+void HSD_SynthSFXHeaderLoadCallback(int request, s32 args, void* buffer, BOOL cancelled)
 {
 	s32 header_size;
 	u32 alloc_size;
@@ -855,10 +850,10 @@ void HSD_SynthSFXHeaderLoadCallback(s32 result, s32 length, void* addr, s32 canc
 		header_size  = hsd_SynthSFXLoadBuf[0];
 		sSynthSfxLoadDestination = HSD_AudioMalloc(OSRoundUp32B(alloc_size + header_size));
 		sSynthLoadRequestIds[1]
-		    = HSD_DevComRequest(sSynthSfxLoadRequests[0].entrynum, 0x20, sSynthSfxLoadDestination, OSRoundUp32B(header_size - 0x10), 0x21, 1, NULL, 0);
+		    = HSD_DevComRequest(sSynthSfxLoadRequests[0].entrynum, 0x20, (u32)sSynthSfxLoadDestination, OSRoundUp32B(header_size - 0x10), 0x21, 1, NULL, 0);
 		sSynthLoadRequestIds[0]
-		    = HSD_DevComRequest(sSynthSfxLoadRequests[0].entrynum, OSRoundUp32B(header_size + 0x10), (void*)hsd_SynthSFXBank[sSynthSfxLoadRequests[0].bankID],
-		                        hsd_SynthSFXLoadBuf[1], 0x23, 1, (void (*)(s32, void*, s32, s32))HSD_SynthSFXSampleLoadCallback, NULL);
+		    = HSD_DevComRequest(sSynthSfxLoadRequests[0].entrynum, OSRoundUp32B(header_size + 0x10), hsd_SynthSFXBank[sSynthSfxLoadRequests[0].bankID],
+		                        hsd_SynthSFXLoadBuf[1], 0x23, 1, HSD_SynthSFXSampleLoadCallback, 0);
 		return;
 	}
 	sSynthSfxLoadDestination = NULL;
@@ -873,8 +868,8 @@ void HSD_SynthSFXLoadNewProc(void)
 {
 	if (sSynthSfxLoadQueueLength != 0) {
 		u32 enabled     = OSDisableInterrupts();
-		sSynthLoadRequestIds[0] = HSD_DevComRequest(sSynthSfxLoadRequests[0].entrynum, 0, hsd_SynthSFXLoadBuf, 0x20, 0x21, 1,
-		                                    (void (*)(s32, void*, s32, s32))HSD_SynthSFXHeaderLoadCallback, NULL);
+		sSynthLoadRequestIds[0] = HSD_DevComRequest(sSynthSfxLoadRequests[0].entrynum, 0, (u32)hsd_SynthSFXLoadBuf, 0x20, 0x21, 1,
+		                                    HSD_SynthSFXHeaderLoadCallback, 0);
 		OSRestoreInterrupts(enabled);
 	}
 }
@@ -4670,7 +4665,7 @@ void HSD_SynthCallback(void)
  * @note Address: 0x801F09A8
  * @note Size: 0x10C
  */
-void QueueLoadedSynthStreamBuffer(s32 result, s32 pstreamID)
+void QueueLoadedSynthStreamBuffer(int request, s32 pstreamID, void* buffer, BOOL cancelled)
 {
 	HSD_SynthSFXNode* node = getNode(pstreamID);
 	s32 buf;
@@ -4757,9 +4752,10 @@ static inline void linkBeatMarkers(HSD_SynthPStream* pst, HSD_SynthBeatMarker* m
  * @note Address: N/A
  * @note Size: 0x2EC
  */
-void HSD_SynthPStreamHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMarker* markers)
+void HSD_SynthPStreamHakoMarkerCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled)
 {
-	HSD_SynthSFXNode* node = getNode(id);
+	HSD_SynthBeatMarker* markers = buffer;
+	HSD_SynthSFXNode* node = getNode(pstreamID);
 	s32 buf;
 	s32 n;
 
@@ -4775,7 +4771,7 @@ void HSD_SynthPStreamHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMarker*
  * @note Address: 0x801F0DA0
  * @note Size: 0x16C
  */
-void HSD_SynthPStreamHakoHeaderCallback(s32 result, s32 pstreamID)
+void HSD_SynthPStreamHakoHeaderCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled)
 {
 	HSD_SynthSFXNode* node = getNode(pstreamID);
 	HSD_SynthPStream* pst;
@@ -4792,11 +4788,11 @@ void HSD_SynthPStreamHakoHeaderCallback(s32 result, s32 pstreamID)
 		}
 		nMarkers = sSynthStreamHakoBuffers[buf].markerNum;
 		if (nMarkers > 0) {
-			HSD_DevComRequest(PSTREAM(node)->entrynum, offset + 0x20, NULL, OSRoundUp32B(nMarkers * 8), 0x22, 0,
-			                  (void (*)(s32, void*, s32, s32))HSD_SynthPStreamHakoMarkerCallback, (void*)pstreamID);
+			HSD_DevComRequest(PSTREAM(node)->entrynum, offset + 0x20, 0, OSRoundUp32B(nMarkers * 8), 0x22, 0,
+			                  HSD_SynthPStreamHakoMarkerCallback, pstreamID);
 		}
-		HSD_DevComRequest(PSTREAM(node)->entrynum, offset + 0x20 + OSRoundUp32B(nMarkers * 8), (void*)(sSynthStreamBufferAramBase + (buf << 16)),
-		                  sSynthStreamHakoBuffers[buf].size, 0x23, 0, (void (*)(s32, void*, s32, s32))QueueLoadedSynthStreamBuffer, (void*)pstreamID);
+		HSD_DevComRequest(PSTREAM(node)->entrynum, offset + 0x20 + OSRoundUp32B(nMarkers * 8), sSynthStreamBufferAramBase + (buf << 16),
+		                  sSynthStreamHakoBuffers[buf].size, 0x23, 0, QueueLoadedSynthStreamBuffer, pstreamID);
 	}
 }
 
@@ -4819,8 +4815,8 @@ void HSD_SynthPStreamNextHakoCallback(s32 pstreamID)
 		}
 		buf                = getFreeBuf();
 		PSTREAM(node)->_1C = buf;
-		HSD_DevComRequest(PSTREAM(node)->entrynum, offset, &sSynthStreamHakoBuffers[buf], 0x20, 0x21, 0,
-		                  (void (*)(s32, void*, s32, s32))HSD_SynthPStreamHakoHeaderCallback, (void*)pstreamID);
+		HSD_DevComRequest(PSTREAM(node)->entrynum, offset, (u32)&sSynthStreamHakoBuffers[buf], 0x20, 0x21, 0,
+		                  HSD_SynthPStreamHakoHeaderCallback, pstreamID);
 	}
 	OSRestoreInterrupts(enabled);
 }
@@ -4838,7 +4834,6 @@ void AXSetVoiceLoop(AXVPB* p, u16 loop);
 void AXSetVoiceAdpcmLoop(AXVPB* p, void* loop);
 void AXSetVoiceItdOn(AXVPB* p);
 void AXSetVoiceState(AXVPB* p, u16 state);
-void SetDvdStreamingSlotCallback(s32 id, void (*callback)(s32, void*));
 void HSD_SynthPStreamNextHakoCallback(s32 pstreamID);
 
 static inline BOOL isPStreamActive(HSD_SynthPStream* pstream)
@@ -4973,7 +4968,7 @@ void HSD_SynthPStreamMasterClockCallback(void)
  * @note Address: 0x801F19AC
  * @note Size: 0x408
  */
-void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID)
+void HSD_SynthPStreamFirstHakoDataCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled)
 {
 	HSD_SynthSFXNode* node = getNode(pstreamID);
 	HSD_SynthSFXNode* n;
@@ -5059,7 +5054,7 @@ void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID)
 		ReleaseDvdStreamingSlot(PSTREAM(node)->schedulerSlot);
 		PSTREAM(node)->schedulerSlot = -1;
 	} else {
-		SetDvdStreamingSlotCallback(PSTREAM(node)->schedulerSlot, (void (*)(s32, void*))HSD_SynthPStreamNextHakoCallback);
+		SetDvdStreamingSlotCallback(PSTREAM(node)->schedulerSlot, HSD_SynthPStreamNextHakoCallback);
 	}
 }
 
@@ -5067,9 +5062,10 @@ void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID)
  * @note Address: N/A
  * @note Size: 0x2D0
  */
-void HSD_SynthPStreamFirstHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMarker* markers)
+void HSD_SynthPStreamFirstHakoMarkerCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled)
 {
-	HSD_SynthSFXNode* node = getNode(id);
+	HSD_SynthBeatMarker* markers = buffer;
+	HSD_SynthSFXNode* node = getNode(pstreamID);
 	s32 n;
 
 	if (node == NULL) {
@@ -5084,7 +5080,7 @@ void HSD_SynthPStreamFirstHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMa
  * @note Address: 0x801F2084
  * @note Size: 0x14C
  */
-void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
+void HSD_SynthPStreamFirstHakoHeaderCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled)
 {
 	HSD_SynthSFXNode* node = getNode(pstreamID);
 	s32 buf;
@@ -5097,12 +5093,11 @@ void HSD_SynthPStreamFirstHakoHeaderCallback(s32 result, s32 pstreamID)
 		}
 		nMarkers = sSynthStreamHakoBuffers[buf].markerNum;
 		if (nMarkers > 0) {
-			HSD_DevComRequest(PSTREAM(node)->entrynum, 0xA0, NULL, OSRoundUp32B(nMarkers * 8), 0x22, 0,
-			                  (void (*)(s32, void*, s32, s32))HSD_SynthPStreamFirstHakoMarkerCallback, (void*)pstreamID);
+			HSD_DevComRequest(PSTREAM(node)->entrynum, 0xA0, 0, OSRoundUp32B(nMarkers * 8), 0x22, 0,
+			                  HSD_SynthPStreamFirstHakoMarkerCallback, pstreamID);
 		}
-		HSD_DevComRequest(PSTREAM(node)->entrynum, OSRoundUp32B(nMarkers * 8) + 0xA0, (void*)(sSynthStreamBufferAramBase + (buf << 16)),
-		                  sSynthStreamHakoBuffers[buf].size, 0x23, 0, (void (*)(s32, void*, s32, s32))HSD_SynthPStreamFirstHakoDataCallback,
-		                  (void*)pstreamID);
+		HSD_DevComRequest(PSTREAM(node)->entrynum, OSRoundUp32B(nMarkers * 8) + 0xA0, sSynthStreamBufferAramBase + (buf << 16),
+		                  sSynthStreamHakoBuffers[buf].size, 0x23, 0, HSD_SynthPStreamFirstHakoDataCallback, pstreamID);
 	}
 	sSynthStreamHakoBuffers[buf].markerIx = 0;
 }
@@ -6195,8 +6190,9 @@ static f32 sSynthStreamVolume    = 1.0f;
  * @note Address: 0x801F21D0
  * @note Size: 0x2CC
  */
-void HSD_SynthPStreamHeaderCallback(s32 result, s32 pstreamID, u32* header)
+void HSD_SynthPStreamHeaderCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled)
 {
+	u32* header = buffer;
 	HSD_SynthSFXNode* entry = getNode(pstreamID);
 	s32 i;
 	s32 bufReading;
@@ -6237,8 +6233,8 @@ void HSD_SynthPStreamHeaderCallback(s32 result, s32 pstreamID, u32* header)
 	bufReading          = getFreeBuf();
 	PSTREAM(entry)->_1C = bufReading;
 	ASSERT_SYNTH(0xEB4, bufReading != -1);
-	HSD_DevComRequest(PSTREAM(entry)->entrynum, 0x80, &sSynthStreamHakoBuffers[bufReading], 0x20, 0x21, 0,
-	                  (void (*)(s32, void*, s32, s32))HSD_SynthPStreamFirstHakoHeaderCallback, (void*)pstreamID);
+	HSD_DevComRequest(PSTREAM(entry)->entrynum, 0x80, (u32)&sSynthStreamHakoBuffers[bufReading], 0x20, 0x21, 0,
+	                  HSD_SynthPStreamFirstHakoHeaderCallback, pstreamID);
 }
 
 /**
@@ -6250,8 +6246,7 @@ void HSD_SynthPStreamStartCallback(s32 pstreamID)
 	HSD_SynthSFXNode* node = getNode(pstreamID);
 
 	ASSERT_SYNTH_MSG(0xEC2, node != NULL, "entry");
-	HSD_DevComRequest(node->link.pstream->entrynum, 0, NULL, 0x80, 0x22, 0, (void (*)(s32, void*, s32, s32))HSD_SynthPStreamHeaderCallback,
-	                  (void*)(u32)pstreamID);
+	HSD_DevComRequest(node->link.pstream->entrynum, 0, 0, 0x80, 0x22, 0, HSD_SynthPStreamHeaderCallback, pstreamID);
 }
 
 /**
@@ -6363,7 +6358,7 @@ s32 HSD_SynthPStreamStart(s32 entrynum, s32 vol, s32 volMode, s32 vol2, s32 vol2
 	} else {
 		node->rearIndex = -1;
 	}
-	PSTREAM(node)->schedulerSlot = AcquireDvdStreamingSlot((void (*)(s32, void*))HSD_SynthPStreamStartCallback, node->sfxID);
+	PSTREAM(node)->schedulerSlot = AcquireDvdStreamingSlot(HSD_SynthPStreamStartCallback, node->sfxID);
 	OSRestoreInterrupts(enabled);
 	return node->sfxID;
 }
@@ -6451,7 +6446,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
 	sSynthStreamBufferCount = pstNum * (pstBufNum + 1) + 1;
 	AISetDSPSampleRate(0);
 	lbl_8065BBE4 = ARAlloc(0x500);
-	HSD_DevComRequest(0, 0, lbl_8065BBE4, 0x500, 3, 0, NULL, 0);
+	HSD_DevComRequest(0, 0, (u32)lbl_8065BBE4, 0x500, 3, 0, NULL, 0);
 	lbl_8065BBE4            = (void*)((s32)lbl_8065BBE4 * 2);
 	hsd_SynthSFXBankHead[0] = (s32)ARAlloc(heapSize);
 	AXRegisterCallback(HSD_SynthCallback);
