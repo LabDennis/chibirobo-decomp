@@ -7,78 +7,35 @@ extern "C" {
 }
 
 static CPadEx* sPadEx;
+static void PadRetraceCallback(u32 retraceCount);
 
 /**
- * @note Address: 0x8019E3C8
- * @note Size: 0x28
+ * @note Address: 0x8019E8BC
+ * @note Size: 0x38
  */
-CPad::CPad(u8 port)
+void CPadOne::Init(u8 port)
 {
-	mPad = &sPadEx->mPad[port];
+	mPort      = port;
+	mConnected = 0;
+	Clear();
 }
 
 /**
- * @note Address: 0x8019E3F0
- * @note Size: 0x20
+ * @note Address: 0x8019E864
+ * @note Size: 0x58
  */
-static void PadRetraceCallback(u32 retraceCount)
+void CPadOne::Clear()
 {
-	HSD_PadRenewRawStatus();
-}
-
-/**
- * @note Address: 0x8019E410
- * @note Size: 0x80
- */
-void CPadEx::Update(s32 frames)
-{
-	HSD_PadRenewMasterStatus();
-	HSD_PadRenewCopyStatus();
-	for (u8 i = 0; i < 4; i++) {
-		mPad[i].Update(frames);
-	}
-}
-
-/**
- * @note Address: 0x8019E490
- * @note Size: 0xE0
- */
-void CPadEx::Init()
-{
-	HSD_PadInit(1, &mQueue, 4, mRumble);
-	HSD_PadLibData.adc_type            = 0;
-	HSD_PadLibData.adc_th              = 50;
-	HSD_PadLibData.adc_angle           = 0.5235988f;
-	HSD_PadLibData.clamp_stickType     = 0;
-	HSD_PadLibData.clamp_stickShift    = 1;
-	HSD_PadLibData.clamp_stickMax      = 80;
-	HSD_PadLibData.clamp_stickMin      = 10;
-	HSD_PadLibData.scale_stick         = 70;
-	HSD_PadLibData.clamp_analogLRShift = 1;
-	HSD_PadLibData.clamp_analogLRMax   = 200;
-	HSD_PadLibData.clamp_analogLRMin   = 10;
-	HSD_PadLibData.scale_analogLR      = 190;
-	SetPadQueueType(1);
-	HSD_VISetUserPostRetraceCallback(PadRetraceCallback);
+	mButton = mDirButton = 0;
+	mLastButton = mLastDirButton = 0;
+	mTrigger = mDirTrigger = mRepeat = mDirRepeat = 0;
 	for (int i = 0; i < 4; i++) {
-		mPad[i].Init(i);
+		mRepeatTimer[i] = 24;
 	}
+	mStickX = mStickY = 0.0f;
+	mSubStickX = mSubStickY = 0.0f;
+	mAnalogL = mAnalogR = 0.0f;
 }
-
-/**
- * @note Address: 0x8019E570
- * @note Size: 0x5C
- */
-CPadEx::CPadEx()
-{
-	sPadEx = this;
-}
-
-/**
- * @note Address: 0x8019E5CC
- * @note Size: 0x10
- */
-// CPadOne's implicit ctor, generated for the array in CPadEx
 
 /**
  * @note Address: 0x8019E5DC
@@ -140,29 +97,67 @@ void CPadOne::Update(s32 frames)
 }
 
 /**
- * @note Address: 0x8019E864
- * @note Size: 0x58
+ * @note Address: 0x8019E570
+ * @note Size: 0x5C
  */
-void CPadOne::Clear()
+CPadEx::CPadEx()
 {
-	mButton = mDirButton = 0;
-	mLastButton = mLastDirButton = 0;
-	mTrigger = mDirTrigger = mRepeat = mDirRepeat = 0;
-	for (int i = 0; i < 4; i++) {
-		mRepeatTimer[i] = 24;
-	}
-	mStickX = mStickY = 0.0f;
-	mSubStickX = mSubStickY = 0.0f;
-	mAnalogL = mAnalogR = 0.0f;
+	sPadEx = this;
 }
 
 /**
- * @note Address: 0x8019E8BC
- * @note Size: 0x38
+ * @note Address: 0x8019E490
+ * @note Size: 0xE0
  */
-void CPadOne::Init(u8 port)
+void CPadEx::Init()
 {
-	mPort      = port;
-	mConnected = 0;
-	Clear();
+	HSD_PadInit(1, &mQueue, 4, mRumble);
+	HSD_PadLibData.adc_type            = 0;
+	HSD_PadLibData.adc_th              = 50;
+	HSD_PadLibData.adc_angle           = 0.5235988f;
+	HSD_PadLibData.clamp_stickType     = 0;
+	HSD_PadLibData.clamp_stickShift    = 1;
+	HSD_PadLibData.clamp_stickMax      = 80;
+	HSD_PadLibData.clamp_stickMin      = 10;
+	HSD_PadLibData.scale_stick         = 70;
+	HSD_PadLibData.clamp_analogLRShift = 1;
+	HSD_PadLibData.clamp_analogLRMax   = 200;
+	HSD_PadLibData.clamp_analogLRMin   = 10;
+	HSD_PadLibData.scale_analogLR      = 190;
+	SetPadQueueType(1);
+	HSD_VISetUserPostRetraceCallback(PadRetraceCallback);
+	for (int i = 0; i < 4; i++) {
+		mPad[i].Init(i);
+	}
+}
+
+/**
+ * @note Address: 0x8019E410
+ * @note Size: 0x80
+ */
+void CPadEx::Update(s32 frames)
+{
+	HSD_PadRenewMasterStatus();
+	HSD_PadRenewCopyStatus();
+	for (u8 i = 0; i < 4; i++) {
+		mPad[i].Update(frames);
+	}
+}
+
+/**
+ * @note Address: 0x8019E3F0
+ * @note Size: 0x20
+ */
+static void PadRetraceCallback(u32 retraceCount)
+{
+	HSD_PadRenewRawStatus();
+}
+
+/**
+ * @note Address: 0x8019E3C8
+ * @note Size: 0x28
+ */
+CPad::CPad(u8 port)
+{
+	mPad = &sPadEx->mPad[port];
 }
