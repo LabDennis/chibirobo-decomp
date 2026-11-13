@@ -406,7 +406,7 @@ public:
 	virtual ~CamAreaInfo() { } // _08
 
 	CamAreaRecord* GetRecord() const { return mRecord; }
-	bool Is_2C_1() const { return mRecord->mCameraAction == 1; }
+	bool UsesAreaCamera() const { return mRecord->mCameraAction == 1; }
 	bool IsCameraOff() const { return !(mRecord->mFlags & 4); }
 	bool IsCameraArea() const
 	{

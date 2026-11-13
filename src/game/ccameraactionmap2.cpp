@@ -2498,12 +2498,12 @@ extern "C" s32 SelectMapCameraArea(CCameraActionMap* map)
 	map->mAreaIntersectionCount = CollectMapCameraAreaIntersections(map, eye, target, map->mAreaIntersections, 1);
 
 	s32 eyeArea = FindEnabledCameraAreaContainingPoint(&gCameraAreaState, eye);
-	if (CamAreaInfo(&gCameraAreaState.mAreaRecords[eyeArea]).Is_2C_1()) {
+	if (CamAreaInfo(&gCameraAreaState.mAreaRecords[eyeArea]).UsesAreaCamera()) {
 		eyeArea = -1;
 	}
 
 	s32 targetArea = FindEnabledCameraAreaContainingPoint(&gCameraAreaState, target);
-	if (CamAreaInfo(&gCameraAreaState.mAreaRecords[targetArea]).Is_2C_1()) {
+	if (CamAreaInfo(&gCameraAreaState.mAreaRecords[targetArea]).UsesAreaCamera()) {
 		targetArea = -1;
 	}
 
@@ -4064,7 +4064,7 @@ extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Ve
 			record++;
 			continue;
 		}
-		if (CamAreaInfo(record).Is_2C_1()) {
+		if (CamAreaInfo(record).UsesAreaCamera()) {
 			record++;
 			continue;
 		}
