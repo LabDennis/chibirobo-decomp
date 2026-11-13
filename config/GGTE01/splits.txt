@@ -478,6 +478,7 @@ game/xobjmatcolor.cpp:
 
 game/obja_chr.cpp:
 	.text       start:0x80097284 end:0x800B7898
+	.bss        start:0x80378300 end:0x8037C278 align:4
 
 game/xobjcurrentedge.cpp:
 	.text       start:0x800B7898 end:0x800B78FC

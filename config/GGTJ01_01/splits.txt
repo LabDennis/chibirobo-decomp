@@ -481,6 +481,7 @@ game/efftrail.cpp:
 
 game/obja_chr.cpp:
 	.text       start:0x80098D04 end:0x800B9740
+	.bss        start:0x803568EC end:0x8035A864 align:4
 
 game/xobjcurrentedge.cpp:
 	.text       start:0x800B9740 end:0x800B97A4

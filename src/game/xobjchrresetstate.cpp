@@ -105,12 +105,7 @@ void XObjChr::ResetObjectState()
 		p.display.mState = p.burst.mState = 0;
 		gPointParticleSlots[i]            = NULL;
 	}
-	gPlayerSuitChangeEffect.active = FALSE;
-	for (s32 i = 0; i < 2; ++i)
-		for (s32 j = 0; j < 10; ++j) {
-			gPlayerSuitChangeEffect.rings[i][j].scale = 0.0f;
-			gPlayerSuitChangeEffect.rings[i][j].angle = 0.0f;
-		}
+	gPlayerSuitChangeEffect.Reset();
 	_158B8 = _158BC = _158C0 = 0;
 	_158C4.Set(0.0f, 0.0f, 0.0f);
 	mHeadOffset      = 5.0f;
