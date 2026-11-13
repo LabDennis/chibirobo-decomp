@@ -3543,7 +3543,7 @@ void SetRotationY__5CJObjFfl(CJObj* object, f32 yaw, s32 force);
 void SetTranslate__5CJObjFRC3Vecl(CJObj* object, const Vec& position, s32 force);
 void SetScale__5CJObjFRC3Vecl(CJObj* object, const Vec& scale, s32 force);
 #if defined(VERSION_JP) || defined(VERSION_PAL)
-void InvalidateMessageDrawState(u8* game);
+void InvalidateMessageDrawState(CGs* gs);
 #endif
 }
 
@@ -3801,7 +3801,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 				font->mCursor[0].mCursor.DrawObject();
 			}
 #if defined(VERSION_JP) || defined(VERSION_PAL)
-			InvalidateMessageDrawState((u8*)&gGame);
+			InvalidateMessageDrawState(&gGame.mGs);
 #else
 			HSD_StateInvalidate(-1);
 			if (gGame.mGs.mCurRenderMode != NULL)
@@ -8247,26 +8247,16 @@ extern "C" void CMsgData_Measure(CMsgData* data)
  * @note Size: ?
  */
 // japan and europe only, the graphics state reset usa inlines into Draw
-extern "C" void InvalidateMessageDrawState(u8* game)
+extern "C" void InvalidateMessageDrawState(CGs* gs)
 {
 	HSD_StateInvalidate(-1);
-#if defined(VERSION_PAL)
-	CGsRenderMode* mode = *(CGsRenderMode**)(game + 0x294);
+	CGsRenderMode* mode = gs->mCurRenderMode;
 	if (mode != NULL)
 		mode->Invalidate();
-	CGsTevStage* stage = *(CGsTevStage**)(game + 0x298);
+	CGsTevStage* stage = gs->mCurTevStage;
 	if (stage != NULL)
 		stage->Invalidate();
-	CGsChannel* channel = *(CGsChannel**)(game + 0x29C);
-#else
-	CGsRenderMode* mode = *(CGsRenderMode**)(game + 0x290);
-	if (mode != NULL)
-		mode->Invalidate();
-	CGsTevStage* stage = *(CGsTevStage**)(game + 0x294);
-	if (stage != NULL)
-		stage->Invalidate();
-	CGsChannel* channel = *(CGsChannel**)(game + 0x298);
-#endif
+	CGsChannel* channel = gs->mCurChannel;
 	if (channel != NULL && !channel->mDirty)
 		channel->mDirty = TRUE;
 }
