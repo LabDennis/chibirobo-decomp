@@ -442,8 +442,12 @@ extern "C" void DrawObjectLoadingProgress(InfoScrn* scrn)
 			sLoading.mFrame = 0;
 			sLoading.mAnim  = sWalkAnim;
 		}
+#if defined(VERSION_JP)
+		const char* text = "reading";
+#else
 		const char* text = GetLocalizedInterfaceText(0x59);
-		f32 w            = MeasureGameTextWidth(&gGame.mGs, text, 1, 16.0f);
+#endif
+		f32 w = MeasureGameTextWidth(&gGame.mGs, text, 1, 16.0f);
 		DrawGsProportionalTextFormat(&gGame.mGs, -1, text, 320.0f - w / 2, 386.0f, 0.0f, 16.0f, 16.0f);
 	}
 }
