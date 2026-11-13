@@ -17,7 +17,7 @@ void CommandSpiderBossProjectiles(s32);
 s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 {
 	switch (args[0]) {
-	case 100: {
+	case 100: { // 0 releases every carried part, else attach at a joint
 		s32 id = args[1];
 		if (id == 0) {
 			mSpiderStatus.mFlags &= ~0x20000000;
@@ -37,7 +37,7 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 			OSReport("id = %d, argv[1]=%d\n", i, id);
 #endif
 			mSpiderStatus.mFlags |= 0x20000000;
-			if (args[1] >= 10000) {
+			if (args[1] >= 10000) { // a placement id vs a slot index
 				mParts[i].mObj = FindObj(args[1]);
 			} else {
 				mParts[i].mObj = gGame.GetObject((s16)args[1]);
@@ -57,7 +57,7 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 		}
 		return 0;
 	}
-	default:
+	default: // anything else is stored for the state machine
 		if (count < 1)
 			return 0;
 		mCommand = args[0];
@@ -129,7 +129,7 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 	case 8:
 		mCommand = 0;
 		break;
-	case 9:
+	case 9: // set the base position, script units are 1/100
 		mBasePos.x       = mArgs[0] / 100.0f;
 		mBasePos.y       = mArgs[1] / 100.0f;
 		mBasePos.z       = mArgs[2] / 100.0f;
@@ -140,7 +140,7 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 		mMoveTranslate.SetTarget(mMoveTranslate);
 		mCommand = 0;
 		break;
-	case 10:
+	case 10: // set the patrol area, same units
 		mAreaPos.x = mArgs[0] / 100.0f;
 		mAreaPos.y = mArgs[1] / 100.0f;
 		mAreaPos.z = mArgs[2] / 100.0f;
@@ -155,13 +155,13 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 	case 12:
 		mCommand = 0;
 		break;
-	case 16:
+	case 16: // reattach all eleven parts and the center
 		for (int i = 0; i < 11; ++i)
 			EnableSpiderBossPartByIndex(i);
 		EnableSpiderBossCenterPart();
 		mCommand = 0;
 		break;
-	case 17:
+	case 17: // 1 hands the player to the script, else gives control back
 		if (mArgs[0] == 1) {
 			mSpiderStatus.mFlags |= 0x20000;
 			XObjChr* player              = gGame.GetPlayer();
