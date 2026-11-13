@@ -8092,9 +8092,9 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		f32 time                     = CEvt_Evaluate(this) / 100.0f;
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		if (camera->IsAction(CAMACTION_EVT)) {
-			reset->mMode = mode;
-			reset->mTime = time;
-			reset->_4C   = FALSE;
+			reset->mMode      = mode;
+			reset->mTime      = time;
+			reset->mImmediate = FALSE;
 			camera->ChangeAction(CAMACTION_RESET);
 		}
 		break;
@@ -8104,9 +8104,9 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		if (camera->IsAction(CAMACTION_AREA)) {
 			ResumeAreaCameraControl((CCameraActionArea*)EVT_CAMERA_ACTION(CAMACTION_AREA));
 		} else if (camera->IsAction(CAMACTION_EVT)) {
-			reset->mMode = 0;
-			reset->mTime = 0.0f;
-			reset->_4C   = TRUE;
+			reset->mMode      = 0;
+			reset->mTime      = 0.0f;
+			reset->mImmediate = TRUE;
 			camera->ChangeAction(CAMACTION_RESET);
 		}
 		break;

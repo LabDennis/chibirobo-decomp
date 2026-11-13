@@ -27,7 +27,7 @@ extern "C" {
  */
 u32 CCameraActionReset::vf5C()
 {
-	return _58;
+	return mInterestMode;
 }
 
 /**
@@ -107,7 +107,7 @@ void CCameraActionReset::PreviousUpdate()
 	UpdateCameraAreaIndexAndBaseFov(&gCameraAreaState, 0);
 	s32 arg           = gCameraAreaState._0C;
 	mNextCameraAction = GetCameraAreaMode(&gCameraAreaState);
-	if (_4C == TRUE) {
+	if (mImmediate == TRUE) {
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		camera->ChangeAction(mNextCameraAction);
 		if (mNextCameraAction == 1) {
@@ -120,7 +120,7 @@ void CCameraActionReset::PreviousUpdate()
 				StartMapCameraTargetHeightInterpolation((CCameraActionMap*)gGame.mCameraActions.mTable[7], dy, 0.0f, 8.0f);
 			}
 		}
-		_4C = FALSE;
+		mImmediate = FALSE;
 		return;
 	}
 
@@ -155,9 +155,9 @@ void CCameraActionReset::PreviousUpdate()
 
 		SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState._14);
 		if (mMode == 3 || 0.0f == mTime) {
-			_58 = 0;
+			mInterestMode = 0;
 		} else {
-			_58 = 2;
+			mInterestMode = 2;
 		}
 	}
 	mState = 1;
@@ -587,9 +587,9 @@ void CCameraActionReset::SetCamera(CCamera* camera)
 	SetDistance(camera->mDistance);
 	SetFov(camera->mFov);
 	SetAngle(camera->mAngle);
-	mTarget = gGame.GetPlayer();
-	mState  = 100;
-	_58     = 2;
+	mTarget       = gGame.GetPlayer();
+	mState        = 100;
+	mInterestMode = 2;
 }
 
 /**
@@ -598,9 +598,9 @@ void CCameraActionReset::SetCamera(CCamera* camera)
  */
 void CCameraActionReset::Init()
 {
-	mMode = 1;
-	mTime = 2.0f;
-	_4C   = FALSE;
+	mMode      = 1;
+	mTime      = 2.0f;
+	mImmediate = FALSE;
 	InitCameraAreaEntries(&gCameraAreaState);
 	mEyeInterps[0] = &mEyeLinear;
 	mEyeInterps[1] = &mEyeEaseInOut;

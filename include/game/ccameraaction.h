@@ -554,10 +554,10 @@ public:
 	XObj* mTarget;                                 // _40
 	s32 mMode;                                     // _44, picks the interpolators, 3 is none
 	f32 mTime;                                     // _48
-	BOOL _4C;                                      // _4C
+	BOOL mImmediate;                               // _4C
 	s32 mNextCameraAction;                         // _50
 	s32 mState;                                    // _54
-	s32 _58;                                       // _58
+	s32 mInterestMode;                             // _58
 	CInterfaceVectorInterpolation* mEyeInterp;     // _5C
 	CInterfaceInterpolation* mFovInterp;           // _60
 	CVectorLinearInterpolation mEyeLinear;         // _64
