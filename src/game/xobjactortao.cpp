@@ -100,28 +100,29 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 		return -1;
 	}
 	switch (command[0]) {
-	case 1:
+	case 1: // where to look
 		switch (command[1]) {
-		case 0:
-			ResetActorLook(this, 0.08726646f);
+		case 0: // nowhere
+			ResetActorLook(this, DEG2RAD * 5.0f);
 			break;
-		case 1:
-			SetActorLookAtPosition(this, &gGame.GetPlayer()->mMoveTranslate, 0.08726646f);
+		case 1: // at the player
+			SetActorLookAtPosition(this, &gGame.GetPlayer()->mMoveTranslate, DEG2RAD * 5.0f);
 			break;
-		case 2:
+		case 2: // at another object
 			if (FindObj(command[2]) != NULL) {
 				SetActorLookAtPosition(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
 			}
 			break;
-		case 3:
+		case 3: // at an angle
 			SetActorLookAngle(this, DEG2RAD * command[2], DEG2RAD * command[3]);
 			break;
 		}
 		break;
-	case 2:
+	case 2: // swap what it carries
 		Drop();
 		switch (command[1]) {
-		case 0x102:
+		case 0x102: // lives in pool 8
+
 			for (s32 i = 0; i < 64; i++) {
 				XObj* obj = gGame.mXObjs.mPools[8].Get(i);
 				if (command[1] == obj->GetKind()) {
@@ -135,7 +136,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 				}
 			}
 			break;
-		case 0x159:
+		case 0x159: // lives in pool 10
 			for (s32 i = 0; i < 15; i++) {
 				XObj* obj = gGame.mXObjs.mPools[10].Get(i);
 				if (command[1] == obj->GetKind()) {
@@ -145,7 +146,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 				}
 			}
 			break;
-		case 0xF8: {
+		case 0xF8: { // the command[2]-th kind-0xF8 object in pool 16
 			mCmd[2] = command[2];
 			s32 n   = -1;
 			for (s32 i = 0; i < 21; i++) {
@@ -161,7 +162,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 			}
 			break;
 		}
-		case 0x2A3:
+		case 0x2A3: // a pool-22 prop
 			for (s32 i = 0; i < 288; i++) {
 				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 				if (command[1] == obj->GetKind()) {
@@ -171,7 +172,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 				}
 			}
 			break;
-		case 0x46F:
+		case 0x46F: // a pool-22 prop
 			for (s32 i = 0; i < 288; i++) {
 				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 				if (command[1] == obj->GetKind()) {
@@ -181,7 +182,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 				}
 			}
 			break;
-		default:
+		default: // an unknown kind lets go
 			if (mHeldObjects[0] != NULL) {
 				HSD_JObjClearMtxFlags(mHeldObjects[0]->mJObj);
 				mHeldObjects[0] = NULL;
@@ -189,20 +190,21 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 			break;
 		}
 		break;
-	case 3:
+	case 3: // pick up the object whose id follows
 		mAttachedId = command[1];
 		mState      = &XObjActorTao::StatePickUp;
 		ResetActorMovementStep(this);
 		mCmd[0] = 0;
 		break;
-	case 4:
+	case 4: // let go of the attached object
 		mAttachedId = -1;
 		if (mAttached != NULL) {
 			mAttached->Release();
 		}
 		mCmd[0] = 0;
 		break;
-	case 5:
+	case 5: // carry the 0x82 object or drop it
+
 		if (command[1] != 0) {
 			mMountObjId = 0x82;
 			mMountState = 1;
@@ -215,7 +217,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 		}
 		mCmd[0] = 0;
 		break;
-	default:
+	default: // anything else stays in mCmd
 		if (count < 1) {
 			return 0;
 		}
@@ -258,7 +260,7 @@ void XObjActorTao::StatePickUp(u32 frames)
 		mKindStep++;
 	case 1:
 		if (mAttached != NULL) {
-			if (mAttached->mStatus.mFlags & 0x0040000000000000ULL) {
+			if (mAttached->mStatus.mFlags & 0x0040000000000000ULL) { // not ready yet
 				return;
 			}
 			gGame.mStatus.mFlags |= 0x1000;
@@ -319,11 +321,11 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 		else if (mHideKinds.mFlags & 4)
 			kind = 0xf8;
 		else if (mHideKinds.mFlags & 8) {
-			kind        = 0x2a3;
+			kind        = 0x2a3; // one level up from the mouth
 			s32 path[5] = { 0, 0, 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, path, 5));
 		} else if (mHideKinds.mFlags & 0x20) {
-			kind        = 0x46f;
+			kind        = 0x46f; // three levels up from the mouth
 			s32 path[3] = { 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, path, 3));
 		}
@@ -387,7 +389,7 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 					if (kind == obj->GetKind()) {
 						switch (kind) {
 						case 0xf8:
-							if (++ordinal != mCmd[2])
+							if (++ordinal != mCmd[2]) // only the numbered one
 								break;
 							PlaceInTaoMouth(joint, obj, mCarryMtx, 3);
 							return;
@@ -441,7 +443,7 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 	switch (mMountState) {
 	case 0:
 		break;
-	case 1:
+	case 1: // load the mount object
 		if (mMountObj)
 			mMountObj->Release();
 		if (mMountObjId >= 0) {
@@ -450,13 +452,14 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 		} else
 			mMountObj = NULL;
 		break;
-	case 2:
+	case 2: // wait for it to be ready, then flag the game
 		if (mMountObj && !(mMountObj->mStatus.mFlags & 0x0040000000000000ULL)) {
 			gGame.mStatus.mFlags |= 0x1000;
 			++mMountState;
 		}
 		break;
-	case 3:
+	case 3: // mount it on the joint and mark tao free
+
 		if (mMountObjId >= 0 && mMountObj) {
 			mMountObj->SetScale(1, 1, 1, 0);
 			CJObj extra;
@@ -558,7 +561,7 @@ void XObjActorTao::Drop()
  */
 void XObjActorTao::ProcessPendingEvents(u32)
 {
-	if (mActorStatus.Check(2)) {
+	if (mActorStatus.Check(2)) { // flag 2 plays its sound
 		mActorStatus.mFlags &= ~2;
 		PlayGameSound(&gGame.mSound, 0x15D, 0xFF);
 	}
@@ -592,5 +595,5 @@ void XObjActorTao::ResetActorState()
 	mMountObj   = NULL;
 	mMountObjId = 0x82;
 	mMountState = 1;
-	mActorStatus.mFlags |= 0x2000;
+	mActorStatus.mFlags |= 0x2000; // busy until the mount lands
 }
