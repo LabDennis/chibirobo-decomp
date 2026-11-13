@@ -9,12 +9,13 @@
 
 static inline u32 getVoiceCurrentAddress(const AXVPB* voice)
 {
-	return ((u32)voice->pb.addr.currentAddressHi << 16) | voice->pb.addr.currentAddressLo;
+	// the two halves sit next to each other and are read as one word
+	return *(const u32*)&voice->pb.addr.currentAddressHi;
 }
 
 static inline u32 getVoiceEndAddress(const AXVPB* voice)
 {
-	return ((u32)voice->pb.addr.endAddressHi << 16) | voice->pb.addr.endAddressLo;
+	return *(const u32*)&voice->pb.addr.endAddressHi;
 }
 
 struct HSD_SynthPStream;
@@ -153,18 +154,6 @@ typedef struct HSD_SynthSFXLoadRequest {
 	void (*callback)(s32, s32); // _08
 	s32 arg;                    // _0C
 } HSD_SynthSFXLoadRequest;
-
-typedef struct HSD_SynthStreamFormat {
-	AXPBADDR addr;
-	AXPBADPCM adpcm;
-} HSD_SynthStreamFormat;
-
-typedef struct HSD_SynthStreamHeader {
-	char signature[8];
-	u32 sampleRate;
-	u32 channels;
-	HSD_SynthStreamFormat format[2];
-} HSD_SynthStreamHeader;
 
 typedef struct HSD_SynthLoopState {
 	AXPBADPCMLOOP adpcm;
@@ -4343,7 +4332,8 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 		}
 		if (pan < 0x7F) {
 			shiftL = sSynthItdShiftByPan[0x7E - pan];
-		} else if (pan > 0x7F) {
+		} else {
+			// retail has no check here: a centred pan (0x7F) reads the byte before the table
 			shiftR = sSynthItdShiftByPan[pan - 0x80];
 		}
 	}
@@ -6065,15 +6055,16 @@ static f32 sSynthStreamVolume    = 1.0f;
  */
 void HSD_SynthPStreamHeaderCallback(int request, s32 pstreamID, void* buffer, BOOL cancelled)
 {
-	HSD_SynthStreamHeader* header = buffer;
-	HSD_SynthSFXNode* entry       = getNode(pstreamID);
+	// read as words: rate at [2], channels at [3], then 14 words per channel (address at +4, ADPCM at +8)
+	u32* header             = buffer;
+	HSD_SynthSFXNode* entry = getNode(pstreamID);
 	s32 i;
 	s32 bufReading;
 
 	if (entry == NULL) {
 		return;
 	}
-	entry->voice_count = header->channels;
+	entry->voice_count = header[3];
 	if (entry->voice_count == 2) {
 		entry->voice[1] = AXAcquireVoice(0x1F, dropcallback, 0);
 		ASSERT_SYNTH(0xE94, entry->voice[1]);
@@ -6088,19 +6079,19 @@ void HSD_SynthPStreamHeaderCallback(int request, s32 pstreamID, void* buffer, BO
 			rear2->voice_count                         = 2;
 		}
 	}
-	entry->freqBase = 0.00003125f * header->sampleRate;
+	entry->freqBase = 0.00003125f * header[2];
 	for (i = 0; i < entry->voice_count; i++) {
 		// ratioHi and ratioLo go out as one word
 		*(u32*)&lbl_8050932C = 65536.0f * entry->freqBase;
-		AXSetVoiceAddr(entry->voice[i], &header->format[i].addr);
-		AXSetVoiceAdpcm(entry->voice[i], &header->format[i].adpcm);
+		AXSetVoiceAddr(entry->voice[i], (AXPBADDR*)&header[i * 14 + 4]);
+		AXSetVoiceAdpcm(entry->voice[i], (AXPBADPCM*)&header[i * 14 + 8]);
 	}
 	if (entry->rearIndex != -1) {
 		HSD_SynthSFXNode* rear = &sSynthSfxNodes[entry->rearIndex];
 
 		for (i = 0; i < entry->voice_count; i++) {
-			AXSetVoiceAddr(rear->voice[i], &header->format[i].addr);
-			AXSetVoiceAdpcm(rear->voice[i], &header->format[i].adpcm);
+			AXSetVoiceAddr(rear->voice[i], (AXPBADDR*)&header[i * 14 + 4]);
+			AXSetVoiceAdpcm(rear->voice[i], (AXPBADPCM*)&header[i * 14 + 8]);
 		}
 	}
 	bufReading          = getFreeBuf();

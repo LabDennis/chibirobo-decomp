@@ -96,7 +96,7 @@ extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw);
 
 static inline BOOL CameraPolygonContains(const Vec& pos, CamCollisionPolygon& polygon)
 {
-	return IsPointInsideQuadXZ(&pos, &polygon.point[0], &polygon.point[1], &polygon.point[2], &polygon.point[3]);
+	return IsPointInsideQuadXZ((Vec*)&pos, &polygon.point[0], &polygon.point[1], &polygon.point[2], &polygon.point[3]);
 }
 
 static inline BOOL CameraEdgeIntersect(const Vec& from, const Vec& to, Vec& a, Vec& b, Vec& hit, s32 segment)
@@ -1947,8 +1947,8 @@ static inline f32 MapAreaHeight(s32 index)
  */
 extern "C" void StartMapCameraAreaHeightInterpolation(CCameraActionMap* map)
 {
+	CamAreaInfo area = CamAreaInfo(&gCameraAreaState.mAreaRecords[map->mMapArea]);
 	if (map->mMapArea >= 0) {
-		CamAreaInfo area(&gCameraAreaState.mAreaRecords[map->mMapArea]);
 		if (!(area.mRecord->mFlags & 1)) {
 			map->mHeightMode = 0;
 		} else {

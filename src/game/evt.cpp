@@ -3157,8 +3157,16 @@ extern "C" void LatchEventBeat(s32 id, s32 beat, void* context)
  */
 s32 CEvt::_cmd_PRINTF(u8, s32)
 {
-	// The retail interpreter consumes the string even with debug output disabled.
-	while (*mData.mScript++ != '\0') { }
+	// the print itself is compiled out
+	for (s32 i = mValues.mCount - 1; i >= 0; i--) { }
+
+	u8 c;
+	u8* str;
+	do {
+		str           = mData.mScript;
+		c             = *str;
+		mData.mScript = str + 1;
+	} while (c != 0);
 
 	return 0;
 }
@@ -3297,6 +3305,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("ptcl(..., @LEAD, %d, ...) obj(%d) killed!", id, id));
 		}
+		for (s32 i = 0; i < depth; i++) { }
 	} else if (type == EVT_ATOM_KILL) {
 		(&gGame.mParticle)->Kill((s32)code);
 	} else {
@@ -4605,20 +4614,20 @@ s32 CEvt::_cmd_WIN(u8, s32)
 		u8 b = CEvt_Evaluate(this);
 		u8 a = CEvt_Evaluate(this);
 		if (mMsg != NULL) {
-			GXColor color = sEvtWindowColorTemplate;
-			color.r       = r;
-			color.g       = g;
-			color.b       = b;
-			color.a       = a;
-			mMsg->SetColor(color);
+			GXColor color      = sEvtWindowColorTemplate;
+			color.r            = r;
+			color.g            = g;
+			color.b            = b;
+			color.a            = a;
+			mMsg->mFont.mColor = color;
 		}
 		break;
 	}
 	case EVT_ATOM_RESET:
 		if (mMsg != NULL) {
 			CMsg_ResetPos(mMsg);
-			GXColor color = sEvtWindowDefaultColor;
-			mMsg->SetColor(color);
+			GXColor color      = sEvtWindowDefaultColor;
+			mMsg->mFont.mColor = color;
 		}
 		break;
 	}
@@ -4662,16 +4671,17 @@ s32 CEvt::_cmd_POS(u8, s32)
 		obj->mLastPos.y = obj->mMoveTranslate.y;
 		obj->mLastPos.z = obj->mMoveTranslate.z;
 		gGame.mMotionControlCamera.UpdateTarget(obj);
-		XObjChr* player = gGame.GetPlayer();
-		if (obj == player) {
-			ResetPlayerHeadOffset(player);
-			ResetPlayerPlug(player);
-			XActLift& lift = player->mLift;
-			if (lift.mTarget != NULL) {
-				UpdateHeldObject(&lift, 1);
-				lift.mTarget->UpdateObject(1);
+		XActLift* lift;
+		u8* player = (u8*)gGame.GetPlayer();
+		if (obj == (XObj*)player) {
+			ResetPlayerHeadOffset((XObjChr*)player);
+			ResetPlayerPlug((XObjChr*)player);
+			lift = &((XObjChr*)player)->mLift;
+			if (lift->mTarget != NULL) {
+				UpdateHeldObject(lift, 1);
+				lift->mTarget->UpdateObject(1);
 			}
-			CancelPlayerPushAction(&player->mPush);
+			CancelPlayerPushAction(&((XObjChr*)player)->mPush);
 		}
 	} else {
 		CEvt_Warn(FormatToStaticBuffer("pos(%d, ...) obj(%d) killed!", id, id));
@@ -11616,15 +11626,13 @@ static inline void CEvt_Attach(CEvt* evt, u8* script, XObj* owner, s16 useValue 
 			gEventScriptQueue.mScript[i] = NULL;
 		}
 	}
-	evt->mSelectResult = 0;
-	evt->mResult2      = 0;
-	evt->mMsgState     = 0;
-	evt->mUseValue     = -1;
-	evt->mHitValue     = -1;
-	evt->mData.mScript = script;
-	if (evt->mOwner != NULL)
-		owner = evt->mOwner;
-	evt->mData.mContext = owner;
+	evt->mSelectResult  = 0;
+	evt->mResult2       = 0;
+	evt->mMsgState      = 0;
+	evt->mUseValue      = -1;
+	evt->mHitValue      = -1;
+	evt->mData.mScript  = script;
+	evt->mData.mContext = (evt->mOwner == NULL) ? owner : evt->mOwner;
 	evt->mUseValue      = useValue;
 	evt->mHitValue      = hitValue;
 }
@@ -17343,6 +17351,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 					mSelectResult = result;
 			} else
 				mSelectResult = result;
+			for (s32 i = 0; i < count; i++) { }
 		}
 		break;
 	}

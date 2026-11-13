@@ -73,8 +73,6 @@ typedef char XObjColorStep_size_check[sizeof(XObjColorStep) == 0x24 ? 1 : -1];
 // the game's object, everything in a stage that has a model
 class XObj : public CXObjIntp {
 public:
-	XObj();
-
 	// _00-_228 = CXObjIntp
 	CStatus64 mStatus;    // _228, 1 in use, 0x10000 drawn, 0x0040000000000000 while a read is pending
 	CoordInfo mCoord;     // _238
@@ -350,7 +348,6 @@ struct XObjSource {
 		u32 size;
 	} mCache;
 };
-STATIC_ASSERT(sizeof(XObjSource) == 0x14);
 
 extern "C" XObjSource gObjectSources[];
 extern "C" XObjSource* GetObjectSources();

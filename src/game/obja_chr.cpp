@@ -1155,7 +1155,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				    GetHeadingBetweenPositions(GetObjectMoveTranslation(object), GetObjectMoveTranslation(player)) - yaw);
 				if (angle < 0.52359879f || angle > 5.7595863f || (angle > 1.04719758f && angle < 2.09439516f)
 				    || (angle > 2.61799383f && angle < 3.66519141f) || (angle > 4.18879032f && angle < 5.23598766f)) {
-					player->mLetickerIndex = GetStagePlacementIndex(GetIndexedCoordPlacement(GetObjectCoordInfo(object), 0));
+					player->mLetickerIndex = GetIndexedCoordPlacement(GetObjectCoordInfo(object), 0) - GetStagePlacementByIndex(0);
 					break;
 				}
 			}
@@ -1976,12 +1976,12 @@ static inline f32 CurrentFrame(HSD_JObj* joint)
 }
 
 extern "C" {
-PointPtcl gPointParticlePool[10];
-PointPtcl* gPointParticleSlots[10];
-SuitChangeEffect gPlayerSuitChangeEffect;
+extern PointPtcl gPointParticlePool[10];
+extern PointPtcl* gPointParticleSlots[10];
+extern SuitChangeEffect gPlayerSuitChangeEffect;
 PlayerTurnState gPlayerTurnState;
-f32 gEquipmentIconWidth[8];
-f32 gEquipmentIconHeight[8];
+extern f32 gEquipmentIconWidth[8];
+extern f32 gEquipmentIconHeight[8];
 }
 extern "C" f32 GetControlStickMagnitude(const CPadOne*);
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr*, f32);
@@ -4330,7 +4330,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		for (s32 k = 0; k < (s32)ARRAY_SIZE(menu->mLabelChars) && *p; ++k, ++p) {
 			menu->mLabelChars[k].mText = p;
 			++menu->mLabelLength;
-			if (gGame.IsJapanese() && IsSjisLead((u8)*p))
+			if (HelpTextIsJapanese() && (IsSjisLead((u8)*p) & 1))
 				++p;
 		}
 		f32 phase = PI * highlight, halfPhase = (PI * .5f) * highlight;
@@ -4339,7 +4339,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		for (s32 k = 0; k < menu->mLabelLength; ++k) {
 			MenuHelpChar& ch = menu->mLabelChars[k];
 
-			if (!gGame.IsJapanese() && strncmp(ch.mText, " ", 1) == 0)
+			if (!HelpTextIsJapanese() && strncmp(ch.mText, " ", 1) == 0)
 				continue;
 			CFont font;
 			s32 width;

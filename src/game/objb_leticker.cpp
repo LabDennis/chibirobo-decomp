@@ -234,7 +234,8 @@ BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle)
 			continue;
 		if (target->mId == lift->mId || target->mId == first->mId || target->mId == second->mId)
 			continue;
-		if (target->mAttr.mObjData == NULL || target->mAttr.mObjData->mSource == NULL)
+		XObjSource* source = target->mAttr.mObjData != NULL ? target->mAttr.mObjData->mSource : NULL;
+		if (source == NULL)
 			continue;
 		f32 dx = target->mMoveTranslate.x - pos.x;
 		f32 dz = target->mMoveTranslate.z - pos.z;

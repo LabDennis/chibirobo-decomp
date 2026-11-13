@@ -392,11 +392,6 @@ struct CamAreaRecord {
 	u16 mFlags;        // _2E, flags. 4 marks a camera area, events toggle 0x80 to turn it off
 	u8 _30[0x4];       // _30
 
-	Vec GetPoint(s32 index) const
-	{
-		Vec point = { _04[index][0] / 100.0f, 0.0f, _04[index][1] / 100.0f };
-		return point;
-	}
 	f32 GetTop() const { return mTop / 100.0f; }
 	f32 GetBottom() const { return mBottom / 100.0f; }
 };

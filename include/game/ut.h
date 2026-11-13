@@ -103,8 +103,8 @@ int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec
 int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const Vec* d, Vec* out, int check);
 void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
 int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec* out);
-BOOL IsPointInsideQuadXZ(const Vec* pos, const Vec* a, const Vec* b, const Vec* c, const Vec* d);
-BOOL IsPointInsideTriangleXZ(const Vec* pos, const Vec* a, const Vec* b, const Vec* c);
+BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d);
+BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c);
 f32 SignedTriangleArea2XZ(Vec* a, Vec* b, Vec* c);
 void CalcTriangleNormal(Vec* a, Vec* b, Vec* c, Vec* normal);
 

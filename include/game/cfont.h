@@ -31,7 +31,11 @@ STATIC_ASSERT(sizeof(CFont) == 0x140);
 // shift jis lead byte
 inline bool IsSjisLead(u8 c)
 {
-	return (c >= 0x81 && c <= 0x9F) || (c >= 0xE0 && c <= 0xFC);
+	u8 lead = FALSE;
+	if ((c >= 0x81 && c <= 0x9F) || (c >= 0xE0 && c <= 0xFC)) {
+		lead = TRUE;
+	}
+	return lead;
 }
 
 extern "C" {
