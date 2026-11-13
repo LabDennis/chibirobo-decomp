@@ -38,13 +38,13 @@ inline void YawDir(CVec& dir, const Vec& angle)
 inline s32 FindFacing(const Vec& dir, s32 arg)
 {
 	CVec look(dir);
-	CamAreaSlot* slot   = &gCameraAreaState._2034[arg];
+	CamAreaSlot* slot   = &gCameraAreaState.mGroups[arg];
 	f32 best            = -1.0f;
 	s32 bestIndex       = -1;
 	CamAreaEntry* entry = slot->_00;
-	for (s32 i = 0; i < slot->_08; i++, entry++) {
+	for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
 		CVec facing;
-		YawDir(facing, entry->_20);
+		YawDir(facing, entry->mAngle);
 		f32 dot = PSVECDotProduct(&look, &facing);
 		if (dot > best) {
 			bestIndex = i;
@@ -119,11 +119,11 @@ extern "C" void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entr
 	case 2:
 	case 3:
 	case 4:
-		area->SetEye_I(mode, area->mEye, entry->_10, time);
+		area->SetEye_I(mode, area->mEye, entry->mEye, time);
 		gGame.GetPlayer()->ResetCameraValue();
 		break;
 	case 5:
-		area->SetEyeInterpolation(mode, area->mEye, entry->_10, time);
+		area->SetEyeInterpolation(mode, area->mEye, entry->mEye, time);
 		gGame.GetPlayer()->ResetCameraValue();
 		break;
 	}
@@ -693,7 +693,7 @@ extern "C" void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entr
  */
 extern "C" void SelectAreaCameraEntry(CCameraActionArea* area, s32 arg1, s32 arg2, s32 arg3, f32 arg4)
 {
-	CamAreaEntry* entry   = &gCameraAreaState._2034[arg1]._00[arg2];
+	CamAreaEntry* entry   = &gCameraAreaState.mGroups[arg1]._00[arg2];
 	area->mEntry          = entry;
 	area->mPrevEntry      = entry;
 	area->mEntryIndex     = arg2;
@@ -996,7 +996,7 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 	s32 previousArea = gCameraAreaState._08;
 	s32 height       = gCameraAreaState._14;
 	if (gGame.mStatus.mFlags & 0x20) {
-		return area->mEntry->_34;
+		return area->mEntry->mId;
 	}
 
 	u32 up       = (gGame.mStatus.mFlags & 0x80000000) ? 8 : 0x100000;
@@ -1007,21 +1007,21 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 	if (buttons & up) {
 		if (height > 1) {
 			gCameraAreaState._14 = height - 1;
-			return area->mEntry->_34;
+			return area->mEntry->mId;
 		}
 	} else if (buttons & down) {
 		if (height < 2) {
 			gCameraAreaState._14 = height + 1;
-			return area->mEntry->_34;
+			return area->mEntry->mId;
 		}
 	} else if (area->mKeepViewDirection == 1 && (buttons & next)) {
 		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		f32 best = TWO_PI;
 		s32 index;
-		CamAreaSlot* slot   = &gCameraAreaState._2034[gCameraAreaState._0C];
+		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState._0C];
 		CamAreaEntry* entry = slot->_00;
-		for (s32 i = 0; i < slot->_08; i++, entry++) {
-			f32 facing = WrapAngle(atan2(entry->_10.x - area->mInterest.x, entry->_10.z - area->mInterest.z));
+		for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
+			f32 facing = WrapAngle(atan2(entry->mEye.x - area->mInterest.x, entry->mEye.z - area->mInterest.z));
 			f32 turn   = WrapAngle(yaw - facing);
 			if (turn <= best) {
 				best  = turn;
@@ -1034,10 +1034,10 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		f32 yaw  = WrapAngle(atan2(area->mEye.x - area->mInterest.x, area->mEye.z - area->mInterest.z));
 		f32 best = TWO_PI;
 		s32 index;
-		CamAreaSlot* slot   = &gCameraAreaState._2034[gCameraAreaState._0C];
+		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState._0C];
 		CamAreaEntry* entry = slot->_00;
-		for (s32 i = 0; i < slot->_08; i++, entry++) {
-			f32 facing = WrapAngle(atan2(entry->_10.x - area->mInterest.x, entry->_10.z - area->mInterest.z));
+		for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
+			f32 facing = WrapAngle(atan2(entry->mEye.x - area->mInterest.x, entry->mEye.z - area->mInterest.z));
 			f32 turn   = WrapAngle(yaw - facing);
 			if (turn <= best) {
 				best  = turn;
@@ -1045,17 +1045,17 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 			}
 		}
 		if (--index < 0) {
-			index = slot->_08 - 1;
+			index = slot->mEntryCount - 1;
 		}
 		area->mEntryIndex = index;
 		area->mForceApply = TRUE;
 	} else if (buttons & next) {
-		if (++area->mEntryIndex >= gCameraAreaState._2034[slotIndex]._08) {
+		if (++area->mEntryIndex >= gCameraAreaState.mGroups[slotIndex].mEntryCount) {
 			area->mEntryIndex = 0;
 		}
 	} else if (buttons & previous) {
 		if (--area->mEntryIndex < 0) {
-			area->mEntryIndex = gCameraAreaState._2034[slotIndex]._08 - 1;
+			area->mEntryIndex = gCameraAreaState.mGroups[slotIndex].mEntryCount - 1;
 		}
 	} else if (currentArea != previousArea && currentArea != -1) {
 		CVec dir;
@@ -1064,15 +1064,15 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 			delta.Normalize();
 			dir.Set(delta);
 		} else {
-			YawDir(dir, area->mEntry->_20);
+			YawDir(dir, area->mEntry->mAngle);
 		}
 		CVec look(dir);
-		CamAreaSlot* slot   = &gCameraAreaState._2034[gCameraAreaState._0C];
+		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState._0C];
 		f32 best            = -1.0f;
 		CamAreaEntry* entry = slot->_00;
-		for (s32 i = 0; i < slot->_08; i++, entry++) {
+		for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
 			CVec facing;
-			YawDir(facing, entry->_20);
+			YawDir(facing, entry->mAngle);
 			f32 dot = PSVECDotProduct(&look, &facing);
 			if (dot > best) {
 				area->mEntryIndex = i;
@@ -1083,8 +1083,8 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 			area->mEntryIndex = 0;
 		}
 	}
-	area->mEntry = &gCameraAreaState._2034[slotIndex]._00[area->mEntryIndex];
-	return area->mEntry->_34;
+	area->mEntry = &gCameraAreaState.mGroups[slotIndex]._00[area->mEntryIndex];
+	return area->mEntry->mId;
 }
 /*
     stwu     r1, -0xf0(r1)
@@ -1617,7 +1617,7 @@ void CCameraActionArea::Update(u32 step)
 	}
 	s32 currentArea  = gCameraAreaState._04;
 	s32 previousArea = gCameraAreaState._08;
-	if (mEntry->_34 != mPrevEntry->_34 || mForceApply) {
+	if (mEntry->mId != mPrevEntry->mId || mForceApply) {
 		if (currentArea != previousArea && currentArea != -1) {
 			mTransitionTime = 2.0f;
 			ApplyAreaCameraEntry(this, mEntry, 1, 1, mTransitionTime);
@@ -2066,7 +2066,7 @@ void CCameraActionArea::Reset()
 	mControlEnabled     = 1;
 	mPadControlEnabled  = TRUE;
 	mEntryIndex         = 0;
-	CamAreaEntry* entry = gCameraAreaState._2034[0]._00;
+	CamAreaEntry* entry = gCameraAreaState.mGroups[0]._00;
 	mEntry              = entry;
 	mPrevEntry          = entry;
 	mTarget             = (XObj*)gGame.GetPlayer();

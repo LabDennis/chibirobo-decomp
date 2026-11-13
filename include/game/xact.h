@@ -22,7 +22,7 @@ public:
 	virtual void Reset();              // _0C, 0x800BB708
 
 	s32 mMoveDirection; // _0C
-	CVec _10;           // _10, push keeps the offset to its target here
+	CVec mTargetOffset; // _10, push keeps the offset to its target here
 	XObj* mTarget;      // _20
 	s32 mTargetState;   // _24
 	s32 mTargetFloor;   // _28, the selected floor when the target was picked
@@ -72,7 +72,7 @@ extern "C" void UpdateHeldObject(XActLift* act, s32 frames);
 
 class XActHang : public XAction {
 public:
-	BOOL _2C;             // _2C, set when the stick points away
+	BOOL mStickAway;      // _2C, set when the stick points away
 	Vec mHangStartOffset; // _30, player position relative to the target
 	Vec mFloorCenter;     // _3C
 	f32 mDistance;        // _48
@@ -95,10 +95,10 @@ STATIC_ASSERT(sizeof(XActJump) == 0x54);
 
 class XActLadder : public XAction {
 public:
-	BOOL _2C;   // _2C, set when b is pressed on it
-	Vec mPos;   // _30, where he hangs, in front of the ladder
-	f32 mDist;  // _3C, how far he still has to go to get there
-	f32 mAngle; // _40, from mPos to where he started
+	BOOL mBPressed; // _2C, set when b is pressed on it
+	Vec mPos;       // _30, where he hangs, in front of the ladder
+	f32 mDist;      // _3C, how far he still has to go to get there
+	f32 mAngle;     // _40, from mPos to where he started
 };
 STATIC_ASSERT(sizeof(XActLadder) == 0x44);
 

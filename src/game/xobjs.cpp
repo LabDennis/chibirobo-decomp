@@ -282,7 +282,7 @@ extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 unus
 {
 	XObj* obj;
 	AttrInfo attr(info);
-	s16 pool = attr._00 ? attr._00->_14 : 0;
+	s16 pool = attr._00 ? attr._00->mCategory : 0;
 
 	s32 idx = list->mPools[pool].Find(1, 0);
 	if (idx >= 0) {
@@ -487,10 +487,10 @@ inline void XOBJS::ReadAll()
 	}
 
 	s32 i;
-	for (i = 0; GetStagePlacementByIndex(i)->_00 >= 0; i++) {
+	for (i = 0; GetStagePlacementByIndex(i)->mObjectId >= 0; i++) {
 		CoordInfo info(GetStagePlacementByIndex(i));
 		if (mObjects[i] == NULL) {
-			XObjPool& pool = mPools[GetObjData(&info)->_14];
+			XObjPool& pool = mPools[GetObjData(&info)->mCategory];
 			if (pool.mUsed >= pool.mCount) {
 				OSPanic(__FILE__, 161, "%s%s", FormatToStaticBuffer("%s:: cnt=%d, max=%d\n", pool.mName, pool.mUsed, pool.mCount),
 				        __FUNCTION__);
@@ -506,7 +506,7 @@ inline void XOBJS::ReadAll()
 	for (s32 i = 0; i < mObjectCount; i++) {
 		UnkStageObj* obj = GetStagePlacementByIndex(i);
 		CoordInfo info(obj);
-		if ((obj->_34 & 0x80000000ULL) == 0) {
+		if ((obj->mFlags & 0x80000000ULL) == 0) {
 			while (!mObjects[mLoadObjectIndex]->LoadFromPlacement(info)) { }
 		}
 		mLoadObjectIndex++;

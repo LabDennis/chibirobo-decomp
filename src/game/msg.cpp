@@ -942,7 +942,7 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
 	// tenths of a second
 	f32 frames = (command / 10) * FRAME_RATE;
 	frames += (command % 10) * FRAME_RATE / 10.0f;
-	msg->_445CC = frames;
+	msg->mWaitTimer = frames;
 	return 0;
 }
 /*
@@ -1232,12 +1232,12 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 						for (s32 i = 9; i >= 0; i--) {
 							result = result * 10 + msg->_445DC[i];
 						}
-						gGame.mEvt._10 = result;
+						gGame.mEvt.mSelectResult = result;
 					} else if (pad.mPad->mTrigger & 0x200) {
 						msg->mFont.mFadeOut        = 1;
 						msg->mFont.mOtherSelection = -1;
 						PlayGameSound(&gGame.mSound, 0x86, 255);
-						gGame.mEvt._10 = -1;
+						gGame.mEvt.mSelectResult = -1;
 					}
 				}
 			} else if (msg->_445F8 != 0) {
@@ -1948,11 +1948,11 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			waiting = TRUE;
 			continue;
 		}
-		if (msg->_445CC > 0.0f) {
-			f32 time    = msg->_445CC - step;
-			msg->_445CC = time;
+		if (msg->mWaitTimer > 0.0f) {
+			f32 time        = msg->mWaitTimer - step;
+			msg->mWaitTimer = time;
 			if (time < 0.0f) {
-				msg->_445CC = 0.0f;
+				msg->mWaitTimer = 0.0f;
 			} else {
 				waiting = TRUE;
 			}
@@ -2077,8 +2077,8 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 				CPad pad(0);
 				HandleOXMenuInput(&gGame.GetPlayer()->mOXMenu, &pad);
 				if (pad.mPad->mTrigger & 0x100) {
-					gGame.mEvt._10 = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
-					waiting        = FALSE;
+					gGame.mEvt.mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
+					waiting                  = FALSE;
 				} else {
 					msg->mData.mCursor -= 3;
 					waiting = TRUE;
@@ -2691,9 +2691,9 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
 	u8* cursor = msg->mData.mCursor;
 	CMsgFont_Init(&msg->mFont, msg->mData.mText, msg->_44600, msg->_44604, msg->_44608, msg->mData.mAlignment, msg->mData.mStyle);
 	msg->SetFontPosition(msg->mFontPosition.x, msg->mFontPosition.y, msg->mFontPosition.z);
-	msg->_445C4 = 0.0f;
-	msg->_445C8 = msg->mCommand == 35 ? 2 : 0;
-	msg->_445CC = 0.0f;
+	msg->_445C4     = 0.0f;
+	msg->_445C8     = msg->mCommand == 35 ? 2 : 0;
+	msg->mWaitTimer = 0.0f;
 	return cursor;
 }
 /*

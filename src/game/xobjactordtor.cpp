@@ -11,7 +11,7 @@ extern "C" XObjActor* __dt__9XObjActorFv(XObjActor* actor, s32 flags)
 {
 	if (actor != NULL) {
 		*(void***)((u8*)actor + 0x34) = __vt__9XObjActor;
-		actor->_998.CStatus::~CStatus();
+		actor->mActorStatus.CStatus::~CStatus();
 		__dt__4XObjFv(actor, 0);
 		if ((s16)flags > 0) {
 			::operator delete(actor);

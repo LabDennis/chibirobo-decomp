@@ -1353,8 +1353,8 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
 		act->mState = 14;
 		break;
 	case 14:
-		if (act->mOwner->_158BC > 0) {
-			if (!act->mIdleParticle && TumbleStationary(act->mOwner->mMoveTranslate - (Vec)act->mOwner->_264)) {
+		if (act->mOwner->mIdleModeTimer > 0) {
+			if (!act->mIdleParticle && TumbleStationary(act->mOwner->mMoveTranslate - (Vec)act->mOwner->mLastPos)) {
 				s32 effect = 0x28;
 				if (rand() & 1)
 					effect = 0x26;
@@ -1374,7 +1374,7 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
 		StartTumble(act, anim, aobj, 16);
 		break;
 	case 16:
-		if (act->mOwner->_158BC <= 0)
+		if (act->mOwner->mIdleModeTimer <= 0)
 			act->mState = 17;
 		break;
 	case 17:

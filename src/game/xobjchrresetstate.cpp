@@ -40,11 +40,11 @@ void XObjChr::ResetObjectState()
 	mHitStrength              = 0.0f;
 	mMoveSpeedScale           = 1.0f;
 	mHang.Init(this);
-	mHang._2C = FALSE;
+	mHang.mStickAway = FALSE;
 	mJump.Init(this);
 	mJump.mTargetStrength = mJump.mStrength = 0.0f;
 	mLadder.Init(this);
-	mLadder._2C = FALSE;
+	mLadder.mBPressed = FALSE;
 	mRope.Init(this);
 	mPush.Init(this);
 	mTumble.Init(this);
@@ -83,7 +83,7 @@ void XObjChr::ResetObjectState()
 	mBatteryWarningFrames                         = 0;
 	mBatteryWarningFade = mBatteryWarningAngle = 0.0f;
 	_9AC0                                      = 0;
-	_9AC4                                      = 0.0f;
+	mGaugeTime                                 = 0.0f;
 	mPlug.ResetObjectState();
 	mCopterObj.ResetObjectState();
 	mPopperObj.ResetObjectState();
@@ -91,13 +91,13 @@ void XObjChr::ResetObjectState()
 	mOXObj.ResetObjectState();
 	for (s32 i = 0; i < 9; ++i)
 		mSuits.mObjects[i].ResetObjectState();
-	_12DF8 = NAN;
+	mWalkHeading = NAN;
 	ClearRingHighlights(mMenu.mAtc);
 	ClearRingHighlights(mMenu.mDrs);
 	mMenu.mFade = mMenu.mCursorY = mMenu.mTargetY = 0.0f;
 	mOXMenu.mStarted                              = FALSE;
 	mOXMenu.mFade                                 = 0.0f;
-	_146D8                                        = TRUE;
+	mInAir                                        = TRUE;
 	InitParticlePool(&mDust.mPtcl, mDust.mPtcls, sizeof(mDust.mPtcls[0]), ARRAY_SIZE(mDust.mPtcls));
 	for (s32 i = 0; i < 10; ++i) {
 		PointPtcl& p = gPointParticlePool[i];
@@ -111,7 +111,7 @@ void XObjChr::ResetObjectState()
 			gPlayerSuitChangeEffect.rings[i][j].scale = 0.0f;
 			gPlayerSuitChangeEffect.rings[i][j].angle = 0.0f;
 		}
-	_158B8 = _158BC = _158C0 = 0;
+	mIdleMode = mIdleModeTimer = mGroundType = 0;
 	_158C4.Set(0.0f, 0.0f, 0.0f);
 	mHeadOffset      = 5.0f;
 	mHeadOffsetReady = FALSE;

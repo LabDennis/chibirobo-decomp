@@ -51,14 +51,14 @@ void XObjActor3::UpdateObject(u32 frames)
 				_B8C.mFlags &= ~4;
 			} else {
 				_B8C.mFlags |= 4;
-				_B80 = 0;
+				mKindStep = 0;
 			}
 			mEventCommand = 0;
 			mEventArg1    = 0;
 			break;
 		case 2:
-			_B80          = 2;
-			_B78          = mEventArg2 / 100.0f;
+			mKindStep     = 2;
+			mKindTimer    = mEventArg2 / 100.0f;
 			mEventCommand = 0;
 			mEventArg1    = 0;
 			break;
@@ -116,7 +116,7 @@ void XObjActor3::UpdateObject(u32 frames)
 	}
 	(this->*gActor3UpdateHandlers[GetItem()])(frames);
 	if (!(_B8C.mFlags & 4)) {
-		SetRotateY(_B7C, 0.0f);
+		SetRotateY(mHeading, 0.0f);
 		SetPos(mMoveTranslate, 0);
 	}
 	UpdateObject__4XObjFUl(this, frames);

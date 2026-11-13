@@ -218,7 +218,7 @@ public:
 	CFileArchive mArchive; // _333C
 	s32 mStage;            // _3444, _342C in japan, _344C in europe
 	s32 mPrevStage;        // _3448
-	s32 _344C;             // _344C, room count
+	s32 mRoomCount;        // _344C, room count
 #if defined(VERSION_JP) || defined(VERSION_PAL)
 	u8 _3450[8];
 #else
@@ -241,7 +241,7 @@ public:
 	GameScrnColor mColor0;                     // _46BC
 	GameScrnColor mColor1;                     // _46F0
 	s32 _4724;                                 // _4724
-	f32 _4728;                                 // _4728, the outline's width, the c stick moves it
+	f32 mOutlineWidth;                         // _4728, the outline's width, the c stick moves it
 	Logo mLogo;                                // _472C
 	Title mTitle;                              // _4930
 	MenuEx mMenu;                              // _8580, _8538 in japan

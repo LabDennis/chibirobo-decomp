@@ -26,8 +26,8 @@ void XObjActor::UpdateGroundMovement(u32 frames)
 	// Retail uses the origin for the floor probe before filling it with the actor's final position.
 	Vec pos = { 0.0f, 0.0f, 0.0f };
 	CVec step;
-	step.x = _984 * (f32)sin(_980);
-	step.z = _984 * (f32)cos(_980);
+	step.x = mMoveSpeed * (f32)sin(_980);
+	step.z = mMoveSpeed * (f32)cos(_980);
 	step.y = 0.0f;
 	SetGroundPosition(mMoveTranslate, mMoveTranslate + step * (f32)frames);
 	f32 offset = 0.0f;
@@ -36,13 +36,13 @@ void XObjActor::UpdateGroundMovement(u32 frames)
 		offset = 6.0f;
 		break;
 	}
-	_998.mFlags &= ~0x20;
+	mActorStatus.mFlags &= ~0x20;
 	if (FindMapFloor((XObjMap*)gGame.mXObjs.mPools[3].mObjects, &pos, &mFloorHit, NULL)) {
 		_9DC = mFloorHit.mHeight + offset;
-		if (!(_998.mFlags & 8)) {
+		if (!(mActorStatus.mFlags & 8)) {
 			mMoveTranslate.y = mFloorHit.mHeight + offset;
-			_998.mFlags |= 0x20;
-		} else if (_998.mFlags & 0x10) {
+			mActorStatus.mFlags |= 0x20;
+		} else if (mActorStatus.mFlags & 0x10) {
 			if (_9D8 >= -2.3f)
 				_9D8 -= 0.36f * (f32)frames;
 			else
@@ -52,15 +52,15 @@ void XObjActor::UpdateGroundMovement(u32 frames)
 			mMoveTranslate.y += _9D8;
 			if (mMoveTranslate.y <= _9DC) {
 				_9D8 = 0.0f;
-				_998.mFlags &= ~8;
-				_998.mFlags &= ~0x10;
+				mActorStatus.mFlags &= ~8;
+				mActorStatus.mFlags &= ~0x10;
 			}
 		} else {
 			mMoveTranslate.y += _9D8;
 		}
 	} else {
 		mMoveTranslate.y = offset;
-		_998.mFlags |= 0x20;
+		mActorStatus.mFlags |= 0x20;
 	}
 	GetGroundPosition(this, &pos);
 	SetPos(pos, 0);

@@ -72,7 +72,7 @@ extern "C" XObj* __dt__4XObjFv(XObj* object, s32 flags)
 		object->mAnmQueue.CAnmQueue::~CAnmQueue();
 		object->mEvt.CEvt::~CEvt();
 		object->_794.CVec::~CVec();
-		object->_264.CVec::~CVec();
+		object->mLastPos.CVec::~CVec();
 		object->mAttr.AttrInfo::~AttrInfo();
 		object->mCoord.CoordInfo::~CoordInfo();
 		object->mStatus.CStatus64::~CStatus64();

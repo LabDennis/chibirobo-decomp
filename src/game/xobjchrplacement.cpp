@@ -55,9 +55,9 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 			break;
 		CJObj::SetRotationY(0.0f, TRUE);
 		SamplePlayerPose(this, 8);
-		mLift._10.Set(GetPlayerCarryJointLocalTranslation(this));
-		SampleRootOffset(this, 0x13, mHang._10);
-		SampleRootOffset(this, 0x8A, mRope._10);
+		mLift.mTargetOffset.Set(GetPlayerCarryJointLocalTranslation(this));
+		SampleRootOffset(this, 0x13, mHang.mTargetOffset);
+		SampleRootOffset(this, 0x8A, mRope.mTargetOffset);
 		SamplePlayerPose(this, 0x36);
 		s32 tumble[]          = { 0, 1, 0, 1, 2, 0, 1 };
 		mTumble.mFade.mOffset = GetEventJointWorldPosition(this, 7, tumble) - mMoveTranslate;

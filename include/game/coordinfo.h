@@ -5,14 +5,14 @@
 
 // one 0x38 byte entry of the stage's object placement table
 struct UnkStageObj {
-	s32 _00;       // _00, the object id, negative ends the table
-	s32 mPos[3];   // _04, in hundredths
-	s32 _10[3];    // _10
-	s32 mScale[3]; // _1C, in hundredths
-	s32 _28;       // _28
-	s32 _2C;       // _2C
-	s32 _30;       // _30, starting anim
-	u32 _34;       // _34, flags, 0x80000000 skips the read
+	s32 mObjectId;  // _00, the object id, negative ends the table
+	s32 mPos[3];    // _04, in hundredths
+	s32 _10[3];     // _10
+	s32 mScale[3];  // _1C, in hundredths
+	s32 _28;        // _28
+	s32 _2C;        // _2C
+	s32 mStartAnim; // _30, starting anim
+	u32 mFlags;     // _34, flags, 0x80000000 skips the read
 };
 STATIC_ASSERT(sizeof(UnkStageObj) == 0x38);
 
@@ -39,14 +39,14 @@ struct UnkObjData {
 	}; // _00
 	u32 mModel;        // _04
 	u32 mFlags;        // _08
-	u32 _0C;           // _0C, shadow size
+	u32 mShadowSize;   // _0C, shadow size
 	s16 mLookPriority; // _10
 	s16 mLookRange;    // _12
-	s16 _14;           // _14, category, also which pool in XOBJS
-	s16 _16;           // _16, item index, some callers test it as flags
+	s16 mCategory;     // _14, category, also which pool in XOBJS
+	s16 mItemIndex;    // _16, item index, some callers test it as flags
 
-	s16 GetCategory() const { return this != NULL ? _14 : 0; }
-	s16 GetItem() const { return this != NULL ? _16 : 0; }
+	s16 GetCategory() const { return this != NULL ? mCategory : 0; }
+	s16 GetItem() const { return this != NULL ? mItemIndex : 0; }
 };
 STATIC_ASSERT(sizeof(UnkObjData) == 0x18);
 extern "C" UnkObjData* GetObjData(const CoordInfo* info);
@@ -54,29 +54,29 @@ extern "C" UnkObjData* GetObjData(const CoordInfo* info);
 // todo: cleanup
 inline s32 GetObjDataPool(const UnkObjData* data)
 {
-	return data != NULL ? data->_14 : 0;
+	return data != NULL ? data->mCategory : 0;
 }
 inline s32 GetObjDataFlags(const UnkObjData* data)
 {
-	return data != NULL ? data->_16 : 0;
+	return data != NULL ? data->mItemIndex : 0;
 }
 
 // name from __vt__8AttrInfo
 class AttrInfo {
 public:
-	UnkObjData* _00;  // _00
-	UnkStageObj* _04; // _04, the placement CoordInfo points at
+	UnkObjData* _00;         // _00
+	UnkStageObj* mPlacement; // _04, the placement CoordInfo points at
 	// _08 vtable
 
 	AttrInfo() { _00 = NULL; }
 	AttrInfo(CoordInfo* info)
 	    : _00(GetObjData(info))
-	    , _04(info->_00)
+	    , mPlacement(info->_00)
 	{
 	}
 	AttrInfo(const CoordInfo& info)
 	    : _00(GetObjData(&info))
-	    , _04(info._00)
+	    , mPlacement(info._00)
 	{
 	}
 	virtual ~AttrInfo() { } // _08

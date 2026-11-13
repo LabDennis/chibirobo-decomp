@@ -4714,12 +4714,12 @@ s32 CEvt::_cmd_POS(u8, s32)
 	f32 z     = CEvt_Evaluate(this) / 100.0f;
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 		obj->SetPos(x, y, z, 0);
-		if (obj->mMoveTranslate.y != obj->_264.y) {
+		if (obj->mMoveTranslate.y != obj->mLastPos.y) {
 			obj->mStatus.mFlags |= 0x0010000000000000;
 		}
-		obj->_264.x = obj->mMoveTranslate.x;
-		obj->_264.y = obj->mMoveTranslate.y;
-		obj->_264.z = obj->mMoveTranslate.z;
+		obj->mLastPos.x = obj->mMoveTranslate.x;
+		obj->mLastPos.y = obj->mMoveTranslate.y;
+		obj->mLastPos.z = obj->mMoveTranslate.z;
 		gGame.mMotionControlCamera.UpdateTarget(obj);
 		u8* carry;
 		u8* player = (u8*)gGame.GetPlayer();
@@ -5051,7 +5051,7 @@ s32 CEvt::_cmd_MSG(u8 cmd, s32)
 			return 1;
 		}
 		if (cmd == EVT_CMD_SELECT) {
-			_10 = EVT_OWNER_445D4(owner);
+			mSelectResult = EVT_OWNER_445D4(owner);
 		}
 		EVT_OWNER_445C0(mMsg) = 1;
 		mData.mScript         = ResolveEventScriptOffset(mData.mScript);
@@ -6425,7 +6425,7 @@ s32 CEvt::_cmd_KILL(u8, s32)
 		CEvt_ForgetObjId(id);
 		UnkStageObj* entry = GetStagePlacementByIndex(index);
 		CoordInfo info(entry);
-		entry->_34 |= 0x80000000ULL;
+		entry->mFlags |= 0x80000000ULL;
 	}
 	return 0;
 }
@@ -11697,7 +11697,7 @@ static inline void CEvt_Attach(CEvt* evt, u8* script, u32 owner, s16 useValue = 
 			gEventScriptQueue.mScript[i] = NULL;
 		}
 	}
-	evt->_10           = 0;
+	evt->mSelectResult = 0;
 	evt->mResult2      = 0;
 	evt->mMsgState     = 0;
 	evt->mUseValue     = -1;
@@ -13541,7 +13541,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			}
 			break;
 		case EVT_EXPR_RESULT1:
-			evt->_10 = value;
+			evt->mSelectResult = value;
 			break;
 		case EVT_EXPR_RESULT2:
 			evt->mResult2 = value;
@@ -14523,7 +14523,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 			OSPanic("evt.cpp", 694, "%s%s", FormatToStaticBuffer("Invalid Evaluate var[%d] - 0~%d\n", result, 2048), "Evaluate");
 		break;
 	case EVT_EXPR_RESULT1:
-		result = evt->_10;
+		result = evt->mSelectResult;
 		break;
 	case EVT_EXPR_RESULT2:
 		result = evt->mResult2;
@@ -17039,7 +17039,7 @@ static inline void EvtWaitFor(CEvt* evt, u8 command, u8* start, s32 ready, s32& 
 			yield              = 1;
 		}
 	} else
-		evt->_10 = ready;
+		evt->mSelectResult = ready;
 }
 
 // a wipe is done once its size stops
@@ -17107,13 +17107,13 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		s16 id    = args[0];
 		s32 flags = args[1];
 		if (flags == -1) {
-			XObj* obj = CEvt_GetObj(this, id);
-			obj->_8B0 = 0;
-			obj->_8B0 |= 0x80000000;
+			XObj* obj            = CEvt_GetObj(this, id);
+			obj->mMarkerOverride = 0;
+			obj->mMarkerOverride |= 0x80000000;
 		} else {
 			XObj* obj = CEvt_GetObj(this, id);
-			obj->_8B0 &= ~0x80000000;
-			obj->_8B0 |= flags;
+			obj->mMarkerOverride &= ~0x80000000;
+			obj->mMarkerOverride |= flags;
 		}
 		break;
 	}
@@ -17128,8 +17128,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 				mData.mScript = start;
 				yield         = 1;
 			} else {
-				mYesNoActive = 0;
-				_10          = EVT_PLAYER.mOXMenu.mConfirmedIndex;
+				mYesNoActive  = 0;
+				mSelectResult = EVT_PLAYER.mOXMenu.mConfirmedIndex;
 			}
 		} else {
 			if (EVT_PLAYER.mAttachmentRequest < 0) {
@@ -17192,8 +17192,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		break;
 	}
 	case -19: {
-		s16 id = args[0];
-		_10    = (EVT_CALL_BITS(5)[(u32)id >> 5] & (1U << (id & 31))) != 0;
+		s16 id        = args[0];
+		mSelectResult = (EVT_CALL_BITS(5)[(u32)id >> 5] & (1U << (id & 31))) != 0;
 		break;
 	}
 	case -20: {
@@ -17221,8 +17221,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		break;
 	}
 	case -22: {
-		s16 id = args[0];
-		_10    = (EVT_CALL_BITS(4)[(u32)id >> 5] & (1U << (id & 31))) != 0;
+		s16 id        = args[0];
+		mSelectResult = (EVT_CALL_BITS(4)[(u32)id >> 5] & (1U << (id & 31))) != 0;
 		break;
 	}
 	case -23: {
@@ -17250,8 +17250,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		break;
 	}
 	case -25: {
-		s16 id = args[0];
-		_10    = (EVT_CALL_BITS(17)[(u32)id >> 5] & (1U << (id & 31))) != 0;
+		s16 id        = args[0];
+		mSelectResult = (EVT_CALL_BITS(17)[(u32)id >> 5] & (1U << (id & 31))) != 0;
 		break;
 	}
 	case -26: {
@@ -17340,7 +17340,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		u64 mask  = (u64)1 << bit;
 		XObj* obj = CEvt_GetObj(this, id);
 		if (obj != NULL)
-			_10 = (obj->mStatus.mFlags & mask) ? 1 : 0;
+			mSelectResult = (obj->mStatus.mFlags & mask) ? 1 : 0;
 		else
 			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_CHK_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
 		break;
@@ -17352,7 +17352,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		ClearItemFlags((s16)args[0], (u16)args[1]);
 		break;
 	case -31:
-		_10 = (u16)GetItemFlagsMasked((s16)args[0], (u16)args[1]);
+		mSelectResult = (u16)GetItemFlagsMasked((s16)args[0], (u16)args[1]);
 		break;
 	case -41:
 		gGame.mStatus.mFlags |= (u64)1 << args[0];
@@ -17361,7 +17361,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		gGame.mStatus.mFlags &= ~((u64)1 << args[0]);
 		break;
 	case -43:
-		_10 = (gGame.mStatus.mFlags & ((u64)1 << args[0])) ? 1 : 0;
+		mSelectResult = (gGame.mStatus.mFlags & ((u64)1 << args[0])) ? 1 : 0;
 		break;
 	case -32:
 		gGame.mStatus.mFlags |= (u64)0x8000 << 32;
@@ -17398,7 +17398,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		for (s32 i = 0; i < areaCount; i++) {
 			CamAreaRecord* record = CamAreaInfo(&records[i]).GetRecord();
 			if (id == record->_2C)
-				record->_2E &= ~0x80;
+				record->mFlags &= ~0x80;
 		}
 		break;
 	}
@@ -17409,7 +17409,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		for (s32 i = 0; i < areaCount; i++) {
 			CamAreaRecord* record = CamAreaInfo(&records[i]).GetRecord();
 			if (id == record->_2C)
-				record->_2E |= 0x80;
+				record->mFlags |= 0x80;
 		}
 		break;
 	}
@@ -17419,15 +17419,15 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		if (result == 1)
 			result = 2;
 #endif
-		_10 = result;
+		mSelectResult = result;
 		break;
 	}
 	case -40:
-		_10 = (s16)GetItemHappyPointValue(args[0]);
+		mSelectResult = (s16)GetItemHappyPointValue(args[0]);
 		break;
 	case -100:
 		if (count > 0)
-			_10 = CallStageModule(args[0] + 7, count - 1, &args[1]);
+			mSelectResult = CallStageModule(args[0] + 7, count - 1, &args[1]);
 #if defined(VERSION_PAL)
 		else
 			OSPanic("evt.cpp", 2161, "%s%s", "SYSCALL_STGFUNC, noargs\n", "_cmd_CALL");
@@ -17446,9 +17446,9 @@ s32 CEvt::_cmd_CALL(u8, s32)
 				if (result == -1 && args[0] != 101)
 					yield = 1;
 				else
-					_10 = result;
+					mSelectResult = result;
 			} else
-				_10 = result;
+				mSelectResult = result;
 			for (s32 i = 0; i < count; i++) { }
 		}
 		break;
@@ -17485,7 +17485,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 				}
 			}
 		} else
-			_10 = 1;
+			mSelectResult = 1;
 		break;
 	}
 	case EVT_ATOM_FADE:
@@ -17505,7 +17505,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		break;
 	case 203:
 		if (command != EVT_CMD_WAIT)
-			_10 = 1;
+			mSelectResult = 1;
 		break;
 	case EVT_ATOM_ANIM: {
 		s16 id    = CEvt_Evaluate(this);
@@ -17523,11 +17523,11 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 				} else
 					EvtWaitFor(this, command, start, (anim->flags & 0x44000000) != 0, yield);
 			} else if (command == EVT_CMD_CHECK)
-				_10 = 1;
+				mSelectResult = 1;
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("wait(@ANIM, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
-				_10 = 1;
+				mSelectResult = 1;
 		}
 		break;
 	}
@@ -17541,7 +17541,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("wait(@DIR, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
-				_10 = 1;
+				mSelectResult = 1;
 		}
 		break;
 	}
@@ -17556,7 +17556,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("wait(@MOVE, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
-				_10 = 1;
+				mSelectResult = 1;
 		}
 		break;
 	}
@@ -17570,7 +17570,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("wait(@SCALE, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
-				_10 = 1;
+				mSelectResult = 1;
 		}
 		break;
 	}
@@ -17587,7 +17587,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("wait(@COLOR, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
-				_10 = 1;
+				mSelectResult = 1;
 		}
 		break;
 	}
@@ -17637,7 +17637,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("wait(@READ, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
-				_10 = 1;
+				mSelectResult = 1;
 		}
 		break;
 	}
@@ -17658,7 +17658,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 			mData.mScript = start;
 			yield         = 1;
 		} else
-			_10 = beat;
+			mSelectResult = beat;
 		break;
 	}
 	case EVT_ATOM_MOVIE: {
@@ -17670,7 +17670,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 			mData.mScript = start;
 			yield         = 1;
 		} else
-			_10 = ready;
+			mSelectResult = ready;
 		break;
 	}
 	default:
@@ -18267,7 +18267,7 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 					break;
 				}
 				case -4:
-					_10 = InfoScrn_GetTimerHundredths(&gGame.mInfoScrn);
+					mSelectResult = InfoScrn_GetTimerHundredths(&gGame.mInfoScrn);
 					break;
 				}
 			}
@@ -18344,11 +18344,11 @@ static inline void ClearQueue()
 
 static inline void ClearResults(CEvt* evt)
 {
-	evt->_10       = 0;
-	evt->mResult2  = 0;
-	evt->mMsgState = 0;
-	evt->mUseValue = -1;
-	evt->mHitValue = -1;
+	evt->mSelectResult = 0;
+	evt->mResult2      = 0;
+	evt->mMsgState     = 0;
+	evt->mUseValue     = -1;
+	evt->mHitValue     = -1;
 }
 
 /**
@@ -18458,11 +18458,11 @@ extern "C" void InitializeEventScriptContext(CEvt* evt, u8* context, void* owner
 		ClearQueue();
 		gEventObjectIds.mCount = 0;
 	}
-	evt->_10       = 0;
-	evt->mResult2  = 0;
-	evt->mMsgState = 0;
-	evt->mUseValue = -1;
-	evt->mHitValue = -1;
+	evt->mSelectResult = 0;
+	evt->mResult2      = 0;
+	evt->mMsgState     = 0;
+	evt->mUseValue     = -1;
+	evt->mHitValue     = -1;
 }
 
 // what ResolveEventObjectId gets as its context

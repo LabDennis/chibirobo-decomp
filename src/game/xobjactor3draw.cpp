@@ -12,7 +12,7 @@ void DrawStage02ActorCounterPanel(XObjActor3* actor);
 void XObjActor3::DrawScreenOverlay()
 {
 	UnkObjData* data = mAttr._00;
-	s16 type         = data != NULL ? (data != NULL ? data->_16 : 0) : -1; // todo: cleanup, probably an inline
+	s16 type         = data != NULL ? (data != NULL ? data->mItemIndex : 0) : -1; // todo: cleanup, probably an inline
 	switch (type) {
 	case 14:
 		DrawStage02TimerPanel(this);

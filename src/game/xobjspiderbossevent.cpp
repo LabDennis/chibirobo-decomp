@@ -94,9 +94,9 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 		break;
 	case 2:
 		if (mSpiderStatus.mFlags & 0x10000)
-			gGame.mEvt._10 = 1;
+			gGame.mEvt.mSelectResult = 1;
 		else
-			gGame.mEvt._10 = 0;
+			gGame.mEvt.mSelectResult = 0;
 		mCommand = 0;
 		break;
 	case 3:

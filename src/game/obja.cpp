@@ -38,7 +38,7 @@ extern const XObjPEPresets gObjectPixelEnginePresets;
 
 static inline u32 ShadowSize(XObj* object)
 {
-	return object->mAttr._00 != NULL ? object->mAttr._00->_0C : 0;
+	return object->mAttr._00 != NULL ? object->mAttr._00->mShadowSize : 0;
 }
 
 static inline void StepColor(f32& current, f32& target, f32& speed, u32 frames)
@@ -361,7 +361,7 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 extern "C" void ClearActiveObjectFloors(XObj* object)
 {
 	if (object->mStatus.mFlags & 0x0200000000000000ULL) {
-		object->_250[1] = object->_250[0];
+		object->mFloorMasks[1] = object->mFloorMasks[0];
 		for (int i = 0; object->mFloors[i].mId != -1; i++) {
 			if (object->IsFloorOn(i)) {
 				object->ClearFloor(i);
@@ -557,7 +557,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 		}
 		}
 		if (collision) {
-			_250[0] |= 1u << i;
+			mFloorMasks[0] |= 1u << i;
 			result |= collision;
 			mHitFloorIndex = i;
 			if (cursor) {
@@ -796,7 +796,7 @@ void XObj::UpdateObject(u32 frames)
 		UpdateAnim(frames);
 		HSD_JObjSetupMatrix(mJObj);
 	}
-	if ((mStatus.mFlags & 0x0010000000000000ULL) || mMoveTranslate.y != _264.y) {
+	if ((mStatus.mFlags & 0x0010000000000000ULL) || mMoveTranslate.y != mLastPos.y) {
 		UpdateObjectFloorHeights((XObj*)this);
 	}
 	if (mEvt.mData.mScript != NULL)
@@ -822,9 +822,9 @@ void XObj::Release()
 				source->mArchive = NULL;
 		}
 	}
-	mAttr._00 = NULL;
-	mAttr._04 = NULL;
-	mFloors   = NULL;
+	mAttr._00        = NULL;
+	mAttr.mPlacement = NULL;
+	mFloors          = NULL;
 	mStatus.mFlags &= ~0x10001ULL;
 }
 

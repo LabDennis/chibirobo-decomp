@@ -37,7 +37,7 @@ void XObjDust::ResetObjectState()
 	mMatAnim  = NULL;
 	if (mJObj != NULL && (mStatus.mFlags & 0x1000ULL)) {
 		UnkStageObj* placement = mCoord._00;
-		SetAnim(placement->_30, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+		SetAnim(placement->mStartAnim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 	}
 }
 

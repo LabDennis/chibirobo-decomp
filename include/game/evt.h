@@ -244,7 +244,7 @@ class CEvt {
 public:
 	u32 mOwner;                     // _00, ABORT only resumes a parked script while this is zero
 	CEvtData mData;                 // _04
-	s32 _10;                        // _10, SELECT result
+	s32 mSelectResult;              // _10, SELECT result
 	s32 mResult2;                   // _14
 	s32 mWaitTimer;                 // _18
 	s32 mYesNoActive;               // _1C

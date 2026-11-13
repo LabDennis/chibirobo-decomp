@@ -371,11 +371,11 @@ STATIC_ASSERT(sizeof(CCameraActionMap) == 0x11EC);
 
 // an entry in a CamAreaSlot list
 struct CamAreaEntry {
-	CVec _00; // _00, interest
-	CVec _10; // _10, camera position
-	CVec _20; // _20, an angle
-	f32 _30;  // _30, field of view
-	s32 _34;  // _34, entry ID
+	CVec mInterest; // _00, interest
+	CVec mEye;      // _10, camera position
+	CVec mAngle;    // _20, an angle
+	f32 mFov;       // _30, field of view
+	s32 mId;        // _34, entry ID
 };
 STATIC_ASSERT(sizeof(CamAreaEntry) == 0x38);
 
@@ -386,7 +386,7 @@ struct CamAreaRecord {
 	s32 mTop;      // _24, upper height in hundredths
 	s32 mBottom;   // _28, lower height in hundredths
 	s16 _2C;       // _2C
-	u16 _2E;       // _2E, flags. 4 marks a camera area, events toggle 0x80 to turn it off
+	u16 mFlags;    // _2E, flags. 4 marks a camera area, events toggle 0x80 to turn it off
 	u8 _30[0x4];   // _30
 
 	f32 GetTop() const { return mTop / 100.0f; }
@@ -404,13 +404,13 @@ public:
 
 	CamAreaRecord* GetRecord() const { return _04; }
 	bool Is_2C_1() const { return _04->_2C == 1; }
-	bool IsCameraOff() const { return !(_04->_2E & 4); }
+	bool IsCameraOff() const { return !(_04->mFlags & 4); }
 	bool IsCameraArea() const
 	{
-		u16 flags = _04->_2E & 4;
+		u16 flags = _04->mFlags & 4;
 		return flags != 0;
 	}
-	u16 IsDisabled() const { return _04->_2E & 0x80; }
+	u16 IsDisabled() const { return _04->mFlags & 0x80; }
 	f32 GetTop() const { return _04->mTop / 100.0f; }
 	f32 GetBottom() const { return _04->mBottom / 100.0f; }
 
@@ -420,9 +420,9 @@ public:
 
 struct CamAreaSlot {
 	CamAreaEntry* _00; // _00
-	s32 _04;           // _04, group ID
-	s32 _08;           // _08, entries in _00
-	CVec _0C;          // _0C, representative camera position
+	s32 mGroupId;      // _04, group ID
+	s32 mEntryCount;   // _08, entries in _00
+	CVec mEye;         // _0C, representative camera position
 
 	CamAreaSlot();
 	~CamAreaSlot();
@@ -437,20 +437,20 @@ public:
 	virtual ~CCameraActionAreaEx(); // _08
 
 	// _00 vtable
-	s32 _04;                 // _04
-	s32 _08;                 // _08
-	s32 _0C;                 // _0C
-	f32 mBaseFov;            // _10
-	s32 _14;                 // _14
-	s32 _18;                 // _18
-	CamAreaRecord* _1C;      // _1C
-	s32 _20;                 // _20, records in _1C
-	CamAreaRecord* _24;      // _24
-	s32 _28;                 // _28, records in _24
-	CamInfoData* _2C;        // _2C, stage camera placements
-	CamAreaEntry* _30[2048]; // _30, entries in the shared placement pool
-	s32 _2030;               // _2030, number of camera groups
-	CamAreaSlot _2034[256];  // _2034, count unknown, 256 fills out the 0x3C34 object
+	s32 _04;                        // _04
+	s32 _08;                        // _08
+	s32 _0C;                        // _0C
+	f32 mBaseFov;                   // _10
+	s32 _14;                        // _14
+	s32 _18;                        // _18
+	CamAreaRecord* _1C;             // _1C
+	s32 _20;                        // _20, records in _1C
+	CamAreaRecord* _24;             // _24
+	s32 _28;                        // _28, records in _24
+	CamInfoData* mCameraInfo;       // _2C, stage camera placements
+	CamAreaEntry* mEntryPool[2048]; // _30, entries in the shared placement pool
+	s32 mGroupCount;                // _2030, number of camera groups
+	CamAreaSlot mGroups[256];       // _2034, count unknown, 256 fills out the 0x3C34 object
 };
 STATIC_ASSERT(sizeof(CCameraActionAreaEx) == 0x3C34);
 // todo: old name, the prototypes below still use it

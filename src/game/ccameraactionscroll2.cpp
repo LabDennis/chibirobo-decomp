@@ -439,7 +439,7 @@ void CCameraActionScroll2::Update(u32 step)
  */
 Scroll2Limits* CCameraActionScroll2::GetLimits(s32 room)
 {
-	if (room < gGame._344C) {
+	if (room < gGame.mRoomCount) {
 		return ROOM_LIMITS[room];
 	}
 	return ROOM_LIMITS[7];

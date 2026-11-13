@@ -152,7 +152,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		game->SetStage(stage);
 	} else {
 		game->mPrevStage = game->mStage;
-		if (++game->mStage >= game->_344C) {
+		if (++game->mStage >= game->mRoomCount) {
 			game->mStage = 0;
 		}
 	}

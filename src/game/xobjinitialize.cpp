@@ -12,12 +12,12 @@ void InitializeEventScriptContext(CEvt* event, u8* context, void* owner);
 void XObj::InitializeObject(u32 id)
 {
 	CXObj::Init(id);
-	mStatus.mFlags = 0;
-	mCoord._00     = NULL;
-	mAttr._00      = NULL;
-	mAttr._04      = NULL;
-	mFloors        = NULL;
-	mPoolIndex     = 0;
+	mStatus.mFlags   = 0;
+	mCoord._00       = NULL;
+	mAttr._00        = NULL;
+	mAttr.mPlacement = NULL;
+	mFloors          = NULL;
+	mPoolIndex       = 0;
 	ResetObjectState();
 	InitializeEventScriptContext(&mEvt, (u8*)gGame.GetMsg(1), this);
 	mAnmQueue.Clear();

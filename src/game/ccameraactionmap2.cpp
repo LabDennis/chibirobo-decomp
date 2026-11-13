@@ -128,7 +128,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 		CamAreaRecord* record        = &records[i];
 		CamCollisionPolygon& polygon = polygons[i];
 		CamAreaRecord* area          = CamAreaInfo(record).GetRecord();
-		if (area->_2E & 0x80)
+		if (area->mFlags & 0x80)
 			continue;
 		f32 top      = area->GetTop();
 		f32 bottom   = area->GetBottom();
@@ -157,7 +157,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 		for (s32 i = 0; i < count; i++) {
 			CamCollisionPolygon& polygon = polygons[i];
 			CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
-			if (area->_2E & 0x80)
+			if (area->mFlags & 0x80)
 				continue;
 			f32 top      = area->GetTop();
 			f32 bottom   = area->GetBottom();
@@ -188,7 +188,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 			for (s32 i = 0; i < count; i++) {
 				CamCollisionPolygon& polygon = polygons[i];
 				CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
-				if (area->_2E & 0x80)
+				if (area->mFlags & 0x80)
 					continue;
 				f32 top      = area->GetTop();
 				f32 bottom   = area->GetBottom();
@@ -204,7 +204,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 				for (s32 i = 0; i < count; i++) {
 					CamCollisionPolygon& polygon = polygons[i];
 					CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
-					if (area->_2E & 0x80)
+					if (area->mFlags & 0x80)
 						continue;
 					f32 top      = area->GetTop();
 					f32 bottom   = area->GetBottom();
@@ -244,7 +244,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 		for (s32 i = 0; i < count; i++) {
 			CamCollisionPolygon& polygon = polygons[i];
 			CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
-			if (area->_2E & 0x80)
+			if (area->mFlags & 0x80)
 				continue;
 			f32 top      = area->GetTop();
 			f32 bottom   = area->GetBottom();
@@ -344,7 +344,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 		s32 insideCount = 0;
 		for (s32 i = 0; i < count; i++) {
 			CamAreaRecord* area = CamAreaInfo(&records[i]).GetRecord();
-			if (area->_2E & 0x80)
+			if (area->mFlags & 0x80)
 				continue;
 			f32 top      = area->GetTop();
 			f32 bottom   = area->GetBottom();
@@ -567,7 +567,7 @@ void CCameraActionMap::Update(u32 step)
 					s32 flag;
 					{
 						CamAreaInfo area(&gCameraAreaState._1C[mNearestEyeEntry->mRecordIndex]);
-						flag = (area._04->_2E & 1) != 0;
+						flag = (area._04->mFlags & 1) != 0;
 					}
 					if (flag)
 						mTurnBlocked = 0;
@@ -1936,9 +1936,9 @@ static inline f32 MapAreaHeight(s32 index)
 {
 	CamAreaInfo area = CamAreaInfo(&GetStageCameraAreaRecords()[index]);
 	if (area._04->_2C == -1) {
-		return 0.23f * CamInfo(&gCameraAreaState._2C[gCameraAreaState._2034[index]._00->_34]).GetEye().y;
+		return 0.23f * CamInfo(&gCameraAreaState.mCameraInfo[gCameraAreaState.mGroups[index]._00->mId]).GetEye().y;
 	}
-	return CamInfo(&gCameraAreaState._2C[gCameraAreaState._2034[index]._00->_34]).GetEye().y;
+	return CamInfo(&gCameraAreaState.mCameraInfo[gCameraAreaState.mGroups[index]._00->mId]).GetEye().y;
 }
 
 /**
@@ -1949,12 +1949,12 @@ extern "C" void StartMapCameraAreaHeightInterpolation(CCameraActionMap* map)
 {
 	CamAreaInfo area = CamAreaInfo(&gCameraAreaState._24[map->mMapArea]);
 	if (map->mMapArea >= 0) {
-		if (!(area._04->_2E & 1)) {
+		if (!(area._04->mFlags & 1)) {
 			map->mHeightMode = 0;
 		} else {
 			map->mHeightMode = 1;
 		}
-		if (!(area._04->_2E & 2)) {
+		if (!(area._04->mFlags & 2)) {
 			map->mUseAreaHeight = 0;
 		} else {
 			map->mUseAreaHeight = 1;

@@ -14,13 +14,13 @@ void XObjActorMama::ResetActorState()
 		player->mPlayerStatus.mFlags |= 7;
 		player->mPad.mReset = TRUE;
 	}
-	_998.mFlags = 0;
-	_C8C.mFlags = 0;
-	_980        = 0.0f;
-	_984        = 0.0f;
-	_988        = 0.0f;
-	_C84        = _988;
-	_C88        = 0;
-	mState      = &XObjActorMama::StateNone;
+	mActorStatus.mFlags = 0;
+	mHideKinds.mFlags   = 0;
+	_980                = 0.0f;
+	mMoveSpeed          = 0.0f;
+	_988                = 0.0f;
+	_C84                = _988;
+	_C88                = 0;
+	mState              = &XObjActorMama::StateNone;
 	ResetActorMovementStep(this);
 }

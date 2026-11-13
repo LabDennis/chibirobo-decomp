@@ -326,7 +326,7 @@ void XObjSpider::ResetObjectState()
 			XObj* candidate = gGame.mXObjs.mObjects[i];
 			if (candidate->mStatus.mFlags & 1ULL) {
 				UnkStageObj* placement = candidate->mCoord._00;
-				if (placement->_00 == 0x13C) {
+				if (placement->mObjectId == 0x13C) {
 					++found;
 					*output++ = candidate;
 					if (found >= 16)
@@ -485,7 +485,7 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 	}
 	Vec pos  = *origin;
 	Vec rot  = { -HALF_PI, 0.0f, 0.0f };
-	Vec size = mMoveScale * (f32)(mAttr._00 != NULL ? mAttr._00->_0C : 0);
+	Vec size = mMoveScale * (f32)(mAttr._00 != NULL ? mAttr._00->mShadowSize : 0);
 	size.x   = mRadius;
 	size.y   = mRadius;
 	size.z   = mRadius;
@@ -997,16 +997,16 @@ extern "C" void ExecuteSpiderCommand(XObjSpider* spider, u32 frames)
 		break;
 	case 2:
 		if (spider->mFlags.mFlags & 0x10000)
-			gGame.mEvt._10 = 1;
+			gGame.mEvt.mSelectResult = 1;
 		else
-			gGame.mEvt._10 = 0;
+			gGame.mEvt.mSelectResult = 0;
 		spider->mCommand = 0;
 		break;
 	case 3:
 		if (spider->mFlags.mFlags & 0x80000)
-			gGame.mEvt._10 = 1;
+			gGame.mEvt.mSelectResult = 1;
 		else
-			gGame.mEvt._10 = 0;
+			gGame.mEvt.mSelectResult = 0;
 		spider->mCommand = 0;
 		break;
 	case 4:

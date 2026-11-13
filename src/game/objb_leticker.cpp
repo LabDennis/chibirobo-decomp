@@ -124,9 +124,9 @@ static XObjFloor* sLetickerLiftFloors[2] = { sLetickerLiftFloor0, sLetickerLiftF
 // sets the object's floor boxes, they take effect at once
 static inline void SetFloors(XObj* obj, XObjFloor* floors)
 {
-	obj->mFloors = floors;
-	obj->_250[1] = 0;
-	obj->_250[0] = 0;
+	obj->mFloors        = floors;
+	obj->mFloorMasks[1] = 0;
+	obj->mFloorMasks[0] = 0;
 	UpdateObjectFloorXZExtent(obj);
 	UpdateObjectFloorHeights(obj);
 }
@@ -481,7 +481,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 		mSpeedScale       = 1.0f;
 		if (mLinkedCount > 0) {
 			XObj* part = gGame.GetObject(mLinked[0]);
-			switch (part->mCoord._00->_00) {
+			switch (part->mCoord._00->mObjectId) {
 			case 0xEE: {
 				mState = 1;
 				mFunc  = &XObjLeticker::StateLift;
@@ -509,7 +509,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 				mState = 3;
 				mFunc  = NULL;
 				for (s32 i = 0; mFloors[i].mId != -1; ++i)
-					_250[0] |= 1U << i;
+					mFloorMasks[0] |= 1U << i;
 				SelectHighestActiveFloor(this);
 				break;
 			}
@@ -912,8 +912,8 @@ void XObjLeticker::StateLift()
 		mBox[0].mCenterOffset[1] = k * 0xA9 + 0x654;
 		mBox[0].mExtent[1]       = k * 400 + 1000;
 		base->mFloors            = mBox;
-		base->_250[1]            = 0;
-		base->_250[0]            = 0;
+		base->mFloorMasks[1]     = 0;
+		base->mFloorMasks[0]     = 0;
 		UpdateObjectFloorHeights(base);
 		SetFloors(this, sLetickerLiftFloors[1]);
 		SetColor(1, 0, 0, 0, 0.5f);

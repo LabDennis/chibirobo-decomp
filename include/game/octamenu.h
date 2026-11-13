@@ -33,7 +33,7 @@ STATIC_ASSERT(sizeof(OctaMenuBob) == 0xD80);
 struct OctaMenuItem {
 	s32 mType;             // _00, attachment or costume id
 	s32 mAvailable;        // _04
-	f32 _08;               // _08, spin, the pulse phase while it's selected
+	f32 mPulsePhase;       // _08, spin, the pulse phase while it's selected
 	f32 _0C;               // _0C
 	f32 _10;               // _10
 	f32 mHighlight;        // _14
@@ -48,7 +48,7 @@ public:
 	s32 mOpen;              // _00, above 0 while open, below 0 while it closes
 	s32 mCursorIndex;       // _04
 	f32 mFade;              // _08, 1 once it has all faded in
-	f32 _0C;                // _0C, glow, 1 when opened from the pad
+	f32 mGlow;              // _0C, glow, 1 when opened from the pad
 	f32 _10;                // _10
 	OctaMenuItem mItems[8]; // _14
 	f32 mPhase;             // _154

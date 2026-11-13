@@ -103,10 +103,10 @@ void CGame::Update(u32 frames)
 		for (i = 0; i < mDrawLists[0].mCount; i++) {
 			XObj* obj = mDrawLists[0].mObjects[i];
 			if (obj->mStatus.mFlags & 1) {
-				if (obj->mMoveTranslate.y != obj->_264.y) {
+				if (obj->mMoveTranslate.y != obj->mLastPos.y) {
 					obj->mStatus.mFlags |= 0x10000000000000;
 				}
-				obj->_264 = obj->mMoveTranslate;
+				obj->mLastPos = obj->mMoveTranslate;
 				obj->UpdateObject(frames);
 			}
 		}
@@ -197,15 +197,15 @@ void CGame::Update(u32 frames)
 	mOutline.SetColor4(mColor1.mColor.mColor.r, mColor1.mColor.mColor.g, mColor1.mColor.mColor.b, mColor1.mColor.mColor.a);
 	if (_4724 > 0) {
 		if (mPad.mPad[0].mSubStickY > 0.0f) {
-			if ((_4728 -= 0.01f * frames) < 0.04f) {
-				_4728 = 0.04f;
+			if ((mOutlineWidth -= 0.01f * frames) < 0.04f) {
+				mOutlineWidth = 0.04f;
 			}
 		} else if (mPad.mPad[0].mSubStickY < 0.0f) {
-			if ((_4728 += 0.01f * frames) > 0.5f) {
-				_4728 = 0.5f;
+			if ((mOutlineWidth += 0.01f * frames) > 0.5f) {
+				mOutlineWidth = 0.5f;
 			}
 		}
-		mOutline.mZoom = sin(3.1415927f * _4728 / 2.0f);
+		mOutline.mZoom = sin(3.1415927f * mOutlineWidth / 2.0f);
 	}
 	UpdateBootLogos(&mLogo, frames);
 	UpdateTitleScreen(&mTitle, frames);

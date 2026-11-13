@@ -3372,7 +3372,7 @@ extern "C" UnkStageObj* GetSpawnData(s32 index)
  */
 extern "C" UnkObjData* GetObjData(const CoordInfo* info)
 {
-	s32 index = info->_00->_00;
+	s32 index = info->_00->mObjectId;
 	if (index >= 10000)
 		return &objTableEx[index - 10000];
 	return &objTable[index];

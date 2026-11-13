@@ -15,7 +15,7 @@ void XObjActor::UpdateObject(u32 frames)
 	XObjActor* actor = (XObjActor*)this;
 	actor->ProcessPendingEvents(frames);
 	actor->RunStateHandler(frames);
-	if (actor->_998.mFlags & 4) {
+	if (actor->mActorStatus.mFlags & 4) {
 		actor->UpdateGroundMovement(frames);
 	}
 	UpdateObject__4XObjFUl(actor, frames);
@@ -32,14 +32,14 @@ void XObjActor::UpdateObject(u32 frames)
 BOOL XObjActor::LoadFromPlacement(const CoordInfo& info)
 {
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
-		_980 = 0.0f;
-		_984 = 0.0f;
-		_988 = 0.0f;
+		_980       = 0.0f;
+		mMoveSpeed = 0.0f;
+		_988       = 0.0f;
 		for (u32 i = 0; i < 20; ++i) {
 			mCmd[i] = 0;
 		}
-		_A4C            = -1;
-		_A50            = NULL;
+		mAttachedId     = -1;
+		mAttached       = NULL;
 		mHeldObjects[0] = NULL;
 		mHeldObjects[1] = NULL;
 		ClearStateHandler();
@@ -62,12 +62,12 @@ void XObjActor::ResetForNewGame()
 {
 	XObjActorLiterals* lit = &gActorUpdateConstants;
 	_980                   = 0.0f;
-	_984                   = 0.0f;
+	mMoveSpeed             = 0.0f;
 	_988                   = 0.0f;
 	_98C                   = PI;
-	_990                   = 0;
+	mKindStep              = 0;
 	_994                   = 0;
-	_998.mFlags            = 0;
+	mActorStatus.mFlags    = 0;
 	_9A0                   = 0;
 	_9A4                   = 0;
 	_9A8                   = 1.0f;
@@ -81,9 +81,9 @@ void XObjActor::ResetForNewGame()
 	_9BC.y                 = v1.y;
 	_9BC.z                 = v1.z;
 	Vec v2                 = lit->mInit[2];
-	_9C8.x                 = v2.x;
-	_9C8.y                 = v2.y;
-	_9C8.z                 = v2.z;
+	mVelocity.x            = v2.x;
+	mVelocity.y            = v2.y;
+	mVelocity.z            = v2.z;
 	Vec v3                 = lit->mInit[3];
 	_A40.x                 = v3.x;
 	_A40.y                 = v3.y;
@@ -104,8 +104,8 @@ void XObjActor::ResetForNewGame()
 		mParts[i].mJoint = NULL;
 	}
 	mAnimSfx.mEvents = NULL;
-	_A4C             = -1;
-	_A50             = NULL;
+	mAttachedId      = -1;
+	mAttached        = NULL;
 	mHeldObjects[0]  = NULL;
 	mHeldObjects[1]  = 0;
 	mLookMode        = 0;
@@ -123,39 +123,39 @@ void XObjActor::ResetObjectState()
 {
 	const Vec* reset = gActorUpdateConstants.mReset;
 	ResetObjectState__4XObjFv(this);
-	_980         = 0.0f;
-	_984         = 0.0f;
-	_988         = 0.0f;
-	_98C         = PI;
-	_990         = 0;
-	_994         = 0;
-	_998.mFlags  = 0;
-	_9A0         = 0;
-	_9A4         = 0;
-	_9A8         = 1.0f;
-	_9AC         = 1.0f;
-	Vec v0       = reset[0];
-	mHitPos.x    = v0.x;
-	mHitPos.y    = v0.y;
-	mHitPos.z    = v0.z;
-	Vec v1       = reset[1];
-	_9BC.x       = v1.x;
-	_9BC.y       = v1.y;
-	_9BC.z       = v1.z;
-	Vec v2       = reset[2];
-	_9C8.x       = v2.x;
-	_9C8.y       = v2.y;
-	_9C8.z       = v2.z;
-	Vec v3       = reset[3];
-	_A40.x       = v3.x;
-	_A40.y       = v3.y;
-	_A40.z       = v3.z;
-	mHitStrength = 0.0f;
-	_9D8         = 0.0f;
-	_9DC         = 0.0f;
-	mCmd[0]      = 0;
-	mCmd[1]      = 0;
-	mCmd[18]     = 0;
+	_980                = 0.0f;
+	mMoveSpeed          = 0.0f;
+	_988                = 0.0f;
+	_98C                = PI;
+	mKindStep           = 0;
+	_994                = 0;
+	mActorStatus.mFlags = 0;
+	_9A0                = 0;
+	_9A4                = 0;
+	_9A8                = 1.0f;
+	_9AC                = 1.0f;
+	Vec v0              = reset[0];
+	mHitPos.x           = v0.x;
+	mHitPos.y           = v0.y;
+	mHitPos.z           = v0.z;
+	Vec v1              = reset[1];
+	_9BC.x              = v1.x;
+	_9BC.y              = v1.y;
+	_9BC.z              = v1.z;
+	Vec v2              = reset[2];
+	mVelocity.x         = v2.x;
+	mVelocity.y         = v2.y;
+	mVelocity.z         = v2.z;
+	Vec v3              = reset[3];
+	_A40.x              = v3.x;
+	_A40.y              = v3.y;
+	_A40.z              = v3.z;
+	mHitStrength        = 0.0f;
+	_9D8                = 0.0f;
+	_9DC                = 0.0f;
+	mCmd[0]             = 0;
+	mCmd[1]             = 0;
+	mCmd[18]            = 0;
 	for (u32 i = 0; i < 16; ++i) {
 		mCmd[i + 2] = 0;
 	}
@@ -165,8 +165,8 @@ void XObjActor::ResetObjectState()
 		mParts[i].mObj   = NULL;
 		mParts[i].mJoint = NULL;
 	}
-	_A4C            = -1;
-	_A50            = NULL;
+	mAttachedId     = -1;
+	mAttached       = NULL;
 	mHeldObjects[0] = NULL;
 	mHeldObjects[1] = NULL;
 	mLookMode       = 0;

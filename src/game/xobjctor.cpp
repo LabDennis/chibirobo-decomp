@@ -31,7 +31,7 @@ extern "C" XObj* __ct__4XObjFv(XObj* obj)
 	obj->mCoord._00                                      = NULL;
 	*(void***)((u8*)&obj->mAttr + 0x8)                   = __vt__8AttrInfo;
 	obj->mAttr._00                                       = NULL;
-	*(void***)((u8*)&obj->_264 + 0xC)                    = __vt__4CVec;
+	*(void***)((u8*)&obj->mLastPos + 0xC)                = __vt__4CVec;
 	*(void***)((u8*)&obj->_794 + 0xC)                    = __vt__4CVec;
 	*(void***)((u8*)&obj->mEvt + 0x64)                   = __vt__4CEvt;
 	*(void***)((u8*)&obj->mEvt + 0xC)                    = __vt__8CEvtData;

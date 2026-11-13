@@ -17,33 +17,33 @@
 class XObjActor : public XObj {
 public:
 	// _00-_980 = XObj
-	f32 _980;         // _980
-	f32 _984;         // _984, move speed
-	f32 _988;         // _988
-	f32 _98C;         // _98C
-	s32 _990;         // _990, the kind's own step
-	u32 _994;         // _994
-	CStatus _998;     // _998, 2 a sound is due, 0x2000 busy
-	u32 _9A0;         // _9A0
-	s32 _9A4;         // _9A4
-	f32 _9A8;         // _9A8
-	f32 _9AC;         // _9AC
-	Vec mHitPos;      // _9B0
-	Vec _9BC;         // _9BC
-	Vec _9C8;         // _9C8, velocity
-	f32 mHitStrength; // _9D4
-	f32 _9D8;         // _9D8
-	f32 _9DC;         // _9DC
-	s32 mCmd[20];     // _9E0, the event command HandleEventCommand got and its args, the rest is the kind's scratch
+	f32 _980;             // _980
+	f32 mMoveSpeed;       // _984, move speed
+	f32 _988;             // _988
+	f32 _98C;             // _98C
+	s32 mKindStep;        // _990, the kind's own step
+	u32 _994;             // _994
+	CStatus mActorStatus; // _998, 2 a sound is due, 0x2000 busy
+	u32 _9A0;             // _9A0
+	s32 _9A4;             // _9A4
+	f32 _9A8;             // _9A8
+	f32 _9AC;             // _9AC
+	Vec mHitPos;          // _9B0
+	Vec _9BC;             // _9BC
+	Vec mVelocity;        // _9C8, velocity
+	f32 mHitStrength;     // _9D4
+	f32 _9D8;             // _9D8
+	f32 _9DC;             // _9DC
+	s32 mCmd[20];         // _9E0, the event command HandleEventCommand got and its args, the rest is the kind's scratch
 	u8 _A30[4];
-	s32 mMovePhase; // _A34, index into the movement speed cycle
-	f32 _A38;       // _A38
-	f32 _A3C;       // _A3C
-	Vec _A40;       // _A40
-	s16 _A4C;       // _A4C, id of the attached object, -1 for none
+	s32 mMovePhase;  // _A34, index into the movement speed cycle
+	f32 _A38;        // _A38
+	f32 _A3C;        // _A3C
+	Vec _A40;        // _A40
+	s16 mAttachedId; // _A4C, id of the attached object, -1 for none
 	u8 _A4E[0xA50 - 0xA4E];
-	XObj* _A50;              // _A50, the attached object
-	Mtx _A54;                // _A54, where the attached object is held
+	XObj* mAttached;         // _A50, the attached object
+	Mtx mAttachedMtx;        // _A54, where the attached object is held
 	XObj* mHeldObjects[2];   // _A84, Mama can carry a pair
 	AnimSfx mAnimSfx;        // _A8C, its events are the kind's table
 	s32 mLookMode;           // _A9C, 0 ahead, 1 at mLookTarget, 3 at mLookAngle
@@ -108,7 +108,7 @@ public:
 
 	// _00-_C78 = XObjActor
 	StateFunc mState;             // _C78, run every frame by RunStateHandler
-	CStatus _C84;                 // _C84, kinds queued to hide
+	CStatus mHideKinds;           // _C84, kinds queued to hide
 	s32 mLoad;                    // _C8C, which part LoadFromPlacement is reading
 	XObj mFirst;                  // _C90
 	XObj mSecond;                 // _1610, _1600 in japan
@@ -154,13 +154,13 @@ public:
 	typedef void (XObjActorJenny::*StateFunc)(u32 frames);
 
 	// _00-_C78 = XObjActor
-	StateFunc mState; // _C78
-	f32 _C84;         // _C84
-	f32 _C88;         // _C88
-	u32 _C8C;         // _C8C
-	CStatus _C90;     // _C90, 4 head joint, 8 joint shown
-	CStatus _C98;     // _C98, kinds queued to hide
-	u8 _CA0;          // _CA0
+	StateFunc mState;    // _C78
+	f32 _C84;            // _C84
+	f32 _C88;            // _C88
+	u32 _C8C;            // _C8C
+	CStatus mJointFlags; // _C90, 4 head joint, 8 joint shown
+	CStatus mHideKinds;  // _C98, kinds queued to hide
+	u8 _CA0;             // _CA0
 	u8 _CA1[0xCA8 - 0xCA1];
 
 	XObjActorJenny();
@@ -194,10 +194,10 @@ public:
 	typedef void (XObjActorMama::*StateFunc)(u32 frames);
 
 	// _00-_C78 = XObjActor
-	StateFunc mState; // _C78
-	f32 _C84;         // _C84
-	u32 _C88;         // _C88
-	CStatus _C8C;     // _C8C, kinds queued to hide
+	StateFunc mState;   // _C78
+	f32 _C84;           // _C84
+	u32 _C88;           // _C88
+	CStatus mHideKinds; // _C8C, kinds queued to hide
 	u8 _C94[0xC98 - 0xC94];
 
 	XObjActorMama();
@@ -232,11 +232,11 @@ public:
 	typedef void (XObjActorPapa::*StateFunc)(u32 frames);
 
 	// _00-_C78 = XObjActor
-	StateFunc mState; // _C78
-	f32 _C84;         // _C84
-	u32 _C88;         // _C88
-	CStatus _C8C;     // _C8C, kinds queued to hide
-	u8 _C94;          // _C94
+	StateFunc mState;   // _C78
+	f32 _C84;           // _C84
+	u32 _C88;           // _C88
+	CStatus mHideKinds; // _C8C, kinds queued to hide
+	u8 _C94;            // _C94
 	u8 _C95[0xC98 - 0xC95];
 
 	XObjActorPapa();
@@ -270,13 +270,13 @@ public:
 	typedef void (XObjActorTao::*StateFunc)(u32 frames);
 
 	// _00-_C78 = XObjActor
-	StateFunc mState; // _C78
-	f32 _C84;         // _C84
-	u32 _C88;         // _C88
-	CStatus _C8C;     // _C8C, kinds queued to hide
-	Mtx _C94;         // _C94, where it holds what it carries
-	Mtx _CC4;         // _CC4, mount for the object loaded by command 5
-	s16 _CF4;         // _CF4
+	StateFunc mState;   // _C78
+	f32 _C84;           // _C84
+	u32 _C88;           // _C88
+	CStatus mHideKinds; // _C8C, kinds queued to hide
+	Mtx mCarryMtx;      // _C94, where it holds what it carries
+	Mtx mMountMtx;      // _CC4, mount for the object loaded by command 5
+	s16 _CF4;           // _CF4
 	u8 _CF6[0xCF8 - 0xCF6];
 	s32 _CF8;   // _CF8
 	XObj* _CFC; // _CFC
@@ -310,14 +310,14 @@ public:
 	typedef void (XObjActorDeca::*StateFunc)(u32 frames);
 
 	// _00-_C78 = XObjActor
-	StateFunc mState; // _C78
-	f32 _C84;         // _C84
-	f32 _C88;         // _C88
-	u32 _C8C;         // _C8C
-	CStatus _C90;     // _C90, 4 head joint
-	CStatus _C98;     // _C98
-	f32 _CA0;         // _CA0
-	f32 _CA4;         // _CA4
+	StateFunc mState;    // _C78
+	f32 _C84;            // _C84
+	f32 _C88;            // _C88
+	u32 _C8C;            // _C8C
+	CStatus mJointFlags; // _C90, 4 head joint
+	CStatus _C98;        // _C98
+	f32 _CA0;            // _CA0
+	f32 _CA4;            // _CA4
 
 	XObjActorDeca();
 
@@ -416,24 +416,24 @@ public:
 	CTpl _980;            // _980
 	f32 _B70;             // _B70
 	f32 _B74;             // _B74
-	f32 _B78;             // _B78, timer
-	f32 _B7C;             // _B7C, heading
-	s32 _B80;             // _B80, the kind's step
+	f32 mKindTimer;       // _B78, timer
+	f32 mHeading;         // _B7C, heading
+	s32 mKindStep;        // _B80, the kind's step
 	u32 _B84;             // _B84
-	s32 _B88;             // _B88, frame count
+	s32 mFrameCount;      // _B88, frame count
 	CStatus _B8C;         // _B8C
 	s32 mEventCommand;    // _B94, command from the event
 	s32 mEventArg1;       // _B98, its arg
 	s32 mEventArg2;       // _B9C, its second arg
 	s32 mEventArg3;       // _BA0, its third arg
 	u32 _BA4[7];          // _BA4
-	f32 _BC0;             // _BC0, window left
-	f32 _BC4;             // _BC4, window right
-	f32 _BC8;             // _BC8, angle around the owner
+	f32 mWindowLeft;      // _BC0, window left
+	f32 mWindowRight;     // _BC4, window right
+	f32 mOrbitAngle;      // _BC8, angle around the owner
 	f32 _BCC;             // _BCC
-	f32 _BD0;             // _BD0, height above the owner
+	f32 mOrbitHeight;     // _BD0, height above the owner
 	f32 _BD4;             // _BD4
-	f32 _BD8;             // _BD8, distance from the owner
+	f32 mOrbitDistance;   // _BD8, distance from the owner
 	CVec _BDC;            // _BDC
 	s32 _BEC;             // _BEC
 	f32 mTimerPanelAlpha; // _BF0

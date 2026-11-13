@@ -13,23 +13,23 @@ static inline u32 MaskedFlags(const CStatus& status, u32 mask)
 void XObjActorMama::Drop()
 {
 	s32 kind = -1;
-	if (MaskedFlags(_C8C, 4)) {
-		_C8C.mFlags &= ~4;
+	if (MaskedFlags(mHideKinds, 4)) {
+		mHideKinds.mFlags &= ~4;
 		kind = 0x7D;
-	} else if (MaskedFlags(_C8C, 1)) {
-		_C8C.mFlags &= ~1;
+	} else if (MaskedFlags(mHideKinds, 1)) {
+		mHideKinds.mFlags &= ~1;
 		kind = 0x40;
-	} else if (MaskedFlags(_C8C, 2)) {
-		_C8C.mFlags &= ~2;
+	} else if (MaskedFlags(mHideKinds, 2)) {
+		mHideKinds.mFlags &= ~2;
 		kind = 0x5B;
-	} else if (MaskedFlags(_C8C, 8)) {
-		_C8C.mFlags &= ~8;
+	} else if (MaskedFlags(mHideKinds, 8)) {
+		mHideKinds.mFlags &= ~8;
 		kind = 0x196;
-	} else if (MaskedFlags(_C8C, 0x10)) {
-		_C8C.mFlags &= ~0x10;
+	} else if (MaskedFlags(mHideKinds, 0x10)) {
+		mHideKinds.mFlags &= ~0x10;
 		kind = 0x1A1;
-	} else if (MaskedFlags(_C8C, 0x20)) {
-		_C8C.mFlags &= ~0x20;
+	} else if (MaskedFlags(mHideKinds, 0x20)) {
+		mHideKinds.mFlags &= ~0x20;
 		kind = 0x45B;
 	}
 	if (kind < 0) {

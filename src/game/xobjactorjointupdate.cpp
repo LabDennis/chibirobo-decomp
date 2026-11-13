@@ -22,7 +22,7 @@ static inline void SetTargetPitch(XObjActor* actor, const CVec& target, const CV
  */
 void XObjActor::UpdateAfterAnim(u32 frames)
 {
-	if (_998.mFlags & 0x80) {
+	if (mActorStatus.mFlags & 0x80) {
 		switch (mLookMode) {
 		case 0:
 			break;
@@ -48,11 +48,11 @@ void XObjActor::UpdateAfterAnim(u32 frames)
 		} else {
 			mHeadYaw = mLookAngle;
 			if ((u32)mLookMode == 0)
-				_998.mFlags &= ~0x80;
+				mActorStatus.mFlags &= ~0x80;
 		}
 		Push(GetHeadJoint(), 0x80, mHeadYaw);
 	}
-	if (_998.mFlags & 0x400) {
+	if (mActorStatus.mFlags & 0x400) {
 
 		CVec target;
 		target.x = gGame.GetPlayer()->mMoveTranslate.x;
@@ -65,7 +65,7 @@ void XObjActor::UpdateAfterAnim(u32 frames)
 			mHeadPitch = GetMinHeadPitch();
 		Push(GetHeadJoint(), 0x40, mHeadPitch);
 	}
-	if (_998.mFlags & 0x1000) {
+	if (mActorStatus.mFlags & 0x1000) {
 		for (u32 i = 0; i < 8; ++i) {
 			if (mParts[i].mJoint && mParts[i].mObj)
 				XObjJointPart::UpdateMatrix(*this, i);

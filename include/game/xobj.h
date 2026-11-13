@@ -73,11 +73,11 @@ public:
 	CoordInfo mCoord;            // _238
 	AttrInfo mAttr;              // _240
 	XObjFloor* mFloors;          // _24C
-	u32 _250[2];                 // _250, a bit per floor, one mask per group
+	u32 mFloorMasks[2];          // _250, a bit per floor, one mask per group
 	s32 mPoolIndex;              // _258, index in its pool
 	s32 _25C;                    // _25C
 	s32 _260;                    // _260
-	CVec _264;                   // _264, POS copies the position here
+	CVec mLastPos;               // _264, POS copies the position here
 	s32 mHitFloorIndex;          // _274
 	XObjEdge mEdges[32];         // _278, one per floor
 	f32 mFloorXZExtent;          // _6F8
@@ -96,7 +96,7 @@ public:
 	f32 mLimitNegX;              // _8A4
 	f32 mLimitPosZ;              // _8A8
 	f32 mLimitNegZ;              // _8AC
-	u32 _8B0;                    // _8B0, clamp flags from the event call -11, 0x80000000 while it's off
+	u32 mMarkerOverride;         // _8B0, clamp flags from the event call -11, 0x80000000 while it's off
 	XObjColorStep mColorStep[2]; // _8B4
 	CJAnim mAnim;                // _8FC, anims from the object's second archive, ids from 1000 up
 
@@ -155,7 +155,7 @@ public:
 	virtual void OnMicrophonePeak(s32 unused, s32 volume);               // _144, the microphone heard a sound louder than 1000
 
 	// todo: cleanup
-	s32 GetKind() const { return mAttr._04 != NULL ? mAttr._04->_00 : -1; }
+	s32 GetKind() const { return mAttr.mPlacement != NULL ? mAttr.mPlacement->mObjectId : -1; }
 
 	// which anim archive an anim id is in, 0 for the model's own
 	s32 GetAnimSet(s32 id) const
@@ -167,8 +167,8 @@ public:
 		return ret ? id / 1000 : 0;
 	}
 
-	BOOL IsFloorOn(int i) const { return _250[0] & (1 << i); }
-	void ClearFloor(int i) { _250[0] &= ~(1 << i); }
+	BOOL IsFloorOn(int i) const { return mFloorMasks[0] & (1 << i); }
+	void ClearFloor(int i) { mFloorMasks[0] &= ~(1 << i); }
 
 	BOOL HasQueuedAnim() const
 	{
@@ -202,14 +202,14 @@ public:
 	static s16 GetDataCategory(const UnkObjData* data)
 	{
 		if (data != NULL) {
-			return data->_14;
+			return data->mCategory;
 		}
 		return 0;
 	}
 	static s16 GetDataItem(const UnkObjData* data)
 	{
 		if (data != NULL) {
-			return data->_16;
+			return data->mItemIndex;
 		}
 		return 0;
 	}

@@ -151,7 +151,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj hand;
 	XObjChr* player = gGame.GetPlayer();
-	if (_C8C.mFlags & 0x3f) {
+	if (mHideKinds.mFlags & 0x3f) {
 		CVec position;
 		CJObj other;
 		s32 first[6] = { 0, 4, 2, 0, 0, 0 };
@@ -160,17 +160,17 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 		other.Attach(FindJointByPath(mJObj, second, 6));
 		position = hand.GetPos();
 		s32 kind = -1;
-		if (_C8C.Check(1))
+		if (mHideKinds.Check(1))
 			kind = 0x40;
-		else if (_C8C.Check(2))
+		else if (mHideKinds.Check(2))
 			kind = 0x5b;
-		else if (_C8C.Check(4))
+		else if (mHideKinds.Check(4))
 			kind = 0x7d;
-		else if (_C8C.Check(8))
+		else if (mHideKinds.Check(8))
 			kind = 0x196;
-		else if (_C8C.Check(16))
+		else if (mHideKinds.Check(16))
 			kind = 0x1a1;
-		else if (_C8C.Check(32))
+		else if (mHideKinds.Check(32))
 			kind = 0x45b;
 		Mtx mount, translation, rotation, result;
 		if (kind >= 0)
@@ -271,7 +271,7 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 				break;
 			}
 	}
-	if ((_998.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
+	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
 		s32 hold[6] = { 0, 4, 2, 0, 0, 0 };
 		hand.Attach(FindJointByPath(mJObj, hold, 6));
 		CVec pos = hand.GetPos();

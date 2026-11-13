@@ -187,7 +187,7 @@ static inline void StunKind9Actor(XObjActor3* actor)
 	actor->SetAnim(11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 	PlayGameSound(&gGame.mSound, 0xb0004, 255);
 	actor->_B8C.mFlags |= 0x200;
-	actor->_B80 = 20;
+	actor->mKindStep = 20;
 }
 
 static inline BOOL Kind9AnimFinished(XObjActor3* actor, u32 frames)
@@ -202,76 +202,77 @@ void XObjActor3::Kind9(u32 frames)
 	XObjChr* player = gGame.GetPlayer();
 	CJObj joint;
 	Vec pos = player->mMoveTranslate;
-	if ((_B8C.mFlags & 0x20) && _B80 < 5 && _B80 >= 1 && (s32)--_BA4[6] < 0)
+	if ((_B8C.mFlags & 0x20) && mKindStep < 5 && mKindStep >= 1 && (s32)--_BA4[6] < 0)
 		_B8C.mFlags &= ~0x20;
-	if (_B80 != 0 && _B80 < 20 && Abs(pos.x - mMoveTranslate.x) <= 10 && pos.y >= 4 + mMoveTranslate.y && pos.y <= 8 + mMoveTranslate.y)
+	if (mKindStep != 0 && mKindStep < 20 && Abs(pos.x - mMoveTranslate.x) <= 10 && pos.y >= 4 + mMoveTranslate.y
+	    && pos.y <= 8 + mMoveTranslate.y)
 		StunKind9Actor(this);
-	switch (_B80) {
+	switch (mKindStep) {
 	case 0:
 		if (!(_B8C.mFlags & 4)) {
-			_B88 = 30;
-			++_B80;
+			mFrameCount = 30;
+			++mKindStep;
 		}
 		break;
 	case 1:
 		SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-		if (--_B88 < 0) {
-			_B88 = rand() % 120 + 120;
-			_B7C = rand() % 2 == 0 ? -HALF_PI : HALF_PI;
-			_B80 = 2;
+		if (--mFrameCount < 0) {
+			mFrameCount = rand() % 120 + 120;
+			mHeading    = rand() % 2 == 0 ? -HALF_PI : HALF_PI;
+			mKindStep   = 2;
 		}
 		if (IsPlayerWithinActorReach(this))
-			_B80 = 5;
+			mKindStep = 5;
 		break;
 	case 2:
 		SetAnim(3, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-		if (_B7C == -HALF_PI)
+		if (mHeading == -HALF_PI)
 			mMoveTranslate.x -= 0.1f * frames;
 		else
 			mMoveTranslate.x += 0.1f * frames;
-		if (mMoveTranslate.x < _BC0) {
-			mMoveTranslate.x = _BC0;
-			_B70             = _B7C;
-			_B80             = 3;
+		if (mMoveTranslate.x < mWindowLeft) {
+			mMoveTranslate.x = mWindowLeft;
+			_B70             = mHeading;
+			mKindStep        = 3;
 			SetAnim(8, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-		} else if (mMoveTranslate.x > _BC4) {
-			mMoveTranslate.x = _BC4;
-			_B70             = _B7C;
-			_B80             = 3;
+		} else if (mMoveTranslate.x > mWindowRight) {
+			mMoveTranslate.x = mWindowRight;
+			_B70             = mHeading;
+			mKindStep        = 3;
 			SetAnim(8, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 		}
-		if (--_B88 < 0 && (_B8C.mFlags & 0x20)) {
-			_B80 = 4;
-			_B88 = 90;
+		if (--mFrameCount < 0 && (_B8C.mFlags & 0x20)) {
+			mKindStep   = 4;
+			mFrameCount = 90;
 			StartKind9Effect(this, 0x28, 3);
 		}
 		if (IsPlayerWithinActorReach(this))
-			_B80 = 5;
+			mKindStep = 5;
 		break;
 	case 3:
 		if (_B70 == HALF_PI) {
-			_B7C -= 0.04f * frames;
-			if (_B7C <= -HALF_PI) {
-				_B7C = -HALF_PI;
-				_B80 = 2;
+			mHeading -= 0.04f * frames;
+			if (mHeading <= -HALF_PI) {
+				mHeading  = -HALF_PI;
+				mKindStep = 2;
 			}
 		} else {
-			_B7C += 0.04f * frames;
-			if (_B7C >= HALF_PI) {
-				_B7C = HALF_PI;
-				_B80 = 2;
+			mHeading += 0.04f * frames;
+			if (mHeading >= HALF_PI) {
+				mHeading  = HALF_PI;
+				mKindStep = 2;
 			}
 		}
 		break;
 	case 4:
 		SetAnim(2, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-		if (--_B88 < 0) {
-			_B88 = rand() % 120 + 30;
-			_B80 = rand() % 2 + 2;
+		if (--mFrameCount < 0) {
+			mFrameCount = rand() % 120 + 30;
+			mKindStep   = rand() % 2 + 2;
 			gGame.mParticle.Kill((HSD_Generator*)_1DC0[0]);
 		}
 		if (IsPlayerWithinActorReach(this)) {
-			_B80 = 5;
+			mKindStep = 5;
 			gGame.mParticle.Kill((HSD_Generator*)_1DC0[0]);
 		}
 		break;
@@ -283,11 +284,11 @@ void XObjActor3::Kind9(u32 frames)
 #endif
 		_B8C.mFlags |= 0x20;
 		StartKind9Effect(this, 0x26, 3);
-		_B88 = 15;
+		mFrameCount = 15;
 		SetAnim(5, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-		_B7C = mMoveTranslate.x < pos.x ? HALF_PI : -HALF_PI;
+		mHeading = mMoveTranslate.x < pos.x ? HALF_PI : -HALF_PI;
 		PlayGameSound(&gGame.mSound, 0xb0005, 255);
-		_B80 = 6;
+		mKindStep = 6;
 		break;
 	case 6:
 		if (Kind9AnimFinished(this, frames)) {
@@ -296,7 +297,7 @@ void XObjActor3::Kind9(u32 frames)
 			joint.Attach(GetJointByPath(mJObj, path, 4));
 			Vec p = joint.GetPos();
 			SetAnim(7, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			if (_B7C == -HALF_PI)
+			if (mHeading == -HALF_PI)
 				p.x += 2;
 			else {
 				p.x -= 2;
@@ -304,31 +305,31 @@ void XObjActor3::Kind9(u32 frames)
 			}
 			Vec scale = { 1, 1, 1 };
 			_1DC0[0]  = (s32)gGame.mParticle.CreateSRT(0x84, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
-			_B80      = 7;
+			mKindStep = 7;
 		}
 		break;
 	case 7:
 		if (Kind9AnimFinished(this, frames)) {
 			SetAnim(4, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 			gGame.mParticle.Kill((HSD_Generator*)_1DC0[0]);
-			_B88 = 2;
-			_B80 = 8;
+			mFrameCount = 2;
+			mKindStep   = 8;
 		}
 		break;
 	case 8:
-		if (_B7C == -HALF_PI)
+		if (mHeading == -HALF_PI)
 			mMoveTranslate.x -= 0.6f * frames;
 		else
 			mMoveTranslate.x += 0.6f * frames;
-		if (mMoveTranslate.x < _BC0) {
-			mMoveTranslate.x = _BC0;
-			_B80             = 4;
-			_B88             = 90;
+		if (mMoveTranslate.x < mWindowLeft) {
+			mMoveTranslate.x = mWindowLeft;
+			mKindStep        = 4;
+			mFrameCount      = 90;
 			StartKind9Effect(this, 0x28, 3);
-		} else if (mMoveTranslate.x > _BC4) {
-			mMoveTranslate.x = _BC4;
-			_B80             = 4;
-			_B88             = 90;
+		} else if (mMoveTranslate.x > mWindowRight) {
+			mMoveTranslate.x = mWindowRight;
+			mKindStep        = 4;
+			mFrameCount      = 90;
 			StartKind9Effect(this, 0x28, 3);
 		} else {
 			Vec projected = { pos.x, pos.y, mMoveTranslate.z };
@@ -336,9 +337,9 @@ void XObjActor3::Kind9(u32 frames)
 			if (sqrtf(dz * dz + (dx * dx + dy * dy)) < 32 && !IsPlayerAway(gGame.GetPlayer(), gGame.GetPlayer()->mMoveTranslate)
 			    && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 				SetAnim(9, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-				_B80 = 9;
-			} else if (--_B88 < 0) {
-				_B88 = 2;
+				mKindStep = 9;
+			} else if (--mFrameCount < 0) {
+				mFrameCount = 2;
 				EmitKind9Dust(this);
 			}
 		}
@@ -346,25 +347,25 @@ void XObjActor3::Kind9(u32 frames)
 	case 9:
 		if (Kind9AnimFinished(this, frames)) {
 			SetAnim(10, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			_B80 = 10;
+			mKindStep = 10;
 			PlayGameSound(&gGame.mSound, 0xb0002, 255);
 		}
 		break;
 	case 10: {
 		f32 radius = GetPlayerCollisionRadius(gGame.GetPlayer());
 		f32 offset;
-		if (_B7C == -HALF_PI) {
+		if (mHeading == -HALF_PI) {
 			mMoveTranslate.x -= 1.4f * (0.6f * frames);
 			offset = radius < 2 ? 1.5f : 5.5f;
 		} else {
 			mMoveTranslate.x += 1.4f * (0.6f * frames);
 			offset = radius < 2 ? -1.5f : -5.5f;
 		}
-		if (mMoveTranslate.x < _BC0) {
-			mMoveTranslate.x = _BC0;
+		if (mMoveTranslate.x < mWindowLeft) {
+			mMoveTranslate.x = mWindowLeft;
 			StunKind9Actor(this);
-		} else if (mMoveTranslate.x > _BC4) {
-			mMoveTranslate.x = _BC4;
+		} else if (mMoveTranslate.x > mWindowRight) {
+			mMoveTranslate.x = mWindowRight;
 			StunKind9Actor(this);
 		} else {
 			Vec projected = { pos.x + offset, pos.y, mMoveTranslate.z };
@@ -382,7 +383,7 @@ void XObjActor3::Kind9(u32 frames)
 						PlayGameSound(&gGame.mSound, 0xb0004, 255);
 						_B8C.mFlags |= 0x200;
 					}
-					_B80 = 20;
+					mKindStep = 20;
 				} else if (IsUsingMug(&gGame.GetPlayer()->mLift))
 					StunKind9Actor(this);
 			}
@@ -390,19 +391,19 @@ void XObjActor3::Kind9(u32 frames)
 		break;
 	}
 	case 20:
-		if (--_B88 < 0) {
-			_B88 = 2;
+		if (--mFrameCount < 0) {
+			mFrameCount = 2;
 			EmitKind9Dust(this);
 		}
 		if (Kind9AnimFinished(this, frames)) {
 			mStatus.mFlags |= 0x100000;
 			SetAnim(13, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 #ifdef VERSION_PAL
-			_B88 = (3 * gVideoFramesPerSecond) / frames;
+			mFrameCount = (3 * gVideoFramesPerSecond) / frames;
 #else
-			_B88 = 180 / frames;
+			mFrameCount = 180 / frames;
 #endif
-			_B80 = 21;
+			mKindStep = 21;
 			if (_B8C.mFlags & 0x80)
 				_B8C.mFlags &= ~0x80;
 			if (_B8C.mFlags & 0x200) {
@@ -415,10 +416,10 @@ void XObjActor3::Kind9(u32 frames)
 		if (gGame.mEvt.mData.mScript)
 			break;
 		f32 distance = Abs(pos.x - mMoveTranslate.x);
-		if (--_B88 < 0 && distance >= 12) {
-			_B88 = 0;
+		if (--mFrameCount < 0 && distance >= 12) {
+			mFrameCount = 0;
 			SetAnim(12, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			_B80 = 22;
+			mKindStep = 22;
 			gGame.mParticle.Kill((HSD_Generator*)_1DC0[0]);
 			mStatus.mFlags &= ~0x100000ULL;
 		}
@@ -427,18 +428,18 @@ void XObjActor3::Kind9(u32 frames)
 	case 22:
 		if (Kind9AnimFinished(this, frames)) {
 			SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			_B88 = 0;
-			_B80 = 1;
+			mFrameCount = 0;
+			mKindStep   = 1;
 		}
 		break;
 	case 100:
-		if (_B88 & 1)
+		if (mFrameCount & 1)
 			mStatus.mFlags |= 0x10000;
 		else
 			mStatus.mFlags &= ~0x10000ULL;
-		if (--_B88 < 0) {
+		if (--mFrameCount < 0) {
 			mStatus.mFlags &= ~0x10000ULL;
-			++_B80;
+			++mKindStep;
 		}
 		break;
 	}
@@ -453,10 +454,10 @@ BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
 	if (XObj::LoadFromPlacement(info)) {
 		bool ready = false;
 		_B74       = 0.0f;
-		_B78       = 0.0f;
+		mKindTimer = 0.0f;
 
-		_B80        = 0;
-		_B88        = 0;
+		mKindStep   = 0;
+		mFrameCount = 0;
 		_B8C.mFlags = 0;
 		_B8C.mFlags |= 4;
 		mEventCommand = 0;
@@ -470,12 +471,12 @@ BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
 		_BA4[4]       = 0;
 		_BA4[5]       = 0;
 		_BA4[6]       = 0;
-		_BC0          = 0.0f;
-		_BC4          = 0.0f;
-		_BC8          = 0.0f;
+		mWindowLeft   = 0.0f;
+		mWindowRight  = 0.0f;
+		mOrbitAngle   = 0.0f;
 		Vec zero      = { 0.0f, 0.0f, 0.0f };
 		_BCC          = zero.x;
-		_BD0          = zero.y;
+		mOrbitHeight  = zero.y;
 		_BD4          = zero.z;
 
 		mMoveTranslate.x = PlacementPosition(mCoord, gActor3PlacementPosition).x;
@@ -484,7 +485,7 @@ BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
 		mMoveRotate.x    = ActorPlacementRotation(this).x;
 		mMoveRotate.y    = ActorPlacementRotation(this).y;
 		mMoveRotate.z    = ActorPlacementRotation(this).z;
-		_B7C             = ActorPlacementRotation(this).y;
+		mHeading         = ActorPlacementRotation(this).y;
 		for (int i = 0; i < 8; ++i)
 			mParts[i].Clear();
 		if (mPoolIndex == 0) {
@@ -547,10 +548,10 @@ extern "C" void ResetActor3Fields(XObjActor3* actor)
 {
 	actor->_B70        = 0.0f;
 	actor->_B74        = 0.0f;
-	actor->_B78        = 0.0f;
-	actor->_B7C        = 0.0f;
-	actor->_B80        = 0;
-	actor->_B88        = 0;
+	actor->mKindTimer  = 0.0f;
+	actor->mHeading    = 0.0f;
+	actor->mKindStep   = 0;
+	actor->mFrameCount = 0;
 	actor->_B8C.mFlags = 0;
 	actor->_B8C.mFlags |= 4;
 	actor->mEventCommand = 0;
@@ -564,12 +565,12 @@ extern "C" void ResetActor3Fields(XObjActor3* actor)
 	actor->_BA4[4]       = 0;
 	actor->_BA4[5]       = 0;
 	actor->_BA4[6]       = 0;
-	actor->_BC0          = 0.0f;
-	actor->_BC4          = 0.0f;
-	actor->_BC8          = 0.0f;
+	actor->mWindowLeft   = 0.0f;
+	actor->mWindowRight  = 0.0f;
+	actor->mOrbitAngle   = 0.0f;
 	Vec zero             = { 0.0f, 0.0f, 0.0f };
 	actor->_BCC          = zero.x;
-	actor->_BD0          = zero.y;
+	actor->mOrbitHeight  = zero.y;
 	actor->_BD4          = zero.z;
 	for (int i = 0; i < 8; i++) {
 		actor->mParts[i].Clear();
@@ -689,8 +690,8 @@ void XObjActor3::Kind3(u32)
  */
 void XObjActor3::Kind4(u32 frames)
 {
-	_B88++;
-	f32 s     = sin(0.017453292f * ((_B88 * 6) % 360));
+	mFrameCount++;
+	f32 s     = sin(0.017453292f * ((mFrameCount * 6) % 360));
 	f32 swing = 0.25f;
 	if (GetKind() == 0x437) {
 		mMoveRotate.x = s * swing;
@@ -730,8 +731,8 @@ void XObjActor3::Kind6(u32 frames)
 				count++;
 			}
 		}
-		gGame.mEvt._10 = count;
-		mEventCommand  = 0;
+		gGame.mEvt.mSelectResult = count;
+		mEventCommand            = 0;
 		break;
 	}
 }
@@ -819,7 +820,7 @@ void XObjActor3::Kind10(u32 frames)
 {
 	XObjChr* player = gGame.GetPlayer();
 	Vec pos         = player->mMoveTranslate;
-	switch (_B80) {
+	switch (mKindStep) {
 	case 0:
 		if (_B8C.mFlags & 4) {
 			break;
@@ -829,13 +830,13 @@ void XObjActor3::Kind10(u32 frames)
 		mMoveTranslate.z = pos.z - (rand() % 3600) / 100.0f + 18.0f;
 		mStatus.mFlags |= 0x10000;
 		mStatus.mFlags |= 4;
-		_B70 = 4.0f;
-		_B88 = rand() % 30 + 30;
-		_B80++;
+		_B70        = 4.0f;
+		mFrameCount = rand() % 30 + 30;
+		mKindStep++;
 		break;
 	case 1:
-		if (--_B88 < 0) {
-			_B80++;
+		if (--mFrameCount < 0) {
+			mKindStep++;
 		}
 		break;
 	case 2:
@@ -845,8 +846,8 @@ void XObjActor3::Kind10(u32 frames)
 		f32 dist = sqrtf(dx * dx + dy * dy + dz * dz);
 		if (dist < 8.0f && !IsPlayerFlashingFromHit(player) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 			player->OnHitFromPosition(pos, 10.0f);
-			_B88 = 30;
-			_B80 = 3;
+			mFrameCount = 30;
+			mKindStep   = 3;
 			break;
 		}
 		if (_B70 >= -2.3f) {
@@ -857,21 +858,21 @@ void XObjActor3::Kind10(u32 frames)
 		mMoveTranslate.y += _B70;
 		if (mMoveTranslate.y < 0.0f) {
 			mMoveTranslate.y = 0.0f;
-			_B88             = 30;
-			_B80             = 3;
+			mFrameCount      = 30;
+			mKindStep        = 3;
 		}
 		break;
 	case 3:
-		if ((_B88 & 3) < 2) {
+		if ((mFrameCount & 3) < 2) {
 			mStatus.mFlags |= 0x10000;
 		} else {
 			mStatus.mFlags &= ~0x10000ULL;
 		}
-		if (--_B88 < 0) {
+		if (--mFrameCount < 0) {
 			mStatus.mFlags &= ~0x10000ULL;
 			mStatus.mFlags &= ~4ULL;
 			_B8C.mFlags |= 4;
-			_B80 = 0;
+			mKindStep = 0;
 		}
 		break;
 	}
@@ -891,11 +892,11 @@ extern "C" BOOL IsPlayerWithinActorReach(XObjActor3* actor)
 			return FALSE;
 		}
 		if (pos.y >= actor->mMoveTranslate.y - 16.0f && pos.y <= actor->mMoveTranslate.y + 16.0f) {
-			if (actor->_B7C == 1.5707964f) {
-				if (actor->mMoveTranslate.x < pos.x && pos.x < actor->_BC4) {
+			if (actor->mHeading == 1.5707964f) {
+				if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mWindowRight) {
 					return TRUE;
 				}
-				if (actor->mMoveTranslate.x > pos.x && pos.x > actor->_BC0) {
+				if (actor->mMoveTranslate.x > pos.x && pos.x > actor->mWindowLeft) {
 					if (IsLongReachAnim(player->mAnimId)) {
 						if (actor->mMoveTranslate.x > pos.x && pos.x > actor->mMoveTranslate.x - 32.0f) {
 							return TRUE;
@@ -907,10 +908,10 @@ extern "C" BOOL IsPlayerWithinActorReach(XObjActor3* actor)
 					}
 				}
 			} else {
-				if (actor->mMoveTranslate.x > pos.x && pos.x > actor->_BC0) {
+				if (actor->mMoveTranslate.x > pos.x && pos.x > actor->mWindowLeft) {
 					return TRUE;
 				}
-				if (actor->mMoveTranslate.x < pos.x && pos.x < actor->_BC4) {
+				if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mWindowRight) {
 					if (IsLongReachAnim(player->mAnimId)) {
 						if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mMoveTranslate.x + 32.0f) {
 							return TRUE;
@@ -930,8 +931,8 @@ extern "C" BOOL IsPlayerWithinActorReach(XObjActor3* actor)
 static inline void AdvanceActorAlongHeading(XObjActor3* actor, u32 frames, const f32& speed)
 {
 	CVec velocity;
-	velocity.x              = speed * (f32)sin(actor->_B7C);
-	velocity.z              = speed * (f32)cos(actor->_B7C);
+	velocity.x              = speed * (f32)sin(actor->mHeading);
+	velocity.z              = speed * (f32)cos(actor->mHeading);
 	velocity.y              = 0;
 	const CVec& pos         = actor->mMoveTranslate + velocity * (f32)frames;
 	actor->mMoveTranslate.x = pos.x;
@@ -944,13 +945,13 @@ static inline void AdvanceActorAlongHeading(XObjActor3* actor, u32 frames, const
 // Each impact has its own entry in the original action table.
 static inline void BounceBossPart(XObjActor3* part, f32 speed)
 {
-	part->_B78 = speed;
-	++part->_B88;
+	part->mKindTimer = speed;
+	++part->mFrameCount;
 }
 void XObjActor3::Kind11(u32 frames)
 {
 	CPad pad(0);
-	switch (_B80) {
+	switch (mKindStep) {
 	case 0: {
 		if (_B8C.mFlags & 4)
 			break;
@@ -966,63 +967,63 @@ void XObjActor3::Kind11(u32 frames)
 		}
 		switch (GetKind()) {
 		case 0x3cd:
-			_BD8 = 16;
-			_BC8 = -PI / 4;
-			_BD0 = 10;
+			mOrbitDistance = 16;
+			mOrbitAngle    = -PI / 4;
+			mOrbitHeight   = 10;
 			break;
 		case 0x3ce:
-			_BD8 = 16;
-			_BC8 = PI / 4;
-			_BD0 = 10;
+			mOrbitDistance = 16;
+			mOrbitAngle    = PI / 4;
+			mOrbitHeight   = 10;
 			break;
 		case 0x3cf:
-			_BD8 = 10;
-			_BC8 = PI;
-			_BD0 = 16;
+			mOrbitDistance = 10;
+			mOrbitAngle    = PI;
+			mOrbitHeight   = 16;
 			break;
 		case 0x3d0:
-			_BD8 = 0;
-			_BC8 = HALF_PI;
-			_BD0 = 30;
+			mOrbitDistance = 0;
+			mOrbitAngle    = HALF_PI;
+			mOrbitHeight   = 30;
 			break;
 		case 0x3d1:
-			_BD8 = 30;
-			_BC8 = PI;
-			_BD0 = 10;
+			mOrbitDistance = 30;
+			mOrbitAngle    = PI;
+			mOrbitHeight   = 10;
 			break;
 		case 0x3d2:
-			_BD8 = 40;
-			_BC8 = 3 * HALF_PI;
-			_BD0 = 24;
+			mOrbitDistance = 40;
+			mOrbitAngle    = 3 * HALF_PI;
+			mOrbitHeight   = 24;
 			break;
 		case 0x3d3:
-			_BD8 = 30;
-			_BC8 = 3 * PI / 4;
-			_BD0 = 14;
+			mOrbitDistance = 30;
+			mOrbitAngle    = 3 * PI / 4;
+			mOrbitHeight   = 14;
 			break;
 		case 0x3d4:
-			_BD8 = 20;
-			_BC8 = 0;
-			_BD0 = 10;
+			mOrbitDistance = 20;
+			mOrbitAngle    = 0;
+			mOrbitHeight   = 10;
 			break;
 		case 0x3d5:
-			_BD8 = 16;
-			_BC8 = 3 * HALF_PI;
-			_BD0 = 10;
+			mOrbitDistance = 16;
+			mOrbitAngle    = 3 * HALF_PI;
+			mOrbitHeight   = 10;
 			break;
 		default:
-			_BD8 = 32;
-			_BC8 = DEG2RAD * (rand() % 360);
-			_BD0 = (48.f - (rand() % 1800) / 100) * .5f;
+			mOrbitDistance = 32;
+			mOrbitAngle    = DEG2RAD * (rand() % 360);
+			mOrbitHeight   = (48.f - (rand() % 1800) / 100) * .5f;
 			break;
 		}
-		_BCC = _BD8 * (f32)sin(_BC8);
-		_BD4 = _BD8 * (f32)cos(_BC8);
-		_B7C = atan2(origin.x - mMoveTranslate.x, origin.z - mMoveTranslate.z);
+		_BCC     = mOrbitDistance * (f32)sin(mOrbitAngle);
+		_BD4     = mOrbitDistance * (f32)cos(mOrbitAngle);
+		mHeading = atan2(origin.x - mMoveTranslate.x, origin.z - mMoveTranslate.z);
 		mStatus.mFlags |= 0x100000;
 		mStatus.mFlags |= 4;
-		_B88 = 0;
-		++_B80;
+		mFrameCount = 0;
+		++mKindStep;
 		break;
 	}
 	case 1: {
@@ -1041,7 +1042,7 @@ void XObjActor3::Kind11(u32 frames)
 			scale.z = GetStagePlacementScale(this).z / scale.z;
 			PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
 			PSMTXConcat(mount, scaleMtx, result);
-			PSMTXTrans(translation, _BCC, _BD0, _BD4);
+			PSMTXTrans(translation, _BCC, mOrbitHeight, _BD4);
 			PSMTXConcat(result, translation, result);
 			HSD_JObj* jobj = mJObj;
 			MtxPtr matrix  = result;
@@ -1057,8 +1058,8 @@ void XObjActor3::Kind11(u32 frames)
 	}
 	case 2: {
 		SetColor(1, 0, 0, 0, 0);
-		_B78 -= .09f * frames;
-		mMoveTranslate.y += _B78;
+		mKindTimer -= .09f * frames;
+		mMoveTranslate.y += mKindTimer;
 		f32 floor = 0;
 		switch (GetKind()) {
 		case 0x3d2:
@@ -1070,10 +1071,10 @@ void XObjActor3::Kind11(u32 frames)
 		}
 		if (mMoveTranslate.y <= floor) {
 			mMoveTranslate.y = floor;
-			switch (_B88) {
+			switch (mFrameCount) {
 			case 0: {
-				++_B88;
-				_B78 = 8;
+				++mFrameCount;
+				mKindTimer = 8;
 				PlayGameSound(&gGame.mSound, 0x160020, 255);
 				Vec p;
 				p.x       = mMoveTranslate.x;
@@ -1084,8 +1085,8 @@ void XObjActor3::Kind11(u32 frames)
 				break;
 			}
 			case 1:
-				_B78 = 7;
-				++_B88;
+				mKindTimer = 7;
+				++mFrameCount;
 				PlayGameSound(&gGame.mSound, 0x160020, 255);
 				gGame.mParticle.Kill((HSD_Generator*)_1DC0[0]);
 				break;
@@ -1111,29 +1112,29 @@ void XObjActor3::Kind11(u32 frames)
 				BounceBossPart(this, 4);
 				break;
 			case 9:
-				_B78 = 0;
-				_B80 = 3;
-				_B88 = 30;
+				mKindTimer  = 0;
+				mKindStep   = 3;
+				mFrameCount = 30;
 				break;
 			}
 		}
-		if (_B78 >= -3.4499998f)
-			_B78 -= .36f * frames;
+		if (mKindTimer >= -3.4499998f)
+			mKindTimer -= .36f * frames;
 		else
-			_B78 = -3.4499998f;
+			mKindTimer = -3.4499998f;
 		AdvanceActorAlongHeading(this, frames, .6f);
 		break;
 	}
 	case 3:
-		if ((_B88 & 3) < 2)
+		if ((mFrameCount & 3) < 2)
 			mStatus.mFlags |= 0x10000;
 		else
 			mStatus.mFlags &= ~0x10000ULL;
-		if (--_B88 < 0) {
+		if (--mFrameCount < 0) {
 			mStatus.mFlags &= ~0x10000ULL;
 			_B8C.mFlags |= 4;
 			mStatus.mFlags &= ~4ULL;
-			_B80 = 0;
+			mKindStep = 0;
 		}
 		break;
 	case 5: {
@@ -1146,11 +1147,11 @@ void XObjActor3::Kind11(u32 frames)
 			HSD_JObjGetRotationX(boss->mJObj);
 			HSD_JObjGetRotationY(boss->mJObj);
 			HSD_JObjGetRotationZ(boss->mJObj);
-			_B7C = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
+			mHeading = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
 		}
 		f32 dx = origin.x - mMoveTranslate.x, dy = origin.y - mMoveTranslate.y, dz = origin.z - mMoveTranslate.z;
 		if (sqrtf(dx * dx + dy * dy + dz * dz) < 16)
-			_B80 = 6;
+			mKindStep = 6;
 		AdvanceActorAlongHeading(this, frames, .6f);
 		break;
 	}
@@ -1165,15 +1166,15 @@ void XObjActor3::Kind11(u32 frames)
 			HSD_JObjGetRotationY(boss->mJObj);
 			HSD_JObjGetRotationZ(boss->mJObj);
 		}
-		_BC8 = DEG2RAD * (rand() % 360);
-		_BCC = 32 * (f32)sin(_BC8);
-		_BD0 = (48.f - (rand() % 1800) / 100) * .5f;
-		_BD4 = 32 * (f32)cos(_BC8);
-		_B7C = atan2(origin.x - mMoveTranslate.x, origin.z - mMoveTranslate.z);
+		mOrbitAngle  = DEG2RAD * (rand() % 360);
+		_BCC         = 32 * (f32)sin(mOrbitAngle);
+		mOrbitHeight = (48.f - (rand() % 1800) / 100) * .5f;
+		_BD4         = 32 * (f32)cos(mOrbitAngle);
+		mHeading     = atan2(origin.x - mMoveTranslate.x, origin.z - mMoveTranslate.z);
 		mStatus.mFlags |= 0x100000;
-		_B80 = 1;
+		mKindStep = 1;
 		if (pad.mPad->mTrigger & 0x10) {
-			_B80 = 5;
+			mKindStep = 5;
 			mStatus.mFlags |= 0x10000;
 			_B8C.mFlags &= ~4;
 		}
@@ -1200,7 +1201,7 @@ extern "C" void EnableSpiderBossPartByIndex(s32 n)
 		obj = (XObjActor3*)(data + offset);
 		if (XObj::GetDataItem(obj->mAttr._00) == 0xB) {
 			if (count == n && (obj->mStatus.mFlags & 1)) {
-				if (obj->_B80 == 0) {
+				if (obj->mKindStep == 0) {
 					obj->_B8C.mFlags &= ~4;
 				}
 				return;
@@ -1243,22 +1244,22 @@ extern "C" void LaunchSpiderBossPartByIndex(s32 n)
  */
 void XObjActor3::Kind12(u32 frames)
 {
-	switch (_B80) {
+	switch (mKindStep) {
 	case 0:
 		if (!(_B8C.mFlags & 4)) {
-			_BC8 = 0.0f;
-			_BCC = 0.0f;
-			_BD0 = 0.0f;
-			_BD4 = 0.0f;
+			mOrbitAngle  = 0.0f;
+			_BCC         = 0.0f;
+			mOrbitHeight = 0.0f;
+			_BD4         = 0.0f;
 			mStatus.mFlags |= 0x100000;
 			mStatus.mFlags |= 4;
-			++_B80;
+			++mKindStep;
 		}
 		break;
 	case 1: {
 		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
-			_B7C = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
+			mHeading = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
 			SetScale(1.0f, 1.0f, 1.0f, 0);
 			CJObj joint;
 			s32 path[] = { 0 };
@@ -1293,20 +1294,20 @@ void XObjActor3::Kind12(u32 frames)
 			mStatus.mFlags &= ~0x10000ULL;
 			_B8C.mFlags |= 4;
 			PlayGameSound(&gGame.mSound, 0x160020, 0xFF);
-			_B80 = 0;
+			mKindStep = 0;
 		}
 		break;
 	}
 	case 3:
-		if ((_B88 & 3) < 2)
+		if ((mFrameCount & 3) < 2)
 			mStatus.mFlags |= 0x10000;
 		else
 			mStatus.mFlags &= ~0x10000ULL;
-		if (--_B88 < 0) {
+		if (--mFrameCount < 0) {
 			mStatus.mFlags &= ~0x10000ULL;
 			_B8C.mFlags |= 4;
 			mStatus.mFlags &= ~4ULL;
-			_B80 = 0;
+			mKindStep = 0;
 			Release();
 		}
 		break;
@@ -1321,22 +1322,22 @@ void XObjActor3::Kind12(u32 frames)
 extern "C" void LaunchSpiderBossPart(XObjActor3* actor)
 {
 	XObj* holder = gGame.mXObjs.mPools[19].Get(0);
-	if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && actor->_B80 == 1) {
-		f32 s          = sin(actor->_BC8 + HSD_JObjGetRotationY(holder->mJObj));
-		f32 x          = actor->_BD8 * s;
-		f32 y          = actor->_BD0;
-		f32 c          = cos(actor->_BC8 + HSD_JObjGetRotationY(holder->mJObj));
-		f32 z          = actor->_BD8 * c;
-		actor->_B80    = 2;
-		actor->_B78    = 6.0f;
-		HSD_JObj* jobj = actor->mJObj;
+	if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && actor->mKindStep == 1) {
+		f32 s             = sin(actor->mOrbitAngle + HSD_JObjGetRotationY(holder->mJObj));
+		f32 x             = actor->mOrbitDistance * s;
+		f32 y             = actor->mOrbitHeight;
+		f32 c             = cos(actor->mOrbitAngle + HSD_JObjGetRotationY(holder->mJObj));
+		f32 z             = actor->mOrbitDistance * c;
+		actor->mKindStep  = 2;
+		actor->mKindTimer = 6.0f;
+		HSD_JObj* jobj    = actor->mJObj;
 		HSD_JObjClearMtxFlags(jobj);
 		actor->mMoveTranslate.x = x + HSD_JObjGetTranslationX(holder->mJObj);
 		actor->mMoveTranslate.y = y + 8.0f + 10.0f;
 		actor->mMoveTranslate.z = z + HSD_JObjGetTranslationZ(holder->mJObj);
 		actor->SetPos(actor->mMoveTranslate, 0);
-		actor->_B7C = (f32)atan2(holder->mMoveTranslate.x - actor->mMoveTranslate.x, holder->mMoveTranslate.z - actor->mMoveTranslate.z)
-		            + 3.1415927f;
+		actor->mHeading = (f32)atan2(holder->mMoveTranslate.x - actor->mMoveTranslate.x, holder->mMoveTranslate.z - actor->mMoveTranslate.z)
+		                + 3.1415927f;
 		PlayGameSound(&gGame.mSound, 0x160021, 0xFF);
 	}
 }
@@ -1357,7 +1358,7 @@ extern "C" void EnableSpiderBossCenterPart(void)
 	for (i = 0, offset = 0; i < 48; ++i, offset += size) {
 		obj = (XObjActor3*)(data + offset);
 		if (XObj::GetDataItem(obj->mAttr._00) == 0xC && (obj->mStatus.mFlags & 1)) {
-			if (obj->_B80 == 0) {
+			if (obj->mKindStep == 0) {
 				obj->_B8C.mFlags &= ~4;
 			}
 			return;
@@ -1381,18 +1382,19 @@ extern "C" void LaunchSpiderBossCenterPart(void)
 		XObjActor3* obj = (XObjActor3*)(data + i * size);
 		if (XObj::GetDataItem(obj->mAttr._00) == 0xC && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 			XObj* holder = (XObj*)gGame.mXObjs.mPools[19].mObjects;
-			if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && obj->_B80 == 1) {
-				obj->_B80      = 2;
-				obj->_B78      = 6.0f;
-				HSD_JObj* jobj = obj->mJObj;
+			if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && obj->mKindStep == 1) {
+				obj->mKindStep  = 2;
+				obj->mKindTimer = 6.0f;
+				HSD_JObj* jobj  = obj->mJObj;
 				HSD_JObjClearMtxFlags(jobj);
 				f32 ofs               = 0.0f; // the holder's middle, where LaunchSpiderBossPart goes round it
 				obj->mMoveTranslate.x = ofs + HSD_JObjGetTranslationX(holder->mJObj);
 				obj->mMoveTranslate.y = 18.0f;
 				obj->mMoveTranslate.z = ofs + HSD_JObjGetTranslationZ(holder->mJObj);
 				obj->SetPos(obj->mMoveTranslate, 0);
-				obj->_B7C = (f32)atan2(holder->mMoveTranslate.x - obj->mMoveTranslate.x, holder->mMoveTranslate.z - obj->mMoveTranslate.z)
-				          + 3.1415927f;
+				obj->mHeading
+				    = (f32)atan2(holder->mMoveTranslate.x - obj->mMoveTranslate.x, holder->mMoveTranslate.z - obj->mMoveTranslate.z)
+				    + 3.1415927f;
 				obj->SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				PlayGameSound(&gGame.mSound, 0x160021, 0xFF);
 			}
@@ -1426,32 +1428,32 @@ static inline void AimBossVolley(XObjActor3* actor, const Vec& center, f32 radiu
 	actor->mStatus.mFlags |= 0x10000;
 	actor->_BEC = gSpiderBossVolleySlot;
 	if (gSpiderBossVolleySlot == 0) {
-		actor->_BCC = center.x;
-		actor->_BD0 = center.y;
-		actor->_BD4 = center.z;
+		actor->_BCC         = center.x;
+		actor->mOrbitHeight = center.y;
+		actor->_BD4         = center.z;
 	} else {
-		actor->_BCC = center.x + radius * (f32)sin(TWO_PI * (gSpiderBossVolleySlot - 1) / 9);
-		actor->_BD0 = center.y;
-		actor->_BD4 = center.z + radius * (f32)cos(TWO_PI * (gSpiderBossVolleySlot - 1) / 9);
+		actor->_BCC         = center.x + radius * (f32)sin(TWO_PI * (gSpiderBossVolleySlot - 1) / 9);
+		actor->mOrbitHeight = center.y;
+		actor->_BD4         = center.z + radius * (f32)cos(TWO_PI * (gSpiderBossVolleySlot - 1) / 9);
 	}
 	++gSpiderBossVolleySlot;
-	++actor->_B80;
+	++actor->mKindStep;
 }
 
 static inline bool BossProjectileLanded(XObjActor3* actor, u32 frames)
 {
-	actor->_B78 -= .09f * frames;
-	actor->mMoveTranslate.y += actor->_B78;
+	actor->mKindTimer -= .09f * frames;
+	actor->mMoveTranslate.y += actor->mKindTimer;
 	return actor->mMoveTranslate.y <= -1;
 }
 
 static inline void SteerFallingProjectile(XObjActor3* actor, u32 frames)
 {
-	if (actor->_B78 >= -3.4499998f)
-		actor->_B78 -= .36f * frames;
+	if (actor->mKindTimer >= -3.4499998f)
+		actor->mKindTimer -= .36f * frames;
 	else
-		actor->_B78 = -3.4499998f;
-	actor->_B7C = atan2(actor->_BCC - actor->mMoveTranslate.x, actor->_BD4 - actor->mMoveTranslate.z);
+		actor->mKindTimer = -3.4499998f;
+	actor->mHeading = atan2(actor->_BCC - actor->mMoveTranslate.x, actor->_BD4 - actor->mMoveTranslate.z);
 	AdvanceActorAlongHeading(actor, frames, actor->_B74);
 }
 
@@ -1463,20 +1465,20 @@ static inline void HideBossProjectile(XObjActor3* actor, bool resetPitch)
 	actor->SetAnim(0, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 	if (resetPitch)
 		actor->mMoveRotate.x = 0;
-	actor->_B80 = 0;
+	actor->mKindStep = 0;
 }
 
 void XObjActor3::Kind13(u32 frames)
 {
 	XObjChr* player = gGame.GetPlayer();
 	Vec pos         = player->mMoveTranslate;
-	switch (_B80) {
+	switch (mKindStep) {
 	case 0:
 		if (!(_B8C.mFlags & 4)) {
 			XObjSpiderBoss* boss = ProjectileOwner();
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				PlaceBossProjectile(this, boss, 64);
-				_B78   = 16;
+				mKindTimer = 16;
 				f32 dx = pos.x - mMoveTranslate.x, dz = pos.z - mMoveTranslate.z;
 				_B74 = .01f * sqrtf(dx * dx + 0.f + dz * dz);
 				if (_B74 < 1.2f)
@@ -1494,27 +1496,27 @@ void XObjActor3::Kind13(u32 frames)
 		if (sqrtf(dx * dx + dy * dy + dz * dz) < 8 && !IsPlayerFlashingFromHit(player) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)
 		    && !blocked) {
 			player->OnHitFromPosition(pos, 6);
-			mRumble = 1;
-			_B88    = 30;
+			mRumble     = 1;
+			mFrameCount = 30;
 			gGame.mParticle.Kill((HSD_Generator*)_1DC0[0]);
 			Vec scale = { 1, 1, 1 };
 			_1DC0[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
 			PlayGameSound(&gGame.mSound, 0x127, 255);
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
-			_B80 = 2;
+			mKindStep = 2;
 			break;
 		}
 		if (BossProjectileLanded(this, frames)) {
-			_B78             = 0;
+			mKindTimer       = 0;
 			mMoveTranslate.y = 0;
-			_B88             = 30;
+			mFrameCount      = 30;
 			if (_BEC == 0) {
 				Vec scale = { 1, 1, 1 };
 				_1DC0[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
 				PlayGameSound(&gGame.mSound, 0x127, 255);
 			}
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
-			_B80 = 2;
+			mKindStep = 2;
 		} else
 			SteerFallingProjectile(this, frames);
 		break;
@@ -1534,11 +1536,11 @@ void XObjActor3::Kind13(u32 frames)
 				mStatus.mFlags |= 0x10000;
 				mStatus.mFlags |= 4;
 				_B74          = 2;
-				_B7C          = atan2(pos.x - mMoveTranslate.x, pos.z - mMoveTranslate.z);
+				mHeading      = atan2(pos.x - mMoveTranslate.x, pos.z - mMoveTranslate.z);
 				mMoveRotate.x = -HALF_PI;
 				mStatus.mFlags |= 0x10000;
-				_B88 = 120;
-				++_B80;
+				mFrameCount = 120;
+				++mKindStep;
 			}
 		}
 		break;
@@ -1546,14 +1548,14 @@ void XObjActor3::Kind13(u32 frames)
 		f32 dx = pos.x - mMoveTranslate.x, dz = pos.z - mMoveTranslate.z;
 		if (sqrtf(dx * dx + 0.f + dz * dz) < 8 && !IsPlayerFlashingFromHit(player) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 			player->OnHitFromPosition(pos, 6);
-			mRumble   = 1;
-			_B88      = 30;
-			Vec scale = { 1, 1, 1 };
-			_1DC0[0]  = (s32)gGame.mParticle.CreateSRT(0xb2, 1, mMoveTranslate, scale, (Vec) { 0, _B7C, 0 }, TRUE);
+			mRumble     = 1;
+			mFrameCount = 30;
+			Vec scale   = { 1, 1, 1 };
+			_1DC0[0]    = (s32)gGame.mParticle.CreateSRT(0xb2, 1, mMoveTranslate, scale, (Vec) { 0, mHeading, 0 }, TRUE);
 			PlayGameSound(&gGame.mSound, 0x127, 255);
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
-			_B80 = 12;
-		} else if (--_B88 < 0)
+			mKindStep = 12;
+		} else if (--mFrameCount < 0)
 			HideBossProjectile(this, true);
 		else
 			AdvanceActorAlongHeading(this, frames, _B74);
@@ -1568,7 +1570,7 @@ void XObjActor3::Kind13(u32 frames)
 			XObjSpiderBoss* boss = ProjectileOwner();
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				PlaceBossProjectile(this, boss, 16);
-				_B78 = 10;
+				mKindTimer = 10;
 				Vec center
 				    = { HSD_JObjGetTranslationX(boss->mJObj), HSD_JObjGetTranslationY(boss->mJObj), HSD_JObjGetTranslationZ(boss->mJObj) };
 				_B74 = 2.4f;
@@ -1578,16 +1580,16 @@ void XObjActor3::Kind13(u32 frames)
 		break;
 	case 21:
 		if (BossProjectileLanded(this, frames)) {
-			_B78             = 0;
+			mKindTimer       = 0;
 			mMoveTranslate.y = 0;
-			_B88             = 30;
+			mFrameCount      = 30;
 			if (_BEC == 0) {
 				Vec scale = { 1, 1, 1 };
 				_1DC0[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
 				mRumble   = 1;
 			}
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
-			_B80 = 22;
+			mKindStep = 22;
 		} else
 			SteerFallingProjectile(this, frames);
 		break;
@@ -1609,7 +1611,7 @@ extern "C" void CommandSpiderBossProjectiles(s32 mode)
 			XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
 			if (obj->GetKind() == 0x3E0 && (obj->mStatus.mFlags & 1)) {
 				obj->_B8C.mFlags &= ~4;
-				obj->_B80             = 0;
+				obj->mKindStep        = 0;
 				gSpiderBossVolleySlot = 0;
 			}
 		}
@@ -1619,7 +1621,7 @@ extern "C" void CommandSpiderBossProjectiles(s32 mode)
 			XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
 			if (obj->GetKind() == 0x3E0 && (obj->mStatus.mFlags & 1) && obj->_B8C.Check(4)) {
 				obj->_B8C.mFlags &= ~4;
-				obj->_B80             = 20;
+				obj->mKindStep        = 20;
 				gSpiderBossVolleySlot = 0;
 			}
 		}
@@ -1637,7 +1639,7 @@ extern "C" void CommandSpiderBossProjectiles(s32 mode)
 				if (obj->mStatus.mFlags & 1) {
 					if (obj->_B8C.Check(4)) {
 						obj->_B8C.mFlags &= ~4;
-						obj->_B80 = 10;
+						obj->mKindStep = 10;
 						return;
 					}
 				} else {
@@ -1721,12 +1723,12 @@ void XObjActor3::UpdateSpiderCounterPanel(u32 frames)
  */
 void XObjActor3::Kind15(u32 frames)
 {
-	switch (_B80) {
+	switch (mKindStep) {
 	case 0:
 		if (_B8C.mFlags & 4) {
 			break;
 		}
-		_B80++;
+		mKindStep++;
 		SetAnim(1, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		if (++gActor3Kind15ActivationCounter >= 10) {
 			gActor3Kind15ActivationCounter = 0;
@@ -1738,13 +1740,13 @@ void XObjActor3::Kind15(u32 frames)
 	case 1:
 		f32 end = GetAnimEndFrame(mJObj);
 		if (end - frames <= GetAnimFrame(mJObj)) {
-			_B80++;
+			mKindStep++;
 			SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		}
 		break;
 	case 2:
 		_B8C.mFlags |= 4;
-		_B80 = 0;
+		mKindStep = 0;
 		break;
 	}
 }
@@ -1774,7 +1776,7 @@ extern "C" void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z)
 
 static inline void ResetBossAttachment(XObjActor3* obj)
 {
-	obj->_B80 = 0;
+	obj->mKindStep = 0;
 	obj->SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	obj->_B8C.mFlags |= 4;
 	obj->_B8C.mFlags |= 0x10;
@@ -1782,7 +1784,7 @@ static inline void ResetBossAttachment(XObjActor3* obj)
 	obj->_B8C.mFlags &= ~4;
 	obj->_B8C.mFlags &= ~0x10;
 	obj->SetScale(0.1f, 0.1f, 0.1f, 0);
-	obj->_B80 = 0;
+	obj->mKindStep = 0;
 }
 
 template <int depth>
@@ -1802,7 +1804,7 @@ void XObjActor3::Kind16(u32 frames)
 	XObj* boss = gGame.mXObjs.mPools[19].First();
 	if (_B8C.mFlags & 0x10)
 		return;
-	switch (_B80) {
+	switch (mKindStep) {
 	case 0:
 		_B8C.mFlags |= 4;
 		_B8C.mFlags |= 0x10;
@@ -1812,24 +1814,24 @@ void XObjActor3::Kind16(u32 frames)
 		s32 path[] = { 0, 7 };
 		Vec pos    = BossJointPosition(joint, boss, path);
 		mMoveTranslate.Set(pos);
-		_B7C = HSD_JObjGetRotationY(boss->mJObj);
+		mHeading = HSD_JObjGetRotationY(boss->mJObj);
 		break;
 	}
 	case 2: {
 		s32 path[]       = { 0, 2, 0, 1, 1, 0, 0 };
 		Vec pos          = BossJointPosition(joint, boss, path);
-		_B7C             = HSD_JObjGetRotationY(boss->mJObj);
-		mMoveTranslate.x = 2.0f * (f32)sin(_B7C) + pos.x;
+		mHeading         = HSD_JObjGetRotationY(boss->mJObj);
+		mMoveTranslate.x = 2.0f * (f32)sin(mHeading) + pos.x;
 		mMoveTranslate.y = pos.y;
-		mMoveTranslate.z = 2.0f * (f32)cos(_B7C) + pos.z;
+		mMoveTranslate.z = 2.0f * (f32)cos(mHeading) + pos.z;
 		break;
 	}
 	case 4: {
 		s32 path[] = { 0, 7 };
 		Vec pos    = BossJointPosition(joint, boss, path);
 		mMoveTranslate.Set(pos);
-		_B7C    = HSD_JObjGetRotationY(boss->mJObj);
-		f32 end = GetAnimEndFrame(mJObj);
+		mHeading = HSD_JObjGetRotationY(boss->mJObj);
+		f32 end  = GetAnimEndFrame(mJObj);
 		if (end - frames <= GetAnimFrame(mJObj)) {
 			ResetBossAttachment(this);
 			Release();
@@ -1859,23 +1861,23 @@ extern "C" void PlaySpiderBossAttachmentAnimation(s32 n)
 			switch (n) {
 			case 0:
 				obj->SetScale(0.1f, 0.1f, 0.1f, 0);
-				obj->_B80 = 0;
+				obj->mKindStep = 0;
 				break;
 			case 1:
 				obj->SetScale(1.4f, 1.4f, 1.4f, 0);
-				obj->_B80 = 1;
+				obj->mKindStep = 1;
 				break;
 			case 2:
 				obj->SetScale(1.0f, 1.0f, 1.0f, 0);
-				obj->_B80 = 2;
+				obj->mKindStep = 2;
 				break;
 			case 3:
 				obj->SetScale(1.0f, 1.0f, 1.0f, 0);
-				obj->_B80 = 1;
+				obj->mKindStep = 1;
 				break;
 			case 4:
 				obj->SetScale(1.0f, 1.0f, 1.0f, 0);
-				obj->_B80 = 4;
+				obj->mKindStep = 4;
 				break;
 			}
 			return;
@@ -1912,29 +1914,29 @@ extern "C" void ResetSpiderBossAttachment(void)
 void XObjActor3::Kind18(u32 frames)
 {
 	f32 time = gGame.mTimeState.mTime;
-	switch (_B80) {
+	switch (mKindStep) {
 	case 0:
 		if (time >= 0.42f && time < 0.5f) {
-			_B80++;
+			mKindStep++;
 		}
 		break;
 	case 1:
 		mMoveTranslate.x -= 0.2f * frames;
 		if (mMoveTranslate.x <= PlacementPosition(mCoord, gActor3PlacementPosition).x - 10.0f) {
 			mMoveTranslate.x = PlacementPosition(mCoord, gActor3PlacementPosition).x - 10.0f;
-			_B80++;
+			mKindStep++;
 		}
 		break;
 	case 2:
 		if (time >= 0.5f) {
-			_B80++;
+			mKindStep++;
 		}
 		break;
 	case 3:
 		mMoveTranslate.x += 0.2f * frames;
 		if (mMoveTranslate.x >= PlacementPosition(mCoord, gActor3PlacementPosition).x) {
 			mMoveTranslate.x = PlacementPosition(mCoord, gActor3PlacementPosition).x;
-			_B80             = 0;
+			mKindStep        = 0;
 		}
 		break;
 	}
@@ -1966,13 +1968,13 @@ extern "C" void HandleKind9ActorCommand(XObjActor3* actor)
 	case 1:
 		if (actor->mEventArg1 != 0) {
 			actor->_B8C.mFlags &= ~4;
-			actor->_BC0 = actor->mEventArg2 / 100.0f;
-			actor->_BC4 = actor->mEventArg3 / 100.0f;
+			actor->mWindowLeft  = actor->mEventArg2 / 100.0f;
+			actor->mWindowRight = actor->mEventArg3 / 100.0f;
 		} else {
 			actor->_B8C.mFlags |= 4;
-			actor->_BC0 = 0.0f;
-			actor->_BC4 = 0.0f;
-			actor->_B80 = 0;
+			actor->mWindowLeft  = 0.0f;
+			actor->mWindowRight = 0.0f;
+			actor->mKindStep    = 0;
 		}
 		actor->mEventCommand = 0;
 		actor->mEventArg1    = 0;

@@ -226,7 +226,7 @@ public:
 	f32 mBatteryWarningFade;             // _9AB8
 	f32 mBatteryWarningAngle;            // _9ABC
 	s32 _9AC0;                           // _9AC0
-	f32 _9AC4;                           // _9AC4, time shown on the player gauge
+	f32 mGaugeTime;                      // _9AC4, time shown on the player gauge
 	s32 mLoadStep;
 	u8 _9ACC[4];                   // _9AC8
 	XObjPlug mPlug;                // _9AD0
@@ -236,11 +236,11 @@ public:
 	XObjOX mOXObj;                 // _CE58, _CDF8 in japan
 	PlayerSuits mSuits;            // _D7E0, _D770 in japan
 	XPad mPad;                     // _12DA0, _12CA0 in japan
-	f32 _12DF8;                    // _12DF8, heading he walks towards
+	f32 mWalkHeading;              // _12DF8, heading he walks towards
 	AttachmentValues mAttachments; // _12DFC, goes in the save as is
 	XObjChrMenu mMenu;             // _12E44, _12D44 in japan
 	OXMenu mOXMenu;                // _13390, _13260 in japan
-	BOOL _146D8;                   // _146D8, set while he's off the floor
+	BOOL mInAir;                   // _146D8, set while he's off the floor
 	DustParticlePool mDust;        // _146DC, _1329C in japan
 	CTexObj mTex[2];               // _15690
 	u32 _15890;                    // _15890
@@ -257,9 +257,9 @@ public:
 	};
 	f32 mHeadOffset;        // _158B0, _14470 in japan
 	BOOL mHeadOffsetReady;  // _158B4
-	s32 _158B8;             // _158B8, idle mode, 1 looks at the camera, 2 fidgets
-	s32 _158BC;             // _158BC, idle timer
-	s32 _158C0;             // _158C0, the ground type under the player
+	s32 mIdleMode;          // _158B8, idle mode, 1 looks at the camera, 2 fidgets
+	s32 mIdleModeTimer;     // _158BC, idle timer
+	s32 mGroundType;        // _158C0, the ground type under the player
 	CVec _158C4;            // _158C4
 	CJAnim mAttachmentAnim; // _158D4, _14494 in japan, the attachment's anims
 	CJAnim mSuitAnim;       // _15958, _14510 in japan, the suit's anims
@@ -273,7 +273,7 @@ public:
 	}
 
 	// how far above the floor he is
-	f32 GetHeight() const { return _146D8 ? mMoveTranslate.y - mFloorHit.mHeight : 0.0f; }
+	f32 GetHeight() const { return mInAir ? mMoveTranslate.y - mFloorHit.mHeight : 0.0f; }
 
 	// todo: cleanup
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }

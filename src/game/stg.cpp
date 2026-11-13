@@ -4641,7 +4641,7 @@ void MenuPC::State11(u32)
 {
 	MenuPC* menu = this;
 	if (menu->mFrameHeight <= 2.0f) {
-		gGame.mEvt._10 = menu->mExitState;
+		gGame.mEvt.mSelectResult = menu->mExitState;
 		menu->Close();
 		sMenuMain.Resume();
 		PlayGameSound(&gGame.mSound, 0x86, 0xFF);
@@ -6936,8 +6936,8 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		menu->mWindow.SetSize(60.0f + menu->mMaxWidth, (2.0f + menu->mFontSize) * menu->mRowCount + 24.0f);
 		menu->mWindow.SetPos(24.0f + (menu->mWindow.mWidth * 0.5f + 16.0f), 24.0f + (menu->mWindow.mHeight * 0.5f + 30.0f));
 	} else {
-		menu->mCount = gGame._344C;
-		for (int i = 0; i < gGame._344C; i++) {
+		menu->mCount = gGame.mRoomCount;
+		for (int i = 0; i < gGame.mRoomCount; i++) {
 			char* line = menu->mLabels[i];
 			int length = CopyStageFileName(line, GetStageFileName(i));
 			sprintf(line + length, "(%2d) %-.18s", i, FormatToStaticBuffer("%s%s", GetStageName(i), GetStageDesc(i)));
@@ -8388,7 +8388,7 @@ void MenuPC::Open()
 		mShopOnly = FALSE;
 	else
 		mShopOnly = TRUE;
-	if (gGame._344C + 1 == gGame.mStage)
+	if (gGame.mRoomCount + 1 == gGame.mStage)
 		mShopOnly = FALSE;
 	FindStageIndexByName("shun");
 	mHistoryStart = 600;
@@ -8741,7 +8741,7 @@ BOOL MenuItem::Update(u32 frames)
 			break;
 		case 3:
 			if (--mDelay < 0) {
-				gGame.mEvt._10 = selectedItem;
+				gGame.mEvt.mSelectResult = selectedItem;
 				gGame.mStatus.mFlags &= ~2ULL;
 				Close();
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);

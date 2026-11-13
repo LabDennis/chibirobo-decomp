@@ -40,7 +40,7 @@ static inline bool FitsInAram(CObjArchive* archive)
 BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ready = FALSE;
-	if ((u64)info._00->_34 & 0x80000000ULL)
+	if ((u64)info._00->mFlags & 0x80000000ULL)
 		return TRUE;
 
 	AttrInfo& attr = mAttr;
@@ -48,9 +48,9 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		ready = TRUE;
 	else {
 		if (!attr._00) {
-			mCoord._00 = info._00;
-			attr._00   = GetObjData(&info);
-			attr._04   = info._00;
+			mCoord._00      = info._00;
+			attr._00        = GetObjData(&info);
+			attr.mPlacement = info._00;
 			if (!(HasSource(attr) ? attr._00->mSource->mArchive : NULL) && ModelName(attr)) {
 				CObjArchive* archive = FindFreeObjectArchive(gGame.mObjArchives.mArchives);
 				if (attr._00 && attr._00->mSource)
@@ -58,9 +58,9 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			}
 		}
 		if (!mFloors) {
-			mFloors = (XObjFloor*)GetGlobalTextEntry(info._00->_00);
-			_250[1] = _250[0] = 0;
-			BOOL empty        = mFloors ? mFloors->mId == -1 : FALSE;
+			mFloors        = (XObjFloor*)GetGlobalTextEntry(info._00->mObjectId);
+			mFloorMasks[1] = mFloorMasks[0] = 0;
+			BOOL empty                      = mFloors ? mFloors->mId == -1 : FALSE;
 			if (empty)
 				mFloors = NULL;
 		}
@@ -109,7 +109,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 				}
 				if ((flags & 2) && FitsInAram(archive)) {
 					const char* cachedName = ModelName(attr);
-					s32 id                 = attr._04 ? attr._04->_00 : -1;
+					s32 id                 = attr.mPlacement ? attr.mPlacement->mObjectId : -1;
 					u32 padded             = PaddedSize(archive);
 
 					gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].address  = gARAMCacheInfo.mBaseAddress;
@@ -130,7 +130,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		mMoveTranslate.mSpeed.Set(0, 0, 0);
 		mMoveRotate.mSpeed.Set(0, 0, 0);
 		mStatus.mFlags = 0;
-		mStatus.mFlags |= (attr._00 ? attr._00->mFlags : 0) | (1ULL | ((u64)info._00->_34 << 16));
+		mStatus.mFlags |= (attr._00 ? attr._00->mFlags : 0) | (1ULL | ((u64)info._00->mFlags << 16));
 		if (mFloors)
 			mStatus.mFlags |= 0x0200000000000000ULL;
 		else
@@ -138,11 +138,11 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		_25C = mCoord._00->_28;
 		_260 = mCoord._00->_2C;
 		if (mJObj)
-			SetAnim(mCoord._00->_30, TRUE, NULL, NULL, NULL, 0, 1, 1, 10);
+			SetAnim(mCoord._00->mStartAnim, TRUE, NULL, NULL, NULL, 0, 1, 1, 10);
 		ResetObjectState();
-		_264.x     = mMoveTranslate.x;
-		_264.y     = mMoveTranslate.y;
-		_264.z     = mMoveTranslate.z;
+		mLastPos.x = mMoveTranslate.x;
+		mLastPos.y = mMoveTranslate.y;
+		mLastPos.z = mMoveTranslate.z;
 		mColors[1] = 0xffffff00;
 		mColors[0] = 0;
 		if (mJObj) {
@@ -194,8 +194,8 @@ void XObj::ResetObjectState()
 	_794.z              = 0.0f;
 	mAnmQueue.Clear();
 	mAnchorX = mAnchorZ = NAN;
-	_8B0                = 0;
-	_8B0 |= 0x80000000;
+	mMarkerOverride     = 0;
+	mMarkerOverride |= 0x80000000;
 	mColorStep[0].mValue.x = mColorStep[0].mValue.y = mColorStep[0].mValue.z = 255.0f;
 	mColorStep[0].mTarget.x = mColorStep[0].mTarget.y = mColorStep[0].mTarget.z = 255.0f;
 	mColorStep[0].mSpeed.x = mColorStep[0].mSpeed.y = mColorStep[0].mSpeed.z = 0.0f;

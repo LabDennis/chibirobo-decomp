@@ -32,16 +32,16 @@ STATIC_ASSERT(sizeof(XObjSpiderSmallFx) == 0x38);
 class XObjSpiderSmall : public XObj {
 public:
 	// _00-_980 = XObj
-	f32 _980;               // _980, the way it walks
-	f32 _984;               // _984, walk speed
+	f32 mWalkHeading;       // _980, the way it walks
+	f32 mWalkSpeed;         // _984, walk speed
 	f32 _988;               // _988
-	f32 _98C;               // _98C, turn speed
+	f32 mTurnSpeed;         // _98C, turn speed
 	u8 _990[0x994 - 0x990]; // _990
 	f32 _994;               // _994
 	f32 mRadius;            // _998
-	f32 _99C;               // _99C, fall speed
-	f32 _9A0;               // _9A0, its scale
-	f32 _9A4;               // _9A4, the scale it grows to
+	f32 mFallSpeed;         // _99C, fall speed
+	f32 mScale;             // _9A0, its scale
+	f32 mTargetScale;       // _9A4, the scale it grows to
 	s32 mState;             // _9A8
 	s32 mStep;              // _9AC
 	s32 mTimer;             // _9B0
@@ -53,10 +53,10 @@ public:
 	Vec mHitPos;            // _9CC
 	Vec mHome;              // _9D8
 	f32 mHitStrength;       // _9E4
-	s32 _9E8;               // _9E8, hits left
+	s32 mHitsLeft;          // _9E8, hits left
 	s32 _9EC;               // _9EC
 	Vec _9F0;               // _9F0
-	Vec _9FC;               // _9FC, where it walks to
+	Vec mWalkTarget;        // _9FC, where it walks to
 	Vec mAreaPos;           // _A08, corner of the area it walks in
 	f32 mAreaWidth;         // _A14
 	f32 mAreaDepth;         // _A18
@@ -69,21 +69,21 @@ public:
 	XObj* mFxObj;           // _A84
 	u8 mFxIndex;            // _A88, into gSmallSpiderEffectObjects, 255 for none
 	u8 _A89[0xA8C - 0xA89]; // _A89
-	f32 _A8C;               // _A8C, the angle it sits at around the robot
+	f32 mClingAngle;        // _A8C, the angle it sits at around the robot
 	f32 _A90;               // _A90
-	s32 _A94;               // _A94, frames to the next battery drain
-	f32 _A98;               // _A98, how long it holds on
+	s32 mDrainTimer;        // _A94, frames to the next battery drain
+	f32 mHoldTime;          // _A98, how long it holds on
 	Vec _A9C;               // _A9C
 	u8 _AA8;                // _AA8
 	u8 _AA9[0xAAC - 0xAA9]; // _AA9
-	s32 _AAC;               // _AAC, the bgm it took over from
-	u8 _AB0;                // _AB0, and its volume
+	s32 mPrevBgm;           // _AAC, the bgm it took over from
+	u8 mPrevBgmVolume;      // _AB0, and its volume
 	u8 _AB1[0xAB4 - 0xAB1]; // _AB1
-	s32 _AB4;               // _AB4, pool index it loaded with
+	s32 mLoadPoolIndex;     // _AB4, pool index it loaded with
 	s32 mTimeMode;          // _AB8
 	s32 mAreaGraceTimer;    // _ABC
 	s32 _AC0;               // _AC0
-	s32 _AC4;               // _AC4, the battle bgm state
+	s32 mBattleBgmState;    // _AC4, the battle bgm state
 	AnimSfx mAnimSfx;       // _AC8
 
 	XObjSpiderSmall();
@@ -138,21 +138,21 @@ public:
 	// walks to a random spot around home
 	void Wander(s32 step)
 	{
-		_9FC.x = 12.0f + mHome.x - rand() % 2400 / 100.0f;
-		_9FC.y = mHome.y;
-		_9FC.z = 12.0f + mHome.z - rand() % 2400 / 100.0f;
-		mStep  = step;
-		_984   = 0.3f;
+		mWalkTarget.x = 12.0f + mHome.x - rand() % 2400 / 100.0f;
+		mWalkTarget.y = mHome.y;
+		mWalkTarget.z = 12.0f + mHome.z - rand() % 2400 / 100.0f;
+		mStep         = step;
+		mWalkSpeed    = 0.3f;
 		SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	}
 
 	// keeps the walk speed between the slowest and the fastest
 	void ClampSpeed()
 	{
-		if (_984 < 0.08f) {
-			_984 = 0.08f;
-		} else if (_984 > 1.1f) {
-			_984 = 1.1f;
+		if (mWalkSpeed < 0.08f) {
+			mWalkSpeed = 0.08f;
+		} else if (mWalkSpeed > 1.1f) {
+			mWalkSpeed = 1.1f;
 		}
 	}
 

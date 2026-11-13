@@ -232,7 +232,7 @@ public:
 	s32 _445C0;                   // _445C0
 	f32 _445C4;                   // _445C4
 	f32 _445C8;                   // _445C8
-	f32 _445CC;                   // _445CC, wait timer in frames
+	f32 mWaitTimer;               // _445CC, wait timer in frames
 	s32 _445D0;                   // _445D0
 	s32 _445D4;                   // _445D4
 	s32 _445D8;                   // _445D8
