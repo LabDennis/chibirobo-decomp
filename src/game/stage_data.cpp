@@ -604,36 +604,36 @@ extern "C" UnkStageObj* GetStageObjectPlacementByIndex(s32 index)
 }
 
 extern "C" {
-XObjSource gTestShortplayTitleSource = { "test/shortplay_title" };
-XObjSource gChargeFx01Source = { "charge_fx01" };
-XObjSource gCbPropellerLv2Source = { "cb_propeller_lv2" };
-XObjSource gCbCannonLv2Source = { "cb_cannon_lv2" };
-XObjSource gCbRadarSource = { "cb_radar" };
-XObjSource gMaruBatuSource = { "maru_batu" };
-XObjSource gExclamationSource = { "exclamation" };
-XObjSource gKisekaePartsKeathSource = { "kisekae/parts_keath" };
-XObjSource gKisekaePartsKaeruSource = { "kisekae/parts_kaeru" };
+XObjSource gTestShortplayTitleSource   = { "test/shortplay_title" };
+XObjSource gChargeFx01Source           = { "charge_fx01" };
+XObjSource gCbPropellerLv2Source       = { "cb_propeller_lv2" };
+XObjSource gCbCannonLv2Source          = { "cb_cannon_lv2" };
+XObjSource gCbRadarSource              = { "cb_radar" };
+XObjSource gMaruBatuSource             = { "maru_batu" };
+XObjSource gExclamationSource          = { "exclamation" };
+XObjSource gKisekaePartsKeathSource    = { "kisekae/parts_keath" };
+XObjSource gKisekaePartsKaeruSource    = { "kisekae/parts_kaeru" };
 XObjSource gKisekaePartsTaoSource10021 = { "kisekae/parts_tao" };
-XObjSource gKisekaePartsKegaSource = { "kisekae/parts_kega" };
+XObjSource gKisekaePartsKegaSource     = { "kisekae/parts_kega" };
 XObjSource gKisekaePartsTaoSource10023 = { "kisekae/parts_tao" };
-XObjSource gKisekaePartsObakeSource = { "kisekae/parts_obake" };
-XObjSource gKisekaePartsPajamaSource = { "kisekae/parts_pajama" };
-XObjSource gKisekaePartsSuperSource = { "kisekae/parts_super" };
+XObjSource gKisekaePartsObakeSource    = { "kisekae/parts_obake" };
+XObjSource gKisekaePartsPajamaSource   = { "kisekae/parts_pajama" };
+XObjSource gKisekaePartsSuperSource    = { "kisekae/parts_super" };
 XObjSource gKisekaePartsPajama01Source = { "kisekae/parts_pajama_01" };
 XObjSource gKisekaePartsPajama02Source = { "kisekae/parts_pajama_02" };
-XObjSource gTitleIconIconBbSource = { "title_icon/icon_bb" };
-XObjSource gTitleIconIconArmySource = { "title_icon/icon_army" };
-XObjSource gTitleIconIconFafaSource = { "title_icon/icon_fafa" };
-XObjSource gTitleIconIconFunkySource = { "title_icon/icon_funky" };
-XObjSource gTitleIconIconHockSource = { "title_icon/icon_hock" };
-XObjSource gTitleIconIconKeathSource = { "title_icon/icon_keath" };
-XObjSource gTitleIconIconPeetsSource = { "title_icon/icon_peets" };
+XObjSource gTitleIconIconBbSource      = { "title_icon/icon_bb" };
+XObjSource gTitleIconIconArmySource    = { "title_icon/icon_army" };
+XObjSource gTitleIconIconFafaSource    = { "title_icon/icon_fafa" };
+XObjSource gTitleIconIconFunkySource   = { "title_icon/icon_funky" };
+XObjSource gTitleIconIconHockSource    = { "title_icon/icon_hock" };
+XObjSource gTitleIconIconKeathSource   = { "title_icon/icon_keath" };
+XObjSource gTitleIconIconPeetsSource   = { "title_icon/icon_peets" };
 XObjSource gTitleIconIconSunmidaSource = { "title_icon/icon_sunmida" };
-XObjSource gTitleIconIconTrexSource = { "title_icon/icon_trex" };
-XObjSource gTitleIconIconZobinSource = { "title_icon/icon_zobin" };
-XObjSource gTitleIconIconArmy2Source = { "title_icon/icon_army2" };
+XObjSource gTitleIconIconTrexSource    = { "title_icon/icon_trex" };
+XObjSource gTitleIconIconZobinSource   = { "title_icon/icon_zobin" };
+XObjSource gTitleIconIconArmy2Source   = { "title_icon/icon_army2" };
 #if !defined(VERSION_JP)
-XObjSource gUsMaruBatuSource = { "us_maru_batu" };
+XObjSource gUsMaruBatuSource  = { "us_maru_batu" };
 XObjSource gUsMaruModelSource = { "us_maru_model" };
 XObjSource gUsBatuModelSource = { "us_batu_model" };
 #endif
