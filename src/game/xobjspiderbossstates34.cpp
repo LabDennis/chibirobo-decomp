@@ -30,7 +30,7 @@ static inline void FacePatrolPoint(XObjSpiderBoss* boss, const Vec& target, s32 
 	f32 delta      = boss->mHeading - boss->mTargetRotY;
 	if (delta < 0)
 		delta += TWO_PI;
-	if (delta < PI) {
+	if (delta < PI) { // one turn anim per side, an exact about-face needs none
 		PlayPatrolAnim(boss, 0x1a);
 		boss->mStep = turningStep;
 	} else if (delta > PI) {
@@ -66,7 +66,7 @@ void XObjSpiderBoss::State4(u32 frames)
 	if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && mStep != 30) {
 		PlayPatrolAnim(this, 0x17);
 		mSpeed = 0;
-		mStep  = 30;
+		mStep  = 30; // step 30 waits out the drained battery
 	}
 	switch (mStep) {
 	case 0: {
@@ -77,7 +77,7 @@ void XObjSpiderBoss::State4(u32 frames)
 		Vec candidates[25];
 		Vec* next = candidates;
 		for (s32 i = 0; i < 25; ++i)
-			if (mPatrolSelection != i)
+			if (mPatrolSelection != i) // drops the previous pick
 				*next++ = sSpiderBossPatrolPoints[i];
 		s32 pick         = rand() % 24;
 		mPatrolTarget    = candidates[pick];
@@ -92,7 +92,7 @@ void XObjSpiderBoss::State4(u32 frames)
 		if (--mTimer < 0) {
 			mSpeed = 1;
 			PlayPatrolAnim(this, 0x18);
-			{
+			{ // the move-start effect
 				Vec scale    = { 1, 1, 1 };
 				Vec rotation = {};
 				rotation.y   = mTargetRotY;
@@ -137,7 +137,7 @@ void XObjSpiderBoss::State4(u32 frames)
 	case 6:
 		if ((s32)--mActionTimer < 0)
 			mStep = 0;
-		else {
+		else { // the projectile shot
 			PlayPatrolAnim(this, 0x1b);
 			CommandSpiderBossProjectiles(1);
 			PlayGameSound(&gGame.mSound, 0x16001b, 255);
@@ -148,7 +148,7 @@ void XObjSpiderBoss::State4(u32 frames)
 		if (GetAnimEndFrame(mJObj) - frames <= GetAnimFrame(mJObj))
 			mStep = 4;
 		break;
-	case 30:
+	case 30: // waits until the battery is back and no script runs
 		if (!InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && gGame.IsRunning() && !gGame.mEvt.mData.mScript)
 			mStep = 0;
 		break;
@@ -195,7 +195,8 @@ static inline void PulseSpiderArena(XObjSpiderBoss* boss)
 
 static inline bool IsGrabBlocked(s32 anim)
 {
-	switch (anim) {
+	switch (anim) { // these player anims make him ungrabbable
+
 	case 5:
 	case 6:
 	case 7:
@@ -236,7 +237,7 @@ void XObjSpiderBoss::State3(u32 frames)
 	CJObj joint;
 	switch (mStep) {
 	case 100:
-		mTimer = 3 * BOSS_FPS / frames;
+		mTimer = 3 * BOSS_FPS / frames; // three seconds
 		SetAttackAnim(this, 7);
 		gSpiderBossSavedTargetYaw = mTargetRotY;
 		mStep                     = 101;
@@ -296,7 +297,8 @@ void XObjSpiderBoss::State3(u32 frames)
 				SetAttackAnim(this, 7);
 		}
 		if (SpiderContactDistance(&position, &mMoveTranslate) <= 220) {
-			if (mGrabIntervalFrames >= (s32)(3 * BOSS_FPS)) {
+			if (mGrabIntervalFrames >= (s32)(3 * BOSS_FPS)) { // three seconds into the approach
+
 				mStep = 10;
 				SetAttackAnim(this, 16);
 				s32 path[] = { 0, 2, 0, 1, 1, 0, 0 };
@@ -307,7 +309,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			PulseSpiderArena(this);
 		} else if (--mTimer < 0) {
 			mTimer = 30;
-			mStep  = 20;
+			mStep  = 20; // step 20: a short pause, then back to the start
 			ShakeSpiderArena();
 			CommandSpiderBossProjectiles(0);
 		}
@@ -343,7 +345,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			SetAttackAnim(this, 17);
 	}
 		if (--mTimer < 0) {
-			mTimer       = 3 * BOSS_FPS / frames + (BOSS_FPS / frames) / 2;
+			mTimer       = 3 * BOSS_FPS / frames + (BOSS_FPS / frames) / 2; // three and a half seconds
 			mActionTimer = rand() % 30 + 30;
 			s32 path[]   = { 0, 2, 0, 1, 1, 0, 0 };
 			joint.Attach(FindJointByPath(mJObj, path, 7));
@@ -381,9 +383,10 @@ void XObjSpiderBoss::State3(u32 frames)
 		if (IsGrabBlocked(gGame.GetPlayer()->mAnimId))
 			mGrabCooldown = 5;
 		f32 distance = SpiderContactDistance(&position, &mMoveTranslate);
+		// the grab: within 70, the mug not raised, a grab-able anim and no cooldown
 		if (distance <= 70 && !IsUsingMug(&gGame.GetPlayer()->mLift) && !IsGrabBlocked(gGame.GetPlayer()->mAnimId)
 		    && gGame.GetPlayer()->mAttachmentRequest < 0 && mGrabCooldown == 0) {
-			mStatus.mFlags |= 0x100000;
+			mStatus.mFlags |= 0x100000; // flags 0x100000/0x20000 mark the grab
 			ShakeSpiderArena();
 			mSpiderStatus.mFlags |= 0x20000;
 			XObjChr* chr              = gGame.GetPlayer();
@@ -391,7 +394,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			chr->mPlayerStatus.mFlags |= 0x80000000;
 			gGame.GetPlayer()->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mEscapeInputStrength = 1;
-			mEscapeRemaining     = 450;
+			mEscapeRemaining     = 450; // the grab's escape meter
 			++mStep;
 			InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 1, 1);
 			mSpiderStatus.mFlags &= ~0x200;
@@ -400,7 +403,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			break;
 		}
 		if (distance <= 220) {
-			mSpiderStatus.mFlags |= 0x200;
+			mSpiderStatus.mFlags |= 0x200; // flag 0x200 tracks the player being in range
 			PulseSpiderArena(this);
 		} else {
 			mGrabIntervalFrames = 0;
@@ -421,7 +424,7 @@ void XObjSpiderBoss::State3(u32 frames)
 		}
 		break;
 	}
-	case 13:
+	case 13: // the grab: mashing drains the escape meter
 		if (gGame.IsRunning() && (pad.mPad->mButton & 0xf0000)) {
 			mEscapeRemaining -= mEscapeInputStrength;
 			mEscapeInputStrength = 8;
@@ -429,7 +432,7 @@ void XObjSpiderBoss::State3(u32 frames)
 		if (mEscapeInputStrength > 1)
 			mEscapeInputStrength -= 1;
 		if (mEscapeRemaining <= 0) {
-			if (mSpiderStatus.Check(0x1000000)) {
+			if (mSpiderStatus.Check(0x1000000)) { // clears the drain flash tint
 				mSpiderStatus.mFlags &= ~0x1000000;
 				gSpiderDrainFlashClaimed = 0;
 				gGame.GetPlayer()->SetColor(1, 0, 0, 0, 0);
@@ -438,7 +441,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			mSpiderStatus.mFlags &= ~0x20000;
 			XObjChr* chr              = gGame.GetPlayer();
 			chr->mPlayerStatus.mFlags = 0;
-			chr->mPlayerStatus.mFlags |= 0x20000000;
+			chr->mPlayerStatus.mFlags |= 0x20000000; // released, as in ReleasePlayerAt
 			chr->mPlayerStatus.mFlags |= 7;
 			chr->mPad.mReset    = TRUE;
 			mGrabIntervalFrames = 0;
@@ -448,7 +451,7 @@ void XObjSpiderBoss::State3(u32 frames)
 			ResetSpiderBossAttachment();
 			StopGameSfx(&gGame.mSound, 0x16001f);
 		}
-		if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
+		if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) { // a drained battery lets go too
 			SetAttackAnim(this, 7);
 			mStep = 30;
 			ResetSpiderBossAttachment();
