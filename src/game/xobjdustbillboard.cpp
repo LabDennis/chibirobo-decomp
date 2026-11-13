@@ -4,80 +4,44 @@
 #include "game/hsd_cobj.h"
 #include <math.h>
 
-// todo: cleanup, move these onto CJArchive in cobj.h with GetAnimJointRoot
-static inline HSD_AnimJoint* Joint(CJArchive* archive, s32 id)
-{
-	if (id >= 0) {
-		s32 index = id % 1000;
-		if (index < archive->mNum[0]) {
-			return archive->mAnimJoint != NULL ? archive->mAnimJoint[index] : NULL;
-		}
-	}
-	return NULL;
-}
-
-static inline HSD_MatAnimJoint* Material(CJArchive* archive, s32 id)
-{
-	if (id >= 0) {
-		s32 index = id % 1000;
-		if (index < archive->mNum[0]) {
-			return archive->mMatAnimJoint != NULL ? archive->mMatAnimJoint[index] : NULL;
-		}
-	}
-	return NULL;
-}
-
-static inline HSD_ShapeAnimJoint* Shape(CJArchive* archive, s32 id)
-{
-	if (id >= 0) {
-		s32 index = id % 1000;
-		if (index < archive->mNum[0]) {
-			return archive->mShapeAnimJoint != NULL ? archive->mShapeAnimJoint[index] : NULL;
-		}
-	}
-	return NULL;
-}
-
-// XObjDust::SetAnim, XObjFree's with the material anim looping
+// Keeps the material animation looping across animation changes.
 /**
  * @note Address: 0x800DE7F4
  * @note Size: 0x2AC
  */
-extern "C" void SetAnim__8XObjDustFliPvPvPvffff(XObjDust* object, s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim,
-                                                f32 frame, f32 rate, f32 blend, f32 blendRate)
+void XObjDust::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate)
 {
-	if (object->mStatus.mFlags & 0x1000ULL) {
-		if (force || id != object->mAnimId) {
-			object->mAnimId = id;
-			void* joint     = jointAnim != NULL ? jointAnim : Joint(&object->mArchive, id);
-			void* shape     = shapeAnim != NULL ? shapeAnim : Shape(&object->mArchive, id);
+	if (mStatus.mFlags & 0x1000ULL) {
+		if (force || id != mAnimId) {
+			mAnimId     = id;
+			void* joint = jointAnim != NULL ? jointAnim : mArchive.GetAnimJointRoot(id);
+			void* shape = shapeAnim != NULL ? shapeAnim : mArchive.GetShapeAnimJointRoot(id);
 			f32 materialFrame;
-			if (object->mMatAnim != NULL) {
-				HSD_AObj* animation = FindMaterialOrTextureAnimationInJointTree(object->mJObj);
+			if (mMatAnim != NULL) {
+				HSD_AObj* animation = FindMaterialOrTextureAnimationInJointTree(mJObj);
 				materialFrame       = animation != NULL ? HSD_AObjGetCurrentFrame(animation) : 0.0f;
 			} else {
-				materialFrame    = 0.0f;
-				object->mMatAnim = Material(&object->mArchive, 0);
+				materialFrame = 0.0f;
+				mMatAnim      = mArchive.GetMatAnimJointRoot(0);
 			}
-			if (joint != NULL || object->mMatAnim != NULL || shape != NULL) {
-				HSD_JObjRemoveAnimAll(object->mJObj);
-				HSD_JObjAddAnimAll(object->mJObj, (HSD_AnimJoint*)joint, object->mMatAnim, (HSD_ShapeAnimJoint*)shape);
-				HSD_ForeachAnim(object->mJObj, (HSD_Type)6, (HSD_TypeMask)0x484, HSD_AObjSetFlags, (AObj_Arg_Type)3, 0x20000000);
-				HSD_JObjReqAnimAllByFlags(object->mJObj, 0x189, frame);
-				HSD_JObjReqAnimAllByFlags(object->mJObj, 0x16, materialFrame);
+			if (joint != NULL || mMatAnim != NULL || shape != NULL) {
+				HSD_JObjRemoveAnimAll(mJObj);
+				HSD_JObjAddAnimAll(mJObj, (HSD_AnimJoint*)joint, mMatAnim, (HSD_ShapeAnimJoint*)shape);
+				HSD_ForeachAnim(mJObj, (HSD_Type)6, (HSD_TypeMask)0x484, HSD_AObjSetFlags, (AObj_Arg_Type)3, 0x20000000);
+				HSD_JObjReqAnimAllByFlags(mJObj, 0x189, frame);
+				HSD_JObjReqAnimAllByFlags(mJObj, 0x16, materialFrame);
 			}
 			force = TRUE;
 		}
-		if (rate != object->mAnimRate || force) {
-			object->mAnimRate     = rate;
-			object->mLastAnimRate = 0.01f + rate;
+		if (rate != mAnimRate || force) {
+			mAnimRate     = rate;
+			mLastAnimRate = 0.01f + rate;
 		}
 	} else {
-		SetAnim__4XObjFliPvPvPvffff(object, id, force, jointAnim, matAnim, shapeAnim, frame, rate, blend, blendRate);
+		XObj::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, rate, blend, blendRate);
 	}
 }
 
-// XObjDust::DrawObjectEffects
 /**
  * @note Address: 0x800DEAA0
  * @note Size: 0x208
@@ -107,7 +71,6 @@ void XObjDust::DrawObjectEffects()
 	}
 }
 
-// XObjDust::DrawWithView
 /**
  * @note Address: 0x800DECA8
  * @note Size: 0x7C
@@ -115,8 +78,8 @@ void XObjDust::DrawObjectEffects()
 void XObjDust::DrawWithView(Mtx view)
 {
 	if (GetObjFlags() & 2) {
-		DrawWithView__4XObjFPA4_f(this, view);
+		XObj::DrawWithView(view);
 	} else if (GetObjFlags() & 4) {
-		DrawWithView__4XObjFPA4_f(this, view);
+		XObj::DrawWithView(view);
 	}
 }
