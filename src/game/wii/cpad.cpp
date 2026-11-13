@@ -60,6 +60,13 @@ enum {
 	RumblePaused   = 4
 };
 
+#if defined(WII_GAMECUBE_PAD)
+// mod: the first A press picks the controls. GameCube A plays with the GameCube controller alone, and the game no
+// longer asks for the Wii Remote; Wii Remote A plays as retail does, pointer, motion and speaker included.
+enum { ControlsUndecided, ControlsGameCube, ControlsRemote };
+static u8 sControls = ControlsUndecided;
+#endif
+
 // Hardware masks returned by KPAD for the Wii Remote and its extensions.
 enum {
 	WPAD_BUTTON_LEFT  = 0x0001,
@@ -210,10 +217,10 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 	mProbeResult = probe;
 	mDeviceType  = device;
 #if defined(WII_GAMECUBE_PAD)
-	// mod: with no Wii Remote the game keeps asking for it, its Nunchuk and its pointer (it reads these three
-	// values). While only a GameCube controller is in, they say all is there; mDevices keeps the truth, so no Wii
-	// Remote input is read. A Wii Remote that answers is used as usual, pointer, motion and speaker included.
-	if (probe == -1 && status->err == PAD_ERR_NONE) {
+	// mod: the game asks for the Wii Remote, its Nunchuk and its pointer from these three values of port 1. With
+	// GameCube controls, or before the choice while only a GameCube controller is in, they say all is there;
+	// mDevices keeps the truth and mInputMask decides which input is read.
+	if (mPort == 0 && (sControls == ControlsGameCube || (sControls == ControlsUndecided && probe == -1 && status->err == PAD_ERR_NONE))) {
 		mProbeResult             = 0;
 		mDeviceType              = 1;
 		mSamples[0].pointerValid = 2;
@@ -816,8 +823,8 @@ PADStatus gWiiGameCubePads[4];
 void CPadEx::Init(u8 inputMask)
 {
 #if defined(WII_GAMECUBE_PAD)
-	// mod: the GameCube controller works next to the Wii Remote; CPadAct already turns its buttons into the same
-	// actions (GameCubeActions), retail only left it switched off
+	// mod: both controllers work until the first A press picks one (see Update); CPadAct already turns the GameCube
+	// buttons into the same actions (GameCubeActions), retail only left them switched off
 	inputMask |= InputGameCube;
 #endif
 	mInputMask = inputMask;
@@ -873,6 +880,24 @@ void CPadEx::Update(s32 frames)
 	for (u8 port = 0; port < 4; ++port) {
 		gWiiPads[port].Update(&gWiiGameCubePads[port], frames);
 	}
+#if defined(WII_GAMECUBE_PAD)
+	if (sControls == ControlsUndecided) {
+		u8 inputMask = 0;
+		if (gWiiPads[0].mTrigger & (1ULL << GameCubeA)) {
+			sControls = ControlsGameCube;
+			inputMask = InputGameCube;
+		} else if (gWiiPads[0].mTrigger & (1ULL << RemoteA)) {
+			sControls = ControlsRemote;
+			inputMask = InputRemote;
+		}
+		if (inputMask != 0) {
+			mInputMask = inputMask;
+			for (int port = 0; port < 4; ++port) {
+				gWiiPads[port].mInputMask = inputMask;
+			}
+		}
+	}
+#endif
 }
 
 void CPadEx::SetMainStickRange(f32 inner, f32 outer)

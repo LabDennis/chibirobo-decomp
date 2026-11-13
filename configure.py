@@ -59,15 +59,18 @@ parser.add_argument(
     help="base build directory (default: build)",
 )
 parser.add_argument(
+    "--langpack",
     "--wii-locale",
+    dest="wii_locale",
     choices=("en-US", "en-GB", "de-DE", "fr-FR", "es-ES", "it-IT"),
-    help="build a Wii localization mod from R24J01",
+    help="Wii mod: the game's text in this language",
 )
 parser.add_argument(
+    "--gcncon",
     "--wii-gamecube-pad",
+    dest="wii_gamecube_pad",
     action="store_true",
-    help="Wii mod: a GameCube controller works next to the Wii Remote; with only a GameCube controller in, the game "
-    "stops asking for the Wii Remote, Nunchuk and pointer",
+    help="Wii mod: the first A press picks the controls, GameCube controller or Wii Remote with its extras",
 )
 parser.add_argument(
     "--binutils",
@@ -154,7 +157,7 @@ version_num = VERSIONS.index(config.version)
 wii = config.version == "R24J01"
 wii_mod = bool(args.wii_locale or args.wii_gamecube_pad)
 if wii_mod and not wii:
-    parser.error("--wii-locale and --wii-gamecube-pad require --version R24J01")
+    parser.error("--langpack and --gcncon require --version R24J01")
 if wii_mod and args.mode == "progress":
     parser.error("progress is measured against retail releases")
 
@@ -194,7 +197,7 @@ if wii_mod:
 
     parts = [args.wii_locale] if args.wii_locale else []
     if args.wii_gamecube_pad:
-        parts.append("gcpad")
+        parts.append("gcncon")
     config.output_name = "wii-" + "-".join(parts)
     config.check_sha_path = None
     config.progress = False
