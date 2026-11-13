@@ -8,10 +8,6 @@
 
 extern "C" void OSReport(const char* format, ...);
 extern "C" Vec lbl_805A0400[];
-extern "C" s8 lbl_8065B324;
-extern "C" s32 lbl_8065B320;
-extern "C" s8 lbl_8065B32C;
-extern "C" s32 lbl_8065B328;
 
 class CGs;
 
@@ -84,25 +80,24 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		u16 flags = CamAreaInfo(&state->_24[i])._04->_2E & 4;
 		if (flags == 0)
 			continue;
-		if (lbl_8065B32C == 0)
-			lbl_8065B32C = 1;
-		lbl_8065B328 = i;
+		static s32 selected = 0;
+		selected            = i;
 		CPad pad(3);
 		if (pad.mPad->mTrigger & 2) {
-			if (++lbl_8065B328 >= state->_28)
-				lbl_8065B328 = state->_28 - 1;
+			if (++selected >= state->_28)
+				selected = state->_28 - 1;
 #if !defined(VERSION_PAL)
-			OSReport("DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n", lbl_8065B328);
+			OSReport("DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n", selected);
 #endif
 		} else if (pad.mPad->mTrigger & 1) {
-			if (--lbl_8065B328 <= 0)
-				lbl_8065B328 = 0;
+			if (--selected <= 0)
+				selected = 0;
 #if !defined(VERSION_PAL)
-			OSReport("DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n", lbl_8065B328);
+			OSReport("DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n", selected);
 #endif
 		}
 
-		CamAreaInfo area(&state->_24[lbl_8065B328]);
+		CamAreaInfo area(&state->_24[selected]);
 		CVec a     = AreaPoint(area, 0);
 		CVec b     = AreaPoint(area, 1);
 		CVec c     = AreaPoint(area, 2);
@@ -120,9 +115,9 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		CVec axis      = CVec(1.0f, 0.0f, 0.0f);
 		CVec direction = b - a;
 		PSVECNormalize(&direction, &direction);
-		DrawGsCube(&gGame.mGs, colors[lbl_8065B328 % 5], center.x, center.y, center.z, 0.0f, 0.0f, 0.0f, width, height, depth);
+		DrawGsCube(&gGame.mGs, colors[selected % 5], center.x, center.y, center.z, 0.0f, 0.0f, 0.0f, width, height, depth);
 
-		s32 index           = lbl_8065B328;
+		s32 index           = selected;
 		CamAreaEntry* entry = state->_2034[index]._00;
 		for (s32 j = 0; j < state->_2034[index]._08; ++j, ++entry) {
 			CVec pos, next;
@@ -167,23 +162,20 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 	u32 colors[7] = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
 	f32 scale     = 2.0f / sqrtf(3.0f);
 	for (s32 i = 0; i < count; ++records, ++i) {
-		if (lbl_8065B324 == 0) {
-			lbl_8065B320 = 0;
-			lbl_8065B324 = 1;
-		}
+		static s32 selected = 0;
 		CPad pad(3);
 #if !defined(VERSION_PAL)
 		if (pad.mPad->mTrigger & 2) {
-			if (++lbl_8065B320 >= count)
-				lbl_8065B320 = count - 1;
-			OSReport("DEBUG:CCameraActionMap::DrawDebug3d():%d\n", lbl_8065B320);
+			if (++selected >= count)
+				selected = count - 1;
+			OSReport("DEBUG:CCameraActionMap::DrawDebug3d():%d\n", selected);
 		} else if (pad.mPad->mTrigger & 1) {
-			if (--lbl_8065B320 <= 0)
-				lbl_8065B320 = 0;
-			OSReport("DEBUG:CCameraActionMap::DrawDebug3d():%d\n", lbl_8065B320);
+			if (--selected <= 0)
+				selected = 0;
+			OSReport("DEBUG:CCameraActionMap::DrawDebug3d():%d\n", selected);
 		}
 #endif
-		lbl_8065B320 = i;
+		selected = i;
 		CamAreaInfo area(records);
 		if (area.IsDisabled())
 			continue;
@@ -235,7 +227,7 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 		CVec axis      = CVec(1.0f, 0.0f, 0.0f);
 		CVec direction = b - a;
 		PSVECNormalize(&direction, &direction);
-		DrawGsCube(&gGame.mGs, colors[lbl_8065B320 % 5], center.x, center.y, center.z, 0.0f, yaw, 0.0f, width, height, depth);
+		DrawGsCube(&gGame.mGs, colors[selected % 5], center.x, center.y, center.z, 0.0f, yaw, 0.0f, width, height, depth);
 	}
 }
 
