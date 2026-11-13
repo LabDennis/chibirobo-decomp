@@ -1,10 +1,6 @@
 #include "game/xobjactor.h"
 #include "game/xchr.h"
 
-extern "C" {
-extern XObjActorMama::StateFunc sMamaIdleState;
-}
-
 /**
  * @note Address: 0x8012926C
  * @note Size: 0xB0
@@ -25,6 +21,6 @@ void XObjActorMama::ResetActorState()
 	_988        = 0.0f;
 	_C84        = _988;
 	_C88        = 0;
-	mState      = sMamaIdleState;
+	mState      = &XObjActorMama::StateNone;
 	ResetActorMovementStep(this);
 }
