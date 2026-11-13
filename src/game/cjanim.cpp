@@ -131,7 +131,7 @@ void XObj::OnHitFromPosition(const Vec& position, f32 strength)
  * @note Address: 0x8008A818
  * @note Size: 0x8
  */
-extern "C" BOOL vf134__4XObjFf(void* object, f32 amount)
+BOOL XObj::vf134(f32 amount)
 {
 	return TRUE;
 }

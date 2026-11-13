@@ -2962,7 +2962,7 @@ extern "C" BOOL GetMapCameraTargetOffsetPosition(CCameraActionMap* map, CVec& ou
  * @note Address: 0x8013C1D4
  * @note Size: 0x2C
  */
-extern "C" void vf28__16CCameraActionMapFv()
+void CCameraActionMap::vf28()
 {
 	DrawMapCameraAreaDebug3D(&gCameraAreaState, 1);
 }

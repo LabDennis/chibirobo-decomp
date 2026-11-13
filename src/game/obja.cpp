@@ -656,7 +656,7 @@ void XObj::vfC8()
  * @note Address: 0x80090568
  * @note Size: 0x4
  */
-extern "C" void vfC4__4XObjFv(XObj*)
+void XObj::vfC4()
 {
 }
 

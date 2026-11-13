@@ -266,7 +266,6 @@ CVec GetFloorContactPosition(XObj* object, s32 floor, const Vec* offset);
 f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut);
 void UpdateObjectFloorHeights(XObj* object);
 void UpdateObjectFloorXZExtent(XObj* object);
-void vfC4__4XObjFv(XObj* object);
 void DrawGroundShadowAt__4XObjFPC3Vecf(XObj* object, const Vec* origin, f32 opacity);
 void DrawGroundShadow__4XObjFv(XObj* object);
 void DrawWithView__4XObjFPA4_f(XObj* object, f32 (*view)[4]);

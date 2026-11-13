@@ -5703,7 +5703,7 @@ void XObjChr::vfC4()
 		PSMTXConcat(model, tilt, model);
 		PSMTXConcat(gs->mCamera->mViewMtx, model, view);
 		DrawGsCylinderWithMatrix(gs, view, 0x9696FF60, 16);
-		vfC4__4XObjFv(this);
+		XObj::vfC4();
 		XObj* plug = &mPlug;
 		if (gGame.mStatus.mFlags & 0x0040000000000000ULL)
 			plug->vfC4();
@@ -8783,7 +8783,7 @@ extern "C" void OpenPlayerEquipmentRings(XObjChr* chr)
  * @note Address: 0x800B5808
  * @note Size: 0x4
  */
-extern "C" void vfE0__7XObjChrFf()
+void XObjChr::vfE0(f32 factor)
 {
 }
 

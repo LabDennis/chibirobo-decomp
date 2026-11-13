@@ -246,7 +246,7 @@ void main(int argc, char** argv)
  * @note Address: 0x800151DC
  * @note Size: 0x4
  */
-extern "C" void Reset__8FbMirrorFv(void)
+void FbMirror::Reset()
 {
 }
 

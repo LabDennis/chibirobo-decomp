@@ -1263,7 +1263,7 @@ void Cursor::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* s
  * @note Size: 0x4
  */
 // XObj's vf94
-extern "C" void vf94__4XObjFv()
+void XObj::vf94()
 {
 }
 
@@ -1282,7 +1282,7 @@ BOOL XObj::LoadAnimationArchiveAsync(const char* path)
  * @note Size: 0x4
  */
 // XObj's DrawDebugStatus
-extern "C" void DrawDebugStatus__4XObjFv()
+void XObj::DrawDebugStatus()
 {
 }
 
@@ -1346,7 +1346,7 @@ HSD_ShapeAnimJoint* XObj::GetShapeAnimation(s32 id)
  * @note Size: 0x8
  */
 // XObj's vf100
-extern "C" s32 vf100__4XObjFll(void* object, s32 unused, s32 value)
+s32 XObj::vf100(s32 unused, s32 value)
 {
 	return value;
 }
