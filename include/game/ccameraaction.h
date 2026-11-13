@@ -616,13 +616,13 @@ public:
 	f32 mScrollFov;                            // _4C
 	CInterfaceInterpolation* mDistanceInterp;  // _50
 	CInterpolationEaseOutDivide mDistanceEase; // _54
-	u32 _64;                                   // _64
+	u32 mInterestMode;                         // _64
 	s32 mZoom;                                 // _68, 0 near, 1 far
 
-	virtual void Update(u32 step);           // _10
-	virtual void Reset();                    // _14
-	virtual void SetCamera(CCamera* camera); // _18
-	virtual u32 vf5C() { return _64; }       // _5C
+	virtual void Update(u32 step);               // _10
+	virtual void Reset();                        // _14
+	virtual void SetCamera(CCamera* camera);     // _18
+	virtual u32 vf5C() { return mInterestMode; } // _5C
 
 	void SetZoomDistance(f32 distance)
 	{
