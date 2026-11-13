@@ -6,6 +6,8 @@
 #include "game/cgame.h"
 #include "game/xchr.h"
 
+CCameraActionAreaEx gCameraAreaState;
+
 extern "C" void OSReport(const char* format, ...);
 extern "C" Vec lbl_805A0400[];
 
