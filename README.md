@@ -119,6 +119,14 @@ options: `wii-gcncon`, `wii-en-US`, …). Dolphin applies the mod to your origin
 disc image; on a Wii, Riivolution does the same with the folder's
 `riivolution.xml` and `main.dol`.
 
+Add `--iso` to also get a disc image with the mod, for example
+`build/wii-en-US-gcncon/wii-en-US-gcncon.iso`. This needs
+[Wiimms ISO Tools](https://wit.wiimm.de) (`wit`, GPL-2.0) on your PATH, in
+`~/.local/opt/wit/bin/wit`, or passed with `--wit`. The build extracts your disc
+once, puts the mod's `main.dol` and files into a copy, and has `wit` write and
+encrypt the image. Ticket and TMD are fake-signed: Dolphin plays it as is; a Wii
+needs a USB loader with patched IOS.
+
 For `--langpack`, choose `en-US`, `en-GB`, `de-DE`, `fr-FR`, `es-ES` or `it-IT`.
 The starter translations cover the Wii title, save banner and three Wii Remote
 messages. Other text and assets fall back to the Japanese release.

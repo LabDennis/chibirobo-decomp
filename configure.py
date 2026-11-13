@@ -13,6 +13,7 @@
 ###
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 from typing import Any, Dict, List
@@ -71,6 +72,17 @@ parser.add_argument(
     dest="wii_gamecube_pad",
     action="store_true",
     help="Wii mod: the first A press picks the controls, GameCube controller or Wii Remote with its extras",
+)
+parser.add_argument(
+    "--iso",
+    action="store_true",
+    help="Wii mod: also write a disc image with the mod (needs Wiimms ISO Tools, wit)",
+)
+parser.add_argument(
+    "--wit",
+    metavar="BINARY",
+    type=Path,
+    help="path to wit for --iso (default: wit on PATH, or ~/.local/opt/wit/bin/wit)",
 )
 parser.add_argument(
     "--binutils",
@@ -160,6 +172,16 @@ if wii_mod and not wii:
     parser.error("--langpack and --gcncon require --version R24J01")
 if wii_mod and args.mode == "progress":
     parser.error("progress is measured against retail releases")
+wit = None
+if args.wit and not args.iso:
+    parser.error("--wit is only used with --iso")
+if args.iso:
+    if not wii_mod:
+        parser.error("--iso builds a mod's disc image: add --gcncon and/or --langpack")
+    default_wit = Path.home() / ".local/opt/wit/bin/wit"
+    wit = args.wit or (Path(shutil.which("wit")) if shutil.which("wit") else default_wit)
+    if not wit.is_file():
+        parser.error(f"--iso needs Wiimms ISO Tools: install wit (https://wit.wiimm.de) or pass --wit; tried {wit}")
 
 # Apply arguments
 config.build_dir = args.build_dir
@@ -207,7 +229,9 @@ if wii_mod:
     if args.wii_gamecube_pad:
         features.append("GameCube controller")
     try:
-        base = disc_image(Path("orig/R24J01"))
+        base = wii_disc = disc_image(Path("orig/R24J01"))
+        if args.iso and wii_disc.name == "main.dol":
+            parser.error("--iso needs a disc image (ISO, RVZ, ...) in orig/R24J01, not an extracted partition")
         if args.wii_locale:
             write_localization(translations, args.wii_locale, config.out_path())
         write_mod(config.out_path(), base, ", ".join(features))
@@ -1370,11 +1394,48 @@ def append_treemap_step(config: ProjectConfig) -> None:
         )
 
 
+def append_iso_step(config: ProjectConfig, wit: Path, disc: Path) -> None:
+    # The mod's main.dol and files, put into a copy of the original disc by tools/wii_iso.py.
+    out = config.out_path()
+    image = (out / f"{config.output_name}.iso").as_posix()
+    exe = ".exe" if is_windows() else ""
+    # the same dtk generate_build uses: a given binary, one built from a given checkout, or the downloaded one
+    if config.dtk_path is not None and config.dtk_path.is_file():
+        dtk = config.dtk_path
+    elif config.dtk_path is not None:
+        dtk = config.build_dir / "tools" / "release" / f"dtk{exe}"
+    else:
+        dtk = config.build_dir / "tools" / f"dtk{exe}"
+
+    def esc(path: str) -> str:  # a path on a build line
+        return path.replace("$", "$$").replace(" ", "$ ").replace(":", "$:")
+
+    def arg(path: Path) -> str:  # a path in a command, quoted for the shell
+        return '"' + path.as_posix().replace("$", "$$") + '"'
+
+    with open("build.ninja", "a", encoding="utf-8") as f:
+        f.write(
+            "\n# Disc image with the mod\n"
+            "rule wii_iso\n"
+            f"  command = $python tools/wii_iso.py --dtk {arg(dtk)} --wit {arg(wit)} --disc {arg(disc)}"
+            f" --dol $in --files {arg(out / 'files')} --work {arg(out / 'iso')} --out $out\n"
+            "  depfile = $out.d\n"
+            "  deps = gcc\n"
+            "  description = ISO $out\n"
+            "  pool = console\n"
+            f"build {esc(image)}: wii_iso {esc((out / 'main.dol').as_posix())} | {esc(dtk.as_posix())} {esc(disc.as_posix())}"
+            " tools/wii_iso.py\n"
+            f"default {esc(image)}\n"
+        )
+
+
 if args.mode == "configure":
     # Write build.ninja and objdiff.json
     generate_build(config)
     if not wii_mod:
         append_treemap_step(config)
+    if args.iso:
+        append_iso_step(config, wit, wii_disc)
 elif args.mode == "progress":
     # Print progress information
     calculate_progress(config)
