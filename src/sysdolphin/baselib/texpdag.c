@@ -320,21 +320,19 @@ int HSD_TExpMakeDag(HSD_TExp* root, HSD_TExpDag* list)
 {
 	HSD_TExp* tevs[HSD_TEXP_MAX_NUM];
 	int dist[32];
-	int j;
-	HSD_TExp** base;
-	int num;
 	int n;
 	int i;
+	int j;
 	int k;
 	int l;
+	int num;
 	int idx;
 	HSD_TExpDag* dag;
 
 	TEXPDAG_ASSERT(0xEE, HSD_TExpGetType(root) == HSD_TE_TEV);
 
-	base      = tevs;
 	n         = 0;
-	base[n++] = root;
+	tevs[n++] = root;
 	for (j = 0; j < n; j++) {
 		HSD_TExp* tmp;
 		TEXPDAG_ASSERT_S(0xF6, j < HSD_TEXP_MAX_NUM, "j<HSD_TEXP_MAX_NUM");
@@ -342,7 +340,7 @@ int HSD_TExpMakeDag(HSD_TExp* root, HSD_TExpDag* list)
 		for (i = 0; i < 4; i++) {
 			if (tmp->tev.c_in[i].type == HSD_TE_TEV) {
 				for (k = 0; k < n; k++) {
-					if (base[k] == tmp->tev.c_in[i].exp) {
+					if (tevs[k] == tmp->tev.c_in[i].exp) {
 						break;
 					}
 				}
@@ -355,7 +353,7 @@ int HSD_TExpMakeDag(HSD_TExp* root, HSD_TExpDag* list)
 		for (i = 0; i < 4; i++) {
 			if (tmp->tev.a_in[i].type == HSD_TE_TEV) {
 				for (k = 0; k < n; k++) {
-					if (base[k] == tmp->tev.a_in[i].exp) {
+					if (tevs[k] == tmp->tev.a_in[i].exp) {
 						break;
 					}
 				}
@@ -372,19 +370,19 @@ int HSD_TExpMakeDag(HSD_TExp* root, HSD_TExpDag* list)
 	}
 
 	CalcDistance(&tevs[0], &dist[0], tevs[0], num, 0);
-	for (idx = 0; idx < num; idx++) {
-		for (j = idx + 1; j < num; j++) {
-			if (dist[j - 1] > dist[j]) {
+	for (i = 0; i < num; i++) {
+		for (idx = i + 1; idx < num; idx++) {
+			if (dist[idx - 1] > dist[idx]) {
 				{
-					HSD_TExp* tmp = tevs[j - 1];
-					tevs[j - 1]   = tevs[j];
-					tevs[j]       = tmp;
+					HSD_TExp* tmp = tevs[idx - 1];
+					tevs[idx - 1] = tevs[idx];
+					tevs[idx]     = tmp;
 				}
 
 				{
-					int tmp     = dist[j - 1];
-					dist[j - 1] = dist[j];
-					dist[j]     = tmp;
+					int tmp       = dist[idx - 1];
+					dist[idx - 1] = dist[idx];
+					dist[idx]     = tmp;
 				}
 			}
 		}
@@ -408,7 +406,7 @@ int HSD_TExpMakeDag(HSD_TExp* root, HSD_TExpDag* list)
 								break;
 							}
 						}
-						if (l >= (int)dag->nb_dep) {
+						if (l >= dag->nb_dep) {
 							dag->depend[dag->nb_dep++] = dep_entry;
 							dep_entry->nb_ref++;
 						}
@@ -423,16 +421,15 @@ int HSD_TExpMakeDag(HSD_TExp* root, HSD_TExpDag* list)
 			if (tmp->tev.a_in[idx].type == HSD_TE_TEV) {
 				for (l = j; l < num; l++) {
 					if (tmp->tev.a_in[idx].exp == tevs[l]) {
-						u8 dep_count2           = dag->nb_dep;
-						HSD_TExpDag* dep_entry2 = &list[l];
-						for (l = 0; l < (int)dep_count2; l++) {
-							if (dag->depend[l] == dep_entry2) {
+						HSD_TExpDag* dep_entry = &list[l];
+						for (l = 0; l < dag->nb_dep; l++) {
+							if (dag->depend[l] == dep_entry) {
 								break;
 							}
 						}
 						if (l >= dag->nb_dep) {
-							dag->depend[dag->nb_dep++] = dep_entry2;
-							dep_entry2->nb_ref++;
+							dag->depend[dag->nb_dep++] = dep_entry;
+							dep_entry->nb_ref++;
 						}
 						break;
 					}

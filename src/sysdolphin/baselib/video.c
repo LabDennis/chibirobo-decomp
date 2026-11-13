@@ -149,13 +149,14 @@ HSD_VIGXDrawDoneCallback HSD_VISetUserGXDrawDoneCallback(HSD_VIGXDrawDoneCallbac
  */
 void HSD_VIPreRetraceCB(u32 retraceCount)
 {
+	s32 next;
 	s32 idx;
 	s32 flush = 0;
 	s32 renew = 0;
 
-	idx = HSD_VISearchXFBByStatus(HSD_VI_XFB_NEXT);
-	if (idx != -1) {
-		HSD_VIXFB* x = &_p->xfb[idx];
+	next = HSD_VISearchXFBByStatus(HSD_VI_XFB_NEXT);
+	if (next != -1) {
+		HSD_VIXFB* x = &_p->xfb[next];
 		VISetNextFrameBuffer(x->buffer);
 		if (x->vi_all.chg_flag) {
 			VIConfigure(&x->vi_all.vi.rmode);
@@ -382,15 +383,17 @@ ret:
  */
 static inline void HSD_VISetXFBWaitDone(s32 idx)
 {
+	HSD_VIXFBDrawDispStatus* status;
 	HSD_VIXFB* xfb;
 	bool intr;
 
 	intr = OSDisableInterrupts();
 
-	xfb = &_p->xfb[idx];
-	assert_line_named(0x24E, xfb->status == HSD_VI_XFB_DRAWING, "_p->xfb[idx].status == HSD_VI_XFB_DRAWING");
+	status = &_p->xfb[idx].status;
+	assert_line_named(0x24E, *status == HSD_VI_XFB_DRAWING, "_p->xfb[idx].status == HSD_VI_XFB_DRAWING");
+	*status = HSD_VI_XFB_WAITDONE;
 
-	xfb->status          = HSD_VI_XFB_WAITDONE;
+	xfb                  = &_p->xfb[idx];
 	xfb->vi_all          = _p->current;
 	_p->current.chg_flag = 0;
 
