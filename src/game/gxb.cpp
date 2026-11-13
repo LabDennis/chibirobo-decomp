@@ -2433,7 +2433,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			u8 selected = 0, empty = 0;
 			if (title->mFile == i)
 				selected = 1;
-			if (title->mFreeBlocks >= 6 && title->mFreeFiles > 0)
+			if (title->mFreeBlocks >= 6 && title->mFreeEntries > 0)
 				empty = 1;
 			DrawSaveSlotDetails(&gTitleSaveSlots[i], empty, i, selected, x, 223.0f, width, 230.0f, title->mLoadAlpha, 1.0f, 1.0f);
 		}
@@ -3141,9 +3141,9 @@ void Title::State15(u32 frames)
 	}
 	switch (step) {
 	case 0:
-		mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
-		mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
-		file        = &card->mSaves[0][mFile];
+		mFreeBlocks  = gGame.mMemcard.mCard.mFreeBlocks;
+		mFreeEntries = gGame.mMemcard.mCard.mFreeEntries;
+		file         = &card->mSaves[0][mFile];
 		if (file->mState != 0) {
 			gTitleSaveSlots[mFile].mUsed       = 1;
 			gTitleSaveSlots[mFile].mLevel      = file->mHeader.mLevel;
@@ -3343,8 +3343,8 @@ void Title::State12(u32 frames)
 	}
 	switch (gGame.mMemcard.mCard.mState) {
 	case 0:
-		mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
-		mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
+		mFreeBlocks  = gGame.mMemcard.mCard.mFreeBlocks;
+		mFreeEntries = gGame.mMemcard.mCard.mFreeEntries;
 		SetMode(13);
 		mAlpha = 1.0f;
 		break;
@@ -3799,7 +3799,7 @@ void Title::State2(u32 frames)
 				SetMode(3);
 				mChoice = 1;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			} else if (mFreeBlocks >= 6 && mFreeFiles > 0) {
+			} else if (mFreeBlocks >= 6 && mFreeEntries > 0) {
 				StartMemoryCardSaveWrite(&gGame.mMemcard.mCard, mChannel, mFile, 1);
 				SetMode(15);
 				mDelay  = 1.5f * FRAME_RATE;
@@ -3896,8 +3896,8 @@ void Title::State1(u32 frames)
 					gTitleSaveSlots[i].mState = 0;
 			}
 		}
-		mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
-		mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
+		mFreeBlocks  = gGame.mMemcard.mCard.mFreeBlocks;
+		mFreeEntries = gGame.mMemcard.mCard.mFreeEntries;
 		SetMode(2);
 		if (mSelection == 0)
 			mFile = 0;

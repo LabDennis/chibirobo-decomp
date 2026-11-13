@@ -3664,8 +3664,8 @@ void MenuSave::State9(u32 frameCount)
 	}
 	switch (gGame.mMemcard.mCard.mState) {
 	case 0:
-		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
-		menu->mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
+		menu->mFreeBlocks  = gGame.mMemcard.mCard.mFreeBlocks;
+		menu->mFreeEntries = gGame.mMemcard.mCard.mFreeEntries;
 		menu->SetMode(10);
 		break;
 	case 1:
@@ -3786,8 +3786,8 @@ void MenuSave::State1(u32 frameCount)
 				}
 			}
 		}
-		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
-		menu->mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
+		menu->mFreeBlocks  = gGame.mMemcard.mCard.mFreeBlocks;
+		menu->mFreeEntries = gGame.mMemcard.mCard.mFreeEntries;
 		if (menu->mSaved == TRUE) {
 			menu->SetMode(4);
 			menu->mTime  = 0.5f * FRAME_RATE;
@@ -3904,8 +3904,8 @@ void MenuSave::State5(u32 frameCount)
 				menu->mSlots[menu->mFile].mActive = 0;
 			}
 		}
-		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
-		menu->mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
+		menu->mFreeBlocks  = gGame.mMemcard.mCard.mFreeBlocks;
+		menu->mFreeEntries = gGame.mMemcard.mCard.mFreeEntries;
 		StartMemoryCardPreviewRead(card, menu->mChannel, 1);
 		menu->SetMode(1);
 		menu->mLastFile = menu->mFile;
@@ -4234,7 +4234,7 @@ void MenuSave::State2(u32)
 		if (menu->mSlots[menu->mFile].mUsed == 1) {
 			menu->mChoice = 1;
 			menu->SetMode(3);
-		} else if (menu->mFreeBlocks >= 6 && menu->mFreeFiles > 0) {
+		} else if (menu->mFreeBlocks >= 6 && menu->mFreeEntries > 0) {
 			StartMemoryCardSaveWrite(&gGame.mMemcard.mCard, menu->mChannel, menu->mFile, 1);
 			menu->SetMode(5);
 			menu->mDelay = 1.5f * FRAME_RATE;
@@ -7158,7 +7158,7 @@ BOOL MenuMCTest::Update(u32 frames)
 			}
 			if (result == 0)
 				sprintf(mText[mFileCount + 1], "SLOT: %c   FREE BLOCKS: %d   FREE ENTRIES: %d", sMenuMain.mChannel + 'A', card->mFreeBlocks,
-				        card->mFreeFiles);
+				        card->mFreeEntries);
 			mOperation = 0;
 			break;
 		case 3:
@@ -9194,7 +9194,7 @@ BOOL MenuSave::Draw()
 				u8 selected = 0, emptyMessage = 0;
 				if (mFile == i)
 					selected = 1;
-				if (mFreeBlocks >= 6 && mFreeFiles > 0)
+				if (mFreeBlocks >= 6 && mFreeEntries > 0)
 					emptyMessage = 1;
 				DrawSaveSlotDetails(&mSlots[i], emptyMessage, i, selected, x, 223.0f, width, 230.0f, mDrawAlpha, 1.0f, 1.0f);
 			}

@@ -125,8 +125,8 @@ public:
 	f32 mLoadOffset;           // _37C4
 	f32 _37C8;                 // _37C8
 	f32 mOffset;               // _37CC
-	s32 mFreeBlocks;           // _37D0, the card's _16A04
-	s32 mFreeFiles;            // _37D4, the card's _16A00
+	s32 mFreeBlocks;           // _37D0, the card's mFreeBlocks
+	s32 mFreeEntries;          // _37D4, the card's mFreeEntries
 	s32 mResult;               // _37D8, the card result
 	u32 _37DC;                 // _37DC
 	u8 mReady;                 // _37E0

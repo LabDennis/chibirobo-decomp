@@ -609,8 +609,8 @@ public:
 	f32 _170;                  // _170
 	f32 mOffset;               // _174
 	MenuSaveSlot mSlots[3];    // _178, the three save files
-	s32 mFreeBlocks;           // _250, the card's _16A04
-	s32 mFreeFiles;            // _254, the card's _16A00
+	s32 mFreeBlocks;           // _250, the card's mFreeBlocks
+	s32 mFreeEntries;          // _254, the card's mFreeEntries
 	s32 mResult;               // _258, the card result
 	s32 mMessage;              // _25C
 	u8 mReady;                 // _260, a card is in the slot
