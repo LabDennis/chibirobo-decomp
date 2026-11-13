@@ -6,9 +6,9 @@
  * @note Size: 0x144
  */
 // FbMirror's Draw, sets up gx for drawing the mirror's texture
-extern "C" void Draw__8FbMirrorFv(FbMirror* mirror)
+void FbMirror::Draw()
 {
-	if (mirror->mJoint) {
+	if (mJoint) {
 		CGs* graphics = CaptureGraphics();
 		if (graphics->mCurRenderMode)
 			ApplyGsRenderMode(graphics->mCurRenderMode, TRUE);
@@ -36,14 +36,14 @@ extern "C" void Draw__8FbMirrorFv(FbMirror* mirror)
  * @note Size: 0x1FC
  */
 // FbMirror's Copy
-extern "C" void Copy__8FbMirrorFv(FbMirror* mirror)
+void FbMirror::Copy()
 {
-	if (mirror->mVisible) {
+	if (mVisible) {
 		CGs* graphics = CaptureGraphics();
 		SetGsColorUpdate(graphics->mCurRenderMode, 1);
 		SetGsAlphaUpdate(graphics->mCurRenderMode, 1);
 		SetGsDepthMode(graphics->mCurRenderMode, 0, 7, 1);
 		FlushCaptureGraphics(graphics);
-		CopyCaptureTexture(&mirror->mTexture, graphics);
+		CopyCaptureTexture(&mTexture, graphics);
 	}
 }

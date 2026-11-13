@@ -15,14 +15,14 @@ extern "C" {
  * @note Size: 0xC8
  */
 // sets the mirror's camera up for its 256 square texture
-extern "C" void Init__10FbMirrorExFv(FbMirrorEx* mirror)
+void FbMirrorEx::Init()
 {
-	mirror->mJoint = NULL;
-	mirror->mCamera.Init(0.1f, 32768.0f, 0.5f, -0.5f, -0.5f, 0.5f, &gGame.mGs.mScreen);
-	mirror->mCamera.SetViewport(0.0f, 256.0f, 0.0f, 256.0f);
-	mirror->mCamera.SetScissor(0, 0x100, 0, 0x100);
-	mirror->Reset();
-	mirror->mOwner = NULL;
+	mJoint = NULL;
+	mCamera.Init(0.1f, 32768.0f, 0.5f, -0.5f, -0.5f, 0.5f, &gGame.mGs.mScreen);
+	mCamera.SetViewport(0.0f, 256.0f, 0.0f, 256.0f);
+	mCamera.SetScissor(0, 0x100, 0, 0x100);
+	Reset();
+	mOwner = NULL;
 }
 
 static inline void DrawScanModeConfirmation(u32 color, bool alternate)
@@ -296,7 +296,7 @@ extern "C" BOOL UpdateProgressiveScanPrompt(u32 frames)
 			OSSetEuRgb60Mode(1);
 			CGsScreen* screen = &gGame.mGs.mScreen;
 			ConfigureGsScreenMode(screen, 28, 0, 18);
-			screen->_40           = screen->xfbHeight / 444.0f;
+			screen->mHeightScale  = screen->xfbHeight / 444.0f;
 			gVideoFramesPerSecond = 60;
 			CCamera* first        = &gGame.mCameras[0];
 			CCamera* second       = &gGame.mCameras[1];

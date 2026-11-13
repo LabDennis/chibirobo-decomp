@@ -7,6 +7,8 @@ char* strtok(char* str, const char* delim);
 int strcmp(const char* a, const char* b);
 }
 
+CmdLineArgs gCmdLineArgs = { -1, -1, 3, 0, 0, 0, { 0, 0, 0 }, 3, 2, 1, 0, 0, -1 };
+
 /**
  * @note Address: 0x80013580
  * @note Size: 0xCC

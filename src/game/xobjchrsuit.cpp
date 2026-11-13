@@ -23,7 +23,7 @@ extern "C" void UpdatePlayerSuitChange(XObjChr* player)
 {
 	switch (player->mSuits.mChangeStep) {
 	case 1:
-		player->vf12C(2, 255, 255, 255, 0.5f);
+		player->SetColor(2, 255, 255, 255, 0.5f);
 		gPlayerSuitChangeEffect.active = TRUE;
 		for (s32 i = 0; i < 2; ++i) {
 			for (s32 j = 0; j < 10; ++j) {
@@ -51,7 +51,7 @@ extern "C" void UpdatePlayerSuitChange(XObjChr* player)
 	case 3:
 		if (player->mSuits.mCurrent != 0) {
 			RemovePlayerSuit(player);
-			player->vf12C(2, 255, 255, 255, 0.0f);
+			player->SetColor(2, 255, 255, 255, 0.0f);
 		}
 		player->mSuits.mCurrent  = player->mSuits.mRequested;
 		player->mSuits.mLoadStep = 1;
@@ -68,11 +68,11 @@ extern "C" void UpdatePlayerSuitChange(XObjChr* player)
 		// fall through
 	case 5: {
 		ApplyPlayerSuit(player);
-		player->vf12C(2, 255, 255, 255, 0.0f);
-		player->vf12C(2, 0, 0, 0, 0.5f);
+		player->SetColor(2, 255, 255, 255, 0.0f);
+		player->SetColor(2, 0, 0, 0, 0.5f);
 		const Vec& tint = player->mColorStep[0].mValue;
 		u32 color       = ((u32)tint.y << 16) | ((u32)tint.x << 24) | ((u32)tint.z << 8);
-		player->vf12C(0, color >> 24, color >> 16, color >> 8, 0.0f);
+		player->SetColor(0, color >> 24, color >> 16, color >> 8, 0.0f);
 		++player->mSuits.mChangeStep;
 		break;
 	}

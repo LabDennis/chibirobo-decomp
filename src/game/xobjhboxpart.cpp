@@ -5,11 +5,11 @@
  * @note Address: 0x800E0F40
  * @note Size: 0x4C
  */
-extern "C" void Release__8XObjHBoxFv(XObjHBox* box)
+void XObjHBox::Release()
 {
-	box->mPart.mObj.Release();
-	Release__4XObjFv(box);
-	box->mLoadState = 0;
+	mPart.mObj.Release();
+	XObj::Release();
+	mLoadState = 0;
 }
 
 /**
@@ -22,7 +22,7 @@ BOOL XObjHBox::LoadFromPlacement(const CoordInfo& info)
 	case 0:
 		if (!LoadFromPlacement__4XObjFRC9CoordInfo(this, &info))
 			break;
-		_80C = 0;
+		mEventScript = 0;
 		++mLoadState;
 		// fall through, the part starts reading right away
 	case 1:
@@ -59,9 +59,9 @@ void XObjHBox::ResetObjectState()
  * @note Address: 0x800E1138
  * @note Size: 0x30
  */
-extern "C" void vf94__8XObjHBoxFv(XObjHBox* box)
+void XObjHBox::ResetForNewGame()
 {
-	box->mPart.mObj.vf94();
+	mPart.mObj.ResetForNewGame();
 }
 
 /**

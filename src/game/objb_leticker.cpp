@@ -28,103 +28,105 @@ void SelectHighestActiveFloor(XObj* obj);
 extern CCameraActionLeticker gLetickerCameraAction;
 }
 
-static XObjFloor sLetickerLiftFloor0[] = {
+// nothing reads it, the table many units start their .data with
+static s32 sUnused[26] = { 0, 3, 0, 0, 3, 0, 0, 2, 0, 0, 2, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 3, 0 };
+
+static XObjFloor sLetickerLiftFloor0[2] = {
 	{ 2, 0, { 0, 0, 0 }, 0, { 1200, 5000, 1200 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLiftFloor1[] = {
+static XObjFloor sLetickerLiftFloor1[2] = {
 	{ 2, 0, { 0, 517, 0 }, 0, { 1216, 878, 1216 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLevel10Floors[] = {
+static XObjFloor sLetickerLevel10Floors[5] = {
 	{ 2, 0, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -13800 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -22750 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -28600 }, 0, { 600, 150, 2650 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLevel9Floors[] = {
+static XObjFloor sLetickerLevel9Floors[4] = {
 	{ 2, 0, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -13800 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -22750 }, 0, { 600, 150, 7650 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLevel8Floors[] = {
+static XObjFloor sLetickerLevel8Floors[4] = {
 	{ 2, 0, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -13800 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -21300 }, 0, { 600, 150, 5000 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLevel7Floors[] = {
+static XObjFloor sLetickerLevel7Floors[4] = {
 	{ 2, 0, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -13800 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -19600 }, 0, { 600, 150, 2650 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLevel6Floors[] = {
+static XObjFloor sLetickerLevel6Floors[3] = {
 	{ 2, 0, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -13800 }, 0, { 600, 150, 7650 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLevel5Floors[] = {
+static XObjFloor sLetickerLevel5Floors[3] = {
 	{ 2, 0, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -12350 }, 0, { 600, 150, 5000 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLevel4Floors[] = {
+static XObjFloor sLetickerLevel4Floors[3] = {
 	{ 2, 0, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
 	{ 2, 0, { 0, 1000, -10650 }, 0, { 600, 150, 2650 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLevel3Floors[] = {
+static XObjFloor sLetickerLevel3Floors[2] = {
 	{ 2, 0, { 0, 1000, -4650 }, 0, { 600, 150, 7650 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLevel2Floors[] = {
+static XObjFloor sLetickerLevel2Floors[2] = {
 	{ 2, 0, { 0, 1000, -3200 }, 0, { 600, 150, 5000 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLevel1Floors[] = {
+static XObjFloor sLetickerLevel1Floors[2] = {
 	{ 2, 0, { 0, 1000, -1500 }, 0, { 600, 150, 2650 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-static XObjFloor sLetickerLevel0Floors[] = {
+static XObjFloor sLetickerLevel0Floors[2] = {
 	{ 2, 0, { 0, 2564, 6 }, 0, { 604, 2827, 121 } },
-	{ -1 },
+	{ -1, 0, { 0, 0, 0 }, 0, { 0, 0, 0 } },
 };
 
-extern "C" {
-XObjFloor* sLetickerLiftFloors[2]     = { sLetickerLiftFloor0, sLetickerLiftFloor1 };
-XObjFloor* sLetickerFloorsByLevel[11] = {
+static XObjFloor* sLetickerFloorsByLevel[] = {
 	sLetickerLevel0Floors, sLetickerLevel1Floors, sLetickerLevel2Floors,  sLetickerLevel3Floors,
 	sLetickerLevel4Floors, sLetickerLevel5Floors, sLetickerLevel6Floors,  sLetickerLevel7Floors,
 	sLetickerLevel8Floors, sLetickerLevel9Floors, sLetickerLevel10Floors,
 };
 
-AnimSfxEvent sLetickerAnimSfxEvents[] = {
+static AnimSfxEvent sLetickerAnimSfxEvents[] = {
 	{ 7, 10.0f, -1.0f, 1, 0x190, 0xFF, 0, 0, 0 },
 	{ -1 },
 };
-} // extern "C"
+
+static XObjFloor* sLetickerLiftFloors[2] = { sLetickerLiftFloor0, sLetickerLiftFloor1 };
 
 // sets the object's floor boxes, they take effect at once
 static inline void SetFloors(XObj* obj, XObjFloor* floors)
 {
-	obj->mFloors = floors;
-	obj->_250[1] = 0;
-	obj->_250[0] = 0;
+	obj->mFloors        = floors;
+	obj->mFloorMasks[1] = 0;
+	obj->mFloorMasks[0] = 0;
 	UpdateObjectFloorXZExtent(obj);
 	UpdateObjectFloorHeights(obj);
 }
@@ -202,7 +204,7 @@ BOOL TurnLetickerLinkedPartAndTrackJoint(XObjLeticker* leticker, f32 angle)
 	f32 c      = cos(HSD_JObjGetRotationY(part->mJObj) - (angle + my));
 	if (c < (f32)cos(0.08726646f)) {
 		leticker->mLevelProgress = 0.0f;
-		leticker->_A30           = 0;
+		leticker->mPowerTimer    = 0;
 		if (part->mAnimId == 0) {
 			part->SetRotateY(angle + HSD_JObjGetRotationY(leticker->mJObj), 0.1f);
 			leticker->mHeading = angle;
@@ -246,15 +248,14 @@ BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle)
 			continue;
 		if (target->mId == lift->mId || target->mId == first->mId || target->mId == second->mId)
 			continue;
-		XObjSource* source = target->mAttr._00 != NULL ? target->mAttr._00->mSource : NULL;
-		if (source == NULL)
+		if (target->mAttr.mObjData == NULL || target->mAttr.mObjData->mSource == NULL)
 			continue;
 		f32 dx = target->mMoveTranslate.x - pos.x;
 		f32 dz = target->mMoveTranslate.z - pos.z;
 		if (sqrtf(dx * dx + dz * dz) > 100.0f + (5.0f + target->mFloorXZExtent))
 			continue;
 		CVec hit, normal;
-		u32 flags = target->vfFC(&pos, &pos, 5.5f, 6.0f, &hit, &normal, 0, 0);
+		u32 flags = target->TestFloorCollision(&pos, &pos, 5.5f, 6.0f, &hit, &normal, 0, 0);
 		if (flags & 2)
 			return FALSE;
 		if (flags & 1) {
@@ -281,10 +282,10 @@ void XObjLeticker::OnPushDisplacement(const Vec& displacement)
 		part->SetTranslateZ(mMoveTranslate.z, 0);
 	}
 	if (0.0f < PSVECMag(&displacement)) {
-		vf12C(1, 0, 0, 0, 0.5f);
+		SetColor(1, 0, 0, 0, 0.5f);
 		SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	} else {
-		vf12C(1, 0xFF, 0, 0, 1.0f);
+		SetColor(1, 0xFF, 0, 0, 1.0f);
 		SetAnim(7, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	}
 	if (mPtcl) {
@@ -297,20 +298,20 @@ void XObjLeticker::OnPushDisplacement(const Vec& displacement)
  * @note Address: 0x800E3050
  * @note Size: 0x1DC
  */
-void XObjLeticker::vf148()
+void XObjLeticker::OnUnplugged()
 {
 	if (mState != 3) {
 		gGame.mStatus.mFlags &= ~0x80ULL;
 		gGame.mMotionControlCamera.PopAction();
 	}
-	_A2D = FALSE;
-	_A30 = 0;
+	mPowered    = FALSE;
+	mPowerTimer = 0;
 	if (mState == 2) {
 		mMaxLevel         = mLevelBySide[GetSide(mHeading)];
 		mMaxLevelProgress = 10.0f * mMaxLevel;
 		mLevelProgress    = 10.0f * mCurrentLevel;
 	}
-	vf12C(1, 0, 0, 0, 0.5f);
+	SetColor(1, 0, 0, 0, 0.5f);
 	SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
 
@@ -318,7 +319,7 @@ void XObjLeticker::vf148()
  * @note Address: 0x800E322C
  * @note Size: 0x8C4
  */
-BOOL XObjLeticker::vf134(f32 amount)
+BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 {
 	if (gGame.GetPlayer()->mMoveTranslate.y < mMoveTranslate.y - 5.0f)
 		return FALSE;
@@ -341,8 +342,8 @@ BOOL XObjLeticker::vf134(f32 amount)
 		angle = -HALF_PI;
 		break;
 	}
-	if (!_A2D) {
-		_A2D     = TRUE;
+	if (!mPowered) {
+		mPowered = TRUE;
 		mWaiting = FALSE;
 		if (mState != 3) {
 			CCameraActionLeticker& camera = gLetickerCameraAction;
@@ -372,28 +373,28 @@ BOOL XObjLeticker::vf134(f32 amount)
 	}
 	if (mWaiting) {
 		if (!(pad.mPad->mButton & HSD_PAD_STICK_DOWN)) {
-			_A30 -= 1;
-			if (_A30 <= 0)
+			mPowerTimer -= 1;
+			if (mPowerTimer <= 0)
 				return FALSE;
 			return TRUE;
 		}
 		mWaiting = FALSE;
 	}
-	++_A30;
+	++mPowerTimer;
 	f32 delta     = amount * mSpeedScale;
-	BOOL starting = _A30 < 40;
+	BOOL starting = mPowerTimer < 40;
 	switch (mState) {
 	case 1:
 		if (!(u8)TurnLetickerAndCheckClearance(this, angle)) {
 			if (mHeight == 4.0f * (s32)(mLevelProgress / 3.0f) + 0.5f) {
 				XObj* part = gGame.GetObject(mLinked[1]);
 				PlayGameSound(&gGame.mSound, 0x191, 255);
-				vf12C(1, 255, 0, 0, 0.5f);
+				SetColor(1, 255, 0, 0, 0.5f);
 				SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				part->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				PushAnim(part, 0, 0, 100);
-				_A30     = 30;
-				mWaiting = TRUE;
+				mPowerTimer = 30;
+				mWaiting    = TRUE;
 			}
 			return TRUE;
 		}
@@ -450,8 +451,8 @@ static inline void StartLetickerRide(XObjLeticker* lift, XObj* part, XObjChr* pl
 	part->mStatus.mFlags |= 0x10000ULL;
 	part->SetAnim(partAnim, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	part->SetPos(lift->mMoveTranslate, 0);
-	player->_980.mFlags = 0;
-	player->_980.mFlags |= 0x40000000;
+	player->mPlayerStatus.mFlags = 0;
+	player->mPlayerStatus.mFlags |= 0x40000000;
 	player->mPad.mReset = FALSE;
 	StopGameSfx(&gGame.mSound, 0xB0);
 	PlayGameSound(&gGame.mSound, sound, 255);
@@ -479,7 +480,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 		mSpeedScale       = 1.0f;
 		if (mLinkedCount > 0) {
 			XObj* part = gGame.GetObject(mLinked[0]);
-			switch (part->mCoord._00->_00) {
+			switch (part->mCoord.mPlacement->mObjectId) {
 			case 0xEE: {
 				mState = 1;
 				mFunc  = &XObjLeticker::StateLift;
@@ -507,7 +508,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 				mState = 3;
 				mFunc  = NULL;
 				for (s32 i = 0; mFloors[i].mId != -1; ++i)
-					_250[0] |= 1U << i;
+					mFloorMasks[0] |= 1U << i;
 				SelectHighestActiveFloor(this);
 				break;
 			}
@@ -574,7 +575,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 		case 2:
 			return !(mLevelProgress < mMaxLevelProgress);
 		case 3:
-			return _A2D != 0;
+			return mPowered != 0;
 		case 4:
 			return (s32)(100.0f * mSpeedScale);
 		}
@@ -609,9 +610,9 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 				mLevelProgress = 0.0f;
 				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				part->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-				player->_980.mFlags = 0;
-				player->_980.mFlags |= 0x20000000;
-				player->_980.mFlags |= 7;
+				player->mPlayerStatus.mFlags = 0;
+				player->mPlayerStatus.mFlags |= 0x20000000;
+				player->mPlayerStatus.mFlags |= 7;
 				player->mPad.mReset = TRUE;
 				player->SetRotationY(mMoveRotate.y, 0);
 				mStep = 0;
@@ -625,7 +626,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 			case 3:
 				if (count <= 2 || args[2]) {
 					player->mLift.SetState(1, &player->mPlug);
-					player->mLift._24 = 0;
+					player->mLift.mTargetState = 0;
 				} else if (player->mLift.mTarget) {
 					player->mLift.mState = 6;
 				}
@@ -695,7 +696,7 @@ bool IsLetickerJointClearOfObjects(XObj* obj, HSD_JObj* jobj)
 			continue;
 		}
 		CVec hit, normal;
-		if (target->vfFC(&pos, &pos, 5.0f, 12.0f, &hit, &normal, 0, 0) & 2) {
+		if (target->TestFloorCollision(&pos, &pos, 5.0f, 12.0f, &hit, &normal, 0, 0) & 2) {
 			return false;
 		}
 	}
@@ -747,7 +748,7 @@ void XObjLeticker::DrawObjectEffects()
 	XObj* part = gGame.GetObject(mLinked[0]);
 	switch (mState) {
 	case 3:
-		if (!(0.0f < mLevelProgress) || (!_A2D && part->mAnimId != 1)) {
+		if (!(0.0f < mLevelProgress) || (!mPowered && part->mAnimId != 1)) {
 			break;
 		}
 		Mtx mtx;
@@ -785,7 +786,7 @@ void XObjLeticker::DrawObjectEffects()
  * @note Size: 0x324
  */
 // NONMATCHING: control flow
-void XObjLeticker::vfAC()
+void XObjLeticker::DrawObject()
 {
 	DrawWithView(0);
 	switch (mState) {
@@ -806,7 +807,7 @@ void XObjLeticker::vfAC()
 	case 2:
 		gGame.GetObject(mLinked[0])->mStatus.mFlags &= ~0x80000000ULL;
 		break;
-	default:
+	case 3:
 		break;
 	}
 }
@@ -828,11 +829,11 @@ void XObjLeticker::StateCount()
 			if (mCurrentLevel < count) {
 				mCurrentLevel++;
 				f32 rate = 1.0f;
-				if (!_A2D) {
+				if (!mPowered) {
 					rate = 8.0f;
 				}
 				part->SetAnim(mCurrentLevel, FALSE, NULL, NULL, NULL, 0.0f, rate, 0.0f, 10.0f);
-			} else if (_A2D) {
+			} else if (mPowered) {
 				mCurrentLevel--;
 				part->SetAnim(24 - mCurrentLevel, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f);
 				if (mCurrentLevel == 0) {
@@ -841,7 +842,7 @@ void XObjLeticker::StateCount()
 			} else {
 				mLevelProgress = (mCurrentLevel - 1) * 10;
 			}
-			if (_A2D) {
+			if (mPowered) {
 				PlayGameSound(&gGame.mSound, 0xAC, 0xFF);
 				HSD_AudioSFXSetPitchByID(0xAC, 600.0f * (mSpeedScale - 1.0f));
 			}
@@ -849,7 +850,7 @@ void XObjLeticker::StateCount()
 		SetFloors(part, sLetickerFloorsByLevel[mCurrentLevel]);
 	}
 	if (!(mStatus.mFlags & 0x0800000000000000ULL)) {
-		vf12C(1, 0, 0, 0, 0.5f);
+		SetColor(1, 0, 0, 0, 0.5f);
 		SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	}
 }
@@ -910,11 +911,11 @@ void XObjLeticker::StateLift()
 		mBox[0].mCenterOffset[1] = k * 0xA9 + 0x654;
 		mBox[0].mExtent[1]       = k * 400 + 1000;
 		base->mFloors            = mBox;
-		base->_250[1]            = 0;
-		base->_250[0]            = 0;
+		base->mFloorMasks[1]     = 0;
+		base->mFloorMasks[0]     = 0;
 		UpdateObjectFloorHeights(base);
 		SetFloors(this, sLetickerLiftFloors[1]);
-		vf12C(1, 0, 0, 0, 0.5f);
+		SetColor(1, 0, 0, 0, 0.5f);
 		SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	}
 }
@@ -968,8 +969,8 @@ void XObjLeticker::ResetObjectState()
 	mLevelProgress = 0.0f;
 	mHeight        = 0.0f;
 	mPtcl          = TRUE;
-	_A2D           = FALSE;
-	_A30           = 0;
+	mPowered       = FALSE;
+	mPowerTimer    = 0;
 	mState         = 0;
 	mHeading       = 0.0f;
 	mBox[0].mId    = -1;

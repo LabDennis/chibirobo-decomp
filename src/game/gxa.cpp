@@ -179,7 +179,8 @@ extern "C" void InitGameDVD(void)
 	DVDChangeDir((char*)"/qp/");
 }
 
-extern "C" u32 gAramBlockLengths[8];
+// ARInit's allocation stack
+u32 gAramBlockLengths[8];
 
 /**
  * @note Address: 0x8001D4EC
@@ -202,8 +203,8 @@ extern "C" void InitGameRenderState(CBase* base)
 	CGs* gs = &base->mGs;
 #if defined(VERSION_PAL)
 	SetGsScreenModeAndRenderDefaults(gs, 21, 0, 0, 0);
-	gs->mScreen._40      = gGame.mGs.mScreen.xfbHeight / 448.0f;
-	gs->mScreen.viHeight = 480;
+	gs->mScreen.mHeightScale = gGame.mGs.mScreen.xfbHeight / 448.0f;
+	gs->mScreen.viHeight     = 480;
 #else
 	SetGsScreenModeAndRenderDefaults(gs, 4, 0, 16, 0);
 #endif
@@ -284,9 +285,9 @@ f32 gProgressiveFadeFrames = 0.15f * FRAME_RATE;
  * @note Size: 0x8
  */
 // CCameraActionMap's GetTarget
-extern "C" XObj* GetTarget__16CCameraActionMapFv(CCameraActionMap* map)
+XObj* CCameraActionMap::GetTarget()
 {
-	return map->_44;
+	return mTarget;
 }
 
 // ids with the high half 0xFFFF but not -1 mean every sfx, see game/sound.cpp

@@ -144,7 +144,7 @@ typedef struct HSD_SynthSFXNode {
 		} rear;
 	} u;                 // _34
 	u8 userPan[2];       // _64
-	s8 userSPan[2];      // _66
+	u8 userSPan[2];      // _66
 	f32 mixMain;         // _68
 	f32 mixAuxA;         // _6C
 	f32 mixAuxB;         // _70
@@ -462,23 +462,24 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
 {
 	u32 enabled;
 	s32 i;
+	s32 n;
+	s32 k;
+	s32 id;
+	unsigned int header_size;
+	u32 alloc_size;
+	u32 total;
+	u32 dnw;
+	s32 bankID;
+	HSD_SynthSFXGroup** pp;
+	s32 count;
+	s32 base;
 
 	if (lbl_8065BB8C == 0) {
-		s32 j;
-		s32 header_size = hsd_SynthSFXLoadBuf[0];
-		u32 data_bytes  = header_size - 0x10;
-		u32 alloc_size;
-		u32 total;
-		u32 dnw;
-		s32 bankID;
-		HSD_SynthSFXGroup** pp;
-		s32 count;
-		s32 base;
-
-		alloc_size = hsd_SynthSFXLoadBuf[2] * 8 + sizeof(HSD_SynthSFXGroup);
-		total      = OSRoundUp32B(alloc_size + header_size);
-		for (j = (data_bytes >> 2) - 1; j >= 0; j--) {
-			((u32*)sSynthSfxLoadDestination)[j + ((total - data_bytes) >> 2)] = ((u32*)sSynthSfxLoadDestination)[j];
+		header_size = hsd_SynthSFXLoadBuf[0];
+		alloc_size  = hsd_SynthSFXLoadBuf[2] * 8 + sizeof(HSD_SynthSFXGroup);
+		total       = OSRoundUp32B(alloc_size + header_size);
+		for (i = ((header_size - 0x10) >> 2) - 1; i >= 0; i--) {
+			((u32*)sSynthSfxLoadDestination)[i + ((total - (header_size - 0x10)) >> 2)] = ((u32*)sSynthSfxLoadDestination)[i];
 		}
 		dnw = total - header_size;
 		for (i = 0; i < 4; i++) {
@@ -503,15 +504,8 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
 		((HSD_SynthSFXGroup*)sSynthSfxLoadDestination)->count  = count;
 		sSynthSfxLoadDestination                               = (HSD_SynthSFXGroup*)sSynthSfxLoadDestination + 1;
 		for (i = 0; i < count; i++) {
-			s32 n;
-			s32 nbytes;
-			s32 k;
-			s32 id;
-			void** bucket;
-
-			n      = *sSynthSfxLoadReadCursor;
-			nbytes = (n << 6) + 8;
-			memcpy((u8*)sSynthSfxLoadDestination + 8, sSynthSfxLoadReadCursor, nbytes);
+			n = *sSynthSfxLoadReadCursor;
+			memcpy((u8*)sSynthSfxLoadDestination + 8, sSynthSfxLoadReadCursor, n * 0x40 + 8);
 			for (k = 0; k < n; k++) {
 				u8* e = (u8*)sSynthSfxLoadDestination + k * 0x40;
 				if (e + 0x10 != NULL) {
@@ -522,14 +516,12 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
 				*(u32*)((u8*)sSynthSfxLoadDestination + k * 0x40 + 0x18) += hsd_SynthSFXBank[bankID] * 2;
 				*(u32*)((u8*)sSynthSfxLoadDestination + k * 0x40 + 0x1C) += hsd_SynthSFXBank[bankID] * 2;
 			}
-			id                                    = base + i;
-			((HSD_SynthSFXData*)sSynthSfxLoadDestination)->id = id;
-			id &= 0x1F;
-			bucket                                  = &lbl_80656260[id];
-			((HSD_SynthSFXData*)sSynthSfxLoadDestination)->next = *bucket;
-			*bucket                                 = sSynthSfxLoadDestination;
-			sSynthSfxLoadReadCursor += (u32)nbytes >> 2;
-			sSynthSfxLoadDestination = (u32*)sSynthSfxLoadDestination + ((u32)((n << 6) + 0x10) >> 2);
+			id                                                  = base + i;
+			((HSD_SynthSFXData*)sSynthSfxLoadDestination)->id   = id;
+			((HSD_SynthSFXData*)sSynthSfxLoadDestination)->next = lbl_80656260[id & 0x1F];
+			lbl_80656260[id & 0x1F]                             = sSynthSfxLoadDestination;
+			sSynthSfxLoadReadCursor += (n * 0x40 + 8) / sizeof(u32);
+			sSynthSfxLoadDestination = (u32*)sSynthSfxLoadDestination + (n * 0x40 + 0x10) / sizeof(u32);
 		}
 		if (sSynthSfxLoadRequests[0].callback != NULL) {
 			sSynthSfxLoadRequests[0].callback(sSynthSfxLoadRequests[0].entrynum, sSynthSfxLoadRequests[0].arg);
@@ -1334,9 +1326,9 @@ void dropcallback(void* dropped)
 
 	enabled = OSDisableInterrupts();
 	node    = &sSynthSfxNodes[voice->index];
-	for (i = 0; i < sSynthPendingVoiceFreeCount; i++) {
-		if (sSynthVoicesPendingFree[i] == voice) {
-			sSynthVoicesPendingFree[i] = NULL;
+	for (j = 0; j < sSynthPendingVoiceFreeCount; j++) {
+		if (sSynthVoicesPendingFree[j] == voice) {
+			sSynthVoicesPendingFree[j] = NULL;
 			break;
 		}
 	}
@@ -1360,7 +1352,11 @@ void dropcallback(void* dropped)
 
 	// the driver already took the dropped voice, queue the others for freeing
 	for (i = 0; i < (node->rearIndex != -1) + 1; i++) {
-		base = i == 0 ? node : &sSynthSfxNodes[node->rearIndex];
+		if (i == 0) {
+			base = node;
+		} else {
+			base = &sSynthSfxNodes[node->rearIndex];
+		}
 		for (j = 0; j < node->voice_count; j++) {
 			if (base->voice[j] != voice) {
 				sSynthVoicesPendingFree[sSynthPendingVoiceFreeCount++] = base->voice[j];
@@ -1375,7 +1371,7 @@ void dropcallback(void* dropped)
 typedef struct HSD_SynthSFXEntry {
 	struct HSD_SynthSFXEntry* next; // _00
 	s32 id;                         // _04
-	s32 count;                      // _08
+	int count;                      // _08
 	s32 rate;                       // _0C
 	struct {
 		u8 addr[0x10];      // _00
@@ -1404,18 +1400,17 @@ s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mod
 	AXVPB* voices[4] = { NULL, NULL, NULL, NULL };
 	AXPBVE ve;
 	HSD_SynthSFXEntry* entry;
-	HSD_SynthSFXNode* node;
-	HSD_SynthSFXNode* rearNode;
-	u32 enabled;
 	s32 uid;
-	s32 dup;
+	HSD_SynthSFXNode* node;
 	s32 i;
+	u32 enabled;
+	s32 dup;
+	HSD_SynthSFXNode* rearNode;
 	s32 j;
 	s32 k;
 	s32 raw;
-	f32 master;
 
-	uid = 0;
+	dup = 0;
 	if (channel < 0 || channel >= 0x40) {
 		return 0;
 	}
@@ -1444,7 +1439,6 @@ s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mod
 		}
 
 		// the driver can hand out the same voice twice, drop the copies
-		dup = 0;
 		for (i = 0; i < entry->count * (rear + 1); i++) {
 			for (j = i + 1; j < entry->count * (rear + 1); j++) {
 				if (voices[i] == voices[j]) {
@@ -1519,10 +1513,11 @@ s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mod
 		node->unk16       = unk16;
 
 		if (rear != 0) {
-			rearNode            = &sSynthSfxNodes[voices[2]->index];
+			k                   = voices[2]->index;
+			rearNode            = &sSynthSfxNodes[k];
 			rearNode->sfxID     = -2;
 			rearNode->rearIndex = uid;
-			node->rearIndex     = voices[2]->index;
+			node->rearIndex     = k;
 			if (entry->count == 2) {
 				sSynthSfxNodes[voices[3]->index].sfxID    = -3;
 				sSynthSfxNodes[voices[3]->index].voice[0] = voices[2];
@@ -1534,9 +1529,11 @@ s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mod
 			node->rearIndex = -1;
 		}
 
-		master = node->channel < 0x3F ? sSynthStreamVolume * lbl_80659300.volume : sSynthStreamVolume;
-		ve.currentVolume
-		    = 32767.0f * (node->u.user_vol[1].volume * (node->u.user_vol[0].volume * (lbl_80659318[node->channel].volume * master)));
+		ve.currentVolume = 32767.0f
+		                 * (node->u.user_vol[1].volume
+		                    * (node->u.user_vol[0].volume
+		                       * (lbl_80659318[node->channel].volume
+		                          * (node->channel < 0x3F ? sSynthStreamVolume * lbl_80659300.volume : sSynthStreamVolume))));
 		ve.currentDelta = 0;
 		node->curVol    = ve.currentVolume;
 		if (rear != 0) {
@@ -3020,27 +3017,28 @@ static inline s32 tickFader(HSD_SynthVolFader* f)
 		f->delay -= 1;
 		return 1;
 	}
-	if (f->duration == 0) {
-		return 0;
-	}
-	if (f->mode == 0) {
-		f->volume = (f->volume * ((f32)f->duration - 1.0f)) / (f32)f->duration + f->target.f / (f32)f->duration;
-	} else {
-		// in db mode the target slot holds the current dbx and dbxRaw the goal
-		f->target.i = ((f32)f->target.i * ((f32)f->duration - 1.0f)) / (f32)f->duration + (f32)f->dbxRaw / (f32)f->duration;
-		if (f->target.i <= sSynthDecibelFloor) {
-			vol = 0.0f;
-		} else if (f->target.i >= 0) {
-			vol = 1.0f;
+	if (f->duration != 0) {
+		if (f->mode == 0) {
+			f->volume = (f->volume * ((f32)f->duration - 1.0f)) / (f32)f->duration + f->target.f / (f32)f->duration;
 		} else {
-			vol = exp(1.75673301162265e-07 * f->target.i);
+			// in db mode the target slot holds the current dbx and dbxRaw the goal
+			f->target.i = ((f32)f->target.i * ((f32)f->duration - 1.0f)) / (f32)f->duration + (f32)f->dbxRaw / (f32)f->duration;
+			if (f->target.i <= sSynthDecibelFloor) {
+				vol = 0.0f;
+			} else if (f->target.i >= 0) {
+				vol = 1.0f;
+			} else {
+				vol = exp(1.75673301162265e-07 * f->target.i);
+			}
+			f->volume = vol;
 		}
-		f->volume = vol;
+		f->duration -= 1;
+		if (f->duration == 0) {
+			return 0;
+		}
+		return 1;
 	}
-	if (--f->duration == 0) {
-		return 0;
-	}
-	return 1;
+	return 0;
 }
 
 #define AX_SYNC_USER_VE      0x200
@@ -3058,23 +3056,35 @@ extern void AXSetVoiceVeDelta(AXVPB* vpb, s16 delta);
  */
 void UpdateSynthVolumeFadersAndVoices(void)
 {
-	u32 enabled      = OSDisableInterrupts();
-	s32 masterActive = 0;
+	s32 i;
+	u32 enabled;
+	HSD_SynthSFXNode* rearEntry;
+	s32 masterActive;
 	s32 group;
+	s32 chan;
 	HSD_SynthSFXNode** it;
+	HSD_SynthSFXNode* entry;
+	s32 changed;
+	s32 vol;
+	s32 delta;
+	s32 lastVol;
+	s32 lastDelta;
+	AXPBVE rearVe;
+	AXPBVE ve;
 
+	enabled      = OSDisableInterrupts();
+	masterActive = 0;
 	if (lbl_80659300.duration != 0 && tickFader(&lbl_80659300)) {
 		masterActive = 1;
 	}
 
 	for (group = 0; group < 2; group++) {
-		s32 bit;
 		if (sSynthActiveChannelFaderMasks[group] != 0) {
-			for (bit = 0; bit < 0x20; bit++) {
-				s32 chan = group * 0x20 + bit;
-				if (sSynthActiveChannelFaderMasks[group] & (1 << bit)) {
+			for (i = 0; i < 0x20; i++) {
+				chan = group * 0x20 + i;
+				if (sSynthActiveChannelFaderMasks[group] & (1 << i)) {
 					if (!tickFader(&lbl_80659318[chan])) {
-						sSynthActiveChannelFaderMasks[group] &= ~(1 << bit);
+						sSynthActiveChannelFaderMasks[group] &= ~(1 << i);
 					}
 				}
 			}
@@ -3083,27 +3093,17 @@ void UpdateSynthVolumeFadersAndVoices(void)
 
 	it = &sSynthPendingVolumeUpdates;
 	while (*it != NULL) {
-		HSD_SynthSFXNode* entry = *it;
-		s32 changed             = 0;
-		s32 uv;
-		s32 vol;
-		s32 delta;
-		s32 i;
-		s32 lastVol;
-		s32 lastDelta;
-		AXPBVE ve;
-		AXPBVE rearVe;
-		HSD_SynthSFXNode* rearEntry;
-
+		entry   = *it;
+		changed = 0;
 		if (entry->sfxID <= 0) {
 			entry->volUpdatePending = 0;
 			*it                     = entry->volUpdateNext;
 			continue;
 		}
 
-		for (uv = 0; uv < USERVOL_NUM; uv++) {
-			if (entry->u.user_vol[uv].fadeCount != 0) {
-				if (tickFader((HSD_SynthVolFader*)&entry->u.user_vol[uv])) {
+		for (i = 0; i < USERVOL_NUM; i++) {
+			if (entry->u.user_vol[i].fadeCount != 0) {
+				if (tickFader((HSD_SynthVolFader*)&entry->u.user_vol[i])) {
 					changed = 1;
 				}
 			}
@@ -3116,10 +3116,11 @@ void UpdateSynthVolumeFadersAndVoices(void)
 		}
 
 		if (!(entry->flags & 3)) {
-			f32 masterVol = entry->channel < 0x3F ? sSynthStreamVolume * lbl_80659300.volume : sSynthStreamVolume;
-			vol           = (s32)(32767.0f
-                        * (entry->u.user_vol[1].volume
-                           * (entry->u.user_vol[0].volume * (lbl_80659318[entry->channel].volume * masterVol))));
+			vol = 32767.0f
+			    * (entry->u.user_vol[1].volume
+			       * (entry->u.user_vol[0].volume
+			          * (lbl_80659318[entry->channel].volume
+			             * (entry->channel < 0x3F ? sSynthStreamVolume * lbl_80659300.volume : sSynthStreamVolume))));
 		} else {
 			vol     = 0;
 			changed = 0;
@@ -4155,18 +4156,6 @@ static u8 lbl_8025BF68[0x80] = {
 	0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F, 0x1F,
 };
 
-static inline s32 calcPan(HSD_SynthSFXNode* node)
-{
-	s32 pan = node->userPan[0] + node->userPan[1] - 0x7F;
-	if (pan < 0) {
-		pan = 0;
-	}
-	if (pan > 0xFE) {
-		pan = 0xFE;
-	}
-	return pan;
-}
-
 static inline void clearFrontMix(HSD_SynthMix* m)
 {
 	m->vL     = 0;
@@ -4190,16 +4179,21 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 	s32 shiftR;
 	HSD_SynthSFXNode* rearEntry;
 	HSD_SynthMix* m;
+	f32 panL;
+	f32 panR;
+	f32 front;
+	f32 sur;
+	f32 rearL;
+	f32 rearR;
 
 	if (node->voice_count == 1) {
-		f32 panL;
-		f32 panR;
-		f32 front;
-		f32 sur;
-		f32 rearR;
-		f32 rearL;
-
-		pan = calcPan(node);
+		pan = node->userPan[0] + node->userPan[1] - 0x7F;
+		if (pan < 0) {
+			pan = 0;
+		}
+		if (pan > 0xFE) {
+			pan = 0xFE;
+		}
 		if (sSynthSoundMode == 0) {
 			pan = 0x7F;
 		}
@@ -4214,8 +4208,8 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			sur   = lbl_8025BA10[0xFF - span];
 			if (span > 0) {
 				s32 idx = 0.527559042f * pan + 60.0f;
-				rearR   = sSynthSqrtLookup[idx];
 				rearL   = sSynthSqrtLookup[0xFE - idx];
+				rearR   = sSynthSqrtLookup[idx];
 			} else {
 				rearL = rearR = 0.0f;
 			}
@@ -4228,36 +4222,33 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			rearEntry = &sSynthSfxNodes[node->rearIndex];
 			ASSERT_SYNTH(0xA60, rearEntry->sfxID == -2);
 			if (sSynthSoundMode == 4) {
-				f32 vol;
-
+				m = &rearEntry->mixDst;
 				if (rearL >= rearR) {
 					rearEntry->u.rear.newSide = 0;
 					if (rearEntry->u.rear.side == 1) {
-						clearFrontMix(&rearEntry->mixDst);
+						clearFrontMix(m);
+						m = &rearEntry->u.rear.mix;
 					}
-					m         = &rearEntry->u.rear.mix;
-					vol       = sur * (rearL - rearR);
-					sur       = sur * rearR;
-					m->vL     = 32767.0f * (node->mixMain * vol);
+					m->vL     = 32767.0f * (node->mixMain * (sur * (rearL - rearR)));
 					m->vR     = 0;
-					m->vAuxAL = 32767.0f * (node->mixAuxA * vol);
+					m->vAuxAL = 32767.0f * (node->mixAuxA * (sur * (rearL - rearR)));
 					m->vAuxAR = 0;
-					m->vAuxBL = 32767.0f * (node->mixAuxB * vol);
+					m->vAuxBL = 32767.0f * (node->mixAuxB * (sur * (rearL - rearR)));
 					m->vAuxBR = 0;
+					sur *= rearR;
 				} else {
 					rearEntry->u.rear.newSide = 1;
 					if (rearEntry->u.rear.side == 0) {
-						clearFrontMix(&rearEntry->mixDst);
+						clearFrontMix(m);
+						m = &rearEntry->u.rear.mix;
 					}
-					m         = &rearEntry->u.rear.mix;
-					vol       = sur * (rearR - rearL);
-					sur       = sur * rearL;
 					m->vL     = 0;
-					m->vR     = 32767.0f * (node->mixMain * vol);
+					m->vR     = 32767.0f * (node->mixMain * (sur * (rearR - rearL)));
 					m->vAuxAL = 0;
-					m->vAuxAR = 32767.0f * (node->mixAuxA * vol);
+					m->vAuxAR = 32767.0f * (node->mixAuxA * (sur * (rearR - rearL)));
 					m->vAuxBL = 0;
-					m->vAuxBR = 32767.0f * (node->mixAuxB * vol);
+					m->vAuxBR = 32767.0f * (node->mixAuxB * (sur * (rearR - rearL)));
+					sur *= rearL;
 				}
 			} else {
 				clearFrontMix(&rearEntry->mixDst);
@@ -4298,25 +4289,27 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			m->vS     = 0;
 		}
 	} else {
-		f32 gainL;
-		f32 gainR;
-		f32 front;
-		f32 sur;
 		HSD_SynthMix* m2;
 
-		pan = calcPan(node);
+		pan = node->userPan[0] + node->userPan[1] - 0x7F;
+		if (pan < 0) {
+			pan = 0;
+		}
+		if (pan > 0xFE) {
+			pan = 0xFE;
+		}
 		if (sSynthSoundMode == 0) {
 			pan = 0x7F;
 		}
 		if (pan <= 0x7F) {
-			gainL = 1.0f;
+			panL = 1.0f;
 		} else {
-			gainL = sSynthSqrtLookup[0xFE - (pan - 0x7F) * 2];
+			panL = sSynthSqrtLookup[0xFE - (pan - 0x7F) * 2];
 		}
 		if (pan >= 0x7F) {
-			gainR = 1.0f;
+			panR = 1.0f;
 		} else {
-			gainR = sSynthSqrtLookup[pan * 2];
+			panR = sSynthSqrtLookup[pan * 2];
 		}
 		if (sSynthSoundMode == 2 || sSynthSoundMode == 3 || sSynthSoundMode == 4) {
 			span = node->userSPan[0] + node->userSPan[1];
@@ -4334,23 +4327,21 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			rearEntry = &sSynthSfxNodes[node->rearIndex];
 			ASSERT_SYNTH(0xB13, rearEntry->sfxID == -2);
 			if (sSynthSoundMode == 4) {
-				f64 l     = 0.38 * gainL * sur;
-				f64 r     = 0.38 * gainR * sur;
-				sur       = sur * 0.49;
 				m         = &rearEntry->mixDst;
-				m->vL     = 32767.0 * (node->mixMain * l);
+				m->vL     = 32767.0 * (node->mixMain * (0.38 * panL * sur));
 				m->vR     = 0;
-				m->vAuxAL = 32767.0 * (node->mixAuxA * l);
+				m->vAuxAL = 32767.0 * (node->mixAuxA * (0.38 * panL * sur));
 				m->vAuxAR = 0;
-				m->vAuxBL = 32767.0 * (node->mixAuxB * l);
+				m->vAuxBL = 32767.0 * (node->mixAuxB * (0.38 * panL * sur));
 				m->vAuxBR = 0;
 				m         = &(VOICE_NODE(rearEntry->voice[1]))->mixDst;
 				m->vL     = 0;
-				m->vR     = 32767.0 * (node->mixMain * r);
+				m->vR     = 32767.0 * (node->mixMain * (0.38 * panR * sur));
 				m->vAuxAL = 0;
-				m->vAuxAR = 32767.0 * (node->mixAuxA * r);
+				m->vAuxAR = 32767.0 * (node->mixAuxA * (0.38 * panR * sur));
 				m->vAuxBL = 0;
-				m->vAuxBR = 32767.0 * (node->mixAuxB * r);
+				m->vAuxBR = 32767.0 * (node->mixAuxB * (0.38 * panR * sur));
+				sur *= 0.49;
 			} else {
 				clearFrontMix(&rearEntry->mixDst);
 				clearFrontMix(&(VOICE_NODE(rearEntry->voice[1]))->mixDst);
@@ -4365,8 +4356,8 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 		m  = &node->mixDst;
 		m2 = &(VOICE_NODE(node->voice[1]))->mixDst;
 		if (sSynthSoundMode == 0) {
-			f32 l      = gainL * 0.5f;
-			f32 r      = gainR * 0.5f;
+			f32 l      = panL / 2;
+			f32 r      = panR / 2;
 			m->vL      = 32767.0f * (l * node->mixMain);
 			m->vR      = 32767.0f * (l * node->mixMain);
 			m->vAuxAL  = 32767.0f * (l * node->mixAuxA);
@@ -4386,10 +4377,10 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			m2->vAuxAS = 0;
 			m2->vAuxBS = 0;
 		} else if (sSynthSoundMode != 3) {
-			f32 l      = gainL * front;
-			f32 sl     = gainL * sur;
-			f32 r      = gainR * front;
-			f32 sr     = gainR * sur;
+			f32 l      = panL * front;
+			f32 sl     = panL * sur;
+			f32 r      = panR * front;
+			f32 sr     = panR * sur;
 			m->vL      = 32767.0f * (node->mixMain * l);
 			m->vAuxAL  = 32767.0f * (node->mixAuxA * l);
 			m->vAuxBL  = 32767.0f * (node->mixAuxB * l);
@@ -4409,29 +4400,23 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			m2->vAuxAS = 32767.0f * (node->mixAuxA * sr);
 			m2->vAuxBS = 32767.0f * (node->mixAuxB * sr);
 		} else {
-			f32 l      = gainL * front;
-			f64 sl     = 0.87 * gainL * sur;
-			f64 sl2    = 0.49 * gainL * sur;
-			f32 r      = gainR * front;
-			f64 sr2    = 0.49 * gainR * sur;
-			f64 sr     = 0.87 * gainR * sur;
-			m->vL      = 32767.0f * (node->mixMain * l);
+			m->vL      = 32767.0f * (node->mixMain * (panL * front));
 			m->vR      = 0;
-			m->vAuxBL  = 32767.0 * (node->mixMain * sl);
-			m->vAuxBR  = 32767.0 * (node->mixMain * sl2);
-			m->vAuxAL  = 32767.0f * (node->mixAuxA * l);
+			m->vAuxBL  = 32767.0 * (node->mixMain * (0.87 * panL * sur));
+			m->vAuxBR  = 32767.0 * (node->mixMain * (0.49 * panL * sur));
+			m->vAuxAL  = 32767.0f * (node->mixAuxA * (panL * front));
 			m->vAuxAR  = 0;
-			m->vAuxAS  = 32767.0 * (node->mixAuxA * sl);
-			m->vAuxBS  = 32767.0 * (node->mixAuxA * sl2);
+			m->vAuxAS  = 32767.0 * (node->mixAuxA * (0.87 * panL * sur));
+			m->vAuxBS  = 32767.0 * (node->mixAuxA * (0.49 * panL * sur));
 			m->vS      = 0;
 			m2->vL     = 0;
-			m2->vR     = 32767.0f * (node->mixMain * r);
-			m2->vAuxBL = 32767.0 * (node->mixMain * sr2);
-			m2->vAuxBR = 32767.0 * (node->mixMain * sr);
+			m2->vR     = 32767.0f * (node->mixMain * (panR * front));
+			m2->vAuxBL = 32767.0 * (node->mixMain * (0.49 * panR * sur));
+			m2->vAuxBR = 32767.0 * (node->mixMain * (0.87 * panR * sur));
 			m2->vAuxAL = 0;
-			m2->vAuxAR = 32767.0f * (node->mixAuxA * r);
-			m2->vAuxAS = 32767.0 * (node->mixAuxA * sr2);
-			m2->vAuxBS = 32767.0 * (node->mixAuxA * sr);
+			m2->vAuxAR = 32767.0f * (node->mixAuxA * (panR * front));
+			m2->vAuxAS = 32767.0 * (node->mixAuxA * (0.49 * panR * sur));
+			m2->vAuxBS = 32767.0 * (node->mixAuxA * (0.87 * panR * sur));
 			m2->vS     = 0;
 		}
 	}
@@ -4471,7 +4456,13 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 	shiftR = 0;
 	shiftL = 0;
 	if (sSynthSoundMode == 1 && node->voice_count == 1 && node->unk16 != 0) {
-		pan = calcPan(node);
+		pan = node->userPan[0] + node->userPan[1] - 0x7F;
+		if (pan < 0) {
+			pan = 0;
+		}
+		if (pan > 0xFE) {
+			pan = 0xFE;
+		}
 		if (pan < 0x7F) {
 			shiftL = lbl_8025BF68[0x7E - pan];
 		} else {
@@ -4701,60 +4692,63 @@ void QueueLoadedSynthStreamBuffer(s32 result, s32 pstreamID)
 static inline HSD_SynthBeatMarkerBlock* allocBmb(void)
 {
 	HSD_SynthBeatMarkerBlock* bmb = sSynthFreeBeatMarkerBlocks;
+	HSD_SynthBeatMarkerBlock* p;
 	s32 i;
 
 	if (bmb != NULL) {
 		sSynthFreeBeatMarkerBlocks = bmb->next;
 	} else {
+		// one allocation makes eight blocks, seven go on the free list
 		bmb = HSD_AudioMalloc(0x100);
 		for (i = 0; i < 7; i++) {
-			bmb->next    = sSynthFreeBeatMarkerBlocks;
-			sSynthFreeBeatMarkerBlocks = bmb;
-			bmb++;
+			p                          = &bmb[i];
+			p->next                    = sSynthFreeBeatMarkerBlocks;
+			sSynthFreeBeatMarkerBlocks = p;
 		}
+		bmb += 7;
 	}
 	return bmb;
 }
 
+static inline HSD_SynthBeatMarker* getBeatMarker(s32 buf, s32 ix)
+{
+	HSD_SynthBeatMarkerBlock* bmb = sSynthStreamHakoBuffers[buf].markers;
+	HSD_SynthBeatMarkerBlock* bmbnext;
+	s32 i;
+
+	if (bmb == NULL) {
+		bmb = allocBmb();
+		ASSERT_SYNTH(0x4BC, bmb);
+		sSynthStreamHakoBuffers[buf].markers = bmb;
+		bmb->next                            = NULL;
+	}
+	while (ix >= 3) {
+		bmbnext = bmb->next;
+		if (bmbnext == NULL) {
+			bmbnext = allocBmb();
+			ASSERT_SYNTH(0x4C4, bmbnext);
+			bmb->next     = bmbnext;
+			bmbnext->next = NULL;
+			for (i = 0; i < 3; i++) {
+				// stored twice, the first one is dead
+				bmbnext->marker[i].pos = -1;
+				bmbnext->marker[i].pos = 0;
+			}
+		}
+		bmb = bmbnext;
+		ix -= 3;
+	}
+	return &bmb->marker[ix];
+}
+
 static inline void linkBeatMarkers(HSD_SynthPStream* pst, HSD_SynthBeatMarker* markers, s32 count)
 {
-	HSD_SynthBeatMarkerBlock** head;
-	HSD_SynthBeatMarkerBlock* bmb;
-	HSD_SynthBeatMarkerBlock* next;
-	u32 enabled;
-	s32 slot;
 	s32 i;
+	u32 enabled;
 
 	enabled = OSDisableInterrupts();
 	for (i = 0; i < count; i++) {
-		slot = i;
-		head = (HSD_SynthBeatMarkerBlock**)&sSynthStreamHakoBuffers[pst->_1C].markers;
-		bmb  = *head;
-		if (bmb == NULL) {
-			bmb = allocBmb();
-			ASSERT_SYNTH(0x4BC, bmb);
-			*head     = bmb;
-			bmb->next = NULL;
-		}
-		while (slot >= 3) {
-			next = bmb->next;
-			if (next == NULL) {
-				s32 j;
-
-				next = allocBmb();
-				ASSERT_SYNTH_MSG(0x4C4, next, "bmbnext");
-				bmb->next  = next;
-				next->next = NULL;
-				for (j = 0; j < 3; j++) {
-					// stored twice, the first one is dead, whatever
-					next->marker[j].pos = -1;
-					next->marker[j].pos = 0;
-				}
-			}
-			bmb = next;
-			slot -= 3;
-		}
-		bmb->marker[slot] = markers[i];
+		*getBeatMarker(pst->_1C, i) = markers[i];
 	}
 	OSRestoreInterrupts(enabled);
 }
@@ -4766,19 +4760,15 @@ static inline void linkBeatMarkers(HSD_SynthPStream* pst, HSD_SynthBeatMarker* m
 void HSD_SynthPStreamHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMarker* markers)
 {
 	HSD_SynthSFXNode* node = getNode(id);
-	HSD_SynthPStream* pst;
 	s32 buf;
+	s32 n;
 
-	if (node == NULL) {
-		return;
+	if (node != NULL && node->link.pstream != NULL) {
+		buf = PSTREAM(node)->_1C;
+		n   = sSynthStreamHakoBuffers[buf].markerNum;
+		linkBeatMarkers(PSTREAM(node), markers, n);
+		sSynthStreamHakoBuffers[buf].markerIx = 0;
 	}
-	pst = PSTREAM(node);
-	if (pst == NULL) {
-		return;
-	}
-	buf = pst->_1C;
-	linkBeatMarkers(pst, markers, sSynthStreamHakoBuffers[buf].markerNum);
-	sSynthStreamHakoBuffers[buf].markerIx = 0;
 }
 
 /**
@@ -4851,35 +4841,6 @@ void AXSetVoiceState(AXVPB* p, u16 state);
 void SetDvdStreamingSlotCallback(s32 id, void (*callback)(s32, void*));
 void HSD_SynthPStreamNextHakoCallback(s32 pstreamID);
 
-static inline HSD_SynthBeatMarker* getBeatMarker(HSD_SynthBeatMarkerBlock** head, s32 ix)
-{
-	HSD_SynthBeatMarkerBlock* bmb = *head;
-	HSD_SynthBeatMarkerBlock* bmbnext;
-	s32 i;
-
-	if (bmb == NULL) {
-		bmb = allocBmb();
-		ASSERT_SYNTH(0x4BC, bmb);
-		*head     = bmb;
-		bmb->next = NULL;
-	}
-	while (ix >= 3) {
-		bmbnext = bmb->next;
-		if (bmbnext == NULL) {
-			bmbnext = allocBmb();
-			ASSERT_SYNTH(0x4C4, bmbnext);
-			bmb->next     = bmbnext;
-			bmbnext->next = NULL;
-			for (i = 0; i < 3; i++) {
-				bmbnext->marker[i].pos = -1;
-			}
-		}
-		bmb = bmbnext;
-		ix -= 3;
-	}
-	return &bmb->marker[ix];
-}
-
 static inline BOOL isPStreamActive(HSD_SynthPStream* pstream)
 {
 	HSD_SynthPStream* p;
@@ -4898,16 +4859,13 @@ static inline BOOL isPStreamActive(HSD_SynthPStream* pstream)
  */
 void HSD_SynthPStreamMasterClockCallback(void)
 {
+	HSD_SynthSFXNode* node;
 	HSD_SynthPStream* pstream;
 	HSD_SynthPStream* next;
-	HSD_SynthSFXNode* node;
 	HSD_SynthSFXNode* n;
-	HSD_SynthPStreamHako* hako;
 	HSD_SynthBeatMarker* marker;
-	u32 cadhi;
-	u32 pstbuf;
 	s32 a;
-	s32 last;
+	s32 buf;
 	s32 pos;
 	s32 i;
 	s32 j;
@@ -4919,36 +4877,31 @@ void HSD_SynthPStreamMasterClockCallback(void)
 		if (node->flags & 8) {
 			continue;
 		}
-		cadhi  = AXVPB_CURRENT_ADDR(node->voice[0]);
-		pstbuf = sSynthStreamBufferAramBase * 2;
-		if (cadhi < pstbuf) {
+		if (AXVPB_CURRENT_ADDR(node->voice[0]) < sSynthStreamBufferAramBase * 2) {
 			continue;
 		}
-		a = (cadhi - pstbuf) >> 17;
+		a = (AXVPB_CURRENT_ADDR(node->voice[0]) - sSynthStreamBufferAramBase * 2) >> 17;
 		if (a == pstream->bufTableHeadIx) {
-			if (pstream->_18 == 1) {
-				last = *getBufTableTail(&pstream->bufTableHeadIx);
-				if (sSynthStreamHakoBuffers[last].next != -1 && *(u32*)((u8*)node->voice[0] + 0x1AE) - cadhi < 0xE60) {
-					lbl_8065BBD0 = 1;
-				}
+			if (pstream->_18 == 1 && sSynthStreamHakoBuffers[lastBuf(pstream)].next != -1
+			    && *(u32*)((u8*)node->voice[0] + 0x1AE) - AXVPB_CURRENT_ADDR(node->voice[0]) < 0xE60) {
+				lbl_8065BBD0 = 1;
 			}
-			hako = &sSynthStreamHakoBuffers[a];
-			pos  = (s32)(AXVPB_CURRENT_ADDR(node->voice[0]) - pstbuf - (a << 17)) * 14 / 16;
-			for (; hako->markerIx < hako->markerNum; hako->markerIx++) {
-				marker = getBeatMarker(&hako->markers, hako->markerIx);
-				if (marker->pos >= pos) {
-					break;
-				}
-				if (pstream->callback != NULL) {
-					pstream->callback(node->sfxID, marker->data, pstream->_24);
-					if (!isPStreamActive(pstream)) {
-						goto next_pstream;
+			pos = AXVPB_CURRENT_ADDR(node->voice[0]) - sSynthStreamBufferAramBase * 2 - (a << 17);
+			if (sSynthStreamHakoBuffers[a].markerIx < sSynthStreamHakoBuffers[a].markerNum) {
+				while (sSynthStreamHakoBuffers[a].markerIx < sSynthStreamHakoBuffers[a].markerNum
+				       && (marker = getBeatMarker(a, sSynthStreamHakoBuffers[a].markerIx))->pos < pos * 14 / 16) {
+					if (pstream->callback != NULL) {
+						pstream->callback(node->sfxID, marker->data, pstream->_24);
+						if (!isPStreamActive(pstream)) {
+							goto next_pstream;
+						}
 					}
+					sSynthStreamHakoBuffers[a].markerIx++;
 				}
 			}
 		} else {
 			while (sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerIx < sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerNum) {
-				marker = getBeatMarker(&sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markers, sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerIx);
+				marker = getBeatMarker(pstream->bufTableHeadIx, sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerIx);
 				if (pstream->callback != NULL) {
 					pstream->callback(node->sfxID, marker->data, pstream->_24);
 					if (!isPStreamActive(pstream)) {
@@ -4957,8 +4910,9 @@ void HSD_SynthPStreamMasterClockCallback(void)
 				}
 				sSynthStreamHakoBuffers[pstream->bufTableHeadIx].markerIx++;
 			}
-			freeBeatMarkers(pstream->bufTableHeadIx);
-			unlinkBufTable(&pstream->bufTableHeadIx, pstream->bufTableHeadIx);
+			buf = pstream->bufTableHeadIx;
+			freeBeatMarkers(buf);
+			unlinkBufTable(&pstream->bufTableHeadIx, buf);
 			if (pstream->bufTableHeadIx != a) {
 				OSReport("pst=%08x: pst->buftableheadix = %d, a=%d\n cadhi= %d pstbuf=%d\n", pstream, pstream->bufTableHeadIx, a,
 				         AXVPB_CURRENT_ADDR(node->voice[0]), sSynthStreamBufferAramBase * 2);
@@ -5116,12 +5070,14 @@ void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID)
 void HSD_SynthPStreamFirstHakoMarkerCallback(s32 unused, s32 id, HSD_SynthBeatMarker* markers)
 {
 	HSD_SynthSFXNode* node = getNode(id);
+	s32 n;
 
 	if (node == NULL) {
 		return;
 	}
 	// no null check on the link here, unlike HSD_SynthPStreamHakoMarkerCallback
-	linkBeatMarkers(PSTREAM(node), markers, sSynthStreamHakoBuffers[PSTREAM(node)->_1C].markerNum);
+	n = sSynthStreamHakoBuffers[PSTREAM(node)->_1C].markerNum;
+	linkBeatMarkers(PSTREAM(node), markers, n);
 }
 
 /**
@@ -6267,15 +6223,15 @@ void HSD_SynthPStreamHeaderCallback(s32 result, s32 pstreamID, u32* header)
 	for (i = 0; i < entry->voice_count; i++) {
 		// ratioHi and ratioLo go out as one word
 		*(u32*)&lbl_8050932C = 65536.0f * entry->freqBase;
-		AXSetVoiceAddr(entry->voice[i], (u8*)header + (i * 0x38 + 0x10));
-		AXSetVoiceAdpcm(entry->voice[i], (u8*)header + (i * 0x38 + 0x20));
+		AXSetVoiceAddr(entry->voice[i], &header[i * 14 + 4]);
+		AXSetVoiceAdpcm(entry->voice[i], &header[i * 14 + 8]);
 	}
 	if (entry->rearIndex != -1) {
 		HSD_SynthSFXNode* rear = &sSynthSfxNodes[entry->rearIndex];
 
 		for (i = 0; i < entry->voice_count; i++) {
-			AXSetVoiceAddr(rear->voice[i], (u8*)header + (i * 0x38 + 0x10));
-			AXSetVoiceAdpcm(rear->voice[i], (u8*)header + (i * 0x38 + 0x20));
+			AXSetVoiceAddr(rear->voice[i], &header[i * 14 + 4]);
+			AXSetVoiceAdpcm(rear->voice[i], &header[i * 14 + 8]);
 		}
 	}
 	bufReading          = getFreeBuf();
@@ -6506,7 +6462,7 @@ void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
 	lbl_80659300.volume   = 1.0f;
 	lbl_80659300.target.f = 1.0f;
 	lbl_80659300.duration = 0;
-	for (i = 0; i < 0x40; i++) {
+	for (i = 0; i < ARRAY_SIZE(lbl_80659318); i++) {
 		lbl_80659318[i].volume   = 1.0f;
 		lbl_80659318[i].target.f = 1.0f;
 		lbl_80659318[i].duration = 0;

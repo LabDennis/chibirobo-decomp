@@ -9,7 +9,7 @@ extern void* __vt__8OctaMenu[];
 // todo: cleanup, the vtable is right before _280
 static inline void SetVtable(OctaMenu* menu, void** vtable)
 {
-	((void***)&menu->_280)[-1] = vtable;
+	((void***)&menu->mMenuType)[-1] = vtable;
 }
 
 // todo: weak copy

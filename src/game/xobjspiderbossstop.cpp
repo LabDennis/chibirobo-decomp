@@ -4,15 +4,15 @@
  * @note Address: 0x80103B28
  * @note Size: 0x58
  */
-extern "C" void State2__14XObjSpiderBossFUl(XObjSpiderBoss* spider)
+void XObjSpiderBoss::State2(u32 frames)
 {
-	switch (spider->mStep) {
+	switch (mStep) {
 	case 0:
-		spider->mSpiderStatus.mFlags |= 0x80000;
-		spider->mSpiderStatus.mFlags |= 0x10;
-		spider->mSpiderStatus.mFlags &= ~0x200U;
-		spider->mSpiderStatus.mFlags &= ~0x100000U;
-		++spider->mStep;
+		mSpiderStatus.mFlags |= 0x80000;
+		mSpiderStatus.mFlags |= 0x10;
+		mSpiderStatus.mFlags &= ~0x200U;
+		mSpiderStatus.mFlags &= ~0x100000U;
+		++mStep;
 		break;
 	case 1:
 		break;

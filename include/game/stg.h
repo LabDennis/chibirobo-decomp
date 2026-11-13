@@ -157,11 +157,11 @@ public:
 	virtual void Open();
 
 	u8 _158[0x518 - 0x158];
-	s32 _518;
+	s32 mDelay;
 	u8 _51C[0x528 - 0x51C];
 	f32 _528, _52C, _530, _534;
-	s32 _538;
-	f32 _53C;
+	s32 mPhase;
+	f32 _53C; // a 0 -> 1 -> 0 ramp that moves the phase along, nothing draws with it
 };
 class MenuRequestClear : public Menu {
 public:
@@ -279,10 +279,10 @@ STATIC_ASSERT(sizeof(MenuTitle) == 0x19C);
 
 // one of the status screen's tabs
 struct MenuStatusTab {
-	f32 _00; // _00
-	f32 _04; // _04
-	f32 mX;  // _08
-	f32 _0C; // _0C
+	f32 mX;       // _00
+	f32 mY;       // _04
+	f32 mTargetX; // _08
+	f32 mTargetY; // _0C
 };
 STATIC_ASSERT(sizeof(MenuStatusTab) == 0x10);
 
@@ -306,75 +306,75 @@ public:
 	virtual BOOL Draw();             // _18
 	virtual void Open();             // _1C
 
-	u8 _158[0x510 - 0x158];  // _158
-	s32 mMode;               // _510
-	s32 mPrevMode;           // _514
-	s32 mNextMode;           // _518, where a wait mode goes after
-	s32 mAnimationFrame;     // _51C
-	s32 mItem;               // _520, the one shown in the middle
-	s32 mPreviousItem;       // _524
-	s32 mOverviewSelection;  // _528
-	s32 mIconSelection;      // _52C, selected cell in the 6 by 4 icon grid
-	s32 mChoice;             // _530, 0 yes, 1 no
-	s32 mCount;              // _534, how many of the item to throw away
-	f32 mOffsetX;            // _538
-	f32 mOffsetY;            // _53C
-	f32 _540;                // _540
-	f32 _544;                // _544
-	f32 _548;                // _548
-	f32 _54C;                // _54C
-	f32 _550;                // _550
-	f32 mSlide;              // _554
-	u8 _558[0x568 - 0x558];  // _558
-	f32 _568;                // _568
-	f32 _56C;                // _56C
-	f32 _570;                // _570
-	f32 _574;                // _574
-	f32 mDiscardPanelX;      // _578
-	f32 mDiscardPanelY;      // _57C
-	f32 _580;                // _580
-	f32 _584;                // _584
-	u8 _588[0x598 - 0x588];  // _588
-	MenuStatusTab mTabs[4];  // _598
-	f32 mX;                  // _5D8
-	f32 mY;                  // _5DC
-	f32 _5E0;                // _5E0
-	f32 _5E4;                // _5E4
-	f32 _5E8;                // _5E8
-	f32 _5EC;                // _5EC
-	f32 _5F0;                // _5F0
-	f32 _5F4;                // _5F4
-	f32 _5F8;                // _5F8
-	f32 _5FC;                // _5FC
-	f32 _600;                // _600
-	f32 _604;                // _604
-	f32 mDiagramX;           // _608
-	f32 mDiagramY;           // _60C
-	f32 _610;                // _610
-	f32 _614;                // _614
-	MenuStatusTab mTabs2[4]; // _618
-	f32 _658;                // _658
-	s32 mPhase;              // _65C
-	s32 mDelay;              // _660
-	s32 mSavedBgm;           // _664, put back on the way out
-	u8 mSavedBgmVolume;      // _668
-	u8 _669[0x66C - 0x669];  // _669
-	f32 _66C;                // _66C
-	f32 _670;                // _670
-	u8 _674;                 // _674, the fourth tab is there
-	u8 _675[4];              // _675
-	u8 _679;                 // _679
-	u8 _67A[2];              // _67A
-	u8 _67C;                 // _67C
-	u8 _67D[3];              // _67D
-	f32 _680;                // _680
-	s32 mShowHelp;           // _684
-	f32 mHelpAlpha;          // _688
-	const char* mHelpText;   // _68C
-	char* mHelp;             // _690, the line at the bottom
-	f32 _694;                // _694
-	MenuTitle mTitle;        // _698
-	s32 mHelpCount;          // _834
+	u8 _158[0x510 - 0x158];   // _158
+	s32 mMode;                // _510
+	s32 mPrevMode;            // _514
+	s32 mNextMode;            // _518, where a wait mode goes after
+	s32 mAnimationFrame;      // _51C
+	s32 mItem;                // _520, the one shown in the middle
+	s32 mPreviousItem;        // _524
+	s32 mOverviewSelection;   // _528
+	s32 mIconSelection;       // _52C, selected cell in the 6 by 4 icon grid
+	s32 mChoice;              // _530, 0 yes, 1 no
+	s32 mCount;               // _534, how many of the item to throw away
+	f32 mOffsetX;             // _538
+	f32 mOffsetY;             // _53C
+	f32 mTargetOffsetX;       // _540
+	f32 mTargetOffsetY;       // _544
+	f32 mPanelX;              // _548
+	f32 mPanelY;              // _54C
+	f32 mTargetPanelX;        // _550
+	f32 mTargetPanelY;        // _554
+	u8 _558[0x568 - 0x558];   // _558
+	f32 mItemPanelX;          // _568
+	f32 mItemPanelY;          // _56C
+	f32 mTargetItemPanelX;    // _570
+	f32 mTargetItemPanelY;    // _574
+	f32 mDiscardPanelX;       // _578
+	f32 mDiscardPanelY;       // _57C
+	f32 mTargetDiscardPanelX; // _580
+	f32 mTargetDiscardPanelY; // _584
+	u8 _588[0x598 - 0x588];   // _588
+	MenuStatusTab mTabs[4];   // _598
+	f32 mX;                   // _5D8
+	f32 mY;                   // _5DC
+	f32 mTargetX;             // _5E0
+	f32 mTargetY;             // _5E4
+	f32 mOverviewX;           // _5E8
+	f32 mOverviewY;           // _5EC
+	f32 mTargetOverviewX;     // _5F0
+	f32 mTargetOverviewY;     // _5F4
+	f32 mGridX;               // _5F8
+	f32 mGridY;               // _5FC
+	f32 mTargetGridX;         // _600
+	f32 mTargetGridY;         // _604
+	f32 mDiagramX;            // _608
+	f32 mDiagramY;            // _60C
+	f32 mTargetDiagramX;      // _610
+	f32 mTargetDiagramY;      // _614
+	MenuStatusTab mTabs2[4];  // _618
+	f32 _658;                 // _658, written 0 when B leaves the overview for mode 4, never read
+	s32 mPhase;               // _65C
+	s32 mDelay;               // _660
+	s32 mSavedBgm;            // _664, put back on the way out
+	u8 mSavedBgmVolume;       // _668
+	u8 _669[0x66C - 0x669];   // _669
+	f32 mDetailScale;         // _66C
+	f32 mTargetDetailScale;   // _670
+	u8 mHasFourthTab;         // _674, the fourth tab is there
+	u8 _675[4];               // _675
+	u8 mShowGauge;            // _679
+	u8 _67A[2];               // _67A
+	u8 mIconLit;              // _67C
+	u8 _67D[3];               // _67D
+	f32 mGaugeValue;          // _680
+	s32 mShowHelp;            // _684
+	f32 mHelpAlpha;           // _688
+	const char* mHelpText;    // _68C
+	char* mHelp;              // _690, the line at the bottom
+	f32 mPulsePhase;          // _694
+	MenuTitle mTitle;         // _698
+	s32 mHelpCount;           // _834
 #if defined(VERSION_JP)
 	MenuHelpChar mHelpChars[20]; // _838
 #else
@@ -423,28 +423,28 @@ public:
 	virtual BOOL Draw();             // _18
 	virtual void Open();             // _1C
 
-	s32 _158;               // _158
-	s32 _15C;               // _15C
-	f32 _160;               // _160
-	f32 _164;               // _164
-	f32 _168;               // _168
-	f32 _16C;               // _16C
-	f32 _170;               // _170
-	f32 _174;               // _174
-	f32 _178;               // _178
-	f32 _17C;               // _17C
+	s32 mPhase;             // _158
+	s32 mDelay;             // _15C
+	f32 mGridX;             // _160
+	f32 mGridY;             // _164
+	f32 mTargetGridX;       // _168
+	f32 mTargetGridY;       // _16C
+	f32 mPanelX;            // _170, eased toward mTargetPanelX, starts -10; nothing in MenuItem draws with it
+	f32 mPanelY;            // _174, eased toward mTargetPanelY, slides from -200 to 0 on open; nothing in MenuItem draws with it
+	f32 mTargetPanelX;      // _178, -10, where mPanelX eases to
+	f32 mTargetPanelY;      // _17C, 0 on open, -200 when the menu starts closing
 	u8 _180[0x190 - 0x180]; // _180
-	f32 _190;               // _190
-	f32 _194;               // _194
+	f32 _190;               // _190, eased toward _194 at 0.08 a frame; both are only ever 0, nothing reads the result
+	f32 _194;               // _194, target _190 eases to, written 0 in Open and never set otherwise
 	s32 mSavedBgm;          // _198
-	s32 _19C;               // _19C
+	s32 mPrevSelection;     // _19C
 	s32 mShowHelp;          // _1A0
-	f32 _1A4;               // _1A4
+	f32 mNameAlpha;         // _1A4
 	char* mName;            // _1A8
 	char* mHelp;            // _1AC
 	f32 mItemPhase;         // _1B0
 	MenuTitle mTitle;       // _1B4
-	s32 _350;               // _350
+	s32 mNameCharCount;     // _350
 #if defined(VERSION_PAL)
 	MenuHelpChar mBg[22]; // _354
 #else
@@ -495,27 +495,27 @@ public:
 
 	s32 mMode;                    // _158
 	s32 mPrevMode;                // _15C
-	u32 _160;                     // _160
+	u32 _160;                     // _160, never accessed in any edition
 	s32 mPhase;                   // _164
 	f32 mSpeed;                   // _168
 	s32 mTextPhase;               // _16C
 	s32 mChoice;                  // _170
 	s32 mPurchaseSelection;       // _174
-	s32 _178;                     // _178
-	s32 _17C;                     // _17C
+	s32 _178;                     // _178, written 0 in Open, never read
+	s32 _17C;                     // _17C, written 0 in Open, never read
 	s32 mYesNo;                   // _180
 	s32 mMoneyDigit;              // _184
 	s32 mShopSelection;           // _188
 	s32 mScrapDigit;              // _18C
 	f32 mProgress;                // _190
 	f32 mTargetProgress;          // _194
-	f32 _198;                     // _198
-	f32 mFade;                    // _19C
-	f32 _1A0;                     // _1A0
-	f32 _1A4;                     // _1A4
+	f32 _198;                     // _198, -10 in Open and eased toward _1A0 in Update, nothing else reads it
+	f32 mFrameHeight;             // _19C, the frame quad grows to 60 on opening and closes back
+	f32 _1A0;                     // _1A0, -10 in Open, the target _198 eases to; never read otherwise
+	f32 mTargetFrameHeight;       // _1A4
 	u8 _1A8[0x1B8 - 0x1A8];       // _1A8
 	s32 mCharIndex;               // _1B8
-	u32 _1BC;                     // _1BC
+	u32 mGreetingVariant;         // _1BC
 	f32 mTextX;                   // _1C0
 	f32 mTextY;                   // _1C4
 	f32 mTargetX;                 // _1C8
@@ -528,9 +528,9 @@ public:
 	char mCharCopies[40][3];      // _2EC, each character again as a string of its own
 	u32 mGlyphFrames;             // _364
 	u32 mNextGlyph;               // _368
-	s32 _36C;                     // _36C, the shopkeeper's anim step
-	s32 _370;                     // _370, the anim for it
-	u8 _374;                      // _374, set the anim
+	s32 mKeeperAnimStep;          // _36C, the shopkeeper's anim step
+	s32 mKeeperAnimId;            // _370, the anim for it
+	u8 mPlayKeeperAnim;           // _374, set the anim
 	u8 _375[0x378 - 0x375];       // _375
 	u32 mNumberOffset;            // _378
 	u8 mInsertsNumber;            // _37C
@@ -541,11 +541,11 @@ public:
 	s32 mHistoryCount;            // _38C
 	f32 mPanelAlpha;              // _390
 	f32 mPanelTarget;             // _394
-	f32 _398;                     // _398
-	f32 _39C;                     // _39C
-	u8 _3A0;                      // _3A0
+	f32 mListAlpha;               // _398
+	f32 mTargetListAlpha;         // _39C
+	u8 mShopOnly;                 // _3A0, opens straight into the item list and B closes; FALSE in stage05
 	u8 _3A1[0x3A4 - 0x3A1];       // _3A1
-	u32 _3A4;                     // _3A4
+	u32 mDialogueNumber;          // _3A4
 	f32 mRankingOffsets[5];       // _3A8
 	PCRankingRow mRankingRows[5]; // _3BC
 	s32 mRankingEnd;              // _3F8
@@ -556,15 +556,15 @@ public:
 	PCAmount mMoneyDisplay;       // _40C
 	PCAmount mScrapDisplay;       // _414
 	PCAmount mDepositDisplay;     // _41C
-	f32 _424;                     // _424
-	f32 _428;                     // _428
+	f32 _424;                     // _424, 0 in Open and eased toward _428 in Update, nothing else reads it
+	f32 _428;                     // _428, written 0 in Open, the target _424 eases to; never set otherwise
 	f32 mScrapRate;               // _42C
 	s32 mExitState;               // _430, the game state it hands back
 	u8 mCanSelect;                // _434
 	u8 _435[0x438 - 0x435];       // _435
 	s32 mChoices[4];              // _438
 	s32 mChoiceCount;             // _448
-	f32 _44C;                     // _44C
+	f32 mTexScroll;               // _44C
 };
 #if !defined(VERSION_JP)
 STATIC_ASSERT(sizeof(MenuPC) == 0x450);
@@ -599,28 +599,28 @@ public:
 	virtual BOOL Draw();             // _18
 	virtual void Open();             // _1C
 
-	f32 _158;                  // _158
-	f32 _15C;                  // _15C
-	f32 _160;                  // _160
-	f32 _164;                  // _164
-	f32 _168;                  // _168
-	f32 _16C;                  // _16C
-	f32 _170;                  // _170
+	f32 mPanelX;               // _158
+	f32 mPanelY;               // _15C
+	f32 mTargetPanelX;         // _160
+	f32 mTargetPanelY;         // _164
+	f32 _168;                  // _168, written 0 in Open, never read
+	f32 mBannerSlide;          // _16C
+	f32 _170;                  // _170, written 0 in Open, never read
 	f32 mOffset;               // _174
 	MenuSaveSlot mSlots[3];    // _178, the three save files
-	s32 _250;                  // _250, the card's _16A04
-	s32 _254;                  // _254, the card's _16A00
+	s32 mFreeBlocks;           // _250, the card's mFreeBlocks
+	s32 mFreeEntries;          // _254, the card's mFreeEntries
 	s32 mResult;               // _258, the card result
 	s32 mMessage;              // _25C
 	u8 mReady;                 // _260, a card is in the slot
 	u8 mShowMessage;           // _261
-	u8 _262;                   // _262, checked instead of mReady after a -2
+	u8 mWrongDevice;           // _262, checked instead of mReady after a -2
 	u8 mSaved;                 // _263
-	f32 _264;                  // _264
-	f32 mTargetAlpha;          // _268, _264 goes to it
+	f32 mDrawAlpha;            // _264
+	f32 mTargetAlpha;          // _268, mDrawAlpha goes to it
 	s32 mMode;                 // _26C
 	s32 mPrevMode;             // _270
-	u32 _274;                  // _274
+	u32 _274;                  // _274, never accessed in any edition
 	s32 mPhase;                // _278
 	f32 mTime;                 // _27C
 	s32 mDelay;                // _280
@@ -628,16 +628,16 @@ public:
 	s32 mChoice;               // _288, 0 yes, 1 no
 	s32 mLastFile;             // _28C, -1 until something's saved
 	s32 mChannel;              // _290
-	s32 _294;                  // _294
-	f32 _298;                  // _298
+	s32 mShowHelp;             // _294
+	f32 mHelpAlpha;            // _298
 	const char* mHelpText;     // _29C
 	const char* mNextHelpText; // _2A0
-	f32 _2A4;                  // _2A4
+	f32 mTexScroll;            // _2A4
 	MenuTitle mTitle;          // _2A8
 	s32 mHelpCount;            // _444
 	MenuHelpChar mBg[20];      // _448
 #if !defined(VERSION_JP)
-	BOOL _538; // _538
+	BOOL mFormatCancelled; // _538
 #endif
 
 	void SetMode(s32 mode)
@@ -722,7 +722,7 @@ struct MenuPCItem {
 	s16 mCount;       // _02, -1 for an empty row
 	s16 mPrice;       // _04
 	u8 mIsAttachment; // _06
-	u8 _07;           // _07
+	u8 _07;           // _07, never accessed, pads the row to 8 bytes
 };
 STATIC_ASSERT(sizeof(MenuPCItem) == 8);
 
@@ -737,8 +737,6 @@ struct MenuPCPage {
 STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
 
 extern "C" {
-// CMenu's own update, the overrides call it first
-BOOL Update__5CMenuFUl(CMenu* menu, u32 frames);
 void RebuildStageSelectList(MenuStageSelect* menu);
 void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha);
 }

@@ -207,5 +207,5 @@ void CCameraActionEye::Update(u32 step)
 			sPreviousZoomSpeed = speedZ;
 		}
 	}
-	gGame.mRoboeyes._5C = mAngle.y;
+	gGame.mRoboeyes.mRotation = mAngle.y;
 }

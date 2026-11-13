@@ -3,6 +3,7 @@
 #include <dolphin/mtx/mtx.h>
 #include <dolphin/mtx/vec.h>
 #include <sysdolphin/mtx.h>
+#include <sysdolphin/identity_mtx.h>
 
 #define HSD_ASSERT(line, cond) ((cond) ? ((void)0) : __assert("mtx.c", line, #cond))
 
@@ -12,6 +13,12 @@
 
 // not in our vec.h yet
 void PSVECScale(Vec* src, Vec* dst, f32 scale);
+
+Mtx HSD_identityMtx = {
+	{ 1.0F, 0.0F, 0.0F, 0.0F },
+	{ 0.0F, 1.0F, 0.0F, 0.0F },
+	{ 0.0F, 0.0F, 1.0F, 0.0F },
+};
 
 static HSD_ObjAllocData mtx_alloc_data;
 static HSD_ObjAllocData vec_alloc_data;
@@ -64,16 +71,6 @@ static inline float calcVal(float x, float y)
 }
 
 /**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline float HSD_CalcDeterminantMatrix3x4(Mtx m)
-{
-	return m[0][0] * m[1][1] * m[2][2] + m[0][1] * m[1][2] * m[2][0] + m[0][2] * m[1][0] * m[2][1] - m[2][0] * m[1][1] * m[0][2]
-	     - m[1][0] * m[0][1] * m[2][2] - m[0][0] * m[2][1] * m[1][2];
-}
-
-/**
  * @note Address: 0x801CEC78
  * @note Size: 0x430
  */
@@ -94,7 +91,8 @@ BOOL HSD_MtxInverseConcat(Mtx inv, Mtx src, Mtx dest)
 	float temp11;
 	float temp12;
 
-	det = HSD_CalcDeterminantMatrix3x4(inv);
+	det = inv[0][0] * inv[1][1] * inv[2][2] + inv[0][1] * inv[1][2] * inv[2][0] + inv[0][2] * inv[1][0] * inv[2][1]
+	    - inv[2][0] * inv[1][1] * inv[0][2] - inv[1][0] * inv[0][1] * inv[2][2] - inv[0][0] * inv[2][1] * inv[1][2];
 
 	if (det == 0.0F) {
 		return 0;
@@ -102,45 +100,45 @@ BOOL HSD_MtxInverseConcat(Mtx inv, Mtx src, Mtx dest)
 		det    = 1.0f / det;
 		temp1  = ((inv[1][1] * inv[2][2]) - (inv[2][1] * inv[1][2])) * det;
 		temp2  = (-((inv[0][1] * inv[2][2]) - (inv[2][1] * inv[0][2]))) * det;
-		temp3  = (-((inv[1][0] * inv[2][2]) - (inv[2][0] * inv[1][2]))) * det;
-		temp6  = (-((inv[0][0] * inv[2][1]) - (inv[2][0] * inv[0][1]))) * det;
 		temp7  = ((inv[0][1] * inv[1][2]) - (inv[1][1] * inv[0][2])) * det;
+		temp3  = (-((inv[1][0] * inv[2][2]) - (inv[2][0] * inv[1][2]))) * det;
 		temp4  = ((inv[0][0] * inv[2][2]) - (inv[2][0] * inv[0][2])) * det;
 		temp8  = (-((inv[0][0] * inv[1][2]) - (inv[1][0] * inv[0][2]))) * det;
 		temp5  = ((inv[1][0] * inv[2][1]) - (inv[2][0] * inv[1][1])) * det;
+		temp6  = (-((inv[0][0] * inv[2][1]) - (inv[2][0] * inv[0][1]))) * det;
 		temp9  = ((inv[0][0] * inv[1][1]) - (inv[1][0] * inv[0][1])) * det;
-		temp10 = -((temp7 * inv[2][3]) - (((-temp1) * inv[0][3]) - (temp2 * inv[1][3])));
-		temp11 = -((temp8 * inv[2][3]) - (((-temp3) * inv[0][3]) - (temp4 * inv[1][3])));
-		temp12 = -((temp9 * inv[2][3]) - (((-temp5) * inv[0][3]) - (temp6 * inv[1][3])));
+		temp10 = -temp1 * inv[0][3] - temp2 * inv[1][3] - temp7 * inv[2][3];
+		temp11 = -temp3 * inv[0][3] - temp4 * inv[1][3] - temp8 * inv[2][3];
+		temp12 = -temp5 * inv[0][3] - temp6 * inv[1][3] - temp9 * inv[2][3];
 
 		if (inv == dest || src == dest) {
-			m[0][0] = temp7 * src[2][0] + (temp1 * src[0][0] + temp2 * src[1][0]);
-			m[0][1] = temp7 * src[2][1] + (temp1 * src[0][1] + temp2 * src[1][1]);
-			m[0][2] = temp7 * src[2][2] + (temp1 * src[0][2] + temp2 * src[1][2]);
-			m[0][3] = temp7 * src[2][3] + (temp1 * src[0][3] + temp2 * src[1][3]) + temp10;
-			m[1][0] = temp8 * src[2][0] + (temp3 * src[0][0] + temp4 * src[1][0]);
-			m[1][1] = temp8 * src[2][1] + (temp3 * src[0][1] + temp4 * src[1][1]);
-			m[1][2] = temp8 * src[2][2] + (temp3 * src[0][2] + temp4 * src[1][2]);
-			m[1][3] = temp8 * src[2][3] + (temp3 * src[0][3] + temp4 * src[1][3]) + temp11;
-			m[2][0] = temp9 * src[2][0] + (temp5 * src[0][0] + temp6 * src[1][0]);
-			m[2][1] = temp9 * src[2][1] + (temp5 * src[0][1] + temp6 * src[1][1]);
-			m[2][2] = temp9 * src[2][2] + (temp5 * src[0][2] + temp6 * src[1][2]);
-			m[2][3] = temp9 * src[2][3] + (temp5 * src[0][3] + temp6 * src[1][3]) + temp12;
+			m[0][0] = temp1 * src[0][0] + temp2 * src[1][0] + temp7 * src[2][0];
+			m[0][1] = temp1 * src[0][1] + temp2 * src[1][1] + temp7 * src[2][1];
+			m[0][2] = temp1 * src[0][2] + temp2 * src[1][2] + temp7 * src[2][2];
+			m[0][3] = temp1 * src[0][3] + temp2 * src[1][3] + temp7 * src[2][3] + temp10;
+			m[1][0] = temp3 * src[0][0] + temp4 * src[1][0] + temp8 * src[2][0];
+			m[1][1] = temp3 * src[0][1] + temp4 * src[1][1] + temp8 * src[2][1];
+			m[1][2] = temp3 * src[0][2] + temp4 * src[1][2] + temp8 * src[2][2];
+			m[1][3] = temp3 * src[0][3] + temp4 * src[1][3] + temp8 * src[2][3] + temp11;
+			m[2][0] = temp5 * src[0][0] + temp6 * src[1][0] + temp9 * src[2][0];
+			m[2][1] = temp5 * src[0][1] + temp6 * src[1][1] + temp9 * src[2][1];
+			m[2][2] = temp5 * src[0][2] + temp6 * src[1][2] + temp9 * src[2][2];
+			m[2][3] = temp5 * src[0][3] + temp6 * src[1][3] + temp9 * src[2][3] + temp12;
 
 			PSMTXCopy(m, dest);
 		} else {
-			dest[0][0] = temp7 * src[2][0] + (temp1 * src[0][0] + temp2 * src[1][0]);
-			dest[0][1] = temp7 * src[2][1] + (temp1 * src[0][1] + temp2 * src[1][1]);
-			dest[0][2] = temp7 * src[2][2] + (temp1 * src[0][2] + temp2 * src[1][2]);
-			dest[0][3] = temp7 * src[2][3] + (temp1 * src[0][3] + temp2 * src[1][3]) + temp10;
-			dest[1][0] = temp8 * src[2][0] + (temp3 * src[0][0] + temp4 * src[1][0]);
-			dest[1][1] = temp8 * src[2][1] + (temp3 * src[0][1] + temp4 * src[1][1]);
-			dest[1][2] = temp8 * src[2][2] + (temp3 * src[0][2] + temp4 * src[1][2]);
-			dest[1][3] = temp8 * src[2][3] + (temp3 * src[0][3] + temp4 * src[1][3]) + temp11;
-			dest[2][0] = temp9 * src[2][0] + (temp5 * src[0][0] + temp6 * src[1][0]);
-			dest[2][1] = temp9 * src[2][1] + (temp5 * src[0][1] + temp6 * src[1][1]);
-			dest[2][2] = temp9 * src[2][2] + (temp5 * src[0][2] + temp6 * src[1][2]);
-			dest[2][3] = temp9 * src[2][3] + (temp5 * src[0][3] + temp6 * src[1][3]) + temp12;
+			dest[0][0] = temp1 * src[0][0] + temp2 * src[1][0] + temp7 * src[2][0];
+			dest[0][1] = temp1 * src[0][1] + temp2 * src[1][1] + temp7 * src[2][1];
+			dest[0][2] = temp1 * src[0][2] + temp2 * src[1][2] + temp7 * src[2][2];
+			dest[0][3] = temp1 * src[0][3] + temp2 * src[1][3] + temp7 * src[2][3] + temp10;
+			dest[1][0] = temp3 * src[0][0] + temp4 * src[1][0] + temp8 * src[2][0];
+			dest[1][1] = temp3 * src[0][1] + temp4 * src[1][1] + temp8 * src[2][1];
+			dest[1][2] = temp3 * src[0][2] + temp4 * src[1][2] + temp8 * src[2][2];
+			dest[1][3] = temp3 * src[0][3] + temp4 * src[1][3] + temp8 * src[2][3] + temp11;
+			dest[2][0] = temp5 * src[0][0] + temp6 * src[1][0] + temp9 * src[2][0];
+			dest[2][1] = temp5 * src[0][1] + temp6 * src[1][1] + temp9 * src[2][1];
+			dest[2][2] = temp5 * src[0][2] + temp6 * src[1][2] + temp9 * src[2][2];
+			dest[2][3] = temp5 * src[0][3] + temp6 * src[1][3] + temp9 * src[2][3] + temp12;
 		}
 	}
 	return 1;
@@ -440,6 +438,7 @@ void HSD_MkRotationMtx(Mtx arg0, Vec* arg1)
  */
 void HSD_MtxSRT(Mtx m, Vec* vec1, Vec* vec2, Vec* vec3, Vec* vec4)
 {
+	// NONMATCHING: register allocation only; retail keeps cosZ in f1 and vec4->x in f3
 	float sinX, cosX, sinY, cosY, sinZ, cosZ;
 	float vec1x_2;
 	float vec1y_2;

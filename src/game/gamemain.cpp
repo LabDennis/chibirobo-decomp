@@ -25,7 +25,7 @@ extern u8 gGameLanguageMap[12];
  * @note Address: 0x8001552C
  * @note Size: 0x8
  */
-extern "C" BOOL BeforeUpdate__5CBaseFv(CBase* base)
+BOOL CBase::BeforeUpdate()
 {
 	return TRUE;
 }
@@ -37,52 +37,52 @@ extern "C" BOOL BeforeUpdate__5CBaseFv(CBase* base)
 // NONMATCHING: pool symbol names (sGameVectorDefaults) and regalloc in the
 // language-map loop
 // CBase's Start
-extern "C" void Start__5CBaseFv(CBase* base)
+void CBase::Start()
 {
 	InitGameRuntime();
-	InitGameRenderState(base);
+	InitGameRenderState(this);
 	InitGameARAM();
 	InitGameDVD();
 #if defined(VERSION_PAL)
 	u8 language = OSGetLanguage();
 	for (s32 i = 0; i < 6; ++i) {
 		if (language == gGameLanguageMap[i * 2]) {
-			base->mLanguage = gGameLanguageMap[i * 2 + 1];
+			mLanguage = gGameLanguageMap[i * 2 + 1];
 			break;
 		}
 	}
 #elif !defined(VERSION_JP)
-	base->mLanguage = 0;
+	mLanguage = 0;
 #endif
 #if defined(VERSION_JP)
-	Init__5CFontFv(&base->mFont);
+	mFont.Init();
 #else
-	Init__5CFontFi(&base->mFont, gGame.mLanguage != 6);
+	mFont.Init(gGame.mLanguage != 6);
 #endif
-	base->mPad.Init();
-	base->mLastRetrace   = 0;
-	base->mRetraceStep   = 0;
-	base->mStatus.mFlags = 0;
-	InitGamePerspectiveCamera(&base->mCameras[0], &base->mGs.mScreen);
-	InitGameOrthoCamera(&base->mCameras[1], &base->mGs.mScreen);
-	InitFourLightSet(&base->mLights[0]);
-	InitTwoLightSet(&base->mLights[4]);
-	OSInitStopwatch(&base->mStopwatch[0], "__$dsync$ ");
-	OSInitStopwatch(&base->mStopwatch[1], "__$update$");
-	OSInitStopwatch(&base->mStopwatch[2], "__$draw$  ");
-	base->mPrevDvdStatus = 0;
-	base->mDvdStatus     = 0;
-	base->mDiskOk        = 1;
-	base->mDvdError      = 0;
-	base->mResetHold     = 0;
-	base->mReset         = 0;
+	mPad.Init();
+	mLastRetrace   = 0;
+	mRetraceStep   = 0;
+	mStatus.mFlags = 0;
+	InitGamePerspectiveCamera(&mCameras[0], &mGs.mScreen);
+	InitGameOrthoCamera(&mCameras[1], &mGs.mScreen);
+	InitFourLightSet(&mLights[0]);
+	InitTwoLightSet(&mLights[4]);
+	OSInitStopwatch(&mStopwatch[0], "__$dsync$ ");
+	OSInitStopwatch(&mStopwatch[1], "__$update$");
+	OSInitStopwatch(&mStopwatch[2], "__$draw$  ");
+	mPrevDvdStatus = 0;
+	mDvdStatus     = 0;
+	mDiskOk        = 1;
+	mDvdError      = 0;
+	mResetHold     = 0;
+	mReset         = 0;
 }
 
 /**
  * @note Address: 0x800153B4
  * @note Size: 0x4
  */
-extern "C" void vf24__5CBaseFv(CBase* base)
+void CBase::DrawHud()
 {
 }
 
@@ -90,7 +90,7 @@ extern "C" void vf24__5CBaseFv(CBase* base)
  * @note Address: 0x800153B8
  * @note Size: 0x4
  */
-extern "C" void vf20__5CBaseFv(CBase* base)
+void CBase::DrawScene()
 {
 }
 
@@ -98,7 +98,7 @@ extern "C" void vf20__5CBaseFv(CBase* base)
  * @note Address: 0x80015634
  * @note Size: 0x4
  */
-extern "C" void Initialize__5CBaseFiPPc(CBase* base, int argc, char** argv)
+void CBase::Initialize(int argc, char** argv)
 {
 }
 
@@ -106,7 +106,7 @@ extern "C" void Initialize__5CBaseFiPPc(CBase* base, int argc, char** argv)
  * @note Address: 0x80015638
  * @note Size: 0x8
  */
-extern "C" s32 FrameInterval__5CBaseFv(CBase* base)
+s32 CBase::FrameInterval()
 {
 	return 1;
 }
@@ -115,7 +115,7 @@ extern "C" s32 FrameInterval__5CBaseFv(CBase* base)
  * @note Address: 0x80015640
  * @note Size: 0x4
  */
-extern "C" void Draw__5CBaseFv(CBase* base)
+void CBase::Draw()
 {
 }
 
@@ -133,9 +133,9 @@ void OSResetSystem(int reset, u32 code, BOOL forceMenu);
  * @note Address: 0x800153BC
  * @note Size: 0x170
  */
-extern "C" void Update__5CBaseFUl(CBase* base, u32 frames)
+void CBase::Update(u32 frames)
 {
-	BaseUpdate(base, frames);
+	BaseUpdate(this, frames);
 }
 
 // stops the sound and the video and resets
@@ -166,7 +166,7 @@ inline void ResetSystem(u32 code)
  * @note Size: 0x60
  */
 // CBase::Reset
-extern "C" void Reset__5CBaseFUl(CBase* base, u32 code)
+void CBase::Reset(u32 code)
 {
 	ResetSystem(code);
 }
@@ -246,7 +246,7 @@ void main(int argc, char** argv)
  * @note Address: 0x800151DC
  * @note Size: 0x4
  */
-extern "C" void Reset__8FbMirrorFv(void)
+void FbMirror::Reset()
 {
 }
 
@@ -254,13 +254,12 @@ extern "C" void Reset__8FbMirrorFv(void)
  * @note Address: 0x80014DA4
  * @note Size: 0x2BC
  */
-// NONMATCHING: the surface check is a compare where the original tests a bool
 // FbMirror::Update, puts the mirror camera at the main camera's eye reflected in the surface,
 // looking at the surface through a frustum that just fits it
-extern "C" void Update__8FbMirrorFUl(FbMirror* mirror, u32 frames)
+void FbMirror::Update(u32 frames)
 {
-	if (mirror->IsUsed()) {
-		HSD_JObj* jobj = mirror->mJoint;
+	if (IsUsed()) {
+		HSD_JObj* jobj = mJoint;
 		Mtx mtx;
 		Mtx view;
 		Vec eye;
@@ -295,7 +294,7 @@ extern "C" void Update__8FbMirrorFUl(FbMirror* mirror, u32 frames)
 		PSVECSubtract(&pos, &eye, &diff);
 		f32 dist = PSVECDotProduct(&normal, &diff);
 		if (dist <= 0.0f) {
-			mirror->mVisible = FALSE;
+			mVisible = FALSE;
 		} else {
 			PSVECScale(&normal, &diff, 2.0f * dist);
 			PSVECAdd(&diff, &eye, &diff);
@@ -304,13 +303,13 @@ extern "C" void Update__8FbMirrorFUl(FbMirror* mirror, u32 frames)
 			mtx[2][3] = diff.z;
 			PSMTXInverse(mtx, view);
 			PSMTXMultVec(view, &pos, &pos);
-			mirror->mCamera.SetNear(0.1f - pos.z);
-			mirror->mCamera.SetFar(32768.0f + (0.1f - pos.z));
-			mirror->mCamera.SetFrustum(0.5f + pos.y, -0.5f + pos.y, -0.5f + pos.x, 0.5f + pos.x);
-			mirror->mCamera.SetEye(diff);
-			mirror->mCamera.SetMtx(view);
-			PSMTXCopy(view, mirror->mView);
-			mirror->mVisible = TRUE;
+			mCamera.SetNear(0.1f - pos.z);
+			mCamera.SetFar(32768.0f + (0.1f - pos.z));
+			mCamera.SetFrustum(0.5f + pos.y, -0.5f + pos.y, -0.5f + pos.x, 0.5f + pos.x);
+			mCamera.SetEye(diff);
+			mCamera.SetMtx(view);
+			PSMTXCopy(view, mView);
+			mVisible = TRUE;
 		}
 	}
 }
@@ -320,11 +319,11 @@ extern "C" void Update__8FbMirrorFUl(FbMirror* mirror, u32 frames)
  * @note Size: 0xC0
  */
 // FbMirror::Init
-extern "C" void Init__8FbMirrorFv(FbMirror* mirror)
+void FbMirror::Init()
 {
-	mirror->mJoint = NULL;
-	mirror->mCamera.Init(0.1f, 32768.0f, 0.5f, -0.5f, -0.5f, 0.5f, &gGame.mGs.mScreen);
-	mirror->mCamera.SetViewport(0.0f, 256.0f, 0.0f, 256.0f);
-	mirror->mCamera.SetScissor(0, 256, 0, 256);
-	mirror->Reset();
+	mJoint = NULL;
+	mCamera.Init(0.1f, 32768.0f, 0.5f, -0.5f, -0.5f, 0.5f, &gGame.mGs.mScreen);
+	mCamera.SetViewport(0.0f, 256.0f, 0.0f, 256.0f);
+	mCamera.SetScissor(0, 256, 0, 256);
+	Reset();
 }

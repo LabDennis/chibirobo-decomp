@@ -17,11 +17,11 @@ STATIC_ASSERT(sizeof(CoinBounce) == 0x24);
 // a carried model, drawn with the object 0x13C model the spider claimed a slot for
 struct CarryInfo {
 	CVec mPos;      // _00
-	CVec _10;       // _10
+	CVec _10;       // _10, zeroed in the spider's init, never read
 	f32 mAngle;     // _20
-	f32 _24;        // _24
+	f32 _24;        // _24, written 0 in the spider's init, never read
 	s32 mState;     // _28, its anim, 1 opens, 2 follows mObj's joint, 3 closes
-	u32 _2C;        // _2C
+	u32 _2C;        // _2C, written 0 in the spider's init, never read
 	CStatus mFlags; // _30, 1 drawn, 2 the robot was hit with it
 	XObj* mObj;     // _38, the object whose joint it follows
 };
@@ -43,8 +43,8 @@ public:
 	// _00-_980 = XObj
 	f32 mDir;         // _980, the way it walks
 	f32 mSpeed;       // _984
-	f32 _988;         // _988
-	f32 _98C;         // _98C
+	f32 mFacing;      // _988, eased toward mDir while it turns
+	f32 _98C;         // _98C, State4 sets it to mFacing once the robot is in reach, ResetSpiderState sets it to 0, never read
 	f32 mTurnSpeed;   // _990
 	f32 mSavedDir;    // _994
 	f32 mThreadAlpha; // _998, 0 to 1
@@ -58,56 +58,58 @@ public:
 #if defined(VERSION_PAL)
 	f32 mAnimStartFrame; // _9BC
 #endif
-	s32 mWait;              // _9BC
-	f32 _9C0;               // _9C0
-	f32 _9C4;               // _9C4
-	Vec mHitPos;            // _9C8, where it was hit from
-	Vec mHome;              // _9D4, y is the floor
-	f32 mHitStrength;       // _9E0
-	s32 mWall;              // _9E4, 2 to 5 while it walks on a wall, on 3 it carries sideways
-	s32 mHits;              // _9E8, hits left
-	s32 mMaxHits;           // _9EC
-	Vec mWallPos;           // _9F0
-	Vec mTarget;            // _9FC, where it walks to
-	Vec mShotOrigin;        // _A08
-	Vec mShotPosition;      // _A14
-	u8 _A20[0xA2C - 0xA20]; // _A20
-	Vec mShotTo;            // _A2C, where the carried model is shot at
-	f32 mShotRange;         // _A38
-	u8 _A3C[0xA40 - 0xA3C]; // _A3C
-	f32 mShotProgress;      // _A40
-	s32 mShotState;         // _A44
-	s32 _A48;               // _A48
-	Vec mAreaPos;           // _A4C, corner of the area it stays in
-	f32 mAreaWidth;         // _A58
-	f32 mAreaDepth;         // _A5C
-	Vec mStartPos;          // _A60
-	f32 _A6C;               // _A6C
-	s32 mCommand;           // _A70, from the event scripts, 0 once handled
-	s32 mArgs[5];           // _A74
-	u32 _A88;               // _A88
-	CarryInfo mCarry;       // _A8C
-	CarryInfo _AC8;         // _AC8, mObj is the slot's model
-	u8 mSlot;               // _B04, 255 for none
-	u8 _B05[0xB10 - 0xB05]; // _B05
-	s16 _B10;               // _B10
-	s32 _B14[4];            // _B14
-	s32 _B24[3];            // _B24
-	u8 _B30[0xB50 - 0xB30]; // _B30
-	s16 _B50;               // _B50
-	s32 _B54;               // _B54
-	s16 mEffectId;          // _B58, a stage object it holds on its joint
-	u16 _B5A;               // _B5A
-	XObj* mEffect;          // _B5C
-	s32 mEffectOn;          // _B60
-	Mtx mEffectMtx;         // _B64
-	s32 mHitState;          // _B94
-	s32 mHitTimer;          // _B98
-	s32 _B9C;               // _B9C
-	s32 mRumble;            // _BA0
-	s32 mRumbleTimer;       // _BA4
-	AnimSfx mSfx;           // _BA8
-	SpiderTie mTies[8];     // _BB8
+	s32 mWait;   // _9BC
+	f32 _9C0;    // _9C0, written 1.0f in ResetSpiderState, never read; XObjSpiderBoss _9C4 and XObjSpiderSmall _9C4 are the same write-only
+	             // slot
+	f32 _9C4;    // _9C4, written 1.0f in ResetSpiderState, never read; XObjSpiderBoss _9C8 and XObjSpiderSmall _9C8 are the same write-only
+	             // slot
+	Vec mHitPos; // _9C8, where it was hit from
+	Vec mHome;   // _9D4, y is the floor
+	f32 mHitStrength;        // _9E0
+	s32 mWall;               // _9E4, 2 to 5 while it walks on a wall, on 3 it carries sideways
+	s32 mHits;               // _9E8, hits left
+	s32 mMaxHits;            // _9EC
+	Vec mWallPos;            // _9F0
+	Vec mTarget;             // _9FC, where it walks to
+	Vec mShotOrigin;         // _A08
+	Vec mShotPosition;       // _A14
+	u8 _A20[0xA2C - 0xA20];  // _A20
+	Vec mShotTo;             // _A2C, where the carried model is shot at
+	f32 mShotRange;          // _A38
+	u8 _A3C[0xA40 - 0xA3C];  // _A3C
+	f32 mShotProgress;       // _A40
+	s32 mShotState;          // _A44
+	s32 _A48;                // _A48, LaunchSpiderShot sets it to 10 next to mShotState = 1, ResetSpiderState sets it to 0, never read
+	Vec mAreaPos;            // _A4C, corner of the area it stays in
+	f32 mAreaWidth;          // _A58
+	f32 mAreaDepth;          // _A5C
+	Vec mStartPos;           // _A60
+	f32 _A6C;                // _A6C, written 0 in ResetSpiderState right after mStartPos, never read; XObjSpiderBoss _A1C is the same slot
+	s32 mCommand;            // _A70, from the event scripts, 0 once handled
+	s32 mArgs[5];            // _A74
+	u32 _A88;                // _A88, written 0 in ResetSpiderState right after mArgs[0], never read; XObjSpiderBoss _A44 is the same slot
+	CarryInfo mCarry;        // _A8C
+	CarryInfo mSlotCarry;    // _AC8, mObj is the slot's model
+	u8 mSlot;                // _B04, 255 for none
+	u8 _B05[0xB10 - 0xB05];  // _B05
+	s16 _B10;                // _B10, written 2 in ResetSpiderState, never read
+	s32 _B14[4];             // _B14, all four written 0 in ResetSpiderState, never read
+	s32 _B24[3];             // _B24, all three written 100 in ResetSpiderState, never read
+	u8 _B30[0xB50 - 0xB30];  // _B30
+	s16 _B50;                // _B50, written 0 in ResetSpiderState, never read
+	s32 _B54;                // _B54, written 0 in ResetSpiderState, never read
+	s16 mEffectId;           // _B58, a stage object it holds on its joint
+	u16 _B5A;                // _B5A, never accessed; sits after the s16 mEffectId, may be padding
+	XObj* mEffect;           // _B5C
+	s32 mEffectOn;           // _B60
+	Mtx mEffectMtx;          // _B64
+	s32 mHitState;           // _B94
+	s32 mHitTimer;           // _B98
+	s32 mDroppedSpiderIndex; // _B9C, FindNearbyDroppedSpider's pool index
+	s32 mRumble;             // _BA0
+	s32 mRumbleTimer;        // _BA4
+	AnimSfx mSfx;            // _BA8
+	SpiderTie mTies[8];      // _BB8
 #if defined(VERSION_PAL)
 	u8 _D78_PAL[0x4]; // _D78
 #endif
@@ -117,17 +119,17 @@ public:
 #endif
 	virtual ~XObjSpider();
 	virtual void InitializeObject(u32 id);                           // _90
-	virtual void vf94();                                             // _94
+	virtual void ResetForNewGame();                                  // _94
 	virtual void ResetObjectState();                                 // _98
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);           // _9C
 	virtual void UpdateObject(u32 frames);                           // _A4
-	virtual void vfAC();                                             // _AC
+	virtual void DrawObject();                                       // _AC
 	virtual void DrawGroundShadow();                                 // _B8
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity); // _BC
 	virtual void DrawObjectEffects();                                // _C0
-	virtual void vfC8();                                             // _C8
+	virtual void DrawScreenOverlay();                                // _C8
 	virtual void DrawDebugStatus();                                  // _CC
-	virtual s32 vf100(s32 unused, s32 value);                        // _100
+	virtual s32 OnPlayerContact(s32 unused, s32 value);              // _100
 	virtual s32 HandleEventCommand(s32 count, s32* args);            // _124
 	virtual void OnHitFromPosition(const Vec& from, f32 strength);   // _138
 	virtual void UpdateAnimationSounds();                            // _148, plays the sounds along the anim

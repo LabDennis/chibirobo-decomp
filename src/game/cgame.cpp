@@ -4,12 +4,24 @@
 #include "game/mm.h"
 #include <Dolphin/vi.h>
 #include "game/cgameutil.h"
+#include "game/arcache.h"
+#include "game/cthread.h"
 
 extern "C" {
 int strncmp(const char* a, const char* b, unsigned long n);
 }
-extern "C" f32 sStageNameShadowX[4];
-extern "C" f32 sStageNameShadowY[4];
+// the stage name's four shadow copies, one pixel off to each corner
+f32 sStageNameShadowX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 sStageNameShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+
+// the cgame file's globals, in the order retail built them in cgameinit's static
+// initializer; cgameinit.cpp still constructs the same region by hand, so these are
+// initialized twice until that workaround is replaced
+ARCacheInfo gARAMCacheInfo;
+FbMirrorEx gFramebufferMirrors[5];
+ARPreCache gAramPrecache;
+CThread gMovieUpdateThread;
+u8 gMovieUpdateThreadStack[0x1000];
 
 /**
  * @note Address: 0x8000AD34
@@ -95,7 +107,7 @@ void ResetGameHudState(void* info);
 u8* GetStageDisplayName(s32 index);
 int rand(void);
 }
-extern "C" GXColor gMessageFontDefaultColor;
+GXColor gMessageFontDefaultColor = { 0, 0, 0, 0x80 };
 
 // a lead byte of a two byte shift jis character
 static inline bool IsSJISByte(char c)
@@ -139,7 +151,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		game->SetStage(stage);
 	} else {
 		game->mPrevStage = game->mStage;
-		if (++game->mStage >= game->_344C) {
+		if (++game->mStage >= game->mRoomCount) {
 			game->mStage = 0;
 		}
 	}
@@ -210,7 +222,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		StartScreenShake(&game->mQuake, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 		game->mBlur.mAlpha  = 0.0f;
 		game->mBlur.mTarget = 0.0f;
-		game->_3338         = 19;
+		game->mLoadStep     = 19;
 	} else if (stage == 20000) {
 		game->mSubwin.Reset();
 		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
@@ -223,9 +235,9 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		StartScreenShake(&game->mQuake, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 		game->mBlur.mAlpha  = 0.0f;
 		game->mBlur.mTarget = 0.0f;
-		game->_3338         = 20;
+		game->mLoadStep     = 20;
 	} else {
-		game->_3338 = 21;
+		game->mLoadStep = 21;
 	}
 
 	if (showName) {

@@ -214,7 +214,7 @@ void XObjAttachment::Show()
  * @note Address: 0x800D5580
  * @note Size: 0x3C
  */
-void XObjAttachment::vfAC()
+void XObjAttachment::DrawObject()
 {
 	if (mVisible) {
 		DrawWithView(NULL);

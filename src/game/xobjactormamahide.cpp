@@ -10,12 +10,12 @@ void XObjActorMama::ProcessPendingEvents(u32)
 	CJObj jobj;
 	XObjChr* player = gGame.GetPlayer();
 	CVec pos;
-	if (_998.Check(0x400)) {
-		_998.mFlags &= ~0x400;
+	if (mActorStatus.Check(0x400)) {
+		mActorStatus.mFlags &= ~0x400;
 		mHeadPitch = 0.0f;
 	}
-	if (_998.Check(2)) {
-		_998.mFlags &= ~2;
+	if (mActorStatus.Check(2)) {
+		mActorStatus.mFlags &= ~2;
 		PlayGameSound(&gGame.mSound, HSD_Randi(10) + 0x9E, 0xFF);
 	}
 	switch (mCmd[0]) {
@@ -30,7 +30,7 @@ void XObjActorMama::ProcessPendingEvents(u32)
 					obj->mStatus.mFlags |= 0x10000ULL;
 					switch (mCmd[1]) {
 					case 0x40:
-						_C8C.mFlags |= 1;
+						mHideKinds.mFlags |= 1;
 						break;
 					}
 				}
@@ -47,16 +47,16 @@ void XObjActorMama::ProcessPendingEvents(u32)
 					mHeldObjects[0] = obj;
 					switch (mCmd[1]) {
 					case 0x5B:
-						_C8C.mFlags |= 2;
+						mHideKinds.mFlags |= 2;
 						break;
 					case 0x7D:
-						_C8C.mFlags |= 4;
+						mHideKinds.mFlags |= 4;
 						break;
 					case 0x196:
-						_C8C.mFlags |= 8;
+						mHideKinds.mFlags |= 8;
 						break;
 					case 0x45B:
-						_C8C.mFlags |= 0x20;
+						mHideKinds.mFlags |= 0x20;
 						break;
 					}
 				}
@@ -73,7 +73,7 @@ void XObjActorMama::ProcessPendingEvents(u32)
 					mHeldObjects[1] = obj;
 				}
 			}
-			_C8C.mFlags |= 0x10;
+			mHideKinds.mFlags |= 0x10;
 			break;
 		default:
 			for (int i = 0; i < 2; ++i) {
@@ -90,24 +90,24 @@ void XObjActorMama::ProcessPendingEvents(u32)
 	case 3:
 		switch (mCmd[1]) {
 		case 1: {
-			_998.mFlags |= 0x100;
-			player->_980.mFlags = 0;
-			player->_980.mFlags |= 0x40000000;
+			mActorStatus.mFlags |= 0x100;
+			player->mPlayerStatus.mFlags = 0;
+			player->mPlayerStatus.mFlags |= 0x40000000;
 			player->mPad.mReset = FALSE;
 			player->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 
 			break;
 		}
 		default: {
-			_998.mFlags &= ~0x100;
+			mActorStatus.mFlags &= ~0x100;
 			s32 path[6] = { 0, 4, 2, 0, 0, 0 };
 			jobj.Attach(FindJointByPath(mJObj, path, 6));
 			pos   = CVec(jobj.GetPos());
 			pos.y = mMoveTranslate.y;
 			player->SetPos(pos, 0);
-			player->_980.mFlags = 0;
-			player->_980.mFlags |= 0x20000000;
-			player->_980.mFlags |= 7;
+			player->mPlayerStatus.mFlags = 0;
+			player->mPlayerStatus.mFlags |= 0x20000000;
+			player->mPlayerStatus.mFlags |= 7;
 			player->mPad.mReset = TRUE;
 			break;
 		}

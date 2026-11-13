@@ -54,10 +54,10 @@ struct AnimSfxEvent {
 	f32 mEnd;   // _08
 	s32 mKind;  // _0C, 1 plays when the frame passes mStart or mEnd
 	s32 mSfx;   // _10, a track id from 0xFFFF0000 up
-	u8 _14;     // _14
+	u8 _14;     // _14, no access in the source, only filled by the data tables
 	u8 mCount;  // _15, mSfx and the next ones are played in turn
 	u8 mIndex;  // _16
-	u8 _17;     // _17
+	u8 _17;     // _17, no access in the source, only filled by the data tables
 };
 STATIC_ASSERT(sizeof(AnimSfxEvent) == 0x18);
 

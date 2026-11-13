@@ -4,11 +4,11 @@
  * @note Address: 0x801220A8
  * @note Size: 0xA4
  */
-void XObjActorToy::vfC8()
+void XObjActorToy::DrawScreenOverlay()
 {
-	vfC8__9XObjActorFv(this);
+	XObjActor::DrawScreenOverlay();
 	if (mFirst.mStatus.mFlags & 0x10000ULL)
-		mFirst.vfC8();
+		mFirst.DrawScreenOverlay();
 	if (mSecond.mStatus.mFlags & 0x10000ULL)
-		mSecond.vfC8();
+		mSecond.DrawScreenOverlay();
 }

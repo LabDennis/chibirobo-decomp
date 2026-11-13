@@ -30,9 +30,9 @@ inline void CGame::ResetNewGameState()
 	StartScreenFade(&mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
 	StartScreenFade(&mColor0.mColor, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
 	StartScreenFade(&mColor1.mColor, 0, 0, 0, 0, 255, 255, 255, 0, 0.0f);
-	_4724              = 0;
-	_4728              = 0.5f;
-	mStageName.mActive = FALSE;
+	mOutlineWidthControl = 0;
+	mOutlineWidth        = 0.5f;
+	mStageName.mActive   = FALSE;
 	for (int i = 0; i < 20; ++i) {
 		mStageName.mChars[i].mScale = 0;
 		mStageName.mChars[i].mWait  = 0;

@@ -14,7 +14,7 @@ public:
 	HSD_LObj* mLoadedLObj;  // _D4, the light Init made from a desc
 	CVec mPosition;         // _D8
 	CVec mInterest;         // _E8
-	CVec _F8;               // _F8
+	CVec _F8;               // _F8, CVec between mInterest and mColor; only constructed and destroyed, nothing reads or writes its value
 	CColor mColor;          // _108
 	CColor mSpecColor;      // _110
 	HSD_WObj mPositionWObj; // _118, what position points at when Init built the light by hand

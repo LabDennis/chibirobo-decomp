@@ -83,7 +83,7 @@ void XObjMap::Release()
 			}
 		}
 	}
-	Release__4XObjFv(this);
+	XObj::Release();
 }
 
 // a floor for every child of the root joint that has triangles, sorted from the highest down

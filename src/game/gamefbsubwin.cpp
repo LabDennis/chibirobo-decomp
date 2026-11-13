@@ -6,12 +6,12 @@
  * @note Size: 0x1F0
  */
 // FbSubwin's Copy
-extern "C" void Copy__8FbSubwinFv(FbSubwin* subwin)
+void FbSubwin::Copy()
 {
 	CGs* graphics = CaptureGraphics();
 	SetGsColorUpdate(graphics->mCurRenderMode, 1);
 	SetGsAlphaUpdate(graphics->mCurRenderMode, 1);
 	SetGsDepthMode(graphics->mCurRenderMode, 0, 7, 1);
 	FlushCaptureGraphics(graphics);
-	CopyCaptureTexture(&subwin->mTexture, graphics);
+	CopyCaptureTexture(&mTexture, graphics);
 }

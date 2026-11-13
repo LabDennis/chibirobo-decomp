@@ -21,7 +21,7 @@ public:
 	u8 mSuppressIdleDisplay; // _75
 	s32 mState;              // _78
 	f32 mIconAlphaScale;     // _7C
-	s32 _80;                 // _80
+	s32 _80;                 // _80, written 0 in InitHudPointCounter, never read
 	// _84 vtable
 
 	virtual ~InfoPoint() { } // _08 (weak)

@@ -32,18 +32,18 @@ extern "C" void DrawStage02ActorCounterPanel(XObjActor3* actor)
 	if (!IsStage("stage02")) {
 		return;
 	}
-	if (!actor->_980.mBound) {
+	if (!actor->mPanelTpl.mBound) {
 		return;
 	}
 	CTexObj tex;
-	tex       = actor->_980.mTex.Init(&((TPLPalette*)actor->_980.mBuffer)->descriptorArray[9], 0);
+	tex       = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[9], 0);
 	f32 scale = 1.0f;
 	f32 w     = scale * GXGetTexObjWidth(&tex);
 	u16 h     = GXGetTexObjHeight(&tex);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, w, TexSize(h, 1.0f), 0.0f, 0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-	tex    = actor->_980.mTex.Init(&((TPLPalette*)actor->_980.mBuffer)->descriptorArray[1], 0);
+	tex    = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0);
 	f32 dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);
 	f32 x;
 	f32 dh    = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
@@ -104,11 +104,11 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 	if (!IsStage("stage02")) {
 		return;
 	}
-	if (!actor->_980.mBound) {
+	if (!actor->mPanelTpl.mBound) {
 		return;
 	}
 	CTexObj tex;
-	tex       = actor->_980.mTex.Init(&((TPLPalette*)actor->_980.mBuffer)->descriptorArray[4], 0);
+	tex       = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[4], 0);
 	f32 scale = 1.0f;
 #if defined(VERSION_JP)
 	f32 w = TexSize(GXGetTexObjWidth(&tex), scale);
@@ -122,7 +122,7 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 #if !defined(VERSION_JP)
 	DrawTimerLabel(scale);
 #endif
-	tex    = actor->_980.mTex.Init(&((TPLPalette*)actor->_980.mBuffer)->descriptorArray[1], 0);
+	tex    = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0);
 	f32 dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);
 	f32 dh = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
 	f32 x  = 110.0f;

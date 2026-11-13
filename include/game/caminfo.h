@@ -9,7 +9,7 @@
 
 // a stage's camera placement, positions and fov in hundredths
 struct CamInfoData {
-	s32 _00;          // _00
+	s32 mGroupId;     // _00, camera area group the entry belongs to, a group's entries are consecutive; -1 ends the table
 	s32 mEye[3];      // _04
 	s32 mInterest[3]; // _10
 	s32 mFov;         // _1C

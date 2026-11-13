@@ -38,7 +38,6 @@ s32 HSD_DevComIsBusy(s32 id);
 void CMsg_Update(CMsg* msg, u32 frames);
 void UpdateOpenMenus(void* menu, u32 frames);
 void UpdateHudTransitionsAndIndicators(void* info, u32 frames);
-void Update__8FbMirrorFUl(FbMirror* mirror, u32 frames);
 void BuildObjectDrawList(CGame* game);
 }
 
@@ -60,13 +59,13 @@ void CGame::Update(u32 frames)
 			mReset     = FALSE;
 			HSD_PadReset();
 			Reset(1);
-		} else if (_3338 != 0x17 && _3338 != 0x1A && !HasPendingObjectReads()) {
+		} else if (mLoadStep != 0x17 && mLoadStep != 0x1A && !HasPendingObjectReads()) {
 			mResetHold = 0;
 			mReset     = FALSE;
 			HSD_PadReset();
 			if (!mDiskOk) {
 				Reset(1);
-			} else if (_3338 <= 0x13) {
+			} else if (mLoadStep <= 0x13) {
 				Reset(0);
 			} else {
 				ChangeGameStage(this, 10000, FALSE);
@@ -91,7 +90,11 @@ void CGame::Update(u32 frames)
 		BuildObjectDrawList(this);
 	}
 	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 2) && !(mStatus.mFlags & 0x20) && !mMenu.mActive && mEvt.mData.mScript == NULL
-	    && (mPad.mPad[0].mTrigger & 0x1000) && !(mPad.mPad[0].mButton & 0x200) && mMenu.mMenus[1] != NULL) {
+	    && (mPad.mPad[0].mTrigger & 0x1000) && !(mPad.mPad[0].mButton & 0x200)
+#if !defined(VERSION_JP)
+	    && mMenu.mMenus[1] != NULL
+#endif
+	) {
 		mMenu.mMenus[1]->Open();
 		mMenu.mActive = TRUE;
 	}
@@ -99,10 +102,10 @@ void CGame::Update(u32 frames)
 		for (i = 0; i < mDrawLists[0].mCount; i++) {
 			XObj* obj = mDrawLists[0].mObjects[i];
 			if (obj->mStatus.mFlags & 1) {
-				if (obj->mMoveTranslate.y != obj->_264.y) {
+				if (obj->mMoveTranslate.y != obj->mLastPos.y) {
 					obj->mStatus.mFlags |= 0x10000000000000;
 				}
-				obj->_264 = obj->mMoveTranslate;
+				obj->mLastPos = obj->mMoveTranslate;
 				obj->UpdateObject(frames);
 			}
 		}
@@ -191,17 +194,17 @@ void CGame::Update(u32 frames)
 	}
 	UpdateScreenFade(&mColor1.mColor, frames);
 	mOutline.SetColor4(mColor1.mColor.mColor.r, mColor1.mColor.mColor.g, mColor1.mColor.mColor.b, mColor1.mColor.mColor.a);
-	if (_4724 > 0) {
+	if (mOutlineWidthControl > 0) {
 		if (mPad.mPad[0].mSubStickY > 0.0f) {
-			if ((_4728 -= 0.01f * frames) < 0.04f) {
-				_4728 = 0.04f;
+			if ((mOutlineWidth -= 0.01f * frames) < 0.04f) {
+				mOutlineWidth = 0.04f;
 			}
 		} else if (mPad.mPad[0].mSubStickY < 0.0f) {
-			if ((_4728 += 0.01f * frames) > 0.5f) {
-				_4728 = 0.5f;
+			if ((mOutlineWidth += 0.01f * frames) > 0.5f) {
+				mOutlineWidth = 0.5f;
 			}
 		}
-		mOutline.mZoom = sin(3.1415927f * _4728 / 2.0f);
+		mOutline.mZoom = sin(3.1415927f * mOutlineWidth / 2.0f);
 	}
 	UpdateBootLogos(&mLogo, frames);
 	UpdateTitleScreen(&mTitle, frames);
@@ -211,7 +214,7 @@ void CGame::Update(u32 frames)
 		mSubwin.Update(frames);
 		for (i = 0; i < 5; i++) {
 			if (!IsMirrorOff(&gFramebufferMirrors[i])) {
-				Update__8FbMirrorFUl(&gFramebufferMirrors[i], frames);
+				gFramebufferMirrors[i].FbMirror::Update(frames);
 			}
 		}
 	}
@@ -290,7 +293,7 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 		for (i = 0; i < game->mXObjs.mObjectCount; i++) {
 			obj = game->mXObjs.mObjects[i];
 			if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
-				if (!(game->mStatus.mFlags & 0x100) && (obj->mStatus.mFlags & 0x80000000) && obj->vf11C(&camera->mCamera)) {
+				if (!(game->mStatus.mFlags & 0x100) && (obj->mStatus.mFlags & 0x80000000) && obj->IsOutsideCameraDepth(&camera->mCamera)) {
 					obj->mStatus.mFlags |= 0x1000000000000;
 				} else {
 					obj->mStatus.mFlags &= ~0x1000000000000;

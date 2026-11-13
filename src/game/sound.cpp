@@ -271,7 +271,7 @@ static inline s32 SelectAlternatingSound(XSound* sound, s32* stop, s32* play)
 	for (u32 i = 0; i < 4; i++) {
 		if (IsGameSoundPlaying(sound, stop[i])) {
 			stopSfx(sound, stop[i]);
-			sound->_18C = 0;
+			sound->mAltSoundIndex = 0;
 		}
 	}
 	for (u32 i = 0; i < 4; i++) {
@@ -279,10 +279,10 @@ static inline s32 SelectAlternatingSound(XSound* sound, s32* stop, s32* play)
 			return -1;
 		}
 	}
-	if (sound->_18C < 0 || (u32)sound->_18C >= 4) {
-		sound->_18C = 0;
+	if (sound->mAltSoundIndex < 0 || (u32)sound->mAltSoundIndex >= 4) {
+		sound->mAltSoundIndex = 0;
 	}
-	return play[sound->_18C++];
+	return play[sound->mAltSoundIndex++];
 }
 
 static inline s32 SelectMappedSound(s32 sfx)
@@ -721,8 +721,8 @@ extern "C" BOOL StopGameSfx(XSound* sound, s32 sfx)
 extern "C" BOOL IsGameSoundPlaying(XSound* sound, s32 sfx)
 {
 	// steps by two so it only ever looks at every other slot, nice one
-	for (u32 i = 0; i < 32 && sound->_108[i] != 0; i += 2) {
-		if (sound->_108[i] == sfx) {
+	for (u32 i = 0; i < 32 && sound->mStartedSfx[i] != 0; i += 2) {
+		if (sound->mStartedSfx[i] == sfx) {
 			return TRUE;
 		}
 	}
@@ -844,7 +844,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		vol = 0;
 		break;
 	case 0x3E:
-		sound->_18C = 0;
+		sound->mAltSoundIndex = 0;
 		break;
 	case 0x11:
 		sfx = SelectAlternatingSound(sound, sAlternatingSound15, sAlternatingSound11);
@@ -870,10 +870,10 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		if (IsGameSoundPlaying(sound, 0xFD)) {
 			sfx = -1;
 		} else {
-			if (sound->_190 < 0 || (u32)sound->_190 >= 25) {
-				sound->_190 = 0;
+			if (sound->mVoiceSeqIndex < 0 || (u32)sound->mVoiceSeqIndex >= 25) {
+				sound->mVoiceSeqIndex = 0;
 			}
-			sfx = sSoundFDSequence[sound->_190++];
+			sfx = sSoundFDSequence[sound->mVoiceSeqIndex++];
 		}
 		break;
 	case 0x110:
@@ -883,10 +883,10 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 			if (IsGameSoundPlaying(sound, 0xFFFF0000)) {
 				PauseMusic(sound, 120);
 			}
-			if (sound->_190 < 0 || (u32)sound->_190 >= 8) {
-				sound->_190 = 0;
+			if (sound->mVoiceSeqIndex < 0 || (u32)sound->mVoiceSeqIndex >= 8) {
+				sound->mVoiceSeqIndex = 0;
 			}
-			sfx = sSound110Sequence[sound->_190++];
+			sfx = sSound110Sequence[sound->mVoiceSeqIndex++];
 		}
 		if (sfx < 0) {
 			return -1;
@@ -909,10 +909,10 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		}
 		break;
 	case 0x137:
-		if (sound->_194 < 0 || (u32)sound->_194 >= 11) {
-			sound->_194 = 0;
+		if (sound->mSoundSeqIndex < 0 || (u32)sound->mSoundSeqIndex >= 11) {
+			sound->mSoundSeqIndex = 0;
 		}
-		sfx = sSound137Sequence[sound->_194++];
+		sfx = sSound137Sequence[sound->mSoundSeqIndex++];
 		break;
 	case 0x84:
 	case 0x85:
@@ -922,10 +922,10 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		sfx = SelectMappedSound(sfx);
 		break;
 	case 0x11D:
-		if (sound->_198 > 0) {
+		if (sound->mCooldown > 0) {
 			return -1;
 		}
-		sound->_198 = 60;
+		sound->mCooldown = 60;
 		break;
 	case 0x44:
 	case 0x18C:
@@ -984,11 +984,11 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		result = 1;
 	}
 	u32 i = 0;
-	while (i < 32 && sound->_108[i] != 0) {
+	while (i < 32 && sound->mStartedSfx[i] != 0) {
 		i++;
 	}
 	if (i < 32) {
-		sound->_108[i] = sfx;
+		sound->mStartedSfx[i] = sfx;
 	}
 	switch (sfx) {
 	case 9:
@@ -1878,16 +1878,16 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 		}
 	}
 	for (int i = 0; i < 32; i++) {
-		sound->_108[i] = 0;
+		sound->mStartedSfx[i] = 0;
 	}
 	if (sound->mCurrentMusicId != 0 && sound->mPausedMusicId == 0 && !AXDriverIsStreamActive()) {
 		sound->mCurrentMusicId = 0;
 	}
-	const s32 pitchFrames = sound->_188;
+	const s32 pitchFrames = sound->mMusicPitchFrames;
 	if (pitchFrames > 0 && sound->mMusicPitch != sound->mTargetMusicPitch) {
 		sound->mMusicPitch += (sound->mTargetMusicPitch - sound->mMusicPitch) / pitchFrames;
-		sound->_188 -= step;
-		if (sound->_188 <= 0) {
+		sound->mMusicPitchFrames -= step;
+		if (sound->mMusicPitchFrames <= 0) {
 			sound->mMusicPitch = sound->mTargetMusicPitch;
 		}
 		AXDriverSetAllStreamPitches(sound->mMusicPitch);
@@ -1896,11 +1896,11 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 		if (UseRaisedLiftPitch()) {
 			if (sound->mTargetMusicPitch != 200) {
 				sound->mTargetMusicPitch = 200;
-				sound->_188              = 15;
+				sound->mMusicPitchFrames = 15;
 			}
 		} else if (sound->mTargetMusicPitch != 0) {
 			sound->mTargetMusicPitch = 0;
-			sound->_188              = 15;
+			sound->mMusicPitchFrames = 15;
 		}
 	}
 	if (sound->mDefaultTrack == 0 && sound->mMusicResumeDelay > 0) {
@@ -1931,17 +1931,17 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 			AXDriverStopAllStreams();
 		}
 	}
-	if (sound->_198 > 0) {
-		sound->_198 -= step;
+	if (sound->mCooldown > 0) {
+		sound->mCooldown -= step;
 	}
 	if (sound->mQueueRead != sound->mQueueWrite) {
-		if (sound->_188 > 0) {
-			sound->_188 -= step;
+		if (sound->mMusicPitchFrames > 0) {
+			sound->mMusicPitchFrames -= step;
 		}
 		if (sound->mLastQueuedSoundId != 0 && IsGameSoundPlaying(sound, sound->mLastQueuedSoundId)) {
 			return;
 		}
-		if (sound->_188 <= 0) {
+		if (sound->mMusicPitchFrames <= 0) {
 			sound->mLastQueuedSoundId = sound->mQueuedSoundIds[sound->mQueueRead];
 			PlayGameSound((XSound*)&gGame.mSound, sound->mLastQueuedSoundId, 255);
 			if (++sound->mQueueRead >= 64) {

@@ -944,6 +944,7 @@ void get_shape_nbt_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f32*
  * @note Address: 0x801AD29C
  * @note Size: 0x31C
  */
+// NONMATCHING: register allocation only; retail keeps pobj, vertex and normal in r29-r31, we colour n, m, l, length and dl first
 void interpretShapeAnimDisplayList(HSD_PObj* pobj, f32 (*vertex)[3], f32 (*normal)[3])
 {
 	s32 i, j;
@@ -1068,7 +1069,7 @@ void interpretShapeAnimDisplayList(HSD_PObj* pobj, f32 (*vertex)[3], f32 (*norma
  */
 void drawShapeAnim(HSD_PObj* pobj)
 {
-	// NONMATCHING: register allocation and the averaged NBT loop's index updates
+	// NONMATCHING: register allocation only; retail gives the loop counters the lowest saved registers
 	HSD_ShapeSet* shape_set = pobj->u.shape_set;
 	f32 blend;
 	s32 shape_id, i;
@@ -1106,20 +1107,20 @@ void drawShapeAnim(HSD_PObj* pobj)
 
 			get_shape_vertex_xyz(shape_set, shape_id, i, s0);
 			get_shape_vertex_xyz(shape_set, pobj_min(shape_id + 1, shape_set->nb_shape - 1), i, s1);
-			vertex_buffer[i][0] = __fmadds(blend, s1[0] - s0[0], s0[0]);
-			vertex_buffer[i][1] = __fmadds(blend, s1[1] - s0[1], s0[1]);
-			vertex_buffer[i][2] = __fmadds(blend, s1[2] - s0[2], s0[2]);
+			vertex_buffer[i][0] = blend * (s1[0] - s0[0]) + s0[0];
+			vertex_buffer[i][1] = blend * (s1[1] - s0[1]) + s0[1];
+			vertex_buffer[i][2] = blend * (s1[2] - s0[2]) + s0[2];
 		}
 		if (shape_set->nb_normal_index) {
 			if (blend_nbt) {
 				for (i = 0; i < shape_set->nb_normal_index; i++) {
 					f32 s0[9], s1[9];
-					s32 j, idx = i * 3;
+					int j, idx = i * 3;
 
 					get_shape_nbt_xyz(shape_set, shape_id, i, s0);
 					get_shape_nbt_xyz(shape_set, pobj_min(shape_id + 1, shape_set->nb_shape - 1), i, s1);
 					for (j = 0; j < 9; j++) {
-						normal_buffer[idx][j] = __fmadds(blend, s1[j] - s0[j], s0[j]);
+						normal_buffer[idx][j] = blend * (s1[j] - s0[j]) + s0[j];
 					}
 				}
 			} else {
@@ -1128,9 +1129,9 @@ void drawShapeAnim(HSD_PObj* pobj)
 
 					get_shape_normal_xyz(shape_set, shape_id, i, s0);
 					get_shape_normal_xyz(shape_set, pobj_min(shape_id + 1, shape_set->nb_shape - 1), i, s1);
-					normal_buffer[i][0] = __fmadds(blend, s1[0] - s0[0], s0[0]);
-					normal_buffer[i][1] = __fmadds(blend, s1[1] - s0[1], s0[1]);
-					normal_buffer[i][2] = __fmadds(blend, s1[2] - s0[2], s0[2]);
+					normal_buffer[i][0] = blend * (s1[0] - s0[0]) + s0[0];
+					normal_buffer[i][1] = blend * (s1[1] - s0[1]) + s0[1];
+					normal_buffer[i][2] = blend * (s1[2] - s0[2]) + s0[2];
 				}
 			}
 		}
@@ -1144,9 +1145,9 @@ void drawShapeAnim(HSD_PObj* pobj)
 				f32 s[3];
 
 				get_shape_vertex_xyz(shape_set, j + 1, i, s);
-				vertex_buffer[i][0] = __fmadds(s[0], b, vertex_buffer[i][0]);
-				vertex_buffer[i][1] = __fmadds(s[1], b, vertex_buffer[i][1]);
-				vertex_buffer[i][2] = __fmadds(s[2], b, vertex_buffer[i][2]);
+				vertex_buffer[i][0] += s[0] * b;
+				vertex_buffer[i][1] += s[1] * b;
+				vertex_buffer[i][2] += s[2] * b;
 			}
 		}
 		if (shape_set->nb_normal_index) {
@@ -1159,15 +1160,15 @@ void drawShapeAnim(HSD_PObj* pobj)
 						f32 s[9];
 
 						get_shape_nbt_xyz(shape_set, j + 1, i, s);
-						normal_buffer[idx][0] = __fmadds(b, s[0], normal_buffer[idx][0]);
-						normal_buffer[idx][1] = __fmadds(b, s[1], normal_buffer[idx][1]);
-						normal_buffer[idx][2] = __fmadds(b, s[2], normal_buffer[idx][2]);
-						normal_buffer[idx][3] = __fmadds(b, s[3], normal_buffer[idx][3]);
-						normal_buffer[idx][4] = __fmadds(b, s[4], normal_buffer[idx][4]);
-						normal_buffer[idx][5] = __fmadds(b, s[5], normal_buffer[idx][5]);
-						normal_buffer[idx][6] = __fmadds(b, s[6], normal_buffer[idx][6]);
-						normal_buffer[idx][7] = __fmadds(b, s[7], normal_buffer[idx][7]);
-						normal_buffer[idx][8] = __fmadds(b, s[8], normal_buffer[idx][8]);
+						normal_buffer[idx][0] += b * s[0];
+						normal_buffer[idx][1] += b * s[1];
+						normal_buffer[idx][2] += b * s[2];
+						normal_buffer[idx][3] += b * s[3];
+						normal_buffer[idx][4] += b * s[4];
+						normal_buffer[idx][5] += b * s[5];
+						normal_buffer[idx][6] += b * s[6];
+						normal_buffer[idx][7] += b * s[7];
+						normal_buffer[idx][8] += b * s[8];
 					}
 				}
 			} else {
@@ -1178,9 +1179,9 @@ void drawShapeAnim(HSD_PObj* pobj)
 						f32 s[3];
 
 						get_shape_normal_xyz(shape_set, j + 1, i, s);
-						normal_buffer[i][0] = __fmadds(s[0], b, normal_buffer[i][0]);
-						normal_buffer[i][1] = __fmadds(s[1], b, normal_buffer[i][1]);
-						normal_buffer[i][2] = __fmadds(s[2], b, normal_buffer[i][2]);
+						normal_buffer[i][0] += s[0] * b;
+						normal_buffer[i][1] += s[1] * b;
+						normal_buffer[i][2] += s[2] * b;
 					}
 				}
 			}

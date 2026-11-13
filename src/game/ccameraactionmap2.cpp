@@ -117,8 +117,8 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 	if (!(target != (Vec)old))
 		return false;
 
-	CamAreaRecord* records        = gCameraAreaState._1C;
-	s32 count                     = gCameraAreaState._20;
+	CamAreaRecord* records        = gCameraAreaState.mAreaExRecords;
+	s32 count                     = gCameraAreaState.mAreaExCount;
 	CamCollisionPolygon* polygons = gCameraCollisionPolygons;
 	BOOL changed                  = false;
 	BOOL targetInside             = false;
@@ -128,7 +128,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 		CamAreaRecord* record        = &records[i];
 		CamCollisionPolygon& polygon = polygons[i];
 		CamAreaRecord* area          = CamAreaInfo(record).GetRecord();
-		if (area->_2E & 0x80)
+		if (area->mFlags & 0x80)
 			continue;
 		f32 top      = area->GetTop();
 		f32 bottom   = area->GetBottom();
@@ -157,7 +157,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 		for (s32 i = 0; i < count; i++) {
 			CamCollisionPolygon& polygon = polygons[i];
 			CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
-			if (area->_2E & 0x80)
+			if (area->mFlags & 0x80)
 				continue;
 			f32 top      = area->GetTop();
 			f32 bottom   = area->GetBottom();
@@ -188,7 +188,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 			for (s32 i = 0; i < count; i++) {
 				CamCollisionPolygon& polygon = polygons[i];
 				CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
-				if (area->_2E & 0x80)
+				if (area->mFlags & 0x80)
 					continue;
 				f32 top      = area->GetTop();
 				f32 bottom   = area->GetBottom();
@@ -204,14 +204,14 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 				for (s32 i = 0; i < count; i++) {
 					CamCollisionPolygon& polygon = polygons[i];
 					CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
-					if (area->_2E & 0x80)
+					if (area->mFlags & 0x80)
 						continue;
 					f32 top      = area->GetTop();
 					f32 bottom   = area->GetBottom();
 					bool outside = ClassifyAreaHeight(target.y, bottom, top) < 0 && ClassifyAreaHeight(eye.y, bottom, top) < 0;
 					if (outside)
 						continue;
-					CVec from = targetInside ? (CVec&)map->_44->mMoveTranslate : target;
+					CVec from = targetInside ? (CVec&)map->mTarget->mMoveTranslate : target;
 					CVec normal, hit;
 					for (s32 side = 0; side < 4; side++) {
 						Vec& a = polygon.point[side];
@@ -236,15 +236,15 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 			}
 		}
 	} else {
-		f32 yaw = map->_44->mMoveRotate.y;
+		f32 yaw = map->mTarget->mMoveRotate.y;
 		Vec behind;
-		behind.x = map->_44->mMoveTranslate.x - 2.0f * (f32)sin(yaw);
-		behind.z = map->_44->mMoveTranslate.z - 2.0f * (f32)cos(yaw);
+		behind.x = map->mTarget->mMoveTranslate.x - 2.0f * (f32)sin(yaw);
+		behind.z = map->mTarget->mMoveTranslate.z - 2.0f * (f32)cos(yaw);
 		behind.y = target.y;
 		for (s32 i = 0; i < count; i++) {
 			CamCollisionPolygon& polygon = polygons[i];
 			CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
-			if (area->_2E & 0x80)
+			if (area->mFlags & 0x80)
 				continue;
 			f32 top      = area->GetTop();
 			f32 bottom   = area->GetBottom();
@@ -285,8 +285,8 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 							candidate.Set(nearest);
 							candidate.y        = eye.y;
 							changed            = true;
-							f32 dx             = target.x - map->_44->mMoveTranslate.x;
-							f32 dz             = target.z - map->_44->mMoveTranslate.z;
+							f32 dx             = target.x - map->mTarget->mMoveTranslate.x;
+							f32 dz             = target.z - map->mTarget->mMoveTranslate.z;
 							f32 playerDistance = sqrtf(dx * dx + dz * dz);
 							dx                 = target.x - candidate.x;
 							dz                 = target.z - candidate.z;
@@ -344,7 +344,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 		s32 insideCount = 0;
 		for (s32 i = 0; i < count; i++) {
 			CamAreaRecord* area = CamAreaInfo(&records[i]).GetRecord();
-			if (area->_2E & 0x80)
+			if (area->mFlags & 0x80)
 				continue;
 			f32 top      = area->GetTop();
 			f32 bottom   = area->GetBottom();
@@ -370,57 +370,57 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
  * @note Address: 0x8013FA38
  * @note Size: 0x1574
  */
-extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
+void CCameraActionMap::Update(u32 step)
 {
 	if (step > 2)
 		step = 2;
-	if (map->_44 == NULL)
+	if (mTarget == NULL)
 		return;
 
-	Vec pos   = map->_44->mMoveTranslate;
-	map->_EA4 = 0;
+	Vec pos          = mTarget->mMoveTranslate;
+	mInsideAreaCount = 0;
 	for (u32 i = 0; i < 32; i++)
-		map->_EA8[i] = -2;
+		mInsideAreas[i] = -2;
 	pos.y += 10.0f;
-	map->_EA4 = CollectCameraAreasContainingPoint(&gCameraAreaState, pos, map->_EA8);
-	f32 dt    = 0.1f * step;
-	CopyVecToCVec(map->_60, map->_70);
-	GetMapCameraTargetOffsetPosition(map, map->_70);
-	UpdateMapCameraPadControls(map, step);
-	if ((map->mStatus.mFlags & 0x20000) && !(map->mStatus.mFlags & 0x3E) && map->_70 != map->_60) {
-		SetMapCameraModeFlags(map, 0x10000);
+	mInsideAreaCount = CollectCameraAreasContainingPoint(&gCameraAreaState, pos, mInsideAreas);
+	f32 dt           = 0.1f * step;
+	CopyVecToCVec(mSpringPrevTarget, mSpringTarget);
+	GetMapCameraTargetOffsetPosition(this, mSpringTarget);
+	UpdateMapCameraPadControls(this, step);
+	if ((mStatus.mFlags & 0x20000) && !(mStatus.mFlags & 0x3E) && mSpringTarget != mSpringPrevTarget) {
+		SetMapCameraModeFlags(this, 0x10000);
 	}
 
 	// retail steps these twice
 	for (s32 i = 0; i < 2; i++) {
-		if (map->_E58 == 0) {
-			if (map->_E30 != NULL)
-				map->_E30->Update(step, FRAME_TIME);
-			f32 height = map->_E30->Get();
-			map->_E60  = height + GetPlayerPoolObject(&gGame, 0)->GetCameraTarget().y;
+		if (mHeightMode == 0) {
+			if (mHeightInterp != NULL)
+				mHeightInterp->Update(step, FRAME_TIME);
+			f32 height     = mHeightInterp->Get();
+			mCurrentHeight = height + GetPlayerPoolObject(&gGame, 0)->GetCameraTarget().y;
 		}
-		if (map->_E58 == 1) {
-			if (map->_E50 != NULL)
-				map->_E50->Update(step, FRAME_TIME);
-			map->_E60 = map->_E50->Get();
+		if (mHeightMode == 1) {
+			if (mAbsHeightInterp != NULL)
+				mAbsHeightInterp->Update(step, FRAME_TIME);
+			mCurrentHeight = mAbsHeightInterp->Get();
 		}
 	}
-	if (map->_E64 != NULL)
-		map->_E64->Update(step, FRAME_TIME);
-	if (map->_E78 != NULL) {
-		if (!map->_E78->Update(step, FRAME_TIME))
-			map->_E98 = map->_E78->Get();
+	if (mTargetHeightOffsetInterp != NULL)
+		mTargetHeightOffsetInterp->Update(step, FRAME_TIME);
+	if (mEyeYOffsetInterp != NULL) {
+		if (!mEyeYOffsetInterp->Update(step, FRAME_TIME))
+			mEyeYOffset = mEyeYOffsetInterp->Get();
 	} else {
-		map->_E78 = NULL;
+		mEyeYOffsetInterp = NULL;
 	}
 
-	if (map->mStatus.mFlags & 0x10000) {
+	if (mStatus.mFlags & 0x10000) {
 		{
-			CVec eye(map->mEye);
-			f32 previousDistance = PSVECDistance(&eye, &map->_60);
-			f32 distance         = PSVECDistance(&eye, &map->_70);
-			f32 rest             = map->_58;
-			f32 targetRest       = map->_80;
+			CVec eye(mEye);
+			f32 previousDistance = PSVECDistance(&eye, &mSpringPrevTarget);
+			f32 distance         = PSVECDistance(&eye, &mSpringTarget);
+			f32 rest             = mRestDistance;
+			f32 targetRest       = mTargetRestDistance;
 			if (rest != targetRest && distance > previousDistance) {
 				if (distance < targetRest && rest != targetRest)
 					rest = distance;
@@ -429,41 +429,41 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 			} else if (distance < previousDistance) {
 				rest = targetRest;
 			}
-			map->_58 = rest;
+			mRestDistance = rest;
 		}
 		CVec eye;
-		CopyVecToCVec(eye, map->mEye);
-		CopyVecToCVec(eye, SpringDamp(eye, map->_70, map->_60, dt, sMapCameraSpringParameters[0], map->_5C, map->_58));
-		map->SetEye(eye);
-		map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
-		map->SetEye(map->mEye.x, map->mPreviousEye.y, map->mEye.z);
-		SetMapCameraAnglesFromEyeAndInterest(map);
-		if (ClassifyFloatBits(map->mAngle.x) == FP_NAN || ClassifyFloatBits(map->mAngle.y) == FP_NAN
-		    || ClassifyFloatBits(map->mAngle.z) == FP_NAN) {
+		CopyVecToCVec(eye, mEye);
+		CopyVecToCVec(eye,
+		              SpringDamp(eye, mSpringTarget, mSpringPrevTarget, dt, sMapCameraSpringParameters[0], mSpringDamping, mRestDistance));
+		SetEye(eye);
+		SetInterest(GetMapCameraTargetWithHeightOffset(this));
+		SetEye(mEye.x, mPreviousEye.y, mEye.z);
+		SetMapCameraAnglesFromEyeAndInterest(this);
+		if (ClassifyFloatBits(mAngle.x) == FP_NAN || ClassifyFloatBits(mAngle.y) == FP_NAN || ClassifyFloatBits(mAngle.z) == FP_NAN) {
 			OSPanic("ccameraactionmap2.cpp", 581, "%s%s",
 			        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
 			                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
 			                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
-			                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z, map->mDistance,
-			                             map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0, lbl_8065B340, lbl_8065B33C,
-			                             map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z, map->_F28,
-			                             map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x, map->_F98.y,
-			                             map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
+			                             mEye.x, mEye.y, mEye.z, mAngle.x, mAngle.y, mAngle.z, mDistance, mStatus.mFlags,
+			                             mPreviousStatus.mFlags, mManualInput, lbl_8065B340, lbl_8065B33C, mTargetEye.x, mTargetEye.y,
+			                             mTargetEye.z, mPrevTargetEye.x, mPrevTargetEye.y, mPrevTargetEye.z, mEyeInterp, mTurnInterpolation,
+			                             mOrbitEye.x, mOrbitEye.y, mOrbitEye.z, mOrbitAngle.x, mOrbitAngle.y, mOrbitAngle.z,
+			                             mPrevOrbitAngle.x, mPrevOrbitAngle.y, mPrevOrbitAngle.z, lbl_8065B338),
 			        "Update");
 		}
 
 		Vec movement;
-		PSVECSubtract(&map->_70, &map->_60, &movement);
+		PSVECSubtract(&mSpringTarget, &mSpringPrevTarget, &movement);
 		movement.y = 0.0f;
 		if (movement.x != 0.0f || movement.z != 0.0f) {
 			PSVECNormalize(&movement, &movement);
 			Vec facing;
-			facing.x = sin(map->mAngle.y);
+			facing.x = sin(mAngle.y);
 			facing.y = 0.0f;
-			facing.z = cos(map->mAngle.y);
+			facing.z = cos(mAngle.y);
 			f32 dot  = PSVECDotProduct(&movement, &facing);
-			CVec current(map->mEye);
-			f32 distance = GetHorizontalDistance(&current, &map->_70);
+			CVec current(mEye);
+			f32 distance = GetHorizontalDistance(&current, &mSpringTarget);
 			if (dot < -0.5f && distance < 20.0f)
 				lbl_8065B344 = 1;
 			else
@@ -472,15 +472,15 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 		lbl_8065B33C = lbl_8065B340;
 		lbl_8065B340 = ((XObjChr*)GetPlayerPoolObject(&gGame, 0))->mHang.mState;
 		if (((XObjChr*)GetPlayerPoolObject(&gGame, 0))->mHang.mState == 3 && lbl_8065B340 != lbl_8065B33C) {
-			Vec center = map->_44->mMoveTranslate;
+			Vec center = mTarget->mMoveTranslate;
 			CVec angles;
-			SetVectorComponents(&angles, map->mAngle.x, PI + map->_44->mMoveRotate.mTarget.y, map->mAngle.z);
+			SetVectorComponents(&angles, mAngle.x, PI + mTarget->mMoveRotate.mTarget.y, mAngle.z);
 			f32 yaw   = HALF_PI + angles.y;
-			f32 pitch = map->mAngle.x;
+			f32 pitch = mAngle.x;
 			f32 distance;
 			{
-				CVec target = __ct__4CVecFRC3Vec(map->_44->GetCameraTarget());
-				CVec current(map->mEye);
+				CVec target = __ct__4CVecFRC3Vec(mTarget->GetCameraTarget());
+				CVec current(mEye);
 				distance = PSVECDistance(&target, &current);
 			}
 			Vec candidate;
@@ -489,134 +489,133 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 			candidate.y = center.y;
 			CopyVecToCVec(sMapCameraTestEye, __ct__4CVecFRC3Vec(candidate));
 			CopyVecToCVec(sMapCameraTestCenter, __ct__4CVecFRC3Vec(center));
-			map->mIntersectionCount
-			    = CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(map, candidate, center, map->mIntersectionEntries, 0);
-			if (map->mIntersectionCount == 0 && TrySetMapCameraTargetYaw(map, PI + map->_44->mMoveRotate.mTarget.y, 20.0f, 0.0f)) {
-				SetMapCameraModeFlags(map, 0x20002);
+			mIntersectionCount
+			    = CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(this, candidate, center, mIntersectionEntries, 0);
+			if (mIntersectionCount == 0 && TrySetMapCameraTargetYaw(this, PI + mTarget->mMoveRotate.mTarget.y, 20.0f, 0.0f)) {
+				SetMapCameraModeFlags(this, 0x20002);
 				goto checkCollision;
 			}
 		}
 		if (lbl_8065B344 != 0) {
-			map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
+			SetInterest(GetMapCameraTargetWithHeightOffset(this));
 			CVec angles;
-			CopyVecToCVec(angles, __ct__4CVecFfff(map->mAngle.x, map->_44->mMoveRotate.y, map->mAngle.z));
-			map->SetAngle(angles);
-			CVec current(map->mEye);
-			f32 distance = PSVECDistance(&current, &map->_70);
+			CopyVecToCVec(angles, __ct__4CVecFfff(mAngle.x, mTarget->mMoveRotate.y, mAngle.z));
+			SetAngle(angles);
+			CVec current(mEye);
+			f32 distance = PSVECDistance(&current, &mSpringTarget);
 			if (distance < 31.0f)
 				distance = 31.0f;
-			f32 pitch = map->mAngle.x;
-			f32 yaw   = HALF_PI + map->mAngle.y;
+			f32 pitch = mAngle.x;
+			f32 yaw   = HALF_PI + mAngle.y;
 			Vec target;
-			target.x = map->_70.x + distance * (f32)cos(yaw) * (f32)cos(pitch);
-			target.z = map->_70.z + distance * -(f32)sin(yaw) * (f32)cos(pitch);
-			target.y = map->_E60;
-			map->SetEye(target);
+			target.x = mSpringTarget.x + distance * (f32)cos(yaw) * (f32)cos(pitch);
+			target.z = mSpringTarget.z + distance * -(f32)sin(yaw) * (f32)cos(pitch);
+			target.y = mCurrentHeight;
+			SetEye(target);
 			ResetPlayerCameraValue((XObjChr*)GetPlayerPoolObject(&gGame, 0));
-			SetMapCameraAnglesFromEyeAndInterest(map);
-			if (ClassifyFloatBits(map->mAngle.x) == FP_NAN || ClassifyFloatBits(map->mAngle.y) == FP_NAN
-			    || ClassifyFloatBits(map->mAngle.z) == FP_NAN) {
+			SetMapCameraAnglesFromEyeAndInterest(this);
+			if (ClassifyFloatBits(mAngle.x) == FP_NAN || ClassifyFloatBits(mAngle.y) == FP_NAN || ClassifyFloatBits(mAngle.z) == FP_NAN) {
 				OSPanic("ccameraactionmap2.cpp", 683, "%s%s",
 				        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
 				                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
 				                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
-				                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z,
-				                             map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0, lbl_8065B340,
-				                             lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z,
-				                             map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x,
-				                             map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
+				                             mEye.x, mEye.y, mEye.z, mAngle.x, mAngle.y, mAngle.z, mDistance, mStatus.mFlags,
+				                             mPreviousStatus.mFlags, mManualInput, lbl_8065B340, lbl_8065B33C, mTargetEye.x, mTargetEye.y,
+				                             mTargetEye.z, mPrevTargetEye.x, mPrevTargetEye.y, mPrevTargetEye.z, mEyeInterp,
+				                             mTurnInterpolation, mOrbitEye.x, mOrbitEye.y, mOrbitEye.z, mOrbitAngle.x, mOrbitAngle.y,
+				                             mOrbitAngle.z, mPrevOrbitAngle.x, mPrevOrbitAngle.y, mPrevOrbitAngle.z, lbl_8065B338),
 				        "Update");
 			}
 			lbl_8065B344 = 0;
 		} else {
-			SetMapCameraAnglesFromEyeAndInterest(map);
-			if (ClassifyFloatBits(map->mAngle.x) == FP_NAN || ClassifyFloatBits(map->mAngle.y) == FP_NAN
-			    || ClassifyFloatBits(map->mAngle.z) == FP_NAN) {
+			SetMapCameraAnglesFromEyeAndInterest(this);
+			if (ClassifyFloatBits(mAngle.x) == FP_NAN || ClassifyFloatBits(mAngle.y) == FP_NAN || ClassifyFloatBits(mAngle.z) == FP_NAN) {
 				OSPanic("ccameraactionmap2.cpp", 693, "%s%s",
 				        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
 				                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
 				                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
-				                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z,
-				                             map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0, lbl_8065B340,
-				                             lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z,
-				                             map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x,
-				                             map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
+				                             mEye.x, mEye.y, mEye.z, mAngle.x, mAngle.y, mAngle.z, mDistance, mStatus.mFlags,
+				                             mPreviousStatus.mFlags, mManualInput, lbl_8065B340, lbl_8065B33C, mTargetEye.x, mTargetEye.y,
+				                             mTargetEye.z, mPrevTargetEye.x, mPrevTargetEye.y, mPrevTargetEye.z, mEyeInterp,
+				                             mTurnInterpolation, mOrbitEye.x, mOrbitEye.y, mOrbitEye.z, mOrbitAngle.x, mOrbitAngle.y,
+				                             mOrbitAngle.z, mPrevOrbitAngle.x, mPrevOrbitAngle.y, mPrevOrbitAngle.z, lbl_8065B338),
 				        "Update");
 			}
-			CVec target(map->_44->mMoveTranslate);
+			CVec target(mTarget->mMoveTranslate);
 			target.y += 10.0f;
-			CVec current(map->mEye);
+			CVec current(mEye);
 			current.y = target.y;
 			CVec direction;
 			PSVECSubtract(&target, &current, &direction);
 			PSVECNormalize(&direction, &direction);
 			target += direction * 3.0f;
-			map->mIntersectionCount
-			    = CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(map, map->mEye, target, map->mIntersectionEntries, 0);
-			map->_978 = FindNearestMapCameraEntry(map, map->_44->mMoveTranslate);
-			map->_974 = GetNearestMapCameraEntry(map, map->_44->mMoveTranslate);
-			map->_980 = FindNearestMapCameraEntry(map, map->mEye);
-			map->_97C = GetNearestMapCameraEntry(map, map->mEye);
-			SetMapCameraSideEndpoints(map);
-			if (map->_97C != NULL) {
-				s32 count = CountMapCameraEntriesInGroup(map, map->_97C->_0C);
-				s32 index = CountMapCameraAdjacentSideIntersections(map, map->_97C);
+			mIntersectionCount
+			    = CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(this, mEye, target, mIntersectionEntries, 0);
+			mNearestTargetIndex = FindNearestMapCameraEntry(this, mTarget->mMoveTranslate);
+			mNearestTargetEntry = GetNearestMapCameraEntry(this, mTarget->mMoveTranslate);
+			mNearestEyeIndex    = FindNearestMapCameraEntry(this, mEye);
+			mNearestEyeEntry    = GetNearestMapCameraEntry(this, mEye);
+			SetMapCameraSideEndpoints(this);
+			if (mNearestEyeEntry != NULL) {
+				s32 count = CountMapCameraEntriesInGroup(this, mNearestEyeEntry->mRecordIndex);
+				s32 index = CountMapCameraAdjacentSideIntersections(this, mNearestEyeEntry);
 				if (count < 2)
-					map->_E9C = 1;
+					mTurnBlocked = 1;
 				else if (index == 0)
-					map->_E9C = 1;
+					mTurnBlocked = 1;
 				else {
 					s32 flag;
 					{
-						CamAreaInfo area(&gCameraAreaState._1C[map->_97C->_0C]);
-						flag = (area._04->_2E & 1) != 0;
+						CamAreaInfo area(&gCameraAreaState.mAreaExRecords[mNearestEyeEntry->mRecordIndex]);
+						flag = (area.mRecord->mFlags & 1) != 0;
 					}
 					if (flag)
-						map->_E9C = 0;
+						mTurnBlocked = 0;
 					else
-						map->_E9C = 1;
+						mTurnBlocked = 1;
 					if (((XObjChr*)GetPlayerPoolObject(&gGame, 0))->mCopter.mState != 0
 					    || ((XObjChr*)GetPlayerPoolObject(&gGame, 0))->mJump.mState != 0) {
-						map->_E9C = 1;
+						mTurnBlocked = 1;
 					}
 				}
 			}
-			if (map->_8C.y == map->_8C.mTarget.y && map->_97C != NULL && map->_E9C == 0) {
-				StartMapCameraTurnInterpolation(map, 0);
+			if (_8C.y == _8C.mTarget.y && mNearestEyeEntry != NULL && mTurnBlocked == 0) {
+				StartMapCameraTurnInterpolation(this, 0);
 			}
 		}
 	checkCollision:
-		CVec current(map->mEye);
-		CVec previous(map->mPreviousEye);
-		ResolveMapCameraEyeCollision(map, current, previous, map->mInterest, map->mPreviousInterest, sMapCameraCollisionMode0);
-		map->SetEye(current);
+		CVec current(mEye);
+		CVec previous(mPreviousEye);
+		ResolveMapCameraEyeCollision(this, current, previous, mInterest, mPreviousInterest, sMapCameraCollisionMode0);
+		SetEye(current);
 	}
 
-	if (map->mStatus.mFlags & 0x20000) {
-		map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
-		if (!(map->mStatus.mFlags & 0x400))
-			map->_F68.y = map->_E60;
-		map->_F68.y = map->_F78.y;
-		UpdateMapCameraOrbit(map, step);
-		map->_F68.y = map->_F78.y;
+	if (mStatus.mFlags & 0x20000) {
+		SetInterest(GetMapCameraTargetWithHeightOffset(this));
+		if (!(mStatus.mFlags & 0x400))
+			mTargetEye.y = mCurrentHeight;
+		mTargetEye.y = mPrevTargetEye.y;
+		UpdateMapCameraOrbit(this, step);
+		mTargetEye.y = mPrevTargetEye.y;
 		if (lbl_8065B330 != 0) {
-			CVec previous(map->_F78);
-			CopyVecToCVec(map->_F78, map->_F68);
+			CVec previous(mPrevTargetEye);
+			CopyVecToCVec(mPrevTargetEye, mTargetEye);
 			CVec current;
-			CopyVecToCVec(current, map->_F68);
-			CopyVecToCVec(current, SpringDamp(current, map->_70, map->_60, dt, sMapCameraSpringParameters[0], map->_5C, map->_80));
-			CopyVecToCVec(map->_F68, current);
-			CopyVecToCVec(map->_F78, previous);
+			CopyVecToCVec(current, mTargetEye);
+			CopyVecToCVec(current, SpringDamp(current, mSpringTarget, mSpringPrevTarget, dt, sMapCameraSpringParameters[0], mSpringDamping,
+			                                  mTargetRestDistance));
+			CopyVecToCVec(mTargetEye, current);
+			CopyVecToCVec(mPrevTargetEye, previous);
 		}
-		lbl_8065B358 = GetHorizontalDistance(&map->_F68, &map->_F78);
-		if (!(map->mStatus.mFlags & 4)) {
+		lbl_8065B358 = GetHorizontalDistance(&mTargetEye, &mPrevTargetEye);
+		if (!(mStatus.mFlags & 4)) {
 			s32 wasBlocked = lbl_8065B348;
-			f32 before     = GetHeadingBetweenPositions(&map->_F68, &map->mInterest);
-			BOOL hit       = ResolveMapCameraEyeCollision(map, map->_F68, map->_F78, map->mInterest, map->mPreviousInterest,
-			                                              &sMapCameraCollisionMode1);
+			f32 before     = GetHeadingBetweenPositions(&mTargetEye, &mInterest);
+			BOOL hit
+			    = ResolveMapCameraEyeCollision(this, mTargetEye, mPrevTargetEye, mInterest, mPreviousInterest, &sMapCameraCollisionMode1);
 			if (lbl_8065B34C > 0.0f) {
-				f32 after = GetHeadingBetweenPositions(&map->_F68, &map->mInterest);
-				GetHeadingBetweenPositions(&map->_F78, &map->mInterest);
+				f32 after = GetHeadingBetweenPositions(&mTargetEye, &mInterest);
+				GetHeadingBetweenPositions(&mPrevTargetEye, &mInterest);
 				before = WrapAngle(before);
 				after  = WrapAngle(after);
 				if (after - before < 0.0f) {
@@ -627,8 +626,8 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 					lbl_8065B350 = 0;
 				}
 			} else if (lbl_8065B34C < 0.0f) {
-				f32 after = GetHeadingBetweenPositions(&map->_F68, &map->mInterest);
-				GetHeadingBetweenPositions(&map->_F78, &map->mInterest);
+				f32 after = GetHeadingBetweenPositions(&mTargetEye, &mInterest);
+				GetHeadingBetweenPositions(&mPrevTargetEye, &mInterest);
 				before = WrapAngle(before);
 				after  = WrapAngle(after);
 				if (after - before > 0.0f) {
@@ -640,8 +639,8 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 				}
 			}
 			if (lbl_8065B348 == 1 && wasBlocked != lbl_8065B348) {
-				CopyVecToCVec(map->_F68, map->_F78);
-				CopyVecToCVec(map->_F98, map->_FB8);
+				CopyVecToCVec(mTargetEye, mPrevTargetEye);
+				CopyVecToCVec(mOrbitAngle, mPrevOrbitAngle);
 			}
 			if (hit != 0) {
 				if (lbl_8065B330 != 0)
@@ -651,64 +650,64 @@ extern "C" void Update__16CCameraActionMapFUl(CCameraActionMap* map, u32 step)
 					lbl_8065B330 = 1;
 			}
 		}
-		f32 distance = GetHorizontalDistance(&map->_F68, &map->_F78);
+		f32 distance = GetHorizontalDistance(&mTargetEye, &mPrevTargetEye);
 		lbl_8065B354 = distance;
 		if (distance > lbl_8065B358)
-			map->_F64 = 0.0f;
+			mEyeInterpTime = 0.0f;
 		else {
-			map->_F64 = 3.0f;
-			if (map->mStatus.mFlags & 0x10)
-				map->_F64 = 5.0f;
+			mEyeInterpTime = 3.0f;
+			if (mStatus.mFlags & 0x10)
+				mEyeInterpTime = 5.0f;
 		}
-		map->_F78.y = map->_F68.y = map->_E60;
-		map->SetEye(__ct__4CVecFfff(map->mEye.x, map->_F68.y, map->mEye.z));
-		Vec target = map->_F68;
-		if (map->_F78 != target)
-			StartCameraEyeInterpolation(map, target, map->_F64);
+		mPrevTargetEye.y = mTargetEye.y = mCurrentHeight;
+		SetEye(__ct__4CVecFfff(mEye.x, mTargetEye.y, mEye.z));
+		Vec target = mTargetEye;
+		if (mPrevTargetEye != target)
+			StartCameraEyeInterpolation(this, target, mEyeInterpTime);
 	}
 
-	UpdateCameraEyeInterpolation(map, step);
-	f32 weight = GetHorizontalDistance(&map->mEye, &map->_70) / 60.0f;
+	UpdateCameraEyeInterpolation(this, step);
+	f32 weight = GetHorizontalDistance(&mEye, &mSpringTarget) / 60.0f;
 	if (weight > 1.0f)
 		weight = 1.0f;
 	if (weight < 0.0f)
 		weight = 0.0f;
 	if (gGame.mMotionControlCamera.GetMapDistance() <= 1.0f)
 		weight = 0.0f;
-	f32 interestHeight = map->mInterest.y;
-	f32 height         = map->_E60;
+	f32 interestHeight = mInterest.y;
+	f32 height         = mCurrentHeight;
 	f32 difference     = height - interestHeight;
 	if (difference < 0.0f)
 		difference = 0.0f;
 	f32 weighted = difference * weight;
 	f32 offset   = interestHeight + weighted;
 	offset -= height;
-	f32 from = map->_E78->Get();
+	f32 from = mEyeYOffsetInterp->Get();
 	if (0.0f != offset) {
-		map->_E78 = &map->_E7C;
-		map->_E78->Start(from, offset, 0.05f);
+		mEyeYOffsetInterp = &mEyeYOffsetEaseInOut;
+		mEyeYOffsetInterp->Start(from, offset, 0.05f);
 	}
-	Vec eye = map->mEye;
-	eye.y   = map->_E60;
-	eye.y += map->_E98;
-	map->SetEye(eye);
-	SetMapCameraPreviousEye(map, map->mEye);
-	CopyVecToCVec(map->_F78, map->_F68);
-	CopyVecToCVec(map->_FA8, map->_F88);
-	SetMapCameraPreviousInterest(map, map->mInterest);
-	map->mPreviousStatus.mFlags = 0;
-	map->mPreviousStatus.mFlags |= map->mStatus.mFlags;
+	Vec eye = mEye;
+	eye.y   = mCurrentHeight;
+	eye.y += mEyeYOffset;
+	SetEye(eye);
+	SetMapCameraPreviousEye(this, mEye);
+	CopyVecToCVec(mPrevTargetEye, mTargetEye);
+	CopyVecToCVec(mPrevOrbitEye, mOrbitEye);
+	SetMapCameraPreviousInterest(this, mInterest);
+	mPreviousStatus.mFlags = 0;
+	mPreviousStatus.mFlags |= mStatus.mFlags;
 }
 
 // todo: cleanup, same body as TrySetMapCameraTargetYaw but it allocates differently out of line
 static inline BOOL SetMapYaw(CCameraActionMap* map, f32 yaw, f32 time)
 {
-	f32 oldYaw   = map->_C0;
-	f32 oldSpeed = map->_BC;
+	f32 oldYaw   = map->mTargetYaw;
+	f32 oldSpeed = map->mTurnSpeed;
 
-	map->_C0 = WrapAngle(yaw);
-	f32 from = WrapAngle(map->mAngle.y);
-	f32 to   = WrapAngle(yaw);
+	map->mTargetYaw = WrapAngle(yaw);
+	f32 from        = WrapAngle(map->mAngle.y);
+	f32 to          = WrapAngle(yaw);
 
 	f32 diff = to - from;
 	if (diff < 0.0f) {
@@ -731,10 +730,10 @@ static inline BOOL SetMapYaw(CCameraActionMap* map, f32 yaw, f32 time)
 	if (diff < 0.0f) {
 		diff = -diff;
 	}
-	map->_BC = diff / time;
-	if (map->_BC < (2.0f * DEG2RAD)) {
-		map->_C0 = oldYaw;
-		map->_BC = oldSpeed;
+	map->mTurnSpeed = diff / time;
+	if (map->mTurnSpeed < (2.0f * DEG2RAD)) {
+		map->mTargetYaw = oldYaw;
+		map->mTurnSpeed = oldSpeed;
 		return FALSE;
 	}
 	return TRUE;
@@ -746,13 +745,13 @@ static inline BOOL SetMapYaw(CCameraActionMap* map, f32 yaw, f32 time)
  */
 extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw)
 {
-	Vec center = map->_44->mMoveTranslate;
+	Vec center = map->mTarget->mMoveTranslate;
 	f32 pitch  = map->mAngle.x;
 	CVec angles(pitch, yaw, map->mAngle.z);
 	f32 angle = HALF_PI + angles.y;
 	f32 distance;
 	{
-		CVec target(map->_44->GetCameraTarget());
+		CVec target(map->mTarget->GetCameraTarget());
 		CVec eye(map->mEye);
 		distance = PSVECDistance(&target, &eye);
 	}
@@ -1036,8 +1035,8 @@ extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw)
 extern "C" void StartMapCameraTargetHeightInterpolation(CCameraActionMap* map, f32 from, f32 to, f32 time)
 {
 	if (0.0f != time) {
-		map->_E64 = &map->_E68;
-		map->_E64->Start(from, to, time);
+		map->mTargetHeightOffsetInterp = &map->mTargetHeightOffsetEase;
+		map->mTargetHeightOffsetInterp->Start(from, to, time);
 	}
 }
 
@@ -1047,32 +1046,32 @@ extern "C" void StartMapCameraTargetHeightInterpolation(CCameraActionMap* map, f
  */
 extern "C" Vec GetMapCameraTargetWithHeightOffset(CCameraActionMap* map)
 {
-	Vec target = map->_44->GetCameraTarget();
-	if (map->_E64 != NULL) {
-		target.y += map->_E64->Get();
+	Vec target = map->mTarget->GetCameraTarget();
+	if (map->mTargetHeightOffsetInterp != NULL) {
+		target.y += map->mTargetHeightOffsetInterp->Get();
 	}
 	return target;
 }
 
 extern "C" void ResetMapCameraTargetEye(CCameraActionMap* map);
 
-// _60 follows _70
+// mSpringPrevTarget follows mSpringTarget
 static inline void SetCenter(CCameraActionMap* map, const Vec& pos)
 {
-	map->_70 = pos;
-	map->_60 = map->_70;
+	map->mSpringTarget     = pos;
+	map->mSpringPrevTarget = map->mSpringTarget;
 }
 
 static inline void ResetCenter(CCameraActionMap* map)
 {
-	Vec* center = &map->_70;
+	Vec* center = &map->mSpringTarget;
 	SetCenter(map, *center);
-	CVec eye     = map->mEye;
-	map->_58     = PSVECDistance(&eye, center);
-	lbl_8065B330 = 1;
+	CVec eye           = map->mEye;
+	map->mRestDistance = PSVECDistance(&eye, center);
+	lbl_8065B330       = 1;
 	map->mStatus.mFlags &= ~0x700;
-	if (map->_F28 != NULL) {
-		map->_F28 = NULL;
+	if (map->mEyeInterp != NULL) {
+		map->mEyeInterp = NULL;
 	}
 }
 
@@ -1098,19 +1097,19 @@ extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags)
 		if (mode == 0x20000) {
 			ResetMapCameraTargetEye(map);
 			if (lbl_8065B344 == 1) {
-				map->_88 = map->_80;
+				map->mOrbitRadius = map->mTargetRestDistance;
 			} else if (eyeMode == 4) {
-				CVec pos = map->_70;
-				CVec eye = map->mEye;
-				map->_88 = PSVECDistance(&pos, &eye);
+				CVec pos          = map->mSpringTarget;
+				CVec eye          = map->mEye;
+				map->mOrbitRadius = PSVECDistance(&pos, &eye);
 			} else {
-				CVec target = map->_44->GetCameraTarget();
+				CVec target = map->mTarget->GetCameraTarget();
 				CVec eye    = map->mEye;
 				f32 dist    = PSVECDistance(&eye, &target);
 				if (dist < 31.0f) {
 					dist = 31.0f;
 				}
-				map->_88 = dist;
+				map->mOrbitRadius = dist;
 			}
 		} else if (mode == 0x10000) {
 			ResetCenter(map);
@@ -1124,8 +1123,8 @@ extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags)
  */
 extern "C" f32 GetMapCameraHorizontalTargetDistance(CCameraActionMap* map)
 {
-	CVec pos = map->_44->mMoveTranslate;
-	f32 y    = map->_44->GetCameraTarget().y;
+	CVec pos = map->mTarget->mMoveTranslate;
+	f32 y    = map->mTarget->GetCameraTarget().y;
 	pos.y    = y;
 	CVec eye = map->mEye;
 	eye.y    = y;
@@ -1138,11 +1137,11 @@ extern "C" f32 GetMapCameraHorizontalTargetDistance(CCameraActionMap* map)
  */
 extern "C" void UpdateCameraEyeInterpolation(CCameraActionMap* map, u32 step)
 {
-	if (map->_F28 != NULL) {
-		if (!map->_F28->Update(step, FRAME_TIME)) {
-			map->SetEye(map->_F28->Get());
+	if (map->mEyeInterp != NULL) {
+		if (!map->mEyeInterp->Update(step, FRAME_TIME)) {
+			map->SetEye(map->mEyeInterp->Get());
 		} else {
-			map->_F28 = NULL;
+			map->mEyeInterp = NULL;
 			map->mStatus.mFlags &= ~0x3E;
 		}
 	}
@@ -1154,8 +1153,8 @@ extern "C" void UpdateCameraEyeInterpolation(CCameraActionMap* map, u32 step)
  */
 extern "C" void StartCameraEyeInterpolation(CCameraActionMap* map, Vec to, f32 time)
 {
-	map->_F28 = &map->_F2C;
-	map->_F28->Start(map->mEye, to, time);
+	map->mEyeInterp = &map->mEyeEaseOutDivide;
+	map->mEyeInterp->Start(map->mEye, to, time);
 }
 
 extern "C" Vec sPreviousMapOrbitAngle; // saved before updating the orbit
@@ -1166,13 +1165,13 @@ extern "C" Vec sPreviousMapOrbitAngle; // saved before updating the orbit
  */
 extern "C" void ResetMapCameraInterpolation(CCameraActionMap* map)
 {
-	map->_F88    = map->mEye;
-	map->_FA8    = map->mEye;
-	map->_F98    = map->mAngle;
-	map->_FB8    = map->mAngle;
-	map->_F28    = NULL;
-	lbl_8065B34C = 0.0f;
-	map->_F98.y  = sPreviousMapOrbitAngle.y;
+	map->mOrbitEye       = map->mEye;
+	map->mPrevOrbitEye   = map->mEye;
+	map->mOrbitAngle     = map->mAngle;
+	map->mPrevOrbitAngle = map->mAngle;
+	map->mEyeInterp      = NULL;
+	lbl_8065B34C         = 0.0f;
+	map->mOrbitAngle.y   = sPreviousMapOrbitAngle.y;
 	map->mStatus.mFlags &= ~0x3E;
 }
 
@@ -1189,16 +1188,16 @@ static inline f32 FlatDistance(const CVec& pos, CVec& v)
  */
 extern "C" void ResetMapCameraTargetEye(CCameraActionMap* map)
 {
-	map->_F88 = map->mEye;
-	map->_FA8 = map->mEye;
-	map->_F98 = map->mAngle;
-	map->_FB8 = map->mAngle;
-	map->_F78 = map->mEye;
-	map->_F68 = map->_F78;
-	map->_F28 = NULL;
+	map->mOrbitEye       = map->mEye;
+	map->mPrevOrbitEye   = map->mEye;
+	map->mOrbitAngle     = map->mAngle;
+	map->mPrevOrbitAngle = map->mAngle;
+	map->mPrevTargetEye  = map->mEye;
+	map->mTargetEye      = map->mPrevTargetEye;
+	map->mEyeInterp      = NULL;
 
-	map->_84 = FlatDistance(map->_F68, map->mInterest);
-	FlatDistance(map->_F68, map->_70);
+	map->mFlatDistance = FlatDistance(map->mTargetEye, map->mInterest);
+	FlatDistance(map->mTargetEye, map->mSpringTarget);
 }
 
 /**
@@ -1410,14 +1409,14 @@ extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step
 {
 	if (map->mTurnInterpolation != NULL) {
 		if (!map->mTurnInterpolation->Update(step, FRAME_TIME)) {
-			f32 radius = map->_88;
+			f32 radius = map->mOrbitRadius;
 			CVec position(map->mTurnInterpolation->Get());
-			CVec origin(map->_70);
-			origin.y   = 0.0f;
-			position   = origin + CVec((position - origin).Normalize()) * radius;
-			position.y = map->mEye.y;
-			map->_F88  = position;
-			map->_F68  = position;
+			CVec origin(map->mSpringTarget);
+			origin.y        = 0.0f;
+			position        = origin + CVec((position - origin).Normalize()) * radius;
+			position.y      = map->mEye.y;
+			map->mOrbitEye  = position;
+			map->mTargetEye = position;
 
 			f32 dz    = map->mInterest.z - map->mEye.z;
 			f32 dx    = map->mInterest.x - map->mEye.x;
@@ -1435,14 +1434,16 @@ extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step
 				                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
 				                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
 				                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z,
-				                             map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0, lbl_8065B340,
-				                             lbl_8065B33C, map->_F68.x, map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z,
-				                             map->_F28, map->mTurnInterpolation, map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x,
-				                             map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y, map->_FB8.z, lbl_8065B338),
+				                             map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->mManualInput,
+				                             lbl_8065B340, lbl_8065B33C, map->mTargetEye.x, map->mTargetEye.y, map->mTargetEye.z,
+				                             map->mPrevTargetEye.x, map->mPrevTargetEye.y, map->mPrevTargetEye.z, map->mEyeInterp,
+				                             map->mTurnInterpolation, map->mOrbitEye.x, map->mOrbitEye.y, map->mOrbitEye.z,
+				                             map->mOrbitAngle.x, map->mOrbitAngle.y, map->mOrbitAngle.z, map->mPrevOrbitAngle.x,
+				                             map->mPrevOrbitAngle.y, map->mPrevOrbitAngle.z, lbl_8065B338),
 				        "UpdateTurn");
 			}
-			map->_F98 = map->mAngle;
-			map->_EA0 = 1;
+			map->mOrbitAngle  = map->mAngle;
+			map->mManualInput = 1;
 		} else {
 			map->mStatus.mFlags &= ~4;
 			map->mTurnInterpolation = NULL;
@@ -1912,9 +1913,9 @@ extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
  */
 extern "C" void StartMapCameraTurnInterpolation(CCameraActionMap* map, s32 unused)
 {
-	CVec to(map->_984);
-	CVec a(map->_97C->_14);
-	CVec b(map->_974->_14);
+	CVec to(map->mSideStart);
+	CVec a(map->mNearestEyeEntry->mNormal);
+	CVec b(map->mNearestTargetEntry->mNormal);
 	CVec move = a * 20.0f;
 	move += b * 5.0f;
 	to += move;
@@ -1922,11 +1923,11 @@ extern "C" void StartMapCameraTurnInterpolation(CCameraActionMap* map, s32 unuse
 	Vec from = map->mEye;
 	from.y   = 0.0f;
 	if (map->mTurnInterpolation == NULL) {
-		map->mTurnInterpolation = &map->_DB8;
+		map->mTurnInterpolation = &map->mTurnEaseInOut;
 		map->mTurnInterpolation->Start(from, to, 0.7f);
 		map->_DB0 = 0;
 		gGame.GetPlayer()->ResetCameraValue();
-		lbl_8065B334 = map->_974->_0C;
+		lbl_8065B334 = map->mNearestTargetEntry->mRecordIndex;
 		SetMapCameraModeFlags(map, 0x20004);
 	}
 }
@@ -1934,10 +1935,10 @@ extern "C" void StartMapCameraTurnInterpolation(CCameraActionMap* map, s32 unuse
 static inline f32 MapAreaHeight(s32 index)
 {
 	CamAreaInfo area = CamAreaInfo(&GetStageCameraAreaRecords()[index]);
-	if (area._04->_2C == -1) {
-		return 0.23f * CamInfo(&gCameraAreaState._2C[gCameraAreaState._2034[index]._00->_34]).GetEye().y;
+	if (area.mRecord->mCameraAction == -1) {
+		return 0.23f * CamInfo(&gCameraAreaState.mCameraInfo[gCameraAreaState.mGroups[index].mEntries->mId]).GetEye().y;
 	}
-	return CamInfo(&gCameraAreaState._2C[gCameraAreaState._2034[index]._00->_34]).GetEye().y;
+	return CamInfo(&gCameraAreaState.mCameraInfo[gCameraAreaState.mGroups[index].mEntries->mId]).GetEye().y;
 }
 
 /**
@@ -1946,51 +1947,51 @@ static inline f32 MapAreaHeight(s32 index)
  */
 extern "C" void StartMapCameraAreaHeightInterpolation(CCameraActionMap* map)
 {
-	if (map->_DA8 >= 0) {
-		CamAreaInfo area(&gCameraAreaState._24[map->_DA8]);
-		if (!(area._04->_2E & 1)) {
-			map->_E58 = 0;
+	if (map->mMapArea >= 0) {
+		CamAreaInfo area(&gCameraAreaState.mAreaRecords[map->mMapArea]);
+		if (!(area.mRecord->mFlags & 1)) {
+			map->mHeightMode = 0;
 		} else {
-			map->_E58 = 1;
+			map->mHeightMode = 1;
 		}
-		if (!(area._04->_2E & 2)) {
-			map->_E5C = 0;
+		if (!(area.mRecord->mFlags & 2)) {
+			map->mUseAreaHeight = 0;
 		} else {
-			map->_E5C = 1;
+			map->mUseAreaHeight = 1;
 		}
-		if (map->_E58 == 0) {
-			f32 height = MapAreaHeight(map->_DA8);
-			Vec target = (gGame.GetPlayer())->GetCameraTarget();
-			map->_E30  = &map->_E14;
-			map->_E30->Start(map->mEye.y - target.y - map->_E98, height, 1.0f);
-			if (map->_E5C == 0) {
-				map->_E54 = 13.0f;
+		if (map->mHeightMode == 0) {
+			f32 height         = MapAreaHeight(map->mMapArea);
+			Vec target         = (gGame.GetPlayer())->GetCameraTarget();
+			map->mHeightInterp = &map->mHeightEaseInOut;
+			map->mHeightInterp->Start(map->mEye.y - target.y - map->mEyeYOffset, height, 1.0f);
+			if (map->mUseAreaHeight == 0) {
+				map->mTargetHeight = 13.0f;
 			}
-			if (map->_E5C == 1) {
-				map->_E54 = height;
-			}
-		}
-		if (map->_E58 == 1) {
-			f32 height = MapAreaHeight(map->_DA8);
-			map->_E50  = &map->_E34;
-			map->_E50->Start(map->mEye.y - map->_E98, height, 1.0f);
-			if (map->_E5C == 0) {
-				map->_E54 = 13.0f;
-			}
-			if (map->_E5C == 1) {
-				map->_E54 = height;
+			if (map->mUseAreaHeight == 1) {
+				map->mTargetHeight = height;
 			}
 		}
-	} else if (map->_DA8 == -1) {
-		if (map->_E58 == 0 || (map->_E58 == 1 && map->_E5C == 0)) {
-			map->_E58  = 0;
-			Vec target = (gGame.GetPlayer())->GetCameraTarget();
-			map->_E30  = &map->_E14;
-			map->_E30->Start(map->mEye.y - target.y - map->_E98, map->_E54, 1.0f);
+		if (map->mHeightMode == 1) {
+			f32 height            = MapAreaHeight(map->mMapArea);
+			map->mAbsHeightInterp = &map->mAbsHeightEaseInOut;
+			map->mAbsHeightInterp->Start(map->mEye.y - map->mEyeYOffset, height, 1.0f);
+			if (map->mUseAreaHeight == 0) {
+				map->mTargetHeight = 13.0f;
+			}
+			if (map->mUseAreaHeight == 1) {
+				map->mTargetHeight = height;
+			}
 		}
-		if (map->_E58 == 1 && map->_E5C == 1) {
-			map->_E50 = &map->_E34;
-			map->_E50->Start(map->mEye.y - map->_E98, map->_E54, 1.0f);
+	} else if (map->mMapArea == -1) {
+		if (map->mHeightMode == 0 || (map->mHeightMode == 1 && map->mUseAreaHeight == 0)) {
+			map->mHeightMode   = 0;
+			Vec target         = (gGame.GetPlayer())->GetCameraTarget();
+			map->mHeightInterp = &map->mHeightEaseInOut;
+			map->mHeightInterp->Start(map->mEye.y - target.y - map->mEyeYOffset, map->mTargetHeight, 1.0f);
+		}
+		if (map->mHeightMode == 1 && map->mUseAreaHeight == 1) {
+			map->mAbsHeightInterp = &map->mAbsHeightEaseInOut;
+			map->mAbsHeightInterp->Start(map->mEye.y - map->mEyeYOffset, map->mTargetHeight, 1.0f);
 		}
 	}
 }
@@ -2490,34 +2491,34 @@ extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Ve
  */
 extern "C" s32 SelectMapCameraArea(CCameraActionMap* map)
 {
-	CVec target = map->_44->mMoveTranslate;
+	CVec target = map->mTarget->mMoveTranslate;
 	CVec eye    = map->mEye;
 	eye.y       = target.y;
 
-	map->_DA0 = CollectMapCameraAreaIntersections(map, eye, target, map->_9A0, 1);
+	map->mAreaIntersectionCount = CollectMapCameraAreaIntersections(map, eye, target, map->mAreaIntersections, 1);
 
 	s32 eyeArea = FindEnabledCameraAreaContainingPoint(&gCameraAreaState, eye);
-	if (CamAreaInfo(&gCameraAreaState._24[eyeArea]).Is_2C_1()) {
+	if (CamAreaInfo(&gCameraAreaState.mAreaRecords[eyeArea]).UsesAreaCamera()) {
 		eyeArea = -1;
 	}
 
 	s32 targetArea = FindEnabledCameraAreaContainingPoint(&gCameraAreaState, target);
-	if (CamAreaInfo(&gCameraAreaState._24[targetArea]).Is_2C_1()) {
+	if (CamAreaInfo(&gCameraAreaState.mAreaRecords[targetArea]).UsesAreaCamera()) {
 		targetArea = -1;
 	}
 
-	s32 mapArea = map->_DA0 ? map->_9A0[0]._0C : -1;
+	s32 mapArea = map->mAreaIntersectionCount ? map->mAreaIntersections[0].mRecordIndex : -1;
 
 	if (eyeArea >= 0) {
-		map->_DA8 = eyeArea;
+		map->mMapArea = eyeArea;
 	} else if (targetArea >= 0) {
-		map->_DA8 = targetArea;
+		map->mMapArea = targetArea;
 	} else if (mapArea >= 0) {
-		map->_DA8 = mapArea;
+		map->mMapArea = mapArea;
 	} else {
-		map->_DA8 = -1;
+		map->mMapArea = -1;
 	}
-	return map->_DA8;
+	return map->mMapArea;
 }
 
 // SelectMapCameraArea
@@ -2664,10 +2665,10 @@ extern "C" void StartMapCameraAreaHeightInterpolation(CCameraActionMap* map);
  */
 extern "C" void RefreshMapCameraArea(CCameraActionMap* map)
 {
-	map->_DA4 = map->_DA8;
+	map->mPrevMapArea = map->mMapArea;
 	SelectMapCameraArea(map);
 	StartMapCameraAreaHeightInterpolation(map);
-	map->_DA4 = map->_DA8;
+	map->mPrevMapArea = map->mMapArea;
 }
 
 /**
@@ -2678,17 +2679,17 @@ extern "C" void GetMapCameraEyeBehindTarget(CCameraActionMap* map, Vec& out, s32
 {
 	CVec result;
 	if (mode != 1) {
-		if (map->_44 != NULL) {
+		if (map->mTarget != NULL) {
 			Mtx mtx;
-			PSMTXCopy(HSD_JObjGetMtxPtr(map->_44->mJObj), mtx);
-			CVec pos(0.0f, 13.0f, -map->_80);
+			PSMTXCopy(HSD_JObjGetMtxPtr(map->mTarget->mJObj), mtx);
+			CVec pos(0.0f, 13.0f, -map->mTargetRestDistance);
 			PSMTXMultVec(mtx, &pos, &pos);
-			pos.y  = map->_E30->Get();
+			pos.y  = map->mHeightInterp->Get();
 			result = pos;
 		}
-	} else if (map->_44 != NULL) {
+	} else if (map->mTarget != NULL) {
 		f32 x, z;
-		XObj* target = map->_44;
+		XObj* target = map->mTarget;
 		if (target != NULL && (target->mStatus.mFlags & 1)) {
 			Mtx mtx;
 			PSMTXCopy(HSD_JObjGetMtxPtr(target->mJObj), mtx);
@@ -2701,10 +2702,10 @@ extern "C" void GetMapCameraEyeBehindTarget(CCameraActionMap* map, Vec& out, s32
 		CVec eye                     = camera->mCamera.mEye;
 		CVec interest                = camera->mCamera.mInterest;
 		f32 angle                    = HALF_PI + (f32)atan2(interest.x - eye.x, interest.z - eye.z);
-		f32 distance                 = map->_80;
+		f32 distance                 = map->mTargetRestDistance;
 		result.x                     = x + distance * (f32)cos(angle);
 		result.z                     = z + distance * -(f32)sin(angle);
-		result.y                     = 13.0f + map->_44->GetCameraTarget().y;
+		result.y                     = 13.0f + map->mTarget->GetCameraTarget().y;
 	}
 	out.x = result.x;
 	out.y = result.y;
@@ -2951,7 +2952,7 @@ extern "C" void GetMapCameraEyeBehindTarget(CCameraActionMap* map, Vec& out, s32
  */
 extern "C" BOOL GetMapCameraTargetOffsetPosition(CCameraActionMap* map, CVec& out)
 {
-	XObj* target = map->_44;
+	XObj* target = map->mTarget;
 	if (target != NULL && (target->mStatus.mFlags & 1)) {
 		Mtx mtx;
 		PSMTXCopy(HSD_JObjGetMtxPtr(target->mJObj), mtx);
@@ -2969,7 +2970,7 @@ extern "C" BOOL GetMapCameraTargetOffsetPosition(CCameraActionMap* map, CVec& ou
  * @note Address: 0x8013C1D4
  * @note Size: 0x2C
  */
-extern "C" void vf28__16CCameraActionMapFv()
+void CCameraActionMap::DrawDebug3d()
 {
 	DrawMapCameraAreaDebug3D(&gCameraAreaState, 1);
 }
@@ -2978,25 +2979,25 @@ extern "C" void vf28__16CCameraActionMapFv()
  * @note Address: 0x8013C200
  * @note Size: 0x1CC
  */
-extern "C" void vf24__16CCameraActionMapFv(CCameraActionMap* map)
+void CCameraActionMap::DrawDebug2d()
 {
 	CGame* game = &gGame;
-	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B000000A0AREA(%3d,---)(%3d)\n", 408.0f, 298.0f, 0.0f, 12.0f, 12.0f, gCameraAreaState._0C,
-	                       gCameraAreaState._04);
+	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B000000A0AREA(%3d,---)(%3d)\n", 408.0f, 298.0f, 0.0f, 12.0f, 12.0f,
+	                       gCameraAreaState.mActiveArea, gCameraAreaState.mCurrentArea);
 	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B000000A0ACMAP2\n", 408.0f, 310.0f, 0.0f, 12.0f, 12.0f);
 	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080CAMSTAT\t   :%8X\nCAMSTATPRE :%8X\n", 360.0f, 322.0f, 0.0f, 12.0f, 12.0f,
-	                       map->mStatus.mFlags, map->mPreviousStatus.mFlags);
-	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080CHR_InsideCll(%3d,%3d,%3d)\n", 324.0f, 346.0f, 0.0f, 12.0f, 12.0f, map->_EA8[0],
-	                       map->_EA8[1], map->_EA8[2]);
-	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080CAM_InsideCll(%3d,%3d,%3d)\n", 324.0f, 358.0f, 0.0f, 12.0f, 12.0f, map->_4F0,
-	                       map->_4F4, map->_4F8);
-	if (map->_4EC > 0) {
-		DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080CamHitCll(%3d,%3d,%3d)\n", 324.0f, 370.0f, 0.0f, 12.0f, 12.0f, map->_4F0,
-		                       map->_4F4, map->_4F8);
+	                       mStatus.mFlags, mPreviousStatus.mFlags);
+	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080CHR_InsideCll(%3d,%3d,%3d)\n", 324.0f, 346.0f, 0.0f, 12.0f, 12.0f, mInsideAreas[0],
+	                       mInsideAreas[1], mInsideAreas[2]);
+	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080CAM_InsideCll(%3d,%3d,%3d)\n", 324.0f, 358.0f, 0.0f, 12.0f, 12.0f, mInsideCll0,
+	                       mInsideCll1, mInsideCll2);
+	if (mInsideCllCount > 0) {
+		DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080CamHitCll(%3d,%3d,%3d)\n", 324.0f, 370.0f, 0.0f, 12.0f, 12.0f, mInsideCll0,
+		                       mInsideCll1, mInsideCll2);
 	}
-	if (map->_974 != NULL) {
-		DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080INTRSCT(%3d-%3d)\n", 324.0f, 382.0f, 0.0f, 12.0f, 12.0f, map->_974->_0C,
-		                       map->_974->_10);
+	if (mNearestTargetEntry != NULL) {
+		DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080INTRSCT(%3d-%3d)\n", 324.0f, 382.0f, 0.0f, 12.0f, 12.0f,
+		                       mNearestTargetEntry->mRecordIndex, mNearestTargetEntry->mSide);
 	}
 }
 /*
@@ -3125,12 +3126,12 @@ extern "C" void vf24__16CCameraActionMapFv(CCameraActionMap* map)
  */
 extern "C" BOOL TrySetMapCameraTargetYaw(CCameraActionMap* map, f32 yaw, f32 time, f32 unused)
 {
-	f32 oldYaw   = map->_C0;
-	f32 oldSpeed = map->_BC;
+	f32 oldYaw   = map->mTargetYaw;
+	f32 oldSpeed = map->mTurnSpeed;
 
-	map->_C0 = WrapAngle(yaw);
-	f32 from = WrapAngle(map->mAngle.y);
-	f32 to   = WrapAngle(yaw);
+	map->mTargetYaw = WrapAngle(yaw);
+	f32 from        = WrapAngle(map->mAngle.y);
+	f32 to          = WrapAngle(yaw);
 
 	f32 diff = to - from;
 	if (diff < 0.0f) {
@@ -3153,10 +3154,10 @@ extern "C" BOOL TrySetMapCameraTargetYaw(CCameraActionMap* map, f32 yaw, f32 tim
 	if (diff < 0.0f) {
 		diff = -diff;
 	}
-	map->_BC = diff / time;
-	if (map->_BC < (2.0f * DEG2RAD)) {
-		map->_C0 = oldYaw;
-		map->_BC = oldSpeed;
+	map->mTurnSpeed = diff / time;
+	if (map->mTurnSpeed < (2.0f * DEG2RAD)) {
+		map->mTargetYaw = oldYaw;
+		map->mTurnSpeed = oldSpeed;
 		return FALSE;
 	}
 	return TRUE;
@@ -3169,20 +3170,20 @@ inline void SetFovStep(CCameraActionMap* map, s32 index, f32 time)
 	switch (index) {
 	case 0:
 	default:
-		map->_C8.Start(map->mFov, 0.8f * fov, time);
+		map->mFovEaseOutDivide.Start(map->mFov, 0.8f * fov, time);
 		break;
 	case 1:
-		map->_C8.Start(map->mFov, fov, time);
+		map->mFovEaseOutDivide.Start(map->mFov, fov, time);
 		break;
 	case 2:
-		map->_C8.Start(map->mFov, 1.5f * fov, time);
+		map->mFovEaseOutDivide.Start(map->mFov, 1.5f * fov, time);
 		break;
 	case 3:
-		map->_C8.Start(map->mFov, 2.0f * fov, time);
+		map->mFovEaseOutDivide.Start(map->mFov, 2.0f * fov, time);
 		break;
 	}
-	gCameraAreaState._14 = index;
-	gCameraAreaState._18 = index;
+	gCameraAreaState.mZoomLevel     = index;
+	gCameraAreaState.mPrevZoomLevel = index;
 }
 
 /**
@@ -3203,42 +3204,43 @@ extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step
 extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
 {
 	if (gGame.mStatus.mFlags & 0xC00) {
-		map->_DAC = 0;
+		map->mPadControlEnabled = 0;
 	} else {
-		map->_DAC = 1;
+		map->mPadControlEnabled = 1;
 	}
-	map->_EA0 = 0;
+	map->mManualInput = 0;
 	CPad pad(0);
 	u32 left    = (gGame.mStatus.mFlags & 0x80000000) ? 1 : 0x400000;
 	u32 right   = (gGame.mStatus.mFlags & 0x80000000) ? 2 : 0x800000;
 	u32 zoomIn  = (gGame.mStatus.mFlags & 0x80000000) ? 8 : 0x100000;
 	u32 zoomOut = (gGame.mStatus.mFlags & 0x80000000) ? 4 : 0x200000;
 	f32 turn    = 0.0f;
-	if ((pad.mPad->mButton & right) && map->_DAC) {
+	if ((pad.mPad->mButton & right) && map->mPadControlEnabled) {
 		turn = 1.0f;
-	} else if ((pad.mPad->mButton & left) && map->_DAC) {
+	} else if ((pad.mPad->mButton & left) && map->mPadControlEnabled) {
 		turn = -1.0f;
 	}
 	if (turn != 0.0f) {
-		map->_EA0 = 1;
+		map->mManualInput = 1;
 		SetMapCameraModeFlags(map, 0x20008);
 	} else if (map->mStatus.mFlags & 8) {
 		map->mStatus.mFlags &= ~8;
 	}
-	if (map->_44 != NULL && map->_44->mJObj != NULL && (pad.mPad->mTrigger & 0x40) && map->_DAC && gGame.GetPlayer()->mHang.mState != 3) {
-		if (SetMapYaw(map, map->_44->mMoveRotate.mTarget.y, 10.0f)) {
+	if (map->mTarget != NULL && map->mTarget->mJObj != NULL && (pad.mPad->mTrigger & 0x40) && map->mPadControlEnabled
+	    && gGame.GetPlayer()->mHang.mState != 3) {
+		if (SetMapYaw(map, map->mTarget->mMoveRotate.mTarget.y, 10.0f)) {
 			gGame.GetPlayer()->ResetCameraValue();
 			SetMapCameraModeFlags(map, 0x20002);
 		}
 	}
 	UpdateMapCameraTurnInterpolation(map, step);
-	s32 previous = gCameraAreaState._18;
-	s32 mode     = gCameraAreaState._14;
-	if ((pad.mPad->mTrigger & zoomIn) && map->_DAC) {
+	s32 previous = gCameraAreaState.mPrevZoomLevel;
+	s32 mode     = gCameraAreaState.mZoomLevel;
+	if ((pad.mPad->mTrigger & zoomIn) && map->mPadControlEnabled) {
 		if (mode > 1) {
 			mode--;
 		}
-	} else if ((pad.mPad->mTrigger & zoomOut) && map->_DAC) {
+	} else if ((pad.mPad->mTrigger & zoomOut) && map->mPadControlEnabled) {
 		if (mode < 2) {
 			mode++;
 		}
@@ -3246,8 +3248,8 @@ extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
 	if (mode != previous) {
 		SetFovStep(map, mode, 15.0f);
 	}
-	if (!map->_C8.Update(step, 0.0f)) {
-		map->SetFov(map->_C8.Get());
+	if (!map->mFovEaseOutDivide.Update(step, 0.0f)) {
+		map->SetFov(map->mFovEaseOutDivide.Get());
 	}
 }
 /*
@@ -3631,13 +3633,14 @@ extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
 static inline void RefreshOrbitPosition(CCameraActionMap* map, u32 step, bool manual)
 {
 	f32 yaw    = HALF_PI + map->mAngle.y;
-	f32 radius = FlatDistance(map->_F68, map->mInterest);
-	f32 x      = radius * (f32)cos(yaw) + map->mInterest.x;
-	f32 z      = radius * -(f32)sin(yaw) + map->mInterest.z;
+	f32 radius = FlatDistance(map->mTargetEye, map->mInterest);
+	f32 pitch  = 0.0f;
+	f32 x      = map->mInterest.x + radius * (f32)cos(yaw) * (f32)cos(pitch);
+	f32 z      = map->mInterest.z + radius * -(f32)sin(yaw) * (f32)cos(pitch);
 	// The manual turn uses the frame delta left in f31 by the retail caller.
-	f32 height = manual ? 0.1f * step : map->_F68.y;
-	map->_F88  = CVec(x, height, z);
-	map->_F68  = CVec(x, height, z);
+	f32 height      = manual ? 0.1f * step : map->mTargetEye.y;
+	map->mOrbitEye  = CVec(x, height, z);
+	map->mTargetEye = CVec(x, height, z);
 }
 
 // The original rounds each axis increment before adding it to the angle.
@@ -3656,21 +3659,21 @@ extern "C" void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 	CPad pad(0);
 	u32 left               = (gGame.mStatus.mFlags & 0x80000000) ? 1 : 0x400000;
 	u32 right              = (gGame.mStatus.mFlags & 0x80000000) ? 2 : 0x800000;
-	sPreviousMapOrbitAngle = map->_F98;
-	map->_F88              = map->_F68;
+	sPreviousMapOrbitAngle = map->mOrbitAngle;
+	map->mOrbitEye         = map->mTargetEye;
 	if (!lbl_8065B348)
-		map->_F98 = map->mAngle;
+		map->mOrbitAngle = map->mAngle;
 
 	{
 		CVec angle;
 		f32 turn = 0.0f;
-		if ((pad.mPad->mButton & right) && map->_DAC)
+		if ((pad.mPad->mButton & right) && map->mPadControlEnabled)
 			turn = 1.0f;
-		else if ((pad.mPad->mButton & left) && map->_DAC)
+		else if ((pad.mPad->mButton & left) && map->mPadControlEnabled)
 			turn = -1.0f;
 		if (turn != 0.0f) {
 			lbl_8065B34C = turn;
-			angle        = map->_F98;
+			angle        = map->mOrbitAngle;
 			f32 pitch, heading;
 			AdvanceOrbitAngles(angle, step, 0.0f, (3.5f * DEG2RAD) * turn, pitch, heading);
 			if (pitch > 89.1f * DEG2RAD)
@@ -3678,19 +3681,19 @@ extern "C" void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 			if (pitch < -89.1f * DEG2RAD)
 				pitch = -89.1f * DEG2RAD;
 			map->SetAngle(pitch, heading, angle.z);
-			map->_FB8 = map->_F98;
-			map->_F98 = map->mAngle;
+			map->mPrevOrbitAngle = map->mOrbitAngle;
+			map->mOrbitAngle     = map->mAngle;
 			map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
 			RefreshOrbitPosition(map, step, true);
 		}
 	}
 
 	if (map->mStatus.mFlags & 2) {
-		map->_F88 = map->_F68;
+		map->mOrbitEye = map->mTargetEye;
 		if (!lbl_8065B348)
-			map->_F98 = map->mAngle;
-		f32 yaw    = WrapAngle(map->_F98.y);
-		f32 target = WrapAngle(map->_C0);
+			map->mOrbitAngle = map->mAngle;
+		f32 yaw    = WrapAngle(map->mOrbitAngle.y);
+		f32 target = WrapAngle(map->mTargetYaw);
 		f32 diff   = target - yaw;
 		if (diff < 0.0f)
 			diff = -diff;
@@ -3702,11 +3705,11 @@ extern "C" void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 		}
 		if (yaw < target) {
 			lbl_8065B34C = 1.0f;
-			yaw          = map->_BC * step + yaw;
+			yaw          = map->mTurnSpeed * step + yaw;
 			if (yaw > target)
 				yaw = target;
 		} else if (yaw > target) {
-			yaw = yaw - map->_BC * step;
+			yaw = yaw - map->mTurnSpeed * step;
 			if (yaw < target)
 				yaw = target;
 			lbl_8065B34C = -1.0f;
@@ -3717,14 +3720,14 @@ extern "C" void UpdateMapCameraOrbit(CCameraActionMap* map, u32 step)
 		if (diff < 0.001f)
 			yaw = target;
 		BOOL turning = TRUE;
-		Vec angle    = map->_F98;
+		Vec angle    = map->mOrbitAngle;
 		angle.y      = yaw;
 		map->SetAngle(angle);
-		map->_FB8 = map->_F98;
-		map->_F98 = map->mAngle;
+		map->mPrevOrbitAngle = map->mOrbitAngle;
+		map->mOrbitAngle     = map->mAngle;
 		map->SetInterest(GetMapCameraTargetWithHeightOffset(map));
 		RefreshOrbitPosition(map, step, false);
-		map->_EA0 = 1;
+		map->mManualInput = 1;
 
 		if (yaw == target)
 			turning = FALSE;
@@ -3742,12 +3745,12 @@ extern "C" void C_VECCrossProduct(Vec* a, Vec* b, Vec* axb);
  */
 extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
 {
-	CamMapEntry* entry = map->_97C;
+	CamMapEntry* entry = map->mNearestEyeEntry;
 	if (entry != NULL) {
-		s32 group          = entry->_0C;
-		s32 side           = entry->_10;
-		CVec dir           = entry->_14;
-		CamAreaRecord* rec = &gCameraAreaState._1C[group];
+		s32 group          = entry->mRecordIndex;
+		s32 side           = entry->mSide;
+		CVec dir           = entry->mNormal;
+		CamAreaRecord* rec = &gCameraAreaState.mAreaExRecords[group];
 		CVec toPlayer      = gGame.GetPlayer()->mMoveTranslate;
 		toPlayer.y         = 0.0f;
 		Vec eye            = map->mEye;
@@ -3769,22 +3772,22 @@ extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
 		f32 z1 = corner[1] / 100.0f;
 
 		if (cross.y > 0.0f) {
-			map->_984.x = x0;
-			map->_984.y = 0.0f;
-			map->_984.z = z0;
-			map->_990.x = x1;
-			map->_990.y = 0.0f;
-			map->_990.z = z1;
-			map->_99C   = 1;
+			map->mSideStart.x = x0;
+			map->mSideStart.y = 0.0f;
+			map->mSideStart.z = z0;
+			map->mSideEnd.x   = x1;
+			map->mSideEnd.y   = 0.0f;
+			map->mSideEnd.z   = z1;
+			map->mSideSign    = 1;
 		}
 		if (cross.y < 0.0f) {
-			map->_984.x = x1;
-			map->_984.y = 0.0f;
-			map->_984.z = z1;
-			map->_990.x = x0;
-			map->_990.y = 0.0f;
-			map->_990.z = z0;
-			map->_99C   = -1;
+			map->mSideStart.x = x1;
+			map->mSideStart.y = 0.0f;
+			map->mSideStart.z = z1;
+			map->mSideEnd.x   = x0;
+			map->mSideEnd.y   = 0.0f;
+			map->mSideEnd.z   = z0;
+			map->mSideSign    = -1;
 		}
 		return TRUE;
 	}
@@ -3962,14 +3965,14 @@ extern "C" s32 CountMapCameraAdjacentSideIntersections(CCameraActionMap* map, Ca
 		{ 2, 0 },
 	};
 	s32 num   = map->mIntersectionCount;
-	s32 group = entry->_0C;
-	s32 side  = entry->_10;
+	s32 group = entry->mRecordIndex;
+	s32 side  = entry->mSide;
 	s32 count = 0;
 	if (num > 0) {
 		for (s32 i = 0; i < num; i++) {
-			if (map->mIntersectionEntries[i]._0C == group) {
+			if (map->mIntersectionEntries[i].mRecordIndex == group) {
 				for (s32 j = 0; j < 2; j++) {
-					if (map->mIntersectionEntries[i]._10 == sides[side][j]) {
+					if (map->mIntersectionEntries[i].mSide == sides[side][j]) {
 						count++;
 					}
 				}
@@ -3988,7 +3991,7 @@ extern "C" s32 CountMapCameraEntriesInGroup(CCameraActionMap* map, s32 value)
 	s32 count = 0;
 	if (map->mIntersectionCount > 0) {
 		for (s32 i = 0; i < map->mIntersectionCount; i++) {
-			if (map->mIntersectionEntries[i]._0C == value) {
+			if (map->mIntersectionEntries[i].mRecordIndex == value) {
 				count++;
 			}
 		}
@@ -4009,7 +4012,7 @@ extern "C" s32 FindNearestMapCameraEntry(CCameraActionMap* map, const Vec& pos)
 		s32 nearest = -1;
 		f32 minDist = 10000.0f;
 		for (s32 i = 0; i < map->mIntersectionCount; i++) {
-			f32 dist = PSVECDistance(&p, &map->mIntersectionEntries[i]._00);
+			f32 dist = PSVECDistance(&p, &map->mIntersectionEntries[i].mPos);
 			if (dist < minDist) {
 				minDist = dist;
 				nearest = i;
@@ -4047,12 +4050,12 @@ extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Ve
 	CamAreaRecord* record;
 	s32 numRecords;
 	if (type == 0) {
-		record     = gCameraAreaState._1C;
-		numRecords = gCameraAreaState._20;
+		record     = gCameraAreaState.mAreaExRecords;
+		numRecords = gCameraAreaState.mAreaExCount;
 	}
 	if (type == 1) {
-		record     = gCameraAreaState._24;
-		numRecords = gCameraAreaState._28;
+		record     = gCameraAreaState.mAreaRecords;
+		numRecords = gCameraAreaState.mAreaCount;
 	}
 	CamMapEntry* entry = out;
 	s32 count          = 0;
@@ -4061,7 +4064,7 @@ extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Ve
 			record++;
 			continue;
 		}
-		if (CamAreaInfo(record).Is_2C_1()) {
+		if (CamAreaInfo(record).UsesAreaCamera()) {
 			record++;
 			continue;
 		}
@@ -4107,12 +4110,12 @@ extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Ve
 					nz = normal.z;
 				}
 				count++;
-				entry->_00   = hit;
-				entry->_10   = side;
-				entry->_0C   = i;
-				entry->_14.x = nx;
-				entry->_14.y = ny;
-				entry->_14.z = nz;
+				entry->mPos         = hit;
+				entry->mSide        = side;
+				entry->mRecordIndex = i;
+				entry->mNormal.x    = nx;
+				entry->mNormal.y    = ny;
+				entry->mNormal.z    = nz;
 				entry++;
 			}
 		}
@@ -4444,12 +4447,12 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
 	CamAreaRecord* record;
 	s32 numRecords;
 	if (type == 0) {
-		record     = gCameraAreaState._1C;
-		numRecords = gCameraAreaState._20;
+		record     = gCameraAreaState.mAreaExRecords;
+		numRecords = gCameraAreaState.mAreaExCount;
 	}
 	if (type == 1) {
-		record     = gCameraAreaState._24;
-		numRecords = gCameraAreaState._28;
+		record     = gCameraAreaState.mAreaRecords;
+		numRecords = gCameraAreaState.mAreaCount;
 	}
 	CamMapEntry* entry = out;
 	s32 count          = 0;
@@ -4510,12 +4513,12 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
 					nz = normal.z;
 				}
 				count++;
-				entry->_00   = hit;
-				entry->_10   = side;
-				entry->_0C   = i;
-				entry->_14.x = nx;
-				entry->_14.y = ny;
-				entry->_14.z = nz;
+				entry->mPos         = hit;
+				entry->mSide        = side;
+				entry->mRecordIndex = i;
+				entry->mNormal.x    = nx;
+				entry->mNormal.y    = ny;
+				entry->mNormal.z    = nz;
 				entry++;
 			}
 		}
@@ -8143,24 +8146,24 @@ extern "C" XObj* GetPlayerPoolObject(CGame* game, s32 index)
  * @note Size: 0x1F8
  */
 // vtable slot _0C, PreviousUpdate
-extern "C" void PreviousUpdate__16CCameraActionMapFv(CCameraActionMap* map)
+void CCameraActionMap::PreviousUpdate()
 {
 	UpdateCameraAreaIndexAndBaseFov(&gCameraAreaState, 0);
-	s32 arg = gCameraAreaState._0C;
-	if (gCameraAreaState._04 != gCameraAreaState._08 && gCameraAreaState._04 != -1) {
+	s32 arg = gCameraAreaState.mActiveArea;
+	if (gCameraAreaState.mCurrentArea != gCameraAreaState.mPrevArea && gCameraAreaState.mCurrentArea != -1) {
 		if (GetCameraAreaMode(&gCameraAreaState) == 1) {
 			gGame.mMotionControlCamera.ChangeAction(1);
-			gCameraAreaState._18 = gCameraAreaState._14;
+			gCameraAreaState.mPrevZoomLevel = gCameraAreaState.mZoomLevel;
 			SelectAreaCameraEntryByViewDirection((CCameraActionArea*)gGame.mCameraActions.mTable[1], 1, 2.0f, arg);
 			return;
 		}
-		SetFovStep(map, gCameraAreaState._14, 15.0f);
+		SetFovStep(this, gCameraAreaState.mZoomLevel, 15.0f);
 		SelectAreaCameraEntryWithControl((CCameraActionArea*)gGame.mCameraActions.mTable[1], arg, 0, 3, 1, 1.0f);
 	}
-	map->_DA4 = map->_DA8;
-	SelectMapCameraArea(map);
-	if (map->_DA8 != map->_DA4) {
-		StartMapCameraAreaHeightInterpolation(map);
+	mPrevMapArea = mMapArea;
+	SelectMapCameraArea(this);
+	if (mMapArea != mPrevMapArea) {
+		StartMapCameraAreaHeightInterpolation(this);
 	}
 }
 /*
@@ -8307,76 +8310,76 @@ extern "C" void PreviousUpdate__16CCameraActionMapFv(CCameraActionMap* map)
  */
 extern "C" void SetMapCameraKeepPreviousEye(CCameraActionMap* map)
 {
-	map->_11E8 = TRUE;
+	map->mKeepPreviousEye = TRUE;
 }
 
 /**
  * @note Address: 0x80141288
  * @note Size: 0x4CC
  */
-extern "C" void SetCamera__16CCameraActionMapFP7CCamera(CCameraActionMap* map, CCamera* camera)
+void CCameraActionMap::SetCamera(CCamera* camera)
 {
-	map->_40 = 3;
-	map->SetEye(camera->mEye);
-	map->mPreviousEye = CVec(camera->mEye.x, camera->mEye.y, camera->mEye.z);
-	map->SetInterest(camera->mInterest);
-	map->SetDistance(camera->mDistance);
-	map->SetFov(camera->mFov);
-	map->SetAngle(camera->mAngle);
-	map->_44 = gGame.GetPlayer();
-	if (map->_44 != NULL) {
-		map->SetInterest(map->_44->GetCameraTarget());
+	mInterestMode = 3;
+	SetEye(camera->mEye);
+	mPreviousEye = CVec(camera->mEye.x, camera->mEye.y, camera->mEye.z);
+	SetInterest(camera->mInterest);
+	SetDistance(camera->mDistance);
+	SetFov(camera->mFov);
+	SetAngle(camera->mAngle);
+	mTarget = gGame.GetPlayer();
+	if (mTarget != NULL) {
+		SetInterest(mTarget->GetCameraTarget());
 	}
-	map->_E64 = NULL;
-	map->_E68.Start(0.0f, 0.0f, 0.1f);
-	if (map->_44 != NULL) {
+	mTargetHeightOffsetInterp = NULL;
+	mTargetHeightOffsetEase.Start(0.0f, 0.0f, 0.1f);
+	if (mTarget != NULL) {
 		Mtx mtx;
-		PSMTXCopy(HSD_JObjGetMtxPtr(map->_44->mJObj), mtx);
+		PSMTXCopy(HSD_JObjGetMtxPtr(mTarget->mJObj), mtx);
 		CVec pos(0.0f, 13.0f, -1.0f);
 		PSMTXMultVec(mtx, &pos, &pos);
-		map->_70   = CVec(pos.x, pos.y, pos.z);
-		map->_60.x = map->_70.x;
-		map->_60.y = map->_70.y;
-		map->_60.z = map->_70.z;
+		mSpringTarget       = CVec(pos.x, pos.y, pos.z);
+		mSpringPrevTarget.x = mSpringTarget.x;
+		mSpringPrevTarget.y = mSpringTarget.y;
+		mSpringPrevTarget.z = mSpringTarget.z;
 	}
-	map->_8C.x         = 0.0f;
-	map->_8C.y         = 0.0f;
-	map->_8C.z         = 0.0f;
-	map->_8C.mTarget.x = 0.0f;
-	map->_8C.mTarget.y = 0.0f;
-	map->_8C.mTarget.z = 0.0f;
-	map->_8C.mSpeed.x  = 0.0f;
-	map->_8C.mSpeed.y  = 0.0f;
-	map->_8C.mSpeed.z  = 0.0f;
-	map->_80           = 60.0f;
-	map->_58           = map->_80;
-	map->_84           = map->_80;
-	SetFovStep(map, gCameraAreaState._14, 15.0f);
-	map->_DAC               = 1;
-	map->_DB0               = 1;
-	map->mTurnInterpolation = NULL;
-	map->mTurnInterpolation = NULL;
-	map->_E30               = &map->_E14;
-	map->_E30->Start(13.0f, 13.0f, 1.0f);
-	map->_DA8 = -1;
-	map->_DA4 = -1;
-	map->_E50 = &map->_E34;
-	map->_E50->Start(map->mEye.y, map->mEye.y, 1.0f);
-	map->_E58 = 0;
-	map->_E5C = 0;
-	map->_E54 = 13.0f;
-	map->_E9C = 1;
-	ResetMapCameraTargetEye(map);
-	map->mStatus.mFlags = 0;
-	map->mStatus.mFlags |= 0x10000;
-	lbl_8065B344 = 0;
-	map->_E78    = &map->_E7C;
-	map->_E7C.Start(0.0f, 0.0f, 1.0f);
-	map->_E98              = 0.0f;
-	map->mPreviousInterest = CVec(map->mInterest.x, map->mInterest.y, map->mInterest.z);
-	if (!map->_11E8) {
-		map->mPreviousEye = CVec(map->mInterest.x, map->mInterest.y, map->mInterest.z);
-		map->_11E8        = FALSE;
+	_8C.x               = 0.0f;
+	_8C.y               = 0.0f;
+	_8C.z               = 0.0f;
+	_8C.mTarget.x       = 0.0f;
+	_8C.mTarget.y       = 0.0f;
+	_8C.mTarget.z       = 0.0f;
+	_8C.mSpeed.x        = 0.0f;
+	_8C.mSpeed.y        = 0.0f;
+	_8C.mSpeed.z        = 0.0f;
+	mTargetRestDistance = 60.0f;
+	mRestDistance       = mTargetRestDistance;
+	mFlatDistance       = mTargetRestDistance;
+	SetFovStep(this, gCameraAreaState.mZoomLevel, 15.0f);
+	mPadControlEnabled = 1;
+	_DB0               = 1;
+	mTurnInterpolation = NULL;
+	mTurnInterpolation = NULL;
+	mHeightInterp      = &mHeightEaseInOut;
+	mHeightInterp->Start(13.0f, 13.0f, 1.0f);
+	mMapArea         = -1;
+	mPrevMapArea     = -1;
+	mAbsHeightInterp = &mAbsHeightEaseInOut;
+	mAbsHeightInterp->Start(mEye.y, mEye.y, 1.0f);
+	mHeightMode    = 0;
+	mUseAreaHeight = 0;
+	mTargetHeight  = 13.0f;
+	mTurnBlocked   = 1;
+	ResetMapCameraTargetEye(this);
+	mStatus.mFlags = 0;
+	mStatus.mFlags |= 0x10000;
+	lbl_8065B344      = 0;
+	mEyeYOffsetInterp = &mEyeYOffsetEaseInOut;
+	mEyeYOffsetEaseInOut.Start(0.0f, 0.0f, 1.0f);
+	mEyeYOffset       = 0.0f;
+	mPreviousInterest = CVec(mInterest.x, mInterest.y, mInterest.z);
+	if (!mKeepPreviousEye) {
+		mPreviousEye     = CVec(mInterest.x, mInterest.y, mInterest.z);
+		mKeepPreviousEye = FALSE;
 	}
 }
 /*
@@ -8708,7 +8711,7 @@ extern "C" void SetCamera__16CCameraActionMapFP7CCamera(CCameraActionMap* map, C
  */
 extern "C" void Reset2__16CCameraActionMapFv(CCameraActionMap* map)
 {
-	map->SetInterest(map->_44->GetCameraTarget());
+	map->SetInterest(map->mTarget->GetCameraTarget());
 	Vec eye;
 	GetMapCameraEyeBehindTarget(map, eye, 0);
 	map->SetEye(eye);
@@ -8719,10 +8722,11 @@ extern "C" void Reset2__16CCameraActionMapFv(CCameraActionMap* map)
 		                             "%f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, "
 		                             "%f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
 		                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z, map->mDistance,
-		                             map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->_EA0, lbl_8065B340, lbl_8065B33C, map->_F68.x,
-		                             map->_F68.y, map->_F68.z, map->_F78.x, map->_F78.y, map->_F78.z, map->_F28, map->mTurnInterpolation,
-		                             map->_F88.x, map->_F88.y, map->_F88.z, map->_F98.x, map->_F98.y, map->_F98.z, map->_FB8.x, map->_FB8.y,
-		                             map->_FB8.z, lbl_8065B338),
+		                             map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->mManualInput, lbl_8065B340, lbl_8065B33C,
+		                             map->mTargetEye.x, map->mTargetEye.y, map->mTargetEye.z, map->mPrevTargetEye.x, map->mPrevTargetEye.y,
+		                             map->mPrevTargetEye.z, map->mEyeInterp, map->mTurnInterpolation, map->mOrbitEye.x, map->mOrbitEye.y,
+		                             map->mOrbitEye.z, map->mOrbitAngle.x, map->mOrbitAngle.y, map->mOrbitAngle.z, map->mPrevOrbitAngle.x,
+		                             map->mPrevOrbitAngle.y, map->mPrevOrbitAngle.z, lbl_8065B338),
 		        "Reset2");
 	}
 }
@@ -9095,33 +9099,33 @@ extern "C" void Reset2__16CCameraActionMapFv(CCameraActionMap* map)
 // Reset__16CCameraActionMapFv
 
 // the original's panic names its function Reset through __FUNCTION__
-extern "C" void Reset__16CCameraActionMapFv(CCameraActionMap* map)
+void CCameraActionMap::Reset()
 {
 	OSPanic(__FILE__, 220, "%s%s", "actionMap::reset\n", "Reset");
 
-	map->_44 = gGame.GetPlayer();
-	if (map->_44 != NULL) {
+	mTarget = gGame.GetPlayer();
+	if (mTarget != NULL) {
 		Mtx mtx;
-		PSMTXCopy(HSD_JObjGetMtxPtr(map->_44->mJObj), mtx);
-		CVec eye(0.0f, 13.0f, -map->_58);
+		PSMTXCopy(HSD_JObjGetMtxPtr(mTarget->mJObj), mtx);
+		CVec eye(0.0f, 13.0f, -mRestDistance);
 		PSMTXMultVec(mtx, &eye, &eye);
-		map->SetEye(eye);
-		map->SetInterest(map->_44->GetCameraTarget());
+		SetEye(eye);
+		SetInterest(mTarget->GetCameraTarget());
 	}
-	map->_DAC = 1;
+	mPadControlEnabled = 1;
 }
 
 /**
  * @note Address: 0x80141DC8
  * @note Size: 0x4C
  */
-extern "C" void Init__16CCameraActionMapFv(CCameraActionMap* map)
+void CCameraActionMap::Init()
 {
-	map->_5C = 0.5f;
-	map->_58 = 60.0f;
-	map->_80 = 60.0f;
-	map->_84 = 60.0f;
-	map->_C4 = 18.0f;
+	mSpringDamping      = 0.5f;
+	mRestDistance       = 60.0f;
+	mTargetRestDistance = 60.0f;
+	mFlatDistance       = 60.0f;
+	_C4                 = 18.0f;
 	InitCameraAreaEntries(&gCameraAreaState);
 }
 
@@ -9623,9 +9627,9 @@ u32 CCameraActionMap::GetCameraFlags()
  * @note Address: 0x80139E48
  * @note Size: 0x8
  */
-extern "C" s32 vf5C__16CCameraActionMapFv(CCameraActionMap* map)
+extern "C" s32 GetInterestMode__16CCameraActionMapFv(CCameraActionMap* map)
 {
-	return map->_40;
+	return map->mInterestMode;
 }
 
 /**

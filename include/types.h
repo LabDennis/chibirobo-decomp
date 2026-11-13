@@ -29,7 +29,7 @@ typedef double f64;
 typedef long double f128;
 typedef volatile f32 vf32;
 typedef volatile f64 vf64;
-typedef volatile f128 vf128;
+typedef volatile f128 GetEventScript;
 
 typedef u32 unknown;
 

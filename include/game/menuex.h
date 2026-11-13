@@ -12,12 +12,8 @@ class MenuCursor : public Cursor {
 public:
 	MenuCursor();
 
-	virtual void InitializeObject(u32 id);                    // _90
-	virtual void vf94();                                      // _94
-	virtual void ResetObjectState();                          // _98
-	virtual BOOL LoadFromPlacement(const CoordInfo& info);    // _9C
-	virtual BOOL LoadAnimationArchiveAsync(const char* path); // _A0
-	virtual void UpdateObject(u32 frames);                    // _A4
+	virtual void ResetObjectState();       // _98
+	virtual void UpdateObject(u32 frames); // _A4
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(MenuCursor) == 0x978);

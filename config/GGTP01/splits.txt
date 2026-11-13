@@ -351,10 +351,12 @@ game/infopointinit.cpp:
 
 game/globalresources.cpp:
 	.text       start:0x8006FA14 end:0x80070C00
+	.data       start:0x802194A8 end:0x8021B9EC
 
 game/stage_data.cpp:
 	.text       start:0x80070C00 end:0x80071AF4
 	.ctors      start:0x80200078 end:0x8020007C
+	.data       start:0x8021D590 end:0x8022B148
 
 game/evt.cpp:
 	.text       start:0x80071AF4 end:0x80081EC8
@@ -2171,6 +2173,7 @@ sysdolphin/baselib/spline.c:
 
 sysdolphin/baselib/mtx.c:
 	.text       start:0x801D1574 end:0x801D2DB4
+	.data       start:0x80261158 end:0x80261188
 	.bss        start:0x80653628 end:0x80653680
 	.sdata      start:0x80661DD8 end:0x80661DE8
 	.sdata2     start:0x80666D70 end:0x80666DB8

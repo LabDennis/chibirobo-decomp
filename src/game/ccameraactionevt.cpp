@@ -42,7 +42,7 @@ void CCameraActionEvt::SetCamera(CCamera* camera)
 	SetDistance(camera->mDistance);
 	SetFov(camera->mFov);
 	SetAngle(camera->mAngle);
-	_38 = 0;
+	mCameraFlags = 0;
 	mAxes.mFlags &= ~7;
 	mTarget         = NULL;
 	mEyeInterp      = NULL;
@@ -204,9 +204,9 @@ void CCameraActionEvt::SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32
 	CVec from;
 
 	if (type == 1) {
-		_38 = 0x20012;
+		mCameraFlags = 0x20012;
 	} else if (type == 2) {
-		_38 = 0x20011;
+		mCameraFlags = 0x20011;
 	}
 	if (relative) {
 		dest = mAngle;
@@ -226,8 +226,8 @@ void CCameraActionEvt::SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32
 		to.y = dest.y;
 	}
 	if (mAxes.mFlags & 4) {
-		to.z = dest.z;
-		_38  = 0x40010;
+		to.z         = dest.z;
+		mCameraFlags = 0x40010;
 	}
 
 	from = mAngle;

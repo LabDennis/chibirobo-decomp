@@ -38,7 +38,7 @@ extern const XObjPEPresets gObjectPixelEnginePresets;
 
 static inline u32 ShadowSize(XObj* object)
 {
-	return object->mAttr._00 != NULL ? object->mAttr._00->_0C : 0;
+	return object->mAttr.mObjData != NULL ? object->mAttr.mObjData->mShadowSize : 0;
 }
 
 static inline void StepColor(f32& current, f32& target, f32& speed, u32 frames)
@@ -67,10 +67,10 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 		return;
 	object->mStatus.mFlags &= ~0x0010000000000000ULL;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
-		Vec center
-		    = object->mMoveScale * (object->_794 + ReadFloorCoordinates(object->mFloors[i].mCenterOffset, gObjectFloorOffsetTemplate));
+		Vec center = object->mMoveScale
+		           * (object->mToppleOffset + ReadFloorCoordinates(object->mFloors[i].mCenterOffset, gObjectFloorOffsetTemplate));
 		Vec extent = object->mMoveScale * ReadFloorCoordinates(object->mFloors[i].mExtent, lbl_80378148);
-		f32 yaw    = object->mMoveRotate.y + (f32)((f64)DEG2RAD * (f32)object->mFloors[i].mYawDegrees);
+		f32 yaw    = object->mMoveRotate.y + DEG2RAD * object->mFloors[i].mYawDegrees;
 		switch (object->mFloors[i].mId) {
 		case 0:
 		case 1: {
@@ -97,9 +97,9 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 		case 5: {
 			Vec corners[4];
 			for (s32 j = 0; j < 4; ++j)
-				corners[j] = object->_794 + ReadFloorCoordinates(object->mFloors[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
+				corners[j] = object->mToppleOffset + ReadFloorCoordinates(object->mFloors[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
 			Vec scale = object->mMoveScale * ReadFloorCoordinates(object->mFloors[i].mExtent, lbl_80378148);
-			f32 angle = object->mMoveRotate.y + (f32)((f64)DEG2RAD * (f32)object->mFloors[i].mYawDegrees);
+			f32 angle = object->mMoveRotate.y + DEG2RAD * object->mFloors[i].mYawDegrees;
 			Mtx translate, rotate, scaling, transform;
 			PSMTXTrans(translate, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
 			PSMTXScale(scaling, scale.x, scale.y, scale.z);
@@ -161,10 +161,10 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
 		Vec zero = { 0, 0, 0 };
 		CVec origin(zero);
-		Vec center     = object->mMoveScale * (object->_794 + ReadObjectFloorOffset(object, i));
+		Vec center     = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object, i));
 		Vec extent     = object->mMoveScale * ReadObjectFloorExtent(object, i);
 		f32 baseYaw    = object->mMoveRotate.y;
-		f32 floorAngle = (f32)((f64)DEG2RAD * (f32)object->mFloors[i].mYawDegrees);
+		f32 floorAngle = DEG2RAD * object->mFloors[i].mYawDegrees;
 		f32 yaw        = baseYaw + floorAngle;
 		switch (object->mFloors[i].mId) {
 		case 0:
@@ -219,9 +219,9 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 		case 5: {
 			Vec* corners = geometry.samples + 2;
 			for (int j = 0; j < 4; ++j)
-				corners[j] = object->_794 + ReadObjectFloorOffset(object, i + j);
+				corners[j] = object->mToppleOffset + ReadObjectFloorOffset(object, i + j);
 			Vec extent = object->mMoveScale * ReadObjectFloorExtent(object, i);
-			f32 angle  = object->mMoveRotate.y + (f32)((f64)DEG2RAD * (f32)object->mFloors[i].mYawDegrees);
+			f32 angle  = object->mMoveRotate.y + DEG2RAD * object->mFloors[i].mYawDegrees;
 
 			PSMTXTrans(geometry.polygonWorld, origin.x, origin.y, origin.z);
 			PSMTXScale(geometry.polygonScale, extent.x, extent.y, extent.z);
@@ -259,9 +259,9 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 	static Vec origin = { 0.0f, 0.0f, 0.0f };
 	f32 angle         = NAN;
 
-	Vec center = object->mMoveScale * (object->_794 + ReadObjectFloorOffset(floorRecord));
+	Vec center = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(floorRecord));
 	Vec extent = object->mMoveScale * ReadObjectFloorExtent(floorRecord);
-	f32 yaw    = (object->mMoveRotate.y + (f32)((f64)DEG2RAD * (f32)floorRecord.mYawDegrees));
+	f32 yaw    = (object->mMoveRotate.y + DEG2RAD * floorRecord.mYawDegrees);
 	switch (floorRecord.mId) {
 	case 0:
 	case 1: {
@@ -314,19 +314,17 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 		Mtx translate, rotate, scaling, transform;
 		Vec corners[4];
 		for (s32 j = 0; j < 4; ++j)
-			corners[j] = object->_794 + ReadObjectFloorOffset(object->mFloors[index - 3 + j]);
+			corners[j] = object->mToppleOffset + ReadObjectFloorOffset(object->mFloors[index - 3 + j]);
 		Vec scale = object->mMoveScale * ReadObjectFloorExtent(object->mFloors[index]);
 
-		f32 angleY = object->mMoveRotate.y + (f32)((f64)DEG2RAD * (f32)object->mFloors[index].mYawDegrees);
+		f32 angleY = object->mMoveRotate.y + DEG2RAD * object->mFloors[index].mYawDegrees;
 		PSMTXTrans(translate, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
 		PSMTXScale(scaling, scale.x, scale.y, scale.z);
 		PSMTXRotRad(rotate, 'y', angleY);
 		PSMTXConcat(translate, rotate, transform);
 		PSMTXConcat(transform, scaling, transform);
 		PSMTXMultVecArray(transform, corners, corners, 4);
-		// A degenerate polygon has no center from which to select a facing edge.
-		if (!IntersectLinesXZ(&corners[0], &corners[2], &corners[1], &corners[3], &middle, 1))
-			break;
+		IntersectLinesXZ(&corners[0], &corners[2], &corners[1], &corners[3], &middle, 1);
 		for (s32 i = 0; i < 4; ++i) {
 			Vec& a = corners[i];
 			Vec& b = corners[(i + 1) % 4];
@@ -363,7 +361,7 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 extern "C" void ClearActiveObjectFloors(XObj* object)
 {
 	if (object->mStatus.mFlags & 0x0200000000000000ULL) {
-		object->_250[1] = object->_250[0];
+		object->mFloorMasks[1] = object->mFloorMasks[0];
 		for (int i = 0; object->mFloors[i].mId != -1; i++) {
 			if (object->IsFloorOn(i)) {
 				object->ClearFloor(i);
@@ -408,7 +406,7 @@ static inline void StoreSweepContact(const Vec* from, const Vec* to, Vec* contac
  * @note Address: 0x8008ED50
  * @note Size: 0x1498
  */
-u32 XObj::vfFC(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 floorCursor, s32 flags)
+u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 floorCursor, s32 flags)
 {
 	s32* cursor = (s32*)floorCursor;
 	if (!(mStatus.mFlags & 0x0200000000000000ULL)) {
@@ -436,7 +434,7 @@ u32 XObj::vfFC(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push
 	for (; mFloors[i].mId != -1; ++i) {
 		u32 collision          = 0;
 		const XObjFloor& floor = mFloors[i];
-		Vec center             = mMoveScale * (_794 + ReadObjectFloorOffset(floor));
+		Vec center             = mMoveScale * (mToppleOffset + ReadObjectFloorOffset(floor));
 		Vec extent             = mMoveScale * ReadObjectFloorExtent(floor);
 		f32 objYaw             = mMoveRotate.y;
 		f32 angle              = DEG2RAD * floor.mYawDegrees;
@@ -522,7 +520,7 @@ u32 XObj::vfFC(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push
 		case 5: {
 			Vec quad[4];
 			for (s32 j = 0; j < 4; ++j)
-				quad[j] = _794 + ReadObjectFloorOffset(mFloors[i + j]);
+				quad[j] = mToppleOffset + ReadObjectFloorOffset(mFloors[i + j]);
 			Vec size       = mMoveScale * ReadObjectFloorExtent(floor);
 			f32 floorAngle = DEG2RAD * floor.mYawDegrees;
 			f32 rotY       = mMoveRotate.y + floorAngle;
@@ -559,7 +557,7 @@ u32 XObj::vfFC(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push
 		}
 		}
 		if (collision) {
-			_250[0] |= 1u << i;
+			mFloorMasks[0] |= 1u << i;
 			result |= collision;
 			mHitFloorIndex = i;
 			if (cursor) {
@@ -579,15 +577,16 @@ u32 XObj::vfFC(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push
 			XObjChr* player = gGame.GetPlayer();
 			if ((mStatus.mFlags & 0x20000000000ULL) && !(mStatus.mFlags & 0x8000000000000000ULL) && !(gGame.mStatus.mFlags & 0x400)
 			    && player->mAttachmentRequest < 0
-			    && (!(gGame.mStatus.mFlags & 0x40000000) || !IsPlayerStopped(player) || !player->_158A4 || (mStatus.mFlags & 0x8000))) {
+			    && (!(gGame.mStatus.mFlags & 0x40000000) || !IsPlayerStopped(player) || !player->mBatteryDrains
+			        || (mStatus.mFlags & 0x8000))) {
 				mStatus.mFlags |= 0x8000000000000000ULL;
-				StartOrQueueEventScript(&gGame.mEvt, (u8*)vf128(), this, -1, -1);
+				StartOrQueueEventScript(&gGame.mEvt, (u8*)GetEventScript(), this, -1, -1);
 			}
 		}
 		if (flags & 1) {
 			const CVec& delta = CVec(*contact) - *from;
 			PSVECMag(push);
-			result = vf100((s32)&delta, result);
+			result = OnPlayerContact((s32)&delta, result);
 		}
 	} else
 		mStatus.mFlags &= ~0x0100000000000000ULL;
@@ -609,31 +608,30 @@ extern "C" CVec ReflectVectorAboutNormal(const Vec* source, const Vec* normal)
  * @note Address: 0x80090254
  * @note Size: 0x50
  */
-extern "C" void ClearAnim__4XObjFv(XObj* object)
+void XObj::ClearAnim()
 {
-	object->CXObj::ClearAnim();
-	object->mStatus.mFlags &= ~0x0008000000000000ULL;
+	CXObj::ClearAnim();
+	mStatus.mFlags &= ~0x0008000000000000ULL;
 }
 
 /**
  * @note Address: 0x800902A4
  * @note Size: 0x1D8
  */
-extern "C" void SetAnim__4XObjFliPvPvPvffff(XObj* object, s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame,
-                                            f32 rate, f32 blend, f32 blendRate)
+void XObj::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate)
 {
-	if (object->mStatus.mFlags & 0x0020000000000000ULL)
+	if (mStatus.mFlags & 0x0020000000000000ULL)
 		blend = 1.0f;
-	if (object->GetAnimSet(id) != 0) {
+	if (GetAnimSet(id) != 0) {
 		s32 index = id % 1000;
-		jointAnim = jointAnim != NULL ? jointAnim : object->mAnim.GetAnimJoint(index);
-		matAnim   = matAnim != NULL ? matAnim : object->mAnim.GetMatAnimJoint(index);
-		shapeAnim = shapeAnim != NULL ? shapeAnim : object->mAnim.GetShapeAnimJoint(index);
-		object->CXObjIntp::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, ANIMATION_RATE(rate), blend, blendRate);
-		object->mStatus.mFlags |= 0x0008000000000000ULL;
+		jointAnim = jointAnim != NULL ? jointAnim : mAnim.GetAnimJoint(index);
+		matAnim   = matAnim != NULL ? matAnim : mAnim.GetMatAnimJoint(index);
+		shapeAnim = shapeAnim != NULL ? shapeAnim : mAnim.GetShapeAnimJoint(index);
+		CXObjIntp::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, ANIMATION_RATE(rate), blend, blendRate);
+		mStatus.mFlags |= 0x0008000000000000ULL;
 	} else {
-		object->CXObjIntp::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, ANIMATION_RATE(rate), blend, blendRate);
-		object->mStatus.mFlags &= ~0x0008000000000000ULL;
+		CXObjIntp::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, ANIMATION_RATE(rate), blend, blendRate);
+		mStatus.mFlags &= ~0x0008000000000000ULL;
 	}
 }
 
@@ -641,15 +639,15 @@ extern "C" void SetAnim__4XObjFliPvPvPvffff(XObj* object, s32 id, BOOL force, vo
  * @note Address: 0x8009047C
  * @note Size: 0xEC
  */
-extern "C" void vfC8__4XObjFv(XObj* object)
+void XObj::DrawScreenOverlay()
 {
-	if ((object->mStatus.mFlags & 0x800ULL) && (object->mStatus.mFlags & 0x10000ULL)) {
-		HSD_JObjSetFlags(object->mJObj, CLASSICAL_SCALE);
-		Vec scale = object->mMoveScale;
-		object->SetScale(scale.x, -scale.y, scale.z, 0);
-		if (object->mJObj != NULL)
-			HSD_JObjDispAll(object->mJObj, NULL, 7, 0);
-		object->SetScale(scale, 0);
+	if ((mStatus.mFlags & 0x800ULL) && (mStatus.mFlags & 0x10000ULL)) {
+		HSD_JObjSetFlags(mJObj, CLASSICAL_SCALE);
+		Vec scale = mMoveScale;
+		SetScale(scale.x, -scale.y, scale.z, 0);
+		if (mJObj != NULL)
+			HSD_JObjDispAll(mJObj, NULL, 7, 0);
+		SetScale(scale, 0);
 	}
 }
 
@@ -657,7 +655,7 @@ extern "C" void vfC8__4XObjFv(XObj* object)
  * @note Address: 0x80090568
  * @note Size: 0x4
  */
-extern "C" void vfC4__4XObjFv(XObj*)
+void XObj::DrawCollisionShapes()
 {
 }
 
@@ -742,19 +740,17 @@ void XObj::DrawWithView(Mtx view)
  * @note Address: 0x80090C84
  * @note Size: 0x250
  */
-extern "C" void vfA8__4XObjFUl(XObj* object, u32 frames)
+void XObj::StepColors(u32 frames)
 {
-	if (object->mJObj != NULL) {
+	if (mJObj != NULL) {
 		for (s32 i = 0; i < 2; ++i) {
-			XObjColorStep& color = object->mColorStep[i];
+			XObjColorStep& color = mColorStep[i];
 			StepColor(color.mValue.x, color.mTarget.x, color.mSpeed.x, frames);
 			StepColor(color.mValue.y, color.mTarget.y, color.mSpeed.y, frames);
 			StepColor(color.mValue.z, color.mTarget.z, color.mSpeed.z, frames);
 		}
-		object->mColors[1] = ((u32)object->mColorStep[0].mValue.x << 24) | ((u32)object->mColorStep[0].mValue.y << 16)
-		                   | ((u32)object->mColorStep[0].mValue.z << 8);
-		object->mColors[0] = ((u32)object->mColorStep[1].mValue.x << 24) | ((u32)object->mColorStep[1].mValue.y << 16)
-		                   | ((u32)object->mColorStep[1].mValue.z << 8);
+		mColors[1] = ((u32)mColorStep[0].mValue.x << 24) | ((u32)mColorStep[0].mValue.y << 16) | ((u32)mColorStep[0].mValue.z << 8);
+		mColors[0] = ((u32)mColorStep[1].mValue.x << 24) | ((u32)mColorStep[1].mValue.y << 16) | ((u32)mColorStep[1].mValue.z << 8);
 	}
 }
 
@@ -765,9 +761,9 @@ extern "C" void vfA8__4XObjFUl(XObj* object, u32 frames)
 void XObj::UpdateObject(u32 frames)
 {
 	if (mJObj != NULL) {
-		vfA8(frames);
+		StepColors(frames);
 		if (mStatus.mFlags & 0x1000000000000000ULL) {
-			if (mMoveTranslate.y + _794.y > mFloorHit.mHeight) {
+			if (mMoveTranslate.y + mToppleOffset.y > mFloorHit.mHeight) {
 				mMoveTranslate.mTarget.y = mFloorHit.mHeight;
 				f32 speed                = 0.15f + mMoveTranslate.mSpeed.y;
 				if (speed > 10.0f)
@@ -775,12 +771,12 @@ void XObj::UpdateObject(u32 frames)
 				mMoveTranslate.mSpeed.y = speed;
 			} else {
 				mMoveTranslate.mSpeed.y = 0.0f;
-				mMoveTranslate.x += _794.x;
-				mMoveTranslate.z += _794.z;
+				mMoveTranslate.x += mToppleOffset.x;
+				mMoveTranslate.z += mToppleOffset.z;
 				mMoveTranslate.y = mFloorHit.mHeight;
-				_794.x           = 0.0f;
-				_794.y           = 0.0f;
-				_794.z           = 0.0f;
+				mToppleOffset.x  = 0.0f;
+				mToppleOffset.y  = 0.0f;
+				mToppleOffset.z  = 0.0f;
 				SetRotationX(0.0f, 0);
 				SetRotationZ(0.0f, 0);
 				mStatus.mFlags &= ~0x1000000000000000ULL;
@@ -801,7 +797,7 @@ void XObj::UpdateObject(u32 frames)
 		UpdateAnim(frames);
 		HSD_JObjSetupMatrix(mJObj);
 	}
-	if ((mStatus.mFlags & 0x0010000000000000ULL) || mMoveTranslate.y != _264.y) {
+	if ((mStatus.mFlags & 0x0010000000000000ULL) || mMoveTranslate.y != mLastPos.y) {
 		UpdateObjectFloorHeights((XObj*)this);
 	}
 	if (mEvt.mData.mScript != NULL)
@@ -812,25 +808,25 @@ void XObj::UpdateObject(u32 frames)
  * @note Address: 0x800911C0
  * @note Size: 0xF4
  */
-extern "C" void Release__4XObjFv(XObj* object)
+void XObj::Release()
 {
-	CJArchive* archive = &object->mAnim;
+	CJArchive* archive = &mAnim;
 	archive->Release();
-	if (object->mEvt.mData.mScript != NULL)
-		ResetEventScriptState(&object->mEvt, TRUE, FALSE);
-	if (object->mStatus.mFlags & 1) {
-		object->CXObjIntp::Release();
-		UnkObjData* data = object->mAttr._00;
+	if (mEvt.mData.mScript != NULL)
+		ResetEventScriptState(&mEvt, TRUE, FALSE);
+	if (mStatus.mFlags & 1) {
+		CXObjIntp::Release();
+		UnkObjData* data = mAttr.mObjData;
 		if (data != NULL && data->mSource != NULL) {
 			XObjSource* source = data->mSource;
 			if (source->mArchive != NULL && source->mArchive->mRefCount <= 0)
 				source->mArchive = NULL;
 		}
 	}
-	object->mAttr._00 = NULL;
-	object->mAttr._04 = NULL;
-	object->mFloors   = NULL;
-	object->mStatus.mFlags &= ~0x10001ULL;
+	mAttr.mObjData   = NULL;
+	mAttr.mPlacement = NULL;
+	mFloors          = NULL;
+	mStatus.mFlags &= ~0x10001ULL;
 }
 
 /**
@@ -877,27 +873,27 @@ extern "C" void SetJointMaterialTranslucent(HSD_JObj* joint, f32** arguments, s3
  * @note Address: 0x8009146C
  * @note Size: 0x60
  */
-extern "C" void vfE8__4XObjFv(CXObj* object)
+void XObj::SetOpaque()
 {
 	void* arguments[1] = { NULL };
-	arguments[0]       = object;
-	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, SetJointMaterialOpaque, (f32**)arguments);
-	HSD_JObjModifyFlags(object->mJObj, 0x10000000, 0x70000000);
+	arguments[0]       = this;
+	if (mJObj != NULL)
+		HSD_JObjWalkTree(mJObj, SetJointMaterialOpaque, (f32**)arguments);
+	HSD_JObjModifyFlags(mJObj, 0x10000000, 0x70000000);
 }
 
 /**
  * @note Address: 0x800914CC
  * @note Size: 0x74
  */
-extern "C" void vfE4__4XObjFf(CXObj* object, f32 alpha)
+void XObj::SetTranslucent(f32 alpha)
 {
 	void* arguments[2] = { NULL, NULL };
-	arguments[0]       = object;
+	arguments[0]       = this;
 	arguments[1]       = &alpha;
-	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, SetJointMaterialTranslucent, (f32**)arguments);
-	HSD_JObjModifyFlags(object->mJObj, 0x20000000, 0x70000000);
+	if (mJObj != NULL)
+		HSD_JObjWalkTree(mJObj, SetJointMaterialTranslucent, (f32**)arguments);
+	HSD_JObjModifyFlags(mJObj, 0x20000000, 0x70000000);
 }
 
 /**
@@ -934,13 +930,13 @@ extern "C" void ScaleJointMaterialDiffuse(HSD_JObj* joint, f32** arguments, s32 
  * @note Address: 0x8009172C
  * @note Size: 0x58
  */
-extern "C" void vfE0__4XObjFf(CXObj* object, f32 factor)
+void XObj::EnableLighting(f32 factor)
 {
 	void* arguments[2] = { NULL, NULL };
-	arguments[0]       = object;
+	arguments[0]       = this;
 	arguments[1]       = &factor;
-	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, ScaleJointMaterialDiffuse, (f32**)arguments);
+	if (mJObj != NULL)
+		HSD_JObjWalkTree(mJObj, ScaleJointMaterialDiffuse, (f32**)arguments);
 }
 
 /**
@@ -967,16 +963,16 @@ extern "C" void SetJointMaterialDestAlpha(HSD_JObj* joint, f32** arguments, s32 
  * @note Address: 0x80091834
  * @note Size: 0x54
  */
-extern "C" void vfDC__4XObjFiUc(CXObj* object, BOOL enabled, u8 value)
+void XObj::SetDestinationAlpha(BOOL enabled, u8 value)
 {
 	void* arguments[2] = { NULL, NULL };
 	arguments[0]       = (void*)enabled;
 	arguments[1]       = (void*)value;
-	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, SetJointMaterialDestAlpha, (f32**)arguments);
+	if (mJObj != NULL)
+		HSD_JObjWalkTree(mJObj, SetJointMaterialDestAlpha, (f32**)arguments);
 }
 
-// joint walk callback for XObj::vfD8, the args are five on/off flags
+// joint walk callback for XObj::ApplyMaterialPresets, the args are five on/off flags
 /**
  * @note Address: 0x80091888
  * @note Size: 0x3BC

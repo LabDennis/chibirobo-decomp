@@ -104,7 +104,7 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	Stats()->SetBattery(save->mHeader.mBattery);
 	SetMoney(Stats(), save->mHeader.mMoney);
 	SetScrap(Stats(), save->mHeader.mScrap);
-	if (save->mHeader._34)
+	if (save->mHeader.mActive)
 		Stats()->_1C[0] = 1;
 	else
 		Stats()->_1C[0] = 0;
@@ -121,7 +121,7 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	memcpy(gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags, save->mDustFlags, sizeof(save->mDustFlags));
 	memcpy(&Player()->mAttachments, save->mPlayerRecord, sizeof(save->mPlayerRecord));
 	RequestSuit(Player(), save->mSuit);
-	Player()->mSuits.mSpecial = save->_2CB4;
-	Player()->_158A8          = save->_2CE8;
-	Player()->mItemTintWord   = save->_2CEC;
+	Player()->mSuits.mSpecial  = save->mSpecialSuit;
+	Player()->mSquirterContent = save->mSquirterLiquid;
+	Player()->mItemTintWord    = save->mItemTint;
 }

@@ -50,7 +50,7 @@ bool XObjActorToy::IsFree() const
 	if (!(mStatus.mFlags & 1)) {
 		return true;
 	}
-	return !_998.Check(0x2000);
+	return !mActorStatus.Check(0x2000);
 }
 
 /**
@@ -102,13 +102,13 @@ void XObjActorToy::OnPushDisplacement(const Vec& displacement)
 	case 0x156:
 		break;
 	case 0x157:
-		_2098.mFlags |= 2;
+		mKindFlags.mFlags |= 2;
 		for (s32 i = 0; i < 15; i++) {
 			XObjActorToy* toy = GetToy(i);
-			if (toy->GetKind() == 0x156 && (toy->_2098.mFlags & 1)) {
+			if (toy->GetKind() == 0x156 && (toy->mKindFlags.mFlags & 1)) {
 				toy->SetTranslateX(mMoveTranslate.x, 0);
 				toy->SetTranslateZ(mMoveTranslate.z, 0);
-				if (toy->_A4C >= 0 && toy->_A50 != NULL) {
+				if (toy->mAttachedId >= 0 && toy->mAttached != NULL) {
 					CJObj joint;
 					s32 path[4] = { 0, 2, 4, 0 };
 					Mtx hand;
@@ -116,13 +116,13 @@ void XObjActorToy::OnPushDisplacement(const Vec& displacement)
 					Mtx rot;
 					Mtx mtx;
 					joint.Attach(GetJointFromRoot(toy->mJObj, 4, path));
-					toy->_A50->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+					toy->mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 					PSMTXCopy(joint.GetMtx(), hand);
 					PSMTXRotRad(rot, 'z', 0.0f);
 					PSMTXConcat(hand, rot, mtx);
 					PSMTXTrans(trans, 0.0f, 2.0f, 2.0f);
 					PSMTXConcat(mtx, trans, mtx);
-					HSD_JObj* jobj = toy->_A50->mJObj;
+					HSD_JObj* jobj = toy->mAttached->mJObj;
 					MtxPtr m       = mtx;
 					HSD_JObjCopyMtx(jobj, m);
 					if (mStatus.mFlags & 0x10000) {

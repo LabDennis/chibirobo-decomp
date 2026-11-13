@@ -24,27 +24,27 @@ void XObjChr::ResetObjectState()
 {
 	ResetObjectState__4XObjFv(this);
 	SetPlayerEyeCameraJointsHidden(this, FALSE);
-	_988.Reset(0.0f, 0.0f, 0.0f);
-	_9BC[1] = _9BC[0] = _9BC[3] = _9BC[2] = 0.0f;
-	mHitObjectIndex = _9D0        = -1;
+	mMotion.Reset(0.0f, 0.0f, 0.0f);
+	mStick[1] = mStick[0] = mStick[3] = mStick[2] = 0.0f;
+	mHitObjectIndex = mActionObjectIndex = -1;
 	mFloorContacts[1].objectIndex = mFloorContacts[0].objectIndex = mFloorContacts[2].objectIndex = mFloorContacts[4].objectIndex = -1;
 	mLastContactFloorIndex                                                                                                        = -1;
 	mNearDistance                                                                                                                 = 2.0f;
-	_A10                                                                                                                          = -1;
+	mLetickerIndex                                                                                                                = -1;
 	_A14                                                                                                                          = 0;
 	mLiftPlugFlags &= ~0x80;
-	_A1C = _A20 = 0;
-	_A2C        = 0;
-	_A30        = 0.0f;
-	_A38 = _A34 = 0;
-	_A3C        = 0.0f;
-	_A40        = 1.0f;
+	mPressTimer = mAPressed = 0;
+	mIdleLoops              = 0;
+	mIdleTimer              = 0.0f;
+	mFlashCount = mFlashTimer = 0;
+	mHitStrength              = 0.0f;
+	mMoveSpeedScale           = 1.0f;
 	mHang.Init(this);
-	mHang._2C = FALSE;
+	mHang.mStickAway = FALSE;
 	mJump.Init(this);
 	mJump.mTargetStrength = mJump.mStrength = 0.0f;
 	mLadder.Init(this);
-	mLadder._2C = FALSE;
+	mLadder.mBPressed = FALSE;
 	mRope.Init(this);
 	mPush.Init(this);
 	mTumble.Init(this);
@@ -54,11 +54,11 @@ void XObjChr::ResetObjectState()
 	InitRadarAction(&mRadar, this);
 	mFrameTime.mLastFrame = mFrameTime.mFrame = -1.0f;
 	for (s32 i = 0; i < 4; ++i) {
-		_9500[i].mJObj      = NULL;
-		_9500[i].mAnimJoint = NULL;
-		_9500[i]._08        = NULL;
+		mIdleJoints[i].mJObj       = NULL;
+		mIdleJoints[i].mAnimJoint  = NULL;
+		mIdleJoints[i].mLastAdHead = NULL;
 	}
-	_9530                = 0;
+	mIdleJointCooldown   = 0;
 	mAttachmentJoint     = NULL;
 	mAttachmentJointAnim = NULL;
 	s32 joint[]          = { 0, 1, 0, 1, 2 };
@@ -75,15 +75,15 @@ void XObjChr::ResetObjectState()
 	mLook.mFade = mLook.mPhase = mLook.mPulse = 0.0f;
 	mLook.mObject                             = this;
 	mAttachmentRequest                        = -1;
-	_95D8 = _95DC = _95E4 = _95E0 = 0;
-	_9A90                         = 0.0f;
+	mAttachmentStep = mScriptAttach = mNextClimbType = mClimbType = 0;
+	mFallDistance                                                 = 0.0f;
 	mCameraTarget[2] = mCameraTarget[1] = mCameraTarget[0] = NAN;
 	mCameraTargetMarginSetting = mCameraTargetMargin = 1.0f;
-	_9AB0 = _9AAC = _9AA8 = NAN;
-	mBatteryWarningFrames = 0;
+	mHeldStickAngle = mMoveAngle = mHeldMoveAngle = NAN;
+	mBatteryWarningFrames                         = 0;
 	mBatteryWarningFade = mBatteryWarningAngle = 0.0f;
-	_9AC0                                      = 0;
-	_9AC4                                      = 0.0f;
+	mGaugeTarget                               = 0;
+	mGaugeTime                                 = 0.0f;
 	mPlug.ResetObjectState();
 	mCopterObj.ResetObjectState();
 	mPopperObj.ResetObjectState();
@@ -91,13 +91,13 @@ void XObjChr::ResetObjectState()
 	mOXObj.ResetObjectState();
 	for (s32 i = 0; i < 9; ++i)
 		mSuits.mObjects[i].ResetObjectState();
-	_12DF8 = NAN;
+	mWalkHeading = NAN;
 	ClearRingHighlights(mMenu.mAtc);
 	ClearRingHighlights(mMenu.mDrs);
 	mMenu.mFade = mMenu.mCursorY = mMenu.mTargetY = 0.0f;
 	mOXMenu.mStarted                              = FALSE;
 	mOXMenu.mFade                                 = 0.0f;
-	_146D8                                        = TRUE;
+	mInAir                                        = TRUE;
 	InitParticlePool(&mDust.mPtcl, mDust.mPtcls, sizeof(mDust.mPtcls[0]), ARRAY_SIZE(mDust.mPtcls));
 	for (s32 i = 0; i < 10; ++i) {
 		PointPtcl& p = gPointParticlePool[i];
@@ -106,7 +106,7 @@ void XObjChr::ResetObjectState()
 		gPointParticleSlots[i]            = NULL;
 	}
 	gPlayerSuitChangeEffect.Reset();
-	_158B8 = _158BC = _158C0 = 0;
+	mIdleMode = mIdleModeTimer = mGroundType = 0;
 	_158C4.Set(0.0f, 0.0f, 0.0f);
 	mHeadOffset      = 5.0f;
 	mHeadOffsetReady = FALSE;

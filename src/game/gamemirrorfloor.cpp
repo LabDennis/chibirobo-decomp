@@ -51,7 +51,7 @@ extern "C" void RenderFloorReflection(CGame* game)
 			for (s32 i = 0; i < game->mDrawLists[1].mCount; i++) {
 				XObj* obj = game->mDrawLists[1].mObjects[i];
 				if (!(obj->mStatus.mFlags & 0x200000) && (obj->mStatus.mFlags & 0x20000000)) {
-					obj->vf120(1);
+					obj->SetCullMode(1);
 					obj->DrawReflection(view);
 				}
 			}
@@ -64,7 +64,7 @@ extern "C" void RenderFloorReflection(CGame* game)
 			for (s32 i = 0; i < game->mDrawLists[1].mCount; i++) {
 				XObj* obj = game->mDrawLists[1].mObjects[i];
 				if (!(obj->mStatus.mFlags & 0x200000) && (obj->mStatus.mFlags & 0x20000000)) {
-					obj->vf120(2);
+					obj->SetCullMode(2);
 				}
 			}
 		}

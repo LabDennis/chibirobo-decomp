@@ -15,14 +15,9 @@ extern "C" {
 void GXProject(f32 x, f32 y, f32 z, const Mtx view, const f32* projection, const f32* viewport, f32* screenX, f32* screenY, f32* screenZ);
 }
 
-static inline const void* ObjectScript(XObj* object)
-{
-	return object->vf128();
-}
-
 static inline void TriggerObjectEvent(XObj* object, u32 first, u32 second)
 {
-	const void* script = ObjectScript(object);
+	const void* script = object->GetEventScript();
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
 		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, object, first, second);
 	}
@@ -33,10 +28,10 @@ static inline void TriggerObjectEvent(XObj* object, u32 first, u32 second)
  * @note Size: 0x2C
  */
 // CJAnim::Release
-extern "C" void Release__6CJAnimFv(CJAnim* anim)
+void CJAnim::Release()
 {
-	if (anim->mArchive != NULL)
-		anim->CJArchive::Release();
+	if (mArchive != NULL)
+		CJArchive::Release();
 }
 
 /**
@@ -74,22 +69,22 @@ extern "C" BOOL LoadJointAnimationAsync(CJAnim* anim, const char* path)
  * @note Size: 0x34
  */
 // CJAnim::Clear
-extern "C" void Clear__6CJAnimFv(CJAnim* anim)
+void CJAnim::Clear()
 {
-	anim->CJArchive::Clear();
-	anim->mLoading = 0;
+	CJArchive::Clear();
+	mLoading = 0;
 }
 
 /**
  * @note Address: 0x8008A530
  * @note Size: 0xD4
  */
-BOOL XObj::vf140(const Vec* position, s32 value)
+BOOL XObj::OnItemUsed(const Vec* position, s32 value)
 {
 	if (mStatus.mFlags & 0x0000040000000000ULL) {
 		if (value == 56)
 			return FALSE;
-		const void* script = ObjectScript(this);
+		const void* script = this->GetEventScript();
 		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
 			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, (s16)value, -1);
 		}
@@ -102,10 +97,10 @@ BOOL XObj::vf140(const Vec* position, s32 value)
  * @note Address: 0x8008A604
  * @note Size: 0xBC
  */
-void XObj::vf13C(const Vec* contact, s32 value, s32 tint)
+void XObj::OnSquirterHit(const Vec* contact, s32 value, s32 tint)
 {
 	if (mStatus.mFlags & 0x0000080000000000ULL) {
-		const void* script = ObjectScript(this);
+		const void* script = this->GetEventScript();
 		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
 			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, -1, (s16)((u32)value + 3000));
 		}
@@ -131,7 +126,7 @@ void XObj::OnHitFromPosition(const Vec& position, f32 strength)
  * @note Address: 0x8008A818
  * @note Size: 0x8
  */
-extern "C" BOOL vf134__4XObjFf(void* object, f32 amount)
+BOOL XObj::ReceivePlugPower(f32 amount)
 {
 	return TRUE;
 }
@@ -140,26 +135,26 @@ extern "C" BOOL vf134__4XObjFf(void* object, f32 amount)
  * @note Address: 0x8008A820
  * @note Size: 0x124
  */
-extern "C" void vf12C__4XObjFlUcUcUcf(XObj* object, s32 index, u8 red, u8 green, u8 blue, f32 time)
+void XObj::SetColor(s32 index, u8 red, u8 green, u8 blue, f32 time)
 {
-	object->mColorStep[index].mTarget.x = red;
-	object->mColorStep[index].mTarget.y = green;
-	object->mColorStep[index].mTarget.z = blue;
+	mColorStep[index].mTarget.x = red;
+	mColorStep[index].mTarget.y = green;
+	mColorStep[index].mTarget.z = blue;
 	if (time == 0.0f) {
-		object->mColorStep[index].mValue.x = red;
-		object->mColorStep[index].mValue.y = green;
-		object->mColorStep[index].mValue.z = blue;
-		object->mColorStep[index].mSpeed.x = object->mColorStep[index].mSpeed.y = object->mColorStep[index].mSpeed.z = 0.0f;
+		mColorStep[index].mValue.x = red;
+		mColorStep[index].mValue.y = green;
+		mColorStep[index].mValue.z = blue;
+		mColorStep[index].mSpeed.x = mColorStep[index].mSpeed.y = mColorStep[index].mSpeed.z = 0.0f;
 	} else {
 #if defined(VERSION_PAL)
 		// retail reads the refresh rate for each one
-		object->mColorStep[index].mSpeed.x = ((f32)red - object->mColorStep[index].mValue.x) / (gVideoFramesPerSecond * time);
-		object->mColorStep[index].mSpeed.y = ((f32)green - object->mColorStep[index].mValue.y) / (gVideoFramesPerSecond * time);
-		object->mColorStep[index].mSpeed.z = ((f32)blue - object->mColorStep[index].mValue.z) / (gVideoFramesPerSecond * time);
+		mColorStep[index].mSpeed.x = ((f32)red - mColorStep[index].mValue.x) / (gVideoFramesPerSecond * time);
+		mColorStep[index].mSpeed.y = ((f32)green - mColorStep[index].mValue.y) / (gVideoFramesPerSecond * time);
+		mColorStep[index].mSpeed.z = ((f32)blue - mColorStep[index].mValue.z) / (gVideoFramesPerSecond * time);
 #else
-		object->mColorStep[index].mSpeed.x = ((f32)red - object->mColorStep[index].mValue.x) / (60.0f * time);
-		object->mColorStep[index].mSpeed.y = ((f32)green - object->mColorStep[index].mValue.y) / (60.0f * time);
-		object->mColorStep[index].mSpeed.z = ((f32)blue - object->mColorStep[index].mValue.z) / (60.0f * time);
+		mColorStep[index].mSpeed.x = ((f32)red - mColorStep[index].mValue.x) / (60.0f * time);
+		mColorStep[index].mSpeed.y = ((f32)green - mColorStep[index].mValue.y) / (60.0f * time);
+		mColorStep[index].mSpeed.z = ((f32)blue - mColorStep[index].mValue.z) / (60.0f * time);
 #endif
 	}
 }
@@ -259,32 +254,32 @@ extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 
  * @note Address: 0x8008B0D8
  * @note Size: 0x14C
  */
-extern "C" void vf120__4XObjFl(CJObj* object, s32 mode)
+void XObj::SetCullMode(s32 mode)
 {
 	switch (mode) {
 	case 0:
-		if (object->mJObj != NULL)
-			HSD_JObjWalkTree(object->mJObj, JObjClearPObjFlags, (f32**)0x4000);
-		if (object->mJObj != NULL)
-			HSD_JObjWalkTree(object->mJObj, JObjClearPObjFlags, (f32**)0x8000);
+		if (mJObj != NULL)
+			HSD_JObjWalkTree(mJObj, JObjClearPObjFlags, (f32**)0x4000);
+		if (mJObj != NULL)
+			HSD_JObjWalkTree(mJObj, JObjClearPObjFlags, (f32**)0x8000);
 		break;
 	case 2:
-		if (object->mJObj != NULL)
-			HSD_JObjWalkTree(object->mJObj, JObjClearPObjFlags, (f32**)0x4000);
-		if (object->mJObj != NULL)
-			HSD_JObjWalkTree(object->mJObj, JObjSetPObjFlags, (f32**)0x8000);
+		if (mJObj != NULL)
+			HSD_JObjWalkTree(mJObj, JObjClearPObjFlags, (f32**)0x4000);
+		if (mJObj != NULL)
+			HSD_JObjWalkTree(mJObj, JObjSetPObjFlags, (f32**)0x8000);
 		break;
 	case 1:
-		if (object->mJObj != NULL)
-			HSD_JObjWalkTree(object->mJObj, JObjSetPObjFlags, (f32**)0x4000);
-		if (object->mJObj != NULL)
-			HSD_JObjWalkTree(object->mJObj, JObjClearPObjFlags, (f32**)0x8000);
+		if (mJObj != NULL)
+			HSD_JObjWalkTree(mJObj, JObjSetPObjFlags, (f32**)0x4000);
+		if (mJObj != NULL)
+			HSD_JObjWalkTree(mJObj, JObjClearPObjFlags, (f32**)0x8000);
 		break;
 	case 3:
-		if (object->mJObj != NULL)
-			HSD_JObjWalkTree(object->mJObj, JObjSetPObjFlags, (f32**)0x4000);
-		if (object->mJObj != NULL)
-			HSD_JObjWalkTree(object->mJObj, JObjSetPObjFlags, (f32**)0x8000);
+		if (mJObj != NULL)
+			HSD_JObjWalkTree(mJObj, JObjSetPObjFlags, (f32**)0x4000);
+		if (mJObj != NULL)
+			HSD_JObjWalkTree(mJObj, JObjSetPObjFlags, (f32**)0x8000);
 		break;
 	}
 }
@@ -293,7 +288,7 @@ extern "C" void vf120__4XObjFl(CJObj* object, s32 mode)
  * @note Address: 0x8008B224
  * @note Size: 0x114
  */
-extern "C" BOOL vf11C__4XObjFP7CCamera(const XObj* object, CCamera* camera)
+extern "C" BOOL IsOutsideCameraDepth__4XObjFP7CCamera(const XObj* object, CCamera* camera)
 {
 	HSD_JObj* joint = object->mJObj;
 	if (joint != NULL) {
@@ -312,8 +307,7 @@ extern "C" BOOL vf11C__4XObjFP7CCamera(const XObj* object, CCamera* camera)
  * @note Address: 0x8008B338
  * @note Size: 0x29C
  */
-extern "C" BOOL ProjectVisibleBounds__4XObjFPfPfP7CCameraff(CXObj* object, f32* width, f32* height, CCamera* camera, f32 radius,
-                                                            f32 objectHeight)
+BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight)
 {
 	camera          = camera != NULL ? camera : &gGame.mMotionControlCamera.mCamera;
 	f32 heading     = camera->mAngle.y;
@@ -324,22 +318,22 @@ extern "C" BOOL ProjectVisibleBounds__4XObjFPfPfP7CCameraff(CXObj* object, f32* 
 	f32 angle  = (PI + HALF_PI) + heading;
 	f32 cosine = (f32)cos(angle);
 	f32 sine   = (f32)sin(angle);
-	GXProject(radius * sine + object->mMoveTranslate.x, object->mMoveTranslate.y, radius * cosine + object->mMoveTranslate.z, view,
-	          projection, viewport, &left, &unusedY, &depth);
+	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, view, projection, viewport, &left,
+	          &unusedY, &depth);
 	angle  = HALF_PI + heading;
 	cosine = (f32)cos(angle);
 	sine   = (f32)sin(angle);
-	GXProject(radius * sine + object->mMoveTranslate.x, object->mMoveTranslate.y, radius * cosine + object->mMoveTranslate.z, view,
-	          projection, viewport, &right, &unusedY, &depth);
+	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, view, projection, viewport, &right,
+	          &unusedY, &depth);
 	angle  = PI + heading;
 	cosine = (f32)cos(angle);
 	sine   = (f32)sin(angle);
-	GXProject(radius * sine + object->mMoveTranslate.x, object->mMoveTranslate.y, radius * cosine + object->mMoveTranslate.z, view,
-	          projection, viewport, &unusedX, &bottom, &depth);
+	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y, radius * cosine + mMoveTranslate.z, view, projection, viewport, &unusedX,
+	          &bottom, &depth);
 	cosine = (f32)cos(heading);
 	sine   = (f32)sin(heading);
-	GXProject(radius * sine + object->mMoveTranslate.x, object->mMoveTranslate.y + objectHeight, radius * cosine + object->mMoveTranslate.z,
-	          view, projection, viewport, &unusedX, &top, &depth);
+	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y + objectHeight, radius * cosine + mMoveTranslate.z, view, projection,
+	          viewport, &unusedX, &top, &depth);
 #if defined(VERSION_PAL)
 	f32 scale = 448.0f / (&gGame.mGs.mScreen)->xfbHeight;
 	bottom *= scale;
@@ -422,7 +416,7 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 
 	f32 rotation = mMoveRotate.y;
 	for (s32 i = 0; floors[i].mId != -1; ++i) {
-		CVec center  = mMoveScale * (_794 + ReadFloorCoordinates(floors[i].mCenterOffset, gObjectFloorOffsetTemplate));
+		CVec center  = mMoveScale * (mToppleOffset + ReadFloorCoordinates(floors[i].mCenterOffset, gObjectFloorOffsetTemplate));
 		extent       = mMoveScale * ReadFloorCoordinates(floors[i].mExtent, lbl_80378148);
 		f32 localYaw = FloorRotationRadians(floors[i].mYawDegrees);
 		f32 yaw      = rotation + localYaw;
@@ -482,7 +476,7 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 			XObjFloor* polygon = mFloors;
 			Vec corners[4];
 			for (s32 j = 0; j < 4; ++j)
-				corners[j] = _794 + ReadFloorCoordinates(polygon[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
+				corners[j] = mToppleOffset + ReadFloorCoordinates(polygon[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
 			Vec size  = mMoveScale * ReadFloorCoordinates(polygon[i].mExtent, lbl_80378148);
 			f32 angle = mMoveRotate.y + FloorRotationRadians(polygon[i].mYawDegrees);
 			Mtx translate, rotate, scale, transform;
@@ -533,7 +527,7 @@ extern "C" CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offs
 	Vec none               = { 0.0f, 0.0f, 0.0f };
 	Vec displacement       = offset ? Vec(*offset) : Vec(none);
 	Vec position           = object->mMoveTranslate + displacement;
-	Vec center             = object->mMoveScale * (object->_794 + ReadObjectFloorOffset(object->mFloors[index]));
+	Vec center             = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object->mFloors[index]));
 	Vec extent             = object->mMoveScale * ReadObjectFloorExtent(object->mFloors[index]);
 	const XObjFloor& floor = object->mFloors[index];
 	f32 yaw                = object->mMoveRotate.y + FloorRotationRadians(floor.mYawDegrees);

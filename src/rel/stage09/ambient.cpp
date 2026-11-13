@@ -24,14 +24,14 @@ void StopGameSfx(void* p, s32 id);
 void DrawAnas(void);
 void UpdateAnas(s32 dt);
 void InitAnas(void);
-s32 CmdAttachAnaToRobo(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetAnaRotY(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetAnaJObj(s32 cmd, s32 argc, s32* argv);
-s32 CmdPlantTane(s32 cmd, s32 argc, s32* argv);
-s32 CmdFindNearestAna(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetTutiAna(s32 cmd, s32 argc, s32* argv);
-s32 CmdAddAna(s32 cmd, s32 argc, s32* argv);
-s32 CmdDropHeldObj(s32 cmd, s32 argc, s32* argv);
+s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args);
+s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args);
+s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args);
+s32 CmdPlantTane(s32 cmd, s32 count, s32* args);
+s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args);
+s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args);
+s32 CmdAddAna(s32 cmd, s32 count, s32* args);
+s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args);
 }
 
 class AmbientSeq;
@@ -54,11 +54,11 @@ public:
 };
 
 struct AmbientPlayer {
-	u8 _00;              // _00
+	u8 mPaused;          // _00, nonzero stops the ambient sequences and bird calls
 	AmbientSeq seqs[10]; // _04
-	s32 _7C;             // _7C
-	s32* _80;            // _80
-	s32 _84;             // _84
+	s32 mBirdTimer;      // _7C, frames until the next random bird call, reset to 600-1199
+	s32* mBirdSounds;    // _80, table of bird sfx ids one is picked from at random, NULL for none
+	s32 mBirdSoundCount; // _84, number of ids in mBirdSounds
 
 	void UpdateSeqs(s32 dt)
 	{
@@ -77,9 +77,9 @@ struct AmbientPlayer {
 		for (i = 0; i < 10; i++) {
 			seqs[i].Clear();
 		}
-		_00 = 0;
-		_80 = NULL;
-		_84 = 0;
+		mPaused         = 0;
+		mBirdSounds     = NULL;
+		mBirdSoundCount = 0;
 	}
 
 	void Start(s32* data)
@@ -119,7 +119,7 @@ static s32 ambientNightCricket[] = { 5, 100, 500, 1, 0x150001, 5, 500, 1500, 4, 
 static s32 ambientNatureBirds1[] = { 0x130003, 0x130004, 0x130005, 0x130006, 0x130007 };
 static s32 ambientNatureBirds2[] = { 0x140003, 0x140004, 0x140005, 0x140006, 0x140007 };
 
-s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv);
+s32 CmdSetAmbientSound(s32 cmd, s32 count, s32* args);
 void DrawStage(s32 dt);
 void UpdateStage(s32 dt);
 void InitStage(s32 dt);
@@ -127,7 +127,7 @@ void AmbientSeq_Update(AmbientSeq* seq, s32 dt);
 }
 
 typedef void (*RelSlotFunc)(s32 arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, s32 argc, s32* argv);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage, DrawStage };
@@ -143,23 +143,23 @@ static AmbientPlayer ambient;
  * @note Address: stage09 .text 0x0
  * @note Size: 0x730
  */
-extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 count, s32* args)
 {
-	switch (argv[0]) {
+	switch (args[0]) {
 	case 0:
-		if (argc >= 2) {
-			if (argv[1] != 0) {
+		if (count >= 2) {
+			if (args[1] != 0) {
 				void* sound;
-				ambient._00 = 1;
-				sound       = SOUND();
+				ambient.mPaused = 1;
+				sound           = SOUND();
 				if (IsGameSoundPlaying(sound, 0x140001) != 0) {
 					StopGameSfx(sound, 0x140001);
 				}
 			} else {
-				ambient._00 = 0;
+				ambient.mPaused = 0;
 			}
 		} else {
-			ambient._00 = 1;
+			ambient.mPaused = 1;
 		}
 		break;
 	case 1:
@@ -170,9 +170,9 @@ extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
 		ambient.Start(ambientTrafficCarLr);
 		ambient.Start(ambientTrafficCarRl);
 		ambient.Start(ambientTrafficDump);
-		ambient._7C = HSD_Randi(600) + 600;
-		ambient._80 = ambientNatureBirds1;
-		ambient._84 = 5;
+		ambient.mBirdTimer      = HSD_Randi(600) + 600;
+		ambient.mBirdSounds     = ambientNatureBirds1;
+		ambient.mBirdSoundCount = 5;
 		break;
 	case 2:
 		RegisterGameSoundName(SOUND(), "sfx_uraniwa_ambient1.ssm");
@@ -182,9 +182,9 @@ extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
 		ambient.Start(ambientTrafficCarLr);
 		ambient.Start(ambientTrafficCarRl);
 		ambient.Start(ambientTrafficDump);
-		ambient._7C = HSD_Randi(600) + 600;
-		ambient._80 = ambientNatureBirds1;
-		ambient._84 = 5;
+		ambient.mBirdTimer      = HSD_Randi(600) + 600;
+		ambient.mBirdSounds     = ambientNatureBirds1;
+		ambient.mBirdSoundCount = 5;
 		break;
 	case 3:
 		RegisterGameSoundName(SOUND(), "sfx_uraniwa_ambient2.ssm");
@@ -192,9 +192,9 @@ extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
 		ambient.Start(ambientTrafficCarLr);
 		ambient.Start(ambientTrafficCarRl);
 		ambient.Start(ambientTrafficDump);
-		ambient._7C = HSD_Randi(600) + 600;
-		ambient._80 = ambientNatureBirds2;
-		ambient._84 = 5;
+		ambient.mBirdTimer      = HSD_Randi(600) + 600;
+		ambient.mBirdSounds     = ambientNatureBirds2;
+		ambient.mBirdSoundCount = 5;
 		break;
 	case 4:
 		RegisterGameSoundName(SOUND(), "sfx_uraniwa_ambient3.ssm");
@@ -777,13 +777,13 @@ extern "C" void UpdateStage(s32 dt)
 	if (IsGameSoundPlaying(sound, 0x60005) != 0) {
 		SetGameSfxVolume(sound, 0x60005, GetSoundVolumeAtPosition(sound, &pos, 4), 0);
 	}
-	if (!ambient._00) {
+	if (!ambient.mPaused) {
 		ambient.UpdateSeqs(dt);
-		if (ambient._80 != NULL) {
-			ambient._7C -= dt;
-			if (ambient._7C <= 0) {
-				PlayGameSound(sound, ambient._80[HSD_Randi(ambient._84)], 0xFF);
-				ambient._7C = HSD_Randi(600) + 600;
+		if (ambient.mBirdSounds != NULL) {
+			ambient.mBirdTimer -= dt;
+			if (ambient.mBirdTimer <= 0) {
+				PlayGameSound(sound, ambient.mBirdSounds[HSD_Randi(ambient.mBirdSoundCount)], 0xFF);
+				ambient.mBirdTimer = HSD_Randi(600) + 600;
 			}
 		}
 	}

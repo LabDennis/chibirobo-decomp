@@ -9,8 +9,8 @@ class XObjSound : public XObj {
 public:
 	// _00-_980 = XObj
 	AnimSfx mSfx;           // _980
-	u32 _990;               // _990
-	u32 _994;               // _994
+	u32 _990;               // _990, written 0 in ResetObjectState, never read
+	u32 _994;               // _994, written 0 in ResetObjectState, never read
 	u8 _998[0x9A0 - 0x998]; // _998
 
 	XObjSound();

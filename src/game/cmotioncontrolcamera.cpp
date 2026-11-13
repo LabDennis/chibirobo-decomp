@@ -160,7 +160,7 @@ void CMotionControlCamera::Update(u32 step)
 				free = true;
 			}
 		}
-		if (free && (PLAYER->_980.mFlags & 0x20000000) && !(gGame.mStatus.mFlags & 0x80)) {
+		if (free && (PLAYER->mPlayerStatus.mFlags & 0x20000000) && !(gGame.mStatus.mFlags & 0x80)) {
 			if (!(gGame.mStatus.mFlags & 0xC00) && PLAYER->mAttachmentRequest < 0 && PLAYER->mSuits.mChangeStep == 0
 			    && (PLAYER->mLift.mState == 0 || IsCarryingMug(&PLAYER->mLift) == 0)) {
 				if (pad.mPad->mTrigger & 0x200) {
@@ -187,7 +187,7 @@ void CMotionControlCamera::Update(u32 step)
 			EndEye();
 		}
 		if (PLAYER->mHang.mState != 5 && PLAYER->mRope.mState != 5 && PLAYER->mLadder.mState != 5 && PLAYER->mPush.mState != 2) {
-			PLAYER->_9AA8 = PLAYER->_9AAC;
+			PLAYER->mHeldMoveAngle = PLAYER->mMoveAngle;
 		}
 	}
 
@@ -1557,7 +1557,7 @@ void CMotionControlCamera::Interpolate(u32 step)
 void CMotionControlCamera::Draw()
 {
 	if (mAction != NULL) {
-		mAction->vf20();
+		mAction->Draw();
 	}
 }
 
@@ -2027,7 +2027,7 @@ BOOL CMotionControlCamera::SetMemento(const CCameraMemento* memento)
  */
 extern "C" f32 GetAreaCameraFovRatio(CMotionControlCamera* camera)
 {
-	f32 zoom = ((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->vf68();
+	f32 zoom = ((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->GetBaseFov();
 	if (zoom) {
 		return camera->mCamera.mFov / zoom;
 	}
@@ -2070,7 +2070,7 @@ extern "C" f32 GetAreaCameraFovRatio(CMotionControlCamera* camera)
  */
 extern "C" void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode)
 {
-	((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->vf70(mode);
+	((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->SetZoomLevel(mode);
 }
 
 /**

@@ -652,6 +652,7 @@ static void setup_spec_lightobj(HSD_LObj* lobj, Mtx mtx, s32 spec_id)
  * @note Address: 0x801BD8F8
  * @note Size: 0xBBC
  */
+// NONMATCHING: retail keeps &active_lights from the top in r26 for the last two loops; here it is recomputed
 void HSD_LObjSetupInit(HSD_CObj* cobj)
 {
 	MtxPtr vmtx;

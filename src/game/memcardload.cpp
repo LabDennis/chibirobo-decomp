@@ -16,8 +16,10 @@ static inline BOOL ReadFailed(Memcard* card)
 extern "C" BOOL ReadValidatedSaveIntoCardBuffer(Memcard* card)
 {
 	card->mState     = 12;
+	s32 offset       = 0;
+	s32 copy         = 0;
 	SaveHeader* save = &card->mFile.mData.mHeader;
-	for (s32 copy = 0, offset = 0; copy < 2; ++copy, offset += sizeof(SaveFile)) {
+	for (; copy < 2; ++copy, offset += sizeof(SaveFile)) {
 		card->mCard.Read(card->mBuffer, sizeof(SaveFile), offset);
 		card->LogResult();
 		if (card->mCard.mResult != CARD_RESULT_READY)

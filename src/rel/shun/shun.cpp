@@ -18,18 +18,18 @@ extern "C" void SetJunkUnkoFlag(u8 on);
 extern "C" void SetFafaPartVisibility(s32 mode);
 
 struct OnOffWork {
-	s32 _00;      // _00
-	u8 _04[0x4];  // _04
-	s32 _08;      // _08
-	u8 _0C[0x2C]; // _0C
-	CVec _38[3];  // _38
-	s32 _68;      // _68
-	u8 _6C[0xC];  // _6C
-	s32 _78;      // _78
-	s32 _7C;      // _7C
-	u8 _80[0x4];  // _80
-	s32 _84;      // _84
-	CStatus _88;  // _88
+	s32 _00;         // _00
+	u8 _04[0x4];     // _04
+	s32 _08;         // _08
+	u8 _0C[0x2C];    // _0C
+	CVec _38[3];     // _38
+	s32 _68;         // _68
+	u8 _6C[0xC];     // _6C
+	s32 _78;         // _78
+	s32 _7C;         // _7C
+	u8 _80[0x4];     // _80
+	s32 _84;         // _84
+	CStatus mStatus; // _88
 };
 
 static SavedObjFlagList savedObjFlags;
@@ -199,14 +199,14 @@ extern "C" s32 CmdSetFafaPartVisibility(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdCheckOnOffFlag(s32 cmd, s32 count, s32* args)
 {
-	return onOffWork._88.Check(1);
+	return onOffWork.mStatus.Check(1);
 }
 
 static inline void StartOnOff(s32 mode)
 {
-	XObjChr* player     = gGame.GetPlayer();
-	player->_980.mFlags = 0x40000000;
-	player->mPad.mReset = FALSE;
+	XObjChr* player              = gGame.GetPlayer();
+	player->mPlayerStatus.mFlags = 0x40000000;
+	player->mPad.mReset          = FALSE;
 	player->SetAnim(0x3E, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f);
 	onOffWork._68 = 0;
 	onOffWork._84 = mode;
@@ -248,11 +248,11 @@ extern "C" s32 CmdStartOnOff0(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdResetOnOff(s32 cmd, s32 count, s32* args)
 {
-	onOffWork._00        = (FRAMES_PER_SECOND * 60) / 2; // half a minute
-	onOffWork._08        = 0;
-	onOffWork._78        = 0;
-	onOffWork._7C        = 0;
-	onOffWork._88.mFlags = 0;
+	onOffWork._00            = (FRAMES_PER_SECOND * 60) / 2; // half a minute
+	onOffWork._08            = 0;
+	onOffWork._78            = 0;
+	onOffWork._7C            = 0;
+	onOffWork.mStatus.mFlags = 0;
 	return 0;
 }
 

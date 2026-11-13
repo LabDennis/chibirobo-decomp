@@ -8,12 +8,12 @@
 void XObj::InitializeObject(u32 id)
 {
 	CXObj::Init(id);
-	mStatus.mFlags = 0;
-	mCoord._00     = NULL;
-	mAttr._00      = NULL;
-	mAttr._04      = NULL;
-	mFloors        = NULL;
-	mPoolIndex     = 0;
+	mStatus.mFlags    = 0;
+	mCoord.mPlacement = NULL;
+	mAttr.mObjData    = NULL;
+	mAttr.mPlacement  = NULL;
+	mFloors           = NULL;
+	mPoolIndex        = 0;
 	ResetObjectState();
 	InitializeEventScriptContext(&mEvt, gGame.GetMsg(1), this);
 	mAnmQueue.Clear();

@@ -38,7 +38,7 @@ void FbSubwin::Draw()
 
 	f32 amount = mAmount;
 	f32 fade   = sin(0.5f * (3.1415927f * amount));
-	if (fpclassify(_13C) == FP_NAN || fpclassify(_140) == FP_NAN) {
+	if (fpclassify(mRectWidth) == FP_NAN || fpclassify(mRectHeight) == FP_NAN) {
 		CTexObj frame = WindowFrameTexture();
 		f32 w         = fade * GXGetTexObjWidth(&frame);
 		f32 h         = fade * GXGetTexObjHeight(&frame);
@@ -54,8 +54,8 @@ void FbSubwin::Draw()
 		DrawQuad(frame, 0xc8c8c800 | (u32)(255 * amount), 160, 80, 1.1f * w, 1.1f * h);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	} else {
-		f32 w = _13C * fade, h = _140 * fade, corner = 24 * fade;
-		f32 x = _134, y = _138;
+		f32 w = mRectWidth * fade, h = mRectHeight * fade, corner = 24 * fade;
+		f32 x = mRectX, y = mRectY;
 		Vec pos[10] = { (Vec) { x, y, 0 },
 			            (Vec) { (fade + (x - w * .5f)), corner + (fade + (y - h * .5f)), 0 },
 			            (Vec) { corner + (fade + (x - w * .5f)), (fade + (y - h * .5f)), 0 },

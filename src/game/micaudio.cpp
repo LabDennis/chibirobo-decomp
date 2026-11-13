@@ -9,9 +9,6 @@ void M2SAdvanceBuffer(s32 count);
 void* memset(void* dst, int val, u32 size);
 }
 
-extern "C" s32 sMicSamplePhaseSteps[3];
-extern "C" s32 sMicBufferThresholds[3];
-
 /**
  * @note Address: 0x8000A560
  * @note Size: 0x118

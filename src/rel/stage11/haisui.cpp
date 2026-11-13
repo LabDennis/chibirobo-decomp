@@ -8,10 +8,10 @@ extern "C" s32 CmdSetCameraScroll(s32 cmd, s32 count, s32* values);
 extern "C" void InitStage(void* arg);
 
 struct CCameraActionScroll {
-	u8 _00[0x44]; // _00
-	f32 _44;      // _44
-	f32 _48;      // _48
-	f32 _4C;      // _4C
+	u8 _00[0x44];      // _00
+	f32 mFarDistance;  // _44, CCameraActionScroll::mFarDistance
+	f32 mNearDistance; // _48, CCameraActionScroll::mNearDistance
+	f32 mScrollFov;    // _4C, CCameraActionScroll::mScrollFov
 };
 
 // past the end of CGame's symbol size
@@ -23,7 +23,7 @@ struct CCameraActionScroll {
 #endif
 
 typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, s32 arg, void* arg2);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { InitStage };
@@ -45,13 +45,13 @@ extern "C" s32 CmdSetCameraScroll(s32 cmd, s32 count, s32* values)
 		}
 		switch (i) {
 		case 0:
-			STAGE11_UNK()->_48 = v;
+			STAGE11_UNK()->mNearDistance = v;
 			break;
 		case 1:
-			STAGE11_UNK()->_44 = v;
+			STAGE11_UNK()->mFarDistance = v;
 			break;
 		case 2:
-			STAGE11_UNK()->_4C = v;
+			STAGE11_UNK()->mScrollFov = v;
 			break;
 		}
 	}

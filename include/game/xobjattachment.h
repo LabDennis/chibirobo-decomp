@@ -20,7 +20,7 @@ public:
 
 	XObjWireEff();
 
-	virtual ~XObjWireEff();                // _08 (weak)
+	virtual ~XObjWireEff() { }             // _08 (weak)
 	virtual void Release();                // _54
 	virtual void ResetObjectState();       // _98
 	virtual void UpdateObject(u32 frames); // _A4
@@ -72,51 +72,54 @@ struct XObjPlugCord {
 	f32 mSpeed;                 // _08
 	Vec mEnd[3];                // _0C, the plug end first, then the last point
 	const Vec* mEndSource[3];   // _30, followed every frame when set
-	f32 _3C;                    // _3C
-	f32 _40;                    // _40
-	u32 _44;                    // _44
+	f32 _3C;                    // _3C, set to 0.0f in InitPlugCord, never read
+	f32 _40;                    // _40, set to 0.0f in InitPlugCord, never read
+	u32 _44;                    // _44, never accessed
 	const f32* mEndHeight[3];   // _48, height-only constraints
-	u8 _54;                     // _54
+	u8 _54;                     // _54, set to 6 in InitPlugCord, never read
 	u8 _55[0x58 - 0x55];        // _55
 	f32 mWidth;                 // _58
 	u32 mColor;                 // _5C
-	u32 _60;                    // _60
-	u8 mAlpha;                  // _64
-	u8 _65[0x68 - 0x65];        // _65
-	u32 mFlags;                 // _68
-	CVec _6C;                   // _6C
-	XObjMapHit mFloorHit;       // _7C
-	u32 mMode;                  // _88
-	XObjPlugCordNodes mNodes;   // _8C
+	u32 _60;   // _60, always written with the same value as mColor (InitPlugCord, InitializeObject, UpdateObject, DrawGroundShadow), never
+	           // read
+	u8 mAlpha; // _64
+	u8 _65[0x68 - 0x65]; // _65
+	u32 mFlags;          // _68
+	CVec mPull; // _6C, the cord's pull on its pinned first end, the first segment's correction negated; drags the player while the plug is
+	            // connected
+	XObjMapHit mFloorHit;     // _7C
+	u32 mMode;                // _88
+	XObjPlugCordNodes mNodes; // _8C
 };
 STATIC_ASSERT(sizeof(XObjPlugCord) == 0x394);
 
 class XObjPlug : public XObj {
 public:
-	XObjPlugCord mCord; // _980
-	Vec mCordAnchor;    // _D14, source for the first cord endpoint
-	Vec mCordJointPos;  // _D20
-	Vec mCordJointTip;  // _D2C
-	s32 _D38;           // _D38
-	s32 _D3C;           // _D3C, XActLift's _54 with 0x10000 set
-	s32 mLoadState;     // _D40
-	u32 _D44;           // _D44
-	XObjWireEff mWire;  // _D48
+	XObjPlugCord mCord;  // _980
+	Vec mCordAnchor;     // _D14, source for the first cord endpoint
+	Vec mCordJointPos;   // _D20
+	Vec mCordJointTip;   // _D2C
+	s32 mCordEndsPinned; // _D38, 1 while cord ends 1 and 2 follow mCordJointPos and mCordJointTip (plug held or connected), 0 once they are
+	                     // let go
+	s32 mConnection;     // _D3C, XActLift's _54 with 0x10000 set
+	s32 mLoadState;      // _D40
+	u32 _D44;            // _D44, never accessed
+	XObjWireEff mWire;   // _D48
 
 	XObjPlug();
 
-	virtual ~XObjPlug();                                   // _08 (weak)
-	virtual void Release();                                // _54
-	virtual void InitializeObject(u32 id);                 // _90
-	virtual void vf94();                                   // _94
-	virtual void ResetObjectState();                       // _98
-	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
-	virtual void UpdateObject(u32 frames);                 // _A4
-	virtual void DrawWithView(Mtx view);                   // _B0
-	virtual void DrawReflection(Mtx view);                 // _B4
-	virtual void DrawGroundShadow();                       // _B8
-	virtual void DrawObjectEffects();                      // _C0
-	virtual void vfDC(BOOL enabled, u8 value);             // _DC
+	virtual ~XObjPlug();                                      // _08 (weak)
+	virtual void Release();                                   // _54
+	virtual void InitializeObject(u32 id);                    // _90
+	virtual void ResetForNewGame();                           // _94
+	virtual void ResetObjectState();                          // _98
+	virtual BOOL LoadFromPlacement(const CoordInfo& info);    // _9C
+	virtual void UpdateObject(u32 frames);                    // _A4
+	virtual void DrawWithView(Mtx view);                      // _B0
+	virtual void DrawReflection(Mtx view);                    // _B4
+	virtual void DrawGroundShadow();                          // _B8
+	virtual void DrawObjectEffects();                         // _C0
+	virtual void SetDestinationAlpha(BOOL enabled, u8 value); // _DC
 };
 #if defined(VERSION_JP)
 STATIC_ASSERT(sizeof(XObjPlug) == 0x16C0);
@@ -132,12 +135,12 @@ public:
 
 	XObjAttachment();
 
-	virtual ~XObjAttachment();                                    // _08 (weak)
+	virtual ~XObjAttachment() { }                                 // _08 (weak)
 	virtual void Release();                                       // _54
 	virtual void InitializeObject(u32 id);                        // _90
-	virtual void vf94();                                          // _94
+	virtual void ResetForNewGame();                               // _94
 	virtual void ResetObjectState();                              // _98
-	virtual void vfAC();                                          // _AC
+	virtual void DrawObject();                                    // _AC
 	virtual void DrawWithView(Mtx view);                          // _B0
 	virtual void Show();                                          // _148
 	virtual void Hide();                                          // _14C
@@ -153,7 +156,7 @@ class XObjCopter : public XObjAttachment {
 public:
 	XObjCopter();
 
-	virtual ~XObjCopter();                 // _08 (weak)
+	virtual ~XObjCopter() { }              // _08 (weak)
 	virtual void UpdateObject(u32 frames); // _A4
 };
 
@@ -161,7 +164,7 @@ class XObjPopper : public XObjAttachment {
 public:
 	XObjPopper();
 
-	virtual ~XObjPopper();                 // _08 (weak)
+	virtual ~XObjPopper() { }              // _08 (weak)
 	virtual void UpdateObject(u32 frames); // _A4
 };
 
@@ -184,7 +187,7 @@ class XObjOX : public XObjAttachment {
 public:
 	XObjOX();
 
-	virtual ~XObjOX();                     // _08 (weak)
+	virtual ~XObjOX() { }                  // _08 (weak)
 	virtual void UpdateObject(u32 frames); // _A4
 };
 

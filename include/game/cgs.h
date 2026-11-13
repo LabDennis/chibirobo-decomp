@@ -31,8 +31,8 @@ public:
 
 	s32 mMode; // _3C, index into the mode table, -1 before the first set
 #if defined(VERSION_PAL)
-	f32 _40; // _40, europe only, scales by the xfb height
-	         // _44 vtable
+	f32 mHeightScale; // _40, europe only, scales by the xfb height
+	                  // _44 vtable
 #else
 	// _40 vtable
 #endif
@@ -284,7 +284,7 @@ public:
 	CSphere mSphere;               // _1368
 	CCylinder mCylinder;           // _14D0
 	CTorus mTorus;                 // _1638
-	s32 _17A0;                     // _17A0, 5 after Init
+	s32 mRotOrder;                 // _17A0, 5 after Init
 #if defined(VERSION_JP)
 	// _17A4 vtable, japan has no sjis switch or glyph widths
 #else

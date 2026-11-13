@@ -72,7 +72,16 @@ typedef struct _HSD_VIInfo {
 HSD_VIInfo HSD_VIData;
 static u8 sAntialiasOverlapBuffer[HSD_ANTIALIAS_GARBAGE_SIZE] __attribute__((aligned(32)));
 
-#define _p (&HSD_VIData)
+#define _p ((HSD_VIInfo*)&HSD_VIData)
+
+/**
+ * @note Address: N/A
+ * @note Size: ?
+ */
+static inline void* HSD_VIGetXFBPtr(s32 idx)
+{
+	return HSD_VIData.xfb[idx].buffer;
+}
 
 #define assert_line_named(line, cond, condstr) ((cond) ? ((void)0) : __assert("video.c", line, condstr))
 
@@ -149,17 +158,17 @@ HSD_VIGXDrawDoneCallback HSD_VISetUserGXDrawDoneCallback(HSD_VIGXDrawDoneCallbac
  */
 void HSD_VIPreRetraceCB(u32 retraceCount)
 {
+	s32 next;
 	s32 idx;
 	s32 flush = 0;
 	s32 renew = 0;
 
-	idx = HSD_VISearchXFBByStatus(HSD_VI_XFB_NEXT);
-	if (idx != -1) {
-		HSD_VIXFB* x = &_p->xfb[idx];
-		VISetNextFrameBuffer(x->buffer);
-		if (x->vi_all.chg_flag) {
-			VIConfigure(&x->vi_all.vi.rmode);
-			VISetBlack(x->vi_all.vi.black);
+	next = HSD_VISearchXFBByStatus(HSD_VI_XFB_NEXT);
+	if (next != -1) {
+		VISetNextFrameBuffer(_p->xfb[next].buffer);
+		if (_p->xfb[next].vi_all.chg_flag) {
+			VIConfigure(&_p->xfb[next].vi_all.vi.rmode);
+			VISetBlack(_p->xfb[next].vi_all.vi.black);
 		}
 		flush = 1;
 		renew = 1;
@@ -209,24 +218,19 @@ void HSD_VIPostRetraceCB(u32 retraceCount)
 {
 	s32 idx;
 	s32 next;
-	HSD_VIXFB* xfb;
 
 	if ((next = HSD_VISearchXFBByStatus(HSD_VI_XFB_NEXT)) != -1) {
 		if ((idx = HSD_VISearchXFBByStatus(HSD_VI_XFB_DISPLAY)) != -1) {
-			xfb         = &_p->xfb[idx];
-			xfb->status = HSD_VI_XFB_FREE;
+			_p->xfb[idx].status = HSD_VI_XFB_FREE;
 		}
-		xfb         = &_p->xfb[next];
-		xfb->status = HSD_VI_XFB_DISPLAY;
+		_p->xfb[next].status = HSD_VI_XFB_DISPLAY;
 		if ((idx = HSD_VISearchXFBByStatus(HSD_VI_XFB_DRAWDONE)) != -1) {
-			xfb         = &_p->xfb[idx];
-			xfb->status = HSD_VI_XFB_NEXT;
+			_p->xfb[idx].status = HSD_VI_XFB_NEXT;
 		}
 	} else if ((idx = HSD_VISearchXFBByStatus(HSD_VI_XFB_COPYEFB)) != -1) {
-		xfb = &_p->xfb[idx];
-		HSD_VICopyEFB2XFBPtr(&_p->efb.vi_all.vi, xfb->buffer, HSD_RP_SCREEN);
-		xfb->status    = HSD_VI_XFB_DISPLAY;
-		_p->efb.status = HSD_VI_EFB_FREE;
+		HSD_VICopyEFB2XFBPtr(&_p->efb.vi_all.vi, _p->xfb[idx].buffer, HSD_RP_SCREEN);
+		_p->xfb[idx].status = HSD_VI_XFB_DISPLAY;
+		_p->efb.status      = HSD_VI_EFB_FREE;
 	}
 
 	if (_p->post_cb) {
@@ -382,16 +386,14 @@ ret:
  */
 static inline void HSD_VISetXFBWaitDone(s32 idx)
 {
-	HSD_VIXFB* xfb;
 	bool intr;
 
 	intr = OSDisableInterrupts();
 
-	xfb = &_p->xfb[idx];
-	assert_line_named(0x24E, xfb->status == HSD_VI_XFB_DRAWING, "_p->xfb[idx].status == HSD_VI_XFB_DRAWING");
+	assert_line_named(0x24E, _p->xfb[idx].status == HSD_VI_XFB_DRAWING, "_p->xfb[idx].status == HSD_VI_XFB_DRAWING");
 
-	xfb->status          = HSD_VI_XFB_WAITDONE;
-	xfb->vi_all          = _p->current;
+	_p->xfb[idx].status  = HSD_VI_XFB_WAITDONE;
+	_p->xfb[idx].vi_all  = _p->current;
 	_p->current.chg_flag = 0;
 
 	OSRestoreInterrupts(intr);
@@ -424,7 +426,7 @@ void HSD_VICopyXFBAsync(HSD_RenderPass rpass)
 	}
 
 	idx = HSD_VIWaitXFBDrawEnable();
-	HSD_VICopyEFB2XFBPtr(&_p->current.vi, _p->xfb[idx].buffer, rpass);
+	HSD_VICopyEFB2XFBPtr(&_p->current.vi, HSD_VIGetXFBPtr(idx), rpass);
 	HSD_VISetXFBWaitDone(idx);
 
 	HSD_VIGXSetDrawDone(idx);
@@ -593,5 +595,5 @@ void HSD_VIInit(HSD_VIStatus* vi, void* xfb0, void* xfb1, void* xfb2)
 	VIFlush();
 
 	idx = HSD_VISearchXFBByStatus(HSD_VI_XFB_FREE);
-	HSD_VICopyEFB2XFBPtr(&_p->current.vi, _p->xfb[idx].buffer, HSD_RP_SCREEN);
+	HSD_VICopyEFB2XFBPtr(&_p->current.vi, HSD_VIGetXFBPtr(idx), HSD_RP_SCREEN);
 }

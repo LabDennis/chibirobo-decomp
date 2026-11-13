@@ -36,8 +36,8 @@ void XObjDust::ResetObjectState()
 	mEventArg = -1;
 	mMatAnim  = NULL;
 	if (mJObj != NULL && (mStatus.mFlags & 0x1000ULL)) {
-		UnkStageObj* placement = mCoord._00;
-		SetAnim(placement->_30, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+		UnkStageObj* placement = mCoord.mPlacement;
+		SetAnim(placement->mStartAnim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 	}
 }
 
@@ -45,26 +45,26 @@ void XObjDust::ResetObjectState()
  * @note Address: 0x800DFB24
  * @note Size: 0x44
  */
-extern "C" s32 GetFlagIndex__8XObjDustFv(XObjDust* dust)
+s32 XObjDust::GetFlagIndex()
 {
-	return dust->GetPlacementFlagIndex(2);
+	return GetPlacementFlagIndex(2);
 }
 
 /**
  * @note Address: 0x800DFB68
  * @note Size: 0x100
  */
-extern "C" u32 vf100__8XObjHBoxFll(XObjHBox* box, s32 unused, u32 flags)
+extern "C" u32 OnPlayerContact__8XObjHBoxFll(XObjHBox* box, s32 unused, u32 flags)
 {
 	if ((flags & 3) == 1)
 		return flags;
 	if (box->mAnimId == 0)
 		return flags;
-	gGame.GetPlayer()->_9A90 = 0.0f;
+	gGame.GetPlayer()->mFallDistance = 0.0f;
 	box->mStatus.mFlags |= 0x4000000000000000ULL;
 	box->mPart.mHit = 1.0f;
 	PlayGameSound(&gGame.mSound, 285, 255);
-	const void* script = box->vf128();
+	const void* script = box->GetEventScript();
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
 		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, box, -1, -1);
 	}
@@ -89,13 +89,13 @@ void XObjHBox::OnHitFromPosition(const Vec& pos, f32 strength)
  * @note Address: 0x800DFD24
  * @note Size: 0x1F0
  */
-extern "C" void vfC8__8XObjHBoxFv(XObjHBox* box)
+void XObjHBox::DrawScreenOverlay()
 {
-	if (box->mRing > 0.0f) {
+	if (mRing > 0.0f) {
 		Vec pos = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;
-		box->ProjectOffsetToScreen(&pos, &x, &y, NULL, 0);
-		f32 ring  = box->mRing;
+		ProjectOffsetToScreen(&pos, &x, &y, NULL, 0);
+		f32 ring  = mRing;
 		f32 inner = 400.0f * ring;
 		f32 outer = 400.0f * (1.0f - ring);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 7, 0);

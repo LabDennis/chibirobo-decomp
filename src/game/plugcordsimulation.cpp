@@ -91,7 +91,7 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 				if (i == 0 && cord->mEndSource[0]) {
 					CopyCordPos(a, *cord->mEndSource[0]);
 					AddStep(b, delta / distance * correction);
-					cord->_6C = delta / distance * correction * -1.0f;
+					cord->mPull = delta / distance * correction * -1.0f;
 				} else if (i == cord->mCount - 2) {
 					correction = 0.7f * (5.0f - distance);
 					SubStep(a, delta / distance * correction);
@@ -126,7 +126,7 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 			CopyCordPos(points[i].mTarget, points[i].mPos);
 	}
 	u32 old   = cord->mMode;
-	s32 state = gGame.GetPlayer()->mPlug._D3C;
+	s32 state = gGame.GetPlayer()->mPlug.mConnection;
 	if (state < 0)
 		cord->mMode = 3;
 	else {

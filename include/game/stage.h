@@ -42,19 +42,19 @@ public:
 		mState = 0;
 	}
 
-	char mDataPath[0x40];                      // _00
-	char mModulePath[0x40];                    // _40
-	s32 mState;                                // _80
-	CFile mDataFile;                           // _84
-	EnvInfo mEnvironment;                      // _170
-	CoordInfo mPlacements;                     // _178
-	u8* mScriptOffsets;                        // _180
-	u8* mSetupScript;                          // _184
-	u8* mEntryScript;                          // _188
-	u8* mBatteryDepletedScript;                // _18C
-	u8* mZButtonScript;                        // _190
-	u8* mTimerExpiredScript;                   // _194
-	void* _198;                                // _198
+	char mDataPath[0x40];       // _00
+	char mModulePath[0x40];     // _40
+	s32 mState;                 // _80
+	CFile mDataFile;            // _84
+	EnvInfo mEnvironment;       // _170
+	CoordInfo mPlacements;      // _178
+	u8* mScriptOffsets;         // _180
+	u8* mSetupScript;           // _184
+	u8* mEntryScript;           // _188
+	u8* mBatteryDepletedScript; // _18C
+	u8* mZButtonScript;         // _190
+	u8* mTimerExpiredScript;    // _194
+	void* _198; // _198, the stage file's resource at header offset 0x20, NULL when absent; written in the stage loader, never read
 	const StageEventObject* mEventObjectPairs; // _19C
 	void* mCameraAreaRecords;                  // _1A0
 	void* mCameraInfoRecords;                  // _1A4

@@ -12,7 +12,7 @@ void XObjActor::UpdateAnimationSounds(f32 frame)
 	if (mStatus.mFlags & 1ULL) {
 		if (mStatus.mFlags & 0x10000ULL) {
 			u8 volume;
-			if (_998.mFlags & 0x800) {
+			if (mActorStatus.mFlags & 0x800) {
 				volume = 255;
 			} else {
 				volume = GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0);

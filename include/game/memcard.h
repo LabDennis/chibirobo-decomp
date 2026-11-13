@@ -34,14 +34,14 @@ public:
 		SavePreviewRecord mSaves[2][5];  // _16200, the save headers read off each slot's card
 		SavePreviewRecord mAllSaves[10]; // the test menu lists both slots together
 	};
-	u32 _169F8;      // _169F8
-	u32 _169FC;      // _169FC
-	s32 _16A00;      // _16A00, the save file's two words menus show
-	s32 _16A04;      // _16A04
-	BOOL mBusy;      // _16A08, a job's thread is running
-	BOOL mFound;     // _16A0C, the scan found a save
-	MemcardJob mJob; // _16A10
-	BOOL mLog;       // _16A1C, print card results
+	u32 _169F8;       // _169F8
+	u32 mFreeBytes;   // _169FC
+	s32 mFreeEntries; // _16A00, free directory entries (CARDFreeBlocks' filesNotUsed); the title and save menus need one
+	s32 mFreeBlocks;  // _16A04, free 8 KB blocks; a save takes six
+	BOOL mBusy;       // _16A08, a job's thread is running
+	BOOL mFound;      // _16A0C, the scan found a save
+	MemcardJob mJob;  // _16A10
+	BOOL mLog;        // _16A1C, print card results
 	// _16A20 vtable
 
 	virtual ~Memcard() { } // _08
@@ -144,6 +144,17 @@ public:
 	{
 		mState = 9;
 		mCard.CloseEx();
+		LogResult();
+		if (mCard.mResult != CARD_RESULT_READY) {
+			mCard.Unmount();
+			return TRUE;
+		}
+		return FALSE;
+	}
+	inline BOOL GetFreeBlocks()
+	{
+		mState      = 14;
+		mFreeBlocks = mCard.GetFreeBlocks((s32*)&mFreeBytes, &mFreeEntries);
 		LogResult();
 		if (mCard.mResult != CARD_RESULT_READY) {
 			mCard.Unmount();

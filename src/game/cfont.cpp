@@ -177,9 +177,9 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
 
 	if (font->mDesc.textureHeader == NULL) {
 #if defined(VERSION_JP)
-		Init__5CFontFv(font);
+		font->Init();
 #else
-		Init__5CFontFi(font, FALSE);
+		font->Init(FALSE);
 #endif
 	}
 	if (UseGlyphCache()) {
@@ -475,9 +475,9 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
  * @note Size: 0x738
  */
 #if defined(VERSION_JP)
-extern "C" void Init__5CFontFv(CFont* font)
+void CFont::Init()
 #else
-extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
+void CFont::Init(BOOL builtin)
 #endif
 {
 	if (gActiveFontHeader == NULL) {
@@ -557,25 +557,25 @@ extern "C" void Init__5CFontFi(CFont* font, BOOL builtin)
 	}
 
 	TPLDescriptor desc = { NULL, NULL };
-	desc.textureHeader = &font->mImage;
-	font->mDesc        = desc;
+	desc.textureHeader = &mImage;
+	mDesc              = desc;
 	if (UseGlyphCache()) {
-		TPLHeader image       = { 24, 24, GX_TF_I4, NULL, GX_CLAMP, GX_CLAMP, GX_LINEAR, GX_LINEAR, 0.0f, 0, 0, 0, 1 };
-		font->mImage          = image;
-		font->mInvSheetWidth  = 0.0f;
-		font->mInvSheetHeight = 0.0f;
-		font->mInvCellWidth   = 1.0f;
-		font->mInvCellHeight  = 1.0f;
+		TPLHeader image = { 24, 24, GX_TF_I4, NULL, GX_CLAMP, GX_CLAMP, GX_LINEAR, GX_LINEAR, 0.0f, 0, 0, 0, 1 };
+		mImage          = image;
+		mInvSheetWidth  = 0.0f;
+		mInvSheetHeight = 0.0f;
+		mInvCellWidth   = 1.0f;
+		mInvCellHeight  = 1.0f;
 	} else {
-		TPLHeader image       = { 0, 0, GX_TF_I4, NULL, GX_CLAMP, GX_CLAMP, GX_LINEAR, GX_LINEAR, 0.0f, 0, 0, 0, 1 };
-		image.height          = gActiveFontHeader->sheetHeight;
-		image.width           = gActiveFontHeader->sheetWidth;
-		image.format          = gActiveFontHeader->sheetFormat;
-		font->mImage          = image;
-		font->mInvSheetWidth  = 1.0f / gActiveFontHeader->sheetWidth;
-		font->mInvSheetHeight = 1.0f / gActiveFontHeader->sheetHeight;
-		font->mInvCellWidth   = 1.0f / (gActiveFontHeader->cellWidth - 2);
-		font->mInvCellHeight  = 1.0f / (gActiveFontHeader->cellHeight - 2);
+		TPLHeader image = { 0, 0, GX_TF_I4, NULL, GX_CLAMP, GX_CLAMP, GX_LINEAR, GX_LINEAR, 0.0f, 0, 0, 0, 1 };
+		image.height    = gActiveFontHeader->sheetHeight;
+		image.width     = gActiveFontHeader->sheetWidth;
+		image.format    = gActiveFontHeader->sheetFormat;
+		mImage          = image;
+		mInvSheetWidth  = 1.0f / gActiveFontHeader->sheetWidth;
+		mInvSheetHeight = 1.0f / gActiveFontHeader->sheetHeight;
+		mInvCellWidth   = 1.0f / (gActiveFontHeader->cellWidth - 2);
+		mInvCellHeight  = 1.0f / (gActiveFontHeader->cellHeight - 2);
 	}
 }
 /*

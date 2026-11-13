@@ -64,10 +64,10 @@ AnimSfxEvent gSpiderAnimSfxEvents[] = {
 	{ 12, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
 	{ -1 },
 }; // the spider's anim sounds
-extern u8 gSpiderCoinBounceUpdateContext[4]; // the coins' manager, it has no data of its own
-extern s32 gSpiderCoinBounceCount;           // how many coins are out
-extern s32 lbl_8065B2BC;
-extern u8 lbl_8065B2C0;
+u32 gSpiderCoinBounceUpdateContext; // the coins' manager token, the callbacks never touch it; its real type is unknown
+s32 lbl_8065B2BC;
+u8 lbl_8065B2C0;
+s32 gSpiderCoinBounceCount; // how many coins are out
 }
 
 // NONMATCHING: the sinit's copy source sits at another offset in retail's
@@ -133,7 +133,7 @@ static inline void TakeSlot(XObjSpider* spider)
 {
 	for (int i = 0; i < 16; i++) {
 		if (gSpiderCarrySlotOwners[i] == -1) {
-			spider->_AC8.mObj         = gSpiderCarryModels[i];
+			spider->mSlotCarry.mObj   = gSpiderCarryModels[i];
 			spider->mSlot             = i;
 			gSpiderCarrySlotOwners[i] = spider->mPoolIndex;
 			return;
@@ -176,7 +176,7 @@ static inline f32 DistXZ(const Vec* first, const Vec* second)
  * @note Address: 0x800F4818
  * @note Size: 0x50
  */
-void XObjSpider::vf94()
+void XObjSpider::ResetForNewGame()
 {
 	ResetSpiderState(this);
 	SetState(0);
@@ -223,7 +223,7 @@ extern "C" void ApplySpiderPlacement(XObjSpider* spider)
 	spider->mHome.z          = PlacementPosition(spider->mCoord, gSpiderPosition).z;
 	spider->mDir             = PlacementRotation(spider->mCoord, gSpiderRotation).y;
 	spider->mRadius          = 20.0f * PlacementScale(spider->mCoord, gSpiderScale).x;
-	switch (spider->_25C) {
+	switch (spider->mPlacementParam0) {
 	case 0:
 		spider->SetState(0);
 		spider->mFlags.mFlags |= 0x08000000;
@@ -284,7 +284,7 @@ extern "C" void ApplySpiderPlacement(XObjSpider* spider)
 	if (spider->mFlags.mFlags & 0x40) {
 		spider->mFlags.mFlags |= 0x80;
 		spider->mFlags.mFlags |= 0x100;
-		spider->mMoveTranslate.y = spider->_260 + spider->mHome.y;
+		spider->mMoveTranslate.y = spider->mPlacementParam1 + spider->mHome.y;
 	}
 }
 
@@ -325,8 +325,8 @@ void XObjSpider::ResetObjectState()
 		for (s32 i = 0; i < count; ++i) {
 			XObj* candidate = gGame.mXObjs.mObjects[i];
 			if (candidate->mStatus.mFlags & 1ULL) {
-				UnkStageObj* placement = candidate->mCoord._00;
-				if (placement->_00 == 0x13C) {
+				UnkStageObj* placement = candidate->mCoord.mPlacement;
+				if (placement->mObjectId == 0x13C) {
 					++found;
 					*output++ = candidate;
 					if (found >= 16)
@@ -378,7 +378,7 @@ void XObjSpider::UpdateObject(u32 frames)
 		return;
 	}
 	if (mPoolIndex == 0) {
-		UpdateSpiderCoinBounces(gSpiderCoinBounceUpdateContext, frames);
+		UpdateSpiderCoinBounces(&gSpiderCoinBounceUpdateContext, frames);
 	}
 	if (!(mStatus.mFlags & 0x10000) && mState != 1) {
 		return;
@@ -447,7 +447,7 @@ void XObjSpider::UpdateObject(u32 frames)
  * @note Address: 0x800F3184
  * @note Size: 0x5C
  */
-void XObjSpider::vfAC()
+void XObjSpider::DrawObject()
 {
 	DrawWithView(NULL);
 	bool sideways = false;
@@ -474,7 +474,7 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 {
 	if (!(mStatus.mFlags & 8ULL))
 		return;
-	switch (_25C) {
+	switch (mPlacementParam0) {
 	case 3:
 	case 4:
 	case 5:
@@ -485,7 +485,7 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 	}
 	Vec pos  = *origin;
 	Vec rot  = { -HALF_PI, 0.0f, 0.0f };
-	Vec size = mMoveScale * (f32)(mAttr._00 != NULL ? mAttr._00->_0C : 0);
+	Vec size = mMoveScale * (f32)(mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0);
 	size.x   = mRadius;
 	size.y   = mRadius;
 	size.z   = mRadius;
@@ -511,7 +511,7 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
  * @note Address: 0x800F2E40
  * @note Size: 0x4
  */
-void XObjSpider::vfC8()
+void XObjSpider::DrawScreenOverlay()
 {
 }
 
@@ -709,7 +709,7 @@ void XObjSpider::OnHitFromPosition(const Vec& from, f32 strength)
  * @note Address: 0x800F2350
  * @note Size: 0x14
  */
-s32 XObjSpider::vf100(s32 unused, s32 value)
+s32 XObjSpider::OnPlayerContact(s32 unused, s32 value)
 {
 	mFlags.mFlags |= 1;
 	return value;
@@ -790,6 +790,8 @@ extern "C" void UpdateSpiderShot(XObjSpider* spider, u32 frames)
 			FinishSpiderShotStep(spider);
 		}
 		break;
+	case 2:
+		break;
 	}
 }
 
@@ -805,7 +807,7 @@ extern "C" void LaunchSpiderShot(XObjSpider* spider)
 	s32 path[8] = { 0, 0, 0, 0, 1, 1, 0, 0 };
 	joint.Attach(FindJointByPath(spider->mJObj, path, 8));
 	CVec pos(GetJointPosition(joint.mJObj));
-	switch (spider->_25C) {
+	switch (spider->mPlacementParam0) {
 	case 0:
 		spider->mShotTo.x = pos.x + 72.0f * (f32)sin(spider->mDir);
 		spider->mShotTo.y = pos.y;
@@ -943,14 +945,14 @@ extern "C" void UpdateSpiderHitReaction(XObjSpider* spider, u32 frames)
 		break;
 	case 1:
 		if (spider->mCounter % 30 < 15) {
-			spider->vf12C(1, 0x80, 0, 0, 0.0f);
+			spider->SetColor(1, 0x80, 0, 0, 0.0f);
 		} else {
-			spider->vf12C(1, 0, 0, 0, 0.0f);
+			spider->SetColor(1, 0, 0, 0, 0.0f);
 		}
 		spider->mHitTimer++;
 		if (spider->mHitTimer > 20) {
 			spider->mFlags.mFlags &= ~0x10;
-			spider->vf12C(1, 0, 0, 0, 0.0f);
+			spider->SetColor(1, 0, 0, 0, 0.0f);
 			spider->mHitTimer = 0;
 			spider->mHitState = 0;
 		}
@@ -995,16 +997,16 @@ extern "C" void ExecuteSpiderCommand(XObjSpider* spider, u32 frames)
 		break;
 	case 2:
 		if (spider->mFlags.mFlags & 0x10000)
-			gGame.mEvt._10 = 1;
+			gGame.mEvt.mSelectResult = 1;
 		else
-			gGame.mEvt._10 = 0;
+			gGame.mEvt.mSelectResult = 0;
 		spider->mCommand = 0;
 		break;
 	case 3:
 		if (spider->mFlags.mFlags & 0x80000)
-			gGame.mEvt._10 = 1;
+			gGame.mEvt.mSelectResult = 1;
 		else
-			gGame.mEvt._10 = 0;
+			gGame.mEvt.mSelectResult = 0;
 		spider->mCommand = 0;
 		break;
 	case 4:
@@ -1039,7 +1041,7 @@ extern "C" void ExecuteSpiderCommand(XObjSpider* spider, u32 frames)
 		spider->mStartPos.y      = spider->mHome.y;
 		spider->mStartPos.z      = spider->mHome.z;
 		spider->mMoveTranslate.x = spider->mHome.x;
-		spider->mMoveTranslate.y = (f32)spider->_260 + spider->mHome.y;
+		spider->mMoveTranslate.y = (f32)spider->mPlacementParam1 + spider->mHome.y;
 		spider->mMoveTranslate.z = spider->mHome.z;
 		spider->mMoveTranslate.mTarget.Set(spider->mMoveTranslate.x, spider->mMoveTranslate.y, spider->mMoveTranslate.z);
 		spider->mCommand = 0;
@@ -1096,7 +1098,7 @@ extern "C" void ExecuteSpiderCommand(XObjSpider* spider, u32 frames)
  */
 void XObjSpider::State0(u32 frames)
 {
-	if (_25C == 11 && (mFlags.mFlags & 0x400000))
+	if (mPlacementParam0 == 11 && (mFlags.mFlags & 0x400000))
 		SetState(4);
 }
 
@@ -1153,9 +1155,9 @@ void XObjSpider::State3(u32 frames)
 {
 	mCounter++;
 	if (mCounter % 30 < 15) {
-		vf12C(1, 0, 0x80, 0, 0.0f);
+		SetColor(1, 0, 0x80, 0, 0.0f);
 	} else {
-		vf12C(1, 0, 0, 0, 0.0f);
+		SetColor(1, 0, 0, 0, 0.0f);
 	}
 	Vec pos;
 	switch (mPhase) {
@@ -1163,11 +1165,11 @@ void XObjSpider::State3(u32 frames)
 		StopGameSfx(&gGame.mSound, 0x132);
 		SetAnim(0x19, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		if (mSlot != 255) {
-			if (_AC8.mObj != NULL) {
-				_AC8.mObj->mStatus.mFlags &= ~0x10000ULL;
+			if (mSlotCarry.mObj != NULL) {
+				mSlotCarry.mObj->mStatus.mFlags &= ~0x10000ULL;
 			}
 			gSpiderCarrySlotOwners[mSlot] = -1;
-			_AC8.mObj                     = NULL;
+			mSlotCarry.mObj               = NULL;
 			mSlot                         = 255;
 		}
 		mWait = 44;
@@ -1276,7 +1278,7 @@ static inline void EndSpiderCombatTurn(XObjSpider* spider, u32 frames)
 	if (CombatAnimDone(spider, frames)) {
 		spider->mDir = spider->mSavedDir;
 		CombatAnim(spider, 15);
-		spider->_988       = spider->mDir;
+		spider->mFacing    = spider->mDir;
 		spider->mTurnSpeed = .1f;
 		spider->mPhase     = 1;
 	}
@@ -1305,10 +1307,10 @@ void XObjSpider::State4(u32 frames)
 		CombatAnim(this, 1);
 		mSpeed = 0.0f;
 		if (dist <= 120.0f) {
-			_988     = mDir;
+			mFacing  = mDir;
 			mCounter = (rand() % 30 + 30) / frames;
 			++mPhase;
-			_98C = _988;
+			_98C = mFacing;
 		}
 		break;
 	case 1:
@@ -1317,17 +1319,17 @@ void XObjSpider::State4(u32 frames)
 			break;
 		}
 		mDir = CombatHeading(this, chr);
-		if (_988 - mDir > PI)
+		if (mFacing - mDir > PI)
 			mDir = mDir + TWO_PI;
-		else if (_988 - mDir < -PI)
+		else if (mFacing - mDir < -PI)
 			mDir = mDir - TWO_PI;
-		ApproachHudValue(&_988, &mDir, 0.018f);
-		if (mDir > _988) {
+		ApproachHudValue(&mFacing, &mDir, 0.018f);
+		if (mDir > mFacing) {
 			if (CombatAnimDone(this, frames))
 				CombatAnim(this, 6, TRUE);
 			else
 				CombatAnim(this, 6);
-		} else if (mDir < _988) {
+		} else if (mDir < mFacing) {
 			if (CombatAnimDone(this, frames))
 				CombatAnim(this, 7, TRUE);
 			else
@@ -1353,7 +1355,7 @@ void XObjSpider::State4(u32 frames)
 		break;
 	case 3: {
 		mDir     = CombatHeading(this, chr);
-		f32 diff = mDir - _988;
+		f32 diff = mDir - mFacing;
 		if (diff < 0) {
 			if (CombatAnimDone(this, frames))
 				CombatAnim(this, 14, TRUE);
@@ -1362,7 +1364,7 @@ void XObjSpider::State4(u32 frames)
 				CombatAnim(this, 13, TRUE);
 		} else if (CombatAnimDone(this, frames))
 			CombatAnim(this, 10);
-		_988 = mDir;
+		mFacing = mDir;
 		if (--mCounter < 0 && SpiderInView(this)) {
 			CombatAnim(this, 24);
 			PlayGameSound(&gGame.mSound, 0x1A0, 255);
@@ -1384,8 +1386,8 @@ void XObjSpider::State4(u32 frames)
 		mSpeed = 0.0f;
 		if (CombatAnimDone(this, frames)) {
 			CombatAnim(this, 1);
-			_988   = mDir;
-			mPhase = 1;
+			mFacing = mDir;
+			mPhase  = 1;
 		}
 		break;
 	case 5:
@@ -1418,8 +1420,8 @@ void XObjSpider::State4(u32 frames)
 				mFlags.mFlags &= ~0x1000;
 				mPhase = 7;
 			} else if (FindNearbyDroppedSpider(this) != -1) {
-				_B9C   = FindNearbyDroppedSpider(this);
-				mPhase = 30;
+				mDroppedSpiderIndex = FindNearbyDroppedSpider(this);
+				mPhase              = 30;
 			}
 		}
 		break;
@@ -1479,7 +1481,7 @@ void XObjSpider::State4(u32 frames)
 	case 31:
 		if (CombatAnimDone(this, frames)) {
 			CombatAnim(this, 8);
-			Vec other = gGame.mXObjs.mPools[17].Get(_B9C)->mMoveTranslate;
+			Vec other = gGame.mXObjs.mPools[17].Get(mDroppedSpiderIndex)->mMoveTranslate;
 			mDir      = CombatHeading(this, other);
 			RetreatTarget(this);
 			mCounter = 24 / frames;
@@ -1534,8 +1536,8 @@ void XObjSpider::State4(u32 frames)
 				}
 			}
 			if (FindNearbyDroppedSpider(this) != -1) {
-				_B9C   = FindNearbyDroppedSpider(this);
-				mPhase = 30;
+				mDroppedSpiderIndex = FindNearbyDroppedSpider(this);
+				mPhase              = 30;
 			}
 		}
 		break;
@@ -1610,7 +1612,7 @@ void XObjSpider::State6(u32 frames)
 		f32 swing        = (f32)sin(DEG2RAD * (f32)((mCounter * 4) % 360));
 		f32 offset       = 8.0f * swing;
 		mMoveTranslate.x = mHome.x + offset - 4.0f;
-		if (_25C == 11) {
+		if (mPlacementParam0 == 11) {
 			if (mFlags.mFlags & 0x200000) {
 				PlayGameSound(&gGame.mSound, 0x131, 255);
 				mFlags.mFlags |= 0x100000;
@@ -1647,9 +1649,9 @@ void XObjSpider::State6(u32 frames)
 			StopGameSfx(&gGame.mSound, 0x131);
 			mPhase++;
 			SetAnim(0x12, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			mDir   = atan2(mTarget.x - mMoveTranslate.x, mTarget.z - mMoveTranslate.z);
-			_988   = mDir;
-			mSpeed = 0.0f;
+			mDir    = atan2(mTarget.x - mMoveTranslate.x, mTarget.z - mMoveTranslate.z);
+			mFacing = mDir;
+			mSpeed  = 0.0f;
 		}
 		break;
 	case 3:
@@ -1657,9 +1659,9 @@ void XObjSpider::State6(u32 frames)
 		if (end - frames <= GetAnimFrame(mJObj)) {
 			mPhase++;
 			SetAnim(0x13, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			mDir   = atan2(mTarget.x - mMoveTranslate.x, mTarget.z - mMoveTranslate.z);
-			_988   = mDir;
-			mSpeed = -0.5f;
+			mDir    = atan2(mTarget.x - mMoveTranslate.x, mTarget.z - mMoveTranslate.z);
+			mFacing = mDir;
+			mSpeed  = -0.5f;
 		}
 		break;
 	case 4:
@@ -2233,7 +2235,7 @@ void ResetSpiderState(XObjSpider* spider)
 {
 	spider->mDir          = 0.0f;
 	spider->mSpeed        = 0.0f;
-	spider->_988          = 0.0f;
+	spider->mFacing       = 0.0f;
 	spider->_98C          = 0.0f;
 	spider->mTurnSpeed    = 0.1f;
 	spider->mFallSpeed    = 0.0f;
@@ -2283,7 +2285,7 @@ void ResetSpiderState(XObjSpider* spider)
 	spider->mCarry.mFlags.mFlags = 0;
 	spider->mCarry.mObj          = NULL;
 	spider->mRadius              = 20.0f;
-	spider->_AC8.mObj            = NULL;
+	spider->mSlotCarry.mObj      = NULL;
 	spider->mSlot                = 255;
 	Vec areaPos                  = { 0.0f, 0.0f, 0.0f };
 	spider->mAreaPos             = areaPos;
@@ -2312,9 +2314,9 @@ void ResetSpiderState(XObjSpider* spider)
 	if (spider->mPoolIndex == 0) {
 		ResetCoins();
 	}
-	spider->mHitState    = 0;
-	spider->mHitTimer    = 0;
-	spider->_B9C         = -1;
-	spider->mRumble      = 0;
-	spider->mRumbleTimer = 0;
+	spider->mHitState           = 0;
+	spider->mHitTimer           = 0;
+	spider->mDroppedSpiderIndex = -1;
+	spider->mRumble             = 0;
+	spider->mRumbleTimer        = 0;
 }

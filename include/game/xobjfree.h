@@ -10,7 +10,7 @@ public:
 	f32 mLife;                  // _980, counts down from the object's flags once hit
 	f32 mFlash;                 // _984, the ring drawn around it
 	HSD_MatAnimJoint* mMatAnim; // _988, kept across anim changes
-	u32 _98C;                   // _98C
+	u32 _98C;                   // _98C, never accessed
 
 	XObjFree();
 
@@ -20,7 +20,7 @@ public:
 	                     f32 blendRate);                               // _80
 	virtual void ResetObjectState();                                   // _98
 	virtual void UpdateObject(u32 frames);                             // _A4
-	virtual void vfC8();                                               // _C8
+	virtual void DrawScreenOverlay();                                  // _C8
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _138
 };
 #if defined(VERSION_JP)

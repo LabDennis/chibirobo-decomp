@@ -1,16 +1,12 @@
 #include "game/xobjactor.h"
 
-extern "C" {
-extern Vec sActorHitPositionZero;
-}
-
 /**
  * @note Address: 0x8010753C
  * @note Size: 0xC
  */
-extern "C" bool vf160__9XObjActorFv(XObjActor* actor)
+extern "C" bool IsHitPending__9XObjActorFv(XObjActor* actor)
 {
-	return (actor->_998.mFlags & 2) != 0;
+	return (actor->mActorStatus.mFlags & 2) != 0;
 }
 
 /**
@@ -21,14 +17,8 @@ extern "C" bool vf160__9XObjActorFv(XObjActor* actor)
 void XObjActor::OnHitFromPosition(const Vec& pos, f32 strength)
 {
 	OnHitFromPosition__4XObjFRC3Vecf(this, &pos, strength);
-	_998.mFlags |= 2;
-	f32 x        = pos.x;
-	f32 y        = pos.y;
-	f32 z        = pos.z;
-	Vec hit      = sActorHitPositionZero;
-	hit.x        = x;
-	hit.y        = y;
-	hit.z        = z;
+	mActorStatus.mFlags |= 2;
+	Vec hit      = { pos.x, pos.y, pos.z };
 	mHitPos      = hit;
 	mHitStrength = strength;
 }
@@ -37,9 +27,9 @@ void XObjActor::OnHitFromPosition(const Vec& pos, f32 strength)
  * @note Address: 0x801075E8
  * @note Size: 0x14
  */
-extern "C" s32 vf100__9XObjActorFll(XObjActor* actor, s32 unused, s32 value)
+s32 XObjActor::OnPlayerContact(s32 unused, s32 value)
 {
-	actor->_998.mFlags |= 1;
+	mActorStatus.mFlags |= 1;
 	return value;
 }
 
@@ -55,21 +45,21 @@ void XObjActor::DrawDebugStatus()
  * @note Address: 0x80107600
  * @note Size: 0x20
  */
-extern "C" void vfC8__9XObjActorFv(XObjActor* actor)
+void XObjActor::DrawScreenOverlay()
 {
-	vfC8__4XObjFv(actor);
+	XObj::DrawScreenOverlay();
 }
 
 /**
  * @note Address: 0x80107620
  * @note Size: 0x70
  */
-extern "C" void vfAC__9XObjActorFv(XObjActor* actor)
+void XObjActor::DrawObject()
 {
-	if (actor->_998.mFlags & 0x80) {
-		actor->Push(actor->GetHeadJoint(), 0x80, actor->mHeadYaw);
+	if (mActorStatus.mFlags & 0x80) {
+		Push(GetHeadJoint(), 0x80, mHeadYaw);
 	}
-	actor->DrawWithView(NULL);
+	DrawWithView(NULL);
 }
 
 /**
@@ -117,11 +107,11 @@ f32 XObjActor::GetMaxHeadYaw()
 extern "C" void SetActorLookAtPosition(CXObj* object, const Vec* target, f32 rate)
 {
 	XObjActor* actor = (XObjActor*)object;
-	actor->_998.mFlags |= 0x80;
+	actor->mActorStatus.mFlags |= 0x80;
 	actor->mLookMode   = 1;
 	actor->mLookRate   = rate;
 	actor->mLookTarget = target;
-	actor->_998.mFlags |= 0x400;
+	actor->mActorStatus.mFlags |= 0x400;
 }
 
 /**
@@ -131,7 +121,7 @@ extern "C" void SetActorLookAtPosition(CXObj* object, const Vec* target, f32 rat
 extern "C" void SetActorLookAngle(CXObj* object, f32 angle, f32 rate)
 {
 	XObjActor* actor = (XObjActor*)object;
-	actor->_998.mFlags |= 0x80;
+	actor->mActorStatus.mFlags |= 0x80;
 	actor->mLookMode  = 3;
 	actor->mLookAngle = angle;
 	actor->mLookRate  = rate;
@@ -144,7 +134,7 @@ extern "C" void SetActorLookAngle(CXObj* object, f32 angle, f32 rate)
 extern "C" void SetActorLookTarget(CXObj* object, const Vec* target, f32 rate)
 {
 	XObjActor* actor = (XObjActor*)object;
-	actor->_998.mFlags |= 0x80;
+	actor->mActorStatus.mFlags |= 0x80;
 	actor->mLookMode   = 1;
 	actor->mLookRate   = rate;
 	actor->mLookTarget = target;
@@ -158,10 +148,10 @@ extern "C" void SetActorLookTarget(CXObj* object, const Vec* target, f32 rate)
 extern "C" void ResetActorLook(CXObj* object, f32 rate)
 {
 	XObjActor* actor = (XObjActor*)object;
-	actor->_998.mFlags |= 0x80;
+	actor->mActorStatus.mFlags |= 0x80;
 	actor->mLookMode  = 0;
 	actor->mLookRate  = rate;
 	actor->mLookAngle = 0.0f;
-	actor->_998.mFlags &= ~0x400;
+	actor->mActorStatus.mFlags &= ~0x400;
 	actor->mHeadPitch = 0.0f;
 }

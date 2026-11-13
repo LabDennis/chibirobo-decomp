@@ -35,7 +35,7 @@ extern "C" BOOL RestorePlayerHeldItem(XObjChr* chr)
 			ResetPlayerLiftAction(&chr->mLift);
 			chr->mLift.mState = 4;
 			chr->mLift.SetTarget(chr->mPendingTarget);
-			chr->mLift._24 = 4;
+			chr->mLift.mTargetState = 4;
 			chr->mLift.mTarget->SetAnim(chr->mSavedTargetAnim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			chr->mLift.mTarget->mStatus.mFlags |= 0x0400000000000000ULL;
 			chr->SetAnim(8, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);

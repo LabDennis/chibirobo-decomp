@@ -17,14 +17,15 @@
 // chibi robo's numbers, watts, happy points and the items he holds
 class Params {
 public:
-	s32 mExperience;      // _00
-	s32 mLevel;           // _04
-	s32 mRank;            // _08
-	f32 mBattery;         // _0C
-	f32 mMaxBattery;      // _10
-	s32 mMoney;           // _14
-	s32 mScrap;           // _18
-	u32 _1C[8];           // _1C
+	s32 mExperience; // _00
+	s32 mLevel;      // _04
+	s32 mRank;       // _08
+	f32 mBattery;    // _0C
+	f32 mMaxBattery; // _10
+	s32 mMoney;      // _14
+	s32 mScrap;      // _18
+	u32 _1C[8];      // _1C, [0] above 0 is an unlimited battery: no drain, battery held at max, HUD battery dims; script commands 850/851
+	                 // set/clear it, 852 reads it; saved as SavePreview mActive. [1]..[7] are only zeroed in ResetPlayerStats
 	Inventory mInventory; // _3C
 	// _440 vtable
 
@@ -71,15 +72,15 @@ void ResetPlayerStats(Params* stats);
 
 // where chibi robo looks, beside the three CJointRots that turn his head
 struct XObjChrLook {
-	BOOL mActive;  // _00
-	s32 mMode;     // _04
-	XObj* mObject; // _08
-	Vec mOffset;   // _0C
-	Vec mTarget;   // _18
-	f32 mFade;     // _24, the marker fades in over 0.3 seconds
-	f32 mPhase;    // _28, degrees
-	f32 mPulse;    // _2C, 0 to 2
-	u32 _30;       // _30
+	BOOL mActive;     // _00
+	s32 mMode;        // _04
+	XObj* mObject;    // _08
+	Vec mOffset;      // _0C
+	Vec mTarget;      // _18
+	f32 mFade;        // _24, the marker fades in over 0.3 seconds
+	f32 mPhase;       // _28, degrees
+	f32 mPulse;       // _2C, 0 to 2
+	u32 mMarkerCount; // _30, visible look markers the update found
 };
 STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 
@@ -87,7 +88,7 @@ STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 struct XObjChrIdleJoint {
 	HSD_JObj* mJObj;           // _00
 	HSD_AnimJoint* mAnimJoint; // _04
-	u8* _08;                   // _08, the fobj's ad_head last frame
+	u8* mLastAdHead;           // _08, the fobj's ad_head last frame
 };
 STATIC_ASSERT(sizeof(XObjChrIdleJoint) == 0xC);
 
@@ -160,33 +161,33 @@ STATIC_ASSERT(sizeof(PlayerHeadTurn) == 0x40);
 class XObjChr : public XObj {
 public:
 	// _00-_980 = XObj
-	CStatus _980; // _980
-	CObjVec _988; // _988, cleared whenever he stops
-	f32 _9B8;     // _9B8
-	f32 _9BC[4];
-	s32 mHitObjectIndex; // _9CC
-	s32 _9D0;            // _9D0
+	CStatus mPlayerStatus;  // _980
+	CObjVec mMotion;        // _988, cleared whenever he stops
+	f32 mMoveSpeed;         // _9B8
+	f32 mStick[4];          // _9BC, [0] stick magnitude, [1] last frame's, [2] stick angle (-1 centred), [3] last frame's
+	s32 mHitObjectIndex;    // _9CC
+	s32 mActionObjectIndex; // _9D0, highest object ahead of him with an action flag in status bits 32-39 (liftable, pushable, ...)
 	union {
 		s32 objectIndex;
 		XObj* object;
 	} mFloorContacts[5];        // Slot 3 holds the supporting object. The other slots hold object indices.
-	CVec _9E8;                  // _9E8
+	CVec mContactPos;           // _9E8, where the contact-4 object stood
 	s32 mLastContactFloorIndex; // _9F8
-	CVec _9FC;                  // _9FC
+	CVec mEdgePos;              // _9FC, world position of the near object's selected edge contact; he walks toward it
 	f32 mNearDistance;          // _A0C
-	s32 _A10;
+	s32 mLetickerIndex;         // _A10, the XObjLeticker (pool 9) within 18 in front of him the carried plug can go into, -1 for none
 	s32 _A14;
 	u32 mLiftPlugFlags;
-	s32 _A1C;
-	s32 _A20;
+	s32 mPressTimer; // _A1C, frames since mAPressed latched; the plug lifts once it reaches interaction parameter 3
+	s32 mAPressed;   // _A20, latched when A is pressed while mLiftPlugFlags has 0x80
 	s32 mAttachmentActionType;
 	s32 mToolActionType;                 // _A28
-	s32 _A2C;                            // _A2C, 3 after his anim goes back to standing
-	f32 _A30;                            // _A30
-	s32 _A34;                            // _A34, flash timer
-	s32 _A38;                            // _A38
-	f32 _A3C;                            // _A3C
-	f32 _A40;                            // _A40
+	s32 mIdleLoops;                      // _A2C, idle loops before he may fidget; 3 after he goes back to standing, 5-14 after a fidget
+	f32 mIdleTimer;                      // _A30
+	s32 mFlashTimer;                     // _A34
+	s32 mFlashCount;                     // _A38, frames the flash has run
+	f32 mHitStrength;                    // _A3C, the last hit's strength, taken off the battery once while he flinches (tumble 8/9)
+	f32 mMoveSpeedScale;                 // _A40
 	XActLift mLift;                      // _A44
 	XActHang mHang;                      // _AC0
 	XActJump mJump;                      // _B10
@@ -198,8 +199,8 @@ public:
 	XActPopper mPopper;                  // _CC0
 	XActRadar mRadar;                    // _9438
 	FrameEventTime mFrameTime;           // _94F8
-	XObjChrIdleJoint _9500[4];           // _9500
-	s32 _9530;                           // _9530, idle joint cooldown
+	XObjChrIdleJoint mIdleJoints[4];     // _9500
+	s32 mIdleJointCooldown;              // _9530
 	HSD_JObj* mAttachmentJoint;          // _9534
 	HSD_AnimJoint* mAttachmentJointAnim; // _9538
 	CJointRot mJointRot;                 // _953C
@@ -207,26 +208,27 @@ public:
 	XObjChrLook mLook;                   // _959C
 	s32 mAttachment;                     // _95D0, the AtcMenu pick
 	s32 mAttachmentRequest;              // _95D4, -1 when there's none
-	s32 _95D8;                           // _95D8, how far the attachment change is
-	s32 _95DC;                           // _95DC
-	s32 _95E0;                           // _95E0
-	s32 _95E4;                           // _95E4
+	s32 mAttachmentStep;                 // _95D8, how far the attachment change is
+	s32 mScriptAttach;                   // _95DC, the request came from an event command
+	s32 mClimbType;                      // _95E0, mNextClimbType after the swap; nonzero re-runs the A-press handling once
+	s32 mNextClimbType;                  // _95E4, climb to start once the swap ends, 1 ladder, 2 rope
 	u8 _95E8[0x960C - 0x95E8];           // _95E8
-	CObjVec _960C;                       // _960C
-	CVec _963C;                          // _963C
+	CObjVec mSlopeMotion;                // _960C, slide speed down a floor slope
+	CVec mFloorSlope;                    // _963C
 	Params mParams;                      // _964C
-	f32 _9A90;                           // _9A90, zeroed when he hits an XObjHBox
+	f32 mFallDistance;                   // _9A90, zeroed when he hits an XObjHBox
 	f32 mCameraTarget[3];                // _9A94, last camera target on each axis
 	f32 mCameraTargetMargin;             // _9AA0
 	f32 mCameraTargetMarginSetting;      // _9AA4
-	f32 _9AA8;                           // _9AA8, the cameras put _9AAC back here
-	f32 _9AAC;                           // _9AAC
-	f32 _9AB0;                           // _9AB0
+	f32 mHeldMoveAngle;                  // _9AA8, mMoveAngle kept across a camera change, the cameras put it back
+	f32 mMoveAngle;                      // _9AAC, the angle he walks at this frame, NAN idle
+	f32 mHeldStickAngle;                 // _9AB0, the stick angle mHeldMoveAngle was taken at
 	s32 mBatteryWarningFrames;           // _9AB4
 	f32 mBatteryWarningFade;             // _9AB8
 	f32 mBatteryWarningAngle;            // _9ABC
-	s32 _9AC0;                           // _9AC0
-	f32 _9AC4;                           // _9AC4, time shown on the player gauge
+	s32 mGaugeTarget; // _9AC0, the object (XObj* held as s32) whose hold time mGaugeTime counts toward the auto action; 0 for none, reset
+	                  // when the target changes or the action fires
+	f32 mGaugeTime;   // _9AC4, time shown on the player gauge
 	s32 mLoadStep;
 	u8 _9ACC[4];                   // _9AC8
 	XObjPlug mPlug;                // _9AD0
@@ -236,30 +238,31 @@ public:
 	XObjOX mOXObj;                 // _CE58, _CDF8 in japan
 	PlayerSuits mSuits;            // _D7E0, _D770 in japan
 	XPad mPad;                     // _12DA0, _12CA0 in japan
-	f32 _12DF8;                    // _12DF8, heading he walks towards
+	f32 mWalkHeading;              // _12DF8, heading he walks towards
 	AttachmentValues mAttachments; // _12DFC, goes in the save as is
 	XObjChrMenu mMenu;             // _12E44, _12D44 in japan
 	OXMenu mOXMenu;                // _13390, _13260 in japan
-	BOOL _146D8;                   // _146D8, set while he's off the floor
+	BOOL mInAir;                   // _146D8, set while he's off the floor
 	DustParticlePool mDust;        // _146DC, _1329C in japan
 	CTexObj mTex[2];               // _15690
-	u32 _15890;                    // _15890
+	u32 _15890;                    // _15890, set to 0 in ResetForNewGame, never read
 	s16 mSavedTarget;              // _15894, _14454 in japan, the lifted object's id while he's reset
-	u16 _15896;                    // _15896
+	u16 _15896;                    // _15896, never accessed; sits after the s16 mSavedTarget
 	s32 mSavedTargetAnim;          // _15898
 	s32 mSavedTargetState;         // _1589C
 	XObj* mPendingTarget;          // _158A0
-	BOOL _158A4;                   // _158A4
-	s32 _158A8;                    // _158A8, saved
+	BOOL mBatteryDrains;  // _158A4, TRUE while his battery runs down (over time, from hits and from radar shots) and an empty battery stops
+	                      // him; event commands 800/801 set and clear it, 802 returns it; TRUE after ResetForNewGame
+	s32 mSquirterContent; // _158A8, saved
 	union {
 		GXColor mItemTint; // _158AC, _1446C in japan, tints the held item and its particles
 		s32 mItemTintWord; // _158AC, the save copies it as a word
 	};
 	f32 mHeadOffset;        // _158B0, _14470 in japan
 	BOOL mHeadOffsetReady;  // _158B4
-	s32 _158B8;             // _158B8, idle mode, 1 looks at the camera, 2 fidgets
-	s32 _158BC;             // _158BC, idle timer
-	s32 _158C0;             // _158C0, the ground type under the player
+	s32 mIdleMode;          // _158B8, idle mode, 1 looks at the camera, 2 fidgets
+	s32 mIdleModeTimer;     // _158BC, idle timer
+	s32 mGroundType;        // _158C0, the ground type under the player
 	CVec _158C4;            // _158C4
 	CJAnim mAttachmentAnim; // _158D4, _14494 in japan, the attachment's anims
 	CJAnim mSuitAnim;       // _15958, _14510 in japan, the suit's anims
@@ -268,12 +271,12 @@ public:
 	void ResetCameraValue()
 	{
 		if (mHang.mState != 5 && mRope.mState != 5 && mLadder.mState != 5 && mPush.mState != 2) {
-			_9AA8 = _9AAC;
+			mHeldMoveAngle = mMoveAngle;
 		}
 	}
 
 	// how far above the floor he is
-	f32 GetHeight() const { return _146D8 ? mMoveTranslate.y - mFloorHit.mHeight : 0.0f; }
+	f32 GetHeight() const { return mInAir ? mMoveTranslate.y - mFloorHit.mHeight : 0.0f; }
 
 	// todo: cleanup
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
@@ -285,7 +288,7 @@ public:
 	virtual void SetMoveDir(const Vec* dir, f32 speed);
 	virtual void UpdateAnim(u32 speed);
 	virtual void InitializeObject(u32 id);
-	virtual void vf94();
+	virtual void ResetForNewGame();
 	virtual void ResetObjectState();
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);
 	virtual void UpdateObject(u32 frames);
@@ -294,23 +297,23 @@ public:
 	virtual void DrawGroundShadow();
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);
 	virtual void DrawObjectEffects();
-	virtual void vfC4();
-	virtual void vfC8();
+	virtual void DrawCollisionShapes();
+	virtual void DrawScreenOverlay();
 	virtual void DrawDebugStatus();
 	virtual void RegisterShadowObjects(CShadow* shadow);
-	virtual void vfD8(u32* flags);
-	virtual void vfDC(BOOL enabled, u8 value);
-	virtual void vfE0(f32 factor);
+	virtual void ApplyMaterialPresets(u32* flags);
+	virtual void SetDestinationAlpha(BOOL enabled, u8 value);
+	virtual void EnableLighting(f32 factor);
 	virtual Vec GetCameraTarget();
 	virtual HSD_AnimJoint* GetJointAnimation(s32 id);
 	virtual HSD_MatAnimJoint* GetMaterialAnimation(s32 id);
 	virtual HSD_ShapeAnimJoint* GetShapeAnimation(s32 id);
 	virtual f32 GetCollisionHeight();
-	virtual void vf120(s32 mode);
+	virtual void SetCullMode(s32 mode);
 	virtual s32 HandleEventCommand(s32 count, s32* args);
-	virtual void vf12C(s32 blend, u8 r, u8 g, u8 b, f32 time);
+	virtual void SetColor(s32 blend, u8 r, u8 g, u8 b, f32 time);
 	virtual void OnHitFromPosition(const Vec& position, f32 strength);
-	virtual void vf144(s32 unused, s32 volume);
+	virtual void OnMicrophonePeak(s32 unused, s32 volume);
 	void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate);
 };
 

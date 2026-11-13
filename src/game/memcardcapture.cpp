@@ -42,7 +42,7 @@ extern "C" void CaptureGameSaveData(Memcard* card)
 	save->mHeader.mMaxBattery = Player()->mParams.mMaxBattery;
 	save->mHeader.mMoney      = Player()->mParams.mMoney;
 	save->mHeader.mScrap      = Player()->mParams.mScrap;
-	save->mHeader._34         = Player()->mParams._1C[0];
+	save->mHeader.mActive     = Player()->mParams._1C[0];
 #if defined(VERSION_PAL)
 	save->mHeader.mFrames = (s32)gGame.mPlayTime;
 #else
@@ -57,8 +57,8 @@ extern "C" void CaptureGameSaveData(Memcard* card)
 	memcpy(save->mPlayerRecord, &Player()->mAttachments, sizeof(save->mPlayerRecord));
 	save->mSuit = Player()->mSuits.mCurrent;
 	CopyVec(save->mPos, gGame.GetPlayer()->mMoveTranslate);
-	save->mRotY = gGame.GetPlayer()->mMoveRotate.y;
-	save->_2CB4 = Player()->mSuits.mSpecial;
+	save->mRotY        = gGame.GetPlayer()->mMoveRotate.y;
+	save->mSpecialSuit = Player()->mSuits.mSpecial;
 	if (gGame.mStatus.mFlags & 0x0000000800000000ULL)
 		save->mHeader.mVersion |= 1;
 	else
@@ -76,10 +76,10 @@ extern "C" void CaptureGameSaveData(Memcard* card)
 		save->mCameraDistance = camera->mCamera.mDistance;
 		save->mCameraFov      = camera->mCamera.mFov;
 	}
-	save->_2CE8      = Player()->_158A8;
-	save->_2CEC      = Player()->mItemTintWord;
-	file->mChecksum  = 0;
-	const u8* cursor = reinterpret_cast<const u8*>(save);
+	save->mSquirterLiquid = Player()->mSquirterContent;
+	save->mItemTint       = Player()->mItemTintWord;
+	file->mChecksum       = 0;
+	const u8* cursor      = reinterpret_cast<const u8*>(save);
 	for (u32 i = 0; i < sizeof(SaveData); ++i)
 		file->mChecksum += *cursor++;
 }

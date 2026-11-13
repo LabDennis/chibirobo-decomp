@@ -62,11 +62,11 @@ void XObjHBox::UpdateObject(u32 frames)
 		part->SetPos(mMoveTranslate, 0);
 		part->SetRotationY(DEG2RAD * (rand() % 360), 0);
 		SpawnBoxEffect(this, 0x10021);
-		mFloors = (XObjFloor*)GetGlobalTextEntry(part->mCoord._00->_00);
-		_250[1] = _250[0] = 0;
-		s32 index         = GetStagePlacementIndex(mCoord._00);
+		mFloors        = (XObjFloor*)GetGlobalTextEntry(part->mCoord.mPlacement->mObjectId);
+		mFloorMasks[1] = mFloorMasks[0] = 0;
+		s32 index                       = GetStagePlacementIndex(mCoord.mPlacement);
 		if (index > 0)
-			_80C = (u32)GetStageScriptByIndex(index);
+			mEventScript = (u32)GetStageScriptByIndex(index);
 	} else if (mAnimId == 1) {
 		HSD_AObj* anim = GetAObj(mJObj);
 		if (anim && (anim->flags & 0x44000000))

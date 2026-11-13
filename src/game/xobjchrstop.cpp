@@ -16,20 +16,20 @@ extern "C" CVec GetPlayerJointLocalTranslationByPath(CJObj* object, s32 depth, s
 // stops him where he stands
 extern "C" void StopPlayerMotion(XObjChr* chr)
 {
-	chr->_988.x         = 0.0f;
-	chr->_988.y         = 0.0f;
-	chr->_988.z         = 0.0f;
-	chr->_988.mTarget.x = 0.0f;
-	chr->_988.mTarget.y = 0.0f;
-	chr->_988.mTarget.z = 0.0f;
-	chr->_988.mSpeed.x  = 0.0f;
-	chr->_988.mSpeed.y  = 0.0f;
-	chr->_988.mSpeed.z  = 0.0f;
+	chr->mMotion.x         = 0.0f;
+	chr->mMotion.y         = 0.0f;
+	chr->mMotion.z         = 0.0f;
+	chr->mMotion.mTarget.x = 0.0f;
+	chr->mMotion.mTarget.y = 0.0f;
+	chr->mMotion.mTarget.z = 0.0f;
+	chr->mMotion.mSpeed.x  = 0.0f;
+	chr->mMotion.mSpeed.y  = 0.0f;
+	chr->mMotion.mSpeed.z  = 0.0f;
 	chr->mMoveRotate.Set(chr->mMoveRotate.mTarget);
 	if (chr->mPush.mState != 0) {
 		ReleasePushAction(&chr->mPush);
 		chr->mPush.mState = 0;
 		chr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-		chr->_A2C = 3;
+		chr->mIdleLoops = 3;
 	}
 }

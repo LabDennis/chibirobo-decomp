@@ -24,8 +24,6 @@ void M2SClose(void);
 void M2SStart(void);
 void M2SStop(void);
 }
-extern "C" BOOL gMicRecording;
-extern "C" OSTime gMicButtonReleaseTime;
 
 // whether the stage takes the mic, which ended up true either way
 static inline BOOL IsMicStage()
@@ -89,7 +87,7 @@ extern "C" void UpdateStageMicrophone(u32 frames)
 			if ((gGame.mStatus.mFlags & 1) && !(gGame.mStatus.mFlags & 2)) {
 				for (s32 i = 0; i < gGame.mDrawLists[0].mCount; i++) {
 					if (gGame.mDrawLists[0].mObjects[i]->mStatus.mFlags & 1) {
-						gGame.mDrawLists[0].mObjects[i]->vf144(-1, gMicObjectPeak);
+						gGame.mDrawLists[0].mObjects[i]->OnMicrophonePeak(-1, gMicObjectPeak);
 					}
 				}
 			}
@@ -102,6 +100,6 @@ extern "C" void UpdateStageMicrophone(u32 frames)
  * @note Address: 0x8000AB8C
  * @note Size: 0x4
  */
-void XObj::vf144(s32, s32)
+void XObj::OnMicrophonePeak(s32, s32)
 {
 }

@@ -73,7 +73,7 @@ static inline BOOL FindMapFloor(const XObjMap* map, const Vec* pos, XObjMapHit* 
 
 static inline u32 ProbeObjectFloor(XObj* obj, const CVec& from, const CVec& to, f32 radius, f32 height, Vec* push, Vec* contact, s32* floor)
 {
-	return obj->vfFC(&from, &to, radius, height, push, contact, (s32)floor, 0);
+	return obj->TestFloorCollision(&from, &to, radius, height, push, contact, (s32)floor, 0);
 }
 
 #endif

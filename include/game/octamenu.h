@@ -16,11 +16,11 @@ struct OctaMenuBob {
 	u8 _04[0x30 - 0x4];   // _04
 	f32 mPhase;           // _30
 	f32 mHeight;          // _34
-	u32 _38;              // _38
+	u32 _38;              // _38, never accessed
 	u8 _3C[0xC0 - 0x3C];  // _3C
-	f32 _C0;              // _C0
+	f32 _C0;              // _C0, never accessed
 	u8 _C4[0xD8 - 0xC4];  // _C4
-	f32 _D8;              // _D8
+	f32 _D8;              // _D8, never accessed
 	u8 _DC[0xE4 - 0xDC];  // _DC
 	CPtcl mPtcl;          // _E4
 	u8 _F8[0xD78 - 0xF8]; // _F8
@@ -31,11 +31,11 @@ STATIC_ASSERT(sizeof(OctaMenuBob) == 0xD80);
 
 // one item on the ring
 struct OctaMenuItem {
-	s32 mType;             // _00, attachment or costume id
-	s32 mAvailable;        // _04
-	f32 _08;               // _08, spin, the pulse phase while it's selected
-	f32 _0C;               // _0C
-	f32 _10;               // _10
+	s32 mType;       // _00, attachment or costume id
+	s32 mAvailable;  // _04
+	f32 mPulsePhase; // _08, spin, the pulse phase while it's selected
+	f32 _0C;         // _0C, never accessed; usa/europe only
+	f32 mScale; // _10, icon size: 0.5, grows to 0.7 under the cursor (0.3/0.4 while focused); also widens the ring radius (60 + 20 * scale)
 	f32 mHighlight;        // _14
 	f32 mSlotOffset;       // _18, horizontal position in the scrolling row
 	f32 mTargetSlotOffset; // _1C
@@ -48,8 +48,8 @@ public:
 	s32 mOpen;              // _00, above 0 while open, below 0 while it closes
 	s32 mCursorIndex;       // _04
 	f32 mFade;              // _08, 1 once it has all faded in
-	f32 _0C;                // _0C, glow, 1 when opened from the pad
-	f32 _10;                // _10
+	f32 mGlow;              // _0C, glow, 1 when opened from the pad
+	f32 _10;                // _10, set at init to -1 on the attachment ring and 1 on the costume ring, never read
 	OctaMenuItem mItems[8]; // _14
 	f32 mPhase;             // _154
 	f32 mOpenScreenX;       // _158, ring center on screen
@@ -71,16 +71,16 @@ public:
 	virtual ~OctaMenu() { }                         // _08 (weak)
 	virtual void Open(s32 item);                    // _0C
 	virtual void Select(s32 dir);                   // _10
-	virtual void vf14();                            // _14
-	virtual void vf18();                            // _18
+	virtual void OpenActive();                      // _14, Open(0): the ring that has the cursor
+	virtual void FinishClose();                     // _18, marks the ring closed once its fade reached 0
 	virtual void ConfirmSelection();                // _1C
 	virtual s32 GetItemIconTextureIndex(s32 index); // _20
 	virtual const char* GetItemLabel(s32 index);    // _24
 	virtual u32 GetItemColor(s32 index);            // _28
-	virtual BOOL vf2C(s32 index);                   // _2C
+	virtual BOOL IsItemEquipped(s32 index);         // _2C, the attachment held or the costume worn
 
-	s32 _280;                     // _280, _268 in japan
-	f32 _284;                     // _284
+	s32 mMenuType;                // _280, _268 in japan
+	f32 _284;                     // _284, set at init (0, then -1.5 on the attachment ring, 0.9 on the costume ring), never read
 	s32 mFirstVisibleItem;        // _288, item to start on
 	s32 mPendingFirstVisibleItem; // _28C, queued start item, -1 for none
 	s32 mFocus;                   // _290, set on the menu that has the cursor
@@ -96,24 +96,22 @@ class AtcMenu : public OctaMenu {
 public:
 	virtual ~AtcMenu() { }                          // _08 (weak)
 	virtual void Open(s32 item);                    // _0C
-	virtual void vf18();                            // _18
 	virtual void ConfirmSelection();                // _1C
 	virtual s32 GetItemIconTextureIndex(s32 index); // _20
 	virtual const char* GetItemLabel(s32 index);    // _24
 	virtual u32 GetItemColor(s32 index);            // _28
-	virtual BOOL vf2C(s32 index);                   // _2C
+	virtual BOOL IsItemEquipped(s32 index);         // _2C
 };
 
 class DrsMenu : public OctaMenu {
 public:
 	virtual ~DrsMenu() { }                          // _08
 	virtual void Open(s32 item);                    // _0C
-	virtual void vf18();                            // _18
 	virtual void ConfirmSelection();                // _1C
 	virtual s32 GetItemIconTextureIndex(s32 index); // _20
 	virtual const char* GetItemLabel(s32 index);    // _24
 	virtual u32 GetItemColor(s32 index);            // _28
-	virtual BOOL vf2C(s32 index);                   // _2C
+	virtual BOOL IsItemEquipped(s32 index);         // _2C
 };
 
 struct OXJointPath {
@@ -126,7 +124,7 @@ struct OXMenuMark {
 	f32 mTilt;  // _04
 	f32 mScale; // _08
 #if !defined(VERSION_JP)
-	u32 _0C;   // _0C
+	u32 _0C; // _0C, random angle on Open, +3 degrees a frame while the ring is unfocused; only fed to sin() calls whose results are dropped
 	XObj mObj; // _10
 
 	OXMenuMark();
@@ -143,14 +141,14 @@ STATIC_ASSERT(sizeof(OXMenuMark) == 0x990);
 class OXMenu {
 public:
 #if !defined(VERSION_JP)
-	u32 _00; // _00
+	u32 mLoadStep; // _00, how far loading the two mark models (45, 46) has got, 0 on reset; usa/europe only
 #endif
 	BOOL mStarted;      // _04
 	s32 mCrossMask;     // _08
 	s32 mSelectedIndex; // _0C
 	f32 mFade;          // _10
 #if !defined(VERSION_JP)
-	u32 _14; // _14
+	u32 _14; // _14, never accessed; usa/europe only
 #endif
 	OXMenuMark mMark[2]; // _18
 	XObj* mChr;          // _1338, _28 in japan
