@@ -400,7 +400,7 @@ extern "C" XObjFloor* GetObjectCollisionList(s32 objectId)
 extern "C" s32 GetDefaultStageIndex()
 {
 #if defined(VERSION_R24J01)
-	if (gGame.mVTable->getFlags(&gGame, 0x8000000000000ULL))
+	if (gGame.GetStatusFlags(0x8000000000000ULL))
 #else
 	if (gGame.mStatus.mFlags & 0x8000000000000ULL)
 #endif

@@ -1,5 +1,6 @@
 // Wii Remote speaker ADPCM encoder. Source reference: projectPiki/pik1wii.
 #include "revolution/wenc.h"
+#include <stdlib.h>
 #include <string.h>
 
 s32 WENCGetEncodeData(WENCInfo* info, u32 flag, const s16* pcmData, s32 samples, u8* adpcmData)
@@ -57,7 +58,9 @@ s32 WENCGetEncodeData(WENCInfo* info, u32 flag, const s16* pcmData, s32 samples,
 			l3 = 1;
 		}
 
-		dn = __abs(da - xn);
+		// NONMATCHING: retail inlines abs, the Revolution MSL defines it with __abs; this MSL has abs as a
+		// function, so the build calls it
+		dn = abs(da - xn);
 		if (dn >= dl) {
 			l2 = 1;
 			dn -= dl;

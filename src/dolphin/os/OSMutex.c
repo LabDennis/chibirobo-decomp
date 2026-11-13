@@ -106,7 +106,6 @@ BOOL OSTryLockMutex(OSMutex* mutex)
 	return locked;
 }
 
-#if !defined(VERSION_R24J01)
 /**
  * @note Address: N/A
  * @note Size: 0x20
@@ -155,4 +154,3 @@ void OSSignalCond(OSCond* cond)
 {
 	OSWakeupThread(&cond->queue);
 }
-#endif

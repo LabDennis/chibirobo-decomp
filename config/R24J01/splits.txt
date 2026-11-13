@@ -27,17 +27,15 @@ game/stage_data.cpp:
 	extab start:0x8000A210 end:0x8000A230
 	extabindex start:0x80012F68 end:0x80012F98
 	.text start:0x80092308 end:0x80092EC8
+	.rodata start:0x802D8310 end:0x802D83EC
+	.data start:0x802FEEF0 end:0x802FF2C8
+	.sdata2 start:0x805A4030 end:0x805A4160
 
 game/globalresources.cpp:
 	extab start:0x8000A238 end:0x8000A248
 	extabindex start:0x80012FA4 end:0x80012FBC
 	.sdata start:0x805A0ED0 end:0x805A0ED4
 	.text start:0x80093138 end:0x800942E8
-
-game/wii/stage_table.cpp:
-	.rodata start:0x802D8310 end:0x802D83EC
-	.data start:0x802FEEF0 end:0x802FF2C8
-	.sdata2 start:0x805A4030 end:0x805A4160
 
 game/wii/cpadact.cpp:
 	extab start:0x8000A600 end:0x8000A610
@@ -60,9 +58,6 @@ game/wii/saveslots.cpp:
 	extab start:0x8000A650 end:0x8000A6A0
 	extabindex start:0x800133AC end:0x80013424
 	.text start:0x800A9C48 end:0x800AA2F8
-
-game/attachmentcounts.cpp:
-	.text start:0x800E83EC end:0x800E84BC
 
 game/ringmenupointer.cpp:
 	extab start:0x8000C4EC end:0x8000C4F4
@@ -102,7 +97,7 @@ revolution/OS/OSArena.c:
 dolphin/os/OSMessage.c:
 	.text start:0x801878C4 end:0x80187B98
 
-dolphin/os/OSMutex.c:
+revolution/OS/OSMutex.c:
 	.text start:0x801882D0 end:0x801885D4
 
 revolution/OS/OSStateFlags.c:
@@ -110,7 +105,7 @@ revolution/OS/OSStateFlags.c:
 	.data start:0x8031CF98 end:0x8031CFC0
 	.bss start:0x804CD5A0 end:0x804CD5C0
 
-dolphin/mtx/mtx44.c:
+revolution/MTX/mtx44.c:
 	.text start:0x8018F3E4 end:0x8018FA40
 	.sdata2 start:0x805A6498 end:0x805A64B0
 

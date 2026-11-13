@@ -14,7 +14,6 @@ extern CThread gWiiSaveThread;
 extern WiiSaveJob gWiiSaveJob;
 extern u8* gWiiSaveThreadStack;
 extern void* gWiiSaveNandWorkBuffer;
-extern const char gWiiSaveSlotPathFormat[];
 
 void CaptureWiiSaveSlot(WiiSaveManager* manager, bool newGame);
 s32 GetDefaultStageIndex();
@@ -62,7 +61,7 @@ extern "C" void* RunWiiSaveSlotScan(void* param)
 
 extern "C" s32 WriteWiiSaveSlot(WiiSaveManager* manager, int slot, bool newGame)
 {
-	sprintf(manager->mSlotPath, gWiiSaveSlotPathFormat, slot);
+	sprintf(manager->mSlotPath, "CB_SKIP(%d)", slot);
 	memset(&manager->mSlot, 0, sizeof(manager->mSlot));
 	CaptureWiiSaveSlot(manager, newGame);
 	ChangeNandGameDir(&manager->mFile, manager->mHomeDir);
@@ -114,7 +113,7 @@ extern "C" void* RunWiiSaveSlotWrite(void* param)
 
 extern "C" s32 ReadWiiSaveSlot(WiiSaveManager* manager, int slot)
 {
-	sprintf(manager->mSlotPath, gWiiSaveSlotPathFormat, slot);
+	sprintf(manager->mSlotPath, "CB_SKIP(%d)", slot);
 	memset(&manager->mSlot, 0, sizeof(manager->mSlot));
 	ChangeNandGameDir(&manager->mFile, manager->mHomeDir);
 	s32 result = OpenNandGameFile(&manager->mFile, manager->mSlotPath, 1, gWiiSaveNandWorkBuffer, 0x4000);
@@ -158,7 +157,7 @@ extern "C" void* RunWiiSaveSlotDelete(void* param)
 {
 	WiiSaveJob* job         = static_cast<WiiSaveJob*>(param);
 	WiiSaveManager* manager = job->mManager;
-	sprintf(manager->mSlotPath, gWiiSaveSlotPathFormat, job->mSlot);
+	sprintf(manager->mSlotPath, "CB_SKIP(%d)", job->mSlot);
 	DeleteNandGameFile(&manager->mFile, manager->mSlotPath);
 	return NULL;
 }

@@ -102,7 +102,7 @@ static u64 GameCubeActions(CPadAct& act, const CPadOne& pad)
 		actions |= 1ULL << 8;
 	}
 	const bool triggerR = (trigger & ((1ULL << GameCubeR) | (1ULL << 16))) != 0;
-	if (gGame.mVTable->getFlags(&gGame, 0x80000000ULL)) {
+	if (gGame.GetStatusFlags(0x80000000ULL)) {
 		actions |= DirectionActions((u32)(held >> GameCubeDPad), (u32)(trigger >> GameCubeDPad));
 		if (pad.mSubStick.y != 0.0f) {
 			act.mCameraInput = 0.5f * pad.mSubStick.y;
@@ -122,7 +122,7 @@ static u64 GameCubeActions(CPadAct& act, const CPadOne& pad)
 			actions |= 1ULL << 9;
 		}
 	}
-	if ((trigger & (1ULL << GameCubeL)) && !gGame.mVTable->getFlags(&gGame, 0x0600000000000000ULL)) {
+	if ((trigger & (1ULL << GameCubeL)) && !gGame.GetStatusFlags(0x0600000000000000ULL)) {
 		actions |= 1ULL << 34;
 	}
 	if (held & (1ULL << GameCubeB)) {
@@ -200,7 +200,7 @@ static void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 			const u8* game        = reinterpret_cast<const u8*>(&gGame);
 			const bool hasSelection
 			    = *reinterpret_cast<const s32*>(game + 0xb5e8) >= 1 && *reinterpret_cast<const s32*>(game + 0xb79c) >= 0;
-			if (!hasSelection && !(gGame.mVTable->getFlags(&gGame, 4ULL << 32) && *reinterpret_cast<const s32*>(game + 0x5978) != 12)
+			if (!hasSelection && !(gGame.GetStatusFlags(4ULL << 32) && *reinterpret_cast<const s32*>(game + 0x5978) != 12)
 			    && gGame.mLoadStep >= 2 && act.mTransitionCooldown == 0.0f) {
 				act.mTransitionCooldown = 0.3f * gRefreshRate;
 			}
