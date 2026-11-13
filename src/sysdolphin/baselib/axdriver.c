@@ -1,4 +1,5 @@
 #include <global.h>
+#include <sysdolphin/axdriver.h>
 #include <math.h>
 #include <string.h>
 
@@ -78,12 +79,10 @@ void HSD_SynthSFXSetMix(s32 pid, f32 mix_main, f32 mix_a, f32 mix_b);
 void HSD_SynthSFXSetPitch(s32 pid, s32 which, f32 ratio);
 void HSD_SynthSFXSetPriority(s32 pid, s32 pri);
 void HSD_SynthSFXSetDriverInactivatedCallback(void (*cb)(s32));
-void HSD_SynthSFXSetDriverMasterClockCallback(void (*cb)(void));
 void HSD_SynthSFXSetDriverPauseCallback(void (*cb)(s32));
 s32 HSD_SynthPStreamStart(s32 entrynum, s32 vol, s32 vol_mode, s32 vol2, s32 vol2_mode, u8 x7F, u8 b, u8 c, f32 pitch1, f32 pitch2,
                           f32 mix_main, f32 mix_a, f32 mix_b, u8 d, s32 e, s32 f);
 s32 HSD_SynthPStreamIsActive(void);
-void HSD_SynthPStreamSetBeatCallback(s32 pid, s32 a, s32 b);
 void HSD_SynthInit(s32 heap_size, s32 slots, s32 bufs);
 extern s32 sSynthDecibelFloor;
 
@@ -833,7 +832,7 @@ void AXDriverInterp(HSD_SM* v, BOOL exec)
  * @note Address: 0x801E7E84
  * @note Size: 0x208
  */
-void AXDriverCallback(void)
+void AXDriverCallback(u32 frame)
 {
 	HSD_SM* v;
 	HSD_SM* next;
@@ -1842,12 +1841,12 @@ s32 AXDriverIsStreamActive(void)
 	return HSD_SynthPStreamIsActive();
 }
 
-static inline BOOL AXDriverSetSlotParam(s32 slot, s32 a, s32 b)
+static inline BOOL AXDriverSetSlotParam(s32 slot, HSD_AudioBeatCallback callback, void* context)
 {
 	if (slot < 1 || slot > sAXStreamSlotCount) {
 		return FALSE;
 	}
-	HSD_SynthPStreamSetBeatCallback(sStreamVoiceIds[slot], a, b);
+	HSD_SynthPStreamSetBeatCallback(sStreamVoiceIds[slot], callback, context);
 	return TRUE;
 }
 
@@ -1855,12 +1854,12 @@ static inline BOOL AXDriverSetSlotParam(s32 slot, s32 a, s32 b)
  * @note Address: 0x801EA308
  * @note Size: 0x90
  */
-BOOL AXDriverSetAllStreamParams(s32 a, s32 b)
+BOOL AXDriverSetAllStreamParams(HSD_AudioBeatCallback callback, void* context)
 {
 	s32 i;
 
 	for (i = 1; i <= sAXStreamSlotCount; i++) {
-		AXDriverSetSlotParam(i, a, b);
+		AXDriverSetSlotParam(i, callback, context);
 	}
 	return TRUE;
 }

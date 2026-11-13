@@ -3,9 +3,13 @@
 
 #include <dolphin/types.h>
 
-// the sound effect calls the game makes from units with the hsd include path,
-// src/sysdolphin/baselib/axdriver.c has the rest
+typedef void (*HSD_AudioBeatCallback)(s32 id, s32 beat, void* context);
+
 BOOL HSD_AudioSFXKeyOff(s32 vid);
 BOOL HSD_AudioSFXCheck(s32 vid);
+
+BOOL AXDriverSetAllStreamParams(HSD_AudioBeatCallback callback, void* context);
+void HSD_SynthPStreamSetBeatCallback(s32 id, HSD_AudioBeatCallback callback, void* context);
+void HSD_SynthSFXSetDriverMasterClockCallback(void (*callback)(u32));
 
 #endif
