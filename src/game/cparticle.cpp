@@ -75,26 +75,26 @@ HSD_Generator* CParticle::Create(u32 code, u8 type, HSD_JObj* jobj, BOOL keep)
 	HSD_Generator* gen = NULL;
 	for (int i = 0; i < CPARTICLE_GEN_NUM; i++) {
 		if (mGenerators[i].mGen == NULL) {
-			s32 linkNo = (code >> 16) & 0xFF;
+			s32 linkNo = (code >> 16) & 0xFF; // the code packs link number and effect id
 #if defined(VERSION_JP)
 			s32 no   = code & 0xFFFF;
 			s32 bank = GetBank();
 			s32 id   = no + GetIdBase();
 #else
 			s32 id = code & 0xFFFF;
-			if (id < GetIdBase()) {
+			if (id < GetIdBase()) { // a relative id gets the base added
 				id += GetIdBase();
 			}
 			s32 bank = GetBank();
 #endif
 			mGenerators[i].mId = id;
-			if (type == 0) {
+			if (type == 0) { // 0 plain, else queued
 				mGenerators[i].mGen = psCreateJointGenerator(linkNo, bank, id, jobj);
 			} else {
 				mGenerators[i].mGen = psCreateQueuedJointGenerator(linkNo, bank, id, jobj);
 			}
 			gen = mGenerators[i].mGen;
-			if (gen != NULL && !keep && gen->genLife != 0) {
+			if (gen != NULL && !keep && gen->genLife != 0) { // unkept: the slot forgets it
 				mGenerators[i].mId  = -1;
 				mGenerators[i].mGen = NULL;
 			}
@@ -113,14 +113,14 @@ HSD_Generator* CParticle::CreateSRT(u32 code, s32 status, const Vec& translate, 
 	HSD_Generator* gen = NULL;
 	for (int i = 0; i < CPARTICLE_GEN_NUM; i++) {
 		if (mGenerators[i].mGen == NULL) {
-			s32 linkNo = (code >> 16) & 0xFF;
+			s32 linkNo = (code >> 16) & 0xFF; // the code packs link number and effect id
 #if defined(VERSION_JP)
 			s32 no   = code & 0xFFFF;
 			s32 bank = GetBank();
 			s32 id   = no + GetIdBase();
 #else
 			s32 id = code & 0xFFFF;
-			if (id < GetIdBase()) {
+			if (id < GetIdBase()) { // a relative id gets the base added
 				id += GetIdBase();
 			}
 			s32 bank = GetBank();
@@ -152,7 +152,7 @@ HSD_Generator* CParticle::CreateSRT(u32 code, s32 status, const Vec& translate, 
  */
 void CParticle::Draw(s32 mask)
 {
-	for (u32 i = 0; i < 3; i++) {
+	for (u32 i = 0; i < 3; i++) { // the three particle kinds
 		_psDispParticlesSub(mask, i);
 	}
 }
@@ -175,7 +175,7 @@ void CParticle::Update(u32 frames)
  */
 BOOL CParticle::Read(const char* name)
 {
-	const char* exts[CPARTICLE_FILE_NUM] = { "ptl", "txg", "ref", "txf" };
+	const char* exts[CPARTICLE_FILE_NUM] = { "ptl", "txg", "ref", "txf" }; // the four banks, one file per call
 	void** banks[CPARTICLE_FILE_NUM]     = { (void**)&mCmdBank, (void**)&mTexBank, &mRef, (void**)&mFormBank };
 	char path[64];
 
