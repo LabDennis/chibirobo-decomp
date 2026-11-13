@@ -3673,20 +3673,17 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 		scale.x = scale.y = scale.z = 1.0f;
 
 		if (level < 4 && oldLevel < level) {
-			static const Vec rot = { 0.0f, 0.0f, 0.0f };
-			STAGE01_PARTICLE->CreateSRT(0x3A, 1, pos, scale, rot, 1);
+			STAGE01_PARTICLE->CreateSRT(0x3A, 1, pos, scale, (Vec) { 0, 0, 0 }, 1);
 		}
 		if (level == 4) {
 			if (slot->mYakiTime[slot->mSide] % 180 == 0) {
-				static const Vec rot = { 0.0f, 0.0f, 0.0f };
 				STAGE01_PARTICLE->Kill(0x3B);
-				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, rot, 1);
+				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, (Vec) { 0, 0, 0 }, 1);
 			}
 		} else if (level >= 5) {
 			if (slot->mYakiTime[slot->mSide] % 120 == 0) {
-				static const Vec rot = { 0.0f, 0.0f, 0.0f };
 				STAGE01_PARTICLE->Kill(0x3B);
-				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, rot, 1);
+				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, (Vec) { 0, 0, 0 }, 1);
 			}
 		}
 

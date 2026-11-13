@@ -64,7 +64,7 @@ public:
 	void Kill(HSD_Generator* gen);
 	void Kill(s32 id);
 	HSD_Generator* Create(u32 code, u8 type, HSD_JObj* jobj, BOOL keep);
-	HSD_Generator* CreateSRT(u32 code, s32 status, const Vec& translate, const Vec& scale, Vec rotate, BOOL keep);
+	HSD_Generator* CreateSRT(u32 code, s32 status, const Vec& translate, const Vec& scale, const Vec& rotate, BOOL keep);
 	void Draw(s32 mask);
 	void Update(u32 frames);
 	BOOL Read(const char* name);
