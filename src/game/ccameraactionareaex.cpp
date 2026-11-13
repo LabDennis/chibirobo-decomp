@@ -9,37 +9,9 @@
 CCameraActionAreaEx gCameraAreaState;
 
 extern "C" void OSReport(const char* format, ...);
-extern "C" Vec lbl_805A0400[];
-
-class CGs;
 
 extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state);
 extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32 unused);
-
-// inlined in retail: only an inlined copy puts the CamAreaInfo copy below its temporary on the stack
-static inline s32 GetAreaMode(s32 index)
-{
-	s32 mode;
-	CamAreaRecord* records = GetStageCameraAreaRecords();
-	CamAreaInfo area       = CamAreaInfo(&records[index]);
-	switch (area.mRecord->mCameraAction) {
-	case 1:
-		mode = 1;
-		break;
-	case 7:
-		mode = 7;
-		break;
-	case -1:
-	default:
-		f32 height = area.GetBottom();
-		if (height < -5.0f)
-			mode = 7;
-		else if (height >= -5.0f)
-			mode = 1;
-		break;
-	}
-	return mode;
-}
 
 /**
  * @note Address: 0x80135D28
@@ -50,28 +22,20 @@ extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state)
 	s32 index = state->mActiveArea;
 	if (index == -1)
 		return 7;
-	return GetAreaMode(index);
-}
-
-static inline Vec AreaPoint(const CamAreaInfo& area, s32 index)
-{
-	Vec point = lbl_805A0400[2 + index];
-	point.x   = area.mRecord->_04[index][0] / 100.0f;
-	point.z   = area.mRecord->_04[index][1] / 100.0f;
-	return point;
-}
-
-static inline BOOL PointInQuad(const Vec& pos, Vec a, Vec b, Vec c, Vec d)
-{
-	return IsPointInsideQuadXZ(&pos, &a, &b, &c, &d);
+	const CamAreaRecord& area = GetStageCameraAreaRecords()[index];
+	switch (area.mCameraAction) {
+	case 1:
+	case 7:
+		return area.mCameraAction;
+	default:
+		return area.GetBottom() < -5.0f ? 7 : 1;
+	}
 }
 
 /**
  * @note Address: 0x801361C4
  * @note Size: 0x890
  */
-// NONMATCHING: retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands in for
-// them until the whole file is built, and keeps top - bottom and the height in f26/f27 the other way round
 extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 {
 	if (state->mAreaRecords == NULL)
@@ -100,10 +64,9 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		}
 
 		CamAreaInfo area(&state->mAreaRecords[selected]);
-		CVec a     = AreaPoint(area, 0);
-		CVec b     = AreaPoint(area, 1);
-		CVec c     = AreaPoint(area, 2);
-		CVec d     = AreaPoint(area, 3);
+		CVec a     = area.mRecord->GetPoint(0);
+		CVec b     = area.mRecord->GetPoint(1);
+		CVec c     = area.mRecord->GetPoint(2);
 		f32 top    = area.GetTop();
 		f32 bottom = area.GetBottom();
 		f32 width  = PSVECDistance(&a, &b);
@@ -113,10 +76,7 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		width /= scale;
 		height /= scale;
 		depth /= scale;
-		center.y       = (top - bottom) / 2.0f + bottom;
-		CVec axis      = CVec(1.0f, 0.0f, 0.0f);
-		CVec direction = b - a;
-		PSVECNormalize(&direction, &direction);
+		center.y = (top - bottom) / 2.0f + bottom;
 		DrawGsCube(&gGame.mGs, colors[selected % 5], center.x, center.y, center.z, 0.0f, 0.0f, 0.0f, width, height, depth);
 
 		s32 index           = selected;
@@ -144,20 +104,18 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
  * @note Address: 0x80136A54
  * @note Size: 0x77C
  */
-// NONMATCHING: retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands in for
-// them until the whole file is built, and rotates the yaw, top - bottom and the height among f29-f31
 extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 {
-	// callers only pass 0 or 1
 	CamAreaRecord* records;
 	s32 count;
 	if (mode == 0) {
 		records = state->mAreaRecords;
 		count   = state->mAreaCount;
-	}
-	if (mode == 1) {
+	} else if (mode == 1) {
 		records = state->mAreaExRecords;
 		count   = state->mAreaExCount;
+	} else {
+		return;
 	}
 	if (records == NULL)
 		return;
@@ -181,10 +139,9 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 		CamAreaInfo area(records);
 		if (area.IsDisabled())
 			continue;
-		CVec a     = AreaPoint(area, 0);
-		CVec b     = AreaPoint(area, 1);
-		CVec c     = AreaPoint(area, 2);
-		CVec d     = AreaPoint(area, 3);
+		CVec a     = area.mRecord->GetPoint(0);
+		CVec b     = area.mRecord->GetPoint(1);
+		CVec c     = area.mRecord->GetPoint(2);
 		f32 top    = area.GetTop();
 		f32 bottom = area.GetBottom();
 		f32 ax     = a.x;
@@ -225,28 +182,18 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 		width /= scale;
 		height /= scale;
 		depth /= scale;
-		center.y       = (top - bottom) / 2.0f + bottom;
-		CVec axis      = CVec(1.0f, 0.0f, 0.0f);
-		CVec direction = b - a;
-		PSVECNormalize(&direction, &direction);
+		center.y = (top - bottom) / 2.0f + bottom;
 		DrawGsCube(&gGame.mGs, colors[selected % 5], center.x, center.y, center.z, 0.0f, yaw, 0.0f, width, height, depth);
 	}
 }
 
-static inline BOOL BothAreaTests(BOOL polygon, BOOL height)
+static bool ContainsPoint(const CamAreaRecord& area, const Vec& pos)
 {
-	if (polygon && height)
-		return TRUE;
-	return FALSE;
-}
-
-static inline BOOL ContainsPoint(const CamAreaInfo& area, const Vec& pos)
-{
-	BOOL inside       = PointInQuad(pos, AreaPoint(area, 0), AreaPoint(area, 1), AreaPoint(area, 2), AreaPoint(area, 3));
-	bool withinHeight = false;
-	if (pos.y <= area.GetTop() && pos.y >= area.GetBottom())
-		withinHeight = true;
-	return BothAreaTests(inside, withinHeight != false);
+	Vec a = area.GetPoint(0);
+	Vec b = area.GetPoint(1);
+	Vec c = area.GetPoint(2);
+	Vec d = area.GetPoint(3);
+	return IsPointInsideQuadXZ(&pos, &a, &b, &c, &d) && pos.y <= area.GetTop() && pos.y >= area.GetBottom();
 }
 
 /**
@@ -257,7 +204,7 @@ extern "C" s32 CollectCameraAreasContainingPoint(CCameraActionAreaEx* state, Vec
 {
 	s32 count = 0;
 	for (s32 i = 0; i < state->mAreaExCount; ++i) {
-		if (ContainsPoint(CamAreaInfo(&state->mAreaExRecords[i]), pos)) {
+		if (ContainsPoint(state->mAreaExRecords[i], pos)) {
 			*ids++ = i;
 			++count;
 		}
@@ -273,7 +220,7 @@ extern "C" s32 FindFirstCameraAreaContainingPoint(CCameraActionAreaEx* state, Ve
 {
 	s32 index = -1;
 	for (s32 i = 0; i < state->mAreaExCount; ++i) {
-		if (ContainsPoint(CamAreaInfo(&state->mAreaExRecords[i]), pos)) {
+		if (ContainsPoint(state->mAreaExRecords[i], pos)) {
 			index = i;
 			break;
 		}
@@ -291,7 +238,7 @@ extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, 
 	for (s32 i = 1; i < state->mAreaCount; ++i) {
 		if (CamAreaInfo(&state->mAreaRecords[i]).IsCameraOff())
 			continue;
-		if (ContainsPoint(CamAreaInfo(&state->mAreaRecords[i]), pos)) {
+		if (ContainsPoint(state->mAreaRecords[i], pos)) {
 			index = i;
 			break;
 		}
@@ -303,22 +250,10 @@ extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, 
  * @note Address: 0x80135E34
  * @note Size: 0x390
  */
-// NONMATCHING: the loop is FindEnabledCameraAreaContainingPoint's, but retail swaps the stack slots of the two
-// CamAreaInfo temporaries and the registers of i and the record offset
 extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 {
-	state->mPrevArea = state->mCurrentArea;
-	Vec pos          = gGame.GetPlayer()->mMoveTranslate;
-	s32 index        = -1;
-	for (s32 i = 1; i < state->mAreaCount; ++i) {
-		if (CamAreaInfo(&state->mAreaRecords[i]).IsCameraOff())
-			continue;
-		if (ContainsPoint(CamAreaInfo(&state->mAreaRecords[i]), pos)) {
-			index = i;
-			break;
-		}
-	}
-	state->mCurrentArea = index;
+	state->mPrevArea    = state->mCurrentArea;
+	state->mCurrentArea = FindEnabledCameraAreaContainingPoint(state, gGame.GetPlayer()->mMoveTranslate);
 	if (state->mPrevArea != state->mCurrentArea && state->mCurrentArea != -1)
 		state->mActiveArea = state->mCurrentArea;
 }
