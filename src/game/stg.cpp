@@ -9307,7 +9307,7 @@ BOOL MenuSave::Draw()
 				barX = ((32.0f + center) - SavePromptHalfWidth(cells)) - 2.0f;
 			else
 				barX = 60.0f + (10.0f + ((32.0f + center) - SavePromptHalfWidth(cells)));
-			f32 barWidth = 56.7f;
+			f32 barWidth = 0.9f * (3 * 21.0f);
 #else
 			f32 barX     = mChoice == 0 ? 281.25f : 358.75f;
 			f32 barWidth = 61.5f;
