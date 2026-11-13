@@ -93,15 +93,15 @@ extern "C" CCameraActionArea* __dt__17CCameraActionAreaFv(CCameraActionArea* are
 {
 	if (area != NULL) {
 		*(void***)((u8*)area + 0x3C) = __vt__17CCameraActionArea;
-		area->_258.CInterpolationEaseOutDivide::~CInterpolationEaseOutDivide();
-		area->_238.CInterpolationEaseOut::~CInterpolationEaseOut();
-		area->_21C.CInterpolationEaseInOut::~CInterpolationEaseInOut();
-		area->_20C.CInterpolationLinear::~CInterpolationLinear();
-		area->_1C0.CVectorEaseOutDivideInterpolation::~CVectorEaseOutDivideInterpolation();
-		area->_15C.CVectorEaseOutInterpolation::~CVectorEaseOutInterpolation();
-		area->_100.CVectorEaseInOutInterpolation::~CVectorEaseInOutInterpolation();
-		area->_CC.CVectorLinearInterpolation::~CVectorLinearInterpolation();
-		area->_70.CVectorEaseInOutInterpolation::~CVectorEaseInOutInterpolation();
+		area->mFovEaseOutDivide.CInterpolationEaseOutDivide::~CInterpolationEaseOutDivide();
+		area->mFovEaseOut.CInterpolationEaseOut::~CInterpolationEaseOut();
+		area->mFovEaseInOut.CInterpolationEaseInOut::~CInterpolationEaseInOut();
+		area->mFovLinear.CInterpolationLinear::~CInterpolationLinear();
+		area->mEyeEaseOutDivide.CVectorEaseOutDivideInterpolation::~CVectorEaseOutDivideInterpolation();
+		area->mEyeEaseOut.CVectorEaseOutInterpolation::~CVectorEaseOutInterpolation();
+		area->mEyeEaseInOut.CVectorEaseInOutInterpolation::~CVectorEaseInOutInterpolation();
+		area->mEyeLinear.CVectorLinearInterpolation::~CVectorLinearInterpolation();
+		area->mInterestEaseInOut.CVectorEaseInOutInterpolation::~CVectorEaseInOutInterpolation();
 		area->CCameraActionAreaExM::~CCameraActionAreaExM();
 		if ((s16)flags > 0)
 			::operator delete(area);

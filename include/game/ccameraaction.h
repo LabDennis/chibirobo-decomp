@@ -460,31 +460,31 @@ extern "C" CCameraActionAreaEx gCameraAreaState;
 // the area action, CCameraActions holds it at _40
 class CCameraActionArea : public CCameraActionAreaExM {
 public:
-	f32 _40;                                            // _40, transition time
-	s32 _44;                                            // _44, camera direction mode
-	BOOL _48;                                           // _48, user-selected entry
-	s32 _4C;                                            // _4C
-	s32 _50;                                            // _50
-	CamAreaEntry* _54;                                  // _54
-	CamAreaEntry* _58;                                  // _58
-	s32 _5C;                                            // _5C
-	BOOL _60;                                           // _60, manual camera changes enabled
-	XObj* mTarget;                                      // _64
-	CInterfaceVectorInterpolation* mEyeInterp;          // _68
-	CInterfaceInterpolation* mFovInterp;                // _6C
-	CVectorEaseInOutInterpolation _70;                  // _70
-	CVectorLinearInterpolation _CC;                     // _CC
-	CVectorEaseInOutInterpolation _100;                 // _100
-	CVectorEaseOutInterpolation _15C;                   // _15C
-	CVectorEaseOutDivideInterpolation _1C0;             // _1C0
-	CInterfaceVectorInterpolation* mEyeInterps[5];      // _1F8
-	CInterpolationLinear _20C;                          // _20C
-	CInterpolationEaseInOut _21C;                       // _21C
-	CInterpolationEaseOut _238;                         // _238
-	CInterpolationEaseOutDivide _258;                   // _258
-	CInterfaceInterpolation* mFovInterps[5];            // _268
-	CInterfaceVectorInterpolation* mInterestInterp;     // _27C
-	CInterfaceVectorInterpolation* mInterestInterps[5]; // _280, by mode
+	f32 mTransitionTime;                                 // _40, transition time
+	s32 mDirectionMode;                                  // _44, camera direction mode
+	BOOL mUserSelected;                                  // _48, user-selected entry
+	s32 mEntryIndex;                                     // _4C
+	s32 mPrevEntryIndex;                                 // _50
+	CamAreaEntry* mEntry;                                // _54
+	CamAreaEntry* mPrevEntry;                            // _58
+	s32 mControlEnabled;                                 // _5C
+	BOOL mManualControl;                                 // _60, manual camera changes enabled
+	XObj* mTarget;                                       // _64
+	CInterfaceVectorInterpolation* mEyeInterp;           // _68
+	CInterfaceInterpolation* mFovInterp;                 // _6C
+	CVectorEaseInOutInterpolation mInterestEaseInOut;    // _70
+	CVectorLinearInterpolation mEyeLinear;               // _CC
+	CVectorEaseInOutInterpolation mEyeEaseInOut;         // _100
+	CVectorEaseOutInterpolation mEyeEaseOut;             // _15C
+	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _1C0
+	CInterfaceVectorInterpolation* mEyeInterps[5];       // _1F8
+	CInterpolationLinear mFovLinear;                     // _20C
+	CInterpolationEaseInOut mFovEaseInOut;               // _21C
+	CInterpolationEaseOut mFovEaseOut;                   // _238
+	CInterpolationEaseOutDivide mFovEaseOutDivide;       // _258
+	CInterfaceInterpolation* mFovInterps[5];             // _268
+	CInterfaceVectorInterpolation* mInterestInterp;      // _27C
+	CInterfaceVectorInterpolation* mInterestInterps[5];  // _280, by mode
 
 	virtual void PreviousUpdate();           // _0C
 	virtual void Update(u32 step);           // _10
