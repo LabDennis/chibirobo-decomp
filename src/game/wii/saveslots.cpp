@@ -16,14 +16,8 @@ extern u8* gWiiSaveThreadStack;
 extern void* gWiiSaveNandWorkBuffer;
 extern const char gWiiSaveSlotPathFormat[];
 
-s32 ChangeNandGameDir(WiiGameSaveFile* file, const char* path);
-s32 CreateNandGameFile(WiiGameSaveFile* file, const char* path, u8 permission, u8 attribute);
-s32 DeleteNandGameFile(WiiGameSaveFile* file, const char* path);
-s32 CheckNandGameSpace(WiiGameSaveFile* file, u32 blocks, u32 inodes, u32* answer);
 void CaptureWiiSaveSlot(WiiSaveManager* manager, bool newGame);
-s32 GetWiiInitialStage();
-int CheckWiiSaveBanner(WiiSaveManager* manager, bool removeInvalid);
-s32 WriteWiiSaveBanner(WiiSaveManager* manager);
+s32 GetDefaultStageIndex();
 void ScanWiiSaveSlots(WiiSaveManager* manager, int count);
 
 void* RunWiiSaveSlotScan(void* param);
@@ -135,7 +129,7 @@ extern "C" s32 ReadWiiSaveSlot(WiiSaveManager* manager, int slot)
 	if (storedChecksum != GetWiiSaveSlotChecksum(manager->mSlot))
 		return NAND_RESULT_UNKNOWN;
 	if (manager->mSlot.mHeader.mStages[0] < 0)
-		manager->mSlot.mHeader.mStages[0] = manager->mSlot.mHeader.mStages[1] = GetWiiInitialStage();
+		manager->mSlot.mHeader.mStages[0] = manager->mSlot.mHeader.mStages[1] = GetDefaultStageIndex();
 	return CloseNandGameFile(&manager->mFile);
 }
 

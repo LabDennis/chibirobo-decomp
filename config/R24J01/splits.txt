@@ -13,16 +13,48 @@ Sections:
 	.sdata2     type:rodata align:32
 	.sbss2      type:bss align:32
 
+game/wii/soundbank.cpp:
+	extab start:0x80009064 end:0x8000906C
+	extabindex start:0x800120B0 end:0x800120BC
+	.text start:0x8003AA58 end:0x8003AB00
+	.rodata start:0x802C6100 end:0x802C62B0
+	.data start:0x802E7170 end:0x802E7238
+
 game/roboeyeslens.cpp:
 	.text start:0x80040E08 end:0x80040E4C
 
 game/stage_data.cpp:
-	.text start:0x80092308 end:0x800927C0
+	extab start:0x8000A210 end:0x8000A230
+	extabindex start:0x80012F68 end:0x80012F98
+	.text start:0x80092308 end:0x80092EC8
+
+game/globalresources.cpp:
+	extab start:0x8000A238 end:0x8000A248
+	extabindex start:0x80012FA4 end:0x80012FBC
+	.sdata start:0x805A0ED0 end:0x805A0ED4
+	.text start:0x80093138 end:0x800942E8
 
 game/wii/stage_table.cpp:
 	.rodata start:0x802D8310 end:0x802D83EC
 	.data start:0x802FEEF0 end:0x802FF2C8
 	.sdata2 start:0x805A4030 end:0x805A4160
+
+game/wii/cpadact.cpp:
+	extab start:0x8000A600 end:0x8000A610
+	extabindex start:0x8001334C end:0x80013364
+	.text start:0x800A8164 end:0x800A92CC
+	.sbss start:0x805A1C28 end:0x805A1C2C
+	.sdata2 start:0x805A4430 end:0x805A4468
+
+game/wii/savejobs.cpp:
+	extab start:0x8000A610 end:0x8000A620
+	extabindex start:0x80013364 end:0x8001337C
+	.text start:0x800A9320 end:0x800A93E8
+
+game/wii/savebanner.cpp:
+	extab start:0x8000A620 end:0x8000A648
+	extabindex start:0x8001337C end:0x800133A0
+	.text start:0x800A93E8 end:0x800A9834
 
 game/wii/saveslots.cpp:
 	extab start:0x8000A650 end:0x8000A6A0
@@ -43,6 +75,59 @@ game/wii/atcmenuselection.cpp:
 rel/module.c:
 	.text start:0x8016AD78 end:0x8016AF80
 	.rodata start:0x802DDCA0 end:0x802DDD10
+
+revolution/MEM/mem_heapCommon.c:
+	.text start:0x801AE7A8 end:0x801AEC14
+	.bss start:0x804E8C70 end:0x804E8C98
+	.sbss start:0x805A23E0 end:0x805A23E4
+
+revolution/MEM/mem_frameHeap.c:
+	.text start:0x801AF448 end:0x801AF844
+
+revolution/MEM/mem_allocator.c:
+	.text start:0x801AF844 end:0x801AF898
+	.sdata2 start:0x805A66C0 end:0x805A66C8
+
+revolution/MEM/mem_list.c:
+	.text start:0x801AF898 end:0x801AF9AC
+
+revolution/AXFX/AXFXReverbHi.c:
+	.text start:0x801A27C0 end:0x801A284C
+	.sdata2 start:0x805A64F8 end:0x805A6500
+
+revolution/AXFX/AXFXReverbHiExp.c:
+	.text start:0x801A284C end:0x801A3834
+	.data start:0x80322D60 end:0x80322F00
+	.sdata2 start:0x805A6500 end:0x805A6540
+
+revolution/AXFX/AXFXReverbHiExpDpl2.c:
+	.text start:0x801A3834 end:0x801A48E8
+	.data start:0x80322F00 end:0x803230C0
+	.sdata2 start:0x805A6540 end:0x805A6580
+
+revolution/WENC/wenc.c:
+	.text start:0x80202D64 end:0x8020303C
+	.rodata start:0x802DE670 end:0x802DE6B0
+	.sdata2 start:0x805A6828 end:0x805A6830
+
+revolution/WPAD/WPADEncrypt.c:
+	.text start:0x801F2B70 end:0x801F3C18
+	.data start:0x8032B230 end:0x8032C558
+	.sbss start:0x805A2528 end:0x805A2530
+
+revolution/WPAD/WPADMem.c:
+	.text start:0x801F3C18 end:0x801F3D10
+
+revolution/WPAD/debug_msg.c:
+	.text start:0x801F3D10 end:0x801F3D60
+
+revolution/NAND/NANDSecret.c:
+	.text start:0x801B5DD4 end:0x801B5E8C
+
+revolution/NAND/NANDCheck.c:
+	.text start:0x801B5E8C end:0x801B616C
+	.data start:0x80324590 end:0x80324640
+	.sdata start:0x805A15C8 end:0x805A15D8
 
 MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c:
 	.text start:0x8022A180 end:0x8022A450
@@ -77,7 +162,14 @@ game/wii/cpad.cpp:
 	.sbss start:0x805A2888 end:0x805A2890
 	.sdata2 start:0x805A79C8 end:0x805A7A28
 
+game/cmodule.cpp:
+	extab start:0x800110D0 end:0x800110E0
+	extabindex start:0x80017990 end:0x800179A8
+	.text start:0x802C19B8 end:0x802C1B3C
+	.rodata start:0x802E5CB0 end:0x802E5CB8
+
 game/wii/nandfile.cpp:
-	extab start:0x800110E8 end:0x80011118
-	extabindex start:0x800179B4 end:0x800179FC
-	.text start:0x802C1BB8 end:0x802C1EA8
+	extab start:0x800110E0 end:0x80011140
+	extabindex start:0x800179A8 end:0x80017A38
+	.text start:0x802C1B3C end:0x802C2278
+	.rodata start:0x802E5CB8 end:0x802E5E20

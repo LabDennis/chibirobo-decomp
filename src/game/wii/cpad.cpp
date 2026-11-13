@@ -1,5 +1,6 @@
 #include "game/wii/cpad.h"
 #include "Dolphin/pad.h"
+#include "revolution/mem.h"
 
 struct WiiRawSample {
 	u16 buttons;
@@ -92,47 +93,6 @@ enum {
 	WPAD_CL_TRIGGER_L    = 0x2000,
 	WPAD_CL_BUTTON_DOWN  = 0x4000,
 	WPAD_CL_BUTTON_RIGHT = 0x8000
-};
-
-// Bit positions in the game's 64-bit button word.
-enum {
-	RemoteA = 4,
-	RemoteB,
-	RemoteOne,
-	RemoteTwo,
-	RemotePlus,
-	RemoteMinus,
-	RemoteHome,
-	NunchukC,
-	NunchukZ,
-	NunchukStick      = 17,
-	RemoteDirections2 = 21,
-	ClassicLeft       = 25,
-	ClassicRight,
-	ClassicDown,
-	ClassicUp,
-	ClassicA,
-	ClassicB,
-	ClassicX,
-	ClassicY,
-	ClassicPlus,
-	ClassicMinus,
-	ClassicHome,
-	ClassicL,
-	ClassicR,
-	ClassicZL,
-	ClassicZR,
-	GameCubeDPad = 44,
-	GameCubeA    = 48,
-	GameCubeB,
-	GameCubeX,
-	GameCubeY,
-	GameCubeZ,
-	GameCubeR,
-	GameCubeL,
-	GameCubeStart,
-	GameCubeStick    = 56,
-	GameCubeSubStick = 60
 };
 
 // In table order: Remote directions, two extra repeat masks, +, -; then GC directions, L, R, X, Y.
@@ -754,11 +714,8 @@ void CPadOne::DetectNunchukMotion()
 	}
 }
 
-struct MEMAllocator;
 extern "C" {
 extern MEMAllocator gWiiPadAllocator;
-void* MEMAllocFromAllocator(MEMAllocator* allocator, u32 size);
-void MEMFreeToAllocator(MEMAllocator* allocator, void* object);
 void WPADRegisterAllocator(void* (*alloc)(u32), BOOL (*free)(void*));
 BOOL WPADIsMotorEnabled();
 void KPADInit();
@@ -769,11 +726,11 @@ void KPADSetHoriParam(s32 channel, f32 playRadius, f32 sensitivity);
 void KPADSetDistParam(s32 channel, f32 playRadius, f32 sensitivity);
 void KPADSetAccParam(s32 channel, f32 playRadius, f32 sensitivity);
 void KPADSetConnectCallback(s32 channel, void (*callback)(s32, s32));
-void fn_801FAAE0(s32 channel);
-void fn_801FA8B4(s32 channel);
-void fn_801FEAA8();
-void fn_801FA66C(f32 value);
-void fn_801FA5C8(s8 inner, s8 outer);
+void KPADEnableAimingMode(s32 channel);
+s32 KPADCalibrateDPD(s32 channel);
+void KPADDisableStickCrossClamp();
+void KPADSetObjInterval(f32 value);
+void KPADSetFSStickClamp(s8 inner, s8 outer);
 BOOL EnableWiiRemoteSpeaker(RemoteSpeakerChannel*, void (*completion)(s32, s32));
 BOOL DisableWiiRemoteSpeaker(RemoteSpeakerChannel*, void (*completion)(s32, s32));
 }
@@ -805,8 +762,8 @@ void CPadOne::Init(u8 port, u8 inputMask)
 	KPADSetDistParam(mPort, 0.0f, 1.0f);
 	KPADSetAccParam(mPort, 0.1f, 1.0f);
 	KPADSetBtnRepeat(mPort, 0.0f, 0.0f);
-	fn_801FAAE0(mPort);
-	fn_801FA8B4(mPort);
+	KPADEnableAimingMode(mPort);
+	KPADCalibrateDPD(mPort);
 	SetConnectCallback();
 }
 
@@ -854,14 +811,14 @@ void CPadEx::Init(u8 inputMask)
 	}
 	WPADRegisterAllocator(AllocatePadMemory, FreePadMemory);
 	KPADInit();
-	fn_801FEAA8();
+	KPADDisableStickCrossClamp();
 	SetMainStickRange(15.0f, 71.0f);
 	SetSubStickRange(15.0f, 60.0f);
 	for (int port = 0; port < 4; ++port) {
 		gWiiPads[port].Init(port, inputMask);
 	}
 	Clear();
-	fn_801FA66C(0.2f);
+	KPADSetObjInterval(0.2f);
 }
 
 void CPadEx::Clear()
@@ -907,7 +864,7 @@ void CPadEx::SetMainStickRange(f32 inner, f32 outer)
 {
 	sStickRanges[0].min = inner;
 	sStickRanges[0].max = outer;
-	fn_801FA5C8((s8)inner, (s8)outer);
+	KPADSetFSStickClamp((s8)inner, (s8)outer);
 }
 
 void CPadEx::SetSubStickRange(f32 inner, f32 outer)

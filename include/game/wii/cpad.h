@@ -4,6 +4,47 @@
 #include "types.h"
 #include "Dolphin/vec.h"
 
+// Bit positions in the game's 64-bit button word.
+enum {
+	RemoteA = 4,
+	RemoteB,
+	RemoteOne,
+	RemoteTwo,
+	RemotePlus,
+	RemoteMinus,
+	RemoteHome,
+	NunchukC,
+	NunchukZ,
+	NunchukStick      = 17,
+	RemoteDirections2 = 21,
+	ClassicLeft       = 25,
+	ClassicRight,
+	ClassicDown,
+	ClassicUp,
+	ClassicA,
+	ClassicB,
+	ClassicX,
+	ClassicY,
+	ClassicPlus,
+	ClassicMinus,
+	ClassicHome,
+	ClassicL,
+	ClassicR,
+	ClassicZL,
+	ClassicZR,
+	GameCubeDPad = 44,
+	GameCubeA    = 48,
+	GameCubeB,
+	GameCubeX,
+	GameCubeY,
+	GameCubeZ,
+	GameCubeR,
+	GameCubeL,
+	GameCubeStart,
+	GameCubeStick    = 56,
+	GameCubeSubStick = 60
+};
+
 struct PADStatus;
 
 struct StickPosition {

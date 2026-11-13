@@ -93,4 +93,23 @@ ninja
 
 The output DOL is written to `build/GGTE01/main.dol`, or to the folder for the version you built.
 
+### Wii localization mods
+
+Build a US or European localization from your Japanese Wii disc. For example:
+
+```sh
+python3 configure.py --version R24J01 --wii-locale en-US
+ninja
+```
+
+Choose `en-US`, `en-GB`, `de-DE`, `fr-FR`, `es-ES` or `it-IT`. Open
+`build/wii-en-US/game.json` in Dolphin, substituting your chosen locale.
+The starter translations cover the Wii title, save banner and three Wii Remote
+messages. Other text and assets fall back to the Japanese release.
+For new translations, edit `mods/wii-localization/interface.json` or place
+Wii-compatible replacement assets under the build's `files/` folder, using
+their original disc paths (for example `files/bin/stage14.bin`).
+These mods share the Japanese title's save files. Use a separate Dolphin user
+directory to keep a development save. Retail progress is measured against `R24J01`.
+
 [Credits and license notices](NOTICE)

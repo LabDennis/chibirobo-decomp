@@ -84,7 +84,11 @@ typedef char CStatus_size_check[sizeof(CStatus) == 0x8 ? 1 : -1];
 
 #include "game/cstatus64.h"
 
+#if defined(VERSION_R24J01)
+#include "game/wii/cpad.h"
+#else
 #include "game/cpad.h"
+#endif
 
 // game/ut.cpp. hsd types go by struct tag since this header can't pull in the hsd headers,
 // Mtx comes with Vec from whatever got included first

@@ -1,8 +1,15 @@
+#include "Version.h"
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#else
 #include "game/cgame.h"
+#endif
 #include "game/globals.h"
 #include "game/stage.h"
-#include "Version.h"
 #include <stdio.h>
+#if defined(WII_LOCALIZATION)
+#include "wii_locale.h"
+#endif
 
 extern "C" {
 #if defined(VERSION_JP)
@@ -85,6 +92,10 @@ extern "C" const char* GetLocalizedPCDialogue(s32 index)
  */
 extern "C" const char* GetLocalizedInterfaceText(s32 index)
 {
+#if defined(WII_LOCALIZATION)
+	if ((u32)index < ARRAY_SIZE(sLocalizedWiiInterface))
+		return sLocalizedWiiInterface[index];
+#endif
 #if defined(VERSION_JP)
 	return gJapaneseInterfaceText[index];
 #else
@@ -386,8 +397,11 @@ extern "C" u8* GetGlobalTextEntry(s32 index)
  */
 extern "C" s32 GetDefaultStageIndex()
 {
-	u64 flags = gGame.mStatus.mFlags;
-	if (flags & 0x8000000000000ULL)
+#if defined(VERSION_R24J01)
+	if (gGame.mVTable->getFlags(&gGame, 0x8000000000000ULL))
+#else
+	if (gGame.mStatus.mFlags & 0x8000000000000ULL)
+#endif
 		return 0;
 	return 14;
 }
@@ -518,6 +532,7 @@ extern "C" BOOL LoadGlobalResourceData()
 	return FALSE;
 }
 
+#if !defined(VERSION_R24J01)
 extern "C" {
 UnkStageObj gStageObjectPlacements[] = {
 	{ 161, { 0, 0, 0 }, { 0, 0, 0 }, { 100, 100, 100 }, 0, 0, 0, 0x20012001 },
@@ -724,3 +739,4 @@ extern "C" s32 GetItemIconTextureIndex(s32 index)
 		return -1;
 	return gItemIconTextureIndices[index];
 }
+#endif

@@ -59,6 +59,11 @@ parser.add_argument(
     help="base build directory (default: build)",
 )
 parser.add_argument(
+    "--wii-locale",
+    choices=("en-US", "en-GB", "de-DE", "fr-FR", "es-ES", "it-IT"),
+    help="build a Wii localization mod from R24J01",
+)
+parser.add_argument(
     "--binutils",
     metavar="BINARY",
     type=Path,
@@ -141,6 +146,10 @@ config = ProjectConfig()
 config.version = str(args.version)
 version_num = VERSIONS.index(config.version)
 wii = config.version == "R24J01"
+if args.wii_locale and not wii:
+    parser.error("--wii-locale requires --version R24J01")
+if args.wii_locale and args.mode == "progress":
+    parser.error("progress is measured against retail releases")
 
 # Apply arguments
 config.build_dir = args.build_dir
@@ -151,7 +160,7 @@ config.compilers_path = args.compilers
 # The US and Japanese GameCube linkers used ASCII '0' for padding.
 config.fill_padding = config.version in ("GGTE01", "GGTJ01_01")
 config.generate_map = args.map or not wii
-config.non_matching = args.non_matching
+config.non_matching = args.non_matching or bool(args.wii_locale)
 config.sjiswrap_path = args.sjiswrap
 config.ninja_path = args.ninja
 config.progress = args.progress
@@ -173,6 +182,18 @@ config.wibo_tag = "1.0.3"
 # Project
 config.config_path = Path("config") / config.version / "config.yml"
 config.check_sha_path = Path("config") / config.version / "build.sha1"
+if args.wii_locale:
+    from tools.wii_locale import disc_image, write_localization
+
+    config.output_name = f"wii-{args.wii_locale}"
+    config.check_sha_path = None
+    config.progress = False
+    translations = Path("mods/wii-localization/interface.json")
+    config.reconfig_deps = [translations, Path("tools/wii_locale.py")]
+    try:
+        write_localization(translations, args.wii_locale, config.out_path(), disc_image(Path("orig/R24J01")))
+    except ValueError as error:
+        parser.error(str(error))
 config.asflags = [
     "-mgekko",
     "--strip-local-absolute",
@@ -189,9 +210,6 @@ if args.debug:
 if args.map:
     config.ldflags.append("-mapunused")
     # config.ldflags.append("-listclosure") # For Wii linkers
-
-# Use for any additional files that should cause a re-configure when modified
-config.reconfig_deps = []
 
 # Optional numeric ID for decomp.me preset
 # Can be overridden in libraries or objects
@@ -1166,6 +1184,8 @@ if wii:
     ]
     if args.warn:
         wii_cflags.append(f"-W {args.warn}")
+    if args.wii_locale:
+        wii_cflags.extend(["-DWII_LOCALIZATION", f"-i {config.out_path().as_posix()}/include"])
     wii_cflags.append("-DDEBUG=1" if args.debug else "-DNDEBUG=1")
     config.libs = [
         {
@@ -1175,15 +1195,57 @@ if wii:
             "progress_category": "game",
             "objects": [
                 Object(Matching, "game/attachmentcounts.cpp"),
+                Object(Equivalent, "game/cmodule.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/ringmenupointer.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                Object(Equivalent, "game/globalresources.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/roboeyeslens.cpp"),
-                Object(Equivalent, "game/stage_data.cpp"),
+                Object(Equivalent, "game/stage_data.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/atcmenuselection.cpp"),
                 Object(Equivalent, "game/wii/cpad.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                Object(Equivalent, "game/wii/cpadact.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                Object(Matching, "game/wii/savejobs.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                Object(Equivalent, "game/wii/savebanner.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/saveslots.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                Object(Equivalent, "game/wii/soundbank.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/stage_table.cpp"),
                 Object(Equivalent, "rel/module.c"),
+            ],
+        },
+        {
+            # These Wii SDK modules share the compiler profile used by New Play Control! Pikmin.
+            "lib": "RevolutionSDK-2008",
+            "mw_version": "GC/3.0a5.2",
+            "cflags": [*wii_cflags, "-Cpp_exceptions off", "-fp_contract off", "-common off", "-ipa file", "-use_lmw_stmw off"],
+            "progress_category": "sdk",
+            "objects": [
+                Object(Matching, "revolution/AXFX/AXFXReverbHi.c"),
+                Object(Equivalent, "revolution/AXFX/AXFXReverbHiExp.c"),
+                Object(Equivalent, "revolution/AXFX/AXFXReverbHiExpDpl2.c"),
+                Object(Matching, "revolution/WENC/wenc.c"),
+                Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
+                Object(Matching, "revolution/WPAD/WPADMem.c"),
+                Object(Matching, "revolution/WPAD/debug_msg.c"),
+            ],
+        },
+        {
+            "lib": "RevolutionSDK",
+            "mw_version": "Wii/1.3",
+            "cflags": wii_cflags,
+            "progress_category": "sdk",
+            "objects": [
+                Object(
+                    Matching, "revolution/MEM/mem_heapCommon.c", mw_version="GC/3.0a5.2",
+                    extra_cflags=["-Cpp_exceptions off", "-ipa file", "-use_lmw_stmw off"],
+                ),
+                Object(
+                    Matching, "revolution/MEM/mem_frameHeap.c", mw_version="GC/3.0a5.2",
+                    extra_cflags=["-Cpp_exceptions off", "-ipa file", "-use_lmw_stmw off"],
+                ),
+                Object(Matching, "revolution/MEM/mem_allocator.c"),
+                Object(Matching, "revolution/MEM/mem_list.c", mw_version="GC/3.0a5.2", extra_cflags=["-ipa file"]),
+                Object(Matching, "revolution/NAND/NANDSecret.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-ipa file"]),
+                Object(Matching, "revolution/NAND/NANDCheck.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-ipa file"]),
             ],
         },
         {
@@ -1268,7 +1330,8 @@ def append_treemap_step(config: ProjectConfig) -> None:
 if args.mode == "configure":
     # Write build.ninja and objdiff.json
     generate_build(config)
-    append_treemap_step(config)
+    if not args.wii_locale:
+        append_treemap_step(config)
 elif args.mode == "progress":
     # Print progress information
     calculate_progress(config)
