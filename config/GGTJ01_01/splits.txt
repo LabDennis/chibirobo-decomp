@@ -346,9 +346,17 @@ game/infopointinit.cpp:
 	.text       start:0x8006FF08 end:0x8006FF94
 	.ctors      start:0x801FEF30 end:0x801FEF34
 
+game/globalresources.cpp:
+	.text       start:0x8006FFDC end:0x8007116C
+	.data       start:0x80215F00 end:0x8021617C
+	.sdata      start:0x806347C8 end:0x806347CC
+
 game/stage_data.cpp:
-	.text       start:0x8006FFDC end:0x80072048
+	.text       start:0x8007116C end:0x80072048
 	.ctors      start:0x801FEF34 end:0x801FEF38
+	.data       start:0x80222BF0 end:0x80223DB0
+	.bss        start:0x8034586C end:0x80345C78 align:4
+	.sdata      start:0x806347CC end:0x806347F8 align:4
 
 game/evt.cpp:
 	.text       start:0x80072048 end:0x80082310
