@@ -11,11 +11,18 @@ struct UnkStageObj;
 struct CamInfoData;
 struct CamAreaRecord;
 
+struct StageEventObject {
+	s32 objectIndex; // A negative index ends the list.
+	s32 eventId;
+};
+STATIC_ASSERT(sizeof(StageEventObject) == 8);
+
 extern "C" {
 UnkStageObj* GetSpawnData(s32 index);
 UnkStageObj* GetStageObjectPlacementByIndex(s32 index);
 s32 CallStageModule(s32 function, s32 count, s32* args);
 s32 GetStageCollectionFlagBase(s32 index);
+const StageEventObject* GetStageEventObjectPairs(void);
 CamAreaRecord* GetStageCameraAreaExRecords(void);
 CamInfoData* GetStageCameraInfoRecords(void);
 CamAreaRecord* GetStageCameraAreaRecords(void);
