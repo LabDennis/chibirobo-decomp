@@ -104,22 +104,22 @@ ActorToyAnimationData gActorToyAnimationData = {
 void XObjActorToy::DrawObject()
 {
 	XObjActor::DrawObject();
-	if (mFirst.mStatus.mFlags & 0x10000) {
-		mFirst.CJObj::SetTranslate(GetTranslateX(), GetTranslateY(), GetTranslateZ(), 1);
+	if (mFirst.mStatus.mFlags & 0x10000) {                                                // the part draws when its flag is set
+		mFirst.CJObj::SetTranslate(GetTranslateX(), GetTranslateY(), GetTranslateZ(), 1); // it rides at the toy's transform
 		mFirst.CJObj::SetScale(GetScaleX(), GetScaleY(), GetScaleZ(), 1);
 		mFirst.CJObj::SetRotationY(GetRotationY(), 1);
-		if (mJObj->flags & 8) {
+		if (mJObj->flags & 8) { // the toy's flag 8 passes to the part
 			HSD_JObjSetFlags(mFirst.mJObj, 8);
 		} else {
 			HSD_JObjClearFlags(mFirst.mJObj, 8);
 		}
 		mFirst.DrawObject();
 	}
-	if (mSecond.mStatus.mFlags & 0x10000) {
-		mSecond.CJObj::SetTranslate(GetTranslateX(), GetTranslateY(), GetTranslateZ(), 1);
+	if (mSecond.mStatus.mFlags & 0x10000) {                                                // the part draws when its flag is set
+		mSecond.CJObj::SetTranslate(GetTranslateX(), GetTranslateY(), GetTranslateZ(), 1); // it rides at the toy's transform
 		mSecond.CJObj::SetScale(GetScaleX(), GetScaleY(), GetScaleZ(), 1);
 		mSecond.CJObj::SetRotationY(GetRotationY(), 1);
-		if (mJObj->flags & 8) {
+		if (mJObj->flags & 8) { // the toy's flag 8 passes to the part
 			HSD_JObjSetFlags(mSecond.mJObj, 8);
 		} else {
 			HSD_JObjClearFlags(mSecond.mJObj, 8);
@@ -148,7 +148,7 @@ void XObjActorToy::Release()
 BOOL XObjActorToy::LoadFromPlacement(const CoordInfo& info)
 {
 	switch (GetKind()) {
-	case 0xF:
+	case 0xF: // kind 0xf loads its two parts in stages
 		switch (mLoad) {
 		case 0:
 			if (!LoadFromPlacement__9XObjActorFRC9CoordInfo(this, info)) {
@@ -156,21 +156,21 @@ BOOL XObjActorToy::LoadFromPlacement(const CoordInfo& info)
 			}
 			mLoad++;
 		case 1:
-			if (!mFirst.LoadFromPlacement(CoordInfo(GetSpawnData(0x2A)))) {
+			if (!mFirst.LoadFromPlacement(CoordInfo(GetSpawnData(0x2A)))) { // the first part's spawn data
 				break;
 			}
 			mFirst.mStatus.mFlags &= ~0x10000ULL;
 			mFirst.SetPos(mMoveTranslate, 0);
 			mLoad++;
 		case 2:
-			if (!mSecond.LoadFromPlacement(CoordInfo(GetSpawnData(0x2B)))) {
+			if (!mSecond.LoadFromPlacement(CoordInfo(GetSpawnData(0x2B)))) { // the second part's spawn data
 				break;
 			}
 			mSecond.mStatus.mFlags &= ~0x10000ULL;
 			mSecond.SetPos(mMoveTranslate, 0);
 			mLoad++;
 		}
-		if (mLoad > 2) {
+		if (mLoad > 2) { // actor and both parts loaded
 			mLoad = 0;
 			return TRUE;
 		}
@@ -191,37 +191,37 @@ void XObjActorToy::ResetObjectState()
 	mShownPart = 0;
 	mFirst.ResetObjectState();
 	mSecond.ResetObjectState();
-	switch (GetKind()) {
+	switch (GetKind()) { // each kind gets its own anim-sound table
 	case 0x6F:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x374);
+		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x374); // sounds6F
 		break;
 	case 0x110:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x68);
+		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x68); // sounds110
 		break;
 	case 0x117:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x50C);
+		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x50C); // sounds117
 		break;
 	case 0x159:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x4DC);
+		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x4DC); // sounds159
 		break;
 	case 0x1FB:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x62C);
+		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x62C); // sounds1FB
 		break;
 	case 0x1FC:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x3EC);
+		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x3EC); // sounds1FC
 		break;
 	case 0x25E:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x74C);
+		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x74C); // sounds25E
 		break;
 	case 0x317:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x68C);
+		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x68C); // sounds317
 		break;
 	case 0x26C:
 	case 0x485:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x4AC);
+		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x4AC); // sounds26CAnd485
 		break;
 	default:
-		mAnimSfx.mEvents = NULL;
+		mAnimSfx.mEvents = NULL; // kinds without a table
 		break;
 	}
 }
