@@ -46,6 +46,12 @@ static inline u32 ReadMsgU8(CMsg* msg)
 	return value;
 }
 
+static inline CTexObj& GetMessageIconTexture()
+{
+	TPLPalette* palette = (TPLPalette*)gGame.mTpl.mBuffer;
+	return gGame.mTpl.mTex.Init(&palette->descriptorArray[119 - StatusTextureOffset], 0);
+}
+
 // script operands are little endian, literal colors are rgba bytes
 static inline s16 ReadMsgS16(CMsg* msg)
 {
@@ -2672,9 +2678,7 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
 	msg->mData.mCursor = msg->mData.mText;
 #if !defined(VERSION_JP)
 	if (msg->mData.mIconColumns == 0) {
-		TPLPalette* palette     = (TPLPalette*)(&gGame.mTpl)->mBuffer;
-		CTexObj* texture        = &(&gGame.mTpl)->mTex;
-		CTexObj icon            = texture->Init(&palette->descriptorArray[119], 0);
+		CTexObj icon            = GetMessageIconTexture();
 		msg->mData.mIconColumns = (s32)GXGetTexObjWidth(&icon) / 24;
 	}
 #endif
@@ -3730,18 +3734,14 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 				u32 clipX = (u32)(1.0f + (((font->mWindowX - font->mWidth * 0.5f) - 40.0f - expandX) - halfPortrait));
 				GXSetScissor(clipX, clipY, clipWidth, clipHeight);
 			}
-			f32 portraitX   = 44.0f * portraitScale + ((font->mWindowX - font->mWidth * 0.5f) - 40.0f - halfPortrait);
-			f32 portraitY   = 12.0f * portraitScale + (font->mHeight * 0.5f + font->mWindowY);
-			XObj* portrait  = NULL;
-			s32 objectCount = gGame.mXObjs.mPools[10].mUsed;
-			s32 stride      = gGame.mXObjs.mPools[10].mStride;
-			u8* objects     = gGame.mXObjs.mPools[10].mObjects;
-			for (s32 i = 0; i < objectCount; i++) {
-				XObj* obj = (XObj*)(objects + i * stride);
-				if (obj->mStatus.mFlags & 1) {
-					UnkObjData* kind = *(UnkObjData**)((u8*)obj + MSG_OBJECT_OFFSET(0x240));
-					if ((s16)(kind != NULL ? kind->GetItem() : -1) == 10)
-						portrait = obj;
+			f32 portraitX        = 44.0f * portraitScale + ((font->mWindowX - font->mWidth * 0.5f) - 40.0f - halfPortrait);
+			f32 portraitY        = 12.0f * portraitScale + (font->mHeight * 0.5f + font->mWindowY);
+			XObj* portrait       = NULL;
+			const XObjPool& pool = gGame.mXObjs.mPools[10];
+			for (s32 i = 0; i < pool.mUsed; i++) {
+				XObj* obj = pool.Get(i);
+				if ((obj->mStatus.mFlags & 1) && obj->GetItem() == 10) {
+					portrait = obj;
 				}
 			}
 			if (portrait != NULL) {
@@ -6446,21 +6446,16 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 #endif
 	s32 textureWidth;
 	if ((u8)text[0] == 17) {
+		CTexObj icon = GetMessageIconTexture();
 #if defined(VERSION_JP)
-		TPLPalette* palette = (TPLPalette*)(&gGame.mTpl)->mBuffer;
-		CTexObj* texture    = &(&gGame.mTpl)->mTex;
-		CTexObj icon        = texture->Init(&palette->descriptorArray[117], 0);
 		PSMTXScale(icon.mMtx[1], 1.0f / 14.0f, 1.0f, 1.0f);
 		icon.mMtxDirty = TRUE;
 		PSMTXTrans(icon.mMtx[0], (1.0f / 14.0f) * (u8)text[1], 0.0f, 0.0f);
 		icon.mMtxDirty = TRUE;
 		textureWidth   = (s32)font->mGlyphs[font->mCharCount].mTexture.Set(icon) / 14;
 #else
-		TPLPalette* palette = (TPLPalette*)(&gGame.mTpl)->mBuffer;
-		CTexObj* texture    = &(&gGame.mTpl)->mTex;
-		CTexObj icon        = texture->Init(&palette->descriptorArray[119], 0);
-		s32 index           = (u8)text[1];
-		s32 columns         = font->mData->mIconColumns;
+		s32 index   = (u8)text[1];
+		s32 columns = font->mData->mIconColumns;
 		if (index >= columns) {
 			index = columns - 1;
 		}
@@ -7823,15 +7818,10 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 				text[1]      = p[1];
 				data->mWidths[data->mLineCount] += MeasureGameTextWidth(&gGame.mGs, text, proportional, size);
 			} else if (*p == 17) {
+				CTexObj icon = GetMessageIconTexture();
 #if defined(VERSION_JP)
-				TPLPalette* palette = (TPLPalette*)(&gGame.mTpl)->mBuffer;
-				CTexObj* texture    = &(&gGame.mTpl)->mTex;
-				CTexObj icon        = texture->Init(&palette->descriptorArray[117], 0);
 				data->mWidths[data->mLineCount] += (size / 22.0f) * (GXGetTexObjWidth(&icon) / 14);
 #else
-				TPLPalette* palette = (TPLPalette*)(&gGame.mTpl)->mBuffer;
-				CTexObj* texture    = &(&gGame.mTpl)->mTex;
-				CTexObj icon        = texture->Init(&palette->descriptorArray[119], 0);
 				data->mWidths[data->mLineCount] += 24.0f * (size / 22.0f);
 #endif
 			} else {
