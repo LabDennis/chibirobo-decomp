@@ -145,10 +145,10 @@ typedef char CTile_size_check[sizeof(CTile) == 0x184 ? 1 : -1];
 class CSprite : public CPrimitive {
 public:
 	CTexObj* mTex; // _168
-	u32 _16C;      // _16C
-	u32 _170;      // _170
-	u32 _174;      // _174
-	u32 _178;      // _178
+	u32 mColor0;   // _16C
+	u32 mColor1;   // _170
+	u32 mColor2;   // _174
+	u32 mColor3;   // _178
 	Vec mCenter;   // _17C
 
 	virtual ~CSprite() { }                                                                     // _08

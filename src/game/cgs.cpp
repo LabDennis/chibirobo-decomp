@@ -300,7 +300,7 @@ static inline void SetCenter(CTile* tile, f32 x, f32 y, f32 z)
 
 static inline void SetColor(CSprite* sprite, u32 color)
 {
-	sprite->_16C = sprite->_170 = sprite->_174 = sprite->_178 = color;
+	sprite->mColor0 = sprite->mColor1 = sprite->mColor2 = sprite->mColor3 = color;
 }
 
 static inline void SetColor(CTile* tile, u32 color)
@@ -3466,13 +3466,14 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	SetupDrawState(gs);
 	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].enable) {
 		for (i = 0; i < count; i++) {
-			sGsTextChars[i].mSprite.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, sGsTextChars[i].mSprite._16C,
-			                                sGsTextChars[i].mSprite._170, sGsTextChars[i].mSprite._174, sGsTextChars[i].mSprite._178);
+			sGsTextChars[i].mSprite.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, sGsTextChars[i].mSprite.mColor0,
+			                                sGsTextChars[i].mSprite.mColor1, sGsTextChars[i].mSprite.mColor2,
+			                                sGsTextChars[i].mSprite.mColor3);
 		}
 	} else {
 		for (i = 0; i < count; i++) {
-			sGsTextChars[i].mSprite.Draw(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, sGsTextChars[i].mSprite._16C,
-			                             sGsTextChars[i].mSprite._170, sGsTextChars[i].mSprite._174, sGsTextChars[i].mSprite._178);
+			sGsTextChars[i].mSprite.Draw(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, sGsTextChars[i].mSprite.mColor0,
+			                             sGsTextChars[i].mSprite.mColor1, sGsTextChars[i].mSprite.mColor2, sGsTextChars[i].mSprite.mColor3);
 		}
 	}
 
