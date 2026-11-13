@@ -54,7 +54,7 @@ typedef struct HSD_SynthSFXNode {
 	u8 channel;                             // _0B
 	AXVPB* voice[2];                        // _0C
 	s16 rearIndex;                          // _14
-	s8 unk16;                               // _16
+	s8 panItd;                               // _16
 	s8 unk17;                               // _17
 	f32 freqBase;                           // _18
 	f32 pitch[2];                           // _1C
@@ -1301,7 +1301,7 @@ typedef struct HSD_SynthSFXEntry {
  * @note Size: 0x740
  */
 s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mode, u8 clamp1, u8 clamp2, u8 pan, f32 mixMain, f32 mixAuxA,
-                f32 mixAuxB, u8 span, s32 priority, s32 channel, s32 rear, s32 unk16)
+                f32 mixAuxB, u8 span, s32 priority, s32 channel, s32 rear, s32 panItd)
 {
 	AXVPB* voices[4] = { NULL, NULL, NULL, NULL };
 	AXPBVE ve;
@@ -1416,7 +1416,7 @@ s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mod
 		node->mixMain     = mixMain;
 		node->mixAuxA     = mixAuxA;
 		node->mixAuxB     = mixAuxB;
-		node->unk16       = unk16;
+		node->panItd      = panItd;
 
 		if (rear != 0) {
 			k                   = voices[2]->index;
@@ -4038,7 +4038,7 @@ void HSD_SynthSFXInitMix(HSD_SynthSFXNode* node)
 }
 
 // itd shift by pan distance from center
-static u8 lbl_8025BF68[0x80] = {
+static u8 sSynthItdShiftByPan[0x80] = {
 	0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x02, 0x02, 0x03, 0x03, 0x04, 0x04, 0x05, 0x05, 0x06, 0x06, 0x07, 0x07, 0x08, 0x08, 0x09, 0x09,
 	0x0A, 0x0A, 0x0B, 0x0B, 0x0C, 0x0C, 0x0D, 0x0D, 0x0E, 0x0E, 0x0F, 0x0F, 0x10, 0x10, 0x11, 0x11, 0x12, 0x12, 0x13, 0x13, 0x14, 0x14,
 	0x15, 0x15, 0x16, 0x16, 0x16, 0x17, 0x17, 0x17, 0x17, 0x18, 0x18, 0x18, 0x18, 0x19, 0x19, 0x19, 0x19, 0x19, 0x1A, 0x1A, 0x1A, 0x1A,
@@ -4346,7 +4346,7 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 
 	shiftR = 0;
 	shiftL = 0;
-	if (sSynthSoundMode == 1 && node->voice_count == 1 && node->unk16 != 0) {
+	if (sSynthSoundMode == 1 && node->voice_count == 1 && node->panItd != 0) {
 		pan = node->userPan[0] + node->userPan[1] - 0x7F;
 		if (pan < 0) {
 			pan = 0;
@@ -4355,9 +4355,9 @@ void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate)
 			pan = 0xFE;
 		}
 		if (pan < 0x7F) {
-			shiftL = lbl_8025BF68[0x7E - pan];
-		} else {
-			shiftR = lbl_8025BF68[pan - 0x80];
+			shiftL = sSynthItdShiftByPan[0x7E - pan];
+		} else if (pan > 0x7F) {
+			shiftR = sSynthItdShiftByPan[pan - 0x80];
 		}
 	}
 	for (i = 0; i < node->voice_count; i++) {
