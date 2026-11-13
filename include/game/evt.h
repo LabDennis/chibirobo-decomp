@@ -242,18 +242,18 @@ class CCameraMemento;
 // the script runner. PUSHBP and POPBP park mValues's count on mFrames
 class CEvt {
 public:
-	u32 _00;                        // _00, ABORT only resumes a parked script while this is zero
+	u32 mOwner;                     // _00, ABORT only resumes a parked script while this is zero
 	CEvtData mData;                 // _04
 	s32 _10;                        // _10, SELECT result
-	s32 _14;                        // _14
-	s32 _18;                        // _18
-	s32 _1C;                        // _1C
-	s32 _20;                        // _20
+	s32 mResult2;                   // _14
+	s32 mWaitTimer;                 // _18
+	s32 mYesNoActive;               // _1C
+	s32 mMenuActive;                // _20
 	CStack mCalls;                  // _24, return addresses
 	CStack mFrames;                 // _34
 	CStack mValues;                 // _44
-	u8* _54;                        // _54, WARP raises a flag deep inside it
-	s32 _58;                        // _58
+	u8* mMsg;                       // _54, WARP raises a flag deep inside it
+	s32 mMsgState;                  // _58
 	s16 mUseValue;                  // _5C
 	s16 mHitValue;                  // _5E
 	CCameraMemento* mCameraMemento; // _60, private saved camera
