@@ -94,7 +94,11 @@ public:
 	virtual ~CTpl() { mBound = FALSE; } // _08 (weak)
 #endif
 	virtual s32 GetResult(); // _18
-	virtual void Close();    // _20
+#if defined(VERSION_R24J01)
+	virtual BOOL Close(); // _20
+#else
+	virtual void Close(); // _20
+#endif
 
 #if defined(VERSION_R24J01)
 	bool mBound;          // _EC
