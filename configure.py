@@ -1101,7 +1101,7 @@ config.libs = [
             Object(NonMatching, "sysdolphin/baselib/generator.c", padding="small_data+data"),
             Object(Matching, "sysdolphin/baselib/psdisptev.c"),
             Object(Matching, "sysdolphin/baselib/psappsrt.c"),
-            Object(NonMatching, "sysdolphin/baselib/pslist.c"),
+            Object(Matching, "sysdolphin/baselib/pslist.c"),
             Object(NonMatching, "sysdolphin/baselib/axdriver.c"),
             Object(Matching, "sysdolphin/baselib/devcom.c"),
             Object(Matching, "sysdolphin/baselib/dvdsche.c"),
