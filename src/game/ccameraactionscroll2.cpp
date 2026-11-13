@@ -695,8 +695,13 @@ void CCameraActionScroll2::vf20()
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 
 	// the caption in the corner, with a dark outline
+#if defined(VERSION_JP)
+	const int zoomText = 0x48;
+#else
+	const int zoomText = 0x0F;
+#endif
 	CaptionMsg msg = { 7, NULL };
-	msg.mText      = GetLocalizedInterfaceText(15);
+	msg.mText      = GetLocalizedInterfaceText(zoomText);
 	f32 slide      = HALF_PI; // a slide in, always at its end here
 	f32 captionX   = 100.0f * (1.0f - (f32)sin(slide)) + 576.0f;
 	f32 fade       = 255.0f;
