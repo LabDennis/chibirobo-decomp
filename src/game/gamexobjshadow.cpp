@@ -186,8 +186,8 @@ void XObj::DrawObjectEffects()
  * @note Address: 0x8000CDA0
  * @note Size: 0x28C
  */
-// CGame::vf20, draws the objects in _C074 from the main camera, kind 3 ones first
-void CGame::vf20()
+// CGame::DrawScene, draws the objects in _C074 from the main camera, kind 3 ones first
+void CGame::DrawScene()
 {
 	if (mStatus.mFlags & 1) {
 		s32 i;
@@ -229,7 +229,7 @@ void XObj::DrawObject()
  */
 CCamera* CBase::GetCamera()
 {
-	return vf30();
+	return GetPerspectiveCamera();
 }
 
 /**
@@ -266,7 +266,7 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 	s32 i;
 	XObjChr* player;
 	if ((game->mStatus.mFlags & 1) && (game->mStatus.mFlags & 0x4000000000)) {
-		game->mGs.mCamera = game->vf34();
+		game->mGs.mCamera = game->GetScreenCamera();
 		if (BeginGsCamera(game)) {
 			InvalidateAll();
 			SetGsChannelEnabled(&gGame.mGs, 4, 0);

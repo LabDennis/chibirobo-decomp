@@ -1557,7 +1557,7 @@ void CMotionControlCamera::Interpolate(u32 step)
 void CMotionControlCamera::Draw()
 {
 	if (mAction != NULL) {
-		mAction->vf20();
+		mAction->Draw();
 	}
 }
 
@@ -2027,7 +2027,7 @@ BOOL CMotionControlCamera::SetMemento(const CCameraMemento* memento)
  */
 extern "C" f32 GetAreaCameraFovRatio(CMotionControlCamera* camera)
 {
-	f32 zoom = ((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->vf68();
+	f32 zoom = ((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->GetBaseFov();
 	if (zoom) {
 		return camera->mCamera.mFov / zoom;
 	}
@@ -2070,7 +2070,7 @@ extern "C" f32 GetAreaCameraFovRatio(CMotionControlCamera* camera)
  */
 extern "C" void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode)
 {
-	((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->vf70(mode);
+	((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->SetZoomLevel(mode);
 }
 
 /**

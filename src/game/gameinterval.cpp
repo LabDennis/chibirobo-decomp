@@ -56,7 +56,7 @@ CLight* CGame::GetLight()
  * @note Address: 0x8000A538
  * @note Size: 0x8
  */
-u32 CBase::vf2C()
+u32 CBase::GetRetraceStep()
 {
 	return mRetraceStep;
 }
@@ -65,7 +65,7 @@ u32 CBase::vf2C()
  * @note Address: 0x8000A540
  * @note Size: 0x8
  */
-CCamera* CBase::vf30()
+CCamera* CBase::GetPerspectiveCamera()
 {
 	return &mCameras[0];
 }
@@ -74,7 +74,7 @@ CCamera* CBase::vf30()
  * @note Address: 0x8000A548
  * @note Size: 0x8
  */
-CCamera* CBase::vf34()
+CCamera* CBase::GetScreenCamera()
 {
 	return &mCameras[1];
 }
@@ -83,7 +83,7 @@ CCamera* CBase::vf34()
  * @note Address: 0x8000A550
  * @note Size: 0x8
  */
-CLight* CBase::vf3C()
+CLight* CBase::GetDefaultLight()
 {
 	return &mLights[0];
 }
@@ -92,7 +92,7 @@ CLight* CBase::vf3C()
  * @note Address: 0x8000A558
  * @note Size: 0x8
  */
-CLight* CBase::vf40()
+CLight* CBase::GetScreenLight()
 {
 	return &mLights[4];
 }

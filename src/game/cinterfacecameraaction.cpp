@@ -193,7 +193,7 @@ Vec CVectorEaseOutInterpolation::Get()
  * @note Address: 0x80015CC8
  * @note Size: 0x64
  */
-BOOL CCameraActionAreaExM::vf78(s32 index)
+BOOL CCameraActionAreaExM::IsCameraArea(s32 index)
 {
 	bool set = CamAreaInfo(&gCameraAreaState._24[index]).IsCameraArea();
 	if (set) {
@@ -206,7 +206,7 @@ BOOL CCameraActionAreaExM::vf78(s32 index)
  * @note Address: 0x80015D74
  * @note Size: 0x64
  */
-BOOL CCameraActionAreaExM::vf7C(s32 index)
+BOOL CCameraActionAreaExM::IsAreaEnabled(s32 index)
 {
 	bool set = CamAreaInfo(&gCameraAreaState._1C[index]).IsDisabled();
 	if (set) {

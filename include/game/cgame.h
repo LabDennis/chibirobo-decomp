@@ -166,16 +166,16 @@ public:
 	virtual BOOL BeforeUpdate();                    // _14
 	virtual void Update(u32 frames);                // _18
 	virtual void Draw();                            // _1C
-	virtual void vf20();                            // _20
-	virtual void vf24();                            // _24
+	virtual void DrawScene();                       // _20, the scene through the main camera
+	virtual void DrawHud();                         // _24, the screen-space layer under the ortho camera
 	virtual s32 FrameInterval();                    // _28, retraces per frame
-	virtual u32 vf2C();                             // _2C
-	virtual CCamera* vf30();                        // _30
-	virtual CCamera* vf34();                        // _34
-	virtual CCamera* GetCamera();                   // _38, vf30's unless overridden
-	virtual CLight* vf3C();                         // _3C
-	virtual CLight* vf40();                         // _40
-	virtual CLight* GetLight();                     // _44, vf3C's unless overridden
+	virtual u32 GetRetraceStep();                   // _2C, retraces since the last frame, at most 4
+	virtual CCamera* GetPerspectiveCamera();        // _30, mCameras[0]
+	virtual CCamera* GetScreenCamera();             // _34, mCameras[1], the 640x448 ortho camera
+	virtual CCamera* GetCamera();                   // _38, GetPerspectiveCamera unless overridden
+	virtual CLight* GetDefaultLight();              // _3C, the four-light set mLights[0]
+	virtual CLight* GetScreenLight();               // _40, the two-light set for the screen-space pass
+	virtual CLight* GetLight();                     // _44, GetDefaultLight unless overridden
 	virtual void Reset(u32 code);                   // _48
 
 	// the disc can't be read
@@ -286,8 +286,8 @@ public:
 	virtual BOOL BeforeUpdate();                    // _14
 	virtual void Update(u32 frames);                // _18
 	virtual void Draw();                            // _1C
-	virtual void vf20();                            // _20
-	virtual void vf24();                            // _24
+	virtual void DrawScene();                       // _20, the scene through the main camera
+	virtual void DrawHud();                         // _24, the screen-space layer under the ortho camera
 	virtual s32 FrameInterval();                    // _28
 	virtual CCamera* GetCamera();                   // _38
 	virtual CLight* GetLight();                     // _44

@@ -82,7 +82,7 @@ void CBase::Start()
  * @note Address: 0x800153B4
  * @note Size: 0x4
  */
-void CBase::vf24()
+void CBase::DrawHud()
 {
 }
 
@@ -90,7 +90,7 @@ void CBase::vf24()
  * @note Address: 0x800153B8
  * @note Size: 0x4
  */
-void CBase::vf20()
+void CBase::DrawScene()
 {
 }
 

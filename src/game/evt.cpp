@@ -7956,7 +7956,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		s32 direction = CEvt_Evaluate(this);
 		s32 mode      = CEvt_Evaluate(this);
 		f32 time      = CEvt_Evaluate(this) / 100.0f;
-		if (GetStageCameraInfoRecords() != NULL && area->vf78(id) != 0) {
+		if (GetStageCameraInfoRecords() != NULL && area->IsCameraArea(id) != 0) {
 			CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 			camera->ChangeAction(CAMACTION_AREA);
 			SelectAreaCameraEntryWithControl((CCameraActionArea*)area, id, direction, mode, 0, time);

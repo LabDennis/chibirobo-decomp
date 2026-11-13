@@ -25,7 +25,7 @@ extern "C" {
  * @note Address: 0x80147630
  * @note Size: 0x8
  */
-u32 CCameraActionReset::vf5C()
+u32 CCameraActionReset::GetInterestMode()
 {
 	return mInterestMode;
 }

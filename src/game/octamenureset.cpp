@@ -5,7 +5,7 @@
  * @note Address: 0x80093BD8
  * @note Size: 0x30
  */
-void OctaMenu::vf14()
+void OctaMenu::OpenActive()
 {
 	Open(0);
 }
@@ -15,7 +15,7 @@ void OctaMenu::vf14()
  * @note Address: 0x80093C08
  * @note Size: 0xC
  */
-void OctaMenu::vf18()
+void OctaMenu::FinishClose()
 {
 	mOpen = 0;
 }

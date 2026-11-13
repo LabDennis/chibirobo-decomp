@@ -73,7 +73,7 @@ u32 CCameraActionArea::GetCameraFlags()
  * @note Address: 0x8013829C
  * @note Size: 0x8
  */
-u32 CCameraActionArea::vf5C()
+u32 CCameraActionArea::GetInterestMode()
 {
 	return 2;
 }
@@ -91,7 +91,7 @@ XObj* CCameraActionArea::GetTarget()
  * @note Address: 0x801382AC
  * @note Size: 0x28
  */
-void CCameraActionArea::vf28()
+void CCameraActionArea::DrawDebug3d()
 {
 	DrawDebug3d__19CCameraActionAreaExFv(&gCameraAreaState);
 }
@@ -1587,7 +1587,7 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
  * @note Address: 0x801395B8
  * @note Size: 0x94
  */
-void CCameraActionArea::vf24()
+void CCameraActionArea::DrawDebug2d()
 {
 	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,%3d)(%3d)\n", 324.0f, 298.0f, 0.0f, 12.0f, 12.0f, gCameraAreaState._0C,
 	                       mEntryIndex, gCameraAreaState._04);

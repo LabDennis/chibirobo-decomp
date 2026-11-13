@@ -6,5 +6,5 @@
  */
 CLight* CBase::GetLight()
 {
-	return vf3C();
+	return GetDefaultLight();
 }

@@ -4,8 +4,8 @@
  * @note Address: 0x8001160C
  * @note Size: 0x28
  */
-// CCameraActionAreaExM's vf64, resets the shared area camera state
-extern "C" void vf64__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
+// CCameraActionAreaExM's LoadAreaState, resets the shared area camera state
+extern "C" void LoadAreaState__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
 {
 	LoadStageCameraAreaState(&gCameraAreaState);
 }

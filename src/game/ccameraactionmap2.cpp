@@ -2970,7 +2970,7 @@ extern "C" BOOL GetMapCameraTargetOffsetPosition(CCameraActionMap* map, CVec& ou
  * @note Address: 0x8013C1D4
  * @note Size: 0x2C
  */
-void CCameraActionMap::vf28()
+void CCameraActionMap::DrawDebug3d()
 {
 	DrawMapCameraAreaDebug3D(&gCameraAreaState, 1);
 }
@@ -2979,7 +2979,7 @@ void CCameraActionMap::vf28()
  * @note Address: 0x8013C200
  * @note Size: 0x1CC
  */
-void CCameraActionMap::vf24()
+void CCameraActionMap::DrawDebug2d()
 {
 	CGame* game = &gGame;
 	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B000000A0AREA(%3d,---)(%3d)\n", 408.0f, 298.0f, 0.0f, 12.0f, 12.0f, gCameraAreaState._0C,
@@ -9627,7 +9627,7 @@ u32 CCameraActionMap::GetCameraFlags()
  * @note Address: 0x80139E48
  * @note Size: 0x8
  */
-extern "C" s32 vf5C__16CCameraActionMapFv(CCameraActionMap* map)
+extern "C" s32 GetInterestMode__16CCameraActionMapFv(CCameraActionMap* map)
 {
 	return map->_40;
 }

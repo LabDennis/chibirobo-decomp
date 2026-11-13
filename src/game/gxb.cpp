@@ -2812,7 +2812,7 @@ extern "C" void DrawTitleScreen(Title* title)
 		return;
 	CGame& game       = gGame;
 	CGs& gs           = game.mGs;
-	gGame.mGs.mCamera = game.vf34();
+	gGame.mGs.mCamera = game.GetScreenCamera();
 	if (BeginGsCamera(&game)) {
 		if (title->mMenuAlpha > 0.0f) {
 			BeginTitleOverlay();
@@ -2849,7 +2849,7 @@ extern "C" void DrawTitleScreen(Title* title)
 			gs.mCurChannel->mDirty = TRUE;
 		title->mDemo.DrawObject();
 	}
-	gGame.mGs.mCamera = game.vf34();
+	gGame.mGs.mCamera = game.GetScreenCamera();
 	if (!BeginGsCamera(&game))
 		return;
 	if (title->mMenuAlpha > 0.0f) {

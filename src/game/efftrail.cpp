@@ -436,7 +436,7 @@ static inline void DrawOXModel(XObj& model, u32 diffuse, u32 ambient, f32& alpha
 	model.DrawObject();
 	EndGsCamera(&gGame.mGs);
 	CBase* game       = &gGame;
-	gGame.mGs.mCamera = game->vf34();
+	gGame.mGs.mCamera = game->GetScreenCamera();
 	BeginGsCamera(&gGame);
 }
 

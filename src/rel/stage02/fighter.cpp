@@ -125,9 +125,9 @@ public:
 	virtual void Reset() { }                    // _14
 	virtual void SetCamera(CCamera* camera) { } // _18
 	virtual void Init() { }                     // _1C
-	virtual void vf20() { }                     // _20
-	virtual void vf24() { }                     // _24
-	virtual void vf28() { }                     // _28
+	virtual void Draw() { }                     // _20
+	virtual void DrawDebug2d() { }              // _24
+	virtual void DrawDebug3d() { }              // _28
 	virtual void SetEye(f32 x, f32 y, f32 z)    // _2C
 	{
 		_00.x = x;
@@ -155,7 +155,7 @@ public:
 	virtual s32 GetMode() { return 0; }                                    // _50
 	virtual s32 GetFlags() { return _38; }                                 // _54
 	virtual f32 GetEaseDivisor() { return 12.0f; }                         // _58
-	virtual s32 vf5C() { return 0; }                                       // _5C
+	virtual s32 GetInterestMode() { return 0; }                            // _5C
 	virtual s32 GetTarget() { return 0; }                                  // _60
 };
 

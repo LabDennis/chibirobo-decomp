@@ -214,9 +214,9 @@ public:
 	virtual void Reset() { }                    // _14
 	virtual void SetCamera(CCamera* camera) { } // _18, takes eye, interest, angle, distance and fov
 	virtual void Init() { }                     // _1C
-	virtual void vf20() { }                     // _20
-	virtual void vf24() { }                     // _24
-	virtual void vf28() { }                     // _28
+	virtual void Draw() { }                     // _20, the action's markers over the room
+	virtual void DrawDebug2d() { }              // _24, debug text
+	virtual void DrawDebug3d() { }              // _28, debug shapes in the scene
 	virtual void SetEye(f32 x, f32 y, f32 z)    // _2C
 	{
 		mEye.x = x;
@@ -241,10 +241,10 @@ public:
 	virtual void SetDistance(f32 distance) { mDistance = distance; }                                   // _44
 	virtual void SetFov(f32 fov) { mFov = fov; }                                                       // _48
 	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                                                    // _4C
-	virtual u32 vf50() { return 0; }                                                                   // _50
+	virtual u32 GetMode() { return 0; }                                                                // _50
 	virtual u32 GetCameraFlags() { return _38; }                                                       // _54
 	virtual f32 GetFollowDivisor();                                                                    // _58
-	virtual u32 vf5C() { return 0; }                                                                   // _5C
+	virtual u32 GetInterestMode() { return 0; }                                                        // _5C
 	virtual XObj* GetTarget() { return NULL; }                                                         // _60
 
 	// set the mode word along with the vector
@@ -263,13 +263,13 @@ public:
 // base of the area, map and reset actions. fields from _40 on differ per subclass
 class CCameraActionAreaExM : public CInterfaceCameraAction {
 public:
-	virtual void vf64();          // _64
-	virtual f32 vf68();           // _68
-	virtual s32 vf6C();           // _6C
-	virtual void vf70(s32 mode);  // _70
-	virtual void vf74(Vec pos);   // _74
-	virtual BOOL vf78(s32 id);    // _78, whether an area camera entry exists
-	virtual BOOL vf7C(s32 index); // _7C
+	virtual void LoadAreaState();                 // _64, reloads the stage's camera area tables
+	virtual f32 GetBaseFov();                     // _68, the area camera's fov before the zoom level
+	virtual s32 GetZoomLevel();                   // _6C, CAM_AREA_ZOOM_LV, 1 is the default
+	virtual void SetZoomLevel(s32 mode);          // _70
+	virtual s32 FindAreaContainingPoint(Vec pos); // _74, the first area holding pos, or -1
+	virtual BOOL IsCameraArea(s32 id);            // _78, whether an area camera entry exists
+	virtual BOOL IsAreaEnabled(s32 index);        // _7C
 };
 
 // an entry in CCameraActionMap's mIntersectionEntries and mAreaIntersections lists
@@ -360,11 +360,11 @@ public:
 	virtual void Reset();                    // _14
 	virtual void SetCamera(CCamera* camera); // _18
 	virtual void Init();                     // _1C
-	virtual void vf24();                     // _24
-	virtual void vf28();                     // _28
+	virtual void DrawDebug2d();              // _24
+	virtual void DrawDebug3d();              // _28
 	virtual u32 GetCameraFlags();            // _54
 	virtual f32 GetFollowDivisor();          // _58
-	virtual u32 vf5C();                      // _5C
+	virtual u32 GetInterestMode();           // _5C
 	virtual XObj* GetTarget();               // _60
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x11EC);
@@ -491,10 +491,10 @@ public:
 	virtual void Reset();                    // _14
 	virtual void SetCamera(CCamera* camera); // _18
 	virtual void Init();                     // _1C
-	virtual void vf24();                     // _24
-	virtual void vf28();                     // _28
+	virtual void DrawDebug2d();              // _24
+	virtual void DrawDebug3d();              // _28
 	virtual u32 GetCameraFlags();            // _54
-	virtual u32 vf5C();                      // _5C
+	virtual u32 GetInterestMode();           // _5C
 	virtual XObj* GetTarget();               // _60
 
 	void SetEyeInterpolation(s32 mode, Vec from, Vec to, f32 time)
@@ -576,7 +576,7 @@ public:
 	virtual void SetCamera(CCamera* camera); // _18
 	virtual void Init();                     // _1C
 	virtual f32 GetFollowDivisor();          // _58
-	virtual u32 vf5C();                      // _5C
+	virtual u32 GetInterestMode();           // _5C
 	virtual XObj* GetTarget();               // _60
 
 	void SetEye_Interp(s32 mode, const Vec& eye, f32 time)
@@ -619,10 +619,10 @@ public:
 	u32 mInterestMode;                         // _64
 	s32 mZoom;                                 // _68, 0 near, 1 far
 
-	virtual void Update(u32 step);               // _10
-	virtual void Reset();                        // _14
-	virtual void SetCamera(CCamera* camera);     // _18
-	virtual u32 vf5C() { return mInterestMode; } // _5C
+	virtual void Update(u32 step);                          // _10
+	virtual void Reset();                                   // _14
+	virtual void SetCamera(CCamera* camera);                // _18
+	virtual u32 GetInterestMode() { return mInterestMode; } // _5C
 
 	void SetZoomDistance(f32 distance)
 	{
@@ -673,7 +673,7 @@ public:
 
 	virtual void Update(u32 step);                  // _10
 	virtual void Reset();                           // _14
-	virtual u32 vf50() { return 0; }                // _50 (weak)
+	virtual u32 GetMode() { return 0; }             // _50 (weak)
 	virtual u32 GetCameraFlags() { return 11; }     // _54 (weak)
 	virtual f32 GetFollowDivisor() { return 0.1f; } // _58 (weak)
 	virtual Vec GetCameraTarget();                  // _64
@@ -777,8 +777,8 @@ public:
 
 	virtual void Update(u32 step); // _10
 	virtual void Reset();          // _14
-	virtual void vf20();           // _20, draws the markers over the room's objects
-	virtual void vf28();           // _28
+	virtual void Draw();           // _20, draws the markers over the room's objects
+	virtual void DrawDebug3d();    // _28
 	virtual u32 GetCameraFlags();  // _54
 
 	void SaveCamInfo(const void* info);

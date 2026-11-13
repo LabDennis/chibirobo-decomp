@@ -6,7 +6,7 @@
  * @note Address: 0x80015C54
  * @note Size: 0x10
  */
-f32 CCameraActionAreaExM::vf68()
+f32 CCameraActionAreaExM::GetBaseFov()
 {
 	return gCameraAreaState.mBaseFov;
 }
@@ -15,7 +15,7 @@ f32 CCameraActionAreaExM::vf68()
  * @note Address: 0x80015C64
  * @note Size: 0x10
  */
-s32 CCameraActionAreaExM::vf6C()
+s32 CCameraActionAreaExM::GetZoomLevel()
 {
 	return gCameraAreaState._14;
 }
@@ -24,7 +24,7 @@ s32 CCameraActionAreaExM::vf6C()
  * @note Address: 0x80015C74
  * @note Size: 0x10
  */
-void CCameraActionAreaExM::vf70(s32 mode)
+void CCameraActionAreaExM::SetZoomLevel(s32 mode)
 {
 	gCameraAreaState._14 = mode;
 }
@@ -33,7 +33,7 @@ void CCameraActionAreaExM::vf70(s32 mode)
  * @note Address: 0x80015C84
  * @note Size: 0x44
  */
-extern "C" s32 vf74__20CCameraActionAreaExMF3Vec(CCameraActionAreaExM* action, const Vec& pos)
+extern "C" s32 FindAreaContainingPoint__20CCameraActionAreaExMF3Vec(CCameraActionAreaExM* action, const Vec& pos)
 {
 	return FindFirstCameraAreaContainingPoint(&gCameraAreaState, pos);
 }

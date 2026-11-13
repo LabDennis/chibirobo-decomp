@@ -449,7 +449,7 @@ Scroll2Limits* CCameraActionScroll2::GetLimits(s32 room)
  * @note Address: 0x80143A00
  * @note Size: 0x1C44
  */
-void CCameraActionScroll2::vf20()
+void CCameraActionScroll2::Draw()
 {
 	static s32 sOverlayFrameCount = 0;
 
@@ -2654,6 +2654,6 @@ u32 CCameraActionScroll2::GetCameraFlags()
 	return 11;
 }
 
-void CCameraActionScroll2::vf28()
+void CCameraActionScroll2::DrawDebug3d()
 {
 }

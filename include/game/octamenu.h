@@ -71,13 +71,13 @@ public:
 	virtual ~OctaMenu() { }                         // _08 (weak)
 	virtual void Open(s32 item);                    // _0C
 	virtual void Select(s32 dir);                   // _10
-	virtual void vf14();                            // _14
-	virtual void vf18();                            // _18
+	virtual void OpenActive();                      // _14, Open(0): the ring that has the cursor
+	virtual void FinishClose();                     // _18, marks the ring closed once its fade reached 0
 	virtual void ConfirmSelection();                // _1C
 	virtual s32 GetItemIconTextureIndex(s32 index); // _20
 	virtual const char* GetItemLabel(s32 index);    // _24
 	virtual u32 GetItemColor(s32 index);            // _28
-	virtual BOOL vf2C(s32 index);                   // _2C
+	virtual BOOL IsItemEquipped(s32 index);         // _2C, the attachment held or the costume worn
 
 	s32 _280;                     // _280, _268 in japan
 	f32 _284;                     // _284
@@ -100,7 +100,7 @@ public:
 	virtual s32 GetItemIconTextureIndex(s32 index); // _20
 	virtual const char* GetItemLabel(s32 index);    // _24
 	virtual u32 GetItemColor(s32 index);            // _28
-	virtual BOOL vf2C(s32 index);                   // _2C
+	virtual BOOL IsItemEquipped(s32 index);         // _2C
 };
 
 class DrsMenu : public OctaMenu {
@@ -111,7 +111,7 @@ public:
 	virtual s32 GetItemIconTextureIndex(s32 index); // _20
 	virtual const char* GetItemLabel(s32 index);    // _24
 	virtual u32 GetItemColor(s32 index);            // _28
-	virtual BOOL vf2C(s32 index);                   // _2C
+	virtual BOOL IsItemEquipped(s32 index);         // _2C
 };
 
 struct OXJointPath {

@@ -2533,7 +2533,7 @@ static inline BOOL IsAttachment(const XObjChr* chr, s32 id)
 	return id == chr->GetAttachment();
 }
 
-// DrsMenu::vf2C, he wears the item's costume
+// DrsMenu::IsItemEquipped, he wears the item's costume
 static inline BOOL IsWorn(DrsMenu* menu, s32 index)
 {
 	return menu->mItems[index].mType == menu->mChr->mSuits.mCurrent;
@@ -3154,12 +3154,12 @@ s32 DrsMenu::GetItemIconTextureIndex(s32 index)
 	return DRS_LABEL(105);
 }
 
-// DrsMenu::vf2C
+// DrsMenu::IsItemEquipped
 /**
  * @note Address: 0x800984CC
  * @note Size: 0x28
  */
-BOOL DrsMenu::vf2C(s32 index)
+BOOL DrsMenu::IsItemEquipped(s32 index)
 {
 	return IsWorn(this, index);
 }
@@ -3355,12 +3355,12 @@ s32 AtcMenu::GetItemIconTextureIndex(s32 index)
 	return ATC_LABEL(105);
 }
 
-// AtcMenu::vf2C
+// AtcMenu::IsItemEquipped
 /**
  * @note Address: 0x80098D9C
  * @note Size: 0x38
  */
-extern "C" u8 vf2C__7AtcMenuFl(AtcMenu* menu, s32 index)
+extern "C" u8 IsItemEquipped__7AtcMenuFl(AtcMenu* menu, s32 index)
 {
 	return menu->mChr->GetAttachment() == menu->mItems[index].mType;
 }
@@ -3438,12 +3438,12 @@ const char* OctaMenu::GetItemLabel(s32 index)
 	return "";
 }
 
-// OctaMenu::vf2C
+// OctaMenu::IsItemEquipped
 /**
  * @note Address: 0x8009AFDC
  * @note Size: 0x8
  */
-extern "C" u8 vf2C__8OctaMenuFl(OctaMenu* menu, s32 index)
+extern "C" u8 IsItemEquipped__8OctaMenuFl(OctaMenu* menu, s32 index)
 {
 	return 0;
 }
@@ -3555,7 +3555,7 @@ extern "C" void UpdateEquipmentRingAnimation(OctaMenu* ring, u32 frames)
 					LowerRingValue(ring->mFade, 0.0f, 1.0f / (0.25f * IDLE_SECOND), frames);
 			}
 			if (ring->mFade == 0.0f)
-				ring->vf18();
+				ring->FinishClose();
 		}
 		if (ring->_0C > 0.0f) {
 			if (ring->_280 == 3)
@@ -3614,7 +3614,7 @@ extern "C" void UpdateEquipmentRingAnimation(OctaMenu* ring, u32 frames)
 	}
 }
 
-// OctaMenu::vf14, the stick or the dpad moves the cursor, a picks, b closes. 1 when it picked,
+// OctaMenu::OpenActive, the stick or the dpad moves the cursor, a picks, b closes. 1 when it picked,
 // -1 when it closed
 /**
  * @note Address: 0x8009B9E0
@@ -4262,7 +4262,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		menu->GetItemColor(i);
 		SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
 		f32 iconAlpha = alpha;
-		if (menu->vf2C(i))
+		if (menu->IsItemEquipped(i))
 			iconAlpha = alpha * .25f;
 		u32 color = 0xffffff00 | (u32)(255.f * alpha);
 		f32 size  = 1.2f * pulse;

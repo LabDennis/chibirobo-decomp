@@ -92,8 +92,8 @@ void CGame::Draw()
 	RenderFloorReflection(this);
 	if ((mStatus.mFlags & 0x4000000000ULL) && !(GetPlayer()->mStatus.mFlags & 0x200000))
 		DrawObjectAlphaMask(this);
-	vf20();
-	mGs.mCamera = vf34();
+	DrawScene();
+	mGs.mCamera = GetScreenCamera();
 	if (BeginGsCamera(this)) {
 		if (mStatus.mFlags & 1) {
 			if (mStatus.mFlags & 0x4000000000ULL) {
@@ -165,13 +165,13 @@ void CGame::Draw()
 		mParticle.Draw(2);
 		EndGsCamera(&mGs);
 	}
-	gGame.mGs.mLight = vf40();
+	gGame.mGs.mLight = GetScreenLight();
 	DrawTitleScreen(&mTitle);
-	mGs.mCamera = vf34();
+	mGs.mCamera = GetScreenCamera();
 	if (BeginGsCamera(this)) {
 		InvalidateAll();
 		SetupAll(TRUE);
-		vf24();
+		DrawHud();
 		Vec corners[4] = { (Vec) { 0, 0, -1 }, (Vec) { 640, 0, -1 }, (Vec) { 640, 448, -1 }, (Vec) { 0, 448, -1 } };
 		SetGsColorUpdate(gGame.mGs.mCurRenderMode, 0);
 		SetGsAlphaUpdate(gGame.mGs.mCurRenderMode, 0);
@@ -218,7 +218,7 @@ void CGame::Draw()
 		mBlur.DrawTex();
 		mOutline.Draw(0x80);
 		InvalidateAll();
-		mGs.mCamera = vf34();
+		mGs.mCamera = GetScreenCamera();
 		if (BeginGsCamera(this)) {
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			CTexObj tex = mTpl.mTex.Init(&((TPLPalette*)mTpl.mBuffer)->descriptorArray[121 - StatusTextureOffset], 0);
@@ -231,7 +231,7 @@ void CGame::Draw()
 			EndGsCamera(&mGs);
 		}
 	}
-	mGs.mCamera = vf34();
+	mGs.mCamera = GetScreenCamera();
 	if (BeginGsCamera(this)) {
 		SetupAll(TRUE);
 		DrawObjectLoadingProgress(&mInfoScrn);

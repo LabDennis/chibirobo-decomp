@@ -53,7 +53,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			game->mCameraActions.mTable[1]->Reset();
 		}
 		if (GetStageCameraAreaRecords() && GetStageCameraInfoRecords()) {
-			((CCameraActionAreaExM*)game->mCameraActions.mTable[1])->vf64();
+			((CCameraActionAreaExM*)game->mCameraActions.mTable[1])->LoadAreaState();
 		}
 		((CCameraActionAnim*)game->mCameraActions.mTable[6])->SetObj((XObjCamera*)game->mXObjs.mPools[0].First());
 		game->mMotionControlCamera.Init();
@@ -238,7 +238,7 @@ BOOL CGame::BeforeUpdate()
 	case 0:
 		return TRUE;
 	case 1:
-		if (!UpdateProgressiveScanPrompt(vf2C()))
+		if (!UpdateProgressiveScanPrompt(GetRetraceStep()))
 			break;
 #if defined(VERSION_PAL)
 		mOutline.SetSize(gGame.mGs.mScreen.fbWidth, gGame.mGs.mScreen.efbHeight);
