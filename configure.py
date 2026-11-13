@@ -32,6 +32,7 @@ VERSIONS = [
     "GGTE01",  # USA rev 0
     "GGTJ01_01",  # Japan rev 1
     "GGTP01",  # Europe
+    "R24J01",  # Wii, Japan rev 0
 ]
 
 parser = argparse.ArgumentParser()
@@ -139,6 +140,7 @@ args = parser.parse_args()
 config = ProjectConfig()
 config.version = str(args.version)
 version_num = VERSIONS.index(config.version)
+wii = config.version == "R24J01"
 
 # Apply arguments
 config.build_dir = args.build_dir
@@ -146,10 +148,9 @@ config.dtk_path = args.dtk
 config.objdiff_path = args.objdiff
 config.binutils_path = args.binutils
 config.compilers_path = args.compilers
-# Required by fill_padding.py.
-config.generate_map = True
-# PAL pads with zeros; US and JP use ASCII '0'.
-config.fill_padding = config.version != "GGTP01"
+# The US and Japanese GameCube linkers used ASCII '0' for padding.
+config.fill_padding = config.version in ("GGTE01", "GGTJ01_01")
+config.generate_map = args.map or not wii
 config.non_matching = args.non_matching
 config.sjiswrap_path = args.sjiswrap
 config.ninja_path = args.ninja
@@ -184,7 +185,7 @@ config.ldflags = [
     "-nodefaults",
 ]
 if args.debug:
-    config.ldflags.append("-g")  # Or -gdwarf-2 for Wii linkers
+    config.ldflags.append("-gdwarf-2" if wii else "-g")
 if args.map:
     config.ldflags.append("-mapunused")
     # config.ldflags.append("-listclosure") # For Wii linkers
@@ -313,7 +314,7 @@ cflags_trk = [
     "-sdata2 0",
 ]
 
-config.linker_version = "GC/2.6"
+config.linker_version = "Wii/1.3" if wii else "GC/2.6"
 
 
 # Helper function for Dolphin libraries
@@ -359,7 +360,7 @@ def EquivalentFor(*versions):
 
 config.warn_missing_config = False
 config.warn_missing_source = False
-config.libs = [
+gamecube_libs = [
     {
         "lib": "game part 1",
         "mw_version": "GC/2.6",
@@ -1155,6 +1156,48 @@ config.libs = [
 ]
 
 
+config.libs = gamecube_libs
+if wii:
+    wii_cflags = [
+        "-nodefaults", "-proc gekko", "-align powerpc", "-enum int", "-fp hardware",
+        "-O4,p", "-func_align 4", "-inline auto", "-use_lmw_stmw on", "-fp_contract on",
+        "-nosyspath", "-gccinc", "-i include", "-i include/stl", "-DVERSION_R24J01",
+        f"-DDTK_CONFIG_NONMATCHING={config.non_matching:d}",
+    ]
+    if args.warn:
+        wii_cflags.append(f"-W {args.warn}")
+    wii_cflags.append("-DDEBUG=1" if args.debug else "-DNDEBUG=1")
+    config.libs = [
+        {
+            "lib": "game",
+            "mw_version": "Wii/1.3",
+            "cflags": [*wii_cflags, "-Cpp_exceptions off", "-RTTI on", "-str reuse,readonly"],
+            "progress_category": "game",
+            "objects": [
+                Object(Matching, "game/attachmentcounts.cpp"),
+                Object(Equivalent, "game/stage_data.cpp"),
+                Object(Equivalent, "game/wii/stage_table.cpp"),
+            ],
+        },
+        {
+            "lib": "Runtime.PPCEABI.H",
+            "mw_version": "Wii/1.3",
+            "cflags": wii_cflags,
+            "progress_category": "runtime",
+            "objects": [Object(Matching, "Runtime.PPCEABI.H/ptmf.c")],
+        },
+        {
+            "lib": "MSL_C.PPCEABI.bare.H",
+            "mw_version": "Wii/1.3",
+            "cflags": wii_cflags,
+            "progress_category": "runtime",
+            "objects": [
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c", mw_version="GC/2.6"),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/rand.c"),
+            ],
+        },
+    ]
+
 # Optional callback to adjust link order. This can be used to add, remove, or reorder objects.
 # This is called once per module, with the module ID and the current link order.
 #
@@ -1176,14 +1219,16 @@ def link_order_callback(module_id: int, objects: List[str]) -> List[str]:
 # Optional extra categories for progress tracking
 # Adjust as desired for your project
 config.progress_categories = [
-    ProgressCategory("game", "Game Code"),
-    ProgressCategory("sdk", "SDK Code"),
-    ProgressCategory("hsd", "HSD Code"),
-    ProgressCategory("runtime", "Runtime Code"),
+    category
+    for category in (
+        ProgressCategory("game", "Game Code"),
+        ProgressCategory("sdk", "SDK Code"),
+        ProgressCategory("hsd", "HSD Code"),
+        ProgressCategory("runtime", "Runtime Code"),
+        ProgressCategory("rels", "REL Code"),
+    )
+    if any(lib.get("progress_category") == category.id for lib in config.libs)
 ]
-# Empty categories report 100%.
-if any(lib.get("progress_category") == "rels" for lib in config.libs):
-    config.progress_categories.append(ProgressCategory("rels", "REL Code"))
 config.progress_each_module = args.verbose
 config.progress_use_fancy = True
 config.progress_code_fancy_frac = 1000

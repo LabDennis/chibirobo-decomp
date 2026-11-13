@@ -13354,7 +13354,6 @@ s32 CEvt::_cmd_SET(u8, s32)
 	return 0;
 }
 
-extern "C" void SetAttachmentCountById(void* attachments, s32 index, s32 value);
 #define EVT_PAD (&gGame.mPad.mPad[0])
 
 /**
