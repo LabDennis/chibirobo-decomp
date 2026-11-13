@@ -79,7 +79,7 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 	f32 scale     = 2.0f / sqrtf(3.0f);
 	for (s32 i = 0; i < state->mAreaCount; ++i) {
 		u16 flags = CamAreaInfo(&state->mAreaRecords[i]).mRecord->mFlags & 4;
-		if (flags == 0) // only areas flagged for debug drawing
+		if (flags == 0) // skip areas whose camera is off
 			continue;
 		static s32 selected = 0;
 		selected            = i;

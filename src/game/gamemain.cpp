@@ -303,7 +303,7 @@ void FbMirror::Update(u32 frames)
 			mtx[2][3] = diff.z;
 			PSMTXInverse(mtx, view);
 			PSMTXMultVec(view, &pos, &pos);
-			mCamera.SetNear(0.1f - pos.z); // near and far sit at the surface's depth
+			mCamera.SetNear(0.1f - pos.z); // near starts at the surface's depth, far 32768 beyond it
 			mCamera.SetFar(32768.0f + (0.1f - pos.z));
 			mCamera.SetFrustum(0.5f + pos.y, -0.5f + pos.y, -0.5f + pos.x, 0.5f + pos.x);
 			mCamera.SetEye(diff);

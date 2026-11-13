@@ -18,7 +18,7 @@ CCameraActionEvt* __dt__16CCameraActionEvtFv(CCameraActionEvt* evt, s32 flags);
 CCameraActionReset* __dt__18CCameraActionResetFv(CCameraActionReset* reset, s32 flags);
 }
 
-// the camera classes' weak copies, everything in them is inline
+// weak destructor copies (MsgFontGlyph and the camera classes), everything in them is inline
 
 /**
  * @note Address: 0x80008FB0

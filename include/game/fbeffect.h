@@ -7,10 +7,10 @@
 // CFbOutline::Draw's pass bits: bits 0-1 grab the efb (without one the buffer is reused), the rest add a pass
 #define FBOUT_COPY_A8   0x01  // grab into mBuf as alpha
 #define FBOUT_COPY_I8   0x02  // grab into mBuf as intensity
-#define FBOUT_OUTLINE   0x04  // outline the marked pixels, mThick wide
+#define FBOUT_OUTLINE   0x04  // mThick != 0: outline the marked pixels mThick wide; 0: colour every pixel with id > 4
 #define FBOUT_TINT      0x08  // tint the pixels whose alpha matches mColor0's
-#define FBOUT_OUTLINE2  0x10  // second outline pass, mPatternTex adds a pattern
-#define FBOUT_OVERLAY   0x20  // tint the marked area with mColor3
+#define FBOUT_OUTLINE2  0x10  // mThick2 != 0: second outline in mColor2; 0: fill the id-0 pixels with mColor2, patterned by mPatternTex
+#define FBOUT_OVERLAY   0x20  // blend the whole screen toward buffer intensity * mColor3, at mColor3's alpha
 #define FBOUT_ZOOM_COPY 0x40  // draw the screen shrunk into the middle and grab it
 #define FBOUT_ZOOM_FADE 0x80  // fade the zoomed copy over the screen
 #define FBOUT_GHOSTS    0x100 // ghost copies circling the outline

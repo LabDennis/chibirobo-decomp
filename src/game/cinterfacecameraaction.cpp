@@ -114,7 +114,7 @@ bool CVectorEaseInOutInterpolation::Update(u32 step, f32 dt)
 	bool x = mAxes[0].Update(step, dt);
 	bool y = mAxes[1].Update(step, dt);
 	bool z = mAxes[2].Update(step, dt);
-	if (x && z) { // the ground plane arrives first
+	if (x && z) { // x and z have both arrived
 		mXZDone = TRUE;
 	}
 	return x && y && z;

@@ -208,7 +208,7 @@ void CGame::Draw()
 		DrawScanModePrompt();
 		EndGsCamera(&mGs);
 	}
-	if (mColor1.mColor.mColor.a > 0) { // a fullscreen texture tinted by the overlay
+	if (mColor1.mColor.mColor.a > 0) { // a blur copy, then texture 121 full-screen at up to 48 alpha scaled by the overlay's alpha
 
 #if defined(VERSION_PAL)
 		mBlur.Copy();

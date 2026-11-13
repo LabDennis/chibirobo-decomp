@@ -142,7 +142,7 @@ void CCameraActionEye::Update(u32 step)
 				f32 pitch       = 0.0f;
 				mLook.mTarget.y = 0.0f;
 				if (tilt > 0.0f) {
-					pitch = mLook.x + 0.06981317f * Abs(tilt); // 4 degrees per step
+					pitch = mLook.x + 0.06981317f * Abs(tilt); // up to 4 degrees per update, scaled by the stick
 					if (pitch > 0.87266463f) {
 						pitch = 0.87266463f; // 50 degrees up
 					}
@@ -198,7 +198,7 @@ void CCameraActionEye::Update(u32 step)
 				gGame.mBlur.mTarget  = 0.0f;
 				gGame.mBlur.mSpeed   = 0.1f;
 				gGame.mBlur.mOffsetY = gGame.mBlur.mOffsetX = 2.0f * -stick;
-			} else { // zooming: fade in the motion blur
+			} else { // zooming: kick the blur to 0.8, it decays back to 0
 				gGame.mBlur.mAlpha   = 0.8f;
 				gGame.mBlur.mTarget  = 0.0f;
 				gGame.mBlur.mSpeed   = 0.1f;

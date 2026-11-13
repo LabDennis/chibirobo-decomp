@@ -248,7 +248,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		if (cur < GetStageNum()) {
 			char* name = (char*)GetStageDisplayName(game->mStage);
 			if (name != NULL) {
-				game->mStageName.mColor = 0x80FFFF00; // half-alpha yellow
+				game->mStageName.mColor = 0x80FFFF00; // pale cyan; the alpha byte is filled from each letter's scale
 				for (s32 i = 0; i < 20 && *name != '\0'; i++, name++) {
 					game->mStageName.mChars[i].mText  = name;
 					game->mStageName.mChars[i].mScale = -0.2f * i; // later letters start hidden
