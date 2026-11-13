@@ -81,4 +81,12 @@ public:
 
 extern "C" UnkStageObj* GetStagePlacementByIndex(s32 i);
 
+// Spawned objects can use placements in the executable, outside the loaded stage table.
+inline s32 GetStagePlacementIndex(const UnkStageObj* placement)
+{
+	const UnkStageObj* first = GetStagePlacementByIndex(0);
+	s32 byteOffset           = (s32)((u32)placement - (u32)first);
+	return byteOffset / (s32)sizeof(UnkStageObj);
+}
+
 #endif
