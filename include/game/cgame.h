@@ -359,9 +359,8 @@ static inline XObj* FindObj(s16 id)
 // whether the stage up is the one with the name
 static inline bool IsStage(const char* name)
 {
-	s32 stage = gGame.mStage;
-	s32 id    = FindStageIndexByName(name);
-	return id == stage;
+	const s32 stage = gGame.mStage;
+	return stage == FindStageIndexByName(name);
 }
 
 #endif
