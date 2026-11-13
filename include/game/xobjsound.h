@@ -15,7 +15,7 @@ public:
 
 	XObjSound();
 
-	virtual ~XObjSound() { }               // _08 (weak)
+	virtual ~XObjSound();                  // _08
 	virtual void InitializeObject(u32 id); // _90
 	virtual void ResetObjectState();       // _98
 	virtual void UpdateObject(u32 frames); // _A4

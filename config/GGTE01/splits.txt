@@ -305,6 +305,8 @@ game/cpaddtor.cpp:
 
 game/progressive.cpp:
 	.text       start:0x8001C89C end:0x8001CEA0
+	.data       start:0x80210500 end:0x80210748
+	.rodata     start:0x801FE004 end:0x801FE23C
 
 game/cfiletextdtor.cpp:
 	.text       start:0x8001CEA0 end:0x8001CEFC
@@ -656,6 +658,10 @@ game/xobjfreedtor.cpp:
 
 game/objb_sound.cpp:
 	.text       start:0x800DD32C end:0x800DD5A0
+	.rodata     start:0x8020A918 end:0x8020A930
+	.data       start:0x80228FF8 end:0x802291EC
+	.sdata      start:0x8065A658 end:0x8065A680
+	.sdata2     start:0x8065D9C0 end:0x8065D9F0
 
 game/xobjfree.cpp:
 	.text       start:0x800DD600 end:0x800DDB8C
@@ -677,6 +683,7 @@ game/xobjdustevent.cpp:
 
 game/xobjdust.cpp:
 	.text       start:0x800DF0A0 end:0x800DF9A0
+	.data       start:0x802293E8 end:0x80229534
 
 game/xobjhbox.cpp:
 	.text       start:0x800DF9A0 end:0x800DFFD4
@@ -852,6 +859,7 @@ game/xobjactortoydraw.cpp:
 
 game/xobjactortoyread.cpp:
 	.text       start:0x8012214C end:0x80122E0C
+	.data       start:0x8022C7E0 end:0x8022CFA4
 
 game/xobjactorjenny.cpp:
 	.text       start:0x80122E0C end:0x8012641C

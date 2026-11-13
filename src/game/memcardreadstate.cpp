@@ -6,7 +6,8 @@
 
 extern "C" {
 extern char gSaveReadFileName[];
-extern SaveFile gSavePreviewFileBuffer[2];
+// EXI DMA requires a cache-line-aligned read buffer.
+extern SaveFile gSavePreviewFileBuffer[2] ATTRIBUTE_ALIGN(32);
 }
 
 /**
