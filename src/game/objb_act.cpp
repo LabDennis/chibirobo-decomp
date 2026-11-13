@@ -154,7 +154,7 @@ static inline void UseToolCharge(XActLift* act, s16 count, s32 level)
 
 void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
-	s32 placement     = act->mTarget ? act->mTarget->mCoord._00 - GetStagePlacementByIndex(0) : -1;
+	s32 placement     = act->mTarget ? GetStagePlacementIndex(act->mTarget->mCoord._00) : -1;
 	act->mBatteryCost = 0;
 	switch (act->mState) {
 	case 1:

@@ -157,8 +157,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 				vfE0(GetEnvData()[9] / 100.f);
 			if ((mStatus.mFlags & 2) && mJObj)
 				HSD_JObjWalkTree(mJObj, JObjSetMObjFlags, (f32**)0x04000000);
-			UnkStageObj* place = mCoord._00;
-			s32 index          = place - GetStagePlacementByIndex(0);
+			s32 index = GetStagePlacementIndex(mCoord._00);
 			if (index > 0)
 				_80C = (u32)GetStageScriptByIndex(index);
 		}

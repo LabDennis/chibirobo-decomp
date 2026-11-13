@@ -1136,7 +1136,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				    GetHeadingBetweenPositions(GetObjectMoveTranslation(object), GetObjectMoveTranslation(player)) - yaw);
 				if (angle < 0.52359879f || angle > 5.7595863f || (angle > 1.04719758f && angle < 2.09439516f)
 				    || (angle > 2.61799383f && angle < 3.66519141f) || (angle > 4.18879032f && angle < 5.23598766f)) {
-					player->_A10 = GetIndexedCoordPlacement(GetObjectCoordInfo(object), 0) - GetStagePlacementByIndex(0);
+					player->_A10 = GetStagePlacementIndex(GetIndexedCoordPlacement(GetObjectCoordInfo(object), 0));
 					break;
 				}
 			}
@@ -5591,7 +5591,7 @@ static inline s32 ActionTargetPlacement(const XAction& action)
 {
 	if (action.mTarget != NULL) {
 		UnkStageObj* placement = action.mTarget->mCoord._00;
-		return placement - GetStagePlacementByIndex(0);
+		return GetStagePlacementIndex(placement);
 	}
 	return -1;
 }
