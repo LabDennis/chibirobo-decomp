@@ -759,7 +759,7 @@ def generate_build_ninja(
     n.rule(
         name="elf2dol",
         command=(
-            f"{dtk} elf2dol $in $out && $python {fill_padding} $out $in.MAP $compilers"
+            f"{CHAIN}{dtk} elf2dol $in $out && $python {fill_padding} $out $in.MAP $compilers"
             if getattr(config, "fill_padding", True)
             else f"{dtk} elf2dol $in $out"
         ),
