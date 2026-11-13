@@ -15,33 +15,33 @@ void XObjPopper::UpdateObject(u32 frames)
 		CopyParentMtx(this);
 		HSD_AObj* aobj = GetAObj(mJObj);
 		s32 anim       = mAnimId;
-		f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
+		f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f; // fetched but never read
 		f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
 		switch (anim) {
-		case 1:
+		case 1: // deploy done: idle
 			if (aobj->flags & 0x44000000) {
 				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
-		case 2:
+		case 2: // stowed: idle and hidden
 			if (aobj->flags & 0x44000000) {
 				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				Hide();
 			}
 			break;
-		case 3:
+		case 3: // raised: hold
 			if (aobj->flags & 0x44000000) {
 				SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
 		case 4:
 			break;
-		case 5:
+		case 5: // fired: hold
 			if (aobj->flags & 0x44000000) {
 				SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
-		case 6:
+		case 6: // lowered: idle
 			if (aobj->flags & 0x44000000) {
 				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
@@ -132,26 +132,26 @@ void XObjCopter::UpdateObject(u32 frames)
 		CopyParentMtx(this);
 		HSD_AObj* aobj = GetAObj(mJObj);
 		s32 anim       = mAnimId;
-		f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
+		f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f; // fetched but never read
 		f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
 		switch (anim) {
-		case 5:
+		case 5: // deploy done: idle
 			if (aobj->flags & 0x44000000) {
 				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
-		case 8:
+		case 8: // stowed: idle and hidden
 			if (aobj->flags & 0x44000000) {
 				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				Hide();
 			}
 			break;
-		case 6:
+		case 6: // anim 6 leads into flight
 			if (aobj->flags & 0x44000000) {
 				SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
-		case 7:
+		case 7: // landed: idle
 			if (aobj->flags & 0x44000000) {
 				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
@@ -247,7 +247,7 @@ void XObjAttachment::ResetObjectState()
  */
 void XObjAttachment::SetParent(HSD_JObj* parent, BOOL fromPlacement)
 {
-	mParent = parent;
+	mParent = parent; // fromPlacement goes unused
 }
 
 /**
