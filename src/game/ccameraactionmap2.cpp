@@ -3634,8 +3634,9 @@ static inline void RefreshOrbitPosition(CCameraActionMap* map, u32 step, bool ma
 {
 	f32 yaw    = HALF_PI + map->mAngle.y;
 	f32 radius = FlatDistance(map->mTargetEye, map->mInterest);
-	f32 x      = radius * (f32)cos(yaw) + map->mInterest.x;
-	f32 z      = radius * -(f32)sin(yaw) + map->mInterest.z;
+	f32 pitch  = 0.0f;
+	f32 x      = map->mInterest.x + radius * (f32)cos(yaw) * (f32)cos(pitch);
+	f32 z      = map->mInterest.z + radius * -(f32)sin(yaw) * (f32)cos(pitch);
 	// The manual turn uses the frame delta left in f31 by the retail caller.
 	f32 height      = manual ? 0.1f * step : map->mTargetEye.y;
 	map->mOrbitEye  = CVec(x, height, z);
