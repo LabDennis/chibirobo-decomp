@@ -26,7 +26,7 @@ LIBRARY_RULES = [
     ("Runtime", re.compile(r"^Runtime")),
     ("MSL", re.compile(r"^MSL")),
     ("TRK", re.compile(r"^(TRK|MetroTRK)")),
-    ("SDK", re.compile(r"^(dolphin|THP|sdk)", re.I)),
+    ("SDK", re.compile(r"^(dolphin|THP|sdk|revolution/)", re.I)),
     ("HSD", re.compile(r"^(sysdolphin|baselib|HSD)", re.I)),
 ]
 GROUP_ORDER = ["Runtime", "MSL", "TRK", "SDK", "HSD", "game", "unmapped DOL", "RELs"]
