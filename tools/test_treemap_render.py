@@ -74,15 +74,15 @@ class RenderTests(unittest.TestCase):
         self.assertIn("&amp;", svg)
 
     def test_platforms_and_publication_url_in_page_metadata(self):
-        site = "https://example.test/project/"
-        page = treemap.render_page(payload(), site_url=site)
+        site = "https://cleosp.com/chibirobo-decomp/"
+        page = treemap.render_page(payload())
         self.assertIn(f'<link rel="canonical" href="{site}">', page)
         self.assertIn(f'<meta property="og:url" content="{site}">', page)
         schema = json.loads(page.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])
         self.assertEqual(schema["url"], site)
         self.assertIn("GameCube and Wii", schema["description"])
         self.assertIn("GameCube and Wii", page.split("<h1>", 1)[1].split("</h1>", 1)[0])
-        self.assertIn('<link rel="canonical" href="./">', treemap.render_page(payload()))
+        self.assertIn('<a href="https://github.com/CleoSp/chibirobo-decomp">Source on GitHub</a>', page)
 
     def test_local_stamp_ignores_generated_timestamps(self):
         before = payload()

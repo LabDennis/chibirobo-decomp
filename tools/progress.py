@@ -167,7 +167,7 @@ def badge(label, percent):
 '''
 
 
-def render(output=OUTPUT, snapshot=SNAPSHOT, source_url=None, site_url="./"):
+def render(output=OUTPUT, snapshot=SNAPSHOT):
     raw = snapshot.read_bytes()
     payload = json.loads(raw)
     if payload.get("schema") != 1:
@@ -182,7 +182,7 @@ def render(output=OUTPUT, snapshot=SNAPSHOT, source_url=None, site_url="./"):
     output.mkdir(parents=True, exist_ok=True)
     if (output / "data.json").resolve() != snapshot.resolve():
         (output / "data.json").write_bytes(raw)
-    page = treemap.render_page(payload, source_url, site_url)
+    page = treemap.render_page(payload)
     (output / "index.html").write_text(page, encoding="utf-8")
     # Keep old README links and bookmarks working, including their filters.
     (output / "progress.html").write_text(page, encoding="utf-8")
@@ -198,8 +198,6 @@ def main():
     parser.add_argument("command", choices=("update", "merge", "render"))
     parser.add_argument("--version", action="append", choices=versions.versions(), help="can be given more than once")
     parser.add_argument("--snapshot", type=Path, default=SNAPSHOT, help="snapshot to read or update")
-    parser.add_argument("--source-url", help="repository or branch linked from the treemap")
-    parser.add_argument("--site-url", default="./", help="published Pages URL for canonical links and sharing")
     parser.add_argument("--output", type=Path, default=OUTPUT, help="where render writes")
     args = parser.parse_args()
     try:
@@ -209,7 +207,7 @@ def main():
             merge(args.version, args.snapshot)
         elif args.version:
             parser.error("--version only applies to update or merge")
-        render(args.output, args.snapshot, args.source_url, args.site_url)
+        render(args.output, args.snapshot)
     except (ValueError, OSError) as error:
         parser.exit(1, f"{error}\n")
 
