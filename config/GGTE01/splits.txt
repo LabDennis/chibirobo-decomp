@@ -347,8 +347,11 @@ game/infopointinit.cpp:
 	.text       start:0x8006DAF4 end:0x8006DB80
 	.ctors      start:0x801FD670 end:0x801FD674
 
+game/globalresources.cpp:
+	.text       start:0x8006DBC8 end:0x8006EDB4
+
 game/stage_data.cpp:
-	.text       start:0x8006DBC8 end:0x8006FCAC
+	.text       start:0x8006EDB4 end:0x8006FCAC
 	.ctors      start:0x801FD674 end:0x801FD678
 
 game/evt.cpp:
