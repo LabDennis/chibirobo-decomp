@@ -336,7 +336,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				SetObjectVectorAndTargetXYZ(&motion, 0, 0, 0);
 			}
 		} else {
-			f32 step = 1.56f * (0.05f * movementFrames);
+			f32 step = (1.3f * 1.2f) * (0.05f * movementFrames);
 			if (!(GetMaskedGameStatus(&gGame, 0x100))) {
 				Vec* current = GetObjectVectorCurrent(&motion);
 				Vec* target  = GetObjectVectorTarget(&motion);
@@ -1183,26 +1183,29 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				if (IsObjectLiftable(object) && index != player->mFloorContacts[0].objectIndex)
 					available |= 4;
 				if (IsObjectPushable(object) && index != player->mFloorContacts[0].objectIndex) {
-					if (IsLiftActionState(&player->mLift, 0) || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift)))
+					if (IsLiftActionState(&player->mLift, 0)
+					    || (IsLiftActionState(&player->mLift, 4) && IsLiftTargetPlug(&player->mLift))) {
 						available |= 2;
 #if defined(VERSION_JP)
-					if (GetMaskedGameStatus(&gGame, 0x80000000000ULL) != 0) {
-						target     = object;
-						actionMode = 9;
-					}
+						if (GetMaskedGameStatus(&gGame, 0x80000000000ULL) != 0) {
+							target     = object;
+							actionMode = 9;
+						}
 #endif
+					}
 				} else if (IsObjectPushableFromBack(object) && index != player->mFloorContacts[0].objectIndex) {
 					f32 yaw   = GetObjectMoveRotation(object)->y;
 					s32 edge  = GetSelectedFloorIndex(object);
 					f32 angle = GetObjectEdgeOutwardYaw(object, GetObjectMoveTranslation(player), edge) - yaw;
-					if (angle > 3.13984752f && angle < 3.14333797f)
+					if (angle > 3.13984752f && angle < 3.14333797f) {
 						available |= 2;
 #if defined(VERSION_JP)
-					if (GetMaskedGameStatus(&gGame, 0x80000000000ULL) != 0) {
-						target     = object;
-						actionMode = 9;
-					}
+						if (GetMaskedGameStatus(&gGame, 0x80000000000ULL) != 0) {
+							target     = object;
+							actionMode = 9;
+						}
 #endif
+					}
 				}
 				if (IsObjectClimbableLedge(object)) {
 					f32 climbHeight = GetSelectedFloorHeight(object) - player->mMoveTranslate.y;
@@ -1232,28 +1235,31 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 								available |= 8;
 #endif
 							if (climbHeight > 1) {
-								if (climbHeight <= 4)
+								if (climbHeight <= 4) {
 #if defined(VERSION_JP)
 									if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
 #endif
 									{
 										target     = object;
 										actionMode = 1;
-									} else if (climbHeight <= 8)
+									}
+								} else if (climbHeight <= 8) {
 #if defined(VERSION_JP)
-										if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
+									if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
 #endif
-										{
-											target     = object;
-											actionMode = 2;
-										} else if (climbHeight <= 12.5f)
+									{
+										target     = object;
+										actionMode = 2;
+									}
+								} else if (climbHeight <= 12.5f) {
 #if defined(VERSION_JP)
-											if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
+									if (!GetMaskedGameStatus(&gGame, 0x80000000000ULL))
 #endif
-											{
-												target     = object;
-												actionMode = 3;
-											}
+									{
+										target     = object;
+										actionMode = 3;
+									}
+								}
 							}
 						}
 					}
