@@ -136,12 +136,32 @@ the mod's `main.dol`; this suits a patch that only rewrites text, as the
 V0101 English patch does. The image is then named `…-fanpatch.iso`. The build
 stops if a change has no unique place in the mod.
 
-For `--langpack`, choose `en-US`, `en-GB`, `de-DE`, `fr-FR`, `es-ES` or `it-IT`.
-The starter translations cover the Wii title, save banner and three Wii Remote
-messages. Other text and assets fall back to the Japanese release.
-For new translations, edit `mods/wii-localization/interface.json` or place
-Wii-compatible replacement assets under the build's `files/` folder, using
-their original disc paths (for example `files/bin/stage14.bin`).
+Use `--langpack global` for Japanese, English, German, French, Spanish and
+Italian in one build. The game reads the Wii system language at startup and uses
+English for other language settings. Japanese uses the original resources.
+To lock the language, choose `en-US`, `en-GB`, `de-DE`, `fr-FR`, `es-ES` or
+`it-IT`. GameCube controller support works with either selection.
+
+```sh
+python3 configure.py --version R24J01 --langpack global
+ninja
+python3 configure.py --version R24J01 --langpack global --gcncon --iso
+ninja
+```
+
+Global builds require `tools/wii_lang_data.py` and the disc images in
+`orig/R24J01`, `orig/GGTE01` and `orig/GGTP01`. Ninja generates the assets in
+`build/wii-lang/files/lang/` once for both controller configurations. It installs
+the language directories in `build/wii-global/files/lang/` or
+`build/wii-global-gcncon/files/lang/`. These generated directories are replaced
+when the inputs change. Riivolution and the optional ISO use the same files.
+The disc images are named `wii-global.iso` and `wii-global-gcncon.iso` in their
+respective output folders. Available translations depend on the disc data.
+The game falls back to the original file when a language override is missing.
+
+Runtime interface and PC text use the GameCube string tables resident in the
+Wii executable. Wii-specific translations and the title and save banner lines
+are in `mods/wii-localization/`.
 These mods share the Japanese title's save files. Use a separate Dolphin user
 directory to keep a development save. Retail progress is measured against `R24J01`.
 
