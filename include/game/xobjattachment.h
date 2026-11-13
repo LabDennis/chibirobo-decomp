@@ -20,7 +20,7 @@ public:
 
 	XObjWireEff();
 
-	virtual ~XObjWireEff();                // _08 (weak)
+	virtual ~XObjWireEff() { }             // _08 (weak)
 	virtual void Release();                // _54
 	virtual void ResetObjectState();       // _98
 	virtual void UpdateObject(u32 frames); // _A4
@@ -132,7 +132,7 @@ public:
 
 	XObjAttachment();
 
-	virtual ~XObjAttachment();                                    // _08 (weak)
+	virtual ~XObjAttachment() { }                                 // _08 (weak)
 	virtual void Release();                                       // _54
 	virtual void InitializeObject(u32 id);                        // _90
 	virtual void vf94();                                          // _94
@@ -153,7 +153,7 @@ class XObjCopter : public XObjAttachment {
 public:
 	XObjCopter();
 
-	virtual ~XObjCopter();                 // _08 (weak)
+	virtual ~XObjCopter() { }              // _08 (weak)
 	virtual void UpdateObject(u32 frames); // _A4
 };
 
@@ -161,7 +161,7 @@ class XObjPopper : public XObjAttachment {
 public:
 	XObjPopper();
 
-	virtual ~XObjPopper();                 // _08 (weak)
+	virtual ~XObjPopper() { }              // _08 (weak)
 	virtual void UpdateObject(u32 frames); // _A4
 };
 
@@ -184,7 +184,7 @@ class XObjOX : public XObjAttachment {
 public:
 	XObjOX();
 
-	virtual ~XObjOX();                     // _08 (weak)
+	virtual ~XObjOX() { }                  // _08 (weak)
 	virtual void UpdateObject(u32 frames); // _A4
 };
 
