@@ -4417,7 +4417,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		for (s32 k = 0; k < (s32)ARRAY_SIZE(menu->mLabelChars) && *p; ++k, ++p) {
 			menu->mLabelChars[k].mText = p;
 			++menu->mLabelLength;
-			if (HelpTextIsJapanese() && (IsSjisLead((u8)*p) & 1) && p[1])
+			if (HelpTextIsJapanese() && (IsSjisLead((u8)*p) & 1))
 				++p;
 		}
 		f32 phase = PI * highlight, halfPhase = (PI * .5f) * highlight;
@@ -4448,11 +4448,6 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 				DrawRingQuad(gGame.mGs, glyph, opacity, .5f * padding + (cx + gEquipmentOutlineX[j]),
 				             bob + (baseline + gEquipmentOutlineY[j]), 1, glyphSize, glyphSize, rotation, -zero);
 			DrawRingQuad(gGame.mGs, glyph, 0xfffffb00 | opacity, .5f * padding + cx, cy, 1, glyphSize, glyphSize, rotation, -zero);
-		}
-		// Keep the label references valid after the local render copy expires.
-		for (s32 k = 0; k < menu->mLabelLength; ++k) {
-			MenuHelpChar& ch = menu->mLabelChars[k];
-			ch.mText         = source + (ch.mText - label);
 		}
 		SetGsTevMode(gs.mCurTevStage, 4);
 	}

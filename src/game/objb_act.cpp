@@ -904,8 +904,6 @@ void UpdatePushedObject(XActPush* act)
 				speed.x = 0.1f;
 				dx      = 0;
 				dz      = -(extent.z * (2.0f / sqrtf(3.0f))) * 0.5f;
-			} else {
-				dx = dz = 0;
 			}
 			target->mMoveRotate.mTarget.Set(rotation);
 			target->mMoveRotate.mSpeed.Set(speed);
