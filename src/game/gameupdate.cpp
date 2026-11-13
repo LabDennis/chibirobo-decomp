@@ -91,7 +91,11 @@ void CGame::Update(u32 frames)
 		BuildObjectDrawList(this);
 	}
 	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 2) && !(mStatus.mFlags & 0x20) && !mMenu.mActive && mEvt.mData.mScript == NULL
-	    && (mPad.mPad[0].mTrigger & 0x1000) && !(mPad.mPad[0].mButton & 0x200) && mMenu.mMenus[1] != NULL) {
+	    && (mPad.mPad[0].mTrigger & 0x1000) && !(mPad.mPad[0].mButton & 0x200)
+#if !defined(VERSION_JP)
+	    && mMenu.mMenus[1] != NULL
+#endif
+	) {
 		mMenu.mMenus[1]->Open();
 		mMenu.mActive = TRUE;
 	}
