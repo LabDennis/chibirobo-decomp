@@ -881,21 +881,15 @@ game/xobjactortao.cpp:
 game/xobjactordeca.cpp:
 	.text       start:0x80131C34 end:0x801343F4
 
-game/xobjreadanmdtor.cpp:
-	.text       start:0x801343F4 end:0x80134478
-
-game/xobjreadwait.cpp:
-	.text       start:0x80134478 end:0x8013484C
-
 game/xobjs.cpp:
-	.text       start:0x8013484C end:0x80137924
+	.text       start:0x801343F4 end:0x80137924
 	.ctors      start:0x802000A0 end:0x802000A4
-	.rodata     start:0x80212C80 end:0x80212D38
-	.data       start:0x80234960 end:0x8023496C
-	.bss        start:0x80386CB8 end:0x805A7270
-	.sdata      start:0x80661830 end:0x80661838
+	.rodata     start:0x80212C20 end:0x80212EBC
+	.data       start:0x80234960 end:0x80234EF4
+	.bss        start:0x80386CB8 end:0x805A727C
+	.sdata      start:0x80661830 end:0x806618C0
 	.sbss       start:0x806621A8 end:0x806621C0
-	.sdata2     start:0x80665938 end:0x806659A8
+	.sdata2     start:0x80665930 end:0x806659E0
 
 game/cinterpolationeaseout.cpp:
 	.text       start:0x80137924 end:0x80137BF0
