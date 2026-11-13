@@ -1176,6 +1176,7 @@ if wii:
             "objects": [
                 Object(Matching, "game/attachmentcounts.cpp"),
                 Object(Equivalent, "game/stage_data.cpp"),
+                Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/stage_table.cpp"),
             ],
         },

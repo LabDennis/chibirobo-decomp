@@ -30,3 +30,8 @@ Runtime.PPCEABI.H/__init_cpp_exceptions.cpp:
 	.dtors start:0x802C4680 end:0x802C4684 rename:.dtors$10
 	.dtors start:0x802C4684 end:0x802C4688 rename:.dtors$15
 	.sdata start:0x805A18C0 end:0x805A18C4
+
+game/wii/nandfile.cpp:
+	extab start:0x800110E8 end:0x80011118
+	extabindex start:0x800179B4 end:0x800179FC
+	.text start:0x802C1BB8 end:0x802C1EA8
