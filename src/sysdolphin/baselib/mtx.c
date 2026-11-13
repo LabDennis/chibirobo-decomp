@@ -436,56 +436,49 @@ void HSD_MkRotationMtx(Mtx arg0, Vec* arg1)
  * @note Address: 0x801CFD30
  * @note Size: 0x2D8
  */
-void HSD_MtxSRT(Mtx m, Vec* vec1, Vec* vec2, Vec* vec3, Vec* vec4)
+void HSD_MtxSRT(Mtx m, Vec* scale, Vec* rotation, Vec* translation, Vec* parent_scale)
 {
-	// NONMATCHING: register allocation only; retail keeps cosZ in f1 and vec4->x in f3
-	float sinX, cosX, sinY, cosY, sinZ, cosZ;
-	float vec1x_2;
-	float vec1y_2;
-	float vec1z_2;
-	float vec1x_1;
-	float vec1y_1;
-	float vec1z_1;
-	float vec1x;
-	float vec1y;
-	float vec1z;
+	Vec sines, cosines;
+	float scale_xx, scale_xy, scale_xz;
+	float scale_yx, scale_yy, scale_yz;
+	float scale_zx, scale_zy, scale_zz;
 
-	sinX = (float)sin(vec2->x);
-	cosX = (float)cos(vec2->x);
-	sinY = (float)sin(vec2->y);
-	cosY = (float)cos(vec2->y);
-	sinZ = (float)sin(vec2->z);
-	cosZ = (float)cos(vec2->z);
+	sines.x = (float)sin(rotation->x);
+	cosines.x = (float)cos(rotation->x);
+	sines.y = (float)sin(rotation->y);
+	cosines.y = (float)cos(rotation->y);
+	sines.z = (float)sin(rotation->z);
+	cosines.z = (float)cos(rotation->z);
 
-	vec1x_2 = vec1x_1 = vec1x = vec1->x;
-	vec1y_2 = vec1y_1 = vec1y = vec1->y;
-	vec1z_2 = vec1z_1 = vec1z = vec1->z;
+	scale_xx = scale_yx = scale_zx = scale->x;
+	scale_xy = scale_yy = scale_zy = scale->y;
+	scale_xz = scale_yz = scale_zz = scale->z;
 
-	if (vec4 != 0) {
-		float temp1 = (vec4->x >= 0.0F ? 1.0F / (FLT_EPSILON + vec4->x) : 1.0F / (vec4->x - FLT_EPSILON));
-		float temp2 = (vec4->y >= 0.0F ? 1.0F / (FLT_EPSILON + vec4->y) : 1.0F / (vec4->y - FLT_EPSILON));
-		float temp3 = (vec4->z >= 0.0F ? 1.0F / (FLT_EPSILON + vec4->z) : 1.0F / (vec4->z - FLT_EPSILON));
+	if (parent_scale != 0) {
+		float inverse_x = mtx_safe_recip(parent_scale->x);
+		float inverse_y = mtx_safe_recip(parent_scale->y);
+		float inverse_z = mtx_safe_recip(parent_scale->z);
 
-		vec1y_2 *= vec4->y * temp1;
-		vec1z_2 *= vec4->z * temp1;
-		vec1x_1 *= vec4->x * temp2;
-		vec1z_1 *= vec4->z * temp2;
-		vec1x *= vec4->x * temp3;
-		vec1y *= vec4->y * temp3;
+		scale_xy *= parent_scale->y * inverse_x;
+		scale_xz *= parent_scale->z * inverse_x;
+		scale_yx *= parent_scale->x * inverse_y;
+		scale_yz *= parent_scale->z * inverse_y;
+		scale_zx *= parent_scale->x * inverse_z;
+		scale_zy *= parent_scale->y * inverse_z;
 	}
 
-	m[0][0] = cosZ * (vec1x_2 * cosY);
-	m[1][0] = sinZ * (vec1x_1 * cosY);
-	m[2][0] = -vec1x * sinY;
-	m[0][1] = vec1y_2 * ((cosZ * (sinX * sinY)) - (cosX * sinZ));
-	m[1][1] = vec1y_1 * ((sinZ * (sinX * sinY)) + (cosX * cosZ));
-	m[2][1] = cosY * (vec1y * sinX);
-	m[0][2] = vec1z_2 * ((cosZ * (cosX * sinY)) + (sinX * sinZ));
-	m[1][2] = vec1z_1 * ((sinZ * (cosX * sinY)) - (sinX * cosZ));
-	m[2][2] = cosY * (vec1z * cosX);
-	m[0][3] = vec3->x;
-	m[1][3] = vec3->y;
-	m[2][3] = vec3->z;
+	m[0][0] = cosines.z * (scale_xx * cosines.y);
+	m[1][0] = sines.z * (scale_yx * cosines.y);
+	m[2][0] = -scale_zx * sines.y;
+	m[0][1] = scale_xy * ((cosines.z * (sines.x * sines.y)) - (cosines.x * sines.z));
+	m[1][1] = scale_yy * ((sines.z * (sines.x * sines.y)) + (cosines.x * cosines.z));
+	m[2][1] = cosines.y * (scale_zy * sines.x);
+	m[0][2] = scale_xz * ((cosines.z * (cosines.x * sines.y)) + (sines.x * sines.z));
+	m[1][2] = scale_yz * ((sines.z * (cosines.x * sines.y)) - (sines.x * cosines.z));
+	m[2][2] = cosines.y * (scale_zz * cosines.x);
+	m[0][3] = translation->x;
+	m[1][3] = translation->y;
+	m[2][3] = translation->z;
 }
 
 /**
