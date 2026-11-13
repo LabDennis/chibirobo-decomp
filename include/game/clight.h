@@ -9,6 +9,8 @@
 // base from RTTI. The setters are inline, most copies are in game part 1.
 class CLight : public HSD_LObj {
 public:
+	CLight();
+
 	HSD_LObj* mLoadedLObj;  // _D4, the light Init made from a desc
 	CVec mPosition;         // _D8
 	CVec mInterest;         // _E8
