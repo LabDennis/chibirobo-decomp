@@ -9356,12 +9356,10 @@ static inline void DrawJapaneseCardLine(char (&text)[256], s32 id, f32 x, f32 y,
 	DrawJapaneseCardLine(text, x, y, size, color);
 }
 
-static void AppendJapaneseCardSuffix(char (&text)[256], const char* suffix);
-
 static inline void DrawJapaneseCardLine(char (&text)[256], const char* prefix, s32 id, f32 x, f32 y, f32 size, u32 color)
 {
 	sprintf(text, "%s", prefix);
-	AppendJapaneseCardSuffix(text, GetLocalizedInterfaceText(id));
+	strcat(text, GetLocalizedInterfaceText(id));
 	DrawJapaneseCardLine(text, x, y, size, color);
 }
 
@@ -9524,12 +9522,6 @@ extern "C" s32 DrawJapaneseSaveStatusMessage(s32 channel, s32 status, f32 x, f32
 	}
 	}
 	return lines;
-}
-
-static void AppendJapaneseCardSuffix(char (&text)[256], const char* suffix)
-{
-	size_t length = strlen(text);
-	sprintf(text + length, "%.*s", (int)(sizeof(text) - length - 1), suffix);
 }
 #endif
 
