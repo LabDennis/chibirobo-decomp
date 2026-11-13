@@ -4,7 +4,6 @@
 
 import argparse
 import hashlib
-from html import escape
 import json
 import os
 import re
@@ -193,7 +192,7 @@ def find_versions(building: str) -> List[str]:
     return sorted(found, key=lambda v: (order.index(v) if v in order else len(order), v))
 
 
-def render_page(payload, source_url=None, site_url="./"):
+def render_page(payload):
     for release in payload["versions"]:
         version = release["version"]
         if version.startswith("GGT"):
@@ -204,9 +203,6 @@ def render_page(payload, source_url=None, site_url="./"):
     payload["map_style"] = {"svg": SVG_ATTRIBUTES, "rect": RECT_ATTRIBUTES}
     with open(os.path.join(script_dir, "treemap_template.html"), encoding="utf-8") as f:
         page = f.read()
-    page = page.replace("/*__SOURCE_URL__*/", escape(source_url or "https://github.com/CleoSp/chibirobo-decomp", quote=True))
-    page = page.replace("/*__SITE_URL__*/", escape(site_url, quote=True))
-    page = page.replace("/*__JSON_SITE_URL__*/null", json.dumps(site_url).replace("<", "\\u003c"))
     palette = "\n".join(f"  --{key}: {value};" for key, value in treemap_layout.PALETTE.items())
     page = page.replace("/*__PALETTE__*/", palette)
     if payload.get("live") is not False:
