@@ -49,12 +49,12 @@ public:
 	s32 mDefaultTrack;                 // _FC, SetMusicPlaybackPaused also writes 1 or 0 here
 	s32 mStageBank;                    // _100, the stage's sfx bank, cleared on every stage change
 	u8 _104[0x108 - 0x104];            // _104
-	s32 _108[32];                      // _108, ids that PlayGameSound started, zero means free
+	s32 mActiveSoundIds[32];           // _108, ids that PlayGameSound started, zero means free
 	s32 _188;                          // _188, pitch interpolation and queued sound delay
-	s32 _18C;                          // _18C, alternating sound sequence index
-	s32 _190;                          // _190, voice sequence index
-	s32 _194;                          // _194, sound sequence index
-	s32 _198;                          // _198, cooldown
+	s32 mAltSoundIndex;                // _18C, alternating sound sequence index
+	s32 mVoiceSeqIndex;                // _190, voice sequence index
+	s32 mSoundSeqIndex;                // _194, sound sequence index
+	s32 mCooldown;                     // _198, cooldown
 	u8 _19C[0x1A0 - 0x19C];            // _19C
 	u8 mQueueRead;                     // _1A0
 	u8 mQueueWrite;                    // _1A1
