@@ -32,6 +32,27 @@ extern u8 HSD_VIData[];
 BOOL LoadGameSoundBank(XSound* sound, s32 stage);
 }
 
+// the globals.bin offset table: one u32 offset to each table (0x3C and 0x40 aren't used)
+#define GLOBAL_PLAYER_ACTION_PARAMS 0x00
+#define GLOBAL_POPPER_PARAMS        0x04
+#define GLOBAL_COPTER_PARAMS        0x08
+#define GLOBAL_RADAR_PARAMS         0x0C
+#define GLOBAL_STAGE_ENTRY_TIMES    0x10
+#define GLOBAL_INTERACTION_PARAMS   0x14
+#define GLOBAL_ATTACHMENT_LEVELS    0x18
+#define GLOBAL_PICKUP_REWARDS       0x1C
+#define GLOBAL_MATERIAL_SOUNDS      0x20
+#define GLOBAL_ITEM_RELEASE_SOUNDS  0x24
+#define GLOBAL_ITEMS                0x28
+#define GLOBAL_ACTOR_NAMES          0x2C
+#define GLOBAL_ATTACHMENTS          0x30
+#define GLOBAL_COSTUME_NAMES        0x34
+#define GLOBAL_STAGE_NAMES          0x38
+#define GLOBAL_PC_RANKING_NAMES     0x44
+#define GLOBAL_UTILIBOTS            0x48
+#define GLOBAL_STATUS_ICONS         0x4C
+#define GLOBAL_STATUS_OVERVIEW      0x50
+
 UnkStageObj gStageObjectPlacements[] = {
 	{ 161, { 0, 0, 0 }, { 0, 0, 0 }, { 100, 100, 100 }, 0, 0, 0, 0x20012001 },
 	{ 59, { 0, 0, 0 }, { 0, 0, 0 }, { 100, 100, 100 }, 0, 0, 0, 0x20012001 },
@@ -2918,7 +2939,7 @@ extern "C" const char* GetLocalizedInterfaceText(s32 index)
  */
 extern "C" u8* GetStatusOverviewDescription(s32 index)
 {
-	return ResourcePointer(0x50, index, 8, 4);
+	return ResourcePointer(GLOBAL_STATUS_OVERVIEW, index, 8, 4);
 }
 
 /**
@@ -2927,7 +2948,7 @@ extern "C" u8* GetStatusOverviewDescription(s32 index)
  */
 extern "C" u8* GetStatusOverviewLabel(s32 index)
 {
-	return ResourcePointer(0x50, index, 8, 0);
+	return ResourcePointer(GLOBAL_STATUS_OVERVIEW, index, 8, 0);
 }
 
 /**
@@ -2936,7 +2957,7 @@ extern "C" u8* GetStatusOverviewLabel(s32 index)
  */
 extern "C" u32 GetStatusIconEventFlagId(s32 index)
 {
-	return *(u32*)(ResourceField(0x4C, index, 12, 8));
+	return *(u32*)(ResourceField(GLOBAL_STATUS_ICONS, index, 12, 8));
 }
 
 /**
@@ -2945,7 +2966,7 @@ extern "C" u32 GetStatusIconEventFlagId(s32 index)
  */
 extern "C" u8* GetStatusIconDescription(s32 index)
 {
-	return ResourcePointer(0x4C, index, 12, 4);
+	return ResourcePointer(GLOBAL_STATUS_ICONS, index, 12, 4);
 }
 
 /**
@@ -2954,7 +2975,7 @@ extern "C" u8* GetStatusIconDescription(s32 index)
  */
 extern "C" u8* GetStatusIconName(s32 index)
 {
-	return ResourcePointer(0x4C, index, 12, 0);
+	return ResourcePointer(GLOBAL_STATUS_ICONS, index, 12, 0);
 }
 
 /**
@@ -2963,7 +2984,7 @@ extern "C" u8* GetStatusIconName(s32 index)
  */
 extern "C" s16 GetUtilibotPrice(s32 index)
 {
-	return *(s16*)(ResourceField(0x48, index, 12, 8));
+	return *(s16*)(ResourceField(GLOBAL_UTILIBOTS, index, 12, 8));
 }
 
 /**
@@ -2972,7 +2993,7 @@ extern "C" s16 GetUtilibotPrice(s32 index)
  */
 extern "C" u8* GetUtilibotDescription(s32 index)
 {
-	return ResourcePointer(0x48, index, 12, 4);
+	return ResourcePointer(GLOBAL_UTILIBOTS, index, 12, 4);
 }
 
 /**
@@ -2981,7 +3002,7 @@ extern "C" u8* GetUtilibotDescription(s32 index)
  */
 extern "C" u8* GetUtilibotName(s32 index)
 {
-	return ResourcePointer(0x48, index, 12, 0);
+	return ResourcePointer(GLOBAL_UTILIBOTS, index, 12, 0);
 }
 
 /**
@@ -2990,7 +3011,7 @@ extern "C" u8* GetUtilibotName(s32 index)
  */
 extern "C" u8* GetPCRankingName(s32 index)
 {
-	return ResourcePointer(0x44, index, 4, 0);
+	return ResourcePointer(GLOBAL_PC_RANKING_NAMES, index, 4, 0);
 }
 
 /**
@@ -2999,7 +3020,7 @@ extern "C" u8* GetPCRankingName(s32 index)
  */
 extern "C" u8* GetStageDisplayName(s32 index)
 {
-	return ResourcePointer(0x38, index, 8, 0);
+	return ResourcePointer(GLOBAL_STAGE_NAMES, index, 8, 0);
 }
 
 /**
@@ -3008,7 +3029,7 @@ extern "C" u8* GetStageDisplayName(s32 index)
  */
 extern "C" u8* GetCostumeName(s32 index)
 {
-	return ResourcePointer(0x34, index, 4, 0);
+	return ResourcePointer(GLOBAL_COSTUME_NAMES, index, 4, 0);
 }
 
 /**
@@ -3017,7 +3038,7 @@ extern "C" u8* GetCostumeName(s32 index)
  */
 extern "C" s16 GetAttachmentShopPrice(s32 index)
 {
-	return *(s16*)(ResourceField(0x30, index, 12, 8));
+	return *(s16*)(ResourceField(GLOBAL_ATTACHMENTS, index, 12, 8));
 }
 
 /**
@@ -3026,7 +3047,7 @@ extern "C" s16 GetAttachmentShopPrice(s32 index)
  */
 extern "C" u8* GetAttachmentDescription(s32 index)
 {
-	return ResourcePointer(0x30, index, 12, 4);
+	return ResourcePointer(GLOBAL_ATTACHMENTS, index, 12, 4);
 }
 
 /**
@@ -3035,7 +3056,7 @@ extern "C" u8* GetAttachmentDescription(s32 index)
  */
 extern "C" u8* GetAttachmentName(s32 index)
 {
-	return ResourcePointer(0x30, index, 12, 0);
+	return ResourcePointer(GLOBAL_ATTACHMENTS, index, 12, 0);
 }
 
 /**
@@ -3044,7 +3065,7 @@ extern "C" u8* GetAttachmentName(s32 index)
  */
 extern "C" u8* GetActorName(s32 index)
 {
-	return ResourcePointer(0x2C, index, 4, 0);
+	return ResourcePointer(GLOBAL_ACTOR_NAMES, index, 4, 0);
 }
 
 /**
@@ -3053,7 +3074,7 @@ extern "C" u8* GetActorName(s32 index)
  */
 extern "C" u8 GetItemSoundIndex(s32 index, s32 member)
 {
-	return ResourceField(0x28, index, 20, 18)[member];
+	return ResourceField(GLOBAL_ITEMS, index, 20, 18)[member];
 }
 
 /**
@@ -3062,7 +3083,7 @@ extern "C" u8 GetItemSoundIndex(s32 index, s32 member)
  */
 extern "C" s16 GetItemHappyPointValue(s32 index)
 {
-	return *(s16*)(ResourceField(0x28, index, 20, 16));
+	return *(s16*)(ResourceField(GLOBAL_ITEMS, index, 20, 16));
 }
 
 /**
@@ -3071,7 +3092,7 @@ extern "C" s16 GetItemHappyPointValue(s32 index)
  */
 extern "C" s16 GetItemScrapValue(s32 index)
 {
-	return *(s16*)(ResourceField(0x28, index, 20, 14));
+	return *(s16*)(ResourceField(GLOBAL_ITEMS, index, 20, 14));
 }
 
 /**
@@ -3080,7 +3101,7 @@ extern "C" s16 GetItemScrapValue(s32 index)
  */
 extern "C" s16 GetItemShopPrice(s32 index)
 {
-	return *(s16*)(ResourceField(0x28, index, 20, 12));
+	return *(s16*)(ResourceField(GLOBAL_ITEMS, index, 20, 12));
 }
 
 /**
@@ -3089,7 +3110,7 @@ extern "C" s16 GetItemShopPrice(s32 index)
  */
 extern "C" s16 GetItemPickupHoldTime(s32 index)
 {
-	return *(s16*)(ResourceField(0x28, index, 20, 10));
+	return *(s16*)(ResourceField(GLOBAL_ITEMS, index, 20, 10));
 }
 
 /**
@@ -3098,7 +3119,7 @@ extern "C" s16 GetItemPickupHoldTime(s32 index)
  */
 extern "C" void ClearItemFlags(s32 index, u16 mask)
 {
-	u16* flags = (u16*)(ResourceField(0x28, index, 20, 8));
+	u16* flags = (u16*)(ResourceField(GLOBAL_ITEMS, index, 20, 8));
 	*flags &= ~mask;
 }
 
@@ -3108,7 +3129,7 @@ extern "C" void ClearItemFlags(s32 index, u16 mask)
  */
 extern "C" void SetItemFlags(s32 index, u16 mask)
 {
-	u16* flags = (u16*)(ResourceField(0x28, index, 20, 8));
+	u16* flags = (u16*)(ResourceField(GLOBAL_ITEMS, index, 20, 8));
 	*flags |= mask;
 }
 
@@ -3118,7 +3139,7 @@ extern "C" void SetItemFlags(s32 index, u16 mask)
  */
 extern "C" u16 GetItemFlagsMasked(s32 index, u16 mask)
 {
-	return *(u16*)(ResourceField(0x28, index, 20, 8)) & mask;
+	return *(u16*)(ResourceField(GLOBAL_ITEMS, index, 20, 8)) & mask;
 }
 
 /**
@@ -3127,7 +3148,7 @@ extern "C" u16 GetItemFlagsMasked(s32 index, u16 mask)
  */
 extern "C" u8* GetItemDescription(s32 index)
 {
-	return ResourcePointer(0x28, index, 20, 4);
+	return ResourcePointer(GLOBAL_ITEMS, index, 20, 4);
 }
 
 /**
@@ -3136,7 +3157,7 @@ extern "C" u8* GetItemDescription(s32 index)
  */
 extern "C" u8* GetItemName(s32 index)
 {
-	return ResourcePointer(0x28, index, 20, 0);
+	return ResourcePointer(GLOBAL_ITEMS, index, 20, 0);
 }
 
 // script offsets count from the buffer the operand is in, the globals file or the stage's, 0 is none
@@ -3146,6 +3167,7 @@ extern "C" u8* GetItemName(s32 index)
  */
 extern "C" u8* ResolveEventScriptOffset(u8* operand)
 {
+	// a globals operand resolves against the globals' script blob, a stage one against the stage data
 	if (IsGlobalScript(operand)) {
 		u32 offset = ReadResourceOffset(operand);
 		return offset == 0 ? NULL : gGlobalScriptResources.mScripts + offset;
@@ -3218,7 +3240,7 @@ extern "C" s32 GetDefaultStageIndex()
  */
 extern "C" u32 GetItemReleaseSoundId(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x24, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_ITEM_RELEASE_SOUNDS, index, 4, 0));
 }
 
 /**
@@ -3227,7 +3249,7 @@ extern "C" u32 GetItemReleaseSoundId(s32 index)
  */
 extern "C" u32 GetMaterialSoundId(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x20, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_MATERIAL_SOUNDS, index, 4, 0));
 }
 
 /**
@@ -3236,7 +3258,7 @@ extern "C" u32 GetMaterialSoundId(s32 index)
  */
 extern "C" u32 GetPickupRewardValue(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x1C, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_PICKUP_REWARDS, index, 4, 0));
 }
 
 /**
@@ -3245,7 +3267,7 @@ extern "C" u32 GetPickupRewardValue(s32 index)
  */
 extern "C" u32 GetStartingAttachmentLevel(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x18, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_ATTACHMENT_LEVELS, index, 4, 0));
 }
 
 /**
@@ -3254,7 +3276,7 @@ extern "C" u32 GetStartingAttachmentLevel(s32 index)
  */
 extern "C" u32 GetInteractionParameter(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x14, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_INTERACTION_PARAMS, index, 4, 0));
 }
 
 /**
@@ -3263,7 +3285,7 @@ extern "C" u32 GetInteractionParameter(s32 index)
  */
 extern "C" u32 GetStageEntryTimeComponent(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x10, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_STAGE_ENTRY_TIMES, index, 4, 0));
 }
 
 /**
@@ -3272,7 +3294,7 @@ extern "C" u32 GetStageEntryTimeComponent(s32 index)
  */
 extern "C" u32 GetRadarParameter(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0xC, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_RADAR_PARAMS, index, 4, 0));
 }
 
 /**
@@ -3281,7 +3303,7 @@ extern "C" u32 GetRadarParameter(s32 index)
  */
 extern "C" u32 GetCopterParameter(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x8, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_COPTER_PARAMS, index, 4, 0));
 }
 
 /**
@@ -3290,7 +3312,7 @@ extern "C" u32 GetCopterParameter(s32 index)
  */
 extern "C" u32 GetPopperParameter(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x4, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_POPPER_PARAMS, index, 4, 0));
 }
 
 /**
@@ -3299,7 +3321,7 @@ extern "C" u32 GetPopperParameter(s32 index)
  */
 extern "C" u32 GetPlayerActionParameter(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x0, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_PLAYER_ACTION_PARAMS, index, 4, 0));
 }
 
 /**
@@ -3409,11 +3431,12 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		strcpy(stage->mModulePath, FormatToStaticBuffer("rel/%s%s.rel", stageTable[index].fileName, ""));
 #endif
 		if (!(gGame.mStatus.mFlags & 0x100000000ULL))
-			stage->mModulePath[0] = 0;
+			stage->mModulePath[0] = 0; // an empty path skips the module load below
 		++stage->mState;
 	}
 	// fall through, every step that's done moves on in the same frame
 	case 1: {
+		// read the stage's data file and resolve its sections
 		if (!stage->mDataFile.ReadEx(stage->mDataPath, 0, 0))
 			break;
 		stage->mDataFile.CloseHandle();
@@ -3422,7 +3445,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		stage->mPlacements.mPlacement = (UnkStageObj*)(data + ReadResourceOffset(data + 4));
 		stage->mScriptOffsets         = data + ReadResourceOffset(data + 8);
 		stage->mSetupScript           = data + ReadResourceOffset(data + 0xC);
-		if (stage->mSetupScript == data)
+		if (stage->mSetupScript == data) // a zero script offset means no script
 			stage->mSetupScript = NULL;
 		stage->mEntryScript = data + ReadResourceOffset(data + 0x10);
 		if (stage->mEntryScript == data)
@@ -3451,7 +3474,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 			stage->mCameraAreaExRecords = NULL;
 		++stage->mState;
 	}
-	case 2:
+	case 2: // load the stage's rel module when it has one
 		if ((s8)stage->mModulePath[0] != 0) {
 			if (!stage->mModule.Load(stage->mModulePath))
 				break;
@@ -3461,7 +3484,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		}
 	case 3:
 		++stage->mState;
-	case 4:
+	case 4: // the stage's sound bank
 		if (LoadGameSoundBank(&gGame.mSound, index))
 			++stage->mState;
 		break;
@@ -3622,6 +3645,7 @@ extern "C" BOOL IsStageDataLoaded()
  */
 extern "C" void ApplyStageClearColor()
 {
+	// the environment record's first word is the VI background colour
 	GXColor color                  = *(GXColor*)gStageResources.mEnvironment.mData;
 	*(GXColor*)(HSD_VIData + 0x48) = color; // current.vi.bg_color
 	gStageResources.mModule.Print();
@@ -3634,7 +3658,7 @@ extern "C" void ApplyStageClearColor()
 extern "C" void UnloadStageDataAndModule()
 {
 	if (IsModuleLoaded(&gStageResources.mModule))
-		gStageResources.CallModule(6, 0, NULL);
+		gStageResources.CallModule(6, 0, NULL); // slot 6 runs only before the module unloads
 	gStageResources.mModule.Unload();
 	CFile* file = &gStageResources.mDataFile;
 	file->Close();
@@ -3685,12 +3709,12 @@ extern "C" u32 CheckStageFlag(s32 index, u32 mask)
 extern "C" s32 FindStageIndexByName(const char* name)
 {
 	s32 index = 0;
-	while (stageTable[index].fileName != NULL) {
+	while (stageTable[index].fileName != NULL) { // the direct ids before the null entry
 		if (strcmp(name, stageTable[index].fileName) == 0)
 			return index;
 		++index;
 	}
-	++index;
+	++index; // past the null entry the ids are 100-based
 	while (stageTable[index].fileName != NULL) {
 		if (strcmp(name, stageTable[index].fileName) == 0)
 			return index - StageCount() + 99;
@@ -3705,7 +3729,7 @@ static inline const char* StageMessage(s32 index, s32 member)
 	s32 message     = desc->message;
 	if (message >= 0) {
 		u8* data   = gGlobalScriptResources.mData;
-		u8* record = data + ReadResourceOffset(data + 0x38) + message * 8;
+		u8* record = data + ReadResourceOffset(data + GLOBAL_STAGE_NAMES) + message * 8;
 		return (const char*)(data + ReadResourceOffset(record + member));
 	}
 	return NULL;
