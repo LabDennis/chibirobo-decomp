@@ -271,6 +271,8 @@ typedef char CXObj_size_check[sizeof(CXObj) == 0x1E8 ? 1 : -1];
 // a CXObj with a second jobj it blends into
 class CXObjIntp : public CXObj {
 public:
+	CXObjIntp();
+
 	CJObj mIntp;    // _1E8
 	f32 mBlend;     // _220, below 1 while the two jobjs are being blended
 	f32 mBlendRate; // _224

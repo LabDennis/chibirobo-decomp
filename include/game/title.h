@@ -19,6 +19,8 @@ extern s32 gTitlePaletteIndex, gTitleLogoIndex;
 // the menus' pointer, an XObj with a little on top. class name from RTTI
 class Cursor : public XObj {
 public:
+	Cursor();
+
 	// _00-_980 = XObj
 	f32 mAngle;      // _980, _970 in japan
 	f32 mAngleSpeed; // _984, it spins, the scale setters flip y for screen space
@@ -74,6 +76,8 @@ STATIC_ASSERT(sizeof(StageName) == 0x19C);
 // the title screen, CGame keeps it at _4930. class name from RTTI
 class Title {
 public:
+	Title();
+
 	void State0(u32 frames);
 	void State1(u32 frames);
 	void State2(u32 frames);
