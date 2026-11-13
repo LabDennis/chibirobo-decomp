@@ -2546,7 +2546,7 @@ extern "C" char* GetTitleAndSaveMenuText(s32 id)
  * @note Address: 0x8003D7C4
  * @note Size: 0x18
  */
-extern "C" BOOL IsSaveSlotIntact(MenuSaveSlot* slot)
+extern "C" bool IsSaveSlotIntact(const MenuSaveSlot* slot)
 {
 	return slot->mState != 1;
 }
