@@ -3,6 +3,8 @@
 #include "game/arcache.h"
 #include "game/cthread.h"
 
+// NONMATCHING: __sinit_cgameinit_cpp is the compiler's and its code is the same as retail's, but retail's .bss
+// holds more data ahead of these objects, so the offsets from the section base differ
 CGame gGame;
 ARCacheInfo gARAMCacheInfo;
 FbMirrorEx gFramebufferMirrors[5];

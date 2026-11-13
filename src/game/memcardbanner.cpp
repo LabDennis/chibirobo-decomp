@@ -14,11 +14,6 @@ enum { BANNER_TEXTURE = 89, ICON_TEXTURE = 90 };
 enum { BANNER_TEXTURE = 88, ICON_TEXTURE = 90 };
 #endif
 
-#if defined(VERSION_JP)
-static const char sSaveBannerTitle[]         = "ちびロボ！";
-static const char sSaveBannerCommentFormat[] = "(%d) プレイ時間 %2d:%02d:%02d";
-#endif
-
 static inline void* SaveTextureData(const CTexObj& texture)
 {
 	return texture.mImage != NULL ? texture.mImage->data : NULL;
@@ -34,9 +29,9 @@ extern "C" void BuildSaveBanner(Memcard* card, s32 slot)
 {
 	SaveBanner* data = &card->mFile.mBanner;
 #if defined(VERSION_JP)
-	sprintf(data->mTitle, sSaveBannerTitle);
+	sprintf(data->mTitle, "ちびロボ！");
 	s32 time = gGame.mPlayTime;
-	sprintf(data->mComment, sSaveBannerCommentFormat, slot + 1, time / 216000, time / 3600 % 60, time / 60 % 60);
+	sprintf(data->mComment, "(%d) プレイ時間 %2d:%02d:%02d", slot + 1, time / 216000, time / 3600 % 60, time / 60 % 60);
 #elif defined(VERSION_PAL)
 	sprintf(data->mTitle, GetLocalizedInterfaceText(0x102));
 	f32 time    = gGame.mPlayTime;

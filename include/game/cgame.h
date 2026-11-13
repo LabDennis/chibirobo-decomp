@@ -168,15 +168,6 @@ public:
 	BOOL mReset;        // _3330, stops XOBJS::ReadAll when set
 	// _3334 vtable
 
-	bool IsJapanese() const
-	{
-#if defined(VERSION_JP)
-		return true;
-#else
-		return mLanguage == 6;
-#endif
-	}
-
 	CBase();
 	virtual ~CBase();                               // _08
 	virtual void Initialize(int argc, char** argv); // _0C
@@ -359,8 +350,9 @@ static inline XObj* FindObj(s16 id)
 // whether the stage up is the one with the name
 static inline bool IsStage(const char* name)
 {
-	const s32 stage = gGame.mStage;
-	return stage == FindStageIndexByName(name);
+	s32 stage = gGame.mStage;
+	s32 id    = FindStageIndexByName(name);
+	return id == stage;
 }
 
 #endif
