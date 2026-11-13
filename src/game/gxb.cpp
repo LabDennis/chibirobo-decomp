@@ -51,9 +51,6 @@ f32 gTitleNameOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
 f32 gTitleNameOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 f32 gTitleHelpOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
 f32 gTitleHelpOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
-
-// Title's mode steps, the gTitleModeUpdates table picks one by mMode
-void State20__5TitleFUl(Title* title);
 }
 
 extern "C" s32 GetItemIconTextureIndex(s32 id);
@@ -2946,7 +2943,7 @@ finish:
  * @note Address: 0x8002BB7C
  * @note Size: 0x4
  */
-extern "C" void State25__5TitleFUl(Title* title)
+void Title::State25(u32)
 {
 }
 
@@ -2955,28 +2952,28 @@ extern "C" void State25__5TitleFUl(Title* title)
  * @note Size: 0x148
  */
 // waits out the delay, then fades the labels and leaves for the game
-extern "C" void State24__5TitleFUl(Title* title, u32 frames)
+void Title::State24(u32 frames)
 {
-	switch (title->mPhase) {
+	switch (mPhase) {
 	case 0:
-		title->mDelay -= frames;
-		if (title->mDelay < 0) {
-			title->mDelay = 0;
-			++title->mPhase;
+		mDelay -= frames;
+		if (mDelay < 0) {
+			mDelay = 0;
+			++mPhase;
 		}
 		break;
 	case 1:
-		HideName(title);
-		title->_37BC   = -200.0f;
-		title->mOffset = 0.0f;
-		title->mAlpha  = 0.0f;
-		title->mChoice = 0;
-		title->mState  = 13;
-		title->SetMode(25);
+		HideName(this);
+		_37BC   = -200.0f;
+		mOffset = 0.0f;
+		mAlpha  = 0.0f;
+		mChoice = 0;
+		mState  = 13;
+		SetMode(25);
 		XSound* sound = &gGame.mSound;
 		PlayGameSound(sound, 0x88, 255);
 		StopGameSfx(sound, (s32)0xFFFF0003);
-		gGame.mInfoScrn.mSelectedSaveSlot = title->mFile;
+		gGame.mInfoScrn.mSelectedSaveSlot = mFile;
 		break;
 	}
 }
@@ -2985,7 +2982,7 @@ extern "C" void State24__5TitleFUl(Title* title, u32 frames)
  * @note Address: 0x8002BCC8
  * @note Size: 0x4
  */
-extern "C" void State23__5TitleFUl(Title* title)
+void Title::State23(u32)
 {
 }
 
@@ -2993,18 +2990,18 @@ extern "C" void State23__5TitleFUl(Title* title)
  * @note Address: 0x8002BCCC
  * @note Size: 0x20
  */
-extern "C" void State22__5TitleFUl(Title* title)
+void Title::State22(u32 frames)
 {
-	State20__5TitleFUl(title);
+	State20(frames);
 }
 
 /**
  * @note Address: 0x8002BCEC
  * @note Size: 0x20
  */
-extern "C" void State21__5TitleFUl(Title* title)
+void Title::State21(u32 frames)
 {
-	State20__5TitleFUl(title);
+	State20(frames);
 }
 
 /**
@@ -3012,49 +3009,49 @@ extern "C" void State21__5TitleFUl(Title* title)
  * @note Size: 0x4AC
  */
 // the card check's message, it waits for A or for the card to change
-extern "C" void State20__5TitleFUl(Title* title)
+void Title::State20(u32)
 {
 	CPad pad(0);
-	s32 error = title->mResult;
+	s32 error = mResult;
 
 	if (error == -3) {
-		if (title->_37A8 == 1) {
-			if (title->mReady) {
-				OnFormattedCardGone(title);
+		if (_37A8 == 1) {
+			if (mReady) {
+				OnFormattedCardGone(this);
 				return;
 			}
-		} else if (title->mReady == 1) {
+		} else if (mReady == 1) {
 			for (s32 i = 0; i < 3; i++) {
 				ResetSaveSlotRecord(&gTitleSaveSlots[i]);
 			}
-			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, title->mChannel, 1);
-			title->SetMode(1);
+			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, mChannel, 1);
+			SetMode(1);
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			return;
 		}
-	} else if (title->_37A8 == 1) {
-		if (!title->mReady || !title->_3809) {
-			OnFormattedCardGone(title);
+	} else if (_37A8 == 1) {
+		if (!mReady || !_3809) {
+			OnFormattedCardGone(this);
 			return;
 		}
-	} else if (!title->mReady) {
-		OnCardRemoved(title);
+	} else if (!mReady) {
+		OnCardRemoved(this);
 		return;
 	}
 	if (pad.mPad->mTrigger & 0x100) {
-		if (title->_37A8 == 1) {
-			OnFormattedCardGone(title);
+		if (_37A8 == 1) {
+			OnFormattedCardGone(this);
 			return;
 		}
 		if (error == -3) {
-			OnCardRemoved(title);
+			OnCardRemoved(this);
 		} else if (error == -5) {
-			title->SetMode(19);
-			title->mShowMessage = 1;
+			SetMode(19);
+			mShowMessage = 1;
 		} else {
-			title->SetMode(5);
-			title->mOffset = -32.0f;
-			title->mChoice = 1;
+			SetMode(5);
+			mOffset = -32.0f;
+			mChoice = 1;
 		}
 		PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 	}
@@ -3085,25 +3082,25 @@ static inline void HandleUnavailableCard(Title* title)
  * @note Address: 0x8002C1B8
  * @note Size: 0x118
  */
-extern "C" void State19__5TitleFUl(Title* title)
+void Title::State19(u32)
 {
-	HandleUnavailableCard(title);
+	HandleUnavailableCard(this);
 }
 
 /**
  * @note Address: 0x8002C2D0
  * @note Size: 0x118
  */
-extern "C" void State18__5TitleFUl(Title* title)
+void Title::State18(u32)
 {
-	HandleUnavailableCard(title);
+	HandleUnavailableCard(this);
 }
 
 /**
  * @note Address: 0x8002C3E8
  * @note Size: 0x4
  */
-extern "C" void State17__5TitleFUl(Title* title)
+void Title::State17(u32)
 {
 }
 
@@ -3111,7 +3108,7 @@ extern "C" void State17__5TitleFUl(Title* title)
  * @note Address: 0x8002C3EC
  * @note Size: 0x4
  */
-extern "C" void State16__5TitleFUl(Title* title)
+void Title::State16(u32)
 {
 }
 
@@ -3121,43 +3118,43 @@ extern "C" void State16__5TitleFUl(Title* title)
  */
 // NONMATCHING: regalloc
 // waits for the card to read the file picked, then shows what is in it
-extern "C" void State15__5TitleFUl(Title* title, u32 frames)
+void Title::State15(u32 frames)
 {
 	Memcard* card = &gGame.mMemcard.mCard;
 	s32 step      = card->mState;
 	SavePreviewRecord* file;
 	s32 result;
 
-	title->mDelay -= frames;
-	if (title->mDelay < 0) {
-		title->mDelay = 0;
+	mDelay -= frames;
+	if (mDelay < 0) {
+		mDelay = 0;
 	}
 	switch (step) {
 	case 0:
-		title->_37D0 = gGame.mMemcard.mCard._16A04;
-		title->_37D4 = gGame.mMemcard.mCard._16A00;
-		file         = &card->mSaves[0][title->mFile];
+		_37D0 = gGame.mMemcard.mCard._16A04;
+		_37D4 = gGame.mMemcard.mCard._16A00;
+		file  = &card->mSaves[0][mFile];
 		if (file->mState != 0) {
-			gTitleSaveSlots[title->mFile].mUsed       = 1;
-			gTitleSaveSlots[title->mFile].mLevel      = file->mHeader.mLevel;
-			gTitleSaveSlots[title->mFile].mBattery    = file->mHeader.mBattery;
-			gTitleSaveSlots[title->mFile].mMaxBattery = file->mHeader.mMaxBattery;
-			gTitleSaveSlots[title->mFile].mMoney      = file->mHeader.mMoney;
-			gTitleSaveSlots[title->mFile].mExp        = file->mHeader.mExp;
-			gTitleSaveSlots[title->mFile].mScrap      = file->mHeader.mScrap;
-			gTitleSaveSlots[title->mFile].mRank       = file->mHeader.mRank;
-			gTitleSaveSlots[title->mFile].mHours      = file->mHeader.mFrames / 216000;
-			gTitleSaveSlots[title->mFile].mMinutes    = (file->mHeader.mFrames / 3600) % 60;
-			gTitleSaveSlots[title->mFile].mStage      = file->mHeader.mStage;
-			gTitleSaveSlots[title->mFile].mTimeMode   = file->mHeader.mTimeMode;
-			gTitleSaveSlots[title->mFile].mState      = 0;
+			gTitleSaveSlots[mFile].mUsed       = 1;
+			gTitleSaveSlots[mFile].mLevel      = file->mHeader.mLevel;
+			gTitleSaveSlots[mFile].mBattery    = file->mHeader.mBattery;
+			gTitleSaveSlots[mFile].mMaxBattery = file->mHeader.mMaxBattery;
+			gTitleSaveSlots[mFile].mMoney      = file->mHeader.mMoney;
+			gTitleSaveSlots[mFile].mExp        = file->mHeader.mExp;
+			gTitleSaveSlots[mFile].mScrap      = file->mHeader.mScrap;
+			gTitleSaveSlots[mFile].mRank       = file->mHeader.mRank;
+			gTitleSaveSlots[mFile].mHours      = file->mHeader.mFrames / 216000;
+			gTitleSaveSlots[mFile].mMinutes    = (file->mHeader.mFrames / 3600) % 60;
+			gTitleSaveSlots[mFile].mStage      = file->mHeader.mStage;
+			gTitleSaveSlots[mFile].mTimeMode   = file->mHeader.mTimeMode;
+			gTitleSaveSlots[mFile].mState      = 0;
 			if (file->mHeader._34 > 0) {
-				gTitleSaveSlots[title->mFile].mActive = 1;
+				gTitleSaveSlots[mFile].mActive = 1;
 			} else {
-				gTitleSaveSlots[title->mFile].mActive = 0;
+				gTitleSaveSlots[mFile].mActive = 0;
 			}
 		}
-		title->SetMode(24);
+		SetMode(24);
 		break;
 	case 4:
 		break;
@@ -3175,8 +3172,8 @@ extern "C" void State15__5TitleFUl(Title* title, u32 frames)
 	case 13:
 	case 14:
 	case 15:
-		result         = gGame.mMemcard.mCard.mCard.mResult;
-		title->mResult = result;
+		result  = gGame.mMemcard.mCard.mCard.mResult;
+		mResult = result;
 		switch (result) {
 		case -128:
 		case -14:
@@ -3195,22 +3192,22 @@ extern "C" void State15__5TitleFUl(Title* title, u32 frames)
 		case -1:
 		case 0:
 			if (step == 2 && (result == -6 || result == -13)) {
-				title->SetMode(11);
-				title->mChoice      = 1;
-				title->mShowMessage = 1;
+				SetMode(11);
+				mChoice      = 1;
+				mShowMessage = 1;
 			} else if (result == -3 || result == -5) {
-				title->SetMode(20);
-				title->mShowMessage = 1;
+				SetMode(20);
+				mShowMessage = 1;
 			} else {
-				title->SetMode(14);
-				title->mOffset = -32.0f;
+				SetMode(14);
+				mOffset = -32.0f;
 			}
-			title->mAlpha = 1.0f;
+			mAlpha = 1.0f;
 			break;
 		default:
-			title->SetMode(14);
-			title->mAlpha  = 1.0f;
-			title->mOffset = -32.0f;
+			SetMode(14);
+			mAlpha  = 1.0f;
+			mOffset = -32.0f;
 			break;
 		}
 		break;
@@ -3222,49 +3219,49 @@ extern "C" void State15__5TitleFUl(Title* title, u32 frames)
  * @note Size: 0x408
  */
 // shows what is wrong with the card until A is pressed or the card changes
-extern "C" void State14__5TitleFUl(Title* title)
+void Title::State14(u32)
 {
 	CPad pad(0);
-	s32 error = title->mResult;
+	s32 error = mResult;
 
 	switch (error) {
 	case -3:
-		if (title->_37E2 == 1) {
+		if (_37E2 == 1) {
 			for (s32 i = 0; i < 3; i++) {
 				ResetSaveSlotRecord(&gTitleSaveSlots[i]);
 			}
-			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, title->mChannel, 1);
-			title->SetMode(1);
+			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, mChannel, 1);
+			SetMode(1);
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			title->mOffset = 0.0f;
+			mOffset = 0.0f;
 			return;
 		}
-		if (title->mReady == 1) {
+		if (mReady == 1) {
 			for (s32 i = 0; i < 3; i++) {
 				ResetSaveSlotRecord(&gTitleSaveSlots[i]);
 			}
-			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, title->mChannel, 1);
-			title->SetMode(1);
+			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, mChannel, 1);
+			SetMode(1);
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			title->mOffset = 0.0f;
+			mOffset = 0.0f;
 			return;
 		}
 		break;
 	case -2:
-		if (!title->_37E2) {
-			OnCardRemoved(title);
+		if (!_37E2) {
+			OnCardRemoved(this);
 			return;
 		}
 		break;
 	case -128:
-		if ((!title->mReady || !title->_3809) && title->_37A8 == 1) {
-			OnFormattedCardGone(title);
+		if ((!mReady || !_3809) && _37A8 == 1) {
+			OnFormattedCardGone(this);
 			return;
 		}
 		break;
 	default:
-		if (!title->mReady) {
-			OnCardRemoved(title);
+		if (!mReady) {
+			OnCardRemoved(this);
 			return;
 		}
 		break;
@@ -3272,17 +3269,17 @@ extern "C" void State14__5TitleFUl(Title* title)
 	if (pad.mPad->mTrigger & 0x100) {
 		switch (error) {
 		case -9:
-			title->SetMode(18);
-			title->mOffset = 0.0f;
+			SetMode(18);
+			mOffset = 0.0f;
 			break;
 		case -128:
-			title->SetMode(6);
-			title->mOffset = -32.0f;
+			SetMode(6);
+			mOffset = -32.0f;
 			break;
 		default:
-			title->SetMode(5);
-			title->mOffset = -32.0f;
-			title->mChoice = 1;
+			SetMode(5);
+			mOffset = -32.0f;
+			mChoice = 1;
 			break;
 		}
 		PlayGameSound(&gGame.mSound, 0x88, 0xFF);
@@ -3293,20 +3290,20 @@ extern "C" void State14__5TitleFUl(Title* title)
  * @note Address: 0x8002CB40
  * @note Size: 0x1B4
  */
-extern "C" void State13__5TitleFUl(Title* title, u32 frames)
+void Title::State13(u32 frames)
 {
 	CPad pad(0);
 
-	if (!title->mReady) {
-		OnCardRemoved(title);
+	if (!mReady) {
+		OnCardRemoved(this);
 		return;
 	}
-	switch (title->mPhase) {
+	switch (mPhase) {
 	case 0:
-		title->mDelay -= frames;
-		if (title->mDelay < 0) {
-			title->mDelay = 0;
-			title->mPhase++;
+		mDelay -= frames;
+		if (mDelay < 0) {
+			mDelay = 0;
+			mPhase++;
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 		}
 		break;
@@ -3315,8 +3312,8 @@ extern "C" void State13__5TitleFUl(Title* title, u32 frames)
 			for (s32 i = 0; i < 3; i++) {
 				ResetSaveSlotRecord(&gTitleSaveSlots[i]);
 			}
-			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, title->mChannel, 1);
-			title->SetMode(1);
+			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, mChannel, 1);
+			SetMode(1);
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			return;
 		}
@@ -3328,18 +3325,18 @@ extern "C" void State13__5TitleFUl(Title* title, u32 frames)
  * @note Address: 0x8002CCF4
  * @note Size: 0x14C
  */
-extern "C" void State12__5TitleFUl(Title* title, u32 frames)
+void Title::State12(u32 frames)
 {
-	title->mDelay -= frames;
-	if (title->mDelay < 0) {
-		title->mDelay = 0;
+	mDelay -= frames;
+	if (mDelay < 0) {
+		mDelay = 0;
 	}
 	switch (gGame.mMemcard.mCard.mState) {
 	case 0:
-		title->_37D0 = gGame.mMemcard.mCard._16A04;
-		title->_37D4 = gGame.mMemcard.mCard._16A00;
-		title->SetMode(13);
-		title->mAlpha = 1.0f;
+		_37D0 = gGame.mMemcard.mCard._16A04;
+		_37D4 = gGame.mMemcard.mCard._16A00;
+		SetMode(13);
+		mAlpha = 1.0f;
 		break;
 	case 1:
 	case 2:
@@ -3355,8 +3352,8 @@ extern "C" void State12__5TitleFUl(Title* title, u32 frames)
 	case 13:
 	case 14:
 	case 15: {
-		s32 result     = gGame.mMemcard.mCard.mCard.mResult;
-		title->mResult = result;
+		s32 result = gGame.mMemcard.mCard.mCard.mResult;
+		mResult    = result;
 		switch (result) {
 		case -128:
 		case -14:
@@ -3375,18 +3372,18 @@ extern "C" void State12__5TitleFUl(Title* title, u32 frames)
 		case -1:
 		case 0:
 			if (result == -6 || result == -13) {
-				title->SetMode(19);
-				title->mShowMessage = 1;
+				SetMode(19);
+				mShowMessage = 1;
 			} else {
-				title->SetMode(21);
-				title->mShowMessage = 1;
+				SetMode(21);
+				mShowMessage = 1;
 			}
-			title->mAlpha = 1.0f;
+			mAlpha = 1.0f;
 			break;
 		default:
-			title->SetMode(14);
-			title->mAlpha  = 1.0f;
-			title->mOffset = -32.0f;
+			SetMode(14);
+			mAlpha  = 1.0f;
+			mOffset = -32.0f;
 			break;
 		}
 		break;
@@ -3399,45 +3396,45 @@ extern "C" void State12__5TitleFUl(Title* title, u32 frames)
  * @note Size: 0x348
  */
 // asked twice whether to make a new save file
-extern "C" void State11__5TitleFUl(Title* title)
+void Title::State11(u32)
 {
 	CPad pad(0);
 
-	if (!title->mReady) {
-		OnCardRemoved(title);
+	if (!mReady) {
+		OnCardRemoved(this);
 		return;
 	}
-	switch (title->mPhase) {
+	switch (mPhase) {
 	case 0:
-		MoveYesNo(title, pad);
+		MoveYesNo(this, pad);
 		if (pad.mPad->mTrigger & 0x100) {
-			if (title->mChoice == 0) {
+			if (mChoice == 0) {
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-				title->mChoice = 1;
-				title->mPhase++;
+				mChoice = 1;
+				mPhase++;
 			} else {
-				title->SetMode(19);
+				SetMode(19);
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 #if !defined(VERSION_JP)
-				title->_3C44 = 1;
+				_3C44 = 1;
 #endif
 			}
 			return;
 		}
 		break;
 	case 1:
-		MoveYesNo(title, pad);
+		MoveYesNo(this, pad);
 		if (pad.mPad->mTrigger & 0x100) {
-			if (title->mChoice == 0) {
-				StartMemoryCardFormatCheck(&gGame.mMemcard.mCard, title->mChannel, 1);
-				title->SetMode(12);
-				title->mDelay = 1.5f * FRAME_RATE;
+			if (mChoice == 0) {
+				StartMemoryCardFormatCheck(&gGame.mMemcard.mCard, mChannel, 1);
+				SetMode(12);
+				mDelay = 1.5f * FRAME_RATE;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			} else {
-				title->SetMode(19);
+				SetMode(19);
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 #if !defined(VERSION_JP)
-				title->_3C44 = 1;
+				_3C44 = 1;
 #endif
 			}
 			return;
@@ -3450,7 +3447,7 @@ extern "C" void State11__5TitleFUl(Title* title)
  * @note Address: 0x8002D188
  * @note Size: 0x4
  */
-extern "C" void State10__5TitleFUl(Title* title)
+void Title::State10(u32)
 {
 }
 
@@ -3458,23 +3455,23 @@ extern "C" void State10__5TitleFUl(Title* title)
  * @note Address: 0x8002D18C
  * @note Size: 0x148
  */
-extern "C" void State9__5TitleFUl(Title* title)
+void Title::State9(u32)
 {
 	CPad pad(0);
-	if (title->_37E2 == 1 || title->mReady == 1) {
+	if (_37E2 == 1 || mReady == 1) {
 		for (s32 i = 0; i < 3; ++i) {
 			ResetSaveSlotRecord(&gTitleSaveSlots[i]);
 		}
-		StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, title->mChannel, TRUE);
-		title->SetMode(1);
+		StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, mChannel, TRUE);
+		SetMode(1);
 		PlayGameSound(&gGame.mSound, 0x88, 255);
-		title->mOffset = 0.0f;
+		mOffset = 0.0f;
 		return;
 	}
 	if (pad.mPad->mTrigger & 0x100) {
-		title->SetMode(5);
-		title->mOffset = -32.0f;
-		title->mChoice = 1;
+		SetMode(5);
+		mOffset = -32.0f;
+		mChoice = 1;
 		PlayGameSound(&gGame.mSound, 0x88, 255);
 	}
 }
@@ -3483,20 +3480,20 @@ extern "C" void State9__5TitleFUl(Title* title)
  * @note Address: 0x8002D2D4
  * @note Size: 0x218
  */
-extern "C" void State8__5TitleFUl(Title* title)
+void Title::State8(u32)
 {
 	s32 cardState = gGame.mMemcard.mCard.mState;
 	switch (cardState) {
 	case 0:
-		HideName(title);
+		HideName(this);
 		StopGameSfx(&gGame.mSound, (s32)0xFFFF0003);
-		title->_37BC                      = -200.0f;
-		title->mAlpha                     = 0.0f;
-		gGame.mInfoScrn.mSelectedSaveSlot = title->mFile;
+		_37BC                             = -200.0f;
+		mAlpha                            = 0.0f;
+		gGame.mInfoScrn.mSelectedSaveSlot = mFile;
 		ResumeScrapCounterPulse(&gGame.mInfoScrn);
-		title->SetMode(25);
-		title->mState   = 13;
-		title->mTimeout = 20000;
+		SetMode(25);
+		mState   = 13;
+		mTimeout = 20000;
 		break;
 	case 1:
 	case 2:
@@ -3512,8 +3509,8 @@ extern "C" void State8__5TitleFUl(Title* title)
 	case 13:
 	case 14:
 	case 15: {
-		s32 result     = gGame.mMemcard.mCard.mCard.mResult;
-		title->mResult = result;
+		s32 result = gGame.mMemcard.mCard.mCard.mResult;
+		mResult    = result;
 		switch (result) {
 		case -128:
 		case -14:
@@ -3532,22 +3529,22 @@ extern "C" void State8__5TitleFUl(Title* title)
 		case -1:
 		case 0:
 			if (cardState == 2 && (result == -6 || result == -13)) {
-				title->SetMode(11);
-				title->mChoice      = 1;
-				title->mShowMessage = 1;
+				SetMode(11);
+				mChoice      = 1;
+				mShowMessage = 1;
 			} else if (result == -3 || result == -5) {
-				title->SetMode(22);
-				title->mShowMessage = 1;
+				SetMode(22);
+				mShowMessage = 1;
 			} else {
-				title->SetMode(14);
-				title->mOffset = -32.0f;
+				SetMode(14);
+				mOffset = -32.0f;
 			}
-			title->mAlpha = 1.0f;
+			mAlpha = 1.0f;
 			break;
 		default:
-			title->SetMode(14);
-			title->mAlpha  = 1.0f;
-			title->mOffset = -32.0f;
+			SetMode(14);
+			mAlpha  = 1.0f;
+			mOffset = -32.0f;
 			break;
 		}
 		break;
@@ -3559,7 +3556,7 @@ extern "C" void State8__5TitleFUl(Title* title)
  * @note Address: 0x8002D4EC
  * @note Size: 0x4
  */
-extern "C" void State7__5TitleFUl(Title* title)
+void Title::State7(u32)
 {
 }
 
@@ -3568,52 +3565,52 @@ extern "C" void State7__5TitleFUl(Title* title)
  * @note Size: 0x304
  */
 // asked whether to save over the file, unless the card went away under it
-extern "C" void State6__5TitleFUl(Title* title)
+void Title::State6(u32)
 {
 	CPad pad(0);
 
-	if ((!title->mReady || !title->_3809) && title->_37A8 == 1) {
-		title->SetMode(25);
-		title->mState = 11;
+	if ((!mReady || !_3809) && _37A8 == 1) {
+		SetMode(25);
+		mState = 11;
 		PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-		title->_37BC   = -200.0f;
-		title->mOffset = 0.0f;
-		title->mAlpha  = 0.0f;
-		HideName(title);
-		title->_37A8 = 0;
-		title->_3809 = 0;
-		title->_3808 = 0;
+		_37BC   = -200.0f;
+		mOffset = 0.0f;
+		mAlpha  = 0.0f;
+		HideName(this);
+		_37A8 = 0;
+		_3809 = 0;
+		_3808 = 0;
 		return;
 	}
-	if (!title->mReady) {
-		OnCardRemoved(title);
+	if (!mReady) {
+		OnCardRemoved(this);
 		return;
 	}
 	if (pad.mPad->mRepeat & 0x40001) {
-		if (title->mChoice > 0) {
-			title->mChoice--;
+		if (mChoice > 0) {
+			mChoice--;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			return;
 		}
 	} else if (pad.mPad->mRepeat & 0x80002) {
-		if (title->mChoice < 1) {
-			title->mChoice++;
+		if (mChoice < 1) {
+			mChoice++;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			return;
 		}
 	}
 	if (pad.mPad->mTrigger & 0x100) {
-		switch (title->mChoice) {
+		switch (mChoice) {
 		case 0:
-			StartMemoryCardSaveWrite(&gGame.mMemcard.mCard, title->mChannel, title->mFile, 1);
-			title->SetMode(15);
-			title->mDelay = 1.5f * FRAME_RATE;
+			StartMemoryCardSaveWrite(&gGame.mMemcard.mCard, mChannel, mFile, 1);
+			SetMode(15);
+			mDelay = 1.5f * FRAME_RATE;
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			title->mOffset = -32.0f;
+			mOffset = -32.0f;
 			break;
 		case 1:
-			title->SetMode(2);
-			title->mChoice = 0;
+			SetMode(2);
+			mChoice = 0;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			break;
 		}
@@ -3625,74 +3622,74 @@ extern "C" void State6__5TitleFUl(Title* title)
  * @note Size: 0x504
  */
 // asked whether to go on without saving
-extern "C" void State5__5TitleFUl(Title* title)
+void Title::State5(u32)
 {
 	CPad pad(0);
 
-	switch (title->mResult) {
+	switch (mResult) {
 	case -3:
-		if (title->mReady == 1) {
+		if (mReady == 1) {
 			for (s32 i = 0; i < 3; i++) {
 				ResetSaveSlotRecord(&gTitleSaveSlots[i]);
 			}
-			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, title->mChannel, 1);
-			title->mOffset = 0.0f;
-			title->SetMode(1);
+			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, mChannel, 1);
+			mOffset = 0.0f;
+			SetMode(1);
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			return;
 		}
 		break;
 	case -2:
-		if (!title->_37E2) {
-			OnCardRemoved(title);
+		if (!_37E2) {
+			OnCardRemoved(this);
 			return;
 		}
 		break;
 	default:
-		if (!title->mReady) {
-			OnCardRemoved(title);
+		if (!mReady) {
+			OnCardRemoved(this);
 			return;
 		}
 		break;
 	}
-	MoveYesNo(title, pad);
+	MoveYesNo(this, pad);
 	if (pad.mPad->mTrigger & 0x100) {
-		if (title->mChoice == 0 && (pad.mPad->mTrigger & 0x100)) {
-			HideName(title);
-			title->_37BC   = -200.0f;
-			title->mOffset = 0.0f;
-			title->mAlpha  = 0.0f;
-			title->mChoice = 0;
-			title->mState  = 13;
-			title->SetMode(25);
+		if (mChoice == 0 && (pad.mPad->mTrigger & 0x100)) {
+			HideName(this);
+			_37BC   = -200.0f;
+			mOffset = 0.0f;
+			mAlpha  = 0.0f;
+			mChoice = 0;
+			mState  = 13;
+			SetMode(25);
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			StopGameSfx(&gGame.mSound, (s32)0xFFFF0003);
-			gGame.mInfoScrn.mSelectedSaveSlot = title->mFile;
+			gGame.mInfoScrn.mSelectedSaveSlot = mFile;
 			return;
 		}
-		if (title->mChoice == 1 && (pad.mPad->mTrigger & 0x100)) {
-			if (title->mShowMessage == 1) {
-				title->SetMode(19);
-				title->mOffset = 0.0f;
-			} else if (title->mResult == 0) {
-				title->SetMode(2);
-				title->mChoice = 0;
-			} else if (title->mResult == -3) {
-				title->SetMode(25);
-				title->mState = 11;
+		if (mChoice == 1 && (pad.mPad->mTrigger & 0x100)) {
+			if (mShowMessage == 1) {
+				SetMode(19);
+				mOffset = 0.0f;
+			} else if (mResult == 0) {
+				SetMode(2);
+				mChoice = 0;
+			} else if (mResult == -3) {
+				SetMode(25);
+				mState = 11;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-				title->_37BC   = -200.0f;
-				title->mAlpha  = 0.0f;
-				title->mChoice = 0;
-				title->mOffset = 0.0f;
-				HideName(title);
+				_37BC   = -200.0f;
+				mAlpha  = 0.0f;
+				mChoice = 0;
+				mOffset = 0.0f;
+				HideName(this);
 			} else {
 				for (s32 i = 0; i < 3; i++) {
 					ResetSaveSlotRecord(&gTitleSaveSlots[i]);
 				}
-				StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, title->mChannel, 1);
-				title->SetMode(1);
-				title->mOffset = 0.0f;
+				StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, mChannel, 1);
+				SetMode(1);
+				mOffset = 0.0f;
 			}
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			return;
@@ -3704,7 +3701,7 @@ extern "C" void State5__5TitleFUl(Title* title)
  * @note Address: 0x8002DCF8
  * @note Size: 0x4
  */
-extern "C" void State4__5TitleFUl(Title* title)
+void Title::State4(u32)
 {
 }
 
@@ -3713,41 +3710,41 @@ extern "C" void State4__5TitleFUl(Title* title)
  * @note Size: 0x240
  */
 // the yes or no question, left and right pick, A takes it
-extern "C" void State3__5TitleFUl(Title* title)
+void Title::State3(u32)
 {
 	CPad pad(0);
 	CPadOne* state;
 
-	if (!title->mReady) {
-		OnCardRemoved(title);
+	if (!mReady) {
+		OnCardRemoved(this);
 		return;
 	}
 	state = pad.mPad;
 	if (state->mRepeat & 0x40001) {
-		if (title->mChoice > 0) {
-			title->mChoice--;
+		if (mChoice > 0) {
+			mChoice--;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			return;
 		}
 	} else if (state->mRepeat & 0x80002) {
-		if (title->mChoice < 1) {
-			title->mChoice++;
+		if (mChoice < 1) {
+			mChoice++;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			return;
 		}
 	}
 	if (state->mTrigger & 0x100) {
-		switch (title->mChoice) {
+		switch (mChoice) {
 		case 0:
-			StartMemoryCardSaveWrite(&gGame.mMemcard.mCard, title->mChannel, title->mFile, 1);
-			title->SetMode(15);
-			title->mDelay = 1.5f * FRAME_RATE;
+			StartMemoryCardSaveWrite(&gGame.mMemcard.mCard, mChannel, mFile, 1);
+			SetMode(15);
+			mDelay = 1.5f * FRAME_RATE;
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			title->mOffset = -32.0f;
+			mOffset = -32.0f;
 			return;
 		case 1:
-			title->SetMode(2);
-			title->mChoice = 0;
+			SetMode(2);
+			mChoice = 0;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			return;
 		}
@@ -3759,75 +3756,75 @@ extern "C" void State3__5TitleFUl(Title* title)
  * @note Size: 0x638
  */
 // picks one of the three save files, A starts or loads it, B goes back
-extern "C" void State2__5TitleFUl(Title* title)
+void Title::State2(u32)
 {
 	CPad pad(0);
 
-	if ((!title->mReady || !title->_3809) && title->_37A8 == 1) {
-		OnFormattedCardGone(title);
+	if ((!mReady || !_3809) && _37A8 == 1) {
+		OnFormattedCardGone(this);
 		return;
 	}
-	if (!title->mReady) {
-		OnCardRemoved(title);
+	if (!mReady) {
+		OnCardRemoved(this);
 		return;
 	}
-	title->mOffset = 0.0f;
+	mOffset = 0.0f;
 	if (pad.mPad->mRepeat & 0x40001) {
-		title->mFile--;
-		if (title->mFile < 0) {
-			title->mFile = 2;
+		mFile--;
+		if (mFile < 0) {
+			mFile = 2;
 		}
 		PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 	} else if (pad.mPad->mRepeat & 0x80002) {
-		title->mFile++;
-		if (title->mFile > 2) {
-			title->mFile = 0;
+		mFile++;
+		if (mFile > 2) {
+			mFile = 0;
 		}
 		PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 	}
 	if (pad.mPad->mTrigger & 0x100) {
-		switch (title->_37A8) {
+		switch (_37A8) {
 		case 0:
-			if (gTitleSaveSlots[title->mFile].mUsed == 1) {
-				title->SetMode(3);
-				title->mChoice = 1;
+			if (gTitleSaveSlots[mFile].mUsed == 1) {
+				SetMode(3);
+				mChoice = 1;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			} else if (title->_37D0 >= 6 && title->_37D4 > 0) {
-				StartMemoryCardSaveWrite(&gGame.mMemcard.mCard, title->mChannel, title->mFile, 1);
-				title->SetMode(15);
-				title->mDelay  = 1.5f * FRAME_RATE;
-				title->mOffset = -32.0f;
+			} else if (_37D0 >= 6 && _37D4 > 0) {
+				StartMemoryCardSaveWrite(&gGame.mMemcard.mCard, mChannel, mFile, 1);
+				SetMode(15);
+				mDelay  = 1.5f * FRAME_RATE;
+				mOffset = -32.0f;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			} else {
-				title->mResult = -9;
-				title->SetMode(14);
+				mResult = -9;
+				SetMode(14);
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-				title->mOffset = -32.0f;
+				mOffset = -32.0f;
 			}
 			return;
 		case 1:
-			if (gTitleSaveSlots[title->mFile].mUsed == 1) {
-				if (!IsSaveSlotIntact(&gTitleSaveSlots[title->mFile])) {
-					title->mResult = -128;
-					title->SetMode(14);
+			if (gTitleSaveSlots[mFile].mUsed == 1) {
+				if (!IsSaveSlotIntact(&gTitleSaveSlots[mFile])) {
+					mResult = -128;
+					SetMode(14);
 					PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-					title->mOffset = 0.0f;
+					mOffset = 0.0f;
 					return;
 				}
-				if (gTitleSaveSlots[title->mFile].mStage == 0) {
-					HideName(title);
-					title->_37BC   = -200.0f;
-					title->mAlpha  = 0.0f;
-					title->mChoice = 0;
-					title->mState  = 13;
-					title->SetMode(25);
+				if (gTitleSaveSlots[mFile].mStage == 0) {
+					HideName(this);
+					_37BC   = -200.0f;
+					mAlpha  = 0.0f;
+					mChoice = 0;
+					mState  = 13;
+					SetMode(25);
 					PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 					StopGameSfx(&gGame.mSound, (s32)0xFFFF0003);
-					gGame.mInfoScrn.mSelectedSaveSlot = title->mFile;
+					gGame.mInfoScrn.mSelectedSaveSlot = mFile;
 					return;
 				}
-				StartMemoryCardSaveRead(&gGame.mMemcard.mCard, title->mChannel, title->mFile, 1);
-				title->SetMode(8);
+				StartMemoryCardSaveRead(&gGame.mMemcard.mCard, mChannel, mFile, 1);
+				SetMode(8);
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			} else {
 				PlayGameSound(&gGame.mSound, 0x86, 0xFF);
@@ -3835,13 +3832,13 @@ extern "C" void State2__5TitleFUl(Title* title)
 			return;
 		}
 	} else if (pad.mPad->mTrigger & 0x200) {
-		title->SetMode(25);
-		title->mState = 11;
+		SetMode(25);
+		mState = 11;
 		PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-		title->_37BC   = -200.0f;
-		title->mOffset = 0.0f;
-		title->mAlpha  = 0.0f;
-		HideName(title);
+		_37BC   = -200.0f;
+		mOffset = 0.0f;
+		mAlpha  = 0.0f;
+		HideName(this);
 	}
 }
 
@@ -3849,13 +3846,13 @@ extern "C" void State2__5TitleFUl(Title* title)
  * @note Address: 0x8002E574
  * @note Size: 0x358
  */
-extern "C" void State1__5TitleFUl(Title* title, u32 frames)
+void Title::State1(u32 frames)
 {
 	Memcard* card = &gGame.mMemcard.mCard;
 	s32 state     = card->mState;
-	title->mDelay -= frames;
-	if (title->mDelay < 0)
-		title->mDelay = 0;
+	mDelay -= frames;
+	if (mDelay < 0)
+		mDelay = 0;
 	switch (state) {
 	case 0: {
 		OSTime timestamps[3];
@@ -3889,14 +3886,14 @@ extern "C" void State1__5TitleFUl(Title* title, u32 frames)
 					gTitleSaveSlots[i].mState = 0;
 			}
 		}
-		title->_37D0 = gGame.mMemcard.mCard._16A04;
-		title->_37D4 = gGame.mMemcard.mCard._16A00;
-		title->SetMode(2);
-		if (title->_37A8 == 0)
-			title->mFile = 0;
+		_37D0 = gGame.mMemcard.mCard._16A04;
+		_37D4 = gGame.mMemcard.mCard._16A00;
+		SetMode(2);
+		if (_37A8 == 0)
+			mFile = 0;
 		else
-			title->mFile = IndexOfLargestOfThree(timestamps[0], timestamps[1], timestamps[2]);
-		title->mAlpha = 1.0f;
+			mFile = IndexOfLargestOfThree(timestamps[0], timestamps[1], timestamps[2]);
+		mAlpha = 1.0f;
 		break;
 	}
 	case 1:
@@ -3913,8 +3910,8 @@ extern "C" void State1__5TitleFUl(Title* title, u32 frames)
 	case 13:
 	case 14:
 	case 15: {
-		s32 result     = gGame.mMemcard.mCard.mCard.mResult;
-		title->mResult = result;
+		s32 result = gGame.mMemcard.mCard.mCard.mResult;
+		mResult    = result;
 		switch (result) {
 		case -128:
 		case -14:
@@ -3933,21 +3930,21 @@ extern "C" void State1__5TitleFUl(Title* title, u32 frames)
 		case -1:
 		case 0:
 			if (result == -6 || result == -13) {
-				title->SetMode(11);
-				title->mChoice = 1;
+				SetMode(11);
+				mChoice = 1;
 			} else if (result == -5) {
-				title->SetMode(19);
-				title->mShowMessage = 1;
+				SetMode(19);
+				mShowMessage = 1;
 			} else {
-				title->SetMode(14);
-				title->mOffset = -32.0f;
+				SetMode(14);
+				mOffset = -32.0f;
 			}
-			title->mAlpha = 1.0f;
+			mAlpha = 1.0f;
 			break;
 		default:
-			title->SetMode(14);
-			title->mAlpha  = 1.0f;
-			title->mOffset = -32.0f;
+			SetMode(14);
+			mAlpha  = 1.0f;
+			mOffset = -32.0f;
 			break;
 		}
 		break;
@@ -3959,7 +3956,7 @@ extern "C" void State1__5TitleFUl(Title* title, u32 frames)
  * @note Address: 0x8002E8CC
  * @note Size: 0x4
  */
-extern "C" void State0__5TitleFUl(Title* title)
+void Title::State0(u32)
 {
 }
 
