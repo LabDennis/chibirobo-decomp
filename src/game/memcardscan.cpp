@@ -2,7 +2,9 @@
 #include "game/ccard.h"
 #include <stdio.h>
 
-extern "C" char gSaveScanFileName[];
+char gSaveScanFileName[0x80];
+
+const char gSaveFileNameFormat[] = "CHIBIROBO(%d)";
 
 // NONMATCHING: retail derives the stat pointer from the card base it keeps, the build
 // materializes it standalone and makes the base a copy

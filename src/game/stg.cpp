@@ -47,6 +47,17 @@ void PSMTXTrans(Mtx m, f32 x, f32 y, f32 z);
 void PSMTXScale(Mtx m, f32 x, f32 y, f32 z);
 u16 GXGetTexObjWidth(const GXTexObj* obj);
 u16 GXGetTexObjHeight(const GXTexObj* obj);
+CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width);
+}
+
+// japan has no language setting, its text is always japanese
+static inline bool IsJapanese()
+{
+#if defined(VERSION_JP)
+	return true;
+#else
+	return gGame.mLanguage == 6;
+#endif
 }
 
 // the fixed lines of the pause menu, MemCard's ? becomes the slot letter
@@ -1417,7 +1428,7 @@ inline void MenuTitle::Set(const char* text, u32 color)
 			mChars[i].mAngle0 = 0.017453292f * (rand() % 360);
 			mChars[i].mAngle1 = 0.017453292f * (rand() % 360);
 			mCount++;
-			if (gGame.IsJapanese() && IsSjisLead(*p)) {
+			if (IsJapanese() && (IsSjisLead(*p) & 1)) {
 				p++;
 			}
 		}
@@ -1969,7 +1980,9 @@ void MenuSave::Open()
 	mChannel     = 0;
 	mTexScroll   = 0.0f;
 #if !defined(VERSION_JP)
+#if !defined(VERSION_JP)
 	mFormatCancelled = 0;
+#endif
 #endif
 	PlayGameSound(&gGame.mSound, 0x14B, 0xFF);
 	u32 color = (u32)(255.0f * mTargetAlpha) | 0xFFFFFF00;
@@ -6158,7 +6171,7 @@ extern "C" s32 DrawSaveStatusMessage(s32, s32 id, f32 x, f32 y, f32 size, f32 al
 		}
 		break;
 	case 2:
-		if (gGame.IsJapanese()) {
+		if (IsJapanese()) {
 			DrawMenuHelpLine(0xdf, y, size, color);
 			lines = 1;
 #if defined(VERSION_PAL)
@@ -6188,7 +6201,7 @@ extern "C" s32 DrawSaveStatusMessage(s32, s32 id, f32 x, f32 y, f32 size, f32 al
 		}
 		break;
 	case 8:
-		if (gGame.IsJapanese()) {
+		if (IsJapanese()) {
 			DrawMenuHelpLine(0x85, y, size, color);
 			lines = 1;
 		} else {
@@ -6265,7 +6278,7 @@ extern "C" s32 DrawSaveStatusMessage(s32, s32 id, f32 x, f32 y, f32 size, f32 al
 		lines = 3;
 		break;
 	case 9:
-		if (gGame.IsJapanese()) {
+		if (IsJapanese()) {
 			DrawMenuHelpLine(0x8a, y, size, color);
 			lines = 1;
 		} else {
@@ -6275,7 +6288,7 @@ extern "C" s32 DrawSaveStatusMessage(s32, s32 id, f32 x, f32 y, f32 size, f32 al
 		}
 		break;
 	case 10:
-		if (gGame.IsJapanese()) {
+		if (IsJapanese()) {
 			DrawMenuHelpLine(0x8f, y, size, color);
 			DrawMenuHelpLine(0x90, (y + size), size, color);
 			lines = 2;
@@ -6363,7 +6376,7 @@ extern "C" s32 DrawCardErrorMessage(s32, s32 id, u8 retry, f32 x, f32 y, f32 siz
 	case -4:
 	case -1:
 	case 0:
-		if (gGame.IsJapanese()) {
+		if (IsJapanese()) {
 			DrawMenuHelpLine(0xC6, y, size, color);
 			lines = 1;
 		} else {
@@ -6380,7 +6393,7 @@ extern "C" s32 DrawCardErrorMessage(s32, s32 id, u8 retry, f32 x, f32 y, f32 siz
 		break;
 	case -3: {
 		s32 n;
-		if (gGame.IsJapanese()) {
+		if (IsJapanese()) {
 			DrawMenuHelpLine(0x67, y, size, color);
 			DrawMenuHelpLine(0x68, y + (2.0f + size), size, color);
 			DrawMenuHelpLine(0x69, 2.0f * (2.0f + size) + y, size, color);
@@ -6405,7 +6418,7 @@ extern "C" s32 DrawCardErrorMessage(s32, s32 id, u8 retry, f32 x, f32 y, f32 siz
 	case -2:
 		if (retry) {
 
-			if (gGame.IsJapanese()) {
+			if (IsJapanese()) {
 				DrawMenuHelpLine(0x6C, y, size, color);
 				lines = 1;
 #if defined(VERSION_PAL)
@@ -6756,7 +6769,7 @@ extern "C" void DrawStatusHelpText(MenuStatus* menu)
 		for (int i = 0; i < limit && *text; i++, text++) {
 			menu->mHelpChars[i].mText = text;
 			menu->mHelpCount++;
-			if (gGame.IsJapanese() && IsSjisLead(*text))
+			if (IsJapanese() && (IsSjisLead(*text) & 1))
 				text++;
 		}
 	}
@@ -6864,7 +6877,7 @@ extern "C" char* GetStageDesc(s32 stage);
 static inline void FinishStageLabel(char* text)
 {
 	for (int i = 0; text[i]; i++) {
-		if (gGame.IsJapanese() && IsSjisLead(text[i])) {
+		if (IsJapanese() && (IsSjisLead(text[i]) & 1)) {
 			if (text[++i] == 0) {
 				text[i - 1] = '.';
 				break;
@@ -6914,7 +6927,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		for (s32* stage = sStageOrder; *stage >= 0; stage++) {
 			char* line         = menu->mLabels[menu->mCount];
 			int length         = CopyStageFileName(line, GetStageFileName(*stage));
-			const char* format = gGame.IsJapanese() ? "(%2d) %-.20s" : "(%2d) %-.30s";
+			const char* format = IsJapanese() ? "(%2d) %-.20s" : "(%2d) %-.30s";
 			sprintf(line + length, format, *stage, FormatToStaticBuffer("%s%s", GetStageName(*stage), GetStageDesc(*stage)));
 			FinishStageLabel(line + length);
 			menu->mCount++;
@@ -7258,7 +7271,7 @@ BOOL MenuItem::Draw()
 				for (int i = 0; i < limit && *text; i++, text++) {
 					mBg[i].mText = text;
 					mNameCharCount++;
-					if (gGame.IsJapanese() && IsSjisLead(*text))
+					if (IsJapanese() && (IsSjisLead(*text) & 1))
 						text++;
 				}
 			}
@@ -7786,7 +7799,7 @@ extern "C" void DrawSaveHelpText(MenuSave* menu)
 		for (int i = 0; i < limit && *text; i++, text++) {
 			menu->mBg[i].mText = text;
 			menu->mHelpCount++;
-			if (gGame.IsJapanese() && IsSjisLead(*text))
+			if (HelpTextIsJapanese() && (IsSjisLead(*text) & 1))
 				text++;
 		}
 	}
@@ -8158,7 +8171,7 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	f32 step = 17.0f * scale;
 	f32 rowY = y - height * 0.5f;
 	f32 barX, barW;
-	if (gGame.IsJapanese()) {
+	if (IsJapanese()) {
 		barX = (10.0f * step * 0.5f + (left + step)) - 8.0f * scale;
 		barW = 0.9f * (14.0f * step);
 	} else {
@@ -9043,7 +9056,7 @@ extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 ind
 #if defined(VERSION_JP)
 		DrawSaveSlotMessage(message, 0x3C, 86.0f, x, y, alpha, sx, sy);
 #else
-		if (gGame.IsJapanese())
+		if (IsJapanese())
 			DrawSaveSlotMessage(0x99, false, x, y, alpha, sx, sy);
 		else
 			DrawSaveSlotMessage(0x99, true, x, y, alpha, sx, sy);
@@ -9314,7 +9327,7 @@ BOOL MenuSave::Draw()
 			f32 labelX = 320.0f + panelX - SavePromptHalfWidth(cells);
 			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * mDrawAlpha), text, 10.0f + labelX, labelY, 0.0f, 21.0f, 21.0f);
 #else
-			if (gGame.IsJapanese()) {
+			if (IsJapanese()) {
 				DrawSaveChoiceLabel(this, 0x65, 281.25f, labelY);
 				DrawSaveChoiceLabel(this, 0x66, 358.75f, labelY);
 			} else {
@@ -10673,8 +10686,8 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	CTexObj tex;
 	if (scale <= 0)
 		return;
-	f32 extraH = gGame.IsJapanese() ? 0 : 17;
-	f32 extraW = gGame.IsJapanese() ? 0 : 8;
+	f32 extraH = IsJapanese() ? 0 : 17;
+	f32 extraW = IsJapanese() ? 0 : 8;
 
 	f32 width = (246.0f + extraW) * scale, height = (153.0f + extraH) * scale;
 	f32 left              = (x - width / 2.0f) - 34.0f * scale;
@@ -10734,8 +10747,8 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	CTexObj tex;
 	if (scale <= 0)
 		return;
-	f32 extraH = gGame.IsJapanese() ? 0 : 17;
-	f32 extraW = gGame.IsJapanese() ? 0 : 8;
+	f32 extraH = IsJapanese() ? 0 : 17;
+	f32 extraW = IsJapanese() ? 0 : 8;
 
 	f32 width = (246.0f + extraW) * scale, height = (153.0f + extraH) * scale;
 	f32 left    = (x - width / 2.0f) - 34.0f * scale;

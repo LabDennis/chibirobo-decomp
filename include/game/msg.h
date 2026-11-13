@@ -284,7 +284,7 @@ public:
 		SetWindowAnchor(NULL, 0.0f, 0.0f, 0.0f);
 	}
 
-	void SetColor(const GXColor& color) { mFont.mColor = color; }
+	void SetColor(GXColor color) { mFont.mColor = color; }
 
 	void SetFontPosition(f32 x, f32 y, f32 z)
 	{

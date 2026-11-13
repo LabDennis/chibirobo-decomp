@@ -1,3 +1,5 @@
+// A file of its own, not part of stage_data.cpp: GameCube links this code right before stage_data,
+// the Wii build links it after stage_data with other code in between.
 #include "game/cgame.h"
 #include "game/globals.h"
 #include "game/stage.h"

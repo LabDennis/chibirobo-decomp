@@ -32,6 +32,12 @@ void CMsgFont_Draw(void* p, f32 t);
 void ClearGameSoundQueue(void* sound, s32 id);
 }
 
+#if defined(VERSION_JP)
+#define MsgHasSjisLead(c) IsSjisLead(c)
+#else
+#define MsgHasSjisLead(c) (gGame.mLanguage == 6 && IsSjisLead(c))
+#endif
+
 // read before stepping, the script can point into the message's own bytes
 static inline u32 ReadMsgU8(CMsg* msg)
 {
@@ -2082,7 +2088,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			break;
 		default: {
 			char text[3];
-			if (gGame.IsJapanese() && IsSjisLead(command)) {
+			if (MsgHasSjisLead(command)) {
 				text[0] = command;
 				text[1] = ReadMsgU8(msg);
 				text[2] = 0;
@@ -3728,12 +3734,14 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 				u32 clipX = (u32)(1.0f + (((font->mWindowX - font->mWidth * 0.5f) - 40.0f - expandX) - halfPortrait));
 				GXSetScissor(clipX, clipY, clipWidth, clipHeight);
 			}
-			f32 portraitX        = 44.0f * portraitScale + ((font->mWindowX - font->mWidth * 0.5f) - 40.0f - halfPortrait);
-			f32 portraitY        = 12.0f * portraitScale + (font->mHeight * 0.5f + font->mWindowY);
-			XObj* portrait       = NULL;
-			const XObjPool& pool = gGame.mXObjs.mPools[10];
-			for (s32 i = 0; i < pool.mUsed; i++) {
-				XObj* obj = pool.Get(i);
+			f32 portraitX   = 44.0f * portraitScale + ((font->mWindowX - font->mWidth * 0.5f) - 40.0f - halfPortrait);
+			f32 portraitY   = 12.0f * portraitScale + (font->mHeight * 0.5f + font->mWindowY);
+			XObj* portrait  = NULL;
+			s32 objectCount = gGame.mXObjs.mPools[10].mUsed;
+			s32 stride      = gGame.mXObjs.mPools[10].mStride;
+			u8* objects     = gGame.mXObjs.mPools[10].mObjects;
+			for (s32 i = 0; i < objectCount; i++) {
+				XObj* obj = (XObj*)(objects + i * stride);
 				if ((obj->mStatus.mFlags & 1) && obj->GetItem() == 10) {
 					portrait = obj;
 				}
@@ -7730,7 +7738,7 @@ static inline s32 MsgCommandLength(u8* p)
 	case 21:
 		return 5;
 	default:
-		if (gGame.IsJapanese() && IsSjisLead(*p)) {
+		if (MsgHasSjisLead(*p)) {
 			return 2;
 		}
 		return 1;
@@ -7805,7 +7813,7 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 		case 24:
 			break;
 		default:
-			if (gGame.IsJapanese() && IsSjisLead(*p)) {
+			if (MsgHasSjisLead(*p)) {
 				data->mCounts[data->mLineCount]++;
 				char text[3] = "";
 				text[0]      = p[0];
