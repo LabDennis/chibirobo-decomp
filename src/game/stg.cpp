@@ -396,7 +396,7 @@ BOOL MenuPC::Draw()
 			f32 center, width;
 			if (PCUsesFixedChoiceLabels()) {
 
-				sprintf(labelText, "%.255s", GetPCMenuLabelText(pcChoiceArt[this->mChoices[this->mChoice]].label));
+				sprintf(labelText, "%s", GetPCMenuLabelText(pcChoiceArt[this->mChoices[this->mChoice]].label));
 				u32 chars = strlen(labelText) / 2;
 				center    = 224.0f + 0.5f * ((chars - 1) * 20.0f);
 				width     = 0.9f * ((chars + 2) * 20.0f);
@@ -446,7 +446,7 @@ BOOL MenuPC::Draw()
 				SetMenuTevMode(GetGameGraphics(&gGame), 4);
 				if (PCUsesFixedChoiceLabels()) {
 #if defined(VERSION_JP)
-					sprintf(labelText, "%.255s", GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label));
+					sprintf(labelText, "%s", GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label));
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, labelText, 224, rowY, 0, 20, 20);
 #else
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), color, GetPCMenuLabelText(pcChoiceArt[this->mChoices[i]].label),
@@ -529,7 +529,7 @@ BOOL MenuPC::Draw()
 		} break;
 
 		case 9: {
-			sprintf(labelText, "%.255s", GetPCMenuLabelText(7));
+			sprintf(labelText, "%s", GetPCMenuLabelText(7));
 			DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 224, 148, 0, 18,
 			                             18);
 			{
@@ -562,7 +562,7 @@ BOOL MenuPC::Draw()
 			}
 			switch (this->mPhase) {
 			case 0: {
-				sprintf(labelText, "%.255s", GetPCMenuLabelText(8));
+				sprintf(labelText, "%s", GetPCMenuLabelText(8));
 				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 224, 212, 0, 18,
 				                             18);
 				{
@@ -610,10 +610,10 @@ BOOL MenuPC::Draw()
 				break;
 			}
 			case 1: {
-				sprintf(labelText, "%.255s", GetPCMenuLabelText(9));
+				sprintf(labelText, "%s", GetPCMenuLabelText(9));
 				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 224, 212, 0, 18,
 				                             18);
-				sprintf(labelText, "%.255s", GetPCMenuLabelText(10));
+				sprintf(labelText, "%s", GetPCMenuLabelText(10));
 				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 260, 260, 0, 18,
 				                             18);
 				f32 x = this->mYesNo ? 302.0f : 242.0f;
@@ -656,7 +656,7 @@ BOOL MenuPC::Draw()
 				}
 				SetMenuTevMode(GetGameGraphics(&gGame), 4);
 			}
-				sprintf(labelText, "%.255s", GetPCMenuLabelText(11));
+				sprintf(labelText, "%s", GetPCMenuLabelText(11));
 				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 244, 260, 0, 18,
 				                             18);
 				break;
@@ -669,7 +669,7 @@ BOOL MenuPC::Draw()
 			case 0: {
 				{
 #if defined(VERSION_JP)
-					sprintf(labelText, "%.255s", GetPCMenuLabelText(29));
+					sprintf(labelText, "%s", GetPCMenuLabelText(29));
 					u32 chars = strlen(labelText) / 2;
 					f32 x     = (320.0f - ((chars - 1) * 20.0f) * 0.5f) - 10.0f;
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha) | 0xFFFFFF00, labelText, x, 148, 0,
@@ -683,7 +683,7 @@ BOOL MenuPC::Draw()
 				}
 				{
 #if defined(VERSION_JP)
-					sprintf(labelText, "%.255s", GetPCMenuLabelText(30));
+					sprintf(labelText, "%s", GetPCMenuLabelText(30));
 					u32 chars = strlen(labelText) / 2;
 					f32 x     = (320.0f - ((chars - 1) * 20.0f) * 0.5f) - 10.0f;
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha) | 0xFFFFFF00, labelText, x, 220, 0,
@@ -733,7 +733,7 @@ BOOL MenuPC::Draw()
 				}
 #if defined(VERSION_JP)
 				DrawPCBlueNumber(false, 164, 178, this->mAlpha, 1, 1);
-				sprintf(labelText, "%.255s", GetPCMenuLabelText(34));
+				sprintf(labelText, "%s", GetPCMenuLabelText(34));
 				DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha) | 0xC8C8C800, labelText, 313, 169, 0, 18,
 				                             18);
 				s32 digits = CountDecimalDigits(rate);
@@ -849,36 +849,36 @@ BOOL MenuPC::Draw()
 					switch (this->mMode) {
 
 					case 2:
-						sprintf(labelText, "%.255s", GetPCMenuLabelText(1));
+						sprintf(labelText, "%s", GetPCMenuLabelText(1));
 						break;
 					case 3:
 						if (this->mShopOnly)
-							sprintf(labelText, "%.255s", GetPCMenuLabelText(3));
+							sprintf(labelText, "%s", GetPCMenuLabelText(3));
 						else
-							sprintf(labelText, "%.255s", GetPCMenuLabelText(2));
+							sprintf(labelText, "%s", GetPCMenuLabelText(2));
 						break;
 					case 4:
-						sprintf(labelText, "%.255s", GetPCMenuLabelText(4));
+						sprintf(labelText, "%s", GetPCMenuLabelText(4));
 						break;
 					case 5:
-						sprintf(labelText, "%.255s", GetPCMenuLabelText(5));
+						sprintf(labelText, "%s", GetPCMenuLabelText(5));
 						break;
 					case 7:
-						sprintf(labelText, "%.255s", GetPCMenuLabelText(24));
+						sprintf(labelText, "%s", GetPCMenuLabelText(24));
 						break;
 					case 9:
-						sprintf(labelText, "%.255s", GetPCMenuLabelText(6));
+						sprintf(labelText, "%s", GetPCMenuLabelText(6));
 						break;
 					case 10:
-						sprintf(labelText, "%.255s", GetPCMenuLabelText(28));
+						sprintf(labelText, "%s", GetPCMenuLabelText(28));
 						break;
 					default:
-						sprintf(labelText, "%.255s", "");
+						sprintf(labelText, "%s", "");
 						break;
 					}
 #if defined(VERSION_JP)
 					char joined[256];
-					sprintf(joined, "%.255s", GetPCMenuLabelText(0));
+					sprintf(joined, "%s", GetPCMenuLabelText(0));
 					strcat(joined, labelText);
 					strcpy(labelText, joined);
 
@@ -1033,9 +1033,9 @@ BOOL MenuPC::Draw()
 						SetMenuTevMode(GetGameGraphics(&gGame), 4);
 					}
 					if (this->mMode == 2)
-						sprintf(labelText, "%.255s", GetPCMenuLabelText(12));
+						sprintf(labelText, "%s", GetPCMenuLabelText(12));
 					else
-						sprintf(labelText, "%.255s", GetPCMenuLabelText(13));
+						sprintf(labelText, "%s", GetPCMenuLabelText(13));
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(255.0f * this->mAlpha), labelText, 224, 334, 0, 20, 20);
 					{
 						CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 139 - StatusTextureOffset));
@@ -1051,20 +1051,20 @@ BOOL MenuPC::Draw()
 					{
 						switch (this->mMode) {
 						case 4:
-							sprintf(labelText, "%.255s", GetPCMenuLabelText(14));
+							sprintf(labelText, "%s", GetPCMenuLabelText(14));
 							break;
 						case 3:
 							switch (this->mPhase) {
 							case 0:
 							case 10:
 							case 20:
-								sprintf(labelText, "%.255s", GetPCMenuLabelText(16));
+								sprintf(labelText, "%s", GetPCMenuLabelText(16));
 								break;
 							case 1:
-								sprintf(labelText, "%.255s", GetPCMenuLabelText(15));
+								sprintf(labelText, "%s", GetPCMenuLabelText(15));
 								break;
 							default:
-								sprintf(labelText, "%.255s", GetPCMenuLabelText(13));
+								sprintf(labelText, "%s", GetPCMenuLabelText(13));
 								break;
 							}
 							break;
@@ -1073,31 +1073,31 @@ BOOL MenuPC::Draw()
 							case 0:
 							case 10:
 							case 20:
-								sprintf(labelText, "%.255s", GetPCMenuLabelText(16));
+								sprintf(labelText, "%s", GetPCMenuLabelText(16));
 								break;
 							case 1:
-								sprintf(labelText, "%.255s", GetPCMenuLabelText(25));
+								sprintf(labelText, "%s", GetPCMenuLabelText(25));
 								break;
 							default:
-								sprintf(labelText, "%.255s", GetPCMenuLabelText(13));
+								sprintf(labelText, "%s", GetPCMenuLabelText(13));
 								break;
 							}
 							break;
 						case 10:
 							switch (this->mPhase) {
 							case 0:
-								sprintf(labelText, "%.255s", GetPCMenuLabelText(16));
+								sprintf(labelText, "%s", GetPCMenuLabelText(16));
 								break;
 							case 1:
-								sprintf(labelText, "%.255s", GetPCMenuLabelText(37));
+								sprintf(labelText, "%s", GetPCMenuLabelText(37));
 								break;
 							default:
-								sprintf(labelText, "%.255s", GetPCMenuLabelText(13));
+								sprintf(labelText, "%s", GetPCMenuLabelText(13));
 								break;
 							}
 							break;
 						default:
-							sprintf(labelText, "%.255s", GetPCMenuLabelText(16));
+							sprintf(labelText, "%s", GetPCMenuLabelText(16));
 							break;
 						}
 					}
@@ -6642,7 +6642,7 @@ extern "C" void DrawStatusDiagram(MenuStatus* menu)
 		f32 y;
 		f32 x = menu->mDiagramX + menu->mOffsetX;
 		y     = menu->mDiagramY + menu->mOffsetY;
-		tex   = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[181], 0);
+		tex   = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[181 - StatusTextureOffset], 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		u16 width  = GXGetTexObjWidth(&tex);
 		u16 height = GXGetTexObjHeight(&tex);
@@ -6709,8 +6709,10 @@ extern "C" void DrawStatusItemDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale
 	CTexObj tex;
 	if (scale <= 0.0f)
 		return;
-	f32 height  = 153.0f * scale;
-	height      = 10.0f * scale + height;
+	f32 height = 153.0f * scale;
+#if !defined(VERSION_JP)
+	height = 10.0f * scale + height;
+#endif
 	y           = y - height / 2.0f;
 	u32 opacity = (u32)(255.0f * alpha);
 	u32 color   = opacity | 0xFFFFFF00;
@@ -8904,7 +8906,7 @@ BOOL MenuRequestClear::Update(u32 frames)
 #if defined(VERSION_JP)
 static inline void DrawSaveSlotMessage(char (&message)[256], s32 id, f32 row, f32 x, f32 y, f32 alpha, f32 sx, f32 sy)
 {
-	sprintf(message, "%.255s", GetLocalizedInterfaceText(id));
+	sprintf(message, "%s", GetLocalizedInterfaceText(id));
 	u32 chars     = strlen(message) / 2 - 1;
 	f32 halfGlyph = 9.0f * sx;
 	f32 right     = 10.0f * sx + x;
@@ -9102,7 +9104,7 @@ extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha,
 	DrawMenuBannerStrip(tex, x, y + 10.0f, 88.0f, alpha);
 	if (title) {
 		char text[256];
-		sprintf(text, "%.255s", title);
+		sprintf(text, "%s", title);
 		u32 count   = strlen(text) / 2;
 		f32 left    = (320.0f + x) - ((count - 1) * 30) / 2;
 		f32 textTop = 4.0f + (8.0f + (22.0f + y));
@@ -9213,18 +9215,18 @@ BOOL MenuSave::Draw()
 				lines = SaveStatusLines(this, 4, panelX, panelY);
 			break;
 		case 2:
-			sprintf(text, "%.255s", GetLocalizedInterfaceText(selectMessage));
+			sprintf(text, "%s", GetLocalizedInterfaceText(selectMessage));
 			showMessage = true;
 			break;
 		case 3:
-			sprintf(text, "%.255s", GetLocalizedInterfaceText(confirmMessage));
+			sprintf(text, "%s", GetLocalizedInterfaceText(confirmMessage));
 			showMessage = true;
 			break;
 		case 4:
 			if (mPhase == 0)
 				lines = SaveStatusLines(this, 4, panelX, panelY);
 			else {
-				sprintf(text, "%.255s", GetLocalizedInterfaceText(writeMessage));
+				sprintf(text, "%s", GetLocalizedInterfaceText(writeMessage));
 				showMessage = true;
 			}
 			break;
@@ -9296,7 +9298,7 @@ BOOL MenuSave::Draw()
 			if (lines > 1)
 				lineOffset = (lines - 2) * 21;
 #if defined(VERSION_JP)
-			sprintf(text, "%.255s", GetLocalizedInterfaceText(0x40));
+			sprintf(text, "%s", GetLocalizedInterfaceText(0x40));
 			u32 cells  = strlen(text) / 2;
 			f32 center = 320.0f + panelX;
 
@@ -9350,7 +9352,7 @@ static inline void DrawJapaneseCardLine(char* text, f32 x, f32 y, f32 size, u32 
 
 static inline void DrawJapaneseCardLine(char (&text)[256], s32 id, f32 x, f32 y, f32 size, u32 color)
 {
-	sprintf(text, "%.255s", GetLocalizedInterfaceText(id));
+	sprintf(text, "%s", GetLocalizedInterfaceText(id));
 	DrawJapaneseCardLine(text, x, y, size, color);
 }
 
@@ -9358,7 +9360,7 @@ static void AppendJapaneseCardSuffix(char (&text)[256], const char* suffix);
 
 static inline void DrawJapaneseCardLine(char (&text)[256], const char* prefix, s32 id, f32 x, f32 y, f32 size, u32 color)
 {
-	sprintf(text, "%.255s", prefix);
+	sprintf(text, "%s", prefix);
 	AppendJapaneseCardSuffix(text, GetLocalizedInterfaceText(id));
 	DrawJapaneseCardLine(text, x, y, size, color);
 }
@@ -9399,9 +9401,9 @@ extern "C" s32 DrawJapaneseCardErrorMessage(s32 channel, s32 error, u8 retry, f3
 	case -3: {
 		char channelText[256];
 		if (channel == 0)
-			sprintf(channelText, "%.255s", GetLocalizedInterfaceText(0x26));
+			sprintf(channelText, "%s", GetLocalizedInterfaceText(0x26));
 		else
-			sprintf(channelText, "%.255s", GetLocalizedInterfaceText(0x27));
+			sprintf(channelText, "%s", GetLocalizedInterfaceText(0x27));
 		DrawJapaneseCardLine(channelText, x, y, size, color);
 		DrawJapaneseCardLine(channelText, 0x1A, x, y + (2.0f + size), size, color);
 		DrawJapaneseCardLine(channelText, 0x1C, x, 2.0f * (2.0f + size) + y, size, color);
@@ -9584,12 +9586,12 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 	y += scale;
 	f32 size = scale * 17.0f, offset = scale * 24.0f;
 	char text[256];
-	sprintf(text, "%.255s", iconGrid ? GetStatusIconDescription(id) : GetStatusOverviewDescription(id));
+	sprintf(text, "%s", iconGrid ? GetStatusIconDescription(id) : GetStatusOverviewDescription(id));
 	f32 w       = MeasureGameTextWidth(&gGame.mGs, text, 1, size);
 	f32 padding = 6.0f * scale;
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 320.0f - w / 2.0f, (4.0f * scale + (offset + (5.0f * size + y))) - padding, 0.0f,
 	                             size, size);
-	sprintf(text, "%.255s", iconGrid ? GetStatusIconName(id) : GetStatusOverviewLabel(id));
+	sprintf(text, "%s", iconGrid ? GetStatusIconName(id) : GetStatusOverviewLabel(id));
 	f32 helpSize = 2.0f * scale + size;
 	w            = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
 	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, 320.0f - w / 2.0f, ((4.0f * size + y) + offset) - padding, 0.0f,
@@ -9878,7 +9880,7 @@ static inline void DrawGaugeNumber(CTexObj& tex, s32 number, u32 color, f32 x, f
 		PSMTXTrans(tex.mMtx[0], 0, 0.1f * (digit % 10), 0);
 		tex.mMtxDirty = TRUE;
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		DrawOverviewTexture(tex, color, (offset + (7.0f * width + (x - i * (width - 3.6f)))) - shift, y - 2.4f, width, height);
+		DrawOverviewTexture(tex, color, (offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f)))) - shift, y - 2.4f, width, height);
 	}
 }
 
@@ -9930,7 +9932,7 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	SetGsTevMode(gs.mCurTevStage, 4);
 
 	s32 current = (s32)(10000.0f * value);
-	x += 121.2f;
+	x += 101.0f * 1.2f;
 	y -= 4.8f;
 	LoadOverviewTexture(tex, 125);
 	width  = 1.2f * GXGetTexObjWidth(&tex);
@@ -9938,14 +9940,14 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
 	u32 textColor = 0xFFFFFF00 | (u8)opacity;
-	f32 offset    = (3.0f * (width - 3.6f) - 98.0f * 1.2f) - 16.0f;
+	f32 offset    = (3.0f * (width - 3.0f * 1.2f) - 98.0f * 1.2f) - 16.0f;
 	DrawGaugeNumber(tex, 10000, textColor, x, y, width, height, offset, 0);
-	DrawGaugeNumber(tex, current, textColor, x, y, width, height, offset, 6.0f * (width - 3.6f));
+	DrawGaugeNumber(tex, current, textColor, x, y, width, height, offset, 6.0f * (width - 3.0f * 1.2f));
 	SetGsTevMode(gs.mCurTevStage, 4);
 	LoadOverviewTexture(tex, 168);
 	u16 slashWidth = GXGetTexObjWidth(&tex), slashHeight = GXGetTexObjHeight(&tex);
 	SetGsTevMode(gs.mCurTevStage, 0);
-	DrawOverviewTexture(tex, textColor, offset + (7.0f * width + (x - 5.0f * (width - 3.6f))), y - 1.2f, 0.8f * (1.2f * slashWidth),
+	DrawOverviewTexture(tex, textColor, offset + (7.0f * width + (x - 5.0f * (width - 3.0f * 1.2f))), y - 1.2f, 0.8f * (1.2f * slashWidth),
 	                    0.8f * (1.2f * slashHeight));
 }
 
@@ -10077,7 +10079,6 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 	}
 	// All three retail objects pass stack buffers to the label renderer without writing any text.
 	char label[256];
-	label[0]      = '\0';
 	u32 halfWidth = (24 * (strlen(label) / 2 - 1)) / 2;
 	f32 labelX    = 12.0f + ((12.0f + (4.0f + ((40.0f + ((72.0f + x) - halfWidth)) - 120.0f))) - 20.0f);
 	f32 labelY    = (12.0f + ((2.0f + (((22.0f + y) - 12.0f) - 2.0f)) - 22.0f)) - 36.0f;
@@ -10118,7 +10119,6 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 	}
 	case 2: {
 		char message[256];
-		message[0] = '\0';
 		// Retail measures the confirmation label even though it draws it at a fixed position.
 		(void)strlen(message);
 		DrawDoubleByteMenuText(message, x, 14.0f + y, -10.0f, 24.0f, 24.0f, menu->mAlpha);
@@ -10493,7 +10493,7 @@ static inline void DrawPCRecycleLabel(s32 id, f32 x, f32 offset, f32 margin, f32
 {
 #if defined(VERSION_JP)
 	char text[256];
-	sprintf(text, "%.255s", GetLocalizedInterfaceText(id));
+	sprintf(text, "%s", GetLocalizedInterfaceText(id));
 	x = margin + (offset + (x - (strlen(text) / 2 - 1) * size * 0.5f));
 #else
 	const char* text = GetLocalizedInterfaceText(id);
@@ -10506,7 +10506,7 @@ static inline void DrawPCRecycleUnit(f32 originX, f32 originY, f32 scale, f32 al
 {
 #if defined(VERSION_JP)
 	char units[256];
-	sprintf(units, "%.255s", GetLocalizedInterfaceText(0x88));
+	sprintf(units, "%s", GetLocalizedInterfaceText(0x88));
 	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xC8C8C800, units, 216.0f * scale + originX, 147.0f * scale + originY,
 	                             0, 18.0f * scale, 18.0f * scale);
 #else
@@ -10677,7 +10677,7 @@ static inline void DrawPCPurchaseLabels(s32 question, s32 yes, s32 no, f32 left,
 static inline void DrawPCPurchaseResult(char (&text)[256], s32 bought, f32 x, f32 y, f32 size, u32 white)
 {
 #if defined(VERSION_JP)
-	sprintf(text, "%.255s", GetLocalizedInterfaceText(bought));
+	sprintf(text, "%s", GetLocalizedInterfaceText(bought));
 	DrawPCShopCenteredText(text, white, x, y, size);
 #else
 	f32 labelWidth = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(bought), 1, size);
@@ -10724,10 +10724,10 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	}
 	if (id < 0)
 		return;
-	sprintf(text, "%.255s", GetUtilibotDescription(id));
+	sprintf(text, "%s", GetUtilibotDescription(id));
 	if (choice != 2)
 		DrawPCShopCenteredText(text, white, x, (4.0f * scale + (rowY + (5.0f * size + top))) - 3.0f * scale, size);
-	sprintf(text, "%.255s", GetUtilibotName(id));
+	sprintf(text, "%s", GetUtilibotName(id));
 	DrawPCShopCenteredText(text, color | 0xFFAA0000, x, (rowY + (4.0f * size + top)) - 3.0f * scale, 2.0f * scale + size);
 	if (choice != 2) {
 		f32 digitY = DrawPCPurchasePrice<PriceList>(tex, row, opacity, left, top, scale, extraW, extraH);
@@ -10786,15 +10786,15 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	if (id < 0)
 		return;
 	if (row.mIsAttachment) {
-		sprintf(text, "%.255s", GetAttachmentDescription(id));
+		sprintf(text, "%s", GetAttachmentDescription(id));
 		if (choice != 2)
 			DrawPCShopCenteredText(text, white, x, (4.0f * scale + (rowY + (5.0f * size + top))) - 3.0f * scale, size);
-		sprintf(text, "%.255s", GetAttachmentName(id));
+		sprintf(text, "%s", GetAttachmentName(id));
 	} else {
-		sprintf(text, "%.255s", GetItemDescription(id));
+		sprintf(text, "%s", GetItemDescription(id));
 		if (choice != 2)
 			DrawPCShopCenteredText(text, white, x, (4.0f * scale + (rowY + (5.0f * size + top))) - 3.0f * scale, size);
-		sprintf(text, "%.255s", GetItemName(id));
+		sprintf(text, "%s", GetItemName(id));
 	}
 	DrawPCShopCenteredText(text, color | 0xFFAA0000, x, (rowY + (4.0f * size + top)) - 3.0f * scale, 2.0f * scale + size);
 	if (choice != 2) {
@@ -10946,11 +10946,11 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 			char text[256];
 			if (rankValue > 0 && rankValue <= 1000000) {
 				DrawPCRankingDigits(tex, rankValue, left, rowY, scale, a | 0xBFDDFB00, a | 0x0E72D600, true);
-				sprintf(text, "%.255s", GetLocalizedInterfaceText(rankLabel));
+				sprintf(text, "%s", GetLocalizedInterfaceText(rankLabel));
 				DrawGsProportionalTextFormat(&gGame.mGs, a | 0xBFDDFB00, text, 103.0f * scale + left, rowY, 0, 18.0f * scale,
 				                             18.0f * scale);
 			} else {
-				sprintf(text, "%.255s", GetLocalizedInterfaceText(unrankedLabel));
+				sprintf(text, "%s", GetLocalizedInterfaceText(unrankedLabel));
 				DrawGsProportionalTextFormat(&gGame.mGs, a | 0xBFDDFB00, text, 48.0f * scale + left, rowY, 0, 18.0f * scale, 18.0f * scale);
 			}
 			DrawPCRankingDigits(tex, row.score, left, rowY, scale, a | 0xCECEFF00, a | 0xE037EE00, false);
@@ -10958,7 +10958,7 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			u16 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
 			DrawOverviewTexture(tex, light, 140.0f * scale + left, rowY + 10.0f * scale, 0.6f * (scale * iw), 0.6f * (scale * ih));
-			sprintf(text, "%.255s", GetPCRankingName(row.nameIndex));
+			sprintf(text, "%s", GetPCRankingName(row.nameIndex));
 			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * menu->mAlpha) | 0xC8C8C800, text, 48.0f * scale + left,
 			                             rowY + 20.0f * scale, 0, 18.0f * scale, 18.0f * scale);
 		}

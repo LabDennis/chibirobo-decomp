@@ -83,7 +83,7 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 	} work;
 	work.used = work.visible = 0;
 	XObjPool& pool           = gGame.mXObjs.mPools[8];
-	for (s32 i = 0; i < pool.mUsed && work.visible < 64; ++i) {
+	for (s32 i = 0; i < pool.mUsed; ++i) {
 		XObj* object = pool.Get(i);
 		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000))
 			continue;
@@ -2192,11 +2192,15 @@ extern "C" void DrawTitleNameBubbles(Title* title)
 			f32 x;
 			f32 rot;
 			f32 y;
-			bob       = 4.0f * (f32)sin(title->mName.mChars[i].mBob);
-			tilt      = sin(0.7f * title->mName.mChars[i].mTilt);
-			swell     = sin(3.1415927f * scale);
-			pop       = 0.2f * swell + (f32)sin(1.5707964f * scale);
-			x         = 24.0f + (48.0f * i + (320.0f - 48.0f * title->mName.mCount / 2.0f));
+			bob   = 4.0f * (f32)sin(title->mName.mChars[i].mBob);
+			tilt  = sin(0.7f * title->mName.mChars[i].mTilt);
+			swell = sin(3.1415927f * scale);
+			pop   = 0.2f * swell + (f32)sin(1.5707964f * scale);
+#if defined(VERSION_PAL)
+			x = 20.0f + (40.0f * i + (320.0f - 40.0f * title->mName.mCount / 2.0f));
+#else
+			x = 24.0f + (48.0f * i + (320.0f - 48.0f * title->mName.mCount / 2.0f));
+#endif
 			u32 alpha = 255.0f * scale;
 			rot       = -(0.017453292f * (10.0f * tilt));
 			y         = 64.0f + bob;
@@ -2449,12 +2453,12 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	case 2:
 		if (!title->mSelection) {
 #if defined(VERSION_JP)
-			sprintf(text, "%.255s", LoadPromptText(0x94, 0x15));
+			sprintf(text, "%s", LoadPromptText(0x94, 0x15));
 			u32 cells  = strlen(text) / 2;
 			f32 center = 320.0f + panelX, top = 8.0f + (356.0f - panelY);
 			f32 x = center - LoadHalfWidth(cells), y = (top - 6.0f) + title->mLoadOffset;
 			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mLoadAlpha), text, x, y, 0.0f, 21.0f, 21.0f);
-			sprintf(text, "%.255s", LoadPromptText(0x95, 0x16));
+			sprintf(text, "%s", LoadPromptText(0x95, 0x16));
 			cells = strlen(text) / 2;
 			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mLoadAlpha), text, center - LoadHalfWidth(cells),
 			                             (21.0f + top) + title->mLoadOffset, 0.0f, 21.0f, 21.0f);
@@ -2465,12 +2469,12 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			DrawLoadText(LoadPromptText(0x95, 0), 320.0f, (21.0f + top) + title->mLoadOffset, color);
 #endif
 		} else {
-			sprintf(text, "%.255s", LoadPromptText(0xbc, 0x12));
+			sprintf(text, "%s", LoadPromptText(0xbc, 0x12));
 			showMessage = true;
 		}
 		break;
 	case 3:
-		sprintf(text, "%.255s", LoadPromptText(0xa8, 1));
+		sprintf(text, "%s", LoadPromptText(0xa8, 1));
 		showMessage = true;
 		break;
 	case 5:
@@ -2480,7 +2484,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		lines = LoadStatusLines(title, 11, panelX, panelY);
 		break;
 	case 8:
-		sprintf(text, "%.255s", LoadPromptText(0xc1, 0x32));
+		sprintf(text, "%s", LoadPromptText(0xc1, 0x32));
 		showMessage = true;
 		break;
 	case 11: {
@@ -2570,7 +2574,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		if (lines > 1)
 			extra = (lines - 2) * 21;
 #if defined(VERSION_JP)
-		sprintf(text, "%.255s", LoadPromptText(0, 0x33));
+		sprintf(text, "%s", LoadPromptText(0, 0x33));
 		u32 cells = strlen(text) / 2;
 		f32 barX  = title->mChoice == 0 ? ((32.0f + (320.0f + panelX)) - LoadHalfWidth(cells)) - 2.0f
 		                                : 60.0f + (10.0f + ((32.0f + (320.0f + panelX)) - LoadHalfWidth(cells)));
@@ -2585,7 +2589,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			f32 barY     = 8.0f + (extra + (base + title->mLoadOffset));
 			u32 barColor = 0x181CC600 | (u32)(200.0f * alpha);
 			InitMenuSelectionBar(tex);
-			DrawMenuSelectionBar(tex, barX, 2.0f + barY, width, 22.0f, alpha, scroll, barColor, 0.5f);
+			DrawMenuSelectionBar(tex, barX, 2.0f + barY, width, 22.0f, alpha, scroll, barColor);
 		}
 		f32 y = extra + (base + title->mLoadOffset);
 #if defined(VERSION_JP)
@@ -2605,7 +2609,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	}
 	if (title->mOptionAlpha > 0.0f) {
 #if defined(VERSION_JP)
-		sprintf(text, "%.255s", LoadPromptText(0, 0x36));
+		sprintf(text, "%s", LoadPromptText(0, 0x36));
 		{
 			u32 cells = strlen(text) / 2;
 			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mOptionAlpha), text, (320.0f + panelX) - LoadHalfWidth(cells),
@@ -2656,7 +2660,7 @@ extern "C" void DrawTitleOptions(Title* title)
 #endif
 		f32 size = 24.0f * title->mOptionAlpha;
 #if defined(VERSION_PAL)
-		top = (224.0f - (4.0f * (size * 0.5f) - size * 0.25f)) - h * 0.5f;
+		top = (224.0f - (4.0f * (size * 0.5f) * 0.5f - size * 0.25f)) - h * 0.5f;
 #endif
 		u32 color = normal;
 		if (IsLineLit(title, 0)) {

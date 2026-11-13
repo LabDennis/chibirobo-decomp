@@ -1511,14 +1511,14 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 		}
 
 		Vec pos[65];
-		f32 cy = y0 - 7.2f;
+		f32 cy = y0 - 6.0f * 1.2f;
 		for (int i = 0; i < 65; i++) {
 			f32 s;
 			f32 angle = 0.09817477f * i - 1.5707964f;
 			s         = sin(angle);
 			f32 c     = -(f32)cos(angle);
-			pos[i].x  = x0 + s * 14.4f;
-			pos[i].y  = cy + c * 14.4f;
+			pos[i].x  = x0 + s * (12.0f * 1.2f);
+			pos[i].y  = cy + c * (12.0f * 1.2f);
 			pos[i].z  = 0.0f;
 		}
 		f32 a255 = 255.0f * alpha;
@@ -1529,8 +1529,8 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 
 		tex              = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[125 - StatusTextureOffset], 0);
 		u16 tw           = GXGetTexObjWidth(&tex);
-		f32 lineY        = cy + 14.4f;
-		point->mValue[3] = len * (1.2f * tw - 3.6f) + 34.0f;
+		f32 lineY        = cy + 12.0f * 1.2f;
+		point->mValue[3] = len * (1.2f * tw - 3.0f * 1.2f) + 34.0f;
 		pos[0].x         = x0;
 		pos[0].y         = lineY;
 		pos[1].x         = x0 + point->mValue[2];
@@ -1568,7 +1568,7 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 		PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 		u8 da         = (s32)a255;
 		f32 step      = 7.0f * w;
-		f32 base      = len * (w - 3.6f) - 117.6f;
+		f32 base      = len * (w - 3.0f * 1.2f) - 98.0f * 1.2f;
 		u32 blueT     = da | 0xCECEFF00;
 		u32 blueB     = da | 0xE037EE00;
 		u32 goldT     = da | 0xEFEBC500;
@@ -1599,8 +1599,8 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 				bottom = pinkB;
 				break;
 			}
-			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, base + (step + (dx - i * (w - 3.6f))), dy - 2.0f, 0.0f, w, h,
-			                   0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, base + (step + (dx - i * (w - 3.0f * 1.2f))), dy - 2.0f, 0.0f, w,
+			                   h, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		}
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
