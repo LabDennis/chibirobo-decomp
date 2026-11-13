@@ -57,7 +57,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		}
 		((CCameraActionAnim*)game->mCameraActions.mTable[6])->SetObj((XObjCamera*)game->mXObjs.mPools[0].First());
 		game->mMotionControlCamera.Init();
-		if (mode == 1 || mode == 7) {
+		if (mode == 1 || mode == 7) { // both modes start on the map camera
 			game->mMotionControlCamera.ChangeAction(7);
 			Reset2__16CCameraActionMapFv(game->mCameraActions.mTable[7]);
 			game->mMotionControlCamera.ApplyAction();
@@ -68,7 +68,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			game->mMotionControlCamera.UpdateTarget(game->mXObjs.mObjects[i]);
 		}
 
-		if (game->mStatus.mFlags & 0x100) {
+		if (game->mStatus.mFlags & 0x100) { // flag 0x100: a fresh roboeyes wipe
 			game->mStatus.mFlags &= ~0x300;
 			StartScreenWipe(&game->mRoboeyes, 0, 0, 0, 0, 1, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 		}
@@ -85,9 +85,9 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			if (obj->mStatus.mFlags & 1) {
 				if (!(game->mStatus.mFlags & 0x2000000000) && (obj->mStatus.mFlags & 0x20000000)
 				    && !(obj->mStatus.mFlags & 0x400000000000000)) {
-					game->mStatus.mFlags |= 0x2000000000;
+					game->mStatus.mFlags |= 0x2000000000; // the stage wants the mirror fade
 				}
-				if ((obj->mStatus.mFlags & 0x400) && mirrors < 5) {
+				if ((obj->mStatus.mFlags & 0x400) && mirrors < 5) { // flag 0x400 makes an object a mirror
 					game->mStatus.mFlags |= 0x100000000000;
 					jobj = obj->mJObj;
 					if (jobj != NULL) {
@@ -109,10 +109,10 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 						for (HSD_DObj* dobj = HSD_JObjGetDObj(jobj); dobj != NULL; dobj = HSD_DObjGetNext(dobj)) {
 							HSD_MObj* mobj = HSD_DObjGetMObj(dobj);
 							if (mobj != NULL) {
-								SetMaterialAmbientColor(mobj, 255, 255, 255);
+								SetMaterialAmbientColor(mobj, 255, 255, 255); // the surface draws full bright
 								HSD_TObj* tobj = HSD_MObjGetTObj(mobj);
 								if (tobj != NULL) {
-									tobj->imagedesc = (HSD_ImageDesc*)mirror;
+									tobj->imagedesc = (HSD_ImageDesc*)mirror; // the mirror supplies its image
 								}
 							}
 						}
@@ -121,7 +121,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 					}
 				}
 				if (!(game->mStatus.mFlags & 0x8000000000) && (obj->mStatus.mFlags & 0x80000000)) {
-					game->mStatus.mFlags |= 0x8000000000;
+					game->mStatus.mFlags |= 0x8000000000; // an object needs the depth check
 				}
 			}
 		}
@@ -129,7 +129,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		if (game->mStatus.mFlags & 0x2000000000) {
 			f32 fade  = GetStageInfo()->mMirrorFade / 100.0f;
 			XObj* obj = game->mXObjs.mPools[3].First();
-			if ((obj->mStatus.mFlags & 1) && fade > 0.0f && fade < 1.0f) {
+			if ((obj->mStatus.mFlags & 1) && fade > 0.0f && fade < 1.0f) { // a partial fade translucents the map
 				obj->SetTranslucent(fade);
 			}
 		}
@@ -182,7 +182,7 @@ static inline BOOL PreloadStageArchives()
 		XObjSource* src = GetObjectSources();
 		const u8* pair  = (const u8*)cache.mFile0.mBuffer;
 		if (pair) {
-			for (s32 id = 0;; ++id, ++src) {
+			for (s32 id = 0;; ++id, ++src) { // offset/size pairs end at 0xffffffff
 				if (*(const u32*)pair == 0xffffffff || src->mCache.address == 0xffffffff)
 					break;
 				if (src->mCache.size != 1)
@@ -192,7 +192,7 @@ static inline BOOL PreloadStageArchives()
 					break;
 				src->mCache.address = address;
 				src->mCache.size    = size;
-				u32 padded          = (size + 31) & ~31u;
+				u32 padded          = (size + 31) & ~31u; // aram blocks align to 32
 
 				gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].address  = gARAMCacheInfo.mBaseAddress;
 				gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].size     = padded;
@@ -216,15 +216,15 @@ static inline BOOL LoadStartingAttachments(CGame* game)
 {
 	if (!LoadGlobalResourceData())
 		return FALSE;
-	if (!gCmdLineArgs.mCopterLevelOverride) {
+	if (!gCmdLineArgs.mCopterLevelOverride) { // attachment slot 1 takes the saved level
 		u32 level = GetStartingAttachmentLevel(0);
 		SetAttachmentCountById(&game->GetPlayer()->mAttachments, 1, level);
 	}
-	if (!gCmdLineArgs.mPopperLevelOverride) {
+	if (!gCmdLineArgs.mPopperLevelOverride) { // slot 2
 		u32 level = GetStartingAttachmentLevel(1);
 		SetAttachmentCountById(&game->GetPlayer()->mAttachments, 2, level);
 	}
-	if (!gCmdLineArgs.mRadarLevelOverride) {
+	if (!gCmdLineArgs.mRadarLevelOverride) { // slot 3
 		u32 level = GetStartingAttachmentLevel(2);
 		SetAttachmentCountById(&game->GetPlayer()->mAttachments, 3, level);
 	}
@@ -259,7 +259,7 @@ BOOL CGame::BeforeUpdate()
 		if (!mTpl.ReadEx("tpl/misc.tpl", 0, 0))
 			break;
 		++mLoadStep;
-		mScrnTex.mTex        = mTpl.mTex.Init(&((TPLPalette*)mTpl.mBuffer)->descriptorArray[121 - StatusTextureOffset], 0);
+		mScrnTex.mTex = mTpl.mTex.Init(&((TPLPalette*)mTpl.mBuffer)->descriptorArray[121 - StatusTextureOffset], 0); // the outline texture
 		mOutline.mPatternTex = &mScrnTex.mTex;
 		mOutline.mFrame      = 0;
 		mOutline.mThick2     = 0;
@@ -312,7 +312,7 @@ BOOL CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 	case 18:
-		if (!GetPlayer()->LoadFromPlacement(CoordInfo(GetSpawnData(14))))
+		if (!GetPlayer()->LoadFromPlacement(CoordInfo(GetSpawnData(14)))) // spawn placement 14
 			break;
 		++mLoadStep;
 	case 19:
@@ -325,7 +325,7 @@ BOOL CGame::BeforeUpdate()
 		}
 		++mLoadStep;
 	case 20:
-		if (mMemcardLoaded) {
+		if (mMemcardLoaded) { // a save restores the battery too
 			RestoreGameSaveData(&mMemcard.mCard);
 			mMemcardLoaded = FALSE;
 			mStatus.mFlags |= 0x2000;
@@ -343,7 +343,7 @@ BOOL CGame::BeforeUpdate()
 			break;
 		ApplyStageClearColor();
 		const s32* pair = GetStageEventObjectPairs();
-		while (pair[0] >= 0) {
+		while (pair[0] >= 0) { // the pairs end at a -1
 			RegisterEventObjectId(&mEvt, pair[1], pair[0]);
 			pair += 2;
 		}
@@ -356,9 +356,9 @@ BOOL CGame::BeforeUpdate()
 		++mLoadStep;
 	}
 	case 25:
-		if (mEvt.mData.mScript)
+		if (mEvt.mData.mScript) // waits for the setup script
 			break;
-		if (CheckStageFlag(gGame.mStage, 4))
+		if (CheckStageFlag(gGame.mStage, 4)) // stage flag 4 sets flag 0x40
 			mStatus.mFlags |= 0x40;
 		++mLoadStep;
 	case 26:
@@ -377,7 +377,7 @@ BOOL CGame::BeforeUpdate()
 		StartScreenFade(&mFade, 0, 0, 0, 255, 0, 0, 0, 0, 0.5f);
 		StartOrQueueEventScript(&mEvt, GetStageEntryScript(), 0, -1, -1);
 		u32 minutes = GetStageEntryTimeComponent(1), hours = GetStageEntryTimeComponent(0);
-		_FF204 = (s32)(hours * 216000 + (minutes * 3600 + GetStageEntryTimeComponent(2) * 60));
+		_FF204 = (s32)(hours * 216000 + (minutes * 3600 + GetStageEntryTimeComponent(2) * 60)); // the clock, in frames
 		mStatus.mFlags |= 1;
 		++mLoadStep;
 	}
