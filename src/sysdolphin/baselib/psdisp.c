@@ -1569,10 +1569,9 @@ void psDispSubAppSRT(HSD_Particle* pp, u32* cmdList)
 void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f32 prevX, f32 prevY, f32 prevZ, f32 rightX, f32 rightY,
                           f32 rightZ, f32 upX, f32 upY, f32 upZ)
 {
-	// NONMATCHING: retail keeps separate stack temps for the two trail-alpha conversions of the quad (frame 0x1A0, ours 0x190);
-	// MWCC only does that when all four vertices sit in one inline expansion. Also dx/dy registers and two loop-preheader slots.
+	// NONMATCHING: retail gives the fourth quad vertex's trail-alpha conversion its own stack temps (frame 0x1A0, ours 0x190);
+	// MWCC reuses the first vertex's temps across the texcoord branches. Also dx/dy/dz get f3/f2/f4 in retail, f2/f4/f5 here.
 	GXColor color;
-	u8* it = (u8*)cmdList;
 
 	if (lbl_8065B8FC != 0) {
 		lbl_8065B8FC = 0;
@@ -1591,7 +1590,7 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 			prevZ = z - prevZ;
 		}
 		psdisp_getTrailColor(pp, &color);
-		if (it == NULL) {
+		if (cmdList == NULL) {
 			if (pp->kind & 0x400) {
 				GXClearVtxDesc();
 				GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -1647,14 +1646,13 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 				upX *= ratio;
 				upY *= ratio;
 				upZ *= ratio;
-				primCount = *(u32*)it;
-				it += 4;
+				primCount = *cmdList++;
 				for (; primCount != 0; primCount--) {
-					u8 prim  = it[0];
-					u8 count = it[1];
+					u8 prim  = ((u8*)cmdList)[0];
+					u8 count = ((u8*)cmdList)[1];
 					s32 i;
 
-					it += 4;
+					cmdList++;
 					if (pp->kind & 0x400) {
 						GXClearVtxDesc();
 						GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -1668,7 +1666,7 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 						GXBegin(prim, GX_VTXFMT3, count);
 					}
 					for (i = 0; i < count; i++) {
-						f32 s = *(f32*)&it[0];
+						f32 s = ((f32*)cmdList)[0];
 						f32 t;
 						f32 sx = 2.0F * (s - 0.5F);
 						f32 tx;
@@ -1677,8 +1675,8 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 						if (pp->kind & 0x40000) {
 							s = 1.0F - s;
 						}
-						t = *(f32*)&it[4];
-						it += 8;
+						t = ((f32*)cmdList)[1];
+						cmdList += 2;
 						alpha = 255.0F - t * trailAlpha;
 						if (alpha < 0) {
 							alpha = 0;
@@ -1699,7 +1697,7 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 				}
 			}
 		}
-	} else if (it == NULL) {
+	} else if (cmdList == NULL) {
 		if (pp->kind & 0x400) {
 			GXClearVtxDesc();
 			GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -1727,15 +1725,14 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 			GXTexCoord1x8(((pp->kind >> 16) & 0xC) + 3);
 		}
 	} else {
-		u32 primCount = *(u32*)it;
+		u32 primCount = *cmdList++;
 
-		it += 4;
 		for (; primCount != 0; primCount--) {
-			u8 prim  = it[0];
-			u8 count = it[1];
+			u8 prim  = ((u8*)cmdList)[0];
+			u8 count = ((u8*)cmdList)[1];
 			s32 i;
 
-			it += 4;
+			cmdList++;
 			if (pp->kind & 0x400) {
 				GXClearVtxDesc();
 				GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -1747,7 +1744,7 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 				GXBegin(prim, GX_VTXFMT1, count);
 			}
 			for (i = 0; i < count; i++) {
-				f32 s = *(f32*)&it[0];
+				f32 s = ((f32*)cmdList)[0];
 				f32 t;
 				f32 sx = 2.0F * (s - 0.5F);
 				f32 tx;
@@ -1755,8 +1752,8 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 				if (pp->kind & 0x40000) {
 					s = 1.0F - s;
 				}
-				t = *(f32*)&it[4];
-				it += 8;
+				t = ((f32*)cmdList)[1];
+				cmdList += 2;
 				tx = 2.0F * (t - 0.5F);
 				if (pp->kind & 0x80000) {
 					t = 1.0F - t;

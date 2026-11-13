@@ -944,6 +944,7 @@ void get_shape_nbt_xyz(HSD_ShapeSet* shape_set, s32 shape_id, s32 arrayidx, f32*
  * @note Address: 0x801AD29C
  * @note Size: 0x31C
  */
+// NONMATCHING: register allocation only; retail keeps pobj, vertex and normal in r29-r31, we colour n, m, l, length and dl first
 void interpretShapeAnimDisplayList(HSD_PObj* pobj, f32 (*vertex)[3], f32 (*normal)[3])
 {
 	s32 i, j;
@@ -1066,7 +1067,6 @@ void interpretShapeAnimDisplayList(HSD_PObj* pobj, f32 (*vertex)[3], f32 (*norma
  * @note Address: 0x801ACB7C
  * @note Size: 0x720
  */
-// NONMATCHING: register allocation only; retail keeps pobj, vertex and normal in r29-r31
 void drawShapeAnim(HSD_PObj* pobj)
 {
 	// NONMATCHING: register allocation only; retail gives the loop counters the lowest saved registers
