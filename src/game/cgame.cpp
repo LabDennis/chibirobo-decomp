@@ -4,24 +4,12 @@
 #include "game/mm.h"
 #include <Dolphin/vi.h>
 #include "game/cgameutil.h"
-#include "game/arcache.h"
-#include "game/cthread.h"
 
-extern "C" {
-int strncmp(const char* a, const char* b, unsigned long n);
-}
+#include <string.h>
+
 // the stage name's four shadow copies, one pixel off to each corner
 f32 sStageNameShadowX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
 f32 sStageNameShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
-
-// the cgame file's globals, in the order retail built them in cgameinit's static
-// initializer; cgameinit.cpp still constructs the same region by hand, so these are
-// initialized twice until that workaround is replaced
-ARCacheInfo gARAMCacheInfo;
-FbMirrorEx gFramebufferMirrors[5];
-ARPreCache gAramPrecache;
-CThread gMovieUpdateThread;
-u8 gMovieUpdateThreadStack[0x1000];
 
 /**
  * @note Address: 0x8000AD34
@@ -108,17 +96,6 @@ u8* GetStageDisplayName(s32 index);
 int rand(void);
 }
 GXColor gMessageFontDefaultColor = { 0, 0, 0, 0x80 };
-
-// a lead byte of a two byte shift jis character
-static inline bool IsSJISByte(char c)
-{
-	return ((u8)c >= 0x81 && (u8)c <= 0x9F) || ((u8)c >= 0xE0 && (u8)c <= 0xFC);
-}
-
-static inline bool IsSJISLead(char c)
-{
-	return IsSJISByte(c) ? true : false;
-}
 
 // shuts a wipe off where it is
 static inline void ClearWipe(CScrnWipe* wipe)
@@ -256,11 +233,11 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 					game->mStageName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
 					game->mStageName.mCount++;
 #if defined(VERSION_JP)
-					if (IsSJISLead(*name)) {
+					if (IsSjisLead(*name)) {
 						name++;
 					}
 #else
-					if (gGame.mLanguage == 6 && IsSJISLead(*name)) {
+					if (gGame.mLanguage == 6 && IsSjisLead(*name)) {
 						name++;
 					}
 #endif
@@ -311,17 +288,4 @@ extern "C" void DrawGameMovie(CGame* game)
 		SetGsAlphaCompare(gs->mCurRenderMode, 4, 0, 0, 3, 255);
 		InvalidateAll();
 	}
-}
-
-extern "C" {
-s32 MICProbeEx(s32 chan);
-s32 MICMountAsync(s32 chan, void* work, s32 size, void (*detach)(s32), void (*attach)(s32, s32));
-s32 MICGetResultCode(s32 chan);
-s32 MICGetDeviceID(s32 chan, u32* id);
-s32 MICUnmount(s32 chan);
-s32 M2SGetActiveChannel(void);
-s32 M2SGetSamplesLeft(void);
-void M2SGetSamples(s16** samples, s32 count);
-void M2SAdvanceBuffer(s32 count);
-void* memset(void* dst, int val, u32 size);
 }

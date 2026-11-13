@@ -13,13 +13,32 @@ AnimSfxEvent gSoundObjectAnimEvents[] = {
 } // extern "C"
 
 /**
- * @note Address: 0x800DD56C
- * @note Size: 0x34
+ * @note Address: 0x800DD32C
+ * @note Size: 0x60
  */
-void XObjSound::InitializeObject(u32 id)
+XObjSound::~XObjSound()
 {
-	XObj::InitializeObject(id);
-	mSfx.mEvents = NULL;
+}
+
+/**
+ * @note Address: 0x800DD38C
+ * @note Size: 0xB0
+ */
+void XObjSound::UpdateSfx(f32 frame)
+{
+	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000)) {
+		mSfx.Update(mAnimId, frame, GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0));
+	}
+}
+
+/**
+ * @note Address: 0x800DD43C
+ * @note Size: 0xC8
+ */
+void XObjSound::UpdateObject(u32 frames)
+{
+	XObj::UpdateObject(frames);
+	UpdateSfx(GetAnimFrame(mJObj));
 }
 
 /**
@@ -39,30 +58,11 @@ void XObjSound::ResetObjectState()
 }
 
 /**
- * @note Address: 0x800DD43C
- * @note Size: 0xC8
+ * @note Address: 0x800DD56C
+ * @note Size: 0x34
  */
-void XObjSound::UpdateObject(u32 frames)
+void XObjSound::InitializeObject(u32 id)
 {
-	XObj::UpdateObject(frames);
-	UpdateSfx(GetAnimFrame(mJObj));
-}
-
-/**
- * @note Address: 0x800DD38C
- * @note Size: 0xB0
- */
-void XObjSound::UpdateSfx(f32 frame)
-{
-	if ((mStatus.mFlags & 1) && (mStatus.mFlags & 0x10000)) {
-		mSfx.Update(mAnimId, frame, GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0));
-	}
-}
-
-/**
- * @note Address: 0x800DD32C
- * @note Size: 0x60
- */
-XObjSound::~XObjSound()
-{
+	XObj::InitializeObject(id);
+	mSfx.mEvents = NULL;
 }
