@@ -3,14 +3,16 @@
 
 #include "game/cfile.h"
 
+struct GlobalResourceHeader;
+
 // the loaded globals file and its sections, class name from RTTI
 class Globals {
 public:
-	CFile mFile;  // _00
-	u8* mHeader;  // _EC
-	u8* mData;    // _F0
-	u8* mText;    // _F4
-	u8* mScripts; // _F8
+	CFile mFile;                   // _00
+	GlobalResourceHeader* mHeader; // _EC
+	u8* mData;                     // _F0
+	u8* mText;                     // _F4
+	u8* mScripts;                  // _F8
 	// _FC vtable
 
 	virtual ~Globals() { } // _08

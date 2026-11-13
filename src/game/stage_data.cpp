@@ -32,6 +32,37 @@ extern u8 HSD_VIData[];
 BOOL LoadGameSoundBank(XSound* sound, s32 stage);
 }
 
+// globals.bin offsets are measured from the end of its header.
+struct GlobalResourceSection {
+	u8 offset[4];
+	u8 length[4];
+};
+
+struct GlobalResourceHeader {
+	GlobalResourceSection data;
+	GlobalResourceSection text;
+	GlobalResourceSection scripts;
+};
+STATIC_ASSERT(sizeof(GlobalResourceHeader) == 0x18);
+
+// Stage offsets are measured from the start of the file.
+struct StageFileHeader {
+	u8 environment[4];
+	u8 placements[4];
+	u8 scriptOffsets[4];
+	u8 setupScript[4];
+	u8 entryScript[4];
+	u8 batteryDepletedScript[4];
+	u8 zButtonScript[4];
+	u8 timerExpiredScript[4];
+	u8 unknown20[4];
+	u8 eventObjects[4];
+	u8 cameraAreas[4];
+	u8 cameraInfo[4];
+	u8 cameraAreasEx[4];
+};
+STATIC_ASSERT(sizeof(StageFileHeader) == 0x34);
+
 Stage gStageResources;
 Globals gGlobalScriptResources;
 
@@ -64,7 +95,7 @@ static inline BOOL IsGlobalScript(const u8* script)
 {
 	bool inside = false;
 	if (script >= gGlobalScriptResources.mScripts
-	    && script < gGlobalScriptResources.mScripts + ReadResourceOffset(gGlobalScriptResources.mHeader + 0x14)) {
+	    && script < gGlobalScriptResources.mScripts + ReadResourceOffset(gGlobalScriptResources.mHeader->scripts.length)) {
 		inside = true;
 	}
 	return inside != false;
@@ -511,11 +542,12 @@ extern "C" BOOL LoadGlobalResourceData()
 	CFile* file = &gGlobalScriptResources.mFile;
 	if (file->ReadEx(path, 0, 0)) {
 		gGlobalScriptResources.mFile.CloseHandle();
-		gGlobalScriptResources.mHeader  = (u8*)gGlobalScriptResources.mFile.mBuffer;
-		u8* header                      = gGlobalScriptResources.mHeader;
-		gGlobalScriptResources.mData    = header + ReadResourceOffset(header) + 0x18;
-		gGlobalScriptResources.mText    = header + ReadResourceOffset(header + 8) + 0x18;
-		gGlobalScriptResources.mScripts = header + ReadResourceOffset(header + 16) + 0x18;
+		gGlobalScriptResources.mHeader  = (GlobalResourceHeader*)gGlobalScriptResources.mFile.mBuffer;
+		GlobalResourceHeader* header    = gGlobalScriptResources.mHeader;
+		u8* buffer                      = (u8*)header;
+		gGlobalScriptResources.mData    = buffer + ReadResourceOffset(header->data.offset) + sizeof(*header);
+		gGlobalScriptResources.mText    = buffer + ReadResourceOffset(header->text.offset) + sizeof(*header);
+		gGlobalScriptResources.mScripts = buffer + ReadResourceOffset(header->scripts.offset) + sizeof(*header);
 		return TRUE;
 	}
 	return FALSE;
@@ -692,36 +724,37 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		if (!stage->mDataFile.ReadEx(stage->mDataPath, 0, 0))
 			break;
 		stage->mDataFile.CloseHandle();
-		u8* data                  = (u8*)stage->mDataFile.mBuffer;
-		stage->mEnvironment.mData = data + ReadResourceOffset(data);
-		stage->mPlacements._00    = (UnkStageObj*)(data + ReadResourceOffset(data + 4));
-		stage->mScriptOffsets     = data + ReadResourceOffset(data + 8);
-		stage->mSetupScript       = data + ReadResourceOffset(data + 0xC);
+		u8* data                      = (u8*)stage->mDataFile.mBuffer;
+		const StageFileHeader* header = (const StageFileHeader*)data;
+		stage->mEnvironment.mData     = data + ReadResourceOffset(header->environment);
+		stage->mPlacements._00        = (UnkStageObj*)(data + ReadResourceOffset(header->placements));
+		stage->mScriptOffsets         = data + ReadResourceOffset(header->scriptOffsets);
+		stage->mSetupScript           = data + ReadResourceOffset(header->setupScript);
 		if (stage->mSetupScript == data)
 			stage->mSetupScript = NULL;
-		stage->mEntryScript = data + ReadResourceOffset(data + 0x10);
+		stage->mEntryScript = data + ReadResourceOffset(header->entryScript);
 		if (stage->mEntryScript == data)
 			stage->mEntryScript = NULL;
-		stage->mBatteryDepletedScript = data + ReadResourceOffset(data + 0x14);
+		stage->mBatteryDepletedScript = data + ReadResourceOffset(header->batteryDepletedScript);
 		if (stage->mBatteryDepletedScript == data)
 			stage->mBatteryDepletedScript = NULL;
-		stage->mZButtonScript = data + ReadResourceOffset(data + 0x18);
+		stage->mZButtonScript = data + ReadResourceOffset(header->zButtonScript);
 		if (stage->mZButtonScript == data)
 			stage->mZButtonScript = NULL;
-		stage->mTimerExpiredScript = data + ReadResourceOffset(data + 0x1C);
+		stage->mTimerExpiredScript = data + ReadResourceOffset(header->timerExpiredScript);
 		if (stage->mTimerExpiredScript == data)
 			stage->mTimerExpiredScript = NULL;
-		stage->_198 = data + ReadResourceOffset(data + 0x20);
+		stage->_198 = data + ReadResourceOffset(header->unknown20);
 		if (stage->_198 == data)
 			stage->_198 = NULL;
-		stage->mEventObjectPairs  = (const s32*)(data + ReadResourceOffset(data + 0x24));
-		stage->mCameraAreaRecords = data + ReadResourceOffset(data + 0x28);
+		stage->mEventObjectPairs  = (const StageEventObject*)(data + ReadResourceOffset(header->eventObjects));
+		stage->mCameraAreaRecords = data + ReadResourceOffset(header->cameraAreas);
 		if (stage->mCameraAreaRecords == data)
 			stage->mCameraAreaRecords = NULL;
-		stage->mCameraInfoRecords = data + ReadResourceOffset(data + 0x2C);
+		stage->mCameraInfoRecords = data + ReadResourceOffset(header->cameraInfo);
 		if (stage->mCameraInfoRecords == data)
 			stage->mCameraInfoRecords = NULL;
-		stage->mCameraAreaExRecords = data + ReadResourceOffset(data + 0x30);
+		stage->mCameraAreaExRecords = data + ReadResourceOffset(header->cameraAreasEx);
 		if (stage->mCameraAreaExRecords == data)
 			stage->mCameraAreaExRecords = NULL;
 		++stage->mState;
@@ -795,7 +828,7 @@ extern "C" CamAreaRecord* GetStageCameraAreaRecords()
  * @note Address: 0x8006F3DC
  * @note Size: 0x10
  */
-extern "C" const s32* GetStageEventObjectPairs()
+extern "C" const StageEventObject* GetStageEventObjectPairs()
 {
 	return gStageResources.mEventObjectPairs;
 }
