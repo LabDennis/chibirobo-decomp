@@ -26,7 +26,7 @@ def configured():
     ninja = ROOT / "build.ninja"
     if not ninja.exists():
         return None
-    m = re.search(r"-DVERSION_(\w+)", ninja.read_text(encoding="utf-8"))
+    m = re.search(r"^version = (\w+)$", ninja.read_text(encoding="utf-8"), re.M)
     return m.group(1) if m else None
 
 

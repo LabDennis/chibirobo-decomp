@@ -1938,16 +1938,6 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 
 extern "C" s32 GetPlayerAttachmentCount(XObjChr* chr, s32 type);
 
-// todo: cleanup
-static inline s32 FindAttachment(const AttachmentValues* values, s32 id)
-{
-	for (s32 i = 0; i < 9; ++i) {
-		if (values->mEntries[i].mId == id)
-			return i;
-	}
-	return -1;
-}
-
 // 0.3 seconds
 #if defined(VERSION_PAL)
 #define LOOK_FADE_STEP (1.0f / (0.3f * gVideoFramesPerSecond))
@@ -2815,7 +2805,7 @@ static inline bool CanUseTool(XObjChr* chr, s16 item)
 
 static inline void SetAttachmentOn(AttachmentValues* values, s32 id, bool on)
 {
-	s32 index = FindAttachment(values, id);
+	s32 index = values->Find(id);
 	if (index >= 0)
 		values->mEntries[index].mValue = on;
 }
@@ -3735,7 +3725,7 @@ void OctaMenu::Select(s32 result)
  */
 extern "C" s32 GetAttachmentCountById(AttachmentValues* values, s32 id)
 {
-	s32 index = FindAttachment(values, id);
+	s32 index = values->Find(id);
 	if (index >= 0) {
 		UpdateAttachmentAvailability(values);
 		return values->mEntries[index].mValue;
@@ -3749,9 +3739,7 @@ extern "C" s32 GetAttachmentCountById(AttachmentValues* values, s32 id)
  */
 extern "C" void SetAttachmentCountById(AttachmentValues* values, s32 id, s32 value)
 {
-	s32 index = FindAttachment(values, id);
-	if (index >= 0)
-		values->mEntries[index].mValue = value;
+	values->SetCount(id, value);
 }
 
 // which of his tools he can use, he has them or one of them is going

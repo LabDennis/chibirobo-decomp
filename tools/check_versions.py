@@ -7,7 +7,6 @@ Reconfigures this checkout for each one and puts it back on whatever was
 configured before, so don't run another build at the same time.
 """
 import argparse
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -25,7 +24,7 @@ def build(version, all_source=False):
     targets = ["all_source", "progress"] if all_source else []
     r = subprocess.run(["ninja", *targets], cwd=ROOT, capture_output=True, text=True)
     out = r.stdout + r.stderr
-    return r.returncode == 0 and re.search(r"^\d+ files OK$", out, re.M) is not None, out
+    return r.returncode == 0 and (ROOT / "build" / version / "ok").is_file(), out
 
 
 def check(wanted=None, all_source=False):

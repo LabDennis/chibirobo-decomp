@@ -10108,7 +10108,6 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 }
 
 extern "C" s32 GetAttachmentCountById(AttachmentValues*, s32);
-extern "C" void SetAttachmentCountById(AttachmentValues*, s32, s32);
 
 void MenuPC::State3(u32 frames)
 {

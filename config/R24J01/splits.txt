@@ -1,0 +1,32 @@
+game/stage_data.cpp:
+	.text start:0x80092308 end:0x800927C0
+
+game/wii/stage_table.cpp:
+	.rodata start:0x802D8310 end:0x802D83EC
+	.data start:0x802FEEF0 end:0x802FF2C8
+	.sdata2 start:0x805A4030 end:0x805A4160
+
+game/attachmentcounts.cpp:
+	.text start:0x800E83EC end:0x800E84BC
+
+MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c:
+	.text start:0x8022A180 end:0x8022A450
+
+MSL_C.PPCEABI.bare.H/MSL_Common/rand.c:
+	.text start:0x8022C924 end:0x8022C94C
+	.sdata start:0x805A18A0 end:0x805A18A4
+
+Runtime.PPCEABI.H/global_destructor_chain.c:
+	.text start:0x80231B24 end:0x80231B84
+	.sbss start:0x805A2708 end:0x805A270C
+
+Runtime.PPCEABI.H/ptmf.c:
+	.text start:0x80232110 end:0x802321A4
+	.rodata start:0x802DFD50 end:0x802DFD5C
+
+Runtime.PPCEABI.H/__init_cpp_exceptions.cpp:
+	.text start:0x80232810 end:0x80232880
+	.ctors start:0x802C4580 end:0x802C4584 rename:.ctors$10
+	.dtors start:0x802C4680 end:0x802C4684 rename:.dtors$10
+	.dtors start:0x802C4684 end:0x802C4688 rename:.dtors$15
+	.sdata start:0x805A18C0 end:0x805A18C4

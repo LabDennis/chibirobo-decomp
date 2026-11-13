@@ -17,42 +17,6 @@ s32 __ptmf_test(PTMF* ptmf);
 void __ptmf_scall(...);
 
 /**
- * @note Address: N/A
- * @note Size: 0x24
- */
-void __ptmf_cast(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x28
- */
-void __ptmf_scall4(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x34
- */
-void __ptmf_call4(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x34
- */
-void __ptmf_call(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x80151434
  * @note Size: 0x30
  */

@@ -1,13 +1,16 @@
-#include "game/cgame.h"
-#include "types.h"
 #include "Version.h"
-
-#include "game/globals.h"
+#if defined(VERSION_R24J01)
+#include "game/stagetable.h"
+#else
+#include "game/cgame.h"
 #include "game/stage.h"
 #include "game/ut.h"
 #include "Dolphin/GX/GXTypes.h"
+#endif
+#include "game/globals.h"
 #include <string.h>
 
+#if !defined(VERSION_R24J01)
 extern "C" {
 extern UnkStageObj gStageObjectPlacements[];
 extern UnkObjData objTable[];
@@ -2884,6 +2887,8 @@ extern "C" BOOL LoadStageByIndex(s32 index)
 	return AdvanceStageLoad(&gStageResources, index);
 }
 
+#endif
+
 static inline s32 StageCount()
 {
 	s32 count = 0;
@@ -2981,3 +2986,18 @@ extern "C" s32 GetStageNum()
 {
 	return StageCount();
 }
+
+#if defined(VERSION_R24J01)
+extern "C" const char* GetStageDisplayName(s32 index)
+{
+	const char* name = GetStageName(index);
+	if (name == NULL)
+		name = GetStageFileName(index);
+	return name;
+}
+
+extern "C" s32 GetStageFirstSoundId(s32 index)
+{
+	return stageTable[StageIndex(index)].firstSoundId;
+}
+#endif

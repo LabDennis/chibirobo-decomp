@@ -5,16 +5,7 @@
 #include "game/coordinfo.h"
 #include "Version.h"
 #include "game/stagedata.h"
-
-struct StageDesc {
-	const char* fileName;
-#if defined(VERSION_PAL)
-	const char* moduleName;
-#endif
-	s32 message;
-	u32 flags;
-};
-extern "C" StageDesc stageTable[];
+#include "game/stagetable.h"
 
 // the stage file's environment block, class name from RTTI
 class EnvInfo {

@@ -1,6 +1,7 @@
 #ifndef _GAME_XCHR_H
 #define _GAME_XCHR_H
 
+#include "game/attachmentvalues.h"
 #include "game/xobj.h"
 #include "game/ctpl.h"
 #include "game/cptcl.h"
@@ -91,17 +92,6 @@ struct XObjChrIdleJoint {
 	u8* mLastAdHead;           // _08, the fobj's ad_head last frame
 };
 STATIC_ASSERT(sizeof(XObjChrIdleJoint) == 0xC);
-
-// a count per attachment, id then value for each of the 9
-struct AttachmentValue {
-	s32 mId;    // _00
-	s32 mValue; // _04
-};
-
-struct AttachmentValues {
-	AttachmentValue mEntries[9]; // _00
-};
-STATIC_ASSERT(sizeof(AttachmentValues) == 0x48);
 
 struct PlayerSuits {
 	s32 mLoadStep;

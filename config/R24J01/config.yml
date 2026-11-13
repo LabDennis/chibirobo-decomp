@@ -1,0 +1,5 @@
+object_base: orig/R24J01
+object: sys/main.dol
+hash: 04ab6605677ce632b43d3b68d51991e6956b8023
+symbols: config/R24J01/symbols.txt
+splits: config/R24J01/splits.txt
