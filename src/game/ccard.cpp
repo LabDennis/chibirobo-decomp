@@ -51,6 +51,7 @@ const char* CCard::GetResultString(s32 result)
  */
 s32 CCard::SetStatus(CARDStat* stat)
 {
+	// every wrapper here retries while the card is busy
 	while ((mResult = CARDSetStatus(mChan, mFileInfo.fileNo, stat)) == CARD_RESULT_BUSY) { }
 	return mResult;
 }
@@ -83,7 +84,7 @@ u32 CCard::GetFreeBlocks(s32* bytesNotUsed, s32* filesNotUsed)
 	if (mResult != CARD_RESULT_READY) {
 		return 0;
 	}
-	return *bytesNotUsed / sectorSize;
+	return *bytesNotUsed / sectorSize; // free sectors, not bytes
 }
 
 /**
@@ -103,7 +104,7 @@ s32 CCard::Write(void* buf, s32 length, s32 offset)
 s32 CCard::Read(void* buf, s32 length, s32 offset)
 {
 	while ((mResult = CARDRead(&mFileInfo, buf, length, offset)) == CARD_RESULT_BUSY) { }
-	DCInvalidateRange(buf, length);
+	DCInvalidateRange(buf, length); // the card dma wrote past the cache
 	return mResult;
 }
 
@@ -212,6 +213,7 @@ s32 CCard::Mount(s32 chan, CARDCallback detachCallback)
  */
 s32 CCard::Probe(s32 chan, s32* memSize, s32* sectorSize)
 {
+	// a single shot, unlike ProbeEx no busy retry
 	s32 result = CARDProbeEx(chan, memSize, sectorSize);
 	mResult    = result;
 	return result;
