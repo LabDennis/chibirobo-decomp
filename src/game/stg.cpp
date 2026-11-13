@@ -22,7 +22,7 @@ const char* GetLocalizedPCDialogue(s32 id);
 char* GetLocalizedInterfaceText(s32 id);
 char* GetStatusOverviewLabel(s32 id);
 char* GetStatusIconName(s32 id);
-char* GetItemName(s16 id);
+char* GetItemName(s32 id);
 s32 GetStatusIconEventFlagId(s32 id);
 void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32 w, f32 h, f32 alpha, f32 alpha2);
 void UpdateObject__6CursorFUl(MenuCursor* cursor, s32 a);
@@ -8468,16 +8468,16 @@ void MenuPC::Open()
 }
 
 #if defined(VERSION_JP)
-static const int StatusIconAtlas = 117, StatusSingleIcon = 228, StatusTextBase = 0x56;
+static const int StatusIconAtlas = 117, StatusSingleIcon = 228, StatusTextBase = 0x56, StatusIconCells = 14;
 #else
-static const int StatusIconAtlas = 119, StatusSingleIcon = 230, StatusTextBase = 0x1d;
+static const int StatusIconAtlas = 119, StatusSingleIcon = 230, StatusTextBase = 0x1d, StatusIconCells = 17;
 #endif
 
 static inline void SetStatusIconCell(CTexObj& tex, int cell)
 {
-	PSMTXScale(tex.mMtx[1], 1.0f / 17, 1.0f, 1.0f);
+	PSMTXScale(tex.mMtx[1], 1.0f / StatusIconCells, 1.0f, 1.0f);
 	tex.mMtxDirty = TRUE;
-	PSMTXTrans(tex.mMtx[0], (1.0f / 17) * cell, 0.0f, 0.0f);
+	PSMTXTrans(tex.mMtx[0], (1.0f / StatusIconCells) * cell, 0.0f, 0.0f);
 	tex.mMtxDirty = TRUE;
 }
 
@@ -9754,13 +9754,13 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 	}
 
 	Vec outline[65];
-	f32 centerY = y - 7.2f;
+	f32 centerY = y - 6.0f * 1.2f;
 	for (int i = 0; i < 65; i++) {
 		f32 angle    = 0.09817477f * i - 1.5707964f;
 		f32 sine     = (f32)sin(angle);
 		f32 cosine   = (f32)cos(angle);
-		outline[i].x = sine * 14.4f + x;
-		outline[i].y = -cosine * 14.4f + centerY;
+		outline[i].x = sine * (12.0f * 1.2f) + x;
+		outline[i].y = -cosine * (12.0f * 1.2f) + centerY;
 		outline[i].z = 0.0f;
 	}
 	f32 opacity = 255.0f * alpha;
@@ -9772,8 +9772,8 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 	LoadOverviewTexture(tex, 125);
 	f32 width    = 1.2f * GXGetTexObjWidth(&tex);
 	outline[0].x = x;
-	outline[0].y = centerY + 14.4f;
-	outline[1].x = x + (places * (width - 3.6f) + 34.0f);
+	outline[0].y = centerY + 12.0f * 1.2f;
+	outline[1].x = x + (places * (width - 3.0f * 1.2f) + 34.0f);
 	outline[1].y = outline[0].y;
 	SetGsLineWidth(gs.mCurRenderMode, 18, 5);
 	DrawGsLineStrip(&gs, outline, color, 2);
@@ -9817,7 +9817,7 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
 	u8 a          = (u8)opacity;
-	f32 offset    = places * (width - 3.6f) - 98.0f * 1.2f;
+	f32 offset    = places * (width - 3.0f * 1.2f) - 98.0f * 1.2f;
 	for (s32 i = 0; i < 7; i++) {
 		f32 divisor = 1.0f;
 		for (s32 j = 0; j < i; j++)
@@ -9849,8 +9849,8 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 		default:
 			top = bottom = 0xFFFFFF00 | a;
 		}
-		DrawGsTexturedQuad(&gs, &tex, top, top, bottom, bottom, offset + (7.0f * width + (x - i * (width - 3.6f))), y - 2.4f, 0, width,
-		                   height, 0, 0, 0);
+		DrawGsTexturedQuad(&gs, &tex, top, top, bottom, bottom, offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f))), y - 2.4f, 0,
+		                   width, height, 0, 0, 0);
 		SetGsTevMode(gs.mCurTevStage, 4);
 	}
 	SetGsTevMode(gs.mCurTevStage, 4);
@@ -9976,13 +9976,13 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	if ((value % 100) / 10 == 0)
 		skipTens = true;
 	Vec outline[65];
-	f32 centerY = y - 7.2f;
+	f32 centerY = y - 6.0f * 1.2f;
 	for (int i = 0; i < 65; i++) {
 		f32 angle    = 0.09817477f * i - 1.5707964f;
 		f32 sine     = (f32)sin(angle);
 		f32 cosine   = (f32)cos(angle);
-		outline[i].x = sine * 14.4f + x;
-		outline[i].y = -cosine * 14.4f + centerY;
+		outline[i].x = sine * (12.0f * 1.2f) + x;
+		outline[i].y = -cosine * (12.0f * 1.2f) + centerY;
 		outline[i].z = 0.0f;
 	}
 	f32 opacity = 255.0f * alpha;
@@ -9994,8 +9994,8 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	LoadOverviewTexture(tex, 125);
 	f32 width    = 1.2f * GXGetTexObjWidth(&tex);
 	outline[0].x = x;
-	outline[0].y = centerY + 14.4f;
-	outline[1].x = x + (visible * (width - 3.6f) + 34.0f);
+	outline[0].y = centerY + 12.0f * 1.2f;
+	outline[1].x = x + (visible * (width - 3.0f * 1.2f) + 34.0f);
 	outline[1].y = outline[0].y;
 	StrokeStatusOutline(outline, color, 2);
 
@@ -10022,7 +10022,7 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
 	u32 white     = 0xFFFFFF00 | (u8)opacity;
-	f32 offset    = (places - 1) * (width - 3.6f) - 98.0f * 1.2f;
+	f32 offset    = (places - 1) * (width - 3.0f * 1.2f) - 98.0f * 1.2f;
 	for (s32 i = 0; i < 4; i++) {
 		f32 divisor = 1.0f;
 		for (s32 j = 0; j < i; j++)
@@ -10033,16 +10033,17 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 		PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
 		tex.mMtxDirty = TRUE;
 		SetGsTevMode(gs.mCurTevStage, 0);
-		f32 gap = i < 2 ? width - 3.6f : 0.0f;
+		f32 gap = i < 2 ? width - 3.0f * 1.2f : 0.0f;
 		if (skipTens && i == 0)
-			gap -= width - 3.6f;
-		DrawOverviewTexture(tex, white, gap + (offset + (7.0f * width + (x - i * (width - 3.6f)))), y - 2.4f, width, height);
+			gap -= width - 3.0f * 1.2f;
+		DrawOverviewTexture(tex, white, gap + (offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f)))), y - 2.4f, width, height);
 	}
 	SetGsTevMode(gs.mCurTevStage, 4);
 	LoadOverviewTexture(tex, 168);
 	u16 sw = GXGetTexObjWidth(&tex), sh = GXGetTexObjHeight(&tex);
 	SetGsTevMode(gs.mCurTevStage, 0);
-	DrawOverviewTexture(tex, white, offset + (7.0f * width + (x - (width - 3.6f))), y - 1.2f, 0.8f * (1.2f * sw), 0.8f * (1.2f * sh));
+	DrawOverviewTexture(tex, white, offset + (7.0f * width + (x - (width - 3.0f * 1.2f))), y - 1.2f, 0.8f * (1.2f * sw),
+	                    0.8f * (1.2f * sh));
 }
 
 // The atlas is measured twice; the discard dialog uses the enlarged sample.
@@ -10814,12 +10815,12 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 		h    = 0.8f * (scale * GXGetTexObjHeight(&tex));
 	} else {
 		icon = GetItemIconTextureIndex(id);
-		if (icon < 0)
-			return;
-		tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
-		w   = scale * GXGetTexObjWidth(&tex);
-		h   = scale * GXGetTexObjHeight(&tex);
+		tex  = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
+		w    = scale * GXGetTexObjWidth(&tex);
+		h    = scale * GXGetTexObjHeight(&tex);
 	}
+	if (icon < 0)
+		return;
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	DrawOverviewTexture(tex, white, 52.0f * scale + left, 48.0f * scale + top, w, h);
 }

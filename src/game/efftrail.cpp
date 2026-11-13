@@ -628,8 +628,6 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 				} else if (p.mState == -3) {
 					tex      = PointTexture(texture, 153);
 					rotation = 0;
-				} else {
-					continue;
 				}
 				radius    = 44;
 				u32 color = display.mAmount >= 0 ? (0xffffff00 | (u32)(200 * alpha)) : (0xff000000 | (u32)(128 * alpha));

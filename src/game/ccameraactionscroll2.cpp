@@ -307,7 +307,8 @@ void CCameraActionScroll2::Reset()
 	mCenter.y   = center.y;
 	mCenter.z   = center.z;
 	mCenterPtr  = &mCenter;
-	mYaw        = atan2(mInterest.x - mEye.x, mInterest.z - mEye.z);
+	CVec front  = CVec(0.0f, 0.0f, 1.0f);
+	mYaw        = atan2(mInterest.x - front.x, mInterest.z - front.z);
 	CalcLimits(this, GetLimits(gGame.mStage));
 	Update(1);
 }

@@ -2943,13 +2943,10 @@ extern "C" void DrawTitleScreen(Title* title)
 			width = MeasureGameTextWidth(&gs, GetLocalizedInterfaceText(0x16), 1, 24.0f);
 #endif
 			break;
-		default:
-			goto finish;
 		}
 
 		DrawTitleCursors(title, width / 2, y);
 	}
-finish:
 	EndGsCamera(&gGame.mGs);
 }
 
