@@ -38,6 +38,7 @@ AXSTUDIO* __AXGetStudio(void)
 {
 	return &__AXStudio;
 }
+// NONMATCHING: register allocation and a few instructions around the clamp differ from retail
 void __AXDepopFadeMain(s32* level, u16* valueWords, s16* delta)
 {
 	s32 average = *level / AX_SAMPLES_PER_FRAME;
@@ -58,6 +59,7 @@ void __AXDepopFadeMain(s32* level, u16* valueWords, s16* delta)
 	}
 }
 
+// NONMATCHING: register allocation and a few instructions around the clamp differ from retail
 void __AXDepopFadeRmt(s32* level, u16* valueWords, s16* delta)
 {
 	s32 average = *level / AX_SAMPLES_PER_FRAME_RMT;
