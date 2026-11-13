@@ -331,6 +331,8 @@ game/gxb.cpp:
 game/titlestates.cpp:
 	.text       start:0x80031940 end:0x80031C98
 	.ctors      start:0x8020006C end:0x80200070
+	.data       start:0x80217D90 end:0x8021807C
+	.sdata2     start:0x80663138 end:0x8066314C
 
 game/stg.cpp:
 	.text       start:0x80031C98 end:0x800650A0
