@@ -569,43 +569,7 @@ public:
 STATIC_ASSERT(sizeof(MenuPC) == 0x450);
 #endif
 
-// a save file as the save and title menus list it
-struct MenuSaveSlot {
-	u32 mUsed;           // _00
-	s32 mLevel;          // _04
-	f32 mBattery;        // _08
-	f32 mMaxBattery;     // _0C
-	u32 mMoney;          // _10
-	u32 mExp;            // _14
-	u32 mScrap;          // _18
-	u32 mRank;           // _1C
-	u32 mHours;          // _20
-	u32 mMinutes;        // _24
-	u32 mStage;          // _28
-	u32 mTimeMode;       // _2C
-	u8 _30[0x40 - 0x30]; // _30
-	s32 mState;          // _40, 1 when the file is broken
-	u8 mActive;          // _44
-};
-STATIC_ASSERT(sizeof(MenuSaveSlot) == 0x48);
-
-inline void ClearSaveSlot(MenuSaveSlot* slot)
-{
-	slot->mUsed       = 0;
-	slot->mLevel      = 0;
-	slot->mBattery    = 0.0f;
-	slot->mMaxBattery = 0.0f;
-	slot->mMoney      = 0;
-	slot->mExp        = 0;
-	slot->mScrap      = 0;
-	slot->mRank       = 0;
-	slot->mHours      = 0;
-	slot->mMinutes    = 0;
-	slot->mStage      = 0;
-	slot->mTimeMode   = 0;
-	slot->mState      = 0;
-	slot->mActive     = 0;
-}
+#include "game/menusave.h"
 
 // the save menu, its mode handlers sit in the table at 0x802122B4
 class MenuSave : public Menu {
@@ -775,8 +739,6 @@ STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
 
 extern "C" {
 // CMenu's own update, the overrides call it first
-BOOL IsSaveSlotIntact(MenuSaveSlot* slot);
-void ResetSaveSlotRecord(MenuSaveSlot* slot);
 void RebuildStageSelectList(MenuStageSelect* menu);
 void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha);
 }

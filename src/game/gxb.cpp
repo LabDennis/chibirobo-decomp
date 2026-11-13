@@ -2350,6 +2350,8 @@ static inline bool IsLineLit(Title* title, s32 line)
 	return lit;
 }
 
+MenuSaveSlot gTitleSaveSlots[3];
+
 extern "C" {
 void DrawMenuBannerPanels(const char*, f32, f32, f32, f32);
 void DrawSaveSlotDetails(MenuSaveSlot*, u8, s16, u8, f32, f32, f32, f32, f32, f32, f32);
