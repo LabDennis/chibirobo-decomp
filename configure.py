@@ -64,6 +64,12 @@ parser.add_argument(
     help="build a Wii localization mod from R24J01",
 )
 parser.add_argument(
+    "--wii-gamecube-pad",
+    action="store_true",
+    help="Wii mod: a GameCube controller works next to the Wii Remote; with only a GameCube controller in, the game "
+    "stops asking for the Wii Remote, Nunchuk and pointer",
+)
+parser.add_argument(
     "--binutils",
     metavar="BINARY",
     type=Path,
@@ -146,9 +152,10 @@ config = ProjectConfig()
 config.version = str(args.version)
 version_num = VERSIONS.index(config.version)
 wii = config.version == "R24J01"
-if args.wii_locale and not wii:
-    parser.error("--wii-locale requires --version R24J01")
-if args.wii_locale and args.mode == "progress":
+wii_mod = bool(args.wii_locale or args.wii_gamecube_pad)
+if wii_mod and not wii:
+    parser.error("--wii-locale and --wii-gamecube-pad require --version R24J01")
+if wii_mod and args.mode == "progress":
     parser.error("progress is measured against retail releases")
 
 # Apply arguments
@@ -160,7 +167,7 @@ config.compilers_path = args.compilers
 # The US and Japanese GameCube linkers used ASCII '0' for padding.
 config.fill_padding = config.version in ("GGTE01", "GGTJ01_01")
 config.generate_map = args.map or not wii
-config.non_matching = args.non_matching or bool(args.wii_locale)
+config.non_matching = args.non_matching or wii_mod
 config.sjiswrap_path = args.sjiswrap
 config.ninja_path = args.ninja
 config.progress = args.progress
@@ -182,16 +189,25 @@ config.wibo_tag = "1.0.3"
 # Project
 config.config_path = Path("config") / config.version / "config.yml"
 config.check_sha_path = Path("config") / config.version / "build.sha1"
-if args.wii_locale:
-    from tools.wii_locale import disc_image, write_localization
+if wii_mod:
+    from tools.wii_locale import disc_image, write_localization, write_mod
 
-    config.output_name = f"wii-{args.wii_locale}"
+    parts = [args.wii_locale] if args.wii_locale else []
+    if args.wii_gamecube_pad:
+        parts.append("gcpad")
+    config.output_name = "wii-" + "-".join(parts)
     config.check_sha_path = None
     config.progress = False
     translations = Path("mods/wii-localization/interface.json")
     config.reconfig_deps = [translations, Path("tools/wii_locale.py")]
+    features = [f"{args.wii_locale} localization"] if args.wii_locale else []
+    if args.wii_gamecube_pad:
+        features.append("GameCube controller")
     try:
-        write_localization(translations, args.wii_locale, config.out_path(), disc_image(Path("orig/R24J01")))
+        base = disc_image(Path("orig/R24J01"))
+        if args.wii_locale:
+            write_localization(translations, args.wii_locale, config.out_path())
+        write_mod(config.out_path(), base, ", ".join(features))
     except ValueError as error:
         parser.error(str(error))
 config.asflags = [
@@ -1187,6 +1203,8 @@ if wii:
         wii_cflags.append(f"-W {args.warn}")
     if args.wii_locale:
         wii_cflags.extend(["-DWII_LOCALIZATION", f"-i {config.out_path().as_posix()}/include"])
+    if args.wii_gamecube_pad:
+        wii_cflags.append("-DWII_GAMECUBE_PAD")
     wii_cflags.append("-DDEBUG=1" if args.debug else "-DNDEBUG=1")
     config.libs = [
         {
@@ -1352,7 +1370,7 @@ def append_treemap_step(config: ProjectConfig) -> None:
 if args.mode == "configure":
     # Write build.ninja and objdiff.json
     generate_build(config)
-    if not args.wii_locale:
+    if not wii_mod:
         append_treemap_step(config)
 elif args.mode == "progress":
     # Print progress information
