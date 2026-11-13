@@ -2684,7 +2684,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 {
 	switch (stage->mState) {
 	case 0: {
-#if defined(VERSION_JP)
+#if defined(VERSION_JP) || defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
 		strcpy(stage->mDataPath, FormatToStaticBuffer("bin/%s.bin", stageTable[index].fileName));
 #else
 		strcpy(stage->mDataPath,

@@ -531,8 +531,12 @@ extern "C" BOOL IsGlobalDataLoaded()
  */
 extern "C" BOOL LoadGlobalResourceData()
 {
+#if defined(VERSION_JP) || defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
 #if defined(VERSION_JP)
 	const char* path = gGlobalResourceFileName;
+#else
+	const char* path = "bin/globals.bin";
+#endif
 #else
 	char path[0x40];
 	sprintf(path, "bin%s/%s", gResourceDirectorySuffixByLanguage[gGame.mLanguage], gGlobalResourceFileName);

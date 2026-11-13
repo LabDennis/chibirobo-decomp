@@ -72,6 +72,11 @@ game/ringmenupointer.cpp:
 game/wii/atcmenuselection.cpp:
 	.text start:0x800ED3B8 end:0x800ED45C
 
+game/wii/cfile.cpp:
+	extab start:0x80010950 end:0x80010960
+	extabindex start:0x80017240 end:0x80017258
+	.text start:0x802B46A0 end:0x802B4798
+
 rel/module.c:
 	.text start:0x8016AD78 end:0x8016AF80
 	.rodata start:0x802DDCA0 end:0x802DDD10
