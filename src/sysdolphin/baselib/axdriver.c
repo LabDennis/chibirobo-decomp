@@ -183,32 +183,32 @@ s32 sAXRearRightAngle = 120;
 s32 sAXRearLeftAngle = 240;
 s32 sAXFrontLeftAngle = 330;
 
-u8* sAXEffectHeapBase;
-u32 axfxallocsize;
-u16* sAXGroupVVoiceLimits;
-s32 sAXMaxGroupIndex;
-u32 axfxmaxsize;
-s32 sAXActiveVVoiceCount;
-u32 sAXPausedTrackMask;
-s32 lbl_8065BAEC;
-u32** lbl_8065BAF0;
-s32 lbl_8065BAF4;
-u32** sSoundCommandStreams;
-s32 sSoundCommandStreamCount;
-u32* sSoundBankFirstCommandIndex;
-s32 sSoundBankCount;
-u32* lbl_8065BB08;
-s32 lbl_8065BB0C;
-u32* lbl_8065BB10;
-s32 lbl_8065BB14;
-HSD_SM* sAXActiveVVoices;
-HSD_SM* sAXFreeVVoices;
-s32 sAXDriverTick;
-HSD_SM* sAXVVoicePool;
-s32 vidhigh;
-s32 sAXVVoiceIndexMask;
-s32 sAXVVoiceIndexBits;
 s32 sAXMaxVVoiceIndex;
+s32 sAXVVoiceIndexBits;
+s32 sAXVVoiceIndexMask;
+s32 vidhigh;
+HSD_SM* sAXVVoicePool;
+s32 sAXDriverTick;
+HSD_SM* sAXFreeVVoices;
+HSD_SM* sAXActiveVVoices;
+s32 lbl_8065BB14;
+u32* lbl_8065BB10;
+s32 lbl_8065BB0C;
+u32* lbl_8065BB08;
+s32 sSoundBankCount;
+u32* sSoundBankFirstCommandIndex;
+s32 sSoundCommandStreamCount;
+u32** sSoundCommandStreams;
+s32 lbl_8065BAF4;
+u32** lbl_8065BAF0;
+s32 lbl_8065BAEC;
+u32 sAXPausedTrackMask;
+s32 sAXActiveVVoiceCount;
+u32 axfxmaxsize;
+s32 sAXMaxGroupIndex;
+u16* sAXGroupVVoiceLimits;
+u32 axfxallocsize;
+u8* sAXEffectHeapBase;
 
 /**
  * @note Address: 0x801E60F8
@@ -938,7 +938,7 @@ s32 AXDriverStartVVoice(u32 sfx, u8 vol, u8 x27, u8 x2D, s16 x32, u8 aux0, u8 au
 	s32 sample;
 	BOOL enabled;
 
-	bank   = sfx >> 16;
+	bank   = (sfx & 0xFFFF0000) >> 16;
 	sample = sfx & 0xFFFF;
 	if (sSoundBankCount <= bank) {
 		return -1;

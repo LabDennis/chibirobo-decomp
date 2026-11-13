@@ -380,7 +380,7 @@ void HSD_SynthSFXUpdateVolume(HSD_SynthSFXNode* node);
 void HSD_SynthSFXInitMix(HSD_SynthSFXNode* node);
 void HSD_SynthSFXUpdateMix(HSD_SynthSFXNode* node, s32 interpolate);
 void ApplySynthMixTargetImmediately(HSD_SynthSFXNode* node);
-void HSD_SynthSFXLinkUpdateRearPitch(HSD_SynthSFXNode* rear, u16 unused);
+void HSD_SynthSFXLinkUpdateRearPitch(HSD_SynthSFXNode* rear);
 void UpdateSynthVolumeFadersAndVoices(void);
 void AdvancePendingSynthMixUpdates(void);
 void HSD_SynthCallback(void);
@@ -888,7 +888,7 @@ s32 HSD_SynthSFXLoad(const s8* filename, s32 bankID, void (*callback)(s32, s32),
 	s32 entrynum;
 	u32 enabled;
 
-	ASSERT_SYNTH_REPORT(0x18F, bankID >= 0 && bankID < hsd_SynthSFXBankNum, "invalid bankID = %d; filename = %s\n", bankID, filename);
+	ASSERT_SYNTH_REPORT(0x18F, (bankID >= 0 && bankID < hsd_SynthSFXBankNum), "invalid bankID = %d; filename = %s\n", bankID, filename);
 
 	entrynum = DVDConvertPathToEntrynum(filename);
 	if (entrynum != -1) {
@@ -1548,7 +1548,7 @@ s32 StartSynthSoundEffect(s32 sfxID, s32 vol, s32 volMode, s32 vol2, s32 vol2Mod
 				rearNode->u.rear.lastVol   = ve.currentVolume;
 				rearNode->u.rear.lastDelta = ve.currentDelta;
 				rearNode->u.rear.pitch     = node->freqBase;
-				HSD_SynthSFXLinkUpdateRearPitch(rearNode, 0);
+				HSD_SynthSFXLinkUpdateRearPitch(rearNode);
 			}
 			for (j = 0; j < entry->count; j++) {
 				AXSetVoicePriority(voices[k * 2 + j], priority);
@@ -2903,7 +2903,7 @@ void HSD_SynthSFXSetMix(s32 id, f32 mixMain, f32 mixAuxA, f32 mixAuxB)
  * @note Address: 0x801EE54C
  * @note Size: 0x70
  */
-void HSD_SynthSFXLinkUpdateRearPitch(HSD_SynthSFXNode* rearEntry, u16 unused)
+void HSD_SynthSFXLinkUpdateRearPitch(HSD_SynthSFXNode* rearEntry)
 {
 	HSD_SynthSFXNode* it;
 
@@ -2964,7 +2964,7 @@ void HSD_SynthSFXUpdatePitch(HSD_SynthSFXNode* node)
 		HSD_SynthSFXNode* rearEntry = &sSynthSfxNodes[node->rearIndex];
 		ASSERT_SYNTH(0x86F, rearEntry->sfxID == -2);
 		rearEntry->u.rear.pitch = pitch;
-		HSD_SynthSFXLinkUpdateRearPitch(rearEntry, 0);
+		HSD_SynthSFXLinkUpdateRearPitch(rearEntry);
 	}
 }
 
@@ -5010,7 +5010,7 @@ void HSD_SynthPStreamFirstHakoDataCallback(s32 result, s32 pstreamID)
 			rear                   = &sSynthSfxNodes[node->rearIndex];
 			rear->u.rear.lastVol   = ve.currentVolume;
 			rear->u.rear.lastDelta = ve.currentDelta;
-			HSD_SynthSFXLinkUpdateRearPitch(rear, 0);
+			HSD_SynthSFXLinkUpdateRearPitch(rear);
 			if (node->flags & 4) {
 				rear->u.rear.pitch = 0.0f;
 			} else {
