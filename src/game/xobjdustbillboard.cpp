@@ -8,7 +8,7 @@
 static inline HSD_AnimJoint* Joint(CJArchive* archive, s32 id)
 {
 	if (id >= 0) {
-		s32 index = id % 1000;
+		s32 index = id % 1000; // ids index the archive in 1000-entry banks
 		if (index < archive->mNum[0]) {
 			return archive->mAnimJoint != NULL ? archive->mAnimJoint[index] : NULL;
 		}
@@ -51,12 +51,12 @@ void XObjDust::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void*
 			void* joint = jointAnim != NULL ? jointAnim : Joint(&mArchive, id);
 			void* shape = shapeAnim != NULL ? shapeAnim : Shape(&mArchive, id);
 			f32 materialFrame;
-			if (mMatAnim != NULL) {
+			if (mMatAnim != NULL) { // keep the material animation's frame
 				HSD_AObj* animation = FindMaterialOrTextureAnimationInJointTree(mJObj);
 				materialFrame       = animation != NULL ? HSD_AObjGetCurrentFrame(animation) : 0.0f;
 			} else {
 				materialFrame = 0.0f;
-				mMatAnim      = Material(&mArchive, 0);
+				mMatAnim      = Material(&mArchive, 0); // the default material animation
 			}
 			if (joint != NULL || mMatAnim != NULL || shape != NULL) {
 				HSD_JObjRemoveAnimAll(mJObj);
@@ -87,12 +87,12 @@ void XObjDust::DrawObjectEffects()
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 		gGame.mGs.mBillboardEnabled = 1;
 		f32 height;
-		f32 width = 8.0f * mMoveScale.x;
+		f32 width = 8.0f * mMoveScale.x; // the billboard's base size
 		height    = 8.0f * mMoveScale.y;
 		u32 color;
 		if (__fpclassifyf(mHeading) != FP_NAN) {
 			color = 0xC8C8C800;
-		} else if (mStatus.mFlags & 0x4000000000000000ULL) {
+		} else if (mStatus.mFlags & 0x4000000000000000ULL) { // a different tint while the hit flag is set
 			color = 0xC8646400;
 		} else {
 			color = 0xC8C8C800;
@@ -113,7 +113,7 @@ void XObjDust::DrawObjectEffects()
  */
 void XObjDust::DrawWithView(Mtx view)
 {
-	if (GetObjFlags() & 2) {
+	if (GetObjFlags() & 2) { // flags 2 and 4 draw normally
 		DrawWithView__4XObjFPA4_f(this, view);
 	} else if (GetObjFlags() & 4) {
 		DrawWithView__4XObjFPA4_f(this, view);

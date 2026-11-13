@@ -22,7 +22,7 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 {
 	if ((value & 3U) == 1)
 		return value;
-	if (mStatus.mFlags & 0x100000)
+	if (mStatus.mFlags & 0x100000) // still falling, not collectible yet
 		return 0;
 
 	XObjChr* player = gGame.GetPlayer();
@@ -34,10 +34,10 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 
 	s32 sound  = -1;
 	s32 effect = -1;
-	if (IsCoinItemInRange(this, 0, 100)) {
+	if (IsCoinItemInRange(this, 0, 100)) { // items 0..99 are money
 		AdjustPlayerMoney(&player->mParams, GetPickupRewardValue(GetItem()));
 		sound = 0x89;
-	} else if (IsCoinItemInRange(this, 100, 200)) {
+	} else if (IsCoinItemInRange(this, 100, 200)) { // items 100..199 are scrap
 		s32 scrap = GetPickupRewardValue(GetItem() - 97);
 		if (!scrap) {
 			AttrInfo attr(CoordInfo(GetSpawnData(mAnimId + 39)));
@@ -45,13 +45,13 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 		}
 		AddPlayerScrap(&player->mParams, scrap);
 		sound = 0x123;
-	} else if (IsCoinItemInRange(this, 200, 300)) {
+	} else if (IsCoinItemInRange(this, 200, 300)) { // items 200..299 are battery
 		Params& stats = player->mParams;
 		s32 reward    = GetPickupRewardValue(GetItem() - 193);
 		stats.SetBattery(reward + stats.mBattery);
 		sound  = 0x8e;
 		effect = 20;
-	} else if (IsCoinItemInRange(this, 300, 400)) {
+	} else if (IsCoinItemInRange(this, 300, 400)) { // items 300..399 are experience
 		AdjustPlayerExperience(&player->mParams, GetPickupRewardValue(GetItem() - 292));
 		sound = 0x11d;
 	}
@@ -71,7 +71,7 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
  */
 void XObjCoin::UpdateObject(u32 frames)
 {
-	const f32 radians = 0.01745329252f;
+	const f32 radians = 0.01745329252f; // degrees to radians
 	if (IsCoinItemInRange(this, 0, 100)) {
 		f32 speed;
 		if (mSpin >= 0.0f) {
@@ -114,7 +114,7 @@ void XObjCoin::UpdateObject(u32 frames)
 		}
 	}
 	switch (mParam0) {
-	case 1:
+	case 1: // a dropped coin gets its heading and fall speed
 		mState      = 1;
 		mFallFrames = 0;
 		mParam0     = 0;
