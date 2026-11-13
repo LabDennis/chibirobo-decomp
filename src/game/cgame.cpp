@@ -97,6 +97,17 @@ int rand(void);
 }
 GXColor gMessageFontDefaultColor = { 0, 0, 0, 0x80 };
 
+// a lead byte of a two byte shift jis character
+static inline bool IsSJISByte(char c)
+{
+	return ((u8)c >= 0x81 && (u8)c <= 0x9F) || ((u8)c >= 0xE0 && (u8)c <= 0xFC);
+}
+
+static inline bool IsSJISLead(char c)
+{
+	return IsSJISByte(c) ? true : false;
+}
+
 // shuts a wipe off where it is
 static inline void ClearWipe(CScrnWipe* wipe)
 {
@@ -232,9 +243,15 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 					game->mStageName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
 					game->mStageName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
 					game->mStageName.mCount++;
-					if (gGame.IsJapanese() && IsSjisLead(*name)) {
+#if defined(VERSION_JP)
+					if (IsSJISLead(*name)) {
 						name++;
 					}
+#else
+					if (gGame.mLanguage == 6 && IsSJISLead(*name)) {
+						name++;
+					}
+#endif
 				}
 				for (s32 i = game->mStageName.mCount; i < 20; i++) {
 					game->mStageName.mChars[i].mText  = NULL;

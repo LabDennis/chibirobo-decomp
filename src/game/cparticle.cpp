@@ -106,7 +106,7 @@ HSD_Generator* CParticle::Create(u32 code, u8 type, HSD_JObj* jobj, BOOL keep)
  * @note Address: 0x801A8BB0
  * @note Size: 0x16C
  */
-HSD_Generator* CParticle::CreateSRT(u32 code, s32 status, const Vec& translate, const Vec& scale, const Vec& rotate, BOOL keep)
+HSD_Generator* CParticle::CreateSRT(u32 code, s32 status, const Vec& translate, const Vec& scale, Vec rotate, BOOL keep)
 {
 	HSD_Generator* gen = NULL;
 	for (int i = 0; i < CPARTICLE_GEN_NUM; i++) {
