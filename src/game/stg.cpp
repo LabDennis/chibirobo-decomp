@@ -762,7 +762,7 @@ BOOL MenuPC::Draw()
 		{
 			textureScrollU -= 0.008f;
 			textureScrollV -= 0.008f;
-			f32 height = this->mFade;
+			f32 height = this->mFrameHeight;
 			{
 				f32 coord0     = 130;
 				f32 coord1     = 40.0f;
@@ -851,7 +851,7 @@ BOOL MenuPC::Draw()
 						sprintf(labelText, "%.255s", GetPCMenuLabelText(1));
 						break;
 					case 3:
-						if (this->mHasMainMenu)
+						if (this->mShopOnly)
 							sprintf(labelText, "%.255s", GetPCMenuLabelText(3));
 						else
 							sprintf(labelText, "%.255s", GetPCMenuLabelText(2));
@@ -898,7 +898,7 @@ BOOL MenuPC::Draw()
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), 0xFFB62800 | (u32)(255.0f * this->mAlpha), labelText, x, y, 0,
 					                             18.0f, 18.0f);
 				}
-				if (!this->mHasMainMenu) {
+				if (!this->mShopOnly) {
 					f32 rotation = 0;
 
 					f32 top = 129;
@@ -1297,7 +1297,7 @@ inline void MenuRequest::Open()
 	_52C   = 0.0f;
 	_530   = 0.0f;
 	_534   = 0.0f;
-	mAlpha = 0.0f;
+	_53C   = 0.0f;
 	mDelay = 0;
 }
 
@@ -3410,11 +3410,11 @@ void MenuStatus::State3(u32)
 			menu->mPhase    = 0;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; i++) {
-				menu->mTabs2[i].mPosX = 0.0f;
+				menu->mTabs2[i].mX = 0.0f;
 				if (menu->mHasFourthTab) {
-					menu->mTabs2[i].mX = 198.0f + i * 108 - 8.0f;
+					menu->mTabs2[i].mTargetX = 198.0f + i * 108 - 8.0f;
 				} else {
-					menu->mTabs2[i].mX = 252.0f + i * 108;
+					menu->mTabs2[i].mTargetX = 252.0f + i * 108;
 				}
 			}
 			menu->mTargetX = 758.0f;
@@ -3499,7 +3499,7 @@ void MenuStatus::State1(u32 frames)
 		if (pad.mPad->mTrigger & 0x1200) {
 			menu->mSlide = -200.0f;
 			for (int i = 0; i < 4; i++) {
-				menu->mTabs[i].mX = -102.0f;
+				menu->mTabs[i].mTargetX = -102.0f;
 			}
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			menu->mPhase++;
@@ -3516,19 +3516,19 @@ void MenuStatus::State1(u32 frames)
 				menu->mPhase    = 0;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				for (int i = 0; i < 4; i++) {
-					menu->mTabs[i].mX = -102.0f;
+					menu->mTabs[i].mTargetX = -102.0f;
 				}
 				for (int i = 0; i < 4; i++) {
-					menu->mTabs2[i].mPosX = 758.0f;
+					menu->mTabs2[i].mX = 758.0f;
 					if (menu->mHasFourthTab) {
-						menu->mTabs2[i].mX = 198.0f + i * 108 - 8.0f;
+						menu->mTabs2[i].mTargetX = 198.0f + i * 108 - 8.0f;
 					} else {
-						menu->mTabs2[i].mX = 252.0f + i * 108;
+						menu->mTabs2[i].mTargetX = 252.0f + i * 108;
 					}
 				}
 				s32 count = CountMenuItems();
 				for (int i = 0; i < 4; i++) {
-					menu->mTabs2[i].mX = 0.0f;
+					menu->mTabs2[i].mTargetX = 0.0f;
 				}
 				menu->mTargetX = 360.0f - (count - 1) * 51;
 				if (count == 0) {
@@ -3557,7 +3557,7 @@ void MenuStatus::State1(u32 frames)
 				menu->mPhase           = 0;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				for (int i = 0; i < 4; i++) {
-					menu->mTabs[i].mX = -102.0f;
+					menu->mTabs[i].mTargetX = -102.0f;
 				}
 				u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
 				menu->mTitle.Set(GetLocalizedInterfaceText(StatusTitleText + 3), color);
@@ -3580,7 +3580,7 @@ void MenuStatus::State1(u32 frames)
 				menu->mPhase          = 0;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				for (int i = 0; i < 4; i++) {
-					menu->mTabs[i].mX = -102.0f;
+					menu->mTabs[i].mTargetX = -102.0f;
 				}
 				u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
 				menu->mTitle.Set(GetLocalizedInterfaceText(StatusTitleText + 2), color);
@@ -3596,7 +3596,7 @@ void MenuStatus::State1(u32 frames)
 				menu->mPhase       = 0;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				for (int i = 0; i < 4; i++) {
-					menu->mTabs[i].mX = -102.0f;
+					menu->mTabs[i].mTargetX = -102.0f;
 				}
 				u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
 				menu->mTitle.Set(GetLocalizedInterfaceText(StatusTitleText + 4), color);
@@ -4644,7 +4644,7 @@ extern "C" void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, 
 void MenuPC::State11(u32)
 {
 	MenuPC* menu = this;
-	if (menu->mFade <= 2.0f) {
+	if (menu->mFrameHeight <= 2.0f) {
 		gGame.mEvt._10 = menu->mExitState;
 		menu->Close();
 		sMenuMain.Resume();
@@ -4928,11 +4928,11 @@ void MenuStatus::State9(u32)
 			menu->mTargetOverviewX = 1086.0f;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; i++) {
-				menu->mTabs[i].mPosX = 0.0f;
+				menu->mTabs[i].mX = 0.0f;
 				if (menu->mHasFourthTab) {
-					menu->mTabs[i].mX = 198.0f + i * 108 - 8.0f;
+					menu->mTabs[i].mTargetX = 198.0f + i * 108 - 8.0f;
 				} else {
-					menu->mTabs[i].mX = 252.0f + i * 108;
+					menu->mTabs[i].mTargetX = 252.0f + i * 108;
 				}
 			}
 			menu->_658      = 0.0f;
@@ -5039,11 +5039,11 @@ void MenuStatus::State8(u32)
 			menu->mTargetGridX = 959.0f;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; i++) {
-				menu->mTabs[i].mPosX = 0.0f;
+				menu->mTabs[i].mX = 0.0f;
 				if (menu->mHasFourthTab) {
-					menu->mTabs[i].mX = 198.0f + i * 108 - 8.0f;
+					menu->mTabs[i].mTargetX = 198.0f + i * 108 - 8.0f;
 				} else {
-					menu->mTabs[i].mX = 252.0f + i * 108;
+					menu->mTabs[i].mTargetX = 252.0f + i * 108;
 				}
 			}
 			menu->mPrevMode = menu->mMode;
@@ -5081,11 +5081,11 @@ void MenuStatus::State5(u32)
 		menu->mTargetDiagramX = 1086.0f;
 		PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 		for (int i = 0; i < 4; i++) {
-			menu->mTabs[i].mPosX = 0.0f;
+			menu->mTabs[i].mX = 0.0f;
 			if (menu->mHasFourthTab) {
-				menu->mTabs[i].mX = 198.0f + i * 108 - 8.0f;
+				menu->mTabs[i].mTargetX = 198.0f + i * 108 - 8.0f;
 			} else {
-				menu->mTabs[i].mX = 252.0f + i * 108;
+				menu->mTabs[i].mTargetX = 252.0f + i * 108;
 			}
 		}
 		menu->mPrevMode = menu->mMode;
@@ -5210,7 +5210,7 @@ void MenuPC::State1(u32 frames)
 void MenuPC::State0(u32)
 {
 	MenuPC* menu = this;
-	if (menu->mHasMainMenu) {
+	if (menu->mShopOnly) {
 		ResetPCText(menu, 3);
 	} else {
 		ResetPCText(menu, 1);
@@ -5275,7 +5275,7 @@ void MenuPC::State2(u32)
 		}
 	} else if (pad.mPad->mTrigger & 0x200) {
 		ResetPCText(menu, 11);
-		menu->mTargetFade = 0.0f;
+		menu->mTargetFrameHeight = 0.0f;
 		RestorePCHistory(menu);
 	}
 }
@@ -5820,7 +5820,7 @@ void MenuPC::State7(u32 frames)
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			PopulateShopCatalogPage(&gShopCatalogPage);
 			ResetPCText(menu, 11);
-			menu->mTargetFade = 0.0f;
+			menu->mTargetFrameHeight = 0.0f;
 			RestorePCHistory(menu);
 		}
 		break;
@@ -5898,7 +5898,7 @@ BOOL MenuPC::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
 		PCEase(_198, _1A0);
-		PCEase(mFade, mTargetFade);
+		PCEase(mFrameHeight, mTargetFrameHeight);
 		PCSlide(mTextX, mTargetX, 6.0f * frames);
 		PCSlide(mTextY, mTargetY, 6.0f * frames);
 		ApproachHudValue(&mScroll, &mScrollTarget, 17.0f);
@@ -7331,8 +7331,8 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 			bob = 4.0f * (f32)sin(0.017453292f * ((menu->mAnimationFrame * 20) % 360));
 		else
 			bob = 0.0f;
-		f32 x = 6.0f + (8.0f + ((menu->mTabs[i].mPosX - 52.0f) + menu->mOffsetX));
-		f32 y = bob + ((180.0f + menu->mTabs[i].mPosY) + menu->mOffsetY);
+		f32 x = 6.0f + (8.0f + ((menu->mTabs[i].mX - 52.0f) + menu->mOffsetX));
+		f32 y = bob + ((180.0f + menu->mTabs[i].mY) + menu->mOffsetY);
 		switch (i) {
 		case 0:
 			offset = -12.0f;
@@ -7654,9 +7654,9 @@ BOOL MenuRequest::Update(u32 frames)
 			mPhase++;
 			break;
 		case 1:
-			mAlpha += 0.08f * frames;
-			if (mAlpha >= 1.0f) {
-				mAlpha = 1.0f;
+			_53C += 0.08f * frames;
+			if (_53C >= 1.0f) {
+				_53C   = 1.0f;
 				mDelay = 10 * frames;
 				mPhase++;
 			}
@@ -7673,9 +7673,9 @@ BOOL MenuRequest::Update(u32 frames)
 			}
 			break;
 		case 4:
-			mAlpha -= 0.08f * frames;
-			if (mAlpha < 0.0f) {
-				mAlpha = 0.0f;
+			_53C -= 0.08f * frames;
+			if (_53C < 0.0f) {
+				_53C = 0.0f;
 				gGame.mStatus.mFlags &= ~2ULL;
 				Close();
 				sMenuMain.Resume();
@@ -8235,16 +8235,16 @@ void MenuStatus::Open()
 	mTargetDiscardPanelY = 100;
 	mHasFourthTab        = TRUE;
 	for (int i = 0; i < 4; i++) {
-		mTabs[i].mPosX = 758;
-		mTabs[i].mPosY = 36;
+		mTabs[i].mX = 758;
+		mTabs[i].mY = 36;
 		if (mHasFourthTab)
-			mTabs[i].mX = (198.0f + i * 108) - 8.0f;
+			mTabs[i].mTargetX = (198.0f + i * 108) - 8.0f;
 		else
-			mTabs[i].mX = 252.0f + i * 108;
+			mTabs[i].mTargetX = 252.0f + i * 108;
 		mTabs[i].mTargetY  = 36;
-		mTabs2[i].mPosX    = 758;
-		mTabs2[i].mPosY    = 36;
 		mTabs2[i].mX       = 758;
+		mTabs2[i].mY       = 36;
+		mTabs2[i].mTargetX = 758;
 		mTabs2[i].mTargetY = 36;
 	}
 	mX               = 758;
@@ -8369,9 +8369,9 @@ void MenuPC::Open()
 	mTargetProgress    = 0;
 	mSpeed             = 1;
 	_198               = -10;
-	mFade              = 0;
+	mFrameHeight       = 0;
 	_1A0               = -10;
-	mTargetFade        = 60;
+	mTargetFrameHeight = 60;
 	mTextX             = 210;
 	mTextY             = 129;
 	mTargetX           = mTextX;
@@ -8388,11 +8388,11 @@ void MenuPC::Open()
 	mTexScroll   = 0;
 	s32 stage    = gGame.mStage;
 	if (FindStageIndexByName("stage05") == stage)
-		mHasMainMenu = FALSE;
+		mShopOnly = FALSE;
 	else
-		mHasMainMenu = TRUE;
+		mShopOnly = TRUE;
 	if (gGame._344C + 1 == gGame.mStage)
-		mHasMainMenu = FALSE;
+		mShopOnly = FALSE;
 	FindStageIndexByName("shun");
 	mHistoryStart = 600;
 	mHistoryCount = 20;
@@ -8560,10 +8560,10 @@ BOOL MenuStatus::Update(u32 frames)
 		PCEase(mPanelX, mTargetPanelX);
 		PCEase(mPanelY, mSlide);
 		for (int i = 0; i < 4; i++) {
-			PCEase(mTabs[i].mPosX, mTabs[i].mX);
-			PCEase(mTabs[i].mPosY, mTabs[i].mTargetY);
-			PCEase(mTabs2[i].mPosX, mTabs2[i].mX);
-			PCEase(mTabs2[i].mPosY, mTabs2[i].mTargetY);
+			PCEase(mTabs[i].mX, mTabs[i].mTargetX);
+			PCEase(mTabs[i].mY, mTabs[i].mTargetY);
+			PCEase(mTabs2[i].mX, mTabs2[i].mTargetX);
+			PCEase(mTabs2[i].mY, mTabs2[i].mTargetY);
 		}
 		PCEase(mX, mTargetX);
 		ApproachHudValue(&mY, &mTargetY, 20.0f);
@@ -10214,9 +10214,9 @@ void MenuPC::State3(u32 frames)
 			break;
 		}
 		if (pad.mPad->mTrigger & 0x200) {
-			if (menu->mHasMainMenu) {
+			if (menu->mShopOnly) {
 				ResetPCText(menu, 11);
-				menu->mTargetFade = 0.0f;
+				menu->mTargetFrameHeight = 0.0f;
 				RestorePCHistory(menu);
 			} else {
 				ResetPCText(menu, 2);
@@ -10411,16 +10411,16 @@ void MenuStatus::State2(u32)
 			menu->mPhase    = 0;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; ++i) {
-				menu->mTabs2[i].mPosX = 0.0f;
-				menu->mTabs2[i].mX    = menu->mHasFourthTab ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
+				menu->mTabs2[i].mX       = 0.0f;
+				menu->mTabs2[i].mTargetX = menu->mHasFourthTab ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
 			}
 			menu->mTargetX = 758.0f;
 			for (int i = 0; i < 4; ++i) {
-				menu->mTabs[i].mPosX = 0.0f;
-				menu->mTabs[i].mX    = menu->mHasFourthTab ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
+				menu->mTabs[i].mX       = 0.0f;
+				menu->mTabs[i].mTargetX = menu->mHasFourthTab ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
 			}
 			for (int i = 0; i < 4; ++i)
-				menu->mTabs2[i].mX = 758.0f;
+				menu->mTabs2[i].mTargetX = 758.0f;
 
 			u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
 			menu->mTitle.Set(GetLocalizedInterfaceText(StatusTitleText), color);

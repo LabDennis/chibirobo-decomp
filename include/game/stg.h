@@ -160,7 +160,7 @@ public:
 	u8 _51C[0x528 - 0x51C];
 	f32 _528, _52C, _530, _534;
 	s32 mPhase;
-	f32 mAlpha;
+	f32 _53C; // a 0 -> 1 -> 0 ramp that moves the phase along, nothing draws with it
 };
 class MenuRequestClear : public Menu {
 public:
@@ -278,9 +278,9 @@ STATIC_ASSERT(sizeof(MenuTitle) == 0x19C);
 
 // one of the status screen's tabs
 struct MenuStatusTab {
-	f32 mPosX;    // _00
-	f32 mPosY;    // _04
-	f32 mX;       // _08
+	f32 mX;       // _00
+	f32 mY;       // _04
+	f32 mTargetX; // _08
 	f32 mTargetY; // _0C
 };
 STATIC_ASSERT(sizeof(MenuStatusTab) == 0x10);
@@ -509,9 +509,9 @@ public:
 	f32 mProgress;                // _190
 	f32 mTargetProgress;          // _194
 	f32 _198;                     // _198
-	f32 mFade;                    // _19C
+	f32 mFrameHeight;             // _19C, the frame quad grows to 60 on opening and closes back
 	f32 _1A0;                     // _1A0
-	f32 mTargetFade;              // _1A4
+	f32 mTargetFrameHeight;       // _1A4
 	u8 _1A8[0x1B8 - 0x1A8];       // _1A8
 	s32 mCharIndex;               // _1B8
 	u32 mGreetingVariant;         // _1BC
@@ -542,7 +542,7 @@ public:
 	f32 mPanelTarget;             // _394
 	f32 mListAlpha;               // _398
 	f32 mTargetListAlpha;         // _39C
-	u8 mHasMainMenu;              // _3A0
+	u8 mShopOnly;                 // _3A0, opens straight into the item list and B closes; FALSE in stage05
 	u8 _3A1[0x3A4 - 0x3A1];       // _3A1
 	u32 mDialogueNumber;          // _3A4
 	f32 mRankingOffsets[5];       // _3A8
