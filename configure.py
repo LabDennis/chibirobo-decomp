@@ -64,7 +64,7 @@ parser.add_argument(
     "--langpack",
     "--wii-locale",
     dest="wii_locale",
-    choices=("en-US", "en-GB", "de-DE", "fr-FR", "es-ES", "it-IT"),
+    choices=("global", "en-US", "en-GB", "de-DE", "fr-FR", "es-ES", "it-IT"),
     help="Wii mod: the game's text in this language",
 )
 parser.add_argument(
@@ -178,6 +178,8 @@ wii = config.version == "R24J01"
 wii_mod = bool(args.wii_locale or args.wii_gamecube_pad)
 if wii_mod and not wii:
     parser.error("--langpack and --gcncon require --version R24J01")
+if args.wii_locale == "global" and not Path("tools/wii_lang_data.py").is_file():
+    parser.error("--langpack global requires tools/wii_lang_data.py (Wii language data builder)")
 if wii_mod and args.mode == "progress":
     parser.error("progress is measured against retail releases")
 wit = None
@@ -1431,6 +1433,34 @@ def arg(path: Path) -> str:  # a path in a command, quoted for the shell (Window
     quoted = f'"{path.as_posix()}"' if is_windows() else shlex.quote(path.as_posix())
     return quoted.replace("$", "$$")
 
+def append_language_data_step(config):
+    shared = config.build_dir / "wii-lang"
+    files = shared / "files"
+    stamp = shared / "ready"
+    target = config.out_path() / "files/lang"
+    dtk = wii_dtk(config)
+    discs = [disc_image(Path("orig") / version) for version in ("R24J01", "GGTE01", "GGTP01")]
+    inputs = [dtk, *discs]
+    # The producer also detects the Japanese GC reference beside the other discs.
+    jp = Path("orig/GGTJ01_01")
+    inputs.extend(sorted(p for p in jp.glob("*") if p.suffix.lower() in (".rvz", ".iso", ".gcm")))
+    dependencies = " ".join(esc(path.as_posix()) for path in inputs)
+    with open("build.ninja", "a", encoding="utf-8") as f:
+        f.write(
+            "\nrule wii_language_data\n"
+            f"  command = $python tools/wii_lang_data.py --dtk {arg(dtk)} --wii {arg(discs[0])}"
+            f" --us {arg(discs[1])} --pal {arg(discs[2])} --work {arg(shared / 'work')} --out {arg(files)}"
+            " && $python -c \"from pathlib import Path; import sys; Path(sys.argv[1]).touch()\" $out\n"
+            "  description = Extract Wii language data\n"
+            f"build {esc(stamp.as_posix())}: wii_language_data tools/wii_lang_data.py | {dependencies}\n"
+            "rule wii_stage_languages\n"
+            f"  command = $python -m tools.wii_lang_install {arg(files)} $out\n"
+            "  description = Install Wii language files\n"
+            f"build {esc(target.as_posix())}: wii_stage_languages {esc(stamp.as_posix())} | tools/wii_lang_install.py\n"
+            f"default {esc(target.as_posix())}\n"
+        )
+
+
 def append_banner_step(config, disc, translations, locale):
     out = config.out_path() / "files/opening.bnr"
     dtk = wii_dtk(config)
@@ -1466,7 +1496,8 @@ def append_iso_step(config: ProjectConfig, wit: Path, disc: Path, patch: Optiona
             "  pool = console\n"
             f"build {esc(image)}: wii_iso {esc((out / 'main.dol').as_posix())} | {esc(dtk.as_posix())} {esc(disc.as_posix())}"
             " tools/wii_iso.py"
-            + (" " + esc((out / "files/opening.bnr").as_posix()) if args.wii_locale else "") + "\n"
+            + (" " + esc((out / "files/opening.bnr").as_posix()) if args.wii_locale else "")
+            + (" " + esc((out / "files/lang").as_posix()) if args.wii_locale == "global" else "") + "\n"
             f"default {esc(image)}\n"
         )
 
@@ -1476,6 +1507,8 @@ if args.mode == "configure":
     generate_build(config)
     if not wii_mod:
         append_treemap_step(config)
+    if args.wii_locale == "global":
+        append_language_data_step(config)
     if args.wii_locale:
         append_banner_step(config, wii_disc, translations, args.wii_locale)
     if args.iso:
