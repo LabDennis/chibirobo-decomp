@@ -151,6 +151,17 @@ public:
 		}
 		return FALSE;
 	}
+	inline BOOL GetFreeBlocks()
+	{
+		mState = 14;
+		_16A04 = mCard.GetFreeBlocks((s32*)&_169FC, &_16A00);
+		LogResult();
+		if (mCard.mResult != CARD_RESULT_READY) {
+			mCard.Unmount();
+			return TRUE;
+		}
+		return FALSE;
+	}
 };
 STATIC_ASSERT(sizeof(Memcard) == 0x16A24);
 
