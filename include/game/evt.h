@@ -239,6 +239,7 @@ public:
 STATIC_ASSERT(sizeof(CStack) == 0x10);
 
 class CCameraMemento;
+class CMsg;
 
 // the script runner. PUSHBP and POPBP park mValues's count on mFrames
 class CEvt {
@@ -253,7 +254,7 @@ public:
 	CStack mCalls;                  // _24, return addresses
 	CStack mFrames;                 // _34
 	CStack mValues;                 // _44
-	u8* mMsg;                       // _54, WARP raises a flag deep inside it
+	CMsg* mMsg;                     // _54, the message window the script talks through
 	s32 mMsgState;                  // _58
 	s16 mUseValue;                  // _5C
 	s16 mHitValue;                  // _5E

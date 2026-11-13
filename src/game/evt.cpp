@@ -448,12 +448,8 @@ static inline void CEvt_End(CEvt* evt)
 {
 	evt->mData.mScript = 0;
 	if (evt->mMsg != 0 && evt->mMsgState != 0) {
-		evt->mMsgState = 0;
-#if defined(VERSION_JP)
-		*(s32*)(evt->mMsg + 0x43F70) = 1;
-#else
-		*(s32*)(evt->mMsg + 0x445C0) = 1;
-#endif
+		evt->mMsgState   = 0;
+		evt->mMsg->mIdle = 1;
 	}
 	Inventory* inventory = &EVT_PLAYER.mParams.mInventory;
 	inventory->mCompact  = TRUE;
@@ -4588,24 +4584,20 @@ s32 CEvt::_cmd_READ(u8, s32)
 	return 0;
 }
 
-// where WIN puts its message, a screen spot or a point on an object
+// where WIN puts its message, a screen spot or a point on an object: CMsg's window position block
 struct EvtMsgPosition {
-	f32 x;        // _00
-	f32 y;        // _04
-	XObj* object; // _08
-	Vec offset;   // _0C
+	f32 x;        // _00, CMsg::mWindowX
+	f32 y;        // _04, CMsg::mWindowY
+	XObj* object; // _08, CMsg::mPlacement
+	Vec offset;   // _0C, CMsg::mFontPosition
 };
 
-static inline EvtMsgPosition* CEvt_MsgPosition(u8* owner)
+static inline EvtMsgPosition* CEvt_MsgPosition(CMsg* msg)
 {
-#if defined(VERSION_JP)
-	return (EvtMsgPosition*)(owner + 0x43FB0);
-#else
-	return (EvtMsgPosition*)(owner + 0x44600);
-#endif
+	return (EvtMsgPosition*)&msg->mWindowX;
 }
 
-extern "C" void CMsg_ResetPos(u8* owner);
+extern "C" void CMsg_ResetPos(CMsg* msg);
 
 /**
  * @note Address: 0x8006FD8C
@@ -4664,20 +4656,20 @@ s32 CEvt::_cmd_WIN(u8, s32)
 		u8 b = CEvt_Evaluate(this);
 		u8 a = CEvt_Evaluate(this);
 		if (mMsg != NULL) {
-			GXColor color             = sEvtWindowColorTemplate;
-			color.r                   = r;
-			color.g                   = g;
-			color.b                   = b;
-			color.a                   = a;
-			*(GXColor*)(mMsg + 0x9B8) = color;
+			GXColor color      = sEvtWindowColorTemplate;
+			color.r            = r;
+			color.g            = g;
+			color.b            = b;
+			color.a            = a;
+			mMsg->mFont.mColor = color;
 		}
 		break;
 	}
 	case EVT_ATOM_RESET:
 		if (mMsg != NULL) {
 			CMsg_ResetPos(mMsg);
-			GXColor color             = sEvtWindowDefaultColor;
-			*(GXColor*)(mMsg + 0x9B8) = color;
+			GXColor color      = sEvtWindowDefaultColor;
+			mMsg->mFont.mColor = color;
 		}
 		break;
 	}
@@ -4991,40 +4983,28 @@ s32 CEvt::_cmd_POS(u8, s32)
     blr
 */
 
-// script owner fields MSG and SELECT use, 0x650 lower in japan. _445C0 is raised by
-// CEvt_End, _445F8 is nonzero while something waits on the owner, _445D4 is the SELECT answer
-#if defined(VERSION_JP)
-#define EVT_OWNER_445C0(owner) (*(s32*)((owner) + 0x43F70))
-#define EVT_OWNER_445D4(owner) (*(s32*)((owner) + 0x43F84))
-#define EVT_OWNER_445F8(owner) (*(s32*)((owner) + 0x43FA8))
-#else
-#define EVT_OWNER_445C0(owner) (*(s32*)((owner) + 0x445C0))
-#define EVT_OWNER_445D4(owner) (*(s32*)((owner) + 0x445D4))
-#define EVT_OWNER_445F8(owner) (*(s32*)((owner) + 0x445F8))
-#endif
-
 /**
  * @note Address: 0x800749DC
  * @note Size: 0x1E8
  */
 s32 CEvt::_cmd_MSG(u8 cmd, s32)
 {
-	u8* owner = mMsg;
+	CMsg* owner = mMsg;
 	if (owner != 0) {
-		if (EVT_OWNER_445F8(owner) > 0) {
+		if (owner->mStay > 0) {
 			if (mMsgState == 1) {
-				EVT_OWNER_445F8(owner) = 2;
+				owner->mStay = 2;
 				mMsgState++;
 				mData.mScript--;
 				return 1;
 			}
 			if (mMsgState == 2) {
-				if (*(u32*)(owner + 0x804) != 0) {
+				if (owner->mData.mCursor != NULL) {
 					mData.mScript--;
 					return 1;
 				}
-				mMsgState             = 0;
-				EVT_OWNER_445C0(mMsg) = 1;
+				mMsgState   = 0;
+				mMsg->mIdle = 1;
 				if (mData.mScript[4] == 0) {
 					mData.mScript = ResolveEventScriptOffset(mData.mScript);
 					return 0;
@@ -5032,29 +5012,29 @@ s32 CEvt::_cmd_MSG(u8 cmd, s32)
 			}
 		}
 		owner = mMsg;
-		if (EVT_OWNER_445C0(owner) != 0) {
-			CMsg_Open((CMsg*)owner, cmd, mData.mScript + 4, (MsgFormatArgs*)&mValues.mBuf);
-			EVT_OWNER_445C0(mMsg) = 0;
+		if (owner->mIdle != 0) {
+			CMsg_Open(owner, cmd, mData.mScript + 4, (MsgFormatArgs*)&mValues.mBuf);
+			mMsg->mIdle = 0;
 			mData.mScript--;
 			if (cmd == EVT_CMD_SELECT) {
 				PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			}
 			return 1;
 		}
-		if (EVT_OWNER_445F8(owner) > 0) {
+		if (owner->mStay > 0) {
 			mMsgState     = 1;
 			mData.mScript = ResolveEventScriptOffset(mData.mScript);
 			return 0;
 		}
-		if (*(u32*)(owner + 0x804) != 0) {
+		if (owner->mData.mCursor != NULL) {
 			mData.mScript--;
 			return 1;
 		}
 		if (cmd == EVT_CMD_SELECT) {
-			mSelectResult = EVT_OWNER_445D4(owner);
+			mSelectResult = owner->mSelectResult;
 		}
-		EVT_OWNER_445C0(mMsg) = 1;
-		mData.mScript         = ResolveEventScriptOffset(mData.mScript);
+		mMsg->mIdle   = 1;
+		mData.mScript = ResolveEventScriptOffset(mData.mScript);
 		return 0;
 	}
 	mData.mScript = ResolveEventScriptOffset(mData.mScript);
@@ -11726,8 +11706,8 @@ s32 CEvt::_cmd_ATTACH(u8 command, s32)
 	} else if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 		obj->mEvt.mData.mScript = NULL;
 		if (obj->mEvt.mMsg != NULL && obj->mEvt.mMsgState != 0) {
-			obj->mEvt.mMsgState             = 0;
-			EVT_OWNER_445C0(obj->mEvt.mMsg) = 1;
+			obj->mEvt.mMsgState   = 0;
+			obj->mEvt.mMsg->mIdle = 1;
 		}
 		Inventory* inventory = &EVT_PLAYER.mParams.mInventory;
 		inventory->mCompact  = TRUE;
@@ -18432,7 +18412,7 @@ static inline void ClearTimers()
 extern "C" void InitializeEventScriptContext(CEvt* evt, u8* context, void* owner)
 {
 	evt->mOwner = (u32)owner;
-	evt->mMsg   = context;
+	evt->mMsg   = (CMsg*)context;
 	if (evt->mOwner == 0) {
 		for (u32 i = 0; i < 128; ++i)
 			gEventFlags.mFlags[i] = 0;
