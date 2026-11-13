@@ -158,7 +158,6 @@ class ProjectConfig:
     def __init__(self) -> None:
         # Paths
         self.build_dir: Path = Path("build")  # Output build files
-        self.output_name: Optional[str] = None  # Separate output for a mod of a retail version
         self.src_dir: Path = Path("src")  # C/C++/asm source files
         self.tools_dir: Path = Path("tools")  # Python scripts
         self.asm_dir: Optional[Path] = Path(
@@ -255,6 +254,7 @@ class ProjectConfig:
             "build_dir",
             "src_dir",
             "tools_dir",
+            "check_sha_path",
             "config_path",
             "ldflags",
             "linker_version",
@@ -264,8 +264,6 @@ class ProjectConfig:
         for attr in required_attrs:
             if getattr(self, attr) is None:
                 sys.exit(f"ProjectConfig.{attr} missing")
-        if self.check_sha_path is None and not self.non_matching:
-            sys.exit("A matching build requires a retail hash")
 
     # Creates a map of object names to Object instances
     # Options are fully resolved from the library and object.
@@ -285,7 +283,7 @@ class ProjectConfig:
 
     # Gets the output path for build-related files.
     def out_path(self) -> Path:
-        return self.build_dir / (self.output_name or str(self.version))
+        return self.build_dir / str(self.version)
 
     # Gets the path to the compilers directory.
     # Exits the program if neither `compilers_path` nor `compilers_tag` is provided.
@@ -1376,14 +1374,13 @@ def generate_build_ninja(
             command=f"{dtk} shasum {quiet} -c $in -o $out",
             description="CHECK $in",
         )
-        if config.check_sha_path is not None:
-            n.build(
-                outputs=ok_path,
-                rule="check",
-                inputs=config.check_sha_path,
-                implicit=[dtk, *link_outputs],
-                order_only="post-build",
-            )
+        n.build(
+            outputs=ok_path,
+            rule="check",
+            inputs=config.check_sha_path,
+            implicit=[dtk, *link_outputs],
+            order_only="post-build",
+        )
         n.newline()
 
         ###
@@ -1395,13 +1392,17 @@ def generate_build_ninja(
             command=f"$python {configure_script} $configure_args progress",
             description="PROGRESS",
         )
-        if config.check_sha_path is not None:
-            n.build(
-                outputs="progress",
-                rule="progress",
-                implicit=[ok_path, configure_script, python_lib, report_path],
-                order_only="post-build",
-            )
+        n.build(
+            outputs="progress",
+            rule="progress",
+            implicit=[
+                ok_path,
+                configure_script,
+                python_lib,
+                report_path,
+            ],
+            order_only="post-build",
+        )
 
         ###
         # Generate progress report
@@ -1524,18 +1525,17 @@ def generate_build_ninja(
             command=f"{dtk} dol apply $in",
             description=f"APPLY {dol_elf_path}",
         )
-        if config.check_sha_path is not None:
-            n.build(
-                inputs=[config.config_path, dol_elf_path],
-                outputs="dol_apply",
-                rule="dol_apply",
-                implicit=[ok_path],
-            )
-            n.build(
-                outputs="apply",
-                rule="phony",
-                inputs="dol_apply",
-            )
+        n.build(
+            inputs=[config.config_path, dol_elf_path],
+            outputs="dol_apply",
+            rule="dol_apply",
+            implicit=[ok_path],
+        )
+        n.build(
+            outputs="apply",
+            rule="phony",
+            inputs="dol_apply",
+        )
         n.newline()
 
     ###

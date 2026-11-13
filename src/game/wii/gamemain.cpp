@@ -33,20 +33,11 @@ void CBase::Start()
 	DVDSetAutoFatalMessaging(TRUE);
 	fn_801905CC("/cb/");
 	fn_80199AE4();
-	// the mod's language has to be known before the font and the resident text are set up
-#if defined(WII_LANGUAGE_SYSTEM)
-	u8 language = SCGetLanguage();
-	mLanguage   = language <= 5 ? language : 1;
-#elif defined(WII_LANGUAGE)
-	mLanguage = WII_LANGUAGE;
-#endif
 	fn_800355F4(this);
 	fn_8003568C(this);
 	fn_80035AD0(this);
 	fn_802AAF98(gGame._0000 + 8);
-#if !defined(WII_LANGUAGE) && !defined(WII_LANGUAGE_SYSTEM)
 	mLanguage = 0;
-#endif
 	mPad.Init(1);
 	KPADSetPosParam(gWiiPads[0].mPort, 0.07f, 0.8f);
 	KPADSetHoriParam(gWiiPads[0].mPort, 0.05f, 1.0f);

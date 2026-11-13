@@ -2,10 +2,6 @@
 #include "game/mm.h"
 #include "Dolphin/os.h"
 #include <string.h>
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-#include "game/wii/cgame.h"
-#include <stdio.h>
-#endif
 
 // The Wii CFile keeps two flags where the GameCube one keeps the archive pointer: the archive is
 // always the current one, and a buffer handed in by the caller is never freed.
@@ -130,34 +126,9 @@ BOOL CFile::IsInArchive(const char* path)
 	return gCurrentFileArchive != NULL ? fn_801FEE48(&gCurrentFileArchive->mHandle, path) >= 0 : FALSE;
 }
 
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-// the selected language's copy of a disc file, /lang/<code>/<path>
-static s32 LocalizedDiscEntry(const char* path, char* localized, size_t capacity)
-{
-	static const char* const codes[] = { "", "en", "de", "fr", "es", "it" };
-	if (!gGame.mLanguage)
-		return -1;
-	if (*path == '/')
-		++path;
-	if (strlen(path) + sizeof("/lang/en/") > capacity)
-		return -1;
-	sprintf(localized, "/lang/%s/%s", codes[gGame.mLanguage], path);
-	return fn_80190238(localized);
-}
-#endif
-
 s32 CFile::ConvertPathToEntrynum(const char* path)
 {
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-	char localized[sizeof(mPath)];
-	s32 entrynum = LocalizedDiscEntry(path, localized, sizeof(localized));
-	if (entrynum >= 0) {
-		return entrynum;
-	}
-	entrynum = -1;
-#else
 	s32 entrynum = -1;
-#endif
 	if (gCurrentFileArchive != NULL) {
 		entrynum = fn_801FEE48(&gCurrentFileArchive->mHandle, path);
 	}
@@ -169,22 +140,8 @@ s32 CFile::ConvertPathToEntrynum(const char* path)
 
 s32 CFile::OpenPath(const char* path)
 {
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-	char localized[sizeof(mPath)];
-	if (LocalizedDiscEntry(path, localized, sizeof(localized)) >= 0) {
-		strcpy(mPath, localized);
-		mInArchive = FALSE;
-	} else {
-		if (strlen(path) >= sizeof(mPath)) {
-			return -3;
-		}
-		strcpy(mPath, path);
-		mInArchive = IsInArchive(mPath);
-	}
-#else
 	strcpy(mPath, path);
 	mInArchive = IsInArchive(mPath);
-#endif
 	s32 result = Open(mPath);
 	if (result < 0) {
 		if (mInArchive) {
