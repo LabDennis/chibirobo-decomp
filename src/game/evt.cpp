@@ -3163,18 +3163,6 @@ s32 CEvt::_cmd_PRINTF(u8, s32)
 	return 0;
 }
 
-// maps object ids from 10000 up to an index in the game's object table
-#if defined(VERSION_JP)
-#define PLAYER_HELD_OBJ 0xA54
-#define PLAYER_BE8      0xBD8
-#else
-#define PLAYER_HELD_OBJ 0xA64
-#define PLAYER_BE8      0xBE8
-#endif
-
-// POS calls these after moving an object
-extern "C" void CancelPlayerPushAction(u8* p);
-
 static inline XObj* CEvt_FindObj(s16 id)
 {
 	for (s32 i = 0; i < gEventObjectIds.mCount; i++) {
@@ -4674,17 +4662,16 @@ s32 CEvt::_cmd_POS(u8, s32)
 		obj->mLastPos.y = obj->mMoveTranslate.y;
 		obj->mLastPos.z = obj->mMoveTranslate.z;
 		gGame.mMotionControlCamera.UpdateTarget(obj);
-		u8* carry;
-		u8* player = (u8*)gGame.GetPlayer();
-		if (obj == (XObj*)player) {
-			ResetPlayerHeadOffset((XObjChr*)player);
-			ResetPlayerPlug((XObjChr*)player);
-			carry = (u8*)&((XObjChr*)player)->mLift;
-			if (*(XObj**)(carry + 0x20) != NULL) {
-				UpdateHeldObject((XActLift*)carry, 1);
-				(*(XObj**)(carry + 0x20))->UpdateObject(1);
+		XObjChr* player = gGame.GetPlayer();
+		if (obj == player) {
+			ResetPlayerHeadOffset(player);
+			ResetPlayerPlug(player);
+			XActLift& lift = player->mLift;
+			if (lift.mTarget != NULL) {
+				UpdateHeldObject(&lift, 1);
+				lift.mTarget->UpdateObject(1);
 			}
-			CancelPlayerPushAction(player + PLAYER_BE8);
+			CancelPlayerPushAction(&player->mPush);
 		}
 	} else {
 		CEvt_Warn(FormatToStaticBuffer("pos(%d, ...) obj(%d) killed!", id, id));
@@ -5002,9 +4989,6 @@ s32 CEvt::_cmd_MSG(u8 cmd, s32)
 	return 0;
 }
 
-extern "C" void StartGameMovie(u8* game, const char* path, BOOL loop, s32 arg);
-extern "C" void StopGameMovie(u8* game);
-
 /**
  * @note Address: 0x80074BC4
  * @note Size: 0x130
@@ -5029,13 +5013,13 @@ s32 CEvt::_cmd_MOVIE(u8, s32)
 		// x and y are the center, the rect wants the corner
 		x -= w / 2;
 		y -= h / 2;
-		StartGameMovie((u8*)&gGame, path, FALSE, arg);
+		StartGameMovie(&gGame, path, FALSE, arg);
 		gGame.mMovieRect[0] = x;
 		gGame.mMovieRect[1] = y;
 		gGame.mMovieRect[2] = w;
 		gGame.mMovieRect[3] = h;
 	} else {
-		StopGameMovie((u8*)&gGame);
+		StopGameMovie(&gGame);
 	}
 	return 0;
 }
@@ -5147,9 +5131,9 @@ s32 CEvt::_cmd_MOVETO(u8, s32)
 			CEvt_Warn(FormatToStaticBuffer("moveto(%d, %d,%d,%d, %d, %d, %d) ... obj(%d) is collision!", id, (s32)(x * 100.0f),
 			                               (s32)(y * 100.0f), (s32)(z * 100.0f), (s32)(time * 100.0f), anim, dir, id));
 		}
-		u8* player = (u8*)gGame.GetPlayer();
-		if (obj == (XObj*)player) {
-			CancelPlayerPushAction(player + PLAYER_BE8);
+		XObjChr* player = gGame.GetPlayer();
+		if (obj == player) {
+			CancelPlayerPushAction(&player->mPush);
 		}
 		f32 distance;
 		{
@@ -5730,9 +5714,9 @@ s32 CEvt::_cmd_MOVE(u8, s32)
 			CEvt_Warn(FormatToStaticBuffer("move(%d, %d, %d, %d, %d) ... obj(%d) is collision!", id, distance, (s32)(time * 100.0f), anim,
 			                               dir, id));
 		}
-		u8* player = (u8*)gGame.GetPlayer();
-		if (obj == (XObj*)player) {
-			CancelPlayerPushAction(player + PLAYER_BE8);
+		XObjChr* player = gGame.GetPlayer();
+		if (obj == player) {
+			CancelPlayerPushAction(&player->mPush);
 		}
 		Vec target = obj->mMoveTranslate;
 		// -1 and -2 keep the way it faces
@@ -6347,7 +6331,7 @@ s32 CEvt::_cmd_KILL(u8, s32)
 	s16 id    = CEvt_Evaluate(this);
 	XObj* obj = CEvt_GetObj(this, id);
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
-		XObj* held = *(XObj**)((u8*)gGame.GetPlayer() + PLAYER_HELD_OBJ);
+		XObj* held = gGame.GetPlayer()->mLift.mTarget;
 		if (held != NULL && obj == held && (obj->mStatus.mFlags & 0x0000400000000000)) {
 			// chibi is carrying it, can't kill that
 			CEvt_Warn(FormatToStaticBuffer("kill(%d) ... obj(%d) lifted!", id, id));
@@ -6381,7 +6365,7 @@ s32 CEvt::_cmd_DISP(u8, s32)
 	XObj* obj = CEvt_GetObj(this, id);
 	u8 on     = CEvt_Evaluate(this);
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
-		XObj* held = *(XObj**)((u8*)gGame.GetPlayer() + PLAYER_HELD_OBJ);
+		XObj* held = gGame.GetPlayer()->mLift.mTarget;
 		if (held != NULL && obj == held && (obj->mStatus.mFlags & 0x0000400000000000)) {
 			// chibi is carrying it, leave it be
 			CEvt_Warn(FormatToStaticBuffer("disp(%d, %d) ... obj(%d) lifted!", id, on, id));
@@ -6405,19 +6389,19 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 	s16 id    = CEvt_Evaluate(this);
 	XObj* obj = CEvt_GetObj(this, id);
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
-		u8* player = (u8*)gGame.GetPlayer();
-		if ((u8*)obj == player)
-			CancelPlayerPushAction(player + PLAYER_BE8);
+		XObjChr* player = gGame.GetPlayer();
+		if (obj == player)
+			CancelPlayerPushAction(&player->mPush);
 	}
 	if (command == EVT_CMD_DIR) {
 		s16 direction = CEvt_Evaluate(this);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			obj->SetRotationY(DEG2RAD * direction, 0);
 			gGame.mMotionControlCamera.UpdateTarget(obj);
-			u8* player = (u8*)gGame.GetPlayer();
-			if ((u8*)obj == player) {
-				ResetPlayerHeadOffset((XObjChr*)player);
-				XActLift* carry = &((XObjChr*)player)->mLift;
+			XObjChr* player = gGame.GetPlayer();
+			if (obj == player) {
+				ResetPlayerHeadOffset(player);
+				XActLift* carry = &player->mLift;
 				if (carry->mTarget != NULL) {
 					UpdateHeldObject(carry, 1);
 					carry->mTarget->UpdateObject(1);
@@ -11224,12 +11208,6 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     blr
 */
 
-#if defined(VERSION_JP)
-#define XOBJ_80C 0x804
-#else
-#define XOBJ_80C 0x80C // BORN's last arg goes here
-#endif
-
 // null when the pool is full
 static inline XObj* CEvt_Born(s32 index)
 {
@@ -11266,8 +11244,8 @@ s32 CEvt::_cmd_BORN(u8, s32)
 		obj->SetScale(sx, sy, sz, 0);
 		UpdateObjectFloorHeights(obj);
 		UpdateObjectFloorXZExtent(obj);
-		*(s32*)((u8*)obj + XOBJ_80C) = arg;
-		s16 index                    = FindStageObjectIndex(&gGame.mXObjs, (CXObj*)obj);
+		obj->mEventScript = arg;
+		s16 index         = FindStageObjectIndex(&gGame.mXObjs, (CXObj*)obj);
 		if (CEvt_FindObj(id) == NULL) {
 			gEventObjectIds.mEntry[gEventObjectIds.mCount].mId    = id;
 			gEventObjectIds.mEntry[gEventObjectIds.mCount].mIndex = index;
@@ -14541,7 +14519,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		result = EVT_PLAYER.mParams.mRank;
 		break;
 	case EVT_EXPR_HOLD: {
-		XObj* held = *(XObj**)((u8*)gGame.GetPlayer() + PLAYER_HELD_OBJ);
+		XObj* held = gGame.GetPlayer()->mLift.mTarget;
 		if (held != NULL) {
 			if ((s16)held->GetPool() == 24)
 				result = 1000;
@@ -17467,7 +17445,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
 				CEvt_Warn(FormatToStaticBuffer("wait(@MOVE, %d) ... obj(%d) is collision!", id, id));
-			const Vec& target = *(Vec*)((u8*)&obj->mMoveTranslate + sizeof(CVec));
+			const Vec& target = obj->mMoveTranslate.mTarget;
 			EvtWaitFor(this, command, start, !(obj->mMoveTranslate != target), yield);
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("wait(@MOVE, %d, ...) obj(%d) killed!", id, id));

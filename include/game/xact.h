@@ -119,6 +119,8 @@ public:
 };
 STATIC_ASSERT(sizeof(XActPush) == 0x58);
 
+extern "C" void CancelPlayerPushAction(XActPush* act);
+
 // the ring on the floor around him while he tumbles
 struct XActTumbleFade {
 	BOOL mActive; // _00
