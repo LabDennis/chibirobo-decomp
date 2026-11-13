@@ -908,12 +908,9 @@ game/cinterpolationeaseout.cpp:
 	.sdata2     start:0x80638B98 end:0x80638BA8
 
 game/ccameraactionareaex.cpp:
-	.text       start:0x80136F64 end:0x80139CD4
-
-game/ccameraactionareaexinit.cpp:
-	.text       start:0x80139CD4 end:0x80139D40
+	.text       start:0x80136F64 end:0x80139D40
 	.ctors      start:0x801FEF60 end:0x801FEF64
-	.bss        start:0x8057A964 end:0x8057E5A4 align:4
+	.bss        start:0x8057A964 end:0x8059A5B0 align:4
 
 game/ccameraactionareaexdtor.cpp:
 	.text       start:0x80139D40 end:0x80139E14
