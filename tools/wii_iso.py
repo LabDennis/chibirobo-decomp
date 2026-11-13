@@ -17,10 +17,16 @@ from typing import Optional
 
 
 def overlay_files(folder: Path) -> list:
-    """The files a folder puts onto the disc's files/, a main.dol at its top excepted."""
+    """The files a folder puts onto the disc's files/, a main.dol at its top excepted. A link that leads out of the
+    folder is left out: a downloaded patch must not pull other files from this computer into the image."""
     if not folder.is_dir():
         return []
-    return sorted(p for p in folder.rglob("*") if p.is_file() and p != folder / "main.dol")
+    inside = folder.resolve()
+    return sorted(
+        p
+        for p in folder.rglob("*")
+        if p.is_file() and p != folder / "main.dol" and p.resolve().is_relative_to(inside)
+    )
 
 
 def disc_path(files: Path, relative: Path) -> Path:

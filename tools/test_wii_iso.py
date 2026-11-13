@@ -49,6 +49,8 @@ class PrepareTreeTests(unittest.TestCase):
             (patch / "bin/stage02.bin").write_bytes(b"patch stage 2")
             (patch / "bin/extra.bin").write_bytes(b"not on the disc")
             (patch / "item/letter.brres").write_bytes(b"patch letter")
+            (tmp / "secret.txt").write_bytes(b"not for the image")
+            (patch / "bin/stage03.bin").symlink_to(tmp / "secret.txt")
             (mod / "bin").mkdir(parents=True)
             (mod / "bin/stage02.bin").write_bytes(b"mod stage 2")
             (mod / "bin/new.bin").write_bytes(b"mod adds this")
@@ -64,6 +66,8 @@ class PrepareTreeTests(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in (root / "files").iterdir()), ["Item", "bin"])
             # like Riivolution, the patch only replaces what the disc has
             self.assertFalse((root / "files/bin/extra.bin").exists())
+            # a link out of the patch folder is not followed
+            self.assertFalse((root / "files/bin/stage03.bin").exists())
             self.assertFalse((root / "files/main.dol").exists())
 
 
