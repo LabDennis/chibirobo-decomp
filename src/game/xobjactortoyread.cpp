@@ -1,13 +1,9 @@
 #include "game/xobjactor.h"
+#include "game/actortoyanimation.h"
 #include "game/cjobjset.h"
 #include "game/xchr.h"
 #include "game/globals.h"
 #include "game/hsd_dobj.h"
-
-extern "C" {
-// the sound tables the toys play along their anims
-extern u8 gActorToyAnimationData[];
-}
 
 /**
  * @note Address: 0x8012214C
@@ -97,7 +93,7 @@ BOOL XObjActorToy::LoadFromPlacement(const CoordInfo& info)
  */
 void XObjActorToy::ResetObjectState()
 {
-	u8* data = gActorToyAnimationData;
+	ActorToyAnimationData& data = gActorToyAnimationData;
 	ResetObjectState__9XObjActorFv(this);
 	mLoad = 0;
 	_1F90 = 0;
@@ -105,32 +101,32 @@ void XObjActorToy::ResetObjectState()
 	mSecond.ResetObjectState();
 	switch (GetKind()) {
 	case 0x6F:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x374);
+		mAnimSfx.mEvents = data.sounds6F;
 		break;
 	case 0x110:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x68);
+		mAnimSfx.mEvents = data.sounds110;
 		break;
 	case 0x117:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x50C);
+		mAnimSfx.mEvents = data.sounds117;
 		break;
 	case 0x159:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x4DC);
+		mAnimSfx.mEvents = data.sounds159;
 		break;
 	case 0x1FB:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x62C);
+		mAnimSfx.mEvents = data.sounds1FB;
 		break;
 	case 0x1FC:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x3EC);
+		mAnimSfx.mEvents = data.sounds1FC;
 		break;
 	case 0x25E:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x74C);
+		mAnimSfx.mEvents = data.sounds25E;
 		break;
 	case 0x317:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x68C);
+		mAnimSfx.mEvents = data.sounds317;
 		break;
 	case 0x26C:
 	case 0x485:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x4AC);
+		mAnimSfx.mEvents = data.sounds26CAnd485;
 		break;
 	default:
 		mAnimSfx.mEvents = NULL;

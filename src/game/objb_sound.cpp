@@ -3,9 +3,12 @@
 
 // XObjSound, an object that plays sounds along with its anim
 
-extern "C" AnimSfxEvent gSoundObjectAnimEvents[3];
-
 extern "C" {
+AnimSfxEvent gSoundObjectAnimEvents[] = {
+	{ 2, 18.0f, 35.0f, 1, 0x11000e, 255, 4, 0, 0 },
+	{ 3, 14.0f, 27.0f, 1, 0x11000e, 255, 4, 0, 0 },
+	{ -1 },
+};
 
 // the weak destructor
 /**
