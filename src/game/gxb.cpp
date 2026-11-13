@@ -2066,7 +2066,7 @@ void XObjDemo::ResetObjectState()
 
 extern "C" void DrawTitleHelpText(Title* menu)
 {
-	f32 alpha   = menu->_10 * menu->mHelpAlpha;
+	f32 alpha   = menu->mMenuAlpha * menu->mHelpAlpha;
 	f32 spacing = 30.0f;
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
@@ -2131,13 +2131,13 @@ static inline void OnFormattedCardGone(Title* title)
 	title->SetMode(25);
 	title->mState = 11;
 	PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-	title->_37BC   = -200.0f;
-	title->mOffset = 0.0f;
-	title->mAlpha  = 0.0f;
+	title->mTargetPanelY = -200.0f;
+	title->mOffset       = 0.0f;
+	title->mAlpha        = 0.0f;
 	HideName(title);
-	title->_37A8 = 0;
-	title->_3809 = 0;
-	title->_3808 = 0;
+	title->mSelection     = 0;
+	title->mSaveFound     = 0;
+	title->mCardScanState = 0;
 }
 
 // moves the yes or no choice with left and right
@@ -2229,46 +2229,46 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
 	CPad pad(0);
 
 	title->mCursor.UpdateObject(frames);
-	title->_1C += frames;
-	if (title->_1C >= FRAME_RATE) {
-		title->_1C = FRAME_RATE;
-		title->_18 = fmod(title->_18 + frames * 9, 360.0);
+	title->mInputDelay += frames;
+	if (title->mInputDelay >= FRAME_RATE) {
+		title->mInputDelay = FRAME_RATE;
+		title->mPulseAngle = fmod(title->mPulseAngle + frames * 9, 360.0);
 	}
-	if (!pad.mPad->mConnected && title->_3818) {
-		title->_3818 = FALSE;
+	if (!pad.mPad->mConnected && title->mRumble) {
+		title->mRumble = FALSE;
 		gGame.mStatus.mFlags &= ~0x800000000ULL;
 	}
 
-	switch (title->_08) {
+	switch (title->mOptionState) {
 	case 0:
 		if (pad.mPad->mRepeat & 0x10008) {
-			if (title->_380C > 0) {
-				title->_380C--;
+			if (title->mOptionLine > 0) {
+				title->mOptionLine--;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
-				title->_18 = 45.0f;
+				title->mPulseAngle = 45.0f;
 			}
 		} else if (pad.mPad->mRepeat & 0x20004) {
-			if (title->_380C < 2) {
-				title->_380C++;
+			if (title->mOptionLine < 2) {
+				title->mOptionLine++;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
-				title->_18 = 45.0f;
+				title->mPulseAngle = 45.0f;
 			}
 		}
 		if (pad.mPad->mTrigger & 0x100) {
-			switch (title->_380C) {
+			switch (title->mOptionLine) {
 			case 0:
 				if (pad.mPad->mConnected) {
-					if (title->_3818) {
-						title->_3818 = FALSE;
+					if (title->mRumble) {
+						title->mRumble = FALSE;
 						gGame.mStatus.mFlags &= ~0x800000000ULL;
 					} else {
-						title->_3818 = TRUE;
+						title->mRumble = TRUE;
 						gGame.mStatus.mFlags |= 0x800000000ULL;
 						if (pad.mPad->mConnected) {
 							HSD_PadRumbleOn(pad.mPad->mPort);
 						}
-						title->_08   = 1;
-						title->_3820 = 24;
+						title->mOptionState = 1;
+						title->mRumbleTimer = 24;
 					}
 					PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				} else {
@@ -2276,34 +2276,34 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
 				}
 				break;
 			case 1:
-				if (title->_3819) {
-					title->_3819 = FALSE;
+				if (title->mMono) {
+					title->mMono = FALSE;
 					gGame.mStatus.mFlags &= ~0x1000000000ULL;
 					SetGameSoundStereo(&gGame.mSound, FALSE);
 				} else {
-					title->_3819 = TRUE;
+					title->mMono = TRUE;
 					gGame.mStatus.mFlags |= 0x1000000000ULL;
 					SetGameSoundStereo(&gGame.mSound, TRUE);
 				}
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				break;
 			case 2:
-				title->_08 = 2;
+				title->mOptionState = 2;
 				title->mCursor.SetAnim(1, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-				title->_18 = 90.0f;
+				title->mPulseAngle = 90.0f;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				break;
 			}
 		} else if (pad.mPad->mTrigger & 0x200) {
-			title->_08 = 2;
+			title->mOptionState = 2;
 			title->mCursor.SetAnim(1, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			title->_18 = 90.0f;
+			title->mPulseAngle = 90.0f;
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 		}
 		break;
 	case 1:
-		if (--title->_3820 < 0) {
-			title->_08 = 0;
+		if (--title->mRumbleTimer < 0) {
+			title->mOptionState = 0;
 			if (pad.mPad->mConnected) {
 				HSD_PadRumbleOffN(pad.mPad->mPort);
 			}
@@ -2316,15 +2316,15 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
 		HSD_AObj* aobj = GetAObj(title->mCursor.mJObj);
 		if ((aobj->flags & 0x44000000) || title->mCursor.mAnimId == 0 || title->mCursor.mArchive.mNum[0] < 2) {
 			title->mCursor.SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			title->_18    = 0.0f;
-			title->mState = 11;
+			title->mPulseAngle = 0.0f;
+			title->mState      = 11;
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			title->_3814   = 0.0f;
-			title->_08     = 0;
-			title->_380C   = 0;
-			title->_37BC   = -200.0f;
-			title->mOffset = 0.0f;
-			title->mAlpha  = 0.0f;
+			title->mTargetOptionAlpha = 0.0f;
+			title->mOptionState       = 0;
+			title->mOptionLine        = 0;
+			title->mTargetPanelY      = -200.0f;
+			title->mOffset            = 0.0f;
+			title->mAlpha             = 0.0f;
 			HideName(title);
 		}
 		break;
@@ -2344,7 +2344,7 @@ static inline f32 GetAnimProgress(Title* title)
 static inline bool IsLineLit(Title* title, s32 line)
 {
 	bool lit = false;
-	if (title->_380C == line && title->_1C >= FRAME_RATE) {
+	if (title->mOptionLine == line && title->mInputDelay >= FRAME_RATE) {
 		lit = true;
 	}
 	return lit;
@@ -2369,14 +2369,14 @@ static inline u32 LoadTextColor(f32 alpha)
 }
 static inline f32 LoadPromptY(Title* title, f32 panelY)
 {
-	return ((8.0f + (356.0f - panelY)) - 6.0f) + title->_37C4;
+	return ((8.0f + (356.0f - panelY)) - 6.0f) + title->mLoadOffset;
 }
 static inline s32 LoadStatusAt(Title* title, s32 id, f32 panelX, f32 panelY)
 {
 #if defined(VERSION_JP)
-	return DrawJapaneseSaveStatusMessage(title->mChannel, id, panelX, panelY, 21.0f, title->_37E4);
+	return DrawJapaneseSaveStatusMessage(title->mChannel, id, panelX, panelY, 21.0f, title->mLoadAlpha);
 #else
-	return DrawSaveStatusMessage(title->mChannel, id, panelX, panelY, 21.0f, title->_37E4);
+	return DrawSaveStatusMessage(title->mChannel, id, panelX, panelY, 21.0f, title->mLoadAlpha);
 #endif
 }
 static inline s32 LoadStatusLines(Title* title, s32 id, f32 panelX, f32 panelY)
@@ -2407,7 +2407,7 @@ static inline u32 LoadHalfWidth(u32 cells)
 #else
 static inline void DrawLoadChoice(Title* title, s32 label, f32 center, f32 y)
 {
-	u32 color = LoadTextColor(title->_37E4);
+	u32 color = LoadTextColor(title->mLoadAlpha);
 	DrawLoadText(GetLocalizedInterfaceText(label), center, y, color);
 }
 #endif
@@ -2430,36 +2430,36 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			u8 selected = 0, empty = 0;
 			if (title->mFile == i)
 				selected = 1;
-			if (title->_37D0 >= 6 && title->_37D4 > 0)
+			if (title->mFreeBlocks >= 6 && title->mFreeFiles > 0)
 				empty = 1;
-			DrawSaveSlotDetails(&gTitleSaveSlots[i], empty, i, selected, x, 223.0f, width, 230.0f, title->_37E4, 1.0f, 1.0f);
+			DrawSaveSlotDetails(&gTitleSaveSlots[i], empty, i, selected, x, 223.0f, width, 230.0f, title->mLoadAlpha, 1.0f, 1.0f);
 		}
 		break;
 	}
-	f32 panelX = title->_37B0, panelY = title->_37B4 - 8.0f;
-	DrawMenuBannerPanels(NULL, panelX, panelY, 1.0f, title->_37C4);
+	f32 panelX = title->mPanelX, panelY = title->mPanelY - 8.0f;
+	DrawMenuBannerPanels(NULL, panelX, panelY, 1.0f, title->mLoadOffset);
 	bool showMessage = false;
 	s32 lines        = 2;
 	char text[256];
 
 	switch (title->mMode) {
 	case 2:
-		if (!title->_37A8) {
+		if (!title->mSelection) {
 #if defined(VERSION_JP)
 			sprintf(text, "%.255s", LoadPromptText(0x94, 0x15));
 			u32 cells  = strlen(text) / 2;
 			f32 center = 320.0f + panelX, top = 8.0f + (356.0f - panelY);
-			f32 x = center - LoadHalfWidth(cells), y = (top - 6.0f) + title->_37C4;
-			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->_37E4), text, x, y, 0.0f, 21.0f, 21.0f);
+			f32 x = center - LoadHalfWidth(cells), y = (top - 6.0f) + title->mLoadOffset;
+			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mLoadAlpha), text, x, y, 0.0f, 21.0f, 21.0f);
 			sprintf(text, "%.255s", LoadPromptText(0x95, 0x16));
 			cells = strlen(text) / 2;
-			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->_37E4), text, center - LoadHalfWidth(cells),
-			                             (21.0f + top) + title->_37C4, 0.0f, 21.0f, 21.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mLoadAlpha), text, center - LoadHalfWidth(cells),
+			                             (21.0f + top) + title->mLoadOffset, 0.0f, 21.0f, 21.0f);
 #else
 			f32 top   = 8.0f + (356.0f - panelY);
-			u32 color = LoadTextColor(title->_37E4);
-			DrawLoadText(LoadPromptText(0x94, 0), 320.0f, (top - 6.0f) + title->_37C4, color);
-			DrawLoadText(LoadPromptText(0x95, 0), 320.0f, (21.0f + top) + title->_37C4, color);
+			u32 color = LoadTextColor(title->mLoadAlpha);
+			DrawLoadText(LoadPromptText(0x94, 0), 320.0f, (top - 6.0f) + title->mLoadOffset, color);
+			DrawLoadText(LoadPromptText(0x95, 0), 320.0f, (21.0f + top) + title->mLoadOffset, color);
 #endif
 		} else {
 			sprintf(text, "%.255s", LoadPromptText(0xbc, 0x12));
@@ -2503,9 +2503,10 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	case 14:
 #if defined(VERSION_JP)
 		lines = DrawJapaneseCardErrorMessage(title->mChannel, title->mResult, 1, 320.0f + panelX, LoadPromptY(title, panelY), 21.0f,
-		                                     title->_37E4);
+		                                     title->mLoadAlpha);
 #else
-		lines = DrawCardErrorMessage(title->mChannel, title->mResult, 1, 320.0f + panelX, LoadPromptY(title, panelY), 21.0f, title->_37E4);
+		lines = DrawCardErrorMessage(title->mChannel, title->mResult, 1, 320.0f + panelX, LoadPromptY(title, panelY), 21.0f,
+		                             title->mLoadAlpha);
 #endif
 		break;
 	case 15:
@@ -2520,7 +2521,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 #else
 	{
 		f32 x = 320.0f + panelX, y = LoadPromptY(title, panelY);
-		if (title->_3C44 == 1)
+		if (title->mFormatCancelled == 1)
 			lines = LoadStatusAt(title, 16, x, y);
 		else
 			lines = LoadStatusAt(title, 12, x, y);
@@ -2549,10 +2550,10 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	if (showMessage) {
 #if defined(VERSION_JP)
 		u32 cells = strlen(text) / 2;
-		DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->_37E4), text, (320.0f + panelX) - LoadHalfWidth(cells),
+		DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mLoadAlpha), text, (320.0f + panelX) - LoadHalfWidth(cells),
 		                             LoadPromptY(title, panelY), 0.0f, 21.0f, 21.0f);
 #else
-		DrawLoadText(text, 320.0f, LoadPromptY(title, panelY), LoadTextColor(title->_37E4));
+		DrawLoadText(text, 320.0f, LoadPromptY(title, panelY), LoadTextColor(title->mLoadAlpha));
 #endif
 	}
 
@@ -2577,16 +2578,16 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		f32 base = (24.0f + (12.0f + (356.0f - panelY))) - 6.0f;
 		{
 			CTexObj tex;
-			f32 alpha = title->_37E4, scroll = title->_37AC;
-			f32 barY     = 8.0f + (extra + (base + title->_37C4));
+			f32 alpha = title->mLoadAlpha, scroll = title->mLoadScroll;
+			f32 barY     = 8.0f + (extra + (base + title->mLoadOffset));
 			u32 barColor = 0x181CC600 | (u32)(200.0f * alpha);
 			InitMenuSelectionBar(tex);
 			DrawMenuSelectionBar(tex, barX, 2.0f + barY, width, 22.0f, alpha, scroll, barColor, 0.5f);
 		}
-		f32 y = extra + (base + title->_37C4);
+		f32 y = extra + (base + title->mLoadOffset);
 #if defined(VERSION_JP)
-		DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->_37E4), text, 10.0f + ((320.0f + panelX) - LoadHalfWidth(cells)), y,
-		                             0.0f, 21.0f, 21.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mLoadAlpha), text, 10.0f + ((320.0f + panelX) - LoadHalfWidth(cells)),
+		                             y, 0.0f, 21.0f, 21.0f);
 #else
 		if (HelpTextIsJapanese()) {
 			DrawLoadChoice(title, 0x65, 281.25f, y);
@@ -2599,17 +2600,17 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		break;
 	}
 	}
-	if (title->_3810 > 0.0f) {
+	if (title->mOptionAlpha > 0.0f) {
 #if defined(VERSION_JP)
 		sprintf(text, "%.255s", LoadPromptText(0, 0x36));
 		{
 			u32 cells = strlen(text) / 2;
-			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->_3810), text, (320.0f + panelX) - LoadHalfWidth(cells),
+			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mOptionAlpha), text, (320.0f + panelX) - LoadHalfWidth(cells),
 			                             LoadPromptY(title, panelY), 0.0f, 21.0f, 21.0f);
 		}
 #else
 		{
-			u32 color = LoadTextColor(title->_3810);
+			u32 color = LoadTextColor(title->mOptionAlpha);
 			DrawLoadText(GetLocalizedInterfaceText(0x61), 320.0f, LoadPromptY(title, panelY), color);
 		}
 #endif
@@ -2625,7 +2626,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 // window is open. the back line bobs while the cursor plays its anim
 extern "C" void DrawTitleOptions(Title* title)
 {
-	f32 scale = title->_3810;
+	f32 scale = title->mOptionAlpha;
 	if (scale > 0.0f) {
 		f32 alpha  = 255.0f * scale;
 		f32 h      = 224.0f * scale;
@@ -2643,14 +2644,14 @@ extern "C" void DrawTitleOptions(Title* title)
 #else
 		GetLocalizedInterfaceText(0x60);
 #endif
-		f32 titleSize = 24.0f * title->_3810;
+		f32 titleSize = 24.0f * title->mOptionAlpha;
 #if !defined(VERSION_JP)
 		text = GetLocalizedInterfaceText(0x60);
 #endif
 		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, titleSize) / 2.0f,
 		                             titleSize + top, 0.0f, titleSize, titleSize);
 #endif
-		f32 size = 24.0f * title->_3810;
+		f32 size = 24.0f * title->mOptionAlpha;
 #if defined(VERSION_PAL)
 		top = (224.0f - (4.0f * (size * 0.5f) - size * 0.25f)) - h * 0.5f;
 #endif
@@ -2664,7 +2665,7 @@ extern "C" void DrawTitleOptions(Title* title)
 		f32 left = 320.0f - 9.0f * half;
 		f32 y    = size + (4.0f * half + top);
 		DrawGsProportionalTextFormat(&gGame.mGs, color, text, size + left, y, 0.0f, size, size);
-		if (title->_3818) {
+		if (title->mRumble) {
 			text = GetLocalizedInterfaceText(0x4a);
 			DrawGsProportionalTextFormat(&gGame.mGs, normal, text, size + (5.0f * size + left), y, 0.0f, size, size);
 		} else {
@@ -2675,7 +2676,7 @@ extern "C" void DrawTitleOptions(Title* title)
 		text  = GetLocalizedInterfaceText(0x4c);
 		y     = size + (4.0f * (2.0f * half) + top);
 		DrawGsProportionalTextFormat(&gGame.mGs, color, text, left, y, 0.0f, size, size);
-		text = title->_3819 ? GetLocalizedInterfaceText(0x4d) : GetLocalizedInterfaceText(0x4e);
+		text = title->mMono ? GetLocalizedInterfaceText(0x4d) : GetLocalizedInterfaceText(0x4e);
 		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, 5.0f * size + left, y, 0.0f, size, size);
 #else
 		text  = GetLocalizedInterfaceText(0x10);
@@ -2683,7 +2684,7 @@ extern "C" void DrawTitleOptions(Title* title)
 		f32 y;
 		DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f,
 		                             y = size + (4.0f * (size / 2.0f) + top), 0.0f, size, size);
-		text = title->_3818 ? GetLocalizedInterfaceText(0x11) : GetLocalizedInterfaceText(0x12);
+		text = title->mRumble ? GetLocalizedInterfaceText(0x11) : GetLocalizedInterfaceText(0x12);
 		x    = 8.0f + (MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f + 320.0f);
 		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f, y, 0.0f, size,
 		                             size);
@@ -2696,14 +2697,14 @@ extern "C" void DrawTitleOptions(Title* title)
 		x    = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f - 8.0f;
 		DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f,
 		                             y = size + (4.0f * (2.0f * (size / 2.0f)) + top), 0.0f, size, size);
-		text = title->_3819 ? GetLocalizedInterfaceText(0x14) : GetLocalizedInterfaceText(0x15);
+		text = title->mMono ? GetLocalizedInterfaceText(0x14) : GetLocalizedInterfaceText(0x15);
 		x    = 8.0f + (MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f + 320.0f);
 		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f, y, 0.0f, size,
 		                             size);
 #endif
 
 		f32 t        = title->mCursor.mAnimId == 1 ? GetAnimProgress(title) : 0.0f;
-		f32 bob      = title->_380C == 2 ? 2.0f * (f32)sin(4.712389f * t) : 0.0f;
+		f32 bob      = title->mOptionLine == 2 ? 2.0f * (f32)sin(4.712389f * t) : 0.0f;
 		f32 backSize = 24.0f + bob;
 		if (IsLineLit(title, 2)) {
 			normal = lit;
@@ -2757,22 +2758,22 @@ static inline void DrawTitleCursors(Title* title, f32 halfWidth, f32 y)
 static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32 progress, u32 normal, u32 lit)
 {
 	const char* text = GetTitleAndSaveMenuText(textId);
-	f32 size         = 24.0f + (title->_37A8 == entry ? 2.0f * (f32)sin(4.712389f * progress) : 0.0f);
+	f32 size         = 24.0f + (title->mSelection == entry ? 2.0f * (f32)sin(4.712389f * progress) : 0.0f);
 	f32 width        = MeasureGameTextWidth(&gGame.mGs, text, 1, 24.0f);
 	if (entry == 1) {
 		bool selected = false;
-		if (title->_37A8 == entry && (f32)title->_1C >= FRAME_RATE)
+		if (title->mSelection == entry && (f32)title->mInputDelay >= FRAME_RATE)
 			selected = true;
 		u32 tint = normal;
 		if (selected)
 			tint = lit;
-		if (title->_3809)
+		if (title->mSaveFound)
 			DrawGsProportionalTextFormat(&gGame.mGs, tint, text, 320.0f - width * .5f, (size - 24.0f) * .5f + (y - size), 0.0f, 24.0f,
 			                             size);
 	} else {
 		f32 x = 320.0f - width * .5f, top = (size - 24.0f) * .5f + (y - size);
 		bool selected = false;
-		if (title->_37A8 == entry && (f32)title->_1C >= FRAME_RATE)
+		if (title->mSelection == entry && (f32)title->mInputDelay >= FRAME_RATE)
 			selected = true;
 		DrawGsProportionalTextFormat(&gGame.mGs, selected ? lit : normal, text, x, top, 0.0f, 24.0f, size);
 	}
@@ -2806,11 +2807,11 @@ extern "C" void DrawTitleScreen(Title* title)
 	CGs& gs           = game.mGs;
 	gGame.mGs.mCamera = game.vf34();
 	if (BeginGsCamera(&game)) {
-		if (title->_10 > 0.0f) {
+		if (title->mMenuAlpha > 0.0f) {
 			BeginTitleOverlay();
 
 			for (s32 i = 0; i < 16; ++i) {
-				f32 alpha = title->_10;
+				f32 alpha = title->mMenuAlpha;
 				SetGsTevMode(gs.mCurTevStage, 0);
 				TitleDust& dust = title->mDust[i];
 
@@ -2824,7 +2825,7 @@ extern "C" void DrawTitleScreen(Title* title)
 			SetGsTevMode(gs.mCurTevStage, 0);
 			u16 w     = GXGetTexObjWidth(&title->mTex[gTitleLogoTextures[gTitleLogoIndex]]);
 			u16 h     = GXGetTexObjHeight(&title->mTex[gTitleLogoTextures[gTitleLogoIndex]]);
-			u32 color = 0xffffff00 | (u32)(255.0f * title->_10);
+			u32 color = 0xffffff00 | (u32)(255.0f * title->mMenuAlpha);
 			DrawGsTexturedQuad(&gGame.mGs, &title->mTex[gTitleLogoTextures[gTitleLogoIndex]], color, color, color, color, 320, 130, 0, w, h,
 			                   0, 0, 0);
 			SetGsTevMode(gs.mCurTevStage, 4);
@@ -2844,23 +2845,23 @@ extern "C" void DrawTitleScreen(Title* title)
 	gGame.mGs.mCamera = game.vf34();
 	if (!BeginGsCamera(&game))
 		return;
-	if (title->_10 > 0.0f) {
+	if (title->mMenuAlpha > 0.0f) {
 		BeginTitleOverlay();
 		SetGsTevMode(gs.mCurTevStage, 0);
 		CTexObj& tex = title->mTex[footerTexture];
 		u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
-		u32 color = (u32)(255.0f * title->_10);
+		u32 color = (u32)(255.0f * title->mMenuAlpha);
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 320.0f, 398.0f, 0, .6f * w, .6f * h, 0, 0, 0);
 		SetGsTevMode(gs.mCurTevStage, 4);
 	}
-	DrawPanelBackground<SavePanel>(title->_37E4 + title->_3810);
+	DrawPanelBackground<SavePanel>(title->mLoadAlpha + title->mOptionAlpha);
 	DrawTitleHelpText(title);
 	DrawTitleLoadScreen(title);
 	DrawTitleOptions(title);
 	DrawTitleNameBubbles(title);
 	if (title->mState == 10 || title->mState == 11 || title->mState == 12) {
-		f32 wave            = 127.0f * (f32)sin(DEG2RAD * title->_18);
-		f32 alpha           = title->_10;
+		f32 wave            = 127.0f * (f32)sin(DEG2RAD * title->mPulseAngle);
+		f32 alpha           = title->mMenuAlpha;
 		const GXColor& text = gTitlePalette[gTitlePaletteIndex].text;
 		u32 rgb             = ((u32)text.r << 24) | ((u32)text.g << 16) | ((u32)text.b << 8);
 		u32 lit             = rgb | (u8)(127.0f + alpha * wave);
@@ -2875,7 +2876,7 @@ extern "C" void DrawTitleScreen(Title* title)
 		f32 w1 = DrawTitleEntry(title, 1, second, 352.0f, progress, normal, lit);
 		f32 y  = 380.0f;
 		f32 w2 = DrawTitleEntry(title, 2, third, y, progress, normal, lit);
-		switch (title->_37A8) {
+		switch (title->mSelection) {
 		case 0:
 			y = 324.0f;
 #if defined(VERSION_JP)
@@ -2901,7 +2902,7 @@ extern "C" void DrawTitleScreen(Title* title)
 	if (title->mState == 21) {
 		f32 y;
 		u32 width;
-		switch (title->_380C) {
+		switch (title->mOptionLine) {
 		case 0:
 			y = 208;
 #if defined(VERSION_PAL)
@@ -2970,11 +2971,11 @@ void Title::State24(u32 frames)
 		break;
 	case 1:
 		HideName(this);
-		_37BC   = -200.0f;
-		mOffset = 0.0f;
-		mAlpha  = 0.0f;
-		mChoice = 0;
-		mState  = 13;
+		mTargetPanelY = -200.0f;
+		mOffset       = 0.0f;
+		mAlpha        = 0.0f;
+		mChoice       = 0;
+		mState        = 13;
 		SetMode(25);
 		XSound* sound = &gGame.mSound;
 		PlayGameSound(sound, 0x88, 255);
@@ -3021,7 +3022,7 @@ void Title::State20(u32 frames)
 	s32 error = mResult;
 
 	if (error == -3) {
-		if (_37A8 == 1) {
+		if (mSelection == 1) {
 			if (mReady) {
 				OnFormattedCardGone(this);
 				return;
@@ -3035,8 +3036,8 @@ void Title::State20(u32 frames)
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			return;
 		}
-	} else if (_37A8 == 1) {
-		if (!mReady || !_3809) {
+	} else if (mSelection == 1) {
+		if (!mReady || !mSaveFound) {
 			OnFormattedCardGone(this);
 			return;
 		}
@@ -3045,7 +3046,7 @@ void Title::State20(u32 frames)
 		return;
 	}
 	if (pad.mPad->mTrigger & 0x100) {
-		if (_37A8 == 1) {
+		if (mSelection == 1) {
 			OnFormattedCardGone(this);
 			return;
 		}
@@ -3069,7 +3070,7 @@ static inline void HandleUnavailableCard(Title* title)
 	if (title->mReady == 0) {
 		OnCardRemoved(title);
 #if !defined(VERSION_JP)
-		title->_3C44 = 0;
+		title->mFormatCancelled = 0;
 #endif
 		return;
 	}
@@ -3079,7 +3080,7 @@ static inline void HandleUnavailableCard(Title* title)
 		title->mChoice = 1;
 		PlayGameSound(&gGame.mSound, 0x88, 255);
 #if !defined(VERSION_JP)
-		title->_3C44 = 0;
+		title->mFormatCancelled = 0;
 #endif
 	}
 }
@@ -3137,9 +3138,9 @@ void Title::State15(u32 frames)
 	}
 	switch (step) {
 	case 0:
-		_37D0 = gGame.mMemcard.mCard.mFreeSectors;
-		_37D4 = gGame.mMemcard.mCard.mFreeFiles;
-		file  = &card->mSaves[0][mFile];
+		mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
+		file        = &card->mSaves[0][mFile];
 		if (file->mState != 0) {
 			gTitleSaveSlots[mFile].mUsed       = 1;
 			gTitleSaveSlots[mFile].mLevel      = file->mHeader.mLevel;
@@ -3232,7 +3233,7 @@ void Title::State14(u32 frames)
 
 	switch (error) {
 	case -3:
-		if (_37E2 == 1) {
+		if (mWrongDevice == 1) {
 			for (s32 i = 0; i < 3; i++) {
 				ResetSaveSlotRecord(&gTitleSaveSlots[i]);
 			}
@@ -3254,13 +3255,13 @@ void Title::State14(u32 frames)
 		}
 		break;
 	case -2:
-		if (!_37E2) {
+		if (!mWrongDevice) {
 			OnCardRemoved(this);
 			return;
 		}
 		break;
 	case -128:
-		if ((!mReady || !_3809) && _37A8 == 1) {
+		if ((!mReady || !mSaveFound) && mSelection == 1) {
 			OnFormattedCardGone(this);
 			return;
 		}
@@ -3339,8 +3340,8 @@ void Title::State12(u32 frames)
 	}
 	switch (gGame.mMemcard.mCard.mState) {
 	case 0:
-		_37D0 = gGame.mMemcard.mCard.mFreeSectors;
-		_37D4 = gGame.mMemcard.mCard.mFreeFiles;
+		mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
 		SetMode(13);
 		mAlpha = 1.0f;
 		break;
@@ -3422,7 +3423,7 @@ void Title::State11(u32 frames)
 				SetMode(19);
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 #if !defined(VERSION_JP)
-				_3C44 = 1;
+				mFormatCancelled = 1;
 #endif
 			}
 			return;
@@ -3440,7 +3441,7 @@ void Title::State11(u32 frames)
 				SetMode(19);
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 #if !defined(VERSION_JP)
-				_3C44 = 1;
+				mFormatCancelled = 1;
 #endif
 			}
 			return;
@@ -3464,7 +3465,7 @@ void Title::State10(u32 frames)
 void Title::State9(u32 frames)
 {
 	CPad pad(0);
-	if (_37E2 == 1 || mReady == 1) {
+	if (mWrongDevice == 1 || mReady == 1) {
 		for (s32 i = 0; i < 3; ++i) {
 			ResetSaveSlotRecord(&gTitleSaveSlots[i]);
 		}
@@ -3493,7 +3494,7 @@ void Title::State8(u32 frames)
 	case 0:
 		HideName(this);
 		StopGameSfx(&gGame.mSound, (s32)0xFFFF0003);
-		_37BC                             = -200.0f;
+		mTargetPanelY                     = -200.0f;
 		mAlpha                            = 0.0f;
 		gGame.mInfoScrn.mSelectedSaveSlot = mFile;
 		ResumeScrapCounterPulse(&gGame.mInfoScrn);
@@ -3575,17 +3576,17 @@ void Title::State6(u32 frames)
 {
 	CPad pad(0);
 
-	if ((!mReady || !_3809) && _37A8 == 1) {
+	if ((!mReady || !mSaveFound) && mSelection == 1) {
 		SetMode(25);
 		mState = 11;
 		PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-		_37BC   = -200.0f;
-		mOffset = 0.0f;
-		mAlpha  = 0.0f;
+		mTargetPanelY = -200.0f;
+		mOffset       = 0.0f;
+		mAlpha        = 0.0f;
 		HideName(this);
-		_37A8 = 0;
-		_3809 = 0;
-		_3808 = 0;
+		mSelection     = 0;
+		mSaveFound     = 0;
+		mCardScanState = 0;
 		return;
 	}
 	if (!mReady) {
@@ -3646,7 +3647,7 @@ void Title::State5(u32 frames)
 		}
 		break;
 	case -2:
-		if (!_37E2) {
+		if (!mWrongDevice) {
 			OnCardRemoved(this);
 			return;
 		}
@@ -3662,11 +3663,11 @@ void Title::State5(u32 frames)
 	if (pad.mPad->mTrigger & 0x100) {
 		if (mChoice == 0 && (pad.mPad->mTrigger & 0x100)) {
 			HideName(this);
-			_37BC   = -200.0f;
-			mOffset = 0.0f;
-			mAlpha  = 0.0f;
-			mChoice = 0;
-			mState  = 13;
+			mTargetPanelY = -200.0f;
+			mOffset       = 0.0f;
+			mAlpha        = 0.0f;
+			mChoice       = 0;
+			mState        = 13;
 			SetMode(25);
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			StopGameSfx(&gGame.mSound, (s32)0xFFFF0003);
@@ -3684,10 +3685,10 @@ void Title::State5(u32 frames)
 				SetMode(25);
 				mState = 11;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-				_37BC   = -200.0f;
-				mAlpha  = 0.0f;
-				mChoice = 0;
-				mOffset = 0.0f;
+				mTargetPanelY = -200.0f;
+				mAlpha        = 0.0f;
+				mChoice       = 0;
+				mOffset       = 0.0f;
 				HideName(this);
 			} else {
 				for (s32 i = 0; i < 3; i++) {
@@ -3766,7 +3767,7 @@ void Title::State2(u32 frames)
 {
 	CPad pad(0);
 
-	if ((!mReady || !_3809) && _37A8 == 1) {
+	if ((!mReady || !mSaveFound) && mSelection == 1) {
 		OnFormattedCardGone(this);
 		return;
 	}
@@ -3789,13 +3790,13 @@ void Title::State2(u32 frames)
 		PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 	}
 	if (pad.mPad->mTrigger & 0x100) {
-		switch (_37A8) {
+		switch (mSelection) {
 		case 0:
 			if (gTitleSaveSlots[mFile].mUsed == 1) {
 				SetMode(3);
 				mChoice = 1;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			} else if (_37D0 >= 6 && _37D4 > 0) {
+			} else if (mFreeBlocks >= 6 && mFreeFiles > 0) {
 				StartMemoryCardSaveWrite(&gGame.mMemcard.mCard, mChannel, mFile, 1);
 				SetMode(15);
 				mDelay  = 1.5f * FRAME_RATE;
@@ -3819,10 +3820,10 @@ void Title::State2(u32 frames)
 				}
 				if (gTitleSaveSlots[mFile].mStage == 0) {
 					HideName(this);
-					_37BC   = -200.0f;
-					mAlpha  = 0.0f;
-					mChoice = 0;
-					mState  = 13;
+					mTargetPanelY = -200.0f;
+					mAlpha        = 0.0f;
+					mChoice       = 0;
+					mState        = 13;
 					SetMode(25);
 					PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 					StopGameSfx(&gGame.mSound, (s32)0xFFFF0003);
@@ -3841,9 +3842,9 @@ void Title::State2(u32 frames)
 		SetMode(25);
 		mState = 11;
 		PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-		_37BC   = -200.0f;
-		mOffset = 0.0f;
-		mAlpha  = 0.0f;
+		mTargetPanelY = -200.0f;
+		mOffset       = 0.0f;
+		mAlpha        = 0.0f;
 		HideName(this);
 	}
 }
@@ -3892,10 +3893,10 @@ void Title::State1(u32 frames)
 					gTitleSaveSlots[i].mState = 0;
 			}
 		}
-		_37D0 = gGame.mMemcard.mCard.mFreeSectors;
-		_37D4 = gGame.mMemcard.mCard.mFreeFiles;
+		mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
 		SetMode(2);
-		if (_37A8 == 0)
+		if (mSelection == 0)
 			mFile = 0;
 		else
 			mFile = IndexOfLargestOfThree(timestamps[0], timestamps[1], timestamps[2]);
@@ -3990,7 +3991,7 @@ static inline void KeepTitleSoundPlaying(XSound* sound)
 
 static inline void ShowTitleChoice(Title* title, s32 id)
 {
-	u32 tint             = 0xffffff00 | (u32)(255.f * title->_37E4);
+	u32 tint             = 0xffffff00 | (u32)(255.f * title->mLoadAlpha);
 	const char* text     = GetTitleAndSaveMenuText(id);
 	title->mName.mActive = 1;
 	title->mName.mCount  = 0;
@@ -4048,10 +4049,10 @@ static inline void ApplyTitleControllerSetting(Title* title)
 {
 	if (gGame.mStatus.mFlags & 0x4000) {
 		if (gGame.mPad.mPad[0].mConnected) {
-			title->_3818 = 1;
+			title->mRumble = 1;
 			gGame.mStatus.mFlags |= 0x800000000ULL;
 		} else {
-			title->_3818 = 0;
+			title->mRumble = 0;
 			gGame.mStatus.mFlags &= ~0x800000000ULL;
 		}
 		gGame.mStatus.mFlags &= ~0x4000ULL;
@@ -4060,7 +4061,7 @@ static inline void ApplyTitleControllerSetting(Title* title)
 
 static inline void TitleSelectionMoved(Title* title)
 {
-	title->_18 = 45;
+	title->mPulseAngle = 45;
 	PlayGameSound(&gGame.mSound, 0x87, 255);
 }
 
@@ -4069,7 +4070,7 @@ static inline void TitleSelectionConfirmed(Title* title)
 	PlayGameSound(&gGame.mSound, 0x88, 255);
 	title->mState = 12;
 	title->mCursor.SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
-	title->_18 = 90;
+	title->mPulseAngle = 90;
 }
 
 /**
@@ -4080,11 +4081,11 @@ static inline void TitleSelectionConfirmed(Title* title)
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {
 
-	ApproachTitleOffset(title->_37B4, title->_37BC);
-	ApproachHudValue(&title->_37E4, &title->mAlpha, .08f * frames);
-	ApproachTitleOffset(title->_37C4, title->mOffset);
-	ApproachHudValue(&title->_3810, &title->_3814, .08f * frames);
-	title->_37AC -= .008f * frames;
+	ApproachTitleOffset(title->mPanelY, title->mTargetPanelY);
+	ApproachHudValue(&title->mLoadAlpha, &title->mAlpha, .08f * frames);
+	ApproachTitleOffset(title->mLoadOffset, title->mOffset);
+	ApproachHudValue(&title->mOptionAlpha, &title->mTargetOptionAlpha, .08f * frames);
+	title->mLoadScroll -= .008f * frames;
 	if (title->mState != 0 && title->mState != 1 && title->mState != 23) {
 		if (title->mName.mActive && title->mName.mActive > 0) {
 			for (s32 i = 0; i < title->mName.mCount; ++i) {
@@ -4125,7 +4126,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 			}
 			break;
 		}
-		if (title->_10 > 0) {
+		if (title->mMenuAlpha > 0) {
 			for (s32 i = 0; i < (s32)ARRAY_SIZE(title->mBg); ++i) {
 				title->mBg[i].mAngle0 += (5.f * DEG2RAD) * frames;
 				title->mBg[i].mAngle1 += (3.f * DEG2RAD) * frames;
@@ -4134,11 +4135,11 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		if (title->mMode != 1 && title->mMode != 8 && title->mMode != 12 && title->mMode != 15) {
 			Memcard& card = gGame.mMemcard.mCard;
 			s32 sector, capacity;
-			title->mReady = 0;
-			title->_37E2  = 0;
+			title->mReady       = 0;
+			title->mWrongDevice = 0;
 			switch (ProbeMemoryCardCapacity(&card, title->mChannel, &capacity, &sector)) {
 			case CARD_RESULT_WRONGDEVICE:
-				title->_37E2 = 1;
+				title->mWrongDevice = 1;
 				break;
 			case CARD_RESULT_READY:
 				if (sector == 8192)
@@ -4151,22 +4152,22 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 			if (!title->mReady)
 				title->mShowMessage = 0;
 			if (!title->mReady) {
-				if (title->mState != 20 && title->_37A8 == 1)
-					title->_37A8 = 0;
-				title->_3809 = 0;
-				title->_3808 = 0;
+				if (title->mState != 20 && title->mSelection == 1)
+					title->mSelection = 0;
+				title->mSaveFound     = 0;
+				title->mCardScanState = 0;
 #if !defined(VERSION_JP)
-				title->_3C44 = 0;
+				title->mFormatCancelled = 0;
 #endif
 			} else {
-				switch (title->_3808) {
+				switch (title->mCardScanState) {
 				case 0:
 					StartMemoryCardScan(&card, title->mChannel, FALSE);
-					title->_3808 = 1;
+					title->mCardScanState = 1;
 					break;
 				case 1:
-					if (!title->_3809 && card.mFound)
-						title->_3809 = 1;
+					if (!title->mSaveFound && card.mFound)
+						title->mSaveFound = 1;
 					break;
 				}
 			}
@@ -4185,24 +4186,24 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		break;
 	case 2:
 		if (gGame.mMemcard.mCard.mFound) {
-			title->_37A8 = 1;
-			title->_3809 = 1;
+			title->mSelection = 1;
+			title->mSaveFound = 1;
 			ApplyTitleControllerSetting(title);
 		} else {
-			title->_37A8 = 0;
-			title->_3809 = 0;
-			title->_3808 = 0;
+			title->mSelection     = 0;
+			title->mSaveFound     = 0;
+			title->mCardScanState = 0;
 			ApplyTitleControllerSetting(title);
 		}
 		title->mState = 3;
 		if (gCmdLineArgs.mTitleCursor < 0) {
-			title->_20 = rand() % 11;
+			title->mSpawnIndex = rand() % 11;
 		} else {
-			title->_20 = gCmdLineArgs.mTitleCursor % 11;
+			title->mSpawnIndex = gCmdLineArgs.mTitleCursor % 11;
 		}
 		// fall through: loading starts on the same frame as cursor selection
 	case 3:
-		if (title->mCursor.LoadFromPlacement(CoordInfo(GetSpawnData(title->_20))))
+		if (title->mCursor.LoadFromPlacement(CoordInfo(GetSpawnData(title->mSpawnIndex))))
 			++title->mState;
 		break;
 	case 4:
@@ -4230,7 +4231,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		title->mTex[4] = title->mTpl.mTex.Init(&((TPLPalette*)title->mTpl.mBuffer)->descriptorArray[4], 0);
 		title->mTex[5] = title->mTpl.mTex.Init(&((TPLPalette*)title->mTpl.mBuffer)->descriptorArray[5], 0);
 #endif
-		title->_10 = title->_14 = 0;
+		title->mMenuAlpha = title->mLogoAlpha = 0;
 		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, gTitlePalette[gTitlePaletteIndex].background.r,
 		                gTitlePalette[gTitlePaletteIndex].background.g, gTitlePalette[gTitlePaletteIndex].background.b, 0, .5f);
 #if defined(VERSION_PAL)
@@ -4246,26 +4247,26 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	}
 	case 10: {
 
-		if (title->_10 < 1) {
-			if ((title->_10 += (1.f / (.5f * FRAME_RATE)) * frames) > 1)
-				title->_10 = 1;
+		if (title->mMenuAlpha < 1) {
+			if ((title->mMenuAlpha += (1.f / (.5f * FRAME_RATE)) * frames) > 1)
+				title->mMenuAlpha = 1;
 		}
-		if (title->_14 < 1) {
-			if ((title->_14 += (1.f / FRAME_RATE) * frames) > 1)
-				title->_14 = 1;
+		if (title->mLogoAlpha < 1) {
+			if ((title->mLogoAlpha += (1.f / FRAME_RATE) * frames) > 1)
+				title->mLogoAlpha = 1;
 		}
 		title->mCursor.UpdateObject(frames);
 		title->mDemo.UpdateObject(frames);
 		UpdateTitleDust(title, frames);
-		if (title->_10 == 1 && title->_14 == 1)
+		if (title->mMenuAlpha == 1 && title->mLogoAlpha == 1)
 			title->mState = 11;
 		break;
 	}
 	case 11: {
-		title->_1C += frames;
-		if (title->_1C >= FRAME_RATE) {
-			title->_1C = (s32)FRAME_RATE;
-			title->_18 = (f32)fmod(title->_18 + (f32)(frames * 9), 360.);
+		title->mInputDelay += frames;
+		if (title->mInputDelay >= FRAME_RATE) {
+			title->mInputDelay = (s32)FRAME_RATE;
+			title->mPulseAngle = (f32)fmod(title->mPulseAngle + (f32)(frames * 9), 360.);
 		}
 		title->mCursor.UpdateObject(frames);
 		title->mDemo.UpdateObject(frames);
@@ -4273,23 +4274,23 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		KeepTitleSoundPlaying(&gGame.mSound);
 		CPad pad(0);
 		if (pad.mPad->mRepeat & 0x10008) {
-			if (title->_3809) {
-				if (title->_37A8 > 0) {
-					--title->_37A8;
+			if (title->mSaveFound) {
+				if (title->mSelection > 0) {
+					--title->mSelection;
 					TitleSelectionMoved(title);
 				}
-			} else if (title->_37A8 != 0) {
-				title->_37A8 = 0;
+			} else if (title->mSelection != 0) {
+				title->mSelection = 0;
 				TitleSelectionMoved(title);
 			}
 		} else if (pad.mPad->mRepeat & 0x20004) {
-			if (title->_3809) {
-				if (title->_37A8 < 2) {
-					++title->_37A8;
+			if (title->mSaveFound) {
+				if (title->mSelection < 2) {
+					++title->mSelection;
 					TitleSelectionMoved(title);
 				}
-			} else if (title->_37A8 != 2) {
-				title->_37A8 = 2;
+			} else if (title->mSelection != 2) {
+				title->mSelection = 2;
 				TitleSelectionMoved(title);
 			}
 		}
@@ -4297,7 +4298,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		else
 #endif
 		    if (pad.mPad->mTrigger & 0x100) {
-			switch (title->_37A8) {
+			switch (title->mSelection) {
 			case 0:
 			case 1:
 				for (s32 i = 0; i < 3; ++i)
@@ -4320,12 +4321,12 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		HSD_AObj* aobj = GetAObj(title->mCursor.mJObj);
 		if ((aobj->flags & 0x44000000) || title->mCursor.mAnimId == 0 || title->mCursor.mArchive.mNum[0] < 2) {
 			title->mCursor.SetAnim(0, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
-			title->_18 = 0;
-			switch (title->_37A8) {
+			title->mPulseAngle = 0;
+			switch (title->mSelection) {
 			case 0:
-				title->_37BC  = 0;
-				title->mAlpha = 1;
-				title->mState = 20;
+				title->mTargetPanelY = 0;
+				title->mAlpha        = 1;
+				title->mState        = 20;
 #if defined(VERSION_JP)
 				ShowTitleChoice(title, 19);
 #else
@@ -4333,9 +4334,9 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 #endif
 				break;
 			case 1:
-				title->_37BC  = 0;
-				title->mAlpha = 1;
-				title->mState = 20;
+				title->mTargetPanelY = 0;
+				title->mAlpha        = 1;
+				title->mState        = 20;
 				PlayGameSound(&gGame.mSound, 0x88, 255);
 #if defined(VERSION_JP)
 				ShowTitleChoice(title, 20);
@@ -4344,11 +4345,11 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 #endif
 				break;
 			case 2:
-				title->_37BC  = 0;
-				title->_3814  = 1;
-				title->mState = 21;
-				title->_08    = 0;
-				title->_380C  = 0;
+				title->mTargetPanelY      = 0;
+				title->mTargetOptionAlpha = 1;
+				title->mState             = 21;
+				title->mOptionState       = 0;
+				title->mOptionLine        = 0;
 				PlayGameSound(&gGame.mSound, 0x88, 255);
 #if defined(VERSION_JP)
 				ShowTitleChoice(title, 53);
@@ -4380,15 +4381,15 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	}
 	case 14: {
 
-		if (title->_10 > 0) {
-			if ((title->_10 -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
-				title->_10 = 0;
+		if (title->mMenuAlpha > 0) {
+			if ((title->mMenuAlpha -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
+				title->mMenuAlpha = 0;
 		}
-		if (title->_14 > 0) {
-			if ((title->_14 -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
-				title->_14 = 0;
+		if (title->mLogoAlpha > 0) {
+			if ((title->mLogoAlpha -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
+				title->mLogoAlpha = 0;
 		}
-		if (title->_10 == 0) {
+		if (title->mMenuAlpha == 0) {
 			bool faded = gGame.mFade.mSpeed.r == 0 && gGame.mFade.mSpeed.g == 0 && gGame.mFade.mSpeed.b == 0 && gGame.mFade.mSpeed.a == 0;
 			if (faded) {
 				GXColor black                   = { 0, 0, 0, 0 };
@@ -4564,59 +4565,59 @@ extern "C" void PlayGameSfxAtFullVolume(s32 sfx)
  */
 extern "C" void ResetTitleScreenState(Title* title)
 {
-	title->mState   = 0;
-	title->mMode    = 0;
-	title->mTimeout = -1;
-	title->_10      = 0.0f;
-	title->_14      = 0.0f;
-	title->_18      = 90.0f;
-	title->_1C      = 0;
-	title->_20      = 0;
+	title->mState      = 0;
+	title->mMode       = 0;
+	title->mTimeout    = -1;
+	title->mMenuAlpha  = 0.0f;
+	title->mLogoAlpha  = 0.0f;
+	title->mPulseAngle = 90.0f;
+	title->mInputDelay = 0;
+	title->mSpawnIndex = 0;
 	title->mCursor.InitializeObject(0);
 	title->mCursor.mAngle      = 0.0f;
 	title->mCursor.mAngleSpeed = 0.0f;
-	title->_37A8               = 0;
+	title->mSelection          = 0;
 	title->mFile               = 0;
 	title->mChoice             = 0;
-	title->_37E4               = 0.0f;
+	title->mLoadAlpha          = 0.0f;
 	title->mAlpha              = 0.0f;
 	title->mPrevMode           = 0;
 	title->mPhase              = 0;
 	title->mDelay              = 0;
-	title->_37B0               = -10.0f;
-	title->_37B4               = -200.0f;
-	title->_37B8               = -10.0f;
-	title->_37BC               = -200.0f;
+	title->mPanelX             = -10.0f;
+	title->mPanelY             = -200.0f;
+	title->mTargetPanelX       = -10.0f;
+	title->mTargetPanelY       = -200.0f;
 	title->_37C0               = 0.0f;
-	title->_37C4               = 0.0f;
+	title->mLoadOffset         = 0.0f;
 	title->_37C8               = 0.0f;
 	title->mOffset             = 0.0f;
-	title->_380C               = 0;
-	title->_08                 = 0;
-	title->_3810               = 0.0f;
-	title->_3814               = 0.0f;
+	title->mOptionLine         = 0;
+	title->mOptionState        = 0;
+	title->mOptionAlpha        = 0.0f;
+	title->mTargetOptionAlpha  = 0.0f;
 	CPad pad(0);
 	if (pad.mPad->mConnected != 0) {
 		if (gGame.mStatus.mFlags & 0x800000000ULL)
-			title->_3818 = 1;
+			title->mRumble = 1;
 		else
-			title->_3818 = 0;
+			title->mRumble = 0;
 	} else {
-		title->_3818 = 0;
+		title->mRumble = 0;
 	}
 	if (gGame.mStatus.mFlags & 0x1000000000ULL)
-		title->_3819 = 1;
+		title->mMono = 1;
 	else
-		title->_3819 = 0;
+		title->mMono = 0;
 	title->mChannel = 0;
 	for (s32 i = 0; i < 3; ++i)
 		ResetSaveSlotRecord(&gTitleSaveSlots[i]);
-	title->_37AC = 0.0f;
-	title->_3809 = 0;
-	title->_3808 = 0;
+	title->mLoadScroll    = 0.0f;
+	title->mSaveFound     = 0;
+	title->mCardScanState = 0;
 	KeyOffGameSoundTrack(&gGame.mSound, 1);
 #if !defined(VERSION_JP)
-	title->_3C44 = 0;
+	title->mFormatCancelled = 0;
 #endif
 }
 
@@ -4637,6 +4638,6 @@ extern "C" void InitTitleScreen(Title* title)
 		title->mDust[i].mSpeedY = 0.0f;
 	}
 #if !defined(VERSION_JP)
-	title->_3C44 = 0;
+	title->mFormatCancelled = 0;
 #endif
 }

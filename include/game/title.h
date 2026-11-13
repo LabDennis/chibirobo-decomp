@@ -103,37 +103,37 @@ public:
 
 	s32 mState;                // _00, CGame's FrameInterval runs at 60 while it's 1 to 22
 	s32 mMode;                 // _04
-	u32 _08;                   // _08
+	u32 mOptionState;          // _08
 	s32 mTimeout;              // _0C
-	f32 _10;                   // _10
-	f32 _14;                   // _14
-	f32 _18;                   // _18
-	s32 _1C;                   // _1C
-	u32 _20;                   // _20
+	f32 mMenuAlpha;            // _10
+	f32 mLogoAlpha;            // _14
+	f32 mPulseAngle;           // _18
+	s32 mInputDelay;           // _1C
+	u32 mSpawnIndex;           // _20
 	u32 _24;                   // _24
 	Cursor mCursor;            // _28
 	XObjDemo mDemo;            // _9B0, _9A0 in japan
 	CTpl mTpl;                 // _2FB8, _2F98 in japan
 	CTexObj mTex[6];           // _31A8
-	BOOL _37A8;                // _37A8, a save file was read
-	f32 _37AC;                 // _37AC
-	f32 _37B0;                 // _37B0
-	f32 _37B4;                 // _37B4
-	f32 _37B8;                 // _37B8
-	f32 _37BC;                 // _37BC
+	BOOL mSelection;           // _37A8
+	f32 mLoadScroll;           // _37AC
+	f32 mPanelX;               // _37B0
+	f32 mPanelY;               // _37B4
+	f32 mTargetPanelX;         // _37B8
+	f32 mTargetPanelY;         // _37BC
 	f32 _37C0;                 // _37C0
-	f32 _37C4;                 // _37C4
+	f32 mLoadOffset;           // _37C4
 	f32 _37C8;                 // _37C8
 	f32 mOffset;               // _37CC
-	s32 _37D0;                 // _37D0, the card's _16A04
-	s32 _37D4;                 // _37D4, the card's _16A00
+	s32 mFreeBlocks;           // _37D0, the card's _16A04
+	s32 mFreeFiles;            // _37D4, the card's _16A00
 	s32 mResult;               // _37D8, the card result
 	u32 _37DC;                 // _37DC
 	u8 mReady;                 // _37E0
 	u8 mShowMessage;           // _37E1
-	u8 _37E2;                  // _37E2
+	u8 mWrongDevice;           // _37E2
 	u8 _37E3;                  // _37E3
-	f32 _37E4;                 // _37E4
+	f32 mLoadAlpha;            // _37E4
 	f32 mAlpha;                // _37E8
 	s32 mPrevMode;             // _37EC
 	s32 mPhase;                // _37F0
@@ -142,16 +142,16 @@ public:
 	s32 mChoice;               // _37FC
 	u32 _3800;                 // _3800
 	s32 mChannel;              // _3804
-	u8 _3808;                  // _3808
-	u8 _3809;                  // _3809
+	u8 mCardScanState;         // _3808
+	u8 mSaveFound;             // _3809
 	u8 _380A[0x380C - 0x380A]; // _380A
-	s32 _380C;                 // _380C, the options line
-	f32 _3810;                 // _3810
-	f32 _3814;                 // _3814
-	u8 _3818;                  // _3818, rumble on
-	u8 _3819;                  // _3819, mono sound
+	s32 mOptionLine;           // _380C, the options line
+	f32 mOptionAlpha;          // _3810
+	f32 mTargetOptionAlpha;    // _3814
+	u8 mRumble;                // _3818, rumble on
+	u8 mMono;                  // _3819, mono sound
 	u8 _381A[0x3820 - 0x381A]; // _381A
-	s32 _3820;                 // _3820, frames the rumble test has left
+	s32 mRumbleTimer;          // _3820, frames the rumble test has left
 	TitleDust mDust[16];       // _3824
 	u32 mHelpFadeState;
 	f32 mHelpAlpha;
@@ -161,7 +161,7 @@ public:
 	s32 mHelpCount;
 	MenuHelpChar mBg[20];
 #if !defined(VERSION_JP)
-	u32 _3C44; // _3C44
+	u32 mFormatCancelled; // _3C44
 #endif
 	// _3C48 vtable, _3C24 in japan
 
