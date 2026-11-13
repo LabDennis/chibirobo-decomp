@@ -505,13 +505,18 @@ void CPadOne::ResetSwing()
 {
 	for (int i = 0; i < 30; ++i) {
 		mSwing.acceleration[i].x = mSwing.acceleration[i].y = mSwing.acceleration[i].z = 0.0f;
-		mSwing.magnitude[i] = mSwing.change[i] = 0.0f;
+		mSwing.magnitude[i]                                                            = 0.0f;
+		mSwing.change[i]                                                               = 0.0f;
 	}
-	mSwing.count   = 0;
-	mSwing.started = mSwing.previouslyStarted = FALSE;
-	mSwing.recognized = mSwing.previouslyRecognized = FALSE;
-	mSwing.timedOut = mSwing.timing = FALSE;
-	mSwing.elapsed = mSwing.timeout = 0;
+	mSwing.count                = 0;
+	mSwing.started              = FALSE;
+	mSwing.previouslyStarted    = FALSE;
+	mSwing.recognized           = FALSE;
+	mSwing.previouslyRecognized = FALSE;
+	mSwing.timedOut             = FALSE;
+	mSwing.timing               = FALSE;
+	mSwing.elapsed              = 0;
+	mSwing.timeout              = 0;
 }
 
 void CPadOne::AppendSwingSample(s32 index)
@@ -904,7 +909,7 @@ void CPadEx::SetMainStickRange(f32 inner, f32 outer)
 {
 	sStickRanges[0].min = inner;
 	sStickRanges[0].max = outer;
-	KPADSetFSStickClamp((s8)inner, (s8)outer);
+	KPADSetFSStickClamp((s8)sStickRanges[0].min, (s8)sStickRanges[0].max);
 }
 
 void CPadEx::SetSubStickRange(f32 inner, f32 outer)
