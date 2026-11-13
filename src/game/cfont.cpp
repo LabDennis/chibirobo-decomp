@@ -151,12 +151,6 @@ FontGlyphRange gFontGlyphRanges[] = {
 };
 }
 
-// todo: cleanup, cfont.h's IsSjisLead costs GetFontGlyphTexture a bit
-static inline bool IsLeadByte(u8 c)
-{
-	return (c >= 0x81 && c <= 0x9F) || (c >= 0xE0 && c <= 0xFC);
-}
-
 static inline bool UseGlyphCache()
 {
 #if defined(VERSION_JP)
@@ -184,7 +178,7 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
 	}
 	if (UseGlyphCache()) {
 		u16 code = (u8)str[0];
-		if (IsLeadByte(code)) {
+		if (IsSjisLead(code)) {
 			code = (code << 8) | (u8)str[1];
 		}
 		image = NULL;

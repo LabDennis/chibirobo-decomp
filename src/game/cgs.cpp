@@ -203,9 +203,9 @@ static inline const char* GetGlyph(CGs* gs, const char* text, TextGlyph* glyph)
 		break;
 	default:
 #if defined(VERSION_JP)
-		if (IsSjisLead(*text) & 1) {
+		if (IsSjisLead(*text)) {
 #else
-		if (gs->mUseShiftJis && (IsSjisLead(*text) & 1)) {
+		if (gs->mUseShiftJis && IsSjisLead(*text)) {
 #endif
 			glyph->mStr[0] = *text;
 			glyph->mStr[1] = *++text;
@@ -2857,14 +2857,14 @@ static inline f32 GetTextWidth(CGs* gs, const char* text, BOOL proportional, f32
 			if (proportional) {
 				width[0] += charWidth * size / 24.0f;
 #if defined(VERSION_JP)
-			} else if (IsSjisLead(glyph.mStr[0]) & 1) {
+			} else if (IsSjisLead(glyph.mStr[0])) {
 				width[0] += size;
 			} else {
 				width[0] += size * 0.5f;
 			}
 #else
 			} else if (gs->mUseShiftJis) {
-				if (IsSjisLead(glyph.mStr[0]) & 1) {
+				if (IsSjisLead(glyph.mStr[0])) {
 					width[0] += size * gs->mShiftJisWidthScale;
 				} else {
 					width[0] += halfSize * gs->mShiftJisWidthScale;

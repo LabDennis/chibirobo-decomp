@@ -2076,7 +2076,7 @@ extern "C" void DrawTitleHelpText(Title* menu)
 		for (int i = 0; i < limit && *text; i++, text++) {
 			menu->mBg[i].mText = text;
 			menu->mHelpCount++;
-			if (HelpTextIsJapanese() && (IsSjisLead(*text) & 1))
+			if (gGame.IsJapanese() && IsSjisLead(*text))
 				text++;
 		}
 	}
@@ -2594,7 +2594,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mLoadAlpha), text, 10.0f + ((320.0f + panelX) - LoadHalfWidth(cells)),
 		                             y, 0.0f, 21.0f, 21.0f);
 #else
-		if (HelpTextIsJapanese()) {
+		if (gGame.IsJapanese()) {
 			DrawLoadChoice(title, 0x65, 281.25f, y);
 			DrawLoadChoice(title, 0x66, 358.75f, y);
 		} else {
@@ -4006,7 +4006,7 @@ static inline void ShowTitleChoice(Title* title, s32 id)
 			title->mName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
 			title->mName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
 			title->mName.mCount++;
-			if (HelpTextIsJapanese() && IsSjisLead(*text))
+			if (gGame.IsJapanese() && IsSjisLead(*text))
 				text++;
 		}
 		for (s32 i = title->mName.mCount; i < 20; i++) {

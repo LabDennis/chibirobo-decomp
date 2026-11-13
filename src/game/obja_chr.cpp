@@ -4342,7 +4342,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		for (s32 k = 0; k < (s32)ARRAY_SIZE(menu->mLabelChars) && *p; ++k, ++p) {
 			menu->mLabelChars[k].mText = p;
 			++menu->mLabelLength;
-			if (HelpTextIsJapanese() && (IsSjisLead((u8)*p) & 1))
+			if (gGame.IsJapanese() && IsSjisLead((u8)*p))
 				++p;
 		}
 		f32 phase = PI * highlight, halfPhase = (PI * .5f) * highlight;
@@ -4351,7 +4351,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		for (s32 k = 0; k < menu->mLabelLength; ++k) {
 			MenuHelpChar& ch = menu->mLabelChars[k];
 
-			if (!HelpTextIsJapanese() && strncmp(ch.mText, " ", 1) == 0)
+			if (!gGame.IsJapanese() && strncmp(ch.mText, " ", 1) == 0)
 				continue;
 			CFont font;
 			s32 width;
