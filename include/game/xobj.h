@@ -307,7 +307,7 @@ extern CStatus lbl_8065B2B0;
 extern u8 gSpiderDrainFlashClaimed;
 extern s32 gAttachedSmallSpiderCount;
 extern XObj* lbl_8065B2DC;
-extern u8 lbl_8065B2E0[8];
+extern u8 lbl_8065B2E0;
 extern u32 gSpiderBossCoinBounceContext;
 extern s32 gSpiderBossVolleySlot;
 extern s32 gActor3Kind15ActivationCounter;

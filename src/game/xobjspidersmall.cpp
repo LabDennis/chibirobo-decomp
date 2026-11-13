@@ -36,7 +36,7 @@ s32 gSpiderDrainFlashTimers[2];
 u8 gSpiderDrainFlashClaimed;
 s32 gAttachedSmallSpiderCount; // how many spiders hold on to the robot
 XObj* lbl_8065B2DC;
-u8 lbl_8065B2E0[8];
+u8 lbl_8065B2E0;
 
 u8 gSmallSpiderPlacementWork[0xD4];
 Vec gSmallSpiderPosition, gSmallSpiderScale, gSmallSpiderRotation;
@@ -2107,9 +2107,9 @@ static inline void FindWebs()
 		gSmallSpiderEffectObjects[i]    = NULL;
 		gSmallSpiderEffectSlotOwners[i] = -1;
 	}
-	lbl_8065B2E0[0] = 0;
-	lbl_8065B2DC    = NULL;
-	s32 n           = 0;
+	lbl_8065B2E0 = 0;
+	lbl_8065B2DC = NULL;
+	s32 n        = 0;
 	for (s32 i = 0; lbl_8065B2DC == NULL && i < gGame.mXObjs.mObjectCount; i++) {
 		XObj* obj = gGame.mXObjs.mObjects[i];
 		if ((obj->mStatus.mFlags & 1) && obj->mCoord._00->_00 == 0x1BC) {
