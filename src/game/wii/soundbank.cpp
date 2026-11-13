@@ -37,9 +37,9 @@ WiiSoundBank gWiiSoundBanks[] = {
 
 extern "C" BOOL LoadWiiSoundBankByName(XSound* sound, const char* name)
 {
-	for (const WiiSoundBank* bank = gWiiSoundBanks; bank->name; ++bank) {
-		if (strcmp(name, bank->name) == 0)
-			return sound->LoadGroupAsync(bank->groupId);
+	for (int i = 0; gWiiSoundBanks[i].name; ++i) {
+		if (strcmp(name, gWiiSoundBanks[i].name) == 0)
+			return sound->LoadGroupAsync(gWiiSoundBanks[i].groupId);
 	}
 	return FALSE;
 }

@@ -290,31 +290,48 @@ void CPadAct::Update(u32 frames)
 	}
 }
 
-static u32 EventButtons(u64 buttons)
+static inline u32 EventButtons(u64 buttons)
 {
 	// The event VM exposes the low 25 bits. GameCube face and trigger inputs
 	// are translated into the same namespace, including four dedicated bits.
-	u32 result = (u32)buttons;
-	result |= (u32)(buttons >> GameCubeDPad) & 0x3f;
+	u64 result = buttons;
+	if (buttons & (1ULL << GameCubeDPad)) {
+		result |= 1ULL << 0;
+	}
+	if (buttons & (1ULL << (GameCubeDPad + 1))) {
+		result |= 1ULL << 1;
+	}
+	if (buttons & (1ULL << (GameCubeDPad + 2))) {
+		result |= 1ULL << 2;
+	}
+	if (buttons & (1ULL << (GameCubeDPad + 3))) {
+		result |= 1ULL << 3;
+	}
+	if (buttons & (1ULL << GameCubeA)) {
+		result |= 1ULL << RemoteA;
+	}
+	if (buttons & (1ULL << GameCubeB)) {
+		result |= 1ULL << RemoteB;
+	}
 	if (buttons & (1ULL << GameCubeZ)) {
-		result |= 1u << NunchukZ;
+		result |= 1ULL << NunchukZ;
 	}
 	if (buttons & (1ULL << GameCubeStart)) {
-		result |= 1u << RemotePlus;
+		result |= 1ULL << RemotePlus;
 	}
 	if (buttons & (1ULL << GameCubeX)) {
-		result |= 1u << 13;
+		result |= 1ULL << 13;
 	}
 	if (buttons & (1ULL << GameCubeY)) {
-		result |= 1u << 14;
+		result |= 1ULL << 14;
 	}
 	if (buttons & (1ULL << GameCubeL)) {
-		result |= 1u << 15;
+		result |= 1ULL << 15;
 	}
 	if (buttons & (1ULL << GameCubeR)) {
-		result |= 1u << 16;
+		result |= 1ULL << 16;
 	}
-	return result & 0x1ffffff;
+	return result & 0x1ffffffULL;
 }
 
 u32 CPadAct::GetEventButtons() const
