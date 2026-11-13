@@ -790,6 +790,8 @@ extern "C" void UpdateSpiderShot(XObjSpider* spider, u32 frames)
 			FinishSpiderShotStep(spider);
 		}
 		break;
+	case 2:
+		break;
 	}
 }
 
