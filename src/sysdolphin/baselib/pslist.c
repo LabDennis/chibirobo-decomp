@@ -28,8 +28,6 @@ HSD_Particle* freeParticle;
 extern u16 lbl_8065BA8E;
 extern u16 lbl_8065BA88;
 
-#define activeParticle activeParticle
-
 char lbl_8025B490[] = "pslist.c";
 
 #undef assert_line
@@ -198,14 +196,14 @@ HSD_Particle* particleSort(s32 linkNo, HSD_Particle** opaqueHead, HSD_Particle**
 
 	memset(buckets, 0, sizeof(buckets));
 
-	bucket               = ((p->kind >> 0x19) & 7) + (((p->kind >> 3) & 1) ^ 1) * 8;
+	bucket               = ((p->kind >> 0x19) & 7) + ((p->kind & 8) == 0) * 8;
 	buckets[bucket].head = p;
 	next                 = p->next;
 
 	while (next != NULL) {
 		if ((p->kind ^ next->kind) & 0x0E000008) {
 			buckets[bucket].tail = p;
-			bucket               = ((next->kind >> 0x19) & 7) + (((next->kind >> 3) & 1) ^ 1) * 8;
+			bucket               = ((next->kind >> 0x19) & 7) + ((next->kind & 8) == 0) * 8;
 			if (buckets[bucket].head == NULL) {
 				buckets[bucket].head = next;
 			} else {
