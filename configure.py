@@ -13,6 +13,7 @@
 ###
 
 import argparse
+import shlex
 import shutil
 import sys
 from pathlib import Path
@@ -1410,8 +1411,9 @@ def append_iso_step(config: ProjectConfig, wit: Path, disc: Path) -> None:
     def esc(path: str) -> str:  # a path on a build line
         return path.replace("$", "$$").replace(" ", "$ ").replace(":", "$:")
 
-    def arg(path: Path) -> str:  # a path in a command, quoted for the shell
-        return '"' + path.as_posix().replace("$", "$$") + '"'
+    def arg(path: Path) -> str:  # a path in a command, quoted for the shell (Windows runs it without one)
+        quoted = f'"{path.as_posix()}"' if is_windows() else shlex.quote(path.as_posix())
+        return quoted.replace("$", "$$")
 
     with open("build.ninja", "a", encoding="utf-8") as f:
         f.write(
