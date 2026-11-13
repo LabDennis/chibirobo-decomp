@@ -422,12 +422,12 @@ public:
 	virtual BOOL Draw();             // _18
 	virtual void Open();             // _1C
 
-	s32 _158;               // _158
-	s32 _15C;               // _15C
-	f32 _160;               // _160
-	f32 _164;               // _164
-	f32 _168;               // _168
-	f32 _16C;               // _16C
+	s32 mPhase;             // _158
+	s32 mTimer;             // _15C
+	f32 mGridX;             // _160
+	f32 mGridY;             // _164
+	f32 mTargetGridX;       // _168
+	f32 mTargetGridY;       // _16C
 	f32 _170;               // _170
 	f32 _174;               // _174
 	f32 _178;               // _178
@@ -436,14 +436,14 @@ public:
 	f32 _190;               // _190
 	f32 _194;               // _194
 	s32 mSavedBgm;          // _198
-	s32 _19C;               // _19C
+	s32 mPrevSelection;     // _19C
 	s32 mShowHelp;          // _1A0
-	f32 _1A4;               // _1A4
+	f32 mNameAlpha;         // _1A4
 	char* mName;            // _1A8
 	char* mHelp;            // _1AC
 	f32 mItemPhase;         // _1B0
 	MenuTitle mTitle;       // _1B4
-	s32 _350;               // _350
+	s32 mNameCharCount;     // _350
 #if defined(VERSION_PAL)
 	MenuHelpChar mBg[22]; // _354
 #else

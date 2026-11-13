@@ -4818,30 +4818,30 @@ void MenuItem::Open()
 	ClearStatusTable(&sStatusItemTable);
 	PopulateOwnedItemPage(&sStatusItemTable);
 	s32 count = CountMenuItems();
-	_160      = 758.0f;
-	_164      = 36.0f;
+	mGridX    = 758.0f;
+	mGridY    = 36.0f;
 	if (count == 0) {
-		_168 = 360.0f;
+		mTargetGridX = 360.0f;
 	} else {
-		_168 = 360.0f - (count - 1) * 51;
+		mTargetGridX = 360.0f - (count - 1) * 51;
 	}
-	_168       = 207.0f;
-	_16C       = 36.0f;
-	_170       = -10.0f;
-	_174       = -200.0f;
-	_178       = -10.0f;
-	_17C       = 0.0f;
-	_158       = 0;
-	_15C       = 0;
-	mSelection = 0;
-	_19C       = mSelection;
-	_190       = 0.0f;
-	_194       = 0.0f;
-	u32 color  = (u32)(255.0f * mAlpha) | 0xFFFFFF00;
+	mTargetGridX   = 207.0f;
+	mTargetGridY   = 36.0f;
+	_170           = -10.0f;
+	_174           = -200.0f;
+	_178           = -10.0f;
+	_17C           = 0.0f;
+	mPhase         = 0;
+	mTimer         = 0;
+	mSelection     = 0;
+	mPrevSelection = mSelection;
+	_190           = 0.0f;
+	_194           = 0.0f;
+	u32 color      = (u32)(255.0f * mAlpha) | 0xFFFFFF00;
 	mTitle.Set(GetLocalizedInterfaceText(StatusTitleText + 1), color);
-	mShowHelp = 0;
-	_1A4      = 0.0f;
-	s16 id    = sStatusItemTable.mItems[mSelection].mItem;
+	mShowHelp  = 0;
+	mNameAlpha = 0.0f;
+	s16 id     = sStatusItemTable.mItems[mSelection].mItem;
 	if (id >= 0 && CountMenuItems() > 0) {
 		mName     = GetItemName(id);
 		char* msg = GetItemName(id);
@@ -4851,7 +4851,7 @@ void MenuItem::Open()
 		mShowHelp = 1;
 		mHelp     = NULL;
 	}
-	_350 = 0;
+	mNameCharCount = 0;
 	for (int i = 0; i < (int)ARRAY_SIZE(mBg); i++) {
 		mBg[i].mAngle0 = 0.017453292f * (rand() % 360);
 		mBg[i].mAngle1 = 0.017453292f * (rand() % 360);
@@ -7242,8 +7242,8 @@ BOOL MenuItem::Draw()
 {
 	if (CMenu::Draw()) {
 		DrawPanelBackground<ItemStatusPanel>(mAlpha);
-		f32 x = _160 - 42.0f;
-		f32 y = 180.0f + _164;
+		f32 x = mGridX - 42.0f;
+		f32 y = 180.0f + mGridY;
 		SetScissor(104, 248);
 		DrawInventoryGrid(mSelection, x, y, mAlpha, 1.0f, mItemPhase);
 		char text[256];
@@ -7255,7 +7255,7 @@ BOOL MenuItem::Draw()
 		SetScissor(0, 448);
 		DrawItemMenuTitle(this);
 		if (mName) {
-			f32 alpha   = mAlpha * _1A4;
+			f32 alpha   = mAlpha * mNameAlpha;
 			f32 spacing = 30.0f;
 #if defined(VERSION_PAL)
 			spacing *= 0.9f;
@@ -7263,7 +7263,7 @@ BOOL MenuItem::Draw()
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			CTexObj blob = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[109 - StatusTextureOffset], 0);
-			_350         = 0;
+			mNameCharCount   = 0;
 			const char* text = mName;
 			if (text) {
 #if defined(VERSION_PAL)
@@ -7273,14 +7273,14 @@ BOOL MenuItem::Draw()
 #endif
 				for (int i = 0; i < limit && *text; i++, text++) {
 					mBg[i].mText = text;
-					_350++;
+					mNameCharCount++;
 					if (IsJapanese() && (IsSjisLead(*text) & 1))
 						text++;
 				}
 			}
 			f32 zero    = 0.0f;
 			f32 opacity = 255.0f * alpha;
-			for (int i = 0; i < _350; i++) {
+			for (int i = 0; i < mNameCharCount; i++) {
 				MenuHelpChar* glyph = &mBg[i];
 #if !defined(VERSION_JP)
 				if (strncmp(glyph->mText, " ", 1) != 0)
@@ -7294,7 +7294,7 @@ BOOL MenuItem::Draw()
 					f32 s1       = sin(3.1415927f * alpha);
 					f32 s2       = sin(1.5707964f * alpha);
 					f32 scale    = 0.2f * s1 + s2;
-					f32 x        = 0.5f * spacing + (i * spacing + (320.0f - _350 * spacing * 0.5f));
+					f32 x        = 0.5f * spacing + (i * spacing + (320.0f - mNameCharCount * spacing * 0.5f));
 					f32 y        = 384.0f + bob;
 					rotation     = -(0.017453292f * (10.0f * rotation));
 					u32 color    = (u32)opacity | 0xFFFFFF00;
@@ -8605,22 +8605,22 @@ extern "C" void PauseGameMusic(XSound*, s32, s32);
 
 static inline void BeginItemMenuClose(MenuItem* menu, u32 frames)
 {
-	menu->_168 = -640.0f;
-	menu->_17C = -200.0f;
-	menu->_15C = 4 * frames;
-	menu->_158++;
+	menu->mTargetGridX = -640.0f;
+	menu->_17C         = -200.0f;
+	menu->mTimer       = 4 * frames;
+	menu->mPhase++;
 	for (int i = 0; i < (int)ARRAY_SIZE(menu->mTitle.mChars); i++)
 		menu->mTitle.mChars[i].mHold = 0;
 }
 
 static inline void FinishItemMenuScroll(MenuItem* menu)
 {
-	menu->_164      = 36.0f;
-	menu->_16C      = 36.0f;
-	char* help      = GetItemName(sStatusItemTable.mItems[menu->mSelection].mItem);
-	menu->mShowHelp = 1;
-	menu->mHelp     = help;
-	menu->_19C      = menu->mSelection;
+	menu->mGridY         = 36.0f;
+	menu->mTargetGridY   = 36.0f;
+	char* help           = GetItemName(sStatusItemTable.mItems[menu->mSelection].mItem);
+	menu->mShowHelp      = 1;
+	menu->mHelp          = help;
+	menu->mPrevSelection = menu->mSelection;
 }
 
 BOOL MenuItem::Update(u32 frames)
@@ -8630,8 +8630,8 @@ BOOL MenuItem::Update(u32 frames)
 		CPad pad(0);
 		if ((mItemPhase += (1.0f / (0.3f * FRAME_RATE)) * frames) >= 2.0f)
 			mItemPhase = fmod(mItemPhase, 2.0);
-		PCEase(_160, _168);
-		ApproachHudValue(&_164, &_16C, 20.0f);
+		PCEase(mGridX, mTargetGridX);
+		ApproachHudValue(&mGridY, &mTargetGridY, 20.0f);
 		PCEase(_170, _178);
 		PCEase(_174, _17C);
 		ApproachHudValue(&_190, &_194, 0.08f * frames);
@@ -8640,15 +8640,15 @@ BOOL MenuItem::Update(u32 frames)
 		case 0:
 			break;
 		case 1:
-			_1A4 = 0;
+			mNameAlpha = 0;
 			mShowHelp++;
 			mName = mHelp;
 			break;
 		case 2:
-			_1A4 += 0.04f * frames;
-			if (_1A4 >= 1.0f) {
-				_1A4      = 1.0f;
-				mShowHelp = 0;
+			mNameAlpha += 0.04f * frames;
+			if (mNameAlpha >= 1.0f) {
+				mNameAlpha = 1.0f;
+				mShowHelp  = 0;
 			}
 			break;
 		}
@@ -8660,16 +8660,16 @@ BOOL MenuItem::Update(u32 frames)
 			}
 		}
 		s32 count = CountMenuItems();
-		switch (_158) {
+		switch (mPhase) {
 		case 0:
 			mSavedBgm = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
 			PauseGameMusic(&gGame.mSound, mSavedBgm, 0);
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			_158++;
+			mPhase++;
 			break;
 		case 1:
-			if (_160 == _168)
-				_158++;
+			if (mGridX == mTargetGridX)
+				mPhase++;
 			break;
 		case 2:
 			if (count > 1) {
@@ -8692,8 +8692,8 @@ BOOL MenuItem::Update(u32 frames)
 						PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 					}
 					if ((pad.mPad->mRepeat & 0x20004) && sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
-						_16C = -56.0f;
-						_158 = 10;
+						mTargetGridY = -56.0f;
+						mPhase       = 10;
 						break;
 					}
 				} else {
@@ -8704,8 +8704,8 @@ BOOL MenuItem::Update(u32 frames)
 					if (pad.mPad->mRepeat & 0x10008) {
 						CountMenuItems();
 						if (sStatusItemTable.mPage > 0) {
-							_16C = 128.0f;
-							_158 = 20;
+							mTargetGridY = 128.0f;
+							mPhase       = 20;
 							break;
 						}
 					}
@@ -8716,7 +8716,7 @@ BOOL MenuItem::Update(u32 frames)
 					--mSelection;
 				} while (sStatusItemTable.mItems[mSelection].mItem < 0 && mSelection != 0);
 			}
-			if (mSelection != _19C) {
+			if (mSelection != mPrevSelection) {
 				s16 id = sStatusItemTable.mItems[mSelection].mItem;
 				if (id >= 0 && CountMenuItems() > 0) {
 					char* text = GetItemName(id);
@@ -8726,7 +8726,7 @@ BOOL MenuItem::Update(u32 frames)
 					mShowHelp = 1;
 					mHelp     = NULL;
 				}
-				_19C = mSelection;
+				mPrevSelection = mSelection;
 			}
 			if (pad.mPad->mTrigger & 0x100) {
 				s16 id = -1, amount = 0;
@@ -8746,19 +8746,19 @@ BOOL MenuItem::Update(u32 frames)
 			}
 			break;
 		case 3:
-			if (--_15C < 0) {
+			if (--mTimer < 0) {
 				gGame.mEvt._10 = selectedItem;
 				gGame.mStatus.mFlags &= ~2ULL;
 				Close();
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				if (mSavedBgm)
 					ResumeGameSfx(&gGame.mSound, mSavedBgm);
-				_158++;
+				mPhase++;
 			}
 			break;
 		case 10:
-			if (_164 == _16C) {
-				_158 = 2;
+			if (mGridY == mTargetGridY) {
+				mPhase = 2;
 				if (sStatusItemTable.mPage < (CountMenuItems() - 1) / 4 - 1) {
 					++sStatusItemTable.mPage;
 					PopulateOwnedItemPage(&sStatusItemTable);
@@ -8768,8 +8768,8 @@ BOOL MenuItem::Update(u32 frames)
 			}
 			break;
 		case 20:
-			if (_164 == _16C) {
-				_158 = 2;
+			if (mGridY == mTargetGridY) {
+				mPhase = 2;
 				CountMenuItems();
 				if (sStatusItemTable.mPage > 0) {
 					--sStatusItemTable.mPage;
