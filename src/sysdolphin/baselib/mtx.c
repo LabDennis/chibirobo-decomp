@@ -64,20 +64,9 @@ static inline float calcVal(float x, float y)
 }
 
 /**
- * @note Address: N/A
- * @note Size: ?
- */
-static inline float HSD_CalcDeterminantMatrix3x4(Mtx m)
-{
-	return m[0][0] * m[1][1] * m[2][2] + m[0][1] * m[1][2] * m[2][0] + m[0][2] * m[1][0] * m[2][1] - m[2][0] * m[1][1] * m[0][2]
-	     - m[1][0] * m[0][1] * m[2][2] - m[0][0] * m[2][1] * m[1][2];
-}
-
-/**
  * @note Address: 0x801CEC78
  * @note Size: 0x430
  */
-// NONMATCHING: register allocation only; f8 and f9 swap from the determinant products on
 BOOL HSD_MtxInverseConcat(Mtx inv, Mtx src, Mtx dest)
 {
 	Mtx m;
@@ -104,12 +93,12 @@ BOOL HSD_MtxInverseConcat(Mtx inv, Mtx src, Mtx dest)
 		det    = 1.0f / det;
 		temp1  = ((inv[1][1] * inv[2][2]) - (inv[2][1] * inv[1][2])) * det;
 		temp2  = (-((inv[0][1] * inv[2][2]) - (inv[2][1] * inv[0][2]))) * det;
+		temp7  = ((inv[0][1] * inv[1][2]) - (inv[1][1] * inv[0][2])) * det;
 		temp3  = (-((inv[1][0] * inv[2][2]) - (inv[2][0] * inv[1][2]))) * det;
 		temp4  = ((inv[0][0] * inv[2][2]) - (inv[2][0] * inv[0][2])) * det;
+		temp8  = (-((inv[0][0] * inv[1][2]) - (inv[1][0] * inv[0][2]))) * det;
 		temp5  = ((inv[1][0] * inv[2][1]) - (inv[2][0] * inv[1][1])) * det;
 		temp6  = (-((inv[0][0] * inv[2][1]) - (inv[2][0] * inv[0][1]))) * det;
-		temp7  = ((inv[0][1] * inv[1][2]) - (inv[1][1] * inv[0][2])) * det;
-		temp8  = (-((inv[0][0] * inv[1][2]) - (inv[1][0] * inv[0][2]))) * det;
 		temp9  = ((inv[0][0] * inv[1][1]) - (inv[1][0] * inv[0][1])) * det;
 		temp10 = -temp1 * inv[0][3] - temp2 * inv[1][3] - temp7 * inv[2][3];
 		temp11 = -temp3 * inv[0][3] - temp4 * inv[1][3] - temp8 * inv[2][3];
