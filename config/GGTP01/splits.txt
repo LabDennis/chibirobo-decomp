@@ -2179,6 +2179,7 @@ sysdolphin/baselib/spline.c:
 
 sysdolphin/baselib/mtx.c:
 	.text       start:0x801D1574 end:0x801D2DB4
+	.data       start:0x80261158 end:0x80261188
 	.bss        start:0x80653628 end:0x80653680
 	.sdata      start:0x80661DD8 end:0x80661DE8
 	.sdata2     start:0x80666D70 end:0x80666DB8

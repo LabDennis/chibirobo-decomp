@@ -3,6 +3,7 @@
 #include <dolphin/mtx/mtx.h>
 #include <dolphin/mtx/vec.h>
 #include <sysdolphin/mtx.h>
+#include <sysdolphin/identity_mtx.h>
 
 #define HSD_ASSERT(line, cond) ((cond) ? ((void)0) : __assert("mtx.c", line, #cond))
 
@@ -12,6 +13,12 @@
 
 // not in our vec.h yet
 void PSVECScale(Vec* src, Vec* dst, f32 scale);
+
+Mtx HSD_identityMtx = {
+	{ 1.0F, 0.0F, 0.0F, 0.0F },
+	{ 0.0F, 1.0F, 0.0F, 0.0F },
+	{ 0.0F, 0.0F, 1.0F, 0.0F },
+};
 
 static HSD_ObjAllocData mtx_alloc_data;
 static HSD_ObjAllocData vec_alloc_data;
