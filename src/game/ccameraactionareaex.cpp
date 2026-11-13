@@ -291,8 +291,6 @@ extern "C" s32 FindFirstCameraAreaContainingPoint(CCameraActionAreaEx* state, Ve
  * @note Address: 0x80137810
  * @note Size: 0x348
  */
-// NONMATCHING: retail tests the camera-off bit as !(flags & 4) (rlwinm/cntlzw), CamAreaInfo::IsCameraOff compares == 0
-// (extrwi/xori); the rest is the same
 extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos)
 {
 	s32 index = -1;
@@ -311,9 +309,8 @@ extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, 
  * @note Address: 0x80135E34
  * @note Size: 0x390
  */
-// NONMATCHING: retail tests the camera-off bit as !(flags & 4) (rlwinm/cntlzw), CamAreaInfo::IsCameraOff compares == 0
-// (extrwi/xori); retail also swaps the stack slots of the two CamAreaInfo temporaries and the registers of i and the
-// record offset, though its loop is FindEnabledCameraAreaContainingPoint's
+// NONMATCHING: the loop is FindEnabledCameraAreaContainingPoint's, but retail swaps the stack slots of the two
+// CamAreaInfo temporaries and the registers of i and the record offset
 extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 {
 	state->_08 = state->_04;

@@ -404,7 +404,7 @@ public:
 
 	CamAreaRecord* GetRecord() const { return _04; }
 	bool Is_2C_1() const { return _04->_2C == 1; }
-	bool IsCameraOff() const { return (_04->_2E & 4) == 0; }
+	bool IsCameraOff() const { return !(_04->_2E & 4); }
 	bool IsCameraArea() const
 	{
 		u16 flags = _04->_2E & 4;
