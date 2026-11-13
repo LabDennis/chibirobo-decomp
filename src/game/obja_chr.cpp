@@ -1293,7 +1293,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							} else {
 								f32 playerHeight = GetObjectMaxFloorHeight(player);
 								inReach          = GetSelectedFloorHeight(object) > playerHeight
-								       && (!true || IsPositionBehindObject(&player->mLadder, GetObjectMoveTranslation(player), object));
+								       && IsPositionBehindObject(&player->mLadder, GetObjectMoveTranslation(player), object);
 							}
 						}
 						if (inReach)
@@ -1309,8 +1309,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 								inReach    = angle <= HALF_PI || angle >= 1.5f * PI;
 							} else {
 								f32 playerHeight = GetObjectMaxFloorHeight(player);
-								inReach          = GetSelectedFloorHeight(object) > playerHeight
-								       && (!false || IsPositionBehindObject(&player->mLadder, GetObjectMoveTranslation(player), object));
+								// a rope can be grabbed from any side
+								inReach = GetSelectedFloorHeight(object) > playerHeight;
 							}
 						}
 						if (inReach)
@@ -7203,6 +7203,7 @@ extern "C" u32 GetObjectMarkerOverride(XObj* object)
  * @note Address: 0x800B1E04
  * @note Size: 0x8
  */
+// a fourth contact kind after ladder and rope; retail's check always says no, so marker 0x40 never shows
 extern "C" s32 fn_800B1E04(void*)
 {
 	return 0;
