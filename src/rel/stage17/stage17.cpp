@@ -21,7 +21,7 @@ struct CCameraActionScroll {
 #endif
 
 typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, s32 arg, void* arg2);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { InitStage };

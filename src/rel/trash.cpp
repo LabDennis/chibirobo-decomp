@@ -189,11 +189,11 @@ static s32 trashboxIndex;
 extern "C" void DrawTrashStack(void* arg);
 extern "C" void UpdateTrash(u32 frames);
 extern "C" void InitTrash(void* arg);
-extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdEndTrash(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdGetTrashResult(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdStartTrash(s32 cmd, s32 arg, s32* arg2);
+extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args);
 
 /**
  * @note Address: stage04 .text 0x183C
@@ -1371,9 +1371,9 @@ static inline s32 IsNearXZ(const Vec& p, const Vec& q)
  * @note Address: stage04 .text 0x26E8
  * @note Size: 0x100
  */
-extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
 {
-	// NONMATCHING: arg regs — the instruction sequence is identical, but trashboxIndex,
+	// NONMATCHING: count regs — the instruction sequence is identical, but trashboxIndex,
 	// the gGame+0x10000 base, robot and the CVec vtable land one slot over.
 	CGame* game;
 	TrashObj* robot;
@@ -1466,7 +1466,7 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x27E8
  * @note Size: 0x9C
  */
-extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
 {
 	TrashObj* robot = (TrashObj*)gGame.GetPlayer();
 
@@ -1484,7 +1484,7 @@ extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x2884
  * @note Size: 0x2C
  */
-extern "C" s32 CmdEndTrash(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args)
 {
 	if (trashTarget != NULL) {
 		trashObj    = NULL;
@@ -1497,7 +1497,7 @@ extern "C" s32 CmdEndTrash(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x28B0
  * @note Size: 0x10
  */
-extern "C" s32 CmdGetTrashResult(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args)
 {
 	return trashResult;
 }
@@ -1506,12 +1506,12 @@ extern "C" s32 CmdGetTrashResult(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x28C0
  * @note Size: 0xA8
  */
-extern "C" s32 CmdStartTrash(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args)
 {
 	CGame* game     = &gGame;
-	f32 scale       = arg2[2] / 100.0f;
-	s32 idx         = arg2[0];
-	s32 num         = arg2[1];
+	f32 scale       = args[2] / 100.0f;
+	s32 idx         = args[0];
+	s32 num         = args[1];
 	trashTarget     = (TrashObj*)game->mXObjs.mObjects[idx];
 	trashStackNum   = num;
 	trashStackScale = scale;

@@ -24,14 +24,14 @@ void StopGameSfx(void* p, s32 id);
 void DrawAnas(void);
 void UpdateAnas(s32 dt);
 void InitAnas(void);
-s32 CmdAttachAnaToRobo(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetAnaRotY(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetAnaJObj(s32 cmd, s32 argc, s32* argv);
-s32 CmdPlantTane(s32 cmd, s32 argc, s32* argv);
-s32 CmdFindNearestAna(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetTutiAna(s32 cmd, s32 argc, s32* argv);
-s32 CmdAddAna(s32 cmd, s32 argc, s32* argv);
-s32 CmdDropHeldObj(s32 cmd, s32 argc, s32* argv);
+s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args);
+s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args);
+s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args);
+s32 CmdPlantTane(s32 cmd, s32 count, s32* args);
+s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args);
+s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args);
+s32 CmdAddAna(s32 cmd, s32 count, s32* args);
+s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args);
 }
 
 class AmbientSeq;
@@ -119,7 +119,7 @@ static s32 ambientNightCricket[] = { 5, 100, 500, 1, 0x150001, 5, 500, 1500, 4, 
 static s32 ambientNatureBirds1[] = { 0x130003, 0x130004, 0x130005, 0x130006, 0x130007 };
 static s32 ambientNatureBirds2[] = { 0x140003, 0x140004, 0x140005, 0x140006, 0x140007 };
 
-s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv);
+s32 CmdSetAmbientSound(s32 cmd, s32 count, s32* args);
 void DrawStage(s32 dt);
 void UpdateStage(s32 dt);
 void InitStage(s32 dt);
@@ -127,7 +127,7 @@ void AmbientSeq_Update(AmbientSeq* seq, s32 dt);
 }
 
 typedef void (*RelSlotFunc)(s32 arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, s32 argc, s32* argv);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage, DrawStage };
@@ -143,12 +143,12 @@ static AmbientPlayer ambient;
  * @note Address: stage09 .text 0x0
  * @note Size: 0x730
  */
-extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdSetAmbientSound(s32 cmd, s32 count, s32* args)
 {
-	switch (argv[0]) {
+	switch (args[0]) {
 	case 0:
-		if (argc >= 2) {
-			if (argv[1] != 0) {
+		if (count >= 2) {
+			if (args[1] != 0) {
 				void* sound;
 				ambient.mPaused = 1;
 				sound           = SOUND();

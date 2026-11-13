@@ -215,16 +215,16 @@ struct SavedObjFlagList {
 };
 
 extern "C" {
-s32 CmdGetDecaPassword(s32 cmd, s32 argc, s32* args);
-s32 CmdIsDecaPanelOpen(s32 cmd, s32 argc, s32* args);
-s32 CmdCloseDecaPanel(s32 cmd, s32 argc, s32* args);
-s32 CmdOpenDecaPanel(s32 cmd, s32 argc, s32* args);
-s32 CmdApplySavedObjFlags(s32 cmd, s32 argc, s32* args);
-s32 CmdSaveObjFlag(s32 cmd, s32 argc, s32* args);
-s32 CmdClearSavedObjFlags(s32 cmd, s32 argc, s32* args);
-s32 CmdClearObjFlagList(s32 cmd, s32 argc, s32* args);
-s32 CmdAddObjFlagList(s32 cmd, s32 argc, s32* args);
-s32 CmdNop(s32 cmd, s32 argc, s32* args);
+s32 CmdGetDecaPassword(s32 cmd, s32 count, s32* args);
+s32 CmdIsDecaPanelOpen(s32 cmd, s32 count, s32* args);
+s32 CmdCloseDecaPanel(s32 cmd, s32 count, s32* args);
+s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args);
+s32 CmdApplySavedObjFlags(s32 cmd, s32 count, s32* args);
+s32 CmdSaveObjFlag(s32 cmd, s32 count, s32* args);
+s32 CmdClearSavedObjFlags(s32 cmd, s32 count, s32* args);
+s32 CmdClearObjFlagList(s32 cmd, s32 count, s32* args);
+s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* args);
+s32 CmdNop(s32 cmd, s32 count, s32* args);
 void ExitStage(void* arg);
 void DrawStageHud(void* arg);
 void UpdateStage(s32 frames);
@@ -233,7 +233,7 @@ void DecaPanel_Update(DecaPanel* work);
 }
 
 typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, s32 argc, s32* args);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { InitStage, (RelSlotFunc)UpdateStage, NULL, NULL, DrawStageHud, NULL, ExitStage };
@@ -374,7 +374,7 @@ inline void SavedObjFlagList::Apply(s32 mode)
  * @note Address: stage03 .text 0x0
  * @note Size: 0x10
  */
-extern "C" s32 CmdGetDecaPassword(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdGetDecaPassword(s32 cmd, s32 count, s32* args)
 {
 	return decaPanel.mCode;
 }
@@ -383,7 +383,7 @@ extern "C" s32 CmdGetDecaPassword(s32 cmd, s32 argc, s32* args)
  * @note Address: stage03 .text 0x10
  * @note Size: 0x10
  */
-extern "C" s32 CmdIsDecaPanelOpen(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdIsDecaPanelOpen(s32 cmd, s32 count, s32* args)
 {
 	return decaPanel.mActive;
 }
@@ -392,7 +392,7 @@ extern "C" s32 CmdIsDecaPanelOpen(s32 cmd, s32 argc, s32* args)
  * @note Address: stage03 .text 0x20
  * @note Size: 0x40
  */
-extern "C" s32 CmdCloseDecaPanel(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdCloseDecaPanel(s32 cmd, s32 count, s32* args)
 {
 	decaPanel.mActive = 0;
 	gGame.mFlags &= ~2ULL;
@@ -405,7 +405,7 @@ extern "C" s32 CmdCloseDecaPanel(s32 cmd, s32 argc, s32* args)
  */
 // NONMATCHING: regalloc — the key-index offset and the decaPanel
 // base swap r6/r8; instruction sequence is identical.
-extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
 {
 	decaPanel.ResetInput();
 	decaPanel.mActive = 1;
@@ -1464,7 +1464,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
  * @note Address: stage03 .text 0xCBC
  * @note Size: 0x158
  */
-extern "C" s32 CmdApplySavedObjFlags(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdApplySavedObjFlags(s32 cmd, s32 count, s32* args)
 {
 	savedObjFlags.Apply(args[0]);
 	return 0;
@@ -1575,7 +1575,7 @@ extern "C" s32 CmdApplySavedObjFlags(s32 cmd, s32 argc, s32* args)
  * @note Address: stage03 .text 0xE14
  * @note Size: 0xF0
  */
-extern "C" s32 CmdSaveObjFlag(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdSaveObjFlag(s32 cmd, s32 count, s32* args)
 {
 	s32 id = args[0];
 	if (savedObjFlags.mNum < 300) {
@@ -1595,7 +1595,7 @@ extern "C" s32 CmdSaveObjFlag(s32 cmd, s32 argc, s32* args)
  * @note Address: stage03 .text 0xF04
  * @note Size: 0xA4
  */
-extern "C" s32 CmdClearSavedObjFlags(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdClearSavedObjFlags(s32 cmd, s32 count, s32* args)
 {
 	savedObjFlags.Clear();
 	return 0;
@@ -1605,7 +1605,7 @@ extern "C" s32 CmdClearSavedObjFlags(s32 cmd, s32 argc, s32* args)
  * @note Address: stage03 .text 0xFA8
  * @note Size: 0x34
  */
-extern "C" s32 CmdClearObjFlagList(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdClearObjFlagList(s32 cmd, s32 count, s32* args)
 {
 	ClearHideList__20CCameraActionScroll2Fv(gGame.mScroll2Action);
 	return 0;
@@ -1615,10 +1615,10 @@ extern "C" s32 CmdClearObjFlagList(s32 cmd, s32 argc, s32* args)
  * @note Address: stage03 .text 0xFDC
  * @note Size: 0x78
  */
-extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* args)
 {
 	s32 i;
-	for (i = 0; i < argc; i++) {
+	for (i = 0; i < count; i++) {
 		AddHideObj__20CCameraActionScroll2Fl(gGame.mScroll2Action, args[i]);
 	}
 	return 0;
@@ -1628,7 +1628,7 @@ extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 argc, s32* args)
  * @note Address: stage03 .text 0x1054
  * @note Size: 0x8
  */
-extern "C" s32 CmdNop(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }

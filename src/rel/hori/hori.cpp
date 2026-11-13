@@ -10,13 +10,13 @@ extern "C" {
 
 extern "C" void OSReport(const char* msg, ...);
 
-extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2);
-extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, void* arg2);
+extern "C" s32 CmdSetSoundPitch(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, s32* args);
 extern "C" void UpdateStage(void* arg);
 extern "C" void Init(void* arg);
 
 typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, void* arg, void* arg2);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { Init, UpdateStage };
@@ -110,9 +110,8 @@ s32 RandomAnimCtrl::UpdateRandomAnim()
  * @note Address: hori .text 0x21C
  * @note Size: 0x50
  */
-extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdSetSoundPitch(s32 cmd, s32 count, s32* args)
 {
-	s32* args = (s32*)arg2;
 	s16 pitch = args[0];
 	s32 time  = args[1] * 60 / 100;
 	XSound* sound;
@@ -130,9 +129,9 @@ extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2)
  * @note Address: hori .text 0x26C
  * @note Size: 0xBC
  */
-extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, void* arg2)
+extern "C" s32 CmdStartRandomAnims(s32 cmd, s32 count, s32* args)
 {
-	s32* ids = (s32*)arg2;
+	s32* ids = args;
 	s32 i;
 
 	for (i = 0; i < count; i++) {

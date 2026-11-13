@@ -34,11 +34,11 @@ extern "C" void SetGameSfxVolume(void* obj, s32 id, s32 arg, s32 arg2);
 extern "C" void DrawTrashStack(void* arg);
 extern "C" void UpdateTrash(void* arg);
 extern "C" void InitTrash(void* arg);
-extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdEndTrash(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdGetTrashResult(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdStartTrash(s32 cmd, s32 arg, s32* arg2);
+extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args);
 extern "C" void SetFafaPartVisibility(s32 mode);
 
 // one child step then path[i] sibling steps per level
@@ -104,15 +104,15 @@ struct Stage07PoolEntry {
 
 extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* values);
 extern "C" void SetObj37PartVisibility(s32 mode);
-extern "C" s32 CmdSetObj37PartVisibility(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdSetFafaPartVisibility(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdNop(s32 cmd, s32 arg, s32* arg2);
+extern "C" s32 CmdSetObj37PartVisibility(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdSetFafaPartVisibility(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args);
 extern "C" void DrawStage(void* arg);
 extern "C" void UpdateStage(void* arg);
 extern "C" void InitStage(void* arg);
 
 typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, s32 arg, s32* arg2);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage, DrawStage };
@@ -218,9 +218,9 @@ extern "C" void SetObj37PartVisibility(s32 mode)
  * @note Address: stage07 .text 0x1058
  * @note Size: 0x28
  */
-extern "C" s32 CmdSetObj37PartVisibility(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdSetObj37PartVisibility(s32 cmd, s32 count, s32* args)
 {
-	SetObj37PartVisibility(arg2[0]);
+	SetObj37PartVisibility(args[0]);
 	return 0;
 }
 
@@ -228,9 +228,9 @@ extern "C" s32 CmdSetObj37PartVisibility(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage07 .text 0x1080
  * @note Size: 0x28
  */
-extern "C" s32 CmdSetFafaPartVisibility(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdSetFafaPartVisibility(s32 cmd, s32 count, s32* args)
 {
-	SetFafaPartVisibility(arg2[0]);
+	SetFafaPartVisibility(args[0]);
 	return 0;
 }
 
@@ -238,7 +238,7 @@ extern "C" s32 CmdSetFafaPartVisibility(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage07 .text 0x10A8
  * @note Size: 0x8
  */
-extern "C" s32 CmdNop(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }

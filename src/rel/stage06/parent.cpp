@@ -3,7 +3,7 @@
 #include "Version.h"
 
 // rel/ana.cpp
-extern "C" s32 CmdDropHeldObj(s32 cmd, void* arg, void* arg2);
+extern "C" s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args);
 
 // JP: _C8 at 0xC0, _980 at 0x970, _12DF4 at 0x12CF4
 struct RoboView {
@@ -52,18 +52,18 @@ struct Stage06Cam {
 static Stage06Work lbl_8_bss_0;
 static Stage06Cam lbl_8_bss_24;
 
-extern "C" s32 CmdParentNoOpSlot5(s32 cmd, void* arg, void* arg2);
-extern "C" s32 CmdStopRoboPreset(s32 cmd, void* arg, void* arg2);
-extern "C" s32 CmdStopRobo(s32 cmd, void* arg, void* arg2);
-extern "C" s32 CmdParentNoOpSlot4(s32 cmd, void* arg, void* arg2);
-extern "C" s32 CmdParentNoOpSlot2(s32 cmd, void* arg, void* arg2);
-extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2);
+extern "C" s32 CmdParentNoOpSlot5(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdStopRoboPreset(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdStopRobo(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdParentNoOpSlot4(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdParentNoOpSlot2(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdSetSoundPitch(s32 cmd, s32 count, s32* args);
 extern "C" void ParentNoOpSlot5(void* arg);
 extern "C" void UpdateStage(void* arg);
 extern "C" void InitStage(void* arg);
 
 typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, void* arg, void* arg2);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage, 0, 0, 0, ParentNoOpSlot5 };
@@ -96,7 +96,7 @@ static inline void SetCam(f32 a, f32 b)
  * @note Address: stage06 .text 0x0
  * @note Size: 0x8
  */
-extern "C" s32 CmdParentNoOpSlot5(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdParentNoOpSlot5(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
@@ -117,9 +117,9 @@ extern "C" void UnusedSetCamUser(void)
  * @note Address: stage06 .text 0x8
  * @note Size: 0x110
  */
-extern "C" s32 CmdStopRoboPreset(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdStopRoboPreset(s32 cmd, s32 count, s32* args)
 {
-	s32 type = *(s32*)arg2;
+	s32 type = *args;
 	if (type == 0) {
 		SetCam(-0.3926991f, -1.570196f);
 	} else if (type == 1) {
@@ -132,7 +132,7 @@ extern "C" s32 CmdStopRoboPreset(s32 cmd, void* arg, void* arg2)
  * @note Address: stage06 .text 0x118
  * @note Size: 0x48
  */
-extern "C" s32 CmdStopRobo(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdStopRobo(s32 cmd, s32 count, s32* args)
 {
 	StopPlayer((RoboView*)gGame.GetPlayer());
 	lbl_8_bss_0._08++;
@@ -143,7 +143,7 @@ extern "C" s32 CmdStopRobo(s32 cmd, void* arg, void* arg2)
  * @note Address: stage06 .text 0x160
  * @note Size: 0x8
  */
-extern "C" s32 CmdParentNoOpSlot4(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdParentNoOpSlot4(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
@@ -152,7 +152,7 @@ extern "C" s32 CmdParentNoOpSlot4(s32 cmd, void* arg, void* arg2)
  * @note Address: stage06 .text 0x168
  * @note Size: 0x8
  */
-extern "C" s32 CmdParentNoOpSlot2(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdParentNoOpSlot2(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
@@ -161,9 +161,8 @@ extern "C" s32 CmdParentNoOpSlot2(s32 cmd, void* arg, void* arg2)
  * @note Address: stage06 .text 0x170
  * @note Size: 0x50
  */
-extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdSetSoundPitch(s32 cmd, s32 count, s32* args)
 {
-	s32* args = (s32*)arg2;
 	s16 pitch = args[0];
 	s32 time  = args[1] * 60 / 100;
 	XSound* sound;

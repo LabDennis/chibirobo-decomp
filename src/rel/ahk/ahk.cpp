@@ -17,14 +17,14 @@ public:
 };
 STATIC_ASSERT(sizeof(Laser) == 0xB0);
 
-extern "C" s32 CmdNop(s32 cmd, void* arg, void* arg2);
-extern "C" s32 CmdPrintArgs(s32 cmd, s32 count, void* arg2);
+extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args);
+extern "C" s32 CmdPrintArgs(s32 cmd, s32 count, s32* args);
 extern "C" void AhkNoOpSlot5(void* arg);
 extern "C" void DrawStageHud(void* arg);
 extern "C" void UpdateStage(void* arg);
 
 typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, void* arg, void* arg2);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { 0, UpdateStage, 0, 0, DrawStageHud, AhkNoOpSlot5 };
@@ -62,7 +62,7 @@ Laser::Laser()
  * @note Address: ahk .text 0x264
  * @note Size: 0x8
  */
-extern "C" s32 CmdNop(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }
@@ -71,7 +71,7 @@ extern "C" s32 CmdNop(s32 cmd, void* arg, void* arg2)
  * @note Address: ahk .text 0x26C
  * @note Size: 0x50
  */
-extern "C" s32 CmdPrintArgs(s32 cmd, s32 count, void* arg2)
+extern "C" s32 CmdPrintArgs(s32 cmd, s32 count, s32* args)
 {
 	int i;
 
