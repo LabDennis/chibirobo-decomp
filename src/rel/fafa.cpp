@@ -85,72 +85,72 @@ extern "C" void SetFafaPartVisibility(s32 mode)
 		if (item->GetType() != 0x117) {
 			continue;
 		}
-		switch (mode) {
+		switch (mode) { // parts 2-4 are alternate shapes; the mode shows exactly one
 		case 4: {
 			s32 path[3] = { 0, 0, 2 };
 			obj.Attach(FafaFindPart(item->mJObj, path));
-			HSD_JObjClearFlags(obj.mJObj, 0x10);
+			HSD_JObjClearFlags(obj.mJObj, HIDDEN);
 		}
 			{
 				s32 path[3] = { 0, 0, 3 };
 				obj.Attach(FafaFindPart(item->mJObj, path));
-				HSD_JObjSetFlags(obj.mJObj, 0x10);
+				HSD_JObjSetFlags(obj.mJObj, HIDDEN);
 			}
 			{
 				s32 path[3] = { 0, 0, 4 };
 				obj.Attach(FafaFindPart(item->mJObj, path));
-				HSD_JObjSetFlags(obj.mJObj, 0x10);
+				HSD_JObjSetFlags(obj.mJObj, HIDDEN);
 			}
 			break;
 		case 7: {
 			s32 path[3] = { 0, 0, 2 };
 			obj.Attach(FafaFindPart(item->mJObj, path));
-			HSD_JObjSetFlags(obj.mJObj, 0x10);
+			HSD_JObjSetFlags(obj.mJObj, HIDDEN);
 		}
 			{
 				s32 path[3] = { 0, 0, 3 };
 				obj.Attach(FafaFindPart(item->mJObj, path));
-				HSD_JObjClearFlags(obj.mJObj, 0x10);
+				HSD_JObjClearFlags(obj.mJObj, HIDDEN);
 			}
 			{
 				s32 path[3] = { 0, 0, 4 };
 				obj.Attach(FafaFindPart(item->mJObj, path));
-				HSD_JObjSetFlags(obj.mJObj, 0x10);
+				HSD_JObjSetFlags(obj.mJObj, HIDDEN);
 			}
 			break;
 		case 6: {
 			s32 path[3] = { 0, 0, 2 };
 			obj.Attach(FafaFindPart(item->mJObj, path));
-			HSD_JObjSetFlags(obj.mJObj, 0x10);
+			HSD_JObjSetFlags(obj.mJObj, HIDDEN);
 		}
 			{
 				s32 path[3] = { 0, 0, 3 };
 				obj.Attach(FafaFindPart(item->mJObj, path));
-				HSD_JObjSetFlags(obj.mJObj, 0x10);
+				HSD_JObjSetFlags(obj.mJObj, HIDDEN);
 			}
 			{
 				s32 path[3] = { 0, 0, 4 };
 				obj.Attach(FafaFindPart(item->mJObj, path));
-				HSD_JObjClearFlags(obj.mJObj, 0x10);
+				HSD_JObjClearFlags(obj.mJObj, HIDDEN);
 			}
 			break;
 		default: {
 			s32 path[3] = { 0, 0, 2 };
 			obj.Attach(FafaFindPart(item->mJObj, path));
-			HSD_JObjSetFlags(obj.mJObj, 0x10);
+			HSD_JObjSetFlags(obj.mJObj, HIDDEN);
 		}
 			{
 				s32 path[3] = { 0, 0, 3 };
 				obj.Attach(FafaFindPart(item->mJObj, path));
-				HSD_JObjSetFlags(obj.mJObj, 0x10);
+				HSD_JObjSetFlags(obj.mJObj, HIDDEN);
 			}
 			{
 				s32 path[3] = { 0, 0, 4 };
 				obj.Attach(FafaFindPart(item->mJObj, path));
-				HSD_JObjSetFlags(obj.mJObj, 0x10);
+				HSD_JObjSetFlags(obj.mJObj, HIDDEN);
 			}
 			break;
 		}
-		break;
+		break; // only the first 0x117 item
 	}
 }
