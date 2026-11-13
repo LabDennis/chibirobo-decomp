@@ -447,6 +447,7 @@ extern "C" s32 GetStageNum(void);
 static inline void CEvt_End(CEvt* evt)
 {
 	evt->mData.mScript = 0;
+	// a window MSG left up for STAY is idle again
 	if (evt->mMsg != 0 && evt->mMsgState != 0) {
 		evt->mMsgState   = 0;
 		evt->mMsg->mIdle = 1;
@@ -2488,14 +2489,15 @@ s32 CEvt::_cmd_TIMER(u8, s32)
 {
 	// first arg is in seconds
 	s32 frames = CEvt_Evaluate(this) * FRAMES_PER_SEC;
-	s32 value  = CEvt_Evaluate(this);
+	s32 script = CEvt_Evaluate(this);
+	// a count of 0 marks a free slot that never fires
 	if (frames == 0) {
 		frames = 1;
 	}
 	for (s32 i = 0; i < 10; i++) {
 		if (gEventTimers.mFrames[i] == 0) {
 			gEventTimers.mFrames[i] = frames;
-			gEventTimers.mValue[i]  = value;
+			gEventTimers.mValue[i]  = script;
 			break;
 		}
 	}
@@ -2503,7 +2505,7 @@ s32 CEvt::_cmd_TIMER(u8, s32)
 }
 
 extern "C" s32 HSD_AudioPStreamStartChParam(const char* path, u8 vol, s32 channel);
-extern "C" BOOL AXDriverSetAllStreamParams(s32 a, s32 b);
+extern "C" BOOL AXDriverSetAllStreamParams(s32 beatCallback, s32 beatArg);
 
 // LatchEventBeat is the stream beat callback, it latches the beat here for WAIT
 extern "C" void LatchEventBeat(s32 id, s32 beat, EvtBeatLatch* latch);
@@ -2518,31 +2520,31 @@ s32 CEvt::_cmd_SFX(u8, s32)
 	s16 type = CEvt_Evaluate(this);
 
 	switch (type) {
-	case 0:
+	case EVT_SFX_STOP:
 		if (sfx == -2) {
 			KeyOffGameSoundTrack(&gGame.mSound, -1);
 		} else {
 			StopGameSfx(&gGame.mSound, sfx);
 		}
 		break;
-	case 1:
+	case EVT_SFX_PLAY:
 		PlayGameSound(&gGame.mSound, sfx, 0xFF);
 		gEventBeatLatch.mPending = 0;
 		AXDriverSetAllStreamParams((s32)LatchEventBeat, (s32)&gEventBeatLatch);
 		break;
-	case 0xF5:
+	case EVT_ATOM_CUE:
 		// here the value is a stream path, not an id
 		HSD_AudioPStreamStartChParam((const char*)sfx, 0xFF, 0x1F);
 		gEventBeatLatch.mPending = 0;
 		AXDriverSetAllStreamParams((s32)LatchEventBeat, (s32)&gEventBeatLatch);
 		break;
-	case 2:
+	case EVT_SFX_FADE_OUT:
 		FadeOutGameSfx(&gGame.mSound, sfx, CEvt_Evaluate(this) * 2);
 		break;
-	case 3:
+	case EVT_SFX_FADE_IN:
 		FadeInGameSfx(&gGame.mSound, sfx, CEvt_Evaluate(this) * 2);
 		break;
-	case 4: {
+	case EVT_SFX_FADE: {
 		XSound* sound;
 		u16 frames;
 		u8 vol;
@@ -2556,16 +2558,17 @@ s32 CEvt::_cmd_SFX(u8, s32)
 		}
 		break;
 	}
-	case 5:
+	case EVT_SFX_PAUSE:
 		if (sfx == -2) {
 			PauseGameSoundTrack(&gGame.mSound, -1);
 		} else if ((sfx & 0xFFFF0000) == 0xFFFF0000) {
+			// ids from 0xFFFF0000 up are music tracks
 			PauseGameMusic(&gGame.mSound, sfx, 0);
 		} else {
 			AXDriverPauseSfx(sfx);
 		}
 		break;
-	case 6:
+	case EVT_SFX_RESUME:
 		if (sfx == -2) {
 			ResumeGameSoundTrack(&gGame.mSound, -1);
 		} else {
@@ -3170,7 +3173,7 @@ s32 CEvt::_cmd_PRINTF(u8, s32)
 	return 0;
 }
 
-// maps object ids from 10000 up to an index in the game's object table
+// XObjChr offsets: mLift's mTarget, the object chibi carries, and mPush; japan's sit 0x10 lower
 #if defined(VERSION_JP)
 #define PLAYER_HELD_OBJ 0xA54
 #define PLAYER_BE8      0xBD8
@@ -3179,9 +3182,10 @@ s32 CEvt::_cmd_PRINTF(u8, s32)
 #define PLAYER_BE8      0xBE8
 #endif
 
-// POS calls these after moving an object
-extern "C" void CancelPlayerPushAction(u8* p);
+// ends a push in progress; POS, MOVE, MOVETO and DIR pass the player's mPush (PLAYER_BE8)
+extern "C" void CancelPlayerPushAction(u8* push);
 
+// the object registered under a script name from 10000 up, NULL unless it's in use
 static inline XObj* CEvt_FindObj(s16 id)
 {
 	for (s32 i = 0; i < gEventObjectIds.mCount; i++) {
@@ -3209,7 +3213,7 @@ extern "C" void RegisterEventObjectId(CEvt*, s16 id, s16 index)
 	}
 }
 
-// -1 is the script's own object, anything lower is a pointer
+// ids from 10000 up are script names, 0 and up slots in gGame.mXObjs, -1 the script's own object, anything lower a pointer
 static inline XObj* CEvt_GetObj(CEvt* evt, s16 id)
 {
 	if (id >= 10000) {
@@ -4551,6 +4555,7 @@ s32 CEvt::_cmd_READ(u8, s32)
 			if (obj->mJObj == NULL) {
 				CEvt_Warn(FormatToStaticBuffer("read(@ANIM, %d, %s) ... obj(%d) is collision!", id, path, id));
 			}
+			// an anim from mAnim is playing and this read reloads mAnim: switch to the model's own anim with that index
 			if (obj->mStatus.mFlags & 0x0008000000000000) {
 				HSD_AObj* anim = GetAObj(obj->mJObj);
 				if (anim != NULL && !(anim->flags & AOBJ_NO_ANIM)) {
@@ -4682,13 +4687,13 @@ s32 CEvt::_cmd_WIN(u8, s32)
  */
 s32 CEvt::_cmd_WARP(u8, s32)
 {
-	s32 stage = CEvt_Evaluate(this);
-	s32 arg   = CEvt_Evaluate(this);
+	s32 stage    = CEvt_Evaluate(this);
+	s32 showName = CEvt_Evaluate(this);
 	// 10000 and 20000 are taken as is, 100 and up counts from the current stage
 	if (stage != 10000 && stage != 20000 && stage >= 100) {
 		stage += GetStageNum() - 99;
 	}
-	ChangeGameStage(&gGame, stage, arg);
+	ChangeGameStage(&gGame, stage, showName);
 	CEvt_End(this);
 	return 1;
 }
@@ -4706,6 +4711,7 @@ s32 CEvt::_cmd_POS(u8, s32)
 	f32 z     = CEvt_Evaluate(this) / 100.0f;
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 		obj->SetPos(x, y, z, 0);
+		// mLastPos is overwritten below, so flag the floor heights as stale for UpdateObject
 		if (obj->mMoveTranslate.y != obj->mLastPos.y) {
 			obj->mStatus.mFlags |= 0x0010000000000000;
 		}
@@ -4713,15 +4719,15 @@ s32 CEvt::_cmd_POS(u8, s32)
 		obj->mLastPos.y = obj->mMoveTranslate.y;
 		obj->mLastPos.z = obj->mMoveTranslate.z;
 		gGame.mMotionControlCamera.UpdateTarget(obj);
-		u8* carry;
+		XActLift* lift;
 		u8* player = (u8*)gGame.GetPlayer();
 		if (obj == (XObj*)player) {
 			ResetPlayerHeadOffset((XObjChr*)player);
 			ResetPlayerPlug((XObjChr*)player);
-			carry = (u8*)&((XObjChr*)player)->mLift;
-			if (*(XObj**)(carry + 0x20) != NULL) {
-				UpdateHeldObject((XActLift*)carry, 1);
-				(*(XObj**)(carry + 0x20))->UpdateObject(1);
+			lift = &((XObjChr*)player)->mLift;
+			if (lift->mTarget != NULL) {
+				UpdateHeldObject(lift, 1);
+				lift->mTarget->UpdateObject(1);
 			}
 			CancelPlayerPushAction(player + PLAYER_BE8);
 		}
@@ -4992,12 +4998,14 @@ s32 CEvt::_cmd_MSG(u8 cmd, s32)
 	CMsg* owner = mMsg;
 	if (owner != 0) {
 		if (owner->mStay > 0) {
+			// 1: the last message was left up by STAY; mStay 2 has END fade it out
 			if (mMsgState == 1) {
 				owner->mStay = 2;
 				mMsgState++;
 				mData.mScript--;
 				return 1;
 			}
+			// 2: wait for that window to finish; a message with no text only closes it
 			if (mMsgState == 2) {
 				if (owner->mData.mCursor != NULL) {
 					mData.mScript--;
@@ -5015,12 +5023,14 @@ s32 CEvt::_cmd_MSG(u8 cmd, s32)
 		if (owner->mIdle != 0) {
 			CMsg_Open(owner, cmd, mData.mScript + 4, (MsgFormatArgs*)&mValues.mBuf);
 			mMsg->mIdle = 0;
+			// back onto the opcode and yield: MSG runs again each frame until the message is done
 			mData.mScript--;
 			if (cmd == EVT_CMD_SELECT) {
 				PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			}
 			return 1;
 		}
+		// STAY: the script goes on with the window left up
 		if (owner->mStay > 0) {
 			mMsgState     = 1;
 			mData.mScript = ResolveEventScriptOffset(mData.mScript);
@@ -5041,7 +5051,7 @@ s32 CEvt::_cmd_MSG(u8 cmd, s32)
 	return 0;
 }
 
-extern "C" void StartGameMovie(u8* game, const char* path, BOOL loop, s32 arg);
+extern "C" void StartGameMovie(u8* game, const char* path, BOOL loop, s32 flags);
 extern "C" void StopGameMovie(u8* game);
 
 /**
@@ -5060,15 +5070,16 @@ s32 CEvt::_cmd_MOVIE(u8, s32)
 			path = buf;
 		}
 #endif
-		s32 x   = CEvt_Evaluate(this);
-		s32 y   = CEvt_Evaluate(this);
-		s32 w   = CEvt_Evaluate(this);
-		s32 h   = CEvt_Evaluate(this);
-		s32 arg = CEvt_Evaluate(this);
+		s32 x     = CEvt_Evaluate(this);
+		s32 y     = CEvt_Evaluate(this);
+		s32 w     = CEvt_Evaluate(this);
+		s32 h     = CEvt_Evaluate(this);
+		s32 flags = CEvt_Evaluate(this);
 		// x and y are the center, the rect wants the corner
 		x -= w / 2;
 		y -= h / 2;
-		StartGameMovie((u8*)&gGame, path, FALSE, arg);
+		// bit 0 of flags plays the movie with alpha
+		StartGameMovie((u8*)&gGame, path, FALSE, flags);
 		gGame.mMovieRect[0] = x;
 		gGame.mMovieRect[1] = y;
 		gGame.mMovieRect[2] = w;
@@ -5181,6 +5192,7 @@ s32 CEvt::_cmd_MOVETO(u8, s32)
 	f32 time  = CEvt_Evaluate(this) / 100.0f;
 	s32 anim  = CEvt_Evaluate(this);
 	s16 dir   = CEvt_Evaluate(this);
+	// only a shown object moves (DISP sets 0x10000), a hidden one is skipped without a warning
 	if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 		if (obj->mJObj == NULL) {
 			CEvt_Warn(FormatToStaticBuffer("moveto(%d, %d,%d,%d, %d, %d, %d) ... obj(%d) is collision!", id, (s32)(x * 100.0f),
@@ -5199,6 +5211,7 @@ s32 CEvt::_cmd_MOVETO(u8, s32)
 			// already there
 			obj->SetPos(x, y, z, 0);
 		} else {
+			// time 0 gets there in one frame, a positive time is seconds, a negative one the speed per frame
 			if (time == 0.0f) {
 				obj->SetMoveDir(CVec(x, y, z), distance);
 			} else if (time > 0.0f) {
@@ -5224,6 +5237,7 @@ s32 CEvt::_cmd_MOVETO(u8, s32)
 					void* matAnim   = obj->GetMaterialAnimation(matId);
 					void* shapeAnim = obj->GetShapeAnimation(jointId);
 					obj->SetAnim(0, TRUE, jointAnim, matAnim, shapeAnim, 0.0f, 1.0f, 0.0f, 10.0f);
+					// XObj::SetAnim(0, ...) cleared the from-mAnim bit; set it again if either id is from mAnim (1000 up)
 					if (jointId >= 1000 || matId >= 1000) {
 						obj->mStatus.mFlags |= 0x0008000000000000;
 					}
@@ -5763,6 +5777,7 @@ s32 CEvt::_cmd_MOVE(u8, s32)
 	f32 time     = CEvt_Evaluate(this) / 100.0f;
 	s32 anim     = CEvt_Evaluate(this);
 	s16 dir      = CEvt_Evaluate(this);
+	// only a shown object moves (DISP sets 0x10000), a hidden one is skipped without a warning
 	if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 		if (obj->mJObj == NULL) {
 			// retail's format says %d but passes a float
@@ -5778,6 +5793,7 @@ s32 CEvt::_cmd_MOVE(u8, s32)
 		f32 yaw = (dir == -1 || dir == -2) ? obj->mMoveRotate.y : DEG2RAD * dir;
 		target.x += distance * (f32)sin(yaw);
 		target.z += distance * (f32)cos(yaw);
+		// time 0 gets there in one frame, a positive time is seconds, a negative one the speed per frame
 		if (time == 0.0f) {
 			obj->SetMoveDir(target, distance);
 		} else if (time > 0.0f) {
@@ -5793,6 +5809,7 @@ s32 CEvt::_cmd_MOVE(u8, s32)
 				void* matAnim   = obj->GetMaterialAnimation(matId);
 				void* shapeAnim = obj->GetShapeAnimation(jointId);
 				obj->SetAnim(0, TRUE, jointAnim, matAnim, shapeAnim, 0.0f, 1.0f, 0.0f, 10.0f);
+				// XObj::SetAnim(0, ...) cleared the from-mAnim bit; set it again if either id is from mAnim (1000 up)
 				if (jointId >= 1000 || matId >= 1000) {
 					obj->mStatus.mFlags |= 0x0008000000000000;
 				}
@@ -6254,18 +6271,6 @@ struct UnkEvtMenu {
 	virtual void Open();             // _1C, MENU opens it with this
 };
 
-#if defined(VERSION_JP)
-#define PLAYER_MENU_12E44 0x12D44
-#define PLAYER_MENU_130D0 0x12FB8
-#define PLAYER_MENU_130DC 0x12FC4
-#define PLAYER_MENU_13368 0x13238
-#else
-#define PLAYER_MENU_12E44 0x12E44
-#define PLAYER_MENU_130D0 0x130D0
-#define PLAYER_MENU_130DC 0x130DC
-#define PLAYER_MENU_13368 0x13368
-#endif
-
 extern "C" void ClosePlayerEquipmentMenu(u8* player, s32 arg);
 
 /**
@@ -6286,24 +6291,25 @@ s32 CEvt::_cmd_MENU(u8, s32)
 			mMenuActive = 0;
 		}
 	} else if (id == 1000) {
-		s32 arg = CEvt_Evaluate(this);
-		if (arg >= 0) {
-			SelectPlayerEquipmentRing(&EVT_PLAYER, arg);
+		// equipment rings: ring 0 (attachments) or 1 (costumes) gets the cursor, opening them if needed; below 0 closes them
+		s32 ring = CEvt_Evaluate(this);
+		if (ring >= 0) {
+			SelectPlayerEquipmentRing(&EVT_PLAYER, ring);
 		} else {
-			u8* player = (u8*)gGame.GetPlayer();
-			bool busy  = false;
-			if (*(s32*)(player + PLAYER_MENU_12E44) != 0 || *(s32*)(player + PLAYER_MENU_130DC) != 0) {
-				busy = true;
+			XObjChr* player = gGame.GetPlayer();
+			bool ringsOpen  = false;
+			if (player->mMenu.mAtc.mOpen != 0 || player->mMenu.mDrs.mOpen != 0) {
+				ringsOpen = true;
 			}
-			if (busy) {
-				ClosePlayerEquipmentMenu(player, -1);
+			if (ringsOpen) {
+				ClosePlayerEquipmentMenu((u8*)player, -1);
 			}
 		}
 	} else if (id == 1001) {
-		s32 a                                               = CEvt_Evaluate(this);
-		s32 b                                               = CEvt_Evaluate(this);
-		*(s32*)((u8*)gGame.GetPlayer() + PLAYER_MENU_130D0) = a;
-		*(s32*)((u8*)gGame.GetPlayer() + PLAYER_MENU_13368) = b;
+		s32 atcItem                                            = CEvt_Evaluate(this);
+		s32 drsItem                                            = CEvt_Evaluate(this);
+		gGame.GetPlayer()->mMenu.mAtc.mPendingFirstVisibleItem = atcItem;
+		gGame.GetPlayer()->mMenu.mDrs.mPendingFirstVisibleItem = drsItem;
 	} else {
 		UnkEvtMenu* menu = (UnkEvtMenu*)gGame.mMenu.mMenus[id];
 #if defined(VERSION_JP)
@@ -6342,7 +6348,7 @@ s32 CEvt::_cmd_LIGHT(u8, s32)
 
 	u16 type = CEvt_Evaluate(this);
 	switch (type) {
-	case 0xDB: {
+	case EVT_ATOM_COLOR: {
 		u8 r            = CEvt_Evaluate(this);
 		u8 g            = CEvt_Evaluate(this);
 		u8 b            = CEvt_Evaluate(this);
@@ -6353,14 +6359,14 @@ s32 CEvt::_cmd_LIGHT(u8, s32)
 		HSD_LObjSetColor(light, light->mColor);
 		break;
 	}
-	case 0xCF: {
+	case EVT_ATOM_POS: {
 		// positions come in hundredths
 		f32 x = CEvt_Evaluate(this) / 100.0f;
 		f32 y = CEvt_Evaluate(this) / 100.0f;
 		light->SetPosition(x, y, CEvt_Evaluate(this) / 100.0f);
 		break;
 	}
-	case 0xE3: {
+	case EVT_ATOM_INTEREST: {
 		f32 x = CEvt_Evaluate(this) / 100.0f;
 		f32 y = CEvt_Evaluate(this) / 100.0f;
 		light->SetInterest(x, y, CEvt_Evaluate(this) / 100.0f);
@@ -6386,7 +6392,7 @@ s32 CEvt::_cmd_KILL(u8, s32)
 	s16 id    = CEvt_Evaluate(this);
 	XObj* obj = CEvt_GetObj(this, id);
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
-		XObj* held = *(XObj**)((u8*)gGame.GetPlayer() + PLAYER_HELD_OBJ);
+		XObj* held = gGame.GetPlayer()->mLift.mTarget;
 		if (held != NULL && obj == held && (obj->mStatus.mFlags & 0x0000400000000000)) {
 			// chibi is carrying it, can't kill that
 			CEvt_Warn(FormatToStaticBuffer("kill(%d) ... obj(%d) lifted!", id, id));
@@ -6420,7 +6426,7 @@ s32 CEvt::_cmd_DISP(u8, s32)
 	XObj* obj = CEvt_GetObj(this, id);
 	u8 on     = CEvt_Evaluate(this);
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
-		XObj* held = *(XObj**)((u8*)gGame.GetPlayer() + PLAYER_HELD_OBJ);
+		XObj* held = gGame.GetPlayer()->mLift.mTarget;
 		if (held != NULL && obj == held && (obj->mStatus.mFlags & 0x0000400000000000)) {
 			// chibi is carrying it, leave it be
 			CEvt_Warn(FormatToStaticBuffer("disp(%d, %d) ... obj(%d) lifted!", id, on, id));
@@ -6527,6 +6533,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 				difference += TWO_PI;
 			while (difference >= TWO_PI)
 				difference -= TWO_PI;
+			// already within a tenth of a degree of it: set it instead of turning
 			if (difference < 0.0017453292f || difference > 6.2814398f) {
 				obj->SetRotationY(yaw, 0);
 			} else {
@@ -6547,6 +6554,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 						void* matAnim   = obj->GetMaterialAnimation(matId);
 						void* shapeAnim = obj->GetShapeAnimation(jointId);
 						obj->SetAnim(0, TRUE, jointAnim, matAnim, shapeAnim, 0.0f, 1.0f, 0.0f, 10.0f);
+						// SetAnim with id 0 cleared the anim archive bit; ids from 1000 up are archive anims
 						if (jointId >= 1000 || matId >= 1000)
 							obj->mStatus.mFlags |= 0x0008000000000000;
 					} else {
@@ -7426,7 +7434,7 @@ s32 CEvt::_cmd_COLOR(u8, s32)
 	u8 g      = CEvt_Evaluate(this);
 	u8 b      = CEvt_Evaluate(this);
 	f32 time  = CEvt_Evaluate(this) / 100.0f;
-	if (obj == (XObj*)-2) {
+	if (obj == (XObj*)-2) { // id -2: every object in use that has a model
 		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; i++) {
 			XObj* current = gGame.mXObjs.mObjects[i];
 			if ((current->mStatus.mFlags & 1) && current->mJObj != NULL) {
@@ -7931,15 +7939,16 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 	CCameraActionReset* reset  = (CCameraActionReset*)EVT_CAMERA_ACTION(CAMACTION_RESET);
 	u16 command                = CEvt_Evaluate(this);
 	switch (command) {
-	case 211: { // area camera
-		s32 id        = CEvt_Evaluate(this);
-		s32 direction = CEvt_Evaluate(this);
+	case EVT_ATOM_AREA: {
+		s32 areaIndex = CEvt_Evaluate(this);
+		s32 entry     = CEvt_Evaluate(this);
 		s32 mode      = CEvt_Evaluate(this);
 		f32 time      = CEvt_Evaluate(this) / 100.0f;
-		if (GetStageCameraInfoRecords() != NULL && area->IsCameraArea(id) != 0) {
+		if (GetStageCameraInfoRecords() != NULL && area->IsCameraArea(areaIndex) != 0) {
 			CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 			camera->ChangeAction(CAMACTION_AREA);
-			SelectAreaCameraEntryWithControl((CCameraActionArea*)area, id, direction, mode, 0, time);
+			SelectAreaCameraEntryWithControl((CCameraActionArea*)area, areaIndex, entry, mode, 0, time);
+			// mode 3 jumps straight to the entry instead of easing, so apply it now
 			if (mode == 3) {
 				camera->ApplyAction();
 			}
@@ -7998,7 +8007,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		}
 		break;
 	}
-	case 227: { // interest position
+	case EVT_ATOM_INTEREST: {
 		f32 x    = CEvt_Evaluate(this) / 100.0f;
 		f32 y    = CEvt_Evaluate(this) / 100.0f;
 		f32 z    = CEvt_Evaluate(this) / 100.0f;
@@ -8047,7 +8056,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		CEvt_Evaluate(this);
 		CEvt_Evaluate(this);
 		break;
-	case 229: { // field of view
+	case EVT_ATOM_FOV: {
 		f32 fov  = CEvt_Evaluate(this);
 		s32 mode = CEvt_Evaluate(this);
 		f32 time = CEvt_Evaluate(this) / 100.0f;
@@ -8061,6 +8070,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		CEvt_Evaluate(this);
 		CEvt_Evaluate(this);
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_ANIM);
+		// pool 0's object is the XObjCamera the anim camera plays
 		XObj* obj = (XObj*)gGame.mXObjs.mPools[0].mObjects;
 		if (obj != NULL && (obj->mStatus.mFlags & 1) != 0) {
 			SetStageCameraAnimation(obj, anim, 0.0f);
@@ -8091,7 +8101,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		}
 		break;
 	}
-	case 236: { // save camera
+	case EVT_ATOM_SAVE: {
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		camera->EndEye();
 		s32 slot = CEvt_Evaluate(this);
@@ -8102,7 +8112,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		}
 		break;
 	}
-	case 237: { // restore camera
+	case EVT_ATOM_LOAD: {
 		s32 slot = CEvt_Evaluate(this);
 		if (slot >= 0) {
 			gGame.mMotionControlCamera.SetMemento(&gEventCameraMementos[slot]);
@@ -8112,11 +8122,11 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		}
 		break;
 	}
-	case 238: {
-		s32 mode = CEvt_Evaluate(this);
-		if (mode <= 0) {
-			s32 sign = mode >> 31;
-			SetAreaCameraHeightIndex(&gGame.mMotionControlCamera, (mode ^ sign) - sign);
+	case 238: { // area camera zoom level, passed negated; values above 0 do nothing
+		s32 zoom = CEvt_Evaluate(this);
+		if (zoom <= 0) {
+			s32 sign = zoom >> 31;
+			SetAreaCameraHeightIndex(&gGame.mMotionControlCamera, (zoom ^ sign) - sign);
 		}
 		break;
 	}
@@ -11263,12 +11273,6 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     blr
 */
 
-#if defined(VERSION_JP)
-#define XOBJ_80C 0x804
-#else
-#define XOBJ_80C 0x80C // BORN's last arg goes here
-#endif
-
 // null when the pool is full
 static inline XObj* CEvt_Born(s32 index)
 {
@@ -11305,8 +11309,8 @@ s32 CEvt::_cmd_BORN(u8, s32)
 		obj->SetScale(sx, sy, sz, 0);
 		UpdateObjectFloorHeights(obj);
 		UpdateObjectFloorXZExtent(obj);
-		*(s32*)((u8*)obj + XOBJ_80C) = arg;
-		s16 index                    = FindStageObjectIndex(&gGame.mXObjs, (CXObj*)obj);
+		obj->mEventScript = arg;
+		s16 index         = FindStageObjectIndex(&gGame.mXObjs, (CXObj*)obj);
 		if (CEvt_FindObj(id) == NULL) {
 			gEventObjectIds.mEntry[gEventObjectIds.mCount].mId    = id;
 			gEventObjectIds.mEntry[gEventObjectIds.mCount].mIndex = index;
@@ -12119,6 +12123,7 @@ s32 CEvt::_cmd_ANIM2(u8 command, s32)
 					void* matAnim   = obj->GetMaterialAnimation(matId);
 					void* shapeAnim = obj->GetShapeAnimation(jointId);
 					obj->SetAnim(0, TRUE, jointAnim, matAnim, shapeAnim, frame, rate / 100.0f, command == EVT_CMD_ANIM1 ? 1 : 0, 10.0f);
+					// SetAnim with id 0 cleared the anim archive bit; ids from 1000 up are archive anims
 					if (jointId >= 1000 || matId >= 1000) {
 						obj->mStatus.mFlags |= 0x0008000000000000;
 					}
@@ -12587,8 +12592,9 @@ s32 CEvt::_cmd_ANIM(u8 command, s32)
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL) {
 				CEvt_Warn(FormatToStaticBuffer("anim(%d, %d) ... obj(%d) is collision!", id, anim, id));
-			} else if (count == 0) {
+			} else if (count == 0) { // the first anim plays now, the ones after it are queued
 				obj->mAnmQueue.Clear();
+				// a pair: the material anim id in the high half, the joint and shape anim id in the low half
 				if (anim & 0xFFFF0000) {
 					s32 jointId     = anim & 0xFFFF;
 					s32 matId       = anim >> 16;
@@ -12596,6 +12602,7 @@ s32 CEvt::_cmd_ANIM(u8 command, s32)
 					void* matAnim   = obj->GetMaterialAnimation(matId);
 					void* shapeAnim = obj->GetShapeAnimation(jointId);
 					obj->SetAnim(0, TRUE, jointAnim, matAnim, shapeAnim, 0.0f, 1.0f, command == EVT_CMD_ANIM1 ? 1 : 0, 10.0f);
+					// ids from 1000 up are from the second archive (mAnim), XObj::SetAnim marks those with this bit
 					if (jointId >= 1000 || matId >= 1000) {
 						obj->mStatus.mFlags |= 0x0008000000000000;
 					}
@@ -13508,7 +13515,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 				} else {
 					gEventFlags.mFlags[(u32)index >> 5] &= ~(1U << (index & 31));
 				}
-			} else if (index != -1 && index != -2 && index != -3) {
+			} else if (index != -1 && index != -2 && index != -3) { // Evaluate's read-only flags, setting one does nothing
 				OSPanic("evt.cpp", 1107, "%s%s", FormatToStaticBuffer("Invalid EvalSet flag[%d] - 0~%d\n", index, 4096), "EvalSet");
 			}
 			break;
@@ -13528,6 +13535,8 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			break;
 		case EVT_EXPR_PAD:
 			index = CEvt_Evaluate(evt);
+			// pad[7] is the rumble, it only runs with the rumble option (0x800000000) on: 1 starts it, 0 stops it,
+			// anything else is the address of a rumble list for HSD_PadRumbleAdd
 			if (index == 7) {
 				if (gGame.mStatus.mFlags & 0x800000000ULL) {
 					if (value == 1) {
@@ -14600,7 +14609,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		result = EVT_PLAYER.mParams.mRank;
 		break;
 	case EVT_EXPR_HOLD: {
-		XObj* held = *(XObj**)((u8*)gGame.GetPlayer() + PLAYER_HELD_OBJ);
+		XObj* held = gGame.GetPlayer()->mLift.mTarget;
 		if (held != NULL) {
 			if ((s16)held->GetPool() == 24)
 				result = 1000;
@@ -14786,6 +14795,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		result = 100.0f * (f32)cos(DEG2RAD * (CEvt_Evaluate(evt) / 100.0f));
 		break;
 	case EVT_EXPR_ARRAY_ELEMENT: {
+		// the element size in bytes, negative for signed elements, then the index and the array
 		result     = (s8)CEvt_Evaluate(evt);
 		s32 index  = CEvt_Evaluate(evt);
 		s32 stride = result;
@@ -17044,7 +17054,7 @@ void ConfigureSubwindowCamera(void* effect, Vec* pos, f32 pitch, f32 yaw, f32 ar
 void AddMainMenuExtraRow(void* object, s32 arg1, s32 arg2);
 }
 
-// todo: pools 4, 5 and 17 keep flag bits right after XObj, no idea what class
+// the collection flags (XObjFlags::mFlags, right after XObj) of a pool's first object: 4 coins, 5 items, 17 dust, in mPools[pool + 3]
 #define EVT_CALL_BITS(pool) (*(u32**)(gGame.mXObjs.mPools[pool + 3].mObjects + sizeof(XObj)))
 
 /**
@@ -17072,15 +17082,15 @@ s32 CEvt::_cmd_CALL(u8, s32)
 	}
 
 	switch ((s32)target) {
-	case -10: {
-		f32 d = args[4], c = args[3], b = args[2], a = args[1];
+	case -10: { // keeps the object inside these limits around where it stands now
+		f32 negZ = args[4], posZ = args[3], negX = args[2], posX = args[1];
 		XObj* obj       = CEvt_GetObj(this, (s16)args[0]);
 		obj->mAnchorX   = obj->mMoveTranslate.x;
 		obj->mAnchorZ   = obj->mMoveTranslate.z;
-		obj->mLimitPosX = a;
-		obj->mLimitNegX = b;
-		obj->mLimitPosZ = c;
-		obj->mLimitNegZ = d;
+		obj->mLimitPosX = posX;
+		obj->mLimitNegX = negX;
+		obj->mLimitPosZ = posZ;
+		obj->mLimitNegZ = negZ;
 		break;
 	}
 	case -11: {
@@ -17102,6 +17112,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 	case -14:
 	case -15:
 		if (mYesNoActive != 0) {
+			// OpenPlayerYesNoMenu sets 0x800, it clears once the marks have faded out after the answer
 			if (gGame.mStatus.mFlags & 0x800) {
 				CPad pad(0);
 				HandleOXMenuInput(&gGame.GetPlayer()->mOXMenu, &pad);
@@ -17113,16 +17124,16 @@ s32 CEvt::_cmd_CALL(u8, s32)
 			}
 		} else {
 			if (EVT_PLAYER.mAttachmentRequest < 0) {
-				s32 mode = 2;
+				s32 crossMask = 2;
 				if ((s32)target == -12)
-					mode = 2;
+					crossMask = 2;
 				else if ((s32)target == -13)
-					mode = 1;
+					crossMask = 1;
 				else if ((s32)target == -14)
-					mode = 0;
+					crossMask = 0;
 				else if ((s32)target == -15)
-					mode = 3;
-				OpenPlayerYesNoMenu(&EVT_PLAYER, mode, args[0]);
+					crossMask = 3;
+				OpenPlayerYesNoMenu(&EVT_PLAYER, crossMask, args[0]);
 				mYesNoActive = 1;
 			}
 			mData.mScript = start;
@@ -17130,12 +17141,14 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		}
 		break;
 	case -16:
+		// the subwindow: 231 sets its rect, @CAM aims its camera and shows it, @RESET and 230 (the two
+		// atoms that end the scripted camera in _cmd_CAMERA) hide it
 		if (args[0] == 231) {
 			gGame.mSubwin.mRectX      = args[1];
 			gGame.mSubwin.mRectY      = args[2];
 			gGame.mSubwin.mRectWidth  = args[3];
 			gGame.mSubwin.mRectHeight = args[4];
-		} else if (args[0] == 225) {
+		} else if (args[0] == EVT_ATOM_CAM) {
 			Vec pos = { 0.0f, 0.0f, 0.0f };
 			pos.x   = args[1] / 100.0f;
 			pos.y   = args[2] / 100.0f;
@@ -17143,10 +17156,12 @@ s32 CEvt::_cmd_CALL(u8, s32)
 			ConfigureSubwindowCamera(&gGame.mSubwin, &pos, DEG2RAD * args[4], DEG2RAD * args[5], args[6], args[7]);
 			gGame.mSubwin.mEnabled      = 1;
 			gGame.mSubwin.mFlags.mFlags = 0;
-		} else if (args[0] == 209 || args[0] == 230) {
+		} else if (args[0] == EVT_ATOM_RESET || args[0] == 230) {
 			gGame.mSubwin.mEnabled = 0;
 		}
 		break;
+	// -17 to -19 set, clear and test an item's collection flag, -20 to -22 a coin's, -23 to -25 a dust pile's;
+	// id -2 sets or clears all of them
 	case -17: {
 		s16 id = args[0];
 		if (id > 0) {
@@ -17234,7 +17249,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		mSelectResult = (EVT_CALL_BITS(17)[(u32)id >> 5] & (1U << (id & 31))) != 0;
 		break;
 	}
-	case -26: {
+	case SYSCALL_SET_OBJSTAT: {
 		s16 id    = args[0];
 		s32 bit   = args[1];
 		u64 mask  = (u64)1 << bit;
@@ -17285,7 +17300,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_SET_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
 		break;
 	}
-	case -27: {
+	case SYSCALL_CLR_OBJSTAT: {
 		s16 id    = args[0];
 		s32 bit   = args[1];
 		u64 mask  = (u64)1 << bit;
@@ -17314,7 +17329,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 			CEvt_Warn(FormatToStaticBuffer("call(SYSCALL_CLR_OBJSTAT, %d, 1<<%d): obj(%d) killed!", id, bit, id));
 		break;
 	}
-	case -28: {
+	case SYSCALL_CHK_OBJSTAT: {
 		s16 id    = args[0];
 		s32 bit   = args[1];
 		u64 mask  = (u64)1 << bit;
@@ -17371,6 +17386,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 			}
 		}
 		break;
+	// -44 turns back on and -45 turns off every camera area record whose mCameraAction is the id
 	case -44: {
 		s16 id                 = args[0];
 		s32 areaCount          = gCameraAreaState.mAreaExCount;
@@ -17405,7 +17421,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 	case -40:
 		mSelectResult = (s16)GetItemHappyPointValue(args[0]);
 		break;
-	case -100:
+	case SYSCALL_STGFUNC:
 		if (count > 0)
 			mSelectResult = CallStageModule(args[0] + 7, count - 1, &args[1]);
 #if defined(VERSION_PAL)
@@ -17450,6 +17466,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		s32 duration = CEvt_Evaluate(this);
 		if (command == EVT_CMD_WAIT) {
 			if (mWaitTimer == 0) {
+				// duration is in hundredths of a second, mWaitTimer counts hundredths of a frame
 				mWaitTimer = (duration / 100) * FRAMES_PER_SEC * 100;
 				mWaitTimer += 100.0f * ((duration % 100 * FRAMES_PER_SEC) / 100.0f);
 				mData.mScript = start;
@@ -17501,7 +17518,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 					f32 current    = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
 					EvtWaitFor(this, command, start, current >= frame, yield);
 				} else
-					EvtWaitFor(this, command, start, (anim->flags & 0x44000000) != 0, yield);
+					EvtWaitFor(this, command, start, (anim->flags & (AOBJ_NO_ANIM | AOBJ_REWINDED)) != 0, yield);
 			} else if (command == EVT_CMD_CHECK)
 				mSelectResult = 1;
 		} else {
@@ -17531,7 +17548,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
 				CEvt_Warn(FormatToStaticBuffer("wait(@MOVE, %d) ... obj(%d) is collision!", id, id));
-			const Vec& target = *(Vec*)((u8*)&obj->mMoveTranslate + sizeof(CVec));
+			const Vec& target = obj->mMoveTranslate.mTarget;
 			EvtWaitFor(this, command, start, !(obj->mMoveTranslate != target), yield);
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("wait(@MOVE, %d, ...) obj(%d) killed!", id, id));
@@ -17632,7 +17649,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		if (beat != 0) {
 			beat                     = gEventBeatLatch.mBeat;
 			gEventBeatLatch.mPending = 0;
-			beat += 1000;
+			beat += 1000; // so beat 0 is told apart from no beat
 		}
 		if (command == EVT_CMD_WAIT && beat == 0) {
 			mData.mScript = start;
@@ -18256,13 +18273,13 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 		}
 		break;
 	case EVT_ATOM_ZBLUR: {
-		u8 a0     = CEvt_Evaluate(this);
-		u8 a1     = CEvt_Evaluate(this);
-		s32 near  = CEvt_Evaluate(this);
-		s32 far   = CEvt_Evaluate(this);
-		f32 time  = CEvt_Evaluate(this) / 100.0f;
-		f32 start = a0 / 255.0f;
-		f32 end   = a1 / 255.0f;
+		u8 a0       = CEvt_Evaluate(this);
+		u8 a1       = CEvt_Evaluate(this);
+		s32 offsetX = CEvt_Evaluate(this);
+		s32 offsetY = CEvt_Evaluate(this);
+		f32 time    = CEvt_Evaluate(this) / 100.0f;
+		f32 start   = a0 / 255.0f;
+		f32 end     = a1 / 255.0f;
 		f32 step;
 		if (time == 0.0f) {
 			start = end;
@@ -18276,8 +18293,8 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 			gGame.mBlur.mTarget = end;
 		step                 = step < 0.0f ? -step : step;
 		gGame.mBlur.mSpeed   = step;
-		gGame.mBlur.mOffsetX = near;
-		gGame.mBlur.mOffsetY = far;
+		gGame.mBlur.mOffsetX = offsetX;
+		gGame.mBlur.mOffsetY = offsetY;
 		break;
 	}
 	case EVT_ATOM_SHAKE: {
@@ -18409,10 +18426,10 @@ static inline void ClearTimers()
  * @note Address: 0x8007F194
  * @note Size: 0x3DC
  */
-extern "C" void InitializeEventScriptContext(CEvt* evt, u8* context, void* owner)
+extern "C" void InitializeEventScriptContext(CEvt* evt, u8* msg, void* owner)
 {
 	evt->mOwner = (u32)owner;
-	evt->mMsg   = (CMsg*)context;
+	evt->mMsg   = (CMsg*)msg;
 	if (evt->mOwner == 0) {
 		for (u32 i = 0; i < 128; ++i)
 			gEventFlags.mFlags[i] = 0;

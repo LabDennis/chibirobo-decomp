@@ -377,8 +377,9 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 			ResumeGameSfx(&gGame.mSound, sfx);
 		}
 		break;
-	case -1:
+	case MSG_SFX_WAIT:
 		if (IsGameSoundPlaying(&gGame.mSound, sfx)) {
+			// back onto the code byte to run it again: code, u32 id and type are 6 bytes, so the US and JP 3 lands inside the id
 #if defined(VERSION_PAL)
 			msg->mData.mCursor -= 6;
 #else
@@ -611,7 +612,7 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 	anim |= ReadMsgU8(msg) << 8;
 	anim |= ReadMsgU8(msg) << 16;
 	anim |= ReadMsgU8(msg) << 24;
-	if (flags & 1) {
+	if (flags & MSG_ANIM_VARIABLE) {
 		anim = gEventVars.mVars[anim];
 	}
 	void* state = &gGame.mEvt.mData;
@@ -623,7 +624,7 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 				msg->mData.mCursor -= 8;
 				return 1;
 			}
-		} else if (!(flags & 0x10)) {
+		} else if (!(flags & MSG_ANIM_QUEUE)) {
 			obj->mAnmQueue.Clear();
 			if (anim & 0xFFFF0000) {
 				s32 jointId     = anim & 0xFFFF;
@@ -898,27 +899,27 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
 	s32 command = ReadMsgU8(msg);
 	// 252 to 255 wait for a button instead of a time
 	if (!(command != 255 && command != 254 && command != 253 && command != 252)) {
-		if (msg->mCommand == 0x23) {
+		if (msg->mCommand == EVT_CMD_MSG) {
 			if (!msg->mFont.mBlink) {
-				s32 mode = -1;
+				s32 icon = -1;
 				if (command == 255) {
-					mode = 0;
+					icon = 0;
 				}
 				if (command == 254) {
-					mode = 1;
+					icon = 1;
 				}
 				if (command == 253 || command == 252) {
-					mode = 0;
+					icon = 0;
 				}
 				msg->mFont.mBlink      = 1;
-				msg->mFont.mBlinkIcon  = mode;
+				msg->mFont.mBlinkIcon  = icon;
 				msg->mFont.mBlinkPhase = 0.0f;
 				msg->mData.mCursor -= 2;
 			} else {
 				BOOL done = FALSE;
 				CPad pad(0);
 				if (command == 253 || command == 252) {
-					if ((pad.mPad->mTrigger & 0x400) && !(gGame.mStatus.mFlags & 0x20)) {
+					if ((pad.mPad->mTrigger & PAD_BUTTON_X) && !(gGame.mStatus.mFlags & 0x20)) {
 						done = TRUE;
 						if (command == 253) {
 							SelectPlayerEquipmentRing(gGame.GetPlayer(), 0);
@@ -926,7 +927,7 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
 							SelectPlayerEquipmentRing(gGame.GetPlayer(), 1);
 						}
 					}
-				} else if (((pad.mPad->mTrigger & 0x100) || (pad.mPad->mTrigger & 0x200)) && !(gGame.mStatus.mFlags & 0x20)) {
+				} else if (((pad.mPad->mTrigger & PAD_BUTTON_A) || (pad.mPad->mTrigger & PAD_BUTTON_B)) && !(gGame.mStatus.mFlags & 0x20)) {
 					done = TRUE;
 				}
 				if (done) {
@@ -1153,7 +1154,7 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 {
 	if (msg->mFont.mActive) {
 		if (!msg->mFont.mFadeOut) {
-			if (msg->mCommand == 0x2B) {
+			if (msg->mCommand == EVT_CMD_SELECT) {
 				if (msg->mSelectedLine < 0) {
 					msg->mSelectedLine       = msg->mDefaultLine;
 					msg->mFont.mSelectedLine = msg->mSelectedLine;
@@ -1161,8 +1162,8 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 					msg->mFont.mCurLineWidth = 0.0f;
 				} else if (!(gGame.mStatus.mFlags & 0x20)) {
 					CPad pad(0);
-					u32 up   = gGame.mStatus.mFlags & 0x80000000 ? 0x10000 : 0x10008;
-					u32 down = gGame.mStatus.mFlags & 0x80000000 ? 0x20000 : 0x20004;
+					u32 up   = gGame.mStatus.mFlags & 0x80000000 ? HSD_PAD_STICK_UP : (HSD_PAD_STICK_UP | HSD_PAD_DPADUP);
+					u32 down = gGame.mStatus.mFlags & 0x80000000 ? HSD_PAD_STICK_DOWN : (HSD_PAD_STICK_DOWN | HSD_PAD_DPADDOWN);
 					if (pad.mPad->mRepeat & up) {
 						if (--msg->mSelectedLine < 0) {
 							msg->mSelectedLine = msg->mData.mLineCount - 1;
@@ -1175,13 +1176,13 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 						}
 						msg->mFont.mSelectedLine = msg->mSelectedLine;
 						PlayGameSound(&gGame.mSound, 0x87, 255);
-					} else if (pad.mPad->mTrigger & 0x100) {
+					} else if (pad.mPad->mTrigger & PAD_BUTTON_A) {
 						msg->mSelectResult       = msg->mSelectedLine;
 						msg->mSelectedLine       = -1;
 						msg->mFont.mFadeOut      = 1;
 						msg->mFont.mSelectedLine = -1;
 						PlayGameSound(&gGame.mSound, 0x88, 255);
-					} else if (pad.mPad->mTrigger & 0x200) {
+					} else if (pad.mPad->mTrigger & PAD_BUTTON_B) {
 						msg->mSelectResult       = -1;
 						msg->mSelectedLine       = -1;
 						msg->mFont.mFadeOut      = 1;
@@ -1194,10 +1195,11 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 					MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 				} else {
 					CPad pad(0);
-					u32 up       = gGame.mStatus.mFlags & 0x80000000 ? 0x10000 : 0x10008;
-					u32 down     = gGame.mStatus.mFlags & 0x80000000 ? 0x20000 : 0x20004;
-					u32 next     = gGame.mStatus.mFlags & 0x80000000 ? 0x40000 : 0x40001;
-					u32 previous = gGame.mStatus.mFlags & 0x80000000 ? 0x80000 : 0x80002;
+					// mDigits[0] is the ones digit (A reads them from [9] down), so left moves to the next higher digit
+					u32 up       = gGame.mStatus.mFlags & 0x80000000 ? HSD_PAD_STICK_UP : (HSD_PAD_STICK_UP | HSD_PAD_DPADUP);
+					u32 down     = gGame.mStatus.mFlags & 0x80000000 ? HSD_PAD_STICK_DOWN : (HSD_PAD_STICK_DOWN | HSD_PAD_DPADDOWN);
+					u32 next     = gGame.mStatus.mFlags & 0x80000000 ? HSD_PAD_STICK_LEFT : (HSD_PAD_STICK_LEFT | HSD_PAD_DPADLEFT);
+					u32 previous = gGame.mStatus.mFlags & 0x80000000 ? HSD_PAD_STICK_RIGHT : (HSD_PAD_STICK_RIGHT | HSD_PAD_DPADRIGHT);
 					if (pad.mPad->mRepeat & up) {
 						if (++msg->mDigits[msg->mSelectedDigit] > 9) {
 							msg->mDigits[msg->mSelectedDigit] = 0;
@@ -1224,7 +1226,7 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 							MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 							PlayGameSound(&gGame.mSound, 0x87, 255);
 						}
-					} else if (pad.mPad->mTrigger & 0x100) {
+					} else if (pad.mPad->mTrigger & PAD_BUTTON_A) {
 						msg->mFont.mFadeOut        = 1;
 						msg->mFont.mOtherSelection = -1;
 						PlayGameSound(&gGame.mSound, 0x88, 255);
@@ -1233,7 +1235,7 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 							result = result * 10 + msg->mDigits[i];
 						}
 						gGame.mEvt.mSelectResult = result;
-					} else if (pad.mPad->mTrigger & 0x200) {
+					} else if (pad.mPad->mTrigger & PAD_BUTTON_B) {
 						msg->mFont.mFadeOut        = 1;
 						msg->mFont.mOtherSelection = -1;
 						PlayGameSound(&gGame.mSound, 0x86, 255);
@@ -1252,6 +1254,7 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 				msg->mFont.mFadeOut = 1;
 			}
 		}
+		// stay on END while the window is up, CMsgFont_Update clears mActive once the fade out ends
 		msg->mData.mCursor--;
 	} else {
 		msg->mData.mCursor = NULL;
@@ -1977,37 +1980,37 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 		}
 		u8 command = ReadMsgU8(msg);
 		switch (command) {
-		case 10:
+		case MSG_CODE_NEWLINE:
 			MsgNextLine(msg);
 			waiting = FALSE;
 			break;
-		case 11:
+		case MSG_CODE_NEWLINE_VT:
 			MsgNextLine(msg);
 			waiting = FALSE;
 			break;
-		case 0:
+		case MSG_CODE_END:
 			waiting = CMsg__cmd_END(msg);
 			break;
-		case 1: {
-			s32 time = ReadMsgU8(msg);
-			if (time == 255) {
-				if (msg->mCommand == 0x23) {
-					time = 2;
+		case MSG_CODE_SPEED: {
+			s32 delay = ReadMsgU8(msg);
+			if (delay == 255) {
+				if (msg->mCommand == EVT_CMD_MSG) {
+					delay = 2;
 				} else {
-					time = 0;
+					delay = 0;
 				}
 			}
-			msg->mCharDelay = time;
+			msg->mCharDelay = delay;
 			waiting         = FALSE;
 			break;
 		}
-		case 2:
+		case MSG_CODE_WAIT:
 			waiting = CMsg__cmd_WAIT(msg);
 			break;
-		case 3:
+		case MSG_CODE_ANIM:
 			waiting = CMsg__cmd_ANIM(msg);
 			break;
-		case 6: {
+		case MSG_CODE_DEFAULT: {
 			u8 flags  = ReadMsgU8(msg);
 			s32 value = ReadMsgU8(msg);
 			value |= ReadMsgU8(msg) << 8;
@@ -2020,10 +2023,10 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			waiting           = FALSE;
 			break;
 		}
-		case 4:
+		case MSG_CODE_SFX:
 			waiting = CMsg__cmd_SFX(msg);
 			break;
-		case 5:
+		case MSG_CODE_VOICE:
 			msg->mGlyphSoundGroup = ReadMsgU8(msg);
 			if (msg->mGlyphSoundGroup == 255) {
 				msg->mGlyphSoundGroup = -1;
@@ -2054,7 +2057,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 		case 21:
 			waiting = CMsg__cmd_SETFONT(msg, command);
 			break;
-		case 22:
+		case MSG_CODE_NUM_INPUT:
 			msg->mDigitCount     = ReadMsgU8(msg);
 			msg->mFirstEditDigit = ReadMsgU8(msg);
 			msg->mFirstEditDigit = msg->mDigitCount - msg->mFirstEditDigit;
@@ -2066,17 +2069,17 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			}
 			waiting = FALSE;
 			break;
-		case 23: {
-			u32 arg1 = ReadMsgU8(msg);
-			u32 arg2 = ReadMsgU8(msg);
+		case MSG_CODE_QUESTION: {
+			u32 crossMask     = ReadMsgU8(msg);
+			u32 selectedIndex = ReadMsgU8(msg);
 			if (gGame.GetPlayer()->mOXMenu.mStarted == 0) {
-				OpenPlayerYesNoMenu(gGame.GetPlayer(), arg1, arg2);
+				OpenPlayerYesNoMenu(gGame.GetPlayer(), crossMask, selectedIndex);
 				msg->mData.mCursor -= 3;
 				waiting = TRUE;
 			} else {
 				CPad pad(0);
 				HandleOXMenuInput(&gGame.GetPlayer()->mOXMenu, &pad);
-				if (pad.mPad->mTrigger & 0x100) {
+				if (pad.mPad->mTrigger & PAD_BUTTON_A) {
 					gGame.mEvt.mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
 					waiting                  = FALSE;
 				} else {
@@ -2086,7 +2089,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			}
 			break;
 		}
-		case 24:
+		case MSG_CODE_STAY:
 			msg->mStay = 1;
 			waiting    = FALSE;
 			break;
@@ -2096,7 +2099,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 				text[0] = command;
 				text[1] = ReadMsgU8(msg);
 				text[2] = 0;
-			} else if (command == 17) {
+			} else if (command == MSG_CODE_ICON) {
 				text[0] = command;
 				text[1] = ReadMsgU8(msg);
 				text[2] = 0;
@@ -2665,7 +2668,7 @@ static inline void ResetMsgState(CMsg* msg)
 
 extern "C" void CMsgData_Format(u8* data, u8* script, MsgFormatArgs* args);
 extern "C" void CMsgData_Measure(CMsgData* data);
-extern "C" void CMsgFont_Init(CMsgFont* font, u8* data, f32 x, f32 y, s32 mode, s32 style, s32 align);
+extern "C" void CMsgFont_Init(CMsgFont* font, u8* data, f32 x, f32 y, s32 placement, s32 fitLine, s32 mode);
 
 /**
  * @note Address: 0x80081C74
@@ -2682,6 +2685,7 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
 	msg->mData.mCursor = msg->mData.mText;
 #if !defined(VERSION_JP)
 	if (msg->mData.mIconColumns == 0) {
+		// how many 24 pixel icons the icon strip holds, CMsgFont_AddChar clamps MSG_CODE_ICON's index to it
 		TPLPalette* palette     = (TPLPalette*)(&gGame.mTpl)->mBuffer;
 		CTexObj* texture        = &(&gGame.mTpl)->mTex;
 		CTexObj icon            = texture->Init(&palette->descriptorArray[119], 0);
@@ -2692,7 +2696,7 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
 	CMsgFont_Init(&msg->mFont, msg->mData.mText, msg->mWindowX, msg->mWindowY, msg->mPlacement, msg->mData.mAlignment, msg->mData.mStyle);
 	msg->SetFontPosition(msg->mFontPosition.x, msg->mFontPosition.y, msg->mFontPosition.z);
 	msg->mCharTimer = 0.0f;
-	msg->mCharDelay = msg->mCommand == 35 ? 2 : 0;
+	msg->mCharDelay = msg->mCommand == EVT_CMD_MSG ? 2 : 0;
 	msg->mWaitTimer = 0.0f;
 	return cursor;
 }
@@ -3604,10 +3608,12 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		portraitScale = 1.1f;
 	if (portraitScale < 0.5f)
 		portraitScale = 0.5f;
+	// only mode 0 has the portrait, and the text moves right by half its width
 	f32 portraitWidth = (font->mMode >= 0 && font->mMode < 1) ? 40.0f * portraitScale : 0.0f;
 	f32 textOffset    = portraitWidth;
-	f32 expandX       = 4.0f * (f32)sin(4.712389f * (1.0f - font->mAlpha));
-	f32 expandY       = 4.0f * (f32)sin(4.712389f * (1.0f - font->mAlpha));
+	// 4.712389 is 3 pi / 2: as mAlpha rises from 0 to 1 the frame starts 4 pixels in, swells 4 out, then settles
+	f32 expandX = 4.0f * (f32)sin(4.712389f * (1.0f - font->mAlpha));
+	f32 expandY = 4.0f * (f32)sin(4.712389f * (1.0f - font->mAlpha));
 
 	if (font->mAlpha > 0.0f) {
 		SetGsLineWidth(gGame.mGs.mCurRenderMode, 12, 5);
@@ -3749,7 +3755,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 			for (s32 i = 0; i < objectCount; i++) {
 				XObj* obj = (XObj*)(objects + i * stride);
 				if (obj->mStatus.mFlags & 1) {
-					UnkObjData* kind = *(UnkObjData**)((u8*)obj + MSG_OBJECT_OFFSET(0x240));
+					UnkObjData* kind = obj->mAttr.mObjData;
 					if ((s16)(kind != NULL ? kind->GetItem() : -1) == 10)
 						portrait = obj;
 				}
@@ -3917,15 +3923,15 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 			case 0x10:
 			case 0x20: {
 				f32 angle       = glyph.mAngle;
-				f32 a           = (glyph.mEffect & 1) ? glyph.mAmount * (f32)sin(DEG2RAD * glyph.mPhaseY) : 0.0f;
-				f32 b           = (glyph.mEffect & 2) ? glyph.mAmount * (f32)sin(DEG2RAD * glyph.mPhaseX) : 0.0f;
+				f32 shakeY      = (glyph.mEffect & 1) ? glyph.mAmount * (f32)sin(DEG2RAD * glyph.mPhaseY) : 0.0f;
+				f32 shakeX      = (glyph.mEffect & 2) ? glyph.mAmount * (f32)sin(DEG2RAD * glyph.mPhaseX) : 0.0f;
 				f32 quarterTurn = HALF_PI + angle;
 				f32 sideSin     = sin(quarterTurn);
 				f32 forwardSin  = sin(angle);
-				f32 dx          = a * forwardSin + b * sideSin;
+				f32 dx          = shakeY * forwardSin + shakeX * sideSin;
 				f32 sideCos     = cos(quarterTurn);
 				f32 forwardCos  = cos(angle);
-				f32 dy          = a * forwardCos + b * sideCos;
+				f32 dy          = shakeY * forwardCos + shakeX * sideCos;
 				f32 scaleX = glyph.mScaleX, scaleY = glyph.mScaleY;
 				if (glyph.mEffect & 4) {
 					f32 wave  = sin(DEG2RAD * glyph.mPhaseW);
@@ -3933,6 +3939,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 					glyph.mSprite.SetScale(scaleX * scale, scaleY * scale, 1.0f);
 				}
 				if (glyph.mEffect & 8) {
+					// 0.52359879 is 30 degrees and SetRot gets angle + wave / 2, so the glyph rocks up to 15 degrees either way
 					f32 wave = 0.52359879f * (f32)sin(DEG2RAD * glyph.mPhaseZ);
 					glyph.mSprite.SetRot(0.0f, 0.0f, wave + (angle - wave * 0.5f));
 				}
@@ -6353,6 +6360,7 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
 {
 	if (font->mActive) {
 		if (font->mFadeIn && font->mAlpha < 1.0f) {
+			// zero-alpha tint and no voice code (mMode stays -1, see CMsgData_Measure): no fade in
 			if (font->mColor.a == 0 && font->mMode < 0) {
 				font->mAlpha  = 1.0f;
 				font->mFadeIn = FALSE;
@@ -6376,6 +6384,7 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
 			}
 			font->mTextAlpha = font->mAlpha;
 		}
+		// a select() line or a number input digit is picked: fade the highlight in, else out
 		if (font->mSelectedLine >= 0 || font->mOtherSelection >= 0) {
 			if (font->mHighlightAlpha < 1.0f) {
 				f32 alpha             = font->mHighlightAlpha + MSG_FADE_RATE * step;
@@ -6400,7 +6409,8 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
 			font->mTexs.mTex[MSG_TEX_LINE].mMtxDirty = TRUE;
 		}
 		if (font->mBlink) {
-			font->mBlinkPhase += 0.104719758f * step;
+			// CMsgFont_Draw fades the button prompt with sin(mBlinkPhase): 6 degrees a frame, wrapped at PI, a pulse every 30 frames
+			font->mBlinkPhase += DEG2RAD * 6.0f * step;
 			font->mBlinkPhase = fmod(font->mBlinkPhase, (f64)PI);
 		}
 	}
@@ -6408,15 +6418,18 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
 	if (font->mActive) {
 		for (s32 i = 0; i < 400; i++) {
 			MsgFontGlyph& glyph = font->mGlyphs[i];
+			// CMsgFont_Draw: bits 1 and 2 shift the glyph, 4 pulses its scale, 8 rocks it; the high nibble sets how the phases move
 			switch (glyph.mEffect & 0xF0) {
 			case 0x10:
-				// this one wraps as an int before going to float
+				// smooth: every phase turns by its share of mSpeed degrees a frame
+				// this one adds in u32 (step is u32) before going to float, so a sum below 0 wraps
 				glyph.mPhaseY = (s16)(f32)fmod((f32)(glyph.mPhaseY + glyph.mSpeed * step), 360.0);
 				glyph.mPhaseX = (s16)(f32)fmod(glyph.mPhaseX + (0.5f * glyph.mSpeed) * step, 360.0);
 				glyph.mPhaseZ = (s16)(f32)fmod(glyph.mPhaseZ + (0.7f * glyph.mSpeed) * step, 360.0);
 				glyph.mPhaseW = (s16)(f32)fmod(glyph.mPhaseW + (0.8f * glyph.mSpeed) * step, 360.0);
 				break;
 			case 0x20:
+				// jitter: fresh random phases every mSpeed updates
 				if (--glyph.mRefresh <= 0) {
 					glyph.mPhaseY  = rand() % 360;
 					glyph.mPhaseX  = rand() % 360;
@@ -6432,6 +6445,7 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
 	font->mScrollY += 0.01f * step;
 	PSMTXTrans(font->mFrame.mTex.mMtx[0], font->mScrollX, font->mScrollY, 0.0f);
 	font->mFrame.mTex.mMtxDirty = TRUE;
+	// only mode 0 has the portrait, CMsgFont_Draw leaves 40 * scale of room for it
 	if (font->mMode >= 0 && font->mMode < 1 && (font->mCursor[0].mCursor.mStatus.mFlags & 1)) {
 		font->mCursor[0].mCursor.UpdateObject(step);
 	}
@@ -6444,6 +6458,7 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
 extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 {
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, font->_04_04, font->mSize);
+	// half the size change since the previous glyph; outside japan mPrevSize is NAN until the first one (CMsgFont_Init)
 	f32 spacing;
 #if defined(VERSION_JP)
 	spacing = (font->mSize - font->mPrevSize) * 0.5f;
@@ -6455,7 +6470,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	}
 #endif
 	s32 textureWidth;
-	if ((u8)text[0] == 17) {
+	if ((u8)text[0] == MSG_CODE_ICON) {
 #if defined(VERSION_JP)
 		TPLPalette* palette = (TPLPalette*)(&gGame.mTpl)->mBuffer;
 		CTexObj* texture    = &(&gGame.mTpl)->mTex;
@@ -6488,7 +6503,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	f32 x = (width - textureWidth) * 0.5f + (11.0f + font->mCursorX + spacing);
 	f32 y = font->mCursorY + font->mData->mHeights[font->mLine] * 0.5f;
 #if defined(VERSION_JP)
-	if ((u8)text[0] == 17) {
+	if ((u8)text[0] == MSG_CODE_ICON) {
 		font->mGlyphs[font->mCharCount].mSprite.SetTrans(x + 0.08f * textureWidth, y, 0.0f);
 	} else {
 		font->mGlyphs[font->mCharCount].mSprite.SetTrans(x, y, 0.0f);
@@ -6501,28 +6516,30 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 		sx = font->mGlyphScaleX;
 		sy = font->mGlyphScaleY;
 	} else {
+		// a negative MSG_CODE_SCALE: each glyph gets |x| plus a random part of the gap up to |y|
 		f32 min = 100.0f * font->mGlyphScaleX;
 		if (min < 0.0f)
 			min = -min;
 		f32 max = 100.0f * font->mGlyphScaleY;
 		if (max < 0.0f)
 			max = -max;
-		f32 value = fmod((f32)rand(), max - min);
+		f32 extra = fmod((f32)rand(), max - min);
 		f32 scale = font->mGlyphScaleX;
 		if (scale < 0.0f)
 			scale = -scale;
-		sx = sy = scale + value / 100.0f;
+		sx = sy = scale + extra / 100.0f;
 	}
 	f32 scaleX = (font->mSize * 0.5f) * sx;
 	f32 scaleY = (-font->mSize * 0.5f) * sy;
 	font->mGlyphs[font->mCharCount].mSprite.SetScale(scaleX, scaleY, 1.0f);
 	f32 angle = font->mGlyphAngle;
+	// a negative MSG_CODE_ROTATE angle: each glyph gets a random tilt between angle and -angle
 	if (!(angle >= 0.0f)) {
 		f32 range = 2.0f * angle;
 		if (range < 0.0f)
 			range = -range;
-		f32 value = fmod((f32)rand(), RAD2DEG * range);
-		angle     = DEG2RAD * value + font->mGlyphAngle;
+		f32 delta = fmod((f32)rand(), RAD2DEG * range);
+		angle     = DEG2RAD * delta + font->mGlyphAngle;
 	}
 	font->mGlyphs[font->mCharCount].mSprite.SetRot(0.0f, 0.0f, angle);
 	font->mGlyphs[font->mCharCount].mColor  = font->mGlyphColor;
@@ -7712,43 +7729,44 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
     blr
 */
 
+// bytes a code with its arguments, or a plain character, takes: how far CMsgData_Measure steps past it
 static inline s32 MsgCommandLength(u8* p)
 {
 	switch (*p) {
-	case 0:
-	case 10:
-	case 11:
-	case 24:
+	case MSG_CODE_END:
+	case MSG_CODE_NEWLINE:
+	case MSG_CODE_NEWLINE_VT:
+	case MSG_CODE_STAY:
 		return 1;
-	case 1:
-	case 2:
-	case 5:
+	case MSG_CODE_SPEED:
+	case MSG_CODE_WAIT:
+	case MSG_CODE_VOICE:
 		return 2;
-	case 6:
+	case MSG_CODE_DEFAULT:
 		return 6;
-	case 3:
+	case MSG_CODE_ANIM:
 		return 8;
-	case 4:
-		if (p[5] == 2 || p[5] == 3) {
+	case MSG_CODE_SFX:
+		if (p[5] == MSG_SFX_FADE_OUT || p[5] == MSG_SFX_FADE_IN) {
 			return 8;
-		} else if (p[5] == 4) {
+		} else if (p[5] == MSG_SFX_FADE) {
 			return 9;
 		}
 		return 6;
-	case 13:
-	case 14:
-	case 16:
-	case 17:
-	case 19:
+	case MSG_CODE_SIZE:
+	case MSG_CODE_COLOR:
+	case MSG_CODE_LAYOUT:
+	case MSG_CODE_ICON:
+	case MSG_CODE_CENTER:
 		return 2;
-	case 20:
-	case 23:
+	case MSG_CODE_ROTATE:
+	case MSG_CODE_QUESTION:
 		return 3;
-	case 18:
-	case 22:
+	case MSG_CODE_SHAKE:
+	case MSG_CODE_NUM_INPUT:
 		return 4;
-	case 15:
-	case 21:
+	case MSG_CODE_RGBA:
+	case MSG_CODE_SCALE:
 		return 5;
 	default:
 		if (MsgHasSjisLead(*p)) {
@@ -7776,8 +7794,8 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 	s32 done                         = 0;
 	while (!done) {
 		switch (*p) {
-		case 10:
-		case 11:
+		case MSG_CODE_NEWLINE:
+		case MSG_CODE_NEWLINE_VT:
 			if (data->mHeights[data->mLineCount] == 0.0f) {
 				data->mHeights[data->mLineCount] = size;
 			}
@@ -7786,14 +7804,14 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 			data->mWidths[data->mLineCount]  = 0.0f;
 			data->mHeights[data->mLineCount] = size;
 			break;
-		case 0:
+		case MSG_CODE_END:
 			if (data->mHeights[data->mLineCount] == 0.0f) {
 				data->mHeights[data->mLineCount] = 22.0f;
 			}
 			data->mLineCount++;
 			done = 1;
 			break;
-		case 13:
+		case MSG_CODE_SIZE:
 			size = (s32)p[1];
 			if (size == 255.0f) {
 				size = 22.0f;
@@ -7802,28 +7820,29 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 				data->mHeights[data->mLineCount] = size;
 			}
 			break;
-		case 16:
+		case MSG_CODE_LAYOUT:
 			proportional = p[1];
 			break;
-		case 19:
+		case MSG_CODE_CENTER:
 			data->mAlignment = p[1];
 			break;
-		case 5:
+		case MSG_CODE_VOICE:
+			// the voice byte doubles as the window's mode, CMsg_Open passes mStyle to CMsgFont_Init
 			data->mStyle = p[1];
 			break;
-		case 1:
-		case 2:
-		case 3:
-		case 4:
-		case 6:
-		case 14:
-		case 15:
-		case 18:
-		case 20:
-		case 21:
-		case 22:
-		case 23:
-		case 24:
+		case MSG_CODE_SPEED:
+		case MSG_CODE_WAIT:
+		case MSG_CODE_ANIM:
+		case MSG_CODE_SFX:
+		case MSG_CODE_DEFAULT:
+		case MSG_CODE_COLOR:
+		case MSG_CODE_RGBA:
+		case MSG_CODE_SHAKE:
+		case MSG_CODE_ROTATE:
+		case MSG_CODE_SCALE:
+		case MSG_CODE_NUM_INPUT:
+		case MSG_CODE_QUESTION:
+		case MSG_CODE_STAY:
 			break;
 		default:
 			if (MsgHasSjisLead(*p)) {
@@ -7832,7 +7851,7 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 				text[0]      = p[0];
 				text[1]      = p[1];
 				data->mWidths[data->mLineCount] += MeasureGameTextWidth(&gGame.mGs, text, proportional, size);
-			} else if (*p == 17) {
+			} else if (*p == MSG_CODE_ICON) {
 #if defined(VERSION_JP)
 				TPLPalette* palette = (TPLPalette*)(&gGame.mTpl)->mBuffer;
 				CTexObj* texture    = &(&gGame.mTpl)->mTex;
@@ -7842,6 +7861,7 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 				TPLPalette* palette = (TPLPalette*)(&gGame.mTpl)->mBuffer;
 				CTexObj* texture    = &(&gGame.mTpl)->mTex;
 				CTexObj icon        = texture->Init(&palette->descriptorArray[119], 0);
+				// a 24 pixel cell, the width CMsg_Open divides the icon strip by for mIconColumns
 				data->mWidths[data->mLineCount] += 24.0f * (size / 22.0f);
 #endif
 			} else {

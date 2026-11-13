@@ -34,7 +34,7 @@ void HSD_PObjSetFlags(HSD_PObj* pobj, u32 flags);
 	OSReport("\n!!!HALT!!!\n"); \
 	OSPanic(__FILE__, line, "%s%s", FormatToStaticBuffer(__VA_ARGS__), __FUNCTION__)
 
-// a material with two extra colors added on top of its tev result
+// a material whose tev result is multiplied by one color and has another added, see XCObjMakeTExp
 struct XCObj {
 	HSD_MObj parent; // _00
 	u32* mColors;    // _20
@@ -186,11 +186,13 @@ BOOL CJArchive::ReadAsync(CObjArchive* archive, const char* path, u32 flags, u32
 	if (mState != 0) {
 		return FALSE;
 	}
+	// the archive is already in memory, nothing to read
 	if (mArchive->mFile.mBuffer != NULL) {
 		return TRUE;
 	}
 
 	s32 result;
+	// 4: read the copy kept in aram at aramAddr instead of the file on disc
 	if (flags & 4) {
 		result = aramAddr != 0 ? mArchive->mFile.ReadAsync(path, aramAddr, size, TRUE) : mArchive->mFile.ReadAsync(path, 0, 0, FALSE);
 	} else {
@@ -200,6 +202,7 @@ BOOL CJArchive::ReadAsync(CObjArchive* archive, const char* path, u32 flags, u32
 		mState++;
 	} else {
 		mResult = result;
+		// 0x100: give up and return FALSE instead of halting
 		if (mFlags & 0x100) {
 			if (mArchive->mRefCount <= 0) {
 				mArchive->mFile.Close();
@@ -368,15 +371,18 @@ BOOL CJArchive::ReadCheck()
 #endif
 			}
 		} else {
+			// still reading
 			break;
 		}
 	}
+	// read in: with flag 2, copy it out to aram at mAramAddr if it fits
 	case 2:
 		if (mFlags & 2) {
 			u32 size = ((mArchive->mFile.mSize + 31) & ~31);
 			if (mAramAddr + size < ARGetSize()) {
 				HSD_DevComRequest(0, (u32)mArchive->mFile.mBuffer, (void*)mAramAddr, ((mArchive->mFile.mSize + 31) & ~31), 0xB, 1,
 				                  ObjectArchiveReadDone, &mState);
+				// ObjectArchiveReadDone moves mState on to 3 once the copy is done
 				while (*(volatile s32*)&mState == 2) { }
 			} else {
 				mState++;
@@ -600,6 +606,7 @@ void CJArchive::SetupScene(s32 model, s32 sceneIndex)
 	scene           = GetScene(sceneIndex);
 	mShapeAnimJoint = scene != NULL ? scene->mModels[model]->mShapeAnimJoint : NULL;
 
+	// mNum[0] is the anim count, taken from the first of the three lists the model has
 	if (mAnimJoint != NULL) {
 		for (mNum[0] = 0;; mNum[0]++) {
 			if (mAnimJoint[mNum[0]] == NULL) {
@@ -934,6 +941,7 @@ void CJArchive::SetupScene(s32 model, s32 sceneIndex)
  * @note Address: 0x801A39D0
  * @note Size: 0xB4
  */
+// goes depth levels down from anim id's root, skipping path[i] siblings on level i
 HSD_AnimJoint* CJArchive::GetAnimJoint(s32 id, s32 depth, const s32* path)
 {
 	HSD_AnimJoint* joint;
@@ -1003,6 +1011,7 @@ HSD_ShapeAnimJoint* CJArchive::GetShapeAnimJoint(s32 id, s32 depth, const s32* p
  * @note Address: 0x801A37E8
  * @note Size: 0x80
  */
+// this and the next three are HSD_JObjWalkTree callbacks, the flags come in as the walk's argument
 extern "C" void JObjSetMObjFlags(HSD_JObj* jobj, f32** flags, s32)
 {
 	u32 mask       = (u32)flags;
@@ -1428,7 +1437,7 @@ void XCObjInfoInit()
  * @note Address: 0x801A326C
  * @note Size: 0x1A8
  */
-// the parent's tev, then the second color added and the first added on top
+// the parent's tev times the second color, then the first color added on top
 HSD_TExp* XCObjMakeTExp(HSD_MObj* mobj, HSD_TObj* tobj_top, HSD_TExp** list)
 {
 	HSD_TExp* tev1;
@@ -1527,19 +1536,19 @@ void CXObj::Init(u32 id)
 	mAnimId                  = -1;
 	mLastAnimRate            = 0.0f;
 	mAnimRate                = 0.0f;
-	mColors[0]               = 0;
-	mColors[1]               = 0xFFFFFF00;
+	mColors[0]               = 0;          // nothing added
+	mColors[1]               = 0xFFFFFF00; // and times white, so the materials start untinted
 }
 
 /**
  * @note Address: 0x801A306C
  * @note Size: 0x88
  */
-BOOL CXObj::ReadAsync(CObjArchive* archive, const char* path, u32 a, u32 flags, u32 b, u32 c)
+BOOL CXObj::ReadAsync(CObjArchive* archive, const char* path, u32 model, u32 flags, u32 aramAddr, u32 aramSize)
 {
-	if (mArchive.ReadAsync(archive, path, flags, b, c)) {
+	if (mArchive.ReadAsync(archive, path, flags, aramAddr, aramSize)) {
 		mLoadState++;
-		mModel     = a;
+		mModel     = model;
 		mLoadFlags = flags;
 		return TRUE;
 	}
@@ -1651,6 +1660,7 @@ BOOL CXObj::ReadCheck()
 {
 	if (mLoadState == 1 && mArchive.ReadCheck()) {
 		mArchive.SetupScene(mModel, 0);
+		// load the materials as x_cobj, so XCObjSetColors can tint them
 		HSD_MObjInfo* mobjClass = HSD_MObjGetDefaultClass();
 		HSD_MObjSetDefaultClass(&xCObj);
 		Attach(mArchive.LoadJObj());
@@ -1852,6 +1862,7 @@ BOOL CXObj::StepScale(u32 frames)
  * @note Address: 0x801A211C
  * @note Size: 0x188
  */
+// dir is the point to move to, not a direction; speed is the distance per frame
 void CXObj::SetMoveDir(const Vec* dir, f32 speed)
 {
 	mMoveTranslate.mTarget.x = dir->x;
@@ -1862,6 +1873,7 @@ void CXObj::SetMoveDir(const Vec* dir, f32 speed)
 		d.x = ABS(d.x);
 		d.y = ABS(d.y);
 		d.z = ABS(d.z);
+		// each axis gets its share of the distance, so all three arrive on the same frame
 		PSVECNormalize(&d, &d);
 		mMoveTranslate.mSpeed.Set(d * speed);
 		if (mMoveTranslate.mSpeed.x > 0.0f && mMoveTranslate.mSpeed.x < 0.001f) {
@@ -2005,6 +2017,7 @@ void CXObj::SetRotateY(f32 target, f32 speed)
 	if (diff >= TWO_PI) {
 		diff -= TWO_PI;
 	}
+	// go the short way round
 	if (diff > PI) {
 		if (tgt < cur) {
 			mMoveRotate.mTarget.y = TWO_PI + tgt;
@@ -2030,6 +2043,7 @@ void CXObj::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* sh
 			HSD_JObjAddAnimAll(mJObj, (HSD_AnimJoint*)joint, (HSD_MatAnimJoint*)mat, (HSD_ShapeAnimJoint*)shape);
 			HSD_JObjReqAnimAll(mJObj, frame);
 		}
+		// a new anim always takes the rate too
 		force = TRUE;
 	}
 	if (rate != mAnimRate || force) {
@@ -2074,6 +2088,7 @@ void CXObj::UpdateAnim(u32 speed)
 			if (mQueue[i].mJObj == NULL) {
 				break;
 			}
+			// rates go on before the anim step: 0x200 the joint's own anim, 0x400 every anim in its subtree
 			if (mQueue[i].mType == 0x200) {
 				if (mQueue[i].mJObj->aobj != NULL) {
 					HSD_AObjSetRate(mQueue[i].mJObj->aobj, mQueue[i].mValue * speed);
@@ -2090,6 +2105,7 @@ void CXObj::UpdateAnim(u32 speed)
 			if (mQueue[i].mJObj == NULL) {
 				break;
 			}
+			// values go on after it, over what the anim set; the rate entries are only cleared
 			HSD_JObj* jobj = mQueue[i].mJObj;
 			if (mQueue[i].mType != 0) {
 				switch (mQueue[i].mType) {
@@ -2644,11 +2660,11 @@ void CXObj::Push(HSD_JObj* jobj, u32 type, f32 value)
  * @note Address: 0x801A163C
  * @note Size: 0x74
  */
-BOOL CXObj::Load(CObjArchive* archive, const char* path, u32 a, u32 flags, u32 b, u32 c)
+BOOL CXObj::Load(CObjArchive* archive, const char* path, u32 model, u32 flags, u32 aramAddr, u32 aramSize)
 {
 	switch (mLoadState) {
 	case 0:
-		ReadAsync(archive, path, a, flags, b, c);
+		ReadAsync(archive, path, model, flags, aramAddr, aramSize);
 		break;
 	case 1:
 		ReadCheck();
@@ -2663,6 +2679,7 @@ BOOL CXObj::Load(CObjArchive* archive, const char* path, u32 a, u32 flags, u32 b
  */
 BOOL CXObjIntp::ReadCheck()
 {
+	// 0x10000: load a second copy of the model to blend anims from
 	if (mLoadState == 1 && CXObj::ReadCheck() && (mLoadFlags & 0x10000)) {
 		mIntp.Attach(mArchive.LoadJObj());
 #if defined(VERSION_JP)
@@ -2683,6 +2700,7 @@ void CXObjIntp::Release()
 {
 	if (mIntp.mJObj != NULL) {
 		ReleaseJObj(&mIntp);
+		// drop the archive reference mIntp's LoadJObj took, CJArchive::Release drops the model's
 		if (mArchive.mArchive != NULL && mArchive.mArchive->mRefCount > 0) {
 			mArchive.mArchive->mRefCount--;
 		}
@@ -2737,6 +2755,7 @@ void CXObjIntp::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void
 {
 	if ((force || id != mAnimId) && mIntp.mJObj != NULL) {
 		if (blend < 1.0f) {
+			// keep the pose the model has now in mIntp, UpdateAnim blends from it
 			CopyJointPoseTree(mJObj, mIntp.mJObj);
 			ConvertJointTreeRotationToQuaternion(mIntp.mJObj);
 		} else if (mBlend < 1.0f) {
@@ -2761,9 +2780,10 @@ void CXObjIntp::UpdateAnim(u32 speed)
 		}
 		CXObj::UpdateAnim(speed);
 		if (mBlend < 1.0f) {
-			f32 t  = mBlend + (1.0f / mBlendRate) * speed;
-			mBlend = t;
-			if (t >= 1.0f || GetAObj(mJObj)->flags & AOBJ_NO_ANIM) {
+			// mBlendRate is the blend's length in frames
+			f32 blend = mBlend + (1.0f / mBlendRate) * speed;
+			mBlend    = blend;
+			if (blend >= 1.0f || GetAObj(mJObj)->flags & AOBJ_NO_ANIM) {
 				mBlend = 1.0f;
 			} else {
 				BlendJointTreePoses(mIntp.mJObj->child, mJObj->child, mJObj->child, mBlend);
@@ -2806,6 +2826,7 @@ void CJointRot::Init(CXObj* obj, s32 depth, s32* path, char axis)
 			mJoint = mObj->FindJoint(depth, path);
 		}
 	}
+	// stored as CXObj's queue type for a rotation about that axis, see UpdateAnim
 	switch (axis) {
 	case 'x':
 	case 'X':
@@ -2881,6 +2902,7 @@ bool CJointRot::Update(u32 frames)
 			}
 		}
 	} else {
+		// there: mode 2 stops, other positive modes turn negative and keep pushing the angle
 		if (mMode > 0) {
 			if (mMode == 2) {
 				mMode = 0;

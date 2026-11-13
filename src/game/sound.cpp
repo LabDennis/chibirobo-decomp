@@ -18,12 +18,6 @@ inline s32 XSound::resolveTrack(s32 track)
 	return track;
 }
 
-#if defined(VERSION_JP)
-#define SOUND_PLAYER_SURFACE (*(s32*)((u8*)gGame.GetPlayer() + 0x14480))
-#else
-#define SOUND_PLAYER_SURFACE (*(s32*)((u8*)gGame.GetPlayer() + 0x158C0))
-#endif
-
 extern "C" {
 s32 HSD_AudioSFXStartParam(u32 sfx, u8 vol, u8 pan, s32 group, s32 track);
 BOOL HSD_AudioSFXSetPitchByID(s32 sfx, s16 pitch);
@@ -202,6 +196,8 @@ MusicEntry musicTable[109] = {
 	{ "streaming/entrance.hps", 255 },
 };
 
+// GetSoundVolumeAtPosition's distances from the camera's interest for each kind, farthest first:
+// past [0] a sound is silent, within [3] it is at full volume
 f32 gSoundFalloffRanges[5][4] = {
 	{ 100.0f, 75.0f, 50.0f, 25.0f }, { 300.0f, 200.0f, 200.0f, 150.0f }, { 75.0f, 40.0f, 30.0f, 25.0f },
 	{ 30.0f, 20.0f, 10.0f, 5.0f },   { 600.0f, 300.0f, 200.0f, 150.0f },
@@ -266,6 +262,8 @@ static s32 sMessageGroup14SoundIds[2] = { 0x9C, 0x9D };
 extern "C" s32 HSD_Randi(s32 max);
 extern "C" void HSD_SynthSetSoundMode(s32 mode);
 
+// 0x11 and 0x15 each play the four sounds of their set in turn: starting one set stops the other, and a set
+// does not start again while one of its own sounds still plays
 static inline s32 SelectAlternatingSound(XSound* sound, s32* stop, s32* play)
 {
 	for (u32 i = 0; i < 4; i++) {
@@ -285,6 +283,8 @@ static inline s32 SelectAlternatingSound(XSound* sound, s32* stop, s32* play)
 	return play[sound->mAltSoundIndex++];
 }
 
+// 0x84-0x88 each play the effect gSoundMenuSelections holds for their row; only the japanese sound menu
+// changes it (SetSoundMenuSelection in gxa.cpp)
 static inline s32 SelectMappedSound(s32 sfx)
 {
 	s32 index;
@@ -317,6 +317,7 @@ static inline u8 getMusicVolume(s32 sfx)
 		return 0;
 	}
 	u8 idx = sfx;
+	// retail tests > where PlayGameSound tests >=, so 0x6D reads one past musicTable's 109 entries
 	if (idx > 0x6D) {
 		idx = 0;
 	}
@@ -339,6 +340,8 @@ static inline bool UseRaisedLiftPitch()
  * @note Address: 0x8001DC20
  * @note Size: 0x2E0
  */
+// msg.cpp calls this for each character it prints, with the message's mGlyphSoundGroup and its font size / 22
+// as strength; first and second are the character's bytes and go unused
 extern "C" void PlayMessageGlyphSound(XSound* sound, u32 group, f32 strength, u8 first, u8 second)
 {
 	u32 volume = 255.0f * strength;
@@ -489,6 +492,7 @@ extern "C" void PlayMessageGlyphSound(XSound* sound, u32 group, f32 strength, u8
 			}
 		}
 		s32 index = HSD_Randi(count);
+		// vol is a u8: a volume over 255 plays the sound twice, the part above 256 and a full one
 		if (volume >= 512) {
 			volume = 511;
 		}
@@ -577,15 +581,16 @@ extern "C" BOOL RegisterGameSoundName(XSound* sound, const char* name)
  * @note Address: 0x8001E11C
  * @note Size: 0x88
  */
-extern "C" void SetMusicPlaybackPaused(XSound* sound, BOOL on)
+extern "C" void SetMusicPlaybackPaused(XSound* sound, BOOL pause)
 {
-	if (on) {
-		XSound* game = (XSound*)&gGame.mSound;
+	if (pause) {
+		XSound* game = &gGame.mSound;
 		AXDriverPauseTrack(game->resolveTrack(0));
 		AXDriverPauseAllStreams();
+		// sfx PlayGameSound starts from now on go to track 1, which this does not pause
 		game->mDefaultTrack = 1;
 	} else {
-		XSound* game = (XSound*)&gGame.mSound;
+		XSound* game = &gGame.mSound;
 		AXDriverResumeTrack(game->resolveTrack(0));
 		AXDriverResumeAllStreams();
 		game->mDefaultTrack = 0;
@@ -678,11 +683,12 @@ extern "C" void PauseGameSoundTrack(XSound* sound, s32 track)
  * @note Address: 0x8001E5C0
  * @note Size: 0x70
  */
-extern "C" void PauseGameMusic(XSound* sound, s32 sfx, s32 arg2)
+// a resumeDelay of 0 never runs out: UpdateGameSound only counts down a delay above 0
+extern "C" void PauseGameMusic(XSound* sound, s32 sfx, s32 resumeDelay)
 {
 	if (isAllSfx(sfx)) {
 		AXDriverPauseAllStreams();
-		sound->mMusicResumeDelay = arg2;
+		sound->mMusicResumeDelay = resumeDelay;
 		sound->mPausedMusicId    = sound->mCurrentMusicId;
 	}
 }
@@ -720,7 +726,7 @@ extern "C" BOOL StopGameSfx(XSound* sound, s32 sfx)
  */
 extern "C" BOOL IsGameSoundPlaying(XSound* sound, s32 sfx)
 {
-	// steps by two so it only ever looks at every other slot, nice one
+	// steps by two, so only even slots are searched though PlayGameSound fills them in order: an id in an odd slot is missed
 	for (u32 i = 0; i < 32 && sound->mStartedSfx[i] != 0; i += 2) {
 		if (sound->mStartedSfx[i] == sfx) {
 			return TRUE;
@@ -731,12 +737,14 @@ extern "C" BOOL IsGameSoundPlaying(XSound* sound, s32 sfx)
 		if (sound->mCurrentMusicId == sfx) {
 			return TRUE;
 		}
+		// 0xFFFF0000 asks whether any music is playing
 		if (sfx == 0xFFFF0000 && sound->mCurrentMusicId != 0) {
 			return TRUE;
 		}
 		return FALSE;
 	}
 
+	// 0x1B and 0xFD stand for every sound PlayGameSound picks for them: 0x1B-0x1E, and sSoundFDSequence's 0xFD-0x10B
 	switch (sfx) {
 	case 0x1B:
 		if (HSD_AudioSFXCountByID(sfx) || HSD_AudioSFXCountByID(sfx + 1) || HSD_AudioSFXCountByID(sfx + 2)
@@ -767,6 +775,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		if (sfx == (s32)0xFFFF0000) {
 			return 0;
 		}
+		// at night (time mode 1) bgm.hps, musicTable[5], gives way to bgm_night.hps, musicTable[0x10]
 		if (sfx == (s32)0xFFFF0005 && gGame.mTimeState.mMode == 1) {
 			sfx = 0xFFFF0010;
 		}
@@ -790,6 +799,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		}
 		sound->_2BC                = 0;
 		sound->mMusicFadeOutFrames = 0;
+		// 255 asks for the track's own volume from musicTable
 		if (vol == 255) {
 			vol = music->volume;
 		}
@@ -812,7 +822,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		sfx += HSD_Randi(4);
 		break;
 	case 0x19: {
-		s32 surface = SOUND_PLAYER_SURFACE;
+		s32 surface = gGame.GetPlayer()->mGroundType;
 		if (surface >= 13) {
 			surface = 0;
 		}
@@ -841,9 +851,11 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		break;
 	}
 	case 0x0A:
+		// with vol 0 it is never started, only recorded in mStartedSfx below
 		vol = 0;
 		break;
 	case 0x3E:
+		// restarts the turn order of 0x11's and 0x15's sets
 		sound->mAltSoundIndex = 0;
 		break;
 	case 0x11:
@@ -877,6 +889,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		}
 		break;
 	case 0x110:
+		// 0xFFFF0037 is cooking.hps
 		if (IsGameSoundPlaying(sound, 0xFFFF0037)) {
 			sfx = -1;
 		} else {
@@ -922,11 +935,13 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		sfx = SelectMappedSound(sfx);
 		break;
 	case 0x11D:
+		// at most once in 60 frames, UpdateGameSound counts mCooldown down
 		if (sound->mCooldown > 0) {
 			return -1;
 		}
 		sound->mCooldown = 60;
 		break;
+	// pause bgm.hps or bgm_night.hps for 120 frames; UpdateGameSound holds that countdown while 0x18C-0x18E play
 	case 0x44:
 	case 0x18C:
 	case 0x18D:
@@ -1903,6 +1918,7 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 			sound->mMusicPitchFrames = 15;
 		}
 	}
+	// paused music comes back when mMusicResumeDelay runs out; no countdown while SetMusicPlaybackPaused holds playback
 	if (sound->mDefaultTrack == 0 && sound->mMusicResumeDelay > 0) {
 		if (!IsGameSoundPlaying(sound, 0x18C) && !IsGameSoundPlaying(sound, 0x18D) && !IsGameSoundPlaying(sound, 0x18E)) {
 			sound->mMusicResumeDelay -= step;
@@ -1911,6 +1927,7 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 			if (sound->mPausedMusicId == sound->mCurrentMusicId) {
 				AXDriverResumeAllStreams();
 			} else {
+				// a no-op: PlayGameSound returns at once for 0xFFFF0000
 				PlayGameSound(sound, 0xFFFF0000, 255);
 			}
 			sound->mPausedMusicId = 0;
@@ -1943,7 +1960,7 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 		}
 		if (sound->mMusicPitchFrames <= 0) {
 			sound->mLastQueuedSoundId = sound->mQueuedSoundIds[sound->mQueueRead];
-			PlayGameSound((XSound*)&gGame.mSound, sound->mLastQueuedSoundId, 255);
+			PlayGameSound(&gGame.mSound, sound->mLastQueuedSoundId, 255);
 			if (++sound->mQueueRead >= 64) {
 				sound->mQueueRead = 0;
 			}

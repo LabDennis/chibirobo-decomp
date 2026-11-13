@@ -64,7 +64,7 @@ static inline f32 LineSide(Vec& a, Vec& b, Vec& p)
 	return p.x * (a.z - b.z) + a.x * (b.z - p.z) + b.x * (p.z - a.z);
 }
 
-// how far p is from the line ab, signed
+// how far p is from the line ab. never negative, n is taken from p toward the line
 static inline f32 LineDist(Vec* p, Vec* a, Vec* b)
 {
 	Vec n;
@@ -131,7 +131,8 @@ inline void ConvertJointRotationToQuaternion(HSD_JObj* jobj)
  * @note Address: 0x80191310
  * @note Size: 0xC8
  */
-// reads len hex digits, or the whole string when len is 0
+// reads len hex digits, or the whole string when len is 0. any other character is skipped but
+// still counts toward len
 extern "C" u32 ParseHexDigits(const char* str, s32 len)
 {
 	u32 val = 0;
@@ -155,6 +156,8 @@ extern "C" u32 ParseHexDigits(const char* str, s32 len)
  * @note Address: 0x80191268
  * @note Size: 0xA8
  */
+// src with each character from sHalfWidthCharacters swapped for its full width twin, the rest copied
+// as they are, into dst or a static buffer when dst is NULL
 extern "C" char* ConvertHalfWidthToFullWidthSJIS(const char* src, char* dst)
 {
 	u8* out      = (u8*)(dst != NULL ? dst : sFullWidthTextBuffer);
@@ -242,6 +245,7 @@ extern "C" char* FormatToStaticBuffer(const char* fmt, ...)
  * @note Address: 0x80190E60
  * @note Size: 0x354
  */
+// src turned so its z axis is (0, 0, 1). its y axis only loses its z part, scale and position stay
 void BuildBillboardMatrixFromUp(Mtx src, Mtx dst)
 {
 	Vec x, y;
@@ -274,6 +278,7 @@ void BuildBillboardMatrixFromUp(Mtx src, Mtx dst)
  * @note Address: 0x80190AF0
  * @note Size: 0x370
  */
+// src's scale and position, its rotation replaced by angle about z
 void BuildBillboardMatrixWithZRotation(Mtx src, Mtx dst, f32 angle)
 {
 	Mtx rot, scale;
@@ -304,6 +309,7 @@ extern "C" u32 GetFreeARAMSize(void)
  * @note Address: 0x801908F8
  * @note Size: 0x1B8
  */
+// the first jobj aobj in the tree: a jobj, then its later siblings' trees, then its children
 extern "C" HSD_AObj* FindJointAnimationInTree(HSD_JObj* jobj)
 {
 	HSD_AObj* aobj = NULL;
@@ -331,6 +337,8 @@ extern "C" HSD_MObj* HSD_DObjGetMObj__FP9_HSD_DObj(HSD_DObj* dobj)
  * @note Address: 0x801905D4
  * @note Size: 0x30C
  */
+// the first aobj of a material, or of its first texture when it has none, walking the tree like
+// FindJointAnimationInTree
 extern "C" HSD_AObj* FindMaterialOrTextureAnimationInJointTree(HSD_JObj* jobj)
 {
 	HSD_AObj* aobj = NULL;
@@ -623,6 +631,8 @@ extern "C" HSD_DObj* HSD_DObjGetNext__FP9_HSD_DObj(HSD_DObj* dobj)
  * @note Address: 0x801902C4
  * @note Size: 0x2E0
  */
+// the first aobj on a dobj's first pobj, walking the tree like FindJointAnimationInTree. later pobjs
+// of a dobj aren't looked at
 extern "C" HSD_AObj* FindPolygonAnimationInJointTree(HSD_JObj* jobj)
 {
 	HSD_AObj* aobj = NULL;
@@ -1491,6 +1501,8 @@ f32 SignedTriangleArea2XZ(Vec* a, Vec* b, Vec* c)
  * @note Address: 0x8018EC6C
  * @note Size: 0x1C0
  */
+// whether pos lies inside abc seen from above, corners wound so CalcTriangleNormal points up. pos is
+// out as soon as one edge's rel x edge points down: its dot with up, which is (0, -1, 0), goes positive
 BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
 {
 	f32 ex = a->x - b->x;
@@ -1666,6 +1678,7 @@ BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
  * @note Address: 0x8018EA50
  * @note Size: 0x21C
  */
+// the IsPointInsideTriangleXZ test with four corners, so the quad has to be convex and wound the same way
 BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
 {
 	f32 ex = a->x - b->x;
@@ -1880,6 +1893,8 @@ BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
  * @note Address: 0x8018E8A4
  * @note Size: 0x1AC
  */
+// out gets the point of abc's plane straight above or below pos. returns 1 when it lies at y 1 or -1,
+// 2 between them and 3 beyond
 int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec* out)
 {
 	Vec normal;
@@ -2020,7 +2035,7 @@ int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec
  * @note Address: 0x8018E824
  * @note Size: 0x80
  */
-// the direction from the line bc out toward a, square to bc
+// the direction square to bc pointing from a toward the line, so out of the triangle abc
 extern "C" void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out)
 {
 	Vec bc;
@@ -2069,9 +2084,9 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 			if (slopeAB == slopeCD) {
 				return 0;
 			}
-			f32 t  = (acz - slopeCD * acx) / (slopeAB - slopeCD);
-			f32 dz = t * slopeAB;
-			out->x = t + a->x;
+			f32 dx = (acz - slopeCD * acx) / (slopeAB - slopeCD);
+			f32 dz = dx * slopeAB;
+			out->x = dx + a->x;
 			out->z = dz + a->z;
 		}
 		out->y = 0.0f;
@@ -2241,6 +2256,7 @@ extern "C" int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos
 	CVec toEdge   = to + n * radius;
 	int ret       = 0;
 
+	// one sided: from must be on the wall's LineSide <= 0 and the circle at to touch or cross it
 	if (LineSide(a, b, toEdge) >= 0.0f && LineSide(a, b, from) <= 0.0f) {
 		CVec v;
 		CVec hit;
@@ -2298,13 +2314,13 @@ extern "C" int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos
 					ret   = 3;
 				} else {
 					IntersectLinesXZ(&from, &toEdge, &a, &b, &hit, 0);
-					CVec e = hit + dir * len;
-					CVec f = e - n;
-					CVec g;
-					IntersectLinesXZ(&e, &f, &a, &b, &g, 0);
-					v = g - hit;
+					CVec moveEnd     = hit + dir * len;
+					CVec alongNormal = moveEnd - n;
+					CVec slideEnd;
+					IntersectLinesXZ(&moveEnd, &alongNormal, &a, &b, &slideEnd, 0);
+					v = slideEnd - hit;
 					if (v.Length() > len) {
-						*push = (g - hit).Normalize() * len;
+						*push = (slideEnd - hit).Normalize() * len;
 					} else {
 						*push = v;
 					}
@@ -2322,13 +2338,13 @@ extern "C" int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos
 					ret   = 3;
 				} else {
 					IntersectLinesXZ(&from, &toEdge, &a, &b, &hit, 0);
-					CVec e = hit + dir * len;
-					CVec f = e - n;
-					CVec g;
-					IntersectLinesXZ(&e, &f, &a, &b, &g, 0);
-					v = g - hit;
+					CVec moveEnd     = hit + dir * len;
+					CVec alongNormal = moveEnd - n;
+					CVec slideEnd;
+					IntersectLinesXZ(&moveEnd, &alongNormal, &a, &b, &slideEnd, 0);
+					v = slideEnd - hit;
 					if (v.Length() > len) {
-						*push = (g - hit).Normalize() * len;
+						*push = (slideEnd - hit).Normalize() * len;
 					} else {
 						*push = v;
 					}
