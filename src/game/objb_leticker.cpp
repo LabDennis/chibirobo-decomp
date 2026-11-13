@@ -801,7 +801,7 @@ void XObjLeticker::vfAC()
 	case 2:
 		gGame.GetObject(mLinked[0])->mStatus.mFlags &= ~0x80000000ULL;
 		break;
-	default:
+	case 3:
 		break;
 	}
 }
