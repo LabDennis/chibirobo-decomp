@@ -207,7 +207,7 @@ inline Ana* GetAna(s32 id)
 inline void ReleaseHeld(RoboView* mgr)
 {
 	if (mgr->mHeld != NULL) {
-		mgr->mHeld->mFlags &= ~0x0400000000000000ULL;
+		mgr->mHeld->mFlags &= ~0x0400000000000000ULL; // no longer held
 		mgr->mHeld = NULL;
 	}
 	mgr->mLiftState = 0;
@@ -226,7 +226,7 @@ inline s16 GetKind(AnaObj* obj)
 
 inline void DropObj(AnaObj* obj)
 {
-	if (GetKind(obj) == 8) {
+	if (GetKind(obj) == 8) { // kind 8 marks its bit before it goes
 		u32 bit = obj->vf148();
 		obj->mBits[bit >> 5] |= 1 << (bit & 31);
 	}
@@ -302,7 +302,7 @@ extern "C" s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args)
 	if (!ana->IsActive()) {
 		return 0;
 	}
-	ana->SetJObj(1, 0);
+	ana->SetJObj(1, 0); // kind 1 shows the dug hole
 	return 1;
 }
 
@@ -346,10 +346,10 @@ extern "C" s32 CmdPlantTane(s32 cmd, s32 count, s32* args)
 	if (!ana->IsActive()) {
 		return 0;
 	}
-	ana->SetJObj(2, 0);
+	ana->SetJObj(2, 0); // kind 2 shows the lid
 	obj = ((RoboView*)gGame.GetPlayer())->mHeld;
 	if (obj != NULL) {
-		ReleaseHeld((RoboView*)gGame.GetPlayer());
+		ReleaseHeld((RoboView*)gGame.GetPlayer()); // the planted object leaves the hand
 		DropObj(obj);
 	}
 	return 1;
@@ -376,7 +376,7 @@ extern "C" s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args)
 extern "C" s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args)
 {
 	Ana* ana   = GetAna(args[0]);
-	ana->mRotY = 57.295776f * args[1];
+	ana->mRotY = 57.295776f * args[1]; // scaled from the script's unit
 	return 1;
 }
 
@@ -490,7 +490,7 @@ extern "C" s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args)
 	if (!ana->IsActive()) {
 		return 0;
 	}
-	ana->mStatus.mFlags |= 8;
+	ana->mStatus.mFlags |= 8; // flag 8 draws it in the player's hand
 	return 0;
 }
 
@@ -515,6 +515,7 @@ extern "C" void InitAnas(void)
 	}
 	num = gGame.mXObjs.mObjectCount;
 
+	// find the hole, its lid and the three flowers among the placed objects
 	for (i = 0; i < num; i++) {
 		AnaObj* obj = (AnaObj*)gGame.mXObjs.mObjects[i];
 		if (obj->mFlags & 1) {
@@ -686,7 +687,7 @@ extern "C" s32 AddAna(s32 id, f32 x, f32 y, f32 z)
 
 	for (i = 0; i < ARRAY_COUNT(anas); i++) {
 		if ((anas[i].mStatus.mFlags & 1) && PSVECDistance(&pos, &anas[i].mPos) < 5.0f) {
-			return -1;
+			return -1; // too close to an existing hole
 		}
 	}
 	for (i = 0; i < ARRAY_COUNT(anas); i++) {
@@ -915,11 +916,11 @@ extern "C" HSD_JObj* GetAnaJObj(s32 kind, s32 which)
 	}
 	obj = flowerObjs[which];
 	switch (kind) {
-	case 1:
+	case 1: // the hole itself
 		return jobj0;
-	case 2:
+	case 2: // its lid
 		return jobj1;
-	case 3: {
+	case 3: { // the flower's joints
 		if (obj == NULL) {
 			return NULL;
 		}
@@ -940,7 +941,7 @@ extern "C" HSD_JObj* GetAnaJObj(s32 kind, s32 which)
 		s32 path[2] = { 2, 0 };
 		return GetJointByPath(obj->mJObj, path, 1);
 	}
-	case 6:
+	case 6: // joints 3 and 4, swapped between 6 and 7
 		if (obj == NULL) {
 			return NULL;
 		}
@@ -978,7 +979,7 @@ extern "C" void Ana_Draw(Ana* ana)
 	if (jobj == NULL) {
 		return;
 	}
-	if (ana->mStatus.mFlags & 8) {
+	if (ana->mStatus.mFlags & 8) { // carried: draw it in the player's hand
 		const CVec& pos = GetPlayerCarryJointWorldPosition((RoboView*)gGame.GetPlayer());
 		x               = pos.x;
 		y               = pos.y;
