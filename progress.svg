@@ -1,377 +1,623 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="500" viewBox="0 0 1000 500" role="img" aria-labelledby="title desc">
 <title id="title">Chibi-Robo! US decompilation treemap</title>
 <desc id="desc">Units sized by code bytes and colored by progress.</desc>
-<rect x="0.000000" y="0.000000" width="256.866620" height="320.133981" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_8008A360_text</title></rect>
-<rect x="0.000000" y="320.133981" width="256.866620" height="179.866019" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_8003135C_text</title></rect>
-<rect x="256.866620" y="0.000000" width="112.442867" height="238.126476" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_80115538_text</title></rect>
-<rect x="369.309486" y="0.000000" width="137.642807" height="119.818102" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_80007880_text</title></rect>
-<rect x="369.309486" y="119.818102" width="137.642807" height="118.308374" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_8001F8D8_text</title></rect>
-<rect x="256.866620" y="238.126476" width="127.299243" height="110.473337" fill="#d7daaf" stroke="white" stroke-width="0.6"><title>main/game/evt</title></rect>
-<rect x="384.165862" y="238.126476" width="122.786431" height="110.473337" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_80106A14_text</title></rect>
-<rect x="256.866620" y="348.599813" width="134.665684" height="78.698318" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_800F49F0_text</title></rect>
-<rect x="256.866620" y="427.298131" width="134.665684" height="72.701869" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_8006331C_text</title></rect>
-<rect x="391.532304" y="348.599813" width="115.419989" height="83.742710" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_800EA30C_text</title></rect>
-<rect x="391.532304" y="432.342523" width="115.419989" height="67.657477" fill="#cfd7ab" stroke="white" stroke-width="0.6"><title>main/game/ccameraactionmap2</title></rect>
-<rect x="506.952293" y="0.000000" width="106.436766" height="64.342345" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/thp/THPDec</title></rect>
-<rect x="506.952293" y="64.342345" width="106.436766" height="64.094018" fill="#66ae74" stroke="white" stroke-width="0.6"><title>main/game/cgs</title></rect>
-<rect x="613.389059" y="0.000000" width="48.772578" height="128.436364" fill="#66af74" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/synth</title></rect>
-<rect x="662.161637" y="0.000000" width="95.529819" height="64.704755" fill="#e3dfb5" stroke="white" stroke-width="0.6"><title>main/game/msg</title></rect>
-<rect x="662.161637" y="64.704755" width="95.529819" height="63.731608" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_8010011C_text</title></rect>
-<rect x="506.952293" y="128.436364" width="46.403413" height="122.482360" fill="#75b47c" stroke="white" stroke-width="0.6"><title>stage02/rel/stage02/fighter</title></rect>
-<rect x="553.355706" y="128.436364" width="76.302213" height="67.727227" fill="#62ad72" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/jobj</title></rect>
-<rect x="553.355706" y="196.163590" width="76.302213" height="54.755133" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_80019480_text</title></rect>
-<rect x="629.657919" y="128.436364" width="66.011014" height="63.125843" fill="#64ae73" stroke="white" stroke-width="0.6"><title>stage01/rel/stage01/hamburg</title></rect>
-<rect x="629.657919" y="191.562206" width="66.011014" height="59.356517" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_800E25AC_text</title></rect>
-<rect x="695.668933" y="128.436364" width="62.022523" height="62.659242" fill="#62ad72" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/axdriver</title></rect>
-<rect x="695.668933" y="191.095606" width="62.022523" height="59.823118" fill="#67af74" stroke="white" stroke-width="0.6"><title>main/game/ut</title></rect>
-<rect x="757.691456" y="0.000000" width="54.746445" height="67.407656" fill="#62ad72" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/psinterpret</title></rect>
-<rect x="812.437900" y="0.000000" width="54.083917" height="67.407656" fill="#63ad73" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/psdisp</title></rect>
-<rect x="757.691456" y="67.407656" width="55.722648" height="63.086330" fill="#65ae74" stroke="white" stroke-width="0.6"><title>main/game/cobj</title></rect>
-<rect x="813.414103" y="67.407656" width="53.107714" height="63.086330" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_800E6950_text</title></rect>
-<rect x="866.521817" y="0.000000" width="69.780782" height="47.986678" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_800869AC_text</title></rect>
-<rect x="866.521817" y="47.986678" width="69.780782" height="41.560591" fill="#62ad72" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/texp</title></rect>
-<rect x="866.521817" y="89.547269" width="69.780782" height="40.946716" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/tobj</title></rect>
-<rect x="936.302599" y="0.000000" width="63.697401" height="44.170497" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_80135118_text</title></rect>
-<rect x="936.302599" y="44.170497" width="63.697401" height="44.113263" fill="#6eb178" stroke="white" stroke-width="0.6"><title>main/game/ccameraactionscroll2</title></rect>
-<rect x="936.302599" y="88.283760" width="63.697401" height="42.210226" fill="#63ad72" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/pobj</title></rect>
-<rect x="757.691456" y="130.493985" width="61.583728" height="40.580636" fill="#76b57d" stroke="white" stroke-width="0.6"><title>main/game/cprimitive</title></rect>
-<rect x="757.691456" y="171.074621" width="61.583728" height="40.181045" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/cobj</title></rect>
-<rect x="757.691456" y="211.255666" width="61.583728" height="39.663057" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/texpopt</title></rect>
-<rect x="819.275183" y="130.493985" width="58.995349" height="41.326001" fill="#62ad72" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/generator</title></rect>
-<rect x="819.275183" y="171.819986" width="58.995349" height="40.012838" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/aobj</title></rect>
-<rect x="819.275183" y="211.832824" width="58.995349" height="39.085900" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/dvd/dvd</title></rect>
-<rect x="878.270533" y="130.493985" width="54.643544" height="40.864350" fill="#63ad73" stroke="white" stroke-width="0.6"><title>stage07/rel/stage07/living</title></rect>
-<rect x="878.270533" y="171.358336" width="54.643544" height="40.197177" fill="#63ad72" stroke="white" stroke-width="0.6"><title>stage02/rel/stage02/rouka</title></rect>
-<rect x="878.270533" y="211.555513" width="54.643544" height="39.363211" fill="#64ae73" stroke="white" stroke-width="0.6"><title>main/game/cmotioncontrolcamera</title></rect>
-<rect x="932.914076" y="130.493985" width="33.595244" height="61.013933" fill="#62ad72" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/lobj</title></rect>
-<rect x="966.509321" y="130.493985" width="33.490679" height="61.013933" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_80132D08_text</title></rect>
-<rect x="932.914076" y="191.507918" width="33.872792" height="59.410805" fill="#63ad72" stroke="white" stroke-width="0.6"><title>main/game/fbeffect</title></rect>
-<rect x="966.786868" y="191.507918" width="33.213132" height="59.410805" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/vi/vi</title></rect>
-<rect x="506.952293" y="250.918723" width="61.358749" height="32.114159" fill="#63ad72" stroke="white" stroke-width="0.6"><title>main/game/ctrigon</title></rect>
-<rect x="506.952293" y="283.032883" width="61.358749" height="31.356610" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/mic/mic</title></rect>
-<rect x="568.311042" y="250.918723" width="58.931970" height="31.766316" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/printf</title></rect>
-<rect x="568.311042" y="282.685039" width="58.931970" height="31.704453" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/robj</title></rect>
-<rect x="506.952293" y="314.389493" width="30.920884" height="59.098962" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/ansi_fp</title></rect>
-<rect x="537.873176" y="314.389493" width="30.797508" height="59.098962" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/__exception</title></rect>
-<rect x="568.670685" y="314.389493" width="58.572327" height="29.673965" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_8006DB80_text</title></rect>
-<rect x="568.670685" y="344.063458" width="58.572327" height="29.424996" fill="#63ad73" stroke="white" stroke-width="0.6"><title>shun/rel/shun/shun</title></rect>
-<rect x="627.243012" y="250.918723" width="33.585345" height="51.208193" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/fobj</title></rect>
-<rect x="660.828357" y="250.918723" width="32.713230" height="51.208193" fill="#bcd0a0" stroke="white" stroke-width="0.6"><title>main/game/sound</title></rect>
-<rect x="627.243012" y="302.126916" width="66.298575" height="24.373725" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/ar/ar</title></rect>
-<rect x="627.243012" y="326.500641" width="34.196720" height="46.987813" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/targimpl</title></rect>
-<rect x="661.439731" y="326.500641" width="32.101855" height="46.987813" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/exi/EXIBios</title></rect>
-<rect x="693.541587" y="250.918723" width="30.081644" height="49.810123" fill="#ccd6a9" stroke="white" stroke-width="0.6"><title>main/game/ccameraactionarea</title></rect>
-<rect x="723.623231" y="250.918723" width="29.807177" height="49.810123" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/mobj</title></rect>
-<rect x="693.541587" y="300.728846" width="59.888821" height="24.623519" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/pad/Pad</title></rect>
-<rect x="693.541587" y="325.352366" width="30.502969" height="48.136089" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/controller</title></rect>
-<rect x="724.044556" y="325.352366" width="29.385852" height="48.136089" fill="#63ad72" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/mtx</title></rect>
-<rect x="506.952293" y="373.488454" width="61.131334" height="21.886663" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/si/SIBios</title></rect>
-<rect x="506.952293" y="395.375117" width="30.862627" height="42.968230" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/game/THPSimple</title></rect>
-<rect x="537.814920" y="395.375117" width="30.268707" height="42.968230" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>shun/rel/fafa</title></rect>
-<rect x="568.083627" y="373.488454" width="59.697910" height="21.786236" fill="#70b279" stroke="white" stroke-width="0.6"><title>stage03/rel/stage03/decapanel</title></rect>
-<rect x="568.083627" y="395.274691" width="30.198127" height="43.068657" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage07/rel/fafa</title></rect>
-<rect x="598.281755" y="395.274691" width="29.499783" height="43.068657" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/bytecode</title></rect>
-<rect x="506.952293" y="438.343348" width="61.331115" height="20.611660" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDBios</title></rect>
-<rect x="506.952293" y="458.955007" width="30.665558" height="41.044993" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/ax/AXVPB</title></rect>
-<rect x="537.617850" y="458.955007" width="30.665558" height="41.044993" fill="#62ad72" stroke="white" stroke-width="0.6"><title>stage04/rel/ana</title></rect>
-<rect x="568.283408" y="438.343348" width="59.498129" height="21.154742" fill="#62ad72" stroke="white" stroke-width="0.6"><title>stage09/rel/ana</title></rect>
-<rect x="568.283408" y="459.498090" width="29.839077" height="40.501910" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXAttr</title></rect>
-<rect x="598.122485" y="459.498090" width="29.659052" height="40.501910" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/displayfunc</title></rect>
-<rect x="627.781537" y="373.488454" width="55.750331" height="21.154570" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/Runtime.PPCEABI.H/Gecko_ExceptionPPC</title></rect>
-<rect x="627.781537" y="394.643024" width="28.335369" height="41.589818" fill="#62ad72" stroke="white" stroke-width="0.6"><title>stage01/rel/ana</title></rect>
-<rect x="656.116906" y="394.643024" width="27.414962" height="41.589818" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXInit</title></rect>
-<rect x="683.531868" y="373.488454" width="35.326942" height="31.707587" fill="#63ad72" stroke="white" stroke-width="0.6"><title>main/game/ccamera</title></rect>
-<rect x="683.531868" y="405.196042" width="35.326942" height="31.036800" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/shadow</title></rect>
-<rect x="718.858811" y="373.488454" width="34.571597" height="31.556736" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSFont</title></rect>
-<rect x="718.858811" y="405.045191" width="34.571597" height="31.187652" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/devcom</title></rect>
-<rect x="627.781537" y="436.232842" width="33.502554" height="31.992397" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDUnlock</title></rect>
-<rect x="627.781537" y="468.225239" width="33.502554" height="31.774761" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSThread</title></rect>
-<rect x="661.284091" y="436.232842" width="31.901749" height="32.369261" fill="#63ad73" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/particle</title></rect>
-<rect x="661.284091" y="468.602103" width="31.901749" height="31.397897" fill="#6bb177" stroke="white" stroke-width="0.6"><title>stage04/rel/trash</title></rect>
-<rect x="693.185840" y="436.232842" width="30.780464" height="32.541674" fill="#6bb177" stroke="white" stroke-width="0.6"><title>stage07/rel/trash</title></rect>
-<rect x="723.966305" y="436.232842" width="29.464102" height="32.541674" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/msghndlr</title></rect>
-<rect x="693.185840" y="468.774516" width="30.297413" height="31.225484" fill="#63ad73" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/texpdag</title></rect>
-<rect x="723.483253" y="468.774516" width="29.947154" height="31.225484" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXTexture</title></rect>
-<rect x="753.430407" y="250.918723" width="28.509251" height="31.521616" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDCheck</title></rect>
-<rect x="781.939658" y="250.918723" width="27.815314" height="31.521616" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/axfx/reverb_hi</title></rect>
-<rect x="753.430407" y="282.440340" width="28.192210" height="30.453635" fill="#63ad72" stroke="white" stroke-width="0.6"><title>main/game/mem</title></rect>
-<rect x="781.622618" y="282.440340" width="28.132354" height="30.453635" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXDraw</title></rect>
-<rect x="809.754972" y="250.918723" width="27.118146" height="31.155671" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/dvd/dvdlow</title></rect>
-<rect x="809.754972" y="282.074395" width="27.118146" height="30.819580" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_rem_pio2</title></rect>
-<rect x="836.873118" y="250.918723" width="37.662457" height="20.835881" fill="#63ad73" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/video</title></rect>
-<rect x="836.873118" y="271.754605" width="37.662457" height="20.811681" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/mic/m2s</title></rect>
-<rect x="836.873118" y="292.566286" width="37.662457" height="20.327689" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSRtc</title></rect>
-<rect x="753.430407" y="312.893975" width="29.909871" height="25.596590" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/tev</title></rect>
-<rect x="783.340279" y="312.893975" width="29.126517" height="25.596590" fill="#63ad72" stroke="white" stroke-width="0.6"><title>main/game/xobjs</title></rect>
-<rect x="753.430407" y="338.490565" width="20.060425" height="36.619488" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/dvdsche</title></rect>
-<rect x="773.490833" y="338.490565" width="20.010648" height="36.619488" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSFatal</title></rect>
-<rect x="793.501481" y="338.490565" width="18.965315" height="36.619488" fill="#68af75" stroke="white" stroke-width="0.6"><title>stage09/rel/stage09/ambient</title></rect>
-<rect x="812.466796" y="312.893975" width="21.496297" height="32.011105" fill="#62ad72" stroke="white" stroke-width="0.6"><title>main/game/ccameraactionevt</title></rect>
-<rect x="833.963093" y="312.893975" width="20.499780" height="32.011105" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/state</title></rect>
-<rect x="854.462873" y="312.893975" width="20.072701" height="32.011105" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDMount</title></rect>
-<rect x="812.466796" y="344.905079" width="20.850523" height="30.204973" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OS</title></rect>
-<rect x="833.317319" y="344.905079" width="20.639302" height="30.204973" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/initialize</title></rect>
-<rect x="853.956621" y="344.905079" width="20.578953" height="30.204973" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXFrameBuf</title></rect>
-<rect x="874.535575" y="250.918723" width="31.145140" height="19.694372" fill="#70b379" stroke="white" stroke-width="0.6"><title>main/game/ccameraactioneye</title></rect>
-<rect x="874.535575" y="270.613096" width="31.145140" height="19.694372" fill="#ebe2b9" stroke="white" stroke-width="0.6"><title>main/game/cfont</title></rect>
-<rect x="874.535575" y="290.307468" width="31.145140" height="19.665109" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/OdemuExi2/DebuggerDriver</title></rect>
-<rect x="905.680715" y="250.918723" width="30.728431" height="19.902127" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/axfx/chorus</title></rect>
-<rect x="905.680715" y="270.820851" width="30.728431" height="19.694505" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/mtx/mtx</title></rect>
-<rect x="905.680715" y="290.515356" width="30.728431" height="19.457221" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/spline</title></rect>
-<rect x="874.535575" y="309.972577" width="20.901077" height="28.562091" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/axfx/reverb_std</title></rect>
-<rect x="895.436652" y="309.972577" width="20.709617" height="28.562091" fill="#62ad72" stroke="white" stroke-width="0.6"><title>main/game/cfile</title></rect>
-<rect x="916.146269" y="309.972577" width="20.262876" height="28.562091" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSLink</title></rect>
-<rect x="874.535575" y="338.534668" width="31.323028" height="18.331339" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/game/ctpl</title></rect>
-<rect x="874.535575" y="356.866006" width="31.323028" height="18.244046" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSContext</title></rect>
-<rect x="905.858603" y="338.534668" width="30.550543" height="18.496524" fill="#65ae74" stroke="white" stroke-width="0.6"><title>main/game/ccameraactionchase</title></rect>
-<rect x="905.858603" y="357.031192" width="30.550543" height="18.078861" fill="#62ad72" stroke="white" stroke-width="0.6"><title>main/game/clight</title></rect>
-<rect x="936.409146" y="250.918723" width="32.456111" height="16.848923" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSExec</title></rect>
-<rect x="936.409146" y="267.767646" width="32.456111" height="16.259210" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/ai/ai</title></rect>
-<rect x="968.865257" y="250.918723" width="31.134743" height="16.568703" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/wobj</title></rect>
-<rect x="968.865257" y="267.487427" width="31.134743" height="16.539430" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXMisc</title></rect>
-<rect x="936.409146" y="284.026856" width="16.152368" height="31.316567" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/class</title></rect>
-<rect x="952.561514" y="284.026856" width="15.890438" height="31.316567" fill="#63ad72" stroke="white" stroke-width="0.6"><title>main/game/ccameraactionreset</title></rect>
-<rect x="968.451952" y="284.026856" width="15.861334" height="31.316567" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/dsp/dsp_task</title></rect>
-<rect x="984.313286" y="284.026856" width="15.686714" height="31.316567" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSInterrupt</title></rect>
-<rect x="936.409146" y="315.343423" width="16.270547" height="30.192841" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/rumble</title></rect>
-<rect x="952.679693" y="315.343423" width="16.119614" height="30.192841" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXPerf</title></rect>
-<rect x="936.409146" y="345.536264" width="16.241308" height="29.573789" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/msgbuf</title></rect>
-<rect x="952.650454" y="345.536264" width="16.148853" height="29.573789" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_pow</title></rect>
-<rect x="968.799308" y="315.343423" width="15.630579" height="30.146218" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/psdisptev</title></rect>
-<rect x="984.429887" y="315.343423" width="15.570113" height="30.146218" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/ax/AXOut</title></rect>
-<rect x="968.799308" y="345.489641" width="15.631116" height="29.620412" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDFormat</title></rect>
-<rect x="984.430424" y="345.489641" width="15.569576" height="29.620412" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXPixel</title></rect>
-<rect x="753.430407" y="375.110053" width="29.140214" height="15.701038" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSAlarm</title></rect>
-<rect x="753.430407" y="390.811090" width="29.140214" height="15.513376" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_8007EEA4_text</title></rect>
-<rect x="753.430407" y="406.324466" width="29.140214" height="15.388268" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_80062B6C_text</title></rect>
-<rect x="753.430407" y="421.712734" width="29.140214" height="15.388268" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/game/THPDraw</title></rect>
-<rect x="782.570621" y="375.110053" width="17.767862" height="25.186260" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/dobj</title></rect>
-<rect x="800.338483" y="375.110053" width="17.297430" height="25.186260" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_8007F664_text</title></rect>
-<rect x="782.570621" y="400.296313" width="35.065292" height="12.294222" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/game/ccameraactionscroll</title></rect>
-<rect x="782.570621" y="412.590534" width="17.551239" height="24.510468" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXFifo</title></rect>
-<rect x="800.121860" y="412.590534" width="17.514054" height="24.510468" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSTime</title></rect>
-<rect x="817.635914" y="375.110053" width="14.861157" height="28.211266" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/ax/AXCL</title></rect>
-<rect x="832.497071" y="375.110053" width="14.828850" height="28.211266" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXTransform</title></rect>
-<rect x="847.325921" y="375.110053" width="14.828850" height="28.211266" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/game/cparticle</title></rect>
-<rect x="862.154771" y="375.110053" width="14.731930" height="28.211266" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXTev</title></rect>
-<rect x="817.635914" y="403.321319" width="24.391035" height="16.927209" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/support</title></rect>
-<rect x="817.635914" y="420.248527" width="24.391035" height="16.852475" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/game/ccard</title></rect>
-<rect x="842.026948" y="403.321319" width="11.844761" height="33.779683" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/Runtime.PPCEABI.H/runtime</title></rect>
-<rect x="853.871709" y="403.321319" width="23.014992" height="17.107647" fill="#63ad72" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/pslist</title></rect>
-<rect x="853.871709" y="420.428966" width="23.014992" height="16.672036" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSAlloc</title></rect>
-<rect x="753.430407" y="437.101002" width="11.552436" height="32.346526" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/dolphin_trk</title></rect>
-<rect x="764.982844" y="437.101002" width="22.484986" height="16.335401" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSCache</title></rect>
-<rect x="764.982844" y="453.436403" width="22.484986" height="16.011125" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSError</title></rect>
-<rect x="753.430407" y="469.447528" width="11.425357" height="30.552472" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/objalloc</title></rect>
-<rect x="764.855765" y="469.447528" width="22.612065" height="15.276236" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDOpen</title></rect>
-<rect x="764.855765" y="484.723764" width="22.612065" height="15.276236" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXLight</title></rect>
-<rect x="787.467829" y="437.101002" width="29.936702" height="11.142804" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/exi/EXIUart</title></rect>
-<rect x="787.467829" y="448.243806" width="15.053885" height="21.311374" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/axfx/delay</title></rect>
-<rect x="802.521714" y="448.243806" width="14.882818" height="21.311374" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/ax/AXAlloc</title></rect>
-<rect x="787.467829" y="469.555180" width="29.936702" height="10.412128" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/dolphin_trk_glue</title></rect>
-<rect x="787.467829" y="479.967308" width="15.059344" height="20.032692" fill="#62ad72" stroke="white" stroke-width="0.6"><title>main/game/cpad</title></rect>
-<rect x="802.527173" y="479.967308" width="14.877358" height="20.032692" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>hori/rel/hori/hori</title></rect>
-<rect x="817.404531" y="437.101002" width="26.126908" height="11.337380" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/dvd/dvdfs</title></rect>
-<rect x="817.404531" y="448.438382" width="13.273478" height="21.698001" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/Runtime.PPCEABI.H/NMWException</title></rect>
-<rect x="830.678009" y="448.438382" width="12.853431" height="21.698001" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/ax/AXSPB</title></rect>
-<rect x="843.531440" y="437.101002" width="16.829371" height="16.571847" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDStat</title></rect>
-<rect x="843.531440" y="453.672849" width="16.829371" height="16.463534" fill="#62ad72" stroke="white" stroke-width="0.6"><title>main/game/cshadow</title></rect>
-<rect x="860.360811" y="437.101002" width="16.525890" height="16.600417" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/alloc</title></rect>
-<rect x="860.360811" y="453.701419" width="16.525890" height="16.434964" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/game/cmovie</title></rect>
-<rect x="817.404531" y="470.136383" width="26.612854" height="10.137191" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/ax/AXAux</title></rect>
-<rect x="817.404531" y="480.273574" width="13.352630" height="19.726426" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSReset</title></rect>
-<rect x="830.757161" y="480.273574" width="13.260224" height="19.726426" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/thp/THPAudio</title></rect>
-<rect x="844.017385" y="470.136383" width="16.938227" height="15.335371" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDRead</title></rect>
-<rect x="844.017385" y="485.471754" width="16.938227" height="14.528246" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/strtoul</title></rect>
-<rect x="860.955612" y="470.136383" width="15.931089" height="15.160648" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/psappsrt</title></rect>
-<rect x="860.955612" y="485.297032" width="15.931089" height="14.702968" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDBlock</title></rect>
-<rect x="876.886701" y="375.110053" width="14.293304" height="16.132633" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/quatlib</title></rect>
-<rect x="891.180005" y="375.110053" width="14.180313" height="16.132633" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/string</title></rect>
-<rect x="876.886701" y="391.242686" width="14.386670" height="15.204367" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/FILE_POS</title></rect>
-<rect x="891.273371" y="391.242686" width="14.086948" height="15.204367" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSResetSW</title></rect>
-<rect x="905.360319" y="375.110053" width="13.495157" height="15.668500" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>ahk/rel/ahk/ahk</title></rect>
-<rect x="905.360319" y="390.778553" width="13.495157" height="15.668500" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_rem_pio2</title></rect>
-<rect x="918.855476" y="375.110053" width="19.980976" height="10.536895" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/ar/arq</title></rect>
-<rect x="918.855476" y="385.646948" width="19.980976" height="10.491281" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDCreate</title></rect>
-<rect x="918.855476" y="396.138229" width="19.980976" height="10.308824" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/direct_io</title></rect>
-<rect x="876.886701" y="406.447052" width="12.973006" height="15.666847" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDWrite</title></rect>
-<rect x="876.886701" y="422.113899" width="12.973006" height="15.596592" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/game/cmodule</title></rect>
-<rect x="889.859708" y="406.447052" width="18.803571" height="10.663498" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/mpc_7xx_603e</title></rect>
-<rect x="889.859708" y="417.110551" width="18.803571" height="10.372676" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_80031004_text</title></rect>
-<rect x="889.859708" y="427.483227" width="18.803571" height="10.227264" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/gdev/main</title></rect>
-<rect x="908.663279" y="406.447052" width="15.159118" height="12.565788" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/ddh/main</title></rect>
-<rect x="923.822397" y="406.447052" width="15.014055" height="12.565788" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod</title></rect>
-<rect x="908.663279" y="419.012840" width="10.090221" height="18.697651" fill="#62ad72" stroke="white" stroke-width="0.6"><title>stage06/rel/ana</title></rect>
-<rect x="918.753500" y="419.012840" width="10.090221" height="18.697651" fill="#62ad72" stroke="white" stroke-width="0.6"><title>stage18/rel/ana</title></rect>
-<rect x="928.843720" y="419.012840" width="9.992731" height="18.697651" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/arc/arc</title></rect>
-<rect x="938.836451" y="375.110053" width="14.667810" height="12.427452" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXGeometry</title></rect>
-<rect x="953.504261" y="375.110053" width="14.521131" height="12.427452" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_8006FA74_text</title></rect>
-<rect x="938.836451" y="387.537505" width="9.901549" height="17.673211" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/__start</title></rect>
-<rect x="948.738000" y="387.537505" width="9.746837" height="17.673211" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/file_io</title></rect>
-<rect x="958.484837" y="387.537505" width="9.540555" height="17.673211" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSMemory</title></rect>
-<rect x="968.025392" y="375.110053" width="16.411210" height="10.052066" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/mtx/vec</title></rect>
-<rect x="968.025392" y="385.162119" width="16.411210" height="10.052066" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/fog</title></rect>
-<rect x="968.025392" y="395.214186" width="16.411210" height="9.996530" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs</title></rect>
-<rect x="984.436602" y="375.110053" width="15.563398" height="10.189719" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/serpoll</title></rect>
-<rect x="984.436602" y="385.299771" width="15.563398" height="10.072595" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/list</title></rect>
-<rect x="984.436602" y="395.372367" width="15.563398" height="9.838349" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage06/rel/stage06/parent</title></rect>
-<rect x="938.836451" y="405.210716" width="10.740043" height="14.087030" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_801152A0_text</title></rect>
-<rect x="949.576494" y="405.210716" width="10.675344" height="14.087030" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSAudioSystem</title></rect>
-<rect x="960.251837" y="405.210716" width="10.610644" height="14.087030" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_atan2</title></rect>
-<rect x="938.836451" y="419.297746" width="16.235762" height="9.206372" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDRdwr</title></rect>
-<rect x="938.836451" y="428.504119" width="16.235762" height="9.206372" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/dsp/dsp</title></rect>
-<rect x="955.072213" y="419.297746" width="15.790269" height="9.235233" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/id</title></rect>
-<rect x="955.072213" y="428.532979" width="15.790269" height="9.177512" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_log</title></rect>
-<rect x="970.862482" y="405.210716" width="9.859031" height="14.513855" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXBump</title></rect>
-<rect x="980.721513" y="405.210716" width="9.670642" height="14.513855" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/CircleBuffer</title></rect>
-<rect x="990.392155" y="405.210716" width="9.607845" height="14.513855" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDDir</title></rect>
-<rect x="970.862482" y="419.724571" width="14.695444" height="9.054980" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/archive</title></rect>
-<rect x="970.862482" y="428.779552" width="14.695444" height="8.930940" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/dvd/fstload</title></rect>
-<rect x="985.557926" y="419.724571" width="14.442074" height="9.024514" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_acos</title></rect>
-<rect x="985.557926" y="428.749085" width="14.442074" height="8.961406" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_asin</title></rect>
-<rect x="876.886701" y="437.710491" width="15.448890" height="8.141402" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/nubevent</title></rect>
-<rect x="876.886701" y="445.851893" width="15.448890" height="8.082406" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_exp</title></rect>
-<rect x="892.335591" y="437.710491" width="15.224178" height="8.201704" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_sqrt</title></rect>
-<rect x="892.335591" y="445.912195" width="15.224178" height="8.022104" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_atan</title></rect>
-<rect x="876.886701" y="453.934299" width="7.875517" height="15.391818" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_tan</title></rect>
-<rect x="884.762219" y="453.934299" width="7.638660" height="15.391818" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/mtx/mtx44</title></rect>
-<rect x="892.400878" y="453.934299" width="15.158891" height="7.756033" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSMessage</title></rect>
-<rect x="892.400878" y="461.690332" width="15.158891" height="7.635785" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/mslsupp</title></rect>
-<rect x="907.559769" y="437.710491" width="7.917458" height="14.619595" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/card/CARDDelete</title></rect>
-<rect x="915.477227" y="437.710491" width="7.855116" height="14.619595" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/dvd/dvdqueue</title></rect>
-<rect x="923.332343" y="437.710491" width="14.525730" height="7.403915" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_8007FDDC_text</title></rect>
-<rect x="923.332343" y="445.114406" width="14.525730" height="7.215680" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSStopwatch</title></rect>
-<rect x="907.559769" y="452.330086" width="12.333822" height="8.498015" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/game/ccameraactionanim</title></rect>
-<rect x="907.559769" y="460.828101" width="12.333822" height="8.498015" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/util</title></rect>
-<rect x="919.893592" y="452.330086" width="6.059661" height="16.996031" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_ldexp</title></rect>
-<rect x="925.953252" y="452.330086" width="11.904820" height="8.574574" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_80139C98_text</title></rect>
-<rect x="925.953252" y="460.904660" width="11.904820" height="8.421457" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>ahk/rel/module</title></rect>
-<rect x="876.886701" y="469.326117" width="7.354003" height="13.632837" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>hori/rel/module</title></rect>
-<rect x="884.240704" y="469.326117" width="7.354003" height="13.632837" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>shun/rel/module</title></rect>
-<rect x="891.594707" y="469.326117" width="7.354003" height="13.632837" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage01/rel/module</title></rect>
-<rect x="898.948710" y="469.326117" width="7.354003" height="13.632837" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage02/rel/module</title></rect>
-<rect x="876.886701" y="482.958954" width="11.766405" height="8.520523" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage03/rel/module</title></rect>
-<rect x="876.886701" y="491.479477" width="11.766405" height="8.520523" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage04/rel/module</title></rect>
-<rect x="888.653106" y="482.958954" width="5.883202" height="17.041046" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage06/rel/module</title></rect>
-<rect x="894.536309" y="482.958954" width="11.766405" height="8.520523" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage07/rel/module</title></rect>
-<rect x="894.536309" y="491.479477" width="11.766405" height="8.520523" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage08/rel/module</title></rect>
-<rect x="906.302714" y="469.326117" width="8.171115" height="12.269553" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage09/rel/module</title></rect>
-<rect x="914.473828" y="469.326117" width="8.171115" height="12.269553" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage11/rel/module</title></rect>
-<rect x="906.302714" y="481.595670" width="16.342229" height="6.134777" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage16/rel/module</title></rect>
-<rect x="906.302714" y="487.730447" width="8.171115" height="12.269553" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage17/rel/module</title></rect>
-<rect x="914.473828" y="487.730447" width="8.171115" height="12.269553" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage18/rel/module</title></rect>
-<rect x="922.644943" y="469.326117" width="7.893605" height="12.700905" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage20/rel/module</title></rect>
-<rect x="930.538548" y="469.326117" width="7.319525" height="12.700905" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/nubinit</title></rect>
-<rect x="922.644943" y="482.027021" width="15.213130" height="6.110813" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/dvd/dvderror</title></rect>
-<rect x="922.644943" y="488.137834" width="7.606565" height="11.862166" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/PPC_EABI/abort_exit</title></rect>
-<rect x="930.251507" y="488.137834" width="7.606565" height="11.862166" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/debug</title></rect>
-<rect x="937.858072" y="437.710491" width="15.363125" height="5.635876" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/PPC_EABI/math_ppc</title></rect>
-<rect x="937.858072" y="443.346367" width="7.722206" height="11.212426" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_800FFFA0_text</title></rect>
-<rect x="945.580278" y="443.346367" width="7.640919" height="11.212426" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/dispatch</title></rect>
-<rect x="953.221197" y="437.710491" width="14.768074" height="5.677816" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/mem</title></rect>
-<rect x="953.221197" y="443.388307" width="7.424833" height="11.170486" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/qsort</title></rect>
-<rect x="960.646030" y="443.388307" width="7.343241" height="11.170486" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/memory</title></rect>
-<rect x="937.858072" y="454.558793" width="5.268141" height="14.186452" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_floor</title></rect>
-<rect x="943.126214" y="454.558793" width="10.215055" height="7.227060" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_8001933C_text</title></rect>
-<rect x="943.126214" y="461.785854" width="10.215055" height="6.959392" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/Runtime.PPCEABI.H/__mem</title></rect>
-<rect x="953.341269" y="454.558793" width="4.946913" height="14.186452" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/mtx/mtxvec</title></rect>
-<rect x="958.288182" y="454.558793" width="9.701090" height="7.140201" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_800F48C0_text</title></rect>
-<rect x="958.288182" y="461.698994" width="9.701090" height="7.046251" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/dvd/dvdFatal</title></rect>
-<rect x="967.989272" y="437.710491" width="8.544594" height="7.999948" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage16/rel/stage16/ufo</title></rect>
-<rect x="967.989272" y="445.710439" width="8.544594" height="7.893282" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_801381C0_text</title></rect>
-<rect x="976.533866" y="437.710491" width="8.429902" height="8.000674" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_8006F94C_text</title></rect>
-<rect x="976.533866" y="445.711165" width="8.429902" height="7.892557" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/game/ctoon</title></rect>
-<rect x="967.989272" y="453.603722" width="8.607635" height="7.729589" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage20/rel/stage20/stage20</title></rect>
-<rect x="967.989272" y="461.333311" width="8.607635" height="7.411935" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/ansi_files</title></rect>
-<rect x="976.596906" y="453.603722" width="8.366862" height="7.625228" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/mbstring</title></rect>
-<rect x="976.596906" y="461.228949" width="8.366862" height="7.516296" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/base/PPCArch</title></rect>
-<rect x="984.963768" y="437.710491" width="7.574643" height="8.061762" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/mem_TRK</title></rect>
-<rect x="992.538411" y="437.710491" width="7.461589" height="8.061762" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_80135010_text</title></rect>
-<rect x="984.963768" y="445.772253" width="7.633779" height="7.879918" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/si/SISamplingRate</title></rect>
-<rect x="992.597547" y="445.772253" width="7.402453" height="7.879918" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/hash</title></rect>
-<rect x="984.963768" y="453.652171" width="7.578261" height="7.576844" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_modf</title></rect>
-<rect x="992.542029" y="453.652171" width="7.457971" height="7.576844" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/buffer_io</title></rect>
-<rect x="984.963768" y="461.229016" width="7.518116" height="7.516230" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/mainloop</title></rect>
-<rect x="992.481884" y="461.229016" width="7.518116" height="7.516230" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/dvd/dvdidutils</title></rect>
-<rect x="937.858072" y="468.745245" width="7.930556" height="7.010412" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_cos</title></rect>
-<rect x="945.788628" y="468.745245" width="7.670538" height="7.010412" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/db/db</title></rect>
-<rect x="937.858072" y="475.755658" width="5.544967" height="9.697737" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/__ppc_eabi_init</title></rect>
-<rect x="943.403039" y="475.755658" width="5.075055" height="9.697737" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_sin</title></rect>
-<rect x="948.478094" y="475.755658" width="4.981072" height="9.697737" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_cos</title></rect>
-<rect x="937.858072" y="485.453395" width="6.390810" height="7.415917" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/PPC_EABI/uart_console_io_gcn</title></rect>
-<rect x="937.858072" y="492.869311" width="6.390810" height="7.130689" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/Runtime.PPCEABI.H/__va_arg</title></rect>
-<rect x="944.248882" y="485.453395" width="9.210284" height="4.848868" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/random</title></rect>
-<rect x="944.248882" y="490.302263" width="9.210284" height="4.848868" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage11/rel/stage11/haisui</title></rect>
-<rect x="944.248882" y="495.151132" width="9.210284" height="4.848868" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage17/rel/stage17/stage17</title></rect>
-<rect x="953.459166" y="468.745245" width="8.438079" height="5.184597" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/signal</title></rect>
-<rect x="953.459166" y="473.929842" width="8.438079" height="4.968572" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/Runtime.PPCEABI.H/GCN_mem_alloc</title></rect>
-<rect x="953.459166" y="478.898414" width="8.438079" height="4.428510" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/ax/AX</title></rect>
-<rect x="961.897245" y="468.745245" width="7.250498" height="5.028165" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_sin</title></rect>
-<rect x="961.897245" y="473.773410" width="7.250498" height="4.776757" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/notify</title></rect>
-<rect x="961.897245" y="478.550167" width="7.250498" height="4.776757" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_8010697C_text</title></rect>
-<rect x="953.459166" y="483.326924" width="8.004376" height="4.326866" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage18/rel/stage18/kako</title></rect>
-<rect x="953.459166" y="487.653791" width="8.004376" height="4.213002" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/Runtime.PPCEABI.H/ptmf</title></rect>
-<rect x="961.463542" y="483.326924" width="7.684201" height="4.269934" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/scanf</title></rect>
-<rect x="961.463542" y="487.596858" width="7.684201" height="4.269934" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSReboot</title></rect>
-<rect x="953.459166" y="491.866792" width="7.844288" height="4.066604" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_frexp</title></rect>
-<rect x="953.459166" y="495.933396" width="7.844288" height="4.066604" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/usr_put</title></rect>
-<rect x="961.303455" y="491.866792" width="7.844288" height="4.066604" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_8006DAF4_text</title></rect>
-<rect x="961.303455" y="495.933396" width="7.844288" height="4.066604" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_800E2520_text</title></rect>
-<rect x="969.147743" y="468.745245" width="7.425263" height="4.173346" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/wchar_io</title></rect>
-<rect x="969.147743" y="472.918592" width="7.425263" height="4.050601" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSSync</title></rect>
-<rect x="969.147743" y="476.969192" width="7.425263" height="3.805110" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/Runtime.PPCEABI.H/__init_cpp_exceptions</title></rect>
-<rect x="969.147743" y="480.774302" width="7.425263" height="3.805110" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage04/rel/stage04/jenny</title></rect>
-<rect x="976.573006" y="468.745245" width="4.230673" height="6.462925" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_tan</title></rect>
-<rect x="980.803680" y="468.745245" width="4.230673" height="6.462925" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_800E68D8_text</title></rect>
-<rect x="976.573006" y="475.208170" width="8.461347" height="3.123747" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>ahk/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
-<rect x="976.573006" y="478.331918" width="4.230673" height="6.247494" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>hori/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
-<rect x="980.803680" y="478.331918" width="4.230673" height="6.247494" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_dt__Q23std9exception_text</title></rect>
-<rect x="985.034353" y="468.745245" width="3.741412" height="7.064474" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>shun/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
-<rect x="988.775765" y="468.745245" width="3.741412" height="7.064474" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage01/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
-<rect x="992.517176" y="468.745245" width="3.741412" height="7.064474" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage02/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
-<rect x="996.258588" y="468.745245" width="3.741412" height="7.064474" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage03/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
-<rect x="985.034353" y="475.809720" width="6.027830" height="4.384846" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage04/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
-<rect x="985.034353" y="480.194566" width="6.027830" height="4.384846" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage06/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
-<rect x="991.062183" y="475.809720" width="3.013915" height="8.769692" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage09/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
-<rect x="994.076098" y="475.809720" width="5.923902" height="4.461773" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage18/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
-<rect x="994.076098" y="480.271493" width="5.923902" height="4.307919" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/gx/GXDisplayList</title></rect>
-<rect x="969.147743" y="484.579412" width="3.761160" height="6.785059" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSMutex</title></rect>
-<rect x="972.908903" y="484.579412" width="3.626833" height="6.785059" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_80138154_text</title></rect>
-<rect x="969.147743" y="491.364471" width="7.387993" height="2.960753" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
-<rect x="969.147743" y="494.325224" width="3.693996" height="5.674776" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/axfx/axfx</title></rect>
-<rect x="972.841739" y="494.325224" width="3.693996" height="5.674776" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/perf</title></rect>
-<rect x="976.535736" y="484.579412" width="2.864694" height="6.999416" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/MWCriticalSection_gc</title></rect>
-<rect x="979.400430" y="484.579412" width="5.468961" height="3.666361" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/main_TRK</title></rect>
-<rect x="979.400430" y="488.245773" width="5.468961" height="3.333055" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/MWTrace</title></rect>
-<rect x="976.535736" y="491.578828" width="4.273670" height="4.265269" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/dsp/dsp_debug</title></rect>
-<rect x="980.809405" y="491.578828" width="4.059986" height="4.265269" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_dl__FPv_text</title></rect>
-<rect x="976.535736" y="495.844097" width="4.166828" height="4.155903" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_8008A314_text</title></rect>
-<rect x="980.702563" y="495.844097" width="4.166828" height="4.155903" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_fn_800EA2C0_text</title></rect>
-<rect x="984.869391" y="484.579412" width="4.373692" height="3.959340" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/os/OSArena</title></rect>
-<rect x="984.869391" y="488.538752" width="4.373692" height="3.750954" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/UDP_Stubs</title></rect>
-<rect x="989.243083" y="484.579412" width="4.137276" height="3.965294" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/ax/AXProf</title></rect>
-<rect x="989.243083" y="488.544706" width="4.137276" height="3.745000" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/msg</title></rect>
-<rect x="993.380359" y="484.579412" width="3.630126" height="4.268198" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/sysdolphin/baselib/object</title></rect>
-<rect x="997.010485" y="484.579412" width="2.989515" height="4.268198" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/flush_cache</title></rect>
-<rect x="993.380359" y="488.847611" width="3.442213" height="3.442096" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/targcont</title></rect>
-<rect x="996.822572" y="488.847611" width="3.177428" height="3.442096" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/amcstubs/AmcExi2Stubs</title></rect>
-<rect x="984.869391" y="492.289706" width="2.486442" height="3.665550" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/rand</title></rect>
-<rect x="987.355833" y="492.289706" width="2.486442" height="3.665550" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_copysign</title></rect>
-<rect x="989.842274" y="492.289706" width="2.237797" height="3.665550" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/ctype</title></rect>
-<rect x="984.869391" y="495.955256" width="3.605340" height="2.022372" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_acos</title></rect>
-<rect x="984.869391" y="497.977628" width="3.605340" height="2.022372" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_asin</title></rect>
-<rect x="988.474732" y="495.955256" width="3.605340" height="2.022372" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_atan2</title></rect>
-<rect x="988.474732" y="497.977628" width="3.605340" height="2.022372" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_exp</title></rect>
-<rect x="992.080072" y="492.289706" width="3.782652" height="1.927573" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_fmod</title></rect>
-<rect x="992.080072" y="494.217280" width="3.782652" height="1.927573" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_log</title></rect>
-<rect x="992.080072" y="496.144853" width="3.782652" height="1.927573" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_pow</title></rect>
-<rect x="992.080072" y="498.072427" width="3.782652" height="1.927573" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_sqrt</title></rect>
-<rect x="995.862724" y="492.289706" width="2.206547" height="3.304412" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/targsupp</title></rect>
-<rect x="998.069271" y="492.289706" width="1.930729" height="3.304412" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/target_options</title></rect>
-<rect x="995.862724" y="495.594118" width="2.482366" height="2.202941" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/TRK_MINNOW_DOLPHIN/mutex_TRK</title></rect>
-<rect x="998.345090" y="495.594118" width="1.654910" height="2.202941" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/misc_io</title></rect>
-<rect x="995.862724" y="497.797059" width="1.241183" height="2.202941" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/MSL_C.PPCEABI.bare.H/PPC_EABI/critical_regions.gamecube</title></rect>
-<rect x="997.103907" y="497.797059" width="1.241183" height="2.202941" fill="#e4e4e1" stroke="white" stroke-width="0.6"><title>main/auto_03_80150F38_text</title></rect>
-<rect x="998.345090" y="497.797059" width="1.654910" height="1.101471" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>main/dolphin/odenotstub/odenotstub</title></rect>
-<rect x="998.345090" y="498.898529" width="1.654910" height="1.101471" fill="#1f5f4b" stroke="white" stroke-width="0.6"><title>stage08/rel/stage08/stage08</title></rect>
+<rect x="0" y="0" width="23.26204" height="26.99534" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/game</title></rect>
+<rect x="0" y="26.99534" width="23.26204" height="1.410497" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamecgschan</title></rect>
+<rect x="0" y="28.405836" width="2.633438" height="6.229694" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamecpadone</title></rect>
+<rect x="2.633438" y="28.405836" width="17.995163" height="6.229694" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameccamera</title></rect>
+<rect x="20.628601" y="28.405836" width="2.633438" height="6.229694" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamecstopwatch</title></rect>
+<rect x="0" y="34.63553" width="23.26204" height="15.397922" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gametitle</title></rect>
+<rect x="0" y="50.033452" width="5.506473" height="4.137937" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamemenuex</title></rect>
+<rect x="0" y="54.171389" width="5.506473" height="3.972419" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamemenucursor</title></rect>
+<rect x="5.506473" y="50.033452" width="6.068358" height="2.703452" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamecfile</title></rect>
+<rect x="5.506473" y="52.736904" width="6.068358" height="5.406904" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamecgenerator</title></rect>
+<rect x="11.574831" y="50.033452" width="2.697048" height="8.110356" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamecobjarchive</title></rect>
+<rect x="14.271879" y="50.033452" width="6.630243" height="8.110356" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamecmsg</title></rect>
+<rect x="20.902123" y="50.033452" width="2.359917" height="8.110356" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamemsgcursor</title></rect>
+<rect x="23.26204" y="0" width="51.196653" height="23.961878" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameccameraactions</title></rect>
+<rect x="74.458693" y="0" width="1.597518" height="23.961878" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameinterval</title></rect>
+<rect x="23.26204" y="23.961878" width="51.56764" height="34.18193" fill="#65ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cgame</title></rect>
+<rect x="74.82968" y="23.961878" width="1.226531" height="34.18193" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameobjupdate</title></rect>
+<rect x="0" y="58.143808" width="25.390761" height="50.541055" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamexobjshadow</title></rect>
+<rect x="0" y="108.684864" width="0.816662" height="12.276307" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamexobjdraw</title></rect>
+<rect x="0.816662" y="108.684864" width="23.683195" height="12.276307" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamemirrorfloor</title></rect>
+<rect x="24.499857" y="108.684864" width="0.890904" height="12.276307" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameclightset</title></rect>
+<rect x="25.390761" y="58.143808" width="49.644557" height="31.246781" fill="#e7e0b3" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameccameraset</title></rect>
+<rect x="75.035318" y="58.143808" width="1.020893" height="31.246781" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamereset</title></rect>
+<rect x="25.390761" y="89.390589" width="50.347889" height="31.570582" fill="#65ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameupdate</title></rect>
+<rect x="75.73865" y="89.390589" width="0.317561" height="31.570582" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamecamarea</title></rect>
+<rect x="76.056211" y="0" width="38.035957" height="30.647395" fill="#d5d999" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameobjsetup</title></rect>
+<rect x="76.056211" y="30.647395" width="0.965157" height="16.99777" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamecoordinfo</title></rect>
+<rect x="76.056211" y="47.645164" width="0.965157" height="3.777282" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamecounter</title></rect>
+<rect x="77.021368" y="30.647395" width="30.007606" height="20.775052" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_80012A8C_text</title></rect>
+<rect x="107.028974" y="30.647395" width="7.063194" height="2.064601" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameccameraview</title></rect>
+<rect x="107.028974" y="32.711996" width="7.063194" height="6.709955" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameinit</title></rect>
+<rect x="107.028974" y="39.421951" width="7.063194" height="3.354977" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameptcllink</title></rect>
+<rect x="107.028974" y="42.776928" width="7.063194" height="6.709955" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamefbsubwincam</title></rect>
+<rect x="107.028974" y="49.486883" width="7.063194" height="1.935564" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameccameraproj</title></rect>
+<rect x="114.092168" y="0" width="37.218693" height="23.606591" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800137C0_text</title></rect>
+<rect x="151.310861" y="0" width="4.787467" height="23.606591" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamefbsubwin</title></rect>
+<rect x="114.092168" y="23.606591" width="10.255794" height="9.331197" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamefbsubwinfade</title></rect>
+<rect x="114.092168" y="32.937789" width="10.255794" height="18.484658" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamefbmirror</title></rect>
+<rect x="124.347962" y="23.606591" width="21.822233" height="27.815855" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamemain</title></rect>
+<rect x="146.170195" y="23.606591" width="9.928133" height="1.83603" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gameosreport</title></rect>
+<rect x="146.170195" y="25.442622" width="9.928133" height="23.317581" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cinterpolationnone</title></rect>
+<rect x="146.170195" y="48.760203" width="9.928133" height="2.662244" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionareaexm</title></rect>
+<rect x="76.056211" y="51.422447" width="28.343227" height="26.400444" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cinterfacecameraaction</title></rect>
+<rect x="104.399437" y="51.422447" width="11.461573" height="1.431349" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cinterfacevectorinterpolationdtor</title></rect>
+<rect x="104.399437" y="52.853796" width="11.461573" height="24.094381" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cinterpolationeaseoutdivide</title></rect>
+<rect x="104.399437" y="76.948177" width="11.461573" height="0.874714" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cinterpolationlinearupdate</title></rect>
+<rect x="76.056211" y="77.822891" width="39.804799" height="33.544363" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cjobj</title></rect>
+<rect x="76.056211" y="111.367254" width="5.129974" height="6.395945" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/attrinfodtor</title></rect>
+<rect x="76.056211" y="117.763199" width="5.129974" height="3.197972" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccolordtor</title></rect>
+<rect x="81.186185" y="111.367254" width="8.074959" height="5.530611" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cshadowdtor</title></rect>
+<rect x="81.186185" y="116.897865" width="8.074959" height="4.063306" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cgsscreendtor</title></rect>
+<rect x="89.261144" y="111.367254" width="19.664901" height="9.593917" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cprimitivedtor</title></rect>
+<rect x="108.926045" y="111.367254" width="6.934965" height="3.679859" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cpadexdtor</title></rect>
+<rect x="108.926045" y="115.047113" width="2.773986" height="5.914058" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cstatus64dtor</title></rect>
+<rect x="111.700031" y="115.047113" width="4.160979" height="5.914058" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cscrnwipecircledtor</title></rect>
+<rect x="115.86101" y="51.422447" width="3.252057" height="10.089315" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cfboutlinedtor</title></rect>
+<rect x="115.86101" y="61.511762" width="3.252057" height="1.401294" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cfbtexeffvirt</title></rect>
+<rect x="115.86101" y="62.913056" width="3.252057" height="5.044658" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cstatusdtor</title></rect>
+<rect x="119.113067" y="51.422447" width="15.819329" height="10.140094" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/logodtor</title></rect>
+<rect x="119.113067" y="61.56254" width="2.565297" height="6.395173" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjsdtor</title></rect>
+<rect x="121.678364" y="61.56254" width="10.688736" height="6.395173" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cevtdtor</title></rect>
+<rect x="132.3671" y="61.56254" width="2.565297" height="6.395173" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/csounddtor</title></rect>
+<rect x="134.932396" y="51.422447" width="3.214503" height="8.222455" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xsounddtor</title></rect>
+<rect x="138.146899" y="51.422447" width="6.872386" height="5.835291" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcarddtor</title></rect>
+<rect x="138.146899" y="57.257737" width="6.872386" height="2.387164" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cmoviedtor</title></rect>
+<rect x="134.932396" y="59.644902" width="1.206041" height="8.312812" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gamecbaselight</title></rect>
+<rect x="136.138437" y="59.644902" width="8.880848" height="8.312812" fill="#c5d382" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cgameinit</title></rect>
+<rect x="145.019285" y="51.422447" width="9.463349" height="7.897441" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cthread</title></rect>
+<rect x="154.482634" y="51.422447" width="1.615694" height="7.897441" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/fbmirrorexpool</title></rect>
+<rect x="145.019285" y="59.319887" width="9.179778" height="8.637826" fill="#97c179" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/fbmirrorexdtor</title></rect>
+<rect x="154.199063" y="59.319887" width="1.899264" height="8.637826" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/arcacheinfodtor</title></rect>
+<rect x="115.86101" y="67.957713" width="40.237318" height="33.297044" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cgamector</title></rect>
+<rect x="115.86101" y="101.254757" width="7.689763" height="4.859463" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cspritedtor</title></rect>
+<rect x="115.86101" y="106.11422" width="3.417672" height="3.200134" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cmsgcursorctor</title></rect>
+<rect x="119.278682" y="106.11422" width="4.27209" height="3.200134" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cursorctor</title></rect>
+<rect x="123.550773" y="101.254757" width="7.237424" height="8.059597" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjctor</title></rect>
+<rect x="130.788197" y="101.254757" width="4.636475" height="4.521237" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cjanimdtor</title></rect>
+<rect x="130.788197" y="105.775995" width="4.636475" height="3.53836" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cjarchivedtor</title></rect>
+<rect x="115.86101" y="109.314355" width="9.312303" height="10.080858" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cxobjintpctor</title></rect>
+<rect x="115.86101" y="119.395213" width="9.312303" height="1.565959" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cobjarchivector</title></rect>
+<rect x="125.173313" y="109.314355" width="6.150815" height="3.55628" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cgeneratorctor</title></rect>
+<rect x="131.324128" y="109.314355" width="4.100543" height="3.55628" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/menuexctor</title></rect>
+<rect x="125.173313" y="112.870634" width="10.251359" height="8.090537" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/titlector</title></rect>
+<rect x="135.424671" y="101.254757" width="10.082454" height="2.440703" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/clightctor</title></rect>
+<rect x="135.424671" y="103.69546" width="10.082454" height="12.384306" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cscrnwipedtor</title></rect>
+<rect x="135.424671" y="116.079766" width="5.788076" height="4.881405" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ctpldtor</title></rect>
+<rect x="141.212747" y="116.079766" width="4.294379" height="4.881405" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cfilearchivedtor</title></rect>
+<rect x="145.507126" y="101.254757" width="8.321659" height="6.023795" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cbasector</title></rect>
+<rect x="153.828784" y="101.254757" width="2.269543" height="6.023795" fill="#63ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameractor</title></rect>
+<rect x="145.507126" y="107.278552" width="10.591202" height="9.035692" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cgsctor</title></rect>
+<rect x="145.507126" y="116.314244" width="9.022135" height="4.646927" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ctiledtor</title></rect>
+<rect x="154.529261" y="116.314244" width="1.569067" height="4.646927" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cgschannelctor</title></rect>
+<rect x="0" y="120.961171" width="27.584811" height="25.639472" fill="#bfd07e" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/fbmirrorex</title></rect>
+<rect x="0" y="146.600644" width="1.165555" height="14.075277" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cpaddtor</title></rect>
+<rect x="1.165555" y="146.600644" width="24.929934" height="14.075277" fill="#e9e1b6" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/progressive</title></rect>
+<rect x="26.09549" y="146.600644" width="1.489321" height="14.075277" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cfiletextdtor</title></rect>
+<rect x="0" y="160.675921" width="27.584811" height="27.787109" fill="#99c179" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gxa</title></rect>
+<rect x="0" y="188.463029" width="27.584811" height="60.728544" fill="#6ab073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/sound</title></rect>
+<rect x="27.584811" y="120.961171" width="126.992479" height="128.230402" fill="#b9ce7d" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/gxb</title></rect>
+<rect x="154.577289" y="120.961171" width="1.521038" height="128.230402" fill="#81b876" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/titlestates</title></rect>
+<rect x="156.098328" y="0" width="185.405854" height="249.191573" fill="#cfd790" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/stg</title></rect>
+<rect x="341.504181" y="0" width="8.923093" height="50.253586" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_fn_80062B6C_text</title></rect>
+<rect x="341.504181" y="50.253586" width="8.923093" height="35.953785" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/menu_cleanup</title></rect>
+<rect x="350.427274" y="0" width="109.847079" height="86.207371" fill="#bdd07d" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/infoscrn</title></rect>
+<rect x="460.274353" y="0" width="15.066646" height="2.117234" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/infopointinit</title></rect>
+<rect x="475.340999" y="0" width="7.748561" height="2.117234" fill="#a5c67a" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/infopointdtor</title></rect>
+<rect x="460.274353" y="2.117234" width="22.815207" height="84.090137" fill="#6ab073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/stage_data</title></rect>
+<rect x="341.504181" y="86.207371" width="141.585378" height="99.686929" fill="#68af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/evt</title></rect>
+<rect x="341.504181" y="185.8943" width="15.723709" height="10.897333" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/evtqueue</title></rect>
+<rect x="341.504181" y="196.791633" width="15.723709" height="14.31724" fill="#76b474" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/evtinit</title></rect>
+<rect x="341.504181" y="211.108873" width="15.723709" height="3.535837" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/evtobj</title></rect>
+<rect x="341.504181" y="214.64471" width="15.723709" height="27.707048" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_fn_8007F664_text</title></rect>
+<rect x="341.504181" y="242.351758" width="15.723709" height="6.839815" fill="#91be78" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/evtdtor</title></rect>
+<rect x="357.22789" y="185.8943" width="97.654026" height="63.297273" fill="#6fb174" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/msg</title></rect>
+<rect x="454.881916" y="185.8943" width="28.207643" height="11.308854" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800869AC_text</title></rect>
+<rect x="454.881916" y="197.203155" width="7.435688" height="18.998875" fill="#65ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardcheck</title></rect>
+<rect x="462.317605" y="197.203155" width="10.649824" height="18.998875" fill="#68af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardheader</title></rect>
+<rect x="472.967429" y="197.203155" width="10.12213" height="18.998875" fill="#69b073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardload</title></rect>
+<rect x="454.881916" y="216.20203" width="12.55888" height="9.144016" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardfile</title></rect>
+<rect x="467.440796" y="216.20203" width="14.253332" height="9.144016" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardpos</title></rect>
+<rect x="481.694128" y="216.20203" width="1.395431" height="9.144016" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardcamera</title></rect>
+<rect x="454.881916" y="225.346046" width="10.205204" height="23.845527" fill="#65ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardrestore</title></rect>
+<rect x="465.087121" y="225.346046" width="18.002439" height="13.011254" fill="#73b374" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardcapture</title></rect>
+<rect x="465.087121" y="238.3573" width="18.002439" height="10.834273" fill="#8fbe78" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardbanner</title></rect>
+<rect x="0" y="249.191573" width="16.153262" height="24.713328" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardformat</title></rect>
+<rect x="16.153262" y="249.191573" width="9.699333" height="19.357207" fill="#6ab073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardscan</title></rect>
+<rect x="16.153262" y="268.548781" width="9.699333" height="5.35612" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardscanjob</title></rect>
+<rect x="0" y="273.904901" width="25.852596" height="11.598695" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_8008933C_text</title></rect>
+<rect x="0" y="285.503596" width="11.420678" height="24.819091" fill="#6cb173" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardread</title></rect>
+<rect x="11.420678" y="285.503596" width="14.431918" height="18.251189" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_80089D3C_text</title></rect>
+<rect x="11.420678" y="303.754785" width="11.795317" height="6.567902" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardjob</title></rect>
+<rect x="23.215995" y="303.754785" width="2.6366" height="6.567902" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/memcardinit</title></rect>
+<rect x="25.852596" y="249.191573" width="35.558501" height="59.747013" fill="#c9d588" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cjanim</title></rect>
+<rect x="25.852596" y="308.938586" width="35.558501" height="1.384101" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjfloor</title></rect>
+<rect x="61.411097" y="249.191573" width="79.794171" height="61.131113" fill="#d1d894" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/obja</title></rect>
+<rect x="141.205268" y="249.191573" width="0.223638" height="61.131113" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjwalk</title></rect>
+<rect x="141.428906" y="249.191573" width="28.405257" height="29.038035" fill="#e1deab" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjinit</title></rect>
+<rect x="169.834163" y="249.191573" width="1.726286" height="29.038035" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjcameradtor</title></rect>
+<rect x="141.428906" y="278.229609" width="12.483068" height="10.440759" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjcamera</title></rect>
+<rect x="141.428906" y="288.670367" width="12.483068" height="2.263381" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjlightdtor</title></rect>
+<rect x="153.911974" y="278.229609" width="13.702678" height="12.70414" fill="#69b073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjlight</title></rect>
+<rect x="167.614652" y="278.229609" width="3.945797" height="8.546422" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjmapdtor</title></rect>
+<rect x="167.614652" y="286.77603" width="3.945797" height="4.157719" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ctrigondtor</title></rect>
+<rect x="141.428906" y="290.933749" width="28.345274" height="19.388938" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/obja_map</title></rect>
+<rect x="169.77418" y="290.933749" width="1.786269" height="11.73541" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/drsmenudtor</title></rect>
+<rect x="169.77418" y="302.669159" width="1.786269" height="7.653528" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/octamenureset</title></rect>
+<rect x="171.56045" y="249.191573" width="51.943739" height="59.306304" fill="#dcdca3" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/efftrail</title></rect>
+<rect x="171.56045" y="308.497877" width="51.943739" height="1.824809" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjmatcolor</title></rect>
+<rect x="0" y="310.322687" width="159.322535" height="189.677313" fill="#d6da9b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/obja_chr</title></rect>
+<rect x="159.322535" y="310.322687" width="9.679961" height="2.353877" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800B7898_text</title></rect>
+<rect x="159.322535" y="312.676564" width="9.679961" height="14.311573" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjchrrestore</title></rect>
+<rect x="159.322535" y="326.988136" width="9.679961" height="11.86354" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjchrreset</title></rect>
+<rect x="169.002496" y="310.322687" width="35.652925" height="28.52899" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800B7D54_text</title></rect>
+<rect x="204.65542" y="310.322687" width="18.848768" height="7.543258" fill="#65ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjchritem</title></rect>
+<rect x="204.65542" y="317.865945" width="18.848768" height="19.003209" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800B9134_text</title></rect>
+<rect x="204.65542" y="336.869154" width="18.848768" height="1.982523" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjchratcanim</title></rect>
+<rect x="159.322535" y="338.851677" width="30.192162" height="41.567805" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800B97FC_text</title></rect>
+<rect x="159.322535" y="380.419482" width="4.483984" height="12.195638" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjchrstop</title></rect>
+<rect x="163.806519" y="380.419482" width="25.708178" height="12.195638" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800BAE70_text</title></rect>
+<rect x="189.514697" y="338.851677" width="12.658527" height="14.832058" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjchrjointrot</title></rect>
+<rect x="189.514697" y="353.683735" width="12.658527" height="2.088008" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xaction</title></rect>
+<rect x="202.173224" y="338.851677" width="20.684572" height="16.920066" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800BB77C_text</title></rect>
+<rect x="222.857796" y="338.851677" width="0.646393" height="16.920066" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xactioninit</title></rect>
+<rect x="189.514697" y="355.771743" width="31.074075" height="12.817419" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800BBDAC_text</title></rect>
+<rect x="220.588772" y="355.771743" width="2.915417" height="12.817419" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/atcmenudtor</title></rect>
+<rect x="189.514697" y="368.589162" width="15.970509" height="24.025958" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800BC524_text</title></rect>
+<rect x="205.485206" y="368.589162" width="8.8178" height="3.824361" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xactpoppershotdtor</title></rect>
+<rect x="205.485206" y="372.413523" width="4.748046" height="8.062166" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugdtor</title></rect>
+<rect x="210.233252" y="372.413523" width="4.069754" height="8.062166" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugcordnodedtor</title></rect>
+<rect x="214.303006" y="368.589162" width="4.600591" height="4.754611" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjwireeffdtor</title></rect>
+<rect x="218.903597" y="368.589162" width="4.600591" height="4.754611" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjcopterdtor</title></rect>
+<rect x="214.303006" y="373.343773" width="3.067061" height="7.131916" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjattachmentdtor</title></rect>
+<rect x="217.370067" y="373.343773" width="6.134122" height="3.565958" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjpopperdtor</title></rect>
+<rect x="217.370067" y="376.909731" width="6.134122" height="3.565958" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjradardtor</title></rect>
+<rect x="205.485206" y="380.475689" width="3.453638" height="6.333616" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjoxdtor</title></rect>
+<rect x="205.485206" y="386.809305" width="3.453638" height="5.805815" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/oxmenumarkdtor</title></rect>
+<rect x="208.938844" y="380.475689" width="6.60696" height="12.139431" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjfloorheight</title></rect>
+<rect x="215.545805" y="380.475689" width="7.958384" height="6.756853" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xpaddtor</title></rect>
+<rect x="215.545805" y="387.232542" width="4.741165" height="5.382578" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/oxmenudtor</title></rect>
+<rect x="220.28697" y="387.232542" width="3.217219" height="5.099284" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cptcldtor</title></rect>
+<rect x="220.28697" y="392.331826" width="3.217219" height="0.283294" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800BD320_text</title></rect>
+<rect x="159.322535" y="392.61512" width="64.181654" height="107.157671" fill="#d6da9b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xactradar</title></rect>
+<rect x="159.322535" y="499.772791" width="64.181654" height="0.227209" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xacttumble</title></rect>
+<rect x="223.504189" y="249.191573" width="126.522158" height="123.498856" fill="#d4d997" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/objb_act</title></rect>
+<rect x="223.504189" y="372.690429" width="58.53768" height="26.328461" fill="#c8d485" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/objb_attach</title></rect>
+<rect x="282.041869" y="372.690429" width="0.692344" height="26.328461" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjradarinit</title></rect>
+<rect x="223.504189" y="399.01889" width="21.824281" height="35.622669" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjpopper</title></rect>
+<rect x="245.32847" y="399.01889" width="36.919622" height="35.622669" fill="#d3d996" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/objb_plug</title></rect>
+<rect x="282.248092" y="399.01889" width="0.486121" height="35.622669" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugrelease</title></rect>
+<rect x="282.734213" y="372.690429" width="13.981354" height="29.139069" fill="#d7da9c" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugload</title></rect>
+<rect x="296.715567" y="372.690429" width="19.517594" height="29.139069" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800D9B10_text</title></rect>
+<rect x="282.734213" y="401.829498" width="8.999717" height="11.241169" fill="#6bb073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugnodedraw</title></rect>
+<rect x="282.734213" y="413.070667" width="8.999717" height="21.570892" fill="#6ab073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugcorddraw</title></rect>
+<rect x="291.733931" y="401.829498" width="24.499231" height="32.812061" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800DA9E0_text</title></rect>
+<rect x="316.233161" y="372.690429" width="2.07443" height="11.423311" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugcordend</title></rect>
+<rect x="318.307591" y="372.690429" width="12.366792" height="11.423311" fill="#67af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugcordreset</title></rect>
+<rect x="316.233161" y="384.113741" width="6.552036" height="11.684776" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugcord</title></rect>
+<rect x="316.233161" y="395.798517" width="6.552036" height="1.947463" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugcordpointpool</title></rect>
+<rect x="322.785197" y="384.113741" width="6.609858" height="4.274516" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugcordpointdtor</title></rect>
+<rect x="329.395055" y="384.113741" width="1.279327" height="4.274516" fill="#a4c67a" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugcordpointctor</title></rect>
+<rect x="322.785197" y="388.388256" width="7.889186" height="9.357723" fill="#6db173" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugnodes</title></rect>
+<rect x="330.674383" y="372.690429" width="19.351964" height="19.215535" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800DBDDC_text</title></rect>
+<rect x="330.674383" y="391.905964" width="19.351964" height="5.840015" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjplugnode</title></rect>
+<rect x="316.233161" y="397.74598" width="33.793186" height="12.109733" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/inventory</title></rect>
+<rect x="316.233161" y="409.855713" width="14.083558" height="24.785846" fill="#69af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/params</title></rect>
+<rect x="330.31672" y="409.855713" width="17.096196" height="8.369847" fill="#67af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/objb_sound</title></rect>
+<rect x="347.412916" y="409.855713" width="2.613431" height="8.369847" fill="#81b876" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjfreedtor</title></rect>
+<rect x="330.31672" y="418.22556" width="19.709627" height="16.415999" fill="#72b374" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjfree</title></rect>
+<rect x="223.504189" y="434.641559" width="26.026995" height="10.47043" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800DDB8C_text</title></rect>
+<rect x="223.504189" y="445.111989" width="19.559681" height="17.33399" fill="#67af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjfreeevent</title></rect>
+<rect x="243.06387" y="445.111989" width="6.467314" height="17.33399" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjdustpad</title></rect>
+<rect x="249.531184" y="434.641559" width="18.192673" height="16.632554" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjdustbillboard</title></rect>
+<rect x="249.531184" y="451.274112" width="18.192673" height="11.171866" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjdustevent</title></rect>
+<rect x="267.723857" y="434.641559" width="18.881044" height="27.80442" fill="#91be78" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjdust</title></rect>
+<rect x="223.504189" y="462.445978" width="9.634993" height="37.554022" fill="#74b374" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjhbox</title></rect>
+<rect x="233.139182" y="462.445978" width="23.954001" height="37.554022" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800DFFD4_text</title></rect>
+<rect x="257.093184" y="462.445978" width="14.571411" height="9.882637" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjhboxpart</title></rect>
+<rect x="271.664594" y="462.445978" width="12.08136" height="9.882637" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjcoinfall</title></rect>
+<rect x="283.745954" y="462.445978" width="2.858948" height="9.882637" fill="#73b374" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjcoinparam</title></rect>
+<rect x="257.093184" y="472.328616" width="21.343296" height="27.671384" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_800E1440_text</title></rect>
+<rect x="278.43648" y="472.328616" width="8.168422" height="27.671384" fill="#69af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjcoin</title></rect>
+<rect x="286.604901" y="434.641559" width="12.527693" height="3.492107" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjflagsdtor</title></rect>
+<rect x="299.132594" y="434.641559" width="10.178751" height="3.492107" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjflagsclear</title></rect>
+<rect x="309.311345" y="434.641559" width="7.307821" height="3.492107" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjhboxdtor</title></rect>
+<rect x="316.619166" y="434.641559" width="18.008559" height="3.492107" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjcoindtor</title></rect>
+<rect x="334.627724" y="434.641559" width="9.134776" height="3.492107" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjflagsinit</title></rect>
+<rect x="343.762501" y="434.641559" width="6.263846" height="3.492107" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjletickerdtor</title></rect>
+<rect x="286.604901" y="438.133665" width="63.421446" height="61.866335" fill="#afca7c" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/objb_leticker</title></rect>
+<rect x="350.026347" y="249.191573" width="34.200652" height="98.468524" fill="#9ec379" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/objb_army</title></rect>
+<rect x="384.226999" y="249.191573" width="98.862561" height="98.468524" fill="#9ac279" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspider</title></rect>
+<rect x="350.026347" y="347.660097" width="133.063212" height="79.646077" fill="#6fb174" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspidersmall</title></rect>
+<rect x="350.026347" y="427.306174" width="21.406932" height="4.044702" fill="#83b976" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspidersmallinit</title></rect>
+<rect x="371.433279" y="427.306174" width="18.477562" height="4.044702" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspidersmallstatus</title></rect>
+<rect x="389.910841" y="427.306174" width="6.760084" height="4.044702" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspiderbossdtor</title></rect>
+<rect x="396.670924" y="427.306174" width="19.15357" height="4.044702" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspiderbossse</title></rect>
+<rect x="350.026347" y="431.350876" width="65.798147" height="48.730351" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_80100430_text</title></rect>
+<rect x="350.026347" y="480.081227" width="12.217041" height="1.641247" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspiderbossstop</title></rect>
+<rect x="350.026347" y="481.722474" width="12.217041" height="15.517247" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspiderbossgetup</title></rect>
+<rect x="350.026347" y="497.239721" width="12.217041" height="2.760279" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspiderbossstate</title></rect>
+<rect x="362.243388" y="480.081227" width="53.581106" height="19.918773" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_80103F54_text</title></rect>
+<rect x="415.824495" y="427.306174" width="26.604839" height="3.802592" fill="#79b575" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspiderbosshit</title></rect>
+<rect x="415.824495" y="431.108766" width="26.604839" height="20.828611" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_8010535C_text</title></rect>
+<rect x="415.824495" y="451.937377" width="3.509575" height="8.050532" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspiderbossdraw</title></rect>
+<rect x="419.334069" y="451.937377" width="19.246054" height="8.050532" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspiderbossupdate</title></rect>
+<rect x="438.580123" y="451.937377" width="3.849211" height="8.050532" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspiderbossload</title></rect>
+<rect x="442.429334" y="427.306174" width="17.875998" height="17.997898" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_80106088_text</title></rect>
+<rect x="442.429334" y="445.304072" width="11.04836" height="14.683837" fill="#68af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspiderbossinit</title></rect>
+<rect x="453.477693" y="445.304072" width="6.827638" height="10.679154" fill="#6ab073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjspiderbossreset</title></rect>
+<rect x="453.477693" y="455.983226" width="6.827638" height="4.004683" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactordtor</title></rect>
+<rect x="460.305331" y="427.306174" width="7.828427" height="15.600828" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactorse</title></rect>
+<rect x="468.133759" y="427.306174" width="14.955801" height="14.747658" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_80106CA4_text</title></rect>
+<rect x="468.133759" y="442.053832" width="14.955801" height="0.85317" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactorstop</title></rect>
+<rect x="460.305331" y="442.907002" width="15.687501" height="17.080907" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_801070A4_text</title></rect>
+<rect x="475.992833" y="442.907002" width="7.096727" height="17.080907" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactorlook</title></rect>
+<rect x="415.824495" y="459.987909" width="18.701191" height="20.469036" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_80107750_text</title></rect>
+<rect x="415.824495" y="480.456945" width="18.701191" height="19.543055" fill="#6cb073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactorupdate</title></rect>
+<rect x="434.525686" y="459.987909" width="17.721714" height="39.086361" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactor3dtor</title></rect>
+<rect x="434.525686" y="499.07427" width="17.721714" height="0.92573" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactor3ptcl</title></rect>
+<rect x="452.2474" y="459.987909" width="30.84216" height="25.620741" fill="#cad589" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactor3panel</title></rect>
+<rect x="452.2474" y="485.60865" width="2.659899" height="14.39135" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactor3draw</title></rect>
+<rect x="454.907298" y="485.60865" width="26.345664" height="14.39135" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactor3update</title></rect>
+<rect x="481.252963" y="485.60865" width="1.836597" height="14.39135" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactor3release</title></rect>
+<rect x="483.08956" y="0" width="118.629663" height="85.149363" fill="#d2d895" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/scrc</title></rect>
+<rect x="601.719222" y="0" width="9.044669" height="16.727567" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactor3init</title></rect>
+<rect x="601.719222" y="16.727567" width="9.044669" height="3.123823" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactortoystate</title></rect>
+<rect x="601.719222" y="19.85139" width="9.044669" height="60.561855" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactortoydtor</title></rect>
+<rect x="601.719222" y="80.413245" width="9.044669" height="4.736118" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactortoycmd</title></rect>
+<rect x="483.08956" y="85.149363" width="127.674331" height="88.09761" fill="#d6da9b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactortoy</title></rect>
+<rect x="483.08956" y="173.246974" width="2.457016" height="15.208739" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactortoydraw</title></rect>
+<rect x="485.546576" y="173.246974" width="48.900614" height="15.208739" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactortoyread</title></rect>
+<rect x="483.08956" y="188.455713" width="51.35763" height="61.402844" fill="#d8db9e" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactorjenny</title></rect>
+<rect x="534.44719" y="173.246974" width="48.636674" height="35.923249" fill="#e0dea9" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactormama</title></rect>
+<rect x="583.083864" y="173.246974" width="27.680027" height="0.263415" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactormamaupdate</title></rect>
+<rect x="583.083864" y="173.510389" width="27.680027" height="35.659834" fill="#d7da9c" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactormamahide</title></rect>
+<rect x="534.44719" y="209.170223" width="76.316701" height="40.688334" fill="#c7d384" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactorpapa</title></rect>
+<rect x="610.763891" y="0" width="61.227198" height="41.739861" fill="#c7d484" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactortao</title></rect>
+<rect x="610.763891" y="41.739861" width="42.791756" height="54.184412" fill="#a7c77b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactordeca</title></rect>
+<rect x="653.555647" y="41.739861" width="2.18838" height="13.743856" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjreadanmdtor</title></rect>
+<rect x="655.744027" y="41.739861" width="16.247062" height="13.743856" fill="#74b374" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjreadwait</title></rect>
+<rect x="653.555647" y="55.483717" width="18.435442" height="40.440556" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjs</title></rect>
+<rect x="671.991089" y="0" width="42.46555" height="32.923498" fill="#cad588" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/actor_pool</title></rect>
+<rect x="714.456639" y="0" width="26.381792" height="0.483661" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactor3pool</title></rect>
+<rect x="714.456639" y="0.483661" width="26.381792" height="23.975769" fill="#6fb274" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjactor3ctor</title></rect>
+<rect x="714.456639" y="24.45943" width="7.106932" height="8.464068" fill="#92bf78" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/xobjreadinit</title></rect>
+<rect x="721.563571" y="24.45943" width="19.27486" height="8.464068" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cinterpolationeaseout</title></rect>
+<rect x="671.991089" y="32.923498" width="42.069357" height="63.000775" fill="#6cb073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionareaex</title></rect>
+<rect x="714.060446" y="32.923498" width="9.03757" height="2.722886" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionareaexinit</title></rect>
+<rect x="723.098016" y="32.923498" width="17.740415" height="2.722886" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionareaexdtor</title></rect>
+<rect x="714.060446" y="35.646384" width="26.777985" height="60.277889" fill="#6ab073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionarea</title></rect>
+<rect x="610.763891" y="95.924273" width="112.097609" height="69.711511" fill="#75b474" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionmap2</title></rect>
+<rect x="722.8615" y="95.924273" width="17.976932" height="31.433554" fill="#67af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionchase</title></rect>
+<rect x="722.8615" y="127.357827" width="17.976932" height="38.277957" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionevt</title></rect>
+<rect x="610.763891" y="165.635784" width="52.91718" height="53.099961" fill="#75b474" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionscroll2</title></rect>
+<rect x="610.763891" y="218.735745" width="23.076225" height="26.580777" fill="#78b575" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactioneye</title></rect>
+<rect x="610.763891" y="245.316523" width="23.076225" height="4.542035" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionanim</title></rect>
+<rect x="633.840115" y="218.735745" width="29.840955" height="16.676207" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionreset</title></rect>
+<rect x="633.840115" y="235.411953" width="29.840955" height="14.446605" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccameraactionscroll</title></rect>
+<rect x="663.681071" y="165.635784" width="51.892668" height="41.449889" fill="#65ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cmotioncontrolcamera</title></rect>
+<rect x="715.573738" y="165.635784" width="4.910379" height="11.507846" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/mainloop</title></rect>
+<rect x="720.484118" y="165.635784" width="10.929554" height="11.507846" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/nubevent</title></rect>
+<rect x="731.413671" y="165.635784" width="9.42476" height="9.863868" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/nubinit</title></rect>
+<rect x="731.413671" y="175.499652" width="9.42476" height="1.643978" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/msg</title></rect>
+<rect x="715.573738" y="177.14363" width="25.264693" height="19.011394" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/msgbuf</title></rect>
+<rect x="715.573738" y="196.155024" width="14.508437" height="10.93065" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/serpoll</title></rect>
+<rect x="730.082176" y="196.155024" width="10.756255" height="2.96568" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/usr_put</title></rect>
+<rect x="730.082176" y="199.120704" width="10.756255" height="7.96497" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/dispatch</title></rect>
+<rect x="663.681071" y="207.085674" width="34.732532" height="27.605567" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/msghndlr</title></rect>
+<rect x="663.681071" y="234.69124" width="27.221171" height="15.167317" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/support</title></rect>
+<rect x="690.902242" y="234.69124" width="0.777037" height="7.037635" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/mutex_TRK</title></rect>
+<rect x="691.679279" y="234.69124" width="6.734323" height="5.142887" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/notify</title></rect>
+<rect x="691.679279" y="239.834127" width="6.734323" height="1.894748" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/flush_cache</title></rect>
+<rect x="690.902242" y="241.728875" width="7.511361" height="8.129682" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/mem_TRK</title></rect>
+<rect x="698.413603" y="207.085674" width="42.424829" height="37.874733" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/targimpl</title></rect>
+<rect x="698.413603" y="244.960407" width="1.48859" height="4.89815" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/targsupp</title></rect>
+<rect x="699.902193" y="244.960407" width="40.936238" height="4.89815" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/mpc_7xx_603e</title></rect>
+<rect x="483.08956" y="249.858557" width="59.12171" height="30.785658" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/__exception</title></rect>
+<rect x="483.08956" y="280.644216" width="25.916438" height="14.418694" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/dolphin_trk</title></rect>
+<rect x="509.005998" y="280.644216" width="1.390638" height="14.418694" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/main_TRK</title></rect>
+<rect x="483.08956" y="295.062909" width="18.420158" height="16.921939" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/dolphin_trk_glue</title></rect>
+<rect x="501.509717" y="295.062909" width="5.776497" height="2.051144" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/targcont</title></rect>
+<rect x="507.286214" y="295.062909" width="3.110421" height="2.051144" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/target_options</title></rect>
+<rect x="501.509717" y="297.114053" width="8.886918" height="13.024765" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/mslsupp</title></rect>
+<rect x="501.509717" y="310.138819" width="8.886918" height="1.84603" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/UDP_Stubs</title></rect>
+<rect x="510.396636" y="280.644216" width="10.55641" height="18.044607" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/ddh/main</title></rect>
+<rect x="510.396636" y="298.688822" width="10.55641" height="13.296026" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/CircleBuffer</title></rect>
+<rect x="520.953045" y="280.644216" width="12.599678" height="15.263017" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/gdev/main</title></rect>
+<rect x="533.552723" y="280.644216" width="4.123117" height="4.421012" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/MWTrace</title></rect>
+<rect x="537.675841" y="280.644216" width="4.535429" height="4.421012" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/TRK_MINNOW_DOLPHIN/MWCriticalSection_gc</title></rect>
+<rect x="533.552723" y="285.065227" width="8.658546" height="5.263109" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/Runtime.PPCEABI.H/__va_arg</title></rect>
+<rect x="533.552723" y="290.328337" width="3.920851" height="5.578896" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
+<rect x="537.473574" y="290.328337" width="4.737695" height="5.578896" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_dt__Q23std9exception_text</title></rect>
+<rect x="520.953045" y="295.907232" width="1.247149" height="13.885214" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_dl__FPv_text</title></rect>
+<rect x="520.953045" y="309.792446" width="1.247149" height="2.192402" fill="#e4e4e1" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/auto_03_80150F38_text</title></rect>
+<rect x="522.200194" y="295.907232" width="17.913597" height="16.077616" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/Runtime.PPCEABI.H/NMWException</title></rect>
+<rect x="540.113791" y="295.907232" width="2.097478" height="16.077616" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/Runtime.PPCEABI.H/ptmf</title></rect>
+<rect x="542.21127" y="249.858557" width="26.158602" height="15.29563" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/Runtime.PPCEABI.H/runtime</title></rect>
+<rect x="568.369872" y="249.858557" width="1.847191" height="15.29563" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/Runtime.PPCEABI.H/__init_cpp_exceptions</title></rect>
+<rect x="542.21127" y="265.154187" width="28.005793" height="42.111797" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/Runtime.PPCEABI.H/Gecko_ExceptionPPC</title></rect>
+<rect x="542.21127" y="307.265984" width="8.884596" height="4.718864" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/Runtime.PPCEABI.H/GCN_mem_alloc</title></rect>
+<rect x="551.095866" y="307.265984" width="19.121196" height="4.718864" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/PPC_EABI/abort_exit</title></rect>
+<rect x="570.217062" y="249.858557" width="28.280101" height="9.700696" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/alloc</title></rect>
+<rect x="598.497164" y="249.858557" width="6.576768" height="9.700696" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/ansi_files</title></rect>
+<rect x="570.217062" y="259.559253" width="34.856869" height="52.425595" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/ansi_fp</title></rect>
+<rect x="483.08956" y="311.984848" width="4.100657" height="13.780203" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/buffer_io</title></rect>
+<rect x="483.08956" y="325.765051" width="1.025164" height="2.667136" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/PPC_EABI/critical_regions.gamecube</title></rect>
+<rect x="484.114724" y="325.765051" width="3.075493" height="2.667136" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/ctype</title></rect>
+<rect x="487.190216" y="311.984848" width="12.523628" height="16.447339" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/direct_io</title></rect>
+<rect x="499.713844" y="311.984848" width="10.473299" height="16.447339" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/file_io</title></rect>
+<rect x="510.187144" y="311.984848" width="13.299428" height="16.447339" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/FILE_POS</title></rect>
+<rect x="523.486572" y="311.984848" width="8.977114" height="7.106875" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/mbstring</title></rect>
+<rect x="523.486572" y="319.091723" width="8.977114" height="9.340464" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/mem</title></rect>
+<rect x="532.463686" y="311.984848" width="10.196228" height="16.089788" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs</title></rect>
+<rect x="532.463686" y="328.074637" width="10.196228" height="0.357551" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/misc_io</title></rect>
+<rect x="483.08956" y="328.432187" width="40.935934" height="45.731253" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/printf</title></rect>
+<rect x="524.025494" y="328.432187" width="9.16612" height="9.04843" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/qsort</title></rect>
+<rect x="533.191614" y="328.432187" width="4.633423" height="1.96705" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/rand</title></rect>
+<rect x="533.191614" y="330.399237" width="4.633423" height="7.08138" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/scanf</title></rect>
+<rect x="537.825037" y="328.432187" width="4.834877" height="9.04843" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/signal</title></rect>
+<rect x="524.025494" y="337.480617" width="18.63442" height="12.276518" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/string</title></rect>
+<rect x="524.025494" y="349.757135" width="18.63442" height="13.205816" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/strtoul</title></rect>
+<rect x="524.025494" y="362.962952" width="6.998079" height="4.4281" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common/wchar_io</title></rect>
+<rect x="524.025494" y="367.391052" width="6.998079" height="6.772389" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/PPC_EABI/uart_console_io_gcn</title></rect>
+<rect x="531.023573" y="362.962952" width="11.636341" height="11.200489" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_acos</title></rect>
+<rect x="542.659914" y="311.984848" width="11.060225" height="11.701506" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_asin</title></rect>
+<rect x="553.720138" y="311.984848" width="12.77378" height="11.701506" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_atan2</title></rect>
+<rect x="542.659914" y="323.686355" width="6.491568" height="19.234829" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_exp</title></rect>
+<rect x="549.151482" y="323.686355" width="17.342437" height="10.878715" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod</title></rect>
+<rect x="549.151482" y="334.565069" width="17.342437" height="8.356114" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_log</title></rect>
+<rect x="542.659914" y="342.921183" width="23.834005" height="20.037873" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_pow</title></rect>
+<rect x="542.659914" y="362.959057" width="18.871977" height="11.204383" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_rem_pio2</title></rect>
+<rect x="561.53189" y="362.959057" width="4.962028" height="11.204383" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_cos</title></rect>
+<rect x="566.493919" y="311.984848" width="27.488634" height="30.404198" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_rem_pio2</title></rect>
+<rect x="593.982553" y="311.984848" width="11.091379" height="3.28694" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_sin</title></rect>
+<rect x="593.982553" y="315.271789" width="11.091379" height="10.929076" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_tan</title></rect>
+<rect x="593.982553" y="326.200865" width="11.091379" height="11.01125" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_atan</title></rect>
+<rect x="593.982553" y="337.212115" width="1.760536" height="5.176931" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_copysign</title></rect>
+<rect x="595.743089" y="337.212115" width="9.330843" height="5.176931" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_cos</title></rect>
+<rect x="566.493919" y="342.389046" width="7.61693" height="9.811858" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_floor</title></rect>
+<rect x="566.493919" y="352.200904" width="7.61693" height="4.187988" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_frexp</title></rect>
+<rect x="574.110849" y="342.389046" width="11.457946" height="8.988537" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_ldexp</title></rect>
+<rect x="574.110849" y="351.377583" width="11.457946" height="5.011309" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_modf</title></rect>
+<rect x="566.493919" y="356.388892" width="7.178717" height="6.855897" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_sin</title></rect>
+<rect x="566.493919" y="363.244789" width="5.667408" height="4.82452" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_tan</title></rect>
+<rect x="572.161327" y="363.244789" width="1.511309" height="4.82452" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_acos</title></rect>
+<rect x="566.493919" y="368.069309" width="3.589358" height="2.031377" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_asin</title></rect>
+<rect x="566.493919" y="370.100686" width="3.589358" height="2.031377" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_atan2</title></rect>
+<rect x="566.493919" y="372.132063" width="3.589358" height="2.031377" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_exp</title></rect>
+<rect x="570.083277" y="368.069309" width="3.589358" height="2.031377" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_fmod</title></rect>
+<rect x="570.083277" y="370.100686" width="3.589358" height="2.031377" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_log</title></rect>
+<rect x="570.083277" y="372.132063" width="3.589358" height="2.031377" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_pow</title></rect>
+<rect x="573.672636" y="356.388892" width="11.896159" height="10.496177" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_sqrt</title></rect>
+<rect x="573.672636" y="366.885069" width="11.896159" height="7.278371" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/PPC_EABI/math_ppc</title></rect>
+<rect x="585.568795" y="342.389046" width="19.505137" height="0.373816" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_sqrt</title></rect>
+<rect x="585.568795" y="342.762862" width="19.505137" height="31.400578" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/OdemuExi2/DebuggerDriver</title></rect>
+<rect x="483.08956" y="374.16344" width="54.063591" height="27.900403" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/exi/EXIBios</title></rect>
+<rect x="483.08956" y="402.063843" width="9.757039" height="34.18853" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/exi/EXIUart</title></rect>
+<rect x="492.846598" y="402.063843" width="39.134789" height="34.18853" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/si/SIBios</title></rect>
+<rect x="531.981387" y="402.063843" width="5.171764" height="11.631149" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/si/SISamplingRate</title></rect>
+<rect x="531.981387" y="413.694993" width="5.171764" height="12.159838" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/base/PPCArch</title></rect>
+<rect x="531.981387" y="425.854831" width="5.171764" height="10.397543" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/db/db</title></rect>
+<rect x="537.153151" y="374.16344" width="32.308977" height="19.492709" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OS</title></rect>
+<rect x="537.153151" y="393.65615" width="32.308977" height="14.161129" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSAlarm</title></rect>
+<rect x="537.153151" y="407.817278" width="14.103125" height="27.207216" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSAlloc</title></rect>
+<rect x="537.153151" y="435.024494" width="14.103125" height="1.227879" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSArena</title></rect>
+<rect x="551.256276" y="407.817278" width="18.205852" height="8.260195" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSAudioSystem</title></rect>
+<rect x="551.256276" y="416.077473" width="18.205852" height="20.1749" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSCache</title></rect>
+<rect x="569.462128" y="374.16344" width="21.847946" height="26.156179" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSContext</title></rect>
+<rect x="591.310074" y="374.16344" width="13.763857" height="26.156179" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSError</title></rect>
+<rect x="569.462128" y="400.319619" width="35.611803" height="15.355878" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSExec</title></rect>
+<rect x="569.462128" y="415.675497" width="35.611803" height="20.576876" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSFatal</title></rect>
+<rect x="483.08956" y="436.252373" width="42.005805" height="25.971809" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSFont</title></rect>
+<rect x="525.095365" y="436.252373" width="18.914895" height="25.971809" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSInterrupt</title></rect>
+<rect x="483.08956" y="462.224183" width="24.440661" height="23.679806" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSLink</title></rect>
+<rect x="483.08956" y="485.903989" width="8.34086" height="14.096011" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSMessage</title></rect>
+<rect x="491.43042" y="485.903989" width="11.961699" height="14.096011" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSMemory</title></rect>
+<rect x="503.392119" y="485.903989" width="4.138101" height="6.167005" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSMutex</title></rect>
+<rect x="503.392119" y="492.070994" width="4.138101" height="7.929006" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSReboot</title></rect>
+<rect x="507.53022" y="462.224183" width="20.119716" height="13.091619" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSReset</title></rect>
+<rect x="527.649936" y="462.224183" width="16.360323" height="13.091619" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSResetSW</title></rect>
+<rect x="507.53022" y="475.315802" width="31.015418" height="24.684198" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSRtc</title></rect>
+<rect x="538.545638" y="475.315802" width="5.464621" height="19.180289" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSStopwatch</title></rect>
+<rect x="538.545638" y="494.496091" width="5.464621" height="5.503909" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSSync</title></rect>
+<rect x="544.010259" y="436.252373" width="36.241041" height="29.37376" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSThread</title></rect>
+<rect x="580.2513" y="436.252373" width="24.822631" height="17.293801" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/OSTime</title></rect>
+<rect x="580.2513" y="453.546175" width="5.885001" height="12.079959" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/Runtime.PPCEABI.H/__mem</title></rect>
+<rect x="586.136301" y="453.546175" width="14.486156" height="12.079959" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/__start</title></rect>
+<rect x="600.622457" y="453.546175" width="4.451475" height="12.079959" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/os/__ppc_eabi_init</title></rect>
+<rect x="544.010259" y="465.626133" width="27.867095" height="21.716696" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/mtx/mtx</title></rect>
+<rect x="544.010259" y="487.342829" width="5.544616" height="12.657171" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/mtx/mtxvec</title></rect>
+<rect x="549.554875" y="487.342829" width="9.289032" height="12.657171" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/mtx/mtx44</title></rect>
+<rect x="558.843907" y="487.342829" width="13.033448" height="12.657171" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/mtx/vec</title></rect>
+<rect x="571.877354" y="465.626133" width="33.196577" height="25.450938" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/dvd/dvdlow</title></rect>
+<rect x="571.877354" y="491.077071" width="33.196577" height="8.922929" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/dvd/dvdfs</title></rect>
+<rect x="605.073932" y="249.858557" width="47.666589" height="48.375316" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/dvd/dvd</title></rect>
+<rect x="652.74052" y="249.858557" width="9.589839" height="11.975029" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/dvd/dvdqueue</title></rect>
+<rect x="652.74052" y="261.833586" width="9.589839" height="9.694071" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/dvd/dvderror</title></rect>
+<rect x="652.74052" y="271.527658" width="9.589839" height="5.892475" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/dvd/dvdidutils</title></rect>
+<rect x="652.74052" y="277.420132" width="9.589839" height="7.127994" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/dvd/dvdFatal</title></rect>
+<rect x="652.74052" y="284.548126" width="9.589839" height="13.685748" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/dvd/fstload</title></rect>
+<rect x="605.073932" y="298.233873" width="57.256428" height="34.462836" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/vi/vi</title></rect>
+<rect x="605.073932" y="332.696709" width="42.167001" height="34.972218" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/pad/Pad</title></rect>
+<rect x="647.240933" y="332.696709" width="15.089427" height="34.972218" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/ai/ai</title></rect>
+<rect x="662.33036" y="249.858557" width="35.061665" height="46.088605" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/ar/ar</title></rect>
+<rect x="697.392025" y="249.858557" width="12.901116" height="16.31932" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/ar/arq</title></rect>
+<rect x="697.392025" y="266.177877" width="12.901116" height="2.896503" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/ax/AX</title></rect>
+<rect x="710.293141" y="249.858557" width="16.50584" height="19.215823" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/ax/AXAlloc</title></rect>
+<rect x="726.798981" y="249.858557" width="14.03945" height="19.215823" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/ax/AXAux</title></rect>
+<rect x="697.392025" y="269.07438" width="15.601364" height="26.872783" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/ax/AXCL</title></rect>
+<rect x="712.993389" y="269.07438" width="17.466744" height="26.872783" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/ax/AXOut</title></rect>
+<rect x="730.460133" y="269.07438" width="10.378298" height="26.872783" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/ax/AXSPB</title></rect>
+<rect x="662.33036" y="295.947163" width="37.833255" height="33.268816" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/ax/AXVPB</title></rect>
+<rect x="700.163615" y="295.947163" width="0.49312" height="33.268816" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/ax/AXProf</title></rect>
+<rect x="662.33036" y="329.215978" width="38.326375" height="22.87677" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/axfx/reverb_hi</title></rect>
+<rect x="662.33036" y="352.092748" width="38.326375" height="15.576179" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/axfx/reverb_std</title></rect>
+<rect x="700.656735" y="295.947163" width="21.920259" height="27.899358" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/axfx/chorus</title></rect>
+<rect x="722.576993" y="295.947163" width="18.261438" height="17.568111" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/axfx/delay</title></rect>
+<rect x="722.576993" y="313.515274" width="2.029049" height="10.331247" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/axfx/axfx</title></rect>
+<rect x="724.606042" y="313.515274" width="14.467999" height="10.331247" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/dsp/dsp</title></rect>
+<rect x="739.074041" y="313.515274" width="1.76439" height="10.331247" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/dsp/dsp_debug</title></rect>
+<rect x="700.656735" y="323.846521" width="40.181697" height="12.361911" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/dsp/dsp_task</title></rect>
+<rect x="700.656735" y="336.208431" width="40.181697" height="31.460496" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDBios</title></rect>
+<rect x="605.073932" y="367.668927" width="43.103686" height="24.866249" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDUnlock</title></rect>
+<rect x="648.177617" y="367.668927" width="21.038704" height="7.104643" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDRdwr</title></rect>
+<rect x="648.177617" y="374.773569" width="13.187675" height="17.761607" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDBlock</title></rect>
+<rect x="661.365293" y="374.773569" width="7.851028" height="17.761607" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDDir</title></rect>
+<rect x="605.073932" y="392.535176" width="22.522933" height="39.899673" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDCheck</title></rect>
+<rect x="627.596865" y="392.535176" width="16.104126" height="39.899673" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDMount</title></rect>
+<rect x="643.70099" y="392.535176" width="25.515331" height="18.145957" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDFormat</title></rect>
+<rect x="643.70099" y="410.681133" width="15.878999" height="21.753716" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDOpen</title></rect>
+<rect x="659.579989" y="410.681133" width="9.636332" height="21.753716" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDCreate</title></rect>
+<rect x="605.073932" y="432.434849" width="27.535579" height="9.433395" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDRead</title></rect>
+<rect x="605.073932" y="441.868244" width="9.360418" height="21.713358" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDWrite</title></rect>
+<rect x="614.434349" y="441.868244" width="18.175161" height="6.368583" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDDelete</title></rect>
+<rect x="614.434349" y="448.236827" width="18.175161" height="15.344775" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/card/CARDStat</title></rect>
+<rect x="632.60951" y="432.434849" width="36.606811" height="31.146753" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXInit</title></rect>
+<rect x="605.073932" y="463.581602" width="11.81241" height="36.418398" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXFifo</title></rect>
+<rect x="616.886342" y="463.581602" width="33.184865" height="36.418398" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXAttr</title></rect>
+<rect x="650.071207" y="463.581602" width="19.145114" height="26.897248" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXMisc</title></rect>
+<rect x="650.071207" y="490.47885" width="19.145114" height="9.52115" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXGeometry</title></rect>
+<rect x="669.216321" y="367.668927" width="19.994037" height="31.088606" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXFrameBuf</title></rect>
+<rect x="689.210358" y="367.668927" width="11.111056" height="31.088606" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXLight</title></rect>
+<rect x="669.216321" y="398.757533" width="31.105093" height="30.063063" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXTexture</title></rect>
+<rect x="669.216321" y="428.820596" width="31.105093" height="4.600293" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXBump</title></rect>
+<rect x="700.321414" y="367.668927" width="19.205572" height="21.639886" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXTev</title></rect>
+<rect x="719.526986" y="367.668927" width="21.311446" height="21.639886" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXPixel</title></rect>
+<rect x="700.321414" y="389.308813" width="39.345037" height="21.774854" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXDraw</title></rect>
+<rect x="739.666451" y="389.308813" width="1.17198" height="21.774854" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXDisplayList</title></rect>
+<rect x="700.321414" y="411.083668" width="18.72841" height="22.337222" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXTransform</title></rect>
+<rect x="719.049824" y="411.083668" width="21.788607" height="22.337222" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/gx/GXPerf</title></rect>
+<rect x="669.216321" y="433.420889" width="2.997944" height="62.322912" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/arc/arc</title></rect>
+<rect x="669.216321" y="495.743801" width="2.997944" height="3.64817" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/amcstubs/AmcExi2Stubs</title></rect>
+<rect x="669.216321" y="499.391972" width="2.997944" height="0.608028" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/odenotstub/odenotstub</title></rect>
+<rect x="672.214265" y="433.420889" width="55.728901" height="66.579111" fill="#69b073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ut</title></rect>
+<rect x="727.943166" y="433.420889" width="12.895265" height="66.579111" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/mem</title></rect>
+<rect x="740.838431" y="0" width="17.547491" height="63.834319" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccamera</title></rect>
+<rect x="740.838431" y="63.834319" width="17.547491" height="31.475669" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/clight</title></rect>
+<rect x="740.838431" y="95.309988" width="17.547491" height="15.789775" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cshadow</title></rect>
+<rect x="758.385922" y="0" width="102.62698" height="66.473359" fill="#66af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cgs</title></rect>
+<rect x="758.385922" y="66.473359" width="56.000633" height="44.626403" fill="#81b876" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cprimitive</title></rect>
+<rect x="814.386555" y="66.473359" width="20.504973" height="14.71249" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cpad</title></rect>
+<rect x="814.386555" y="81.185848" width="20.504973" height="29.913914" fill="#6bb073" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cfont</title></rect>
+<rect x="834.891527" y="66.473359" width="26.121375" height="22.644672" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cfile</title></rect>
+<rect x="834.891527" y="89.118031" width="26.121375" height="21.981731" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ctpl</title></rect>
+<rect x="740.838431" y="111.099762" width="52.918476" height="66.4293" fill="#67af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cobj</title></rect>
+<rect x="793.756907" y="111.099762" width="30.664453" height="64.259573" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ctrigon</title></rect>
+<rect x="793.756907" y="175.359335" width="30.664453" height="2.169727" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ctoon</title></rect>
+<rect x="824.42136" y="111.099762" width="36.591542" height="54.996586" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/fbeffect</title></rect>
+<rect x="824.42136" y="166.096348" width="36.591542" height="11.432714" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cparticle</title></rect>
+<rect x="740.838431" y="177.529062" width="8.85557" height="22.848296" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cmodule</title></rect>
+<rect x="749.694001" y="177.529062" width="17.99037" height="22.848296" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/ccard</title></rect>
+<rect x="767.684371" y="177.529062" width="11.887207" height="22.848296" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/cmovie</title></rect>
+<rect x="740.838431" y="200.377358" width="38.733146" height="16.942094" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/state</title></rect>
+<rect x="740.838431" y="217.319453" width="38.733146" height="28.307416" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/shadow</title></rect>
+<rect x="779.571577" y="177.529062" width="39.482647" height="68.097806" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/pobj</title></rect>
+<rect x="819.054224" y="177.529062" width="41.958678" height="68.097806" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/tobj</title></rect>
+<rect x="861.012902" y="0" width="67.47101" height="54.033133" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/psdisp</title></rect>
+<rect x="861.012902" y="54.033133" width="33.522381" height="39.559019" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/THPSimple</title></rect>
+<rect x="861.012902" y="93.592152" width="16.778241" height="26.726127" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/game/THPDraw</title></rect>
+<rect x="877.791143" y="93.592152" width="16.744139" height="26.726127" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/dobj</title></rect>
+<rect x="894.535282" y="54.033133" width="33.948629" height="22.551447" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/tev</title></rect>
+<rect x="894.535282" y="76.58458" width="33.948629" height="43.733699" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/mobj</title></rect>
+<rect x="928.483911" y="0" width="71.516089" height="33.007557" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/aobj</title></rect>
+<rect x="928.483911" y="33.007557" width="71.516089" height="28.661774" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/lobj</title></rect>
+<rect x="928.483911" y="61.669331" width="42.191695" height="58.648948" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/cobj</title></rect>
+<rect x="970.675606" y="61.669331" width="29.324394" height="58.648948" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/fobj</title></rect>
+<rect x="861.012902" y="120.318279" width="62.063787" height="83.264936" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/jobj</title></rect>
+<rect x="861.012902" y="203.583215" width="28.571454" height="42.043653" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/displayfunc</title></rect>
+<rect x="889.584355" y="203.583215" width="33.492334" height="18.613501" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/initialize</title></rect>
+<rect x="889.584355" y="222.196716" width="33.492334" height="23.430152" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/video</title></rect>
+<rect x="923.076689" y="120.318279" width="34.057891" height="43.111701" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/controller</title></rect>
+<rect x="923.076689" y="163.42998" width="34.057891" height="14.424089" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/rumble</title></rect>
+<rect x="957.13458" y="120.318279" width="42.86542" height="13.94807" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/spline</title></rect>
+<rect x="957.13458" y="134.266349" width="42.86542" height="32.999093" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/mtx</title></rect>
+<rect x="957.13458" y="167.265442" width="9.898641" height="10.588626" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/util</title></rect>
+<rect x="967.033221" y="167.265442" width="32.966779" height="10.588626" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/objalloc</title></rect>
+<rect x="923.076689" y="177.854069" width="37.332012" height="50.048357" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/robj</title></rect>
+<rect x="923.076689" y="227.902426" width="8.227441" height="17.724443" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/id</title></rect>
+<rect x="931.30413" y="227.902426" width="29.104572" height="17.724443" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/wobj</title></rect>
+<rect x="960.408701" y="177.854069" width="16.712546" height="9.870822" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/fog</title></rect>
+<rect x="960.408701" y="187.724891" width="1.813154" height="11.561405" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/perf</title></rect>
+<rect x="962.221855" y="187.724891" width="13.559235" height="11.561405" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/list</title></rect>
+<rect x="975.78109" y="187.724891" width="1.340157" height="11.561405" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/object</title></rect>
+<rect x="977.121247" y="177.854069" width="10.758967" height="21.432227" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/quatlib</title></rect>
+<rect x="987.880215" y="177.854069" width="12.119785" height="6.768072" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/memory</title></rect>
+<rect x="987.880215" y="184.62214" width="12.119785" height="10.979316" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/archive</title></rect>
+<rect x="987.880215" y="195.601457" width="12.119785" height="3.684839" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/random</title></rect>
+<rect x="960.408701" y="199.286296" width="39.591299" height="32.090789" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/bytecode</title></rect>
+<rect x="960.408701" y="231.377085" width="35.497852" height="14.249784" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/class</title></rect>
+<rect x="995.906554" y="231.377085" width="4.093446" height="14.249784" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/hash</title></rect>
+<rect x="740.838431" y="245.626868" width="52.398743" height="55.34733" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/texp</title></rect>
+<rect x="793.237175" y="245.626868" width="17.09299" height="55.34733" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/texpdag</title></rect>
+<rect x="810.330165" y="245.626868" width="45.762447" height="53.375618" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/texpopt</title></rect>
+<rect x="810.330165" y="299.002487" width="45.762447" height="1.971711" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/debug</title></rect>
+<rect x="740.838431" y="300.974198" width="14.395655" height="71.73248" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/particle</title></rect>
+<rect x="755.234086" y="300.974198" width="51.445726" height="71.73248" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/psinterpret</title></rect>
+<rect x="806.679812" y="300.974198" width="49.4128" height="49.340289" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/generator</title></rect>
+<rect x="806.679812" y="350.314487" width="21.043178" height="22.392191" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/psdisptev</title></rect>
+<rect x="827.72299" y="350.314487" width="10.786155" height="22.392191" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/psappsrt</title></rect>
+<rect x="838.509145" y="350.314487" width="17.583468" height="22.392191" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/pslist</title></rect>
+<rect x="740.838431" y="372.706678" width="78.593288" height="49.448043" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/axdriver</title></rect>
+<rect x="819.431719" y="372.706678" width="36.660893" height="29.410274" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/devcom</title></rect>
+<rect x="819.431719" y="402.116951" width="36.660893" height="20.037769" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/dvdsche</title></rect>
+<rect x="740.838431" y="422.15472" width="80.469523" height="77.84528" fill="#68af73" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/sysdolphin/baselib/synth</title></rect>
+<rect x="821.307955" y="422.15472" width="34.784658" height="55.311809" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/mic/mic</title></rect>
+<rect x="821.307955" y="477.46653" width="34.784658" height="22.53347" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/mic/m2s</title></rect>
+<rect x="856.092612" y="245.626868" width="68.681806" height="99.711867" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/thp/THPDec</title></rect>
+<rect x="856.092612" y="345.338736" width="17.53708" height="14.915643" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>main/dolphin/thp/THPAudio</title></rect>
+<rect x="873.629693" y="345.338736" width="14.176316" height="14.915643" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>ahk/rel/ahk/ahk</title></rect>
+<rect x="887.806009" y="345.338736" width="1.772039" height="14.915643" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>ahk/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
+<rect x="889.578048" y="345.338736" width="6.721529" height="14.915643" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>ahk/rel/module</title></rect>
+<rect x="896.299577" y="345.338736" width="19.981273" height="14.915643" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>hori/rel/hori/hori</title></rect>
+<rect x="916.28085" y="345.338736" width="8.493569" height="3.111897" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>hori/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
+<rect x="916.28085" y="348.450632" width="8.493569" height="11.803746" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>hori/rel/module</title></rect>
+<rect x="924.774419" y="245.626868" width="41.14885" height="41.884294" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>shun/rel/shun/shun</title></rect>
+<rect x="965.923269" y="245.626868" width="7.109534" height="3.717699" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>shun/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
+<rect x="973.032803" y="245.626868" width="26.967197" height="3.717699" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>shun/rel/module</title></rect>
+<rect x="965.923269" y="249.344567" width="34.076731" height="38.166595" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>shun/rel/fafa</title></rect>
+<rect x="924.774419" y="287.511162" width="57.283704" height="72.743216" fill="#63ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage01/rel/stage01/hamburg</title></rect>
+<rect x="982.058123" y="287.511162" width="3.743269" height="7.060969" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage01/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
+<rect x="985.801392" y="287.511162" width="14.198608" height="7.060969" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage01/rel/module</title></rect>
+<rect x="982.058123" y="294.572131" width="17.941877" height="65.682248" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage01/rel/ana</title></rect>
+<rect x="856.092612" y="360.254378" width="68.617703" height="82.82993" fill="#7eb775" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage02/rel/stage02/fighter</title></rect>
+<rect x="856.092612" y="443.084309" width="38.592454" height="56.915691" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage02/rel/stage02/rouka</title></rect>
+<rect x="894.685066" y="443.084309" width="6.264261" height="4.21935" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage02/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
+<rect x="900.949327" y="443.084309" width="23.760989" height="4.21935" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage02/rel/module</title></rect>
+<rect x="894.685066" y="447.303659" width="30.025249" height="43.316636" fill="#77b475" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage03/rel/stage03/decapanel</title></rect>
+<rect x="894.685066" y="490.620294" width="2.817904" height="9.379706" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage03/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
+<rect x="897.50297" y="490.620294" width="10.6886" height="9.379706" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage03/rel/module</title></rect>
+<rect x="908.19157" y="490.620294" width="5.830146" height="4.846181" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage04/rel/stage04/jenny</title></rect>
+<rect x="908.19157" y="495.466475" width="5.830146" height="4.533525" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage04/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
+<rect x="914.021716" y="490.620294" width="10.6886" height="9.379706" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage04/rel/module</title></rect>
+<rect x="924.710316" y="360.254378" width="36.289248" height="34.684311" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage04/rel/ana</title></rect>
+<rect x="924.710316" y="394.93869" width="30.773058" height="32.549506" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage04/rel/trash</title></rect>
+<rect x="955.483374" y="394.93869" width="5.51619" height="27.757954" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage06/rel/stage06/parent</title></rect>
+<rect x="955.483374" y="422.696644" width="5.51619" height="4.791552" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage06/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
+<rect x="960.999564" y="360.254378" width="13.533274" height="7.408106" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage06/rel/module</title></rect>
+<rect x="974.532838" y="360.254378" width="25.467162" height="7.408106" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage06/rel/ana</title></rect>
+<rect x="960.999564" y="367.662484" width="39.000436" height="57.255075" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage07/rel/stage07/living</title></rect>
+<rect x="960.999564" y="424.917559" width="39.000436" height="2.570636" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage07/rel/module</title></rect>
+<rect x="924.710316" y="427.488195" width="33.157627" height="39.224543" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage07/rel/fafa</title></rect>
+<rect x="924.710316" y="466.712739" width="33.157627" height="30.208671" fill="#64ae72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage07/rel/trash</title></rect>
+<rect x="924.710316" y="496.921409" width="0.5921" height="3.078591" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage08/rel/stage08/stage08</title></rect>
+<rect x="925.302416" y="496.921409" width="32.565527" height="3.078591" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage08/rel/module</title></rect>
+<rect x="957.867943" y="427.488195" width="35.632217" height="19.490792" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage09/rel/stage09/ambient</title></rect>
+<rect x="993.50016" y="427.488195" width="6.49984" height="4.066424" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage09/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
+<rect x="993.50016" y="431.55462" width="6.49984" height="15.424368" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage09/rel/module</title></rect>
+<rect x="957.867943" y="446.978988" width="42.132057" height="29.874344" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage09/rel/ana</title></rect>
+<rect x="957.867943" y="476.853332" width="4.147411" height="10.768032" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage11/rel/stage11/haisui</title></rect>
+<rect x="962.015354" y="476.853332" width="9.310515" height="10.768032" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage11/rel/module</title></rect>
+<rect x="971.325869" y="476.853332" width="6.348078" height="10.768032" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage16/rel/stage16/ufo</title></rect>
+<rect x="957.867943" y="487.621364" width="8.09911" height="12.378636" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage16/rel/module</title></rect>
+<rect x="965.967053" y="487.621364" width="11.706895" height="3.8148" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage17/rel/stage17/stage17</title></rect>
+<rect x="965.967053" y="491.436164" width="11.706895" height="8.563836" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage17/rel/module</title></rect>
+<rect x="977.673947" y="476.853332" width="4.793164" height="7.225679" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage18/rel/stage18/kako</title></rect>
+<rect x="982.467111" y="476.853332" width="3.657941" height="7.225679" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage18/Runtime.PPCEABI.H/global_destructor_chain</title></rect>
+<rect x="986.125052" y="476.853332" width="13.874948" height="7.225679" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage18/rel/module</title></rect>
+<rect x="977.673947" y="484.079011" width="11.849982" height="15.920989" fill="#62ad72" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage18/rel/ana</title></rect>
+<rect x="989.523929" y="484.079011" width="10.476071" height="6.350995" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage20/rel/stage20/stage20</title></rect>
+<rect x="989.523929" y="490.430007" width="10.476071" height="9.569993" fill="#1f5f4b" stroke="#fff" stroke-width="1" vector-effect="non-scaling-stroke"><title>stage20/rel/module</title></rect>
 </svg>
