@@ -274,10 +274,10 @@ public:
 
 // an entry in CCameraActionMap's _570 and _9A0 lists
 struct CamMapEntry {
-	Vec _00; // _00, a position
-	s32 _0C; // _0C
-	s32 _10; // _10
-	Vec _14; // _14
+	Vec mPos;         // _00, a position
+	s32 mRecordIndex; // _0C
+	s32 mSide;        // _10
+	Vec mNormal;      // _14
 };
 
 // the map action, CCameraActions holds it at _99C

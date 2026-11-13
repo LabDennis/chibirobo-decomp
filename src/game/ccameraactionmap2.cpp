@@ -553,7 +553,7 @@ void CCameraActionMap::Update(u32 step)
 			_97C = GetNearestMapCameraEntry(this, mEye);
 			SetMapCameraSideEndpoints(this);
 			if (_97C != NULL) {
-				s32 count = CountMapCameraEntriesInGroup(this, _97C->_0C);
+				s32 count = CountMapCameraEntriesInGroup(this, _97C->mRecordIndex);
 				s32 index = CountMapCameraAdjacentSideIntersections(this, _97C);
 				if (count < 2)
 					_E9C = 1;
@@ -562,7 +562,7 @@ void CCameraActionMap::Update(u32 step)
 				else {
 					s32 flag;
 					{
-						CamAreaInfo area(&gCameraAreaState._1C[_97C->_0C]);
+						CamAreaInfo area(&gCameraAreaState._1C[_97C->mRecordIndex]);
 						flag = (area._04->_2E & 1) != 0;
 					}
 					if (flag)
@@ -1906,8 +1906,8 @@ extern "C" void SetMapCameraModeFlags(CCameraActionMap* map, u32 flags);
 extern "C" void StartMapCameraTurnInterpolation(CCameraActionMap* map, s32 unused)
 {
 	CVec to(map->_984);
-	CVec a(map->_97C->_14);
-	CVec b(map->_974->_14);
+	CVec a(map->_97C->mNormal);
+	CVec b(map->_974->mNormal);
 	CVec move = a * 20.0f;
 	move += b * 5.0f;
 	to += move;
@@ -1919,7 +1919,7 @@ extern "C" void StartMapCameraTurnInterpolation(CCameraActionMap* map, s32 unuse
 		map->mTurnInterpolation->Start(from, to, 0.7f);
 		map->_DB0 = 0;
 		gGame.GetPlayer()->ResetCameraValue();
-		lbl_8065B334 = map->_974->_0C;
+		lbl_8065B334 = map->_974->mRecordIndex;
 		SetMapCameraModeFlags(map, 0x20004);
 	}
 }
@@ -2499,7 +2499,7 @@ extern "C" s32 SelectMapCameraArea(CCameraActionMap* map)
 		targetArea = -1;
 	}
 
-	s32 mapArea = map->_DA0 ? map->_9A0[0]._0C : -1;
+	s32 mapArea = map->_DA0 ? map->_9A0[0].mRecordIndex : -1;
 
 	if (eyeArea >= 0) {
 		map->_DA8 = eyeArea;
@@ -2986,7 +2986,8 @@ void CCameraActionMap::vf24()
 		DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080CamHitCll(%3d,%3d,%3d)\n", 324.0f, 370.0f, 0.0f, 12.0f, 12.0f, _4F0, _4F4, _4F8);
 	}
 	if (_974 != NULL) {
-		DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080INTRSCT(%3d-%3d)\n", 324.0f, 382.0f, 0.0f, 12.0f, 12.0f, _974->_0C, _974->_10);
+		DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080INTRSCT(%3d-%3d)\n", 324.0f, 382.0f, 0.0f, 12.0f, 12.0f, _974->mRecordIndex,
+		                       _974->mSide);
 	}
 }
 /*
@@ -3735,9 +3736,9 @@ extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
 {
 	CamMapEntry* entry = map->_97C;
 	if (entry != NULL) {
-		s32 group          = entry->_0C;
-		s32 side           = entry->_10;
-		CVec dir           = entry->_14;
+		s32 group          = entry->mRecordIndex;
+		s32 side           = entry->mSide;
+		CVec dir           = entry->mNormal;
 		CamAreaRecord* rec = &gCameraAreaState._1C[group];
 		CVec toPlayer      = gGame.GetPlayer()->mMoveTranslate;
 		toPlayer.y         = 0.0f;
@@ -3953,14 +3954,14 @@ extern "C" s32 CountMapCameraAdjacentSideIntersections(CCameraActionMap* map, Ca
 		{ 2, 0 },
 	};
 	s32 num   = map->mIntersectionCount;
-	s32 group = entry->_0C;
-	s32 side  = entry->_10;
+	s32 group = entry->mRecordIndex;
+	s32 side  = entry->mSide;
 	s32 count = 0;
 	if (num > 0) {
 		for (s32 i = 0; i < num; i++) {
-			if (map->mIntersectionEntries[i]._0C == group) {
+			if (map->mIntersectionEntries[i].mRecordIndex == group) {
 				for (s32 j = 0; j < 2; j++) {
-					if (map->mIntersectionEntries[i]._10 == sides[side][j]) {
+					if (map->mIntersectionEntries[i].mSide == sides[side][j]) {
 						count++;
 					}
 				}
@@ -3979,7 +3980,7 @@ extern "C" s32 CountMapCameraEntriesInGroup(CCameraActionMap* map, s32 value)
 	s32 count = 0;
 	if (map->mIntersectionCount > 0) {
 		for (s32 i = 0; i < map->mIntersectionCount; i++) {
-			if (map->mIntersectionEntries[i]._0C == value) {
+			if (map->mIntersectionEntries[i].mRecordIndex == value) {
 				count++;
 			}
 		}
@@ -4000,7 +4001,7 @@ extern "C" s32 FindNearestMapCameraEntry(CCameraActionMap* map, const Vec& pos)
 		s32 nearest = -1;
 		f32 minDist = 10000.0f;
 		for (s32 i = 0; i < map->mIntersectionCount; i++) {
-			f32 dist = PSVECDistance(&p, &map->mIntersectionEntries[i]._00);
+			f32 dist = PSVECDistance(&p, &map->mIntersectionEntries[i].mPos);
 			if (dist < minDist) {
 				minDist = dist;
 				nearest = i;
@@ -4098,12 +4099,12 @@ extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Ve
 					nz = normal.z;
 				}
 				count++;
-				entry->_00   = hit;
-				entry->_10   = side;
-				entry->_0C   = i;
-				entry->_14.x = nx;
-				entry->_14.y = ny;
-				entry->_14.z = nz;
+				entry->mPos         = hit;
+				entry->mSide        = side;
+				entry->mRecordIndex = i;
+				entry->mNormal.x    = nx;
+				entry->mNormal.y    = ny;
+				entry->mNormal.z    = nz;
 				entry++;
 			}
 		}
@@ -4501,12 +4502,12 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
 					nz = normal.z;
 				}
 				count++;
-				entry->_00   = hit;
-				entry->_10   = side;
-				entry->_0C   = i;
-				entry->_14.x = nx;
-				entry->_14.y = ny;
-				entry->_14.z = nz;
+				entry->mPos         = hit;
+				entry->mSide        = side;
+				entry->mRecordIndex = i;
+				entry->mNormal.x    = nx;
+				entry->mNormal.y    = ny;
+				entry->mNormal.z    = nz;
 				entry++;
 			}
 		}
