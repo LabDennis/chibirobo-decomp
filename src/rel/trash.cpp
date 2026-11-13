@@ -158,7 +158,7 @@ struct TrashObj {
 #endif
 	u32* mFlags;           // _980 in Japan _970
 	u8 _984[0x50];         // _984 in Japan _974
-	s32 mFloorContacts;    // _9D4 in Japan _9C4
+	s32 mFloorContacts;    // _9D4 in Japan _9C4, the contacted object's index (compared against the trashbox's)
 	u8 _9D8[0x70];         // _9D8 in Japan _9C8
 	s32 mLiftState;        // _A48 in Japan _A38
 	u8 _A4C[0x18];         // _A4C in Japan _A3C
@@ -182,6 +182,7 @@ static Vec trashPos;
 static Vec trashDest;
 static Vec trashStep;
 static f32 trashArc;
+// 0 while it runs, 2 dropped in flight, 3 reached the box, 4 cancelled on B
 static s32 trashResult;
 static u8 trashActive;
 static s32 trashboxIndex;
@@ -225,7 +226,7 @@ extern "C" void DrawTrashStack(void* arg)
 
 	count   = trashStackNum;
 	Vec pos = actor->mMoveTranslate;
-	angle   = 1.0471976f + actor->mMoveRotateY;
+	angle   = THIRD_PI + actor->mMoveRotateY;
 	jobj    = actor->jobj;
 	if (count < 0) {
 		count = 0;
@@ -236,14 +237,14 @@ extern "C" void DrawTrashStack(void* arg)
 
 	for (i = 1; i < count; i++) {
 		int step = i - 1;
-		if (step % 4 == 0) {
+		if (step % 4 == 0) { // every fourth piece sits on the axis
 			x = 0.0f;
 			z = x;
 			y = 2.0f * step / 4.0f + 2.0f;
 		} else {
-			a = DEG2RAD * (step % 4 * 120) + angle;
+			a = DEG2RAD * (step % 4 * 120) + angle; // the other three at 120 degrees
 			x = 2.0f * (f32)sin(a);
-			y = 2.0f * (i - 1) / 4.0f + 1.0f;
+			y = 2.0f * (i - 1) / 4.0f + 1.0f; // half a unit higher each step
 			z = 2.0f * (f32)cos(a);
 		}
 		HSD_JObjSetTranslateX(jobj, x * trashStackScale + pos.x);
@@ -677,16 +678,17 @@ extern "C" void UpdateTrash(u32 frames)
 		robot = (TrashObj*)gGame.GetPlayer();
 		switch (trashState) {
 		case 0:
-			trashObj = robot->mLiftTarget;
-			if (pad.mPad->mButton & 0x100) {
+			trashObj = robot->mLiftTarget;   // the lifted object is the one to throw
+			if (pad.mPad->mButton & 0x100) { // A throws
 				robot->SetAnim(9, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				trashState++;
-			} else if (pad.mPad->mTrigger & 0x200) {
+			} else if (pad.mPad->mTrigger & 0x200) { // B cancels
 				trashResult = 4;
 				trashState  = 99;
 			}
 			break;
 		case 1:
+			// wait for the robot's turn
 			if (robot->mMoveRotateY == robot->mMoveRotateTargetY) {
 				robot->mLiftState = 6;
 				trashTarget->mStatus |= 0x10000000000ULL;
@@ -694,17 +696,17 @@ extern "C" void UpdateTrash(u32 frames)
 			}
 			break;
 		case 2:
-			if (15.0f <= GetAnimFrame(robot->jobj)) {
+			if (15.0f <= GetAnimFrame(robot->jobj)) { // the toss anim's release frame
 				robot->mLiftTarget = NULL;
-				trashObj->mStatus &= ~0x400000000000000ULL;
+				trashObj->mStatus &= ~0x400000000000000ULL; // no longer carried
 				trashDest.x = trashTarget->GetPos()->x;
 				trashDest.y = trashTarget->GetPos()->y;
 				trashDest.z = trashTarget->GetPos()->z;
-				trashDest.y += 30.0f;
+				trashDest.y += 30.0f; // aim above the box
 				trashPos.x  = trashObj->GetPos()->x;
 				trashPos.y  = trashObj->GetPos()->y;
 				trashPos.z  = trashObj->GetPos()->z;
-				trashStep.x = (trashDest.x - trashPos.x) / 36.0f;
+				trashStep.x = (trashDest.x - trashPos.x) / 36.0f; // 36 frames of flight
 				trashArc    = 0.0f;
 				trashState++;
 				trashStep.y = (trashDest.y - trashPos.y) / 36.0f;
@@ -713,16 +715,17 @@ extern "C" void UpdateTrash(u32 frames)
 			break;
 		case 3: {
 			if (30.0f <= GetAnimFrame(robot->jobj) && GetAnimFrame(robot->jobj) < 33.0f) {
+				// the toss sound's window
 				XSound* obj = &gGame.mSound;
 				if (!IsGameSoundPlaying(obj, 0x1B9)) {
 					PlayGameSound(obj, 0x1B9, 0xFF);
 				}
 			}
-			trashArc += 0.08726646f * frames;
-			if ((f32)sin(trashArc) < 0.0f) {
+			trashArc += DEG2RAD * 5 * frames;
+			if ((f32)sin(trashArc) < 0.0f) { // past the arc's peak: it drops where it is
 				trashResult    = 2;
 				TrashObj* held = trashObj;
-				if (GetKindId(held) == 8) {
+				if (GetKindId(held) == 8) { // category-8 pieces get their flag set
 					u32 bit = held->vf148();
 					held->mFlags[bit >> 5] |= 1 << (bit & 31);
 				}
@@ -736,7 +739,7 @@ extern "C" void UpdateTrash(u32 frames)
 				pos.z = trashObj->GetPos()->z;
 				pos.y = trashTarget->GetPos()->y;
 				if (PSVECDistance(&trashTarget->mMoveTranslate, &pos) < 15.0f && trashObj->GetPos()->y < 30.0f) {
-					trashState = 10;
+					trashState = 10; // close and low enough: it counts
 				} else {
 					trashPos.x += trashStep.x * frames;
 					trashPos.y += trashStep.y * frames;
@@ -744,7 +747,7 @@ extern "C" void UpdateTrash(u32 frames)
 					pos.x = trashPos.x;
 					pos.y = trashPos.y;
 					pos.z = trashPos.z;
-					pos.y += 10.0f * (f32)sin(trashArc);
+					pos.y += 10.0f * (f32)sin(trashArc); // the arc's height
 					trashObj->SetMoveDir(&pos, 10.0f);
 				}
 			}
@@ -753,6 +756,7 @@ extern "C" void UpdateTrash(u32 frames)
 		case 10: {
 			f32 angle;
 			trashResult = 3;
+			// it lands on the ground 2 units from the box, along the throw's line
 			impactPos.x = trashObj->GetPos()->x;
 			impactPos.y = trashObj->GetPos()->y;
 			impactPos.z = trashObj->GetPos()->z;
@@ -1338,7 +1342,8 @@ extern "C" void InitTrash(void* arg)
 	count         = game->mXObjs.mObjectCount;
 	for (i = 0; trashboxIndex < 0 && i < count; i++) {
 		actor = (TrashObj*)game->mXObjs.mObjects[i];
-		if (actor->mStatus & 1) {
+		if (actor->mStatus & 1) { // live objects only
+			// the trashbox's object ids
 			if (*actor->mCoord == 0x12D) {
 				trashboxIndex = i;
 			}
@@ -1361,7 +1366,7 @@ static inline s32 IsNearXZ(const Vec& p, const Vec& q)
 	b.z = q.z;
 	b.y = 0.0f;
 	a.y = 0.0f;
-	if (11.5f < PSVECDistance(&a, &b)) {
+	if (11.5f < PSVECDistance(&a, &b)) { // the y fields are zeroed: XZ only
 		return 0;
 	}
 	return 1;
@@ -1384,7 +1389,7 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
 	}
 	game  = &gGame;
 	robot = (TrashObj*)game->GetPlayer();
-	if (trashboxIndex != robot->mFloorContacts) {
+	if (trashboxIndex != robot->mFloorContacts) { // the box must be the contacted object
 		return 0;
 	}
 	box = (TrashObj*)game->mXObjs.mObjects[trashboxIndex];
@@ -1509,9 +1514,9 @@ extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args)
 extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args)
 {
 	CGame* game     = &gGame;
-	f32 scale       = args[2] / 100.0f;
-	s32 idx         = args[0];
-	s32 num         = args[1];
+	f32 scale       = args[2] / 100.0f; // percent
+	s32 idx         = args[0];          // the trashbox's object index
+	s32 num         = args[1];          // pieces in the stack
 	trashTarget     = (TrashObj*)game->mXObjs.mObjects[idx];
 	trashStackNum   = num;
 	trashStackScale = scale;
