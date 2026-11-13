@@ -96,7 +96,6 @@ class AtcMenu : public OctaMenu {
 public:
 	virtual ~AtcMenu() { }                          // _08 (weak)
 	virtual void Open(s32 item);                    // _0C
-	virtual void vf18();                            // _18
 	virtual void ConfirmSelection();                // _1C
 	virtual s32 GetItemIconTextureIndex(s32 index); // _20
 	virtual const char* GetItemLabel(s32 index);    // _24
@@ -108,7 +107,6 @@ class DrsMenu : public OctaMenu {
 public:
 	virtual ~DrsMenu() { }                          // _08
 	virtual void Open(s32 item);                    // _0C
-	virtual void vf18();                            // _18
 	virtual void ConfirmSelection();                // _1C
 	virtual s32 GetItemIconTextureIndex(s32 index); // _20
 	virtual const char* GetItemLabel(s32 index);    // _24
