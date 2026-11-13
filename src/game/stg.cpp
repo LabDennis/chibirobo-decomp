@@ -6518,9 +6518,10 @@ extern "C" s32 CountDecimalDigits(s32 value)
 		for (s32 i = 0; i < digits; i++)
 			divisor *= 10.0f;
 		if ((s32)(value / divisor) == 0)
-			return digits;
+			break;
 		digits++;
 	}
+	return digits;
 }
 
 #endif
