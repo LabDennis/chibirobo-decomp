@@ -26,7 +26,7 @@ extern "C" void ReadAll__5XOBJSFv(XOBJS* list);
 
 inline BOOL XObjRead::ReadStart(void* obj, void* info)
 {
-	for (s32 i = 0; i < 8; i++) {
+	for (s32 i = 0; i < 8; i++) { // eight pending requests at most
 		if (mReqs[i].mObj == NULL) {
 			mReqs[i].mObj  = obj;
 			mReqs[i].mInfo = info;
@@ -44,7 +44,7 @@ inline BOOL XObjRead::ReadStart(void* obj, void* info)
  */
 BOOL XObjReadAnm::QueueRead(void* object, void* info)
 {
-	((XObj*)object)->mStatus.mFlags |= 0x0080000000000000ULL;
+	((XObj*)object)->mStatus.mFlags |= 0x0080000000000000ULL; // mark the anim read as queued
 	return ReadStart(object, info);
 }
 
@@ -77,7 +77,7 @@ void XObjRead::ProcessRequest(XObjReadReq* req)
  */
 extern "C" BOOL QueueObjectAnimationRead(XObj* obj, char* path)
 {
-	obj->mStatus.mFlags |= 0x0080000000000000ULL;
+	obj->mStatus.mFlags |= 0x0080000000000000ULL; // mark the anim read as queued
 	return gObjectAnimationReader.ReadStart(obj, path);
 }
 
@@ -94,7 +94,7 @@ void XObjReadOne::ProcessRequest(XObjReadReq* req)
 		OSYieldThread();
 	}
 	req->mObj = NULL;
-	obj->mStatus.mFlags &= ~0x0040000000000000ULL;
+	obj->mStatus.mFlags &= ~0x0040000000000000ULL; // the placement load finished
 }
 
 /**
@@ -103,7 +103,7 @@ void XObjReadOne::ProcessRequest(XObjReadReq* req)
  */
 BOOL XObjReadOne::QueueRead(void* object, void* info)
 {
-	((XObj*)object)->mStatus.mFlags |= 0x0040000000000000ULL;
+	((XObj*)object)->mStatus.mFlags |= 0x0040000000000000ULL; // a placement read is queued
 	return ReadStart(object, info);
 }
 
@@ -228,6 +228,7 @@ BOOL XObjRead::Create(OSThreadStartFunction func, void* param, u32 stackSize, OS
 	}
 	mStack     = (u8*)OSAllocFromHeap(__OSCurrHeap, stackSize);
 	mStackSize = stackSize;
+	// OSCreateThread wants the stack's top, stacks grow down
 	if (OSCreateThread(&mThread, func, param, mStack + mStackSize, mStackSize, priority, attr)) {
 		mStackSize = stackSize;
 	}
@@ -282,19 +283,20 @@ extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 unus
 {
 	XObj* obj;
 	AttrInfo attr(info);
-	s16 pool = attr.mObjData ? attr.mObjData->mCategory : 0;
+	s16 pool = attr.mObjData ? attr.mObjData->mCategory : 0; // the category picks the pool
 
 	s32 idx = list->mPools[pool].Find(1, 0);
 	if (idx >= 0) {
 		obj = list->mPools[pool].Get(idx);
 		if (idx >= list->mPools[pool].mUsed) {
+			// a slot past the used range joins the stage's object list
 			list->mObjects[list->mObjectCount]             = obj;
 			list->mObjects[list->mObjectCount]->mPoolIndex = list->mPools[pool].mUsed;
 			list->mPools[pool].mUsed++;
 			list->mObjectCount++;
 		}
 		if (async) {
-			obj->mStatus.mFlags |= 0x0040000000000000ULL;
+			obj->mStatus.mFlags |= 0x0040000000000000ULL; // a placement read is queued
 			gSingleObjectReader.ReadStart(obj, info->mPlacement);
 		} else {
 			while (!obj->LoadFromPlacement(*info)) { }
@@ -487,7 +489,7 @@ inline void XOBJS::ReadAll()
 	}
 
 	s32 i;
-	for (i = 0; GetStagePlacementByIndex(i)->mObjectId >= 0; i++) {
+	for (i = 0; GetStagePlacementByIndex(i)->mObjectId >= 0; i++) { // the placement list ends at id -1
 		CoordInfo info(GetStagePlacementByIndex(i));
 		if (mObjects[i] == NULL) {
 			XObjPool& pool = mPools[GetObjData(&info)->mCategory];
@@ -506,7 +508,7 @@ inline void XOBJS::ReadAll()
 	for (s32 i = 0; i < mObjectCount; i++) {
 		UnkStageObj* obj = GetStagePlacementByIndex(i);
 		CoordInfo info(obj);
-		if ((obj->mFlags & 0x80000000ULL) == 0) {
+		if ((obj->mFlags & 0x80000000ULL) == 0) { // flag 63 skips the placement load
 			while (!mObjects[mLoadObjectIndex]->LoadFromPlacement(info)) { }
 		}
 		mLoadObjectIndex++;
