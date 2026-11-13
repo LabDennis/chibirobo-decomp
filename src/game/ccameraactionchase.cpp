@@ -33,7 +33,7 @@ CVec CalcSpring(CVec& eye, const CVec& target, const CVec& last, f32 dt, f32 sti
 	vel     = (last - target) * dt;
 	f32 dot = PSVECDotProduct(&dir, &vel);
 	PSVECNormalize(&dir, &dir);
-	f32 force = stiffness * (rest - len) + damping * (dot / len);
+	f32 force = stiffness * (rest - len) + damping * (dot / len); // spring toward the rest distance
 	PSVECScale(&dir, &dir, force * dt);
 	AddCopy(eye, dir);
 	return eye;
@@ -116,7 +116,7 @@ void CCameraActionChase::Update(u32 step)
 	mMode = 3;
 
 	CPad pad(0);
-	u32 leftButton  = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADLEFT : HSD_PAD_CSTICK_LEFT;
+	u32 leftButton  = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADLEFT : HSD_PAD_CSTICK_LEFT; // the flag picks the pad layout
 	u32 rightButton = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADRIGHT : HSD_PAD_CSTICK_RIGHT;
 	u32 upButton    = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADUP : HSD_PAD_CSTICK_UP;
 	u32 downButton  = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADDOWN : HSD_PAD_CSTICK_DOWN;
@@ -131,12 +131,12 @@ void CCameraActionChase::Update(u32 step)
 			yaw = -1.0f;
 		}
 		if (yaw || pitch) {
-			f32 dx = step * (pitch * 0.05235988f);
+			f32 dx = step * (pitch * 0.05235988f); // 3 degrees per step
 			f32 dy = step * (yaw * 0.05235988f);
 			f32 y  = angle.y + dy;
 			f32 x  = angle.x + dx;
 			if (x > 1.5550883f) {
-				x = 1.5550883f;
+				x = 1.5550883f; // just under 90 degrees
 			}
 			if (x < -1.5550883f) {
 				x = -1.5550883f;
@@ -151,7 +151,7 @@ void CCameraActionChase::Update(u32 step)
 		f32 distance = mDistance;
 		if (up) {
 			distance -= 12.0f * step;
-			if (distance < 60.0f) {
+			if (distance < 60.0f) { // the zoom floor
 				distance = 60.0f;
 			}
 		}

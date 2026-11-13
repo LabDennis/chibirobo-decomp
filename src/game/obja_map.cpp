@@ -14,7 +14,7 @@ static inline s32 GetLightMode()
 static inline u32 MakeRGB(s32 r, s32 g, s32 b)
 {
 	s32 cr = r;
-	if (cr >= 256) {
+	if (cr >= 256) { // the table writes 256 for full
 		cr = 255;
 	}
 	s32 cg = g;
@@ -42,11 +42,11 @@ extern "C" s32 GetMapTriangleFloorType(XObjMap* map, s32 trigon, s32 tri)
 	};
 	u32 color = map->mTrigon[trigon].mTri[tri].mColor;
 	for (s32 i = 1; i < 13; i++) {
-		if (color == sColors[i]) {
+		if (color == sColors[i]) { // vertex color i means floor type i
 			return i;
 		}
 	}
-	return 0;
+	return 0; // black and unknown colors are type 0
 }
 
 /**
@@ -126,7 +126,10 @@ BOOL XObjMap::LoadFromPlacement(const CoordInfo& info)
 			CLight* prev = NULL;
 			for (i = 0; i < 8; i++) {
 				if (GetLightDesc(i) != NULL) {
-					mLights[i].Init(GetLightDesc(i)->mDesc, GetEnvData()[5] & (1 << (7 - i)));
+					mLights[i].Init(
+					    GetLightDesc(i)->mDesc,
+					    GetEnvData()[5]
+					        & (1 << (7 - i))); // env slot 5 picks which lights cast shadows // env slot 5 picks which lights cast shadows
 					if (GetLightAnimNum(i) > 0) {
 						mLightAnims[i] = 0;
 						mLights[i].SetAnim(GetLightDesc(i)->mAnims[mLightAnims[i]], 0.0f);
@@ -160,7 +163,7 @@ void XObjMap::ResetObjectState()
 	}
 	mLightNum = 0;
 	for (int i = 0; i < 8; i++) {
-		mLightAnims[i] = -1;
+		mLightAnims[i] = -1; // -1: no anim
 	}
 }
 
