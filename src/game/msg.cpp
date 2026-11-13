@@ -32,12 +32,6 @@ void CMsgFont_Draw(void* p, f32 t);
 void ClearGameSoundQueue(void* sound, s32 id);
 }
 
-#if defined(VERSION_JP)
-#define MsgHasSjisLead(c) IsSjisLead(c)
-#else
-#define MsgHasSjisLead(c) (gGame.mLanguage == 6 && IsSjisLead(c))
-#endif
-
 // read before stepping, the script can point into the message's own bytes
 static inline u32 ReadMsgU8(CMsg* msg)
 {
@@ -2088,7 +2082,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			break;
 		default: {
 			char text[3];
-			if (MsgHasSjisLead(command)) {
+			if (gGame.IsJapanese() && IsSjisLead(command)) {
 				text[0] = command;
 				text[1] = ReadMsgU8(msg);
 				text[2] = 0;
@@ -7736,7 +7730,7 @@ static inline s32 MsgCommandLength(u8* p)
 	case 21:
 		return 5;
 	default:
-		if (MsgHasSjisLead(*p)) {
+		if (gGame.IsJapanese() && IsSjisLead(*p)) {
 			return 2;
 		}
 		return 1;
@@ -7811,7 +7805,7 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 		case 24:
 			break;
 		default:
-			if (MsgHasSjisLead(*p)) {
+			if (gGame.IsJapanese() && IsSjisLead(*p)) {
 				data->mCounts[data->mLineCount]++;
 				char text[3] = "";
 				text[0]      = p[0];

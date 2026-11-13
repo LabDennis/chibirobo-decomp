@@ -162,11 +162,7 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 			CopyMessageBytes(dst, src, 5);
 			break;
 		default:
-#if defined(VERSION_JP)
-			if (IsSjisLead(*src)) {
-#else
-			if (gGame.mLanguage == 6 && IsSjisLead(*src)) {
-#endif
+			if (gGame.IsJapanese() && IsSjisLead(*src)) {
 				CopyMessageBytes(dst, src, 2);
 			} else if (*src == '$') {
 				++src;

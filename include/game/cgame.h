@@ -168,6 +168,15 @@ public:
 	BOOL mReset;        // _3330, stops XOBJS::ReadAll when set
 	// _3334 vtable
 
+	bool IsJapanese() const
+	{
+#if defined(VERSION_JP)
+		return true;
+#else
+		return mLanguage == 6;
+#endif
+	}
+
 	CBase();
 	virtual ~CBase();                               // _08
 	virtual void Initialize(int argc, char** argv); // _0C

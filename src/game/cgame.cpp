@@ -232,15 +232,9 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 					game->mStageName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
 					game->mStageName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
 					game->mStageName.mCount++;
-#if defined(VERSION_JP)
-					if (IsSjisLead(*name)) {
+					if (gGame.IsJapanese() && IsSjisLead(*name)) {
 						name++;
 					}
-#else
-					if (gGame.mLanguage == 6 && IsSjisLead(*name)) {
-						name++;
-					}
-#endif
 				}
 				for (s32 i = game->mStageName.mCount; i < 20; i++) {
 					game->mStageName.mChars[i].mText  = NULL;

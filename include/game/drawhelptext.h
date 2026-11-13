@@ -4,15 +4,6 @@
 #include <math.h>
 #include "game/menuhelpchar.h"
 
-static inline bool HelpTextIsJapanese()
-{
-#if defined(VERSION_JP)
-	return true;
-#else
-	return gGame.mLanguage == 6;
-#endif
-}
-
 // The glyph width is rounded before subtracting it from the cell width.
 static inline f32 HelpGlyphPadding(s32 width, f32 scale)
 {
