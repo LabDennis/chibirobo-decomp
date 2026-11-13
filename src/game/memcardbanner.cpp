@@ -14,16 +14,14 @@ enum { BANNER_TEXTURE = 89, ICON_TEXTURE = 90 };
 enum { BANNER_TEXTURE = 88, ICON_TEXTURE = 90 };
 #endif
 
-extern "C" {
 #if defined(VERSION_JP)
-extern const char lbl_80209EC8[];
-extern const char lbl_80209ED4[];
+static const char sSaveBannerTitle[] = "ちびロボ！";
+static const char sSaveBannerCommentFormat[] = "(%d) プレイ時間 %2d:%02d:%02d";
 #elif defined(VERSION_PAL)
-extern const char lbl_8020FB48[];
+extern "C" const char lbl_8020FB48[];
 #else
-extern const char lbl_802091C0[];
+extern "C" const char lbl_802091C0[];
 #endif
-}
 
 static inline void* SaveTextureData(const CTexObj& texture)
 {
@@ -40,9 +38,9 @@ extern "C" void BuildSaveBanner(Memcard* card, s32 slot)
 {
 	SaveBanner* data = &card->mFile.mBanner;
 #if defined(VERSION_JP)
-	sprintf(data->mTitle, lbl_80209EC8);
+	sprintf(data->mTitle, sSaveBannerTitle);
 	s32 time = gGame.mPlayTime;
-	sprintf(data->mComment, lbl_80209ED4, slot + 1, time / 216000, time / 3600 % 60, time / 60 % 60);
+	sprintf(data->mComment, sSaveBannerCommentFormat, slot + 1, time / 216000, time / 3600 % 60, time / 60 % 60);
 #elif defined(VERSION_PAL)
 	sprintf(data->mTitle, GetLocalizedInterfaceText(0x102));
 	f32 time    = gGame.mPlayTime;
