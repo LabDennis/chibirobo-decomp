@@ -1,6 +1,7 @@
 #include "Version.h"
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
+#include "game/animframe.h"
 #include "game/cparticle.h"
 #include "game/cgame.h"
 #include "game/gmath.h"
@@ -221,28 +222,18 @@ static XObj* tempActors[4];
 static CStatus yakiResultFlags;
 static u8 putDownActive;
 
-static inline bool IsActive(XObj* actor)
+static bool IsActive(XObj* actor)
 {
-	if (actor == NULL) {
-		return false;
-	}
-	if (!(actor->mStatus.mFlags & 0x10000)) {
-		return false;
-	}
-	return true;
+	return actor != NULL && (actor->mStatus.mFlags & 0x10000) != 0;
 }
 
-static inline bool IsHeld(XObj* actor)
+static bool IsHeld(XObj* actor)
 {
 	XObjChr* player = gGame.GetPlayer();
-	bool held       = false;
-	if (player->mLift.mState != 0 && player->mLift.mTarget == actor) {
-		held = true;
-	}
-	return held;
+	return player->mLift.mState != 0 && player->mLift.mTarget == actor;
 }
 
-static inline bool IsOnGasPlate(XObj* actor)
+static bool IsOnGasPlate(XObj* actor)
 {
 	f32 x = actor->mMoveTranslate.x;
 	f32 z = actor->mMoveTranslate.z;
@@ -250,13 +241,6 @@ static inline bool IsOnGasPlate(XObj* actor)
 		return false;
 	}
 	return true;
-}
-
-// todo: copied inline, clean up
-inline f32 HSD_AObjGetCurrFrame(HSD_AObj* aobj)
-{
-	((aobj) ? ((void)0) : __assert("aobj.h", 149, "aobj"));
-	return aobj->curr_frame;
 }
 
 static inline bool IsOnTopOf(HamObj* slot, HamObj* base)
@@ -267,21 +251,6 @@ static inline bool IsOnTopOf(HamObj* slot, HamObj* base)
 static inline bool IsSamePos(const Vec& a, Vec b)
 {
 	return a.x == b.x && a.y == b.y && a.z == b.z;
-}
-
-static inline HamObj* FindHamObjByActorInline(XObj* actor)
-{
-	s32 i;
-	if (actor == NULL) {
-		return NULL;
-	}
-	for (i = 0; i < 9; i++) {
-		XObj* current = hamObjs[i].mActor;
-		if (current != NULL && current->mPoolIndex == actor->mPoolIndex) {
-			return &hamObjs[i];
-		}
-	}
-	return NULL;
 }
 
 static inline bool IsLeavingGasPlate(HamObj* slot)
@@ -1056,7 +1025,7 @@ extern "C" s32 PutHeldHamObjOnDish(s32 id)
 		return -1;
 	}
 
-	slot = FindHamObjByActorInline(player->mLift.mTarget);
+	slot = FindHamObjByActor(player->mLift.mTarget);
 	if (slot == NULL) {
 		return -1;
 	}
@@ -1956,7 +1925,7 @@ extern "C" HamObj* FindHamObj(s32 id)
 	// NONMATCHING: regalloc
 	s32 i;
 	if (id < 0) {
-		return FindHamObjByActorInline(gGame.GetPlayer()->mLift.mTarget);
+		return FindHamObjByActor(gGame.GetPlayer()->mLift.mTarget);
 	}
 	for (i = 0; i < 9; i++) {
 		if (hamObjs[i].mActor != NULL && id == hamObjs[i]._08) {
@@ -2529,9 +2498,7 @@ void HamObj::StatePutDown()
 		if (player->mLift.mState != 6 || player->mAnimId != 9) {
 			break;
 		}
-		HSD_AObj* aobj = GetAObj(player->mJObj);
-		f32 frame      = aobj != NULL ? HSD_AObjGetCurrFrame(aobj) : 0.0f;
-		if (frame < 15.0f) {
+		if (GetAnimFrame(player->mJObj) < 15.0f) {
 			break;
 		}
 
