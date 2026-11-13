@@ -638,15 +638,7 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 			}
 			obj->UpdateAnim(1);
 		} else {
-			for (s32 i = 0; i < 16; i++) {
-				s32 index = (obj->mAnmQueue.mNext + i) % 16;
-				if (obj->mAnmQueue.mEntry[index].mId == -1) {
-					obj->mAnmQueue.mEntry[index].mId    = anim;
-					obj->mAnmQueue.mEntry[index].mFrame = 0;
-					obj->mAnmQueue.mEntry[index].mRate  = 100;
-					break;
-				}
-			}
+			obj->PushAnim(anim, 0, 100);
 		}
 	}
 	return 0;

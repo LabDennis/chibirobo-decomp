@@ -269,7 +269,22 @@ public:
 
 	u32 _4461C; // _4461C, after the vtable, never read or written
 
-	void SetColor(GXColor color) { mFont.mColor = color; }
+	void SetWindowAnchor(XObj* object, f32 x, f32 y, f32 z)
+	{
+		mPlacement      = object;
+		mFontPosition.x = x;
+		mFontPosition.y = y;
+		mFontPosition.z = z;
+	}
+
+	void SetWindowPosition(f32 x, f32 y)
+	{
+		mWindowX = x;
+		mWindowY = y;
+		SetWindowAnchor(NULL, 0.0f, 0.0f, 0.0f);
+	}
+
+	void SetColor(const GXColor& color) { mFont.mColor = color; }
 
 	void SetFontPosition(f32 x, f32 y, f32 z)
 	{
