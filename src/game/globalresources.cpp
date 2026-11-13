@@ -11,6 +11,7 @@
 #include <stdio.h>
 #if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
 #include "wii_locale.h"
+#include "wii_text.h"
 #endif
 
 extern "C" {
@@ -81,14 +82,16 @@ static inline BOOL IsGlobalScript(const u8* script)
  */
 extern "C" const char* GetLocalizedPCDialogue(s32 index)
 {
-#if defined(VERSION_JP)
+#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
+	if ((u32)index >= ARRAY_SIZE(sPCMap))
+		return "";
+	if (gGame.mLanguage && sPCMap[index] >= 0)
+		return gPCDialogueByLanguage[gGame.mLanguage][sPCMap[index]];
+	return gPCDialogueByLanguage[0][index];
+#elif defined(VERSION_JP)
 	return gJapanesePCDialogue[index];
 #else
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-	return gPCDialogueByLanguage[0][index];
-#else
 	return gPCDialogueByLanguage[gGame.mLanguage][index];
-#endif
 #endif
 }
 
@@ -99,17 +102,23 @@ extern "C" const char* GetLocalizedPCDialogue(s32 index)
 extern "C" const char* GetLocalizedInterfaceText(s32 index)
 {
 #if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-	if (gGame.mLanguage && (u32)index < ARRAY_SIZE(sLocalizedWiiInterface))
-		return sLocalizedWiiInterface[index];
-#endif
-#if defined(VERSION_JP)
+	if ((u32)index >= ARRAY_SIZE(sInterfaceMap))
+		return "";
+	u8 language = gGame.mLanguage;
+	if (language) {
+		if ((u32)index < ARRAY_SIZE(sLocalizedWiiInterface))
+			return sLocalizedWiiInterface[index];
+		if (sInterfaceMap[index] >= 0)
+			return gInterfaceTextByLanguage[language][sInterfaceMap[index]];
+		const char* text = WiiOnlyText(language, index);
+		if (text)
+			return text;
+	}
+	return gInterfaceTextByLanguage[0][index];
+#elif defined(VERSION_JP)
 	return gJapaneseInterfaceText[index];
 #else
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-	return gInterfaceTextByLanguage[0][index];
-#else
 	return gInterfaceTextByLanguage[gGame.mLanguage][index];
-#endif
 #endif
 }
 
