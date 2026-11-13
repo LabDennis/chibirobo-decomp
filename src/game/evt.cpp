@@ -3439,7 +3439,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     subi     r3, r3, 0x6eec
     stw      r0, 0x38(r1)
     stfs     f0, 0x34(r1)
-    bl       CreateSRT__9CParticleFUllRC3VecRC3Vec3Veci
+    bl       CreateSRT__9CParticleFUllRC3VecRC3VecRC3Veci
     b        .L_800745F4
 .L_80073E14:
     cmpwi    r4, 0xd0
@@ -3647,7 +3647,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     stw      r10, 0x8(r1)
     stw      r0, 0x10(r1)
     stfs     f0, 0xc(r1)
-    bl       CreateSRT__9CParticleFUllRC3VecRC3Vec3Veci
+    bl       CreateSRT__9CParticleFUllRC3VecRC3VecRC3Veci
     b        .L_800745F4
 .L_8007412C:
     mr       r4, r29

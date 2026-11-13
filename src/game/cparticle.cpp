@@ -1,4 +1,5 @@
 #include "game/cparticle.h"
+#include <sysdolphin/psdisp.h>
 #include <stdio.h>
 
 extern "C" {
@@ -6,16 +7,13 @@ extern "C" {
 void OSReport(const char* msg, ...);
 HSD_Generator* psCreateGeneratorID(int linkNo, int bank, int kind);
 HSD_psAppSRT* CreateGeneratorAppSRT(HSD_Generator* gen, s32 status);
-void _psDispParticlesSub(s32 bankMask, s32 kind);
 void psInterpretParticles(u32 flags);
 void psExecGenerator(u32 mask);
 void psInitDataBank(s32 bank, s32* cmdBank, s32* texBank, void* ref, s32* formBank);
 void psInitDataBankLoad(s32 bank, s32* cmdBank, s32* texBank, void* ref, s32* formBank);
 void psInitParticle(s32 count);
 void psRemoveParticle(void);
-s32 psInitGenerator(s32 num);
 void psRemoveGenerator(void);
-s32 psInitAppSRT(s32 num, s32 size);
 void psRemoveAppSRT(void);
 void psSetPointJObjNodup(HSD_JObj* jobj, s32 no);
 void HSD_JObjSetSPtclCallback(HSD_Generator* (*func)(int, int, int, HSD_JObj*));
@@ -108,7 +106,7 @@ HSD_Generator* CParticle::Create(u32 code, u8 type, HSD_JObj* jobj, BOOL keep)
  * @note Address: 0x801A8BB0
  * @note Size: 0x16C
  */
-HSD_Generator* CParticle::CreateSRT(u32 code, s32 status, const Vec& translate, const Vec& scale, Vec rotate, BOOL keep)
+HSD_Generator* CParticle::CreateSRT(u32 code, s32 status, const Vec& translate, const Vec& scale, const Vec& rotate, BOOL keep)
 {
 	HSD_Generator* gen = NULL;
 	for (int i = 0; i < CPARTICLE_GEN_NUM; i++) {
@@ -217,7 +215,7 @@ void CParticle::Init()
 	}
 	psInitParticle(800);
 	psInitGenerator(100);
-	psInitAppSRT(100, 0x74); // this revision's HSD_psAppSRT is 0x74 bytes, our particle.h has a later layout
+	psInitAppSRT(100, sizeof(HSD_psAppSRT));
 	HSD_JObjSetSPtclCallback(psCreateQueuedJointGenerator);
 	HSD_JObjSetDPtclCallback(psCreateJointGenerator);
 	HSD_JObjSetPtclTargetCallback(psSetPointJObjNodup);

@@ -1,4 +1,5 @@
 #include <global.h>
+#include <string.h>
 
 #include <dolphin/mtx/mtxtypes.h>
 #include <dolphin/os.h>
@@ -8,9 +9,6 @@
 #include <sysdolphin/particle.h>
 #include <sysdolphin/perf.h>
 #include <sysdolphin/pslist.h>
-
-void memset(void*, int, int);
-void memcpy(void*, void*, int);
 
 #define PS_NUM_LINK 16
 
@@ -50,8 +48,8 @@ s32 _psLinkInit(s32 count)
 	freeParticle = NULL;
 
 	for (i = count - 1; i >= 0; i--) {
-		pp = HSD_Alloc(0x9C);
-		memset(pp, 0, 0x9C);
+		pp = HSD_Alloc(sizeof(HSD_Particle));
+		memset(pp, 0, sizeof(HSD_Particle));
 		if (pp == NULL) {
 			return -1;
 		}
