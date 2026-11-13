@@ -25,28 +25,28 @@ extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32)
 	CJObj joint;
 	XObjChr* player = gGame.GetPlayer();
 	CPad pad(0);
-	if ((spider->mSpiderStatus.mFlags & 0x20000) && (player->mPlayerStatus.mFlags & 0x80000000)) {
+	if ((spider->mSpiderStatus.mFlags & 0x20000) && (player->mPlayerStatus.mFlags & 0x80000000)) { // it carries the player
 		s32 path[] = { 0, 2, 0, 1, 1, 0, 0 };
 		joint.Attach(FindJointByPath(spider->mJObj, path, 7));
 		CVec position(GetJointPosition(joint.mJObj));
 		f32 radius = GetPlayerCollisionRadius(gGame.GetPlayer());
-		position.y -= 6.0f;
-		f32 heading
+		position.y -= 6.0f; // sits 6 below the joint
+		f32 heading         // away from the spider's center
 		    = PI + (f32)atan2(spider->mMoveTranslate.x - player->mMoveTranslate.x, spider->mMoveTranslate.z - player->mMoveTranslate.z);
 		position.x += (radius + 0.5f) * (f32)sin(heading);
 		position.z += (radius + 0.5f) * (f32)cos(heading);
 		player->SetPos(position, 0);
-		if (gGame.IsRunning() && (pad.mPad->mButton & 0xF0000)) {
+		if (gGame.IsRunning() && (pad.mPad->mButton & 0xF0000)) { // stick pushed: face its direction
 			player->SetAnim(4, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 			heading = (f32)atan2(pad.mPad->mStickX, pad.mPad->mStickY);
 			heading = -heading + gGame.mMotionControlCamera.mCamera.mAngle.y;
-		} else if (radius < 2.0f)
+		} else if (radius < 2.0f) // a small rider gets another anim
 			player->SetAnim(0xE6, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 		else
 			player->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 		player->SetRotateY(heading, 0);
 	}
-	if (spider->mSpiderStatus.mFlags & 0x20000000) {
+	if (spider->mSpiderStatus.mFlags & 0x20000000) { // re-fit the eight parts to their joints
 		for (u32 i = 0; i < 8; ++i) {
 			XObjJointPart& part = spider->mParts[i];
 			if (!part.mJoint || !part.mObj)
@@ -55,7 +55,7 @@ extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32)
 			PSMTXCopy(HSD_JObjGetMtxPtr(part.mJoint), mount);
 			Vec scale;
 			HSD_MtxGetScale(mount, &scale);
-			scale.x = GetStagePlacementScale(part.mObj).x / scale.x;
+			scale.x = GetStagePlacementScale(part.mObj).x / scale.x; // undo the joint's scale, keep the placement's
 			scale.y = GetStagePlacementScale(part.mObj).y / scale.y;
 			scale.z = GetStagePlacementScale(part.mObj).z / scale.z;
 			PSMTXScale(scaling, scale.x, scale.y, scale.z);
@@ -83,19 +83,19 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 {
 	CPad pad(0);
 	switch (spider->mDamageStep) {
-	case 0:
+	case 0: // flag 2 took a hit, 0x10 means already reacting
 		if ((spider->mSpiderStatus.mFlags & 2) && !(spider->mSpiderStatus.mFlags & 0x10)) {
 			StopGameSfx(&gGame.mSound, 0x12A);
 			spider->mSpiderStatus.mFlags &= ~2;
-			if (spider->mHitStrength >= (s32)GetPlayerActionParameter(31) / 100.0f) {
+			if (spider->mHitStrength >= (s32)GetPlayerActionParameter(31) / 100.0f) { // a strong hit costs 3
 				spider->mHits -= 3;
 				if (spider->mHits <= 0)
 					spider->mHits = 0;
 			} else if (--spider->mHits <= 0)
 				spider->mHits = 0;
-			if (gGame.GetPlayer()->mParams.mBattery <= 30.0f && (spider->mSpiderStatus.mFlags & 0x40000000))
+			if (gGame.GetPlayer()->mParams.mBattery <= 30.0f && (spider->mSpiderStatus.mFlags & 0x40000000)) // a low battery finishes it
 				spider->mHits = 0;
-			if (!(spider->mSpiderStatus.mFlags & 0x40000000)) {
+			if (!(spider->mSpiderStatus.mFlags & 0x40000000)) { // each threshold sheds another part
 				if (spider->mHits < 22) {
 					LaunchSpiderBossPartByIndex(0);
 				}
@@ -126,7 +126,7 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 				if (spider->mHits < 1)
 					LaunchSpiderBossCenterPart();
 			}
-			if (spider->mHits <= 0) {
+			if (spider->mHits <= 0) { // beaten: state 2 under flag 0x40000000, else state 1
 				ResetSpiderBossAttachment();
 				StopGameSfx(&gGame.mSound, 0x16001F);
 				spider->mSpeed = 0;
@@ -149,7 +149,7 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 			}
 		}
 		break;
-	case 1:
+	case 1: // it blinks red for twenty frames while invulnerable
 		if (spider->mBlinkTimer % 30 < 15)
 			spider->SetColor(1, 0x80, 0, 0, 0.0f);
 		else
@@ -163,17 +163,17 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 		}
 		break;
 	}
-	if (spider->mSpiderStatus.mFlags & 0x200) {
+	if (spider->mSpiderStatus.mFlags & 0x200) { // it pushes the player away
 		f32 heading, speed, x, z;
 		Vec p = gGame.GetPlayer()->mMoveTranslate;
 		CVec position(p);
-		speed = 0.4f * (220.0f - SpiderContactDistance(&position, &spider->mMoveTranslate));
+		speed = 0.4f * (220.0f - SpiderContactDistance(&position, &spider->mMoveTranslate)); // the push weakens with distance
 		if (speed > 4.0f)
 			speed = 4.0f;
 		heading = PI + (f32)atan2(p.x - spider->mMoveTranslate.x, p.z - spider->mMoveTranslate.z);
 		x       = speed * (f32)sin(heading);
 		z       = speed * (f32)cos(heading);
-		if (IsUsingMug(&gGame.GetPlayer()->mLift)) {
+		if (IsUsingMug(&gGame.GetPlayer()->mLift)) { // the mug takes no push
 			gGame.GetPlayer()->_158C4.Set(0, 0, 0);
 		} else
 			gGame.GetPlayer()->_158C4.Set(x, 0, z);
@@ -185,8 +185,8 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 	if (SpiderContactDistance(&pos, &spider->mMoveTranslate) < 28.0f && !IsPlayerFlashingFromHit(player)
 	    && (spider->mSpiderStatus.mFlags & 0x1000) && !(spider->mSpiderStatus.mFlags & 0x80000))
 		player->OnHitFromPosition(ppos, 4.0f);
-	if (GetPlayerCollisionRadius(gGame.GetPlayer()) < 2.0f && (spider->mSpiderStatus.mFlags & 0x20000)) {
-		if (--spider->mDrainTimer <= 0) {
+	if (GetPlayerCollisionRadius(gGame.GetPlayer()) < 2.0f && (spider->mSpiderStatus.mFlags & 0x20000)) { // a small rider gets drained
+		if (--spider->mDrainTimer <= 0) { // every thirty frames, four battery
 			DrainPlayerBattery(4.0f);
 			spider->mDrainTimer = 30;
 			if (!gSpiderDrainFlashClaimed) {
@@ -206,7 +206,7 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 				gSpiderDrainFlashTimers[0] = 0;
 			}
 			gSpiderDrainFlashTimers[1]++;
-			if (gSpiderDrainFlashTimers[0] > 0) {
+			if (gSpiderDrainFlashTimers[0] > 0) { // the red flash fades out over a second
 				f32 red = 128.0f * (gSpiderDrainFlashTimers[0] / FRAME_RATE);
 				player->SetColor(1, red, 0, 0, 0.0f);
 				StartScreenFade(&gGame.mScrnTex.mColor, red, 0, 0, 0, red, 0, 0, 0, 0.0f);
@@ -216,7 +216,7 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 			}
 		}
 	}
-	if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && (spider->mSpiderStatus.mFlags & 0x20000)) {
+	if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && (spider->mSpiderStatus.mFlags & 0x20000)) { // an empty battery drops the player
 		InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, 0, 1);
 		spider->mSpiderStatus.mFlags &= ~0x20000;
 		XObjChr* player              = gGame.GetPlayer();
