@@ -511,10 +511,10 @@ public:
 	f32 _198;                     // _198
 	f32 mFade;                    // _19C
 	f32 _1A0;                     // _1A0
-	f32 _1A4;                     // _1A4
+	f32 mTargetFade;              // _1A4
 	u8 _1A8[0x1B8 - 0x1A8];       // _1A8
 	s32 mCharIndex;               // _1B8
-	u32 _1BC;                     // _1BC
+	u32 mGreetingVariant;         // _1BC
 	f32 mTextX;                   // _1C0
 	f32 mTextY;                   // _1C4
 	f32 mTargetX;                 // _1C8
@@ -527,9 +527,9 @@ public:
 	char mCharCopies[40][3];      // _2EC, each character again as a string of its own
 	u32 mGlyphFrames;             // _364
 	u32 mNextGlyph;               // _368
-	s32 _36C;                     // _36C, the shopkeeper's anim step
-	s32 _370;                     // _370, the anim for it
-	u8 _374;                      // _374, set the anim
+	s32 mKeeperAnimStep;          // _36C, the shopkeeper's anim step
+	s32 mKeeperAnimId;            // _370, the anim for it
+	u8 mPlayKeeperAnim;           // _374, set the anim
 	u8 _375[0x378 - 0x375];       // _375
 	u32 mNumberOffset;            // _378
 	u8 mInsertsNumber;            // _37C
@@ -540,9 +540,9 @@ public:
 	s32 mHistoryCount;            // _38C
 	f32 mPanelAlpha;              // _390
 	f32 mPanelTarget;             // _394
-	f32 _398;                     // _398
-	f32 _39C;                     // _39C
-	u8 _3A0;                      // _3A0
+	f32 mListAlpha;               // _398
+	f32 mTargetListAlpha;         // _39C
+	u8 mHasMainMenu;              // _3A0
 	u8 _3A1[0x3A4 - 0x3A1];       // _3A1
 	u32 mDialogueNumber;          // _3A4
 	f32 mRankingOffsets[5];       // _3A8
@@ -563,7 +563,7 @@ public:
 	u8 _435[0x438 - 0x435];       // _435
 	s32 mChoices[4];              // _438
 	s32 mChoiceCount;             // _448
-	f32 _44C;                     // _44C
+	f32 mTexScroll;               // _44C
 };
 #if !defined(VERSION_JP)
 STATIC_ASSERT(sizeof(MenuPC) == 0x450);

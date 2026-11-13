@@ -420,7 +420,7 @@ BOOL MenuPC::Draw()
 				SetMenuTextureTranslation(&tex, 0.5f, 0);
 				DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, 4.0f + (center + width * 0.5f), y, 0, 8, 24, 0, 0, 0);
 				CTexObj* fill = LoadMenuPaletteTexture(&gGame, 118 - StatusTextureOffset);
-				SetMenuTextureTranslation(fill, this->_44C, 0);
+				SetMenuTextureTranslation(fill, this->mTexScroll, 0);
 				SetMenuTextureScale(fill, 0.5f * (width / GetMenuTextureWidth(fill)), 0.5f);
 				color = 0xFFFFFF00 | (u32)(40.0f * this->mAlpha);
 				DrawMenuTexturedQuad(GetGameGraphics(&gGame), fill, color, 2.0f + center, y, 0, width, 20, 0, 0, 0);
@@ -465,11 +465,11 @@ BOOL MenuPC::Draw()
 #endif
 			MenuPCPage* page = &gShopHistoryPage;
 			s32 selected     = this->mPurchaseSelection;
-			f32 alpha        = this->_398;
+			f32 alpha        = this->mListAlpha;
 #if defined(VERSION_JP)
-			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + this->mScroll, this->_44C, alpha, 1.0f);
+			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, alpha, 1.0f);
 #else
-			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + this->mScroll, this->_44C, alpha, 1.0f, scroll);
+			DrawPCShopList<ItemPriceList>(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, alpha, 1.0f, scroll);
 #endif
 			DrawPCGoldNumber(true, 339.0f, 316.0f, this->mAlpha, 1.0f, this->mMoneyDisplay.shown);
 			s32 positions = CountShopHistoryEntries(page) - 8;
@@ -498,9 +498,9 @@ BOOL MenuPC::Draw()
 			MenuPCPage* page = &gShopCatalogPage;
 			s32 selected     = this->mShopSelection;
 #if defined(VERSION_JP)
-			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + this->mScroll, this->_44C, 1.0f, 1.0f);
+			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, 1.0f, 1.0f);
 #else
-			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + this->mScroll, this->_44C, 1.0f, 1.0f, scroll);
+			DrawPCShopList<PriceList>(selected, 320.0f, 215.0f + this->mScroll, this->mTexScroll, 1.0f, 1.0f, scroll);
 #endif
 			DrawPCBlueNumber(true, 339.0f, 316.0f, this->mAlpha, 1.0f, this->mScrapDisplay.shown);
 			s32 positions = CountShopCatalogEntries(page) - 8;
@@ -748,7 +748,7 @@ BOOL MenuPC::Draw()
 			}
 			case 1:
 			case 2:
-				DrawPCRecyclePanel(this, this->mYesNo, 320, 215.0f + this->mScroll, this->mAmount, this->mAmount * rate, this->_44C,
+				DrawPCRecyclePanel(this, this->mYesNo, 320, 215.0f + this->mScroll, this->mAmount, this->mAmount * rate, this->mTexScroll,
 				                   this->mAlpha, 1);
 				break;
 			}
@@ -851,7 +851,7 @@ BOOL MenuPC::Draw()
 						sprintf(labelText, "%.255s", GetPCMenuLabelText(1));
 						break;
 					case 3:
-						if (this->_3A0)
+						if (this->mHasMainMenu)
 							sprintf(labelText, "%.255s", GetPCMenuLabelText(3));
 						else
 							sprintf(labelText, "%.255s", GetPCMenuLabelText(2));
@@ -898,7 +898,7 @@ BOOL MenuPC::Draw()
 					DrawGsProportionalTextFormat(GetGameGraphics(&gGame), 0xFFB62800 | (u32)(255.0f * this->mAlpha), labelText, x, y, 0,
 					                             18.0f, 18.0f);
 				}
-				if (!this->_3A0) {
+				if (!this->mHasMainMenu) {
 					f32 rotation = 0;
 
 					f32 top = 129;
@@ -1111,7 +1111,7 @@ BOOL MenuPC::Draw()
 			{
 				switch (this->mMode) {
 				case 2:
-					switch (this->_1BC) {
+					switch (this->mGreetingVariant) {
 					case 0:
 						text = GetPCDialogueText(20) + this->mCharIndex;
 						break;
@@ -1137,14 +1137,14 @@ BOOL MenuPC::Draw()
 				}
 				case 5:
 					if (GetPCDialogueText(2)[this->mCharIndex] == '\a') {
-						++this->_36C;
+						++this->mKeeperAnimStep;
 						++this->mCharIndex;
-						this->_374 = 1;
+						this->mPlayKeeperAnim = 1;
 					}
 					text = GetPCDialogueText(2) + this->mCharIndex;
 					break;
 				case 3:
-					DrawPCItemPurchasePanel(this->mPurchaseSelection, this->mYesNo, 320.0f, 215.0f + this->mScroll, this->_44C,
+					DrawPCItemPurchasePanel(this->mPurchaseSelection, this->mYesNo, 320.0f, 215.0f + this->mScroll, this->mTexScroll,
 					                        this->mAlpha, this->mPanelAlpha);
 					text = GetPCDialogueText(15) + this->mCharIndex;
 					break;
@@ -1152,8 +1152,8 @@ BOOL MenuPC::Draw()
 					text = GetPCDialogueText(16) + this->mCharIndex;
 					break;
 				case 7:
-					DrawPCScrapPurchasePanel(this->mShopSelection, this->mYesNo, 320.0f, 215.0f + this->mScroll, this->_44C, this->mAlpha,
-					                         this->mPanelAlpha);
+					DrawPCScrapPurchasePanel(this->mShopSelection, this->mYesNo, 320.0f, 215.0f + this->mScroll, this->mTexScroll,
+					                         this->mAlpha, this->mPanelAlpha);
 					text = GetPCDialogueText(17) + this->mCharIndex;
 					break;
 				case 10:
@@ -1182,9 +1182,9 @@ BOOL MenuPC::Draw()
 						}
 					} else if (!*text) {
 						SetPCDialogueGlyph(this, 0x8140);
-						this->mCharIndex    = 0;
-						this->mNumberOffset = 0;
-						this->_36C          = 0;
+						this->mCharIndex      = 0;
+						this->mNumberOffset   = 0;
+						this->mKeeperAnimStep = 0;
 					} else {
 						SetPCDialogueGlyph(this, ReadPCDialogueGlyph(text));
 						this->mCharIndex += 2;
@@ -5119,11 +5119,11 @@ static inline void ResetPCCharacters(MenuPC* menu)
 		*(u16*)menu->mCharCopies[i] = *(u16*)space;
 		menu->mCharCopies[i][2]     = 0;
 	}
-	menu->mGlyphFrames = 0;
-	menu->mNextGlyph   = 0;
-	menu->_36C         = 0;
-	menu->_370         = 0;
-	menu->_374         = 0;
+	menu->mGlyphFrames    = 0;
+	menu->mNextGlyph      = 0;
+	menu->mKeeperAnimStep = 0;
+	menu->mKeeperAnimId   = 0;
+	menu->mPlayKeeperAnim = 0;
 #if !defined(VERSION_JP)
 	gPCDialogueX = 640.0f;
 	// Open and State0 clear the first two rows in both US and PAL.
@@ -5210,7 +5210,7 @@ void MenuPC::State1(u32 frames)
 void MenuPC::State0(u32)
 {
 	MenuPC* menu = this;
-	if (menu->_3A0) {
+	if (menu->mHasMainMenu) {
 		ResetPCText(menu, 3);
 	} else {
 		ResetPCText(menu, 1);
@@ -5275,7 +5275,7 @@ void MenuPC::State2(u32)
 		}
 	} else if (pad.mPad->mTrigger & 0x200) {
 		ResetPCText(menu, 11);
-		menu->_1A4 = 0.0f;
+		menu->mTargetFade = 0.0f;
 		RestorePCHistory(menu);
 	}
 }
@@ -5805,7 +5805,7 @@ void MenuPC::State7(u32 frames)
 				menu->mPhase       = 0;
 				menu->mPanelTarget = 0.0f;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-				menu->_39C = 1.0f;
+				menu->mTargetListAlpha = 1.0f;
 			}
 		} else if (pad.mPad->mTrigger & 0x200) {
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
@@ -5820,7 +5820,7 @@ void MenuPC::State7(u32 frames)
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			PopulateShopCatalogPage(&gShopCatalogPage);
 			ResetPCText(menu, 11);
-			menu->_1A4 = 0.0f;
+			menu->mTargetFade = 0.0f;
 			RestorePCHistory(menu);
 		}
 		break;
@@ -5898,14 +5898,14 @@ BOOL MenuPC::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
 		PCEase(_198, _1A0);
-		PCEase(mFade, _1A4);
+		PCEase(mFade, mTargetFade);
 		PCSlide(mTextX, mTargetX, 6.0f * frames);
 		PCSlide(mTextY, mTargetY, 6.0f * frames);
 		ApproachHudValue(&mScroll, &mScrollTarget, 17.0f);
 		PCEaseCall(mMoneyDisplay.shown, mMoneyDisplay.target);
 		PCEaseCall(mScrapDisplay.shown, mScrapDisplay.target);
 		PCEaseCall(_424, _428);
-		_44C -= 0.008f * frames;
+		mTexScroll -= 0.008f * frames;
 		if (mMode > 1) {
 			switch (mTextPhase) {
 			case 0:
@@ -5970,50 +5970,50 @@ BOOL MenuPC::Update(u32 frames)
 				break;
 			}
 		}
-		switch (_36C) {
+		switch (mKeeperAnimStep) {
 		case 0:
-			_370 = 0;
+			mKeeperAnimId = 0;
 			break;
 		case 1:
-			_370 = 1;
+			mKeeperAnimId = 1;
 			break;
 		case 2:
-			_370 = 2;
+			mKeeperAnimId = 2;
 			break;
 		case 3:
-			_370 = 6;
+			mKeeperAnimId = 6;
 			break;
 		case 4:
-			_370 = 7;
+			mKeeperAnimId = 7;
 			break;
 		case 5:
-			_370 = 8;
+			mKeeperAnimId = 8;
 			break;
 		case 6:
-			_370 = 9;
+			mKeeperAnimId = 9;
 			break;
 		case 7:
-			_370 = 2;
+			mKeeperAnimId = 2;
 			break;
 		case 8:
-			_370 = 10;
+			mKeeperAnimId = 10;
 			break;
 		default:
-			_370 = 0;
+			mKeeperAnimId = 0;
 			break;
 		}
-		if (_374 == 1) {
+		if (mPlayKeeperAnim == 1) {
 			for (s32 i = 0; i < 288; i++) {
 				XObj* obj = PCWorldObject(i);
 				switch (obj->GetKind()) {
 				case 120:
-					obj->SetAnim(_370, 0, 0, 0, 0, 0.0f, frames, 1.0f, 10.0f);
+					obj->SetAnim(mKeeperAnimId, 0, 0, 0, 0, 0.0f, frames, 1.0f, 10.0f);
 					break;
 				}
 			}
-			_374 = 0;
+			mPlayKeeperAnim = 0;
 		}
-		switch (_36C) {
+		switch (mKeeperAnimStep) {
 		case 1:
 		case 2:
 		case 6:
@@ -6025,8 +6025,8 @@ BOOL MenuPC::Update(u32 frames)
 					f32 end     = PCAnimEnd(obj);
 					f32 current = PCAnimFrame(obj);
 					if (end - 4.0f <= current) {
-						_36C++;
-						_374 = 1;
+						mKeeperAnimStep++;
+						mPlayKeeperAnim = 1;
 					}
 				} break;
 				}
@@ -8371,28 +8371,28 @@ void MenuPC::Open()
 	_198               = -10;
 	mFade              = 0;
 	_1A0               = -10;
-	_1A4               = 60;
+	mTargetFade        = 60;
 	mTextX             = 210;
 	mTextY             = 129;
 	mTargetX           = mTextX;
 	mTargetY           = mTextY;
 	ResetPCCharacters(this);
-	mAmount      = 0;
-	_398         = 1;
-	_39C         = 1;
-	mPanelAlpha  = 0;
-	mPanelTarget = 0;
+	mAmount          = 0;
+	mListAlpha       = 1;
+	mTargetListAlpha = 1;
+	mPanelAlpha      = 0;
+	mPanelTarget     = 0;
 	for (int i = 0; i < 4; i++)
 		mChoices[i] = -1;
 	mChoiceCount = 0;
-	_44C         = 0;
+	mTexScroll   = 0;
 	s32 stage    = gGame.mStage;
 	if (FindStageIndexByName("stage05") == stage)
-		_3A0 = FALSE;
+		mHasMainMenu = FALSE;
 	else
-		_3A0 = TRUE;
+		mHasMainMenu = TRUE;
 	if (gGame._344C + 1 == gGame.mStage)
-		_3A0 = FALSE;
+		mHasMainMenu = FALSE;
 	FindStageIndexByName("shun");
 	mHistoryStart = 600;
 	mHistoryCount = 20;
@@ -8450,8 +8450,8 @@ void MenuPC::Open()
 		mRankingRows[i].nameIndex = 0;
 		mRankingRows[i].score     = 0;
 	}
-	mRankingEnd = 0;
-	_1BC        = rand() % 8;
+	mRankingEnd      = 0;
+	mGreetingVariant = rand() % 8;
 	ClearPCShopPage<ItemPriceList>();
 	PopulateShopHistoryPage(&gShopHistoryPage);
 	ClearPCShopPage<PriceList>();
@@ -10206,17 +10206,17 @@ void MenuPC::State3(u32 frames)
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				menu->mPanelTarget = 1.0f;
 				menu->mPhase++;
-				menu->mYesNo = 0;
-				menu->_39C   = 0.5f;
+				menu->mYesNo           = 0;
+				menu->mTargetListAlpha = 0.5f;
 				break;
 			}
 			PlayGameSound(&gGame.mSound, 0x85, 0xFF);
 			break;
 		}
 		if (pad.mPad->mTrigger & 0x200) {
-			if (menu->_3A0) {
+			if (menu->mHasMainMenu) {
 				ResetPCText(menu, 11);
-				menu->_1A4 = 0.0f;
+				menu->mTargetFade = 0.0f;
 				RestorePCHistory(menu);
 			} else {
 				ResetPCText(menu, 2);
@@ -10282,14 +10282,14 @@ void MenuPC::State3(u32 frames)
 				menu->mPhase       = 0;
 				menu->mPanelTarget = 0.0f;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-				menu->_39C = 1.0f;
+				menu->mTargetListAlpha = 1.0f;
 			}
 		}
 		if (pad.mPad->mTrigger & 0x200) {
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
-			menu->mPhase       = 0;
-			menu->mPanelTarget = 0.0f;
-			menu->_39C         = 1.0f;
+			menu->mPhase           = 0;
+			menu->mPanelTarget     = 0.0f;
+			menu->mTargetListAlpha = 1.0f;
 		}
 		break;
 	case 2:
@@ -10297,7 +10297,7 @@ void MenuPC::State3(u32 frames)
 			menu->mPhase       = 0;
 			menu->mPanelTarget = 0.0f;
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			menu->_39C = 1.0f;
+			menu->mTargetListAlpha = 1.0f;
 			PopulateShopHistoryPage(&gShopHistoryPage);
 		}
 		break;
