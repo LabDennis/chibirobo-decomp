@@ -7,7 +7,9 @@
 extern "C" double sin(double x);
 extern "C" double cos(double x);
 extern "C" double atan2(double y, double x);
-extern "C" f32 PSVECDistance(Vec* a, Vec* b);
+extern "C" {
+#include <dolphin/mtx/vec.h>
+}
 
 // first aobj on the jobj or below it
 static inline HSD_AObj* FindAnim(HSD_JObj* jobj)

@@ -2798,7 +2798,10 @@ extern "C" void UpdateFighter(u32 arg)
 			if (!(item->_04->_228 & 0x10000) || item->_24 <= 0) {
 				continue;
 			}
-			dist = PSVECDistance(&item->GetPos(), &pos);
+			{
+				const CVec& targetPosition = item->GetPos();
+				dist                       = PSVECDistance(&targetPosition, &pos);
+			}
 			if (fighterWork._B4 == NULL) {
 				range = 75.0f;
 			} else {
