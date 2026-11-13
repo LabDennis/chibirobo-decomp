@@ -13,11 +13,9 @@
 ###
 
 import argparse
-import shlex
-import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from tools.project import (
     Object,
@@ -59,38 +57,6 @@ parser.add_argument(
     type=Path,
     default=Path("build"),
     help="base build directory (default: build)",
-)
-parser.add_argument(
-    "--langpack",
-    "--wii-locale",
-    dest="wii_locale",
-    choices=("global", "en-US", "en-GB", "de-DE", "fr-FR", "es-ES", "it-IT"),
-    help="Wii mod: the game's text in this language",
-)
-parser.add_argument(
-    "--gcncon",
-    "--wii-gamecube-pad",
-    dest="wii_gamecube_pad",
-    action="store_true",
-    help="Wii mod: the first A press picks the controls, GameCube controller or Wii Remote with its extras",
-)
-parser.add_argument(
-    "--iso",
-    action="store_true",
-    help="Wii mod: also write a disc image with the mod (needs Wiimms ISO Tools, wit)",
-)
-parser.add_argument(
-    "--fanpatch",
-    metavar="FOLDER",
-    type=Path,
-    help="Wii mod with --iso: put a translation patch for the retail disc into the image "
-    "(the folder with its main.dol and file folders, as Riivolution loads them)",
-)
-parser.add_argument(
-    "--wit",
-    metavar="BINARY",
-    type=Path,
-    help="path to wit for --iso (default: wit on PATH, or ~/.local/opt/wit/bin/wit)",
 )
 parser.add_argument(
     "--binutils",
@@ -175,27 +141,6 @@ config = ProjectConfig()
 config.version = str(args.version)
 version_num = VERSIONS.index(config.version)
 wii = config.version == "R24J01"
-wii_mod = bool(args.wii_locale or args.wii_gamecube_pad)
-if wii_mod and not wii:
-    parser.error("--langpack and --gcncon require --version R24J01")
-if args.wii_locale and not Path("tools/wii_lang_data.py").is_file():
-    parser.error("--langpack requires tools/wii_lang_data.py (Wii language data builder)")
-if wii_mod and args.mode == "progress":
-    parser.error("progress is measured against retail releases")
-wit = None
-if args.wit and not args.iso:
-    parser.error("--wit is only used with --iso")
-if args.fanpatch and not args.iso:
-    parser.error("--fanpatch is only used with --iso")
-if args.fanpatch and not (args.fanpatch / "main.dol").is_file():
-    parser.error(f"--fanpatch needs the patch folder that holds its main.dol; there is none in {args.fanpatch}")
-if args.iso:
-    if not wii_mod:
-        parser.error("--iso builds a mod's disc image: add --gcncon and/or --langpack")
-    default_wit = Path.home() / ".local/opt/wit/bin/wit"
-    wit = args.wit or (Path(shutil.which("wit")) if shutil.which("wit") else default_wit)
-    if not wit.is_file():
-        parser.error(f"--iso needs Wiimms ISO Tools: install wit (https://wit.wiimm.de) or pass --wit; tried {wit}")
 
 # Apply arguments
 config.build_dir = args.build_dir
@@ -206,7 +151,7 @@ config.compilers_path = args.compilers
 # The US and Japanese GameCube linkers used ASCII '0' for padding.
 config.fill_padding = config.version in ("GGTE01", "GGTJ01_01")
 config.generate_map = args.map or not wii
-config.non_matching = args.non_matching or wii_mod
+config.non_matching = args.non_matching
 config.sjiswrap_path = args.sjiswrap
 config.ninja_path = args.ninja
 config.progress = args.progress
@@ -228,30 +173,6 @@ config.wibo_tag = "1.0.3"
 # Project
 config.config_path = Path("config") / config.version / "config.yml"
 config.check_sha_path = Path("config") / config.version / "build.sha1"
-if wii_mod:
-    from tools.wii_locale import LANGUAGES, disc_image, write_localization, write_mod
-
-    parts = [args.wii_locale] if args.wii_locale else []
-    if args.wii_gamecube_pad:
-        parts.append("gcncon")
-    config.output_name = "wii-" + "-".join(parts)
-    config.check_sha_path = None
-    config.progress = False
-    translations = Path("mods/wii-localization/interface.json")
-    config.reconfig_deps = [translations, translations.with_name("text_map.json"),
-                            translations.with_name("wii_text.json"), Path("tools/wii_locale.py")]
-    features = [f"{args.wii_locale} localization"] if args.wii_locale else []
-    if args.wii_gamecube_pad:
-        features.append("GameCube controller")
-    try:
-        base = wii_disc = disc_image(Path("orig/R24J01"))
-        if args.iso and wii_disc.name == "main.dol":
-            parser.error("--iso needs a disc image (ISO, RVZ, ...) in orig/R24J01, not an extracted partition")
-        if args.wii_locale:
-            write_localization(translations, args.wii_locale, config.out_path())
-        write_mod(config.out_path(), base, ", ".join(features))
-    except ValueError as error:
-        parser.error(str(error))
 config.asflags = [
     "-mgekko",
     "--strip-local-absolute",
@@ -268,6 +189,9 @@ if args.debug:
 if args.map:
     config.ldflags.append("-mapunused")
     # config.ldflags.append("-listclosure") # For Wii linkers
+
+# Use for any additional files that should cause a re-configure when modified
+config.reconfig_deps = []
 
 # Optional numeric ID for decomp.me preset
 # Can be overridden in libraries or objects
@@ -1243,11 +1167,6 @@ if wii:
     ]
     if args.warn:
         wii_cflags.append(f"-W {args.warn}")
-    if args.wii_locale:
-        wii_cflags.extend([("-DWII_LANGUAGE_SYSTEM" if args.wii_locale == "global" else
-                           f"-DWII_LANGUAGE={LANGUAGES.index(args.wii_locale[:2]) + 1}"), f"-i {config.out_path().as_posix()}/include"])
-    if args.wii_gamecube_pad:
-        wii_cflags.append("-DWII_GAMECUBE_PAD")
     wii_cflags.append("-DDEBUG=1" if args.debug else "-DNDEBUG=1")
     config.libs = [
         {
@@ -1262,11 +1181,11 @@ if wii:
                 Object(Equivalent, "game/roboeyeslens.cpp"),
                 Object(Equivalent, "game/stage_data.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/atcmenuselection.cpp"),
-                Object(bool(args.wii_locale), "game/wii/homemenu.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                Object(NonMatching, "game/wii/homemenu.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # its switches are binary-search trees, which only the GC compilers emit, and none of its
                 # small functions is inlined into the callers that follow them
-                Object(bool(args.wii_locale), "game/wii/cfile.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
-                Object(bool(args.wii_locale), "game/wii/gamemain.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
+                Object(NonMatching, "game/wii/gamemain.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/cpad.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
@@ -1415,111 +1334,10 @@ def append_treemap_step(config: ProjectConfig) -> None:
         )
 
 
-def wii_dtk(config: ProjectConfig) -> Path:
-    exe = ".exe" if is_windows() else ""
-    # the same dtk generate_build uses: a given binary, one built from a given checkout, or the downloaded one
-    if config.dtk_path is not None and config.dtk_path.is_file():
-        dtk = config.dtk_path
-    elif config.dtk_path is not None:
-        dtk = config.build_dir / "tools" / "release" / f"dtk{exe}"
-    else:
-        dtk = config.build_dir / "tools" / f"dtk{exe}"
-
-    return dtk
-
-
-def esc(path: str) -> str:  # a path on a build line
-    return path.replace("$", "$$").replace(" ", "$ ").replace(":", "$:")
-
-def arg(path: Path) -> str:  # a path in a command, quoted for the shell (Windows runs it without one)
-    quoted = f'"{path.as_posix()}"' if is_windows() else shlex.quote(path.as_posix())
-    return quoted.replace("$", "$$")
-
-def append_language_data_step(config, codes):
-    # tools/wii_lang_data.py builds every language once into build/wii-lang, for all mod variants; each
-    # variant then takes the languages it can show.
-    shared = config.build_dir / "wii-lang"
-    files = shared / "files"
-    report = files / "report.json"
-    target = config.out_path() / "files/lang"
-    dtk = wii_dtk(config)
-    try:
-        discs = [disc_image(Path("orig") / version) for version in ("R24J01", "GGTE01", "GGTP01")]
-    except ValueError as error:
-        parser.error(f"--langpack needs the Wii, US and PAL discs in orig/: {error}")
-    inputs = [dtk, *discs]
-    # The producer also detects the Japanese GC reference beside the other discs.
-    jp = Path("orig/GGTJ01_01")
-    inputs.extend(sorted(p for p in jp.glob("*") if p.suffix.lower() in (".rvz", ".iso", ".gcm")))
-    dependencies = " ".join(esc(path.as_posix()) for path in inputs)
-    with open("build.ninja", "a", encoding="utf-8") as f:
-        f.write(
-            "\nrule wii_language_data\n"
-            f"  command = $python tools/wii_lang_data.py --dtk {arg(dtk)} --wii {arg(discs[0])}"
-            f" --us {arg(discs[1])} --pal {arg(discs[2])} --work {arg(shared / 'work')} --out {arg(files)}\n"
-            "  description = Extract Wii language data\n"
-            f"build {esc(report.as_posix())}: wii_language_data tools/wii_lang_data.py | {dependencies}\n"
-            "rule wii_stage_languages\n"
-            f"  command = $python -m tools.wii_lang_install {arg(files)} \"$out\" {' '.join(codes)}\n"
-            "  description = Install Wii language files\n"
-            f"build {esc(target.as_posix())}: wii_stage_languages {esc(report.as_posix())} | tools/wii_lang_install.py\n"
-            f"default {esc(target.as_posix())}\n"
-        )
-
-
-def append_banner_step(config, disc, translations, locale):
-    out = config.out_path() / "files/opening.bnr"
-    dtk = wii_dtk(config)
-    source = disc.parent.parent / "files/opening.bnr" if disc.name == "main.dol" else disc
-    with open("build.ninja", "a", encoding="utf-8") as f:
-        f.write(
-            "\nrule wii_banner\n"
-            f"  command = $python -m tools.wii_locale {arg(disc)} {arg(dtk)} {arg(translations)} {locale} \"$out\"\n"
-            "  description = BANNER $out\n"
-            f"build {esc(out.as_posix())}: wii_banner {esc(source.as_posix())} | {esc(dtk.as_posix())}"
-            f" {esc(translations.as_posix())} tools/wii_locale.py\n"
-            f"default {esc(out.as_posix())}\n"
-        )
-
-
-def append_iso_step(config: ProjectConfig, wit: Path, disc: Path, patch: Optional[Path]) -> None:
-    # The mod's main.dol and files, put into a copy of the original disc by tools/wii_iso.py.
-    out = config.out_path()
-    image = (out / f"{config.output_name}{'-fanpatch' if patch else ''}.iso").as_posix()
-    dtk = wii_dtk(config)
-
-    with open("build.ninja", "a", encoding="utf-8") as f:
-        f.write(
-            "\n# Disc image with the mod\n"
-            "rule wii_iso\n"
-            f"  command = $python tools/wii_iso.py --dtk {arg(dtk)} --wit {arg(wit)} --disc {arg(disc)}"
-            f" --dol $in --files {arg(out / 'files')} --work {arg(out / 'iso')} --out $out"
-            + (f" --patch {arg(patch)}" if patch else "")
-            + "\n"
-            "  depfile = $out.d\n"
-            "  deps = gcc\n"
-            "  description = ISO $out\n"
-            "  pool = console\n"
-            f"build {esc(image)}: wii_iso {esc((out / 'main.dol').as_posix())} | {esc(dtk.as_posix())} {esc(disc.as_posix())}"
-            " tools/wii_iso.py"
-            + (" " + esc((out / "files/opening.bnr").as_posix()) if args.wii_locale else "")
-            + (" " + esc((out / "files/lang").as_posix()) if args.wii_locale else "") + "\n"
-            f"default {esc(image)}\n"
-        )
-
-
 if args.mode == "configure":
     # Write build.ninja and objdiff.json
     generate_build(config)
-    if not wii_mod:
-        append_treemap_step(config)
-    if args.wii_locale:
-        codes = LANGUAGES if args.wii_locale == "global" else (args.wii_locale[:2],)
-        append_language_data_step(config, codes)
-    if args.wii_locale:
-        append_banner_step(config, wii_disc, translations, args.wii_locale)
-    if args.iso:
-        append_iso_step(config, wit, wii_disc, args.fanpatch)
+    append_treemap_step(config)
 elif args.mode == "progress":
     # Print progress information
     calculate_progress(config)

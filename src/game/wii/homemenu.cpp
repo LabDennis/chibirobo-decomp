@@ -44,17 +44,12 @@ extern "C" void InitWiiHomeMenu(WiiHomeMenu* menu)
 	menu->layout        = 0;
 	menu->message       = 0;
 	menu->configuration = 0;
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-	// the archive loader indexes its homeBtn table with this, so the mod's language picks the files
-	menu->language = gGame.mLanguage;
-#else
-	menu->language = SCGetLanguage();
-#endif
-	menu->flags     = 0;
-	menu->sound     = 0;
-	menu->heapSize  = 0x80000;
-	menu->scaleX    = 1;
-	menu->scaleY    = 1;
-	menu->speed     = 1;
-	menu->allocator = &gWiiPadAllocator;
+	menu->language      = SCGetLanguage();
+	menu->flags         = 0;
+	menu->sound         = 0;
+	menu->heapSize      = 0x80000;
+	menu->scaleX        = 1;
+	menu->scaleY        = 1;
+	menu->speed         = 1;
+	menu->allocator     = &gWiiPadAllocator;
 }

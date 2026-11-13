@@ -9,47 +9,6 @@
 #include "game/globals.h"
 #include "game/stage.h"
 #include <stdio.h>
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-#include "wii_locale.h"
-#include "wii_text.h"
-
-// The Wii build stored the European tables Shift-JIS safe: the byte after one from 0x80 up has its top bit
-// set as well (0xDF stays, it is the German sharp s), and an accented last letter is followed by 0xA2. The
-// Latin font reads one byte a letter, so the text is put back in place before use; a second pass changes nothing.
-static const char* RepairEuropeanText(const char* text)
-{
-	u8* in  = (u8*)text;
-	u8* out = in;
-	while (*in != 0) {
-		u8 c   = *in++;
-		*out++ = c;
-		if (c >= 0x80 && *in != 0) {
-			u8 next = *in++;
-			if (next == 0xA2 && *in == 0)
-				break;
-			*out++ = next == 0xDF ? next : next & 0x7F;
-		}
-	}
-	*out = 0;
-	return text;
-}
-
-// Language 1, English, came through as it was.
-static const char* MappedText(const char** table, u8 language, s16 slot)
-{
-	return language == 1 ? table[slot] : RepairEuropeanText(table[slot]);
-}
-
-// A Japanese text with no translation: shown only if the Latin font can draw it (plain ASCII such as "NEW").
-static const char* LatinOrEmpty(const char* text)
-{
-	for (const u8* c = (const u8*)text; *c != 0; c++) {
-		if (*c >= 0x80)
-			return "";
-	}
-	return text;
-}
-#endif
 
 extern "C" {
 #if defined(VERSION_JP)
@@ -119,14 +78,7 @@ static inline BOOL IsGlobalScript(const u8* script)
  */
 extern "C" const char* GetLocalizedPCDialogue(s32 index)
 {
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-	u8 language = gGame.mLanguage;
-	if (language == 0)
-		return gPCDialogueByLanguage[0][index];
-	if ((u32)index < ARRAY_SIZE(sPCMap) && sPCMap[index] >= 0)
-		return MappedText(gPCDialogueByLanguage[language], language, sPCMap[index]);
-	return LatinOrEmpty(gPCDialogueByLanguage[0][index]);
-#elif defined(VERSION_JP)
+#if defined(VERSION_JP)
 	return gJapanesePCDialogue[index];
 #else
 	return gPCDialogueByLanguage[gGame.mLanguage][index];
@@ -139,22 +91,7 @@ extern "C" const char* GetLocalizedPCDialogue(s32 index)
  */
 extern "C" const char* GetLocalizedInterfaceText(s32 index)
 {
-#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
-	u8 language = gGame.mLanguage;
-	if (language == 0)
-		return gInterfaceTextByLanguage[0][index];
-	if ((u32)index < ARRAY_SIZE(sInterfaceRow0))
-		return sWiiInterfaceRows[language - 1][index];
-	if ((u32)index < ARRAY_SIZE(sInterfaceMap)) {
-		// our own text first: it also replaces US lines that do not fit the lines the Wii prints
-		const char* text = WiiOnlyText(language, index);
-		if (text != NULL)
-			return text;
-		if (sInterfaceMap[index] >= 0)
-			return MappedText(gInterfaceTextByLanguage[language], language, sInterfaceMap[index]);
-	}
-	return LatinOrEmpty(gInterfaceTextByLanguage[0][index]);
-#elif defined(VERSION_JP)
+#if defined(VERSION_JP)
 	return gJapaneseInterfaceText[index];
 #else
 	return gInterfaceTextByLanguage[gGame.mLanguage][index];
@@ -570,12 +507,8 @@ extern "C" BOOL IsGlobalDataLoaded()
  */
 extern "C" BOOL LoadGlobalResourceData()
 {
-#if defined(VERSION_JP) || defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
 #if defined(VERSION_JP)
 	const char* path = gGlobalResourceFileName;
-#else
-	const char* path = "bin/globals.bin";
-#endif
 #else
 	char path[0x40];
 	sprintf(path, "bin%s/%s", gResourceDirectorySuffixByLanguage[gGame.mLanguage], gGlobalResourceFileName);
