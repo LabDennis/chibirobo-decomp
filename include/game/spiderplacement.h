@@ -6,8 +6,8 @@
 
 static inline Vec PlacementPosition(const CoordInfo& coord, const Vec& initial)
 {
-	const UnkStageObj* entry = coord._00;
 	Vec pos                  = initial;
+	const UnkStageObj* entry = coord._00;
 	pos.x                    = entry->mPos[0] / 100.0f;
 	pos.y                    = entry->mPos[1] / 100.0f;
 	pos.z                    = entry->mPos[2] / 100.0f;
@@ -16,8 +16,8 @@ static inline Vec PlacementPosition(const CoordInfo& coord, const Vec& initial)
 
 static inline Vec PlacementRotation(const CoordInfo& coord, const Vec& initial)
 {
-	const UnkStageObj* entry = coord._00;
 	Vec rot                  = initial;
+	const UnkStageObj* entry = coord._00;
 	rot.x                    = DEG2RAD * entry->_10[0];
 	rot.y                    = DEG2RAD * entry->_10[1];
 	rot.z                    = DEG2RAD * entry->_10[2];
@@ -26,8 +26,8 @@ static inline Vec PlacementRotation(const CoordInfo& coord, const Vec& initial)
 
 static inline Vec PlacementScale(const CoordInfo& coord, const Vec& initial)
 {
-	const UnkStageObj* entry = coord._00;
 	Vec scale                = initial;
+	const UnkStageObj* entry = coord._00;
 	scale.x                  = entry->mScale[0] / 100.0f;
 	scale.y                  = entry->mScale[1] / 100.0f;
 	scale.z                  = entry->mScale[2] / 100.0f;

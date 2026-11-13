@@ -224,7 +224,9 @@ static inline bool IsGrabBlocked(s32 anim)
 	return false;
 }
 
-// NONMATCHING: same code; retail orders the vector-constant loads (@2029) and a few lfs differently
+// NONMATCHING: same code; retail keeps the zero from the prologue in r6 (here r0), takes r4 for the second path
+// pointer and reuses the player pointer for both _980 writes in case 12. The path arrays and the joint string sit
+// at other .rodata offsets because this unit holds only part of the file.
 void XObjSpiderBoss::State3(u32 frames)
 {
 	CPad pad(0);
@@ -239,7 +241,7 @@ void XObjSpiderBoss::State3(u32 frames)
 		mStep                     = 101;
 		break;
 	case 101: {
-		mHeading  = atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
+		mHeading  = atan2(position.x - mMoveTranslate.x, position.z - mMoveTranslate.z);
 		f32 delta = mTargetRotY - mHeading;
 		if (delta > PI)
 			mHeading = TWO_PI + mHeading;
@@ -272,7 +274,7 @@ void XObjSpiderBoss::State3(u32 frames)
 	case 1:
 		mGrabIntervalFrames += frames;
 		{
-			mHeading  = atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
+			mHeading  = atan2(position.x - mMoveTranslate.x, position.z - mMoveTranslate.z);
 			f32 delta = mTargetRotY - mHeading;
 			if (delta > PI)
 				mHeading = TWO_PI + mHeading;
@@ -319,7 +321,7 @@ void XObjSpiderBoss::State3(u32 frames)
 		}
 		break;
 	case 11: {
-		mHeading  = atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
+		mHeading  = atan2(position.x - mMoveTranslate.x, position.z - mMoveTranslate.z);
 		f32 delta = mTargetRotY - mHeading;
 		if (delta > PI)
 			mHeading = TWO_PI + mHeading;
@@ -353,7 +355,7 @@ void XObjSpiderBoss::State3(u32 frames)
 		break;
 	case 12: {
 		{
-			mHeading  = atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
+			mHeading  = atan2(position.x - mMoveTranslate.x, position.z - mMoveTranslate.z);
 			f32 delta = mTargetRotY - mHeading;
 			if (delta > PI)
 				mHeading = TWO_PI + mHeading;
@@ -425,7 +427,7 @@ void XObjSpiderBoss::State3(u32 frames)
 		if (mEscapeInputStrength > 1)
 			mEscapeInputStrength -= 1;
 		if (mEscapeRemaining <= 0) {
-			if (mSpiderStatus.mFlags & 0x1000000) {
+			if (mSpiderStatus.Check(0x1000000)) {
 				mSpiderStatus.mFlags &= ~0x1000000;
 				gSpiderDrainFlashClaimed = 0;
 				gGame.GetPlayer()->vf12C(1, 0, 0, 0, 0);

@@ -30,7 +30,7 @@ extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32)
 	if ((spider->mSpiderStatus.mFlags & 0x20000) && (player->_980.mFlags & 0x80000000)) {
 		s32 path[] = { 0, 2, 0, 1, 1, 0, 0 };
 		joint.Attach(FindJointByPath(spider->mJObj, path, 7));
-		CVec position(joint.GetPos());
+		CVec position(GetJointPosition(joint.mJObj));
 		f32 radius = GetPlayerCollisionRadius(gGame.GetPlayer());
 		position.y -= 6.0f;
 		f32 heading
@@ -70,6 +70,15 @@ extern "C" void UpdateSpiderBossAttachments(XObjSpiderBoss* spider, u32)
 			HSD_JObjCopyMtx(obj, matrix);
 		}
 	}
+}
+
+static inline void DrainPlayerBattery(f32 amount)
+{
+	f32 battery = gGame.GetPlayer()->mParams.mBattery - amount;
+	if (battery < 0.0f) {
+		battery = 0.0f;
+	}
+	gGame.GetPlayer()->mParams.SetBattery(battery);
 }
 
 extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
@@ -122,15 +131,19 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 			if (spider->mNextAction <= 0) {
 				ResetSpiderBossAttachment();
 				StopGameSfx(&gGame.mSound, 0x16001F);
-				spider->mSpeed     = 0;
-				spider->mStep      = 0;
-				spider->mTimer     = 0;
-				spider->mPrevState = spider->mState;
+				spider->mSpeed = 0;
 				if (spider->mSpiderStatus.mFlags & 0x40000000) {
-					spider->mState = 2;
+					spider->mStep      = 0;
+					spider->mTimer     = 0;
+					spider->mPrevState = spider->mState;
+					spider->mState     = 2;
 					spider->mSpiderStatus.mFlags |= 0x10;
-				} else
-					spider->mState = 1;
+				} else {
+					spider->mStep      = 0;
+					spider->mTimer     = 0;
+					spider->mPrevState = spider->mState;
+					spider->mState     = 1;
+				}
 			} else {
 				spider->_A68        = 1;
 				spider->mBlinkTimer = 0;
@@ -143,7 +156,8 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 			spider->vf12C(1, 0x80, 0, 0, 0.0f);
 		else
 			spider->vf12C(1, 0, 0, 0, 0.0f);
-		if (++spider->mBlinkTimer > 20) {
+		spider->mBlinkTimer++;
+		if (spider->mBlinkTimer > 20) {
 			spider->mSpiderStatus.mFlags &= ~0x10;
 			spider->vf12C(1, 0, 0, 0, 0.0f);
 			spider->mBlinkTimer = 0;
@@ -152,13 +166,15 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 		break;
 	}
 	if (spider->mSpiderStatus.mFlags & 0x200) {
+		f32 heading, speed, x, z;
 		Vec p = gGame.GetPlayer()->mMoveTranslate;
 		CVec position(p);
-		f32 speed = 0.4f * (220.0f - SpiderContactDistance(&position, &spider->mMoveTranslate));
+		speed = 0.4f * (220.0f - SpiderContactDistance(&position, &spider->mMoveTranslate));
 		if (speed > 4.0f)
 			speed = 4.0f;
-		f32 heading = PI + (f32)atan2(p.x - spider->mMoveTranslate.x, p.z - spider->mMoveTranslate.z);
-		f32 x = speed * (f32)sin(heading), z = speed * (f32)cos(heading);
+		heading = PI + (f32)atan2(p.x - spider->mMoveTranslate.x, p.z - spider->mMoveTranslate.z);
+		x       = speed * (f32)sin(heading);
+		z       = speed * (f32)cos(heading);
 		if (IsUsingMug(&gGame.GetPlayer()->mLift)) {
 			gGame.GetPlayer()->_158C4.Set(0, 0, 0);
 		} else
@@ -173,14 +189,14 @@ extern "C" void UpdateSpiderBossDamage(XObjSpiderBoss* spider, u32 frames)
 		player->OnHitFromPosition(ppos, 4.0f);
 	if (GetPlayerCollisionRadius(gGame.GetPlayer()) < 2.0f && (spider->mSpiderStatus.mFlags & 0x20000)) {
 		if (--spider->mDrainTimer <= 0) {
-			DrainSpiderBattery(gGame.GetPlayer()->mParams, 4.0f);
+			DrainPlayerBattery(4.0f);
 			spider->mDrainTimer = 30;
 			if (!gSpiderDrainFlashClaimed) {
 				spider->mSpiderStatus.mFlags |= 0x1000000;
 				gSpiderDrainFlashClaimed = 1;
 			}
 			if (spider->mSpiderStatus.mFlags & 0x1000000) {
-				gSpiderDrainFlashTimers[0] = (s32)FRAME_RATE;
+				gSpiderDrainFlashTimers[0] = FRAMES_PER_SECOND;
 				gSpiderDrainFlashTimers[1] = 0;
 			}
 		}

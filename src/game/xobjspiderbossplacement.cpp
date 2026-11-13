@@ -7,7 +7,8 @@ Vec gSpiderBossPosition, gSpiderBossScale, gSpiderBossRotation;
  * @note Address: 0x80106088
  * @note Size: 0x584
  */
-// NONMATCHING: retail keeps a second fdivs where this code reuses the quotient; different spill-store ordering
+// NONMATCHING: retail reads the three start Vecs at +0xD4 of the file's .bss, behind a header-made prefix this
+// split unit lacks, so every load from them has another offset; the code is otherwise the same
 extern "C" void ApplySpiderBossPlacement(XObjSpiderBoss* spider)
 {
 	spider->vf12C(1, 0, 0, 0, 0.0f);
