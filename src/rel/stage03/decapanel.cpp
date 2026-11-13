@@ -1,5 +1,6 @@
 #include "game/hsd_jobj.h"
 #include "game/ctpl.h"
+#include "game/evt.h"
 #include "game/gmath.h"
 #include "game/video.h"
 #include "Version.h"
@@ -24,10 +25,6 @@ typedef char UnkObj_size_check[sizeof(UnkObj) == 0x228 ? 1 : -1];
 #else
 typedef char UnkObj_size_check[sizeof(UnkObj) == 0x230 ? 1 : -1];
 #endif
-
-struct UnkObjTable {
-	void* mList; // _00
-};
 
 // partial MainGame layout
 struct CGameS03View {
@@ -59,11 +56,11 @@ struct CGameS03View {
 #else
 	u8 _01B18[0x5D080 - 0x1B18]; // _01B18
 #endif
-	UnkObjTable mObjTable; // _5D080, JP _5D038
+	CEvtData mEventData; // _5D080, JP _5D038
 #if defined(VERSION_GGTJ01_01)
-	u8 _5D084[0xE7114 - 0x5D03C]; // _5D03C
+	u8 _5D08C[0xE7114 - 0x5D044]; // _5D044
 #else
-	u8 _5D084[0xE7DFC - 0x5D084]; // _5D084
+	u8 _5D08C[0xE7DFC - 0x5D08C]; // _5D08C
 #endif
 	void* _E7DFC;    // _E7DFC, JP _E7114
 	u8 _E7E00[0x24]; // _E7E00, JP _E7118
@@ -78,7 +75,6 @@ typedef char CGameS03View_size_check[sizeof(CGameS03View) == 0xE7E28 ? 1 : -1];
 extern "C" CGameS03View gGame;
 
 extern "C" {
-UnkObj* ResolveEventObjectId(UnkObjTable* mgr, s16 id);
 BOOL IsGameSoundPlaying(void* sound, s32 id);
 void PlayGameSound(void* sound, s32 id, s32 vol);
 void AXDriverSetAllStreamPitches(s32 x);
@@ -212,8 +208,8 @@ inline void DecaPanel::ResetInput()
 
 inline UnkObj* GetObjById(s16 id)
 {
-	if (gGame.mObjTable.mList != NULL) {
-		return ResolveEventObjectId(&gGame.mObjTable, id);
+	if (gGame.mEventData.mScript != NULL) {
+		return (UnkObj*)ResolveEventObjectId(&gGame.mEventData, id);
 	}
 	return NULL;
 }
@@ -1596,7 +1592,7 @@ extern "C" void UpdateStage(s32 frames)
 	if (IsGameSoundPlaying(gGame.mSound, 0xFFFF000F)) {
 		AXDriverSetAllStreamPitches(5.0f * (f32)sin(DEG2RAD * sTimer));
 	}
-	if (gGame.mObjTable.mList == NULL && HSD_Randi(5000) < 10) {
+	if (gGame.mEventData.mScript == NULL && HSD_Randi(5000) < 10) {
 		switch (HSD_Randi(4)) {
 		case 0:
 			PlayGameSound(gGame.mSound, 0x50004, 0xFF);

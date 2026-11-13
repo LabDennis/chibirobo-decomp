@@ -1,4 +1,5 @@
 #include "game/cjobj.h"
+#include "game/evt.h"
 #include "game/cjobjset.h"
 #include "game/video.h"
 #include "Version.h"
@@ -24,10 +25,6 @@ typedef char ShunObjViewSizeCheck[sizeof(ShunObj) == 0x228 ? 1 : -1];
 typedef char ShunObjViewSizeCheck[sizeof(ShunObj) == 0x230 ? 1 : -1];
 #endif
 
-struct ShunObjList {
-	void* _00; // _00
-};
-
 struct SavedObjFlag {
 	s32 mId;  // _00
 	u8 mFlag; // _04
@@ -41,7 +38,6 @@ struct SavedObjFlagList {
 };
 
 extern "C" void SetJunkUnkoFlag(s32);
-extern "C" ShunObj* ResolveEventObjectId(ShunObjList* list, s16 id);
 extern "C" void InfoScrn_SetTimerHundredths(void* obj, s32 arg);
 extern "C" s32 InfoScrn_GetTimerHundredths(void* obj);
 extern "C" void InfoScrn_ShowTimer(void* obj);
@@ -55,15 +51,14 @@ extern "C" void SetFafaPartVisibility(s32 arg);
 #else
 #define GAME_OFS(other, japan) (other)
 #endif
-#define SHUN_OBJ_LIST() ((ShunObjList*)(gGame + GAME_OFS(0x5D080, 0x5D038)))
-#define SHUN_8F38()     ((void*)(gGame + GAME_OFS(0x8F38, 0x8EF0)))
-#define SHUN_96BC()     (*(RoboView**)(gGame + GAME_OFS(0x96BC, 0x9674)))
+#define SHUN_8F38() ((void*)(gGame + GAME_OFS(0x8F38, 0x8EF0)))
+#define SHUN_96BC() (*(RoboView**)(gGame + GAME_OFS(0x96BC, 0x9674)))
 
 inline ShunObj* ShunFindObj(s16 id)
 {
-	ShunObjList* list = SHUN_OBJ_LIST();
-	if (list->_00 != NULL) {
-		return ResolveEventObjectId(list, id);
+	const CEvtData* data = (const CEvtData*)(gGame + GAME_OFS(0x5D080, 0x5D038));
+	if (data->mScript != NULL) {
+		return (ShunObj*)ResolveEventObjectId(data, id);
 	}
 	return NULL;
 }

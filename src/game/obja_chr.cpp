@@ -1623,7 +1623,7 @@ BOOL IsGameRunning(CGame*);
 void SetHangActionState(XActHang*, s32);
 void SetPlayerActionState(XAction*, s32);
 void UpdateOXMenuTransition(OXMenu*, u32);
-void TryStartObjectEvent(CGame*, const void*, void*, s16, s16);
+void TryStartObjectEvent(CGame*, const void*, XObj*, s16, s16);
 void SetLiftActionState(XActLift*, s32);
 void SetLadderActionState(XActLadder*, s32);
 void SetRopeActionState(XActRope*, s32);
@@ -8496,10 +8496,10 @@ extern "C" void SetLiftActionState(XActLift* act, s32 state)
  * @note Size: 0x130
  */
 // NONMATCHING: regalloc
-extern "C" void TryStartObjectEvent(CGame* game, const void* script, void* context, s16 first, s16 second)
+extern "C" void TryStartObjectEvent(CGame* game, const void* script, XObj* owner, s16 first, s16 second)
 {
 	if (!IsEventBlocked(game->GetPlayer())) {
-		StartOrQueueEventScript(&game->mEvt, (u8*)script, (u32)context, first, second);
+		StartOrQueueEventScript(&game->mEvt, (u8*)script, owner, first, second);
 	}
 }
 

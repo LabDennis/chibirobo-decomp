@@ -614,8 +614,7 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 	if (flags & 1) {
 		anim = gEventVars.mVars[anim];
 	}
-	void* state = &gGame.mEvt.mData;
-	XObj* obj   = *(void**)state != NULL ? ResolveEventObjectId(state, id) : NULL;
+	XObj* obj = FindObj(id);
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 		if (anim == -1) {
 			HSD_AObj* aobj = GetAObj(obj->mJObj);

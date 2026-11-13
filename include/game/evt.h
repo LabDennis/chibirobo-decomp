@@ -201,17 +201,19 @@ enum EvtSyscall {
 	SYSCALL_STGFUNC     = -100, // first arg plus 7 picks the stage rel function
 };
 
+class XObj;
+
 // where CEvt is in its script, name from RTTI
 class CEvtData {
 public:
 	CEvtData()
 	{
 		mScript = NULL;
-		_04     = 0;
+		mOwner  = NULL;
 	}
 
-	u8* mScript; // _00, read pointer
-	u32 _04;     // _04
+	u8* mScript;  // _00, read pointer
+	XObj* mOwner; // _04, object referenced by script ID -1
 	// _08 vtable
 
 	virtual ~CEvtData() { } // _08
@@ -242,7 +244,7 @@ class CCameraMemento;
 // the script runner. PUSHBP and POPBP park mValues's count on mFrames
 class CEvt {
 public:
-	u32 _00;                        // _00, ABORT only resumes a parked script while this is zero
+	XObj* mOwner;                   // _00, NULL for the global script runner
 	CEvtData mData;                 // _04
 	s32 _10;                        // _10, SELECT result
 	s32 _14;                        // _14
@@ -338,7 +340,7 @@ public:
 // the same with each script's context and two arguments
 class CEvtQueueEx : public CEvtQueue {
 public:
-	u32 mContext[0x80];  // _208
+	XObj* mOwners[0x80]; // _208
 	s16 mUseValue[0x80]; // _408
 	s16 mHitValue[0x80]; // _508
 
@@ -359,7 +361,6 @@ STATIC_ASSERT(sizeof(CEvtTimer) == 0x54);
 
 class CJObj;
 class CVec;
-class XObj;
 
 extern "C" {
 // script flags, one bit each, and script variables. both go in the save file
@@ -372,12 +373,13 @@ extern CCameraMemento gEventCameraMementos[];
 CVec GetEventJointWorldPosition(CJObj* obj, s32 depth, s32* path);
 CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* path);
 // start a script on evt, or park it in the queue while another one runs
-void StartOrQueueEventScript(CEvt* evt, u8* script, u32 context, s16 useValue, s16 hitValue);
+void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* owner, s16 useValue, s16 hitValue);
+void InitializeEventScriptContext(CEvt* evt, u8* context, XObj* owner);
 void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal);
 // runs the script on for step frames
 void CEvt_Update(CEvt* evt, s32 step);
 // the object an event refers to by id, -1 is the one running the script
-XObj* ResolveEventObjectId(void* context, s16 id);
+XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
 }
 
 struct EvtBeatLatch {

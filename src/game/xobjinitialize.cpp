@@ -1,10 +1,6 @@
 #include "game/xobj.h"
 #include "game/cgame.h"
 
-extern "C" {
-void InitializeEventScriptContext(CEvt* event, u8* context, void* owner);
-}
-
 /**
  * @note Address: 0x800929C4
  * @note Size: 0xE0

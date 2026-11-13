@@ -29,7 +29,6 @@ void HSD_JObjSetSPtclCallback(HSD_Generator* (*func)(int, int, int, HSD_JObj*));
 void HSD_JObjSetDPtclCallback(HSD_Generator* (*func)(int, int, int, HSD_JObj*));
 HSD_Generator* LinkJointSoundGenerator(int, int, int, HSD_JObj*);
 HSD_Generator* LinkJointParticleGenerator(int, int, int, HSD_JObj*);
-void InitializeEventScriptContext(CEvt*, u8*, void*);
 void InitMessageWindow(CMsg*);
 }
 

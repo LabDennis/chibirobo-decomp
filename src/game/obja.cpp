@@ -581,7 +581,7 @@ u32 XObj::vfFC(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push
 			    && player->mAttachmentRequest < 0
 			    && (!(gGame.mStatus.mFlags & 0x40000000) || !IsPlayerStopped(player) || !player->_158A4 || (mStatus.mFlags & 0x8000))) {
 				mStatus.mFlags |= 0x8000000000000000ULL;
-				StartOrQueueEventScript(&gGame.mEvt, (u8*)vf128(), (u32)this, -1, -1);
+				StartOrQueueEventScript(&gGame.mEvt, (u8*)vf128(), this, -1, -1);
 			}
 		}
 		if (flags & 1) {
