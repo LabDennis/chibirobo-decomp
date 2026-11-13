@@ -1,4 +1,5 @@
 #include "game/hsd_jobj.h"
+#include "game/ctpl.h"
 #include "game/ut.h"
 #include "game/gmath.h"
 
@@ -32,36 +33,6 @@ extern "C" void DrawGsCircle(void* game, s32 kind, s32 color, s32 color2, f32 x,
 #define GAME_STAGE 0x3444
 #endif
 
-struct _GXTexObj {
-	u32 dummy[8]; // _00
-};
-
-// copied as one block, so it's its own struct
-struct UnkTexMtxs {
-	Mtx _00;      // _00
-	Mtx _30;      // _30
-	u8 _60[0x60]; // _60
-};
-
-struct TPLDescriptor;
-
-class CTexObj : public _GXTexObj {
-public:
-	u32 _20;        // _20
-	u32 _24;        // _24
-	u32 _28;        // _28
-	u32 _2C;        // _2C
-	u32 _30;        // _30
-	u32 _34;        // _34
-	s32 _38;        // _38
-	UnkTexMtxs _3C; // _3C
-
-	CTexObj() { }
-	virtual ~CTexObj() { }
-
-	CTexObj& Init(TPLDescriptor* desc, u32 tlutName);
-};
-
 // xobj style actor from the dol
 struct UnkDolObjVtbl {
 	u8 _00[0x80];                                                                                       // _00
@@ -82,17 +53,21 @@ struct UnkDolObj {
 #else
 	u8 _38[0x90]; // _38
 #endif
-	CVec _C8;       // _C8, japan has it and what follows 8 bytes earlier
-	u8 _D8[0x150];  // _D8
-	u64 _228;       // _228
-	u8 _230[0x14];  // _230
-	s32* _244;      // _244
-	u8 _248[0x804]; // _248
-	u32* _A4C;      // _A4C
-	u8 _A50[0x1C];  // _A50
-	u8 _A6C[0x100]; // _A6C
-	s32 _B6C;       // _B6C
+	CVec _C8;      // _C8, at 0xC0 in Japan
+	u8 _D8[0x150]; // _D8
+	u64 _228;      // _228
+	u8 _230[0x14]; // _230
+	s32* _244;     // _244
+	u8 _248[GAME_OFS(0x980 - 0x248, 0x970 - 0x240)];
+	CTpl mTpl; // XObjActor3's texture palette
+
+	CTexObj& InitHudTexture(s32 index)
+	{
+		TPLPalette* palette = (TPLPalette*)mTpl.mBuffer;
+		return mTpl.mTex.Init(&palette->descriptorArray[index], 0);
+	}
 };
+STATIC_ASSERT(sizeof(UnkDolObj) == GAME_OFS(0xB70, 0xB60));
 
 class CCamera;
 
@@ -361,8 +336,6 @@ inline f32 HSD_AObjGetEndFrame(void* aobj)
 }
 
 extern "C" void GXProject(f32 x, f32 y, f32 z, Mtx mtx, f32* pm, f32* vp, f32* sx, f32* sy, f32* sz);
-extern "C" u16 GXGetTexObjWidth(_GXTexObj* obj);
-extern "C" u16 GXGetTexObjHeight(_GXTexObj* obj);
 extern "C" void SetGsLineWidth(void* gx, s32 a, s32 b);
 extern "C" void SetGsTevMode(void* gx, s32 mode);
 extern "C" void DrawGsLineStrip(void* game, Vec* pts, s32 color, s32 n);
@@ -677,12 +650,12 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			if (kind != 0x149) {
 				continue;
 			}
-			if (obj->_B6C == 0) {
+			if (!obj->mTpl.mBound) {
 				break;
 			}
 
 			// score
-			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x18), 0);
+			tex = obj->InitHudTexture(3);
 			w   = 1.0f * GXGetTexObjWidth(&tex);
 			x   = 640.0f - w * 0.5f - 40.0f;
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
@@ -694,16 +667,16 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				DrawCaption(0x5A, x, 40.0f);
 			}
 #endif
-			tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 8), 0);
+			tex  = obj->InitHudTexture(1);
 			left = 20.0f + (x - 12.0f - 88.0f);
 			digW = 0.8f * (1.0f * (GXGetTexObjWidth(&tex) / 11));
 			digH = 0.8f * (1.0f * GXGetTexObjHeight(&tex));
-			PSMTXScale(tex._3C._30, 0.09090909f, 1.0f, 1.0f);
-			tex._38 = 1;
-			base    = 255.0f;
-			hi      = base | 0xFAE0CF00;
-			lo      = base | 0xE9813A00;
-			step    = 7.0f * digW;
+			PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f);
+			tex.mMtxDirty = 1;
+			base          = 255.0f;
+			hi            = base | 0xFAE0CF00;
+			lo            = base | 0xE9813A00;
+			step          = 7.0f * digW;
 			for (d = 0; d < 4; d++) {
 				f32 div = 1.0f;
 				s32 k;
@@ -713,8 +686,8 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				}
 				digit = score / div;
 				if (d == 0 || digit != 0) {
-					PSMTXTrans(tex._3C._00, 0.09090909f * (digit % 10), 0.0f, 0.0f);
-					tex._38 = 1;
+					PSMTXTrans(tex.mMtx[0], 0.09090909f * (digit % 10), 0.0f, 0.0f);
+					tex.mMtxDirty = 1;
 					SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 					DrawGsTexturedQuad(gGame, &tex, hi, hi, lo, lo, step + (left - d * digW) - 32.0f, 68.0f, 0.0f, digW, digH, 0.0f, 0.0f,
 					                   0.0f);
@@ -723,7 +696,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			}
 
 			// time
-			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x20), 0);
+			tex = obj->InitHudTexture(4);
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, 1.0f * GXGetTexObjWidth(&tex),
 			                   1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
@@ -734,15 +707,15 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				DrawCaption(0x5B, 320.0f, 40.0f);
 			}
 #endif
-			tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 8), 0);
+			tex  = obj->InitHudTexture(1);
 			digW = 1.4f * (1.0f * (GXGetTexObjWidth(&tex) / 11));
 			digH = 1.4f * (1.0f * GXGetTexObjHeight(&tex));
 			left = 110.0f + 11.0f;
-			PSMTXScale(tex._3C._30, 0.09090909f, 1.0f, 1.0f);
-			hi      = base | 0x1F33FF00;
-			lo      = base | 0xFFFFFF00;
-			step    = 7.0f * digW;
-			tex._38 = 1;
+			PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f);
+			hi            = base | 0x1F33FF00;
+			lo            = base | 0xFFFFFF00;
+			step          = 7.0f * digW;
+			tex.mMtxDirty = 1;
 			for (d = 0; d < 2; d++) {
 				f32 div = 1.0f;
 				s32 k;
@@ -752,8 +725,8 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				}
 				digit = time / div;
 				if (d == 0 || digit != 0) {
-					PSMTXTrans(tex._3C._00, 0.09090909f * (digit % 10), 0.0f, 0.0f);
-					tex._38 = 1;
+					PSMTXTrans(tex.mMtx[0], 0.09090909f * (digit % 10), 0.0f, 0.0f);
+					tex.mMtxDirty = 1;
 					SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 					DrawGsTexturedQuad(gGame, &tex, lo, lo, hi, hi, step + (left - d * (digW - 8.0f)) - 32.0f, 76.0f, 0.0f, digW, digH,
 					                   0.0f, 0.0f, 0.0f);
@@ -763,8 +736,8 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			digW = 1.4f * (1.0f * (GXGetTexObjWidth(&tex) / 11));
 			digH = 1.4f * (1.0f * GXGetTexObjHeight(&tex));
 			left = 110.0f + 11.0f;
-			PSMTXTrans(tex._3C._00, 0.90909094f, 0.0f, 0.0f);
-			tex._38 = 1;
+			PSMTXTrans(tex.mMtx[0], 0.90909094f, 0.0f, 0.0f);
+			tex.mMtxDirty = 1;
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 			s32 lead = 2;
 			if (time < 10)
@@ -774,7 +747,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
 
 			// gauge
-			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x28), 0);
+			tex = obj->InitHudTexture(5);
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, 1.0f * GXGetTexObjWidth(&tex),
 			                   1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
@@ -785,13 +758,13 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				DrawCaption(0x5C, 100.0f, 44.0f);
 			}
 #endif
-			tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x30), 0);
+			tex  = obj->InitHudTexture(6);
 			w    = 1.0f * GXGetTexObjWidth(&tex);
 			digH = 1.0f * GXGetTexObjHeight(&tex);
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 72.0f, 0.0f, w, digH, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
-			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x38), 0);
+			tex = obj->InitHudTexture(7);
 			SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f - w * 0.5f + gauge * w / 100.0f, 72.0f, 0.0f,
 			                   1.0f * GXGetTexObjWidth(&tex), 1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
@@ -5717,24 +5690,24 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 			f32 half;
 			f32 w;
 			f32 h;
-			if (kind != 0x149 || obj->_B6C == 0) {
+			if (kind != 0x149 || !obj->mTpl.mBound) {
 				continue;
 			}
 			if (fade->_08 > 0.0f) {
-				tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x50), 0);
+				tex  = obj->InitHudTexture(10);
 				w    = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
 				y    = 320.0f - 32.0f;
 				half = fade->_08 * (1.0f * GXGetTexObjHeight(&tex));
 				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, half, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
-				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + (fade->_10 + 25) * 8), 0);
+				tex = obj->InitHudTexture(fade->_10 + 25);
 				w   = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
 				h   = fade->_08 * (1.0f * GXGetTexObjHeight(&tex));
 				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
-				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x58), 0);
+				tex = obj->InitHudTexture(11);
 				half *= 0.5f;
 				w = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
 				h = 1.0f * GXGetTexObjHeight(&tex);
@@ -5747,23 +5720,23 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 			}
 			if (fade->_0C > 0.0f) {
 				u16 texW;
-				tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x40), 0);
+				tex  = obj->InitHudTexture(8);
 				texW = GXGetTexObjWidth(&tex);
 				half = fade->_0C * (1.0f * GXGetTexObjHeight(&tex));
 				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 180.0f, 0.0f, 1.1f * (1.0f * texW), half, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
 				if (fade->_20 == 0) {
-					tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + (fade->_14 + 12) * 8), 0);
+					tex = obj->InitHudTexture(fade->_14 + 12);
 				} else {
-					tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + (fade->_14 + 18) * 8), 0);
+					tex = obj->InitHudTexture(fade->_14 + 18);
 				}
 				w = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
 				h = fade->_0C * (1.0f * GXGetTexObjHeight(&tex));
 				SetGsTevMode(GAME_FIELD(void*, 0x294), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 180.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, 0x294), 4);
-				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x48), 0);
+				tex = obj->InitHudTexture(9);
 				half *= 0.5f;
 				w = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
 				h = 1.0f * GXGetTexObjHeight(&tex);
