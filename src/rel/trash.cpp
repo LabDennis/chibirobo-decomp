@@ -49,45 +49,45 @@ struct TrashObj {
 	HSD_JObj* jobj; // _00
 	u8 _04[0x30];   // _04
 	// _34 vtable
-	virtual void vf08();             // _08
-	virtual void vf0C();             // _0C
-	virtual void vf10();             // _10
-	virtual void vf14();             // _14
-	virtual void vf18();             // _18
-	virtual void vf1C();             // _1C
-	virtual void vf20();             // _20
-	virtual void vf24();             // _24
-	virtual void vf28();             // _28
-	virtual void vf2C();             // _2C
-	virtual void vf30();             // _30
-	virtual void vf34();             // _34
-	virtual void vf38();             // _38
-	virtual void vf3C();             // _3C
-	virtual void vf40();             // _40
-	virtual void vf44();             // _44
-	virtual void vf48();             // _48
-	virtual void vf4C();             // _4C
-	virtual void vf50();             // _50
-	virtual void Release();          // _54
-	virtual void GetFollowDivisor(); // _58
-	virtual void vf5C();             // _5C
-	virtual void vf60();             // _60
-	virtual void vf64();             // _64
-	virtual void vf68();             // _68
-	virtual void vf6C();             // _6C
-	virtual void vf70();             // _70
-	virtual void vf74();             // _74
+	virtual void vf08();                                       // _08
+	virtual void SetTranslateX();                              // _0C
+	virtual void SetTranslateY();                              // _10
+	virtual void SetTranslateZ();                              // _14
+	virtual void SetScaleX();                                  // _18
+	virtual void SetScaleY();                                  // _1C
+	virtual void SetScaleZ();                                  // _20
+	virtual void SetRotationX();                               // _24
+	virtual void SetRotationY();                               // _28
+	virtual void SetRotationZ();                               // _2C
+	virtual void SetTranslate(const Vec& v, s32 force);        // _30
+	virtual void SetTranslate(f32 x, f32 y, f32 z, s32 force); // _34
+	virtual void SetScale(const Vec& v, s32 force);            // _38
+	virtual void SetScale(f32 x, f32 y, f32 z, s32 force);     // _3C
+	virtual void SetRotation(const Vec& v, s32 force);         // _40
+	virtual void SetRotation(f32 x, f32 y, f32 z, s32 force);  // _44
+	virtual void SetAnimRate();                                // _48
+	virtual void ReadAsync();                                  // _4C
+	virtual void ReadCheck();                                  // _50
+	virtual void Release();                                    // _54
+	virtual void StepRotate();                                 // _58
+	virtual void StepTranslate();                              // _5C
+	virtual void StepScale();                                  // _60
+	virtual void SetPos(const Vec& pos, s32 force);            // _64
+	virtual void SetPos(f32 x, f32 y, f32 z, s32 force);       // _68
+	virtual void SetScale(f32 scale, s32 force);               // _6C
+	virtual void SetRot(const Vec& rot, s32 force);            // _70
+	virtual void SetRot(f32 x, f32 y, f32 z, s32 force);       // _74
 
 	virtual void SetMoveDir(const Vec* dir, f32 speed); // _78
 
-	virtual void vf7C(); // _7C
+	virtual void SetRotateY(); // _7C
 
 	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
 	                     f32 blendRate); // _80
 
-	virtual void vf84();                      // _84
-	virtual void vf88();                      // _88
-	virtual void vf8C();                      // _8C
+	virtual void ClearAnim();                 // _84
+	virtual void UpdateAnim();                // _88
+	virtual void ApplyTransform();            // _8C
 	virtual void InitializeObject();          // _90
 	virtual void ResetForNewGame();           // _94
 	virtual void ResetObjectState();          // _98
@@ -111,7 +111,7 @@ struct TrashObj {
 	virtual void EnableLighting();            // _E0
 	virtual void SetTranslucent();            // _E4
 	virtual void SetOpaque();                 // _E8
-	virtual void vfEC();                      // _EC
+	virtual void GetCameraTarget();           // _EC
 	virtual void GetJointAnimation();         // _F0
 	virtual void GetMaterialAnimation();      // _F4
 	virtual void GetShapeAnimation();         // _F8
