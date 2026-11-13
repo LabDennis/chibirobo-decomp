@@ -324,9 +324,9 @@ BOOL CGame::BeforeUpdate()
 		}
 		++_3338;
 	case 20:
-		if (mMemcard.mLoaded) {
+		if (mMemcardLoaded) {
 			RestoreGameSaveData(&mMemcard.mCard);
-			mMemcard.mLoaded = FALSE;
+			mMemcardLoaded = FALSE;
 			mStatus.mFlags |= 0x2000;
 			InitBatteryGauge(&mInfoScrn, GetPlayer()->mParams.mBattery);
 		}

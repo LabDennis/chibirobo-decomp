@@ -25,9 +25,10 @@ public:
 	CCard mCard;               // _20
 	u8 _A044[0xA068 - 0xA044]; // _A044
 	CARDStat mStat;            // _A068
+	u8 _A0D4[0xA200 - 0xA0D4]; // _A0D4
 	union {
-		u8 mBuffer[0xC000] ATTRIBUTE_ALIGN(CARD_READ_SIZE); // _A200, the file, two SaveFile copies
-		SaveFile mFile;                                     // _A200
+		u8 mBuffer[0xC000]; // _A200, the file, two SaveFile copies
+		SaveFile mFile;     // _A200
 	};
 	union {
 		SavePreviewRecord mSaves[2][5];  // _16200, the save headers read off each slot's card
@@ -151,9 +152,11 @@ public:
 		return FALSE;
 	}
 };
-STATIC_ASSERT(sizeof(Memcard) == 0x16C00);
+STATIC_ASSERT(sizeof(Memcard) == 0x16A24);
 
 extern "C" {
+void PollMemoryCardWorker(Memcard* card);
+s32 GetSaveFileStage(Memcard* card);
 s32 ProbeMemoryCardCapacity(Memcard* card, s32 channel, s32* memorySize, s32* sectorSize);
 BOOL StartMemoryCardScan(Memcard* card, s32 channel, BOOL logResults);
 // the card steps, TRUE when one failed. mCard.mResult says why
