@@ -3281,7 +3281,7 @@ GXColor gMessageWindowDefaultColor = { 0, 0, 0, 0x80 };
  */
 extern "C" void InitMessageWindow(CMsg* msg)
 {
-	ResetMsgState(msg);
+	ResetMessageState(msg);
 	CMsg_ResetPos(msg);
 	GXColor color       = gMessageWindowDefaultColor;
 	msg->mFont.mColor.r = color.r;
