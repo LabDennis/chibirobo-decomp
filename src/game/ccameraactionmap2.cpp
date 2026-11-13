@@ -96,7 +96,7 @@ extern "C" BOOL TrySetUnobstructedMapCameraYaw(CCameraActionMap* map, f32 yaw);
 
 static inline BOOL CameraPolygonContains(const Vec& pos, CamCollisionPolygon& polygon)
 {
-	return IsPointInsideQuadXZ((Vec*)&pos, &polygon.point[0], &polygon.point[1], &polygon.point[2], &polygon.point[3]);
+	return IsPointInsideQuadXZ(&pos, &polygon.point[0], &polygon.point[1], &polygon.point[2], &polygon.point[3]);
 }
 
 static inline BOOL CameraEdgeIntersect(const Vec& from, const Vec& to, Vec& a, Vec& b, Vec& hit, s32 segment)
