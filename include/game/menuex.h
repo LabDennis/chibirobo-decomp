@@ -10,6 +10,8 @@ class CMenu;
 // the hand over a menu, MenuEx's
 class MenuCursor : public Cursor {
 public:
+	MenuCursor();
+
 	virtual void InitializeObject(u32 id);                    // _90
 	virtual void vf94();                                      // _94
 	virtual void ResetObjectState();                          // _98
@@ -26,6 +28,8 @@ STATIC_ASSERT(sizeof(MenuCursor) == 0x988);
 // not a CMenu, it owns the menus and the cursor they share
 class MenuEx {
 public:
+	MenuEx();
+
 	BOOL mActive; // _00, a menu is open
 #if defined(VERSION_JP)
 	CMenu* mMenus[13]; // _04
