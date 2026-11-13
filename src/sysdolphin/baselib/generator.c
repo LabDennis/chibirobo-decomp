@@ -790,16 +790,14 @@ f32 generateParticle(HSD_Generator* gen)
 		case 3:
 		case 4: {
 			f32 min = gen->aux.disc.minAngle;
-			f32 rnd = HSD_Randf();
-			cur     = (gen->aux.disc.maxAngle - min) / (f32)(s32)gen->count * rnd + min;
+			cur     = (gen->aux.disc.maxAngle - min) / (f32)(s32)gen->count * HSD_Randf() + min;
 			step    = (gen->aux.disc.maxAngle - min) / (f32)(s32)gen->count;
 			break;
 		}
 		case 6:
 		case 7: {
 			f32 min = gen->aux.cone.minAngle;
-			f32 rnd = HSD_Randf();
-			cur     = (gen->aux.cone.maxAngle - min) / (f32)(s32)gen->count * rnd + min;
+			cur     = (gen->aux.cone.maxAngle - min) / (f32)(s32)gen->count * HSD_Randf() + min;
 			step    = (gen->aux.cone.maxAngle - min) / (f32)(s32)gen->count;
 			break;
 		}

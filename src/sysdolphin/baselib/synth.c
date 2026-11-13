@@ -463,12 +463,9 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
 	u32 enabled;
 	s32 i;
 	s32 n;
-	s32 nbytes;
-	s32 size;
 	s32 k;
 	s32 id;
-	s32 header_size;
-	u32 data_bytes;
+	unsigned int header_size;
 	u32 alloc_size;
 	u32 total;
 	u32 dnw;
@@ -479,11 +476,10 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
 
 	if (lbl_8065BB8C == 0) {
 		header_size = hsd_SynthSFXLoadBuf[0];
-		data_bytes  = header_size - 0x10;
 		alloc_size  = hsd_SynthSFXLoadBuf[2] * 8 + sizeof(HSD_SynthSFXGroup);
 		total       = OSRoundUp32B(alloc_size + header_size);
-		for (i = (data_bytes >> 2) - 1; i >= 0; i--) {
-			((u32*)sSynthSfxLoadDestination)[i + ((total - data_bytes) >> 2)] = ((u32*)sSynthSfxLoadDestination)[i];
+		for (i = ((header_size - 0x10) >> 2) - 1; i >= 0; i--) {
+			((u32*)sSynthSfxLoadDestination)[i + ((total - (header_size - 0x10)) >> 2)] = ((u32*)sSynthSfxLoadDestination)[i];
 		}
 		dnw = total - header_size;
 		for (i = 0; i < 4; i++) {
@@ -508,10 +504,8 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
 		((HSD_SynthSFXGroup*)sSynthSfxLoadDestination)->count  = count;
 		sSynthSfxLoadDestination                               = (HSD_SynthSFXGroup*)sSynthSfxLoadDestination + 1;
 		for (i = 0; i < count; i++) {
-			n      = *sSynthSfxLoadReadCursor;
-			size   = n << 6;
-			nbytes = size + 8;
-			memcpy((u8*)sSynthSfxLoadDestination + 8, sSynthSfxLoadReadCursor, nbytes);
+			n = *sSynthSfxLoadReadCursor;
+			memcpy((u8*)sSynthSfxLoadDestination + 8, sSynthSfxLoadReadCursor, n * 0x40 + 8);
 			for (k = 0; k < n; k++) {
 				u8* e = (u8*)sSynthSfxLoadDestination + k * 0x40;
 				if (e + 0x10 != NULL) {
@@ -526,8 +520,8 @@ void HSD_SynthSFXSampleLoadCallback(s32 result, s32 length, void* addr, s32 canc
 			((HSD_SynthSFXData*)sSynthSfxLoadDestination)->id   = id;
 			((HSD_SynthSFXData*)sSynthSfxLoadDestination)->next = lbl_80656260[id & 0x1F];
 			lbl_80656260[id & 0x1F]                             = sSynthSfxLoadDestination;
-			sSynthSfxLoadReadCursor += (u32)nbytes >> 2;
-			sSynthSfxLoadDestination = (u32*)sSynthSfxLoadDestination + ((u32)(size + 0x10) >> 2);
+			sSynthSfxLoadReadCursor += (n * 0x40 + 8) / sizeof(u32);
+			sSynthSfxLoadDestination = (u32*)sSynthSfxLoadDestination + (n * 0x40 + 0x10) / sizeof(u32);
 		}
 		if (sSynthSfxLoadRequests[0].callback != NULL) {
 			sSynthSfxLoadRequests[0].callback(sSynthSfxLoadRequests[0].entrynum, sSynthSfxLoadRequests[0].arg);
@@ -1377,7 +1371,7 @@ void dropcallback(void* dropped)
 typedef struct HSD_SynthSFXEntry {
 	struct HSD_SynthSFXEntry* next; // _00
 	s32 id;                         // _04
-	s32 count;                      // _08
+	int count;                      // _08
 	s32 rate;                       // _0C
 	struct {
 		u8 addr[0x10];      // _00
