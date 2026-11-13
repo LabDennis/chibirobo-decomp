@@ -206,12 +206,13 @@ class CEvtData {
 public:
 	CEvtData()
 	{
-		mScript = NULL;
-		_04     = 0;
+		mScript  = NULL;
+		mContext = 0;
 	}
 
-	u8* mScript; // _00, read pointer
-	u32 _04;     // _04
+	u8* mScript;  // _00, read pointer
+	u32 mContext; // _04, the object the script runs for (the event's owner, else the caller's or queued context); object id -1 resolves to
+	              // it
 	// _08 vtable
 
 	virtual ~CEvtData() { } // _08
@@ -390,7 +391,7 @@ struct EvtBeatLatch {
 extern "C" EvtBeatLatch gEventBeatLatch;
 struct EvtCmdEntry {
 	u8 command;                                 // _00
-	u8 _01;                                     // _01
+	u8 _01;                                     // _01, a per-command constant in evtCmdTable (3 for most, also 0, 1, 7, 11), never read
 	const char* name;                           // _04
 	s32 (CEvt::*handler)(u8 command, s32 step); // _08
 };

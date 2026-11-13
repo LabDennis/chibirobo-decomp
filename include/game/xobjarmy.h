@@ -28,10 +28,11 @@ public:
 	typedef void (XObjArmy::*Func)();
 
 	// _00-_980 = XObj
-	Func mFunc;             // _980
-	s32 mStep;              // _98C, the step of mFunc
-	s32 mTimer;             // _990
-	f32 _994;               // _994
+	Func mFunc; // _980
+	s32 mStep;  // _98C, the step of mFunc
+	s32 mTimer; // _990
+	f32 _994;   // _994, set to 0 in OnHitFromPosition right before the `<= 0` test, so a hit always knocks or fells it and never takes the
+	            // StateWait branch; nothing else uses it
 	u8 _998[0x9A0 - 0x998]; // _998
 	CStatus mFlags;         // _9A0, 1 ignores hits, 2 lies down, 0x80 shoots quietly, 0x100 plays its sounds at full volume
 	CVec mGuardPos;         // _9A8, where it aims while on guard

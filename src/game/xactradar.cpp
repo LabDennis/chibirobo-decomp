@@ -568,7 +568,7 @@ static inline void StartAvailablePopperShot(XActPopper* act, const Vec& origin, 
 {
 	for (int i = 0; i < 10; ++i)
 		if (!act->mShots.mShot[i].mActive) {
-			StartPopperShot(&act->mShots.mShot[i], origin, kind, target, yaw, pitch, power, speed, range, act->_2C);
+			StartPopperShot(&act->mShots.mShot[i], origin, kind, target, yaw, pitch, power, speed, range, act->mShotStrength);
 			break;
 		}
 }
@@ -614,7 +614,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 			ClearPopperCharge(&charge);
 		}
 	}
-	act->_2C = 0;
+	act->mShotStrength = 0;
 	switch (act->mState) {
 	case 1:
 		if (anim != 0x81f) {
@@ -649,24 +649,24 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 		if (ActivePopperShots(act) < limit) {
 			act->mOwner->mPopperObj.SetAnim(4, TRUE, NULL, NULL, NULL, 0, 1, 1, 10);
 			act->mOwner->mPopperObj.UpdateAnim(0);
-			act->mState = 7;
-			act->_2C    = (s32)GetPlayerActionParameter(30) / 100.f;
+			act->mState        = 7;
+			act->mShotStrength = (s32)GetPlayerActionParameter(30) / 100.f;
 		}
 	}
 	// fall through
 	case 6:
 	case 7:
-		if (anim != 0x823 || act->_2C != 0) {
+		if (anim != 0x823 || act->mShotStrength != 0) {
 			if (act->mState != 6)
 				act->mState = 8;
 			s32 limit = GetPopperParameter(3);
 			if (ActivePopperShots(act) < limit) {
 				PlayPopperFireAnimation(&act->mOwner->mPopperObj);
-				if (act->_2C == 0) {
+				if (act->mShotStrength == 0) {
 					if (act->mState == 6)
-						act->_2C = (s32)GetPlayerActionParameter(31) / 100.f;
+						act->mShotStrength = (s32)GetPlayerActionParameter(31) / 100.f;
 					else
-						act->_2C = (s32)GetPlayerActionParameter(30) / 100.f;
+						act->mShotStrength = (s32)GetPlayerActionParameter(30) / 100.f;
 				}
 				CVec origin;
 				PopperMuzzle(act->mOwner, origin);
@@ -705,8 +705,8 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 						target = obj;
 				}
 				XObjChr* p = act->mOwner;
-				if (p->_158A4) {
-					f32 battery = p->mParams.mBattery - act->_2C;
+				if (p->mBatteryDrains) {
+					f32 battery = p->mParams.mBattery - act->mShotStrength;
 					if (battery < 0)
 						battery = 0;
 					p->mParams.mBattery = battery > 0 ? battery : 0;

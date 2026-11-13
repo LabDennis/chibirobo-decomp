@@ -17,7 +17,7 @@ f32 CCameraActionAreaExM::GetBaseFov()
  */
 s32 CCameraActionAreaExM::GetZoomLevel()
 {
-	return gCameraAreaState._14;
+	return gCameraAreaState.mZoomLevel;
 }
 
 /**
@@ -26,7 +26,7 @@ s32 CCameraActionAreaExM::GetZoomLevel()
  */
 void CCameraActionAreaExM::SetZoomLevel(s32 mode)
 {
-	gCameraAreaState._14 = mode;
+	gCameraAreaState.mZoomLevel = mode;
 }
 
 /**

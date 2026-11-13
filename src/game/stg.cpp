@@ -1351,7 +1351,7 @@ inline void MenuSettings::Open()
 	mValues[1] = TRUE;
 	mValues[2] = (gGame.mStatus.mFlags & 0x0000004000000000ULL) ? TRUE : FALSE;
 	mValues[3] = (gGame.GetPlayer()->mPlug.mCord.mFlags >> 3) & 1;
-	mValues[4] = gGame.GetPlayer()->mMenu.mAtc._280;
+	mValues[4] = gGame.GetPlayer()->mMenu.mAtc.mMenuType;
 }
 #endif
 
@@ -4654,7 +4654,7 @@ void MenuPC::State11(u32)
 static inline void SetScissor(u32 top, u32 height)
 {
 #if defined(VERSION_PAL)
-	f32 scale     = gGame.mGs.mScreen._40;
+	f32 scale     = gGame.mGs.mScreen.mHeightScale;
 	u32 scaledH   = (u32)((f32)height * scale);
 	u32 scaledTop = (u32)((f32)top * scale);
 	GXSetScissor(0, scaledTop, 640, scaledH);
@@ -4823,10 +4823,10 @@ void MenuItem::Open()
 	}
 	mTargetGridX   = 207.0f;
 	mTargetGridY   = 36.0f;
-	_170           = -10.0f;
-	_174           = -200.0f;
-	_178           = -10.0f;
-	_17C           = 0.0f;
+	mPanelX        = -10.0f;
+	mPanelY        = -200.0f;
+	mTargetPanelX  = -10.0f;
+	mTargetPanelY  = 0.0f;
 	mPhase         = 0;
 	mDelay         = 0;
 	mSelection     = 0;
@@ -5581,7 +5581,7 @@ void MenuPC::State10(u32)
 // the placement entry's scale, in percent there
 static inline Vec EntryScale(XObj* obj)
 {
-	UnkStageObj* entry = obj->mCoord._00;
+	UnkStageObj* entry = obj->mCoord.mPlacement;
 	Vec scale          = lbl_80362048[0];
 	scale.x            = entry->mScale[0] / 100.0f;
 	scale.y            = entry->mScale[1] / 100.0f;
@@ -5601,7 +5601,7 @@ extern "C" CVec GetStagePlacementScale(XObj* obj)
 // and its position, in centimeters
 static inline Vec EntryPos(XObj* obj)
 {
-	UnkStageObj* entry = obj->mCoord._00;
+	UnkStageObj* entry = obj->mCoord.mPlacement;
 	Vec pos            = lbl_8036203C;
 	pos.x              = entry->mPos[0] / 100.0f;
 	pos.y              = entry->mPos[1] / 100.0f;
@@ -8602,9 +8602,9 @@ extern "C" void PauseGameMusic(XSound*, s32, s32);
 
 static inline void BeginItemMenuClose(MenuItem* menu, u32 frames)
 {
-	menu->mTargetGridX = -640.0f;
-	menu->_17C         = -200.0f;
-	menu->mDelay       = 4 * frames;
+	menu->mTargetGridX  = -640.0f;
+	menu->mTargetPanelY = -200.0f;
+	menu->mDelay        = 4 * frames;
 	menu->mPhase++;
 	for (int i = 0; i < (int)ARRAY_SIZE(menu->mTitle.mChars); i++)
 		menu->mTitle.mChars[i].mHold = 0;
@@ -8629,8 +8629,8 @@ BOOL MenuItem::Update(u32 frames)
 			mItemPhase = fmod(mItemPhase, 2.0);
 		PCEase(mGridX, mTargetGridX);
 		ApproachHudValue(&mGridY, &mTargetGridY, 20.0f);
-		PCEase(_170, _178);
-		PCEase(_174, _17C);
+		PCEase(mPanelX, mTargetPanelX);
+		PCEase(mPanelY, mTargetPanelY);
 		ApproachHudValue(&_190, &_194, 0.08f * frames);
 		UpdateMenuTitle(this, frames);
 		switch (mShowHelp) {

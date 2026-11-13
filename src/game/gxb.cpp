@@ -245,7 +245,7 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	static f32 trail[10];
 	for (s32 i = 9; i > 0; --i)
 		trail[i] = trail[i - 1];
-	trail[0]                        = _5C;
+	trail[0]                        = mRotation;
 	static RoboeyesValue separation = { 150, 150 }, lw = { width, width }, lh = { height, height }, rw = { width, width },
 	                     rh = { height, height }, focus = { 0, 0 };
 	static s32 state;
@@ -359,9 +359,9 @@ void CScrnRoboeyes::Reset()
 	mSpeed.g                   = 0.0f;
 	mSpeed.b                   = 0.0f;
 	mSpeed.a                   = 0.0f;
-	_5C = _60 = 0.0f;
-	mAngle    = 0.0f;
-	mPhase    = 0.0f;
+	mRotation = mSpeedRotation = 0.0f;
+	mAngle                     = 0.0f;
+	mPhase                     = 0.0f;
 }
 
 // steps a value towards its target, it stops there
@@ -477,7 +477,7 @@ void CScrnWipeTex::Draw(CGs* gs, s32 mode)
 	BeginWipeMask(gs, mColor.a);
 	SetGsTevMode(gs->mCurTevStage, 0);
 	SetGsDepthCompareBeforeTexture(gs->mCurRenderMode, 0);
-	DrawGsTexturedQuad(gs, &mTex, -1, -1, -1, -1, mX, mY, 0.0f, mWidth, mHeight, 0.0f, 0.0f, _5C);
+	DrawGsTexturedQuad(gs, &mTex, -1, -1, -1, -1, mX, mY, 0.0f, mWidth, mHeight, 0.0f, 0.0f, mRotation);
 	SetGsDepthCompareBeforeTexture(gs->mCurRenderMode, 1);
 	EndWipeMask(gs);
 	SetGsTevMode(gs->mCurTevStage, 4);
@@ -514,7 +514,7 @@ void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 	f32 edgeHeight = 24.0f;
 	if (edgeHeight > mHeight)
 		edgeHeight = mHeight;
-	DrawGsQuad(gs, 255, 255, 255, 255, mX, mY, 0.0f, mWidth, mHeight, 0.0f, 0.0f, _5C);
+	DrawGsQuad(gs, 255, 255, 255, 255, mX, mY, 0.0f, mWidth, mHeight, 0.0f, 0.0f, mRotation);
 
 	Vec vertices[18] = {};
 	const f32 dx = edgeWidth * 0.5f, dy = edgeHeight * 0.5f;
@@ -531,7 +531,7 @@ void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 	u32 colors[18] = { 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0 };
 	Mtx translation, rotation, transform;
 	PSMTXTrans(translation, mX, mY, 0.0f);
-	PSMTXRotRad(rotation, 'z', -_5C);
+	PSMTXRotRad(rotation, 'z', -mRotation);
 	PSMTXConcat(translation, rotation, transform);
 	PSMTXMultVecArray(transform, vertices, vertices, 18);
 	DrawGsColoredTrianglePrimitive(gs, GX_TRIANGLESTRIP, gs->mCamera->mViewMtx, vertices, colors, 18);
@@ -591,8 +591,8 @@ void CScrnWipe::Update(u32 frames)
 	if (!mActive) {
 		return;
 	}
-	if (0.0f != _60) {
-		_5C = fmod(_60 * frames + _5C, TWO_PI);
+	if (0.0f != mSpeedRotation) {
+		mRotation = fmod(mSpeedRotation * frames + mRotation, TWO_PI);
 	}
 	StepChannel(mWidth, mTargetWidth, mSpeedWidth, frames);
 	StepChannel(mHeight, mTargetHeight, mSpeedHeight, frames);
@@ -720,7 +720,7 @@ void CScrnWipe::Reset()
 	mSpeed.g                   = 0.0f;
 	mSpeed.b                   = 0.0f;
 	mSpeed.a                   = 0.0f;
-	_5C = _60 = 0.0f;
+	mRotation = mSpeedRotation = 0.0f;
 }
 
 static inline bool HasColor(CScrnColor* color)
@@ -1368,7 +1368,7 @@ s32 XObj::HandleEventCommand(s32 count, s32* args)
 // XObj's GetEventScript
 extern "C" s32 GetEventScript__4XObjFv(XObj* object)
 {
-	return object->_80C;
+	return object->mEventScript;
 }
 
 /**

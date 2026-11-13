@@ -911,7 +911,7 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
 					mode = 0;
 				}
 				msg->mFont.mBlink      = 1;
-				msg->mFont._43C6C      = mode;
+				msg->mFont.mBlinkIcon  = mode;
 				msg->mFont.mBlinkPhase = 0.0f;
 				msg->mData.mCursor -= 2;
 			} else {
@@ -1154,9 +1154,9 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 	if (msg->mFont.mActive) {
 		if (!msg->mFont.mFadeOut) {
 			if (msg->mCommand == 0x2B) {
-				if (msg->_445D0 < 0) {
-					msg->_445D0              = msg->_445D8;
-					msg->mFont.mSelectedLine = msg->_445D0;
+				if (msg->mSelectedLine < 0) {
+					msg->mSelectedLine       = msg->mDefaultLine;
+					msg->mFont.mSelectedLine = msg->mSelectedLine;
 					msg->mFont.mCurLineY     = msg->mFont.mLineY[msg->mFont.mSelectedLine];
 					msg->mFont.mCurLineWidth = 0.0f;
 				} else if (!(gGame.mStatus.mFlags & 0x20)) {
@@ -1164,34 +1164,34 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 					u32 up   = gGame.mStatus.mFlags & 0x80000000 ? 0x10000 : 0x10008;
 					u32 down = gGame.mStatus.mFlags & 0x80000000 ? 0x20000 : 0x20004;
 					if (pad.mPad->mRepeat & up) {
-						if (--msg->_445D0 < 0) {
-							msg->_445D0 = msg->mData.mLineCount - 1;
+						if (--msg->mSelectedLine < 0) {
+							msg->mSelectedLine = msg->mData.mLineCount - 1;
 						}
-						msg->mFont.mSelectedLine = msg->_445D0;
+						msg->mFont.mSelectedLine = msg->mSelectedLine;
 						PlayGameSound(&gGame.mSound, 0x87, 255);
 					} else if (pad.mPad->mRepeat & down) {
-						if (++msg->_445D0 >= msg->mData.mLineCount) {
-							msg->_445D0 = 0;
+						if (++msg->mSelectedLine >= msg->mData.mLineCount) {
+							msg->mSelectedLine = 0;
 						}
-						msg->mFont.mSelectedLine = msg->_445D0;
+						msg->mFont.mSelectedLine = msg->mSelectedLine;
 						PlayGameSound(&gGame.mSound, 0x87, 255);
 					} else if (pad.mPad->mTrigger & 0x100) {
-						msg->_445D4              = msg->_445D0;
-						msg->_445D0              = -1;
+						msg->mSelectResult       = msg->mSelectedLine;
+						msg->mSelectedLine       = -1;
 						msg->mFont.mFadeOut      = 1;
 						msg->mFont.mSelectedLine = -1;
 						PlayGameSound(&gGame.mSound, 0x88, 255);
 					} else if (pad.mPad->mTrigger & 0x200) {
-						msg->_445D4              = -1;
-						msg->_445D0              = -1;
+						msg->mSelectResult       = -1;
+						msg->mSelectedLine       = -1;
 						msg->mFont.mFadeOut      = 1;
 						msg->mFont.mSelectedLine = -1;
 						PlayGameSound(&gGame.mSound, 0x86, 255);
 					}
 				}
-			} else if (msg->_445E8 > 0) {
+			} else if (msg->mDigitCount > 0) {
 				if (msg->mFont.mOtherSelection < 0) {
-					MsgSetDigits(msg, msg->_445DC, msg->_445E8, msg->_445EC, msg->_445F0);
+					MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 				} else {
 					CPad pad(0);
 					u32 up       = gGame.mStatus.mFlags & 0x80000000 ? 0x10000 : 0x10008;
@@ -1199,29 +1199,29 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 					u32 next     = gGame.mStatus.mFlags & 0x80000000 ? 0x40000 : 0x40001;
 					u32 previous = gGame.mStatus.mFlags & 0x80000000 ? 0x80000 : 0x80002;
 					if (pad.mPad->mRepeat & up) {
-						if (++msg->_445DC[msg->_445F0] > 9) {
-							msg->_445DC[msg->_445F0] = 0;
+						if (++msg->mDigits[msg->mSelectedDigit] > 9) {
+							msg->mDigits[msg->mSelectedDigit] = 0;
 						}
-						MsgSetDigits(msg, msg->_445DC, msg->_445E8, msg->_445EC, msg->_445F0);
+						MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 						PlayGameSound(&gGame.mSound, 0x87, 255);
 					} else if (pad.mPad->mRepeat & down) {
-						if (--msg->_445DC[msg->_445F0] < 0) {
-							msg->_445DC[msg->_445F0] = 9;
+						if (--msg->mDigits[msg->mSelectedDigit] < 0) {
+							msg->mDigits[msg->mSelectedDigit] = 9;
 						}
-						MsgSetDigits(msg, msg->_445DC, msg->_445E8, msg->_445EC, msg->_445F0);
+						MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 						PlayGameSound(&gGame.mSound, 0x87, 255);
 					} else if (pad.mPad->mRepeat & next) {
-						if (++msg->_445F0 > msg->_445E8 - 1) {
-							msg->_445F0 = msg->_445E8 - 1;
+						if (++msg->mSelectedDigit > msg->mDigitCount - 1) {
+							msg->mSelectedDigit = msg->mDigitCount - 1;
 						} else {
-							MsgSetDigits(msg, msg->_445DC, msg->_445E8, msg->_445EC, msg->_445F0);
+							MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 							PlayGameSound(&gGame.mSound, 0x87, 255);
 						}
 					} else if (pad.mPad->mRepeat & previous) {
-						if (--msg->_445F0 < msg->_445EC) {
-							msg->_445F0 = msg->_445EC;
+						if (--msg->mSelectedDigit < msg->mFirstEditDigit) {
+							msg->mSelectedDigit = msg->mFirstEditDigit;
 						} else {
-							MsgSetDigits(msg, msg->_445DC, msg->_445E8, msg->_445EC, msg->_445F0);
+							MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
 							PlayGameSound(&gGame.mSound, 0x87, 255);
 						}
 					} else if (pad.mPad->mTrigger & 0x100) {
@@ -1230,7 +1230,7 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 						PlayGameSound(&gGame.mSound, 0x88, 255);
 						s32 result = 0;
 						for (s32 i = 9; i >= 0; i--) {
-							result = result * 10 + msg->_445DC[i];
+							result = result * 10 + msg->mDigits[i];
 						}
 						gGame.mEvt.mSelectResult = result;
 					} else if (pad.mPad->mTrigger & 0x200) {
@@ -1240,10 +1240,10 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 						gGame.mEvt.mSelectResult = -1;
 					}
 				}
-			} else if (msg->_445F8 != 0) {
-				if (msg->_445F8 == 1) {
+			} else if (msg->mStay != 0) {
+				if (msg->mStay == 1) {
 					if (gGame.GetPlayer()->mOXMenu.mStarted < 0) {
-						msg->_445F8++;
+						msg->mStay++;
 					}
 				} else {
 					msg->mFont.mFadeOut = 1;
@@ -1903,10 +1903,10 @@ extern "C" void CMsg_Draw(CMsg* msg)
 	SetGsChannelEnabled(&gGame.mGs, 0, 0);
 	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 3, 0);
-	if (msg->_445C8 == 0.0f) {
+	if (msg->mCharDelay == 0.0f) {
 		CMsgFont_Draw(&msg->mFont, 1.0f);
 	} else {
-		f32 t = (msg->_445C8 - msg->_445C4) / msg->_445C8;
+		f32 t = (msg->mCharDelay - msg->mCharTimer) / msg->mCharDelay;
 		if (t > 1.0f) {
 			t = 1.0f;
 		}
@@ -1958,16 +1958,16 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			}
 			continue;
 		}
-		if (msg->_445C4 < 0.0f) {
+		if (msg->mCharTimer < 0.0f) {
 			waiting = TRUE;
 			continue;
 		}
-		if (msg->_445C4 > 0.0f) {
-			f32 time    = msg->_445C4 - step;
-			msg->_445C4 = time;
+		if (msg->mCharTimer > 0.0f) {
+			f32 time        = msg->mCharTimer - step;
+			msg->mCharTimer = time;
 			if (time < 0.0f) {
-				msg->_445C4 = 0.0f;
-				if (msg->_445C8 > 0.0f && msg->_445C8 - step < 0.0f) {
+				msg->mCharTimer = 0.0f;
+				if (msg->mCharDelay > 0.0f && msg->mCharDelay - step < 0.0f) {
 					waiting = TRUE;
 				}
 			} else {
@@ -1997,8 +1997,8 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 					time = 0;
 				}
 			}
-			msg->_445C8 = time;
-			waiting     = FALSE;
+			msg->mCharDelay = time;
+			waiting         = FALSE;
 			break;
 		}
 		case 2:
@@ -2016,8 +2016,8 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			if (flags & 1) {
 				value = gEventVars.mVars[value];
 			}
-			msg->_445D8 = value;
-			waiting     = FALSE;
+			msg->mDefaultLine = value;
+			waiting           = FALSE;
 			break;
 		}
 		case 4:
@@ -2055,14 +2055,14 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			waiting = CMsg__cmd_SETFONT(msg, command);
 			break;
 		case 22:
-			msg->_445E8 = ReadMsgU8(msg);
-			msg->_445EC = ReadMsgU8(msg);
-			msg->_445EC = msg->_445E8 - msg->_445EC;
-			msg->_445F0 = ReadMsgU8(msg) - 1;
-			if (msg->_445F0 > msg->_445E8 - 1) {
-				msg->_445F0 = msg->_445E8 - 1;
-			} else if (msg->_445F0 < msg->_445EC) {
-				msg->_445F0 = msg->_445EC;
+			msg->mDigitCount     = ReadMsgU8(msg);
+			msg->mFirstEditDigit = ReadMsgU8(msg);
+			msg->mFirstEditDigit = msg->mDigitCount - msg->mFirstEditDigit;
+			msg->mSelectedDigit  = ReadMsgU8(msg) - 1;
+			if (msg->mSelectedDigit > msg->mDigitCount - 1) {
+				msg->mSelectedDigit = msg->mDigitCount - 1;
+			} else if (msg->mSelectedDigit < msg->mFirstEditDigit) {
+				msg->mSelectedDigit = msg->mFirstEditDigit;
 			}
 			waiting = FALSE;
 			break;
@@ -2087,8 +2087,8 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			break;
 		}
 		case 24:
-			msg->_445F8 = 1;
-			waiting     = FALSE;
+			msg->mStay = 1;
+			waiting    = FALSE;
 			break;
 		default: {
 			char text[3];
@@ -2105,7 +2105,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 				text[1] = 0;
 			}
 			CMsgFont_AddChar(&msg->mFont, text);
-			msg->_445C4 = msg->_445C8;
+			msg->mCharTimer = msg->mCharDelay;
 			if (msg->mGlyphSoundGroup >= 0) {
 				PlayMessageGlyphSound(&gGame.mSound, msg->mGlyphSoundGroup, msg->mFont.mSize / 22.0f, text[0], text[1]);
 			}
@@ -2639,27 +2639,27 @@ static inline void ResetMsgState(CMsg* msg)
 	msg->mFont.mAlpha          = 0.0f;
 	msg->mFont.mTextAlpha      = 1.0f;
 	msg->mFont.mHighlightAlpha = 0.0f;
-	msg->mFont._43C6C          = 0;
+	msg->mFont.mBlinkIcon      = 0;
 	msg->mFont.mBlinkPhase     = 0.0f;
 	msg->mFont.mTexOffset      = 0.0f;
 	for (int i = 0; i < 400; i++) {
 		msg->mFont.mGlyphs[i].mPhaseX = msg->mFont.mGlyphs[i].mPhaseY = (i * 75) % 360;
 	}
-	msg->_445C0 = 1;
-	msg->_445C8 = 0.0f;
-	msg->_445C4 = 0.0f;
-	msg->_445D4 = -1;
-	msg->_445D0 = -1;
-	msg->_445D8 = 0;
+	msg->mIdle         = 1;
+	msg->mCharDelay    = 0.0f;
+	msg->mCharTimer    = 0.0f;
+	msg->mSelectResult = -1;
+	msg->mSelectedLine = -1;
+	msg->mDefaultLine  = 0;
 	for (int i = 0; i < 9; i += 3) {
 		for (int j = 0; j < 3; j++) {
-			msg->_445DC[i + j] = 0;
+			msg->mDigits[i + j] = 0;
 		}
 	}
-	msg->_445F0           = 0;
-	msg->_445EC           = 0;
-	msg->_445E8           = 0;
-	msg->_445F8           = 0;
+	msg->mSelectedDigit   = 0;
+	msg->mFirstEditDigit  = 0;
+	msg->mDigitCount      = 0;
+	msg->mStay            = 0;
 	msg->mGlyphSoundGroup = -1;
 }
 
@@ -2689,10 +2689,10 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
 	}
 #endif
 	u8* cursor = msg->mData.mCursor;
-	CMsgFont_Init(&msg->mFont, msg->mData.mText, msg->_44600, msg->_44604, msg->_44608, msg->mData.mAlignment, msg->mData.mStyle);
+	CMsgFont_Init(&msg->mFont, msg->mData.mText, msg->mWindowX, msg->mWindowY, msg->mPlacement, msg->mData.mAlignment, msg->mData.mStyle);
 	msg->SetFontPosition(msg->mFontPosition.x, msg->mFontPosition.y, msg->mFontPosition.z);
-	msg->_445C4     = 0.0f;
-	msg->_445C8     = msg->mCommand == 35 ? 2 : 0;
+	msg->mCharTimer = 0.0f;
+	msg->mCharDelay = msg->mCommand == 35 ? 2 : 0;
 	msg->mWaitTimer = 0.0f;
 	return cursor;
 }
@@ -3030,9 +3030,9 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
  */
 extern "C" void CMsg_ResetPos(CMsg* msg)
 {
-	msg->_44600          = 320.0f;
-	msg->_44604          = 344.0f;
-	msg->_44608          = 0;
+	msg->mWindowX        = 320.0f;
+	msg->mWindowY        = 344.0f;
+	msg->mPlacement      = 0;
 	Vec zero             = { 0.0f, 0.0f, 0.0f };
 	msg->mFontPosition.x = zero.x;
 	msg->mFontPosition.y = zero.y;
@@ -3556,7 +3556,7 @@ void InvalidateMessageDrawState(u8* game);
 #if defined(VERSION_PAL)
 static inline void MsgRestoreScissor(u32 x, u32 y, u32 width, u32 height)
 {
-	f32 displayScale = gGame.mGs.mScreen._40;
+	f32 displayScale = gGame.mGs.mScreen.mHeightScale;
 	u32 scaledHeight = (u32)(height * displayScale);
 	u32 scaledY      = (u32)(y * displayScale);
 	GXSetScissor(x, scaledY, width, scaledHeight);
@@ -3726,7 +3726,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		if (font->mMode >= 0 && font->mMode < 1) {
 			if (font->mColor.a != 0) {
 #if defined(VERSION_PAL)
-				f32 displayScale = gGame.mGs.mScreen._40;
+				f32 displayScale = gGame.mGs.mScreen.mHeightScale;
 				u32 clipHeight   = (u32)(displayScale * (u32)(2.0f * ((8.0f + expandY) - 1.0f) + font->mHeight));
 #else
 				u32 clipHeight = (u32)(2.0f * ((8.0f + expandY) - 1.0f) + font->mHeight);
@@ -3961,22 +3961,22 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		gGame.mGs.mCurTevStage->SetNumTexGens(0);
 	}
-	if (font->mBlink && (s32)font->_43C6C >= 0) {
+	if (font->mBlink && (s32)font->mBlinkIcon >= 0) {
 		SetGsTevOrder(gGame.mGs.mCurTevStage, 0, 0, 4);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		gGame.mGs.mCurTevStage->SetNumTexGens(1);
 		gGame.mGs.mCurTevStage->SetTexGen(0, 1, 4, 30);
-		s32 index = font->_43C6C;
+		s32 index = font->mBlinkIcon;
 		if (index >= 2)
 			index = 2;
 		CTexObj* cursor = &font->mTexs.mTex[MSG_TEX_CURSOR] + index;
 		f32 width       = GXGetTexObjWidth(cursor);
 		f32 height      = GXGetTexObjHeight(cursor);
-		if ((s32)font->_43C6C >= 2) {
+		if ((s32)font->mBlinkIcon >= 2) {
 			width = (s32)GXGetTexObjWidth(cursor) / 11;
 			PSMTXScale(cursor->mMtx[1], 1.0f / 11.0f, 1.0f, 1.0f);
 			cursor->mMtxDirty = TRUE;
-			PSMTXTrans(cursor->mMtx[0], (1.0f / 11.0f) * ((s32)font->_43C6C - 2), 0.0f, 0.0f);
+			PSMTXTrans(cursor->mMtx[0], (1.0f / 11.0f) * ((s32)font->mBlinkIcon - 2), 0.0f, 0.0f);
 			cursor->mMtxDirty = TRUE;
 		}
 		s32 line = font->mGlyphs[font->mCharCount - 1].mLine;
@@ -7052,7 +7052,7 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
 	font->mAlpha                            = 0.0f;
 	font->mTextAlpha                        = 1.0f;
 	font->mHighlightAlpha                   = 0.0f;
-	font->_43C6C                            = 0;
+	font->mBlinkIcon                        = 0;
 	font->mBlinkPhase                       = 0.0f;
 	font->mTexOffset                        = 0.0f;
 	for (int i = 0; i < 400; i++) {

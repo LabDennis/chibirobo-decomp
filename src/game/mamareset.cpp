@@ -16,10 +16,10 @@ void XObjActorMama::ResetActorState()
 	}
 	mActorStatus.mFlags = 0;
 	mHideKinds.mFlags   = 0;
-	_980                = 0.0f;
+	mHeading            = 0.0f;
 	mMoveSpeed          = 0.0f;
-	_988                = 0.0f;
-	_C84                = _988;
+	mFacing             = 0.0f;
+	_C84                = mFacing;
 	_C88                = 0;
 	mState              = &XObjActorMama::StateNone;
 	ResetActorMovementStep(this);

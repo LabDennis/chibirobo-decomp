@@ -32,9 +32,9 @@ void XObjActor::UpdateObject(u32 frames)
 BOOL XObjActor::LoadFromPlacement(const CoordInfo& info)
 {
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
-		_980       = 0.0f;
+		mHeading   = 0.0f;
 		mMoveSpeed = 0.0f;
-		_988       = 0.0f;
+		mFacing    = 0.0f;
 		for (u32 i = 0; i < 20; ++i) {
 			mCmd[i] = 0;
 		}
@@ -61,12 +61,12 @@ BOOL XObjActor::LoadFromPlacement(const CoordInfo& info)
 void XObjActor::ResetForNewGame()
 {
 	XObjActorLiterals* lit = &gActorUpdateConstants;
-	_980                   = 0.0f;
+	mHeading               = 0.0f;
 	mMoveSpeed             = 0.0f;
-	_988                   = 0.0f;
+	mFacing                = 0.0f;
 	_98C                   = PI;
 	mKindStep              = 0;
-	_994                   = 0;
+	mKindCounter           = 0;
 	mActorStatus.mFlags    = 0;
 	_9A0                   = 0;
 	_9A4                   = 0;
@@ -77,9 +77,9 @@ void XObjActor::ResetForNewGame()
 	mHitPos.y              = v0.y;
 	mHitPos.z              = v0.z;
 	Vec v1                 = lit->mInit[1];
-	_9BC.x                 = v1.x;
-	_9BC.y                 = v1.y;
-	_9BC.z                 = v1.z;
+	mHomePos.x             = v1.x;
+	mHomePos.y             = v1.y;
+	mHomePos.z             = v1.z;
 	Vec v2                 = lit->mInit[2];
 	mVelocity.x            = v2.x;
 	mVelocity.y            = v2.y;
@@ -89,8 +89,8 @@ void XObjActor::ResetForNewGame()
 	_A40.y                 = v3.y;
 	_A40.z                 = v3.z;
 	mHitStrength           = 0.0f;
-	_9D8                   = 0.0f;
-	_9DC                   = 0.0f;
+	mFallSpeed             = 0.0f;
+	mGroundHeight          = 0.0f;
 	mCmd[0]                = 0;
 	mCmd[1]                = 0;
 	mCmd[18]               = 0;
@@ -123,12 +123,12 @@ void XObjActor::ResetObjectState()
 {
 	const Vec* reset = gActorUpdateConstants.mReset;
 	ResetObjectState__4XObjFv(this);
-	_980                = 0.0f;
+	mHeading            = 0.0f;
 	mMoveSpeed          = 0.0f;
-	_988                = 0.0f;
+	mFacing             = 0.0f;
 	_98C                = PI;
 	mKindStep           = 0;
-	_994                = 0;
+	mKindCounter        = 0;
 	mActorStatus.mFlags = 0;
 	_9A0                = 0;
 	_9A4                = 0;
@@ -139,9 +139,9 @@ void XObjActor::ResetObjectState()
 	mHitPos.y           = v0.y;
 	mHitPos.z           = v0.z;
 	Vec v1              = reset[1];
-	_9BC.x              = v1.x;
-	_9BC.y              = v1.y;
-	_9BC.z              = v1.z;
+	mHomePos.x          = v1.x;
+	mHomePos.y          = v1.y;
+	mHomePos.z          = v1.z;
 	Vec v2              = reset[2];
 	mVelocity.x         = v2.x;
 	mVelocity.y         = v2.y;
@@ -151,8 +151,8 @@ void XObjActor::ResetObjectState()
 	_A40.y              = v3.y;
 	_A40.z              = v3.z;
 	mHitStrength        = 0.0f;
-	_9D8                = 0.0f;
-	_9DC                = 0.0f;
+	mFallSpeed          = 0.0f;
+	mGroundHeight       = 0.0f;
 	mCmd[0]             = 0;
 	mCmd[1]             = 0;
 	mCmd[18]            = 0;

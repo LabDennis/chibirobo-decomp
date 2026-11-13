@@ -15,9 +15,9 @@ static inline void ResetRingMode(OctaMenu& ring)
 	ring.mCursorIndex = 0;
 	u32 mode          = gCmdLineArgs.mAttachmentMenuType;
 	if (mode <= 3)
-		ring._280 = mode;
+		ring.mMenuType = mode;
 	else
-		ring._280 = 0;
+		ring.mMenuType = 0;
 	ring.mFocus    = 0;
 	ring.mHeadTurn = NAN;
 }
@@ -52,14 +52,14 @@ void XObjChr::ResetForNewGame()
 	mMenu.mPrevSel = mMenu.mSel = 0;
 	mOXMenu.mSelectedIndex      = 0;
 #if !defined(VERSION_JP)
-	mOXMenu._00 = 0;
+	mOXMenu.mLoadStep = 0;
 #endif
-	_15890         = 0;
-	mSavedTarget   = -1;
-	mPendingTarget = NULL;
-	_158A4         = TRUE;
-	_158A8         = 0;
-	mItemTintWord  = -1;
+	_15890           = 0;
+	mSavedTarget     = -1;
+	mPendingTarget   = NULL;
+	mBatteryDrains   = TRUE;
+	mSquirterContent = 0;
+	mItemTintWord    = -1;
 	for (s32 i = 0; i < 10; ++i) {
 		PointPtcl& p = gPointParticlePool[i];
 		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
@@ -135,7 +135,7 @@ void XObjChr::InitializeObject(u32 id)
 	{
 		OctaMenu& ring = mMenu.mDrs;
 		SetupPlayerRing(ring, this, 1.0f);
-		if (ring._280 == 3) {
+		if (ring.mMenuType == 3) {
 			SetRingItems(ring, 1, 4, 6, 3, 2, 7, 8, 5);
 		} else {
 			SetRingItems(ring, 3, 5, 4, 1, 6, 8, 7, 2);
@@ -148,7 +148,7 @@ void XObjChr::InitializeObject(u32 id)
 	mOXMenu.mChr           = this;
 	mOXMenu.mSelectedIndex = 0;
 #if !defined(VERSION_JP)
-	mOXMenu._00 = 0;
+	mOXMenu.mLoadStep = 0;
 #endif
 	for (s32 i = 0; i < 9; ++i) {
 		mSuits.mObjects[i].InitializeObject(id);

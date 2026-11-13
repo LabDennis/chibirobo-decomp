@@ -17,7 +17,7 @@ public:
 
 	s32 GetPlacementFlagIndex(s32 group) const
 	{
-		s32 id = _260;
+		s32 id = mPlacementParam1;
 		if (id > 0) {
 			u32 base = GetStageCollectionFlagBase(group);
 			return (s32)(base + (u32)id);
@@ -92,13 +92,14 @@ STATIC_ASSERT(sizeof(XObjDust) == 0x9E0);
 class XObjCoin : public XObjFlags {
 public:
 	// _00-_988 = XObjFlags
-	f32 mSpin;              // _988
-	f32 _98C;               // _98C
-	s32 mState;             // _990, 1 while falling
-	u32 mParam0;            // _994
-	u32 mParam1;            // _998
-	u32 mFallFrames;        // _99C
-	u32 mParams[8];         // _9A0
+	f32 mSpin;       // _988
+	f32 mFade;       // _98C, 1 when picked up, falls 0.02 a frame; the scale is multiplied by 1.12 times it until the coin is gone; 0 after
+	                 // ResetObjectState
+	s32 mState;      // _990, 1 while falling
+	u32 mParam0;     // _994
+	u32 mParam1;     // _998
+	u32 mFallFrames; // _99C
+	u32 mParams[8];  // _9A0
 	u8 _9C0[0x9E0 - 0x9C0]; // _9C0
 	f32 mHeading;           // _9E0
 	f32 mFallSpeed;         // _9E4

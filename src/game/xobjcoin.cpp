@@ -11,7 +11,7 @@
  */
 BOOL XObjCoin::LoadFromPlacement(const CoordInfo& info)
 {
-	_260 = info._00->_2C;
+	mPlacementParam1 = info.mPlacement->mParam1;
 	if (IsFlagSet())
 		return TRUE;
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
@@ -34,10 +34,10 @@ void XObjCoin::ResetObjectState()
 	f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
 	if (end > 0.0f) {
 		f32 frame              = fmod((f32)rand(), end);
-		UnkStageObj* placement = mCoord._00;
+		UnkStageObj* placement = mCoord.mPlacement;
 		SetAnim(placement->mStartAnim, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
 	}
-	_98C      = 0.0f;
+	mFade     = 0.0f;
 	mState    = 0;
 	mParam0   = 0;
 	mBouncing = 0;

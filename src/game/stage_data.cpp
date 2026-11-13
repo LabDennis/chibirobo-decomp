@@ -3372,7 +3372,7 @@ extern "C" UnkStageObj* GetSpawnData(s32 index)
  */
 extern "C" UnkObjData* GetObjData(const CoordInfo* info)
 {
-	s32 index = info->_00->mObjectId;
+	s32 index = info->mPlacement->mObjectId;
 	if (index >= 10000)
 		return &objTableEx[index - 10000];
 	return &objTable[index];
@@ -3417,11 +3417,11 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		if (!stage->mDataFile.ReadEx(stage->mDataPath, 0, 0))
 			break;
 		stage->mDataFile.CloseHandle();
-		u8* data                  = (u8*)stage->mDataFile.mBuffer;
-		stage->mEnvironment.mData = data + ReadResourceOffset(data);
-		stage->mPlacements._00    = (UnkStageObj*)(data + ReadResourceOffset(data + 4));
-		stage->mScriptOffsets     = data + ReadResourceOffset(data + 8);
-		stage->mSetupScript       = data + ReadResourceOffset(data + 0xC);
+		u8* data                      = (u8*)stage->mDataFile.mBuffer;
+		stage->mEnvironment.mData     = data + ReadResourceOffset(data);
+		stage->mPlacements.mPlacement = (UnkStageObj*)(data + ReadResourceOffset(data + 4));
+		stage->mScriptOffsets         = data + ReadResourceOffset(data + 8);
+		stage->mSetupScript           = data + ReadResourceOffset(data + 0xC);
 		if (stage->mSetupScript == data)
 			stage->mSetupScript = NULL;
 		stage->mEntryScript = data + ReadResourceOffset(data + 0x10);
@@ -3595,7 +3595,7 @@ extern "C" u8* GetStageDataBuffer()
  */
 extern "C" UnkStageObj* GetStagePlacementByIndex(s32 index)
 {
-	return gStageResources.mPlacements._00 + index;
+	return gStageResources.mPlacements.mPlacement + index;
 }
 
 /**

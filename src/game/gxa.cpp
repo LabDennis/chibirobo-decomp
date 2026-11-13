@@ -203,8 +203,8 @@ extern "C" void InitGameRenderState(CBase* base)
 	CGs* gs = &base->mGs;
 #if defined(VERSION_PAL)
 	SetGsScreenModeAndRenderDefaults(gs, 21, 0, 0, 0);
-	gs->mScreen._40      = gGame.mGs.mScreen.xfbHeight / 448.0f;
-	gs->mScreen.viHeight = 480;
+	gs->mScreen.mHeightScale = gGame.mGs.mScreen.xfbHeight / 448.0f;
+	gs->mScreen.viHeight     = 480;
 #else
 	SetGsScreenModeAndRenderDefaults(gs, 4, 0, 16, 0);
 #endif

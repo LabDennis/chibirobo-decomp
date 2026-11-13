@@ -65,7 +65,7 @@ extern "C" void __sinit_cgameinit_cpp(void)
 	cache->mFile1.mBuffer                  = NULL;
 	cache->mFile1.mResult                  = 0;
 	cache->mFile1.mState                   = 1;
-	cache->_00                             = 0;
+	cache->mLoadStep                       = 0;
 	__register_global_object(cache, (void*)__dt__10ARPreCacheFv, (u8*)cache - 0xC);
 
 	CThread* thread                 = (CThread*)(GLOBALS + 0x5278);

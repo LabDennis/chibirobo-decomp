@@ -218,8 +218,8 @@ void XObjActorMama::UpdateAfterAnim(u32 frames)
 						SetHeldPropMatrix(prop, result);
 						break;
 					case 0x196:
-						sin(DEG2RAD * ((s32)(_994 * 16) % 360));
-						++_994;
+						sin(DEG2RAD * ((s32)(mKindCounter * 16) % 360));
+						++mKindCounter;
 						PSMTXCopy(hand.GetMtx(), mount);
 						RotateHeldProp(mount, result, rotation, 'x', -HALF_PI);
 						OffsetHeldProp(result, translation, 2.5f, -3, -8.5f);

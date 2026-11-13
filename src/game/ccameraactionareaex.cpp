@@ -20,7 +20,7 @@ static inline s32 GetAreaMode(s32 index)
 	s32 mode;
 	CamAreaRecord* records = GetStageCameraAreaRecords();
 	CamAreaInfo area       = CamAreaInfo(&records[index]);
-	switch (area._04->_2C) {
+	switch (area.mRecord->mCameraAction) {
 	case 1:
 		mode = 1;
 		break;
@@ -45,7 +45,7 @@ static inline s32 GetAreaMode(s32 index)
  */
 extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state)
 {
-	s32 index = state->_0C;
+	s32 index = state->mActiveArea;
 	if (index == -1)
 		return 7;
 	return GetAreaMode(index);
@@ -54,8 +54,8 @@ extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state)
 static inline Vec AreaPoint(const CamAreaInfo& area, s32 index)
 {
 	Vec point = lbl_805A0400[2 + index];
-	point.x   = area._04->_04[index][0] / 100.0f;
-	point.z   = area._04->_04[index][1] / 100.0f;
+	point.x   = area.mRecord->_04[index][0] / 100.0f;
+	point.z   = area.mRecord->_04[index][1] / 100.0f;
 	return point;
 }
 
@@ -72,20 +72,20 @@ static inline BOOL PointInQuad(const Vec& pos, Vec a, Vec b, Vec c, Vec d)
 // them until the whole file is built, and keeps top - bottom and the height in f26/f27 the other way round
 extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 {
-	if (state->_24 == NULL)
+	if (state->mAreaRecords == NULL)
 		return;
 	u32 colors[7] = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
 	f32 scale     = 2.0f / sqrtf(3.0f);
-	for (s32 i = 0; i < state->_28; ++i) {
-		u16 flags = CamAreaInfo(&state->_24[i])._04->mFlags & 4;
+	for (s32 i = 0; i < state->mAreaCount; ++i) {
+		u16 flags = CamAreaInfo(&state->mAreaRecords[i]).mRecord->mFlags & 4;
 		if (flags == 0)
 			continue;
 		static s32 selected = 0;
 		selected            = i;
 		CPad pad(3);
 		if (pad.mPad->mTrigger & 2) {
-			if (++selected >= state->_28)
-				selected = state->_28 - 1;
+			if (++selected >= state->mAreaCount)
+				selected = state->mAreaCount - 1;
 #if !defined(VERSION_PAL)
 			OSReport("DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n", selected);
 #endif
@@ -97,7 +97,7 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 #endif
 		}
 
-		CamAreaInfo area(&state->_24[selected]);
+		CamAreaInfo area(&state->mAreaRecords[selected]);
 		CVec a     = AreaPoint(area, 0);
 		CVec b     = AreaPoint(area, 1);
 		CVec c     = AreaPoint(area, 2);
@@ -118,11 +118,11 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 		DrawGsCube(&gGame.mGs, colors[selected % 5], center.x, center.y, center.z, 0.0f, 0.0f, 0.0f, width, height, depth);
 
 		s32 index           = selected;
-		CamAreaEntry* entry = state->mGroups[index]._00;
+		CamAreaEntry* entry = state->mGroups[index].mEntries;
 		for (s32 j = 0; j < state->mGroups[index].mEntryCount; ++j, ++entry) {
 			CVec pos, next;
 			pos  = entry->mEye;
-			next = j == state->mGroups[index].mEntryCount - 1 ? state->mGroups[index]._00[0].mEye : entry[1].mEye;
+			next = j == state->mGroups[index].mEntryCount - 1 ? state->mGroups[index].mEntries[0].mEye : entry[1].mEye;
 			DrawGsLineSegment(&gGame.mGs, NULL, pos.x, pos.y, pos.z, colors[5], next.x, next.y, next.z, colors[5]);
 			DrawGsSphere(&gGame.mGs, colors[index % 5], 12, 16, pos.x, pos.y, pos.z, 0.0f, 0.0f, 0.0f, 3.0f, 3.0f, 3.0f);
 			CVec angle  = entry->mAngle;
@@ -150,12 +150,12 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 	CamAreaRecord* records;
 	s32 count;
 	if (mode == 0) {
-		records = state->_24;
-		count   = state->_28;
+		records = state->mAreaRecords;
+		count   = state->mAreaCount;
 	}
 	if (mode == 1) {
-		records = state->_1C;
-		count   = state->_20;
+		records = state->mAreaExRecords;
+		count   = state->mAreaExCount;
 	}
 	if (records == NULL)
 		return;
@@ -254,8 +254,8 @@ static inline BOOL ContainsPoint(const CamAreaInfo& area, const Vec& pos)
 extern "C" s32 CollectCameraAreasContainingPoint(CCameraActionAreaEx* state, Vec pos, s32* ids)
 {
 	s32 count = 0;
-	for (s32 i = 0; i < state->_20; ++i) {
-		if (ContainsPoint(CamAreaInfo(&state->_1C[i]), pos)) {
+	for (s32 i = 0; i < state->mAreaExCount; ++i) {
+		if (ContainsPoint(CamAreaInfo(&state->mAreaExRecords[i]), pos)) {
 			*ids++ = i;
 			++count;
 		}
@@ -270,8 +270,8 @@ extern "C" s32 CollectCameraAreasContainingPoint(CCameraActionAreaEx* state, Vec
 extern "C" s32 FindFirstCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos)
 {
 	s32 index = -1;
-	for (s32 i = 0; i < state->_20; ++i) {
-		if (ContainsPoint(CamAreaInfo(&state->_1C[i]), pos)) {
+	for (s32 i = 0; i < state->mAreaExCount; ++i) {
+		if (ContainsPoint(CamAreaInfo(&state->mAreaExRecords[i]), pos)) {
 			index = i;
 			break;
 		}
@@ -286,10 +286,10 @@ extern "C" s32 FindFirstCameraAreaContainingPoint(CCameraActionAreaEx* state, Ve
 extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos)
 {
 	s32 index = -1;
-	for (s32 i = 1; i < state->_28; ++i) {
-		if (CamAreaInfo(&state->_24[i]).IsCameraOff())
+	for (s32 i = 1; i < state->mAreaCount; ++i) {
+		if (CamAreaInfo(&state->mAreaRecords[i]).IsCameraOff())
 			continue;
-		if (ContainsPoint(CamAreaInfo(&state->_24[i]), pos)) {
+		if (ContainsPoint(CamAreaInfo(&state->mAreaRecords[i]), pos)) {
 			index = i;
 			break;
 		}
@@ -305,20 +305,20 @@ extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, 
 // CamAreaInfo temporaries and the registers of i and the record offset
 extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 {
-	state->_08 = state->_04;
-	Vec pos    = gGame.GetPlayer()->mMoveTranslate;
-	s32 index  = -1;
-	for (s32 i = 1; i < state->_28; ++i) {
-		if (CamAreaInfo(&state->_24[i]).IsCameraOff())
+	state->mPrevArea = state->mCurrentArea;
+	Vec pos          = gGame.GetPlayer()->mMoveTranslate;
+	s32 index        = -1;
+	for (s32 i = 1; i < state->mAreaCount; ++i) {
+		if (CamAreaInfo(&state->mAreaRecords[i]).IsCameraOff())
 			continue;
-		if (ContainsPoint(CamAreaInfo(&state->_24[i]), pos)) {
+		if (ContainsPoint(CamAreaInfo(&state->mAreaRecords[i]), pos)) {
 			index = i;
 			break;
 		}
 	}
-	state->_04 = index;
-	if (state->_08 != state->_04 && state->_04 != -1)
-		state->_0C = state->_04;
+	state->mCurrentArea = index;
+	if (state->mPrevArea != state->mCurrentArea && state->mCurrentArea != -1)
+		state->mActiveArea = state->mCurrentArea;
 }
 
 /**
@@ -327,13 +327,13 @@ extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
  */
 extern "C" void SetCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 index)
 {
-	if (state->_24 != NULL && state->mCameraInfo != NULL) {
-		state->_0C = index;
-		state->_04 = index;
-		state->_08 = index;
+	if (state->mAreaRecords != NULL && state->mCameraInfo != NULL) {
+		state->mActiveArea  = index;
+		state->mCurrentArea = index;
+		state->mPrevArea    = index;
 		f32 fov;
 		if (GetCameraAreaMode(state) == 1) {
-			fov = CamInfo(&state->mCameraInfo[state->mGroups[state->_0C]._00->mId]).GetFov();
+			fov = CamInfo(&state->mCameraInfo[state->mGroups[state->mActiveArea].mEntries->mId]).GetFov();
 		} else {
 			fov = 30.5f;
 		}
@@ -348,12 +348,12 @@ extern "C" void SetCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 ind
 // NONMATCHING: retail has the two loads of the -1 test in r0 and r3 the other way round (as for a -1L compare)
 extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 unused)
 {
-	if (state->_24 != NULL && state->mCameraInfo != NULL) {
+	if (state->mAreaRecords != NULL && state->mCameraInfo != NULL) {
 		UpdateCameraAreaIndexFromPlayer(state, unused);
-		if (state->_08 != state->_04 && state->_04 != -1) {
+		if (state->mPrevArea != state->mCurrentArea && state->mCurrentArea != -1) {
 			f32 fov;
 			if (GetCameraAreaMode(state) == 1) {
-				fov = CamInfo(&state->mCameraInfo[state->mGroups[state->_0C]._00->mId]).GetFov();
+				fov = CamInfo(&state->mCameraInfo[state->mGroups[state->mActiveArea].mEntries->mId]).GetFov();
 			} else {
 				fov = 30.5f;
 			}
@@ -365,7 +365,7 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
 static inline bool IsAreaEnd(CamAreaRecord* record)
 {
 	CamAreaInfo area(record);
-	return area._04->_00 == -1;
+	return area.mRecord->_00 == -1;
 }
 
 /**
@@ -376,37 +376,37 @@ static inline bool IsAreaEnd(CamAreaRecord* record)
 // that takes the table by reference; these loops keep the pointer in a register
 extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 {
-	state->_1C = NULL;
-	state->_20 = 0;
-	state->_1C = GetStageCameraAreaExRecords();
-	s32 count  = 0;
-	if (state->_1C != NULL) {
+	state->mAreaExRecords = NULL;
+	state->mAreaExCount   = 0;
+	state->mAreaExRecords = GetStageCameraAreaExRecords();
+	s32 count             = 0;
+	if (state->mAreaExRecords != NULL) {
 		for (;;) {
-			if (IsAreaEnd(&state->_1C[count]))
+			if (IsAreaEnd(&state->mAreaExRecords[count]))
 				break;
 			++count;
 		}
 	}
-	state->_20 = count;
-	state->_24 = NULL;
-	state->_28 = 0;
-	state->_24 = GetStageCameraAreaRecords();
-	count      = 0;
-	if (state->_24 != NULL) {
+	state->mAreaExCount = count;
+	state->mAreaRecords = NULL;
+	state->mAreaCount   = 0;
+	state->mAreaRecords = GetStageCameraAreaRecords();
+	count               = 0;
+	if (state->mAreaRecords != NULL) {
 		for (;;) {
-			if (IsAreaEnd(&state->_24[count]))
+			if (IsAreaEnd(&state->mAreaRecords[count]))
 				break;
 			++count;
 		}
 	}
-	state->_28         = count;
+	state->mAreaCount  = count;
 	state->mCameraInfo = NULL;
 	state->mCameraInfo = GetStageCameraInfoRecords();
 	BuildCameraAreaGroups(state);
-	state->_04      = -1;
-	state->_08      = -1;
-	state->_0C      = -1;
-	state->mBaseFov = 30.5f;
+	state->mCurrentArea = -1;
+	state->mPrevArea    = -1;
+	state->mActiveArea  = -1;
+	state->mBaseFov     = 30.5f;
 #if !defined(VERSION_PAL)
 	OSReport("reset zoom lv = CAM_AREA_ZOOM_LV1\n");
 #endif
@@ -428,8 +428,8 @@ extern "C" void InitCameraAreaEntries(CCameraActionAreaEx* state)
 #endif
 	for (int i = 0; i < 2048; ++i)
 		state->mEntryPool[i] = &gCameraAreaEntries[i];
-	state->_18 = 1;
-	state->_14 = 1;
+	state->mPrevZoomLevel = 1;
+	state->mZoomLevel     = 1;
 }
 
 /**
@@ -443,7 +443,7 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
 
 	CamAreaEntry* entry = state->mEntryPool[0];
 	for (s32 i = 0;; ++i, ++entry) {
-		if (CamInfo(&state->mCameraInfo[i]).mData->_00 == -1)
+		if (CamInfo(&state->mCameraInfo[i]).mData->mGroupId == -1)
 			break;
 		entry->mInterest = CamInfo(&state->mCameraInfo[i]).GetInterest();
 		entry->mEye      = CamInfo(&state->mCameraInfo[i]).GetEye();
@@ -456,12 +456,12 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
 	CamInfoData* data = state->mCameraInfo;
 	s32 group         = 0;
 	for (;;) {
-		if (data->_00 == -1)
+		if (data->mGroupId == -1)
 			break;
-		state->mGroups[group]._00      = state->mEntryPool[first];
+		state->mGroups[group].mEntries = state->mEntryPool[first];
 		state->mGroups[group].mGroupId = group;
 		s32 count                      = 0;
-		while (data->_00 == group) {
+		while (data->mGroupId == group) {
 			++count;
 			++data;
 		}
@@ -477,34 +477,34 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
 		case 0:
 			break;
 		case 1: {
-			CVec center = (Vec)slot->_00[0].mEye;
+			CVec center = (Vec)slot->mEntries[0].mEye;
 			slot->mEye  = center;
 			break;
 		}
 		case 2: {
 			CVec center;
-			CamAreaEntry* entries = slot->_00;
+			CamAreaEntry* entries = slot->mEntries;
 			center                = entries[0].mEye + (entries[1].mEye - entries[0].mEye) / 2.0f;
 			slot->mEye            = center;
 			break;
 		}
 		case 3: {
 			CVec center;
-			CamAreaEntry* entries = slot->_00;
+			CamAreaEntry* entries = slot->mEntries;
 			center                = entries[0].mEye + (entries[1].mEye - entries[0].mEye) / 2.0f;
 			slot->mEye            = center + (entries[2].mEye - center) / 3.0f;
 			break;
 		}
 		case 4: {
 			CVec center;
-			CamAreaEntry* entries = slot->_00;
+			CamAreaEntry* entries = slot->mEntries;
 			center                = entries[0].mEye + (entries[2].mEye - entries[0].mEye) / 2.0f;
 			slot->mEye            = center;
 			break;
 		}
 		default: {
 			CVec center;
-			CamAreaEntry* entries = slot->_00;
+			CamAreaEntry* entries = slot->mEntries;
 			center                = entries[0].mEye + (entries[1].mEye - entries[0].mEye) / 2.0f;
 			slot->mEye            = center + (entries[2].mEye - center) / 3.0f;
 			break;

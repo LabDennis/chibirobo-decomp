@@ -204,13 +204,13 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 		break;
 	case 5:
 		if (command[1] != 0) {
-			_CF4 = 0x82;
-			_CF8 = 1;
+			mMountObjId = 0x82;
+			mMountState = 1;
 		} else {
-			_CF8 = 0;
-			_CF4 = -1;
-			if (_CFC != NULL) {
-				_CFC->Release();
+			mMountState = 0;
+			mMountObjId = -1;
+			if (mMountObj != NULL) {
+				mMountObj->Release();
 			}
 		}
 		mCmd[0] = 0;
@@ -438,27 +438,27 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 				break;
 			}
 	}
-	switch (_CF8) {
+	switch (mMountState) {
 	case 0:
 		break;
 	case 1:
-		if (_CFC)
-			_CFC->Release();
-		if (_CF4 >= 0) {
-			_CFC = ReadObj(_CF4);
-			++_CF8;
+		if (mMountObj)
+			mMountObj->Release();
+		if (mMountObjId >= 0) {
+			mMountObj = ReadObj(mMountObjId);
+			++mMountState;
 		} else
-			_CFC = NULL;
+			mMountObj = NULL;
 		break;
 	case 2:
-		if (_CFC && !(_CFC->mStatus.mFlags & 0x0040000000000000ULL)) {
+		if (mMountObj && !(mMountObj->mStatus.mFlags & 0x0040000000000000ULL)) {
 			gGame.mStatus.mFlags |= 0x1000;
-			++_CF8;
+			++mMountState;
 		}
 		break;
 	case 3:
-		if (_CF4 >= 0 && _CFC) {
-			_CFC->SetScale(1, 1, 1, 0);
+		if (mMountObjId >= 0 && mMountObj) {
+			mMountObj->SetScale(1, 1, 1, 0);
 			CJObj extra;
 			s32 path[3] = { 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&extra, FindJointByPath(mJObj, path, 3));
@@ -466,20 +466,20 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 			PSMTXCopy(extra.GetMtx(), mMountMtx);
 			Vec scale;
 			HSD_MtxGetScale(mMountMtx, &scale);
-			scale.x = GetStagePlacementScale(_CFC).x / scale.x;
-			scale.y = GetStagePlacementScale(_CFC).y / scale.y;
-			scale.z = GetStagePlacementScale(_CFC).z / scale.z;
+			scale.x = GetStagePlacementScale(mMountObj).x / scale.x;
+			scale.y = GetStagePlacementScale(mMountObj).y / scale.y;
+			scale.z = GetStagePlacementScale(mMountObj).z / scale.z;
 			Mtx scaling;
 			PSMTXScale(scaling, scale.x, scale.y, scale.z);
 			PSMTXConcat(mMountMtx, scaling, result);
-			HSD_JObj* root = _CFC->mJObj;
+			HSD_JObj* root = mMountObj->mJObj;
 			MtxPtr matrix  = result;
 			HSD_JObjCopyMtx(root, matrix);
 			if (mStatus.mFlags & 0x10000)
-				_CFC->mStatus.mFlags |= 0x10000ULL;
+				mMountObj->mStatus.mFlags |= 0x10000ULL;
 			else
-				_CFC->mStatus.mFlags &= ~0x10000ULL;
-			_CFC->mStatus.mFlags &= ~0x0200000000000000ULL;
+				mMountObj->mStatus.mFlags &= ~0x10000ULL;
+			mMountObj->mStatus.mFlags &= ~0x0200000000000000ULL;
 		}
 		mActorStatus.mFlags &= ~0x2000;
 		break;
@@ -572,25 +572,25 @@ void XObjActorTao::ResetActorState()
 {
 	mActorStatus.mFlags = 0;
 	mHideKinds.mFlags   = 0;
-	_980                = 0.0f;
+	mHeading            = 0.0f;
 	mMoveSpeed          = 0.0f;
-	_988                = 0.0f;
-	_C84                = _988;
+	mFacing             = 0.0f;
+	_C84                = mFacing;
 	_C88                = 0;
 	mState              = &XObjActorTao::StateNone;
 	ResetActorMovementStep(this);
-	mCmd[2] = 0;
-	mCmd[3] = 0;
-	mCmd[4] = 0;
-	mCmd[5] = 0;
-	mCmd[6] = 0;
-	mCmd[7] = 0;
-	mCmd[8] = 0;
-	mCmd[9] = 0;
-	_CF4    = -1;
-	_CF8    = 0;
-	_CFC    = NULL;
-	_CF4    = 0x82;
-	_CF8    = 1;
+	mCmd[2]     = 0;
+	mCmd[3]     = 0;
+	mCmd[4]     = 0;
+	mCmd[5]     = 0;
+	mCmd[6]     = 0;
+	mCmd[7]     = 0;
+	mCmd[8]     = 0;
+	mCmd[9]     = 0;
+	mMountObjId = -1;
+	mMountState = 0;
+	mMountObj   = NULL;
+	mMountObjId = 0x82;
+	mMountState = 1;
 	mActorStatus.mFlags |= 0x2000;
 }

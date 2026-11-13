@@ -5,12 +5,14 @@
 
 // one 0x38 byte entry of the stage's object placement table
 struct UnkStageObj {
-	s32 mObjectId;  // _00, the object id, negative ends the table
-	s32 mPos[3];    // _04, in hundredths
-	s32 _10[3];     // _10
-	s32 mScale[3];  // _1C, in hundredths
-	s32 _28;        // _28
-	s32 _2C;        // _2C
+	s32 mObjectId; // _00, the object id, negative ends the table
+	s32 mPos[3];   // _04, in hundredths
+	s32 mRot[3];   // _10, rotation in whole degrees, x y z
+	s32 mScale[3]; // _1C, in hundredths
+	s32 mParam0; // _28, first per-object placement parameter, copied to XObj _25C; GetObjectPlacementParam(obj, 0) returns it (spider mode,
+	             // custom ledge height)
+	s32 mParam1; // _2C, second per-object placement parameter, copied to XObj _260; GetObjectPlacementParam(obj, 1) returns it; coins, dust
+	             // and hbox use it as their collection flag id, the spider as a height offset
 	s32 mStartAnim; // _30, starting anim
 	u32 mFlags;     // _34, flags, 0x80000000 skips the read
 };
@@ -19,12 +21,12 @@ STATIC_ASSERT(sizeof(UnkStageObj) == 0x38);
 // name from __vt__9CoordInfo
 class CoordInfo {
 public:
-	UnkStageObj* _00; // _00
+	UnkStageObj* mPlacement; // _00, the object's entry in the stage placement table
 	// _04 vtable
 
-	CoordInfo() { _00 = NULL; }
+	CoordInfo() { mPlacement = NULL; }
 	CoordInfo(void* value)
-	    : _00((UnkStageObj*)value)
+	    : mPlacement((UnkStageObj*)value)
 	{
 	}
 	virtual ~CoordInfo() { } // _08
@@ -64,19 +66,19 @@ inline s32 GetObjDataFlags(const UnkObjData* data)
 // name from __vt__8AttrInfo
 class AttrInfo {
 public:
-	UnkObjData* _00;         // _00
+	UnkObjData* mObjData; // _00, the object's data record from GetObjData (source, shadow size, look range, category, item), NULL until set
 	UnkStageObj* mPlacement; // _04, the placement CoordInfo points at
 	// _08 vtable
 
-	AttrInfo() { _00 = NULL; }
+	AttrInfo() { mObjData = NULL; }
 	AttrInfo(CoordInfo* info)
-	    : _00(GetObjData(info))
-	    , mPlacement(info->_00)
+	    : mObjData(GetObjData(info))
+	    , mPlacement(info->mPlacement)
 	{
 	}
 	AttrInfo(const CoordInfo& info)
-	    : _00(GetObjData(&info))
-	    , mPlacement(info._00)
+	    : mObjData(GetObjData(&info))
+	    , mPlacement(info.mPlacement)
 	{
 	}
 	virtual ~AttrInfo() { } // _08

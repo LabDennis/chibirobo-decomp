@@ -20,11 +20,11 @@ BOOL IsStageDataLoaded();
 }
 static inline bool HasSource(const AttrInfo& attr)
 {
-	return attr._00 && attr._00->mSource;
+	return attr.mObjData && attr.mObjData->mSource;
 }
 static inline const char* ModelName(const AttrInfo& attr)
 {
-	return HasSource(attr) ? attr._00->mSource->mName : NULL;
+	return HasSource(attr) ? attr.mObjData->mSource->mName : NULL;
 }
 static inline u32 PaddedSize(CObjArchive* archive)
 {
@@ -40,25 +40,25 @@ static inline bool FitsInAram(CObjArchive* archive)
 BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ready = FALSE;
-	if ((u64)info._00->mFlags & 0x80000000ULL)
+	if ((u64)info.mPlacement->mFlags & 0x80000000ULL)
 		return TRUE;
 
 	AttrInfo& attr = mAttr;
 	if (mStatus.mFlags & 1)
 		ready = TRUE;
 	else {
-		if (!attr._00) {
-			mCoord._00      = info._00;
-			attr._00        = GetObjData(&info);
-			attr.mPlacement = info._00;
-			if (!(HasSource(attr) ? attr._00->mSource->mArchive : NULL) && ModelName(attr)) {
+		if (!attr.mObjData) {
+			mCoord.mPlacement = info.mPlacement;
+			attr.mObjData     = GetObjData(&info);
+			attr.mPlacement   = info.mPlacement;
+			if (!(HasSource(attr) ? attr.mObjData->mSource->mArchive : NULL) && ModelName(attr)) {
 				CObjArchive* archive = FindFreeObjectArchive(gGame.mObjArchives.mArchives);
-				if (attr._00 && attr._00->mSource)
-					attr._00->mSource->mArchive = archive;
+				if (attr.mObjData && attr.mObjData->mSource)
+					attr.mObjData->mSource->mArchive = archive;
 			}
 		}
 		if (!mFloors) {
-			mFloors        = (XObjFloor*)GetGlobalTextEntry(info._00->mObjectId);
+			mFloors        = (XObjFloor*)GetGlobalTextEntry(info.mPlacement->mObjectId);
 			mFloorMasks[1] = mFloorMasks[0] = 0;
 			BOOL empty                      = mFloors ? mFloors->mId == -1 : FALSE;
 			if (empty)
@@ -66,14 +66,14 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		}
 		if (!ModelName(attr))
 			ready = TRUE;
-		else if (attr._00 ? attr._00->mSource : NULL) {
-			CObjArchive* archive = HasSource(attr) ? attr._00->mSource->mArchive : NULL;
+		else if (attr.mObjData ? attr.mObjData->mSource : NULL) {
+			CObjArchive* archive = HasSource(attr) ? attr.mObjData->mSource->mArchive : NULL;
 			const char* name     = ModelName(attr);
-			u32 model            = attr._00 ? attr._00->mModel : 0;
+			u32 model            = attr.mObjData ? attr.mObjData->mModel : 0;
 			u32 flags            = 0;
-			if ((u64)(attr._00 ? attr._00->mFlags : 0) & 0x80)
+			if ((u64)(attr.mObjData ? attr.mObjData->mFlags : 0) & 0x80)
 				flags = 0x10000;
-			XObjSource::Cache* cache = HasSource(attr) ? &attr._00->mSource->mCache : NULL;
+			XObjSource::Cache* cache = HasSource(attr) ? &attr.mObjData->mSource->mCache : NULL;
 			u32 address = cache->address, size = cache->size;
 			if (gGame.mStatus.mFlags & 0x20000000000ULL) {
 				if (address)
@@ -88,9 +88,9 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			sprintf(path, "%s.dat", name);
 			ready = Load(archive, path, model, flags, address, size);
 			if (ready) {
-				if ((flags & 2) && FitsInAram(archive) && attr._00 && attr._00->mSource) {
-					attr._00->mSource->mCache.address = gARAMCacheInfo.mBaseAddress;
-					attr._00->mSource->mCache.size    = archive->mFile.mSize;
+				if ((flags & 2) && FitsInAram(archive) && attr.mObjData && attr.mObjData->mSource) {
+					attr.mObjData->mSource->mCache.address = gARAMCacheInfo.mBaseAddress;
+					attr.mObjData->mSource->mCache.size    = archive->mFile.mSize;
 				}
 				if (mm::GetName(archive->mFile.mBuffer)[1] != ' ') {
 					char label[64];
@@ -130,15 +130,15 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		mMoveTranslate.mSpeed.Set(0, 0, 0);
 		mMoveRotate.mSpeed.Set(0, 0, 0);
 		mStatus.mFlags = 0;
-		mStatus.mFlags |= (attr._00 ? attr._00->mFlags : 0) | (1ULL | ((u64)info._00->mFlags << 16));
+		mStatus.mFlags |= (attr.mObjData ? attr.mObjData->mFlags : 0) | (1ULL | ((u64)info.mPlacement->mFlags << 16));
 		if (mFloors)
 			mStatus.mFlags |= 0x0200000000000000ULL;
 		else
 			mStatus.mFlags &= ~0x0200000000000000ULL;
-		_25C = mCoord._00->_28;
-		_260 = mCoord._00->_2C;
+		mPlacementParam0 = mCoord.mPlacement->mParam0;
+		mPlacementParam1 = mCoord.mPlacement->mParam1;
 		if (mJObj)
-			SetAnim(mCoord._00->mStartAnim, TRUE, NULL, NULL, NULL, 0, 1, 1, 10);
+			SetAnim(mCoord.mPlacement->mStartAnim, TRUE, NULL, NULL, NULL, 0, 1, 1, 10);
 		ResetObjectState();
 		mLastPos.x = mMoveTranslate.x;
 		mLastPos.y = mMoveTranslate.y;
@@ -157,10 +157,10 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 				EnableLighting(GetEnvData()[9] / 100.f);
 			if ((mStatus.mFlags & 2) && mJObj)
 				HSD_JObjWalkTree(mJObj, JObjSetMObjFlags, (f32**)0x04000000);
-			UnkStageObj* place = mCoord._00;
+			UnkStageObj* place = mCoord.mPlacement;
 			s32 index          = place - GetStagePlacementByIndex(0);
 			if (index > 0)
-				_80C = (u32)GetStageScriptByIndex(index);
+				mEventScript = (u32)GetStageScriptByIndex(index);
 		}
 		UpdateObjectFloorHeights(this);
 		UpdateObjectFloorXZExtent(this);
@@ -185,13 +185,13 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
  */
 void XObj::ResetObjectState()
 {
-	_80C                = 0;
+	mEventScript        = 0;
 	mFloorHit.mTriangle = -1;
 	mFloorHit.mTrigon   = 0;
 	mFloorHit.mHeight   = 0.0f;
-	_794.x              = 0.0f;
-	_794.y              = 0.0f;
-	_794.z              = 0.0f;
+	mToppleOffset.x     = 0.0f;
+	mToppleOffset.y     = 0.0f;
+	mToppleOffset.z     = 0.0f;
 	mAnmQueue.Clear();
 	mAnchorX = mAnchorZ = NAN;
 	mMarkerOverride     = 0;

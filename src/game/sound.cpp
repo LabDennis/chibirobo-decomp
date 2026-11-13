@@ -1883,11 +1883,11 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 	if (sound->mCurrentMusicId != 0 && sound->mPausedMusicId == 0 && !AXDriverIsStreamActive()) {
 		sound->mCurrentMusicId = 0;
 	}
-	const s32 pitchFrames = sound->_188;
+	const s32 pitchFrames = sound->mMusicPitchFrames;
 	if (pitchFrames > 0 && sound->mMusicPitch != sound->mTargetMusicPitch) {
 		sound->mMusicPitch += (sound->mTargetMusicPitch - sound->mMusicPitch) / pitchFrames;
-		sound->_188 -= step;
-		if (sound->_188 <= 0) {
+		sound->mMusicPitchFrames -= step;
+		if (sound->mMusicPitchFrames <= 0) {
 			sound->mMusicPitch = sound->mTargetMusicPitch;
 		}
 		AXDriverSetAllStreamPitches(sound->mMusicPitch);
@@ -1896,11 +1896,11 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 		if (UseRaisedLiftPitch()) {
 			if (sound->mTargetMusicPitch != 200) {
 				sound->mTargetMusicPitch = 200;
-				sound->_188              = 15;
+				sound->mMusicPitchFrames = 15;
 			}
 		} else if (sound->mTargetMusicPitch != 0) {
 			sound->mTargetMusicPitch = 0;
-			sound->_188              = 15;
+			sound->mMusicPitchFrames = 15;
 		}
 	}
 	if (sound->mDefaultTrack == 0 && sound->mMusicResumeDelay > 0) {
@@ -1935,13 +1935,13 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 		sound->mCooldown -= step;
 	}
 	if (sound->mQueueRead != sound->mQueueWrite) {
-		if (sound->_188 > 0) {
-			sound->_188 -= step;
+		if (sound->mMusicPitchFrames > 0) {
+			sound->mMusicPitchFrames -= step;
 		}
 		if (sound->mLastQueuedSoundId != 0 && IsGameSoundPlaying(sound, sound->mLastQueuedSoundId)) {
 			return;
 		}
-		if (sound->_188 <= 0) {
+		if (sound->mMusicPitchFrames <= 0) {
 			sound->mLastQueuedSoundId = sound->mQueuedSoundIds[sound->mQueueRead];
 			PlayGameSound((XSound*)&gGame.mSound, sound->mLastQueuedSoundId, 255);
 			if (++sound->mQueueRead >= 64) {

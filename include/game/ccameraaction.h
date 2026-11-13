@@ -200,12 +200,13 @@ STATIC_ASSERT(sizeof(CVectorEaseOutDivideInterpolation) == 0x38);
 
 class CInterfaceCameraAction {
 public:
-	CVec mEye;      // _00
-	CVec mInterest; // _10
-	CVec mAngle;    // _20
-	f32 mDistance;  // _30
-	f32 mFov;       // _34
-	u32 _38;        // _38
+	CVec mEye;        // _00
+	CVec mInterest;   // _10
+	CVec mAngle;      // _20
+	f32 mDistance;    // _30
+	f32 mFov;         // _34
+	u32 mCameraFlags; // _38, the mode word GetCameraFlags returns, CMotionControlCamera ORs it into its flags; SetEye/SetInterest with a
+	                  // mode set it
 	// _3C vtable
 
 	virtual ~CInterfaceCameraAction() { }       // _08
@@ -242,7 +243,7 @@ public:
 	virtual void SetFov(f32 fov) { mFov = fov; }                                                       // _48
 	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                                                    // _4C
 	virtual u32 GetMode() { return 0; }                                                                // _50
-	virtual u32 GetCameraFlags() { return _38; }                                                       // _54
+	virtual u32 GetCameraFlags() { return mCameraFlags; }                                              // _54
 	virtual f32 GetFollowDivisor();                                                                    // _58
 	virtual u32 GetInterestMode() { return 0; }                                                        // _5C
 	virtual XObj* GetTarget() { return NULL; }                                                         // _60
@@ -250,12 +251,12 @@ public:
 	// set the mode word along with the vector
 	void SetEye(const Vec& eye, u32 mode)
 	{
-		_38 = mode;
+		mCameraFlags = mode;
 		SetEye(eye);
 	}
 	void SetInterest(const Vec& interest, u32 mode)
 	{
-		_38 = mode;
+		mCameraFlags = mode;
 		SetInterest(interest);
 	}
 };
@@ -283,20 +284,21 @@ struct CamMapEntry {
 // the map action, CCameraActions holds it at _99C
 class CCameraActionMap : public CCameraActionAreaExM {
 public:
-	s32 _40;                                             // _40
-	XObj* mTarget;                                       // _44, the object the camera looks at
-	CVec mPreviousInterest;                              // _48
-	f32 mRestDistance;                                   // _58
-	f32 mSpringDamping;                                  // _5C
-	CVec mSpringPrevTarget;                              // _60
-	CVec mSpringTarget;                                  // _70
-	f32 mTargetRestDistance;                             // _80, the rest distance mRestDistance eases toward
-	f32 mFlatDistance;                                   // _84
-	f32 mOrbitRadius;                                    // _88
-	CObjVec _8C;                                         // _8C
-	f32 mTurnSpeed;                                      // _BC, turn speed
-	f32 mTargetYaw;                                      // _C0, wrapped target yaw
-	f32 _C4;                                             // _C4
+	s32 mInterestMode;       // _40, what GetInterestMode returns, SetCamera sets 3
+	XObj* mTarget;           // _44, the object the camera looks at
+	CVec mPreviousInterest;  // _48
+	f32 mRestDistance;       // _58
+	f32 mSpringDamping;      // _5C
+	CVec mSpringPrevTarget;  // _60
+	CVec mSpringTarget;      // _70
+	f32 mTargetRestDistance; // _80, the rest distance mRestDistance eases toward
+	f32 mFlatDistance;       // _84
+	f32 mOrbitRadius;        // _88
+	CObjVec _8C;    // _8C, a CObjVec SetCamera zeroes (value, target, speed); Update only starts a turn while its y equals mTarget.y, which
+	                // nothing else changes
+	f32 mTurnSpeed; // _BC, turn speed
+	f32 mTargetYaw; // _C0, wrapped target yaw
+	f32 _C4;        // _C4, Init writes 18.0f, never read
 	CInterpolationEaseOutDivide mFovEaseOutDivide;       // _C8
 	CVec mPreviousEye;                                   // _D8
 	u8 _E8[0x4EC - 0xE8];                                // _E8
@@ -319,7 +321,7 @@ public:
 	s32 mPrevMapArea;                                    // _DA4
 	s32 mMapArea;                                        // _DA8
 	s32 mPadControlEnabled;                              // _DAC
-	s32 _DB0;                                            // _DB0
+	s32 _DB0;                                            // _DB0, SetCamera writes 1, starting the turn interpolation writes 0, never read
 	CInterfaceVectorInterpolation* mTurnInterpolation;   // _DB4
 	CVectorEaseInOutInterpolation mTurnEaseInOut;        // _DB8
 	CInterpolationEaseInOut mHeightEaseInOut;            // _E14
@@ -381,13 +383,14 @@ STATIC_ASSERT(sizeof(CamAreaEntry) == 0x38);
 
 // a record in CamAreaState's _1C and _24 lists
 struct CamAreaRecord {
-	s32 _00;       // _00, -1 terminates the table
-	s32 _04[4][2]; // _04, 4 corners as x z pairs, in hundredths
-	s32 mTop;      // _24, upper height in hundredths
-	s32 mBottom;   // _28, lower height in hundredths
-	s16 _2C;       // _2C
-	u16 mFlags;    // _2E, flags. 4 marks a camera area, events toggle 0x80 to turn it off
-	u8 _30[0x4];   // _30
+	s32 _00;           // _00, -1 terminates the table
+	s32 _04[4][2];     // _04, 4 corners as x z pairs, in hundredths
+	s32 mTop;          // _24, upper height in hundredths
+	s32 mBottom;       // _28, lower height in hundredths
+	s16 mCameraAction; // _2C, the CAMACTION the area switches to: 1 area camera, 7 map camera, -1 lets the bottom height pick (below -5 is
+	                   // map); the map camera skips the 1s, evt -44/-45 enable or disable every record with a given value
+	u16 mFlags;        // _2E, flags. 4 marks a camera area, events toggle 0x80 to turn it off
+	u8 _30[0x4];       // _30
 
 	f32 GetTop() const { return mTop / 100.0f; }
 	f32 GetBottom() const { return mBottom / 100.0f; }
@@ -397,32 +400,33 @@ struct CamAreaRecord {
 class CamAreaInfo {
 public:
 	CamAreaInfo(CamAreaRecord* record)
-	    : _04(record)
+	    : mRecord(record)
 	{
 	}
 	virtual ~CamAreaInfo() { } // _08
 
-	CamAreaRecord* GetRecord() const { return _04; }
-	bool Is_2C_1() const { return _04->_2C == 1; }
-	bool IsCameraOff() const { return !(_04->mFlags & 4); }
+	CamAreaRecord* GetRecord() const { return mRecord; }
+	bool Is_2C_1() const { return mRecord->mCameraAction == 1; }
+	bool IsCameraOff() const { return !(mRecord->mFlags & 4); }
 	bool IsCameraArea() const
 	{
-		u16 flags = _04->mFlags & 4;
+		u16 flags = mRecord->mFlags & 4;
 		return flags != 0;
 	}
-	u16 IsDisabled() const { return _04->mFlags & 0x80; }
-	f32 GetTop() const { return _04->mTop / 100.0f; }
-	f32 GetBottom() const { return _04->mBottom / 100.0f; }
+	u16 IsDisabled() const { return mRecord->mFlags & 0x80; }
+	f32 GetTop() const { return mRecord->mTop / 100.0f; }
+	f32 GetBottom() const { return mRecord->mBottom / 100.0f; }
 
 	// _00 vtable
-	CamAreaRecord* _04; // _04
+	CamAreaRecord*
+	    mRecord; // _04, the CamAreaRecord this wraps, set by the constructor; GetRecord returns it, every getter reads through it
 };
 
 struct CamAreaSlot {
-	CamAreaEntry* _00; // _00
-	s32 mGroupId;      // _04, group ID
-	s32 mEntryCount;   // _08, entries in _00
-	CVec mEye;         // _0C, representative camera position
+	CamAreaEntry* mEntries; // _00, the group's first CamAreaEntry in the shared pool, mEntryCount entries long
+	s32 mGroupId;           // _04, group ID
+	s32 mEntryCount;        // _08, entries in _00
+	CVec mEye;              // _0C, representative camera position
 
 	CamAreaSlot();
 	~CamAreaSlot();
@@ -437,17 +441,20 @@ public:
 	virtual ~CCameraActionAreaEx(); // _08
 
 	// _00 vtable
-	s32 _04;                        // _04
-	s32 _08;                        // _08
-	s32 _0C;                        // _0C
-	f32 mBaseFov;                   // _10
-	s32 _14;                        // _14
-	s32 _18;                        // _18
-	CamAreaRecord* _1C;             // _1C
-	s32 _20;                        // _20, records in _1C
-	CamAreaRecord* _24;             // _24
-	s32 _28;                        // _28, records in _24
-	CamInfoData* mCameraInfo;       // _2C, stage camera placements
+	s32 mCurrentArea; // _04, the enabled camera area (index into _24's records) the player stands in, -1 outside all
+	s32 mPrevArea;    // _08, _04 of the previous update; a change with _04 != -1 means the player entered a new area
+	s32 mActiveArea;  // _0C, the area whose camera group is in use: takes _04 whenever it changes to an area and keeps it while the player
+	                  // is outside all; -1 means the map camera (mode 7)
+	f32 mBaseFov;     // _10
+	s32 mZoomLevel;   // _14, CAM_AREA_ZOOM_LV, 1 default; up/down pads move it between 1 and 2, 0 shrinks the fov to 0.8
+	s32 mPrevZoomLevel;            // _18, the zoom level the fov was last set for; Update eases the fov when _14 differs, then syncs it
+	CamAreaRecord* mAreaExRecords; // _1C, the stage's GetStageCameraAreaExRecords table, ended by _00 == -1; the map camera's collision and
+	                               // side areas, events toggle their 0x80 flag
+	s32 mAreaExCount;              // _20, records in _1C
+	CamAreaRecord* mAreaRecords; // _24, the stage's GetStageCameraAreaRecords table, ended by _00 == -1; flag 4 marks an area with its own
+	                             // camera group
+	s32 mAreaCount;              // _28, records in _24
+	CamInfoData* mCameraInfo;    // _2C, stage camera placements
 	CamAreaEntry* mEntryPool[2048]; // _30, entries in the shared placement pool
 	s32 mGroupCount;                // _2030, number of camera groups
 	CamAreaSlot mGroups[256];       // _2034, count unknown, 256 fills out the 0x3C34 object
@@ -718,7 +725,7 @@ public:
 	CInterfaceInterpolation* mFovInterp;                // _50
 	CInterfaceVectorInterpolation* mAngleInterp;        // _54
 	CStatus mAxes;                                      // _58, which angles SetAngle_Interp moves
-	u32 _60;                                            // _60
+	u32 _60;                                            // _60, no access in the source
 	CVectorLinearInterpolation mEyeLinear;              // _64
 	CVectorEaseInOutInterpolation mEyeEaseInOut;        // _98
 	CVectorEaseOutInterpolation mEyeEaseOut;            // _F4

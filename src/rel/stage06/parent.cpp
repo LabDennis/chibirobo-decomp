@@ -172,7 +172,7 @@ extern "C" s32 CmdSetSoundPitch(s32 cmd, void* arg, void* arg2)
 	}
 	sound                    = &gGame.mSound;
 	sound->mTargetMusicPitch = pitch;
-	sound->_188              = time;
+	sound->mMusicPitchFrames = time;
 	return 0;
 }
 

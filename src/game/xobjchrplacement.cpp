@@ -137,23 +137,23 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 	}
 	case 6:
 #if !defined(VERSION_JP)
-		switch (mOXMenu._00) {
+		switch (mOXMenu.mLoadStep) {
 		case 0:
 			if (!LoadPlayerModel(mOXMenu.mMark[0].mObj, 45))
 				break;
 			if (mOXMenu.mMark[0].mObj.mJObj)
 				HSD_JObjWalkTree(mOXMenu.mMark[0].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
-			++mOXMenu._00;
+			++mOXMenu.mLoadStep;
 		case 1:
 			if (!LoadPlayerModel(mOXMenu.mMark[1].mObj, 46))
 				break;
 			if (mOXMenu.mMark[1].mObj.mJObj)
 				HSD_JObjWalkTree(mOXMenu.mMark[1].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
-			++mOXMenu._00;
+			++mOXMenu.mLoadStep;
 		case 2:
-			++mOXMenu._00;
+			++mOXMenu.mLoadStep;
 		}
-		if ((s32)mOXMenu._00 <= 1)
+		if ((s32)mOXMenu.mLoadStep <= 1)
 			break;
 #endif
 		++mLoadStep;

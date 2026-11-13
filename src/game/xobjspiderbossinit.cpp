@@ -55,8 +55,8 @@ extern "C" void ResetSpiderBossState(XObj* object)
 	spider->mAreaWidth = 0.0f;
 	spider->mAreaDepth = 0.0f;
 	{
-		Vec value    = { 0.0f, 0.0f, 0.0f };
-		spider->_A10 = value;
+		Vec value         = { 0.0f, 0.0f, 0.0f };
+		spider->mStartPos = value;
 	}
 	spider->_A1C = 0.0f;
 	spider->SetColor(1, 0, 0, 0, 0.0f);

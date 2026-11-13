@@ -248,7 +248,7 @@ BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle)
 			continue;
 		if (target->mId == lift->mId || target->mId == first->mId || target->mId == second->mId)
 			continue;
-		u32 attr = target->mAttr._00 != NULL ? target->mAttr._00->_00 : 0;
+		u32 attr = target->mAttr.mObjData != NULL ? target->mAttr.mObjData->_00 : 0;
 		if (attr == 0)
 			continue;
 		f32 dx = target->mMoveTranslate.x - pos.x;
@@ -481,7 +481,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 		mSpeedScale       = 1.0f;
 		if (mLinkedCount > 0) {
 			XObj* part = gGame.GetObject(mLinked[0]);
-			switch (part->mCoord._00->mObjectId) {
+			switch (part->mCoord.mPlacement->mObjectId) {
 			case 0xEE: {
 				mState = 1;
 				mFunc  = &XObjLeticker::StateLift;

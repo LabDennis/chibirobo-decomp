@@ -223,7 +223,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		StartScreenShake(&game->mQuake, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 		game->mBlur.mAlpha  = 0.0f;
 		game->mBlur.mTarget = 0.0f;
-		game->_3338         = 19;
+		game->mLoadStep     = 19;
 	} else if (stage == 20000) {
 		game->mSubwin.Reset();
 		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
@@ -236,9 +236,9 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		StartScreenShake(&game->mQuake, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 		game->mBlur.mAlpha  = 0.0f;
 		game->mBlur.mTarget = 0.0f;
-		game->_3338         = 20;
+		game->mLoadStep     = 20;
 	} else {
-		game->_3338 = 21;
+		game->mLoadStep = 21;
 	}
 
 	if (showName) {

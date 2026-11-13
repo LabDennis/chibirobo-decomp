@@ -421,7 +421,7 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 
 	f32 rotation = mMoveRotate.y;
 	for (s32 i = 0; floors[i].mId != -1; ++i) {
-		CVec center  = mMoveScale * (_794 + ReadFloorCoordinates(floors[i].mCenterOffset, gObjectFloorOffsetTemplate));
+		CVec center  = mMoveScale * (mToppleOffset + ReadFloorCoordinates(floors[i].mCenterOffset, gObjectFloorOffsetTemplate));
 		extent       = mMoveScale * ReadFloorCoordinates(floors[i].mExtent, lbl_80378148);
 		f32 localYaw = FloorRotationRadians(floors[i].mYawDegrees);
 		f32 yaw      = rotation + localYaw;
@@ -481,7 +481,7 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 			XObjFloor* polygon = mFloors;
 			Vec corners[4];
 			for (s32 j = 0; j < 4; ++j)
-				corners[j] = _794 + ReadFloorCoordinates(polygon[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
+				corners[j] = mToppleOffset + ReadFloorCoordinates(polygon[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
 			Vec size  = mMoveScale * ReadFloorCoordinates(polygon[i].mExtent, lbl_80378148);
 			f32 angle = mMoveRotate.y + FloorRotationRadians(polygon[i].mYawDegrees);
 			Mtx translate, rotate, scale, transform;
@@ -532,7 +532,7 @@ extern "C" CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offs
 	Vec none               = { 0.0f, 0.0f, 0.0f };
 	Vec displacement       = offset ? Vec(*offset) : Vec(none);
 	Vec position           = object->mMoveTranslate + displacement;
-	Vec center             = object->mMoveScale * (object->_794 + ReadObjectFloorOffset(object->mFloors[index]));
+	Vec center             = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object->mFloors[index]));
 	Vec extent             = object->mMoveScale * ReadObjectFloorExtent(object->mFloors[index]);
 	const XObjFloor& floor = object->mFloors[index];
 	f32 yaw                = object->mMoveRotate.y + FloorRotationRadians(floor.mYawDegrees);

@@ -133,7 +133,7 @@ s32 XObjSpiderBoss::HandleEventCommand(s32 count, s32* args)
 		mBasePos.x       = mArgs[0] / 100.0f;
 		mBasePos.y       = mArgs[1] / 100.0f;
 		mBasePos.z       = mArgs[2] / 100.0f;
-		_A10             = mBasePos;
+		mStartPos        = mBasePos;
 		mMoveTranslate.x = mBasePos.x;
 		mMoveTranslate.y = mBasePos.y;
 		mMoveTranslate.z = mBasePos.z;

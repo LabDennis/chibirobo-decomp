@@ -12,7 +12,7 @@ struct FbTexture {
 	u16 mWidth;       // _04
 	u16 mHeight;      // _06
 	GXTexFmt mFormat; // _08
-	u32 _0C;          // _0C
+	u32 _0C;          // _0C, written 0 when the subwindow and mirror textures are set up, never read
 	f32 mX;           // _10
 	f32 mY;           // _14
 	u8 mMipmap;       // _18, copies the efb at twice the size
@@ -42,10 +42,10 @@ public:
 	BOOL mEnabled;   // _124, fades in while set, out while not
 	CStatus mFlags;  // _128
 	f32 mAmount;     // _130, 0 to 1
-	f32 _134;        // _134
-	f32 _138;        // _138
-	f32 _13C;        // _13C
-	f32 _140;        // _140
+	f32 mRectX;      // _134, centre x of the window's rect on screen
+	f32 mRectY;      // _138, centre y of the window's rect on screen
+	f32 mRectWidth;  // _13C, window width, NaN (with mRectHeight) picks the round frame
+	f32 mRectHeight; // _140, window height, NaN picks the round frame
 	CCamera mCamera; // _144
 
 	virtual void Init();             // _08, Init__8FbSubwinFv

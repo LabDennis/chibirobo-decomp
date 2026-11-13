@@ -89,9 +89,9 @@ void CCameraActionReset::PreviousUpdate()
 
 	if (mState == 100) {
 		if (mAngle.z) {
-			_38       = 0x40010;
-			Vec angle = mAngle;
-			angle.z   = 0.0f;
+			mCameraFlags = 0x40010;
+			Vec angle    = mAngle;
+			angle.z      = 0.0f;
 			SetAngle(angle);
 		}
 		return;
@@ -103,17 +103,17 @@ void CCameraActionReset::PreviousUpdate()
 		return;
 	}
 
-	_38 = 0xB;
+	mCameraFlags = 0xB;
 	UpdateCameraAreaIndexAndBaseFov(&gCameraAreaState, 0);
-	s32 arg           = gCameraAreaState._0C;
+	s32 arg           = gCameraAreaState.mActiveArea;
 	mNextCameraAction = GetCameraAreaMode(&gCameraAreaState);
 	if (mImmediate == TRUE) {
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		camera->ChangeAction(mNextCameraAction);
 		if (mNextCameraAction == 1) {
-			SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState._14);
+			SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState.mZoomLevel);
 		} else {
-			SetMapCameraFovStep((CCameraActionMap*)gGame.mCameraActions.mTable[7], gCameraAreaState._14, 15.0f);
+			SetMapCameraFovStep((CCameraActionMap*)gGame.mCameraActions.mTable[7], gCameraAreaState.mZoomLevel, 15.0f);
 			RefreshMapCameraArea((CCameraActionMap*)gGame.mCameraActions.mTable[7]);
 			f32 dy = camera->mCamera.mInterest.y - mTarget->GetCameraTarget().y;
 			if (0.0f != dy) {
@@ -127,7 +127,7 @@ void CCameraActionReset::PreviousUpdate()
 	if (mNextCameraAction == 1) {
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		camera->ChangeAction(mNextCameraAction);
-		SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState._14);
+		SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState.mZoomLevel);
 		SelectAreaCameraEntryByViewDirection((CCameraActionArea*)gGame.mCameraActions.mTable[1], mMode, mTime, arg);
 		if (mMode == 3) {
 			camera->ApplyAction();
@@ -150,10 +150,10 @@ void CCameraActionReset::PreviousUpdate()
 		Vec target = eye;
 		SetEye_Interp(mMode, target, time);
 
-		f32 fov = GetAreaCameraFovForHeightLevel(&gCameraAreaState, gCameraAreaState._14);
+		f32 fov = GetAreaCameraFovForHeightLevel(&gCameraAreaState, gCameraAreaState.mZoomLevel);
 		SetFov_Interp(mMode, fov, mTime);
 
-		SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState._14);
+		SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState.mZoomLevel);
 		if (mMode == 3 || 0.0f == mTime) {
 			mInterestMode = 0;
 		} else {

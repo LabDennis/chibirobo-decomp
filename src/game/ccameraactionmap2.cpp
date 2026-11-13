@@ -117,8 +117,8 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 	if (!(target != (Vec)old))
 		return false;
 
-	CamAreaRecord* records        = gCameraAreaState._1C;
-	s32 count                     = gCameraAreaState._20;
+	CamAreaRecord* records        = gCameraAreaState.mAreaExRecords;
+	s32 count                     = gCameraAreaState.mAreaExCount;
 	CamCollisionPolygon* polygons = gCameraCollisionPolygons;
 	BOOL changed                  = false;
 	BOOL targetInside             = false;
@@ -566,8 +566,8 @@ void CCameraActionMap::Update(u32 step)
 				else {
 					s32 flag;
 					{
-						CamAreaInfo area(&gCameraAreaState._1C[mNearestEyeEntry->mRecordIndex]);
-						flag = (area._04->mFlags & 1) != 0;
+						CamAreaInfo area(&gCameraAreaState.mAreaExRecords[mNearestEyeEntry->mRecordIndex]);
+						flag = (area.mRecord->mFlags & 1) != 0;
 					}
 					if (flag)
 						mTurnBlocked = 0;
@@ -1935,10 +1935,10 @@ extern "C" void StartMapCameraTurnInterpolation(CCameraActionMap* map, s32 unuse
 static inline f32 MapAreaHeight(s32 index)
 {
 	CamAreaInfo area = CamAreaInfo(&GetStageCameraAreaRecords()[index]);
-	if (area._04->_2C == -1) {
-		return 0.23f * CamInfo(&gCameraAreaState.mCameraInfo[gCameraAreaState.mGroups[index]._00->mId]).GetEye().y;
+	if (area.mRecord->mCameraAction == -1) {
+		return 0.23f * CamInfo(&gCameraAreaState.mCameraInfo[gCameraAreaState.mGroups[index].mEntries->mId]).GetEye().y;
 	}
-	return CamInfo(&gCameraAreaState.mCameraInfo[gCameraAreaState.mGroups[index]._00->mId]).GetEye().y;
+	return CamInfo(&gCameraAreaState.mCameraInfo[gCameraAreaState.mGroups[index].mEntries->mId]).GetEye().y;
 }
 
 /**
@@ -1947,14 +1947,14 @@ static inline f32 MapAreaHeight(s32 index)
  */
 extern "C" void StartMapCameraAreaHeightInterpolation(CCameraActionMap* map)
 {
-	CamAreaInfo area = CamAreaInfo(&gCameraAreaState._24[map->mMapArea]);
+	CamAreaInfo area = CamAreaInfo(&gCameraAreaState.mAreaRecords[map->mMapArea]);
 	if (map->mMapArea >= 0) {
-		if (!(area._04->mFlags & 1)) {
+		if (!(area.mRecord->mFlags & 1)) {
 			map->mHeightMode = 0;
 		} else {
 			map->mHeightMode = 1;
 		}
-		if (!(area._04->mFlags & 2)) {
+		if (!(area.mRecord->mFlags & 2)) {
 			map->mUseAreaHeight = 0;
 		} else {
 			map->mUseAreaHeight = 1;
@@ -2498,12 +2498,12 @@ extern "C" s32 SelectMapCameraArea(CCameraActionMap* map)
 	map->mAreaIntersectionCount = CollectMapCameraAreaIntersections(map, eye, target, map->mAreaIntersections, 1);
 
 	s32 eyeArea = FindEnabledCameraAreaContainingPoint(&gCameraAreaState, eye);
-	if (CamAreaInfo(&gCameraAreaState._24[eyeArea]).Is_2C_1()) {
+	if (CamAreaInfo(&gCameraAreaState.mAreaRecords[eyeArea]).Is_2C_1()) {
 		eyeArea = -1;
 	}
 
 	s32 targetArea = FindEnabledCameraAreaContainingPoint(&gCameraAreaState, target);
-	if (CamAreaInfo(&gCameraAreaState._24[targetArea]).Is_2C_1()) {
+	if (CamAreaInfo(&gCameraAreaState.mAreaRecords[targetArea]).Is_2C_1()) {
 		targetArea = -1;
 	}
 
@@ -2982,8 +2982,8 @@ void CCameraActionMap::DrawDebug3d()
 void CCameraActionMap::DrawDebug2d()
 {
 	CGame* game = &gGame;
-	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B000000A0AREA(%3d,---)(%3d)\n", 408.0f, 298.0f, 0.0f, 12.0f, 12.0f, gCameraAreaState._0C,
-	                       gCameraAreaState._04);
+	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B000000A0AREA(%3d,---)(%3d)\n", 408.0f, 298.0f, 0.0f, 12.0f, 12.0f,
+	                       gCameraAreaState.mActiveArea, gCameraAreaState.mCurrentArea);
 	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B000000A0ACMAP2\n", 408.0f, 310.0f, 0.0f, 12.0f, 12.0f);
 	DrawGsStrokeTextFormat(&game->mGs, -1, "\\B00000080CAMSTAT\t   :%8X\nCAMSTATPRE :%8X\n", 360.0f, 322.0f, 0.0f, 12.0f, 12.0f,
 	                       mStatus.mFlags, mPreviousStatus.mFlags);
@@ -3182,8 +3182,8 @@ inline void SetFovStep(CCameraActionMap* map, s32 index, f32 time)
 		map->mFovEaseOutDivide.Start(map->mFov, 2.0f * fov, time);
 		break;
 	}
-	gCameraAreaState._14 = index;
-	gCameraAreaState._18 = index;
+	gCameraAreaState.mZoomLevel     = index;
+	gCameraAreaState.mPrevZoomLevel = index;
 }
 
 /**
@@ -3234,8 +3234,8 @@ extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
 		}
 	}
 	UpdateMapCameraTurnInterpolation(map, step);
-	s32 previous = gCameraAreaState._18;
-	s32 mode     = gCameraAreaState._14;
+	s32 previous = gCameraAreaState.mPrevZoomLevel;
+	s32 mode     = gCameraAreaState.mZoomLevel;
 	if ((pad.mPad->mTrigger & zoomIn) && map->mPadControlEnabled) {
 		if (mode > 1) {
 			mode--;
@@ -3750,7 +3750,7 @@ extern "C" BOOL SetMapCameraSideEndpoints(CCameraActionMap* map)
 		s32 group          = entry->mRecordIndex;
 		s32 side           = entry->mSide;
 		CVec dir           = entry->mNormal;
-		CamAreaRecord* rec = &gCameraAreaState._1C[group];
+		CamAreaRecord* rec = &gCameraAreaState.mAreaExRecords[group];
 		CVec toPlayer      = gGame.GetPlayer()->mMoveTranslate;
 		toPlayer.y         = 0.0f;
 		Vec eye            = map->mEye;
@@ -4050,12 +4050,12 @@ extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Ve
 	CamAreaRecord* record;
 	s32 numRecords;
 	if (type == 0) {
-		record     = gCameraAreaState._1C;
-		numRecords = gCameraAreaState._20;
+		record     = gCameraAreaState.mAreaExRecords;
+		numRecords = gCameraAreaState.mAreaExCount;
 	}
 	if (type == 1) {
-		record     = gCameraAreaState._24;
-		numRecords = gCameraAreaState._28;
+		record     = gCameraAreaState.mAreaRecords;
+		numRecords = gCameraAreaState.mAreaCount;
 	}
 	CamMapEntry* entry = out;
 	s32 count          = 0;
@@ -4447,12 +4447,12 @@ extern "C" s32 CalcIntersectVec__16CCameraActionMapFRC3VecRC3VecP11CamMapEntryl(
 	CamAreaRecord* record;
 	s32 numRecords;
 	if (type == 0) {
-		record     = gCameraAreaState._1C;
-		numRecords = gCameraAreaState._20;
+		record     = gCameraAreaState.mAreaExRecords;
+		numRecords = gCameraAreaState.mAreaExCount;
 	}
 	if (type == 1) {
-		record     = gCameraAreaState._24;
-		numRecords = gCameraAreaState._28;
+		record     = gCameraAreaState.mAreaRecords;
+		numRecords = gCameraAreaState.mAreaCount;
 	}
 	CamMapEntry* entry = out;
 	s32 count          = 0;
@@ -8149,15 +8149,15 @@ extern "C" XObj* GetPlayerPoolObject(CGame* game, s32 index)
 void CCameraActionMap::PreviousUpdate()
 {
 	UpdateCameraAreaIndexAndBaseFov(&gCameraAreaState, 0);
-	s32 arg = gCameraAreaState._0C;
-	if (gCameraAreaState._04 != gCameraAreaState._08 && gCameraAreaState._04 != -1) {
+	s32 arg = gCameraAreaState.mActiveArea;
+	if (gCameraAreaState.mCurrentArea != gCameraAreaState.mPrevArea && gCameraAreaState.mCurrentArea != -1) {
 		if (GetCameraAreaMode(&gCameraAreaState) == 1) {
 			gGame.mMotionControlCamera.ChangeAction(1);
-			gCameraAreaState._18 = gCameraAreaState._14;
+			gCameraAreaState.mPrevZoomLevel = gCameraAreaState.mZoomLevel;
 			SelectAreaCameraEntryByViewDirection((CCameraActionArea*)gGame.mCameraActions.mTable[1], 1, 2.0f, arg);
 			return;
 		}
-		SetFovStep(this, gCameraAreaState._14, 15.0f);
+		SetFovStep(this, gCameraAreaState.mZoomLevel, 15.0f);
 		SelectAreaCameraEntryWithControl((CCameraActionArea*)gGame.mCameraActions.mTable[1], arg, 0, 3, 1, 1.0f);
 	}
 	mPrevMapArea = mMapArea;
@@ -8319,7 +8319,7 @@ extern "C" void SetMapCameraKeepPreviousEye(CCameraActionMap* map)
  */
 void CCameraActionMap::SetCamera(CCamera* camera)
 {
-	_40 = 3;
+	mInterestMode = 3;
 	SetEye(camera->mEye);
 	mPreviousEye = CVec(camera->mEye.x, camera->mEye.y, camera->mEye.z);
 	SetInterest(camera->mInterest);
@@ -8354,7 +8354,7 @@ void CCameraActionMap::SetCamera(CCamera* camera)
 	mTargetRestDistance = 60.0f;
 	mRestDistance       = mTargetRestDistance;
 	mFlatDistance       = mTargetRestDistance;
-	SetFovStep(this, gCameraAreaState._14, 15.0f);
+	SetFovStep(this, gCameraAreaState.mZoomLevel, 15.0f);
 	mPadControlEnabled = 1;
 	_DB0               = 1;
 	mTurnInterpolation = NULL;
@@ -9629,7 +9629,7 @@ u32 CCameraActionMap::GetCameraFlags()
  */
 extern "C" s32 GetInterestMode__16CCameraActionMapFv(CCameraActionMap* map)
 {
-	return map->_40;
+	return map->mInterestMode;
 }
 
 /**

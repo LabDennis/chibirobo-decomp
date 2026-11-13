@@ -802,7 +802,7 @@ extern "C" void HandleOXMenuInput(OXMenu* menu, CPad* pad)
 // the japanese settings menu sets both rings' option at once
 extern "C" void SetRingMenuOption(XObjChrMenu* menu, s32 value)
 {
-	menu->mAtc._280 = value;
-	menu->mDrs._280 = value;
+	menu->mAtc.mMenuType = value;
+	menu->mDrs.mMenuType = value;
 }
 #endif

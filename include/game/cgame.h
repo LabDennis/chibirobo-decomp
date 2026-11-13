@@ -214,7 +214,7 @@ STATIC_ASSERT(sizeof(CBase) == 0x3338);
 // from mTpl
 class CGame : public CBase {
 public:
-	s32 _3338;             // _3338, _3320 in japan, _3340 in europe
+	s32 mLoadStep;         // _3338, _3320 in japan, _3340 in europe
 	CFileArchive mArchive; // _333C
 	s32 mStage;            // _3444, _342C in japan, _344C in europe
 	s32 mPrevStage;        // _3448
@@ -226,34 +226,35 @@ public:
 #endif
 	ToonTexture mToonTexture; // _3460
 	u8 _3C78[8];
-	CTpl mTpl;                                 // _3C80, _3C60 in japan, the shared textures
-	CScrnFade mFade;                           // _3E70
-	CScrnWipeCircle mWipeCircle;               // _3EA4
-	CScrnWipeTex mWipeTex;                     // _3F08
-	CScrnWipeCustom mWipeCustom;               // _406C
-	CScrnWipeTile mWipeTile0;                  // _40D0
-	CScrnWipeTile mWipeTile1;                  // _4134
-	CScrnRoboeyes mRoboeyes;                   // _4198
-	CFbOutline mOutline;                       // _4204
-	CFbBlur mBlur;                             // _4268
-	FbSubwin mSubwin;                          // _42AC
-	ScrnTex mScrnTex;                          // _4584
-	GameScrnColor mColor0;                     // _46BC
-	GameScrnColor mColor1;                     // _46F0
-	s32 _4724;                                 // _4724
-	f32 mOutlineWidth;                         // _4728, the outline's width, the c stick moves it
-	Logo mLogo;                                // _472C
-	Title mTitle;                              // _4930
-	MenuEx mMenu;                              // _8580, _8538 in japan
-	InfoScrn mInfoScrn;                        // _8F38, _8EF0 in japan
-	CParticle mParticle;                       // _9114, _90CC in japan
-	CScrnQuake mQuake;                         // _965C
-	XOBJS mXObjs;                              // _9694
-	XObjDrawList mDrawLists[3];                // _A870, _A828 in japan, the last one is what mirrors show
-	ObjArchiveTable mObjArchives;              // _F07C
-	CEvt mEvt;                                 // _5D07C
-	CMsg mCMsgs[2];                            // _5D0E8
-	EvtTimeState mTimeState;                   // _E5D28, _E5040 in japan
+	CTpl mTpl;                    // _3C80, _3C60 in japan, the shared textures
+	CScrnFade mFade;              // _3E70
+	CScrnWipeCircle mWipeCircle;  // _3EA4
+	CScrnWipeTex mWipeTex;        // _3F08
+	CScrnWipeCustom mWipeCustom;  // _406C
+	CScrnWipeTile mWipeTile0;     // _40D0
+	CScrnWipeTile mWipeTile1;     // _4134
+	CScrnRoboeyes mRoboeyes;      // _4198
+	CFbOutline mOutline;          // _4204
+	CFbBlur mBlur;                // _4268
+	FbSubwin mSubwin;             // _42AC
+	ScrnTex mScrnTex;             // _4584
+	GameScrnColor mColor0;        // _46BC
+	GameScrnColor mColor1;        // _46F0
+	s32 mOutlineWidthControl;     // _4724, while above 0 the c stick changes mOutlineWidth (0.04 to 0.5); only ever set to 0, in
+	                              // ResetNewGameState
+	f32 mOutlineWidth;            // _4728, the outline's width, the c stick moves it
+	Logo mLogo;                   // _472C
+	Title mTitle;                 // _4930
+	MenuEx mMenu;                 // _8580, _8538 in japan
+	InfoScrn mInfoScrn;           // _8F38, _8EF0 in japan
+	CParticle mParticle;          // _9114, _90CC in japan
+	CScrnQuake mQuake;            // _965C
+	XOBJS mXObjs;                 // _9694
+	XObjDrawList mDrawLists[3];   // _A870, _A828 in japan, the last one is what mirrors show
+	ObjArchiveTable mObjArchives; // _F07C
+	CEvt mEvt;                    // _5D07C
+	CMsg mCMsgs[2];               // _5D0E8
+	EvtTimeState mTimeState;      // _E5D28, _E5040 in japan
 	CMotionControlCamera mMotionControlCamera; // _E5D38, _E5050 in japan
 	CCameraActions mCameraActions;             // _E5FAC, _E52C4 in japan, the actions the camera picks from
 	CLight* mLightList;                        // _E7E20, _E7138 in japan, LIGHT walks it

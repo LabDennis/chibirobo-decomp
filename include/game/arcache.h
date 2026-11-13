@@ -33,13 +33,14 @@ extern "C" ARCacheInfo gARAMCacheInfo;
 
 class ARPreCache {
 public:
-	u32 _00;                // _00
-	CFile mFile0;           // _04
-	CFile mFile1;           // _F0
+	u32 mLoadStep; // _00, PreloadStageArchives' step: 0 resolve pc.idx/pc.bin, 1 read pc.idx, 2 while pc.bin streams to ARAM (the DevCom
+	               // callback bumps it to 3), 3 fill gARAMCacheInfo, 4 done
+	CFile mFile0;  // _04
+	CFile mFile1;  // _F0
 	u8 _1DC[0x1E4 - 0x1DC]; // _1DC
 	// _1E4 vtable
 
-	ARPreCache() { _00 = 0; }
+	ARPreCache() { mLoadStep = 0; }
 	virtual ~ARPreCache() { } // _08
 };
 STATIC_ASSERT(sizeof(ARPreCache) == 0x1E8);

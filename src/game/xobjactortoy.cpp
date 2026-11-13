@@ -41,7 +41,7 @@ extern "C" f32 GetJointAnimationEndFrame(CJObj*);
 
 static inline void SetToyBlinkVisibility(XObjActorToy* toy, CJObj& joint)
 {
-	if ((s32)(toy->_994 & 3) < 2)
+	if ((s32)(toy->mKindCounter & 3) < 2)
 		HSD_JObjClearFlags(joint.mJObj, 0x10);
 	else
 		HSD_JObjSetFlags(joint.mJObj, 0x10);
@@ -64,7 +64,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		switch (toy->GetKind()) {
 		case 0xF:
 			toy->_9AC = 20.0f;
-			if (!toy->mActorStatus.Check(0x40) && !toy->_2098.Check(2)) {
+			if (!toy->mActorStatus.Check(0x40) && !toy->mKindFlags.Check(2)) {
 				toy->mState = &XObjActorToy::StateHitRecovery;
 				ResetActorMovementStep(toy);
 				toy->mActorStatus.mFlags |= 0x40;
@@ -150,20 +150,20 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		if (toy->mSecond.mStatus.mFlags & 0x10000)
 			toy->mSecond.UpdateObject(frames);
 		s32 anim = toy->mAnimId;
-		switch (toy->_1F90) {
+		switch (toy->mShownPart) {
 		case 0:
 			if (anim == 0x13 || anim == 0x3fb) {
 				toy->mFirst.SetPos(toy->mMoveTranslate, 0);
 				toy->mFirst.SetRotationY(toy->GetRotationY(), 0);
 				toy->mFirst.mStatus.mFlags |= 0x10000;
 				toy->mFirst.SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
-				toy->_1F90 = 1;
+				toy->mShownPart = 1;
 			} else if (anim == 0xe || anim == 0x14 || anim == 0x3f6 || anim == 0x3fc) {
 				toy->mSecond.SetPos(toy->mMoveTranslate, 0);
 				toy->mSecond.SetRotationY(toy->GetRotationY(), 0);
 				toy->mSecond.SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 				toy->mSecond.mStatus.mFlags |= 0x10000;
-				toy->_1F90 = 2;
+				toy->mShownPart = 2;
 			}
 			break;
 		case 1:
@@ -171,7 +171,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			toy->mFirst.SetRotationY(toy->GetRotationY(), 0);
 			if (anim != 0x13 && anim != 0x3fb) {
 				toy->mFirst.mStatus.mFlags &= ~0x10000ULL;
-				toy->_1F90 = 0;
+				toy->mShownPart = 0;
 			}
 			break;
 		case 2: {
@@ -180,7 +180,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			f32 frame = GetJointAnimationCurrentFrame(toy);
 			if (GetJointAnimationEndFrame(toy) - frames <= frame) {
 				toy->mSecond.mStatus.mFlags &= ~0x10000ULL;
-				toy->_1F90 = 0;
+				toy->mShownPart = 0;
 			}
 			break;
 		}
@@ -194,7 +194,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			HSD_JObjClearFlags(joint.mJObj, 0x10);
 		else
 			HSD_JObjSetFlags(joint.mJObj, 0x10);
-		if (!(toy->_2098.mFlags & 1))
+		if (!(toy->mKindFlags.mFlags & 1))
 			break;
 		switch (toy->mKindStep) {
 		case 0:
@@ -211,7 +211,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if (PSVECDistance(&toy->mMoveTranslate, &CVec(toy->mVelocity)) < 0.1f) {
 				toy->mMoveSpeed = 0;
 				toy->mKindStep  = 0;
-				toy->_2098.mFlags &= ~1;
+				toy->mKindFlags.mFlags &= ~1;
 				toy->SetPos(toy->mVelocity.x, toy->mVelocity.y, toy->mVelocity.z, 0);
 				toy->SetMoveDir(&CVec(toy->mMoveTranslate), 0);
 			} else {
@@ -237,7 +237,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		s32 second[] = { 0, 2, 4, 0, 3 };
 		joint.Attach(GetObjectJointByPath(toy, 5, second));
 		joint.SetScale(toy->_9A8, toy->_9A8, toy->_9A8, 0);
-		if ((toy->_2098.mFlags & 1) && toy->mKindStep == 0 && toy->mMoveTranslate.y <= 2.0f) {
+		if ((toy->mKindFlags.mFlags & 1) && toy->mKindStep == 0 && toy->mMoveTranslate.y <= 2.0f) {
 			++toy->mKindStep;
 			toy->mStatus.mFlags &= ~0x10000ULL;
 		}
@@ -248,15 +248,15 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			toy->mActorStatus.mFlags |= 4;
 			toy->mActorStatus.mFlags |= 8;
 			toy->mMoveSpeed  = 0.5f;
-			toy->mVelocity.x = 14.0f * (f32)sin(toy->_980) + toy->mMoveTranslate.x;
+			toy->mVelocity.x = 14.0f * (f32)sin(toy->mHeading) + toy->mMoveTranslate.x;
 			toy->mVelocity.y = toy->mMoveTranslate.y;
-			toy->mVelocity.z = 14.0f * (f32)cos(toy->_980) + toy->mMoveTranslate.z;
+			toy->mVelocity.z = 14.0f * (f32)cos(toy->mHeading) + toy->mMoveTranslate.z;
 			++toy->mKindStep;
 			PlayGameSound(&gGame.mSound, 0x10017, 255);
 			for (s32 i = 0; i < 15; ++i) {
 				XObjActorToy* other = GetToy(i);
 				if (other->GetKind() == 0x156) {
-					other->_2098.mFlags |= 0x10;
+					other->mKindFlags.mFlags |= 0x10;
 					break;
 				}
 			}
@@ -268,7 +268,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			}
 			if (toy->mMoveTranslate.y <= 2.0f) {
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 				toy->mStatus.mFlags &= ~0x10000ULL;
 				for (s32 i = 0; i < 15; ++i) {
 					XObjActorToy* other = GetToy(i);
@@ -277,7 +277,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 						other->SetTranslateX(toy->mMoveTranslate.x, 0);
 						other->SetTranslateY(toy->mMoveTranslate.y, 0);
 						other->SetTranslateZ(toy->mMoveTranslate.z, 0);
-						other->_2098.mFlags |= 4;
+						other->mKindFlags.mFlags |= 4;
 						PlayGameSound(&gGame.mSound, 0x10016, 255);
 						break;
 					}
@@ -288,8 +288,8 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 	case 0x16c:
 		switch (toy->mKindStep) {
 		case 0:
-			if (toy->_2098.Check(4)) {
-				toy->_2098.mFlags &= ~4;
+			if (toy->mKindFlags.Check(4)) {
+				toy->mKindFlags.mFlags &= ~4;
 				toy->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 				++toy->mKindStep;
 			}
@@ -299,16 +299,16 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if (GetJointAnimationEndFrame(toy) - frames <= frame) {
 				toy->SetAnim(2, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 			}
 			break;
 		}
 		case 2:
-			if (toy->_2098.Check(8)) {
-				toy->_2098.mFlags &= ~8;
+			if (toy->mKindFlags.Check(8)) {
+				toy->mKindFlags.mFlags &= ~8;
 				toy->SetAnim(2, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-				toy->mKindStep = 10;
-				toy->_994      = 0;
+				toy->mKindStep    = 10;
+				toy->mKindCounter = 0;
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
 				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, rotation, TRUE);
@@ -316,10 +316,10 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			break;
 		case 10:
 			BLINK_TOY_JOINT(1, 1);
-			++toy->_994;
-			if ((s32)toy->_994 > 4) {
+			++toy->mKindCounter;
+			if ((s32)toy->mKindCounter > 4) {
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
@@ -329,10 +329,10 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			break;
 		case 11:
 			BLINK_TOY_JOINT(1, 2);
-			++toy->_994;
-			if ((s32)toy->_994 > 4) {
+			++toy->mKindCounter;
+			if ((s32)toy->mKindCounter > 4) {
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
@@ -343,10 +343,10 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		case 12:
 			BLINK_TOY_JOINT(1, 3);
 			BLINK_TOY_JOINT(1, 0);
-			++toy->_994;
-			if ((s32)toy->_994 > 4) {
+			++toy->mKindCounter;
+			if ((s32)toy->mKindCounter > 4) {
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
@@ -358,10 +358,10 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		case 13:
 			BLINK_TOY_JOINT(1, 4);
 			BLINK_TOY_JOINT(2, 4, 0);
-			++toy->_994;
-			if ((s32)toy->_994 > 4) {
+			++toy->mKindCounter;
+			if ((s32)toy->mKindCounter > 4) {
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
@@ -377,10 +377,10 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			BLINK_TOY_JOINT(2, 5, 2);
 			BLINK_TOY_JOINT(3, 5, 0, 0);
 			BLINK_TOY_JOINT(4, 5, 0, 0, 0);
-			++toy->_994;
-			if ((s32)toy->_994 > 4) {
+			++toy->mKindCounter;
+			if ((s32)toy->mKindCounter > 4) {
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
@@ -399,10 +399,10 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			BLINK_TOY_JOINT(2, 6, 1);
 			BLINK_TOY_JOINT(3, 6, 0, 0);
 			BLINK_TOY_JOINT(4, 6, 0, 0, 0);
-			++toy->_994;
-			if ((s32)toy->_994 > 4) {
+			++toy->mKindCounter;
+			if ((s32)toy->mKindCounter > 4) {
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
@@ -416,10 +416,10 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			break;
 		case 16:
 			BLINK_TOY_JOINT(1, 7);
-			++toy->_994;
-			if ((s32)toy->_994 > 4) {
+			++toy->mKindCounter;
+			if ((s32)toy->mKindCounter > 4) {
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
@@ -429,10 +429,10 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			break;
 		case 17:
 			BLINK_TOY_JOINT(1, 8);
-			++toy->_994;
-			if ((s32)toy->_994 > 4) {
+			++toy->mKindCounter;
+			if ((s32)toy->mKindCounter > 4) {
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
@@ -442,10 +442,10 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			break;
 		case 18:
 			BLINK_TOY_JOINT(1, 9);
-			++toy->_994;
-			if ((s32)toy->_994 > 4) {
+			++toy->mKindCounter;
+			if ((s32)toy->mKindCounter > 4) {
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 }, rotation = { 0, 0, 0 };
@@ -460,10 +460,10 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			BLINK_TOY_JOINT(2, 10, 2);
 			BLINK_TOY_JOINT(2, 10, 3);
 			BLINK_TOY_JOINT(2, 10, 4);
-			++toy->_994;
-			if ((s32)toy->_994 > 4) {
+			++toy->mKindCounter;
+			if ((s32)toy->mKindCounter > 4) {
 				++toy->mKindStep;
-				toy->_994 = 0;
+				toy->mKindCounter = 0;
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
@@ -496,11 +496,11 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		case 1:
 			switch (toy->mCmd[1]) {
 			case 0:
-				toy->_2098.mFlags |= 1;
+				toy->mKindFlags.mFlags |= 1;
 				toy->mCmd[0] = 0;
 				break;
 			case 1:
-				toy->_2098.mFlags &= ~1;
+				toy->mKindFlags.mFlags &= ~1;
 				toy->mCmd[0] = 0;
 				break;
 			}
@@ -517,10 +517,10 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		case 1:
 			switch (toy->mCmd[1]) {
 			case 8:
-				toy->_2098.mFlags |= 8;
+				toy->mKindFlags.mFlags |= 8;
 				break;
 			default:
-				toy->_2098.mFlags &= ~8;
+				toy->mKindFlags.mFlags &= ~8;
 				break;
 			}
 			toy->mCmd[0] = 0;
@@ -535,7 +535,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		case 0:
 			break;
 		case 1:
-			if (toy->_2098.mFlags & 2)
+			if (toy->mKindFlags.mFlags & 2)
 				gEventVars.mVars[toy->mCmd[1]] = 1;
 			toy->mCmd[0] = 0;
 			break;
@@ -608,26 +608,26 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 	switch (mKindStep) {
 	case 0: {
 		Vec& player = gGame.GetPlayer()->mMoveTranslate;
-		_980        = PI + (f32)atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
-		_9BC        = mMoveTranslate;
+		mHeading    = PI + (f32)atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
+		mHomePos    = mMoveTranslate;
 		mActorStatus.mFlags |= 8;
 		mActorStatus.mFlags |= 0x10;
 		mActorStatus.mFlags |= 4;
 		if (mHitStrength >= 10.0f) {
 			mMoveSpeed = 0;
-			_9D8       = 6.8f;
+			mFallSpeed = 6.8f;
 		} else {
 			mMoveSpeed = 0;
-			_9D8       = 4.8f;
+			mFallSpeed = 4.8f;
 		}
-		_994 = 0;
+		mKindCounter = 0;
 		++mKindStep;
 		break;
 	}
 	case 1:
-		++_994;
+		++mKindCounter;
 		if (mActorStatus.Check(0x20)) {
-			_9D8 = 0;
+			mFallSpeed = 0;
 			++mKindStep;
 		}
 		break;
@@ -635,18 +635,18 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 		mMoveSpeed -= 0.04f * frames;
 		if (mMoveSpeed <= 0) {
 			mMoveSpeed = 0;
-			mMoveTranslate.Set(_9BC);
+			mMoveTranslate.Set(mHomePos);
 			mKindStep = 4;
 		}
 		break;
 	case 3: {
 		mMoveSpeed = 0.5f;
-		_980       = atan2(_9BC.x - mMoveTranslate.x, _9BC.z - mMoveTranslate.z);
-		_988       = _980;
-		CVec home(_9BC);
+		mHeading   = atan2(mHomePos.x - mMoveTranslate.x, mHomePos.z - mMoveTranslate.z);
+		mFacing    = mHeading;
+		CVec home(mHomePos);
 		f32 dx = home.x - mMoveTranslate.x, dz = home.z - mMoveTranslate.z;
 		if (sqrtf(dz * dz + (dx * dx + 0.0f)) < 1.0f) {
-			mMoveTranslate.Set(_9BC);
+			mMoveTranslate.Set(mHomePos);
 			mMoveSpeed = 0;
 			++mKindStep;
 		}
@@ -847,14 +847,14 @@ static inline void MountToyPiece(CJObj& joint, XObj* const& prop, Mtx mount)
 extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 {
 	CJObj joint;
-	if (toy->_2098.Check(1)) {
-		Vec& player = gGame.GetPlayer()->mMoveTranslate;
-		toy->_988   = atan2(player.x - toy->mMoveTranslate.x, player.z - toy->mMoveTranslate.z);
-		toy->SetRotateY(toy->_988, 0);
+	if (toy->mKindFlags.Check(1)) {
+		Vec& player  = gGame.GetPlayer()->mMoveTranslate;
+		toy->mFacing = atan2(player.x - toy->mMoveTranslate.x, player.z - toy->mMoveTranslate.z);
+		toy->SetRotateY(toy->mFacing, 0);
 	}
-	toy->mMoveTranslate.x += .1f * (toy->_1F94.x * frames);
-	toy->mMoveTranslate.z += .1f * (toy->_1F94.z * frames);
-	toy->_1F94.Set(0, 0, 0);
+	toy->mMoveTranslate.x += .1f * (toy->mPendingMove.x * frames);
+	toy->mMoveTranslate.z += .1f * (toy->mPendingMove.z * frames);
+	toy->mPendingMove.Set(0, 0, 0);
 	if (toy->mHideKinds.mFlags & 0x9f) {
 		s32 hand[9] = { 0, 3, 0, 0, 0, 0, 0, 5, 0 };
 		joint.Attach(FindJointByPath(toy->mJObj, hand, 9));
@@ -981,7 +981,7 @@ void UpdateToy159JointScales(XObjActorToy* object, u32)
 void UpdateToy117JointVisibility(XObjActorToy* object, u32)
 {
 	CJObj joint;
-	if (object->_2098.mFlags & 8) {
+	if (object->mKindFlags.mFlags & 8) {
 		s32 path[] = { 0, 0, 3 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 3, path));
 		HSD_JObjClearFlags(joint.mJObj, 0x10);
@@ -995,7 +995,7 @@ void UpdateToy117JointVisibility(XObjActorToy* object, u32)
 void UpdateToy6FJointSpin(XObjActorToy* object, u32)
 {
 	CJObj joint;
-	if (object->_2098.mFlags & 1) {
+	if (object->mKindFlags.mFlags & 1) {
 		s32 path[] = { 0, 3, 2, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 6, path));
 		HSD_JObjSetFlags(joint.mJObj, 0x10);
@@ -1071,17 +1071,17 @@ extern "C" void UpdateToyJointSpin(XObjActorToy* object, u32 frames)
 		break;
 	case 1:
 		object->mKindStep++;
-		object->_988 = 0.0f;
+		object->mFacing = 0.0f;
 		break;
 	case 2: {
-		object->_988 += 0.2f;
+		object->mFacing += 0.2f;
 		s32 path[2] = { 0, 3 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 2, path));
-		if (object->_988 >= TWO_PI) {
+		if (object->mFacing >= TWO_PI) {
 			object->mKindStep = 0;
-			object->_988      = 0.0f;
+			object->mFacing   = 0.0f;
 		}
-		joint.SetRotationY(object->_988 + HSD_JObjGetRotationY(object->mJObj), 0);
+		joint.SetRotationY(object->mFacing + HSD_JObjGetRotationY(object->mJObj), 0);
 		break;
 	}
 	}
@@ -1178,7 +1178,7 @@ extern "C" void UpdateToyJointExtension(XObjActorToy* object, u32 frames)
 		break;
 	}
 	}
-	if (object->_2098.mFlags & 1) {
+	if (object->mKindFlags.mFlags & 1) {
 		s32 path0[4] = { 0, 0, 0, 1 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 4, path0));
 		HSD_JObjSetFlags(joint.mJObj, 0x10);
@@ -1347,11 +1347,11 @@ extern "C" void HandleToyKind1FCCommand(XObjActorToy* object, u32 frames)
 	case 2:
 		switch (object->mCmd[1]) {
 		case 0:
-			object->_2098.mFlags |= 1;
+			object->mKindFlags.mFlags |= 1;
 			object->mCmd[0] = 0;
 			break;
 		case 1:
-			object->_2098.mFlags &= ~1;
+			object->mKindFlags.mFlags &= ~1;
 			object->mCmd[0] = 0;
 			break;
 		}
@@ -1394,7 +1394,7 @@ extern "C" void HandleToyKind16CCommand(XObjActorToy* object, u32 frames)
 	case 0:
 		break;
 	case 1:
-		object->_2098.mFlags |= 8;
+		object->mKindFlags.mFlags |= 8;
 		object->mCmd[0] = 0;
 		break;
 	case 2:
@@ -1423,7 +1423,7 @@ extern "C" void HandleToyKind156Command(XObjActorToy* object, u32 frames)
 		object->mCmd[0] = 0;
 		break;
 	case 3:
-		if (object->_2098.mFlags & 0x10) {
+		if (object->mKindFlags.mFlags & 0x10) {
 			gEventVars.mVars[object->mCmd[1]] = 1;
 		}
 		object->mCmd[0] = 0;
@@ -1456,7 +1456,7 @@ extern "C" void HandleToyKind110Command(XObjActorToy* object, u32 frames)
 	case 1:
 		switch (object->mCmd[1]) {
 		case 0: {
-			object->_2098.mFlags &= ~1;
+			object->mKindFlags.mFlags &= ~1;
 			object->mMoveSpeed = 0.0f;
 			object->mKindStep  = 0;
 			CVec pos(object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
@@ -1464,7 +1464,7 @@ extern "C" void HandleToyKind110Command(XObjActorToy* object, u32 frames)
 			break;
 		}
 		case 1:
-			object->_2098.mFlags |= 1;
+			object->mKindFlags.mFlags |= 1;
 			object->mVelocity.x = object->mCmd[2] / 100.0f;
 			object->mVelocity.y = object->mCmd[3] / 100.0f;
 			object->mVelocity.z = object->mCmd[4] / 100.0f;
@@ -1489,10 +1489,10 @@ extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
 	case 1:
 		switch (object->mCmd[1]) {
 		case 0:
-			object->_2098.mFlags &= ~1;
+			object->mKindFlags.mFlags &= ~1;
 			break;
 		case 1:
-			object->_2098.mFlags |= 1;
+			object->mKindFlags.mFlags |= 1;
 			break;
 		}
 		object->mCmd[0] = 0;
@@ -1617,7 +1617,7 @@ void XObjActorToy::UpdateAfterAnim(u32 frames)
 		UpdateToy117JointVisibility(this, frames);
 		break;
 	case 0x156:
-		if (_2098.mFlags & 1) {
+		if (mKindFlags.mFlags & 1) {
 			for (s32 i = 0; i < 15; i++) {
 				if (GetToy(i)->GetKind() == 0x157) {
 					Vec pos          = GetToy(i)->mMoveTranslate;
@@ -1675,18 +1675,18 @@ extern Vec gToyPlacementPosition, gToyPlacementRotation;
 static inline Vec ToyPlacementPosition(const CoordInfo& place)
 {
 	Vec pos = gToyPlacementPosition;
-	pos.x   = place._00->mPos[0] / 100.0f;
-	pos.y   = place._00->mPos[1] / 100.0f;
-	pos.z   = place._00->mPos[2] / 100.0f;
+	pos.x   = place.mPlacement->mPos[0] / 100.0f;
+	pos.y   = place.mPlacement->mPos[1] / 100.0f;
+	pos.z   = place.mPlacement->mPos[2] / 100.0f;
 	return Vec(pos);
 }
 
 static inline Vec ToyPlacementRotation(const CoordInfo& place)
 {
 	Vec rot = gToyPlacementRotation;
-	rot.x   = DEG2RAD * place._00->_10[0];
-	rot.y   = DEG2RAD * place._00->_10[1];
-	rot.z   = DEG2RAD * place._00->_10[2];
+	rot.x   = DEG2RAD * place.mPlacement->mRot[0];
+	rot.y   = DEG2RAD * place.mPlacement->mRot[1];
+	rot.z   = DEG2RAD * place.mPlacement->mRot[2];
 	return Vec(rot);
 }
 
@@ -1697,11 +1697,11 @@ static inline Vec ToyPlacementRotation(const CoordInfo& place)
 void XObjActorToy::ResetActorState()
 {
 	mActorStatus.mFlags = 0;
-	_2098.mFlags        = 0;
+	mKindFlags.mFlags   = 0;
 	mHideKinds.mFlags   = 0;
-	_980                = 0.0f;
+	mHeading            = 0.0f;
 	mMoveSpeed          = 0.0f;
-	_988                = 0.0f;
+	mFacing             = 0.0f;
 	mState              = &XObjActorToy::StateCarry;
 	ResetActorMovementStep(this);
 
@@ -1727,21 +1727,21 @@ void XObjActorToy::ResetActorState()
 	case 0x485:
 		break;
 	case 0xF:
-		_2098.mFlags |= 1;
+		mKindFlags.mFlags |= 1;
 		break;
 	case 0x117:
-		_2098.mFlags &= ~8;
+		mKindFlags.mFlags &= ~8;
 		break;
 	case 0x156:
-		_980 = ToyPlacementRotation(mCoord).y;
+		mHeading = ToyPlacementRotation(mCoord).y;
 		break;
 	case 0x157:
-		_980 = ToyPlacementRotation(mCoord).y;
+		mHeading = ToyPlacementRotation(mCoord).y;
 		break;
 	case 0x16c:
-		_980 = ToyPlacementRotation(mCoord).y;
+		mHeading = ToyPlacementRotation(mCoord).y;
 		break;
 	}
-	_1F94.Set(0.0f, 0.0f, 0.0f);
+	mPendingMove.Set(0.0f, 0.0f, 0.0f);
 	_1FA4 = 0;
 }

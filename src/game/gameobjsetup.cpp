@@ -164,15 +164,15 @@ u32 ARGetSize();
 static inline BOOL PreloadStageArchives()
 {
 	ARPreCache& cache = gAramPrecache;
-	switch (cache._00) {
+	switch (cache.mLoadStep) {
 	case 0:
 		if (cache.mFile0.ConvertPathToEntrynum("/qp/pc.idx") < 0 || cache.mFile1.ConvertPathToEntrynum("/qp/pc.bin") < 0)
 			return TRUE;
-		++cache._00;
+		++cache.mLoadStep;
 	case 1: {
 		if (!cache.mFile0.ReadEx("/qp/pc.idx", 0, 0))
 			break;
-		++cache._00;
+		++cache.mLoadStep;
 		s32 entry   = DVDConvertPathToEntrynum("/qp/pc.bin");
 		u32 address = gARAMCacheInfo.mBaseAddress;
 		HSD_DevComRequest(entry, 0, (void*)address, ARGetSize() - gARAMCacheInfo.mBaseAddress, 0x23, 1, TakeNextCounterValue, &cache);
@@ -204,7 +204,7 @@ static inline BOOL PreloadStageArchives()
 			}
 		}
 		cache.mFile0.Close();
-		++cache._00;
+		++cache.mLoadStep;
 	}
 	case 4:
 		return TRUE;
@@ -234,7 +234,7 @@ static inline BOOL LoadStartingAttachments(CGame* game)
 BOOL CGame::BeforeUpdate()
 {
 	// Ready stages fall through. Pending reads resume at the same stage next frame.
-	switch (_3338) {
+	switch (mLoadStep) {
 	case 0:
 		return TRUE;
 	case 1:
@@ -244,21 +244,21 @@ BOOL CGame::BeforeUpdate()
 		mOutline.SetSize(gGame.mGs.mScreen.fbWidth, gGame.mGs.mScreen.efbHeight);
 		mBlur.SetSize(gGame.mGs.mScreen.fbWidth / 2, gGame.mGs.mScreen.efbHeight / 2);
 #endif
-		++_3338;
+		++mLoadStep;
 	case 2:
-		++_3338;
+		++mLoadStep;
 	case 3:
 		if (!LoadGameSoundBank(&mSound, -1))
 			break;
-		++_3338;
+		++mLoadStep;
 	case 4:
 		if ((mStatus.mFlags & 0x200000000ULL) && !mArchive.ReadEx("/qp.bin", 0, 0))
 			break;
-		++_3338;
+		++mLoadStep;
 	case 5:
 		if (!mTpl.ReadEx("tpl/misc.tpl", 0, 0))
 			break;
-		++_3338;
+		++mLoadStep;
 		mScrnTex.mTex        = mTpl.mTex.Init(&((TPLPalette*)mTpl.mBuffer)->descriptorArray[121 - StatusTextureOffset], 0);
 		mOutline.mPatternTex = &mScrnTex.mTex;
 		mOutline.mFrame      = 0;
@@ -270,51 +270,51 @@ BOOL CGame::BeforeUpdate()
 			if (mLogo.mState <= 2)
 				break;
 		}
-		++_3338;
+		++mLoadStep;
 	case 7:
 		if ((mStatus.mFlags & 0x40000000000ULL) && !PreloadStageArchives())
 			break;
-		++_3338;
+		++mLoadStep;
 	case 8:
 		if ((mStatus.mFlags & 0x400000000ULL) && mLogo.mState != 15)
 			break;
-		++_3338;
+		++mLoadStep;
 	case 9:
 		if (!mParticle.Read("particle/chibi_robo"))
 			break;
-		++_3338;
+		++mLoadStep;
 	case 10:
 		if (!LoadMenuGroupResources(&mMenu))
 			break;
-		++_3338;
+		++mLoadStep;
 	case 11:
 		if (!LoadMemoryCardResources(&mMemcard.mCard))
 			break;
-		++_3338;
+		++mLoadStep;
 	case 12:
-		++_3338;
+		++mLoadStep;
 	case 13:
 		if (!LoadEventResources(&mEvt))
 			break;
-		++_3338;
+		++mLoadStep;
 	case 14:
 		if (!LoadMessageCursorObject(mCMsgs))
 			break;
-		++_3338;
+		++mLoadStep;
 	case 15:
 		if (!HideHudPointCounters(&mInfoScrn))
 			break;
-		++_3338;
+		++mLoadStep;
 	case 16:
-		++_3338;
+		++mLoadStep;
 	case 17:
 		if (!LoadStartingAttachments(this))
 			break;
-		++_3338;
+		++mLoadStep;
 	case 18:
 		if (!GetPlayer()->LoadFromPlacement(CoordInfo(GetSpawnData(14))))
 			break;
-		++_3338;
+		++mLoadStep;
 	case 19:
 		if ((mStatus.mFlags & 0x20000000) && mTitle.mState != 23) {
 			if (!(mTitle.mState >= 1 && mTitle.mState < 23)) {
@@ -323,7 +323,7 @@ BOOL CGame::BeforeUpdate()
 			}
 			break;
 		}
-		++_3338;
+		++mLoadStep;
 	case 20:
 		if (mMemcardLoaded) {
 			RestoreGameSaveData(&mMemcard.mCard);
@@ -331,12 +331,12 @@ BOOL CGame::BeforeUpdate()
 			mStatus.mFlags |= 0x2000;
 			InitBatteryGauge(&mInfoScrn, GetPlayer()->mParams.mBattery);
 		}
-		++_3338;
+		++mLoadStep;
 	case 21:
-		++_3338;
+		++mLoadStep;
 	case 22:
 		CheckStageFlag(gGame.mStage, 2);
-		++_3338;
+		++mLoadStep;
 		break;
 	case 23: {
 		if (!LoadStageByIndex(mStage))
@@ -347,30 +347,30 @@ BOOL CGame::BeforeUpdate()
 			RegisterEventObjectId(&mEvt, pair[1], pair[0]);
 			pair += 2;
 		}
-		++_3338;
+		++mLoadStep;
 	}
 	case 24: {
 		u8* script = GetStageSetupScript();
 		if (script)
 			StartOrQueueEventScript(&mEvt, script, 0, -1, -1);
-		++_3338;
+		++mLoadStep;
 	}
 	case 25:
 		if (mEvt.mData.mScript)
 			break;
 		if (CheckStageFlag(gGame.mStage, 4))
 			mStatus.mFlags |= 0x40;
-		++_3338;
+		++mLoadStep;
 	case 26:
 		if (!FinalizeStageObjectSetup(this))
 			break;
 		mStatus.mFlags &= ~0x40ULL;
 		if (mStatus.mFlags & 0x2000)
 			RestoreSavedPlayerAndCamera(&mMemcard.mCard);
-		++_3338;
+		++mLoadStep;
 	case 27:
 		CallStageModule(0, 0, NULL);
-		++_3338;
+		++mLoadStep;
 	case 28: {
 		if (mFade.mSpeed.r != 0 || mFade.mSpeed.g != 0 || mFade.mSpeed.b != 0 || mFade.mSpeed.a != 0)
 			break;
@@ -379,8 +379,8 @@ BOOL CGame::BeforeUpdate()
 		u32 minutes = GetStageEntryTimeComponent(1), hours = GetStageEntryTimeComponent(0);
 		_FF204 = (s32)(hours * 216000 + (minutes * 3600 + GetStageEntryTimeComponent(2) * 60));
 		mStatus.mFlags |= 1;
-		++_3338;
+		++mLoadStep;
 	}
 	}
-	return !(_3338 > 0 && _3338 < 29);
+	return !(mLoadStep > 0 && mLoadStep < 29);
 }

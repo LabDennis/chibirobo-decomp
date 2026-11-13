@@ -72,8 +72,10 @@ public:
 	f32 mTargetHeight;  // _50
 	f32 mSpeedWidth;    // _54, zero once the wipe is done
 	f32 mSpeedHeight;   // _58
-	f32 _5C;            // _5C
-	f32 _60;            // _60
+	f32 mRotation; // _5C, angle of the hole in radians, advanced by mSpeedRotation and wrapped at 2 pi in Update; Tex and Tile draws rotate
+	               // by it; the eye camera writes its yaw into gGame.mRoboeyes
+	f32 mSpeedRotation; // _60, radians per frame Update adds to mRotation, skipped when 0; nothing in the decompiled code sets it to
+	                    // anything but 0
 };
 typedef char CScrnWipe_size_check[sizeof(CScrnWipe) == 0x64 ? 1 : -1];
 

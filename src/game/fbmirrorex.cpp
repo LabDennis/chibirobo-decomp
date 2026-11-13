@@ -296,7 +296,7 @@ extern "C" BOOL UpdateProgressiveScanPrompt(u32 frames)
 			OSSetEuRgb60Mode(1);
 			CGsScreen* screen = &gGame.mGs.mScreen;
 			ConfigureGsScreenMode(screen, 28, 0, 18);
-			screen->_40           = screen->xfbHeight / 444.0f;
+			screen->mHeightScale  = screen->xfbHeight / 444.0f;
 			gVideoFramesPerSecond = 60;
 			CCamera* first        = &gGame.mCameras[0];
 			CCamera* second       = &gGame.mCameras[1];

@@ -10,7 +10,7 @@ public:
 	f32 mLife;                  // _980, counts down from the object's flags once hit
 	f32 mFlash;                 // _984, the ring drawn around it
 	HSD_MatAnimJoint* mMatAnim; // _988, kept across anim changes
-	u32 _98C;                   // _98C
+	u32 _98C;                   // _98C, never accessed
 
 	XObjFree();
 

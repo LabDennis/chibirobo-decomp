@@ -282,7 +282,7 @@ extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 unus
 {
 	XObj* obj;
 	AttrInfo attr(info);
-	s16 pool = attr._00 ? attr._00->mCategory : 0;
+	s16 pool = attr.mObjData ? attr.mObjData->mCategory : 0;
 
 	s32 idx = list->mPools[pool].Find(1, 0);
 	if (idx >= 0) {
@@ -295,7 +295,7 @@ extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 unus
 		}
 		if (async) {
 			obj->mStatus.mFlags |= 0x0040000000000000ULL;
-			gSingleObjectReader.ReadStart(obj, info->_00);
+			gSingleObjectReader.ReadStart(obj, info->mPlacement);
 		} else {
 			while (!obj->LoadFromPlacement(*info)) { }
 		}

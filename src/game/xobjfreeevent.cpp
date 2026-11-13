@@ -32,11 +32,11 @@ void XObjFree::Release()
 void XObjFree::ResetObjectState()
 {
 	ResetObjectState__4XObjFv(this);
-	if (mAttr._00 != NULL)
+	if (mAttr.mObjData != NULL)
 		mLife = (s16)GetObjFlags();
 	mMatAnim = NULL;
 	if (mJObj != NULL && (mStatus.mFlags & 0x1000ULL)) {
-		UnkStageObj* animation = mCoord._00;
+		UnkStageObj* animation = mCoord.mPlacement;
 		SetAnim(animation->mStartAnim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 	}
 }

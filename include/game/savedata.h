@@ -21,15 +21,16 @@ struct SaveData {
 	s32 mSuit;              // _2CA0
 	Vec mPos;               // _2CA4
 	f32 mRotY;              // _2CB0
-	s32 _2CB4;              // _2CB4
+	s32 mSpecialSuit;       // _2CB4, XObjChr mSuits.mSpecial, the special suit index used when mSuit is 7
 	s32 mCameraAction;      // _2CB8
 	Vec mCameraEye;         // _2CBC
 	Vec mCameraInterest;    // _2CC8
 	Vec mCameraAngle;       // _2CD4
 	f32 mCameraDistance;    // _2CE0
 	f32 mCameraFov;         // _2CE4
-	s32 _2CE8;              // _2CE8
-	s32 _2CEC;              // _2CEC, XObjChr _158AC
+	s32 mSquirterLiquid; // _2CE8, XObjChr _158A8: what the squirter holds. Script command 900 sets it with the item tint, a sprayed object
+	                     // runs event 3000 + it, cleared to 0 with the tint when the squirter runs dry
+	s32 mItemTint;       // _2CEC, XObjChr _158AC
 };
 STATIC_ASSERT(sizeof(SaveData) == 0x2CF0);
 

@@ -102,10 +102,10 @@ void XObjActorToy::OnPushDisplacement(const Vec& displacement)
 	case 0x156:
 		break;
 	case 0x157:
-		_2098.mFlags |= 2;
+		mKindFlags.mFlags |= 2;
 		for (s32 i = 0; i < 15; i++) {
 			XObjActorToy* toy = GetToy(i);
-			if (toy->GetKind() == 0x156 && (toy->_2098.mFlags & 1)) {
+			if (toy->GetKind() == 0x156 && (toy->mKindFlags.mFlags & 1)) {
 				toy->SetTranslateX(mMoveTranslate.x, 0);
 				toy->SetTranslateZ(mMoveTranslate.z, 0);
 				if (toy->mAttachedId >= 0 && toy->mAttached != NULL) {

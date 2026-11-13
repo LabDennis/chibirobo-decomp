@@ -17,14 +17,15 @@
 // chibi robo's numbers, watts, happy points and the items he holds
 class Params {
 public:
-	s32 mExperience;      // _00
-	s32 mLevel;           // _04
-	s32 mRank;            // _08
-	f32 mBattery;         // _0C
-	f32 mMaxBattery;      // _10
-	s32 mMoney;           // _14
-	s32 mScrap;           // _18
-	u32 _1C[8];           // _1C
+	s32 mExperience; // _00
+	s32 mLevel;      // _04
+	s32 mRank;       // _08
+	f32 mBattery;    // _0C
+	f32 mMaxBattery; // _10
+	s32 mMoney;      // _14
+	s32 mScrap;      // _18
+	u32 _1C[8];      // _1C, [0] above 0 is an unlimited battery: no drain, battery held at max, HUD battery dims; script commands 850/851
+	                 // set/clear it, 852 reads it; saved as SavePreview mActive. [1]..[7] are only zeroed in ResetPlayerStats
 	Inventory mInventory; // _3C
 	// _440 vtable
 
@@ -225,8 +226,9 @@ public:
 	s32 mBatteryWarningFrames;           // _9AB4
 	f32 mBatteryWarningFade;             // _9AB8
 	f32 mBatteryWarningAngle;            // _9ABC
-	s32 _9AC0;                           // _9AC0
-	f32 mGaugeTime;                      // _9AC4, time shown on the player gauge
+	s32 mGaugeTarget; // _9AC0, the object (XObj* held as s32) whose hold time mGaugeTime counts toward the auto action; 0 for none, reset
+	                  // when the target changes or the action fires
+	f32 mGaugeTime;   // _9AC4, time shown on the player gauge
 	s32 mLoadStep;
 	u8 _9ACC[4];                   // _9AC8
 	XObjPlug mPlug;                // _9AD0
@@ -243,14 +245,15 @@ public:
 	BOOL mInAir;                   // _146D8, set while he's off the floor
 	DustParticlePool mDust;        // _146DC, _1329C in japan
 	CTexObj mTex[2];               // _15690
-	u32 _15890;                    // _15890
+	u32 _15890;                    // _15890, set to 0 in ResetForNewGame, never read
 	s16 mSavedTarget;              // _15894, _14454 in japan, the lifted object's id while he's reset
-	u16 _15896;                    // _15896
+	u16 _15896;                    // _15896, never accessed; sits after the s16 mSavedTarget
 	s32 mSavedTargetAnim;          // _15898
 	s32 mSavedTargetState;         // _1589C
 	XObj* mPendingTarget;          // _158A0
-	BOOL _158A4;                   // _158A4
-	s32 _158A8;                    // _158A8, saved
+	BOOL mBatteryDrains;  // _158A4, TRUE while his battery runs down (over time, from hits and from radar shots) and an empty battery stops
+	                      // him; event commands 800/801 set and clear it, 802 returns it; TRUE after ResetForNewGame
+	s32 mSquirterContent; // _158A8, saved
 	union {
 		GXColor mItemTint; // _158AC, _1446C in japan, tints the held item and its particles
 		s32 mItemTintWord; // _158AC, the save copies it as a word

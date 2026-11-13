@@ -758,7 +758,7 @@ void XObjArmy::ResetObjectState()
 		gArmyShotModel = NULL;
 		for (s32 i = 0; gArmyShotModel == NULL && i < gGame.mXObjs.mObjectCount; i++) {
 			XObj* obj = gGame.GetObject(i);
-			if ((obj->mStatus.mFlags & 1) && obj->mCoord._00->mObjectId == 0x12A) {
+			if ((obj->mStatus.mFlags & 1) && obj->mCoord.mPlacement->mObjectId == 0x12A) {
 				gArmyShotModel = obj;
 			}
 		}

@@ -39,7 +39,7 @@ BOOL XObjPlug::LoadFromPlacement(const CoordInfo& info)
 void XObjPlug::ResetObjectState()
 {
 	ResetObjectState__4XObjFv(this);
-	_D3C = 0;
+	mConnection = 0;
 	if (mStatus.mFlags & 1) {
 		Vec position = gGame.GetPlayer()->mMoveTranslate;
 		ResetPlugCordPoints(&mCord, position.x, position.y, position.z);
@@ -51,7 +51,7 @@ void XObjPlug::ResetObjectState()
 	SetPlugCordEndpointSource(&mCord, 0, &mCordAnchor);
 	SetPlugCordEndpointSource(&mCord, 1, NULL);
 	SetPlugCordEndpointSource(&mCord, 2, NULL);
-	_D38 = 0;
+	mCordEndsPinned = 0;
 	mWire.ResetObjectState();
 	mWire.mSparkMode = -1;
 }

@@ -127,7 +127,7 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	memcpy(PoolSaveData(17), save->mObjects[2], sizeof(save->mObjects[2]));
 	memcpy(&Player()->mAttachments, save->mPlayerRecord, sizeof(save->mPlayerRecord));
 	RequestSuit(Player(), save->mSuit);
-	Player()->mSuits.mSpecial = save->_2CB4;
-	Player()->_158A8          = save->_2CE8;
-	Player()->mItemTintWord   = save->_2CEC;
+	Player()->mSuits.mSpecial  = save->mSpecialSuit;
+	Player()->mSquirterContent = save->mSquirterLiquid;
+	Player()->mItemTintWord    = save->mItemTint;
 }

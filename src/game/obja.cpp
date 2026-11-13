@@ -38,7 +38,7 @@ extern const XObjPEPresets gObjectPixelEnginePresets;
 
 static inline u32 ShadowSize(XObj* object)
 {
-	return object->mAttr._00 != NULL ? object->mAttr._00->mShadowSize : 0;
+	return object->mAttr.mObjData != NULL ? object->mAttr.mObjData->mShadowSize : 0;
 }
 
 static inline void StepColor(f32& current, f32& target, f32& speed, u32 frames)
@@ -67,8 +67,8 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 		return;
 	object->mStatus.mFlags &= ~0x0010000000000000ULL;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
-		Vec center
-		    = object->mMoveScale * (object->_794 + ReadFloorCoordinates(object->mFloors[i].mCenterOffset, gObjectFloorOffsetTemplate));
+		Vec center = object->mMoveScale
+		           * (object->mToppleOffset + ReadFloorCoordinates(object->mFloors[i].mCenterOffset, gObjectFloorOffsetTemplate));
 		Vec extent = object->mMoveScale * ReadFloorCoordinates(object->mFloors[i].mExtent, lbl_80378148);
 		f32 yaw    = object->mMoveRotate.y + DEG2RAD * object->mFloors[i].mYawDegrees;
 		switch (object->mFloors[i].mId) {
@@ -97,7 +97,7 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 		case 5: {
 			Vec corners[4];
 			for (s32 j = 0; j < 4; ++j)
-				corners[j] = object->_794 + ReadFloorCoordinates(object->mFloors[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
+				corners[j] = object->mToppleOffset + ReadFloorCoordinates(object->mFloors[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
 			Vec scale = object->mMoveScale * ReadFloorCoordinates(object->mFloors[i].mExtent, lbl_80378148);
 			f32 angle = object->mMoveRotate.y + DEG2RAD * object->mFloors[i].mYawDegrees;
 			Mtx translate, rotate, scaling, transform;
@@ -161,7 +161,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
 		Vec zero = { 0, 0, 0 };
 		CVec origin(zero);
-		Vec center     = object->mMoveScale * (object->_794 + ReadObjectFloorOffset(object, i));
+		Vec center     = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object, i));
 		Vec extent     = object->mMoveScale * ReadObjectFloorExtent(object, i);
 		f32 baseYaw    = object->mMoveRotate.y;
 		f32 floorAngle = DEG2RAD * object->mFloors[i].mYawDegrees;
@@ -219,7 +219,7 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 		case 5: {
 			Vec* corners = geometry.samples + 2;
 			for (int j = 0; j < 4; ++j)
-				corners[j] = object->_794 + ReadObjectFloorOffset(object, i + j);
+				corners[j] = object->mToppleOffset + ReadObjectFloorOffset(object, i + j);
 			Vec extent = object->mMoveScale * ReadObjectFloorExtent(object, i);
 			f32 angle  = object->mMoveRotate.y + DEG2RAD * object->mFloors[i].mYawDegrees;
 
@@ -259,7 +259,7 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 	static Vec origin = { 0.0f, 0.0f, 0.0f };
 	f32 angle         = NAN;
 
-	Vec center = object->mMoveScale * (object->_794 + ReadObjectFloorOffset(floorRecord));
+	Vec center = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(floorRecord));
 	Vec extent = object->mMoveScale * ReadObjectFloorExtent(floorRecord);
 	f32 yaw    = (object->mMoveRotate.y + DEG2RAD * floorRecord.mYawDegrees);
 	switch (floorRecord.mId) {
@@ -314,7 +314,7 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 		Mtx translate, rotate, scaling, transform;
 		Vec corners[4];
 		for (s32 j = 0; j < 4; ++j)
-			corners[j] = object->_794 + ReadObjectFloorOffset(object->mFloors[index - 3 + j]);
+			corners[j] = object->mToppleOffset + ReadObjectFloorOffset(object->mFloors[index - 3 + j]);
 		Vec scale = object->mMoveScale * ReadObjectFloorExtent(object->mFloors[index]);
 
 		f32 angleY = object->mMoveRotate.y + DEG2RAD * object->mFloors[index].mYawDegrees;
@@ -434,7 +434,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 	for (; mFloors[i].mId != -1; ++i) {
 		u32 collision          = 0;
 		const XObjFloor& floor = mFloors[i];
-		Vec center             = mMoveScale * (_794 + ReadObjectFloorOffset(floor));
+		Vec center             = mMoveScale * (mToppleOffset + ReadObjectFloorOffset(floor));
 		Vec extent             = mMoveScale * ReadObjectFloorExtent(floor);
 		f32 objYaw             = mMoveRotate.y;
 		f32 angle              = DEG2RAD * floor.mYawDegrees;
@@ -520,7 +520,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 		case 5: {
 			Vec quad[4];
 			for (s32 j = 0; j < 4; ++j)
-				quad[j] = _794 + ReadObjectFloorOffset(mFloors[i + j]);
+				quad[j] = mToppleOffset + ReadObjectFloorOffset(mFloors[i + j]);
 			Vec size       = mMoveScale * ReadObjectFloorExtent(floor);
 			f32 floorAngle = DEG2RAD * floor.mYawDegrees;
 			f32 rotY       = mMoveRotate.y + floorAngle;
@@ -577,7 +577,8 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			XObjChr* player = gGame.GetPlayer();
 			if ((mStatus.mFlags & 0x20000000000ULL) && !(mStatus.mFlags & 0x8000000000000000ULL) && !(gGame.mStatus.mFlags & 0x400)
 			    && player->mAttachmentRequest < 0
-			    && (!(gGame.mStatus.mFlags & 0x40000000) || !IsPlayerStopped(player) || !player->_158A4 || (mStatus.mFlags & 0x8000))) {
+			    && (!(gGame.mStatus.mFlags & 0x40000000) || !IsPlayerStopped(player) || !player->mBatteryDrains
+			        || (mStatus.mFlags & 0x8000))) {
 				mStatus.mFlags |= 0x8000000000000000ULL;
 				StartOrQueueEventScript(&gGame.mEvt, (u8*)GetEventScript(), (u32)this, -1, -1);
 			}
@@ -762,7 +763,7 @@ void XObj::UpdateObject(u32 frames)
 	if (mJObj != NULL) {
 		StepColors(frames);
 		if (mStatus.mFlags & 0x1000000000000000ULL) {
-			if (mMoveTranslate.y + _794.y > mFloorHit.mHeight) {
+			if (mMoveTranslate.y + mToppleOffset.y > mFloorHit.mHeight) {
 				mMoveTranslate.mTarget.y = mFloorHit.mHeight;
 				f32 speed                = 0.15f + mMoveTranslate.mSpeed.y;
 				if (speed > 10.0f)
@@ -770,12 +771,12 @@ void XObj::UpdateObject(u32 frames)
 				mMoveTranslate.mSpeed.y = speed;
 			} else {
 				mMoveTranslate.mSpeed.y = 0.0f;
-				mMoveTranslate.x += _794.x;
-				mMoveTranslate.z += _794.z;
+				mMoveTranslate.x += mToppleOffset.x;
+				mMoveTranslate.z += mToppleOffset.z;
 				mMoveTranslate.y = mFloorHit.mHeight;
-				_794.x           = 0.0f;
-				_794.y           = 0.0f;
-				_794.z           = 0.0f;
+				mToppleOffset.x  = 0.0f;
+				mToppleOffset.y  = 0.0f;
+				mToppleOffset.z  = 0.0f;
 				SetRotationX(0.0f, 0);
 				SetRotationZ(0.0f, 0);
 				mStatus.mFlags &= ~0x1000000000000000ULL;
@@ -815,14 +816,14 @@ void XObj::Release()
 		ResetEventScriptState(&mEvt, TRUE, FALSE);
 	if (mStatus.mFlags & 1) {
 		CXObjIntp::Release();
-		XObjSource** slot = (XObjSource**)mAttr._00;
+		XObjSource** slot = (XObjSource**)mAttr.mObjData;
 		if (slot != NULL && *slot != NULL) {
 			XObjSource* source = *slot;
 			if (source->mArchive != NULL && source->mArchive->mRefCount <= 0)
 				source->mArchive = NULL;
 		}
 	}
-	mAttr._00        = NULL;
+	mAttr.mObjData   = NULL;
 	mAttr.mPlacement = NULL;
 	mFloors          = NULL;
 	mStatus.mFlags &= ~0x10001ULL;

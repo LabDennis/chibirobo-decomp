@@ -67,7 +67,7 @@ void CGame::Start()
 
 	gARAMCacheInfo.mBaseAddress = ARAlloc(GetFreeARAMSize());
 	ARGetSize();
-	_3338      = 1;
+	mLoadStep  = 1;
 	mStage     = GetDefaultStageIndex();
 	mRoomCount = GetStageNum();
 	LoadBootConfig();

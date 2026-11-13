@@ -388,7 +388,7 @@ void XObjActorPapa::UpdateAfterAnim(u32 frames)
 		pos = joint.GetPos();
 		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
 	}
-	if (!_C94) {
+	if (!mJointShown) {
 		s32 path[5] = { 0, 2, 0, 0, 1 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, path, 5));
 		HSD_JObjSetFlags(joint.mJObj, 0x10);
@@ -600,10 +600,10 @@ void XObjActorPapa::ProcessPendingEvents(u32 frames)
 	case 8:
 		switch (mCmd[1]) {
 		case 1:
-			_C94 = 1;
+			mJointShown = 1;
 			break;
 		default:
-			_C94 = 0;
+			mJointShown = 0;
 			break;
 		}
 		mCmd[0] = 0;
@@ -626,12 +626,12 @@ void XObjActorPapa::ResetActorState()
 	}
 	mActorStatus.mFlags = 0;
 	mHideKinds.mFlags   = 0;
-	_980                = 0.0f;
+	mHeading            = 0.0f;
 	mMoveSpeed          = 0.0f;
-	_988                = 0.0f;
-	_C84                = _988;
+	mFacing             = 0.0f;
+	_C84                = mFacing;
 	_C88                = 0;
-	_C94                = 1;
+	mJointShown         = 1;
 	mState              = &XObjActorPapa::StateNone;
 	ResetActorMovementStep(this);
 }

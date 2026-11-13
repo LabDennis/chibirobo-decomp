@@ -69,34 +69,37 @@ typedef char XObjColorStep_size_check[sizeof(XObjColorStep) == 0x24 ? 1 : -1];
 class XObj : public CXObjIntp {
 public:
 	// _00-_228 = CXObjIntp
-	CStatus64 mStatus;           // _228, 1 in use, 0x10000 drawn, 0x0040000000000000 while a read is pending
-	CoordInfo mCoord;            // _238
-	AttrInfo mAttr;              // _240
-	XObjFloor* mFloors;          // _24C
-	u32 mFloorMasks[2];          // _250, a bit per floor, one mask per group
-	s32 mPoolIndex;              // _258, index in its pool
-	s32 _25C;                    // _25C
-	s32 _260;                    // _260
-	CVec mLastPos;               // _264, POS copies the position here
-	s32 mHitFloorIndex;          // _274
-	XObjEdge mEdges[32];         // _278, one per floor
-	f32 mFloorXZExtent;          // _6F8
-	f32 mFloorHeights[32];       // _6FC, a height per floor
-	f32 mMaxFloorHeight;         // _77C
-	f32 mSelectedFloorHeight;    // _780, highest active floor, NaN when none is active
-	s32 mSelectedFloorIndex;     // _784
-	XObjMapHit mFloorHit;        // _788
-	CVec _794;                   // _794
-	CEvt mEvt;                   // _7A4, the object's own script
-	u32 _80C;                    // _80C
-	CAnmQueue mAnmQueue;         // _810
-	f32 mAnchorX;                // _898, NAN while there's no anchor to clamp around
-	f32 mAnchorZ;                // _89C
-	f32 mLimitPosX;              // _8A0
-	f32 mLimitNegX;              // _8A4
-	f32 mLimitPosZ;              // _8A8
-	f32 mLimitNegZ;              // _8AC
-	u32 mMarkerOverride;         // _8B0, clamp flags from the event call -11, 0x80000000 while it's off
+	CStatus64 mStatus;    // _228, 1 in use, 0x10000 drawn, 0x0040000000000000 while a read is pending
+	CoordInfo mCoord;     // _238
+	AttrInfo mAttr;       // _240
+	XObjFloor* mFloors;   // _24C
+	u32 mFloorMasks[2];   // _250, a bit per floor, one mask per group
+	s32 mPoolIndex;       // _258, index in its pool
+	s32 mPlacementParam0; // _25C, the placement entry's _28, copied on load; its meaning is up to the kind: the spider's variant (0..11), a
+	                      // support's ledge height when HasObjectCustomLedgeHeight
+	s32 mPlacementParam1; // _260, the placement entry's _2C, copied on load; per kind: the collection flag index of coins and dust
+	                      // (XObjFlags::GetFlagIndex), the spider's height above mHome
+	CVec mLastPos;        // _264, POS copies the position here
+	s32 mHitFloorIndex;   // _274
+	XObjEdge mEdges[32];  // _278, one per floor
+	f32 mFloorXZExtent;   // _6F8
+	f32 mFloorHeights[32];    // _6FC, a height per floor
+	f32 mMaxFloorHeight;      // _77C
+	f32 mSelectedFloorHeight; // _780, highest active floor, NaN when none is active
+	s32 mSelectedFloorIndex;  // _784
+	XObjMapHit mFloorHit;     // _788
+	CVec mToppleOffset;  // _794, offset of the floors while the object topples off a ledge after a push: half its width sideways, half its
+	                     // height down; its XZ is added to the position when it lands, then it is cleared
+	CEvt mEvt;           // _7A4, the object's own script
+	u32 mEventScript;    // _80C, the placement's stage script (GetStageScriptByIndex), 0 if none; returned by GetEventScript
+	CAnmQueue mAnmQueue; // _810
+	f32 mAnchorX;        // _898, NAN while there's no anchor to clamp around
+	f32 mAnchorZ;        // _89C
+	f32 mLimitPosX;      // _8A0
+	f32 mLimitNegX;      // _8A4
+	f32 mLimitPosZ;      // _8A8
+	f32 mLimitNegZ;      // _8AC
+	u32 mMarkerOverride; // _8B0, clamp flags from the event call -11, 0x80000000 while it's off
 	XObjColorStep mColorStep[2]; // _8B4
 	CJAnim mAnim;                // _8FC, anims from the object's second archive, ids from 1000 up
 
@@ -196,7 +199,7 @@ public:
 		}
 	}
 
-	s32 GetPool() const { return mAttr._00 != NULL ? GetObjDataPool(mAttr._00) : -1; }
+	s32 GetPool() const { return mAttr.mObjData != NULL ? GetObjDataPool(mAttr.mObjData) : -1; }
 
 	// the kind record's category and item, s16 like the record's fields
 	static s16 GetDataCategory(const UnkObjData* data)
@@ -215,20 +218,20 @@ public:
 	}
 	s16 GetCategory() const
 	{
-		if (mAttr._00 != NULL) {
-			return GetDataCategory(mAttr._00);
+		if (mAttr.mObjData != NULL) {
+			return GetDataCategory(mAttr.mObjData);
 		}
 		return -1;
 	}
 	s16 GetItem() const
 	{
-		if (mAttr._00 != NULL) {
-			return GetDataItem(mAttr._00);
+		if (mAttr.mObjData != NULL) {
+			return GetDataItem(mAttr.mObjData);
 		}
 		return -1;
 	}
 
-	s32 GetObjFlags() const { return mAttr._00 != NULL ? GetObjDataFlags(mAttr._00) : -1; }
+	s32 GetObjFlags() const { return mAttr.mObjData != NULL ? GetObjDataFlags(mAttr.mObjData) : -1; }
 };
 #if defined(VERSION_JP)
 typedef char XObj_size_check[sizeof(XObj) == 0x970 ? 1 : -1];

@@ -108,8 +108,8 @@ public:
 	CInterfaceCameraAction* mAction;       // _1D0
 	CInterfaceCameraAction* mPrevAction;   // _1D4
 	CInterfaceCameraAction* mPushedAction; // _1D8
-	s32 _1DC;                              // _1DC
-	s32 _1E0;                              // _1E0
+	s32 _1DC;                              // _1DC, written -1 in Init, never read
+	s32 _1E0;                              // _1E0, written -1 in Init, never read
 	CStatus mFlags;                        // _1E4, the action's GetCameraFlags, see CAMFLAG
 	s32 mInterestMode;                     // _1EC, the action's GetInterestMode, 2 and 3 follow the interest in
 	s32 mEyeMode;                          // _1F0, 2 and 3 follow the eye in

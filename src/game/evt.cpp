@@ -3228,7 +3228,7 @@ static inline XObj* CEvt_GetObj(CEvt* evt, s16 id)
 		return gGame.mXObjs.mObjects[id];
 	}
 	if (id == -1) {
-		return (XObj*)evt->mData._04;
+		return (XObj*)evt->mData.mContext;
 	}
 	return (XObj*)id;
 }
@@ -7973,12 +7973,12 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		s32 mode = CEvt_Evaluate(this);
 		f32 time = CEvt_Evaluate(this) / 100.0f;
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
-		action->_38 = 11;
-		Vec eye     = { 0.0f, 0.0f, 0.0f };
-		eye.x       = x;
-		eye.y       = y;
-		eye.z       = z;
-		Vec target  = eye;
+		action->mCameraFlags = 11;
+		Vec eye              = { 0.0f, 0.0f, 0.0f };
+		eye.x                = x;
+		eye.y                = y;
+		eye.z                = z;
+		Vec target           = eye;
 		action->SetEye_Interp(mode, target, time);
 		break;
 	}
@@ -8025,12 +8025,12 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		s32 mode = CEvt_Evaluate(this);
 		f32 time = CEvt_Evaluate(this) / 100.0f;
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
-		action->_38  = 11;
-		Vec interest = { 0.0f, 0.0f, 0.0f };
-		interest.x   = x;
-		interest.y   = y;
-		interest.z   = z;
-		Vec target   = interest;
+		action->mCameraFlags = 11;
+		Vec interest         = { 0.0f, 0.0f, 0.0f };
+		interest.x           = x;
+		interest.y           = y;
+		interest.z           = z;
+		Vec target           = interest;
 		action->SetInterest_Interp(mode, target, time);
 		break;
 	}
@@ -8042,8 +8042,8 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		if (obj != NULL) {
 			Vec target = obj->GetCameraTarget();
 			gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
-			action->_38  = 11;
-			Vec interest = target;
+			action->mCameraFlags = 11;
+			Vec interest         = target;
 			action->SetInterest_Interp(mode, interest, time);
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("cam(@OBJ, %d, ...): obj(%d) killed!", id, id));
@@ -8055,7 +8055,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		XObj* obj = CEvt_GetObj(this, (s16)id);
 		if (obj != NULL) {
 			gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
-			action->_38 = 11;
+			action->mCameraFlags = 11;
 			action->SetInterest_Interp(3, obj, 0.0f);
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("cam(@LEAD, %d): obj(%d) killed!", id, id));
@@ -8072,7 +8072,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		s32 mode = CEvt_Evaluate(this);
 		f32 time = CEvt_Evaluate(this) / 100.0f;
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
-		action->_38 = action->GetCameraFlags() | 8;
+		action->mCameraFlags = action->GetCameraFlags() | 8;
 		action->SetFov_Interp(mode, fov, time);
 		break;
 	}
@@ -11697,15 +11697,15 @@ static inline void CEvt_Attach(CEvt* evt, u8* script, u32 owner, s16 useValue = 
 			gEventScriptQueue.mScript[i] = NULL;
 		}
 	}
-	evt->mSelectResult = 0;
-	evt->mResult2      = 0;
-	evt->mMsgState     = 0;
-	evt->mUseValue     = -1;
-	evt->mHitValue     = -1;
-	evt->mData.mScript = script;
-	evt->mData._04     = (evt->mOwner == 0) ? owner : evt->mOwner;
-	evt->mUseValue     = useValue;
-	evt->mHitValue     = hitValue;
+	evt->mSelectResult  = 0;
+	evt->mResult2       = 0;
+	evt->mMsgState      = 0;
+	evt->mUseValue      = -1;
+	evt->mHitValue      = -1;
+	evt->mData.mScript  = script;
+	evt->mData.mContext = (evt->mOwner == 0) ? owner : evt->mOwner;
+	evt->mUseValue      = useValue;
+	evt->mHitValue      = hitValue;
 }
 
 /**
@@ -13076,10 +13076,10 @@ s32 CEvt::_cmd_ABORT(u8, s32)
 		queue->mScript[idx] = 0;
 		queue->mRead        = (queue->mRead + 1) % 0x80;
 		if (script != 0) {
-			mData.mScript = script;
-			mData._04     = context;
-			mUseValue     = useValue;
-			mHitValue     = hitValue;
+			mData.mScript  = script;
+			mData.mContext = context;
+			mUseValue      = useValue;
+			mHitValue      = hitValue;
 			return 0;
 		}
 	}
@@ -13108,10 +13108,10 @@ s32 CEvt::_cmd_RETURN(u8, s32)
 		queue->mScript[idx] = 0;
 		queue->mRead        = (queue->mRead + 1) % 0x80;
 		if (script != 0) {
-			mData.mScript = script;
-			mData._04     = context;
-			mUseValue     = useValue;
-			mHitValue     = hitValue;
+			mData.mScript  = script;
+			mData.mContext = context;
+			mUseValue      = useValue;
+			mHitValue      = hitValue;
 			return 0;
 		}
 	}
@@ -17151,10 +17151,10 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		break;
 	case -16:
 		if (args[0] == 231) {
-			gGame.mSubwin._134 = args[1];
-			gGame.mSubwin._138 = args[2];
-			gGame.mSubwin._13C = args[3];
-			gGame.mSubwin._140 = args[4];
+			gGame.mSubwin.mRectX      = args[1];
+			gGame.mSubwin.mRectY      = args[2];
+			gGame.mSubwin.mRectWidth  = args[3];
+			gGame.mSubwin.mRectHeight = args[4];
 		} else if (args[0] == 225) {
 			Vec pos = { 0.0f, 0.0f, 0.0f };
 			pos.x   = args[1] / 100.0f;
@@ -17393,22 +17393,22 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		break;
 	case -44: {
 		s16 id                 = args[0];
-		s32 areaCount          = gCameraAreaState._20;
-		CamAreaRecord* records = gCameraAreaState._1C;
+		s32 areaCount          = gCameraAreaState.mAreaExCount;
+		CamAreaRecord* records = gCameraAreaState.mAreaExRecords;
 		for (s32 i = 0; i < areaCount; i++) {
 			CamAreaRecord* record = CamAreaInfo(&records[i]).GetRecord();
-			if (id == record->_2C)
+			if (id == record->mCameraAction)
 				record->mFlags &= ~0x80;
 		}
 		break;
 	}
 	case -45: {
 		s16 id                 = args[0];
-		s32 areaCount          = gCameraAreaState._20;
-		CamAreaRecord* records = gCameraAreaState._1C;
+		s32 areaCount          = gCameraAreaState.mAreaExCount;
+		CamAreaRecord* records = gCameraAreaState.mAreaExRecords;
 		for (s32 i = 0; i < areaCount; i++) {
 			CamAreaRecord* record = CamAreaInfo(&records[i]).GetRecord();
-			if (id == record->_2C)
+			if (id == record->mCameraAction)
 				record->mFlags |= 0x80;
 		}
 		break;
@@ -18378,10 +18378,10 @@ extern "C" void StartOrQueueEventScript(CEvt* evt, u8* script, u32 context, s16 
 	if (evt->mOwner == 0)
 		ClearQueue();
 	ClearResults(evt);
-	evt->mData.mScript = script;
-	evt->mData._04     = evt->mOwner != 0 ? evt->mOwner : context;
-	evt->mUseValue     = useValue;
-	evt->mHitValue     = hitValue;
+	evt->mData.mScript  = script;
+	evt->mData.mContext = evt->mOwner != 0 ? evt->mOwner : context;
+	evt->mUseValue      = useValue;
+	evt->mHitValue      = hitValue;
 }
 
 /**

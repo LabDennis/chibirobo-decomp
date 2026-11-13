@@ -9,7 +9,7 @@ void XObjActor3::Release()
 	switch (GetKind()) {
 	case 0x149:
 	case 0x42B:
-		_980.Close();
+		mPanelTpl.Close();
 		break;
 	}
 	XObj::Release();

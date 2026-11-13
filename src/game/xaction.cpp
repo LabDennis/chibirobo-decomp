@@ -21,7 +21,7 @@ void XAction::Reset()
  */
 s32 XObjFlags::GetFlagIndex()
 {
-	return _260;
+	return mPlacementParam1;
 }
 
 /**

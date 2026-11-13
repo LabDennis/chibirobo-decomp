@@ -11,7 +11,7 @@ void DrawStage02ActorCounterPanel(XObjActor3* actor);
  */
 void XObjActor3::DrawScreenOverlay()
 {
-	UnkObjData* data = mAttr._00;
+	UnkObjData* data = mAttr.mObjData;
 	s16 type         = data != NULL ? (data != NULL ? data->mItemIndex : 0) : -1; // todo: cleanup, probably an inline
 	switch (type) {
 	case 14:
@@ -27,7 +27,7 @@ void XObjActor3::DrawScreenOverlay()
  */
 void XObjActor3::DrawObject()
 {
-	if (!(_B8C.mFlags & 0x10)) {
+	if (!(mActorFlags.mFlags & 0x10)) {
 		DrawWithView(NULL);
 	}
 }

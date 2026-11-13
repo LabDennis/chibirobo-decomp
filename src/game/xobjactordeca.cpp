@@ -145,11 +145,11 @@ s32 XObjActorDeca::HandleEventCommand(s32 count, s32* command)
 			switch (mCmd[1]) {
 			case 0:
 				mJointFlags.mFlags |= 2;
-				_CA4 = PI;
+				mJointYawTarget = PI;
 				break;
 			case 1:
 				mJointFlags.mFlags |= 2;
-				_CA4 = 0.0f;
+				mJointYawTarget = 0.0f;
 				break;
 			}
 			mCmd[0] = 0;
@@ -364,10 +364,10 @@ void XObjActorDeca::UpdateAfterAnim(u32 frames)
 		joint.Attach(FindJointByPath(mJObj, second, 4));
 		HSD_JObjClearFlags(joint.mJObj, 0x10);
 	}
-	ApproachHudValue(&_CA0, &_CA4, 0.1f);
+	ApproachHudValue(&mJointYaw, &mJointYawTarget, 0.1f);
 	s32 head[5] = { 0, 1, 0, 0, 0 };
 	joint.Attach(FindJointByPath(mJObj, head, 5));
-	joint.SetRotationY(_CA0, 0);
+	joint.SetRotationY(mJointYaw, 0);
 	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
 		s32 mount[2] = { 0, 3 };
 		joint.Attach(FindJointByPath(mJObj, mount, 2));
@@ -428,14 +428,14 @@ void XObjActorDeca::ResetActorState()
 	mActorStatus.mFlags = 0;
 	mJointFlags.mFlags  = 0;
 	_C98.mFlags         = 0;
-	_980                = 0.0f;
+	mHeading            = 0.0f;
 	mMoveSpeed          = 0.0f;
-	_988                = 0.0f;
-	_C84                = _988;
+	mFacing             = 0.0f;
+	_C84                = mFacing;
 	_C88                = 0.0f;
 	_C8C                = 0;
-	_CA0                = PI;
-	_CA4                = PI;
+	mJointYaw           = PI;
+	mJointYawTarget     = PI;
 	mState              = &XObjActorDeca::StateHold;
 	ResetActorMovementStep(this);
 	for (u32 i = 0; i < 20; i++) {

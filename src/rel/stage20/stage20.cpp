@@ -61,7 +61,7 @@ extern "C" void InitStage(void* arg)
 	timeAnimObj = 0;
 	for (i = 0; i < gGame.mXObjs.mObjectCount; i++) {
 		obj = gGame.GetObject(i);
-		if ((obj->mStatus.mFlags & 1) != 0 && obj->mCoord._00->mObjectId == 0x2CD) {
+		if ((obj->mStatus.mFlags & 1) != 0 && obj->mCoord.mPlacement->mObjectId == 0x2CD) {
 			timeAnimObj = obj;
 		}
 	}

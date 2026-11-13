@@ -60,13 +60,13 @@ void CGame::Update(u32 frames)
 			mReset     = FALSE;
 			HSD_PadReset();
 			Reset(1);
-		} else if (_3338 != 0x17 && _3338 != 0x1A && !HasPendingObjectReads()) {
+		} else if (mLoadStep != 0x17 && mLoadStep != 0x1A && !HasPendingObjectReads()) {
 			mResetHold = 0;
 			mReset     = FALSE;
 			HSD_PadReset();
 			if (!mDiskOk) {
 				Reset(1);
-			} else if (_3338 <= 0x13) {
+			} else if (mLoadStep <= 0x13) {
 				Reset(0);
 			} else {
 				ChangeGameStage(this, 10000, FALSE);
@@ -195,7 +195,7 @@ void CGame::Update(u32 frames)
 	}
 	UpdateScreenFade(&mColor1.mColor, frames);
 	mOutline.SetColor4(mColor1.mColor.mColor.r, mColor1.mColor.mColor.g, mColor1.mColor.mColor.b, mColor1.mColor.mColor.a);
-	if (_4724 > 0) {
+	if (mOutlineWidthControl > 0) {
 		if (mPad.mPad[0].mSubStickY > 0.0f) {
 			if ((mOutlineWidth -= 0.01f * frames) < 0.04f) {
 				mOutlineWidth = 0.04f;

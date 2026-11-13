@@ -110,7 +110,7 @@ public:
 	f32 mPulseAngle;           // _18
 	s32 mHighlightDelay;       // _1C, frames until the selected line starts pulsing
 	u32 mSpawnIndex;           // _20
-	u32 _24;                   // _24
+	u32 _24;                   // _24, no access in any edition
 	Cursor mCursor;            // _28
 	XObjDemo mDemo;            // _9B0, _9A0 in japan
 	CTpl mTpl;                 // _2FB8, _2F98 in japan
@@ -121,18 +121,18 @@ public:
 	f32 mPanelY;               // _37B4
 	f32 mTargetPanelX;         // _37B8
 	f32 mTargetPanelY;         // _37BC
-	f32 _37C0;                 // _37C0
+	f32 _37C0;                 // _37C0, written 0 in ResetTitleScreenState, never read
 	f32 mLoadOffset;           // _37C4
-	f32 _37C8;                 // _37C8
+	f32 _37C8;                 // _37C8, written 0 in ResetTitleScreenState, never read
 	f32 mOffset;               // _37CC
 	s32 mFreeBlocks;           // _37D0, the card's mFreeBlocks
 	s32 mFreeEntries;          // _37D4, the card's mFreeEntries
 	s32 mResult;               // _37D8, the card result
-	u32 _37DC;                 // _37DC
+	u32 _37DC;                 // _37DC, no access in any edition
 	u8 mReady;                 // _37E0
 	u8 mShowMessage;           // _37E1
 	u8 mWrongDevice;           // _37E2
-	u8 _37E3;                  // _37E3
+	u8 _37E3;                  // _37E3, no access in any edition
 	f32 mLoadAlpha;            // _37E4
 	f32 mAlpha;                // _37E8
 	s32 mPrevMode;             // _37EC
@@ -140,7 +140,7 @@ public:
 	s32 mDelay;                // _37F4
 	s32 mFile;                 // _37F8, the newest save starts picked
 	s32 mChoice;               // _37FC
-	u32 _3800;                 // _3800
+	u32 _3800;                 // _3800, no access in any edition
 	s32 mChannel;              // _3804
 	u8 mCardScanState;         // _3808
 	u8 mSaveFound;             // _3809

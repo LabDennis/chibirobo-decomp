@@ -20,7 +20,7 @@ struct TRIGON_INFO {
 	f32 mDist;                // _10, centroid distance from the origin, the sort key
 	MtxPtr mMtx;              // _14, the joint's matrix, NULL when it's identity
 	u16 mFrac;                // _18
-	u16 _1A;                  // _1A
+	u16 _1A;                  // _1A, no access in any edition; the checker's struct copy (*out = checker) carries it along
 	u32 mColor;               // _1C, material diffuse without alpha, 0 means skip
 };
 typedef char TRIGON_INFO_size_check[sizeof(TRIGON_INFO) == 0x20 ? 1 : -1];

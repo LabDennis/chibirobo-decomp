@@ -137,8 +137,8 @@ void XObjActorToy::Release()
 	mFirst.Release();
 	mSecond.Release();
 	XObj::Release();
-	mLoad = 0;
-	_1F90 = 0;
+	mLoad      = 0;
+	mShownPart = 0;
 }
 
 /**
@@ -187,8 +187,8 @@ void XObjActorToy::ResetObjectState()
 {
 	u8* data = (u8*)&gActorToyAnimationData;
 	ResetObjectState__9XObjActorFv(this);
-	mLoad = 0;
-	_1F90 = 0;
+	mLoad      = 0;
+	mShownPart = 0;
 	mFirst.ResetObjectState();
 	mSecond.ResetObjectState();
 	switch (GetKind()) {
@@ -233,8 +233,8 @@ void XObjActorToy::ResetObjectState()
 void XObjActorToy::ResetForNewGame()
 {
 	XObjActor::ResetForNewGame();
-	mLoad = 0;
-	_1F90 = 0;
+	mLoad      = 0;
+	mShownPart = 0;
 	mFirst.ResetForNewGame();
 	mSecond.ResetForNewGame();
 }
@@ -246,8 +246,8 @@ void XObjActorToy::ResetForNewGame()
 void XObjActorToy::InitializeObject(u32 id)
 {
 	InitializeObject__9XObjActorFUl(this, id);
-	mLoad = 0;
-	_1F90 = 0;
+	mLoad      = 0;
+	mShownPart = 0;
 	mFirst.InitializeObject(id);
 	mSecond.InitializeObject(id);
 }

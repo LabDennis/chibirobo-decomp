@@ -1322,7 +1322,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				if ((GetMaskedObjectStatus(object, 0x20)) && IsLiftTargetPlug(&player->mLift)
 				    && index != player->mFloorContacts[0].objectIndex && GetCharacterObjectApproachResult(player, object))
 					available |= 0x80;
-				if (player->_9AC0)
+				if (player->mGaugeTarget)
 					player->mHitObjectIndex = index;
 			}
 		}
@@ -1438,7 +1438,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			if (target && !GetMaskedObjectStatus(target, 0x0002000000000000ULL) && !GetHeldPadButtons(&player->mPad, 0x200)
 			    && magnitude > 0) {
 				f32 threshold = FRAME_RATE * GetAutoActionHoldTime();
-				if ((s32)target == player->_9AC0) {
+				if ((s32)target == player->mGaugeTarget) {
 					if (GetAutoActionChargeRate() > 0)
 						player->mGaugeTime += frames * GetAutoActionChargeRate();
 					else
@@ -1447,8 +1447,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					if (cap > 0 && magnitude <= 0.7f && player->mGaugeTime > threshold * cap)
 						player->mGaugeTime = threshold * cap;
 				} else {
-					player->_9AC0      = (s32)target;
-					player->mGaugeTime = 0;
+					player->mGaugeTarget = (s32)target;
+					player->mGaugeTime   = 0;
 				}
 				if (player->mGaugeTime >= threshold) {
 					XObj* hit = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
@@ -1484,16 +1484,16 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						SetPlayerActionTarget(&player->mPush, hit);
 						SetPushTargetState(&player->mPush, 0);
 					}
-					player->_9AC0      = 0;
-					player->mGaugeTime = 0;
+					player->mGaugeTarget = 0;
+					player->mGaugeTime   = 0;
 				}
 			} else {
-				player->_9AC0      = 0;
-				player->mGaugeTime = 0;
+				player->mGaugeTarget = 0;
+				player->mGaugeTime   = 0;
 			}
 		} else {
-			player->_9AC0      = 0;
-			player->mGaugeTime = 0;
+			player->mGaugeTarget = 0;
+			player->mGaugeTime   = 0;
 		}
 	}
 }
@@ -1791,13 +1791,13 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 		        && IsRadarActionState(&player->mRadar, 0))) {
 			if (IsPlayerAttachmentEquipped(player, 0)) {
 				if (!(gGame.mStatus.mFlags & 0x100)) {
-					if (player->mPlug._D3C && (pad->mTrigger & 0x300)) {
+					if (player->mPlug.mConnection && (pad->mTrigger & 0x300)) {
 						if (player->mLift.mPlugTarget) {
 							StartInteractionEvent(player->mLift.mPlugTarget);
 							StopPlayerMotion(player);
 							speed = 0;
 						}
-					} else if (IsLiftActionState(&player->mLift, 0) && IsPushActionState(&player->mPush, 0) && !player->mPlug._D3C
+					} else if (IsLiftActionState(&player->mLift, 0) && IsPushActionState(&player->mPush, 0) && !player->mPlug.mConnection
 					           && player->mFloorContacts[4].objectIndex < 0 && (pad->mButton & 0x100))
 						player->mLiftPlugFlags |= 0x80;
 				}
@@ -2022,7 +2022,7 @@ void XObjChr::UpdateObject(u32 frames)
 		pad->Clear();
 	if ((mMenu.mAtc.mOpen > 0 || mMenu.mDrs.mOpen > 0) && mTumble.mState) {
 		PlayGameSound(&gGame.mSound, 0x86, 255);
-		if (mMenu.mAtc._280 != 3)
+		if (mMenu.mAtc.mMenuType != 3)
 			mMenu.mSel = mMenu.mPrevSel;
 		mMenu.mAtc.Select(0);
 		mMenu.mDrs.Select(0);
@@ -2417,7 +2417,7 @@ static inline bool IsDown(const XObjChr* chr)
 {
 	bool ret = false;
 	if (IsStopped(chr)) {
-		if (chr->_158A4 != 0) {
+		if (chr->mBatteryDrains != 0) {
 			ret = true;
 		}
 	}
@@ -2832,11 +2832,11 @@ static inline bool IsLiftDone(const XObjChr* chr)
 static inline void TakeOutTool(XObjChr* chr, s16 item)
 {
 	if (chr->mScriptAttach == 0) {
-		chr->mLift.mState = 20;
-		chr->mLift._48    = item;
+		chr->mLift.mState         = 20;
+		chr->mLift.mPendingItemId = item;
 	} else {
-		chr->mLift.mState = 24;
-		chr->mLift._48    = item;
+		chr->mLift.mState         = 24;
+		chr->mLift.mPendingItemId = item;
 	}
 }
 
@@ -2858,13 +2858,13 @@ extern "C" void ClosePlayerEquipmentRings(XObjChrMenu* menu, s32 result)
 {
 	if (result == 0) {
 		PlayGameSound(&gGame.mSound, 0x86, 255);
-		if (menu->mAtc._280 != 3)
+		if (menu->mAtc.mMenuType != 3)
 			menu->mSel = menu->mPrevSel;
 	} else if (result > 0) {
 		PlayGameSound(&gGame.mSound, 0x88, 255);
 	} else if (result < 0) {
 		PlayGameSound(&gGame.mSound, 0x86, 255);
-		if (menu->mAtc._280 != 3)
+		if (menu->mAtc.mMenuType != 3)
 			menu->mSel = menu->mPrevSel;
 	}
 	menu->mAtc.Select(result);
@@ -2896,7 +2896,7 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 	}
 	CGs* gs   = &gGame.mGs;
 	CTpl* tpl = &gGame.mTpl;
-	if (menu->mAtc._280 == 3) {
+	if (menu->mAtc.mMenuType == 3) {
 		if (menu->mSel == 0) {
 			menu->mTargetY = menu->mAtc.mCursorY;
 			menu->mTargetX = menu->mAtc.mCursorX;
@@ -3023,7 +3023,7 @@ extern "C" void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames)
 	BOOL active = gGame.mEvt.mData.mScript == NULL;
 	if (CanSelectEquipmentRing(menu) && active) {
 		CPad pad(0);
-		if (menu->mAtc._280 == 3) {
+		if (menu->mAtc.mMenuType == 3) {
 			u8 dir = pad.mPad->mDirButton & 0xF;
 			if (dir == 8 && (menu->mSel == 1 || menu->mSel < 0)) {
 				menu->mSel = 0;
@@ -3060,7 +3060,7 @@ extern "C" void UpdatePlayerEquipmentRings(XObjChrMenu* menu, u32 frames)
 	if (menu->IsOpen()) {
 		if (menu->IsOpening()) {
 			if (menu->mFade < 1.0f) {
-				if (menu->mAtc._280 == 3) {
+				if (menu->mAtc.mMenuType == 3) {
 					if (menu->mSel >= 0)
 						FadeEquipmentRingIn(menu, frames);
 					else
@@ -3090,7 +3090,7 @@ u32 DrsMenu::GetItemColor(s32 index)
 		blue  = 32;
 		green = 32;
 		red   = 32;
-	} else if (_280 == 3) {
+	} else if (mMenuType == 3) {
 		if (IsWorn(this, index)) {
 			red   = 50;
 			green = 200;
@@ -3218,7 +3218,7 @@ void OctaMenu::Open(s32 focus)
 	for (int i = 0; i < 8; i++) {
 		mItems[i].mPulsePhase = DEG2RAD * (rand() % 360);
 		mItems[i]._0C         = DEG2RAD * (rand() % 360);
-		mItems[i]._10         = mFocus != 0 ? 0.3f : 0.5f;
+		mItems[i].mScale      = mFocus != 0 ? 0.3f : 0.5f;
 	}
 	mCursorIndex = -1;
 	mLabelLength = 0;
@@ -3237,10 +3237,10 @@ void OctaMenu::Open(s32 focus)
 void DrsMenu::Open(s32 focus)
 {
 	// NONMATCHING: the costume ids are read from the unit's rodata
-	if (_280 == 3) {
+	if (mMenuType == 3) {
 		s16 ids[8] = { 0x18, 0x20, 0x22, 0x19, 0x1A, 0x1E, 0x1F, 0x21 };
 		for (s32 i = 0; i < 8; ++i) {
-			if (_280 == 2)
+			if (mMenuType == 2)
 				mItems[i].mAvailable = 1;
 			else
 				mItems[i].mAvailable = HasItem(mChr, ids[i]);
@@ -3248,14 +3248,14 @@ void DrsMenu::Open(s32 focus)
 	} else {
 		s16 ids[8] = { 0x19, 0x21, 0x20, 0x18, 0x22, 0x1F, 0x1E, 0x1A };
 		for (s32 i = 0; i < 8; ++i) {
-			if (_280 == 2)
+			if (mMenuType == 2)
 				mItems[i].mAvailable = 1;
 			else
 				mItems[i].mAvailable = HasItem(mChr, ids[i]);
 		}
 	}
 	OctaMenu::Open(focus);
-	if (_280 == 3) {
+	if (mMenuType == 3) {
 		if (mPendingFirstVisibleItem >= 0) {
 			mFirstVisibleItem        = mPendingFirstVisibleItem;
 			mPendingFirstVisibleItem = -1;
@@ -3284,7 +3284,7 @@ u32 AtcMenu::GetItemColor(s32 index)
 		blue  = 32;
 		green = 32;
 		red   = 32;
-	} else if (_280 == 3) {
+	} else if (mMenuType == 3) {
 		if (IsAttachment(mChr, mItems[index].mType)) {
 			red   = 50;
 			green = 200;
@@ -3396,13 +3396,13 @@ void AtcMenu::ConfirmSelection()
 void AtcMenu::Open(s32 focus)
 {
 	for (s32 i = 0; i < 8; ++i) {
-		if (_280 == 2)
+		if (mMenuType == 2)
 			mItems[i].mAvailable = 1;
 		else
 			mItems[i].mAvailable = GetPlayerAttachmentCount(mChr, mItems[i].mType);
 	}
 	OctaMenu::Open(focus);
-	if (_280 == 3) {
+	if (mMenuType == 3) {
 		if (mPendingFirstVisibleItem >= 0) {
 			mFirstVisibleItem        = mPendingFirstVisibleItem;
 			mPendingFirstVisibleItem = -1;
@@ -3470,7 +3470,7 @@ u32 OctaMenu::GetItemColor(s32 index)
 		blue  = 32;
 		green = 32;
 		red   = 32;
-	} else if (_280 == 3) {
+	} else if (mMenuType == 3) {
 		red   = 50;
 		green = 50;
 		blue  = 200;
@@ -3526,7 +3526,7 @@ static inline void ApproachItemScale(f32& value, f32 target, f32 step)
 extern "C" void UpdateEquipmentRingAnimation(OctaMenu* ring, u32 frames)
 {
 	if (ring->mFocus != 0) {
-		if (ring->_280 == 3) {
+		if (ring->mMenuType == 3) {
 			if (ring->mFade < 1.0f)
 				RaiseRingValue(ring->mFade, 1.0f, 1.0f / (0.18f * IDLE_SECOND), frames);
 			else if (ring->mFade > 1.0f)
@@ -3538,7 +3538,7 @@ extern "C" void UpdateEquipmentRingAnimation(OctaMenu* ring, u32 frames)
 				LowerRingValue(ring->mFade, 0.7f, 1.0f / (0.25f * IDLE_SECOND), frames);
 		}
 		if (ring->mGlow < 1.0f) {
-			if (ring->_280 == 3)
+			if (ring->mMenuType == 3)
 				ring->mGlow = 1.0f;
 			else
 				RaiseRingValue(ring->mGlow, 1.0f, 1.0f / (0.35f * IDLE_SECOND), frames);
@@ -3549,7 +3549,7 @@ extern "C" void UpdateEquipmentRingAnimation(OctaMenu* ring, u32 frames)
 				RaiseRingValue(ring->mFade, 1.0f, 1.0f / (0.18f * IDLE_SECOND), frames);
 		} else if (ring->mOpen < 0) {
 			if (ring->mFade > 0.0f) {
-				if (ring->_280 == 3)
+				if (ring->mMenuType == 3)
 					LowerRingValue(ring->mFade, 0.0f, 1.0f / (0.18f * IDLE_SECOND), frames);
 				else
 					LowerRingValue(ring->mFade, 0.0f, 1.0f / (0.25f * IDLE_SECOND), frames);
@@ -3558,7 +3558,7 @@ extern "C" void UpdateEquipmentRingAnimation(OctaMenu* ring, u32 frames)
 				ring->FinishClose();
 		}
 		if (ring->mGlow > 0.0f) {
-			if (ring->_280 == 3)
+			if (ring->mMenuType == 3)
 				ring->mGlow = 0.0f;
 			else
 				LowerRingValue(ring->mGlow, 0.0f, 1.0f / (0.35f * IDLE_SECOND), frames);
@@ -3568,22 +3568,22 @@ extern "C" void UpdateEquipmentRingAnimation(OctaMenu* ring, u32 frames)
 		for (s32 i = 0; i < 8; ++i) {
 			OctaMenuItem& item = ring->mItems[i];
 			if (ring->mFocus != 0) {
-				if (ring->_280 == 3)
-					ApproachItemScale(item._10, 0.4f, 0.02f * frames);
+				if (ring->mMenuType == 3)
+					ApproachItemScale(item.mScale, 0.4f, 0.02f * frames);
 				else
-					ApproachItemScale(item._10, 0.3f, 0.01f * frames);
+					ApproachItemScale(item.mScale, 0.3f, 0.01f * frames);
 			} else {
 				item.mPulsePhase += (DEG2RAD * 8.0f) * frames;
 				item._0C += (DEG2RAD * 3.0f) * frames;
-				if (ring->_280 == 3) {
+				if (ring->mMenuType == 3) {
 					if (i == ring->mCursorIndex)
-						item._10 = 0.5f;
+						item.mScale = 0.5f;
 					else
-						item._10 = 0.4f;
+						item.mScale = 0.4f;
 				} else if (i == ring->mCursorIndex)
-					ApproachItemScale(item._10, 0.7f, 0.03f * frames);
+					ApproachItemScale(item.mScale, 0.7f, 0.03f * frames);
 				else
-					ApproachItemScale(item._10, 0.5f, 0.02f * frames);
+					ApproachItemScale(item.mScale, 0.5f, 0.02f * frames);
 			}
 		}
 		if ((ring->mPhase += (1.0f / (0.3f * IDLE_SECOND)) * frames) >= 2.0f)
@@ -3602,7 +3602,7 @@ extern "C" void UpdateEquipmentRingAnimation(OctaMenu* ring, u32 frames)
 				f32& glow = ring->mItems[i].mHighlight;
 				if (i == ring->mCursorIndex)
 					RaiseRingValue(glow, 1.0f, 1.0f / (0.2f * IDLE_SECOND), frames);
-				else if (ring->_280 == 3)
+				else if (ring->mMenuType == 3)
 					glow = 0.0f;
 				else
 					LowerRingValue(glow, 0.0f, 1.0f / (0.25f * IDLE_SECOND), frames);
@@ -3625,7 +3625,7 @@ extern "C" s32 HandleEquipmentRingInput(OctaMenu* menu, BOOL active)
 	if (menu->mOpen > 0 && menu->mFocus == 0) {
 		CPad pad(0);
 		s32 cursor;
-		if (menu->_280 == 3) {
+		if (menu->mMenuType == 3) {
 			u32 dir = active ? pad.mPad->mDirRepeat & 0xF : 0;
 			if (dir & 1) {
 				if (--menu->mFirstVisibleItem < 0)
@@ -3661,7 +3661,7 @@ extern "C" s32 HandleEquipmentRingInput(OctaMenu* menu, BOOL active)
 			else
 				cursor = menu->mCursorIndex;
 		}
-		if (menu->_280 != 3) {
+		if (menu->mMenuType != 3) {
 			TurnJoint(DEG2RAD * gEquipmentHeadYaw[cursor + 1], &menu->mChr->mHeadTurn.mNeck);
 			if (fpclassify(menu->mHeadTurn) == FP_NAN)
 				TurnJoint(DEG2RAD * gEquipmentHeadPitch[cursor + 1] + -1.52f, &menu->mChr->mHeadTurn.mHead);
@@ -4036,7 +4036,7 @@ void SetObjectJointTranslationByPath(CJObj*, s32, s32*, f32, f32, f32);
 }
 static inline void ClearPlugState(XObjPlug* plug, BOOL resetJoint)
 {
-	plug->_D3C = 0;
+	plug->mConnection = 0;
 	if (resetJoint) {
 		s32 path        = lbl_8065B260;
 		HSD_JObj* joint = GetJointByPath(plug->mJObj, &path, 1);
@@ -4092,7 +4092,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 	if (gGame.mStatus.mFlags & 0x100) {
 		originX = 320;
 		originY = 276;
-	} else if (menu->_280 == 3) {
+	} else if (menu->mMenuType == 3) {
 		originX = 320;
 		originY = 228;
 	} else {
@@ -4100,7 +4100,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		menu->mChr->ProjectOffsetToScreen(&offset, &originX, &originY, 0, NULL);
 	}
 	f32 fade = menu->mFade;
-	if (menu->_280 == 3) {
+	if (menu->mMenuType == 3) {
 
 		for (s32 i = 0; i < 8; ++i) {
 			OctaMenuItem& item = menu->mItems[i];
@@ -4130,7 +4130,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			slotX[i] = item.mSlotOffset;
 		}
 		scale = 1.1f;
-	} else if (menu->_280 == 0) {
+	} else if (menu->mMenuType == 0) {
 		for (int i = 0; i < 8; ++i) {
 			slotY[i] = gEquipmentRingY[i];
 			slotX[i] = gEquipmentRingX[i];
@@ -4152,13 +4152,13 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		gEquipmentIconWidth[i]  = 100.f;
 		gEquipmentIconHeight[i] = 100.f * ((f32)h / w);
 	}
-	s32 count = menu->_280 == 3 ? 7 : 8;
+	s32 count = menu->mMenuType == 3 ? 7 : 8;
 	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
 	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
 	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
-	if (menu->_280 == 3) {
+	if (menu->mMenuType == 3) {
 		s32 start = menu->mFirstVisibleItem, last = (start + 6) % 7;
-		f32 itemSize = menu->mItems[start]._10 * (f32)sin((PI * .5f) * fade);
+		f32 itemSize = menu->mItems[start].mScale * (f32)sin((PI * .5f) * fade);
 		f32 radius   = 60.f + 20.f * itemSize;
 		f32 y0       = originY + (scale * slotY[start]) * radius;
 		f32 left     = originX + (-3.f * scale) * radius;
@@ -4221,13 +4221,13 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		sin(.5f * item._0C);
 		sin(.7f * item._0C);
 		f32 pulse;
-		if (menu->_280 == 3)
-			pulse = item._10 * (f32)sin((PI * .5f) * fade);
+		if (menu->mMenuType == 3)
+			pulse = item.mScale * (f32)sin((PI * .5f) * fade);
 		else
-			pulse = item._10 * (f32)sin(2.0943952f * fade);
+			pulse = item.mScale * (f32)sin(2.0943952f * fade);
 		f32 x, y;
 
-		if (menu->_280 == 3) {
+		if (menu->mMenuType == 3) {
 			x        = originX + 68.f * (scale * slotX[i]);
 			y        = originY + 68.f * (scale * slotY[i]);
 			s32 slot = i - menu->mFirstVisibleItem;
@@ -4238,12 +4238,12 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 				menu->mCursorX = menu->mFade < 1.f ? x : 320.f;
 			}
 		} else {
-			f32 radius = 60.f + 20.f * item._10;
+			f32 radius = 60.f + 20.f * item.mScale;
 			x          = originX + fade * (radius * (scale * slotX[i]));
 			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
 		}
-		if (menu->_280 != 3 && menu->mFocus) {
-			if (menu->_280 == 0) {
+		if (menu->mMenuType != 3 && menu->mFocus) {
+			if (menu->mMenuType == 0) {
 				y += 80.f * (slotY[i] * (f32)sin(PI * menu->mGlow));
 				x += 80.f * (slotX[i] * (f32)sin(PI * menu->mGlow));
 			} else {
@@ -4284,9 +4284,9 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
 			SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
 		}
-		if (menu->_280 == 3 && (item.mSlotOffset >= 3.02f || item.mSlotOffset <= -3.02f)) {
+		if (menu->mMenuType == 3 && (item.mSlotOffset >= 3.02f || item.mSlotOffset <= -3.02f)) {
 			f32 span   = 7.f * scale;
-			f32 radius = 20.f * item._10 + 60.f;
+			f32 radius = 20.f * item.mScale + 60.f;
 			if (item.mSlotOffset >= 3.02f) {
 				x     = x - span * radius;
 				alpha = Abs(item.mSlotOffset - 3.f);
@@ -4316,11 +4316,11 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		f32 width = gEquipmentIconWidth[i];
 		sin(2.0943952f * fade);
 		f32 x, y;
-		if (menu->_280 == 3) {
+		if (menu->mMenuType == 3) {
 			y = originY + 68.f * (scale * slotY[i]);
 			x = originX + 68.f * (scale * slotX[i]);
 		} else {
-			f32 radius = 60.f + 20.f * item._10;
+			f32 radius = 60.f + 20.f * item.mScale;
 			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
 			x          = originX + fade * (radius * (scale * slotX[i]));
 		}
@@ -4391,7 +4391,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 		return result;
 	switch (args[0]) {
 	case 100:
-		return mPlug._D3C;
+		return mPlug.mConnection;
 	case 101: {
 		XObj* obj = FindObj(args[1]);
 		return obj->GetCategory() == 9 ? GetClearLetickerApproachSide(obj, &mMoveTranslate) : 1;
@@ -4434,7 +4434,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 		break;
 	}
 	case 105:
-		if (mPlug._D3C) {
+		if (mPlug.mConnection) {
 			PlayGameSound(&gGame.mSound, 0x37, 255);
 			ClearPlugState(&mPlug, TRUE);
 		}
@@ -4464,8 +4464,8 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 		result = -1;
 		break;
 	case 110: {
-		mPlug._D3C = 0;
-		s32 path[] = { 0 };
+		mPlug.mConnection = 0;
+		s32 path[]        = { 0 };
 		CJObj joint(GetJointByPath(mPlug.mJObj, path, 1));
 		joint.SetRotationX(0, 0);
 		joint.SetRotationZ(0, 0);
@@ -4554,8 +4554,8 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			RequestScriptAttachment(this, 6);
 			mScriptAttach = 1;
 		} else {
-			mLift.mState = 24;
-			mLift._48    = args[1];
+			mLift.mState         = 24;
+			mLift.mPendingItemId = args[1];
 		}
 		result = -1;
 		break;
@@ -4572,8 +4572,8 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			} else if (args[1] == 56) {
 				RequestScriptAttachment(this, 7);
 			} else {
-				mLift.mState = 20;
-				mLift._48    = args[1];
+				mLift.mState         = 20;
+				mLift.mPendingItemId = args[1];
 			}
 		}
 		result = -1;
@@ -4620,13 +4620,13 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 	case 702:
 		return mInAir;
 	case 800:
-		_158A4 = 1;
+		mBatteryDrains = 1;
 		break;
 	case 801:
-		_158A4 = 0;
+		mBatteryDrains = 0;
 		break;
 	case 802:
-		return _158A4;
+		return mBatteryDrains;
 	case 850:
 		mParams._1C[0] = 1;
 		break;
@@ -4636,8 +4636,8 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 	case 852:
 		return (s32)mParams._1C[0] > 0;
 	case 900:
-		_158A8        = args[1];
-		mItemTintWord = ((u32)args[2] << 24) | ((u32)args[3] << 16) | ((u32)args[4] << 8) | 255;
+		mSquirterContent = args[1];
+		mItemTintWord    = ((u32)args[2] << 24) | ((u32)args[3] << 16) | ((u32)args[4] << 8) | 255;
 		break;
 	case 901:
 		mCameraTargetMarginSetting = args[1] / 100.f;
@@ -5709,7 +5709,7 @@ void XObjChr::DrawScreenOverlay()
 static inline s32 ActionTargetPlacement(const XAction& action)
 {
 	if (action.mTarget != NULL) {
-		UnkStageObj* placement = action.mTarget->mCoord._00;
+		UnkStageObj* placement = action.mTarget->mCoord.mPlacement;
 		return placement - GetStagePlacementByIndex(0);
 	}
 	return -1;
@@ -5892,7 +5892,7 @@ void XObjChr::DrawGroundShadowAt(const Vec*, f32 opacity)
 	CVec jointScale;
 	HSD_JObjGetScale(FindJointByPath(mJObj, path, 2), &jointScale);
 	Vec rotation   = { -HALF_PI, 0.0f, 0.0f };
-	u32 shadowSize = mAttr._00 != NULL ? mAttr._00->mShadowSize : 0;
+	u32 shadowSize = mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0;
 	Vec size       = (mMoveScale * (f32)shadowSize) + ((jointScale * 2.5f) * 3.0f);
 	CGs& gs        = gGame.mGs;
 	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
@@ -6401,7 +6401,7 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			case 6:
 			case 7:
 			case 8:
-				if (p->mPopper._2C != 0.0f)
+				if (p->mPopper.mShotStrength != 0.0f)
 					index = 30;
 				break;
 			default:
@@ -6476,7 +6476,7 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 	if ((s32)stats._1C[0] > 0) {
 		drain = 0.0f;
 		stats.SetBattery(stats.mMaxBattery);
-	} else if (p->mPlug._D3C > 0 && (u8)p->mPlug._D3C) {
+	} else if (p->mPlug.mConnection > 0 && (u8)p->mPlug.mConnection) {
 		drain = 0.0f;
 		stats.SetBattery(stats.mMaxBattery);
 	} else if (gGame.mEvt.mData.mScript || (gGame.mStatus.mFlags & 0xC00)) {
@@ -6500,7 +6500,7 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 	} else {
 		p->mIdleTimer = (f32)IDLE_SECOND;
 	}
-	if (p->_158A4) {
+	if (p->mBatteryDrains) {
 		f32 battery;
 		if ((p->mTumble.mState == 8 || p->mTumble.mState == 9) && p->mHitStrength > 0.0f) {
 			battery         = stats.mBattery - p->mHitStrength;
@@ -6596,7 +6596,7 @@ extern "C" void UpdatePlayerLookAtObjects(XObjChr* player, u32 frames)
 			    || IsActiveActionTarget(player->mTumble, obj) || IsActiveActionTarget(player->mCopter, obj)
 			    || IsActiveActionTarget(player->mPopper, obj) || IsActiveActionTarget(player->mRadar, obj))
 				continue;
-			s16 priority = obj->mAttr._00 != NULL ? obj->mAttr._00->mLookPriority : 0;
+			s16 priority = obj->mAttr.mObjData != NULL ? obj->mAttr.mObjData->mLookPriority : 0;
 			if (priority == 0)
 				continue;
 			Vec target = obj->mMoveTranslate;
@@ -6605,7 +6605,7 @@ extern "C" void UpdatePlayerLookAtObjects(XObjChr* player, u32 frames)
 			f32 dx       = pos.x - target.x;
 			f32 dz       = pos.z - target.z;
 			f32 distance = sqrtf(dx * dx + dz * dz);
-			s16 range    = obj->mAttr._00 != NULL ? obj->mAttr._00->mLookRange : 0;
+			s16 range    = obj->mAttr.mObjData != NULL ? obj->mAttr.mObjData->mLookRange : 0;
 			if (!(distance < range))
 				continue;
 			f32 yaw = WrapAngle((f32)atan2(target.x - pos.x, target.z - pos.z) - player->mMoveRotate.y);
@@ -7315,7 +7315,7 @@ extern "C" s32 GetObjectPoolUsedCount(const CGame* game, s32 index)
  */
 extern "C" UnkStageObj* GetIndexedCoordPlacement(const CoordInfo* info, s32 index)
 {
-	return info->_00 + index;
+	return info->mPlacement + index;
 }
 
 /**
@@ -7446,7 +7446,7 @@ extern "C" BOOL IsObjectClimbableLedge(const XObj* object)
  */
 extern "C" s32 GetObjectPlacementParam(const XObj* object, s32 index)
 {
-	const s32* entries = &object->_25C;
+	const s32* entries = &object->mPlacementParam0;
 	return entries[index];
 }
 
@@ -7923,7 +7923,7 @@ extern "C" BOOL IsPopperActionState(const XActPopper* act, s32 wanted)
  */
 extern "C" CVec* GetPlayerPlugCordPull(XObjPlug* plug)
 {
-	return &plug->mCord._6C;
+	return &plug->mCord.mPull;
 }
 
 /**
@@ -8017,7 +8017,7 @@ extern "C" s32 IsGameMenuActive(const CGame* game)
  */
 extern "C" u32 GetPlayerPlugConnection(const XObjPlug* plug)
 {
-	return plug->_D3C;
+	return plug->mConnection;
 }
 
 /**

@@ -17,10 +17,10 @@ extern "C" {
 
 static inline void AttachPlugCord(XObjPlug* plug)
 {
-	if (plug->_D38 == 0) {
+	if (plug->mCordEndsPinned == 0) {
 		SetPlugCordEndpointSource(&plug->mCord, 1, &plug->mCordJointPos);
 		SetPlugCordEndpointSource(&plug->mCord, 2, &plug->mCordJointTip);
-		plug->_D38 = 1;
+		plug->mCordEndsPinned = 1;
 	}
 }
 
@@ -44,15 +44,15 @@ void XObjPlug::UpdateObject(u32 frames)
 			s32 path[] = { 0, 0 };
 			CJObj joint(FindJointByPath(mJObj, path, 2));
 			UpdateCordJoint(this, joint);
-		} else if (_D3C != 0) {
+		} else if (mConnection != 0) {
 			AttachPlugCord(this);
 			s32 path[] = { 0, 0 };
 			CJObj joint(FindJointByPath(mJObj, path, 2));
 			UpdateCordJoint(this, joint);
-		} else if (_D38 == 1) {
+		} else if (mCordEndsPinned == 1) {
 			SetPlugCordEndpointSource(&mCord, 1, NULL);
 			SetPlugCordEndpointSource(&mCord, 2, NULL);
-			_D38 = 0;
+			mCordEndsPinned = 0;
 		}
 		const Vec& tint = mColorStep[1].mValue;
 		mCord.mColor = mCord._60 = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8) | 0xff;
@@ -61,7 +61,7 @@ void XObjPlug::UpdateObject(u32 frames)
 		ResetObjectState();
 	}
 	mWire.UpdateObject(frames);
-	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 0x0400000000000000ULL) && _D3C == 0) {
+	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 0x0400000000000000ULL) && mConnection == 0) {
 		Vec pos = GetPlugCordPointPosition(&mCord, 18);
 		SetPos(pos, 0);
 		CVec tip, base, rot;

@@ -45,7 +45,8 @@ struct CJArchiveScene {
 	CJArchiveModel** mModels; // _00
 	CJArchiveDesc* mCamera;   // _04
 	CJArchiveDesc** mLights;  // _08, 8 of them
-	CJArchiveDesc* _0C;       // _0C
+	CJArchiveDesc* _0C;       // _0C, a fourth desc after mCamera and mLights; SetupScene copies it into CJArchive::mDesc[9] outside japan,
+	                          // nothing reads that afterwards
 };
 
 // japan has one desc list fewer, the last one, which the usa SetupScene fills in wrong

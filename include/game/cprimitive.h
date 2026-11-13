@@ -82,7 +82,7 @@ typedef char CPrimitive_size_check[sizeof(CPrimitive) == 0x168 ? 1 : -1];
 
 class CLine : public CPrimitive {
 public:
-	u32 _168; // _168
+	u32 _168; // _168, no access in the source (CTriangle's _168 is unnamed too)
 
 	virtual ~CLine() { } // _08
 
@@ -95,7 +95,7 @@ typedef char CLine_size_check[sizeof(CLine) == 0x16C ? 1 : -1];
 // lit draws give the whole list the normal of its first three points
 class CTriangle : public CPrimitive {
 public:
-	u32 _168; // _168
+	u32 _168; // _168, never read or written; cgsctor.cpp only sets the vtable, the Draw overloads don't touch it
 
 	virtual ~CTriangle() { } // _08
 
@@ -111,8 +111,8 @@ typedef char CTriangle_size_check[sizeof(CTriangle) == 0x16C ? 1 : -1];
 // a unit circle fan, the size comes from the scale
 class CCircle : public CPrimitive {
 public:
-	u32 _168;    // _168
-	u32 _16C;    // _16C
+	u32 _168;    // _168, never read or written; cgsctor.cpp only sets the vtable, the Draw/DrawLit overloads don't touch it
+	u32 _16C;    // _16C, no access in the source
 	Vec mCenter; // _170
 	// _17C
 

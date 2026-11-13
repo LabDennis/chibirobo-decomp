@@ -223,7 +223,7 @@ extern "C" void ApplySpiderPlacement(XObjSpider* spider)
 	spider->mHome.z          = PlacementPosition(spider->mCoord, gSpiderPosition).z;
 	spider->mDir             = PlacementRotation(spider->mCoord, gSpiderRotation).y;
 	spider->mRadius          = 20.0f * PlacementScale(spider->mCoord, gSpiderScale).x;
-	switch (spider->_25C) {
+	switch (spider->mPlacementParam0) {
 	case 0:
 		spider->SetState(0);
 		spider->mFlags.mFlags |= 0x08000000;
@@ -284,7 +284,7 @@ extern "C" void ApplySpiderPlacement(XObjSpider* spider)
 	if (spider->mFlags.mFlags & 0x40) {
 		spider->mFlags.mFlags |= 0x80;
 		spider->mFlags.mFlags |= 0x100;
-		spider->mMoveTranslate.y = spider->_260 + spider->mHome.y;
+		spider->mMoveTranslate.y = spider->mPlacementParam1 + spider->mHome.y;
 	}
 }
 
@@ -325,7 +325,7 @@ void XObjSpider::ResetObjectState()
 		for (s32 i = 0; i < count; ++i) {
 			XObj* candidate = gGame.mXObjs.mObjects[i];
 			if (candidate->mStatus.mFlags & 1ULL) {
-				UnkStageObj* placement = candidate->mCoord._00;
+				UnkStageObj* placement = candidate->mCoord.mPlacement;
 				if (placement->mObjectId == 0x13C) {
 					++found;
 					*output++ = candidate;
@@ -474,7 +474,7 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 {
 	if (!(mStatus.mFlags & 8ULL))
 		return;
-	switch (_25C) {
+	switch (mPlacementParam0) {
 	case 3:
 	case 4:
 	case 5:
@@ -485,7 +485,7 @@ void XObjSpider::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 	}
 	Vec pos  = *origin;
 	Vec rot  = { -HALF_PI, 0.0f, 0.0f };
-	Vec size = mMoveScale * (f32)(mAttr._00 != NULL ? mAttr._00->mShadowSize : 0);
+	Vec size = mMoveScale * (f32)(mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0);
 	size.x   = mRadius;
 	size.y   = mRadius;
 	size.z   = mRadius;
@@ -807,7 +807,7 @@ extern "C" void LaunchSpiderShot(XObjSpider* spider)
 	s32 path[8] = { 0, 0, 0, 0, 1, 1, 0, 0 };
 	joint.Attach(FindJointByPath(spider->mJObj, path, 8));
 	CVec pos(GetJointPosition(joint.mJObj));
-	switch (spider->_25C) {
+	switch (spider->mPlacementParam0) {
 	case 0:
 		spider->mShotTo.x = pos.x + 72.0f * (f32)sin(spider->mDir);
 		spider->mShotTo.y = pos.y;
@@ -1041,7 +1041,7 @@ extern "C" void ExecuteSpiderCommand(XObjSpider* spider, u32 frames)
 		spider->mStartPos.y      = spider->mHome.y;
 		spider->mStartPos.z      = spider->mHome.z;
 		spider->mMoveTranslate.x = spider->mHome.x;
-		spider->mMoveTranslate.y = (f32)spider->_260 + spider->mHome.y;
+		spider->mMoveTranslate.y = (f32)spider->mPlacementParam1 + spider->mHome.y;
 		spider->mMoveTranslate.z = spider->mHome.z;
 		spider->mMoveTranslate.mTarget.Set(spider->mMoveTranslate.x, spider->mMoveTranslate.y, spider->mMoveTranslate.z);
 		spider->mCommand = 0;
@@ -1098,7 +1098,7 @@ extern "C" void ExecuteSpiderCommand(XObjSpider* spider, u32 frames)
  */
 void XObjSpider::State0(u32 frames)
 {
-	if (_25C == 11 && (mFlags.mFlags & 0x400000))
+	if (mPlacementParam0 == 11 && (mFlags.mFlags & 0x400000))
 		SetState(4);
 }
 
@@ -1612,7 +1612,7 @@ void XObjSpider::State6(u32 frames)
 		f32 swing        = (f32)sin(DEG2RAD * (f32)((mCounter * 4) % 360));
 		f32 offset       = 8.0f * swing;
 		mMoveTranslate.x = mHome.x + offset - 4.0f;
-		if (_25C == 11) {
+		if (mPlacementParam0 == 11) {
 			if (mFlags.mFlags & 0x200000) {
 				PlayGameSound(&gGame.mSound, 0x131, 255);
 				mFlags.mFlags |= 0x100000;

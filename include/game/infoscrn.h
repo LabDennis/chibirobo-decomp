@@ -10,17 +10,18 @@ class XObj;
 // the hud over the game, CGame's mInfoScrn. class name from RTTI, its vtable only has the dtor
 class InfoScrn {
 public:
-	CScrnFade mFade;              // _00
-	CScrnWipe mWipe;              // _34
-	s32 _98;                      // _98
-	s32 mHudState;                // _9C
-	s32 mAttachmentState;         // _A0
-	s32 mMenuHudState;            // _A4
-	f32 mHudAlpha;                // _A8
-	f32 mAttachmentAlpha;         // _AC
-	f32 mMenuHudAlpha;            // _B0
-	s32 mFrameCount;              // _B4
-	s32 _B8;                      // _B8
+	CScrnFade mFade;      // _00
+	CScrnWipe mWipe;      // _34
+	s32 _98;              // _98, written 0 in InitInfoScreen and ResetGameHudState, never read
+	s32 mHudState;        // _9C
+	s32 mAttachmentState; // _A0
+	s32 mMenuHudState;    // _A4
+	f32 mHudAlpha;        // _A8
+	f32 mAttachmentAlpha; // _AC
+	f32 mMenuHudAlpha;    // _B0
+	s32 mFrameCount;      // _B4
+	s32 _B8; // _B8, set -1 when the attachment hud starts to show; the shown state fades out once it isn't -1, but only init/reset write it
+	         // (0) so that test never fires
 	s32 mBatteryState;            // _BC
 	f32 mBatteryAlpha;            // _C0
 	f32 mBatteryOffsetY;          // _C4
@@ -37,7 +38,7 @@ public:
 	f32 mDigitLastDelta[4];       // _114
 	u8 mBatteryEmpty;             // _124
 	u8 _125[0x128 - 0x125];       // _125
-	Vec _128;                     // _128
+	Vec _128;                     // _128, zeroed in InitInfoScreen and ResetGameHudState, never read
 	u8 mBatteryDim;               // _134
 	u8 _135[0x138 - 0x135];       // _135
 	f32 mBatteryDimAlpha;         // _138
@@ -54,17 +55,17 @@ public:
 	s32 mItemMax;                 // _164, 5, 10 or 15 by the upgrades in chibi robo's items
 	s32 mNextItemMax;             // _168
 	f32 mClockScale;              // _16C
-	Vec _170;                     // _170
+	Vec _170;                     // _170, zeroed in InitInfoScreen and ResetGameHudState, never read
 	s32 mIconFrameTimer;          // _17C
 	s32 mIconFrame;               // _180
-	s32 _184;                     // _184
+	s32 _184;                     // _184, written 0 in InitInfoScreen and ResetGameHudState, never read
 	s32 mObjectGaugeState;        // _188
 	f32 mObjectGaugeAlpha;        // _18C
 	Vec mObjectGaugePos;          // _190
 	XObj* mGaugeTarget;           // _19C, what the gauge hangs over
 	s32 mPlayerIconState;         // _1A0
 	f32 mPlayerIconAlpha;         // _1A4
-	Vec _1A8;                     // _1A8
+	Vec _1A8;                     // _1A8, zeroed in InitInfoScreen and ResetGameHudState, never read
 	s32 mTimerState;              // _1B4
 	f32 mTimerAlpha;              // _1B8
 	f32 mTimer;                   // _1BC, frames
@@ -72,7 +73,7 @@ public:
 	u8 _1C1[0x1C4 - 0x1C1];       // _1C1
 	s32 mScanlineVisibilityState; // _1C4
 	f32 mScanlineAlpha;           // _1C8
-	f32 _1CC;                     // _1CC
+	f32 _1CC;                     // _1CC, written 0.0f in InitInfoScreen and ResetGameHudState, never read
 	s32 mSelectedSaveSlot;        // _1D0
 	f32 mBatteryGauge;            // _1D4, the battery gauge, 10 a watt
 	// _1D8 vtable

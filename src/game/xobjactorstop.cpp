@@ -6,10 +6,10 @@
  */
 extern "C" void ResetActorMovementStep(void* object)
 {
-	XObjActor* actor  = (XObjActor*)object;
-	actor->mKindStep  = 0;
-	actor->_994       = 0;
-	actor->mMoveSpeed = 0.0f;
+	XObjActor* actor    = (XObjActor*)object;
+	actor->mKindStep    = 0;
+	actor->mKindCounter = 0;
+	actor->mMoveSpeed   = 0.0f;
 }
 
 /**

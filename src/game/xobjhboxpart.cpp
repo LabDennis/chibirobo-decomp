@@ -22,7 +22,7 @@ BOOL XObjHBox::LoadFromPlacement(const CoordInfo& info)
 	case 0:
 		if (!LoadFromPlacement__4XObjFRC9CoordInfo(this, &info))
 			break;
-		_80C = 0;
+		mEventScript = 0;
 		++mLoadState;
 		// fall through, the part starts reading right away
 	case 1:

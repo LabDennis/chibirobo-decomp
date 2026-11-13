@@ -165,7 +165,7 @@ void XObjActorJenny::UpdateObject(u32 frames)
 	XObjActor::UpdateObject(frames);
 	CJObj joint;
 	if (mStatus.mFlags & 0x10000) {
-		if (_CA0) {
+		if (mJointHidden) {
 			s32 path[] = { 0, 3, 0, 0, 4 };
 			joint.Attach(GetJointFromRoot(mJObj, 5, path));
 			HSD_JObjSetFlags(joint.mJObj, 0x10);
@@ -505,12 +505,12 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 	case 8:
 		switch (mCmd[1]) {
 		case 0:
-			_CA0    = 1;
-			mCmd[0] = 0;
+			mJointHidden = 1;
+			mCmd[0]      = 0;
 			break;
 		case 1:
-			_CA0    = 0;
-			mCmd[0] = 0;
+			mJointHidden = 0;
+			mCmd[0]      = 0;
 			break;
 		}
 		break;
@@ -533,13 +533,13 @@ void XObjActorJenny::ResetActorState()
 	mActorStatus.mFlags = 0;
 	mJointFlags.mFlags  = 0;
 	mHideKinds.mFlags   = 0;
-	_980                = 0.0f;
+	mHeading            = 0.0f;
 	mMoveSpeed          = 0.0f;
-	_988                = 0.0f;
-	_C84                = _988;
+	mFacing             = 0.0f;
+	_C84                = mFacing;
 	_C88                = 0.0f;
 	_C8C                = 0;
-	_CA0                = 0;
+	mJointHidden        = 0;
 	mState              = &XObjActorJenny::StateNone;
 	ResetActorMovementStep(this);
 	for (u32 i = 0; i < 20; i++) {
