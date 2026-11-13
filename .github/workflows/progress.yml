@@ -38,7 +38,10 @@ jobs:
           fi
           cp -a "$CHIBIROBO_ORIG/." orig/
       - name: Build and record progress
-        run: python3 tools/progress.py update --version GGTE01 --version GGTJ01_01 --version GGTP01 --version R24J01
+        run: |
+          # the Wii build joins only when the runner has the Japanese Wii disc
+          wii=$(python3 -c 'import sys; sys.path.insert(0, "tools"); import versions; print("--version R24J01" if versions.has_disc("R24J01") else "")')
+          python3 tools/progress.py update --version GGTE01 --version GGTJ01_01 --version GGTP01 $wii
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: verified-progress

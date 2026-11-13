@@ -61,15 +61,18 @@ The build checks the DOL and, on GameCube, the 16 RELs against the originals. Un
 
 ## Progress site
 
-The Progress workflow rebuilds the three GameCube versions and [Wii Japan](https://cleosp.com/chibirobo-decomp/#v=R24J01) on the self-hosted runner,
+The Progress workflow rebuilds the three GameCube versions on the self-hosted runner,
+plus [Wii Japan](https://cleosp.com/chibirobo-decomp/#v=R24J01) when the runner has that disc,
 then publishes the interactive page and README badges to
 [cleosp.com/chibirobo-decomp](https://cleosp.com/chibirobo-decomp/). It runs when
 source, config, or tools change on the default branch, and can also be run from
 the Actions tab. Failed builds leave the last published page in place.
 
-The runner needs `CHIBIROBO_ORIG` set to its local `orig/` folder. Only the
-progress report goes to GitHub; the discs stay on the runner. In the repo’s
-Pages settings, the publishing source should be **GitHub Actions**.
+The runner needs `CHIBIROBO_ORIG` set to its local `orig/` folder, with a
+subfolder per version as in this repository. Without `R24J01/` the Wii badge
+reads "not built". Only the progress report goes to GitHub; the discs stay on
+the runner. In the repo’s Pages settings, the publishing source should be
+**GitHub Actions**.
 
 ## Diffing
 

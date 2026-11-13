@@ -149,7 +149,7 @@ def svg(payload):
 
 
 def badge(label, percent, meaning):
-    value = f"{percent:.1f}%"
+    value = "not built" if percent is None else f"{percent:.1f}%"
     left = len(label) * 7 + 12
     right = len(value) * 7 + 12
     width = left + right
@@ -194,6 +194,10 @@ def render(output=OUTPUT, snapshot=SNAPSHOT):
             linked = percentages(release["units"])["linked"]
             (output / "badges/wii-linked.svg").write_text(
                 badge("Wii JP linked", linked, "Japanese Wii code linked from source"), encoding="utf-8")
+    # The README shows this badge on every fork; a runner without the Wii disc says so instead of a broken image.
+    if not any(release["version"] == "R24J01" for release in payload["versions"]):
+        (output / "badges/wii-linked.svg").write_text(
+            badge("Wii JP linked", None, "Japanese Wii code linked from source"), encoding="utf-8")
     print(f"rendered treemap and README badges in {output}")
 
 
