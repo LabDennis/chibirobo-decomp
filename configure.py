@@ -1136,7 +1136,7 @@ config.libs = [
             Object(Matching, "rel/hori/hori.cpp"),
             Object(NonMatching, "rel/shun/shun.cpp"),
             Object(Matching, "rel/fafa.cpp"),
-            Object(NonMatching, "rel/stage01/hamburg.cpp"),
+            Object(EquivalentFor(JP), "rel/stage01/hamburg.cpp"),
             Object(Matching, "rel/ana.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "rel/stage02/fighter.cpp"),
             Object(MatchingFor(US, JP), "rel/stage02/rouka.cpp", extra_cflags=["-inline auto,deferred"]),
