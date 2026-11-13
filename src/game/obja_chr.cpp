@@ -179,6 +179,25 @@ struct PushContactBounds {
 };
 
 // Update the player movement, contacts and context-sensitive actions.
+// one action marker over the object: shown when the player can do that action there, or when the object's placement
+// sets its own markers and includes it; allowed limits the markers to the ones this kind of contact can show
+#define ADD_OBJECT_MARKER(allowed, bit)                                                                              \
+	do {                                                                                                             \
+		if (((allowed) & (bit))                                                                                      \
+		    && ((GetObjectMarkerOverride(object) == 0x80000000 && (available & (bit)))                               \
+		        || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, (bit))))) \
+			marker |= (bit);                                                                                         \
+	} while (0)
+#define ADD_OBJECT_MARKERS(allowed)   \
+	ADD_OBJECT_MARKER(allowed, 1);    \
+	ADD_OBJECT_MARKER(allowed, 2);    \
+	ADD_OBJECT_MARKER(allowed, 4);    \
+	ADD_OBJECT_MARKER(allowed, 8);    \
+	ADD_OBJECT_MARKER(allowed, 0x10); \
+	ADD_OBJECT_MARKER(allowed, 0x20); \
+	ADD_OBJECT_MARKER(allowed, 0x40); \
+	ADD_OBJECT_MARKER(allowed, 0x80)
+
 extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32 speed, f32 direction)
 {
 	if (GetMaskedPlayerStatus(player, 0x80000000))
@@ -1322,108 +1341,15 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			}
 			if (player->mFloorContacts[2].objectIndex >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, player->mFloorContacts[2].objectIndex);
-				if (0xff & 1)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 1))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 1)))
-						marker |= 1;
-				if (0xff & 2)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 2))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 2)))
-						marker |= 2;
-				if (0xff & 4)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 4))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 4)))
-						marker |= 4;
-				if (0xff & 8)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 8))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 8)))
-						marker |= 8;
-				if (0xff & 0x10)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x10))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x10)))
-						marker |= 0x10;
-				if (0xff & 0x20)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x20))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x20)))
-						marker |= 0x20;
-				if (0xff & 0x40)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x40))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x40)))
-						marker |= 0x40;
-				if (0xff & 0x80)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x80))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x80)))
-						marker |= 0x80;
+				ADD_OBJECT_MARKERS(0xff);
 			}
 			if (player->mHitObjectIndex >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, player->mHitObjectIndex);
-				if (0xfe & 1)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 1))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 1)))
-						marker |= 1;
-				if (0xfe & 2)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 2))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 2)))
-						marker |= 2;
-				if (0xfe & 4)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 4))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 4)))
-						marker |= 4;
-				if (0xfe & 8)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 8))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 8)))
-						marker |= 8;
-				if (0xfe & 0x10)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x10))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x10)))
-						marker |= 0x10;
-				if (0xfe & 0x20)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x20))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x20)))
-						marker |= 0x20;
-				if (0xfe & 0x40)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x40))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x40)))
-						marker |= 0x40;
-				if (0xfe & 0x80)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x80))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x80)))
-						marker |= 0x80;
+				ADD_OBJECT_MARKERS(0xfe);
 			}
 			if (player->mLetickerIndex >= 0) {
 				XObj* object = GetGameObjectByIndex(&gGame, player->mLetickerIndex);
-				if (0x80 & 1)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 1))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 1)))
-						marker |= 1;
-				if (0x80 & 2)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 2))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 2)))
-						marker |= 2;
-				if (0x80 & 4)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 4))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 4)))
-						marker |= 4;
-				if (0x80 & 8)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 8))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 8)))
-						marker |= 8;
-				if (0x80 & 0x10)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x10))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x10)))
-						marker |= 0x10;
-				if (0x80 & 0x20)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x20))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x20)))
-						marker |= 0x20;
-				if (0x80 & 0x40)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x40))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x40)))
-						marker |= 0x40;
-				if (0x80 & 0x80)
-					if ((GetObjectMarkerOverride(object) == 0x80000000 && (available & 0x80))
-					    || (GetObjectMarkerOverride(object) != 0x80000000 && GetMaskedObjectMarkerOverride(object, 0x80)))
-						marker |= 0x80;
+				ADD_OBJECT_MARKERS(0x80);
 			}
 		}
 	}
