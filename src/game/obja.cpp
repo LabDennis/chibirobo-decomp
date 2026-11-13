@@ -609,31 +609,30 @@ extern "C" CVec ReflectVectorAboutNormal(const Vec* source, const Vec* normal)
  * @note Address: 0x80090254
  * @note Size: 0x50
  */
-extern "C" void ClearAnim__4XObjFv(XObj* object)
+void XObj::ClearAnim()
 {
-	object->CXObj::ClearAnim();
-	object->mStatus.mFlags &= ~0x0008000000000000ULL;
+	CXObj::ClearAnim();
+	mStatus.mFlags &= ~0x0008000000000000ULL;
 }
 
 /**
  * @note Address: 0x800902A4
  * @note Size: 0x1D8
  */
-extern "C" void SetAnim__4XObjFliPvPvPvffff(XObj* object, s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame,
-                                            f32 rate, f32 blend, f32 blendRate)
+void XObj::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate)
 {
-	if (object->mStatus.mFlags & 0x0020000000000000ULL)
+	if (mStatus.mFlags & 0x0020000000000000ULL)
 		blend = 1.0f;
-	if (object->GetAnimSet(id) != 0) {
+	if (GetAnimSet(id) != 0) {
 		s32 index = id % 1000;
-		jointAnim = jointAnim != NULL ? jointAnim : object->mAnim.GetAnimJoint(index);
-		matAnim   = matAnim != NULL ? matAnim : object->mAnim.GetMatAnimJoint(index);
-		shapeAnim = shapeAnim != NULL ? shapeAnim : object->mAnim.GetShapeAnimJoint(index);
-		object->CXObjIntp::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, ANIMATION_RATE(rate), blend, blendRate);
-		object->mStatus.mFlags |= 0x0008000000000000ULL;
+		jointAnim = jointAnim != NULL ? jointAnim : mAnim.GetAnimJoint(index);
+		matAnim   = matAnim != NULL ? matAnim : mAnim.GetMatAnimJoint(index);
+		shapeAnim = shapeAnim != NULL ? shapeAnim : mAnim.GetShapeAnimJoint(index);
+		CXObjIntp::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, ANIMATION_RATE(rate), blend, blendRate);
+		mStatus.mFlags |= 0x0008000000000000ULL;
 	} else {
-		object->CXObjIntp::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, ANIMATION_RATE(rate), blend, blendRate);
-		object->mStatus.mFlags &= ~0x0008000000000000ULL;
+		CXObjIntp::SetAnim(id, force, jointAnim, matAnim, shapeAnim, frame, ANIMATION_RATE(rate), blend, blendRate);
+		mStatus.mFlags &= ~0x0008000000000000ULL;
 	}
 }
 
@@ -641,15 +640,15 @@ extern "C" void SetAnim__4XObjFliPvPvPvffff(XObj* object, s32 id, BOOL force, vo
  * @note Address: 0x8009047C
  * @note Size: 0xEC
  */
-extern "C" void vfC8__4XObjFv(XObj* object)
+void XObj::vfC8()
 {
-	if ((object->mStatus.mFlags & 0x800ULL) && (object->mStatus.mFlags & 0x10000ULL)) {
-		HSD_JObjSetFlags(object->mJObj, CLASSICAL_SCALE);
-		Vec scale = object->mMoveScale;
-		object->SetScale(scale.x, -scale.y, scale.z, 0);
-		if (object->mJObj != NULL)
-			HSD_JObjDispAll(object->mJObj, NULL, 7, 0);
-		object->SetScale(scale, 0);
+	if ((mStatus.mFlags & 0x800ULL) && (mStatus.mFlags & 0x10000ULL)) {
+		HSD_JObjSetFlags(mJObj, CLASSICAL_SCALE);
+		Vec scale = mMoveScale;
+		SetScale(scale.x, -scale.y, scale.z, 0);
+		if (mJObj != NULL)
+			HSD_JObjDispAll(mJObj, NULL, 7, 0);
+		SetScale(scale, 0);
 	}
 }
 
@@ -742,19 +741,17 @@ void XObj::DrawWithView(Mtx view)
  * @note Address: 0x80090C84
  * @note Size: 0x250
  */
-extern "C" void vfA8__4XObjFUl(XObj* object, u32 frames)
+void XObj::vfA8(u32 frames)
 {
-	if (object->mJObj != NULL) {
+	if (mJObj != NULL) {
 		for (s32 i = 0; i < 2; ++i) {
-			XObjColorStep& color = object->mColorStep[i];
+			XObjColorStep& color = mColorStep[i];
 			StepColor(color.mValue.x, color.mTarget.x, color.mSpeed.x, frames);
 			StepColor(color.mValue.y, color.mTarget.y, color.mSpeed.y, frames);
 			StepColor(color.mValue.z, color.mTarget.z, color.mSpeed.z, frames);
 		}
-		object->mColors[1] = ((u32)object->mColorStep[0].mValue.x << 24) | ((u32)object->mColorStep[0].mValue.y << 16)
-		                   | ((u32)object->mColorStep[0].mValue.z << 8);
-		object->mColors[0] = ((u32)object->mColorStep[1].mValue.x << 24) | ((u32)object->mColorStep[1].mValue.y << 16)
-		                   | ((u32)object->mColorStep[1].mValue.z << 8);
+		mColors[1] = ((u32)mColorStep[0].mValue.x << 24) | ((u32)mColorStep[0].mValue.y << 16) | ((u32)mColorStep[0].mValue.z << 8);
+		mColors[0] = ((u32)mColorStep[1].mValue.x << 24) | ((u32)mColorStep[1].mValue.y << 16) | ((u32)mColorStep[1].mValue.z << 8);
 	}
 }
 
@@ -812,25 +809,25 @@ void XObj::UpdateObject(u32 frames)
  * @note Address: 0x800911C0
  * @note Size: 0xF4
  */
-extern "C" void Release__4XObjFv(XObj* object)
+void XObj::Release()
 {
-	CJArchive* archive = &object->mAnim;
+	CJArchive* archive = &mAnim;
 	archive->Release();
-	if (object->mEvt.mData.mScript != NULL)
-		ResetEventScriptState(&object->mEvt, TRUE, FALSE);
-	if (object->mStatus.mFlags & 1) {
-		object->CXObjIntp::Release();
-		XObjSource** slot = (XObjSource**)object->mAttr._00;
+	if (mEvt.mData.mScript != NULL)
+		ResetEventScriptState(&mEvt, TRUE, FALSE);
+	if (mStatus.mFlags & 1) {
+		CXObjIntp::Release();
+		XObjSource** slot = (XObjSource**)mAttr._00;
 		if (slot != NULL && *slot != NULL) {
 			XObjSource* source = *slot;
 			if (source->mArchive != NULL && source->mArchive->mRefCount <= 0)
 				source->mArchive = NULL;
 		}
 	}
-	object->mAttr._00 = NULL;
-	object->mAttr._04 = NULL;
-	object->mFloors   = NULL;
-	object->mStatus.mFlags &= ~0x10001ULL;
+	mAttr._00 = NULL;
+	mAttr._04 = NULL;
+	mFloors   = NULL;
+	mStatus.mFlags &= ~0x10001ULL;
 }
 
 /**
@@ -877,27 +874,27 @@ extern "C" void SetJointMaterialTranslucent(HSD_JObj* joint, f32** arguments, s3
  * @note Address: 0x8009146C
  * @note Size: 0x60
  */
-extern "C" void vfE8__4XObjFv(CXObj* object)
+void XObj::vfE8()
 {
 	void* arguments[1] = { NULL };
-	arguments[0]       = object;
-	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, SetJointMaterialOpaque, (f32**)arguments);
-	HSD_JObjModifyFlags(object->mJObj, 0x10000000, 0x70000000);
+	arguments[0]       = this;
+	if (mJObj != NULL)
+		HSD_JObjWalkTree(mJObj, SetJointMaterialOpaque, (f32**)arguments);
+	HSD_JObjModifyFlags(mJObj, 0x10000000, 0x70000000);
 }
 
 /**
  * @note Address: 0x800914CC
  * @note Size: 0x74
  */
-extern "C" void vfE4__4XObjFf(CXObj* object, f32 alpha)
+void XObj::vfE4(f32 alpha)
 {
 	void* arguments[2] = { NULL, NULL };
-	arguments[0]       = object;
+	arguments[0]       = this;
 	arguments[1]       = &alpha;
-	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, SetJointMaterialTranslucent, (f32**)arguments);
-	HSD_JObjModifyFlags(object->mJObj, 0x20000000, 0x70000000);
+	if (mJObj != NULL)
+		HSD_JObjWalkTree(mJObj, SetJointMaterialTranslucent, (f32**)arguments);
+	HSD_JObjModifyFlags(mJObj, 0x20000000, 0x70000000);
 }
 
 /**
@@ -934,13 +931,13 @@ extern "C" void ScaleJointMaterialDiffuse(HSD_JObj* joint, f32** arguments, s32 
  * @note Address: 0x8009172C
  * @note Size: 0x58
  */
-extern "C" void vfE0__4XObjFf(CXObj* object, f32 factor)
+void XObj::vfE0(f32 factor)
 {
 	void* arguments[2] = { NULL, NULL };
-	arguments[0]       = object;
+	arguments[0]       = this;
 	arguments[1]       = &factor;
-	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, ScaleJointMaterialDiffuse, (f32**)arguments);
+	if (mJObj != NULL)
+		HSD_JObjWalkTree(mJObj, ScaleJointMaterialDiffuse, (f32**)arguments);
 }
 
 /**
@@ -967,13 +964,13 @@ extern "C" void SetJointMaterialDestAlpha(HSD_JObj* joint, f32** arguments, s32 
  * @note Address: 0x80091834
  * @note Size: 0x54
  */
-extern "C" void vfDC__4XObjFiUc(CXObj* object, BOOL enabled, u8 value)
+void XObj::vfDC(BOOL enabled, u8 value)
 {
 	void* arguments[2] = { NULL, NULL };
 	arguments[0]       = (void*)enabled;
 	arguments[1]       = (void*)value;
-	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, SetJointMaterialDestAlpha, (f32**)arguments);
+	if (mJObj != NULL)
+		HSD_JObjWalkTree(mJObj, SetJointMaterialDestAlpha, (f32**)arguments);
 }
 
 // joint walk callback for XObj::vfD8, the args are five on/off flags

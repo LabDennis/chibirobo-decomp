@@ -39,7 +39,6 @@ void PollMemoryCardWorker(void* card);
 void CMsg_Update(CMsg* msg, u32 frames);
 void UpdateOpenMenus(void* menu, u32 frames);
 void UpdateHudTransitionsAndIndicators(void* info, u32 frames);
-void Update__8FbMirrorFUl(FbMirror* mirror, u32 frames);
 void BuildObjectDrawList(CGame* game);
 }
 
@@ -212,7 +211,7 @@ void CGame::Update(u32 frames)
 		mSubwin.Update(frames);
 		for (i = 0; i < 5; i++) {
 			if (!IsMirrorOff(&gFramebufferMirrors[i])) {
-				Update__8FbMirrorFUl(&gFramebufferMirrors[i], frames);
+				gFramebufferMirrors[i].FbMirror::Update(frames);
 			}
 		}
 	}

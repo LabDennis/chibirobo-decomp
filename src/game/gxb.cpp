@@ -328,12 +328,12 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
  * @note Address: 0x80021474
  * @note Size: 0x8C
  */
-extern "C" void Update__13CScrnRoboeyesFUl(CScrnRoboeyes* eyes, u32 frames)
+void CScrnRoboeyes::Update(u32 frames)
 {
-	Update__9CScrnWipeFUl(eyes, frames);
-	if (eyes->mActive) {
-		eyes->mAngle += 0.02617994f * frames;
-		eyes->mPhase += 0.10471976f * frames;
+	CScrnWipe::Update(frames);
+	if (mActive) {
+		mAngle += 0.02617994f * frames;
+		mPhase += 0.10471976f * frames;
 	}
 }
 
@@ -341,28 +341,28 @@ extern "C" void Update__13CScrnRoboeyesFUl(CScrnRoboeyes* eyes, u32 frames)
  * @note Address: 0x80021500
  * @note Size: 0x70
  */
-extern "C" void Reset__13CScrnRoboeyesFv(CScrnRoboeyes* eyes)
+void CScrnRoboeyes::Reset()
 {
-	eyes->mActive = FALSE;
-	eyes->mX = eyes->mY = 0.0f;
-	eyes->mWidth = eyes->mHeight = 0.0f;
-	eyes->mTargetWidth = eyes->mTargetHeight = 0.0f;
-	eyes->mSpeedWidth = eyes->mSpeedHeight = 0.0f;
-	eyes->mColor.r                         = 0.0f;
-	eyes->mColor.g                         = 0.0f;
-	eyes->mColor.b                         = 0.0f;
-	eyes->mColor.a                         = 0.0f;
-	eyes->mTarget.r                        = 0.0f;
-	eyes->mTarget.g                        = 0.0f;
-	eyes->mTarget.b                        = 0.0f;
-	eyes->mTarget.a                        = 0.0f;
-	eyes->mSpeed.r                         = 0.0f;
-	eyes->mSpeed.g                         = 0.0f;
-	eyes->mSpeed.b                         = 0.0f;
-	eyes->mSpeed.a                         = 0.0f;
-	eyes->_5C = eyes->_60 = 0.0f;
-	eyes->mAngle          = 0.0f;
-	eyes->mPhase          = 0.0f;
+	mActive = FALSE;
+	mX = mY = 0.0f;
+	mWidth = mHeight = 0.0f;
+	mTargetWidth = mTargetHeight = 0.0f;
+	mSpeedWidth = mSpeedHeight = 0.0f;
+	mColor.r                   = 0.0f;
+	mColor.g                   = 0.0f;
+	mColor.b                   = 0.0f;
+	mColor.a                   = 0.0f;
+	mTarget.r                  = 0.0f;
+	mTarget.g                  = 0.0f;
+	mTarget.b                  = 0.0f;
+	mTarget.a                  = 0.0f;
+	mSpeed.r                   = 0.0f;
+	mSpeed.g                   = 0.0f;
+	mSpeed.b                   = 0.0f;
+	mSpeed.a                   = 0.0f;
+	_5C = _60 = 0.0f;
+	mAngle    = 0.0f;
+	mPhase    = 0.0f;
 }
 
 // steps a value towards its target, it stops there
@@ -587,22 +587,22 @@ static inline bool SizeStopped(CScrnWipe* wipe)
  */
 // a wipe's update: it turns, sizes its hole and fades its color, and goes off once the size
 // stops when it was asked to
-extern "C" void Update__9CScrnWipeFUl(CScrnWipe* wipe, u32 frames)
+void CScrnWipe::Update(u32 frames)
 {
-	if (!wipe->mActive) {
+	if (!mActive) {
 		return;
 	}
-	if (0.0f != wipe->_60) {
-		wipe->_5C = fmod(wipe->_60 * frames + wipe->_5C, TWO_PI);
+	if (0.0f != _60) {
+		_5C = fmod(_60 * frames + _5C, TWO_PI);
 	}
-	StepChannel(wipe->mWidth, wipe->mTargetWidth, wipe->mSpeedWidth, frames);
-	StepChannel(wipe->mHeight, wipe->mTargetHeight, wipe->mSpeedHeight, frames);
-	StepChannel(wipe->mColor.r, wipe->mTarget.r, wipe->mSpeed.r, frames);
-	StepChannel(wipe->mColor.g, wipe->mTarget.g, wipe->mSpeed.g, frames);
-	StepChannel(wipe->mColor.b, wipe->mTarget.b, wipe->mSpeed.b, frames);
-	StepChannel(wipe->mColor.a, wipe->mTarget.a, wipe->mSpeed.a, frames);
-	if (wipe->mHideWhenDone && SizeStopped(wipe)) {
-		wipe->mActive = FALSE;
+	StepChannel(mWidth, mTargetWidth, mSpeedWidth, frames);
+	StepChannel(mHeight, mTargetHeight, mSpeedHeight, frames);
+	StepChannel(mColor.r, mTarget.r, mSpeed.r, frames);
+	StepChannel(mColor.g, mTarget.g, mSpeed.g, frames);
+	StepChannel(mColor.b, mTarget.b, mSpeed.b, frames);
+	StepChannel(mColor.a, mTarget.a, mSpeed.a, frames);
+	if (mHideWhenDone && SizeStopped(this)) {
+		mActive = FALSE;
 	}
 }
 
@@ -702,26 +702,26 @@ extern "C" void StartScreenWipe(CScrnWipe* wipe, u8 r, u8 g, u8 b, u8 a, BOOL hi
  * @note Address: 0x800238A4
  * @note Size: 0x68
  */
-extern "C" void Reset__9CScrnWipeFv(CScrnWipe* wipe)
+void CScrnWipe::Reset()
 {
-	wipe->mActive = FALSE;
-	wipe->mX = wipe->mY = 0.0f;
-	wipe->mWidth = wipe->mHeight = 0.0f;
-	wipe->mTargetWidth = wipe->mTargetHeight = 0.0f;
-	wipe->mSpeedWidth = wipe->mSpeedHeight = 0.0f;
-	wipe->mColor.r                         = 0.0f;
-	wipe->mColor.g                         = 0.0f;
-	wipe->mColor.b                         = 0.0f;
-	wipe->mColor.a                         = 0.0f;
-	wipe->mTarget.r                        = 0.0f;
-	wipe->mTarget.g                        = 0.0f;
-	wipe->mTarget.b                        = 0.0f;
-	wipe->mTarget.a                        = 0.0f;
-	wipe->mSpeed.r                         = 0.0f;
-	wipe->mSpeed.g                         = 0.0f;
-	wipe->mSpeed.b                         = 0.0f;
-	wipe->mSpeed.a                         = 0.0f;
-	wipe->_5C = wipe->_60 = 0.0f;
+	mActive = FALSE;
+	mX = mY = 0.0f;
+	mWidth = mHeight = 0.0f;
+	mTargetWidth = mTargetHeight = 0.0f;
+	mSpeedWidth = mSpeedHeight = 0.0f;
+	mColor.r                   = 0.0f;
+	mColor.g                   = 0.0f;
+	mColor.b                   = 0.0f;
+	mColor.a                   = 0.0f;
+	mTarget.r                  = 0.0f;
+	mTarget.g                  = 0.0f;
+	mTarget.b                  = 0.0f;
+	mTarget.a                  = 0.0f;
+	mSpeed.r                   = 0.0f;
+	mSpeed.g                   = 0.0f;
+	mSpeed.b                   = 0.0f;
+	mSpeed.a                   = 0.0f;
+	_5C = _60 = 0.0f;
 }
 
 static inline bool HasColor(CScrnColor* color)
@@ -1273,9 +1273,9 @@ extern "C" void vf94__4XObjFv()
  * @note Size: 0x24
  */
 // XObj's LoadAnimationArchiveAsync
-extern "C" BOOL LoadAnimationArchiveAsync__4XObjFPCc(XObj* object, const char* path)
+BOOL XObj::LoadAnimationArchiveAsync(const char* path)
 {
-	return LoadJointAnimationAsync(&object->mAnim, path);
+	return LoadJointAnimationAsync(&mAnim, path);
 }
 
 /**
@@ -1292,9 +1292,9 @@ extern "C" void DrawDebugStatus__4XObjFv()
  * @note Size: 0x1C
  */
 // XObj's GetCameraTarget
-extern "C" Vec GetCameraTarget__4XObjFv(CXObj* object)
+Vec XObj::GetCameraTarget()
 {
-	return object->mMoveTranslate;
+	return mMoveTranslate;
 }
 
 /**
@@ -1302,13 +1302,13 @@ extern "C" Vec GetCameraTarget__4XObjFv(CXObj* object)
  * @note Size: 0xF4
  */
 // XObj's GetJointAnimation
-extern "C" HSD_AnimJoint* GetJointAnimation__4XObjFl(XObj* object, s32 id)
+HSD_AnimJoint* XObj::GetJointAnimation(s32 id)
 {
-	if (AnimationGroup(object, id)) {
-		HSD_AnimJoint** animations = object->mAnim.mAnimJoint;
+	if (AnimationGroup(this, id)) {
+		HSD_AnimJoint** animations = mAnim.mAnimJoint;
 		return animations != NULL ? animations[(id % 1000) % 1000] : NULL;
 	}
-	HSD_AnimJoint** animations = object->mArchive.mAnimJoint;
+	HSD_AnimJoint** animations = mArchive.mAnimJoint;
 	return animations != NULL ? animations[id % 1000] : NULL;
 }
 
@@ -1317,13 +1317,13 @@ extern "C" HSD_AnimJoint* GetJointAnimation__4XObjFl(XObj* object, s32 id)
  * @note Size: 0xF4
  */
 // XObj's GetMaterialAnimation
-extern "C" HSD_MatAnimJoint* GetMaterialAnimation__4XObjFl(XObj* object, s32 id)
+HSD_MatAnimJoint* XObj::GetMaterialAnimation(s32 id)
 {
-	if (AnimationGroup(object, id)) {
-		HSD_MatAnimJoint** animations = object->mAnim.mMatAnimJoint;
+	if (AnimationGroup(this, id)) {
+		HSD_MatAnimJoint** animations = mAnim.mMatAnimJoint;
 		return animations != NULL ? animations[(id % 1000) % 1000] : NULL;
 	}
-	HSD_MatAnimJoint** animations = object->mArchive.mMatAnimJoint;
+	HSD_MatAnimJoint** animations = mArchive.mMatAnimJoint;
 	return animations != NULL ? animations[id % 1000] : NULL;
 }
 
@@ -1332,13 +1332,13 @@ extern "C" HSD_MatAnimJoint* GetMaterialAnimation__4XObjFl(XObj* object, s32 id)
  * @note Size: 0xF4
  */
 // XObj's GetShapeAnimation
-extern "C" HSD_ShapeAnimJoint* GetShapeAnimation__4XObjFl(XObj* object, s32 id)
+HSD_ShapeAnimJoint* XObj::GetShapeAnimation(s32 id)
 {
-	if (AnimationGroup(object, id)) {
-		HSD_ShapeAnimJoint** animations = object->mAnim.mShapeAnimJoint;
+	if (AnimationGroup(this, id)) {
+		HSD_ShapeAnimJoint** animations = mAnim.mShapeAnimJoint;
 		return animations != NULL ? animations[(id % 1000) % 1000] : NULL;
 	}
-	HSD_ShapeAnimJoint** animations = object->mArchive.mShapeAnimJoint;
+	HSD_ShapeAnimJoint** animations = mArchive.mShapeAnimJoint;
 	return animations != NULL ? animations[id % 1000] : NULL;
 }
 
@@ -2959,28 +2959,28 @@ extern "C" void State25__5TitleFUl(Title* title)
  * @note Size: 0x148
  */
 // waits out the delay, then fades the labels and leaves for the game
-extern "C" void State24__5TitleFUl(Title* title, u32 frames)
+void Title::State24(u32 frames)
 {
-	switch (title->mPhase) {
+	switch (mPhase) {
 	case 0:
-		title->mDelay -= frames;
-		if (title->mDelay < 0) {
-			title->mDelay = 0;
-			++title->mPhase;
+		mDelay -= frames;
+		if (mDelay < 0) {
+			mDelay = 0;
+			++mPhase;
 		}
 		break;
 	case 1:
-		HideName(title);
-		title->_37BC   = -200.0f;
-		title->mOffset = 0.0f;
-		title->mAlpha  = 0.0f;
-		title->mChoice = 0;
-		title->mState  = 13;
-		title->SetMode(25);
+		HideName(this);
+		_37BC   = -200.0f;
+		mOffset = 0.0f;
+		mAlpha  = 0.0f;
+		mChoice = 0;
+		mState  = 13;
+		SetMode(25);
 		XSound* sound = &gGame.mSound;
 		PlayGameSound(sound, 0x88, 255);
 		StopGameSfx(sound, (s32)0xFFFF0003);
-		gGame.mInfoScrn.mSelectedSaveSlot = title->mFile;
+		gGame.mInfoScrn.mSelectedSaveSlot = mFile;
 		break;
 	}
 }
@@ -3125,43 +3125,43 @@ extern "C" void State16__5TitleFUl(Title* title)
  */
 // NONMATCHING: regalloc
 // waits for the card to read the file picked, then shows what is in it
-extern "C" void State15__5TitleFUl(Title* title, u32 frames)
+void Title::State15(u32 frames)
 {
 	Memcard* card = &gGame.mMemcard.mCard;
 	s32 step      = card->mState;
 	SavePreviewRecord* file;
 	s32 result;
 
-	title->mDelay -= frames;
-	if (title->mDelay < 0) {
-		title->mDelay = 0;
+	mDelay -= frames;
+	if (mDelay < 0) {
+		mDelay = 0;
 	}
 	switch (step) {
 	case 0:
-		title->_37D0 = gGame.mMemcard.mCard._16A04;
-		title->_37D4 = gGame.mMemcard.mCard._16A00;
-		file         = &card->mSaves[0][title->mFile];
+		_37D0 = gGame.mMemcard.mCard._16A04;
+		_37D4 = gGame.mMemcard.mCard._16A00;
+		file  = &card->mSaves[0][mFile];
 		if (file->mState != 0) {
-			gTitleSaveSlots[title->mFile].mUsed       = 1;
-			gTitleSaveSlots[title->mFile].mLevel      = file->mHeader.mLevel;
-			gTitleSaveSlots[title->mFile].mBattery    = file->mHeader.mBattery;
-			gTitleSaveSlots[title->mFile].mMaxBattery = file->mHeader.mMaxBattery;
-			gTitleSaveSlots[title->mFile].mMoney      = file->mHeader.mMoney;
-			gTitleSaveSlots[title->mFile].mExp        = file->mHeader.mExp;
-			gTitleSaveSlots[title->mFile].mScrap      = file->mHeader.mScrap;
-			gTitleSaveSlots[title->mFile].mRank       = file->mHeader.mRank;
-			gTitleSaveSlots[title->mFile].mHours      = file->mHeader.mFrames / 216000;
-			gTitleSaveSlots[title->mFile].mMinutes    = (file->mHeader.mFrames / 3600) % 60;
-			gTitleSaveSlots[title->mFile].mStage      = file->mHeader.mStage;
-			gTitleSaveSlots[title->mFile].mTimeMode   = file->mHeader.mTimeMode;
-			gTitleSaveSlots[title->mFile].mState      = 0;
+			gTitleSaveSlots[mFile].mUsed       = 1;
+			gTitleSaveSlots[mFile].mLevel      = file->mHeader.mLevel;
+			gTitleSaveSlots[mFile].mBattery    = file->mHeader.mBattery;
+			gTitleSaveSlots[mFile].mMaxBattery = file->mHeader.mMaxBattery;
+			gTitleSaveSlots[mFile].mMoney      = file->mHeader.mMoney;
+			gTitleSaveSlots[mFile].mExp        = file->mHeader.mExp;
+			gTitleSaveSlots[mFile].mScrap      = file->mHeader.mScrap;
+			gTitleSaveSlots[mFile].mRank       = file->mHeader.mRank;
+			gTitleSaveSlots[mFile].mHours      = file->mHeader.mFrames / 216000;
+			gTitleSaveSlots[mFile].mMinutes    = (file->mHeader.mFrames / 3600) % 60;
+			gTitleSaveSlots[mFile].mStage      = file->mHeader.mStage;
+			gTitleSaveSlots[mFile].mTimeMode   = file->mHeader.mTimeMode;
+			gTitleSaveSlots[mFile].mState      = 0;
 			if (file->mHeader._34 > 0) {
-				gTitleSaveSlots[title->mFile].mActive = 1;
+				gTitleSaveSlots[mFile].mActive = 1;
 			} else {
-				gTitleSaveSlots[title->mFile].mActive = 0;
+				gTitleSaveSlots[mFile].mActive = 0;
 			}
 		}
-		title->SetMode(24);
+		SetMode(24);
 		break;
 	case 4:
 		break;
@@ -3179,8 +3179,8 @@ extern "C" void State15__5TitleFUl(Title* title, u32 frames)
 	case 13:
 	case 14:
 	case 15:
-		result         = gGame.mMemcard.mCard.mCard.mResult;
-		title->mResult = result;
+		result  = gGame.mMemcard.mCard.mCard.mResult;
+		mResult = result;
 		switch (result) {
 		case -128:
 		case -14:
@@ -3199,22 +3199,22 @@ extern "C" void State15__5TitleFUl(Title* title, u32 frames)
 		case -1:
 		case 0:
 			if (step == 2 && (result == -6 || result == -13)) {
-				title->SetMode(11);
-				title->mChoice      = 1;
-				title->mShowMessage = 1;
+				SetMode(11);
+				mChoice      = 1;
+				mShowMessage = 1;
 			} else if (result == -3 || result == -5) {
-				title->SetMode(20);
-				title->mShowMessage = 1;
+				SetMode(20);
+				mShowMessage = 1;
 			} else {
-				title->SetMode(14);
-				title->mOffset = -32.0f;
+				SetMode(14);
+				mOffset = -32.0f;
 			}
-			title->mAlpha = 1.0f;
+			mAlpha = 1.0f;
 			break;
 		default:
-			title->SetMode(14);
-			title->mAlpha  = 1.0f;
-			title->mOffset = -32.0f;
+			SetMode(14);
+			mAlpha  = 1.0f;
+			mOffset = -32.0f;
 			break;
 		}
 		break;
@@ -3297,20 +3297,20 @@ extern "C" void State14__5TitleFUl(Title* title)
  * @note Address: 0x8002CB40
  * @note Size: 0x1B4
  */
-extern "C" void State13__5TitleFUl(Title* title, u32 frames)
+void Title::State13(u32 frames)
 {
 	CPad pad(0);
 
-	if (!title->mReady) {
-		OnCardRemoved(title);
+	if (!mReady) {
+		OnCardRemoved(this);
 		return;
 	}
-	switch (title->mPhase) {
+	switch (mPhase) {
 	case 0:
-		title->mDelay -= frames;
-		if (title->mDelay < 0) {
-			title->mDelay = 0;
-			title->mPhase++;
+		mDelay -= frames;
+		if (mDelay < 0) {
+			mDelay = 0;
+			mPhase++;
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 		}
 		break;
@@ -3319,8 +3319,8 @@ extern "C" void State13__5TitleFUl(Title* title, u32 frames)
 			for (s32 i = 0; i < 3; i++) {
 				ResetSaveSlotRecord(&gTitleSaveSlots[i]);
 			}
-			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, title->mChannel, 1);
-			title->SetMode(1);
+			StartMemoryCardPreviewRead(&gGame.mMemcard.mCard, mChannel, 1);
+			SetMode(1);
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			return;
 		}
@@ -3332,18 +3332,18 @@ extern "C" void State13__5TitleFUl(Title* title, u32 frames)
  * @note Address: 0x8002CCF4
  * @note Size: 0x14C
  */
-extern "C" void State12__5TitleFUl(Title* title, u32 frames)
+void Title::State12(u32 frames)
 {
-	title->mDelay -= frames;
-	if (title->mDelay < 0) {
-		title->mDelay = 0;
+	mDelay -= frames;
+	if (mDelay < 0) {
+		mDelay = 0;
 	}
 	switch (gGame.mMemcard.mCard.mState) {
 	case 0:
-		title->_37D0 = gGame.mMemcard.mCard._16A04;
-		title->_37D4 = gGame.mMemcard.mCard._16A00;
-		title->SetMode(13);
-		title->mAlpha = 1.0f;
+		_37D0 = gGame.mMemcard.mCard._16A04;
+		_37D4 = gGame.mMemcard.mCard._16A00;
+		SetMode(13);
+		mAlpha = 1.0f;
 		break;
 	case 1:
 	case 2:
@@ -3359,8 +3359,8 @@ extern "C" void State12__5TitleFUl(Title* title, u32 frames)
 	case 13:
 	case 14:
 	case 15: {
-		s32 result     = gGame.mMemcard.mCard.mCard.mResult;
-		title->mResult = result;
+		s32 result = gGame.mMemcard.mCard.mCard.mResult;
+		mResult    = result;
 		switch (result) {
 		case -128:
 		case -14:
@@ -3379,18 +3379,18 @@ extern "C" void State12__5TitleFUl(Title* title, u32 frames)
 		case -1:
 		case 0:
 			if (result == -6 || result == -13) {
-				title->SetMode(19);
-				title->mShowMessage = 1;
+				SetMode(19);
+				mShowMessage = 1;
 			} else {
-				title->SetMode(21);
-				title->mShowMessage = 1;
+				SetMode(21);
+				mShowMessage = 1;
 			}
-			title->mAlpha = 1.0f;
+			mAlpha = 1.0f;
 			break;
 		default:
-			title->SetMode(14);
-			title->mAlpha  = 1.0f;
-			title->mOffset = -32.0f;
+			SetMode(14);
+			mAlpha  = 1.0f;
+			mOffset = -32.0f;
 			break;
 		}
 		break;
@@ -3853,13 +3853,13 @@ extern "C" void State2__5TitleFUl(Title* title)
  * @note Address: 0x8002E574
  * @note Size: 0x358
  */
-extern "C" void State1__5TitleFUl(Title* title, u32 frames)
+void Title::State1(u32 frames)
 {
 	Memcard* card = &gGame.mMemcard.mCard;
 	s32 state     = card->mState;
-	title->mDelay -= frames;
-	if (title->mDelay < 0)
-		title->mDelay = 0;
+	mDelay -= frames;
+	if (mDelay < 0)
+		mDelay = 0;
 	switch (state) {
 	case 0: {
 		OSTime timestamps[3];
@@ -3893,14 +3893,14 @@ extern "C" void State1__5TitleFUl(Title* title, u32 frames)
 					gTitleSaveSlots[i].mState = 0;
 			}
 		}
-		title->_37D0 = gGame.mMemcard.mCard._16A04;
-		title->_37D4 = gGame.mMemcard.mCard._16A00;
-		title->SetMode(2);
-		if (title->_37A8 == 0)
-			title->mFile = 0;
+		_37D0 = gGame.mMemcard.mCard._16A04;
+		_37D4 = gGame.mMemcard.mCard._16A00;
+		SetMode(2);
+		if (_37A8 == 0)
+			mFile = 0;
 		else
-			title->mFile = IndexOfLargestOfThree(timestamps[0], timestamps[1], timestamps[2]);
-		title->mAlpha = 1.0f;
+			mFile = IndexOfLargestOfThree(timestamps[0], timestamps[1], timestamps[2]);
+		mAlpha = 1.0f;
 		break;
 	}
 	case 1:
@@ -3917,8 +3917,8 @@ extern "C" void State1__5TitleFUl(Title* title, u32 frames)
 	case 13:
 	case 14:
 	case 15: {
-		s32 result     = gGame.mMemcard.mCard.mCard.mResult;
-		title->mResult = result;
+		s32 result = gGame.mMemcard.mCard.mCard.mResult;
+		mResult    = result;
 		switch (result) {
 		case -128:
 		case -14:
@@ -3937,21 +3937,21 @@ extern "C" void State1__5TitleFUl(Title* title, u32 frames)
 		case -1:
 		case 0:
 			if (result == -6 || result == -13) {
-				title->SetMode(11);
-				title->mChoice = 1;
+				SetMode(11);
+				mChoice = 1;
 			} else if (result == -5) {
-				title->SetMode(19);
-				title->mShowMessage = 1;
+				SetMode(19);
+				mShowMessage = 1;
 			} else {
-				title->SetMode(14);
-				title->mOffset = -32.0f;
+				SetMode(14);
+				mOffset = -32.0f;
 			}
-			title->mAlpha = 1.0f;
+			mAlpha = 1.0f;
 			break;
 		default:
-			title->SetMode(14);
-			title->mAlpha  = 1.0f;
-			title->mOffset = -32.0f;
+			SetMode(14);
+			mAlpha  = 1.0f;
+			mOffset = -32.0f;
 			break;
 		}
 		break;

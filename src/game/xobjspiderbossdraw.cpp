@@ -20,7 +20,7 @@ void XObjSpiderBoss::DrawDebugStatus()
  * @note Address: 0x80105CE4
  * @note Size: 0x4
  */
-extern "C" void vfC8__14XObjSpiderBossFv(XObjSpiderBoss* spider)
+void XObjSpiderBoss::vfC8()
 {
 }
 
@@ -46,7 +46,7 @@ void XObjSpiderBoss::DrawGroundShadow()
  * @note Address: 0x80105D28
  * @note Size: 0x30
  */
-extern "C" void vfAC__14XObjSpiderBossFv(XObjSpiderBoss* spider)
+void XObjSpiderBoss::vfAC()
 {
-	spider->DrawWithView(NULL);
+	DrawWithView(NULL);
 }

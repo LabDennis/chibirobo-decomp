@@ -45,9 +45,9 @@ void XObjDust::ResetObjectState()
  * @note Address: 0x800DFB24
  * @note Size: 0x44
  */
-extern "C" s32 GetFlagIndex__8XObjDustFv(XObjDust* dust)
+s32 XObjDust::GetFlagIndex()
 {
-	return dust->GetPlacementFlagIndex(2);
+	return GetPlacementFlagIndex(2);
 }
 
 /**
@@ -89,13 +89,13 @@ void XObjHBox::OnHitFromPosition(const Vec& pos, f32 strength)
  * @note Address: 0x800DFD24
  * @note Size: 0x1F0
  */
-extern "C" void vfC8__8XObjHBoxFv(XObjHBox* box)
+void XObjHBox::vfC8()
 {
-	if (box->mRing > 0.0f) {
+	if (mRing > 0.0f) {
 		Vec pos = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;
-		box->ProjectOffsetToScreen(&pos, &x, &y, NULL, 0);
-		f32 ring  = box->mRing;
+		ProjectOffsetToScreen(&pos, &x, &y, NULL, 0);
+		f32 ring  = mRing;
 		f32 inner = 400.0f * ring;
 		f32 outer = 400.0f * (1.0f - ring);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 7, 0);

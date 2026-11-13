@@ -47,9 +47,9 @@ void XObjCoin::ResetObjectState()
  * @note Address: 0x800E20F8
  * @note Size: 0x44
  */
-extern "C" s32 GetFlagIndex__8XObjCoinFv(XObjCoin* coin)
+s32 XObjCoin::GetFlagIndex()
 {
-	return coin->GetPlacementFlagIndex(1);
+	return GetPlacementFlagIndex(1);
 }
 
 /**
@@ -68,7 +68,7 @@ BOOL XObjItem::LoadFromPlacement(const CoordInfo& info)
  * @note Address: 0x800E21FC
  * @note Size: 0x44
  */
-extern "C" s32 GetFlagIndex__8XObjItemFv(XObjItem* item)
+s32 XObjItem::GetFlagIndex()
 {
-	return item->GetPlacementFlagIndex(0);
+	return GetPlacementFlagIndex(0);
 }

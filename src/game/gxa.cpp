@@ -284,9 +284,9 @@ f32 gProgressiveFadeFrames = 0.15f * FRAME_RATE;
  * @note Size: 0x8
  */
 // CCameraActionMap's GetTarget
-extern "C" XObj* GetTarget__16CCameraActionMapFv(CCameraActionMap* map)
+XObj* CCameraActionMap::GetTarget()
 {
-	return map->mTarget;
+	return mTarget;
 }
 
 // ids with the high half 0xFFFF but not -1 mean every sfx, see game/sound.cpp

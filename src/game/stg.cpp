@@ -41,12 +41,7 @@ void DrawStatusIconGrid(MenuStatus* menu);
 void DrawStatusHelpText(MenuStatus* menu);
 void DrawStatusMenuTitle(MenuStatus* menu);
 void GXSetScissor(u32 left, u32 top, u32 width, u32 height);
-void Open__10MenuStatusFv(MenuStatus* menu);
-void Open__8MenuItemFv(MenuItem* menu);
-void Open__6MenuPCFv(MenuPC* menu);
-void Open__8MenuSaveFv(MenuSave* menu);
 void LayoutMainMenuRows(MenuMain* menu);
-BOOL Update__5CMenuFUl(CMenu* menu, u32 frames);
 void DrawMenuWindow(MenuWindow* win);
 void PSMTXTrans(Mtx m, f32 x, f32 y, f32 z);
 void PSMTXScale(Mtx m, f32 x, f32 y, f32 z);
@@ -1572,40 +1567,39 @@ extern "C" void InitGameMenus(MenuEx* ex)
  * @note Address: 0x80031740
  * @note Size: 0x398
  */
-extern "C" BOOL Draw__13MenuMCTestSubFv(MenuMCTestSub* menu)
+BOOL MenuMCTestSub::Draw()
 {
-	if (menu->CMenu::Draw()) {
+	if (CMenu::Draw()) {
 		f32 x, y, width, step, height, maxW, lines, lineH;
-		maxW   = menu->mMaxWidth;
+		maxW   = mMaxWidth;
 		width  = 30.0f + maxW;
-		lineH  = menu->mFontSize;
+		lineH  = mFontSize;
 		step   = 2.0f + lineH;
-		lines  = menu->mRowCount;
+		lines  = mRowCount;
 		height = step * lines;
-		x      = menu->mWindow.mX;
-		y      = menu->mWindow.mY;
+		x      = mWindow.mX;
+		y      = mWindow.mY;
 		for (int i = 0; i < lines; i++) {
 			u32 color;
-			if (i == menu->mSelection) {
-				color = (u32)(255.0f * menu->mAlpha) | 0x20202000;
+			if (i == mSelection) {
+				color = (u32)(255.0f * mAlpha) | 0x20202000;
 			} else {
-				color = (u32)(255.0f * menu->mAlpha) | 0x64646400;
+				color = (u32)(255.0f * mAlpha) | 0x64646400;
 			}
-			if (*menu->mText[i] == *"\x01") {
+			if (*mText[i] == *"\x01") {
 				f32 lineY  = y - height / 2 + step * (0.5f + i);
 				f32 left   = x - width / 2;
-				u32 shadow = (u32)(255.0f * menu->mAlpha) | 0x64646400;
+				u32 shadow = (u32)(255.0f * mAlpha) | 0x64646400;
 				DrawGsLineSegment(&gGame.mGs, NULL, left, lineY, 0.0f, shadow, left + width, lineY, 0.0f, shadow);
-				u32 light = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
+				u32 light = (u32)(255.0f * mAlpha) | 0xC8C8C800;
 				DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + left, 1.0f + lineY, 0.0f, light, 1.0f + (left + width), 1.0f + lineY, 0.0f,
 				                  light);
 			} else {
-				DrawGsFixedWidthTextFormat(&gGame.mGs, color, menu->mText[i], x - menu->mTextWidth[i] / 2, y - height / 2 + step * i, 0.0f,
-				                           lineH, lineH);
+				DrawGsFixedWidthTextFormat(&gGame.mGs, color, mText[i], x - mTextWidth[i] / 2, y - height / 2 + step * i, 0.0f, lineH,
+				                           lineH);
 			}
 		}
-		DrawMenuSelectionCursor(menu->mCursor, x - maxW / 2, y - height / 2 + step * menu->mSelection, maxW, lineH, menu->mAlpha,
-		                        menu->mAlpha);
+		DrawMenuSelectionCursor(mCursor, x - maxW / 2, y - height / 2 + step * mSelection, maxW, lineH, mAlpha, mAlpha);
 		return TRUE;
 	}
 	return FALSE;
@@ -1616,31 +1610,31 @@ extern "C" BOOL Draw__13MenuMCTestSubFv(MenuMCTestSub* menu)
  * @note Size: 0x3F4
  */
 // NONMATCHING: string pool offsets, the strings before these aren't in yet
-extern "C" BOOL Update__13MenuMCTestSubFUl(MenuMCTestSub* menu, u32 frames)
+BOOL MenuMCTestSub::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(menu, frames) == 4) {
+	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
 		if (pad.mPad->mRepeat & 0x10008) {
 			do {
-				if (--menu->mSelection < 0) {
-					menu->mSelection = 3;
+				if (--mSelection < 0) {
+					mSelection = 3;
 				}
-			} while (*menu->mText[menu->mSelection] == *"\x01");
+			} while (*mText[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		} else if (pad.mPad->mRepeat & 0x20004) {
 			do {
-				if (++menu->mSelection > 3) {
-					menu->mSelection = 0;
+				if (++mSelection > 3) {
+					mSelection = 0;
 				}
-			} while (*menu->mText[menu->mSelection] == *"\x01");
+			} while (*mText[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		} else if (pad.mPad->mTrigger & 0x200) {
-			menu->Close();
+			Close();
 			sMenuMCTest.mSuspended   = FALSE;
 			sMenuMCTest.mSuspendFade = 0;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 		} else if (pad.mPad->mTrigger & 0x100) {
-			s32 id                  = sMCTestSubLines[menu->mSelection].mAction;
+			s32 id                  = sMCTestSubLines[mSelection].mAction;
 			Memcard* card           = &gGame.mMemcard.mCard;
 			SavePreviewRecord* save = &card->mSaves[0][sMenuMCTest.mSelection];
 			if ((id == 4 || id == 6) && save->mState == 0) {
@@ -1648,7 +1642,7 @@ extern "C" BOOL Update__13MenuMCTestSubFUl(MenuMCTestSub* menu, u32 frames)
 			} else if (id == 4 && save->mState != 0 && (save->mStatus != 0 || !IsValidSavePreview(save))) {
 				PlayGameSound(&gGame.mSound, 0x85, 0xFF);
 			} else {
-				menu->Close();
+				Close();
 				sMenuMCTest.mSuspended   = FALSE;
 				sMenuMCTest.mSuspendFade = 0;
 				switch (id) {
@@ -1679,19 +1673,19 @@ extern "C" BOOL Update__13MenuMCTestSubFUl(MenuMCTestSub* menu, u32 frames)
 			}
 		}
 	}
-	return menu->IsOpen();
+	return IsOpen();
 }
 
 /**
  * @note Address: 0x80031ECC
  * @note Size: 0x50
  */
-extern "C" void Open__13MenuMCTestSubFv(Menu* menu)
+void MenuMCTestSub::Open()
 {
-	menu->mState = 1;
-	menu->Resume();
-	menu->mWindow.mOpen = TRUE;
-	menu->mSelection    = 0;
+	mState = 1;
+	Resume();
+	mWindow.mOpen = TRUE;
+	mSelection    = 0;
 }
 
 /**
@@ -1732,57 +1726,56 @@ void MenuMCTestSub::Init()
  * @note Address: 0x80032098
  * @note Size: 0x4C4
  */
-extern "C" BOOL Draw__10MenuMCTestFv(MenuMCTest* menu)
+BOOL MenuMCTest::Draw()
 {
-	if (menu->CMenu::Draw()) {
+	if (CMenu::Draw()) {
 		f32 x, y, width, step, height, maxW, lines, lineH;
-		maxW       = menu->mMaxWidth;
+		maxW       = mMaxWidth;
 		width      = 30.0f + maxW;
-		lineH      = menu->mFontSize;
+		lineH      = mFontSize;
 		step       = 2.0f + lineH;
-		lines      = menu->mRowCount;
+		lines      = mRowCount;
 		height     = step * lines;
-		x          = menu->mWindow.mX;
-		y          = menu->mWindow.mY;
+		x          = mWindow.mX;
+		y          = mWindow.mY;
 		s32 result = gGame.mMemcard.mCard.mCard.mResult;
 		for (int i = 0; i < lines; i++) {
 			u32 color;
-			if (i == menu->mSelection) {
-				color = (u32)(255.0f * menu->mAlpha) | 0x20202000;
+			if (i == mSelection) {
+				color = (u32)(255.0f * mAlpha) | 0x20202000;
 			} else {
-				color = (u32)(255.0f * menu->mAlpha) | 0x64646400;
+				color = (u32)(255.0f * mAlpha) | 0x64646400;
 			}
-			if (*menu->mText[i] == *"\x01") {
+			if (*mText[i] == *"\x01") {
 				f32 lineY  = y - height / 2 + step * (0.5f + i);
 				f32 left   = x - width / 2;
-				u32 shadow = (u32)(255.0f * menu->mAlpha) | 0x64646400;
+				u32 shadow = (u32)(255.0f * mAlpha) | 0x64646400;
 				DrawGsLineSegment(&gGame.mGs, NULL, left, lineY, 0.0f, shadow, left + width, lineY, 0.0f, shadow);
-				u32 light = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
+				u32 light = (u32)(255.0f * mAlpha) | 0xC8C8C800;
 				DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + left, 1.0f + lineY, 0.0f, light, 1.0f + (left + width), 1.0f + lineY, 0.0f,
 				                  light);
-			} else if (result == 0 || result == -1 || result == -4 || result == -7 || result == -128 || i >= menu->mFileCount) {
-				DrawGsFixedWidthTextFormat(&gGame.mGs, color, menu->mText[i], x - menu->mMaxWidth / 2, y - height / 2 + step * i, 0.0f,
-				                           lineH, lineH);
+			} else if (result == 0 || result == -1 || result == -4 || result == -7 || result == -128 || i >= mFileCount) {
+				DrawGsFixedWidthTextFormat(&gGame.mGs, color, mText[i], x - mMaxWidth / 2, y - height / 2 + step * i, 0.0f, lineH, lineH);
 			} else {
-				f32 textW = MeasureGameTextWidth(&gGame.mGs, menu->mText[i], 0, menu->mFontSize);
-				DrawGsFixedWidthTextFormat(&gGame.mGs, (u32)(255.0f * menu->mAlpha) | 0x20202000, menu->mText[i], x - textW / 2,
+				f32 textW = MeasureGameTextWidth(&gGame.mGs, mText[i], 0, mFontSize);
+				DrawGsFixedWidthTextFormat(&gGame.mGs, (u32)(255.0f * mAlpha) | 0x20202000, mText[i], x - textW / 2,
 				                           y - height / 2 + step * i, 0.0f, lineH, lineH);
 			}
 		}
 		if (result == 0 || result == -1 || result == -4 || result == -7 || result == -128) {
 			f32 cx = x - maxW / 2;
-			f32 cy = y - height / 2 + step * menu->mSelection;
+			f32 cy = y - height / 2 + step * mSelection;
 			f32 alpha;
 			if (sMenuMCTestSub.IsOpen()) {
-				if (menu->mState == 4) {
+				if (mState == 4) {
 					alpha = 1.0f - sMenuMCTestSub.mWindow.mDrawAlpha;
 				} else {
 					alpha = 0.0f;
 				}
 			} else {
-				alpha = menu->mAlpha;
+				alpha = mAlpha;
 			}
-			DrawMenuSelectionCursor(menu->mCursor, cx, cy, maxW, lineH, menu->mAlpha, alpha);
+			DrawMenuSelectionCursor(mCursor, cx, cy, maxW, lineH, mAlpha, alpha);
 		}
 		return TRUE;
 	}
@@ -1872,50 +1865,50 @@ void MenuMCTest::Init()
  * @note Address: 0x800336DC
  * @note Size: 0x38C
  */
-extern "C" BOOL Update__15MenuStageSelectFUl(MenuStageSelect* menu, u32 frames)
+BOOL MenuStageSelect::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(menu, frames) == 4) {
+	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
 		if (pad.mPad->mRepeat & 0x10008) {
 			do {
-				if (--menu->mSelection < 0) {
-					menu->mSelection = menu->mCount - 1;
+				if (--mSelection < 0) {
+					mSelection = mCount - 1;
 				}
-			} while (*menu->mLabels[menu->mSelection] == *"\x01");
+			} while (*mLabels[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		} else if (pad.mPad->mRepeat & 0x20004) {
 			do {
-				if (++menu->mSelection > menu->mCount - 1) {
-					menu->mSelection = 0;
+				if (++mSelection > mCount - 1) {
+					mSelection = 0;
 				}
-			} while (*menu->mLabels[menu->mSelection] == *"\x01");
+			} while (*mLabels[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		} else if (pad.mPad->mRepeat & 0x40001) {
-			if (menu->mSelection - 20 >= 0 && *menu->mLabels[menu->mSelection - 20] != *"\x01") {
-				menu->mSelection -= 20;
+			if (mSelection - 20 >= 0 && *mLabels[mSelection - 20] != *"\x01") {
+				mSelection -= 20;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			}
 		} else if (pad.mPad->mRepeat & 0x80002) {
-			if (menu->mSelection + 20 < menu->mCount && *menu->mLabels[menu->mSelection + 20] != *"\x01") {
-				menu->mSelection += 20;
+			if (mSelection + 20 < mCount && *mLabels[mSelection + 20] != *"\x01") {
+				mSelection += 20;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			}
 		} else if (pad.mPad->mTrigger & 0x200) {
-			menu->Close();
+			Close();
 			sMenuMain.Resume();
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 		} else if (pad.mPad->mTrigger & 0x100) {
-			menu->Close();
+			Close();
 			sMenuMain.Close();
 			if (gGame.mStatus.mFlags & 0x0008000000000000ULL) {
-				ChangeGameStage(&gGame, sStageOrder[menu->mSelection], 1);
+				ChangeGameStage(&gGame, sStageOrder[mSelection], 1);
 			} else {
-				ChangeGameStage(&gGame, menu->mSelection, 1);
+				ChangeGameStage(&gGame, mSelection, 1);
 			}
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 		}
 	}
-	return menu->IsOpen();
+	return IsOpen();
 }
 
 /**
@@ -1953,61 +1946,61 @@ extern "C" void Open__15MenuStageSelectFv(MenuStageSelect* menu)
  * @note Size: 0x3AC
  */
 // NONMATCHING: regalloc
-extern "C" void Open__8MenuSaveFv(MenuSave* menu)
+void MenuSave::Open()
 {
-	menu->mState = 1;
-	menu->Resume();
-	menu->mWindow.mOpen = TRUE;
+	mState = 1;
+	Resume();
+	mWindow.mOpen = TRUE;
 	gGame.mStatus.mFlags |= 2;
-	menu->mWindow.SetSize(0.0f, 0.0f);
-	menu->mWindow.SetPos(0.0f, 0.0f);
-	menu->_158         = -10.0f;
-	menu->_15C         = -200.0f;
-	menu->_160         = -10.0f;
-	menu->_164         = 0.0f;
-	menu->_168         = 0.0f;
-	menu->_16C         = 0.0f;
-	menu->_170         = 0.0f;
-	menu->mOffset      = 0.0f;
-	menu->_264         = 0.0f;
-	menu->mTargetAlpha = 1.0f;
-	menu->mMode        = 0;
-	menu->mPrevMode    = menu->mMode;
-	menu->mPhase       = 0;
-	menu->mTime        = 0.0f;
-	menu->mDelay       = 0;
-	if (menu->mLastFile == -1) {
-		menu->mFile = gGame.mInfoScrn.mSelectedSaveSlot;
+	mWindow.SetSize(0.0f, 0.0f);
+	mWindow.SetPos(0.0f, 0.0f);
+	_158         = -10.0f;
+	_15C         = -200.0f;
+	_160         = -10.0f;
+	_164         = 0.0f;
+	_168         = 0.0f;
+	_16C         = 0.0f;
+	_170         = 0.0f;
+	mOffset      = 0.0f;
+	_264         = 0.0f;
+	mTargetAlpha = 1.0f;
+	mMode        = 0;
+	mPrevMode    = mMode;
+	mPhase       = 0;
+	mTime        = 0.0f;
+	mDelay       = 0;
+	if (mLastFile == -1) {
+		mFile = gGame.mInfoScrn.mSelectedSaveSlot;
 	} else {
-		menu->mFile = menu->mLastFile;
+		mFile = mLastFile;
 	}
-	menu->mChoice      = 0;
-	menu->mResult      = 0;
-	menu->mMessage     = 0;
-	menu->mReady       = 0;
-	menu->mShowMessage = 0;
-	menu->_262         = 0;
-	menu->mSaved       = 0;
-	menu->mChannel     = 0;
-	menu->_2A4         = 0.0f;
+	mChoice      = 0;
+	mResult      = 0;
+	mMessage     = 0;
+	mReady       = 0;
+	mShowMessage = 0;
+	_262         = 0;
+	mSaved       = 0;
+	mChannel     = 0;
+	_2A4         = 0.0f;
 #if !defined(VERSION_JP)
 #if !defined(VERSION_JP)
-	menu->_538 = 0;
+	_538 = 0;
 #endif
 #endif
 	PlayGameSound(&gGame.mSound, 0x14B, 0xFF);
-	u32 color = (u32)(255.0f * menu->mTargetAlpha) | 0xFFFFFF00;
-	menu->mTitle.Set(GetLocalizedInterfaceText(SaveTitleText), color);
+	u32 color = (u32)(255.0f * mTargetAlpha) | 0xFFFFFF00;
+	mTitle.Set(GetLocalizedInterfaceText(SaveTitleText), color);
 }
 
 /**
  * @note Address: 0x8003D6FC
  * @note Size: 0x34
  */
-extern "C" void Reset__8MenuSaveFv(MenuSave* menu)
+void MenuSave::Reset()
 {
-	menu->CMenu::Reset();
-	menu->mLastFile = -1;
+	CMenu::Reset();
+	mLastFile = -1;
 }
 
 /**
@@ -2115,86 +2108,85 @@ extern "C" void ClearMainMenuExtraRows(MenuMain* menu)
  * @note Address: 0x800613B0
  * @note Size: 0x74
  */
-extern "C" void Reset__8MenuMainFv(MenuMain* menu)
+void MenuMain::Reset()
 {
-	menu->CMenu::Reset();
-	menu->mChannel = 0;
+	CMenu::Reset();
+	mChannel = 0;
 	for (int i = 0; i < 5; i++) {
-		menu->mExtraRows[i].mText   = NULL;
-		menu->mExtraRows[i].mAction = 0;
+		mExtraRows[i].mText   = NULL;
+		mExtraRows[i].mAction = 0;
 	}
-	LayoutMainMenuRows(menu);
+	LayoutMainMenuRows(this);
 }
 
 /**
  * @note Address: 0x800607D8
  * @note Size: 0x504
  */
-extern "C" BOOL Draw__8MenuMainFv(MenuMain* menu)
+BOOL MenuMain::Draw()
 {
-	if (menu->CMenu::Draw()) {
+	if (CMenu::Draw()) {
 		f32 x, y, width, step, height, maxW, lines, lineH;
-		maxW   = menu->mMaxWidth;
+		maxW   = mMaxWidth;
 		width  = 30.0f + maxW;
-		lineH  = menu->mFontSize;
+		lineH  = mFontSize;
 		step   = 2.0f + lineH;
-		lines  = menu->mRowCount;
+		lines  = mRowCount;
 		height = step * lines;
-		x      = menu->mWindow.mX;
-		y      = menu->mWindow.mY;
+		x      = mWindow.mX;
+		y      = mWindow.mY;
 		for (int i = 0; i < lines; i++) {
 			u32 color;
-			if (i == menu->mSelection) {
-				color = (u32)(255.0f * menu->mAlpha) | 0x20202000;
+			if (i == mSelection) {
+				color = (u32)(255.0f * mAlpha) | 0x20202000;
 			} else {
-				color = (u32)(255.0f * menu->mAlpha) | 0x64646400;
+				color = (u32)(255.0f * mAlpha) | 0x64646400;
 			}
-			if (*menu->mText[i] == *"\x01") {
+			if (*mText[i] == *"\x01") {
 				f32 lineY  = y - height / 2 + step * (0.5f + i);
 				f32 left   = x - width / 2;
-				u32 shadow = (u32)(255.0f * menu->mAlpha) | 0x64646400;
+				u32 shadow = (u32)(255.0f * mAlpha) | 0x64646400;
 				DrawGsLineSegment(&gGame.mGs, NULL, left, lineY, 0.0f, shadow, left + width, lineY, 0.0f, shadow);
-				u32 light = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
+				u32 light = (u32)(255.0f * mAlpha) | 0xC8C8C800;
 				DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + left, 1.0f + lineY, 0.0f, light, 1.0f + (left + width), 1.0f + lineY, 0.0f,
 				                  light);
 			} else {
-				DrawGsFixedWidthTextFormat(&gGame.mGs, color, menu->mText[i], x - menu->mMaxWidth / 2, y - height / 2 + step * i, 0.0f,
-				                           lineH, lineH);
+				DrawGsFixedWidthTextFormat(&gGame.mGs, color, mText[i], x - mMaxWidth / 2, y - height / 2 + step * i, 0.0f, lineH, lineH);
 			}
 		}
 		f32 cx = x - maxW / 2;
-		f32 cy = y - height / 2 + step * menu->mSelection;
+		f32 cy = y - height / 2 + step * mSelection;
 		f32 alpha;
 		if (sMenuStatus.IsOpen()) {
-			alpha = menu->mState == 4 ? 1.0f - sMenuStatus.mWindow.mDrawAlpha : 0.0f;
+			alpha = mState == 4 ? 1.0f - sMenuStatus.mWindow.mDrawAlpha : 0.0f;
 #if defined(VERSION_JP)
 		} else if (sMenuSettings.IsOpen()) {
-			alpha = menu->mState == 4 ? 1.0f - sMenuSettings.mWindow.mDrawAlpha : 0.0f;
+			alpha = mState == 4 ? 1.0f - sMenuSettings.mWindow.mDrawAlpha : 0.0f;
 #endif
 		} else if (sMenuMCTest.IsOpen()) {
-			alpha = menu->mState == 4 ? 1.0f - sMenuMCTest.mWindow.mDrawAlpha : 0.0f;
+			alpha = mState == 4 ? 1.0f - sMenuMCTest.mWindow.mDrawAlpha : 0.0f;
 		} else if (sMenuStageSelect.IsOpen()) {
-			alpha = menu->mState == 4 ? 1.0f - sMenuStageSelect.mWindow.mDrawAlpha : 0.0f;
+			alpha = mState == 4 ? 1.0f - sMenuStageSelect.mWindow.mDrawAlpha : 0.0f;
 #if defined(VERSION_JP)
 		} else if (sMenuPadControl.IsOpen()) {
-			alpha = menu->mState == 4 ? 1.0f - sMenuPadControl.mWindow.mDrawAlpha : 0.0f;
+			alpha = mState == 4 ? 1.0f - sMenuPadControl.mWindow.mDrawAlpha : 0.0f;
 		} else if (sMenuRequest.IsOpen()) {
-			alpha = menu->mState == 4 ? 1.0f - sMenuRequest.mWindow.mDrawAlpha : 0.0f;
+			alpha = mState == 4 ? 1.0f - sMenuRequest.mWindow.mDrawAlpha : 0.0f;
 		} else if (sMenuSound.IsOpen()) {
-			alpha = menu->mState == 4 ? 1.0f - sMenuSound.mWindow.mDrawAlpha : 0.0f;
+			alpha = mState == 4 ? 1.0f - sMenuSound.mWindow.mDrawAlpha : 0.0f;
 #endif
 		} else if (sMenuPC.IsOpen()) {
-			alpha = menu->mState == 4 ? 1.0f - sMenuPC.mWindow.mDrawAlpha : 0.0f;
+			alpha = mState == 4 ? 1.0f - sMenuPC.mWindow.mDrawAlpha : 0.0f;
 #if defined(VERSION_JP)
 		} else if (sMenuRequestClear.IsOpen()) {
-			alpha = menu->mState == 4 ? 1.0f - sMenuRequestClear.mWindow.mDrawAlpha : 0.0f;
+			alpha = mState == 4 ? 1.0f - sMenuRequestClear.mWindow.mDrawAlpha : 0.0f;
 #endif
 		} else if (sMenuSave.IsOpen()) {
-			alpha = menu->mState == 4 ? 1.0f - sMenuSave.mWindow.mDrawAlpha : 0.0f;
+			alpha = mState == 4 ? 1.0f - sMenuSave.mWindow.mDrawAlpha : 0.0f;
 		} else {
-			alpha = menu->mAlpha;
+			alpha = mAlpha;
 		}
-		DrawMenuSelectionCursor(menu->mCursor, cx, cy, maxW, lineH, menu->mAlpha, alpha);
+		DrawMenuSelectionCursor(mCursor, cx, cy, maxW, lineH, mAlpha, alpha);
 		return TRUE;
 	}
 	return FALSE;
@@ -2204,49 +2196,49 @@ extern "C" BOOL Draw__8MenuMainFv(MenuMain* menu)
  * @note Address: 0x80060CDC
  * @note Size: 0x4F8
  */
-extern "C" BOOL Update__8MenuMainFUl(MenuMain* menu, u32 frames)
+BOOL MenuMain::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(menu, frames) == 4) {
+	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
 		s32 id = -1;
 		if (pad.mPad->mRepeat & 0x10008) {
 			do {
-				if (--menu->mSelection < 0) {
-					menu->mSelection = menu->mRowCount - 1.0f;
+				if (--mSelection < 0) {
+					mSelection = mRowCount - 1.0f;
 				}
-			} while (*menu->mText[menu->mSelection] == *"\x01");
+			} while (*mText[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		} else if (pad.mPad->mRepeat & 0x20004) {
 			do {
-				if (++menu->mSelection > menu->mRowCount - 1.0f) {
-					menu->mSelection = 0;
+				if (++mSelection > mRowCount - 1.0f) {
+					mSelection = 0;
 				}
-			} while (*menu->mText[menu->mSelection] == *"\x01");
+			} while (*mText[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		} else if (pad.mPad->mRepeat & 0xC0003) {
-			if (sMainLines[menu->mSelection].mAction == MainMemCardAction) {
-				menu->mChannel = (menu->mChannel + 1) & 1;
+			if (sMainLines[mSelection].mAction == MainMemCardAction) {
+				mChannel = (mChannel + 1) & 1;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
-				menu->mText[menu->mSelection][8] = menu->mChannel + 'A';
+				mText[mSelection][8] = mChannel + 'A';
 			}
 		} else if (pad.mPad->mTrigger & 0x1200) {
-			menu->Close();
+			Close();
 		} else if (pad.mPad->mTrigger & 0x100) {
-			if (menu->mSelection < menu->mBaseRows) {
-				id = sMainLines[menu->mSelection].mAction;
+			if (mSelection < mBaseRows) {
+				id = sMainLines[mSelection].mAction;
 			} else {
-				menu->Close();
-				StartOrQueueEventScript(&gGame.mEvt, (u8*)menu->mExtraRows[menu->mSelection - (menu->mBaseRows + 1)].mAction, 0, -1, -1);
+				Close();
+				StartOrQueueEventScript(&gGame.mEvt, (u8*)mExtraRows[mSelection - (mBaseRows + 1)].mAction, 0, -1, -1);
 			}
 		}
 		if (id >= 0) {
 			BOOL fade = TRUE;
 			switch (id) {
 			case 1:
-				Open__10MenuStatusFv(&sMenuStatus);
+				sMenuStatus.MenuStatus::Open();
 				break;
 			case 2:
-				Open__8MenuItemFv(&sMenuItem);
+				sMenuItem.MenuItem::Open();
 				break;
 #if defined(VERSION_JP)
 			case 3:
@@ -2273,7 +2265,7 @@ extern "C" BOOL Update__8MenuMainFUl(MenuMain* menu, u32 frames)
 				sMenuStageSelect.Open();
 				break;
 			case MainPCAction:
-				Open__6MenuPCFv(&sMenuPC);
+				sMenuPC.MenuPC::Open();
 				break;
 #if defined(VERSION_JP)
 			case 9:
@@ -2281,18 +2273,18 @@ extern "C" BOOL Update__8MenuMainFUl(MenuMain* menu, u32 frames)
 				break;
 #endif
 			case MainSaveAction:
-				Open__8MenuSaveFv(&sMenuSave);
+				sMenuSave.MenuSave::Open();
 				break;
 			}
 			if (id >= 0) {
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-				menu->Suspend(fade);
+				Suspend(fade);
 			} else {
 				PlayGameSound(&gGame.mSound, 0x85, 0xFF);
 			}
 		}
 	}
-	return menu->IsOpen();
+	return IsOpen();
 }
 
 /**
@@ -2368,74 +2360,74 @@ extern "C" BOOL Draw__5CMenuFv(CMenu* menu)
  * @note Address: 0x800617DC
  * @note Size: 0x2E0
  */
-extern "C" BOOL Update__5CMenuFUl(CMenu* menu, u32 frames)
+BOOL CMenu::Update(u32 frames)
 {
-	if (menu->mSuspended) {
-		if (menu->mSuspendFade != 0 && menu->mSuspendAlpha > 0.0f) {
-			if ((menu->mSuspendAlpha -= (1.0f / (0.2f * FRAME_RATE)) * frames) < 0.0f) {
-				menu->mSuspendAlpha = 0.0f;
+	if (mSuspended) {
+		if (mSuspendFade != 0 && mSuspendAlpha > 0.0f) {
+			if ((mSuspendAlpha -= (1.0f / (0.2f * FRAME_RATE)) * frames) < 0.0f) {
+				mSuspendAlpha = 0.0f;
 			}
 		}
-	} else if (menu->mSuspendAlpha < 1.0f) {
-		if ((menu->mSuspendAlpha += (1.0f / (0.2f * FRAME_RATE)) * frames) > 1.0f) {
-			menu->mSuspendAlpha = 1.0f;
+	} else if (mSuspendAlpha < 1.0f) {
+		if ((mSuspendAlpha += (1.0f / (0.2f * FRAME_RATE)) * frames) > 1.0f) {
+			mSuspendAlpha = 1.0f;
 		}
 	}
-	if (!menu->IsOpen()) {
+	if (!IsOpen()) {
 		return FALSE;
 	}
-	if (menu->mSuspended) {
-		menu->mAlpha             = menu->mFade * menu->mSuspendAlpha;
-		menu->mWindow.mDrawAlpha = menu->mAlpha;
+	if (mSuspended) {
+		mAlpha             = mFade * mSuspendAlpha;
+		mWindow.mDrawAlpha = mAlpha;
 		return FALSE;
 	}
 	CPad pad(0);
-	switch (menu->mState) {
+	switch (mState) {
 	case 0:
 		break;
 	case 1:
-		menu->mState = 2;
+		mState = 2;
 	case 2:
-		menu->mState = 3;
+		mState = 3;
 		break;
 	case 3:
-		if (menu->mFade < 1.0f) {
-			if ((menu->mFade += (1.0f / (0.2f * FRAME_RATE)) * frames) > 1.0f) {
-				menu->mFade = 1.0f;
+		if (mFade < 1.0f) {
+			if ((mFade += (1.0f / (0.2f * FRAME_RATE)) * frames) > 1.0f) {
+				mFade = 1.0f;
 			}
 		}
-		if (menu->mFade >= 1.0f) {
-			menu->mState = 4;
+		if (mFade >= 1.0f) {
+			mState = 4;
 		}
 		break;
 	case 4:
 		break;
 	case 5:
-		if (menu->mFade > 0.0f) {
-			if ((menu->mFade -= (1.0f / (0.2f * FRAME_RATE)) * frames) < 0.0f) {
-				menu->mFade = 0.0f;
+		if (mFade > 0.0f) {
+			if ((mFade -= (1.0f / (0.2f * FRAME_RATE)) * frames) < 0.0f) {
+				mFade = 0.0f;
 			}
 		}
-		if (0.0f == menu->mFade) {
-			menu->mState = 6;
+		if (0.0f == mFade) {
+			mState = 6;
 		}
-		menu->mWindow.mOpen = FALSE;
+		mWindow.mOpen = FALSE;
 		break;
 	case 6:
 		break;
 	}
-	menu->mAlpha             = menu->mFade * menu->mSuspendAlpha;
-	menu->mWindow.mDrawAlpha = menu->mAlpha;
-	if (menu->mWindow.mOpen) {
-		menu->mWindow.mTex.mX += 0.002f * frames;
-		menu->mWindow.mTex.mY += 0.002f * frames;
-		PSMTXTrans(menu->mWindow.mTex.mTex.mMtx[0], menu->mWindow.mTex.mX, menu->mWindow.mTex.mY, 0.0f);
-		menu->mWindow.mTex.mTex.mMtxDirty = TRUE;
-		PSMTXScale(menu->mWindow.mTex.mTex.mMtx[1], menu->mWindow.mTex.mScaleX, menu->mWindow.mTex.mScaleY, 1.0f);
-		menu->mWindow.mTex.mTex.mMtxDirty = TRUE;
+	mAlpha             = mFade * mSuspendAlpha;
+	mWindow.mDrawAlpha = mAlpha;
+	if (mWindow.mOpen) {
+		mWindow.mTex.mX += 0.002f * frames;
+		mWindow.mTex.mY += 0.002f * frames;
+		PSMTXTrans(mWindow.mTex.mTex.mMtx[0], mWindow.mTex.mX, mWindow.mTex.mY, 0.0f);
+		mWindow.mTex.mTex.mMtxDirty = TRUE;
+		PSMTXScale(mWindow.mTex.mTex.mMtx[1], mWindow.mTex.mScaleX, mWindow.mTex.mScaleY, 1.0f);
+		mWindow.mTex.mTex.mMtxDirty = TRUE;
 		CPad pad2(0);
 	}
-	return menu->mState;
+	return mState;
 }
 
 /**
@@ -4688,27 +4680,27 @@ static inline void CheckPlayerInventoryFlags()
  * @note Address: 0x8005773C
  * @note Size: 0x1F8
  */
-extern "C" BOOL Draw__10MenuStatusFv(MenuStatus* menu)
+BOOL MenuStatus::Draw()
 {
-	if (menu->CMenu::Draw()) {
-		DrawPanelBackground<ItemStatusPanel>(menu->mAlpha);
-		DrawStatusMenuTabs(menu);
-		if (menu->mMode == 2 || menu->mMode == 4) {
+	if (CMenu::Draw()) {
+		DrawPanelBackground<ItemStatusPanel>(mAlpha);
+		DrawStatusMenuTabs(this);
+		if (mMode == 2 || mMode == 4) {
 			SetScissor(104, 248);
-			f32 x    = (menu->mX - 42.0f) + menu->mOffsetX;
-			f32 y    = (180.0f + menu->mY) + menu->mOffsetY;
-			s32 item = menu->mPhase == 100 ? -1 : menu->mItem;
-			DrawInventoryGrid(item, x, y, menu->mAlpha, 1.0f, menu->_694);
-			DrawStatusItemDetails(sStatusItemTable.mItems[menu->mItem].mItem, 320.0f, 224.0f, menu->mAlpha, menu->_66C);
+			f32 x    = (mX - 42.0f) + mOffsetX;
+			f32 y    = (180.0f + mY) + mOffsetY;
+			s32 item = mPhase == 100 ? -1 : mItem;
+			DrawInventoryGrid(item, x, y, mAlpha, 1.0f, _694);
+			DrawStatusItemDetails(sStatusItemTable.mItems[mItem].mItem, 320.0f, 224.0f, mAlpha, _66C);
 			CheckPlayerInventoryFlags();
-			DrawDiscardCountPanel(menu);
+			DrawDiscardCountPanel(this);
 			SetScissor(0, 448);
 		}
-		DrawPlayerStatusOverview(menu);
-		DrawStatusDiagram(menu);
-		DrawStatusIconGrid(menu);
-		DrawStatusHelpText(menu);
-		DrawStatusMenuTitle(menu);
+		DrawPlayerStatusOverview(this);
+		DrawStatusDiagram(this);
+		DrawStatusIconGrid(this);
+		DrawStatusHelpText(this);
+		DrawStatusMenuTitle(this);
 		return TRUE;
 	}
 	return FALSE;
@@ -4815,54 +4807,54 @@ static inline void ClearStatusTable(MenuStatusTable* table)
  * @note Size: 0x650
  */
 // NONMATCHING: regalloc
-extern "C" void Open__8MenuItemFv(MenuItem* menu)
+void MenuItem::Open()
 {
-	menu->mState = 1;
-	menu->Resume();
-	menu->mWindow.mOpen = TRUE;
+	mState = 1;
+	Resume();
+	mWindow.mOpen = TRUE;
 	gGame.mStatus.mFlags |= 2;
-	menu->mWindow.SetSize(0.0f, 0.0f);
-	menu->mWindow.SetPos(0.0f, 0.0f);
+	mWindow.SetSize(0.0f, 0.0f);
+	mWindow.SetPos(0.0f, 0.0f);
 	ClearStatusTable(&sStatusItemTable);
 	PopulateOwnedItemPage(&sStatusItemTable);
-	s32 count  = CountMenuItems();
-	menu->_160 = 758.0f;
-	menu->_164 = 36.0f;
+	s32 count = CountMenuItems();
+	_160      = 758.0f;
+	_164      = 36.0f;
 	if (count == 0) {
-		menu->_168 = 360.0f;
+		_168 = 360.0f;
 	} else {
-		menu->_168 = 360.0f - (count - 1) * 51;
+		_168 = 360.0f - (count - 1) * 51;
 	}
-	menu->_168       = 207.0f;
-	menu->_16C       = 36.0f;
-	menu->_170       = -10.0f;
-	menu->_174       = -200.0f;
-	menu->_178       = -10.0f;
-	menu->_17C       = 0.0f;
-	menu->_158       = 0;
-	menu->_15C       = 0;
-	menu->mSelection = 0;
-	menu->_19C       = menu->mSelection;
-	menu->_190       = 0.0f;
-	menu->_194       = 0.0f;
-	u32 color        = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
-	menu->mTitle.Set(GetLocalizedInterfaceText(StatusTitleText + 1), color);
-	menu->mShowHelp = 0;
-	menu->_1A4      = 0.0f;
-	s16 id          = sStatusItemTable.mItems[menu->mSelection].mItem;
+	_168       = 207.0f;
+	_16C       = 36.0f;
+	_170       = -10.0f;
+	_174       = -200.0f;
+	_178       = -10.0f;
+	_17C       = 0.0f;
+	_158       = 0;
+	_15C       = 0;
+	mSelection = 0;
+	_19C       = mSelection;
+	_190       = 0.0f;
+	_194       = 0.0f;
+	u32 color  = (u32)(255.0f * mAlpha) | 0xFFFFFF00;
+	mTitle.Set(GetLocalizedInterfaceText(StatusTitleText + 1), color);
+	mShowHelp = 0;
+	_1A4      = 0.0f;
+	s16 id    = sStatusItemTable.mItems[mSelection].mItem;
 	if (id >= 0 && CountMenuItems() > 0) {
-		menu->mName     = GetItemName(id);
-		char* msg       = GetItemName(id);
-		menu->mShowHelp = 1;
-		menu->mHelp     = msg;
+		mName     = GetItemName(id);
+		char* msg = GetItemName(id);
+		mShowHelp = 1;
+		mHelp     = msg;
 	} else {
-		menu->mShowHelp = 1;
-		menu->mHelp     = NULL;
+		mShowHelp = 1;
+		mHelp     = NULL;
 	}
-	menu->_350 = 0;
-	for (int i = 0; i < (int)ARRAY_SIZE(menu->mBg); i++) {
-		menu->mBg[i].mAngle0 = 0.017453292f * (rand() % 360);
-		menu->mBg[i].mAngle1 = 0.017453292f * (rand() % 360);
+	_350 = 0;
+	for (int i = 0; i < (int)ARRAY_SIZE(mBg); i++) {
+		mBg[i].mAngle0 = 0.017453292f * (rand() % 360);
+		mBg[i].mAngle1 = 0.017453292f * (rand() % 360);
 	}
 }
 
@@ -5902,126 +5894,126 @@ static inline f32 PCAnimFrame(XObj* obj)
  * @note Address: 0x8004DD1C
  * @note Size: 0x830
  */
-extern "C" BOOL Update__6MenuPCFUl(MenuPC* menu, u32 frames)
+BOOL MenuPC::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(menu, frames) == 4) {
-		PCEase(menu->_198, menu->_1A0);
-		PCEase(menu->mFade, menu->_1A4);
-		PCSlide(menu->mTextX, menu->mTargetX, 6.0f * frames);
-		PCSlide(menu->mTextY, menu->mTargetY, 6.0f * frames);
-		ApproachHudValue(&menu->mScroll, &menu->mScrollTarget, 17.0f);
-		PCEaseCall(menu->mMoneyDisplay.shown, menu->mMoneyDisplay.target);
-		PCEaseCall(menu->mScrapDisplay.shown, menu->mScrapDisplay.target);
-		PCEaseCall(menu->_424, menu->_428);
-		menu->_44C -= 0.008f * frames;
-		if (menu->mMode > 1) {
-			switch (menu->mTextPhase) {
+	if (CMenu::Update(frames) == 4) {
+		PCEase(_198, _1A0);
+		PCEase(mFade, _1A4);
+		PCSlide(mTextX, mTargetX, 6.0f * frames);
+		PCSlide(mTextY, mTargetY, 6.0f * frames);
+		ApproachHudValue(&mScroll, &mScrollTarget, 17.0f);
+		PCEaseCall(mMoneyDisplay.shown, mMoneyDisplay.target);
+		PCEaseCall(mScrapDisplay.shown, mScrapDisplay.target);
+		PCEaseCall(_424, _428);
+		_44C -= 0.008f * frames;
+		if (mMode > 1) {
+			switch (mTextPhase) {
 			case 0:
-				switch (menu->mMode) {
+				switch (mMode) {
 				case 3:
 				case 7:
 				case 10:
-					menu->mTargetX = 140.0f;
+					mTargetX = 140.0f;
 					break;
 				case 4:
-					menu->mTargetX = 160.0f;
+					mTargetX = 160.0f;
 					break;
 				default:
-					menu->mTargetX = 180.0f;
+					mTargetX = 180.0f;
 					break;
 				}
-				menu->mTextPhase++;
+				mTextPhase++;
 				break;
 			case 1:
-				if (menu->mTextX == menu->mTargetX) {
-					menu->mTextY   = 129.0f;
-					menu->mTargetY = 301.0f;
+				if (mTextX == mTargetX) {
+					mTextY   = 129.0f;
+					mTargetY = 301.0f;
 #if !defined(VERSION_JP)
-					switch (menu->mMode) {
+					switch (mMode) {
 					case 3:
 					case 7:
 					case 10:
-						menu->mTextY -= 8.0f;
-						menu->mTargetY -= 8.0f;
+						mTextY -= 8.0f;
+						mTargetY -= 8.0f;
 						break;
 					}
 #endif
-					menu->mTextPhase++;
+					mTextPhase++;
 				}
 				break;
 			case 2:
-				if (menu->mTextY == menu->mTargetY) {
-					switch (menu->mMode) {
+				if (mTextY == mTargetY) {
+					switch (mMode) {
 					case 3:
 					case 7:
 					case 10:
-						menu->mTextX   = 140.0f;
-						menu->mTargetX = 469.0f;
+						mTextX   = 140.0f;
+						mTargetX = 469.0f;
 						break;
 					case 4:
-						menu->mTextX   = 160.0f;
-						menu->mTargetX = 449.0f;
+						mTextX   = 160.0f;
+						mTargetX = 449.0f;
 						break;
 					default:
-						menu->mTextX   = 210.0f;
-						menu->mTargetX = 429.0f;
+						mTextX   = 210.0f;
+						mTargetX = 429.0f;
 						break;
 					}
-					menu->mTextPhase++;
+					mTextPhase++;
 				}
 				break;
 			case 3:
-				if (menu->mTextX == menu->mTargetX)
-					menu->mTextPhase++;
+				if (mTextX == mTargetX)
+					mTextPhase++;
 				break;
 			case 4:
 				break;
 			}
 		}
-		switch (menu->_36C) {
+		switch (_36C) {
 		case 0:
-			menu->_370 = 0;
+			_370 = 0;
 			break;
 		case 1:
-			menu->_370 = 1;
+			_370 = 1;
 			break;
 		case 2:
-			menu->_370 = 2;
+			_370 = 2;
 			break;
 		case 3:
-			menu->_370 = 6;
+			_370 = 6;
 			break;
 		case 4:
-			menu->_370 = 7;
+			_370 = 7;
 			break;
 		case 5:
-			menu->_370 = 8;
+			_370 = 8;
 			break;
 		case 6:
-			menu->_370 = 9;
+			_370 = 9;
 			break;
 		case 7:
-			menu->_370 = 2;
+			_370 = 2;
 			break;
 		case 8:
-			menu->_370 = 10;
+			_370 = 10;
 			break;
 		default:
-			menu->_370 = 0;
+			_370 = 0;
 			break;
 		}
-		if (menu->_374 == 1) {
+		if (_374 == 1) {
 			for (s32 i = 0; i < 288; i++) {
 				XObj* obj = PCWorldObject(i);
 				switch (obj->GetKind()) {
 				case 120:
-					obj->SetAnim(menu->_370, 0, 0, 0, 0, 0.0f, frames, 1.0f, 10.0f);
+					obj->SetAnim(_370, 0, 0, 0, 0, 0.0f, frames, 1.0f, 10.0f);
 					break;
 				}
 			}
-			menu->_374 = 0;
+			_374 = 0;
 		}
-		switch (menu->_36C) {
+		switch (_36C) {
 		case 1:
 		case 2:
 		case 6:
@@ -6033,17 +6025,17 @@ extern "C" BOOL Update__6MenuPCFUl(MenuPC* menu, u32 frames)
 					f32 end     = PCAnimEnd(obj);
 					f32 current = PCAnimFrame(obj);
 					if (end - 4.0f <= current) {
-						menu->_36C++;
-						menu->_374 = 1;
+						_36C++;
+						_374 = 1;
 					}
 				} break;
 				}
 			}
 			break;
 		}
-		(menu->*gPCStepHandlers[menu->mMode])(frames);
+		(this->*gPCStepHandlers[mMode])(frames);
 	}
-	return menu->IsOpen();
+	return IsOpen();
 }
 
 template <class MenuType>
@@ -6086,66 +6078,66 @@ static inline void UpdateMenuTitle(MenuType* menu, u32 frames)
  * @note Size: 0x538
  */
 // NONMATCHING: regalloc, and retail reaches the card's busy flag in two steps
-extern "C" BOOL Update__8MenuSaveFUl(MenuSave* menu, u32 frames)
+BOOL MenuSave::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(menu, frames) == 4) {
-		PCEaseCall(menu->_15C, menu->_164);
-		ApproachHudValue(&menu->_264, &menu->mTargetAlpha, 0.08f * frames);
-		PCEaseCall(menu->_16C, menu->mOffset);
-		menu->_2A4 -= 0.008f * frames;
-		UpdateMenuTitle(menu, frames);
-		switch (menu->_294) {
+	if (CMenu::Update(frames) == 4) {
+		PCEaseCall(_15C, _164);
+		ApproachHudValue(&_264, &mTargetAlpha, 0.08f * frames);
+		PCEaseCall(_16C, mOffset);
+		_2A4 -= 0.008f * frames;
+		UpdateMenuTitle(this, frames);
+		switch (_294) {
 		case 0:
 			break;
 		case 1:
-			menu->_298 = 0.0f;
-			menu->_294++;
-			menu->mHelpText = menu->mNextHelpText;
+			_298 = 0.0f;
+			_294++;
+			mHelpText = mNextHelpText;
 			break;
 		case 2:
-			menu->_298 += 0.04f * frames;
-			if (menu->_298 >= 1.0f) {
-				menu->_298 = 1.0f;
-				menu->_294 = 0;
+			_298 += 0.04f * frames;
+			if (_298 >= 1.0f) {
+				_298 = 1.0f;
+				_294 = 0;
 			}
 			break;
 		}
-		if (menu->mAlpha > 0.0f) {
+		if (mAlpha > 0.0f) {
 			f32 spinX = 0.08726646f * frames;
 			f32 spinY = 0.05235988f * frames;
 			for (int i = 0; i < 20; i++) {
-				menu->mBg[i].mAngle0 += spinX;
-				menu->mBg[i].mAngle1 += spinY;
+				mBg[i].mAngle0 += spinX;
+				mBg[i].mAngle1 += spinY;
 			}
 		}
-		if (menu->mMode != 1 && menu->mMode != 5 && menu->mMode != 9) {
+		if (mMode != 1 && mMode != 5 && mMode != 9) {
 			s32 sector;
 			s32 size;
-			menu->mReady = FALSE;
-			menu->_262   = FALSE;
-			switch (ProbeMemoryCardCapacity(&gGame.mMemcard.mCard, menu->mChannel, &size, &sector)) {
+			mReady = FALSE;
+			_262   = FALSE;
+			switch (ProbeMemoryCardCapacity(&gGame.mMemcard.mCard, mChannel, &size, &sector)) {
 			case CARD_RESULT_WRONGDEVICE:
-				menu->_262 = TRUE;
+				_262 = TRUE;
 				break;
 			case CARD_RESULT_READY:
 				if (sector == 0x2000) {
-					menu->mReady = TRUE;
+					mReady = TRUE;
 				}
 				break;
 			case CARD_RESULT_NOCARD:
 			case CARD_RESULT_FATAL_ERROR:
 				break;
 			}
-			if (!menu->mReady) {
-				menu->mShowMessage = FALSE;
+			if (!mReady) {
+				mShowMessage = FALSE;
 			}
 		}
 		if (gGame.mMemcard.mCard.mBusy != 0) {
-			return menu->IsOpen();
+			return IsOpen();
 		}
-		(menu->*gSaveStepHandlers[menu->mMode])(frames);
+		(this->*gSaveStepHandlers[mMode])(frames);
 	}
-	return menu->IsOpen();
+	return IsOpen();
 }
 
 static inline f32 MenuTextCenter(f32 w, f32 factor, f32 center)
@@ -6499,7 +6491,7 @@ void MenuRequest::Init()
 
 BOOL MenuPadControl::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(this, frames) == 4) {
+	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
 		if (pad.mPad->mTrigger & 0x200) {
 			Close();
@@ -7133,7 +7125,7 @@ extern "C" void DrawMenuWindow(MenuWindow* window)
 // NONMATCHING: register allocation and popup coordinate scheduling
 BOOL MenuMCTest::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(this, frames) == 4) {
+	if (CMenu::Update(frames) == 4) {
 		Memcard* card = &gGame.mMemcard.mCard;
 		if (card->mBusy)
 			return IsOpen();
@@ -7514,7 +7506,7 @@ extern "C" void SetSoundMenuSelection(XSound* sound, s32 index, s32 value);
 
 BOOL MenuSound::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(this, frames) == 4) {
+	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
 		if (pad.mPad->mRepeat & 0x10008) {
 			if (--mSelection < 0)
@@ -7595,7 +7587,7 @@ extern "C" void SetRingMenuOption(XObjChrMenu* menu, s32 value);
 
 BOOL MenuSettings::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(this, frames) == 4) {
+	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
 		if (pad.mPad->mRepeat & 0x10008) {
 			do {
@@ -7652,7 +7644,7 @@ BOOL MenuSettings::Update(u32 frames)
 #if defined(VERSION_JP)
 BOOL MenuRequest::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(this, frames) == 4) {
+	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
 		PCEase(_528, _530);
 		PCEase(_52C, _534);
@@ -8218,91 +8210,91 @@ static inline char* StatusTabHelp(s32 selection)
 	return selection >= 4 ? NULL : GetLocalizedInterfaceText(StatusTitleText + gStatusTabTextOffsets[selection]);
 }
 
-extern "C" void Open__10MenuStatusFv(MenuStatus* menu)
+void MenuStatus::Open()
 {
-	menu->CMenu::Open();
+	CMenu::Open();
 	gGame.mStatus.mFlags |= 2;
-	menu->mFontSize      = 22;
-	menu->mRowCount      = 14;
-	menu->mMaxWidth      = 0;
-	menu->mOffsetX       = 0;
-	menu->mOffsetY       = 0;
-	menu->_540           = 0;
-	menu->_544           = 0;
-	menu->_548           = -10;
-	menu->_54C           = -200;
-	menu->_550           = -10;
-	menu->mSlide         = 0;
-	menu->_568           = 725;
-	menu->_56C           = 100;
-	menu->_570           = 725;
-	menu->_574           = 100;
-	menu->mDiscardPanelX = 937;
-	menu->mDiscardPanelY = 100;
-	menu->_580           = 937;
-	menu->_584           = 100;
-	menu->_674           = TRUE;
+	mFontSize      = 22;
+	mRowCount      = 14;
+	mMaxWidth      = 0;
+	mOffsetX       = 0;
+	mOffsetY       = 0;
+	_540           = 0;
+	_544           = 0;
+	_548           = -10;
+	_54C           = -200;
+	_550           = -10;
+	mSlide         = 0;
+	_568           = 725;
+	_56C           = 100;
+	_570           = 725;
+	_574           = 100;
+	mDiscardPanelX = 937;
+	mDiscardPanelY = 100;
+	_580           = 937;
+	_584           = 100;
+	_674           = TRUE;
 	for (int i = 0; i < 4; i++) {
-		menu->mTabs[i]._00 = 758;
-		menu->mTabs[i]._04 = 36;
-		if (menu->_674)
-			menu->mTabs[i].mX = (198.0f + i * 108) - 8.0f;
+		mTabs[i]._00 = 758;
+		mTabs[i]._04 = 36;
+		if (_674)
+			mTabs[i].mX = (198.0f + i * 108) - 8.0f;
 		else
-			menu->mTabs[i].mX = 252.0f + i * 108;
-		menu->mTabs[i]._0C  = 36;
-		menu->mTabs2[i]._00 = 758;
-		menu->mTabs2[i]._04 = 36;
-		menu->mTabs2[i].mX  = 758;
-		menu->mTabs2[i]._0C = 36;
+			mTabs[i].mX = 252.0f + i * 108;
+		mTabs[i]._0C  = 36;
+		mTabs2[i]._00 = 758;
+		mTabs2[i]._04 = 36;
+		mTabs2[i].mX  = 758;
+		mTabs2[i]._0C = 36;
 	}
-	menu->mX        = 758;
-	menu->mY        = 36;
-	menu->_5E0      = 758;
-	menu->_5E4      = 36;
-	menu->_5E8      = 1086;
-	menu->_5EC      = 36;
-	menu->_5F0      = 1086;
-	menu->_5F4      = 36;
-	menu->_5F8      = 959;
-	menu->_5FC      = 36;
-	menu->_600      = 959;
-	menu->_604      = 36;
-	menu->mDiagramX = 1086;
-	menu->mDiagramY = 36;
-	menu->_610      = 1086;
-	menu->_614      = 36;
-	menu->mWindow.SetSize(0, 0);
-	menu->mWindow.SetPos(0, 0);
-	menu->mMode              = 0;
-	menu->mPrevMode          = 0;
-	menu->mNextMode          = 0;
-	menu->mAnimationFrame    = 0;
-	menu->mPhase             = 0;
-	menu->mDelay             = 0;
-	menu->mItem              = 0;
-	menu->mPreviousItem      = 0;
-	menu->mOverviewSelection = 0;
-	menu->mIconSelection     = 0;
-	menu->mChoice            = 0;
-	menu->mCount             = 0;
+	mX        = 758;
+	mY        = 36;
+	_5E0      = 758;
+	_5E4      = 36;
+	_5E8      = 1086;
+	_5EC      = 36;
+	_5F0      = 1086;
+	_5F4      = 36;
+	_5F8      = 959;
+	_5FC      = 36;
+	_600      = 959;
+	_604      = 36;
+	mDiagramX = 1086;
+	mDiagramY = 36;
+	_610      = 1086;
+	_614      = 36;
+	mWindow.SetSize(0, 0);
+	mWindow.SetPos(0, 0);
+	mMode              = 0;
+	mPrevMode          = 0;
+	mNextMode          = 0;
+	mAnimationFrame    = 0;
+	mPhase             = 0;
+	mDelay             = 0;
+	mItem              = 0;
+	mPreviousItem      = 0;
+	mOverviewSelection = 0;
+	mIconSelection     = 0;
+	mChoice            = 0;
+	mCount             = 0;
 	ClearStatusTable(&sStatusItemTable);
 	PopulateOwnedItemPage(&sStatusItemTable);
-	menu->SetMode(0);
-	menu->_66C            = 0;
-	menu->_670            = 0;
-	menu->mSavedBgm       = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
-	menu->mSavedBgmVolume = gGame.mSound.mMusicVolume;
-	if (!menu->_674 && menu->mSelection >= 3)
-		menu->mSelection = 0;
+	SetMode(0);
+	_66C            = 0;
+	_670            = 0;
+	mSavedBgm       = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
+	mSavedBgmVolume = gGame.mSound.mMusicVolume;
+	if (!_674 && mSelection >= 3)
+		mSelection = 0;
 	if (gEventFlags.mFlags[0] & 4)
-		menu->_67C = TRUE;
+		_67C = TRUE;
 	else
-		menu->_67C = FALSE;
+		_67C = FALSE;
 	if ((gEventFlags.mFlags[0] & 0x20000000) && (gEventFlags.mFlags[0] & 0x40000000))
-		menu->_679 = TRUE;
+		_679 = TRUE;
 	else
-		menu->_679 = FALSE;
-	menu->_680 = gEventVars.mVars[0x220 / 4] / 10000.0f;
+		_679 = FALSE;
+	_680 = gEventVars.mVars[0x220 / 4] / 10000.0f;
 	for (int i = 0; i < 24; i++)
 		gStatusIconUnlocked[i] = 0;
 	for (int i = 0; i < 24; i++) {
@@ -8313,18 +8305,18 @@ extern "C" void Open__10MenuStatusFv(MenuStatus* menu)
 	for (int i = 0; i < 13; i++)
 		gStatusEntryAvailable[i] = 0;
 	MarkAvailableStatusEntries(gStatusEntryAvailable);
-	u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
-	menu->mTitle.Set(GetLocalizedInterfaceText(StatusTitleText), color);
-	menu->mShowHelp  = 0;
-	menu->mHelpAlpha = 0;
-	menu->mHelpText  = StatusTabHelp(menu->mSelection);
-	char* help       = StatusTabHelp(menu->mSelection);
-	menu->mShowHelp  = 1;
-	menu->mHelp      = help;
-	menu->mHelpCount = 0;
-	for (int i = 0; i < (int)ARRAY_SIZE(menu->mHelpChars); i++) {
-		menu->mHelpChars[i].mAngle0 = 0.017453292f * (rand() % 360);
-		menu->mHelpChars[i].mAngle1 = 0.017453292f * (rand() % 360);
+	u32 color = (u32)(255.0f * mAlpha) | 0xFFFFFF00;
+	mTitle.Set(GetLocalizedInterfaceText(StatusTitleText), color);
+	mShowHelp  = 0;
+	mHelpAlpha = 0;
+	mHelpText  = StatusTabHelp(mSelection);
+	char* help = StatusTabHelp(mSelection);
+	mShowHelp  = 1;
+	mHelp      = help;
+	mHelpCount = 0;
+	for (int i = 0; i < (int)ARRAY_SIZE(mHelpChars); i++) {
+		mHelpChars[i].mAngle0 = 0.017453292f * (rand() % 360);
+		mHelpChars[i].mAngle1 = 0.017453292f * (rand() % 360);
 	}
 }
 
@@ -8357,59 +8349,59 @@ static inline void ClearPCShopPage()
 		page->mNext[0].mIsAttachment = 0;
 }
 
-extern "C" void Open__6MenuPCFv(MenuPC* menu)
+void MenuPC::Open()
 {
-	menu->CMenu::Open();
-	menu->mWindow.SetSize(0, 0);
-	menu->mWindow.SetPos(0, 0);
-	menu->mMode              = 0;
-	menu->mPrevMode          = menu->mMode;
-	menu->mPhase             = 0;
-	menu->mTextPhase         = 0;
-	menu->mChoice            = 0;
-	menu->mPurchaseSelection = 0;
-	menu->_178               = 0;
-	menu->_17C               = 0;
-	menu->mMoneyDigit        = 0;
-	menu->mShopSelection     = 0;
-	menu->mScrapDigit        = 0;
-	menu->mProgress          = 0;
-	menu->mTargetProgress    = 0;
-	menu->mSpeed             = 1;
-	menu->_198               = -10;
-	menu->mFade              = 0;
-	menu->_1A0               = -10;
-	menu->_1A4               = 60;
-	menu->mTextX             = 210;
-	menu->mTextY             = 129;
-	menu->mTargetX           = menu->mTextX;
-	menu->mTargetY           = menu->mTextY;
-	ResetPCCharacters(menu);
-	menu->mAmount      = 0;
-	menu->_398         = 1;
-	menu->_39C         = 1;
-	menu->mPanelAlpha  = 0;
-	menu->mPanelTarget = 0;
+	CMenu::Open();
+	mWindow.SetSize(0, 0);
+	mWindow.SetPos(0, 0);
+	mMode              = 0;
+	mPrevMode          = mMode;
+	mPhase             = 0;
+	mTextPhase         = 0;
+	mChoice            = 0;
+	mPurchaseSelection = 0;
+	_178               = 0;
+	_17C               = 0;
+	mMoneyDigit        = 0;
+	mShopSelection     = 0;
+	mScrapDigit        = 0;
+	mProgress          = 0;
+	mTargetProgress    = 0;
+	mSpeed             = 1;
+	_198               = -10;
+	mFade              = 0;
+	_1A0               = -10;
+	_1A4               = 60;
+	mTextX             = 210;
+	mTextY             = 129;
+	mTargetX           = mTextX;
+	mTargetY           = mTextY;
+	ResetPCCharacters(this);
+	mAmount      = 0;
+	_398         = 1;
+	_39C         = 1;
+	mPanelAlpha  = 0;
+	mPanelTarget = 0;
 	for (int i = 0; i < 4; i++)
-		menu->mChoices[i] = -1;
-	menu->mChoiceCount = 0;
-	menu->_44C         = 0;
-	s32 stage          = gGame.mStage;
+		mChoices[i] = -1;
+	mChoiceCount = 0;
+	_44C         = 0;
+	s32 stage    = gGame.mStage;
 	if (FindStageIndexByName("stage05") == stage)
-		menu->_3A0 = FALSE;
+		_3A0 = FALSE;
 	else
-		menu->_3A0 = TRUE;
+		_3A0 = TRUE;
 	if (gGame._344C + 1 == gGame.mStage)
-		menu->_3A0 = FALSE;
+		_3A0 = FALSE;
 	FindStageIndexByName("shun");
-	menu->mHistoryStart = 600;
-	menu->mHistoryCount = 20;
-	if (menu->mHistoryCount > 0) {
-		for (int i = 0; i < menu->mHistoryCount; i++) {
+	mHistoryStart = 600;
+	mHistoryCount = 20;
+	if (mHistoryCount > 0) {
+		for (int i = 0; i < mHistoryCount; i++) {
 			MenuPCItem* row = &sShopHistoryEntries[i];
-			s32 id          = gEventVars.mVars[menu->mHistoryStart + i];
+			s32 id          = gEventVars.mVars[mHistoryStart + i];
 			row->mItem      = id;
-			row->mCount     = gEventVars.mVars[menu->mHistoryStart + (menu->mHistoryCount + i)];
+			row->mCount     = gEventVars.mVars[mHistoryStart + (mHistoryCount + i)];
 			if (id != -1) {
 				if (id & 0x10000) {
 					id &= ~0x10000;
@@ -8423,18 +8415,18 @@ extern "C" void Open__6MenuPCFv(MenuPC* menu)
 			}
 		}
 	}
-	menu->mChoices[menu->mChoiceCount] = 3;
-	menu->mChoiceCount++;
-	menu->mCanSelect    = TRUE;
-	menu->mCatalogBase  = 560;
-	menu->mCatalogCount = 20;
-	int count           = 0;
-	if (menu->mCatalogCount > 0) {
-		for (int i = 0; i < menu->mCatalogCount; i++) {
+	mChoices[mChoiceCount] = 3;
+	mChoiceCount++;
+	mCanSelect    = TRUE;
+	mCatalogBase  = 560;
+	mCatalogCount = 20;
+	int count     = 0;
+	if (mCatalogCount > 0) {
+		for (int i = 0; i < mCatalogCount; i++) {
 			MenuPCItem* row = &sShopCatalogEntries[i];
-			s32 id          = gEventVars.mVars[menu->mCatalogBase + i];
+			s32 id          = gEventVars.mVars[mCatalogBase + i];
 			row->mItem      = id;
-			row->mCount     = gEventVars.mVars[menu->mCatalogBase + (menu->mCatalogCount + i)];
+			row->mCount     = gEventVars.mVars[mCatalogBase + (mCatalogCount + i)];
 			if (id != -1) {
 				row->mPrice = GetUtilibotPrice(id);
 				count++;
@@ -8442,38 +8434,38 @@ extern "C" void Open__6MenuPCFv(MenuPC* menu)
 		}
 	}
 	if (count == 0)
-		menu->mCanSelect = FALSE;
-	menu->mChoices[menu->mChoiceCount] = 7;
-	menu->mChoiceCount++;
+		mCanSelect = FALSE;
+	mChoices[mChoiceCount] = 7;
+	mChoiceCount++;
 	int flag      = GetStatusIconEventFlagId(3);
 	bool unlocked = false;
 	if (gEventFlags.mFlags[flag >> 5] & (1u << (flag & 31)))
 		unlocked = true;
 	if (unlocked) {
-		menu->mChoices[menu->mChoiceCount] = 10;
-		menu->mChoiceCount++;
+		mChoices[mChoiceCount] = 10;
+		mChoiceCount++;
 	}
 	for (int i = 0; i < 5; i++) {
-		menu->mRankingOffsets[i]        = 0;
-		menu->mRankingRows[i].nameIndex = 0;
-		menu->mRankingRows[i].score     = 0;
+		mRankingOffsets[i]        = 0;
+		mRankingRows[i].nameIndex = 0;
+		mRankingRows[i].score     = 0;
 	}
-	menu->mRankingEnd = 0;
-	menu->_1BC        = rand() % 8;
+	mRankingEnd = 0;
+	_1BC        = rand() % 8;
 	ClearPCShopPage<ItemPriceList>();
 	PopulateShopHistoryPage(&gShopHistoryPage);
 	ClearPCShopPage<PriceList>();
 	PopulateShopCatalogPage(&gShopCatalogPage);
-	menu->mScroll             = 0;
-	menu->mScrollTarget       = 0;
-	menu->mMoneyDisplay.shown = menu->mMoneyDisplay.target = GetMoney();
-	menu->mScrapDisplay.shown = menu->mScrapDisplay.target = GetScrap();
-	menu->mDepositDisplay.shown                            = menu->mDepositBalance;
-	menu->mDepositDisplay.target                           = menu->mDepositBalance;
-	menu->_424                                             = 0;
-	menu->_428                                             = 0;
-	menu->mScrapRate                                       = 1;
-	menu->mExitState                                       = -1;
+	mScroll             = 0;
+	mScrollTarget       = 0;
+	mMoneyDisplay.shown = mMoneyDisplay.target = GetMoney();
+	mScrapDisplay.shown = mScrapDisplay.target = GetScrap();
+	mDepositDisplay.shown                      = mDepositBalance;
+	mDepositDisplay.target                     = mDepositBalance;
+	_424                                       = 0;
+	_428                                       = 0;
+	mScrapRate                                 = 1;
+	mExitState                                 = -1;
 	StopGameSfx(&gGame.mSound, 0x30007);
 	gGame.mStatus.mFlags |= 2;
 }
@@ -8557,7 +8549,7 @@ extern "C" void DrawStatusCallout(MenuStatus*, s32 id, f32 x, f32 y, f32 targetX
 
 BOOL MenuStatus::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(this, frames) == 4) {
+	if (CMenu::Update(frames) == 4) {
 		mAnimationFrame++;
 		_694 += (1.0f / (0.3f * FRAME_RATE)) * frames;
 		if (_694 >= 2.0f)
@@ -8634,7 +8626,7 @@ static inline void FinishItemMenuScroll(MenuItem* menu)
 BOOL MenuItem::Update(u32 frames)
 {
 	static s32 selectedItem = -1;
-	if (Update__5CMenuFUl(this, frames) == 4) {
+	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
 		if ((mItemPhase += (1.0f / (0.3f * FRAME_RATE)) * frames) >= 2.0f)
 			mItemPhase = fmod(mItemPhase, 2.0);
@@ -8795,7 +8787,7 @@ BOOL MenuItem::Update(u32 frames)
 #if defined(VERSION_JP)
 BOOL MenuRequestClear::Update(u32 frames)
 {
-	if (Update__5CMenuFUl(this, frames) == 4) {
+	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
 		PCEase(_170, _178);
 		PCEase(_174, _17C);

@@ -103,7 +103,7 @@ ActorToyAnimationData gActorToyAnimationData = {
  */
 void XObjActorToy::vfAC()
 {
-	vfAC__9XObjActorFv(this);
+	XObjActor::vfAC();
 	if (mFirst.mStatus.mFlags & 0x10000) {
 		mFirst.CJObj::SetTranslate(GetTranslateX(), GetTranslateY(), GetTranslateZ(), 1);
 		mFirst.CJObj::SetScale(GetScaleX(), GetScaleY(), GetScaleZ(), 1);
@@ -136,7 +136,7 @@ void XObjActorToy::Release()
 {
 	mFirst.Release();
 	mSecond.Release();
-	Release__4XObjFv(this);
+	XObj::Release();
 	mLoad = 0;
 	_1F90 = 0;
 }
@@ -232,7 +232,7 @@ void XObjActorToy::ResetObjectState()
  */
 void XObjActorToy::vf94()
 {
-	vf94__9XObjActorFv(this);
+	XObjActor::vf94();
 	mLoad = 0;
 	_1F90 = 0;
 	mFirst.vf94();

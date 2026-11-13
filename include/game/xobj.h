@@ -263,20 +263,14 @@ BOOL LoadJointAnimationAsync(CJAnim* anim, const char* path);
 void OnHitFromPosition__4XObjFRC3Vecf(XObj* object, const Vec* position, f32 strength);
 CVec GetFloorContactPosition(XObj* object, s32 floor, const Vec* offset);
 // the default vf12C
-void vf12C__4XObjFlUcUcUcf(XObj* object, s32 blend, u8 red, u8 green, u8 blue, f32 time);
 f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut);
 void UpdateObjectFloorHeights(XObj* object);
 void UpdateObjectFloorXZExtent(XObj* object);
-void SetAnim__4XObjFliPvPvPvffff(XObj* object, s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate,
-                                 f32 blend, f32 blendRate);
 void vfC4__4XObjFv(XObj* object);
-void vfC8__4XObjFv(XObj* object);
 void DrawGroundShadowAt__4XObjFPC3Vecf(XObj* object, const Vec* origin, f32 opacity);
 void DrawGroundShadow__4XObjFv(XObj* object);
 void DrawWithView__4XObjFPA4_f(XObj* object, f32 (*view)[4]);
 void UpdateObject__4XObjFUl(XObj* object, u32 frames);
-void Release__4XObjFv(XObj* object);
-void vfDC__4XObjFiUc(CXObj* object, BOOL enabled, u8 mode);
 // walk callback, sets up each material's pe and toon flags
 void ApplyJointMaterialPEPresets(HSD_JObj* joint, f32** arguments, s32 type);
 // the default LoadFromPlacement, reads the object's coord info
@@ -295,7 +289,6 @@ void SetActorLookAtPosition(CXObj* object, const Vec* target, f32 rate);
 void SetActorLookAngle(CXObj* object, f32 value, f32 rate);
 void SetActorLookTarget(CXObj* object, const Vec* target, f32 rate);
 void ResetActorLook(CXObj* object, f32 rate);
-void UpdateObject__9XObjActorFUl(XObj* object, u32 frames);
 
 // pools and counters the object kinds share
 extern XObj* gSpiderCarryModels[16];

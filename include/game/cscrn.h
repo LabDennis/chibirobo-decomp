@@ -134,15 +134,11 @@ void UpdateScreenFade(CScrnColor* color, u32 frames);
 void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8 a, f32 time);
 void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time);
 // CScrnWipe
-void Update__9CScrnWipeFUl(CScrnWipe* wipe, u32 frames);
 void StartScreenWipeColorTransition(CScrnWipe* wipe, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, f32 x, f32 y, f32 width0, f32 height0,
                                     f32 width1, f32 height1, f32 time, u8 a1, BOOL hideWhenDone);
 void StartScreenWipe(CScrnWipe* wipe, u8 r, u8 g, u8 b, u8 a, BOOL hideWhenDone, f32 x, f32 y, f32 width0, f32 height0, f32 width1,
                      f32 height1, f32 time);
-void Reset__9CScrnWipeFv(CScrnWipe* wipe);
 // CScrnRoboeyes
-void Update__13CScrnRoboeyesFUl(CScrnRoboeyes* eyes, u32 frames);
-void Reset__13CScrnRoboeyesFv(CScrnRoboeyes* eyes);
 // CScrnQuake
 void UpdateScreenShake(CScrnQuake* quake, u32 frames);
 void StartScreenShake(CScrnQuake* quake, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, f32 time);

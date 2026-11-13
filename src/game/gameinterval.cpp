@@ -56,9 +56,9 @@ CLight* CGame::GetLight()
  * @note Address: 0x8000A538
  * @note Size: 0x8
  */
-extern "C" u32 vf2C__5CBaseFv(CBase* base)
+u32 CBase::vf2C()
 {
-	return base->mRetraceStep;
+	return mRetraceStep;
 }
 
 /**

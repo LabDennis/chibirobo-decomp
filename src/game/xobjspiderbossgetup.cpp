@@ -6,41 +6,41 @@
  * @note Size: 0x340
  */
 // gets back up, blinking
-extern "C" void State1__14XObjSpiderBossFUl(XObjSpiderBoss* spider, u32 frames)
+void XObjSpiderBoss::State1(u32 frames)
 {
-	switch (spider->mStep) {
+	switch (mStep) {
 	case 0:
-		spider->mSpiderStatus.mFlags |= 0x10;
-		spider->SetAnim(11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-		++spider->mStep;
-		spider->mBlinkTimer = 0;
-		spider->mSpiderStatus.mFlags &= ~0x200;
+		mSpiderStatus.mFlags |= 0x10;
+		SetAnim(11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+		++mStep;
+		mBlinkTimer = 0;
+		mSpiderStatus.mFlags &= ~0x200;
 		break;
 	case 1: {
-		if (spider->mBlinkTimer % 30 < 15) {
-			spider->vf12C(1, 128, 0, 0, 0.0f);
+		if (mBlinkTimer % 30 < 15) {
+			vf12C(1, 128, 0, 0, 0.0f);
 		} else {
-			spider->vf12C(1, 0, 0, 0, 0.0f);
+			vf12C(1, 0, 0, 0, 0.0f);
 		}
-		++spider->mBlinkTimer;
-		HSD_AObj* aobj = GetAObj(spider->mJObj);
+		++mBlinkTimer;
+		HSD_AObj* aobj = GetAObj(mJObj);
 		f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
-		aobj           = GetAObj(spider->mJObj);
+		aobj           = GetAObj(mJObj);
 		f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
 		if (end - frames <= frame) {
-			spider->SetAnim(7, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			spider->mBlinkTimer = 0;
-			spider->vf12C(1, 0, 0, 0, 0.0f);
-			spider->mStep      = 0;
-			spider->mTimer     = 0;
-			spider->mPrevState = spider->mState;
-			spider->mState     = 0;
-			spider->mSpiderStatus.mFlags |= 0x8000;
-			spider->mSpiderStatus.mFlags |= 0x02000000;
-			spider->mSpiderStatus.mFlags |= 0x40000000;
-			spider->mSpiderStatus.mFlags &= ~0x10;
-			spider->mSpiderStatus.mFlags |= 0x80000;
-			spider->mNextAction = 16;
+			SetAnim(7, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			mBlinkTimer = 0;
+			vf12C(1, 0, 0, 0, 0.0f);
+			mStep      = 0;
+			mTimer     = 0;
+			mPrevState = mState;
+			mState     = 0;
+			mSpiderStatus.mFlags |= 0x8000;
+			mSpiderStatus.mFlags |= 0x02000000;
+			mSpiderStatus.mFlags |= 0x40000000;
+			mSpiderStatus.mFlags &= ~0x10;
+			mSpiderStatus.mFlags |= 0x80000;
+			mNextAction = 16;
 		}
 		break;
 	}

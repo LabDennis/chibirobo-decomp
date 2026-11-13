@@ -1587,10 +1587,10 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
  * @note Address: 0x801395B8
  * @note Size: 0x94
  */
-extern "C" void vf24__17CCameraActionAreaFv(CCameraActionArea* area)
+void CCameraActionArea::vf24()
 {
-	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,%3d)(%3d)\n", 324.0f, 298.0f, 0.0f, 12.0f, 12.0f, gCameraAreaState._0C,
-	                       area->_4C, gCameraAreaState._04);
+	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0AREA(%3d,%3d)(%3d)\n", 324.0f, 298.0f, 0.0f, 12.0f, 12.0f, gCameraAreaState._0C, _4C,
+	                       gCameraAreaState._04);
 	DrawGsStrokeTextFormat(&gGame.mGs, -1, "\\B000000A0ACAREA\n", 324.0f, 310.0f, 0.0f, 12.0f, 12.0f);
 }
 
@@ -1598,75 +1598,75 @@ extern "C" void vf24__17CCameraActionAreaFv(CCameraActionArea* area)
  * @note Address: 0x8013964C
  * @note Size: 0x544
  */
-extern "C" void Update__17CCameraActionAreaFUl(CCameraActionArea* area, u32 step)
+void CCameraActionArea::Update(u32 step)
 {
-	area->_60 = (gGame.mStatus.mFlags & 0xC00) ? FALSE : TRUE;
+	_60 = (gGame.mStatus.mFlags & 0xC00) ? FALSE : TRUE;
 	// retail does this, nothing reads the result
-	if (area->mTarget != NULL && area->mTarget->mJObj != NULL) {
+	if (mTarget != NULL && mTarget->mJObj != NULL) {
 		CPad pad(0);
 		Mtx mtx;
-		PSMTXCopy(HSD_JObjGetMtxPtr(area->mTarget->mJObj), mtx);
-		CVec flatEye(area->mEye);
-		flatEye.y    = area->mTarget->mMoveTranslate.y;
-		f32 distance = PSVECDistance(&flatEye, &area->mTarget->mMoveTranslate);
-		CVec localEye(0.0f, area->mEye.y - flatEye.y, -distance);
+		PSMTXCopy(HSD_JObjGetMtxPtr(mTarget->mJObj), mtx);
+		CVec flatEye(mEye);
+		flatEye.y    = mTarget->mMoveTranslate.y;
+		f32 distance = PSVECDistance(&flatEye, &mTarget->mMoveTranslate);
+		CVec localEye(0.0f, mEye.y - flatEye.y, -distance);
 		PSMTXMultVec(mtx, &localEye, &localEye);
 	}
-	if (area->_5C == 1 && area->_60) {
-		UpdateAreaCameraEntrySelection(area);
+	if (_5C == 1 && _60) {
+		UpdateAreaCameraEntrySelection(this);
 	}
 	s32 currentArea  = gCameraAreaState._04;
 	s32 previousArea = gCameraAreaState._08;
-	if (area->_54->_34 != area->_58->_34 || area->_48) {
+	if (_54->_34 != _58->_34 || _48) {
 		if (currentArea != previousArea && currentArea != -1) {
-			area->_40 = 2.0f;
-			ApplyAreaCameraEntry(area, area->_54, 1, 1, area->_40);
-		} else if (area->_48) {
-			area->_40 = 15.0f;
-			ApplyAreaCameraEntry(area, area->_54, 5, 1, area->_40);
-			area->_48 = FALSE;
+			_40 = 2.0f;
+			ApplyAreaCameraEntry(this, _54, 1, 1, _40);
+		} else if (_48) {
+			_40 = 15.0f;
+			ApplyAreaCameraEntry(this, _54, 5, 1, _40);
+			_48 = FALSE;
 		} else if (currentArea == previousArea) {
-			area->_40 = 15.0f;
-			ApplyAreaCameraEntry(area, area->_54, 5, 1, area->_40);
+			_40 = 15.0f;
+			ApplyAreaCameraEntry(this, _54, 5, 1, _40);
 		}
 		gGame.GetPlayer()->ResetCameraValue();
-		area->_50 = area->_4C;
-		area->_58 = area->_54;
-		if (area->_44 != 0) {
-			area->_44 = 0;
+		_50 = _4C;
+		_58 = _54;
+		if (_44 != 0) {
+			_44 = 0;
 		}
 	}
 	s32 height = gCameraAreaState._14;
 	if (height != gCameraAreaState._18) {
 		f32 fov = GetAreaCameraFovForHeightLevel(&gCameraAreaState, height);
-		area->SetFovInterpolation(4, area->mFov, fov, 15.0f);
+		SetFovInterpolation(4, mFov, fov, 15.0f);
 		gGame.GetPlayer()->ResetCameraValue();
 		gCameraAreaState._14 = height;
 		gCameraAreaState._18 = height;
 	}
-	if (area->mEyeInterp != NULL) {
-		if (!area->mEyeInterp->Update(step, FRAME_TIME)) {
-			area->SetEye(area->mEyeInterp->Get());
+	if (mEyeInterp != NULL) {
+		if (!mEyeInterp->Update(step, FRAME_TIME)) {
+			SetEye(mEyeInterp->Get());
 		} else {
-			area->mEyeInterp = NULL;
+			mEyeInterp = NULL;
 		}
 	}
-	if (area->mFovInterp != NULL) {
-		if (!area->mFovInterp->Update(step, FRAME_TIME)) {
-			area->SetFov(area->mFovInterp->Get());
+	if (mFovInterp != NULL) {
+		if (!mFovInterp->Update(step, FRAME_TIME)) {
+			SetFov(mFovInterp->Get());
 		} else {
-			area->mFovInterp = NULL;
+			mFovInterp = NULL;
 		}
 	}
-	if (area->mInterestInterp != NULL) {
-		if (!area->mInterestInterp->Update(step, FRAME_TIME)) {
-			area->SetInterest(area->mInterestInterp->Get());
+	if (mInterestInterp != NULL) {
+		if (!mInterestInterp->Update(step, FRAME_TIME)) {
+			SetInterest(mInterestInterp->Get());
 		} else {
-			area->mInterestInterp = NULL;
+			mInterestInterp = NULL;
 		}
 	}
-	if (area->mInterestInterp == NULL && area->mTarget != NULL) {
-		area->SetInterest(area->mTarget->GetCameraTarget());
+	if (mInterestInterp == NULL && mTarget != NULL) {
+		SetInterest(mTarget->GetCameraTarget());
 	}
 }
 /*

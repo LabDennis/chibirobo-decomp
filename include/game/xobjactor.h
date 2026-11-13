@@ -345,12 +345,8 @@ STATIC_ASSERT(sizeof(XObjActorDeca) == 0xCA8);
 
 // XObjActor's own virtuals, the ones the subclasses call through to
 extern "C" {
-Vec GetCameraTarget__9XObjActorFv(XObjActor* object);                                      // GetCameraTarget
-void vfC8__9XObjActorFv(XObjActor* object);                                                // vfC8
-void vfAC__9XObjActorFv(XObjActor* object);                                                // vfAC
 void vf148__9XObjActorFUl(XObjActor* object, u32 frames);                                  // vf148
 BOOL LoadFromPlacement__9XObjActorFRC9CoordInfo(XObjActor* object, const CoordInfo& info); // LoadFromPlacement
-void vf94__9XObjActorFv(XObjActor* object);                                                // vf94
 void ResetObjectState__9XObjActorFv(XObjActor* object);                                    // ResetObjectState
 void InitializeObject__9XObjActorFUl(XObjActor* object, u32 id);                           // InitializeObject
 

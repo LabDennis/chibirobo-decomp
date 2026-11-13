@@ -10,9 +10,9 @@ STATIC_ASSERT(sizeof(XObjActorLiterals) == 0xA8);
  * @note Size: 0x138
  */
 // UpdateObject, the update
-extern "C" void UpdateObject__9XObjActorFUl(XObj* object, u32 frames)
+void XObjActor::UpdateObject(u32 frames)
 {
-	XObjActor* actor = (XObjActor*)object;
+	XObjActor* actor = (XObjActor*)this;
 	actor->ProcessPendingEvents(frames);
 	actor->RunStateHandler(frames);
 	if (actor->_998.mFlags & 4) {
@@ -58,61 +58,61 @@ BOOL XObjActor::LoadFromPlacement(const CoordInfo& info)
  * @note Address: 0x80108014
  * @note Size: 0x1DC
  */
-extern "C" void vf94__9XObjActorFv(XObjActor* actor)
+void XObjActor::vf94()
 {
 	XObjActorLiterals* lit = &gActorUpdateConstants;
-	actor->_980            = 0.0f;
-	actor->_984            = 0.0f;
-	actor->_988            = 0.0f;
-	actor->_98C            = PI;
-	actor->_990            = 0;
-	actor->_994            = 0;
-	actor->_998.mFlags     = 0;
-	actor->_9A0            = 0;
-	actor->_9A4            = 0;
-	actor->_9A8            = 1.0f;
-	actor->_9AC            = 1.0f;
+	_980                   = 0.0f;
+	_984                   = 0.0f;
+	_988                   = 0.0f;
+	_98C                   = PI;
+	_990                   = 0;
+	_994                   = 0;
+	_998.mFlags            = 0;
+	_9A0                   = 0;
+	_9A4                   = 0;
+	_9A8                   = 1.0f;
+	_9AC                   = 1.0f;
 	Vec v0                 = lit->mInit[0];
-	actor->mHitPos.x       = v0.x;
-	actor->mHitPos.y       = v0.y;
-	actor->mHitPos.z       = v0.z;
+	mHitPos.x              = v0.x;
+	mHitPos.y              = v0.y;
+	mHitPos.z              = v0.z;
 	Vec v1                 = lit->mInit[1];
-	actor->_9BC.x          = v1.x;
-	actor->_9BC.y          = v1.y;
-	actor->_9BC.z          = v1.z;
+	_9BC.x                 = v1.x;
+	_9BC.y                 = v1.y;
+	_9BC.z                 = v1.z;
 	Vec v2                 = lit->mInit[2];
-	actor->_9C8.x          = v2.x;
-	actor->_9C8.y          = v2.y;
-	actor->_9C8.z          = v2.z;
+	_9C8.x                 = v2.x;
+	_9C8.y                 = v2.y;
+	_9C8.z                 = v2.z;
 	Vec v3                 = lit->mInit[3];
-	actor->_A40.x          = v3.x;
-	actor->_A40.y          = v3.y;
-	actor->_A40.z          = v3.z;
-	actor->mHitStrength    = 0.0f;
-	actor->_9D8            = 0.0f;
-	actor->_9DC            = 0.0f;
-	actor->mCmd[0]         = 0;
-	actor->mCmd[1]         = 0;
-	actor->mCmd[18]        = 0;
+	_A40.x                 = v3.x;
+	_A40.y                 = v3.y;
+	_A40.z                 = v3.z;
+	mHitStrength           = 0.0f;
+	_9D8                   = 0.0f;
+	_9DC                   = 0.0f;
+	mCmd[0]                = 0;
+	mCmd[1]                = 0;
+	mCmd[18]               = 0;
 	for (u32 i = 0; i < 16; ++i) {
-		actor->mCmd[i + 2] = 0;
+		mCmd[i + 2] = 0;
 	}
-	actor->_A38 = 0.0f;
-	actor->_A3C = 0.0f;
+	_A38 = 0.0f;
+	_A3C = 0.0f;
 	for (u32 i = 0; i < 8; ++i) {
-		actor->mParts[i].mObj   = NULL;
-		actor->mParts[i].mJoint = NULL;
+		mParts[i].mObj   = NULL;
+		mParts[i].mJoint = NULL;
 	}
-	actor->mAnimSfx.mEvents = NULL;
-	actor->_A4C             = -1;
-	actor->_A50             = NULL;
-	actor->mHeldObjects[0]  = NULL;
-	actor->mHeldObjects[1]  = 0;
-	actor->mLookMode        = 0;
-	actor->mHeadYaw         = 0.0f;
-	actor->mLookAngle       = 0.0f;
-	actor->mLookRate        = 0.0f;
-	actor->mLookTarget      = 0;
+	mAnimSfx.mEvents = NULL;
+	_A4C             = -1;
+	_A50             = NULL;
+	mHeldObjects[0]  = NULL;
+	mHeldObjects[1]  = 0;
+	mLookMode        = 0;
+	mHeadYaw         = 0.0f;
+	mLookAngle       = 0.0f;
+	mLookRate        = 0.0f;
+	mLookTarget      = 0;
 }
 
 /**

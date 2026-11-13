@@ -6,7 +6,7 @@
  * @note Address: 0x80015C54
  * @note Size: 0x10
  */
-extern "C" f32 vf68__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
+f32 CCameraActionAreaExM::vf68()
 {
 	return gCameraAreaState.mBaseFov;
 }
@@ -15,7 +15,7 @@ extern "C" f32 vf68__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
  * @note Address: 0x80015C64
  * @note Size: 0x10
  */
-extern "C" s32 vf6C__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
+s32 CCameraActionAreaExM::vf6C()
 {
 	return gCameraAreaState._14;
 }
@@ -24,7 +24,7 @@ extern "C" s32 vf6C__20CCameraActionAreaExMFv(CCameraActionAreaExM* action)
  * @note Address: 0x80015C74
  * @note Size: 0x10
  */
-extern "C" void vf70__20CCameraActionAreaExMFl(CCameraActionAreaExM* action, s32 mode)
+void CCameraActionAreaExM::vf70(s32 mode)
 {
 	gCameraAreaState._14 = mode;
 }

@@ -116,10 +116,10 @@ void XObjDust::UpdateObject(u32 frames)
  * @note Address: 0x800DF6D0
  * @note Size: 0x28
  */
-extern "C" void Release__8XObjDustFv(XObjDust* dust)
+void XObjDust::Release()
 {
-	dust->mMatAnim = NULL;
-	Release__4XObjFv(dust);
+	mMatAnim = NULL;
+	XObj::Release();
 }
 
 /**

@@ -16,9 +16,9 @@ extern "C" void ResetActorMovementStep(void* object)
  * @note Address: 0x80107084
  * @note Size: 0x1C
  */
-extern "C" Vec GetCameraTarget__9XObjActorFv(XObjActor* actor)
+Vec XObjActor::GetCameraTarget()
 {
-	return actor->mMoveTranslate;
+	return mMoveTranslate;
 }
 
 /**

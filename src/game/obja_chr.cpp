@@ -2570,8 +2570,6 @@ static inline void OpenMenus(XObjChr* chr)
 }
 
 extern "C" {
-void vfD8__4XObjFPUl(CXObj* object, u32* flags);
-void vf120__4XObjFl(CXObj* object, s32 mode);
 extern PointPtcl gPointParticlePool[10];
 extern PointPtcl* gPointParticleSlots[10];
 }
@@ -3229,9 +3227,9 @@ s32 DrsMenu::GetItemIconTextureIndex(s32 index)
  * @note Address: 0x800984CC
  * @note Size: 0x28
  */
-extern "C" BOOL vf2C__7DrsMenuFl(DrsMenu* menu, s32 index)
+BOOL DrsMenu::vf2C(s32 index)
 {
-	return IsWorn(menu, index);
+	return IsWorn(this, index);
 }
 
 // puts the selected costume on, or takes the worn one off
@@ -3271,32 +3269,32 @@ void DrsMenu::ConfirmSelection()
  * @note Address: 0x8009BF14
  * @note Size: 0x2A8
  */
-extern "C" void Open__8OctaMenuFl(OctaMenu* menu, s32 focus)
+void OctaMenu::Open(s32 focus)
 {
-	if (menu->mOpen == 0) {
-		menu->mOpeningHeading = menu->mChr->mMoveRotate.y;
-		SetTurn(&menu->mChr->mHeadTurn.mNeck, 0.0f);
-		SetTurn(&menu->mChr->mHeadTurn.mHead, -1.52f);
+	if (mOpen == 0) {
+		mOpeningHeading = mChr->mMoveRotate.y;
+		SetTurn(&mChr->mHeadTurn.mNeck, 0.0f);
+		SetTurn(&mChr->mHeadTurn.mHead, -1.52f);
 	}
-	menu->mOpen  = 1;
-	menu->mFocus = focus;
-	if (menu->mFocus != 0) {
-		menu->_0C = 1.0f;
+	mOpen  = 1;
+	mFocus = focus;
+	if (mFocus != 0) {
+		_0C = 1.0f;
 	}
 	Vec offset = { 0.0f, 8.8f, 0.0f };
-	menu->mChr->ProjectOffsetToScreen(&offset, &menu->mOpenScreenX, &menu->mOpenScreenY, NULL, 0);
+	mChr->ProjectOffsetToScreen(&offset, &mOpenScreenX, &mOpenScreenY, NULL, 0);
 	for (int i = 0; i < 8; i++) {
-		menu->mItems[i]._08 = DEG2RAD * (rand() % 360);
-		menu->mItems[i]._0C = DEG2RAD * (rand() % 360);
-		menu->mItems[i]._10 = menu->mFocus != 0 ? 0.3f : 0.5f;
+		mItems[i]._08 = DEG2RAD * (rand() % 360);
+		mItems[i]._0C = DEG2RAD * (rand() % 360);
+		mItems[i]._10 = mFocus != 0 ? 0.3f : 0.5f;
 	}
-	menu->mCursorIndex = -1;
-	menu->mLabelLength = 0;
-	for (int i = 0; i < (int)ARRAY_SIZE(menu->mLabelChars); i++) {
-		menu->mLabelChars[i].mAngle0 = DEG2RAD * (rand() % 360);
-		menu->mLabelChars[i].mAngle1 = DEG2RAD * (rand() % 360);
+	mCursorIndex = -1;
+	mLabelLength = 0;
+	for (int i = 0; i < (int)ARRAY_SIZE(mLabelChars); i++) {
+		mLabelChars[i].mAngle0 = DEG2RAD * (rand() % 360);
+		mLabelChars[i].mAngle1 = DEG2RAD * (rand() % 360);
 	}
-	menu->mChr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+	mChr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
 
 // DrsMenu::Open, a costume is there when he has it
@@ -3304,38 +3302,38 @@ extern "C" void Open__8OctaMenuFl(OctaMenu* menu, s32 focus)
  * @note Address: 0x800985B4
  * @note Size: 0x488
  */
-extern "C" void Open__7DrsMenuFl(OctaMenu* menu, s32 focus)
+void DrsMenu::Open(s32 focus)
 {
 	// NONMATCHING: the costume ids are read from the unit's rodata
-	if (menu->_280 == 3) {
+	if (_280 == 3) {
 		s16 ids[8] = { 0x18, 0x20, 0x22, 0x19, 0x1A, 0x1E, 0x1F, 0x21 };
 		for (s32 i = 0; i < 8; ++i) {
-			if (menu->_280 == 2)
-				menu->mItems[i].mAvailable = 1;
+			if (_280 == 2)
+				mItems[i].mAvailable = 1;
 			else
-				menu->mItems[i].mAvailable = HasItem(menu->mChr, ids[i]);
+				mItems[i].mAvailable = HasItem(mChr, ids[i]);
 		}
 	} else {
 		s16 ids[8] = { 0x19, 0x21, 0x20, 0x18, 0x22, 0x1F, 0x1E, 0x1A };
 		for (s32 i = 0; i < 8; ++i) {
-			if (menu->_280 == 2)
-				menu->mItems[i].mAvailable = 1;
+			if (_280 == 2)
+				mItems[i].mAvailable = 1;
 			else
-				menu->mItems[i].mAvailable = HasItem(menu->mChr, ids[i]);
+				mItems[i].mAvailable = HasItem(mChr, ids[i]);
 		}
 	}
-	Open__8OctaMenuFl(menu, focus);
-	if (menu->_280 == 3) {
-		if (menu->mPendingFirstVisibleItem >= 0) {
-			menu->mFirstVisibleItem        = menu->mPendingFirstVisibleItem;
-			menu->mPendingFirstVisibleItem = -1;
+	OctaMenu::Open(focus);
+	if (_280 == 3) {
+		if (mPendingFirstVisibleItem >= 0) {
+			mFirstVisibleItem        = mPendingFirstVisibleItem;
+			mPendingFirstVisibleItem = -1;
 		} else {
 			// one past the items
 			for (s32 i = 0; i < 9; ++i) {
-				if (menu->mItems[i].mType == menu->mChr->mSuits.mCurrent) {
-					menu->mFirstVisibleItem = i - 3;
-					if (menu->mFirstVisibleItem < 0)
-						menu->mFirstVisibleItem += 7;
+				if (mItems[i].mType == mChr->mSuits.mCurrent) {
+					mFirstVisibleItem = i - 3;
+					if (mFirstVisibleItem < 0)
+						mFirstVisibleItem += 7;
 				}
 			}
 		}
@@ -3463,25 +3461,25 @@ void AtcMenu::ConfirmSelection()
  * @note Address: 0x80098E48
  * @note Size: 0x3B4
  */
-extern "C" void Open__7AtcMenuFl(OctaMenu* menu, s32 focus)
+void AtcMenu::Open(s32 focus)
 {
 	for (s32 i = 0; i < 8; ++i) {
-		if (menu->_280 == 2)
-			menu->mItems[i].mAvailable = 1;
+		if (_280 == 2)
+			mItems[i].mAvailable = 1;
 		else
-			menu->mItems[i].mAvailable = GetPlayerAttachmentCount(menu->mChr, menu->mItems[i].mType);
+			mItems[i].mAvailable = GetPlayerAttachmentCount(mChr, mItems[i].mType);
 	}
-	Open__8OctaMenuFl(menu, focus);
-	if (menu->_280 == 3) {
-		if (menu->mPendingFirstVisibleItem >= 0) {
-			menu->mFirstVisibleItem        = menu->mPendingFirstVisibleItem;
-			menu->mPendingFirstVisibleItem = -1;
+	OctaMenu::Open(focus);
+	if (_280 == 3) {
+		if (mPendingFirstVisibleItem >= 0) {
+			mFirstVisibleItem        = mPendingFirstVisibleItem;
+			mPendingFirstVisibleItem = -1;
 		} else {
 			for (s32 i = 0; i < 8; ++i) {
-				if (menu->mItems[i].mType == menu->mChr->GetAttachment()) {
-					menu->mFirstVisibleItem = i - 3;
-					if (menu->mFirstVisibleItem < 0)
-						menu->mFirstVisibleItem += 7;
+				if (mItems[i].mType == mChr->GetAttachment()) {
+					mFirstVisibleItem = i - 3;
+					if (mFirstVisibleItem < 0)
+						mFirstVisibleItem += 7;
 				}
 			}
 		}
@@ -3774,22 +3772,22 @@ void OctaMenu::ConfirmSelection()
  * @note Address: 0x8009BE1C
  * @note Size: 0xF8
  */
-extern "C" void Select__8OctaMenuFl(OctaMenu* menu, s32 result)
+void OctaMenu::Select(s32 result)
 {
-	if (result > 0 && menu->mFocus == 0)
-		menu->mOpen = -1;
+	if (result > 0 && mFocus == 0)
+		mOpen = -1;
 	else
-		menu->mOpen = -2;
-	menu->mPendingFirstVisibleItem = -1;
-	menu->mFocus                   = 0;
-	if (menu->mChr->mTumble.mState == 0) {
-		menu->mChr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-		menu->mChr->SetRotateY(menu->mOpeningHeading, DEG2RAD * 12.0f);
-		CJointRot* neck = &menu->mChr->mHeadTurn.mNeck;
+		mOpen = -2;
+	mPendingFirstVisibleItem = -1;
+	mFocus                   = 0;
+	if (mChr->mTumble.mState == 0) {
+		mChr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+		mChr->SetRotateY(mOpeningHeading, DEG2RAD * 12.0f);
+		CJointRot* neck = &mChr->mHeadTurn.mNeck;
 		neck->mMode     = 2;
 		neck->mTarget   = 0.0f;
 		neck->mLookAt   = NULL;
-		CJointRot* head = &menu->mChr->mHeadTurn.mHead;
+		CJointRot* head = &mChr->mHeadTurn.mHead;
 		head->mMode     = 2;
 		head->mTarget   = -1.52f;
 		head->mLookAt   = NULL;
@@ -3986,48 +3984,47 @@ extern "C" void UpdatePlayerLookMarker(XObjChrLook* look, u32 frames)
  * @note Address: 0x8009D778
  * @note Size: 0x330
  */
-extern "C" void vf144__7XObjChrFll(XObjChr* chr, s32 input, s32 elapsed)
+void XObjChr::vf144(s32 input, s32 elapsed)
 {
 	s32 idle;
 	if (gGame.mEvt.mData.mScript != NULL || !InputEnabled(&gGame) || (gGame.mStatus.mFlags & 0xC00) || (gGame.mStatus.mFlags & 0x100)
-	    || !(chr->_980.mFlags & 0x20000000) || chr->mCopter.mState != 0 || (chr->mPopper.mState != 0 && chr->mPopper.mState != 4)
-	    || chr->mRadar.mState != 0 || (!(idle = (u8)(chr->mLift.mState == 0)) && chr->mLift.mState != 4) || chr->mHang.mState != 0
-	    || chr->mJump.mState != 0 || chr->mLadder.mState != 0 || chr->mRope.mState != 0 || chr->mPush.mState != 0
-	    || chr->mTumble.mState != 0 || chr->mAttachmentRequest != -1 || chr->mSuits.mChangeStep != 0)
+	    || !(_980.mFlags & 0x20000000) || mCopter.mState != 0 || (mPopper.mState != 0 && mPopper.mState != 4) || mRadar.mState != 0
+	    || (!(idle = (u8)(mLift.mState == 0)) && mLift.mState != 4) || mHang.mState != 0 || mJump.mState != 0 || mLadder.mState != 0
+	    || mRope.mState != 0 || mPush.mState != 0 || mTumble.mState != 0 || mAttachmentRequest != -1 || mSuits.mChangeStep != 0)
 		return;
 	if (input != -1)
 		return;
-	if (elapsed > 6000 && (idle || (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift)))) {
-		u8 release = chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift);
+	if (elapsed > 6000 && (idle || (mLift.mState == 4 && IsLiftTargetPlug(&mLift)))) {
+		u8 release = mLift.mState == 4 && IsLiftTargetPlug(&mLift);
 		if (release) {
-			if (chr->mLift.mTarget) {
-				chr->mLift.mTarget->mStatus.mFlags &= 0xFBFFFFFFFFFFFFFFULL;
-				chr->mLift.mTarget = NULL;
+			if (mLift.mTarget) {
+				mLift.mTarget->mStatus.mFlags &= 0xFBFFFFFFFFFFFFFFULL;
+				mLift.mTarget = NULL;
 			}
-			chr->mLift.mState = 0;
+			mLift.mState = 0;
 		}
-		chr->mHeadTurn.mNeck.mMode   = 2;
-		chr->mHeadTurn.mNeck.mTarget = 0.0f;
-		chr->mHeadTurn.mNeck.mLookAt = NULL;
-		chr->mTumble.mState          = 15;
-		chr->mTumble.mFade.mActive   = 1;
-		chr->mTumble.mFade.mAmount   = 0.0f;
-		chr->_158BC                  = 3 * IDLE_SECOND;
+		mHeadTurn.mNeck.mMode   = 2;
+		mHeadTurn.mNeck.mTarget = 0.0f;
+		mHeadTurn.mNeck.mLookAt = NULL;
+		mTumble.mState          = 15;
+		mTumble.mFade.mActive   = 1;
+		mTumble.mFade.mAmount   = 0.0f;
+		_158BC                  = 3 * IDLE_SECOND;
 	} else if (elapsed > 3000) {
-		chr->mTumble.mState          = 12;
-		chr->mHeadTurn.mNeck.mMode   = 2;
-		chr->mHeadTurn.mNeck.mTarget = 0.0f;
-		chr->mHeadTurn.mNeck.mLookAt = NULL;
-		chr->_158B8                  = 2;
-		chr->_158BC                  = IDLE_SECOND;
+		mTumble.mState          = 12;
+		mHeadTurn.mNeck.mMode   = 2;
+		mHeadTurn.mNeck.mTarget = 0.0f;
+		mHeadTurn.mNeck.mLookAt = NULL;
+		_158B8                  = 2;
+		_158BC                  = IDLE_SECOND;
 	} else {
-		f32 angle = (f32)atan2(gGame.mMotionControlCamera.mCamera.mEye.x - chr->mMoveTranslate.x,
-		                       gGame.mMotionControlCamera.mCamera.mEye.z - chr->mMoveTranslate.z)
-		          - chr->mMoveRotate.y;
-		chr->mHeadTurn.mNeck.mMode   = 1;
-		chr->mHeadTurn.mNeck.mTarget = angle;
-		chr->_158B8                  = 1;
-		chr->_158BC                  = IDLE_SECOND;
+		f32 angle = (f32)atan2(gGame.mMotionControlCamera.mCamera.mEye.x - mMoveTranslate.x,
+		                       gGame.mMotionControlCamera.mCamera.mEye.z - mMoveTranslate.z)
+		          - mMoveRotate.y;
+		mHeadTurn.mNeck.mMode   = 1;
+		mHeadTurn.mNeck.mTarget = angle;
+		_158B8                  = 1;
+		_158BC                  = IDLE_SECOND;
 	}
 }
 
@@ -4867,24 +4864,24 @@ extern "C" void ApplyPlayerHitReaction(XObjChr* chr, BOOL start, BOOL cancel, f3
  * @note Address: 0x800A0234
  * @note Size: 0x1E0
  */
-extern "C" void vf12C__7XObjChrFlUcUcUcf(XObjChr* chr, s32 blend, u8 red, u8 green, u8 blue, f32 time)
+void XObjChr::vf12C(s32 blend, u8 red, u8 green, u8 blue, f32 time)
 {
-	if (chr->mSuits.mChangeStep != 0) {
+	if (mSuits.mChangeStep != 0) {
 		if (blend == 2)
 			blend = 1;
 		else if (blend == 1)
 			return;
 	}
-	vf12C__4XObjFlUcUcUcf(chr, blend, red, green, blue, time);
-	chr->mPlug.vf12C(blend, red, green, blue, time);
-	chr->mCopterObj.vf12C(blend, red, green, blue, time);
-	chr->mPopperObj.vf12C(blend, red, green, blue, time);
-	chr->mRadarObj.vf12C(blend, red, green, blue, time);
-	chr->mOXObj.vf12C(blend, red, green, blue, time);
+	XObj::vf12C(blend, red, green, blue, time);
+	mPlug.vf12C(blend, red, green, blue, time);
+	mCopterObj.vf12C(blend, red, green, blue, time);
+	mPopperObj.vf12C(blend, red, green, blue, time);
+	mRadarObj.vf12C(blend, red, green, blue, time);
+	mOXObj.vf12C(blend, red, green, blue, time);
 	for (s32 i = 0; i < 9; ++i)
-		chr->mSuits.mObjects[i].vf12C(blend, red, green, blue, time);
-	if (IsCarryingMug(&chr->mLift))
-		chr->mLift.mTarget->vf12C(blend, red, green, blue, time);
+		mSuits.mObjects[i].vf12C(blend, red, green, blue, time);
+	if (IsCarryingMug(&mLift))
+		mLift.mTarget->vf12C(blend, red, green, blue, time);
 }
 
 static inline f32 PlayerCollisionRadius(XObjChr* chr)
@@ -4916,14 +4913,14 @@ extern "C" f32 GetPlayerCollisionRadius(XObjChr* chr)
  * @note Address: 0x800A0694
  * @note Size: 0x1BC
  */
-extern "C" void SetMoveDir__7XObjChrFPC3Vecf(XObjChr* chr, const Vec* direction, f32 speed)
+void XObjChr::SetMoveDir(const Vec* direction, f32 speed)
 {
-	StopMoving(chr);
-	chr->CXObj::SetMoveDir(direction, speed);
-	CVec horizontal = chr->mMoveTranslate.mSpeed;
+	StopMoving(this);
+	CXObj::SetMoveDir(direction, speed);
+	CVec horizontal = mMoveTranslate.mSpeed;
 	horizontal.y    = 0.0f;
 	if (horizontal.Length() > 0.0f)
-		chr->_12DF8 = WrapAngle(GetYAngle(chr->mMoveTranslate.mTarget - chr->mMoveTranslate));
+		_12DF8 = WrapAngle(GetYAngle(mMoveTranslate.mTarget - mMoveTranslate));
 }
 
 /**
@@ -5394,10 +5391,10 @@ extern "C" void SetPlayerEyeCameraJointsHidden(XObj* player, BOOL hidden)
  * @note Address: 0x800A36E8
  * @note Size: 0x1A4
  */
-extern "C" void SetAnimRate__7XObjChrFfUl(XObjChr* chr, f32 rate, u32 mask)
+void XObjChr::SetAnimRate(f32 rate, u32 mask)
 {
 	f32 multiplier;
-	if (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift)) {
+	if (mLift.mState == 4 && IsLiftTargetPlug(&mLift)) {
 		multiplier = 1.135f;
 	} else {
 		multiplier = 1.0f;
@@ -5407,13 +5404,13 @@ extern "C" void SetAnimRate__7XObjChrFfUl(XObjChr* chr, f32 rate, u32 mask)
 #else
 	f32 frameScale = multiplier;
 #endif
-	chr->CXObj::SetAnimRate(rate * frameScale, mask);
+	CXObj::SetAnimRate(rate * frameScale, mask);
 	for (s32 i = 0; gPlayerItemAnimationTable[i].mItem >= 0; i++) {
 		XObjChrItemAnim* entry = &gPlayerItemAnimationTable[i];
-		if (entry->mItem == chr->mSuits.mCurrent) {
-			HSD_JObj* joint = GetJointByPath(chr->mJObj, entry->mPath, entry->mDepth);
+		if (entry->mItem == mSuits.mCurrent) {
+			HSD_JObj* joint = GetJointByPath(mJObj, entry->mPath, entry->mDepth);
 			if (GetAObj(joint) != NULL)
-				chr->Push(joint, 0x200, 1.0f);
+				Push(joint, 0x200, 1.0f);
 		}
 	}
 }
@@ -5588,9 +5585,9 @@ void XObjChr::RegisterShadowObjects(CShadow* shadow)
  * @note Address: 0x800A54FC
  * @note Size: 0x20
  */
-extern "C" void UpdateAnim__7XObjChrFUl(XObjChr* chr, u32 frames)
+void XObjChr::UpdateAnim(u32 frames)
 {
-	chr->CXObjIntp::UpdateAnim(frames);
+	CXObjIntp::UpdateAnim(frames);
 }
 
 extern "C" void ClearActiveObjectFloors(XObj* object);
@@ -5743,7 +5740,7 @@ static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction,
  */
 void XObjChr::vfC8()
 {
-	vfC8__4XObjFv(this);
+	XObj::vfC8();
 	DrawPopperShotRings(&mPopper);
 	DrawPlayerRadarEffects(&mRadar);
 	if (!(gGame.mStatus.mFlags & 0x100))
@@ -8794,22 +8791,22 @@ extern "C" void vfE0__7XObjChrFf()
  * @note Address: 0x800B580C
  * @note Size: 0x168
  */
-extern "C" void vfDC__7XObjChrFiUc(XObjChr* chr, BOOL enabled, u8 value)
+void XObjChr::vfDC(BOOL enabled, u8 value)
 {
-	vfDC__4XObjFiUc(chr, enabled, value);
-	if (chr->mPlug.mJObj != NULL)
-		chr->mPlug.vfDC(enabled, value);
-	if (chr->mCopterObj.mJObj != NULL)
-		chr->mCopterObj.vfDC(enabled, value);
-	if (chr->mPopperObj.mJObj != NULL)
-		chr->mPopperObj.vfDC(enabled, value);
-	if (chr->mRadarObj.mJObj != NULL)
-		chr->mRadarObj.vfDC(enabled, value);
-	if (chr->mOXObj.mJObj != NULL)
-		chr->mOXObj.vfDC(enabled, value);
+	XObj::vfDC(enabled, value);
+	if (mPlug.mJObj != NULL)
+		mPlug.vfDC(enabled, value);
+	if (mCopterObj.mJObj != NULL)
+		mCopterObj.vfDC(enabled, value);
+	if (mPopperObj.mJObj != NULL)
+		mPopperObj.vfDC(enabled, value);
+	if (mRadarObj.mJObj != NULL)
+		mRadarObj.vfDC(enabled, value);
+	if (mOXObj.mJObj != NULL)
+		mOXObj.vfDC(enabled, value);
 	for (s32 i = 0; i < 9; ++i) {
-		if (chr->mSuits.mObjects[i].mJObj != NULL)
-			chr->mSuits.mObjects[i].vfDC(enabled, value);
+		if (mSuits.mObjects[i].mJObj != NULL)
+			mSuits.mObjects[i].vfDC(enabled, value);
 	}
 }
 
@@ -8817,22 +8814,22 @@ extern "C" void vfDC__7XObjChrFiUc(XObjChr* chr, BOOL enabled, u8 value)
  * @note Address: 0x800B5974
  * @note Size: 0x144
  */
-extern "C" void vfD8__7XObjChrFPUl(XObjChr* chr, u32* flags)
+void XObjChr::vfD8(u32* flags)
 {
-	vfD8__4XObjFPUl(chr, flags);
-	if (chr->mPlug.mJObj != NULL)
-		chr->mPlug.vfD8(flags);
-	if (chr->mCopterObj.mJObj != NULL)
-		chr->mCopterObj.vfD8(flags);
-	if (chr->mPopperObj.mJObj != NULL)
-		chr->mPopperObj.vfD8(flags);
-	if (chr->mRadarObj.mJObj != NULL)
-		chr->mRadarObj.vfD8(flags);
-	if (chr->mOXObj.mJObj != NULL)
-		chr->mOXObj.vfD8(flags);
+	XObj::vfD8(flags);
+	if (mPlug.mJObj != NULL)
+		mPlug.vfD8(flags);
+	if (mCopterObj.mJObj != NULL)
+		mCopterObj.vfD8(flags);
+	if (mPopperObj.mJObj != NULL)
+		mPopperObj.vfD8(flags);
+	if (mRadarObj.mJObj != NULL)
+		mRadarObj.vfD8(flags);
+	if (mOXObj.mJObj != NULL)
+		mOXObj.vfD8(flags);
 	for (s32 i = 0; i < 9; ++i) {
-		if (chr->mSuits.mObjects[i].mJObj != NULL)
-			chr->mSuits.mObjects[i].vfD8(flags);
+		if (mSuits.mObjects[i].mJObj != NULL)
+			mSuits.mObjects[i].vfD8(flags);
 	}
 }
 
@@ -8840,14 +8837,14 @@ extern "C" void vfD8__7XObjChrFPUl(XObjChr* chr, u32* flags)
  * @note Address: 0x800B5AB8
  * @note Size: 0xC4
  */
-extern "C" void vf120__7XObjChrFl(XObjChr* chr, s32 mode)
+void XObjChr::vf120(s32 mode)
 {
-	vf120__4XObjFl(chr, mode);
-	chr->mPlug.vf120(mode);
-	chr->mCopterObj.vf120(mode);
-	chr->mPopperObj.vf120(mode);
-	chr->mRadarObj.vf120(mode);
-	chr->mOXObj.vf120(mode);
+	XObj::vf120(mode);
+	mPlug.vf120(mode);
+	mCopterObj.vf120(mode);
+	mPopperObj.vf120(mode);
+	mRadarObj.vf120(mode);
+	mOXObj.vf120(mode);
 }
 
 /**

@@ -7,9 +7,9 @@
  * @note Address: 0x801051A0
  * @note Size: 0x14
  */
-extern "C" s32 vf100__14XObjSpiderBossFll(XObjSpiderBoss* spider, s32 unused, s32 value)
+s32 XObjSpiderBoss::vf100(s32 unused, s32 value)
 {
-	spider->mSpiderStatus.mFlags |= 1;
+	mSpiderStatus.mFlags |= 1;
 	return value;
 }
 

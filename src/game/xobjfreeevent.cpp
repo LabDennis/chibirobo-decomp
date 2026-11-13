@@ -18,10 +18,10 @@ static inline void TriggerEvent(XObj* object, u32 first, u32 second)
  * @note Address: 0x800DE038
  * @note Size: 0x28
  */
-extern "C" void Release__8XObjFreeFv(XObjFree* object)
+void XObjFree::Release()
 {
-	object->mMatAnim = NULL;
-	Release__4XObjFv(object);
+	mMatAnim = NULL;
+	XObj::Release();
 }
 
 // XObjFree::ResetObjectState

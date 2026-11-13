@@ -9,45 +9,45 @@ extern "C" {
  * @note Address: 0x800D6FE8
  * @note Size: 0x398
  */
-void UpdateObject__10XObjPopperFUl(XObjPopper* object, u32 frames)
+void XObjPopper::UpdateObject(u32 frames)
 {
-	if (object->mVisible) {
-		CopyParentMtx(object);
-		HSD_AObj* aobj = GetAObj(object->mJObj);
-		s32 anim       = object->mAnimId;
+	if (mVisible) {
+		CopyParentMtx(this);
+		HSD_AObj* aobj = GetAObj(mJObj);
+		s32 anim       = mAnimId;
 		f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
 		f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
 		switch (anim) {
 		case 1:
 			if (aobj->flags & 0x44000000) {
-				object->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
 		case 2:
 			if (aobj->flags & 0x44000000) {
-				object->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-				object->Hide();
+				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				Hide();
 			}
 			break;
 		case 3:
 			if (aobj->flags & 0x44000000) {
-				object->SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
 		case 4:
 			break;
 		case 5:
 			if (aobj->flags & 0x44000000) {
-				object->SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
 		case 6:
 			if (aobj->flags & 0x44000000) {
-				object->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
 		}
-		UpdateObject__4XObjFUl(object, frames);
+		UpdateObject__4XObjFUl(this, frames);
 	}
 }
 
@@ -126,38 +126,38 @@ void ShowAndDeployPopper(XObjPopper* object)
  * @note Address: 0x800D7668
  * @note Size: 0x344
  */
-void UpdateObject__10XObjCopterFUl(XObjCopter* object, u32 frames)
+void XObjCopter::UpdateObject(u32 frames)
 {
-	if (object->mVisible) {
-		CopyParentMtx(object);
-		HSD_AObj* aobj = GetAObj(object->mJObj);
-		s32 anim       = object->mAnimId;
+	if (mVisible) {
+		CopyParentMtx(this);
+		HSD_AObj* aobj = GetAObj(mJObj);
+		s32 anim       = mAnimId;
 		f32 frame      = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
 		f32 end        = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
 		switch (anim) {
 		case 5:
 			if (aobj->flags & 0x44000000) {
-				object->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
 		case 8:
 			if (aobj->flags & 0x44000000) {
-				object->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-				object->Hide();
+				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				Hide();
 			}
 			break;
 		case 6:
 			if (aobj->flags & 0x44000000) {
-				object->SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
 		case 7:
 			if (aobj->flags & 0x44000000) {
-				object->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+				SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 			break;
 		}
-		UpdateObject__4XObjFUl(object, frames);
+		UpdateObject__4XObjFUl(this, frames);
 	}
 }
 
@@ -226,19 +226,19 @@ void ShowAndDeployCopter(XObjCopter* object)
  * @note Address: 0x800D7C60
  * @note Size: 0x40
  */
-void Release__14XObjAttachmentFv(XObjAttachment* object)
+void XObjAttachment::Release()
 {
-	object->Hide();
-	Release__4XObjFv(object);
+	Hide();
+	XObj::Release();
 }
 
 /**
  * @note Address: 0x800D7CA0
  * @note Size: 0x20
  */
-void ResetObjectState__14XObjAttachmentFv(XObjAttachment* object)
+void XObjAttachment::ResetObjectState()
 {
-	ResetObjectState__4XObjFv(object);
+	ResetObjectState__4XObjFv(this);
 }
 
 /**
@@ -254,20 +254,20 @@ void SetParent__14XObjAttachmentFP9_HSD_JObji(XObjAttachment* object, HSD_JObj* 
  * @note Address: 0x800D7CC8
  * @note Size: 0x34
  */
-void vf94__14XObjAttachmentFv(XObjAttachment* object)
+void XObjAttachment::vf94()
 {
-	object->mParent = NULL;
-	object->Hide();
+	mParent = NULL;
+	Hide();
 }
 
 /**
  * @note Address: 0x800D7CFC
  * @note Size: 0x40
  */
-void InitializeObject__14XObjAttachmentFUl(XObjAttachment* object, u32 id)
+void XObjAttachment::InitializeObject(u32 id)
 {
-	InitializeObject__4XObjFUl(object, id);
-	object->vf94();
+	InitializeObject__4XObjFUl(this, id);
+	vf94();
 }
 
 } // extern "C"

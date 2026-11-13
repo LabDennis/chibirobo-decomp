@@ -5,11 +5,11 @@
  * @note Address: 0x800E0F40
  * @note Size: 0x4C
  */
-extern "C" void Release__8XObjHBoxFv(XObjHBox* box)
+void XObjHBox::Release()
 {
-	box->mPart.mObj.Release();
-	Release__4XObjFv(box);
-	box->mLoadState = 0;
+	mPart.mObj.Release();
+	XObj::Release();
+	mLoadState = 0;
 }
 
 /**
@@ -59,9 +59,9 @@ void XObjHBox::ResetObjectState()
  * @note Address: 0x800E1138
  * @note Size: 0x30
  */
-extern "C" void vf94__8XObjHBoxFv(XObjHBox* box)
+void XObjHBox::vf94()
 {
-	box->mPart.mObj.vf94();
+	mPart.mObj.vf94();
 }
 
 /**

@@ -5,8 +5,8 @@
  * @note Address: 0x80091C44
  * @note Size: 0x3C
  */
-extern "C" void vfD8__4XObjFPUl(XObj* object, u32* flags)
+void XObj::vfD8(u32* flags)
 {
-	if (object->mJObj != NULL)
-		HSD_JObjWalkTree(object->mJObj, ApplyJointMaterialPEPresets, (f32**)flags);
+	if (mJObj != NULL)
+		HSD_JObjWalkTree(mJObj, ApplyJointMaterialPEPresets, (f32**)flags);
 }
