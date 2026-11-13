@@ -122,12 +122,12 @@ struct HamObj {
 		mStateTime = 0;
 	}
 
-	void StartSlide(f32 speed, f32 f, f32 angle)
+	void StartSlide(f32 distance, f32 speed, f32 angle)
 	{
 		if (mState != &HamObj::StateFlip) {
 			mMoveAngle     = angle;
-			mSlideDistance = speed;
-			mMoveSpeed     = f;
+			mSlideDistance = distance;
+			mMoveSpeed     = speed;
 			SetState(&HamObj::StateSlide);
 		}
 	}
@@ -167,7 +167,7 @@ struct HamDish {
 static inline void AddToHamDish(HamDish* group, HamObj* slot)
 {
 	s32 i;
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < ARRAY_SIZE(group->mObjs); i++) {
 		if (group->mObjs[i] == NULL) {
 			group->mObjs[i] = slot;
 			break;
@@ -256,8 +256,8 @@ void GetStackHeight(HamObj* slot);
 void HamObj_SetRot(HamObj* slot, f32 angle);
 void HamObj_StartPutDown(HamObj* slot);
 void HamObj_Respawn(HamObj* slot);
-void HamObj_StartSlide(HamObj* slot, f32 a, f32 b, f32 angle);
-void HamObj_StartFlip(HamObj* slot, u32 time);
+void HamObj_StartSlide(HamObj* slot, f32 distance, f32 speed, f32 angle);
+void HamObj_StartFlip(HamObj* slot, u32 frames);
 void HamObj_Update(HamObj* slot, u32 step);
 void HamObj_LowerStack(HamObj* slot);
 s32 HSD_Randi(s32 max);
@@ -307,16 +307,16 @@ RelCmdFunc _prolog_cmds[]    = {
 
 // zero vec, only used to seed GetSize
 static Vec sHamPlacementPosition;
-static f32 yakiRates[6];
-static u32 yakiLoopLevel;
+static f32 yakiRates[6];  // cook-speed multiplier per doneness level, [0] unused
+static u32 yakiLoopLevel; // 0 none, 1 something cooks, 2 a side is well done
 static u8 playerOffGasPlate;
 static u8 yakiSoundPlayed;
 static HamObj hamObjs[9];
 static Stage01Actor* gasPlate;
 static HamDish hamDishes[4];
 static Stage01Actor* tempActors[4];
-static CStatus yakiResultFlags;
-static u8 putDownActive;
+static CStatus yakiResultFlags; // bits of the results already reported once
+static u8 putDownActive;        // a put-down runs: pickup flags stay off
 
 static inline bool IsActive(Stage01Actor* actor)
 {
@@ -564,7 +564,7 @@ extern "C" s32 CmdPutDownHamObj(s32 cmd, s32 count, s32* args)
 	}
 
 	ClearTempActors();
-	for (i = 1; i < count; i++) {
+	for (i = 1; i < count; i++) { // the remaining args are actors drawn during the put-down
 		AddTempActor(args[i]);
 	}
 	HamObj_StartPutDown(slot);
@@ -623,6 +623,7 @@ extern "C" s32 CmdPushHamObj(s32 cmd, s32 count, s32* args)
 		return 0;
 	}
 
+	// slide it away from the player
 	f32 angle = atan2(slot->mActor->mMoveTranslate.x - STAGE01_PLAYER->mMoveTranslate.x,
 	                  slot->mActor->mMoveTranslate.z - STAGE01_PLAYER->mMoveTranslate.z);
 	HamObj_StartSlide(slot, args[1], 0.2f, angle);
@@ -786,6 +787,7 @@ extern "C" void UpdateStage(u32 arg)
 	UpdateHamObjs(arg);
 	UpdateAnas(arg);
 
+	// keep the running stage sounds' volume at their two emitter positions
 	pos.x = -92.52f;
 	pos.y = 75.87f;
 	pos.z = -165.98f;
@@ -839,14 +841,16 @@ extern "C" s32 CheckYakiResult(void)
 	}
 
 	player = STAGE01_PLAYER;
+	// the player is away from the plate
 	if (player->mMoveTranslate.x < -295.0f || -225.0 < player->mMoveTranslate.x || player->mMoveTranslate.z < 10.0f
 	    || 74.0f < player->mMoveTranslate.z) {
 		return 9;
 	}
 
+	// a hamburger done on both sides (doneness 3+) reports 1, once
 	result = 0;
 	if (result == 0 && !(yakiResultFlags.mFlags & 2)) {
-		for (i = 0; i < 9 && result == 0; i++) {
+		for (i = 0; i < ARRAY_SIZE(hamObjs) && result == 0; i++) {
 			slot = &hamObjs[i];
 			if (IsActive(slot->mActor) && slot->mActor->mCoord.mKind->mObjectId == 0x1F9 && slot->mYakiTime[0] / 600 + 1 >= 3
 			    && slot->mYakiTime[1] / 600 + 1 >= 3) {
@@ -858,8 +862,9 @@ extern "C" s32 CheckYakiResult(void)
 		}
 	}
 
+	// a burnt hamburger side (doneness 5) reports 2, once
 	if (result == 0 && !(yakiResultFlags.mFlags & 4)) {
-		for (i = 0; i < 9 && result == 0; i++) {
+		for (i = 0; i < ARRAY_SIZE(hamObjs) && result == 0; i++) {
 			slot = &hamObjs[i];
 			if (IsActive(slot->mActor) && slot->mActor->mCoord.mKind->mObjectId == 0x1F9
 			    && (slot->mYakiTime[0] / 600 + 1 >= 5 || slot->mYakiTime[1] / 600 + 1 >= 5)) {
@@ -1063,7 +1068,7 @@ extern "C" s32 CheckYakiResult(void)
 extern "C" void AddTempActor(s32 id)
 {
 	s32 i;
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < ARRAY_SIZE(tempActors); i++) {
 		if (tempActors[i] == NULL) {
 			Stage01Actor* actor;
 			if (gGame.mEvt.mData.mScript != NULL) {
@@ -1072,7 +1077,7 @@ extern "C" void AddTempActor(s32 id)
 				actor = NULL;
 			}
 			tempActors[i] = actor;
-			tempActors[i]->mStatus |= 0x10000;
+			tempActors[i]->mStatus |= 0x10000; // draw it; only valid while a script runs
 			return;
 		}
 	}
@@ -1085,9 +1090,9 @@ extern "C" void AddTempActor(s32 id)
 extern "C" void ClearTempActors(void)
 {
 	s32 i;
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < ARRAY_SIZE(tempActors); i++) {
 		if (tempActors[i] != NULL) {
-			tempActors[i]->mStatus &= ~0x10000ULL;
+			tempActors[i]->mStatus &= ~0x10000ULL; // stop drawing it
 			tempActors[i] = NULL;
 		}
 	}
@@ -1100,7 +1105,7 @@ extern "C" void ClearTempActors(void)
 extern "C" HamDish* FindHamDish(s32 id)
 {
 	s32 i;
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < ARRAY_SIZE(hamDishes); i++) {
 		if (hamDishes[i].mActor != NULL && id == hamDishes[i].mId) {
 			return &hamDishes[i];
 		}
@@ -1120,7 +1125,7 @@ extern "C" HamDish* RegisterHamDish(s32 id)
 		return group;
 	}
 
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < ARRAY_SIZE(hamDishes); i++) {
 		if (hamDishes[i].mActor == NULL) {
 			group           = &hamDishes[i];
 			group->mId      = id;
@@ -1142,12 +1147,12 @@ extern "C" HamDish* RegisterHamDish(s32 id)
 extern "C" s32 CountHamDishObjs(HamDish* group)
 {
 	s32 i;
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < ARRAY_SIZE(group->mObjs); i++) {
 		if (group->mObjs[i] == NULL) {
 			return i;
 		}
 	}
-	return 4;
+	return ARRAY_SIZE(group->mObjs);
 }
 
 /**
@@ -1158,6 +1163,7 @@ extern "C" void SetYakiRates(u8* data)
 {
 	s32 i;
 	for (i = 0; i < 5; i++) {
+		// a little-endian s32 per doneness level, /100; slot 0 keeps the reset 1.0
 		yakiRates[i + 1] = (s32)(data[0] + data[1] * 0x100 + data[2] * 0x10000 + data[3] * 0x1000000) / 100.0f;
 		data += 4;
 	}
@@ -1188,7 +1194,7 @@ extern "C" s32 PutHeldHamObjOnDish(s32 id)
 	AddToHamDish(group, slot);
 
 	if (player->mLiftState == 4) {
-		player->mLiftState = 6;
+		player->mLiftState = 6; // play the put-down animation
 	}
 	return slot->mId;
 }
@@ -1315,11 +1321,12 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
 
 	if (best != NULL) {
 		f32 angle = AngleFrom(&slot->mActor->mMoveTranslate, &best->mActor->mMoveTranslate);
-		f32 c     = cos(angle - slot->mMoveAngle);
+		// inside a ~58-degree cone of the slide direction it gets pushed (the literal is 45 radians)
+		f32 c = cos(angle - slot->mMoveAngle);
 		if ((f32)cos(45.0) < c) {
 			f32 speed;
 			angle = AngleFrom(&slot->mActor->mMoveTranslate, &best->mActor->mMoveTranslate);
-			speed = slot->mSlideDistance * 0.5f;
+			speed = slot->mSlideDistance * 0.5f; // it takes half the slide distance, up to 10
 			if (10.0f < speed) {
 				speed = 10.0f;
 			}
@@ -1330,7 +1337,7 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
 		}
 	}
 
-	if (IsLeavingGasPlate(slot)) {
+	if (IsLeavingGasPlate(slot)) { // sliding off the plate ends the move
 		return true;
 	}
 	return false;
@@ -1616,7 +1623,7 @@ extern "C" void UpdateHamPickupFlags(void)
 			continue;
 		}
 		if (slot->mDish != NULL) {
-			slot->mActor->mStatus &= ~0x100000000ULL;
+			slot->mActor->mStatus &= ~0x100000000ULL; // on a dish it can't be picked up
 			slot->mActor->mStatus &= ~0x10000000000ULL;
 		} else {
 			Vec pos      = slot->mActor->mMoveTranslate;
@@ -1637,7 +1644,7 @@ extern "C" void UpdateHamPickupFlags(void)
 				}
 			}
 			if (best == NULL) {
-				slot->mActor->mStatus |= 0x100000000ULL;
+				slot->mActor->mStatus |= 0x100000000ULL; // nothing sits on it: it can be picked up
 			}
 		}
 	}
@@ -1856,7 +1863,7 @@ extern "C" void UpdateHamPickupFlags(void)
 extern "C" HamObj* FindFreeHamObj(void)
 {
 	s32 i;
-	for (i = 0; i < 9; i++) {
+	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		if (!IsActive(hamObjs[i].mActor)) {
 			return &hamObjs[i];
 		}
@@ -1876,16 +1883,17 @@ extern "C" HamObj* FindFacingHamburg(void)
 	f32 bestDist = 0.0f;
 	u32 i;
 
-	for (i = 0; i < 9; i++) {
+	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		HamObj* slot        = &hamObjs[i];
 		Stage01Actor* actor = slot->mActor;
 		if (IsActive(actor) && (actor->mStatus & 0x100000000ULL) && slot->mStackLevel <= 0 && actor->mCoord.mKind->mObjectId == 0x1F9) {
 			dist      = PSVECDistance(&STAGE01_PLAYER->mMoveTranslate, &actor->mMoveTranslate);
 			Vec* pos  = slot->GetPos();
 			Vec* ppos = &STAGE01_PLAYER->mMoveTranslate;
+			// the nearest pickable hamburger in a 45-degree cone within 15 units
 			f32 angle = atan2(pos->x - ppos->x, pos->z - ppos->z);
 			c         = cos(angle - STAGE01_PLAYER->mMoveRotateY);
-			if ((f32)cos(0.7853982f) < c && dist < 15.0f && (best == NULL || dist < bestDist)) {
+			if ((f32)cos(HALF_PI * 0.5f) < c && dist < 15.0f && (best == NULL || dist < bestDist)) {
 				best     = slot;
 				bestDist = dist;
 			}
@@ -2028,7 +2036,7 @@ extern "C" HamObj* FindHamObjByActor(Stage01Actor* actor)
 	if (actor == NULL) {
 		return NULL;
 	}
-	for (i = 0; i < 9; i++) {
+	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		Stage01Actor* current = hamObjs[i].mActor;
 		if (current != NULL && current->mPoolIndex == actor->mPoolIndex) {
 			return &hamObjs[i];
@@ -2079,9 +2087,9 @@ extern "C" HamObj* FindHamObj(s32 id)
 	// NONMATCHING: regalloc
 	s32 i;
 	if (id < 0) {
-		return FindHamObjByActorInline(STAGE01_PLAYER->mLiftTarget);
+		return FindHamObjByActorInline(STAGE01_PLAYER->mLiftTarget); // -1 asks for the held object
 	}
-	for (i = 0; i < 9; i++) {
+	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		if (hamObjs[i].mActor != NULL && id == hamObjs[i].mId) {
 			return &hamObjs[i];
 		}
@@ -2168,7 +2176,7 @@ extern "C" HamObj* RegisterHamObj(s32 id)
 		return slot;
 	}
 
-	for (i = 0; i < 9; i++) {
+	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		if (hamObjs[i].mActor == NULL) {
 			slot         = &hamObjs[i];
 			slot->mId    = id;
@@ -2197,7 +2205,7 @@ extern "C" HamObj* RegisterHamObj(s32 id)
 				break;
 			}
 			if (slot->mActor != NULL) {
-				slot->mActor->mStatus |= 0x100000000ULL;
+				slot->mActor->mStatus |= 0x100000000ULL; // the ham-game flags
 				slot->mActor->mStatus |= 0x10000000000ULL;
 			}
 			return slot;
@@ -2419,7 +2427,7 @@ extern "C" void InitHamburg(void)
 	gasPlate    = NULL;
 	for (i = 0; gasPlate == NULL && i < count; i++) {
 		Stage01Actor* actor = (Stage01Actor*)game->mXObjs.mObjects[i];
-		if ((actor->mStatus & 1) && actor->mCoord.mKind->mObjectId == 0x200) {
+		if ((actor->mStatus & 1) && actor->mCoord.mKind->mObjectId == 0x200) { // a live actor of the gas-plate kind
 			gasPlate = actor;
 		}
 	}
@@ -2427,7 +2435,7 @@ extern "C" void InitHamburg(void)
 		gasPlate->mStatus &= ~0x200000000ULL;
 	}
 
-	for (i = 0; i < 4; i++) {
+	for (i = 0; i < ARRAY_SIZE(tempActors); i++) {
 		tempActors[i] = NULL;
 	}
 	yakiResultFlags.mFlags = 0;
@@ -2582,6 +2590,7 @@ extern "C" void UpdateHamObjs(u32 arg)
 		}
 	}
 
+	// the cooking loop: one sound while something cooks, another once a side is well done
 	switch (yakiLoopLevel) {
 	case 1:
 		StopGameSfx(STAGE01_SOUND, 0x4001D);
@@ -2649,6 +2658,7 @@ void HamObj::StatePutDown()
 
 	switch (mStateTime) {
 	case 0: {
+		// wait until the player's put-down anim passes frame 15
 		if (player->mLiftState != 6 || player->mAnimId != 9) {
 			break;
 		}
@@ -2659,12 +2669,12 @@ void HamObj::StatePutDown()
 		}
 
 		if (IsHeld(mActor)) {
-			STAGE01_PLAYER->mLiftTarget = NULL;
+			STAGE01_PLAYER->mLiftTarget = NULL; // the player lets go
 		}
-		mActor->mStatus &= ~0x400000000000000ULL;
+		mActor->mStatus &= ~0x400000000000000ULL; // drop the carried flag
 		mMoveAngle = player->mMoveRotateY;
 		mMoveSpeed = 2.0f;
-		Vec pos    = mActor->mMoveTranslate;
+		Vec pos    = mActor->mMoveTranslate; // aim 5 units ahead in the player's facing
 		pos.x += 5.0f * (f32)sin(mMoveAngle);
 		pos.z += 5.0f * (f32)cos(mMoveAngle);
 
@@ -2687,7 +2697,7 @@ void HamObj::StatePutDown()
 			PlayYakiSound();
 		}
 
-		for (level = 4; level >= 0; level--) {
+		for (level = 4; level >= 0; level--) { // land on the tallest stack in reach
 			HamObj* base = FindStackBase(pos, mId, level, 5.0f);
 			if (base != NULL) {
 				pos.y        = base->mActor->mMoveTranslate.y;
@@ -2708,7 +2718,7 @@ void HamObj::StatePutDown()
 		mStateTime++;
 		break;
 	}
-	case 1:
+	case 1: // arrived: on the gas plate it slides on, off it the put-down ends
 		if (PSVECDistance(&mActor->mMoveTranslate, &mActor->mMoveTarget) <= 0.001f) {
 			UpdateHamPickupFlags();
 			if (IsOnGasPlate(mActor)) {
@@ -3418,7 +3428,7 @@ void HamObj::StateSlide()
 			SetState(NULL);
 		}
 		if (mAbove != NULL && 8.0f < PSVECDistance(&mActor->mMoveTranslate, &mAbove->mActor->mMoveTranslate)) {
-			HamObj_LowerStack(mAbove);
+			HamObj_LowerStack(mAbove); // it slid out from under its stack: drop the top
 			mAbove = NULL;
 		}
 		break;
@@ -3432,7 +3442,7 @@ void HamObj::StateSlide()
 void HamObj::StateFlip()
 {
 	switch (mStateTime) {
-	case 0:
+	case 0: // flip to the opposite side: upside-down aims for 0, upright for PI
 		if (0.0f < (f32)cos(HSD_JObjGetRotationZ(mActor->mJObj))) {
 			mRotZ = PI;
 		} else {
@@ -3440,7 +3450,7 @@ void HamObj::StateFlip()
 		}
 		mStateTime++;
 		break;
-	case 1:
+	case 1: // ease the rotation over the flip frames, then settle the new side
 		mFlipFrames -= 1.0f;
 		if (0.0f < mFlipFrames) {
 			f32 rot = HSD_JObjGetRotationZ(mActor->mJObj);
@@ -3450,10 +3460,10 @@ void HamObj::StateFlip()
 			PlayYakiSound();
 			level = mYakiTime[mSide] / 600;
 			if (level >= 5) {
-				level = 4;
+				level = 4; // the doneness anim stops at 4
 			}
 			mActor->SetAnim(level, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			mSide = 1 - mSide;
+			mSide = 1 - mSide; // the other side now faces the plate
 			SetState(NULL);
 		}
 		break;
@@ -3616,6 +3626,7 @@ void HamObj::StateFlip()
  */
 extern "C" void HamObj_LowerStack(HamObj* slot)
 {
+	// drop a stacked object, and what sits on it, one level
 	if (slot->mStackLevel > 0) {
 		slot->mStackLevel--;
 		Vec pos = *slot->GetPos();
@@ -3677,18 +3688,18 @@ extern "C" void HamObj_StartPutDown(HamObj* slot)
 
 	if (IsHeld(slot->mActor)) {
 		HamObj* other;
-		putDownActive = 1;
-		for (i = 0, other = hamObjs; i < 9; i++, other++) {
+		putDownActive = 1; // while it runs, no pickup flags
+		for (i = 0, other = hamObjs; i < ARRAY_SIZE(hamObjs); i++, other++) {
 			if (IsActive(other->mActor)) {
 				other->mActor->mStatus &= ~0x100000000ULL;
 				if (IsOnTopOf(other, slot)) {
-					other->mAbove = NULL;
+					other->mAbove = NULL; // it was stacked under the held object
 				}
 			}
 		}
 		slot->SetState(&HamObj::StatePutDown);
 	} else if (player->mLiftState == 4) {
-		player->mLiftState = 6;
+		player->mLiftState = 6; // play the put-down animation
 	}
 }
 
@@ -3699,10 +3710,10 @@ extern "C" void HamObj_StartPutDown(HamObj* slot)
 extern "C" void HamObj_Respawn(HamObj* slot)
 {
 	if (putDownActive) {
-		slot->mActor->mStatus &= ~0x100000000ULL;
+		slot->mActor->mStatus &= ~0x100000000ULL; // a put-down is running: it can't be picked
 	}
 
-	if (slot->mType == 1) {
+	if (slot->mType == 1) { // a hamburger respawns raw and sizzles; anything else just lands
 		slot->mSide        = 0;
 		slot->mYakiTime[1] = 0;
 		slot->mYakiTime[0] = 0;
@@ -3711,11 +3722,13 @@ extern "C" void HamObj_Respawn(HamObj* slot)
 		PlayGameSound(STAGE01_SOUND, 0x4001E, 0xFF);
 	}
 
+	// put it back at the spawn point upright, at anim 0 (raw)
 	slot->mActor->SetPos(-231.8f, 77.5f, 50.0f, 0);
 	slot->mActor->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	slot->SetRot(0.0f);
 
 	f32 speed;
+	// toss it back in a random 240-300-degree direction
 	f32 angle = DEG2RAD * (HSD_Randi(60) + 240);
 	speed     = 30.0f + HSD_Randi(15);
 	slot->StartSlide(speed, 0.5f, angle);
@@ -3728,18 +3741,18 @@ extern "C" void HamObj_Respawn(HamObj* slot)
  * @note Address: stage01 .text 0x3D30
  * @note Size: 0x98
  */
-extern "C" void HamObj_StartSlide(HamObj* slot, f32 speed, f32 f, f32 angle)
+extern "C" void HamObj_StartSlide(HamObj* slot, f32 distance, f32 speed, f32 angle)
 {
-	slot->StartSlide(speed, f, angle);
+	slot->StartSlide(distance, speed, angle);
 }
 
 /**
  * @note Address: stage01 .text 0x3DC8
  * @note Size: 0xA8
  */
-extern "C" void HamObj_StartFlip(HamObj* slot, u32 time)
+extern "C" void HamObj_StartFlip(HamObj* slot, u32 frames)
 {
-	slot->mFlipFrames = time;
+	slot->mFlipFrames = frames;
 	slot->mMoveAngle  = AngleFrom(&STAGE01_PLAYER->mMoveTranslate, &slot->mActor->mMoveTranslate);
 	slot->SetState(&HamObj::StateFlip);
 }
@@ -3800,6 +3813,7 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 		slot->mSpawned = 0;
 	}
 
+	// only an unstacked spawned hamburger that isn't carried cooks
 	if (slot->mType == 1 && slot->mSpawned && slot->mStackLevel == 0 && !IsHeld(slot->mActor)) {
 		s32 oldLevel = slot->mYakiTime[slot->mSide] / 600 + 1;
 		f32 rate;
@@ -3808,10 +3822,10 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 		} else {
 			rate = yakiRates[oldLevel];
 		}
-		slot->mYakiTime[slot->mSide] += step * rate;
+		slot->mYakiTime[slot->mSide] += step * rate; // cook at the script's rate for the current doneness
 
 		s32 level = slot->mYakiTime[slot->mSide] / 600 + 1;
-		if (oldLevel > 5) {
+		if (oldLevel > 5) { // the doneness anim stops at 5
 			oldLevel = 5;
 		}
 		if (level > 5) {
@@ -3826,17 +3840,17 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 		pos.y += 2.5f;
 		scale.x = scale.y = scale.z = 1.0f;
 
-		if (level < 4 && oldLevel < level) {
+		if (level < 4 && oldLevel < level) { // crossing into a new doneness puffs once
 			static const Vec rot = { 0.0f, 0.0f, 0.0f };
 			STAGE01_PARTICLE->CreateSRT(0x3A, 1, pos, scale, rot, 1);
 		}
-		if (level == 4) {
+		if (level == 4) { // well done: re-puff every 180 frames
 			if (slot->mYakiTime[slot->mSide] % 180 == 0) {
 				static const Vec rot = { 0.0f, 0.0f, 0.0f };
 				STAGE01_PARTICLE->Kill(0x3B);
 				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, rot, 1);
 			}
-		} else if (level >= 5) {
+		} else if (level >= 5) { // burnt: every 120 frames
 			if (slot->mYakiTime[slot->mSide] % 120 == 0) {
 				static const Vec rot = { 0.0f, 0.0f, 0.0f };
 				STAGE01_PARTICLE->Kill(0x3B);
@@ -3848,10 +3862,10 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 			yakiLoopLevel = 1;
 		}
 		if (level >= 4) {
-			yakiLoopLevel = 2;
+			yakiLoopLevel = 2; // a side at doneness 4+ switches the cooking loop
 		}
 
-		if (slot->mYakiEffect == 0) {
+		if (slot->mYakiEffect == 0) { // start the cooking particles on joint 0 once
 			s32 path[]        = { 0 };
 			HSD_JObj* jobj    = GetJointByPath(slot->mActor->mJObj, path, 1);
 			slot->mYakiEffect = STAGE01_PARTICLE->Create(0x78, 0, jobj, 1);
@@ -3861,25 +3875,28 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 	if (slot->mState != NULL) {
 		(slot->*(slot->mState))();
 	} else if (slot->mSpawned && slot->mDish == NULL) {
+		// a loose spawned object keeps sliding toward the plate centre (-263.9, 42.0)
 		f32 angle = atan2(-263.9f - slot->mActor->mMoveTranslate.x, 42.0f - slot->mActor->mMoveTranslate.z);
-		if (!IsOnGasPlate(slot->mActor)) {
+		if (!IsOnGasPlate(slot->mActor)) { // off the plate: slide back onto it
 			slot->StartSlide(5.0f, 0.2f, angle);
 			slot->mStackLevel = 0;
 		} else if (slot->mStackLevel == 0 && playerOffGasPlate) {
+			// a player standing off the plate nudges it when closer than 8
 			if (PSVECDistance(&STAGE01_PLAYER->mMoveTranslate, &slot->mActor->mMoveTranslate) < 8.0f) {
 				slot->StartSlide(5.0f, 0.2f, angle);
 			}
 		} else if (slot->mActor->mCoord.GetSize().y + 2.0f * slot->mStackLevel < slot->mActor->mMoveTranslate.y) {
-			slot->StartSlide(0.0f, 0.5f, angle);
+			slot->StartSlide(0.0f, 0.5f, angle); // still in the air above its stack height: settle down
 		}
 
+		// restore the pickup flag once it is uncovered again
 		if (!putDownActive && !(slot->mActor->mStatus & 0x100000000ULL)
 		    && (slot->mAbove == NULL || (slot->mAbove != NULL && slot->mStackLevel == slot->mAbove->mStackLevel))) {
 			slot->mActor->mStatus |= 0x100000000ULL;
 		}
 	}
 
-	if (slot->mSpawned && slot->mActor->mMoveTranslate.y < 77.5f) {
+	if (slot->mSpawned && slot->mActor->mMoveTranslate.y < 77.5f) { // keep spawned objects on the plate
 		slot->mActor->SetTranslateY(78.0f, 0);
 		slot->mActor->SetRotationZ(slot->mRotZ, 0);
 	}
