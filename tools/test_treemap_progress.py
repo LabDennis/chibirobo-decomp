@@ -71,6 +71,13 @@ class SnapshotTests(unittest.TestCase):
         badge = (self.root / "site/badges/wii-linked.svg").read_text(encoding="utf-8")
         self.assertIn("Japanese Wii code linked from source: 25.0%", badge)
 
+    def test_render_without_wii_still_writes_the_readme_badge(self):
+        self.seed_legacy()
+        with patch.object(progress, "source_hash", return_value="legacy"):
+            progress.render(self.root / "site", self.snapshot)
+        badge = (self.root / "site/badges/wii-linked.svg").read_text(encoding="utf-8")
+        self.assertIn("Japanese Wii code linked from source: not built", badge)
+
     def test_invalid_or_incomplete_build_leaves_snapshot_unchanged(self):
         self.seed_legacy()
         old = self.snapshot.read_bytes()
