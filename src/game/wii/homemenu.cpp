@@ -1,6 +1,9 @@
 #include "game/wii/cgame.h"
 #include "revolution/mem.h"
 
+// One function of a larger file: its .sdata2 pool (0x805A4470-0x805A44CC) is shared with
+// fn_800AAD1C through fn_800ABA98, so the unit cannot be linked until those are written too.
+
 struct WiiHomeMenu {
 	u32 state;
 	u8 _004[0x4a0 - 4];
@@ -23,6 +26,7 @@ struct WiiHomeMenu {
 STATIC_ASSERT(sizeof(WiiHomeMenu) == 0x65c);
 
 extern "C" {
+u8 SCGetLanguage();
 void fn_80019CBC(void*);
 extern MEMAllocator gWiiPadAllocator;
 }
@@ -32,13 +36,25 @@ extern "C" void InitWiiHomeMenu(WiiHomeMenu* menu)
 	menu->loadState = 0;
 	fn_80019CBC(menu->resources);
 	menu->active = 0;
-	for (int i = 0; i < 4; ++i)
-		menu->pointers[i].x = menu->pointers[i].y = 0;
-	menu->state = menu->layout = menu->message = menu->configuration = 0;
-	// The archive loader indexes its retail homeBtn table with the same field.
+	for (int i = 0; i < 4; ++i) {
+		menu->pointers[i].x = 0;
+		menu->pointers[i].y = 0;
+	}
+	menu->state         = 0;
+	menu->layout        = 0;
+	menu->message       = 0;
+	menu->configuration = 0;
+#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
+	// the archive loader indexes its homeBtn table with this, so the mod's language picks the files
 	menu->language = gGame.mLanguage;
-	menu->flags = menu->sound = 0;
-	menu->heapSize            = 0x80000;
-	menu->scaleX = menu->scaleY = menu->speed = 1;
-	menu->allocator                           = &gWiiPadAllocator;
+#else
+	menu->language = SCGetLanguage();
+#endif
+	menu->flags     = 0;
+	menu->sound     = 0;
+	menu->heapSize  = 0x80000;
+	menu->scaleX    = 1;
+	menu->scaleY    = 1;
+	menu->speed     = 1;
+	menu->allocator = &gWiiPadAllocator;
 }
