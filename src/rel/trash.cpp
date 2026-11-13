@@ -1,3 +1,4 @@
+#include "rel/trash.h"
 #include "game/hsd_jobj.h"
 #include "game/animframe.h"
 #include "game/xchr.h"
@@ -25,20 +26,11 @@ static s32 trashResult;
 static u8 trashActive;
 static s32 trashboxIndex;
 
-extern "C" void DrawTrashStack(void* arg);
-extern "C" void UpdateTrash(u32 frames);
-extern "C" void InitTrash(void* arg);
-extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdEndTrash(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdGetTrashResult(s32 cmd, s32 arg, s32* arg2);
-extern "C" s32 CmdStartTrash(s32 cmd, s32 arg, s32* arg2);
-
 /**
  * @note Address: stage04 .text 0x183C
  * @note Size: 0x5B8
  */
-extern "C" void DrawTrashStack(void* arg)
+extern "C" void DrawTrashStack(void)
 {
 	// NONMATCHING: regalloc
 	XObj* actor;
@@ -1144,7 +1136,7 @@ extern "C" void UpdateTrash(u32 frames)
  * @note Address: stage04 .text 0x261C
  * @note Size: 0xCC
  */
-extern "C" void InitTrash(void* arg)
+extern "C" void InitTrash(void)
 {
 	XObj* actor;
 	CGame* game = &gGame;
