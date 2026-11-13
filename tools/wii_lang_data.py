@@ -758,6 +758,325 @@ def translate_globals_bin(
     return bytes(out), stats
 
 
+TPL_FMT_SPECS: Dict[int, Tuple[int, int, int]] = {
+    # fmt_id: (block_w, block_h, bpp)
+    0: (8, 8, 4),    # I4
+    1: (8, 4, 8),    # I8
+    2: (8, 4, 8),    # IA4
+    3: (4, 4, 16),   # IA8
+    4: (4, 4, 16),   # RGB565
+    5: (4, 4, 16),   # RGB5A3
+    6: (4, 4, 32),   # RGBA8
+    8: (8, 8, 4),    # CI4
+    9: (8, 4, 8),    # CI8
+    14: (8, 8, 4),   # CMPR
+}
+
+
+def _tpl_data_size(w: int, h: int, fmt: int) -> int:
+    bw, bh, bpp = TPL_FMT_SPECS[fmt]
+    tiles_x = (w + bw - 1) // bw
+    tiles_y = (h + bh - 1) // bh
+    return tiles_x * tiles_y * ((bw * bh * bpp) // 8)
+
+
+def _decode_pal_entry(fmt: int, val: int) -> Tuple[int, int, int, int]:
+    if fmt == 0:  # IA8
+        i = val & 0xFF
+        a = (val >> 8) & 0xFF
+        return (i, i, i, a)
+    if fmt == 1:  # RGB565
+        r, g, b = (val >> 11) & 0x1F, (val >> 5) & 0x3F, val & 0x1F
+        return ((r << 3) | (r >> 2), (g << 2) | (g >> 4), (b << 3) | (b >> 2), 255)
+    if fmt == 2:  # RGB5A3
+        if val & 0x8000:
+            r, g, b = (val >> 10) & 0x1F, (val >> 5) & 0x1F, val & 0x1F
+            return ((r << 3) | (r >> 2), (g << 3) | (g >> 2), (b << 3) | (b >> 2), 255)
+        a = (val >> 12) & 7
+        r, g, b = (val >> 8) & 0xF, (val >> 4) & 0xF, val & 0xF
+        return ((r << 4) | r, (g << 4) | g, (b << 4) | b, (a << 5) | (a << 2) | (a >> 1))
+    raise ValueError(f"Unsupported TPL palette format {fmt}")
+
+
+def _decode_tpl_pixels(
+    data: bytes,
+    w: int,
+    h: int,
+    fmt: int,
+    pal_fmt: Optional[int] = None,
+    pal_data: Optional[bytes] = None,
+) -> bytearray:
+    out = bytearray(w * h * 4)
+    bw, bh, _ = TPL_FMT_SPECS[fmt]
+    tiles_x = (w + bw - 1) // bw
+    tiles_y = (h + bh - 1) // bh
+    palette: List[Tuple[int, int, int, int]] = []
+    if fmt in (8, 9):
+        if pal_fmt is None or pal_data is None:
+            raise ValueError(f"Palette required for TPL format {fmt}")
+        palette = [
+            _decode_pal_entry(pal_fmt, struct.unpack_from(">H", pal_data, i * 2)[0])
+            for i in range(len(pal_data) // 2)
+        ]
+
+    def put(x: int, y: int, rgba: Tuple[int, int, int, int]) -> None:
+        if x < w and y < h:
+            idx = (y * w + x) * 4
+            out[idx : idx + 4] = bytes(rgba)
+
+    pos = 0
+    for ty in range(tiles_y):
+        for tx in range(tiles_x):
+            bx, by = tx * bw, ty * bh
+            if fmt == 0:  # I4
+                for y in range(8):
+                    for x in range(0, 8, 2):
+                        byte = data[pos]
+                        pos += 1
+                        v0 = (byte >> 4) * 17
+                        v1 = (byte & 0xF) * 17
+                        put(bx + x, by + y, (v0, v0, v0, 255))
+                        put(bx + x + 1, by + y, (v1, v1, v1, 255))
+            elif fmt == 1:  # I8
+                for y in range(4):
+                    for x in range(8):
+                        v = data[pos]
+                        pos += 1
+                        put(bx + x, by + y, (v, v, v, 255))
+            elif fmt == 2:  # IA4
+                for y in range(4):
+                    for x in range(8):
+                        byte = data[pos]
+                        pos += 1
+                        a = (byte >> 4) * 17
+                        v = (byte & 0xF) * 17
+                        put(bx + x, by + y, (v, v, v, a))
+            elif fmt == 3:  # IA8
+                for y in range(4):
+                    for x in range(4):
+                        a, v = data[pos], data[pos + 1]
+                        pos += 2
+                        put(bx + x, by + y, (v, v, v, a))
+            elif fmt in (4, 5):  # RGB565 / RGB5A3
+                p_fmt = 1 if fmt == 4 else 2
+                for y in range(4):
+                    for x in range(4):
+                        val = struct.unpack_from(">H", data, pos)[0]
+                        pos += 2
+                        put(bx + x, by + y, _decode_pal_entry(p_fmt, val))
+            elif fmt == 6:  # RGBA8
+                ar = data[pos : pos + 32]
+                gb = data[pos + 32 : pos + 64]
+                pos += 64
+                for i in range(16):
+                    x, y = i & 3, i >> 2
+                    put(bx + x, by + y, (ar[i * 2 + 1], gb[i * 2], gb[i * 2 + 1], ar[i * 2]))
+            elif fmt == 8:  # CI4
+                for y in range(8):
+                    for x in range(0, 8, 2):
+                        byte = data[pos]
+                        pos += 1
+                        put(bx + x, by + y, palette[byte >> 4])
+                        put(bx + x + 1, by + y, palette[byte & 0xF])
+            elif fmt == 9:  # CI8
+                for y in range(4):
+                    for x in range(8):
+                        put(bx + x, by + y, palette[data[pos]])
+                        pos += 1
+            elif fmt == 14:  # CMPR
+                for sy in (0, 4):
+                    for sx in (0, 4):
+                        c0, c1 = struct.unpack_from(">2H", data, pos)
+                        pos += 4
+                        p0 = _decode_pal_entry(1, c0)
+                        p1 = _decode_pal_entry(1, c1)
+                        if c0 > c1:
+                            cols = [
+                                p0,
+                                p1,
+                                ((2 * p0[0] + p1[0]) // 3, (2 * p0[1] + p1[1]) // 3, (2 * p0[2] + p1[2]) // 3, 255),
+                                ((p0[0] + 2 * p1[0]) // 3, (p0[1] + 2 * p1[1]) // 3, (p0[2] + 2 * p1[2]) // 3, 255),
+                            ]
+                        else:
+                            cols = [
+                                p0,
+                                p1,
+                                ((p0[0] + p1[0]) // 2, (p0[1] + p1[1]) // 2, (p0[2] + p1[2]) // 2, 255),
+                                (0, 0, 0, 0),
+                            ]
+                        for ry in range(4):
+                            row = data[pos]
+                            pos += 1
+                            for rx in range(4):
+                                ci = (row >> (6 - 2 * rx)) & 3
+                                put(bx + sx + rx, by + sy + ry, cols[ci])
+            else:
+                raise ValueError(f"Unsupported TPL format {fmt}")
+    return out
+
+
+def _encode_tpl_pixels(rgba: bytes, w: int, h: int, fmt: int) -> bytes:
+    if fmt not in (0, 1, 2, 3, 4, 5, 6, 14):
+        raise ValueError(f"Unsupported target TPL format {fmt}")
+    bw, bh, _ = TPL_FMT_SPECS[fmt]
+    tiles_x = (w + bw - 1) // bw
+    tiles_y = (h + bh - 1) // bh
+    out = bytearray()
+
+    def get(x: int, y: int) -> Tuple[int, int, int, int]:
+        cx = min(x, w - 1)
+        cy = min(y, h - 1)
+        idx = (cy * w + cx) * 4
+        return rgba[idx], rgba[idx + 1], rgba[idx + 2], rgba[idx + 3]
+
+    def lum(p: Tuple[int, int, int, int]) -> int:
+        return (p[0] * 77 + p[1] * 150 + p[2] * 29) >> 8
+
+    for ty in range(tiles_y):
+        for tx in range(tiles_x):
+            bx, by = tx * bw, ty * bh
+            if fmt == 0:  # I4
+                for y in range(8):
+                    for x in range(0, 8, 2):
+                        v0 = lum(get(bx + x, by + y)) >> 4
+                        v1 = lum(get(bx + x + 1, by + y)) >> 4
+                        out.append((v0 << 4) | v1)
+            elif fmt == 1:  # I8
+                for y in range(4):
+                    for x in range(8):
+                        out.append(lum(get(bx + x, by + y)))
+            elif fmt == 2:  # IA4
+                for y in range(4):
+                    for x in range(8):
+                        p = get(bx + x, by + y)
+                        out.append(((p[3] >> 4) << 4) | (lum(p) >> 4))
+            elif fmt == 3:  # IA8
+                for y in range(4):
+                    for x in range(4):
+                        p = get(bx + x, by + y)
+                        out.append(p[3])
+                        out.append(lum(p))
+            elif fmt == 4:  # RGB565
+                for y in range(4):
+                    for x in range(4):
+                        r, g, b, _ = get(bx + x, by + y)
+                        out.extend(struct.pack(">H", ((r >> 3) << 11) | ((g >> 2) << 5) | (b >> 3)))
+            elif fmt == 5:  # RGB5A3
+                for y in range(4):
+                    for x in range(4):
+                        r, g, b, a = get(bx + x, by + y)
+                        if a >= 0xE0:
+                            val = 0x8000 | ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3)
+                        else:
+                            val = ((a >> 5) << 12) | ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4)
+                        out.extend(struct.pack(">H", val))
+            elif fmt == 6:  # RGBA8
+                ar = bytearray()
+                gb = bytearray()
+                for y in range(4):
+                    for x in range(4):
+                        r, g, b, a = get(bx + x, by + y)
+                        ar.extend((a, r))
+                        gb.extend((g, b))
+                out.extend(ar)
+                out.extend(gb)
+            elif fmt == 14:  # CMPR
+                for sy in (0, 4):
+                    for sx in (0, 4):
+                        blk = [get(bx + sx + rx, by + sy + ry) for ry in range(4) for rx in range(4)]
+                        opaque = [p for p in blk if p[3] >= 128]
+                        has_alpha = len(opaque) < 16
+                        if not opaque:
+                            out.extend(b"\x00\x00\x00\x00\xff\xff\xff\xff")
+                            continue
+                        lo = min(opaque, key=lum)
+                        hi = max(opaque, key=lum)
+                        c_lo = ((lo[0] >> 3) << 11) | ((lo[1] >> 2) << 5) | (lo[2] >> 3)
+                        c_hi = ((hi[0] >> 3) << 11) | ((hi[1] >> 2) << 5) | (hi[2] >> 3)
+                        if has_alpha:
+                            c0, c1 = (c_lo, c_hi) if c_lo <= c_hi else (c_hi, c_lo)
+                        else:
+                            if c_lo == c_hi:
+                                c0 = c1 = c_hi
+                            else:
+                                c0, c1 = (c_hi, c_lo) if c_hi > c_lo else (c_lo, c_hi)
+                        p0 = _decode_pal_entry(1, c0)
+                        p1 = _decode_pal_entry(1, c1)
+                        if c0 > c1:
+                            pal = [
+                                p0,
+                                p1,
+                                ((2 * p0[0] + p1[0]) // 3, (2 * p0[1] + p1[1]) // 3, (2 * p0[2] + p1[2]) // 3, 255),
+                                ((p0[0] + 2 * p1[0]) // 3, (p0[1] + 2 * p1[1]) // 3, (p0[2] + 2 * p1[2]) // 3, 255),
+                            ]
+                        else:
+                            pal = [
+                                p0,
+                                p1,
+                                ((p0[0] + p1[0]) // 2, (p0[1] + p1[1]) // 2, (p0[2] + p1[2]) // 2, 255),
+                                (0, 0, 0, 0),
+                            ]
+                        out.extend(struct.pack(">2H", c0, c1))
+                        for ry in range(4):
+                            row = 0
+                            for rx in range(4):
+                                p = blk[ry * 4 + rx]
+                                if has_alpha and p[3] < 128:
+                                    ci = 3
+                                else:
+                                    limit = 3 if has_alpha else 4
+                                    ci = min(
+                                        range(limit),
+                                        key=lambda idx: (p[0] - pal[idx][0]) ** 2
+                                        + (p[1] - pal[idx][1]) ** 2
+                                        + (p[2] - pal[idx][2]) ** 2,
+                                    )
+                                row |= ci << (6 - 2 * rx)
+                            out.append(row)
+    return bytes(out)
+
+
+def parse_tpl_textures(b: bytes) -> List[Dict[str, object]]:
+    """Parse full TPL headers, image data, and optional palettes."""
+    if len(b) < 12:
+        raise ValueError("TPL too short")
+    magic, count, tbl_off = struct.unpack_from(">3I", b, 0)
+    if magic != 0x0020AF30:
+        raise ValueError(f"Bad TPL magic 0x{magic:08x}")
+    texs: List[Dict[str, object]] = []
+    for i in range(count):
+        tex_hdr_off, pal_hdr_off = struct.unpack_from(">2I", b, tbl_off + i * 8)
+        h, w, fmt, data_off, wrap_s, wrap_t, min_f, mag_f, lod_bias, edge_lod, min_lod, max_lod, unpacked = (
+            struct.unpack_from(">2H6If4B", b, tex_hdr_off)
+        )
+        data_len = _tpl_data_size(w, h, fmt) if fmt in TPL_FMT_SPECS else 0
+        pal_fmt: Optional[int] = None
+        pal_data: Optional[bytes] = None
+        if pal_hdr_off != 0:
+            p_cnt, _, _, pal_fmt, p_data_off = struct.unpack_from(">HBBII", b, pal_hdr_off)
+            pal_data = b[p_data_off : p_data_off + p_cnt * 2]
+        texs.append(
+            {
+                "width": w,
+                "height": h,
+                "fmt": fmt,
+                "wrap_s": wrap_s,
+                "wrap_t": wrap_t,
+                "min_filter": min_f,
+                "mag_filter": mag_f,
+                "lod_bias": lod_bias,
+                "edge_lod": edge_lod,
+                "min_lod": min_lod,
+                "max_lod": max_lod,
+                "unpacked": unpacked,
+                "data": b[data_off : data_off + data_len],
+                "pal_fmt": pal_fmt,
+                "pal_data": pal_data,
+            }
+        )
+    return texs
+
+
 def parse_tpl_header(b: bytes) -> List[Tuple[int, int, int]]:
     if len(b) < 12:
         raise ValueError("TPL too short")
@@ -770,6 +1089,138 @@ def parse_tpl_header(b: bytes) -> List[Tuple[int, int, int]]:
         h, w, fmt = struct.unpack_from(">2HI", b, tex_hdr_off)
         texs.append((w, h, fmt))
     return texs
+
+
+def _build_tpl(texs: List[Dict[str, object]]) -> bytes:
+    count = len(texs)
+    tbl_off = 12
+    pal_entries: List[Tuple[int, int, bytes]] = []
+    tex_hdr_offs: List[int] = []
+    pal_hdr_offs: List[int] = []
+
+    cursor = tbl_off + count * 8
+    for t in texs:
+        if t["pal_data"] is not None:
+            pal_hdr_offs.append(cursor)
+            pal_entries.append((len(pal_entries), int(t["pal_fmt"]), bytes(t["pal_data"])))
+            cursor += 12
+        else:
+            pal_hdr_offs.append(0)
+        tex_hdr_offs.append(cursor)
+        cursor += 36
+
+    # Align data section to 32 bytes
+    data_cursor = (cursor + 31) & ~31
+    pal_data_offs: Dict[int, int] = {}
+    pal_blobs: List[Tuple[int, bytes]] = []
+    for idx, p_fmt, p_bytes in pal_entries:
+        pal_data_offs[idx] = data_cursor
+        pal_blobs.append((data_cursor, p_bytes))
+        data_cursor = (data_cursor + len(p_bytes) + 31) & ~31
+
+    tex_data_offs: List[int] = []
+    for t in texs:
+        tex_data_offs.append(data_cursor)
+        data_cursor = (data_cursor + len(bytes(t["data"])) + 31) & ~31
+
+    out = bytearray(data_cursor)
+    struct.pack_into(">3I", out, 0, 0x0020AF30, count, tbl_off)
+    pal_idx = 0
+    for i, t in enumerate(texs):
+        struct.pack_into(">2I", out, tbl_off + i * 8, tex_hdr_offs[i], pal_hdr_offs[i])
+        if pal_hdr_offs[i] != 0:
+            p_bytes = bytes(t["pal_data"])
+            struct.pack_into(
+                ">HBBII", out, pal_hdr_offs[i], len(p_bytes) // 2, 0, 0, int(t["pal_fmt"]), pal_data_offs[pal_idx]
+            )
+            out[pal_data_offs[pal_idx] : pal_data_offs[pal_idx] + len(p_bytes)] = p_bytes
+            pal_idx += 1
+        struct.pack_into(
+            ">2H6If4B",
+            out,
+            tex_hdr_offs[i],
+            int(t["height"]),
+            int(t["width"]),
+            int(t["fmt"]),
+            tex_data_offs[i],
+            int(t["wrap_s"]),
+            int(t["wrap_t"]),
+            int(t["min_filter"]),
+            int(t["mag_filter"]),
+            float(t["lod_bias"]),
+            int(t["edge_lod"]),
+            int(t["min_lod"]),
+            int(t["max_lod"]),
+            int(t["unpacked"]),
+        )
+        d_bytes = bytes(t["data"])
+        out[tex_data_offs[i] : tex_data_offs[i] + len(d_bytes)] = d_bytes
+    return bytes(out)
+
+
+def convert_tpl_to_wii_format(
+    wii_tpl: bytes, target_tpl: bytes
+) -> Tuple[Optional[bytes], Dict[str, object]]:
+    """Convert target_tpl into wii_tpl's texture formats if counts and dimensions match."""
+    w_texs = parse_tpl_textures(wii_tpl)
+    t_texs = parse_tpl_textures(target_tpl)
+    if len(w_texs) != len(t_texs):
+        return None, {
+            "reason": "texture_count_mismatch",
+            "wii_count": len(w_texs),
+            "target_count": len(t_texs),
+        }
+    dim_mismatches = [
+        {
+            "index": i,
+            "wii": [int(wt["width"]), int(wt["height"])],
+            "target": [int(tt["width"]), int(tt["height"])],
+        }
+        for i, (wt, tt) in enumerate(zip(w_texs, t_texs))
+        if wt["width"] != tt["width"] or wt["height"] != tt["height"]
+    ]
+    if dim_mismatches:
+        return None, {"reason": "dimension_mismatch", "mismatches": dim_mismatches}
+
+    if all(
+        wt["fmt"] == tt["fmt"] and wt["pal_fmt"] == tt["pal_fmt"] and len(wii_tpl) == len(target_tpl)
+        for wt, tt in zip(w_texs, t_texs)
+    ):
+        return target_tpl, {"reason": "direct_match"}
+
+    converted_texs: List[Dict[str, object]] = []
+    reencoded = 0
+    for wt, tt in zip(w_texs, t_texs):
+        w_fmt = int(wt["fmt"])
+        t_fmt = int(tt["fmt"])
+        if w_fmt == t_fmt and wt["pal_fmt"] == tt["pal_fmt"]:
+            new_t = dict(wt)
+            new_t["data"] = tt["data"]
+            new_t["pal_data"] = tt["pal_data"]
+            converted_texs.append(new_t)
+            continue
+        if t_fmt not in TPL_FMT_SPECS or w_fmt not in (0, 1, 2, 3, 4, 5, 6, 14):
+            return None, {
+                "reason": "unsupported_format_conversion",
+                "wii_fmt": w_fmt,
+                "target_fmt": t_fmt,
+            }
+        rgba = _decode_tpl_pixels(
+            bytes(tt["data"]),
+            int(tt["width"]),
+            int(tt["height"]),
+            t_fmt,
+            tt["pal_fmt"] if tt["pal_fmt"] is None else int(tt["pal_fmt"]),
+            tt["pal_data"] if tt["pal_data"] is None else bytes(tt["pal_data"]),
+        )
+        new_t = dict(wt)
+        new_t["data"] = _encode_tpl_pixels(rgba, int(wt["width"]), int(wt["height"]), w_fmt)
+        new_t["pal_fmt"] = None
+        new_t["pal_data"] = None
+        converted_texs.append(new_t)
+        reencoded += 1
+
+    return _build_tpl(converted_texs), {"reason": "reencoded", "reencoded_textures": reencoded}
 
 
 def _run_dtk(dtk: Path, args: Sequence[str]) -> str:
@@ -970,15 +1421,16 @@ def build_language_data(
                 continue
             wii_b = wii_tpl_path.read_bytes()
             tgt_b = tgt_tpl_path.read_bytes()
-            if len(wii_b) != len(tgt_b) or parse_tpl_header(wii_b) != parse_tpl_header(tgt_b):
-                non_transferable_files.append({"path": rel_path, "reason": "format_or_size_mismatch"})
+            converted_b, tpl_info = convert_tpl_to_wii_format(wii_b, tgt_b)
+            if converted_b is None:
+                non_transferable_files.append({"path": rel_path, **tpl_info})
                 continue
-            if wii_b == tgt_b:
+            if wii_b == converted_b:
                 identical_files.append(rel_path)
                 continue
             dst = lang_out / "tpl" / name
             dst.parent.mkdir(parents=True, exist_ok=True)
-            dst.write_bytes(tgt_b)
+            dst.write_bytes(converted_b)
             written_files.append(dst)
             transferred_files.append(rel_path)
 
