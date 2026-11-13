@@ -56,7 +56,9 @@ static inline void TurnTowardPoint(XObjSpiderBoss* boss, s32 readyStep)
 	}
 }
 
-// NONMATCHING: retail's frame is 0x20 smaller, it sets the patrol effect's rotation in the copy it passes
+// NONMATCHING: retail's frame is 0x20 smaller, it builds each patrol effect's rotation straight in the copy it passes to
+// CreateSRT where this build makes the local and copies it (same in xobjspiderbosshit, no source form found). The patrol
+// points and effect vectors also sit at other .rodata offsets because this unit holds only part of the file.
 void XObjSpiderBoss::State4(u32 frames)
 {
 	CPad pad(0);
@@ -91,8 +93,8 @@ void XObjSpiderBoss::State4(u32 frames)
 			mSpeed = 1;
 			PlayPatrolAnim(this, 0x18);
 			{
-				Vec rotation = {};
 				Vec scale    = { 1, 1, 1 };
+				Vec rotation = {};
 				rotation.y   = mTargetRotY;
 				gGame.mParticle.CreateSRT(0xb6, 1, mMoveTranslate, scale, rotation, TRUE);
 				mPatrolEffectActive = 1;
@@ -104,8 +106,8 @@ void XObjSpiderBoss::State4(u32 frames)
 	case 3:
 		if (mAltAnimId == 0x18) {
 			if (!mPatrolEffectActive) {
-				Vec rotation = {};
 				Vec scale    = { 1, 1, 1 };
+				Vec rotation = {};
 				rotation.y   = mTargetRotY;
 				gGame.mParticle.CreateSRT(0xb6, 1, mMoveTranslate, scale, rotation, TRUE);
 				mPatrolEffectActive = 1;
@@ -225,7 +227,7 @@ static inline bool IsGrabBlocked(s32 anim)
 }
 
 // NONMATCHING: same code; retail keeps the zero from the prologue in r6 (here r0), takes r4 for the second path
-// pointer and reuses the player pointer for both _980 writes in case 12. The path arrays and the joint string sit
+// pointer and has r29 and r30 the other way round in the whole function. The path arrays and the joint string sit
 // at other .rodata offsets because this unit holds only part of the file.
 void XObjSpiderBoss::State3(u32 frames)
 {
@@ -385,8 +387,9 @@ void XObjSpiderBoss::State3(u32 frames)
 			mStatus.mFlags |= 0x100000;
 			ShakeSpiderArena();
 			mSpiderStatus.mFlags |= 0x20000;
-			gGame.GetPlayer()->_980.mFlags = 0;
-			gGame.GetPlayer()->_980.mFlags |= 0x80000000;
+			XObjChr* chr     = gGame.GetPlayer();
+			chr->_980.mFlags = 0;
+			chr->_980.mFlags |= 0x80000000;
 			gGame.GetPlayer()->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mEscapeInputStrength = 1;
 			mEscapeRemaining     = 450;

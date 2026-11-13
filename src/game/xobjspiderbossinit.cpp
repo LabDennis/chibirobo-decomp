@@ -7,6 +7,8 @@ u32 gSpiderBossCoinBounceContext; // the boss's coin bounce context, it has no d
  * @note Address: 0x8010660C
  * @note Size: 0x2C8
  */
+// NONMATCHING: retail copies the six zero Vecs from +0x48 of the file's .rodata, behind the header-made
+// block of six Vecs this split unit lacks, so every load from them has another offset; the code is otherwise the same
 extern "C" void ResetSpiderBossState(XObj* object)
 {
 	XObjSpiderBoss* spider       = (XObjSpiderBoss*)object;
