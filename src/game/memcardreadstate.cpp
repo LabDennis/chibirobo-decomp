@@ -39,7 +39,7 @@ extern "C" BOOL ReadMemoryCardPreviews(Memcard* card, s32 channel)
 			card->mAllSaves[slot].mHeader.mMaxBattery = header.mMaxBattery;
 			card->mAllSaves[slot].mHeader.mMoney      = header.mMoney;
 			card->mAllSaves[slot].mHeader.mScrap      = header.mScrap;
-			card->mAllSaves[slot].mHeader._34         = header._34;
+			card->mAllSaves[slot].mHeader.mActive     = header.mActive;
 			card->mAllSaves[slot].mHeader.mFrames     = header.mFrames;
 			card->mState                              = 9;
 			card->mCard.CloseEx();

@@ -110,7 +110,7 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	Stats()->SetBattery(save->mHeader.mBattery);
 	SetMoney(Stats(), save->mHeader.mMoney);
 	SetScrap(Stats(), save->mHeader.mScrap);
-	if (save->mHeader._34)
+	if (save->mHeader.mActive)
 		Stats()->_1C[0] = 1;
 	else
 		Stats()->_1C[0] = 0;

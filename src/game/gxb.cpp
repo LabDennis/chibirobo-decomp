@@ -3137,8 +3137,8 @@ void Title::State15(u32 frames)
 	}
 	switch (step) {
 	case 0:
-		_37D0 = gGame.mMemcard.mCard._16A04;
-		_37D4 = gGame.mMemcard.mCard._16A00;
+		_37D0 = gGame.mMemcard.mCard.mFreeSectors;
+		_37D4 = gGame.mMemcard.mCard.mFreeFiles;
 		file  = &card->mSaves[0][mFile];
 		if (file->mState != 0) {
 			gTitleSaveSlots[mFile].mUsed       = 1;
@@ -3154,7 +3154,7 @@ void Title::State15(u32 frames)
 			gTitleSaveSlots[mFile].mStage      = file->mHeader.mStage;
 			gTitleSaveSlots[mFile].mTimeMode   = file->mHeader.mTimeMode;
 			gTitleSaveSlots[mFile].mState      = 0;
-			if (file->mHeader._34 > 0) {
+			if (file->mHeader.mActive > 0) {
 				gTitleSaveSlots[mFile].mActive = 1;
 			} else {
 				gTitleSaveSlots[mFile].mActive = 0;
@@ -3339,8 +3339,8 @@ void Title::State12(u32 frames)
 	}
 	switch (gGame.mMemcard.mCard.mState) {
 	case 0:
-		_37D0 = gGame.mMemcard.mCard._16A04;
-		_37D4 = gGame.mMemcard.mCard._16A00;
+		_37D0 = gGame.mMemcard.mCard.mFreeSectors;
+		_37D4 = gGame.mMemcard.mCard.mFreeFiles;
 		SetMode(13);
 		mAlpha = 1.0f;
 		break;
@@ -3868,7 +3868,7 @@ void Title::State1(u32 frames)
 				OSCalendarTime calendar;
 				OSTicksToCalendarTime(OSSecondsToTicks((OSTime)save->mStat.time), &calendar);
 				s32 frames                     = save->mHeader.mFrames;
-				s32 active                     = save->mHeader._34;
+				s32 active                     = save->mHeader.mActive;
 				gTitleSaveSlots[i].mUsed       = 1;
 				gTitleSaveSlots[i].mLevel      = save->mHeader.mLevel;
 				gTitleSaveSlots[i].mBattery    = save->mHeader.mBattery;
@@ -3892,8 +3892,8 @@ void Title::State1(u32 frames)
 					gTitleSaveSlots[i].mState = 0;
 			}
 		}
-		_37D0 = gGame.mMemcard.mCard._16A04;
-		_37D4 = gGame.mMemcard.mCard._16A00;
+		_37D0 = gGame.mMemcard.mCard.mFreeSectors;
+		_37D4 = gGame.mMemcard.mCard.mFreeFiles;
 		SetMode(2);
 		if (_37A8 == 0)
 			mFile = 0;

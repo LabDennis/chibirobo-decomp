@@ -3664,8 +3664,8 @@ void MenuSave::State9(u32 frameCount)
 	}
 	switch (gGame.mMemcard.mCard.mState) {
 	case 0:
-		menu->_250 = gGame.mMemcard.mCard._16A04;
-		menu->_254 = gGame.mMemcard.mCard._16A00;
+		menu->_250 = gGame.mMemcard.mCard.mFreeSectors;
+		menu->_254 = gGame.mMemcard.mCard.mFreeFiles;
 		menu->SetMode(10);
 		break;
 	case 1:
@@ -3773,7 +3773,7 @@ void MenuSave::State1(u32 frameCount)
 				header->mMinutes    = minutes;
 				header->mStage      = stage;
 				header->mTimeMode   = timeMode;
-				if (save->mHeader._34 > 0) {
+				if (save->mHeader.mActive > 0) {
 					header->mActive = 1;
 				} else {
 					header->mActive = 0;
@@ -3786,8 +3786,8 @@ void MenuSave::State1(u32 frameCount)
 				}
 			}
 		}
-		menu->_250 = gGame.mMemcard.mCard._16A04;
-		menu->_254 = gGame.mMemcard.mCard._16A00;
+		menu->_250 = gGame.mMemcard.mCard.mFreeSectors;
+		menu->_254 = gGame.mMemcard.mCard.mFreeFiles;
 		if (menu->mSaved == TRUE) {
 			menu->SetMode(4);
 			menu->mTime  = 0.5f * FRAME_RATE;
@@ -3898,14 +3898,14 @@ void MenuSave::State5(u32 frameCount)
 			menu->mSlots[menu->mFile].mTimeMode   = timeMode;
 			menu->mSlots[menu->mFile].mStage      = stage;
 			menu->mSlots[menu->mFile].mState      = 0;
-			if (save->mHeader._34 > 0) {
+			if (save->mHeader.mActive > 0) {
 				menu->mSlots[menu->mFile].mActive = 1;
 			} else {
 				menu->mSlots[menu->mFile].mActive = 0;
 			}
 		}
-		menu->_250 = gGame.mMemcard.mCard._16A04;
-		menu->_254 = gGame.mMemcard.mCard._16A00;
+		menu->_250 = gGame.mMemcard.mCard.mFreeSectors;
+		menu->_254 = gGame.mMemcard.mCard.mFreeFiles;
 		StartMemoryCardPreviewRead(card, menu->mChannel, 1);
 		menu->SetMode(1);
 		menu->mLastFile = menu->mFile;
@@ -7158,8 +7158,8 @@ BOOL MenuMCTest::Update(u32 frames)
 				}
 			}
 			if (result == 0)
-				sprintf(mText[mFileCount + 1], "SLOT: %c   FREE BLOCKS: %d   FREE ENTRIES: %d", sMenuMain.mChannel + 'A', card->_16A04,
-				        card->_16A00);
+				sprintf(mText[mFileCount + 1], "SLOT: %c   FREE BLOCKS: %d   FREE ENTRIES: %d", sMenuMain.mChannel + 'A',
+				        card->mFreeSectors, card->mFreeFiles);
 			mOperation = 0;
 			break;
 		case 3:

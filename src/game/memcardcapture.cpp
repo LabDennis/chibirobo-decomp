@@ -48,7 +48,7 @@ extern "C" void CaptureGameSaveData(Memcard* card)
 	save->mHeader.mMaxBattery = Player()->mParams.mMaxBattery;
 	save->mHeader.mMoney      = Player()->mParams.mMoney;
 	save->mHeader.mScrap      = Player()->mParams.mScrap;
-	save->mHeader._34         = Player()->mParams._1C[0];
+	save->mHeader.mActive     = Player()->mParams._1C[0];
 #if defined(VERSION_PAL)
 	save->mHeader.mFrames = (s32)gGame.mPlayTime;
 #else

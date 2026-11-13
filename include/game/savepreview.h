@@ -18,7 +18,7 @@ struct SaveHeader {
 	f32 mMaxBattery; // _28
 	s32 mMoney;      // _2C
 	s32 mScrap;      // _30
-	s32 _34;         // _34
+	s32 mActive;     // _34
 	u8 _38[0x1C];    // _38
 	s32 mFrames;     // _54, play time
 };
@@ -35,7 +35,7 @@ struct SaveCardStat {
 	u8 gameName[4];       // _28
 	u8 company[2];        // _2C
 	u8 bannerFormat;      // _2E
-	u8 _2F;               // _2F
+	u8 reserved;          // _2F
 	u32 iconAddr;         // _30
 	u16 iconFormat;       // _34
 	u16 iconSpeed;        // _36
