@@ -277,18 +277,15 @@ extern "C" bool IsSmallSpiderWithinTargetRadius(XObjSpiderSmall* spider)
 // the player stands in the spider's area
 extern "C" bool IsPlayerInSmallSpiderArea(XObjSpiderSmall* spider)
 {
-	Vec pos = gGame.GetPlayer()->mMoveTranslate;
-	f32 y   = pos.y;
-	f32 z   = pos.z;
-	CVec unused;
-	if (y < HSD_JObjGetTranslationY(spider->mJObj) - 20.0f || y > 20.0f + HSD_JObjGetTranslationY(spider->mJObj)) {
+	const Vec pos = gGame.GetPlayer()->mMoveTranslate;
+	if (pos.y < HSD_JObjGetTranslationY(spider->mJObj) - 20.0f || pos.y > 20.0f + HSD_JObjGetTranslationY(spider->mJObj)) {
 		return false;
 	}
 	f32 minX = spider->mAreaPos.x + spider->mRadius;
 	f32 maxX = spider->mAreaPos.x + spider->mAreaWidth - spider->mRadius;
 	f32 minZ = spider->mAreaPos.z + spider->mRadius;
 	f32 maxZ = spider->mAreaPos.z + spider->mAreaDepth - spider->mRadius;
-	if (minX > pos.x || maxX < pos.x || minZ > z || maxZ < z) {
+	if (minX > pos.x || maxX < pos.x || minZ > pos.z || maxZ < pos.z) {
 		return false;
 	}
 	return true;
