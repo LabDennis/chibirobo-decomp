@@ -282,7 +282,7 @@ game/cfilearchivedtor.cpp:
 	.text       start:0x8001B844 end:0x8001B8A0
 
 game/cbasector.cpp:
-	.text       start:0x8001B8A0 end:0x8001B97C
+	.text       start:0x8001B8A0 end:0x8001B9B8
 
 game/cgsctor.cpp:
 	.text       start:0x8001B9B8 end:0x8001BB5C
@@ -295,9 +295,6 @@ game/cgschannelctor.cpp:
 
 game/cgamector.cpp:
 	.text       start:0x800197A4 end:0x8001AE9C
-
-game/ccameractor.cpp:
-	.text       start:0x8001B97C end:0x8001B9B8
 
 game/fbmirrorex.cpp:
 	.text       start:0x8001BC34 end:0x8001C854

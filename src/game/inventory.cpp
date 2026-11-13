@@ -1,6 +1,5 @@
 #include "game/inventory.h"
 
-// todo: cleanup
 static inline s32 FindItem(Inventory* inventory, s16 id)
 {
 	for (s32 i = 0; i < 256; ++i) {
@@ -10,7 +9,6 @@ static inline s32 FindItem(Inventory* inventory, s16 id)
 	return -1;
 }
 
-// todo: cleanup
 static inline s32 FindAvailableSlot(Inventory* inventory, s16 id)
 {
 	s32 index = FindItem(inventory, id);
@@ -23,7 +21,6 @@ static inline s32 FindAvailableSlot(Inventory* inventory, s16 id)
 	return -1;
 }
 
-// todo: cleanup
 static inline void CompactSlot(Inventory* inventory, s32 index)
 {
 	if (inventory->mCompact) {
@@ -86,8 +83,6 @@ extern "C" s32 SetOrAddInventoryItemCount(Inventory* inventory, s16 id, s16 amou
 			inventory->mItems[index].mCount = count + amount;
 		} else {
 			inventory->mItems[index].mCount = amount;
-			// retail has this empty loop, an mtctr/bdnz with nothing in it
-			for (s32 i = amount; i < 10; ++i) { }
 			if (amount == 0)
 				CompactSlot(inventory, index);
 		}

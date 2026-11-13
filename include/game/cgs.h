@@ -151,6 +151,8 @@ struct GsTevOp {
 // one tev stage with its texgen
 class CGsTevStage : public HSD_TevDesc {
 public:
+	CGsTevStage();
+
 	BOOL mStageDirty;   // _74
 	BOOL mNumGensDirty; // _78
 	BOOL mTexGenDirty;  // _7C
@@ -238,6 +240,8 @@ struct GsChanCtrl {
 
 class CGsChannel : public HSD_Chan {
 public:
+	CGsChannel();
+
 	BOOL mDirty; // _30
 	// _34 vtable
 

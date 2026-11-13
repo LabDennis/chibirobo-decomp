@@ -121,6 +121,8 @@ STATIC_ASSERT(sizeof(MsgFontGlyph) == 0x2AC);
 
 // the slot CMsgFont keeps its Cursor in
 struct MsgCursor {
+	MsgCursor();
+
 	Cursor mCursor; // _00
 };
 
