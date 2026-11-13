@@ -32,7 +32,7 @@ extern "C" CLight* InitTwoLightSet(CLight* lights)
 {
 	CLight* light;
 
-	lights[0].Init(4, FALSE);
+	lights[0].Init(LOBJ_AMBIENT | LOBJ_DIFFUSE, FALSE);
 	lights[0].mColor.r = 0x80;
 	lights[0].mColor.g = 0x80;
 	lights[0].mColor.b = 0x80;
@@ -41,7 +41,7 @@ extern "C" CLight* InitTwoLightSet(CLight* lights)
 
 	lights[0].next = &lights[1];
 	light          = &lights[1];
-	light->Init(5, FALSE);
+	light->Init(LOBJ_INFINITE | LOBJ_DIFFUSE, FALSE);
 	light->SetPosition(1.0f, -1.0f, 1.0f);
 	light->mColor.r = 0xFF;
 	light->mColor.g = 0xFF;
@@ -60,7 +60,7 @@ extern "C" CLight* InitFourLightSet(CLight* lights)
 {
 	CLight* light;
 
-	lights[0].Init(4, FALSE);
+	lights[0].Init(LOBJ_AMBIENT | LOBJ_DIFFUSE, FALSE);
 	lights[0].mColor.r = 200;
 	lights[0].mColor.g = 200;
 	lights[0].mColor.b = 200;
@@ -69,7 +69,7 @@ extern "C" CLight* InitFourLightSet(CLight* lights)
 
 	lights[0].next = &lights[1];
 	light          = &lights[1];
-	light->Init(5, TRUE);
+	light->Init(LOBJ_INFINITE | LOBJ_DIFFUSE, TRUE);
 	light->SetPosition(-2.0f, 20.0f, 2.0f);
 	light->mColor.r = 200;
 	light->mColor.g = 200;
@@ -80,7 +80,7 @@ extern "C" CLight* InitFourLightSet(CLight* lights)
 	light->next = NULL;
 
 	light = &lights[2];
-	light->Init(6, FALSE);
+	light->Init(LOBJ_POINT | LOBJ_DIFFUSE, FALSE);
 	light->SetPosition(0.0f, 20.0f, -20.0f);
 	light->mColor.r = 0;
 	light->mColor.g = 0xFF;
@@ -91,7 +91,7 @@ extern "C" CLight* InitFourLightSet(CLight* lights)
 	light->next = NULL;
 
 	light = &lights[3];
-	light->Init(7, FALSE);
+	light->Init(LOBJ_SPOT | LOBJ_DIFFUSE, FALSE);
 	light->SetPosition(0.0f, 20.0f, 0.0f);
 	light->SetInterest(0.0f, 0.0f, 20.0f);
 	light->mColor.r = 0xFF;
@@ -130,7 +130,7 @@ extern "C" CCamera* InitMotionControlCameraDefaults(CCamera* camera)
 	camera->Init(1.0f, 80000.0f, 30.0f, &gGame.mGs.mScreen);
 	camera->SetScale(1.0f, 1.0f, 1.0f);
 	camera->SetInterest(-4.2f, 0.0f, -64.0f);
-	camera->SetAngle(0.41887903f, -3.1415927f, 0.0f);
+	camera->SetAngle(0.41887903f, -3.1415927f, 0.0f); // pitched 24 degrees, yawed -180
 	camera->SetDistance(400.0f);
 	camera->SetFov(18.0f);
 	camera->CalcEye();
@@ -176,7 +176,7 @@ void HSD_VIDrawDoneXFB(s32 idx);
 extern "C" void InitGameDVD(void)
 {
 	DVDSetAutoFatalMessaging(TRUE);
-	DVDChangeDir((char*)"/qp/");
+	DVDChangeDir((char*)"/qp/"); // the game's data root
 }
 
 // ARInit's allocation stack
@@ -269,7 +269,8 @@ extern "C" void InitGameRuntime(void)
 	HSD_Init();
 	mm::Init();
 	gVideoModeResetState = (SavedVideoMode*)OSAllocFromHeap(__OSCurrHeap, sizeof(SavedVideoMode));
-	if (!(OSGetResetCode() >> 31)) {
+	if (!(OSGetResetCode() >> 31)) { // a set sign bit keeps what was saved
+
 		gVideoModeResetState->hasSelection    = 0;
 		gVideoModeResetState->useStandardMode = 1;
 	}
@@ -325,7 +326,8 @@ void AnimSfx::Update(s32 anim, f32 frame, u8 vol)
 	}
 	AnimSfxEvent* event;
 	XSound* sound = &gGame.mSound;
-	for (s32 i = 0; mEvents != NULL && (event = &mEvents[i])->mAnim >= 0; i++) {
+	for (s32 i = 0; mEvents != NULL && (event = &mEvents[i])->mAnim >= 0; i++) { // the table ends at -1
+
 		if (event->mAnim == anim || event->mAnim == prev) {
 			if (prev != anim && event->mAnim == prev && CheckStop(event)) {
 				StopSfx(sound, GetSfx(event));
