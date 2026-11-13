@@ -57,7 +57,7 @@ public:
 
 	XObjActor();
 
-	virtual ~XObjActor();
+	virtual ~XObjActor() { }
 	virtual void InitializeObject(u32 id);
 	virtual void vf94();
 	virtual void ResetObjectState();
