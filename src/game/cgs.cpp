@@ -305,7 +305,7 @@ static inline void SetColor(CSprite* sprite, u32 color)
 
 static inline void SetColor(CTile* tile, u32 color)
 {
-	tile->_168 = tile->_16C = tile->_170 = tile->_174 = color;
+	tile->mColor0 = tile->mColor1 = tile->mColor2 = tile->mColor3 = color;
 }
 
 extern "C" {
@@ -3443,15 +3443,15 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].enable) {
 		for (i = 0; i < count; i++) {
 			if (sGsTextChars[i].mHasBg) {
-				sGsTextChars[i].mBg.DrawLit(gs->mCamera->mViewMtx, sGsTextChars[i].mBg._168, sGsTextChars[i].mBg._16C,
-				                            sGsTextChars[i].mBg._170, sGsTextChars[i].mBg._174);
+				sGsTextChars[i].mBg.DrawLit(gs->mCamera->mViewMtx, sGsTextChars[i].mBg.mColor0, sGsTextChars[i].mBg.mColor1,
+				                            sGsTextChars[i].mBg.mColor2, sGsTextChars[i].mBg.mColor3);
 			}
 		}
 	} else {
 		for (i = 0; i < count; i++) {
 			if (sGsTextChars[i].mHasBg) {
-				sGsTextChars[i].mBg.Draw(gs->mCamera->mViewMtx, sGsTextChars[i].mBg._168, sGsTextChars[i].mBg._16C,
-				                         sGsTextChars[i].mBg._170, sGsTextChars[i].mBg._174);
+				sGsTextChars[i].mBg.Draw(gs->mCamera->mViewMtx, sGsTextChars[i].mBg.mColor0, sGsTextChars[i].mBg.mColor1,
+				                         sGsTextChars[i].mBg.mColor2, sGsTextChars[i].mBg.mColor3);
 			}
 		}
 	}

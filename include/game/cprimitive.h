@@ -127,10 +127,10 @@ typedef char CCircle_size_check[sizeof(CCircle) == 0x17C ? 1 : -1];
 // a two by two quad with a color per corner
 class CTile : public CPrimitive {
 public:
-	u32 _168;    // _168
-	u32 _16C;    // _16C
-	u32 _170;    // _170
-	u32 _174;    // _174
+	u32 mColor0; // _168
+	u32 mColor1; // _16C
+	u32 mColor2; // _170
+	u32 mColor3; // _174
 	Vec mCenter; // _178
 
 	virtual ~CTile() { }                                                                       // _08
