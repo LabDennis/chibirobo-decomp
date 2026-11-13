@@ -323,7 +323,7 @@ public:
 	f32 mPanelX;              // _548
 	f32 mPanelY;              // _54C
 	f32 mTargetPanelX;        // _550
-	f32 mSlide;               // _554
+	f32 mTargetPanelY;        // _554
 	u8 _558[0x568 - 0x558];   // _558
 	f32 mItemPanelX;          // _568
 	f32 mItemPanelY;          // _56C
@@ -423,7 +423,7 @@ public:
 	virtual void Open();             // _1C
 
 	s32 mPhase;             // _158
-	s32 mTimer;             // _15C
+	s32 mDelay;             // _15C
 	f32 mGridX;             // _160
 	f32 mGridY;             // _164
 	f32 mTargetGridX;       // _168

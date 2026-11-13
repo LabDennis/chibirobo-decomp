@@ -3444,13 +3444,13 @@ void MenuStatus::State4(u32 frameCount)
 	CPad pad(0);
 	switch (menu->mPhase) {
 	case 0:
-		menu->mSlide = -200.0f;
-		menu->mDelay = wait * 4;
+		menu->mTargetPanelY = -200.0f;
+		menu->mDelay        = wait * 4;
 		menu->mPhase++;
 	case 1:
 		if (--menu->mDelay < 0) {
 			if (menu->mNextMode != 5) {
-				menu->mSlide = 0.0f;
+				menu->mTargetPanelY = 0.0f;
 			}
 			menu->SetMode(menu->mNextMode);
 		}
@@ -3496,7 +3496,7 @@ void MenuStatus::State1(u32 frames)
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		}
 		if (pad.mPad->mTrigger & 0x1200) {
-			menu->mSlide = -200.0f;
+			menu->mTargetPanelY = -200.0f;
 			for (int i = 0; i < 4; i++) {
 				menu->mTabs[i].mTargetX = -102.0f;
 			}
@@ -4831,7 +4831,7 @@ void MenuItem::Open()
 	_178           = -10.0f;
 	_17C           = 0.0f;
 	mPhase         = 0;
-	mTimer         = 0;
+	mDelay         = 0;
 	mSelection     = 0;
 	mPrevSelection = mSelection;
 	_190           = 0.0f;
@@ -8223,7 +8223,7 @@ void MenuStatus::Open()
 	mPanelX              = -10;
 	mPanelY              = -200;
 	mTargetPanelX        = -10;
-	mSlide               = 0;
+	mTargetPanelY        = 0;
 	mItemPanelX          = 725;
 	mItemPanelY          = 100;
 	mTargetItemPanelX    = 725;
@@ -8557,7 +8557,7 @@ BOOL MenuStatus::Update(u32 frames)
 		PCEase(mOffsetX, mTargetOffsetX);
 		PCEase(mOffsetY, mTargetOffsetY);
 		PCEase(mPanelX, mTargetPanelX);
-		PCEase(mPanelY, mSlide);
+		PCEase(mPanelY, mTargetPanelY);
 		for (int i = 0; i < 4; i++) {
 			PCEase(mTabs[i].mX, mTabs[i].mTargetX);
 			PCEase(mTabs[i].mY, mTabs[i].mTargetY);
@@ -8606,7 +8606,7 @@ static inline void BeginItemMenuClose(MenuItem* menu, u32 frames)
 {
 	menu->mTargetGridX = -640.0f;
 	menu->_17C         = -200.0f;
-	menu->mTimer       = 4 * frames;
+	menu->mDelay       = 4 * frames;
 	menu->mPhase++;
 	for (int i = 0; i < (int)ARRAY_SIZE(menu->mTitle.mChars); i++)
 		menu->mTitle.mChars[i].mHold = 0;
@@ -8745,7 +8745,7 @@ BOOL MenuItem::Update(u32 frames)
 			}
 			break;
 		case 3:
-			if (--mTimer < 0) {
+			if (--mDelay < 0) {
 				gGame.mEvt._10 = selectedItem;
 				gGame.mStatus.mFlags &= ~2ULL;
 				Close();

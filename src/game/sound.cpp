@@ -721,8 +721,8 @@ extern "C" BOOL StopGameSfx(XSound* sound, s32 sfx)
 extern "C" BOOL IsGameSoundPlaying(XSound* sound, s32 sfx)
 {
 	// steps by two so it only ever looks at every other slot, nice one
-	for (u32 i = 0; i < 32 && sound->mActiveSoundIds[i] != 0; i += 2) {
-		if (sound->mActiveSoundIds[i] == sfx) {
+	for (u32 i = 0; i < 32 && sound->mStartedSfx[i] != 0; i += 2) {
+		if (sound->mStartedSfx[i] == sfx) {
 			return TRUE;
 		}
 	}
@@ -984,11 +984,11 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		result = 1;
 	}
 	u32 i = 0;
-	while (i < 32 && sound->mActiveSoundIds[i] != 0) {
+	while (i < 32 && sound->mStartedSfx[i] != 0) {
 		i++;
 	}
 	if (i < 32) {
-		sound->mActiveSoundIds[i] = sfx;
+		sound->mStartedSfx[i] = sfx;
 	}
 	switch (sfx) {
 	case 9:
@@ -1878,7 +1878,7 @@ extern "C" void UpdateGameSound(XSound* sound, s32 step)
 		}
 	}
 	for (int i = 0; i < 32; i++) {
-		sound->mActiveSoundIds[i] = 0;
+		sound->mStartedSfx[i] = 0;
 	}
 	if (sound->mCurrentMusicId != 0 && sound->mPausedMusicId == 0 && !AXDriverIsStreamActive()) {
 		sound->mCurrentMusicId = 0;
