@@ -5,18 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="light">
 <title>Chibi-Robo! decomp — Cleo Spiers</title>
-<meta name="description" content="Explore decompilation progress for the GameCube and Wii releases of Chibi-Robo!">
+<meta name="description" content="I'm working on a decompilation of Chibi-Robo! for the GameCube and Wii. Explore the code and follow its progress here.">
 <link rel="canonical" href="https://cleosp.com/chibirobo-decomp/">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Chibi-Robo! decomp — Cleo Spiers">
-<meta property="og:description" content="Explore decompilation progress for the GameCube and Wii releases of Chibi-Robo!">
+<meta property="og:description" content="Explore the code and follow progress on a decompilation of Chibi-Robo! for the GameCube and Wii.">
 <meta property="og:url" content="https://cleosp.com/chibirobo-decomp/">
 <meta property="og:site_name" content="Cleo Spiers">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Chibi-Robo! decomp — Cleo Spiers">
-<meta name="twitter:description" content="Explore decompilation progress for the GameCube and Wii releases of Chibi-Robo!">
+<meta name="twitter:description" content="Explore the code and follow progress on a decompilation of Chibi-Robo! for the GameCube and Wii.">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"WebPage","name":"Chibi-Robo! decomp","url":"https://cleosp.com/chibirobo-decomp/","description":"Explore decompilation progress for the GameCube and Wii releases of Chibi-Robo!","creator":{"@type":"Person","name":"Cleo Spiers","url":"https://cleosp.com/"}}
+{"@context":"https://schema.org","@type":"WebPage","name":"Chibi-Robo! decomp","url":"https://cleosp.com/chibirobo-decomp/","description":"Explore the code and follow progress on a decompilation of Chibi-Robo! for the GameCube and Wii.","isPartOf":{"@type":"WebSite","name":"Cleo Spiers","url":"https://cleosp.com/"}}
 </script>
 <style>
 /* color shows match progress */
@@ -129,7 +129,7 @@ footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5
     <select id="ver-pick" aria-label="Game version" hidden></select>
   </header>
   <main>
-    <h1>Chibi-Robo! decompilation for GameCube and Wii</h1>
+    <h1>Chibi-Robo! decomp</h1>
     <p><a href="https://github.com/CleoSp/chibirobo-decomp">Source on GitHub</a></p>
     <noscript><p>The interactive map needs JavaScript. You can still read the project and build instructions on GitHub.</p></noscript>
     <section>
@@ -183,7 +183,7 @@ function setVersion(id) {
   units = V.units;
   byFull = new Map(units.map(u => [u.full, u]));
 }
-// Include the platform so the two Japanese releases are distinguishable.
+// like "Wii / Japan rev 0, R24J01", the platform tells the two japanese releases apart
 const verLabel = v => {
   const name = [v.platform, v.region].filter(Boolean).join(" / ") + (v.revision != null ? ` rev ${v.revision}` : "");
   return name.trim() ? `${name.trim()}, ${v.version}` : v.version;
@@ -194,7 +194,8 @@ let openUnit = null;
 
 const fmt = n => n.toLocaleString("en-US");
 const size = n => n >= 1048576 ? (n / 1048576).toFixed(2) + " MB" : n >= 1024 ? (n / 1024).toFixed(1) + " KB" : Math.round(n) + " B";
-// Keep small nonzero percentages visible on newly supported releases.
+// always one decimal so numbers side by side line up, except a clean 100 and tiny shares,
+// which keep two digits so a new release doesn't read 0.0.
 // anything short of 100 caps at 99.9 so it never rounds up and looks done
 const dec = v => v >= 100 ? "100" : v > 0 && v < 0.1 ? v.toPrecision(2) : Math.min(v, 99.9).toFixed(1);
 const pct = (a, b) => dec(b ? 100 * a / b : 0) + "%";
