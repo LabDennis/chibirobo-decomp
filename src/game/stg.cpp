@@ -1292,13 +1292,13 @@ inline void MenuRequest::Open()
 	gGame.mStatus.mFlags |= 2;
 	mWindow.SetSize(0.0f, 0.0f);
 	mWindow.SetPos(0.0f, 0.0f);
-	_538 = 0;
-	_528 = 640.0f;
-	_52C = 0.0f;
-	_530 = 0.0f;
-	_534 = 0.0f;
-	_53C = 0.0f;
-	_518 = 0;
+	mPhase = 0;
+	_528   = 640.0f;
+	_52C   = 0.0f;
+	_530   = 0.0f;
+	_534   = 0.0f;
+	mAlpha = 0.0f;
+	mDelay = 0;
 }
 
 inline void MenuRequestClear::Open()
@@ -7648,38 +7648,38 @@ BOOL MenuRequest::Update(u32 frames)
 		CPad pad(0);
 		PCEase(_528, _530);
 		PCEase(_52C, _534);
-		switch (_538) {
+		switch (mPhase) {
 		case 0:
 			PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-			_538++;
+			mPhase++;
 			break;
 		case 1:
-			_53C += 0.08f * frames;
-			if (_53C >= 1.0f) {
-				_53C = 1.0f;
-				_518 = 10 * frames;
-				_538++;
+			mAlpha += 0.08f * frames;
+			if (mAlpha >= 1.0f) {
+				mAlpha = 1.0f;
+				mDelay = 10 * frames;
+				mPhase++;
 			}
 			break;
 		case 2:
-			if (--_518 < 0)
-				_538++;
+			if (--mDelay < 0)
+				mPhase++;
 			break;
 		case 3:
 			if ((pad.mPad->mTrigger & 0x200) | (pad.mPad->mTrigger & 0x100)) {
 				_530 = -640.0f;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
-				_538++;
+				mPhase++;
 			}
 			break;
 		case 4:
-			_53C -= 0.08f * frames;
-			if (_53C < 0.0f) {
-				_53C = 0.0f;
+			mAlpha -= 0.08f * frames;
+			if (mAlpha < 0.0f) {
+				mAlpha = 0.0f;
 				gGame.mStatus.mFlags &= ~2ULL;
 				Close();
 				sMenuMain.Resume();
-				_538++;
+				mPhase++;
 			}
 			break;
 		case 5:

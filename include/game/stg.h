@@ -156,11 +156,11 @@ public:
 	virtual void Open();
 
 	u8 _158[0x518 - 0x158];
-	s32 _518;
+	s32 mDelay;
 	u8 _51C[0x528 - 0x51C];
 	f32 _528, _52C, _530, _534;
-	s32 _538;
-	f32 _53C;
+	s32 mPhase;
+	f32 mAlpha;
 };
 class MenuRequestClear : public Menu {
 public:
