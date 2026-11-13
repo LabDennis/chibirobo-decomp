@@ -248,7 +248,7 @@ s32 THPSimpleOpenWait(void)
 			return -1;
 		}
 
-		if (SimpleControl.header.version != 0x11000) { // thp version 1.0
+		if (SimpleControl.header.version != 0x11000) { // thp version 1.1
 			DVDClose(&SimpleControl.fileInfo);
 			return -1;
 		}

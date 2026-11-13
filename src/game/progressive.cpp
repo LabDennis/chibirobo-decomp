@@ -116,7 +116,7 @@ extern "C" void LoadBootConfig()
 					continue;
 				switch (entry->kind) {
 				case BootFlag:
-					if (restricted) // restricted files only get BootUnrestrictedFlag
+					if (restricted) // restricted files only get BootUnrestrictedFlag and BootCrosshair
 						break;
 				case BootUnrestrictedFlag:
 					if (atoi(text))
@@ -185,7 +185,7 @@ extern "C" void LoadBootConfig()
 			}
 		}
 		file.Close();
-	} else if (result == -3) { // the read failed: fall back to the default stage
+	} else if (result == -3) { // no qp.ini on the disc: use the default stage
 		s32 stage           = gCmdLineArgs.mStage >= 0 ? gCmdLineArgs.mStage : GetDefaultStageIndex();
 		gCmdLineArgs.mStage = stage;
 		gGame.SetStage(stage);

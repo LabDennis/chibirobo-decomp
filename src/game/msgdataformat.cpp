@@ -168,7 +168,7 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 			if (gGame.mLanguage == 6 && IsSjisLead(*src)) {
 #endif
 				CopyMessageBytes(dst, src, 2);
-			} else if (*src == '$') { // '$' is the quote escape
+			} else if (*src == '$') { // '$' becomes '"' ('/' in Japan)
 				++src;
 #if defined(VERSION_JP)
 				*dst++ = '/';

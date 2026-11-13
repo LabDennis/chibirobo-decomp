@@ -85,7 +85,7 @@ extern "C" BOOL CheckAndFormatMemoryCard(Memcard* card, s32 channel)
 			return TRUE;
 		}
 	}
-	card->mState = 3; // report state while the job finishes
+	card->mState = 3; // 3: unmounting
 	card->mCard.UnmountEx();
 	card->LogResult();
 	if (card->mCard.mResult != CARD_RESULT_READY)

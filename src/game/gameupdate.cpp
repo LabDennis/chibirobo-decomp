@@ -66,7 +66,7 @@ void CGame::Update(u32 frames)
 			HSD_PadReset();
 			if (!mDiskOk) {
 				Reset(1);
-			} else if (mLoadStep <= 0x13) { // early in the load a reset stays put
+			} else if (mLoadStep <= 0x13) { // early in the load a reset restarts the system (OSResetSystem code 0)
 				Reset(0);
 			} else { // later it goes back to stage 10000
 				ChangeGameStage(this, 10000, FALSE);
@@ -104,7 +104,7 @@ void CGame::Update(u32 frames)
 			XObj* obj = mDrawLists[0].mObjects[i];
 			if (obj->mStatus.mFlags & 1) {
 				if (obj->mMoveTranslate.y != obj->mLastPos.y) {
-					obj->mStatus.mFlags |= 0x10000000000000; // the flag marks a moved object
+					obj->mStatus.mFlags |= 0x10000000000000; // the flag marks an object whose height changed
 				}
 				obj->mLastPos = obj->mMoveTranslate;
 				obj->UpdateObject(frames);

@@ -51,7 +51,7 @@ const char* CCard::GetResultString(s32 result)
  */
 s32 CCard::SetStatus(CARDStat* stat)
 {
-	// every wrapper here retries while the card is busy
+	// most wrappers here retry while the card is busy
 	while ((mResult = CARDSetStatus(mChan, mFileInfo.fileNo, stat)) == CARD_RESULT_BUSY) { }
 	return mResult;
 }

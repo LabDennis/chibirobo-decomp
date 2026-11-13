@@ -216,7 +216,7 @@ static inline BOOL LoadStartingAttachments(CGame* game)
 {
 	if (!LoadGlobalResourceData())
 		return FALSE;
-	if (!gCmdLineArgs.mCopterLevelOverride) { // attachment slot 1 takes the saved level
+	if (!gCmdLineArgs.mCopterLevelOverride) { // attachment slot 1 takes its starting level from the global resource table
 		u32 level = GetStartingAttachmentLevel(0);
 		SetAttachmentCountById(&game->GetPlayer()->mAttachments, 1, level);
 	}
