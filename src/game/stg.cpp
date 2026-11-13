@@ -878,7 +878,6 @@ BOOL MenuPC::Draw()
 #if defined(VERSION_JP)
 					char joined[256];
 					sprintf(joined, "%.255s", GetPCMenuLabelText(0));
-					labelText[255 - strlen(joined)] = 0;
 					strcat(joined, labelText);
 					strcpy(labelText, joined);
 
@@ -9161,7 +9160,6 @@ static inline s32 DrawSavePhaseMessage(MenuSave* menu, s32 first, s32 next, f32 
 }
 
 #if defined(VERSION_JP)
-static u32 SavePromptCells(const char* text);
 static inline u32 SavePromptHalfWidth(u32 cells)
 {
 	return ((cells - 1) * 21) / 2;
@@ -9287,7 +9285,7 @@ BOOL MenuSave::Draw()
 		mOffset = -(lines - 2) * 21;
 		if (showMessage) {
 #if defined(VERSION_JP)
-			u32 cells = SavePromptCells(text);
+			u32 cells = strlen(text) / 2;
 			u32 color = (u32)(255.0f * mDrawAlpha);
 			f32 y     = SaveMessageY(this, panelY);
 			f32 x     = 320.0f + panelX - SavePromptHalfWidth(cells);
@@ -9306,7 +9304,7 @@ BOOL MenuSave::Draw()
 				lineOffset = (lines - 2) * 21;
 #if defined(VERSION_JP)
 			sprintf(text, "%.255s", GetLocalizedInterfaceText(0x40));
-			u32 cells  = SavePromptCells(text);
+			u32 cells  = strlen(text) / 2;
 			f32 center = 320.0f + panelX;
 
 			f32 barX;
@@ -9351,12 +9349,6 @@ BOOL MenuSave::Draw()
 }
 
 #if defined(VERSION_JP)
-static u32 SavePromptCells(const char* text)
-{
-	u32 cells = strlen(text) / 2;
-	return cells ? cells : 1;
-}
-
 static inline void DrawJapaneseCardLine(char* text, f32 x, f32 y, f32 size, u32 color)
 {
 	u32 gaps = strlen(text) / 2 - 1;
