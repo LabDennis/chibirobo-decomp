@@ -60,7 +60,7 @@ static inline bool IsJapanese()
 #endif
 }
 
-// the fixed lines of the pause menu, MemCard's ? becomes the slot letter
+// the fixed lines of the pause menu, "\x01" draws a divider and MemCard's ? becomes the slot letter
 #if defined(VERSION_JP)
 enum { MainMemCardAction = 10, MainSelectStageAction = 7, MainPCAction = 8, MainSaveAction = 12 };
 
@@ -288,24 +288,24 @@ BOOL MenuPC::Draw()
 		CTexObj tex;
 		char labelText[256];
 		{
-			f32 coord0     = 130;
-			f32 coord1     = 40;
-			f32 coord2     = 510;
-			f32 coord3     = 360;
-			Vec vertices[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
-				               (Vec) { coord0, coord3, -10 }, (Vec) { coord0, coord1, -10 } };
+			f32 left       = 130;
+			f32 top        = 40;
+			f32 right      = 510;
+			f32 bottom     = 360;
+			Vec vertices[] = { (Vec) { left, top, -10 }, (Vec) { right, top, -10 }, (Vec) { right, bottom, -10 },
+				               (Vec) { left, bottom, -10 }, (Vec) { left, top, -10 } };
 			SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
 			DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, (u32)(255.0f * this->mAlpha), 5);
 		}
 		switch (mMode) {
 		case 1: {
 
-			f32 coord0  = 260;
-			f32 coord1  = 160;
-			f32 coord2  = 380;
-			f32 coord3  = 240;
-			Vec panel[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
-				            (Vec) { coord0, coord3, -10 }, (Vec) { coord0, coord1, -10 } };
+			f32 left    = 260;
+			f32 top     = 160;
+			f32 right   = 380;
+			f32 bottom  = 240;
+			Vec panel[] = { (Vec) { left, top, -10 }, (Vec) { right, top, -10 }, (Vec) { right, bottom, -10 }, (Vec) { left, bottom, -10 },
+				            (Vec) { left, top, -10 } };
 			SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
 			DrawMenuTriangleFan(GetGameGraphics(&gGame), panel, (u32)(255.0f * this->mAlpha) | 0xFFB62800, 5);
 			DrawGsLineStrip(GetGameGraphics(&gGame), panel, (u32)(255.0f * this->mAlpha) | 0xC8C8C800, 5);
@@ -335,6 +335,7 @@ BOOL MenuPC::Draw()
 			SetGsChannelEnabled(GetGameGraphics(&gGame), 0, 0);
 			SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
 			SetMenuDepthMode(GetGameGraphics(&gGame), 0, 3, 0);
+			// the loading bar: [0-4] its outline, [4-7] the filled part, [8-11] the rest
 			f32 fill    = 281.0f + 80.0f * this->mProgress;
 			Vec bar[12] = {};
 			bar[0].x    = 281;
@@ -458,7 +459,7 @@ BOOL MenuPC::Draw()
 				}
 			}
 		} break;
-		case 3: {
+		case 3: { // the item shop, prices in money
 #if defined(VERSION_JP)
 			const f32 scroll = 0.0f;
 #else
@@ -490,7 +491,7 @@ BOOL MenuPC::Draw()
 		case 4:
 			DrawPCRankings(this, -30, -20, mAlpha, 1);
 			break;
-		case 7: {
+		case 7: { // the scrap catalog, prices in scrap
 #if defined(VERSION_JP)
 			const f32 scroll = 0.0f;
 #else
@@ -528,7 +529,7 @@ BOOL MenuPC::Draw()
 			SetMenuTevMode(GetGameGraphics(&gGame), 4);
 		} break;
 
-		case 9: {
+		case 9: { // depositing money: phase 0 enters the amount, 1 asks yes or no, 2 shows the deposit
 			sprintf(labelText, "%s", GetPCMenuLabelText(7));
 			DrawGsProportionalTextFormat(GetGameGraphics(&gGame), (u32)(this->mAlpha * 255.0f) | 0xC8C8C800, labelText, 224, 148, 0, 18,
 			                             18);
@@ -663,7 +664,7 @@ BOOL MenuPC::Draw()
 			}
 			DrawPCGoldNumber(true, 339, 316, this->mAlpha, 1, this->mMoneyDisplay.shown);
 		} break;
-		case 10: {
+		case 10: { // recycling scrap into money: phase 0 enters the amount, 1 and 2 show the exchange panel
 			s32 rate = (s32)this->mScrapRate;
 			switch (this->mPhase) {
 			case 0: {
@@ -765,12 +766,12 @@ BOOL MenuPC::Draw()
 			textureScrollV -= 0.008f;
 			f32 height = this->mFrameHeight;
 			{
-				f32 coord0     = 130;
-				f32 coord1     = 40.0f;
-				f32 coord2     = 510;
-				f32 coord3     = 40.0f + height;
-				Vec vertices[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
-					               (Vec) { coord0, coord3, -10 }, (Vec) { coord0, coord1, -10 } };
+				f32 left       = 130;
+				f32 top        = 40.0f;
+				f32 right      = 510;
+				f32 bottom     = 40.0f + height;
+				Vec vertices[] = { (Vec) { left, top, -10 }, (Vec) { right, top, -10 }, (Vec) { right, bottom, -10 },
+					               (Vec) { left, bottom, -10 }, (Vec) { left, top, -10 } };
 				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
 				DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, (u32)(255.0f * this->mAlpha) | 0xFFB62800, 5);
 			}
@@ -792,12 +793,12 @@ BOOL MenuPC::Draw()
 			f32 half = height * 0.5f;
 			u32 bandColor;
 			{
-				f32 coord0     = 130;
-				f32 coord1     = 360.0f - half;
-				f32 coord2     = 510;
-				f32 coord3     = 360.0f;
-				Vec vertices[] = { (Vec) { coord0, coord1, -10 }, (Vec) { coord2, coord1, -10 }, (Vec) { coord2, coord3, -10 },
-					               (Vec) { coord0, coord3, -10 }, (Vec) { coord0, coord1, -10 } };
+				f32 left       = 130;
+				f32 top        = 360.0f - half;
+				f32 right      = 510;
+				f32 bottom     = 360.0f;
+				Vec vertices[] = { (Vec) { left, top, -10 }, (Vec) { right, top, -10 }, (Vec) { right, bottom, -10 },
+					               (Vec) { left, bottom, -10 }, (Vec) { left, top, -10 } };
 				SetMenuDepthMode(GetGameGraphics(&gGame), 1, 7, 1);
 				bandColor = (u32)(255.0f * this->mAlpha) | 0xFFB62800;
 				DrawMenuTriangleFan(GetGameGraphics(&gGame), vertices, bandColor, 5);
@@ -1359,6 +1360,7 @@ inline void MenuMain::Open()
 {
 	CMenu::Open();
 	PlayGameSound(&gGame.mSound, 0x86, 0xFF);
+	// status bit 2 pauses the stage, its objects, play time and music, while the menu is up
 	gGame.mStatus.mFlags |= 2;
 }
 
@@ -1610,29 +1612,30 @@ BOOL MenuMCTestSub::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
-		if (pad.mPad->mRepeat & 0x10008) {
+		if (pad.mPad->mRepeat & (HSD_PAD_STICK_UP | HSD_PAD_DPADUP)) {
 			do {
 				if (--mSelection < 0) {
 					mSelection = 3;
 				}
 			} while (*mText[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
-		} else if (pad.mPad->mRepeat & 0x20004) {
+		} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_DOWN | HSD_PAD_DPADDOWN)) {
 			do {
 				if (++mSelection > 3) {
 					mSelection = 0;
 				}
 			} while (*mText[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
-		} else if (pad.mPad->mTrigger & 0x200) {
+		} else if (pad.mPad->mTrigger & PAD_BUTTON_B) {
 			Close();
 			sMenuMCTest.mSuspended   = FALSE;
 			sMenuMCTest.mSuspendFade = 0;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
-		} else if (pad.mPad->mTrigger & 0x100) {
+		} else if (pad.mPad->mTrigger & PAD_BUTTON_A) {
 			s32 id                  = sMCTestSubLines[mSelection].mAction;
 			Memcard* card           = &gGame.mMemcard.mCard;
 			SavePreviewRecord* save = &card->mSaves[0][sMenuMCTest.mSelection];
+			// load (4) and delete (6) buzz on an empty slot, load also on a damaged save
 			if ((id == 4 || id == 6) && save->mState == 0) {
 				PlayGameSound(&gGame.mSound, 0x85, 0xFF);
 			} else if (id == 4 && save->mState != 0 && (save->mStatus != 0 || !IsValidSavePreview(save))) {
@@ -1750,7 +1753,8 @@ BOOL MenuMCTest::Draw()
 				u32 light = (u32)(255.0f * mAlpha) | 0xC8C8C800;
 				DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + left, 1.0f + lineY, 0.0f, light, 1.0f + (left + width), 1.0f + lineY, 0.0f,
 				                  light);
-			} else if (result == 0 || result == -1 || result == -4 || result == -7 || result == -128 || i >= mFileCount) {
+			} else if (result == CARD_RESULT_READY || result == CARD_RESULT_BUSY || result == CARD_RESULT_NOFILE
+			           || result == CARD_RESULT_EXIST || result == CARD_RESULT_FATAL_ERROR || i >= mFileCount) {
 				DrawGsFixedWidthTextFormat(&gGame.mGs, color, mText[i], x - mMaxWidth / 2, y - height / 2 + step * i, 0.0f, lineH, lineH);
 			} else {
 				f32 textW = MeasureGameTextWidth(&gGame.mGs, mText[i], 0, mFontSize);
@@ -1758,7 +1762,8 @@ BOOL MenuMCTest::Draw()
 				                           y - height / 2 + step * i, 0.0f, lineH, lineH);
 			}
 		}
-		if (result == 0 || result == -1 || result == -4 || result == -7 || result == -128) {
+		if (result == CARD_RESULT_READY || result == CARD_RESULT_BUSY || result == CARD_RESULT_NOFILE || result == CARD_RESULT_EXIST
+		    || result == CARD_RESULT_FATAL_ERROR) {
 			f32 cx = x - maxW / 2;
 			f32 cy = y - height / 2 + step * mSelection;
 			f32 alpha;
@@ -1837,6 +1842,7 @@ void MenuMCTest::Init()
 	MenuMCTest* menu = this;
 	menu->CMenu::Init();
 	menu->mFileCount = 10;
+	// a row as wide as the card listing can print, to size the window; \x81\x40 is a full-width space
 	for (int i = 0; i < menu->mFileCount; i++) {
 		strcpy(menu->mText[i],
 		       "(0) 00/00/00 00:00 [ 0:00] (000)\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40\x81\x40");
@@ -1865,37 +1871,39 @@ BOOL MenuStageSelect::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
-		if (pad.mPad->mRepeat & 0x10008) {
+		if (pad.mPad->mRepeat & (HSD_PAD_STICK_UP | HSD_PAD_DPADUP)) {
 			do {
 				if (--mSelection < 0) {
 					mSelection = mCount - 1;
 				}
 			} while (*mLabels[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
-		} else if (pad.mPad->mRepeat & 0x20004) {
+		} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_DOWN | HSD_PAD_DPADDOWN)) {
 			do {
 				if (++mSelection > mCount - 1) {
 					mSelection = 0;
 				}
 			} while (*mLabels[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
-		} else if (pad.mPad->mRepeat & 0x40001) {
+		} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_LEFT | HSD_PAD_DPADLEFT)) {
+			// the full list stands in columns of 20 rows, left and right jump a column
 			if (mSelection - 20 >= 0 && *mLabels[mSelection - 20] != *"\x01") {
 				mSelection -= 20;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			}
-		} else if (pad.mPad->mRepeat & 0x80002) {
+		} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_RIGHT | HSD_PAD_DPADRIGHT)) {
 			if (mSelection + 20 < mCount && *mLabels[mSelection + 20] != *"\x01") {
 				mSelection += 20;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			}
-		} else if (pad.mPad->mTrigger & 0x200) {
+		} else if (pad.mPad->mTrigger & PAD_BUTTON_B) {
 			Close();
 			sMenuMain.Resume();
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
-		} else if (pad.mPad->mTrigger & 0x100) {
+		} else if (pad.mPad->mTrigger & PAD_BUTTON_A) {
 			Close();
 			sMenuMain.Close();
+			// with the short list the rows are sStageOrder's entries, not stage numbers
 			if (gGame.mStatus.mFlags & 0x0008000000000000ULL) {
 				ChangeGameStage(&gGame, sStageOrder[mSelection], 1);
 			} else {
@@ -2197,32 +2205,34 @@ BOOL MenuMain::Update(u32 frames)
 	if (CMenu::Update(frames) == 4) {
 		CPad pad(0);
 		s32 id = -1;
-		if (pad.mPad->mRepeat & 0x10008) {
+		if (pad.mPad->mRepeat & (HSD_PAD_STICK_UP | HSD_PAD_DPADUP)) {
 			do {
 				if (--mSelection < 0) {
 					mSelection = mRowCount - 1.0f;
 				}
 			} while (*mText[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
-		} else if (pad.mPad->mRepeat & 0x20004) {
+		} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_DOWN | HSD_PAD_DPADDOWN)) {
 			do {
 				if (++mSelection > mRowCount - 1.0f) {
 					mSelection = 0;
 				}
 			} while (*mText[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
-		} else if (pad.mPad->mRepeat & 0xC0003) {
+		} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_LEFT | HSD_PAD_STICK_RIGHT | HSD_PAD_DPADLEFT | HSD_PAD_DPADRIGHT)) {
+			// on the MemCard line left and right swap the card slot, [8] is its ?
 			if (sMainLines[mSelection].mAction == MainMemCardAction) {
 				mChannel = (mChannel + 1) & 1;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 				mText[mSelection][8] = mChannel + 'A';
 			}
-		} else if (pad.mPad->mTrigger & 0x1200) {
+		} else if (pad.mPad->mTrigger & (PAD_BUTTON_START | PAD_BUTTON_B)) {
 			Close();
-		} else if (pad.mPad->mTrigger & 0x100) {
+		} else if (pad.mPad->mTrigger & PAD_BUTTON_A) {
 			if (mSelection < mBaseRows) {
 				id = sMainLines[mSelection].mAction;
 			} else {
+				// the rows past the divider (hence + 1) each hold an event script to run
 				Close();
 				StartOrQueueEventScript(&gGame.mEvt, (u8*)mExtraRows[mSelection - (mBaseRows + 1)].mAction, 0, -1, -1);
 			}
@@ -2495,7 +2505,7 @@ void MenuSave::State16(u32)
 	menu->mTargetAlpha  = 0.0f;
 	menu->mTargetPanelY = -200.0f;
 	menu->mBannerSlide  = 0.0f;
-	menu->SetMode(0x11);
+	menu->SetMode(17); // State17 closes the menu once it has faded out
 }
 
 /**
@@ -2580,6 +2590,7 @@ extern "C" void DrawMenuLine(CGs* gs, u32 color, f32 x0, f32 y0, f32 z0, f32 x1,
 extern "C" void DrawPCExchangeRateIcon(f32 x, f32 y, f32 alpha)
 {
 	CTexObj icon = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[119], 0);
+	// the icon strip is 17 cells wide, show its third one
 	PSMTXScale(icon.mMtx[1], 0.05882353f, 1.0f, 1.0f);
 	icon.mMtxDirty = TRUE;
 	PSMTXTrans(icon.mMtx[0], 0.11764706f, 0.0f, 0.0f);
@@ -2653,6 +2664,8 @@ extern "C" void DrawSolidQuad(CGs* gs, Vec* quad, u32 color)
  * @note Size: 0x354
  */
 // NONMATCHING: register allocation and instruction scheduling
+// quads holds the track, then the part above the thumb, the thumb and the part below;
+// start and end place the thumb as fractions of the track
 extern "C" void DrawPCShopScrollBar(f32 x, f32 y, f32 start, f32 end, f32 alpha, f32 /*scale*/)
 {
 	SetGsChannelEnabled(&gGame.mGs, 0, 0);
@@ -8408,6 +8421,7 @@ void MenuPC::Open()
 	if (gGame.mRoomCount + 1 == gGame.mStage)
 		mShopOnly = FALSE;
 	FindStageIndexByName("shun");
+	// the shop's stock: item ids in event vars 600-619, their counts in 620-639
 	mHistoryStart = 600;
 	mHistoryCount = 20;
 	if (mHistoryCount > 0) {
@@ -8417,6 +8431,7 @@ void MenuPC::Open()
 			row->mItem      = id;
 			row->mCount     = gEventVars.mVars[mHistoryStart + (mHistoryCount + i)];
 			if (id != -1) {
+				// 0x10000 marks an attachment rather than an item
 				if (id & 0x10000) {
 					id &= ~0x10000;
 					row->mItem         = id;
@@ -8429,9 +8444,10 @@ void MenuPC::Open()
 			}
 		}
 	}
-	mChoices[mChoiceCount] = 3;
+	mChoices[mChoiceCount] = 3; // mode 3, the item shop
 	mChoiceCount++;
-	mCanSelect    = TRUE;
+	mCanSelect = TRUE;
+	// the Utilibot catalog: ids in event vars 560-579, their counts in 580-599
 	mCatalogBase  = 560;
 	mCatalogCount = 20;
 	int count     = 0;
@@ -8449,8 +8465,9 @@ void MenuPC::Open()
 	}
 	if (count == 0)
 		mCanSelect = FALSE;
-	mChoices[mChoiceCount] = 7;
+	mChoices[mChoiceCount] = 7; // mode 7, the Utilibot catalog
 	mChoiceCount++;
+	// mode 10, recycling scrap into money, comes with status icon 3
 	int flag      = GetStatusIconEventFlagId(3);
 	bool unlocked = false;
 	if (gEventFlags.mFlags[flag >> 5] & (1u << (flag & 31)))
@@ -9023,7 +9040,7 @@ extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 ind
 	if (index >= 0) {
 		DrawSlotFrame(selected, x, y, width, height, alpha);
 	}
-	if (slot->mState == 1u) {
+	if (slot->mState == 1u) { // the file is broken
 #if defined(VERSION_JP)
 		DrawSaveSlotMessage(message, 0x39, 76.0f, x, y, alpha, sx, sy);
 		DrawSaveSlotMessage(message, 0x3A, 96.0f, x, y, alpha, sx, sy);
@@ -9206,6 +9223,7 @@ BOOL MenuSave::Draw()
 				u8 selected = 0, emptyMessage = 0;
 				if (mFile == i)
 					selected = 1;
+				// an empty slot can take a new file: 6 free blocks and a free directory entry
 				if (mFreeBlocks >= 6 && mFreeEntries > 0)
 					emptyMessage = 1;
 				DrawSaveSlotDetails(&mSlots[i], emptyMessage, i, selected, x, 223.0f, width, 230.0f, mDrawAlpha, 1.0f, 1.0f);
@@ -9395,25 +9413,25 @@ extern "C" s32 DrawJapaneseCardErrorMessage(s32 channel, s32 error, u8 retry, f3
 	u32 color = (u32)(255.0f * alpha);
 	s32 lines = 0;
 	switch (error) {
-	case -128:
-	case -14:
-	case -12:
-	case -11:
-	case -10:
-	case -8:
-	case -7:
-	case -4:
-	case -1:
-	case 0:
+	case CARD_RESULT_FATAL_ERROR:
+	case CARD_RESULT_CANCELED:
+	case CARD_RESULT_NAMETOOLONG:
+	case CARD_RESULT_LIMIT:
+	case CARD_RESULT_NOPERM:
+	case CARD_RESULT_NOENT:
+	case CARD_RESULT_EXIST:
+	case CARD_RESULT_NOFILE:
+	case CARD_RESULT_BUSY:
+	case CARD_RESULT_READY:
 		DrawJapaneseCardLine(text, 0x36, x, y, size, color);
 		lines = 1;
 		break;
-	case -5:
+	case CARD_RESULT_IOERROR:
 		DrawJapaneseCardLine(text, 0x17, x, y, size, color);
 		DrawJapaneseCardLine(text, 0x18, x, y + size, size, color);
 		lines = 2;
 		break;
-	case -3: {
+	case CARD_RESULT_NOCARD: {
 		char channelText[256];
 		if (channel == 0)
 			sprintf(channelText, "%s", GetLocalizedInterfaceText(0x26));
@@ -9425,7 +9443,7 @@ extern "C" s32 DrawJapaneseCardErrorMessage(s32 channel, s32 error, u8 retry, f3
 		lines = 3;
 		break;
 	}
-	case -9: {
+	case CARD_RESULT_INSSPACE: {
 		DrawJapaneseCardLine(text, JapaneseCardSlotName(channel), 0x2B, x, y, size, color);
 		DrawJapaneseCardLine(text, 0x2C, x, y + size, size, color);
 		DrawJapaneseCardLine(text, 0x2D, x, 2.0f * size + y, size, color);
@@ -9435,7 +9453,7 @@ extern "C" s32 DrawJapaneseCardErrorMessage(s32 channel, s32 error, u8 retry, f3
 		lines = 4;
 		break;
 	}
-	case -2: {
+	case CARD_RESULT_WRONGDEVICE: {
 		const char* slot = JapaneseCardSlotName(channel);
 		if (retry) {
 			DrawJapaneseCardLine(text, slot, 0x28, x, y, size, color);
@@ -9609,10 +9627,11 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 
 extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 {
+	// drawn on its own page (mode 8) and during the mode 4 slide between pages
 	if (menu->mMode == 8 || menu->mMode == 4) {
 		f32 left     = ((menu->mGridX - 42.0f) + menu->mOffsetX) - 201.0f;
 		f32 top      = ((180.0f + menu->mGridY) + menu->mOffsetY) - 81.0f;
-		s32 selected = menu->mPhase == 100 ? -1 : menu->mIconSelection;
+		s32 selected = menu->mPhase == 100 ? -1 : menu->mIconSelection; // no highlight under the description window
 		CTexObj tex;
 		static u32 frame = 0;
 		++frame;
@@ -9719,7 +9738,7 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		f32 center = ((180.0f + (x - 24.0f)) - 24.0f) - 12.0f;
 		f32 middle = (y - 18.0f) + 14.0f;
 		DrawOverviewTexture(tex, color, center, middle, w, h);
-		if (gEventFlags.mFlags[0] & 0x10000000) {
+		if (gEventFlags.mFlags[28 / 32] & (1u << (28 % 32))) {
 			LoadOverviewTexture(tex, 245);
 			width  = GXGetTexObjWidth(&tex);
 			height = GXGetTexObjHeight(&tex);
@@ -9762,6 +9781,7 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 			break;
 	}
 
+	// a ring of 64 segments around the icon, 0.09817477 is 2 pi / 64
 	Vec outline[65];
 	f32 centerY = y - 6.0f * 1.2f;
 	for (int i = 0; i < 65; i++) {
@@ -9838,6 +9858,7 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 		tex.mMtxDirty = TRUE;
 		SetGsTevMode(gs.mCurTevStage, 0);
 		u32 top, bottom;
+		// digit colours by stat: 154 experience, 152 money, 153 scrap, 180 rank (see DrawOverviewStats)
 		switch (icon) {
 		case 154 - StatusTextureOffset:
 			top    = 0xCECEFF00 | a;
@@ -10049,10 +10070,10 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	}
 	SetGsTevMode(gs.mCurTevStage, 4);
 	LoadOverviewTexture(tex, 168);
-	u16 sw = GXGetTexObjWidth(&tex), sh = GXGetTexObjHeight(&tex);
+	u16 slashWidth = GXGetTexObjWidth(&tex), slashHeight = GXGetTexObjHeight(&tex);
 	SetGsTevMode(gs.mCurTevStage, 0);
-	DrawOverviewTexture(tex, white, offset + (7.0f * width + (x - (width - 3.0f * 1.2f))), y - 1.2f, 0.8f * (1.2f * sw),
-	                    0.8f * (1.2f * sh));
+	DrawOverviewTexture(tex, white, offset + (7.0f * width + (x - (width - 3.0f * 1.2f))), y - 1.2f, 0.8f * (1.2f * slashWidth),
+	                    0.8f * (1.2f * slashHeight));
 }
 
 // The atlas is measured twice; the discard dialog uses the enlarged sample.
@@ -10234,9 +10255,9 @@ void MenuPC::State3(u32 frames)
 		} else if (pad.mPad->mTrigger & 0x100) {
 			if (menu->mYesNo == 0) {
 				MenuPCItem* entry;
-				s32 item  = gShopHistoryPage.mIndex[menu->mPurchaseSelection];
-				s32 money = GetMoney();
-				entry     = &sShopHistoryEntries[item];
+				s32 entryIndex = gShopHistoryPage.mIndex[menu->mPurchaseSelection];
+				s32 money      = GetMoney();
+				entry          = &sShopHistoryEntries[entryIndex];
 				if (entry->mPrice <= money) {
 					money -= entry->mPrice;
 					gGame.GetPlayer()->mParams.SetMoney(money);
@@ -10259,6 +10280,7 @@ void MenuPC::State3(u32 frames)
 					}
 					if (entry->mCount > 0)
 						entry->mCount--;
+					// items 0x57, 0x59 and 0x5A replace each other: buying one clears the others from the shop and the inventory
 					if (entry->mItem != 0x58 && entry->mItem >= 0x57 && entry->mItem < 0x5B) {
 						for (s32 i = 0; i < 20; i++) {
 							MenuPCItem& other = table[i];
@@ -10400,6 +10422,7 @@ void MenuStatus::State2(u32)
 		}
 		UpdateOwnedItemHelp(menu);
 		if (pad.mPad->mTrigger & 0x200) {
+			// B: slide the page out (mode 4), then back to the tabs (mode 1)
 			menu->mPrevMode = menu->mMode;
 			menu->mMode     = 4;
 			menu->mNextMode = 1;
@@ -10425,6 +10448,7 @@ void MenuStatus::State2(u32)
 			menu->mAnimationFrame = 0;
 		} else if (pad.mPad->mTrigger & 0x100) {
 			if (count > 0) {
+				// open the detail window; phase 100 holds it until A or B
 				menu->mTargetDetailScale = 1.0f;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				menu->mPhase = 100;
@@ -10598,16 +10622,16 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 #endif
 	DrawPCGoldNumber(false, numberX, (originY + height), alpha, scale, money);
 #if defined(VERSION_JP)
-	const s32 label1 = 0x86, label2 = 0x87, yes = 0x79, no = 0x7A, done = 0x80;
+	const s32 question1 = 0x86, question2 = 0x87, yes = 0x79, no = 0x7A, done = 0x80;
 #else
-	const s32 label1 = 0x4D, label2 = 0x4E, yes = 0x40, no = 0x41, done = 0x47;
+	const s32 question1 = 0x4D, question2 = 0x4E, yes = 0x40, no = 0x41, done = 0x47;
 #endif
 	u32 white      = opacity | 0xFFFFFF00;
 	f32 textMargin = 40.0f * scale, gap = 4.0f * scale;
 	if (choice != 2) {
 		f32 textX = PCRecycleTextX(originX, size, scale, margin, labelOffset);
-		DrawPCRecycleLabel(label1, textX, labelOffset, textMargin, (rowOffset + (originY - size)) - gap, size, white);
-		DrawPCRecycleLabel(label2, textX, labelOffset, textMargin, (originY + rowOffset) - gap, size, white);
+		DrawPCRecycleLabel(question1, textX, labelOffset, textMargin, (rowOffset + (originY - size)) - gap, size, white);
+		DrawPCRecycleLabel(question2, textX, labelOffset, textMargin, (originY + rowOffset) - gap, size, white);
 		DrawPCRecycleLabel(yes, textX, labelOffset, textMargin, rowOffset + (originY + size), size, white);
 		DrawPCRecycleLabel(no, textX, labelOffset, textMargin, rowOffset + (2.0f * size + originY), size, white);
 	} else {
@@ -10651,14 +10675,14 @@ static inline f32 DrawPCPurchasePrice(CTexObj& tex, const MenuPCItem& row, f32 o
 	f32 centerOffset = (extraW * 0.5f) * scale;
 #endif
 	for (int i = 0; i < 4; i++) {
-		f32 div = 1.0f;
+		f32 divisor = 1.0f;
 		if (i > 0)
 			for (int j = 0; j < i; j++)
-				div *= 10.0f;
-		s32 n = (s32)(row.mPrice / div);
-		if (i && n == 0)
+				divisor *= 10.0f;
+		s32 digit = (s32)(row.mPrice / divisor);
+		if (i && digit == 0)
 			continue;
-		PSMTXTrans(tex.mMtx[0], 0, 0.1f * (n % 10), 0);
+		PSMTXTrans(tex.mMtx[0], 0, 0.1f * (digit % 10), 0);
 		tex.mMtxDirty = TRUE;
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		u32 upper  = (u8)opacity | (kind == ItemPriceList ? 0xEFEBC500 : 0xCECEFF00);
@@ -10749,7 +10773,7 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	s32 icon = 238;
-	if (id && (gEventFlags.mFlags[0x28 / 4] & 0x8000))
+	if (id && (gEventFlags.mFlags[335 / 32] & (1u << (335 % 32))))
 		icon = 239;
 	tex   = InitPCPanelTexture(icon);
 	u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
@@ -10894,6 +10918,7 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 				menu->mRankingRows[i].nameIndex = 0;
 				menu->mRankingRows[i].score     = 0;
 			}
+			// the end is always 3 here, so the list starts in place and the scroll (phase 1) never runs
 			menu->mRankingEnd = 3;
 			if (menu->mRankingEnd <= 3) {
 				menu->mPhase          = 2;
@@ -10966,8 +10991,9 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 			DrawPCRankingDigits(tex, row.score, left, rowY, scale, a | 0xCECEFF00, a | 0xE037EE00, false);
 			tex = InitPCPanelTexture(154);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			u16 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
-			DrawOverviewTexture(tex, light, 140.0f * scale + left, rowY + 10.0f * scale, 0.6f * (scale * iw), 0.6f * (scale * ih));
+			u16 iconWidth = GXGetTexObjWidth(&tex), iconHeight = GXGetTexObjHeight(&tex);
+			DrawOverviewTexture(tex, light, 140.0f * scale + left, rowY + 10.0f * scale, 0.6f * (scale * iconWidth),
+			                    0.6f * (scale * iconHeight));
 			sprintf(text, "%s", GetPCRankingName(row.nameIndex));
 			DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * menu->mAlpha) | 0xC8C8C800, text, 48.0f * scale + left,
 			                             rowY + 20.0f * scale, 0, 18.0f * scale, 18.0f * scale);

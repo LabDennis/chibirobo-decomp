@@ -239,6 +239,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			if (aobj->flags & 0x44000000)
 				HeldAnim(act->mOwner, 0x894);
 		}
+		// the brush's effect lasts while it scrubs (0x895), the squirter's while it squirts (0x8c2 to 0x8c4)
 		if (IsCarryingToothbrush(act)) {
 			if (anim != 0x895 && act->mContactEffect) {
 				gGame.mParticle.Kill(act->mContactEffectId);
@@ -273,6 +274,8 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			SetLiftActionState(act, 0);
 		}
 		break;
+	// event commands 102, 106 and 108 plug him into mPlugTarget: 7 only plugs in, 8 then gives it
+	// power (12, 13), 9 then waits for the stick or b (15)
 	case 7:
 	case 8:
 	case 9:
@@ -444,6 +447,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			}
 		}
 		break;
+	// 20 to 22 take an item out of his inventory, 24 to 26 the same without counting it off
 	case 20:
 		LoadLiftItem(act, 21);
 		// fall through
@@ -482,6 +486,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	case 26:
 		TakeLiftItem(act, anim, aobj, false);
 		break;
+	// a with a tool out: the toothbrush (27, 28), spoon (29, 30), mug (31 to 33) and squirter (35, 36)
 	case 27:
 		HeldAnim(act->mOwner, 0x895, TRUE);
 		HeldAnim(act->mTarget, 1, TRUE);
@@ -545,6 +550,8 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	case 34:
 		PutAwayLiftedObject(act);
 		break;
+	// the squirter fills up from what's in front of him, low (0x8d2) or high (0x8c1), or else squirts.
+	// its inventory count (at most 10) is how full it is, lbl_8020A5E8 turns that into a squirt level, 3 to 0
 	case 35: {
 		Vec point = act->mOwner->mMoveTranslate;
 		f32 angle = act->mOwner->mMoveRotate.y;
@@ -617,6 +624,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 				HeldAnim(act->mTarget, 18);
 			} else if (anim == 0x8d3 || anim == 0x8c1) {
 				HeldAnim(act->mTarget, 4);
+				// filled up, the inventory keeps the count at 10 at most
 				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, 11, FALSE);
 				finished = true;
 			}
@@ -991,21 +999,21 @@ void HandlePushActionInput(XActPush* act, const CPadOne* pad, f32* weight)
 		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL) {
 #if defined(VERSION_JP)
 			if (gGame.mStatus.mFlags & 0x0000080000000000ULL) {
-				if (pad->mTrigger & 0x200) {
+				if (pad->mTrigger & PAD_BUTTON_B) {
 					Release(act);
 					act->mState = 3;
 					*weight     = 0.0f;
 				}
 			} else
 #endif
-			    if (!(pad->mButton & 0x100)) {
+			    if (!(pad->mButton & PAD_BUTTON_A)) {
 				Release(act);
 				act->mState = 3;
 				*weight     = 0.0f;
 			}
 		}
 	} else if (act->mState != 0) {
-		if (act->mState != 3 && !(pad->mButton & 0x100)
+		if (act->mState != 3 && !(pad->mButton & PAD_BUTTON_A)
 #if defined(VERSION_JP)
 		    && !(gGame.mStatus.mFlags & 0x0000080000000000ULL)
 #endif
@@ -1363,7 +1371,8 @@ void HandleRopeActionInput(XActRope* act, const CPadOne* pad, f32* weight)
 {
 	if (act->mState == 5) {
 		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL) {
-			if (pad->mTrigger & 0x200) {
+			// b lets go of the rope
+			if (pad->mTrigger & PAD_BUTTON_B) {
 				act->mState = 8;
 			}
 			if (act->mOwner->mAnimId == 0x8A || act->mOwner->mAnimId == 0x8C) {
@@ -1804,10 +1813,10 @@ static inline void HangRootPosition(XActHang* act)
 }
 static inline void FinishHang(XActHang* act, f32 loop)
 {
-	XObjChr* p = act->mOwner;
-	p->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, loop, 10);
-	p->mIdleLoops = 3;
-	act->mState   = 0;
+	XObjChr* owner = act->mOwner;
+	owner->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0, 1, loop, 10);
+	owner->mIdleLoops = 3;
+	act->mState       = 0;
 }
 
 /**
@@ -1846,8 +1855,8 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			}
 		} else if (act->mTarget) {
 			if (RoundHangFloor(act)) {
-				XObjChr* p = act->mOwner;
-				f32 radius = p->mMoveScale.x * GetScaledTargetFloorExtent(act)->x;
+				XObjChr* chr = act->mOwner;
+				f32 radius   = chr->mMoveScale.x * GetScaledTargetFloorExtent(act)->x;
 				CVec owner(act->mOwner->mMoveTranslate);
 				owner.y = 0;
 				CVec floor(GetTargetFloorPosition(act));
@@ -2037,6 +2046,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 		} else if (anim != 0x14)
 			HangAnim(act, 0x14);
 		break;
+	// climbing up, TryLeaveHang picks the other climb (7) one time in eight
 	case 6:
 	case 7: {
 		int next = act->mState == 7 ? 0x7d : 0x17;
@@ -2121,7 +2131,7 @@ void HandleLadderActionInput(XActLadder* act, const CPadOne* pad, f32* weight)
 {
 	act->mBPressed = FALSE;
 	if (act->mState == 5) {
-		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL && (pad->mTrigger & 0x200)) {
+		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL && (pad->mTrigger & PAD_BUTTON_B)) {
 			act->mBPressed = TRUE;
 		}
 	} else if (act->mState != 0) {
@@ -2290,9 +2300,10 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			if (act->mTargetStrength >= 50)
 				id = 0x9a;
 			else if (act->mTargetStrength >= 45 && !gGame.mEvt.mData.mScript) {
-				XObjChr* p = act->mOwner;
-				if (p->mLift.mState && IsCarrying(&p->mLift, 22))
-					PutAway(&p->mLift);
+				// a hard landing makes him put the mug (item 22) away
+				XObjChr* chr = act->mOwner;
+				if (chr->mLift.mState && IsCarrying(&chr->mLift, 22))
+					PutAway(&chr->mLift);
 			}
 			JumpAnim(act, id);
 			act->mState = 7;
@@ -2458,7 +2469,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 	}
 }
 
-// the jump's fall, a long one makes him drop what he carries
+// the jump's fall: a long one makes him put the mug away, a longer one makes him tumble
 /**
  * @note Address: 0x800C9D54
  * @note Size: 0x360
@@ -2506,19 +2517,21 @@ void HandleHangActionInput(XActHang* act, const CPadOne* pad, f32* weight)
 	if (act->mState == 4) {
 		f32 stick = -(f32)atan2(pad->mStickX, pad->mStickY);
 		f32 angle = WrapAngle(stick + gGame.mMotionControlCamera.mCamera.mAngle.y - act->mOwner->mMoveRotate.y);
-		if (!(angle < 0.5235988f) && !(angle > 5.7595863f)) {
+		// the stick points anywhere but within 30 degrees of where he faces
+		if (!(angle < 30 * DEG2RAD) && !(angle > 330 * DEG2RAD)) {
 			act->mStickAway = TRUE;
 		}
 		*weight = 0.0f;
 	} else if (act->mState == 5) {
 		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL) {
-			if (pad->mTrigger & 0x100) {
+			// a climbs up if there is room, b lets go (9)
+			if (pad->mTrigger & PAD_BUTTON_A) {
 				if (act->mTarget == NULL || (act->mTarget->mStatus.mFlags & 0x400000000ULL)) {
 					TryLeaveHang(act);
 					act->mMoveDirection = 0;
 				}
 				*weight = 0.0f;
-			} else if (pad->mTrigger & 0x200) {
+			} else if (pad->mTrigger & PAD_BUTTON_B) {
 				act->mState         = 9;
 				act->mMoveDirection = 0;
 				*weight             = 0.0f;
@@ -2984,7 +2997,8 @@ void UpdateCarriedObjectPosition(XActLift* act, XObj* target)
 // NONMATCHING: stack order
 Vec GetLiftTargetContactOffset(XActLift* act, XObj* target)
 {
-	if (target->GetCategory() == 0x18) {
+	// a plug (24) is held by its end joint
+	if (target->GetCategory() == 24) {
 		s32 path[] = { 0 };
 		CJObj joint(GetJointByPath(target->mJObj, path, 1));
 		CVec pos(joint.GetPos());
@@ -3145,12 +3159,12 @@ Vec GetObjectJointWorldPosition(const CJObj* obj)
  * @note Address: 0x800D3EB0
  * @note Size: 0x14
  */
-void SetSubwindowRect(CGame* game, f32 a, f32 b, f32 c, f32 d)
+void SetSubwindowRect(CGame* game, f32 x, f32 y, f32 width, f32 height)
 {
-	game->mSubwin.mRectX      = a;
-	game->mSubwin.mRectY      = b;
-	game->mSubwin.mRectWidth  = c;
-	game->mSubwin.mRectHeight = d;
+	game->mSubwin.mRectX      = x;
+	game->mSubwin.mRectY      = y;
+	game->mSubwin.mRectWidth  = width;
+	game->mSubwin.mRectHeight = height;
 }
 
 /**
@@ -3264,7 +3278,8 @@ void HandleLiftActionInput(XActLift* act, const CPadOne* pad, f32* weight)
 			*weight = 0.0f;
 			return;
 		}
-		if (pad->mTrigger & 0x100) {
+		// a sets it down (6), b puts an item away (19) and sets anything else down
+		if (pad->mTrigger & PAD_BUTTON_A) {
 			if (act->mTarget == NULL) {
 				return;
 			}
@@ -3280,11 +3295,11 @@ void HandleLiftActionInput(XActLift* act, const CPadOne* pad, f32* weight)
 			}
 			act->mState = 6;
 			*weight     = 0.0f;
-		} else if (pad->mTrigger & 0x200) {
+		} else if (pad->mTrigger & PAD_BUTTON_B) {
 			if (act->mTarget != NULL) {
 				if (act->mTarget->GetCategory() == 8) {
 					if (chr->GetAttachment() == 0) {
-						act->mState = 0x13;
+						act->mState = 19;
 					}
 				} else {
 					act->mState = 6;
@@ -3292,29 +3307,31 @@ void HandleLiftActionInput(XActLift* act, const CPadOne* pad, f32* weight)
 			}
 			*weight = 0.0f;
 		}
-	} else if (act->mState == 0xC || act->mState == 0xD) {
-		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL && ((pad->mTrigger & 0x100) || (pad->mTrigger & 0x200))) {
-			act->mState = 0xE;
+	} else if (act->mState == 12 || act->mState == 13) {
+		// a or b stops giving power and pulls the plug (14)
+		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL && ((pad->mTrigger & PAD_BUTTON_A) || (pad->mTrigger & PAD_BUTTON_B))) {
+			act->mState = 14;
 			act->mTimer = 0.0f;
 		}
 		*weight = 0.0f;
-	} else if (act->mState == 0xF) {
+	} else if (act->mState == 15) {
 		if (gGame.IsRunning()) {
 			if (pad->mStickX > 0.8f) {
-				act->mState = 0x10;
+				act->mState = 16;
 				act->mTimer = 0.0f;
-			} else if (pad->mTrigger & 0x200) {
-				act->mState = 0x11;
+			} else if (pad->mTrigger & PAD_BUTTON_B) {
+				act->mState = 17;
 				act->mTimer = 0.0f;
 			}
 		}
 		*weight = 0.0f;
-	} else if (act->mState == 0x1B) {
-		// stays as it is while the lift is thrown
-	} else if (act->mState == 0x1C) {
-	} else if (act->mState == 0x1F || act->mState == 0x20) {
-		if (!(pad->mButton & 0x100)) {
-			act->mState = 0x21;
+	} else if (act->mState == 27) {
+		// the first frames of a toothbrush stroke leave the stick alone
+	} else if (act->mState == 28) {
+	} else if (act->mState == 31 || act->mState == 32) {
+		// he uses the mug for as long as a is held
+		if (!(pad->mButton & PAD_BUTTON_A)) {
+			act->mState = 33;
 		}
 		*weight = 0.0f;
 	} else if (act->mState != 0) {
@@ -3349,9 +3366,9 @@ void ApplyPlayerItemTintToTarget(XAction* act)
 		if (mobj != NULL) {
 			mobj->mat->diffuse = act->mOwner->mItemTint;
 			for (HSD_TObj* tobj = HSD_MObjGetTObj(mobj); tobj != NULL; tobj = HSD_TObjGetNext(tobj)) {
-				u32 flags   = tobj->flags & ~0xF0000;
+				u32 flags   = tobj->flags & ~TEX_COLORMAP_MASK;
 				tobj->flags = flags;
-				tobj->flags = flags | 0x60000;
+				tobj->flags = flags | TEX_COLORMAP_PASS;
 			}
 			HSD_MObjCompileTev(mobj);
 		}

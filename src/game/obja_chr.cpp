@@ -265,8 +265,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		targetX = targetZ = 0.0f;
 		if (ClassifyFloatBits(direction) != FP_NAN) {
 			f32 angle = direction >= 0.0f ? direction : -direction;
-			if (angle > 6.2831855f)
-				angle -= 6.2831855f;
+			if (angle > TWO_PI)
+				angle -= TWO_PI;
 			if (lbl_8065B268 >= 1) {
 				f32 scale = 1.0f - 0.15f * lbl_8065B268;
 				if (scale < 0.7f)
@@ -299,13 +299,14 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				SetObjectVectorSpeedX(&motion, 0);
 				SetObjectVectorSpeedZ(&motion, 0);
 				if (HasPlayerActionTarget(&hangAction) && IsActionTargetFloorId(&hangAction, 0)) {
+					// on a round ledge he shuffles along the circle around its centre
 					Vec center = *GetHangFloorCenter(&hangAction);
 					f32 radius = GetHangDistance(&hangAction);
-					f32 period = (6.2831855f * radius) / (0.3f * speed);
+					f32 period = (TWO_PI * radius) / (0.3f * speed);
 					f32 angle
-					    = movementFrames * ((6.2831855f / period) * (s32)GetPlayerActionMoveDirection(&hangAction)) + player->mMoveRotate.y;
+					    = movementFrames * ((TWO_PI / period) * (s32)GetPlayerActionMoveDirection(&hangAction)) + player->mMoveRotate.y;
 					player->SetRotationY(WrapPlayerActionAngle(angle), 0);
-					f32 facing = 3.1415927f + angle;
+					f32 facing = PI + angle;
 					SetVectorX(&motion, (radius * PlayerActionSine(facing) + center.x) - player->mMoveTranslate.x);
 					SetVectorZ(&motion, (radius * PlayerActionCosine(facing) + center.z) - player->mMoveTranslate.z);
 					PlayerActionSine(facing);
@@ -406,7 +407,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						else
 							rate = turn * 0.2f;
 					} else {
-						rate = 0.017453292f;
+						rate = DEG2RAD;
 					}
 				}
 				XActLift& lift  = player->mLift;
@@ -417,7 +418,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					SetObjectZAndTarget(&motion, 0);
 					if (ClassifyFloatBits(direction) != FP_NAN && direction >= 0.0f)
 						player->SetRotateY(direction, 0.25f * rate);
-				} else if (GetHeldPadButtons(GetPadForPort(&gGame, 0), 0x100) && !(GetMaskedGameStatus(&gGame, 0x400))
+				} else if (GetHeldPadButtons(GetPadForPort(&gGame, 0), PAD_BUTTON_A) && !(GetMaskedGameStatus(&gGame, 0x400))
 				           && IsJumpActionState(&player->mJump, 0) && IsLiftActionState(&lift, 4)
 				           && (IsCarryingToothbrush(&lift) || IsCarryingSpoon(&lift) || IsCarryingSquirter(&lift))
 				           && GetObjectAnimationId(player) != 0x8ae && GetObjectAnimationId(player) != 0x8af) {
@@ -426,10 +427,11 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					player->mMoveSpeed = GetPlayerAnimationRateMultiplier(player);
 					if (ClassifyFloatBits(direction) != FP_NAN && direction >= 0.0f) {
 						f32 diff = WrapPlayerActionAngle(player->mMoveRotate.y - WrapPlayerActionAngle(direction));
-						if (diff < 1.5707964f || diff >= 4.712389f)
+						// he turns only toward a stick ahead of him; with the stick behind him he backs up (anim 0x12a) facing the same way
+						if (diff < HALF_PI || diff >= 1.5f * PI)
 							player->SetRotateY(direction, 0.25f * rate);
 						if (player->mMoveSpeed > 0) {
-							if (diff > 1.5707964f && diff < 4.712389f)
+							if (diff > HALF_PI && diff < 1.5f * PI)
 								player->SetAnim(0x12a, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 							else
 								player->SetAnim(3, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
@@ -602,7 +604,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			Vec scale;
 			GetJointScale(player, GetObjectJointByPath(player, 2, boundsPath), &scale);
 			radius += 2.5f * scale.x;
-			liftState22 = IsLiftActionState(&player->mLift, 22);
+			liftState22 = IsLiftActionState(&player->mLift, 22); // lift state 22: he is taking the mug out
 		}
 		Mtx rotation;
 		PSMTXRotRad(rotation, 'y', player->mMoveRotate.y);
@@ -638,13 +640,14 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						continue;
 				}
 				BOOL touched = false;
-				for (s32 floor = 0; floor != -1;) {
+				// one floor per call: the cursor resumes after the floor that was hit and is -1 once all are tested
+				for (s32 cursor = 0; cursor != -1;) {
 					position.x = player->mMoveTranslate.x + offset.x;
 					position.z = player->mMoveTranslate.z + offset.z;
 					u32 hit;
 					{
 						CVec from(position), to(position);
-						hit = object->TestFloorCollision(&from, &to, radius, height, &push, &contact, (s32)&floor, queryFlags | 1);
+						hit = object->TestFloorCollision(&from, &to, radius, height, &push, &contact, (s32)&cursor, queryFlags | 1);
 					}
 					if (hit & 1) {
 						touched = true;
@@ -690,15 +693,17 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				if (!touched && GetMaskedObjectStatus(object, 0x0002000000000000ULL))
 					ClearObjectStatusFlags(object, 0x0002000000000000ULL);
 			}
+			// taking the mug out widens him: an object marked 0x10 above that he ends up more than 1.5 inside stops blocking
+			// him (0x0002000000000000) until he is out of it
 			if (liftState22) {
 				for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
 					XObj* object = GetDrawListObject(&gGame, 0, i);
 					if (!(GetMaskedObjectStatus(object, 0x10)))
 						continue;
 					ClearObjectStatusFlags(object, 0x10ULL);
-					for (s32 floor = 0; floor != -1;) {
+					for (s32 cursor = 0; cursor != -1;) {
 						u32 hit = object->TestFloorCollision(&player->mMoveTranslate, &player->mMoveTranslate, radius, height, &push,
-						                                     &contact, (s32)&floor, 0);
+						                                     &contact, (s32)&cursor, 0);
 						if ((hit & 3) != 3)
 							continue;
 						f32 top = GetObjectHitFloorHeight(object);
@@ -1013,9 +1018,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						} else {
 							XObj* support = NULL;
 							if (player->mFloorContacts[1].objectIndex >= 0) {
-								support       = GetGameObjectByIndex(&gGame, player->mFloorContacts[1].objectIndex);
-								s32 supHeight = HasObjectCustomLedgeHeight(support) ? GetObjectPlacementParam(support, 0) : 12;
-								if (!(drop > 0.5f + supHeight))
+								support         = GetGameObjectByIndex(&gGame, player->mFloorContacts[1].objectIndex);
+								s32 ledgeHeight = HasObjectCustomLedgeHeight(support) ? GetObjectPlacementParam(support, 0) : 12;
+								if (!(drop > 0.5f + ledgeHeight))
 									support = NULL;
 							}
 							if (!support || !IsObjectClimbableLedge(support)) {
@@ -1153,6 +1158,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				f32 yaw   = GetObjectMoveRotation(object)->y;
 				f32 angle = WrapPlayerActionAngle(
 				    GetHeadingBetweenPositions(GetObjectMoveTranslation(object), GetObjectMoveTranslation(player)) - yaw);
+				// he stands within 30 degrees of square to one of its four sides
 				if (angle < 0.52359879f || angle > 5.7595863f || (angle > 1.04719758f && angle < 2.09439516f)
 				    || (angle > 2.61799383f && angle < 3.66519141f) || (angle > 4.18879032f && angle < 5.23598766f)) {
 					player->mLetickerIndex = GetIndexedCoordPlacement(GetObjectCoordInfo(object), 0) - GetStagePlacementByIndex(0);
@@ -1161,6 +1167,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			}
 		}
 	}
+	// available: actions the objects around him offer, 1 event, 2 push, 4 lift, 8 climb (japan), 0x10 ladder, 0x20 rope,
+	// 0x40 never (fn_800B1E04), 0x80 plug in; marker: the ones whose marker shows. actionMode: what a full gauge on target
+	// starts, 1-3 jump up 4, 8 or 12.5, 4 grab a ledge, 5 climb up from a hang, 6 let go of it, 9 push (japan)
 	u32 available              = 0;
 	XObj* target               = NULL;
 	s32 actionMode             = -1;
@@ -1216,6 +1225,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					f32 yaw   = GetObjectMoveRotation(object)->y;
 					s32 edge  = GetSelectedFloorIndex(object);
 					f32 angle = GetObjectEdgeOutwardYaw(object, GetObjectMoveTranslation(player), edge) - yaw;
+					// the edge he is at faces straight back, within 0.1 degrees
 					if (angle > 3.13984752f && angle < 3.14333797f) {
 						available |= 2;
 #if defined(VERSION_JP)
@@ -1395,6 +1405,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		if (!IsHangActionState(&player->mHang, 0)) {
 			if (IsHangActionState(&player->mHang, 5) && (player->mStick[0] > 0) && HasPlayerActionTarget(&player->mHang)) {
 				f32 angle = WrapPlayerActionAngle((player->mStick[2] + GetCameraAngles(gGame.GetCamera())->y) - player->mMoveRotate.y);
+				// stick within 30 degrees of ahead climbs up, within 30 degrees of behind lets go
 				if ((angle < 0.52359879f || angle > 5.7595863f) && IsObjectClimbableFromHang(GetPlayerActionTarget(&player->mHang))) {
 					target     = GetPlayerActionTarget(&player->mHang);
 					actionMode = 5;
@@ -1410,6 +1421,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				}
 			}
 		} else {
+			// retail makes these checks and drops every result
 			if (!IsCopterActionState(&player->mCopter, 0))
 				IsCopterActionState(&player->mCopter, 3);
 			else if (!IsRopeActionState(&player->mRope, 0))
@@ -1435,7 +1447,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			f32 magnitude = GetControlStickMagnitude(&player->mPad);
 			if (magnitude == 0 && player->mFloorContacts[4].objectIndex >= 0)
 				magnitude = 0.8f;
-			if (target && !GetMaskedObjectStatus(target, 0x0002000000000000ULL) && !GetHeldPadButtons(&player->mPad, 0x200)
+			if (target && !GetMaskedObjectStatus(target, 0x0002000000000000ULL) && !GetHeldPadButtons(&player->mPad, PAD_BUTTON_B)
 			    && magnitude > 0) {
 				f32 threshold = FRAME_RATE * GetAutoActionHoldTime();
 				if ((s32)target == player->mGaugeTarget) {
@@ -1649,13 +1661,13 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 	        && IsRadarActionState(&player->mRadar, 0))) {
 		CPad controller(0);
 		if (!gGame.mMenu.mActive) {
-			if ((controller.mPad->mTrigger & 0x400) && !(controller.mPad->mButton & 0x1000) && (gGame.mStatus.mFlags & 0x800000000000ULL)
-			    && player->mAttachmentRequest < 0) {
+			if ((controller.mPad->mTrigger & PAD_BUTTON_X) && !(controller.mPad->mButton & PAD_BUTTON_START)
+			    && (gGame.mStatus.mFlags & 0x800000000000ULL) && player->mAttachmentRequest < 0) {
 				if (!(gGame.mStatus.mFlags & 0x100))
 					OpenPlayerEquipmentRings(player);
 				else
 					PlayGameSound(&gGame.mSound, 0x85, 255);
-			} else if (!IsPlayerAttachmentEquipped(player, 0) && (pad->mTrigger & 0x200) && !(pad->mButton & 0x1000)
+			} else if (!IsPlayerAttachmentEquipped(player, 0) && (pad->mTrigger & PAD_BUTTON_B) && !(pad->mButton & PAD_BUTTON_START)
 			           && (!(gGame.mStatus.mFlags & 0x100) && player->mAttachmentRequest < 0)) {
 				RequestPlayerUnequipAttachment(player);
 				return 0;
@@ -1666,7 +1678,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 		        || IsPlayerAttachmentEquipped(player, 3) || IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5)
 		        || IsPlayerAttachmentEquipped(player, 6) || IsPlayerAttachmentEquipped(player, 7)
 		        || IsPlayerAttachmentEquipped(player, 8))) {
-			BOOL press = (pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x500) && player->mAttachmentRequest < 0;
+			BOOL press = (pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x500) && player->mAttachmentRequest < 0;
 			s32 mode;
 			if (IsPlayerAttachmentEquipped(player, 1) || IsPlayerAttachmentEquipped(player, 2) || IsPlayerAttachmentEquipped(player, 3)) {
 				switch (player->mAttachmentActionType) {
@@ -1791,46 +1803,46 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 		        && IsRadarActionState(&player->mRadar, 0))) {
 			if (IsPlayerAttachmentEquipped(player, 0)) {
 				if (!(gGame.mStatus.mFlags & 0x100)) {
-					if (player->mPlug.mConnection && (pad->mTrigger & 0x300)) {
+					if (player->mPlug.mConnection && (pad->mTrigger & (PAD_BUTTON_A | PAD_BUTTON_B))) {
 						if (player->mLift.mPlugTarget) {
 							StartInteractionEvent(player->mLift.mPlugTarget);
 							StopPlayerMotion(player);
 							speed = 0;
 						}
 					} else if (IsLiftActionState(&player->mLift, 0) && IsPushActionState(&player->mPush, 0) && !player->mPlug.mConnection
-					           && player->mFloorContacts[4].objectIndex < 0 && (pad->mButton & 0x100))
+					           && player->mFloorContacts[4].objectIndex < 0 && (pad->mButton & PAD_BUTTON_A))
 						player->mLiftPlugFlags |= 0x80;
 				}
 			} else if (IsPlayerAttachmentEquipped(player, 1)) {
-				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100)) {
+				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100)) {
 					SetCopterActionState(&player->mCopter, 3);
 					player->SetAnim(39, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 					PlayCopterFlightAnimation(&player->mCopterObj);
 					StopPlayerMotion(player);
 				}
 			} else if (IsPlayerAttachmentEquipped(player, 2)) {
-				if (pad->mTrigger & 0x100) {
+				if (pad->mTrigger & PAD_BUTTON_A) {
 					SetPopperActionState(&player->mPopper, 7);
 					SetObjectVectorTarget(&player->mMoveRotate, player->mMoveRotate);
 				}
 			} else if (IsPlayerAttachmentEquipped(player, 3)) {
-				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100)) {
+				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100)) {
 					SetRadarActionState(&player->mRadar, 3);
 					StartPlayerRadarScan(&player->mRadarObj);
 				}
 			} else if (IsPlayerAttachmentEquipped(player, 4) && !IsLiftActionState(&player->mLift, 0)
 			           && IsCarryingToothbrush(&player->mLift)) {
-				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100))
+				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100))
 					SetLiftActionState(&player->mLift, 27);
 			} else if (IsPlayerAttachmentEquipped(player, 5) && !IsLiftActionState(&player->mLift, 0) && IsCarryingSpoon(&player->mLift)) {
-				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100) && player->mAnimId != 0x8ae)
+				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100) && player->mAnimId != 0x8ae)
 					SetLiftActionState(&player->mLift, 29);
 			} else if (IsPlayerAttachmentEquipped(player, 6) && !IsLiftActionState(&player->mLift, 0) && IsCarryingMug(&player->mLift)) {
-				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100))
+				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100))
 					SetLiftActionState(&player->mLift, 31);
 			} else if (IsPlayerAttachmentEquipped(player, 7) && !IsLiftActionState(&player->mLift, 0)
 			           && IsCarryingSquirter(&player->mLift)) {
-				if ((pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100))
+				if ((pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100))
 					SetLiftActionState(&player->mLift, 35);
 			} else
 				IsPlayerAttachmentEquipped(player, 8);
@@ -1863,7 +1875,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 		player->mPressTimer = player->mAPressed = 0;
 	if (IsPlayerAttachmentEquipped(player, 2) && !IsEventScriptActive(&gGame)
 	    && (IsPopperActionState(&player->mPopper, 7) || IsPopperActionState(&player->mPopper, 8))
-	    && IsPopperFireAnimationSelected(&player->mPopperObj) && (pad->mTrigger & 0x100))
+	    && IsPopperFireAnimationSelected(&player->mPopperObj) && (pad->mTrigger & PAD_BUTTON_A))
 		SetPopperActionState(&player->mPopper, 5);
 	if ((pad->mTrigger & 0x10) && !IsEventScriptActive(&gGame) && !(gGame.mStatus.mFlags & 0x400) && player->mAttachmentRequest < 0
 	    && !(gGame.mStatus.mFlags & 0x20) && !(gGame.mStatus.mFlags & 0x100)
@@ -2037,7 +2049,7 @@ void XObjChr::UpdateObject(u32 frames)
 	            && !IsCarryingSquirter(&mLift)))
 	    && !mHang.mState && !mJump.mState && !mLadder.mState && !mRope.mState && !mPush.mState && !mTumble.mState && !mCopter.mState
 	    && !mPopper.mState && !mRadar.mState) {
-		if (mFloorContacts[4].objectIndex < 0 && !_A14 && (pad->mTrigger & 0x100) && !(gGame.mStatus.mFlags & 0x100)
+		if (mFloorContacts[4].objectIndex < 0 && !_A14 && (pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100)
 		    && (mHitObjectIndex < 0 || mHitObjectIndex == mFloorContacts[0].objectIndex
 		        || (!IsLiftTargetPlug(&mLift) && mHitObjectIndex >= 0 && (gGame.GetObject(mHitObjectIndex)->mStatus.mFlags & 0x20)))) {
 			for (mNearDistance = 2; mNearDistance <= 10; ++mNearDistance) {
@@ -2945,7 +2957,7 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 	hints[2].label  = GetLocalizedInterfaceText(ATC_LABEL(11));
 	s32 order[2][2] = { { 0, 1 }, { 0, 2 } };
 
-	f32 edge            = 608.0f + 100.0f * (1.0f - (f32)sin(1.5707964f * menu->mFade));
+	f32 edge            = 608.0f + 100.0f * (1.0f - (f32)sin(HALF_PI * menu->mFade));
 	const Hint* rowHint = hints;
 	for (s32 row = 0; row < 2; ++row, ++rowHint) {
 		Hint& hint    = hints[order[menu->mSel][row]];
