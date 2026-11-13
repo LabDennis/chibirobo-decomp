@@ -85,7 +85,8 @@ class RenderTests(unittest.TestCase):
         schema = json.loads(page.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])
         self.assertEqual(schema["url"], site)
         self.assertIn("GameCube and Wii", schema["description"])
-        self.assertIn("GameCube and Wii", page.split("<h1>", 1)[1].split("</h1>", 1)[0])
+        self.assertEqual(schema["isPartOf"], {"@type": "WebSite", "name": "Cleo Spiers", "url": "https://cleosp.com/"})
+        self.assertIn("for the GameCube and Wii", page.split('<meta name="description" content="', 1)[1].split('">', 1)[0])
         self.assertIn('<a href="https://github.com/CleoSp/chibirobo-decomp">Source on GitHub</a>', page)
 
     def test_local_stamp_ignores_generated_timestamps(self):
