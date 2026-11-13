@@ -30,7 +30,6 @@ extern "C" {
 // chibi robo's actions, the XAct kinds of XAction, and the game helpers they use
 
 extern "C" {
-void ConfigureSubwindowCamera(FbSubwin* subwin, const Vec& interest, f32 angleY, f32 angleX, f32 distance, f32 fov);
 void SetObjectJointTranslationByPath(CXObj* obj, s32 depth, const s32* path, f32 x, f32 y, f32 z); // puts a joint at a translation
 f32 GetJointAnimationEndFrame(const CJObj* obj);                                                   // the end frame of the anim
 HSD_JObj* GetObjectJointByPath(const CJObj* obj, s32 depth, s32* path);
