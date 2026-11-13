@@ -179,7 +179,8 @@ extern "C" void InitGameDVD(void)
 	DVDChangeDir((char*)"/qp/");
 }
 
-extern "C" u32 gAramBlockLengths[8];
+// ARInit's allocation stack
+u32 gAramBlockLengths[8];
 
 /**
  * @note Address: 0x8001D4EC

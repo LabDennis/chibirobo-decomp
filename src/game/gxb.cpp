@@ -2357,7 +2357,8 @@ void DrawSaveSlotDetails(MenuSaveSlot*, u8, s16, u8, f32, f32, f32, f32, f32, f3
 s32 DrawJapaneseSaveStatusMessage(s32, s32, f32, f32, f32, f32);
 s32 DrawJapaneseCardErrorMessage(s32, s32, u8, f32, f32, f32, f32);
 #else
-extern f32 lbl_8065A278;
+// each save slot is this much wider than 154, and the three shift left by half of three times it
+static f32 sSaveSlotExtraWidth = 10.0f;
 s32 DrawSaveStatusMessage(s32, s32, f32, f32, f32, f32);
 s32 DrawCardErrorMessage(s32, s32, u8, f32, f32, f32, f32);
 #endif
@@ -2424,8 +2425,8 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 #if defined(VERSION_JP)
 			f32 x = 49.0f + (194.0f * i + 77.0f), width = 154.0f;
 #else
-			f32 width = 154.0f + lbl_8065A278;
-			f32 x     = 49.0f + ((width * .5f) + i * (40.0f + width)) - (3.0f * lbl_8065A278) * .5f;
+			f32 width = 154.0f + sSaveSlotExtraWidth;
+			f32 x     = 49.0f + ((width * .5f) + i * (40.0f + width)) - (3.0f * sSaveSlotExtraWidth) * .5f;
 #endif
 			u8 selected = 0, empty = 0;
 			if (title->mFile == i)

@@ -176,7 +176,8 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, f32 scroll, f32 alpha, f32 scale);
 extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale);
 extern "C" void ApproachHudValue(f32*, f32*, f32);
-extern "C" f32 gPCDialogueX;
+// where the PC's scrolling dialogue line starts, it runs left by 3 a frame
+f32 gPCDialogueX;
 static inline void PCEaseCall(f32& value, f32& target)
 {
 	f32 speed = target - value;
@@ -5100,7 +5101,6 @@ void MenuStatus::State5(u32)
 	}
 }
 
-extern "C" f32 gPCDialogueX;
 extern "C" void ApproachHudValue(f32*, f32*, f32);
 
 static inline void ResetPCCharacters(MenuPC* menu)

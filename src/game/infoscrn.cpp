@@ -55,7 +55,7 @@ f32 gHudScanlineHistory[10];
 }
 
 // how bright the hud is, the counters and gauges multiply their alpha by it
-extern "C" f32 gHudOpacityScale;
+f32 gHudOpacityScale = 1.0f;
 
 // frames to a clock reading, minutes * 6000 + seconds * 100 + hundredths
 static inline f32 FramesToClock(f32 frames)

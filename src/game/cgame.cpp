@@ -10,8 +10,9 @@
 extern "C" {
 int strncmp(const char* a, const char* b, unsigned long n);
 }
-extern "C" f32 sStageNameShadowX[4];
-extern "C" f32 sStageNameShadowY[4];
+// the stage name's four shadow copies, one pixel off to each corner
+f32 sStageNameShadowX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 sStageNameShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 
 // the cgame file's globals, in the order retail built them in cgameinit's static
 // initializer; cgameinit.cpp still constructs the same region by hand, so these are
@@ -107,7 +108,7 @@ void ResetGameHudState(void* info);
 u8* GetStageDisplayName(s32 index);
 int rand(void);
 }
-extern "C" GXColor gMessageFontDefaultColor;
+GXColor gMessageFontDefaultColor = { 0, 0, 0, 0x80 };
 
 // a lead byte of a two byte shift jis character
 static inline bool IsSJISByte(char c)
