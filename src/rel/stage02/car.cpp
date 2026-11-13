@@ -125,27 +125,6 @@ inline void Car::CarRoot::Register(XObj* a, XObj* b, XObj* c)
 	mStarted   = 0;
 }
 
-// what Brake does. the copy retail has of the virtual holds this one inline level down
-inline void CarRoot_Brake(Car::CarRoot* car)
-{
-	s32 i;
-	XObj* obj;
-
-	car->mBraking = 1;
-	car->mCar->SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-	obj = car->mCar;
-	// takes the first free slot in the request ring
-	for (i = 0; i < 16; i++) {
-		s32 idx = (obj->mAnmQueue.mNext + i) % 16;
-		if (obj->mAnmQueue.mEntry[idx].mId == -1) {
-			obj->mAnmQueue.mEntry[idx].mId    = 3;
-			obj->mAnmQueue.mEntry[idx].mFrame = 0;
-			obj->mAnmQueue.mEntry[idx].mRate  = 100;
-			break;
-		}
-	}
-}
-
 // the one virtual that is inline: retail has its copy at the end, with the camera's
 inline void Car::CarRoot::Start()
 {
@@ -574,7 +553,9 @@ void Car::CarRoot::Update(u32 arg)
  */
 void Car::CarRoot::Brake()
 {
-	CarRoot_Brake(this);
+	mBraking = 1;
+	mCar->SetAnim(2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+	mCar->PushAnim(3, 0, 100);
 }
 
 // Brake__Q23Car7CarRootFv
