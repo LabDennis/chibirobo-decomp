@@ -135,7 +135,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		}
 	} else if (stage == 20000) {
 		game->SetStage(GetSaveFileStage(&game->mMemcard));
-		game->mMemcardLoaded = TRUE;
+		game->mMemcard.mLoaded = TRUE;
 	} else if (stage >= 0) {
 		game->SetStage(stage);
 	} else {
