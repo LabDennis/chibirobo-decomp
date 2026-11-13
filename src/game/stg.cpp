@@ -1206,21 +1206,17 @@ BOOL MenuPC::Draw()
 					                             22.0f);
 				}
 #else
-				// Buffers are persistent; original strncpy calls leave the rest of each chunk intact.
+				// the chunks persist, strncpy leaves the rest of each one as it was
 				char(*chunks)[256] = gPCDialogueChunks;
 #if defined(VERSION_PAL)
-				const size_t length = strlen(text), span = length / 3;
+				const size_t span = strlen(text) / 3;
 #else
 				const size_t span = strlen(text) / 2;
 #endif
-				// Keep a terminator in each buffer even for a longer replacement translation.
-				const size_t n = span < 255 ? span : 255;
-				strncpy(chunks[0], text, n);
-				strncpy(chunks[1], text + span, n);
+				strncpy(chunks[0], text, span);
+				strncpy(chunks[1], text + span, span);
 #if defined(VERSION_PAL)
-				const size_t tailSize = length - 2 * span + 1;
-				memcpy(chunks[2], text + 2 * span, tailSize < sizeof(chunks[2]) ? tailSize : sizeof(chunks[2]) - 1);
-				chunks[2][sizeof(chunks[2]) - 1] = '\0';
+				strcpy(chunks[2], text + 2 * span);
 #endif
 				gPCDialogueX -= 3.0f;
 				u32 color     = (u32)(255.0f * this->mAlpha) | 0xC8C8C800;
@@ -8728,12 +8724,9 @@ BOOL MenuItem::Update(u32 frames)
 				mPrevSelection = mSelection;
 			}
 			if (pad.mPad->mTrigger & 0x100) {
-				s16 id = -1, amount = 0;
-				if (mSelection >= 0) {
-					const MenuStatusEntry& item = sStatusItemTable.mItems[mSelection];
-					id                          = item.mItem;
-					amount                      = item.mCount;
-				}
+				const MenuStatusEntry& item = sStatusItemTable.mItems[mSelection];
+				s16 id                      = item.mItem;
+				s16 amount                  = item.mCount;
 				if (count > 0 && id >= 0 && amount > 0)
 					selectedItem = id;
 				else
