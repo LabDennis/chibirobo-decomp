@@ -143,6 +143,7 @@ static MEMiHeapHead* InitExpHeap_(MEMiHeapHead* heap, void* end, u16 opt)
 	return heap;
 }
 
+// NONMATCHING: register allocation differs from retail, and one load and a subtraction come earlier
 static void* AllocUsedBlockFromFreeBlock_(MEMiExpHeapHead* exp, MEMiExpHeapMBlock* mblock, void* memPtr, u32 size, u16 allocDir)
 {
 	void* region[2];
@@ -183,6 +184,7 @@ static void* AllocUsedBlockFromFreeBlock_(MEMiExpHeapHead* exp, MEMiExpHeapMBloc
 	return memPtr;
 }
 
+// NONMATCHING: register allocation differs from retail
 static void* AllocFromHead_(MEMiHeapHead* heap, u32 size, s32 align)
 {
 	MEMiExpHeapMBlock* it;
@@ -217,6 +219,7 @@ static void* AllocFromHead_(MEMiHeapHead* heap, u32 size, s32 align)
 	return bestBlk != NULL ? AllocUsedBlockFromFreeBlock_(exp, bestBlk, bestBlkMemPtr, size, 0) : NULL;
 }
 
+// NONMATCHING: register allocation differs from retail
 static void* AllocFromTail_(MEMiHeapHead* heap, u32 size, s32 align)
 {
 	MEMiExpHeapMBlock* it;
@@ -250,6 +253,7 @@ static void* AllocFromTail_(MEMiHeapHead* heap, u32 size, s32 align)
 	return bestBlk != NULL ? AllocUsedBlockFromFreeBlock_(exp, bestBlk, bestBlkMemPtr, size, 1) : NULL;
 }
 
+// NONMATCHING: retail sets up a stack frame this version does not need, and register allocation differs
 static BOOL RecycleRegion_(MEMiExpHeapHead* exp, void** region)
 {
 	void* merged[2];
@@ -318,6 +322,7 @@ void* MEMAllocFromExpHeapEx(MEMiHeapHead* heap, u32 size, s32 align)
 	return memBlock;
 }
 
+// NONMATCHING: the saved registers and register allocation differ from retail
 void MEMFreeToExpHeap(MEMiHeapHead* heap, void* memBlock)
 {
 	MEMiExpHeapMBlock* mblock;
@@ -340,6 +345,7 @@ void MEMFreeToExpHeap(MEMiHeapHead* heap, void* memBlock)
 	UnlockHeap(heap);
 }
 
+// NONMATCHING: the saved registers and register allocation differ from retail
 u32 MEMGetAllocatableSizeForExpHeapEx(MEMiHeapHead* heap, s32 align)
 {
 	MEMiExpHeapMBlock* it;

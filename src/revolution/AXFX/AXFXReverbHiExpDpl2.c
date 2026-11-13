@@ -21,6 +21,8 @@ static void __FreeDelayLine(AXFX_REVERBHI_EXP_DPL2* reverb);
 static void __BzeroDelayLines(AXFX_REVERBHI_EXP_DPL2* reverb);
 static BOOL __InitParams(AXFX_REVERBHI_EXP_DPL2* reverb);
 
+// NONMATCHING: the same loads and adds as retail, which sets up the table addresses and pushes the stack frame
+// in another order
 u32 AXFXReverbHiExpGetMemSizeDpl2(const AXFX_REVERBHI_EXP_DPL2* reverb)
 {
 	u32 ch;

@@ -36,6 +36,7 @@ s32 __AXGetNumVoices(void)
 	return __AXNumVoices;
 }
 
+// NONMATCHING: register allocation and the order of the field copies differ from retail
 void __AXServiceVPB(AXVPB* vpb)
 {
 	AXPB* dst;
@@ -418,6 +419,8 @@ void AXSetVoiceState(AXVPB* vpb, u16 state)
 	OSRestoreInterrupts(enabled);
 }
 
+// NONMATCHING: retail's body is shaped differently: this version needs a larger stack frame and saves more
+// registers
 void AXSetVoiceAddr(AXVPB* vpb, AXPBADDR* addr)
 {
 	BOOL enabled = OSDisableInterrupts();

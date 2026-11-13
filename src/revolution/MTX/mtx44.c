@@ -89,6 +89,8 @@ void C_MTXOrtho(Mtx44 m, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f)
  * @note Wii JP address: 0x8018F604
  * @note Size: 0x34
  */
+// NONMATCHING: retail writes the matrix without a loop: psq_st of a zero pair for the off-diagonal words and
+// stfs of 1.0 on the diagonal; this C version loops over the rows
 void PSMTX44Identity(Mtx44 m)
 {
 	int row, col;
@@ -131,6 +133,7 @@ ASM void PSMTX44Copy(register Mtx44 src, register Mtx44 dest)
  * @note Wii JP address: 0x8018F67C
  * @note Size: 0x104
  */
+// NONMATCHING: retail is paired-single assembly (psq_l, ps_muls0, ...), this is the C version
 void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 out)
 {
 	// Whole matrices can alias. Retail stores some columns earlier for partially overlapping buffers.
@@ -152,6 +155,7 @@ void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 out)
  * @note Wii JP address: 0x8018F780
  * @note Size: 0x2C0
  */
+// NONMATCHING: the control flow and the loads of the float constants differ from retail
 u32 C_MTX44Inverse(Mtx44 src, Mtx44 inverse)
 {
 	Mtx44 work;
