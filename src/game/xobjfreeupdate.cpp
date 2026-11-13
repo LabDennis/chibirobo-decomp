@@ -11,7 +11,7 @@
  */
 void XObjFree::UpdateObject(u32 frames)
 {
-	UpdateObject__4XObjFUl(this, frames);
+	XObj::UpdateObject(frames);
 	if (mStatus.mFlags & 0x2000000000000000ULL) {
 		mStatus.mFlags &= ~0x2000000000000000ULL;
 		mStatus.mFlags |= 0x4000000000000000ULL;
@@ -20,8 +20,10 @@ void XObjFree::UpdateObject(u32 frames)
 		vf12C(1, 0, 0, 0, 0.4f);
 		for (s32 i = 0; i < 10; ++i) {
 			f32 angle    = DEG2RAD * (rand() % 360);
-			f32 x        = (f32)sin(angle) * (rand() % 100) / 150.0f;
-			f32 z        = (f32)cos(angle) * (rand() % 100) / 150.0f;
+			f32 sinAngle = (f32)sin(angle);
+			f32 x        = sinAngle * (rand() % 100) / 150.0f;
+			f32 cosAngle = (f32)cos(angle);
+			f32 z        = cosAngle * (rand() % 100) / 150.0f;
 			f32 y        = (rand() % 100) / 200.0f;
 			Vec position = mMoveTranslate;
 			position.x += x * (rand() % 100) / 100.0f;
@@ -37,8 +39,7 @@ void XObjFree::UpdateObject(u32 frames)
 		if (aobj && (aobj->flags & 0x44000000))
 			ClearAnim();
 		if (mFlash > 0.0f) {
-			mFlash -= 0.04f;
-			if (mFlash <= 0.0f)
+			if ((mFlash -= 0.04f) <= 0.0f)
 				Release();
 		}
 	}
