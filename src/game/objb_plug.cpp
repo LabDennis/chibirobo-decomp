@@ -29,7 +29,7 @@ static inline void UpdateCordJoint(XObjPlug* plug, CJObj& joint)
 	Mtx matrix;
 	PSMTXCopy(joint.GetMtx(), matrix);
 	plug->mCordJointPos = CVec(matrix[0][3], matrix[1][3], matrix[2][3]);
-	CVec tip(0, 0, 5);
+	CVec tip(0, 0, 5); // the cord's far end sits 5 along the joint's z
 	PSMTXMultVec(matrix, &tip, &tip);
 	plug->mCordJointTip = tip;
 }
@@ -49,25 +49,25 @@ void XObjPlug::UpdateObject(u32 frames)
 			s32 path[] = { 0, 0 };
 			CJObj joint(FindJointByPath(mJObj, path, 2));
 			UpdateCordJoint(this, joint);
-		} else if (mCordEndsPinned == 1) {
+		} else if (mCordEndsPinned == 1) { // neither carried nor connected: unpin the ends
 			SetPlugCordEndpointSource(&mCord, 1, NULL);
 			SetPlugCordEndpointSource(&mCord, 2, NULL);
 			mCordEndsPinned = 0;
 		}
 		const Vec& tint = mColorStep[1].mValue;
-		mCord.mColor = mCord._60 = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8) | 0xff;
+		mCord.mColor = mCord._60 = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8) | 0xff; // tint rgb at full alpha
 		UpdatePlugCordSimulation(&mCord, frames);
 	} else {
 		ResetObjectState();
 	}
 	mWire.UpdateObject(frames);
 	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 0x0400000000000000ULL) && mConnection == 0) {
-		Vec pos = GetPlugCordPointPosition(&mCord, 18);
+		Vec pos = GetPlugCordPointPosition(&mCord, 18); // the plug follows the cord's free end
 		SetPos(pos, 0);
 		CVec tip, base, rot;
 		tip    = GetPlugCordPointPosition(&mCord, 19);
 		base   = GetPlugCordPointPosition(&mCord, 18);
-		rot.y  = atan2(tip.x - base.x, tip.z - base.z);
+		rot.y  = atan2(tip.x - base.x, tip.z - base.z); // the heading of the cord's last span
 		f32 dx = tip.x - base.x, dy = tip.y - base.y, dz = tip.z - base.z;
 		f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
 		rot.x     = dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
@@ -75,7 +75,7 @@ void XObjPlug::UpdateObject(u32 frames)
 		SetRot(rot, 0);
 		Mtx matrix;
 		PSMTXCopy(HSD_JObjGetMtxPtr(mJObj), matrix);
-		Vec offset = { 0, -0.2f, 0 };
+		Vec offset = { 0, -0.2f, 0 }; // sits 0.2 under the joint
 		PSMTXMultVec(matrix, &offset, &offset);
 		SetPos(offset, 0);
 		if (mWire.mSparkMode == 0) {
@@ -84,11 +84,11 @@ void XObjPlug::UpdateObject(u32 frames)
 				CVec scale(0.5f, 0.5f, 0.5f);
 				Vec rotation = { 0, 0, 0 };
 				gGame.mParticle.CreateSRT(0x1001a, 1, pos, scale, rotation, FALSE);
-				mWire.mSparkTimer += HSD_Randi(10) + 16;
+				mWire.mSparkTimer += HSD_Randi(10) + 16; // the next spark in 16 to 25 frames
 			}
 			XSound* sound = &gGame.mSound;
 			if (IsGameSoundPlaying(sound, 0xfb) != 1 && IsGameSoundPlaying(sound, 0xfc) != 1) {
-				if (mWire.mSparkTimer % 2)
+				if (mWire.mSparkTimer % 2) // alternate the two spark sounds
 					PlayGameSound(sound, 0xfb, 255);
 				else
 					PlayGameSound(sound, 0xfc, 255);
@@ -101,7 +101,7 @@ void XObjPlug::UpdateObject(u32 frames)
 static inline void ClearWireAnim(XObjWireEff* object)
 {
 	object->mStatus.mFlags &= ~0x10000ULL;
-	object->mAnim   = -1;
+	object->mAnim   = -1; // -1 means none
 	object->mEffect = -1;
 }
 
@@ -247,7 +247,7 @@ void XObjPlug::DrawObjectEffects()
  */
 void XObjPlug::DrawGroundShadow()
 {
-	mCord.mColor = 0x14141440;
+	mCord.mColor = 0x14141440; // the shadow draws as a faint dark line
 	mCord._60    = 0x14141440;
 	mCord.mWidth = 0.15f;
 	if (mJObj != NULL) {
@@ -256,7 +256,7 @@ void XObjPlug::DrawGroundShadow()
 		DrawPlugCordSegments(&mCord, NULL, 1.0f, 1.0f, 1.0f);
 		InvalidateCaptureGraphics(gs);
 	}
-	mCord.mColor = 0x141414FF;
+	mCord.mColor = 0x141414FF; // restore the cord's colour for the next draw
 	mCord._60    = 0x141414FF;
 	mCord.mWidth = 0.2f;
 }
