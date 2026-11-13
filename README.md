@@ -127,6 +127,15 @@ once, puts the mod's `main.dol` and files into a copy, and has `wit` write and
 encrypt the image. Ticket and TMD are fake-signed: Dolphin plays it as is; a Wii
 needs a USB loader with patched IOS.
 
+With `--iso`, `--fanpatch <folder>` also puts a translation patch made for the
+retail disc into the image: the folder Riivolution loads, with the patch's
+`main.dol` and its file folders. Like Riivolution, its files replace the disc's
+files of the same name, whatever the case of their names. Its changes to
+`main.dol` are found by their surrounding data and copied to the same data in
+the mod's `main.dol`; this suits a patch that only rewrites text, as the
+V0101 English patch does. The image is then named `…-fanpatch.iso`. The build
+stops if a change has no unique place in the mod.
+
 For `--langpack`, choose `en-US`, `en-GB`, `de-DE`, `fr-FR`, `es-ES` or `it-IT`.
 The starter translations cover the Wii title, save banner and three Wii Remote
 messages. Other text and assets fall back to the Japanese release.

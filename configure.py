@@ -17,7 +17,7 @@ import shlex
 import shutil
 import sys
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from tools.project import (
     Object,
@@ -78,6 +78,13 @@ parser.add_argument(
     "--iso",
     action="store_true",
     help="Wii mod: also write a disc image with the mod (needs Wiimms ISO Tools, wit)",
+)
+parser.add_argument(
+    "--fanpatch",
+    metavar="FOLDER",
+    type=Path,
+    help="Wii mod with --iso: put a translation patch for the retail disc into the image "
+    "(the folder with its main.dol and file folders, as Riivolution loads them)",
 )
 parser.add_argument(
     "--wit",
@@ -176,6 +183,10 @@ if wii_mod and args.mode == "progress":
 wit = None
 if args.wit and not args.iso:
     parser.error("--wit is only used with --iso")
+if args.fanpatch and not args.iso:
+    parser.error("--fanpatch is only used with --iso")
+if args.fanpatch and not (args.fanpatch / "main.dol").is_file():
+    parser.error(f"--fanpatch needs the patch folder that holds its main.dol; there is none in {args.fanpatch}")
 if args.iso:
     if not wii_mod:
         parser.error("--iso builds a mod's disc image: add --gcncon and/or --langpack")
@@ -1395,10 +1406,10 @@ def append_treemap_step(config: ProjectConfig) -> None:
         )
 
 
-def append_iso_step(config: ProjectConfig, wit: Path, disc: Path) -> None:
+def append_iso_step(config: ProjectConfig, wit: Path, disc: Path, patch: Optional[Path]) -> None:
     # The mod's main.dol and files, put into a copy of the original disc by tools/wii_iso.py.
     out = config.out_path()
-    image = (out / f"{config.output_name}.iso").as_posix()
+    image = (out / f"{config.output_name}{'-fanpatch' if patch else ''}.iso").as_posix()
     exe = ".exe" if is_windows() else ""
     # the same dtk generate_build uses: a given binary, one built from a given checkout, or the downloaded one
     if config.dtk_path is not None and config.dtk_path.is_file():
@@ -1420,7 +1431,9 @@ def append_iso_step(config: ProjectConfig, wit: Path, disc: Path) -> None:
             "\n# Disc image with the mod\n"
             "rule wii_iso\n"
             f"  command = $python tools/wii_iso.py --dtk {arg(dtk)} --wit {arg(wit)} --disc {arg(disc)}"
-            f" --dol $in --files {arg(out / 'files')} --work {arg(out / 'iso')} --out $out\n"
+            f" --dol $in --files {arg(out / 'files')} --work {arg(out / 'iso')} --out $out"
+            + (f" --patch {arg(patch)}" if patch else "")
+            + "\n"
             "  depfile = $out.d\n"
             "  deps = gcc\n"
             "  description = ISO $out\n"
@@ -1437,7 +1450,7 @@ if args.mode == "configure":
     if not wii_mod:
         append_treemap_step(config)
     if args.iso:
-        append_iso_step(config, wit, wii_disc)
+        append_iso_step(config, wit, wii_disc, args.fanpatch)
 elif args.mode == "progress":
     # Print progress information
     calculate_progress(config)
