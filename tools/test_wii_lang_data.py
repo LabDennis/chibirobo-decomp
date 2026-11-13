@@ -7,10 +7,16 @@ import struct
 import unittest
 
 from tools.wii_lang_data import (
+    _build_tpl,
+    _decode_tpl_pixels,
+    _encode_tpl_pixels,
     align_by_structure,
+    convert_tpl_to_wii_format,
     extract_script_entries,
+    map_globals_slots,
     parse_script_from,
     parse_tpl_header,
+    parse_tpl_textures,
     translate_globals_bin,
     translate_stage_bin,
 )
@@ -260,6 +266,109 @@ class TestWiiLangData(unittest.TestCase):
         self.assertEqual(parse_tpl_header(tpl), [(64, 32, 5)])
         with self.assertRaises(ValueError):
             parse_tpl_header(b"\x00" * 12)
+
+    def test_globals_bin_inserted_and_deleted_slots_via_jp(self) -> None:
+        def build_globals(slot_specs):
+            data = bytearray(0x60)
+            coll = b""
+            tbl_size = len(slot_specs) * 4
+            scr = bytearray(tbl_size)
+            for idx, (prefix_cmds, msg_bytes) in enumerate(slot_specs):
+                struct.pack_into("<I", scr, idx * 4, len(scr))
+                scr.extend(prefix_cmds)
+                scr.append(35)
+                nxt = len(scr)
+                scr.extend(b"\x00\x00\x00\x00")
+                scr.extend(msg_bytes)
+                struct.pack_into("<I", scr, nxt, len(scr))
+                scr.append(2)
+            d_pad = (len(data) + 3) & ~3
+            hdr = struct.pack("<6I", 0, len(data), d_pad, 0, d_pad, len(scr))
+            return hdr + data + scr
+
+        # Distinct synthetic prefix opcodes (SET with different imm16 values)
+        p0 = b"\x04" + _imm16(10) + _imm16(1)
+        p_del = b"\x04" + _imm16(20) + _imm16(2)
+        p2 = b"\x04" + _imm16(30) + _imm16(3)
+        p_ins = b"\x04" + _imm16(99) + _imm16(9)
+        p3 = b"\x04" + _imm16(40) + _imm16(4)
+
+        wii_g = build_globals([(p0, b"JP0"), (p_del, b"JP_DEL"), (p2, b"JP2"), (p3, b"JP3")])
+        jp_g = build_globals([(p0, b"JP0"), (p_del, b"JP_DEL"), (p2, b"JP2"), (p3, b"JP3")])
+        tgt_g = build_globals(
+            [(p0, b"EN0"), (p2, b"EN2_LONGER"), (p_ins, b"EXTRA1"), (p_ins, b"EXTRA2"), (p3, b"EN3")]
+        )
+
+        slot_map = map_globals_slots(jp_g, tgt_g)
+        self.assertEqual(slot_map, {"g0": "g0", "g2": "g1", "g3": "g4"})
+
+        out_g, stats = translate_globals_bin(wii_g, tgt_g, jp_bytes=jp_g)
+        self.assertEqual(stats["slots_total"], 4)
+        self.assertEqual(stats["slots_mapped"], 3)
+        self.assertEqual(stats["translated_messages"], 3)
+        self.assertEqual(stats["untranslated_messages"], 1)
+
+        hdr = struct.unpack_from("<6I", out_g, 0)
+        _, ent = extract_script_entries(out_g, is_globals=True)
+        _, _, _, msgs = parse_script_from(out_g, list(ent.values()), 0x18 + hdr[4])
+        self.assertEqual([out_g[m[3]:m[4]] for m in msgs], [b"EN0", b"JP_DEL", b"EN2_LONGER", b"EN3"])
+
+    def test_tpl_format_conversion_and_mismatches(self) -> None:
+        w, h = 8, 8
+        # Synthetic 8x8 RGBA pattern (red/blue halves)
+        rgba = bytearray(w * h * 4)
+        for y in range(h):
+            for x in range(w):
+                idx = (y * w + x) * 4
+                rgba[idx : idx + 4] = bytes((255, 0, 0, 255) if x < 4 else (0, 0, 255, 255))
+
+        def make_tex_entry(fmt: int, data: bytes, pal_fmt=None, pal_data=None):
+            return {
+                "width": w,
+                "height": h,
+                "fmt": fmt,
+                "wrap_s": 0,
+                "wrap_t": 0,
+                "min_filter": 1,
+                "mag_filter": 1,
+                "lod_bias": 0.0,
+                "edge_lod": 0,
+                "min_lod": 0,
+                "max_lod": 0,
+                "unpacked": 0,
+                "data": data,
+                "pal_fmt": pal_fmt,
+                "pal_data": pal_data,
+            }
+
+        # CI4 (fmt=8) with RGB565 palette -> RGB5A3 (fmt=5)
+        pal_bytes = struct.pack(">2H", 0xF800, 0x001F)  # red, blue
+        ci4_bytes = bytes([0x00, 0x00, 0x11, 0x11] * 8)  # left 4 px = idx 0, right 4 px = idx 1
+        gc_tpl = _build_tpl([make_tex_entry(8, ci4_bytes, pal_fmt=1, pal_data=pal_bytes)])
+        wii_tpl = _build_tpl([make_tex_entry(5, _encode_tpl_pixels(bytes(rgba), w, h, 5))])
+
+        converted, info = convert_tpl_to_wii_format(wii_tpl, gc_tpl)
+        self.assertIsNotNone(converted)
+        self.assertEqual(info["reason"], "reencoded")
+        self.assertEqual(parse_tpl_header(converted), [(8, 8, 5)])
+        conv_tex = parse_tpl_textures(converted)[0]
+        decoded = _decode_tpl_pixels(bytes(conv_tex["data"]), w, h, int(conv_tex["fmt"]))
+        self.assertEqual(tuple(decoded[0:4]), (255, 0, 0, 255))
+        self.assertEqual(tuple(decoded[4 * 4 : 4 * 4 + 4]), (0, 0, 255, 255))
+
+        # Texture count mismatch
+        two_tex_tpl = _build_tpl([make_tex_entry(5, b"\x00" * 128), make_tex_entry(5, b"\x00" * 128)])
+        res_cnt, info_cnt = convert_tpl_to_wii_format(wii_tpl, two_tex_tpl)
+        self.assertIsNone(res_cnt)
+        self.assertEqual(info_cnt["reason"], "texture_count_mismatch")
+
+        # Dimension mismatch
+        wide_entry = make_tex_entry(5, b"\x00" * 256)
+        wide_entry["width"] = 16
+        wide_tpl = _build_tpl([wide_entry])
+        res_dim, info_dim = convert_tpl_to_wii_format(wii_tpl, wide_tpl)
+        self.assertIsNone(res_dim)
+        self.assertEqual(info_dim["reason"], "dimension_mismatch")
 
 
 if __name__ == "__main__":
