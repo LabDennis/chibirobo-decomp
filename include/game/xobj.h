@@ -296,6 +296,7 @@ extern XObj* gSmallSpiderEffectObjects[12];
 extern XObj* lbl_8065B2A0;
 extern XObj* lbl_8065B2AC;
 extern CStatus lbl_8065B2B0;
+extern s32 gSpiderDrainFlashTimers[2];
 extern u8 gSpiderDrainFlashClaimed;
 extern s32 gAttachedSmallSpiderCount;
 extern XObj* lbl_8065B2DC;

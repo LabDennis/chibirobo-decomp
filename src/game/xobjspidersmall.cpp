@@ -31,7 +31,7 @@ void ApplyPlayerHitReaction(XObjChr* chr, BOOL react, BOOL stop, f32 time);
 void DetachSmallSpiderFromPlayer(XObjSpiderSmall* spider);
 void HandleSmallSpiderEventCommand(XObjSpiderSmall* spider, u32 frames);
 
-u8 gSpiderCoinBounceManager[4]; // the coins' manager, it has no data of its own
+u32 gSpiderCoinBounceManager; // the coins' manager token, the callbacks never touch it; its real type is unknown
 s32 gSpiderDrainFlashTimers[2];
 u8 gSpiderDrainFlashClaimed;
 s32 gAttachedSmallSpiderCount; // how many spiders hold on to the robot
@@ -2055,7 +2055,7 @@ void XObjSpiderSmall::UpdateObject(u32 frames)
 		return;
 	}
 	if (mPoolIndex == 0) {
-		UpdateSpiderCoinBounces(gSpiderCoinBounceManager, frames);
+		UpdateSpiderCoinBounces(&gSpiderCoinBounceManager, frames);
 	}
 	if (!(mStatus.mFlags & 0x10000) && mState != 1) {
 		return;
@@ -2349,7 +2349,7 @@ extern "C" void ResetSmallSpiderState(XObjSpiderSmall* spider)
 	spider->mFx.mStatus.mFlags = 0;
 	spider->mRadius            = 16.0f;
 	if (spider->mPoolIndex == 0) {
-		ResetSpiderCoinBounces(gSpiderCoinBounceManager);
+		ResetSpiderCoinBounces(&gSpiderCoinBounceManager);
 		gSpiderDrainFlashTimers[0] = 0;
 		gSpiderDrainFlashTimers[1] = 0;
 		gSpiderDrainFlashClaimed   = 0;

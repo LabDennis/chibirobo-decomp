@@ -64,7 +64,7 @@ AnimSfxEvent gSpiderAnimSfxEvents[] = {
 	{ 12, 1.0f, 0.0f, 1, 0x137, 0xFF, 0, 0, 0 },
 	{ -1 },
 }; // the spider's anim sounds
-u8 gSpiderCoinBounceUpdateContext[4]; // the coins' manager, it has no data of its own
+u32 gSpiderCoinBounceUpdateContext; // the coins' manager token, the callbacks never touch it; its real type is unknown
 s32 lbl_8065B2BC;
 u8 lbl_8065B2C0;
 s32 gSpiderCoinBounceCount; // how many coins are out
@@ -378,7 +378,7 @@ void XObjSpider::UpdateObject(u32 frames)
 		return;
 	}
 	if (mPoolIndex == 0) {
-		UpdateSpiderCoinBounces(gSpiderCoinBounceUpdateContext, frames);
+		UpdateSpiderCoinBounces(&gSpiderCoinBounceUpdateContext, frames);
 	}
 	if (!(mStatus.mFlags & 0x10000) && mState != 1) {
 		return;

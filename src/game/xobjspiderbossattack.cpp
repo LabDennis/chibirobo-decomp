@@ -13,8 +13,6 @@ BOOL IsUsingMug(XActLift* lift);
 BOOL IsPlayerFlashingFromHit(XObjChr* player);
 f32 GetPlayerCollisionRadius(XObjChr* player);
 void ApplyPlayerHitReaction(XObjChr* player, BOOL react, BOOL stop, f32 time);
-extern s32 gSpiderDrainFlashTimers[2];
-extern u8 gSpiderDrainFlashClaimed;
 }
 
 extern "C" {
