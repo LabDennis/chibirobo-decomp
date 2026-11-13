@@ -1071,7 +1071,7 @@ config.libs = [
             Object(NonMatching, "sysdolphin/baselib/jobj.c"),
             Object(Matching, "sysdolphin/baselib/displayfunc.c", padding="small_data+data"),
             Object(Matching, "sysdolphin/baselib/initialize.c"),
-            Object(NonMatching, "sysdolphin/baselib/video.c"),
+            Object(MatchingFor(PAL), "sysdolphin/baselib/video.c"),
             Object(Matching, "sysdolphin/baselib/controller.c"),
             Object(Matching, "sysdolphin/baselib/rumble.c"),
             Object(Matching, "sysdolphin/baselib/spline.c"),
