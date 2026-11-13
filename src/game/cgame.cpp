@@ -82,7 +82,6 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 
 extern "C" {
 s32 GetDefaultStageIndex(void);
-s32 GetSaveFileStage(void* card);
 void ClearMainMenuExtraRows(void* menu);
 void ResetMessageState(CMsg* msg);
 void CMsg_ResetPos(CMsg* msg);
@@ -134,8 +133,8 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 			game->SetStage(first);
 		}
 	} else if (stage == 20000) {
-		game->SetStage(GetSaveFileStage(&game->mMemcard));
-		game->mMemcard.mLoaded = TRUE;
+		game->SetStage(GetSaveFileStage(&game->mMemcard.mCard));
+		game->mMemcardLoaded = TRUE;
 	} else if (stage >= 0) {
 		game->SetStage(stage);
 	} else {
