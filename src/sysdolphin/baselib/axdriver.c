@@ -43,7 +43,7 @@ typedef struct HSD_SM {
 	u8 _27;              // _27
 	s16 _28;             // _28
 	u8 _2A;              // _2A
-	u8 _2B;              // _2B
+	u8 panItd;           // _2B
 	u8 _2C;              // _2C
 	u8 _2D;              // _2D
 	u16 _2E;             // _2E
@@ -67,7 +67,7 @@ void* HSD_AudioMalloc(u32 size);
 s32 HSD_SynthVolToDBx(f32 vol);
 f32 HSD_SynthDBxToVol(s32 dbx);
 s32 StartSynthSoundEffect(s32 fid, s32 vol, s32 vol_mode, s32 vol2, s32 vol2_mode, u8 pan, u8 x27, u8 span, f32 mix_main, f32 mix_a, f32 mix_b,
-                u8 x2D, s32 pri, s32 track, s32 x2A, s32 x2B);
+                u8 x2D, s32 pri, s32 track, s32 x2A, s32 panItd);
 void HSD_SynthSFXKeyOff(s32 pid);
 void HSD_SynthSFXPause(s32 pid);
 void HSD_SynthSFXResume(s32 pid);
@@ -477,7 +477,7 @@ s32 StartAxDriverSynthVoice(HSD_SM* v)
 	mix_b      = left_inv * right_sqrt;
 	right_inv  = sqrtf(1.0f - right);
 	return StartSynthSoundEffect(v->_18, v->_20, v->_1E, v->_22, v->_1F, v->_26, v->_27, v->_2C, left_inv * right_inv, left_sqrt, mix_b, v->_2D,
-	                   v->_1B, v->_39, v->_2A, v->_2B);
+	                   v->_1B, v->_39, v->_2A, v->panItd);
 }
 
 /**
@@ -809,7 +809,7 @@ void AXDriverInterp(HSD_SM* v, BOOL exec)
 			v->_2A = *v->_3C;
 			break;
 		case 28:
-			v->_2B = *v->_3C;
+			v->panItd = *v->_3C;
 			break;
 		case 15:
 			v->flags |= 0x100;
@@ -982,7 +982,7 @@ s32 AXDriverStartVVoice(u32 sfx, u8 vol, u8 x27, u8 x2D, s16 x32, u8 aux0, u8 au
 	v->_32    = x32;
 	v->_28    = 0;
 	v->_2A    = 1;
-	v->_2B    = 1;
+	v->panItd = 1;
 	v->_34[0] = aux0;
 	v->_34[1] = aux1;
 	v->_36    = 0xFF;
