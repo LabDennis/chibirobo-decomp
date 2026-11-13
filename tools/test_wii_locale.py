@@ -48,6 +48,28 @@ class WiiLocaleTests(unittest.TestCase):
                 values = header.split(f"s{name}Map[] = {{ ")[1].split(" };")[0]
                 self.assertEqual(len(values.split(", ")), length)
 
+    def test_global_interface_and_disc_banner(self):
+        import hashlib
+        from tools.wii_locale import SYSTEM_LOCALES, opening_banner
+        strings = json.loads(self.source.read_text())
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "global.h"
+            write_header(self.source, "global", target)
+            header = target.read_text()
+            for i, locale in enumerate(SYSTEM_LOCALES):
+                self.assertIn(f"sInterfaceRow{i}", header)
+                self.assertIn(strings[locale][3], header)
+        original = bytearray(0x640)
+        original[0x40:0x48] = b"IMET\0\0\x06\0"
+        original[0x5c:0x60] = "日本".encode("utf-16-be")
+        changed = opening_banner(original, {2: "Menü"})
+        self.assertEqual(changed[0x5c:0xb0], original[0x5c:0xb0])
+        self.assertEqual(changed[0x104:0x10c], "Menü".encode("utf-16-be"))
+        self.assertEqual(changed[0x5f0:0x600], hashlib.md5(changed[:0x5f0] + bytes(16)).digest())
+        self.assertEqual(changed[0x600:], original[0x600:])
+        with self.assertRaises(ValueError):
+            opening_banner(original, {2: "a" * 42})
+
     def test_gamecube_pad_mod_without_localization(self):
         with tempfile.TemporaryDirectory() as tmp:
             output = Path(tmp) / "wii-gcpad"
