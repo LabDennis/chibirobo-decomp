@@ -106,9 +106,9 @@ public:
 	u32 mOptionState;          // _08
 	s32 mTimeout;              // _0C
 	f32 mMenuAlpha;            // _10
-	f32 mLogoAlpha;            // _14
+	f32 _14;                   // _14, fades in over a second; state 10 waits for it and mMenuAlpha, nothing draws with it
 	f32 mPulseAngle;           // _18
-	s32 mInputDelay;           // _1C
+	s32 mHighlightDelay;       // _1C, frames until the selected line starts pulsing
 	u32 mSpawnIndex;           // _20
 	u32 _24;                   // _24
 	Cursor mCursor;            // _28

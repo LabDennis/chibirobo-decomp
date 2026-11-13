@@ -44,8 +44,8 @@ public:
 	f32 mTargetBatteryDimAlpha;   // _13C
 	f32 mDimAlpha;                // _140
 	f32 mTargetDimAlpha;          // _144
-	s32 mItemMaxState;            // _148
-	f32 mItemMaxFade;             // _14C
+	s32 mClockState;              // _148
+	f32 mClockAlpha;              // _14C
 	s32 mTimeWarningBeeps;        // _150
 	s32 mTimeWarningTick;         // _154
 	u8 mTimeWarningBeeped;        // _158
@@ -53,7 +53,7 @@ public:
 	f32 mItemMaxAlpha;            // _160
 	s32 mItemMax;                 // _164, 5, 10 or 15 by the upgrades in chibi robo's items
 	s32 mNextItemMax;             // _168
-	f32 mItemMaxScale;            // _16C
+	f32 mClockScale;              // _16C
 	Vec _170;                     // _170
 	s32 mIconFrameTimer;          // _17C
 	s32 mIconFrame;               // _180

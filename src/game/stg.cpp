@@ -3664,7 +3664,7 @@ void MenuSave::State9(u32 frameCount)
 	}
 	switch (gGame.mMemcard.mCard.mState) {
 	case 0:
-		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
 		menu->mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
 		menu->SetMode(10);
 		break;
@@ -3786,7 +3786,7 @@ void MenuSave::State1(u32 frameCount)
 				}
 			}
 		}
-		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
 		menu->mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
 		if (menu->mSaved == TRUE) {
 			menu->SetMode(4);
@@ -3904,7 +3904,7 @@ void MenuSave::State5(u32 frameCount)
 				menu->mSlots[menu->mFile].mActive = 0;
 			}
 		}
-		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		menu->mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
 		menu->mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
 		StartMemoryCardPreviewRead(card, menu->mChannel, 1);
 		menu->SetMode(1);
@@ -7158,8 +7158,8 @@ BOOL MenuMCTest::Update(u32 frames)
 				}
 			}
 			if (result == 0)
-				sprintf(mText[mFileCount + 1], "SLOT: %c   FREE BLOCKS: %d   FREE ENTRIES: %d", sMenuMain.mChannel + 'A',
-				        card->mFreeSectors, card->mFreeFiles);
+				sprintf(mText[mFileCount + 1], "SLOT: %c   FREE BLOCKS: %d   FREE ENTRIES: %d", sMenuMain.mChannel + 'A', card->mFreeBlocks,
+				        card->mFreeFiles);
 			mOperation = 0;
 			break;
 		case 3:

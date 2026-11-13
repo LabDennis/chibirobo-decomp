@@ -2229,10 +2229,10 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
 	CPad pad(0);
 
 	title->mCursor.UpdateObject(frames);
-	title->mInputDelay += frames;
-	if (title->mInputDelay >= FRAME_RATE) {
-		title->mInputDelay = FRAME_RATE;
-		title->mPulseAngle = fmod(title->mPulseAngle + frames * 9, 360.0);
+	title->mHighlightDelay += frames;
+	if (title->mHighlightDelay >= FRAME_RATE) {
+		title->mHighlightDelay = FRAME_RATE;
+		title->mPulseAngle     = fmod(title->mPulseAngle + frames * 9, 360.0);
 	}
 	if (!pad.mPad->mConnected && title->mRumble) {
 		title->mRumble = FALSE;
@@ -2344,7 +2344,7 @@ static inline f32 GetAnimProgress(Title* title)
 static inline bool IsLineLit(Title* title, s32 line)
 {
 	bool lit = false;
-	if (title->mOptionLine == line && title->mInputDelay >= FRAME_RATE) {
+	if (title->mOptionLine == line && title->mHighlightDelay >= FRAME_RATE) {
 		lit = true;
 	}
 	return lit;
@@ -2762,7 +2762,7 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32
 	f32 width        = MeasureGameTextWidth(&gGame.mGs, text, 1, 24.0f);
 	if (entry == 1) {
 		bool selected = false;
-		if (title->mSelection == entry && (f32)title->mInputDelay >= FRAME_RATE)
+		if (title->mSelection == entry && (f32)title->mHighlightDelay >= FRAME_RATE)
 			selected = true;
 		u32 tint = normal;
 		if (selected)
@@ -2773,7 +2773,7 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32
 	} else {
 		f32 x = 320.0f - width * .5f, top = (size - 24.0f) * .5f + (y - size);
 		bool selected = false;
-		if (title->mSelection == entry && (f32)title->mInputDelay >= FRAME_RATE)
+		if (title->mSelection == entry && (f32)title->mHighlightDelay >= FRAME_RATE)
 			selected = true;
 		DrawGsProportionalTextFormat(&gGame.mGs, selected ? lit : normal, text, x, top, 0.0f, 24.0f, size);
 	}
@@ -3138,7 +3138,7 @@ void Title::State15(u32 frames)
 	}
 	switch (step) {
 	case 0:
-		mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
 		mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
 		file        = &card->mSaves[0][mFile];
 		if (file->mState != 0) {
@@ -3340,7 +3340,7 @@ void Title::State12(u32 frames)
 	}
 	switch (gGame.mMemcard.mCard.mState) {
 	case 0:
-		mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
 		mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
 		SetMode(13);
 		mAlpha = 1.0f;
@@ -3893,7 +3893,7 @@ void Title::State1(u32 frames)
 					gTitleSaveSlots[i].mState = 0;
 			}
 		}
-		mFreeBlocks = gGame.mMemcard.mCard.mFreeSectors;
+		mFreeBlocks = gGame.mMemcard.mCard.mFreeBlocks;
 		mFreeFiles  = gGame.mMemcard.mCard.mFreeFiles;
 		SetMode(2);
 		if (mSelection == 0)
@@ -4231,7 +4231,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		title->mTex[4] = title->mTpl.mTex.Init(&((TPLPalette*)title->mTpl.mBuffer)->descriptorArray[4], 0);
 		title->mTex[5] = title->mTpl.mTex.Init(&((TPLPalette*)title->mTpl.mBuffer)->descriptorArray[5], 0);
 #endif
-		title->mMenuAlpha = title->mLogoAlpha = 0;
+		title->mMenuAlpha = title->_14 = 0;
 		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, gTitlePalette[gTitlePaletteIndex].background.r,
 		                gTitlePalette[gTitlePaletteIndex].background.g, gTitlePalette[gTitlePaletteIndex].background.b, 0, .5f);
 #if defined(VERSION_PAL)
@@ -4251,22 +4251,22 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 			if ((title->mMenuAlpha += (1.f / (.5f * FRAME_RATE)) * frames) > 1)
 				title->mMenuAlpha = 1;
 		}
-		if (title->mLogoAlpha < 1) {
-			if ((title->mLogoAlpha += (1.f / FRAME_RATE) * frames) > 1)
-				title->mLogoAlpha = 1;
+		if (title->_14 < 1) {
+			if ((title->_14 += (1.f / FRAME_RATE) * frames) > 1)
+				title->_14 = 1;
 		}
 		title->mCursor.UpdateObject(frames);
 		title->mDemo.UpdateObject(frames);
 		UpdateTitleDust(title, frames);
-		if (title->mMenuAlpha == 1 && title->mLogoAlpha == 1)
+		if (title->mMenuAlpha == 1 && title->_14 == 1)
 			title->mState = 11;
 		break;
 	}
 	case 11: {
-		title->mInputDelay += frames;
-		if (title->mInputDelay >= FRAME_RATE) {
-			title->mInputDelay = (s32)FRAME_RATE;
-			title->mPulseAngle = (f32)fmod(title->mPulseAngle + (f32)(frames * 9), 360.);
+		title->mHighlightDelay += frames;
+		if (title->mHighlightDelay >= FRAME_RATE) {
+			title->mHighlightDelay = (s32)FRAME_RATE;
+			title->mPulseAngle     = (f32)fmod(title->mPulseAngle + (f32)(frames * 9), 360.);
 		}
 		title->mCursor.UpdateObject(frames);
 		title->mDemo.UpdateObject(frames);
@@ -4385,9 +4385,9 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 			if ((title->mMenuAlpha -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
 				title->mMenuAlpha = 0;
 		}
-		if (title->mLogoAlpha > 0) {
-			if ((title->mLogoAlpha -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
-				title->mLogoAlpha = 0;
+		if (title->_14 > 0) {
+			if ((title->_14 -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
+				title->_14 = 0;
 		}
 		if (title->mMenuAlpha == 0) {
 			bool faded = gGame.mFade.mSpeed.r == 0 && gGame.mFade.mSpeed.g == 0 && gGame.mFade.mSpeed.b == 0 && gGame.mFade.mSpeed.a == 0;
@@ -4565,14 +4565,14 @@ extern "C" void PlayGameSfxAtFullVolume(s32 sfx)
  */
 extern "C" void ResetTitleScreenState(Title* title)
 {
-	title->mState      = 0;
-	title->mMode       = 0;
-	title->mTimeout    = -1;
-	title->mMenuAlpha  = 0.0f;
-	title->mLogoAlpha  = 0.0f;
-	title->mPulseAngle = 90.0f;
-	title->mInputDelay = 0;
-	title->mSpawnIndex = 0;
+	title->mState          = 0;
+	title->mMode           = 0;
+	title->mTimeout        = -1;
+	title->mMenuAlpha      = 0.0f;
+	title->_14             = 0.0f;
+	title->mPulseAngle     = 90.0f;
+	title->mHighlightDelay = 0;
+	title->mSpawnIndex     = 0;
 	title->mCursor.InitializeObject(0);
 	title->mCursor.mAngle      = 0.0f;
 	title->mCursor.mAngleSpeed = 0.0f;

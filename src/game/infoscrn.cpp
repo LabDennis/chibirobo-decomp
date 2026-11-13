@@ -161,8 +161,8 @@ extern "C" void InitInfoScreen(InfoScrn* scrn)
 	scrn->_128.x                   = v0.x;
 	scrn->_128.y                   = v0.y;
 	scrn->_128.z                   = v0.z;
-	scrn->mItemMaxState            = 0;
-	scrn->mItemMaxFade             = 0.0f;
+	scrn->mClockState              = 0;
+	scrn->mClockAlpha              = 0.0f;
 	scrn->mTimeWarningBeeps        = 0;
 	scrn->mTimeWarningTick         = 0;
 	scrn->mTimeWarningBeeped       = 0;
@@ -170,7 +170,7 @@ extern "C" void InitInfoScreen(InfoScrn* scrn)
 	scrn->_170.x                   = v1.x;
 	scrn->_170.y                   = v1.y;
 	scrn->_170.z                   = v1.z;
-	scrn->mItemMaxScale            = 1.0f;
+	scrn->mClockScale              = 1.0f;
 	scrn->mObjectGaugeState        = 0;
 	scrn->mObjectGaugeAlpha        = 0.0f;
 	const Vec v2                   = { 0.0f, 0.0f, 0.0f };
@@ -260,8 +260,8 @@ extern "C" void ResetGameHudState(InfoScrn* scrn)
 	scrn->_128.x                   = v0.x;
 	scrn->_128.y                   = v0.y;
 	scrn->_128.z                   = v0.z;
-	scrn->mItemMaxState            = 0;
-	scrn->mItemMaxFade             = 0.0f;
+	scrn->mClockState              = 0;
+	scrn->mClockAlpha              = 0.0f;
 	scrn->mTimeWarningBeeps        = 0;
 	scrn->mTimeWarningTick         = 0;
 	scrn->mTimeWarningBeeped       = 0;
@@ -269,7 +269,7 @@ extern "C" void ResetGameHudState(InfoScrn* scrn)
 	scrn->_170.x                   = v1.x;
 	scrn->_170.y                   = v1.y;
 	scrn->_170.z                   = v1.z;
-	scrn->mItemMaxScale            = 1.0f;
+	scrn->mClockScale              = 1.0f;
 	scrn->mObjectGaugeState        = 0;
 	scrn->mObjectGaugeAlpha        = 0.0f;
 	const Vec v2                   = { 0.0f, 0.0f, 0.0f };
@@ -653,33 +653,33 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		step = -step;
 	Approach(&h->mBatteryOffsetY, &h->mTargetBatteryOffsetY, step);
 	Approach(&h->mDimAlpha, &h->mTargetDimAlpha, 0.08f * frames);
-	switch (h->mItemMaxState) {
+	switch (h->mClockState) {
 	case 0:
-		h->mItemMaxState = 3;
-		h->mItemMaxFade  = 0;
-		h->mItemMaxAlpha = h->mItemMaxFade;
+		h->mClockState   = 3;
+		h->mClockAlpha   = 0;
+		h->mItemMaxAlpha = h->mClockAlpha;
 		h->mItemMax      = ItemMax();
-		h->mItemMaxScale = 1;
+		h->mClockScale   = 1;
 		break;
 	case 1:
-		h->mItemMaxFade  = 1;
-		h->mItemMaxAlpha = h->mItemMaxFade;
+		h->mClockAlpha   = 1;
+		h->mItemMaxAlpha = h->mClockAlpha;
 		break;
 	case 2:
-		h->mItemMaxFade  = 0;
-		h->mItemMaxAlpha = h->mItemMaxFade;
+		h->mClockAlpha   = 0;
+		h->mItemMaxAlpha = h->mClockAlpha;
 		break;
 	case 3:
-		h->mItemMaxFade += 0.08f * frames;
-		if (h->mItemMaxFade >= 1)
-			h->mItemMaxFade = 1;
-		h->mItemMaxAlpha = h->mItemMaxFade;
+		h->mClockAlpha += 0.08f * frames;
+		if (h->mClockAlpha >= 1)
+			h->mClockAlpha = 1;
+		h->mItemMaxAlpha = h->mClockAlpha;
 		break;
 	case 4:
-		h->mItemMaxFade -= 0.08f * frames;
-		if (h->mItemMaxFade < 0)
-			h->mItemMaxFade = 0;
-		h->mItemMaxAlpha = h->mItemMaxFade;
+		h->mClockAlpha -= 0.08f * frames;
+		if (h->mClockAlpha < 0)
+			h->mClockAlpha = 0;
+		h->mItemMaxAlpha = h->mClockAlpha;
 		break;
 	case 5:
 		h->mItemMaxAlpha -= 0.08f * frames;
@@ -687,7 +687,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			h->mItemMaxAlpha = 0;
 			h->mItemMax      = h->mNextItemMax;
 			PlayGameSound(&gGame.mSound, 0xb6, 255);
-			++h->mItemMaxState;
+			++h->mClockState;
 		}
 		break;
 	case 6:
@@ -696,10 +696,10 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			h->mItemMaxAlpha = 1;
 		break;
 	case 7:
-		ApproachHudScale(h->mItemMaxScale, 1.0f + 0.125f * (f32)sin(0.017453292f * ((s32)((u32)h->mFrameCount * 16) % 360)));
+		ApproachHudScale(h->mClockScale, 1.0f + 0.125f * (f32)sin(0.017453292f * ((s32)((u32)h->mFrameCount * 16) % 360)));
 		break;
 	case 8:
-		ApproachHudScale(h->mItemMaxScale, 1);
+		ApproachHudScale(h->mClockScale, 1);
 		break;
 	}
 	if ((IsHudOn() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00) && gGame.mTimeState.mDuration > 0
@@ -1210,30 +1210,30 @@ extern "C" void InfoScrn_ApplyClockHudCommand(InfoScrn* scrn, u8 show, s32 mode,
 	switch (mode) {
 	case 0:
 		if (show) {
-			scrn->mItemMaxState = 1;
+			scrn->mClockState = 1;
 		} else {
-			scrn->mItemMaxState = 2;
+			scrn->mClockState = 2;
 		}
 		break;
 	case 1:
 		if (show) {
-			scrn->mItemMaxState = 3;
+			scrn->mClockState = 3;
 		} else {
-			scrn->mItemMaxState = 4;
+			scrn->mClockState = 4;
 		}
 		break;
 	case 2:
 		scrn->mItemMax = ItemMax();
 		break;
 	case 3:
-		scrn->mItemMaxState = 5;
-		scrn->mNextItemMax  = ItemMax();
+		scrn->mClockState  = 5;
+		scrn->mNextItemMax = ItemMax();
 		break;
 	case 4:
 		if (show) {
-			scrn->mItemMaxState = 7;
+			scrn->mClockState = 7;
 		} else {
-			scrn->mItemMaxState = 8;
+			scrn->mClockState = 8;
 		}
 		break;
 	}
@@ -1869,11 +1869,11 @@ static inline void DrawClockQuad(CTexObj& tex, u32 color, f32 x, f32 y, f32 z, f
 
 extern "C" void DrawHudClock(InfoScrn* scrn)
 {
-	f32 alpha = scrn->mItemMaxFade * gHudOpacityScale;
+	f32 alpha = scrn->mClockAlpha * gHudOpacityScale;
 	if (!(alpha > 0.0f))
 		return;
 	CTexObj tex;
-	f32 scale = 1.1f * scrn->mItemMaxScale;
+	f32 scale = 1.1f * scrn->mClockScale;
 	u32 color;
 	if (gGame.mTimeState.mMode == 0) {
 		tex   = HudTexture(156);
