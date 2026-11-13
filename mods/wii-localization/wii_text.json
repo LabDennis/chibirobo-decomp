@@ -103,7 +103,8 @@
       "fr": "Ne touchez pas au bouton POWER.",
       "es": "No pulses el botón POWER.",
       "it": "Non premere il pulsante POWER."
-    }
+    },
+    "override": true
   },
   {
     "indices": [
@@ -462,15 +463,222 @@
   },
   {
     "indices": [
+      104
+    ],
+    "meaning": "No Memory Card in Slot A (line 1 of 3)",
+    "override": true,
+    "translations": {
+      "en": "No Memory Card was found",
+      "de": "In Steckplatz A wurde keine",
+      "fr": "Aucune carte mémoire trouvée",
+      "es": "No se encontró ninguna",
+      "it": "Nessuna Scheda Memoria"
+    }
+  },
+  {
+    "indices": [
+      105
+    ],
+    "meaning": "No Memory Card in Slot A (line 2 of 3)",
+    "override": true,
+    "translations": {
+      "en": "in Slot A.",
+      "de": "Memory Card gefunden.",
+      "fr": "dans le Slot A.",
+      "es": "Memory Card en la Ranura A.",
+      "it": "trovata nello Slot A."
+    }
+  },
+  {
+    "indices": [
+      106
+    ],
+    "meaning": "Check the Memory Card connection",
+    "override": true,
+    "translations": {
+      "en": "Please check the Memory Card.",
+      "de": "Bitte prüfe die Memory Card.",
+      "fr": "Vérifiez la carte mémoire.",
+      "es": "Comprueba la Memory Card.",
+      "it": "Controlla la Scheda Memoria."
+    }
+  },
+  {
+    "indices": [
+      109
+    ],
+    "meaning": "The device in Slot A cannot be used (one line)",
+    "override": true,
+    "translations": {
+      "de": "Steckplatz A: Gerät nicht verwendbar.",
+      "fr": "Slot A : objet inutilisable.",
+      "es": "Ranura A: objeto no utilizable."
+    }
+  },
+  {
+    "indices": [
+      179
+    ],
+    "meaning": "Manage Memory Card data (line 1 of 2)",
+    "override": true,
+    "translations": {
+      "de": "Memory-Card-Daten verwaltest du"
+    }
+  },
+  {
+    "indices": [
+      180
+    ],
+    "meaning": "... in the console's Memory Card screen",
+    "override": true,
+    "translations": {
+      "de": "im Memory-Card-Menü der Konsole."
+    }
+  },
+  {
+    "indices": [
+      214
+    ],
+    "meaning": "Cannot save",
+    "override": true,
+    "translations": {
+      "de": "Speichern nicht möglich."
+    }
+  },
+  {
+    "indices": [
+      215
+    ],
+    "meaning": "The device in Slot A cannot be used",
+    "override": true,
+    "translations": {
+      "de": "Steckplatz A: Gerät nicht verwendbar."
+    }
+  },
+  {
+    "indices": [
+      216
+    ],
+    "meaning": "Insert a working Memory Card (line 1 of 2)",
+    "override": true,
+    "translations": {
+      "de": "Bitte setze in Steckplatz A"
+    }
+  },
+  {
+    "indices": [
+      217
+    ],
+    "meaning": "Insert a working Memory Card (line 2 of 2)",
+    "override": true,
+    "translations": {
+      "de": "eine funktionierende Memory Card ein."
+    }
+  },
+  {
+    "indices": [
+      224,
       259
     ],
-    "meaning": "Saving unavailable",
+    "meaning": "Cannot save",
+    "override": true,
     "translations": {
-      "en": "Saving is unavailable.",
-      "de": "Speichern ist nicht möglich.",
+      "en": "Unable to save.",
+      "de": "Speichern nicht möglich.",
       "fr": "Sauvegarde impossible.",
       "es": "No se puede guardar.",
-      "it": "Salvataggio impossibile."
+      "it": "Impossibile salvare."
+    }
+  },
+  {
+    "indices": [
+      225,
+      260
+    ],
+    "meaning": "The Memory Card in Slot A (line 1 of 2)",
+    "override": true,
+    "translations": {
+      "en": "The Slot A Memory Card is",
+      "de": "Die Memory Card in Steckplatz A",
+      "fr": "La carte mémoire du Slot A est",
+      "es": "La Memory Card de la Ranura A",
+      "it": "La Scheda Memoria nello Slot A"
+    }
+  },
+  {
+    "indices": [
+      226,
+      261
+    ],
+    "meaning": "... is damaged and cannot be used",
+    "override": true,
+    "translations": {
+      "en": "damaged and unusable.",
+      "de": "ist beschädigt und unbrauchbar.",
+      "fr": "endommagée et inutilisable.",
+      "es": "está dañada y no sirve.",
+      "it": "è danneggiata e inutilizzabile."
+    }
+  },
+  {
+    "indices": [
+      227,
+      262
+    ],
+    "meaning": "Replace it with a working Memory Card",
+    "override": true,
+    "translations": {
+      "en": "Please insert a working Memory Card.",
+      "de": "Bitte setze eine intakte ein.",
+      "fr": "Insérez une carte mémoire valide.",
+      "es": "Inserta una Memory Card válida.",
+      "it": "Inserisci una Scheda Memoria valida."
+    }
+  },
+  {
+    "indices": [
+      229
+    ],
+    "meaning": "Replace the Memory Card (one line)",
+    "override": true,
+    "translations": {
+      "de": "Bitte setze eine andere Memory Card ein.",
+      "fr": "Insérez une autre carte mémoire.",
+      "es": "Inserta otra Memory Card."
+    }
+  },
+  {
+    "indices": [
+      254
+    ],
+    "meaning": "The Memory Card in Slot A (line 1 of 2)",
+    "override": true,
+    "translations": {
+      "de": "Die Memory Card in Steckplatz A"
+    }
+  },
+  {
+    "indices": [
+      255
+    ],
+    "meaning": "... is damaged and cannot be used",
+    "override": true,
+    "translations": {
+      "de": "ist beschädigt und unbrauchbar."
+    }
+  },
+  {
+    "indices": [
+      186
+    ],
+    "meaning": "Blank: the Wii prompt has two lines, the US one runs on",
+    "override": true,
+    "translations": {
+      "en": "",
+      "de": "",
+      "fr": "",
+      "es": "",
+      "it": ""
     }
   }
 ]

@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from xml.etree import ElementTree
 
-from tools.wii_locale import disc_image, write_header, write_localization, write_mod
+from tools.wii_locale import disc_image, write_header, write_localization, write_mod, write_text_tables
 
 
 class WiiLocaleTests(unittest.TestCase):
@@ -38,15 +38,37 @@ class WiiLocaleTests(unittest.TestCase):
         mapping = json.loads(self.source.with_name("text_map.json").read_text())
         records = json.loads(self.source.with_name("wii_text.json").read_text())
         for record in records:
-            self.assertEqual(set(record["translations"]), {"en", "de", "fr", "es", "it"})
+            # an override replaces mapped text in the languages it names; a Wii-only text needs all five
+            if record.get("override"):
+                self.assertLessEqual(set(record["translations"]), {"en", "de", "fr", "es", "it"})
+            else:
+                self.assertEqual(set(record["translations"]), {"en", "de", "fr", "es", "it"})
             for index in record["indices"]:
-                self.assertIsNone(mapping["interface"][index])
+                self.assertEqual(mapping["interface"][index] is not None, bool(record.get("override")))
+        # the save banner's title and play time come from the US slots past the Japanese table
+        self.assertEqual(mapping["interface"][264:268], [258, 259, 260, 261])
         with tempfile.TemporaryDirectory() as tmp:
             write_localization(self.source, "de-DE", Path(tmp))
             header = (Path(tmp) / "include/wii_text.h").read_text()
             for name, length in (("Interface", 301), ("PC", 24)):
                 values = header.split(f"s{name}Map[] = {{ ")[1].split(" };")[0]
                 self.assertEqual(len(values.split(", ")), length)
+
+    def test_override_keeps_mapped_text_in_other_languages(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            interface = [None] * 301
+            interface[10] = 9
+            (folder / "text_map.json").write_text(json.dumps({"interface": interface, "pc": [None] * 24}))
+            record = {"indices": [10], "meaning": "test", "override": True, "translations": {"de": "Ja"}}
+            (folder / "wii_text.json").write_text(json.dumps([record]))
+            write_text_tables(folder, folder / "wii_text.h")
+            self.assertIn('{ 0, "\\112\\141", 0, 0, 0 }', (folder / "wii_text.h").read_text())
+            # without "override" a mapped slot is a mistake
+            del record["override"]
+            (folder / "wii_text.json").write_text(json.dumps([record]))
+            with self.assertRaises(ValueError):
+                write_text_tables(folder, folder / "wii_text.h")
 
     def test_global_interface_and_disc_banner(self):
         import hashlib

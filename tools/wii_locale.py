@@ -18,7 +18,7 @@ def disc_image(folder: Path) -> Path:
     extracted = folder / "sys/main.dol"
     if extracted.is_file() and (folder / "sys/boot.bin").is_file() and (folder / "files").is_dir():
         return extracted
-    raise ValueError(f"Place an R24J01 disc image or its extracted game partition in {folder}")
+    raise ValueError(f"Place the disc image or its extracted game partition in {folder}")
 
 
 def write_header(translations: Path, locale: str, output: Path) -> None:
@@ -99,12 +99,12 @@ LANGUAGES = ("en", "de", "fr", "es", "it")
 
 
 def write_text_tables(folder: Path, output: Path) -> None:
+    """Write the Wii slot -> US slot maps and the texts of our own: a record without "override" fills Wii-only
+    slots (no US text) in every language; an "override" record replaces the mapped US text in the languages it
+    lists, where the US lines do not fit the lines the Wii prints."""
     mapping = json.loads((folder / "text_map.json").read_text())
     records = json.loads((folder / "wii_text.json").read_text(encoding="utf-8"))
-    # Two damaged-card prompts repeat. Slots 256-258 and 263 are blank.
     interface = mapping["interface"][:301]
-    for index, target in {254: 248, 255: 249, 260: 248, 261: 249}.items():
-        interface[index] = target
     lines = []
     for name, entries in (("Interface", interface), ("PC", mapping["pc"])):
         values = ", ".join(str(i if i is not None else -1) for i in entries)
@@ -113,16 +113,20 @@ def write_text_tables(folder: Path, output: Path) -> None:
     lines.append("    switch (index) {")
     seen = set()
     for record in records:
+        override = record.get("override", False)
         for index in record["indices"]:
-            if index in seen or not 6 <= index < 301 or interface[index] is not None:
-                raise ValueError(f"unexpected Wii-only index {index}")
+            if index in seen or not 6 <= index < 301 or (interface[index] is not None) != override:
+                raise ValueError(f"unexpected {'override' if override else 'Wii-only'} index {index}")
             seen.add(index)
             lines.append(f"    case {index}:")
         strings = []
         for lang in LANGUAGES:
-            value = record["translations"][lang]
-            if not value or any(ord(c) < 32 for c in value):
-                raise ValueError(f"invalid Wii-only text at {index}")
+            value = record["translations"].get(lang)
+            if value is None and override:
+                strings.append("0")
+                continue
+            if value is None or (not value and not override) or any(ord(c) < 32 for c in value):
+                raise ValueError(f"invalid text for {lang} at {record['indices']}")
             strings.append('"' + ''.join(f'\\{c:03o}' for c in value.encode("cp1252")) + '"')
         lines.append("        { static const char* const text[] = { " + ", ".join(strings)
                      + " }; return text[language - 1]; }")

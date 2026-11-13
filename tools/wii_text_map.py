@@ -1,4 +1,8 @@
-"""Print the R24J01 -> GGTE01 Japanese text index map for two original DOLs."""
+"""Print the R24J01 -> GGTE01 text index map for two original DOLs.
+
+The values index the US build's tables, which every non-Japanese language of the Wii DOL shares. The US
+build keeps its Japanese table (gJapaneseInterfaceText) in the same order wherever both languages print the
+same slot, so identical Japanese text gives the slot; the save prompts below are the exception."""
 
 import argparse
 import hashlib
@@ -66,36 +70,19 @@ INTERFACE_DECISIONS = [
     (86, 85, 3),  # gameccameraset.cpp:260, DVD states 4/6 insert, 11 unreadable.
     (98, 97, 1),  # gxb.cpp:2619, option-panel help now describes menu controls.
     (102, 101, 2),  # gxb.cpp:2604, load-screen confirmation choices.
-    (104, 103, 5),  # stg.cpp:6397, no card present.
-    (109, 108, 5),  # stg.cpp:6422, unusable device, retry allowed.
-    (114, 113, 5),  # stg.cpp:6307, unusable damaged card.
-    (119, 118, 5),  # stg.cpp:6244, damaged data requires formatting.
-    (124, 123, 5),  # stg.cpp:6252, formatting erases data.
-    (129, 128, 5),  # stg.cpp:6275, formatting in progress.
-    (134, 133, 5),  # stg.cpp:6205, format failure.
-    (139, 138, 5),  # stg.cpp:6282, format success.
-    (144, 143, 5),  # stg.cpp:6292, confirmation to continue without saving.
-    (149, 148, 5),  # gxb.cpp:2466, select file for a new game.
-    (154, 153, 5),  # stg.cpp:9060-62, capacity caption uses rows 153/154 (one or two by locale).
-    (159, 158, 5),  # stg.cpp:9014, corrupt save slot.
-    (169, 163, 5),  # stg.cpp:6412, insufficient blocks or directory entries.
-    (174, 168, 5),  # stg.cpp:9222, confirm overwrite.
-    (179, 173, 5),  # stg.cpp:6168, manage card contents in system menu.
-    (184, 178, 1),  # stg.cpp:6237, save in progress. Warning reflows below.
-    (187, 181, 2),  # stg.cpp:6232, trailing padding of the write-progress record.
-    (189, 183, 5),  # stg.cpp:6199, save failure.
-    (194, 188, 5),  # gxb.cpp:2470, choose saved file to load.
-    (199, 193, 5),  # gxb.cpp:2485, loading selected file.
-    (204, 198, 5),  # stg.cpp:6380, corrupt save data.
-    (209, 203, 5),  # stg.cpp:6302, confirm creating replacement save.
-    (214, 208, 5),  # stg.cpp:6450, wrong device, saving unavailable.
-    (224, 218, 5),  # stg.cpp:6350, broken card, saving unavailable.
-    (229, 223, 5),  # stg.cpp:6175, replace card.
-    (234, 228, 5),  # stg.cpp:9229, successful save.
-    (239, 233, 5),  # stg.cpp:9218, select destination file.
-    (244, 238, 5),  # stg.cpp:6222, load failure.
-    (249, 243, 5),  # stg.cpp:6390, exhausted card lifetime.
 ]
+
+
+# The save prompts are five-line records. Japanese and English break the same message into lines at
+# different places, and the US build prints them through its own branch (IsJapanese()), so line n of a
+# Japanese record is not line n of the English one: the record maps as a whole, the Wii prints its lines
+# 0..n from the start of the US record. (Wii start, US start, number of records.) Wii 164-168 is the
+# Wii's own "no free files" record; Wii 254-263 are the two damaged-card records the US build added at
+# 248-257 and the Japanese build lacks.
+SAVE_RECORDS = [(104, 103, 12), (169, 163, 17), (254, 248, 2)]
+# The save banner's title and play time and the yes/no marks: the US build prints them from slots of its
+# own, past the Japanese table (memcardbanner.cpp, DrawOXMenu).
+BANNER_SLOTS = {264: 258, 265: 259, 266: 260, 267: 261}
 
 
 def build_map(wii, gc):
@@ -109,8 +96,13 @@ def build_map(wii, gc):
     for start, target, length in INTERFACE_DECISIONS:
         for delta in range(length):
             interface[start + delta] = target + delta
-    # The shortened power warning spans two GC rows.
-    unclear.append(185)
+    for index in range(SAVE_RECORDS[0][0], max(BANNER_SLOTS) + 1):
+        interface[index] = None
+    for start, target, records in SAVE_RECORDS:
+        for line in range(5 * records):
+            interface[start + line] = target + line
+    for index, target in BANNER_SLOTS.items():
+        interface[index] = target
     pc, pc_unclear = match_table(wii.strings(pc_base, 24), gc.strings(0x80216BD0, 24))
     # stg.cpp:1139 keeper animation, :222/:1131 rank messages by level,
     # :1152 state 9 and :1163 default ticker. All pass the index unchanged.

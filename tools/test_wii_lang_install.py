@@ -26,3 +26,14 @@ class LanguageInstallTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 install(shared, target)
             self.assertTrue((target / "de/test").is_file())
+
+    def test_fixed_language_installs_only_its_own(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for code in ("en", "de", "fr", "es", "it"):
+                (root / "shared/lang" / code).mkdir(parents=True)
+                (root / "shared/lang" / code / "bin").write_bytes(code.encode())
+            target = root / "mod/files/lang"
+            install(root / "shared", target, ("de",))
+            self.assertEqual(sorted(p.name for p in target.iterdir()), ["de"])
+            self.assertEqual((target / "de/bin").read_bytes(), b"de")
