@@ -1,3 +1,10 @@
+// The save slots: one file from ScanWiiSaveSlots (0x800A9834) to its static initializer (0x800AACEC), which
+// constructs gWiiSaveThread. The banner functions before it are a file of their own: WriteWiiSaveSlot calls
+// CheckWiiSaveBanner instead of inlining it, and "CB_SKIP(%d)" starts a new, aligned string pool after "banner.bin".
+// NONMATCHING: five functions have no source yet: ScanWiiSaveSlots, CaptureWiiSaveSlot and the three after it
+// (0x800AA65C and 0x800AA6A4, which read the saved stages, and 0x800AAB18), so the file cannot be linked.
+// The static initializer stores the vtable and mStack like retail's but does not register CThread's destructor
+// through __register_global_object as retail's does.
 #include "game/wii/saveslots.h"
 #include "game/cthread.h"
 #include "stl/stdio.h"
@@ -10,8 +17,8 @@ struct WiiSaveJob {
 };
 
 extern "C" {
-extern CThread gWiiSaveThread;
-extern WiiSaveJob gWiiSaveJob;
+CThread gWiiSaveThread;
+WiiSaveJob gWiiSaveJob;
 extern u8* gWiiSaveThreadStack;
 extern void* gWiiSaveNandWorkBuffer;
 
@@ -24,6 +31,8 @@ void* RunWiiSaveSlotWrite(void* param);
 void* RunWiiSaveSlotRead(void* param);
 void* RunWiiSaveSlotDelete(void* param);
 }
+
+// ScanWiiSaveSlots (0x800A9834) comes here
 
 static void StartWiiSaveJob(WiiSaveManager* manager, OSThreadStartFunction entry)
 {
@@ -161,3 +170,5 @@ extern "C" void* RunWiiSaveSlotDelete(void* param)
 	DeleteNandGameFile(&manager->mFile, manager->mSlotPath);
 	return NULL;
 }
+
+// CaptureWiiSaveSlot (0x800AA2F8) and the functions at 0x800AA65C, 0x800AA6A4 and 0x800AAB18 come here

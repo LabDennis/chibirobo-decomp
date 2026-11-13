@@ -1206,7 +1206,7 @@ if wii:
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Matching, "game/wii/savejobs.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/savebanner.cpp", extra_cflags=["-Cpp_exceptions on"]),
-                Object(Equivalent, "game/wii/saveslots.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                Object(NonMatching, "game/wii/saveslots.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/soundbank.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "rel/module.c"),
             ],

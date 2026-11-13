@@ -55,9 +55,10 @@ game/wii/savebanner.cpp:
 	.text start:0x800A93E8 end:0x800A9834
 
 game/wii/saveslots.cpp:
-	extab start:0x8000A650 end:0x8000A6A0
-	extabindex start:0x800133AC end:0x80013424
-	.text start:0x800A9C48 end:0x800AA2F8
+	extab start:0x8000A648 end:0x8000A6D0
+	extabindex start:0x800133A0 end:0x80013454
+	.text start:0x800A9834 end:0x800AAD1C
+	.ctors start:0x802C45A4 end:0x802C45A8
 
 game/ringmenupointer.cpp:
 	extab start:0x8000C4EC end:0x8000C4F4
