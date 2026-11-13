@@ -1,3 +1,4 @@
+OpenPath__5CFileFPCc = .text:0x802B46F0; // type:function size:0xA8
 Start__5CBaseFv = .text:0x800354DC; // type:function size:0x118
 SCGetLanguage = .text:0x801B8174; // type:function size:0x6C
 PlayWiiSoundEffect = .text:0x8003714C; // type:function size:0x640

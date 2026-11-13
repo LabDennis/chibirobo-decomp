@@ -13,7 +13,11 @@ class CFile : public DVDFileInfo {
 public:
 	CFile()
 	{
-		mArchive  = NULL;
+#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
+		mFromMemory = mInArchive = 0;
+#else
+		mArchive = NULL;
+#endif
 		mEntrynum = -1;
 		mBuffer   = NULL;
 		mResult   = 0;
@@ -21,16 +25,21 @@ public:
 	}
 
 	// _00 DVDFileInfo
-	char mPath[0x84];       // _3C
-	s32 mEntrynum;          // _C0
-	u32 mOffset;            // _C4
-	u32 mSize;              // _C8
-	void* mBuffer;          // _CC
-	s32 mResult;            // _D0, 1 while the read is running, then 0 or an error
+	char mPath[0x84]; // _3C
+	s32 mEntrynum;    // _C0
+	u32 mOffset;      // _C4
+	u32 mSize;        // _C8
+	void* mBuffer;    // _CC
+	s32 mResult;      // _D0, 1 while the read is running, then 0 or an error
+#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
+	u8 mFromMemory, mInArchive;
+	u8 _D6[2];
+#else
 	CFileArchive* mArchive; // _D4
-	ARCFileInfo mArcInfo;   // _D8
-	s32 mState;             // _E4, ReadEx step
-	                        // _E8 vtable
+#endif
+	ARCFileInfo mArcInfo; // _D8
+	s32 mState;           // _E4, ReadEx step
+	                      // _E8 vtable
 
 	virtual ~CFile() { }                                                          // _08 (weak)
 	virtual void* Alloc(u32 size);                                                // _0C
@@ -42,6 +51,9 @@ public:
 	virtual BOOL ReadEx(const char* path, u32 offset, u32 size);                  // _24
 
 	s32 ConvertPathToEntrynum(const char* path);
+#if defined(WII_LANGUAGE) || defined(WII_LANGUAGE_SYSTEM)
+	s32 OpenPath(const char* path);
+#endif
 	s32 CloseHandle(); // in ctpl.cpp
 
 	// inlined:

@@ -1260,6 +1260,7 @@ if wii:
                 Object(Equivalent, "game/roboeyeslens.cpp"),
                 Object(Equivalent, "game/stage_data.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/atcmenuselection.cpp"),
+                Object(bool(args.wii_locale), "game/wii/cfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(bool(args.wii_locale), "game/wii/gamemain.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/cpad.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", extra_cflags=["-Cpp_exceptions on"]),
