@@ -85,7 +85,7 @@ extern "C" void SetFafaPartVisibility(s32 mode)
 		if (item->GetType() != 0x117) {
 			continue;
 		}
-		switch (mode) { // parts 2-4 are alternate shapes; the mode shows exactly one
+		switch (mode) { // mode 4, 7 or 6 shows part 2, 3 or 4; any other mode hides all three
 		case 4: {
 			s32 path[3] = { 0, 0, 2 };
 			obj.Attach(FafaFindPart(item->mJObj, path));

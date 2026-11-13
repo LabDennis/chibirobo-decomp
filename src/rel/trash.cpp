@@ -182,7 +182,7 @@ static Vec trashPos;
 static Vec trashDest;
 static Vec trashStep;
 static f32 trashArc;
-// 0 while it runs, 2 dropped in flight, 3 reached the box, 4 cancelled on B
+// 0 while it runs, 2 the arc finished over the box and the piece was released, 3 it hit the box low and fell beside it, 4 cancelled on B
 static s32 trashResult;
 static u8 trashActive;
 static s32 trashboxIndex;
@@ -722,7 +722,7 @@ extern "C" void UpdateTrash(u32 frames)
 				}
 			}
 			trashArc += DEG2RAD * 5 * frames;
-			if ((f32)sin(trashArc) < 0.0f) { // past the arc's peak: it drops where it is
+			if ((f32)sin(trashArc) < 0.0f) { // the arc is over (half a turn, 36 frames): release the piece
 				trashResult    = 2;
 				TrashObj* held = trashObj;
 				if (GetKindId(held) == 8) { // category-8 pieces get their flag set
@@ -739,7 +739,7 @@ extern "C" void UpdateTrash(u32 frames)
 				pos.z = trashObj->GetPos()->z;
 				pos.y = trashTarget->GetPos()->y;
 				if (PSVECDistance(&trashTarget->mMoveTranslate, &pos) < 15.0f && trashObj->GetPos()->y < 30.0f) {
-					trashState = 10; // close and low enough: it counts
+					trashState = 10; // it hit the box low: bounce it off
 				} else {
 					trashPos.x += trashStep.x * frames;
 					trashPos.y += trashStep.y * frames;
@@ -756,7 +756,7 @@ extern "C" void UpdateTrash(u32 frames)
 		case 10: {
 			f32 angle;
 			trashResult = 3;
-			// it lands on the ground 2 units from the box, along the throw's line
+			// push it 2 units further out from the box, down to the ground
 			impactPos.x = trashObj->GetPos()->x;
 			impactPos.y = trashObj->GetPos()->y;
 			impactPos.z = trashObj->GetPos()->z;

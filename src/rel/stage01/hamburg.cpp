@@ -145,7 +145,7 @@ struct HamObj {
 	f32 mRotZ;            // _10, z rotation, PI upside down; SetRot sets it and StateFlip turns the actor toward it
 	f32 mFlipFrames;      // _14, frames left in the flip, set from the flip command
 	f32 mMoveAngle;       // _18, yaw on the XZ plane the object slides or is put down along
-	f32 mSlideDistance;   // _1C, how far a slide goes, added along mMoveAngle to the move target (StartSlide's 'speed' parameter)
+	f32 mSlideDistance;   // _1C, how far a slide goes, added along mMoveAngle to the move target (StartSlide's 'distance' parameter)
 	f32 mMoveSpeed;       // _20, speed handed to SetMoveDir (vf_78) for slides and put-downs
 	s32 mSide;            // _24, which side is cooking, 0 or 1, indexes mYakiTime; StateFlip toggles it
 	s32 mYakiTime[2];     // _28, cook time per side, /600 + 1 is the doneness level; 9999 for kinds 0x263/0x264
@@ -1324,13 +1324,13 @@ extern "C" bool HamObj_CheckSlideHit(HamObj* slot)
 		// inside a ~58-degree cone of the slide direction it gets pushed (the literal is 45 radians)
 		f32 c = cos(angle - slot->mMoveAngle);
 		if ((f32)cos(45.0) < c) {
-			f32 speed;
-			angle = AngleFrom(&slot->mActor->mMoveTranslate, &best->mActor->mMoveTranslate);
-			speed = slot->mSlideDistance * 0.5f; // it takes half the slide distance, up to 10
-			if (10.0f < speed) {
-				speed = 10.0f;
+			f32 distance;
+			angle    = AngleFrom(&slot->mActor->mMoveTranslate, &best->mActor->mMoveTranslate);
+			distance = slot->mSlideDistance * 0.5f; // it takes half the slide distance, up to 10
+			if (10.0f < distance) {
+				distance = 10.0f;
 			}
-			best->StartSlide(speed, slot->mMoveSpeed, angle);
+			best->StartSlide(distance, slot->mMoveSpeed, angle);
 			if (IsOnGasPlate(slot->mActor)) {
 				return true;
 			}
@@ -3428,7 +3428,7 @@ void HamObj::StateSlide()
 			SetState(NULL);
 		}
 		if (mAbove != NULL && 8.0f < PSVECDistance(&mActor->mMoveTranslate, &mAbove->mActor->mMoveTranslate)) {
-			HamObj_LowerStack(mAbove); // it slid out from under its stack: drop the top
+			HamObj_LowerStack(mAbove); // it slid out from under its stack: drop what sits on it one level
 			mAbove = NULL;
 		}
 		break;
@@ -3727,11 +3727,11 @@ extern "C" void HamObj_Respawn(HamObj* slot)
 	slot->mActor->SetAnim(0, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 	slot->SetRot(0.0f);
 
-	f32 speed;
+	f32 distance;
 	// toss it back in a random 240-300-degree direction
 	f32 angle = DEG2RAD * (HSD_Randi(60) + 240);
-	speed     = 30.0f + HSD_Randi(15);
-	slot->StartSlide(speed, 0.5f, angle);
+	distance  = 30.0f + HSD_Randi(15);
+	slot->StartSlide(distance, 0.5f, angle);
 	slot->mSpawned    = 1;
 	slot->mStackLevel = 0;
 	slot->mAbove      = NULL;
@@ -3825,7 +3825,7 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 		slot->mYakiTime[slot->mSide] += step * rate; // cook at the script's rate for the current doneness
 
 		s32 level = slot->mYakiTime[slot->mSide] / 600 + 1;
-		if (oldLevel > 5) { // the doneness anim stops at 5
+		if (oldLevel > 5) { // doneness tops out at 5 (burnt)
 			oldLevel = 5;
 		}
 		if (level > 5) {
@@ -3844,13 +3844,13 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 			static const Vec rot = { 0.0f, 0.0f, 0.0f };
 			STAGE01_PARTICLE->CreateSRT(0x3A, 1, pos, scale, rot, 1);
 		}
-		if (level == 4) { // well done: re-puff every 180 frames
+		if (level == 4) { // well done: re-puff every 180 units of cook time
 			if (slot->mYakiTime[slot->mSide] % 180 == 0) {
 				static const Vec rot = { 0.0f, 0.0f, 0.0f };
 				STAGE01_PARTICLE->Kill(0x3B);
 				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, rot, 1);
 			}
-		} else if (level >= 5) { // burnt: every 120 frames
+		} else if (level >= 5) { // burnt: every 120 units of cook time
 			if (slot->mYakiTime[slot->mSide] % 120 == 0) {
 				static const Vec rot = { 0.0f, 0.0f, 0.0f };
 				STAGE01_PARTICLE->Kill(0x3B);
@@ -3875,7 +3875,7 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 	if (slot->mState != NULL) {
 		(slot->*(slot->mState))();
 	} else if (slot->mSpawned && slot->mDish == NULL) {
-		// a loose spawned object keeps sliding toward the plate centre (-263.9, 42.0)
+		// slides go toward the plate centre (-263.9, 42.0)
 		f32 angle = atan2(-263.9f - slot->mActor->mMoveTranslate.x, 42.0f - slot->mActor->mMoveTranslate.z);
 		if (!IsOnGasPlate(slot->mActor)) { // off the plate: slide back onto it
 			slot->StartSlide(5.0f, 0.2f, angle);

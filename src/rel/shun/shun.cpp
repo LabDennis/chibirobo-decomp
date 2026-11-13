@@ -57,7 +57,7 @@ extern "C" void SetFafaPartVisibility(s32 arg);
 #define GAME_OFS(other, japan) (other)
 #endif
 #define SHUN_OBJ_LIST()  ((ShunObjList*)(gGame + GAME_OFS(0x5D080, 0x5D038)))
-#define SHUN_TIMER_OBJ() ((void*)(gGame + GAME_OFS(0x8F38, 0x8EF0))) // the InfoScrn timer object
+#define SHUN_INFO_SCRN() ((void*)(gGame + GAME_OFS(0x8F38, 0x8EF0))) // CGame::mInfoScrn, the HUD that owns the timer
 #define SHUN_PLAYER()    (*(RoboView**)(gGame + GAME_OFS(0x96BC, 0x9674)))
 
 inline ShunObj* ShunFindObj(s16 id)
@@ -385,9 +385,9 @@ extern "C" s32 CmdSetOrGetTimer(s32 cmd, s32 count, s32* args)
 
 	// args[0] != 0 writes args[1] hundredths, 0 reads them
 	if (args[0] != 0) {
-		InfoScrn_SetTimerHundredths(SHUN_TIMER_OBJ(), args[1]);
+		InfoScrn_SetTimerHundredths(SHUN_INFO_SCRN(), args[1]);
 	} else {
-		ret = InfoScrn_GetTimerHundredths(SHUN_TIMER_OBJ());
+		ret = InfoScrn_GetTimerHundredths(SHUN_INFO_SCRN());
 	}
 	return ret;
 }
@@ -398,11 +398,11 @@ extern "C" s32 CmdSetOrGetTimer(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdSetTimerRunning(s32 cmd, s32 count, s32* args)
 {
-	// shows or hides the timer, despite the name
+	// starts or stops the timer counting (InfoScrn::mTimerShown gates mTimer += frames)
 	if (args[0] != 0) {
-		InfoScrn_ShowTimer(SHUN_TIMER_OBJ());
+		InfoScrn_ShowTimer(SHUN_INFO_SCRN());
 	} else {
-		InfoScrn_HideTimer(SHUN_TIMER_OBJ());
+		InfoScrn_HideTimer(SHUN_INFO_SCRN());
 	}
 	return 0;
 }
@@ -415,9 +415,9 @@ extern "C" s32 CmdShowTimer(s32 cmd, s32 count, s32* args)
 {
 	// args[0] becomes the hud command's first arg
 	if (args[0] != 0) {
-		InfoScrn_ApplyTimerHudCommand(SHUN_TIMER_OBJ(), 1, 1);
+		InfoScrn_ApplyTimerHudCommand(SHUN_INFO_SCRN(), 1, 1);
 	} else {
-		InfoScrn_ApplyTimerHudCommand(SHUN_TIMER_OBJ(), 0, 1);
+		InfoScrn_ApplyTimerHudCommand(SHUN_INFO_SCRN(), 0, 1);
 	}
 	return 0;
 }

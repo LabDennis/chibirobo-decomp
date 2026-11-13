@@ -131,7 +131,7 @@ typedef void (*RelSlotFunc)(s32 arg);
 typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
-// the rel's three slots and its script commands
+// the rel's slots (three used) and its script commands
 RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage, DrawStage };
 RelCmdFunc _prolog_cmds[]    = {
     CmdSetAmbientSound, CmdAddAna,     CmdSetTutiAna,  CmdFindNearestAna,  CmdPlantTane,

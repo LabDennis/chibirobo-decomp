@@ -872,7 +872,7 @@ void Car::PlayerCarRoot::Update(u32 frames)
 		s32 id    = ReadS32LE(carSoundCues + (i * 2 + 1) * 4);
 		if (mPrevFrame < frame && frame <= mFrame) {
 			PlayGameSound(sound, id, 0xFF);
-			if (id == 0x2001F) { // it gets faded out
+			if (id == 0x2001F) { // starting 0x2001F fades the music (track 0xFFFF0000) out
 				FadeOutGameSfx(sound, -0x10000, 20);
 			} else if (id == 0x2000F) { // it stops 0x2001F
 				StopGameSfx(sound, 0x2001F);

@@ -431,7 +431,7 @@ struct UnkGame_96BC {
 #endif
 	u32 mPlayerStatus; // _980, _970 in japan
 	u8 _984[0x8CD4];   // _984
-	f32 mBattery;      // _9658, XObjChr::mParams.mBattery (Params at _964C + 0xC); each shot takes n off it
+	f32 mBattery;      // _9658, XObjChr::mParams.mBattery (Params at _964C + 0xC); each shot takes batteryCost off it
 	f32 mMaxBattery;   // _965C, XObjChr::mParams.mMaxBattery (Params at _964C + 0x10)
 #if defined(VERSION_JP)
 	u8 _9660[0x96A4]; // _9660
@@ -701,7 +701,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 	f32 left;
 	f32 digW;
 	f32 digH;
-	f32 rightX;
+	f32 onesOffset;
 	f32 w;
 	u32 base;
 	s32 hi;
@@ -743,7 +743,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			base          = 255.0f;
 			hi            = base | 0xFAE0CF00;
 			lo            = base | 0xE9813A00;
-			rightX        = 7.0f * digW;
+			onesOffset    = 7.0f * digW;
 			for (d = 0; d < 4; d++) {
 				f32 div = 1.0f;
 				s32 k;
@@ -756,8 +756,8 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 					PSMTXTrans(tex.mMtx.mTrans, 0.09090909f * (digit % 10), 0.0f, 0.0f);
 					tex.mMtxDirty = 1;
 					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
-					DrawGsTexturedQuad(gGame, &tex, hi, hi, lo, lo, rightX + (left - d * digW) - 32.0f, 68.0f, 0.0f, digW, digH, 0.0f, 0.0f,
-					                   0.0f);
+					DrawGsTexturedQuad(gGame, &tex, hi, hi, lo, lo, onesOffset + (left - d * digW) - 32.0f, 68.0f, 0.0f, digW, digH, 0.0f,
+					                   0.0f, 0.0f);
 					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				}
 			}
@@ -785,7 +785,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 			PSMTXScale(tex.mMtx.mScale, 0.09090909f, 1.0f, 1.0f);
 			hi            = base | 0x1F33FF00;
 			lo            = base | 0xFFFFFF00;
-			rightX        = 7.0f * digW;
+			onesOffset    = 7.0f * digW;
 			tex.mMtxDirty = 1;
 			for (d = 0; d < 2; d++) {
 				f32 div = 1.0f;
@@ -799,8 +799,8 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 					PSMTXTrans(tex.mMtx.mTrans, 0.09090909f * (digit % 10), 0.0f, 0.0f);
 					tex.mMtxDirty = 1;
 					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
-					DrawGsTexturedQuad(gGame, &tex, lo, lo, hi, hi, rightX + (left - d * (digW - 8.0f)) - 32.0f, 76.0f, 0.0f, digW, digH,
-					                   0.0f, 0.0f, 0.0f);
+					DrawGsTexturedQuad(gGame, &tex, lo, lo, hi, hi, onesOffset + (left - d * (digW - 8.0f)) - 32.0f, 76.0f, 0.0f, digW,
+					                   digH, 0.0f, 0.0f, 0.0f);
 					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				}
 			}
@@ -2830,7 +2830,7 @@ extern "C" void UpdateFighter(u32 dt)
 	}
 	shotEvents.mFlags = 0;
 	CPad pad(0);
-	// a tap fires one shot; holding A for 20+ frames fires a single shot costing ten battery on release
+	// every press fires a shot costing 1; releasing after holding A 20+ frames fires another costing 10
 	if (pad.mPad->mButton & PAD_BUTTON_A) {
 		if (pad.mPad->mTrigger & PAD_BUTTON_A) {
 			Fighter_Fire(&fighterWork, 1);
@@ -2890,7 +2890,7 @@ extern "C" void UpdateFighter(u32 dt)
 		}
 		if (best != NULL && !best->mPending) {
 			if (best != NULL && fighterWork.mLastTarget != best) {
-				PlayGameSound(sfx, 0x20006, 0xFF); // the lock-on sound, only when the target changed
+				PlayGameSound(sfx, 0x20006, 0xFF); // the lock-on sound; mLastTarget is always NULL, so it plays on every lock
 			}
 			fighterWork.mAim.mTarget = best;
 		}
@@ -3339,7 +3339,8 @@ extern "C" s32 GetShotEvent(void)
 {
 	s32 ret   = 0;
 	u32 flags = shotEvents.mFlags;
-	// the pending shot event for the stage script: 1 hit, 2 miss, 3 five-hit streak, 4 five-miss streak
+	// the pending shot event for the stage script: 1 a target destroyed,
+	// 2 never raised (nothing sets bit 2), 3 five-hit streak, 4 five-miss streak
 	if (flags & 4) {
 		ret = 3;
 	} else if (flags & 8) {

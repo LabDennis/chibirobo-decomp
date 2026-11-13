@@ -1674,7 +1674,7 @@ extern "C" void UpdateStage(s32 frames)
 	if (IsGameSoundPlaying(gGame.mSound, 0xFFFF000F)) {
 		AXDriverSetAllStreamPitches(5.0f * (f32)sin(DEG2RAD * sTimer));
 	}
-	// a rare ambient sound, only with no event objects loaded
+	// a rare ambient sound, only while no event script is loaded
 	if (gGame.mObjTable.mList == NULL && HSD_Randi(5000) < 10) {
 		switch (HSD_Randi(4)) {
 		case 0:
