@@ -24,14 +24,6 @@ void UpdateToy6FJointSpin(XObjActorToy* object, u32 frames);
 
 extern "C" {
 f32 GetToyHorizontalDistance(Vec*, Vec*);
-extern XObjActorToy::StateFunc gToyInitialState;
-extern XObjActorToy::StateFunc gToyHitRecoveryState;
-extern XObjActorToy::StateFunc gToy0FPickUpState;
-extern XObjActorToy::StateFunc gToy156PickUpState;
-extern XObjActorToy::StateFunc gToy159PickUpState;
-extern XObjActorToy::StateFunc gToy25EPickUpState;
-extern XObjActorToy::StateFunc gToyPostHitState;
-extern XObjActorToy::StateFunc gToyPostPickUpState;
 void ApproachHudValue(f32*, f32*, f32);
 void HandleToyKind0FCommand(XObjActorToy*, u32 frames);
 void HandleToyKind110Command(XObjActorToy*, u32 frames);
@@ -73,7 +65,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		case 0xF:
 			toy->_9AC = 20.0f;
 			if (!toy->_998.Check(0x40) && !toy->_2098.Check(2)) {
-				toy->mState = gToyHitRecoveryState;
+				toy->mState = &XObjActorToy::StateHitRecovery;
 				ResetActorMovementStep(toy);
 				toy->_998.mFlags |= 0x40;
 			}
@@ -663,7 +655,7 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 	case 4:
 		_998.mFlags &= ~4;
 		_998.mFlags &= ~0x40;
-		mState = gToyPostHitState;
+		mState = &XObjActorToy::StateCarry;
 		ResetActorMovementStep(this);
 		break;
 	}
@@ -758,7 +750,7 @@ void XObjActorToy::StatePickUp(u32 frames)
 			FinishToyMount(this);
 		}
 		_998.mFlags &= ~0x2000;
-		mState = gToyPostPickUpState;
+		mState = &XObjActorToy::StateCarry;
 		ResetActorMovementStep(this);
 		break;
 	}
@@ -1284,7 +1276,7 @@ extern "C" void HandleToyKind25ECommand(XObjActorToy* object, u32 frames)
 		break;
 	case 1:
 		object->_A4C   = object->mCmd[1];
-		object->mState = gToy25EPickUpState;
+		object->mState = &XObjActorToy::StatePickUp;
 		ResetActorMovementStep(object);
 		object->mCmd[0] = 0;
 		break;
@@ -1378,7 +1370,7 @@ extern "C" void HandleToyKind159Command(XObjActorToy* object, u32 frames)
 		break;
 	case 1:
 		object->_A4C   = object->mCmd[1];
-		object->mState = gToy159PickUpState;
+		object->mState = &XObjActorToy::StatePickUp;
 		ResetActorMovementStep(object);
 		object->mCmd[0] = 0;
 		break;
@@ -1438,7 +1430,7 @@ extern "C" void HandleToyKind156Command(XObjActorToy* object, u32 frames)
 		break;
 	case 4:
 		object->_A4C   = object->mCmd[1];
-		object->mState = gToy156PickUpState;
+		object->mState = &XObjActorToy::StatePickUp;
 		ResetActorMovementStep(object);
 		object->mCmd[0] = 0;
 		break;
@@ -1570,7 +1562,7 @@ extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
 		break;
 	case 5:
 		object->_A4C   = object->mCmd[1];
-		object->mState = gToy0FPickUpState;
+		object->mState = &XObjActorToy::StatePickUp;
 		ResetActorMovementStep(object);
 		object->mCmd[0] = 0;
 		break;
@@ -1710,7 +1702,7 @@ void XObjActorToy::ResetActorState()
 	_980         = 0.0f;
 	_984         = 0.0f;
 	_988         = 0.0f;
-	mState       = gToyInitialState;
+	mState       = &XObjActorToy::StateCarry;
 	ResetActorMovementStep(this);
 
 	mMoveTranslate.x = ToyPlacementPosition(mCoord).x;
