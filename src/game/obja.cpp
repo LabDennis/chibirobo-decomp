@@ -820,9 +820,9 @@ extern "C" void Release__4XObjFv(XObj* object)
 		ResetEventScriptState(&object->mEvt, TRUE, FALSE);
 	if (object->mStatus.mFlags & 1) {
 		object->CXObjIntp::Release();
-		XObjSource** slot = (XObjSource**)object->mAttr._00;
-		if (slot != NULL && *slot != NULL) {
-			XObjSource* source = *slot;
+		UnkObjData* data = object->mAttr._00;
+		if (data != NULL && data->mSource != NULL) {
+			XObjSource* source = data->mSource;
 			if (source->mArchive != NULL && source->mArchive->mRefCount <= 0)
 				source->mArchive = NULL;
 		}
