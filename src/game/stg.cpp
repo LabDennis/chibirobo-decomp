@@ -3,6 +3,7 @@
 #include "game/hsd_jobj.h"
 #include "game/hsd_cobj.h"
 #include "game/stg.h"
+#include "game/stagedata.h"
 #include "game/cgame.h"
 #include "game/cgs.h"
 #include "game/fbtexeff.h"
@@ -17,7 +18,6 @@
 #include "game/menupanelbackground.h"
 
 extern "C" {
-void* GetSpawnData(s32 index);
 const char* GetLocalizedPCDialogue(s32 id);
 char* GetLocalizedInterfaceText(s32 id);
 char* GetStatusOverviewLabel(s32 id);
