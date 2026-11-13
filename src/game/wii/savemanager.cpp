@@ -1,5 +1,20 @@
+// The Wii save manager, one file from InitializeWiiSaveManager (0x800A9320) to its static initializer
+// (0x800AACEC), which constructs gWiiSaveThread. Retail's strings show the banner and slot code are one file:
+// "banner.bin" is its own object, and the string pool that starts with "CB_SKIP(%d)" follows it 4-aligned,
+// where the next file's pool would start 8-aligned.
+// NONMATCHING: five functions have no source yet: ScanWiiSaveSlots, CaptureWiiSaveSlot and the three after it
+// (0x800AA65C and 0x800AA6A4 read the saved stages, then 0x800AAB18), so the file cannot be linked. Here
+// "banner.bin" goes into the string pool, so "CB_SKIP(%d)" sits at +0xB (RunWiiSaveSlotDelete). This
+// CheckWiiSaveBanner is smaller than retail's (0xBC against 0xE4), so it is inlined into WriteWiiSaveSlot, and
+// BuildWiiSaveBanner into WriteWiiSaveBanner, where retail calls both. ReadWiiSaveSlot does not line up with
+// retail yet, StartWiiSaveJob and GetWiiSaveSlotChecksum are also emitted out of line (retail only inlines them),
+// and the static initializer does not register CThread's destructor as retail's does. The file's data is not
+// assigned to the unit until the rest has source.
 #include "game/wii/saveslots.h"
+#include "game/wii/cgame.h"
 #include "game/cthread.h"
+#include "game/globals.h"
+#include "revolution/mem.h"
 #include "stl/stdio.h"
 #include "stl/mem.h"
 
@@ -10,20 +25,94 @@ struct WiiSaveJob {
 };
 
 extern "C" {
-extern CThread gWiiSaveThread;
-extern WiiSaveJob gWiiSaveJob;
-extern u8* gWiiSaveThreadStack;
-extern void* gWiiSaveNandWorkBuffer;
+extern MEMiHeapHead* gWiiGameHeap;
 
+CThread gWiiSaveThread;
+WiiSaveJob gWiiSaveJob;
+const char* gWiiSaveBannerPath = "banner.bin";
+void* gWiiSaveNandWorkBuffer;
+u8* gWiiSaveThreadStack;
+
+void ScanWiiSaveSlots(WiiSaveManager* manager, int count);
 void CaptureWiiSaveSlot(WiiSaveManager* manager, bool newGame);
 s32 GetDefaultStageIndex();
-void ScanWiiSaveSlots(WiiSaveManager* manager, int count);
 
 void* RunWiiSaveSlotScan(void* param);
 void* RunWiiSaveSlotWrite(void* param);
 void* RunWiiSaveSlotRead(void* param);
 void* RunWiiSaveSlotDelete(void* param);
 }
+
+extern "C" void InitializeWiiSaveManager(WiiSaveManager* manager)
+{
+	InitializeNandGameFile(&manager->mFile);
+	gWiiSaveNandWorkBuffer = MEMAllocFromExpHeapEx(gWiiGameHeap, 0x4000, 32);
+	gWiiSaveThreadStack    = static_cast<u8*>(MEMAllocFromExpHeapEx(gWiiGameHeap, 0x2000, 32));
+	GetNandGameHomeDir(&manager->mFile, manager->mHomeDir);
+	u32 blocks, inodes;
+	GetNandGameFreeSpace(&manager->mFile, &blocks, &inodes);
+}
+
+extern "C" void UpdateWiiSaveJob(WiiSaveManager* manager)
+{
+	if (manager->mJobStarted && OSIsThreadTerminated(&gWiiSaveThread.mThread))
+		manager->mJobStarted = 0;
+}
+
+extern "C" int CheckWiiSaveBanner(WiiSaveManager* manager, bool removeInvalid)
+{
+	WiiGameSaveFile* file = &manager->mFile;
+	if (OpenNandGameFile(file, gWiiSaveBannerPath, 1, gWiiSaveNandWorkBuffer, 0x4000) != 0)
+		return 0;
+	u32 length;
+	bool valid = GetNandGameFileLength(file, &length) == 0 && length == sizeof(manager->mBanner);
+	if (CloseNandGameFile(file) != 0)
+		valid = false;
+	if (!valid && removeInvalid)
+		DeleteNandGameFile(file, gWiiSaveBannerPath);
+	return valid;
+}
+
+extern "C" void BuildWiiSaveBanner(WiiSaveManager* manager)
+{
+	NANDBanner& banner  = manager->mBanner;
+	const u16* subtitle = reinterpret_cast<const u16*>(GetLocalizedInterfaceText(2));
+	const u16* title    = reinterpret_cast<const u16*>(GetLocalizedInterfaceText(1));
+	NANDInitBanner(&banner, 0, title, subtitle);
+	CTpl& textures = gGame.mTpl;
+	textures.mTex.Init(&textures.mPalette->descriptorArray[247], 0);
+	memcpy(banner.bannerTexture, textures.mTex.mImageData, sizeof(banner.bannerTexture));
+	for (int i = 0; i < ARRAY_SIZE(banner.iconTexture); ++i) {
+		textures.mTex.Init(&textures.mPalette->descriptorArray[248 + i], 0);
+		memcpy(banner.iconTexture[i], textures.mTex.mImageData, sizeof(banner.iconTexture[i]));
+		banner.iconSpeed = (banner.iconSpeed & ~(3 << (2 * i))) | (1 << (2 * i));
+	}
+}
+
+extern "C" s32 WriteWiiSaveBanner(WiiSaveManager* manager)
+{
+	BuildWiiSaveBanner(manager);
+	WiiGameSaveFile* file = &manager->mFile;
+	for (int attempt = 0; attempt < 3; ++attempt) {
+		s32 result = CreateNandGameFile(file, gWiiSaveBannerPath, 0x30, 0);
+		if (result == 0)
+			break;
+		if (result != NAND_RESULT_EXISTS)
+			return result;
+		result = DeleteNandGameFile(file, gWiiSaveBannerPath);
+		if (result != 0)
+			return result;
+	}
+	s32 result = OpenNandGameFile(file, gWiiSaveBannerPath, 2, gWiiSaveNandWorkBuffer, 0x4000);
+	if (result != 0)
+		return result;
+	result = WriteNandGameFile(file, &manager->mBanner, sizeof(manager->mBanner));
+	if (result < 0)
+		return result;
+	return CloseNandGameFile(file);
+}
+
+// ScanWiiSaveSlots (0x800A9834) comes here
 
 static void StartWiiSaveJob(WiiSaveManager* manager, OSThreadStartFunction entry)
 {
@@ -161,3 +250,5 @@ extern "C" void* RunWiiSaveSlotDelete(void* param)
 	DeleteNandGameFile(&manager->mFile, manager->mSlotPath);
 	return NULL;
 }
+
+// CaptureWiiSaveSlot (0x800AA2F8) and the functions at 0x800AA65C, 0x800AA6A4 and 0x800AAB18 come here
