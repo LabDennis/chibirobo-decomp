@@ -30,7 +30,7 @@ bool CVectorLinearInterpolation::Start(Vec from, Vec to, f32 time)
  */
 bool CInterpolationLinear::Start(f32 from, f32 to, f32 time)
 {
-	if (time < 0.0f) {
+	if (time < 0.0f) { // a negative time means no interp
 		return false;
 	}
 	mTime  = time;
@@ -114,7 +114,7 @@ bool CVectorEaseInOutInterpolation::Update(u32 step, f32 dt)
 	bool x = mAxes[0].Update(step, dt);
 	bool y = mAxes[1].Update(step, dt);
 	bool z = mAxes[2].Update(step, dt);
-	if (x && z) {
+	if (x && z) { // the ground plane arrives first
 		mXZDone = TRUE;
 	}
 	return x && y && z;
