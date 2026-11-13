@@ -290,29 +290,23 @@ void order_dag(int num, u32* dep, u32* full_dep, HSD_TExpDag* list, int depth, i
  */
 void CalcDistance(HSD_TExp** tevs, int* dist, HSD_TExp* tev, int num, int depth)
 {
-	int idx;
-	HSD_TExp** p;
 	int i;
 
-	p   = tevs;
-	idx = 0;
 	for (i = 0; i < num; i++) {
-		if (*p == tev) {
-			if (dist[idx] < depth) {
-				dist[idx] = depth;
+		if (tevs[i] == tev) {
+			if (dist[i] < depth) {
+				dist[i] = depth;
 				for (i = 0; i < 4; i++) {
-					if (tev->tev.c_in[i].type == 1) {
+					if (tev->tev.c_in[i].type == HSD_TE_TEV) {
 						CalcDistance(tevs, dist, tev->tev.c_in[i].exp, num, depth + 1);
 					}
-					if (tev->tev.a_in[i].type == 1) {
+					if (tev->tev.a_in[i].type == HSD_TE_TEV) {
 						CalcDistance(tevs, dist, tev->tev.a_in[i].exp, num, depth + 1);
 					}
 				}
 			}
 			return;
 		}
-		p++;
-		idx++;
 	}
 }
 
