@@ -1114,7 +1114,7 @@ Runtime.PPCEABI.H/global_destructor_chain.c:
 	.dtors      start:0x802000C8 end:0x802000CC
 	.sbss       start:0x80662230 end:0x80662238
 
-Runtime.PPCEABI.H/delete.cpp:
+Runtime.PPCEABI.H/New.cp:
 	extab       start:0x80005628 end:0x80005650
 	extabindex  start:0x8000668C end:0x80006698
 	.text       start:0x8015379C end:0x801537E8
