@@ -4,12 +4,23 @@
 #include "game/mm.h"
 #include <Dolphin/vi.h>
 #include "game/cgameutil.h"
+#include "game/arcache.h"
+#include "game/cthread.h"
 
 extern "C" {
 int strncmp(const char* a, const char* b, unsigned long n);
 }
 extern "C" f32 sStageNameShadowX[4];
 extern "C" f32 sStageNameShadowY[4];
+
+// the cgame file's globals, in the order retail built them in cgameinit's static
+// initializer; cgameinit.cpp still constructs the same region by hand, so these are
+// initialized twice until that workaround is replaced
+ARCacheInfo gARAMCacheInfo;
+FbMirrorEx gFramebufferMirrors[5];
+ARPreCache gAramPrecache;
+CThread gMovieUpdateThread;
+u8 gMovieUpdateThreadStack[0x1000];
 
 /**
  * @note Address: 0x8000AD34

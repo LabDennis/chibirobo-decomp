@@ -16,6 +16,13 @@ struct SuitChangeEffect {
 	SuitParticle rings[2][10];
 };
 
+// joints that follow an item's own anim
+struct PlayerTurnState {
+	f32 heading, previousHeading;
+	f32 change, previousChange;
+	f32 total;
+};
+
 extern "C" {
 f32 UpdatePlayerActions(XObjChr* player, u32 frames);
 void DrawSpiralTrail(SuitChangeEffect*, const CVec&);

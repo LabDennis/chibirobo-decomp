@@ -2053,14 +2053,7 @@ static inline f32 CurrentFrame(HSD_JObj* joint)
 	return animation != NULL ? HSD_AObjGetCurrentFrame(animation) : 0.0f;
 }
 
-// joints that follow an item's own anim
-struct PlayerTurnState {
-	f32 heading, previousHeading;
-	f32 change, previousChange;
-	f32 total;
-};
-
-extern "C" PlayerTurnState gPlayerTurnState;
+PlayerTurnState gPlayerTurnState;
 extern "C" f32 GetControlStickMagnitude(const CPadOne*);
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr*, f32);
 extern "C" const Vec* GetCurrentEdgeWorldOffsetPosition(const XObj*);
@@ -2646,8 +2639,212 @@ static inline void TurnJoint(f32 angle, CJointRot* rot)
 	rot->mTarget = angle;
 }
 
-// how the head turns for each cursor, from no cursor through the eight items
 extern "C" {
+// the idle anim id of each suit, in mCurrent order
+s32 gPlayerSuitIdleAnimations[9] = { 1, 0xCF7, 0xCF9, 0xCF8, 0xCFD, 1, 0xCFA, 0xCFB, 0xCFC };
+
+// the per-anim footstep and action sounds, terminated by anim -1
+FrameEvent gPlayerAnimationFrameEvents[] = {
+	{ 18, -1.0f, -1.0f, FrameSoundStartIfSilent, FrameSoundStopIfPlaying, 12, 255 },
+	{ 3, 2.0f, 17.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 3, 7.0f, 22.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 12, 7.0f, 22.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2198, 7.0f, 22.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2072, 7.0f, 22.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 119, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 136, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2199, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2178, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 4, 6.0f, 21.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 4, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 13, 6.0f, 21.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 13, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2200, 6.0f, 21.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 2200, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 2073, 6.0f, 21.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 2073, 11.0f, 26.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 179, 2.0f, 16.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 298, 2.0f, 17.0f, FrameSoundOnEitherBoundary, NULL, 10, 255 },
+	{ 298, 7.0f, 22.0f, FrameSoundOnEitherBoundary, NULL, 25, 255 },
+	{ 10, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 10, 42.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 11, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 11, 42.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 159, 34.0f, -1.0f, FrameSoundOnStartFrame, NULL, 56, 255 },
+	{ 160, 24.0f, -1.0f, FrameSoundOnStartFrame, NULL, 56, 255 },
+	{ 173, 76.0f, -1.0f, FrameSoundOnStartFrame, NULL, 55, 255 },
+	{ 172, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 55, 255 },
+	{ 32, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 150, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 31, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 149, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 27, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 30, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 148, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 291, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 117, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 57, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 89, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 159, 92.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 173, 80.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 92, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 273, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 279, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 98, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 276, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 282, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 101, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 285, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 288, 2.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 91, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 272, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 278, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 97, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 275, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 281, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 100, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 284, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 287, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 60, 255 },
+	{ 23, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 13, 255 },
+	{ 125, 12.0f, -1.0f, FrameSoundOnStartFrame, NULL, 14, 255 },
+	{ 21, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 63, 255 },
+	{ 22, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 63, 255 },
+	{ 24, 0.0f, 48.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 24, 58.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 152, 0.0f, 48.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 152, 58.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 109, 0.0f, 48.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 109, 58.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 109, 97.0f, 116.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 109, 133.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 109, 50.0f, -1.0f, FrameSoundOnStartFrame, NULL, 62, 255 },
+	{ 139, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 16, 255 },
+	{ 141, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 16, 255 },
+	{ 64, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 32, 255 },
+	{ 65, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 31, 255 },
+	{ 53, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 1, 255 },
+	{ 269, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 1, 255 },
+	{ 67, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 1, 255 },
+	{ 270, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 1, 255 },
+	{ 67, 1.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 59, 255 },
+	{ 270, 1.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 59, 255 },
+	{ 67, 1.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 54, 255 },
+	{ 270, 1.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 54, 255 },
+	{ 90, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 271, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 277, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 96, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 274, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 280, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 99, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 283, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 286, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 19, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 19, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 62, 255 },
+	{ 25, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 102, 10.0f, 33.0f, FrameSoundOnEitherBoundary, NULL, 9, 255 },
+	{ 102, 37.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 102, 25.0f, -1.0f, FrameSoundOnStartFrame, NULL, 62, 255 },
+	{ 105, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 105, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 106, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 106, 18.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 110, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 110, 20.0f, 40.0f, FrameSoundOnEitherBoundary, NULL, 9, 255 },
+	{ 110, 17.0f, 38.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 110, 58.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 111, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 111, 20.0f, 40.0f, FrameSoundOnEitherBoundary, NULL, 9, 255 },
+	{ 111, 17.0f, 38.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 111, 58.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 107, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 107, 18.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 108, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 108, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 114, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 115, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 33, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 33, 28.0f, -1.0f, FrameSoundOnStartFrame, NULL, 62, 255 },
+	{ 37, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 5, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 7, 24.0f, -1.0f, FrameSoundOnStartFrame, NULL, 7, 255 },
+	{ 62, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 62, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 62, 255 },
+	{ 66, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 9, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 159, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 173, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 160, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 9, 255 },
+	{ 122, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 61, 255 },
+	{ 202, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 61, 255 },
+	{ 2068, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 2071, 26.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 2070, 4.0f, -1.0f, FrameSoundOnStartFrame, NULL, 25, 255 },
+	{ 2169, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 2170, 26.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 2079, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 4, 255 },
+	{ 2080, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 4, 255 },
+	{ 2081, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 2, 255 },
+	{ 2084, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 2, 255 },
+	{ 120, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 120, 60.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 239, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 239, 60.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 315, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 5, 255 },
+	{ 315, 60.0f, -1.0f, FrameSoundOnStartFrame, NULL, 6, 255 },
+	{ 175, 15.0f, 37.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 175, 59.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 176, 18.0f, 40.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 176, 61.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 234, 15.0f, 37.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 234, 59.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 235, 18.0f, 40.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 235, 61.0f, -1.0f, FrameSoundOnStartFrame, NULL, 26, 255 },
+	{ 2197, 10.0f, -1.0f, FrameSoundUntilAnimEnd, NULL, 253, 255 },
+	{ 188, 48.0f, -1.0f, FrameSoundOnStartFrame, NULL, 56, 255 },
+	{ 191, 85.0f, -1.0f, FrameSoundOnStartFrame, NULL, 280, 255 },
+	{ 191, 142.0f, -1.0f, FrameSoundOnStartFrame, NULL, 55, 255 },
+	{ 2222, 5.0f, -1.0f, FrameSoundOnStartFrame, NULL, 268, 255 },
+	{ 2222, 80.0f, -1.0f, FrameSoundOnStartFrame, NULL, 269, 255 },
+	{ 2225, 10.0f, -1.0f, FrameSoundOnStartFrame, NULL, 57, 255 },
+	{ 1187, 35.0f, 47.0f, FrameSoundOnEitherBoundary, NULL, 281, 255 },
+	{ 221, 22.0f, -1.0f, FrameSoundOnStartFrame, NULL, 347, 255 },
+	{ 213, 25.0f, -1.0f, FrameSoundOnStartFrame, NULL, 289, 255 },
+	{ 246, 25.0f, -1.0f, FrameSoundOnStartFrame, NULL, 289, 255 },
+	{ 1232, 25.0f, -1.0f, FrameSoundOnStartFrame, NULL, 289, 255 },
+	{ 55, 30.0f, 35.0f, FrameSoundOnEitherBoundary, NULL, 26, 255 },
+	{ 55, 110.0f, 120.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 238, 110.0f, 120.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 3308, 100.0f, 110.0f, FrameSoundInFrameWindow, NULL, 12, 255 },
+	{ 2245, 7.0f, -1.0f, FrameSoundOnStartFrame, NULL, 365, 255 },
+	{ 2245, 32.0f, -1.0f, FrameSoundOnStartFrame, NULL, 366, 255 },
+	{ 2240, 1.0f, -1.0f, FrameSoundOnStartFrame, NULL, 373, 255 },
+	{ 2241, 57.0f, -1.0f, FrameSoundOnStartFrame, NULL, 373, 255 },
+	{ 2242, 48.0f, -1.0f, FrameSoundOnStartFrame, NULL, 374, 255 },
+	{ 2243, 48.0f, -1.0f, FrameSoundOnStartFrame, NULL, 375, 255 },
+	{ 2244, 48.0f, -1.0f, FrameSoundOnStartFrame, NULL, 376, 255 },
+	{ 1299, 20.0f, -1.0f, FrameSoundOnStartFrame, NULL, 408, 255 },
+	{ -1, 0.0f, 0.0f, NULL, NULL, 0, 0 },
+};
+// the copter anim events, terminated by anim -1
+FrameEvent gCopterAnimationFrameEvents[] = {
+	{ 5, 22.0f, -1.0f, FrameSoundOnStartFrame, NULL, 15, 255 }, { 8, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 15, 255 },
+	{ 6, 0.0f, -1.0f, FrameSoundOnStartFrame, NULL, 8, 255 },   { 2, 0.0f, -1.0f, FrameSoundStartIfSilent, NULL, 8, 255 },
+	{ 3, 0.0f, -1.0f, FrameSoundStartIfSilent, NULL, 8, 255 },  { 7, 0.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 8, 255 },
+	{ 0, 0.0f, -1.0f, FrameSoundStopIfPlaying, NULL, 8, 255 },  { -1, 0.0f, 0.0f, NULL, NULL, 0, 0 },
+};
+// the alternate anim ids for carrying, lifting and attachments, terminated by -1
+PlayerAnimVariants gPlayerAnimVariants[] = {
+	{ 17, 8, 2196, -1 },   { 1, 8, 2196, -1 },    { 93, 8, 2196, -1 },    { 94, 8, 2196, -1 },    { 95, 8, 2196, -1 },
+	{ 8, 8, 2196, -1 },    { 212, 228, 229, -1 }, { 121, 137, 224, -1 },  { 3, 12, 2198, 2072 },  { 119, 136, 2199, 2178 },
+	{ 4, 13, 2200, 2073 }, { 2, 2, 2, 266 },      { 53, 53, 53, 269 },    { 67, 67, 67, 270 },    { 120, 315, 239, -1 },
+	{ 90, 271, 277, -1 },  { 91, 272, 278, -1 },  { 92, 273, 279, -1 },   { 96, 274, 280, -1 },   { 97, 275, 281, -1 },
+	{ 98, 276, 282, -1 },  { 99, 283, 286, -1 },  { 100, 284, 287, -1 },  { 101, 285, 288, -1 },  { 122, 202, -1, -1 },
+	{ 32, 150, 297, -1 },  { 31, 149, 296, -1 },  { 28, 146, 289, -1 },   { 29, 147, 290, -1 },   { 30, 148, 291, -1 },
+	{ 142, 155, 292, -1 }, { 143, 156, 293, -1 }, { 144, 157, 294, 267 }, { 154, 158, 295, 268 }, { -1, 0, 0, 0 },
+};
+
+// how the head turns for each cursor, from no cursor through the eight items
 f32 gEquipmentHeadYaw[9]      = { 0, -20, 0, 20, 20, 20, 0, -20, -20 };
 f32 gEquipmentHeadPitch[9]    = { -20, -20, -30, -20, -10, 0, 10, 0, -10 };
 f32 gEquipmentRowY[8]         = { 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -6558,7 +6755,6 @@ extern "C" void UpdatePlayerIdleJointAnimations(XObjChr* chr, u32 frames)
 
 extern "C" {
 extern s32 lbl_8065B268;
-extern s32 gPlayerSuitIdleAnimations[9];
 }
 
 static inline f32 PlayerGaitRate(f32 speed, bool slow)
