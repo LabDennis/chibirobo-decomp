@@ -22,9 +22,9 @@ void THPGXRestore(void)
 	GXSetTevSwapMode(GX_TEVSTAGE3, GX_TEV_SWAP0, GX_TEV_SWAP0);
 
 	GXSetTevSwapModeTable(GX_TEV_SWAP0, GX_CH_RED, GX_CH_GREEN, GX_CH_BLUE, GX_CH_ALPHA);
-	GXSetTevSwapModeTable(GX_TEV_SWAP1, GX_CH_RED, GX_CH_RED, GX_CH_RED, GX_CH_ALPHA);
-	GXSetTevSwapModeTable(GX_TEV_SWAP2, GX_CH_GREEN, GX_CH_GREEN, GX_CH_GREEN, GX_CH_ALPHA);
-	GXSetTevSwapModeTable(GX_TEV_SWAP3, GX_CH_BLUE, GX_CH_BLUE, GX_CH_BLUE, GX_CH_ALPHA);
+	GXSetTevSwapModeTable(GX_TEV_SWAP1, GX_CH_RED, GX_CH_RED, GX_CH_RED, GX_CH_ALPHA);       // r into rgb
+	GXSetTevSwapModeTable(GX_TEV_SWAP2, GX_CH_GREEN, GX_CH_GREEN, GX_CH_GREEN, GX_CH_ALPHA); // g into rgb
+	GXSetTevSwapModeTable(GX_TEV_SWAP3, GX_CH_BLUE, GX_CH_BLUE, GX_CH_BLUE, GX_CH_ALPHA);    // b into rgb
 }
 
 /**
@@ -89,7 +89,7 @@ void THPGXYuv2RgbSetup(BOOL alpha)
 	GXSetTevKColorSel(GX_TEVSTAGE3, GX_TEV_KCSEL_K2);
 
 	GXSetTevColorS10(GX_TEVREG0, (GXColorS10) { -90, 0, -114, 135 });
-	GXSetTevKColor(GX_KCOLOR0, (GXColor) { 0, 0, 226, 88 });
+	GXSetTevKColor(GX_KCOLOR0, (GXColor) { 0, 0, 226, 88 }); // the yuv-to-rgb coefficients
 	GXSetTevKColor(GX_KCOLOR1, (GXColor) { 179, 0, 0, 182 });
 	GXSetTevKColor(GX_KCOLOR2, (GXColor) { 255, 0, 255, 128 });
 	GXSetTevSwapModeTable(GX_TEV_SWAP0, GX_CH_RED, GX_CH_GREEN, GX_CH_BLUE, GX_CH_ALPHA);
@@ -107,7 +107,8 @@ void THPGXLoadYuvTex(u8* yData, u8* uData, u8* vData, s16 textureWidth, s16 text
 	GXInitTexObjLOD(&tobj0, GX_NEAR, GX_NEAR, 0, 0, 0, GX_FALSE, GX_FALSE, GX_ANISO_1);
 	GXLoadTexObj(&tobj0, GX_TEXMAP0);
 
-	GXInitTexObj(&tobj1, uData, (u16)(textureWidth >> 1), (u16)(textureHeight >> 1), GX_TF_I8, GX_CLAMP, GX_CLAMP, GX_FALSE);
+	GXInitTexObj(&tobj1, uData, (u16)(textureWidth >> 1), (u16)(textureHeight >> 1), GX_TF_I8, GX_CLAMP, GX_CLAMP,
+	             GX_FALSE); // u and v are quarter-size
 	GXInitTexObjLOD(&tobj1, GX_NEAR, GX_NEAR, 0, 0, 0, GX_FALSE, GX_FALSE, GX_ANISO_1);
 	GXLoadTexObj(&tobj1, GX_TEXMAP1);
 
