@@ -1,5 +1,9 @@
 #include "game/wii/cgame.h"
 #include <Dolphin/gx.h>
+#include "Dolphin/OS/OSFastCast.h"
+
+// One function of a larger file: Start's 1.0f and 0.0f (0x805A2B6C, 0x805A2B70) are also used by
+// fn_80035DC8 through fn_80036314, so the unit cannot be linked until those are written too.
 
 extern "C" {
 u32 SCCheckStatus();
@@ -20,39 +24,29 @@ u32 OSGetTick();
 void srand(u32);
 }
 
+// NONMATCHING: retail computes &mPad for mPad.Init before it stores mLanguage = 0, this build after
 void CBase::Start()
 {
 	while (SCCheckStatus() != 0) { }
-	asm {
-		li r3, 4
-		oris r3, r3, 4
-		mtspr 914, r3
-		li r3, 5
-		oris r3, r3, 5
-		mtspr 915, r3
-		li r3, 6
-		oris r3, r3, 6
-		mtspr 916, r3
-		li r3, 7
-		oris r3, r3, 7
-		mtspr 917, r3
-	}
+	OSInitFastCast();
 	DVDInit();
 	DVDSetAutoFatalMessaging(TRUE);
 	fn_801905CC("/cb/");
 	fn_80199AE4();
+	// the mod's language has to be known before the font and the resident text are set up
 #if defined(WII_LANGUAGE_SYSTEM)
 	u8 language = SCGetLanguage();
 	mLanguage   = language <= 5 ? language : 1;
 #elif defined(WII_LANGUAGE)
 	mLanguage = WII_LANGUAGE;
-#else
-	mLanguage = 0;
 #endif
 	fn_800355F4(this);
 	fn_8003568C(this);
 	fn_80035AD0(this);
 	fn_802AAF98(gGame._0000 + 8);
+#if !defined(WII_LANGUAGE) && !defined(WII_LANGUAGE_SYSTEM)
+	mLanguage = 0;
+#endif
 	mPad.Init(1);
 	KPADSetPosParam(gWiiPads[0].mPort, 0.07f, 0.8f);
 	KPADSetHoriParam(gWiiPads[0].mPort, 0.05f, 1.0f);
