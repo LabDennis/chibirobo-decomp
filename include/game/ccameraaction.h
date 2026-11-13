@@ -283,75 +283,75 @@ struct CamMapEntry {
 // the map action, CCameraActions holds it at _99C
 class CCameraActionMap : public CCameraActionAreaExM {
 public:
-	s32 _40;                                           // _40
-	XObj* mTarget;                                     // _44, the object the camera looks at
-	CVec mPreviousInterest;                            // _48
-	f32 _58;                                           // _58
-	f32 _5C;                                           // _5C
-	CVec _60;                                          // _60
-	CVec _70;                                          // _70
-	f32 _80;                                           // _80
-	f32 _84;                                           // _84
-	f32 _88;                                           // _88
-	CObjVec _8C;                                       // _8C
-	f32 _BC;                                           // _BC, turn speed
-	f32 _C0;                                           // _C0, wrapped target yaw
-	f32 _C4;                                           // _C4
-	CInterpolationEaseOutDivide _C8;                   // _C8
-	CVec mPreviousEye;                                 // _D8
-	u8 _E8[0x4EC - 0xE8];                              // _E8
-	s32 _4EC;                                          // _4EC
-	s32 _4F0;                                          // _4F0
-	s32 _4F4;                                          // _4F4
-	s32 _4F8;                                          // _4F8
-	u8 _4FC[0x570 - 0x4FC];                            // _4FC
-	CamMapEntry mIntersectionEntries[32];              // _570
-	s32 mIntersectionCount;                            // _970
-	CamMapEntry* _974;                                 // _974
-	s32 _978;                                          // _978
-	CamMapEntry* _97C;                                 // _97C
-	s32 _980;                                          // _980
-	Vec _984;                                          // _984, one end of the picked side
-	Vec _990;                                          // _990, the other end
-	s32 _99C;                                          // _99C, 1 or -1, which way round they are
-	CamMapEntry _9A0[32];                              // _9A0
-	s32 _DA0;                                          // _DA0, count of _9A0
-	s32 _DA4;                                          // _DA4
-	s32 _DA8;                                          // _DA8
-	s32 _DAC;                                          // _DAC
-	s32 _DB0;                                          // _DB0
-	CInterfaceVectorInterpolation* mTurnInterpolation; // _DB4
-	CVectorEaseInOutInterpolation _DB8;                // _DB8
-	CInterpolationEaseInOut _E14;                      // _E14
-	CInterfaceInterpolation* _E30;                     // _E30, camera height
-	CInterpolationEaseInOut _E34;                      // _E34
-	CInterfaceInterpolation* _E50;                     // _E50
-	f32 _E54;                                          // _E54
-	s32 _E58;                                          // _E58
-	s32 _E5C;                                          // _E5C
-	f32 _E60;                                          // _E60, current camera height
-	CInterfaceInterpolation* _E64;                     // _E64
-	CInterpolationEaseOutDivide _E68;                  // _E68
-	CInterfaceInterpolation* _E78;                     // _E78
-	CInterpolationEaseInOut _E7C;                      // _E7C
-	f32 _E98;                                          // _E98
-	s32 _E9C;                                          // _E9C
-	s32 _EA0;                                          // _EA0, manual camera input this frame
-	s32 _EA4;                                          // _EA4, area IDs written to _EA8
-	s32 _EA8[32];                                      // _EA8, areas containing the player
-	CInterfaceVectorInterpolation* _F28;               // _F28
-	CVectorEaseOutDivideInterpolation _F2C;            // _F2C
-	f32 _F64;                                          // _F64, target-eye interpolation time
-	CVec _F68;                                         // _F68
-	CVec _F78;                                         // _F78
-	CVec _F88;                                         // _F88
-	CVec _F98;                                         // _F98
-	CVec _FA8;                                         // _FA8
-	CVec _FB8;                                         // _FB8
-	u8 _FC8[0x11D8 - 0xFC8];                           // _FC8
-	CStatus mStatus;                                   // _11D8, printed as CAMSTAT
-	CStatus mPreviousStatus;                           // _11E0, printed as CAMSTATPRE
-	BOOL mKeepPreviousEye;                             // _11E8
+	s32 _40;                                             // _40
+	XObj* mTarget;                                       // _44, the object the camera looks at
+	CVec mPreviousInterest;                              // _48
+	f32 mResetDistance;                                  // _58
+	f32 mSpringDamping;                                  // _5C
+	CVec mSpringPrevTarget;                              // _60
+	CVec mSpringTarget;                                  // _70
+	f32 mRestDistance;                                   // _80
+	f32 mFlatDistance;                                   // _84
+	f32 mOrbitRadius;                                    // _88
+	CObjVec _8C;                                         // _8C
+	f32 mTurnSpeed;                                      // _BC, turn speed
+	f32 mTargetYaw;                                      // _C0, wrapped target yaw
+	f32 _C4;                                             // _C4
+	CInterpolationEaseOutDivide mFovEaseOutDivide;       // _C8
+	CVec mPreviousEye;                                   // _D8
+	u8 _E8[0x4EC - 0xE8];                                // _E8
+	s32 mInsideCllCount;                                 // _4EC
+	s32 mInsideCll0;                                     // _4F0
+	s32 mInsideCll1;                                     // _4F4
+	s32 mInsideCll2;                                     // _4F8
+	u8 _4FC[0x570 - 0x4FC];                              // _4FC
+	CamMapEntry mIntersectionEntries[32];                // _570
+	s32 mIntersectionCount;                              // _970
+	CamMapEntry* mNearestTargetEntry;                    // _974
+	s32 mNearestTargetIndex;                             // _978
+	CamMapEntry* mNearestEyeEntry;                       // _97C
+	s32 mNearestEyeIndex;                                // _980
+	Vec mSideStart;                                      // _984, one end of the picked side
+	Vec mSideEnd;                                        // _990, the other end
+	s32 mSideSign;                                       // _99C, 1 or -1, which way round they are
+	CamMapEntry mAreaIntersections[32];                  // _9A0
+	s32 mAreaIntersectionCount;                          // _DA0, count of mAreaIntersections
+	s32 mPrevMapArea;                                    // _DA4
+	s32 mMapArea;                                        // _DA8
+	s32 mPadControlEnabled;                              // _DAC
+	s32 _DB0;                                            // _DB0
+	CInterfaceVectorInterpolation* mTurnInterpolation;   // _DB4
+	CVectorEaseInOutInterpolation mTurnEaseInOut;        // _DB8
+	CInterpolationEaseInOut mHeightEaseInOut;            // _E14
+	CInterfaceInterpolation* mHeightInterp;              // _E30, camera height
+	CInterpolationEaseInOut mAbsHeightEaseInOut;         // _E34
+	CInterfaceInterpolation* mAbsHeightInterp;           // _E50
+	f32 mTargetHeight;                                   // _E54
+	s32 mHeightMode;                                     // _E58
+	s32 mUseAreaHeight;                                  // _E5C
+	f32 mCurrentHeight;                                  // _E60, current camera height
+	CInterfaceInterpolation* mTargetHeightOffsetInterp;  // _E64
+	CInterpolationEaseOutDivide mTargetHeightOffsetEase; // _E68
+	CInterfaceInterpolation* mEyeYOffsetInterp;          // _E78
+	CInterpolationEaseInOut mEyeYOffsetEaseInOut;        // _E7C
+	f32 mEyeYOffset;                                     // _E98
+	s32 mTurnBlocked;                                    // _E9C
+	s32 mManualInput;                                    // _EA0, manual camera input this frame
+	s32 mInsideAreaCount;                                // _EA4, area IDs written to mInsideAreas
+	s32 mInsideAreas[32];                                // _EA8, areas containing the player
+	CInterfaceVectorInterpolation* mEyeInterp;           // _F28
+	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _F2C
+	f32 mEyeInterpTime;                                  // _F64, target-eye interpolation time
+	CVec mTargetEye;                                     // _F68
+	CVec mDesiredEye;                                    // _F78
+	CVec mOrbitEye;                                      // _F88
+	CVec mOrbitAngle;                                    // _F98
+	CVec mPrevOrbitEye;                                  // _FA8
+	CVec mPrevOrbitAngle;                                // _FB8
+	u8 _FC8[0x11D8 - 0xFC8];                             // _FC8
+	CStatus mStatus;                                     // _11D8, printed as CAMSTAT
+	CStatus mPreviousStatus;                             // _11E0, printed as CAMSTATPRE
+	BOOL mKeepPreviousEye;                               // _11E8
 
 	CCameraActionMap();                      // in the dol, 0x8001A45C
 	virtual ~CCameraActionMap();             // in the dol, 0x80009F20
