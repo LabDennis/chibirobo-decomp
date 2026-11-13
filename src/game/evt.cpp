@@ -16981,7 +16981,6 @@ static inline bool EvtZero4(const ScrnColorF& speed)
 }
 
 extern "C" {
-void ConfigureSubwindowCamera(void* effect, Vec* pos, f32 pitch, f32 yaw, f32 arg1, f32 arg2);
 void AddMainMenuExtraRow(void* object, s32 arg1, s32 arg2);
 }
 
@@ -17078,7 +17077,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 			pos.x   = args[1] / 100.0f;
 			pos.y   = args[2] / 100.0f;
 			pos.z   = args[3] / 100.0f;
-			ConfigureSubwindowCamera(&gGame.mSubwin, &pos, DEG2RAD * args[4], DEG2RAD * args[5], args[6], args[7]);
+			ConfigureSubwindowCamera(&gGame.mSubwin, pos, DEG2RAD * args[4], DEG2RAD * args[5], args[6], args[7]);
 			gGame.mSubwin.mEnabled      = 1;
 			gGame.mSubwin.mFlags.mFlags = 0;
 		} else if (args[0] == 209 || args[0] == 230) {

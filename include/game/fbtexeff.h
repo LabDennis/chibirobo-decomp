@@ -56,6 +56,8 @@ public:
 };
 STATIC_ASSERT(sizeof(FbSubwin) == 0x2D8);
 
+extern "C" void ConfigureSubwindowCamera(FbSubwin* subwin, const Vec& interest, f32 angleY, f32 angleX, f32 distance, f32 fov);
+
 // a mirror, renders the scene again through a camera reflected in a joint's plane
 class FbMirror : public CFbTexEff {
 public:
