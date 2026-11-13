@@ -5,23 +5,23 @@
  * @note Address: 0x8016C3F4
  * @note Size: 0x9C
  */
-void C_MTXFrustum(Mtx44 m, f32 arg1, f32 arg2, f32 arg3, f32 arg4, f32 arg5, f32 arg6)
+void C_MTXFrustum(Mtx44 m, f32 top, f32 bottom, f32 left, f32 right, f32 nearZ, f32 farZ)
 {
-	f32 tmp = 1.0f / (arg4 - arg3);
-	m[0][0] = (2 * arg5) * tmp;
+	f32 tmp = 1.0f / (right - left);
+	m[0][0] = (2 * nearZ) * tmp;
 	m[0][1] = 0.0f;
-	m[0][2] = (arg4 + arg3) * tmp;
+	m[0][2] = (right + left) * tmp;
 	m[0][3] = 0.0f;
-	tmp     = 1.0f / (arg1 - arg2);
+	tmp     = 1.0f / (top - bottom);
 	m[1][0] = 0.0f;
-	m[1][1] = (2 * arg5) * tmp;
-	m[1][2] = (arg1 + arg2) * tmp;
+	m[1][1] = (2 * nearZ) * tmp;
+	m[1][2] = (top + bottom) * tmp;
 	m[1][3] = 0.0f;
 	m[2][0] = 0.0f;
 	m[2][1] = 0.0f;
-	tmp     = 1.0f / (arg6 - arg5);
-	m[2][2] = -(arg5)*tmp;
-	m[2][3] = -(arg6 * arg5) * tmp;
+	tmp     = 1.0f / (farZ - nearZ);
+	m[2][2] = -nearZ * tmp;
+	m[2][3] = -(farZ * nearZ) * tmp;
 	m[3][0] = 0.0f;
 	m[3][1] = 0.0f;
 	m[3][2] = -1.0f;
@@ -38,7 +38,11 @@ void C_MTXPerspective(Mtx44 m, f32 fovY, f32 aspect, f32 n, f32 f)
 	f32 cot;
 	f32 tmp;
 	angle   = MTXDegToRad(angle);
+#if defined(VERSION_R24J01)
+	cot     = 1.0f / (f32)tan(angle);
+#else
 	cot     = 1.0f / tanf(angle);
+#endif
 	m[0][0] = cot / aspect;
 	m[0][1] = 0.0f;
 	m[0][2] = 0.0f;
@@ -86,37 +90,24 @@ void C_MTXOrtho(Mtx44 m, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x4C
- */
-void C_MTX44Identity(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
+ * @note Wii JP address: 0x8018F604
  * @note Size: 0x34
  */
-void PSMTX44Identity(void)
+void PSMTX44Identity(Mtx44 m)
 {
-	// UNUSED FUNCTION
+	int row, col;
+	for (row = 0; row < 4; ++row) {
+		for (col = 0; col < 4; ++col) {
+			m[row][col] = row == col ? 1.0f : 0.0f;
+		}
+	}
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x8C
- */
-void C_MTX44Copy(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
+ * @note Wii JP address: 0x8018F638
  * @note Size: 0x44
  */
-ASM void PSMTX44Copy(register Mtx44 src, register Mtx44 dest)
+ASM void PSMTX44Copy(const register Mtx44 src, register Mtx44 dest)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc;
@@ -141,181 +132,75 @@ ASM void PSMTX44Copy(register Mtx44 src, register Mtx44 dest)
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0x450
- */
-void C_MTX44Concat(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
+ * @note Wii JP address: 0x8018F67C
  * @note Size: 0x104
  */
-void PSMTX44Concat(void)
+void PSMTX44Concat(const Mtx44 a, const Mtx44 b, Mtx44 out)
 {
-	// UNUSED FUNCTION
+	// Whole matrices can alias. Retail stores some columns earlier for partially overlapping buffers.
+	Mtx44 product;
+	int row, col, k;
+	for (row = 0; row < 4; ++row) {
+		for (col = 0; col < 4; ++col) {
+			f32 sum = b[0][col] * a[row][0];
+			for (k = 1; k < 4; ++k) {
+				sum = __fmadds(b[k][col], a[row][k], sum);
+			}
+			product[row][col] = sum;
+		}
+	}
+	PSMTX44Copy(product, out);
 }
 
 /**
- * @note Address: N/A
- * @note Size: 0xC4
+ * @note Wii JP address: 0x8018F780
+ * @note Size: 0x2C0
  */
-void C_MTX44Transpose(void)
+u32 C_MTX44Inverse(const Mtx44 src, Mtx44 inverse)
 {
-	// UNUSED FUNCTION
-}
+	Mtx44 work;
+	int col, row, k;
+	PSMTX44Copy(src, work);
+	PSMTX44Identity(inverse);
 
-/**
- * @note Address: N/A
- * @note Size: 0x64
- */
-void PSMTX44Transpose(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x3F0
- */
-void C_MTX44Inverse(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x4C
- */
-void C_MTX44Trans(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x3C
- */
-void PSMTX44Trans(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x98
- */
-void C_MTX44TransApply(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x5C
- */
-void PSMTX44TransApply(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x4C
- */
-void C_MTX44Scale(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x34
- */
-void PSMTX44Scale(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xB4
- */
-void C_MTX44ScaleApply(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x68
- */
-void PSMTX44ScaleApply(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x70
- */
-void C_MTX44RotRad(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x70
- */
-void PSMTX44RotRad(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x11C
- */
-void C_MTX44RotTrig(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xD4
- */
-void PSMTX44RotTrig(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x12C
- */
-void C_MTX44RotAxisRad(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0xBC
- */
-void __PSMTX44RotAxisRadInternal(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x70
- */
-void PSMTX44RotAxisRad(void)
-{
-	// UNUSED FUNCTION
+	for (col = 0; col < 4; ++col) {
+		int pivot = col;
+		f32 largest = 0.0f;
+		f32 scale;
+		for (row = col; row < 4; ++row) {
+			f32 magnitude = __fabsf(work[row][col]);
+			if (magnitude > largest) {
+				largest = magnitude;
+				pivot = row;
+			}
+		}
+		if (largest == 0.0f) {
+			return 0;
+		}
+		if (pivot != col) {
+			for (k = 0; k < 4; ++k) {
+				f32 tmp = work[col][k];
+				work[col][k] = work[pivot][k];
+				work[pivot][k] = tmp;
+				tmp = inverse[col][k];
+				inverse[col][k] = inverse[pivot][k];
+				inverse[pivot][k] = tmp;
+			}
+		}
+		scale = 1.0f / work[col][col];
+		for (k = 0; k < 4; ++k) {
+			work[col][k] *= scale;
+			inverse[col][k] *= scale;
+		}
+		for (row = 0; row < 4; ++row) {
+			if (row != col) {
+				f32 factor = work[row][col];
+				for (k = 0; k < 4; ++k) {
+					work[row][k] -= factor * work[col][k];
+					inverse[row][k] -= factor * inverse[col][k];
+				}
+			}
+		}
+	}
+	return 1;
 }
