@@ -85,7 +85,7 @@ static inline void TakeSmallSpiderSlot(XObjSpiderSmall* spider)
 	}
 }
 
-// and a sound effect may play
+// whether a sound effect may play now
 static inline bool CanPlaySe()
 {
 	bool play = false;
@@ -113,13 +113,14 @@ void XObjSpiderSmall::UpdateAnimationSounds()
  * @note Address: 0x800F4C10
  * @note Size: 0x1A8
  */
-extern "C" bool IsSmallSpiderEffectAnimationFinished(XObjSpiderSmallFx* shot, u8 i, u32 frames)
+// the web in slot has played its anim to the end, or the slot has none
+extern "C" bool IsSmallSpiderEffectAnimationFinished(XObjSpiderSmallFx* fx, u8 slot, u32 frames)
 {
-	if (gSmallSpiderEffectObjects[i] == NULL) {
+	if (gSmallSpiderEffectObjects[slot] == NULL) {
 		return TRUE;
 	}
-	f32 end = GetAnimEndFrame(gSmallSpiderEffectObjects[i]->mJObj);
-	if (end - frames <= GetAnimFrame(gSmallSpiderEffectObjects[i]->mJObj)) {
+	f32 end = GetAnimEndFrame(gSmallSpiderEffectObjects[slot]->mJObj);
+	if (end - frames <= GetAnimFrame(gSmallSpiderEffectObjects[slot]->mJObj)) {
 		return TRUE;
 	}
 	return FALSE;
@@ -129,14 +130,14 @@ extern "C" bool IsSmallSpiderEffectAnimationFinished(XObjSpiderSmallFx* shot, u8
  * @note Address: 0x800F4DB8
  * @note Size: 0x190
  */
-extern "C" void StartSmallSpiderWebEffect(XObjSpiderSmallFx* shot, const CVec& pos)
+extern "C" void StartSmallSpiderWebEffect(XObjSpiderSmallFx* fx, const CVec& pos)
 {
-	shot->mStatus.mFlags |= 1;
-	shot->mPos   = pos;
-	shot->mState = 1;
+	fx->mStatus.mFlags |= 1;
+	fx->mPos   = pos;
+	fx->mState = 1;
 	if (CanPlaySe()) {
 		PlayGameSound(&gGame.mSound, 0x184, 0xFF);
-		GetSoundVolumeAtPosition(&gGame.mSound, &shot->mPos, 0);
+		GetSoundVolumeAtPosition(&gGame.mSound, &fx->mPos, 0);
 	}
 }
 
@@ -145,7 +146,7 @@ extern "C" void StartSmallSpiderWebEffect(XObjSpiderSmallFx* shot, const CVec& p
  * @note Size: 0x4B0
  */
 // plays the web's anims, 1 and 2 shoot it, 10 drops it
-extern "C" void UpdateSmallSpiderWebEffect(XObjSpiderSmallFx* shot, u8 i, u32 frames, BOOL arg)
+extern "C" void UpdateSmallSpiderWebEffect(XObjSpiderSmallFx* shot, u8 i, u32 frames, BOOL unused)
 {
 	if (gGame.mStatus.mFlags & 0x400) {
 		return;
@@ -222,7 +223,7 @@ extern "C" void SetJunkUnkoFlag(u8 on)
  * @note Address: 0x800F5588
  * @note Size: 0xF0
  */
-// how long it holds on, by the suit the robot wears
+// how long it waits in step 2 before it jumps at the robot, by the suit the robot wears
 extern "C" s32 GetSmallSpiderGripDuration()
 {
 	switch (gGame.GetPlayer()->mSuits.mCurrent) {
@@ -353,13 +354,16 @@ static inline void Catch(XObjSpiderSmall* spider)
  * @note Address: 0x800F6408
  * @note Size: 0x2014
  */
-// state 8: chases the robot and spits webs at it
+// state 8: chases the robot and jumps onto it; when the robot gets away, it warps next to it through its web
 void XObjSpiderSmall::State8(u32 frames)
 {
 	CPad pad(0);
 	XObjChr* player = gGame.GetPlayer();
 	Vec ppos        = player->mMoveTranslate;
 	Vec prot        = player->mMoveRotate;
+	// 0 chases the robot when it is near, else warps; 1 walks up to it; 2 waits, then jumps at it (10) or, when it got
+	// away, hops in place (22 to 24); 10 and 11 fly at it and grab it, 12 lands after a miss; 4 clings, 5 drops off,
+	// 6 blinks and loses a hit; 30 to 33 let go for a script; 100 to 105 warp through the web
 	switch (mStep) {
 	case 0:
 		mTurnSpeed = 0.0f;
@@ -684,6 +688,7 @@ void XObjSpiderSmall::State8(u32 frames)
 				mMoveTranslate.z = mHome.z;
 				mWarpsLeft       = 0;
 				mTimer           = 0;
+				// one an event dropped in (command 12 sets 0x40000) is gone for good instead
 				if (mSpiderStatus.mFlags & 0x40000) {
 					State2(frames);
 					if (mFxIndex != 0xFF) {
@@ -749,6 +754,7 @@ void XObjSpiderSmall::State3(u32 frames)
 	} else {
 		mAreaGraceTimer = (3 * FRAMES_PER_SECOND) / frames;
 	}
+	// around its jumps its floor box is four times as tall
 	switch (mStep) {
 	case 2:
 	case 10:
@@ -765,6 +771,8 @@ void XObjSpiderSmall::State3(u32 frames)
 		mFloorMasks[0] = 0;
 		break;
 	}
+	// 0 idles until it wanders (20) or the robot comes near (1); a wander may end in a hop in place (21, then 22 to 24);
+	// the other steps are state 8's without the warps, kept inside its area
 	switch (mStep) {
 	case 0:
 		mTurnSpeed = 0.0f;
@@ -798,6 +806,7 @@ void XObjSpiderSmall::State3(u32 frames)
 				mWalkTarget.y = mHome.y;
 				mWalkTarget.z = mHome.z;
 			}
+			// the robot has been out of its area for 3 seconds: a follower (0x20) goes after it, the others vanish home
 			if (mAreaGraceTimer <= 0) {
 				if ((mSpiderStatus.mFlags & 0x20) && gGame.mTimeState.mDuration != 0.0f) {
 					mWarpsLeft = rand() % 4 + 3;
@@ -1142,7 +1151,7 @@ extern "C" void DetachSmallSpiderFromPlayer(XObjSpiderSmall* spider)
  * @note Address: 0x800F5934
  * @note Size: 0xAD4
  */
-// state 9: falls off the wall, runs a bit and spits a last web
+// state 9, from event command 21: lets go of the robot, runs away from it for a moment and vanishes into its web for good
 void XObjSpiderSmall::State9(u32 frames)
 {
 	XObjChr* player = gGame.GetPlayer();
@@ -1250,7 +1259,7 @@ void XObjSpiderSmall::State9(u32 frames)
  * @note Address: 0x800F9AA0
  * @note Size: 0xA10
  */
-// state 4: jumps around the robot and spits webs at it
+// state 4: once the robot is 30 away, vanishes into its web and pops up next to it, then stays put
 void XObjSpiderSmall::State4(u32 frames)
 {
 	CPad pad(0);
@@ -1328,7 +1337,7 @@ void XObjSpiderSmall::State4(u32 frames)
  * @note Size: 0x750
  */
 // NONMATCHING: r9 and r10 swap around the web sound
-// state 5: rises back up on its thread
+// state 5: hides in its web until the robot comes into its area, then pops out
 void XObjSpiderSmall::State5(u32 frames)
 {
 	CJObj obj;
@@ -1365,6 +1374,7 @@ void XObjSpiderSmall::State5(u32 frames)
 			mSpiderStatus.mFlags |= 0x40;
 			gSmallSpiderStatusByStage[gGame.mStage].mSpiders[mLoadPoolIndex].mFlags |= 0x40;
 			mAreaGraceTimer = (3 * FRAMES_PER_SECOND) / frames;
+			// one in four may follow the robot out of its area (0x20), except on stages 3, 7 and 9
 			switch (gGame.mStage) {
 			case 3:
 			case 7:
@@ -1428,6 +1438,7 @@ void XObjSpiderSmall::State7(u32 frames)
 				}
 			}
 		} else if (IsSmallSpiderEffectAnimationFinished(&mFx, mFxIndex, frames)) {
+			// it let go because the robot left its floor (0x2000), so it goes back home
 			if (mSpiderStatus.mFlags & 0x2000) {
 				mMoveTranslate.x = mHome.x;
 				mMoveTranslate.y = mHome.y;
@@ -1618,7 +1629,9 @@ void XObjSpiderSmall::State1(u32 frames)
  * @note Address: 0x800FCF04
  * @note Size: 0x6DC
  */
-// runs the command an event gave it with HandleEventCommand
+// runs the command an event gave it with HandleEventCommand: 1 knocks it out, 3 asks whether it is dead, 7 freezes it
+// (arg 1 frees it), 8 resets it to its placement, 9 moves it and its home, 10 sets its area (positions in hundredths),
+// 11 hides it in its web, 12 drops it in, 21 sends it off for good, 23 shows or hides the junk unko
 extern "C" void HandleSmallSpiderEventCommand(XObjSpiderSmall* spider, u32 frames)
 {
 	switch (spider->mEvtArgs[0]) {
@@ -1818,17 +1831,18 @@ s32 XObjSpiderSmall::OnPlayerContact(s32 unused, s32 value)
  * @note Address: 0x800FDA00
  * @note Size: 0xBC
  */
-void XObjSpiderSmall::OnHitFromPosition(const Vec& pos, f32 f)
+// keeps the hit for UpdatePlayerCaughtInSpiderWeb, unless one is pending or it can't be hit (0x10, or 0x8000 in its web)
+void XObjSpiderSmall::OnHitFromPosition(const Vec& pos, f32 strength)
 {
 	if (!(mSpiderStatus.mFlags & 2) && !(mSpiderStatus.mFlags & 0x10) && !(mSpiderStatus.mFlags & 0x8000)) {
-		OnHitFromPosition__4XObjFRC3Vecf(this, &pos, f);
+		OnHitFromPosition__4XObjFRC3Vecf(this, &pos, strength);
 		mSpiderStatus.mFlags |= 2;
-		Vec v        = { 0.0f, 0.0f, 0.0f };
-		v.x          = pos.x;
-		v.y          = pos.y;
-		v.z          = pos.z;
-		mHitPos      = v;
-		mHitStrength = f;
+		Vec hitPos   = { 0.0f, 0.0f, 0.0f };
+		hitPos.x     = pos.x;
+		hitPos.y     = pos.y;
+		hitPos.z     = pos.z;
+		mHitPos      = hitPos;
+		mHitStrength = strength;
 	}
 }
 
@@ -1908,7 +1922,7 @@ void XObjSpiderSmall::DrawGroundShadow()
  * @note Size: 0x330
  */
 // NONMATCHING: float register order
-void XObjSpiderSmall::DrawGroundShadowAt(const Vec* pos, f32 scale)
+void XObjSpiderSmall::DrawGroundShadowAt(const Vec* pos, f32 opacity)
 {
 	if ((mStatus.mFlags & 8) && (mSpiderStatus.mFlags & 0x40) && (mStatus.mFlags & 0x10000)) {
 		Vec p    = *pos;
@@ -1918,11 +1932,12 @@ void XObjSpiderSmall::DrawGroundShadowAt(const Vec* pos, f32 scale)
 		size.y   = mRadius;
 		size.z   = mRadius;
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-		u32 edge   = 128.0f * scale;
-		u32 center = 160.0f * scale;
+		u32 edge   = 128.0f * opacity;
+		u32 center = 160.0f * opacity;
 		DrawGsCircle(&gGame.mGs, 12, center, edge, p.x, p.y, p.z, size.x, size.z, rot.x, rot.y, rot.z);
 		PrimVertex vtx[26];
 
+		// a soft rim around it, a pair of points every 30 degrees (0.5235988), fading out over 1.5
 		for (s32 i = 0; i < 13; i++) {
 			f32 hx               = size.x * 0.5f;
 			f32 hz               = size.z * 0.5f;
@@ -2001,11 +2016,13 @@ static inline void SetObjVec(CObjVec& v, const Vec& pos)
 void XObjSpiderSmall::UpdateObject(u32 frames)
 {
 	CPad pad(0);
-	bool music = true;
+	bool battleBgm = true;
 	if (IsStage("stage00") || IsStage("stage19")) {
-		music = false;
+		battleBgm = false;
 	}
-	if (mPoolIndex == 0 && music && !IsStage("stage07")) {
+	// the first spider runs the battle bgm, music 0xFFFF000C (-0xFFF4): 0 starts it when the robot comes near, 1 plays it
+	// until the robot leaves or the battery runs out, 2 waits for the robot to leave after the battery ran out
+	if (mPoolIndex == 0 && battleBgm && !IsStage("stage07")) {
 		switch (mBattleBgmState) {
 		case 0:
 			if (IsPlayerNear() && gGame.mEvt.mData.mScript == NULL && GetBgm() != -0xFFF4) {
@@ -2065,6 +2082,8 @@ void XObjSpiderSmall::UpdateObject(u32 frames)
 	if (!(mSpiderStatus.mFlags & 0x2000000)) {
 		(this->*gSmallSpiderStateHandlers[mState])(frames);
 		CVec dir;
+		// 0x100: the walk speed moves it up rather than forward; 8: in the air, it rises and falls by mFallSpeed,
+		// else it stays at its home height
 		if (mSpiderStatus.mFlags & 0x100) {
 			dir.x = 0.0f;
 			dir.z = 0.0f;
@@ -2109,14 +2128,14 @@ static inline void FindWebs()
 	}
 	lbl_8065B2E0 = 0;
 	lbl_8065B2DC = NULL;
-	s32 n        = 0;
+	s32 found    = 0;
 	for (s32 i = 0; lbl_8065B2DC == NULL && i < gGame.mXObjs.mObjectCount; i++) {
 		XObj* obj = gGame.mXObjs.mObjects[i];
 		if ((obj->mStatus.mFlags & 1) && obj->mCoord.mPlacement->mObjectId == 0x1BC) {
-			gSmallSpiderEffectObjects[n] = obj;
-			gSmallSpiderEffectObjects[n]->SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			n++;
-			if (n >= 12) {
+			gSmallSpiderEffectObjects[found] = obj;
+			gSmallSpiderEffectObjects[found]->SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			found++;
+			if (found >= 12) {
 				break;
 			}
 		}
@@ -2252,6 +2271,8 @@ extern "C" void ApplySmallSpiderPlacement(XObjSpiderSmall* spider)
 	spider->mHome.z          = PlacementPosition(spider->mCoord, gSmallSpiderPosition).z;
 	spider->mWalkHeading     = PlacementRotation(spider->mCoord, gSmallSpiderRotation).y;
 	spider->mRadius          = 16.0f * PlacementScale(spider->mCoord, gSmallSpiderScale).x;
+	// the placement's first param picks how it starts: 0 roams its area, 1 hides in its web, 2 waits for an event
+	// to drop it in, 3 chases the robot
 	switch (spider->mPlacementParam0) {
 	case 0:
 		spider->SetState(3);

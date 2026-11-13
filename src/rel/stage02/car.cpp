@@ -32,35 +32,35 @@ public:
 	HSD_JObj* jobj; // _00
 	u8 _04[0x30];   // _04, padding over CJObj's mTranslate/mRotate/mScale (_04-_34); not accessed
 	virtual void vf08();
-	virtual void vf0C();
-	virtual void vf10();
-	virtual void vf14();
-	virtual void vf18();
-	virtual void vf1C();
-	virtual void vf20();
-	virtual void vf24();
-	virtual void vf28();
-	virtual void vf2C();
-	virtual void vf30();
-	virtual void vf34();
-	virtual void vf38();
-	virtual void vf3C();
-	virtual void vf40();
-	virtual void vf44();
-	virtual void vf48();
-	virtual void vf4C();
-	virtual void vf50();
+	virtual void SetTranslateX();
+	virtual void SetTranslateY();
+	virtual void SetTranslateZ();
+	virtual void SetScaleX();
+	virtual void SetScaleY();
+	virtual void SetScaleZ();
+	virtual void SetRotationX();
+	virtual void SetRotationY();
+	virtual void SetRotationZ();
+	virtual void SetTranslate(const Vec& v, s32 force);
+	virtual void SetTranslate(f32 x, f32 y, f32 z, s32 force);
+	virtual void SetScale(const Vec& v, s32 force);
+	virtual void SetScale(f32 x, f32 y, f32 z, s32 force);
+	virtual void SetRotation(const Vec& v, s32 force);
+	virtual void SetRotation(f32 x, f32 y, f32 z, s32 force);
+	virtual void SetAnimRate();
+	virtual void ReadAsync();
+	virtual void ReadCheck();
 	virtual void Release();
-	virtual void GetFollowDivisor();
-	virtual void vf5C();
-	virtual void vf60();
-	virtual void vf64();
-	virtual void vf68();
-	virtual void vf6C();
-	virtual void vf70();
-	virtual void vf74();
+	virtual void StepRotate();
+	virtual void StepTranslate();
+	virtual void StepScale();
+	virtual void SetPos(const Vec& pos, s32 force);
+	virtual void SetPos(f32 x, f32 y, f32 z, s32 force);
+	virtual void SetScale(f32 scale, s32 force);
+	virtual void SetRot(const Vec& rot, s32 force);
+	virtual void SetRot(f32 x, f32 y, f32 z, s32 force);
 	virtual void SetMoveDir(const Vec* dir, f32 speed);
-	virtual void vf7C();
+	virtual void SetRotateY();
 	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
 	                     f32 blendRate);
 #if defined(VERSION_JP)
@@ -163,11 +163,11 @@ public:
 
 class CarRoot {
 public:
-	virtual void Update(u32 arg); // _08
-	virtual void Brake();         // _0C
-	virtual void Start();         // _10
+	virtual void Update(u32 frames); // _08
+	virtual void Brake();            // _0C
+	virtual void Start();            // _10
 
-	void Register(XObj* a, XObj* b, XObj* c);
+	void Register(XObj* car, XObj* path, XObj* attached);
 
 	XObj* mCar;       // _04, the car model: drawn, follows _1C, plays the drive/brake/stop anims
 	XObj* mPath;      // _08, hidden object whose anim 0 at mFrame carries the car along the course
@@ -183,9 +183,9 @@ public:
 
 class PlayerCarRoot : public CarRoot {
 public:
-	virtual void Update(u32 arg); // _08
-	virtual void Start();         // _10
-	virtual void Clear();         // _14
+	virtual void Update(u32 frames); // _08
+	virtual void Start();            // _10
+	virtual void Clear();            // _14
 
 	f32 mBrakeFrame; // _80, frame at which the player braked
 };
@@ -241,11 +241,17 @@ s32 GetPlayerCarResult(void);
 void SetCarSoundCues(u8* data);
 void SetCarParams(u8* data);
 void DrawCarHud(void* arg);
-void UpdateCars(u32 arg);
+void UpdateCars(u32 frames);
 void StartCars(void);
 void StartCarCamera(void);
-s32 RegisterCar(XObj* a, XObj* b, XObj* c);
+s32 RegisterCar(XObj* car, XObj* path, XObj* attached);
 }
+
+// carParams: little endian s32s out of the stage's car data
+#define CAR_PARAM_BRAKE_DECEL 0x0 // speed loss per frame while braking, thousandths
+#define CAR_PARAM_FINISH      0x4 // past it the run counts as done: speed restores, camera releases
+#define CAR_PARAM_BRAKE_JUDGE 0x8 // braking before this frame plays 0x2000E, after it 0x20011
+#define CAR_PARAM_RACER_BRAKE 0xC // the frame the rival's car brakes at
 
 // little endian ints out of a loaded data file
 inline s32 ReadS32LE(u8* p)
@@ -271,16 +277,16 @@ inline void JObjInline1199(HSD_JObj* jobj)
 	HSD_JObjSetMtxDirty(jobj);
 }
 
-inline void Car::CarRoot::Register(XObj* a, XObj* b, XObj* c)
+inline void Car::CarRoot::Register(XObj* car, XObj* path, XObj* attached)
 {
 #if !defined(VERSION_PAL)
 	OSReport("Car::Register\n");
 #endif
-	mCar      = a;
-	mPath     = b;
-	mAttached = c;
-	a->mStatus |= 0x10000;
-	mPath->mStatus &= ~0x10000ULL;
+	mCar      = car;
+	mPath     = path;
+	mAttached = attached;
+	car->mStatus |= 0x10000;       // drawn
+	mPath->mStatus &= ~0x10000ULL; // the hidden mover
 	mFrame     = 0.0f;
 	mPrevFrame = 0.0f;
 	mSpeed     = 1.0f;
@@ -300,7 +306,7 @@ inline void CarRoot_Brake(Car::CarRoot* car)
 	// takes the first free slot in the request ring
 	for (i = 0; i < 16; i++) {
 		s32 idx = (obj->mAnmQueueNext + i) % 16;
-		if (obj->_814[idx].type == -1) {
+		if (obj->_814[idx].type == -1) { // -1 marks it free
 			obj->_814[idx].type  = 3;
 			obj->_814[idx]._04   = 0;
 			obj->_814[idx].mRate = 100;
@@ -377,7 +383,7 @@ void Car::CCameraActionCar::Update()
  * @note Address: stage02 .text 0x80A0
  * @note Size: 0x490
  */
-void Car::CarRoot::Update(u32 arg)
+void Car::CarRoot::Update(u32 frames)
 {
 	HSD_JObj* jobj;
 	Mtx scale;
@@ -386,7 +392,7 @@ void Car::CarRoot::Update(u32 arg)
 	if (mCar == NULL || mPath == NULL) {
 		return;
 	}
-	s32 path[2] = { 0, 0 };
+	s32 path[2] = { 0, 0 }; // the path object's first joint
 	jobj        = GetJointByPath(mPath->jobj, path, 1);
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, mCarMtx);
@@ -398,7 +404,7 @@ void Car::CarRoot::Update(u32 arg)
 	}
 	if (mStarted) {
 		mPrevFrame = mFrame;
-		mFrame     = mSpeed * arg + mFrame;
+		mFrame     = mSpeed * frames + mFrame;
 	}
 	mPath->SetAnim(0, TRUE, NULL, NULL, NULL, mFrame, 1.0f, 0.0f, 10.0f);
 	if (!mBraking) {
@@ -406,7 +412,7 @@ void Car::CarRoot::Update(u32 arg)
 		return;
 	}
 	if (0.0f < mSpeed) {
-		f32 rate = mSpeed - ReadS32LE(carParams) / 1000.0f;
+		f32 rate = mSpeed - ReadS32LE(carParams + CAR_PARAM_BRAKE_DECEL) / 1000.0f;
 		if (rate < 0.0f) {
 			rate = 0.0f;
 		}
@@ -838,41 +844,42 @@ void Car::PlayerCarRoot::Start()
  * @note Address: stage02 .text 0x7BB0
  * @note Size: 0x3A8
  */
-void Car::PlayerCarRoot::Update(u32 arg)
+void Car::PlayerCarRoot::Update(u32 frames)
 {
 	s32 i;
 
-	CarRoot::Update(arg);
+	CarRoot::Update(frames);
 	if (!mStarted) {
 		return;
 	}
 	CPad pad(0);
 	void* sound;
-	if (!mBraking && (pad.mPad->mTrigger & 0x200)) {
+	if (!mBraking && (pad.mPad->mTrigger & 0x200)) { // B brakes
 		Brake();
 		mBrakeFrame = mFrame;
 		sound       = SOUND();
 		StopGameSfx(sound, 0x2000D);
-		if (mBrakeFrame < ReadS32LE(carParams + 8)) {
+		if (mBrakeFrame < ReadS32LE(carParams + CAR_PARAM_BRAKE_JUDGE)) {
 			PlayGameSound(sound, 0x2000E, 0xFF);
 		} else {
 			PlayGameSound(sound, 0x20011, 0xFF);
 		}
 	}
 	sound = SOUND();
+	// cue records of (frame, sound id); a non-positive frame ends the list
 	for (i = 0; ReadS32LE(carSoundCues + i * 8) > 0; i++) {
 		s32 frame = ReadS32LE(carSoundCues + i * 8);
 		s32 id    = ReadS32LE(carSoundCues + (i * 2 + 1) * 4);
 		if (mPrevFrame < frame && frame <= mFrame) {
 			PlayGameSound(sound, id, 0xFF);
-			if (id == 0x2001F) {
+			if (id == 0x2001F) { // starting 0x2001F fades the music (track 0xFFFF0000) out
 				FadeOutGameSfx(sound, -0x10000, 20);
-			} else if (id == 0x2000F) {
+			} else if (id == 0x2000F) { // it stops 0x2001F
 				StopGameSfx(sound, 0x2001F);
 			}
 		}
 	}
-	if (ReadS32LE(carParams + 4) <= mFrame) {
+	if (ReadS32LE(carParams + CAR_PARAM_FINISH) <= mFrame) {
 		mSpeed = 1.0f;
 		if (mBraking && mCar->mAnimId != 4) {
 			mCar->SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
@@ -903,14 +910,15 @@ void Car::Init(void)
  * @note Address: stage02 .text 0x799C
  * @note Size: 0x19C
  */
-extern "C" s32 RegisterCar(XObj* a, XObj* b, XObj* c)
+extern "C" s32 RegisterCar(XObj* car, XObj* path, XObj* attached)
 {
+	// 1 claims the player's car, 2 the rival's
 	if (playerCar.mCar == NULL) {
-		playerCar.Register(a, b, c);
+		playerCar.Register(car, path, attached);
 		return 1;
 	}
 	if (racerCar.mCar == NULL) {
-		racerCar.Register(a, b, c);
+		racerCar.Register(car, path, attached);
 		return 2;
 	}
 	return 0;
@@ -936,7 +944,7 @@ extern "C" void StartCarCamera(void)
 	v.x = 0.0f;
 	v.y = 0.0f;
 	v.z = 60.0f;
-	carCamera.SetOffset(v);
+	carCamera.SetOffset(v); // the interest sits 60 out on the car's z
 	carCamera.mCarMtx = playerCar.mCarMtx;
 }
 
@@ -955,13 +963,13 @@ extern "C" void StartCars(void)
  * @note Address: stage02 .text 0x7494
  * @note Size: 0x398
  */
-extern "C" void UpdateCars(u32 arg)
+extern "C" void UpdateCars(u32 frames)
 {
 	CPad pad(0);
 	bool done;
 
 	if (!carsStarted) {
-		arg = 0;
+		frames = 0;
 	}
 	if (playerCar.mCar == NULL) {
 		return;
@@ -969,25 +977,25 @@ extern "C" void UpdateCars(u32 arg)
 	if (racerCar.mCar == NULL) {
 		return;
 	}
-	playerCar.Update(arg);
-	racerCar.Update(arg);
+	playerCar.Update(frames);
+	racerCar.Update(frames);
 	if (!playerCar.mStarted) {
 		done = false;
 	} else {
-		done = ReadS32LE(carParams + 4) <= playerCar.mFrame;
+		done = ReadS32LE(carParams + CAR_PARAM_FINISH) <= playerCar.mFrame;
 	}
 	if (done) {
-		carCamera.mCarMtx = NULL;
+		carCamera.mCarMtx = NULL; // the camera lets go
 	} else {
 		Vec pos;
 		s32 prev;
 		pos.y = 0.0f;
 		pos.z = 0.0f;
 		pos.x = 0.0f;
-		pos.y = 20.0f;
+		pos.y = 20.0f; // the camera rides 20 above the car
 		PSMTXMultVec(playerCar.mCarMtx, &pos, &pos);
 		carCameraTrail[carCameraTrailIndex] = pos;
-		prev                                = carCameraTrailIndex - 10;
+		prev                                = carCameraTrailIndex - 10; // the eye trails 10 positions back
 		if (prev < 0) {
 			prev += 32;
 		}
@@ -997,7 +1005,7 @@ extern "C" void UpdateCars(u32 arg)
 			carCameraTrailIndex = 0;
 		}
 	}
-	if (!racerCar.mBraking && ReadS32LE(carParams + 0xC) <= racerCar.mFrame) {
+	if (!racerCar.mBraking && ReadS32LE(carParams + CAR_PARAM_RACER_BRAKE) <= racerCar.mFrame) {
 		racerCar.Brake();
 	}
 }
@@ -1288,6 +1296,7 @@ extern "C" s32 GetPlayerCarResult(void)
 	HSD_AObj* aobj;
 	f32 end;
 
+	// 1: braked to a stop, 2: ran past the course's end
 	if (playerCar.mBraking && playerCar.mSpeed <= 0.0f) {
 		return 1;
 	}

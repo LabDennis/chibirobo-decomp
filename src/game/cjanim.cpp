@@ -44,16 +44,16 @@ extern "C" BOOL LoadJointAnimationAsync(CJAnim* anim, const char* path)
 	if (anim->mLoading == 0) {
 		anim->Release();
 		if (path == NULL || *path == '\0')
-			return TRUE;
+			return TRUE; // no animation asked for
 		CFile file;
 		if (file.ConvertPathToEntrynum(path) < 0)
-			return TRUE;
+			return TRUE; // the file isn't there
 		CObjArchive* storage = FindFreeObjectArchive(gGame.mObjArchives.mArchives);
 		if (storage != NULL) {
 			anim->ReadAsync(storage, path, 0, 0, 0);
 			anim->mLoading++;
 		} else {
-			return TRUE;
+			return TRUE; // no free archive slot: treat as done
 		}
 	} else {
 		if (anim->ReadCheck()) {
@@ -81,9 +81,9 @@ void CJAnim::Clear()
  */
 BOOL XObj::OnItemUsed(const Vec* position, s32 value)
 {
-	if (mStatus.mFlags & 0x0000040000000000ULL) {
+	if (mStatus.mFlags & 0x0000040000000000ULL) { // flag means: has an item-use event
 		if (value == 56)
-			return FALSE;
+			return FALSE; // item 56 never triggers it
 		const void* script = this->GetEventScript();
 		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
 			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, (s16)value, -1);
@@ -99,10 +99,11 @@ BOOL XObj::OnItemUsed(const Vec* position, s32 value)
  */
 void XObj::OnSquirterHit(const Vec* contact, s32 value, s32 tint)
 {
-	if (mStatus.mFlags & 0x0000080000000000ULL) {
+	if (mStatus.mFlags & 0x0000080000000000ULL) { // flag means: has a hit event
 		const void* script = this->GetEventScript();
 		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, -1, (s16)((u32)value + 3000));
+			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, -1,
+			                        (s16)((u32)value + 3000)); // squirts reach the script as 3000 + value
 		}
 	}
 }
@@ -114,6 +115,7 @@ void XObj::OnSquirterHit(const Vec* contact, s32 value, s32 tint)
 void XObj::OnHitFromPosition(const Vec& position, f32 strength)
 {
 	if (mStatus.mFlags & 0x0000080000000000ULL) {
+		// a hit of the required force raises event 2001, less raises 2000
 		if (strength >= (s32)GetPlayerActionParameter(31) / 100.0f) {
 			TriggerObjectEvent(this, -1, 2001);
 		} else {
@@ -170,14 +172,14 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 	if (!FindMapFloor(map, pos, &self->mFloorHit, NULL)) {
 		self->mFloorHit.mTriangle = -1;
 		self->mFloorHit.mTrigon   = -1;
-		self->mFloorHit.mHeight   = pos->y;
+		self->mFloorHit.mHeight   = pos->y; // no map floor: use the object's own height
 	}
 	f32 highest = self->mFloorHit.mHeight;
 	CVec contact, push;
 	for (int i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.GetObject(i);
 		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || (object->mStatus.mFlags & 0x100000))
-			continue;
+			continue; // inactive, not shown, or skipped
 		if (self->mId == object->mId)
 			continue;
 		f32 dx = object->mMoveTranslate.x - pos->x;
@@ -191,6 +193,7 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 			f32 x = pos->x;
 			if (ProbeObjectFloor(object, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, &floor) & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
+				// only floors at most one unit overhead
 				if (__fpclassifyf(floorHeight) != FP_NAN && pos->y + 1.0f >= floorHeight && floorHeight >= highest)
 					highest = floorHeight;
 			}
@@ -208,7 +211,7 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 axes, f32 x, f32 z)
 {
 	BOOL changed = FALSE;
-	if (__fpclassifyf(object->mAnchorX) == FP_NAN || __fpclassifyf(object->mAnchorZ) == FP_NAN) {
+	if (__fpclassifyf(object->mAnchorX) == FP_NAN || __fpclassifyf(object->mAnchorZ) == FP_NAN) { // no anchor: place directly
 		object->SetTranslateX(x, 0);
 		object->SetTranslateZ(z, 0);
 	} else if (object->mAnchorX == x && object->mAnchorZ == z) {
@@ -221,7 +224,7 @@ extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 
 		displacement.x = object->mAnchorX - x;
 		displacement.z = object->mAnchorZ - z;
 		displacement.y = 0.0f;
-		PSMTXMultVec(rotation, &displacement, &displacement);
+		PSMTXMultVec(rotation, &displacement, &displacement); // into the object's yaw
 
 		if (axes & 1) {
 			if (direction->x > 0.0f && displacement.x < object->mLimitPosX) {
@@ -232,7 +235,7 @@ extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 
 				changed        = TRUE;
 			}
 		}
-		if (axes & 2) {
+		if (axes & 2) { // the z axis
 			if (direction->z > 0.0f && displacement.z < object->mLimitPosZ) {
 				displacement.z = object->mLimitPosZ;
 				changed        = TRUE;
@@ -243,7 +246,7 @@ extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 
 		}
 
 		PSMTXRotRad(rotation, 'y', object->mMoveRotate.y);
-		PSMTXMultVec(rotation, &displacement, &displacement);
+		PSMTXMultVec(rotation, &displacement, &displacement); // and back
 		object->SetTranslateX(object->mAnchorX - displacement.x, 0);
 		object->SetTranslateZ(object->mAnchorZ - displacement.z, 0);
 	}
@@ -256,7 +259,7 @@ extern "C" BOOL SetClampedPushPositionXZ(XObj* object, const Vec* direction, u8 
  */
 void XObj::SetCullMode(s32 mode)
 {
-	switch (mode) {
+	switch (mode) { // the two PObj flags pick which faces to drop
 	case 0:
 		if (mJObj != NULL)
 			HSD_JObjWalkTree(mJObj, JObjClearPObjFlags, (f32**)0x4000);
@@ -297,7 +300,7 @@ extern "C" BOOL IsOutsideCameraDepth__4XObjFP7CCamera(const XObj* object, CCamer
 		GXProject(position.x, position.y, position.z, camera->mViewMtx, camera->mProjection, camera->mViewport, &screenX, &screenY,
 		          &screenZ);
 		if (screenZ > 0.0f && screenZ < 1.0f)
-			return FALSE;
+			return FALSE; // inside the depth range: visible
 		return TRUE;
 	}
 	return TRUE;
@@ -315,6 +318,7 @@ BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 ra
 	f32* projection = camera->mProjection;
 	f32* viewport   = camera->mViewport;
 	f32 left, right, bottom, top, unusedX, unusedY, depth;
+	// three points on the circle and one raised by the height give its screen extent
 	f32 angle  = (PI + HALF_PI) + heading;
 	f32 cosine = (f32)cos(angle);
 	f32 sine   = (f32)sin(angle);
@@ -412,7 +416,7 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 	CVec extent;
 	from.y = 0;
 	Vec to = end;
-	to.y   = 0;
+	to.y   = 0; // floors are tested flat on the ground plane
 
 	f32 rotation = mMoveRotate.y;
 	for (s32 i = 0; floors[i].mId != -1; ++i) {
@@ -422,7 +426,7 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 		f32 yaw      = rotation + localYaw;
 		switch (floors[i].mId) {
 		case 0:
-		case 1: {
+		case 1: { // a point: passed if the bearing to it swings through
 			CVec point(0, 0, 0);
 			Mtx transform;
 			MakeFloorTransform(this, center, extent, yaw, transform);
@@ -435,7 +439,7 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 				return TRUE;
 			break;
 		}
-		case 2: {
+		case 2: { // a box, tested against its four side edges
 			Mtx transform;
 			MakeFloorTransform(this, center, extent, yaw, transform);
 			f32 h = (2.0f / sqrtf(3.0f)) * 0.5f;
@@ -453,7 +457,7 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 				return TRUE;
 			break;
 		}
-		case 3: {
+		case 3: { // a line segment: the path crosses it when the sides swap
 			Mtx world, offset, turn, local, scale, transform;
 			PSMTXTrans(world, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
 			PSMTXTrans(offset, center.x, center.y, center.z);
@@ -472,7 +476,7 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 				return TRUE;
 			break;
 		}
-		case 5: {
+		case 5: { // a four-point polygon built from this and the next three floors
 			XObjFloor* polygon = mFloors;
 			Vec corners[4];
 			for (s32 j = 0; j < 4; ++j)
@@ -494,7 +498,7 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 			}
 			if (outside == crossed)
 				return TRUE;
-			i += 3;
+			i += 3; // its four points were this and the next three entries
 			break;
 		}
 		}
@@ -522,7 +526,7 @@ CVec CVec::operator*(Vec other) const
 extern "C" CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offset)
 {
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
-		return object->mMoveTranslate;
+		return object->mMoveTranslate; // that flag off: no floor contact to compute
 
 	Vec none               = { 0.0f, 0.0f, 0.0f };
 	Vec displacement       = offset ? Vec(*offset) : Vec(none);
@@ -534,17 +538,17 @@ extern "C" CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offs
 	f32 height;
 	switch (floor.mId) {
 	case 0:
-	case 1:
+	case 1: // a disc touches at its bottom, one unit down
 		height = -1.0f;
 		break;
-	case 2: {
+	case 2: { // a box touches at its underside, half an edge down
 		f32 root = sqrtf(3.0f);
 		f32 edge = 2.0f / root;
 		height   = 0.5f * -edge;
 		break;
 	}
 	default:
-		height = NAN;
+		height = NAN; // other shapes return the object's translation, offset ignored
 	}
 	if (__fpclassifyf(height) != FP_NAN) {
 		Mtx translate, local, rotate, scale, result;

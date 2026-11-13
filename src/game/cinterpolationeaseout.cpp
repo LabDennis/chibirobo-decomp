@@ -56,7 +56,7 @@ extern "C" bool Start__21CInterpolationEaseOutFfff(CInterpolationEaseOut* interp
 	interp->mStart    = from;
 	interp->mTarget   = to;
 	interp->mSpeed    = (2.0f * (to - from)) / time;
-	interp->mAccel    = -interp->mSpeed / time;
+	interp->mAccel    = -interp->mSpeed / time; // the speed decays to zero at the end
 	interp->mDuration = time;
 	interp->mTime     = time;
 	return true;
@@ -78,7 +78,7 @@ extern "C" f32 Get__23CInterpolationEaseInOutFv(CInterpolationEaseInOut* interp)
 extern "C" bool Step__23CInterpolationEaseInOutFf(CInterpolationEaseInOut* interp, f32 dt)
 {
 	interp->mTime -= dt;
-	if (interp->mTime < interp->mDuration / 2.0f) {
+	if (interp->mTime < interp->mDuration / 2.0f) { // accelerate to the midpoint, then brake
 		interp->mSpeed -= interp->mAccel * dt;
 	} else {
 		interp->mSpeed += interp->mAccel * dt;

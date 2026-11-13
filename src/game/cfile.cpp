@@ -24,9 +24,9 @@ static void ReadCallback(s32, DVDFileInfo* info, void*, BOOL cancel)
 {
 	s32* result = (s32*)info->cBlock.userData;
 	if (cancel) {
-		*result = -2;
+		*result = -2; // cancelled
 	} else {
-		*result = 0;
+		*result = 0; // done
 	}
 }
 
@@ -79,7 +79,7 @@ void CFileA::Free()
 s32 CFile::ConvertPathToEntrynum(const char* path)
 {
 	s32 entrynum = -1;
-	if (gCurrentFileArchive != NULL) {
+	if (gCurrentFileArchive != NULL) { // the open archive wins over the disc
 		entrynum = ARCConvertPathToEntrynum(&gCurrentFileArchive->mHandle, path);
 	}
 	if (entrynum < 0) {
@@ -91,7 +91,7 @@ s32 CFile::ConvertPathToEntrynum(const char* path)
 inline s32 CFile::StartRead(BOOL fromAram)
 {
 	s32 status;
-	if (fromAram) {
+	if (fromAram) { // reads straight out of aram
 		u32 pos               = mOffset;
 		u32 len               = OSRoundUp32B(mSize);
 		DVDFileInfo* info     = mArchive != NULL ? (DVDFileInfo*)mArchive : this;
@@ -105,8 +105,8 @@ inline s32 CFile::StartRead(BOOL fromAram)
 		u32 len = OSRoundUp32B(mSize);
 		if (mArchive != NULL) {
 			entrynum = mArchive->mEntrynum;
-			memcpy(this, mArchive, sizeof(DVDFileInfo));
-			pos += ARCGetStartOffset(&mArcInfo);
+			memcpy(this, mArchive, sizeof(DVDFileInfo)); // the archive's file info becomes ours
+			pos += ARCGetStartOffset(&mArcInfo);         // plus the member's offset inside it
 		} else {
 			entrynum = mEntrynum;
 		}
@@ -127,7 +127,7 @@ inline s32 CFile::Open()
 			return -3;
 		}
 		if (!ARCFastOpen(&mArchive->mHandle, mEntrynum, &mArcInfo)) {
-			return -4;
+			return -4; // -3: unknown path, -4: open failed
 		}
 		mSize = ARCGetLength(&mArcInfo);
 	} else {
@@ -203,7 +203,7 @@ s32 CFile::ReadAsync(const char* path, u32 offset, u32 size, BOOL fromAram)
  */
 s32 CFile::GetResult()
 {
-	if (mResult == 0) {
+	if (mResult == 0) { // a finished read gets its cache invalidated
 		DCInvalidateRange(mBuffer, mSize);
 	}
 	return mResult;
@@ -219,7 +219,7 @@ s32 CFile::Read(const char* path, u32 offset, u32 size)
 	if (result >= 0) {
 		do {
 			result = GetResult();
-		} while (result == 1);
+		} while (result == 1); // 1 means still in flight
 	}
 	return result;
 }
@@ -248,7 +248,7 @@ void CFile::Close()
  */
 BOOL CFile::ReadEx(const char* path, u32 offset, u32 size)
 {
-	switch (mState) {
+	switch (mState) { // 0 idle, 1 starts the read, 2 waits on it
 	case 0:
 		return TRUE;
 	case 1:
@@ -277,7 +277,7 @@ BOOL CFile::ReadEx(const char* path, u32 offset, u32 size)
  */
 s32 CFileArchive::ReadAsync(const char* path, u32 offset, u32 size, BOOL fromAram)
 {
-	if (gCurrentFileArchive != NULL) {
+	if (gCurrentFileArchive != NULL) { // a new archive replaces the current one
 		gCurrentFileArchive->Close();
 	}
 	gCurrentFileArchive = NULL;
@@ -367,7 +367,7 @@ BOOL CFileText::GetLine(char* line)
 	BOOL lineEnd = FALSE;
 	do {
 		char c = *p;
-		if (c == '\r' || c == '\n' || c == 0x1A) {
+		if (c == '\r' || c == '\n' || c == 0x1A) { // \r, \n and 0x1a all end a line
 			lineEnd = TRUE;
 			p++;
 		} else {

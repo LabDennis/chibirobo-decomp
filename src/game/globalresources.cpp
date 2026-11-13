@@ -104,7 +104,7 @@ extern "C" const char* GetLocalizedInterfaceText(s32 index)
  */
 extern "C" u8* GetStatusOverviewDescription(s32 index)
 {
-	return ResourcePointer(0x50, index, 8, 4);
+	return ResourcePointer(GLOBAL_STATUS_OVERVIEW, index, 8, 4);
 }
 
 /**
@@ -113,7 +113,7 @@ extern "C" u8* GetStatusOverviewDescription(s32 index)
  */
 extern "C" u8* GetStatusOverviewLabel(s32 index)
 {
-	return ResourcePointer(0x50, index, 8, 0);
+	return ResourcePointer(GLOBAL_STATUS_OVERVIEW, index, 8, 0);
 }
 
 /**
@@ -122,7 +122,7 @@ extern "C" u8* GetStatusOverviewLabel(s32 index)
  */
 extern "C" u32 GetStatusIconEventFlagId(s32 index)
 {
-	return *(u32*)(ResourceField(0x4C, index, 12, 8));
+	return *(u32*)(ResourceField(GLOBAL_STATUS_ICONS, index, 12, 8));
 }
 
 /**
@@ -131,7 +131,7 @@ extern "C" u32 GetStatusIconEventFlagId(s32 index)
  */
 extern "C" u8* GetStatusIconDescription(s32 index)
 {
-	return ResourcePointer(0x4C, index, 12, 4);
+	return ResourcePointer(GLOBAL_STATUS_ICONS, index, 12, 4);
 }
 
 /**
@@ -140,7 +140,7 @@ extern "C" u8* GetStatusIconDescription(s32 index)
  */
 extern "C" u8* GetStatusIconName(s32 index)
 {
-	return ResourcePointer(0x4C, index, 12, 0);
+	return ResourcePointer(GLOBAL_STATUS_ICONS, index, 12, 0);
 }
 
 /**
@@ -149,7 +149,7 @@ extern "C" u8* GetStatusIconName(s32 index)
  */
 extern "C" s16 GetUtilibotPrice(s32 index)
 {
-	return *(s16*)(ResourceField(0x48, index, 12, 8));
+	return *(s16*)(ResourceField(GLOBAL_UTILIBOTS, index, 12, 8));
 }
 
 /**
@@ -158,7 +158,7 @@ extern "C" s16 GetUtilibotPrice(s32 index)
  */
 extern "C" u8* GetUtilibotDescription(s32 index)
 {
-	return ResourcePointer(0x48, index, 12, 4);
+	return ResourcePointer(GLOBAL_UTILIBOTS, index, 12, 4);
 }
 
 /**
@@ -167,7 +167,7 @@ extern "C" u8* GetUtilibotDescription(s32 index)
  */
 extern "C" u8* GetUtilibotName(s32 index)
 {
-	return ResourcePointer(0x48, index, 12, 0);
+	return ResourcePointer(GLOBAL_UTILIBOTS, index, 12, 0);
 }
 
 /**
@@ -176,7 +176,7 @@ extern "C" u8* GetUtilibotName(s32 index)
  */
 extern "C" u8* GetPCRankingName(s32 index)
 {
-	return ResourcePointer(0x44, index, 4, 0);
+	return ResourcePointer(GLOBAL_PC_RANKING_NAMES, index, 4, 0);
 }
 
 /**
@@ -185,7 +185,7 @@ extern "C" u8* GetPCRankingName(s32 index)
  */
 extern "C" u8* GetStageDisplayName(s32 index)
 {
-	return ResourcePointer(0x38, index, 8, 0);
+	return ResourcePointer(GLOBAL_STAGE_NAMES, index, 8, 0);
 }
 
 /**
@@ -194,7 +194,7 @@ extern "C" u8* GetStageDisplayName(s32 index)
  */
 extern "C" u8* GetCostumeName(s32 index)
 {
-	return ResourcePointer(0x34, index, 4, 0);
+	return ResourcePointer(GLOBAL_COSTUME_NAMES, index, 4, 0);
 }
 
 /**
@@ -203,7 +203,7 @@ extern "C" u8* GetCostumeName(s32 index)
  */
 extern "C" s16 GetAttachmentShopPrice(s32 index)
 {
-	return *(s16*)(ResourceField(0x30, index, 12, 8));
+	return *(s16*)(ResourceField(GLOBAL_ATTACHMENTS, index, 12, 8));
 }
 
 /**
@@ -212,7 +212,7 @@ extern "C" s16 GetAttachmentShopPrice(s32 index)
  */
 extern "C" u8* GetAttachmentDescription(s32 index)
 {
-	return ResourcePointer(0x30, index, 12, 4);
+	return ResourcePointer(GLOBAL_ATTACHMENTS, index, 12, 4);
 }
 
 /**
@@ -221,7 +221,7 @@ extern "C" u8* GetAttachmentDescription(s32 index)
  */
 extern "C" u8* GetAttachmentName(s32 index)
 {
-	return ResourcePointer(0x30, index, 12, 0);
+	return ResourcePointer(GLOBAL_ATTACHMENTS, index, 12, 0);
 }
 
 /**
@@ -230,7 +230,7 @@ extern "C" u8* GetAttachmentName(s32 index)
  */
 extern "C" u8* GetActorName(s32 index)
 {
-	return ResourcePointer(0x2C, index, 4, 0);
+	return ResourcePointer(GLOBAL_ACTOR_NAMES, index, 4, 0);
 }
 
 /**
@@ -239,7 +239,7 @@ extern "C" u8* GetActorName(s32 index)
  */
 extern "C" u8 GetItemSoundIndex(s32 index, s32 member)
 {
-	return ResourceField(0x28, index, 20, 18)[member];
+	return ResourceField(GLOBAL_ITEMS, index, 20, 18)[member];
 }
 
 /**
@@ -248,7 +248,7 @@ extern "C" u8 GetItemSoundIndex(s32 index, s32 member)
  */
 extern "C" s16 GetItemHappyPointValue(s32 index)
 {
-	return *(s16*)(ResourceField(0x28, index, 20, 16));
+	return *(s16*)(ResourceField(GLOBAL_ITEMS, index, 20, 16));
 }
 
 /**
@@ -257,7 +257,7 @@ extern "C" s16 GetItemHappyPointValue(s32 index)
  */
 extern "C" s16 GetItemScrapValue(s32 index)
 {
-	return *(s16*)(ResourceField(0x28, index, 20, 14));
+	return *(s16*)(ResourceField(GLOBAL_ITEMS, index, 20, 14));
 }
 
 /**
@@ -266,7 +266,7 @@ extern "C" s16 GetItemScrapValue(s32 index)
  */
 extern "C" s16 GetItemShopPrice(s32 index)
 {
-	return *(s16*)(ResourceField(0x28, index, 20, 12));
+	return *(s16*)(ResourceField(GLOBAL_ITEMS, index, 20, 12));
 }
 
 /**
@@ -275,7 +275,7 @@ extern "C" s16 GetItemShopPrice(s32 index)
  */
 extern "C" s16 GetItemPickupHoldTime(s32 index)
 {
-	return *(s16*)(ResourceField(0x28, index, 20, 10));
+	return *(s16*)(ResourceField(GLOBAL_ITEMS, index, 20, 10));
 }
 
 /**
@@ -284,7 +284,7 @@ extern "C" s16 GetItemPickupHoldTime(s32 index)
  */
 extern "C" void ClearItemFlags(s32 index, u16 mask)
 {
-	u16* flags = (u16*)(ResourceField(0x28, index, 20, 8));
+	u16* flags = (u16*)(ResourceField(GLOBAL_ITEMS, index, 20, 8));
 	*flags &= ~mask;
 }
 
@@ -294,7 +294,7 @@ extern "C" void ClearItemFlags(s32 index, u16 mask)
  */
 extern "C" void SetItemFlags(s32 index, u16 mask)
 {
-	u16* flags = (u16*)(ResourceField(0x28, index, 20, 8));
+	u16* flags = (u16*)(ResourceField(GLOBAL_ITEMS, index, 20, 8));
 	*flags |= mask;
 }
 
@@ -304,7 +304,7 @@ extern "C" void SetItemFlags(s32 index, u16 mask)
  */
 extern "C" u16 GetItemFlagsMasked(s32 index, u16 mask)
 {
-	return *(u16*)(ResourceField(0x28, index, 20, 8)) & mask;
+	return *(u16*)(ResourceField(GLOBAL_ITEMS, index, 20, 8)) & mask;
 }
 
 /**
@@ -313,7 +313,7 @@ extern "C" u16 GetItemFlagsMasked(s32 index, u16 mask)
  */
 extern "C" u8* GetItemDescription(s32 index)
 {
-	return ResourcePointer(0x28, index, 20, 4);
+	return ResourcePointer(GLOBAL_ITEMS, index, 20, 4);
 }
 
 /**
@@ -322,7 +322,7 @@ extern "C" u8* GetItemDescription(s32 index)
  */
 extern "C" u8* GetItemName(s32 index)
 {
-	return ResourcePointer(0x28, index, 20, 0);
+	return ResourcePointer(GLOBAL_ITEMS, index, 20, 0);
 }
 
 // script offsets count from the buffer the operand is in, the globals file or the stage's, 0 is none
@@ -332,6 +332,7 @@ extern "C" u8* GetItemName(s32 index)
  */
 extern "C" u8* ResolveEventScriptOffset(u8* operand)
 {
+	// a globals operand resolves against the globals' script blob, a stage one against the stage data
 	if (IsGlobalScript(operand)) {
 		u32 offset = ReadResourceOffset(operand);
 		return offset == 0 ? NULL : gGlobalScriptResources.mScripts + offset;
@@ -407,7 +408,7 @@ extern "C" s32 GetDefaultStageIndex()
  */
 extern "C" u32 GetItemReleaseSoundId(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x24, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_ITEM_RELEASE_SOUNDS, index, 4, 0));
 }
 
 /**
@@ -416,7 +417,7 @@ extern "C" u32 GetItemReleaseSoundId(s32 index)
  */
 extern "C" u32 GetMaterialSoundId(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x20, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_MATERIAL_SOUNDS, index, 4, 0));
 }
 
 /**
@@ -425,7 +426,7 @@ extern "C" u32 GetMaterialSoundId(s32 index)
  */
 extern "C" u32 GetPickupRewardValue(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x1C, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_PICKUP_REWARDS, index, 4, 0));
 }
 
 /**
@@ -434,7 +435,7 @@ extern "C" u32 GetPickupRewardValue(s32 index)
  */
 extern "C" u32 GetStartingAttachmentLevel(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x18, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_ATTACHMENT_LEVELS, index, 4, 0));
 }
 
 /**
@@ -443,7 +444,7 @@ extern "C" u32 GetStartingAttachmentLevel(s32 index)
  */
 extern "C" u32 GetInteractionParameter(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x14, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_INTERACTION_PARAMS, index, 4, 0));
 }
 
 /**
@@ -452,7 +453,7 @@ extern "C" u32 GetInteractionParameter(s32 index)
  */
 extern "C" u32 GetStageEntryTimeComponent(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x10, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_STAGE_ENTRY_TIMES, index, 4, 0));
 }
 
 /**
@@ -461,7 +462,7 @@ extern "C" u32 GetStageEntryTimeComponent(s32 index)
  */
 extern "C" u32 GetRadarParameter(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0xC, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_RADAR_PARAMS, index, 4, 0));
 }
 
 /**
@@ -470,7 +471,7 @@ extern "C" u32 GetRadarParameter(s32 index)
  */
 extern "C" u32 GetCopterParameter(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x8, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_COPTER_PARAMS, index, 4, 0));
 }
 
 /**
@@ -479,7 +480,7 @@ extern "C" u32 GetCopterParameter(s32 index)
  */
 extern "C" u32 GetPopperParameter(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x4, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_POPPER_PARAMS, index, 4, 0));
 }
 
 /**
@@ -488,7 +489,7 @@ extern "C" u32 GetPopperParameter(s32 index)
  */
 extern "C" u32 GetPlayerActionParameter(s32 index)
 {
-	return ReadResourceOffset(ResourceField(0x0, index, 4, 0));
+	return ReadResourceOffset(ResourceField(GLOBAL_PLAYER_ACTION_PARAMS, index, 4, 0));
 }
 
 /**

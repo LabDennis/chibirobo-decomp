@@ -2701,12 +2701,13 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		strcpy(stage->mModulePath, FormatToStaticBuffer("rel/%s%s.rel", stageTable[index].fileName, ""));
 #endif
 		if (!(gGame.mStatus.mFlags & 0x100000000ULL))
-			stage->mModulePath[0] = 0;
+			stage->mModulePath[0] = 0; // an empty path skips the module load below
 #endif
 		++stage->mState;
 	}
 	// fall through, every step that's done moves on in the same frame
 	case 1: {
+		// read the stage's data file and resolve its sections
 		if (!stage->mDataFile.ReadEx(stage->mDataPath, 0, 0))
 			break;
 		stage->mDataFile.CloseHandle();
@@ -2716,7 +2717,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		stage->mPlacements.mPlacement = (UnkStageObj*)(data + ReadResourceOffset(header->placements));
 		stage->mScriptOffsets         = data + ReadResourceOffset(header->scriptOffsets);
 		stage->mSetupScript           = data + ReadResourceOffset(header->setupScript);
-		if (stage->mSetupScript == data)
+		if (stage->mSetupScript == data) // a zero script offset means no script
 			stage->mSetupScript = NULL;
 		stage->mEntryScript = data + ReadResourceOffset(header->entryScript);
 		if (stage->mEntryScript == data)
@@ -2745,7 +2746,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 			stage->mCameraAreaExRecords = NULL;
 		++stage->mState;
 	}
-	case 2:
+	case 2: // load the stage's rel module when it has one
 		if ((s8)stage->mModulePath[0] != 0) {
 			if (!stage->mModule.Load(stage->mModulePath))
 				break;
@@ -2755,7 +2756,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		}
 	case 3:
 		++stage->mState;
-	case 4:
+	case 4: // the stage's sound bank
 #if defined(VERSION_R24J01)
 		if (stageTable[index].soundBank) {
 			LoadWiiSoundBankByName(&gGame.mSound, stageTable[index].soundBank);
@@ -2946,6 +2947,7 @@ extern "C" BOOL IsStageDataLoaded()
  */
 extern "C" void ApplyStageClearColor()
 {
+	// the environment record's first word is the VI background colour
 	GXColor color = *(GXColor*)gStageResources.mEnvironment.mData;
 #if defined(VERSION_R24J01)
 	GXSetCopyClear(color, 0xFFFFFF);
@@ -2965,7 +2967,7 @@ extern "C" void UnloadStageDataAndModule()
 	_prolog(6, 0, NULL);
 #else
 	if (IsModuleLoaded(&gStageResources.mModule))
-		gStageResources.CallModule(6, 0, NULL);
+		gStageResources.CallModule(6, 0, NULL); // slot 6 runs only before the module unloads
 #endif
 	gStageResources.mModule.Unload();
 	CFile* file = &gStageResources.mDataFile;
@@ -3017,12 +3019,12 @@ extern "C" u32 CheckStageFlag(s32 index, u32 mask)
 extern "C" s32 FindStageIndexByName(const char* name)
 {
 	s32 index = 0;
-	while (stageTable[index].fileName != NULL) {
+	while (stageTable[index].fileName != NULL) { // the direct ids before the null entry
 		if (strcmp(name, stageTable[index].fileName) == 0)
 			return index;
 		++index;
 	}
-	++index;
+	++index; // past the null entry the ids are 100-based
 	while (stageTable[index].fileName != NULL) {
 		if (strcmp(name, stageTable[index].fileName) == 0)
 			return index - StageCount() + 99;
@@ -3037,7 +3039,7 @@ static inline const char* StageMessage(s32 index, s32 member)
 	s32 message     = desc->message;
 	if (message >= 0) {
 		u8* data   = gGlobalScriptResources.mData;
-		u8* record = data + ReadResourceOffset(data + 0x38) + message * 8;
+		u8* record = data + ReadResourceOffset(data + GLOBAL_STAGE_NAMES) + message * 8;
 		return (const char*)(data + ReadResourceOffset(record + member));
 	}
 	return NULL;

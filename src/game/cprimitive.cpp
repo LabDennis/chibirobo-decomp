@@ -10,8 +10,10 @@ void GXDrawSphere(u8 numMajor, u8 numMinor);
 void GXDrawCube(void);
 }
 
+// tev_state.h's value; that is an HSD header and this file builds with the Dolphin ones
 #define HSD_STATE_VTX_ATTR 2
 
+// normals take the inverse transpose of the position matrix, so a non-uniform scale doesn't skew them
 static inline void LoadNrmMtx(MtxP mtx)
 {
 	Mtx inv;
@@ -23,8 +25,8 @@ static inline void LoadNrmMtx(MtxP mtx)
 }
 
 // position and color, both direct. every caller shares one copy of these arrays, so
-// it's an inline. retail's tile and circle draws use their own format with no null test,
-// this check still costs them a compare. default first then an if beats a ternary
+// it's an inline. retail's tile draws and lit circle pass their own format with no null
+// test, this check still costs them a compare. default first then an if beats a ternary
 static inline void SetVtxPosClr(GXVtxAttrFmtList* fmt = NULL)
 {
 	GXVtxAttrFmtList defFmt[] = {
@@ -103,9 +105,12 @@ MtxP CPrimitive::LoadMtx(Mtx view)
 {
 	MtxP mtx;
 
+	// a fixed matrix goes to GX as the whole model view: view and the transform are skipped
 	if (mFixedMtx != NULL) {
 		mtx = mFixedMtx;
 	} else {
+		// view only goes in on a rebuild: until something sets mDirty again, the cached
+		// mModelView keeps the view it was built with
 		if (mDirty) {
 			Mtx rot;
 			MtxP trans = mTrans;
@@ -114,6 +119,8 @@ MtxP CPrimitive::LoadMtx(Mtx view)
 			MtxP rotY  = mRotY;
 			MtxP rotZ  = mRotZ;
 
+			// order the rotations follow the translation: 0 x y z, 1 x z y, 2 y x z, 3 y z x,
+			// 4 z x y (what Set gives), 5 z y x (what CGs gives its shapes)
 			switch (mRotOrder) {
 			case 0:
 				PSMTXConcat(trans, rotX, rot);
@@ -1848,6 +1855,8 @@ void CCircle::Draw(Mtx view, u32 segments, u32 centerColor, u32 edgeColor)
 	LoadMtx(view);
 	HSD_StateInvalidate(HSD_STATE_VTX_ATTR);
 	SetVtxPosClr();
+	// the hub at the origin, then segments + 1 rim points around mCenter: the last one
+	// lands on the first again and closes the fan
 	GXBegin(GX_TRIANGLEFAN, GX_VTXFMT0, segments + 2);
 	f32 zero = 0.0f;
 	GXPosition3f32(zero, zero, zero);
@@ -1997,6 +2006,7 @@ void CCircle::Draw(Mtx view, u32 segments, u32 centerColor, u32 edgeColor)
  */
 void CCircle::DrawLit(Mtx view, u32 segments, u32 centerColor, u32 edgeColor)
 {
+	// SetVtxPosNrmClr's default with s8 normals, enough for the fixed (0, 0, 1) every vertex sends
 	GXVtxAttrFmtList fmt[] = {
 		{ GX_VA_POS, GX_POS_XYZ, GX_F32, 0 },
 		{ GX_VA_NRM, GX_NRM_XYZ, GX_S8, 0 },
@@ -2230,6 +2240,7 @@ void CTile::Init(f32 tx, f32 ty, f32 tz, f32 sx, f32 sy, f32 sz, f32 rx, f32 ry,
  */
 void CTile::Draw(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
 {
+	// the same entries as SetVtxPosClr's default, but retail's tile copies and passes its own table
 	GXVtxAttrFmtList fmt[] = {
 		{ GX_VA_POS, GX_POS_XYZ, GX_F32, 0 },
 		{ GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0 },
@@ -2239,6 +2250,8 @@ void CTile::Draw(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
 	LoadMtx(view);
 	HSD_StateInvalidate(HSD_STATE_VTX_ATTR);
 	SetVtxPosClr(fmt);
+	// a strip, so the corners zigzag: color0 and color1 on the +y edge, color2 and color3
+	// on the -y edge, each pair -x first
 	GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 4);
 	GXPosition3f32(mCenter.x - 1.0f, 1.0f + mCenter.y, mCenter.z);
 	GXColor1u32(color0);
@@ -2385,6 +2398,7 @@ void CTile::Draw(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
  */
 void CTile::DrawLit(Mtx view, u32 color0, u32 color1, u32 color2, u32 color3)
 {
+	// SetVtxPosNrmClr's default with s8 normals, enough for the fixed (0, 0, 1) every vertex sends
 	GXVtxAttrFmtList fmt[] = {
 		{ GX_VA_POS, GX_POS_XYZ, GX_F32, 0 },
 		{ GX_VA_NRM, GX_NRM_XYZ, GX_S8, 0 },

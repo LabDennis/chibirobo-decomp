@@ -58,6 +58,8 @@ static inline void SetToyBlinkVisibility(XObjActorToy* toy, CJObj& joint)
 void XObjActorToy::ProcessPendingEvents(u32 frames)
 {
 	XObjActorToy* toy = this;
+	// a hit is pending (OnHitFromPosition): most kinds set the value their joint effect eases to (_9AC) and how long the hit
+	// lasts (_9A4)
 	if (toy->mActorStatus.Check(2)) {
 		toy->mActorStatus.mFlags &= ~2;
 		toy->_9A4 = 5 * frames;
@@ -113,6 +115,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			break;
 		}
 	}
+	// when the hit's time is up the target falls back to 1; _9A8 eases a quarter of the way to _9AC each tick
 	if (--toy->_9A4 < 0) {
 		toy->_9AC = 1.0f;
 		toy->_9A4 = 0;
@@ -140,6 +143,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		joint.Attach(GetObjectJointByPath(toy, 8, path));
 		joint.SetScale(1, 1, toy->_9A8, 0);
 		XSound* sound = &gGame.mSound;
+		// sound 0xF8 loops while the toy is drawn (0x10000), at the volume for where it stands
 		if (!IsGameSoundPlaying(sound, 0xf8) && (toy->mStatus.mFlags & 0x10000))
 			PlayGameSound(sound, 0xf8, 255);
 		SetGameSfxVolume(sound, 0xf8, GetSoundVolumeAtPosition(sound, &toy->mMoveTranslate, 0), 0);
@@ -150,6 +154,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		if (toy->mSecond.mStatus.mFlags & 0x10000)
 			toy->mSecond.UpdateObject(frames);
 		s32 anim = toy->mAnimId;
+		// mShownPart: 1 mFirst is out while anim 0x13 or 0x3FB plays, 2 mSecond until that anim (0xE, 0x14, 0x3F6 or 0x3FC) ends
 		switch (toy->mShownPart) {
 		case 0:
 			if (anim == 0x13 || anim == 0x3fb) {
@@ -190,10 +195,12 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 	case 0x110: {
 		s32 path[] = { 0, 3, 0, 0, 0 };
 		joint.Attach(GetObjectJointByPath(toy, 5, path));
+		// the joint blinks while a hit lasts
 		if ((toy->_9A4 & 3) < 2)
 			HSD_JObjClearFlags(joint.mJObj, 0x10);
 		else
 			HSD_JObjSetFlags(joint.mJObj, 0x10);
+		// flag 1: walking to the spot command 1 left in mVelocity; step 1 starts the walk anim, step 2 walks and stops on the spot
 		if (!(toy->mKindFlags.mFlags & 1))
 			break;
 		switch (toy->mKindStep) {
@@ -237,6 +244,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		s32 second[] = { 0, 2, 4, 0, 3 };
 		joint.Attach(GetObjectJointByPath(toy, 5, second));
 		joint.SetScale(toy->_9A8, toy->_9A8, toy->_9A8, 0);
+		// rode toy 0x157 down to the floor: it hides
 		if ((toy->mKindFlags.mFlags & 1) && toy->mKindStep == 0 && toy->mMoveTranslate.y <= 2.0f) {
 			++toy->mKindStep;
 			toy->mStatus.mFlags &= ~0x10000ULL;
@@ -244,6 +252,8 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		break;
 	}
 	case 0x157:
+		// step 0: once pushed off the edge (XObj's falling flag) it moves 14 ahead and tells toy 0x156 (flag 0x10); step 1: down on
+		// the floor it hides and toy 0x16C appears in its place
 		if (toy->mKindStep == 0 && (toy->mStatus.mFlags & 0x1000000000000000ULL)) {
 			toy->mActorStatus.mFlags |= 4;
 			toy->mActorStatus.mFlags |= 8;
@@ -286,6 +296,8 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		}
 		break;
 	case 0x16c:
+		// 0 waits for toy 0x157 to land (flag 4), 1 plays anim 1 once, 2 waits for command 1 (flag 8); 10-18 each blink a group of
+		// joints for five ticks, then hide it with a burst of particle 0x5B; 19 hides the last group and the toy; 20 is done
 		switch (toy->mKindStep) {
 		case 0:
 			if (toy->mKindFlags.Check(4)) {
@@ -490,6 +502,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		HandleToyKind0FCommand(toy, frames);
 		break;
 	case 0x6F:
+		// command 1: arg 0 hides joint 0-3-2-0-0-0, arg 1 shows it again (UpdateToy6FJointSpin)
 		switch (toy->mCmd[0]) {
 		case 0:
 			break;
@@ -511,6 +524,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		HandleToyKind110Command(toy, frames);
 		break;
 	case 0x117:
+		// command 1: arg 8 shows joint 0-0-3, anything else hides it (UpdateToy117JointVisibility)
 		switch (toy->mCmd[0]) {
 		case 0:
 			break;
@@ -605,11 +619,14 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 		else
 			mAttached->mStatus.mFlags &= ~0x10000ULL;
 	}
+	// 0 starts a hop, heading away from the player; 1 waits until it lands; 2 slows to a stop and puts it back on mHomePos;
+	// 4 returns to StateCarry; nothing enters 3, a walk back home
 	switch (mKindStep) {
 	case 0: {
 		Vec& player = gGame.GetPlayer()->mMoveTranslate;
 		mHeading    = PI + (f32)atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
 		mHomePos    = mMoveTranslate;
+		// in the air, falling under gravity, moved by UpdateGroundMovement
 		mActorStatus.mFlags |= 8;
 		mActorStatus.mFlags |= 0x10;
 		mActorStatus.mFlags |= 4;
@@ -675,6 +692,7 @@ static inline void FinishToyMount(XObjActorToy* toy)
 
 void XObjActorToy::StatePickUp(u32 frames)
 {
+	// 0 waits until Tao and Papa are free and reads mAttachedId in, 1 waits for the read, 2 mounts it and goes to StateCarry
 	switch (mKindStep) {
 	case 0: {
 		XObjActorTao* tao = (XObjActorTao*)gGame.mXObjs.mPools[14].First();
@@ -840,7 +858,7 @@ static inline void MountToyPiece(CJObj& joint, XObj* const& prop, Mtx mount)
 	PSMTXScale(scaling, scale.x, scale.y, scale.z);
 	PSMTXConcat(mount, scaling, result);
 	OffsetHeldProp(result, translation, 0, -6.5f, 0);
-	RotateHeldProp(result, result, rotation, 'y', .19634955f);
+	RotateHeldProp(result, result, rotation, 'y', PI / 16);
 	SetHeldPropMatrix(prop, result);
 }
 
@@ -855,6 +873,7 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 	toy->mMoveTranslate.x += .1f * (toy->mPendingMove.x * frames);
 	toy->mMoveTranslate.z += .1f * (toy->mPendingMove.z * frames);
 	toy->mPendingMove.Set(0, 0, 0);
+	// one of the pool 8 items: every mHideKinds bit but 0x40, which is toy 0x25E's 0x341
 	if (toy->mHideKinds.mFlags & 0x9f) {
 		s32 hand[9] = { 0, 3, 0, 0, 0, 0, 0, 5, 0 };
 		joint.Attach(FindJointByPath(toy->mJObj, hand, 9));
@@ -922,6 +941,7 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 	}
 	for (u32 i = 0; i < 4; ++i) {
 		XObjActorToyPiece& piece = toy->mPieces[i];
+		// 1 reads the piece in by id, 2 waits for the read, 3 keeps it mounted on joint 0-3-0-0-0-0-0
 		switch (piece.mState) {
 		case 1:
 			if (piece.mObj)
@@ -984,11 +1004,11 @@ void UpdateToy117JointVisibility(XObjActorToy* object, u32)
 	if (object->mKindFlags.mFlags & 8) {
 		s32 path[] = { 0, 0, 3 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 3, path));
-		HSD_JObjClearFlags(joint.mJObj, 0x10);
+		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
 	} else {
 		s32 path[] = { 0, 0, 3 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 3, path));
-		HSD_JObjSetFlags(joint.mJObj, 0x10);
+		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
 	}
 }
 
@@ -998,11 +1018,11 @@ void UpdateToy6FJointSpin(XObjActorToy* object, u32)
 	if (object->mKindFlags.mFlags & 1) {
 		s32 path[] = { 0, 3, 2, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 6, path));
-		HSD_JObjSetFlags(joint.mJObj, 0x10);
+		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
 	} else {
 		s32 path[] = { 0, 3, 2, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 6, path));
-		HSD_JObjClearFlags(joint.mJObj, 0x10);
+		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
 	}
 
 	static f32 sAngle = 0.0f;
@@ -1181,29 +1201,29 @@ extern "C" void UpdateToyJointExtension(XObjActorToy* object, u32 frames)
 	if (object->mKindFlags.mFlags & 1) {
 		s32 path0[4] = { 0, 0, 0, 1 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 4, path0));
-		HSD_JObjSetFlags(joint.mJObj, 0x10);
+		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
 		s32 path1[5] = { 0, 0, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 5, path1));
-		HSD_JObjSetFlags(joint.mJObj, 0x10);
+		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
 		s32 path2[6] = { 0, 0, 0, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 6, path2));
-		HSD_JObjSetFlags(joint.mJObj, 0x10);
+		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
 		s32 path3[7] = { 0, 0, 0, 0, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 7, path3));
-		HSD_JObjSetFlags(joint.mJObj, 0x10);
+		HSD_JObjSetFlags(joint.mJObj, HIDDEN);
 	} else {
 		s32 path0[4] = { 0, 0, 0, 1 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 4, path0));
-		HSD_JObjClearFlags(joint.mJObj, 0x10);
+		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
 		s32 path1[5] = { 0, 0, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 5, path1));
-		HSD_JObjClearFlags(joint.mJObj, 0x10);
+		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
 		s32 path2[6] = { 0, 0, 0, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 6, path2));
-		HSD_JObjClearFlags(joint.mJObj, 0x10);
+		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
 		s32 path3[7] = { 0, 0, 0, 0, 0, 0, 0 };
 		joint.Attach(GetJointFromRoot(object->mJObj, 7, path3));
-		HSD_JObjClearFlags(joint.mJObj, 0x10);
+		HSD_JObjClearFlags(joint.mJObj, HIDDEN);
 	}
 }
 
@@ -1211,7 +1231,7 @@ extern "C" void UpdateToyJointExtension(XObjActorToy* object, u32 frames)
  * @note Address: 0x8011E3A4
  * @note Size: 0x2E4
  */
-// hides the item the toy dropped, the _C84 bits say which
+// hides the item the toy dropped, the mHideKinds bits say which
 extern "C" void HideToyDroppedItem(XObjActorToy* object)
 {
 	s32 id = -1;
@@ -1393,6 +1413,7 @@ extern "C" void HandleToyKind16CCommand(XObjActorToy* object, u32 frames)
 	switch (object->mCmd[0]) {
 	case 0:
 		break;
+	// 1 starts its blinking away (step 2 in ProcessPendingEvents), 2 tells the script whether it is still drawn
 	case 1:
 		object->mKindFlags.mFlags |= 8;
 		object->mCmd[0] = 0;
@@ -1488,6 +1509,7 @@ extern "C" void HandleToyKind0FCommand(XObjActorToy* object, u32 frames)
 		break;
 	case 1:
 		switch (object->mCmd[1]) {
+		// flag 1 keeps it turned to the player (UpdateToy0FCarriedObjects)
 		case 0:
 			object->mKindFlags.mFlags &= ~1;
 			break;
@@ -1617,6 +1639,7 @@ void XObjActorToy::UpdateAfterAnim(u32 frames)
 		UpdateToy117JointVisibility(this, frames);
 		break;
 	case 0x156:
+		// flag 1: it rides on toy 0x157 (OnPushDisplacement)
 		if (mKindFlags.mFlags & 1) {
 			for (s32 i = 0; i < 15; i++) {
 				if (GetToy(i)->GetKind() == 0x157) {

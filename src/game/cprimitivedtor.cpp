@@ -13,6 +13,8 @@ extern void* __vt__7CSphere[];
 extern void* __vt__9CCylinder[];
 extern void* __vt__6CTorus[];
 
+// the file holds the compiler's deleting destructors for the primitives: each stores the
+// child vtable over the slot at _164, runs the base dtor and frees when flags > 0
 // todo: weak copy
 /**
  * @note Address: 0x800187DC

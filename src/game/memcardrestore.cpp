@@ -55,7 +55,7 @@ static inline void SetMaxBattery(Params* stats, f32 value)
 
 static inline void RequestSuit(XObjChr* chr, s32 value)
 {
-	if (chr->mSuits.mChangeStep == FALSE) {
+	if (chr->mSuits.mChangeStep == FALSE) { // only when no suit change is in progress
 		chr->mSuits.mRequested  = value;
 		chr->mSuits.mChangeStep = TRUE;
 	}
@@ -69,7 +69,7 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 {
 	SaveData* save = &card->mFile.mData;
 	s32 stage      = save->mHeader.mStage;
-	if (stage >= 100) {
+	if (stage >= 100) { // stages >= 100 are relative to the current stage count
 		stage += GetStageNum();
 		stage -= 99;
 	}
@@ -77,7 +77,7 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	gGame.mStage               = stage;
 	gGame.mTimeState.mMode     = save->mHeader.mTimeMode;
 	gGame.mTimeState.mTime     = save->mHeader.mTime;
-	gGame.mTimeState.mRunning  = 0;
+	gGame.mTimeState.mRunning  = 0; // the clock starts stopped
 	gGame.mTimeState.mDuration = save->mHeader.mDuration;
 	SetExperience(Stats(), save->mHeader.mExp);
 	SetLevel(Stats(), save->mHeader.mLevel);

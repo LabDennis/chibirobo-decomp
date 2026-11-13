@@ -69,12 +69,12 @@ extern "C" void LoadBootConfig()
 {
 	CGame& game = gGame;
 	u64& flags  = game.mStatus.mFlags;
-	flags |= 1ULL << 34;
+	flags |= 1ULL << 34; // the defaults: logo, title, game over, rel, archiver
 	flags |= 1ULL << 29;
 	flags |= 1ULL << 30;
 	flags |= 1ULL << 32;
 	flags |= 1ULL << 33;
-	if (OSGetSoundMode() == 1)
+	if (OSGetSoundMode() == 1) // 1 = stereo
 		flags |= 1ULL << 36;
 	else
 		flags &= ~(1ULL << 36);
@@ -98,14 +98,14 @@ extern "C" void LoadBootConfig()
 		BOOL restricted = FALSE;
 		while (file.GetLine(line) == TRUE) {
 			for (char* p = line; *p; ++p)
-				if (*p == ';') {
+				if (*p == ';') { // ';' starts a comment
 					*p = 0;
 					break;
 				}
 			char* key = strtok(line, " \t,=");
 			if (!key)
 				continue;
-			if (strcmp(key, "&") == 0)
+			if (strcmp(key, "&") == 0) // '&' restricts the rest of the file
 				restricted = TRUE;
 			char* text = strtok(NULL, " \t,=");
 			if (!text)
@@ -116,7 +116,7 @@ extern "C" void LoadBootConfig()
 					continue;
 				switch (entry->kind) {
 				case BootFlag:
-					if (restricted)
+					if (restricted) // restricted files only get BootUnrestrictedFlag and BootCrosshair
 						break;
 				case BootUnrestrictedFlag:
 					if (atoi(text))
@@ -127,7 +127,7 @@ extern "C" void LoadBootConfig()
 				case BootStage:
 					if (!restricted) {
 						s32 stage = gCmdLineArgs.mStage >= 0 ? gCmdLineArgs.mStage : atoi(text);
-						if (stage >= 100)
+						if (stage >= 100) // 100+ indexes the rel stages
 							stage += GetStageNum() - 99;
 						gCmdLineArgs.mStage = stage;
 						gGame.SetStage(stage);
@@ -185,7 +185,7 @@ extern "C" void LoadBootConfig()
 			}
 		}
 		file.Close();
-	} else if (result == -3) {
+	} else if (result == -3) { // no qp.ini on the disc: use the default stage
 		s32 stage           = gCmdLineArgs.mStage >= 0 ? gCmdLineArgs.mStage : GetDefaultStageIndex();
 		gCmdLineArgs.mStage = stage;
 		gGame.SetStage(stage);

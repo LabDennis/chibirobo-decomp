@@ -57,12 +57,13 @@ void CCameraActionReset::Update(u32 step)
 	if (mTarget == NULL) {
 		return;
 	}
-	if (mState == 100) {
+	if (mState == 100) { // hold for one frame after taking the camera
 		mState = 0;
 		return;
 	}
 
 	SetInterest(mTarget->GetCameraTarget());
+	// an interpolator that answers true is done
 	if (mEyeInterp != NULL) {
 		if (!mEyeInterp->Update(step, FRAME_TIME)) {
 			SetEye(mEyeInterp->Get());
@@ -88,7 +89,7 @@ void CCameraActionReset::PreviousUpdate()
 	Vec eye;
 
 	if (mState == 100) {
-		if (mAngle.z) {
+		if (mAngle.z) { // drop any roll it came in with
 			mCameraFlags = 0x40010;
 			Vec angle    = mAngle;
 			angle.z      = 0.0f;
@@ -96,7 +97,7 @@ void CCameraActionReset::PreviousUpdate()
 		}
 		return;
 	}
-	if (mState == 1) {
+	if (mState == 1) { // hand over once the interpolators ran out
 		if (mEyeInterp == NULL && mFovInterp == NULL) {
 			gGame.mMotionControlCamera.ChangeAction(mNextCameraAction);
 		}
@@ -124,12 +125,13 @@ void CCameraActionReset::PreviousUpdate()
 		return;
 	}
 
+	// the action ids are the slots in mTable: 1 is the area camera, 7 the map camera
 	if (mNextCameraAction == 1) {
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		camera->ChangeAction(mNextCameraAction);
 		SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState.mZoomLevel);
 		SelectAreaCameraEntryByViewDirection((CCameraActionArea*)gGame.mCameraActions.mTable[1], mMode, mTime, arg);
-		if (mMode == 3) {
+		if (mMode == 3) { // mode 3 snaps instead of interpolating
 			camera->ApplyAction();
 		}
 		return;
@@ -137,7 +139,8 @@ void CCameraActionReset::PreviousUpdate()
 
 	if (mNextCameraAction == 7) {
 		GetMapCameraEyeBehindTarget((CCameraActionMap*)gGame.mCameraActions.mTable[7], eye, 1);
-		if (fpclassify(eye.x) == FP_NAN || fpclassify(eye.y) == FP_NAN || fpclassify(eye.z) == FP_NAN) {
+		if (fpclassify(eye.x) == FP_NAN || fpclassify(eye.y) == FP_NAN || fpclassify(eye.z) == FP_NAN) { // a NaN eye is fatal
+
 			CVec cameraEye      = gGame.mMotionControlCamera.mCamera.mEye;
 			CVec cameraInterest = gGame.mMotionControlCamera.mCamera.mInterest;
 			OSPanic(__FILE__, 157, "%s%s",
@@ -154,7 +157,7 @@ void CCameraActionReset::PreviousUpdate()
 		SetFov_Interp(mMode, fov, mTime);
 
 		SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState.mZoomLevel);
-		if (mMode == 3 || 0.0f == mTime) {
+		if (mMode == 3 || 0.0f == mTime) { // no time to blend the interest
 			mInterestMode = 0;
 		} else {
 			mInterestMode = 2;
@@ -588,7 +591,7 @@ void CCameraActionReset::SetCamera(CCamera* camera)
 	SetFov(camera->mFov);
 	SetAngle(camera->mAngle);
 	mTarget       = gGame.GetPlayer();
-	mState        = 100;
+	mState        = 100; // hold until the first update
 	mInterestMode = 2;
 }
 
@@ -598,7 +601,7 @@ void CCameraActionReset::SetCamera(CCamera* camera)
  */
 void CCameraActionReset::Init()
 {
-	mMode      = 1;
+	mMode      = 1; // ease in-out, like the tables below
 	mTime      = 2.0f;
 	mImmediate = FALSE;
 	InitCameraAreaEntries(&gCameraAreaState);

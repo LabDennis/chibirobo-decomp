@@ -43,19 +43,19 @@ extern "C" void DrawStage02ActorCounterPanel(XObjActor3* actor)
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, w, TexSize(h, 1.0f), 0.0f, 0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-	tex    = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0);
-	f32 dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);
+	tex    = actor->mPanelTpl.mTex.Init(&((TPLPalette*)actor->mPanelTpl.mBuffer)->descriptorArray[1], 0); // the digit sheet
+	f32 dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);                                           // eleven glyphs in a row
 	f32 x;
 	f32 dh    = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
 	x         = 110.0f - (1 - actor->mSpiderCount / 10) * 12;
 	f32 count = actor->mSpiderCount;
-	PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f);
+	PSMTXScale(tex.mMtx[1], 0.09090909f, 1.0f, 1.0f); // one eleventh of the digit sheet per glyph
 	tex.mMtxDirty = TRUE;
 	s32 i         = 0;
 	u32 a         = 255.0f * alpha;
 	u32 c0;
-	u32 c1 = a | 0x1F33FF00;
-	c0     = a | 0xFFFFFF00;
+	u32 c1 = a | 0x1F33FF00; // colored below
+	c0     = a | 0xFFFFFF00; // white above
 	for (; i < 2; i++) {
 		f32 p = 1.0f;
 		if (i > 0) {
@@ -157,10 +157,10 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 
 	dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);
 	dh = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
-	PSMTXTrans(tex.mMtx[0], 10.0f / 11.0f, 0.0f, 0.0f);
+	PSMTXTrans(tex.mMtx[0], 10.0f / 11.0f, 0.0f, 0.0f); // the eleventh glyph
 	tex.mMtxDirty = TRUE;
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	s32 digits = count < 10.0f ? 1 : 2;
+	s32 digits = count < 10.0f ? 1 : 2; // the glyph slides with the digit count
 	DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - digits * (dw - 8.0f)) - 32.0f, 76.0f, 0.0f, dw, dh, 0.0f, 0.0f,
 	                   0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);

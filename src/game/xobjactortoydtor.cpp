@@ -61,13 +61,13 @@ void XObjActorToy::UpdateAnimationSounds(f32 frame)
 {
 	switch (GetKind()) {
 	case 0x1FC:
-		if (mAnimId == 0x3F6) {
+		if (mAnimId == 0x3F6) { // its frame comes from the fifth dobj's tex anim
 			s32 path[3]    = { 0, 2, 0 };
 			HSD_AObj* aobj = GetTexAObj(GetJointByPath(mJObj, path, 3), 4);
 			frame          = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
 		}
 		if (IsGameSoundPlaying(&gGame.mSound, 0x10001F)) {
-			if (mAnimId != 0x10) {
+			if (mAnimId != 0x10) { // the loop only runs in anim 0x10
 				StopGameSfx(&gGame.mSound, 0x10001F);
 			} else {
 				SetGameSfxVolume(&gGame.mSound, 0x10001F, GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0), 0);
@@ -75,7 +75,7 @@ void XObjActorToy::UpdateAnimationSounds(f32 frame)
 		}
 		break;
 	case 0x159:
-		if (IsGameSoundPlaying(&gGame.mSound, 0xE0008) && mAnimId != 7) {
+		if (IsGameSoundPlaying(&gGame.mSound, 0xE0008) && mAnimId != 7) { // the loop stops outside anim 7
 			StopGameSfx(&gGame.mSound, 0xE0008);
 		}
 		break;
@@ -102,10 +102,10 @@ void XObjActorToy::OnPushDisplacement(const Vec& displacement)
 	case 0x156:
 		break;
 	case 0x157:
-		mKindFlags.mFlags |= 2;
+		mKindFlags.mFlags |= 2; // flag 2: being pushed
 		for (s32 i = 0; i < 15; i++) {
 			XObjActorToy* toy = GetToy(i);
-			if (toy->GetKind() == 0x156 && (toy->mKindFlags.mFlags & 1)) {
+			if (toy->GetKind() == 0x156 && (toy->mKindFlags.mFlags & 1)) { // flag 1: carries along
 				toy->SetTranslateX(mMoveTranslate.x, 0);
 				toy->SetTranslateZ(mMoveTranslate.z, 0);
 				if (toy->mAttachedId >= 0 && toy->mAttached != NULL) {
@@ -120,12 +120,12 @@ void XObjActorToy::OnPushDisplacement(const Vec& displacement)
 					PSMTXCopy(joint.GetMtx(), hand);
 					PSMTXRotRad(rot, 'z', 0.0f);
 					PSMTXConcat(hand, rot, mtx);
-					PSMTXTrans(trans, 0.0f, 2.0f, 2.0f);
+					PSMTXTrans(trans, 0.0f, 2.0f, 2.0f); // held slightly up and out
 					PSMTXConcat(mtx, trans, mtx);
 					HSD_JObj* jobj = toy->mAttached->mJObj;
 					MtxPtr m       = mtx;
 					HSD_JObjCopyMtx(jobj, m);
-					if (mStatus.mFlags & 0x10000) {
+					if (mStatus.mFlags & 0x10000) { // the drawn flag follows the pusher's
 						toy->mStatus.mFlags |= 0x10000ULL;
 					} else {
 						toy->mStatus.mFlags &= ~0x10000ULL;

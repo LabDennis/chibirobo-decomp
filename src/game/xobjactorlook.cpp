@@ -69,7 +69,7 @@ void XObjActor::DrawObject()
 // the head's turn limits
 f32 XObjActor::GetMinHeadPitch()
 {
-	return -0.34906584f;
+	return -0.34906584f; // -20 degrees
 }
 
 /**
@@ -78,7 +78,7 @@ f32 XObjActor::GetMinHeadPitch()
  */
 f32 XObjActor::GetMaxHeadPitch()
 {
-	return 0.34906584f;
+	return 0.34906584f; // +20 degrees
 }
 
 /**
@@ -87,7 +87,7 @@ f32 XObjActor::GetMaxHeadPitch()
  */
 f32 XObjActor::GetMinHeadYaw()
 {
-	return -1.3962634f;
+	return -1.3962634f; // -80 degrees
 }
 
 /**
@@ -96,7 +96,7 @@ f32 XObjActor::GetMinHeadYaw()
  */
 f32 XObjActor::GetMaxHeadYaw()
 {
-	return 1.3962634f;
+	return 1.3962634f; // +80 degrees
 }
 
 /**
@@ -107,11 +107,11 @@ f32 XObjActor::GetMaxHeadYaw()
 extern "C" void SetActorLookAtPosition(CXObj* object, const Vec* target, f32 rate)
 {
 	XObjActor* actor = (XObjActor*)object;
-	actor->mActorStatus.mFlags |= 0x80;
+	actor->mActorStatus.mFlags |= 0x80; // flag 0x80: the head tracks
 	actor->mLookMode   = 1;
 	actor->mLookRate   = rate;
 	actor->mLookTarget = target;
-	actor->mActorStatus.mFlags |= 0x400;
+	actor->mActorStatus.mFlags |= 0x400; // 0x400: also pitch the head toward the player
 }
 
 /**
@@ -122,7 +122,7 @@ extern "C" void SetActorLookAngle(CXObj* object, f32 angle, f32 rate)
 {
 	XObjActor* actor = (XObjActor*)object;
 	actor->mActorStatus.mFlags |= 0x80;
-	actor->mLookMode  = 3;
+	actor->mLookMode  = 3; // at an angle
 	actor->mLookAngle = angle;
 	actor->mLookRate  = rate;
 }
@@ -149,7 +149,7 @@ extern "C" void ResetActorLook(CXObj* object, f32 rate)
 {
 	XObjActor* actor = (XObjActor*)object;
 	actor->mActorStatus.mFlags |= 0x80;
-	actor->mLookMode  = 0;
+	actor->mLookMode  = 0; // back to forward
 	actor->mLookRate  = rate;
 	actor->mLookAngle = 0.0f;
 	actor->mActorStatus.mFlags &= ~0x400;

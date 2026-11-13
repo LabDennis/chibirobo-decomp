@@ -167,8 +167,8 @@ void UpdateRadarBeamAnimation(XActRadar* act, u32 frames)
 				act->mFade = 1.0f;
 			}
 		}
-		act->mAngle[0] -= 0.08726646f * frames;
-		act->mAngle[1] -= 0.08726646f * frames;
+		act->mAngle[0] -= DEG2RAD * 5 * frames;
+		act->mAngle[1] -= DEG2RAD * 5 * frames;
 	} else if (act->mFade > 0.0f) {
 		if ((act->mFade -= 0.05f * frames) < 0.0f) {
 			act->mFade = 0.0f;
@@ -245,6 +245,8 @@ static inline void StartRadarTone(XActRadar* act, s32 tone, u8 r0, u8 g0, u8 b0,
 
 void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, f32, f32)
 {
+	// 1 takes the radar out, 2 puts it away. a scan starts at 3, 4 spins the dish a full turn and
+	// works out the aim, 5 turns it there and 0 keeps it on the target
 	switch (act->mState) {
 	case 1:
 		if (anim != 0x879) {
@@ -267,6 +269,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 		StartPlayerRadarScan(&act->mOwner->mRadarObj);
 		act->mState  = 4;
 		act->mTarget = FindNearestRadarTarget(act);
+		// holding up on the d-pad makes the scan find nothing
 		if (gGame.mPad.mPad[0].mButton & 8)
 			act->mTarget = NULL;
 		act->mYaw.targetAngle   = TWO_PI + act->mYaw.angle;
@@ -336,6 +339,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 	case 0:
 		if (act->mTarget) {
 			u64 flags = act->mTarget->mStatus.mFlags;
+			// the target is gone, hidden or being removed: drop it and turn the dish back to the front
 			if (!(flags & 1) || !(flags & 0x10000) || (flags & 0x4000000000000000ULL)) {
 				act->mTarget          = NULL;
 				act->mYaw.targetAngle = TWO_PI;
@@ -364,6 +368,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 			act->mTargetDistance = 0;
 		if (act->mState == 0) {
 			XSound& sound = gGame.mSound;
+			// near, middle or far: each has its own tone and turns the beam red, yellow or blue
 			if (act->mTargetDistance < (s32)GetRadarParameter(0) / 100.f) {
 				StartRadarTone(act, 0x18e, 255, 150, 150, 255, 50, 50);
 				sound.StopIfPlaying(0x18d);
@@ -423,6 +428,7 @@ XObj* FindNearestRadarTarget(XActRadar* act)
  */
 void ApplyRadarMovementWeight(XActRadar* act, const CPadOne* pad, f32* weight)
 {
+	// with the radar out (attachment 3) he stands still while it comes out, goes away or scans
 	if (act->mOwner->GetAttachment() == 3) {
 		const s32 state = act->mState;
 		if (state == 1 || state == 2) {
@@ -533,14 +539,15 @@ void StartPopperShot(XActPopperShot*, const Vec&, s32, XObj*, f32, f32, f32, f32
 
 static inline void PopperMuzzle(XObjChr* p, Vec& out)
 {
+	// through the eye camera the shot starts a little right of, below and ahead of the eye
 	if (gGame.mStatus.mFlags & 0x100) {
 		CCamera& camera = gGame.mMotionControlCamera.mCamera;
-		Mtx y, x, m;
-		PSMTXRotRad(y, 'y', camera.mAngle.y);
-		PSMTXRotRad(x, 'x', camera.mAngle.x);
-		PSMTXConcat(y, x, m);
+		Mtx rotY, rotX, rot;
+		PSMTXRotRad(rotY, 'y', camera.mAngle.y);
+		PSMTXRotRad(rotX, 'x', camera.mAngle.x);
+		PSMTXConcat(rotY, rotX, rot);
 		Vec offset = { 1.087597f, -1.056235f, 4.978912f };
-		PSMTXMultVec(m, &offset, &offset);
+		PSMTXMultVec(rot, &offset, &offset);
 		const CVec& v = camera.mEye + offset;
 		out.x         = v.x;
 		out.y         = v.y;
@@ -588,6 +595,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 	BOOL rangeUpgrade        = FindOwnedInventoryItemIndex(act->mOwner->mParams.mInventory.mItems, 0x36) >= 0;
 	BOOL canCharge           = FindOwnedInventoryItemIndex(act->mOwner->mParams.mInventory.mItems, 0x35) >= 0;
 	XActPopperCharge& charge = act->mCharge;
+	// with the popper out (attachment 2), holding A charges a shot
 	if (act->mOwner->GetAttachment() == 2) {
 		CPad pad(0);
 		XObjChr* p = act->mOwner;
@@ -609,12 +617,15 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 				ClearPopperCharge(&charge);
 			}
 		} else {
+			// letting go of A: a full charge fires, a partial one is dropped
 			if (act->mState == 4)
 				act->mState = charge.mTimer >= 1 ? 6 : 0;
 			ClearPopperCharge(&charge);
 		}
 	}
 	act->mShotStrength = 0;
+	// 1 and 2 take the popper out and raise it, 3 puts it back in the ready pose, 4 charges (above).
+	// 5 to 7 fire (6 a full charge), 8 waits for the popper's fire anim, 9 and 10 lower it and put it away
 	switch (act->mState) {
 	case 1:
 		if (anim != 0x81f) {
@@ -679,6 +690,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 					pitch = 0;
 				}
 				f32 power = act->mState == 6 ? 3 : 1;
+				// in tenths: popper parameter 2 is the speed, 0 the range and 1 the range with the upgrade
 				f32 speed = (s32)GetPopperParameter(2) / 10.f, range = (s32)GetPopperParameter(rangeUpgrade) / 10.f;
 				XObj* target = NULL;
 				for (int i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
@@ -992,17 +1004,18 @@ void CheckPopperShotImpact(XActPopperShot* shot)
  * @note Size: 0x304
  */
 // NONMATCHING: the position is read once too few
-void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* target, f32 a, f32 b, f32 c, f32 d, f32 e, f32 strength)
+void StartPopperShot(XActPopperShot* shot, const Vec& pos, s32 kind, XObj* target, f32 yaw, f32 pitch, f32 power, f32 speed, f32 range,
+                     f32 strength)
 {
 	shot->mActive    = TRUE;
 	shot->mHitTarget = NULL;
 	shot->mPos       = pos;
-	shot->mYaw       = a;
-	shot->mPitch     = b;
-	shot->mSpeed     = d;
+	shot->mYaw       = yaw;
+	shot->mPitch     = pitch;
+	shot->mSpeed     = speed;
 	shot->mDistance  = 0.0f;
-	shot->mRange     = e;
-	shot->_28        = c;
+	shot->mRange     = range;
+	shot->_28        = power;
 	for (int i = 0; i < 10; i++) {
 		shot->mHistory[i].x = shot->mPos.x;
 		shot->mHistory[i].y = shot->mPos.y;
@@ -1046,6 +1059,7 @@ void ResetPopperShot(XActPopperShot* shot)
  */
 void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end)
 {
+	// the flight time (copter parameter 0, in hundredths of a second) fills up while idle and runs down in flight
 	if (act->mState == 0) {
 		act->mTime = FRAME_RATE * ((s32)GetCopterParameter(0) / 100.0f);
 	} else if (act->mState == 3) {
@@ -1054,6 +1068,8 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, HSD_AObj* aobj, u32 fra
 			act->mState = 4;
 		}
 	}
+	// 1 takes the copter out, 2 puts it away, 3 flies. 4 and 5 come down and 6 lands, 7 (off a rope)
+	// and 8 (off a ledge) come down and 9 lands
 	switch (act->mState) {
 	case 1:
 		if (anim != 0x814) {
@@ -1076,7 +1092,7 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, HSD_AObj* aobj, u32 fra
 		}
 		break;
 	case 3:
-		UpdateCopterBobbing(act, frames, 0.08726646f);
+		UpdateCopterBobbing(act, frames, DEG2RAD * 5);
 		break;
 	case 4:
 		UpdateCopterBobbing(act, frames, -1.0f);
@@ -1151,7 +1167,7 @@ void UpdatePlayerCopterFlight(XActCopter* act, s32 anim, HSD_AObj* aobj, u32 fra
 void UpdateCopterBobbing(XActCopter* act, u32 frames, f32 speed)
 {
 	if (speed > 0.0f) {
-		act->mPhase = fmod(speed * frames + act->mPhase, 6.2831855f);
+		act->mPhase = fmod(speed * frames + act->mPhase, TWO_PI);
 		act->mBob   = 0.4f * (f32)sin(act->mPhase) + 0.4f;
 		s32 path[]  = { 0 };
 		SetObjectJointTranslationByPath(act->mOwner, 1, path, 0.0f, act->mBob, 0.0f);
@@ -1182,6 +1198,7 @@ CVec GetPlayerFloorSlope(XObjChr* chr)
 void HandleCopterActionInput(XActCopter* act, const CPadOne* pad, f32* weight)
 {
 	if (act->mState == 3) {
+		// B or standing still ends the flight
 		if ((pad->mTrigger & 0x200) || IsPlayerStopped(act->mOwner)) {
 			act->mState = 4;
 			PlayCopterDescentAnimation(&act->mOwner->mCopterObj);
@@ -1218,13 +1235,13 @@ void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle)
 		PrimVertex verts[50];
 		f32 outer = size * 0.5f + 1.0f;
 		for (int i = 0; i < 25; i++) {
-			f32 a                  = 0.2617994f * i;
-			verts[i * 2].pos.x     = center.x - size * (f32)sin(a) * 0.5f;
-			verts[i * 2].pos.z     = center.z + size * (f32)cos(a) * 0.5f;
+			f32 ringAngle          = (TWO_PI / 24) * i;
+			verts[i * 2].pos.x     = center.x - size * (f32)sin(ringAngle) * 0.5f;
+			verts[i * 2].pos.z     = center.z + size * (f32)cos(ringAngle) * 0.5f;
 			verts[i * 2].pos.y     = center.y;
 			verts[i * 2].color     = color;
-			verts[i * 2 + 1].pos.x = center.x - outer * (f32)sin(a);
-			verts[i * 2 + 1].pos.z = center.z + outer * (f32)cos(a);
+			verts[i * 2 + 1].pos.x = center.x - outer * (f32)sin(ringAngle);
+			verts[i * 2 + 1].pos.z = center.z + outer * (f32)cos(ringAngle);
 			verts[i * 2 + 1].pos.y = center.y;
 			verts[i * 2 + 1].color = 0;
 		}
@@ -1262,7 +1279,7 @@ static inline void PlayTumbleAnimation(XObjChr* owner, s32 anim, f32 blend)
 static inline void FinishTumble(XActTumble* act, f32 blend)
 {
 	XObjChr* owner = act->mOwner;
-	PlayTumbleAnimation(owner, 17, blend);
+	PlayTumbleAnimation(owner, 0x11, blend);
 	owner->mIdleLoops = 3;
 	act->mState       = 0;
 }
@@ -1297,6 +1314,9 @@ static inline bool TumbleStationary(const CVec& delta)
  */
 void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end)
 {
+	// 1 and 15 knock him over; 2 and 16 keep him down until a button or the idle timer, then 3 and
+	// 17 get him up. 4 is the empty battery, 10 comes after five turns on the spot, 12 turns him to
+	// face the camera and 13 back, 14 holds the pose while the idle timer runs
 	switch (act->mState) {
 	case 1:
 		StartTumble(act, anim, aobj, 2);
@@ -1308,6 +1328,7 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
 		if (anim != 0x43)
 			PlayTumbleAnimation(act->mOwner, 0x43, 0.0f);
 		else if (aobj->flags & 0x44000000) {
+			// battery empty: the stage's script takes over, otherwise he lies there until a button (5)
 			if ((gGame.mStatus.mFlags & 0x40000000) && GetStageBatteryDepletedScript() && gGame.GetPlayer()->mParams.mBattery <= 0.0f) {
 				if (gGame.mEvt.mData.mScript == NULL)
 					StartOrQueueEventScript(&gGame.mEvt, GetStageBatteryDepletedScript(), 0, -1, -1);
@@ -1389,6 +1410,7 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
  */
 void HandleTumbleActionInput(XActTumble* act, const CPadOne* pad, f32* weight)
 {
+	// lying down (2, 16) A, B or the stick gets him up; after the battery ran out (5) only A or B
 	if (act->mState == 2) {
 		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL) {
 			if ((pad->mTrigger & 0x100) || (pad->mTrigger & 0x200) || StickLength(pad) > 0.0f) {
@@ -1396,10 +1418,10 @@ void HandleTumbleActionInput(XActTumble* act, const CPadOne* pad, f32* weight)
 			}
 		}
 		*weight = 0.0f;
-	} else if (act->mState == 0x10) {
+	} else if (act->mState == 16) {
 		if (gGame.IsRunning() && gGame.mEvt.mData.mScript == NULL) {
 			if ((pad->mTrigger & 0x100) || (pad->mTrigger & 0x200) || StickLength(pad) > 0.0f) {
-				act->mState = 0x11;
+				act->mState = 17;
 			}
 		}
 		*weight = 0.0f;

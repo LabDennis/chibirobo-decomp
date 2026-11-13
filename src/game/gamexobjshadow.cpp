@@ -39,7 +39,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 		} else {
 			target = NULL;
 		}
-		f32 limits[2] = { 1.0f + player->mMoveTranslate.y, NAN };
+		f32 limits[2] = { 1.0f + player->mMoveTranslate.y, NAN }; // a unit over the player; nan = none found
 		for (i = 0; i < game->mDrawLists[1].mCount; i++) {
 			obj = game->mDrawLists[1].mObjects[i];
 			if (obj->mStatus.mFlags & 2) {
@@ -48,7 +48,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 					if (obj->mJObj != NULL) {
 						HSD_JObjWalkTree(obj->mJObj, (HSD_JObjWalkTreeCallback)FindHighestJointBelowHeightLimit, (f32**)limits);
 					}
-				} else if (obj->mJObj != NULL) {
+				} else if (obj->mJObj != NULL) { // every other object loses the mark
 					HSD_JObjWalkTree(obj->mJObj, JObjClearMObjFlags, (f32**)0x4000000);
 				}
 			}
@@ -62,14 +62,14 @@ extern "C" void RenderSceneShadow(CGame* game)
 				Vec eye;
 				eye.x = interest.x;
 				eye.z = interest.z;
-				eye.y = 200.0f + interest.y;
+				eye.y = 200.0f + interest.y; // straight over the interest
 				HSD_CObjSetInterest(cobj, &interest);
 				HSD_CObjSetEyePosition(cobj, &eye);
 				HSD_ShadowDeleteObject(shadow->mShadow, NULL);
 				shadow->InitRect();
 				for (s32 i = 0; i < game->mDrawLists[1].mCount; i++) {
 					XObj* obj = game->mDrawLists[1].mObjects[i];
-					if (IsShadowObj(obj, 4)) {
+					if (IsShadowObj(obj, 4)) { // flag 4 casts into the shadow map
 						obj->RegisterShadowObjects(shadow);
 					}
 					if ((GetStageInfo()->mFlags & 1) && obj->GetCategory() == 2) {
@@ -86,11 +86,12 @@ extern "C" void RenderSceneShadow(CGame* game)
 					SetupAll(TRUE);
 					for (s32 i = 0; i < game->mDrawLists[1].mCount; i++) {
 						XObj* obj = game->mDrawLists[1].mObjects[i];
-						if (IsShadowObj(obj, 8)) {
+						if (IsShadowObj(obj, 8)) { // flag 8 gets the blob shadow
 							f32 alpha;
 							if (GetStageInfo()->mFlags & 1) {
 								alpha = 1.0f;
-							} else {
+							} else { // else it fades over a hundred units
+
 								CCamera* camera = game->GetCamera();
 								f32 dz          = camera->mInterest.z - obj->mMoveTranslate.z;
 								f32 dx          = camera->mInterest.x - obj->mMoveTranslate.x;
@@ -102,7 +103,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 									alpha = 0.8f;
 								}
 							}
-							obj->DrawGroundShadowAt(&obj->mMoveTranslate, sin(3.1415927f * alpha * 0.5f));
+							obj->DrawGroundShadowAt(&obj->mMoveTranslate, sin(3.1415927f * alpha * 0.5f)); // a half-sine falloff
 						}
 					}
 					EndGsCamera(&game->mGs);
@@ -276,7 +277,8 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 7, 0);
 			SetGsDestinationAlpha(gGame.mGs.mCurRenderMode, 0, 0);
 			SetupAll(TRUE);
-			Vec quad[4] = { { 0.0f, 0.0f, 0.0f }, { 640.0f, 0.0f, 0.0f }, { 640.0f, 448.0f, 0.0f }, { 0.0f, 448.0f, 0.0f } };
+			Vec quad[4]
+			    = { { 0.0f, 0.0f, 0.0f }, { 640.0f, 0.0f, 0.0f }, { 640.0f, 448.0f, 0.0f }, { 0.0f, 448.0f, 0.0f } }; // a full-screen clear
 			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, 4, quad[1].x, quad[1].y, quad[1].z, 4, quad[2].x, quad[2].y,
 			                 quad[2].z, 4, quad[3].x, quad[3].y, quad[3].z, 4);
 			SetGsColorUpdate(gGame.mGs.mCurRenderMode, 1);
@@ -300,7 +302,7 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 			if (targets[1] == NULL) {
 				targets[1] = player->mLadder.mTarget;
 			}
-			if (targets[1] == NULL) {
+			if (targets[1] == NULL) { // or the rope's
 				targets[1] = player->mRope.mTarget;
 			}
 			for (i = 0; i < game->mDrawLists[1].mCount; i++) {
@@ -308,7 +310,8 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 				if (obj->mStatus.mFlags & 0x40) {
 					obj->SetDestinationAlpha(1, 0);
 					obj->DrawObject();
-				} else if ((targets[0] == obj || targets[1] == obj) && !(obj->mStatus.mFlags & 0x800000)) {
+				} else if ((targets[0] == obj || targets[1] == obj)
+				           && !(obj->mStatus.mFlags & 0x800000)) { // flag 0x800000 stays out of the mask
 					obj->DrawObject();
 				}
 			}
@@ -368,13 +371,13 @@ extern "C" void RenderMirrorTextures(CGame* game)
 	if ((game->mStatus.mFlags & 1) && (game->mStatus.mFlags & 0x100000000000)) {
 		for (i = 0; i < 5; i++) {
 			mirror = &gFramebufferMirrors[i];
-			if (mirror->mJoint != NULL && mirror->mVisible && !IsMirrorOff(mirror)) {
+			if (mirror->mJoint != NULL && mirror->mVisible && !IsMirrorOff(mirror)) { // each live mirror
 				game->mGs.mCamera = &mirror->mCamera;
 				if (BeginGsCamera(game)) {
 					view = mirror->mView;
 					for (j = 0; j < game->mDrawLists[2].mCount; j++) {
 						obj = game->mDrawLists[2].mObjects[j];
-						if (!(obj->mStatus.mFlags & 0x200000) && (obj->mStatus.mFlags & 0x200000000000)) {
+						if (!(obj->mStatus.mFlags & 0x200000) && (obj->mStatus.mFlags & 0x200000000000)) { // only flagged objects reflect
 							obj->DrawReflection(view);
 						}
 					}

@@ -66,9 +66,9 @@ extern "C" void DrawScanModePrompt()
 	SetGsDepthMode(gs.mCurRenderMode, 0, 7, 0);
 	SetGsTevMode(gs.mCurTevStage, 0);
 	u8 alpha  = (u8)(s32)(255.0f * gVideoModePrompt.alpha);
-	u32 color = 0xffffff00 | alpha;
+	u32 color = 0xffffff00 | alpha; // white text at the prompt's alpha
 	switch (gVideoModePrompt.step) {
-	case 1:
+	case 1: // the question and its fade-out
 	case 10: {
 #if defined(VERSION_PAL)
 		const char* lines[]  = { GetLocalizedInterfaceText(0x107),
@@ -109,7 +109,7 @@ extern "C" void DrawScanModePrompt()
 		DrawGsProportionalTextFormat(&gGame.mGs, color, choices, 320.0f - width * 0.5f, y, 0.0f, 24.0f, 24.0f, yes, no);
 		break;
 	}
-	case 4:
+	case 4: // the "did it work" confirmation
 	case 40: {
 		if (gVideoModePrompt.useStandardMode == 0)
 			DrawScanModeConfirmation(color, false);
@@ -160,26 +160,26 @@ extern "C" BOOL UpdateProgressiveScanPrompt(u32 frames)
 	switch (gVideoModePrompt.step) {
 	case 0:
 #if !defined(VERSION_JP)
-		gVideoModePrompt.step = 100;
+		gVideoModePrompt.step = 100; // non-jp enters at 100
 		break;
 	case 100:
 #endif
-#if defined(VERSION_PAL)
-		if ((OSGetResetCode() >> 31) && gVideoModeResetState->hasSelection) {
+#if defined(VERSION_PAL)                                                      // PAL asks about eu-rgb60, not progressive
+		if ((OSGetResetCode() >> 31) && gVideoModeResetState->hasSelection) { // a reset brought us back
 			gVideoModePrompt.step              = 10;
 			gVideoModePrompt.restoredSelection = gVideoModeResetState->hasSelection;
 			gVideoModePrompt.useStandardMode   = gVideoModeResetState->useStandardMode;
 			break;
 		}
 		gVideoModePrompt.step            = 1;
-		gVideoModePrompt.framesRemaining = 10 * VIDEO_FPS;
+		gVideoModePrompt.framesRemaining = 10 * VIDEO_FPS; // ten seconds to answer
 		gVideoModePrompt.alpha           = 0.0f;
 		if (OSGetEuRgb60Mode() != 1) {
 			gVideoModePrompt.useStandardMode = TRUE;
 		}
 #else
-		if (VIGetDTVStatus() != 0) {
-			if ((OSGetResetCode() >> 31) && gVideoModeResetState->hasSelection) {
+		if (VIGetDTVStatus() != 0) {                                              // a component cable is connected
+			if ((OSGetResetCode() >> 31) && gVideoModeResetState->hasSelection) { // a reset brought us back
 				gVideoModePrompt.step              = 10;
 				gVideoModePrompt.restoredSelection = gVideoModeResetState->hasSelection;
 				gVideoModePrompt.useStandardMode   = gVideoModeResetState->useStandardMode;
@@ -192,7 +192,7 @@ extern "C" BOOL UpdateProgressiveScanPrompt(u32 frames)
 				ask = TRUE;
 			}
 			if (ask) {
-				gVideoModePrompt.framesRemaining = 600.0f;
+				gVideoModePrompt.framesRemaining = 600.0f; // ten seconds to answer
 				gVideoModePrompt.step            = 1;
 				gVideoModePrompt.alpha           = 0.0f;
 			} else {
@@ -213,18 +213,18 @@ extern "C" BOOL UpdateProgressiveScanPrompt(u32 frames)
 		}
 #endif
 		break;
-	case 1: {
+	case 1: { // asking: fade in, read the pad
 		if (gVideoModePrompt.alpha < 1.0f && (gVideoModePrompt.alpha += PROGRESSIVE_FADE_STEP * frames) > 1.0f) {
 			gVideoModePrompt.alpha = 1.0f;
 		}
 		BOOL done = FALSE;
-		if ((gVideoModePrompt.framesRemaining -= frames) <= 0.0f) {
+		if ((gVideoModePrompt.framesRemaining -= frames) <= 0.0f) { // time's up
 			done = TRUE;
-		} else if (((ResetPad*)pad.mPad)->mTrigger & 0x100) {
+		} else if (((ResetPad*)pad.mPad)->mTrigger & 0x100) { // A confirms
 			done = TRUE;
-		} else if (((ResetPad*)pad.mPad)->mRepeat & 1) {
+		} else if (((ResetPad*)pad.mPad)->mRepeat & 1) { // d-pad left picks progressive
 			gVideoModePrompt.useStandardMode = FALSE;
-		} else if (((ResetPad*)pad.mPad)->mRepeat & 2) {
+		} else if (((ResetPad*)pad.mPad)->mRepeat & 2) { // right picks standard
 			gVideoModePrompt.useStandardMode = TRUE;
 		}
 		if (done) {
@@ -232,7 +232,7 @@ extern "C" BOOL UpdateProgressiveScanPrompt(u32 frames)
 		}
 		break;
 	}
-	case 10:
+	case 10: // fade out, then act on the choice
 		if (gVideoModePrompt.alpha > 0.0f && (gVideoModePrompt.alpha -= PROGRESSIVE_FADE_STEP * frames) < 0.0f) {
 			gVideoModePrompt.alpha = 0.0f;
 		}
@@ -240,7 +240,7 @@ extern "C" BOOL UpdateProgressiveScanPrompt(u32 frames)
 			if (!gVideoModePrompt.useStandardMode) {
 				gVideoModePrompt.step            = 2;
 				gVideoModePrompt.framesRemaining = 2.0f;
-				HSD_VISetBlack(TRUE);
+				HSD_VISetBlack(TRUE); // blank the screen while the mode flips
 			} else {
 				gVideoModePrompt.step            = 4;
 				gVideoModePrompt.pendingMode     = gVideoModePrompt.useStandardMode ? FALSE : TRUE;
@@ -259,10 +259,10 @@ extern "C" BOOL UpdateProgressiveScanPrompt(u32 frames)
 		if ((gVideoModePrompt.framesRemaining -= frames) <= 0.0f) {
 			gVideoModePrompt.step            = 4;
 			gVideoModePrompt.framesRemaining = 10 * VIDEO_FPS;
-			HSD_VISetBlack(FALSE);
+			HSD_VISetBlack(FALSE); // lift the black and show the new mode
 		}
 		break;
-	case 4:
+	case 4: // the second prompt: confirm the new mode
 		if ((OSGetResetCode() >> 31) && gVideoModePrompt.restoredSelection) {
 			gVideoModePrompt.step = 40;
 		} else {
@@ -280,7 +280,7 @@ extern "C" BOOL UpdateProgressiveScanPrompt(u32 frames)
 			}
 		}
 		break;
-	case 40:
+	case 40: // fade out and finish
 		if (gVideoModePrompt.alpha > 0.0f && (gVideoModePrompt.alpha -= PROGRESSIVE_FADE_STEP * frames) < 0.0f) {
 			gVideoModePrompt.alpha = 0.0f;
 		}
@@ -290,7 +290,7 @@ extern "C" BOOL UpdateProgressiveScanPrompt(u32 frames)
 		break;
 	}
 
-	if (gVideoModePrompt.pendingMode >= 0) {
+	if (gVideoModePrompt.pendingMode >= 0) { // apply a switch the steps queued
 		if (gVideoModePrompt.pendingMode != 0) {
 #if defined(VERSION_PAL)
 			OSSetEuRgb60Mode(1);

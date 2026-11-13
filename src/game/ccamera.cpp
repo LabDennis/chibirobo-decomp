@@ -106,7 +106,7 @@ void CCamera::Init(HSD_CObjDesc* desc)
 	*(HSD_CObj*)this = *mLoadedCObj;
 	HSD_CObjGetEyePosition(this, &mEye);
 	HSD_CObjGetInterest(this, &mInterest);
-	if (HSD_CObjGetFlags(this) & 1) {
+	if (HSD_CObjGetFlags(this) & 1) { // flag 1: an up vector, else a roll
 		HSD_CObjGetUpVector(this, &mUp);
 	} else {
 		mRoll = GetCameraRoll(this);
@@ -145,6 +145,7 @@ void CCamera::SetAnim(HSD_CameraAnim* anim, f32 frame)
 	HSD_CObjAddAnim(this, anim);
 	HSD_CObjReqAnim(this, frame);
 
+	// remembers the longest animation so callers can wait on it
 	end  = 0.0f;
 	aobj = this->aobj;
 	if (aobj != NULL && (endFrame = HSD_AObjGetEndFrame(aobj)) > end) {
@@ -194,7 +195,7 @@ void CCamera::SetViewport(f32 x, f32 y, GXRenderModeObj* rmode)
 	HSD_CObjSetViewportf(this, &viewport);
 	width  = rmode->fbWidth;
 	height = rmode->viHeight;
-	if (projection_type == PROJ_ORTHO) {
+	if (projection_type == PROJ_ORTHO) { // an ortho frame takes the rect, a perspective just the aspect
 		projection_param.ortho.top    = y;
 		projection_param.ortho.bottom = y + height;
 		projection_param.ortho.left   = x;
@@ -238,7 +239,7 @@ void CCamera::CalcEye()
  * @note Size: 0xE8
  */
 void CCamera::CalcInterest()
-{
+{ // mirrors CalcEye with the pitch pushed past PI
 	f32 y = HALF_PI + mAngle.y;
 	f32 x = PI + mAngle.x;
 
@@ -319,7 +320,7 @@ void CCamera::CalcAngle()
 	f32 dx    = mInterest.x - mEye.x;
 	f32 dz    = mInterest.z - mEye.z;
 	f32 dy    = mInterest.y - mEye.y;
-	f32 angle = (f32)atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
+	f32 angle = (f32)atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy)); // horizontal run against |rise|
 
 	mAngle.x = dy < 0.0f ? HALF_PI - angle : angle - HALF_PI;
 	mAngle.y = (f32)atan2(mInterest.x - mEye.x, mInterest.z - mEye.z);
@@ -353,11 +354,12 @@ MtxPtr CCamera::SetCurrent()
 {
 	MtxPtr mtx = NULL;
 
-	if (mUseMtx) {
+	if (mUseMtx) { // trusts the matrix it was given
 		if (HSD_CObjSetCurrent(this)) {
 			mtx = mViewMtx;
 		}
-	} else if (mLoadedCObj != NULL) {
+	} else if (mLoadedCObj != NULL) { // pushes our eye/interest into the loaded cobj
+
 		HSD_CObjClearViewingMtx(this);
 		HSD_CObjSetEyePosition(this, &mEye);
 		HSD_CObjSetInterest(this, &mInterest);
@@ -365,7 +367,7 @@ MtxPtr CCamera::SetCurrent()
 			HSD_CObjGetViewingMtx(this, mViewMtx);
 			mtx = mViewMtx;
 		}
-	} else {
+	} else { // otherwise builds the look-at itself
 		Vec eye      = mEye * mScale;
 		Vec interest = mInterest * mScale;
 

@@ -141,6 +141,7 @@ extern "C" CJObj* __dt__5CJObjFv(CJObj* obj, s32 flags)
 	return obj;
 }
 
+// extern "C" thunks into the inline setters
 /**
  * @note Address: 0x80017244
  * @note Size: 0xC4
@@ -276,7 +277,7 @@ extern "C" void SetRotation__5CJObjFfffl(CJObj* jobj, f32 x, f32 y, f32 z, s32 f
 	jobj->mRotate.x = x;
 	jobj->mRotate.y = y;
 	jobj->mRotate.z = z;
-	if (jobj->mJObj->flags & USE_QUATERNION) {
+	if (jobj->mJObj->flags & USE_QUATERNION) { // quaternion joints need the euler angles converted
 		EulerToQuat(&jobj->mRotate, &q);
 		HSD_JObjSetRotation(jobj->mJObj, &q);
 	} else {
@@ -290,13 +291,13 @@ extern "C" void SetRotation__5CJObjFfffl(CJObj* jobj, f32 x, f32 y, f32 z, s32 f
  */
 extern "C" void SetRotation__5CJObjFRC3Vecl(CJObj* jobj, const Vec& v, s32 force)
 {
-	if (force == 0 && !(jobj->mRotate != v)) {
+	if (force == 0 && !(jobj->mRotate != v)) { // skip a no-op change unless forced
 		return;
 	}
 	jobj->mRotate.x = v.x;
 	jobj->mRotate.y = v.y;
 	jobj->mRotate.z = v.z;
-	if (jobj->mJObj->flags & USE_QUATERNION) {
+	if (jobj->mJObj->flags & USE_QUATERNION) { // same euler-to-quat conversion
 		Quaternion q;
 		EulerToQuat(&jobj->mRotate, &q);
 		HSD_JObjSetRotation(jobj->mJObj, &q);

@@ -110,9 +110,9 @@ f32 gScrollCaptionOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 #define CAPTION_ICON_FRAME 0.05882353f
 #endif
 
-// a message id with its text, the caption over the room camera
+// the caption over the room camera: the frame of the icon strip it shows and its text
 struct CaptionMsg {
-	s32 mId;           // _00
+	s32 mFrame;        // _00
 	const char* mText; // _04
 };
 
@@ -125,6 +125,7 @@ void DrawTexturedWindowFrame(u32 color, s32 a, f32 x, f32 y, f32 w, f32 h, f32 s
 void PSMTXRotRad(Mtx m, char axis, f32 rad);
 }
 
+// mSavedInfo while SaveCamInfo holds a camera info, NULL otherwise
 void* gSavedScrollCameraInfo;
 
 // the objects hidden while this camera runs and what they were before
@@ -152,7 +153,7 @@ inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, u32 color)
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
-// in reverse order, same deferred inlining thing
+// the functions sit in reverse address order: -inline deferred emits a file's functions last to first
 /**
  * @note Address: 0x801469A8
  * @note Size: 0x38
@@ -194,6 +195,7 @@ void CCameraActionScroll2::HideObjs()
 			return;
 		}
 		XObj* obj = gGame.GetObject(*id);
+		// 1: was drawn and is hidden now, 2: in use but not drawn, 0: missing or not in use
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mStatus.mFlags & 0x10000) {
 				*state = 1;
@@ -222,6 +224,7 @@ void CCameraActionScroll2::ShowObjs()
 		if (*id == -1) {
 			return;
 		}
+		// 0 and 2 were not drawn before HideObjs, they stay as they are
 		if (*state == 0 || *state == 2) {
 			id++;
 			state++;
@@ -242,17 +245,18 @@ inline void CalcLimits(CCameraActionScroll2* camera, Scroll2Limits* limits)
 {
 	camera->mMaxFov = limits->mMaxFov;
 	camera->mMinFov = limits->mMinFov;
-	f32 x           = (camera->mFov - camera->mMinFov) / (camera->mMaxFov - camera->mMinFov);
-	f32 z;
+	f32 xBlend      = (camera->mFov - camera->mMinFov) / (camera->mMaxFov - camera->mMinFov);
+	// 0 keeps the narrow limits, 1 the wide ones; z is fully wide from mMidFov up
+	f32 zBlend;
 	if (camera->mFov > limits->mMidFov) {
-		z = 1.0f;
+		zBlend = 1.0f;
 	} else {
-		z = (camera->mFov - camera->mMinFov) / (limits->mMidFov - camera->mMinFov);
+		zBlend = (camera->mFov - camera->mMinFov) / (limits->mMidFov - camera->mMinFov);
 	}
-	camera->mMinX = x * (limits->mWideMinX - limits->mNarrowMinX) + limits->mNarrowMinX;
-	camera->mMaxX = x * (limits->mWideMaxX - limits->mNarrowMaxX) + limits->mNarrowMaxX;
-	camera->mMinZ = z * (limits->mWideMinZ - limits->mNarrowMinZ) + limits->mNarrowMinZ;
-	camera->mMaxZ = z * (limits->mWideMaxZ - limits->mNarrowMaxZ) + limits->mNarrowMaxZ;
+	camera->mMinX = xBlend * (limits->mWideMinX - limits->mNarrowMinX) + limits->mNarrowMinX;
+	camera->mMaxX = xBlend * (limits->mWideMaxX - limits->mNarrowMaxX) + limits->mNarrowMaxX;
+	camera->mMinZ = zBlend * (limits->mWideMinZ - limits->mNarrowMinZ) + limits->mNarrowMinZ;
+	camera->mMaxZ = zBlend * (limits->mWideMaxZ - limits->mNarrowMaxZ) + limits->mNarrowMaxZ;
 	camera->mMinX += camera->mStart.x;
 	camera->mMaxX += camera->mStart.x;
 	camera->mMinZ += camera->mStart.z;
@@ -331,6 +335,7 @@ static inline void SetPanCenter(CCameraActionScroll2* camera, Vec position)
  */
 void CCameraActionScroll2::Update(u32 step)
 {
+	// the stick works on the unturned camera: undo the quarter turn here, the end of Update turns it again
 	if (mTurned) {
 		Mtx turn;
 		PSMTXRotRad(turn, 'x', -HALF_PI);
@@ -360,10 +365,10 @@ void CCameraActionScroll2::Update(u32 step)
 	f32 stickY = pad.mPad->mStickY;
 	if (stickX != 0.0f || stickY != 0.0f) {
 		CVec eye(mEye);
-		CVec center = Vec(mCenter);
-		Vec origin  = eye;
-		PSVECSubtract(&center, &origin, &center);
-		PSVECNormalize(&center, &center);
+		CVec toCenter = Vec(mCenter);
+		Vec origin    = eye;
+		PSVECSubtract(&toCenter, &origin, &toCenter);
+		PSVECNormalize(&toCenter, &toCenter);
 
 		CVec move = CVec(-stickX, 0.0f, stickY);
 		Mtx rot;
@@ -390,13 +395,13 @@ void CCameraActionScroll2::Update(u32 step)
 		PSMTXRotRad(tilt, 'x', pitch);
 		PSMTXRotRad(tilt, 'z', 0.0f);
 		PSMTXMultVec(tilt, &move, &move);
-		PSVECScale(&center, &center, 50.0f);
+		PSVECScale(&toCenter, &toCenter, 50.0f);
 		Vec pan = move;
-		PSVECAdd(&center, &pan, &center);
-		PSVECNormalize(&center, &center);
-		PSVECScale(&center, &center, mDistance);
+		PSVECAdd(&toCenter, &pan, &toCenter);
+		PSVECNormalize(&toCenter, &toCenter);
+		PSVECScale(&toCenter, &toCenter, mDistance);
 
-		next = center + eye;
+		next = toCenter + eye;
 		if (gSavedScrollCameraInfo != NULL) {
 			next.y = mInterest.y;
 		} else {
@@ -458,7 +463,7 @@ void CCameraActionScroll2::Draw()
 
 	sOverlayFrameCount++;
 	f32 blink     = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 4) % 360)));
-	f32 slowBlink = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 7) % 360)));
+	f32 fastBlink = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 7) % 360)));
 
 	Vec pos   = { 0.0f, 0.0f, 0.0f };
 	u32 color = (u32)(255.0f * blink) | 0xC8C8C800;
@@ -509,19 +514,20 @@ void CCameraActionScroll2::Draw()
 			switch ((obj)->GetKind()) {
 			case 0xD2:
 			case 0x22C: {
-				Vec high = { 0.0f, 0.0f, -100.0f };
-				pos      = high;
+				Vec alongZ = { 0.0f, 0.0f, -100.0f };
+				pos        = alongZ;
 				break;
 			}
 			case 0x70: {
-				Vec side = { 10.0f, 170.0f, 12.0f };
-				pos      = side;
+				Vec high = { 10.0f, 170.0f, 12.0f };
+				pos      = high;
 				break;
 			}
 			}
 			if ((obj)->GetKind() == 0x20) {
 				Vec far = { -180.0f, 0.0f, -380.0f };
 				pos     = far;
+				// leaves the kind switch: this door gets no name when Reset found a saved camera info
 				if (!mFromStage) {
 					break;
 				}
@@ -541,7 +547,7 @@ void CCameraActionScroll2::Draw()
 				} else {
 					stage = 2;
 				}
-				// room 2's doors get visited here too
+				// no break: room 1 runs room 2's door checks too, and they can override the stage above
 			case 2:
 				switch ((obj)->GetKind()) {
 				case 0x19:
@@ -592,6 +598,7 @@ void CCameraActionScroll2::Draw()
 			MeasureGameTextWidth(&gGame.mGs, name, 1, 16.0f);
 			f32 nameX = x;
 			f32 nameY = y;
+			// 135 degrees, the results go unused
 			sin(2.356194496154785);
 			cos(2.356194496154785);
 #if defined(VERSION_JP)
@@ -611,12 +618,13 @@ void CCameraActionScroll2::Draw()
 		}
 	}
 
-	u32 color2     = (u32)(255.0f * slowBlink) | 0xC8C8C800;
-	u32 fadedAlpha = (u32)(255.0f * (1.0f - slowBlink));
+	// with its particle running, a leticker's marker and its label blink in turn
+	u32 fastColor  = (u32)(255.0f * fastBlink) | 0xC8C8C800;
+	u32 fadedAlpha = (u32)(255.0f * (1.0f - fastBlink));
 #if defined(VERSION_PAL)
-	u32 markerColor = fadedAlpha | 0xFFD52C00;
+	u32 labelColor = fadedAlpha | 0xFFD52C00;
 #else
-	u32 color2Off = fadedAlpha | 0xC8C8C800;
+	u32 labelColor = fadedAlpha | 0xC8C8C800;
 #endif
 	for (s32 i = 0; i < 12; i++) {
 		XObjLeticker* obj = static_cast<XObjLeticker*>(gGame.mXObjs.mPools[9].Get(i));
@@ -635,7 +643,7 @@ void CCameraActionScroll2::Draw()
 		Vec ofs = { 0.0f, 0.0f, 0.0f };
 		obj->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
 		if (obj->mPtcl) {
-			DrawScrollMapMarker(163, x, y, color2);
+			DrawScrollMapMarker(163, x, y, fastColor);
 
 			f32 markX = x;
 			f32 markY = y;
@@ -644,7 +652,7 @@ void CCameraActionScroll2::Draw()
 				DrawGsProportionalTextFormat(&gGame.mGs, fadedAlpha, GetLocalizedInterfaceText(0x115), markX + gScrollRoomData.markerX[j],
 				                             (-20.8f + (markY + gScrollRoomData.markerY[j])) - 11.0f, 0.0f, 22.0f, 22.0f);
 			}
-			DrawGsProportionalTextFormat(&gGame.mGs, markerColor, GetLocalizedInterfaceText(0x115), markX, (markY - 20.8f) - 11.0f, 0.0f,
+			DrawGsProportionalTextFormat(&gGame.mGs, labelColor, GetLocalizedInterfaceText(0x115), markX, (markY - 20.8f) - 11.0f, 0.0f,
 			                             22.0f, 22.0f);
 #else
 			CTexObj tex;
@@ -653,7 +661,7 @@ void CCameraActionScroll2::Draw()
 			u16 w    = GXGetTexObjWidth(&tex);
 			u16 h    = GXGetTexObjHeight(&tex);
 			f32 zoom = 1.0f;
-			DrawGsTexturedQuad(&gGame.mGs, &tex, color2Off, color2Off, color2Off, color2Off, markX + 23.4f, markY + -20.8f, 0.0f,
+			DrawGsTexturedQuad(&gGame.mGs, &tex, labelColor, labelColor, labelColor, labelColor, markX + 23.4f, markY + -20.8f, 0.0f,
 			                   MARK_SCALE * (1.1f * w) / zoom, MARK_SCALE * h / zoom, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 #endif
@@ -675,6 +683,7 @@ void CCameraActionScroll2::Draw()
 		angle = PI + PLAYER->mMoveRotate.y;
 		break;
 	case 11:
+		// the turned camera's room: the arrow only points left or right of the player
 		if (HALF_PI + PLAYER->mMoveRotate.y > PI) {
 			angle = -HALF_PI;
 		} else {
@@ -712,7 +721,7 @@ void CCameraActionScroll2::Draw()
 	f32 fade       = 255.0f;
 	u32 alpha      = (u32)fade;
 	u32 white      = alpha | 0xFFFFFF00;
-	f32 frame      = CAPTION_ICON_FRAME * msg.mId;
+	f32 frame      = CAPTION_ICON_FRAME * msg.mFrame;
 	captionX -= MeasureGameTextWidth(&gGame.mGs, msg.mText, 1, 20.0f);
 	s32 line     = 0;
 	f32 captionY = 24.0f * line + 62.0f;
@@ -739,6 +748,7 @@ void CCameraActionScroll2::Draw()
 		// script variables from 0x603 on hold a count per room
 		s32 count = gEventVars.mVars[0x603 + gGame.mStage];
 		if (base > 0) {
+			// shown as count/base: the hundreds go left of the slash, the low two digits right of it
 			DrawSeparatedStatusValue(0xAB - StatusTextureOffset, base + count * 100, false, 56.0f, 378.0f, 1.0f);
 		}
 	}
@@ -2651,7 +2661,7 @@ void CCameraActionScroll2::SaveCamInfo(const void* info)
 
 u32 CCameraActionScroll2::GetCameraFlags()
 {
-	return 11;
+	return CAMFLAG_EYE | CAMFLAG_INTEREST | CAMFLAG_FOV;
 }
 
 void CCameraActionScroll2::DrawDebug3d()

@@ -73,6 +73,7 @@ void CFbBlur::SetSize(u16 w, u16 h)
  */
 void CFbBlur::Update(u32 frames)
 {
+	// ease mAlpha toward mTarget by mSpeed per frame
 	if (mAlpha < mTarget) {
 		if ((mAlpha += mSpeed * frames) >= mTarget) {
 			mAlpha = mTarget;
@@ -179,7 +180,7 @@ void CFbBlur::Copy(BOOL half)
 #endif
 	GXCopyTex(mBuf, GX_FALSE);
 	if (!mValid) {
-		mValid = 1;
+		mValid = 1; // the fade can use the buffer now
 	}
 }
 
@@ -314,8 +315,8 @@ void CFbOutline::Draw(u32 flags)
 	Mtx44 proj;
 	Mtx texMtx;
 
-	if (flags & 3) {
-		GXTexFmt format = (flags & 1) ? GX_CTF_A8 : GX_TF_I8;
+	if (flags & (FBOUT_COPY_A8 | FBOUT_COPY_I8)) {
+		GXTexFmt format = (flags & FBOUT_COPY_A8) ? GX_CTF_A8 : GX_TF_I8;
 		Copy(format);
 	}
 
@@ -341,7 +342,7 @@ void CFbOutline::Draw(u32 flags)
 	GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
 
 	// outline from the id in alpha
-	if (flags & 4) {
+	if (flags & FBOUT_OUTLINE) {
 		if (mThick == 0.0f) {
 			static const GXColor white = { 0xFF, 0xFF, 0xFF, 0x04 };
 			GXSetBlendMode(GX_BM_BLEND, GX_BL_DSTCOL, GX_BL_SRCALPHA, GX_LO_SET);
@@ -393,7 +394,7 @@ void CFbOutline::Draw(u32 flags)
 	}
 
 	// tint everything whose id matches
-	if (flags & 8) {
+	if (flags & FBOUT_TINT) {
 		GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 		GXSetTevColor(GX_TEVREG0, mColor0);
 		GXSetTevColor(GX_TEVREG1, mColor1);
@@ -408,7 +409,7 @@ void CFbOutline::Draw(u32 flags)
 		DrawQuad(w, h);
 	}
 
-	if (flags & 0x10) {
+	if (flags & FBOUT_OUTLINE2) {
 		if (mThick2 == 0.0f) {
 			static const GXColor white = { 0xFF, 0xFF, 0xFF, 0x00 };
 			GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
@@ -456,16 +457,17 @@ void CFbOutline::Draw(u32 flags)
 			PSMTXIdentity(offsetX);
 			offsetX[0][3] = mThick2 / mWidth;
 			PSMTXIdentity(offsetY);
-			f32 thick = mThick2;
-			if (thick < 0.0f) {
-				thick = -thick;
+			f32 absThick = mThick2;
+			if (absThick < 0.0f) {
+				absThick = -absThick;
 			}
-			offsetY[1][3] = thick / mHeight;
+			offsetY[1][3] = absThick / mHeight;
 			GXLoadTexMtxImm(offsetX, GX_TEXMTX1, GX_MTX2x4);
 			GXLoadTexMtxImm(offsetY, GX_TEXMTX2, GX_MTX2x4);
 			if (mThick2 > 0.0f) {
 				GXSetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 			} else {
+				// a negative thickness fades instead of covering
 				GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 			}
 			static const GXColor white = { 0xFF, 0xFF, 0xFF, 0x00 };
@@ -496,7 +498,7 @@ void CFbOutline::Draw(u32 flags)
 		}
 	}
 
-	if ((flags & 0x20) && mColor3.a != 0) {
+	if ((flags & FBOUT_OVERLAY) && mColor3.a != 0) {
 		GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 		GXSetTevColor(GX_TEVREG0, mColor3);
 		GXSetNumChans(0);
@@ -510,7 +512,7 @@ void CFbOutline::Draw(u32 flags)
 		DrawQuad(w, h);
 	}
 
-	if ((flags & 0xC0) && mColor4.a != 0) {
+	if ((flags & (FBOUT_ZOOM_COPY | FBOUT_ZOOM_FADE)) && mColor4.a != 0) {
 		f32 zoom  = mZoom;
 		f32 zoomW = w * zoom;
 		f32 zoomH = h * zoom;
@@ -518,7 +520,7 @@ void CFbOutline::Draw(u32 flags)
 		f32 zoomV = zoomH / h;
 
 		// draw the screen shrunk into the middle and grab it back
-		if (flags & 0x40) {
+		if (flags & FBOUT_ZOOM_COPY) {
 			GXSetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 			GXSetDither(GX_TRUE);
 			GXSetNumChans(0);
@@ -529,29 +531,30 @@ void CFbOutline::Draw(u32 flags)
 			GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
 			GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_KONST, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO);
 			GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_FALSE, GX_TEVPREV);
-			f32 zero = 0.0f;
-			f32 one  = 1.0f;
-			f32 x    = (w - zoomW) / 2;
-			f32 y    = (h - zoomH) / 2;
+			f32 zero    = 0.0f;
+			f32 one     = 1.0f;
+			f32 marginX = (w - zoomW) / 2;
+			f32 marginY = (h - zoomH) / 2;
 			GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-			GXPosition2f32(x, y);
+			GXPosition2f32(marginX, marginY);
 			GXTexCoord2f32(zero, zero);
-			GXPosition2f32(w - x, y);
+			GXPosition2f32(w - marginX, marginY);
 			GXTexCoord2f32(one, zero);
-			GXPosition2f32(w - x, h - y);
+			GXPosition2f32(w - marginX, h - marginY);
 			GXTexCoord2f32(one, one);
-			GXPosition2f32(x, h - y);
+			GXPosition2f32(marginX, h - marginY);
 			GXTexCoord2f32(zero, one);
 			GXEnd();
 			Copy(GX_TF_I8);
 		}
 
 		// fade the zoomed copy over the screen
-		if (flags & 0x80) {
+		if (flags & FBOUT_ZOOM_FADE) {
 			GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 			GXSetDither(GX_TRUE);
 			GXColor color = mColor4;
-			color.a       = 255.0f * (f32)sin(PI * (color.a / 255.0f) / 2);
+			// the fade alpha follows a sine ease
+			color.a = 255.0f * (f32)sin(PI * (color.a / 255.0f) / 2);
 			GXSetTevColor(GX_TEVREG0, color);
 			GXSetNumChans(0);
 			GXSetNumTexGens(1);
@@ -561,25 +564,25 @@ void CFbOutline::Draw(u32 flags)
 			GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
 			GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_A0, GX_CA_ZERO, GX_CA_ZERO, GX_CA_ZERO);
 			GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_FALSE, GX_TEVPREV);
-			f32 zero = 0.0f;
-			f32 one  = 1.0f;
-			f32 u    = (1.0f - zoomU) / 2;
-			f32 v    = (1.0f - zoomV) / 2;
+			f32 zero    = 0.0f;
+			f32 one     = 1.0f;
+			f32 marginU = (1.0f - zoomU) / 2;
+			f32 marginV = (1.0f - zoomV) / 2;
 			GXBegin(GX_QUADS, GX_VTXFMT0, 4);
 			GXPosition2f32(zero, zero);
-			GXTexCoord2f32(u, v);
+			GXTexCoord2f32(marginU, marginV);
 			GXPosition2f32(w, zero);
-			GXTexCoord2f32(one - u, v);
+			GXTexCoord2f32(one - marginU, marginV);
 			GXPosition2f32(w, h);
-			GXTexCoord2f32(one - u, one - v);
+			GXTexCoord2f32(one - marginU, one - marginV);
 			GXPosition2f32(zero, h);
-			GXTexCoord2f32(u, one - v);
+			GXTexCoord2f32(marginU, one - marginV);
 			GXEnd();
 		}
 	}
 
 	// ghosts of the outline circling around it
-	if (flags & 0x100) {
+	if (flags & FBOUT_GHOSTS) {
 		static const GXColor color0 = { 0xFF, 0xFF, 0xFF, 0x08 };
 		static const GXColor color1 = { 0xFF, 0xFF, 0xFF, 0x40 };
 		GXSetBlendMode(GX_BM_BLEND, GX_BL_DSTCOL, GX_BL_SRCALPHA, GX_LO_SET);
@@ -594,7 +597,9 @@ void CFbOutline::Draw(u32 flags)
 		GXSetTevAlphaIn(GX_TEVSTAGE0, GX_CA_TEXA, GX_CA_A0, GX_CA_A1, GX_CA_ZERO);
 		GXSetTevAlphaOp(GX_TEVSTAGE0, GX_TEV_COMP_A8_EQ, GX_TB_ZERO, GX_CS_SCALE_1, GX_FALSE, GX_TEVPREV);
 
-		static f32 rot   = 0.0f;
+		// the ghosts' phase, advanced 2 degrees a draw
+		static f32 rot = 0.0f;
+		// placeholders, the loop fills them every draw
 		f32 offset[4][2] = {
 			{ -3.0f, -3.0f },
 			{ 3.0f, -3.0f },

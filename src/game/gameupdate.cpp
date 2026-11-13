@@ -65,15 +65,15 @@ void CGame::Update(u32 frames)
 			HSD_PadReset();
 			if (!mDiskOk) {
 				Reset(1);
-			} else if (mLoadStep <= 0x13) {
+			} else if (mLoadStep <= 0x13) { // early in the load a reset restarts the system (OSResetSystem code 0)
 				Reset(0);
-			} else {
+			} else { // later it goes back to stage 10000
 				ChangeGameStage(this, 10000, FALSE);
 			}
 		}
 	}
 
-	if (IsDiscError()) {
+	if (IsDiscError()) { // flag 8: the music paused while the disc can't be read
 		if (!(mStatus.mFlags & 8)) {
 			mStatus.mFlags |= 8;
 			PauseGameMusic(&gGame.mSound, 0xFFFF0000, 0);
@@ -85,12 +85,12 @@ void CGame::Update(u32 frames)
 		ResumeGameSfx(&gGame.mSound, 0xFFFF0000);
 	}
 	UpdateStageMicrophone(frames);
-	if (mStatus.mFlags & 0x1000) {
+	if (mStatus.mFlags & 0x1000) { // flag 0x1000 queues a draw-list rebuild
 		mStatus.mFlags &= ~0x1000;
 		BuildObjectDrawList(this);
 	}
 	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 2) && !(mStatus.mFlags & 0x20) && !mMenu.mActive && mEvt.mData.mScript == NULL
-	    && (mPad.mPad[0].mTrigger & 0x1000) && !(mPad.mPad[0].mButton & 0x200)
+	    && (mPad.mPad[0].mTrigger & PAD_BUTTON_START) && !(mPad.mPad[0].mButton & PAD_BUTTON_B)
 #if !defined(VERSION_JP)
 	    && mMenu.mMenus[1] != NULL
 #endif
@@ -103,7 +103,7 @@ void CGame::Update(u32 frames)
 			XObj* obj = mDrawLists[0].mObjects[i];
 			if (obj->mStatus.mFlags & 1) {
 				if (obj->mMoveTranslate.y != obj->mLastPos.y) {
-					obj->mStatus.mFlags |= 0x10000000000000;
+					obj->mStatus.mFlags |= 0x10000000000000; // the flag marks an object whose height changed
 				}
 				obj->mLastPos = obj->mMoveTranslate;
 				obj->UpdateObject(frames);
@@ -116,19 +116,19 @@ void CGame::Update(u32 frames)
 #else
 		mPlayTime += frames;
 #endif
-		if (mPlayTime >= 21600000) {
+		if (mPlayTime >= 21600000) { // caps the play time at a hundred hours of frames
 			mPlayTime = 21599999;
 		}
 	}
-	if (mStatus.mFlags & 0x2000000000000) {
+	if (mStatus.mFlags & 0x2000000000000) { // flag 0x2000000000000 arms the stage timer
 		if (IsRunning() && mEvt.mData.mScript == NULL && !mMenu.mActive && !(mStatus.mFlags & 0xC00) && mTimeState.mDuration > 0.0f) {
 			if (!mTimeState.mRunning) {
 				mTimeState.mTime = frames * (mTimeState.mDuration / (600.0f * FRAME_RATE)) + mTimeState.mTime;
-				if (mTimeState.mTime >= 1.0f) {
+				if (mTimeState.mTime >= 1.0f) { // a full timer runs down
 					mTimeState.mRunning = TRUE;
 				}
 			}
-			if (mTimeState.mRunning == TRUE) {
+			if (mTimeState.mRunning == TRUE) { // then waits for an idle player
 				bool idle       = false;
 				XObjChr* player = GetPlayer();
 				if ((player->mLift.mState == 0 || player->mLift.mState == 4) && player->mHang.mState == 0 && player->mJump.mState == 0
@@ -173,9 +173,10 @@ void CGame::Update(u32 frames)
 			mRoboeyes.Update(frames);
 			UpdateScreenShake(&mQuake, frames);
 			mOutline.Update(frames);
-			mScrnTex.mAngle = fmod(0.10471976f * frames + mScrnTex.mAngle, 6.2831854820251465);
+			mScrnTex.mAngle = fmod(DEG2RAD * 6.0f * frames + mScrnTex.mAngle, TWO_PI); // six degrees a frame
 			mOutline.mThick = 0.0f;
-			u8 lineAlpha    = 100.0f * (f32)sin(mScrnTex.mAngle) + 150.0f;
+			u8 lineAlpha    = 100.0f * (f32)sin(mScrnTex.mAngle) + 150.0f; // pulses the outline alpha
+
 			mOutline.SetLineColor(0xFF, 0xFF, 0xFF);
 			mOutline.mColor0.a = lineAlpha;
 			UpdateScreenFade(&mScrnTex.mColor, frames);
@@ -194,7 +195,7 @@ void CGame::Update(u32 frames)
 	}
 	UpdateScreenFade(&mColor1.mColor, frames);
 	mOutline.SetColor4(mColor1.mColor.mColor.r, mColor1.mColor.mColor.g, mColor1.mColor.mColor.b, mColor1.mColor.mColor.a);
-	if (mOutlineWidthControl > 0) {
+	if (mOutlineWidthControl > 0) { // the c-stick sets the outline width
 		if (mPad.mPad[0].mSubStickY > 0.0f) {
 			if ((mOutlineWidth -= 0.01f * frames) < 0.04f) {
 				mOutlineWidth = 0.04f;
@@ -204,7 +205,7 @@ void CGame::Update(u32 frames)
 				mOutlineWidth = 0.5f;
 			}
 		}
-		mOutline.mZoom = sin(3.1415927f * mOutlineWidth / 2.0f);
+		mOutline.mZoom = sin(3.1415927f * mOutlineWidth / 2.0f); // a half-sine over the width
 	}
 	UpdateBootLogos(&mLogo, frames);
 	UpdateTitleScreen(&mTitle, frames);
@@ -237,8 +238,8 @@ void CGame::Update(u32 frames)
 			}
 		}
 		s32 moving = 0;
-		f32 bob    = 0.08726646f * frames;
-		f32 tilt   = 0.05235988f * frames;
+		f32 bob    = DEG2RAD * 5.0f * frames; // bobs five degrees a frame
+		f32 tilt   = DEG2RAD * 3.0f * frames; // tilts three
 		for (i = 0; i < mStageName.mCount; i++) {
 			if (0.0f != mStageName.mChars[i].mScale) {
 				moving++;
@@ -250,7 +251,7 @@ void CGame::Update(u32 frames)
 			mStageName.mActive = FALSE;
 		}
 	}
-	if (mStatus.mFlags & 2) {
+	if (mStatus.mFlags & 2) { // flag 2 suspends: flag 4 marks the pause done once
 		if (!(mStatus.mFlags & 4)) {
 			mStatus.mFlags |= 4;
 			SetMusicPlaybackPaused(&gGame.mSound, TRUE);
@@ -262,7 +263,7 @@ void CGame::Update(u32 frames)
 			}
 			HSD_PadRumblePauseAll();
 		}
-	} else if (mStatus.mFlags & 4) {
+	} else if (mStatus.mFlags & 4) { // and resumes both on the way back
 		mStatus.mFlags &= ~4;
 		SetMusicPlaybackPaused(&gGame.mSound, FALSE);
 		HSD_PadRumbleActiveAll();
@@ -288,13 +289,13 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 	CMotionControlCamera* camera;
 	s32 i;
 	s32 mirrored;
-	if (game->mStatus.mFlags & 0x8000000000) {
+	if (game->mStatus.mFlags & 0x8000000000) { // only while flag 0x8000000000 stands
 		camera = &game->mMotionControlCamera;
 		for (i = 0; i < game->mXObjs.mObjectCount; i++) {
 			obj = game->mXObjs.mObjects[i];
 			if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 				if (!(game->mStatus.mFlags & 0x100) && (obj->mStatus.mFlags & 0x80000000) && obj->IsOutsideCameraDepth(&camera->mCamera)) {
-					obj->mStatus.mFlags |= 0x1000000000000;
+					obj->mStatus.mFlags |= 0x1000000000000; // out of depth: mirror-only
 				} else {
 					obj->mStatus.mFlags &= ~0x1000000000000;
 				}

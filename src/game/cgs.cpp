@@ -89,7 +89,9 @@ GXRenderModeObj* gVideoRenderModes[31] = {
 	&GXEurgb60Hz480IntAa,
 };
 
-// per glyph the stroke segments it draws, each byte pair a from,to of nibbles, 0xFF ends the row
+// per glyph the stroke segments it draws, each byte pair a from,to point with x in the high
+// nibble and y (0 at the glyph's top) in the low one, 0xFF ends the row. rows 0-9 are the
+// digits, 10-35 the letters and 36-46 the punctuation DrawGsStrokeText looks up
 u8 gGlyphStrokeTable[47][13] = {
 	{ 0x00, 0x60, 0x60, 0x66, 0x66, 0x06, 0x06, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00 },
 	{ 0x30, 0x36, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
@@ -313,11 +315,11 @@ u16 GXGetTexObjWidth(const GXTexObj* obj);
 u16 GXGetTexObjHeight(const GXTexObj* obj);
 }
 
-// places a flat shape on screen, w and h are its full size. with camera type 3 y points
-// the other way, so the shape gets flipped back
+// places a flat shape on screen, w and h are its full size. an ortho camera has y growing
+// down the screen, so the shape gets flipped back
 static inline void SetFlatTransform(CGs* gs, CPrimitive* prim, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz)
 {
-	if (gs->mCamera->projection_type == 3) {
+	if (gs->mCamera->projection_type == PROJ_ORTHO) {
 		prim->SetTrans(x, y, z);
 		prim->SetScale(w / 2.0f, -h / 2.0f, 1.0f);
 		prim->SetRot(-rx, ry, -rz);
@@ -762,7 +764,7 @@ extern "C" void InitializeGsTevStageDescriptor(CGsTevStage* stage, u32 id, GsTev
 {
 	stage->next                    = NULL;
 	stage->stage                   = id;
-	stage->flags                   = 1;
+	stage->flags                   = 1; // not 0: HSD_SetupTevStage uses u.tevconf, SetGsTevMode's 0 picks a GXSetTevOp mode
 	stage->coord                   = order.mCoord;
 	stage->map                     = order.mMap;
 	stage->color                   = order.mColor;
@@ -787,13 +789,13 @@ extern "C" void InitializeGsTevStageDescriptor(CGsTevStage* stage, u32 id, GsTev
 	stage->u.tevconf.mode          = 0;
 	stage->u.tevconf.ras_swap      = 0;
 	stage->u.tevconf.tex_swap      = 0;
-	stage->u.tevconf.kcsel         = 0xC;
-	stage->u.tevconf.kasel         = 0x1C;
+	stage->u.tevconf.kcsel         = 0xC;  // GX_TEV_KCSEL_K0
+	stage->u.tevconf.kasel         = 0x1C; // GX_TEV_KASEL_K0_A
 	stage->mNumTexGens             = 0;
-	stage->mTexCoord               = 0;
-	stage->mTexGenFunc             = 1;
-	stage->mTexGenSrc              = 4;
-	stage->mTexMtx                 = 0x3C;
+	stage->mTexCoord               = GX_TEXCOORD0;
+	stage->mTexGenFunc             = GX_TG_MTX2x4;
+	stage->mTexGenSrc              = GX_TG_TEX0;
+	stage->mTexMtx                 = GX_IDENTITY;
 	stage->Invalidate();
 }
 // InitializeGsTevStageDescriptor
@@ -1033,8 +1035,8 @@ extern "C" void InitializeGsRenderDefaultsJP(CGs* gs)
 extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
 #endif
 {
-	HSD_SetPixelFormat(1, 0);
-	GXSetPixelFmt(1, 0);
+	HSD_SetPixelFormat(GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
+	GXSetPixelFmt(GX_PF_RGBA6_Z24, GX_ZC_LINEAR);
 
 	InitializeVideoClearState((GXColor) { 0, 0, 0x20, 0 });
 	GXSetClipMode(0);
@@ -1724,6 +1726,7 @@ extern "C" void ConfigureGsChannel(CGs* gs, CGsChannel* ch, s32 chan, GsChanCtrl
 		GsChanInit(&gs->mChannels[3], GX_ALPHA1, ctrl, amb, mat);
 		break;
 	}
+	// mChannels is indexed by channel id; HSD_SetupChannelAll runs COLOR0, then ALPHA0 through next
 	gs->mCurChannel = &gs->mChannels[0];
 	GsChanSetNext(gs->mCurChannel, &gs->mChannels[2]);
 }
@@ -1762,12 +1765,13 @@ extern "C" MtxPtr BeginGsCamera(CBase* base)
 		if (gs->mLight != NULL) {
 			gs->mLight->SetCurrent(gs->mCamera);
 			if (gs->mCurChannel == &gs->mChannels[0]) {
+				// the last active light's type picks the attenuation, any light but ambient turns it on
 				u32 type = LOBJ_AMBIENT;
 				s32 n    = HSD_LObjGetNbActive();
 				for (s32 i = 0; i < n; i++) {
 					HSD_LObj* lobj = HSD_LObjGetActiveByIndex(i);
 					if (lobj != NULL) {
-						type = lobj->flags & 3;
+						type = lobj->flags & LOBJ_TYPE_MASK;
 					}
 				}
 				if (type != LOBJ_AMBIENT) {
@@ -2107,7 +2111,7 @@ extern "C" void DrawGsLineSegment(CGs* gs, Mtx view, f32 x0, f32 y0, f32 z0, u32
 	} else {
 		mtx = view;
 	}
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mLine.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
 	PrimVertex vtx[2] = {
@@ -2123,7 +2127,7 @@ extern "C" void DrawGsLineSegment(CGs* gs, Mtx view, f32 x0, f32 y0, f32 z0, u32
  */
 extern "C" void DrawGsLineStrip(CGs* gs, Vec* pos, u32 color, u16 count)
 {
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mLine.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
 	gs->mLine.Draw(gs->mCamera->mViewMtx, pos, color, count);
@@ -2135,7 +2139,7 @@ extern "C" void DrawGsLineStrip(CGs* gs, Vec* pos, u32 color, u16 count)
  */
 extern "C" void DrawGsColoredLineStrip(CGs* gs, Vec* pos, u32* color, u16 count)
 {
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mLine.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
 	gs->mLine.Draw(gs->mCamera->mViewMtx, pos, color, count);
@@ -2147,7 +2151,7 @@ extern "C" void DrawGsColoredLineStrip(CGs* gs, Vec* pos, u32* color, u16 count)
  */
 extern "C" void DrawGsTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32 color, u16 count)
 {
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
 	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].enable) {
@@ -2163,7 +2167,7 @@ extern "C" void DrawGsTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec
  */
 extern "C" void DrawGsColoredTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32* color, u16 count)
 {
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
 	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].enable) {
@@ -2179,7 +2183,7 @@ extern "C" void DrawGsColoredTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx vi
  */
 extern "C" void DrawGsTriangleVertices(CGs* gs, GXPrimitive type, Mtx view, PrimVertex* vtx, u16 count)
 {
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
 	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].enable) {
@@ -2204,7 +2208,7 @@ extern "C" void DrawGsVertexQuad(CGs* gs, f32 x0, f32 y0, f32 z0, u32 color0, f3
 	};
 	MtxP view = gs->mCamera->mViewMtx;
 
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
 	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].enable) {
@@ -2221,7 +2225,7 @@ extern "C" void DrawGsVertexQuad(CGs* gs, f32 x0, f32 y0, f32 z0, u32 color0, f3
 extern "C" void DrawGsCircle(CGs* gs, u32 segments, u32 centerColor, u32 edgeColor, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry,
                              f32 rz)
 {
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	SetFlatTransform(gs, &gs->mCircle, x, y, z, w, h, rx, ry, rz);
 	gs->mCircle.mFixedMtx = NULL;
@@ -2239,7 +2243,7 @@ extern "C" void DrawGsCircle(CGs* gs, u32 segments, u32 centerColor, u32 edgeCol
 extern "C" void DrawGsQuad(CGs* gs, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry,
                            f32 rz)
 {
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	SetFlatTransform(gs, &gs->mTile, x, y, z, w, h, rx, ry, rz);
 	gs->mTile.mFixedMtx = NULL;
@@ -2257,7 +2261,7 @@ extern "C" void DrawGsQuad(CGs* gs, u32 color0, u32 color1, u32 color2, u32 colo
 extern "C" void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h,
                                    f32 rx, f32 ry, f32 rz)
 {
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	if (gs->mCurTevStage == &gs->mTevStages[0]) {
 		gs->mCurTevStage->SetOrder(GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
 		gs->mCurTevStage->SetNumTexGens(1);
@@ -2754,7 +2758,7 @@ extern "C" void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1
  */
 extern "C" void DrawGsCube(CGs* gs, u32 color, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz)
 {
-	SetGsChannelMaterialAndLighting(gs, 0, color);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
 	SetupDrawState(gs);
 	gs->mCube.SetTrans(tx, ty, tz);
 	gs->mCube.SetScale(sx, sy, sz);
@@ -2770,7 +2774,7 @@ extern "C" void DrawGsCube(CGs* gs, u32 color, f32 tx, f32 ty, f32 tz, f32 rx, f
  */
 extern "C" void DrawGsSphere(CGs* gs, u32 color, u8 major, u8 minor, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz)
 {
-	SetGsChannelMaterialAndLighting(gs, 0, color);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
 	SetupDrawState(gs);
 	gs->mSphere.SetTrans(tx, ty, tz);
 	gs->mSphere.SetScale(sx, sy, sz);
@@ -2786,7 +2790,7 @@ extern "C" void DrawGsSphere(CGs* gs, u32 color, u8 major, u8 minor, f32 tx, f32
  */
 extern "C" void DrawGsSphereWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 major, u8 minor)
 {
-	SetGsChannelMaterialAndLighting(gs, 0, color);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
 	SetupDrawState(gs);
 	gs->mSphere.mFixedMtx = mtx;
 	gs->mSphere.Draw(gs->mCamera->mViewMtx, major, minor);
@@ -2798,7 +2802,7 @@ extern "C" void DrawGsSphereWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 major, u8
  */
 extern "C" void DrawGsCylinder(CGs* gs, u32 color, u8 sides, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz)
 {
-	SetGsChannelMaterialAndLighting(gs, 0, color);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
 	SetupDrawState(gs);
 	gs->mCylinder.SetTrans(tx, ty, tz);
 	gs->mCylinder.SetScale(sx, sy, sz);
@@ -2814,7 +2818,7 @@ extern "C" void DrawGsCylinder(CGs* gs, u32 color, u8 sides, f32 tx, f32 ty, f32
  */
 extern "C" void DrawGsCylinderWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 sides)
 {
-	SetGsChannelMaterialAndLighting(gs, 0, color);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
 	SetupDrawState(gs);
 	gs->mCylinder.mFixedMtx = mtx;
 	gs->mCylinder.Draw(gs->mCamera->mViewMtx, sides);
@@ -3338,7 +3342,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	TextGlyph glyph;
 	s32 i;
 
-	// an ortho camera has y going up
+	// an ortho camera has y growing down the screen, so the line step flips
 	f32 lineHeight = gs->mCamera->projection_type == PROJ_ORTHO ? -height : height;
 	glyph.mColor   = color;
 	glyph.mBgColor = 0;
@@ -3433,7 +3437,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	}
 
 	// backgrounds first, flat color
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	if (gs->mCurTevStage == &gs->mTevStages[0]) {
 		gs->mCurTevStage->SetOrder(GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
 		SetTevMode(gs->mCurTevStage, GX_PASSCLR);
@@ -4902,7 +4906,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 		gs->mRenderMode.mPointTexOffs = 5;
 		gs->mRenderMode.mPointDirty   = TRUE;
 	}
-	SetGsChannelMaterialAndLighting(gs, 1, 0);
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 
 	f32 width = MeasureStrokeTextWidth(gs, text);

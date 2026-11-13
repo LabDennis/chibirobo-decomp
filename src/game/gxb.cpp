@@ -87,13 +87,13 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 			continue;
 		if (!GetItemFlagsMasked(object->GetItem(), 2) || (object->mStatus.mFlags & 0x0400000000000000ULL))
 			continue;
-		f32 w, h;
-		if (ProjectRoboeyesItem(object, &w, &h)) {
+		f32 radius, height;
+		if (ProjectRoboeyesItem(object, &radius, &height)) {
 			work.entries[work.visible].object = object;
 			Vec offset                        = { 0, 0, 0 };
 			f32 x, y;
 			object->ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
-			y -= .5f * w;
+			y -= .5f * radius;
 			f32 dx = 320.0f - x, dy = 224.0f - y;
 			work.entries[work.visible++].distance = sqrtf(dx * dx + dy * dy);
 		}
@@ -144,6 +144,7 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 						left  = endX;
 						right = endX + width;
 					}
+					// moved above that label, so test against every placed label again
 					j = -1;
 				}
 			}
@@ -153,9 +154,9 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 			if (pass == 0) {
 				f32 inner = radius + .1f * radius * (f32)sin(eyes->mPhase), outer = 1.2f * inner;
 				for (s32 k = 0; (f32)k < 16.0f; ++k) {
-					f32 a = .3926991f * k + eyes->mAngle, b = .3926991f * (k + 1) + eyes->mAngle;
-					f32 x0 = x + outer * (f32)sin(a), y0 = y + outer * (f32)cos(a);
-					f32 x1 = x + inner * (f32)sin(b), y1 = y + inner * (f32)cos(b);
+					f32 outerAngle = .3926991f * k + eyes->mAngle, innerAngle = .3926991f * (k + 1) + eyes->mAngle;
+					f32 x0 = x + outer * (f32)sin(outerAngle), y0 = y + outer * (f32)cos(outerAngle);
+					f32 x1 = x + inner * (f32)sin(innerAngle), y1 = y + inner * (f32)cos(innerAngle);
 					DrawGsLineSegment(gs, NULL, x0, y0, 0, gold, x1, y1, 0, gold);
 				}
 				DrawGsLineSegment(gs, NULL, startX, startY, 0, gold, endX, endY, 0, gold);
@@ -247,6 +248,8 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	static RoboeyesValue separation = { 150, 150 }, lw = { width, width }, lh = { height, height }, rw = { width, width },
 	                     rh = { height, height }, focus = { 0, 0 };
 	static s32 state;
+	// 0: lenses apart at full size until attachment 2 is out, 1: they slide together, 2: the right lens
+	// shrinks to a half and the left to a sixth until it is put away, 3: back to full size, 4: apart again
 	switch (state) {
 	case 0:
 		lw.target = width;
@@ -1972,7 +1975,7 @@ void XObjDemo::UpdateObject(u32 frames)
 		}
 	}
 	if (mLoop) {
-		if (GetAObj(mJObj)->flags & 0x44000000) {
+		if (GetAObj(mJObj)->flags & (AOBJ_NO_ANIM | AOBJ_REWINDED)) {
 			mState = 1;
 			SetPos(mMoveTranslate, 0);
 			SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
@@ -2089,12 +2092,12 @@ extern "C" void DrawTitleHelpText(Title* menu)
 		CTexObj tex  = *GetFontGlyphTexture(&font, glyph->mText, &width);
 		f32 bob      = 2.0f * (f32)sin(glyph->mAngle0);
 		f32 rotation = sin(0.7f * glyph->mAngle1);
-		f32 s1       = sin(3.1415927f * alpha);
-		f32 s2       = sin(1.5707964f * alpha);
-		f32 scale    = 0.2f * s1 + s2;
+		f32 swell    = sin(PI * alpha);
+		f32 grow     = sin(HALF_PI * alpha);
+		f32 scale    = 0.2f * swell + grow;
 		f32 x        = 0.5f * spacing + (i * spacing + (320.0f - menu->mHelpCount * spacing * 0.5f));
 		f32 y        = 384.0f + bob;
-		rotation     = -(0.017453292f * (10.0f * rotation));
+		rotation     = -(DEG2RAD * (10.0f * rotation));
 		u32 color    = (u32)opacity | 0xFFFFFF00;
 		DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero, rotation);
 		scale       = 30.0f * (0.8f * scale);
@@ -2141,12 +2144,12 @@ static inline void OnFormattedCardGone(Title* title)
 // moves the yes or no choice with left and right
 static inline void MoveYesNo(Title* title, CPad& pad)
 {
-	if (pad.mPad->mRepeat & 0x40001) {
+	if (pad.mPad->mRepeat & (HSD_PAD_STICK_LEFT | HSD_PAD_DPADLEFT)) {
 		if (title->mChoice > 0) {
 			title->mChoice--;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		}
-	} else if (pad.mPad->mRepeat & 0x80002) {
+	} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_RIGHT | HSD_PAD_DPADRIGHT)) {
 		if (title->mChoice < 1) {
 			title->mChoice++;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
@@ -2192,15 +2195,15 @@ extern "C" void DrawTitleNameBubbles(Title* title)
 			f32 y;
 			bob   = 4.0f * (f32)sin(title->mName.mChars[i].mBob);
 			tilt  = sin(0.7f * title->mName.mChars[i].mTilt);
-			swell = sin(3.1415927f * scale);
-			pop   = 0.2f * swell + (f32)sin(1.5707964f * scale);
+			swell = sin(PI * scale);
+			pop   = 0.2f * swell + (f32)sin(HALF_PI * scale);
 #if defined(VERSION_PAL)
 			x = 20.0f + (40.0f * i + (320.0f - 40.0f * title->mName.mCount / 2.0f));
 #else
 			x = 24.0f + (48.0f * i + (320.0f - 48.0f * title->mName.mCount / 2.0f));
 #endif
 			u32 alpha = 255.0f * scale;
-			rot       = -(0.017453292f * (10.0f * tilt));
+			rot       = -(DEG2RAD * (10.0f * tilt));
 			y         = 64.0f + bob;
 			DrawGsTexturedQuad(&gGame.mGs, &bubble, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, x, y,
 			                   0.0f, 20.0f * (2.0f * pop), 20.0f * (2.0f * pop), zero, -zero, rot);
@@ -2236,6 +2239,7 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
 		title->mHighlightDelay = FRAME_RATE;
 		title->mPulseAngle     = fmod(title->mPulseAngle + frames * 9, 360.0);
 	}
+	// the game flags keep the settings: 0x800000000 is rumble on, 0x1000000000 mono sound
 	if (!pad.mPad->mConnected && title->mRumble) {
 		title->mRumble = FALSE;
 		gGame.mStatus.mFlags &= ~0x800000000ULL;
@@ -2243,13 +2247,13 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
 
 	switch (title->mOptionState) {
 	case 0:
-		if (pad.mPad->mRepeat & 0x10008) {
+		if (pad.mPad->mRepeat & (HSD_PAD_STICK_UP | HSD_PAD_DPADUP)) {
 			if (title->mOptionLine > 0) {
 				title->mOptionLine--;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 				title->mPulseAngle = 45.0f;
 			}
-		} else if (pad.mPad->mRepeat & 0x20004) {
+		} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_DOWN | HSD_PAD_DPADDOWN)) {
 			if (title->mOptionLine < 2) {
 				title->mOptionLine++;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
@@ -2316,7 +2320,7 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
 		break;
 	case 2:
 		HSD_AObj* aobj = GetAObj(title->mCursor.mJObj);
-		if ((aobj->flags & 0x44000000) || title->mCursor.mAnimId == 0 || title->mCursor.mArchive.mNum[0] < 2) {
+		if ((aobj->flags & (AOBJ_NO_ANIM | AOBJ_REWINDED)) || title->mCursor.mAnimId == 0 || title->mCursor.mArchive.mNum[0] < 2) {
 			title->mCursor.SetAnim(0, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			title->mPulseAngle = 0.0f;
 			title->mState      = 11;
@@ -2708,8 +2712,8 @@ extern "C" void DrawTitleOptions(Title* title)
 		                             size);
 #endif
 
-		f32 t        = title->mCursor.mAnimId == 1 ? GetAnimProgress(title) : 0.0f;
-		f32 bob      = title->mOptionLine == 2 ? 2.0f * (f32)sin(4.712389f * t) : 0.0f;
+		f32 progress = title->mCursor.mAnimId == 1 ? GetAnimProgress(title) : 0.0f;
+		f32 bob      = title->mOptionLine == 2 ? 2.0f * (f32)sin(4.712389f * progress) : 0.0f;
 		f32 backSize = 24.0f + bob;
 		if (IsLineLit(title, 2)) {
 			normal = lit;
@@ -2788,11 +2792,11 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32
 #if !defined(VERSION_JP)
 static inline f32 TitleOptionWidth(s32 first)
 {
-	f32 a       = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(first + 1), 1, 24.0f);
-	f32 b       = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(first + 2), 1, 24.0f);
-	f32 c       = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(first), 1, 24.0f);
-	f32 largest = a > b ? a : b;
-	return 2.0f * ((c > largest ? c : largest) + 8.0f);
+	f32 value1  = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(first + 1), 1, 24.0f);
+	f32 value2  = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(first + 2), 1, 24.0f);
+	f32 label   = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(first), 1, 24.0f);
+	f32 largest = value1 > value2 ? value1 : value2;
+	return 2.0f * ((label > largest ? label : largest) + 8.0f);
 }
 #endif
 
@@ -3200,11 +3204,11 @@ void Title::State15(u32 frames)
 		case -2:
 		case -1:
 		case 0:
-			if (step == 2 && (result == -6 || result == -13)) {
+			if (step == 2 && (result == CARD_RESULT_BROKEN || result == CARD_RESULT_ENCODING)) {
 				SetMode(11);
 				mChoice      = 1;
 				mShowMessage = 1;
-			} else if (result == -3 || result == -5) {
+			} else if (result == CARD_RESULT_NOCARD || result == CARD_RESULT_IOERROR) {
 				SetMode(20);
 				mShowMessage = 1;
 			} else {
@@ -3380,7 +3384,7 @@ void Title::State12(u32 frames)
 		case -2:
 		case -1:
 		case 0:
-			if (result == -6 || result == -13) {
+			if (result == CARD_RESULT_BROKEN || result == CARD_RESULT_ENCODING) {
 				SetMode(19);
 				mShowMessage = 1;
 			} else {
@@ -3537,11 +3541,12 @@ void Title::State8(u32)
 		case -2:
 		case -1:
 		case 0:
-			if (cardState == 2 && (result == -6 || result == -13)) {
+			// while mounting (card state 2), a broken card or one from another region gets the format question
+			if (cardState == 2 && (result == CARD_RESULT_BROKEN || result == CARD_RESULT_ENCODING)) {
 				SetMode(11);
 				mChoice      = 1;
 				mShowMessage = 1;
-			} else if (result == -3 || result == -5) {
+			} else if (result == CARD_RESULT_NOCARD || result == CARD_RESULT_IOERROR) {
 				SetMode(22);
 				mShowMessage = 1;
 			} else {
@@ -3595,13 +3600,13 @@ void Title::State6(u32)
 		OnCardRemoved(this);
 		return;
 	}
-	if (pad.mPad->mRepeat & 0x40001) {
+	if (pad.mPad->mRepeat & (HSD_PAD_STICK_LEFT | HSD_PAD_DPADLEFT)) {
 		if (mChoice > 0) {
 			mChoice--;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			return;
 		}
-	} else if (pad.mPad->mRepeat & 0x80002) {
+	} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_RIGHT | HSD_PAD_DPADRIGHT)) {
 		if (mChoice < 1) {
 			mChoice++;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
@@ -3729,13 +3734,13 @@ void Title::State3(u32)
 		return;
 	}
 	state = pad.mPad;
-	if (state->mRepeat & 0x40001) {
+	if (state->mRepeat & (HSD_PAD_STICK_LEFT | HSD_PAD_DPADLEFT)) {
 		if (mChoice > 0) {
 			mChoice--;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			return;
 		}
-	} else if (state->mRepeat & 0x80002) {
+	} else if (state->mRepeat & (HSD_PAD_STICK_RIGHT | HSD_PAD_DPADRIGHT)) {
 		if (mChoice < 1) {
 			mChoice++;
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
@@ -3778,13 +3783,13 @@ void Title::State2(u32)
 		return;
 	}
 	mOffset = 0.0f;
-	if (pad.mPad->mRepeat & 0x40001) {
+	if (pad.mPad->mRepeat & (HSD_PAD_STICK_LEFT | HSD_PAD_DPADLEFT)) {
 		mFile--;
 		if (mFile < 0) {
 			mFile = 2;
 		}
 		PlayGameSound(&gGame.mSound, 0x87, 0xFF);
-	} else if (pad.mPad->mRepeat & 0x80002) {
+	} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_RIGHT | HSD_PAD_DPADRIGHT)) {
 		mFile++;
 		if (mFile > 2) {
 			mFile = 0;
@@ -3805,7 +3810,7 @@ void Title::State2(u32)
 				mOffset = -32.0f;
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 			} else {
-				mResult = -9;
+				mResult = CARD_RESULT_INSSPACE;
 				SetMode(14);
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				mOffset = -32.0f;
@@ -3938,10 +3943,10 @@ void Title::State1(u32 frames)
 		case -2:
 		case -1:
 		case 0:
-			if (result == -6 || result == -13) {
+			if (result == CARD_RESULT_BROKEN || result == CARD_RESULT_ENCODING) {
 				SetMode(11);
 				mChoice = 1;
-			} else if (result == -5) {
+			} else if (result == CARD_RESULT_IOERROR) {
 				SetMode(19);
 				mShowMessage = 1;
 			} else {
@@ -4180,6 +4185,9 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		if (gGame.mMemcard.mCard.mBusy)
 			return;
 	}
+	// 1-2 scan the card, 3-5 read in the cursor, the demo model and the textures, 10 fades the menu in,
+	// 11 is the menu, 12 waits for the cursor's anim, 20 runs the file modes, 21 the options, 13-14 fade
+	// out, 22 frees it all and changes the stage, 23 is done
 	switch (title->mState) {
 	case 1:
 		title->mState = 2;
@@ -4275,7 +4283,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		UpdateTitleDust(title, frames);
 		KeepTitleSoundPlaying(&gGame.mSound);
 		CPad pad(0);
-		if (pad.mPad->mRepeat & 0x10008) {
+		if (pad.mPad->mRepeat & (HSD_PAD_STICK_UP | HSD_PAD_DPADUP)) {
 			if (title->mSaveFound) {
 				if (title->mSelection > 0) {
 					--title->mSelection;
@@ -4285,7 +4293,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 				title->mSelection = 0;
 				TitleSelectionMoved(title);
 			}
-		} else if (pad.mPad->mRepeat & 0x20004) {
+		} else if (pad.mPad->mRepeat & (HSD_PAD_STICK_DOWN | HSD_PAD_DPADDOWN)) {
 			if (title->mSaveFound) {
 				if (title->mSelection < 2) {
 					++title->mSelection;
@@ -4321,7 +4329,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		title->mDemo.UpdateObject(frames);
 		UpdateTitleDust(title, frames);
 		HSD_AObj* aobj = GetAObj(title->mCursor.mJObj);
-		if ((aobj->flags & 0x44000000) || title->mCursor.mAnimId == 0 || title->mCursor.mArchive.mNum[0] < 2) {
+		if ((aobj->flags & (AOBJ_NO_ANIM | AOBJ_REWINDED)) || title->mCursor.mAnimId == 0 || title->mCursor.mArchive.mNum[0] < 2) {
 			title->mCursor.SetAnim(0, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			title->mPulseAngle = 0;
 			switch (title->mSelection) {

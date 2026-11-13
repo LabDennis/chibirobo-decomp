@@ -43,6 +43,9 @@ struct UnkObjData {
 	s16 mLookRange;      // _12
 	s16 mCategory;       // _14, category, also which pool in XOBJS
 	s16 mItemIndex;      // _16, item index, some callers test it as flags
+
+	s16 GetCategory() const { return this != NULL ? mCategory : 0; }
+	s16 GetItem() const { return this != NULL ? mItemIndex : 0; }
 };
 STATIC_ASSERT(sizeof(UnkObjData) == 0x18);
 extern "C" UnkObjData* GetObjData(const CoordInfo* info);
