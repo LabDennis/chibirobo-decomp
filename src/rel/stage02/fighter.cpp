@@ -5743,9 +5743,13 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 				continue;
 			}
 			if (fade->_08 > 0.0f) {
-				tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x50), 0);
-				w    = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
-				y    = 320.0f - 32.0f;
+				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->_A4C[2] + 0x50), 0);
+				w   = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
+#if defined(VERSION_JP)
+				y = 320.0f;
+#else
+				y = 320.0f - 32.0f;
+#endif
 				half = fade->_08 * (1.0f * GXGetTexObjHeight(&tex));
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, half, 0.0f, 0.0f, 0.0f);
