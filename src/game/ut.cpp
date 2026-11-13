@@ -1487,60 +1487,23 @@ f32 SignedTriangleArea2XZ(Vec* a, Vec* b, Vec* c)
 	return a->x * (b->z - c->z) + b->x * (c->z - a->z) + c->x * (a->z - b->z);
 }
 
+static inline bool FacesOutsideXZ(const Vec* pos, const Vec* a, const Vec* b, const Vec& down)
+{
+	Vec edge     = { a->x - b->x, 0.0f, a->z - b->z };
+	Vec relative = { b->x - pos->x, 0.0f, b->z - pos->z };
+	Vec normal;
+	C_VECCrossProduct(&relative, &edge, &normal);
+	return PSVECDotProduct(&down, &normal) > 0.0f;
+}
+
 /**
  * @note Address: 0x8018EC6C
  * @note Size: 0x1C0
  */
-BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
+BOOL IsPointInsideTriangleXZ(const Vec* pos, const Vec* a, const Vec* b, const Vec* c)
 {
-	f32 ex = a->x - b->x;
-	f32 ez = a->z - b->z;
-	f32 rx = b->x - pos->x;
-	f32 rz = b->z - pos->z;
-	Vec up = { 0.0f, -1.0f, 0.0f };
-	Vec edge, rel, n;
-
-	edge.x = ex;
-	edge.z = ez;
-	edge.y = 0.0f;
-	rel.x  = rx;
-	rel.z  = rz;
-	rel.y  = 0.0f;
-	C_VECCrossProduct(&rel, &edge, &n);
-	if (PSVECDotProduct(&up, &n) > 0.0f) {
-		return FALSE;
-	}
-
-	ex     = b->x - c->x;
-	ez     = b->z - c->z;
-	rx     = c->x - pos->x;
-	rz     = c->z - pos->z;
-	edge.x = ex;
-	edge.z = ez;
-	edge.y = 0.0f;
-	rel.x  = rx;
-	rel.z  = rz;
-	rel.y  = 0.0f;
-	C_VECCrossProduct(&rel, &edge, &n);
-	if (PSVECDotProduct(&up, &n) > 0.0f) {
-		return FALSE;
-	}
-
-	ex     = c->x - a->x;
-	ez     = c->z - a->z;
-	rx     = a->x - pos->x;
-	rz     = a->z - pos->z;
-	edge.x = ex;
-	edge.z = ez;
-	edge.y = 0.0f;
-	rel.x  = rx;
-	rel.z  = rz;
-	rel.y  = 0.0f;
-	C_VECCrossProduct(&rel, &edge, &n);
-	if (PSVECDotProduct(&up, &n) > 0.0f) {
-		return FALSE;
-	}
-	return TRUE;
+	const Vec down = { 0.0f, -1.0f, 0.0f };
+	return !(FacesOutsideXZ(pos, a, b, down) || FacesOutsideXZ(pos, b, c, down) || FacesOutsideXZ(pos, c, a, down));
 }
 
 // IsPointInsideTriangleXZ
@@ -1666,71 +1629,11 @@ BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c)
  * @note Address: 0x8018EA50
  * @note Size: 0x21C
  */
-BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d)
+BOOL IsPointInsideQuadXZ(const Vec* pos, const Vec* a, const Vec* b, const Vec* c, const Vec* d)
 {
-	f32 ex = a->x - b->x;
-	f32 ez = a->z - b->z;
-	f32 rx = b->x - pos->x;
-	f32 rz = b->z - pos->z;
-	Vec up = { 0.0f, -1.0f, 0.0f };
-	Vec edge, rel, n;
-
-	edge.x = ex;
-	edge.z = ez;
-	edge.y = 0.0f;
-	rel.x  = rx;
-	rel.z  = rz;
-	rel.y  = 0.0f;
-	C_VECCrossProduct(&rel, &edge, &n);
-	if (PSVECDotProduct(&up, &n) > 0.0f) {
-		return FALSE;
-	}
-
-	ex     = b->x - c->x;
-	ez     = b->z - c->z;
-	rx     = c->x - pos->x;
-	rz     = c->z - pos->z;
-	edge.x = ex;
-	edge.z = ez;
-	edge.y = 0.0f;
-	rel.x  = rx;
-	rel.z  = rz;
-	rel.y  = 0.0f;
-	C_VECCrossProduct(&rel, &edge, &n);
-	if (PSVECDotProduct(&up, &n) > 0.0f) {
-		return FALSE;
-	}
-
-	ex     = c->x - d->x;
-	ez     = c->z - d->z;
-	rx     = d->x - pos->x;
-	rz     = d->z - pos->z;
-	edge.x = ex;
-	edge.z = ez;
-	edge.y = 0.0f;
-	rel.x  = rx;
-	rel.z  = rz;
-	rel.y  = 0.0f;
-	C_VECCrossProduct(&rel, &edge, &n);
-	if (PSVECDotProduct(&up, &n) > 0.0f) {
-		return FALSE;
-	}
-
-	ex     = d->x - a->x;
-	ez     = d->z - a->z;
-	rx     = a->x - pos->x;
-	rz     = a->z - pos->z;
-	edge.x = ex;
-	edge.z = ez;
-	edge.y = 0.0f;
-	rel.x  = rx;
-	rel.z  = rz;
-	rel.y  = 0.0f;
-	C_VECCrossProduct(&rel, &edge, &n);
-	if (PSVECDotProduct(&up, &n) > 0.0f) {
-		return FALSE;
-	}
-	return TRUE;
+	const Vec down = { 0.0f, -1.0f, 0.0f };
+	return !(FacesOutsideXZ(pos, a, b, down) || FacesOutsideXZ(pos, b, c, down) || FacesOutsideXZ(pos, c, d, down)
+	         || FacesOutsideXZ(pos, d, a, down));
 }
 
 // IsPointInsideQuadXZ

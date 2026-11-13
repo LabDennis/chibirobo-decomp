@@ -65,7 +65,7 @@ static inline Vec AreaPoint(const CamAreaInfo& area, s32 index)
 
 static inline BOOL PointInQuad(const Vec& pos, Vec a, Vec b, Vec c, Vec d)
 {
-	return IsPointInsideQuadXZ((Vec*)&pos, &a, &b, &c, &d);
+	return IsPointInsideQuadXZ(&pos, &a, &b, &c, &d);
 }
 
 /**
