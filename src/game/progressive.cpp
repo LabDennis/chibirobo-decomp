@@ -12,6 +12,46 @@ const char* GetStageFileName(s32);
 s32 GetDefaultStageIndex();
 }
 
+BootConfigEntry gBootConfigEntries[] = {
+	{ "STAGE_NO", BootStage, 0 },
+	{ "DRAW_XZGRID", BootFlag, 1ULL << 18 },
+	{ "DRAW_WORLDAXIS", BootFlag, 1ULL << 19 },
+	{ "DRAW_LIGHTMARK", BootFlag, 1ULL << 20 },
+	{ "DRAW_SAFETYFRAME", BootFlag, 1ULL << 21 },
+	{ "DRAW_FRAMEMETER", BootFlag, 1ULL << 22 },
+	{ "DRAW_HEAPMETER", BootFlag, 1ULL << 23 },
+	{ "DRAW_CROSSHAIR", BootCrosshair, 1ULL << 50 },
+	{ "DRAW_DEBUGSTRING", BootFlag, 1ULL << 24 },
+	{ "DRAW_COLLISION", BootFlag, 1ULL << 25 },
+	{ "DRAW_CAMCOLLISION", BootFlag, 1ULL << 53 },
+	{ "DRAW_OBJINFO", BootFlag, 1ULL << 26 },
+	{ "DRAW_PLAYTIME", BootFlag, 1ULL << 27 },
+	{ "PRINT_FILEINFO", BootFlag, 1ULL << 28 },
+	{ "ENABLE_LOGO", BootFlag, 1ULL << 34 },
+	{ "ENABLE_TITLE", BootFlag, 1ULL << 29 },
+	{ "ENABLE_GAMEOVER", BootFlag, 1ULL << 30 },
+	{ "ENABLE_TIMEUP", BootFlag, 1ULL << 46 },
+	{ "ENABLE_DAYNIGHT", BootFlag, 1ULL << 49 },
+	{ "ENABLE_DEBUGOPR", BootFlag, 1ULL << 31 },
+	{ "ENABLE_ATC_COPTER", BootSetting, 1 },
+	{ "ENABLE_ATC_POPPER", BootSetting, 2 },
+	{ "ENABLE_ATC_RADAR", BootSetting, 3 },
+	{ "ENABLE_RELMODULE", BootFlag, 1ULL << 32 },
+	{ "ENABLE_ARAMCACHE", BootFlag, 1ULL << 41 },
+	{ "ENABLE_PRECACHE", BootFlag, 1ULL << 42 },
+	{ "ENABLE_ARCHIVER", BootUnrestrictedFlag, 1ULL << 33 },
+	{ "ENABLE_SCREENSHOT", BootFlag, 1ULL << 52 },
+	{ "ATC_MENU_TYPE", BootSetting, 0 },
+	{ "LIFTPLUG_TYPE", BootSetting, 4 },
+	{ "ATC_ACTION_TYPE", BootSetting, 5 },
+	{ "TOOL_ACTION_TYPE", BootSetting, 6 },
+	{ "TITLE_CURSOR", BootSetting, 7 },
+	{ "EVENT_LOG", BootEventLog, 0 },
+	{ NULL, BootFlag, 0 },
+};
+
+VideoModePrompt gVideoModePrompt = { 0, -1, 0.0f, 0.0f, 0, 0 };
+
 /**
  * @note Address: 0x8001C89C
  * @note Size: 0x28

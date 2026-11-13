@@ -61,9 +61,9 @@ void XObjFree::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void*
  * @note Address: 0x800DD96C
  * @note Size: 0x220
  */
-void XObjFree::vfC8()
+void XObjFree::DrawScreenOverlay()
 {
-	XObj::vfC8();
+	XObj::DrawScreenOverlay();
 	if ((mStatus.mFlags & 0x4000000000000000ULL) && mFlash > 0.0f) {
 		Vec position = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;

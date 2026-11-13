@@ -17,10 +17,10 @@ extern "C" {
 
 static inline void AttachPlugCord(XObjPlug* plug)
 {
-	if (plug->_D38 == 0) {
+	if (plug->mCordEndsPinned == 0) {
 		SetPlugCordEndpointSource(&plug->mCord, 1, &plug->mCordJointPos);
 		SetPlugCordEndpointSource(&plug->mCord, 2, &plug->mCordJointTip);
-		plug->_D38 = 1;
+		plug->mCordEndsPinned = 1;
 	}
 }
 
@@ -34,66 +34,66 @@ static inline void UpdateCordJoint(XObjPlug* plug, CJObj& joint)
 	plug->mCordJointTip = tip;
 }
 
-void UpdateObject__8XObjPlugFUl(XObjPlug* plug, u32 frames)
+void XObjPlug::UpdateObject(u32 frames)
 {
-	UpdateObject__4XObjFUl(plug, frames);
-	if (plug->mStatus.mFlags & 1) {
-		GetPlayerPlugCordAnchorTransform(plug, &plug->mCordAnchor, NULL, NULL);
-		if (plug->mStatus.mFlags & 0x0400000000000000ULL) {
-			AttachPlugCord(plug);
+	UpdateObject__4XObjFUl(this, frames);
+	if (mStatus.mFlags & 1) {
+		GetPlayerPlugCordAnchorTransform(this, &mCordAnchor, NULL, NULL);
+		if (mStatus.mFlags & 0x0400000000000000ULL) {
+			AttachPlugCord(this);
 			s32 path[] = { 0, 0 };
-			CJObj joint(FindJointByPath(plug->mJObj, path, 2));
-			UpdateCordJoint(plug, joint);
-		} else if (plug->_D3C != 0) {
-			AttachPlugCord(plug);
+			CJObj joint(FindJointByPath(mJObj, path, 2));
+			UpdateCordJoint(this, joint);
+		} else if (mConnection != 0) {
+			AttachPlugCord(this);
 			s32 path[] = { 0, 0 };
-			CJObj joint(FindJointByPath(plug->mJObj, path, 2));
-			UpdateCordJoint(plug, joint);
-		} else if (plug->_D38 == 1) {
-			SetPlugCordEndpointSource(&plug->mCord, 1, NULL);
-			SetPlugCordEndpointSource(&plug->mCord, 2, NULL);
-			plug->_D38 = 0;
+			CJObj joint(FindJointByPath(mJObj, path, 2));
+			UpdateCordJoint(this, joint);
+		} else if (mCordEndsPinned == 1) {
+			SetPlugCordEndpointSource(&mCord, 1, NULL);
+			SetPlugCordEndpointSource(&mCord, 2, NULL);
+			mCordEndsPinned = 0;
 		}
-		const Vec& tint    = plug->mColorStep[1].mValue;
-		plug->mCord.mColor = plug->mCord._60 = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8) | 0xff;
-		UpdatePlugCordSimulation(&plug->mCord, frames);
+		const Vec& tint = mColorStep[1].mValue;
+		mCord.mColor = mCord._60 = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8) | 0xff;
+		UpdatePlugCordSimulation(&mCord, frames);
 	} else {
-		plug->ResetObjectState();
+		ResetObjectState();
 	}
-	plug->mWire.UpdateObject(frames);
-	if ((plug->mStatus.mFlags & 1) && !(plug->mStatus.mFlags & 0x0400000000000000ULL) && plug->_D3C == 0) {
-		Vec pos = GetPlugCordPointPosition(&plug->mCord, 18);
-		plug->SetPos(pos, 0);
+	mWire.UpdateObject(frames);
+	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 0x0400000000000000ULL) && mConnection == 0) {
+		Vec pos = GetPlugCordPointPosition(&mCord, 18);
+		SetPos(pos, 0);
 		CVec tip, base, rot;
-		tip    = GetPlugCordPointPosition(&plug->mCord, 19);
-		base   = GetPlugCordPointPosition(&plug->mCord, 18);
+		tip    = GetPlugCordPointPosition(&mCord, 19);
+		base   = GetPlugCordPointPosition(&mCord, 18);
 		rot.y  = atan2(tip.x - base.x, tip.z - base.z);
 		f32 dx = tip.x - base.x, dy = tip.y - base.y, dz = tip.z - base.z;
 		f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
 		rot.x     = dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
 		rot.z     = 0;
-		plug->SetRot(rot, 0);
+		SetRot(rot, 0);
 		Mtx matrix;
-		PSMTXCopy(HSD_JObjGetMtxPtr(plug->mJObj), matrix);
+		PSMTXCopy(HSD_JObjGetMtxPtr(mJObj), matrix);
 		Vec offset = { 0, -0.2f, 0 };
 		PSMTXMultVec(matrix, &offset, &offset);
-		plug->SetPos(offset, 0);
-		if (plug->mWire.mSparkMode == 0) {
-			if (plug->mWire.mSparkTimer < 0) {
-				CVec pos(plug->mMoveTranslate);
+		SetPos(offset, 0);
+		if (mWire.mSparkMode == 0) {
+			if (mWire.mSparkTimer < 0) {
+				CVec pos(mMoveTranslate);
 				CVec scale(0.5f, 0.5f, 0.5f);
 				Vec rotation = { 0, 0, 0 };
 				gGame.mParticle.CreateSRT(0x1001a, 1, pos, scale, rotation, FALSE);
-				plug->mWire.mSparkTimer += HSD_Randi(10) + 16;
+				mWire.mSparkTimer += HSD_Randi(10) + 16;
 			}
 			XSound* sound = &gGame.mSound;
 			if (IsGameSoundPlaying(sound, 0xfb) != 1 && IsGameSoundPlaying(sound, 0xfc) != 1) {
-				if (plug->mWire.mSparkTimer % 2)
+				if (mWire.mSparkTimer % 2)
 					PlayGameSound(sound, 0xfb, 255);
 				else
 					PlayGameSound(sound, 0xfc, 255);
 			}
-			plug->mWire.mSparkTimer -= frames;
+			mWire.mSparkTimer -= frames;
 		}
 	}
 }
@@ -146,7 +146,7 @@ void ConfigurePlugWireEffect(XObjWireEff* object, s32 anim, s32 effect, f32 rate
 	} else {
 		KillWireEffect(object);
 	}
-	object->vf12C(0, color >> 24, color >> 16, color >> 8, 0.0f);
+	object->SetColor(0, color >> 24, color >> 16, color >> 8, 0.0f);
 }
 }
 
@@ -217,14 +217,14 @@ extern "C" void SetPlugSparkMode(XObjPlug* object, s32 value)
 	object->mWire.mSparkTimer = -1;
 }
 
-// XObjPlug::vfDC
+// XObjPlug::SetDestinationAlpha
 /**
  * @note Address: 0x800D80E4
  * @note Size: 0x54
  */
-void XObjPlug::vfDC(BOOL enabled, u8 value)
+void XObjPlug::SetDestinationAlpha(BOOL enabled, u8 value)
 {
-	XObj::vfDC(enabled, value);
+	XObj::SetDestinationAlpha(enabled, value);
 	SetPlugCordAlphaMode(&mCord, enabled, value);
 }
 

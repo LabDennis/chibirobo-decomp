@@ -20,7 +20,7 @@ void XObjActor3::UpdateObject(u32 frames)
 {
 	switch (GetItem()) {
 	case 8:
-		_B8C.mFlags |= 4;
+		mActorFlags.mFlags |= 4;
 		break;
 	case 9:
 		UpdateAnimationSounds();
@@ -34,7 +34,7 @@ void XObjActor3::UpdateObject(u32 frames)
 		}
 		switch (mEventCommand) {
 		case 1:
-			_B8C.mFlags &= ~4;
+			mActorFlags.mFlags &= ~4;
 			mEventCommand = 0;
 			mEventArg1    = 0;
 			break;
@@ -48,17 +48,17 @@ void XObjActor3::UpdateObject(u32 frames)
 		switch (mEventCommand) {
 		case 1:
 			if (mEventArg1 != 0) {
-				_B8C.mFlags &= ~4;
+				mActorFlags.mFlags &= ~4;
 			} else {
-				_B8C.mFlags |= 4;
-				_B80 = 0;
+				mActorFlags.mFlags |= 4;
+				mKindStep = 0;
 			}
 			mEventCommand = 0;
 			mEventArg1    = 0;
 			break;
 		case 2:
-			_B80          = 2;
-			_B78          = mEventArg2 / 100.0f;
+			mKindStep     = 2;
+			mKindTimer    = mEventArg2 / 100.0f;
 			mEventCommand = 0;
 			mEventArg1    = 0;
 			break;
@@ -98,7 +98,7 @@ void XObjActor3::UpdateObject(u32 frames)
 		}
 		switch (mEventCommand) {
 		case 1:
-			_B8C.mFlags &= ~4;
+			mActorFlags.mFlags &= ~4;
 			mEventCommand = 0;
 			mEventArg1    = 0;
 			break;
@@ -111,12 +111,12 @@ void XObjActor3::UpdateObject(u32 frames)
 		HandleSpiderCounterCommand(this);
 		break;
 	}
-	if (_B8C.mFlags & 0x10) {
+	if (mActorFlags.mFlags & 0x10) {
 		return;
 	}
 	(this->*gActor3UpdateHandlers[GetItem()])(frames);
-	if (!(_B8C.mFlags & 4)) {
-		SetRotateY(_B7C, 0.0f);
+	if (!(mActorFlags.mFlags & 4)) {
+		SetRotateY(mHeading, 0.0f);
 		SetPos(mMoveTranslate, 0);
 	}
 	UpdateObject__4XObjFUl(this, frames);
@@ -126,7 +126,7 @@ void XObjActor3::UpdateObject(u32 frames)
 	if (GetKind() == 0x2C3) {
 		CarryRiderAtActorJoint(this, frames);
 	}
-	if (_B8C.mFlags & 2) {
+	if (mActorFlags.mFlags & 2) {
 		for (u32 i = 0; i < 8; i++) {
 			if (mParts[i].mJoint != NULL && mParts[i].mObj != NULL) {
 				Mtx t;

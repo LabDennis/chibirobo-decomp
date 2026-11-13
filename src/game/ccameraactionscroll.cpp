@@ -122,12 +122,12 @@ void CCameraActionScroll::Update(u32 step)
 		if (mZoom == 1) {
 			SetZoomDistance(mFarDistance);
 		}
-		_64    = 0;
-		mStart = FALSE;
+		mInterestMode = 0;
+		mStart        = FALSE;
 		return;
 	}
 
-	_64 = 2;
+	mInterestMode = 2;
 	CPad pad(0);
 	u32 nearButton = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADUP : HSD_PAD_CSTICK_UP;
 	u32 farButton  = (gGame.mStatus.mFlags & 0x80000000) ? HSD_PAD_DPADDOWN : HSD_PAD_CSTICK_DOWN;

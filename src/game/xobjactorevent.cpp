@@ -14,7 +14,7 @@ s32 XObjActor::HandleEventCommand(s32 count, s32* args)
 	case 100: {
 		s32 id = args[1];
 		if (id == 0) {
-			_998.mFlags &= ~0x1000;
+			mActorStatus.mFlags &= ~0x1000;
 			for (u32 i = 0; i < 8; i++) {
 				if (mParts[i].mObj != NULL) {
 					HSD_JObjClearMtxFlags(mParts[i].mObj->mJObj);
@@ -29,7 +29,7 @@ s32 XObjActor::HandleEventCommand(s32 count, s32* args)
 #if !defined(VERSION_PAL)
 				OSReport("id = %d, argv[1]=%d\n", i, id);
 #endif
-				_998.mFlags |= 0x1000;
+				mActorStatus.mFlags |= 0x1000;
 				if (args[1] >= 10000) {
 					mParts[i].mObj = FindObj(args[1]);
 				} else {
@@ -53,9 +53,9 @@ s32 XObjActor::HandleEventCommand(s32 count, s32* args)
 	}
 	case 101:
 		if (args[1] == 0) {
-			_998.mFlags &= ~0x800;
+			mActorStatus.mFlags &= ~0x800;
 		} else {
-			_998.mFlags |= 0x800;
+			mActorStatus.mFlags |= 0x800;
 		}
 		break;
 	}

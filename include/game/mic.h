@@ -2,6 +2,7 @@
 #define _GAME_MIC_H
 
 #include "types.h"
+#include "Dolphin/OS/OSUtil.h"
 
 // the mic on the memory card slots and the m2s stream it feeds
 struct MicChannel {
@@ -25,6 +26,10 @@ extern MicChannel gMicrophoneChannels[2];
 extern s32 gActiveMicChannel;
 extern s32 gMicObjectPeak; // peak above 1000 delivered to stage objects
 extern s32 gMicMeterPeak;  // largest positive sample since the level bar was drawn
+extern s32 sMicSamplePhaseSteps[3];
+extern s32 sMicBufferThresholds[3];
+extern BOOL gMicRecording;
+extern OSTime gMicButtonReleaseTime;
 }
 
 #endif

@@ -6,6 +6,8 @@
 extern "C" void CaptureGameSaveData(Memcard*);
 extern "C" void BuildSaveBanner(Memcard*, s32);
 
+// NONMATCHING: retail materializes the loop counters as li+mr, derives the stat
+// pointer from its card base and rematerializes failed=FALSE on the loop-exit edge
 /**
  * @note Address: 0x80089D3C
  * @note Size: 0x484
@@ -23,7 +25,8 @@ extern "C" BOOL WriteMemoryCardSaveFile(Memcard* card, s32 channel, s32 slot)
 	BuildSaveBanner(card, slot);
 	CaptureGameSaveData(card);
 	card->mState = 13;
-	BOOL failed  = FALSE;
+	BOOL failed;
+	CARDStat* stat = &card->mStat;
 	for (s32 copy = 0, offset = 0; copy < 2; ++copy, offset += sizeof(SaveFile)) {
 		card->mCard.Write(card->mBuffer, sizeof(SaveFile), offset);
 		card->LogResult();
@@ -34,11 +37,11 @@ extern "C" BOOL WriteMemoryCardSaveFile(Memcard* card, s32 channel, s32 slot)
 			break;
 		}
 		if (copy == 1) {
-			CARDStat stat;
-			card->mCard.GetStatus(&stat);
-			if (!HasSaveFileLayout(stat)) {
+			CARDStat st;
+			card->mCard.GetStatus(&st);
+			if (!HasSaveFileLayout(st)) {
 				card->mState = 11;
-				card->mCard.SetStatus(&card->mStat);
+				card->mCard.SetStatus(stat);
 				card->LogResult();
 				if (card->mCard.mResult != CARD_RESULT_READY) {
 					card->mCard.Close();
@@ -48,6 +51,7 @@ extern "C" BOOL WriteMemoryCardSaveFile(Memcard* card, s32 channel, s32 slot)
 				}
 			}
 		}
+		failed = FALSE;
 	}
 	if (failed)
 		return TRUE;

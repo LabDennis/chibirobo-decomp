@@ -86,7 +86,7 @@ bool XObjActorTao::IsFree()
 	if ((mStatus.mFlags & 1) == 0) {
 		return true;
 	}
-	return !(_998.mFlags & 0x2000);
+	return !(mActorStatus.mFlags & 0x2000);
 }
 
 /**
@@ -129,7 +129,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 					obj->mStatus.mFlags |= 0x10000ULL;
 					switch (command[1]) {
 					case 0x102:
-						_C8C.mFlags |= 2;
+						mHideKinds.mFlags |= 2;
 						break;
 					}
 				}
@@ -141,7 +141,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 				if (command[1] == obj->GetKind()) {
 					mHeldObjects[0] = obj;
 					obj->mStatus.mFlags |= 0x10000ULL;
-					_C8C.mFlags |= 1;
+					mHideKinds.mFlags |= 1;
 				}
 			}
 			break;
@@ -154,7 +154,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 					if (++n == mCmd[2]) {
 						obj->mStatus.mFlags |= 0x10000ULL;
 						mHeldObjects[0] = obj;
-						_C8C.mFlags |= 4;
+						mHideKinds.mFlags |= 4;
 						break;
 					}
 				}
@@ -166,7 +166,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 				if (command[1] == obj->GetKind()) {
 					obj->mStatus.mFlags |= 0x10000ULL;
-					_C8C.mFlags |= 8;
+					mHideKinds.mFlags |= 8;
 					mHeldObjects[0] = obj;
 				}
 			}
@@ -176,7 +176,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 				XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 				if (command[1] == obj->GetKind()) {
 					obj->mStatus.mFlags |= 0x10000ULL;
-					_C8C.mFlags |= 0x20;
+					mHideKinds.mFlags |= 0x20;
 					mHeldObjects[0] = obj;
 				}
 			}
@@ -190,27 +190,27 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 		}
 		break;
 	case 3:
-		_A4C   = command[1];
-		mState = &XObjActorTao::StatePickUp;
+		mAttachedId = command[1];
+		mState      = &XObjActorTao::StatePickUp;
 		ResetActorMovementStep(this);
 		mCmd[0] = 0;
 		break;
 	case 4:
-		_A4C = -1;
-		if (_A50 != NULL) {
-			_A50->Release();
+		mAttachedId = -1;
+		if (mAttached != NULL) {
+			mAttached->Release();
 		}
 		mCmd[0] = 0;
 		break;
 	case 5:
 		if (command[1] != 0) {
-			_CF4 = 0x82;
-			_CF8 = 1;
+			mMountObjId = 0x82;
+			mMountState = 1;
 		} else {
-			_CF8 = 0;
-			_CF4 = -1;
-			if (_CFC != NULL) {
-				_CFC->Release();
+			mMountState = 0;
+			mMountObjId = -1;
+			if (mMountObj != NULL) {
+				mMountObj->Release();
 			}
 		}
 		mCmd[0] = 0;
@@ -245,50 +245,50 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 // picks up the object _A4C names and holds it in its mouth
 void XObjActorTao::StatePickUp(u32 frames)
 {
-	switch (_990) {
+	switch (mKindStep) {
 	case 0:
-		if (_A50 != NULL) {
-			_A50->Release();
+		if (mAttached != NULL) {
+			mAttached->Release();
 		}
-		if (_A4C >= 0) {
-			_A50 = ReadObj(_A4C);
+		if (mAttachedId >= 0) {
+			mAttached = ReadObj(mAttachedId);
 		} else {
-			_A50 = NULL;
+			mAttached = NULL;
 		}
-		_990++;
+		mKindStep++;
 	case 1:
-		if (_A50 != NULL) {
-			if (_A50->mStatus.mFlags & 0x0040000000000000ULL) {
+		if (mAttached != NULL) {
+			if (mAttached->mStatus.mFlags & 0x0040000000000000ULL) {
 				return;
 			}
 			gGame.mStatus.mFlags |= 0x1000;
 		}
-		_990++;
+		mKindStep++;
 	case 2:
-		if (_A4C >= 0 && _A50 != NULL) {
-			_A50->SetScale(1.0f, 1.0f, 1.0f, 0);
+		if (mAttachedId >= 0 && mAttached != NULL) {
+			mAttached->SetScale(1.0f, 1.0f, 1.0f, 0);
 			CJObj jobj;
 			s32 path[6] = { 0, 0, 0, 0, 0, 0 };
 			jobj.Attach(FindJointByPath(mJObj, path, 6));
 			Vec pos = jobj.GetPos();
-			_A50->SetPos(pos.x, HSD_JObjGetTranslationY(mJObj), pos.z, 0);
+			mAttached->SetPos(pos.x, HSD_JObjGetTranslationY(mJObj), pos.z, 0);
 			Vec scale;
-			PSMTXCopy(jobj.GetMtx(), _C94);
-			HSD_MtxGetScale(_C94, &scale);
-			scale.x = GetStagePlacementScale(_A50).x / scale.x;
-			scale.y = GetStagePlacementScale(_A50).y / scale.y;
-			scale.z = GetStagePlacementScale(_A50).z / scale.z;
+			PSMTXCopy(jobj.GetMtx(), mCarryMtx);
+			HSD_MtxGetScale(mCarryMtx, &scale);
+			scale.x = GetStagePlacementScale(mAttached).x / scale.x;
+			scale.y = GetStagePlacementScale(mAttached).y / scale.y;
+			scale.z = GetStagePlacementScale(mAttached).z / scale.z;
 			Mtx scaleMtx;
 			Mtx transMtx;
 			Mtx m;
 			PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
-			PSMTXConcat(_C94, scaleMtx, m);
+			PSMTXConcat(mCarryMtx, scaleMtx, m);
 			PSMTXTrans(transMtx, 0.0f, -10.0f, 0.0f);
 			PSMTXConcat(m, transMtx, m);
-			HSD_JObj* joint = _A50->mJObj;
+			HSD_JObj* joint = mAttached->mJObj;
 			MtxPtr mp       = m;
 			HSD_JObjCopyMtx(joint, mp);
-			_A50->mStatus.mFlags &= ~0x0200000000000000ULL;
+			mAttached->mStatus.mFlags &= ~0x0200000000000000ULL;
 		}
 		break;
 	}
@@ -302,27 +302,27 @@ void XObjActorTao::StateNone(u32 frames)
 {
 }
 
-void XObjActorTao::vf148(u32 frames)
+void XObjActorTao::UpdateAfterAnim(u32 frames)
 {
-	vf148__9XObjActorFUl(this, frames);
+	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj joint;
-	if (_C8C.mFlags & 0x2f) {
+	if (mHideKinds.mFlags & 0x2f) {
 		s32 mouth[6] = { 0, 0, 0, 0, 0, 0 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, mouth, 6));
 		CVec mouthPosition;
 		mouthPosition = joint.GetPos();
 		s32 kind      = -1;
-		if (_C8C.mFlags & 2)
+		if (mHideKinds.mFlags & 2)
 			kind = 0x102;
-		else if (_C8C.mFlags & 1)
+		else if (mHideKinds.mFlags & 1)
 			kind = 0x159;
-		else if (_C8C.mFlags & 4)
+		else if (mHideKinds.mFlags & 4)
 			kind = 0xf8;
-		else if (_C8C.mFlags & 8) {
+		else if (mHideKinds.mFlags & 8) {
 			kind        = 0x2a3;
 			s32 path[5] = { 0, 0, 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, path, 5));
-		} else if (_C8C.mFlags & 0x20) {
+		} else if (mHideKinds.mFlags & 0x20) {
 			kind        = 0x46f;
 			s32 path[3] = { 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, path, 3));
@@ -335,7 +335,7 @@ void XObjActorTao::vf148(u32 frames)
 					if (kind == obj->GetKind()) {
 						switch (kind) {
 						case 0x102:
-							PlaceInTaoMouth(joint, obj, _C94, 0);
+							PlaceInTaoMouth(joint, obj, mCarryMtx, 0);
 							break;
 						default: {
 							MtxPtr matrix  = joint.GetMtx();
@@ -356,16 +356,16 @@ void XObjActorTao::vf148(u32 frames)
 					if (kind == obj->GetKind()) {
 						switch (kind) {
 						case 0x159:
-							PSMTXCopy(joint.GetMtx(), _C94);
+							PSMTXCopy(joint.GetMtx(), mCarryMtx);
 							Vec scale;
-							HSD_MtxGetScale(_C94, &scale);
+							HSD_MtxGetScale(mCarryMtx, &scale);
 							scale.x = GetStagePlacementScale(obj).x / scale.x;
 							scale.y = GetStagePlacementScale(obj).y / scale.y;
 							scale.z = GetStagePlacementScale(obj).z / scale.z;
 							Mtx scaling;
 							PSMTXScale(scaling, scale.x, scale.y, scale.z);
-							PSMTXConcat(_C94, scaling, _C94);
-							HSD_JObjCopyMtx(obj->mJObj, _C94);
+							PSMTXConcat(mCarryMtx, scaling, mCarryMtx);
+							HSD_JObjCopyMtx(obj->mJObj, mCarryMtx);
 							break;
 						default: {
 							MtxPtr matrix  = joint.GetMtx();
@@ -389,7 +389,7 @@ void XObjActorTao::vf148(u32 frames)
 						case 0xf8:
 							if (++ordinal != mCmd[2])
 								break;
-							PlaceInTaoMouth(joint, obj, _C94, 3);
+							PlaceInTaoMouth(joint, obj, mCarryMtx, 3);
 							return;
 						default: {
 							MtxPtr matrix  = joint.GetMtx();
@@ -438,50 +438,50 @@ void XObjActorTao::vf148(u32 frames)
 				break;
 			}
 	}
-	switch (_CF8) {
+	switch (mMountState) {
 	case 0:
 		break;
 	case 1:
-		if (_CFC)
-			_CFC->Release();
-		if (_CF4 >= 0) {
-			_CFC = ReadObj(_CF4);
-			++_CF8;
+		if (mMountObj)
+			mMountObj->Release();
+		if (mMountObjId >= 0) {
+			mMountObj = ReadObj(mMountObjId);
+			++mMountState;
 		} else
-			_CFC = NULL;
+			mMountObj = NULL;
 		break;
 	case 2:
-		if (_CFC && !(_CFC->mStatus.mFlags & 0x0040000000000000ULL)) {
+		if (mMountObj && !(mMountObj->mStatus.mFlags & 0x0040000000000000ULL)) {
 			gGame.mStatus.mFlags |= 0x1000;
-			++_CF8;
+			++mMountState;
 		}
 		break;
 	case 3:
-		if (_CF4 >= 0 && _CFC) {
-			_CFC->SetScale(1, 1, 1, 0);
+		if (mMountObjId >= 0 && mMountObj) {
+			mMountObj->SetScale(1, 1, 1, 0);
 			CJObj extra;
 			s32 path[3] = { 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&extra, FindJointByPath(mJObj, path, 3));
 			Mtx result;
-			PSMTXCopy(extra.GetMtx(), _CC4);
+			PSMTXCopy(extra.GetMtx(), mMountMtx);
 			Vec scale;
-			HSD_MtxGetScale(_CC4, &scale);
-			scale.x = GetStagePlacementScale(_CFC).x / scale.x;
-			scale.y = GetStagePlacementScale(_CFC).y / scale.y;
-			scale.z = GetStagePlacementScale(_CFC).z / scale.z;
+			HSD_MtxGetScale(mMountMtx, &scale);
+			scale.x = GetStagePlacementScale(mMountObj).x / scale.x;
+			scale.y = GetStagePlacementScale(mMountObj).y / scale.y;
+			scale.z = GetStagePlacementScale(mMountObj).z / scale.z;
 			Mtx scaling;
 			PSMTXScale(scaling, scale.x, scale.y, scale.z);
-			PSMTXConcat(_CC4, scaling, result);
-			HSD_JObj* root = _CFC->mJObj;
+			PSMTXConcat(mMountMtx, scaling, result);
+			HSD_JObj* root = mMountObj->mJObj;
 			MtxPtr matrix  = result;
 			HSD_JObjCopyMtx(root, matrix);
 			if (mStatus.mFlags & 0x10000)
-				_CFC->mStatus.mFlags |= 0x10000ULL;
+				mMountObj->mStatus.mFlags |= 0x10000ULL;
 			else
-				_CFC->mStatus.mFlags &= ~0x10000ULL;
-			_CFC->mStatus.mFlags &= ~0x0200000000000000ULL;
+				mMountObj->mStatus.mFlags &= ~0x10000ULL;
+			mMountObj->mStatus.mFlags &= ~0x0200000000000000ULL;
 		}
-		_998.mFlags &= ~0x2000;
+		mActorStatus.mFlags &= ~0x2000;
 		break;
 	}
 }
@@ -500,20 +500,20 @@ static inline u32 GetTaoDropFlags(const CStatus& status, u32 mask)
 void XObjActorTao::Drop()
 {
 	s32 kind = -1;
-	if (GetTaoDropFlags(_C8C, 2)) {
-		_C8C.mFlags &= ~2;
+	if (GetTaoDropFlags(mHideKinds, 2)) {
+		mHideKinds.mFlags &= ~2;
 		kind = 0x102;
-	} else if (GetTaoDropFlags(_C8C, 1)) {
-		_C8C.mFlags &= ~1;
+	} else if (GetTaoDropFlags(mHideKinds, 1)) {
+		mHideKinds.mFlags &= ~1;
 		kind = 0x159;
-	} else if (GetTaoDropFlags(_C8C, 4)) {
-		_C8C.mFlags &= ~4;
+	} else if (GetTaoDropFlags(mHideKinds, 4)) {
+		mHideKinds.mFlags &= ~4;
 		kind = 0xF8;
-	} else if (GetTaoDropFlags(_C8C, 8)) {
-		_C8C.mFlags &= ~8;
+	} else if (GetTaoDropFlags(mHideKinds, 8)) {
+		mHideKinds.mFlags &= ~8;
 		kind = 0x2A3;
-	} else if (GetTaoDropFlags(_C8C, 0x20)) {
-		_C8C.mFlags &= ~0x20;
+	} else if (GetTaoDropFlags(mHideKinds, 0x20)) {
+		mHideKinds.mFlags &= ~0x20;
 		kind = 0x46F;
 	}
 	if (kind < 0) {
@@ -558,8 +558,8 @@ void XObjActorTao::Drop()
  */
 void XObjActorTao::ProcessPendingEvents(u32)
 {
-	if (_998.Check(2)) {
-		_998.mFlags &= ~2;
+	if (mActorStatus.Check(2)) {
+		mActorStatus.mFlags &= ~2;
 		PlayGameSound(&gGame.mSound, 0x15D, 0xFF);
 	}
 }
@@ -570,27 +570,27 @@ void XObjActorTao::ProcessPendingEvents(u32)
  */
 void XObjActorTao::ResetActorState()
 {
-	_998.mFlags = 0;
-	_C8C.mFlags = 0;
-	_980        = 0.0f;
-	_984        = 0.0f;
-	_988        = 0.0f;
-	_C84        = _988;
-	_C88        = 0;
-	mState      = &XObjActorTao::StateNone;
+	mActorStatus.mFlags = 0;
+	mHideKinds.mFlags   = 0;
+	mHeading            = 0.0f;
+	mMoveSpeed          = 0.0f;
+	mFacing             = 0.0f;
+	_C84                = mFacing;
+	_C88                = 0;
+	mState              = &XObjActorTao::StateNone;
 	ResetActorMovementStep(this);
-	mCmd[2] = 0;
-	mCmd[3] = 0;
-	mCmd[4] = 0;
-	mCmd[5] = 0;
-	mCmd[6] = 0;
-	mCmd[7] = 0;
-	mCmd[8] = 0;
-	mCmd[9] = 0;
-	_CF4    = -1;
-	_CF8    = 0;
-	_CFC    = NULL;
-	_CF4    = 0x82;
-	_CF8    = 1;
-	_998.mFlags |= 0x2000;
+	mCmd[2]     = 0;
+	mCmd[3]     = 0;
+	mCmd[4]     = 0;
+	mCmd[5]     = 0;
+	mCmd[6]     = 0;
+	mCmd[7]     = 0;
+	mCmd[8]     = 0;
+	mCmd[9]     = 0;
+	mMountObjId = -1;
+	mMountState = 0;
+	mMountObj   = NULL;
+	mMountObjId = 0x82;
+	mMountState = 1;
+	mActorStatus.mFlags |= 0x2000;
 }

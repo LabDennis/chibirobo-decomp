@@ -20,9 +20,9 @@ f32 HSD_Randf(void);
 // sets the object's floor boxes, they take effect at once
 static inline void SetFloors(XObj* obj, XObjFloor* floors)
 {
-	obj->mFloors = floors;
-	obj->_250[1] = 0;
-	obj->_250[0] = 0;
+	obj->mFloors        = floors;
+	obj->mFloorMasks[1] = 0;
+	obj->mFloorMasks[0] = 0;
 	UpdateObjectFloorXZExtent(obj);
 	UpdateObjectFloorHeights(obj);
 }
@@ -758,7 +758,7 @@ void XObjArmy::ResetObjectState()
 		gArmyShotModel = NULL;
 		for (s32 i = 0; gArmyShotModel == NULL && i < gGame.mXObjs.mObjectCount; i++) {
 			XObj* obj = gGame.GetObject(i);
-			if ((obj->mStatus.mFlags & 1) && obj->mCoord._00->_00 == 0x12A) {
+			if ((obj->mStatus.mFlags & 1) && obj->mCoord.mPlacement->mObjectId == 0x12A) {
 				gArmyShotModel = obj;
 			}
 		}

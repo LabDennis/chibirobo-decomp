@@ -8,7 +8,7 @@
 // todo: cleanup
 static inline void TriggerEvent(XObj* object, u32 first, u32 second)
 {
-	const void* script = object->vf128();
+	const void* script = object->GetEventScript();
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer()))
 		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, object, first, second);
 }
@@ -18,10 +18,10 @@ static inline void TriggerEvent(XObj* object, u32 first, u32 second)
  * @note Address: 0x800DE038
  * @note Size: 0x28
  */
-extern "C" void Release__8XObjFreeFv(XObjFree* object)
+void XObjFree::Release()
 {
-	object->mMatAnim = NULL;
-	Release__4XObjFv(object);
+	mMatAnim = NULL;
+	XObj::Release();
 }
 
 // XObjFree::ResetObjectState
@@ -32,21 +32,21 @@ extern "C" void Release__8XObjFreeFv(XObjFree* object)
 void XObjFree::ResetObjectState()
 {
 	ResetObjectState__4XObjFv(this);
-	if (mAttr._00 != NULL)
+	if (mAttr.mObjData != NULL)
 		mLife = (s16)GetObjFlags();
 	mMatAnim = NULL;
 	if (mJObj != NULL && (mStatus.mFlags & 0x1000ULL)) {
-		UnkStageObj* animation = mCoord._00;
-		SetAnim(animation->_30, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+		UnkStageObj* animation = mCoord.mPlacement;
+		SetAnim(animation->mStartAnim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 	}
 }
 
-// XObjDust::vf140
+// XObjDust::OnItemUsed
 /**
  * @note Address: 0x800DE14C
  * @note Size: 0x2D8
  */
-BOOL XObjDust::vf140(const Vec* position, s32 kind)
+BOOL XObjDust::OnItemUsed(const Vec* position, s32 kind)
 {
 	if ((GetObjFlags() & 2) && kind == 16) {
 		if (GetObjFlags() & 0x10) {

@@ -71,7 +71,7 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 #else
 			sprintf(buffers.text, buffers.format, args->values[--args->count]);
 			if (grouped) {
-				u8 separator = ',';
+				char separator = ',';
 #if defined(VERSION_PAL)
 				switch (gGame.mLanguage) {
 				case 1:
@@ -89,10 +89,10 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 				}
 #endif
 				s32 len = strlen(buffers.text);
-				s32 i, count;
 #if defined(VERSION_PAL)
 				u8 lang = gGame.mLanguage;
 #endif
+				s32 i, count;
 				for (i = 0, count = 0; i < len; ++i, ++count) {
 					buffers.format[count] = buffers.text[(len - 1) - i];
 					if ((i + 1) % 3 == 0 && i + 1 < len) {

@@ -300,12 +300,12 @@ static inline void SetCenter(CTile* tile, f32 x, f32 y, f32 z)
 
 static inline void SetColor(CSprite* sprite, u32 color)
 {
-	sprite->_16C = sprite->_170 = sprite->_174 = sprite->_178 = color;
+	sprite->mColor0 = sprite->mColor1 = sprite->mColor2 = sprite->mColor3 = color;
 }
 
 static inline void SetColor(CTile* tile, u32 color)
 {
-	tile->_168 = tile->_16C = tile->_170 = tile->_174 = color;
+	tile->mColor0 = tile->mColor1 = tile->mColor2 = tile->mColor3 = color;
 }
 
 extern "C" {
@@ -333,7 +333,7 @@ static inline void SetFlatTransform(CGs* gs, CPrimitive* prim, f32 x, f32 y, f32
 		prim->mBillboard = 0;
 	}
 	prim->mDirty    = TRUE;
-	prim->mRotOrder = gs->_17A0;
+	prim->mRotOrder = gs->mRotOrder;
 }
 
 extern "C" {
@@ -505,7 +505,7 @@ extern "C" void ConfigureGsScreenMode(CGsScreen* screen, s32 mode, u16 hor, u16 
 	HSD_VISetConfigure(screen);
 	HSD_CObjSetReferenceSize(screen->fbWidth, screen->efbHeight);
 #if defined(VERSION_PAL)
-	screen->_40 = 1.0f;
+	screen->mHeightScale = 1.0f;
 #endif
 }
 // ConfigureGsScreenMode
@@ -1077,7 +1077,7 @@ extern "C" void InitializeGsRenderDefaults(CGs* gs, s32 arg)
 	gs->mSphere.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
 	gs->mCylinder.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
 	gs->mTorus.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-	gs->_17A0 = 5;
+	gs->mRotOrder = 5;
 #if !defined(VERSION_JP)
 	gs->mUseShiftJis          = arg;
 	gs->mShiftJisWidthScale   = 1.0f;
@@ -2759,7 +2759,7 @@ extern "C" void DrawGsCube(CGs* gs, u32 color, f32 tx, f32 ty, f32 tz, f32 rx, f
 	gs->mCube.SetTrans(tx, ty, tz);
 	gs->mCube.SetScale(sx, sy, sz);
 	gs->mCube.SetRot(rx, ry, rz);
-	gs->mCube.mRotOrder = gs->_17A0;
+	gs->mCube.mRotOrder = gs->mRotOrder;
 	gs->mCube.mFixedMtx = NULL;
 	gs->mCube.Draw(gs->mCamera->mViewMtx);
 }
@@ -2775,7 +2775,7 @@ extern "C" void DrawGsSphere(CGs* gs, u32 color, u8 major, u8 minor, f32 tx, f32
 	gs->mSphere.SetTrans(tx, ty, tz);
 	gs->mSphere.SetScale(sx, sy, sz);
 	gs->mSphere.SetRot(rx, ry, rz);
-	gs->mSphere.mRotOrder = gs->_17A0;
+	gs->mSphere.mRotOrder = gs->mRotOrder;
 	gs->mSphere.mFixedMtx = NULL;
 	gs->mSphere.Draw(gs->mCamera->mViewMtx, major, minor);
 }
@@ -2803,7 +2803,7 @@ extern "C" void DrawGsCylinder(CGs* gs, u32 color, u8 sides, f32 tx, f32 ty, f32
 	gs->mCylinder.SetTrans(tx, ty, tz);
 	gs->mCylinder.SetScale(sx, sy, sz);
 	gs->mCylinder.SetRot(rx, ry, rz);
-	gs->mCylinder.mRotOrder = gs->_17A0;
+	gs->mCylinder.mRotOrder = gs->mRotOrder;
 	gs->mCylinder.mFixedMtx = NULL;
 	gs->mCylinder.Draw(gs->mCamera->mViewMtx, sides);
 }
@@ -3443,15 +3443,15 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].enable) {
 		for (i = 0; i < count; i++) {
 			if (sGsTextChars[i].mHasBg) {
-				sGsTextChars[i].mBg.DrawLit(gs->mCamera->mViewMtx, sGsTextChars[i].mBg._168, sGsTextChars[i].mBg._16C,
-				                            sGsTextChars[i].mBg._170, sGsTextChars[i].mBg._174);
+				sGsTextChars[i].mBg.DrawLit(gs->mCamera->mViewMtx, sGsTextChars[i].mBg.mColor0, sGsTextChars[i].mBg.mColor1,
+				                            sGsTextChars[i].mBg.mColor2, sGsTextChars[i].mBg.mColor3);
 			}
 		}
 	} else {
 		for (i = 0; i < count; i++) {
 			if (sGsTextChars[i].mHasBg) {
-				sGsTextChars[i].mBg.Draw(gs->mCamera->mViewMtx, sGsTextChars[i].mBg._168, sGsTextChars[i].mBg._16C,
-				                         sGsTextChars[i].mBg._170, sGsTextChars[i].mBg._174);
+				sGsTextChars[i].mBg.Draw(gs->mCamera->mViewMtx, sGsTextChars[i].mBg.mColor0, sGsTextChars[i].mBg.mColor1,
+				                         sGsTextChars[i].mBg.mColor2, sGsTextChars[i].mBg.mColor3);
 			}
 		}
 	}
@@ -3466,13 +3466,14 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	SetupDrawState(gs);
 	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].enable) {
 		for (i = 0; i < count; i++) {
-			sGsTextChars[i].mSprite.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, sGsTextChars[i].mSprite._16C,
-			                                sGsTextChars[i].mSprite._170, sGsTextChars[i].mSprite._174, sGsTextChars[i].mSprite._178);
+			sGsTextChars[i].mSprite.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, sGsTextChars[i].mSprite.mColor0,
+			                                sGsTextChars[i].mSprite.mColor1, sGsTextChars[i].mSprite.mColor2,
+			                                sGsTextChars[i].mSprite.mColor3);
 		}
 	} else {
 		for (i = 0; i < count; i++) {
-			sGsTextChars[i].mSprite.Draw(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, sGsTextChars[i].mSprite._16C,
-			                             sGsTextChars[i].mSprite._170, sGsTextChars[i].mSprite._174, sGsTextChars[i].mSprite._178);
+			sGsTextChars[i].mSprite.Draw(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, sGsTextChars[i].mSprite.mColor0,
+			                             sGsTextChars[i].mSprite.mColor1, sGsTextChars[i].mSprite.mColor2, sGsTextChars[i].mSprite.mColor3);
 		}
 	}
 

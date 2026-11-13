@@ -145,7 +145,7 @@ void XObjActorJenny::UpdateAnim(u32 frames)
 {
 	CXObjIntp::UpdateAnim(frames);
 	CJObj joint;
-	if (_C90.mFlags & 8) {
+	if (mJointFlags.mFlags & 8) {
 		s32 path[7] = { 0, 3, 2, 0, 0, 1, 0 };
 		joint.Attach(GetJointFromRoot(mJObj, 7, path));
 		HSD_JObjClearFlags(joint.mJObj, 0x10);
@@ -165,7 +165,7 @@ void XObjActorJenny::UpdateObject(u32 frames)
 	XObjActor::UpdateObject(frames);
 	CJObj joint;
 	if (mStatus.mFlags & 0x10000) {
-		if (_CA0) {
+		if (mJointHidden) {
 			s32 path[] = { 0, 3, 0, 0, 4 };
 			joint.Attach(GetJointFromRoot(mJObj, 5, path));
 			HSD_JObjSetFlags(joint.mJObj, 0x10);
@@ -179,7 +179,7 @@ void XObjActorJenny::UpdateObject(u32 frames)
 	XSound& sound = gGame.mSound;
 	if (mAnimId == 0x47) {
 		if (!IsGameSoundPlaying(&sound, 0x19B)) {
-			u8 volume = (_998.mFlags & 0x800) ? 0xFF : GetSoundVolumeAtPosition(&sound, &mMoveTranslate, 0);
+			u8 volume = (mActorStatus.mFlags & 0x800) ? 0xFF : GetSoundVolumeAtPosition(&sound, &mMoveTranslate, 0);
 			PlayGameSound(&sound, 0x19B, volume);
 		}
 	} else {
@@ -198,35 +198,35 @@ static inline void JennyPropVisibility(XObjActorJenny* jenny, XObj* object)
 }
 
 // Positions the props Jenny holds and turns the carried player toward her head.
-void XObjActorJenny::vf148(u32 frames)
+void XObjActorJenny::UpdateAfterAnim(u32 frames)
 {
-	vf148__9XObjActorFUl(this, frames);
+	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj joint;
 	XObjChr* player = gGame.GetPlayer();
-	if (_C98.mFlags & 0x1f) {
+	if (mHideKinds.mFlags & 0x1f) {
 		CVec position;
 		s32 kind = -1;
-		if (_C98.Check(1)) {
+		if (mHideKinds.Check(1)) {
 			kind        = 0x3d;
 			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
 			position = joint.GetPos();
-		} else if (_C98.Check(2)) {
+		} else if (mHideKinds.Check(2)) {
 			kind        = 0x3e;
 			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
 			position = joint.GetPos();
-		} else if (_C98.Check(4)) {
+		} else if (mHideKinds.Check(4)) {
 			kind        = 0x3f;
 			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
 			position = joint.GetPos();
-		} else if (_C98.Check(8)) {
+		} else if (mHideKinds.Check(8)) {
 			kind        = 0x3b;
 			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
 			position = joint.GetPos();
-		} else if (_C98.Check(16)) {
+		} else if (mHideKinds.Check(16)) {
 			kind        = 0x401;
 			s32 hand[6] = { 0, 3, 2, 0, 0, 0 };
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
@@ -293,7 +293,7 @@ void XObjActorJenny::vf148(u32 frames)
 			break;
 		}
 	}
-	if ((_998.mFlags & 0x200) && (player->_980.mFlags & 0x40000000)) {
+	if ((mActorStatus.mFlags & 0x200) && (player->mPlayerStatus.mFlags & 0x40000000)) {
 		s32 hand[6] = { 0, 3, 2, 0, 0, 0 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
 		CVec pos = joint.GetPos();
@@ -311,7 +311,7 @@ void XObjActorJenny::vf148(u32 frames)
 		pos = joint.GetPos();
 		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
 	}
-	if ((_998.mFlags & 0x100) && (player->_980.mFlags & 0x40000000)) {
+	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
 		s32 hand[6] = { 0, 3, 2, 0, 0, 0 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
 		CVec pos = joint.GetPos();
@@ -332,20 +332,20 @@ void XObjActorJenny::vf148(u32 frames)
 void XObjActorJenny::Drop()
 {
 	s32 kind = -1;
-	if (_C98.Check(1)) {
-		_C98.mFlags &= ~1;
+	if (mHideKinds.Check(1)) {
+		mHideKinds.mFlags &= ~1;
 		kind = 0x3D;
-	} else if (_C98.Check(2)) {
-		_C98.mFlags &= ~2;
+	} else if (mHideKinds.Check(2)) {
+		mHideKinds.mFlags &= ~2;
 		kind = 0x3E;
-	} else if (_C98.Check(4)) {
-		_C98.mFlags &= ~4;
+	} else if (mHideKinds.Check(4)) {
+		mHideKinds.mFlags &= ~4;
 		kind = 0x3F;
-	} else if (_C98.Check(8)) {
-		_C98.mFlags &= ~8;
+	} else if (mHideKinds.Check(8)) {
+		mHideKinds.mFlags &= ~8;
 		kind = 0x3B;
-	} else if (_C98.Check(0x10)) {
-		_C98.mFlags &= ~0x10;
+	} else if (mHideKinds.Check(0x10)) {
+		mHideKinds.mFlags &= ~0x10;
 		kind = 0x401;
 	}
 	if (kind < 0) {
@@ -376,8 +376,8 @@ void XObjActorJenny::Drop()
 
 static inline void HoldPlayerForJenny(XObjChr* player)
 {
-	player->_980.mFlags = 0;
-	player->_980.mFlags |= 0x40000000;
+	player->mPlayerStatus.mFlags = 0;
+	player->mPlayerStatus.mFlags |= 0x40000000;
 	player->mPad.mReset = FALSE;
 	player->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 }
@@ -385,9 +385,9 @@ static inline void HoldPlayerForJenny(XObjChr* player)
 static inline void ReleasePlayerAt(XObjChr* player, const Vec& position)
 {
 	player->SetPos(position, 0);
-	player->_980.mFlags = 0;
-	player->_980.mFlags |= 0x20000000;
-	player->_980.mFlags |= 7;
+	player->mPlayerStatus.mFlags = 0;
+	player->mPlayerStatus.mFlags |= 0x20000000;
+	player->mPlayerStatus.mFlags |= 7;
 	player->mPad.mReset = TRUE;
 }
 
@@ -400,16 +400,16 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 	CVec firstPos;
 	CJObj joint;
 	XObjChr* player = gGame.GetPlayer();
-	if (_998.mFlags & 2) {
-		_998.mFlags &= ~2;
+	if (mActorStatus.mFlags & 2) {
+		mActorStatus.mFlags &= ~2;
 		PlayGameSound(&gGame.mSound, rand() % 10 + 0x92, 0xFF);
 	}
 	switch (mCmd[0]) {
 	case 2:
 		if (mCmd[1] == 8)
-			_C90.mFlags |= 8;
+			mJointFlags.mFlags |= 8;
 		else
-			_C90.mFlags &= ~8;
+			mJointFlags.mFlags &= ~8;
 		mCmd[0] = 0;
 		break;
 	case 3:
@@ -426,16 +426,16 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 					mHeldObjects[0] = object;
 					switch (mCmd[1]) {
 					case 0x3B:
-						_C98.mFlags |= 8;
+						mHideKinds.mFlags |= 8;
 						break;
 					case 0x3D:
-						_C98.mFlags |= 1;
+						mHideKinds.mFlags |= 1;
 						break;
 					case 0x3E:
-						_C98.mFlags |= 2;
+						mHideKinds.mFlags |= 2;
 						break;
 					case 0x3F:
-						_C98.mFlags |= 4;
+						mHideKinds.mFlags |= 4;
 						break;
 					}
 				}
@@ -448,7 +448,7 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 					mHeldObjects[0] = object;
 					object->mStatus.mFlags |= 0x10000ULL;
 					if (mCmd[1] == 0x401)
-						_C98.mFlags |= 0x10;
+						mHideKinds.mFlags |= 0x10;
 				}
 			}
 			break;
@@ -462,10 +462,10 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 		break;
 	case 4:
 		if (mCmd[1] == 1) {
-			_998.mFlags |= 0x200;
+			mActorStatus.mFlags |= 0x200;
 			HoldPlayerForJenny(player);
 		} else {
-			_998.mFlags &= ~0x200;
+			mActorStatus.mFlags &= ~0x200;
 			s32 first[] = { 0, 3, 1, 0, 0, 0 };
 			joint.Attach(FindJointByPath(mJObj, first, 6));
 			firstPos     = CVec(joint.GetPos());
@@ -482,10 +482,10 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 		break;
 	case 5:
 		if (mCmd[1] == 1) {
-			_998.mFlags |= 0x100;
+			mActorStatus.mFlags |= 0x100;
 			HoldPlayerForJenny(player);
 		} else {
-			_998.mFlags &= ~0x100;
+			mActorStatus.mFlags &= ~0x100;
 			s32 path[] = { 0, 3, 2, 0, 0, 0 };
 			joint.Attach(FindJointByPath(mJObj, path, 6));
 			CVec position(joint.GetPos());
@@ -505,12 +505,12 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 	case 8:
 		switch (mCmd[1]) {
 		case 0:
-			_CA0    = 1;
-			mCmd[0] = 0;
+			mJointHidden = 1;
+			mCmd[0]      = 0;
 			break;
 		case 1:
-			_CA0    = 0;
-			mCmd[0] = 0;
+			mJointHidden = 0;
+			mCmd[0]      = 0;
 			break;
 		}
 		break;
@@ -524,26 +524,26 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 void XObjActorJenny::ResetActorState()
 {
 	XObjChr* player = gGame.GetPlayer();
-	if (player->_980.mFlags & 0x40000000) {
-		player->_980.mFlags = 0;
-		player->_980.mFlags |= 0x20000000;
-		player->_980.mFlags |= 7;
+	if (player->mPlayerStatus.mFlags & 0x40000000) {
+		player->mPlayerStatus.mFlags = 0;
+		player->mPlayerStatus.mFlags |= 0x20000000;
+		player->mPlayerStatus.mFlags |= 7;
 		player->mPad.mReset = TRUE;
 	}
-	_998.mFlags = 0;
-	_C90.mFlags = 0;
-	_C98.mFlags = 0;
-	_980        = 0.0f;
-	_984        = 0.0f;
-	_988        = 0.0f;
-	_C84        = _988;
-	_C88        = 0.0f;
-	_C8C        = 0;
-	_CA0        = 0;
-	mState      = &XObjActorJenny::StateNone;
+	mActorStatus.mFlags = 0;
+	mJointFlags.mFlags  = 0;
+	mHideKinds.mFlags   = 0;
+	mHeading            = 0.0f;
+	mMoveSpeed          = 0.0f;
+	mFacing             = 0.0f;
+	_C84                = mFacing;
+	_C88                = 0.0f;
+	_C8C                = 0;
+	mJointHidden        = 0;
+	mState              = &XObjActorJenny::StateNone;
 	ResetActorMovementStep(this);
 	for (u32 i = 0; i < 20; i++) {
 		mCmd[i] = 0;
 	}
-	_C90.mFlags &= ~8;
+	mJointFlags.mFlags &= ~8;
 }

@@ -1615,8 +1615,7 @@ void HSD_TExpSetReg(HSD_TExp* clist)
 				u8 val;
 				switch (clist->cnst.ctype) {
 				case HSD_TE_U8:
-					x   = *(u8*)clist->cnst.val;
-					val = x;
+					val = *(u8*)clist->cnst.val;
 					break;
 				case HSD_TE_U16: {
 					x   = *(u16*)clist->cnst.val;

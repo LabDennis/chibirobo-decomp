@@ -18,7 +18,7 @@ static inline bool IsCoinItemInRange(const XObjCoin* coin, s32 first, s32 end)
  * @note Address: 0x800E1440
  * @note Size: 0x540
  */
-s32 XObjCoin::vf100(s32 unused, s32 value)
+s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 {
 	if ((value & 3U) == 1)
 		return value;
@@ -26,9 +26,9 @@ s32 XObjCoin::vf100(s32 unused, s32 value)
 		return 0;
 
 	XObjChr* player = gGame.GetPlayer();
-	player->vf12C(1, 0, 120, 120, 0.0f);
-	player->vf12C(1, 0, 0, 0, 0.2f);
-	player->_9A90 = 0.0f;
+	player->SetColor(1, 0, 120, 120, 0.0f);
+	player->SetColor(1, 0, 0, 0, 0.2f);
+	player->mFallDistance = 0.0f;
 	mStatus.mFlags |= 0x4000000000000000ULL;
 	SetFlag();
 
@@ -41,7 +41,7 @@ s32 XObjCoin::vf100(s32 unused, s32 value)
 		s32 scrap = GetPickupRewardValue(GetItem() - 97);
 		if (!scrap) {
 			AttrInfo attr(CoordInfo(GetSpawnData(mAnimId + 39)));
-			scrap = GetPickupRewardValue(GetDataItem(attr._00) - 97);
+			scrap = GetPickupRewardValue(GetDataItem(attr.mObjData) - 97);
 		}
 		AddPlayerScrap(&player->mParams, scrap);
 		sound = 0x123;
@@ -61,7 +61,7 @@ s32 XObjCoin::vf100(s32 unused, s32 value)
 	}
 	if (sound >= 0)
 		PlayGameSound(&gGame.mSound, sound, 255);
-	_98C = 1.0f;
+	mFade = 1.0f;
 	return 0;
 }
 
@@ -107,10 +107,10 @@ void XObjCoin::UpdateObject(u32 frames)
 		} else {
 			if (mMoveScale.x == 0.0f && mMoveScale.y == 0.0f && mMoveScale.z == 0.0f)
 				Release();
-			_98C -= 0.02f * frames;
-			if (_98C <= 0.0f)
-				_98C = 0.0f;
-			PSVECScale(&mMoveScale, &mMoveScale, 1.12f * _98C);
+			mFade -= 0.02f * frames;
+			if (mFade <= 0.0f)
+				mFade = 0.0f;
+			PSVECScale(&mMoveScale, &mMoveScale, 1.12f * mFade);
 		}
 	}
 	switch (mParam0) {

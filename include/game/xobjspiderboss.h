@@ -12,48 +12,49 @@ public:
 	typedef void (XObjSpiderBoss::*StateFunc)(u32 frames);
 
 	// _00-_980 = XObj
-	f32 mHeading;             // _980
-	f32 mSpeed;               // _984
-	f32 mTargetRotY;          // _988
-	f32 mRotSpeed;            // _98C
-	u8 _990[0x994 - 0x990];   // _990
-	f32 _994;                 // _994
-	f32 mRadius;              // _998
-	f32 mSpeedY;              // _99C
-	f32 _9A0;                 // _9A0
-	f32 _9A4;                 // _9A4
-	s32 mState;               // _9A8, an index into gSpiderBossStateHandlers
-	s32 mStep;                // _9AC
-	s32 mTimer;               // _9B0
+	f32 mHeading;           // _980
+	f32 mSpeed;             // _984
+	f32 mTargetRotY;        // _988
+	f32 mRotSpeed;          // _98C
+	u8 _990[0x994 - 0x990]; // _990
+	f32 _994;    // _994, written 1.0f in ResetSpiderBossState, never read; same reset step and place before mRadius as XObjSpider's
+	             // mThreadAlpha, but the boss draws no thread
+	f32 mRadius; // _998
+	f32 mSpeedY; // _99C
+	f32 _9A0;    // _9A0, written 0 in ResetSpiderBossState, never read; XObjSpiderSmall keeps mScale at this offset and reset step
+	f32 _9A4;    // _9A4, written 0 in ResetSpiderBossState, never read; XObjSpiderSmall keeps mTargetScale at this offset and reset step
+	s32 mState;  // _9A8, an index into gSpiderBossStateHandlers
+	s32 mStep;   // _9AC
+	s32 mTimer;  // _9B0
 	CStatus mSpiderStatus;    // _9B4, 1 hit, 2 knocked over, 8 airborne, 0x2000000 frozen
 	s32 mPrevState;           // _9BC
-	u32 _9C0;                 // _9C0
-	f32 _9C4;                 // _9C4
-	f32 _9C8;                 // _9C8
+	u32 mActionTimer;         // _9C0, countdown the states pace their moves on
+	f32 _9C4;                 // _9C4, written 1.0f in ResetSpiderBossState, never read; same write-only slot as XObjSpider _9C0
+	f32 _9C8;                 // _9C8, written 1.0f in ResetSpiderBossState, never read; same write-only slot as XObjSpider _9C4
 	Vec mHitPos;              // _9CC
 	Vec mBasePos;             // _9D8
 	f32 mHitStrength;         // _9E4
-	s32 mNextAction;          // _9E8
-	s32 _9EC;                 // _9EC
+	s32 mHits;                // _9E8, hits left; each hit takes one and launches parts as it falls
+	s32 mMaxHits;             // _9EC, 23, mHits starts here
 	Vec mPatrolTarget;        // _9F0
 	Vec mAreaPos;             // _9FC, corner of the area it walks in
 	f32 mAreaWidth;           // _A08
 	f32 mAreaDepth;           // _A0C
-	Vec _A10;                 // _A10
-	f32 _A1C;                 // _A1C
+	Vec mStartPos;            // _A10, where event command 9 placed it, a copy of mBasePos; zeroed in reset, never read
+	f32 _A1C;                 // _A1C, written 0 in ResetSpiderBossState, never read; same slot as XObjSpider _A6C
 	s32 mPatrolSelection;     // _A20
 	s32 mAltAnimId;           // _A24, the anim the sounds follow while 0x40000000 is set
 	s32 mGrabCooldown;        // _A28
 	s32 mCommand;             // _A2C
 	s32 mArgs[5];             // _A30
-	u32 _A44;                 // _A44
-	f32 _A48;                 // _A48
+	u32 _A44;                 // _A44, written 0 in ResetSpiderBossState right after mArgs[0], never read; same slot as XObjSpider _A88
+	f32 _A48;                 // _A48, written 0 in ResetSpiderBossState, never read
 	f32 mEscapeInputStrength; // _A4C
 	s32 mDrainTimer;          // _A50
 	f32 mEscapeRemaining;     // _A54
-	Vec _A58;                 // _A58
+	Vec _A58;                 // _A58, zeroed in ResetSpiderBossState, never read
 	s32 mGrabIntervalFrames;  // _A64, a grab is available after three seconds
-	u32 _A68;                 // _A68
+	u32 mDamageStep;          // _A68, 0 watching for a hit, 1 blinking it off
 	s32 mBlinkTimer;          // _A6C
 	u8 _A70[0xA95 - 0xA70];   // _A70
 	u8 mPatrolEffectActive;   // _A95
@@ -71,17 +72,17 @@ public:
 
 	virtual ~XObjSpiderBoss();                                         // _08
 	virtual void InitializeObject(u32 id);                             // _90
-	virtual void vf94();                                               // _94
+	virtual void ResetForNewGame();                                    // _94
 	virtual void ResetObjectState();                                   // _98
 	virtual BOOL LoadFromPlacement(const CoordInfo& info);             // _9C
 	virtual void UpdateObject(u32 frames);                             // _A4
-	virtual void vfAC();                                               // _AC
+	virtual void DrawObject();                                         // _AC
 	virtual void DrawGroundShadow();                                   // _B8
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity);   // _BC
 	virtual void DrawObjectEffects();                                  // _C0
-	virtual void vfC8();                                               // _C8
+	virtual void DrawScreenOverlay();                                  // _C8
 	virtual void DrawDebugStatus();                                    // _CC
-	virtual s32 vf100(s32 unused, s32 value);                          // _100
+	virtual s32 OnPlayerContact(s32 unused, s32 value);                // _100
 	virtual s32 HandleEventCommand(s32 count, s32* args);              // _124
 	virtual void OnHitFromPosition(const Vec& position, f32 strength); // _138
 	virtual void UpdateAnimationSounds();                              // _148, anim sounds

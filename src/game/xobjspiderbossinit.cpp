@@ -1,10 +1,14 @@
 #include "game/xobjspiderboss.h"
 #include "game/video.h"
 
+u32 gSpiderBossCoinBounceContext; // the boss's coin bounce token, the callbacks never touch it; its real type is unknown
+
 /**
  * @note Address: 0x8010660C
  * @note Size: 0x2C8
  */
+// NONMATCHING: retail copies the six zero Vecs from +0x48 of the file's .rodata, behind the header-made
+// block of six Vecs this split unit lacks, so every load from them has another offset; the code is otherwise the same
 extern "C" void ResetSpiderBossState(XObj* object)
 {
 	XObjSpiderBoss* spider       = (XObjSpiderBoss*)object;
@@ -20,7 +24,7 @@ extern "C" void ResetSpiderBossState(XObj* object)
 	spider->mStep                = 0;
 	spider->mTimer               = 0;
 	spider->mSpiderStatus.mFlags = 0;
-	spider->_9C0                 = 0;
+	spider->mActionTimer         = 0;
 	spider->_9C4                 = 1.0f;
 	spider->_9C8                 = 1.0f;
 	{
@@ -36,8 +40,8 @@ extern "C" void ResetSpiderBossState(XObj* object)
 		spider->mPatrolTarget = value;
 	}
 	spider->mHitStrength = 0.0f;
-	spider->_9EC         = 23;
-	spider->mNextAction  = spider->_9EC;
+	spider->mMaxHits     = 23;
+	spider->mHits        = spider->mMaxHits;
 	spider->mCommand     = 0;
 	spider->mArgs[0]     = 0;
 	spider->_A44         = 0;
@@ -51,11 +55,11 @@ extern "C" void ResetSpiderBossState(XObj* object)
 	spider->mAreaWidth = 0.0f;
 	spider->mAreaDepth = 0.0f;
 	{
-		Vec value    = { 0.0f, 0.0f, 0.0f };
-		spider->_A10 = value;
+		Vec value         = { 0.0f, 0.0f, 0.0f };
+		spider->mStartPos = value;
 	}
 	spider->_A1C = 0.0f;
-	spider->vf12C(1, 0, 0, 0, 0.0f);
+	spider->SetColor(1, 0, 0, 0, 0.0f);
 	spider->_A48                 = 0.0f;
 	spider->mEscapeInputStrength = 0.0f;
 	spider->mDrainTimer          = 0;
@@ -74,7 +78,7 @@ extern "C" void ResetSpiderBossState(XObj* object)
 	spider->mAreaPos.z  = -200.0f;
 	spider->mAreaWidth  = 400.0f;
 	spider->mAreaDepth  = 400.0f;
-	spider->_A68        = 0;
+	spider->mDamageStep = 0;
 	spider->mBlinkTimer = 0;
 	for (u32 i = 0; i < 8; ++i) {
 		spider->mParts[i].mObj   = NULL;

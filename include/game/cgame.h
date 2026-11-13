@@ -175,16 +175,16 @@ public:
 	virtual BOOL BeforeUpdate();                    // _14
 	virtual void Update(u32 frames);                // _18
 	virtual void Draw();                            // _1C
-	virtual void vf20();                            // _20
-	virtual void vf24();                            // _24
+	virtual void DrawScene();                       // _20, the scene through the main camera
+	virtual void DrawHud();                         // _24, the screen-space layer under the ortho camera
 	virtual s32 FrameInterval();                    // _28, retraces per frame
-	virtual u32 vf2C();                             // _2C
-	virtual CCamera* vf30();                        // _30
-	virtual CCamera* vf34();                        // _34
-	virtual CCamera* GetCamera();                   // _38, vf30's unless overridden
-	virtual CLight* vf3C();                         // _3C
-	virtual CLight* vf40();                         // _40
-	virtual CLight* GetLight();                     // _44, vf3C's unless overridden
+	virtual u32 GetRetraceStep();                   // _2C, retraces since the last frame, at most 4
+	virtual CCamera* GetPerspectiveCamera();        // _30, mCameras[0]
+	virtual CCamera* GetScreenCamera();             // _34, mCameras[1], the 640x448 ortho camera
+	virtual CCamera* GetCamera();                   // _38, GetPerspectiveCamera unless overridden
+	virtual CLight* GetDefaultLight();              // _3C, the four-light set mLights[0]
+	virtual CLight* GetScreenLight();               // _40, the two-light set for the screen-space pass
+	virtual CLight* GetLight();                     // _44, GetDefaultLight unless overridden
 	virtual void Reset(u32 code);                   // _48
 
 	// the disc can't be read
@@ -223,11 +223,11 @@ STATIC_ASSERT(sizeof(CBase) == 0x3338);
 // from mTpl
 class CGame : public CBase {
 public:
-	s32 _3338;             // _3338, _3320 in japan, _3340 in europe
+	s32 mLoadStep;         // _3338, _3320 in japan, _3340 in europe
 	CFileArchive mArchive; // _333C
 	s32 mStage;            // _3444, _342C in japan, _344C in europe
 	s32 mPrevStage;        // _3448
-	s32 _344C;             // _344C, room count
+	s32 mRoomCount;        // _344C, room count
 #if defined(VERSION_JP) || defined(VERSION_PAL)
 	u8 _3450[8];
 #else
@@ -235,34 +235,35 @@ public:
 #endif
 	ToonTexture mToonTexture; // _3460
 	u8 _3C78[8];
-	CTpl mTpl;                                 // _3C80, _3C60 in japan, the shared textures
-	CScrnFade mFade;                           // _3E70
-	CScrnWipeCircle mWipeCircle;               // _3EA4
-	CScrnWipeTex mWipeTex;                     // _3F08
-	CScrnWipeCustom mWipeCustom;               // _406C
-	CScrnWipeTile mWipeTile0;                  // _40D0
-	CScrnWipeTile mWipeTile1;                  // _4134
-	CScrnRoboeyes mRoboeyes;                   // _4198
-	CFbOutline mOutline;                       // _4204
-	CFbBlur mBlur;                             // _4268
-	FbSubwin mSubwin;                          // _42AC
-	ScrnTex mScrnTex;                          // _4584
-	GameScrnColor mColor0;                     // _46BC
-	GameScrnColor mColor1;                     // _46F0
-	s32 _4724;                                 // _4724
-	f32 _4728;                                 // _4728, the outline's width, the c stick moves it
-	Logo mLogo;                                // _472C
-	Title mTitle;                              // _4930
-	MenuEx mMenu;                              // _8580, _8538 in japan
-	InfoScrn mInfoScrn;                        // _8F38, _8EF0 in japan
-	CParticle mParticle;                       // _9114, _90CC in japan
-	CScrnQuake mQuake;                         // _965C
-	XOBJS mXObjs;                              // _9694
-	XObjDrawList mDrawLists[3];                // _A870, _A828 in japan, the last one is what mirrors show
-	ObjArchiveTable mObjArchives;              // _F07C
-	CEvt mEvt;                                 // _5D07C
-	CMsg mCMsgs[2];                            // _5D0E8
-	EvtTimeState mTimeState;                   // _E5D28, _E5040 in japan
+	CTpl mTpl;                    // _3C80, _3C60 in japan, the shared textures
+	CScrnFade mFade;              // _3E70
+	CScrnWipeCircle mWipeCircle;  // _3EA4
+	CScrnWipeTex mWipeTex;        // _3F08
+	CScrnWipeCustom mWipeCustom;  // _406C
+	CScrnWipeTile mWipeTile0;     // _40D0
+	CScrnWipeTile mWipeTile1;     // _4134
+	CScrnRoboeyes mRoboeyes;      // _4198
+	CFbOutline mOutline;          // _4204
+	CFbBlur mBlur;                // _4268
+	FbSubwin mSubwin;             // _42AC
+	ScrnTex mScrnTex;             // _4584
+	GameScrnColor mColor0;        // _46BC
+	GameScrnColor mColor1;        // _46F0
+	s32 mOutlineWidthControl;     // _4724, while above 0 the c stick changes mOutlineWidth (0.04 to 0.5); only ever set to 0, in
+	                              // ResetNewGameState
+	f32 mOutlineWidth;            // _4728, the outline's width, the c stick moves it
+	Logo mLogo;                   // _472C
+	Title mTitle;                 // _4930
+	MenuEx mMenu;                 // _8580, _8538 in japan
+	InfoScrn mInfoScrn;           // _8F38, _8EF0 in japan
+	CParticle mParticle;          // _9114, _90CC in japan
+	CScrnQuake mQuake;            // _965C
+	XOBJS mXObjs;                 // _9694
+	XObjDrawList mDrawLists[3];   // _A870, _A828 in japan, the last one is what mirrors show
+	ObjArchiveTable mObjArchives; // _F07C
+	CEvt mEvt;                    // _5D07C
+	CMsg mCMsgs[2];               // _5D0E8
+	EvtTimeState mTimeState;      // _E5D28, _E5040 in japan
 	CMotionControlCamera mMotionControlCamera; // _E5D38, _E5050 in japan
 	CCameraActions mCameraActions;             // _E5FAC, _E52C4 in japan, the actions the camera picks from
 	CLight* mLightList;                        // _E7E20, _E7138 in japan, LIGHT walks it
@@ -295,8 +296,8 @@ public:
 	virtual BOOL BeforeUpdate();                    // _14
 	virtual void Update(u32 frames);                // _18
 	virtual void Draw();                            // _1C
-	virtual void vf20();                            // _20
-	virtual void vf24();                            // _24
+	virtual void DrawScene();                       // _20, the scene through the main camera
+	virtual void DrawHud();                         // _24, the screen-space layer under the ortho camera
 	virtual s32 FrameInterval();                    // _28
 	virtual CCamera* GetCamera();                   // _38
 	virtual CLight* GetLight();                     // _44

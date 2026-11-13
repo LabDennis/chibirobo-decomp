@@ -55,9 +55,9 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 			break;
 		CJObj::SetRotationY(0.0f, TRUE);
 		SamplePlayerPose(this, 8);
-		mLift._10.Set(GetPlayerCarryJointLocalTranslation(this));
-		SampleRootOffset(this, 0x13, mHang._10);
-		SampleRootOffset(this, 0x8A, mRope._10);
+		mLift.mTargetOffset.Set(GetPlayerCarryJointLocalTranslation(this));
+		SampleRootOffset(this, 0x13, mHang.mTargetOffset);
+		SampleRootOffset(this, 0x8A, mRope.mTargetOffset);
 		SamplePlayerPose(this, 0x36);
 		s32 tumble[]          = { 0, 1, 0, 1, 2, 0, 1 };
 		mTumble.mFade.mOffset = GetEventJointWorldPosition(this, 7, tumble) - mMoveTranslate;
@@ -65,7 +65,7 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 		mTumble.mFade.mAmount = 0.0f;
 		CJObj::SetRotationY(mMoveRotate.y, TRUE);
 		SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-		_A2C = 3;
+		mIdleLoops = 3;
 		{
 			s32 branch1Child0[] = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
 			s32 branch1Child1[] = { 0, 1, 0, 1, 2, 0, 0, 1, 1 };
@@ -77,10 +77,10 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 			};
 			JointPath joints[] = { { 9, branch1Child0 }, { 9, branch1Child1 }, { 9, branch3Child0 }, { 9, branch3Child1 } };
 			for (int i = 0; i < 4; ++i) {
-				XObjChrIdleJoint& idle = _9500[i];
+				XObjChrIdleJoint& idle = mIdleJoints[i];
 				idle.mJObj             = FindJointByPath(mJObj, joints[i].nodes, joints[i].depth);
 				idle.mAnimJoint        = mArchive.GetAnimJoint(14, joints[i].depth, joints[i].nodes);
-				idle._08               = NULL;
+				idle.mLastAdHead       = NULL;
 			}
 			s32 attachment[]     = { 0, 1, 0, 1, 2, 0, 0, 5 };
 			mAttachmentJoint     = FindJointByPath(mJObj, attachment, 8);
@@ -137,23 +137,23 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 	}
 	case 6:
 #if !defined(VERSION_JP)
-		switch (mOXMenu._00) {
+		switch (mOXMenu.mLoadStep) {
 		case 0:
 			if (!LoadPlayerModel(mOXMenu.mMark[0].mObj, 45))
 				break;
 			if (mOXMenu.mMark[0].mObj.mJObj)
 				HSD_JObjWalkTree(mOXMenu.mMark[0].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
-			++mOXMenu._00;
+			++mOXMenu.mLoadStep;
 		case 1:
 			if (!LoadPlayerModel(mOXMenu.mMark[1].mObj, 46))
 				break;
 			if (mOXMenu.mMark[1].mObj.mJObj)
 				HSD_JObjWalkTree(mOXMenu.mMark[1].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
-			++mOXMenu._00;
+			++mOXMenu.mLoadStep;
 		case 2:
-			++mOXMenu._00;
+			++mOXMenu.mLoadStep;
 		}
-		if ((s32)mOXMenu._00 <= 1)
+		if ((s32)mOXMenu.mLoadStep <= 1)
 			break;
 #endif
 		++mLoadStep;
@@ -162,9 +162,9 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 	case 8:
 		++mLoadStep;
 	case 9:
-		vfD8(flags);
+		ApplyMaterialPresets(flags);
 		if ((mStatus.mFlags & 0x01000000) && IsStageDataLoaded())
-			vfE0(GetEnvData()[9] / 100.0f);
+			EnableLighting(GetEnvData()[9] / 100.0f);
 		++mLoadStep;
 	case 10: {
 		CTpl& tpl               = gGame.mTpl;

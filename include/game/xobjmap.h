@@ -30,7 +30,7 @@ public:
 
 	XObjMap();
 
-	virtual ~XObjMap();                                    // _08
+	virtual ~XObjMap() { }                                 // _08
 	virtual void Release();                                // _54
 	virtual void InitializeObject(u32 id);                 // _90
 	virtual void ResetObjectState();                       // _98

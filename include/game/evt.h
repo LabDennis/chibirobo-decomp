@@ -209,12 +209,13 @@ class CEvtData {
 public:
 	CEvtData()
 	{
-		mScript = NULL;
-		mOwner  = NULL;
+		mScript  = NULL;
+		mContext = NULL;
 	}
 
-	u8* mScript;  // _00, read pointer
-	XObj* mOwner; // _04, object referenced by script ID -1
+	u8* mScript;    // _00, read pointer
+	XObj* mContext; // _04, the object the script runs for (the event's owner, else the caller's or queued context); object id -1 resolves
+	                // to it
 	// _08 vtable
 
 	virtual ~CEvtData() { } // _08
@@ -245,18 +246,18 @@ class CCameraMemento;
 // the script runner. PUSHBP and POPBP park mValues's count on mFrames
 class CEvt {
 public:
-	XObj* mOwner;                   // _00, NULL for the global script runner
+	XObj* mOwner;                   // _00, ABORT only resumes a parked script while this is zero
 	CEvtData mData;                 // _04
-	s32 _10;                        // _10, SELECT result
-	s32 _14;                        // _14
-	s32 _18;                        // _18
-	s32 _1C;                        // _1C
-	s32 _20;                        // _20
+	s32 mSelectResult;              // _10, SELECT result
+	s32 mResult2;                   // _14
+	s32 mWaitTimer;                 // _18
+	s32 mYesNoActive;               // _1C
+	s32 mMenuActive;                // _20
 	CStack mCalls;                  // _24, return addresses
 	CStack mFrames;                 // _34
 	CStack mValues;                 // _44
-	CMsg* mMessage;                 // _54, the global or object message window
-	s32 _58;                        // _58
+	CMsg* mMsg;                     // _54, the message window the script talks through
+	s32 mMsgState;                  // _58
 	s16 mUseValue;                  // _5C
 	s16 mHitValue;                  // _5E
 	CCameraMemento* mCameraMemento; // _60, private saved camera
@@ -341,9 +342,9 @@ public:
 // the same with each script's context and two arguments
 class CEvtQueueEx : public CEvtQueue {
 public:
-	XObj* mOwners[0x80]; // _208
-	s16 mUseValue[0x80]; // _408
-	s16 mHitValue[0x80]; // _508
+	XObj* mContext[0x80]; // _208
+	s16 mUseValue[0x80];  // _408
+	s16 mHitValue[0x80];  // _508
 
 	virtual ~CEvtQueueEx() { } // _08
 };
@@ -393,7 +394,7 @@ struct EvtBeatLatch {
 extern "C" EvtBeatLatch gEventBeatLatch;
 struct EvtCmdEntry {
 	u8 command;                                 // _00
-	u8 _01;                                     // _01
+	u8 _01;                                     // _01, a per-command constant in evtCmdTable (3 for most, also 0, 1, 7, 11), never read
 	const char* name;                           // _04
 	s32 (CEvt::*handler)(u8 command, s32 step); // _08
 };

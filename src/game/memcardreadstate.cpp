@@ -39,7 +39,7 @@ extern "C" BOOL ReadMemoryCardPreviews(Memcard* card, s32 channel)
 			record.mHeader.mMaxBattery = header.mMaxBattery;
 			record.mHeader.mMoney      = header.mMoney;
 			record.mHeader.mScrap      = header.mScrap;
-			record.mHeader._34         = header._34;
+			record.mHeader.mActive     = header.mActive;
 			record.mHeader.mFrames     = header.mFrames;
 			card->mState               = 9;
 			card->mCard.CloseEx();
@@ -53,13 +53,8 @@ extern "C" BOOL ReadMemoryCardPreviews(Memcard* card, s32 channel)
 		record.mState = 1;
 		memcpy(&record.mStat, &card->mStat, sizeof(record.mStat));
 	}
-	card->mState = 14;
-	card->_16A04 = card->mCard.GetFreeBlocks((s32*)&card->_169FC, &card->_16A00);
-	card->LogResult();
-	if (card->mCard.mResult != CARD_RESULT_READY) {
-		card->mCard.Unmount();
+	if (card->GetFreeBlocks())
 		return TRUE;
-	}
 	card->mState = 3;
 	card->mCard.UnmountEx();
 	card->LogResult();

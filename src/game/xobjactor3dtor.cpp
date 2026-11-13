@@ -44,7 +44,7 @@ s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
 	switch (argv[0]) {
 	case 100:
 		if (argv[1] == 0) {
-			_B8C.mFlags &= ~2;
+			mActorFlags.mFlags &= ~2;
 			for (u32 i = 0; i < 8; i++) {
 				if (mParts[i].mObj != NULL) {
 					HSD_JObjClearMtxFlags(mParts[i].mObj->mJObj);
@@ -59,7 +59,7 @@ s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
 #if !defined(VERSION_PAL)
 				OSReport("id = %d, argv[1]=%d\n", i);
 #endif
-				_B8C.mFlags |= 2;
+				mActorFlags.mFlags |= 2;
 				if (argv[1] >= 10000) {
 					mParts[i].mObj = FindObj(argv[1]);
 				} else {
@@ -97,17 +97,17 @@ s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
 		}
 		break;
 	default:
-		mEventCommand = argv[0];
-		mEventArg1    = argv[1];
-		mEventArg2    = argv[2];
-		mEventArg3    = argv[3];
-		_BA4[0]       = argv[4];
-		_BA4[1]       = argv[5];
-		_BA4[2]       = argv[6];
-		_BA4[3]       = argv[7];
-		_BA4[4]       = argv[8];
-		_BA4[5]       = argv[9];
-		_BA4[6]       = 0;
+		mEventCommand      = argv[0];
+		mEventArg1         = argv[1];
+		mEventArg2         = argv[2];
+		mEventArg3         = argv[3];
+		mExtraEventArgs[0] = argv[4];
+		mExtraEventArgs[1] = argv[5];
+		mExtraEventArgs[2] = argv[6];
+		mExtraEventArgs[3] = argv[7];
+		mExtraEventArgs[4] = argv[8];
+		mExtraEventArgs[5] = argv[9];
+		mExtraEventArgs[6] = 0;
 		switch (GetItem()) {
 		case 9:
 			HandleKind9ActorCommand(this);
@@ -121,9 +121,9 @@ s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
 				break;
 			case 1:
 				s32 kind = -1;
-				if (_B8C.Check(0x100)) {
+				if (mActorFlags.Check(0x100)) {
 					kind = 0x40B;
-					_B8C.mFlags &= ~0x100;
+					mActorFlags.mFlags &= ~0x100;
 				}
 				HideItems(kind);
 				switch (mEventArg1) {
@@ -135,7 +135,7 @@ s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
 							obj->mStatus.mFlags |= 0x10000ULL;
 							switch (mEventArg1) {
 							case 0x40B:
-								_B8C.mFlags |= 0x100;
+								mActorFlags.mFlags |= 0x100;
 								obj->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 								break;
 							}
@@ -209,7 +209,7 @@ void XObjActor3::OnHitFromPosition(const Vec& position, f32 strength)
 {
 	if (GetItem() == 1) {
 		XObj::OnHitFromPosition(position, strength);
-	} else if (!_B8C.Check(1)) {
-		_B8C.mFlags |= 1;
+	} else if (!mActorFlags.Check(1)) {
+		mActorFlags.mFlags |= 1;
 	}
 }

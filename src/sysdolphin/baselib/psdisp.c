@@ -556,46 +556,38 @@ static inline void psdisp_getColorMatAmb(HSD_Particle* pp, GXColor* mat, GXColor
 // where a tornado particle sits, it orbits its generator
 static inline void psdisp_tornadoPos(HSD_Particle* pp, f32* x, f32* y, f32* z)
 {
-	HSD_Generator* gen = pp->gen;
-	f32 sG;
-	f32 sF;
-	f32 cG;
-	f32 cF;
 	f32 radius;
-	f32 h;
-	f32 rc;
-	f32 angle;
-	f32 rs;
+	f32 px, py, pz;
+	f32 sina, sinb, cosa, cosb;
+	f32 vx0, vz0;
+	HSD_Generator* gp;
 
-	if (gen == NULL) {
+	gp = pp->gen;
+	if (gp == NULL) {
 		*x = pp->pos.x;
 		*y = pp->pos.y;
 		*z = pp->pos.z;
 		return;
 	}
-	sG     = psdisp_sinf(pp->grav);
-	sF     = psdisp_sinf(pp->fric);
-	cG     = psdisp_cosf(pp->grav);
-	cF     = psdisp_cosf(pp->fric);
-	h      = pp->vel.z - gen->aux.line.x2;
-	angle  = pp->vel.x - gen->grav;
-	radius = gen->radius;
-	if (radius < 0.0F) {
-		radius = -radius;
-	}
-	{
-		f32 spread = gen->angle;
-		if (spread < 0.0F) {
-			spread = -spread;
-		}
-		radius += h * psdisp_tanf(spread);
-	}
+
+	sina = psdisp_sinf(pp->grav);
+	sinb = psdisp_sinf(pp->fric);
+	cosa = psdisp_cosf(pp->grav);
+	cosb = psdisp_cosf(pp->fric);
+
+	vz0 = pp->vel.z - gp->aux.line.x2;
+	vx0 = pp->vel.x - gp->grav;
+
+	radius = (gp->radius < 0.0F) ? -gp->radius : gp->radius;
+	radius += vz0 * psdisp_tanf((gp->angle < 0.0F) ? -gp->angle : gp->angle);
 	radius *= pp->vel.y;
-	rc = radius * psdisp_cosf(angle);
-	rs = radius * psdisp_sinf(angle);
-	*x = gen->pos.x + (rc * cF + h * sF);
-	*y = gen->pos.y + (h * sG * cF + (-rc * sG * sF + rs * cG));
-	*z = gen->pos.z + (h * cG * cF + (-rc * cG * sF - rs * sG));
+	px = radius * psdisp_cosf(vx0);
+	py = radius * psdisp_sinf(vx0);
+	pz = vz0;
+
+	*x = gp->pos.x + (px * cosb + pz * sinb);
+	*y = gp->pos.y + (pz * sina * cosb + (-px * sina * sinb + py * cosa));
+	*z = gp->pos.z + (pz * cosa * cosb + (-px * cosa * sinb - py * sina));
 }
 
 // same, then pushed through the particle's appsrt
@@ -1577,8 +1569,9 @@ void psDispSubAppSRT(HSD_Particle* pp, u32* cmdList)
 void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f32 prevX, f32 prevY, f32 prevZ, f32 rightX, f32 rightY,
                           f32 rightZ, f32 upX, f32 upY, f32 upZ)
 {
+	// NONMATCHING: retail gives the fourth quad vertex's trail-alpha conversion its own stack temps (frame 0x1A0, ours 0x190);
+	// MWCC reuses the first vertex's temps across the texcoord branches. Also dx/dy/dz get f3/f2/f4 in retail, f2/f4/f5 here.
 	GXColor color;
-	u8* it = (u8*)cmdList;
 
 	if (lbl_8065B8FC != 0) {
 		lbl_8065B8FC = 0;
@@ -1597,7 +1590,7 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 			prevZ = z - prevZ;
 		}
 		psdisp_getTrailColor(pp, &color);
-		if (it == NULL) {
+		if (cmdList == NULL) {
 			if (pp->kind & 0x400) {
 				GXClearVtxDesc();
 				GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -1634,9 +1627,8 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 			f32 trailAlpha;
 			f32 upLen;
 
-			upLen      = upX * upX + upY * upY + upZ * upZ;
 			trailAlpha = 255.0F * (1.0F - pp->trail);
-			upLen      = psdisp_sqrtf(upLen);
+			upLen      = psdisp_sqrtf(upX * upX + upY * upY + upZ * upZ);
 
 			if (!(__fabs(upLen) < __float_min[0])) {
 				f32 dx    = x - prevX;
@@ -1654,14 +1646,13 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 				upX *= ratio;
 				upY *= ratio;
 				upZ *= ratio;
-				primCount = *(u32*)it;
-				it += 4;
+				primCount = *cmdList++;
 				for (; primCount != 0; primCount--) {
-					u8 prim  = it[0];
-					u8 count = it[1];
+					u8 prim  = ((u8*)cmdList)[0];
+					u8 count = ((u8*)cmdList)[1];
 					s32 i;
 
-					it += 4;
+					cmdList++;
 					if (pp->kind & 0x400) {
 						GXClearVtxDesc();
 						GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -1675,17 +1666,17 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 						GXBegin(prim, GX_VTXFMT3, count);
 					}
 					for (i = 0; i < count; i++) {
-						f32 s  = *(f32*)&it[0];
-						f32 sx = 2.0F * (s - 0.5F);
+						f32 s = ((f32*)cmdList)[0];
 						f32 t;
+						f32 sx = 2.0F * (s - 0.5F);
 						f32 tx;
 						s32 alpha;
 
 						if (pp->kind & 0x40000) {
 							s = 1.0F - s;
 						}
-						t = *(f32*)&it[4];
-						it += 8;
+						t = ((f32*)cmdList)[1];
+						cmdList += 2;
 						alpha = 255.0F - t * trailAlpha;
 						if (alpha < 0) {
 							alpha = 0;
@@ -1706,7 +1697,7 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 				}
 			}
 		}
-	} else if (it == NULL) {
+	} else if (cmdList == NULL) {
 		if (pp->kind & 0x400) {
 			GXClearVtxDesc();
 			GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -1734,15 +1725,14 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 			GXTexCoord1x8(((pp->kind >> 16) & 0xC) + 3);
 		}
 	} else {
-		u32 primCount = *(u32*)it;
+		u32 primCount = *cmdList++;
 
-		it += 4;
 		for (; primCount != 0; primCount--) {
-			u8 prim  = it[0];
-			u8 count = it[1];
+			u8 prim  = ((u8*)cmdList)[0];
+			u8 count = ((u8*)cmdList)[1];
 			s32 i;
 
-			it += 4;
+			cmdList++;
 			if (pp->kind & 0x400) {
 				GXClearVtxDesc();
 				GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
@@ -1754,16 +1744,16 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
 				GXBegin(prim, GX_VTXFMT1, count);
 			}
 			for (i = 0; i < count; i++) {
-				f32 s  = *(f32*)&it[0];
-				f32 sx = 2.0F * (s - 0.5F);
+				f32 s = ((f32*)cmdList)[0];
 				f32 t;
+				f32 sx = 2.0F * (s - 0.5F);
 				f32 tx;
 
 				if (pp->kind & 0x40000) {
 					s = 1.0F - s;
 				}
-				t = *(f32*)&it[4];
-				it += 8;
+				t = ((f32*)cmdList)[1];
+				cmdList += 2;
 				tx = 2.0F * (t - 0.5F);
 				if (pp->kind & 0x80000) {
 					t = 1.0F - t;
@@ -2677,7 +2667,6 @@ void psDispSubMakePolygon(HSD_Particle* pp, u32* cmdList, f32 x, f32 y, f32 z, f
  */
 void psDispSub(HSD_Particle* pp, u32* cmdList)
 {
-	// NONMATCHING: regalloc
 	f32 x;
 	f32 y;
 	f32 z;
@@ -3275,6 +3264,8 @@ void psDispSub(HSD_Particle* pp, u32* cmdList)
  */
 void _psDispParticlesSub(s32 bankMask, s32 kind)
 {
+	// NONMATCHING: retail .rodata starts with a 0x50-byte block of six default Vecs from a header, so the offsets from the
+	// rodata base (psdisp_ident, the blend-mode message, "psdisp.c") are 0x50 higher there
 	s32 i;
 	HSD_Particle* opaHead;
 	HSD_Particle* xluHead;
@@ -3638,8 +3629,8 @@ void _psDispParticlesSub(s32 bankMask, s32 kind)
 									break;
 								}
 								prevNear = pp->kind & 0x200;
-								GXInitTexObjLOD(&texObj, (prevNear != 0) ? GX_NEAR : GX_LINEAR, ((pp->kind >> 9) & 1) ^ 1, 0.0F, 0.0F, 0.0F,
-								                GX_DISABLE, GX_DISABLE, 0);
+								GXInitTexObjLOD(&texObj, (prevNear != 0) ? GX_NEAR : GX_LINEAR, ((pp->kind >> 9) & 1) ? GX_NEAR : GX_LINEAR,
+								                0.0F, 0.0F, 0.0F, GX_DISABLE, GX_DISABLE, 0);
 								GXLoadTexObj(&texObj, GX_TEXMAP0);
 							}
 							if (prevNear != (pp->kind & 0x200)) {

@@ -22,15 +22,15 @@ void XObjLight::UpdateObject(u32 frames)
  * @note Address: 0x80092F00
  * @note Size: 0x98
  */
-extern "C" void Release__9XObjLightFv(XObjLight* object)
+void XObjLight::Release()
 {
 	if ((s32)GetEnvData()[4] == 2) {
-		for (s32 i = 0; i < object->mLightNum; ++i) {
-			if (object->GetLightDesc(i))
-				object->mLights[i].Release();
+		for (s32 i = 0; i < mLightNum; ++i) {
+			if (GetLightDesc(i))
+				mLights[i].Release();
 		}
 	}
-	Release__4XObjFv(object);
+	XObj::Release();
 }
 
 // XObjLight::LoadFromPlacement

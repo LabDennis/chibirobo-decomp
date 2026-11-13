@@ -25,9 +25,9 @@ extern "C" {
  * @note Address: 0x80147630
  * @note Size: 0x8
  */
-u32 CCameraActionReset::vf5C()
+u32 CCameraActionReset::GetInterestMode()
 {
-	return _58;
+	return mInterestMode;
 }
 
 /**
@@ -89,9 +89,9 @@ void CCameraActionReset::PreviousUpdate()
 
 	if (mState == 100) {
 		if (mAngle.z) {
-			_38       = 0x40010;
-			Vec angle = mAngle;
-			angle.z   = 0.0f;
+			mCameraFlags = 0x40010;
+			Vec angle    = mAngle;
+			angle.z      = 0.0f;
 			SetAngle(angle);
 		}
 		return;
@@ -103,31 +103,31 @@ void CCameraActionReset::PreviousUpdate()
 		return;
 	}
 
-	_38 = 0xB;
+	mCameraFlags = 0xB;
 	UpdateCameraAreaIndexAndBaseFov(&gCameraAreaState, 0);
-	s32 arg           = gCameraAreaState._0C;
+	s32 arg           = gCameraAreaState.mActiveArea;
 	mNextCameraAction = GetCameraAreaMode(&gCameraAreaState);
-	if (_4C == TRUE) {
+	if (mImmediate == TRUE) {
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		camera->ChangeAction(mNextCameraAction);
 		if (mNextCameraAction == 1) {
-			SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState._14);
+			SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState.mZoomLevel);
 		} else {
-			SetMapCameraFovStep((CCameraActionMap*)gGame.mCameraActions.mTable[7], gCameraAreaState._14, 15.0f);
+			SetMapCameraFovStep((CCameraActionMap*)gGame.mCameraActions.mTable[7], gCameraAreaState.mZoomLevel, 15.0f);
 			RefreshMapCameraArea((CCameraActionMap*)gGame.mCameraActions.mTable[7]);
 			f32 dy = camera->mCamera.mInterest.y - mTarget->GetCameraTarget().y;
 			if (0.0f != dy) {
 				StartMapCameraTargetHeightInterpolation((CCameraActionMap*)gGame.mCameraActions.mTable[7], dy, 0.0f, 8.0f);
 			}
 		}
-		_4C = FALSE;
+		mImmediate = FALSE;
 		return;
 	}
 
 	if (mNextCameraAction == 1) {
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		camera->ChangeAction(mNextCameraAction);
-		SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState._14);
+		SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState.mZoomLevel);
 		SelectAreaCameraEntryByViewDirection((CCameraActionArea*)gGame.mCameraActions.mTable[1], mMode, mTime, arg);
 		if (mMode == 3) {
 			camera->ApplyAction();
@@ -150,14 +150,14 @@ void CCameraActionReset::PreviousUpdate()
 		Vec target = eye;
 		SetEye_Interp(mMode, target, time);
 
-		f32 fov = GetAreaCameraFovForHeightLevel(&gCameraAreaState, gCameraAreaState._14);
+		f32 fov = GetAreaCameraFovForHeightLevel(&gCameraAreaState, gCameraAreaState.mZoomLevel);
 		SetFov_Interp(mMode, fov, mTime);
 
-		SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState._14);
+		SetAreaCameraHeightIndices((CCameraActionArea*)gGame.mCameraActions.mTable[1], gCameraAreaState.mZoomLevel);
 		if (mMode == 3 || 0.0f == mTime) {
-			_58 = 0;
+			mInterestMode = 0;
 		} else {
-			_58 = 2;
+			mInterestMode = 2;
 		}
 	}
 	mState = 1;
@@ -587,9 +587,9 @@ void CCameraActionReset::SetCamera(CCamera* camera)
 	SetDistance(camera->mDistance);
 	SetFov(camera->mFov);
 	SetAngle(camera->mAngle);
-	mTarget = gGame.GetPlayer();
-	mState  = 100;
-	_58     = 2;
+	mTarget       = gGame.GetPlayer();
+	mState        = 100;
+	mInterestMode = 2;
 }
 
 /**
@@ -598,9 +598,9 @@ void CCameraActionReset::SetCamera(CCamera* camera)
  */
 void CCameraActionReset::Init()
 {
-	mMode = 1;
-	mTime = 2.0f;
-	_4C   = FALSE;
+	mMode      = 1;
+	mTime      = 2.0f;
+	mImmediate = FALSE;
 	InitCameraAreaEntries(&gCameraAreaState);
 	mEyeInterps[0] = &mEyeLinear;
 	mEyeInterps[1] = &mEyeEaseInOut;

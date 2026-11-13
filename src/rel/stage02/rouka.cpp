@@ -5,83 +5,10 @@
 
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
-#include "game/evt.h"
+#include "game/cgame.h"
+#include "game/caminfo.h"
 #include "game/infoscrn.h"
-
-// CGame, accessed by offset
-extern "C" u8 gGame[];
-#define GAME_AT(off) (gGame + (off))
-// an offset into CGame: japan lays it out differently from the others
-#if defined(VERSION_JP)
-#define GAME_OFS(other, japan) (japan)
-#else
-#define GAME_OFS(other, japan) (other)
-#endif
-
-// loaded model object, vtable at 0x34
-class XObj {
-public:
-	HSD_JObj* jobj; // _00
-	u8 _04[0x30];   // _04
-	virtual void vf08();
-	virtual void vf0C();
-	virtual void vf10();
-	virtual void vf14();
-	virtual void vf18();
-	virtual void vf1C();
-	virtual void vf20();
-	virtual void vf24();
-	virtual void vf28();
-	virtual void vf2C();
-	virtual void vf30();
-	virtual void vf34();
-	virtual void vf38();
-	virtual void vf3C();
-	virtual void vf40();
-	virtual void vf44();
-	virtual void vf48();
-	virtual void vf4C();
-	virtual void vf50();
-	virtual void vf54();
-	virtual void GetFollowDivisor();
-	virtual void vf5C();
-	virtual void vf60();
-	virtual void vf64();
-	virtual void vf68();
-	virtual void vf6C();
-	virtual void vf70();
-	virtual void vf74();
-	virtual void vf78();
-	virtual void vf7C();
-	virtual void vf80(s32 a, s32 b, f32 c, f32 d, f32 e, f32 f, s32 g, s32 h, s32 i);
-#if defined(VERSION_JP)
-	u8 _38[0x88]; // _38
-#else
-	u8 _38[0x90]; // _38
-#endif
-	u8 _C8[0x90];   // _C8 (JP: _C0)
-	s32 _158;       // _158 (JP: _150)
-	u8 _15C[0xCC];  // _15C (JP: _154)
-	u64 _228;       // _228 (JP: _220)
-	u8 _230[0x8];   // _230 (JP: _228)
-	s32* _238;      // _238 (JP: _230)
-	u8 _23C[0x5D4]; // _23C (JP: _234)
-	s32 _810;       // _810 (JP: _808)
-	struct {
-		s32 type; // _00
-		s16 _04;  // _04
-		s16 _06;  // _06
-	} _814[16];   // _814 (JP: _80C)
-};
-
-class CamInfo {
-public:
-	CamInfo(s32* values) { m_values = values; }
-	virtual ~CamInfo() { }
-	void Set(s32 idx, s32 value) { m_values[idx] = value; }
-
-	s32* m_values; // _04
-};
+#include "rel/stage02/fighter.h"
 
 namespace Car {
 
@@ -90,93 +17,35 @@ void Init(void);
 
 } // namespace Car
 
-struct Stage02Main {
-#if defined(VERSION_JP)
-	u8 _00[0x9818]; // _00
-#else
-	u8 _00[0x9860]; // _00
-#endif
-	XObj* mObjects[0x400]; // _9860, _9818 in japan
-	s32 mObjectCount;      // _A860
-
-	XObj* GetObject(s32 index) const { return mObjects[index]; }
-};
-
-#define MAIN() ((Stage02Main*)gGame)
-
-#define SOUND() GAME_AT(GAME_OFS(0xE7E24, 0xE713C))
-
-static inline InfoScrn* StageHud()
-{
-	return reinterpret_cast<InfoScrn*>(GAME_AT(GAME_OFS(0x8F38, 0x8EF0)));
-}
-
 static XObj* takiObj;
-
-// see game/ccameraaction.h
-class CCameraActionScroll2 {
-public:
-	void SaveCamInfo(const void* info);
-	void ClearHideList();
-	BOOL AddHideObj(s32 id);
-};
-
-#define SCROLL2() (*(CCameraActionScroll2**)GAME_AT(GAME_OFS(0xE7DFC, 0xE7114)))
 
 extern "C" {
 void SetJunkUnkoFlag(u8 on);
-s32 IsGameSoundPlaying(void* p, s32 id);
-void PlayGameSound(void* p, s32 id, s32 v);
-void HSD_AudioSFXSetPanByID(s32 id, s32 v);
-s32 GetSoundVolumeAtPosition(void* p, void* q, s32 v);
-void SetGameSfxVolume(void* p, s32 id, s32 v, s32 w);
-void StopGameSfx(void* p, s32 id);
-void FadeOutGameSfx(void* p, s32 a, s32 b);
+BOOL HSD_AudioSFXSetPanByID(s32 id, u8 pan);
 
-// fighter.cpp
-s32 ShowCenterPanel(s32 a, s32 b);
-s32 ShowLowerPanel(s32 a);
-void InitPilotNwing(void* a, void* b, void* c, void* d);
-s32 GetShotEvent(void);
-s32 EndFighter(void);
-s32 TakeDestroyedMatoId(void);
-s32 GetScore(void);
-u32 GetTimeLeft(void);
-f32 GetFighterProgress(void);
-void SetSoundCueTable(s32 v);
-void SetFighterParams(s32 v);
-void SetSpeedRateTable(s32 v);
-void AddMato(void* p, s32 id);
-void StartFighter(void* a, void* b, void* c);
-void DrawFighterHud(void* p);
-s32 DrawShots(void);
-s32 DrawFighterStage(void);
-void UpdateFighter(void* p);
-void ClearFighterObjects(void);
-
-s32 CmdGetTimer(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetTimer(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetTimerRunning(s32 cmd, s32 argc, s32* argv);
-s32 CmdShowTimer(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetCarData(s32 cmd, s32 argc, s32* argv);
-s32 CmdTerminateCars(s32 cmd, s32 argc, s32* argv);
-s32 CmdGetCarState(s32 cmd, s32 argc, s32* argv);
-s32 CmdStartCars(s32 cmd, s32 argc, s32* argv);
-s32 CmdRegisterCar(s32 cmd, s32 argc, s32* argv);
-s32 CmdClearCamInfo(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetCamInfo(s32 cmd, s32 argc, s32* argv);
-s32 CmdClearObjFlagList(s32 cmd, s32 argc, s32* argv);
-s32 CmdAddObjFlagList(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetJunkUnkoFlag(s32 cmd, s32 argc, s32* argv);
-s32 CmdShowFighterCenterPanel(s32 cmd, s32 argc, s32* argv);
-s32 CmdShowFighterLowerPanel(s32 cmd, s32 argc, s32* argv);
-s32 CmdRegisterFighterLink(s32 cmd, s32 argc, s32* argv);
-s32 CmdGetFighterEvent(s32 cmd, s32 argc, s32* argv);
-s32 CmdQueryFighter(s32 cmd, s32 argc, s32* argv);
-s32 CmdSetFighterData(s32 cmd, s32 argc, s32* argv);
-s32 CmdEndFighter(s32 cmd, s32 argc, s32* argv);
-s32 CmdAddMato(s32 cmd, s32 argc, s32* argv);
-s32 CmdStartFighter(s32 cmd, s32 argc, s32* argv);
+s32 CmdGetTimer(s32 cmd, s32 count, s32* args);
+s32 CmdSetTimer(s32 cmd, s32 count, s32* args);
+s32 CmdSetTimerRunning(s32 cmd, s32 count, s32* args);
+s32 CmdShowTimer(s32 cmd, s32 count, s32* args);
+s32 CmdSetCarData(s32 cmd, s32 count, s32* args);
+s32 CmdTerminateCars(s32 cmd, s32 count, s32* args);
+s32 CmdGetCarState(s32 cmd, s32 count, s32* args);
+s32 CmdStartCars(s32 cmd, s32 count, s32* args);
+s32 CmdRegisterCar(s32 cmd, s32 count, s32* args);
+s32 CmdClearCamInfo(s32 cmd, s32 count, s32* args);
+s32 CmdSetCamInfo(s32 cmd, s32 count, s32* args);
+s32 CmdClearObjFlagList(s32 cmd, s32 count, s32* args);
+s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* args);
+s32 CmdSetJunkUnkoFlag(s32 cmd, s32 count, s32* args);
+s32 CmdShowFighterCenterPanel(s32 cmd, s32 count, s32* args);
+s32 CmdShowFighterLowerPanel(s32 cmd, s32 count, s32* args);
+s32 CmdRegisterFighterLink(s32 cmd, s32 count, s32* args);
+s32 CmdGetFighterEvent(s32 cmd, s32 count, s32* args);
+s32 CmdQueryFighter(s32 cmd, s32 count, s32* args);
+s32 CmdSetFighterData(s32 cmd, s32 count, s32* args);
+s32 CmdEndFighter(s32 cmd, s32 count, s32* args);
+s32 CmdAddMato(s32 cmd, s32 count, s32* args);
+s32 CmdStartFighter(s32 cmd, s32 count, s32* args);
 void ExitStage(void* arg);
 void DrawStageHud(void* arg);
 void DrawStageEffects(void* arg);
@@ -196,14 +65,8 @@ void StartCarCamera(void);
 s32 RegisterCar(XObj* a, XObj* b, XObj* c);
 }
 
-inline XObj* FindEventObject(s16 id)
-{
-	const CEvtData* data = (const CEvtData*)GAME_AT(GAME_OFS(0x5D080, 0x5D038));
-	return data->mScript != NULL ? ResolveEventObjectId(data, id) : NULL;
-}
-
 typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, s32 argc, s32* argv);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = {
@@ -249,10 +112,10 @@ extern "C" void InitStage(void* arg)
 	ClearFighterObjects();
 	Car::Init();
 	takiObj = NULL;
-	count   = MAIN()->mObjectCount;
+	count   = gGame.mXObjs.mObjectCount;
 	for (i = 0; takiObj == NULL && i < count; i++) {
-		obj = MAIN()->GetObject(i);
-		if ((obj->_228 & 1) != 0 && obj->_238[0] == 0x254) {
+		obj = gGame.GetObject(i);
+		if ((obj->mStatus.mFlags & 1) != 0 && obj->mCoord.mPlacement->mObjectId == 0x254) {
 			takiObj = obj;
 		}
 	}
@@ -316,11 +179,11 @@ extern "C" void InitStage(void* arg)
  */
 extern "C" void UpdateStage(void* arg)
 {
-	UpdateFighter(arg);
+	UpdateFighter((u32)arg);
 	UpdateCars((u32)arg);
 	if (takiObj != NULL) {
-		if (takiObj->_158 == 0) {
-			void* sound = SOUND();
+		if (takiObj->mAnimId == 0) {
+			XSound* sound = &gGame.mSound;
 			if (IsGameSoundPlaying(sound, 0x20019) == 0) {
 				PlayGameSound(sound, 0x20019, 0xFF);
 				HSD_AudioSFXSetPanByID(0x20019, 0);
@@ -329,10 +192,10 @@ extern "C" void UpdateStage(void* arg)
 				PlayGameSound(sound, 0x2001A, 0xFF);
 				HSD_AudioSFXSetPanByID(0x2001A, 0xFE);
 			}
-			SetGameSfxVolume(sound, 0x20019, GetSoundVolumeAtPosition(sound, takiObj->_C8, 1), 0);
-			SetGameSfxVolume(sound, 0x2001A, GetSoundVolumeAtPosition(sound, takiObj->_C8, 1), 0);
+			SetGameSfxVolume(sound, 0x20019, GetSoundVolumeAtPosition(sound, &takiObj->mMoveTranslate, 1), 0);
+			SetGameSfxVolume(sound, 0x2001A, GetSoundVolumeAtPosition(sound, &takiObj->mMoveTranslate, 1), 0);
 		} else {
-			void* sound = SOUND();
+			XSound* sound = &gGame.mSound;
 			StopGameSfx(sound, 0x20019);
 			StopGameSfx(sound, 0x2001A);
 		}
@@ -363,7 +226,7 @@ extern "C" void DrawStageEffects(void* arg)
  */
 extern "C" void DrawStageHud(void* arg)
 {
-	DrawFighterHud(arg);
+	DrawFighterHud();
 	DrawCarHud(arg);
 }
 
@@ -381,27 +244,20 @@ extern "C" void ExitStage(void* arg)
  * @note Address: stage02 .text 0x6AA0
  * @note Size: 0xFC
  */
-// NONMATCHING: europe's empty loop compares i with argc where this tests argc alone
-extern "C" s32 CmdStartFighter(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdStartFighter(s32 cmd, s32 count, s32* args)
 {
-	XObj* objs[3];
-	s32 i;
+	XObj* objs[3] = {};
 	u32 j;
 
-// europe has the loop without its prints
 #if !defined(VERSION_PAL)
 	OSReport("args = ");
-#endif
-	for (i = 0; i < argc; i++) {
-#if !defined(VERSION_PAL)
-		OSReport("%d ", argv[i]);
-#endif
+	for (s32 i = 0; i < count; i++) {
+		OSReport("%d ", args[i]);
 	}
-#if !defined(VERSION_PAL)
 	OSReport("\n");
 #endif
-	for (j = 0; j < 3 && (s32)j - 1 < argc; j++) {
-		objs[j] = FindEventObject(argv[j]);
+	for (j = 0; j < 3 && (s32)j - 1 < count; j++) {
+		objs[j] = FindObj(args[j]);
 	}
 	StartFighter(objs[0], objs[1], objs[2]);
 	return 0;
@@ -411,11 +267,11 @@ extern "C" s32 CmdStartFighter(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6A20
  * @note Size: 0x80
  */
-extern "C" s32 CmdAddMato(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdAddMato(s32 cmd, s32 count, s32* args)
 {
 	s32 i;
-	for (i = 0; i < argc; i++) {
-		AddMato(MAIN()->mObjects[argv[i]], argv[i]);
+	for (i = 0; i < count; i++) {
+		AddMato(gGame.GetObject(args[i]), args[i]);
 	}
 	return 0;
 }
@@ -462,7 +318,7 @@ extern "C" s32 CmdAddMato(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x69FC
  * @note Size: 0x24
  */
-extern "C" s32 CmdEndFighter(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdEndFighter(s32 cmd, s32 count, s32* args)
 {
 	EndFighter();
 	return 0;
@@ -472,14 +328,14 @@ extern "C" s32 CmdEndFighter(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6994
  * @note Size: 0x68
  */
-extern "C" s32 CmdSetFighterData(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdSetFighterData(s32 cmd, s32 count, s32* args)
 {
-	switch (argv[0]) {
+	switch (args[0]) {
 	case 0:
-		SetSpeedRateTable(argv[1]);
-		SetFighterParams(argv[2]);
-		if (argc >= 4) {
-			SetSoundCueTable(argv[3]);
+		SetSpeedRateTable((u8*)args[1]);
+		SetFighterParams((u8*)args[2]);
+		if (count >= 4) {
+			SetSoundCueTable((u8*)args[3]);
 		}
 		break;
 	}
@@ -490,12 +346,12 @@ extern "C" s32 CmdSetFighterData(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x68A8
  * @note Size: 0xEC
  */
-extern "C" s32 CmdQueryFighter(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdQueryFighter(s32 cmd, s32 count, s32* args)
 {
 	s32 percent = GetFighterProgress() * 100.0f;
 	u32 flag    = GetTimeLeft();
 
-	switch (argv[0]) {
+	switch (args[0]) {
 	case 0:
 		if (percent < 100 && flag != 0) {
 			return 1;
@@ -503,16 +359,12 @@ extern "C" s32 CmdQueryFighter(s32 cmd, s32 argc, s32* argv)
 		return 0;
 	case 1:
 		return GetScore();
-		break;
 	case 2:
 		return flag;
 	case 3:
 		return percent * 100;
 	case 4:
 		return TakeDestroyedMatoId();
-	}
-	if (argv[0] == 0) {
-		return GetFighterProgress() * 100.0f;
 	}
 	return 0;
 }
@@ -521,7 +373,7 @@ extern "C" s32 CmdQueryFighter(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6888
  * @note Size: 0x20
  */
-extern "C" s32 CmdGetFighterEvent(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdGetFighterEvent(s32 cmd, s32 count, s32* args)
 {
 	return GetShotEvent();
 }
@@ -530,7 +382,7 @@ extern "C" s32 CmdGetFighterEvent(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x67CC
  * @note Size: 0xBC
  */
-extern "C" s32 CmdRegisterFighterLink(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdRegisterFighterLink(s32 cmd, s32 count, s32* args)
 {
 	XObj* objs[4];
 	u32 i;
@@ -538,8 +390,8 @@ extern "C" s32 CmdRegisterFighterLink(s32 cmd, s32 argc, s32* argv)
 	for (i = 0; i < 4; i++) {
 		objs[i] = NULL;
 	}
-	for (i = 0; i < 4 && (s32)i - 1 < argc; i++) {
-		objs[i] = FindEventObject(argv[i]);
+	for (i = 0; i < 4 && (s32)i - 1 < count; i++) {
+		objs[i] = FindObj(args[i]);
 	}
 	InitPilotNwing(objs[0], objs[1], objs[2], objs[3]);
 	return 0;
@@ -605,12 +457,12 @@ extern "C" s32 CmdRegisterFighterLink(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x678C
  * @note Size: 0x40
  */
-extern "C" s32 CmdShowFighterLowerPanel(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdShowFighterLowerPanel(s32 cmd, s32 count, s32* args)
 {
-	if (argv[0] != 0) {
-		ShowLowerPanel(1);
+	if (args[0] != 0) {
+		ShowLowerPanel(true);
 	} else {
-		ShowLowerPanel(0);
+		ShowLowerPanel(false);
 	}
 	return 0;
 }
@@ -619,12 +471,12 @@ extern "C" s32 CmdShowFighterLowerPanel(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6744
  * @note Size: 0x48
  */
-extern "C" s32 CmdShowFighterCenterPanel(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdShowFighterCenterPanel(s32 cmd, s32 count, s32* args)
 {
-	if (argv[0] != 0) {
-		ShowCenterPanel(1, argv[1]);
+	if (args[0] != 0) {
+		ShowCenterPanel(true, args[1]);
 	} else {
-		ShowCenterPanel(0, 0);
+		ShowCenterPanel(false, 0);
 	}
 	return 0;
 }
@@ -633,9 +485,9 @@ extern "C" s32 CmdShowFighterCenterPanel(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6704
  * @note Size: 0x40
  */
-extern "C" s32 CmdSetJunkUnkoFlag(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdSetJunkUnkoFlag(s32 cmd, s32 count, s32* args)
 {
-	if (argv[0] != 0) {
+	if (args[0] != 0) {
 		SetJunkUnkoFlag(1);
 	} else {
 		SetJunkUnkoFlag(0);
@@ -647,11 +499,11 @@ extern "C" s32 CmdSetJunkUnkoFlag(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x668C
  * @note Size: 0x78
  */
-extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* args)
 {
 	s32 i;
-	for (i = 0; i < argc; i++) {
-		SCROLL2()->AddHideObj(argv[i]);
+	for (i = 0; i < count; i++) {
+		static_cast<CCameraActionScroll2*>(gGame.mCameraActions.mTable[CAMACTION_SCROLL2])->AddHideObj(args[i]);
 	}
 	return 0;
 }
@@ -660,9 +512,9 @@ extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6658
  * @note Size: 0x34
  */
-extern "C" s32 CmdClearObjFlagList(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdClearObjFlagList(s32 cmd, s32 count, s32* args)
 {
-	SCROLL2()->ClearHideList();
+	static_cast<CCameraActionScroll2*>(gGame.mCameraActions.mTable[CAMACTION_SCROLL2])->ClearHideList();
 	return 0;
 }
 
@@ -676,38 +528,10 @@ extern "C" s32 CmdClearObjFlagList(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x64BC
  * @note Size: 0x154
  */
-extern "C" s32 CmdSetCamInfo(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdSetCamInfo(s32 cmd, s32 count, s32* args)
 {
-	s32 info[8];
-	{
-		CamInfo c(info);
-		c.Set(1, 0);
-	}
-	{
-		CamInfo c(info);
-		c.Set(2, 79300);
-	}
-	{
-		CamInfo c(info);
-		c.Set(3, 0);
-	}
-	{
-		CamInfo c(info);
-		c.Set(4, 1);
-	}
-	{
-		CamInfo c(info);
-		c.Set(5, 10000);
-	}
-	{
-		CamInfo c(info);
-		c.Set(6, 0);
-	}
-	{
-		CamInfo c(info);
-		c.Set(7, 6000);
-	}
-	SCROLL2()->SaveCamInfo(info);
+	CamInfoData info = { 0, { 0, 79300, 0 }, { 1, 10000, 0 }, 6000 };
+	static_cast<CCameraActionScroll2*>(gGame.mCameraActions.mTable[CAMACTION_SCROLL2])->SaveCamInfo(&info);
 	return 0;
 }
 
@@ -715,9 +539,9 @@ extern "C" s32 CmdSetCamInfo(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6484
  * @note Size: 0x38
  */
-extern "C" s32 CmdClearCamInfo(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdClearCamInfo(s32 cmd, s32 count, s32* args)
 {
-	SCROLL2()->SaveCamInfo(NULL);
+	static_cast<CCameraActionScroll2*>(gGame.mCameraActions.mTable[CAMACTION_SCROLL2])->SaveCamInfo(NULL);
 	return 0;
 }
 
@@ -725,26 +549,26 @@ extern "C" s32 CmdClearCamInfo(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x63A4
  * @note Size: 0xE0
  */
-extern "C" s32 CmdRegisterCar(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdRegisterCar(s32 cmd, s32 count, s32* args)
 {
 	XObj* c = NULL;
-	if (argc >= 3) {
-		c = FindEventObject(argv[2]);
+	if (count >= 3) {
+		c = FindObj(args[2]);
 	}
-	return RegisterCar(FindEventObject(argv[0]), FindEventObject(argv[1]), c);
+	return RegisterCar(FindObj(args[0]), FindObj(args[1]), c);
 }
 
 /**
  * @note Address: stage02 .text 0x635C
  * @note Size: 0x48
  */
-extern "C" s32 CmdStartCars(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdStartCars(s32 cmd, s32 count, s32* args)
 {
-	if (argc == 0) {
+	if (count == 0) {
 		StartCars();
 		return 0;
 	}
-	switch (argv[0]) {
+	switch (args[0]) {
 	case 1:
 		StartCarCamera();
 		break;
@@ -756,12 +580,12 @@ extern "C" s32 CmdStartCars(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6314
  * @note Size: 0x48
  */
-extern "C" s32 CmdGetCarState(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdGetCarState(s32 cmd, s32 count, s32* args)
 {
-	if (argc == 0) {
+	if (count == 0) {
 		return GetPlayerCarResult();
 	}
-	switch (argv[0]) {
+	switch (args[0]) {
 	case 1:
 		return GetPlayerCarFrame();
 	}
@@ -772,7 +596,7 @@ extern "C" s32 CmdGetCarState(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x62F0
  * @note Size: 0x24
  */
-extern "C" s32 CmdTerminateCars(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdTerminateCars(s32 cmd, s32 count, s32* args)
 {
 	Terminate();
 	return 0;
@@ -782,13 +606,13 @@ extern "C" s32 CmdTerminateCars(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6298
  * @note Size: 0x58
  */
-extern "C" s32 CmdSetCarData(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdSetCarData(s32 cmd, s32 count, s32* args)
 {
-	SetCarParams((u8*)argv[0]);
-	if (argc < 2) {
+	SetCarParams((u8*)args[0]);
+	if (count < 2) {
 		return 0;
 	}
-	SetCarSoundCues((u8*)argv[1]);
+	SetCarSoundCues((u8*)args[1]);
 	return 0;
 }
 
@@ -796,12 +620,12 @@ extern "C" s32 CmdSetCarData(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6230
  * @note Size: 0x68
  */
-extern "C" s32 CmdShowTimer(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdShowTimer(s32 cmd, s32 count, s32* args)
 {
-	if (argv[0] != 0) {
-		InfoScrn_ApplyTimerHudCommand(StageHud(), 1, 1);
+	if (args[0] != 0) {
+		InfoScrn_ApplyTimerHudCommand(&gGame.mInfoScrn, 1, 1);
 	} else {
-		InfoScrn_ApplyTimerHudCommand(StageHud(), 0, 1);
+		InfoScrn_ApplyTimerHudCommand(&gGame.mInfoScrn, 0, 1);
 	}
 	return 0;
 }
@@ -810,12 +634,12 @@ extern "C" s32 CmdShowTimer(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x61D8
  * @note Size: 0x58
  */
-extern "C" s32 CmdSetTimerRunning(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdSetTimerRunning(s32 cmd, s32 count, s32* args)
 {
-	if (argv[0] != 0) {
-		InfoScrn_ShowTimer(StageHud());
+	if (args[0] != 0) {
+		InfoScrn_ShowTimer(&gGame.mInfoScrn);
 	} else {
-		InfoScrn_HideTimer(StageHud());
+		InfoScrn_HideTimer(&gGame.mInfoScrn);
 	}
 	return 0;
 }
@@ -824,9 +648,9 @@ extern "C" s32 CmdSetTimerRunning(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x61A0
  * @note Size: 0x38
  */
-extern "C" s32 CmdSetTimer(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdSetTimer(s32 cmd, s32 count, s32* args)
 {
-	InfoScrn_SetTimerHundredths(StageHud(), argv[0]);
+	InfoScrn_SetTimerHundredths(&gGame.mInfoScrn, args[0]);
 	return 0;
 }
 
@@ -834,7 +658,7 @@ extern "C" s32 CmdSetTimer(s32 cmd, s32 argc, s32* argv)
  * @note Address: stage02 .text 0x6170
  * @note Size: 0x30
  */
-extern "C" s32 CmdGetTimer(s32 cmd, s32 argc, s32* argv)
+extern "C" s32 CmdGetTimer(s32 cmd, s32 count, s32* args)
 {
-	return InfoScrn_GetTimerHundredths(StageHud());
+	return InfoScrn_GetTimerHundredths(&gGame.mInfoScrn);
 }

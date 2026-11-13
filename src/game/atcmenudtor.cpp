@@ -10,7 +10,7 @@ extern void* __vt__8OctaMenu[];
 static inline void SetVtable(OctaMenu* menu, void** vtable)
 {
 	// the vtable sits just before _280
-	*((void***)&menu->_280 - 1) = vtable;
+	*((void***)&menu->mMenuType - 1) = vtable;
 }
 
 /**

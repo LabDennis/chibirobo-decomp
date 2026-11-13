@@ -87,15 +87,15 @@ extern "C" void ResetPlayerAttachment(XObjChr* player, s32 nextAnimation)
 	}
 	player->mAttachment                   = 0;
 	player->mAttachmentRequest            = -1;
-	player->_95D8                         = 0;
-	player->_95DC                         = 0;
-	player->_95E4                         = 0;
-	player->_95E0                         = 0;
+	player->mAttachmentStep               = 0;
+	player->mScriptAttach                 = 0;
+	player->mNextClimbType                = 0;
+	player->mClimbType                    = 0;
 	player->mHitObjectIndex               = -1;
-	player->_9D0                          = -1;
+	player->mActionObjectIndex            = -1;
 	player->mFloorContacts[2].objectIndex = -1;
 	gGame.mParticle.Kill(0x15);
 	if (nextAnimation >= 0)
 		player->SetAnim(nextAnimation, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
-	player->_9A90 = 0.0f;
+	player->mFallDistance = 0.0f;
 }

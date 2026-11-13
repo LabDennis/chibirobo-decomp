@@ -5,12 +5,12 @@
 
 extern "C" f64 atan2(f64 y, f64 x);
 
-extern "C" s32 CmdNop(s32 cmd, void* arg, void* arg2);
+extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args);
 extern "C" void UpdateStage(void* arg);
 extern "C" void InitStage(void* arg);
 
 typedef void (*RelSlotFunc)(void* arg);
-typedef s32 (*RelCmdFunc)(s32 cmd, void* arg, void* arg2);
+typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
 
 extern "C" {
 RelSlotFunc _prolog_slots[7] = { InitStage, UpdateStage };
@@ -23,7 +23,7 @@ static XObj* gameBotan2;
  * @note Address: stage16 .text 0x0
  * @note Size: 0x8
  */
-extern "C" s32 CmdNop(s32 cmd, void* arg, void* arg2)
+extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args)
 {
 	return 0;
 }

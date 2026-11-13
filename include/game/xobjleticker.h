@@ -29,25 +29,25 @@ public:
 	u8 _A25[0xA28 - 0xA25];                                 // _A25
 	f32 mHeading;                                           // _A28
 	u8 mPtcl;                                               // _A2C, particle 165 is running
-	u8 _A2D;                                                // _A2D
-	u8 mWaiting;                                            // _A2E
-	s32 _A30;                                               // _A30
-	f32 mSpeedScale;                                        // _A34, movement and sound pitch scale
-	s32 mState;                                             // _A38, 1 draws the stack, 2 and 3 skip the camera pop
-	AnimSfx mSfx;                                           // _A3C
-	u8 _A4C[0xA50 - 0xA4C];                                 // _A4C
+	u8 mPowered;            // _A2D, set on the first ReceivePlugPower feed from the plug, cleared by OnUnplugged
+	u8 mWaiting;            // _A2E
+	s32 mPowerTimer;        // _A30, frames it has been fed; under 40 counts as starting, 30 and counting down while waiting
+	f32 mSpeedScale;        // _A34, movement and sound pitch scale
+	s32 mState;             // _A38, 1 draws the stack, 2 and 3 skip the camera pop
+	AnimSfx mSfx;           // _A3C
+	u8 _A4C[0xA50 - 0xA4C]; // _A4C
 
 	XObjLeticker();
 
 	virtual void ResetObjectState();                                 // _98
 	virtual void UpdateObject(u32 frames);                           // _A4
-	virtual void vfAC();                                             // _AC
+	virtual void DrawObject();                                       // _AC
 	virtual void DrawObjectEffects();                                // _C0
 	virtual s32 HandleEventCommand(s32 count, s32* args);            // _124
 	virtual void OnPushDisplacement(const Vec& delta);               // _130
-	virtual BOOL vf134(f32 amount);                                  // _134
+	virtual BOOL ReceivePlugPower(f32 amount);                       // _134
 	virtual void OnHitFromPosition(const Vec& position, f32 amount); // _138
-	virtual void vf148();                                            // _148
+	virtual void OnUnplugged();                                      // _148, the plug was pulled: power off, camera back
 
 	void StateRide();
 	void StateCount();

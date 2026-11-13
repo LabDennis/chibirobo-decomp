@@ -104,14 +104,14 @@ public:
 	CVec mAngle;                           // _1B4
 	f32 mDistance;                         // _1C4
 	f32 mFov;                              // _1C8
-	s32 mMode;                             // _1CC, the action's vf50, 1 eases eye and interest in
+	s32 mMode;                             // _1CC, the action's GetMode, 1 eases eye and interest in
 	CInterfaceCameraAction* mAction;       // _1D0
 	CInterfaceCameraAction* mPrevAction;   // _1D4
 	CInterfaceCameraAction* mPushedAction; // _1D8
-	s32 _1DC;                              // _1DC
-	s32 _1E0;                              // _1E0
+	s32 _1DC;                              // _1DC, written -1 in Init, never read
+	s32 _1E0;                              // _1E0, written -1 in Init, never read
 	CStatus mFlags;                        // _1E4, the action's GetCameraFlags, see CAMFLAG
-	s32 mInterestMode;                     // _1EC, the action's vf5C, 2 and 3 follow the interest in
+	s32 mInterestMode;                     // _1EC, the action's GetInterestMode, 2 and 3 follow the interest in
 	s32 mEyeMode;                          // _1F0, 2 and 3 follow the eye in
 	// _1F4 vtable
 
@@ -208,10 +208,10 @@ public:
 				mFlags.mFlags |= 0x40000;
 			} else {
 				mFlags.mFlags = 0;
-				mMode         = mAction->vf50();
+				mMode         = mAction->GetMode();
 				mFlags.mFlags |= mAction->GetCameraFlags();
 				mFollowDivide = mAction->GetFollowDivisor();
-				mInterestMode = mAction->vf5C();
+				mInterestMode = mAction->GetInterestMode();
 			}
 		}
 	}

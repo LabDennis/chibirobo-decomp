@@ -1151,10 +1151,10 @@ extern "C" void InitTrash(void)
 	for (i = 0; trashboxIndex < 0 && i < count; i++) {
 		actor = game->mXObjs.mObjects[i];
 		if (actor->mStatus.mFlags & 1) {
-			if (actor->mCoord._00->_00 == 0x12D) {
+			if (actor->mCoord.mPlacement->mObjectId == 0x12D) {
 				trashboxIndex = i;
 			}
-			if (actor->mCoord._00->_00 == 0x477) {
+			if (actor->mCoord.mPlacement->mObjectId == 0x477) {
 				trashboxIndex = i;
 			}
 		}
@@ -1183,7 +1183,7 @@ static inline s32 IsNearXZ(const Vec& p, const Vec& q)
  * @note Address: stage04 .text 0x26E8
  * @note Size: 0x100
  */
-extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args)
 {
 	// NONMATCHING: register allocation
 	CGame* game;
@@ -1277,7 +1277,7 @@ extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x27E8
  * @note Size: 0x9C
  */
-extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args)
 {
 	XObjChr* robot = gGame.GetPlayer();
 
@@ -1295,7 +1295,7 @@ extern "C" s32 CmdCancelTrash(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x2884
  * @note Size: 0x2C
  */
-extern "C" s32 CmdEndTrash(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args)
 {
 	if (trashTarget != NULL) {
 		trashObj    = NULL;
@@ -1308,7 +1308,7 @@ extern "C" s32 CmdEndTrash(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x28B0
  * @note Size: 0x10
  */
-extern "C" s32 CmdGetTrashResult(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args)
 {
 	return trashResult;
 }
@@ -1317,12 +1317,12 @@ extern "C" s32 CmdGetTrashResult(s32 cmd, s32 arg, s32* arg2)
  * @note Address: stage04 .text 0x28C0
  * @note Size: 0xA8
  */
-extern "C" s32 CmdStartTrash(s32 cmd, s32 arg, s32* arg2)
+extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args)
 {
 	CGame* game     = &gGame;
-	f32 scale       = arg2[2] / 100.0f;
-	s32 idx         = arg2[0];
-	s32 num         = arg2[1];
+	f32 scale       = args[2] / 100.0f;
+	s32 idx         = args[0];
+	s32 num         = args[1];
 	trashTarget     = game->mXObjs.mObjects[idx];
 	trashStackNum   = num;
 	trashStackScale = scale;

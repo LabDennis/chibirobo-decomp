@@ -16,8 +16,8 @@ void XObjFree::UpdateObject(u32 frames)
 		mStatus.mFlags &= ~0x2000000000000000ULL;
 		mStatus.mFlags |= 0x4000000000000000ULL;
 		SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-		vf12C(1, 200, 200, 200, 0.0f);
-		vf12C(1, 0, 0, 0, 0.4f);
+		SetColor(1, 200, 200, 200, 0.0f);
+		SetColor(1, 0, 0, 0, 0.4f);
 		for (s32 i = 0; i < 10; ++i) {
 			f32 angle    = DEG2RAD * (rand() % 360);
 			f32 sinAngle = (f32)sin(angle);

@@ -19,7 +19,7 @@ static inline void DestroyCord(XObjPlugCord* cord)
 {
 	if (cord != NULL) {
 		DestroyNodes(&cord->mNodes);
-		cord->_6C.CVec::~CVec();
+		cord->mPull.CVec::~CVec();
 	}
 }
 

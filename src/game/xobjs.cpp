@@ -328,7 +328,7 @@ extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 unus
 {
 	XObj* obj;
 	AttrInfo attr(info);
-	s16 pool = attr._00 ? attr._00->_14 : 0;
+	s16 pool = attr.mObjData ? attr.mObjData->mCategory : 0;
 
 	s32 idx = list->mPools[pool].Find(1, 0);
 	if (idx >= 0) {
@@ -341,7 +341,7 @@ extern "C" XObj* SpawnObjectFromPlacement(XOBJS* list, CoordInfo* info, s32 unus
 		}
 		if (async) {
 			obj->mStatus.mFlags |= 0x0040000000000000ULL;
-			gSingleObjectReader.ReadStart(obj, info->_00);
+			gSingleObjectReader.ReadStart(obj, info->mPlacement);
 		} else {
 			while (!obj->LoadFromPlacement(*info)) { }
 		}
@@ -533,10 +533,10 @@ void XOBJS::ReadAll()
 	}
 
 	s32 i;
-	for (i = 0; GetStagePlacementByIndex(i)->_00 >= 0; i++) {
+	for (i = 0; GetStagePlacementByIndex(i)->mObjectId >= 0; i++) {
 		CoordInfo info(GetStagePlacementByIndex(i));
 		if (mObjects[i] == NULL) {
-			XObjPool& pool = mPools[GetObjData(&info)->_14];
+			XObjPool& pool = mPools[GetObjData(&info)->mCategory];
 			if (pool.mUsed >= pool.mCount) {
 				OSPanic(__FILE__, 161, "%s%s", FormatToStaticBuffer("%s:: cnt=%d, max=%d\n", pool.mName, pool.mUsed, pool.mCount),
 				        __FUNCTION__);
@@ -552,7 +552,7 @@ void XOBJS::ReadAll()
 	for (s32 i = 0; i < mObjectCount; i++) {
 		UnkStageObj* obj = GetStagePlacementByIndex(i);
 		CoordInfo info(obj);
-		if ((obj->_34 & 0x80000000ULL) == 0) {
+		if ((obj->mFlags & 0x80000000ULL) == 0) {
 			while (!mObjects[mLoadObjectIndex]->LoadFromPlacement(info)) { }
 		}
 		mLoadObjectIndex++;
@@ -761,13 +761,13 @@ extern "C" u8 UpdateStageObjectLoading(XOBJS* list)
  * @note Address: 0x80132D08
  * @note Size: 0x94
  */
-// vf94 on every object of the 23 pools
+// ResetForNewGame on every object of the 23 pools
 extern "C" void ResetPooledObjects(XObjPool* pools)
 {
 	XObjPool* pool = pools;
 	for (s32 index = 0; index < 23; ++index, ++pool) {
 		for (s32 i = 0; i < pool->mCount; ++i) {
-			pools[index].Get(i)->vf94();
+			pools[index].Get(i)->ResetForNewGame();
 		}
 	}
 }

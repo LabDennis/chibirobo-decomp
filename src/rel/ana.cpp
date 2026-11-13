@@ -129,9 +129,9 @@ extern "C" s32 AddAna(s32 id, f32 x, f32 y, f32 z);
  * @note Address: stage04 .text 0x1518
  * @note Size: 0x10C
  */
-extern "C" s32 CmdAddAna(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdAddAna(s32 cmd, s32 count, s32* args)
 {
-	if (argc >= 4) {
+	if (count >= 4) {
 		return AddAna(args[3], args[0] / 100.0f, args[1] / 100.0f, args[2] / 100.0f);
 	}
 	return AddAna(-1, args[0] / 100.0f, args[1] / 100.0f, args[2] / 100.0f);
@@ -141,7 +141,7 @@ extern "C" s32 CmdAddAna(s32 cmd, s32 argc, s32* args)
  * @note Address: stage04 .text 0x148C
  * @note Size: 0x8C
  */
-extern "C" s32 CmdSetTutiAna(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args)
 {
 	Ana* ana = GetAna(args[0]);
 	if (!ana->IsActive()) {
@@ -155,11 +155,11 @@ extern "C" s32 CmdSetTutiAna(s32 cmd, s32 argc, s32* args)
  * @note Address: stage04 .text 0x124C
  * @note Size: 0x240
  */
-extern "C" s32 CmdFindNearestAna(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args)
 {
 	Ana* best = NULL;
 
-	if (argc == 3) {
+	if (count == 3) {
 		f32 x = args[0] / 100.0f;
 		f32 y = args[1] / 100.0f;
 		f32 z = args[2] / 100.0f;
@@ -184,7 +184,7 @@ extern "C" s32 CmdFindNearestAna(s32 cmd, s32 argc, s32* args)
  * @note Address: stage04 .text 0x1100
  * @note Size: 0x14C
  */
-extern "C" s32 CmdPlantTane(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdPlantTane(s32 cmd, s32 count, s32* args)
 {
 	XObj* obj;
 	Ana* ana = GetAna(args[0]);
@@ -204,7 +204,7 @@ extern "C" s32 CmdPlantTane(s32 cmd, s32 argc, s32* args)
  * @note Address: stage04 .text 0x1068
  * @note Size: 0x98
  */
-extern "C" s32 CmdSetAnaJObj(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args)
 {
 	Ana* ana = GetAna(args[0]);
 	if (!ana->IsActive()) {
@@ -218,7 +218,7 @@ extern "C" s32 CmdSetAnaJObj(s32 cmd, s32 argc, s32* args)
  * @note Address: stage04 .text 0xFF4
  * @note Size: 0x74
  */
-extern "C" s32 CmdSetAnaRotY(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args)
 {
 	Ana* ana   = GetAna(args[0]);
 	ana->mRotY = 57.295776f * args[1];
@@ -229,7 +229,7 @@ extern "C" s32 CmdSetAnaRotY(s32 cmd, s32 argc, s32* args)
  * @note Address: stage04 .text 0xEDC
  * @note Size: 0x118
  */
-extern "C" s32 CmdDropHeldObj(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args)
 {
 	XObj* obj = gGame.GetPlayer()->mLift.mTarget;
 	if (obj != NULL) {
@@ -329,7 +329,7 @@ extern "C" s32 CmdDropHeldObj(s32 cmd, s32 argc, s32* args)
  * @note Address: stage04 .text 0xE48
  * @note Size: 0x88
  */
-extern "C" s32 CmdAttachAnaToRobo(s32 cmd, s32 argc, s32* args)
+extern "C" s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args)
 {
 	Ana* ana = GetAna(args[0]);
 	if (!ana->IsActive()) {
@@ -363,19 +363,19 @@ extern "C" void InitAnas(void)
 	for (i = 0; i < num; i++) {
 		XObj* obj = gGame.GetObject(i);
 		if (obj->mStatus.mFlags & 1) {
-			if (obj->mCoord._00->_00 == 0x2A9) {
+			if (obj->mCoord.mPlacement->mObjectId == 0x2A9) {
 				tutiAnaObj = obj;
 			}
-			if (obj->mCoord._00->_00 == 0x178) {
+			if (obj->mCoord.mPlacement->mObjectId == 0x178) {
 				tutiHutaObj = obj;
 			}
-			if (obj->mCoord._00->_00 == 0x2B7) {
+			if (obj->mCoord.mPlacement->mObjectId == 0x2B7) {
 				flowerObjs[0] = obj;
 			}
-			if (obj->mCoord._00->_00 == 0x2B8) {
+			if (obj->mCoord.mPlacement->mObjectId == 0x2B8) {
 				flowerObjs[1] = obj;
 			}
-			if (obj->mCoord._00->_00 == 0x2B9) {
+			if (obj->mCoord.mPlacement->mObjectId == 0x2B9) {
 				flowerObjs[2] = obj;
 			}
 		}

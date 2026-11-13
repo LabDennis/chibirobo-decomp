@@ -6,5 +6,5 @@
  */
 void XObjActorMama::UpdateObject(u32 frames)
 {
-	UpdateObject__9XObjActorFUl(this, frames);
+	XObjActor::UpdateObject(frames);
 }

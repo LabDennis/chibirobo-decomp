@@ -3,12 +3,12 @@
 #include "game/gmath.h"
 #include <stdlib.h>
 
-// XObjDust::vf100, a stick flick sends it hopping
+// XObjDust::OnPlayerContact, a stick flick sends it hopping
 /**
  * @note Address: 0x800DE608
  * @note Size: 0x1EC
  */
-extern "C" u32 vf100__8XObjDustFll(XObjDust* object, void* unused, u32 flags)
+extern "C" u32 OnPlayerContact__8XObjDustFll(XObjDust* object, void* unused, u32 flags)
 {
 	if ((flags & 3) == 1)
 		return flags;

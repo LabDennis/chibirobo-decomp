@@ -66,9 +66,9 @@ void CGame::Start()
 
 	gARAMCacheInfo.mBaseAddress = ARAlloc(GetFreeARAMSize());
 	ARGetSize();
-	_3338  = 1;
-	mStage = GetDefaultStageIndex();
-	_344C  = GetStageNum();
+	mLoadStep  = 1;
+	mStage     = GetDefaultStageIndex();
+	mRoomCount = GetStageNum();
 	LoadBootConfig();
 	mPrevStage = -1;
 	ResetProgressiveScanPrompt();

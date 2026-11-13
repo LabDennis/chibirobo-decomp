@@ -21,11 +21,11 @@ public:
 	virtual void Init(XObjChr* owner); // _08, 0x800BBD7C
 	virtual void Reset();              // _0C, 0x800BB708
 
-	s32 _0C;          // _0C
-	CVec _10;         // _10, push keeps the offset to its target here
-	XObj* mTarget;    // _20
-	s32 _24;          // _24
-	s32 mTargetFloor; // _28, the selected floor when the target was picked
+	s32 mMoveDirection; // _0C
+	CVec mTargetOffset; // _10, push keeps the offset to its target here
+	XObj* mTarget;      // _20
+	s32 mTargetState;   // _24
+	s32 mTargetFloor;   // _28, the selected floor when the target was picked
 
 	// todo: cleanup
 	void SetTarget(XObj* target)
@@ -46,11 +46,11 @@ STATIC_ASSERT(sizeof(XAction) == 0x2C);
 // picking things up and carrying them
 class XActLift : public XAction {
 public:
-	f32 _2C;        // _2C
-	CVec _30;       // _30
-	f32 mYawOffset; // _40, held object yaw relative to the player
-	u8 _44[4];      // _44
-	s16 _48;        // _48, -1 when there's none
+	f32 mTimer;            // _2C, frames left in a timed lift state: pickup hold (state 2), plug delay (state 12)
+	CVec mLiftStartOffset; // _30, held object's position relative to the carry joint when the lift starts; blended away while he lifts it
+	f32 mYawOffset;        // _40, held object yaw relative to the player
+	u8 _44[4];             // _44, no access in any edition
+	s16 mPendingItemId;    // _48, -1 when there's none
 	u8 _4A[2];
 	XObj* mPendingItem;            // _4C
 	XObj* mPlugTarget;             // _50
@@ -72,10 +72,10 @@ extern "C" void UpdateHeldObject(XActLift* act, s32 frames);
 
 class XActHang : public XAction {
 public:
-	BOOL _2C;             // _2C, set when the stick points away
+	BOOL mStickAway;      // _2C, set when the stick points away
 	Vec mHangStartOffset; // _30, player position relative to the target
-	Vec _3C;              // _3C
-	f32 _48;              // _48
+	Vec mFloorCenter;     // _3C
+	f32 mDistance;        // _48
 	u8 _4C[0x50 - 0x4C];  // _4C
 };
 STATIC_ASSERT(sizeof(XActHang) == 0x50);
@@ -95,10 +95,10 @@ STATIC_ASSERT(sizeof(XActJump) == 0x54);
 
 class XActLadder : public XAction {
 public:
-	BOOL _2C;   // _2C, set when b is pressed on it
-	Vec mPos;   // _30, where he hangs, in front of the ladder
-	f32 mDist;  // _3C, how far he still has to go to get there
-	f32 mAngle; // _40, from mPos to where he started
+	BOOL mBPressed; // _2C, set when b is pressed on it
+	Vec mPos;       // _30, where he hangs, in front of the ladder
+	f32 mDist;      // _3C, how far he still has to go to get there
+	f32 mAngle;     // _40, from mPos to where he started
 };
 STATIC_ASSERT(sizeof(XActLadder) == 0x44);
 
@@ -113,7 +113,7 @@ STATIC_ASSERT(sizeof(XActRope) == 0x40);
 class XActPush : public XAction {
 public:
 	u8 _2C[0x34 - 0x2C];       // _2C
-	CVec _34;                  // _34
+	CVec _34;                  // _34, no access in any edition
 	CVec _44;                  // _44
 	BOOL mPushPositionClamped; // _54
 };
@@ -166,7 +166,7 @@ struct XActPopperShot {
 	f32 mSpeed;                // _1C
 	f32 mDistance;             // _20
 	f32 mRange;                // _24
-	f32 _28;                   // _28
+	f32 _28;                   // _28, StartPopperShot writes its 'power' argument (3 for a charged shot, 1 otherwise), never read
 	f32 mStrength;             // _2C
 	s32 mKind;                 // _30, 1 for the small shot
 	XObj* mHomingTarget;       // _34
@@ -204,7 +204,8 @@ STATIC_ASSERT(sizeof(PopperShots) == 0x8728);
 
 class XActPopper : public XAction {
 public:
-	f32 _2C;                  // _2C
+	f32 mShotStrength; // _2C, strength of the shot fired this frame (action parameter 30, 31 when charged, /100), 0 when none; also drained
+	                   // from the battery while XObjChr _158A4 is set
 	PopperShots mShots;       // _30
 	XActPopperCharge mCharge; // _8758
 };

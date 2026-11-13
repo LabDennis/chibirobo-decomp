@@ -35,5 +35,4 @@ struct BootConfigEntry {
 	u64 value;
 };
 STATIC_ASSERT(sizeof(BootConfigEntry) == 0x10);
-extern "C" const BootConfigEntry gBootConfigEntries[];
 #endif
