@@ -15,6 +15,8 @@ import json
 import math
 import os
 import platform
+import shlex
+import subprocess
 import sys
 from pathlib import Path
 from typing import (
@@ -492,7 +494,9 @@ def generate_build_ninja(
     python_lib = Path(os.path.relpath(__file__))
     python_lib_dir = python_lib.parent
     n.comment("The arguments passed to configure.py, for rerunning it.")
-    n.variable("configure_args", sys.argv[1:])
+    # quoted for the shell and escaped for ninja, so an argument holding spaces (a path) survives the rerun
+    quote = (lambda arg: subprocess.list2cmdline([arg])) if is_windows() else shlex.quote
+    n.variable("configure_args", [quote(arg).replace("$", "$$").replace(" ", "$ ") for arg in sys.argv[1:]])
     n.variable("python", f'"{sys.executable}"')
     n.newline()
 
