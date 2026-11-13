@@ -3410,7 +3410,7 @@ void MenuStatus::State3(u32)
 			menu->mPhase    = 0;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; i++) {
-				menu->mTabs2[i]._00 = 0.0f;
+				menu->mTabs2[i].mPosX = 0.0f;
 				if (menu->_674) {
 					menu->mTabs2[i].mX = 198.0f + i * 108 - 8.0f;
 				} else {
@@ -3519,7 +3519,7 @@ void MenuStatus::State1(u32 frames)
 					menu->mTabs[i].mX = -102.0f;
 				}
 				for (int i = 0; i < 4; i++) {
-					menu->mTabs2[i]._00 = 758.0f;
+					menu->mTabs2[i].mPosX = 758.0f;
 					if (menu->_674) {
 						menu->mTabs2[i].mX = 198.0f + i * 108 - 8.0f;
 					} else {
@@ -4928,7 +4928,7 @@ void MenuStatus::State9(u32)
 			menu->_5F0 = 1086.0f;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; i++) {
-				menu->mTabs[i]._00 = 0.0f;
+				menu->mTabs[i].mPosX = 0.0f;
 				if (menu->_674) {
 					menu->mTabs[i].mX = 198.0f + i * 108 - 8.0f;
 				} else {
@@ -5039,7 +5039,7 @@ void MenuStatus::State8(u32)
 			menu->_600 = 959.0f;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; i++) {
-				menu->mTabs[i]._00 = 0.0f;
+				menu->mTabs[i].mPosX = 0.0f;
 				if (menu->_674) {
 					menu->mTabs[i].mX = 198.0f + i * 108 - 8.0f;
 				} else {
@@ -5081,7 +5081,7 @@ void MenuStatus::State5(u32)
 		menu->_610 = 1086.0f;
 		PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 		for (int i = 0; i < 4; i++) {
-			menu->mTabs[i]._00 = 0.0f;
+			menu->mTabs[i].mPosX = 0.0f;
 			if (menu->_674) {
 				menu->mTabs[i].mX = 198.0f + i * 108 - 8.0f;
 			} else {
@@ -7331,8 +7331,8 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 			bob = 4.0f * (f32)sin(0.017453292f * ((menu->mAnimationFrame * 20) % 360));
 		else
 			bob = 0.0f;
-		f32 x = 6.0f + (8.0f + ((menu->mTabs[i]._00 - 52.0f) + menu->mOffsetX));
-		f32 y = bob + ((180.0f + menu->mTabs[i]._04) + menu->mOffsetY);
+		f32 x = 6.0f + (8.0f + ((menu->mTabs[i].mPosX - 52.0f) + menu->mOffsetX));
+		f32 y = bob + ((180.0f + menu->mTabs[i].mPosY) + menu->mOffsetY);
 		switch (i) {
 		case 0:
 			offset = -12.0f;
@@ -8235,17 +8235,17 @@ void MenuStatus::Open()
 	_584           = 100;
 	_674           = TRUE;
 	for (int i = 0; i < 4; i++) {
-		mTabs[i]._00 = 758;
-		mTabs[i]._04 = 36;
+		mTabs[i].mPosX = 758;
+		mTabs[i].mPosY = 36;
 		if (_674)
 			mTabs[i].mX = (198.0f + i * 108) - 8.0f;
 		else
 			mTabs[i].mX = 252.0f + i * 108;
-		mTabs[i]._0C  = 36;
-		mTabs2[i]._00 = 758;
-		mTabs2[i]._04 = 36;
-		mTabs2[i].mX  = 758;
-		mTabs2[i]._0C = 36;
+		mTabs[i].mTargetY  = 36;
+		mTabs2[i].mPosX    = 758;
+		mTabs2[i].mPosY    = 36;
+		mTabs2[i].mX       = 758;
+		mTabs2[i].mTargetY = 36;
 	}
 	mX        = 758;
 	mY        = 36;
@@ -8560,10 +8560,10 @@ BOOL MenuStatus::Update(u32 frames)
 		PCEase(_548, _550);
 		PCEase(_54C, mSlide);
 		for (int i = 0; i < 4; i++) {
-			PCEase(mTabs[i]._00, mTabs[i].mX);
-			PCEase(mTabs[i]._04, mTabs[i]._0C);
-			PCEase(mTabs2[i]._00, mTabs2[i].mX);
-			PCEase(mTabs2[i]._04, mTabs2[i]._0C);
+			PCEase(mTabs[i].mPosX, mTabs[i].mX);
+			PCEase(mTabs[i].mPosY, mTabs[i].mTargetY);
+			PCEase(mTabs2[i].mPosX, mTabs2[i].mX);
+			PCEase(mTabs2[i].mPosY, mTabs2[i].mTargetY);
 		}
 		PCEase(mX, _5E0);
 		ApproachHudValue(&mY, &_5E4, 20.0f);
@@ -10410,13 +10410,13 @@ void MenuStatus::State2(u32)
 			menu->mPhase    = 0;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; ++i) {
-				menu->mTabs2[i]._00 = 0.0f;
-				menu->mTabs2[i].mX  = menu->_674 ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
+				menu->mTabs2[i].mPosX = 0.0f;
+				menu->mTabs2[i].mX    = menu->_674 ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
 			}
 			menu->_5E0 = 758.0f;
 			for (int i = 0; i < 4; ++i) {
-				menu->mTabs[i]._00 = 0.0f;
-				menu->mTabs[i].mX  = menu->_674 ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
+				menu->mTabs[i].mPosX = 0.0f;
+				menu->mTabs[i].mX    = menu->_674 ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
 			}
 			for (int i = 0; i < 4; ++i)
 				menu->mTabs2[i].mX = 758.0f;

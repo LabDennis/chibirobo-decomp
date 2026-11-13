@@ -278,10 +278,10 @@ STATIC_ASSERT(sizeof(MenuTitle) == 0x19C);
 
 // one of the status screen's tabs
 struct MenuStatusTab {
-	f32 _00; // _00
-	f32 _04; // _04
-	f32 mX;  // _08
-	f32 _0C; // _0C
+	f32 mPosX;    // _00
+	f32 mPosY;    // _04
+	f32 mX;       // _08
+	f32 mTargetY; // _0C
 };
 STATIC_ASSERT(sizeof(MenuStatusTab) == 0x10);
 
