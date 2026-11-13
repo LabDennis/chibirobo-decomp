@@ -1411,10 +1411,7 @@ def append_treemap_step(config: ProjectConfig) -> None:
         )
 
 
-def append_iso_step(config: ProjectConfig, wit: Path, disc: Path, patch: Optional[Path]) -> None:
-    # The mod's main.dol and files, put into a copy of the original disc by tools/wii_iso.py.
-    out = config.out_path()
-    image = (out / f"{config.output_name}{'-fanpatch' if patch else ''}.iso").as_posix()
+def wii_dtk(config: ProjectConfig) -> Path:
     exe = ".exe" if is_windows() else ""
     # the same dtk generate_build uses: a given binary, one built from a given checkout, or the downloaded one
     if config.dtk_path is not None and config.dtk_path.is_file():
@@ -1424,12 +1421,36 @@ def append_iso_step(config: ProjectConfig, wit: Path, disc: Path, patch: Optiona
     else:
         dtk = config.build_dir / "tools" / f"dtk{exe}"
 
-    def esc(path: str) -> str:  # a path on a build line
-        return path.replace("$", "$$").replace(" ", "$ ").replace(":", "$:")
+    return dtk
 
-    def arg(path: Path) -> str:  # a path in a command, quoted for the shell (Windows runs it without one)
-        quoted = f'"{path.as_posix()}"' if is_windows() else shlex.quote(path.as_posix())
-        return quoted.replace("$", "$$")
+
+def esc(path: str) -> str:  # a path on a build line
+    return path.replace("$", "$$").replace(" ", "$ ").replace(":", "$:")
+
+def arg(path: Path) -> str:  # a path in a command, quoted for the shell (Windows runs it without one)
+    quoted = f'"{path.as_posix()}"' if is_windows() else shlex.quote(path.as_posix())
+    return quoted.replace("$", "$$")
+
+def append_banner_step(config, disc, translations, locale):
+    out = config.out_path() / "files/opening.bnr"
+    dtk = wii_dtk(config)
+    source = disc.parent.parent / "files/opening.bnr" if disc.name == "main.dol" else disc
+    with open("build.ninja", "a", encoding="utf-8") as f:
+        f.write(
+            "\nrule wii_banner\n"
+            f"  command = $python -m tools.wii_locale {arg(disc)} {arg(dtk)} {arg(translations)} {locale} $out\n"
+            "  description = BANNER $out\n"
+            f"build {esc(out.as_posix())}: wii_banner {esc(source.as_posix())} | {esc(dtk.as_posix())}"
+            f" {esc(translations.as_posix())} tools/wii_locale.py\n"
+            f"default {esc(out.as_posix())}\n"
+        )
+
+
+def append_iso_step(config: ProjectConfig, wit: Path, disc: Path, patch: Optional[Path]) -> None:
+    # The mod's main.dol and files, put into a copy of the original disc by tools/wii_iso.py.
+    out = config.out_path()
+    image = (out / f"{config.output_name}{'-fanpatch' if patch else ''}.iso").as_posix()
+    dtk = wii_dtk(config)
 
     with open("build.ninja", "a", encoding="utf-8") as f:
         f.write(
@@ -1444,7 +1465,8 @@ def append_iso_step(config: ProjectConfig, wit: Path, disc: Path, patch: Optiona
             "  description = ISO $out\n"
             "  pool = console\n"
             f"build {esc(image)}: wii_iso {esc((out / 'main.dol').as_posix())} | {esc(dtk.as_posix())} {esc(disc.as_posix())}"
-            " tools/wii_iso.py\n"
+            " tools/wii_iso.py"
+            + (" " + esc((out / "files/opening.bnr").as_posix()) if args.wii_locale else "") + "\n"
             f"default {esc(image)}\n"
         )
 
@@ -1454,6 +1476,8 @@ if args.mode == "configure":
     generate_build(config)
     if not wii_mod:
         append_treemap_step(config)
+    if args.wii_locale:
+        append_banner_step(config, wii_disc, translations, args.wii_locale)
     if args.iso:
         append_iso_step(config, wit, wii_disc, args.fanpatch)
 elif args.mode == "progress":

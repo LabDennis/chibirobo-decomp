@@ -1,6 +1,9 @@
 """Generate Wii interface strings. The NAND banner uses two 32-unit UTF-16 fields."""
 
+import hashlib
 import json
+import subprocess
+import tempfile
 import os
 from pathlib import Path
 
@@ -19,7 +22,25 @@ def disc_image(folder: Path) -> Path:
 
 
 def write_header(translations: Path, locale: str, output: Path) -> None:
-    strings = json.loads(translations.read_text(encoding="utf-8"))[locale]
+    locales = json.loads(translations.read_text(encoding="utf-8"))
+    selected = SYSTEM_LOCALES if locale == "global" else (locale,)
+    lines = []
+    for number, name in enumerate(selected):
+        lines.extend(interface_row(name, locales[name], number))
+    rows = [f"sInterfaceRow{i}" for i in range(len(selected))]
+    if locale != "global":
+        rows *= len(SYSTEM_LOCALES)
+    lines.append("static const char* const* const sWiiInterfaceRows[] = { " + ", ".join(rows) + " };")
+    text = "\n".join(lines) + "\n"
+    output.parent.mkdir(parents=True, exist_ok=True)
+    if not output.exists() or output.read_text(encoding="ascii") != text:
+        output.write_text(text, encoding="ascii")
+
+
+SYSTEM_LOCALES = ("en-US", "de-DE", "fr-FR", "es-ES", "it-IT")
+
+
+def interface_row(locale, strings, number):
     if len(strings) != 6 or any(not isinstance(s, str) or not s or "\0" in s for s in strings):
         raise ValueError(f"{locale}: expected the six Wii title, banner and controller messages")
     lines = []
@@ -30,18 +51,48 @@ def write_header(translations: Path, locale: str, output: Path) -> None:
             if len(data) > 62:
                 raise ValueError(f"{locale}: NAND banner line {index} exceeds 31 UTF-16 units")
             units = [f"0x{int.from_bytes(data[i:i+2], 'big'):04x}" for i in range(0, len(data), 2)]
-            lines.append(f"static const u16 sBannerLine{index}[] = {{ {', '.join([*units, '0'])} }};")
-            entries.append(f"reinterpret_cast<const char*>(sBannerLine{index})")
+            lines.append(f"static const u16 sBannerLine{number}_{index}[] = {{ {', '.join([*units, '0'])} }};")
+            entries.append(f"reinterpret_cast<const char*>(sBannerLine{number}_{index})")
         else:
             # The retail Japanese renderer reads Shift-JIS. Keep starter prompts in its ASCII range.
             if not string.isascii() or any(ord(c) < 32 or ord(c) > 126 for c in string):
                 raise ValueError(f"{locale}: Wii message {index} requires printable ASCII")
             entries.append(json.dumps(string))
-    lines += ["static const char* const sLocalizedWiiInterface[] = {", *(f"    {s}," for s in entries), "};"]
-    text = "\n".join(lines) + "\n"
-    output.parent.mkdir(parents=True, exist_ok=True)
-    if not output.exists() or output.read_text(encoding="ascii") != text:
-        output.write_text(text, encoding="ascii")
+    lines += [f"static const char* const sInterfaceRow{number}[] = {{", *(f"    {s}," for s in entries), "};"]
+    return lines
+
+
+def opening_banner(data, titles):
+    if len(data) < 0x600 or data[0x40:0x48] != b"IMET\0\0\x06\0":
+        raise ValueError("opening.bnr has an invalid IMET header")
+    banner = bytearray(data)
+    for number, title in titles.items():
+        encoded = title.encode("utf-16-be")
+        if len(encoded) > 82 or "\0" in title:
+            raise ValueError("opening.bnr title exceeds its field or contains NUL")
+        start = 0x5c + 84 * number
+        banner[start:start + 84] = encoded.ljust(84, b"\0")
+    banner[0x5f0:0x600] = bytes(16)
+    banner[0x5f0:0x600] = hashlib.md5(banner[:0x600]).digest()
+    return banner
+
+
+def write_opening_banner(disc, dtk, translations, locale, out):
+    strings = json.loads(translations.read_text(encoding="utf-8"))
+    titles = {i: strings[name if locale == "global" else locale][0]
+              for i, name in enumerate(SYSTEM_LOCALES, 1)}
+    for i in range(6, 10):
+        titles[i] = titles[1]
+    if locale != "global":
+        titles[0] = titles[1]
+    with tempfile.TemporaryDirectory(dir=out.parent) as tmp:
+        original = disc.parent.parent / "files/opening.bnr"
+        if disc.name != "main.dol":
+            original = Path(tmp) / "retail.bnr"
+            subprocess.run([str(dtk), "vfs", "cp", "-q", f"{disc}:files/opening.bnr", str(original)], check=True)
+        generated = Path(tmp) / "opening.bnr"
+        generated.write_bytes(opening_banner(original.read_bytes(), titles))
+        generated.replace(out)
 
 
 LANGUAGES = ("en", "de", "fr", "es", "it")
@@ -114,3 +165,16 @@ def write_mod(output: Path, base: Path, features: str) -> None:
                         "options": [{"option-id": "mod", "choice": 1}]}]},
     }
     (output / "game.json").write_text(json.dumps(descriptor, indent=2) + "\n", encoding="utf-8")
+
+
+if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("disc", type=Path)
+    parser.add_argument("dtk", type=Path)
+    parser.add_argument("translations", type=Path)
+    parser.add_argument("locale")
+    parser.add_argument("output", type=Path)
+    args = parser.parse_args()
+    write_opening_banner(args.disc, args.dtk, args.translations, args.locale, args.output)

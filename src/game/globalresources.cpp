@@ -106,8 +106,8 @@ extern "C" const char* GetLocalizedInterfaceText(s32 index)
 		return "";
 	u8 language = gGame.mLanguage;
 	if (language) {
-		if ((u32)index < ARRAY_SIZE(sLocalizedWiiInterface))
-			return sLocalizedWiiInterface[index];
+		if ((u32)index < ARRAY_SIZE(sInterfaceRow0))
+			return sWiiInterfaceRows[language - 1][index];
 		if (sInterfaceMap[index] >= 0)
 			return gInterfaceTextByLanguage[language][sInterfaceMap[index]];
 		const char* text = WiiOnlyText(language, index);
