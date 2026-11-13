@@ -4,7 +4,10 @@
 #include "types.h"
 
 enum NANDResult {
+	NAND_RESULT_UNKNOWN        = -64,
 	NAND_RESULT_AUTHENTICATION = -15,
+	NAND_RESULT_MAXFILES       = -11,
+	NAND_RESULT_MAXBLOCKS      = -9,
 	NAND_RESULT_ECC_CRIT       = -5,
 	NAND_RESULT_BUSY           = -3,
 	NAND_RESULT_ALLOC_FAILED   = -2,

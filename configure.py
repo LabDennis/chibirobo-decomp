@@ -1175,9 +1175,15 @@ if wii:
             "progress_category": "game",
             "objects": [
                 Object(Matching, "game/attachmentcounts.cpp"),
+                Object(Equivalent, "game/ringmenupointer.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                Object(Equivalent, "game/roboeyeslens.cpp"),
                 Object(Equivalent, "game/stage_data.cpp"),
+                Object(Equivalent, "game/wii/atcmenuselection.cpp"),
+                Object(Equivalent, "game/wii/cpad.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                Object(Equivalent, "game/wii/saveslots.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/stage_table.cpp"),
+                Object(Equivalent, "rel/module.c"),
             ],
         },
         {

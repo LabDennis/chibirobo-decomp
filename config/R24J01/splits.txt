@@ -1,3 +1,21 @@
+Sections:
+	.init       type:code align:4
+	extab       type:rodata align:32
+	extabindex  type:rodata align:32
+	.text       type:code align:32
+	.ctors      type:rodata align:32
+	.dtors      type:rodata align:32
+	.rodata     type:rodata align:32
+	.data       type:data align:32
+	.bss        type:bss align:128
+	.sdata      type:data align:32
+	.sbss       type:bss align:32
+	.sdata2     type:rodata align:32
+	.sbss2      type:bss align:32
+
+game/roboeyeslens.cpp:
+	.text start:0x80040E08 end:0x80040E4C
+
 game/stage_data.cpp:
 	.text start:0x80092308 end:0x800927C0
 
@@ -6,8 +24,25 @@ game/wii/stage_table.cpp:
 	.data start:0x802FEEF0 end:0x802FF2C8
 	.sdata2 start:0x805A4030 end:0x805A4160
 
+game/wii/saveslots.cpp:
+	extab start:0x8000A650 end:0x8000A6A0
+	extabindex start:0x800133AC end:0x80013424
+	.text start:0x800A9C48 end:0x800AA2F8
+
 game/attachmentcounts.cpp:
 	.text start:0x800E83EC end:0x800E84BC
+
+game/ringmenupointer.cpp:
+	extab start:0x8000C4EC end:0x8000C4F4
+	extabindex start:0x80014534 end:0x80014540
+	.text start:0x800E9D30 end:0x800E9FC4
+
+game/wii/atcmenuselection.cpp:
+	.text start:0x800ED3B8 end:0x800ED45C
+
+rel/module.c:
+	.text start:0x8016AD78 end:0x8016AF80
+	.rodata start:0x802DDCA0 end:0x802DDD10
 
 MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c:
 	.text start:0x8022A180 end:0x8022A450
@@ -30,6 +65,17 @@ Runtime.PPCEABI.H/__init_cpp_exceptions.cpp:
 	.dtors start:0x802C4680 end:0x802C4684 rename:.dtors$10
 	.dtors start:0x802C4684 end:0x802C4688 rename:.dtors$15
 	.sdata start:0x805A18C0 end:0x805A18C4
+
+game/wii/cpad.cpp:
+	extab start:0x8001082C end:0x800108CC
+	extabindex start:0x800170A8 end:0x80017198
+	.text start:0x802B193C end:0x802B3B78
+	.ctors start:0x802C4654 end:0x802C4658
+	.rodata start:0x802E53E0 end:0x802E5460
+	.data start:0x803350F8 end:0x80335104
+	.bss start:0x8059AFB8 end:0x8059FE28
+	.sbss start:0x805A2888 end:0x805A2890
+	.sdata2 start:0x805A79C8 end:0x805A7A28
 
 game/wii/nandfile.cpp:
 	extab start:0x800110E8 end:0x80011118

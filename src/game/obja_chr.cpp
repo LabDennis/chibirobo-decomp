@@ -4095,7 +4095,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			if (slot < 0)
 				slot += 7;
 			item.mTargetSlotOffset = menu->mFade * gEquipmentRowX[slot];
-			slotY[i]               = menu->_284 + gEquipmentRowY[slot];
+			slotY[i]               = menu->mRowOffset + gEquipmentRowY[slot];
 			if (menu->mFade < 1.f) {
 				item.mSlotOffset = item.mTargetSlotOffset;
 			} else {
