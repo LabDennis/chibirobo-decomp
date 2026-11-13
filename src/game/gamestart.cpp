@@ -119,7 +119,7 @@ void CGame::Start()
 	mDrawLists[1].ClearObjects();
 	mDrawLists[2].ClearObjects();
 
-	InitializeEventScriptContext(&mEvt, (u8*)&mCMsgs[0], NULL);
+	InitializeEventScriptContext(&mEvt, &mCMsgs[0], NULL);
 	for (int i = 0; i < 2; ++i)
 		InitMessageWindow(&mCMsgs[i]);
 	ResetNewGameState();

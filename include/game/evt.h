@@ -202,6 +202,7 @@ enum EvtSyscall {
 };
 
 class XObj;
+class CMsg;
 
 // where CEvt is in its script, name from RTTI
 class CEvtData {
@@ -254,7 +255,7 @@ public:
 	CStack mCalls;                  // _24, return addresses
 	CStack mFrames;                 // _34
 	CStack mValues;                 // _44
-	u8* _54;                        // _54, WARP raises a flag deep inside it
+	CMsg* mMessage;                 // _54, the global or object message window
 	s32 _58;                        // _58
 	s16 mUseValue;                  // _5C
 	s16 mHitValue;                  // _5E
@@ -374,7 +375,7 @@ CVec GetEventJointWorldPosition(CJObj* obj, s32 depth, s32* path);
 CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* path);
 // start a script on evt, or park it in the queue while another one runs
 void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* owner, s16 useValue, s16 hitValue);
-void InitializeEventScriptContext(CEvt* evt, u8* context, XObj* owner);
+void InitializeEventScriptContext(CEvt* evt, CMsg* message, XObj* owner);
 void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal);
 // runs the script on for step frames
 void CEvt_Update(CEvt* evt, s32 step);

@@ -7,6 +7,8 @@
 #include "game/cprimitive.h"
 #include "game/title.h"
 
+class XObj;
+
 // control codes inside message text, what msg() and select() in the stage scripts carry.
 // values and argument sizes checked against the parser's jump table in CMsg_Update and
 // the measure and copy passes, names follow unplug, see NOTICE. ints are little
@@ -173,7 +175,7 @@ public:
 	f32 mTexOffset;               // _43C74
 	s32 mCharCount;               // _43C78
 	s32 mLine;                    // _43C7C
-	s32 mPlacement;               // _43C80, an XObj to follow
+	XObj* mAnchor;                // _43C80, object the window follows
 	Vec mPosition;                // _43C84
 	f32 mCursorX;                 // _43C90, current line start x
 	f32 mWindowX;                 // _43C94
@@ -207,7 +209,7 @@ public:
 
 	CMsgFont()
 	{
-		mPlacement      = 0;
+		mAnchor         = NULL;
 		mSelectedLine   = -1;
 		mOtherSelection = -1;
 	}
@@ -231,12 +233,12 @@ public:
 	u8 _89C[0x8A0 - 0x89C]; // _89C
 #endif
 	CMsgFont mFont;               // _8A0
-	s32 _445C0;                   // _445C0
+	s32 mCanOpen;                 // _445C0
 	f32 _445C4;                   // _445C4
 	f32 _445C8;                   // _445C8
 	f32 _445CC;                   // _445CC, wait timer in frames
 	s32 _445D0;                   // _445D0
-	s32 _445D4;                   // _445D4
+	s32 mSelectionResult;         // _445D4
 	s32 _445D8;                   // _445D8
 	s8 _445DC[10];                // _445DC, three displayed groups; END also reads the tenth byte
 	u8 _445E6[0x445E8 - 0x445E6]; // _445E6
@@ -244,11 +246,11 @@ public:
 	s32 _445EC;                   // _445EC
 	s32 _445F0;                   // _445F0
 	u8 _445F4[0x445F8 - 0x445F4]; // _445F4
-	s32 _445F8;                   // _445F8
+	s32 mStayState;               // _445F8
 	s32 mGlyphSoundGroup;         // _445FC, -1 disables glyph sounds
-	f32 _44600;                   // _44600, 320.0f at reset, maybe a screen x
-	f32 _44604;                   // _44604, 344.0f at reset, maybe a screen y
-	s32 _44608;                   // _44608
+	f32 mWindowX;                 // _44600
+	f32 mWindowY;                 // _44604
+	XObj* mAnchor;                // _44608
 	Vec mFontPosition;            // _4460C
 
 	// _44618 vtable
@@ -274,6 +276,8 @@ struct MsgFormatArgs {
 };
 
 extern "C" {
+void CMsg_ResetPos(CMsg* msg);
+
 // formats the message script into msg and opens the window
 u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args);
 }
