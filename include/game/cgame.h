@@ -137,7 +137,9 @@ struct GameMovie {
 
 struct GameMemcard {
 	Memcard mCard; // _00
+	BOOL mLoaded;  // _16C00, restore the player after loading a save
 };
+STATIC_ASSERT(sizeof(GameMemcard) == 0x16E00);
 
 struct GameScrnColor {
 	CScrnColor mColor; // _00
@@ -267,15 +269,7 @@ public:
 	CCameraActions mCameraActions;             // _E5FAC, _E52C4 in japan, the actions the camera picks from
 	CLight* mLightList;                        // _E7E20, _E7138 in japan, LIGHT walks it
 	XSound mSound;                             // _E7E24, _E713C in japan
-#if defined(VERSION_JP)
-	u8 _E8208[0xE8400 - 0xE8208 - 0x118]; // _E8208
-#else
-	u8 _E8208[0xE8400 - 0xE8208]; // _E8208
-#endif
-	GameMemcard mMemcard;         // _E8400, _E7600 in japan
-	u8 _FEE24[0xFF000 - 0xFEE24]; // _FEE24
-	BOOL mMemcardLoaded;          // _FF000, the stage came from the card
-	u8 _FF004[0xFF200 - 0xFF004]; // _FF004
+	GameMemcard mMemcard;                      // _E8400, _E7600 in Japan
 #if defined(VERSION_PAL)
 	f32 mPlayTime; // _FF200, frames played, it stops just short of 100 hours
 	f32 _FF204;
@@ -326,9 +320,9 @@ public:
 	}
 };
 #if defined(VERSION_JP)
-STATIC_ASSERT(sizeof(CGame) == 0xFE670);
+STATIC_ASSERT(sizeof(CGame) == 0xFE800);
 #else
-STATIC_ASSERT(sizeof(CGame) == 0xFF470);
+STATIC_ASSERT(sizeof(CGame) == 0xFF600);
 #endif
 
 extern "C" CGame gGame;

@@ -223,6 +223,7 @@ game/gamecbaselight.cpp:
 game/cgameinit.cpp:
 	.text       start:0x800195FC end:0x80019740
 	.ctors      start:0x80200064 end:0x80200068
+	.bss        start:0x80262F40 end:0x80368A10
 
 game/cthread.cpp:
 	.text       start:0x80019740 end:0x80019888

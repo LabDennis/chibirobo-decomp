@@ -16,7 +16,7 @@ inline void CGame::ResetNewGameState()
 	for (int i = 0; i < 2048; ++i)
 		gEventVars.mVars[i] = 0;
 
-	mMemcardLoaded       = FALSE;
+	mMemcard.mLoaded     = FALSE;
 	mTimeState.mMode     = 0;
 	mTimeState.mTime     = 0;
 	mTimeState.mDuration = 1;

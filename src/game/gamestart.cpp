@@ -49,7 +49,7 @@ void CGame::Start()
 	mLightList = mLights;
 	InitGameSound(&mSound);
 	InitMemoryCardManager(&mMemcard.mCard);
-	mMemcardLoaded = FALSE;
+	mMemcard.mLoaded = FALSE;
 
 	MICInit();
 	M2SInit();
