@@ -33,7 +33,7 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 			*dst = 0;
 			done = TRUE;
 			break;
-		case 12: {
+		case 12: { // %fmt% inline format; 'z' makes it wide, "'" groups digits
 
 			char* out = buffers.format;
 			bool wide = false;
@@ -97,10 +97,10 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 					buffers.format[count] = buffers.text[(len - 1) - i];
 					if ((i + 1) % 3 == 0 && i + 1 < len) {
 #if defined(VERSION_PAL)
-						if ((lang == 1 || lang == 3 || lang == 4) && len < 5)
+						if ((lang == 1 || lang == 3 || lang == 4) && len < 5) // four digits stay ungrouped there
 							continue;
 #endif
-						buffers.format[++count] = separator;
+						buffers.format[++count] = separator; // every third digit
 					}
 					buffers.format[count + 1] = 0;
 				}
@@ -168,7 +168,7 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 			if (gGame.mLanguage == 6 && IsSjisLead(*src)) {
 #endif
 				CopyMessageBytes(dst, src, 2);
-			} else if (*src == '$') {
+			} else if (*src == '$') { // '$' is the quote escape
 				++src;
 #if defined(VERSION_JP)
 				*dst++ = '/';
