@@ -732,12 +732,9 @@ game/xobjspider.cpp:
 	.ctors      start:0x80200090 end:0x80200094
 
 game/xobjspidersmall.cpp:
-	.text       start:0x800F723C end:0x80102808
-	.bss        start:0x803855D0 end:0x80386B00
-
-game/xobjspidersmallinit.cpp:
-	.text       start:0x80102808 end:0x80102984
+	.text       start:0x800F723C end:0x80102984
 	.ctors      start:0x80200094 end:0x80200098
+	.bss        start:0x803855D0 end:0x80386B00
 
 game/xobjspidersmallstatus.cpp:
 	.text       start:0x80102984 end:0x80102ACC

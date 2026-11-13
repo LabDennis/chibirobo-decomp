@@ -548,7 +548,6 @@ config.libs = [
             Object(Matching, "game/cptcldtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjplugcordpointctor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardcamera.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjspidersmallinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjflagsdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjcoindtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjfreedtor.cpp", cflags=with_hsd_headers(cflags_game)),
