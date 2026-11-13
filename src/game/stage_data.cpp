@@ -24,7 +24,6 @@ extern s32 gGlobalTextIdRemap[];
 extern const char* gGlobalResourceFileName;
 extern UnkStageObj gStageObjectPlacements[];
 extern UnkObjData objTable[];
-extern UnkObjData objTableEx[];
 extern XObjSource gObjectSources[];
 // HSD_VIInfo, its header needs the hsd include path
 extern u8 HSD_VIData[];
@@ -604,8 +603,86 @@ extern "C" UnkStageObj* GetStageObjectPlacementByIndex(s32 index)
 	return &gStageObjectPlacements[index];
 }
 
-// Object IDs from 10000 reuse these global entries. A negative entry has no resource.
 extern "C" {
+XObjSource gTestShortplayTitleSource = { "test/shortplay_title" };
+XObjSource gChargeFx01Source = { "charge_fx01" };
+XObjSource gCbPropellerLv2Source = { "cb_propeller_lv2" };
+XObjSource gCbCannonLv2Source = { "cb_cannon_lv2" };
+XObjSource gCbRadarSource = { "cb_radar" };
+XObjSource gMaruBatuSource = { "maru_batu" };
+XObjSource gExclamationSource = { "exclamation" };
+XObjSource gKisekaePartsKeathSource = { "kisekae/parts_keath" };
+XObjSource gKisekaePartsKaeruSource = { "kisekae/parts_kaeru" };
+XObjSource gKisekaePartsTaoSource10021 = { "kisekae/parts_tao" };
+XObjSource gKisekaePartsKegaSource = { "kisekae/parts_kega" };
+XObjSource gKisekaePartsTaoSource10023 = { "kisekae/parts_tao" };
+XObjSource gKisekaePartsObakeSource = { "kisekae/parts_obake" };
+XObjSource gKisekaePartsPajamaSource = { "kisekae/parts_pajama" };
+XObjSource gKisekaePartsSuperSource = { "kisekae/parts_super" };
+XObjSource gKisekaePartsPajama01Source = { "kisekae/parts_pajama_01" };
+XObjSource gKisekaePartsPajama02Source = { "kisekae/parts_pajama_02" };
+XObjSource gTitleIconIconBbSource = { "title_icon/icon_bb" };
+XObjSource gTitleIconIconArmySource = { "title_icon/icon_army" };
+XObjSource gTitleIconIconFafaSource = { "title_icon/icon_fafa" };
+XObjSource gTitleIconIconFunkySource = { "title_icon/icon_funky" };
+XObjSource gTitleIconIconHockSource = { "title_icon/icon_hock" };
+XObjSource gTitleIconIconKeathSource = { "title_icon/icon_keath" };
+XObjSource gTitleIconIconPeetsSource = { "title_icon/icon_peets" };
+XObjSource gTitleIconIconSunmidaSource = { "title_icon/icon_sunmida" };
+XObjSource gTitleIconIconTrexSource = { "title_icon/icon_trex" };
+XObjSource gTitleIconIconZobinSource = { "title_icon/icon_zobin" };
+XObjSource gTitleIconIconArmy2Source = { "title_icon/icon_army2" };
+#if !defined(VERSION_JP)
+XObjSource gUsMaruBatuSource = { "us_maru_batu" };
+XObjSource gUsMaruModelSource = { "us_maru_model" };
+XObjSource gUsBatuModelSource = { "us_batu_model" };
+#endif
+XObjSource gTestWardrobeSource10029 = { "test/wardrobe" };
+XObjSource gTestWardrobeSource10030 = { "test/wardrobe" };
+
+// Extended object IDs start at 10000 and index this table in GetObjData.
+UnkObjData objTableEx[] = {
+	{ &gTitleIconIconBbSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTitleIconIconArmySource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTitleIconIconFafaSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTitleIconIconFunkySource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTitleIconIconHockSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTitleIconIconKeathSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTitleIconIconPeetsSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTitleIconIconSunmidaSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTitleIconIconTrexSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTitleIconIconZobinSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTitleIconIconArmy2Source, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTestShortplayTitleSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gObjectSources[15], 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gChargeFx01Source, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gCbPropellerLv2Source, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gCbCannonLv2Source, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gCbRadarSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gMaruBatuSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gExclamationSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gKisekaePartsKeathSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gKisekaePartsKaeruSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gKisekaePartsTaoSource10021, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gKisekaePartsKegaSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gKisekaePartsTaoSource10023, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gKisekaePartsObakeSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gKisekaePartsPajamaSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gKisekaePartsSuperSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gKisekaePartsPajama01Source, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gKisekaePartsPajama02Source, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gTestWardrobeSource10029, 0, 0x401, 0, 0, 0, 22, 0 },
+	{ &gTestWardrobeSource10030, 0, 0x401, 0, 0, 0, 22, 0 },
+	{ &gObjectSources[312], 0, 0x1, 0, 0, 0, 20, 1 },
+	{ &gObjectSources[313], 0, 0x1, 0, 0, 0, 20, 50 },
+#if !defined(VERSION_JP)
+	{ &gUsMaruBatuSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gUsMaruModelSource, 0, 0x1, 0, 0, 0, 22, 0 },
+	{ &gUsBatuModelSource, 0, 0x1, 0, 0, 0, 22, 0 },
+#endif
+};
+
+// Object IDs from 10000 reuse these global entries. A negative entry has no resource.
 s32 gGlobalTextIdRemap[] = {
 	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 19, 19, 312, 313,
 #if !defined(VERSION_JP)

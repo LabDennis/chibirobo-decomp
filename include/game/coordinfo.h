@@ -33,17 +33,14 @@ public:
 // an entry of objTable or objTableEx, 0x18 bytes. the kind record an object points at
 struct XObjSource;
 struct UnkObjData {
-	union {
-		u32 _00;
-		XObjSource* mSource;
-	}; // _00
-	u32 mModel;        // _04
-	u32 mFlags;        // _08
-	u32 _0C;           // _0C, shadow size
-	s16 mLookPriority; // _10
-	s16 mLookRange;    // _12
-	s16 _14;           // _14, category, also which pool in XOBJS
-	s16 _16;           // _16, item index, some callers test it as flags
+	XObjSource* mSource; // _00
+	u32 mModel;          // _04
+	u32 mFlags;          // _08
+	u32 _0C;             // _0C, shadow size
+	s16 mLookPriority;   // _10
+	s16 mLookRange;      // _12
+	s16 _14;             // _14, category, also which pool in XOBJS
+	s16 _16;             // _16, item index, some callers test it as flags
 
 	s16 GetCategory() const { return this != NULL ? _14 : 0; }
 	s16 GetItem() const { return this != NULL ? _16 : 0; }
