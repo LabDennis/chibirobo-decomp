@@ -10,7 +10,6 @@ u32 SCCheckStatus();
 u8 SCGetLanguage();
 void DVDInit();
 void DVDSetAutoFatalMessaging(BOOL enable);
-BOOL fn_801905CC(const char* path);
 void fn_80199AE4();
 void fn_800355F4(CBase*);
 void fn_8003568C(CBase*);
@@ -31,7 +30,7 @@ void CBase::Start()
 	OSInitFastCast();
 	DVDInit();
 	DVDSetAutoFatalMessaging(TRUE);
-	fn_801905CC("/cb/");
+	DVDChangeDir("/cb/");
 	fn_80199AE4();
 	fn_800355F4(this);
 	fn_8003568C(this);
