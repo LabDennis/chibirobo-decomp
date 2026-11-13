@@ -245,9 +245,9 @@ void XObjAttachment::ResetObjectState()
  * @note Address: 0x800D7CC0
  * @note Size: 0x8
  */
-void SetParent__14XObjAttachmentFP9_HSD_JObji(XObjAttachment* object, HSD_JObj* parent)
+void XObjAttachment::SetParent(HSD_JObj* parent, BOOL fromPlacement)
 {
-	object->mParent = parent;
+	mParent = parent;
 }
 
 /**

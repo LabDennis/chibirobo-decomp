@@ -1519,7 +1519,7 @@ void XObjSpiderSmall::State6(u32 frames)
  * @note Address: 0x800FCF00
  * @note Size: 0x4
  */
-extern "C" void State0__15XObjSpiderSmallFUl(XObjSpiderSmall* spider)
+void XObjSpiderSmall::State0(u32 frames)
 {
 }
 
