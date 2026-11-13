@@ -83,6 +83,11 @@ STATIC_ASSERT(sizeof(InfoScrn) == 0x1DC);
 
 extern "C" {
 f32 TimerFramesToHundredths(f32 frames);
+void InfoScrn_ShowTimer(InfoScrn* scrn);
+void InfoScrn_HideTimer(InfoScrn* scrn);
+void InfoScrn_SetTimerHundredths(InfoScrn* scrn, s32 hundredths);
+s32 InfoScrn_GetTimerHundredths(InfoScrn* scrn);
+void InfoScrn_ApplyTimerHudCommand(InfoScrn* scrn, u8 show, s32 mode);
 void InfoScrn_OnPlayerLevelChanged(InfoScrn* scrn, s32 level);
 void InfoScrn_OnPlayerExperienceChanged(InfoScrn* scrn, s32 delta);
 void InfoScrn_ApplyScanlineHudCommand(InfoScrn* scrn, u8 show, s32 mode);
