@@ -36,6 +36,8 @@ s32 __AXGetNumVoices(void)
 	return __AXNumVoices;
 }
 
+// NONMATCHING: retail copies the address and ADPCM blocks and the u16 pairs as 32-bit words and clears itdBuffer
+// with inline stores; this version copies halfwords and calls memset
 void __AXServiceVPB(AXVPB* vpb)
 {
 	AXPB* dst;
@@ -418,6 +420,8 @@ void AXSetVoiceState(AXVPB* vpb, u16 state)
 	OSRestoreInterrupts(enabled);
 }
 
+// NONMATCHING: retail copies the address as words and fills the ADPCM block with inline stores for each format;
+// this version copies halfwords and calls memset, so it needs a larger stack frame and one more saved register
 void AXSetVoiceAddr(AXVPB* vpb, AXPBADDR* addr)
 {
 	BOOL enabled = OSDisableInterrupts();
