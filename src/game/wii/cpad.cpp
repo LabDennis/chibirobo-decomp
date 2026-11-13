@@ -209,6 +209,16 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 	}
 	mProbeResult = probe;
 	mDeviceType  = device;
+#if defined(WII_GAMECUBE_PAD)
+	// mod: with no Wii Remote the game keeps asking for it, its Nunchuk and its pointer (it reads these three
+	// values). While only a GameCube controller is in, they say all is there; mDevices keeps the truth, so no Wii
+	// Remote input is read. A Wii Remote that answers is used as usual, pointer, motion and speaker included.
+	if (probe == -1 && status->err == PAD_ERR_NONE) {
+		mProbeResult             = 0;
+		mDeviceType              = 1;
+		mSamples[0].pointerValid = 2;
+	}
+#endif
 
 	u64 buttons   = 0;
 	bool nunchukX = false, nunchukY = false;
@@ -805,6 +815,11 @@ PADStatus gWiiGameCubePads[4];
 
 void CPadEx::Init(u8 inputMask)
 {
+#if defined(WII_GAMECUBE_PAD)
+	// mod: the GameCube controller works next to the Wii Remote; CPadAct already turns its buttons into the same
+	// actions (GameCubeActions), retail only left it switched off
+	inputMask |= InputGameCube;
+#endif
 	mInputMask = inputMask;
 	if (mInputMask & InputGameCube) {
 		PADInit();

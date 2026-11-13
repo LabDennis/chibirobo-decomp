@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from xml.etree import ElementTree
 
-from tools.wii_locale import disc_image, write_header, write_localization
+from tools.wii_locale import disc_image, write_header, write_localization, write_mod
 
 
 class WiiLocaleTests(unittest.TestCase):
@@ -17,14 +17,15 @@ class WiiLocaleTests(unittest.TestCase):
                 with self.subTest(locale=locale):
                     output = Path(tmp) / locale
                     base = Path(tmp) / "original.rvz"
-                    write_localization(self.source, locale, output, base)
+                    write_localization(self.source, locale, output)
+                    write_mod(output, base, f"{locale} localization")
                     descriptor = json.loads((output / "game.json").read_text())
                     self.assertEqual((output / descriptor["base-file"]).resolve(), base.resolve())
                     patch = descriptor["riivolution"]["patches"][0]
                     xml = ElementTree.parse(output / patch["xml"]).getroot()
                     option = xml.find("options/section/option")
                     self.assertEqual(option.get("id"), patch["options"][0]["option-id"])
-                    self.assertEqual(option.find("choice").get("name"), locale)
+                    self.assertEqual(option.find("choice").get("name"), f"{locale} localization")
                     self.assertEqual(xml.find("patch/file").get("disc"), "main.dol")
                     header = (output / "include/wii_locale.h").read_text()
                     for line in (1, 2):
@@ -32,6 +33,16 @@ class WiiLocaleTests(unittest.TestCase):
                         units = [f"0x{text[i:i+4]}" for i in range(0, len(text), 4)]
                         self.assertIn(", ".join(units + ["0"]), header)
                     self.assertIn(strings[3], header)
+
+    def test_gamecube_pad_mod_without_localization(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            output = Path(tmp) / "wii-gcpad"
+            base = Path(tmp) / "original.rvz"
+            write_mod(output, base, "GameCube controller")
+            descriptor = json.loads((output / "game.json").read_text())
+            self.assertEqual(descriptor["display-name"], "Chibi-Robo! (Wii, GameCube controller)")
+            self.assertEqual((output / descriptor["base-file"]).resolve(), base.resolve())
+            self.assertFalse((output / "include/wii_locale.h").exists())
 
     def test_disc_only_or_fully_extracted(self):
         with tempfile.TemporaryDirectory() as tmp:

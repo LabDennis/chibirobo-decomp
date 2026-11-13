@@ -44,22 +44,25 @@ def write_header(translations: Path, locale: str, output: Path) -> None:
         output.write_text(text, encoding="ascii")
 
 
-def write_localization(translations: Path, locale: str, output: Path, base: Path) -> None:
+def write_localization(translations: Path, locale: str, output: Path) -> None:
     write_header(translations, locale, output / "include/wii_locale.h")
+
+
+def write_mod(output: Path, base: Path, features: str) -> None:
     # Dolphin mounts patched files over the original partition and retains its disc identity.
-    (output / "files").mkdir(exist_ok=True)
+    (output / "files").mkdir(parents=True, exist_ok=True)
     xml = """<wiidisc version="1" root="/">
   <id game="R24J" developer="01" disc="0" version="0" />
-  <options><section name="Chibi-Robo!"><option name="Localization" id="locale" default="1">
-    <choice name="LOCALE"><patch id="localized" /></choice>
+  <options><section name="Chibi-Robo!"><option name="Mod" id="mod" default="1">
+    <choice name="FEATURES"><patch id="mod" /></choice>
   </option></section></options>
-  <patch id="localized">
+  <patch id="mod">
     <file disc="main.dol" external="/main.dol" />
     <folder disc="/" external="/files" recursive="true" create="true" />
   </patch>
 </wiidisc>
 """
-    (output / "riivolution.xml").write_text(xml.replace("LOCALE", locale), encoding="utf-8")
+    (output / "riivolution.xml").write_text(xml.replace("FEATURES", features), encoding="utf-8")
     base = base.resolve()
     try:
         relative_base = Path(os.path.relpath(base, output))
@@ -67,9 +70,9 @@ def write_localization(translations: Path, locale: str, output: Path, base: Path
         relative_base = base
     descriptor = {
         "type": "dolphin-game-mod-descriptor", "version": 1,
-        "display-name": f"Chibi-Robo! (Wii, {locale} localization)",
+        "display-name": f"Chibi-Robo! (Wii, {features})",
         "base-file": relative_base.as_posix(),
         "riivolution": {"patches": [{"xml": "riivolution.xml", "root": ".",
-                        "options": [{"option-id": "locale", "choice": 1}]}]},
+                        "options": [{"option-id": "mod", "choice": 1}]}]},
     }
     (output / "game.json").write_text(json.dumps(descriptor, indent=2) + "\n", encoding="utf-8")
