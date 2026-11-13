@@ -1,24 +1,19 @@
 #include "Version.h"
 #if defined(VERSION_R24J01)
-#include "game/stagetable.h"
+#include "Dolphin/GX/GXFrameBuffer.h"
+#include "game/wii/cgame.h"
+extern "C" {
+char* FormatToStaticBuffer(const char* format, ...);
+s32 _prolog(s32 function, s32 count, s32* args);
+}
 #else
 #include "game/cgame.h"
-#include "game/stage.h"
 #include "game/ut.h"
 #include "Dolphin/GX/GXTypes.h"
 #endif
+#include "game/stage.h"
 #include "game/globals.h"
 #include <string.h>
-
-#if !defined(VERSION_R24J01)
-extern "C" {
-extern UnkStageObj gStageObjectPlacements[];
-extern UnkObjData objTable[];
-extern XObjSource gObjectSources[];
-// HSD_VIInfo, its header needs the hsd include path
-extern u8 HSD_VIData[];
-BOOL LoadGameSoundBank(XSound* sound, s32 stage);
-}
 
 // Stage offsets are measured from the start of the file.
 struct StageFileHeader {
@@ -37,6 +32,16 @@ struct StageFileHeader {
 	u8 cameraAreasEx[4];
 };
 STATIC_ASSERT(sizeof(StageFileHeader) == 0x34);
+
+#if !defined(VERSION_R24J01)
+extern "C" {
+extern UnkStageObj gStageObjectPlacements[];
+extern UnkObjData objTable[];
+extern XObjSource gObjectSources[];
+// HSD_VIInfo, its header needs the hsd include path
+extern u8 HSD_VIData[];
+BOOL LoadGameSoundBank(XSound* sound, s32 stage);
+}
 
 Stage gStageResources;
 Globals gGlobalScriptResources;
@@ -2622,6 +2627,7 @@ StageDesc stageTable[] = {
 };
 
 #undef STAGE
+#endif
 
 /**
  * @note Address: 0x8006EE24
@@ -2637,6 +2643,9 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		strcpy(stage->mDataPath,
 		       FormatToStaticBuffer("bin%s/%s.bin", gResourceDirectorySuffixByLanguage[gGame.mLanguage], stageTable[index].fileName));
 #endif
+#if defined(VERSION_R24J01)
+		stage->mModulePath[0] = 0;
+#else
 #if defined(VERSION_PAL)
 		// europe's table has the module's name apart from the data file's
 		StageDesc* desc = &stageTable[index];
@@ -2646,6 +2655,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 #endif
 		if (!(gGame.mStatus.mFlags & 0x100000000ULL))
 			stage->mModulePath[0] = 0;
+#endif
 		++stage->mState;
 	}
 	// fall through, every step that's done moves on in the same frame
@@ -2699,11 +2709,29 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 	case 3:
 		++stage->mState;
 	case 4:
+#if defined(VERSION_R24J01)
+		if (stageTable[index].soundBank) {
+			LoadWiiSoundBankByName(&gGame.mSound, stageTable[index].soundBank);
+			++stage->mState;
+		} else {
+			stage->mState += 2;
+		}
+		break;
+	case 5:
+		// The Wii sound system clears this flag when the bank finishes loading.
+		if (!gGame.mSound.mLoadPending)
+			++stage->mState;
+#else
 		if (LoadGameSoundBank(&gGame.mSound, index))
 			++stage->mState;
+#endif
 		break;
 	}
+#if defined(VERSION_R24J01)
+	return stage->mState > 5;
+#else
 	return stage->mState > 4;
+#endif
 }
 
 /**
@@ -2712,10 +2740,22 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
  */
 extern "C" s32 CallStageModule(s32 function, s32 count, s32* args)
 {
+#if defined(VERSION_R24J01)
+	return _prolog(function, count, args);
+#else
 	if (IsModuleLoaded(&gStageResources.mModule))
 		return gStageResources.CallModule(function, count, args);
 	return -1;
+#endif
 }
+
+#if defined(VERSION_R24J01)
+// Three Wii callers query this switch. The retail implementation always returns zero.
+extern "C" s32 fn_800929EC()
+{
+	return 0;
+}
+#endif
 
 /**
  * @note Address: 0x8006F390
@@ -2859,8 +2899,12 @@ extern "C" BOOL IsStageDataLoaded()
  */
 extern "C" void ApplyStageClearColor()
 {
-	GXColor color                  = *(GXColor*)gStageResources.mEnvironment.mData;
+	GXColor color = *(GXColor*)gStageResources.mEnvironment.mData;
+#if defined(VERSION_R24J01)
+	GXSetCopyClear(color, 0xFFFFFF);
+#else
 	*(GXColor*)(HSD_VIData + 0x48) = color; // current.vi.bg_color
+#endif
 	gStageResources.mModule.Print();
 }
 
@@ -2870,8 +2914,12 @@ extern "C" void ApplyStageClearColor()
  */
 extern "C" void UnloadStageDataAndModule()
 {
+#if defined(VERSION_R24J01)
+	_prolog(6, 0, NULL);
+#else
 	if (IsModuleLoaded(&gStageResources.mModule))
 		gStageResources.CallModule(6, 0, NULL);
+#endif
 	gStageResources.mModule.Unload();
 	CFile* file = &gStageResources.mDataFile;
 	file->Close();
@@ -2886,8 +2934,6 @@ extern "C" BOOL LoadStageByIndex(s32 index)
 {
 	return AdvanceStageLoad(&gStageResources, index);
 }
-
-#endif
 
 static inline s32 StageCount()
 {
@@ -2988,7 +3034,7 @@ extern "C" s32 GetStageNum()
 }
 
 #if defined(VERSION_R24J01)
-extern "C" const char* GetStageDisplayName(s32 index)
+extern "C" const char* GetStageNameOrFileName(s32 index)
 {
 	const char* name = GetStageName(index);
 	if (name == NULL)

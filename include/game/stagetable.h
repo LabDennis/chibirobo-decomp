@@ -20,7 +20,7 @@ extern "C" StageDesc stageTable[];
 #if defined(VERSION_R24J01)
 STATIC_ASSERT(sizeof(StageDesc) == 0x18);
 extern "C" s32 GetStageFirstSoundId(s32 index);
-extern "C" const char* GetStageDisplayName(s32 index);
+extern "C" const char* GetStageNameOrFileName(s32 index);
 #endif
 
 #endif

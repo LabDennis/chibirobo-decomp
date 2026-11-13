@@ -1,8 +1,5 @@
 #include "game/ringmenu.h"
-#include "game/cscrn.h"
-
-class CGame;
-extern "C" CGame gGame;
+#include "game/wii/cgame.h"
 
 struct AttachmentChange {
 	s32 equipped;
@@ -28,8 +25,6 @@ void AtcMenu::ConfirmSelection()
 		attachment.step      = 0;
 	}
 	if (type == 2) {
-		// CGame::mRoboeyes in the Wii layout.
-		CScrnRoboeyes& eyes = *reinterpret_cast<CScrnRoboeyes*>(reinterpret_cast<u8*>(&gGame) + 0x5078);
-		eyes.ResetLensState(430.0f, 400.0f);
+		gGame.mRoboeyes.ResetLensState(430.0f, 400.0f);
 	}
 }

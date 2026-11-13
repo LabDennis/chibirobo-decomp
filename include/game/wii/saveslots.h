@@ -26,11 +26,15 @@ struct WiiSaveManager {
 	WiiSaveSlot mSlot;
 	char mHomeDir[64];
 	char mSlotPath[64];
-	u8 mBanner[0xf0a0];
+	NANDBanner mBanner;
 	s32 mJobStarted;
 };
 
 extern "C" {
+void InitializeWiiSaveManager(WiiSaveManager* manager);
+void UpdateWiiSaveJob(WiiSaveManager* manager);
+int CheckWiiSaveBanner(WiiSaveManager* manager, bool removeInvalid);
+s32 WriteWiiSaveBanner(WiiSaveManager* manager);
 void StartWiiSaveSlotScan(WiiSaveManager* manager, int count);
 s32 WriteWiiSaveSlot(WiiSaveManager* manager, int slot, bool newGame);
 void StartWiiSaveSlotWrite(WiiSaveManager* manager, int slot, int newGame);
