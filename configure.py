@@ -1189,9 +1189,16 @@ if wii:
                        extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/atcmenuselection.cpp"),
                 Object(NonMatching, "game/wii/homemenu.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                # no auto-inlining of the small file functions: under -inline auto the
+                # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
+                # retail keeps them as calls
                 Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(NonMatching, "game/wii/gamemain.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
-                # no auto-inlining of the small pad functions into their callers
+                # no auto-inlining of the small pad functions: under -inline auto the
+                # compiler inlines Collect*/Init into their callers where retail keeps
+                # them as calls; IsGameCubePadActive is inline-declared and still inlined
+                # into Update (no bl, retail 0x802B2528), with its standalone copy at its
+                # own address (retail 0x802B1D84)
                 Object(Equivalent, "game/wii/cpad.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
