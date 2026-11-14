@@ -1191,7 +1191,9 @@ if wii:
                 Object(Equivalent, "game/wii/cpad.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
-                Object(NonMatching, "game/wii/savemanager.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                # Same GC-compiler profile as cpad/cfile: no auto-inlining of
+                # StartWiiSaveJob's callers (declared inline in the source).
+                Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(Equivalent, "game/wii/soundbank.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "rel/module.c"),
             ],

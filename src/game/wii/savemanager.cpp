@@ -114,7 +114,7 @@ extern "C" s32 WriteWiiSaveBanner(WiiSaveManager* manager)
 
 // ScanWiiSaveSlots (0x800A9834) comes here
 
-static void StartWiiSaveJob(WiiSaveManager* manager, OSThreadStartFunction entry)
+static inline void StartWiiSaveJob(WiiSaveManager* manager, OSThreadStartFunction entry)
 {
 	const u32 stackSize       = 0x2000;
 	gWiiSaveThread.mStack     = gWiiSaveThreadStack;
