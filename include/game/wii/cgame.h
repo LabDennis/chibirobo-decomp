@@ -214,12 +214,23 @@ struct WiiPlayerSuits {
 	                 // the suit objects beyond here are not reconstructed
 };
 
+struct WiiPlayerState;
+// the vtable slots of the unreconstructed Wii player class that the save manager reaches:
+// +0x70 takes the rotation, +0x90 a position Vec, +0x244 returns it
+struct WiiPlayerVtable {
+	void* _00[0x70 / 4];
+	void (*SetRotation)(WiiPlayerState* chr, f32 rotY);
+	void* _74[(0x90 - 0x74) / 4];
+	void (*SetPosition)(WiiPlayerState* chr, const Vec* pos);
+	void* _94[(0x244 - 0x94) / 4];
+	const Vec* (*GetPosition)(WiiPlayerState* chr);
+};
+
 // the Wii player object: a different, larger class than the GameCube XObjChr. These are the members
-// the save manager reads and writes, at offsets verified against retail. The position lives behind a
-// virtual getter (vtable +0x244 returns the Vec*), the restore calls vtable +0x90 with the saved
-// position and +0x70 with the saved rotation.
+// the save manager reads and writes, at offsets verified against retail.
 struct WiiPlayerState {
-	u8 _0000[0x64];
+	WiiPlayerVtable* mVtable;
+	u8 _0004[0x64 - 0x04];
 	f32 mRotY; // _0064, mMoveRotate.y
 	u8 _0068[0x9920 - 0x68];
 	s32 mAttachment;        // _9920, the AtcMenu pick

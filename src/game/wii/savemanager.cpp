@@ -193,6 +193,9 @@ void ScanWiiSaveSlots(WiiSaveManager* manager, int count)
 				if (result >= 0) {
 					bool ok = VerifyWiiSaveSlotChecksum(sScanSlot);
 					if (ok) {
+						// retail copies the whole 0x2D20-byte slot into the 0x80-byte
+						// mData field - an overflow in the original, spilling into the
+						// entry tail and the following scan entries
 						memcpy(manager->mScanEntries[i].mData, &sScanSlot, sizeof(sScanSlot));
 						manager->mScanEntries[i].mStatus = 1;
 					} else {
@@ -440,12 +443,12 @@ extern "C" void CaptureWiiSaveSlot(WiiSaveManager* manager, bool newGame)
 		manager->mSlot.mHeader.mStages[0] = manager->mSlot.mHeader.mStages[1] = -1;
 		return;
 	}
-	s32* stages = manager->mSlot.mHeader.mStages;
-	s32* stage  = &gGame.mStage;
+	// gGame.mStage and gGame.mPrevStage are adjacent, read as a pair
+	s32* stages = &gGame.mStage;
 	for (int i = 0; i < 2; ++i) {
-		stages[i] = stage[i];
-		if (stages[i] > GetStageNum())
-			stages[i] = stages[i] - GetStageNum() + 99;
+		manager->mSlot.mHeader.mStages[i] = stages[i];
+		if (manager->mSlot.mHeader.mStages[i] > GetStageNum())
+			manager->mSlot.mHeader.mStages[i] -= GetStageNum() - 99;
 	}
 	manager->mSlot.mHeader.mStatusFlags  = (u32)gGame.GetStatusFlags(1);
 	manager->mSlot.mHeader._18           = 0;
@@ -470,9 +473,8 @@ extern "C" void CaptureWiiSaveSlot(WiiSaveManager* manager, bool newGame)
 	memcpy(manager->mSlot.mData.mDustFlags, gGame.mDust->mFlags, sizeof(manager->mSlot.mData.mDustFlags));
 	memcpy(manager->mSlot.mData.mPlayerRecord, gGame.mPlayer->mAttachments, sizeof(manager->mSlot.mData.mPlayerRecord));
 	manager->mSlot.mData.mSuit = gGame.mPlayer->mSuits.mCurrent;
-	// the Wii player class is not reconstructed; vtable +0x244 returns its position Vec
-	const Vec* pos
-	    = reinterpret_cast<const Vec* (*)(WiiPlayerState*)>(reinterpret_cast<void***>(gGame.mPlayer)[0][0x244 / 4])(gGame.mPlayer);
+	// the Wii player class is not reconstructed; the +0x244 getter returns its position Vec
+	const Vec* pos = gGame.mPlayer->mVtable->GetPosition(gGame.mPlayer);
 	CopyVec(manager->mSlot.mData.mPos, *pos);
 	manager->mSlot.mData.mRotY        = gGame.mPlayer->mRotY;
 	manager->mSlot.mData.mSpecialSuit = gGame.mPlayer->mSuits.mSpecial;
@@ -496,16 +498,6 @@ extern "C" s32 GetWiiSaveSlotStage(WiiSaveManager* manager, int index)
 	if (stage >= 100)
 		stage += GetStageNum() - 99;
 	return stage;
-}
-
-static inline WiiPlayerState* Player()
-{
-	return gGame.mPlayer;
-}
-
-static inline WiiPlayerParams* Stats()
-{
-	return &Player()->mParams;
 }
 
 static inline void SetExperience(WiiPlayerParams* stats, s32 value)
@@ -557,9 +549,9 @@ static inline void RequestSuit(WiiPlayerState* chr, s32 value)
 // Set* helpers as compare/branch diamonds (cmpwi; ble arm; b join; li 0), while
 // GC/3.0a5.2 folds them to the neg/andc/srawi/and. arithmetic idiom here. Every
 // honest spelling of the clamp (ternary, statement if, if/else store diamonds,
-// return-based setters) folds the same way; the tail and every Stats() reload
-// match instruction-for-instruction, so the divergence is the select-lowering
-// decision, not the source shape.
+// return-based setters) folds the same way; the tail and every gGame.mPlayer
+// reload match instruction-for-instruction, so the divergence is the
+// select-lowering decision, not the source shape.
 
 // applies the loaded slot to the live game state; the position and the camera go through
 // RestoreSavedPlayerAndCamera afterwards
@@ -574,29 +566,29 @@ extern "C" void ApplyWiiSaveSlot(WiiSaveManager* manager)
 	gGame.mTimeState.mTime     = manager->mSlot.mHeader.mTime;
 	gGame.mTimeState.mRunning  = 0;
 	gGame.mTimeState.mDuration = manager->mSlot.mHeader.mDuration;
-	SetExperience(Stats(), manager->mSlot.mHeader.mExp);
-	SetLevel(Stats(), manager->mSlot.mHeader.mLevel);
-	SetRank(Stats(), manager->mSlot.mHeader.mRank);
-	SetMaxBattery(Stats(), manager->mSlot.mHeader.mMaxBattery);
-	Stats()->SetBattery(manager->mSlot.mHeader.mBattery);
-	Stats()->SetMoney(manager->mSlot.mHeader.mMoney);
-	Stats()->SetScrap(manager->mSlot.mHeader.mScrap);
+	SetExperience(&gGame.mPlayer->mParams, manager->mSlot.mHeader.mExp);
+	SetLevel(&gGame.mPlayer->mParams, manager->mSlot.mHeader.mLevel);
+	SetRank(&gGame.mPlayer->mParams, manager->mSlot.mHeader.mRank);
+	SetMaxBattery(&gGame.mPlayer->mParams, manager->mSlot.mHeader.mMaxBattery);
+	gGame.mPlayer->mParams.SetBattery(manager->mSlot.mHeader.mBattery);
+	gGame.mPlayer->mParams.SetMoney(manager->mSlot.mHeader.mMoney);
+	gGame.mPlayer->mParams.SetScrap(manager->mSlot.mHeader.mScrap);
 	if (manager->mSlot.mHeader.mActive)
-		Stats()->_1C[0] = 1;
+		gGame.mPlayer->mParams._1C[0] = 1;
 	else
-		Stats()->_1C[0] = 0;
+		gGame.mPlayer->mParams._1C[0] = 0;
 	gGame.mPlayTime = manager->mSlot.mHeader.mPlayTime;
-	memcpy(Player()->mParams.mInventory.mItems, manager->mSlot.mData.mPlayer, sizeof(manager->mSlot.mData.mPlayer));
+	memcpy(gGame.mPlayer->mParams.mInventory.mItems, manager->mSlot.mData.mPlayer, sizeof(manager->mSlot.mData.mPlayer));
 	memcpy(gEventFlags, manager->mSlot.mData.mEvtFlags, sizeof(gEventFlags));
 	memcpy(gEventVars, manager->mSlot.mData.mEvtVars, sizeof(gEventVars));
 	memcpy(gGame.mCoins->mFlags, manager->mSlot.mData.mCoinFlags, sizeof(manager->mSlot.mData.mCoinFlags));
 	memcpy(gGame.mItems->mFlags, manager->mSlot.mData.mItemFlags, sizeof(manager->mSlot.mData.mItemFlags));
 	memcpy(gGame.mDust->mFlags, manager->mSlot.mData.mDustFlags, sizeof(manager->mSlot.mData.mDustFlags));
-	memcpy(&Player()->mAttachments, manager->mSlot.mData.mPlayerRecord, sizeof(manager->mSlot.mData.mPlayerRecord));
-	RequestSuit(Player(), manager->mSlot.mData.mSuit);
-	Player()->mSuits.mSpecial  = manager->mSlot.mData.mSpecialSuit;
-	Player()->mSquirterContent = manager->mSlot.mData.mSquirterLiquid;
-	Player()->mItemTint        = manager->mSlot.mData.mItemTint;
+	memcpy(&gGame.mPlayer->mAttachments, manager->mSlot.mData.mPlayerRecord, sizeof(manager->mSlot.mData.mPlayerRecord));
+	RequestSuit(gGame.mPlayer, manager->mSlot.mData.mSuit);
+	gGame.mPlayer->mSuits.mSpecial  = manager->mSlot.mData.mSpecialSuit;
+	gGame.mPlayer->mSquirterContent = manager->mSlot.mData.mSquirterLiquid;
+	gGame.mPlayer->mItemTint        = manager->mSlot.mData.mItemTint;
 }
 
 /**
@@ -605,12 +597,10 @@ extern "C" void ApplyWiiSaveSlot(WiiSaveManager* manager)
  */
 extern "C" void RestoreSavedPlayerAndCamera(WiiSaveManager* manager)
 {
-	// the Wii player class is not reconstructed; vtable +0x90 takes the position Vec,
-	// +0x70 the rotation
-	reinterpret_cast<void (*)(WiiPlayerState*, const Vec*)>(reinterpret_cast<void***>(gGame.mPlayer)[0][0x90 / 4])(
-	    gGame.mPlayer, &manager->mSlot.mData.mPos);
-	reinterpret_cast<void (*)(WiiPlayerState*, f32)>(reinterpret_cast<void***>(gGame.mPlayer)[0][0x70 / 4])(gGame.mPlayer,
-	                                                                                                        manager->mSlot.mData.mRotY);
+	// the Wii player class is not reconstructed; the +0x90 slot takes the position
+	// Vec, +0x70 the rotation
+	gGame.mPlayer->mVtable->SetPosition(gGame.mPlayer, &manager->mSlot.mData.mPos);
+	gGame.mPlayer->mVtable->SetRotation(gGame.mPlayer, manager->mSlot.mData.mRotY);
 	ResetPlayerHeadOffset(gGame.mPlayer);
 	ResetPlayerPlug(gGame.mPlayer);
 	CMotionControlCamera* motion = &gGame.mMotionControlCamera;

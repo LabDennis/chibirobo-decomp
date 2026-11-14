@@ -318,11 +318,11 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 				buttons |= 1ULL << (NunchukStick + 1);
 			}
 			mStick.x = mSamples[0].extension.nunchuk.stick.x;
-			if (0.0f != mSamples[0].extension.nunchuk.stick.x) {
+			if (mSamples[0].extension.nunchuk.stick.x != 0.0f) {
 				claimed |= 1;
 			}
 			mStick.y = mSamples[0].extension.nunchuk.stick.y;
-			if (0.0f != mSamples[0].extension.nunchuk.stick.y) {
+			if (mSamples[0].extension.nunchuk.stick.y != 0.0f) {
 				claimed |= 2;
 			}
 		} else {
