@@ -2947,8 +2947,8 @@ extern "C" void ApplyStageClearColor()
 {
 	// the environment record's first word is the VI background colour
 #if defined(VERSION_R24J01)
-	// NONMATCHING: retail materializes the by-value GXColor argument with byte copies
-	// (u8*-aligned source); this compiler emits a word copy for the same expression.
+	// the by-value GXColor argument materializes as byte copies from the unaligned
+	// record; GC/3.0a5.2 emits the same lbz/stb sequence retail has at 0x80092858
 	GXSetCopyClear(*(GXColor*)gStageResources.mEnvironment.mData, 0xFFFFFF);
 #else
 	GXColor color                  = *(GXColor*)gStageResources.mEnvironment.mData;
