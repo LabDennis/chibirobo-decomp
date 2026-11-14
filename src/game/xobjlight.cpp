@@ -8,8 +8,8 @@
 void XObjLight::UpdateObject(u32 frames)
 {
 	if ((s32)GetEnvData()[4] == 2) {
-		for (s32 i = 0; i < mLightNum; ++i) {
-			if (GetLightDesc(i) && GetLightAnimNum(i) > 0) {
+		for (s32 j = 0, i = 0; i < mLightNum; ++j, ++i) {
+			if (GetLightDesc(j) && GetLightAnimNum(i) > 0) {
 				mLights[i].SetAnimRate((f32)frames);
 				mLights[i].Anim();
 			}
@@ -44,12 +44,12 @@ BOOL XObjLight::LoadFromPlacement(const CoordInfo& info)
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
 		if ((s32)GetEnvData()[4] == 2) {
 			HSD_LObj* previous = NULL;
-			for (s32 i = 0; i < 8; ++i) {
-				if (GetLightDesc(i)) {
-					mLights[i].Init(GetLightDesc(i)->mDesc, GetEnvData()[5] & (1 << (7 - i)));
+			for (s32 j = 0, i = 0; i < 8; ++j, ++i) {
+				if (GetLightDesc(j)) {
+					mLights[i].Init(GetLightDesc(j)->mDesc, GetEnvData()[5] & (1 << (7 - i)));
 					if (GetLightAnimNum(i) > 0) {
 						mLightAnims[i] = 0;
-						mLights[i].SetAnim(GetLightDesc(i)->mAnims[mLightAnims[i]], 0.0f);
+						mLights[i].SetAnim(GetLightDesc(j)->mAnims[mLightAnims[i]], 0.0f);
 					}
 					++mLightNum;
 					if (previous)

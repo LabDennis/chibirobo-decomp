@@ -60,13 +60,14 @@ extern "C" u32 OnPlayerContact__8XObjHBoxFll(XObjHBox* box, s32 unused, u32 flag
 		return flags;
 	if (box->mAnimId == 0)
 		return flags;
-	gGame.GetPlayer()->mFallDistance = 0.0f;
+	CGame* game                      = &gGame;
+	game->GetPlayer()->mFallDistance = 0.0f;
 	box->mStatus.mFlags |= 0x4000000000000000ULL;
 	box->mPart.mHit = 1.0f;
-	PlayGameSound(&gGame.mSound, 285, 255);
+	PlayGameSound(&game->mSound, 285, 255);
 	const void* script = box->GetEventScript();
-	if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, box, -1, -1);
+	if (!IsPlayerBlockingEvents(game->GetPlayer())) {
+		StartOrQueueEventScript(&game->mEvt, (u8*)script, box, -1, -1);
 	}
 	HSD_AudioSFXKeyOff(box->mPart.mSfx);
 	return 0;
@@ -89,6 +90,8 @@ void XObjHBox::OnHitFromPosition(const Vec& pos, f32 strength)
  * @note Address: 0x800DFD24
  * @note Size: 0x1F0
  */
+// NONMATCHING: instruction-identical bar register scheduling; the residual is the unit's
+// unmapped .sdata2 literals showing as @NNN referents
 void XObjHBox::DrawScreenOverlay()
 {
 	if (mRing > 0.0f) {
@@ -100,11 +103,13 @@ void XObjHBox::DrawScreenOverlay()
 		f32 outer = 400.0f * (1.0f - ring);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 7, 0);
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-		// retail adds an int zero to both radii
-		s32 pad   = 0;
 		u32 color = (u32)(255.0f * ring) | 0xFFFFFF00;
-		DrawGsCircle(&gGame.mGs, 16, color, 0xFFFFFF00, x, y, 0.0f, inner + pad, inner + pad, 0.0f, 0.0f, 0.0f);
-		DrawGsCircle(&gGame.mGs, 16, color, 0xFFFFFF00, x, y, 0.0f, outer + pad, outer + pad, 0.0f, 0.0f, 0.0f);
+		for (s32 i = 0; i < 1; i++) {
+			DrawGsCircle(&gGame.mGs, 16, color, 0xFFFFFF00, x, y, 0.0f, inner + i, inner + i, 0.0f, 0.0f, 0.0f);
+		}
+		for (s32 i = 0; i < 1; i++) {
+			DrawGsCircle(&gGame.mGs, 16, color, 0xFFFFFF00, x, y, 0.0f, outer + i, outer + i, 0.0f, 0.0f, 0.0f);
+		}
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 	}

@@ -55,11 +55,10 @@ extern "C" s32 GetMapTriangleFloorType(XObjMap* map, s32 trigon, s32 tri)
  */
 void XObjMap::UpdateObject(u32 frames)
 {
-	// NONMATCHING: induction pointer difference, see XObjLight::Update
 	UpdateObject__4XObjFUl(this, frames);
 	if (GetLightMode() == 1) {
-		for (int i = 0; i < mLightNum; i++) {
-			if (GetLightDesc(i) != NULL && GetLightAnimNum(i) > 0) {
+		for (s32 j = 0, i = 0; i < mLightNum; ++j, ++i) {
+			if (GetLightDesc(j) != NULL && GetLightAnimNum(i) > 0) {
 				mLights[i].SetAnimRate(frames);
 				mLights[i].Anim();
 			}

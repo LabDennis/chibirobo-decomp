@@ -50,9 +50,9 @@ BOOL XObjDust::OnItemUsed(const Vec* position, s32 kind)
 {
 	if ((GetObjFlags() & 2) && kind == 16) {
 		if (GetObjFlags() & 0x10) {
-			mAnimId2 = (s32)((u32)mAnimId2 + 1);
+			mAnimId2++;
 			SetAnim(mAnimId2, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-			if (mAnimId2 >= (s32)((u32)mAnimCount - 1)) {
+			if (mAnimId2 >= mAnimCount - 1) {
 				mStatus.mFlags |= 0x4000000000000000ULL;
 				mEventId = kind;
 			}
@@ -60,13 +60,12 @@ BOOL XObjDust::OnItemUsed(const Vec* position, s32 kind)
 			return FALSE;
 	} else if ((GetObjFlags() & 2) && kind == 56) {
 		if (GetObjFlags() & 0x20) {
-			f32 x = position->x, y = position->y, z = position->z;
 			mFrom.x = mMoveTranslate.x;
 			mFrom.y = mMoveTranslate.y;
 			mFrom.z = mMoveTranslate.z;
-			mTo.x   = x;
-			mTo.y   = y;
-			mTo.z   = z;
+			mTo.x   = position->x;
+			mTo.y   = position->y;
+			mTo.z   = position->z;
 			mStatus.mFlags |= 0x4000000000000000ULL;
 			mEventId = kind;
 			if (mStatus.mFlags & 0x00000C0000000000ULL)
@@ -74,7 +73,7 @@ BOOL XObjDust::OnItemUsed(const Vec* position, s32 kind)
 		} else
 			return FALSE;
 	} else if (mStatus.mFlags & 0x0000040000000000ULL) {
-		TriggerEvent(this, (s16)kind, -1);
+		TriggerEvent(this, kind, -1);
 	} else
 		return FALSE;
 	return TRUE;
