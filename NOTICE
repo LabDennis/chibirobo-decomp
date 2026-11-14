@@ -10,6 +10,26 @@ CC0 sources:
   wowjinxy/KAR @ cb94b1576: HSD sources and headers.
   DonovanMontoya/pokemon-xd-decomp @ 8b567c8bb: HSD implementations.
   iirg4x/marioparty6 @ 9be18e25e: THPSimple error handling and microphone SDK.
+  projectPiki/pik1wii @ 0450613e9e29a5ff63ef3bf677f62078cbe66f86:
+    Wii WENC speaker encoding, AX audio driver, voice management, DSP command
+    lists and compressor coefficients, AXFX reverb and WPAD extension support.
+  doldecomp/ogws @ e5a4d369011062fe243aa63f6c2e2853854c395d: Wii MEM
+    allocator implementation and declarations, adapted from src/revolution/MEM/
+    mem_allocator.c and include/revolution/MEM/mem_allocator.h, as well as the linked-list implementation and header from
+    src/revolution/MEM/mem_list.c and include/revolution/MEM/mem_list.h (CC0-1.0).
+    NAND usage checking in src/revolution/NAND/NANDCheck.c and its declarations
+    are adapted from src/revolution/NAND/NANDCheck.c and the public NAND, FS
+    and IPC headers at the same revision. The R24J01 quota query is reconstructed.
+    The Wii MEM heap tree uses src/revolution/MEM/mem_heapCommon.c and
+    include/revolution/MEM/mem_heapCommon.h from the same CC0 revision.
+    The Wii frame heap and its private helpers use src/revolution/MEM/mem_frameHeap.c,
+    include/revolution/MEM/{mem_frameHeap.h,mem_heapCommon.h}, and include/macros.h.
+    Wii expandable-heap code derives from src/revolution/MEM/mem_expHeap.c and
+    include/revolution/MEM/mem_expHeap.h. Block splitting and free-list coalescing
+    are reconstructed from R24J01.
+    Wii Menu state file handling is adapted from src/revolution/OS/OSStateFlags.c
+    and include/revolution/OS/OSStateFlags.h from that revision.
+    Wii OS memory arenas are adapted from src/revolution/OS/OSArena.c.
 
 Other imports:
   Sun fdlibm: copyright and permission notices remain in the math sources.
