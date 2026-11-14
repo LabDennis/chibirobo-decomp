@@ -148,15 +148,10 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			return;
 		}
 	}
-	// NONMATCHING: the probe/device dispatch, frame layout and register
-	// allocation still differ from retail even though the unit is built with
-	// the matching GC/3.0a5.2 profile; remaining diffs are scheduling and
-	// local-placement residue, not missing cases.
+	// NONMATCHING: instruction multiset is identical to retail; the remaining
+	// diffs are register allocation and stack/local placement residue
+	// (r0 vs r3 in the rumble loop, f0 vs f1 in two fcmpu instructions).
 	switch (probe) {
-	case -1:
-		mDevices = 0;
-		ResetRumble(FALSE);
-		break;
 	case 0:
 		switch (device) {
 		case 0:
@@ -179,6 +174,10 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			break;
 		}
 		break;
+	case -1:
+		mDevices = 0;
+		ResetRumble(FALSE);
+		break;
 	case -3:
 		ResetRumble(FALSE);
 		break;
@@ -191,6 +190,7 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 
 	u64 buttons = 0;
 	u32 claimed = 0;
+	StickPosition stick, substick;
 	if (IsRemoteActive()) {
 		u32 hold = mSamples[0].buttons.hold;
 		UpdateSwing();
@@ -239,8 +239,8 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			KPADGetUnifiedWpadStatus(mPort, sRawSamples, ARRAY_SIZE(sRawSamples));
 			NormalizeWiiStick(&mSamples[0].extension.nunchuk.stick, sRawSamples[0].extension.nunchuk.stickX,
 			                  sRawSamples[0].extension.nunchuk.stickY, sStickRanges[0].min, sStickRanges[0].max);
-			u32 directions
-			    = GetStickDirections(mStickDirections, mSamples[0].extension.nunchuk.stick.x, mSamples[0].extension.nunchuk.stick.y);
+			StickPosition stick = mSamples[0].extension.nunchuk.stick;
+			u32 directions      = GetStickDirections(mStickDirections, stick.x, stick.y);
 			if (directions & StickUp) {
 				buttons |= 1ULL << (NunchukStick + 3);
 			}
@@ -254,11 +254,11 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 				buttons |= 1ULL << (NunchukStick + 1);
 			}
 			mStick.x = mSamples[0].extension.nunchuk.stick.x;
-			if (mSamples[0].extension.nunchuk.stick.x != 0.0f) {
+			if (0.0f != mSamples[0].extension.nunchuk.stick.x) {
 				claimed |= 1;
 			}
 			mStick.y = mSamples[0].extension.nunchuk.stick.y;
-			if (mSamples[0].extension.nunchuk.stick.y != 0.0f) {
+			if (0.0f != mSamples[0].extension.nunchuk.stick.y) {
 				claimed |= 2;
 			}
 		} else {
@@ -352,7 +352,6 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 		if (hold & PAD_BUTTON_START) {
 			buttons |= 1ULL << GameCubeStart;
 		}
-		StickPosition stick, substick;
 		NormalizeWiiStick(&stick, status->stickX, status->stickY, sStickRanges[0].min, sStickRanges[0].max);
 		NormalizeWiiStick(&substick, status->substickX, status->substickY, sStickRanges[1].min, sStickRanges[1].max);
 		u32 directions = GetStickDirections(mStickDirections, stick.x, stick.y);
@@ -432,27 +431,25 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 	mDirTrigger = mDirRepeat = (mDirButton ^ mLastDirButton) & ~mLastDirButton;
 	const int repeatGroups   = (sGameCubePadCheck != NULL) ? 16 : 8;
 	for (int i = 0; i < repeatGroups; ++i) {
-		WiiButtonRepeat& settings = mRepeatSettings[i];
-		if (settings.startingInterval <= 0) {
+		if (mRepeatSettings[i].startingInterval <= 0) {
 			continue;
 		}
-		u64 mask = sRepeatGroups[i];
-		if ((mButton | mDirButton) & mask) {
+		if ((mButton | mDirButton) & sRepeatGroups[i]) {
 			if ((mRepeatTimer[i] -= frames) <= 0) {
-				if (mButton & mask) {
-					mRepeat |= mButton & mask;
+				if (mButton & sRepeatGroups[i]) {
+					mRepeat |= mButton & sRepeatGroups[i];
 				}
-				if (mDirButton & mask) {
-					mDirRepeat |= mDirButton & mask;
+				if (mDirButton & sRepeatGroups[i]) {
+					mDirRepeat |= mDirButton & sRepeatGroups[i];
 				}
-				mRepeatTimer[i] = settings.interval;
-				if (settings.interval > settings.minimumInterval) {
-					--settings.interval;
+				mRepeatTimer[i] = mRepeatSettings[i].interval;
+				if (mRepeatSettings[i].interval > mRepeatSettings[i].minimumInterval) {
+					--mRepeatSettings[i].interval;
 				}
 			}
 		} else {
-			mRepeatTimer[i]   = settings.delay;
-			settings.interval = settings.startingInterval;
+			mRepeatTimer[i]             = mRepeatSettings[i].delay;
+			mRepeatSettings[i].interval = mRepeatSettings[i].startingInterval;
 		}
 	}
 	mLastButton    = mButton;
@@ -460,49 +457,36 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 
 	if (mSamples[0].error == 0) {
 		for (int i = 0; i < 3; ++i) {
-			WiiRumble& rumble = mRumble[i];
-			if (rumble.flags & RumbleEnabled) {
-				if (i == 2 && (rumble.flags & RumblePaused)) {
-					rumble.flags &= ~RumblePaused;
+			if (mRumble[i].flags & RumbleEnabled) {
+				if (i == 2 && (mRumble[i].flags & RumblePaused)) {
+					mRumble[i].flags &= ~RumblePaused;
 				}
-				if ((rumble.flags & RumbleRunning) && (rumble.flags & RumblePaused) && !(rumble.previousFlags & RumblePaused)) {
+				if ((mRumble[i].flags & RumbleRunning) && (mRumble[i].flags & RumblePaused) && !(mRumble[i].previousFlags & RumblePaused)) {
 					WPADControlMotor(mPort, 0);
 				}
-				if ((rumble.flags & RumbleRunning) && !(rumble.flags & RumblePaused) && (rumble.previousFlags & RumblePaused)) {
+				if ((mRumble[i].flags & RumbleRunning) && !(mRumble[i].flags & RumblePaused) && (mRumble[i].previousFlags & RumblePaused)) {
 					WPADControlMotor(mPort, 1);
 				}
-				if ((rumble.flags & RumbleRunning) && !(rumble.flags & RumblePaused) && (rumble.remaining -= frames) <= 0) {
-					rumble.remaining = 0;
-					rumble.flags &= ~RumbleRunning;
+				if ((mRumble[i].flags & RumbleRunning) && !(mRumble[i].flags & RumblePaused) && (mRumble[i].remaining -= frames) <= 0) {
+					mRumble[i].remaining = 0;
+					mRumble[i].flags &= ~RumbleRunning;
 				}
-				if ((rumble.flags & RumbleRunning) && !(rumble.previousFlags & RumbleRunning)) {
+				if ((mRumble[i].flags & RumbleRunning) && !(mRumble[i].previousFlags & RumbleRunning)) {
 					WPADControlMotor(mPort, 1);
 				}
-				if (!(rumble.flags & RumbleRunning) && (rumble.previousFlags & RumbleRunning)) {
+				if (!(mRumble[i].flags & RumbleRunning) && (mRumble[i].previousFlags & RumbleRunning)) {
 					WPADControlMotor(mPort, 0);
 				}
 			}
-			if (rumble.flags != rumble.previousFlags) {
-				rumble.previousFlags = rumble.flags;
+			if (mRumble[i].flags != mRumble[i].previousFlags) {
+				mRumble[i].previousFlags = mRumble[i].flags;
 			}
 		}
 	}
 }
 extern "C" {
-extern f32 WiiReciprocalSquareRoot(f32 value);
-extern void WiiReportMathError(const char* file, int line, const char* format, ...);
+#include "arithmetic.h"
 extern f64 atan2(f64 y, f64 x);
-
-static inline f32 FSqrt(f32 value)
-{
-	if (!(value >= 0.0f)) {
-		WiiReportMathError("arithmetic.h", 627, "FSqrt: Input is out of the domain.");
-	}
-	if (value <= 0.0f) {
-		return 0.0f;
-	}
-	return value * WiiReciprocalSquareRoot(value);
-}
 
 static inline f32 StickLength(f32 x, f32 y)
 {
@@ -525,7 +509,10 @@ void NormalizeWiiStick(StickPosition* result, f32 x, f32 y, f32 innerRadius, f32
 }
 }
 
-u32 CPadOne::GetStickDirections(const StickDirectionSettings& settings, f32 x, f32 y) const
+// NONMATCHING: instruction multiset is identical to retail; the remaining
+// diffs are register allocation and load-order residue around the four
+// directional tests.
+u32 CPadOne::GetStickDirections(StickDirectionSettings& settings, f32 x, f32 y) const
 {
 	u32 result = 0;
 	f32 length = StickLength(x, y);
@@ -534,7 +521,7 @@ u32 CPadOne::GetStickDirections(const StickDirectionSettings& settings, f32 x, f
 		if (angle < 0.0f) {
 			angle += 6.2831855f;
 		}
-		angle *= 57.295776f;
+		angle = 57.295776f * angle;
 		if (angle < 45.0f + settings.diagonalOverlapDegrees * 0.5f || angle > 315.0f - settings.diagonalOverlapDegrees * 0.5f) {
 			result |= StickUp;
 		}
@@ -553,7 +540,7 @@ u32 CPadOne::GetStickDirections(const StickDirectionSettings& settings, f32 x, f
 
 extern "C" f64 sqrt(f64 x);
 
-BOOL CPadOne::GetSwing(Vec* direction, f32* strength) const
+BOOL CPadOne::GetSwing(Vec* direction, f32* strength)
 {
 	if (!mSwing.previouslyRecognized && mSwing.recognized == TRUE) {
 		if (direction) {
@@ -620,7 +607,7 @@ void CPadOne::UpdateSwing()
 	mSwing.previouslyStarted    = mSwing.started;
 	mSwing.previouslyRecognized = mSwing.recognized;
 	DetectSwing();
-	if (mSwing.started != mSwing.previouslyStarted && mSwing.started == TRUE) {
+	if (mSwing.previouslyStarted != mSwing.started && mSwing.started == TRUE) {
 		CalculateSwing(0, mSwing.count - 1);
 	}
 }
@@ -641,24 +628,28 @@ void CPadOne::DetectSwing()
 					mSwing.started = TRUE;
 					break;
 				}
-			} else if (++waitingSamples >= 40) {
+			} else if (++waitingSamples < 40) {
+				if (mSwing.acceleration[mSwing.count - 1].z >= 1.1f) {
+					waitingSamples    = 0;
+					mSwing.recognized = TRUE;
+					mSwing.timing     = TRUE;
+					mSwing.elapsed    = 0;
+					mSwing.timeout    = 15;
+					break;
+				}
+			} else {
 				waitingSamples = 0;
 				mSwing.started = FALSE;
 				mSwing.timing  = FALSE;
-				break;
-			} else if (mSwing.acceleration[mSwing.count - 1].z >= 1.1f) {
-				waitingSamples    = 0;
-				mSwing.recognized = TRUE;
-				mSwing.timing     = TRUE;
-				mSwing.elapsed    = 0;
-				mSwing.timeout    = 15;
 				break;
 			}
 		} else {
 			if (mSwing.magnitude[mSwing.count - 1] < 1.1f) {
 				if (++quietSamples >= 5) {
 					quietSamples      = 0;
-					mSwing.recognized = mSwing.started = mSwing.timing = FALSE;
+					mSwing.recognized = FALSE;
+					mSwing.started    = FALSE;
+					mSwing.timing     = FALSE;
 					break;
 				}
 			} else {
@@ -667,7 +658,9 @@ void CPadOne::DetectSwing()
 			if (mSwing.timedOut) {
 				mSwing.timedOut   = FALSE;
 				quietSamples      = 0;
-				mSwing.recognized = mSwing.started = mSwing.timing = FALSE;
+				mSwing.recognized = FALSE;
+				mSwing.started    = FALSE;
+				mSwing.timing     = FALSE;
 				break;
 			}
 		}
@@ -751,6 +744,8 @@ static inline void FinishMotionFrame(WiiMotionWindow& motion)
 	}
 }
 
+// NONMATCHING: identical to retail apart from a register swap in the
+// inlined ResetMotion unroll (r4/r5 roles for the pointer and counter).
 void CPadOne::ResetRemoteMotion()
 {
 	ResetMotion(mRemoteMotion);
@@ -763,6 +758,9 @@ void CPadOne::CollectRemoteMotion()
 	}
 }
 
+// NONMATCHING: identical to retail apart from a register swap in the
+// inlined FinishMotionFrame sum loop (r3/r4 roles for the changes pointer
+// and counter).
 void CPadOne::UpdateRemoteMotion()
 {
 	DetectRemoteMotion();
@@ -793,6 +791,8 @@ void CPadOne::DetectRemoteMotion()
 	}
 }
 
+// NONMATCHING: identical to retail apart from a register swap in the
+// inlined ResetMotion unroll (r4/r5 roles for the pointer and counter).
 void CPadOne::ResetNunchukMotion()
 {
 	ResetMotion(mNunchukMotion);
@@ -805,6 +805,9 @@ void CPadOne::CollectNunchukMotion()
 	}
 }
 
+// NONMATCHING: identical to retail apart from a register swap in the
+// inlined FinishMotionFrame sum loop (r3/r4 roles for the changes pointer
+// and counter).
 void CPadOne::UpdateNunchukMotion()
 {
 	DetectNunchukMotion();

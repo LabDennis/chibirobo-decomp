@@ -178,12 +178,12 @@ public:
 	void SetConnectCallback();
 	void EnableRemoteSpeaker();
 	void DisableRemoteSpeaker();
-	u32 GetStickDirections(const StickDirectionSettings& settings, f32 x, f32 y) const;
+	u32 GetStickDirections(StickDirectionSettings& settings, f32 x, f32 y) const;
 	BOOL IsRemoteActive() const { return (mDevices & DeviceRemote) && (mInputMask & InputRemote); }
 	BOOL IsNunchukActive() const { return (mDevices & DeviceNunchuk) && (mInputMask & InputRemote); }
 	BOOL IsClassicPadActive() const { return (mDevices & DeviceClassic) && (mInputMask & InputClassic); }
 	BOOL IsGameCubePadActive() const { return (mDevices & DeviceGameCube) && (mInputMask & InputGameCube); }
-	BOOL GetSwing(Vec* direction, f32* strength) const;
+	BOOL GetSwing(Vec* direction, f32* strength);
 	void ResetSwing();
 	void AppendSwingSample(s32 index);
 	void UpdateSwing();
