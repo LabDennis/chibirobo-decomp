@@ -303,8 +303,8 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			KPADGetUnifiedWpadStatus(mPort, sRawSamples, ARRAY_SIZE(sRawSamples));
 			NormalizeWiiStick(&mSamples[0].extension.nunchuk.stick, sRawSamples[0].extension.nunchuk.stickX,
 			                  sRawSamples[0].extension.nunchuk.stickY, sStickRanges[0].min, sStickRanges[0].max);
-			stick               = mSamples[0].extension.nunchuk.stick;
-			u32 directions      = GetStickDirections(mStickDirections, stick.x, stick.y);
+			stick          = mSamples[0].extension.nunchuk.stick;
+			u32 directions = GetStickDirections(mStickDirections, stick.x, stick.y);
 			if (directions & StickUp) {
 				buttons |= 1ULL << (NunchukStick + 3);
 			}
