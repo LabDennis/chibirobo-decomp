@@ -410,7 +410,6 @@ BOOL THPSimpleSetBuffer(void* buffer)
 	return TRUE;
 }
 
-#ifdef VERSION_R24J01
 static void ReadFrameAsync(void)
 {
 	if (!SimpleControl.dvdError && SimpleControl.preFetchState == TRUE) {
@@ -433,29 +432,6 @@ static void ReadFrameAsync(void)
 		}
 	}
 }
-#else
-static inline void ReadFrameAsync(void)
-{
-	if (!SimpleControl.dvdError && SimpleControl.preFetchState == TRUE) {
-		if (SimpleControl.totalReadFrame > SimpleControl.header.numFrames - 1) {
-			if (SimpleControl.loop != 1) { // no loop: stop at the last frame
-				return;
-			}
-			SimpleControl.totalReadFrame = 0;
-			SimpleControl.curOffset      = SimpleControl.header.movieDataOffsets;
-			SimpleControl.readSize       = SimpleControl.header.firstFrameSize;
-		}
-
-		SimpleControl.readProgress = TRUE;
-		if (DVDReadAsyncPrio(&SimpleControl.fileInfo, SimpleControl.readBuffer[SimpleControl.readIndex].ptr, SimpleControl.readSize,
-		                     SimpleControl.curOffset, __THPSimpleDVDCallback, 2)
-		    != TRUE) {
-			SimpleControl.readProgress = FALSE;
-			SimpleControl.dvdError     = TRUE;
-		}
-	}
-}
-#endif
 
 /**
  * @note Address: 0x801B68EC
@@ -612,21 +588,7 @@ BOOL THPSimpleLoadStop(void)
 	return FALSE;
 }
 
-#ifdef VERSION_R24J01
 static BOOL VideoDecode(u8* videoFrame);
-#else
-static inline BOOL VideoDecode(u8* videoFrame)
-{
-	s32 ret = THPVideoDecode(videoFrame, SimpleControl.textureSet.ytexture, SimpleControl.textureSet.utexture,
-	                         SimpleControl.textureSet.vtexture, SimpleControl.thpWork);
-
-	if (ret == 0) {
-		SimpleControl.textureSet.frameNumber = SimpleControl.readBuffer[SimpleControl.nextDecodeIndex].frameNumber;
-		return TRUE;
-	}
-	return FALSE;
-}
-#endif
 
 static inline void CheckPrefetch(void)
 {
@@ -714,7 +676,6 @@ s32 THPSimpleDecode(s32 audioTrack)
 	return 2; // nothing to decode
 }
 
-#ifdef VERSION_R24J01
 static BOOL VideoDecode(u8* videoFrame)
 {
 	s32 ret = THPVideoDecode(videoFrame, SimpleControl.textureSet.ytexture, SimpleControl.textureSet.utexture,
@@ -726,7 +687,6 @@ static BOOL VideoDecode(u8* videoFrame)
 	}
 	return FALSE;
 }
-#endif
 
 /**
  * @note Address: 0x801B61F8
@@ -758,6 +718,7 @@ void THPSimpleDrawEnd(void)
  * @note Size: 0xA4
  */
 #ifdef VERSION_R24J01
+// the Wii port gives the draw calls a depth argument
 s32 THPSimpleDrawCurrentFrame(s32 x, s32 y, s32 z, s32 polygonW, s32 polygonH, BOOL alpha)
 {
 	if (SimpleControl.textureSet.frameNumber >= 0) {
