@@ -1202,7 +1202,9 @@ if wii:
                 Object(Equivalent, "game/wii/cpad.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
-                # no auto-inlining of StartWiiSaveJob's callers (declared inline in the source)
+                # retail has no call to StartWiiSaveJob (declared inline, inlined into its
+                # callers) while BuildWiiSaveBanner and CheckWiiSaveBanner are reached via
+                # bl - auto-inlining was off for the unit
                 Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(Equivalent, "game/wii/soundbank.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "rel/module.c"),

@@ -13,14 +13,14 @@
 // -0xa0). The tail loop's `(status & 4) || (status & 8) || (status & 0x10)` guard is redundant next
 // to the two real tests inside; retail still emits all three rlwinm. records (0x800A9BE0-F8) with no
 // branch before testing 8 and 0x10 live, which is the shape this spelling leaves behind. "banner.bin"
-// is its own rodata object ahead of the pool; under GC/3.0a5.2 a plain literal in the
-// gWiiSaveBannerPath initializer lays out the same way (NANDCheck.c's "/meta"/"/ticket" show it).
-// This CheckWiiSaveBanner is smaller than retail's (0xBC against 0xE4), so it is inlined into
-// WriteWiiSaveSlot, and BuildWiiSaveBanner into WriteWiiSaveBanner, where retail calls both.
-// ReadWiiSaveSlot lines up except for the stubs and its folded checksum select, StartWiiSaveJob and
-// GetWiiSaveSlotChecksum are also emitted out of line (retail only inlines them), and the static
-// initializer does not register CThread's destructor as retail's does. The file's data is not assigned
-// to the unit until the rest has source.
+// is its own rodata object in retail; as a plain literal here it joins the unit's @stringBase0 pool
+// instead, which the remaining referent diffs in ReadWiiSaveSlot/WriteWiiSaveSlot show.
+// CheckWiiSaveBanner (0xE4, same as retail) and BuildWiiSaveBanner (0x284, one instruction short of
+// retail's 0x288) are reached via bl in retail, as they are under this unit's -inline noauto.
+// StartWiiSaveJob and GetWiiSaveSlotChecksum are static inline and inline fully; retail likewise
+// has no call to either. ReadWiiSaveSlot lines up except for the stubs and its folded checksum
+// select, and the static initializer does not register CThread's destructor as retail's does.
+// The file's data is not assigned to the unit until the rest has source.
 #include "game/wii/saveslots.h"
 #include "game/wii/cgame.h"
 #include "game/cthread.h"
