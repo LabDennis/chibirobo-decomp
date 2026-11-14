@@ -6,10 +6,10 @@
 #include <dolphin/gx/gxtypes.h>
 typedef u8 GXBool;
 typedef struct _GXTexObj {
-	u8 pad[0x20]; // _00
+	u32 pad[8]; // _00
 } GXTexObj;
 typedef struct _GXTlutObj {
-	u8 padding[0xC]; // _00
+	u32 padding[3]; // _00
 } GXTlutObj;
 typedef enum _GXTexMtxType { GX_MTX3x4 = 0, GX_MTX2x4 = 1 } GXTexMtxType;
 extern "C" {
