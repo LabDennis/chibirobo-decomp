@@ -108,13 +108,12 @@ extern "C" void BuildWiiSaveBanner(WiiSaveManager* manager)
 	const u16* subtitle = reinterpret_cast<const u16*>(GetLocalizedInterfaceText(2));
 	const u16* title    = reinterpret_cast<const u16*>(GetLocalizedInterfaceText(1));
 	NANDInitBanner(&manager->mBanner, 0, title, subtitle);
-	CTpl& textures = gGame.mTpl;
-	textures.mTex.Init(&textures.mPalette->descriptorArray[247], 0);
-	CTexObj tex = textures.mTex;
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[247], 0);
+	CTexObj tex = gGame.mTpl.mTex;
 	memcpy(manager->mBanner.bannerTexture, tex.mImageData, sizeof(manager->mBanner.bannerTexture));
 	for (int i = 0; i < 8; ++i) {
-		textures.mTex.Init(&textures.mPalette->descriptorArray[248 + i], 0);
-		CTexObj icon = textures.mTex;
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[248 + i], 0);
+		CTexObj icon = gGame.mTpl.mTex;
 		memcpy(manager->mBanner.iconTexture[i], icon.mImageData, sizeof(manager->mBanner.iconTexture[i]));
 		manager->mBanner.iconSpeed = (manager->mBanner.iconSpeed & ~(3 << (2 * i))) | (1 << (2 * i));
 	}

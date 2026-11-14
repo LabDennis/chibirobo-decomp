@@ -67,10 +67,10 @@ static inline f32 Limit(f32 value, f32 lo, f32 hi)
 
 static inline void CopyNonzeroAxes(StickPosition& dest, const StickPosition& source)
 {
-	if (source.x != 0.0f) {
+	if (source.x) {
 		dest.x = source.x;
 	}
-	if (source.y != 0.0f) {
+	if (source.y) {
 		dest.y = source.y;
 	}
 }
@@ -118,8 +118,8 @@ static inline void GameCubeActions(CPadAct& act, const CPadOne& pad)
 		if (pad.mTrigger & (1ULL << (GameCubeDPad + 1))) {
 			act.mFlags |= 1ULL << 33;
 		}
-		if (pad.mSubStick.y != 0.0f) {
-			act.mCameraInput = 0.5f * pad.mSubStick.y;
+		if (pad.mSubStick.y) {
+			act.mCameraInput = pad.mSubStick.y * 0.5f;
 		}
 		if ((pad.mTrigger & ((1ULL << GameCubeR) | (1ULL << 16))) && !(pad.mButton & (1ULL << GameCubeL)) && act.mAnalogL > 0.0f) {
 			act.mFlags |= 1ULL << 9;
@@ -284,7 +284,7 @@ void CPadAct::Update(u32 frames)
 	mRepeat                                                               = pad.mRepeat;
 	mDirRepeat                                                            = pad.mDirRepeat;
 
-	if (pad.mAnalogL != 0.0f) {
+	if (pad.mAnalogL) {
 		const f32 analogL = pad.mAnalogL - 30.0f;
 		mAnalogL          = analogL;
 		if (analogL < 0.0f) {
@@ -293,7 +293,7 @@ void CPadAct::Update(u32 frames)
 			mAnalogL = 180.0f;
 		}
 	}
-	if (pad.mAnalogR != 0.0f) {
+	if (pad.mAnalogR) {
 		const f32 analogR = pad.mAnalogR - 30.0f;
 		mAnalogR          = analogR;
 		if (analogR < 0.0f) {
