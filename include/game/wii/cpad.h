@@ -201,6 +201,29 @@ public:
 STATIC_ASSERT(sizeof(CPadOne) == 0x12a8);
 
 extern CPadOne gWiiPads[4];
+
+// the pad on a port. Retail multiplies the port out even where it is a constant, so the lookup is a
+// function of its own; the name is ours
+inline CPadOne& GetWiiPad(u8 port)
+{
+	return gWiiPads[port];
+}
+
+struct RemoteSpeakerManager;
+// Prefix read by the input code. Channel selection and ownership stay with the speaker manager.
+struct RemoteSpeakerChannel {
+	u8 flags[8];
+	s32 state;
+};
+
+// what WPADProbe returns
+enum { WPAD_ERR_NONE = 0, WPAD_ERR_NO_CONTROLLER = -1, WPAD_ERR_BUSY = -2, WPAD_ERR_TRANSFER = -3 };
+
+extern "C" {
+s32 WPADProbe(s32 channel, u32* type);
+RemoteSpeakerManager* GetRemoteSpeakerManager();
+RemoteSpeakerChannel* GetRemoteSpeakerChannel(RemoteSpeakerManager*, s32 channel);
+}
 extern PADStatus gWiiGameCubePads[4];
 
 class CPadEx {

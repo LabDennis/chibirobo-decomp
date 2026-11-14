@@ -36,13 +36,19 @@ public:
 };
 STATIC_ASSERT(sizeof(CTlutObj) == 0x14);
 
+// the texture matrices and the flag that has the last one rebuilt. Copying a CTexObj moves them as one
+// block (0x800ABE94), so they are one member; the struct's name is ours
+struct CTexObjMtx {
+	Mtx mMtx[4]; // _00
+	BOOL mDirty; // _C0
+};
+
 class CTexObj : public _GXTexObj {
 public:
-	void* mImageData; // _20
-	void* mClutData;  // _24
-	CTlutObj mTlut;   // _28
-	Mtx mMtx[4];      // _3C
-	BOOL mMtxDirty;   // _FC
+	void* mImageData;   // _20
+	void* mClutData;    // _24
+	CTlutObj mTlut;     // _28
+	CTexObjMtx mTexMtx; // _3C
 	// _100 vtable
 
 	virtual ~CTexObj() { }
