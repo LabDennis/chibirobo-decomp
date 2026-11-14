@@ -5,13 +5,13 @@
 // NONMATCHING: all functions have source now; the diffs left are mostly register allocation and
 // scheduling. The sprintf sites in ReadWiiSaveSlot and WriteWiiSaveSlot show branch stubs around the
 // inlined path helper that MWCC does not reproduce here, and ApplyWiiSaveSlot's min-clamps come out as
-// the and-idiom instead of the selects retail has. Here
-// "banner.bin" goes into the string pool, so "CB_SKIP(%d)" sits at +0xB (RunWiiSaveSlotDelete). This
-// CheckWiiSaveBanner is smaller than retail's (0xBC against 0xE4), so it is inlined into WriteWiiSaveSlot, and
-// BuildWiiSaveBanner into WriteWiiSaveBanner, where retail calls both. ReadWiiSaveSlot does not line up with
-// retail yet, StartWiiSaveJob and GetWiiSaveSlotChecksum are also emitted out of line (retail only inlines them),
-// and the static initializer does not register CThread's destructor as retail's does. The file's data is not
-// assigned to the unit until the rest has source.
+// the and-idiom instead of the selects retail has. "banner.bin" is its own rodata object ahead of the
+// pool, so it is a named array that gWiiSaveBannerPath points at. This CheckWiiSaveBanner is smaller
+// than retail's (0xBC against 0xE4), so it is inlined into WriteWiiSaveSlot, and BuildWiiSaveBanner
+// into WriteWiiSaveBanner, where retail calls both. ReadWiiSaveSlot lines up except for the stubs and
+// its folded checksum select, StartWiiSaveJob and GetWiiSaveSlotChecksum are also emitted out of line
+// (retail only inlines them), and the static initializer does not register CThread's destructor as
+// retail's does. The file's data is not assigned to the unit until the rest has source.
 #include "game/wii/saveslots.h"
 #include "game/wii/cgame.h"
 #include "game/cthread.h"
@@ -36,7 +36,8 @@ extern s32 GetStageNum();
 
 CThread gWiiSaveThread;
 WiiSaveJob gWiiSaveJob;
-const char* gWiiSaveBannerPath = "banner.bin";
+static const char sWiiSaveBannerFileName[] = "banner.bin";
+const char* gWiiSaveBannerPath             = sWiiSaveBannerFileName;
 void* gWiiSaveNandWorkBuffer;
 u8* gWiiSaveThreadStack;
 
@@ -152,6 +153,12 @@ static inline u32 GetWiiSaveSlotChecksum(WiiSaveSlot& slot)
 	return sum;
 }
 
+static inline s32 VerifyWiiSaveSlotChecksum(WiiSaveSlot& slot)
+{
+	u32 storedChecksum = slot.mHeader.mChecksum ^ 0x50494b53;
+	return storedChecksum == GetWiiSaveSlotChecksum(slot);
+}
+
 void ScanWiiSaveSlots(WiiSaveManager* manager, int count)
 {
 	static WiiSaveSlot sScanSlot;
@@ -178,9 +185,8 @@ void ScanWiiSaveSlots(WiiSaveManager* manager, int count)
 			if (result == 0 && length == sizeof(sScanSlot)) {
 				result = ReadNandGameFile(&manager->mFile, &sScanSlot, sizeof(sScanSlot));
 				if (result >= 0) {
-					u32 readResult     = result;
-					u32 storedChecksum = sScanSlot.mHeader.mChecksum;
-					result             = (storedChecksum ^ 0x50494b53) == GetWiiSaveSlotChecksum(sScanSlot);
+					u32 readResult = result;
+					result         = VerifyWiiSaveSlotChecksum(sScanSlot);
 					if (result != 0) {
 						memcpy(manager->mScanEntries[i].mData, &sScanSlot, sizeof(sScanSlot));
 						manager->mScanEntries[i].mStatus = 1;
@@ -365,8 +371,7 @@ extern "C" s32 ReadWiiSaveSlot(WiiSaveManager* manager, int slot)
 		CloseNandGameFile(&manager->mFile);
 		return result;
 	}
-	u32 storedChecksum = manager->mSlot.mHeader.mChecksum;
-	result             = (storedChecksum ^ 0x50494b53) == GetWiiSaveSlotChecksum(manager->mSlot);
+	result = VerifyWiiSaveSlotChecksum(manager->mSlot);
 	if (result == 0)
 		return NAND_RESULT_UNKNOWN;
 	if (manager->mSlot.mHeader.mStages[0] < 0)
@@ -483,7 +488,8 @@ extern "C" s32 GetWiiSaveSlotStage(WiiSaveManager* manager, int index)
 // RestoreSavedPlayerAndCamera afterwards
 extern "C" void ApplyWiiSaveSlot(WiiSaveManager* manager)
 {
-	s32 stage = manager->mSlot.mHeader.mStages[0];
+	WiiPlayerState* player = gGame.mPlayer;
+	s32 stage              = manager->mSlot.mHeader.mStages[0];
 	if (stage >= 100)
 		stage = GetStageNum() + stage - 99;
 	gGame.mPrevStage           = gGame.mStage;
@@ -492,62 +498,62 @@ extern "C" void ApplyWiiSaveSlot(WiiSaveManager* manager)
 	gGame.mTimeState.mTime     = manager->mSlot.mHeader.mTime;
 	gGame.mTimeState.mRunning  = 0;
 	gGame.mTimeState.mDuration = manager->mSlot.mHeader.mDuration;
-	gGame.mPlayer->mExp        = manager->mSlot.mHeader.mExp > 0 ? manager->mSlot.mHeader.mExp : 0;
-	if (gGame.mPlayer->mExp < 0)
-		gGame.mPlayer->mExp = 0;
-	if (gGame.mPlayer->mExp > 99999)
-		gGame.mPlayer->mExp = 99999;
-	gGame.mPlayer->mLevel = manager->mSlot.mHeader.mLevel > 0 ? manager->mSlot.mHeader.mLevel : 0;
-	if (gGame.mPlayer->mLevel < 0)
-		gGame.mPlayer->mLevel = 0;
-	if (gGame.mPlayer->mLevel > 30)
-		gGame.mPlayer->mLevel = 30;
-	gGame.mPlayer->mRank = manager->mSlot.mHeader.mRank > 1 ? manager->mSlot.mHeader.mRank : 1;
-	if (gGame.mPlayer->mRank < 1)
-		gGame.mPlayer->mRank = 1;
-	if (gGame.mPlayer->mRank > 1000000)
-		gGame.mPlayer->mRank = 1000000;
-	gGame.mPlayer->mMaxBattery = manager->mSlot.mHeader.mMaxBattery > 0.0f ? manager->mSlot.mHeader.mMaxBattery : 0.0f;
-	if (gGame.mPlayer->mMaxBattery < 0.0f)
-		gGame.mPlayer->mMaxBattery = 0.0f;
-	if (gGame.mPlayer->mMaxBattery > 999.9f)
-		gGame.mPlayer->mMaxBattery = 999.9f;
-	gGame.mPlayer->mBattery = gGame.mPlayer->mBattery > 0.0f ? gGame.mPlayer->mBattery : 0.0f;
-	if (gGame.mPlayer->mBattery < 0.0f)
-		gGame.mPlayer->mBattery = 0.0f;
-	if (gGame.mPlayer->mBattery > gGame.mPlayer->mMaxBattery)
-		gGame.mPlayer->mBattery = gGame.mPlayer->mMaxBattery;
-	gGame.mPlayer->mBattery = manager->mSlot.mHeader.mBattery > 0.0f ? manager->mSlot.mHeader.mBattery : 0.0f;
-	if (gGame.mPlayer->mBattery < 0.0f)
-		gGame.mPlayer->mBattery = 0.0f;
-	if (gGame.mPlayer->mBattery > gGame.mPlayer->mMaxBattery)
-		gGame.mPlayer->mBattery = gGame.mPlayer->mMaxBattery;
-	gGame.mPlayer->mMoney = manager->mSlot.mHeader.mMoney > 0 ? manager->mSlot.mHeader.mMoney : 0;
-	if (gGame.mPlayer->mMoney < 0)
-		gGame.mPlayer->mMoney = 0;
-	if (gGame.mPlayer->mMoney > 99999)
-		gGame.mPlayer->mMoney = 99999;
-	gGame.mPlayer->mScrap = manager->mSlot.mHeader.mScrap > 0 ? manager->mSlot.mHeader.mScrap : 0;
-	if (gGame.mPlayer->mScrap < 0)
-		gGame.mPlayer->mScrap = 0;
-	if (gGame.mPlayer->mScrap > 99999)
-		gGame.mPlayer->mScrap = 99999;
-	gGame.mPlayer->mActive = manager->mSlot.mHeader.mActive != 0 ? 1 : 0;
-	gGame.mPlayTime        = manager->mSlot.mHeader.mPlayTime;
-	memcpy(gGame.mPlayer->mItems, manager->mSlot.mData.mPlayer, sizeof(gGame.mPlayer->mItems));
+	player->mExp               = manager->mSlot.mHeader.mExp > 0 ? manager->mSlot.mHeader.mExp : 0;
+	if (player->mExp < 0)
+		player->mExp = 0;
+	if (player->mExp > 99999)
+		player->mExp = 99999;
+	player->mLevel = manager->mSlot.mHeader.mLevel > 0 ? manager->mSlot.mHeader.mLevel : 0;
+	if (player->mLevel < 0)
+		player->mLevel = 0;
+	if (player->mLevel > 30)
+		player->mLevel = 30;
+	player->mRank = manager->mSlot.mHeader.mRank > 1 ? manager->mSlot.mHeader.mRank : 1;
+	if (player->mRank < 1)
+		player->mRank = 1;
+	if (player->mRank > 1000000)
+		player->mRank = 1000000;
+	player->mMaxBattery = manager->mSlot.mHeader.mMaxBattery > 0.0f ? manager->mSlot.mHeader.mMaxBattery : 0.0f;
+	if (player->mMaxBattery < 0.0f)
+		player->mMaxBattery = 0.0f;
+	if (player->mMaxBattery > 999.9f)
+		player->mMaxBattery = 999.9f;
+	player->mBattery = player->mBattery > 0.0f ? player->mBattery : 0.0f;
+	if (player->mBattery < 0.0f)
+		player->mBattery = 0.0f;
+	if (player->mBattery > player->mMaxBattery)
+		player->mBattery = player->mMaxBattery;
+	player->mBattery = manager->mSlot.mHeader.mBattery > 0.0f ? manager->mSlot.mHeader.mBattery : 0.0f;
+	if (player->mBattery < 0.0f)
+		player->mBattery = 0.0f;
+	if (player->mBattery > player->mMaxBattery)
+		player->mBattery = player->mMaxBattery;
+	player->mMoney = manager->mSlot.mHeader.mMoney > 0 ? manager->mSlot.mHeader.mMoney : 0;
+	if (player->mMoney < 0)
+		player->mMoney = 0;
+	if (player->mMoney > 99999)
+		player->mMoney = 99999;
+	player->mScrap = manager->mSlot.mHeader.mScrap > 0 ? manager->mSlot.mHeader.mScrap : 0;
+	if (player->mScrap < 0)
+		player->mScrap = 0;
+	if (player->mScrap > 99999)
+		player->mScrap = 99999;
+	player->mActive = manager->mSlot.mHeader.mActive != 0 ? 1 : 0;
+	gGame.mPlayTime = manager->mSlot.mHeader.mPlayTime;
+	memcpy(player->mItems, manager->mSlot.mData.mPlayer, sizeof(player->mItems));
 	memcpy(gEventFlags, manager->mSlot.mData.mEvtFlags, sizeof(gEventFlags));
 	memcpy(gEventVars, manager->mSlot.mData.mEvtVars, sizeof(gEventVars));
 	memcpy(gGame.mCoins->mFlags, manager->mSlot.mData.mCoinFlags, sizeof(manager->mSlot.mData.mCoinFlags));
 	memcpy(gGame.mItems->mFlags, manager->mSlot.mData.mItemFlags, sizeof(manager->mSlot.mData.mItemFlags));
 	memcpy(gGame.mDust->mFlags, manager->mSlot.mData.mDustFlags, sizeof(manager->mSlot.mData.mDustFlags));
-	memcpy(gGame.mPlayer->mAttachments, manager->mSlot.mData.mPlayerRecord, sizeof(gGame.mPlayer->mAttachments));
-	if (gGame.mPlayer->mSuitChangeStep == 0) {
-		gGame.mPlayer->mRequestedSuit  = manager->mSlot.mData.mSuit;
-		gGame.mPlayer->mSuitChangeStep = 1;
+	memcpy(player->mAttachments, manager->mSlot.mData.mPlayerRecord, sizeof(player->mAttachments));
+	if (player->mSuitChangeStep == 0) {
+		player->mRequestedSuit  = manager->mSlot.mData.mSuit;
+		player->mSuitChangeStep = 1;
 	}
-	gGame.mPlayer->mSpecialSuit     = manager->mSlot.mData.mSpecialSuit;
-	gGame.mPlayer->mSquirterContent = manager->mSlot.mData.mSquirterLiquid;
-	gGame.mPlayer->mItemTint        = manager->mSlot.mData.mItemTint;
+	player->mSpecialSuit     = manager->mSlot.mData.mSpecialSuit;
+	player->mSquirterContent = manager->mSlot.mData.mSquirterLiquid;
+	player->mItemTint        = manager->mSlot.mData.mItemTint;
 }
 
 /**

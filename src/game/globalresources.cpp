@@ -376,7 +376,8 @@ extern "C" u8* GetGlobalScriptTable(s32)
 extern "C" XObjFloor* GetObjectCollisionList(s32 objectId)
 {
 	if (objectId >= 10000) {
-		objectId = gObjectCollisionIdRemap[objectId - 10000];
+		objectId -= 10000;
+		objectId = gObjectCollisionIdRemap[objectId];
 		if (objectId < 0)
 			return NULL;
 	}
