@@ -8,7 +8,9 @@
 // the and-idiom instead of the selects retail has. ScanWiiSaveSlots differs in three optimizer
 // decisions: retail recomputes the entry address per status store instead of caching the base in a
 // register, materializes the VerifyWiiSaveSlotChecksum result as a 0/1 value rather than folding the
-// comparison into the branch, and strength-reduces the tail loop to a running byte offset. "banner.bin"
+// comparison into the branch, strength-reduces the tail loop to a running byte offset, and allocates
+// two fewer callee-saved registers than this version (stmw r16 / -0x90 frame against stmw r14 /
+// -0xa0). "banner.bin"
 // is its own rodata object ahead of the pool, so it is a named array that gWiiSaveBannerPath points at.
 // This CheckWiiSaveBanner is smaller than retail's (0xBC against 0xE4), so it is inlined into
 // WriteWiiSaveSlot, and BuildWiiSaveBanner into WriteWiiSaveBanner, where retail calls both.
@@ -187,14 +189,13 @@ void ScanWiiSaveSlots(WiiSaveManager* manager, int count)
 			if (result == 0 && length == sizeof(sScanSlot)) {
 				result = ReadNandGameFile(&manager->mFile, &sScanSlot, sizeof(sScanSlot));
 				if (result >= 0) {
-					u32 readResult = result;
-					result         = VerifyWiiSaveSlotChecksum(sScanSlot);
-					if (result != 0) {
+					bool ok = VerifyWiiSaveSlotChecksum(sScanSlot);
+					if (ok) {
 						memcpy(manager->mScanEntries[i].mData, &sScanSlot, sizeof(sScanSlot));
 						manager->mScanEntries[i].mStatus = 1;
 					} else {
 						manager->mScanEntries[i].mStatus = 3;
-						GetNandGameResultName(&manager->mFile, readResult);
+						GetNandGameResultName(&manager->mFile, result);
 					}
 					CloseNandGameFile(&manager->mFile);
 				} else {
@@ -262,6 +263,8 @@ void ScanWiiSaveSlots(WiiSaveManager* manager, int count)
 		}
 		if (usable == 0) {
 			for (i = 0; i < count; ++i) {
+				if (!(manager->mScanEntries[i].mStatus & 4))
+					continue;
 				if (manager->mScanEntries[i].mStatus & 8) {
 					manager->mFile.mResult = NAND_RESULT_MAXBLOCKS;
 					return;
@@ -501,9 +504,8 @@ extern "C" void ApplyWiiSaveSlot(WiiSaveManager* manager)
 	gGame.mTimeState.mTime     = manager->mSlot.mHeader.mTime;
 	gGame.mTimeState.mRunning  = 0;
 	gGame.mTimeState.mDuration = manager->mSlot.mHeader.mDuration;
-	s32 v                      = manager->mSlot.mHeader.mExp > 0 ? manager->mSlot.mHeader.mExp : 0;
-	player->mExp               = v;
-	if (v < 0)
+	player->mExp               = manager->mSlot.mHeader.mExp > 0 ? manager->mSlot.mHeader.mExp : 0;
+	if (player->mExp < 0)
 		player->mExp = 0;
 	if (player->mExp > 99999)
 		player->mExp = 99999;
@@ -512,7 +514,7 @@ extern "C" void ApplyWiiSaveSlot(WiiSaveManager* manager)
 		player->mLevel = 0;
 	if (player->mLevel > 30)
 		player->mLevel = 30;
-	player->mRank = manager->mSlot.mHeader.mRank > 1 ? manager->mSlot.mHeader.mRank : 1;
+	player->mRank = manager->mSlot.mHeader.mRank > 0 ? manager->mSlot.mHeader.mRank : 0;
 	if (player->mRank < 1)
 		player->mRank = 1;
 	if (player->mRank > 1000000)

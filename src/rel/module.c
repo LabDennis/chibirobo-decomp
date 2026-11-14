@@ -67,21 +67,30 @@ void _epilog(void)
 #if defined(VERSION_R24J01)
 s32 _prolog(s32 cmd, s32 count, s32* args)
 {
-	s32 stage;
+	s32 ret = 0;
 	if (cmd < 0) {
 		RunFuncs(_ctors);
-		return 0;
-	}
-
-	// Wii links the stage handlers into the DOL. CGame::mStage is at 0x42FC.
-	stage = *(const s32*)((const u8*)&gGame + 0x42FC);
-	if (cmd < 7) {
-		StageHook* hooks = gStageHooks[stage];
-		return hooks && hooks[cmd] ? hooks[cmd](count) : 1;
 	} else {
-		StageCommand* commands = gStageCommands[stage];
-		return commands && commands[cmd - 7] ? commands[cmd - 7](cmd, count, args) : 0;
+		// Wii links the stage handlers into the DOL. CGame::mStage is at 0x42FC.
+		if (cmd < 7) {
+			StageHook* hooks = gStageHooks[*(const s32*)((const u8*)&gGame + 0x42FC)];
+			if (hooks != NULL) {
+				if (hooks[cmd] != NULL) {
+					ret = hooks[cmd](count);
+				} else {
+					ret = 1;
+				}
+			} else {
+				ret = 1;
+			}
+		} else if (cmd >= 7) {
+			StageCommand* commands = gStageCommands[*(const s32*)((const u8*)&gGame + 0x42FC)];
+			if (commands != NULL && commands[cmd - 7] != NULL) {
+				ret = commands[cmd - 7](cmd, count, args);
+			}
+		}
 	}
+	return ret;
 }
 #else
 s32 _prolog(s32 cmd, void* arg, void* arg2)
