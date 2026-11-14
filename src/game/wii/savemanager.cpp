@@ -10,7 +10,9 @@
 // register, materializes the VerifyWiiSaveSlotChecksum result as a 0/1 value rather than folding the
 // comparison into the branch, strength-reduces the tail loop to a running byte offset, and allocates
 // two fewer callee-saved registers than this version (stmw r16 / -0x90 frame against stmw r14 /
-// -0xa0). "banner.bin"
+// -0xa0). The tail loop's `(status & 4) || (status & 8) || (status & 0x10)` guard is redundant next
+// to the two real tests inside; retail still emits all three rlwinm. records (0x800A9BE0-F8) with no
+// branch before testing 8 and 0x10 live, which is the shape this spelling leaves behind. "banner.bin"
 // is its own rodata object ahead of the pool, so it is a named array that gWiiSaveBannerPath points at.
 // This CheckWiiSaveBanner is smaller than retail's (0xBC against 0xE4), so it is inlined into
 // WriteWiiSaveSlot, and BuildWiiSaveBanner into WriteWiiSaveBanner, where retail calls both.
@@ -229,6 +231,10 @@ void ScanWiiSaveSlots(WiiSaveManager* manager, int count)
 			i = count;
 			break;
 		case NAND_RESULT_NOEXISTS:
+			manager->mScanEntries[i].mStatus = 4;
+			++empty;
+			manager->mFile.mResult = 0;
+			break;
 		default:
 			manager->mScanEntries[i].mStatus = 4;
 			++empty;
