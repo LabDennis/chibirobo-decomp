@@ -7,37 +7,16 @@ struct WiiSoundBank {
 	s32 groupId;
 };
 
-static const char sBankKitchen[]     = "sfx_kitchen.ssm";
-static const char sBankStage02[]     = "sfx_stage02.ssm";
-static const char sBankSouko[]       = "sfx_souko.ssm";
-static const char sBankJennyRoom[]   = "sfx_jennyroom.ssm";
-static const char sBankStage05[]     = "sfx_stage05.ssm";
-static const char sBankPapaMama[]    = "sfx_papamama.ssm";
-static const char sBankStage07[]     = "sfx_stage07.ssm";
-static const char sBankUraniwa[]     = "sfx_uraniwa.ssm";
-static const char sBankPipe[]        = "sfx_pipe.ssm";
-static const char sBankManual[]      = "sfx_manual.ssm";
-static const char sBankUfo[]         = "sfx_ufo.ssm";
-static const char sBankMartial[]     = "sfx_martial.ssm";
-static const char sBankHock[]        = "sfx_hock.ssm";
-static const char sBankGicco[]       = "sfx_gicco.ssm";
-static const char sBankBb[]          = "sfx_bb.ssm";
-static const char sBankSanpoo[]      = "sfx_sanpoo.ssm";
-static const char sBankTrex[]        = "sfx_trex.ssm";
-static const char sBankArmy[]        = "sfx_army.ssm";
-static const char sBankKaeru[]       = "sfx_kaeru.ssm";
-static const char sBankUraniwaAmb1[] = "sfx_uraniwa_ambient1.ssm";
-static const char sBankUraniwaAmb2[] = "sfx_uraniwa_ambient2.ssm";
-static const char sBankUraniwaAmb3[] = "sfx_uraniwa_ambient3.ssm";
-static const char sBankConcert[]     = "sfx_concert.ssm";
-static const char sBankEnding[]      = "sfx_ending.ssm";
-
 WiiSoundBank gWiiSoundBanks[] = {
-	{ sBankKitchen, 1 },      { sBankStage02, 2 },      { sBankSouko, 3 },    { sBankJennyRoom, 4 }, { sBankStage05, 5 },
-	{ sBankPapaMama, 6 },     { sBankStage07, 7 },      { sBankUraniwa, 8 },  { sBankPipe, 9 },      { sBankManual, 10 },
-	{ sBankUfo, 11 },         { sBankMartial, 12 },     { sBankHock, 13 },    { sBankGicco, 14 },    { sBankBb, 15 },
-	{ sBankSanpoo, 16 },      { sBankTrex, 17 },        { sBankArmy, 18 },    { sBankKaeru, 19 },    { sBankUraniwaAmb1, 20 },
-	{ sBankUraniwaAmb2, 21 }, { sBankUraniwaAmb3, 22 }, { sBankConcert, 23 }, { sBankEnding, 24 },   { NULL, 0 },
+	{ "sfx_kitchen.ssm", 1 },         { "sfx_stage02.ssm", 2 },        { "sfx_souko.ssm", 3 },
+	{ "sfx_jennyroom.ssm", 4 },       { "sfx_stage05.ssm", 5 },        { "sfx_papamama.ssm", 6 },
+	{ "sfx_stage07.ssm", 7 },         { "sfx_uraniwa.ssm", 8 },        { "sfx_pipe.ssm", 9 },
+	{ "sfx_manual.ssm", 10 },         { "sfx_ufo.ssm", 11 },           { "sfx_martial.ssm", 12 },
+	{ "sfx_hock.ssm", 13 },           { "sfx_gicco.ssm", 14 },         { "sfx_bb.ssm", 15 },
+	{ "sfx_sanpoo.ssm", 16 },         { "sfx_trex.ssm", 17 },          { "sfx_army.ssm", 18 },
+	{ "sfx_kaeru.ssm", 19 },          { "sfx_uraniwa_ambient1.ssm", 20 },
+	{ "sfx_uraniwa_ambient2.ssm", 21 }, { "sfx_uraniwa_ambient3.ssm", 22 },
+	{ "sfx_concert.ssm", 23 },        { "sfx_ending.ssm", 24 },        { NULL, 0 },
 };
 
 extern "C" BOOL LoadWiiSoundBankByName(XSound* sound, const char* name)

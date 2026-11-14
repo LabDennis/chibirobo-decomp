@@ -13,7 +13,8 @@
 // -0xa0). The tail loop's `(status & 4) || (status & 8) || (status & 0x10)` guard is redundant next
 // to the two real tests inside; retail still emits all three rlwinm. records (0x800A9BE0-F8) with no
 // branch before testing 8 and 0x10 live, which is the shape this spelling leaves behind. "banner.bin"
-// is its own rodata object ahead of the pool, so it is a named array that gWiiSaveBannerPath points at.
+// is its own rodata object ahead of the pool; under GC/3.0a5.2 a plain literal in the
+// gWiiSaveBannerPath initializer lays out the same way (NANDCheck.c's "/meta"/"/ticket" show it).
 // This CheckWiiSaveBanner is smaller than retail's (0xBC against 0xE4), so it is inlined into
 // WriteWiiSaveSlot, and BuildWiiSaveBanner into WriteWiiSaveBanner, where retail calls both.
 // ReadWiiSaveSlot lines up except for the stubs and its folded checksum select, StartWiiSaveJob and
@@ -44,8 +45,7 @@ extern s32 GetStageNum();
 
 CThread gWiiSaveThread;
 WiiSaveJob gWiiSaveJob;
-static const char sWiiSaveBannerFileName[] = "banner.bin";
-const char* gWiiSaveBannerPath             = sWiiSaveBannerFileName;
+const char* gWiiSaveBannerPath = "banner.bin";
 void* gWiiSaveNandWorkBuffer;
 u8* gWiiSaveThreadStack;
 
