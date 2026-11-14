@@ -5,16 +5,7 @@
 #include "game/coordinfo.h"
 #include "Version.h"
 #include "game/stagedata.h"
-
-struct StageDesc {
-	const char* fileName;
-#if defined(VERSION_PAL)
-	const char* moduleName;
-#endif
-	s32 message;
-	u32 flags;
-};
-extern "C" StageDesc stageTable[];
+#include "game/stagetable.h"
 
 // the stage file's environment block, class name from RTTI
 class EnvInfo {
@@ -55,11 +46,11 @@ public:
 	u8* mZButtonScript;         // _190
 	u8* mTimerExpiredScript;    // _194
 	void* _198; // _198, the stage file's resource at header offset 0x20, NULL when absent; written in the stage loader, never read
-	const s32* mEventObjectPairs; // _19C
-	void* mCameraAreaRecords;     // _1A0
-	void* mCameraInfoRecords;     // _1A4
-	void* mCameraAreaExRecords;   // _1A8
-	CModule mModule;              // _1AC
+	const StageEventObject* mEventObjectPairs; // _19C
+	void* mCameraAreaRecords;                  // _1A0
+	void* mCameraInfoRecords;                  // _1A4
+	void* mCameraAreaExRecords;                // _1A8
+	CModule mModule;                           // _1AC
 	// _2F0 vtable
 
 	virtual ~Stage() { } // _08

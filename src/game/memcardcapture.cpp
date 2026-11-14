@@ -11,12 +11,6 @@ static inline XObjChr* Player()
 	return gGame.GetPlayer();
 }
 
-// todo: pools 4, 5 and 17 keep a save block right after XObj, no idea what class
-static inline void* PoolSaveData(s32 pool)
-{
-	return *(void**)(gGame.mXObjs.mPools[pool + 3].mObjects + sizeof(XObj));
-}
-
 static inline void CopyVec(Vec& dst, const Vec& src)
 {
 	dst.x = src.x;
@@ -57,9 +51,9 @@ extern "C" void CaptureGameSaveData(Memcard* card)
 	memcpy(save->mPlayer, Player()->mParams.mInventory.mItems, sizeof(save->mPlayer));
 	memcpy(save->mEvtFlags, gEventFlags.mFlags, sizeof(save->mEvtFlags));
 	memcpy(save->mEvtVars, gEventVars.mVars, sizeof(save->mEvtVars));
-	memcpy(save->mObjects[0], PoolSaveData(4), sizeof(save->mObjects[0]));
-	memcpy(save->mObjects[1], PoolSaveData(5), sizeof(save->mObjects[1]));
-	memcpy(save->mObjects[2], PoolSaveData(17), sizeof(save->mObjects[2]));
+	memcpy(save->mCoinFlags, gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags, sizeof(save->mCoinFlags));
+	memcpy(save->mItemFlags, gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags, sizeof(save->mItemFlags));
+	memcpy(save->mDustFlags, gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags, sizeof(save->mDustFlags));
 	memcpy(save->mPlayerRecord, &Player()->mAttachments, sizeof(save->mPlayerRecord));
 	save->mSuit = Player()->mSuits.mCurrent;
 	CopyVec(save->mPos, gGame.GetPlayer()->mMoveTranslate);

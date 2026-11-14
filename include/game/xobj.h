@@ -183,6 +183,20 @@ public:
 		return FALSE;
 	}
 
+	// Adds an animation to the first free slot from mNext.
+	void PushAnim(s32 anim, u16 frame, s16 rate)
+	{
+		for (int i = 0; i < 16; i++) {
+			int index = (mAnmQueue.mNext + i) % 16;
+			if (mAnmQueue.mEntry[index].mId == -1) {
+				mAnmQueue.mEntry[index].mId    = anim;
+				mAnmQueue.mEntry[index].mFrame = frame;
+				mAnmQueue.mEntry[index].mRate  = rate;
+				return;
+			}
+		}
+	}
+
 	// takes the next anim off the queue
 	void PopAnim(s32& id, u16& frame, s16& rate)
 	{
@@ -332,11 +346,5 @@ struct XObjSource {
 
 extern "C" XObjSource gObjectSources[];
 extern "C" XObjSource* GetObjectSources();
-
-// todo: cleanup, coordinfo.h has UnkObjData's first word as padding
-inline XObjSource*& GetObjDataSource(UnkObjData* data)
-{
-	return *(XObjSource**)data->_00;
-}
 
 #endif

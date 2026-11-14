@@ -7,6 +7,8 @@
 #include "game/cprimitive.h"
 #include "game/title.h"
 
+class XObj;
+
 // control codes inside message text, what msg() and select() in the stage scripts carry.
 // values and argument sizes checked against the parser's jump table in CMsg_Update and
 // the measure and copy passes, names follow unplug, see NOTICE. ints are little
@@ -121,6 +123,8 @@ STATIC_ASSERT(sizeof(MsgFontGlyph) == 0x2AC);
 
 // the slot CMsgFont keeps its Cursor in
 struct MsgCursor {
+	MsgCursor();
+
 	Cursor mCursor; // _00
 };
 
@@ -172,7 +176,7 @@ public:
 	f32 mTexOffset;   // _43C74
 	s32 mCharCount;   // _43C78
 	s32 mLine;        // _43C7C
-	s32 mPlacement;   // _43C80, an XObj to follow
+	XObj* mPlacement; // _43C80, an XObj to follow
 	Vec mPosition;    // _43C84
 	f32 mCursorX;     // _43C90, current line start x
 	f32 mWindowX;     // _43C94
@@ -206,7 +210,7 @@ public:
 
 	CMsgFont()
 	{
-		mPlacement      = 0;
+		mPlacement      = NULL;
 		mSelectedLine   = -1;
 		mOtherSelection = -1;
 	}
@@ -255,7 +259,7 @@ public:
 	s32 mGlyphSoundGroup; // _445FC, -1 disables glyph sounds
 	f32 mWindowX;         // _44600, 320.0f at reset, maybe a screen x
 	f32 mWindowY;         // _44604, 344.0f at reset, maybe a screen y
-	s32 mPlacement;       // _44608, the XObj the window follows (declared s32, holds an XObj*), NULL for a fixed screen spot; stored in
+	XObj* mPlacement;     // _44608, the object the window follows, NULL for a fixed screen position; stored in
 	                      // mFont.mPlacement by CMsgFont_Init, WIN @OBJ sets it
 	Vec mFontPosition;    // _4460C
 
@@ -264,6 +268,21 @@ public:
 	virtual ~CMsg() { } // _08
 
 	u32 _4461C; // _4461C, after the vtable, never read or written
+
+	void SetWindowAnchor(XObj* object, f32 x, f32 y, f32 z)
+	{
+		mPlacement      = object;
+		mFontPosition.x = x;
+		mFontPosition.y = y;
+		mFontPosition.z = z;
+	}
+
+	void SetWindowPosition(f32 x, f32 y)
+	{
+		mWindowX = x;
+		mWindowY = y;
+		SetWindowAnchor(NULL, 0.0f, 0.0f, 0.0f);
+	}
 
 	void SetColor(GXColor color) { mFont.mColor = color; }
 
@@ -282,6 +301,8 @@ struct MsgFormatArgs {
 };
 
 extern "C" {
+void CMsg_ResetPos(CMsg* msg);
+
 // formats the message script into msg and opens the window
 u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args);
 }

@@ -10,6 +10,7 @@
 #include "game/cgs.h"
 #include "game/cgame.h"
 #include "game/menuex.h"
+#include "game/menusave.h"
 
 // the 2d menus, game/stg.cpp. class names from RTTI, the layout from the methods and the
 // statics' destructor chain. offsets are usa
@@ -569,8 +570,6 @@ public:
 STATIC_ASSERT(sizeof(MenuPC) == 0x450);
 #endif
 
-#include "game/menusave.h"
-
 // the save menu, its mode handlers sit in the table at 0x802122B4
 class MenuSave : public Menu {
 public:
@@ -738,7 +737,6 @@ struct MenuPCPage {
 STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
 
 extern "C" {
-// CMenu's own update, the overrides call it first
 void RebuildStageSelectList(MenuStageSelect* menu);
 void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha);
 }

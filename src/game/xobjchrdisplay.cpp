@@ -85,7 +85,7 @@ static inline void SetupPlayerRing(OctaMenu& ring, XObjChr* owner, f32 direction
 {
 	ring.mChr = owner;
 	ResetRingMode(ring);
-	ring._284                     = 0.0f;
+	ring.mRowOffset               = 0.0f;
 	ring.mFirstVisibleItem        = 0;
 	ring.mPendingFirstVisibleItem = -1;
 	ring._10                      = direction;
@@ -129,7 +129,7 @@ void XObjChr::InitializeObject(u32 id)
 		OctaMenu& ring = mMenu.mAtc; // the attachment ring
 		SetupPlayerRing(ring, this, -1.0f);
 		SetRingItems(ring, 1, 2, 3, 4, 6, 5, 7, 8); // the items in ring order
-		ring._284              = -1.5f;
+		ring.mRowOffset        = -1.5f;
 		ring.mFirstVisibleItem = 4;
 	}
 	{
@@ -140,7 +140,7 @@ void XObjChr::InitializeObject(u32 id)
 		} else {
 			SetRingItems(ring, 3, 5, 4, 1, 6, 8, 7, 2);
 		}
-		ring._284              = 0.9f;
+		ring.mRowOffset        = 0.9f;
 		ring.mFirstVisibleItem = 4;
 	}
 	mMenu.mPrevSel         = 0;

@@ -29,10 +29,9 @@ extern "C" void BuildSaveBanner(Memcard* card, s32 slot)
 {
 	SaveBanner* data = &card->mFile.mBanner;
 #if defined(VERSION_JP)
-	sprintf(data->mTitle, "\x82\xBF\x82\xD1\x83\x8D\x83\x7B\x81\x49");
+	sprintf(data->mTitle, "ちびロボ！");
 	s32 time = gGame.mPlayTime;
-	sprintf(data->mComment, "(%d) \x83\x76\x83\x8C\x83\x43\x8E\x9E\x8A\xD4 %2d:%02d:%02d", slot + 1, time / 216000, time / 3600 % 60,
-	        time / 60 % 60);
+	sprintf(data->mComment, "(%d) プレイ時間 %2d:%02d:%02d", slot + 1, time / 216000, time / 3600 % 60, time / 60 % 60);
 #elif defined(VERSION_PAL)
 	sprintf(data->mTitle, GetLocalizedInterfaceText(0x102));
 	f32 time    = gGame.mPlayTime;

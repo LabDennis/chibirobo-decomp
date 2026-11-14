@@ -1,6 +1,7 @@
 #include <global.h>
 
-#include <sysdolphin/forward.h>
+#include <sysdolphin/devcom.h>
+#include <sysdolphin/dvdsche.h>
 
 #define DEVCOMDEST_SBUF 2
 #define DEVCOM_BUF_SIZE 0x4000
@@ -20,7 +21,7 @@ struct HSD_DevCom {
 	u16 type;                    // _18
 	u16 cancelflag;              // _1A
 	HSD_DevComCallback callback; // _1C
-	int args;                    // _20
+	s32 args;                    // _20
 };
 
 typedef struct ARQRequest ARQRequest;
@@ -44,7 +45,6 @@ void DCInvalidateRange(void* addr, u32 nBytes);
 void DCStoreRange(void* addr, u32 nBytes);
 BOOL DVDFastOpen(s32 entrynum, DVDFileInfo* fileInfo);
 BOOL DVDReadAsyncPrio(DVDFileInfo* fileInfo, void* addr, s32 length, s32 offset, DVDCallback callback, s32 prio);
-void ServiceNextDvdStreamingSlot(void);
 
 void HSD_DevComARAMWakeUp(void);
 void HSD_DevComDVDWakeUp(void);
@@ -482,7 +482,7 @@ static inline HSD_DevCom* HSD_DevComAlloc(void)
  * @note Address: 0x801EB3A4
  * @note Size: 0x270
  */
-int HSD_DevComRequest(int file, u32 src, u32 dest, u32 size, int type, int pri, HSD_DevComCallback cb, int args)
+int HSD_DevComRequest(int file, u32 src, u32 dest, u32 size, int type, int pri, HSD_DevComCallback cb, s32 args)
 {
 	u32 enabled;
 	HSD_DevCom* dc;

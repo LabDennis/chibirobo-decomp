@@ -35,7 +35,6 @@ extern "C" void Resume__5CMenuFv(CMenu* menu)
 extern "C" {
 void SetMusicPlaybackPaused(XSound* sound, BOOL pause);
 s32 HSD_DevComIsBusy(s32 id);
-void PollMemoryCardWorker(void* card);
 void CMsg_Update(CMsg* msg, u32 frames);
 void UpdateOpenMenus(void* menu, u32 frames);
 void UpdateHudTransitionsAndIndicators(void* info, u32 frames);
@@ -53,7 +52,7 @@ void CGame::Update(u32 frames)
 {
 	s32 i;
 	BaseUpdate(this, frames);
-	PollMemoryCardWorker(&mMemcard);
+	PollMemoryCardWorker(&mMemcard.mCard);
 	if (mReset && !mMemcard.mCard.mBusy && HSD_DevComIsBusy(1) <= 0 && HSD_DevComIsBusy(2) <= 0) {
 		if (!mDiskOk) {
 			mResetHold = 0;

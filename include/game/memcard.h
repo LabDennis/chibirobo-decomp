@@ -166,6 +166,8 @@ public:
 STATIC_ASSERT(sizeof(Memcard) == 0x16A24);
 
 extern "C" {
+void PollMemoryCardWorker(Memcard* card);
+s32 GetSaveFileStage(Memcard* card);
 s32 ProbeMemoryCardCapacity(Memcard* card, s32 channel, s32* memorySize, s32* sectorSize);
 BOOL StartMemoryCardScan(Memcard* card, s32 channel, BOOL logResults);
 // the card steps, TRUE when one failed. mCard.mResult says why

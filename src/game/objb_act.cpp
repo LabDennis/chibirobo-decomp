@@ -30,7 +30,6 @@ extern "C" {
 // chibi robo's actions, the XAct kinds of XAction, and the game helpers they use
 
 extern "C" {
-void ConfigureSubwindowCamera(FbSubwin* subwin, const Vec& interest, f32 angleY, f32 angleX, f32 distance, f32 fov);
 void SetObjectJointTranslationByPath(CXObj* obj, s32 depth, const s32* path, f32 x, f32 y, f32 z); // puts a joint at a translation
 f32 GetJointAnimationEndFrame(const CJObj* obj);                                                   // the end frame of the anim
 HSD_JObj* GetObjectJointByPath(const CJObj* obj, s32 depth, s32* path);
@@ -52,7 +51,7 @@ void SetPlugCordSpeed(XObjPlug*, f32);
 void SetLiftActionState(XActLift*, s32);
 void SetLiftTargetState(XActLift*, s32);
 XObj* GetGameObjectByIndex(const CGame*, s32);
-void TryStartObjectEvent(CGame*, const void*, void*, s16, s16);
+void TryStartObjectEvent(CGame*, const void*, XObj*, s16, s16);
 BOOL IsEventScriptActive(const CGame*);
 Params* GetPlayerParamsByIndex(CGame*, s32);
 s32 GetInventoryCountByIndex(Params*, u32);
@@ -68,9 +67,7 @@ void PutAwayLiftedObject(XActLift*);
 Vec GetJointMatrixTranslation(void*, HSD_JObj*);
 Vec GetJointMatrixScale(void*, HSD_JObj*);
 HSD_Generator* CreateParticleAtPosition(CGame*, u32, u32, s32, const Vec&, BOOL);
-struct HSD_PSUserFunc;
 extern HSD_PSUserFunc lbl_80228270;
-void psSetUserFunc(HSD_Generator*, HSD_PSUserFunc*);
 void SetSubwindowRect(CGame*, f32, f32, f32, f32);
 void SetSubwindowCamera(CGame*, const Vec&, f32, f32, f32, f32);
 void EnableSubwindowWithFlags(CGame*, u32);
@@ -154,7 +151,7 @@ static inline void UseToolCharge(XActLift* act, s16 count, s32 level)
 
 void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
-	s32 placement     = act->mTarget ? act->mTarget->mCoord.mPlacement - GetStagePlacementByIndex(0) : -1;
+	s32 placement     = act->mTarget ? GetStagePlacementIndex(act->mTarget->mCoord.mPlacement) : -1;
 	act->mBatteryCost = 0;
 	switch (act->mState) {
 	case 1:
@@ -689,14 +686,6 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 
 #include "game/cjobjinlineattach.h"
 
-// the part of a particle the item tint callback writes
-struct ItemPtclColor {
-	u8 _00[0x12]; // _00
-	u8 mRed;      // _12
-	u8 mGreen;    // _13
-	u8 mBlue;     // _14
-};
-
 // a += b, b by value like the other CVec operators
 static inline void AddVec(CVec& a, Vec b)
 {
@@ -776,12 +765,6 @@ static inline void Release(XAction* act)
 		target->mStatus.mFlags &= ~0x0800000000000000ULL;
 	}
 	act->Reset();
-}
-
-static inline Vec UnitScale()
-{
-	Vec scale = { 1.0f, 1.0f, 1.0f };
-	return scale;
 }
 
 // whether his hands are up at the top of the ladder
@@ -3049,8 +3032,7 @@ void HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(HSD_JObj* jobj, MtxPtr mtx)
  */
 HSD_Generator* CreateParticleAtPosition(CGame* game, u32 bank, u32 id, s32 status, const Vec& pos, BOOL keep)
 {
-	Vec rot = { 0.0f, 0.0f, 0.0f };
-	return (&game->mParticle)->CreateSRT(id | (bank << 16), status, pos, UnitScale(), rot, keep);
+	return game->mParticle.CreateSRT(id | (bank << 16), status, pos, (Vec) { 1, 1, 1 }, (Vec) { 0, 0, 0 }, keep);
 }
 
 /**
@@ -3344,12 +3326,12 @@ void HandleLiftActionInput(XActLift* act, const CPadOne* pad, f32* weight)
  * @note Address: 0x800D47F4
  * @note Size: 0x38
  */
-s32 ApplyPlayerItemParticleColor(ItemPtclColor* particle)
+s32 ApplyPlayerItemParticleColor(HSD_Particle* particle)
 {
-	u32 color        = gGame.GetPlayer()->mItemTintWord;
-	particle->mRed   = color >> 24;
-	particle->mGreen = color >> 16;
-	particle->mBlue  = color >> 8;
+	u32 color           = gGame.GetPlayer()->mItemTintWord;
+	particle->primCol.r = color >> 24;
+	particle->primCol.g = color >> 16;
+	particle->primCol.b = color >> 8;
 	return 0;
 }
 

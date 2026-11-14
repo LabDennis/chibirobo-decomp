@@ -580,7 +580,7 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			    && (!(gGame.mStatus.mFlags & 0x40000000) || !IsPlayerStopped(player) || !player->mBatteryDrains
 			        || (mStatus.mFlags & 0x8000))) {
 				mStatus.mFlags |= 0x8000000000000000ULL;
-				StartOrQueueEventScript(&gGame.mEvt, (u8*)GetEventScript(), (u32)this, -1, -1);
+				StartOrQueueEventScript(&gGame.mEvt, (u8*)GetEventScript(), this, -1, -1);
 			}
 		}
 		if (flags & 1) { // let the object's own handler react and adjust the result
@@ -818,9 +818,9 @@ void XObj::Release()
 		ResetEventScriptState(&mEvt, TRUE, FALSE);
 	if (mStatus.mFlags & 1) {
 		CXObjIntp::Release();
-		XObjSource** slot = (XObjSource**)mAttr.mObjData;
-		if (slot != NULL && *slot != NULL) {
-			XObjSource* source = *slot;
+		UnkObjData* data = mAttr.mObjData;
+		if (data != NULL && data->mSource != NULL) {
+			XObjSource* source = data->mSource;
 			if (source->mArchive != NULL && source->mArchive->mRefCount <= 0) // its last user is gone
 				source->mArchive = NULL;
 		}

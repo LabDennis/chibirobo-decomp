@@ -15,16 +15,11 @@ extern "C" {
 void GXProject(f32 x, f32 y, f32 z, const Mtx view, const f32* projection, const f32* viewport, f32* screenX, f32* screenY, f32* screenZ);
 }
 
-static inline const void* ObjectScript(CXObj* object)
+static inline void TriggerObjectEvent(XObj* object, u32 first, u32 second)
 {
-	return ((XObj*)object)->GetEventScript();
-}
-
-static inline void TriggerObjectEvent(CXObj* object, u32 first, u32 second)
-{
-	const void* script = ObjectScript(object);
+	const void* script = object->GetEventScript();
 	if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)object, first, second);
+		StartOrQueueEventScript(&gGame.mEvt, (u8*)script, object, first, second);
 	}
 }
 
@@ -89,9 +84,9 @@ BOOL XObj::OnItemUsed(const Vec* position, s32 value)
 	if (mStatus.mFlags & 0x0000040000000000ULL) { // flag means: has an item-use event
 		if (value == 56)
 			return FALSE; // item 56 never triggers it
-		const void* script = ObjectScript(this);
+		const void* script = this->GetEventScript();
 		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)this, (s16)value, -1);
+			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, (s16)value, -1);
 		}
 		return TRUE;
 	}
@@ -105,9 +100,9 @@ BOOL XObj::OnItemUsed(const Vec* position, s32 value)
 void XObj::OnSquirterHit(const Vec* contact, s32 value, s32 tint)
 {
 	if (mStatus.mFlags & 0x0000080000000000ULL) { // flag means: has a hit event
-		const void* script = ObjectScript(this);
+		const void* script = this->GetEventScript();
 		if (!IsPlayerBlockingEvents(gGame.GetPlayer())) {
-			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, (u32)this, -1,
+			StartOrQueueEventScript(&gGame.mEvt, (u8*)script, this, -1,
 			                        (s16)((u32)value + 3000)); // squirts reach the script as 3000 + value
 		}
 	}

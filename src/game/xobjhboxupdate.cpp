@@ -4,6 +4,7 @@
 #include "game/cparticle.h"
 #include "game/csound.h"
 #include "game/gmath.h"
+#include "game/globals.h"
 #include "game/stagedata.h"
 #include <stdlib.h>
 
@@ -11,7 +12,6 @@ extern "C" {
 void PSMTXTrans(Mtx matrix, f32 x, f32 y, f32 z);
 void HSD_MtxGetRotation(Mtx matrix, Vec* rotation);
 void PSVECScale(const Vec* src, Vec* dst, f32 scale);
-u8* GetGlobalTextEntry(s32 index);
 u8* GetStageScriptByIndex(s32 index);
 }
 
@@ -62,9 +62,9 @@ void XObjHBox::UpdateObject(u32 frames)
 		part->SetPos(mMoveTranslate, 0);
 		part->SetRotationY(DEG2RAD * (rand() % 360), 0);
 		SpawnBoxEffect(this, 0x10021);
-		mFloors = (XObjFloor*)GetGlobalTextEntry(part->mCoord.mPlacement->mObjectId); // the placement's id points into the text table
+		mFloors        = GetObjectCollisionList(part->mCoord.mPlacement->mObjectId);
 		mFloorMasks[1] = mFloorMasks[0] = 0;
-		s32 index                       = mCoord.mPlacement - GetStagePlacementByIndex(0);
+		s32 index                       = GetStagePlacementIndex(mCoord.mPlacement);
 		if (index > 0)
 			mEventScript = (u32)GetStageScriptByIndex(index);
 	} else if (mAnimId == 1) {

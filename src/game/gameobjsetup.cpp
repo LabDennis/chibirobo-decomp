@@ -147,13 +147,11 @@ BOOL LoadEventResources(CEvt*);
 BOOL LoadMessageCursorObject(CMsg*);
 BOOL HideHudPointCounters(InfoScrn*);
 BOOL LoadGlobalResourceData();
-void SetAttachmentCountById(AttachmentValues*, s32, s32);
 void RestoreGameSaveData(Memcard*);
 void RestoreSavedPlayerAndCamera(Memcard*);
 u32 CheckStageFlag(s32, u32);
 BOOL LoadStageByIndex(s32);
 void ApplyStageClearColor();
-const s32* GetStageEventObjectPairs();
 void RegisterEventObjectId(CEvt*, s16, s16);
 extern ARPreCache gAramPrecache;
 u32 TakeNextCounterValue(void*, u32*);
@@ -342,10 +340,8 @@ BOOL CGame::BeforeUpdate()
 		if (!LoadStageByIndex(mStage))
 			break;
 		ApplyStageClearColor();
-		const s32* pair = GetStageEventObjectPairs();
-		while (pair[0] >= 0) { // the pairs end at a -1
-			RegisterEventObjectId(&mEvt, pair[1], pair[0]);
-			pair += 2;
+		for (const StageEventObject* entry = GetStageEventObjectPairs(); entry->objectIndex >= 0; ++entry) { // the pairs end at a -1
+			RegisterEventObjectId(&mEvt, entry->eventId, entry->objectIndex);
 		}
 		++mLoadStep;
 	}

@@ -1,4 +1,4 @@
-#include "types.h"
+#include "rel/trash.h"
 
 // rel/ana.cpp
 extern "C" void DrawAnas(void);
@@ -12,16 +12,6 @@ extern "C" s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args);
 extern "C" s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args);
 extern "C" s32 CmdAddAna(s32 cmd, s32 count, s32* args);
 extern "C" s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args);
-
-// rel/trash.cpp
-extern "C" void DrawTrashStack(void);
-extern "C" void UpdateTrash(void* arg);
-extern "C" void InitTrash(void);
-extern "C" s32 CmdIsNearTrashbox(s32 cmd, s32 count, s32* args);
-extern "C" s32 CmdCancelTrash(s32 cmd, s32 count, s32* args);
-extern "C" s32 CmdEndTrash(s32 cmd, s32 count, s32* args);
-extern "C" s32 CmdGetTrashResult(s32 cmd, s32 count, s32* args);
-extern "C" s32 CmdStartTrash(s32 cmd, s32 count, s32* args);
 
 extern "C" void DrawStage(void* arg);
 extern "C" void UpdateStage(void* arg);
@@ -55,7 +45,7 @@ extern "C" void DrawStage(void* arg)
 extern "C" void UpdateStage(void* arg)
 {
 	UpdateAnas();
-	UpdateTrash(arg);
+	UpdateTrash(reinterpret_cast<u32>(arg));
 }
 
 /**

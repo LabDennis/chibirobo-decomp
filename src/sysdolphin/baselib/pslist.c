@@ -1,4 +1,5 @@
 #include <global.h>
+#include <string.h>
 
 #include <dolphin/mtx/mtxtypes.h>
 #include <dolphin/os.h>
@@ -8,9 +9,6 @@
 #include <sysdolphin/particle.h>
 #include <sysdolphin/perf.h>
 #include <sysdolphin/pslist.h>
-
-void memset(void*, int, int);
-void memcpy(void*, void*, int);
 
 #define PS_NUM_LINK 16
 
@@ -27,8 +25,6 @@ HSD_Particle* freeParticle;
 // live and peak particle counts, owned by particle.c
 extern u16 lbl_8065BA8E;
 extern u16 lbl_8065BA88;
-
-#define activeParticle activeParticle
 
 char lbl_8025B490[] = "pslist.c";
 
@@ -52,8 +48,8 @@ s32 _psLinkInit(s32 count)
 	freeParticle = NULL;
 
 	for (i = count - 1; i >= 0; i--) {
-		pp = HSD_Alloc(0x9C);
-		memset(pp, 0, 0x9C);
+		pp = HSD_Alloc(sizeof(HSD_Particle));
+		memset(pp, 0, sizeof(HSD_Particle));
 		if (pp == NULL) {
 			return -1;
 		}
@@ -198,14 +194,14 @@ HSD_Particle* particleSort(s32 linkNo, HSD_Particle** opaqueHead, HSD_Particle**
 
 	memset(buckets, 0, sizeof(buckets));
 
-	bucket               = ((p->kind >> 0x19) & 7) + ((p->kind & 8) ? 0 : 1) * 8;
+	bucket               = ((p->kind >> 0x19) & 7) + ((p->kind & 8) == 0) * 8;
 	buckets[bucket].head = p;
 	next                 = p->next;
 
 	while (next != NULL) {
 		if ((p->kind ^ next->kind) & 0x0E000008) {
 			buckets[bucket].tail = p;
-			bucket               = ((next->kind >> 0x19) & 7) + ((next->kind & 8) ? 0 : 1) * 8;
+			bucket               = ((next->kind >> 0x19) & 7) + ((next->kind & 8) == 0) * 8;
 			if (buckets[bucket].head == NULL) {
 				buckets[bucket].head = next;
 			} else {

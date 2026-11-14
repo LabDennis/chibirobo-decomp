@@ -1,4 +1,5 @@
 #include <global.h>
+#include <string.h>
 
 #include <dolphin/gx/gxtypes.h>
 #include <dolphin/mtx/mtx.h>
@@ -11,203 +12,7 @@
 #include <sysdolphin/object.h>
 #include <sysdolphin/random.h>
 
-// the shared particle header still has the older layouts, these are the ones this
-// game's generator and appsrt code actually use
-
-/* size: 0xA0 */
-struct HSD_Particle {
-	HSD_Particle* next;                  // _00
-	u32 kind;                            // _04
-	u8 bank;                             // _08
-	u8 texGroup;                         // _09
-	u8 poseNum;                          // _0A
-	u8 palNum;                           // _0B
-	u16 sizeCount;                       // _0C
-	u16 primColCount;                    // _0E
-	u16 envColCount;                     // _10
-	GXColor primCol;                     // _12
-	GXColor envCol;                      // _16
-	u16 cmdWait;                         // _1A
-	u8 loopCount;                        // _1C
-	u8 linkNo;                           // _1D
-	u16 idnum;                           // _1E
-	u8* cmdList;                         // _20
-	u16 cmdPtr;                          // _24
-	u16 cmdMarkPtr;                      // _26
-	u16 cmdLoopPtr;                      // _28
-	u16 life;                            // _2A
-	Vec vel;                             // _2C
-	f32 grav;                            // _38
-	f32 fric;                            // _3C
-	Vec pos;                             // _40
-	f32 size;                            // _4C
-	f32 rotate;                          // _50
-	u16 aCmpCount;                       // _54
-	u8 aCmpMode;                         // _56
-	u8 aCmpParam1;                       // _57
-	u8 aCmpParam2;                       // _58
-	u8 pJObjOfs;                         // _59
-	u16 matColCount;                     // _5A
-	u16 ambColCount;                     // _5C
-	u16 rotateCount;                     // _5E
-	f32 sizeTarget;                      // _60
-	f32 rotateTarget;                    // _64
-	f32 spreadRate;                      // _68
-	u16 primColRemain;                   // _6C
-	u16 envColRemain;                    // _6E
-	GXColor primColTarget;               // _70
-	GXColor envColTarget;                // _74
-	u16 matColRemain;                    // _78
-	u16 ambColRemain;                    // _7A
-	u16 aCmpRemain;                      // _7C
-	u8 aCmpParam1Target;                 // _7E
-	u8 aCmpParam2Target;                 // _7F
-	u8 matRGB;                           // _80
-	u8 matA;                             // _81
-	u8 ambRGB;                           // _82
-	u8 ambA;                             // _83
-	u8 matRGBTarget;                     // _84
-	u8 matATarget;                       // _85
-	u8 ambRGBTarget;                     // _86
-	u8 ambATarget;                       // _87
-	f32 trail;                           // _88
-	HSD_Generator* gen;                  // _8C
-	HSD_psAppSRT* appsrt;                // _90
-	f32* userdata;                       // _94
-	int (*callback)(HSD_Particle* part); // _98
-	u16 pauseCount;                      // _9C
-	u16 pad9E;                           // _9E
-};
-
-/* size: 0x74 */
-struct HSD_psAppSRT {
-	HSD_psAppSRT* next;                     // _00
-	HSD_Generator* gp;                      // _04
-	Vec translate;                          // _08
-	Vec rot;                                // _14
-	u32 _20;                                // _20
-	Vec scale;                              // _24
-	u8 status;                              // _30
-	u8 frameNum;                            // _31
-	u16 usedCount;                          // _32
-	Mtx mmtx;                               // _34
-	f32 ssx;                                // _64
-	f32 ssy;                                // _68
-	void (*freefunc)(HSD_psAppSRT* appsrt); // _6C
-	u16 idnum;                              // _70
-	u8 xA2;                                 // _72
-};
-
-typedef struct _auxDisc {
-	f32 minAngle; // _00
-	f32 maxAngle; // _04
-} auxDisc;
-
-typedef struct _auxLine {
-	f32 x2; // _00
-	f32 y2; // _04
-	f32 z2; // _08
-} auxLine;
-
-typedef struct _auxRect {
-	f32 x;    // _00
-	f32 y;    // _04
-	f32 z;    // _08
-	f32 xx;   // _0C
-	f32 xy;   // _10
-	f32 xz;   // _14
-	f32 yx;   // _18
-	f32 yy;   // _1C
-	f32 yz;   // _20
-	f32 zx;   // _24
-	f32 zy;   // _28
-	f32 zz;   // _2C
-	u16 flag; // _30
-} auxRect;
-
-typedef struct _auxCone {
-	f32 minAngle; // _00
-	f32 maxAngle; // _04
-	f32 height;   // _08
-} auxCone;
-
-typedef struct _auxSphere {
-	f32 speed;    // _00
-	f32 latMid;   // _04
-	f32 latRange; // _08
-	f32 lonMid;   // _0C
-	f32 lonRange; // _10
-} auxSphere;
-
-/* size: 0x94 */
-struct HSD_Generator {
-	HSD_Generator* next;                  // _00
-	u32 kind;                             // _04
-	f32 random;                           // _08
-	f32 count;                            // _0C
-	HSD_JObj* jobj;                       // _10
-	u16 genLife;                          // _14
-	u16 type;                             // _16
-	u8 bank;                              // _18
-	u8 linkNo;                            // _19
-	u8 texGroup;                          // _1A
-	u8 dummy;                             // _1B
-	u16 idnum;                            // _1C
-	u16 life;                             // _1E
-	u8* cmdList;                          // _20
-	Vec pos;                              // _24
-	Vec vel;                              // _30
-	f32 grav;                             // _3C
-	f32 fric;                             // _40
-	f32 size;                             // _44
-	f32 radius;                           // _48
-	f32 angle;                            // _4C
-	u32 numChild;                         // _50
-	HSD_psAppSRT* appsrt;                 // _54
-	void* userfunc;                       // _58
-	void (*callback)(HSD_Generator* gen); // _5C
-	union {
-		auxDisc disc;
-		auxLine line;
-		auxRect rect;
-		auxCone cone;
-		auxSphere sphere;
-	} aux; // _60
-};
-
-/* size: 0x40 */
-typedef struct HSD_PSCmdList {
-	u16 type;      // _00
-	u16 texGroup;  // _02
-	u16 genLife;   // _04
-	u16 life;      // _06
-	u32 kind;      // _08
-	f32 grav;      // _0C
-	f32 fric;      // _10
-	f32 vx;        // _14
-	f32 vy;        // _18
-	f32 vz;        // _1C
-	f32 radius;    // _20
-	f32 angle;     // _24
-	f32 random;    // _28
-	f32 size;      // _2C
-	f32 param1;    // _30
-	f32 param2;    // _34
-	f32 param3;    // _38
-	u8 cmdList[1]; // _3C
-} HSD_PSCmdList;
-
-/* size: 0x1C */
-typedef struct HSD_PSTexGroup {
-	u32 num;         // _00
-	u32 fmt;         // _04
-	u32 tlutfmt;     // _08
-	u32 width;       // _0C
-	u32 height;      // _10
-	u16 palnum;      // _14
-	u16 palflag;     // _16
-	u8* texTable[1]; // _18
-} HSD_PSTexGroup;
+#include <sysdolphin/particle.h>
 
 extern int __float_nan[];
 extern int __float_epsilon[];
@@ -219,7 +24,6 @@ extern int __float_min[];
 #define M_PI   3.141592653589793
 #define M_PI_2 1.5707963267948966
 
-extern void* memset(void*, int, u32);
 extern f32 __fabsf(f32 x);
 extern f64 __fabs(f64 x);
 extern f64 sin(f64 x);
@@ -227,10 +31,6 @@ extern f64 cos(f64 x);
 extern f64 atan2(f64 y, f64 x);
 
 // particle side
-extern void psKillAllParticle(void);
-extern void psKillGeneratorChild(HSD_Generator* gp);
-extern HSD_Particle* psGenerateParticle(int linkNo, int bank, int reserved, u32 kind, int texGroup, u8* list, int life, f32 x, f32 y, f32 z,
-                                        f32 vx, f32 vy, f32 vz, f32 size, f32 grav, f32 fric, int palflag, HSD_Generator* gp);
 extern HSD_PSTexGroup** psTexGroupArray[];
 
 // generator tables, one per bank
@@ -442,44 +242,6 @@ static inline void gen_kill(HSD_Generator* gen)
 		cur          = cur->next;
 	}
 }
-
-#define GX_TEVSTAGE0     0
-#define GX_TEVSTAGE1     1
-#define GX_TEVSTAGE2     2
-#define GX_TEXCOORD0     0
-#define GX_TEXCOORD_NULL 0xFF
-#define GX_TEV_ADD       0
-#define GX_TB_ZERO       0
-#define GX_CS_SCALE_1    0
-#define GX_TEVPREV       0
-#define GX_TEV_SWAP0     0
-#define GX_MODULATE      0
-
-#define GX_CC_CPREV 0
-#define GX_CC_C0    2
-#define GX_CC_C1    4
-#define GX_CC_C2    6
-#define GX_CC_TEXC  8
-#define GX_CC_RASC  10
-#define GX_CC_ZERO  15
-
-#define GX_CA_APREV 0
-#define GX_CA_A0    1
-#define GX_CA_A1    2
-#define GX_CA_A2    3
-#define GX_CA_TEXA  4
-#define GX_CA_RASA  5
-#define GX_CA_ZERO  7
-
-extern void GXSetTevOrder(u8 stage, u32 coord, u32 map, u32 color);
-extern void GXSetTevColorOp(u8 stage, u32 op, u32 bias, u32 scale, u32 clamp, u32 out_reg);
-extern void GXSetTevAlphaOp(u8 stage, u32 op, u32 bias, u32 scale, u32 clamp, u32 out_reg);
-extern void GXSetTevSwapMode(u8 stage, u32 ras_swap, u32 tex_swap);
-extern void GXSetNumTevStages(u8 n);
-extern void GXSetNumTexGens(u8 n);
-extern void GXSetTevColorIn(u8 stage, u32 a, u32 b, u32 c, u32 d);
-extern void GXSetTevAlphaIn(u8 stage, u32 a, u32 b, u32 c, u32 d);
-extern void GXSetTevOp(u8 stage, u32 mode);
 
 /**
  * @note Address: 0x801E2434
@@ -905,7 +667,7 @@ f32 generateParticle(HSD_Generator* gen)
 			pos.y += gen->pos.y;
 			pos.z += gen->pos.z;
 			PSMTXMultVec(mtx, &vec, &vec);
-			psGenerateParticle(gen->linkNo, gen->bank, 0, gen->kind, gen->texGroup, gen->cmdList, gen->life, pos.x, pos.y, pos.z, vec.x,
+			psGenerateParticle(gen->linkNo, gen->bank, gen->kind, gen->texGroup, gen->cmdList, gen->life, pos.x, pos.y, pos.z, vec.x,
 			                   vec.y, vec.z, gen->size, gen->grav, gen->fric, 0, gen);
 			break;
 
@@ -919,7 +681,7 @@ f32 generateParticle(HSD_Generator* gen)
 			pos.y += gen->pos.y;
 			pos.z += gen->pos.z;
 			PSMTXMultVec(mtx, &vel, &vec);
-			psGenerateParticle(gen->linkNo, gen->bank, 0, gen->kind, gen->texGroup, gen->cmdList, gen->life, pos.x, pos.y, pos.z, vec.x,
+			psGenerateParticle(gen->linkNo, gen->bank, gen->kind, gen->texGroup, gen->cmdList, gen->life, pos.x, pos.y, pos.z, vec.x,
 			                   vec.y, vec.z, gen->size, gen->grav, gen->fric, 0, gen);
 			break;
 		}
@@ -936,7 +698,7 @@ f32 generateParticle(HSD_Generator* gen)
 				cur = 2.0 * (M_PI * HSD_Randf());
 			}
 			gen->aux.line.x2 = elev;
-			psGenerateParticle(gen->linkNo, gen->bank, 0, gen->kind | 4, gen->texGroup, gen->cmdList, gen->life, 0.0F, 0.0F, 0.0F, cur, sa,
+			psGenerateParticle(gen->linkNo, gen->bank, gen->kind | 4, gen->texGroup, gen->cmdList, gen->life, 0.0F, 0.0F, 0.0F, cur, sa,
 			                   0.0F, gen->size, rx, ry, 0, gen);
 			break;
 
@@ -1022,7 +784,7 @@ f32 generateParticle(HSD_Generator* gen)
 				vec.z     = gen->aux.rect.zz * scale;
 			}
 			PSMTXMultVec(mtx, &vec, &vec);
-			psGenerateParticle(gen->linkNo, gen->bank, 0, gen->kind, gen->texGroup, gen->cmdList, gen->life, pos.x, pos.y, pos.z, vec.x,
+			psGenerateParticle(gen->linkNo, gen->bank, gen->kind, gen->texGroup, gen->cmdList, gen->life, pos.x, pos.y, pos.z, vec.x,
 			                   vec.y, vec.z, gen->size, gen->grav, gen->fric, 0, gen);
 			break;
 
@@ -1046,7 +808,7 @@ f32 generateParticle(HSD_Generator* gen)
 			pos.x = sa * pos.x + gen->pos.x;
 			pos.y = sa * pos.y + gen->pos.y;
 			pos.z = sa * pos.z + gen->pos.z;
-			psGenerateParticle(gen->linkNo, gen->bank, 0, gen->kind, gen->texGroup, gen->cmdList, gen->life, pos.x, pos.y, pos.z, vec.x,
+			psGenerateParticle(gen->linkNo, gen->bank, gen->kind, gen->texGroup, gen->cmdList, gen->life, pos.x, pos.y, pos.z, vec.x,
 			                   vec.y, vec.z, gen->size, gen->grav, gen->fric, 0, gen);
 			break;
 

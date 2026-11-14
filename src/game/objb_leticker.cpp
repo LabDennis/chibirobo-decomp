@@ -133,20 +133,6 @@ static inline void SetFloors(XObj* obj, XObjFloor* floors)
 	UpdateObjectFloorHeights(obj);
 }
 
-// puts an anim in the first free slot of the object's queue
-static inline void PushAnim(XObj* obj, s32 id, u16 frame, s16 rate)
-{
-	for (int i = 0; i < 16; i++) { // the queue is a 16-entry ring
-		s32 j = (obj->mAnmQueue.mNext + i) % 16;
-		if (obj->mAnmQueue.mEntry[j].mId == -1) {
-			obj->mAnmQueue.mEntry[j].mId    = id;
-			obj->mAnmQueue.mEntry[j].mFrame = frame;
-			obj->mAnmQueue.mEntry[j].mRate  = rate;
-			return;
-		}
-	}
-}
-
 static inline f32 Cos(f32 x)
 {
 	return cos(x);
@@ -250,8 +236,8 @@ BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle)
 			continue;
 		if (target->mId == lift->mId || target->mId == first->mId || target->mId == second->mId)
 			continue;
-		u32 attr = target->mAttr.mObjData != NULL ? target->mAttr.mObjData->_00 : 0;
-		if (attr == 0)
+		XObjSource* source = target->mAttr.mObjData != NULL ? target->mAttr.mObjData->mSource : NULL;
+		if (source == NULL)
 			continue;
 		f32 dx = target->mMoveTranslate.x - pos.x;
 		f32 dz = target->mMoveTranslate.z - pos.z;
@@ -396,7 +382,7 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 				SetColor(1, 255, 0, 0, 0.5f);
 				SetAnim(4, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 				part->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
-				PushAnim(part, 0, 0, 100);
+				part->PushAnim(0, 0, 100);
 				mPowerTimer = 30;
 				mWaiting    = TRUE;
 			}
@@ -842,7 +828,7 @@ void XObjLeticker::StateCount()
 				mCurrentLevel--;
 				part->SetAnim(24 - mCurrentLevel, FALSE, NULL, NULL, NULL, 0.0f, 2.0f, 0.0f, 10.0f);
 				if (mCurrentLevel == 0) {
-					PushAnim(part, 0, 0, 100);
+					part->PushAnim(0, 0, 100);
 				}
 			} else {
 				mLevelProgress = (mCurrentLevel - 1) * 10;

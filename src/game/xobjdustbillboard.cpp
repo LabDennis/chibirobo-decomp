@@ -4,41 +4,7 @@
 #include "game/hsd_cobj.h"
 #include <math.h>
 
-// todo: cleanup, move these onto CJArchive in cobj.h with GetAnimJointRoot
-static inline HSD_AnimJoint* Joint(CJArchive* archive, s32 id)
-{
-	if (id >= 0) {
-		s32 index = id % 1000; // ids index the archive in 1000-entry banks
-		if (index < archive->mNum[0]) {
-			return archive->mAnimJoint != NULL ? archive->mAnimJoint[index] : NULL;
-		}
-	}
-	return NULL;
-}
-
-static inline HSD_MatAnimJoint* Material(CJArchive* archive, s32 id)
-{
-	if (id >= 0) {
-		s32 index = id % 1000;
-		if (index < archive->mNum[0]) {
-			return archive->mMatAnimJoint != NULL ? archive->mMatAnimJoint[index] : NULL;
-		}
-	}
-	return NULL;
-}
-
-static inline HSD_ShapeAnimJoint* Shape(CJArchive* archive, s32 id)
-{
-	if (id >= 0) {
-		s32 index = id % 1000;
-		if (index < archive->mNum[0]) {
-			return archive->mShapeAnimJoint != NULL ? archive->mShapeAnimJoint[index] : NULL;
-		}
-	}
-	return NULL;
-}
-
-// XObjDust::SetAnim, XObjFree's with the material anim looping
+// Keeps the material animation looping across animation changes.
 /**
  * @note Address: 0x800DE7F4
  * @note Size: 0x2AC
@@ -48,15 +14,15 @@ void XObjDust::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void*
 	if (mStatus.mFlags & 0x1000ULL) {
 		if (force || id != mAnimId) {
 			mAnimId     = id;
-			void* joint = jointAnim != NULL ? jointAnim : Joint(&mArchive, id);
-			void* shape = shapeAnim != NULL ? shapeAnim : Shape(&mArchive, id);
+			void* joint = jointAnim != NULL ? jointAnim : mArchive.GetAnimJointRoot(id);
+			void* shape = shapeAnim != NULL ? shapeAnim : mArchive.GetShapeAnimJointRoot(id);
 			f32 materialFrame;
 			if (mMatAnim != NULL) { // keep the material animation's frame
 				HSD_AObj* animation = FindMaterialOrTextureAnimationInJointTree(mJObj);
 				materialFrame       = animation != NULL ? HSD_AObjGetCurrentFrame(animation) : 0.0f;
 			} else {
 				materialFrame = 0.0f;
-				mMatAnim      = Material(&mArchive, 0); // the default material animation
+				mMatAnim      = mArchive.GetMatAnimJointRoot(0); // the default material animation
 			}
 			if (joint != NULL || mMatAnim != NULL || shape != NULL) {
 				HSD_JObjRemoveAnimAll(mJObj);
@@ -76,7 +42,6 @@ void XObjDust::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void*
 	}
 }
 
-// XObjDust::DrawObjectEffects
 /**
  * @note Address: 0x800DEAA0
  * @note Size: 0x208
@@ -106,7 +71,6 @@ void XObjDust::DrawObjectEffects()
 	}
 }
 
-// XObjDust::DrawWithView
 /**
  * @note Address: 0x800DECA8
  * @note Size: 0x7C
@@ -114,8 +78,8 @@ void XObjDust::DrawObjectEffects()
 void XObjDust::DrawWithView(Mtx view)
 {
 	if (GetObjFlags() & 2) { // flags 2 and 4 draw normally
-		DrawWithView__4XObjFPA4_f(this, view);
+		XObj::DrawWithView(view);
 	} else if (GetObjFlags() & 4) {
-		DrawWithView__4XObjFPA4_f(this, view);
+		XObj::DrawWithView(view);
 	}
 }

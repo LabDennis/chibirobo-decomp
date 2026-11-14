@@ -14,7 +14,6 @@ extern "C" {
 
 CObjArchive* FindFreeObjectArchive(CObjArchive*);
 u32 ARGetSize(void);
-u8* GetGlobalTextEntry(s32);
 u8* GetStageScriptByIndex(s32);
 BOOL IsStageDataLoaded();
 }
@@ -58,7 +57,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			}
 		}
 		if (!mFloors) {
-			mFloors        = (XObjFloor*)GetGlobalTextEntry(info.mPlacement->mObjectId);
+			mFloors        = GetObjectCollisionList(info.mPlacement->mObjectId);
 			mFloorMasks[1] = mFloorMasks[0] = 0;
 			BOOL empty                      = mFloors ? mFloors->mId == -1 : FALSE;
 			if (empty) // a -1 id means no floor list
@@ -157,8 +156,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 				EnableLighting(GetEnvData()[9] / 100.f); // env slot 9 is the light level in percent
 			if ((mStatus.mFlags & 2) && mJObj)
 				HSD_JObjWalkTree(mJObj, JObjSetMObjFlags, (f32**)0x04000000);
-			UnkStageObj* place = mCoord.mPlacement;
-			s32 index          = place - GetStagePlacementByIndex(0); // the placement's index in the stage
+			s32 index = GetStagePlacementIndex(mCoord.mPlacement); // the placement's index in the stage
 			if (index > 0)
 				mEventScript = (u32)GetStageScriptByIndex(index);
 		}

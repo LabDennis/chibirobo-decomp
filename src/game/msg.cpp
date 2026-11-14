@@ -28,7 +28,6 @@ u32 msgColorTable[] = {
 };
 
 extern "C" {
-void CMsg_ResetPos(CMsg* msg);
 void CMsgFont_Draw(void* p, f32 t);
 void ClearGameSoundQueue(void* sound, s32 id);
 }
@@ -45,6 +44,12 @@ static inline u32 ReadMsgU8(CMsg* msg)
 	u32 value = *msg->mData.mCursor;
 	msg->mData.mCursor++;
 	return value;
+}
+
+static inline CTexObj& GetMessageIconTexture()
+{
+	TPLPalette* palette = (TPLPalette*)gGame.mTpl.mBuffer;
+	return gGame.mTpl.mTex.Init(&palette->descriptorArray[119 - StatusTextureOffset], 0);
 }
 
 // script operands are little endian, literal colors are rgba bytes
@@ -615,8 +620,7 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 	if (flags & MSG_ANIM_VARIABLE) {
 		anim = gEventVars.mVars[anim];
 	}
-	void* state = &gGame.mEvt.mData;
-	XObj* obj   = *(void**)state != NULL ? ResolveEventObjectId(state, id) : NULL;
+	XObj* obj = FindObj(id);
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 		if (anim == -1) {
 			HSD_AObj* aobj = GetAObj(obj->mJObj);
@@ -641,15 +645,7 @@ extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 			}
 			obj->UpdateAnim(1);
 		} else {
-			for (s32 i = 0; i < 16; i++) {
-				s32 index = (obj->mAnmQueue.mNext + i) % 16;
-				if (obj->mAnmQueue.mEntry[index].mId == -1) {
-					obj->mAnmQueue.mEntry[index].mId    = anim;
-					obj->mAnmQueue.mEntry[index].mFrame = 0;
-					obj->mAnmQueue.mEntry[index].mRate  = 100;
-					break;
-				}
-			}
+			obj->PushAnim(anim, 0, 100);
 		}
 	}
 	return 0;
@@ -2623,7 +2619,7 @@ static inline void ResetMsgState(CMsg* msg)
 	msg->mFont._04_04     = 1;
 	msg->mFont.mCharCount = 0;
 	msg->mFont.mLine      = 0;
-	msg->mFont.mPlacement = 0;
+	msg->mFont.mPlacement = NULL;
 	Vec zero              = { 0.0f, 0.0f, 0.0f };
 	msg->mFont.mPosition  = zero;
 #if defined(VERSION_JP)
@@ -2668,7 +2664,7 @@ static inline void ResetMsgState(CMsg* msg)
 
 extern "C" void CMsgData_Format(u8* data, u8* script, MsgFormatArgs* args);
 extern "C" void CMsgData_Measure(CMsgData* data);
-extern "C" void CMsgFont_Init(CMsgFont* font, u8* data, f32 x, f32 y, s32 placement, s32 fitLine, s32 mode);
+extern "C" void CMsgFont_Init(CMsgFont* font, u8* data, f32 x, f32 y, XObj* anchor, s32 style, s32 align);
 
 /**
  * @note Address: 0x80081C74
@@ -2686,9 +2682,7 @@ extern "C" u8* CMsg_Open(CMsg* msg, u8 command, u8* script, MsgFormatArgs* args)
 #if !defined(VERSION_JP)
 	if (msg->mData.mIconColumns == 0) {
 		// how many 24 pixel icons the icon strip holds, CMsgFont_AddChar clamps MSG_CODE_ICON's index to it
-		TPLPalette* palette     = (TPLPalette*)(&gGame.mTpl)->mBuffer;
-		CTexObj* texture        = &(&gGame.mTpl)->mTex;
-		CTexObj icon            = texture->Init(&palette->descriptorArray[119], 0);
+		CTexObj icon            = GetMessageIconTexture();
 		msg->mData.mIconColumns = (s32)GXGetTexObjWidth(&icon) / 24;
 	}
 #endif
@@ -3036,7 +3030,7 @@ extern "C" void CMsg_ResetPos(CMsg* msg)
 {
 	msg->mWindowX        = 320.0f;
 	msg->mWindowY        = 344.0f;
-	msg->mPlacement      = 0;
+	msg->mPlacement      = NULL;
 	Vec zero             = { 0.0f, 0.0f, 0.0f };
 	msg->mFontPosition.x = zero.x;
 	msg->mFontPosition.y = zero.y;
@@ -3586,7 +3580,7 @@ struct MsgWindowSlice {
 extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 {
 	CMsgFont* font = (CMsgFont*)p;
-	XObj* anchor   = (XObj*)font->mPlacement;
+	XObj* anchor   = font->mPlacement;
 	if (anchor != NULL && (anchor->mStatus.mFlags & 1) && (anchor->mStatus.mFlags & 0x10000)) {
 		anchor->ProjectOffsetToScreen(&font->mPosition, &font->mWindowX, &font->mWindowY, NULL, 0);
 		font->mWindowY -= font->mHeight;
@@ -6470,22 +6464,17 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	}
 #endif
 	s32 textureWidth;
-	if ((u8)text[0] == MSG_CODE_ICON) {
+	if ((u8)text[0] == 17) {
+		CTexObj icon = GetMessageIconTexture();
 #if defined(VERSION_JP)
-		TPLPalette* palette = (TPLPalette*)(&gGame.mTpl)->mBuffer;
-		CTexObj* texture    = &(&gGame.mTpl)->mTex;
-		CTexObj icon        = texture->Init(&palette->descriptorArray[117], 0);
 		PSMTXScale(icon.mMtx[1], 1.0f / 14.0f, 1.0f, 1.0f);
 		icon.mMtxDirty = TRUE;
 		PSMTXTrans(icon.mMtx[0], (1.0f / 14.0f) * (u8)text[1], 0.0f, 0.0f);
 		icon.mMtxDirty = TRUE;
 		textureWidth   = (s32)font->mGlyphs[font->mCharCount].mTexture.Set(icon) / 14;
 #else
-		TPLPalette* palette = (TPLPalette*)(&gGame.mTpl)->mBuffer;
-		CTexObj* texture    = &(&gGame.mTpl)->mTex;
-		CTexObj icon        = texture->Init(&palette->descriptorArray[119], 0);
-		s32 index           = (u8)text[1];
-		s32 columns         = font->mData->mIconColumns;
+		s32 index   = (u8)text[1];
+		s32 columns = font->mData->mIconColumns;
 		if (index >= columns) {
 			index = columns - 1;
 		}
@@ -7037,7 +7026,7 @@ extern "C" u16 GXGetTexObjHeight(const GXTexObj* obj);
  * @note Address: 0x80085B34
  * @note Size: 0x950
  */
-extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 placement, s32 fitLine, s32 mode)
+extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, XObj* anchor, s32 fitLine, s32 mode)
 {
 	CMsgFont* font    = (CMsgFont*)window;
 	font->mData       = (CMsgData*)data;
@@ -7049,7 +7038,7 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
 	font->_04_04      = TRUE;
 	font->mCharCount  = 0;
 	font->mLine       = 0;
-	font->mPlacement  = 0;
+	font->mPlacement  = NULL;
 	Vec origin        = { 0.0f, 0.0f, 0.0f };
 	font->mPosition.x = origin.x;
 	font->mPosition.y = origin.y;
@@ -7105,7 +7094,7 @@ extern "C" void CMsgFont_Init(CMsgFont* window, u8* data, f32 x, f32 y, s32 plac
 		font->mGlyphs[i].mColor       = msgColorTable[0];
 		font->mGlyphs[i].mLine        = 0;
 	}
-	font->mPlacement                 = placement;
+	font->mPlacement                 = anchor;
 	font->mCursorX                   = -((font->mFitLine ? font->mData->mWidths[font->mLine] : width) * 0.5f);
 	font->mWindowX                   = x;
 	font->mWidth                     = width;
@@ -7852,16 +7841,10 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 				text[1]      = p[1];
 				data->mWidths[data->mLineCount] += MeasureGameTextWidth(&gGame.mGs, text, proportional, size);
 			} else if (*p == MSG_CODE_ICON) {
+				CTexObj icon = GetMessageIconTexture();
 #if defined(VERSION_JP)
-				TPLPalette* palette = (TPLPalette*)(&gGame.mTpl)->mBuffer;
-				CTexObj* texture    = &(&gGame.mTpl)->mTex;
-				CTexObj icon        = texture->Init(&palette->descriptorArray[117], 0);
 				data->mWidths[data->mLineCount] += (size / 22.0f) * (GXGetTexObjWidth(&icon) / 14);
 #else
-				TPLPalette* palette = (TPLPalette*)(&gGame.mTpl)->mBuffer;
-				CTexObj* texture    = &(&gGame.mTpl)->mTex;
-				CTexObj icon        = texture->Init(&palette->descriptorArray[119], 0);
-				// a 24 pixel cell, the width CMsg_Open divides the icon strip by for mIconColumns
 				data->mWidths[data->mLineCount] += 24.0f * (size / 22.0f);
 #endif
 			} else {

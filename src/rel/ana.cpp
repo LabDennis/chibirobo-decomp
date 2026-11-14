@@ -6,156 +6,13 @@
 #include "game/hsd_jobj.h"
 #include "game/ut.h"
 #include "game/cgame.h"
+#include "game/xchr.h"
+#include "game/xobjchr.h"
+#include "game/xobjflags.h"
 
 extern "C" {
 void OSReport(const char* msg, ...);
 }
-
-struct UnkIdData {
-	s32 mId; // _00
-};
-
-struct UnkKindData {
-	u8 _00[0x14]; // _00
-	s16 mKind;    // _14
-};
-
-// the parts of the dol's AnaObj this rel reads
-class AnaObj {
-public:
-	HSD_JObj* mJObj; // _00
-	u8 _04[0x30];    // _04
-	// _34 vtable
-	virtual void vf08();                                       // _08
-	virtual void SetTranslateX();                              // _0C
-	virtual void SetTranslateY();                              // _10
-	virtual void SetTranslateZ();                              // _14
-	virtual void SetScaleX();                                  // _18
-	virtual void SetScaleY();                                  // _1C
-	virtual void SetScaleZ();                                  // _20
-	virtual void SetRotationX();                               // _24
-	virtual void SetRotationY();                               // _28
-	virtual void SetRotationZ();                               // _2C
-	virtual void SetTranslate(const Vec& v, s32 force);        // _30
-	virtual void SetTranslate(f32 x, f32 y, f32 z, s32 force); // _34
-	virtual void SetScale(const Vec& v, s32 force);            // _38
-	virtual void SetScale(f32 x, f32 y, f32 z, s32 force);     // _3C
-	virtual void SetRotation(const Vec& v, s32 force);         // _40
-	virtual void SetRotation(f32 x, f32 y, f32 z, s32 force);  // _44
-	virtual void SetAnimRate();                                // _48
-	virtual void ReadAsync();                                  // _4C
-	virtual void ReadCheck();                                  // _50
-	virtual void Release();                                    // _54
-	virtual void StepRotate();                                 // _58
-	virtual void StepTranslate();                              // _5C
-	virtual void StepScale();                                  // _60
-	virtual void SetPos(const Vec& pos, s32 force);            // _64
-	virtual void SetPos(f32 x, f32 y, f32 z, s32 force);       // _68
-	virtual void SetScale(f32 scale, s32 force);               // _6C
-	virtual void SetRot(const Vec& rot, s32 force);            // _70
-	virtual void SetRot(f32 x, f32 y, f32 z, s32 force);       // _74
-	virtual void SetMoveDir(const Vec* dir, f32 speed);        // _78
-	virtual void SetRotateY();                                 // _7C
-	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
-	                     f32 blendRate);      // _80
-	virtual void ClearAnim();                 // _84
-	virtual void UpdateAnim();                // _88
-	virtual void ApplyTransform();            // _8C
-	virtual void InitializeObject();          // _90
-	virtual void ResetForNewGame();           // _94
-	virtual void ResetObjectState();          // _98
-	virtual void LoadFromPlacement();         // _9C
-	virtual void LoadAnimationArchiveAsync(); // _A0
-	virtual void UpdateObject();              // _A4
-	virtual void StepColors();                // _A8
-	virtual void DrawObject();                // _AC
-	virtual void DrawWithView();              // _B0
-	virtual void DrawReflection();            // _B4
-	virtual void DrawGroundShadow();          // _B8
-	virtual void DrawGroundShadowAt();        // _BC
-	virtual void DrawObjectEffects();         // _C0
-	virtual void DrawCollisionShapes();       // _C4
-	virtual void DrawScreenOverlay();         // _C8
-	virtual void DrawDebugStatus();           // _CC
-	virtual void RegisterShadowObjects();     // _D0
-	virtual void ExpandShadowBounds();        // _D4
-	virtual void ApplyMaterialPresets();      // _D8
-	virtual void SetDestinationAlpha();       // _DC
-	virtual void EnableLighting();            // _E0
-	virtual void SetTranslucent();            // _E4
-	virtual void SetOpaque();                 // _E8
-	virtual void GetCameraTarget();           // _EC
-	virtual void GetJointAnimation();         // _F0
-	virtual void GetMaterialAnimation();      // _F4
-	virtual void GetShapeAnimation();         // _F8
-	virtual void TestFloorCollision();        // _FC
-	virtual void OnPlayerContact();           // _100
-	virtual void TestFloorCrossing();         // _104
-	virtual void GetShadowRadius();           // _108
-	virtual void ProjectOffsetToScreen();     // _10C
-	virtual void GetFloorXZExtent();          // _110
-	virtual void GetCollisionHeight();        // _114
-	virtual void ProjectVisibleBounds();      // _118
-	virtual void IsOutsideCameraDepth();      // _11C
-	virtual void SetCullMode();               // _120
-	virtual void HandleEventCommand();        // _124
-	virtual void GetEventScript();            // _128
-	virtual void SetColor();                  // _12C
-	virtual void OnPushDisplacement();        // _130
-	virtual void ReceivePlugPower();          // _134
-	virtual void OnHitFromPosition();         // _138
-	virtual void OnSquirterHit();             // _13C
-	virtual void OnItemUsed();                // _140
-	virtual void OnMicrophonePeak();          // _144
-	virtual u32 vf148();                      // _148
-
-#if defined(VERSION_JP)
-	u8 _38[0xC0 - 0x38]; // _38
-#else
-	u8 _38[0xC8 - 0x38]; // _38
-#endif
-	Vec mPos;             // _C8 (JP: _C0)
-	u8 _D4[0x228 - 0xD4]; // _D4 (JP: _CC)
-	u64 mFlags;           // _228 (JP: _220)
-	u8 _230[0x8];         // _230 (JP: _228)
-	UnkIdData* mIdData;   // _238 (JP: _230)
-#if defined(VERSION_JP)
-	u8 _234[0x4]; // _234
-#else
-	u8 _23C[0x4]; // _23C
-#endif
-	UnkKindData* mKind; // _240 (JP: _238)
-#if defined(VERSION_JP)
-	u8 _23C[0x970 - 0x23C]; // _23C
-#else
-	u8 _244[0x980 - 0x244]; // _244
-#endif
-	u32* mBits; // _980 (JP: _970)
-};
-
-struct RoboView {
-#if defined(VERSION_JP)
-	u8 _000[0x9CC]; // _000
-#else
-	u8 _000[0x9DC]; // _000
-#endif
-	s32 mPlayerIdx; // _9DC (JP: _9CC)
-	u8 _9E0[0x68];  // _9E0 (JP: _9D0)
-	s32 mLiftState; // _A48 (JP: _A38)
-	u8 _A4C[0x18];  // _A4C (JP: _A3C)
-	AnaObj* mHeld;  // _A64 (JP: _A54)
-};
-
-// sizes of the views, not the real objects
-#if defined(VERSION_JP)
-typedef char AnaXObjViewSizeCheck[sizeof(AnaObj) == 0x978 ? 1 : -1];
-typedef char AnaRoboViewSizeCheck[sizeof(RoboView) == 0xA58 ? 1 : -1];
-#else
-typedef char AnaXObjViewSizeCheck[sizeof(AnaObj) == 0x988 ? 1 : -1];
-typedef char AnaRoboViewSizeCheck[sizeof(RoboView) == 0xA68 ? 1 : -1];
-#endif
-
-extern "C" CVec GetPlayerCarryJointWorldPosition(RoboView* mgr);
 
 class Ana {
 public:
@@ -190,9 +47,9 @@ public:
 s32 activeAnaNum;
 static Ana anas[ANA_NUM];
 static AnaNull anaNull;
-AnaObj* tutiAnaObj;
-AnaObj* tutiHutaObj;
-AnaObj* flowerObjs[3];
+XObj* tutiAnaObj;
+XObj* tutiHutaObj;
+XObj* flowerObjs[3];
 
 Ana* GetNearestAna(f32 x, f32 y, f32 z);
 
@@ -204,31 +61,19 @@ inline Ana* GetAna(s32 id)
 	return &anas[id];
 }
 
-inline void ReleaseHeld(RoboView* mgr)
+inline void ReleaseHeld(XObjChr* player)
 {
-	if (mgr->mHeld != NULL) {
-		mgr->mHeld->mFlags &= ~0x0400000000000000ULL; // no longer held
-		mgr->mHeld = NULL;
+	if (player->mLift.mTarget != NULL) {
+		player->mLift.mTarget->mStatus.mFlags &= ~0x0400000000000000ULL; // no longer held
+		player->mLift.mTarget = NULL;
 	}
-	mgr->mLiftState = 0;
+	player->mLift.mState = 0;
 }
 
-// caller checks too, retail tests the pointer twice
-inline s32 GetKindData(UnkKindData* data)
+inline void DropObj(XObj* obj)
 {
-	return data != NULL ? data->mKind : 0;
-}
-
-inline s16 GetKind(AnaObj* obj)
-{
-	return obj->mKind != NULL ? GetKindData(obj->mKind) : -1;
-}
-
-inline void DropObj(AnaObj* obj)
-{
-	if (GetKind(obj) == 8) { // kind 8 marks its bit before it goes
-		u32 bit = obj->vf148();
-		obj->mBits[bit >> 5] |= 1 << (bit & 31);
+	if (obj->GetCategory() == XOBJS::ITEMS) {
+		static_cast<XObjItem*>(obj)->SetFlag();
 	}
 	obj->Release();
 }
@@ -320,10 +165,10 @@ extern "C" s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args)
 		f32 z = args[2] / 100.0f;
 		best  = GetNearestAna(x, y, z);
 	} else {
-		AnaObj* player = (AnaObj*)gGame.mXObjs.mObjects[((RoboView*)gGame.GetPlayer())->mPlayerIdx];
-		if (player != NULL) {
-			best = GetNearestAna(player->mPos.x, player->mPos.y, player->mPos.z);
-			// retail tests the player's result here and again below
+		XObj* contact = gGame.GetObject(gGame.GetPlayer()->mFloorContacts[2].objectIndex);
+		if (contact != NULL) {
+			best = GetNearestAna(contact->mMoveTranslate.x, contact->mMoveTranslate.y, contact->mMoveTranslate.z);
+			// retail tests the contact's result here and again below
 			if (best != NULL) {
 				return best->mId;
 			}
@@ -341,15 +186,15 @@ extern "C" s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdPlantTane(s32 cmd, s32 count, s32* args)
 {
-	AnaObj* obj;
+	XObj* obj;
 	Ana* ana = GetAna(args[0]);
 	if (!ana->IsActive()) {
 		return 0;
 	}
 	ana->SetJObj(2, 0); // kind 2 shows the lid
-	obj = ((RoboView*)gGame.GetPlayer())->mHeld;
+	obj = gGame.GetPlayer()->mLift.mTarget;
 	if (obj != NULL) {
-		ReleaseHeld((RoboView*)gGame.GetPlayer()); // the planted object leaves the hand
+		ReleaseHeld(gGame.GetPlayer());
 		DropObj(obj);
 	}
 	return 1;
@@ -386,10 +231,10 @@ extern "C" s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args)
  */
 extern "C" s32 CmdDropHeldObj(s32 cmd, s32 count, s32* args)
 {
-	AnaObj* obj = ((RoboView*)gGame.GetPlayer())->mHeld;
+	XObj* obj = gGame.GetPlayer()->mLift.mTarget;
 	if (obj != NULL) {
-		obj->mFlags &= ~0x10000ULL;
-		ReleaseHeld((RoboView*)gGame.GetPlayer());
+		obj->mStatus.mFlags &= ~0x10000ULL;
+		ReleaseHeld(gGame.GetPlayer());
 		DropObj(obj);
 	}
 	return 0;
@@ -517,21 +362,21 @@ extern "C" void InitAnas(void)
 
 	// find the hole, its lid and the three flowers among the placed objects
 	for (i = 0; i < num; i++) {
-		AnaObj* obj = (AnaObj*)gGame.mXObjs.mObjects[i];
-		if (obj->mFlags & 1) {
-			if (obj->mIdData->mId == 0x2A9) {
+		XObj* obj = gGame.GetObject(i);
+		if (obj->mStatus.mFlags & 1) {
+			if (obj->mCoord.mPlacement->mObjectId == 0x2A9) {
 				tutiAnaObj = obj;
 			}
-			if (obj->mIdData->mId == 0x178) {
+			if (obj->mCoord.mPlacement->mObjectId == 0x178) {
 				tutiHutaObj = obj;
 			}
-			if (obj->mIdData->mId == 0x2B7) {
+			if (obj->mCoord.mPlacement->mObjectId == 0x2B7) {
 				flowerObjs[0] = obj;
 			}
-			if (obj->mIdData->mId == 0x2B8) {
+			if (obj->mCoord.mPlacement->mObjectId == 0x2B8) {
 				flowerObjs[1] = obj;
 			}
-			if (obj->mIdData->mId == 0x2B9) {
+			if (obj->mCoord.mPlacement->mObjectId == 0x2B9) {
 				flowerObjs[2] = obj;
 			}
 		}
@@ -901,7 +746,7 @@ extern "C" HSD_JObj* GetAnaJObj(s32 kind, s32 which)
 {
 	HSD_JObj* jobj0;
 	HSD_JObj* jobj1;
-	AnaObj* obj;
+	XObj* obj;
 
 	if (tutiAnaObj == NULL) {
 		return NULL;
@@ -980,7 +825,7 @@ extern "C" void Ana_Draw(Ana* ana)
 		return;
 	}
 	if (ana->mStatus.mFlags & 8) { // carried: draw it in the player's hand
-		const CVec& pos = GetPlayerCarryJointWorldPosition((RoboView*)gGame.GetPlayer());
+		const CVec& pos = GetPlayerCarryJointWorldPosition(gGame.GetPlayer());
 		x               = pos.x;
 		y               = pos.y;
 		z               = pos.z;

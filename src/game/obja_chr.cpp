@@ -114,7 +114,7 @@ UnkStageObj* GetIndexedCoordPlacement(const CoordInfo* info, s32 index);
 s32 GetStageObjectCount(const CGame* game);
 f32 GetSelectedFloorHeight(const XObj* object);
 void DisablePlayerLook(XObjChrLook* look);
-bool IsPlayerLookMarkerVisible(const XObjChrLook* look);
+BOOL IsPlayerLookMarkerVisible(const XObjChrLook* look);
 void EnablePlayerLook(XObjChrLook* look);
 void SetPlayerLookMode(XObjChrLook* look, s32 mode);
 void SetLookTargetPosition(XObjChrLook* look, f32 x, f32 y, f32 z);
@@ -1567,7 +1567,7 @@ BOOL IsGameRunning(CGame*);
 void SetHangActionState(XActHang*, s32);
 void SetPlayerActionState(XAction*, s32);
 void UpdateOXMenuTransition(OXMenu*, u32);
-void TryStartObjectEvent(CGame*, const void*, void*, s16, s16);
+void TryStartObjectEvent(CGame*, const void*, XObj*, s16, s16);
 void SetLiftActionState(XActLift*, s32);
 void SetLadderActionState(XActLadder*, s32);
 void SetRopeActionState(XActRope*, s32);
@@ -1575,7 +1575,7 @@ void SetRadarActionState(XActRadar*, s32);
 void SetPopperActionState(XActPopper*, s32);
 void SetLiftTargetState(XActLift*, s32);
 void RequestPlayerUnequipAttachment(XObjChr*);
-BOOL VectorsDiffer(const Vec*, const Vec*);
+bool VectorsDiffer(const Vec*, const Vec*);
 Vec GetJointMatrixTranslation(void*, HSD_JObj*);
 BOOL IsPopperFireAnimationSelected(XObjPopper*);
 void StartPlayerRadarScan(XObjRadar*);
@@ -1950,16 +1950,6 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 
 extern "C" s32 GetPlayerAttachmentCount(XObjChr* chr, s32 type);
 
-// todo: cleanup
-static inline s32 FindAttachment(const AttachmentValues* values, s32 id)
-{
-	for (s32 i = 0; i < 9; ++i) {
-		if (values->mEntries[i].mId == id)
-			return i;
-	}
-	return -1;
-}
-
 // 0.3 seconds
 #if defined(VERSION_PAL)
 #define LOOK_FADE_STEP (1.0f / (0.3f * gVideoFramesPerSecond))
@@ -1997,7 +1987,14 @@ static inline f32 CurrentFrame(HSD_JObj* joint)
 	return animation != NULL ? HSD_AObjGetCurrentFrame(animation) : 0.0f;
 }
 
+extern "C" {
+extern PointPtcl gPointParticlePool[10];
+extern PointPtcl* gPointParticleSlots[10];
+extern SuitChangeEffect gPlayerSuitChangeEffect;
 PlayerTurnState gPlayerTurnState;
+extern f32 gEquipmentIconWidth[8];
+extern f32 gEquipmentIconHeight[8];
+}
 extern "C" f32 GetControlStickMagnitude(const CPadOne*);
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr*, f32);
 extern "C" const Vec* GetCurrentEdgeWorldOffsetPosition(const XObj*);
@@ -2513,11 +2510,6 @@ static inline void OpenMenus(XObjChr* chr)
 	}
 }
 
-extern "C" {
-extern PointPtcl gPointParticlePool[10];
-extern PointPtcl* gPointParticleSlots[10];
-}
-
 // todo: cleanup
 static inline u8 IsRopeState(XObjChr* chr, s32 state)
 {
@@ -2825,7 +2817,7 @@ static inline bool CanUseTool(XObjChr* chr, s16 item)
 
 static inline void SetAttachmentOn(AttachmentValues* values, s32 id, bool on)
 {
-	s32 index = FindAttachment(values, id);
+	s32 index = values->Find(id);
 	if (index >= 0)
 		values->mEntries[index].mValue = on;
 }
@@ -3750,7 +3742,7 @@ void OctaMenu::Select(s32 result)
  */
 extern "C" s32 GetAttachmentCountById(AttachmentValues* values, s32 id)
 {
-	s32 index = FindAttachment(values, id);
+	s32 index = values->Find(id);
 	if (index >= 0) {
 		UpdateAttachmentAvailability(values);
 		return values->mEntries[index].mValue;
@@ -3764,9 +3756,7 @@ extern "C" s32 GetAttachmentCountById(AttachmentValues* values, s32 id)
  */
 extern "C" void SetAttachmentCountById(AttachmentValues* values, s32 id, s32 value)
 {
-	s32 index = FindAttachment(values, id);
-	if (index >= 0)
-		values->mEntries[index].mValue = value;
+	values->SetCount(id, value);
 }
 
 // which of his tools he can use, he has them or one of them is going
@@ -4080,9 +4070,6 @@ static inline CTexObj& RingTexture(OctaMenu* menu, s32 index)
 	s32 id = menu->GetItemIconTextureIndex(index);
 	return gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[id], 0);
 }
-extern "C" {
-extern f32 gEquipmentIconWidth[8], gEquipmentIconHeight[8];
-}
 
 static inline void DrawRingBandLines(f32 x0, f32 x1, f32 x2, f32 x3, f32 y0, f32 y1, u32 ink)
 {
@@ -4126,7 +4113,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			if (slot < 0)
 				slot += 7;
 			item.mTargetSlotOffset = menu->mFade * gEquipmentRowX[slot];
-			slotY[i]               = menu->_284 + gEquipmentRowY[slot];
+			slotY[i]               = menu->mRowOffset + gEquipmentRowY[slot];
 			if (menu->mFade < 1.f) {
 				item.mSlotOffset = item.mTargetSlotOffset;
 			} else {
@@ -5735,7 +5722,7 @@ static inline s32 ActionTargetPlacement(const XAction& action)
 {
 	if (action.mTarget != NULL) {
 		UnkStageObj* placement = action.mTarget->mCoord.mPlacement;
-		return placement - GetStagePlacementByIndex(0);
+		return GetStagePlacementIndex(placement);
 	}
 	return -1;
 }
@@ -7336,7 +7323,7 @@ extern "C" void DisablePlayerLook(XObjChrLook* look)
  * @note Address: 0x800B2088
  * @note Size: 0x18
  */
-extern "C" bool IsPlayerLookMarkerVisible(const XObjChrLook* look)
+extern "C" BOOL IsPlayerLookMarkerVisible(const XObjChrLook* look)
 {
 	return look->mFade > 0.0f;
 }
@@ -8582,12 +8569,9 @@ extern "C" void UpdatePlayerAttachmentRequest(XObjChr* chr, f32* speed)
  * @note Address: 0x800B4F28
  * @note Size: 0x40
  */
-extern "C" BOOL VectorsDiffer(const Vec* a, const Vec* b)
+extern "C" bool VectorsDiffer(const Vec* a, const Vec* b)
 {
-	BOOL different = FALSE;
-	if (a->x != b->x || a->y != b->y || a->z != b->z)
-		different = TRUE;
-	return different;
+	return a->x != b->x || a->y != b->y || a->z != b->z;
 }
 
 /**
@@ -8660,10 +8644,10 @@ extern "C" void SetLiftActionState(XActLift* act, s32 state)
  * @note Size: 0x130
  */
 // NONMATCHING: regalloc
-extern "C" void TryStartObjectEvent(CGame* game, const void* script, void* context, s16 useValue, s16 hitValue)
+extern "C" void TryStartObjectEvent(CGame* game, const void* script, XObj* owner, s16 first, s16 second)
 {
 	if (!IsEventBlocked(game->GetPlayer())) {
-		StartOrQueueEventScript(&game->mEvt, (u8*)script, (u32)context, useValue, hitValue);
+		StartOrQueueEventScript(&game->mEvt, (u8*)script, owner, first, second);
 	}
 }
 

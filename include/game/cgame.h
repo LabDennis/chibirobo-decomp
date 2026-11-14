@@ -21,6 +21,7 @@
 #include "game/infoscrn.h"
 #include "game/cparticle.h"
 #include "game/xobj.h"
+#include "game/xobjflags.h"
 #include "game/cobj.h"
 #include "game/evt.h"
 #include "game/msg.h"
@@ -79,6 +80,12 @@ STATIC_ASSERT(sizeof(XObjPool) == 0x14);
 // the objects: a pool per kind and the table of the ones in use, name from RTTI
 class XOBJS {
 public:
+	enum CollectionPool {
+		COINS = 7,
+		ITEMS = 8,
+		DUST  = 20,
+	};
+
 	XObjPool mPools[0x17]; // _000
 	XObj* mObjects[0x400]; // _1CC, the object table
 	s32 mObjectCount;      // _11CC
@@ -88,7 +95,9 @@ public:
 
 	virtual ~XOBJS() { } // _08
 
-	inline void ReadAll();
+	CEvtFlags& GetCollectionFlags(CollectionPool pool) const { return *static_cast<XObjFlags*>(mPools[pool].First())->mFlags; }
+
+	void ReadAll();
 };
 STATIC_ASSERT(sizeof(XOBJS) == 0x11DC);
 
@@ -156,7 +165,7 @@ public:
 	BOOL mDiskOk;       // _3324, DVDCheckDisk
 	BOOL mDvdError;     // _3328, rumble is paused while set
 	s32 mResetHold;     // _332C, frames the reset combo is held
-	BOOL mReset;        // _3330, stops ReadAll__5XOBJSFv's read loop when set
+	BOOL mReset;        // _3330, stops XOBJS::ReadAll when set
 	// _3334 vtable
 
 	CBase();
@@ -260,13 +269,13 @@ public:
 	CLight* mLightList;                        // _E7E20, _E7138 in japan, LIGHT walks it
 	XSound mSound;                             // _E7E24, _E713C in japan
 #if defined(VERSION_JP)
-	u8 _E8208[0xE8400 - 0xE8208 - 0x118]; // _E8208
+	u8 _E8208[0xE7600 - 0xE7520]; // _E7520
 #else
 	u8 _E8208[0xE8400 - 0xE8208]; // _E8208
 #endif
 	GameMemcard mMemcard;         // _E8400, _E7600 in japan
 	u8 _FEE24[0xFF000 - 0xFEE24]; // _FEE24
-	BOOL mMemcardLoaded;          // _FF000, the stage came from the card
+	BOOL mMemcardLoaded;          // _FF000, _FE200 in Japan, restore player data on stage entry
 	u8 _FF004[0xFF200 - 0xFF004]; // _FF004
 #if defined(VERSION_PAL)
 	f32 mPlayTime; // _FF200, frames played, it stops just short of 100 hours
@@ -327,6 +336,8 @@ extern "C" CGame gGame;
 
 extern "C" {
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
+void StartGameMovie(CGame* game, const char* path, BOOL loop, u32 flags);
+void StopGameMovie(CGame* game);
 s32 FindStageIndexByName(const char* name);
 }
 

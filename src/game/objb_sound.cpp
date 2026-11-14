@@ -1,26 +1,23 @@
 #include "game/xobjsound.h"
 #include "game/cgame.h"
+#include "game/animframe.h"
 
 // XObjSound, an object that plays sounds along with its anim
 
-extern "C" AnimSfxEvent gSoundObjectAnimEvents[3];
-
 extern "C" {
+AnimSfxEvent gSoundObjectAnimEvents[] = {
+	{ 2, 18.0f, 35.0f, 1, 0x11000e, 255, 4, 0, 0 },
+	{ 3, 14.0f, 27.0f, 1, 0x11000e, 255, 4, 0, 0 },
+	{ -1 },
+};
+} // extern "C"
 
-// the weak destructor
 /**
  * @note Address: 0x800DD32C
  * @note Size: 0x60
  */
-XObjSound* __dt__9XObjSoundFv(XObjSound* object, s32 flags)
+XObjSound::~XObjSound()
 {
-	if (object != NULL) {
-		object->XObjSound::~XObjSound();
-		if ((s16)flags > 0) {
-			::operator delete(object);
-		}
-	}
-	return object;
 }
 
 /**
@@ -40,9 +37,8 @@ void XObjSound::UpdateSfx(f32 frame)
  */
 void XObjSound::UpdateObject(u32 frames)
 {
-	UpdateObject__4XObjFUl(this, frames);
-	HSD_AObj* aobj = GetAObj(mJObj);
-	UpdateSfx(aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f);
+	XObj::UpdateObject(frames);
+	UpdateSfx(GetAnimFrame(mJObj));
 }
 
 /**
@@ -51,7 +47,7 @@ void XObjSound::UpdateObject(u32 frames)
  */
 void XObjSound::ResetObjectState()
 {
-	ResetObjectState__4XObjFv(this);
+	XObj::ResetObjectState();
 	_990 = 0;
 	_994 = 0;
 	switch (GetKind()) {
@@ -67,8 +63,6 @@ void XObjSound::ResetObjectState()
  */
 void XObjSound::InitializeObject(u32 id)
 {
-	InitializeObject__4XObjFUl(this, id);
+	XObj::InitializeObject(id);
 	mSfx.mEvents = NULL;
 }
-
-} // extern "C"

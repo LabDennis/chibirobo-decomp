@@ -29,7 +29,6 @@ void HSD_JObjSetSPtclCallback(HSD_Generator* (*func)(int, int, int, HSD_JObj*));
 void HSD_JObjSetDPtclCallback(HSD_Generator* (*func)(int, int, int, HSD_JObj*));
 HSD_Generator* LinkJointSoundGenerator(int, int, int, HSD_JObj*);
 HSD_Generator* LinkJointParticleGenerator(int, int, int, HSD_JObj*);
-void InitializeEventScriptContext(CEvt*, u8*, void*);
 void InitMessageWindow(CMsg*);
 }
 
@@ -120,7 +119,7 @@ void CGame::Start()
 	mDrawLists[1].ClearObjects();
 	mDrawLists[2].ClearObjects();
 
-	InitializeEventScriptContext(&mEvt, (u8*)&mCMsgs[0], NULL);
+	InitializeEventScriptContext(&mEvt, &mCMsgs[0], NULL);
 	for (int i = 0; i < 2; ++i) // two message windows
 		InitMessageWindow(&mCMsgs[i]);
 	ResetNewGameState();

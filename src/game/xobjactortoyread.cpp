@@ -185,7 +185,7 @@ BOOL XObjActorToy::LoadFromPlacement(const CoordInfo& info)
  */
 void XObjActorToy::ResetObjectState()
 {
-	u8* data = (u8*)&gActorToyAnimationData;
+	ActorToyAnimationData& data = gActorToyAnimationData;
 	ResetObjectState__9XObjActorFv(this);
 	mLoad      = 0;
 	mShownPart = 0;
@@ -193,32 +193,32 @@ void XObjActorToy::ResetObjectState()
 	mSecond.ResetObjectState();
 	switch (GetKind()) { // each kind gets its own anim-sound table
 	case 0x6F:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x374); // sounds6F
+		mAnimSfx.mEvents = data.sounds6F;
 		break;
 	case 0x110:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x68); // sounds110
+		mAnimSfx.mEvents = data.sounds110;
 		break;
 	case 0x117:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x50C); // sounds117
+		mAnimSfx.mEvents = data.sounds117;
 		break;
 	case 0x159:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x4DC); // sounds159
+		mAnimSfx.mEvents = data.sounds159;
 		break;
 	case 0x1FB:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x62C); // sounds1FB
+		mAnimSfx.mEvents = data.sounds1FB;
 		break;
 	case 0x1FC:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x3EC); // sounds1FC
+		mAnimSfx.mEvents = data.sounds1FC;
 		break;
 	case 0x25E:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x74C); // sounds25E
+		mAnimSfx.mEvents = data.sounds25E;
 		break;
 	case 0x317:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x68C); // sounds317
+		mAnimSfx.mEvents = data.sounds317;
 		break;
 	case 0x26C:
 	case 0x485:
-		mAnimSfx.mEvents = (AnimSfxEvent*)(data + 0x4AC); // sounds26CAnd485
+		mAnimSfx.mEvents = data.sounds26CAnd485;
 		break;
 	default:
 		mAnimSfx.mEvents = NULL; // kinds without a table

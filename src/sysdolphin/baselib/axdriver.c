@@ -1,4 +1,5 @@
 #include <global.h>
+#include <sysdolphin/axdriver.h>
 #include <math.h>
 #include <string.h>
 
@@ -42,7 +43,7 @@ typedef struct HSD_SM {
 	u8 _27;              // _27
 	s16 _28;             // _28
 	u8 _2A;              // _2A
-	u8 _2B;              // _2B
+	u8 panItd;           // _2B
 	u8 _2C;              // _2C
 	u8 _2D;              // _2D
 	u16 _2E;             // _2E
@@ -66,7 +67,7 @@ void* HSD_AudioMalloc(u32 size);
 s32 HSD_SynthVolToDBx(f32 vol);
 f32 HSD_SynthDBxToVol(s32 dbx);
 s32 StartSynthSoundEffect(s32 fid, s32 vol, s32 vol_mode, s32 vol2, s32 vol2_mode, u8 pan, u8 x27, u8 span, f32 mix_main, f32 mix_a, f32 mix_b,
-                u8 x2D, s32 pri, s32 track, s32 x2A, s32 x2B);
+                u8 x2D, s32 pri, s32 track, s32 x2A, s32 panItd);
 void HSD_SynthSFXKeyOff(s32 pid);
 void HSD_SynthSFXPause(s32 pid);
 void HSD_SynthSFXResume(s32 pid);
@@ -78,12 +79,10 @@ void HSD_SynthSFXSetMix(s32 pid, f32 mix_main, f32 mix_a, f32 mix_b);
 void HSD_SynthSFXSetPitch(s32 pid, s32 which, f32 ratio);
 void HSD_SynthSFXSetPriority(s32 pid, s32 pri);
 void HSD_SynthSFXSetDriverInactivatedCallback(void (*cb)(s32));
-void HSD_SynthSFXSetDriverMasterClockCallback(void (*cb)(void));
 void HSD_SynthSFXSetDriverPauseCallback(void (*cb)(s32));
 s32 HSD_SynthPStreamStart(s32 entrynum, s32 vol, s32 vol_mode, s32 vol2, s32 vol2_mode, u8 x7F, u8 b, u8 c, f32 pitch1, f32 pitch2,
                           f32 mix_main, f32 mix_a, f32 mix_b, u8 d, s32 e, s32 f);
 s32 HSD_SynthPStreamIsActive(void);
-void HSD_SynthPStreamSetBeatCallback(s32 pid, s32 a, s32 b);
 void HSD_SynthInit(s32 heap_size, s32 slots, s32 bufs);
 extern s32 sSynthDecibelFloor;
 
@@ -183,32 +182,32 @@ s32 sAXRearRightAngle = 120;
 s32 sAXRearLeftAngle = 240;
 s32 sAXFrontLeftAngle = 330;
 
-u8* sAXEffectHeapBase;
-u32 axfxallocsize;
-u16* sAXGroupVVoiceLimits;
-s32 sAXMaxGroupIndex;
-u32 axfxmaxsize;
-s32 sAXActiveVVoiceCount;
-u32 sAXPausedTrackMask;
-s32 lbl_8065BAEC;
-u32** lbl_8065BAF0;
-s32 lbl_8065BAF4;
-u32** sSoundCommandStreams;
-s32 sSoundCommandStreamCount;
-u32* sSoundBankFirstCommandIndex;
-s32 sSoundBankCount;
-u32* lbl_8065BB08;
-s32 lbl_8065BB0C;
-u32* lbl_8065BB10;
-s32 lbl_8065BB14;
-HSD_SM* sAXActiveVVoices;
-HSD_SM* sAXFreeVVoices;
-s32 sAXDriverTick;
-HSD_SM* sAXVVoicePool;
-s32 vidhigh;
-s32 sAXVVoiceIndexMask;
-s32 sAXVVoiceIndexBits;
 s32 sAXMaxVVoiceIndex;
+s32 sAXVVoiceIndexBits;
+s32 sAXVVoiceIndexMask;
+s32 vidhigh;
+HSD_SM* sAXVVoicePool;
+s32 sAXDriverTick;
+HSD_SM* sAXFreeVVoices;
+HSD_SM* sAXActiveVVoices;
+s32 lbl_8065BB14;
+u32* lbl_8065BB10;
+s32 lbl_8065BB0C;
+u32* lbl_8065BB08;
+s32 sSoundBankCount;
+u32* sSoundBankFirstCommandIndex;
+s32 sSoundCommandStreamCount;
+u32** sSoundCommandStreams;
+s32 lbl_8065BAF4;
+u32** lbl_8065BAF0;
+s32 lbl_8065BAEC;
+u32 sAXPausedTrackMask;
+s32 sAXActiveVVoiceCount;
+u32 axfxmaxsize;
+s32 sAXMaxGroupIndex;
+u16* sAXGroupVVoiceLimits;
+u32 axfxallocsize;
+u8* sAXEffectHeapBase;
 
 /**
  * @note Address: 0x801E60F8
@@ -478,7 +477,7 @@ s32 StartAxDriverSynthVoice(HSD_SM* v)
 	mix_b      = left_inv * right_sqrt;
 	right_inv  = sqrtf(1.0f - right);
 	return StartSynthSoundEffect(v->_18, v->_20, v->_1E, v->_22, v->_1F, v->_26, v->_27, v->_2C, left_inv * right_inv, left_sqrt, mix_b, v->_2D,
-	                   v->_1B, v->_39, v->_2A, v->_2B);
+	                   v->_1B, v->_39, v->_2A, v->panItd);
 }
 
 /**
@@ -810,7 +809,7 @@ void AXDriverInterp(HSD_SM* v, BOOL exec)
 			v->_2A = *v->_3C;
 			break;
 		case 28:
-			v->_2B = *v->_3C;
+			v->panItd = *v->_3C;
 			break;
 		case 15:
 			v->flags |= 0x100;
@@ -833,7 +832,7 @@ void AXDriverInterp(HSD_SM* v, BOOL exec)
  * @note Address: 0x801E7E84
  * @note Size: 0x208
  */
-void AXDriverCallback(void)
+void AXDriverCallback(u32 frame)
 {
 	HSD_SM* v;
 	HSD_SM* next;
@@ -938,7 +937,7 @@ s32 AXDriverStartVVoice(u32 sfx, u8 vol, u8 x27, u8 x2D, s16 x32, u8 aux0, u8 au
 	s32 sample;
 	BOOL enabled;
 
-	bank   = sfx >> 16;
+	bank   = (sfx & 0xFFFF0000) >> 16;
 	sample = sfx & 0xFFFF;
 	if (sSoundBankCount <= bank) {
 		return -1;
@@ -983,7 +982,7 @@ s32 AXDriverStartVVoice(u32 sfx, u8 vol, u8 x27, u8 x2D, s16 x32, u8 aux0, u8 au
 	v->_32    = x32;
 	v->_28    = 0;
 	v->_2A    = 1;
-	v->_2B    = 1;
+	v->panItd = 1;
 	v->_34[0] = aux0;
 	v->_34[1] = aux1;
 	v->_36    = 0xFF;
@@ -1842,12 +1841,12 @@ s32 AXDriverIsStreamActive(void)
 	return HSD_SynthPStreamIsActive();
 }
 
-static inline BOOL AXDriverSetSlotParam(s32 slot, s32 a, s32 b)
+static inline BOOL AXDriverSetSlotParam(s32 slot, HSD_AudioBeatCallback callback, void* context)
 {
 	if (slot < 1 || slot > sAXStreamSlotCount) {
 		return FALSE;
 	}
-	HSD_SynthPStreamSetBeatCallback(sStreamVoiceIds[slot], a, b);
+	HSD_SynthPStreamSetBeatCallback(sStreamVoiceIds[slot], callback, context);
 	return TRUE;
 }
 
@@ -1855,12 +1854,12 @@ static inline BOOL AXDriverSetSlotParam(s32 slot, s32 a, s32 b)
  * @note Address: 0x801EA308
  * @note Size: 0x90
  */
-BOOL AXDriverSetAllStreamParams(s32 a, s32 b)
+BOOL AXDriverSetAllStreamParams(HSD_AudioBeatCallback callback, void* context)
 {
 	s32 i;
 
 	for (i = 1; i <= sAXStreamSlotCount; i++) {
-		AXDriverSetSlotParam(i, a, b);
+		AXDriverSetSlotParam(i, callback, context);
 	}
 	return TRUE;
 }

@@ -11,12 +11,6 @@ static inline XObjChr* Player()
 	return gGame.GetPlayer();
 }
 
-// todo: pools 4, 5 and 17 keep a save block right after XObj, no idea what class
-static inline void* PoolSaveData(s32 pool)
-{
-	return *(void**)(gGame.mXObjs.mPools[pool + 3].mObjects + sizeof(XObj));
-}
-
 static inline Params* Stats()
 {
 	return &Player()->mParams;
@@ -59,24 +53,6 @@ static inline void SetMaxBattery(Params* stats, f32 value)
 	stats->SetBattery(stats->mBattery);
 }
 
-static inline void SetMoney(Params* stats, s32 value)
-{
-	stats->mMoney = value > 0 ? value : 0;
-	if (stats->mMoney < 0)
-		stats->mMoney = 0;
-	if (stats->mMoney > 99999)
-		stats->mMoney = 99999;
-}
-
-static inline void SetScrap(Params* stats, s32 value)
-{
-	stats->mScrap = value > 0 ? value : 0;
-	if (stats->mScrap < 0)
-		stats->mScrap = 0;
-	if (stats->mScrap > 99999)
-		stats->mScrap = 99999;
-}
-
 static inline void RequestSuit(XObjChr* chr, s32 value)
 {
 	if (chr->mSuits.mChangeStep == FALSE) { // only when no suit change is in progress
@@ -108,8 +84,8 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	SetRank(Stats(), save->mHeader.mRank);
 	SetMaxBattery(Stats(), save->mHeader.mMaxBattery);
 	Stats()->SetBattery(save->mHeader.mBattery);
-	SetMoney(Stats(), save->mHeader.mMoney);
-	SetScrap(Stats(), save->mHeader.mScrap);
+	Stats()->SetMoney(save->mHeader.mMoney);
+	Stats()->SetScrap(save->mHeader.mScrap);
 	if (save->mHeader.mActive)
 		Stats()->_1C[0] = 1;
 	else
@@ -122,9 +98,9 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	memcpy(Player()->mParams.mInventory.mItems, save->mPlayer, sizeof(save->mPlayer));
 	memcpy(gEventFlags.mFlags, save->mEvtFlags, sizeof(save->mEvtFlags));
 	memcpy(gEventVars.mVars, save->mEvtVars, sizeof(save->mEvtVars));
-	memcpy(PoolSaveData(4), save->mObjects[0], sizeof(save->mObjects[0])); // mObjects[0..2] -> pools 4, 5, 17
-	memcpy(PoolSaveData(5), save->mObjects[1], sizeof(save->mObjects[1]));
-	memcpy(PoolSaveData(17), save->mObjects[2], sizeof(save->mObjects[2]));
+	memcpy(gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags, save->mCoinFlags, sizeof(save->mCoinFlags));
+	memcpy(gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags, save->mItemFlags, sizeof(save->mItemFlags));
+	memcpy(gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags, save->mDustFlags, sizeof(save->mDustFlags));
 	memcpy(&Player()->mAttachments, save->mPlayerRecord, sizeof(save->mPlayerRecord));
 	RequestSuit(Player(), save->mSuit);
 	Player()->mSuits.mSpecial  = save->mSpecialSuit;

@@ -51,8 +51,6 @@ f32 gTitleNameOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
 f32 gTitleNameOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 f32 gTitleHelpOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
 f32 gTitleHelpOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
-
-// Title's mode steps, the gTitleModeUpdates table picks one by mMode
 }
 
 extern "C" s32 GetItemIconTextureIndex(s32 id);
@@ -2958,7 +2956,7 @@ extern "C" void DrawTitleScreen(Title* title)
  * @note Address: 0x8002BB7C
  * @note Size: 0x4
  */
-void Title::State25(u32 frames)
+void Title::State25(u32)
 {
 }
 
@@ -2997,7 +2995,7 @@ void Title::State24(u32 frames)
  * @note Address: 0x8002BCC8
  * @note Size: 0x4
  */
-void Title::State23(u32 frames)
+void Title::State23(u32)
 {
 }
 
@@ -3024,7 +3022,7 @@ void Title::State21(u32 frames)
  * @note Size: 0x4AC
  */
 // the card check's message, it waits for A or for the card to change
-void Title::State20(u32 frames)
+void Title::State20(u32)
 {
 	CPad pad(0);
 	s32 error = mResult;
@@ -3097,7 +3095,7 @@ static inline void HandleUnavailableCard(Title* title)
  * @note Address: 0x8002C1B8
  * @note Size: 0x118
  */
-void Title::State19(u32 frames)
+void Title::State19(u32)
 {
 	HandleUnavailableCard(this);
 }
@@ -3106,7 +3104,7 @@ void Title::State19(u32 frames)
  * @note Address: 0x8002C2D0
  * @note Size: 0x118
  */
-void Title::State18(u32 frames)
+void Title::State18(u32)
 {
 	HandleUnavailableCard(this);
 }
@@ -3115,7 +3113,7 @@ void Title::State18(u32 frames)
  * @note Address: 0x8002C3E8
  * @note Size: 0x4
  */
-void Title::State17(u32 frames)
+void Title::State17(u32)
 {
 }
 
@@ -3123,7 +3121,7 @@ void Title::State17(u32 frames)
  * @note Address: 0x8002C3EC
  * @note Size: 0x4
  */
-void Title::State16(u32 frames)
+void Title::State16(u32)
 {
 }
 
@@ -3234,7 +3232,7 @@ void Title::State15(u32 frames)
  * @note Size: 0x408
  */
 // shows what is wrong with the card until A is pressed or the card changes
-void Title::State14(u32 frames)
+void Title::State14(u32)
 {
 	CPad pad(0);
 	s32 error = mResult;
@@ -3411,7 +3409,7 @@ void Title::State12(u32 frames)
  * @note Size: 0x348
  */
 // asked twice whether to make a new save file
-void Title::State11(u32 frames)
+void Title::State11(u32)
 {
 	CPad pad(0);
 
@@ -3462,7 +3460,7 @@ void Title::State11(u32 frames)
  * @note Address: 0x8002D188
  * @note Size: 0x4
  */
-void Title::State10(u32 frames)
+void Title::State10(u32)
 {
 }
 
@@ -3470,7 +3468,7 @@ void Title::State10(u32 frames)
  * @note Address: 0x8002D18C
  * @note Size: 0x148
  */
-void Title::State9(u32 frames)
+void Title::State9(u32)
 {
 	CPad pad(0);
 	if (mWrongDevice == 1 || mReady == 1) {
@@ -3495,7 +3493,7 @@ void Title::State9(u32 frames)
  * @note Address: 0x8002D2D4
  * @note Size: 0x218
  */
-void Title::State8(u32 frames)
+void Title::State8(u32)
 {
 	s32 cardState = gGame.mMemcard.mCard.mState;
 	switch (cardState) {
@@ -3572,7 +3570,7 @@ void Title::State8(u32 frames)
  * @note Address: 0x8002D4EC
  * @note Size: 0x4
  */
-void Title::State7(u32 frames)
+void Title::State7(u32)
 {
 }
 
@@ -3581,7 +3579,7 @@ void Title::State7(u32 frames)
  * @note Size: 0x304
  */
 // asked whether to save over the file, unless the card went away under it
-void Title::State6(u32 frames)
+void Title::State6(u32)
 {
 	CPad pad(0);
 
@@ -3638,7 +3636,7 @@ void Title::State6(u32 frames)
  * @note Size: 0x504
  */
 // asked whether to go on without saving
-void Title::State5(u32 frames)
+void Title::State5(u32)
 {
 	CPad pad(0);
 
@@ -3717,7 +3715,7 @@ void Title::State5(u32 frames)
  * @note Address: 0x8002DCF8
  * @note Size: 0x4
  */
-void Title::State4(u32 frames)
+void Title::State4(u32)
 {
 }
 
@@ -3726,7 +3724,7 @@ void Title::State4(u32 frames)
  * @note Size: 0x240
  */
 // the yes or no question, left and right pick, A takes it
-void Title::State3(u32 frames)
+void Title::State3(u32)
 {
 	CPad pad(0);
 	CPadOne* state;
@@ -3772,7 +3770,7 @@ void Title::State3(u32 frames)
  * @note Size: 0x638
  */
 // picks one of the three save files, A starts or loads it, B goes back
-void Title::State2(u32 frames)
+void Title::State2(u32)
 {
 	CPad pad(0);
 
@@ -3972,7 +3970,7 @@ void Title::State1(u32 frames)
  * @note Address: 0x8002E8CC
  * @note Size: 0x4
  */
-void Title::State0(u32 frames)
+void Title::State0(u32)
 {
 }
 

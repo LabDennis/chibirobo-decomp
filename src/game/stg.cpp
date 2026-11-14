@@ -3,6 +3,7 @@
 #include "game/hsd_jobj.h"
 #include "game/hsd_cobj.h"
 #include "game/stg.h"
+#include "game/stagedata.h"
 #include "game/cgame.h"
 #include "game/cgs.h"
 #include "game/fbtexeff.h"
@@ -17,7 +18,6 @@
 #include "game/menupanelbackground.h"
 
 extern "C" {
-void* GetSpawnData(s32 index);
 const char* GetLocalizedPCDialogue(s32 id);
 char* GetLocalizedInterfaceText(s32 id);
 char* GetStatusOverviewLabel(s32 id);
@@ -10159,7 +10159,6 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 }
 
 extern "C" s32 GetAttachmentCountById(AttachmentValues*, s32);
-extern "C" void SetAttachmentCountById(AttachmentValues*, s32, s32);
 
 void MenuPC::State3(u32 frames)
 {

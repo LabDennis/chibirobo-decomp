@@ -4,48 +4,13 @@
 #include "game/hsd_cobj.h"
 #include <math.h>
 
-// todo: cleanup, move these onto CJArchive in cobj.h with GetAnimJointRoot
-static inline HSD_AnimJoint* Joint(CJArchive* archive, s32 id)
-{
-	if (id >= 0) {
-		s32 index = id % 1000;
-		if (index < archive->mNum[0]) {
-			return archive->mAnimJoint != NULL ? archive->mAnimJoint[index] : NULL;
-		}
-	}
-	return NULL;
-}
-
-static inline HSD_MatAnimJoint* Material(CJArchive* archive, s32 id)
-{
-	if (id >= 0) {
-		s32 index = id % 1000;
-		if (index < archive->mNum[0]) {
-			return archive->mMatAnimJoint != NULL ? archive->mMatAnimJoint[index] : NULL;
-		}
-	}
-	return NULL;
-}
-
-static inline HSD_ShapeAnimJoint* Shape(CJArchive* archive, s32 id)
-{
-	if (id >= 0) {
-		s32 index = id % 1000;
-		if (index < archive->mNum[0]) {
-			return archive->mShapeAnimJoint != NULL ? archive->mShapeAnimJoint[index] : NULL;
-		}
-	}
-	return NULL;
-}
-
-// XObjFree::OnHitFromPosition
 /**
  * @note Address: 0x800DD600
  * @note Size: 0x94
  */
 void XObjFree::OnHitFromPosition(const Vec& pos, f32 value)
 {
-	OnHitFromPosition__4XObjFRC3Vecf(this, &pos, value);
+	XObj::OnHitFromPosition(pos, value);
 	if (mStatus.mFlags & 0x04000000ULL) {
 		f32 remaining = mLife - value;
 		mLife         = remaining;
@@ -54,7 +19,7 @@ void XObjFree::OnHitFromPosition(const Vec& pos, f32 value)
 	}
 }
 
-// XObjFree::SetAnim, keeps the material anim running across anim changes
+// Keeps the material anim running across anim changes
 /**
  * @note Address: 0x800DD694
  * @note Size: 0x2D8
@@ -64,8 +29,8 @@ void XObjFree::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void*
 	if (mStatus.mFlags & 0x1000ULL) {
 		if (force || id != mAnimId) {
 			mAnimId     = id;
-			void* joint = jointAnim != NULL ? jointAnim : Joint(&mArchive, id);
-			void* shape = shapeAnim != NULL ? shapeAnim : Shape(&mArchive, id);
+			void* joint = jointAnim != NULL ? jointAnim : mArchive.GetAnimJointRoot(id);
+			void* shape = shapeAnim != NULL ? shapeAnim : mArchive.GetShapeAnimJointRoot(id);
 			f32 materialFrame;
 			if (mMatAnim != NULL) {
 				HSD_AObj* animation = FindMaterialOrTextureAnimationInJointTree(mJObj);
@@ -73,7 +38,7 @@ void XObjFree::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void*
 			} else {
 				materialFrame  = 0.0f;
 				s16 materialId = GetObjFlags();
-				mMatAnim       = Material(&mArchive, materialId);
+				mMatAnim       = mArchive.GetMatAnimJointRoot(materialId);
 			}
 			if (joint != NULL || mMatAnim != NULL || shape != NULL) {
 				HSD_JObjRemoveAnimAll(mJObj);
@@ -92,7 +57,6 @@ void XObjFree::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void*
 	}
 }
 
-// XObjFree::DrawScreenOverlay
 /**
  * @note Address: 0x800DD96C
  * @note Size: 0x220

@@ -16,7 +16,9 @@ struct SaveData {
 	u8 mPlayer[0x400];      // _0058
 	u8 mEvtFlags[0x200];    // _0458
 	u8 mEvtVars[0x2000];    // _0658
-	u8 mObjects[3][0x200];  // _2658, pools 4, 5 and 17
+	u32 mCoinFlags[0x80];   // _2658
+	u32 mItemFlags[0x80];   // _2858
+	u32 mDustFlags[0x80];   // _2A58
 	u8 mPlayerRecord[0x48]; // _2C58
 	s32 mSuit;              // _2CA0
 	Vec mPos;               // _2CA4

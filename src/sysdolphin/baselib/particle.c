@@ -6,11 +6,8 @@
 #include <sysdolphin/particle.h>
 #include <sysdolphin/pslist.h>
 
-void psKillAllParticle(void);
 void psClearPointJObj(void);
 void psInitDataBankLocate(s32* cmdBank, s32* texBank, s32* formBank);
-
-extern void memset(void*, int, int);
 
 extern s32 psRemoveParticleAppSRT(HSD_Particle* pp);
 extern s32 psAttachParticleAppSRT(HSD_Particle* pp, HSD_psAppSRT* srt);
@@ -32,7 +29,7 @@ static inline void particle_ref_INC(void* o)
 void* ptclref[64];
 s32 psBankTextureCounts[64];
 HSD_PSTexGroup** psTexGroupArray[64];
-u8** psFormGroupArray[64];
+HSD_PSFormGroup** psFormGroupArray[64];
 s32 psNumCmdList[64];
 HSD_PSCmdList** psCmdListArray[64];
 HSD_JObj* psPointJObj[8];
@@ -69,7 +66,7 @@ void psInitDataBankLoad(s32 bank, s32* cmdBank, s32* texBank, void* ref, s32* fo
 	psBankTextureCounts[bank] = *texBank;
 	psTexGroupArray[bank]     = (HSD_PSTexGroup**)(texBank + 1);
 	if (formBank != NULL) {
-		psFormGroupArray[bank] = (u8**)(formBank + 1);
+		psFormGroupArray[bank] = (HSD_PSFormGroup**)(formBank + 1);
 	} else {
 		psFormGroupArray[bank] = NULL;
 	}
@@ -285,8 +282,8 @@ void psRemoveParticle(void)
  * @note Address: N/A
  * @note Size: 0x2FC
  */
-HSD_Particle* psGenerateParticle0(HSD_Particle* parent, int linkNo, int bank, int reserved0, int reserved1, u32 kind, int texGroup,
-                                  u8* list, f32 x, f32 y, f32 z, f32 vx, f32 vy, f32 vz, f32 size, f32 grav, int life, f32 fric,
+HSD_Particle* psGenerateParticle0(HSD_Particle* parent, int linkNo, int bank, u64 kind, int texGroup, u8* list, int life,
+                                  f32 x, f32 y, f32 z, f32 vx, f32 vy, f32 vz, f32 size, f32 grav, f32 fric,
                                   int palflag, HSD_Generator* gp, int flgInterpret)
 {
 	HSD_Particle* pp;
@@ -309,7 +306,7 @@ HSD_Particle* psGenerateParticle0(HSD_Particle* parent, int linkNo, int bank, in
 
 	pp->bank       = (u8)bank;
 	pp->linkNo     = (u8)linkNo;
-	pp->kind       = kind;
+	pp->kind       = (u32)kind;
 	pp->texGroup   = (u8)texGroup;
 	pp->pos.x      = x;
 	pp->pos.y      = y;
@@ -417,19 +414,18 @@ HSD_Particle* psGenerateParticleID0(HSD_Particle* head, int linkNo, int bank, in
 		palflag = 0;
 	}
 
-	return psGenerateParticle0(head, linkNo, bank, (int)tg, 0, cl->kind, cl->texGroup, cl->cmdList, 0.0F, 0.0F, 0.0F, cl->vx, cl->vy,
-	                           cl->vz, cl->size, cl->grav, cl->life, cl->fric, palflag, NULL, flgInterpret);
+	return psGenerateParticle0(head, linkNo, bank, cl->kind, cl->texGroup, cl->cmdList, cl->life, 0.0F, 0.0F, 0.0F,
+	                           cl->vx, cl->vy, cl->vz, cl->size, cl->grav, cl->fric, palflag, NULL, flgInterpret);
 }
 
 /**
  * @note Address: N/A
  * @note Size: 0x64
  */
-HSD_Particle* psGenerateParticle(int linkNo, int bank, int reserved, u32 kind, int texGroup, u8* list, f32 x, f32 y, f32 z, f32 vx, f32 vy,
-                                 f32 vz, f32 size, f32 grav, int life, f32 fric, int palflag, HSD_Generator* gp)
+HSD_Particle* psGenerateParticle(int linkNo, int bank, u64 kind, int texGroup, u8* list, int life, f32 x, f32 y, f32 z,
+                                 f32 vx, f32 vy, f32 vz, f32 size, f32 grav, f32 fric, int palflag, HSD_Generator* gp)
 {
-	return psGenerateParticle0(NULL, linkNo, bank, kind, reserved, kind, texGroup, list, x, y, z, vx, vy, vz, size, grav, life, fric,
-	                           palflag, gp, 1);
+	return psGenerateParticle0(NULL, linkNo, bank, kind, texGroup, list, life, x, y, z, vx, vy, vz, size, grav, fric, palflag, gp, 1);
 }
 
 /**
