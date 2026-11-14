@@ -481,10 +481,10 @@ extern "C" void CaptureWiiSaveSlot(WiiSaveManager* manager, bool newGame)
 	if (manager->mSlot.mHeader.mStatusFlags & 1) {
 		CMotionControlCamera* camera       = &gGame.mMotionControlCamera;
 		manager->mSlot.mData.mCameraAction = camera->GetActionType();
-		CopyVec(manager->mSlot.mData.mCameraEye, camera->mEye);
-		CopyVec(manager->mSlot.mData.mCameraInterest, camera->mInterest);
-		CopyVec(manager->mSlot.mData.mCameraAngle, camera->mAngle);
-		manager->mSlot.mData.mCameraDistance = camera->mDistance;
+		CopyVec(manager->mSlot.mData.mCameraEye, camera->mView.mEye);
+		CopyVec(manager->mSlot.mData.mCameraInterest, camera->mView.mInterest);
+		CopyVec(manager->mSlot.mData.mCameraAngle, camera->mView.mAngle);
+		manager->mSlot.mData.mCameraDistance = camera->mView.mDistance;
 		manager->mSlot.mData.mCameraFov      = camera->mFov;
 	}
 	manager->mSlot.mData.mSquirterLiquid = gGame.mPlayer->mSquirterContent;

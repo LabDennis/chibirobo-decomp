@@ -1,0 +1,412 @@
+#ifndef GAME_WII_CGS_H
+#define GAME_WII_CGS_H
+
+#include <Dolphin/gx.h>
+#include "game/ut.h"
+
+// The Wii graphics state layer. Class names from RTTI; the GS* classes each hold the arguments of
+// one GX call and are handed around by value. Their vtable sits behind the data.
+
+class GSBlendMode {
+public:
+	GXBlendMode mType;  // _00
+	GXBlendFactor mSrc; // _04
+	GXBlendFactor mDst; // _08
+	GXLogicOp mOp;      // _0C
+	// _10 vtable
+
+	GSBlendMode(GXBlendMode type, GXBlendFactor src, GXBlendFactor dst, GXLogicOp op)
+	{
+		mType = type;
+		mSrc  = src;
+		mDst  = dst;
+		mOp   = op;
+		GXSetBlendMode(type, src, dst, op);
+	}
+	virtual ~GSBlendMode() { } // _08
+};
+
+class GSZMode {
+public:
+	GXBool mEnable;  // _00
+	GXCompare mFunc; // _04
+	GXBool mUpdate;  // _08
+	// _0C vtable
+
+	GSZMode(GXBool enable, GXCompare func, GXBool update)
+	{
+		mEnable = enable;
+		mFunc   = func;
+		mUpdate = update;
+		GXSetZMode(enable, func, update);
+	}
+	virtual ~GSZMode() { } // _08
+};
+
+class GSAlphaCompare {
+public:
+	GXCompare mComp0; // _00
+	u8 mRef0;         // _04
+	GXAlphaOp mOp;    // _08
+	GXCompare mComp1; // _0C
+	u8 mRef1;         // _10
+	// _14 vtable
+
+	GSAlphaCompare(GXCompare comp0, u8 ref0, GXAlphaOp op, GXCompare comp1, u8 ref1)
+	{
+		mComp0 = comp0;
+		mRef0  = ref0;
+		mOp    = op;
+		mComp1 = comp1;
+		mRef1  = ref1;
+		GXSetAlphaCompare(comp0, ref0, op, comp1, ref1);
+	}
+	virtual ~GSAlphaCompare() { } // _08
+};
+
+class GSColorUpdate {
+public:
+	GXBool mEnable; // _00
+	// _04 vtable
+
+	GSColorUpdate(GXBool enable)
+	{
+		mEnable = enable;
+		GXSetColorUpdate(enable);
+	}
+	virtual ~GSColorUpdate() { } // _08
+};
+
+class GSAlphaUpdate {
+public:
+	GXBool mEnable; // _00
+	// _04 vtable
+
+	GSAlphaUpdate(GXBool enable)
+	{
+		mEnable = enable;
+		GXSetAlphaUpdate(enable);
+	}
+	virtual ~GSAlphaUpdate() { } // _08
+};
+
+class GSDstAlpha {
+public:
+	GXBool mEnable; // _00
+	u8 mAlpha;      // _01
+	// _04 vtable
+
+	GSDstAlpha(GXBool enable, u8 alpha)
+	{
+		mEnable = enable;
+		mAlpha  = alpha;
+		GXSetDstAlpha(enable, alpha);
+	}
+	virtual ~GSDstAlpha() { } // _08
+};
+
+class GSZCompLoc {
+public:
+	GXBool mBeforeTex; // _00
+	// _04 vtable
+
+	GSZCompLoc(GXBool beforeTex)
+	{
+		mBeforeTex = beforeTex;
+		GXSetZCompLoc(beforeTex);
+	}
+	virtual ~GSZCompLoc() { } // _08
+};
+
+class GSDither {
+public:
+	GXBool mEnable; // _00
+	// _04 vtable
+
+	GSDither(GXBool enable)
+	{
+		mEnable = enable;
+		GXSetDither(enable);
+	}
+	virtual ~GSDither() { } // _08
+};
+
+class GSLineWidth {
+public:
+	u8 mWidth;           // _00
+	GXTexOffset mOffset; // _04
+	// _08 vtable
+
+	GSLineWidth(u8 width, GXTexOffset offset)
+	{
+		mWidth  = width;
+		mOffset = offset;
+		GXSetLineWidth(width, offset);
+	}
+	virtual ~GSLineWidth() { } // _08
+};
+
+class GSPointSize {
+public:
+	u8 mSize;            // _00
+	GXTexOffset mOffset; // _04
+	// _08 vtable
+
+	GSPointSize(u8 size, GXTexOffset offset)
+	{
+		mSize   = size;
+		mOffset = offset;
+		GXSetPointSize(size, offset);
+	}
+	virtual ~GSPointSize() { } // _08
+};
+
+class GSCullMode {
+public:
+	GXCullMode mMode; // _00
+	// _04 vtable
+
+	GSCullMode(GXCullMode mode)
+	{
+		mMode = mode;
+		GXSetCullMode(mode);
+	}
+	virtual ~GSCullMode() { } // _08
+};
+
+class GSClipMode {
+public:
+	GXClipMode mMode; // _00
+	// _04 vtable
+
+	GSClipMode(GXClipMode mode)
+	{
+		mMode = mode;
+		GXSetClipMode(mode);
+	}
+	virtual ~GSClipMode() { } // _08
+};
+
+// the tev classes carry no stage, so they are applied later, by CGsTevStage
+class GSTevOrder {
+public:
+	GXTexCoordID mCoord; // _00
+	GXTexMapID mMap;     // _04
+	GXChannelID mColor;  // _08
+	// _0C vtable
+
+	GSTevOrder(GXTexCoordID coord, GXTexMapID map, GXChannelID color)
+	{
+		mCoord = coord;
+		mMap   = map;
+		mColor = color;
+	}
+	virtual ~GSTevOrder() { } // _08
+};
+
+class GSTevColorOp {
+public:
+	GXTevOp mOp;       // _00
+	GXTevBias mBias;   // _04
+	GXTevScale mScale; // _08
+	GXBool mClamp;     // _0C
+	GXTevRegID mReg;   // _10
+	// _14 vtable
+
+	GSTevColorOp(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg)
+	{
+		mOp    = op;
+		mScale = scale;
+		mBias  = bias;
+		mClamp = clamp;
+		mReg   = reg;
+	}
+	virtual ~GSTevColorOp() { } // _08
+};
+
+class GSTevColorIn {
+public:
+	GXTevColorArg mA; // _00
+	GXTevColorArg mB; // _04
+	GXTevColorArg mC; // _08
+	GXTevColorArg mD; // _0C
+	// _10 vtable
+
+	GSTevColorIn(GXTevColorArg a, GXTevColorArg b, GXTevColorArg c, GXTevColorArg d)
+	{
+		mA = a;
+		mB = b;
+		mC = c;
+		mD = d;
+	}
+	virtual ~GSTevColorIn() { } // _08
+};
+
+class GSTevAlphaOp {
+public:
+	GXTevOp mOp;       // _00
+	GXTevBias mBias;   // _04
+	GXTevScale mScale; // _08
+	GXBool mClamp;     // _0C
+	GXTevRegID mReg;   // _10
+	// _14 vtable
+
+	GSTevAlphaOp(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg)
+	{
+		mOp    = op;
+		mScale = scale;
+		mBias  = bias;
+		mClamp = clamp;
+		mReg   = reg;
+	}
+	virtual ~GSTevAlphaOp() { } // _08
+};
+
+class GSTevAlphaIn {
+public:
+	GXTevAlphaArg mA; // _00
+	GXTevAlphaArg mB; // _04
+	GXTevAlphaArg mC; // _08
+	GXTevAlphaArg mD; // _0C
+	// _10 vtable
+
+	GSTevAlphaIn(GXTevAlphaArg a, GXTevAlphaArg b, GXTevAlphaArg c, GXTevAlphaArg d)
+	{
+		mA = a;
+		mB = b;
+		mC = c;
+		mD = d;
+	}
+	virtual ~GSTevAlphaIn() { } // _08
+};
+
+class GSChanCtrl {
+public:
+	GXBool mEnable;      // _00
+	GXColorSrc mAmbSrc;  // _04
+	GXColorSrc mMatSrc;  // _08
+	u32 mLightMask;      // _0C
+	GXDiffuseFn mDiffFn; // _10
+	GXAttnFn mAttnFn;    // _14
+	// _18 vtable
+
+	GSChanCtrl(GXBool enable, GXColorSrc ambSrc, GXColorSrc matSrc, u32 lightMask, GXDiffuseFn diffFn, GXAttnFn attnFn)
+	{
+		mEnable    = enable;
+		mAmbSrc    = ambSrc;
+		mMatSrc    = matSrc;
+		mLightMask = lightMask;
+		mDiffFn    = diffFn;
+		mAttnFn    = attnFn;
+	}
+	virtual ~GSChanCtrl() { } // _08
+};
+
+// the three kinds of state a CGs keeps a current one of. Only what the start-up code calls
+class CGsRenderState {
+public:
+	void Apply(); // 0x802A9CE4
+};
+
+class CGsTevStage {
+public:
+	void Apply(); // 0x802AA0DC
+};
+
+class CGsChannel {
+public:
+	void Apply(); // 0x802AA4CC
+};
+
+// the render mode in use, RTTI gives the base as "_GXRenderModeObj"
+class CGsScreen : public GXRenderModeObj {
+public:
+	// _3C vtable
+
+	virtual ~CGsScreen(); // _08
+
+	// the SDK render mode with that index in the screen mode table
+	GXRenderModeObj* GetRenderMode(s32 mode); // 0x802A977C
+};
+STATIC_ASSERT(sizeof(CGsScreen) == 0x40);
+
+class CGs {
+public:
+	void* mFifoBuffer; // _00
+	GXFifoObj* mFifo;  // _04
+	CGsScreen mScreen; // _08
+	u8 _48[0x380 - 0x48];
+	CGsRenderState* mCurRenderState; // _380
+	CGsTevStage* mCurTevStage;       // _384
+	CGsChannel* mCurChannel;         // _388
+	u8 _38C[0x1B84 - 0x38C];
+	BOOL _1B84; // _1B84, set once the start-up state is applied
+	u8 _1B88[0x1B90 - 0x1B88];
+	// _1B90 vtable
+
+	virtual ~CGs(); // _08
+
+	void Init(u32 renderStates, u32 tevStages, u32 channels, u32 texGens); // 0x802AA610
+	void SetScreenMode(s32 mode, s32 arg2, s32 arg3);                      // 0x802AAF6C
+	void InitFrameBuffers();                                               // 0x802AAF98
+	// each takes the object to fill, or NULL for the CGs's own one, and makes it the current one
+	void SetRenderState(CGsRenderState* state, GSBlendMode blend, GSZMode zMode, GSAlphaCompare alphaCompare, GSColorUpdate colorUpdate,
+	                    GSAlphaUpdate alphaUpdate, GSDstAlpha dstAlpha, GSZCompLoc zCompLoc, GSDither dither, GSLineWidth lineWidth,
+	                    GSPointSize pointSize, GSCullMode cullMode, GSClipMode clipMode); // 0x802AAFC4
+	void SetTevStage(CGsTevStage* stage, s32 index, GSTevOrder order, GSTevColorOp colorOp, GSTevColorIn colorIn, GSTevAlphaOp alphaOp,
+	                 GSTevAlphaIn alphaIn);                                                                   // 0x802AB1DC
+	void SetChannel(CGsChannel* channel, GXChannelID id, GSChanCtrl ctrl, GXColor ambient, GXColor material); // 0x802AB344
+};
+
+// GXSetFog's arguments, kept so the fog can be put back
+class CFog {
+public:
+	GXFogType mType; // _00
+	f32 mStartZ;     // _04
+	f32 mEndZ;       // _08
+	f32 mNearZ;      // _0C
+	f32 mFarZ;       // _10
+	CColor mColor;   // _14
+	// _1C vtable
+
+	virtual ~CFog(); // _08
+
+	void Init(GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ); // 0x802A8FF8
+};
+STATIC_ASSERT(sizeof(CFog) == 0x20);
+
+// a GX light with its place in a list. The Init* names follow the GameCube light types
+class CLight : public GXLightObj {
+public:
+	u32 mFlags;     // _40, 1 ambient, 2 infinite, 4 point, 8 spot
+	CVec mPosition; // _44
+	CVec mInterest; // _54
+	// _64 vtable
+
+	virtual ~CLight();                                                                       // _08
+	virtual void InitAmbient(u8 r, u8 g, u8 b, u8 a);                                        // _0C
+	virtual void InitInfinite(const Vec& position, u8 r, u8 g, u8 b, u8 a);                  // _10
+	virtual void InitPoint(const Vec& position, u8 r, u8 g, u8 b, u8 a);                     // _14
+	virtual void InitSpot(const Vec& position, const Vec& interest, u8 r, u8 g, u8 b, u8 a); // _18
+	virtual void InitAmbient(u32 color);                                                     // _1C
+	virtual void InitInfinite(const Vec& position, u32 color);                               // _20
+	virtual void InitPoint(const Vec& position, u32 color);                                  // _24
+	virtual void InitSpot(const Vec& position, const Vec& interest, u32 color);              // _28
+	virtual void vf2C();                                                                     // _2C, sets flag 0x8000
+	virtual void vf30() { mFlags &= ~0x8000; }                                               // _30
+	virtual void SetPosition(f32 x, f32 y, f32 z)                                            // _34
+	{
+		mPosition.x = x;
+		mPosition.y = y;
+		mPosition.z = z;
+	}
+	virtual void SetInterest(f32 x, f32 y, f32 z); // _38
+	virtual void SetPosition(const Vec& position); // _3C
+	virtual void SetInterest(const Vec& interest); // _40
+	virtual void SetColor(u8 r, u8 g, u8 b, u8 a); // _44
+
+	CLight* mNext; // _68
+};
+STATIC_ASSERT(sizeof(CLight) == 0x6C);
+
+#endif

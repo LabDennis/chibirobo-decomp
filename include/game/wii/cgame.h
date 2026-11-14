@@ -3,32 +3,44 @@
 
 #include "game/wii/cpad.h"
 #include "game/wii/csound.h"
+#include "game/wii/cgs.h"
 #include "game/cscrn.h"
 #include "game/ut.h"
 #include "game/inventory.h"
 
-// Verified Wii fields accessed by the controller, stage, and save code. The Wii CBase is larger than the
-// GameCube one, so its vtable sits at 0x41E4, right behind its data.
+class CCamera;
+
+// Verified Wii fields accessed by the controller, stage, start-up and save code. The Wii CBase is larger
+// than the GameCube one, so its vtable sits at 0x41E4, right behind its data.
 class CBase {
 public:
-	u8 _0000[0x2298];
-	CPadEx mPad;
-	XSound mSound;
-	u32 mLastRetrace;
-	u32 mRetraceStep;
-	CStatus64 mStatus;
-	u8 _3400[0x4160 - 0x3400];
-	u8 mLanguage;
-	s32 mDvdStatus;
-	s32 mPrevDvdStatus;
-	BOOL mDiskOk;
+	u32 mTvFormat;   // _0000, 0 NTSC, 1 PAL, 2 M-PAL, 3 EURGB60
+	u8 mProgressive; // _0004
+	CGs mGs;         // _0008
+	u8 _1B9C[0x2298 - 0x1B9C];
+	CPadEx mPad;       // _2298
+	XSound mSound;     // _22A4
+	u32 mLastRetrace;  // _33E4
+	u32 mRetraceStep;  // _33E8
+	CStatus64 mStatus; // _33F0
+	u8 _3400[0x4148 - 0x3400];
+	void* mMem1Base;    // _4148, 0x80000000
+	void* mMem1Start;   // _414C, the MEM1 arena's start before the heaps are made
+	void* mMem1ArenaLo; // _4150
+	void* mMem1ArenaHi; // _4154
+	void* mMem2ArenaLo; // _4158
+	void* mMem2ArenaHi; // _415C
+	u8 mLanguage;       // _4160
+	u8 mAspectRatio;    // _4161, SCGetAspectRatio: 0 is 4:3, 1 is 16:9
+	s32 mDvdStatus;     // _4164
+	s32 mPrevDvdStatus; // _4168
+	BOOL mDiskOk;       // _416C
 	u8 _4170[0x41E4 - 0x4170];
 	// _41E4 vtable
 
-	void Start();
-	virtual ~CBase(); // _08
-	virtual void vf0C();
-	virtual void vf10();
+	virtual ~CBase();                               // _08
+	virtual void Initialize(int argc, char** argv); // _0C
+	virtual void Start();                           // _10, 0x80017D4C
 	virtual void vf14();
 	virtual void vf18();
 	virtual void vf1C();
@@ -37,8 +49,8 @@ public:
 	virtual void vf28();
 	virtual void vf2C();
 	virtual void vf30();
-	virtual void vf34();
-	virtual void vf38();
+	virtual void SetStatusFlags(u64 mask);   // _34, 0x8001D5B4
+	virtual void ClearStatusFlags(u64 mask); // _38, 0x8001C78C
 	virtual void vf3C();
 	virtual u64 GetStatusFlags(u64 mask) const; // _40, the game's status flags under mask
 };
@@ -71,39 +83,73 @@ enum {
 	CAMACTION_NUM,
 };
 
+// where a camera looks from and at. The class has no RTTI of its own, so its name is made up
+class CCameraView {
+public:
+	CVec mEye;      // _00
+	CVec mInterest; // _10
+	CVec mAngle;    // _20
+	CVec _30;       // _30
+	f32 mDistance;  // _40
+	u8 mDirty;      // _44, the view matrix is out of date
+
+	void CalcEye();      // 0x802A855C
+	void CalcAngle();    // 0x802A8734
+	void CalcDistance(); // 0x802A896C, between the eye and the interest
+};
+
 // the Wii camera object behind gGame's camera member. A different layout than the GameCube CCamera,
-// but the setters the save manager calls sit on its vtable at the offsets below
+// but the setters the start-up code and the save manager call sit on its vtable at the offsets below
 class CCamera {
 public:
-	virtual ~CCamera() { }                         // _08
-	virtual void vf0C();                           // _0C
-	virtual void vf10();                           // _10
-	virtual void vf14();                           // _14
-	virtual void SetFov(f32 fov);                  // _18
-	virtual void vf1C();                           // _1C
-	virtual void vf20();                           // _20
-	virtual void vf24();                           // _24
-	virtual void vf28();                           // _28
-	virtual void vf2C();                           // _2C
-	virtual void vf30();                           // _30
-	virtual void vf34();                           // _34
-	virtual void vf38();                           // _38
-	virtual void vf3C();                           // _3C
-	virtual void vf40();                           // _40
-	virtual void SetDistance(f32 distance);        // _44
-	virtual void SetEye(const Vec& eye);           // _48
-	virtual void SetInterest(const Vec& interest); // _4C
-	virtual void SetAngle(const Vec& angle);       // _50
+	virtual ~CCamera() { }                                                            // _08
+	virtual void Init(f32 near, f32 far, f32 fov, f32 scale, GXRenderModeObj* rmode); // _0C
+	virtual void vf10();                                                              // _10
+	// an orthographic camera
+	virtual void Init(f32 top, f32 bottom, f32 left, f32 right, f32 near, f32 far, f32 scale, GXRenderModeObj* rmode); // _14
+	virtual void SetFov(f32 fov);                                                                                      // _18
+	virtual void vf1C();                                                                                               // _1C
+	virtual void vf20();                                                                                               // _20
+	virtual void vf24();                                                                                               // _24
+	virtual void vf28();                                                                                               // _28
+	virtual void vf2C();                                                                                               // _2C
+	virtual void vf30();                                                                                               // _30
+	virtual void SetEye(f32 x, f32 y, f32 z);                                                                          // _34
+	virtual void SetInterest(f32 x, f32 y, f32 z);                                                                     // _38
+	virtual void SetAngle(f32 x, f32 y, f32 z)                                                                         // _3C
+	{
+		mView.mAngle.x = x;
+		mView.mAngle.y = y;
+		mView.mAngle.z = z;
+		mView.mDirty   = TRUE;
+	}
+	virtual void vf40();                                  // _40
+	virtual void SetDistance(f32 distance);               // _44
+	virtual void SetEye(const Vec& eye);                  // _48
+	virtual void SetInterest(const Vec& interest);        // _4C
+	virtual void SetAngle(const Vec& angle);              // _50
+	virtual void vf54();                                  // _54
+	virtual void vf58();                                  // _58
+	virtual void vf5C();                                  // _5C
+	virtual void vf60();                                  // _60
+	virtual void vf64();                                  // _64
+	virtual void vf68();                                  // _68
+	virtual void vf6C();                                  // _6C
+	virtual void CalcEye();                               // _70
+	virtual void vf74();                                  // _74
+	virtual void CalcAngle() { mView.CalcAngle(); }       // _78
+	virtual void vf7C();                                  // _7C
+	virtual void CalcDistance() { mView.CalcDistance(); } // _80
+	virtual void vf84();                                  // _84
+	virtual void vf88();                                  // _88
 
 	u8 _04[0x4];
 	f32 mFov; // _08
 	u8 _0C[0x90 - 0x0C];
-	CVec mEye;      // _90
-	CVec mInterest; // _A0
-	CVec mAngle;    // _B0
-	u8 _C0[0xD0 - 0xC0];
-	f32 mDistance; // _D0
+	CCameraView mView; // _90
+	u8 _D8[0x1F8 - 0xD8];
 };
+STATIC_ASSERT(sizeof(CCamera) == 0x1F8);
 
 // what CreateMemento saves of the camera, the same class the GameCube version keeps
 class CCameraMemento {
@@ -146,7 +192,7 @@ STATIC_ASSERT(sizeof(CCameraMemento) == 0x40);
 // uses the base setters; ChangeAction, GetActionType and SetMemento are named in the binary
 class CMotionControlCamera : public CCamera {
 public:
-	u8 _0D4[0x234 - 0xD4];
+	u8 _1F8[0x234 - 0x1F8];
 	CInterfaceCameraAction* mAction; // _234, the running action, GetActionType finds it in the table
 	u8 _238[0x2504 - 0x238];
 
@@ -280,6 +326,12 @@ public:
 	u8 _EC1A4[0xEE1DC - 0xEC1A4];
 	u32 mMenuControls;
 	u8 _EE1E0[0xEE530 - 0xEE1E0];
+
+	void SetStage(s32 stage)
+	{
+		mPrevStage = mStage;
+		mStage     = stage;
+	}
 };
 STATIC_ASSERT(sizeof(CGame) == 0xEE530);
 
