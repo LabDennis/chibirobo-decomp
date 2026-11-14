@@ -20,9 +20,9 @@ static void SecondaryRemoteConnected(s32 channel, s32 result)
 void CPadAct::Init()
 {
 	mFlags         = 0;
-	const Vec zero = { 0.0f, 0.0f, 0.0f };
 	for (int i = 0; i < 5; ++i) {
-		mRemoteAcceleration[i] = mNunchukAcceleration[i] = zero;
+		mRemoteAcceleration[i].x = mRemoteAcceleration[i].y = mRemoteAcceleration[i].z = 0.0f;
+		mNunchukAcceleration[i].x = mNunchukAcceleration[i].y = mNunchukAcceleration[i].z = 0.0f;
 	}
 	mRight     = gScreenRight - 16.0f;
 	mLeft      = gScreenLeft + 16.0f;
@@ -30,7 +30,7 @@ void CPadAct::Init()
 	mTop       = gScreenTop + 16.0f;
 	mPointer.x = gScreenSafeRight - 12;
 	mPointer.y = gScreenSafeBottom - 12;
-	mPointer.z = mPointerAngle = 0.0f;
+	mPointerAngle = mPointer.z = 0.0f;
 	mPointerScale = mPointerFade = mPointerOpacity = 0.0f;
 	mInBounds = mPointerValid = FALSE;
 	mTransitionFrames         = 0;
@@ -38,9 +38,9 @@ void CPadAct::Init()
 	mFadeFrames               = 0;
 	mTransitionCooldown       = 0.0f;
 	mStablePointer            = mPointer;
-	for (s32 channel = 1; channel < 4; ++channel) {
-		KPADSetConnectCallback(channel, SecondaryRemoteConnected);
-	}
+	KPADSetConnectCallback(1, SecondaryRemoteConnected);
+	KPADSetConnectCallback(2, SecondaryRemoteConnected);
+	KPADSetConnectCallback(3, SecondaryRemoteConnected);
 }
 
 void CPadAct::ResetRumble(BOOL resetAll)
