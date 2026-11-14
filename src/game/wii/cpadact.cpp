@@ -273,8 +273,9 @@ void CPadAct::Update(u32 frames)
 {
 	const CPadOne& pad = gWiiPads[0];
 	mFlags             = 0;
-	mButton = mDirButton = mTrigger = mDirTrigger = mRepeat = mDirRepeat = 0;
-	mStick.y = mStick.x = mSubStick.y = mSubStick.x = mAnalogR = mAnalogL = 0.0f;
+	mButton = mDirButton = 0;
+	mTrigger = mDirTrigger = mRepeat = mDirRepeat = 0;
+	mAnalogL = mAnalogR = mSubStick.x = mSubStick.y = mStick.x = mStick.y = 0.0f;
 	mCameraInput                                                          = NAN;
 	mButton                                                               = pad.mButton;
 	mDirButton                                                            = pad.mDirButton;
