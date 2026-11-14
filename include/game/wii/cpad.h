@@ -6,7 +6,11 @@
 
 // Bit positions in the game's 64-bit button word.
 enum {
-	RemoteA = 4,
+	RemoteLeft,
+	RemoteRight,
+	RemoteDown,
+	RemoteUp,
+	RemoteA,
 	RemoteB,
 	RemoteOne,
 	RemoteTwo,
@@ -43,6 +47,19 @@ enum {
 	GameCubeStart,
 	GameCubeStick    = 56,
 	GameCubeSubStick = 60
+};
+
+enum {
+	InputRemote   = 1,
+	InputClassic  = 2,
+	InputGameCube = 4
+};
+
+enum {
+	DeviceRemote   = 1,
+	DeviceNunchuk  = 2,
+	DeviceClassic  = 4,
+	DeviceGameCube = 8
 };
 
 struct PADStatus;
@@ -171,6 +188,9 @@ public:
 	void EnableRemoteSpeaker();
 	void DisableRemoteSpeaker();
 	u32 GetStickDirections(const StickDirectionSettings& settings, f32 x, f32 y) const;
+	BOOL IsRemoteActive() const { return (mDevices & DeviceRemote) && (mInputMask & InputRemote); }
+	BOOL IsNunchukActive() const { return (mDevices & DeviceNunchuk) && (mInputMask & InputRemote); }
+	BOOL IsClassicPadActive() const { return (mDevices & DeviceClassic) && (mInputMask & InputClassic); }
 	BOOL IsGameCubePadActive() const;
 	BOOL GetSwing(Vec* direction, f32* strength) const;
 	void ResetSwing();

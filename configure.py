@@ -1186,7 +1186,9 @@ if wii:
                 # small functions is inlined into the callers that follow them
                 Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(NonMatching, "game/wii/gamemain.cpp", extra_cflags=["-Cpp_exceptions on"]),
-                Object(Equivalent, "game/wii/cpad.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                # Same profile as cfile.cpp: binary-search-tree switch lowering and no
+                # auto-inlining of the small pad functions into their callers.
+                Object(Equivalent, "game/wii/cpad.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(NonMatching, "game/wii/savemanager.cpp", extra_cflags=["-Cpp_exceptions on"]),

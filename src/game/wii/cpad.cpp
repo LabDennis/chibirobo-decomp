@@ -46,18 +46,12 @@ struct WiiStickRange {
 };
 static WiiStickRange sStickRanges[2];
 static WiiRawSample sRawSamples[16];
+static BOOL (CPadOne::*sGameCubePadCheck)() const = &CPadOne::IsGameCubePadActive;
 
 enum {
-	InputRemote    = 1,
-	InputClassic   = 2,
-	InputGameCube  = 4,
-	DeviceRemote   = 1,
-	DeviceNunchuk  = 2,
-	DeviceClassic  = 4,
-	DeviceGameCube = 8,
-	RumbleEnabled  = 1,
-	RumbleRunning  = 2,
-	RumblePaused   = 4
+	RumbleEnabled = 1,
+	RumbleRunning = 2,
+	RumblePaused  = 4
 };
 
 // Hardware masks returned by KPAD for the Wii Remote and its extensions.
@@ -103,33 +97,40 @@ static const u64 sRepeatGroups[]
 
 void CPadOne::Clear()
 {
-	mButton = mDirButton = mLastButton = mLastDirButton = 0;
+	mButton     = mDirButton = 0;
+	mLastButton = mLastDirButton = 0;
 	mTrigger = mDirTrigger = mRepeat = mDirRepeat = 0;
 	for (int i = 0; i < 16; ++i) {
-		WiiButtonRepeat& settings = mRepeatSettings[i];
-		settings.delay            = 24;
-		settings.interval = settings.startingInterval = settings.minimumInterval = 6;
-		mRepeatTimer[i]                                                          = settings.delay;
+		mRepeatSettings[i].delay = 24;
+		mRepeatSettings[i].interval = mRepeatSettings[i].startingInterval = 6;
+		mRepeatSettings[i].minimumInterval                              = 6;
 	}
-	mStick.x = mStick.y = mSubStick.x = mSubStick.y = mAnalogL = mAnalogR = 0.0f;
-	mStickDirections.thresholdPercent                                     = 50.0f;
-	mStickDirections.diagonalOverlapDegrees                               = 30.0f;
-	mSampleCount                                                          = 0;
-	mDevices                                                              = 0;
+	for (int i = 0; i < 16; ++i) {
+		mRepeatTimer[i] = 24;
+	}
+	mStick.x    = mStick.y = 0.0f;
+	mSubStick.x = mSubStick.y = 0.0f;
+	mAnalogL    = mAnalogR = 0.0f;
+	mStickDirections.thresholdPercent       = 50.0f;
+	mStickDirections.diagonalOverlapDegrees = 30.0f;
+	mSampleCount                            = 0;
+	mDevices                                = 0;
 	ResetRumble(TRUE);
 }
 
 void CPadOne::ResetRumble(BOOL resetAll)
 {
-	for (int i = 0; i < 3; ++i) {
-		WiiRumble& rumble = mRumble[i];
-		if (resetAll) {
-			rumble.flags = rumble.previousFlags = 0;
-		} else {
-			rumble.flags &= ~(RumbleRunning | RumblePaused);
-			rumble.previousFlags &= ~(RumbleRunning | RumblePaused);
+	if (resetAll) {
+		for (int i = 0; i < 3; ++i) {
+			mRumble[i].flags = mRumble[i].previousFlags = 0;
+			mRumble[i].remaining                       = 0;
 		}
-		rumble.remaining = 0;
+	} else {
+		for (int i = 0; i < 3; ++i) {
+			mRumble[i].flags &= ~(RumbleRunning | RumblePaused);
+			mRumble[i].previousFlags &= ~(RumbleRunning | RumblePaused);
+			mRumble[i].remaining = 0;
+		}
 	}
 	WPADControlMotor(mPort, 0);
 }
@@ -146,25 +147,6 @@ enum StickDirection {
 	StickRight = 8,
 };
 
-static u32 StickButtons(const CPadOne* pad, const StickPosition& stick)
-{
-	u32 directions = pad->GetStickDirections(pad->mStickDirections, stick.x, stick.y);
-	u32 result     = 0;
-	if (directions & StickUp) {
-		result |= PAD_BUTTON_UP;
-	}
-	if (directions & StickLeft) {
-		result |= PAD_BUTTON_LEFT;
-	}
-	if (directions & StickDown) {
-		result |= PAD_BUTTON_DOWN;
-	}
-	if (directions & StickRight) {
-		result |= PAD_BUTTON_RIGHT;
-	}
-	return result;
-}
-
 void CPadOne::Update(const PADStatus* status, s32 frames)
 {
 	mSampleCount = KPADRead(mPort, mSamples, ARRAY_SIZE(mSamples));
@@ -175,13 +157,18 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			return;
 		}
 	}
+	// NONMATCHING: the probe/device dispatch, frame layout and register
+	// allocation still differ from retail even though the unit is built with
+	// the matching GC/3.0a5.2 profile; remaining diffs are scheduling and
+	// local-placement residue, not missing cases.
 	switch (probe) {
+	case -1:
+		mDevices = 0;
+		ResetRumble(FALSE);
+		break;
 	case 0:
 		switch (device) {
 		case 0:
-		case 0xfb:
-		case 0xfc:
-		case 0xff:
 			mDevices = DeviceRemote;
 			break;
 		case 1:
@@ -190,15 +177,20 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 		case 2:
 			mDevices = DeviceRemote | DeviceClassic;
 			break;
+		case 0xfb:
+			mDevices = DeviceRemote;
+			break;
+		case 0xfc:
+			mDevices = DeviceRemote;
+			break;
 		case 0xfd:
 			mDevices = 0;
 			ResetRumble(FALSE);
 			break;
+		case 0xff:
+			mDevices = DeviceRemote;
+			break;
 		}
-		break;
-	case -1:
-		mDevices = 0;
-		ResetRumble(FALSE);
 		break;
 	case -3:
 		ResetRumble(FALSE);
@@ -210,13 +202,24 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 	mProbeResult = probe;
 	mDeviceType  = device;
 
-	u64 buttons   = 0;
-	bool nunchukX = false, nunchukY = false;
-	if ((mDevices & DeviceRemote) && (mInputMask & InputRemote)) {
+	u64 buttons = 0;
+	u32 claimed = 0;
+	if (IsRemoteActive()) {
 		u32 hold = mSamples[0].buttons.hold;
 		UpdateSwing();
 		UpdateRemoteMotion();
-		buttons = hold & (WPAD_BUTTON_LEFT | WPAD_BUTTON_RIGHT | WPAD_BUTTON_DOWN | WPAD_BUTTON_UP);
+		if (hold & WPAD_BUTTON_LEFT) {
+			buttons |= 1ULL << RemoteLeft;
+		}
+		if (hold & WPAD_BUTTON_RIGHT) {
+			buttons |= 1ULL << RemoteRight;
+		}
+		if (hold & WPAD_BUTTON_DOWN) {
+			buttons |= 1ULL << RemoteDown;
+		}
+		if (hold & WPAD_BUTTON_UP) {
+			buttons |= 1ULL << RemoteUp;
+		}
 		if (hold & WPAD_BUTTON_A) {
 			buttons |= 1ULL << RemoteA;
 		}
@@ -238,7 +241,7 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 		if (hold & WPAD_BUTTON_HOME) {
 			buttons |= 1ULL << RemoteHome;
 		}
-		if ((mDevices & DeviceNunchuk) && (mInputMask & InputRemote)) {
+		if (IsNunchukActive()) {
 			UpdateNunchukMotion();
 			if (hold & WPAD_BUTTON_C) {
 				buttons |= 1ULL << NunchukC;
@@ -250,16 +253,33 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			StickPosition& stick = mSamples[0].extension.nunchuk.stick;
 			NormalizeWiiStick(&stick, sRawSamples[0].extension.nunchuk.stickX, sRawSamples[0].extension.nunchuk.stickY, sStickRanges[0].min,
 			                  sStickRanges[0].max);
-			buttons |= (u64)StickButtons(this, stick) << NunchukStick;
-			mStick   = stick;
-			nunchukX = stick.x != 0.0f;
-			nunchukY = stick.y != 0.0f;
+			u32 directions = GetStickDirections(mStickDirections, stick.x, stick.y);
+			if (directions & StickUp) {
+				buttons |= 1ULL << (NunchukStick + 3);
+			}
+			if (directions & StickLeft) {
+				buttons |= 1ULL << (NunchukStick + 0);
+			}
+			if (directions & StickDown) {
+				buttons |= 1ULL << (NunchukStick + 2);
+			}
+			if (directions & StickRight) {
+				buttons |= 1ULL << (NunchukStick + 1);
+			}
+			mStick.x = stick.x;
+			if (stick.x != 0.0f) {
+				claimed |= 1;
+			}
+			mStick.y = stick.y;
+			if (stick.y != 0.0f) {
+				claimed |= 2;
+			}
 		} else {
 			mStick.x = mStick.y = 0.0f;
 		}
 		mSubStick.x = mSubStick.y = mAnalogL = mAnalogR = 0.0f;
 	}
-	if ((mDevices & DeviceClassic) && (mInputMask & InputClassic)) {
+	if (IsClassicPadActive()) {
 		u32 hold = mSamples[0].extension.classic.buttons.hold;
 		if (hold & WPAD_CL_BUTTON_LEFT) {
 			buttons |= 1ULL << ClassicLeft;
@@ -309,7 +329,18 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 	}
 	if (IsGameCubePadActive()) {
 		u16 hold = status->button;
-		buttons |= (u64)(hold & (PAD_BUTTON_LEFT | PAD_BUTTON_RIGHT | PAD_BUTTON_DOWN | PAD_BUTTON_UP)) << GameCubeDPad;
+		if (hold & PAD_BUTTON_LEFT) {
+			buttons |= 1ULL << (GameCubeDPad + 0);
+		}
+		if (hold & PAD_BUTTON_RIGHT) {
+			buttons |= 1ULL << (GameCubeDPad + 1);
+		}
+		if (hold & PAD_BUTTON_DOWN) {
+			buttons |= 1ULL << (GameCubeDPad + 2);
+		}
+		if (hold & PAD_BUTTON_UP) {
+			buttons |= 1ULL << (GameCubeDPad + 3);
+		}
 		if (hold & PAD_BUTTON_A) {
 			buttons |= 1ULL << GameCubeA;
 		}
@@ -337,32 +368,83 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 		StickPosition stick, substick;
 		NormalizeWiiStick(&stick, status->stickX, status->stickY, sStickRanges[0].min, sStickRanges[0].max);
 		NormalizeWiiStick(&substick, status->substickX, status->substickY, sStickRanges[1].min, sStickRanges[1].max);
-		buttons |= (u64)StickButtons(this, stick) << GameCubeStick;
-		buttons |= (u64)StickButtons(this, substick) << GameCubeSubStick;
-		if (!nunchukX) {
+		u32 directions = GetStickDirections(mStickDirections, stick.x, stick.y);
+		if (directions & StickUp) {
+			buttons |= 1ULL << (GameCubeStick + 3);
+		}
+		if (directions & StickLeft) {
+			buttons |= 1ULL << (GameCubeStick + 0);
+		}
+		if (directions & StickDown) {
+			buttons |= 1ULL << (GameCubeStick + 2);
+		}
+		if (directions & StickRight) {
+			buttons |= 1ULL << (GameCubeStick + 1);
+		}
+		directions = GetStickDirections(mStickDirections, substick.x, substick.y);
+		if (directions & StickUp) {
+			buttons |= 1ULL << (GameCubeSubStick + 3);
+		}
+		if (directions & StickLeft) {
+			buttons |= 1ULL << (GameCubeSubStick + 0);
+		}
+		if (directions & StickDown) {
+			buttons |= 1ULL << (GameCubeSubStick + 2);
+		}
+		if (directions & StickRight) {
+			buttons |= 1ULL << (GameCubeSubStick + 1);
+		}
+		if (!(claimed & 1)) {
 			mStick.x = stick.x;
 		}
-		if (!nunchukY) {
+		if (!(claimed & 2)) {
 			mStick.y = stick.y;
 		}
-		mSubStick = substick;
-		mAnalogL  = status->triggerLeft;
-		mAnalogR  = status->triggerRight;
+		if (!(claimed & 4)) {
+			mSubStick.x = substick.x;
+		}
+		if (!(claimed & 8)) {
+			mSubStick.y = substick.y;
+		}
+		if (!(claimed & 16)) {
+			mAnalogL = status->triggerLeft;
+		}
+		if (!(claimed & 32)) {
+			mAnalogR = status->triggerRight;
+		}
 	}
 
 	mButton = mDirButton = buttons;
-	for (int i = 0; i < 4; ++i) {
-		const u64 base = 1ULL << i;
-		if (buttons & ((base << NunchukStick) | (base << RemoteDirections2))) {
-			mDirButton |= base;
+	if (mButton & ((1ULL << (NunchukStick + 3)) | (1ULL << (RemoteDirections2 + 3)))) {
+		mDirButton |= 1ULL << RemoteUp;
+	}
+	if (mButton & ((1ULL << (NunchukStick + 2)) | (1ULL << (RemoteDirections2 + 2)))) {
+		mDirButton |= 1ULL << RemoteDown;
+	}
+	if (mButton & ((1ULL << (NunchukStick + 0)) | (1ULL << (RemoteDirections2 + 0)))) {
+		mDirButton |= 1ULL << RemoteLeft;
+	}
+	if (mButton & ((1ULL << (NunchukStick + 1)) | (1ULL << (RemoteDirections2 + 1)))) {
+		mDirButton |= 1ULL << RemoteRight;
+	}
+	if (IsGameCubePadActive()) {
+		if (mButton & ((1ULL << (GameCubeStick + 3)) | (1ULL << (GameCubeSubStick + 3)))) {
+			mDirButton |= 1ULL << (GameCubeDPad + 3);
 		}
-		if (IsGameCubePadActive() && (buttons & ((base << GameCubeStick) | (base << GameCubeSubStick)))) {
-			mDirButton |= base << GameCubeDPad;
+		if (mButton & ((1ULL << (GameCubeStick + 2)) | (1ULL << (GameCubeSubStick + 2)))) {
+			mDirButton |= 1ULL << (GameCubeDPad + 2);
+		}
+		if (mButton & ((1ULL << (GameCubeStick + 0)) | (1ULL << (GameCubeSubStick + 0)))) {
+			mDirButton |= 1ULL << (GameCubeDPad + 0);
+		}
+		if (mButton & ((1ULL << (GameCubeStick + 1)) | (1ULL << (GameCubeSubStick + 1)))) {
+			mDirButton |= 1ULL << (GameCubeDPad + 1);
 		}
 	}
 	mTrigger = mRepeat = mButton & ~mLastButton;
 	mDirTrigger = mDirRepeat = mDirButton & ~mLastDirButton;
-	for (unsigned int i = 0; i < ARRAY_SIZE(sRepeatGroups); ++i) {
+	const int repeatGroups = (sGameCubePadCheck != NULL) ? 16 : 8;
+	for (int i = 0; i < repeatGroups; ++i) {
 		WiiButtonRepeat& settings = mRepeatSettings[i];
 		if (settings.startingInterval <= 0) {
 			continue;
@@ -370,8 +452,12 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 		u64 mask = sRepeatGroups[i];
 		if ((mButton | mDirButton) & mask) {
 			if ((mRepeatTimer[i] -= frames) <= 0) {
-				mRepeat |= mButton & mask;
-				mDirRepeat |= mDirButton & mask;
+				if (mButton & mask) {
+					mRepeat |= mButton & mask;
+				}
+				if (mDirButton & mask) {
+					mDirRepeat |= mDirButton & mask;
+				}
 				mRepeatTimer[i] = settings.interval;
 				if (settings.interval > settings.minimumInterval) {
 					--settings.interval;
@@ -389,23 +475,29 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 		for (int i = 0; i < 3; ++i) {
 			WiiRumble& rumble = mRumble[i];
 			if (rumble.flags & RumbleEnabled) {
-				if (i == 2) {
-					rumble.flags &= ~RumblePaused;
+				if (i == 2 && (rumble.flags & RumblePaused)) {
+					rumble.flags &= ~(RumbleRunning | RumblePaused);
 				}
-				if (rumble.flags & RumbleRunning) {
-					if ((rumble.flags ^ rumble.previousFlags) & RumblePaused) {
-						WPADControlMotor(mPort, (rumble.flags & RumblePaused) ? 0 : 1);
-					}
-					if (!(rumble.flags & RumblePaused) && (rumble.remaining -= frames) <= 0) {
-						rumble.remaining = 0;
-						rumble.flags &= ~RumbleRunning;
-					}
+				if ((rumble.flags & RumbleRunning) && (rumble.flags & RumblePaused) && !(rumble.previousFlags & RumblePaused)) {
+					WPADControlMotor(mPort, 0);
 				}
-				if ((rumble.flags ^ rumble.previousFlags) & RumbleRunning) {
-					WPADControlMotor(mPort, (rumble.flags & RumbleRunning) ? 1 : 0);
+				if ((rumble.flags & RumbleRunning) && !(rumble.flags & RumblePaused) && (rumble.previousFlags & RumblePaused)) {
+					WPADControlMotor(mPort, 1);
+				}
+				if ((rumble.flags & RumbleRunning) && !(rumble.flags & RumblePaused) && (rumble.remaining -= frames) <= 0) {
+					rumble.remaining = 0;
+					rumble.flags &= ~RumbleRunning;
+				}
+				if ((rumble.flags & RumbleRunning) && !(rumble.previousFlags & RumbleRunning)) {
+					WPADControlMotor(mPort, 1);
+				}
+				if (!(rumble.flags & RumbleRunning) && (rumble.previousFlags & RumbleRunning)) {
+					WPADControlMotor(mPort, 0);
 				}
 			}
-			rumble.previousFlags = rumble.flags;
+			if (rumble.flags != rumble.previousFlags) {
+				rumble.previousFlags = rumble.flags;
+			}
 		}
 	}
 }
@@ -610,7 +702,7 @@ void CPadOne::CalculateSwing(s32 first, s32 last)
 	}
 }
 
-static void ResetMotion(WiiMotionWindow& motion)
+static inline void ResetMotion(WiiMotionWindow& motion)
 {
 	for (unsigned int i = 0; i < ARRAY_SIZE(motion.changes); ++i) {
 		motion.changes[i] = 0.0f;
@@ -620,7 +712,7 @@ static void ResetMotion(WiiMotionWindow& motion)
 	motion.activeFrames                     = 1;
 }
 
-static void AppendChange(WiiMotionWindow& motion, f32 change)
+static inline void AppendChange(WiiMotionWindow& motion, f32 change)
 {
 	motion.changes[motion.count++] = change;
 	if (motion.count >= ARRAY_SIZE(motion.changes)) {
@@ -628,7 +720,7 @@ static void AppendChange(WiiMotionWindow& motion, f32 change)
 	}
 }
 
-static bool DetectChange(WiiMotionWindow& motion, f32 change)
+static inline bool DetectChange(WiiMotionWindow& motion, f32 change)
 {
 	if (change >= 0.2f) {
 		motion.previouslyActive = motion.active;
@@ -647,7 +739,7 @@ static bool DetectChange(WiiMotionWindow& motion, f32 change)
 	return false;
 }
 
-static void FinishMotionFrame(WiiMotionWindow& motion)
+static inline void FinishMotionFrame(WiiMotionWindow& motion)
 {
 	if (++motion.activeFrames >= 20) {
 		motion.activeFrames = 1;
