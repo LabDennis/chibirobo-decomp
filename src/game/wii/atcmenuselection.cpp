@@ -1,30 +1,22 @@
 #include "game/ringmenu.h"
 #include "game/wii/cgame.h"
 
-struct AttachmentChange {
-	s32 equipped;
-	s32 requested;
-	s32 step;
-};
-
 void AtcMenu::ConfirmSelection()
 {
-	// The Wii player stores its attachment change at 0x9920.
-	AttachmentChange& attachment = *reinterpret_cast<AttachmentChange*>(reinterpret_cast<u8*>(mChr) + 0x9920);
-	s32 current                  = attachment.requested >= 0 ? attachment.requested : attachment.equipped;
-	s32 type                     = mItems[mCursorIndex].mType;
-	if (type == current) {
-		if (attachment.equipped != 0) {
-			attachment.requested = 0;
-			attachment.step      = 0;
+	WiiPlayerState* player = reinterpret_cast<WiiPlayerState*>(mChr);
+	s32 current            = player->mAttachmentRequest >= 0 ? player->mAttachmentRequest : player->mAttachment;
+	if (mItems[mCursorIndex].mType == current) {
+		if (player->mAttachment != 0) {
+			player->mAttachmentRequest = 0;
+			player->mAttachmentStep    = 0;
 		}
 		return;
 	}
-	if (type != attachment.equipped) {
-		attachment.requested = type;
-		attachment.step      = 0;
+	if (mItems[mCursorIndex].mType != player->mAttachment) {
+		player->mAttachmentRequest = mItems[mCursorIndex].mType;
+		player->mAttachmentStep    = 0;
 	}
-	if (type == 2) {
+	if (mItems[mCursorIndex].mType == 2) {
 		gGame.mRoboeyes.ResetLensState(430.0f, 400.0f);
 	}
 }

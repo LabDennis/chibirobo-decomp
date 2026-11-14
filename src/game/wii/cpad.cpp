@@ -169,17 +169,13 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			mDevices = DeviceRemote | DeviceClassic;
 			break;
 		case 0xfb:
-			mDevices = DeviceRemote;
-			break;
 		case 0xfc:
+		case 0xff:
 			mDevices = DeviceRemote;
 			break;
 		case 0xfd:
 			mDevices = 0;
 			ResetRumble(FALSE);
-			break;
-		case 0xff:
-			mDevices = DeviceRemote;
 			break;
 		}
 		break;
@@ -241,10 +237,10 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 				buttons |= 1ULL << NunchukZ;
 			}
 			KPADGetUnifiedWpadStatus(mPort, sRawSamples, ARRAY_SIZE(sRawSamples));
-			StickPosition& stick = mSamples[0].extension.nunchuk.stick;
-			NormalizeWiiStick(&stick, sRawSamples[0].extension.nunchuk.stickX, sRawSamples[0].extension.nunchuk.stickY, sStickRanges[0].min,
-			                  sStickRanges[0].max);
-			u32 directions = GetStickDirections(mStickDirections, stick.x, stick.y);
+			NormalizeWiiStick(&mSamples[0].extension.nunchuk.stick, sRawSamples[0].extension.nunchuk.stickX,
+			                  sRawSamples[0].extension.nunchuk.stickY, sStickRanges[0].min, sStickRanges[0].max);
+			u32 directions
+			    = GetStickDirections(mStickDirections, mSamples[0].extension.nunchuk.stick.x, mSamples[0].extension.nunchuk.stick.y);
 			if (directions & StickUp) {
 				buttons |= 1ULL << (NunchukStick + 3);
 			}
@@ -257,12 +253,12 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			if (directions & StickRight) {
 				buttons |= 1ULL << (NunchukStick + 1);
 			}
-			mStick.x = stick.x;
-			if (stick.x != 0.0f) {
+			mStick.x = mSamples[0].extension.nunchuk.stick.x;
+			if (mSamples[0].extension.nunchuk.stick.x != 0.0f) {
 				claimed |= 1;
 			}
-			mStick.y = stick.y;
-			if (stick.y != 0.0f) {
+			mStick.y = mSamples[0].extension.nunchuk.stick.y;
+			if (mSamples[0].extension.nunchuk.stick.y != 0.0f) {
 				claimed |= 2;
 			}
 		} else {
@@ -432,8 +428,8 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			mDirButton |= 1ULL << (GameCubeDPad + 1);
 		}
 	}
-	mTrigger = mRepeat = mButton & ~mLastButton;
-	mDirTrigger = mDirRepeat = mDirButton & ~mLastDirButton;
+	mTrigger = mRepeat = (mButton ^ mLastButton) & ~mLastButton;
+	mDirTrigger = mDirRepeat = (mDirButton ^ mLastDirButton) & ~mLastDirButton;
 	const int repeatGroups   = (sGameCubePadCheck != NULL) ? 16 : 8;
 	for (int i = 0; i < repeatGroups; ++i) {
 		WiiButtonRepeat& settings = mRepeatSettings[i];
@@ -467,7 +463,7 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			WiiRumble& rumble = mRumble[i];
 			if (rumble.flags & RumbleEnabled) {
 				if (i == 2 && (rumble.flags & RumblePaused)) {
-					rumble.flags &= ~(RumbleRunning | RumblePaused);
+					rumble.flags &= ~RumblePaused;
 				}
 				if ((rumble.flags & RumbleRunning) && (rumble.flags & RumblePaused) && !(rumble.previousFlags & RumblePaused)) {
 					WPADControlMotor(mPort, 0);

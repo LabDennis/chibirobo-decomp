@@ -60,9 +60,9 @@ u8* GetAttachmentName(s32 index); // an attachment's name
 u8* GetActorName(s32 index);
 s16 GetItemHappyPointValue(s32 index);
 s16 GetItemScrapValue(s32 index);
-void ClearItemFlags(s32 index, u16 mask);
-void SetItemFlags(s32 index, u16 mask);
-u16 GetItemFlagsMasked(s32 index, u16 mask);
+void ClearItemFlags(s32 index, s32 mask);
+void SetItemFlags(s32 index, s32 mask);
+u16 GetItemFlagsMasked(s32 index, s32 mask);
 u8* GetItemName(s32 index);
 u32 GetMaterialSoundId(s32 material);
 u32 GetItemReleaseSoundId(s32 index);

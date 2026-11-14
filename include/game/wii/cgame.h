@@ -167,7 +167,11 @@ STATIC_ASSERT(sizeof(WiiCameraActions) == 0x30);
 struct WiiPlayerState {
 	u8 _0000[0x64];
 	f32 mRotY; // _0064, mMoveRotate.y
-	u8 _0068[0x999C - 0x68];
+	u8 _0068[0x9920 - 0x68];
+	s32 mAttachment;        // _9920, the AtcMenu pick
+	s32 mAttachmentRequest; // _9924, -1 when there's none
+	s32 mAttachmentStep;    // _9928, how far the attachment change is
+	u8 _992C[0x999C - 0x992C];
 	s32 mExp;        // _999C, mParams.mExperience
 	s32 mLevel;      // _99A0
 	s32 mRank;       // _99A4

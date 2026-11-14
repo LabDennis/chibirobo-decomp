@@ -2629,49 +2629,101 @@ StageDesc stageTable[] = {
 #undef STAGE
 #else
 // the Wii's table also names each stage's sound bank and the bank's first sound id
-// NONMATCHING: retail keeps the eight-byte names ("stage00") in .sdata2, this build pools every string of the file
-// in .rodata, so the strings AdvanceStageLoad reads sit at other offsets
+static const char sStageName00[] = "stage00";
+static const char sStageName01[] = "stage01";
+static const char sStageName02[] = "stage02";
+static const char sStageName03[] = "stage03";
+static const char sStageName04[] = "stage04";
+static const char sStageName05[] = "stage05";
+static const char sStageName06[] = "stage06";
+static const char sStageName07[] = "stage07";
+static const char sStageName08[] = "stage08";
+static const char sStageName09[] = "stage09";
+static const char sStageName10[] = "stage10";
+static const char sStageName11[] = "stage11";
+static const char sStageName12[] = "stage12";
+static const char sStageName13[] = "stage13";
+static const char sStageName14[] = "stage14";
+static const char sStageName15[] = "stage15";
+static const char sStageName16[] = "stage16";
+static const char sStageName17[] = "stage17";
+static const char sStageName18[] = "stage18";
+static const char sStageName19[] = "stage19";
+static const char sStageName20[] = "stage20";
+static const char sStageName21[] = "stage21";
+static const char sStageName22[] = "stage22";
+static const char sStageName23[] = "stage23";
+static const char sStageName24[] = "stage24";
+static const char sStageName25[] = "stage25";
+static const char sStageName26[] = "stage26";
+static const char sStageName27[] = "stage27";
+static const char sStageName28[] = "stage28";
+static const char sStageName29[] = "stage29";
+
+static const char sBankKitchen[]   = "sfx_kitchen.ssm";
+static const char sBankStage02[]   = "sfx_stage02.ssm";
+static const char sBankSouko[]     = "sfx_souko.ssm";
+static const char sBankJennyRoom[] = "sfx_jennyroom.ssm";
+static const char sBankStage05[]   = "sfx_stage05.ssm";
+static const char sBankPapaMama[]  = "sfx_papamama.ssm";
+static const char sBankStage07[]   = "sfx_stage07.ssm";
+static const char sBankUraniwa[]   = "sfx_uraniwa.ssm";
+static const char sBankPipe[]      = "sfx_pipe.ssm";
+static const char sBankManual[]    = "sfx_manual.ssm";
+static const char sBankUfo[]       = "sfx_ufo.ssm";
+static const char sBankMartial[]   = "sfx_martial.ssm";
+
+static const char sStageNameShun[]     = "shun";
+static const char sStageNameHori[]     = "hori";
+static const char sStageNameAhk[]      = "ahk";
+static const char sStageNameJunko[]    = "junko";
+static const char sStageNameSayoko[]   = "sayoko";
+static const char sStageNameMory[]     = "mory";
+static const char sStageNameRyosuke[]  = "ryosuke";
+static const char sStageNameTakanabe[] = "takanabe";
+static const char sStageNameMariko[]   = "mariko";
+
 StageDesc stageTable[] = {
-	{ "stage00", "stage00", NULL, -1, 0, 5 },
-	{ "stage01", "stage01", "sfx_kitchen.ssm", 0x245, 1, 5 },
-	{ "stage02", "stage02", "sfx_stage02.ssm", 0x22d, 2, 5 },
-	{ "stage03", "stage03", "sfx_souko.ssm", 0x24d, 3, 5 },
-	{ "stage04", "stage04", "sfx_jennyroom.ssm", 0x23e, 4, 5 },
-	{ "stage05", "stage05", "sfx_stage05.ssm", 0x252, 5, 4 },
-	{ "stage06", "stage06", "sfx_papamama.ssm", 0x237, 6, 5 },
-	{ "stage07", "stage07", "sfx_stage07.ssm", 0x233, 7, 5 },
-	{ "stage08", "stage08", NULL, -1, 8, 5 },
-	{ "stage09", "stage09", "sfx_uraniwa.ssm", 0x249, 9, 5 },
-	{ "stage10", "stage10", NULL, -1, 10, 1 },
-	{ "stage11", "stage11", "sfx_pipe.ssm", 0x259, 11, 5 },
-	{ "stage12", "stage12", NULL, -1, 12, 5 },
-	{ "stage13", "stage13", "sfx_manual.ssm", -1, 13, 5 },
-	{ "stage14", "stage14", "sfx_stage07.ssm", -1, 14, 5 },
-	{ "stage15", "stage15", NULL, -1, 15, 5 },
-	{ "stage16", "stage16", "sfx_ufo.ssm", 0x25f, 16, 5 },
-	{ "stage17", "stage17", NULL, -1, 17, 5 },
-	{ "stage18", "stage18", "sfx_ufo.ssm", 0x237, 18, 5 },
-	{ "stage19", "stage19", "sfx_stage07.ssm", -1, 19, 5 },
-	{ "stage20", "stage20", NULL, -1, 20, 5 },
-	{ "stage21", "stage21", NULL, -1, 21, 5 },
-	{ "stage22", "stage22", "sfx_martial.ssm", -1, 22, 5 },
-	{ "stage23", "stage23", NULL, -1, 23, 5 },
-	{ "stage24", "stage24", NULL, -1, 24, 5 },
-	{ "stage25", "stage25", NULL, -1, 25, 5 },
-	{ "stage26", "stage26", NULL, -1, 26, 5 },
-	{ "stage27", "stage27", NULL, -1, 27, 5 },
-	{ "stage28", "stage07", NULL, -1, 28, 5 },
-	{ "stage29", "stage07", NULL, -1, 29, 5 },
+	{ sStageName00, sStageName00, NULL, -1, 0, 5 },
+	{ sStageName01, sStageName01, sBankKitchen, 0x245, 1, 5 },
+	{ sStageName02, sStageName02, sBankStage02, 0x22d, 2, 5 },
+	{ sStageName03, sStageName03, sBankSouko, 0x24d, 3, 5 },
+	{ sStageName04, sStageName04, sBankJennyRoom, 0x23e, 4, 5 },
+	{ sStageName05, sStageName05, sBankStage05, 0x252, 5, 4 },
+	{ sStageName06, sStageName06, sBankPapaMama, 0x237, 6, 5 },
+	{ sStageName07, sStageName07, sBankStage07, 0x233, 7, 5 },
+	{ sStageName08, sStageName08, NULL, -1, 8, 5 },
+	{ sStageName09, sStageName09, sBankUraniwa, 0x249, 9, 5 },
+	{ sStageName10, sStageName10, NULL, -1, 10, 1 },
+	{ sStageName11, sStageName11, sBankPipe, 0x259, 11, 5 },
+	{ sStageName12, sStageName12, NULL, -1, 12, 5 },
+	{ sStageName13, sStageName13, sBankManual, -1, 13, 5 },
+	{ sStageName14, sStageName14, sBankStage07, -1, 14, 5 },
+	{ sStageName15, sStageName15, NULL, -1, 15, 5 },
+	{ sStageName16, sStageName16, sBankUfo, 0x25f, 16, 5 },
+	{ sStageName17, sStageName17, NULL, -1, 17, 5 },
+	{ sStageName18, sStageName18, sBankUfo, 0x237, 18, 5 },
+	{ sStageName19, sStageName19, sBankStage07, -1, 19, 5 },
+	{ sStageName20, sStageName20, NULL, -1, 20, 5 },
+	{ sStageName21, sStageName21, NULL, -1, 21, 5 },
+	{ sStageName22, sStageName22, sBankMartial, -1, 22, 5 },
+	{ sStageName23, sStageName23, NULL, -1, 23, 5 },
+	{ sStageName24, sStageName24, NULL, -1, 24, 5 },
+	{ sStageName25, sStageName25, NULL, -1, 25, 5 },
+	{ sStageName26, sStageName26, NULL, -1, 26, 5 },
+	{ sStageName27, sStageName27, NULL, -1, 27, 5 },
+	{ sStageName28, sStageName07, NULL, -1, 28, 5 },
+	{ sStageName29, sStageName07, NULL, -1, 29, 5 },
 	{ NULL, NULL, NULL, -1, -1, 0 },
-	{ "shun", "shun", NULL, -1, -1, 5 },
-	{ "hori", "hori", "sfx_manual.ssm", -1, -1, 5 },
-	{ "ahk", "ahk", NULL, -1, -1, 5 },
-	{ "junko", "junko", NULL, -1, -1, 5 },
-	{ "sayoko", "sayoko", NULL, -1, -1, 5 },
-	{ "mory", "mory", NULL, -1, -1, 5 },
-	{ "ryosuke", "ryosuke", NULL, -1, -1, 5 },
-	{ "takanabe", "takanabe", NULL, -1, -1, 5 },
-	{ "mariko", "mariko", NULL, -1, -1, 5 },
+	{ sStageNameShun, sStageNameShun, NULL, -1, -1, 5 },
+	{ sStageNameHori, sStageNameHori, sBankManual, -1, -1, 5 },
+	{ sStageNameAhk, sStageNameAhk, NULL, -1, -1, 5 },
+	{ sStageNameJunko, sStageNameJunko, NULL, -1, -1, 5 },
+	{ sStageNameSayoko, sStageNameSayoko, NULL, -1, -1, 5 },
+	{ sStageNameMory, sStageNameMory, NULL, -1, -1, 5 },
+	{ sStageNameRyosuke, sStageNameRyosuke, NULL, -1, -1, 5 },
+	{ sStageNameTakanabe, sStageNameTakanabe, NULL, -1, -1, 5 },
+	{ sStageNameMariko, sStageNameMariko, NULL, -1, -1, 5 },
 	{ NULL, NULL, NULL, 0, 0, 0 },
 };
 #endif
@@ -2948,10 +3000,12 @@ extern "C" BOOL IsStageDataLoaded()
 extern "C" void ApplyStageClearColor()
 {
 	// the environment record's first word is the VI background colour
-	GXColor color = *(GXColor*)gStageResources.mEnvironment.mData;
 #if defined(VERSION_R24J01)
-	GXSetCopyClear(color, 0xFFFFFF);
+	// NONMATCHING: retail materializes the by-value GXColor argument with byte copies
+	// (u8*-aligned source); this compiler emits a word copy for the same expression.
+	GXSetCopyClear(*(GXColor*)gStageResources.mEnvironment.mData, 0xFFFFFF);
 #else
+	GXColor color                  = *(GXColor*)gStageResources.mEnvironment.mData;
 	*(GXColor*)(HSD_VIData + 0x48) = color; // current.vi.bg_color
 #endif
 	gStageResources.mModule.Print();

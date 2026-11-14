@@ -282,27 +282,27 @@ extern "C" s16 GetItemPickupHoldTime(s32 index)
  * @note Address: 0x8006E3AC
  * @note Size: 0x50
  */
-extern "C" void ClearItemFlags(s32 index, u16 mask)
+extern "C" void ClearItemFlags(s32 index, s32 mask)
 {
 	u16* flags = (u16*)(ResourceField(GLOBAL_ITEMS, index, 20, 8));
-	*flags &= ~mask;
+	*flags     = *flags & ~mask;
 }
 
 /**
  * @note Address: 0x8006E3FC
  * @note Size: 0x50
  */
-extern "C" void SetItemFlags(s32 index, u16 mask)
+extern "C" void SetItemFlags(s32 index, s32 mask)
 {
 	u16* flags = (u16*)(ResourceField(GLOBAL_ITEMS, index, 20, 8));
-	*flags |= mask;
+	*flags     = *flags | mask;
 }
 
 /**
  * @note Address: 0x8006E44C
  * @note Size: 0x50
  */
-extern "C" u16 GetItemFlagsMasked(s32 index, u16 mask)
+extern "C" u16 GetItemFlagsMasked(s32 index, s32 mask)
 {
 	return *(u16*)(ResourceField(GLOBAL_ITEMS, index, 20, 8)) & mask;
 }
