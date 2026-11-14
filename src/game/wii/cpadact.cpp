@@ -17,19 +17,25 @@ static void SecondaryRemoteConnected(s32 channel, s32 result)
 	}
 }
 
+// NONMATCHING: identical instruction multiset; only FP register naming and
+// constant-load scheduling differ.
 void CPadAct::Init()
 {
-	mFlags         = 0;
+	mFlags = 0;
 	for (int i = 0; i < 5; ++i) {
 		mRemoteAcceleration[i].x = mRemoteAcceleration[i].y = mRemoteAcceleration[i].z = 0.0f;
 		mNunchukAcceleration[i].x = mNunchukAcceleration[i].y = mNunchukAcceleration[i].z = 0.0f;
 	}
-	mRight     = gScreenRight - 16.0f;
-	mLeft      = gScreenLeft + 16.0f;
-	mBottom    = gScreenBottom - 16.0f;
-	mTop       = gScreenTop + 16.0f;
-	mPointer.x = gScreenSafeRight - 12;
-	mPointer.y = gScreenSafeBottom - 12;
+	const f32 right  = gScreenRight - 16.0f;
+	const f32 left   = gScreenLeft + 16.0f;
+	const f32 bottom = gScreenBottom - 16.0f;
+	const f32 top    = gScreenTop + 16.0f;
+	mRight           = right;
+	mLeft            = left;
+	mBottom          = bottom;
+	mTop             = top;
+	mPointer.x       = gScreenSafeRight - 12;
+	mPointer.y       = gScreenSafeBottom - 12;
 	mPointerAngle = mPointer.z = 0.0f;
 	mPointerScale = mPointerFade = mPointerOpacity = 0.0f;
 	mInBounds = mPointerValid = FALSE;
@@ -156,8 +162,7 @@ static inline void GameCubeActions(CPadAct& act, const CPadOne& pad)
 	if ((pad.mTrigger & (1ULL << GameCubeL)) && !gGame.GetStatusFlags(0x0600000000000000ULL)) {
 		act.mFlags |= 1ULL << 34;
 	}
-	if ((pad.mButton & (1ULL << GameCubeB)) && (pad.mTrigger & (1ULL << GameCubeStart))
-	    && !(pad.mButton & (1ULL << GameCubeX))) {
+	if ((pad.mButton & (1ULL << GameCubeB)) && (pad.mTrigger & (1ULL << GameCubeStart)) && !(pad.mButton & (1ULL << GameCubeX))) {
 		act.mFlags |= 1ULL << 13;
 	}
 	if ((pad.mButton & (1ULL << GameCubeB)) && (pad.mTrigger & (1ULL << GameCubeR))) {
@@ -189,8 +194,8 @@ static inline void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 	if (act.mPointer.x > act.mRight) {
 		act.mPointer.x = act.mRight;
 	}
-	BOOL visible   = FALSE;
-	BOOL inBounds  = FALSE;
+	BOOL visible  = FALSE;
+	BOOL inBounds = FALSE;
 	for (s32 i = 0; i < pad.mSampleCount; ++i) {
 		const WiiPadSample& sample = pad.mSamples[i];
 		if (sample.pointerValid < 2) {
@@ -215,8 +220,8 @@ static inline void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 			act.mStablePointer.y = sLastPointerY;
 			inBounds             = TRUE;
 		} else {
-			x = Limit(x, act.mLeft, act.mRight);
-			y = Limit(y, act.mTop, act.mBottom);
+			x              = Limit(x, act.mLeft, act.mRight);
+			y              = Limit(y, act.mTop, act.mBottom);
 			act.mPointer.x = x;
 			act.mPointer.y = y;
 		}
@@ -270,13 +275,13 @@ void CPadAct::Update(u32 frames)
 	mFlags             = 0;
 	mButton = mDirButton = mTrigger = mDirTrigger = mRepeat = mDirRepeat = 0;
 	mStick.y = mStick.x = mSubStick.y = mSubStick.x = mAnalogR = mAnalogL = 0.0f;
-	mCameraInput      = NAN;
-	mButton           = pad.mButton;
-	mDirButton        = pad.mDirButton;
-	mTrigger          = pad.mTrigger;
-	mDirTrigger       = pad.mDirTrigger;
-	mRepeat           = pad.mRepeat;
-	mDirRepeat        = pad.mDirRepeat;
+	mCameraInput                                                          = NAN;
+	mButton                                                               = pad.mButton;
+	mDirButton                                                            = pad.mDirButton;
+	mTrigger                                                              = pad.mTrigger;
+	mDirTrigger                                                           = pad.mDirTrigger;
+	mRepeat                                                               = pad.mRepeat;
+	mDirRepeat                                                            = pad.mDirRepeat;
 
 	if (pad.mAnalogL != 0.0f) {
 		const f32 analogL = pad.mAnalogL - 30.0f;

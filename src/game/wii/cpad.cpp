@@ -48,11 +48,7 @@ static WiiStickRange sStickRanges[2];
 static WiiRawSample sRawSamples[16];
 static BOOL (CPadOne::*sGameCubePadCheck)() const = &CPadOne::IsGameCubePadActive;
 
-enum {
-	RumbleEnabled = 1,
-	RumbleRunning = 2,
-	RumblePaused  = 4
-};
+enum { RumbleEnabled = 1, RumbleRunning = 2, RumblePaused = 4 };
 
 // Hardware masks returned by KPAD for the Wii Remote and its extensions.
 enum {
@@ -97,20 +93,20 @@ static const u64 sRepeatGroups[]
 
 void CPadOne::Clear()
 {
-	mButton     = mDirButton = 0;
+	mButton = mDirButton = 0;
 	mLastButton = mLastDirButton = 0;
 	mTrigger = mDirTrigger = mRepeat = mDirRepeat = 0;
 	for (int i = 0; i < 16; ++i) {
-		mRepeatSettings[i].delay = 24;
+		mRepeatSettings[i].delay    = 24;
 		mRepeatSettings[i].interval = mRepeatSettings[i].startingInterval = 6;
-		mRepeatSettings[i].minimumInterval                              = 6;
+		mRepeatSettings[i].minimumInterval                                = 6;
 	}
 	for (int i = 0; i < 16; ++i) {
 		mRepeatTimer[i] = 24;
 	}
-	mStick.x    = mStick.y = 0.0f;
+	mStick.x = mStick.y = 0.0f;
 	mSubStick.x = mSubStick.y = 0.0f;
-	mAnalogL    = mAnalogR = 0.0f;
+	mAnalogL = mAnalogR                     = 0.0f;
 	mStickDirections.thresholdPercent       = 50.0f;
 	mStickDirections.diagonalOverlapDegrees = 30.0f;
 	mSampleCount                            = 0;
@@ -123,7 +119,7 @@ void CPadOne::ResetRumble(BOOL resetAll)
 	if (resetAll) {
 		for (int i = 0; i < 3; ++i) {
 			mRumble[i].flags = mRumble[i].previousFlags = 0;
-			mRumble[i].remaining                       = 0;
+			mRumble[i].remaining                        = 0;
 		}
 	} else {
 		for (int i = 0; i < 3; ++i) {
@@ -438,7 +434,7 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 	}
 	mTrigger = mRepeat = mButton & ~mLastButton;
 	mDirTrigger = mDirRepeat = mDirButton & ~mLastDirButton;
-	const int repeatGroups = (sGameCubePadCheck != NULL) ? 16 : 8;
+	const int repeatGroups   = (sGameCubePadCheck != NULL) ? 16 : 8;
 	for (int i = 0; i < repeatGroups; ++i) {
 		WiiButtonRepeat& settings = mRepeatSettings[i];
 		if (settings.startingInterval <= 0) {
@@ -501,16 +497,20 @@ extern f32 WiiReciprocalSquareRoot(f32 value);
 extern void WiiReportMathError(const char* file, int line, const char* format, ...);
 extern f64 atan2(f64 y, f64 x);
 
-static f32 StickLength(f32 x, f32 y)
+static inline f32 FSqrt(f32 value)
 {
-	f32 squared = x * x + y * y;
-	if (!(squared >= 0.0f)) {
+	if (!(value >= 0.0f)) {
 		WiiReportMathError("arithmetic.h", 627, "FSqrt: Input is out of the domain.");
 	}
-	if (squared <= 0.0f) {
+	if (value <= 0.0f) {
 		return 0.0f;
 	}
-	return squared * WiiReciprocalSquareRoot(squared);
+	return value * WiiReciprocalSquareRoot(value);
+}
+
+static inline f32 StickLength(f32 x, f32 y)
+{
+	return FSqrt(x * x + y * y);
 }
 
 void NormalizeWiiStick(StickPosition* result, f32 x, f32 y, f32 innerRadius, f32 outerRadius)
@@ -559,16 +559,18 @@ extern "C" f64 sqrt(f64 x);
 
 BOOL CPadOne::GetSwing(Vec* direction, f32* strength) const
 {
-	if (mSwing.previouslyRecognized || mSwing.recognized != TRUE) {
-		return FALSE;
+	if (!mSwing.previouslyRecognized && mSwing.recognized == TRUE) {
+		if (direction) {
+			direction->x = mSwing.direction.x;
+			direction->y = mSwing.direction.y;
+			direction->z = mSwing.direction.z;
+		}
+		if (strength) {
+			*strength = mSwing.strength;
+		}
+		return TRUE;
 	}
-	if (direction) {
-		*direction = mSwing.direction;
-	}
-	if (strength) {
-		*strength = mSwing.strength;
-	}
-	return TRUE;
+	return FALSE;
 }
 
 void CPadOne::ResetSwing()
@@ -591,20 +593,22 @@ void CPadOne::ResetSwing()
 
 void CPadOne::AppendSwingSample(s32 index)
 {
-	int dst;
 	if (mSwing.count < 10) {
-		dst = mSwing.count++;
+		mSwing.acceleration[mSwing.count] = mSamples[index].acceleration.value;
+		mSwing.magnitude[mSwing.count]    = mSamples[index].acceleration.magnitude;
+		mSwing.change[mSwing.count]       = mSamples[index].acceleration.change;
+		++mSwing.count;
 	} else {
+		int dst;
 		for (dst = 0; dst < mSwing.count - 1; ++dst) {
 			mSwing.acceleration[dst] = mSwing.acceleration[dst + 1];
 			mSwing.magnitude[dst]    = mSwing.magnitude[dst + 1];
 			mSwing.change[dst]       = mSwing.change[dst + 1];
 		}
+		mSwing.acceleration[dst] = mSamples[index].acceleration.value;
+		mSwing.magnitude[dst]    = mSamples[index].acceleration.magnitude;
+		mSwing.change[dst]       = mSamples[index].acceleration.change;
 	}
-	const WiiAcceleration& sample = mSamples[index].acceleration;
-	mSwing.acceleration[dst]      = sample.value;
-	mSwing.magnitude[dst]         = sample.magnitude;
-	mSwing.change[dst]            = sample.change;
 	if (mSwing.count >= 30) {
 		mSwing.count = 29;
 	}
@@ -632,12 +636,12 @@ void CPadOne::DetectSwing()
 	static s32 quietSamples;
 	for (int i = mSampleCount - 1; i >= 0; --i) {
 		AppendSwingSample(i);
-		const int last = mSwing.count - 1;
 		if (!mSwing.recognized) {
 			if (!mSwing.started) {
-				f32 x = mSwing.acceleration[last].x - mSwing.acceleration[0].x;
-				f32 y = mSwing.acceleration[last].y - mSwing.acceleration[0].y;
-				if (x >= 0.2f || x <= -0.2f || y >= 0.2f || y <= -0.2f) {
+				Vec delta;
+				delta.x = mSwing.acceleration[mSwing.count - 1].x - mSwing.acceleration[0].x;
+				delta.y = mSwing.acceleration[mSwing.count - 1].y - mSwing.acceleration[0].y;
+				if (delta.x >= 0.2f || delta.x <= -0.2f || delta.y >= 0.2f || delta.y <= -0.2f) {
 					mSwing.started = TRUE;
 					break;
 				}
@@ -646,7 +650,7 @@ void CPadOne::DetectSwing()
 				mSwing.started = FALSE;
 				mSwing.timing  = FALSE;
 				break;
-			} else if (mSwing.acceleration[last].z >= 1.1f) {
+			} else if (mSwing.acceleration[mSwing.count - 1].z >= 1.1f) {
 				waitingSamples    = 0;
 				mSwing.recognized = TRUE;
 				mSwing.timing     = TRUE;
@@ -655,7 +659,7 @@ void CPadOne::DetectSwing()
 				break;
 			}
 		} else {
-			if (mSwing.magnitude[last] < 1.1f) {
+			if (mSwing.magnitude[mSwing.count - 1] < 1.1f) {
 				if (++quietSamples >= 5) {
 					quietSamples      = 0;
 					mSwing.recognized = mSwing.started = mSwing.timing = FALSE;
@@ -676,15 +680,19 @@ void CPadOne::DetectSwing()
 
 void CPadOne::CalculateSwing(s32 first, s32 last)
 {
-	Vec movement       = { 0.0f, 0.0f, 0.0f };
-	Vec origin         = { 0.0f, 0.0f, 0.0f };
-	mSwing.direction.x = mSwing.direction.y = mSwing.direction.z = mSwing.strength = 0.0f;
+	Vec delta;
+	Vec movement;
+	Vec origin;
+	movement.x = movement.y = movement.z = 0.0f;
+	origin.x = origin.y = origin.z = 0.0f;
+	mSwing.direction.x = mSwing.direction.y = mSwing.direction.z = 0.0f;
+	mSwing.strength                                              = 0.0f;
 	for (int i = first + 1; i <= last; ++i) {
-		f32 x      = mSwing.acceleration[i].x - mSwing.acceleration[i - 1].x;
-		f32 y      = mSwing.acceleration[i].y - mSwing.acceleration[i - 1].y;
-		f32 length = (f32)sqrt(x * x + y * y);
-		movement.x += x * length;
-		movement.y += y * length;
+		delta.x = mSwing.acceleration[i].x - mSwing.acceleration[i - 1].x;
+		delta.y = mSwing.acceleration[i].y - mSwing.acceleration[i - 1].y;
+		delta.z = 0.0f;
+		movement.x += delta.x * (f32)sqrt(delta.x * delta.x + delta.y * delta.y);
+		movement.y += delta.y * (f32)sqrt(delta.x * delta.x + delta.y * delta.y);
 		mSwing.strength += mSwing.magnitude[i] + mSwing.change[i];
 	}
 	origin.x = mSwing.acceleration[0].x;
@@ -702,14 +710,15 @@ static inline void ResetMotion(WiiMotionWindow& motion)
 	for (unsigned int i = 0; i < ARRAY_SIZE(motion.changes); ++i) {
 		motion.changes[i] = 0.0f;
 	}
-	motion.count  = 0;
-	motion.active = motion.previouslyActive = FALSE;
+	motion.count            = 0;
+	motion.previouslyActive = motion.active = FALSE;
 	motion.activeFrames                     = 1;
 }
 
 static inline void AppendChange(WiiMotionWindow& motion, f32 change)
 {
-	motion.changes[motion.count++] = change;
+	motion.changes[motion.count] = change;
+	++motion.count;
 	if (motion.count >= ARRAY_SIZE(motion.changes)) {
 		motion.count = ARRAY_SIZE(motion.changes) - 1;
 	}
@@ -770,8 +779,20 @@ void CPadOne::UpdateRemoteMotion()
 void CPadOne::DetectRemoteMotion()
 {
 	for (int i = mSampleCount - 1; i >= 0; --i) {
-		if (DetectChange(mRemoteMotion, mSamples[i].acceleration.change)) {
-			break;
+		f32 change = mSamples[i].acceleration.change;
+		if (change >= 0.2f) {
+			mRemoteMotion.previouslyActive = mRemoteMotion.active;
+			mRemoteMotion.active           = TRUE;
+			return;
+		}
+		if (change < 0.1f) {
+			if (++mRemoteMotion.quietSamples >= 15) {
+				mRemoteMotion.previouslyActive = mRemoteMotion.active;
+				mRemoteMotion.active           = FALSE;
+				return;
+			}
+		} else {
+			mRemoteMotion.quietSamples = 0;
 		}
 	}
 }
@@ -800,8 +821,20 @@ void CPadOne::UpdateNunchukMotion()
 void CPadOne::DetectNunchukMotion()
 {
 	for (int i = mSampleCount - 1; i >= 0; --i) {
-		if (DetectChange(mNunchukMotion, mSamples[i].extension.nunchuk.acceleration.change)) {
-			break;
+		f32 change = mSamples[i].extension.nunchuk.acceleration.change;
+		if (change >= 0.2f) {
+			mNunchukMotion.previouslyActive = mNunchukMotion.active;
+			mNunchukMotion.active           = TRUE;
+			return;
+		}
+		if (change < 0.1f) {
+			if (++mNunchukMotion.quietSamples >= 15) {
+				mNunchukMotion.previouslyActive = mNunchukMotion.active;
+				mNunchukMotion.active           = FALSE;
+				return;
+			}
+		} else {
+			mNunchukMotion.quietSamples = 0;
 		}
 	}
 }
@@ -930,13 +963,12 @@ void CPadEx::ResetRumble(BOOL resetAll)
 		mMotorEnabled = WPADIsMotorEnabled();
 	}
 	for (int port = 0; port < 4; ++port) {
-		CPadOne& pad = gWiiPads[port];
-		pad.ResetRumble(resetAll);
+		gWiiPads[port].ResetRumble(resetAll);
 		for (int i = 0; i < 3; ++i) {
 			if (mMotorEnabled) {
-				pad.mRumble[i].flags |= RumbleEnabled;
+				gWiiPads[port].mRumble[i].flags |= RumbleEnabled;
 			} else {
-				pad.mRumble[i].flags &= ~RumbleEnabled;
+				gWiiPads[port].mRumble[i].flags &= ~RumbleEnabled;
 			}
 		}
 	}

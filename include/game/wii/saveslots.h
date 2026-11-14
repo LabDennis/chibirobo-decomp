@@ -10,19 +10,19 @@ struct WiiSaveSlotHeader {
 	u64 mTimestamp;
 	s32 mStages[2];
 	u32 _18;
-	u32 mStatusFlags;  // _1C, the low word of gGame.GetStatusFlags(1); bit 0 means a camera was saved
-	f32 mPlayTime;     // _20
-	s32 mTimeMode;     // _24
-	f32 mTime;         // _28
-	f32 mDuration;     // _2C
-	s32 mExp;          // _30
-	s32 mLevel;        // _34
-	s32 mRank;         // _38
-	f32 mBattery;      // _3C
-	f32 mMaxBattery;   // _40
-	s32 mMoney;        // _44
-	s32 mScrap;        // _48
-	s32 mActive;       // _4C
+	u32 mStatusFlags; // _1C, the low word of gGame.GetStatusFlags(1); bit 0 means a camera was saved
+	f32 mPlayTime;    // _20
+	s32 mTimeMode;    // _24
+	f32 mTime;        // _28
+	f32 mDuration;    // _2C
+	s32 mExp;         // _30
+	s32 mLevel;       // _34
+	s32 mRank;        // _38
+	f32 mBattery;     // _3C
+	f32 mMaxBattery;  // _40
+	s32 mMoney;       // _44
+	s32 mScrap;       // _48
+	s32 mActive;      // _4C
 	u8 _50[0x78 - 0x50];
 	u32 mMenuControls; // bit 0 enables pointer navigation, bit 1 enables stick navigation
 	u32 mChecksum;

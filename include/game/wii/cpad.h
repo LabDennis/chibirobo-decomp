@@ -49,18 +49,9 @@ enum {
 	GameCubeSubStick = 60
 };
 
-enum {
-	InputRemote   = 1,
-	InputClassic  = 2,
-	InputGameCube = 4
-};
+enum { InputRemote = 1, InputClassic = 2, InputGameCube = 4 };
 
-enum {
-	DeviceRemote   = 1,
-	DeviceNunchuk  = 2,
-	DeviceClassic  = 4,
-	DeviceGameCube = 8
-};
+enum { DeviceRemote = 1, DeviceNunchuk = 2, DeviceClassic = 4, DeviceGameCube = 8 };
 
 struct PADStatus;
 
