@@ -39,6 +39,25 @@ void WPADControlMotor(s32 channel, u32 command);
 RemoteSpeakerManager* GetRemoteSpeakerManager();
 RemoteSpeakerChannel* GetRemoteSpeakerChannel(RemoteSpeakerManager*, s32 channel);
 void NormalizeWiiStick(StickPosition*, f32 x, f32 y, f32 innerRadius, f32 outerRadius);
+
+extern MEMAllocator gWiiPadAllocator;
+void WPADRegisterAllocator(void* (*alloc)(u32), BOOL (*free)(void*));
+BOOL WPADIsMotorEnabled();
+void KPADInit();
+void KPADReset();
+void KPADSetBtnRepeat(s32 channel, f32 delay, f32 interval);
+void KPADSetPosParam(s32 channel, f32 playRadius, f32 sensitivity);
+void KPADSetHoriParam(s32 channel, f32 playRadius, f32 sensitivity);
+void KPADSetDistParam(s32 channel, f32 playRadius, f32 sensitivity);
+void KPADSetAccParam(s32 channel, f32 playRadius, f32 sensitivity);
+void KPADSetConnectCallback(s32 channel, void (*callback)(s32, s32));
+void KPADEnableAimingMode(s32 channel);
+s32 KPADCalibrateDPD(s32 channel);
+void KPADDisableStickCrossClamp();
+void KPADSetObjInterval(f32 value);
+void KPADSetFSStickClamp(s8 inner, s8 outer);
+BOOL EnableWiiRemoteSpeaker(RemoteSpeakerChannel*, void (*completion)(s32, s32));
+BOOL DisableWiiRemoteSpeaker(RemoteSpeakerChannel*, void (*completion)(s32, s32));
 }
 
 struct WiiStickRange {
@@ -91,6 +110,50 @@ static const u64 sRepeatGroups[]
 	    1ULL << RemotePlus, 1ULL << RemoteMinus, 0x8800800000000000ULL, 0x4400400000000000ULL, 0x1100100000000000ULL, 0x2200200000000000ULL,
 	    1ULL << GameCubeL,  1ULL << GameCubeR,   1ULL << GameCubeX,     1ULL << GameCubeY };
 
+extern "C" {
+#include "arithmetic.h"
+extern f64 atan2(f64 y, f64 x);
+
+static inline f32 StickLength(f32 x, f32 y)
+{
+	return FSqrt(x * x + y * y);
+}
+
+void NormalizeWiiStick(StickPosition* result, f32 x, f32 y, f32 innerRadius, f32 outerRadius)
+{
+	f32 length = StickLength(x, y);
+	if (length <= innerRadius) {
+		result->x = result->y = 0.0f;
+	} else if (length >= outerRadius) {
+		result->x = x / length;
+		result->y = y / length;
+	} else {
+		f32 scale = ((length - innerRadius) / (outerRadius - innerRadius)) / length;
+		result->x = x * scale;
+		result->y = y * scale;
+	}
+}
+}
+
+static void SpeakerEnabled(s32 channel, s32 result);
+static void SpeakerDisabled(s32 channel, s32 result);
+static void OnPadConnection(s32 channel, s32 result);
+
+void CPadOne::Init(u8 port, u8 inputMask)
+{
+	mPort      = port;
+	mInputMask = inputMask;
+	Clear();
+	KPADSetPosParam(mPort, 0.0f, 1.0f);
+	KPADSetHoriParam(mPort, 0.0f, 1.0f);
+	KPADSetDistParam(mPort, 0.0f, 1.0f);
+	KPADSetAccParam(mPort, 0.1f, 1.0f);
+	KPADSetBtnRepeat(mPort, 0.0f, 0.0f);
+	KPADEnableAimingMode(mPort);
+	KPADCalibrateDPD(mPort);
+	SetConnectCallback();
+}
+
 void CPadOne::Clear()
 {
 	mButton = mDirButton = 0;
@@ -129,6 +192,11 @@ void CPadOne::ResetRumble(BOOL resetAll)
 		}
 	}
 	WPADControlMotor(mPort, 0);
+}
+
+BOOL CPadOne::IsGameCubePadActive() const
+{
+	return (mDevices & DeviceGameCube) && (mInputMask & InputGameCube);
 }
 
 enum StickDirection {
@@ -484,30 +552,6 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 		}
 	}
 }
-extern "C" {
-#include "arithmetic.h"
-extern f64 atan2(f64 y, f64 x);
-
-static inline f32 StickLength(f32 x, f32 y)
-{
-	return FSqrt(x * x + y * y);
-}
-
-void NormalizeWiiStick(StickPosition* result, f32 x, f32 y, f32 innerRadius, f32 outerRadius)
-{
-	f32 length = StickLength(x, y);
-	if (length <= innerRadius) {
-		result->x = result->y = 0.0f;
-	} else if (length >= outerRadius) {
-		result->x = x / length;
-		result->y = y / length;
-	} else {
-		f32 scale = ((length - innerRadius) / (outerRadius - innerRadius)) / length;
-		result->x = x * scale;
-		result->y = y * scale;
-	}
-}
-}
 
 // NONMATCHING: instruction multiset is identical to retail; the remaining
 // diffs are register allocation and load-order residue around the four
@@ -536,6 +580,38 @@ u32 CPadOne::GetStickDirections(StickDirectionSettings& settings, f32 x, f32 y) 
 		}
 	}
 	return result;
+}
+
+void CPadOne::SetConnectCallback()
+{
+	KPADSetConnectCallback(mPort, OnPadConnection);
+}
+
+void CPadOne::EnableRemoteSpeaker()
+{
+	EnableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), mPort), SpeakerEnabled);
+}
+
+void CPadOne::DisableRemoteSpeaker()
+{
+	DisableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), mPort), SpeakerDisabled);
+}
+
+static void SpeakerEnabled(s32, s32)
+{
+}
+
+static void SpeakerDisabled(s32, s32)
+{
+}
+
+static void OnPadConnection(s32 channel, s32 result)
+{
+	if (result == 0) {
+		EnableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), channel), SpeakerEnabled);
+	} else if (result == -1) {
+		DisableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), channel), SpeakerDisabled);
+	}
 }
 
 extern "C" f64 sqrt(f64 x);
@@ -838,81 +914,6 @@ void CPadOne::DetectNunchukMotion()
 	}
 }
 
-extern "C" {
-extern MEMAllocator gWiiPadAllocator;
-void WPADRegisterAllocator(void* (*alloc)(u32), BOOL (*free)(void*));
-BOOL WPADIsMotorEnabled();
-void KPADInit();
-void KPADReset();
-void KPADSetBtnRepeat(s32 channel, f32 delay, f32 interval);
-void KPADSetPosParam(s32 channel, f32 playRadius, f32 sensitivity);
-void KPADSetHoriParam(s32 channel, f32 playRadius, f32 sensitivity);
-void KPADSetDistParam(s32 channel, f32 playRadius, f32 sensitivity);
-void KPADSetAccParam(s32 channel, f32 playRadius, f32 sensitivity);
-void KPADSetConnectCallback(s32 channel, void (*callback)(s32, s32));
-void KPADEnableAimingMode(s32 channel);
-s32 KPADCalibrateDPD(s32 channel);
-void KPADDisableStickCrossClamp();
-void KPADSetObjInterval(f32 value);
-void KPADSetFSStickClamp(s8 inner, s8 outer);
-BOOL EnableWiiRemoteSpeaker(RemoteSpeakerChannel*, void (*completion)(s32, s32));
-BOOL DisableWiiRemoteSpeaker(RemoteSpeakerChannel*, void (*completion)(s32, s32));
-}
-
-static void SpeakerEnabled(s32, s32)
-{
-}
-
-static void SpeakerDisabled(s32, s32)
-{
-}
-
-static void OnPadConnection(s32 channel, s32 result)
-{
-	if (result == 0) {
-		EnableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), channel), SpeakerEnabled);
-	} else if (result == -1) {
-		DisableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), channel), SpeakerDisabled);
-	}
-}
-
-void CPadOne::Init(u8 port, u8 inputMask)
-{
-	mPort      = port;
-	mInputMask = inputMask;
-	Clear();
-	KPADSetPosParam(mPort, 0.0f, 1.0f);
-	KPADSetHoriParam(mPort, 0.0f, 1.0f);
-	KPADSetDistParam(mPort, 0.0f, 1.0f);
-	KPADSetAccParam(mPort, 0.1f, 1.0f);
-	KPADSetBtnRepeat(mPort, 0.0f, 0.0f);
-	KPADEnableAimingMode(mPort);
-	KPADCalibrateDPD(mPort);
-	SetConnectCallback();
-}
-
-void CPadOne::SetConnectCallback()
-{
-	KPADSetConnectCallback(mPort, OnPadConnection);
-}
-
-void CPadOne::EnableRemoteSpeaker()
-{
-	EnableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), mPort), SpeakerEnabled);
-}
-
-void CPadOne::DisableRemoteSpeaker()
-{
-	DisableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), mPort), SpeakerDisabled);
-}
-
-CPadOne::CPadOne()
-{
-	ResetSwing();
-	ResetRemoteMotion();
-	ResetNunchukMotion();
-}
-
 static void* AllocatePadMemory(u32 size)
 {
 	return MEMAllocFromAllocator(&gWiiPadAllocator, size);
@@ -994,4 +995,11 @@ void CPadEx::SetSubStickRange(f32 inner, f32 outer)
 {
 	sStickRanges[1].min = inner;
 	sStickRanges[1].max = outer;
+}
+
+CPadOne::CPadOne()
+{
+	ResetSwing();
+	ResetRemoteMotion();
+	ResetNunchukMotion();
 }
