@@ -20,9 +20,19 @@ struct WiiSaveSlot {
 };
 STATIC_ASSERT(sizeof(WiiSaveSlot) == 0x2d20);
 
+// ScanWiiSaveSlots fills these while probing the slots in the NAND: mData holds the last verified
+// slot copy and mStatus is 1 (valid), 3 (unusable), 4 (empty), 8 (no blocks) or 0x10 (no inodes).
+struct WiiSaveScanEntry {
+	u8 mData[0x80];
+	u32 mStatus;
+	u8 _84[0x1c];
+};
+STATIC_ASSERT(sizeof(WiiSaveScanEntry) == 0xa0);
+
 struct WiiSaveManager {
 	WiiGameSaveFile mFile;
-	u8 _94[0x6e0 - sizeof(WiiGameSaveFile)];
+	u8 _94[0xa0 - sizeof(WiiGameSaveFile)];
+	WiiSaveScanEntry mScanEntries[10];
 	WiiSaveSlot mSlot;
 	char mHomeDir[64];
 	char mSlotPath[64];

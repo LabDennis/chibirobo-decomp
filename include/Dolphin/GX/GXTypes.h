@@ -40,8 +40,8 @@ typedef struct _GXColorS10 {
 
 // Generic struct for texture objects.
 typedef struct _GXTexObj {
-	u8 pad[0x20]; // _00
-} GXTexObj;       // size 0x20
+	u32 pad[8]; // _00
+} GXTexObj;        // size 0x20
 
 // Internal struct for texture objects.
 typedef struct _GXTexObjPriv {
@@ -73,7 +73,7 @@ typedef struct _GXTexRegionPriv {
 
 // Generic struct for texture look-up table objects.
 typedef struct _GXTlutObj {
-	u8 padding[0xc]; // _00
+	u32 padding[3]; // _00
 } GXTlutObj;
 
 typedef struct _GXTlutObjPriv {

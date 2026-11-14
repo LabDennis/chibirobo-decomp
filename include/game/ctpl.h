@@ -41,8 +41,8 @@ public:
 	void* mImageData; // _20
 	void* mClutData;  // _24
 	CTlutObj mTlut;   // _28
-	bool mMtxDirty;   // _3C
-	Mtx mMtx[4];      // _40
+	Mtx mMtx[4];      // _3C
+	BOOL mMtxDirty;   // _FC
 	// _100 vtable
 
 	virtual ~CTexObj() { }
