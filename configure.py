@@ -1176,9 +1176,9 @@ if wii:
             "progress_category": "game",
             "objects": [
                 # GC/3.0a5.2 is evidenced by the build result on these units: CModule::Unload,
-                # OctaMenu::UpdatePointedItem, CPadAct::Init/Update and CBase::Start all score
-                # strictly higher under it (Start is byte-identical), and Wii/1.3 instead emits
-                # @NNNN sdata2 objects where retail has the same literals as named objects.
+                # OctaMenu::UpdatePointedItem and CPadAct::Init/Update all score strictly higher
+                # under it, and Wii/1.3 instead emits @NNNN sdata2 objects where retail has the
+                # same literals as named objects.
                 Object(Equivalent, "game/cmodule.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/globalresources.cpp", extra_cflags=["-Cpp_exceptions on"]),
@@ -1197,7 +1197,13 @@ if wii:
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
                 # retail keeps them as calls
                 Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
-                Object(NonMatching, "game/wii/gamemain.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
+                # init.cpp (the name is in its OSPanic call): InitTwoLightSet and InitFourLightSet
+                # copy their vectors through the registers retail uses under GC/3.0a3.2 to 3.0a5
+                # and through others under 3.0a5.2, and every Wii build is far off. -ipa file: the
+                # weak functions a function leaves behind (CCamera::CalcAngle, CalcDistance;
+                # CLight::SetPosition, vf30) follow it in the order of their calls, as in retail
+                # 0x8003607C and 0x80036254; without the flag they come out in the reverse order
+                Object(NonMatching, "game/wii/init.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # no auto-inlining of the small pad functions: under -inline auto the
                 # compiler inlines Collect*/Init into their callers where retail keeps
                 # them as calls; IsGameCubePadActive is inline-declared and still inlined

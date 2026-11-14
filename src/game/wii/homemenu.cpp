@@ -47,7 +47,7 @@ extern MEMAllocator gWiiPadAllocator;
 extern MEMiHeapHead* gWiiGameHeap;
 extern s32 gPointerScreenWidth, gPointerScreenHeight, gRefreshRate;
 // 60 over the refresh rate
-extern f32 gFrameDelta;
+extern f32 gFrameRateScale;
 
 // these two count, the sounds resume once every pause is taken back
 void PauseGameSounds(CGame* game, f32 fadeSeconds);
@@ -152,10 +152,10 @@ static inline BOOL MoveCursorWithStick(f32 stickX, f32 stickY, Vec2* pos)
 static inline void ResetWiiHomeMenu(WiiHomeMenu* menu)
 {
 	menu->mMenuStep        = 0;
-	menu->mAdjust          = gGame.mWidescreen != 0;
+	menu->mAdjust          = gGame.mAspectRatio != 0;
 	menu->_65C             = 0;
-	menu->mInfo.frameDelta = gFrameDelta;
-	menu->mInfo.adjust.x   = !gGame.mWidescreen ? 1.0f : 832.0f / 608.0f;
+	menu->mInfo.frameDelta = gFrameRateScale;
+	menu->mInfo.adjust.x   = !gGame.mAspectRatio ? 1.0f : 832.0f / 608.0f;
 }
 
 extern "C" void InitWiiHomeMenu(WiiHomeMenu* menu)
@@ -416,8 +416,8 @@ extern "C" BOOL DrawWiiHomeMenu(WiiHomeMenu* menu)
 			GXLoadPosMtxImm(identity, GX_PNMTX0);
 			GXSetCurrentMtx(GX_PNMTX0);
 			GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_FALSE, GX_PTIDENTITY);
-			gGame.mGs.mCurRenderMode->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
-			gGame.mGs.mCurRenderMode->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
 			gGame.mGs.mCurTevStage->SetOrder(GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR_NULL);
 			gGame.mGs.mCurTevStage->SetColorIn(GX_CC_ZERO, GX_CC_TEXC, GX_CC_RASC, GX_CC_ZERO);
 			gGame.mGs.mCurTevStage->SetColorOp(GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_TRUE, GX_TEVPREV);
@@ -427,8 +427,8 @@ extern "C" BOOL DrawWiiHomeMenu(WiiHomeMenu* menu)
 			DrawFbTexture(&menu->mCapture, color, gPointerScreenWidth / 2, gPointerScreenHeight / 2, 0.0f, gPointerScreenWidth,
 			              gPointerScreenHeight, 0.0f, 0.0f, 0.0f);
 			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
-			gGame.mGs.mCurRenderMode->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
-			gGame.mGs.mCurRenderMode->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
 		}
 		if (menu->mMenuStep >= 3) {
 			// the library draws in its own 608x456 space, 832 wide on a 16:9 screen
@@ -451,13 +451,13 @@ extern "C" BOOL DrawWiiHomeMenu(WiiHomeMenu* menu)
 		f32 x        = pos.x + width / 2.0f;
 		f32 y        = pos.y - height / 2.0f;
 		u32 color    = (u32)(255.0f * menu->mFade) | 0xFFFFFF00;
-		gGame.mGs.mCurRenderMode->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
-		gGame.mGs.mCurRenderMode->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
 		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 		DrawGsTexturedQuad(&gGame.mGs, &icon, color, color, color, color, x, y, 0.0f, width, height, 0.0f, 0.0f, 0.0f);
 		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
-		gGame.mGs.mCurRenderMode->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
-		gGame.mGs.mCurRenderMode->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
 	}
 	return TRUE;
 }

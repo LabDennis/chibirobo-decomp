@@ -13,15 +13,17 @@ class CFile : public DVDFileInfo {
 public:
 	CFile()
 	{
-#if defined(VERSION_R24J01)
-		mFromMemory = mInArchive = 0;
-#else
+#if !defined(VERSION_R24J01)
 		mArchive = NULL;
 #endif
 		mEntrynum = -1;
 		mBuffer   = NULL;
 		mResult   = 0;
-		mState    = 1;
+#if defined(VERSION_R24J01)
+		mFromMemory = FALSE;
+		mInArchive  = FALSE;
+#endif
+		mState = 1;
 	}
 
 	// _00 DVDFileInfo
