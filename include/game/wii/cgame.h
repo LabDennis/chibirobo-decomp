@@ -5,6 +5,7 @@
 #include "game/wii/csound.h"
 #include "game/cscrn.h"
 #include "game/ut.h"
+#include "game/inventory.h"
 
 // Verified Wii fields accessed by the controller, stage, and save code. The Wii CBase is larger than the
 // GameCube one, so its vtable sits at 0x41E4, right behind its data.
@@ -160,6 +161,59 @@ struct WiiCameraActions {
 };
 STATIC_ASSERT(sizeof(WiiCameraActions) == 0x30);
 
+// chibi robo's numbers, watts, happy points and the items he holds -- same layout
+// as the GameCube Params the Wii code was ported from
+struct WiiPlayerParams {
+	s32 mExperience;      // _00
+	s32 mLevel;           // _04
+	s32 mRank;            // _08
+	f32 mBattery;         // _0C
+	f32 mMaxBattery;      // _10
+	s32 mMoney;           // _14
+	s32 mScrap;           // _18
+	u32 _1C[8];           // _1C, [0] above 0 is an unlimited battery; saved as mActive
+	Inventory mInventory; // _3C
+	// _440 vtable
+
+	void SetBattery(f32 value)
+	{
+		mBattery = value > 0.0f ? value : 0.0f;
+		if (mBattery < 0.0f)
+			mBattery = 0.0f;
+		if (mBattery > mMaxBattery)
+			mBattery = mMaxBattery;
+	}
+
+	// money and scrap stay between 0 and 99999
+	void SetMoney(s32 value)
+	{
+		mMoney = value > 0 ? value : 0;
+		if (mMoney < 0)
+			mMoney = 0;
+		if (mMoney > 99999)
+			mMoney = 99999;
+	}
+	void SetScrap(s32 value)
+	{
+		mScrap = value > 0 ? value : 0;
+		if (mScrap < 0)
+			mScrap = 0;
+		if (mScrap > 99999)
+			mScrap = 99999;
+	}
+};
+STATIC_ASSERT(sizeof(WiiPlayerParams) == 0x440);
+
+// the suit state fields the save manager touches, at the head of the PlayerSuits-shaped block
+struct WiiPlayerSuits {
+	s32 mLoadStep;   // _00
+	s32 mChangeStep; // _04, a queued suit change
+	s32 mCurrent;    // _08, the suit he's wearing
+	s32 mRequested;  // _0C, takes the saved suit
+	s32 mSpecial;    // _10
+	                 // the suit objects beyond here are not reconstructed
+};
+
 // the Wii player object: a different, larger class than the GameCube XObjChr. These are the members
 // the save manager reads and writes, at offsets verified against retail. The position lives behind a
 // virtual getter (vtable +0x244 returns the Vec*), the restore calls vtable +0x90 with the saved
@@ -172,21 +226,9 @@ struct WiiPlayerState {
 	s32 mAttachmentRequest; // _9924, -1 when there's none
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
 	u8 _992C[0x999C - 0x992C];
-	s32 mExp;        // _999C, mParams.mExperience
-	s32 mLevel;      // _99A0
-	s32 mRank;       // _99A4
-	f32 mBattery;    // _99A8
-	f32 mMaxBattery; // _99AC
-	s32 mMoney;      // _99B0
-	s32 mScrap;      // _99B4
-	s32 mActive;     // _99B8, mParams._1C[0]
-	u8 _99BC[0x99D8 - 0x99BC];
-	u8 mItems[0x400]; // _99D8, mParams.mInventory.mItems
-	u8 _99D8[0xDC54 - 0x9DD8];
-	s32 mSuitChangeStep; // _DC54, a queued suit change
-	s32 mSuit;           // _DC58, mSuits.mCurrent
-	s32 mRequestedSuit;  // _DC5C, takes the saved suit
-	s32 mSpecialSuit;    // _DC60, mSuits.mSpecial
+	WiiPlayerParams mParams; // _999C
+	u8 _9DDC[0xDC50 - 0x9DDC];
+	WiiPlayerSuits mSuits; // _DC50
 	u8 _DC64[0x19E9C - 0xDC64];
 	u8 mAttachments[0x48]; // _19E9C
 	u8 _19EE4[0x1C994 - 0x19EE4];

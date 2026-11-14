@@ -10,7 +10,7 @@
 
 // what a module's _prolog takes, a negative cmd runs its static constructors
 typedef s32 (*CModuleProlog)(s32 cmd, void* arg, void* arg2);
-typedef void (*CModuleEpilog)(void);
+typedef void (*CModuleEpilog)(OSModuleHeader* module);
 
 class CModule : public OSModuleHeader {
 public:
@@ -32,7 +32,7 @@ public:
 	void Epilog()
 	{
 		if (IsLoaded()) {
-			((CModuleEpilog)mModule->epilog)();
+			((CModuleEpilog)mModule->epilog)(mModule);
 		}
 	}
 

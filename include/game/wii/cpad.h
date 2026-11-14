@@ -182,7 +182,7 @@ public:
 	BOOL IsRemoteActive() const { return (mDevices & DeviceRemote) && (mInputMask & InputRemote); }
 	BOOL IsNunchukActive() const { return (mDevices & DeviceNunchuk) && (mInputMask & InputRemote); }
 	BOOL IsClassicPadActive() const { return (mDevices & DeviceClassic) && (mInputMask & InputClassic); }
-	BOOL IsGameCubePadActive() const;
+	BOOL IsGameCubePadActive() const { return (mDevices & DeviceGameCube) && (mInputMask & InputGameCube); }
 	BOOL GetSwing(Vec* direction, f32* strength);
 	void ResetSwing();
 	void AppendSwingSample(s32 index);
