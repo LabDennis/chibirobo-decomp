@@ -57,9 +57,16 @@ public:
 // a color with a hole that opens or closes, the subclasses pick the shape
 class CScrnWipe : public CScrnColor {
 public:
-	virtual ~CScrnWipe() { }              // _08 (weak)
-	virtual void Reset();                 // _0C, Reset__9CScrnWipeFv
-	virtual void Update(u32 frames);      // _10, Update__9CScrnWipeFUl
+	virtual ~CScrnWipe() { } // _08 (weak)
+	virtual void Reset();    // _0C, Reset__9CScrnWipeFv
+#if defined(VERSION_R24J01)
+	virtual void SetDimensions(BOOL hideWhenDone, f32 x, f32 y, f32 width, f32 height, f32 targetWidth, f32 targetHeight, f32 time);
+	virtual void Start(u8 r, u8 g, u8 b, u8 a, BOOL hideWhenDone, f32 x, f32 y, f32 width, f32 height, f32 targetWidth, f32 targetHeight,
+	                   f32 time);
+	virtual void StartTransition(u8 r, u8 g, u8 b, u8 a, u8 targetR, u8 targetG, u8 targetB, f32 x, f32 y, f32 width, f32 height,
+	                             f32 targetWidth, f32 targetHeight, f32 time, u8 targetA, BOOL hideWhenDone);
+#endif
+	virtual void Update(u32 frames);
 	virtual void Draw(CGs* gs, s32 mode); // _14, Draw__9CScrnWipeFP3CGsl
 
 	BOOL mActive;       // _34
@@ -76,8 +83,15 @@ public:
 	               // by it; the eye camera writes its yaw into gGame.mRoboeyes
 	f32 mSpeedRotation; // _60, radians per frame Update adds to mRotation, skipped when 0; nothing in the decompiled code sets it to
 	                    // anything but 0
+#if defined(VERSION_R24J01)
+	BOOL mScaleToWidescreen;
+#endif
 };
+#if defined(VERSION_R24J01)
+STATIC_ASSERT(sizeof(CScrnWipe) == 0x68);
+#else
 typedef char CScrnWipe_size_check[sizeof(CScrnWipe) == 0x64 ? 1 : -1];
+#endif
 
 class CScrnWipeCircle : public CScrnWipe {
 public:
@@ -91,7 +105,7 @@ public:
 
 	CTexObj mTex; // _64
 };
-typedef char CScrnWipeTex_size_check[sizeof(CScrnWipeTex) == 0x164 ? 1 : -1];
+STATIC_ASSERT(sizeof(CScrnWipeTex) == sizeof(CScrnWipe) + sizeof(CTexObj));
 
 class CScrnWipeCustom : public CScrnWipe {
 public:
@@ -105,6 +119,13 @@ public:
 	void Draw(CGs* gs, s32 mode);
 };
 
+#if defined(VERSION_R24J01)
+struct RoboeyesLensValue {
+	f32 value;
+	f32 target;
+};
+#endif
+
 // chibi robo's eyes closing over the screen
 class CScrnRoboeyes : public CScrnWipe {
 public:
@@ -113,10 +134,29 @@ public:
 	virtual void Update(u32 frames);      // _10, Update__13CScrnRoboeyesFUl
 	virtual void Draw(CGs* gs, s32 mode); // _14, Draw__13CScrnRoboeyesFP3CGsl
 
+#if defined(VERSION_R24J01)
+	virtual void StartTransition(u8 r, u8 g, u8 b, u8 a, u8 targetR, u8 targetG, u8 targetB, f32 x, f32 y, f32 width, f32 height,
+	                             f32 targetWidth, f32 targetHeight, f32 time, u8 targetA, BOOL hideWhenDone);
+
+	void ResetLensState(f32 width, f32 height);
+#endif
 	f32 mAngle; // _64
 	f32 mPhase; // _68
+#if defined(VERSION_R24J01)
+	RoboeyesLensValue mSeparation;
+	RoboeyesLensValue mLeftWidth;
+	RoboeyesLensValue mLeftHeight;
+	RoboeyesLensValue mRightWidth;
+	RoboeyesLensValue mRightHeight;
+	RoboeyesLensValue mFocus;
+	s32 mLensState;
+#endif
 };
+#if defined(VERSION_R24J01)
+STATIC_ASSERT(sizeof(CScrnRoboeyes) == 0xA4);
+#else
 typedef char CScrnRoboeyes_size_check[sizeof(CScrnRoboeyes) == 0x6C ? 1 : -1];
+#endif
 
 // shakes the screen, the amount steps to the target and flips sign every frame
 class CScrnQuake {

@@ -1,7 +1,16 @@
 #include "Version.h"
+#if defined(VERSION_R24J01)
+#include "Dolphin/GX/GXFrameBuffer.h"
+#include "game/wii/cgame.h"
+extern "C" {
+char* FormatToStaticBuffer(const char* format, ...);
+s32 _prolog(s32 function, s32 count, s32* args);
+}
+#else
 #include "game/cgame.h"
 #include "game/ut.h"
 #include "Dolphin/GX/GXTypes.h"
+#endif
 #include "game/stage.h"
 #include "game/globals.h"
 #include <string.h>
@@ -24,6 +33,7 @@ struct StageFileHeader {
 };
 STATIC_ASSERT(sizeof(StageFileHeader) == 0x34);
 
+#if !defined(VERSION_R24J01)
 extern "C" {
 extern UnkStageObj gStageObjectPlacements[];
 extern UnkObjData objTable[];
@@ -2617,6 +2627,54 @@ StageDesc stageTable[] = {
 };
 
 #undef STAGE
+#else
+// the Wii's table also names each stage's sound bank and the bank's first sound id
+// NONMATCHING: retail keeps the eight-byte names ("stage00") in .sdata2, this build pools every string of the file
+// in .rodata, so the strings AdvanceStageLoad reads sit at other offsets
+StageDesc stageTable[] = {
+	{ "stage00", "stage00", NULL, -1, 0, 5 },
+	{ "stage01", "stage01", "sfx_kitchen.ssm", 0x245, 1, 5 },
+	{ "stage02", "stage02", "sfx_stage02.ssm", 0x22d, 2, 5 },
+	{ "stage03", "stage03", "sfx_souko.ssm", 0x24d, 3, 5 },
+	{ "stage04", "stage04", "sfx_jennyroom.ssm", 0x23e, 4, 5 },
+	{ "stage05", "stage05", "sfx_stage05.ssm", 0x252, 5, 4 },
+	{ "stage06", "stage06", "sfx_papamama.ssm", 0x237, 6, 5 },
+	{ "stage07", "stage07", "sfx_stage07.ssm", 0x233, 7, 5 },
+	{ "stage08", "stage08", NULL, -1, 8, 5 },
+	{ "stage09", "stage09", "sfx_uraniwa.ssm", 0x249, 9, 5 },
+	{ "stage10", "stage10", NULL, -1, 10, 1 },
+	{ "stage11", "stage11", "sfx_pipe.ssm", 0x259, 11, 5 },
+	{ "stage12", "stage12", NULL, -1, 12, 5 },
+	{ "stage13", "stage13", "sfx_manual.ssm", -1, 13, 5 },
+	{ "stage14", "stage14", "sfx_stage07.ssm", -1, 14, 5 },
+	{ "stage15", "stage15", NULL, -1, 15, 5 },
+	{ "stage16", "stage16", "sfx_ufo.ssm", 0x25f, 16, 5 },
+	{ "stage17", "stage17", NULL, -1, 17, 5 },
+	{ "stage18", "stage18", "sfx_ufo.ssm", 0x237, 18, 5 },
+	{ "stage19", "stage19", "sfx_stage07.ssm", -1, 19, 5 },
+	{ "stage20", "stage20", NULL, -1, 20, 5 },
+	{ "stage21", "stage21", NULL, -1, 21, 5 },
+	{ "stage22", "stage22", "sfx_martial.ssm", -1, 22, 5 },
+	{ "stage23", "stage23", NULL, -1, 23, 5 },
+	{ "stage24", "stage24", NULL, -1, 24, 5 },
+	{ "stage25", "stage25", NULL, -1, 25, 5 },
+	{ "stage26", "stage26", NULL, -1, 26, 5 },
+	{ "stage27", "stage27", NULL, -1, 27, 5 },
+	{ "stage28", "stage07", NULL, -1, 28, 5 },
+	{ "stage29", "stage07", NULL, -1, 29, 5 },
+	{ NULL, NULL, NULL, -1, -1, 0 },
+	{ "shun", "shun", NULL, -1, -1, 5 },
+	{ "hori", "hori", "sfx_manual.ssm", -1, -1, 5 },
+	{ "ahk", "ahk", NULL, -1, -1, 5 },
+	{ "junko", "junko", NULL, -1, -1, 5 },
+	{ "sayoko", "sayoko", NULL, -1, -1, 5 },
+	{ "mory", "mory", NULL, -1, -1, 5 },
+	{ "ryosuke", "ryosuke", NULL, -1, -1, 5 },
+	{ "takanabe", "takanabe", NULL, -1, -1, 5 },
+	{ "mariko", "mariko", NULL, -1, -1, 5 },
+	{ NULL, NULL, NULL, 0, 0, 0 },
+};
+#endif
 
 /**
  * @note Address: 0x8006EE24
@@ -2632,6 +2690,9 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 		strcpy(stage->mDataPath,
 		       FormatToStaticBuffer("bin%s/%s.bin", gResourceDirectorySuffixByLanguage[gGame.mLanguage], stageTable[index].fileName));
 #endif
+#if defined(VERSION_R24J01)
+		stage->mModulePath[0] = 0;
+#else
 #if defined(VERSION_PAL)
 		// europe's table has the module's name apart from the data file's
 		StageDesc* desc = &stageTable[index];
@@ -2641,6 +2702,7 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 #endif
 		if (!(gGame.mStatus.mFlags & 0x100000000ULL))
 			stage->mModulePath[0] = 0; // an empty path skips the module load below
+#endif
 		++stage->mState;
 	}
 	// fall through, every step that's done moves on in the same frame
@@ -2695,11 +2757,29 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
 	case 3:
 		++stage->mState;
 	case 4: // the stage's sound bank
+#if defined(VERSION_R24J01)
+		if (stageTable[index].soundBank) {
+			LoadWiiSoundBankByName(&gGame.mSound, stageTable[index].soundBank);
+			++stage->mState;
+		} else {
+			stage->mState += 2;
+		}
+		break;
+	case 5:
+		// The Wii sound system clears this flag when the bank finishes loading.
+		if (!gGame.mSound.mLoadPending)
+			++stage->mState;
+#else
 		if (LoadGameSoundBank(&gGame.mSound, index))
 			++stage->mState;
+#endif
 		break;
 	}
+#if defined(VERSION_R24J01)
+	return stage->mState > 5;
+#else
 	return stage->mState > 4;
+#endif
 }
 
 /**
@@ -2708,10 +2788,22 @@ extern "C" BOOL AdvanceStageLoad(Stage* stage, s32 index)
  */
 extern "C" s32 CallStageModule(s32 function, s32 count, s32* args)
 {
+#if defined(VERSION_R24J01)
+	return _prolog(function, count, args);
+#else
 	if (IsModuleLoaded(&gStageResources.mModule))
 		return gStageResources.CallModule(function, count, args);
 	return -1;
+#endif
 }
+
+#if defined(VERSION_R24J01)
+// Three Wii callers query this switch. The retail implementation always returns zero.
+extern "C" s32 fn_800929EC()
+{
+	return 0;
+}
+#endif
 
 /**
  * @note Address: 0x8006F390
@@ -2856,8 +2948,12 @@ extern "C" BOOL IsStageDataLoaded()
 extern "C" void ApplyStageClearColor()
 {
 	// the environment record's first word is the VI background colour
-	GXColor color                  = *(GXColor*)gStageResources.mEnvironment.mData;
+	GXColor color = *(GXColor*)gStageResources.mEnvironment.mData;
+#if defined(VERSION_R24J01)
+	GXSetCopyClear(color, 0xFFFFFF);
+#else
 	*(GXColor*)(HSD_VIData + 0x48) = color; // current.vi.bg_color
+#endif
 	gStageResources.mModule.Print();
 }
 
@@ -2867,8 +2963,12 @@ extern "C" void ApplyStageClearColor()
  */
 extern "C" void UnloadStageDataAndModule()
 {
+#if defined(VERSION_R24J01)
+	_prolog(6, 0, NULL);
+#else
 	if (IsModuleLoaded(&gStageResources.mModule))
 		gStageResources.CallModule(6, 0, NULL); // slot 6 runs only before the module unloads
+#endif
 	gStageResources.mModule.Unload();
 	CFile* file = &gStageResources.mDataFile;
 	file->Close();
@@ -2981,3 +3081,18 @@ extern "C" s32 GetStageNum()
 {
 	return StageCount();
 }
+
+#if defined(VERSION_R24J01)
+extern "C" const char* GetStageNameOrFileName(s32 index)
+{
+	const char* name = GetStageName(index);
+	if (name == NULL)
+		name = GetStageFileName(index);
+	return name;
+}
+
+extern "C" s32 GetStageFirstSoundId(s32 index)
+{
+	return stageTable[StageIndex(index)].firstSoundId;
+}
+#endif

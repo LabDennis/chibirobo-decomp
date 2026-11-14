@@ -15,7 +15,12 @@ struct OctaMenuItem {
 	f32 mHighlight;        // _14
 	f32 mSlotOffset;       // _18, horizontal position in the scrolling row
 	f32 mTargetSlotOffset; // _1C
+#if defined(VERSION_R24J01)
+	f32 mRowOffset;
+	f32 mTargetRowOffset;
+#else
 	u8 _20[8];
+#endif
 };
 STATIC_ASSERT(sizeof(OctaMenuItem) == 0x28);
 
@@ -35,7 +40,7 @@ public:
 	XObjChr* mChr;          // _168
 	f32 mOpeningHeading;    // _16C, mChr's heading when it opened
 	s32 mLabelLength;       // _170
-#if defined(VERSION_JP)
+#if defined(VERSION_JP) || defined(VERSION_R24J01)
 	MenuHelpChar mLabelChars[20]; // _174
 #else
 	MenuHelpChar mLabelChars[22]; // _174
@@ -60,9 +65,20 @@ public:
 	s32 mFirstVisibleItem;        // _288, item to start on
 	s32 mPendingFirstVisibleItem; // _28C, queued start item, -1 for none
 	s32 mFocus;                   // _290, set on the menu that has the cursor
-	f32 mHeadTurn;                // _294, nan to turn the head with the cursor
+#if defined(VERSION_R24J01)
+	s32 mLastPointedItem;
+	s32 mKeepPointedItemOnOpen;
+#endif
+	f32 mHeadTurn; // _294, nan to turn the head with the cursor
+#if defined(VERSION_R24J01)
+	BOOL UpdatePointedItem(BOOL enabled);
+	s32 mPointedItem;
+	s32 mPreviousPointedItem;
+#endif
 };
-#if defined(VERSION_JP)
+#if defined(VERSION_R24J01)
+STATIC_ASSERT(sizeof(OctaMenu) == 0x290);
+#elif defined(VERSION_JP)
 STATIC_ASSERT(sizeof(OctaMenu) == 0x280);
 #else
 STATIC_ASSERT(sizeof(OctaMenu) == 0x298);

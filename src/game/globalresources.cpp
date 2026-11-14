@@ -1,7 +1,11 @@
 // A file of its own, not part of stage_data.cpp: GameCube links this code right before stage_data,
 // the Wii build links it after stage_data with other code in between.
 #include "Version.h"
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#else
 #include "game/cgame.h"
+#endif
 #include "game/globals.h"
 #include "game/stage.h"
 #include <stdio.h>
@@ -389,7 +393,11 @@ extern "C" XObjFloor* GetObjectCollisionList(s32 objectId)
  */
 extern "C" s32 GetDefaultStageIndex()
 {
+#if defined(VERSION_R24J01)
+	if (gGame.GetStatusFlags(0x8000000000000ULL))
+#else
 	if (gGame.mStatus.mFlags & 0x8000000000000ULL)
+#endif
 		return 0;
 	return 14;
 }
@@ -520,6 +528,7 @@ extern "C" BOOL LoadGlobalResourceData()
 	return FALSE;
 }
 
+#if !defined(VERSION_R24J01)
 extern "C" {
 UnkStageObj gStageObjectPlacements[] = {
 	{ 161, { 0, 0, 0 }, { 0, 0, 0 }, { 100, 100, 100 }, 0, 0, 0, 0x20012001 },
@@ -726,3 +735,4 @@ extern "C" s32 GetItemIconTextureIndex(s32 index)
 		return -1;
 	return gItemIconTextureIndices[index];
 }
+#endif

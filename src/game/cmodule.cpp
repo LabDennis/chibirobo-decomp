@@ -7,6 +7,7 @@
  */
 void CModule::Print() const
 {
+#if !defined(VERSION_R24J01)
 	if (mModule != NULL) {
 		OSReport("----------------------\n");
 		OSReport("module=%08X\n", mModule);
@@ -35,6 +36,7 @@ void CModule::Print() const
 		}
 		OSReport("\n");
 	}
+#endif
 }
 
 /**
@@ -47,7 +49,11 @@ void CModule::Unload()
 		Epilog();
 		OSUnlink(&mModule->info);
 		if (mBss != NULL) {
+#if defined(VERSION_R24J01)
+			mm::Free(mBss);
+#else
 			mm::Free(mBss, 1);
+#endif
 		}
 		mFile.Close();
 		mModule = NULL;

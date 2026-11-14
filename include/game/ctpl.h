@@ -26,6 +26,30 @@ u16 GXGetTexObjHeight(const GXTexObj* obj);
 #include "Dolphin/tpl.h"
 #include "game/cfile.h"
 
+#if defined(VERSION_R24J01)
+// The Wii texture stores the pixel and palette addresses from the TPL headers.
+class CTlutObj : public GXTlutObj {
+public:
+	u32 mTlutName; // _0C
+
+	virtual ~CTlutObj() { } // _10 vtable
+};
+STATIC_ASSERT(sizeof(CTlutObj) == 0x14);
+
+class CTexObj : public _GXTexObj {
+public:
+	void* mImageData; // _20
+	void* mClutData;  // _24
+	CTlutObj mTlut;   // _28
+	bool mMtxDirty;   // _3C
+	Mtx mMtx[4];      // _40
+	// _100 vtable
+
+	virtual ~CTexObj() { }
+	void Init(TPLDescriptor* desc, u32 tlutName);
+};
+STATIC_ASSERT(sizeof(CTexObj) == 0x104);
+#else
 // a GX texture with its palette and texture matrix. class names are RTTI strings,
 class CTexObj : public _GXTexObj {
 public:
@@ -52,6 +76,7 @@ public:
 	void Load(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType);
 };
 typedef char CTexObj_size_check[sizeof(CTexObj) == 0x100 ? 1 : -1];
+#endif
 
 // HUD and status textures start two entries earlier in the Japanese palette.
 #if defined(VERSION_JP)
@@ -63,13 +88,31 @@ const int StatusTextureOffset = 0;
 // a .tpl file, bound once it's read in
 class CTpl : public CFile {
 public:
+#if defined(VERSION_R24J01)
+	virtual ~CTpl();
+#else
 	virtual ~CTpl() { mBound = FALSE; } // _08 (weak)
-	virtual s32 GetResult();            // _18
-	virtual void Close();               // _20
+#endif
+	virtual s32 GetResult(); // _18
+#if defined(VERSION_R24J01)
+	virtual BOOL Close(); // _20
+#else
+	virtual void Close(); // _20
+#endif
 
+#if defined(VERSION_R24J01)
+	bool mBound;          // _EC
+	TPLPalette* mPalette; // _F0
+	CTexObj mTex;         // _F4
+#else
 	CTexObj mTex; // _EC
 	BOOL mBound;  // _1EC
+#endif
 };
+#if defined(VERSION_R24J01)
+STATIC_ASSERT(sizeof(CTpl) == 0x1f8);
+#else
 typedef char CTpl_size_check[sizeof(CTpl) == 0x1F0 ? 1 : -1];
+#endif
 
 #endif
