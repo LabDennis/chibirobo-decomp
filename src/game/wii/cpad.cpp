@@ -110,8 +110,9 @@ static const u64 sRepeatGroups[]
 	    1ULL << RemotePlus, 1ULL << RemoteMinus, 0x8800800000000000ULL, 0x4400400000000000ULL, 0x1100100000000000ULL, 0x2200200000000000ULL,
 	    1ULL << GameCubeL,  1ULL << GameCubeR,   1ULL << GameCubeX,     1ULL << GameCubeY };
 
-extern "C" {
 #include "arithmetic.h"
+
+extern "C" {
 extern f64 atan2(f64 y, f64 x);
 
 static inline f32 StickLength(f32 x, f32 y)
@@ -302,7 +303,7 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			KPADGetUnifiedWpadStatus(mPort, sRawSamples, ARRAY_SIZE(sRawSamples));
 			NormalizeWiiStick(&mSamples[0].extension.nunchuk.stick, sRawSamples[0].extension.nunchuk.stickX,
 			                  sRawSamples[0].extension.nunchuk.stickY, sStickRanges[0].min, sStickRanges[0].max);
-			StickPosition stick = mSamples[0].extension.nunchuk.stick;
+			stick               = mSamples[0].extension.nunchuk.stick;
 			u32 directions      = GetStickDirections(mStickDirections, stick.x, stick.y);
 			if (directions & StickUp) {
 				buttons |= 1ULL << (NunchukStick + 3);

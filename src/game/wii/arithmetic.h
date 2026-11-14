@@ -3,8 +3,10 @@
 
 #include "types.h"
 
+extern "C" {
 extern f32 WiiReciprocalSquareRoot(f32 value);
 extern void WiiReportMathError(const char* file, int line, const char* format, ...);
+}
 
 inline f32 FSqrt(f32 value)
 {
