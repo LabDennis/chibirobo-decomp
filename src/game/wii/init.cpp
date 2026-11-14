@@ -253,7 +253,7 @@ extern "C" void InitGameScreenMetrics(CBase* base)
  * @note Address: 0x80035DC8
  * @note Size: 0xD0
  */
-extern "C" CCamera* InitGamePerspectiveCamera(CCamera* camera, GXRenderModeObj* rmode)
+extern "C" CCamera* InitGamePerspectiveCamera(CCamera* camera, const GXRenderModeObj* rmode)
 {
 	camera->Init(1.0f, 80000.0f, 30.0f, gScreenWidthScale, rmode);
 	camera->SetInterest(-4.2f, 0.0f, -64.0f);
@@ -283,13 +283,13 @@ extern "C" CCamera* InitMotionControlCameraDefaults(CCamera* camera)
  * @note Address: 0x80035F8C
  * @note Size: 0xF0
  */
-// NONMATCHING: the same instructions in another order. Retail loads the two screen sizes and flips
-// their sign bits before it loads the first float constant, this build after the constants. Tried
-// without effect: locals of every type and order for the sizes and the constants, size accessors,
-// an inline wrapper, every GC 3.0 and Wii compiler build.
-extern "C" CCamera* InitGameOrthoCamera(CCamera* camera, GXRenderModeObj* rmode)
+// the screen-space camera: a pixel is a unit, the origin is the top left corner
+extern "C" CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode)
 {
-	camera->Init(0.0f, (s32)rmode->efbHeight, 0.0f, (s32)rmode->fbWidth, -200.0f, 200.0f, gScreenWidthScale, rmode);
+	s32 height = rmode->efbHeight;
+	s32 width  = rmode->fbWidth;
+	f32 scale  = gScreenWidthScale;
+	camera->Init(0.0f, height, 0.0f, width, -200.0f, 200.0f, scale, rmode);
 	camera->SetEye(0.0f, 0.0f, 0.0f);
 	camera->SetInterest(0.0f, 0.0f, -100.0f);
 	camera->CalcAngle();

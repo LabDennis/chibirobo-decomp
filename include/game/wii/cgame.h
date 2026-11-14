@@ -102,21 +102,21 @@ public:
 // but the setters the start-up code and the save manager call sit on its vtable at the offsets below
 class CCamera {
 public:
-	virtual ~CCamera() { }                                                            // _08
-	virtual void Init(f32 near, f32 far, f32 fov, f32 scale, GXRenderModeObj* rmode); // _0C
-	virtual void vf10();                                                              // _10
+	virtual ~CCamera() { }                                                                  // _08
+	virtual void Init(f32 near, f32 far, f32 fov, f32 scale, const GXRenderModeObj* rmode); // _0C
+	virtual void vf10();                                                                    // _10
 	// an orthographic camera
-	virtual void Init(f32 top, f32 bottom, f32 left, f32 right, f32 near, f32 far, f32 scale, GXRenderModeObj* rmode); // _14
-	virtual void SetFov(f32 fov);                                                                                      // _18
-	virtual void vf1C();                                                                                               // _1C
-	virtual void vf20();                                                                                               // _20
-	virtual void vf24();                                                                                               // _24
-	virtual void vf28();                                                                                               // _28
-	virtual void vf2C();                                                                                               // _2C
-	virtual void vf30();                                                                                               // _30
-	virtual void SetEye(f32 x, f32 y, f32 z);                                                                          // _34
-	virtual void SetInterest(f32 x, f32 y, f32 z);                                                                     // _38
-	virtual void SetAngle(f32 x, f32 y, f32 z)                                                                         // _3C
+	virtual void Init(f32 top, f32 bottom, f32 left, f32 right, f32 near, f32 far, f32 scale, const GXRenderModeObj* rmode); // _14
+	virtual void SetFov(f32 fov);                                                                                            // _18
+	virtual void vf1C();                                                                                                     // _1C
+	virtual void vf20();                                                                                                     // _20
+	virtual void vf24();                                                                                                     // _24
+	virtual void vf28();                                                                                                     // _28
+	virtual void vf2C();                                                                                                     // _2C
+	virtual void vf30();                                                                                                     // _30
+	virtual void SetEye(f32 x, f32 y, f32 z);                                                                                // _34
+	virtual void SetInterest(f32 x, f32 y, f32 z);                                                                           // _38
+	virtual void SetAngle(f32 x, f32 y, f32 z)                                                                               // _3C
 	{
 		mView.mAngle.x = x;
 		mView.mAngle.y = y;
