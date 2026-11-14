@@ -28,6 +28,132 @@ game/wii/soundbank.cpp:
 game/roboeyeslens.cpp:
 	.text start:0x80040E08 end:0x80040E4C
 
+revolution/EXI/EXIBios.c:
+	.text start:0x8017C0A8 end:0x8017D93C
+	.bss start:0x804CC1C8 end:0x804CC288
+	.sbss start:0x805A1E40 end:0x805A1E44
+
+revolution/EXI/EXIUart.c:
+	.text start:0x8017D93C end:0x8017DC70
+	.sbss start:0x805A1E48 end:0x805A1E58
+
+revolution/EXI/EXICommon.c:
+	.text start:0x8017DC70 end:0x8017DDFC
+
+revolution/SI/SIBios.c:
+	.text start:0x8017DDFC end:0x8017F36C
+	.data start:0x8030F368 end:0x8030F390
+	.bss start:0x804CC288 end:0x804CC4C0
+	.sbss start:0x805A1E58 end:0x805A1E68
+
+dolphin/si/SISamplingRate.c:
+	.text start:0x8017F36C end:0x8017F44C
+	.data start:0x8030F390 end:0x8030F428
+	.sbss start:0x805A1E68 end:0x805A1E70
+
+revolution/BASE/PPCArch.c:
+	.text start:0x8017F44C end:0x8017F5B0
+	.data start:0x8030F428 end:0x8030F460
+
+revolution/DB/db.c:
+	.text start:0x8017F5B0 end:0x8017F698
+	.data start:0x8030F460 end:0x8030F478
+	.sbss start:0x805A1E70 end:0x805A1E78
+
+revolution/OS/OSAlarm.c:
+	.text start:0x80180BB4 end:0x80181438
+	.data start:0x8030F988 end:0x8030F998
+	.sbss start:0x805A1EC0 end:0x805A1EC8
+
+revolution/OS/OSAlloc.c:
+	.text start:0x80181438 end:0x80181740
+	.sdata start:0x805A13D8 end:0x805A13E0
+	.sbss start:0x805A1EC8 end:0x805A1ED8
+
+revolution/OS/OSCache.c:
+	.text start:0x80181C88 end:0x801822B8
+	.data start:0x8030FA18 end:0x8030FC50
+
+revolution/OS/OSContext.c:
+	.text start:0x801822B8 end:0x80182B40
+	.data start:0x8030FC50 end:0x8030FE30
+
+revolution/OS/OSFatal.c:
+	.text start:0x80184864 end:0x8018549C
+	.bss start:0x804CC5A0 end:0x804CC880
+	.sdata start:0x805A1400 end:0x805A1408
+	.sdata2 start:0x805A6420 end:0x805A6460
+
+revolution/OS/OSFont.c:
+	.text start:0x8018549C end:0x80186764
+	.data start:0x803101C0 end:0x80310CD0
+	.sdata start:0x805A1408 end:0x805A1410
+	.sbss start:0x805A1EF8 end:0x805A1F08
+
+revolution/OS/OSInterrupt.c:
+	.text start:0x80186764 end:0x80186EE8
+
+revolution/OS/OSLink.c:
+	.text start:0x80186EE8 end:0x801878C4
+	.data start:0x80310D00 end:0x80310D50
+
+revolution/OS/OSRtc.c:
+	.text start:0x80189164 end:0x80189BF0
+	.bss start:0x804CC880 end:0x804CC8D8
+
+revolution/OS/OSSync.c:
+	.text start:0x80189DBC end:0x80189E3C
+
+revolution/OS/OSThread.c:
+	.text start:0x80189E3C end:0x8018B324
+	.bss start:0x804CC8D8 end:0x804CD2E0
+	.sdata start:0x805A1418 end:0x805A1420
+	.sbss start:0x805A1F40 end:0x805A1F50
+
+revolution/MTX/mtx.c:
+	.text start:0x8018E6A0 end:0x8018F2B0
+	.sdata start:0x805A1448 end:0x805A1450
+	.sdata2 start:0x805A6478 end:0x805A6494
+
+revolution/MTX/vec.c:
+	.text start:0x8018FAB8 end:0x8018FEA0
+	.sdata2 start:0x805A64B0 end:0x805A64C0
+
+revolution/DVD/dvdqueue.c:
+	.text start:0x8019568C end:0x801958E4
+	.bss start:0x804D2370 end:0x804D2390
+
+revolution/PAD/Pad.c:
+	.text start:0x8019D69C end:0x8019EEE4
+	.data start:0x8031FC28 end:0x8031FC80
+	.bss start:0x804D2970 end:0x804D29A0
+	.sdata start:0x805A14D0 end:0x805A14F0
+	.sbss start:0x805A21B8 end:0x805A21E0
+
+revolution/AI/ai.c:
+	.text start:0x8019EEE4 end:0x8019F470
+	.data start:0x8031FC80 end:0x8031FCC8
+	.sdata start:0x805A14F0 end:0x805A14F8
+	.sbss start:0x805A21E0 end:0x805A2220
+
+revolution/DSP/dsp.c:
+	.text start:0x801A4920 end:0x801A4B9C
+	.data start:0x803230C0 end:0x80323140
+	.sdata start:0x805A1510 end:0x805A1518
+	.sbss start:0x805A2360 end:0x805A2368
+
+revolution/DSP/dsp_debug.c:
+	.text start:0x801A4B9C end:0x801A4BEC
+
+revolution/DSP/dsp_task.c:
+	.text start:0x801A4BEC end:0x801A5480
+	.sbss start:0x805A2368 end:0x805A2380
+
+revolution/ARC/arc.c:
+	.text start:0x801FEAB4 end:0x801FF434
+	.data start:0x8032DA30 end:0x8032DAA0
+	.sdata start:0x805A1870 end:0x805A1878
+
 game/THPDraw.cpp:
 	.text start:0x802C3D80 end:0x802C456C
 	.sdata2 start:0x805A7B90 end:0x805A7BAC
@@ -112,11 +238,6 @@ revolution/MEM/mem_allocator.c:
 
 revolution/MEM/mem_list.c:
 	.text start:0x801AF898 end:0x801AF9AC
-
-dolphin/si/SISamplingRate.c:
-	.text start:0x8017F36C end:0x8017F44C
-	.data start:0x8030F390 end:0x8030F428
-	.sbss start:0x805A1E68 end:0x805A1E70
 
 revolution/OS/OSArena.c:
 	.text start:0x80181740 end:0x801817D4
@@ -235,6 +356,9 @@ revolution/NAND/NANDCheck.c:
 	.data start:0x80324590 end:0x80324640
 	.sdata start:0x805A15C8 end:0x805A15D8
 
+rvl_msl/mem.c:
+	.text start:0x8022A010 end:0x8022A180
+
 MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c:
 	.text start:0x8022A180 end:0x8022A450
 
@@ -247,6 +371,11 @@ MSL_C.PPCEABI.bare.H/MSL_Common/float.c:
 MSL_C.PPCEABI.bare.H/MSL_Common/rand.c:
 	.text start:0x8022C924 end:0x8022C94C
 	.sdata start:0x805A18A0 end:0x805A18A4
+
+rvl_msl/string.c:
+	.text start:0x8022CA8C end:0x8022CEB8
+	.sdata start:0x805A18A8 end:0x805A18B0
+	.sdata2 start:0x805A6858 end:0x805A6860
 
 MSL_C.PPCEABI.bare.H/MSL_Common/strtoul.c:
 	.text start:0x8022CEB8 end:0x8022D3AC
@@ -281,6 +410,11 @@ MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_rem_pio2.c:
 MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_cos.c:
 	.text start:0x8022F22C end:0x8022F33C
 	.sdata2 start:0x805A6BE0 end:0x805A6C28
+
+rvl_msl/k_rem_pio2.c:
+	.text start:0x8022F33C end:0x80230A48
+	.rodata start:0x802DFC00 end:0x802DFC50
+	.sdata2 start:0x805A6C28 end:0x805A6C68
 
 MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_sin.c:
 	.text start:0x80230A48 end:0x80230B08
@@ -354,7 +488,7 @@ Runtime.PPCEABI.H/__mem.c:
 Runtime.PPCEABI.H/__va_arg.c:
 	.text start:0x80231A5C end:0x80231B24
 
-Runtime.PPCEABI.H/global_destructor_chain.c:
+rvl_runtime/global_destructor_chain.c:
 	.text start:0x80231B24 end:0x80231B84
 	.sbss start:0x805A2708 end:0x805A270C
 
@@ -368,7 +502,11 @@ Runtime.PPCEABI.H/ptmf.c:
 	.text start:0x80232110 end:0x802321A4
 	.rodata start:0x802DFD50 end:0x802DFD5C
 
-Runtime.PPCEABI.H/__init_cpp_exceptions.cpp:
+rvl_runtime/runtime.c:
+	.text start:0x802321A4 end:0x80232810
+	.rodata start:0x802DFD60 end:0x802DFD78
+
+rvl_runtime/__init_cpp_exceptions.cpp:
 	.text start:0x80232810 end:0x80232880
 	.ctors start:0x802C4580 end:0x802C4584 rename:.ctors$10
 	.dtors start:0x802C4680 end:0x802C4684 rename:.dtors$10
