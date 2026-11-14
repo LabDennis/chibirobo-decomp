@@ -1188,7 +1188,11 @@ if wii:
                 Object(Equivalent, "game/stage_data.cpp", mw_version="GC/3.0a5.2",
                        extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/atcmenuselection.cpp"),
-                Object(NonMatching, "game/wii/homemenu.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                # the whole file, 0x800AAD1C-0x800AC07C. GC/3.0a3 to 3.0a5 reproduce it; 3.0a5.2 puts the
+                # li r0, 0 at 0x800AB3E8 behind the branch that follows it in retail, Wii/1.x turns the
+                # load step's switch into a compare chain. -ipa file: retail has the eleven hbm/ paths
+                # as objects of their own in front of @stringBase0, without it they join that pool
+                Object(Matching, "game/wii/homemenu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # no auto-inlining of the small file functions: under -inline auto the
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
                 # retail keeps them as calls

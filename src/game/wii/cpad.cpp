@@ -24,20 +24,10 @@ struct WiiRawSample {
 };
 STATIC_ASSERT(sizeof(WiiRawSample) == 0x38);
 
-struct RemoteSpeakerManager;
-// Prefix read by the input code. Channel selection and ownership stay with the speaker manager.
-struct RemoteSpeakerChannel {
-	u8 flags[8];
-	s32 state;
-};
-
 extern "C" {
 s32 KPADRead(s32 channel, WiiPadSample* out, u32 count);
 void KPADGetUnifiedWpadStatus(s32 channel, WiiRawSample* out, u32 count);
-s32 WPADProbe(s32 channel, u32* type);
 void WPADControlMotor(s32 channel, u32 command);
-RemoteSpeakerManager* GetRemoteSpeakerManager();
-RemoteSpeakerChannel* GetRemoteSpeakerChannel(RemoteSpeakerManager*, s32 channel);
 void NormalizeWiiStick(StickPosition*, f32 x, f32 y, f32 innerRadius, f32 outerRadius);
 
 extern MEMAllocator gWiiPadAllocator;

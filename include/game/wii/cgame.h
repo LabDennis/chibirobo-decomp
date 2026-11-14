@@ -3,26 +3,37 @@
 
 #include "game/wii/cpad.h"
 #include "game/wii/csound.h"
+#include "game/wii/cgs.h"
+#include "game/wii/homemenu.h"
 #include "game/cscrn.h"
 #include "game/ut.h"
 #include "game/inventory.h"
 
 // Verified Wii fields accessed by the controller, stage, and save code. The Wii CBase is larger than the
 // GameCube one, so its vtable sits at 0x41E4, right behind its data.
+class CCamera;
+
 class CBase {
 public:
-	u8 _0000[0x2298];
+	u8 _0000[8];
+	WiiGs mGs; // _0008
+	u8 _0390[0x2298 - 0x390];
 	CPadEx mPad;
 	XSound mSound;
 	u32 mLastRetrace;
 	u32 mRetraceStep;
 	CStatus64 mStatus;
-	u8 _3400[0x4160 - 0x3400];
+	CTpl mIconTpl;             // _3400, the icons shown in the screen's corner; the first says the HOME Menu is not available
+	u8 _35F8[0x4160 - 0x35F8]; // the perspective and the screen camera, 0x1F8 each, start here
 	u8 mLanguage;
+	u8 mWidescreen; // _4161, the console is set to 16:9
 	s32 mDvdStatus;
 	s32 mPrevDvdStatus;
 	BOOL mDiskOk;
-	u8 _4170[0x41E4 - 0x4170];
+	u8 _4170[0x41A8 - 0x4170];
+	bool mResetRequested; // _41A8
+	s32 mResetType;       // _41AC, 3 restarts the game, 4 returns to the Wii Menu
+	u8 _41B0[0x41E4 - 0x41B0];
 	// _41E4 vtable
 
 	void Start();
@@ -37,10 +48,21 @@ public:
 	virtual void vf28();
 	virtual void vf2C();
 	virtual void vf30();
-	virtual void vf34();
-	virtual void vf38();
+	virtual void SetStatusFlags(u64 flags);   // _34
+	virtual void ClearStatusFlags(u64 flags); // _38
 	virtual void vf3C();
 	virtual u64 GetStatusFlags(u64 mask) const; // _40, the game's status flags under mask
+	virtual void vf44();
+	virtual CCamera* GetScreenCamera(); // _48, the orthographic camera the screen-space layer draws under
+
+	// asks for a reset unless one is already on its way
+	void RequestReset(s32 type)
+	{
+		if (!mResetRequested) {
+			mResetRequested = true;
+			mResetType      = type;
+		}
+	}
 };
 
 // the time-of-day state, same fields as the GameCube EvtTimeState
@@ -97,7 +119,9 @@ public:
 
 	u8 _04[0x4];
 	f32 mFov; // _08
-	u8 _0C[0x90 - 0x0C];
+	u8 _0C[0x2C - 0x0C];
+	Mtx44 mProjection; // _2C
+	u8 _6C[0x90 - 0x6C];
 	CVec mEye;      // _90
 	CVec mInterest; // _A0
 	CVec mAngle;    // _B0
@@ -261,9 +285,18 @@ public:
 	s32 mPrevStage; // _4300
 	u8 _4304[0x4B40 - 0x4304];
 	CTpl mTpl;
-	u8 _4D38[0x5078 - 0x4D38];
+	CScrnFade mFade; // _4D38
+	u8 _4D6C[0x5078 - 0x4D6C];
 	CScrnRoboeyes mRoboeyes;
-	u8 _511C[0xF70C - 0x511C];
+	u8 _511C[0x5978 - 0x511C];
+	s32 mLogoState; // _5978, the boot logos' step, as the GameCube mLogo.mState
+	u8 _597C[0x5C74 - 0x597C];
+	s32 mTitleState; // _5C74, the title screen's step, as the GameCube mTitle.mState
+	u8 _5C78[0xAE00 - 0x5C78];
+	BOOL mMenuActive; // _AE00, a menu is open, as the GameCube mMenu.mActive
+	u8 _AE04[0xB148 - 0xAE04];
+	WiiHomeMenu mHomeMenu; // _B148
+	u8 _B7A8[0xF70C - 0xB7A8];
 	WiiPlayerState* mPlayer; // _F70C
 	u8 _F710[0xF770 - 0xF710];
 	WiiFlagSource* mCoins; // _F770
@@ -280,6 +313,19 @@ public:
 	u8 _EC1A4[0xEE1DC - 0xEC1A4];
 	u32 mMenuControls;
 	u8 _EE1E0[0xEE530 - 0xEE1E0];
+
+	// the checks OpenWiiHomeMenu makes. Retail keeps each one's result apart, so they are separate
+	// inline functions; where one ends and the next begins, and all their names, are ours
+	bool IsLoadStepRunning() const { return mLoadStep > 0 && mLoadStep < 30; }
+	bool IsLogoActive() const { return mLogoState >= 1 && mLogoState < 12; }
+	bool IsTitleActive() const { return mTitleState >= 1 && mTitleState < 23; }
+	bool IsLogoShown() const { return IsLogoActive() && mLogoState > 2; }
+	bool IsIntroShown() const { return IsLogoShown() || IsTitleActive(); }
+	// loading with neither the logos nor the title on screen
+	bool IsLoading() const { return IsLoadStepRunning() && !IsIntroShown(); }
+	bool IsInterruptible() const { return !IsLoading() && mTitleState != 20; }
+	bool IsMenuFree() const { return IsInterruptible() && !mMenuActive; }
+	bool CanOpenHomeMenu() const { return IsMenuFree() && !mHomeMenu.IsOpen(); }
 };
 STATIC_ASSERT(sizeof(CGame) == 0xEE530);
 
