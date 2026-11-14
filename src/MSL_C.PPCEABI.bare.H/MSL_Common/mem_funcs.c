@@ -1,24 +1,6 @@
 #include "PowerPC_EABI_Support/MSL_C/MSL_Common/mem_funcs.h"
 
 /**
- * @note Address: N/A
- * @note Size: 0x60
- */
-void __copy_mem(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x1FC
- */
-void __move_mem(void)
-{
-	// UNUSED FUNCTION
-}
-
-/**
  * @note Address: 0x801567BC
  * @note Size: 0xBC
  */

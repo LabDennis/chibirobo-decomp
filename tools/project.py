@@ -15,6 +15,8 @@ import json
 import math
 import os
 import platform
+import shlex
+import subprocess
 import sys
 from pathlib import Path
 from typing import (
@@ -490,7 +492,9 @@ def generate_build_ninja(
     python_lib = Path(os.path.relpath(__file__))
     python_lib_dir = python_lib.parent
     n.comment("The arguments passed to configure.py, for rerunning it.")
-    n.variable("configure_args", sys.argv[1:])
+    # quoted for the shell and escaped for ninja, so an argument holding spaces (a path) survives the rerun
+    quote = (lambda arg: subprocess.list2cmdline([arg])) if is_windows() else shlex.quote
+    n.variable("configure_args", [quote(arg).replace("$", "$$").replace(" ", "$ ") for arg in sys.argv[1:]])
     n.variable("python", f'"{sys.executable}"')
     n.newline()
 
@@ -498,6 +502,7 @@ def generate_build_ninja(
     # Variables
     ###
     n.comment("Variables")
+    n.variable("version", config.version)
     n.variable("ldflags", make_flags_str(config.ldflags))
     if config.linker_version is None:
         sys.exit("ProjectConfig.linker_version missing")
@@ -759,7 +764,7 @@ def generate_build_ninja(
     n.rule(
         name="elf2dol",
         command=(
-            f"{dtk} elf2dol $in $out && $python {fill_padding} $out $in.MAP $compilers"
+            f"{CHAIN}{dtk} elf2dol $in $out && $python {fill_padding} $out $in.MAP $compilers"
             if getattr(config, "fill_padding", True)
             else f"{dtk} elf2dol $in $out"
         ),
@@ -1540,7 +1545,7 @@ def generate_build_ninja(
     n.comment("Split DOL into relocatable objects")
     n.rule(
         name="split",
-        command=f"{dtk} dol split $in $out_dir",
+        command=f"{dtk} dol split --no-update $in $out_dir",
         description="SPLIT $in",
         depfile="$out_dir/dep",
         deps="gcc",
