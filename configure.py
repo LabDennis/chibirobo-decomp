@@ -1175,28 +1175,27 @@ if wii:
             "cflags": [*wii_cflags, "-Cpp_exceptions off", "-RTTI on", "-str reuse,readonly"],
             "progress_category": "game",
             "objects": [
+                # GC/3.0a5.2 is evidenced by the build result on these units: CModule::Unload,
+                # OctaMenu::UpdatePointedItem, CPadAct::Init/Update and CBase::Start all score
+                # strictly higher under it (Start is byte-identical), and Wii/1.3 instead emits
+                # @NNNN sdata2 objects where retail has the same literals as named objects.
                 Object(Equivalent, "game/cmodule.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
-                # these units also come from the GC compiler: their retail instruction streams match
-                # GC/3.0a5.2 output (tree-lowered switches, byte-wise small-struct copies)
                 Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
-                Object(Equivalent, "game/globalresources.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
+                Object(Equivalent, "game/globalresources.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/roboeyeslens.cpp"),
-                # AdvanceStageLoad's switch is a binary-search tree, which only the GC compilers emit
+                # ApplyStageClearColor copies its GXColor argument bytewise (0x8006F9xx); the
+                # same shape is a word copy under Wii/1.3, so the unit keeps GC/3.0a5.2
                 Object(Equivalent, "game/stage_data.cpp", mw_version="GC/3.0a5.2",
                        extra_cflags=["-Cpp_exceptions on"]),
-                Object(Equivalent, "game/wii/atcmenuselection.cpp", mw_version="GC/3.0a5.2"),
-                Object(NonMatching, "game/wii/homemenu.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
-                # its switches are binary-search trees, which only the GC compilers emit, and none of its
-                # small functions is inlined into the callers that follow them
+                Object(Equivalent, "game/wii/atcmenuselection.cpp"),
+                Object(NonMatching, "game/wii/homemenu.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(NonMatching, "game/wii/gamemain.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
-                # Same profile as cfile.cpp: binary-search-tree switch lowering and no
-                # auto-inlining of the small pad functions into their callers.
+                # no auto-inlining of the small pad functions into their callers
                 Object(Equivalent, "game/wii/cpad.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
-                # Same GC-compiler profile as cpad/cfile: no auto-inlining of
-                # StartWiiSaveJob's callers (declared inline in the source).
+                # no auto-inlining of StartWiiSaveJob's callers (declared inline in the source)
                 Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
                 Object(Equivalent, "game/wii/soundbank.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "rel/module.c"),
