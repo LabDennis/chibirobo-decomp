@@ -65,11 +65,15 @@ void OSSetArenaLo(void* lo)
 	OSSetMEM1ArenaLo(lo);
 }
 
-// NONMATCHING: register allocation in the alignment arithmetic differs from retail
 void* OSAllocFromMEM1ArenaLo(u32 size, u32 align)
 {
-	u8* start = (u8*)ALIGN_NEXT((u32)OSGetMEM1ArenaLo(), align);
-	u8* end = start + size;
-	OSSetMEM1ArenaLo((void*)ALIGN_NEXT((u32)end, align));
-	return start;
+	void* ptr;
+	u8* arenaLo;
+
+	ptr     = (void*)ALIGN_NEXT((u32)OSGetMEM1ArenaLo(), align);
+	arenaLo = (u8*)ptr + size;
+	arenaLo = (u8*)ALIGN_NEXT((u32)arenaLo, align);
+
+	OSSetMEM1ArenaLo(arenaLo);
+	return ptr;
 }

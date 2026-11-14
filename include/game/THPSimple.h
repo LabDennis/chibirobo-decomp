@@ -39,11 +39,19 @@ BOOL THPSimpleLoadStop(void);
 s32 THPSimpleDecode(s32 audioTrack);
 s32 THPSimpleDrawBegin(BOOL alpha);
 void THPSimpleDrawEnd(void);
+#ifdef VERSION_R24J01
+s32 THPSimpleDrawCurrentFrame(s32 x, s32 y, s32 z, s32 polygonW, s32 polygonH, BOOL alpha);
+void THPSimpleDrawQuad(s32 x, s32 y, s32 z, s32 polygonW, s32 polygonH);
+#else
 s32 THPSimpleDrawCurrentFrame(s32 x, s32 y, s32 polygonW, s32 polygonH, BOOL alpha);
 void THPSimpleDrawQuad(s32 x, s32 y, s32 polygonW, s32 polygonH);
+#endif
 BOOL THPSimpleGetVideoInfo(THPVideoInfo* videoInfo);
 BOOL THPSimpleGetAudioInfo(THPAudioInfo* audioInfo);
 u32 THPSimpleGetTotalFrame(void);
+#ifdef VERSION_R24J01
+BOOL THPSimpleSetVolume(s32 vol, s32 time);
+#endif
 
 #ifdef __cplusplus
 }

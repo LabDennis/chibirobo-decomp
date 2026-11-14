@@ -89,16 +89,26 @@ void C_MTXOrtho(Mtx44 m, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f)
  * @note Wii JP address: 0x8018F604
  * @note Size: 0x34
  */
-// NONMATCHING: retail writes the matrix without a loop: psq_st of a zero pair for the off-diagonal words and
-// stfs of 1.0 on the diagonal; this C version loops over the rows
-void PSMTX44Identity(Mtx44 m)
+void PSMTX44Identity(register Mtx44 m)
 {
-	int row, col;
-	for (row = 0; row < 4; ++row) {
-		for (col = 0; col < 4; ++col) {
-			m[row][col] = row == col ? 1.0f : 0.0f;
-		}
+	register f32 one;
+	register f32 zero;
+	zero = 0.0f;
+	one  = 1.0f;
+#ifdef __MWERKS__ // clang-format off
+	asm {
+		psq_st zero, 0x4(m), 0, 0
+		stfs one, 0x0(m)
+		psq_st zero, 0xc(m), 0, 0
+		stfs one, 0x14(m)
+		psq_st zero, 0x18(m), 0, 0
+		psq_st zero, 0x20(m), 0, 0
+		stfs one, 0x28(m)
+		psq_st zero, 0x2c(m), 0, 0
+		psq_st zero, 0x34(m), 0, 0
+		stfs one, 0x3c(m)
 	}
+#endif // clang-format on
 }
 
 /**
@@ -133,22 +143,76 @@ ASM void PSMTX44Copy(register Mtx44 src, register Mtx44 dest)
  * @note Wii JP address: 0x8018F67C
  * @note Size: 0x104
  */
-// NONMATCHING: retail is paired-single assembly (psq_l, ps_muls0, ...), this is the C version
-void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 out)
+ASM void PSMTX44Concat(register Mtx44 a, register Mtx44 b, register Mtx44 out)
 {
-	// Whole matrices can alias. Retail stores some columns earlier for partially overlapping buffers.
-	Mtx44 product;
-	int row, col, k;
-	for (row = 0; row < 4; ++row) {
-		for (col = 0; col < 4; ++col) {
-			f32 sum = b[0][col] * a[row][0];
-			for (k = 1; k < 4; ++k) {
-				sum += b[k][col] * a[row][k];
-			}
-			product[row][col] = sum;
-		}
-	}
-	PSMTX44Copy(product, out);
+#ifdef __MWERKS__ // clang-format off
+	nofralloc;
+	psq_l fp0, 0x0(a), 0, 0;
+	psq_l fp2, 0x0(b), 0, 0;
+	ps_muls0 fp6, fp2, fp0;
+	psq_l fp3, 0x10(b), 0, 0;
+	psq_l fp4, 0x20(b), 0, 0;
+	ps_madds1 fp6, fp3, fp0, fp6;
+	psq_l fp1, 0x8(a), 0, 0;
+	psq_l fp5, 0x30(b), 0, 0;
+	ps_madds0 fp6, fp4, fp1, fp6;
+	psq_l fp0, 0x10(a), 0, 0;
+	ps_madds1 fp6, fp5, fp1, fp6;
+	psq_l fp1, 0x18(a), 0, 0;
+	ps_muls0 fp8, fp2, fp0;
+	ps_madds1 fp8, fp3, fp0, fp8;
+	psq_l fp0, 0x20(a), 0, 0;
+	ps_madds0 fp8, fp4, fp1, fp8;
+	ps_madds1 fp8, fp5, fp1, fp8;
+	psq_l fp1, 0x28(a), 0, 0;
+	ps_muls0 fp10, fp2, fp0;
+	ps_madds1 fp10, fp3, fp0, fp10;
+	psq_l fp0, 0x30(a), 0, 0;
+	ps_madds0 fp10, fp4, fp1, fp10;
+	ps_madds1 fp10, fp5, fp1, fp10;
+	psq_l fp1, 0x38(a), 0, 0;
+	ps_muls0 fp12, fp2, fp0;
+	psq_l fp2, 0x8(b), 0, 0;
+	ps_madds1 fp12, fp3, fp0, fp12;
+	psq_l fp0, 0x0(a), 0, 0;
+	ps_madds0 fp12, fp4, fp1, fp12;
+	psq_l fp3, 0x18(b), 0, 0;
+	ps_madds1 fp12, fp5, fp1, fp12;
+	psq_l fp1, 0x8(a), 0, 0;
+	ps_muls0 fp7, fp2, fp0;
+	psq_l fp4, 0x28(b), 0, 0;
+	ps_madds1 fp7, fp3, fp0, fp7;
+	psq_l fp5, 0x38(b), 0, 0;
+	ps_madds0 fp7, fp4, fp1, fp7;
+	psq_l fp0, 0x10(a), 0, 0;
+	ps_madds1 fp7, fp5, fp1, fp7;
+	psq_l fp1, 0x18(a), 0, 0;
+	ps_muls0 fp9, fp2, fp0;
+	psq_st fp6, 0x0(out), 0, 0;
+	ps_madds1 fp9, fp3, fp0, fp9;
+	psq_l fp0, 0x20(a), 0, 0;
+	ps_madds0 fp9, fp4, fp1, fp9;
+	psq_st fp8, 0x10(out), 0, 0;
+	ps_madds1 fp9, fp5, fp1, fp9;
+	psq_l fp1, 0x28(a), 0, 0;
+	ps_muls0 fp11, fp2, fp0;
+	psq_st fp10, 0x20(out), 0, 0;
+	ps_madds1 fp11, fp3, fp0, fp11;
+	psq_l fp0, 0x30(a), 0, 0;
+	ps_madds0 fp11, fp4, fp1, fp11;
+	psq_st fp12, 0x30(out), 0, 0;
+	ps_madds1 fp11, fp5, fp1, fp11;
+	psq_l fp1, 0x38(a), 0, 0;
+	ps_muls0 fp13, fp2, fp0;
+	psq_st fp7, 0x8(out), 0, 0;
+	ps_madds1 fp13, fp3, fp0, fp13;
+	psq_st fp9, 0x18(out), 0, 0;
+	ps_madds0 fp13, fp4, fp1, fp13;
+	psq_st fp11, 0x28(out), 0, 0;
+	ps_madds1 fp13, fp5, fp1, fp13;
+	psq_st fp13, 0x38(out), 0, 0;
+	blr;
+#endif // clang-format on
 }
 
 /**
