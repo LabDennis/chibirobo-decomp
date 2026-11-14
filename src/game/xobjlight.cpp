@@ -5,11 +5,13 @@
  * @note Address: 0x80092E38
  * @note Size: 0xC8
  */
+// NONMATCHING: retail walks a second induction pointer for GetLightDesc where this
+// version uses the loop index for both lookups.
 void XObjLight::UpdateObject(u32 frames)
 {
 	if ((s32)GetEnvData()[4] == 2) {
-		for (s32 j = 0, i = 0; i < mLightNum; ++j, ++i) {
-			if (GetLightDesc(j) && GetLightAnimNum(i) > 0) {
+		for (s32 i = 0; i < mLightNum; ++i) {
+			if (GetLightDesc(i) && GetLightAnimNum(i) > 0) {
 				mLights[i].SetAnimRate((f32)frames);
 				mLights[i].Anim();
 			}
@@ -38,18 +40,19 @@ void XObjLight::Release()
  * @note Address: 0x80092F98
  * @note Size: 0x14C
  */
-// NONMATCHING: regalloc — retail keeps one more copy of the object pointer live.
+// NONMATCHING: regalloc — retail keeps one more copy of the object pointer live and walks
+// a second induction pointer for GetLightDesc where this uses the loop index.
 BOOL XObjLight::LoadFromPlacement(const CoordInfo& info)
 {
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
 		if ((s32)GetEnvData()[4] == 2) {
 			HSD_LObj* previous = NULL;
-			for (s32 j = 0, i = 0; i < 8; ++j, ++i) {
-				if (GetLightDesc(j)) {
-					mLights[i].Init(GetLightDesc(j)->mDesc, GetEnvData()[5] & (1 << (7 - i)));
+			for (s32 i = 0; i < 8; ++i) {
+				if (GetLightDesc(i)) {
+					mLights[i].Init(GetLightDesc(i)->mDesc, GetEnvData()[5] & (1 << (7 - i)));
 					if (GetLightAnimNum(i) > 0) {
 						mLightAnims[i] = 0;
-						mLights[i].SetAnim(GetLightDesc(j)->mAnims[mLightAnims[i]], 0.0f);
+						mLights[i].SetAnim(GetLightDesc(i)->mAnims[mLightAnims[i]], 0.0f);
 					}
 					++mLightNum;
 					if (previous)
