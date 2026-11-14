@@ -5,13 +5,17 @@
 // NONMATCHING: all functions have source now; the diffs left are mostly register allocation and
 // scheduling. The sprintf sites in ReadWiiSaveSlot and WriteWiiSaveSlot show branch stubs around the
 // inlined path helper that MWCC does not reproduce here, and ApplyWiiSaveSlot's min-clamps come out as
-// the and-idiom instead of the selects retail has. "banner.bin" is its own rodata object ahead of the
-// pool, so it is a named array that gWiiSaveBannerPath points at. This CheckWiiSaveBanner is smaller
-// than retail's (0xBC against 0xE4), so it is inlined into WriteWiiSaveSlot, and BuildWiiSaveBanner
-// into WriteWiiSaveBanner, where retail calls both. ReadWiiSaveSlot lines up except for the stubs and
-// its folded checksum select, StartWiiSaveJob and GetWiiSaveSlotChecksum are also emitted out of line
-// (retail only inlines them), and the static initializer does not register CThread's destructor as
-// retail's does. The file's data is not assigned to the unit until the rest has source.
+// the and-idiom instead of the selects retail has. ScanWiiSaveSlots differs in three optimizer
+// decisions: retail recomputes the entry address per status store instead of caching the base in a
+// register, materializes the VerifyWiiSaveSlotChecksum result as a 0/1 value rather than folding the
+// comparison into the branch, and strength-reduces the tail loop to a running byte offset. "banner.bin"
+// is its own rodata object ahead of the pool, so it is a named array that gWiiSaveBannerPath points at.
+// This CheckWiiSaveBanner is smaller than retail's (0xBC against 0xE4), so it is inlined into
+// WriteWiiSaveSlot, and BuildWiiSaveBanner into WriteWiiSaveBanner, where retail calls both.
+// ReadWiiSaveSlot lines up except for the stubs and its folded checksum select, StartWiiSaveJob and
+// GetWiiSaveSlotChecksum are also emitted out of line (retail only inlines them), and the static
+// initializer does not register CThread's destructor as retail's does. The file's data is not assigned
+// to the unit until the rest has source.
 #include "game/wii/saveslots.h"
 #include "game/wii/cgame.h"
 #include "game/cthread.h"
@@ -153,7 +157,7 @@ static inline u32 GetWiiSaveSlotChecksum(WiiSaveSlot& slot)
 	return sum;
 }
 
-static inline s32 VerifyWiiSaveSlotChecksum(WiiSaveSlot& slot)
+static inline bool VerifyWiiSaveSlotChecksum(WiiSaveSlot& slot)
 {
 	u32 storedChecksum = slot.mHeader.mChecksum ^ 0x50494b53;
 	return storedChecksum == GetWiiSaveSlotChecksum(slot);
@@ -163,7 +167,6 @@ void ScanWiiSaveSlots(WiiSaveManager* manager, int count)
 {
 	static WiiSaveSlot sScanSlot;
 	char path[0x40];
-	u32 answer;
 	int usable = 0;
 	int empty  = 0;
 	int i;
@@ -235,6 +238,7 @@ void ScanWiiSaveSlots(WiiSaveManager* manager, int count)
 	}
 	GetNandGameResultName(&manager->mFile, manager->mFile.mResult);
 	if (manager->mFile.mResult == 0 && empty > 0) {
+		u32 answer;
 		int needed = 0;
 		for (i = 0; i < count; ++i) {
 			if (!(manager->mScanEntries[i].mStatus & 4))
@@ -498,8 +502,9 @@ extern "C" void ApplyWiiSaveSlot(WiiSaveManager* manager)
 	gGame.mTimeState.mTime     = manager->mSlot.mHeader.mTime;
 	gGame.mTimeState.mRunning  = 0;
 	gGame.mTimeState.mDuration = manager->mSlot.mHeader.mDuration;
-	player->mExp               = manager->mSlot.mHeader.mExp > 0 ? manager->mSlot.mHeader.mExp : 0;
-	if (player->mExp < 0)
+	s32 v                      = manager->mSlot.mHeader.mExp > 0 ? manager->mSlot.mHeader.mExp : 0;
+	player->mExp               = v;
+	if (v < 0)
 		player->mExp = 0;
 	if (player->mExp > 99999)
 		player->mExp = 99999;
