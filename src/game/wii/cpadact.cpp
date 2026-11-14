@@ -48,7 +48,7 @@ void CPadAct::ResetRumble(BOOL resetAll)
 	gGame.mPad.ResetRumble(resetAll);
 }
 
-static f32 Limit(f32 value, f32 lo, f32 hi)
+static inline f32 Limit(f32 value, f32 lo, f32 hi)
 {
 	if (value < lo) {
 		value = lo;
@@ -59,7 +59,7 @@ static f32 Limit(f32 value, f32 lo, f32 hi)
 	return value;
 }
 
-static void CopyNonzeroAxes(StickPosition& dest, const StickPosition& source)
+static inline void CopyNonzeroAxes(StickPosition& dest, const StickPosition& source)
 {
 	if (source.x != 0.0f) {
 		dest.x = source.x;
@@ -69,87 +69,126 @@ static void CopyNonzeroAxes(StickPosition& dest, const StickPosition& source)
 	}
 }
 
-static u64 DirectionActions(u32 held, u32 edge)
+static inline void GameCubeActions(CPadAct& act, const CPadOne& pad)
 {
-	held &= 15;
-	edge &= 15;
-	// Left/right occupy the lower pair, up/down are reversed.
-	const u32 heldDirs = (held & 3) | ((held & 4) << 1) | ((held & 8) >> 1);
-	const u32 edgeDirs = (edge & 3) | ((edge & 4) << 1) | ((edge & 8) >> 1);
-	// The action word stores up/down, then left/right for both held and pressed.
-	return (u64)heldDirs << 26 | (u64)(edgeDirs >> 2) << 30 | (u64)(edgeDirs & 3) << 32;
-}
-
-static u64 GameCubeActions(CPadAct& act, const CPadOne& pad)
-{
-	const u64 held    = pad.mButton;
-	const u64 trigger = pad.mTrigger;
-	u64 actions       = 0;
-	if (!(held & ((1ULL << RemoteMinus) | (1ULL << NunchukC)))) {
+	if (!(pad.mButton & ((1ULL << RemoteMinus) | (1ULL << NunchukC)))) {
 		CopyNonzeroAxes(act.mStick, pad.mStick);
 	}
 	CopyNonzeroAxes(act.mSubStick, pad.mSubStick);
-	if ((trigger & (1ULL << GameCubeY)) && !(held & (1ULL << GameCubeB))) {
-		actions |= 1ULL << 16;
+	if ((pad.mTrigger & (1ULL << GameCubeY)) && !(pad.mButton & (1ULL << GameCubeB))) {
+		act.mFlags |= 1ULL << 16;
 	}
-	if ((trigger & (1ULL << GameCubeZ)) && !(trigger & (1ULL << GameCubeB))) {
-		actions |= 1ULL << 6;
+	if ((pad.mTrigger & (1ULL << GameCubeZ)) && !(pad.mTrigger & (1ULL << GameCubeB))) {
+		act.mFlags |= 1ULL << 6;
 	}
-	if ((trigger & (1ULL << GameCubeStart)) && !(held & (1ULL << GameCubeB))) {
-		actions |= 1ULL << 10;
+	if ((pad.mTrigger & (1ULL << GameCubeStart)) && !(pad.mButton & (1ULL << GameCubeB))) {
+		act.mFlags |= 1ULL << 10;
 	}
-	if ((trigger & (1ULL << GameCubeX)) && !(held & (1ULL << GameCubeB))) {
-		actions |= 1ULL << 8;
+	if ((pad.mTrigger & (1ULL << GameCubeX)) && !(pad.mButton & (1ULL << GameCubeB))) {
+		act.mFlags |= 1ULL << 8;
 	}
-	const bool triggerR = (trigger & ((1ULL << GameCubeR) | (1ULL << 16))) != 0;
 	if (gGame.GetStatusFlags(0x80000000ULL)) {
-		actions |= DirectionActions((u32)(held >> GameCubeDPad), (u32)(trigger >> GameCubeDPad));
+		if (pad.mButton & (1ULL << (GameCubeDPad + 3))) {
+			act.mFlags |= 1ULL << 28;
+		}
+		if (pad.mButton & (1ULL << (GameCubeDPad + 2))) {
+			act.mFlags |= 1ULL << 29;
+		}
+		if (pad.mButton & (1ULL << GameCubeDPad)) {
+			act.mFlags |= 1ULL << 26;
+		}
+		if (pad.mButton & (1ULL << (GameCubeDPad + 1))) {
+			act.mFlags |= 1ULL << 27;
+		}
+		if (pad.mTrigger & (1ULL << (GameCubeDPad + 3))) {
+			act.mFlags |= 1ULL << 30;
+		}
+		if (pad.mTrigger & (1ULL << (GameCubeDPad + 2))) {
+			act.mFlags |= 1ULL << 31;
+		}
+		if (pad.mTrigger & (1ULL << GameCubeDPad)) {
+			act.mFlags |= 1ULL << 32;
+		}
+		if (pad.mTrigger & (1ULL << (GameCubeDPad + 1))) {
+			act.mFlags |= 1ULL << 33;
+		}
 		if (pad.mSubStick.y != 0.0f) {
 			act.mCameraInput = 0.5f * pad.mSubStick.y;
 		}
-		if (triggerR && !(held & (1ULL << GameCubeL)) && act.mAnalogL > 0.0f) {
-			actions |= 1ULL << 9;
+		if ((pad.mTrigger & ((1ULL << GameCubeR) | (1ULL << 16))) && !(pad.mButton & (1ULL << GameCubeL)) && act.mAnalogL > 0.0f) {
+			act.mFlags |= 1ULL << 9;
 		}
 	} else {
-		actions |= DirectionActions((u32)(held >> GameCubeSubStick), (u32)(trigger >> GameCubeSubStick));
-		if (held & (1ULL << (GameCubeDPad + 3))) {
+		if (pad.mButton & (1ULL << (GameCubeSubStick + 3))) {
+			act.mFlags |= 1ULL << 28;
+		}
+		if (pad.mButton & (1ULL << (GameCubeSubStick + 2))) {
+			act.mFlags |= 1ULL << 29;
+		}
+		if (pad.mButton & (1ULL << GameCubeSubStick)) {
+			act.mFlags |= 1ULL << 26;
+		}
+		if (pad.mButton & (1ULL << (GameCubeSubStick + 1))) {
+			act.mFlags |= 1ULL << 27;
+		}
+		if (pad.mTrigger & (1ULL << (GameCubeSubStick + 3))) {
+			act.mFlags |= 1ULL << 30;
+		}
+		if (pad.mTrigger & (1ULL << (GameCubeSubStick + 2))) {
+			act.mFlags |= 1ULL << 31;
+		}
+		if (pad.mTrigger & (1ULL << GameCubeSubStick)) {
+			act.mFlags |= 1ULL << 32;
+		}
+		if (pad.mTrigger & (1ULL << (GameCubeSubStick + 1))) {
+			act.mFlags |= 1ULL << 33;
+		}
+		if (pad.mButton & (1ULL << (GameCubeDPad + 3))) {
 			act.mCameraInput = 0.5f;
 		}
-		if (held & (1ULL << (GameCubeDPad + 2))) {
+		if (pad.mButton & (1ULL << (GameCubeDPad + 2))) {
 			act.mCameraInput = -0.5f;
 		}
-		if (triggerR && !(held & (1ULL << GameCubeB))) {
-			actions |= 1ULL << 9;
+		if ((pad.mTrigger & ((1ULL << GameCubeR) | (1ULL << 16))) && !(pad.mButton & (1ULL << GameCubeB))) {
+			act.mFlags |= 1ULL << 9;
 		}
 	}
-	if ((trigger & (1ULL << GameCubeL)) && !gGame.GetStatusFlags(0x0600000000000000ULL)) {
-		actions |= 1ULL << 34;
+	if ((pad.mTrigger & (1ULL << GameCubeL)) && !gGame.GetStatusFlags(0x0600000000000000ULL)) {
+		act.mFlags |= 1ULL << 34;
 	}
-	if (held & (1ULL << GameCubeB)) {
-		if ((trigger & (1ULL << GameCubeStart)) && !(held & (1ULL << GameCubeX))) {
-			actions |= 1ULL << 13;
-		}
-		if (trigger & (1ULL << GameCubeR)) {
-			actions |= 1ULL << 14;
-		}
-		if (trigger & (1ULL << GameCubeL)) {
-			actions |= 1ULL << 15;
-		}
-	} else if ((trigger & (1ULL << GameCubeR)) && pad.mAnalogL < 30.0f) {
-		actions |= 1ULL << 35;
+	if ((pad.mButton & (1ULL << GameCubeB)) && (pad.mTrigger & (1ULL << GameCubeStart))
+	    && !(pad.mButton & (1ULL << GameCubeX))) {
+		act.mFlags |= 1ULL << 13;
+	}
+	if ((pad.mButton & (1ULL << GameCubeB)) && (pad.mTrigger & (1ULL << GameCubeR))) {
+		act.mFlags |= 1ULL << 14;
+	}
+	if ((pad.mButton & (1ULL << GameCubeB)) && (pad.mTrigger & (1ULL << GameCubeL))) {
+		act.mFlags |= 1ULL << 15;
+	} else if ((pad.mTrigger & (1ULL << GameCubeR)) && !(pad.mButton & (1ULL << GameCubeB)) && pad.mAnalogL < 30.0f) {
+		act.mFlags |= 1ULL << 35;
 	}
 	if (pad.mRepeat & (1ULL << GameCubeL)) {
-		actions |= 1ULL << 36;
+		act.mFlags |= 1ULL << 36;
 	}
-	return actions;
 }
 
 static f32 sLastPointerY;
 
-static void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
+static inline void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 {
-	act.mPointer.y = Limit(act.mPointer.y, act.mTop, act.mBottom);
-	act.mPointer.x = Limit(act.mPointer.x, act.mLeft, act.mRight);
+	if (act.mPointer.y < act.mTop) {
+		act.mPointer.y = act.mTop;
+	}
+	if (act.mPointer.y > act.mBottom) {
+		act.mPointer.y = act.mBottom;
+	}
+	if (act.mPointer.x < act.mLeft) {
+		act.mPointer.x = act.mLeft;
+	}
+	if (act.mPointer.x > act.mRight) {
+		act.mPointer.x = act.mRight;
+	}
 	BOOL visible   = FALSE;
 	BOOL inBounds  = FALSE;
 	for (s32 i = 0; i < pad.mSampleCount; ++i) {
@@ -167,6 +206,8 @@ static void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 			angle -= 2.0f * PI;
 		}
 		if (x >= act.mLeft && x <= act.mRight && y >= act.mTop && y <= act.mBottom) {
+			act.mPointer.x = x;
+			act.mPointer.y = y;
 			if (__fabsf(y - sLastPointerY) > 40.0f) {
 				sLastPointerY = y;
 			}
@@ -176,9 +217,9 @@ static void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 		} else {
 			x = Limit(x, act.mLeft, act.mRight);
 			y = Limit(y, act.mTop, act.mBottom);
+			act.mPointer.x = x;
+			act.mPointer.y = y;
 		}
-		act.mPointer.x    = x;
-		act.mPointer.y    = y;
 		act.mPointerAngle = angle;
 		visible           = TRUE;
 		break;
@@ -189,7 +230,9 @@ static void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 			act.mTransitionCooldown = 0.0f;
 		}
 	}
-	act.mInBounds       = inBounds;
+	if (act.mInBounds != inBounds) {
+		act.mInBounds = inBounds;
+	}
 	act.mPointerChanged = FALSE;
 	if (act.mPointerValid != visible) {
 		act.mTransitionFrames += frames;
@@ -206,7 +249,7 @@ static void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 			}
 		}
 	}
-	if (act.mPointerValid) {
+	if (act.mPointerValid && !act.mPointerSeen) {
 		act.mPointerSeen = true;
 	}
 	if (act.mPointerSeen) {
@@ -225,50 +268,102 @@ void CPadAct::Update(u32 frames)
 {
 	const CPadOne& pad = gWiiPads[0];
 	mFlags             = 0;
-	mButton            = pad.mButton;
-	mDirButton         = pad.mDirButton;
-	mTrigger           = pad.mTrigger;
-	mDirTrigger        = pad.mDirTrigger;
-	mRepeat            = pad.mRepeat;
-	mDirRepeat         = pad.mDirRepeat;
-	mStick.x = mStick.y = mSubStick.x = mSubStick.y = 0.0f;
-	mAnalogL                                        = pad.mAnalogL == 0.0f ? 0.0f : Limit(pad.mAnalogL - 30.0f, 0.0f, 180.0f);
-	mAnalogR                                        = pad.mAnalogR == 0.0f ? 0.0f : Limit(pad.mAnalogR - 30.0f, 0.0f, 180.0f);
-	mCameraInput                                    = NAN;
+	mButton = mDirButton = mTrigger = mDirTrigger = mRepeat = mDirRepeat = 0;
+	mStick.y = mStick.x = mSubStick.y = mSubStick.x = mAnalogR = mAnalogL = 0.0f;
+	mCameraInput      = NAN;
+	mButton           = pad.mButton;
+	mDirButton        = pad.mDirButton;
+	mTrigger          = pad.mTrigger;
+	mDirTrigger       = pad.mDirTrigger;
+	mRepeat           = pad.mRepeat;
+	mDirRepeat        = pad.mDirRepeat;
 
-	if (mTrigger & ((1ULL << GameCubeA) | (1ULL << RemoteA))) {
+	if (pad.mAnalogL != 0.0f) {
+		const f32 analogL = pad.mAnalogL - 30.0f;
+		mAnalogL          = analogL;
+		if (analogL < 0.0f) {
+			mAnalogL = 0.0f;
+		} else if (analogL > 180.0f) {
+			mAnalogL = 180.0f;
+		}
+	}
+	if (pad.mAnalogR != 0.0f) {
+		const f32 analogR = pad.mAnalogR - 30.0f;
+		mAnalogR          = analogR;
+		if (analogR < 0.0f) {
+			mAnalogR = 0.0f;
+		} else if (analogR > 180.0f) {
+			mAnalogR = 180.0f;
+		}
+	}
+
+	if (pad.mTrigger & ((1ULL << GameCubeA) | (1ULL << RemoteA))) {
 		mFlags |= 1ULL << 0;
 	}
-	if (mTrigger & ((1ULL << GameCubeB) | (1ULL << RemoteB))) {
+	if (pad.mTrigger & ((1ULL << GameCubeB) | (1ULL << RemoteB))) {
 		mFlags |= 1ULL << 1;
 	}
-	const u32 repeatDirs = (u32)((mRepeat >> GameCubeStick) | (mRepeat >> NunchukStick)) & 15;
-	mFlags |= (u64)(repeatDirs >> 3) << 2 | (u64)((repeatDirs >> 2) & 1) << 3 | (u64)(repeatDirs & 3) << 4;
+	if (pad.mRepeat & ((1ULL << (GameCubeStick + 3)) | (1ULL << (NunchukStick + 3)))) {
+		mFlags |= 1ULL << 2;
+	}
+	if (pad.mRepeat & ((1ULL << (GameCubeStick + 2)) | (1ULL << (NunchukStick + 2)))) {
+		mFlags |= 1ULL << 3;
+	}
+	if (pad.mRepeat & ((1ULL << GameCubeStick) | (1ULL << NunchukStick))) {
+		mFlags |= 1ULL << 4;
+	}
+	if (pad.mRepeat & ((1ULL << (GameCubeStick + 1)) | (1ULL << (NunchukStick + 1)))) {
+		mFlags |= 1ULL << 5;
+	}
 
-	if ((pad.mDevices & 2) && (pad.mInputMask & 1)) {
+	if (pad.IsNunchukActive()) {
 		CopyNonzeroAxes(mStick, pad.mStick);
 	}
 	if (pad.IsGameCubePadActive()) {
-		mFlags |= GameCubeActions(*this, pad);
+		GameCubeActions(*this, pad);
 	}
-	if ((pad.mDevices & 1) && (pad.mInputMask & 1)) {
-		if (!((gGame.mDvdStatus || gGame.mPrevDvdStatus) && !gGame.mDiskOk)) {
-			if (mTrigger & (1ULL << NunchukC)) {
+	if (pad.IsRemoteActive()) {
+		const BOOL dvdBusy = (gGame.mDvdStatus || gGame.mPrevDvdStatus) && !gGame.mDiskOk;
+		if (!dvdBusy) {
+			if (pad.mTrigger & (1ULL << NunchukC)) {
 				mFlags |= 1ULL << 16;
 			}
-			if (mTrigger & (1ULL << NunchukZ)) {
+			if (pad.mTrigger & (1ULL << NunchukZ)) {
 				mFlags |= 1ULL << 6;
 			}
-			if (mTrigger & (1ULL << RemotePlus)) {
+			if (pad.mTrigger & (1ULL << RemotePlus)) {
 				mFlags |= 1ULL << 7;
 			}
-			if (mTrigger & (1ULL << RemoteMinus)) {
+			if (pad.mTrigger & (1ULL << RemoteMinus)) {
 				mFlags |= 1ULL << 8;
 			}
-			if (mTrigger & (1ULL << RemoteOne)) {
+			if (pad.mTrigger & (1ULL << RemoteOne)) {
 				mFlags |= 1ULL << 9;
 			}
-			mFlags |= DirectionActions((u32)mButton, (u32)mTrigger);
+			if (pad.mButton & (1ULL << RemoteUp)) {
+				mFlags |= 1ULL << 28;
+			}
+			if (pad.mButton & (1ULL << RemoteDown)) {
+				mFlags |= 1ULL << 29;
+			}
+			if (pad.mButton & (1ULL << RemoteLeft)) {
+				mFlags |= 1ULL << 26;
+			}
+			if (pad.mButton & (1ULL << RemoteRight)) {
+				mFlags |= 1ULL << 27;
+			}
+			if (pad.mTrigger & (1ULL << RemoteUp)) {
+				mFlags |= 1ULL << 30;
+			}
+			if (pad.mTrigger & (1ULL << RemoteDown)) {
+				mFlags |= 1ULL << 31;
+			}
+			if (pad.mTrigger & (1ULL << RemoteLeft)) {
+				mFlags |= 1ULL << 32;
+			}
+			if (pad.mTrigger & (1ULL << RemoteRight)) {
+				mFlags |= 1ULL << 33;
+			}
 			UpdatePointer(*this, pad, frames);
 		}
 		for (int i = 4; i > 0; --i) {

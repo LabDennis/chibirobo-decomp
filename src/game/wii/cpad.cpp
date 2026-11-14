@@ -135,11 +135,6 @@ void CPadOne::ResetRumble(BOOL resetAll)
 	WPADControlMotor(mPort, 0);
 }
 
-BOOL CPadOne::IsGameCubePadActive() const
-{
-	return (mDevices & DeviceGameCube) && (mInputMask & InputGameCube);
-}
-
 enum StickDirection {
 	StickUp    = 1,
 	StickLeft  = 2,
