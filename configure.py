@@ -1181,10 +1181,9 @@ if wii:
                 Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/globalresources.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/roboeyeslens.cpp"),
-                # the table strings are named char arrays; the eight-byte stage names sit in .sdata2;
                 # AdvanceStageLoad's switch is a binary-search tree, which only the GC compilers emit
                 Object(Equivalent, "game/stage_data.cpp", mw_version="GC/3.0a5.2",
-                       extra_cflags=["-Cpp_exceptions on", "-sdata2 8"]),
+                       extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/wii/atcmenuselection.cpp", mw_version="GC/3.0a5.2"),
                 Object(NonMatching, "game/wii/homemenu.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
                 # its switches are binary-search trees, which only the GC compilers emit, and none of its
