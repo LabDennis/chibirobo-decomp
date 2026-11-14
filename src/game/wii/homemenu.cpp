@@ -17,7 +17,7 @@
 //
 // Built with GC/3.0a5 and -ipa file, and linked: main.dol comes out the same with this file built from
 // source, which is what settles the bounds above.
-// - GC/3.0a3 to GC/3.0a5 all give retail's code. GC/3.0a5.2, which the other Wii files use, differs in one
+// - GC/3.0a3 to GC/3.0a5 all give retail's code. GC/3.0a5.2 differs in one
 //   place: where OpenWiiHomeMenu looks whether the game is paused already, retail loads the 0 it stores
 //   into mPausedGame before the branch on the flags (0x800AB3E8), 3.0a5.2 behind it. Wii/1.0 to Wii/1.3 turn
 //   the load step's switch into a compare chain retail does not have and reach 91 to 96 % on the four

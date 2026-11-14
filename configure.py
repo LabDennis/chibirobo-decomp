@@ -1175,18 +1175,25 @@ if wii:
             "cflags": [*wii_cflags, "-Cpp_exceptions off", "-RTTI on", "-str reuse,readonly"],
             "progress_category": "game",
             "objects": [
-                # GC/3.0a5.2 is evidenced by the build result on these units: CModule::Unload,
-                # OctaMenu::UpdatePointedItem and CPadAct::Init/Update all score strictly higher
-                # under it, and Wii/1.3 instead emits @NNNN sdata2 objects where retail has the
-                # same literals as named objects.
-                Object(Equivalent, "game/cmodule.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
-                Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
+                # Two groups of units. Those with an mw_version are built with GC/3.0a5 and -ipa file:
+                # - compiler: CModule::Unload, OctaMenu::UpdatePointedItem and CPadAct::Init/Update score
+                #   strictly higher under GC/3.0 than under Wii/1.3, which also emits @NNNN sdata2 objects
+                #   where retail has the same literals as named objects. GC/3.0a3 to 3.0a5 give the same
+                #   code in every unit of the group; 3.0a5.2 differs from retail in homemenu.cpp
+                #   (0x800AB3E8) and init.cpp (the light vectors' registers) and nowhere helps.
+                # - -ipa file: homemenu.cpp and init.cpp need it (see there). On the other units of the
+                #   group it raises six functions (AdvanceStageLoad and RunWiiSaveSlotDelete to 100 %)
+                #   and lowers one by 0.01 (CPadAct::Update, 94.76 to 94.75).
+                # The units without an mw_version keep the library's Wii/1.3: nandfile.cpp matches only
+                # so (its twelve functions fall to about 80 % under GC/3.0a5 with -ipa file).
+                Object(Equivalent, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/globalresources.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/roboeyeslens.cpp"),
                 # ApplyStageClearColor copies its GXColor argument bytewise (0x8006F9xx); the
-                # same shape is a word copy under Wii/1.3, so the unit keeps GC/3.0a5.2
-                Object(Equivalent, "game/stage_data.cpp", mw_version="GC/3.0a5.2",
-                       extra_cflags=["-Cpp_exceptions on"]),
+                # same shape is a word copy under Wii/1.3
+                Object(Equivalent, "game/stage_data.cpp", mw_version="GC/3.0a5",
+                       extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/wii/atcmenuselection.cpp"),
                 # the whole file, 0x800AAD1C-0x800AC07C. GC/3.0a3 to 3.0a5 reproduce it; 3.0a5.2 puts the
                 # li r0, 0 at 0x800AB3E8 behind the branch that follows it in retail, Wii/1.x turns the
@@ -1196,7 +1203,7 @@ if wii:
                 # no auto-inlining of the small file functions: under -inline auto the
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
                 # retail keeps them as calls
-                Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
+                Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # init.cpp (the name is in its OSPanic call): InitTwoLightSet and InitFourLightSet
                 # copy their vectors through the registers retail uses under GC/3.0a3.2 to 3.0a5
                 # and through others under 3.0a5.2, and every Wii build is far off. -ipa file: the
@@ -1209,13 +1216,13 @@ if wii:
                 # them as calls; IsGameCubePadActive is inline-declared and still inlined
                 # into Update (no bl, retail 0x802B2528), with its standalone copy at its
                 # own address (retail 0x802B1D84)
-                Object(Equivalent, "game/wii/cpad.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
-                Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on"]),
+                Object(Equivalent, "game/wii/cpad.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # retail has no call to StartWiiSaveJob (declared inline, inlined into its
                 # callers) while BuildWiiSaveBanner and CheckWiiSaveBanner are reached via
                 # bl - auto-inlining was off for the unit
-                Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-inline noauto"]),
+                Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 Object(Equivalent, "game/wii/soundbank.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "rel/module.c"),
             ],
