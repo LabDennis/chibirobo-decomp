@@ -38,7 +38,10 @@ jobs:
           fi
           cp -a "$CHIBIROBO_ORIG/." orig/
       - name: Build and record progress
-        run: python3 tools/progress.py update --version GGTE01 --version GGTJ01_01 --version GGTP01
+        run: |
+          # the Wii build joins only when the runner has the Japanese Wii disc
+          wii=$(python3 -c 'import sys; sys.path.insert(0, "tools"); import versions; print("--version R24J01" if versions.has_disc("R24J01") else "")')
+          python3 tools/progress.py update --version GGTE01 --version GGTJ01_01 --version GGTP01 $wii
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: verified-progress
@@ -48,6 +51,8 @@ jobs:
   render:
     needs: build
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
@@ -62,7 +67,6 @@ jobs:
       - name: Render badges, README image and treemap
         run: |
           python tools/progress.py render --output site
-          cp progress/data.json site/data.json
           touch site/.nojekyll
       - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:

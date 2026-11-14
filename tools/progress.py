@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""update builds every version and saves progress/data.json, render turns that into
-the treemap page, svg and badges. render doesn't need the game."""
+"""Build and publish release reports, or merge a separately verified local report
+into an existing snapshot. Rendering a snapshot does not require a disc."""
 
 import argparse
 import hashlib
 import json
+import tempfile
 from html import escape
 from pathlib import Path
 
@@ -32,35 +33,89 @@ def source_hash():
     return digest.hexdigest()
 
 
-def update(wanted):
+def read_release(version, source, digest=None):
+    folder = ROOT / "build" / version
+    report = folder / "report.json"
+    if not report.is_file() or not (folder / "ok").is_file():
+        raise ValueError(f"{version} needs a verified build and report.json")
+    units, _ = treemap.load_units(str(folder), str(report))
+    if not units:
+        raise ValueError(f"{version} has no units in report.json")
+    return {
+        "version": version,
+        "region": treemap.REGIONS.get(version[3:4], ""),
+        "revision": treemap.revision_of(version),
+        "source": source,
+        "source_hash": digest,
+        "generated": int(report.stat().st_mtime),
+        "units": units,
+    }
+
+
+def write_snapshot(path, payload):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n"
+    # Readers can keep using the previous snapshot until the complete file is ready.
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile("w", dir=path.parent, encoding="utf-8", delete=False) as handle:
+            temporary = Path(handle.name)
+            handle.write(text)
+        temporary.replace(path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
+
+
+def update(wanted, snapshot):
     wanted = list(dict.fromkeys(wanted or versions.buildable()))
     if not wanted:
         raise ValueError("no discs in orig/")
     if versions.USA not in wanted:
-        raise ValueError("the readme numbers come from usa, add --version GGTE01")
+        raise ValueError("the README badges need the USA build, add --version GGTE01")
     results = check_versions.check(wanted, all_source=True)
     if set(results) != set(wanted) or not all(results.values()):
-        raise ValueError("build failed, data.json left alone")
-    data = []
-    for version in wanted:
-        report = ROOT / "build" / version / "report.json"
-        if not report.is_file():
-            raise ValueError(f"missing report for {version}, data.json left alone")
-        units, _ = treemap.load_units(str(report.parent), str(report))
-        data.append({
-            "version": version,
-            "region": treemap.REGIONS.get(version[3:4], ""),
-            "revision": treemap.revision_of(version),
-            "source": "verified build",
-            "generated": int(report.stat().st_mtime),
-            "units": units,
-        })
-    payload = {"schema": 1, "source_hash": source_hash(),
-               "default": versions.default_version() if versions.default_version() in wanted else wanted[0],
-               "groups": treemap.GROUP_ORDER, "versions": data}
-    SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
-    SNAPSHOT.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
-    print(f"updated {SNAPSHOT.relative_to(ROOT)}")
+        raise ValueError("build failed, snapshot left alone")
+    digest = source_hash()
+    data = [read_release(version, "verified build", digest) for version in wanted]
+    default = versions.default_version()
+    write_snapshot(snapshot, {"schema": 1, "source_hash": digest,
+                              "default": default if default in wanted else wanted[0],
+                              "groups": treemap.GROUP_ORDER, "versions": data})
+
+
+def merge(wanted, snapshot):
+    if not wanted:
+        raise ValueError("merge needs at least one --version")
+    payload = json.loads(snapshot.read_text(encoding="utf-8"))
+    if payload.get("schema") != 1:
+        raise ValueError("unsupported progress snapshot schema")
+    releases = {release["version"]: release for release in payload["versions"]}
+    if len(releases) != len(payload["versions"]):
+        raise ValueError("duplicate release in progress snapshot")
+    # Older snapshots recorded one hash for the entire build. Keep its original
+    # scope when importing a report produced separately.
+    previous_hash = payload.pop("source_hash", None)
+    for release in releases.values():
+        release.setdefault("source_hash", previous_hash)
+    for version in dict.fromkeys(wanted):
+        release = read_release(version, "locally verified build report")
+        manifest = ROOT / "config" / version / "build.sha1"
+        entries = [line.split(maxsplit=1) for line in manifest.read_text().splitlines() if line.strip()]
+        if not entries:
+            raise ValueError(f"empty retail checksum manifest for {version}")
+        for checksum, filename in entries:
+            digest = hashlib.sha1()
+            with (ROOT / filename).open("rb") as binary:
+                for chunk in iter(lambda: binary.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            if digest.hexdigest().lower() != checksum.lower():
+                raise ValueError(f"{filename} differs from its retail checksum")
+        # report.json and the ok marker carry no source-tree fingerprint.
+        # Keep the imported report's timestamp and leave its source hash unknown.
+        releases[version] = release
+    payload["versions"] = list(releases.values())
+    write_snapshot(snapshot, payload)
 
 
 def us_units(payload):
@@ -70,8 +125,7 @@ def us_units(payload):
     raise ValueError("no usa report in data.json, run update with GGTE01")
 
 
-def percentages(payload):
-    units = us_units(payload)
+def percentages(units):
     code = sum(u["code"] for u in units)
     data = sum(u["data"] for u in units)
     return {
@@ -94,12 +148,11 @@ def svg(payload):
     return "\n".join(parts)
 
 
-def badge(label, percent):
-    value = f"{percent:.1f}%"
+def badge(label, percent, meaning):
+    value = "not built" if percent is None else f"{percent:.1f}%"
     left = len(label) * 7 + 12
     right = len(value) * 7 + 12
     width = left + right
-    meaning = "US code linked from source" if label == "linked" else "US data matched"
     return f'''<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="20" role="img" aria-label="{meaning}: {value}">
 <title>{meaning}: {value}</title>
 <linearGradient id="shade" x2="0" y2="100%"><stop offset="0" stop-color="#fff" stop-opacity=".1"/><stop offset="1" stop-opacity=".1"/></linearGradient>
@@ -112,17 +165,21 @@ def badge(label, percent):
 '''
 
 
-def render(output=OUTPUT):
-    payload = json.loads(SNAPSHOT.read_text(encoding="utf-8"))
+def render(output=OUTPUT, snapshot=SNAPSHOT):
+    raw = snapshot.read_bytes()
+    payload = json.loads(raw)
     if payload.get("schema") != 1:
         raise ValueError("data.json is from a different schema")
-    measures = percentages(payload)
-    stale = payload["source_hash"] != source_hash()
+    measures = percentages(us_units(payload))
+    digest = source_hash()
     payload["live"] = False
-    if stale:
-        for version in payload["versions"]:
-            version["source"] = "earlier build; source has changed"
+    for release in payload["versions"]:
+        release_hash = release.get("source_hash", payload.get("source_hash"))
+        if release_hash and release_hash != digest:
+            release["source"] = "earlier verified build (source has changed)"
     output.mkdir(parents=True, exist_ok=True)
+    if (output / "data.json").resolve() != snapshot.resolve():
+        (output / "data.json").write_bytes(raw)
     page = treemap.render_page(payload)
     (output / "index.html").write_text(page, encoding="utf-8")
     # Keep old README links and bookmarks working, including their filters.
@@ -130,24 +187,35 @@ def render(output=OUTPUT):
     (output / "progress.svg").write_text(svg(payload), encoding="utf-8")
     (output / "badges").mkdir(exist_ok=True)
     for label, percent in measures.items():
-        (output / "badges" / f"{label}.svg").write_text(badge(label, percent), encoding="utf-8")
+        meaning = "US code linked from source" if label == "linked" else "US data matched"
+        (output / "badges" / f"{label}.svg").write_text(badge(label, percent, meaning), encoding="utf-8")
+    for release in payload["versions"]:
+        if release["version"] == "R24J01":
+            linked = percentages(release["units"])["linked"]
+            (output / "badges/wii-linked.svg").write_text(
+                badge("Wii JP linked", linked, "Japanese Wii code linked from source"), encoding="utf-8")
+    # The README shows this badge on every fork; a runner without the Wii disc says so instead of a broken image.
+    if not any(release["version"] == "R24J01" for release in payload["versions"]):
+        (output / "badges/wii-linked.svg").write_text(
+            badge("Wii JP linked", None, "Japanese Wii code linked from source"), encoding="utf-8")
     print(f"rendered treemap and README badges in {output}")
-    if stale:
-        print("source changed since data.json was made, run update")
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("update", "render"))
+    parser.add_argument("command", choices=("update", "merge", "render"))
     parser.add_argument("--version", action="append", choices=versions.versions(), help="can be given more than once")
+    parser.add_argument("--snapshot", type=Path, default=SNAPSHOT, help="snapshot to read or update")
     parser.add_argument("--output", type=Path, default=OUTPUT, help="where render writes")
     args = parser.parse_args()
     try:
         if args.command == "update":
-            update(args.version)
+            update(args.version, args.snapshot)
+        elif args.command == "merge":
+            merge(args.version, args.snapshot)
         elif args.version:
-            parser.error("--version only applies to update")
-        render(args.output)
+            parser.error("--version only applies to update or merge")
+        render(args.output, args.snapshot)
     except (ValueError, OSError) as error:
         parser.exit(1, f"{error}\n")
 

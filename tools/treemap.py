@@ -26,7 +26,7 @@ LIBRARY_RULES = [
     ("Runtime", re.compile(r"^Runtime")),
     ("MSL", re.compile(r"^MSL")),
     ("TRK", re.compile(r"^(TRK|MetroTRK)")),
-    ("SDK", re.compile(r"^(dolphin|THP|sdk)", re.I)),
+    ("SDK", re.compile(r"^(dolphin|THP|sdk|revolution/)", re.I)),
     ("HSD", re.compile(r"^(sysdolphin|baselib|HSD)", re.I)),
 ]
 GROUP_ORDER = ["Runtime", "MSL", "TRK", "SDK", "HSD", "game", "unmapped DOL", "RELs"]
@@ -193,6 +193,12 @@ def find_versions(building: str) -> List[str]:
 
 
 def render_page(payload):
+    for release in payload["versions"]:
+        version = release["version"]
+        if version.startswith("GGT"):
+            release["platform"] = "GameCube"
+        elif version == "R24J01":
+            release["platform"] = "Wii"
     treemap_layout.prepare(payload)
     payload["map_style"] = {"svg": SVG_ATTRIBUTES, "rect": RECT_ATTRIBUTES}
     with open(os.path.join(script_dir, "treemap_template.html"), encoding="utf-8") as f:

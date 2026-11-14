@@ -39,6 +39,10 @@ def embedded_data(page):
 
 
 class RenderTests(unittest.TestCase):
+    def test_wii_sdk_group(self):
+        self.assertEqual(treemap.library_for("revolution/WPAD/WPADMem"), "SDK")
+        self.assertEqual(treemap.library_for("game/wii/cpadact"), "game")
+
     def test_readme_rectangles_match_embedded_usa_map(self):
         source = payload()
         page = treemap.render_page(copy.deepcopy(source))
@@ -72,6 +76,18 @@ class RenderTests(unittest.TestCase):
         self.assertNotIn("</script>", svg)
         self.assertIn("&lt;/script&gt;", svg)
         self.assertIn("&amp;", svg)
+
+    def test_platforms_and_publication_url_in_page_metadata(self):
+        site = "https://cleosp.com/chibirobo-decomp/"
+        page = treemap.render_page(payload())
+        self.assertIn(f'<link rel="canonical" href="{site}">', page)
+        self.assertIn(f'<meta property="og:url" content="{site}">', page)
+        schema = json.loads(page.split('<script type="application/ld+json">', 1)[1].split("</script>", 1)[0])
+        self.assertEqual(schema["url"], site)
+        self.assertIn("GameCube and Wii", schema["description"])
+        self.assertEqual(schema["isPartOf"], {"@type": "WebSite", "name": "Cleo Spiers", "url": "https://cleosp.com/"})
+        self.assertIn("for the GameCube and Wii", page.split('<meta name="description" content="', 1)[1].split('">', 1)[0])
+        self.assertIn('<a href="https://github.com/CleoSp/chibirobo-decomp">Source on GitHub</a>', page)
 
     def test_local_stamp_ignores_generated_timestamps(self):
         before = payload()
