@@ -54,7 +54,7 @@ public:
 	virtual ~CTexObj() { }
 	void Init(TPLDescriptor* desc, u32 tlutName);
 	u32 Set(const CTexObj& other);
-	u32 SetChar(const char* str);
+	u32 SetChar(const char* str, u32 font); // the font index goes to GetFontGlyphTexture's arg3
 };
 STATIC_ASSERT(sizeof(CTexObj) == 0x104);
 #else

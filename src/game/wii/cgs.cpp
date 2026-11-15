@@ -1,5 +1,11 @@
 // The Wii's text drawing unit, .text 0x802AD310-0x802AEBB0: the GameCube
 // cgs.cpp pair (wii_gc_pairs.txt) plus the Wii's own helpers in between.
+//
+// NONMATCHING: five of the unit's nine functions match at 100 %, four stay
+// fuzzy: GetGlyph and MeasureGameTextWidth differ only in callee-saved
+// register choice and the IsSjisLead bool materialization, DrawGsText and
+// DrawGsStrokeText additionally diverge in float scheduling and stack slot
+// order — no behavioural difference found in any of them.
 
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
@@ -74,6 +80,9 @@ static inline void SetColor(CTile* tile, u32 color)
 	tile->mColor0 = tile->mColor1 = tile->mColor2 = tile->mColor3 = color;
 }
 
+// NONMATCHING: same switch and control flow; retail keeps gs in r30 and the
+// glyph pointer in r31 while MWCC swaps them, and it orders the escape-branch
+// compares slightly differently.
 /**
  * @note Address: 0x802AD1C0
  * @note Size: 0x150
@@ -110,7 +119,7 @@ const char* GetGlyph(CGs* gs, const char* text, TextGlyph* glyph)
 		}
 		break;
 	default:
-		if (gs->mUseShiftJis && (IsSjisLead(*text) & 1)) {
+		if (gs->mUseShiftJis && IsSjisLead(*text)) {
 			glyph->mStr[0] = *text;
 			glyph->mStr[1] = *++text;
 		} else {
@@ -135,7 +144,6 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
 	f32 width[2] = { 0.0f, 0.0f };
 	TextGlyph glyph;
 	const char* p = text;
-	f32 halfSize  = 0.5f * size;
 
 	while ((p = GetGlyph(gs, p, &glyph)) != NULL) {
 		if (glyph.mStr[0] == '\0') {
@@ -148,15 +156,15 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
 		GetFontGlyphTexture(&font, glyph.mStr, gs->mTextFont, &charWidth);
 		if (size > 0.0f) {
 			if (proportional) {
-				width[0] += charWidth * size / 24.0f;
+				width[0] += charWidth * (size / 24.0f);
 			} else if (gs->mUseShiftJis) {
-				if (IsSjisLead(glyph.mStr[0]) & 1) {
+				if (IsSjisLead(glyph.mStr[0])) {
 					width[0] += size * gs->mShiftJisWidthScale;
 				} else {
-					width[0] += halfSize * gs->mShiftJisWidthScale;
+					width[0] += 0.5f * size * gs->mShiftJisWidthScale;
 				}
 			} else {
-				width[0] += halfSize * gs->mSingleByteWidthScale;
+				width[0] += 0.5f * size * gs->mSingleByteWidthScale;
 			}
 		} else {
 			width[0] += charWidth;
@@ -252,8 +260,8 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 
 		TextChar* chr     = &textChars[count];
 		chr->mSprite.mTex = &chr->mTex;
-		s32 charWidth     = chr->mSprite.mTex->SetChar(glyph.mStr);
-		BOOL wide         = IsSjisLead(glyph.mStr[0]);
+		s32 charWidth     = chr->mSprite.mTex->SetChar(glyph.mStr, gs->mTextFont);
+		u8 wide           = IsSjisLead(glyph.mStr[0]);
 		f32 advance;
 		if (proportional) {
 			// the glyph's left bearing shifts it inside its cell
