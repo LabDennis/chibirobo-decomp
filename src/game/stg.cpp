@@ -407,7 +407,7 @@ BOOL MenuPC::Draw()
 				width            = 6.0f
 				      + (1.1f * GetMenuTextureWidth(LoadMenuPaletteTexture(&gGame, pcChoiceArt[this->mChoices[this->mChoice]].icon))
 				         + textWidth);
-				center = 204.0f + width * 0.5f;
+				center = 204.0f + width / 2.0f;
 			}
 			f32 y = 2.0f + (step * this->mChoice + (8.0f + top));
 			{
@@ -721,7 +721,7 @@ BOOL MenuPC::Draw()
 					CopyMenuTextureObject(&tex, LoadMenuPaletteTexture(&gGame, 125 - StatusTextureOffset));
 					f32 markerW = 1.4f * GetMenuTextureWidth(&tex);
 					f32 markerH = 1.4f * (GetMenuTextureHeight(&tex) / 10);
-					f32 left    = ((388.0f - this->mScrapDigit * step) - 4.0f) - (2.0f * step) * 0.5f;
+					f32 left    = ((388.0f - this->mScrapDigit * step) - 4.0f) - (2.0f * step) / 2.0f;
 					f32 right = left + markerW, bottom = 241.0f + markerH;
 					f32 coord0   = left;
 					f32 coord1   = 241;
@@ -790,7 +790,7 @@ BOOL MenuPC::Draw()
 			SetMenuBlendMode(GetGameGraphics(&gGame), 1, 4, 5, 15);
 			SetMenuDepthMode(GetGameGraphics(&gGame), 0, 3, 0);
 
-			f32 half = height * 0.5f;
+			f32 half = height / 2.0f;
 			u32 bandColor;
 			{
 				f32 left       = 130;
@@ -998,8 +998,8 @@ BOOL MenuPC::Draw()
 							const f32 scale = 0.8f;
 							f32 width       = scale * (1.1f * GetMenuTextureWidth(&tex));
 							f32 height      = scale * GetMenuTextureHeight(&tex);
-							f32 x           = width * 0.5f + 184;
-							f32 y           = height * 0.5f + 60;
+							f32 x           = width / 2.0f + 184;
+							f32 y           = height / 2.0f + 60;
 							u32 color       = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
 							DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, 0);
 							SetMenuTevMode(GetGameGraphics(&gGame), 4);
@@ -1012,8 +1012,8 @@ BOOL MenuPC::Draw()
 							SetMenuTevMode(GetGameGraphics(&gGame), 0);
 							f32 width  = 1.1f * GetMenuTextureWidth(&tex);
 							f32 height = GetMenuTextureHeight(&tex);
-							f32 x      = width * 0.5f + 220;
-							f32 y      = height * 0.5f + 66;
+							f32 x      = width / 2.0f + 220;
+							f32 y      = height / 2.0f + 66;
 							u32 color  = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
 							DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, 0);
 							SetMenuTevMode(GetGameGraphics(&gGame), 4);
@@ -1027,7 +1027,7 @@ BOOL MenuPC::Draw()
 						SetMenuTevMode(GetGameGraphics(&gGame), 0);
 						f32 width  = 1.1f * GetMenuTextureWidth(&tex);
 						f32 height = GetMenuTextureHeight(&tex);
-						f32 x      = width * 0.5f + 204;
+						f32 x      = width / 2.0f + 204;
 						f32 y      = height * 0.5f + 335;
 						u32 color  = 0xC8C8C800 | (u32)(255.0f * this->mAlpha);
 						DrawMenuTexturedQuad(GetGameGraphics(&gGame), &tex, color, x, y, 0, width, height, 0, 0, 0);
@@ -4436,7 +4436,7 @@ extern "C" void DrawSaveMenuTitle(MenuSave* menu)
 				s1          = sin(3.1415927f * t);
 				s2          = sin(1.5707964f * t);
 				scale       = 0.2f * s1 + s2;
-				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount * 0.5f));
+				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount / 2.0f));
 				alpha       = 255.0f * t;
 				rot         = -(0.017453292f * (10.0f * rot));
 				y           = 64.0f + bob;
@@ -4500,7 +4500,7 @@ extern "C" void DrawItemMenuTitle(MenuItem* menu)
 				s1          = sin(3.1415927f * t);
 				s2          = sin(1.5707964f * t);
 				scale       = 0.2f * s1 + s2;
-				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount * 0.5f));
+				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount / 2.0f));
 				alpha       = 255.0f * t;
 				rot         = -(0.017453292f * (10.0f * rot));
 				y           = 64.0f + bob;
@@ -6822,7 +6822,7 @@ extern "C" void DrawStatusHelpText(MenuStatus* menu)
 			f32 s1       = sin(3.1415927f * alpha);
 			f32 s2       = sin(1.5707964f * alpha);
 			f32 scale    = 0.2f * s1 + s2;
-			f32 x        = 0.5f * spacing + (i * spacing + (320.0f - menu->mHelpCount * spacing * 0.5f));
+			f32 x        = 0.5f * spacing + (i * spacing + (320.0f - menu->mHelpCount * spacing / 2.0f));
 			f32 y        = 384.0f + bob;
 			rotation     = -(0.017453292f * (10.0f * rotation));
 			u32 color    = (u32)opacity | 0xFFFFFF00;
@@ -6879,7 +6879,7 @@ extern "C" void DrawStatusMenuTitle(MenuStatus* menu)
 				s1          = sin(3.1415927f * t);
 				s2          = sin(1.5707964f * t);
 				scale       = 0.2f * s1 + s2;
-				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount * 0.5f));
+				x           = 24.0f + (48.0f * i + (320.0f - 48.0f * menu->mTitle.mCount / 2.0f));
 				alpha       = 255.0f * t;
 				rot         = -(0.017453292f * (10.0f * rot));
 				y           = 64.0f + bob;
@@ -6968,7 +6968,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		}
 		MeasureStageLabels(menu);
 		menu->mWindow.SetSize(60.0f + menu->mMaxWidth, (2.0f + menu->mFontSize) * menu->mRowCount + 24.0f);
-		menu->mWindow.SetPos(24.0f + (menu->mWindow.mWidth * 0.5f + 16.0f), 24.0f + (menu->mWindow.mHeight * 0.5f + 30.0f));
+		menu->mWindow.SetPos(24.0f + (menu->mWindow.mWidth / 2.0f + 16.0f), 24.0f + (menu->mWindow.mHeight * 0.5f + 30.0f));
 	} else {
 		menu->mCount = gGame.mRoomCount;
 		for (int i = 0; i < gGame.mRoomCount; i++) {
@@ -6985,7 +6985,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 		}
 		MeasureStageLabels(menu);
 		menu->mWindow.SetSize(2.0f * (60.0f + menu->mMaxWidth), 20.0f * (2.0f + menu->mFontSize) + 24.0f);
-		menu->mWindow.SetPos(menu->mWindow.mWidth * 0.5f + 16.0f, menu->mWindow.mHeight * 0.5f + 30.0f);
+		menu->mWindow.SetPos(menu->mWindow.mWidth / 2.0f + 16.0f, menu->mWindow.mHeight * 0.5f + 30.0f);
 	}
 }
 
@@ -7253,7 +7253,7 @@ BOOL MenuMCTest::Update(u32 frames)
 		} else if (pad.mPad->mTrigger & 0x100) {
 			if (result == 0) {
 				sMenuMCTestSub.mWindow.mY = (2.0f + mFontSize) * (mSelection + 1) + (mWindow.mY - ((2.0f + mFontSize) * mRowCount) * 0.5f);
-				sMenuMCTestSub.mWindow.mX = 3.0f * mFontSize + (mTextWidth[mSelection] * 0.5f + mWindow.mX);
+				sMenuMCTestSub.mWindow.mX = 3.0f * mFontSize + (mTextWidth[mSelection] / 2.0f + mWindow.mX);
 				sMenuMCTestSub.CMenu::Open();
 				sMenuMCTestSub.mSelection = 0;
 				Suspend(FALSE);
@@ -7325,7 +7325,7 @@ BOOL MenuItem::Draw()
 					f32 s1       = sin(3.1415927f * alpha);
 					f32 s2       = sin(1.5707964f * alpha);
 					f32 scale    = 0.2f * s1 + s2;
-					f32 x        = 0.5f * spacing + (i * spacing + (320.0f - mNameCharCount * spacing * 0.5f));
+					f32 x        = 0.5f * spacing + (i * spacing + (320.0f - mNameCharCount * spacing / 2.0f));
 					f32 y        = 384.0f + bob;
 					rotation     = -(0.017453292f * (10.0f * rotation));
 					u32 color    = (u32)opacity | 0xFFFFFF00;
@@ -7849,7 +7849,7 @@ extern "C" void DrawSaveHelpText(MenuSave* menu)
 		f32 s1       = sin(3.1415927f * alpha);
 		f32 s2       = sin(1.5707964f * alpha);
 		f32 scale    = 0.2f * s1 + s2;
-		f32 x        = 0.5f * spacing + (i * spacing + (320.0f - menu->mHelpCount * spacing * 0.5f));
+		f32 x        = 0.5f * spacing + (i * spacing + (320.0f - menu->mHelpCount * spacing / 2.0f));
 		f32 y        = 384.0f + bob;
 		rotation     = -(0.017453292f * (10.0f * rotation));
 		u32 color    = (u32)opacity | 0xFFFFFF00;
@@ -8209,7 +8209,7 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	f32 rowY = y - height * 0.5f;
 	f32 barX, barW;
 	if (IsJapanese()) {
-		barX = (10.0f * step * 0.5f + (left + step)) - 8.0f * scale;
+		barX = (10.0f * step / 2.0f + (left + step)) - 8.0f * scale;
 		barW = 0.9f * (14.0f * step);
 	} else {
 		CTexObj& label = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[146], 0);
@@ -8219,7 +8219,7 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	f32 barH     = step + scale;
 	u32 barColor = (u32)(200.0f * alpha) | 0x181CC600;
 	InitMenuSelectionBar(tex);
-	f32 barY = 2.0f + ((step * 0.5f + (step * selected + rowY)) - 2.0f * scale);
+	f32 barY = 2.0f + ((step / 2.0f + (step * selected + rowY)) - 2.0f * scale);
 	DrawMenuSelectionBar(tex, barX, barY, barW, barH, alpha, textureOffset, barColor);
 	MenuPCPage& page  = kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage;
 	MenuPCItem* items = kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries;
@@ -9002,7 +9002,7 @@ static inline f32 SaveSlotStatX(f32 x, f32 scale)
 #if defined(VERSION_JP)
 	return x;
 #else
-	return x - (gSaveSlotSpacing * 0.5f) * scale;
+	return x - (gSaveSlotSpacing / 2.0f) * scale;
 #endif
 }
 
@@ -9083,8 +9083,8 @@ extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 ind
 #else
 		const f32 textSize = 23.0f * sx;
 		f32 nameWidth      = MeasureGameTextWidth(&gGame.mGs, name, 1, 0.8f * textSize);
-		f32 nameX          = (88.0f * sx + x) - nameWidth * 0.5f;
-		DrawSaveSlotCaption(name, ((gSaveSlotSpacing * 0.5f) * sx + nameX) - 5.0f * sx, offsetY + (210.0f * sy + (4.0f * sy + top)),
+		f32 nameX          = (88.0f * sx + x) - nameWidth / 2.0f;
+		DrawSaveSlotCaption(name, ((gSaveSlotSpacing / 2.0f) * sx + nameX) - 5.0f * sx, offsetY + (210.0f * sy + (4.0f * sy + top)),
 		                    textSize, alpha);
 #endif
 		DrawSlotStats(iconOffset, slot, selected, x, y, alpha, sx, sy, offsetY);
@@ -9131,7 +9131,7 @@ static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 height, f
 	SetGsBlendMode(gs.mCurRenderMode, 1, 2, 4, 15);
 	SetGsTevMode(gs.mCurTevStage, 2);
 	u32 overlay = (u32)(16.0f * alpha) | 0xFFFFFF00;
-	DrawGsTexturedQuad(&gs, &tex, overlay, overlay, overlay, overlay, x + 330.0f, height * 0.5f + y, -11.0f, 660.0f, height, 0, 0, 0);
+	DrawGsTexturedQuad(&gs, &tex, overlay, overlay, overlay, overlay, x + 330.0f, height / 2.0f + y, -11.0f, 660.0f, height, 0, 0, 0);
 	SetGsTevMode(gs.mCurTevStage, 4);
 	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
 	SetGsDepthMode(gs.mCurRenderMode, 0, 3, 0);
@@ -9226,7 +9226,7 @@ BOOL MenuSave::Draw()
 				f32 x     = 49.0f + (77.0f + i * 194.0f);
 #else
 				f32 width = 154.0f + gSaveSlotSpacing;
-				f32 x     = 49.0f + (width / 2.0f + i * (40.0f + width)) - (3.0f * gSaveSlotSpacing) * 0.5f;
+				f32 x     = 49.0f + (width / 2.0f + i * (40.0f + width)) - (3.0f * gSaveSlotSpacing) / 2.0f;
 #endif
 				u8 selected = 0, emptyMessage = 0;
 				if (mFile == i)
@@ -9968,7 +9968,7 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	width  = 0.95f * (scale * tex.GetWidth());
 	height = 0.95f * (scale * tex.GetHeight());
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, white, white, white, white, (width * 0.5f + right) - 4.0f, capY, 0, width, height, 0, 0,
+	DrawGsTexturedQuad(&gGame.mGs, &tex, white, white, white, white, (width / 2.0f + right) - 4.0f, capY, 0, width, height, 0, 0,
 	                   3.1415927f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 
@@ -10566,9 +10566,9 @@ static inline CTexObj& InitPCPanelTexture(s32 icon)
 	return gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon - StatusTextureOffset], 0);
 }
 
-static inline f32 PCRecycleChoiceX(f32 x, f32 size, f32 scale, f32 margin, f32 offset)
+static inline f32 PCRecycleChoiceX(f32 x, f32 size, f32 scale, f32 margin, f32 offset, f32 widthScale)
 {
-	f32 base = (4.0f * scale + (size * 0.5f + (x + size))) - 40.0f * scale;
+	f32 base = (4.0f * scale + ((widthScale * size) / 2.0f + (x + size))) - 40.0f * scale;
 	return 40.0f * scale + (margin + (offset + base));
 }
 
@@ -10577,7 +10577,7 @@ static inline f32 PCRecycleTextX(f32 x, f32 size, f32 scale, f32 margin, f32 off
 #if defined(VERSION_JP)
 	return x;
 #else
-	return PCRecycleChoiceX(x, size, scale, margin, offset);
+	return PCRecycleChoiceX(x, size, scale, margin, offset, 1.0f);
 #endif
 }
 
@@ -10589,7 +10589,7 @@ static inline void DrawPCRecycleLabel(s32 id, f32 x, f32 offset, f32 margin, f32
 	x = margin + (offset + (x - (strlen(text) / 2 - 1) * size * 0.5f));
 #else
 	const char* text = GetLocalizedInterfaceText(id);
-	x -= MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), 1, size) * 0.5f;
+	x -= MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(id), 1, size) / 2.0f;
 #endif
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x, y, 0, size, size);
 }
@@ -10652,8 +10652,8 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	f32 originX = left - width * 0.25f, originY = (y - height) - height * 0.25f;
 	if (choice != 2) {
 		f32 inset    = 2.0f * scale;
-		f32 cx       = PCRecycleChoiceX(originX, size, scale, margin, labelOffset);
-		f32 cy       = (rowOffset + ((size * 0.5f + (size * (choice + 2) + originY)) - inset)) - size;
+		f32 cx       = PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f);
+		f32 cy       = (rowOffset + ((size / 2.0f + (size * (choice + 2) + originY)) - inset)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
 		DrawPCChoiceStripe(cx + 2.0f * scale, cy + 2.0f * scale, barWidth, barHeight - 4.0f * scale, alpha, scroll);
@@ -10684,17 +10684,23 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 #else
 	const s32 question1 = 0x4D, question2 = 0x4E, yes = 0x40, no = 0x41, done = 0x47;
 #endif
-	u32 white      = opacity | 0xFFFFFF00;
-	f32 textMargin = 40.0f * scale, gap = 4.0f * scale;
 	if (choice != 2) {
 		f32 textX = PCRecycleTextX(originX, size, scale, margin, labelOffset);
-		DrawPCRecycleLabel(question1, textX, labelOffset, textMargin, (rowOffset + (originY - size)) - gap, size, white);
-		DrawPCRecycleLabel(question2, textX, labelOffset, textMargin, (originY + rowOffset) - gap, size, white);
-		DrawPCRecycleLabel(yes, textX, labelOffset, textMargin, rowOffset + (originY + size), size, white);
-		DrawPCRecycleLabel(no, textX, labelOffset, textMargin, rowOffset + (2.0f * size + originY), size, white);
+		DrawPCRecycleLabel(question1, textX, labelOffset, 40.0f * scale, (rowOffset + (-1 * size + originY)) - 4.0f * scale, size,
+		                   opacity | 0xFFFFFF00);
+		DrawPCRecycleLabel(question2, textX, labelOffset, 40.0f * scale, (originY + rowOffset) - 4.0f * scale, size, opacity | 0xFFFFFF00);
+		DrawPCRecycleLabel(yes, textX, labelOffset, 40.0f * scale, rowOffset + (originY + size), size, opacity | 0xFFFFFF00);
+		DrawPCRecycleLabel(no, textX, labelOffset, 40.0f * scale, rowOffset + (2 * size + originY), size, opacity | 0xFFFFFF00);
 	} else {
-		f32 textX = PCRecycleTextX(originX, size, scale, margin, labelOffset);
-		DrawPCRecycleLabel(done, textX, labelOffset, textMargin, (originY + rowOffset) - gap, size, white);
+#if defined(VERSION_JP)
+		DrawPCRecycleLabel(done, originX, labelOffset, 40.0f * scale, (originY + rowOffset) - 4.0f * scale, size, opacity | 0xFFFFFF00);
+#else
+		const char* text = GetLocalizedInterfaceText(done);
+		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(done), 1, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFFFFF00, text,
+		                             PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f) - textWidth / 2.0f,
+		                             (originY + rowOffset) - 4.0f * scale, 0, size, size);
+#endif
 	}
 }
 
@@ -10720,7 +10726,7 @@ static inline void DrawPCPriceUnit(CTexObj& tex, f32 scale, f32 left, f32 digitY
 #endif
 
 template <PCShopListKind kind>
-static inline f32 DrawPCPurchasePrice(CTexObj& tex, const MenuPCItem& row, f32 opacity, f32 left, f32 top, f32 scale, f32 extraW,
+static inline f32 DrawPCPurchasePrice(CTexObj& tex, MenuPCPage& page, s32 selected, f32 opacity, f32 left, f32 top, f32 scale, f32 extraW,
                                       f32 extraH)
 {
 	tex   = InitPCPanelTexture(125);
@@ -10729,15 +10735,12 @@ static inline f32 DrawPCPurchasePrice(CTexObj& tex, const MenuPCItem& row, f32 o
 	tex.mMtxDirty = TRUE;
 	f32 digitY    = extraH * scale + (156.0f * scale + top);
 
-#if !defined(VERSION_JP)
-	f32 centerOffset = (extraW * 0.5f) * scale;
-#endif
 	for (int i = 0; i < 4; i++) {
 		f32 divisor = 1.0f;
 		if (i > 0)
 			for (int j = 0; j < i; j++)
 				divisor *= 10.0f;
-		s32 digit = (s32)(row.mPrice / divisor);
+		s32 digit = (s32)(page.mRows[selected].mPrice / divisor);
 		if (i && digit == 0)
 			continue;
 		PSMTXTrans(tex.mMtx[0], 0, 0.1f * (digit % 10), 0);
@@ -10747,8 +10750,7 @@ static inline f32 DrawPCPurchasePrice(CTexObj& tex, const MenuPCItem& row, f32 o
 		u32 lower  = (u8)opacity | (kind == ItemPriceList ? 0xEDA83600 : 0x5959FF00);
 		f32 digitX = 287.0f * scale + (left - i * w);
 #if !defined(VERSION_JP)
-		digitX = 18.0f * scale + digitX;
-		digitX += centerOffset;
+		digitX = (extraW / 2.0f) * scale + (18.0f * scale + digitX);
 #endif
 		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, digitX, digitY, 0, w, h, 0, 0, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -10760,7 +10762,7 @@ static inline f32 DrawPCPurchasePrice(CTexObj& tex, const MenuPCItem& row, f32 o
 static inline void DrawPCPurchaseLabels(s32 question, s32 yes, s32 no, f32 left, f32 top, f32 size, f32 scale, f32 margin, f32 offset,
                                         f32 rowY, f32 extraW, u32 white)
 {
-	f32 textX = PCRecycleTextX(left, size, scale, margin, offset) + (extraW * 0.5f) * scale;
+	f32 textX = (extraW / 2.0f) * scale + PCRecycleTextX(left, size, scale, margin, offset);
 	DrawPCRecycleLabel(question, textX, offset, 40.0f * scale, (top + rowY) - 4.0f * scale, size, white);
 	DrawPCRecycleLabel(yes, textX, offset, 40.0f * scale, rowY + (top + size), size, white);
 	DrawPCRecycleLabel(no, textX, offset, 40.0f * scale, rowY + (2.0f * size + top), size, white);
@@ -10789,11 +10791,10 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	f32 extraW = IsJapanese() ? 0 : 8;
 
 	f32 width = (246.0f + extraW) * scale, height = (153.0f + extraH) * scale;
-	f32 left              = (x - width / 2.0f) - 34.0f * scale;
-	f32 top               = ((y - extraH * 0.5f) - height / 2.0f) - 13.0f * scale;
-	const MenuPCItem& row = gShopCatalogPage.mRows[selected];
-	s16 id                = row.mItem;
-	f32 opacity           = 255.0f * alpha;
+	f32 left    = (x - width / 2.0f) - 34.0f * scale;
+	f32 top     = ((y - extraH / 2.0f) - height / 2.0f) - 13.0f * scale;
+	s16 id      = gShopCatalogPage.mRows[selected].mItem;
+	f32 opacity = 255.0f * alpha;
 	u32 color = (u32)opacity, white = color | 0xFFFFFF00;
 	DrawTexturedWindowFrame(color, white, x, top + 13.0f * scale, width, height, alpha, 1, 1);
 	top += scale;
@@ -10808,8 +10809,8 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	if (choice == 2) {
 		DrawPCPurchaseResult(text, bought, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, white);
 	} else {
-		f32 cx       = (extraW * 0.5f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset);
-		f32 cy       = (rowY + ((size * 0.5f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
 		DrawPCChoiceStripe(cx + 2.0f * scale, cy + 2.0f * scale, barWidth, barHeight - 4.0f * scale, alpha, scroll);
@@ -10822,20 +10823,23 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	sprintf(text, "%s", GetUtilibotName(id));
 	DrawPCShopCenteredText(text, color | 0xFFAA0000, x, (rowY + (4.0f * size + top)) - 3.0f * scale, 2.0f * scale + size);
 	if (choice != 2) {
-		f32 digitY = DrawPCPurchasePrice<PriceList>(tex, row, opacity, left, top, scale, extraW, extraH);
+		f32 digitY = DrawPCPurchasePrice<PriceList>(tex, gShopCatalogPage, selected, opacity, left, top, scale, extraW, extraH);
 #if defined(VERSION_JP)
 		DrawPCPriceUnit<PriceList>(tex, scale, left, digitY, white);
 #endif
-
-		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, margin, offset, rowY, extraW, white);
 	}
+	if (choice != 2)
+		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, margin, offset, rowY, extraW, white);
+	f32 iconX = 52.0f * scale + left, iconY = 48.0f * scale + top;
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	s32 icon = 238;
+	s32 icon;
 	if (id && (gEventFlags.mFlags[335 / 32] & (1u << (335 % 32))))
 		icon = 239;
+	else
+		icon = 238;
 	tex   = InitPCPanelTexture(icon);
 	u16 w = tex.GetWidth(), h = tex.GetHeight();
-	DrawOverviewTexture(tex, white, 52.0f * scale + left, 48.0f * scale + top, scale * w, scale * h);
+	DrawOverviewTexture(tex, white, iconX, iconY, scale * w, scale * h);
 }
 
 extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, f32 scroll, f32 alpha, f32 scale)
@@ -10868,16 +10872,15 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	if (choice == 2) {
 		DrawPCPurchaseResult(text, bought, x, 4.0f * scale + (rowY + (5.0f * size + top)), size, white);
 	} else {
-		f32 cx       = (extraW * 0.5f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset);
-		f32 cy       = (rowY + ((size * 0.5f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
+		f32 cx       = (extraW / 2.0f) * scale + PCRecycleChoiceX(left, size, scale, margin, offset, 1.0f);
+		f32 cy       = (rowY + ((size / 2.0f + (size * (choice + 2) + top)) - 2.0f * scale)) - size;
 		f32 barWidth = 0.9f * (4.0f * size), barHeight = size + scale;
 		DrawPCChoiceCaps(tex, cx, cy + 2.0f * scale, barWidth, barHeight, scale, alpha);
 		DrawPCChoiceStripe(cx + 2.0f * scale, cy + 2.0f * scale, barWidth, barHeight - 4.0f * scale, alpha, scroll);
 	}
-	const MenuPCItem& row = gShopHistoryPage.mRows[selected];
 	if (id < 0)
 		return;
-	if (row.mIsAttachment) {
+	if (gShopHistoryPage.mRows[selected].mIsAttachment) {
 		sprintf(text, "%s", GetAttachmentDescription(id));
 		if (choice != 2)
 			DrawPCShopCenteredText(text, white, x, (4.0f * scale + (rowY + (5.0f * size + top))) - 3.0f * scale, size);
@@ -10890,16 +10893,16 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	}
 	DrawPCShopCenteredText(text, color | 0xFFAA0000, x, (rowY + (4.0f * size + top)) - 3.0f * scale, 2.0f * scale + size);
 	if (choice != 2) {
-		f32 digitY = DrawPCPurchasePrice<ItemPriceList>(tex, row, opacity, left, top, scale, extraW, extraH);
+		f32 digitY = DrawPCPurchasePrice<ItemPriceList>(tex, gShopHistoryPage, selected, opacity, left, top, scale, extraW, extraH);
 #if defined(VERSION_JP)
 		DrawPCPriceUnit<ItemPriceList>(tex, scale, left, digitY, white);
 #endif
-
-		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, margin, offset, rowY, extraW, white);
 	}
+	if (choice != 2)
+		DrawPCPurchaseLabels(question, yes, no, left, top, size, scale, margin, offset, rowY, extraW, white);
 	s32 icon;
 	f32 w, h;
-	if (row.mIsAttachment) {
+	if (gShopHistoryPage.mRows[selected].mIsAttachment) {
 		icon = (id == 2 ? 92 : 93) - StatusTextureOffset;
 		tex  = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
 		w    = 0.8f * (scale * tex.GetWidth());
@@ -10910,10 +10913,10 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 		w    = scale * tex.GetWidth();
 		h    = scale * tex.GetHeight();
 	}
-	if (icon < 0)
-		return;
-	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	DrawOverviewTexture(tex, white, 52.0f * scale + left, 48.0f * scale + top, w, h);
+	if (icon >= 0) {
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		DrawOverviewTexture(tex, white, 52.0f * scale + left, 48.0f * scale + top, w, h);
+	}
 }
 
 extern "C" u8* GetPCRankingName(s32 index);
