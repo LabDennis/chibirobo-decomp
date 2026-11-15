@@ -12,10 +12,10 @@ static inline void FlushCaptureGraphics(CGs* graphics)
 {
 	if (graphics->mCurRenderState)
 		graphics->mCurRenderState->Apply();
-	if (graphics->mCurTevStage)
-		graphics->mCurTevStage->Apply();
-	if (graphics->mCurChannel)
-		graphics->mCurChannel->Apply();
+	if (gGame.mGs.mCurTevStage)
+		gGame.mGs.mCurTevStage->Apply();
+	if (gGame.mGs.mCurChannel)
+		gGame.mGs.mCurChannel->Apply();
 }
 
 static inline CTexObj WindowFrameTexture()
@@ -43,7 +43,9 @@ void FbSubwin::Copy()
 	graphics->mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_TRUE);
 	FlushCaptureGraphics(graphics);
 	WiiFbTexture* texture = (WiiFbTexture*)this;
-	if (texture->mImage) {
+	void* image           = texture->mImage;
+	GXTexFmt format       = texture->mFormat;
+	if (image) {
 		u16 width, height;
 		if (texture->mMipmap) {
 			width  = texture->mWidth * 2;
@@ -53,7 +55,7 @@ void FbSubwin::Copy()
 			height = texture->mHeight;
 		}
 		GXSetTexCopySrc(0, 0, width, height);
-		GXSetTexCopyDst(texture->mWidth, texture->mHeight, texture->mFormat, texture->mMipmap);
+		GXSetTexCopyDst(texture->mWidth, texture->mHeight, format, texture->mMipmap);
 		GXCopyTex(texture->mImage, 1);
 		GXPixModeSync();
 	}
