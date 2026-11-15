@@ -280,12 +280,12 @@ extern "C" void CMsgData_Format(u8* output, u8* input, MsgFormatArgs* args)
 		case MSG_CODE_QUESTION:
 			CopyMessageBytes(dst, src, 3);
 			break;
+		case MSG_CODE_SCALE:
+			CopyMessageBytes(dst, src, 5);
+			break;
 		case MSG_CODE_SHAKE:
 		case MSG_CODE_NUM_INPUT:
 			CopyMessageBytes(dst, src, 4);
-			break;
-		case MSG_CODE_SCALE:
-			CopyMessageBytes(dst, src, 5);
 			break;
 		case MSG_CODE_DEFAULT:
 			CopyMessageBytes(dst, src, 6);
@@ -467,8 +467,8 @@ extern "C" void CMsgFont_Init(CMsgFont* font, u8* data, f32 x, f32 y, WiiTitleOb
 	font->mBits.mBlink   = FALSE;
 	font->mBits.mFitLine = fitLine;
 	font->mBits._04_04   = TRUE;
-	f32 width            = font->mData->mMaxWidth;
 	f32 height           = font->mData->mTotalHeight;
+	f32 width            = font->mData->mMaxWidth;
 #define MSG_INIT_DESCRIPTOR(i) ((i) + 1)
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[MSG_INIT_DESCRIPTOR(138)], 0);
 	font->mFrame.mTex = gGame.mTpl.mTex;
@@ -1688,8 +1688,10 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
 			} else {
 				BOOL done = FALSE;
 				if (command == 253 || command == 252) {
-					// the Wii's X is the remote's minus button
-					if ((gWiiPointer.mTrigger & (1ULL << RemoteMinus)) && !gGame.GetStatusFlags(0x20)) {
+					// NONMATCHING: retail keeps two cmpwi here while MWCC folds the || into a
+					// (command - 252) <= 1 range check; behavior identical. bit 50 of the
+					// trigger word is the GameCube pad's X
+					if ((gWiiPointer.mTrigger & (1ULL << GameCubeX)) && !gGame.GetStatusFlags(0x20)) {
 						done = TRUE;
 						if (command == 253) {
 							SelectPlayerEquipmentRing(gGame.GetPlayer(), 0);
