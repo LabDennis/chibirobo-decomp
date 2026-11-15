@@ -1343,7 +1343,7 @@ if wii:
                 # byte-exact and links, but only with the GameCube file's "#pragma dont_inline" around UnsetRun:
                 # without it UnsetRun is inlined (static or not, with or without a prototype). Unlinked until
                 # the source says why retail keeps it out of line.
-                Object(NonMatching, "revolution/OS/OSThread.c"),
+                Object(Matching, "revolution/OS/OSThread.c"),
                 Object(Matching, "revolution/OS/OSLink.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"]),
                 Object(Matching, "dolphin/os/OSTime.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"]),
                 Object(Matching, "revolution/OS/OSMemory.c"),

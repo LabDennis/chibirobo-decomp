@@ -156,8 +156,9 @@ static void SetRun(OSThread* thread)
 	RunQueueHint = TRUE;
 }
 
-// NONMATCHING: retail keeps UnsetRun out of line while it inlines SetRun and UpdatePriority; plain source
-// inlines all three. The pragma is the GameCube file's and stands in for whatever the SDK source did.
+// Retail keeps UnsetRun a call from its three callers; the library flags expand it. The Wii decomps
+// that have this file matched (pik1wii, pik2wii, ogws, wiiplay, xenoblade, Petari, wii-news-channel) carry
+// this pragma at this spot and wii-ipl an attribute, so it is taken as the SDK's own line.
 #pragma dont_inline on
 /**
  * @note Address: 0x8016A05C
