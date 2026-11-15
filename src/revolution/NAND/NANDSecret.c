@@ -9,6 +9,6 @@ s32 NANDSecretGetUsage(const char* path, s32* blocks, s32* inodes)
 	} else {
 		char absolute[64] = { 0 };
 		nandGenerateAbsPath(absolute, path);
-		return nandConvertErrorCode(ISFS_GetUsage(absolute, blocks, inodes));
+		return nandConvertErrorCode(ISFS_GetUsage((const u8*)absolute, blocks, inodes));
 	}
 }

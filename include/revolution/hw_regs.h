@@ -248,6 +248,9 @@ vu32 __AIRegs[8] AT_ADDRESS(0xCD006C00);
 // Hollywood accessory control registers (REVOLUTION only).
 vu32 __ACRRegs[16] AT_ADDRESS(0xCD000000);
 
+// IPC mailbox registers, the first four words of the same block.
+vu32 __IPCRegs[4] AT_ADDRESS(0xCD000000);
+
 //////////////////////////////////
 
 #ifdef __cplusplus

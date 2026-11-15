@@ -383,6 +383,52 @@ revolution/WPAD/WPADMem.c:
 revolution/WPAD/debug_msg.c:
 	.text start:0x801F3D10 end:0x801F3D60
 
+revolution/EUART/euart.c:
+	.text start:0x801AF9AC end:0x801AFD1C
+	.sbss start:0x805A23E8 end:0x805A23F8
+
+revolution/FS/fs.c:
+	.text start:0x801AFD1C end:0x801B1220
+	.data start:0x803243E8 end:0x80324410
+	.sdata start:0x805A1578 end:0x805A1588
+	.sbss start:0x805A23F8 end:0x805A2410
+
+revolution/IPC/ipcMain.c:
+	.text start:0x801B1220 end:0x801B12EC
+	.sbss start:0x805A2410 end:0x805A2424
+
+revolution/IPC/ipcclt.c:
+	.text start:0x801B12EC end:0x801B2C5C
+	.bss start:0x804E8CA0 end:0x804E8D40
+	.sdata start:0x805A1588 end:0x805A1590
+	.sbss start:0x805A2428 end:0x805A2438
+
+revolution/IPC/memory.c:
+	.text start:0x801B2C5C end:0x801B3180
+	.bss start:0x804E8D40 end:0x804E8DC0
+
+revolution/IPC/ipcProfile.c:
+	.text start:0x801B3180 end:0x801B3344
+	.bss start:0x804E8DC0 end:0x804E8EC0
+	.sbss start:0x805A2438 end:0x805A2440
+
+revolution/NAND/nand.c:
+	.text start:0x801B3344 end:0x801B4064
+
+revolution/NAND/NANDOpenClose.c:
+	.text start:0x801B4064 end:0x801B4C84
+	.data start:0x80324410 end:0x80324440
+	.sdata start:0x805A1590 end:0x805A15A0
+	.sbss start:0x805A2440 end:0x805A2444
+
+revolution/NAND/NANDCore.c:
+	.text start:0x801B4C84 end:0x801B5DD4
+	.rodata start:0x802DDF70 end:0x802DE0B8
+	.data start:0x80324440 end:0x80324590
+	.bss start:0x804E8EC0 end:0x804E8F00
+	.sdata start:0x805A15A0 end:0x805A15C8
+	.sbss start:0x805A2448 end:0x805A244C
+
 revolution/NAND/NANDSecret.c:
 	.text start:0x801B5DD4 end:0x801B5E8C
 
@@ -390,6 +436,13 @@ revolution/NAND/NANDCheck.c:
 	.text start:0x801B5E8C end:0x801B616C
 	.data start:0x80324590 end:0x80324640
 	.sdata start:0x805A15C8 end:0x805A15D8
+
+revolution/NAND/NANDLogging.c:
+	.text start:0x801B616C end:0x801B673C
+	.data start:0x80324640 end:0x80324688
+	.bss start:0x804E8F00 end:0x804E9200
+	.sdata start:0x805A15D8 end:0x805A15DC
+	.sbss start:0x805A2450 end:0x805A2458
 
 rvl_msl/mem.c:
 	.text start:0x8022A010 end:0x8022A180

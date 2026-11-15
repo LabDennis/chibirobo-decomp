@@ -1400,6 +1400,16 @@ if wii:
                 Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
                 Object(Matching, "revolution/WPAD/WPADMem.c"),
                 Object(Matching, "revolution/WPAD/debug_msg.c"),
+                Object(Matching, "revolution/EUART/euart.c"),
+                Object(Matching, "revolution/FS/fs.c"),
+                Object(Matching, "revolution/IPC/ipcMain.c"),
+                Object(Matching, "revolution/IPC/ipcclt.c"),
+                Object(Matching, "revolution/IPC/memory.c"),
+                Object(Matching, "revolution/IPC/ipcProfile.c"),
+                Object(NonMatching, "revolution/NAND/nand.c"),
+                Object(Matching, "revolution/NAND/NANDOpenClose.c"),
+                Object(NonMatching, "revolution/NAND/NANDCore.c"),
+                Object(Matching, "revolution/NAND/NANDLogging.c"),
                 # GX, the Wii's own sources (src/dolphin/gx is the GameCube template). Compiler and flags are
                 # the library's: with them GXBump.c matched 5 of 5 named functions at once (1 of 7 as the
                 # GameCube file under GC/1.2.5n) and GX as a whole went from 11 to 130 of 191 before any

@@ -26,7 +26,7 @@ static s32 nandCalcUsage(s32* blockCountOut, s32* fileCountOut, const char** dir
 		s32 blockCount = 0;
 		s32 fileCount  = 0;
 
-		result = ISFS_GetUsage(*dirList, &blockCount, &fileCount);
+		result = ISFS_GetUsage((const u8*)*dirList, &blockCount, &fileCount);
 		if (result == IPC_RESULT_OK) {
 			*blockCountOut += blockCount;
 			*fileCountOut += fileCount;
@@ -81,7 +81,7 @@ s32 NANDCheck(u32 neededBlocks, u32 neededFiles, u32* answer)
 		return NAND_RESULT_FATAL_ERROR;
 	}
 
-	result = ISFS_GetUsage(nandGetHomeDir(), &homeDirBlocks, &homeDirFiles);
+	result = ISFS_GetUsage((const u8*)nandGetHomeDir(), &homeDirBlocks, &homeDirFiles);
 	if (result != IPC_RESULT_OK) {
 		return nandConvertErrorCode(result);
 	}
@@ -108,7 +108,7 @@ s32 fn_801B6050(u32* freeBlocks, u32* freeFiles)
 	s32 userFiles  = -1;
 	s32 homeBlocks = -1;
 	s32 homeFiles  = -1;
-	s32 result     = ISFS_GetUsage(nandGetHomeDir(), &homeBlocks, &homeFiles);
+	s32 result     = ISFS_GetUsage((const u8*)nandGetHomeDir(), &homeBlocks, &homeFiles);
 	if (result != IPC_RESULT_OK)
 		return nandConvertErrorCode(result);
 
