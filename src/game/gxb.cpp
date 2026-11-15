@@ -2802,10 +2802,7 @@ extern "C" void DrawTitleScreen(Title* title)
 #else
 	enum { dustTexture = 2, footerTexture = 1 };
 #endif
-	bool active = false;
-	if (title->mState >= 1 && title->mState < 23)
-		active = true;
-	if (!active)
+	if (!title->IsActive())
 		return;
 	gGame.mGs.mCamera = ((CBase*)&gGame)->GetScreenCamera();
 	if (BeginGsCamera(&gGame)) {
@@ -4166,8 +4163,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 				}
 			}
 		}
-		bool running = title->mState >= 1 && title->mState < 23;
-		if (!running)
+		if (!title->IsActive())
 			return;
 		if (gGame.mMemcard.mCard.mBusy)
 			return;

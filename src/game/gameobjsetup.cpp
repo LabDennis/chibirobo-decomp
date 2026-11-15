@@ -181,7 +181,7 @@ static inline BOOL PreloadStageArchives(ARPreCache* cache)
 		XObjSource* src = GetObjectSources();
 		const u8* pair  = (const u8*)cache->mFile0.mBuffer;
 		if (pair) {
-			for (s32 id = 0;; ++id, ++src) { // offset/size pairs end at 0xffffffff
+			for (s32 id = 0;; ++src, ++id) { // offset/size pairs end at 0xffffffff
 				if (*(const u32*)pair == 0xffffffff || src->mCache.address == 0xffffffff)
 					break;
 				if (src->mCache.size != 1)
@@ -193,12 +193,7 @@ static inline BOOL PreloadStageArchives(ARPreCache* cache)
 				src->mCache.size    = size;
 				u32 padded          = (size + 31) & ~31u; // aram blocks align to 32
 
-				gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].address  = gARAMCacheInfo.mBaseAddress;
-				gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].size     = padded;
-				gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].objectId = id;
-				gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].name     = src->mName;
-				++gARAMCacheInfo.mCount;
-				gARAMCacheInfo.mBaseAddress += padded;
+				gARAMCacheInfo.Add(padded, id, src->mName);
 				pair += 8;
 			}
 		}
@@ -231,10 +226,12 @@ static inline BOOL LoadStartingAttachments(CGame* game)
 	return FALSE;
 }
 
-// the stage's flag 2 is looked at and nothing is done with it
+// the stage's flag 2 makes no difference to the answer
 static inline BOOL CheckStageStartFlag()
 {
-	if (CheckStageFlag(gGame.mStage, 2)) { }
+	if (CheckStageFlag(gGame.mStage, 2)) {
+		return TRUE;
+	}
 	return TRUE;
 }
 
@@ -255,6 +252,7 @@ static inline bool FadeStopped(const CScrnColor& fade)
 	return 0.0f == fade.mSpeed.r && 0.0f == fade.mSpeed.g && 0.0f == fade.mSpeed.b && 0.0f == fade.mSpeed.a;
 }
 
+// NONMATCHING: registers in the precache loop and the clock sum, and retail narrows the answer to a byte
 bool CGame::BeforeUpdate()
 {
 	// Ready stages fall through. Pending reads resume at the same stage next frame.
@@ -410,5 +408,5 @@ bool CGame::BeforeUpdate()
 		++mLoadStep;
 	}
 	}
-	return !IsLoading();
+	return IsLoading() == false;
 }
