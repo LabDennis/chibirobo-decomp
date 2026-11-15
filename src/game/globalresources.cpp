@@ -743,3 +743,9 @@ extern "C" s32 GetItemIconTextureIndex(s32 index)
 	return gItemIconTextureIndices[index];
 }
 #endif
+#if defined(VERSION_R24J01)
+// the Wii build puts these globals here: their ctors/dtors and __sinit link right
+// after this file's code; the GameCube build declares them in stage_data.cpp
+Stage gStageResources;
+Globals gGlobalScriptResources;
+#endif

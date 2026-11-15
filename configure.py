@@ -1194,7 +1194,12 @@ if wii:
                 # so (its twelve functions fall to about 80 % under GC/3.0a5 with -ipa file).
                 Object(Equivalent, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(Equivalent, "game/globalresources.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                # the generated tail (0x800942E8-0x8009453C) is the same compiler as the
+                # stage_data group: only GC/3.0a* emits __register_global_object for the
+                # two globals, Wii/1.3 leaves the calls out. No -ipa file: it flips the
+                # string-base register in LoadGlobalResourceData away from retail's r7
+                Object(Equivalent, "game/globalresources.cpp", mw_version="GC/3.0a5",
+                       extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/roboeyeslens.cpp"),
                 # the THP player sits apart from the game's files (0x802C27B4 on) and takes the compiler
                 # without -ipa file: with it MixAudio falls to 99.88 %
