@@ -931,6 +931,92 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
 }
 
 /**
+ * @note Address: 0x800A7A68
+ * @note Size: 0x44C
+ */
+extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
+{
+	s32 sfx = ReadMsgU8(msg);
+	sfx |= ReadMsgU8(msg) << 8;
+	sfx |= ReadMsgU8(msg) << 16;
+	sfx |= ReadMsgU8(msg) << 24;
+	s8 command = ReadMsgU8(msg);
+	switch (command) {
+	case 0:
+		if (sfx == -2) {
+			// stop every playing track at once (0 seconds of fade)
+			// retail computes the frame count at runtime (sdata2 0.0f multiply
+			// is not folded there); the value is 0 either way
+			u32 frames = gRefreshRate * 0.0f;
+			for (int i = 0; i < 0x40; ++i) {
+				void* track = gGame.mSound.mTracks[i].mTrack;
+				if (track != NULL)
+					StopWiiSfxTrack(track, frames);
+			}
+		} else {
+			StopWiiSfx(&gGame.mSound, sfx, 0.0f);
+		}
+		break;
+	case 1:
+		PlayWiiSoundEffect(&gGame.mSound, sfx, 1.0f, 0.0f);
+		break;
+	case 2: {
+		u16 frames = ReadMsgS16(msg);
+		StopWiiSfx(&gGame.mSound, sfx, frames / 100.0f);
+		break;
+	}
+	case 3: {
+		u16 frames = ReadMsgS16(msg);
+		PlayWiiSoundEffect(&gGame.mSound, sfx, 1.0f, frames / 100.0f);
+		break;
+	}
+	case 4: {
+		u16 frames = ReadMsgS16(msg);
+		u8 volume  = ReadMsgU8(msg);
+		if (!IsWiiSfxPlaying(&gGame.mSound, sfx)) {
+			PlayWiiSoundEffect(&gGame.mSound, sfx, volume / 255.0f, frames / 100.0f);
+		} else {
+			SetWiiSfxVolume(&gGame.mSound, sfx, volume / 255.0f, frames / 100.0f);
+		}
+		break;
+	}
+	case 5:
+		if (sfx == -2) {
+			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
+			for (int i = 0; i < 0x40; ++i) {
+				void* track = gGame.mSound.mTracks[i].mTrack;
+				if (track != NULL && !IsWiiSfxTrackPaused(track))
+					SetWiiSfxTrackPaused(track, 1, frames);
+			}
+		} else {
+			PauseWiiSfx(&gGame.mSound, sfx, 0.0f);
+		}
+		break;
+	case 6:
+		if (sfx == -2) {
+			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
+			for (int i = 0; i < 0x40; ++i) {
+				void* track = gGame.mSound.mTracks[i].mTrack;
+				if (track != NULL && IsWiiSfxTrackPaused(track))
+					SetWiiSfxTrackPaused(track, 0, frames);
+			}
+		} else {
+			ResumeWiiSfx(&gGame.mSound, sfx, 0.0f);
+		}
+		break;
+	case MSG_SFX_WAIT:
+		if (IsWiiSfxPlaying(&gGame.mSound, sfx)) {
+			// the Wii script is wider than the GameCube's: code, u32 id and
+			// type are 6 bytes, so 6 lands back on the command
+			msg->mData.mCursor -= 6;
+			return 1;
+		}
+		break;
+	}
+	return 0;
+}
+
+/**
  * @note Address: 0x800A7ED4
  * @note Size: 0x290
  */
