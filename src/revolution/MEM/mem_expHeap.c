@@ -1,6 +1,9 @@
 #include "revolution/mem_exp_heap.h"
 #include "mem_heap_internal.h"
 
+// MSL's <stdlib.h> gives abs() as the compiler's own; the game's headers have no such line
+#define abs(n) __abs(n)
+
 #define MEM_EXP_HEAP_MAGIC       0x45585048U /* EXPH */
 #define MEM_EXP_HEAP_MBLOCK_FREE 0x4652      /* FR */
 #define MEM_EXP_HEAP_MBLOCK_USED 0x5544      /* UD */
@@ -352,7 +355,7 @@ u32 MEMGetAllocatableSizeForExpHeapEx(MEMiHeapHead* heap, s32 align)
 	u32 biggestSize;
 
 	// the intrinsic, as in ogws: the arithmetic form computes into r4 and moves, retail computes into r31
-	align = __abs(align);
+	align = abs(align);
 	exp   = GetExpHeapHeadPtrFromHeapHead_(heap);
 
 	LockHeap(heap);

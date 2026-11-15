@@ -18,7 +18,7 @@ static u32 Type[SI_MAX_CHAN];
 static PADStatus Origin[SI_MAX_CHAN];
 static u32 CmdProbeDevice[SI_MAX_CHAN];
 static PADStatus LastStatus[SI_MAX_CHAN];
-extern void fn_8019B6CC(void);
+extern BOOL __VIResetSIIdle(void);
 
 static s32 ResettingChan                           = 32;
 static u32 XPatchBits                              = PAD_CHAN0_BIT | PAD_CHAN1_BIT | PAD_CHAN2_BIT | PAD_CHAN3_BIT;
@@ -507,7 +507,7 @@ u32 PADRead(PADStatus* status)
 			    abs(abs(status->triggerLeft) - abs(LastStatus[chan].triggerLeft)) >= threshold ||
 			    abs(abs(status->triggerRight) - abs(LastStatus[chan].triggerRight)) >= threshold ||
 			    status->button != LastStatus[chan].button) {
-				fn_8019B6CC();
+				__VIResetSIIdle();
 			}
 			memcpy(&LastStatus[chan], status, sizeof(PADStatus));
 		}

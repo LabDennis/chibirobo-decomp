@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+// MSL's <stdlib.h> gives abs() as the compiler's own; the game's headers have no such line
+#define abs(n) __abs(n)
+
 s32 WENCGetEncodeData(WENCInfo* info, u32 flag, const s16* pcmData, s32 samples, u8* adpcmData)
 {
 	const f64 table[] = { 0.89843750, 0.89843750, 0.89843750, 0.89843750, 1.19921875, 1.59765625, 2.00000000, 2.39843750 };
@@ -59,7 +62,7 @@ s32 WENCGetEncodeData(WENCInfo* info, u32 flag, const s16* pcmData, s32 samples,
 		}
 
 		// the Revolution MSL's abs is the compiler intrinsic (as in pik1wii, pik2wii and ogws)
-		dn = __abs(da - xn);
+		dn = abs(da - xn);
 		if (dn >= dl) {
 			l2 = 1;
 			dn -= dl;
