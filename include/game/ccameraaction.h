@@ -494,7 +494,10 @@ public:
 	CStatus mPreviousStatus;                             // _11E0, printed as CAMSTATPRE
 	BOOL mKeepPreviousEye;                               // _11E8
 
-	CCameraActionMap();                      // in the dol, 0x8001A45C
+	CCameraActionMap(); // in the dol, 0x8001A45C
+	// names from the symbols and from the __FUNCTION__ strings their panics pass
+	s32 CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
+	void Reset2();
 	virtual ~CCameraActionMap();             // in the dol, 0x80009F20
 	virtual void PreviousUpdate();           // _0C
 	virtual void Update(u32 step);           // _10
