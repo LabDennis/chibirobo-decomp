@@ -57,7 +57,11 @@ static void uusb_CloseDeviceCB(long result, void *p_data);
 static void uusb_ReadIntrDataCB(long result, void *p_data);
 static void uusb_ReadBulkDataCB(long result, void *p_data);
 static void uusb_issue_bulk_read(void);
-static void uusb_issue_intr_read(void);
+// Retail keeps this function out of line and calls it from uusb_ReadIntrDataCB and UUSB_Open, while
+// uusb_issue_bulk_read is expanded at both of its call sites. Petari and wii-ipl, which both match this file,
+// carry the same attribute here. Without it the compiler expands both; tried: no -ipa file (then the forward
+// calls in uusb_CloseDeviceCB and uusb_ReadBulkDataCB stay calls too), GC/3.0a3 and 3.0a5, external linkage.
+static void uusb_issue_intr_read(void) __attribute__((never_inline));
 static void uusb_WriteCtrlDataCB(long result, void *p_data);
 static void uusb_WriteBulkDataCB(long result, void *p_data);
 static long uusb_get_devId(int vid, int pid);
@@ -315,10 +319,6 @@ static void uusb_issue_bulk_read(void)
 	}
 }
 
-// NONMATCHING: retail keeps this function out of line and calls it from uusb_ReadIntrDataCB and UUSB_Open,
-// while uusb_issue_bulk_read is expanded at both of its call sites. The compiler expands both. Tried: without
-// -ipa file (then the forward calls in uusb_CloseDeviceCB and uusb_ReadBulkDataCB stay calls as well),
-// GC/3.0a3 and 3.0a5, and external linkage. The references match it only with a noinline attribute.
 static void uusb_issue_intr_read(void)
 {
 	HC_BT_HDR *p_buf = NULL;

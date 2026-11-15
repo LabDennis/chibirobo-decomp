@@ -1321,7 +1321,7 @@ if wii:
                 Object(Matching, "revolution/BTE/gki_time.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/BTE/gki_ppc.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/BTE/hcisu_h2.c", mw_version="GC/3.0a5.2"),
-                Object(NonMatching, "revolution/BTE/uusb_ppc.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/uusb_ppc.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/BTE/bta_dm_cfg.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/BTE/bta_hh_cfg.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/BTE/bta_sys_cfg.c", mw_version="GC/3.0a5.2"),
