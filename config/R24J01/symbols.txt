@@ -1,8 +1,8 @@
 InitWiiHomeMenu = .text:0x800AAEC0; // type:function size:0xB0
 __dl__FPv = .text:0x80019A68; // type:function size:0x4C
-__ct__12CWiiFontFileFv = .text:0x80235A50; // type:function
-__dt__12CWiiFontFileFv = .text:0x80235A8C; // type:function
-LoadFontData__12CWiiFontFileFPCv = .text:0x80235AE4; // type:function
+__ct__Q34nw4r2ut7ResFontFv = .text:0x80235A50; // type:function
+__dt__Q34nw4r2ut7ResFontFv = .text:0x80235A8C; // type:function
+SetResource__Q34nw4r2ut7ResFontFPv = .text:0x80235AE4; // type:function
 Init__5CFontFPCci = .text:0x802B3B78; // type:function
 SetupFontHeader__5CFontFv = .text:0x802B3C0C; // type:function
 LoadFontResource__Fv = .text:0x802B3CD4; // type:function

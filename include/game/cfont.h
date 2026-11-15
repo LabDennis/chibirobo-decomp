@@ -71,61 +71,17 @@ CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width);
 #if defined(VERSION_R24J01)
 #include "game/cfile.h"
 #include "Dolphin/OS/OSFont.h"
-
-// the cmap lookup returns the glyph index and a flag byte packed into
-// a three byte result; it travels in r3 like retail's return value did
-struct SGlyphIndex {
-	u16 glyph; // _00
-	u8 flags;  // _02
-};
+#include <nw4r/ut/ut_ResFont.h>
 
 // the Wii font system loads an RFNU/RFNT font file through a resource
-// instead of only using the console font. the parser lives in its own
-// translation unit (the RFNU chunk walker at 0x80235268); only the slots
-// this file calls are named, the rest of the interface stays in
-// declaration order so the vtable offsets line up with retail
-// (vtable 0x80332878, base 0x803327B0).
-class CWiiFontFile {
-public:
-	CWiiFontFile();
-	virtual ~CWiiFontFile();
-	virtual void Unk01();
-	virtual void Unk02();
-	virtual void Unk03();
-	virtual void Unk04();
-	virtual void Unk05();
-	virtual u8 Unk06();                                // _20, nested chunk byte 1
-	virtual u8 Unk07();                                // _24, nested chunk byte 0
-	virtual void Unk08();                              // _28
-	virtual void Unk09();                              // _2C
-	virtual void Unk0A();                              // _30
-	virtual void Unk0B();                              // _34
-	virtual void Unk0C();                              // _38
-	virtual void Unk0D();                              // _3C
-	virtual void Unk0E();                              // _40
-	virtual void Unk0F();                              // _44
-	virtual void Unk10();                              // _48
-	virtual SGlyphIndex GetGlyphIndex(u16 code);       // _4C
-	virtual void GetGlyphMetrics(void* out, u16 code); // _50
-	virtual void Unk13();                              // _54
-	virtual void Unk14();                              // _58
-
-	// parse a loaded RFNU/RFNT image (checks the RFNU magic and FINF chunk)
-	void LoadFontData(const void* data);
-
-	u32 mCmapDefaults[3]; // _04, copied from the table at 0x80332810
-	void* mExtra;         // _10
-	void* mChunk;         // _14, current cmap chunk
-	u16 mLastCode;        // _18
-	u16 mLastGlyph;       // _1A
-};
-
-// the loaded font resource: a header block the cache path fills per
-// glyph, the file the font was read from and the RFNU/RFNT parser.
+// instead of only using the console font. the parser is NW4R's ResFont
+// (mangled __ct__12CWiiFontFileFv in retail), living in its own translation
+// unit (the RFNU chunk walker at 0x80235268); its vtable at 0x80332878
+// sits behind the base object tables at 0x803327B0 and 0x8033281C.
 struct SWiiFontResource {
-	OSFontHeader mHeader; // _00, rewritten per glyph in the cache path
-	CFile mFile;          // _30
-	CWiiFontFile mParser; // _11C
+	OSFontHeader mHeader;      // _00, rewritten per glyph in the cache path
+	CFile mFile;               // _30
+	nw4r::ut::ResFont mParser; // _11C
 };
 STATIC_ASSERT(sizeof(SWiiFontResource) == 0x138);
 

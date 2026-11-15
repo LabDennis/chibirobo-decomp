@@ -25,19 +25,6 @@ static struct {
 // through sFontPtr.resource once the file is loaded
 static SWiiFontResource sFontResource;
 
-// the metrics the RFNU/RFNT parser reports for one glyph. names unknown,
-// only the fields the texture setup reads are identified
-struct SGlyphMetrics {
-	void* image; // _00
-	u8 _04[2];
-	s8 advance; // _06
-	u32 format; // _08, the low half reaches the tpl header
-	u16 width;  // _0C
-	u16 height; // _0E
-	u16 x;      // _10
-	u16 y;      // _12
-};
-
 void SetupFontImage(CFont* font, const void* image, OSFontHeader* header);
 
 /**
@@ -95,7 +82,7 @@ s32 LoadFontResource()
 	SWiiFontResource* res = &sFontResource;
 	s32 ok                = 0;
 	if (res->mFile.ReadEx(sFontEnv.resourcePath, 0, 0)) {
-		res->mParser.LoadFontData(res->mFile.mBuffer);
+		res->mParser.SetResource(res->mFile.mBuffer);
 		ok = 1;
 	}
 	if (ok) {
@@ -158,17 +145,17 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, u32 arg3, 
 			code = (code << 8) | (u8)str[1];
 		}
 		SWiiFontResource* res = &sFontResource;
-		SGlyphMetrics glyph;
-		res->mParser.GetGlyphMetrics(&glyph, code);
-		res->mHeader.sheetWidth  = glyph.width;
-		res->mHeader.sheetHeight = glyph.height;
-		res->mHeader.sheetFormat = glyph.format;
-		res->mHeader.cellWidth   = res->mParser.Unk07();
-		res->mHeader.cellHeight  = res->mParser.Unk06();
-		SetupFontImage(font, glyph.image, &res->mHeader);
+		nw4r::ut::Glyph glyph;
+		res->mParser.GetGlyph(&glyph, code);
+		res->mHeader.sheetWidth  = glyph.sheetWidth;
+		res->mHeader.sheetHeight = glyph.sheetHeight;
+		res->mHeader.sheetFormat = glyph.sheetFormat;
+		res->mHeader.cellWidth   = res->mParser.GetCellWidth();
+		res->mHeader.cellHeight  = res->mParser.GetCellHeight();
+		SetupFontImage(font, glyph.pTexture, &res->mHeader);
 		y       = glyph.y;
 		x       = glyph.x;
-		advance = (s32)((f32)glyph.advance * (24.0f / res->mHeader.cellWidth));
+		advance = (s32)((f32)glyph.widths.charWidth * (24.0f / res->mHeader.cellWidth));
 	} else if (sFontEnv.useSingleByteFont != FALSE) {
 		image = (void*)gSingleByteFontAtlas;
 		SetupFontImage(font, image, sFontPtr.header);
@@ -202,8 +189,8 @@ extern "C" s8 HasFontGlyph(const char* str)
 		if ((code >= 0x81 && code <= 0x9F) || (code >= 0xE0 && code <= 0xFC)) {
 			code = (code << 8) | (u8)str[1];
 		}
-		SGlyphIndex idx = sFontResource.mParser.GetGlyphIndex(code);
-		return (s8)(idx.glyph >> 8);
+		nw4r::ut::CharWidths widths = sFontResource.mParser.GetCharWidths(code);
+		return widths.left;
 	}
 	return 0;
 }
