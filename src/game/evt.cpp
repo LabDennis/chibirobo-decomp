@@ -14327,6 +14327,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	s32 op = *evt->mData.mScript;
 	evt->mData.mScript++;
 	s32 result;
+	Vec pos;
 	switch (op) {
 	case EVT_EXPR_EQUAL:
 	case EVT_EXPR_NOT_EQUAL:
@@ -14342,35 +14343,36 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_AND:
 	case EVT_EXPR_OR:
 	case EVT_EXPR_XOR: {
-		s32 rhs = CEvt_Evaluate(evt);
-		s32 lhs = CEvt_Evaluate(evt);
-		if ((u8)op == EVT_EXPR_EQUAL)
+		s32 rhs   = CEvt_Evaluate(evt);
+		s32 lhs   = CEvt_Evaluate(evt);
+		u8 binary = op;
+		if (binary == EVT_EXPR_EQUAL)
 			result = lhs == rhs;
-		if ((u8)op == EVT_EXPR_NOT_EQUAL)
+		if (binary == EVT_EXPR_NOT_EQUAL)
 			result = lhs != rhs;
-		if ((u8)op == EVT_EXPR_LESS)
+		if (binary == EVT_EXPR_LESS)
 			result = lhs < rhs;
-		if ((u8)op == EVT_EXPR_LESS_EQUAL)
+		if (binary == EVT_EXPR_LESS_EQUAL)
 			result = lhs <= rhs;
-		if ((u8)op == EVT_EXPR_GREATER)
+		if (binary == EVT_EXPR_GREATER)
 			result = lhs > rhs;
-		if ((u8)op == EVT_EXPR_GREATER_EQUAL)
+		if (binary == EVT_EXPR_GREATER_EQUAL)
 			result = lhs >= rhs;
-		if ((u8)op == EVT_EXPR_ADD)
+		if (binary == EVT_EXPR_ADD)
 			result = lhs + rhs;
-		if ((u8)op == EVT_EXPR_SUB)
+		if (binary == EVT_EXPR_SUB)
 			result = lhs - rhs;
-		if ((u8)op == EVT_EXPR_MUL)
+		if (binary == EVT_EXPR_MUL)
 			result = lhs * rhs;
-		if ((u8)op == EVT_EXPR_DIV)
+		if (binary == EVT_EXPR_DIV)
 			result = lhs / rhs;
-		if ((u8)op == EVT_EXPR_MOD)
+		if (binary == EVT_EXPR_MOD)
 			result = lhs % rhs;
-		if ((u8)op == EVT_EXPR_AND)
+		if (binary == EVT_EXPR_AND)
 			result = lhs & rhs;
-		if ((u8)op == EVT_EXPR_OR)
+		if (binary == EVT_EXPR_OR)
 			result = lhs | rhs;
-		if ((u8)op == EVT_EXPR_XOR)
+		if (binary == EVT_EXPR_XOR)
 			result = lhs ^ rhs;
 		break;
 	}
@@ -14381,10 +14383,12 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		result = (s16)EvtRead16(evt->mData.mScript);
 		evt->mData.mScript += 2;
 		break;
-	case EVT_EXPR_IMM32:
-		result = ReadResourceOffset(evt->mData.mScript);
+	case EVT_EXPR_IMM32: {
+		s32 value = ReadResourceOffset(evt->mData.mScript);
 		evt->mData.mScript += 4;
+		result = value;
 		break;
+	}
 	case EVT_EXPR_ADDRESS_OF: {
 		s32 offset = ReadResourceOffset(evt->mData.mScript);
 		evt->mData.mScript += 4;
@@ -14404,13 +14408,17 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_PARENT_STACK: {
 		s32 index = *evt->mData.mScript;
 		evt->mData.mScript++;
-		result = evt->mValues.mBuf[index + evt->mFrames.mBuf[evt->mFrames.mCount - 2]];
+		s32 frame = evt->mFrames.mCount - 2;
+		result    = evt->mValues.mBuf[index + evt->mFrames.mBuf[frame]];
 		break;
 	}
 	case EVT_EXPR_FLAG:
 		result = CEvt_Evaluate(evt);
 		if (result >= 0 && result < 4096) {
-			result = (gEventFlags.mFlags[(u32)result >> 5] & (1U << (result & 31))) ? 1 : 0;
+			if (gEventFlags.mFlags[(u32)result >> 5] & (1U << (result & 31)))
+				result = 1;
+			else
+				result = 0;
 		} else if (result == -1)
 			result = 0;
 		else if (result == -2)
@@ -14549,7 +14557,8 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_MAP:
 		result = CEvt_Evaluate(evt);
 		if (result >= 0 && result <= 1) {
-			s32 stage = result == 0 ? gGame.mStage : gGame.mPrevStage;
+			// 0 the stage, 1 the one before it: the two fields are read as an array
+			s32 stage = (&gGame.mStage)[result];
 			result    = stage;
 			if (stage > GetStageNum())
 				result = stage - GetStageNum() + 99;
@@ -14636,14 +14645,16 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		case 249:
 		case 250: {
 			u8* data  = (u8*)CEvt_Evaluate(evt);
-			XObj* obj = CEvt_GetObj(evt, (s16)EvtRead16(data));
+			s32 id    = (s16)EvtRead16(data);
+			XObj* obj = CEvt_GetObj(evt, id);
 			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 				s32 depth = (s16)EvtRead16(data + 2);
 				data += 4;
 				s32 path[20];
-				Vec pos;
-				for (s32 i = 0; i < depth; i++, data += 2)
+				for (s32 i = 0; i < depth; i++) {
 					path[i] = (s16)EvtRead16(data);
+					data += 2;
+				}
 				switch (result) {
 				case EVT_ATOM_BONEX:
 					result = 100.0f * GetEventJointWorldPosition((CJObj*)obj, depth, path).x;
