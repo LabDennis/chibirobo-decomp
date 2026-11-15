@@ -236,6 +236,12 @@ game/wii/menu.cpp:
 	.text start:0x8004F8F8 end:0x800870E8
 	.sdata2 start:0x805A2F70 end:0x805A3350
 
+game/wii/infoscrn.cpp:
+	.text start:0x800870E8 end:0x80092244
+	.rodata start:0x802C6AB8 end:0x802C6CFC
+	.sdata start:0x805A0EA8 end:0x805A0EC4
+	.sdata2 start:0x805A3350 end:0x805A34A8
+
 game/wii/homemenu.cpp:
 	extab start:0x8000A6D0 end:0x8000A708
 	extabindex start:0x80013454 end:0x80013490

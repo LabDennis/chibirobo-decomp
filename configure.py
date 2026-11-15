@@ -1225,6 +1225,9 @@ if wii:
                 Object(Matching, "game/wii/homemenu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/title.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/menu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the hud unit 0x800870E8-0x80092244, ported from the GameCube's infoscrn.cpp:
+                # GetStatusFlags replaces mStatus.mFlags reads, the timer runs off gRefreshRate
+                Object(NonMatching, "game/wii/infoscrn.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # no auto-inlining of the small file functions: under -inline auto the
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
                 # retail keeps them as calls
