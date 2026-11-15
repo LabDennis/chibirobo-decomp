@@ -1340,7 +1340,7 @@ if wii:
                 Object(Matching, "dolphin/os/OSTime.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"]),
                 Object(Matching, "revolution/BASE/PPCArch.c"),
                 Object(Matching, "revolution/DB/db.c"),
-                Object(Equivalent, "revolution/MTX/mtx.c"),
+                Object(Matching, "revolution/MTX/mtx.c"),
                 Object(Matching, "revolution/MTX/mtx44.c"),
                 Object(Matching, "dolphin/mtx/mtxvec.c"),
                 Object(Matching, "revolution/MTX/vec.c"),

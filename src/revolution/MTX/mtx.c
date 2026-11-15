@@ -335,7 +335,6 @@ void C_MTXTranspose(void)
  * @note Address: 0x8016B98C
  * @note Size: 0x50
  */
-#pragma scheduling off
 void PSMTXTranspose(const register Mtx src, register Mtx xPose)
 {
 	register f32 c_zero = 0.0f;
@@ -386,65 +385,65 @@ ASM u32 PSMTXInverse(const register Mtx src, register Mtx inv)
 	psq_l       fp0, 0(src), 1, 0
 	psq_l       fp1, 4(src), 0, 0
 	psq_l       fp2, 16(src), 1, 0
-		ps_merge10  fp6, fp1, fp0
+	ps_merge10  fp6, fp1, fp0
 	psq_l       fp3, 20(src), 0, 0
 	psq_l       fp4, 32(src), 1, 0
-		ps_merge10  fp7, fp3, fp2
+	ps_merge10  fp7, fp3, fp2
 	psq_l       fp5, 36(src), 0, 0
 	ps_mul      fp11, fp3, fp6
+	ps_merge10  fp8, fp5, fp4
 	ps_mul      fp13, fp5, fp7
-		ps_merge10  fp8, fp5, fp4
 	ps_msub     fp11, fp1, fp7, fp11
 	ps_mul      fp12, fp1, fp8
 	ps_msub     fp13, fp3, fp8, fp13
-		ps_mul      fp10, fp3, fp4
+	ps_mul      fp10, fp3, fp4
 	ps_msub     fp12, fp5, fp6, fp12
-		ps_mul      fp9,  fp0, fp5
-		ps_mul      fp8,  fp1, fp2
-	ps_sub      fp6, fp6, fp6
-		ps_msub     fp10, fp2, fp5, fp10
 	ps_mul      fp7, fp0, fp13
-		ps_msub     fp9,  fp1, fp4, fp9
+	ps_mul      fp9, fp0, fp5
+	ps_mul      fp8, fp1, fp2
 	ps_madd     fp7, fp2, fp12, fp7
-		ps_msub     fp8,  fp0, fp3, fp8
+	ps_sub      fp6, fp6, fp6
+	ps_msub     fp10, fp2, fp5, fp10
 	ps_madd     fp7, fp4, fp11, fp7
+	ps_msub     fp9, fp1, fp4, fp9
+	ps_msub     fp8, fp0, fp3, fp8
 	ps_cmpo0    cr0, fp7, fp6
 	bne         _regular
-	addi        r3, 0, 0
+	li          r3, 0
 	blr
   _regular:
 	fres        fp0, fp7
 	ps_add      fp6, fp0, fp0
-	ps_mul      fp5, fp0, fp0
-	ps_nmsub    fp0, fp7, fp5, fp6
+	ps_mul      fp5, fp7, fp0
+	ps_nmsub    fp0, fp0, fp5, fp6
 	lfs         fp1, 12(src)
-		ps_muls0    fp13, fp13, fp0
+	ps_muls0    fp13, fp13, fp0
 	lfs         fp2, 28(src)
-		ps_muls0    fp12, fp12, fp0
+	ps_muls0    fp12, fp12, fp0
 	lfs         fp3, 44(src)
-		ps_muls0    fp11, fp11, fp0
+	ps_muls0    fp11, fp11, fp0
 	ps_merge00  fp5, fp13, fp12
-		ps_muls0    fp10, fp10, fp0
 	ps_merge11  fp4, fp13, fp12
-		ps_muls0    fp9,  fp9,  fp0
-	psq_st      fp5,  0(inv), 0, 0
-		ps_mul      fp6, fp13, fp1
-	psq_st      fp4,  16(inv), 0, 0
-		ps_muls0    fp8,  fp8,  fp0
-		ps_madd     fp6, fp12, fp2, fp6
+	ps_mul      fp6, fp13, fp1
+	psq_st      fp5, 0(inv), 0, 0
+	psq_st      fp4, 16(inv), 0, 0
+	ps_muls0    fp10, fp10, fp0
+	ps_muls0    fp9, fp9, fp0
+	ps_madd     fp6, fp12, fp2, fp6
 	psq_st      fp10, 32(inv), 1, 0
-		ps_nmadd    fp6, fp11, fp3, fp6
-	psq_st      fp9,  36(inv), 1, 0
-		ps_mul      fp7, fp10, fp1
-		ps_merge00  fp5, fp11, fp6
-	psq_st      fp8,  40(inv), 1, 0
-		ps_merge11  fp4, fp11, fp6
-	psq_st      fp5,  8(inv), 0, 0
-		ps_madd     fp7, fp9,  fp2, fp7
-	psq_st      fp4,  24(inv), 0, 0
-		ps_nmadd    fp7, fp8,  fp3, fp7
-			addi        r3, 0, 1
-	psq_st      fp7,  44(inv), 1, 0
+	ps_muls0    fp8, fp8, fp0
+	ps_nmadd    fp6, fp11, fp3, fp6
+	psq_st      fp9, 36(inv), 1, 0
+	ps_mul      fp7, fp10, fp1
+	ps_merge00  fp5, fp11, fp6
+	psq_st      fp8, 40(inv), 1, 0
+	ps_madd     fp7, fp9, fp2, fp7
+	ps_merge11  fp4, fp11, fp6
+	psq_st      fp5, 8(inv), 0, 0
+	ps_nmadd    fp7, fp8, fp3, fp7
+	psq_st      fp4, 24(inv), 0, 0
+	psq_st      fp7, 44(inv), 1, 0
+	li          r3, 1
 	blr
 #endif // clang-format on
 }
@@ -528,7 +527,6 @@ void C_MTXRotRad(void)
 {
 	// UNUSED FUNCTION
 }
-#pragma scheduling reset
 /**
  * @note Address: 0x8016BB9C
  * @note Size: 0x70
@@ -964,7 +962,6 @@ void PSMTXReflect(register Mtx m, const register Vec* p, const register Vec* n)
 #endif // clang-format on
 }
 
-#pragma fp_contract off
 
 /**
  * @note Address: 0x8016BF4C
@@ -1078,4 +1075,3 @@ void C_MTXLightOrtho(Mtx m, f32 t, f32 b, f32 l, f32 r, f32 scaleS, f32 scaleT, 
 	m[2][2] = 0.0f;
 	m[2][3] = 1.0f;
 }
-#pragma fp_contract reset
