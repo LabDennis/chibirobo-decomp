@@ -884,8 +884,10 @@ revolution/GX/GXPixel.c:
 	.data start:0x803242D8 end:0x803242F8
 	.sdata2 start:0x805A6630 end:0x805A6680
 
-dolphin/gx/GXDraw.c:
-	.text start:0x801ACFF4 end:0x801AD814
+revolution/GX/GXDraw.c:
+	.text start:0x801AC7B4 end:0x801AD814
+	.bss start:0x804E89E8 end:0x804E8C70
+	.sdata2 start:0x805A6680 end:0x805A66B0
 
 revolution/GX/GXDisplayList.c:
 	.text start:0x801AD814 end:0x801AD888
