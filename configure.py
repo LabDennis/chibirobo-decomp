@@ -1359,7 +1359,7 @@ if wii:
                 Object(Matching, "revolution/AXFX/AXFXReverbHi.c"),
                 Object(Equivalent, "revolution/AXFX/AXFXReverbHiExp.c"),
                 Object(Equivalent, "revolution/AXFX/AXFXReverbHiExpDpl2.c"),
-                Object(Equivalent, "revolution/DSP/dsp.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/DSP/dsp.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/DSP/dsp_debug.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Equivalent, "revolution/DSP/dsp_task.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(NonMatching, "revolution/WENC/wenc.c"),
