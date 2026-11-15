@@ -654,7 +654,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		ApproachHudScale(h->mBatteryScale, 1.4f);
 		break;
 	}
-	f32 step = (h->mTargetBatteryOffsetY - h->mBatteryOffsetY) * 0.25f;
+	f32 step = (h->mTargetBatteryOffsetY - h->mBatteryOffsetY) / 4.0f;
 	if (step < 0)
 		step = -step;
 	Approach(&h->mBatteryOffsetY, &h->mTargetBatteryOffsetY, step);
@@ -1911,7 +1911,7 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 	else
 		tex = HudTexture(157);
 	f32 width = scale * GXGetTexObjWidth(&tex), height = scale * GXGetTexObjHeight(&tex);
-	DrawClockDisc(0.9f * (width * 0.5f), 0.9f * (height * 0.5f), (u32)(120 * alpha));
+	DrawClockDisc(0.9f * (width / 2.0f), 0.9f * (height * 0.5f), (u32)(120 * alpha));
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	f32 time = gGame.mTimeState.mTime;
 	f32 fill = time;
@@ -1957,7 +1957,7 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 	tex.mMtxDirty = TRUE;
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	DrawClockQuad(tex, (u32)(160 * alpha), 80, 80 - (1 - fill) * height * 0.5f, 1, width, height * fill);
+	DrawClockQuad(tex, (u32)(160 * alpha), 80, 80 - (1 - fill) * height / 2.0f, 1, width, height * fill);
 	tex    = HudTexture(159);
 	width  = 0.9f * (scale * GXGetTexObjWidth(&tex));
 	height = 0.9f * (scale * GXGetTexObjHeight(&tex));

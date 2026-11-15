@@ -608,8 +608,8 @@ void CCameraActionScroll2::Draw()
 			DrawTexturedWindowFrame(0x141414A0, -1, (cells - 1) * 18.0f * 0.5f + nameX, nameY - 18.0f, 18.0f * (cells - 3), 18.0f, 1.0f,
 			                        1.0f, 1.0f);
 #else
-			f32 width = MeasureGameTextWidth(&gGame.mGs, name, 1, 18.0f) * 0.5f;
-			DrawTexturedWindowFrame(0x141414A0, -1, MeasureGameTextWidth(&gGame.mGs, name, 1, 18.0f) * 0.5f + nameX, nameY - 18.0f, width,
+			f32 width = MeasureGameTextWidth(&gGame.mGs, name, 1, 18.0f) / 2.0f;
+			DrawTexturedWindowFrame(0x141414A0, -1, MeasureGameTextWidth(&gGame.mGs, name, 1, 18.0f) / 2.0f + nameX, nameY - 18.0f, width,
 			                        18.0f, 1.0f, 1.0f, 1.0f);
 #endif
 			DrawGsProportionalTextFormat(&gGame.mGs, -1, name, nameX, nameY - 18.0f, 0.0f, 18.0f, 18.0f);
