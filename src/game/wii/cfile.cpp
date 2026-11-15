@@ -7,9 +7,9 @@
 // always the current one, and a buffer handed in by the caller is never freed.
 
 extern "C" {
-BOOL fn_801FEDF8(ARCHandle* handle, s32 entrynum, ARCFileInfo* info);
-u32 fn_801FF288(ARCFileInfo* info);
-u32 fn_801FF290(ARCFileInfo* info);
+BOOL ARCFastOpen(ARCHandle* handle, s32 entrynum, ARCFileInfo* info);
+u32 ARCGetStartOffset(ARCFileInfo* info);
+u32 ARCGetLength(ARCFileInfo* info);
 }
 
 // the archive files get read out of, set by CFileArchive::ReadAsync
@@ -24,10 +24,10 @@ s32 CFile::Open(const char* path)
 		if (mEntrynum < 0) {
 			return -3;
 		}
-		if (!fn_801FEDF8(&gCurrentFileArchive->mHandle, mEntrynum, &mArcInfo)) {
+		if (!ARCFastOpen(&gCurrentFileArchive->mHandle, mEntrynum, &mArcInfo)) {
 			return -4;
 		}
-		mSize = fn_801FF290(&mArcInfo);
+		mSize = ARCGetLength(&mArcInfo);
 	} else {
 		mEntrynum = DVDConvertPathToEntrynum((char*)path);
 		if (mEntrynum < 0) {
@@ -60,7 +60,7 @@ s32 CFile::StartRead(u32 size, u32 offset)
 {
 	if (mInArchive) {
 		memcpy(this, gCurrentFileArchive, sizeof(DVDFileInfo));
-		offset += fn_801FF288(&mArcInfo);
+		offset += ARCGetStartOffset(&mArcInfo);
 	}
 	mResult         = 1;
 	cBlock.userData = &mResult;

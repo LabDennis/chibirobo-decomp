@@ -1727,3 +1727,6 @@ Compact__2mmFi = .text:0x802A7A24; // type:function size:0x2CC
 MeasureGameTextWidth = .text:0x802AD310; // type:function size:0x220
 DrawGsProportionalTextFormat = .text:0x802AD5EC; // type:function size:0xF8
 Set__10CPrimitiveFfffffffff = .text:0x802AF8E0; // type:function size:0x11C
+__RTTI__9CFileText = .sdata:0x805A0D48; // type:object size:0x8 scope:weak
+__RTTI__5CFile = .sdata:0x805A0D50; // type:object size:0x8 scope:weak
+__RTTI__11DVDFileInfo = .sdata:0x805A0D58; // type:object size:0x8 scope:weak
