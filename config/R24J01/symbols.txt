@@ -635,6 +635,7 @@ _unresolved = .text:0x8016AECC; // type:function size:0xB4
 DBInitInterrupts = .text:0x8017B738; // type:function size:0x58
 DBQueryData = .text:0x8017B790; // type:function size:0x50
 DBRead = .text:0x8017B7E0; // type:function size:0x7C
+DBWrite = .text:0x8017B85C; // type:function size:0xBC
 DBOpen = .text:0x8017B954; // type:function size:0x4
 DBClose = .text:0x8017B958; // type:function size:0x4
 EXIImmEx = .text:0x8017C414; // type:function size:0xA4
