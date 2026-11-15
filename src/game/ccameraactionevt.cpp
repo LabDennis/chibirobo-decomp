@@ -1,10 +1,14 @@
 #include "game/ccameraaction.h"
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
+#include "JSystem/JMath/Inline.h"
 // the Wii build times the interpolators off its own refresh counter
 extern s32 gRefreshRate;
 #undef FRAME_TIME
 #define FRAME_TIME (1.0f / gRefreshRate)
+// the Wii build inlines the five JMathInlineVEC helpers as paired-single code;
+// the longer SDK calls (PSVECNormalize, PSVECDistance) stay out of line
+#define PSVECAdd JMathInlineVEC::PSVECAdd
 #endif
 #include "game/gmath.h"
 extern "C" {
@@ -261,9 +265,13 @@ inline void TurnShortWay(f32& to, f32& from)
 	to    = t;
 	if (t != f) {
 		f32 diff = t - f;
+#if defined(VERSION_R24J01)
+		diff = fabs(diff); // the Wii build spells the absolute value through the library
+#else
 		if (diff < 0.0f) {
 			diff = -diff;
 		}
+#endif
 		if (diff >= TWO_PI) {
 			diff -= TWO_PI;
 		}
@@ -296,7 +304,11 @@ void CCameraActionEvt::SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32
 		PSVECAdd(&dest, (Vec*)&angle, &dest);
 	}
 	if (!relative) {
+#if defined(VERSION_R24J01)
+		dest.Set(Vec(angle)); // Wii assigns through Set() off a Vec copy of the arg
+#else
 		dest = CVec(angle);
+#endif
 	}
 
 	mAxes.mFlags &= ~7;
