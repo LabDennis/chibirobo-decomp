@@ -3214,8 +3214,6 @@ extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step
  * @note Address: 0x8013C614
  * @note Size: 0x524
  */
-// NONMATCHING: retail reads mStatus.mFlags a second time before it clears bit 8. a clear written out shares the load of the test,
-// a clear through an inline member of CStatus reads again; CStatus has no such member and no copy of one is in the dol
 extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
 {
 	if (gGame.mStatus.mFlags & 0xC00) {
@@ -3239,7 +3237,7 @@ extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
 	if (turn || pitch) {
 		map->mManualInput = 1;
 		SetMapCameraModeFlags(map, 0x20008);
-	} else if (map->mStatus.mFlags & 8) {
+	} else if (map->mStatus.Check(8)) {
 		map->mStatus.mFlags &= ~8;
 	}
 	if (map->mTarget != NULL && map->mTarget->mJObj != NULL && (pad.mPad->mTrigger & PAD_TRIGGER_L) && map->mPadControlEnabled
