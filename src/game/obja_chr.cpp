@@ -2375,7 +2375,7 @@ struct PlayerFrameParticle {
 STATIC_ASSERT(sizeof(PlayerFrameParticle) == 0x28);
 
 extern "C" {
-PlayerFrameParticle ProcessPlayerFrameEvents(XObj*, const FrameEventTime*, const FrameEvent*);
+PlayerFrameParticle ProcessPlayerFrameEvents(XObj*, FrameEventTime*, const FrameEvent*);
 }
 
 // todo: cleanup
@@ -2904,6 +2904,8 @@ void DrawEquipmentRing(OctaMenu* ring);
  * @note Address: 0x80097378
  * @note Size: 0x7D8
  */
+// NONMATCHING: saved float registers, retail gives the cursor branch's radius, y and x f29 to f31 and the hint loop's constants
+// the ones below; here it is the other way round
 extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 {
 	if (menu->mSel == 0) {
@@ -2913,8 +2915,6 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 		DrawEquipmentRing(&menu->mAtc);
 		DrawEquipmentRing(&menu->mDrs);
 	}
-	CGs* gs   = &gGame.mGs;
-	CTpl* tpl = &gGame.mTpl;
 	if (menu->mAtc.mMenuType == 3) {
 		if (menu->mSel == 0) {
 			menu->mTargetY = menu->mAtc.mCursorY;
@@ -2941,17 +2941,17 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 		f32 right  = (x + radius) - 8.0f;
 		f32 bottom = (y + radius) - 8.0f;
 		Vec quad[] = { { left, top, 0.0f }, { right, top, 0.0f }, { right, bottom, 0.0f }, { left, bottom, 0.0f }, { left, top, 0.0f } };
-		SetGsDepthMode(gs->mCurRenderMode, 1, 5, 0);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 5, 0);
 		u32 color = (u32)(255.0f * menu->mFade);
 		DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y,
 		                 quad[2].z, color, quad[3].x, quad[3].y, quad[3].z, color);
-		SetGsDepthMode(gs->mCurRenderMode, 1, 1, 0);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		CTexObj tex = tpl->mTex.Init(&((TPLPalette*)tpl->mBuffer)->descriptorArray[110 - StatusTextureOffset], 0);
+		CTexObj tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[110 - StatusTextureOffset], 0);
 		color       = 0xFFFFFF00 | (u32)(255.0f * menu->mFade);
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 1.0f, 2.0f * radius, 2.0f * radius, 0.0f, 0.0f, 0.0f);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-		SetGsDepthMode(gs->mCurRenderMode, 1, 3, 0);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 		return;
 	}
 	struct Hint {
@@ -2967,18 +2967,19 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 	f32 edge            = 608.0f + 100.0f * (1.0f - (f32)sin(HALF_PI * menu->mFade));
 	const Hint* rowHint = hints;
 	for (s32 row = 0; row < 2; ++row, ++rowHint) {
-		Hint& hint    = hints[order[menu->mSel][row]];
+		s32 which     = order[menu->mSel][row];
 		f32 x         = edge - MeasureGameTextWidth(&gGame.mGs, rowHint->label, TRUE, 20.0f);
 		f32 y         = 46.0f + row * 24.0f;
-		const f32* dx = gEquipmentHintOutlineX;
+		Hint& hint    = hints[which];
 		const f32* dy = gEquipmentHintOutlineY;
+		const f32* dx = gEquipmentHintOutlineX;
 		for (s32 j = 0; j < 4; ++j, ++dx, ++dy) {
 			u32 alpha = (u32)(255.0f * menu->mFade);
 			DrawGsProportionalTextFormat(&gGame.mGs, alpha, hint.label, x + *dx, y + *dy, 0.0f, 20.0f, 20.0f);
 		}
 		u32 color = 0xFFFFFF00 | (u32)(255.0f * menu->mFade);
 		DrawGsProportionalTextFormat(&gGame.mGs, color, hint.label, x, y, 0.0f, 20.0f, 20.0f);
-		CTexObj tex = tpl->mTex.Init(&((TPLPalette*)tpl->mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
+		CTexObj tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
 		PSMTXScale(tex.mMtx[1], HINT_ICON_WIDTH, 1.0f, 1.0f);
 		tex.mMtxDirty = TRUE;
 		PSMTXTrans(tex.mMtx[0], HINT_ICON_WIDTH * hint.icon, 0.0f, 0.0f);
@@ -5584,9 +5585,16 @@ static inline void SetPlayerCylinderDrawState(CGs* gs)
 	SetGsDepthMode(gs->mCurRenderMode, 1, 3, 1);
 }
 
-static inline void DrawPlayerLiftCylinder(const Vec& pos, const Vec& size, u32 color)
+// the scale out of the joint's matrix; retail has its own copy of this one behind UpdateLiftActionAnimation (0x800D3AF0)
+static inline Vec GetJointMatrixScale(HSD_JObj* jobj)
 {
-	Vec rotation = { HALF_PI, 0.0f, 0.0f };
+	Vec scale;
+	HSD_MtxGetScale(HSD_JObjGetMtxPtr(jobj), &scale);
+	return scale;
+}
+
+static inline void DrawPlayerLiftCylinder(u32 color, const Vec& pos, const Vec& rotation, const Vec& size)
+{
 	DrawGsCylinder(&gGame.mGs, color, 16, pos.x, pos.y, pos.z, rotation.x, rotation.y, rotation.z, size.x, size.y, size.z);
 }
 
@@ -5594,55 +5602,54 @@ static inline void DrawPlayerLiftCylinder(const Vec& pos, const Vec& size, u32 c
  * @note Address: 0x800A4A60
  * @note Size: 0xA9C
  */
+// NONMATCHING: retail keeps this in r28 and the squirter in r27, here they are swapped; the stream's half height is multiplied
+// with its operands in the other registers
 void XObjChr::DrawCollisionShapes()
 {
-	CGs* gs = &gGame.mGs;
-	SetPlayerCylinderDrawState(gs);
+	SetPlayerCylinderDrawState(&gGame.mGs);
 	if (mLift.mState != 0) {
 		if (IsCarryingToothbrush(&mLift)) {
 			s32 path[] = { 0, 0, 0, 0, 0 };
 			Vec pos    = CJObj_GetJointWorldPositionByPath(mLift.mTarget, 5, path);
-			Vec size   = { 3.0f, 3.0f, 1.0f };
-			DrawPlayerLiftCylinder(pos, size, 0x00FFFF80);
+			DrawPlayerLiftCylinder(0x00FFFF80, pos, (Vec) { HALF_PI, 0.0f, 0.0f }, (Vec) { 3.0f, 3.0f, 1.0f });
 		}
 		if (IsCarryingSpoon(&mLift)) {
 			f32 yaw = mMoveRotate.y;
 			Vec pos = mMoveTranslate;
 			pos.x += 3.0f * (f32)sin(yaw);
 			pos.z += 3.0f * (f32)cos(yaw);
-			Vec size = { 1.0f, 1.0f, 1.0f };
-			DrawPlayerLiftCylinder(pos, size, 0x00FFFF80);
+			DrawPlayerLiftCylinder(0x00FFFF80, pos, (Vec) { HALF_PI, 0.0f, 0.0f }, (Vec) { 1.0f, 1.0f, 1.0f });
 		}
 		if (IsCarryingSquirter(&mLift)) {
 			f32 yaw = mMoveRotate.y;
 			Vec pos = mMoveTranslate;
 			pos.x += 2.0f * (f32)sin(yaw);
 			pos.z += 2.0f * (f32)cos(yaw);
-			Vec lowerSize = { 2.0f, 2.0f, 1.0f };
-			DrawPlayerLiftCylinder(pos, lowerSize, 0x00FFFF80);
+			DrawPlayerLiftCylinder(0x00FFFF80, pos, (Vec) { HALF_PI, 0.0f, 0.0f }, (Vec) { 2.0f, 2.0f, 1.0f });
 			pos.x += 2.0f * (f32)sin(yaw);
 			pos.z += 2.0f * (f32)cos(yaw);
 			pos.y += 7.0f;
-			Vec upperSize = { 2.0f, 2.0f, 3.0f };
-			DrawPlayerLiftCylinder(pos, upperSize, 0x00FFFF80);
-			if (IsCarryingSquirter(&mLift) && mAnimId >= 0x8C2 && mAnimId <= 0x8C5) {
-				XObj* object          = mLift.mTarget;
-				s32 rootPath[]        = { 0, 0 };
-				HSD_JObj* const joint = FindJointByPath(object->mJObj, rootPath, 2);
-				Vec origin            = GetJointPosition(joint);
-				s32 tipPath[]         = { 0, 3 };
-				Vec delta             = CJObj_GetJointWorldPositionByPath(object, 2, tipPath) - origin;
-				if (PSVECMag(&delta) > 0.1f) {
-					Vec scale;
-					HSD_MtxGetScale(HSD_JObjGetMtxPtr(joint), &scale);
-					Vec size = { scale.x, scale.z, scale.y * 0.5f };
-					DrawPlayerLiftCylinder(origin, size, mItemTintWord);
+			DrawPlayerLiftCylinder(0x00FFFF80, pos, (Vec) { HALF_PI, 0.0f, 0.0f }, (Vec) { 2.0f, 2.0f, 3.0f });
+			if (IsCarryingSquirter(&mLift)) {
+				s32 anim = mAnimId;
+				if (anim == 0x8C2 || anim == 0x8C3 || anim == 0x8C4 || anim == 0x8C5) {
+					XObj* object    = mLift.mTarget;
+					s32 rootPath[]  = { 0, 0 };
+					HSD_JObj* joint = FindJointByPath(object->mJObj, rootPath, 2);
+					Vec origin      = GetJointPosition(joint);
+					s32 tipPath[]   = { 0, 3 };
+					f32 length      = (CJObj_GetJointWorldPositionByPath(object, 2, tipPath) - origin).Length();
+					if (length > 0.1f) {
+						Vec scale = GetJointMatrixScale(joint);
+						DrawPlayerLiftCylinder(mItemTintWord, origin, (Vec) { HALF_PI, 0.0f, 0.0f },
+						                       (Vec) { scale.x, scale.z, scale.y * 0.5f });
+					}
 				}
 			}
 		}
 	}
 	if (mStatus.mFlags & 0x0200000000000000ULL) {
-		SetPlayerCylinderDrawState(gs);
+		SetPlayerCylinderDrawState(&gGame.mGs);
 		CVec pos(mMoveTranslate);
 		Vec offset   = mMoveScale * GetFloorCenterOffset(&mFloors, 0);
 		Vec extent   = mMoveScale * GetFloorExtent(&mFloors, 0);
@@ -5661,13 +5668,12 @@ void XObjChr::DrawCollisionShapes()
 		PSMTXConcat(model, shift, model);
 		PSMTXConcat(model, scale, model);
 		PSMTXConcat(model, tilt, model);
-		PSMTXConcat(gs->mCamera->mViewMtx, model, view);
-		DrawGsCylinderWithMatrix(gs, view, 0x9696FF60, 16);
+		PSMTXConcat(gGame.mGs.mCamera->mViewMtx, model, view);
+		DrawGsCylinderWithMatrix(&gGame.mGs, view, 0x9696FF60, 16);
 		XObj::DrawCollisionShapes();
-		XObj* plug = &mPlug;
 		if (gGame.mStatus.mFlags & 0x0040000000000000ULL)
-			plug->DrawCollisionShapes();
-		ClearActiveObjectFloors(plug);
+			mPlug.DrawCollisionShapes();
+		ClearActiveObjectFloors(&mPlug);
 	}
 }
 
@@ -6060,17 +6066,9 @@ extern "C" void UpdatePlayerFrameEffects(XObjChr* player)
  * @note Address: 0x800A7E1C
  * @note Size: 0x638
  */
-static inline void SetFrameParticleAtJoint(PlayerFrameParticle& particle, XObjChr* player, s32 code)
-{
-	particle.mCode      = code;
-	s32 path[]          = { 0, 1, 0, 1, 2, 0, 1 };
-	Vec offset          = { 0.0f, 2.0f, 0.0f };
-	particle.mTranslate = GetEventJointWorldPosition(player, 7, path) + offset;
-	particle.mScale     = player->mMoveScale;
-	particle.mRotate    = player->mMoveRotate;
-}
-
-extern "C" PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, const FrameEventTime* frames, const FrameEvent* table)
+// NONMATCHING: saved register numbers; retail has the result pointer in r31, the anim object in the joint's register (r29) and
+// walks the table in the object's (r26)
+extern "C" PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, FrameEventTime* frames, const FrameEvent* table)
 {
 	PlayerFrameParticle particle = { -1 };
 	HSD_AObj* aobj               = GetAObj(object->mJObj);
@@ -6081,7 +6079,7 @@ extern "C" PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, const Fram
 	if (frames != NULL) {
 		time = *frames;
 	} else {
-		time.mFrame     = HSD_AObjGetCurrentFrame(aobj);
+		time.mFrame     = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
 		time.mLastFrame = time.mFrame - 1.0f;
 	}
 	for (const FrameEvent* event = table; event->mAnim >= 0; ++event) {
@@ -6106,17 +6104,22 @@ extern "C" PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, const Fram
 				PlayGameSound(&gGame.mSound, event->mId, event->mVolume);
 			}
 			if (event->mId == 5) {
-				SetFrameParticleAtJoint(particle, player, 0x18);
+				particle.mCode      = 0x18;
+				particle.mTranslate = GetEventJointWorldPosition(player, 7, (s32[7]) { 0, 1, 0, 1, 2, 0, 1 }) + (Vec) { 0.0f, 2.0f, 0.0f };
+				particle.mScale     = player->mMoveScale;
+				particle.mRotate    = player->mMoveRotate;
 			} else if (event->mId == 6) {
-				SetFrameParticleAtJoint(particle, player, 0x19);
+				particle.mCode      = 0x19;
+				particle.mTranslate = GetEventJointWorldPosition(player, 7, (s32[7]) { 0, 1, 0, 1, 2, 0, 1 }) + (Vec) { 0.0f, 2.0f, 0.0f };
+				particle.mScale     = player->mMoveScale;
+				particle.mRotate    = player->mMoveRotate;
 			} else if (event->mId == 0x38 && anim == 0x9F) {
 				const Vec& tint = player->mColorStep[0].mValue;
 				u32 color       = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8);
 				// no particle while his modulate color is plain white (untinted)
 				if (color < 0xFFFFFF00) {
 					particle.mCode      = 0x55;
-					s32 path[]          = { 0, 0 };
-					particle.mTranslate = GetEventJointWorldPosition(player, 2, path);
+					particle.mTranslate = GetEventJointWorldPosition(player, 2, (s32[2]) { 0, 0 });
 					particle.mTranslate.x += 2.4f * (f32)sin(player->mMoveRotate.y);
 					particle.mTranslate.z += 2.4f * (f32)cos(player->mMoveRotate.y);
 					particle.mTranslate.y += 0.5f;

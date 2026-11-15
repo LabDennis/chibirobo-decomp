@@ -246,7 +246,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 				gGame.mParticle.Kill(act->mContactEffectId);
 				act->mContactEffect = NULL;
 			}
-		} else if (IsCarryingSquirter(act) && (u32)(anim - 0x8c2) > 2 && act->mToolEffect) {
+		} else if (IsCarryingSquirter(act) && !(anim == 0x8c2 || anim == 0x8c3 || anim == 0x8c4) && act->mToolEffect) {
 			gGame.mParticle.Kill(act->mToolEffectId);
 			act->mToolEffect = NULL;
 		}
@@ -642,18 +642,14 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 					act->mToolEffect = NULL;
 				}
 			}
-		} else if (anim >= 0x8c2 && anim <= 0x8c5) {
+		} else if (anim == 0x8c2 || anim == 0x8c3 || anim == 0x8c4 || anim == 0x8c5) {
 			if (act->mCheckToolHit) {
 				s32 first[]    = { 0, 0 };
 				HSD_JObj* root = GetObjectJointByPath(act->mTarget, 2, first);
 				s32 second[]   = { 0, 3 };
 				HSD_JObj* tip  = GetObjectJointByPath(act->mTarget, 2, second);
 				CVec pos(GetJointMatrixTranslation(act->mTarget, root));
-				f32 distance;
-				{
-					CVec delta = pos - GetJointMatrixTranslation(act->mTarget, tip);
-					distance   = PSVECMag(&delta);
-				}
+				f32 distance = (pos - GetJointMatrixTranslation(act->mTarget, tip)).Length();
 				if (distance > 0.1f) {
 					Vec scale = GetJointMatrixScale(act->mTarget, root);
 					Vec hit;
