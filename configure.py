@@ -1290,6 +1290,12 @@ if wii:
                 # draw entry that takes the node block, InitPlugCord's function-scope static point
                 # array and ResetPlugCordPoints share one literal pool
                 Object(NonMatching, "game/wii/xobjplugcord.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # on Wii the two destructors live alone here; CamAreaSlot's ctor is emitted as the
+                # first function of ccameraactionmap2.cpp (retail 0x80154310)
+                Object(NonMatching, "game/ccameraactionareaexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii binary merged the area and map camera code into one file; only the
+                # CamAreaSlot ctor at its head is reconstructed so far
+                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # InfoPoint's dtor is the out-of-line definition; the GameCube file's hand-spelled
                 # weak copy stays for GC only (retail Wii body has no vtable store)

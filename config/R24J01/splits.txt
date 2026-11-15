@@ -1061,11 +1061,20 @@ game/wii/ccameraactionareaexm.cpp:
 game/ccameraactionareaexinit.cpp:
 	.text start:0x801542A0 end:0x80154310
 
+game/ccameraactionareaexdtor.cpp:
+	.text start:0x801541F8 end:0x801542A0
+	.rodata start:0x802DB4C8 end:0x802DB4DC
+	.data start:0x8030DDA0 end:0x8030DDAC
+	.sdata start:0x805A1278 end:0x805A1280
+
+game/wii/ccameraactionmap2.cpp:
+	.text start:0x80154310 end:0x80154320
+
 game/ccameraactionareaex.cpp:
 	.text start:0x80151FCC end:0x801541F8
 
 game/ccameraactionevt.cpp:
-	.text start:0x801618C0 end:0x80161FFC
+	.text start:0x80161458 end:0x80161FFC
 
 game/wii/ccameraactionscroll2.cpp:
 	extab start:0x8000F340 end:0x8000F458

@@ -7,6 +7,15 @@
 extern "C" {
 #include "Dolphin/mtx.h"
 }
+#include "JSystem/JMath/Inline.h"
+
+// the Wii build inlines the five JMathInlineVEC helpers as paired-single code;
+// the longer SDK calls (PSVECNormalize) stay out of line
+#define PSVECAdd        JMathInlineVEC::PSVECAdd
+#define PSVECSubtract   JMathInlineVEC::PSVECSubtract
+#define PSVECScale      JMathInlineVEC::PSVECScale
+#define PSVECDotProduct JMathInlineVEC::PSVECDotProduct
+#define PSVECSquareMag  JMathInlineVEC::PSVECSquareMag
 
 // the Wii build keeps the GameCube spring camera but swaps its two dependencies:
 // the target is the Wii player object (matrix and focus point through its vtable)
