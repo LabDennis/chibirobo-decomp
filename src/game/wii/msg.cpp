@@ -9,9 +9,8 @@
 //   CMsg__cmd_SETFONT (0x800A7ED4) is the GameCube file's first function, CMsgData_Format and
 //   CMsgData_Measure (0x800A1A20, 0x800A1FE8) are among its last
 //
-// NONMATCHING: sixteen of the unit's 22 functions have source now. Still unwritten:
-// CMsgFont_AddChar (0x800A2E8C), CMsgFont_Update (0x800A34C0), CMsgFont_Draw (0x800A3B5C),
-// CMsg__cmd_END (0x800A687C), CMsg__cmd_ANIM (0x800A7784) and CMsg__cmd_SFX (0x800A7A68).
+// NONMATCHING: 19 of the unit's 22 functions have source now. Still unwritten:
+// CMsgFont_Update (0x800A34C0), CMsgFont_Draw (0x800A3B5C) and CMsg__cmd_SFX (0x800A7A68).
 // The GameCube file's VERSION_JP branches are the reconstruction base; the Wii reads its
 // language flag from gGame.mLanguage (_4160), where Japanese is 0. The Wii's CMsgData flag
 // byte, the u32 CMsgFont::mFlags bitfield word and the pointer-driven CMsg__cmd_QUESTION
@@ -31,6 +30,7 @@
 #include "Dolphin/os.h"
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 u32 msgColorTable[] = {
@@ -54,15 +54,24 @@ s32 CMsg__cmd_WAIT(CMsg* msg);                           // 0x800A74C0
 s32 CMsg__cmd_ANIM(CMsg* msg);                           // 0x800A7784
 s32 CMsg__cmd_SFX(CMsg* msg);                            // 0x800A7A68
 s32 CMsg__cmd_SETFONT(CMsg* msg, u8 command);            // 0x800A7ED4
-void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable);  // fn_802AB734
+void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable);  // 0x802AB734
 
 // Wii-side services the GameCube file called by these names
-void PlayMessageGlyphSound(XSound* sound, s32 group, u8 first, u8 second, f32 scale); // fn_8003BB08
-void ClearGameSoundQueue(XSound* sound, s32 group);                                   // fn_8003BE20
-void SelectPlayerEquipmentRing(WiiPlayerState* player, s32 selection);                // fn_800D2700
-void OpenPlayerYesNoMenu(WiiPlayerState* player, s32 crossMask, s32 selectedIndex);   // 0x800D2B50
-void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad);                                   // fn_800EF58C
+void PlayMessageGlyphSound(XSound* sound, u32 group, f32 strength, u8 first, u8 second); // 0x8003BB08
+void ClearGameSoundQueue(XSound* sound, s32 group);                                      // 0x8003BE20
+void SelectPlayerEquipmentRing(WiiPlayerState* player, s32 selection);                   // 0x800D2700
+void OpenPlayerYesNoMenu(WiiPlayerState* player, s32 crossMask, s32 selectedIndex);      // 0x800D2B50
+void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad);                                      // fn_800EF58C
 extern s32 gRefreshRate;
+}
+
+extern "C" s32 ClassifyFloatBits(f32 value); // the Wii MSL's out-of-line __fpclassifyf
+
+// the GameCube's FindObj: object commands only resolve while an event script runs. The Wii's
+// ResolveEventObjectId (0x8009453C) reads the same two leading words as the GameCube CEvtData
+static inline WiiTitleObject* FindObj(s16 id)
+{
+	return gGame.mEvtData.mScript != NULL ? (WiiTitleObject*)ResolveEventObjectId((const CEvtData*)&gGame.mEvtData, id) : NULL;
 }
 
 // read before stepping, the script can point into the message's own bytes
@@ -97,6 +106,7 @@ static inline void CopyMessageBytes(u8*& dst, u8*& src, int N)
 
 extern "C" {
 extern s32 gPointerScreenWidth;
+extern s32 gScreenSafeTop;
 extern s32 gScreenSafeBottom;
 }
 
@@ -505,7 +515,7 @@ extern "C" void ResetMessageState(CMsgFont* font)
 	font->mGlyphScaleX    = 1.0f;
 	font->mEffect         = 0;
 	font->mSelectedLine   = -1;
-	font->mDigitsPacked   = 0;
+	font->mPointerState   = 0;
 	font->mOtherSelection = -1;
 	font->mAlpha          = 0.0f;
 	font->mTextAlpha      = 1.0f;
@@ -515,6 +525,192 @@ extern "C" void ResetMessageState(CMsgFont* font)
 	font->mTexOffset      = 0.0f;
 	for (int i = 0; i < 400; i++) {
 		font->mGlyphs[i].mPhaseX = font->mGlyphs[i].mPhaseY = (i * 75) % 360;
+	}
+}
+
+/**
+ * @note Address: 0x800A2E8C
+ * @note Size: 0x634
+ */
+// the GameCube's non-japanese shape: the proportional flag is _04_04, mPrevSize is NAN until
+// the first glyph and the icon strip comes from gGame.mTpl. the Wii's CTexObj keeps its four
+// matrices in mTexMtx.mMtx; the icon scale lands in mMtx[2] where the GameCube used mMtx[1]
+extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
+{
+	f32 width = MeasureGameTextWidth(&gGame.mGs, text, font->mBits._04_04, font->mSize);
+	// half the size change since the previous glyph; mPrevSize is NAN until the first one (CMsgFont_Init)
+	f32 spacing;
+	if (ClassifyFloatBits(font->mPrevSize) == FP_NAN) {
+		spacing = 0.0f;
+	} else {
+		spacing = (font->mSize - font->mPrevSize) * 0.5f;
+	}
+	s32 textureWidth;
+	if ((u8)text[0] == MSG_CODE_ICON) {
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[120], 0);
+		CTexObj icon = gGame.mTpl.mTex;
+		s32 index    = (u8)text[1];
+		s32 columns  = font->mData->mIconColumns;
+		if (index >= columns) {
+			index = columns - 1;
+		}
+		f32 cellWidth = 1.0f / columns;
+		PSMTXScale(icon.mTexMtx.mMtx[2], cellWidth, 1.0f, 1.0f);
+		icon.mTexMtx.mDirty = true;
+		PSMTXTrans(icon.mTexMtx.mMtx[0], cellWidth * index, 0.0f, 0.0f);
+		icon.mTexMtx.mDirty = true;
+		textureWidth        = (s32)font->mGlyphs[font->mCharCount].mTexture.Set(icon) / columns;
+		width               = textureWidth * (font->mSize / 22.0f);
+	} else {
+		textureWidth = font->mGlyphs[font->mCharCount].mSprite.mTex->SetChar(text);
+	}
+	f32 x = (width - textureWidth) * 0.5f + (11.0f + font->mCursorX + spacing);
+	f32 y = font->mCursorY + font->mData->mHeights[font->mLine] * 0.5f;
+	font->mGlyphs[font->mCharCount].mSprite.SetTrans(x, y, 0.0f);
+	f32 sx, sy;
+	if (font->mGlyphScaleX >= 0.0f && font->mGlyphScaleY >= 0.0f) {
+		sx = font->mGlyphScaleX;
+		sy = font->mGlyphScaleY;
+	} else {
+		// a negative MSG_CODE_SCALE: each glyph gets |x| plus a random part of the gap up to |y|
+		f32 min   = fabs(100.0f * font->mGlyphScaleX);
+		f32 max   = fabs(100.0f * font->mGlyphScaleY);
+		f32 extra = fmod((f32)rand(), max - min);
+		sx = sy = fabs(font->mGlyphScaleX) + extra / 100.0f;
+	}
+	f32 scaleX = (font->mSize * 0.5f) * sx;
+	f32 scaleY = (-font->mSize * 0.5f) * sy;
+	font->mGlyphs[font->mCharCount].mSprite.SetScale(scaleX, scaleY, 1.0f);
+	f32 angle = font->mGlyphAngle;
+	// a negative MSG_CODE_ROTATE angle: each glyph gets a random tilt between angle and -angle
+	if (!(angle >= 0.0f)) {
+		f32 range = fabs(2.0f * angle);
+		f32 delta = fmod((f32)rand(), RAD2DEG * range);
+		angle     = DEG2RAD * delta + font->mGlyphAngle;
+	}
+	font->mGlyphs[font->mCharCount].mSprite.SetRot(0.0f, 0.0f, angle);
+	font->mGlyphs[font->mCharCount].mColor  = font->mGlyphColor;
+	font->mGlyphs[font->mCharCount].mLine   = font->mLine;
+	font->mGlyphs[font->mCharCount].mAngle  = angle;
+	font->mGlyphs[font->mCharCount].mScaleX = scaleX;
+	font->mGlyphs[font->mCharCount].mScaleY = scaleY;
+	if (!(angle <= PI)) {
+		angle = TWO_PI - angle;
+	}
+	font->mGlyphs[font->mCharCount].mWidthAdjust = (angle / PI) * (width - font->mSize);
+	font->mGlyphs[font->mCharCount].mEffect      = font->mEffect;
+	font->mGlyphs[font->mCharCount].mAmount      = font->mAmount;
+	font->mGlyphs[font->mCharCount].mPhaseZ      = rand() % 360;
+	font->mGlyphs[font->mCharCount].mPhaseW      = rand() % 360;
+	font->mGlyphs[font->mCharCount].mSpeed = font->mGlyphs[font->mCharCount].mRefresh = font->mSpeed;
+	font->mCursorX += width + spacing;
+	font->mPrevSize = font->mSize;
+	font->mCharCount++;
+}
+
+// the GameCube's PAL formula at the remote's refresh rate
+#define MSG_FADE_RATE (1.0f / (0.3f * gRefreshRate))
+
+/**
+ * @note Address: 0x800A34C0
+ * @note Size: 0x69C
+ */
+extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
+{
+	if (font->mBits.mActive) {
+		if (font->mBits.mFadeIn && font->mAlpha < 1.0f) {
+			// zero-alpha tint and no voice code (mMode stays -1, see CMsgData_Measure): no fade in
+			if (font->mColor.a == 0 && font->mMode < 0) {
+				font->mAlpha        = 1.0f;
+				font->mBits.mFadeIn = FALSE;
+			}
+			f32 alpha    = font->mAlpha + MSG_FADE_RATE * step;
+			font->mAlpha = alpha;
+			if (alpha >= 1.0f) {
+				font->mAlpha        = 1.0f;
+				font->mBits.mFadeIn = FALSE;
+			}
+		}
+		if (font->mBits.mFadeOut) {
+			if (font->mAlpha > 0.0f) {
+				f32 alpha    = font->mAlpha - MSG_FADE_RATE * step;
+				font->mAlpha = alpha;
+				if (alpha <= 0.0f) {
+					font->mAlpha         = 0.0f;
+					font->mBits.mFadeOut = FALSE;
+					font->mBits.mActive  = FALSE;
+				}
+			}
+			font->mTextAlpha = font->mAlpha;
+		}
+		// a select() line or a number input digit is picked: fade the highlight in, else out
+		if (font->mSelectedLine >= 0 || font->mOtherSelection >= 0) {
+			if (font->mHighlightAlpha < 1.0f) {
+				f32 alpha             = font->mHighlightAlpha + MSG_FADE_RATE * step;
+				font->mHighlightAlpha = alpha;
+				if (alpha >= 1.0f) {
+					font->mHighlightAlpha = 1.0f;
+				}
+			}
+		} else if (font->mHighlightAlpha > 0.0f) {
+			f32 alpha             = font->mHighlightAlpha - MSG_FADE_RATE * step;
+			font->mHighlightAlpha = alpha;
+			if (alpha <= 0.0f) {
+				font->mHighlightAlpha = 0.0f;
+			}
+		}
+		if (font->mSelectedLine >= 0) {
+			f32 width = font->mBits.mFitLine ? font->mData->mWidths[font->mSelectedLine] : font->mData->mMaxWidth;
+			font->mCurLineY += 0.8f * (font->mLineY[font->mSelectedLine] - font->mCurLineY);
+			font->mCurLineWidth += 0.7f * (width - font->mCurLineWidth);
+			font->mTexOffset -= 0.008f * step;
+			PSMTXTrans(font->mTexs.mTex[MSG_TEX_LINE].mTexMtx.mMtx[0], font->mTexOffset, 0.0f, 0.0f);
+			font->mTexs.mTex[MSG_TEX_LINE].mTexMtx.mDirty = true;
+		}
+		if (font->mBits.mBlink) {
+			// CMsgFont_Draw fades the button prompt with sin(mBlinkPhase): 6 degrees a frame, wrapped at PI, a pulse every 30 frames
+			font->mBlinkPhase += DEG2RAD * 6.0f * step;
+			font->mBlinkPhase = fmod(font->mBlinkPhase, (f64)PI);
+		}
+	}
+
+	if (font->mBits.mActive) {
+		for (s32 i = 0; i < 400; i++) {
+			// CMsgFont_Draw: bits 1 and 2 shift the glyph, 4 pulses its scale, 8 rocks it; the high nibble sets how the phases move
+			switch (font->mGlyphs[i].mEffect & 0xF0) {
+			case 0x10:
+				// smooth: every phase turns by its share of mSpeed degrees a frame
+				// this one adds in u32 (step is u32) before going to float, so a sum below 0 wraps
+				font->mGlyphs[i].mPhaseY = (s16)(f32)fmod((f32)(font->mGlyphs[i].mPhaseY + font->mGlyphs[i].mSpeed * step), 360.0);
+				font->mGlyphs[i].mPhaseX = (s16)(f32)fmod(font->mGlyphs[i].mPhaseX + (0.5f * font->mGlyphs[i].mSpeed) * step, 360.0);
+				font->mGlyphs[i].mPhaseZ = (s16)(f32)fmod(font->mGlyphs[i].mPhaseZ + (0.7f * font->mGlyphs[i].mSpeed) * step, 360.0);
+				font->mGlyphs[i].mPhaseW = (s16)(f32)fmod(font->mGlyphs[i].mPhaseW + (0.8f * font->mGlyphs[i].mSpeed) * step, 360.0);
+				break;
+			case 0x20:
+				// jitter: fresh random phases every mSpeed updates
+				if (--font->mGlyphs[i].mRefresh <= 0) {
+					font->mGlyphs[i].mPhaseY  = rand() % 360;
+					font->mGlyphs[i].mPhaseX  = rand() % 360;
+					font->mGlyphs[i].mPhaseZ  = rand() % 360;
+					font->mGlyphs[i].mPhaseW  = rand() % 360;
+					font->mGlyphs[i].mRefresh = font->mGlyphs[i].mSpeed;
+				}
+				break;
+			}
+		}
+	}
+	font->mScrollX += 0.01f * step;
+	font->mScrollY += 0.01f * step;
+	PSMTXTrans(font->mFrame.mTex.mTexMtx.mMtx[0], font->mScrollX, font->mScrollY, 0.0f);
+	font->mFrame.mTex.mTexMtx.mDirty = true;
+	// only mode 0 has the portrait, CMsgFont_Draw leaves 40 * scale of room for it; the Wii
+	// updates both cursor objects, where the GameCube had one
+	if (font->mMode == 0) {
+		for (s32 i = 0; i < 2; i++) {
+			if (font->mCursor[i].mStatus & 1) {
+				font->mCursor[i].UpdateObject(step);
+			}
+		}
 	}
 }
 
@@ -817,7 +1013,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			CMsgFont_AddChar(&msg->mFont, text);
 			msg->mCharTimer = msg->mCharDelay;
 			if (msg->mGlyphSoundGroup >= 0) {
-				PlayMessageGlyphSound(&gGame.mSound, msg->mGlyphSoundGroup, text[0], text[1], msg->mFont.mSize / 22.0f);
+				PlayMessageGlyphSound(&gGame.mSound, msg->mGlyphSoundGroup, msg->mFont.mSize / 22.0f, text[0], text[1]);
 			}
 			break;
 		}
@@ -847,6 +1043,200 @@ extern "C" void CMsg_Draw(CMsg* msg)
 		}
 		CMsgFont_Draw(&msg->mFont, t);
 	}
+}
+
+static inline void MsgSetDigits(CMsg* msg, const s8* digits, s32 count, s32 first, s32 selected)
+{
+	for (s32 i = 0; i < 9; i += 3) {
+		for (s32 j = 0; j < 3; j++) {
+			msg->mFont.mDigits[i + j] = digits[i + j];
+		}
+	}
+	msg->mFont.mDigitCount     = count;
+	msg->mFont.mFirstEditDigit = first;
+	msg->mFont.mOtherSelection = selected;
+}
+
+/**
+ * @note Address: 0x800A687C
+ * @note Size: 0xB44
+ */
+// the GameCube's select and number input, driven by the remote pointer on the Wii: hovering a
+// line tracks mPointerState (0 off, 1 hover, 2 click held), the dpad bits of the pointer's
+// flags walk the selection and its A/B bits confirm or cancel. sfx: 0xF3 cancel, 0xF4 move,
+// 0xF5 confirm
+extern "C" s32 CMsg__cmd_END(CMsg* msg)
+{
+	if (msg->mFont.mBits.mActive) {
+		if (!msg->mFont.mBits.mFadeOut) {
+			if (msg->mCommand == EVT_CMD_SELECT) {
+				if (msg->mSelectedLine < 0) {
+					msg->mSelectedLine       = msg->mDefaultLine;
+					msg->mFont.mSelectedLine = msg->mSelectedLine;
+					msg->mFont.mCurLineY     = msg->mFont.mLineY[msg->mFont.mSelectedLine];
+					msg->mFont.mCurLineWidth = 0.0f;
+					msg->mFont.mSelectDone   = 0;
+				} else if (msg->mFont.mSelectDone != 0) {
+					msg->mSelectedLine        = -1;
+					msg->mFont.mBits.mFadeOut = TRUE;
+					msg->mFont.mSelectedLine  = -1;
+				} else if (!gGame.GetStatusFlags(0x20)) {
+					s32 hit = 0;
+					if (gWiiPointer.mPointerValid) {
+						f32 top = msg->mFont.mWindowY;
+						if (top < (f32)gScreenSafeTop) {
+							top = (f32)gScreenSafeTop;
+						}
+						if (top + msg->mFont.mHeight > (f32)gScreenSafeBottom) {
+							top = (f32)gScreenSafeBottom - msg->mFont.mHeight;
+						}
+						f32 margin = 40.0f + msg->mData.mHeights[msg->mData.mWidestLine];
+						if (gWiiPointer.mPointer.x >= msg->mFont.mWindowX - msg->mFont.mWidth * 0.5f - margin
+						    && gWiiPointer.mPointer.x <= msg->mFont.mWindowX + msg->mFont.mWidth * 0.5f + margin
+						    && gWiiPointer.mPointer.y >= top - 8.0f && gWiiPointer.mPointer.y <= top + msg->mFont.mHeight + 8.0f) {
+							if (msg->mFont.mPointerState == 2) {
+								hit = -1;
+							} else {
+								for (s32 i = 0; i < msg->mData.mLineCount; i++) {
+									s32 row = msg->mSelectedLine >= 0 ? (msg->mSelectedLine + i) % msg->mData.mLineCount : i;
+									f32 w   = 24.0f + msg->mData.mMaxWidth;
+									if (msg->mFont.mColor.a != 0) {
+										w = margin * 2.0f + msg->mFont.mWidth;
+									}
+									f32 rowTop = top + msg->mFont.mLineY[row];
+									f32 h      = msg->mData.mHeights[row];
+									if (gWiiPointer.mPointer.x >= msg->mFont.mWindowX - w * 0.5f
+									    && gWiiPointer.mPointer.x <= msg->mFont.mWindowX + w * 0.5f
+									    && gWiiPointer.mPointer.y >= rowTop - h * 0.25f
+									    && gWiiPointer.mPointer.y <= rowTop + h + h * 0.25f) {
+										hit = row + 1;
+										break;
+									}
+								}
+							}
+						}
+					}
+					if (hit != 0) {
+						if (!(gWiiPointer.mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA)))) {
+							if (msg->mFont.mPointerState == 0) {
+								msg->mFont.mPointerState = 1;
+								PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+							}
+							if (hit > 0 && hit - 1 != msg->mSelectedLine) {
+								msg->mSelectedLine       = hit - 1;
+								msg->mFont.mSelectedLine = msg->mSelectedLine;
+								PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+							}
+						}
+					} else {
+						msg->mFont.mPointerState = 0;
+					}
+					if (gWiiPointer.Check(4)) { // the remote's up moves the highlight
+						if (msg->mFont.mPointerState == 0) {
+							if (--msg->mSelectedLine < 0) {
+								msg->mSelectedLine = msg->mData.mLineCount - 1;
+							}
+							msg->mFont.mSelectedLine = msg->mSelectedLine;
+							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+						}
+					} else if (gWiiPointer.Check(8)) { // down
+						if (msg->mFont.mPointerState == 0) {
+							if (++msg->mSelectedLine >= msg->mData.mLineCount) {
+								msg->mSelectedLine = 0;
+							}
+							msg->mFont.mSelectedLine = msg->mSelectedLine;
+							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+						}
+					} else if (gWiiPointer.Check(1)) { // A
+						if (msg->mFont.mPointerState != 0) {
+							msg->mFont.mPointerState = 2;
+							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+						} else {
+							msg->mSelectResult        = msg->mSelectedLine;
+							msg->mFont.mPointerState  = 1;
+							msg->mFont.mSelectDone    = 1;
+							msg->mSelectedLine        = -1;
+							msg->mFont.mSelectedLine  = -1;
+							msg->mFont.mBits.mFadeOut = TRUE;
+							PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+						}
+					} else if (gWiiPointer.Check(2)) { // B
+						msg->mSelectResult        = -1;
+						msg->mSelectedLine        = -1;
+						msg->mFont.mSelectedLine  = -1;
+						msg->mFont.mPointerState  = 0;
+						msg->mFont.mSelectDone    = 1;
+						msg->mFont.mBits.mFadeOut = TRUE;
+						PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+					} else if (msg->mFont.mPointerState == 2 && !(gWiiPointer.mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA)))) {
+						msg->mSelectResult       = msg->mSelectedLine;
+						msg->mFont.mSelectDone   = 1;
+						msg->mFont.mPointerState = 0;
+						PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+					}
+				}
+			} else if (msg->mDigitCount > 0) {
+				if (msg->mFont.mOtherSelection < 0) {
+					MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+				} else if (gWiiPointer.Check(4)) {
+					if (++msg->mDigits[msg->mSelectedDigit] > 9) {
+						msg->mDigits[msg->mSelectedDigit] = 0;
+					}
+					MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				} else if (gWiiPointer.Check(8)) {
+					if (--msg->mDigits[msg->mSelectedDigit] < 0) {
+						msg->mDigits[msg->mSelectedDigit] = 9;
+					}
+					MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				} else if (gWiiPointer.Check(0x10)) {
+					if (++msg->mSelectedDigit > msg->mDigitCount - 1) {
+						msg->mSelectedDigit = msg->mDigitCount - 1;
+					} else {
+						MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+					}
+				} else if (gWiiPointer.Check(0x20)) {
+					if (--msg->mSelectedDigit < msg->mFirstEditDigit) {
+						msg->mSelectedDigit = msg->mFirstEditDigit;
+					} else {
+						MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+					}
+				} else if (gWiiPointer.Check(1)) {
+					msg->mFont.mBits.mFadeOut  = TRUE;
+					msg->mFont.mOtherSelection = -1;
+					PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+					s32 result = 0;
+					for (s32 i = 9; i >= 0; i--) {
+						result = result * 10 + msg->mDigits[i];
+					}
+					gGame.mSelectResult = result;
+				} else if (gWiiPointer.Check(2)) {
+					msg->mFont.mBits.mFadeOut  = TRUE;
+					msg->mFont.mOtherSelection = -1;
+					PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+					gGame.mSelectResult = -1;
+				}
+			} else if (msg->mStay != 0) {
+				if (msg->mStay == 1) {
+					if (gGame.GetPlayer()->mOXMenu.mStarted < 0) {
+						msg->mStay++;
+					}
+				} else {
+					msg->mFont.mBits.mFadeOut = TRUE;
+				}
+			} else {
+				msg->mFont.mBits.mFadeOut = TRUE;
+			}
+		}
+		msg->mData.mCursor--;
+	} else {
+		msg->mData.mCursor      = NULL;
+		msg->mData.mIconColumns = 0;
+	}
+	return 1;
 }
 
 /**
@@ -927,6 +1317,41 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
 	f32 frames = (command / 10) * (f32)gRefreshRate;
 	frames += (command % 10) * (f32)gRefreshRate / 10.0f;
 	msg->mWaitTimer = frames;
+	return 0;
+}
+
+/**
+ * @note Address: 0x800A7784
+ * @note Size: 0x2E4
+ */
+// the GameCube's shape with a Wii queue: MSG_ANIM_QUEUE drops the anim into a four slot ring
+// behind the playing one, otherwise vf108 (the Wii's SetAnim) starts it right away
+extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
+{
+	u8 flags = ReadMsgU8(msg);
+	s16 id   = ReadMsgS16(msg);
+	s32 anim = ReadMsgU8(msg);
+	anim |= ReadMsgU8(msg) << 8;
+	anim |= ReadMsgU8(msg) << 16;
+	anim |= ReadMsgU8(msg) << 24;
+	if (flags & MSG_ANIM_VARIABLE) {
+		anim = gEventVars.mVars[anim];
+	}
+	WiiTitleObject* obj = FindObj(id);
+	if (obj != NULL && (obj->mStatus & 1)) {
+		if (anim == -1) {
+			if (!obj->vf130((f32)gGame.mRetraceStep)) {
+				msg->mData.mCursor -= 8;
+				return 1;
+			}
+		} else if (!(flags & MSG_ANIM_QUEUE)) {
+			obj->ClearAnmQueue();
+			obj->vf108(anim, 0, 0.0f, 1.0f, 0.0f, 15.0f);
+			obj->vf118(1.0f);
+		} else {
+			obj->PushAnim(anim, 0, 100);
+		}
+	}
 	return 0;
 }
 

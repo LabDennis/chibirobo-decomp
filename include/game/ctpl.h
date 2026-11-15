@@ -53,6 +53,8 @@ public:
 
 	virtual ~CTexObj() { }
 	void Init(TPLDescriptor* desc, u32 tlutName);
+	u32 Set(const CTexObj& other);
+	u32 SetChar(const char* str);
 };
 STATIC_ASSERT(sizeof(CTexObj) == 0x104);
 #else

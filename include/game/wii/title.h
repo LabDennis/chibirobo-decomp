@@ -11,6 +11,15 @@ class CoordInfo;
 // and the pointer's panes at the end. Only what the reconstructed functions reach is here; the names are
 // the GameCube ones where the member is the same.
 
+// one queued animation: CMsg__cmd_ANIM's MSG_ANIM_QUEUE drops it into the first free
+// slot after mAnmHead, the GameCube kept the same ring on XObj
+struct WiiAnimSlot {
+	s32 mAnim; // _00, -1 when the slot is free
+	s16 mA;    // _04
+	s16 mB;    // _06
+};
+STATIC_ASSERT(sizeof(WiiAnimSlot) == 0x8);
+
 // the title's two objects, the cursor and the demo figure. The Wii XObj is not reconstructed: these are
 // its virtuals up to the one the title code calls, the unnamed ones only keep its place
 class WiiTitleObject {
@@ -79,17 +88,19 @@ public:
 	virtual void vf0FC();
 	virtual void vf100();
 	virtual void vf104();
-	virtual void vf108();
+	// _108, the Wii's SetAnim: the GameCube passed the resolved resources, the Wii resolves them itself
+	virtual void vf108(s32 anim, s32 flags, f32, f32, f32, f32);
 	virtual void vf10C();
 	virtual void vf110();
 	virtual void vf114();
-	virtual void vf118();
+	virtual void vf118(f32 frames); // _118, steps the playing animation, the GameCube's UpdateAnim
 	virtual void vf11C();
 	virtual void vf120();
 	virtual void vf124();
 	virtual void vf128();
 	virtual void vf12C();
-	virtual void vf130();
+	// _130, nonzero once the current animation has played out at the given frame count
+	virtual s32 vf130(f32 frames);
 	virtual void vf134();
 	virtual void vf138();
 	virtual void vf13C();
@@ -106,7 +117,31 @@ public:
 
 	u8 _004[0x154 - 0x004];
 	u32 mStatus; // _154, bit 0 marks a finished LoadFromPlacement, bit 11 the caller's scale set
-	u8 _158[0x9B0 - 0x158];
+	u8 _158[0x794 - 0x158];
+	s32 mAnmHead;             // _794, the slot PushAnim probes first
+	WiiAnimSlot mAnmQueue[4]; // _798
+	u8 _7B8[0x9B0 - 0x7B8];
+
+	void ClearAnmQueue()
+	{
+		mAnmHead = 0;
+		for (s32 i = 0; i < 4; i++) {
+			mAnmQueue[i].mAnim = -1;
+		}
+	}
+
+	void PushAnim(s32 anim, s16 a, s16 b)
+	{
+		for (s32 i = 0; i < 4; i++) {
+			WiiAnimSlot* slot = &mAnmQueue[(mAnmHead + i) % 4];
+			if (slot->mAnim == -1) {
+				slot->mAnim = anim;
+				slot->mA    = a;
+				slot->mB    = b;
+				return;
+			}
+		}
+	}
 };
 STATIC_ASSERT(sizeof(WiiTitleObject) == 0x9B0);
 

@@ -338,6 +338,15 @@ struct WiiFlagSource {
 	u32* mFlags;
 };
 
+class WiiTitleObject;
+
+// the running event's object resolver at CGame+0x4C8E4, the GameCube's CEvtData: the message
+// commands test mScript, ResolveEventObjectId (0x8009453C) falls back to mContext for id -1
+struct WiiEvtData {
+	u8* mScript;              // _00
+	WiiTitleObject* mContext; // _04
+};
+
 class CGame : public CBase {
 public:
 	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
@@ -370,12 +379,16 @@ public:
 	WiiFlagSource* mItems; // _F784
 	u8 _F788[0xF874 - 0xF788];
 	WiiFlagSource* mDust; // _F874
-	u8 _F878[0x108C8 - 0xF878];
+	u8 _F878[0xF8B0 - 0xF878];
+	WiiTitleObject* mObjects[0x400]; // _F8B0, the object table ResolveEventObjectId indexes
+	u8 _108B0[0x108C8 - 0x108B0];
 	// pointers to spawned objects the renderer walks; entries are grouped in eights,
 	// CMsgFont_Init pushes its two cursors here
 	WiiObjectRef* mObjectRefs; // _108C8
 	s32 mObjectRefCount;       // _108CC
-	u8 _108D0[0x4C8F0 - 0x108D0];
+	u8 _108D0[0x4C8E4 - 0x108D0];
+	WiiEvtData mEvtData; // _4C8E4
+	u8 _4C8EC[0x4C8F0 - 0x4C8EC];
 	s32 mSelectResult; // _4C8F0, the yes/no answer CMsg__cmd_QUESTION stores, in mEvt on the GameCube
 	u8 _4C8F4[0xD7610 - 0x4C8F4];
 	WiiTimeState mTimeState;                   // _D7610
