@@ -1,26 +1,26 @@
 #ifndef _GAME_WII_INFOSCRN_H
 #define _GAME_WII_INFOSCRN_H
 
-#include "game/cgs.h"
+#include "game/wii/cgs.h"
 #include "game/cscrn.h"
 #include "game/infopoint.h"
 
-class XObj;
+class WiiTitleObject;
 
 // the hud over the game on the Wii, CGame's mInfoScrn at _AF58 (0x1F0 bytes, the GameCube's
 // is 0x1DC). No vtable: retail has no __vt__9InfoScrn. Versus the GameCube layout it drops
-// _98, inserts an s32 at _A8 (so every member from mHudAlpha on sits 4 bytes later), another
+// _98, inserts an s32 at _9C (so every member from mHudState on sits 4 bytes later), another
 // s32 at _190 before mObjectGaugeAlpha (+8 from there on) and a trailing Vec
-// at _1E4. Member offsets verified against InitInfoScreen (0x800870E8) and the Apply*/Draw*
-// functions' accesses
+// at _1E4. Member offsets verified against InitInfoScreen (0x800870E8), UpdateHudIndicators
+// (0x8008817C) and the Apply*/Draw* functions' accesses
 class InfoScrn {
 public:
 	CScrnFade mFade;              // _00
 	CScrnWipe mWipe;              // _34
-	s32 mHudState;                // _9C
-	s32 mAttachmentState;         // _A0
-	s32 mMenuHudState;            // _A4
-	s32 mWiiHudState;             // _A8, the Wii's own fourth hud state, init 0 like the others
+	s32 _9C;                      // _9C, a Wii-only word InitInfoScreen and ResetGameHudState zero
+	s32 mHudState;                // _A0
+	s32 mAttachmentState;         // _A4
+	s32 mMenuHudState;            // _A8
 	f32 mHudAlpha;                // _AC
 	f32 mAttachmentAlpha;         // _B0
 	f32 mMenuHudAlpha;            // _B4
@@ -67,7 +67,7 @@ public:
 	s32 mObjectGaugeParam;        // _190, set from ApplyObjectGaugeCommand's fifth argument
 	f32 mObjectGaugeAlpha;        // _194
 	Vec mObjectGaugePos;          // _198
-	XObj* mGaugeTarget;           // _1A4, what the gauge hangs over
+	WiiTitleObject* mGaugeTarget; // _1A4, what the gauge hangs over
 	s32 mPlayerIconState;         // _1A8
 	f32 mPlayerIconAlpha;         // _1AC
 	Vec _1B0;                     // _1B0, zeroed in InitInfoScreen and ResetGameHudState
@@ -81,6 +81,7 @@ public:
 	f32 _1D4;                     // _1D4, the GameCube's _1CC
 	s32 mSelectedSaveSlot;        // _1D8
 	f32 mBatteryGauge;            // _1DC, the battery gauge, 10 a watt
+	s32 _1E0;                     // _1E0, a Wii-only word no surviving function touches
 	Vec _1E4;                     // _1E4, a Wii-only vector, zeroed in InitInfoScreen
 };
 STATIC_ASSERT(sizeof(InfoScrn) == 0x1F0);
@@ -96,7 +97,7 @@ void InfoScrn_OnPlayerLevelChanged(InfoScrn* scrn, s32 level);
 void InfoScrn_OnPlayerExperienceChanged(InfoScrn* scrn, s32 delta);
 void InfoScrn_ApplyScanlineHudCommand(InfoScrn* scrn, u8 show, s32 mode);
 void InfoScrn_ApplyScoreHudCommand(InfoScrn* scrn, u8 show, s32 mode);
-void InfoScrn_ApplyObjectGaugeCommand(InfoScrn* scrn, XObj* obj, u8 show, s32 mode, s32 param);
+void InfoScrn_ApplyObjectGaugeCommand(InfoScrn* scrn, WiiTitleObject* obj, u8 show, s32 mode, s32 param);
 void InfoScrn_ApplyClockHudCommand(InfoScrn* scrn, u8 show, s32 mode, s32 flag);
 BOOL InfoScrn_IsBatteryGaugeEmpty(InfoScrn* scrn);
 }

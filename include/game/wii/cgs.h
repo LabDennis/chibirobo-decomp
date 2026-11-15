@@ -338,7 +338,11 @@ public:
 	u8 _6C[4];
 	u8 mPointSize;            // _70
 	GXTexOffset mPointOffset; // _74
-	u8 _78[0x90 - 0x78];
+	u8 _78[4];
+	GXCullMode mCullMode; // _7C
+	u8 _80[4];
+	GXClipMode mClipMode; // _84
+	u8 _88[0x90 - 0x88];
 
 	void SetBlendMode(GXBlendMode type, GXBlendFactor src, GXBlendFactor dst, GXLogicOp op)
 	{
@@ -385,6 +389,16 @@ public:
 		mPointSize   = pointSize;
 		mPointOffset = offset;
 		GXSetPointSize(pointSize, offset);
+	}
+	void SetCullMode(GXCullMode mode)
+	{
+		mCullMode = mode;
+		GXSetCullMode(mode);
+	}
+	void SetClipMode(GXClipMode mode)
+	{
+		mClipMode = mode;
+		GXSetClipMode(mode);
 	}
 	void Apply(); // 0x802A9CE4
 };

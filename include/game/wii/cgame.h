@@ -317,6 +317,18 @@ struct WiiOXMenu {
 	s32 mConfirmedIndex; // _1390
 };
 
+// the attachment ring's menu on the player at _19EE8, the GameCube's mMenu.mAtc. The HUD reads the
+// highlighted item's type; the item count is a bound, the menu only uses a handful
+struct WiiAtcMenuItem {
+	s32 mType; // _00
+	u8 _04[0x24];
+};
+struct WiiAtcMenu {
+	s32 mCursorIndex;            // _00
+	u8 _04[0xC];                 // _04
+	WiiAtcMenuItem mItems[0x20]; // _10
+};
+
 // the Wii player object: a different, larger class than the GameCube XObjChr. These are the members
 // the save manager reads and writes, at offsets verified against retail.
 struct WiiPlayerState {
@@ -333,13 +345,18 @@ struct WiiPlayerState {
 	WiiPlayerSuits mSuits; // _DC50
 	u8 _DC64[0x19E9C - 0xDC64];
 	u8 mAttachments[0x48]; // _19E9C
-	u8 _19EE4[0x1A420 - 0x19EE4];
+	u8 _19EE4[0x19EE8 - 0x19EE4];
+	WiiAtcMenu mAtcMenu; // _19EE8
+	u8 _19EF8[0x1A420 - 0x19F18];
 	WiiOXMenu mOXMenu; // _1A420
 	u8 _1B7B4[0x1C994 - 0x1B7B4];
 	s32 mSquirterContent; // _1C994
 	s32 mItemTint;        // _1C998
 
 	const Vec* GetPosition() { return mVtable->GetPosition(this); }
+	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
+	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
+	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
 };
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8
@@ -370,7 +387,11 @@ public:
 	CScrnFade mFade; // _4D38
 	u8 _4D6C[0x5044 - 0x4D6C];
 	u32 mWipeTileActive; // _5044, the screen wipe's active flag, the GameCube's mWipeTile1.mActive
-	u8 _5048[0x5078 - 0x5048];
+	u8 _5048[0x5050 - 0x5048];
+	f32 mWipeTileY; // _5050, the GameCube's mWipeTile1.mY
+	u8 _5054[0x5058 - 0x5054];
+	f32 mWipeTileHeight; // _5058, the GameCube's mWipeTile1.mHeight
+	u8 _505C[0x5078 - 0x505C];
 	CScrnRoboeyes mRoboeyes;
 	u8 _511C[0x5978 - 0x511C];
 	s32 mLogoState; // _5978, the boot logos' step, as the GameCube mLogo.mState
@@ -399,7 +420,9 @@ public:
 	WiiFlagSource* mDust; // _F874
 	u8 _F878[0xF8B0 - 0xF878];
 	WiiTitleObject* mObjects[0x400]; // _F8B0, the object table ResolveEventObjectId indexes
-	u8 _108B0[0x108C8 - 0x108B0];
+	s32 mObjectCount;                // _108B0
+	s32 mLoadObjectIndex;            // _108B4
+	u8 _108B8[0x108C8 - 0x108B8];
 	// pointers to spawned objects the renderer walks; entries are grouped in eights,
 	// CMsgFont_Init pushes its two cursors here
 	WiiObjectRef* mObjectRefs; // _108C8
@@ -438,6 +461,10 @@ public:
 
 	WiiPlayerState* GetPlayer() const { return mPlayer; }
 	bool CanOpenHomeMenu() const { return IsMenuFree() && !mHomeMenu.IsOpen(); }
+
+	// 0x8002AEC8, projects a world position onto the screen under camera (the motion-control
+	// camera when it is null); the GameCube had it on XObj
+	void ProjectOffsetToScreen(const Vec* pos, f32* x, f32* y, f32* z, void* camera);
 };
 STATIC_ASSERT(sizeof(CGame) == 0xEE530);
 
