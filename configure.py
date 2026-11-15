@@ -1326,6 +1326,9 @@ if wii:
                 Object(Matching, "game/gamefbsubwincam.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/gameinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/ctrigondtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the pool unit: InitializeObjectPools and ~CustomShadow match; the XObj/Light/Map
+                # ctors still wait on the Wii member-class models (TVec, CResource, NW_Anm, ...)
+                Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # Wii CMovie carries a volume (float at _88, scaled by 127.0f) and a time arg:
                 # the whole tail of the layout shifts one word versus the GameCube class
                 Object(Equivalent, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),

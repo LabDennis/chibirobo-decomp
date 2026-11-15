@@ -1195,6 +1195,10 @@ game/gameinit.cpp:
 game/ctrigondtor.cpp:
 	.text start:0x800BEB0C end:0x800BEB4C
 
+game/wii/xobj_ut.cpp:
+	.text start:0x800BD66C end:0x800BEB0C
+	.rodata start:0x802DA21C end:0x802DA320
+
 game/ctoon.cpp:
 	.text start:0x802BD294 end:0x802BD3B4
 
