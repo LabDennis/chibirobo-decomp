@@ -566,6 +566,16 @@ game/wii/cpad.cpp:
 	.sbss start:0x805A2888 end:0x805A2890
 	.sdata2 start:0x805A79C8 end:0x805A7A28
 
+game/wii/cfont.cpp:
+	extab start:0x800108CC end:0x80010920
+	extabindex start:0x80017198 end:0x800171F8
+	.text start:0x802B3B78 end:0x802B438C
+	.ctors start:0x802C4658 end:0x802C465C
+	.rodata start:0x802E5460 end:0x802E54E0
+	.bss start:0x8059FE28 end:0x8059FF70
+	.sbss start:0x805A2890 end:0x805A28A0
+	.sdata2 start:0x805A7A28 end:0x805A7A48
+
 game/cmodule.cpp:
 	extab start:0x800110D0 end:0x800110E0
 	extabindex start:0x80017990 end:0x800179A8
