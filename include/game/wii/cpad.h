@@ -221,6 +221,18 @@ inline CPadOne& GetWiiPad(u8 port)
 	return gWiiPads[port];
 }
 
+// a handle on one port, what the rest of the game keeps. the GameCube's game/cpad.h CPad is a
+// different class (its CPadOne is the 0x54-byte GameCube one); the Wii inlines this constructor
+class CPad {
+public:
+	CPadOne* mPad; // _00
+	// _04 vtable
+
+	CPad(u8 port) { mPad = &GetWiiPad(port); }
+	virtual ~CPad() { } // _08
+};
+STATIC_ASSERT(sizeof(CPad) == 0x8);
+
 struct RemoteSpeakerManager;
 // Prefix read by the input code. Channel selection and ownership stay with the speaker manager.
 struct RemoteSpeakerChannel {
