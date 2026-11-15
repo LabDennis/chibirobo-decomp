@@ -5894,6 +5894,8 @@ void XObjChr::DrawObjectEffects()
  * @note Address: 0x800A72F8
  * @note Size: 0x4DC
  */
+// NONMATCHING: the four ring extents sit in other registers (retail f28 and f29 for the halves, f26 and f27 for the outer ring; here
+// f26, f27 and f29, f28), and the joint path and CVec vtable temporaries swap r3/r4/r5
 void XObjChr::DrawGroundShadowAt(const Vec*, f32 opacity)
 {
 	if (gGame.mMotionControlCamera.GetMapDistance() < 1.0f)
@@ -5905,38 +5907,36 @@ void XObjChr::DrawGroundShadowAt(const Vec*, f32 opacity)
 	}
 	s32 rootPath[] = { 0 };
 	Vec position   = GetEventJointWorldPosition(this, 1, rootPath);
-	if (!mLift.mState || !IsCarryingMug(&mLift)) {
+	if (mLift.mState && IsCarryingMug(&mLift)) {
+		s32 path[] = { 0, 0 };
+		CVec jointScale;
+		HSD_JObjGetScale(FindJointByPath(mJObj, path, 2), &jointScale);
+		Vec rotation   = { -HALF_PI, 0.0f, 0.0f };
+		u32 shadowSize = mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0;
+		Vec size       = (mMoveScale * (f32)shadowSize) + ((jointScale * 2.5f) * 3.0f);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		u32 edge   = (u32)(128.0f * opacity);
+		u32 center = (u32)(160.0f * opacity);
+		DrawGsCircle(&gGame.mGs, 12, center, edge, position.x, position.y, position.z, size.x, size.z, rotation.x, rotation.y, rotation.z);
+		PrimVertex vertices[26];
+		f32 halfWidth = size.x * 0.5f;
+		f32 halfDepth = size.z * 0.5f;
+		for (s32 i = 0; i < 13; i++) {
+			f32 angle     = (PI / 6.0f) * i;
+			PrimVertex* v = &vertices[i * 2];
+			v[0].pos.x    = position.x - halfWidth * (f32)sin(angle);
+			v[0].pos.z    = position.z + halfDepth * (f32)cos(angle);
+			v[0].pos.y    = position.y;
+			v[0].color    = edge;
+			v[1].pos.x    = position.x - (1.5f + halfWidth) * (f32)sin(angle);
+			v[1].pos.z    = position.z + (1.5f + halfDepth) * (f32)cos(angle);
+			v[1].pos.y    = position.y;
+			v[1].color    = 0;
+		}
+		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, 26);
+	} else {
 		DrawGroundShadowAt__4XObjFPC3Vecf(this, &position, opacity);
-		return;
 	}
-
-	s32 path[] = { 0, 0 };
-	CVec jointScale;
-	HSD_JObjGetScale(FindJointByPath(mJObj, path, 2), &jointScale);
-	Vec rotation   = { -HALF_PI, 0.0f, 0.0f };
-	u32 shadowSize = mAttr.mObjData != NULL ? mAttr.mObjData->mShadowSize : 0;
-	Vec size       = (mMoveScale * (f32)shadowSize) + ((jointScale * 2.5f) * 3.0f);
-	CGs& gs        = gGame.mGs;
-	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-	u32 edge   = (u32)(128.0f * opacity);
-	u32 center = (u32)(160.0f * opacity);
-	DrawGsCircle(&gs, 12, center, edge, position.x, position.y, position.z, size.x, size.z, rotation.x, rotation.y, rotation.z);
-	PrimVertex vertices[26];
-	f32 halfWidth = size.x * 0.5f;
-	f32 halfDepth = size.z * 0.5f;
-	for (s32 i = 0; i < 13; i++) {
-		f32 angle     = (PI / 6.0f) * i;
-		PrimVertex* v = &vertices[i * 2];
-		v[0].pos.x    = position.x - halfWidth * (f32)sin(angle);
-		v[0].pos.z    = position.z + halfDepth * (f32)cos(angle);
-		v[0].pos.y    = position.y;
-		v[0].color    = edge;
-		v[1].pos.x    = position.x - (1.5f + halfWidth) * (f32)sin(angle);
-		v[1].pos.z    = position.z + (1.5f + halfDepth) * (f32)cos(angle);
-		v[1].pos.y    = position.y;
-		v[1].color    = 0;
-	}
-	DrawGsTriangleVertices(&gs, GX_TRIANGLESTRIP, gs.mCamera->mViewMtx, vertices, 26);
 }
 
 // XObjChr::DrawGroundShadow, nothing up close to the camera

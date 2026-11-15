@@ -620,9 +620,13 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			} else if (anim == 0x8c0) {
 				HeldAnim(act->mOwner, 0x8d3);
 				HeldAnim(act->mTarget, 18);
-			} else if (anim == 0x8d3 || anim == 0x8c1) {
+			} else if (anim == 0x8d3) {
 				HeldAnim(act->mTarget, 4);
 				// filled up, the inventory keeps the count at 10 at most
+				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, 11, FALSE);
+				finished = true;
+			} else if (anim == 0x8c1) {
+				HeldAnim(act->mTarget, 4);
 				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, 11, FALSE);
 				finished = true;
 			}
