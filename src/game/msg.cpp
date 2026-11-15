@@ -358,7 +358,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 	}
 	case 4: {
 		u16 frames = ReadMsgS16(msg);
-		u8 volume  = ReadMsgU8(msg);
+		s32 volume = ReadMsgU8(msg);
 		if (!IsGameSoundPlaying(&gGame.mSound, sfx)) {
 			PlayGameSound(&gGame.mSound, sfx, volume);
 		} else {
