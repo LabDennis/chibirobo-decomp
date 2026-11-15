@@ -797,53 +797,6 @@ revolution/OS/OSReset.c:
 dolphin/os/__ppc_eabi_init.cpp:
 	.text start:0x8018E5EC end:0x8018E654
 
-dolphin/dvd/dvdfs.c:
-	.text start:0x80190208 end:0x801906E8
-
-dolphin/dvd/dvd.c:
-	.text start:0x801908E8 end:0x80195680
-
-dolphin/dvd/dvderror.c:
-	.text start:0x80196260 end:0x801962C8
-
-dolphin/dvd/dvdFatal.c:
-	.text start:0x801964AC end:0x80196508
-
-dolphin/dvd/dvdlow.c:
-	.text start:0x80197CE0 end:0x80197E48
-
-dolphin/vi/vi.c:
-	.text start:0x80199734 end:0x8019B370
-dolphin/gx/GXInit.c:
-	.text start:0x801A5598 end:0x801A664C
-
-dolphin/gx/GXFifo.c:
-	.text start:0x801A664C end:0x801A7294
-
-dolphin/gx/GXMisc.c:
-	.text start:0x801A84B8 end:0x801A8D4C
-
-dolphin/gx/GXGeometry.c:
-	.text start:0x801A8FC4 end:0x801A92B4
-
-dolphin/gx/GXFrameBuf.c:
-	.text start:0x801A948C end:0x801A9E8C
-
-dolphin/gx/GXLight.c:
-	.text start:0x801A9E8C end:0x801AA5E0
-
-dolphin/gx/GXTexture.c:
-	.text start:0x801AA7C4 end:0x801AB584
-
-dolphin/gx/GXBump.c:
-	.text start:0x801AB740 end:0x801AB9D0
-
-dolphin/gx/GXDraw.c:
-	.text start:0x801ACFF4 end:0x801AD814
-
-dolphin/gx/GXTransform.c:
-	.text start:0x801ADA54 end:0x801ADEE4
-
 dolphin/thp/THPDec.c:
 	.text start:0x801FF434 end:0x80202804
 

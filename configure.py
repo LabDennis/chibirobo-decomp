@@ -1348,6 +1348,8 @@ if wii:
                 Object(Matching, "revolution/OS/OSIpc.c"),
                 Object(Matching, "revolution/OS/OSStateTM.c"),
                 Object(Matching, "revolution/OS/OSPlayRecord.c"),
+                # OSNet.c and OSLaunch.c keep calls the library flags would expand (NWC24iPrepareShutdown,
+                # NWC24SuspendScheduler, NWC24iRequestShutdown, NWC24iSetRtcCounter_, CheckTmdSysVersion)
                 Object(Matching, "revolution/OS/OSNet.c", extra_cflags=["-inline noauto"]),
                 Object(Matching, "revolution/OS/OSNandbootInfo.c"),
                 Object(Matching, "revolution/OS/OSPlayTime.c"),
