@@ -1306,6 +1306,10 @@ if wii:
                 # remote's dpad bits on gWiiPointer.mFlags and the player Y rotation comes
                 # through a vtable call instead of HSD_JObjGetRotationY
                 Object(NonMatching, "game/wii/ccameraactionscroll.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii camera is the base subobject, so the GameCube control fields sit 0x64
+                # higher; the remote's flag words replace the HSD pad reads and the Wii vtable
+                # keeps only CCamera's functions, so the class adds no virtuals of its own
+                Object(NonMatching, "game/wii/cmotioncontrolcamera.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii Params layout matches the GameCube class (mRank _08, mMoney _14,
                 # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs
                 # every function matches, but the file is written in the GameCube's order and the Wii

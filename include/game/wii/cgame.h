@@ -7,6 +7,8 @@
 #include "game/wii/cgs.h"
 #include "game/wii/homemenu.h"
 #include "game/cscrn.h"
+#include "game/cmotioncontrolcamera.h"
+#include "game/ccameraactioneye.h"
 #include "game/ut.h"
 #include "game/inventory.h"
 #
@@ -166,9 +168,9 @@ public:
 	virtual void vf68();                                  // _68
 	virtual void vf6C();                                  // _6C
 	virtual void CalcEye();                               // _70
-	virtual void vf74();                                  // _74
+	virtual void CalcInterest();                          // _74, Update calls it where the GameCube called CalcInterest
 	virtual void CalcAngle() { mView.CalcAngle(); }       // _78
-	virtual void vf7C();                                  // _7C
+	virtual void CalcUp();                                // _7C, Update calls it for the 0x40000 flag, the GameCube's CalcUp
 	virtual void CalcDistance() { mView.CalcDistance(); } // _80
 	virtual void vf84();                                  // _84
 	virtual void vf88(f32, f32, f32, f32, f32, f32);      // _88, FbSubwin::Init passes (0, 0, w, h, 0, 1)
@@ -224,21 +226,156 @@ public:
 };
 STATIC_ASSERT(sizeof(CCameraMemento) == 0x40);
 
-// the Wii motion control camera, a CCamera object with the action interface on top. The restore
-// uses the base setters; ChangeAction, GetActionType and SetMemento are named in the binary
+// the game's camera, a CCamera with whichever action drives it. CGame keeps it at +0xD7620.
+// The member layout is the GameCube class's shifted by 0x64: there the camera was a member at
+// _00 of size 0x194 and the derived fields started at _194, here CCamera is the base subobject
+// of size 0x1F8 and they start at _1F8. Offsets verified in retail Init at 0x80167638.
 class CMotionControlCamera : public CCamera {
 public:
-	u8 _1F8[0x234 - 0x1F8];
-	CInterfaceCameraAction* mAction; // _234, the running action, GetActionType finds it in the table
-	u8 _238[0x2504 - 0x238];
+	CVec mEye;                             // _1F8, what the action wants this frame
+	CVec mInterest;                        // _208
+	CVec mAngle;                           // _218
+	f32 mDistance;                         // _228
+	f32 mFov;                              // _22C
+	s32 mMode;                             // _230, the action's GetMode, 1 eases eye and interest in
+	CInterfaceCameraAction* mAction;       // _234
+	CInterfaceCameraAction* mPrevAction;   // _238
+	CInterfaceCameraAction* mPushedAction; // _23C
+	s32 _240;                              // _240, written -1 in Init, never read
+	s32 _244;                              // _244, written -1 in Init, never read
+	u32 mFlags;                            // _248, the action's GetCameraFlags, see CAMFLAG in cmotioncontrolcamera.h
+	u8 _24C[0x250 - 0x24C];                // _24C, Init clears _248/_250/_254 but never this
+	s32 mInterestMode;                     // _250, the action's GetInterestMode, 2 and 3 follow the interest in
+	s32 mEyeMode;                          // _254, 2 and 3 follow the eye in
+	u8 _258[0x25C - 0x258];
+	CVec mFollowTarget;      // _25C, Follow steps mFollowValue towards it
+	CVec mFollowValue;       // _26C
+	CVec mFollowStep;        // _27C
+	BOOL mFollowDone;        // _28C
+	f32 mFollowDivide;       // _290, how many steps it takes, the action's GetFollowDivisor
+	CCameraMemento mMemento; // _294
+	u8 _2D4[0x2D8 - 0x2D4];
 
-	s32 GetActionType();          // 0x80169548, mTable index of mAction
-	void ChangeAction(long type); // 0x80169768
-	void ApplyAction();           // 0x80169BE0
+	void Init();
+	void InitCamera();
+	void Update(u32 step);
+	void Interpolate(u32 step);
+	void Draw();
+	void fn_80169528(); // forwards the action's vf24, a second draw pass the GameCube never had
+	void fn_80167728(); // clears the eye flag and drops every action pointer
+	void ChangeAction(s32 type);
+	void ChangeAction(CInterfaceCameraAction* action);
+	void PushAction(CInterfaceCameraAction* action);
+	void PopAction();
+	void ApplyAction();
+	bool IsAction(s32 type);
+	s32 GetActionType();
+	void UpdateTarget(XObj* obj);
+	void StartEye();
+	void EndEye();
+	CCameraMemento* CreateMemento(CCameraMemento* memento);
 	BOOL SetMemento(const CCameraMemento* memento);
-};
+	f32 GetMapDistance();
+	void ReadAction();
 
-// the action pointers indexed by CAMACTION_*, CGame keeps them at +0xD9B24
+	// what the action wants lives in mEye/mInterest/mAngle/mDistance/mFov above, Update copies
+	// it there directly; unlike the GameCube class there are no target-writer inlines, they
+	// would override CCamera's virtuals and the Wii vtable has none of its own functions
+	// steps mFollowValue a fixed part of the way to the target
+	void Follow(const Vec& target, const Vec& value)
+	{
+		mFollowTarget.x = target.x;
+		mFollowTarget.y = target.y;
+		mFollowTarget.z = target.z;
+		mFollowValue.x  = value.x;
+		mFollowValue.y  = value.y;
+		mFollowValue.z  = value.z;
+		mFollowStep     = (mFollowTarget - mFollowValue) / mFollowDivide;
+
+		f32 step = PSVECMag(&mFollowStep);
+		f32 dist = PSVECDistance(&mFollowTarget, &mFollowValue);
+		if (dist <= step || dist < 0.05f) {
+			mFollowValue.x = mFollowTarget.x;
+			mFollowValue.y = mFollowTarget.y;
+			mFollowValue.z = mFollowTarget.z;
+			mFollowDone    = TRUE;
+		} else {
+			Vec step = mFollowStep;
+			PSVECAdd(&mFollowValue, &step, &mFollowValue);
+		}
+	}
+
+	// some actions start from the camera as it is, the rest from scratch
+	void StartAction()
+	{
+		if (mAction != NULL) {
+			if (mAction == GetAction(CAMACTION_CHASE) || mAction == GetAction(CAMACTION_10)) {
+				mAction->Reset();
+			} else if (mAction == GetAction(CAMACTION_EVT) || mAction == GetAction(CAMACTION_AREA) || mAction == GetAction(CAMACTION_MAP)
+			           || mAction == GetAction(CAMACTION_RESET) || mAction == GetAction(CAMACTION_ANIM)) {
+				mAction->SetCamera(this);
+			} else {
+				mAction->Reset();
+			}
+		}
+	}
+
+	// inline copy of ApplyAction
+	void CopyAction()
+	{
+		if (mAction != NULL) {
+			if (mFlags & CAMFLAG_EYE) {
+				SetEye(mAction->mEye);
+			}
+			if (mFlags & CAMFLAG_INTEREST) {
+				SetInterest(mAction->mInterest);
+			}
+			if (mFlags & CAMFLAG_DISTANCE) {
+				SetDistance(mAction->mDistance);
+			}
+			if (mFlags & CAMFLAG_FOV) {
+				SetFov(mAction->mFov);
+			}
+			if (mFlags & CAMFLAG_ANGLE) {
+				SetAngle(mAction->mAngle);
+			}
+		}
+	}
+
+	static CInterfaceCameraAction* GetAction(s32 type);
+	BOOL IsCurrent(s32 type) const { return mAction == GetAction(type) ? TRUE : FALSE; }
+};
+STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x2D8);
+
+// every camera action in one block, CGame keeps the block at +0xD78F8 and the table it fills
+// in at +0xD9B24 as mCameraActions. The area and map actions are not reconstructed yet, so
+// their slots stay untyped.
+class CCameraActions {
+public:
+	CCameraActionDefault mDefault;                 // _00
+	u8 mArea[0x33C - 0x40];                        // _40, the Wii CCameraActionArea, 0x2FC
+	CCameraActionChase mChase;                     // _33C
+	CCameraActionEvt mEvt;                         // _3AC
+	CCameraActionScroll2 mScroll2;                 // _890
+	u8 _B78[0xB7C - 0xB78];                        // _B78
+	CCameraActionEye mEye;                         // _B7C
+	CCameraActionAnim mAnim;                       // _CA0
+	u8 mMap[0x1F74 - 0xCE8];                       // _CE8, the Wii CCameraActionMap, 0x128C
+	CCameraActionLadr mLadr;                       // _1F74
+	CCameraActionReset mReset;                     // _1FB8
+	CCameraActionScroll mScroll;                   // _21C0
+	CInterfaceCameraAction* mTable[CAMACTION_NUM]; // _222C
+	// _2258 vtable
+
+	CCameraActions() { }
+	// no vtable: Init writes mTable[0] = this+0 and _2258 holds mTable[CAMACTION_SCROLL]
+
+	void Init();
+};
+STATIC_ASSERT(sizeof(CCameraActions) == 0x225C);
+
+// the action pointers indexed by CAMACTION_*, CGame keeps them at +0xD9B24; they are the tail
+// of the CCameraActions block at +0xD78F8
 struct WiiCameraActions {
 	CInterfaceCameraAction* mTable[CAMACTION_NUM];
 };
@@ -317,6 +454,9 @@ struct WiiPlayerVtable {
 	void* _248[(0x26C - 0x248) / 4];
 	// the ladder camera adds the object's facing to its orbit angle
 	f32 (*GetRotationY)(WiiPlayerState* chr);
+	void* _270[(0x28C - 0x270) / 4];
+	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
+	void (*vf28C)(WiiPlayerState* chr, s32 held);
 };
 
 // the yes/no menu CMsg__cmd_QUESTION opens on the player, the GameCube's mOXMenu. its input poll
@@ -328,13 +468,39 @@ struct WiiOXMenu {
 	s32 mConfirmedIndex; // _1390
 };
 
+// one player action slot on the Wii player: only the state word at +4 is verified, the
+// camera reads it to tell whether the look controls are free
+struct WiiPlayerAction {
+	u8 _00[4];
+	s32 mState; // _04
+};
+
 // the Wii player object: a different, larger class than the GameCube XObjChr. These are the members
 // the save manager reads and writes, at offsets verified against retail.
 struct WiiPlayerState {
 	WiiPlayerVtable* mVtable;
 	u8 _0004[0x64 - 0x04];
 	f32 mRotY; // _0064, mMoveRotate.y
-	u8 _0068[0x9920 - 0x68];
+	u8 _0068[0x9CC - 0x68];
+	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
+	u8 _09D0[0x9DF8 - 0x9D0];
+	f32 mHeldMoveAngle; // _9DF8, the heading the player snaps back to after a look
+	f32 mMoveAngle;     // _9DFC
+	u8 _09E0[0xAA0 - 0x9E0];
+	WiiPlayerAction mLift; // _0AA0, the carry action; its mState decides whether looking is free
+	u8 _0AA8[0xB50 - 0xAA8];
+	WiiPlayerAction mHang; // _0B50
+	u8 _0B58[0xBA0 - 0xB58];
+	WiiPlayerAction mJump; // _0BA0
+	u8 _0BA8[0xBF4 - 0xBA8];
+	WiiPlayerAction mLadder; // _0BF4
+	u8 _0BFC[0xC38 - 0xBFC];
+	WiiPlayerAction mRope; // _0C38
+	u8 _0C40[0xC78 - 0xC40];
+	WiiPlayerAction mPush; // _0C78
+	u8 _0C80[0xCD0 - 0xC80];
+	WiiPlayerAction mTumble; // _0CD0
+	u8 _0CD8[0x9920 - 0xCD8];
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
@@ -354,6 +520,7 @@ struct WiiPlayerState {
 	MtxP GetMtxPtr() { return mVtable->GetMtxPtr(this); }
 	Vec GetCameraTarget() { return mVtable->GetCameraTarget(this); }
 	f32 GetRotationY() { return mVtable->GetRotationY(this); }
+	void vf28C(s32 held) { mVtable->vf28C(this, held); }
 };
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8
@@ -426,7 +593,7 @@ public:
 	u8 _4C8F4[0xD7610 - 0x4C8F4];
 	WiiTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
-	WiiCameraActions mCameraActions;           // _D9B24
+	CCameraActions mCameraActions;             // _D78F8, mTable lands at _D9B24
 	u8 _D9B54[0xEC1A0 - 0xD9B54];
 	f32 mPlayTime; // _EC1A0
 	u8 _EC1A4[0xEE1DC - 0xEC1A4];

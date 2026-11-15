@@ -657,6 +657,9 @@ game/wii/ccameraactionscroll.cpp:
 	.sdata2 start:0x805A5FE0 end:0x805A6008
 	.sbss start:0x805A1D78 end:0x805A1D80
 
+game/wii/cmotioncontrolcamera.cpp:
+	.text start:0x8016753C end:0x8016AD78
+
 game/params.cpp:
 	.text start:0x80113394 end:0x80113910
 
