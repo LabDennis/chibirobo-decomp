@@ -392,8 +392,8 @@ static inline void DrawWipeQuad(CGs* gs, const WipeQuad& shape, u32 color)
 static inline void BeginWipe(CGs* gs, s32 mode)
 {
 	if (mode) {
-		static const Vec corners[4] = { { 0, 0, -1 }, { 640, 0, -1 }, { 640, 448, -1 }, { 0, 448, -1 } };
-		WipeQuad quad               = { { corners[0], corners[1], corners[2], corners[3] } };
+		static const Vec p0 = { 0, 0, -1 }, p1 = { 640, 0, -1 }, p2 = { 640, 448, -1 }, p3 = { 0, 448, -1 };
+		WipeQuad quad = { { p0, p1, p2, p3 } };
 		SetGsDepthMode(gs->mCurRenderMode, 1, 7, 1);
 		DrawWipeQuad(gs, quad, 0);
 	}
@@ -405,9 +405,9 @@ static inline void BeginWipe(CGs* gs, s32 mode)
 
 static inline void FinishWipe(const CScrnWipe* wipe, CGs* gs, s32 mode)
 {
-	static const Vec corners[4] = { { 0, 0, 0 }, { 640, 0, 0 }, { 640, 448, 0 }, { 0, 448, 0 } };
-	WipeQuad quad               = { { corners[0], corners[1], corners[2], corners[3] } };
-	u32 color = ((u32)wipe->mColor.r << 24) | ((u32)wipe->mColor.g << 16) | ((u32)wipe->mColor.b << 8) | (u32)wipe->mColor.a;
+	static const Vec p0 = { 0, 0, 0 }, p1 = { 640, 0, 0 }, p2 = { 640, 448, 0 }, p3 = { 0, 448, 0 };
+	WipeQuad quad = { { p0, p1, p2, p3 } };
+	u32 color     = ((u32)wipe->mColor.r << 24) | ((u32)wipe->mColor.g << 16) | ((u32)wipe->mColor.b << 8) | (u32)wipe->mColor.a;
 	if (mode)
 		SetGsDepthMode(gs->mCurRenderMode, 1, 1, 1);
 	else
@@ -419,8 +419,8 @@ static inline void FinishWipe(const CScrnWipe* wipe, CGs* gs, s32 mode)
 
 static inline void BeginWipeMask(CGs* gs, f32 opacity)
 {
-	static const Vec corners[4] = { { 0, 0, 0 }, { 640, 0, 0 }, { 640, 448, 0 }, { 0, 448, 0 } };
-	WipeQuad quad               = { { corners[0], corners[1], corners[2], corners[3] } };
+	static const Vec p0 = { 0, 0, 0 }, p1 = { 640, 0, 0 }, p2 = { 640, 448, 0 }, p3 = { 0, 448, 0 };
+	WipeQuad quad = { { p0, p1, p2, p3 } };
 	SetGsDestinationAlpha(gs->mCurRenderMode, 0, 0);
 	SetGsColorUpdate(gs->mCurRenderMode, 0);
 	SetGsAlphaUpdate(gs->mCurRenderMode, 1);
@@ -734,13 +734,13 @@ static inline bool HasColor(CScrnColor* color)
  * @note Address: 0x8002390C
  * @note Size: 0x22C
  */
-// NONMATCHING: retail loads the corners' address before it tests the color
+// NONMATCHING: the code is retail's, the corners sit 0x210 further down in .rodata than retail has them
 extern "C" void DrawScreenColorOverlay(CScrnColor* color, CGs* gs)
 {
 	if (HasColor(color)) {
-		static const Vec corners[4] = { { 0, 0, 0 }, { 640, 0, 0 }, { 640, 448, 0 }, { 0, 448, 0 } };
-		WipeQuad quad               = { { corners[0], corners[1], corners[2], corners[3] } };
-		u32 packed = ((u32)color->mColor.r << 24) | ((u32)color->mColor.g << 16) | ((u32)color->mColor.b << 8) | (u32)color->mColor.a;
+		static const Vec p0 = { 0, 0, 0 }, p1 = { 640, 0, 0 }, p2 = { 640, 448, 0 }, p3 = { 0, 448, 0 };
+		WipeQuad quad = { { p0, p1, p2, p3 } };
+		u32 packed    = ((u32)color->mColor.r << 24) | ((u32)color->mColor.g << 16) | ((u32)color->mColor.b << 8) | (u32)color->mColor.a;
 		SetGsChannelEnabled(gs, 0, 0);
 		SetGsBlendMode(gs->mCurRenderMode, 1, 4, 5, 15);
 		SetGsDepthMode(gs->mCurRenderMode, 1, 1, 0);
