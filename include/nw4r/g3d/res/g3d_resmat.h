@@ -4,6 +4,7 @@
 
 #include <nw4r/g3d/res/g3d_resanmtexsrt.h>
 #include <nw4r/g3d/res/g3d_rescommon.h>
+#include <nw4r/g3d/res/g3d_resuser.h>
 #include <nw4r/g3d/res/g3d_respltt.h>
 #include <nw4r/g3d/res/g3d_restev.h>
 #include <nw4r/g3d/res/g3d_restex.h>
@@ -440,6 +441,7 @@ public:
     void CallDisplayList(u8 indNum, bool sync) const;
 
     bool GXGetIndTexMtx(GXIndTexMtxID id, math::MTX34* pMtx) const;
+    bool GXGetIndTexMtx(GXIndTexMtxID id, math::MTX34* pMtx, s8* pScaleExp) const;
     void GXSetIndTexMtx(GXIndTexMtxID id, const math::MTX34& rMtx, s8 scaleExp);
 
     void EndEdit() {
@@ -509,6 +511,47 @@ private:
 
 /******************************************************************************
  *
+ * ResMatFur
+ *
+ ******************************************************************************/
+
+struct ResMatFurData {
+    enum LayerInterval {
+        UNIFORM = 0,
+        TIP = 1,
+    };
+    f32 length;                // at 0x0
+    u32 lyrSize;               // at 0x4
+    LayerInterval lyrInterval; // at 0x8
+    f32 alphaCurve;            // at 0xC
+    f32 specCurve;             // at 0x10
+};
+
+class ResMatFur : public ResCommon<ResMatFurData> {
+public:
+    NW4R_G3D_RESOURCE_FUNC_DEF(ResMatFur);
+
+    void SetLength(f32 len);
+    f32 GetLength() const;
+
+    u32 GetLyrSize() const;
+
+    void SetLytInterval(ResMatFurData::LayerInterval interval);
+    ResMatFurData::LayerInterval GetLytInterval() const;
+
+    void SetAlphaCurve(f32 curve);
+    f32 GetAlphaCurve() const;
+
+    void SetSpecCurve(f32 curve);
+    f32 GetSpecCurve() const;
+
+    f32 GetLyrRate(u32 idx) const;
+
+    ResMatFur CopyTo(void *pDst) const;
+};
+
+/******************************************************************************
+ *
  * ResMat
  *
  ******************************************************************************/
@@ -564,6 +607,11 @@ public:
 
     ResTev GetResTev();
     ResTev GetResTev() const;
+
+    ResMatFur GetResMatFur();
+    ResUserData GetResUserData();
+
+    void DCStore(bool sync);
 
     u32 GetNumResTexPlttInfo() const {
         return ref().numResTexPlttInfo;

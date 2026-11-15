@@ -50,6 +50,7 @@ public:
     NW4R_G3D_RESOURCE_FUNC_DEF(ResAnmScn);
 
     bool Bind(const ResAnmScn scene);
+    void Release();
 
     bool Bind() {
         return Bind(*this);
@@ -73,10 +74,20 @@ public:
     ResAnmAmbLight GetResAnmAmbLight(const ResName name) const;
     ResAnmAmbLight GetResAnmAmbLight(int idx) const;
     ResAnmAmbLight GetResAnmAmbLight(u32 idx) const;
+    u32 GetResAnmAmbLightNumEntries() const;
 
     ResAnmLight GetResAnmLight(const ResName name) const;
     ResAnmLight GetResAnmLight(int idx) const;
     ResAnmLight GetResAnmLight(u32 idx) const;
+    u32 GetResAnmLightNumEntries() const;
+
+    ResAnmFog GetResAnmFog(int idx) const;
+    ResAnmFog GetResAnmFog(u32 idx) const;
+    u32 GetResAnmFogNumEntries() const;
+
+    ResAnmCamera GetResAnmCamera(int idx) const;
+    ResAnmCamera GetResAnmCamera(u32 idx) const;
+    u32 GetResAnmCameraNumEntries() const;
 
     ResLightSet GetResLightSetByRefNumber(u32 refNumber) const;
     ResAnmAmbLight GetResAnmAmbLightByRefNumber(u32 refNumber) const;

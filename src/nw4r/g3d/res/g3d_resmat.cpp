@@ -57,6 +57,18 @@ void ResMatTexCoordGen::DCStore(bool sync) {
     }
 }
 
+// 0x8025F49C: no reference has it. A resource that starts with its own size: the material itself.
+void ResMat::DCStore(bool sync) {
+    ResMatData& r = ref();
+    u32 size = r.size;
+
+    if (sync) {
+        DC::StoreRange(&r, size);
+    } else {
+        DC::StoreRangeNoSync(&r, size);
+    }
+}
+
 /******************************************************************************
  *
  * CallDisplayList
@@ -454,13 +466,38 @@ void ResMatMisc::GetIndirectTexMtxCalcMethod(
     }
 }
 
-ResMatMisc ResMatMisc::CopyTo(void* pDst) const {
-    ResMatMiscData* pData = static_cast<ResMatMiscData*>(pDst);
-    const ResMatMiscData& r = ref();
+ResMatMisc ResMatMisc::CopyTo(void *pDst) const {
+    ResMatMiscData *pData = static_cast<ResMatMiscData *>(pDst);
+    const ResMatMiscData &r = ref();
 
-    // @bug Only copies the first field???
-    pData->zCompLoc = r.zCompLoc;
+    *pData = r;
     return ResMatMisc(pData);
+}
+
+/******************************************************************************
+ *
+ * ResMatFur
+ *
+ ******************************************************************************/
+f32 ResMatFur::GetLyrRate(u32 idx) const {
+    0.f; // For Float Ordering
+    1.f; // For Float Ordering
+
+    if (IsValid()) {
+        u32 layerSize = ref().lyrSize;
+        switch (ref().lyrInterval) {
+            case ResMatFurData::UNIFORM: {
+                return f32(idx + 1) / layerSize;
+            } break;
+            case ResMatFurData::TIP: {
+                return pow(f32(idx + 1) / layerSize, 0.6f);
+            } break;
+            default: {
+                return 0.f;
+            } break;
+        }
+    }
+    return 0.f;
 }
 
 /******************************************************************************
@@ -892,6 +929,70 @@ bool ResMatIndMtxAndScale::GXGetIndTexMtx(GXIndTexMtxID id,
         pMtx->_10 = scale * static_cast<f32>(static_cast<int>((regA >> GX_BP_INDMTXA_M10_SHIFT & GX_BP_INDMTXA_M10_LMASK) << (32 - GX_BP_INDMTXA_M10_SZ)) >> (32 - GX_BP_INDMTXA_M00_SZ)) * (1.0f / 1024.0f);
         pMtx->_11 = scale * static_cast<f32>(static_cast<int>((regB >> GX_BP_INDMTXB_M11_SHIFT & GX_BP_INDMTXB_M11_LMASK) << (32 - GX_BP_INDMTXB_M11_SZ)) >> (32 - GX_BP_INDMTXB_M11_SZ)) * (1.0f / 1024.0f);
         pMtx->_12 = scale * static_cast<f32>(static_cast<int>((regC >> GX_BP_INDMTXC_M12_SHIFT & GX_BP_INDMTXC_M12_LMASK) << (32 - GX_BP_INDMTXC_M12_SZ)) >> (32 - GX_BP_INDMTXC_M12_SZ)) * (1.0f / 1024.0f);
+        pMtx->_13 = 0.0f;
+
+        pMtx->_20 = 0.0f;
+        pMtx->_21 = 0.0f;
+        pMtx->_22 = 1.0f;
+        pMtx->_23 = 0.0f;
+        // clang-format on
+    }
+
+    return true;
+}
+
+bool ResMatIndMtxAndScale::GXGetIndTexMtx(GXIndTexMtxID id, math::MTX34 *pMtx, s8 *pScaleExp) const {
+    s8 scaleExp;
+    const u8 *pCmd;
+    const ResIndMtxAndScaleDL &r = ref();
+
+    switch (id) {
+        case GX_ITM_0: {
+            pCmd = r.dl.indTexMtx0;
+        } break;
+        case GX_ITM_1: {
+            pCmd = r.dl.indTexMtx1;
+        } break;
+        case GX_ITM_2: {
+            pCmd = r.dl.indTexMtx2;
+        } break;
+        default: {
+            return false;
+        }
+    }
+
+    if (pCmd[0] == 0) {
+        return false;
+    }
+
+    u32 regA;
+    detail::ResReadBPCmd(&pCmd[GX_BP_CMD_SZ * 0], &regA);
+
+    u32 regB;
+    detail::ResReadBPCmd(&pCmd[GX_BP_CMD_SZ * 1], &regB);
+
+    u32 regC;
+    detail::ResReadBPCmd(&pCmd[GX_BP_CMD_SZ * 2], &regC);
+
+    u32 scaleExpReg = (regA >> GX_BP_INDMTXA_EXP_SHIFT & GX_BP_INDMTXA_EXP_LMASK) << 0 |
+                      (regB >> GX_BP_INDMTXB_EXP_SHIFT & GX_BP_INDMTXB_EXP_LMASK) << 2 |
+                      (regC >> GX_BP_INDMTXC_EXP_SHIFT & GX_BP_INDMTXC_EXP_LMASK) << 4;
+
+    // Hardware stores as -17
+    if (pScaleExp) {
+        *pScaleExp = static_cast<s8>(scaleExpReg - 17);
+    }
+
+    if (pMtx != NULL) {
+        // clang-format off
+        pMtx->_00 =  static_cast<f32>(static_cast<int>((regA >> GX_BP_INDMTXA_M00_SHIFT & GX_BP_INDMTXA_M00_LMASK) << (32 - GX_BP_INDMTXA_M00_SZ)) >> (32 - GX_BP_INDMTXA_M00_SZ)) * (1.0f / 1024.0f);
+        pMtx->_01 =  static_cast<f32>(static_cast<int>((regB >> GX_BP_INDMTXB_M01_SHIFT & GX_BP_INDMTXB_M01_LMASK) << (32 - GX_BP_INDMTXB_M01_SZ)) >> (32 - GX_BP_INDMTXB_M01_SZ)) * (1.0f / 1024.0f);
+        pMtx->_02 =  static_cast<f32>(static_cast<int>((regC >> GX_BP_INDMTXC_M02_SHIFT & GX_BP_INDMTXC_M02_LMASK) << (32 - GX_BP_INDMTXC_M02_SZ)) >> (32 - GX_BP_INDMTXC_M02_SZ)) * (1.0f / 1024.0f);
+        pMtx->_03 = 0.0f;
+
+        pMtx->_10 =  static_cast<f32>(static_cast<int>((regA >> GX_BP_INDMTXA_M10_SHIFT & GX_BP_INDMTXA_M10_LMASK) << (32 - GX_BP_INDMTXA_M10_SZ)) >> (32 - GX_BP_INDMTXA_M00_SZ)) * (1.0f / 1024.0f);
+        pMtx->_11 =  static_cast<f32>(static_cast<int>((regB >> GX_BP_INDMTXB_M11_SHIFT & GX_BP_INDMTXB_M11_LMASK) << (32 - GX_BP_INDMTXB_M11_SZ)) >> (32 - GX_BP_INDMTXB_M11_SZ)) * (1.0f / 1024.0f);
+        pMtx->_12 =  static_cast<f32>(static_cast<int>((regC >> GX_BP_INDMTXC_M12_SHIFT & GX_BP_INDMTXC_M12_LMASK) << (32 - GX_BP_INDMTXC_M12_SZ)) >> (32 - GX_BP_INDMTXC_M12_SZ)) * (1.0f / 1024.0f);
         pMtx->_13 = 0.0f;
 
         pMtx->_20 = 0.0f;
@@ -1494,6 +1595,14 @@ ResTev ResMat::GetResTev() {
 
 ResTev ResMat::GetResTev() const {
     return ofs_to_obj<ResTev>(ref().toResTevData);
+}
+
+ResMatFur ResMat::GetResMatFur() {
+    return ofs_to_obj<ResMatFur>(ref().toResMatFurData);
+}
+
+ResUserData ResMat::GetResUserData() {
+    return ofs_to_obj<ResUserData>(ref().toResUserData);
 }
 
 /******************************************************************************

@@ -8,6 +8,23 @@ namespace g3d {
  * ResVtxPos
  *
  ******************************************************************************/
+// 0x80260EA4, our name: no reference has this getter of the position format
+void ResVtxPos::GetVtxAttrFmt(GXCompCnt *pCnt, GXCompType *pType, u8 *pFrac) const {
+    const ResVtxPosData &r = ref();
+
+    if (pCnt != NULL) {
+        *pCnt = r.cmpcnt;
+    }
+
+    if (pType != NULL) {
+        *pType = r.tp;
+    }
+
+    if (pFrac != NULL) {
+        *pFrac = r.frac;
+    }
+}
+
 void ResVtxPos::SetArray() {
     if (IsValid()) {
         GXSetArray(GX_VA_POS, GetData(), ref().stride);

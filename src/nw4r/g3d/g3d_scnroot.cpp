@@ -132,6 +132,29 @@ LightSet ScnRoot::GetLightSet(int idx) {
     return mLightSetting.GetLightSet(idx);
 }
 
+// SetAnmScn and RemoveAnmScn are in no reference source (names from xenoblade's symbols)
+bool ScnRoot::SetAnmScn(AnmScn* pAnmScn) {
+    if (mpAnmScn != NULL) {
+        RemoveAnmScn();
+    }
+
+    mpAnmScn = pAnmScn;
+    pAnmScn->G3dProc(G3DPROC_ATTACH_PARENT, 0, this);
+
+    return true;
+}
+
+AnmScn* ScnRoot::RemoveAnmScn() {
+    AnmScn* pAnmScn = mpAnmScn;
+
+    if (pAnmScn != NULL) {
+        pAnmScn->G3dProc(G3DPROC_DETACH_PARENT, 0, this);
+        mpAnmScn = NULL;
+    }
+
+    return pAnmScn;
+}
+
 void ScnRoot::UpdateFrame() {
     if (mpAnmScn != NULL) {
         mpAnmScn->UpdateFrame();
@@ -301,6 +324,16 @@ void ScnRoot::DrawXlu() {
     G3DState::Invalidate(G3DState::INVALIDATE_TEV);
 }
 
+// 0x8027B6B8, our name: no reference has this setter of the forced draw mode
+void ScnRoot::SetForceResMdlDrawMode(bool force, ResMdlDrawMode mode) {
+    if (force) {
+        mDrawMode = mode;
+        mScnRootFlags |= SCNROOTFLAG_FORCE_RESMDLDRAWMODE;
+    } else {
+        mScnRootFlags &= ~SCNROOTFLAG_FORCE_RESMDLDRAWMODE;
+    }
+}
+
 ScnRoot::ScnRoot(MEMAllocator* pAllocator, IScnObjGather* pGather,
                  ScnObj** ppChildrenBuf, u32 maxChildren, u32 numLight,
                  u32 numLightSet, LightObj* pLightObjBuf,
@@ -459,6 +492,10 @@ void ScnObjGather::DrawXlu(ResMdlDrawMode* pForceMode) {
     for (u32 i = 0; i != mNumScnObjXlu;) {
         mpArrayXlu[i++]->G3dProc(G3dObj::G3DPROC_DRAW_XLU, 0, pForceMode);
     }
+}
+
+ScnObjGather::CheckStatus ScnObjGather::CheckScnObj(ScnObj* /* pObj */) {
+    return CHECKSTATUS_GATHER_SCNOBJ;
 }
 
 ScnObjGather::ScnObjGather(ScnObj** ppBufOpa, ScnObj** ppBufXlu, u32 capacity)

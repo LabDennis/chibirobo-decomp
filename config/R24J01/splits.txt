@@ -1107,16 +1107,19 @@ nw4r/g3d/res/g3d_restev.cpp:
 	.text start:0x8025ED28 end:0x8025F40C
 
 nw4r/g3d/res/g3d_resmat.cpp:
-	.text start:0x8025F40C end:0x80260EDC
+	.text start:0x8025F40C end:0x80260EA4
+	.data start:0x80333190 end:0x803331E4
+	.sdata2 start:0x805A7230 end:0x805A7264
 
 nw4r/g3d/res/g3d_resvtx.cpp:
-	.text start:0x80260EDC end:0x8026129C
+	.text start:0x80260EA4 end:0x8026129C
 
 nw4r/g3d/res/g3d_restex.cpp:
 	.text start:0x8026129C end:0x80261438
 
 nw4r/g3d/res/g3d_resnode.cpp:
 	.text start:0x80261438 end:0x8026186C
+	.sdata2 start:0x805A7268 end:0x805A7274
 
 nw4r/g3d/res/g3d_resanm.cpp:
 	.text start:0x8026186C end:0x80261A98
@@ -1159,6 +1162,7 @@ nw4r/g3d/res/g3d_resanmcamera.cpp:
 
 nw4r/g3d/res/g3d_resanmscn.cpp:
 	.text start:0x80264DF0 end:0x802659CC
+	.data start:0x80333200 end:0x803332A0
 
 nw4r/g3d/res/g3d_resanmshp.cpp:
 	.text start:0x802659CC end:0x80265B34
@@ -1247,6 +1251,7 @@ nw4r/g3d/g3d_draw.cpp:
 
 nw4r/g3d/g3d_camera.cpp:
 	.text start:0x80275F8C end:0x80276EC4
+	.sdata2 start:0x805A7448 end:0x805A7478
 
 nw4r/g3d/dcc/g3d_basic.cpp:
 	.text start:0x80276EC4 end:0x80277188
@@ -1303,6 +1308,7 @@ nw4r/g3d/g3d_fog.cpp:
 
 nw4r/g3d/g3d_light.cpp:
 	.text start:0x8028188C end:0x802824A8
+	.sdata2 start:0x805A74F0 end:0x805A751C
 
 nw4r/g3d/g3d_calcvtx.cpp:
 	.text start:0x802824A8 end:0x80282CA0

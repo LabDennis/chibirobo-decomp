@@ -288,6 +288,7 @@ void ScnObj::EnableScnObjCallbackExecOp(ExecOp op) {
     mCallbackExecOpMask |= static_cast<u16>(op);
 }
 
+// NONMATCHING: same instructions as retail plus one unreachable blr after the last tail call (0x80279A30)
 bool ScnObj::SetBoundingVolume(ScnObjBoundingVolumeType type,
                                const math::AABB* pAABB) {
     if (pAABB != NULL) {

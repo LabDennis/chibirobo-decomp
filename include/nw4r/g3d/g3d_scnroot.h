@@ -49,6 +49,9 @@ public:
     Fog GetFog(int idx);
     LightSet GetLightSet(int idx);
 
+    bool SetAnmScn(AnmScn* pAnmScn);
+    AnmScn* RemoveAnmScn();
+
     void UpdateFrame();
     void SetGlbSettings();
 
@@ -62,6 +65,7 @@ public:
     void ZSort();
     void DrawOpa();
     void DrawXlu();
+    void SetForceResMdlDrawMode(bool force, ResMdlDrawMode mode);
 
     u32 TestScnRootFlag(ScnRootFlag flag) const {
         return (mScnRootFlags & flag) != 0;
@@ -122,6 +126,8 @@ public:
 
     virtual void DrawOpa(ResMdlDrawMode* pForceMode); // at 0x20
     virtual void DrawXlu(ResMdlDrawMode* pForceMode); // at 0x24
+
+    virtual CheckStatus CheckScnObj(ScnObj* pObj); // at 0x28
 
 protected:
     ScnObj** mpArrayOpa; // at 0x4

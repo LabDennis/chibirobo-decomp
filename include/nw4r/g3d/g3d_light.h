@@ -45,8 +45,11 @@ public:
     void InitSpecularDir(f32 nx, f32 ny, f32 nz);
     void InitLightShininess(f32 shininess);
 
+    void GetLightAttnA(f32* pAa, f32* pAb, f32* pAc) const;
+    void GetLightAttnK(f32* pKa, f32* pKb, f32* pKc) const;
     void GetLightPos(math::VEC3* pPos) const;
     void GetLightDir(math::VEC3* pDir) const;
+    void GetLightColor(GXColor* pColor) const;
 
     void ApplyViewMtx(const math::MTX34& rCamera);
 

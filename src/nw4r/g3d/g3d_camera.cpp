@@ -96,6 +96,15 @@ void Camera::SetPosition(const math::VEC3& rPos) {
     r.flags &= ~CameraData::FLAG_CAM_MTX_READY;
 }
 
+// GetPosition, GetPosture and SetFrustum are in no reference: written from the retail code
+void Camera::GetPosition(math::VEC3* pPos) const {
+    if (pPos != NULL && IsValid()) {
+        const CameraData& r = ref();
+
+        *pPos = r.cameraPos;
+    }
+}
+
 void Camera::SetPosture(const PostureInfo& rInfo) {
     if (!IsValid()) {
         return;
@@ -168,6 +177,25 @@ void Camera::SetPosture(const PostureInfo& rInfo) {
     }
 }
 
+void Camera::GetPosture(PostureInfo* pInfo) const {
+    if (pInfo != NULL && IsValid()) {
+        const CameraData& r = ref();
+
+        if (r.flags & CameraData::FLAG_CAM_LOOKAT) {
+            pInfo->tp = POSTURE_LOOKAT;
+            pInfo->cameraUp = r.cameraUp;
+            pInfo->cameraTarget = r.cameraTarget;
+        } else if (r.flags & CameraData::FLAG_CAM_ROTATE) {
+            pInfo->tp = POSTURE_ROTATE;
+            pInfo->cameraRotate = r.cameraRotate;
+        } else {
+            pInfo->tp = POSTURE_AIM;
+            pInfo->cameraTarget = r.cameraTarget;
+            pInfo->cameraTwist = r.cameraTwist;
+        }
+    }
+}
+
 void Camera::SetCameraMtxDirectly(const math::MTX34& rMtx) {
     if (!IsValid()) {
         return;
@@ -197,6 +225,29 @@ void Camera::SetPerspective(f32 fovy, f32 aspect, f32 near, f32 far) {
                  CameraData::FLAG_PROJ_ORTHO | CameraData::FLAG_PROJ_MTX_READY);
 
     r.flags |= CameraData::FLAG_PROJ_PERSP;
+}
+
+void Camera::SetFrustum(f32 top, f32 bottom, f32 left, f32 right, f32 near,
+                        f32 far) {
+    if (!IsValid()) {
+        return;
+    }
+
+    CameraData& r = ref();
+
+    r.projType = GX_PERSPECTIVE;
+
+    r.projTop = top;
+    r.projBottom = bottom;
+    r.projLeft = left;
+    r.projRight = right;
+    r.projNear = near;
+    r.projFar = far;
+
+    r.flags &= ~(CameraData::FLAG_PROJ_FRUSTUM | CameraData::FLAG_PROJ_PERSP |
+                 CameraData::FLAG_PROJ_ORTHO | CameraData::FLAG_PROJ_MTX_READY);
+
+    r.flags |= CameraData::FLAG_PROJ_FRUSTUM;
 }
 
 void Camera::SetOrtho(f32 top, f32 bottom, f32 left, f32 right, f32 near,

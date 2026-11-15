@@ -3,6 +3,7 @@
 #include <nw4r/types_nw4r.h>
 
 #include <nw4r/g3d/res/g3d_rescommon.h>
+#include <nw4r/g3d/res/g3d_resuser.h>
 
 #include <nw4r/math.h>
 
@@ -84,6 +85,11 @@ public:
 
     void PatchChrAnmResult(ChrAnmResult* pResult) const;
     void CalcChrAnmResult(ChrAnmResult* pResult) const;
+
+    void SetTranslate(f32 x, f32 y, f32 z);
+    void SetRotate(f32 x, f32 y, f32 z);
+
+    ResUserData GetResUserData();
 
     ResName GetResName() const {
         const ResNodeData& r = ref();

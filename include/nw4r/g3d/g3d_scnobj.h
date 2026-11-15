@@ -217,6 +217,8 @@ public:
         CULLINGSTATUS_NOTEST
     };
 
+    enum CheckStatus { CHECKSTATUS_GATHER_SCNOBJ, CHECKSTATUS_IGNORE_SCNOBJ };
+
 public:
     virtual ~IScnObjGather() {} // at 0x8
 

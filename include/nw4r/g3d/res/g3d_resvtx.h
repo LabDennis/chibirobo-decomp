@@ -40,6 +40,7 @@ public:
         DCStore(false);
     }
 
+    void GetVtxAttrFmt(GXCompCnt *pCnt, GXCompType *pType, u8 *pFrac) const;
     void SetArray();
     void GetArray(const void **ppBase, u8 *pStride) const;
 

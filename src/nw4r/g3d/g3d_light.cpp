@@ -113,6 +113,21 @@ void LightObj::InitLightShininess(f32 shininess) {
     mFlag |= FLAG_SPECULAR;
 }
 
+// not in the references: read back the attenuation, each coefficient optional
+void LightObj::GetLightAttnA(f32* pAa, f32* pAb, f32* pAc) const {
+    f32 aa, ab, ac;
+
+    GXGetLightAttnA(const_cast<GXLightObj*>(&mObj), pAa ? pAa : &aa,
+                    pAb ? pAb : &ab, pAc ? pAc : &ac);
+}
+
+void LightObj::GetLightAttnK(f32* pKa, f32* pKb, f32* pKc) const {
+    f32 ka, kb, kc;
+
+    GXGetLightAttnK(const_cast<GXLightObj*>(&mObj), pKa ? pKa : &ka,
+                    pKb ? pKb : &kb, pKc ? pKc : &kc);
+}
+
 void LightObj::GetLightPos(math::VEC3* pPos) const {
     if (!pPos) {
         return;
@@ -127,6 +142,14 @@ void LightObj::GetLightDir(math::VEC3* pDir) const {
     }
 
     GXGetLightDir(const_cast<GXLightObj*>(&mObj), &pDir->x, &pDir->y, &pDir->z);
+}
+
+void LightObj::GetLightColor(GXColor* pColor) const {
+    if (!pColor) {
+        return;
+    }
+
+    GXGetLightColor(const_cast<GXLightObj*>(&mObj), pColor);
 }
 
 void LightObj::ApplyViewMtx(const math::MTX34& rCamera) {
