@@ -280,7 +280,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	case 7:
 	case 8:
 	case 9:
-		if (anim != 0x9f && anim != 0xa0 && anim != 0xbc) {
+		if (!(anim == 0x9f || anim == 0xa0 || anim == 0xbc)) {
 			SetPlayerActionTarget(act, &act->mOwner->mPlug);
 			XObjPlug* plug = (XObjPlug*)act->mTarget;
 			plug->mStatus.mFlags |= 0x0400000000000000ULL;
@@ -295,7 +295,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		}
 		// fall through
 	case 10:
-		if (anim != 0x9f && anim != 0xa0 && anim != 0xbc) {
+		if (!(anim == 0x9f || anim == 0xa0 || anim == 0xbc)) {
 			ClearObjectAnimationQueue(act->mOwner);
 			if (IsLiftActionState(act, 7)) {
 				HeldAnim(act->mOwner, 0x9f);
