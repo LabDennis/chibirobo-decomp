@@ -4,8 +4,8 @@
 
 char* __AIVersion = "<< RVL_SDK - AI \trelease build: Jul 30 2008 19:18:38 (0x4199_60831) >>";
 
-static AISCallback __AIS_Callback = NULL;
-static AIDCallback __AID_Callback = NULL;
+static AISCallback __AIS_Callback;
+static AIDCallback __AID_Callback;
 static u8* __CallbackStack;
 static u8* __OldStack;
 static vs32 __AI_init_flag = FALSE;
