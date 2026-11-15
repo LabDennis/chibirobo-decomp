@@ -36,8 +36,6 @@ s32 __AXGetNumVoices(void)
 	return __AXNumVoices;
 }
 
-// NONMATCHING: retail copies the address and ADPCM blocks and the u16 pairs as 32-bit words and clears itdBuffer
-// with inline stores; this version copies halfwords and calls memset
 void __AXServiceVPB(AXVPB* vpb)
 {
 	AXPB* dst;
@@ -90,8 +88,63 @@ void __AXServiceVPB(AXVPB* vpb)
 		dst->itd.targetShiftL = src->itd.targetShiftL;
 		dst->itd.targetShiftR = src->itd.targetShiftR;
 	} else if (sync & AX_PBSYNC_ITD) {
-		dst->itd = src->itd;
-		memset(vpb->itdBuffer, 0, sizeof(AXITD));
+		u16* d = (u16*)&dst->itd;
+		u16* s = (u16*)&src->itd;
+		u32* b;
+
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		s += 1;
+
+		b    = vpb->itdBuffer;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
+		b += 1;
+		*(b) = 0;
 	}
 
 	if (sync & AX_PBSYNC_DPOP) {
@@ -112,49 +165,137 @@ void __AXServiceVPB(AXVPB* vpb)
 		}
 
 		if (sync & AX_PBSYNC_LOOP_ADDR) {
-			dst->addr.loopAddressHi = src->addr.loopAddressHi;
-			dst->addr.loopAddressLo = src->addr.loopAddressLo;
+			*(u32*)&dst->addr.loopAddressHi = *(u32*)&src->addr.loopAddressHi;
 		}
 
 		if (sync & AX_PBSYNC_END_ADDR) {
-			dst->addr.endAddressHi = src->addr.endAddressHi;
-			dst->addr.endAddressLo = src->addr.endAddressLo;
+			*(u32*)&dst->addr.endAddressHi = *(u32*)&src->addr.endAddressHi;
 		}
 
 		if (sync & AX_PBSYNC_CURR_ADDR) {
-			dst->addr.currentAddressHi = src->addr.currentAddressHi;
-			dst->addr.currentAddressLo = src->addr.currentAddressLo;
+			*(u32*)&dst->addr.currentAddressHi = *(u32*)&src->addr.currentAddressHi;
 		} else {
-			src->addr.currentAddressHi = dst->addr.currentAddressHi;
-			src->addr.currentAddressLo = dst->addr.currentAddressLo;
+			*(u32*)&src->addr.currentAddressHi = *(u32*)&dst->addr.currentAddressHi;
 		}
 	} else if (sync & AX_PBSYNC_ADDR) {
-		dst->addr = src->addr;
+		u32* d = (u32*)&dst->addr;
+		u32* s = (u32*)&src->addr;
+
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
 	} else {
 		src->addr.currentAddressHi = dst->addr.currentAddressHi;
 		src->addr.currentAddressLo = dst->addr.currentAddressLo;
 	}
 
 	if (sync & AX_PBSYNC_ADPCM) {
-		dst->adpcm = src->adpcm;
+		u32* d = (u32*)&dst->adpcm;
+		u32* s = (u32*)&src->adpcm;
+
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
 	}
 
 	if (sync & AX_PBSYNC_SRC_RATIO) {
 		dst->src.ratioHi = src->src.ratioHi;
 		dst->src.ratioLo = src->src.ratioLo;
 	} else if (sync & AX_PBSYNC_SRC) {
-		dst->src = src->src;
+		u16* d = (u16*)&dst->src;
+		u16* s = (u16*)&src->src;
+
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
 	}
 
 	if (sync & AX_PBSYNC_ADPCM_LOOP) {
-		dst->adpcmLoop = src->adpcmLoop;
+		u16* d = (u16*)&dst->adpcmLoop;
+		u16* s = (u16*)&src->adpcmLoop;
+
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
 	}
 
 	if (sync & AX_PBSYNC_LPF_COEFS) {
 		dst->lpf.a0 = src->lpf.a0;
 		dst->lpf.b0 = src->lpf.b0;
 	} else if (sync & AX_PBSYNC_LPF) {
-		dst->lpf = src->lpf;
+		u16* d = (u16*)&dst->lpf;
+		u16* s = (u16*)&src->lpf;
+
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
 	}
 
 	if (sync & AX_PBSYNC_BIQUAD_COEFS) {
@@ -164,7 +305,39 @@ void __AXServiceVPB(AXVPB* vpb)
 		dst->biquad.a1 = src->biquad.a1;
 		dst->biquad.a2 = src->biquad.a2;
 	} else if (sync & AX_PBSYNC_BIQUAD) {
-		dst->biquad = src->biquad;
+		u16* d = (u16*)&dst->biquad;
+		u16* s = (u16*)&src->biquad;
+
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
 	}
 
 	if (sync & AX_PBSYNC_REMOTE) {
@@ -197,7 +370,39 @@ void __AXServiceVPB(AXVPB* vpb)
 		dst->rmtIIR.biquad.a1 = src->rmtIIR.biquad.a1;
 		dst->rmtIIR.biquad.a2 = src->rmtIIR.biquad.a2;
 	} else if (sync & AX_PBSYNC_RMTIIR) {
-		dst->rmtIIR = src->rmtIIR;
+		u16* d = (u16*)&dst->rmtIIR;
+		u16* s = (u16*)&src->rmtIIR;
+
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
+		*(d) = *(s);
+		d += 1;
+		s += 1;
 	}
 }
 
@@ -420,16 +625,72 @@ void AXSetVoiceState(AXVPB* vpb, u16 state)
 	OSRestoreInterrupts(enabled);
 }
 
-// NONMATCHING: retail copies the address as words and fills the ADPCM block with inline stores for each format;
-// this version copies halfwords and calls memset, so it needs a larger stack frame and one more saved register
 void AXSetVoiceAddr(AXVPB* vpb, AXPBADDR* addr)
 {
 	BOOL enabled = OSDisableInterrupts();
+	u32* dst     = (u32*)&vpb->pb.addr;
+	u32* src     = (u32*)addr;
 
-	vpb->pb.addr = *addr;
-	if (addr->format == AX_SAMPLE_FORMAT_PCM_S16 || addr->format == AX_SAMPLE_FORMAT_PCM_S8) {
-		memset(&vpb->pb.adpcm, 0, sizeof(vpb->pb.adpcm));
-		vpb->pb.adpcm.gain = addr->format == AX_SAMPLE_FORMAT_PCM_S16 ? 0x0800 : 0x0100;
+	*(dst) = *(src);
+	dst += 1;
+	src += 1;
+	*(dst) = *(src);
+	dst += 1;
+	src += 1;
+	*(dst) = *(src);
+	dst += 1;
+	src += 1;
+	*(dst) = *(src);
+
+	switch (addr->format) {
+	case AX_SAMPLE_FORMAT_DSP_ADPCM:
+		break;
+	case AX_SAMPLE_FORMAT_PCM_S16:
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0x08000000;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		break;
+	case AX_SAMPLE_FORMAT_PCM_S8:
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		*(dst) = 0x01000000;
+		dst += 1;
+		*(dst) = 0;
+		dst += 1;
+		break;
 	}
 
 	vpb->sync &= ~(AX_PBSYNC_LOOP_FLAG | AX_PBSYNC_LOOP_ADDR | AX_PBSYNC_END_ADDR | AX_PBSYNC_CURR_ADDR);

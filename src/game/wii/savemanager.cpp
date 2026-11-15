@@ -121,6 +121,7 @@ extern "C" void BuildWiiSaveBanner(WiiSaveManager* manager)
 		memcpy(manager->mBanner.iconTexture[i], icon.mImageData, sizeof(manager->mBanner.iconTexture[i]));
 		manager->mBanner.iconSpeed = (manager->mBanner.iconSpeed & ~(3 << (2 * i))) | (1 << (2 * i));
 	}
+	manager->mBanner.iconSpeed = (manager->mBanner.iconSpeed & ~(3 << (2 * 8))) | (0 << (2 * 8));
 }
 
 extern "C" s32 WriteWiiSaveBanner(WiiSaveManager* manager)

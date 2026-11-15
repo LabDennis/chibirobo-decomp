@@ -32,6 +32,145 @@ game/wii/soundbank.cpp:
 game/roboeyeslens.cpp:
 	.text start:0x80040E08 end:0x80040E4C
 
+revolution/EXI/EXIBios.c:
+	.text start:0x8017C0A8 end:0x8017D93C
+	.bss start:0x804CC1C8 end:0x804CC288
+	.sbss start:0x805A1E40 end:0x805A1E44
+
+revolution/EXI/EXIUart.c:
+	.text start:0x8017D93C end:0x8017DC70
+	.sbss start:0x805A1E48 end:0x805A1E58
+
+revolution/EXI/EXICommon.c:
+	.text start:0x8017DC70 end:0x8017DDFC
+
+revolution/SI/SIBios.c:
+	.text start:0x8017DDFC end:0x8017F36C
+	.data start:0x8030F368 end:0x8030F390
+	.bss start:0x804CC288 end:0x804CC4C0
+	.sbss start:0x805A1E58 end:0x805A1E68
+
+dolphin/si/SISamplingRate.c:
+	.text start:0x8017F36C end:0x8017F44C
+	.data start:0x8030F390 end:0x8030F428
+	.sbss start:0x805A1E68 end:0x805A1E70
+
+revolution/BASE/PPCArch.c:
+	.text start:0x8017F44C end:0x8017F5B0
+	.data start:0x8030F428 end:0x8030F460
+
+revolution/DB/db.c:
+	.text start:0x8017F5B0 end:0x8017F698
+	.data start:0x8030F460 end:0x8030F478
+	.sbss start:0x805A1E70 end:0x805A1E78
+
+revolution/OS/OSAlarm.c:
+	.text start:0x80180BB4 end:0x80181438
+	.data start:0x8030F988 end:0x8030F998
+	.sbss start:0x805A1EC0 end:0x805A1EC8
+
+revolution/OS/OSAlloc.c:
+	.text start:0x80181438 end:0x80181740
+	.sdata start:0x805A13D8 end:0x805A13E0
+	.sbss start:0x805A1EC8 end:0x805A1ED8
+
+revolution/OS/OSCache.c:
+	.text start:0x80181C88 end:0x801822B8
+	.data start:0x8030FA18 end:0x8030FC50
+
+revolution/OS/OSContext.c:
+	.text start:0x801822B8 end:0x80182B40
+	.data start:0x8030FC50 end:0x8030FE30
+
+revolution/OS/OSFatal.c:
+	.text start:0x80184864 end:0x8018549C
+	.bss start:0x804CC5A0 end:0x804CC880
+	.sdata start:0x805A1400 end:0x805A1408
+	.sdata2 start:0x805A6420 end:0x805A6460
+
+revolution/OS/OSFont.c:
+	.text start:0x8018549C end:0x80186764
+	.data start:0x803101C0 end:0x80310CD0
+	.sdata start:0x805A1408 end:0x805A1410
+	.sbss start:0x805A1EF8 end:0x805A1F08
+
+revolution/OS/OSInterrupt.c:
+	.text start:0x80186764 end:0x80186EE8
+
+revolution/OS/OSLink.c:
+	.text start:0x80186EE8 end:0x801878C4
+	.data start:0x80310D00 end:0x80310D50
+
+revolution/OS/OSRtc.c:
+	.text start:0x80189164 end:0x80189BF0
+	.bss start:0x804CC880 end:0x804CC8D8
+
+revolution/OS/OSSync.c:
+	.text start:0x80189DBC end:0x80189E3C
+
+revolution/OS/OSThread.c:
+	.text start:0x80189E3C end:0x8018B324
+	.bss start:0x804CC8D8 end:0x804CD2E0
+	.sdata start:0x805A1418 end:0x805A1420
+	.sbss start:0x805A1F40 end:0x805A1F50
+
+revolution/MTX/mtx.c:
+	.text start:0x8018E6A0 end:0x8018F2B0
+	.sdata start:0x805A1448 end:0x805A1450
+	.sdata2 start:0x805A6478 end:0x805A6494
+
+revolution/MTX/vec.c:
+	.text start:0x8018FAB8 end:0x8018FEA0
+	.sdata2 start:0x805A64B0 end:0x805A64C0
+
+revolution/DVD/dvdqueue.c:
+	.text start:0x8019568C end:0x801958E4
+	.bss start:0x804D2370 end:0x804D2390
+
+revolution/PAD/Pad.c:
+	.text start:0x8019D69C end:0x8019EEE4
+	.data start:0x8031FC28 end:0x8031FC80
+	.bss start:0x804D2970 end:0x804D29A0
+	.sdata start:0x805A14D0 end:0x805A14F0
+	.sbss start:0x805A21B8 end:0x805A21E0
+
+revolution/AI/ai.c:
+	.text start:0x8019EEE4 end:0x8019F470
+	.data start:0x8031FC80 end:0x8031FCC8
+	.sdata start:0x805A14F0 end:0x805A14F8
+	.sbss start:0x805A21E0 end:0x805A2220
+
+revolution/DSP/dsp.c:
+	.text start:0x801A4920 end:0x801A4B9C
+	.data start:0x803230C0 end:0x80323140
+	.sdata start:0x805A1510 end:0x805A1518
+	.sbss start:0x805A2360 end:0x805A2368
+
+revolution/DSP/dsp_debug.c:
+	.text start:0x801A4B9C end:0x801A4BEC
+
+revolution/DSP/dsp_task.c:
+	.text start:0x801A4BEC end:0x801A5480
+	.sbss start:0x805A2368 end:0x805A2380
+
+revolution/ARC/arc.c:
+	.text start:0x801FEAB4 end:0x801FF434
+	.data start:0x8032DA30 end:0x8032DAA0
+	.sdata start:0x805A1870 end:0x805A1878
+
+game/THPDraw.cpp:
+	.text start:0x802C3D80 end:0x802C456C
+	.sdata2 start:0x805A7B90 end:0x805A7BAC
+
+game/THPSimple.cpp:
+	.text start:0x802C269C end:0x802C3D80
+	.rodata start:0x802E5E28 end:0x802E5E2C
+	.data start:0x80356690 end:0x80356790
+	.bss start:0x805A0300 end:0x805A08E0
+	.sdata start:0x805A1B28 end:0x805A1B2C
+	.sbss start:0x805A28C8 end:0x805A28F4
+	.sdata2 start:0x805A7B80 end:0x805A7B90
+
 game/stage_data.cpp:
 	extab start:0x8000A210 end:0x8000A230
 	extabindex start:0x80012F68 end:0x80012F98
@@ -120,10 +259,20 @@ dolphin/os/OSMessage.c:
 revolution/OS/OSMutex.c:
 	.text start:0x801882D0 end:0x801885D4
 
+dolphin/os/OSStopwatch.c:
+	.text start:0x80189BF0 end:0x80189DBC
+
+dolphin/os/OSTime.c:
+	.text start:0x8018B324 end:0x8018B738
+	.data start:0x80310FE8 end:0x80311048
+
 revolution/OS/OSStateFlags.c:
 	.text start:0x8018C708 end:0x8018C914
 	.data start:0x8031CF98 end:0x8031CFC0
 	.bss start:0x804CD5A0 end:0x804CD5C0
+
+dolphin/mtx/mtxvec.c:
+	.text start:0x8018F2B0 end:0x8018F3E4
 
 revolution/MTX/mtx44.c:
 	.text start:0x8018F3E4 end:0x8018FA40
@@ -216,31 +365,175 @@ revolution/NAND/NANDCheck.c:
 	.data start:0x80324590 end:0x80324640
 	.sdata start:0x805A15C8 end:0x805A15D8
 
+rvl_msl/mem.c:
+	.text start:0x8022A010 end:0x8022A180
+
 MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c:
 	.text start:0x8022A180 end:0x8022A450
+
+MSL_C.PPCEABI.bare.H/MSL_Common/errno.c:
+	.sbss start:0x805A26E0 end:0x805A26E8
+
+MSL_C.PPCEABI.bare.H/MSL_Common/float.c:
+	.sdata start:0x805A18B0 end:0x805A18B4
 
 MSL_C.PPCEABI.bare.H/MSL_Common/rand.c:
 	.text start:0x8022C924 end:0x8022C94C
 	.sdata start:0x805A18A0 end:0x805A18A4
 
+rvl_msl/string.c:
+	.text start:0x8022CA8C end:0x8022CEB8
+	.sdata start:0x805A18A8 end:0x805A18B0
+	.sdata2 start:0x805A6858 end:0x805A6860
+
+MSL_C.PPCEABI.bare.H/MSL_Common/strtoul.c:
+	.text start:0x8022CEB8 end:0x8022D3AC
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_acos.c:
+	.text start:0x8022D6B0 end:0x8022D974
+	.sdata2 start:0x805A6860 end:0x805A68E8
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_asin.c:
+	.text start:0x8022D974 end:0x8022DC0C
+	.sdata2 start:0x805A68E8 end:0x805A6970
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_atan2.c:
+	.text start:0x8022DC0C end:0x8022DE7C
+	.sdata2 start:0x805A6970 end:0x805A69C8
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_log.c:
+	.text start:0x8022E1AC end:0x8022E460
+	.sbss start:0x805A26F8 end:0x805A2700
+	.sdata2 start:0x805A69C8 end:0x805A6A48
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_pow.c:
+	.text start:0x8022E574 end:0x8022EDBC
+	.rodata start:0x802DFA48 end:0x802DFA78
+	.sdata2 start:0x805A6A78 end:0x805A6B88
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_rem_pio2.c:
+	.text start:0x8022EDBC end:0x8022F154
+	.rodata start:0x802DFA78 end:0x802DFC00
+	.sdata2 start:0x805A6B88 end:0x805A6BE0
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_cos.c:
+	.text start:0x8022F22C end:0x8022F33C
+	.sdata2 start:0x805A6BE0 end:0x805A6C28
+
+rvl_msl/k_rem_pio2.c:
+	.text start:0x8022F33C end:0x80230A48
+	.rodata start:0x802DFC00 end:0x802DFC50
+	.sdata2 start:0x805A6C28 end:0x805A6C68
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_sin.c:
+	.text start:0x80230A48 end:0x80230B08
+	.sdata2 start:0x805A6C68 end:0x805A6CA0
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_tan.c:
+	.text start:0x80230B08 end:0x80230D60
+	.rodata start:0x802DFC50 end:0x802DFCB8
+	.sdata2 start:0x805A6CA0 end:0x805A6CD8
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_atan.c:
+	.text start:0x80230D60 end:0x80230FA0
+	.rodata start:0x802DFCB8 end:0x802DFD50
+	.sdata2 start:0x805A6CD8 end:0x805A6D00
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_copysign.c:
+	.text start:0x802310E0 end:0x8023110C
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_cos.c:
+	.text start:0x8023110C end:0x802311E0
+	.sdata2 start:0x805A6D10 end:0x805A6D18
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_floor.c:
+	.text start:0x802311E0 end:0x80231324
+	.sdata2 start:0x805A6D18 end:0x805A6D28
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_frexp.c:
+	.text start:0x80231324 end:0x802313AC
+	.sdata2 start:0x805A6D28 end:0x805A6D30
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_ldexp.c:
+	.text start:0x802313AC end:0x80231518
+	.sdata2 start:0x805A6D30 end:0x805A6D58
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_modf.c:
+	.text start:0x80231518 end:0x80231614
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_sin.c:
+	.text start:0x80231614 end:0x802316EC
+	.sdata2 start:0x805A6D58 end:0x805A6D60
+
 MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_tan.c:
 	.text start:0x802316EC end:0x80231764
 	.sdata2 start:0x805A6D60 end:0x805A6D68
 
-Runtime.PPCEABI.H/global_destructor_chain.c:
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_acos.c:
+	.text start:0x80231764 end:0x80231768
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_asin.c:
+	.text start:0x80231768 end:0x8023176C
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_atan2.c:
+	.text start:0x8023176C end:0x80231770
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_exp.c:
+	.text start:0x80231770 end:0x80231774
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_pow.c:
+	.text start:0x80231778 end:0x8023177C
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_sqrt.c:
+	.text start:0x8023177C end:0x802319C4
+	.sdata2 start:0x805A6D68 end:0x805A6D70
+
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_sqrt.c:
+	.text start:0x802319C4 end:0x802319C8
+
+Runtime.PPCEABI.H/__mem.c:
+	.init start:0x800062EC end:0x80006420
+
+Runtime.PPCEABI.H/__va_arg.c:
+	.text start:0x80231A5C end:0x80231B24
+
+rvl_runtime/global_destructor_chain.c:
 	.text start:0x80231B24 end:0x80231B84
 	.sbss start:0x805A2708 end:0x805A270C
+
+Runtime.PPCEABI.H/NMWException.cp:
+	extab start:0x8000FF10 end:0x8000FF50
+	extabindex start:0x800169AC end:0x800169DC
+	.text start:0x80231B84 end:0x80232110
+	.sdata start:0x805A18B8 end:0x805A18C0
 
 Runtime.PPCEABI.H/ptmf.c:
 	.text start:0x80232110 end:0x802321A4
 	.rodata start:0x802DFD50 end:0x802DFD5C
 
-Runtime.PPCEABI.H/__init_cpp_exceptions.cpp:
+rvl_runtime/runtime.c:
+	.text start:0x802321A4 end:0x80232810
+	.rodata start:0x802DFD60 end:0x802DFD78
+
+rvl_runtime/__init_cpp_exceptions.cpp:
 	.text start:0x80232810 end:0x80232880
 	.ctors start:0x802C4580 end:0x802C4584 rename:.ctors$10
 	.dtors start:0x802C4680 end:0x802C4684 rename:.dtors$10
 	.dtors start:0x802C4684 end:0x802C4688 rename:.dtors$15
 	.sdata start:0x805A18C0 end:0x805A18C4
+
+Runtime.PPCEABI.H/Gecko_ExceptionPPC.cp:
+	extab start:0x8000FF50 end:0x8000FFC4
+	extabindex start:0x800169DC end:0x80016A30
+	.text start:0x80232880 end:0x80233FC8
+	.rodata start:0x802DFD78 end:0x802DFDE0
+	.data start:0x803325B0 end:0x803326B0
+	.bss start:0x805307A8 end:0x805307B4
+	.sdata start:0x805A18C8 end:0x805A18D0
+
+Runtime.PPCEABI.H/GCN_mem_alloc.c:
+	.text start:0x80233FC8 end:0x80234080
+	.rodata start:0x802DFDE0 end:0x802DFE50
 
 game/wii/cpad.cpp:
 	extab start:0x8001082C end:0x800108CC

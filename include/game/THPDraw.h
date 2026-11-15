@@ -14,7 +14,11 @@ void THPGXRestore(void);
 void THPGXYuv2RgbSetup(BOOL alpha);
 void THPGXLoadYuvTex(u8* yData, u8* uData, u8* vData, s16 textureWidth, s16 textureHeight);
 void THPGXSetupVtx(void);
+#ifdef VERSION_R24J01
+void THPGXDrawQuad(s16 x, s16 y, s16 z, s16 polygonWidth, s16 polygonHeight);
+#else
 void THPGXDrawQuad(s16 x, s16 y, s16 polygonWidth, s16 polygonHeight);
+#endif
 
 #ifdef __cplusplus
 }

@@ -522,9 +522,9 @@ extern "C" BOOL LoadGlobalResourceData()
 		gGlobalScriptResources.mHeader    = (GlobalResourceHeader*)gGlobalScriptResources.mFile.mBuffer;
 		GlobalResourceHeader* header      = gGlobalScriptResources.mHeader;
 		u8* buffer                        = (u8*)header;
-		gGlobalScriptResources.mData      = buffer + ReadResourceOffset(header->data.offset) + sizeof(*header);
-		gGlobalScriptResources.mCollision = buffer + ReadResourceOffset(header->collision.offset) + sizeof(*header);
-		gGlobalScriptResources.mScripts   = buffer + ReadResourceOffset(header->scripts.offset) + sizeof(*header);
+		gGlobalScriptResources.mData      = buffer + sizeof(*header) + ReadResourceOffset(header->data.offset);
+		gGlobalScriptResources.mCollision = buffer + sizeof(*header) + ReadResourceOffset(header->collision.offset);
+		gGlobalScriptResources.mScripts   = buffer + sizeof(*header) + ReadResourceOffset(header->scripts.offset);
 		return TRUE;
 	}
 	return FALSE;

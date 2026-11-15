@@ -7,6 +7,10 @@
 #include "Dolphin/gx.h"
 #include <string.h>
 
+#ifdef VERSION_R24J01
+extern "C" u8 SCGetSoundMode(void);
+#endif
+
 typedef struct THPHeader {
 	char magic[4];             // _00
 	u32 version;               // _04
@@ -83,8 +87,12 @@ typedef struct THPSimple {
 } THPSimple;
 STATIC_ASSERT(sizeof(THPSimple) == 0x188);
 
+#ifdef VERSION_R24J01
+#define SAMPLES_PER_AUDIO_FRAME 96
+#else
 #define SAMPLES_PER_AUDIO_FRAME 160 // 5ms at 32khz
-#define BYTES_PER_AUDIO_FRAME   (SAMPLES_PER_AUDIO_FRAME * sizeof(s16) * 2)
+#endif
+#define BYTES_PER_AUDIO_FRAME (SAMPLES_PER_AUDIO_FRAME * sizeof(s16) * 2)
 
 // clang-format off
 // 32768 * vol * vol / (127 * 127)
@@ -402,16 +410,17 @@ BOOL THPSimpleSetBuffer(void* buffer)
 	return TRUE;
 }
 
-static inline void ReadFrameAsync(void)
+static void ReadFrameAsync(void)
 {
 	if (!SimpleControl.dvdError && SimpleControl.preFetchState == TRUE) {
 		if (SimpleControl.totalReadFrame > SimpleControl.header.numFrames - 1) {
-			if (SimpleControl.loop != 1) { // no loop: stop at the last frame
+			if (SimpleControl.loop == 1) {
+				SimpleControl.totalReadFrame = 0;
+				SimpleControl.curOffset      = SimpleControl.header.movieDataOffsets;
+				SimpleControl.readSize       = SimpleControl.header.firstFrameSize;
+			} else {
 				return;
 			}
-			SimpleControl.totalReadFrame = 0;
-			SimpleControl.curOffset      = SimpleControl.header.movieDataOffsets;
-			SimpleControl.readSize       = SimpleControl.header.firstFrameSize;
 		}
 
 		SimpleControl.readProgress = TRUE;
@@ -579,17 +588,7 @@ BOOL THPSimpleLoadStop(void)
 	return FALSE;
 }
 
-static inline BOOL VideoDecode(u8* videoFrame)
-{
-	s32 ret = THPVideoDecode(videoFrame, SimpleControl.textureSet.ytexture, SimpleControl.textureSet.utexture,
-	                         SimpleControl.textureSet.vtexture, SimpleControl.thpWork);
-
-	if (ret == 0) {
-		SimpleControl.textureSet.frameNumber = SimpleControl.readBuffer[SimpleControl.nextDecodeIndex].frameNumber;
-		return TRUE;
-	}
-	return FALSE;
-}
+static BOOL VideoDecode(u8* videoFrame);
 
 static inline void CheckPrefetch(void)
 {
@@ -677,6 +676,18 @@ s32 THPSimpleDecode(s32 audioTrack)
 	return 2; // nothing to decode
 }
 
+static BOOL VideoDecode(u8* videoFrame)
+{
+	s32 ret = THPVideoDecode(videoFrame, SimpleControl.textureSet.ytexture, SimpleControl.textureSet.utexture,
+	                         SimpleControl.textureSet.vtexture, SimpleControl.thpWork);
+
+	if (ret == 0) {
+		SimpleControl.textureSet.frameNumber = SimpleControl.readBuffer[SimpleControl.nextDecodeIndex].frameNumber;
+		return TRUE;
+	}
+	return FALSE;
+}
+
 /**
  * @note Address: 0x801B61F8
  * @note Size: 0x74
@@ -706,6 +717,28 @@ void THPSimpleDrawEnd(void)
  * @note Address: 0x801B6134
  * @note Size: 0xA4
  */
+#ifdef VERSION_R24J01
+// the Wii port gives the draw calls a depth argument
+s32 THPSimpleDrawCurrentFrame(s32 x, s32 y, s32 z, s32 polygonW, s32 polygonH, BOOL alpha)
+{
+	if (SimpleControl.textureSet.frameNumber >= 0) {
+		THPSimpleDrawBegin(alpha);
+		THPGXDrawQuad((s16)x, (s16)y, (s16)z, (s16)polygonW, (s16)polygonH);
+		THPSimpleDrawEnd();
+		return SimpleControl.textureSet.frameNumber;
+	}
+	return -1;
+}
+
+/**
+ * @note Address: 0x801B6104
+ * @note Size: 0x30
+ */
+void THPSimpleDrawQuad(s32 x, s32 y, s32 z, s32 polygonW, s32 polygonH)
+{
+	THPGXDrawQuad((s16)x, (s16)y, (s16)z, (s16)polygonW, (s16)polygonH);
+}
+#else
 s32 THPSimpleDrawCurrentFrame(s32 x, s32 y, s32 polygonW, s32 polygonH, BOOL alpha)
 {
 	if (SimpleControl.textureSet.frameNumber >= 0) {
@@ -725,6 +758,7 @@ void THPSimpleDrawQuad(s32 x, s32 y, s32 polygonW, s32 polygonH)
 {
 	THPGXDrawQuad((s16)x, (s16)y, (s16)polygonW, (s16)polygonH);
 }
+#endif
 
 /**
  * @note Address: 0x801B5D48
@@ -791,7 +825,11 @@ static void MixAudio(s16* destination, s16* source, u32 sample)
 						if (SoundOff) {
 							dst[-2] = 0;
 							dst[-1] = 0;
+#ifdef VERSION_R24J01
+						} else if (SCGetSoundMode() == 0) {
+#else
 						} else if (OSGetSoundMode() == OS_SOUND_MODE_MONO) {
+#endif
 							mix     = (dst[-1] + dst[-2]) / 2;
 							dst[-2] = mix;
 							dst[-1] = mix;
@@ -809,9 +847,16 @@ static void MixAudio(s16* destination, s16* source, u32 sample)
 						}
 					}
 
+#ifdef VERSION_R24J01
+					if (requestSample) {
+						continue;
+					}
+					break;
+#else
 					if (!requestSample) {
 						break;
 					}
+#endif
 				} else {
 					memcpy(dst, libsrc, requestSample << 2);
 					break;
@@ -879,9 +924,16 @@ static void MixAudio(s16* destination, s16* source, u32 sample)
 						}
 					}
 
+#ifdef VERSION_R24J01
+					if (requestSample) {
+						continue;
+					}
+					break;
+#else
 					if (!requestSample) {
 						break;
 					}
+#endif
 				} else {
 					memset(dst, 0, requestSample << 2);
 					break;
@@ -976,3 +1028,43 @@ static void THPAudioMixCallback(void)
 		}
 	}
 }
+
+#ifdef VERSION_R24J01
+BOOL THPSimpleSetVolume(s32 vol, s32 time)
+{
+	u32 sampleRate;
+	BOOL enabled;
+
+	if (SimpleControl.open && SimpleControl.audioExist) {
+		sampleRate = AIGetDSPSampleRate() == 0 ? 32 : 48;
+
+		if (vol > 127) {
+			vol = 127;
+		}
+		if (vol < 0) {
+			vol = 0;
+		}
+		if (time > 60000) {
+			time = 60000;
+		}
+		if (time < 0) {
+			time = 0;
+		}
+
+		enabled = OSDisableInterrupts();
+
+		SimpleControl.targetVolume = (f32)vol;
+		if (time != 0) {
+			SimpleControl.rampCount   = sampleRate * time;
+			SimpleControl.deltaVolume = (SimpleControl.targetVolume - SimpleControl.curVolume) / (f32)SimpleControl.rampCount;
+		} else {
+			SimpleControl.curVolume = SimpleControl.targetVolume;
+			SimpleControl.rampCount = 0;
+		}
+
+		OSRestoreInterrupts(enabled);
+		return TRUE;
+	}
+	return FALSE;
+}
+#endif

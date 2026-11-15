@@ -46,6 +46,12 @@ void THPGXYuv2RgbSetup(BOOL alpha)
 	GXInvalidateTexAll();
 
 	GXSetNumTevStages(4);
+#ifdef VERSION_R24J01
+	GXSetTevDirect(GX_TEVSTAGE0);
+	GXSetTevDirect(GX_TEVSTAGE1);
+	GXSetTevDirect(GX_TEVSTAGE2);
+	GXSetTevDirect(GX_TEVSTAGE3);
+#endif
 	GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD1, GX_TEXMAP1, GX_COLOR_NULL);
 	GXSetTevColorIn(GX_TEVSTAGE0, GX_CC_ZERO, GX_CC_TEXC, GX_CC_KONST, GX_CC_C0);
 	GXSetTevColorOp(GX_TEVSTAGE0, GX_TEV_ADD, GX_TB_ZERO, GX_CS_SCALE_1, GX_FALSE, GX_TEVPREV);
@@ -134,6 +140,21 @@ void THPGXSetupVtx(void)
  * @note Address: 0x801B71D8
  * @note Size: 0xD0
  */
+#ifdef VERSION_R24J01
+void THPGXDrawQuad(s16 x, s16 y, s16 z, s16 polygonWidth, s16 polygonHeight)
+{
+	GXBegin(GX_QUADS, GX_VTXFMT7, 4);
+	GXPosition3u16(x, y, z);
+	GXTexCoord2u16(0, 0);
+	GXPosition3u16(x + polygonWidth, y, z);
+	GXTexCoord2u16(1, 0);
+	GXPosition3u16(x + polygonWidth, y + polygonHeight, z);
+	GXTexCoord2u16(1, 1);
+	GXPosition3u16(x, y + polygonHeight, z);
+	GXTexCoord2u16(0, 1);
+	GXEnd();
+}
+#else
 void THPGXDrawQuad(s16 x, s16 y, s16 polygonWidth, s16 polygonHeight)
 {
 	GXBegin(GX_QUADS, GX_VTXFMT7, 4);
@@ -148,3 +169,4 @@ void THPGXDrawQuad(s16 x, s16 y, s16 polygonWidth, s16 polygonHeight)
 	GXTexCoord2u16(0, 1);
 	GXEnd();
 }
+#endif
