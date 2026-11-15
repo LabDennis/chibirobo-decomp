@@ -1168,6 +1168,12 @@ if wii:
     if args.warn:
         wii_cflags.append(f"-W {args.warn}")
     wii_cflags.append("-DDEBUG=1" if args.debug else "-DNDEBUG=1")
+    # the Wii's GX sources take the SDK's public headers from include/sdk
+    # (ahead of include/, whose Dolphin/ directory answers to <dolphin/...> as well)
+    wii_gx_cflags = [
+        "-i include/sdk", "-i include/sdk/dolphin", "-i include/sdk/msl/c",
+        *wii_cflags, "-Cpp_exceptions off", "-fp_contract off", "-common off", "-ipa file", "-use_lmw_stmw off",
+    ]
     config.libs = [
         {
             "lib": "game",
@@ -1365,24 +1371,30 @@ if wii:
                 Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
                 Object(Matching, "revolution/WPAD/WPADMem.c"),
                 Object(Matching, "revolution/WPAD/debug_msg.c"),
+                # GX, the Wii's own sources (src/dolphin/gx is the GameCube template). Compiler and flags are
+                # the library's: with them GXBump.c matched 5 of 5 named functions at once (1 of 7 as the
+                # GameCube file under GC/1.2.5n) and GX as a whole went from 11 to 130 of 191 before any
+                # source change. GC/3.0a3 to 3.0a5 give the same code on GXTexture.c; Wii/1.0 to 1.3 lose
+                # four to five more functions there, and without -ipa file GXInitTexObj falls to 94 %.
+                Object(Matching, "revolution/GX/GXInit.c", cflags=wii_gx_cflags),
+                Object(NonMatching, "revolution/GX/GXFifo.c", cflags=wii_gx_cflags),
+                Object(NonMatching, "revolution/GX/GXAttr.c", cflags=wii_gx_cflags),
+                Object(Matching, "revolution/GX/GXMisc.c", cflags=wii_gx_cflags),
+                Object(Matching, "revolution/GX/GXFrameBuf.c", cflags=wii_gx_cflags),
+                Object(NonMatching, "revolution/GX/GXTexture.c", cflags=wii_gx_cflags),
+                Object(Matching, "revolution/GX/GXBump.c", cflags=wii_gx_cflags),
+                Object(Matching, "revolution/GX/GXTev.c", cflags=wii_gx_cflags),
+                Object(NonMatching, "revolution/GX/GXPixel.c", cflags=wii_gx_cflags),
+                Object(Matching, "revolution/GX/GXDisplayList.c", cflags=wii_gx_cflags),
+                Object(Matching, "revolution/GX/GXPerf.c", cflags=wii_gx_cflags),
                 # GC SDK units paired to free Wii ranges - same DolphinLib profile
                 # (GC/1.2.5n + cflags_sdk) the GameCube editions build them with
                 Object(Equivalent, "dolphin/os/OSAudioSystem.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSError.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(Equivalent, "dolphin/gx/GXTev.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
-                Object(Equivalent, "dolphin/gx/GXPixel.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
-                Object(Equivalent, "dolphin/gx/GXPerf.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/gx/GXAttr.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/gx/GXInit.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/gx/GXFifo.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/gx/GXMisc.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/gx/GXGeometry.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/gx/GXFrameBuf.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/gx/GXLight.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/gx/GXTexture.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/gx/GXBump.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/gx/GXDraw.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/gx/GXTransform.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXDraw.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OS.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSExec.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSMemory.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
