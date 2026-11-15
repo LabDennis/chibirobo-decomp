@@ -1342,8 +1342,11 @@ if wii:
                 # TanDeg constants: a function ahead of FRUSTUM::Set that the linker removed used them
                 # (the reference decomps force the order with a macro)
                 Object(NonMatching, "nw4r/math/math_geometry.cpp"),
+                # nw4r::g3d (0x8025B5A4-0x80282CA0)
+                # nw4r::snd (0x80283EA8-0x802A5358)
             ],
         },
+        # homebuttonLib (0x80203864-0x80222DEC)
         {
             # These Wii SDK modules share the compiler profile used by New Play Control! Pikmin.
             "lib": "RevolutionSDK-2008",
