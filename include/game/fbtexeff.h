@@ -1,6 +1,40 @@
 #ifndef _GAME_FBTEXEFF_H
 #define _GAME_FBTEXEFF_H
 
+#include "Version.h"
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+
+// Wii FbSubwin - partial: only the members below are verified, by the retail functions'
+// offsets (CreateFbTexture writes _04/_06, Init stores _58/_5C/_BC, the function-table
+// pointer is at _124, four bytes later than the GameCube class because WiiFbTexture is
+// one word bigger, _128/_134 are the fade state, the camera is embedded at _148). The
+// gaps stay unverified.
+class FbSubwin {
+public:
+	u8 _000[0x4];
+	u16 mWidth;    // _04, written by CreateFbTexture
+	u16 mHeight;   // _06, written by CreateFbTexture
+	u8 _008[0x50]; // unverified (rest of the WiiFbTexture head)
+	u8 mTexDirty;  // _58, texture-matrix flag, set TRUE around the matrix writes
+	u8 _059[0x3];
+	Mtx mTexMtx[4]; // _5C, the texture's matrices; Init writes [0] and [2]
+	u8 _11C[0x8];
+	void (**mVtable)(FbSubwin*); // _124
+	BOOL mEnabled;               // _128, fades in while set, out while not
+	u8 _12C[0x8];                // unverified
+	f32 mAmount;                 // _134, 0 to 1
+	u8 _138[0x10];
+	CCamera mCamera; // _148
+
+	void Init();
+	void Reset();
+	void Update(u32 frames);
+};
+
+extern "C" void ConfigureSubwindowCamera(FbSubwin* subwin, const Vec& interest, f32 angleY, f32 angleX, f32 distance, f32 fov);
+
+#else
 #include "game/ccamera.h"
 #include "game/ctpl.h"
 
@@ -90,5 +124,6 @@ STATIC_ASSERT(sizeof(FbMirrorEx) == 0x2F4);
 
 // the game's mirrors
 extern "C" FbMirrorEx gFramebufferMirrors[5];
+#endif
 
 #endif

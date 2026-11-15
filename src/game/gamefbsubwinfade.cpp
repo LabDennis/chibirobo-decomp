@@ -1,3 +1,13 @@
+#include "Version.h"
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#include "game/wii/cgs.h"
+#include "game/fbtexeff.h"
+#include <Dolphin/mtx.h>
+
+extern s32 gPointerScreenWidth, gRefreshRate;
+extern "C" CCamera* InitGamePerspectiveCamera(CCamera* camera, const GXRenderModeObj* rmode);
+#else
 #include "game/cgame.h"
 #include "game/mm.h"
 #include "game/video.h"
@@ -5,6 +15,58 @@
 extern "C" {
 u32 GXGetTexBufferSize(u16 width, u16 height, u32 format, GXBool mipmap, u8 maxLod);
 }
+#endif
+
+#if defined(VERSION_R24J01)
+/**
+ * @note Address: 0x8001A704
+ * @note Size: 0x15C
+ */
+void FbSubwin::Init()
+{
+	GXRenderModeObj* screen = &gGame.mGs.mScreen;
+	CreateFbTexture((WiiFbTexture*)this, screen->fbWidth / 2, screen->efbHeight / 2, GX_TF_RGB565, FALSE, NULL, "(subwin)");
+	f32 scale = 640.0f / gPointerScreenWidth;
+	PSMTXTrans(mTexMtx[0], (1.0f - scale) * 0.5f, 0.0f, 0.0f);
+	mTexDirty = TRUE;
+	PSMTXScale(mTexMtx[2], scale, 1.0f, 1.0f);
+	mTexDirty = TRUE;
+	InitGamePerspectiveCamera(&mCamera, screen);
+	mCamera.vf88(0.0f, 0.0f, mWidth, mHeight, 0.0f, 1.0f);
+	mVtable[3](this); // Reset, through the table at _124
+}
+
+/**
+ * @note Address: 0x8001A860
+ * @note Size: 0x14
+ */
+void FbSubwin::Reset()
+{
+	mEnabled = FALSE;
+	mAmount  = 0.0f;
+}
+
+/**
+ * @note Address: 0x8001A874
+ * @note Size: 0xE4
+ */
+void FbSubwin::Update(u32 frames)
+{
+	if (mEnabled) {
+		if (mAmount < 1.0f) {
+			if ((mAmount += (1.0f / (0.3f * gRefreshRate)) * frames) >= 1.0f) {
+				mAmount = 1.0f;
+			}
+		}
+	} else {
+		if (mAmount > 0.0f) {
+			if ((mAmount -= (1.0f / (0.3f * gRefreshRate)) * frames) <= 0.0f) {
+				mAmount = 0.0f;
+			}
+		}
+	}
+}
+#else
 
 /**
  * @note Address: 0x80014978
@@ -73,3 +135,4 @@ void FbSubwin::Update(u32 frames)
 		}
 	}
 }
+#endif

@@ -1,6 +1,13 @@
+#include "Version.h"
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#include "game/cmdline.h"
+#include "game/stagedata.h"
+#else
 #include "game/cgame.h"
 #include "game/xobjmap.h"
 #include "game/cgameutil.h"
+#endif
 
 extern "C" {
 char* strtok(char* str, const char* delim);

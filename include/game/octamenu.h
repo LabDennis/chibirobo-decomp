@@ -1,6 +1,28 @@
 #ifndef _GAME_OCTAMENU_H
 #define _GAME_OCTAMENU_H
 
+#include "Version.h"
+#if defined(VERSION_R24J01)
+#include "types.h"
+
+// Wii OXMenu - partial: the destructor destroys OXMenuMark mMark[2] at _18 with
+// element stride 0x9B8 (retail __destroy_arr in 0x800C1348). Mark internals and the
+// rest of the class are not recovered yet.
+struct OXMenuMark {
+	u8 _0[0x9B8]; // retail element stride; internals unverified
+
+	OXMenuMark();
+	~OXMenuMark();
+};
+
+class OXMenu {
+public:
+	u8 _0[0x18];         // unverified head
+	OXMenuMark mMark[2]; // _18
+
+	virtual ~OXMenu(); // defined in oxmenudtor.cpp
+};
+#else
 #include "game/xobj.h"
 #include "game/ringmenu.h"
 #include "game/cptcl.h"
@@ -79,6 +101,7 @@ public:
 STATIC_ASSERT(sizeof(OXMenu) == 0x38);
 #else
 STATIC_ASSERT(sizeof(OXMenu) == 0x1348);
+#endif
 #endif
 
 #endif

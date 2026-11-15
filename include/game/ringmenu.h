@@ -49,7 +49,11 @@ public:
 
 	OctaMenu() { mChr = NULL; }
 
-	virtual ~OctaMenu() { }                         // _08 (weak)
+#if defined(VERSION_R24J01)
+	virtual ~OctaMenu(); // _08, defined in atcmenudtor.cpp
+#else
+	virtual ~OctaMenu() { } // _08 (weak)
+#endif
 	virtual void Open(s32 item);                    // _0C
 	virtual void Select(s32 dir);                   // _10
 	virtual void OpenActive();                      // _14, Open(0): the ring that has the cursor
@@ -86,7 +90,11 @@ STATIC_ASSERT(sizeof(OctaMenu) == 0x298);
 
 class AtcMenu : public OctaMenu {
 public:
-	virtual ~AtcMenu() { }                          // _08 (weak)
+#if defined(VERSION_R24J01)
+	virtual ~AtcMenu(); // _08, defined in atcmenudtor.cpp
+#else
+	virtual ~AtcMenu() { } // _08 (weak)
+#endif
 	virtual void Open(s32 item);                    // _0C
 	virtual void ConfirmSelection();                // _1C
 	virtual s32 GetItemIconTextureIndex(s32 index); // _20
@@ -97,7 +105,11 @@ public:
 
 class DrsMenu : public OctaMenu {
 public:
-	virtual ~DrsMenu() { }                          // _08
+#if defined(VERSION_R24J01)
+	virtual ~DrsMenu(); // _08, defined in drsmenudtor.cpp
+#else
+	virtual ~DrsMenu() { } // _08
+#endif
 	virtual void Open(s32 item);                    // _0C
 	virtual void ConfirmSelection();                // _1C
 	virtual s32 GetItemIconTextureIndex(s32 index); // _20

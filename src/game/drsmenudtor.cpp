@@ -1,3 +1,14 @@
+#include "Version.h"
+#if defined(VERSION_R24J01)
+#include "game/ringmenu.h"
+
+// NONMATCHING (Wii): ~OctaMenu lives in atcmenudtor.cpp, so this emits a base-dtor
+// call retail's 0x800C1018 doesn't have; the rest is the same minimal shape.
+// the weak dtor copy the GameCube file spells out by hand
+DrsMenu::~DrsMenu()
+{
+}
+#else
 #include "game/octamenu.h"
 
 void operator delete(void* object);
@@ -29,3 +40,4 @@ extern "C" DrsMenu* __dt__7DrsMenuFv(DrsMenu* menu, s32 flags)
 	}
 	return menu;
 }
+#endif

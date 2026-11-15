@@ -1,6 +1,15 @@
 #ifndef _GAME_CTRIGON_H
 #define _GAME_CTRIGON_H
 
+#if defined(VERSION_R24J01)
+// Wii CTrigon - only the destructor is reconstructed so far: retail __dt__7CTrigonFv
+// (0x800BEB0C) is the minimal body. The class stays virtual like the GameCube one; the
+// triangle-pool fields are not recovered yet.
+class CTrigon {
+public:
+	virtual ~CTrigon();
+};
+#else
 // the HSD headers have to come first, see game/hsd_jobj.h
 #include "game/hsd_jobj.h"
 
@@ -66,5 +75,6 @@ public:
 	int Search(Vec* pos, f32* floorY);
 };
 typedef char CTrigon_size_check[sizeof(CTrigon) == 0x1C ? 1 : -1];
+#endif
 
 #endif

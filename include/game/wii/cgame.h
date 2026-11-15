@@ -145,8 +145,8 @@ public:
 	virtual void SetInterest(const Vec& interest);        // _4C
 	virtual void SetAngle(const Vec& angle);              // _50
 	virtual void vf54();                                  // _54
-	virtual void vf58();                                  // _58
-	virtual void vf5C();                                  // _5C
+	virtual void SetAngleY(f32 y);                        // _58, ConfigureSubwindowCamera passes angleY here
+	virtual void SetAngleX(f32 x);                        // _5C, then angleX here - same order as the GameCube CCamera
 	virtual void vf60();                                  // _60
 	virtual void vf64();                                  // _64
 	virtual void vf68();                                  // _68
@@ -157,7 +157,7 @@ public:
 	virtual void vf7C();                                  // _7C
 	virtual void CalcDistance() { mView.CalcDistance(); } // _80
 	virtual void vf84();                                  // _84
-	virtual void vf88();                                  // _88
+	virtual void vf88(f32, f32, f32, f32, f32, f32);      // _88, FbSubwin::Init passes (0, 0, w, h, 0, 1)
 
 	u8 _04[0x4];
 	f32 mFov; // _08
@@ -309,6 +309,8 @@ struct WiiPlayerState {
 	u8 _19EE4[0x1C994 - 0x19EE4];
 	s32 mSquirterContent; // _1C994
 	s32 mItemTint;        // _1C998
+
+	const Vec* GetPosition() { return mVtable->GetPosition(this); }
 };
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8
@@ -319,6 +321,8 @@ struct WiiFlagSource {
 
 class CGame : public CBase {
 public:
+	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
+
 	s32 mLoadStep;
 	u8 _41EC[0x42FC - 0x41EC];
 	s32 mStage;
@@ -334,8 +338,11 @@ public:
 	s32 mTitleState; // _5C74, the title screen's step, as the GameCube mTitle.mState
 	u8 _5C78[0xAE00 - 0x5C78];
 	BOOL mMenuActive; // _AE00, a menu is open, as the GameCube mMenu.mActive
-	u8 _AE04[0xB148 - 0xAE04];
-	WiiHomeMenu mHomeMenu; // _B148
+	u8 _AE04[0xAF58 - 0xAE04];
+	// the object the InfoScrn_* HUD calls receive at +0xAF58; the Wii callbacks are
+	// empty stubs, so only its address is verified, not its layout
+	u8 mInfoScrn[0xB148 - 0xAF58]; // _AF58
+	WiiHomeMenu mHomeMenu;         // _B148
 	u8 _B7A8[0xF70C - 0xB7A8];
 	WiiPlayerState* mPlayer; // _F70C
 	u8 _F710[0xF770 - 0xF710];
@@ -371,6 +378,8 @@ public:
 	bool IsLoading() const { return IsLoadStepRunning() && !IsIntroShown(); }
 	bool IsInterruptible() const { return !IsLoading() && mTitleState != 20; }
 	bool IsMenuFree() const { return IsInterruptible() && !mMenuActive; }
+
+	WiiPlayerState* GetPlayer() const { return mPlayer; }
 	bool CanOpenHomeMenu() const { return IsMenuFree() && !mHomeMenu.IsOpen(); }
 };
 STATIC_ASSERT(sizeof(CGame) == 0xEE530);

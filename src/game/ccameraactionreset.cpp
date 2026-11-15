@@ -1,6 +1,7 @@
 #include "game/ccameraaction.h"
-#include "game/cmotioncontrolcamera.h"
 #include "Version.h"
+#if !defined(VERSION_R24J01)
+#include "game/cmotioncontrolcamera.h"
 #include <math.h>
 
 #include "game/cgame.h"
@@ -10,6 +11,7 @@ extern "C" {
 #include <dolphin/os.h>
 #include "game/video.h"
 }
+#endif
 
 // CGame camera stuff, by offset for now
 // japan's camera, area and map sit 0xCE8 lower
@@ -48,6 +50,7 @@ XObj* CCameraActionReset::GetTarget()
 	return mTarget;
 }
 
+#if !defined(VERSION_R24J01)
 /**
  * @note Address: 0x80147648
  * @note Size: 0x14C
@@ -612,3 +615,4 @@ void CCameraActionReset::Init()
 	mFovInterps[1] = &mFovEaseInOut;
 	mFovInterps[2] = &mFovEaseOut;
 }
+#endif

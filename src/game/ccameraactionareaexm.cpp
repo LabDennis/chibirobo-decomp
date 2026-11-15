@@ -33,7 +33,11 @@ void CCameraActionAreaExM::SetZoomLevel(s32 mode)
  * @note Address: 0x80015C84
  * @note Size: 0x44
  */
+#if defined(VERSION_R24J01)
+extern "C" s32 FindAreaContainingPoint__20CCameraActionAreaExMF3Vec(CCameraActionAreaExM* action, Vec pos)
+#else
 extern "C" s32 FindAreaContainingPoint__20CCameraActionAreaExMF3Vec(CCameraActionAreaExM* action, const Vec& pos)
+#endif
 {
 	return FindFirstCameraAreaContainingPoint(&gCameraAreaState, pos);
 }

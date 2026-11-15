@@ -40,7 +40,11 @@ public:
 	// _04 vtable
 
 	CPad(u8 port);
+#if defined(VERSION_R24J01)
+	virtual ~CPad(); // _08, defined in cpaddtor.cpp
+#else
 	virtual ~CPad() { } // _08
+#endif
 };
 STATIC_ASSERT(sizeof(CPad) == 0x8);
 

@@ -1230,6 +1230,63 @@ if wii:
                 # bl - auto-inlining was off for the unit
                 Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 Object(Equivalent, "game/wii/soundbank.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                # shared GameCube game units found on the Wii (wii_gc_pairs.txt)
+                Object(Equivalent, "game/cinterpolationeaseout.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # FindAreaContainingPoint takes Vec by value on the Wii (the retail caller copies all
+                # three words to the stack); gCameraAreaState's _10/_14/_24 offsets are retail-confirmed
+                Object(Equivalent, "game/ccameraactionareaexm.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the global's __sinit stores the vtable and __construct_arrays mGroups[256] at _2034
+                # (retail 0x801542A0); CCameraActionAreaEx's layout is shared with the GameCube
+                Object(NonMatching, "game/ccameraactionareaexinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii file queries the player position through the vtable GetPosition and calls
+                # FindEnabledCameraAreaContainingPoint instead of open-coding the record loop; the
+                # DrawGs debug draws and the corner-Vec extern stay GameCube-only
+                Object(NonMatching, "game/ccameraactionareaex.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Equivalent, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # InfoPoint's dtor is the out-of-line definition; the GameCube file's hand-spelled
+                # weak copy stays for GC only (retail Wii body has no vtable store)
+                Object(NonMatching, "game/infopointdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/infopointinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # menu dtors: the GameCube files' hand-spelled weak copies stay GC-only; on Wii the
+                # classes keep inline/base dtors and the units define the out-of-line destructors
+                Object(Equivalent, "game/atcmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Equivalent, "game/drsmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Equivalent, "game/oxmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/gamecpadone.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Equivalent, "game/cpaddtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/cpadexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii-only verified members: fade state and the texture matrices live four
+                # bytes later than the GameCube layout (WiiFbTexture is one word bigger)
+                Object(Equivalent, "game/gamefbsubwinfade.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii CCamera vtable: _4C SetInterest(Vec&)/_58 SetAngleY/_5C SetAngleX/_44 SetDistance/
+                # _18 SetFov/_70 CalcEye — mCamera embedded at FbSubwin+0x148
+                Object(Equivalent, "game/gamefbsubwincam.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/gameinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Equivalent, "game/ctrigondtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii CMovie carries a volume (float at _88, scaled by 127.0f) and a time arg:
+                # the whole tail of the layout shifts one word versus the GameCube class
+                Object(Equivalent, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # member offsets are shared with the GameCube class (mEyeInterps _18C, mFovInterps
+                # _330, the interp pointers _44-_54); the Wii vtable re-orders the Vec& overloads
+                Object(NonMatching, "game/ccameraactionevt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # member offsets shared with the GameCube class (mTarget _40, mInterestMode _58);
+                # the heavy previous/update methods need XObj/CMotionControlCamera decls (GC-only)
+                Object(NonMatching, "game/ccameraactionreset.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii Params layout matches the GameCube class (mRank _08, mMoney _14,
+                # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs
+                # every function matches, but the file is written in the GameCube's order and the Wii
+                # has its functions the other way round, so it cannot be linked in place
+                Object(Equivalent, "game/params.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # same Inventory layout on both; the Wii functions carry the FindItem and
+                # CompactSlot helpers inlined with different codegen
+                Object(Equivalent, "game/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
+                # match its field layout); no sysdolphin on Wii
+                Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),
+                # the game's operator delete, in a file of its own: it frees into the MEM1 exp heap
+                # (retail 0x80019A68 loads the InitMem1 global and calls MEMFreeToExpHeap, no null check)
+                Object(Equivalent, "game/wii/delete.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "rel/module.c"),
             ],
         },
@@ -1248,7 +1305,7 @@ if wii:
                 ),
                 Object(Matching, "revolution/AX/AX.c"),
                 Object(Matching, "revolution/OS/OSArena.c"),
-                Object(Equivalent, "revolution/OS/OSAlarm.c", cflags=[*cflags_sdk_2004, "-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
+                Object(NonMatching, "revolution/OS/OSAlarm.c", cflags=[*cflags_sdk_2004, "-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/OS/OSAlloc.c"),
                 Object(Matching, "revolution/OS/OSCache.c"),
                 Object(Matching, "revolution/OS/OSContext.c"),
@@ -1299,6 +1356,38 @@ if wii:
                 Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
                 Object(Matching, "revolution/WPAD/WPADMem.c"),
                 Object(Matching, "revolution/WPAD/debug_msg.c"),
+                # GC SDK units paired to free Wii ranges - same DolphinLib profile
+                # (GC/1.2.5n + cflags_sdk) the GameCube editions build them with
+                Object(Equivalent, "dolphin/os/OSAudioSystem.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/os/OSError.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(Equivalent, "dolphin/gx/GXTev.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(Equivalent, "dolphin/gx/GXPixel.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(Equivalent, "dolphin/gx/GXPerf.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXAttr.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXInit.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXFifo.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXMisc.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXGeometry.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXFrameBuf.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXLight.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXTexture.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXBump.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXDraw.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/gx/GXTransform.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/os/OS.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/os/OSExec.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/os/OSMemory.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/os/OSReset.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/os/__ppc_eabi_init.cpp", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/dvd/dvdfs.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/dvd/dvd.c", cflags=cflags_sdk_2004, extra_cflags=["-char signed"], mw_version="GC/1.2.5n"),
+                Object(Equivalent, "dolphin/dvd/dvderror.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(Equivalent, "dolphin/dvd/dvdFatal.c", cflags=cflags_sdk_2004, extra_cflags=["-char signed"], mw_version="GC/1.2.5n"),
+                Object(Equivalent, "dolphin/dvd/dvdlow.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(NonMatching, "dolphin/vi/vi.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
+                Object(Equivalent, "dolphin/thp/THPDec.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(Equivalent, "dolphin/thp/THPAudio.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
+                Object(Equivalent, "dolphin/OdemuExi2/DebuggerDriver.c", cflags=cflags_sdk, extra_cflags=["-inline deferred"], mw_version="GC/1.2.5n"),
             ],
         },
         {
@@ -1323,6 +1412,43 @@ if wii:
                 Object(Matching, "revolution/MEM/mem_list.c", mw_version="GC/3.0a5.2", extra_cflags=["-ipa file"]),
                 Object(Matching, "revolution/NAND/NANDSecret.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-ipa file"]),
                 Object(Matching, "revolution/NAND/NANDCheck.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-ipa file"]),
+            ],
+        },
+        {
+            # the Wii ships the same MetroTRK stub; GC profile applies (sizes are
+            # verbatim for most units - where they differ the source stays as upstream
+            # wrote it and the unit reports partial)
+            "lib": "TRK_MINNOW_DOLPHIN",
+            "mw_version": "GC/2.6",
+            "cflags": cflags_trk,
+            "progress_category": "runtime",
+            "objects": [
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/mainloop.c"),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/nubevent.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/nubinit.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/msg.c"),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/msgbuf.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/serpoll.c", extra_cflags=["-sdata 8"]),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/usr_put.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/dispatch.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/msghndlr.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/support.c"),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/mutex_TRK.c"),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/notify.c"),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/flush_cache.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/mem_TRK.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/targimpl.c"),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/mpc_7xx_603e.c"),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/dolphin_trk.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/main_TRK.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/dolphin_trk_glue.c"),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/targcont.c"),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/target_options.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/mslsupp.c"),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/UDP_Stubs.c"),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/CircleBuffer.c"),
+                Object(NonMatching, "TRK_MINNOW_DOLPHIN/gdev/main.c", extra_cflags=["-sdata 8"]),
+                Object(Equivalent, "TRK_MINNOW_DOLPHIN/MWCriticalSection_gc.cpp"),
             ],
         },
         {
@@ -1393,6 +1519,18 @@ if wii:
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_exp.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_pow.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_sqrt.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                # GC MSL units paired to free Wii ranges
+                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common/buffer_io.c"),
+                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common/mbstring.c"),
+                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common/misc_io.c"),
+                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common/wchar_io.c"),
+                Object(Equivalent, "MSL_C.PPCEABI.bare.H/PPC_EABI/uart_console_io_gcn.c", mw_version="GC/2.6"),
+                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_exp.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common/ansi_files.c"),
+                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/ansi_fp.c", extra_cflags=["-str pool"]),
+                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common/direct_io.c"),
+                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common/FILE_POS.C"),
+                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common/printf.c", extra_cflags=["-str pool"]),
             ],
         },
     ]
