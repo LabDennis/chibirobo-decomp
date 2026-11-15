@@ -16983,7 +16983,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 	u16 length = EvtRead16(begin);
 	mData.mScript += 2;
 	u8* end      = begin + length;
-	XObj* target = CEvt_GetObj(this, (s16)CEvt_Evaluate(this));
+	s16 id       = CEvt_Evaluate(this);
+	XObj* target = CEvt_GetObj(this, id);
 	s32 count    = 0;
 	s32 args[24];
 	for (s32 i = 0;; i++) {
@@ -17008,7 +17009,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		break;
 	}
 	case -11: {
-		s16 id    = args[0];
+		s32 id    = (s16)args[0];
 		s32 flags = args[1];
 		if (flags == -1) {
 			XObj* obj            = CEvt_GetObj(this, id);
@@ -17081,7 +17082,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		if (id > 0) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
 			bits[(u32)id >> 5] |= 1U << (id & 31);
-		} else if (id == -2) {
+		}
+		if (id == -2) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
 			for (int i = 0; i < 128; i++)
 				bits[i] = -1;
@@ -17093,7 +17095,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		if (id > 0) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
 			bits[(u32)id >> 5] &= ~(1U << (id & 31));
-		} else if (id == -2) {
+		}
+		if (id == -2) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::ITEMS).mFlags;
 			for (int i = 0; i < 128; i++)
 				bits[i] = 0;
@@ -17110,7 +17113,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		if (id > 0) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
 			bits[(u32)id >> 5] |= 1U << (id & 31);
-		} else if (id == -2) {
+		}
+		if (id == -2) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
 			for (int i = 0; i < 128; i++)
 				bits[i] = -1;
@@ -17122,7 +17126,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		if (id > 0) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
 			bits[(u32)id >> 5] &= ~(1U << (id & 31));
-		} else if (id == -2) {
+		}
+		if (id == -2) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::COINS).mFlags;
 			for (int i = 0; i < 128; i++)
 				bits[i] = 0;
@@ -17139,7 +17144,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		if (id > 0) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
 			bits[(u32)id >> 5] |= 1U << (id & 31);
-		} else if (id == -2) {
+		}
+		if (id == -2) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
 			for (int i = 0; i < 128; i++)
 				bits[i] = -1;
@@ -17151,7 +17157,8 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		if (id > 0) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
 			bits[(u32)id >> 5] &= ~(1U << (id & 31));
-		} else if (id == -2) {
+		}
+		if (id == -2) {
 			u32* bits = gGame.mXObjs.GetCollectionFlags(XOBJS::DUST).mFlags;
 			for (int i = 0; i < 128; i++)
 				bits[i] = 0;
