@@ -113,6 +113,11 @@ typedef void (*WPADClearDeviceCallback)(s32 result);
 #define WPAD_BATTERY_LEVEL_HIGH     3
 #define WPAD_BATTERY_LEVEL_MAX      4
 
+#define WPAD_DPD_OFF   0
+#define WPAD_DPD_BASIC 1
+#define WPAD_DPD_STD   3
+#define WPAD_DPD_FULL  5
+
 #define WPAD_BLC_DISABLE 0x00
 #define WPAD_BLC_CHECK   0x55
 #define WPAD_BLC_ENABLE  0xAA
@@ -363,6 +368,14 @@ void WPADSetAutoSamplingBuf(s32, void*, u32);
 
 #define WPADStartMotor(chan) WPADControlMotor((chan), WPAD_MOTOR_RUMBLE)
 #define WPADStopMotor(chan)  WPADControlMotor((chan), WPAD_MOTOR_STOP)
+
+// balance board (the WBC entry points live in WPAD.c in this build)
+s32 WBCSetupCalibration(void);
+s32 WBCGetCalibrationStatus(void);
+s32 WBCGetBatteryLevel(u8 battery);
+s32 WBCReadDummy(WPADBLStatus* status, f64* weight, u32 size);
+s32 WBCSetZEROPointDummy(f64* press, u32 size);
+s32 WBCGetTGCWeightDummy(f64 weight, f64* tgcWeight, WPADBLStatus* status);
 
 ////////////////////////////////////
 

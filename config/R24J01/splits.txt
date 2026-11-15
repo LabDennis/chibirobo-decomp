@@ -400,6 +400,14 @@ revolution/WPAD/WPADMem.c:
 revolution/WPAD/debug_msg.c:
 	.text start:0x801F3D10 end:0x801F3D60
 
+revolution/KPAD/KPAD.c:
+	.text start:0x801FA5C8 end:0x801FEAB4
+	.data start:0x8032D998 end:0x8032DA30
+	.bss start:0x8052B8E8 end:0x8052D018
+	.sdata start:0x805A17F0 end:0x805A1870
+	.sbss start:0x805A2568 end:0x805A2590
+	.sdata2 start:0x805A6790 end:0x805A6808
+
 revolution/BTE/gki_buffer.c:
 	.text start:0x801B8744 end:0x801B9B88
 	.data start:0x803248C0 end:0x80324A08
