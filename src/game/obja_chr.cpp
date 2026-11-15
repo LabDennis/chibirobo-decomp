@@ -3925,45 +3925,47 @@ extern "C" void UpdatePlayerLookMarker(XObjChrLook* look, u32 frames)
  */
 void XObjChr::OnMicrophonePeak(s32 input, s32 elapsed)
 {
-	s32 idle;
+	int idle; // the lift action is at rest; retail narrows the test to a bool before it keeps it
 	if (gGame.mEvt.mData.mScript != NULL || !InputEnabled(&gGame) || (gGame.mStatus.mFlags & 0xC00) || (gGame.mStatus.mFlags & 0x100)
 	    || !(mPlayerStatus.mFlags & 0x20000000) || mCopter.mState != 0 || (mPopper.mState != 0 && mPopper.mState != 4) || mRadar.mState != 0
-	    || (!(idle = (u8)(mLift.mState == 0)) && mLift.mState != 4) || mHang.mState != 0 || mJump.mState != 0 || mLadder.mState != 0
+	    || (!(idle = (bool)(mLift.mState == 0)) && mLift.mState != 4) || mHang.mState != 0 || mJump.mState != 0 || mLadder.mState != 0
 	    || mRope.mState != 0 || mPush.mState != 0 || mTumble.mState != 0 || mAttachmentRequest != -1 || mSuits.mChangeStep != 0)
 		return;
-	if (input != -1)
-		return;
-	if (elapsed > 6000 && (idle || (mLift.mState == 4 && IsLiftTargetPlug(&mLift)))) {
-		u8 release = mLift.mState == 4 && IsLiftTargetPlug(&mLift);
-		if (release) {
-			if (mLift.mTarget) {
-				mLift.mTarget->mStatus.mFlags &= ~0x0400000000000000ULL;
-				mLift.mTarget = NULL;
+	switch (input) {
+	case -1:
+		if (elapsed > 6000 && (idle || (mLift.mState == 4 && IsLiftTargetPlug(&mLift)))) {
+			u8 release = mLift.mState == 4 && IsLiftTargetPlug(&mLift);
+			if (release) {
+				if (mLift.mTarget) {
+					mLift.mTarget->mStatus.mFlags &= ~0x0400000000000000ULL;
+					mLift.mTarget = NULL;
+				}
+				mLift.mState = 0;
 			}
-			mLift.mState = 0;
+			mHeadTurn.mNeck.mMode   = 2;
+			mHeadTurn.mNeck.mTarget = 0.0f;
+			mHeadTurn.mNeck.mLookAt = NULL;
+			mTumble.mState          = 15;
+			mTumble.mFade.mActive   = 1;
+			mTumble.mFade.mAmount   = 0.0f;
+			mIdleModeTimer          = 3 * IDLE_SECOND;
+		} else if (elapsed > 3000) {
+			mTumble.mState          = 12;
+			mHeadTurn.mNeck.mMode   = 2;
+			mHeadTurn.mNeck.mTarget = 0.0f;
+			mHeadTurn.mNeck.mLookAt = NULL;
+			mIdleMode               = 2;
+			mIdleModeTimer          = IDLE_SECOND;
+		} else {
+			f32 angle = (f32)atan2(gGame.mMotionControlCamera.mCamera.mEye.x - mMoveTranslate.x,
+			                       gGame.mMotionControlCamera.mCamera.mEye.z - mMoveTranslate.z)
+			          - mMoveRotate.y;
+			mHeadTurn.mNeck.mMode   = 1;
+			mHeadTurn.mNeck.mTarget = angle;
+			mIdleMode               = 1;
+			mIdleModeTimer          = IDLE_SECOND;
 		}
-		mHeadTurn.mNeck.mMode   = 2;
-		mHeadTurn.mNeck.mTarget = 0.0f;
-		mHeadTurn.mNeck.mLookAt = NULL;
-		mTumble.mState          = 15;
-		mTumble.mFade.mActive   = 1;
-		mTumble.mFade.mAmount   = 0.0f;
-		mIdleModeTimer          = 3 * IDLE_SECOND;
-	} else if (elapsed > 3000) {
-		mTumble.mState          = 12;
-		mHeadTurn.mNeck.mMode   = 2;
-		mHeadTurn.mNeck.mTarget = 0.0f;
-		mHeadTurn.mNeck.mLookAt = NULL;
-		mIdleMode               = 2;
-		mIdleModeTimer          = IDLE_SECOND;
-	} else {
-		f32 angle = (f32)atan2(gGame.mMotionControlCamera.mCamera.mEye.x - mMoveTranslate.x,
-		                       gGame.mMotionControlCamera.mCamera.mEye.z - mMoveTranslate.z)
-		          - mMoveRotate.y;
-		mHeadTurn.mNeck.mMode   = 1;
-		mHeadTurn.mNeck.mTarget = angle;
-		mIdleMode               = 1;
-		mIdleModeTimer          = IDLE_SECOND;
+		break;
 	}
 }
 
