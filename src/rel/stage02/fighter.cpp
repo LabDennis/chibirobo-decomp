@@ -2918,7 +2918,10 @@ extern "C" void UpdateFighter(u32 dt)
 			} else {
 				range = (s32)READ_LE32(fighterWork.mParams + 0xC) / 100.0f;
 			}
-			if (range >= dist && (best == NULL || dist < bestDist)) {
+			if (range < dist) {
+				continue;
+			}
+			if (best == NULL || dist < bestDist) {
 				best     = item;
 				bestDist = dist;
 			}
@@ -7346,7 +7349,8 @@ extern "C" void ShotList_Update(ShotList* list, u32 dt)
 				entry->mPos.y = entry->mVelocity.y * dt + entry->mPos.y;
 				entry->mPos.z = entry->mVelocity.z * dt + entry->mPos.z;
 				for (j = 9; j > 0; j--) {
-					entry->mTrail[j] = entry->mTrail[j - 1];
+					Vec* prev        = &entry->mTrail[j - 1];
+					entry->mTrail[j] = *prev;
 				}
 				entry->mTrail[0] = entry->mPos;
 			}
