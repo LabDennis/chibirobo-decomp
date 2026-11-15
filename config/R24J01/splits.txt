@@ -155,6 +155,7 @@ revolution/DSP/dsp_debug.c:
 
 revolution/DSP/dsp_task.c:
 	.text start:0x801A4BEC end:0x801A5480
+	.data start:0x80323140 end:0x80323280
 	.sbss start:0x805A2368 end:0x805A2380
 
 revolution/ARC/arc.c:
@@ -1023,8 +1024,16 @@ game/wii/nandfile.cpp:
 game/cinterpolationeaseout.cpp:
 	.text start:0x80151D1C end:0x80151FCC
 
-game/ccameraactionareaexm.cpp:
+game/wii/ccameraactionareaexm.cpp:
 	.text start:0x80031FC4 end:0x80032038
+
+game/wii/cinterpolation.cpp:
+	extab start:0x80008358 end:0x800083F0
+	extabindex start:0x80011DA4 end:0x80011E88
+	.text start:0x80032038 end:0x80032FD4
+	.data start:0x802E6110 end:0x802E6250
+	.rodata start:0x802C4BCC end:0x802C4CE8
+	.sdata start:0x805A0948 end:0x805A0998
 
 game/ccameraactionareaexinit.cpp:
 	.text start:0x801542A0 end:0x80154310
@@ -1035,8 +1044,44 @@ game/ccameraactionareaex.cpp:
 game/ccameraactionevt.cpp:
 	.text start:0x801618C0 end:0x80161FFC
 
-game/ccameraactionreset.cpp:
-	.text start:0x8016670C end:0x80166D50
+game/wii/ccameraactionscroll2.cpp:
+	extab start:0x8000F340 end:0x8000F458
+	extabindex start:0x80015D40 end:0x80015DAC
+	.text start:0x80161FFC end:0x80164BFC
+
+game/wii/ccameraactionchase.cpp:
+	extab start:0x8000F270 end:0x8000F2F0
+	extabindex start:0x80015CBC end:0x80015CEC
+	.text start:0x80160D30 end:0x80161458
+	.data start:0x8030DEF8 end:0x8030DF70
+	.sdata2 start:0x805A5E40 end:0x805A5E80
+
+game/wii/ccameraactioneye.cpp:
+	extab start:0x8000F458 end:0x8000F4E0
+	extabindex start:0x80015DAC end:0x80015DDC
+	.text start:0x80164BFC end:0x8016642C
+
+game/wii/ccameraactionanim.cpp:
+	extab start:0x8000F4E0 end:0x8000F4F0
+	extabindex start:0x80015DDC end:0x80015DF4
+	.text start:0x8016642C end:0x801665C4
+
+game/wii/ccameraactionreset.cpp:
+	extab start:0x8000F4F0 end:0x8000F528
+	extabindex start:0x80015DF4 end:0x80015E24
+	.text start:0x801665C4 end:0x80166D50
+	.rodata start:0x802DBA94 end:0x802DBAE8
+	.sdata2 start:0x805A5FB8 end:0x805A5FE0
+
+game/wii/ccameraactionscroll.cpp:
+	extab start:0x8000F528 end:0x8000F548
+	extabindex start:0x80015E24 end:0x80015E54
+	.text start:0x80166D50 end:0x8016753C
+	.sdata2 start:0x805A5FE0 end:0x805A6008
+	.sbss start:0x805A1D78 end:0x805A1D80
+
+game/wii/cmotioncontrolcamera.cpp:
+	.text start:0x8016753C end:0x8016AD78
 
 game/params.cpp:
 	.text start:0x80113394 end:0x80113910

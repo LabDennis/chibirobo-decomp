@@ -1257,7 +1257,13 @@ if wii:
                 Object(Equivalent, "game/cinterpolationeaseout.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # FindAreaContainingPoint takes Vec by value on the Wii (the retail caller copies all
                 # three words to the stack); gCameraAreaState's _10/_14/_24 offsets are retail-confirmed
-                Object(Equivalent, "game/ccameraactionareaexm.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Matching, "game/wii/ccameraactionareaexm.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii interpolation unit 0x80032038-0x80032FD4: the seven camera
+                # interpolation classes share one file (on the GameCube they sit in
+                # cinterfacecameraaction.cpp, cinterpolationnone.cpp and
+                # cinterpolationeaseoutdivide.cpp); each vector/scalar pair emits
+                # interleaved and the scalar Update tail-calls land at the end
+                Object(NonMatching, "game/wii/cinterpolation.cpp", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the global's __sinit stores the vtable and __construct_arrays mGroups[256] at _2034
                 # (retail 0x801542A0); CCameraActionAreaEx's layout is shared with the GameCube
                 Object(NonMatching, "game/ccameraactionareaexinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1293,9 +1299,31 @@ if wii:
                 # member offsets are shared with the GameCube class (mEyeInterps _18C, mFovInterps
                 # _330, the interp pointers _44-_54); the Wii vtable re-orders the Vec& overloads
                 Object(NonMatching, "game/ccameraactionevt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii layout: no mYaw, drag pan over gWiiPointer, four edge quads and a
+                # CScrnWipeTile at _284 whose vptr sits behind CScrnColor's data at _2B4
+                Object(NonMatching, "game/wii/ccameraactionscroll2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # shared class layout with the GameCube; the Wii file goes through the player
+                # vtable (GetMtxPtr _AC, GetCameraTarget _1B0) and reads the remote's direction
+                # bits from gWiiPointer instead of an HSD pad
+                Object(NonMatching, "game/wii/ccameraactionchase.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii class is larger (pointer tracker and two response curves); the
+                # remote's pointer aims the look while the GameCube file is stick-only
+                Object(NonMatching, "game/wii/ccameraactioneye.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # SetObj keeps its signature but the Wii body always clears the binding; the camera's
+                # vectors sit in CCamera::mView here
+                Object(Matching, "game/wii/ccameraactionanim.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # member offsets shared with the GameCube class (mTarget _40, mInterestMode _58);
-                # the heavy previous/update methods need XObj/CMotionControlCamera decls (GC-only)
-                Object(NonMatching, "game/ccameraactionreset.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii file runs the functions in the binary's own order and goes through the
+                # Wii player vtable and CCamera::mView where the GameCube used XObj and mCamera
+                Object(NonMatching, "game/wii/ccameraactionreset.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # member offsets shared with the GameCube classes; the Wii file consumes the
+                # remote's dpad bits on gWiiPointer.mFlags and the player Y rotation comes
+                # through a vtable call instead of HSD_JObjGetRotationY
+                Object(NonMatching, "game/wii/ccameraactionscroll.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii camera is the base subobject, so the GameCube control fields sit 0x64
+                # higher; the remote's flag words replace the HSD pad reads and the Wii vtable
+                # keeps only CCamera's functions, so the class adds no virtuals of its own
+                Object(NonMatching, "game/wii/cmotioncontrolcamera.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii Params layout matches the GameCube class (mRank _08, mMoney _14,
                 # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs
                 # every function matches, but the file is written in the GameCube's order and the Wii
@@ -1517,6 +1545,8 @@ if wii:
                 # December 2007 does not apply to this build.
                 Object(Matching, "revolution/WPAD/WPAD.c"),
                 Object(Matching, "revolution/WPAD/WPADHIDParser.c"),
+                Object(Matching, "revolution/DSP/dsp_task.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
+                Object(NonMatching, "revolution/WENC/wenc.c"),
                 Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
                 Object(Matching, "revolution/WPAD/WPADMem.c"),
                 Object(Matching, "revolution/WPAD/debug_msg.c"),
