@@ -1258,12 +1258,6 @@ if wii:
                 # FindAreaContainingPoint takes Vec by value on the Wii (the retail caller copies all
                 # three words to the stack); gCameraAreaState's _10/_14/_24 offsets are retail-confirmed
                 Object(Matching, "game/wii/ccameraactionareaexm.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the Wii interpolation unit 0x80032038-0x80032FD4: the seven camera
-                # interpolation classes share one file (on the GameCube they sit in
-                # cinterfacecameraaction.cpp, cinterpolationnone.cpp and
-                # cinterpolationeaseoutdivide.cpp); each vector/scalar pair emits
-                # interleaved and the scalar Update tail-calls land at the end
-                Object(NonMatching, "game/wii/cinterpolation.cpp", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the global's __sinit stores the vtable and __construct_arrays mGroups[256] at _2034
                 # (retail 0x801542A0); CCameraActionAreaEx's layout is shared with the GameCube
                 Object(NonMatching, "game/ccameraactionareaexinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1338,11 +1332,29 @@ if wii:
                 # the game's operator delete, in a file of its own: it frees into the MEM1 exp heap
                 # (retail 0x80019A68 loads the InitMem1 global and calls MEMFreeToExpHeap, no null check)
                 Object(Matching, "game/wii/delete.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii TU 0x80019AB4-0x80019BA4 (wii_units.md #3): the game's operator
+                # new[]/delete[] pair on the MEM1 heap plus the aligned operator new[] on the
+                # game heap, emitted new[], delete[], new[](aligned)
+                Object(Matching, "game/wii/new.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii TU 0x8001A958-0x8001BA54 (wii_units.md #7): FbSubwin::Copy and FbSubwin::Draw,
+                # ported to the Wii CGs member setters; Draw is still off
+                Object(NonMatching, "game/wii/fbsubwin.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # retail has extab entries for the three functions and emits them in reverse (_prolog first):
                 # the game group's compiler with exceptions on and deferred inlining gives both. The object
                 # is byte-exact, but nothing calls _epilog and _unresolved: retail kept them through its
                 # linker script (the REL entry points), the linker here strips them, so it stays unlinked.
                 Object(Equivalent, "rel/module.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),
+                # the Wii TU 0x80030AC0-0x80031FC4 (wii_units.md #16); the GameCube file's
+                # CInterfaceCameraAction and CVector*Interpolation classes map onto it
+                Object(NonMatching, "game/cinterfacecameraaction.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii TU 0x80032038-0x80032C48 (wii_units.md #18): every vector
+                # interpolation plus the Linear/None scalar methods, in the Wii's
+                # reversed order (the GameCube spreads them over three files)
+                Object(NonMatching, "game/wii/cinterpolation.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii TU 0x80032C48-0x8003366C (wii_units.md #19): the divide
+                # interpolations and the Linear/None Update tail-calls; the Wii-only
+                # tail (deleting dtors, CThread::Create, the unit's __sinit) is open
+                Object(NonMatching, "game/wii/cinterpolationeaseoutdivide.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
             ],
         },
         {

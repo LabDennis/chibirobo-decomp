@@ -1027,14 +1027,6 @@ game/cinterpolationeaseout.cpp:
 game/wii/ccameraactionareaexm.cpp:
 	.text start:0x80031FC4 end:0x80032038
 
-game/wii/cinterpolation.cpp:
-	extab start:0x80008358 end:0x800083F0
-	extabindex start:0x80011DA4 end:0x80011E88
-	.text start:0x80032038 end:0x80032FD4
-	.data start:0x802E6110 end:0x802E6250
-	.rodata start:0x802C4BCC end:0x802C4CE8
-	.sdata start:0x805A0948 end:0x805A0998
-
 game/ccameraactionareaexinit.cpp:
 	.text start:0x801542A0 end:0x80154310
 
@@ -1119,8 +1111,11 @@ game/gamecpadone.cpp:
 game/gamefbsubwinfade.cpp:
 	.text start:0x8001A704 end:0x8001A958
 
+game/wii/fbsubwin.cpp:
+	.text start:0x8001A958 end:0x8001BA54
+
 game/gamefbsubwincam.cpp:
-	.text start:0x8001BA54 end:0x8001BB24
+	.text start:0x8001BA54 end:0x8001BB90
 
 game/gameinit.cpp:
 	.text start:0x8001BB90 end:0x8001C2D8
@@ -1133,6 +1128,18 @@ game/ctoon.cpp:
 
 game/wii/delete.cpp:
 	.text start:0x80019A68 end:0x80019AB4
+
+game/wii/new.cpp:
+	.text start:0x80019AB4 end:0x80019BA4
+
+game/cinterfacecameraaction.cpp:
+	.text start:0x80030AC0 end:0x80031FC4
+
+game/wii/cinterpolation.cpp:
+	.text start:0x80032038 end:0x80032C48
+
+game/wii/cinterpolationeaseoutdivide.cpp:
+	.text start:0x80032C48 end:0x8003366C
 
 TRK_MINNOW_DOLPHIN/mainloop.c:
 	.text start:0x80222DEC end:0x80222EE4

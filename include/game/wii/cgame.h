@@ -139,35 +139,55 @@ public:
 	virtual void vf10();                                                                    // _10
 	// an orthographic camera
 	virtual void Init(f32 top, f32 bottom, f32 left, f32 right, f32 near, f32 far, f32 scale, const GXRenderModeObj* rmode); // _14
-	virtual void SetFov(f32 fov);                                                                                            // _18
-	virtual void vf1C();                                                                                                     // _1C
-	virtual void vf20();                                                                                                     // _20
-	virtual void vf24(f32 top, f32 bottom, f32 left, f32 right);                                                             // _24
-	virtual void vf28();                                                                                                     // _28
-	virtual void vf2C();                                                                                                     // _2C
-	virtual void vf30();                                                                                                     // _30
-	virtual void SetEye(f32 x, f32 y, f32 z);                                                                                // _34
-	virtual void SetInterest(f32 x, f32 y, f32 z);                                                                           // _38
-	virtual void SetAngle(f32 x, f32 y, f32 z)                                                                               // _3C
+	virtual void SetFov(f32 fov)                                                                                             // _18
+	{
+		mFov             = fov;
+		mProjectionDirty = TRUE;
+	}
+	virtual void vf1C();                                         // _1C
+	virtual void vf20();                                         // _20
+	virtual void vf24(f32 top, f32 bottom, f32 left, f32 right); // _24
+	virtual void vf28();                                         // _28
+	virtual void vf2C();                                         // _2C
+	virtual void vf30();                                         // _30
+	virtual void SetEye(f32 x, f32 y, f32 z);                    // _34
+	virtual void SetInterest(f32 x, f32 y, f32 z);               // _38
+	virtual void SetAngle(f32 x, f32 y, f32 z)                   // _3C
 	{
 		mView.mAngle.x = x;
 		mView.mAngle.y = y;
 		mView.mAngle.z = z;
 		mView.mDirty   = TRUE;
 	}
-	virtual void vf40();                                  // _40
-	virtual void SetDistance(f32 distance);               // _44
-	virtual void SetEye(const Vec& eye);                  // _48
-	virtual void SetInterest(const Vec& interest);        // _4C
-	virtual void SetAngle(const Vec& angle);              // _50
-	virtual void vf54();                                  // _54
-	virtual void SetAngleY(f32 y);                        // _58, ConfigureSubwindowCamera passes angleY here
-	virtual void SetAngleX(f32 x);                        // _5C, then angleX here - same order as the GameCube CCamera
+	virtual void vf40();                   // _40
+	virtual void SetDistance(f32 distance) // _44
+	{
+		mView.mDistance = distance;
+		mView.mDirty    = TRUE;
+	}
+	virtual void SetEye(const Vec& eye);          // _48
+	virtual void SetInterest(const Vec& interest) // _4C
+	{
+		mView.mInterest.Set(interest.x, interest.y, interest.z);
+		mView.mDirty = TRUE;
+	}
+	virtual void SetAngle(const Vec& angle); // _50
+	virtual void vf54();                     // _54
+	virtual void SetAngleY(f32 y)            // _58, ConfigureSubwindowCamera passes angleY here
+	{
+		mView.mAngle.y = y;
+		mView.mDirty   = TRUE;
+	}
+	virtual void SetAngleX(f32 x) // _5C, then angleX here - same order as the GameCube CCamera
+	{
+		mView.mAngle.x = x;
+		mView.mDirty   = TRUE;
+	}
 	virtual void vf60();                                  // _60
 	virtual void vf64();                                  // _64
 	virtual void vf68();                                  // _68
 	virtual void vf6C();                                  // _6C
-	virtual void CalcEye();                               // _70
+	virtual void CalcEye() { mView.CalcEye(); }           // _70
 	virtual void CalcInterest();                          // _74, Update calls it where the GameCube called CalcInterest
 	virtual void CalcAngle() { mView.CalcAngle(); }       // _78
 	virtual void CalcUp();                                // _7C, Update calls it for the 0x40000 flag, the GameCube's CalcUp
@@ -180,7 +200,9 @@ public:
 	u8 _0C[0x18 - 0x0C];
 	f32 mTop;    // _18, ortho projection bounds, fed to C_MTXOrtho
 	f32 mBottom; // _1C
-	u8 _20[0x2C - 0x20];
+	u8 _20[0x28 - 0x20];
+	u8 mProjectionDirty; // _28, SetFov sets it - the projection matrix is rebuilt lazily
+	u8 _29[0x2C - 0x29];
 	Mtx44 mProjection; // _2C
 	u8 _6C[0x90 - 0x6C];
 	CCameraView mView; // _90
@@ -188,6 +210,10 @@ public:
 	u8 _108[0x1F8 - 0x108];
 };
 STATIC_ASSERT(sizeof(CCamera) == 0x1F8);
+#ifndef offsetof
+#define offsetof(type, member) ((u32) & (((type*)0)->member))
+#endif
+STATIC_ASSERT(offsetof(CCamera, mProjectionDirty) == 0x28);
 
 // what CreateMemento saves of the camera, the same class the GameCube version keeps
 class CCameraMemento {
