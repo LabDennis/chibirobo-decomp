@@ -6687,7 +6687,7 @@ extern "C" void DrawStatusDiagram(MenuStatus* menu)
 		x           = 42.0f + x;
 		y           = 84.0f + y;
 		labelX      = x - 42.0f;
-		labelY      = y - 12.0f;
+		labelY      = -12.0f + y;
 		f32 targetY = 114.0f + y;
 		f32 columnX = StatusLabelColumn(labelX, false);
 		DrawStatusCallout(menu, 7, columnX, labelY, 42.0f + ((labelX - 200.0f) - 100.0f), targetY - 7.0f);
@@ -6697,9 +6697,9 @@ extern "C" void DrawStatusDiagram(MenuStatus* menu)
 		columnX = StatusLabelColumn(labelX, false);
 		labelY += 22.0f;
 		DrawStatusCallout(menu, 6, columnX, labelY, 42.0f + (9.0f + (labelX - 200.0f)), targetY - 46.0f);
-		y       = targetY - 27.0f;
 		columnX = StatusLabelColumn(labelX, true);
 		labelY += 22.0f;
+		y = targetY - 27.0f;
 		DrawStatusCallout(menu, 5, columnX, labelY, 42.0f + ((labelX - 200.0f) - 2.0f), y);
 		columnX = StatusLabelColumn(labelX, false);
 		labelY += 22.0f;
