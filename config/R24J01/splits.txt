@@ -261,6 +261,12 @@ game/wii/cfile.cpp:
 	.sbss start:0x805A28A0 end:0x805A28A8
 	.sdata2 start:0x805A7A48 end:0x805A7A50
 
+game/wii/cresfile.cpp:
+	extab start:0x80010AA0 end:0x80010AD8
+	extabindex start:0x80017420 end:0x80017474
+	.text start:0x802B6094 end:0x802B6560
+	.rodata start:0x802E56C0 end:0x802E56D8
+
 game/wii/msg.cpp:
 	.text start:0x800A1938 end:0x800A8164
 
@@ -1018,6 +1024,21 @@ game/wii/cfont.cpp:
 	.bss start:0x8059FE28 end:0x8059FF70
 	.sbss start:0x805A2890 end:0x805A28A0
 	.sdata2 start:0x805A7A28 end:0x805A7A48
+
+game/wii/ut.cpp:
+	extab start:0x8000FFCC end:0x800101A4
+	extabindex start:0x80016A3C end:0x80016ACC
+	.text start:0x802A5418 end:0x802A7478
+	.rodata start:0x802E4EB0 end:0x802E50C8
+	.sdata start:0x805A19D0 end:0x805A19D8
+	.sdata2 start:0x805A7888 end:0x805A78C0
+	.bss start:0x80576A08 end:0x80576B88
+
+game/wii/mem.cpp:
+	.text start:0x802A7478 end:0x802A7FB4
+	.rodata start:0x802E50C8 end:0x802E5150
+	.bss start:0x80576B88 end:0x8059ABA8
+	.sbss start:0x805A2858 end:0x805A2870
 
 game/cmodule.cpp:
 	extab start:0x800110D0 end:0x800110E0

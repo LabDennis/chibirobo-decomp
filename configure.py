@@ -1229,6 +1229,10 @@ if wii:
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
                 # retail keeps them as calls
                 Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the Wii-only resource file unit 0x802B6094-0x802B6560 (cresfile.cpp by its
+                # OSPanic file): ResourceFile's refcounted CFile, the CFileRequest state
+                # machine and CResFile's brres accessor over the nw4r walkers
+                Object(NonMatching, "game/wii/cresfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # the RFNU/RFNT font file loader + glyph cache between the console font paths;
                 # the small setup helpers stay calls in retail, so no auto-inlining here either
                 Object(NonMatching, "game/wii/cfont.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
@@ -1251,6 +1255,15 @@ if wii:
                 # the text drawing unit 0x802AD310-0x802AEBB0; the GameCube cgs.cpp pairs
                 # are the reconstruction base
                 Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii's shared helper unit 0x802A5418-0x802A7478: Shift-JIS, HSD matrix
+                # and collision helpers from the GameCube's ut.cpp + mtx.c; the CVec
+                # operators and PSVEC calls stay calls, so no auto-inlining
+                Object(NonMatching, "game/wii/ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the Wii memory manager 0x802A7478-0x802A7FB4 (mem.cpp by its OSPanic file):
+                # the GameCube table allocator over a MEM2 arena plus InitMem1/InitMem2's two
+                # expanded heaps; the small helpers GetAllocSize/GetFreeSize stay calls, so
+                # no auto-inlining here either
+                Object(NonMatching, "game/wii/mem.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the out-of-line CCamera::SetAngle(const Vec&) copy plus a CThread global
                 # that nothing references - a port leftover
