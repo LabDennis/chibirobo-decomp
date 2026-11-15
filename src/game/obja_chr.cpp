@@ -6226,6 +6226,17 @@ static inline void StopBatterySound(s32 id)
 		StopGameSfx(&gGame.mSound, id);
 }
 
+// the battery is flat and the gauge on screen has run down to it
+static inline bool IsBatteryFlat(const XObjChr* p)
+{
+	return p->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
+}
+
+static inline bool IsZeroVec(const Vec& v)
+{
+	return v.x == 0.0f && v.y == 0.0f && v.z == 0.0f;
+}
+
 static inline void FlashBatteryWarning(XObjChr* p, u8 green, f32 duration)
 {
 	p->SetColor(1, 255, green, 0, 0.0f);
@@ -6237,13 +6248,15 @@ static inline void FlashBatteryWarning(XObjChr* p, u8 green, f32 duration)
  * @note Address: 0x800A867C
  * @note Size: 0xF14
  */
+// NONMATCHING: retail divides the table's cost into f0 and moves it to the drain, and it loads the popper's shot strength
+// ahead of the zero it is compared with
 extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 {
+	const CPadOne* pad = &p->mPad;
 	// the row of the action battery costs (GetPlayerActionParameter) for what he does: 0-1 standing, 2 walk, 3 jog, 4 run; -1 none
 	s32 index = -1;
-	s32 lift  = p->mLift.mState;
-	if (lift && !p->mJump.mState) {
-		switch (lift) {
+	if (p->mLift.mState && IsJumpActionState(&p->mJump, 0)) {
+		switch (p->mLift.mState) {
 		case 1:
 		case 2:
 		case 20:
@@ -6255,40 +6268,39 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			break;
 		case 3:
 		case 4:
-			switch (p->mAnimId) {
-			case 0x89:
-			case 0xE0:
-				index = 5;
-				break;
-			case 0x896:
-			case 0xC:
-				index = 2;
-				break;
-			case 0x897:
-			case 0x88:
-				index = 3;
-				break;
-			case 0x898:
-			case 0xD:
-				index = 4;
-				break;
-			case 0x895:
-				index = 34;
-				break;
-			case 0x8B7:
-			case 0x8AE:
-				index = 35;
-				break;
-			case 0x8B1:
-				index = 36;
-				break;
-			default:
-				index = 0;
-				break;
+			if (IsJumpActionState(&p->mJump, 0)) {
+				switch (p->mAnimId) {
+				case 0x89:
+				case 0xE0:
+					index = 5;
+					break;
+				case 0x896:
+				case 0xC:
+					index = 2;
+					break;
+				case 0x897:
+				case 0x88:
+					index = 3;
+					break;
+				case 0x898:
+				case 0xD:
+					index = 4;
+					break;
+				case 0x895:
+					index = 34;
+					break;
+				case 0x8B7:
+				case 0x8AE:
+					index = 35;
+					break;
+				case 0x8B1:
+					index = 36;
+					break;
+				default:
+					index = 0;
+					break;
+				}
 			}
-			break;
-		case 13:
-			index = 9;
 			break;
 		case 27: // using the toothbrush
 		case 28:
@@ -6319,6 +6331,9 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 				index = 38;
 				break;
 			}
+			break;
+		case 13:
+			index = 9;
 			break;
 		}
 	} else if (p->mHang.mState) {
@@ -6402,11 +6417,13 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			break;
 		}
 	} else if (p->mPush.mState) {
-		if (p->mPush.mState == 2) {
+		switch (p->mPush.mState) {
+		case 2:
 			if (p->mPush.mMoveDirection == 1 || p->mPush.mMoveDirection == -1)
 				index = 27;
 			else
 				index = 0;
+			break;
 		}
 	} else if (p->mCopter.mState) {
 		switch (p->mCopter.mState) {
@@ -6508,30 +6525,28 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 		else
 			drain = (f32)(s32)GetPlayerActionParameter(index) / 100.0f;
 	}
-	Params& stats = p->mParams;
-	if ((s32)stats._1C[0] > 0) { // unlimited battery, script commands 850/851
+	if ((s32)p->mParams._1C[0] > 0) { // unlimited battery, script commands 850/851
 		drain = 0.0f;
-		stats.SetBattery(stats.mMaxBattery);
+		p->mParams.SetBattery(p->mParams.mMaxBattery);
 	} else if (p->mPlug.mConnection > 0 && (u8)p->mPlug.mConnection) {
 		drain = 0.0f;
-		stats.SetBattery(stats.mMaxBattery);
+		p->mParams.SetBattery(p->mParams.mMaxBattery);
 	} else if (gGame.mEvt.mData.mScript || (gGame.mStatus.mFlags & 0xC00)) {
 		drain = 0.0f;
-	} else if ((gGame.mStatus.mFlags & 0x80000000) && !(gGame.mStatus.mFlags & 0x120) && p->mPad.mSubStickY != 0.0f) {
+	} else if ((gGame.mStatus.mFlags & 0x80000000) && !(gGame.mStatus.mFlags & 0x120) && pad->mSubStickY != 0.0f) {
 		drain = 0.0f;
 	}
 	if (drain > 0.0f)
 		drain /= (f32)IDLE_SECOND;
 	// mIdleTimer runs down while he stands or idles in place, else resets to a second; at 0 the HUD slides its counters in
+	s32 anim = p->mAnimId;
 	if (!gGame.mEvt.mData.mScript
-	    && (p->mAttachmentRequest >= 0 || InAnimRange(p->mAnimId, 1, 2) || InAnimRange(p->mAnimId, 0x11, 0x12)
-	        || InAnimRange(p->mAnimId, 0xCF7, 0xCFD) || InAnimRange(p->mAnimId, 5, 11) || InAnimRange(p->mAnimId, 0x894, 0x895)
-	        || InAnimRange(p->mAnimId, 0x8AE, 0x8AF) || InAnimRange(p->mAnimId, 0x8B1, 0x8B3) || p->mAnimId == 0x14
-	        || InAnimRange(p->mAnimId, 0x67, 0x68) || p->mAnimId == 0x8A || p->mAnimId == 0x8C || p->mAnimId == 0x3F || p->mAnimId == 0x4A
-	        || p->mAnimId == 0xA1 || p->mAnimId == 0x822 || InAnimRange(p->mAnimId, 0x5D, 0x5E) || p->mAnimId == 0x5F)) {
+	    && (p->mAttachmentRequest >= 0 || InAnimRange(anim, 1, 2) || InAnimRange(anim, 0x11, 0x12) || InAnimRange(anim, 0xCF7, 0xCFD)
+	        || InAnimRange(anim, 5, 11) || InAnimRange(anim, 0x894, 0x895) || InAnimRange(anim, 0x8AE, 0x8AF)
+	        || InAnimRange(anim, 0x8B1, 0x8B3) || anim == 0x14 || InAnimRange(anim, 0x67, 0x68) || anim == 0x8A || anim == 0x8C
+	        || anim == 0x3F || anim == 0x4A || anim == 0xA1 || anim == 0x822 || InAnimRange(anim, 0x5D, 0x5E) || anim == 0x5F)) {
 		if (p->mIdleTimer > 0.0f) {
-			p->mIdleTimer -= (f32)frames;
-			if (p->mIdleTimer < 0.0f)
+			if ((p->mIdleTimer -= (f32)frames) < 0.0f)
 				p->mIdleTimer = 0.0f;
 		}
 	} else {
@@ -6540,19 +6555,19 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 	if (p->mBatteryDrains) {
 		f32 battery;
 		if ((p->mTumble.mState == 8 || p->mTumble.mState == 9) && p->mHitStrength > 0.0f) {
-			battery         = stats.mBattery - p->mHitStrength;
+			battery         = p->mParams.mBattery - p->mHitStrength;
 			p->mHitStrength = 0.0f;
 		} else {
-			battery = stats.mBattery - drain * (f32)frames;
+			battery = p->mParams.mBattery - drain * (f32)frames;
 		}
 		if (battery < 0.0f)
 			battery = 0.0f;
-		if (battery != stats.mBattery)
-			stats.SetBattery(battery);
+		if (battery != p->mParams.mBattery)
+			p->mParams.SetBattery(battery);
 		// the battery ran out: he collapses (tumble 4), the camera turns to him and the sounds of what he was doing stop
-		if (stats.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && !gGame.mEvt.mData.mScript
-		    && (gGame.mStatus.mFlags & 0x40000000) && GetStageBatteryDepletedScript() && p->mAttachmentRequest < 0
-		    && (p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mCopter.mState && p->mTumble.mState != 4) {
+		if (IsBatteryFlat(p) && !gGame.mEvt.mData.mScript && (gGame.mStatus.mFlags & 0x40000000) && GetStageBatteryDepletedScript()
+		    && p->mAttachmentRequest < 0 && (p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mCopter.mState
+		    && p->mTumble.mState != 4) {
 			ResetPlayerAttachment(p, -1);
 			p->mTumble.mState = 4;
 			FlashBatteryWarning(p, 0, 0.4f);
@@ -6571,10 +6586,9 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			StopBatterySound(0x18E);
 		}
 	}
-	if (stats.mBattery > 0.0f && stats.mBattery <= 30.0f) {
+	if (p->mParams.mBattery > 0.0f && p->mParams.mBattery <= 30.0f) {
 		p->mBatteryWarningFrames += frames;
-		const Vec& color = p->mColorStep[1].mSpeed;
-		if (color.x == 0.0f && color.y == 0.0f && color.z == 0.0f && p->mBatteryWarningFrames >= IDLE_SECOND && !gGame.mEvt.mData.mScript) {
+		if (IsZeroVec(p->mColorStep[1].mSpeed) && p->mBatteryWarningFrames >= IDLE_SECOND && !gGame.mEvt.mData.mScript) {
 			FlashBatteryWarning(p, 100, 1.0f);
 			p->mBatteryWarningFrames = 0;
 			p->mBatteryWarningFade   = 1.0f;
@@ -6585,8 +6599,7 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 		p->mBatteryWarningFade   = 0.0f;
 	}
 	if (p->mBatteryWarningFade > 0.0f) {
-		p->mBatteryWarningFade -= 0.02f * (f32)frames;
-		if (p->mBatteryWarningFade < 0.0f)
+		if ((p->mBatteryWarningFade -= 0.02f * (f32)frames) < 0.0f)
 			p->mBatteryWarningFade = 0.0f;
 		p->mBatteryWarningAngle -= DEG2RAD * 5.0f * (f32)frames;
 	}
