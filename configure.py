@@ -1302,6 +1302,10 @@ if wii:
                 # the Wii file runs the functions in the binary's own order and goes through the
                 # Wii player vtable and CCamera::mView where the GameCube used XObj and mCamera
                 Object(NonMatching, "game/wii/ccameraactionreset.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # member offsets shared with the GameCube classes; the Wii file consumes the
+                # remote's dpad bits on gWiiPointer.mFlags and the player Y rotation comes
+                # through a vtable call instead of HSD_JObjGetRotationY
+                Object(NonMatching, "game/wii/ccameraactionscroll.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii Params layout matches the GameCube class (mRank _08, mMoney _14,
                 # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs
                 # every function matches, but the file is written in the GameCube's order and the Wii

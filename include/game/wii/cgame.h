@@ -314,6 +314,9 @@ struct WiiPlayerVtable {
 	Vec (*GetCameraTarget)(WiiPlayerState* chr);
 	void* _1B4[(0x244 - 0x1B4) / 4];
 	const Vec* (*GetPosition)(WiiPlayerState* chr);
+	void* _248[(0x26C - 0x248) / 4];
+	// the ladder camera adds the object's facing to its orbit angle
+	f32 (*GetRotationY)(WiiPlayerState* chr);
 };
 
 // the yes/no menu CMsg__cmd_QUESTION opens on the player, the GameCube's mOXMenu. its input poll
@@ -350,6 +353,7 @@ struct WiiPlayerState {
 	const Vec* GetPosition() { return mVtable->GetPosition(this); }
 	MtxP GetMtxPtr() { return mVtable->GetMtxPtr(this); }
 	Vec GetCameraTarget() { return mVtable->GetCameraTarget(this); }
+	f32 GetRotationY() { return mVtable->GetRotationY(this); }
 };
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8

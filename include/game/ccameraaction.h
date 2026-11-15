@@ -913,6 +913,64 @@ public:
 	BOOL IsFovUnderMax();
 	virtual ~CCameraActionScroll2() { }
 };
+
+// a camera that looks along the z axis at the player from a fixed distance, the remote's
+// dpad swaps between a near and a far one. the member layout is the GameCube one
+// (mStart _40 … mZoom _68 verified in retail), see game/wii/ccameraactionscroll.cpp
+class CCameraActionScroll : public CInterfaceCameraAction {
+public:
+	BOOL mStart;                               // _40, the next update places the camera from scratch
+	f32 mFarDistance;                          // _44
+	f32 mNearDistance;                         // _48
+	f32 mScrollFov;                            // _4C
+	CInterfaceInterpolation* mDistanceInterp;  // _50
+	CInterpolationEaseOutDivide mDistanceEase; // _54
+	u32 mInterestMode;                         // _64
+	s32 mZoom;                                 // _68, 0 near, 1 far
+
+	virtual void Update(u32 step);           // _10
+	virtual void Reset();                    // _14
+	virtual void SetCamera(CCamera* camera); // _18
+	virtual u32 GetInterestMode();           // _60
+
+	void SetZoomDistance(f32 distance)
+	{
+		mDistanceInterp = NULL;
+		SetDistance(distance);
+	}
+	void StartZoom(f32 distance)
+	{
+		mDistanceInterp = &mDistanceEase;
+		if (mDistanceInterp != NULL) {
+			mDistanceInterp->Start(mDistance, distance, 15.0f);
+		}
+	}
+	virtual ~CCameraActionScroll() { }
+};
+STATIC_ASSERT(sizeof(CCameraActionScroll) == 0x6C);
+
+// behind the player at an angle off its facing, same member layout as the GameCube one
+class CCameraActionLadr : public CInterfaceCameraAction {
+public:
+	f32 mAngle; // _40, added to the player's y rotation
+
+	virtual void Update(u32 step); // _10
+	virtual void Reset();          // _14
+	virtual u32 GetCameraFlags();  // _58
+	virtual Vec GetCameraTarget(); // _68, the player
+
+	void CalcEye(Vec* eye, f32 angle);
+	virtual ~CCameraActionLadr() { }
+};
+STATIC_ASSERT(sizeof(CCameraActionLadr) == 0x44);
+
+// just looks at the player, the camera keeps everything else
+class CCameraActionDefault : public CInterfaceCameraAction {
+public:
+	virtual void Update(u32 step); // _10
+	virtual ~CCameraActionDefault() { }
+};
+STATIC_ASSERT(sizeof(CCameraActionDefault) == 0x40);
 #endif // defined(VERSION_R24J01)
 
 // follows the player from behind on a damped spring, the stick or dpad turns and zooms it.
