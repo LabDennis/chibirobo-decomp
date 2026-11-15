@@ -11,6 +11,14 @@
 
 class CCamera;
 
+// one entry in the object reference table the renderer walks: the spawned object and a
+// flags halfword (CMsgFont_Init sets 0x800 on its cursor's own status instead)
+struct WiiObjectRef {
+	void* mObj; // _00
+	s16 mFlags; // _04
+	s16 _06;
+};
+
 // Verified Wii fields accessed by the controller, stage, start-up and save code. The Wii CBase is larger
 // than the GameCube one, so its vtable sits at 0x41E4, right behind its data.
 class CBase {
@@ -290,6 +298,15 @@ struct WiiPlayerVtable {
 	const Vec* (*GetPosition)(WiiPlayerState* chr);
 };
 
+// the yes/no menu CMsg__cmd_QUESTION opens on the player, the GameCube's mOXMenu. its input poll
+// is HandleOXMenuInput at 0x800EF58C
+struct WiiOXMenu {
+	u8 _00[4];
+	s32 mStarted; // _04
+	u8 _08[0x1388];
+	s32 mConfirmedIndex; // _1390
+};
+
 // the Wii player object: a different, larger class than the GameCube XObjChr. These are the members
 // the save manager reads and writes, at offsets verified against retail.
 struct WiiPlayerState {
@@ -306,7 +323,9 @@ struct WiiPlayerState {
 	WiiPlayerSuits mSuits; // _DC50
 	u8 _DC64[0x19E9C - 0xDC64];
 	u8 mAttachments[0x48]; // _19E9C
-	u8 _19EE4[0x1C994 - 0x19EE4];
+	u8 _19EE4[0x1A420 - 0x19EE4];
+	WiiOXMenu mOXMenu; // _1A420
+	u8 _1B7B4[0x1C994 - 0x1B7B4];
 	s32 mSquirterContent; // _1C994
 	s32 mItemTint;        // _1C998
 
@@ -351,7 +370,14 @@ public:
 	WiiFlagSource* mItems; // _F784
 	u8 _F788[0xF874 - 0xF788];
 	WiiFlagSource* mDust; // _F874
-	u8 _F878[0xD7610 - 0xF878];
+	u8 _F878[0x108C8 - 0xF878];
+	// pointers to spawned objects the renderer walks; entries are grouped in eights,
+	// CMsgFont_Init pushes its two cursors here
+	WiiObjectRef* mObjectRefs; // _108C8
+	s32 mObjectRefCount;       // _108CC
+	u8 _108D0[0x4C8F0 - 0x108D0];
+	s32 mSelectResult; // _4C8F0, the yes/no answer CMsg__cmd_QUESTION stores, in mEvt on the GameCube
+	u8 _4C8F4[0xD7610 - 0x4C8F4];
 	WiiTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
 	WiiCameraActions mCameraActions;           // _D9B24

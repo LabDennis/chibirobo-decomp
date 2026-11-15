@@ -541,6 +541,8 @@ void CopyFbTexture(WiiFbTexture* texture, GXTexFmt format, BOOL clear, BOOL flus
 void DrawFbTexture(WiiFbTexture* texture, u32 color, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz);
 void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx,
                         f32 ry, f32 rz);
+// text widths
+f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size);
 }
 
 #endif

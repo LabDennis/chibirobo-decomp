@@ -4,6 +4,7 @@
 #include "game/wii/menuutil.h"
 #include "game/menuhelpchar.h"
 #include "Dolphin/vec.h"
+class CoordInfo;
 
 // The Wii title screen (title.cpp), CGame keeps it at _5C70. The layout follows the GameCube Title
 // (game/title.h) with a vtable in front, a remembered value behind each selection the pointer can drop,
@@ -47,11 +48,11 @@ public:
 	virtual void vf080();
 	virtual void vf084();
 	virtual void vf088();
-	virtual void vf08C();
+	virtual void vf08C(f32 x, f32 y, f32 z);
 	virtual void vf090();
 	virtual void vf094();
 	virtual void vf098();
-	virtual void vf09C();
+	virtual void vf09C(f32 x, f32 y, f32 z);
 	virtual void vf0A0();
 	virtual void vf0A4();
 	virtual void vf0A8();
@@ -98,12 +99,14 @@ public:
 	virtual void vf14C();
 	virtual void vf150();
 	virtual void vf154();
-	virtual void vf158();
+	virtual s32 vf158(CoordInfo info);
 	virtual void vf15C();
 	virtual void vf160();
 	virtual void UpdateObject(u32 frames); // _164
 
-	u8 _004[0x9B0 - 0x004];
+	u8 _004[0x154 - 0x004];
+	u32 mStatus; // _154, bit 0 marks a finished LoadFromPlacement, bit 11 the caller's scale set
+	u8 _158[0x9B0 - 0x158];
 };
 STATIC_ASSERT(sizeof(WiiTitleObject) == 0x9B0);
 
