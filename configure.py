@@ -1239,6 +1239,9 @@ if wii:
                 # are the reconstruction base
                 Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the out-of-line CCamera::SetAngle(const Vec&) copy plus a CThread global
+                # that nothing references - a port leftover
+                Object(NonMatching, "game/wii/ccamera.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # retail has no call to StartWiiSaveJob (declared inline, inlined into its
                 # callers) while BuildWiiSaveBanner and CheckWiiSaveBanner are reached via
