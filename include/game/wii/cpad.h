@@ -141,10 +141,16 @@ struct WiiButtonRepeat {
 	s32 delay, interval, startingInterval, minimumInterval;
 };
 
+enum { RumbleEnabled = 1, RumbleRunning = 2, RumblePaused = 4 };
+
 struct WiiRumble {
 	u8 flags;
 	u8 previousFlags;
 	s32 remaining;
+
+	// CPadOne::Update reads the flag through a const path: retail loads flags again for its next test,
+	// which the compiler only does after a read through a pointer to const. The name is ours
+	BOOL IsEnabled() const { return flags & RumbleEnabled; }
 };
 
 class CPadOne {

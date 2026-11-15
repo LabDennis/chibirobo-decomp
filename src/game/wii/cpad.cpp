@@ -57,8 +57,6 @@ static WiiStickRange sStickRanges[2];
 static WiiRawSample sRawSamples[16];
 static BOOL (CPadOne::*sGameCubePadCheck)() const = &CPadOne::IsGameCubePadActive;
 
-enum { RumbleEnabled = 1, RumbleRunning = 2, RumblePaused = 4 };
-
 // Hardware masks returned by KPAD for the Wii Remote and its extensions.
 enum {
 	WPAD_BUTTON_LEFT  = 0x0001,
@@ -202,9 +200,6 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			return;
 		}
 	}
-	// NONMATCHING: instruction multiset is identical to retail; the remaining
-	// diffs are register allocation and stack/local placement residue
-	// (r0 vs r3 in the rumble loop, f0 vs f1 in two fcmpu instructions).
 	switch (probe) {
 	case 0:
 		switch (device) {
@@ -293,8 +288,8 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			KPADGetUnifiedWpadStatus(mPort, sRawSamples, ARRAY_SIZE(sRawSamples));
 			NormalizeWiiStick(&mSamples[0].extension.nunchuk.stick, sRawSamples[0].extension.nunchuk.stickX,
 			                  sRawSamples[0].extension.nunchuk.stickY, sStickRanges[0].min, sStickRanges[0].max);
-			stick          = mSamples[0].extension.nunchuk.stick;
-			u32 directions = GetStickDirections(mStickDirections, stick.x, stick.y);
+			StickPosition nunchuk = mSamples[0].extension.nunchuk.stick;
+			u32 directions        = GetStickDirections(mStickDirections, nunchuk.x, nunchuk.y);
 			if (directions & StickUp) {
 				buttons |= 1ULL << (NunchukStick + 3);
 			}
@@ -307,12 +302,10 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 			if (directions & StickRight) {
 				buttons |= 1ULL << (NunchukStick + 1);
 			}
-			mStick.x = mSamples[0].extension.nunchuk.stick.x;
-			if (mSamples[0].extension.nunchuk.stick.x != 0.0f) {
+			if ((mStick.x = mSamples[0].extension.nunchuk.stick.x) != 0.0f) {
 				claimed |= 1;
 			}
-			mStick.y = mSamples[0].extension.nunchuk.stick.y;
-			if (mSamples[0].extension.nunchuk.stick.y != 0.0f) {
+			if ((mStick.y = mSamples[0].extension.nunchuk.stick.y) != 0.0f) {
 				claimed |= 2;
 			}
 		} else {
@@ -511,14 +504,14 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 
 	if (mSamples[0].error == 0) {
 		for (int i = 0; i < 3; ++i) {
-			if (mRumble[i].flags & RumbleEnabled) {
+			if (mRumble[i].IsEnabled()) {
 				if (i == 2 && (mRumble[i].flags & RumblePaused)) {
 					mRumble[i].flags &= ~RumblePaused;
 				}
 				if ((mRumble[i].flags & RumbleRunning) && (mRumble[i].flags & RumblePaused) && !(mRumble[i].previousFlags & RumblePaused)) {
 					WPADControlMotor(mPort, 0);
-				}
-				if ((mRumble[i].flags & RumbleRunning) && !(mRumble[i].flags & RumblePaused) && (mRumble[i].previousFlags & RumblePaused)) {
+				} else if ((mRumble[i].flags & RumbleRunning) && !(mRumble[i].flags & RumblePaused)
+				           && (mRumble[i].previousFlags & RumblePaused)) {
 					WPADControlMotor(mPort, 1);
 				}
 				if ((mRumble[i].flags & RumbleRunning) && !(mRumble[i].flags & RumblePaused) && (mRumble[i].remaining -= frames) <= 0) {
@@ -527,8 +520,7 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 				}
 				if ((mRumble[i].flags & RumbleRunning) && !(mRumble[i].previousFlags & RumbleRunning)) {
 					WPADControlMotor(mPort, 1);
-				}
-				if (!(mRumble[i].flags & RumbleRunning) && (mRumble[i].previousFlags & RumbleRunning)) {
+				} else if (!(mRumble[i].flags & RumbleRunning) && (mRumble[i].previousFlags & RumbleRunning)) {
 					WPADControlMotor(mPort, 0);
 				}
 			}
@@ -539,9 +531,6 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 	}
 }
 
-// NONMATCHING: instruction multiset is identical to retail; the remaining
-// diffs are register allocation and load-order residue around the four
-// directional tests.
 u32 CPadOne::GetStickDirections(StickDirectionSettings& settings, f32 x, f32 y) const
 {
 	u32 result = 0;
@@ -552,16 +541,16 @@ u32 CPadOne::GetStickDirections(StickDirectionSettings& settings, f32 x, f32 y) 
 			angle += 6.2831855f;
 		}
 		angle = 57.295776f * angle;
-		if (angle < 45.0f + settings.diagonalOverlapDegrees * 0.5f || angle > 315.0f - settings.diagonalOverlapDegrees * 0.5f) {
+		if (angle < 45.0f + settings.diagonalOverlapDegrees / 2.0f || angle > 315.0f - settings.diagonalOverlapDegrees / 2.0f) {
 			result |= StickUp;
 		}
-		if (angle > 45.0f - settings.diagonalOverlapDegrees * 0.5f && angle < 135.0f + settings.diagonalOverlapDegrees * 0.5f) {
+		if (angle > 45.0f - settings.diagonalOverlapDegrees / 2.0f && angle < 135.0f + settings.diagonalOverlapDegrees / 2.0f) {
 			result |= StickLeft;
 		}
-		if (angle > 135.0f - settings.diagonalOverlapDegrees * 0.5f && angle < 225.0f + settings.diagonalOverlapDegrees * 0.5f) {
+		if (angle > 135.0f - settings.diagonalOverlapDegrees / 2.0f && angle < 225.0f + settings.diagonalOverlapDegrees / 2.0f) {
 			result |= StickDown;
 		}
-		if (angle > 225.0f - settings.diagonalOverlapDegrees * 0.5f && angle < 315.0f + settings.diagonalOverlapDegrees * 0.5f) {
+		if (angle > 225.0f - settings.diagonalOverlapDegrees / 2.0f && angle < 315.0f + settings.diagonalOverlapDegrees / 2.0f) {
 			result |= StickRight;
 		}
 	}
@@ -756,16 +745,6 @@ void CPadOne::CalculateSwing(s32 first, s32 last)
 	}
 }
 
-static inline void ResetMotion(WiiMotionWindow& motion)
-{
-	for (unsigned int i = 0; i < ARRAY_SIZE(motion.changes); ++i) {
-		motion.changes[i] = 0.0f;
-	}
-	motion.count            = 0;
-	motion.previouslyActive = motion.active = FALSE;
-	motion.activeFrames                     = 1;
-}
-
 static inline void AppendChange(WiiMotionWindow& motion, f32 change)
 {
 	motion.changes[motion.count] = change;
@@ -775,42 +754,14 @@ static inline void AppendChange(WiiMotionWindow& motion, f32 change)
 	}
 }
 
-static inline bool DetectChange(WiiMotionWindow& motion, f32 change)
-{
-	if (change >= 0.2f) {
-		motion.previouslyActive = motion.active;
-		motion.active           = TRUE;
-		return true;
-	}
-	if (change < 0.1f) {
-		if (++motion.quietSamples >= 15) {
-			motion.previouslyActive = motion.active;
-			motion.active           = FALSE;
-			return true;
-		}
-	} else {
-		motion.quietSamples = 0;
-	}
-	return false;
-}
-
-static inline void FinishMotionFrame(WiiMotionWindow& motion)
-{
-	if (++motion.activeFrames >= 20) {
-		motion.activeFrames = 1;
-		motion.sum          = 0.0f;
-		for (u32 i = 0; i < motion.count; ++i) {
-			motion.sum += motion.changes[i];
-		}
-		motion.count = 0;
-	}
-}
-
-// NONMATCHING: identical to retail apart from a register swap in the
-// inlined ResetMotion unroll (r4/r5 roles for the pointer and counter).
 void CPadOne::ResetRemoteMotion()
 {
-	ResetMotion(mRemoteMotion);
+	for (unsigned int i = 0; i < ARRAY_SIZE(mRemoteMotion.changes); ++i) {
+		mRemoteMotion.changes[i] = 0.0f;
+	}
+	mRemoteMotion.count            = 0;
+	mRemoteMotion.previouslyActive = mRemoteMotion.active = FALSE;
+	mRemoteMotion.activeFrames                            = 1;
 }
 
 void CPadOne::CollectRemoteMotion()
@@ -820,15 +771,20 @@ void CPadOne::CollectRemoteMotion()
 	}
 }
 
-// NONMATCHING: identical to retail apart from a register swap in the
-// inlined FinishMotionFrame sum loop (r3/r4 roles for the changes pointer
-// and counter).
+// every 20th active frame the window's changes are summed up and the window starts over
 void CPadOne::UpdateRemoteMotion()
 {
 	DetectRemoteMotion();
 	if (mRemoteMotion.active == TRUE) {
 		CollectRemoteMotion();
-		FinishMotionFrame(mRemoteMotion);
+		if (++mRemoteMotion.activeFrames >= 20) {
+			mRemoteMotion.activeFrames = 1;
+			mRemoteMotion.sum          = 0.0f;
+			for (u32 i = 0; i < mRemoteMotion.count; ++i) {
+				mRemoteMotion.sum += mRemoteMotion.changes[i];
+			}
+			mRemoteMotion.count = 0;
+		}
 	}
 }
 
@@ -853,11 +809,14 @@ void CPadOne::DetectRemoteMotion()
 	}
 }
 
-// NONMATCHING: identical to retail apart from a register swap in the
-// inlined ResetMotion unroll (r4/r5 roles for the pointer and counter).
 void CPadOne::ResetNunchukMotion()
 {
-	ResetMotion(mNunchukMotion);
+	for (unsigned int i = 0; i < ARRAY_SIZE(mNunchukMotion.changes); ++i) {
+		mNunchukMotion.changes[i] = 0.0f;
+	}
+	mNunchukMotion.count            = 0;
+	mNunchukMotion.previouslyActive = mNunchukMotion.active = FALSE;
+	mNunchukMotion.activeFrames                             = 1;
 }
 
 void CPadOne::CollectNunchukMotion()
@@ -867,15 +826,20 @@ void CPadOne::CollectNunchukMotion()
 	}
 }
 
-// NONMATCHING: identical to retail apart from a register swap in the
-// inlined FinishMotionFrame sum loop (r3/r4 roles for the changes pointer
-// and counter).
+// every 20th active frame the window's changes are summed up and the window starts over
 void CPadOne::UpdateNunchukMotion()
 {
 	DetectNunchukMotion();
 	if (mNunchukMotion.active == TRUE) {
 		CollectNunchukMotion();
-		FinishMotionFrame(mNunchukMotion);
+		if (++mNunchukMotion.activeFrames >= 20) {
+			mNunchukMotion.activeFrames = 1;
+			mNunchukMotion.sum          = 0.0f;
+			for (u32 i = 0; i < mNunchukMotion.count; ++i) {
+				mNunchukMotion.sum += mNunchukMotion.changes[i];
+			}
+			mNunchukMotion.count = 0;
+		}
 	}
 }
 
