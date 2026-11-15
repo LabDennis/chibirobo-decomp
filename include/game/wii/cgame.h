@@ -308,6 +308,47 @@ struct WiiPlayerVtable {
 	const Vec* (*GetPosition)(WiiPlayerState* chr);
 };
 
+// the cord wire object embedded in the player at +0xABC0, the GameCube's mPlug.mWire
+// (XObjWireEff). Its vtable shares the unreconstructed Wii object layout where +0x90 takes a
+// position Vec - the same slot the player's own vtable keeps it at
+struct WiiCordWire {
+	virtual void V_00(); // _00 through _8C unreconstructed
+	virtual void V_04();
+	virtual void V_08();
+	virtual void V_0C();
+	virtual void V_10();
+	virtual void V_14();
+	virtual void V_18();
+	virtual void V_1C();
+	virtual void V_20();
+	virtual void V_24();
+	virtual void V_28();
+	virtual void V_2C();
+	virtual void V_30();
+	virtual void V_34();
+	virtual void V_38();
+	virtual void V_3C();
+	virtual void V_40();
+	virtual void V_44();
+	virtual void V_48();
+	virtual void V_4C();
+	virtual void V_50();
+	virtual void V_54();
+	virtual void V_58();
+	virtual void V_5C();
+	virtual void V_60();
+	virtual void V_64();
+	virtual void V_68();
+	virtual void V_6C();
+	virtual void V_70();
+	virtual void V_74();
+	virtual void V_78();
+	virtual void V_7C();
+	virtual void V_80();
+	virtual void V_84();
+	virtual void SetPosition(const Vec* pos); // _90
+};
+
 // the yes/no menu CMsg__cmd_QUESTION opens on the player, the GameCube's mOXMenu. its input poll
 // is HandleOXMenuInput at 0x800EF58C
 struct WiiOXMenu {
@@ -329,7 +370,9 @@ struct WiiPlayerState {
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
 	u8 _992C[0x999C - 0x992C];
 	WiiPlayerParams mParams; // _999C
-	u8 _9DDC[0xDC50 - 0x9DDC];
+	u8 _9DDC[0xABC0 - 0x9DDC];
+	WiiCordWire mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
+	u8 _ABC4[0xDC50 - 0xABC4];
 	WiiPlayerSuits mSuits; // _DC50
 	u8 _DC64[0x19E9C - 0xDC64];
 	u8 mAttachments[0x48]; // _19E9C

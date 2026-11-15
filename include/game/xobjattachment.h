@@ -1,13 +1,23 @@
 #ifndef _GAME_XOBJATTACHMENT_H
 #define _GAME_XOBJATTACHMENT_H
 
+#include "Version.h"
+#if defined(VERSION_R24J01)
+#include "Dolphin/mtx.h"
+#include "game/ut.h"
+class XObj;
+class XObjPlug;
+class XObjCopter;
+#else
 #include "game/xobj.h"
+#endif
 #include "game/mapfloorhit.h"
 #include "game/ccameraaction.h"
 
 // the objects chibi robo carries around with him, class names from RTTI. XObjChr holds one
 // of each, the plug and its cord first. offsets are usa, each XObj is 0x10 shorter in japan
 
+#if !defined(VERSION_R24J01)
 // the wire effect along the plug's cord
 class XObjWireEff : public XObj {
 public:
@@ -31,10 +41,14 @@ STATIC_ASSERT(sizeof(XObjWireEff) == 0x988);
 #else
 STATIC_ASSERT(sizeof(XObjWireEff) == 0x998);
 #endif
+#endif
 
 // one point of the cord, it steps like a CObjVec but has no vtable of its own
 struct XObjPlugCordPoint {
 	XObjPlugCordPoint();
+#if defined(VERSION_R24J01)
+	~XObjPlugCordPoint();
+#endif
 
 	CVec mPos;    // _00
 	CVec mTarget; // _10
@@ -93,6 +107,7 @@ struct XObjPlugCord {
 };
 STATIC_ASSERT(sizeof(XObjPlugCord) == 0x394);
 
+#if !defined(VERSION_R24J01)
 class XObjPlug : public XObj {
 public:
 	XObjPlugCord mCord;  // _980
@@ -190,14 +205,20 @@ public:
 	virtual ~XObjOX() { }                  // _08 (weak)
 	virtual void UpdateObject(u32 frames); // _A4
 };
+#endif
 
 extern "C" {
 CVec GetPlugCordPointPosition(const XObjPlugCord* cord, s32 index);
 void GetPlayerPlugCordAnchorTransform(void*, Vec* position, Vec* rotation, Vec* scale);
 void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames);
 void ResetPlayerPlugState(XObjPlug* plug, BOOL resetJoint);
-// the cord, the scale arguments go unused
+// the cord, the scale arguments go unused; the Wii draw takes the node block, the GameCube
+// the whole cord
+#if defined(VERSION_R24J01)
+void DrawPlugCordNodes(XObjPlugCordNodes* nodes, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ);
+#else
 void DrawPlugCordNodes(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ);
+#endif
 void DrawPlugCordSegments(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ);
 void SetPlugCordAlphaMode(XObjPlugCord* cord, BOOL enabled, u8 alpha);
 void SetPlugCordEndpointSource(XObjPlugCord* cord, u32 index, const Vec* source);
@@ -216,11 +237,13 @@ void PlayCopterStowAnimation(XObjCopter* copter);
 void ShowAndDeployCopter(XObjCopter* copter);
 }
 
+#if !defined(VERSION_R24J01)
 // follows the joint it hangs from
 inline void CopyParentMtx(XObjAttachment* object)
 {
 	MtxPtr mtx = HSD_JObjGetMtxPtr(object->mParent);
 	HSD_JObjCopyMtx(object->mJObj, mtx);
 }
+#endif
 
 #endif
