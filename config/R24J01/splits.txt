@@ -1106,6 +1106,9 @@ game/atcmenudtor.cpp:
 game/drsmenudtor.cpp:
 	.text start:0x800C1018 end:0x800C1058
 
+game/xchrmenu.cpp:
+	.text start:0x800C1058 end:0x800C1308
+
 game/oxmenudtor.cpp:
 	.text start:0x800C1308 end:0x800C13B0
 
@@ -1117,6 +1120,10 @@ game/cpadexdtor.cpp:
 
 game/gamecpadone.cpp:
 	.text start:0x800C0EF0 end:0x800C0F30
+
+game/xpaddtor.cpp:
+	.text start:0x800C0F30 end:0x800C0F98
+	.data start:0x803030AC end:0x803030D4
 
 game/gamefbsubwinfade.cpp:
 	.text start:0x8001A704 end:0x8001A958

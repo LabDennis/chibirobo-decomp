@@ -15,13 +15,21 @@ struct OXMenuMark {
 	~OXMenuMark();
 };
 
+class XObj;
+
 class OXMenu {
 public:
 	u8 _0[0x18];         // unverified head
 	OXMenuMark mMark[2]; // _18
+	XObj* mChr;          // _1388
+	f32 mStartRot;       // _138C
+	u32 mConfirmedIndex; // _1390
+	// _1394 vtable
 
+	OXMenu();          // 0x800C1098, defined in xchrmenu.cpp
 	virtual ~OXMenu(); // defined in oxmenudtor.cpp
 };
+STATIC_ASSERT(sizeof(OXMenu) == 0x1398);
 #else
 #include "game/xobj.h"
 #include "game/ringmenu.h"
