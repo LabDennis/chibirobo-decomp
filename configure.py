@@ -1217,12 +1217,12 @@ if wii:
                 # CLight::SetPosition, vf30) follow it in the order of their calls, as in retail
                 # 0x8003607C and 0x80036254; without the flag they come out in the reverse order
                 Object(NonMatching, "game/wii/init.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # no auto-inlining of the small pad functions: under -inline auto the
-                # compiler inlines Collect*/Init into their callers where retail keeps
-                # them as calls; IsGameCubePadActive is inline-declared and still inlined
-                # into Update (no bl, retail 0x802B2528), with its standalone copy at its
-                # own address (retail 0x802B1D84)
-                Object(Equivalent, "game/wii/cpad.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the whole file, linked. No auto-inlining of the small pad functions: under
+                # -inline auto the compiler inlines Collect*/Init into their callers where retail
+                # keeps them as calls; IsGameCubePadActive is inline-declared and still inlined
+                # into Update (no bl, retail 0x802B2528), with its standalone copy at its own
+                # address (retail 0x802B1D84)
+                Object(Matching, "game/wii/cpad.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # retail has no call to StartWiiSaveJob (declared inline, inlined into its

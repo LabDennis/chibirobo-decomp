@@ -1913,3 +1913,5 @@ IsStickUsedOverPointer__8MenuUtilFv = .text:0x80050788; // type:function size:0x
 UpdateSelections__5TitleFv = .text:0x8004E534; // type:function size:0x1B8
 AddPointerPane = .text:0x8005573C; // type:function size:0x20
 gPointerPanes = .bss:0x8044532C; // type:object size:0x404
+@LOCAL@FSqrt__Ff@sMessage = .data:0x802E6D74; // type:object size:0x23 scope:weak
+@LOCAL@FSqrt__Ff@sFile@0 = .data:0x802E6D98; // type:object size:0xD scope:weak

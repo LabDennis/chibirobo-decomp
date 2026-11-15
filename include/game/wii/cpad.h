@@ -174,7 +174,13 @@ public:
 	WiiMotionWindow mRemoteMotion, mNunchukMotion;
 	WiiSwing mSwing;
 
-	CPadOne();
+	// retail has it behind the file's static initializer, its only caller (0x802B3B10)
+	CPadOne()
+	{
+		ResetSwing();
+		ResetRemoteMotion();
+		ResetNunchukMotion();
+	}
 	virtual ~CPadOne();
 	virtual void Init(u8 port, u8 inputMask);
 	virtual void Clear();

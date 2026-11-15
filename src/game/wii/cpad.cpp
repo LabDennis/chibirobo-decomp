@@ -55,7 +55,6 @@ struct WiiStickRange {
 };
 static WiiStickRange sStickRanges[2];
 static WiiRawSample sRawSamples[16];
-static BOOL (CPadOne::*sGameCubePadCheck)() const = &CPadOne::IsGameCubePadActive;
 
 // Hardware masks returned by KPAD for the Wii Remote and its extensions.
 enum {
@@ -189,6 +188,10 @@ enum StickDirection {
 	StickDown  = 4,
 	StickRight = 8,
 };
+
+// whether the GameCube pad's buttons take part in the repeat groups. Its place here, in front of Update, is
+// what puts IsGameCubePadActive's own copy behind ResetRumble as in retail (0x802B1D84)
+static BOOL (CPadOne::*sGameCubePadCheck)() const = &CPadOne::IsGameCubePadActive;
 
 void CPadOne::Update(const PADStatus* status, s32 frames)
 {
@@ -899,7 +902,7 @@ void CPadEx::Init(u8 inputMask)
 void CPadEx::Clear()
 {
 	if (mInputMask & InputGameCube) {
-		PADReset(0xf0000000);
+		PADRecalibrate(0xf0000000);
 	}
 	KPADReset();
 	for (int port = 0; port < 4; ++port) {
@@ -945,11 +948,4 @@ void CPadEx::SetSubStickRange(f32 inner, f32 outer)
 {
 	sStickRanges[1].min = inner;
 	sStickRanges[1].max = outer;
-}
-
-CPadOne::CPadOne()
-{
-	ResetSwing();
-	ResetRemoteMotion();
-	ResetNunchukMotion();
 }
