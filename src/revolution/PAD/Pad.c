@@ -41,10 +41,14 @@ static u32 CheckingBits;
 static u32 PendingBits;
 static u32 BarrelBits;
 
-static void (*SamplingCallback)(void);
-
 // global symbols
 u32 __PADSpec;
+
+static void (*SamplingCallback)(void);
+
+// The Revolution MSL's abs is the compiler intrinsic (as in pik1wii's Pad.c). The arithmetic form
+// (n < 0 ? -n : n) orders the loads and registers of PADRead's comparisons differently from retail.
+#define abs(n) __abs(n)
 
 // useful macros
 #define offsetof(type, memb) ((u32) & ((type*)0)->memb)
@@ -323,7 +327,7 @@ BOOL PADReset(u32 mask)
 	EnabledBits &= ~mask;
 	BarrelBits &= ~mask;
 
-	if (!(GameChoice & 0x40)) {
+	if (Spec == PAD_SPEC_4) {
 		RecalibrateBits |= mask;
 	}
 
@@ -356,7 +360,7 @@ BOOL PADRecalibrate(u32 mask)
 	EnabledBits &= ~mask;
 	BarrelBits &= ~mask;
 
-	if (Spec == PAD_SPEC_4) {
+	if (!(GameChoice & 0x40)) {
 		RecalibrateBits |= mask;
 	}
 
@@ -407,8 +411,6 @@ BOOL PADInit(void)
  * @note Address: 0x80173998
  * @note Size: 0x300
  */
-// NONMATCHING: retail has the abs() calls of the "status changed" test inline (srawi/xor/subf), which is what
-// the MSL header's abs() gives; with the declaration in include/stl/stdlib.h they are calls.
 u32 PADRead(PADStatus* status)
 {
 	BOOL enabled;
@@ -427,7 +429,7 @@ u32 PADRead(PADStatus* status)
 		chanShift = 8 * (SI_MAX_CHAN - 1 - chan);
 
 		if (PendingBits & chanBit) {
-			PADRecalibrate(0);
+			PADReset(0);
 			status->err = PAD_ERR_NOT_READY;
 			memset(status, 0, offsetof(PADStatus, err));
 			continue;

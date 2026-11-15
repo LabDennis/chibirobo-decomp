@@ -134,9 +134,9 @@ revolution/DVD/dvdqueue.c:
 revolution/PAD/Pad.c:
 	.text start:0x8019D69C end:0x8019EEE4
 	.data start:0x8031FC28 end:0x8031FC80
-	.bss start:0x804D2970 end:0x804D29A0
+	.bss start:0x804D2970 end:0x804D29F0
 	.sdata start:0x805A14D0 end:0x805A14F0
-	.sbss start:0x805A21B8 end:0x805A21E0
+	.sbss start:0x805A21B0 end:0x805A21E0
 
 revolution/AI/ai.c:
 	.text start:0x8019EEE4 end:0x8019F470

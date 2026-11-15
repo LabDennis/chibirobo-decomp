@@ -2440,3 +2440,5 @@ __OSFpscrEnableBits = .sdata:0x805A13E8; // type:object size:0x4 scope:global da
 RunQueue = .bss:0x804CCBF0; // type:object size:0x100 scope:local
 IdleContext = .bss:0x804CCCF0; // type:object size:0x2C8 scope:local
 IdleThread = .bss:0x804CCFB8; // type:object size:0x318 scope:local
+CmdProbeDevice = .bss:0x804D29B0; // type:object size:0x10 scope:local
+LastStatus = .bss:0x804D29C0; // type:object size:0x30 scope:local
