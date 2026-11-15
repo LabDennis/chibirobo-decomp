@@ -2683,14 +2683,14 @@ extern UnkObjData objTableEx[];
 // placement fixup lists: id -1 ends each table
 struct PlacementChain {
 	u8 _00[8];
-	s32 mId;
+	u32 mId;
 	u8 _0C[4];
 	s32* mChain;
 	s32 mIndex;
 };
 
 extern PlacementChain lbl_802F0138[];
-extern PlacementChain lbl_8030DB30[];
+extern PlacementChain lbl_802FDB30[];
 
 /**
  * @note Address: 0x80092EC8
@@ -2699,16 +2699,20 @@ extern PlacementChain lbl_8030DB30[];
 extern "C" void fn_80092EC8(void)
 {
 	PlacementChain* entry = lbl_802F0138;
-	while (entry->mId != -1) {
-		entry->mIndex = entry->mId + 0x10000;
+	for (;;) {
+		if (entry->mId == -1)
+			break;
+		entry->mIndex = 0;
 		if (entry->mChain != NULL)
 			while (entry->mChain[entry->mIndex] != 0)
 				entry->mIndex++;
 		entry++;
 	}
-	entry = lbl_8030DB30;
-	while (entry->mId != -1) {
-		entry->mIndex = entry->mId + 0x10000;
+	entry = lbl_802FDB30;
+	for (;;) {
+		if (entry->mId == -1)
+			break;
+		entry->mIndex = 0;
 		if (entry->mChain != NULL)
 			while (entry->mChain[entry->mIndex] != 0)
 				entry->mIndex++;
