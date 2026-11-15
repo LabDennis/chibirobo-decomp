@@ -1302,7 +1302,11 @@ if wii:
                 # the game's operator delete, in a file of its own: it frees into the MEM1 exp heap
                 # (retail 0x80019A68 loads the InitMem1 global and calls MEMFreeToExpHeap, no null check)
                 Object(Matching, "game/wii/delete.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(Equivalent, "rel/module.c"),
+                # retail has extab entries for the three functions and emits them in reverse (_prolog first):
+                # the game group's compiler with exceptions on and deferred inlining gives both. The object
+                # is byte-exact, but nothing calls _epilog and _unresolved: retail kept them through its
+                # linker script (the REL entry points), the linker here strips them, so it stays unlinked.
+                Object(Equivalent, "rel/module.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),
             ],
         },
         {
@@ -1322,13 +1326,14 @@ if wii:
                 Object(Matching, "revolution/OS/OSArena.c"),
                 Object(Matching, "revolution/OS/OSAudioSystem.c"),
                 Object(NonMatching, "revolution/OS/OSAlarm.c", cflags=[*cflags_sdk_2004, "-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/OS/OSAlarm.c", cflags=[*cflags_sdk_2004, "-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/OS/OSAlloc.c"),
                 Object(Matching, "revolution/OS/OSCache.c"),
                 Object(Matching, "revolution/OS/OSContext.c"),
                 Object(Matching, "revolution/OS/OSError.c"),
                 Object(NonMatching, "revolution/OS/OSInterrupt.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/OS/OSFatal.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
-                Object(NonMatching, "revolution/OS/OSFont.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/OS/OSFont.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "dolphin/os/OSMessage.c"),
                 Object(Matching, "revolution/OS/OSMutex.c"),
                 Object(Matching, "revolution/OS/OSRtc.c", cflags=[*cflags_sdk_2004, "-ipa file"], mw_version="GC/3.0a5.2"),
@@ -1336,6 +1341,9 @@ if wii:
                 # case-sensitive filesystem - the same flags the GameCube build uses
                 Object(Matching, "dolphin/os/OSStopwatch.c", cflags=cflags_sdk_2004),
                 Object(Matching, "revolution/OS/OSSync.c"),
+                # byte-exact and links, but only with the GameCube file's "#pragma dont_inline" around UnsetRun:
+                # without it UnsetRun is inlined (static or not, with or without a prototype). Unlinked until
+                # the source says why retail keeps it out of line.
                 Object(NonMatching, "revolution/OS/OSThread.c"),
                 Object(Matching, "revolution/OS/OSLink.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"]),
                 Object(Matching, "dolphin/os/OSTime.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"]),
@@ -1369,20 +1377,20 @@ if wii:
                 Object(Matching, "revolution/VI/vi3in1.c"),
                 Object(Matching, "revolution/BASE/PPCArch.c"),
                 Object(Matching, "revolution/DB/db.c"),
-                Object(Equivalent, "revolution/MTX/mtx.c"),
+                Object(Matching, "revolution/MTX/mtx.c"),
                 Object(Matching, "revolution/MTX/mtx44.c"),
                 Object(Matching, "dolphin/mtx/mtxvec.c"),
                 Object(Matching, "revolution/MTX/vec.c"),
-                Object(NonMatching, "revolution/PAD/Pad.c", extra_cflags=["-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
-                Object(Equivalent, "revolution/DVD/dvdqueue.c", mw_version="GC/3.0a5.2"),
-                Object(Equivalent, "revolution/AI/ai.c"),
+                Object(Matching, "revolution/PAD/Pad.c", extra_cflags=["-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/DVD/dvdqueue.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/AI/ai.c"),
                 # the whole file was built without instruction scheduling: with it on, all 19 functions fall (to 48-90 %)
                 Object(Matching, "revolution/EXI/EXIBios.c", mw_version="GC/3.0a5.2", extra_cflags=["-schedule off"]),
-                Object(NonMatching, "revolution/EXI/EXIUart.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/EXI/EXIUart.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/EXI/EXICommon.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/SI/SIBios.c", cflags=[*cflags_sdk_2004, "-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "dolphin/si/SISamplingRate.c", mw_version="GC/3.0a5.2"),
-                Object(NonMatching, "revolution/ARC/arc.c", extra_cflags=["-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/ARC/arc.c", extra_cflags=["-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/AX/AXAux.c"),
                 Object(Matching, "revolution/AXFX/AXFXHooks.c"),
                 Object(Matching, "revolution/AX/AXCL.c"),
@@ -1395,10 +1403,10 @@ if wii:
                 Object(Matching, "revolution/AXFX/AXFXReverbHi.c"),
                 Object(Equivalent, "revolution/AXFX/AXFXReverbHiExp.c"),
                 Object(Equivalent, "revolution/AXFX/AXFXReverbHiExpDpl2.c"),
-                Object(Equivalent, "revolution/DSP/dsp.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/DSP/dsp.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/DSP/dsp_debug.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Equivalent, "revolution/DSP/dsp_task.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
-                Object(NonMatching, "revolution/WENC/wenc.c"),
+                Object(Matching, "revolution/WENC/wenc.c"),
                 Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
                 Object(Matching, "revolution/WPAD/WPADMem.c"),
                 Object(Matching, "revolution/WPAD/debug_msg.c"),
@@ -1468,7 +1476,7 @@ if wii:
                     extra_cflags=["-Cpp_exceptions off", "-ipa file", "-use_lmw_stmw off"],
                 ),
                 Object(
-                    Equivalent, "revolution/MEM/mem_expHeap.c", mw_version="GC/3.0a5.2",
+                    Matching, "revolution/MEM/mem_expHeap.c", mw_version="GC/3.0a5.2",
                     extra_cflags=["-Cpp_exceptions off", "-ipa file", "-use_lmw_stmw off"],
                 ),
                 Object(
@@ -1491,10 +1499,10 @@ if wii:
             "progress_category": "runtime",
             "objects": [
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mainloop.c"),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/nubevent.c"),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/nubevent.c"),
                 Object(NonMatching, "TRK_MINNOW_DOLPHIN/nubinit.c"),
                 Object(NonMatching, "TRK_MINNOW_DOLPHIN/msg.c"),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/msgbuf.c"),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/msgbuf.c"),
                 Object(NonMatching, "TRK_MINNOW_DOLPHIN/serpoll.c", extra_cflags=["-sdata 8"]),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/usr_put.c"),
                 Object(NonMatching, "TRK_MINNOW_DOLPHIN/dispatch.c"),
@@ -1558,7 +1566,9 @@ if wii:
                 # GC/2.6: __copy_longs_* only match with the older compiler (89-91% under Wii/1.3)
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c", mw_version="GC/2.6"),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/rand.c"),
-                Object(Equivalent, "rvl_msl/string.c", mw_version="GC/3.0a5.2", extra_cflags=["-str pool", "-Cpp_exceptions off"]),
+                # retail has an extab entry for strtok (the only function with a frame) and strtok's "" once,
+                # in .sdata2: a read-only string only lands there with -ipa file (.rodata without)
+                Object(Matching, "rvl_msl/string.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-str reuse,readonly", "-ipa file"]),
                 Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common/strtoul.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_acos.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
                 Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_asin.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),

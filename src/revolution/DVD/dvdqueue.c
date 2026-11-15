@@ -9,13 +9,12 @@ struct DVDQueue WaitingQueue[4];
  */
 void __DVDClearWaitingQueue()
 {
-	int i;
+	u32 i;
 
 	for (i = 0; i < 4; i++) {
-		struct DVDQueue* ptr = &WaitingQueue[i];
-
-		ptr->mHead = ptr;
-		ptr->mTail = ptr;
+		DVDCommandBlock* q = (DVDCommandBlock*)&WaitingQueue[i];
+		q->next            = q;
+		q->prev            = q;
 	}
 }
 

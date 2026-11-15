@@ -156,6 +156,8 @@ static void SetRun(OSThread* thread)
 	RunQueueHint = TRUE;
 }
 
+// NONMATCHING: retail keeps UnsetRun out of line while it inlines SetRun and UpdatePriority; plain source
+// inlines all three. The pragma is the GameCube file's and stands in for whatever the SDK source did.
 #pragma dont_inline on
 /**
  * @note Address: 0x8016A05C
@@ -674,6 +676,39 @@ void OSWakeupThread(OSThreadQueue* threadQueue)
 OSPriority OSGetThreadPriority(OSThread* thread)
 {
 	return thread->base;
+}
+
+/**
+ * @note Address: N/A
+ * @note Size: ?
+ */
+// Not in the dol; body as in tp's revolution OSThread.c. Retail's .bss keeps IdleThread behind
+// IdleContext, and this compiler drops a static nothing refers to: these two API functions
+// are what refers to it.
+OSThread* OSSetIdleFunction(OSIdleFunction idleFunction, void* param, void* stack, u32 stackSize)
+{
+	if (idleFunction) {
+		if (IdleThread.state == 0) {
+			OSCreateThread(&IdleThread, (OSThreadStartFunction)idleFunction, param, stack, stackSize, OS_PRIORITY_IDLE, OS_THREAD_ATTR_DETACH);
+			OSResumeThread(&IdleThread);
+			return &IdleThread;
+		}
+	} else if (IdleThread.state != 0) {
+		OSCancelThread(&IdleThread);
+	}
+	return NULL;
+}
+
+/**
+ * @note Address: N/A
+ * @note Size: ?
+ */
+OSThread* OSGetIdleFunction()
+{
+	if (IdleThread.state != 0) {
+		return &IdleThread;
+	}
+	return NULL;
 }
 
 /**

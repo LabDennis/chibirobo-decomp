@@ -18,7 +18,7 @@ static void InsertAlarm(OSAlarm* alarm, OSTime fire, OSAlarmHandler handler);
 static void DecrementerExceptionCallback(__REGISTER __OSException exception, __REGISTER OSContext* context);
 static void DecrementerExceptionHandler(__OSException exception, OSContext* context);
 static BOOL OnReset(BOOL final, u32 event);
-static OSShutdownFunctionInfo ResetFunctionInfo = {OnReset, 0xFFFFFFFF, NULL, NULL};
+static OSShutdownFunctionInfo ShutdownFunctionInfo = {OnReset, 0xFFFFFFFF, NULL, NULL};
 static OSAlarmQueue AlarmQueue;
 
 #define ASSERTREPORT(line, cond) \
@@ -66,7 +66,7 @@ void __OSInitAlarm(void) {
     if (__OSGetExceptionHandler(8) != DecrementerExceptionHandler) {
         AlarmQueue.head = AlarmQueue.tail = NULL;
         __OSSetExceptionHandler(8, DecrementerExceptionHandler);
-        OSRegisterShutdownFunction(&ResetFunctionInfo);
+        OSRegisterShutdownFunction(&ShutdownFunctionInfo);
     }
 }
 
@@ -286,6 +286,35 @@ static asm void DecrementerExceptionHandler(__REGISTER __OSException exception,
 #endif
 
 /**
+ * @note Address: 0x80162554
+ * @note Size: 0xA0
+ */
+static BOOL OnReset(BOOL final, u32 event) {
+    OSAlarm* alarm;
+    OSAlarm* next;
+
+    if (final != FALSE) {
+        ASSERTLINE(606, OSCheckAlarmQueue());
+
+        alarm = AlarmQueue.head;
+        next = (alarm) ? alarm->next : NULL;
+
+        while (alarm != 0) {
+            if (__DVDTestAlarm(alarm) == FALSE) {
+                OSCancelAlarm(alarm);
+            }
+
+            alarm = next;
+            next = (alarm) ? alarm->next : NULL;
+        }
+
+        ASSERTLINE(616, OSCheckAlarmQueue());
+    }
+
+    return TRUE;
+}
+
+/**
  * @note Address: N/A
  * @note Size: ?
  */
@@ -324,33 +353,4 @@ void OSCancelAlarms(u32 tag) {
     }
 
     OSRestoreInterrupts(enabled);
-}
-
-/**
- * @note Address: 0x80162554
- * @note Size: 0xA0
- */
-static BOOL OnReset(BOOL final, u32 event) {
-    OSAlarm* alarm;
-    OSAlarm* next;
-
-    if (final != FALSE) {
-        ASSERTLINE(606, OSCheckAlarmQueue());
-
-        alarm = AlarmQueue.head;
-        next = (alarm) ? alarm->next : NULL;
-
-        while (alarm != 0) {
-            if (__DVDTestAlarm(alarm) == FALSE) {
-                OSCancelAlarm(alarm);
-            }
-
-            alarm = next;
-            next = (alarm) ? alarm->next : NULL;
-        }
-
-        ASSERTLINE(616, OSCheckAlarmQueue());
-    }
-
-    return TRUE;
 }
