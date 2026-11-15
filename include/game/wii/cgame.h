@@ -9,6 +9,7 @@
 #include "game/cscrn.h"
 #include "game/ut.h"
 #include "game/inventory.h"
+#
 
 class CCamera;
 
@@ -68,6 +69,11 @@ public:
 	virtual u64 GetStatusFlags(u64 mask) const; // _40, the game's status flags under mask
 	virtual void vf44();
 	virtual CCamera* GetScreenCamera(); // _48, the orthographic camera the screen-space layer draws under
+	virtual void vf4C();
+	virtual void vf50();
+	virtual void vf54(); // _54, ends the current render pass
+	virtual void vf58();
+	virtual BOOL vf5C(); // _5C, begins a render pass; the draws between it and vf54 run only when it holds
 
 	// asks for a reset unless one is already on its way
 	void RequestReset(s32 type)
@@ -134,7 +140,7 @@ public:
 	virtual void SetFov(f32 fov);                                                                                            // _18
 	virtual void vf1C();                                                                                                     // _1C
 	virtual void vf20();                                                                                                     // _20
-	virtual void vf24();                                                                                                     // _24
+	virtual void vf24(f32 top, f32 bottom, f32 left, f32 right);                                                             // _24
 	virtual void vf28();                                                                                                     // _28
 	virtual void vf2C();                                                                                                     // _2C
 	virtual void vf30();                                                                                                     // _30

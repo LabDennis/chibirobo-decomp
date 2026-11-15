@@ -321,7 +321,18 @@ public:
 	GXCompare mZFunc; // _18
 	GXBool mZUpdate;  // _1C
 	u8 _1D[3];
-	u8 _20[0x64 - 0x20];
+	u8 _20[4];
+	GXCompare mComp0; // _24
+	u8 mRef0;         // _28
+	u8 _29[3];
+	GXAlphaOp mAop;   // _2C
+	GXCompare mComp1; // _30
+	u8 mRef1;         // _34
+	u8 _35[0x3C - 0x35];
+	GXBool mColorUpdate; // _3C
+	u8 _3D[0x44 - 0x3D];
+	GXBool mAlphaUpdate; // _44
+	u8 _45[0x64 - 0x45];
 	u8 mLineWidth;           // _64
 	GXTexOffset mLineOffset; // _68
 	u8 _6C[4];
@@ -343,6 +354,25 @@ public:
 		mZFunc   = func;
 		mZUpdate = update;
 		GXSetZMode(enable, func, update);
+	}
+	void SetColorUpdate(GXBool enable)
+	{
+		mColorUpdate = enable;
+		GXSetColorUpdate(enable);
+	}
+	void SetAlphaUpdate(GXBool enable)
+	{
+		mAlphaUpdate = enable;
+		GXSetAlphaUpdate(enable);
+	}
+	void SetAlphaCompare(GXCompare comp0, u8 ref0, GXAlphaOp aop, GXCompare comp1, u8 ref1)
+	{
+		mComp0 = comp0;
+		mRef0  = ref0;
+		mAop   = aop;
+		mComp1 = comp1;
+		mRef1  = ref1;
+		GXSetAlphaCompare(comp0, ref0, aop, comp1, ref1);
 	}
 	void SetLineWidth(u8 width, GXTexOffset offset)
 	{
@@ -490,6 +520,27 @@ public:
 };
 STATIC_ASSERT(sizeof(CGsScreen) == 0x40);
 
+// one entry of the scene draw list the CGs keeps at _1BA4; vf038 pops a queued draw
+class WiiGsSceneObj {
+public:
+	virtual void vf008();
+	virtual void vf00C();
+	virtual void vf010();
+	virtual void vf014();
+	virtual void vf018();
+	virtual void vf01C();
+	virtual void vf020();
+	virtual void vf024();
+	virtual void vf028();
+	virtual void vf02C();
+	virtual void vf030();
+	virtual void vf034();
+	virtual void vf038(s32 index);
+
+	u8 _004[0xE4 - 0x004];
+	s32 mPending; // _E4, the queued draws still waiting
+};
+
 class CGs {
 public:
 	void* mFifoBuffer; // _00
@@ -513,9 +564,10 @@ public:
 
 	virtual ~CGs(); // _08
 
-	Vec mTextRot;  // _1B94, the text rotation, cleared by the light setup
-	u32 mTextFont; // _1BA0, the font argument handed to the glyph lookups
-	u8 _1BA4[0x2290 - 0x1BA4];
+	Vec mTextRot;              // _1B94, the text rotation, cleared by the light setup
+	u32 mTextFont;             // _1BA0, the font argument handed to the glyph lookups
+	WiiGsSceneObj* mSceneHead; // _1BA4, the list the scene pass drains
+	u8 _1BA8[0x2290 - 0x1BA8];
 
 	void Init(u32 renderStates, u32 tevStages, u32 channels, u32 texGens); // 0x802AA610
 	void SetScreenMode(s32 mode, s32 arg2, s32 arg3);                      // 0x802AAF6C
@@ -618,6 +670,7 @@ f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size)
 f32 MeasureGameTextHeight(CGs* gs, const char* text, f32 size);
 // applies the channel material and lighting setup for the primitive draws
 s32 SetGsChannelMaterialAndLighting(CGs* gs, s32 matSrc, u32 rgba);
+void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable);
 }
 
 #endif
