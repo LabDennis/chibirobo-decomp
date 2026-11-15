@@ -536,30 +536,6 @@ void UpdatePopperShotFlight(XActPopperShot*, u32);
 CVec AddScalarToVectorComponents(const CVec&, f32);
 void StartPopperShot(XActPopperShot*, const Vec&, s32, XObj*, f32, f32, f32, f32, f32, f32);
 
-static inline void PopperMuzzle(XObjChr* p, Vec& out)
-{
-	// through the eye camera the shot starts a little right of, below and ahead of the eye
-	if (gGame.mStatus.mFlags & 0x100) {
-		CCamera& camera = gGame.mMotionControlCamera.mCamera;
-		Mtx rotY, rotX, rot;
-		PSMTXRotRad(rotY, 'y', camera.mAngle.y);
-		PSMTXRotRad(rotX, 'x', camera.mAngle.x);
-		PSMTXConcat(rotY, rotX, rot);
-		Vec offset = { 1.087597f, -1.056235f, 4.978912f };
-		PSMTXMultVec(rot, &offset, &offset);
-		const CVec& v = camera.mEye + offset;
-		out.x         = v.x;
-		out.y         = v.y;
-		out.z         = v.z;
-		return;
-	}
-	s32 path[]    = { 0, 1, 0, 0 };
-	const CVec& v = CJObj_GetJointWorldPositionByPath(&p->mPopperObj, 4, path);
-	out.x         = v.x;
-	out.y         = v.y;
-	out.z         = v.z;
-}
-
 static inline int ActivePopperShots(XActPopper* act)
 {
 	int count = 0;
@@ -589,6 +565,9 @@ static inline void StartPopperTone(int sound)
  * @note Address: 0x800C0090
  * @note Size: 0x150C
  */
+// NONMATCHING: the muzzle stands at both sites as retail's two copies of its data ask. left: at the charge site retail's two
+// results are expression temporaries behind the offset copy and the path (a reference binds them earlier), and the shot's
+// speed and range sit in f30/f29 above yaw, pitch and power
 void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 frames, f32, f32)
 {
 	BOOL rangeUpgrade, canCharge;
@@ -607,8 +586,26 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 		    && !(gGame.mStatus.mFlags & 0x400) && !act->mOwner->mLift.mState && !act->mOwner->mHang.mState && !act->mOwner->mJump.mState
 		    && !act->mOwner->mLadder.mState && !act->mOwner->mRope.mState && !act->mOwner->mPush.mState && !act->mOwner->mTumble.mState) {
 			if (!(gGame.mStatus.mFlags & 0x20)) {
+				// through the eye camera the shot starts a little right of, below and ahead of the eye
 				Vec pos;
-				PopperMuzzle(act->mOwner, pos);
+				if (gGame.mStatus.mFlags & 0x100) {
+					CCamera& camera = gGame.mMotionControlCamera.mCamera;
+					Mtx rotY, rotX, rot;
+					PSMTXRotRad(rotY, 'y', camera.mAngle.y);
+					PSMTXRotRad(rotX, 'x', camera.mAngle.x);
+					PSMTXConcat(rotY, rotX, rot);
+					Vec offset = { 1.087597f, -1.056235f, 4.978912f };
+					PSMTXMultVec(rot, &offset, &offset);
+					const CVec& v = camera.mEye + offset;
+					pos.x         = v.x;
+					pos.y         = v.y;
+					pos.z         = v.z;
+				} else {
+					const CVec& v = CJObj_GetJointWorldPositionByPath(&act->mOwner->mPopperObj, 4, (s32[4]) { 0, 1, 0, 0 });
+					pos.x         = v.x;
+					pos.y         = v.y;
+					pos.z         = v.z;
+				}
 				act->mCharge.mState = 1;
 				act->mCharge.mPos   = pos;
 				if (!act->mCharge.mGen)
@@ -682,13 +679,22 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 			if (ActivePopperShots(act) < limit) {
 				PlayPopperFireAnimation(&act->mOwner->mPopperObj);
 				if (act->mShotStrength == 0) {
-					if (act->mState == 6)
-						act->mShotStrength = (s32)GetPlayerActionParameter(31) / 100.f;
-					else
-						act->mShotStrength = (s32)GetPlayerActionParameter(30) / 100.f;
+					act->mShotStrength
+					    = act->mState == 6 ? (s32)GetPlayerActionParameter(31) / 100.f : (s32)GetPlayerActionParameter(30) / 100.f;
 				}
 				CVec origin;
-				PopperMuzzle(act->mOwner, origin);
+				if (gGame.mStatus.mFlags & 0x100) {
+					CCamera& camera = gGame.mMotionControlCamera.mCamera;
+					Mtx rotY, rotX, rot;
+					PSMTXRotRad(rotY, 'y', camera.mAngle.y);
+					PSMTXRotRad(rotX, 'x', camera.mAngle.x);
+					PSMTXConcat(rotY, rotX, rot);
+					Vec offset = { 1.087597f, -1.056235f, 4.978912f };
+					PSMTXMultVec(rot, &offset, &offset);
+					origin = camera.mEye + offset;
+				} else {
+					origin = CJObj_GetJointWorldPositionByPath(&act->mOwner->mPopperObj, 4, (s32[4]) { 0, 1, 0, 0 });
+				}
 				f32 yaw, pitch;
 				if (gGame.mStatus.mFlags & 0x100) {
 					yaw   = gGame.mMotionControlCamera.mCamera.mAngle.y;
