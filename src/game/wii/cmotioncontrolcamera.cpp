@@ -552,8 +552,9 @@ void CMotionControlCamera::ReadAction()
 	}
 }
 
-// NONMATCHING: the push, player calls, wipe and sound are decoded from retail; the arg order
-// of StartTransition and the player vtable call's identity are not fully proven yet
+// NONMATCHING: only residue is vf28C's vptr landing in r5 instead of r12 (player-vtable
+// register wall) plus literal-pool address shifts; the wipe is the virtual
+// CScrnWipe::StartTransition on gGame.mRoboeyes, not the free function
 /**
  * @note Address: 0x80169E6C
  * @note Size: 0x308
@@ -566,13 +567,13 @@ void CMotionControlCamera::StartEye()
 		StopPlayerMotion(PLAYER);
 		PLAYER->vf28C(1);
 		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mRotY, 0.0f);
-		StartScreenWipeColorTransition(&gGame.mRoboeyes, 0xFF, 0xFF, 0xFF, 0, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2.0f,
-		                               gPointerScreenHeight / 2.0f, 550.0f, 500.0f, 430.0f, 400.0f, 0.15f, 0xFF, 0);
+		gGame.mRoboeyes.StartTransition(0xFF, 0xFF, 0xFF, 0, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2, gPointerScreenHeight / 2, 550.0f,
+		                                500.0f, 430.0f, 400.0f, 0.15f, 0xFF, 0);
 		PlayWiiSoundEffect(&gGame.mSound, 0x71, 1.0f, 0.0f);
 	}
 }
 
-// NONMATCHING: same caveats as StartEye; the GameCube PopAction inline expanded in retail
+// NONMATCHING: same residue as StartEye (vf28C register, literal-pool addresses)
 /**
  * @note Address: 0x8016A174
  * @note Size: 0x30C
@@ -586,8 +587,8 @@ void CMotionControlCamera::EndEye()
 		// the second argument stays 1 in EndEye as well; whatever it selects happens in the
 		// joint state, not here
 		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mRotY, 0.0f);
-		StartScreenWipeColorTransition(&gGame.mRoboeyes, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2.0f,
-		                               gPointerScreenHeight / 2.0f, 430.0f, 400.0f, 550.0f, 500.0f, 0.2f, 0, 1);
+		gGame.mRoboeyes.StartTransition(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2, gPointerScreenHeight / 2, 430.0f,
+		                                400.0f, 550.0f, 500.0f, 0.2f, 0, 1);
 		PlayWiiSoundEffect(&gGame.mSound, 0x6F, 1.0f, 0.0f);
 	}
 }
