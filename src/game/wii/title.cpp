@@ -44,7 +44,7 @@
 #include <stdlib.h>
 
 extern "C" {
-extern s32 gPointerScreenWidth, gPointerScreenHeight, gRingScreenWidth, gScreenSafeBottom, gRefreshRate;
+extern s32 gPointerScreenWidth, gPointerScreenHeight, gRingScreenWidth, gRingScreenHeight, gScreenSafeBottom, gRefreshRate;
 const char* GetTitleAndSaveMenuText(s32 index);
 const char* GetLocalizedInterfaceText(s32 index);
 void DrawTitleHelpText(Title* title);
@@ -61,6 +61,18 @@ s32 IndexOfLargestOfThree(OSTime first, OSTime second, OSTime third);
 s32 fn_8025BCB8(void* queue);
 // one dust mote's per-frame update, the body of the GameCube UpdateTitleDust's loop
 void fn_8004DC94(TitleDust* dust, u32 frames);
+// the pane-event slots in Title's vtable
+void fn_8004DF38();
+void fn_8004DF3C(Title* title, CbPane* pane);
+}
+
+// the figure overrides call their XObj bases by name; XObj's own declaration is still pending
+class XObj;
+extern "C" {
+void ResetObjectState__4XObjFv(XObj* obj);
+s32 LoadFromPlacement__4XObjFRC9CoordInfo(XObj* obj, const CoordInfo& info);
+void Release__4XObjFv(XObj* obj);
+void UpdateObject__4XObjFUl(XObj* obj, u32 frames);
 }
 
 // the slot-scan object inside CGame at _D9B80 and the save job's busy word at _EB0A0; the scan
@@ -1084,6 +1096,158 @@ void Title::State24(u32)
 // the last gTitleModeUpdates entry, the file-menu mode past State25
 void Title::fn_80048418(u32)
 {
+}
+
+/**
+ * @note Address: 0x8004DC94
+ * @note Size: 0x174
+ */
+// one dust mote's drift cycle: a random delay, then it grows until it pops and respawns
+void fn_8004DC94(TitleDust* dust, u32 frames)
+{
+	switch (dust->mState) {
+	case 0:
+		dust->mTimer = rand() % 120;
+		++dust->mState;
+		break;
+	case 1:
+		if (--dust->mTimer < 0) {
+			dust->mState  = 2;
+			dust->mSpeedY = 1.0f;
+		}
+		break;
+	case 2:
+		dust->mSpeedX += 0.018f * frames;
+		dust->mSpeedY -= 0.009f * frames;
+		if (dust->mSpeedX >= 2.0f) {
+			dust->mX      = rand() % gRingScreenWidth;
+			dust->mY      = rand() % gRingScreenHeight;
+			dust->mState  = 0;
+			dust->mSpeedX = 0.0f;
+			dust->mSpeedY = 0.0f;
+		}
+		break;
+	}
+}
+
+/**
+ * @note Address: 0x8004DE08
+ * @note Size: 0x64
+ */
+// ResetObjectState: the figure's own bookkeeping goes back to blank
+void WiiTitleFigure::vf154()
+{
+	ResetObjectState__4XObjFv((XObj*)this);
+	mState      = 0;
+	mStateParam = 0;
+	mNextAnim   = -1;
+	_BAC        = 0;
+	for (s32 i = 0; i < 8; i++) {
+		mAnimIds[i] = -1;
+	}
+}
+
+/**
+ * @note Address: 0x8004DE6C
+ * @note Size: 0x2C
+ */
+// LoadFromPlacement: the base call's result becomes a plain flag
+s32 WiiTitleFigure::vf158(const CoordInfo& info)
+{
+	return LoadFromPlacement__4XObjFRC9CoordInfo((XObj*)this, info) != 0;
+}
+
+/**
+ * @note Address: 0x8004DE98
+ * @note Size: 0x4
+ */
+// Release
+void WiiTitleFigure::vf040()
+{
+	Release__4XObjFv((XObj*)this);
+}
+
+/**
+ * @note Address: 0x8004DE9C
+ * @note Size: 0x78
+ */
+// UpdateObject: state 2 waits for the screen fade to finish, then goes quiet
+void WiiTitleFigure::vf164(u32 frames)
+{
+	if (mState == 0) {
+		return;
+	}
+	if (mState == 2 && gGame.mFade.mSpeed.r == 0.0f && gGame.mFade.mSpeed.g == 0.0f && gGame.mFade.mSpeed.b == 0.0f
+	    && gGame.mFade.mSpeed.a == 0.0f) {
+		mState = 0;
+		return;
+	}
+	UpdateObject__4XObjFUl((XObj*)this, frames);
+}
+
+/**
+ * @note Address: 0x8004DF14
+ * @note Size: 0x24
+ */
+// DrawObject front: only draws while the figure is live
+void WiiTitleFigure::vf174()
+{
+	if (mState != 0) {
+		vf178(0);
+	}
+}
+
+/**
+ * @note Address: 0x8004DF38
+ * @note Size: 0x4
+ */
+// one of the pane-event slots in Title's vtable; retail's body is empty
+void fn_8004DF38()
+{
+}
+
+/**
+ * @note Address: 0x8004DF3C
+ * @note Size: 0x104
+ */
+// a pane event clears whichever tracked index pointed at it; the slot sits in Title's vtable
+void fn_8004DF3C(Title* title, CbPane* pane)
+{
+	switch (pane->mKind) {
+	case 0:
+	case 1:
+	case 2:
+		if (title->mFile == pane->mKind && title->mFile != -1) {
+			title->mFile = -1;
+		}
+		break;
+	case 3:
+	case 4:
+		switch (title->mMode) {
+		case 3:
+		case 4:
+		case 5:
+		case 6:
+		case 11:
+		case 26:
+		case 27:
+			if (title->mChoice == pane->mKind - 3 && title->mChoice != -1) {
+				title->mChoice = -1;
+			}
+			break;
+		}
+		break;
+	case 5:
+	case 6:
+	case 7:
+		if (title->mSelection == pane->mKind - 5 && title->mSelection != -1) {
+			title->mSelection = -1;
+		}
+		break;
+	}
+	if (title->mState == 21 && pane->mKind >= 8 && pane->mKind < 11 && title->mOptionLine != -1) {
+		title->mOptionLine = -1;
+	}
 }
 
 // the handlers UpdateTitleScreen's state 20 dispatches by mMode

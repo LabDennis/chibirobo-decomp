@@ -340,27 +340,33 @@ public:
 	virtual void vf14C();
 	virtual void vf150();
 	virtual void vf154();
-	virtual s32 vf158(CoordInfo pos); // _158, LoadFromPlacement
+	virtual s32 vf158(const CoordInfo& info); // _158, LoadFromPlacement
 	virtual void vf15C();
 	virtual void vf160();
 	virtual void vf164(u32 frames); // _164, UpdateObject
 	virtual void vf168();
 	virtual void vf16C();
 	virtual void vf170();
-	virtual void vf174(); // _174, DrawObject
+	virtual void vf174();    // _174, DrawObject front
+	virtual void vf178(s32); // _178, DrawObject mode
 
 	u8 _004[0x154 - 0x004];
 	u32 mStatus; // _154, bit 0 marks a finished LoadFromPlacement
 	u8 _158[0x9A8 - 0x158];
-	s32 mState; // _9A8
-	u8 _9AC[0xF30 - 0x9AC];
+	s32 mState;      // _9A8
+	s32 mStateParam; // _9AC
+	u8 _9B0[0xBA8 - 0x9B0];
+	s32 mNextAnim; // _BA8, -1 when nothing is queued
+	s32 _BAC;
+	u8 _BB0[0xF10 - 0xBB0];
+	s32 mAnimIds[8]; // _F10, all -1 once ResetObjectState ran
 };
 STATIC_ASSERT(sizeof(WiiTitleFigure) == 0xF30);
 
 // one mote of dust drifting over the menu, the GameCube TitleDust
 struct TitleDust {
 	u32 mState;  // _00
-	u32 mTimer;  // _04
+	s32 mTimer;  // _04
 	f32 mX;      // _08
 	f32 mY;      // _0C
 	f32 mSpeedX; // _10, also the quad's scale
@@ -389,7 +395,9 @@ STATIC_ASSERT(sizeof(TitleName) == 0x19C);
 // a rectangle the pointer can pick. The menu code's messages call it CbPane; the layout is not known
 // beyond the two flags
 struct CbPane {
-	u8 _00[0x4C];
+	u8 _00[0x44];
+	s32 mKind; // _44, which entry the pane reports as
+	u8 _48[4];
 	u8 mPointed; // _4C
 	u8 mPicked;  // _4D
 	u8 _4E[2];
