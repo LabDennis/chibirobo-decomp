@@ -8,6 +8,7 @@ BEGIN_SCOPE_EXTERN_C
 #define ES_ERR_INVALID -1017
 
 typedef u64 ESTitleId;
+typedef u64 ESTicketId;
 
 // IOS lays these out with 4-byte alignment: the 64-bit ids are not padded to 8.
 #pragma pack(push, 4)
@@ -44,6 +45,11 @@ typedef struct ESTmdView {
 	u8 reserved[0x3E];   // _1A, starts with the product area (u32), byte 0x18 holds the access flags
 } ESTmdView;
 
+// shortcut: opaque, only its size is used (ESP_DiGetTicketView); give it its fields when something reads a ticket
+typedef struct ESTicket {
+	u8 data[0x2A4];
+} ESTicket;
+
 #pragma pack(pop)
 
 s32 ESP_InitLib(void);
@@ -52,7 +58,8 @@ s32 ESP_GetTitleId(ESTitleId* titleId);
 s32 ESP_GetDataDir(ESTitleId titleId, char* dataDir);
 s32 ESP_GetTicketViews(u64 titleId, ESTicketView* views, u32* numViews);
 s32 ESP_LaunchTitle(u64 titleId, ESTicketView* view);
-s32 ESP_DiGetTicketView(void* ticket, ESTicketView* view);
+s32 ESP_DiGetTicketView(const void* ticket, ESTicketView* view);
+s32 ESP_DiGetTmd(void* tmd, u32* size);
 s32 ESP_GetTmdView(u64 titleId, ESTmdView* view, u32* size);
 s32 ESP_GetConsumption(u64 ticketId, ESLimit* limits, u32* numLimits);
 

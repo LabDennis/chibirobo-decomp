@@ -463,6 +463,15 @@ revolution/SC/scapi_prdinfo.c:
 revolution/USB/usb.c:
 	.text start:0x801E5CE4 end:0x801E71D8
 
+revolution/TPL/TPL.c:
+	.text start:0x8020303C end:0x80203170
+	.data start:0x8032DAE8 end:0x8032DB18
+	.sdata start:0x805A1880 end:0x805A1888
+
+revolution/ESP/esp.c:
+	.text start:0x80203170 end:0x80203864
+	.sdata start:0x805A1888 end:0x805A1898
+
 rvl_msl/mem.c:
 	.text start:0x8022A010 end:0x8022A180
 

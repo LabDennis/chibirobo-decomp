@@ -2872,3 +2872,5 @@ IUSB_ReadBlkMsgAsync = .text:0x801E6A68; // type:function size:0xA0 scope:global
 IUSB_WriteBlkMsgAsync = .text:0x801E6B08; // type:function size:0xA0 scope:global
 __CtrlMsgInt = .text:0x801E6BA8; // type:function size:0x5A4 scope:global
 IUSB_WriteCtrlMsgAsync = .text:0x801E714C; // type:function size:0x8C scope:global
+TPLBind = .text:0x8020303C; // type:function size:0x114 scope:global
+TPLGet = .text:0x80203150; // type:function size:0x20 scope:global
