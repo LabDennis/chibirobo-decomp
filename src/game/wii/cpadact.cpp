@@ -17,8 +17,6 @@ static void SecondaryRemoteConnected(s32 channel, s32 result)
 	}
 }
 
-// NONMATCHING: identical instruction multiset; only FP register naming and
-// constant-load scheduling differ.
 void CPadAct::Init()
 {
 	mFlags = 0;
@@ -26,16 +24,17 @@ void CPadAct::Init()
 		mRemoteAcceleration[i].x = mRemoteAcceleration[i].y = mRemoteAcceleration[i].z = 0.0f;
 		mNunchukAcceleration[i].x = mNunchukAcceleration[i].y = mNunchukAcceleration[i].z = 0.0f;
 	}
-	const f32 right  = gScreenRight - 16.0f;
-	const f32 left   = gScreenLeft + 16.0f;
-	const f32 bottom = gScreenBottom - 16.0f;
-	const f32 top    = gScreenTop + 16.0f;
-	mRight           = right;
-	mLeft            = left;
-	mBottom          = bottom;
-	mTop             = top;
-	mPointer.x       = gScreenSafeRight - 12;
-	mPointer.y       = gScreenSafeBottom - 12;
+	// the pointer may leave the screen by 16 pixels on each side
+	f32 right     = gScreenRight;
+	f32 left      = gScreenLeft;
+	f32 bottom    = gScreenBottom;
+	f32 top       = gScreenTop;
+	mTop          = top + 16.0f;
+	mBottom       = bottom - 16.0f;
+	mLeft         = left + 16.0f;
+	mRight        = right - 16.0f;
+	mPointer.x    = gScreenSafeRight - 12;
+	mPointer.y    = gScreenSafeBottom - 12;
 	mPointerAngle = mPointer.z = 0.0f;
 	mPointerScale = mPointerFade = mPointerOpacity = 0.0f;
 	mInBounds = mPointerValid = FALSE;
@@ -52,17 +51,6 @@ void CPadAct::Init()
 void CPadAct::ResetRumble(BOOL resetAll)
 {
 	gGame.mPad.ResetRumble(resetAll);
-}
-
-static inline f32 Limit(f32 value, f32 lo, f32 hi)
-{
-	if (value < lo) {
-		value = lo;
-	}
-	if (value > hi) {
-		value = hi;
-	}
-	return value;
 }
 
 static inline void CopyNonzeroAxes(StickPosition& dest, const StickPosition& source)
@@ -119,7 +107,7 @@ static inline void GameCubeActions(CPadAct& act, const CPadOne& pad)
 			act.mFlags |= 1ULL << 33;
 		}
 		if (pad.mSubStick.y) {
-			act.mCameraInput = pad.mSubStick.y * 0.5f;
+			act.mCameraInput = pad.mSubStick.y / 2.0f;
 		}
 		if ((pad.mTrigger & ((1ULL << GameCubeR) | (1ULL << 16))) && !(pad.mButton & (1ULL << GameCubeL)) && act.mAnalogL > 0.0f) {
 			act.mFlags |= 1ULL << 9;
@@ -170,15 +158,14 @@ static inline void GameCubeActions(CPadAct& act, const CPadOne& pad)
 	}
 	if ((pad.mButton & (1ULL << GameCubeB)) && (pad.mTrigger & (1ULL << GameCubeL))) {
 		act.mFlags |= 1ULL << 15;
-	} else if ((pad.mTrigger & (1ULL << GameCubeR)) && !(pad.mButton & (1ULL << GameCubeB)) && pad.mAnalogL < 30.0f) {
+	}
+	if ((pad.mTrigger & (1ULL << GameCubeR)) && !(pad.mButton & (1ULL << GameCubeB)) && pad.mAnalogL < 30.0f) {
 		act.mFlags |= 1ULL << 35;
 	}
 	if (pad.mRepeat & (1ULL << GameCubeL)) {
 		act.mFlags |= 1ULL << 36;
 	}
 }
-
-static f32 sLastPointerY;
 
 static inline void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 {
@@ -194,15 +181,15 @@ static inline void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 	if (act.mPointer.x > act.mRight) {
 		act.mPointer.x = act.mRight;
 	}
-	BOOL visible  = FALSE;
 	BOOL inBounds = FALSE;
+	BOOL visible  = FALSE;
 	for (s32 i = 0; i < pad.mSampleCount; ++i) {
 		const WiiPadSample& sample = pad.mSamples[i];
 		if (sample.pointerValid < 2) {
 			continue;
 		}
-		f32 x     = ((1.0f + sample.pointer.position.x) * gPointerScreenWidth) * 0.5f;
-		f32 y     = ((1.0f + sample.pointer.position.y) * gPointerScreenHeight) * 0.5f;
+		f32 x     = ((1.0f + sample.pointer.position.x) * gPointerScreenWidth) / 2.0f;
+		f32 y     = ((1.0f + sample.pointer.position.y) * gPointerScreenHeight) / 2.0f;
 		f32 angle = (f32)atan2(sample.horizon.position.y, sample.horizon.position.x);
 		while (angle < 0.0f) {
 			angle += 2.0f * PI;
@@ -213,20 +200,32 @@ static inline void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 		if (x >= act.mLeft && x <= act.mRight && y >= act.mTop && y <= act.mBottom) {
 			act.mPointer.x = x;
 			act.mPointer.y = y;
-			if (__fabsf(y - sLastPointerY) > 40.0f) {
-				sLastPointerY = y;
+			static f32 lastY;
+			if (__fabsf(y - lastY) > 40.0f) {
+				lastY = y;
 			}
 			act.mStablePointer.x = x;
-			act.mStablePointer.y = sLastPointerY;
+			act.mStablePointer.y = lastY;
+			act.mPointerAngle    = angle;
 			inBounds             = TRUE;
 		} else {
-			x              = Limit(x, act.mLeft, act.mRight);
-			y              = Limit(y, act.mTop, act.mBottom);
-			act.mPointer.x = x;
-			act.mPointer.y = y;
+			if (y < act.mTop) {
+				y = act.mTop;
+			}
+			if (y > act.mBottom) {
+				y = act.mBottom;
+			}
+			if (x < act.mLeft) {
+				x = act.mLeft;
+			}
+			if (x > act.mRight) {
+				x = act.mRight;
+			}
+			act.mPointer.x    = x;
+			act.mPointer.y    = y;
+			act.mPointerAngle = angle;
 		}
-		act.mPointerAngle = angle;
-		visible           = TRUE;
+		visible = TRUE;
 		break;
 	}
 	if (act.mTransitionCooldown > 0.0f) {
@@ -238,26 +237,41 @@ static inline void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 	if (act.mInBounds != inBounds) {
 		act.mInBounds = inBounds;
 	}
-	act.mPointerChanged = FALSE;
 	if (act.mPointerValid != visible) {
 		act.mTransitionFrames += frames;
 		if (act.mTransitionFrames >= 4) {
 			act.mTransitionFrames = 0;
 			act.mPointerValid     = visible;
 			act.mPointerChanged   = TRUE;
-			const u8* game        = reinterpret_cast<const u8*>(&gGame);
-			const bool hasSelection
-			    = *reinterpret_cast<const s32*>(game + 0xb5e8) >= 1 && *reinterpret_cast<const s32*>(game + 0xb79c) >= 0;
-			if (!hasSelection && !(gGame.GetStatusFlags(4ULL << 32) && *reinterpret_cast<const s32*>(game + 0x5978) != 12)
-			    && gGame.mLoadStep >= 2 && act.mTransitionCooldown == 0.0f) {
-				act.mTransitionCooldown = 0.3f * gRefreshRate;
+			// the HOME Menu is up or about to take its picture of the screen
+			bool homeMenu = false;
+			if (gGame.mHomeMenu.mState >= HomeMenuCapture && gGame.mHomeMenu.mMenuStep >= 0) {
+				homeMenu = true;
 			}
+			if (!homeMenu) {
+				// the logos are still running or the game has not loaded yet
+				bool starting = false;
+				if ((gGame.GetStatusFlags(1ULL << 34) && gGame.mLogoState != 12) || gGame.mLoadStep < 2) {
+					starting = true;
+				}
+				if (!starting && act.mTransitionCooldown == 0.0f) {
+					act.mTransitionCooldown = 0.3f * gRefreshRate;
+				}
+			}
+		} else {
+			act.mPointerChanged = FALSE;
 		}
+	} else {
+		act.mPointerChanged = FALSE;
 	}
 	if (act.mPointerValid && !act.mPointerSeen) {
 		act.mPointerSeen = true;
 	}
 	if (act.mPointerSeen) {
+		// retail converts the refresh rate to float twice here and uses neither result; what the two
+		// values were multiplied by, and what for, is gone with the code that used them. The names are ours
+		f32 fadeIn        = gRefreshRate;
+		f32 fadeOut       = gRefreshRate;
 		act.mPointerScale = 1.0f;
 		if (act.mPointerValid) {
 			act.mPointerFade = 1.0f;
@@ -269,6 +283,11 @@ static inline void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 	}
 }
 
+// NONMATCHING: 99 %, the same instructions with other registers in four places, none of which can change
+// what the function does: in the pointer loop retail keeps the sample count in r3 and "visible" in r0 where
+// this build has r0 and r6; the two screen positions are computed through f3 to f7 where this build uses f0
+// to f6, with two loads and two multiplications in the other order; the last pointer height sits in f1, not
+// f2; and the saved registers of gGame's address and the "starting" flag, r28 and r30, are swapped.
 void CPadAct::Update(u32 frames)
 {
 	const CPadOne& pad = gWiiPads[0];
@@ -285,20 +304,18 @@ void CPadAct::Update(u32 frames)
 	mDirRepeat                                                            = pad.mDirRepeat;
 
 	if (pad.mAnalogL) {
-		const f32 analogL = pad.mAnalogL - 30.0f;
-		mAnalogL          = analogL;
-		if (analogL < 0.0f) {
+		mAnalogL = pad.mAnalogL - 30.0f;
+		if (mAnalogL < 0.0f) {
 			mAnalogL = 0.0f;
-		} else if (analogL > 180.0f) {
+		} else if (mAnalogL > 180.0f) {
 			mAnalogL = 180.0f;
 		}
 	}
 	if (pad.mAnalogR) {
-		const f32 analogR = pad.mAnalogR - 30.0f;
-		mAnalogR          = analogR;
-		if (analogR < 0.0f) {
+		mAnalogR = pad.mAnalogR - 30.0f;
+		if (mAnalogR < 0.0f) {
 			mAnalogR = 0.0f;
-		} else if (analogR > 180.0f) {
+		} else if (mAnalogR > 180.0f) {
 			mAnalogR = 180.0f;
 		}
 	}
@@ -379,14 +396,14 @@ void CPadAct::Update(u32 frames)
 		mRemoteAcceleration[0]  = pad.mSamples[0].acceleration.value;
 		mNunchukAcceleration[0] = pad.mSamples[0].extension.nunchuk.acceleration.value;
 	}
-	const u64 other = gWiiPads[3].mTrigger;
-	if (other & (1ULL << GameCubeA)) {
+	const CPadOne& other = gWiiPads[3];
+	if (other.mTrigger & (1ULL << GameCubeA)) {
 		mFlags |= 1ULL << 13;
 	}
-	if (other & (1ULL << (GameCubeDPad + 3))) {
+	if (other.mTrigger & (1ULL << (GameCubeDPad + 3))) {
 		mFlags |= 1ULL << 14;
 	}
-	if (other & (1ULL << (GameCubeDPad + 2))) {
+	if (other.mTrigger & (1ULL << (GameCubeDPad + 2))) {
 		mFlags |= 1ULL << 15;
 	}
 }
