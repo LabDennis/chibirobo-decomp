@@ -1763,6 +1763,8 @@ IntersectLinesXZ = .text:0x802A665C; // type:function size:0x1CC
 Compact__2mmFi = .text:0x802A7A24; // type:function size:0x2CC
 MeasureGameTextWidth = .text:0x802AD310; // type:function size:0x220
 DrawGsProportionalTextFormat = .text:0x802AD5EC; // type:function size:0xF8
+DrawGsFixedWidthTextFormat = .text:0x802AD6E4; // type:function size:0xF8
+DrawGsText = .text:0x802AD7DC; // type:function size:0x828
 Set__10CPrimitiveFfffffffff = .text:0x802AF8E0; // type:function size:0x11C
 
 
