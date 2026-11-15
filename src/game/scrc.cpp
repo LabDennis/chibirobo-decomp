@@ -617,6 +617,8 @@ extern "C" void ResetActor3Fields(XObjActor3* actor)
  * @note Size: 0x518
  */
 // a clock's minute hand, it turns twelve times as fast as Kind3's hour hand; kind 0x411 rides a joint of clock 0x2A1
+// NONMATCHING: retail saves r25 too, the joint reads in Attach go r27, r26, r25, r27 and the hand's joint and matrix r25, r26; here
+// r27, r26, r27, r26 and r26, r27
 void XObjActor3::Kind2(u32)
 {
 	CJObj joint;
@@ -634,11 +636,13 @@ void XObjActor3::Kind2(u32)
 				PSMTXConcat(mount, rotation, result);
 				PSMTXTrans(translate, 0.0f, 0.0f, 1.0f);
 				PSMTXConcat(result, translate, result);
-				HSD_JObjCopyMtx(mJObj, result);
+				HSD_JObj* jobj = mJObj;
+				MtxPtr mp      = result;
+				HSD_JObjCopyMtx(jobj, mp);
 				return;
 			}
 		}
-		return;
+		break;
 	}
 	case 0x413:
 		mMoveRotate.z = PI * (2.0f * -(12.0f * time));
@@ -656,6 +660,7 @@ void XObjActor3::Kind2(u32)
  * @note Size: 0x508
  */
 // a clock's hour hand, 2.617994 and 3.6651917 are 150 and 210 degrees; kind 0x412 rides a joint of clock 0x2A1
+// NONMATCHING: the same registers as in Kind2
 void XObjActor3::Kind3(u32)
 {
 	CJObj joint;
@@ -673,11 +678,13 @@ void XObjActor3::Kind3(u32)
 				PSMTXConcat(mount, rotation, result);
 				PSMTXTrans(translate, 0.0f, 0.0f, 1.0f);
 				PSMTXConcat(result, translate, result);
-				HSD_JObjCopyMtx(mJObj, result);
+				HSD_JObj* jobj = mJObj;
+				MtxPtr mp      = result;
+				HSD_JObjCopyMtx(jobj, mp);
 				return;
 			}
 		}
-		return;
+		break;
 	}
 	case 0x414:
 		mMoveRotate.z = PI * (2.0f * -time) + 2.617994f;
@@ -1799,22 +1806,17 @@ static inline void ResetBossAttachment(XObjActor3* obj)
 	obj->mKindStep = 0;
 }
 
-template <int depth>
-static inline Vec BossJointPosition(CJObj& joint, XObj* boss, s32 (&path)[depth])
-{
-	joint.Attach(GetJointFromRoot(boss->mJObj, depth, path));
-	return joint.GetPos();
-}
-
 /**
  * @note Address: 0x8010C304
  * @note Size: 0xAD8
  */
+// NONMATCHING: retail keeps the boss in r30 ahead of the joint's three vectors (r29 to r27) and gets by with r24 to r31; here the
+// vectors come first, the boss is in r25 and r23 is saved too
 void XObjActor3::Kind16(u32 frames)
 {
 	CJObj joint;
 	XObj* boss = gGame.mXObjs.mPools[19].First();
-	if (mActorFlags.mFlags & 0x10)
+	if (mActorFlags.Check(0x10))
 		return;
 	switch (mKindStep) {
 	case 0:
@@ -1824,23 +1826,28 @@ void XObjActor3::Kind16(u32 frames)
 		break;
 	case 1: {
 		s32 path[] = { 0, 7 };
-		Vec pos    = BossJointPosition(joint, boss, path);
+		joint.Attach(GetJointFromRoot(boss->mJObj, 2, path));
+		Vec pos = joint.GetPos();
 		mMoveTranslate.Set(pos);
 		mHeading = HSD_JObjGetRotationY(boss->mJObj);
 		break;
 	}
 	case 2: {
-		s32 path[]       = { 0, 2, 0, 1, 1, 0, 0 };
-		Vec pos          = BossJointPosition(joint, boss, path);
+		s32 path[] = { 0, 2, 0, 1, 1, 0, 0 };
+		joint.Attach(GetJointFromRoot(boss->mJObj, 7, path));
+		Vec pos          = joint.GetPos();
+		f32 y            = pos.y;
+		f32 z            = pos.z;
 		mHeading         = HSD_JObjGetRotationY(boss->mJObj);
 		mMoveTranslate.x = 2.0f * (f32)sin(mHeading) + pos.x;
-		mMoveTranslate.y = pos.y;
-		mMoveTranslate.z = 2.0f * (f32)cos(mHeading) + pos.z;
+		mMoveTranslate.y = y;
+		mMoveTranslate.z = 2.0f * (f32)cos(mHeading) + z;
 		break;
 	}
 	case 4: {
 		s32 path[] = { 0, 7 };
-		Vec pos    = BossJointPosition(joint, boss, path);
+		joint.Attach(GetJointFromRoot(boss->mJObj, 2, path));
+		Vec pos = joint.GetPos();
 		mMoveTranslate.Set(pos);
 		mHeading = HSD_JObjGetRotationY(boss->mJObj);
 		f32 end  = GetAnimEndFrame(mJObj);
