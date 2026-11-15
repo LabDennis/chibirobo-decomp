@@ -739,7 +739,7 @@ game/gamefbsubwinfade.cpp:
 	.text start:0x8001A704 end:0x8001A958
 
 game/gamefbsubwincam.cpp:
-	.text start:0x8001BA54 end:0x8001BB24
+	.text start:0x8001BA54 end:0x8001BB90
 
 game/gameinit.cpp:
 	.text start:0x8001BB90 end:0x8001C2D8
