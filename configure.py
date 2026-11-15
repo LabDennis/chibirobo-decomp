@@ -1292,6 +1292,9 @@ if wii:
                 # vtable (GetMtxPtr _AC, GetCameraTarget _1B0) and reads the remote's direction
                 # bits from gWiiPointer instead of an HSD pad
                 Object(NonMatching, "game/wii/ccameraactionchase.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii class is larger (pointer tracker and two response curves); the
+                # remote's pointer aims the look while the GameCube file is stick-only
+                Object(NonMatching, "game/wii/ccameraactioneye.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # SetObj keeps its signature but the Wii body always clears the binding; the camera's
                 # vectors sit in CCamera::mView here
                 Object(Matching, "game/wii/ccameraactionanim.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
