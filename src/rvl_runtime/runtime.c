@@ -28,7 +28,7 @@ ASM void __cvt_sll_dbl(void);
 ASM void __cvt_ull_dbl(void);
 ASM void __cvt_sll_flt(void);
 ASM void __cvt_ull_flt(void);
-ASM void __cvt_dbl_usll(void);
+ASM void __cvt_dbl_ull(void);
 
 void SAVE_FPR(14)(void);
 void SAVE_FPR(15)(void);
@@ -965,7 +965,7 @@ zero:
  * @note Address: 0x80151AD8
  * @note Size: 0xCC
  */
-ASM void __cvt_dbl_usll(void)
+ASM void __cvt_dbl_ull(void)
 {
 #ifdef __MWERKS__ // clang-format off
 	nofralloc
