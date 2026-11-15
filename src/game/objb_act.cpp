@@ -873,26 +873,26 @@ void UpdatePushedObject(XActPush* act)
 				rotation.z -= HALF_PI;
 				speed.z = 0.1f;
 				dz      = 0;
-				dx      = extent.x * (2.0f / sqrtf(3.0f)) * 0.5f;
+				dx      = extent.x * (2.0f / sqrtf(3.0f)) / 2.0f;
 			} else if ((angle > (270 * DEG2RAD - pushAngleTolerance) && angle < (270 * DEG2RAD + pushAngleTolerance))) {
 				rotation.z += HALF_PI;
 				speed.z = 0.1f;
 				dz      = 0;
-				dx      = -(extent.x * (2.0f / sqrtf(3.0f))) * 0.5f;
+				dx      = -(extent.x * (2.0f / sqrtf(3.0f))) / 2.0f;
 			} else if ((angle > (0 * DEG2RAD - pushAngleTolerance) && angle < (0 * DEG2RAD + pushAngleTolerance))) {
 				rotation.x += HALF_PI;
 				speed.x = 0.1f;
 				dx      = 0;
-				dz      = extent.z * (2.0f / sqrtf(3.0f)) * 0.5f;
+				dz      = extent.z * (2.0f / sqrtf(3.0f)) / 2.0f;
 			} else if ((angle > (180 * DEG2RAD - pushAngleTolerance) && angle < (180 * DEG2RAD + pushAngleTolerance))) {
 				rotation.x -= HALF_PI;
 				speed.x = 0.1f;
 				dx      = 0;
-				dz      = -(extent.z * (2.0f / sqrtf(3.0f))) * 0.5f;
+				dz      = -(extent.z * (2.0f / sqrtf(3.0f))) / 2.0f;
 			}
 			target->mMoveRotate.mTarget.Set(rotation);
 			target->mMoveRotate.mSpeed.Set(speed);
-			target->mToppleOffset = CVec(dx, -(extent.y * (2.0f / sqrtf(3.0f))) * 0.5f, dz);
+			target->mToppleOffset = CVec(dx, -(extent.y * (2.0f / sqrtf(3.0f))) / 2.0f, dz);
 		}
 		break;
 	}

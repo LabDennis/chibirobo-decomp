@@ -802,9 +802,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			f32 yaw          = GetObjectMoveRotation(target)->y + floorYaw;
 			scaledOffset.y   = 0;
 			if (IsActionTargetFloorId(&pushAction, 2)) {
-				extent.y *= (2.0f / SquareRootFloat(3.0f)) * 0.5f;
-				extent.x *= (2.0f / SquareRootFloat(3.0f)) * 0.5f;
-				extent.z *= (2.0f / SquareRootFloat(3.0f)) * 0.5f;
+				extent.y *= (2.0f / SquareRootFloat(3.0f)) / 2.0f;
+				extent.x *= (2.0f / SquareRootFloat(3.0f)) / 2.0f;
+				extent.z *= (2.0f / SquareRootFloat(3.0f)) / 2.0f;
 			}
 			f32 boxHeight = 2.0f * extent.y;
 			f32 boxRadius = extent.x;
@@ -4384,7 +4384,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			f32 scale     = .2f * glow + wave;
 			f32 rotation  = -(DEG2RAD * (10.f * spin));
 
-			f32 cx = halfSpacing + (k * spacing + (x - (menu->mLabelLength * spacing) * .5f));
+			f32 cx = halfSpacing + (k * spacing + (x - (menu->mLabelLength * spacing) / 2.f));
 			DrawRingQuad(gGame.mGs, tile, 0xffffff00 | opacity, cx, cy, 1, tileSize * scale, tileSize * scale, rotation, -zero);
 			f32 glyphSize = tileSize * (.8f * scale);
 			f32 padding   = HelpGlyphPadding(width, glyphSize);
@@ -5637,7 +5637,7 @@ void XObjChr::DrawCollisionShapes()
 					if (length > 0.1f) {
 						Vec scale = GetJointMatrixScale(joint);
 						DrawPlayerLiftCylinder(mItemTintWord, origin, (Vec) { HALF_PI, 0.0f, 0.0f },
-						                       (Vec) { scale.x, scale.z, scale.y * 0.5f });
+						                       (Vec) { scale.x, scale.z, scale.y / 2.0f });
 					}
 				}
 			}
@@ -5929,8 +5929,8 @@ void XObjChr::DrawGroundShadowAt(const Vec*, f32 opacity)
 		u32 center = (u32)(160.0f * opacity);
 		DrawGsCircle(&gGame.mGs, 12, center, edge, position.x, position.y, position.z, size.x, size.z, rotation.x, rotation.y, rotation.z);
 		PrimVertex vertices[26];
-		f32 halfWidth = size.x * 0.5f;
-		f32 halfDepth = size.z * 0.5f;
+		f32 halfWidth = size.x / 2.0f;
+		f32 halfDepth = size.z / 2.0f;
 		for (s32 i = 0; i < 13; i++) {
 			f32 angle     = (PI / 6.0f) * i;
 			PrimVertex* v = &vertices[i * 2];
