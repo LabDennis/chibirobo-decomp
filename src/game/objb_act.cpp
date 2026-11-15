@@ -15,6 +15,7 @@
 #include "game/fbtexeff.h"
 #include "game/globals.h"
 #include "game/hsd_dobj.h"
+#include "game/objectfloorquery.h"
 #include "game/stagedata.h"
 #include "game/video.h"
 #include "game/gmath.h"
@@ -767,18 +768,6 @@ static inline void Release(XAction* act)
 	act->Reset();
 }
 
-// whether his hands are up at the top of the ladder
-static inline bool AtLadderTop(XActLadder* act)
-{
-	if (act->mTarget != NULL) {
-		s32 path[] = { 0 };
-		if (14.0f + GetEventJointWorldPosition(act->mOwner, 1, path).y >= act->mTarget->mFloorHeights[0]) {
-			return true;
-		}
-	}
-	return false;
-}
-
 // drops the item he's carrying, it goes in his inventory
 static inline void PutAway(XActLift* act)
 {
@@ -1396,11 +1385,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mAngle = atan2(chrPos.x - ladPos.x, chrPos.z - ladPos.z);
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[] = { 0 };
-			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path2[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			act->mOwner->SetAnim(0x67, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			act->mState = 5;
 		} else {
@@ -1449,14 +1436,11 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mAngle = atan2(chrPos.x - ladPos.x, chrPos.z - ladPos.z);
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[] = { 0 };
-			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path2[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			act->mOwner->SetRotationY(PI + act->mOwner->mMoveRotate.y, 0);
-			s32 path3[] = { 0 };
-			SetJointYawByPath(act->mOwner, 1, path3, 0.0f);
+			SetJointYawByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f);
 			act->mOwner->SetAnim(0x68, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			act->mState = 5;
 		} else {
@@ -1496,8 +1480,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mOwner->SetAnim(0x87, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 				act->mOwner->SetAnim(0x87, TRUE, NULL, NULL, NULL, GetJointAnimationEndFrame(act->mOwner), 1.0f, 1.0f, 10.0f);
 				act->mOwner->UpdateAnim(0);
-				s32 path[] = { 0 };
-				CVec d     = GetEventJointWorldPosition(act->mOwner, 1, path) - act->mOwner->mMoveTranslate;
+				CVec d = GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }) - act->mOwner->mMoveTranslate;
 				act->mOwner->SetTranslateX(act->mOwner->mMoveTranslate.x - d.x, 0);
 				act->mOwner->SetTranslateZ(act->mOwner->mMoveTranslate.z - d.z, 0);
 				act->mOwner->SetTranslateY(act->mTarget->mMaxFloorHeight, 0);
@@ -1525,21 +1508,18 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				}
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[]      = { 0 };
-			HSD_JObj* joint = GetObjectJointByPath(act->mOwner, 1, path);
+			HSD_JObj* joint = GetObjectJointByPath(act->mOwner, 1, (s32[]) { 0 });
 			f32 turn        = HSD_JObjGetRotationY(joint);
 			f32 facing      = HSD_JObjGetRotationY(act->mOwner->mJObj);
 			act->mOwner->SetRotationY(facing + turn, 0);
 			HSD_JObjSetRotationY__FP9_HSD_JObjf(joint, 0.0f);
-			s32 path2[] = { 0 };
-			CVec d      = GetEventJointWorldPosition(act->mOwner, 1, path2) - act->mOwner->mMoveTranslate;
-			f32 angle   = HSD_JObjGetRotationY(act->mOwner->mJObj);
-			d.x         = -d.x;
-			d.z         = -d.z;
+			CVec d    = GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }) - act->mOwner->mMoveTranslate;
+			f32 angle = HSD_JObjGetRotationY(act->mOwner->mJObj);
+			d.x       = -d.x;
+			d.z       = -d.z;
 			act->mOwner->SetPos((act->mOwner->mMoveTranslate + d), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path3[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path3, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			act->mOwner->SetAnim(0x68, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			act->mState         = 5;
 			act->mMoveDirection = 0;
@@ -1567,20 +1547,18 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 	case 5:
 		if (anim == 0x69 || anim == 0x6A || anim == 0x6B || anim == 0x6C) {
 			if (aobj->flags & 0x44000000) {
-				s32 path[] = { 0 };
-				CVec hand  = GetPlayerJointLocalTranslationByPath(act->mOwner, 1, path);
+				CVec hand = GetPlayerJointLocalTranslationByPath(act->mOwner, 1, (s32[]) { 0 });
 				if (hand.y < 0.0f) {
 					hand.y = (s32)(hand.y - 0.5f);
 				}
-				s32 path2[] = { 0 };
-				SetJointTranslationFromVectorByPath(act->mOwner, 1, path2, hand);
-				s32 path3[] = { 0 };
-				act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path3), 0);
+				SetJointTranslationFromVectorByPath(act->mOwner, 1, (s32[]) { 0 }, hand);
+				act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 				RecordObjectPositionAndHeightChange(act->mOwner);
-				s32 path4[] = { 0 };
-				SetObjectJointTranslationByPath(act->mOwner, 1, path4, 0.0f, 0.0f, 0.0f);
+				SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 				if (act->mMoveDirection == 1) {
-					if (AtLadderTop(act)) {
+					// his hands are up at the top of the ladder
+					if (act->mTarget != NULL
+					    && 14.0f + GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }).y >= act->mTarget->mFloorHeights[0]) {
 						act->mState = 6;
 					} else if (anim == 0x69 || anim == 0x6B) {
 						act->mOwner->SetAnim(0x6A, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
@@ -1606,7 +1584,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			}
 		} else {
 			if (act->mMoveDirection == 1) {
-				if (AtLadderTop(act)) {
+				// his hands are up at the top of the ladder
+				if (act->mTarget != NULL
+				    && 14.0f + GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }).y >= act->mTarget->mFloorHeights[0]) {
 					act->mState = 6;
 				} else if (anim == 0x67) {
 					act->mOwner->SetAnim(0x69, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
@@ -1639,11 +1619,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mOwner->SetAnim(0x6F, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[] = { 0 };
-			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path2[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			chr->mIdleLoops = 3;
@@ -1663,11 +1641,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mOwner->SetAnim(0x71, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[] = { 0 };
-			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path2[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			chr->mIdleLoops = 3;
@@ -1698,11 +1674,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mOwner->SetAnim(0x73, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[] = { 0 };
-			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path2[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			if (act->mOwner->GetAttachment() == 1) {
 				act->mState                 = 0;
 				act->mOwner->mCopter.mState = 4;
@@ -2537,21 +2511,16 @@ void SetLiftPlugConnection(XActLift* act, u32 value, BOOL apply)
 	}
 }
 
-static inline bool CarriedObjectTouches(XObj* object, const Vec& pos, f32 radius, f32 height, CVec& hit, CVec& contact)
-{
-	CVec from(pos), to(pos);
-	return (object->TestFloorCollision(&from, &to, radius, height, &hit, &contact, 0, 0) & 3) == 3;
-}
-
 /**
  * @note Address: 0x800CE354
  * @note Size: 0x5B0
  */
+// NONMATCHING: retail keeps the masked test result in r0 and the CVec vtable in r3 over the two temporaries' destructors, here r4 and r0
 BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 height, BOOL checkItem, BOOL checkEvent, BOOL checkOthers,
                                 Vec* result)
 {
-	s16 item   = act->mTarget->GetItem();
 	BOOL found = FALSE;
+	s32 item   = act->mTarget->GetItem();
 	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.GetObject(i);
 		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000))
@@ -2562,22 +2531,32 @@ BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 h
 			continue;
 		CVec hit, contact;
 		if (checkItem && (object->mStatus.mFlags & 0x40000000000ULL)) {
-			if (CarriedObjectTouches(object, *pos, radius, height, hit, contact) && object->OnItemUsed(pos, item)) {
+			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL) & 3;
+			if (touch == 3 && object->OnItemUsed(pos, item)) {
 				found = TRUE;
 				if (result)
 					*result = contact;
 			}
 		}
 		if (checkEvent && (object->mStatus.mFlags & 0x80000000000ULL)) {
-			if (CarriedObjectTouches(object, *pos, radius, height, hit, contact)) {
+			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL) & 3;
+			if (touch == 3) {
 				object->OnSquirterHit(&contact, act->mOwner->mSquirterContent, act->mOwner->mItemTintWord);
 				found = TRUE;
 				if (result)
 					*result = contact;
 			}
-		} else if (checkOthers && !(object->mStatus.mFlags & 0x2000000000000ULL) && !(object->mStatus.mFlags & 0x100000)
-		           && object != act->mTarget && object != act->mOwner) {
-			if (CarriedObjectTouches(object, *pos, radius, height, hit, contact)) {
+		} else if (checkOthers) {
+			if (object->mStatus.mFlags & 0x2000000000000ULL)
+				continue;
+			if (object->mStatus.mFlags & 0x100000)
+				continue;
+			if (object == act->mTarget)
+				continue;
+			if (object == act->mOwner)
+				continue;
+			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL) & 3;
+			if (touch == 3) {
 				object->OnSquirterHit(&contact, act->mOwner->mSquirterContent, act->mOwner->mItemTintWord);
 				found = TRUE;
 				if (result)
