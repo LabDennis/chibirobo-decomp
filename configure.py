@@ -1314,6 +1314,7 @@ if wii:
                 ),
                 Object(Matching, "revolution/AX/AX.c"),
                 Object(Matching, "revolution/OS/OSArena.c"),
+                Object(Matching, "revolution/OS/OSAudioSystem.c"),
                 Object(NonMatching, "revolution/OS/OSAlarm.c", cflags=[*cflags_sdk_2004, "-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/OS/OSAlloc.c"),
                 Object(Matching, "revolution/OS/OSCache.c"),
@@ -1367,7 +1368,6 @@ if wii:
                 Object(Matching, "revolution/WPAD/debug_msg.c"),
                 # GC SDK units paired to free Wii ranges - same DolphinLib profile
                 # (GC/1.2.5n + cflags_sdk) the GameCube editions build them with
-                Object(Equivalent, "dolphin/os/OSAudioSystem.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSError.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(Equivalent, "dolphin/gx/GXTev.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(Equivalent, "dolphin/gx/GXPixel.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
