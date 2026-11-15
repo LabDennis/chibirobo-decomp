@@ -330,6 +330,7 @@ __dt__9CEvtTimerFv = .text:0x800A14A8; // type:function size:0x40
 __dt__8CEvtVarsFv = .text:0x800A14E8; // type:function size:0x40
 __dt__9CEvtFlagsFv = .text:0x800A1528; // type:function size:0x40
 __dt__11CEvtQueueExFv = .text:0x800A18B8; // type:function size:0x40
+MsgCommandLength = .text:0x800A1938; // type:function size:0xE8
 CMsg__cmd_SETFONT = .text:0x800A7ED4; // type:function size:0x290
 SecondaryRemoteConnected__Fll = .text:0x800A8164; // type:function size:0x10 scope:local
 Init__7CPadActFv = .text:0x800A8174; // type:function size:0x1C8

@@ -1226,6 +1226,9 @@ if wii:
                 # into Update (no bl, retail 0x802B2528), with its standalone copy at its
                 # own address (retail 0x802B1D84)
                 Object(Equivalent, "game/wii/cpad.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the message system between evt.cpp's destructors and cpadact.cpp; the
+                # GameCube file's VERSION_JP branches are the reconstruction base
+                Object(NonMatching, "game/wii/msg.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # retail has no call to StartWiiSaveJob (declared inline, inlined into its

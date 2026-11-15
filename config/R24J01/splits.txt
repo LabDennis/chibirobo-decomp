@@ -246,6 +246,9 @@ game/wii/cfile.cpp:
 	.sbss start:0x805A28A0 end:0x805A28A8
 	.sdata2 start:0x805A7A48 end:0x805A7A50
 
+game/wii/msg.cpp:
+	.text start:0x800A1938 end:0x800A8164
+
 rel/module.c:
 	.text start:0x8016AD78 end:0x8016AF80
 	.rodata start:0x802DDCA0 end:0x802DDD10
