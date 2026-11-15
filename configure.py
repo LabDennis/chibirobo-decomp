@@ -1249,7 +1249,7 @@ if wii:
                 # cinterfacecameraaction.cpp, cinterpolationnone.cpp and
                 # cinterpolationeaseoutdivide.cpp); each vector/scalar pair emits
                 # interleaved and the scalar Update tail-calls land at the end
-                Object(Matching, "game/wii/cinterpolation.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/cinterpolation.cpp", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the global's __sinit stores the vtable and __construct_arrays mGroups[256] at _2034
                 # (retail 0x801542A0); CCameraActionAreaEx's layout is shared with the GameCube
                 Object(NonMatching, "game/ccameraactionareaexinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),

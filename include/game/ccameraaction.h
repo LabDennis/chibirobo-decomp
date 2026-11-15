@@ -25,18 +25,6 @@ class XObj;
 
 // class names from RTTI, the rest is guessed
 
-// moves a vector from one value to another over time
-class CInterfaceVectorInterpolation {
-public:
-	// _00 vtable
-
-	virtual ~CInterfaceVectorInterpolation() { }        // _08
-	virtual bool Start(Vec from, Vec to, f32 time) = 0; // _0C
-	virtual bool Step(f32 dt)                      = 0; // _10, TRUE once it's done
-	virtual bool Update(u32 step, f32 dt)          = 0; // _14, TRUE once it's done
-	virtual Vec Get()                              = 0; // _18
-};
-
 // the same for one float
 class CInterfaceInterpolation {
 public:
@@ -49,39 +37,34 @@ public:
 	virtual f32 Get()                              = 0; // _18
 };
 
-// constant speed
-class CInterpolationLinear : public CInterfaceInterpolation {
+// moves a vector from one value to another over time
+class CInterfaceVectorInterpolation {
 public:
-	CInterpolationLinear() { }
-	virtual ~CInterpolationLinear() { }             // _08
-	virtual bool Start(f32 from, f32 to, f32 time); // _0C
-	virtual bool Step(f32 dt);                      // _10
-	virtual bool Update(u32 step, f32 dt);          // _14
-	virtual f32 Get();                              // _18
+	// _00 vtable
+
+	virtual ~CInterfaceVectorInterpolation() { }        // _08
+	virtual bool Start(Vec from, Vec to, f32 time) = 0; // _0C
+	virtual bool Step(f32 dt)                      = 0; // _10, TRUE once it's done
+	virtual bool Update(u32 step, f32 dt)          = 0; // _14, TRUE once it's done
+	virtual Vec Get()                              = 0; // _18
+};
+
+// moves 1/divisor of the way there every step, the dt is ignored
+class CInterpolationEaseOutDivide : public CInterfaceInterpolation {
+public:
+	CInterpolationEaseOutDivide() { }
+	virtual ~CInterpolationEaseOutDivide() { }         // _08
+	virtual bool Start(f32 from, f32 to, f32 divisor); // _0C
+	virtual bool Step(f32 dt);                         // _10, done once it moves less than 0.001
+	virtual bool Update(u32 step, f32 dt);             // _14
+	virtual f32 Get();                                 // _18
 
 	// _00 vtable
-	f32 mValue; // _04
-	f32 mSpeed; // _08
-	f32 mTime;  // _0C, time left
+	f32 mValue;   // _04
+	f32 mTarget;  // _08
+	f32 mDivisor; // _0C
 };
-STATIC_ASSERT(sizeof(CInterpolationLinear) == 0x10);
-
-// jumps straight to the end
-class CInterpolationNone : public CInterfaceInterpolation {
-public:
-	CInterpolationNone() { }
-	virtual ~CInterpolationNone() { }               // _08
-	virtual bool Start(f32 from, f32 to, f32 time); // _0C
-	virtual bool Step(f32 dt);                      // _10
-	virtual bool Update(u32 step, f32 dt);          // _14
-	virtual f32 Get();                              // _18
-
-	// _00 vtable
-	f32 mValue; // _04
-	f32 mSpeed; // _08
-	f32 mTime;  // _0C
-};
-STATIC_ASSERT(sizeof(CInterpolationNone) == 0x10);
+STATIC_ASSERT(sizeof(CInterpolationEaseOutDivide) == 0x10);
 
 class CInterpolationEaseInOut : public CInterfaceInterpolation {
 public:
@@ -122,24 +105,68 @@ public:
 };
 STATIC_ASSERT(sizeof(CInterpolationEaseOut) == 0x20);
 
-// moves 1/divisor of the way there every step, the dt is ignored
-class CInterpolationEaseOutDivide : public CInterfaceInterpolation {
+// jumps straight to the end
+class CInterpolationNone : public CInterfaceInterpolation {
 public:
-	CInterpolationEaseOutDivide() { }
-	virtual ~CInterpolationEaseOutDivide() { }         // _08
-	virtual bool Start(f32 from, f32 to, f32 divisor); // _0C
-	virtual bool Step(f32 dt);                         // _10, done once it moves less than 0.001
-	virtual bool Update(u32 step, f32 dt);             // _14
-	virtual f32 Get();                                 // _18
+	CInterpolationNone() { }
+	virtual ~CInterpolationNone() { }               // _08
+	virtual bool Start(f32 from, f32 to, f32 time); // _0C
+	virtual bool Step(f32 dt);                      // _10
+	virtual bool Update(u32 step, f32 dt);          // _14
+	virtual f32 Get();                              // _18
 
 	// _00 vtable
-	f32 mValue;   // _04
-	f32 mTarget;  // _08
-	f32 mDivisor; // _0C
+	f32 mValue; // _04
+	f32 mSpeed; // _08
+	f32 mTime;  // _0C
 };
-STATIC_ASSERT(sizeof(CInterpolationEaseOutDivide) == 0x10);
+STATIC_ASSERT(sizeof(CInterpolationNone) == 0x10);
+
+// constant speed
+class CInterpolationLinear : public CInterfaceInterpolation {
+public:
+	CInterpolationLinear() { }
+	virtual ~CInterpolationLinear() { }             // _08
+	virtual bool Start(f32 from, f32 to, f32 time); // _0C
+	virtual bool Step(f32 dt);                      // _10
+	virtual bool Update(u32 step, f32 dt);          // _14
+	virtual f32 Get();                              // _18
+
+	// _00 vtable
+	f32 mValue; // _04
+	f32 mSpeed; // _08
+	f32 mTime;  // _0C, time left
+};
+STATIC_ASSERT(sizeof(CInterpolationLinear) == 0x10);
 
 // the vector ones run one scalar interpolation per axis
+class CVectorEaseOutDivideInterpolation : public CInterfaceVectorInterpolation {
+public:
+	virtual ~CVectorEaseOutDivideInterpolation() { }   // _08
+	virtual bool Start(Vec from, Vec to, f32 divisor); // _0C
+	virtual bool Step(f32 dt);                         // _10
+	virtual bool Update(u32 step, f32 dt);             // _14
+	virtual Vec Get();                                 // _18
+
+	// _00 vtable
+	CInterpolationEaseOutDivide mAxes[3]; // _04
+	BOOL mXZDone;                         // _34, set once x and z are there
+};
+STATIC_ASSERT(sizeof(CVectorEaseOutDivideInterpolation) == 0x38);
+
+class CVectorNoneInterpolation : public CInterfaceVectorInterpolation {
+public:
+	virtual ~CVectorNoneInterpolation() { }         // _08
+	virtual bool Start(Vec from, Vec to, f32 time); // _0C
+	virtual bool Step(f32 dt);                      // _10
+	virtual bool Update(u32 step, f32 dt);          // _14
+	virtual Vec Get();                              // _18
+
+	// _00 vtable
+	CInterpolationNone mAxes[3]; // _04
+};
+STATIC_ASSERT(sizeof(CVectorNoneInterpolation) == 0x34);
+
 class CVectorLinearInterpolation : public CInterfaceVectorInterpolation {
 public:
 	virtual ~CVectorLinearInterpolation() { }       // _08
@@ -179,33 +206,6 @@ public:
 	CInterpolationEaseOut mAxes[3]; // _04
 };
 STATIC_ASSERT(sizeof(CVectorEaseOutInterpolation) == 0x64);
-
-class CVectorNoneInterpolation : public CInterfaceVectorInterpolation {
-public:
-	virtual ~CVectorNoneInterpolation() { }         // _08
-	virtual bool Start(Vec from, Vec to, f32 time); // _0C
-	virtual bool Step(f32 dt);                      // _10
-	virtual bool Update(u32 step, f32 dt);          // _14
-	virtual Vec Get();                              // _18
-
-	// _00 vtable
-	CInterpolationNone mAxes[3]; // _04
-};
-STATIC_ASSERT(sizeof(CVectorNoneInterpolation) == 0x34);
-
-class CVectorEaseOutDivideInterpolation : public CInterfaceVectorInterpolation {
-public:
-	virtual ~CVectorEaseOutDivideInterpolation() { }   // _08
-	virtual bool Start(Vec from, Vec to, f32 divisor); // _0C
-	virtual bool Step(f32 dt);                         // _10
-	virtual bool Update(u32 step, f32 dt);             // _14
-	virtual Vec Get();                                 // _18
-
-	// _00 vtable
-	CInterpolationEaseOutDivide mAxes[3]; // _04
-	BOOL mXZDone;                         // _34, set once x and z are there
-};
-STATIC_ASSERT(sizeof(CVectorEaseOutDivideInterpolation) == 0x38);
 
 class CInterfaceCameraAction {
 public:
