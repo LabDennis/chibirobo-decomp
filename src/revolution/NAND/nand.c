@@ -360,9 +360,6 @@ s32 NANDGetLengthAsync(NANDFileInfo* info, u32* length, NANDCallback callback, N
 	return nandConvertErrorCode(nandGetFileStatusAsync(info->fileDescriptor, block));
 }
 
-// NONMATCHING: retail keeps this a call in nandGetStatus and nandGetStatusCallback; the library's flags expand it
-// there. GC/3.0a3 and 3.0a5 do the same, const parameters and external linkage change nothing. The templates
-// force it with a never_inline attribute, which says nothing about the original source.
 static void nandComposePerm(u8* perm, u32 owner, u32 group, u32 others)
 {
 	u32 p = 0;
@@ -388,6 +385,9 @@ static void nandComposePerm(u8* perm, u32 owner, u32 group, u32 others)
 		p |= NAND_PERM_BOTH_WRITE;
 	}
 
+	// the assertion is tp's (debug build, line 1007); in a release build it leaves an empty statement, and with
+	// it this function is one statement too long for MWCC to expand it in nandGetStatus, as in retail
+	ASSERTMSG((p & ~0xFF) == 0, "NAND library internal error.\n");
 	*perm = p;
 }
 

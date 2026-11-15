@@ -444,6 +444,22 @@ revolution/NAND/NANDLogging.c:
 	.sdata start:0x805A15D8 end:0x805A15DC
 	.sbss start:0x805A2450 end:0x805A2458
 
+revolution/SC/scsystem.c:
+	.text start:0x801B673C end:0x801B80A0
+	.rodata start:0x802DE0B8 end:0x802DE110
+	.data start:0x80324688 end:0x80324860
+	.bss start:0x804E9200 end:0x804F13A0
+	.sdata start:0x805A15E0 end:0x805A16E8
+	.sbss start:0x805A2458 end:0x805A2470
+
+revolution/SC/scapi.c:
+	.text start:0x801B80A0 end:0x801B84D0
+
+revolution/SC/scapi_prdinfo.c:
+	.text start:0x801B84D0 end:0x801B8744
+	.data start:0x80324860 end:0x803248C0
+	.sdata start:0x805A16E8 end:0x805A16F8
+
 rvl_msl/mem.c:
 	.text start:0x8022A010 end:0x8022A180
 

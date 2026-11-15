@@ -13,7 +13,7 @@
 
 // other files of the library
 u8 OSGetAppType(void);
-s8 SCGetProductArea(void);
+s8 SCGetProductGameRegion(void);
 u32 __DVDGetCoverStatus(void);
 void __DVDResetWithNoSpinup(void);
 u8 __OSGetDiscState(u8 last);
@@ -134,7 +134,7 @@ static inline BOOL CheckTmdCountryCode(ESTmdView* tmd)
 		return TRUE;
 	}
 
-	if (area == SCGetProductArea()) {
+	if (area == SCGetProductGameRegion()) {
 		return TRUE;
 	}
 
@@ -542,7 +542,7 @@ void OSLaunchPDChannel(u64 titleId, u32 launchCode)
 		return;
 	}
 
-	switch (SCGetProductArea()) {
+	switch (SCGetProductGameRegion()) {
 	case 0:
 		OSReport("OSLaunchPDChannel(): product area is 'JPN'\n");
 		break;

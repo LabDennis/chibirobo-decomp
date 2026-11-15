@@ -9,7 +9,7 @@ void OSFatal(GXColor fg, GXColor bg, const char* msg);
 u16 OSSetFontEncode(u16 encode);
 u8 SCGetLanguage(void);
 // 0x801B86C0
-s8 SCGetProductArea(void);
+s8 SCGetProductGameRegion(void);
 
 void __DVDShowFatalMessage(void);
 
@@ -132,7 +132,7 @@ void __DVDShowFatalMessage(void)
 		OSSetFontEncode(0);
 	}
 
-	switch (SCGetProductArea()) {
+	switch (SCGetProductGameRegion()) {
 	default:
 		messages = DefaultMessages;
 		break;
