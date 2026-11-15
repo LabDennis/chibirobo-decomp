@@ -411,6 +411,8 @@ struct MenuStatusTable {
 	MenuStatusEntry mItems[256]; // _04, the eight on screen
 	MenuStatusEntry mPrev[4];    // _C04, the four before them
 	MenuStatusEntry mNext[4];    // _C34, the four after
+
+	s16 GetItem(s32 i) { return mItems[i].mItem; }
 };
 STATIC_ASSERT(sizeof(MenuStatusTable) == 0xC64);
 
@@ -733,6 +735,8 @@ struct MenuPCPage {
 	s32 mIndex[20];       // _A4, list index of each row
 	MenuPCItem mPrev[1];  // _F4
 	MenuPCItem mNext[1];  // _FC
+
+	s16 GetItem(s32 i) { return mRows[i].mItem; }
 };
 STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
 
