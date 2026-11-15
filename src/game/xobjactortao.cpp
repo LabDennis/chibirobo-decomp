@@ -110,7 +110,7 @@ s32 XObjActorTao::HandleEventCommand(s32 count, s32* command)
 			break;
 		case 2: // at another object
 			if (FindObj(command[2]) != NULL) {
-				SetActorLookAtPosition(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
+				SetActorLookTarget(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
 			}
 			break;
 		case 3: // at an angle

@@ -103,11 +103,11 @@ s32 XObjActorMama::HandleEventCommand(s32 count, s32* command)
 			ResetActorLook(this, DEG2RAD * 5);
 			break;
 		case 1:
-			SetActorLookAtPosition(this, &gGame.GetPlayer()->mMoveTranslate, DEG2RAD * 5);
+			SetActorLookTarget(this, &gGame.GetPlayer()->mMoveTranslate, DEG2RAD * 5);
 			break;
 		case 2:
 			if (FindObj(command[2]) != NULL) {
-				SetActorLookAtPosition(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
+				SetActorLookTarget(this, &FindObj(command[2])->mMoveTranslate, DEG2RAD * command[3]);
 			}
 			break;
 		case 3:

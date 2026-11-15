@@ -576,25 +576,21 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 
 #undef BLINK_TOY_JOINT
 
-static inline void MountAnimatedToyProp(XObjActorToy* toy, CJObj& joint, f32 angle, f32 x, f32 y, f32 z)
-{
-	toy->mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-	Mtx mount, rot, trans, result;
-	PSMTXCopy(joint.GetMtx(), mount);
-	RotateHeldProp(mount, result, rot, 'z', angle);
-	OffsetHeldProp(result, trans, x, y, z);
-	SetHeldPropMatrix(toy->mAttached, result);
-}
-
+// NONMATCHING: retail keeps the small paths, the joint positions and case 0's vector with the temporaries, so they
+// follow home on the stack, and it saves one register less
 void XObjActorToy::StateHitRecovery(u32 frames)
 {
 	if (mAttachedId >= 0 && mAttached) {
 		CJObj joint;
+		Mtx mount, translation, rotation, result;
 		switch (GetKind()) {
 		case 0xf: {
-			s32 path[9] = { 0, 3, 0, 0, 0, 0, 0, 5, 0 };
-			joint.Attach(FindJointByPath(mJObj, path, 9));
-			MountAnimatedToyProp(this, joint, HALF_PI, -1.2f, -5.5f, -0.5f);
+			joint.Attach(FindJointByPath(mJObj, (s32[9]) { 0, 3, 0, 0, 0, 0, 0, 5, 0 }, 9));
+			mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+			PSMTXCopy(joint.GetMtx(), mount);
+			RotateHeldProp(mount, result, rotation, 'z', HALF_PI);
+			OffsetHeldProp(result, translation, -1.2f, -5.5f, -0.5f);
+			SetHeldPropMatrix(mAttached, result);
 			break;
 		}
 		case 0x156: {
@@ -602,7 +598,11 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 			joint.Attach(FindJointByPath(mJObj, path, 4));
 			Vec pos = joint.GetPos();
 			mAttached->SetPos(pos.x, 2.0f + pos.y, 2.5f + pos.z, 0);
-			MountAnimatedToyProp(this, joint, 0, 0, 2, 2);
+			mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+			PSMTXCopy(joint.GetMtx(), mount);
+			RotateHeldProp(mount, result, rotation, 'z', 0);
+			OffsetHeldProp(result, translation, 0, 2, 2);
+			SetHeldPropMatrix(mAttached, result);
 			break;
 		}
 		case 0x25e: {
@@ -610,7 +610,11 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 			joint.Attach(FindJointByPath(mJObj, path, 2));
 			Vec pos = joint.GetPos();
 			mAttached->SetPos(pos.x, 2.0f + pos.y, 2.5f + pos.z, 0);
-			MountAnimatedToyProp(this, joint, 0, 0, 2, 2);
+			mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+			PSMTXCopy(joint.GetMtx(), mount);
+			RotateHeldProp(mount, result, rotation, 'z', 0);
+			OffsetHeldProp(result, translation, 0, 2, 2);
+			SetHeldPropMatrix(mAttached, result);
 			break;
 		}
 		}
@@ -625,7 +629,13 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 	case 0: {
 		Vec& player = gGame.GetPlayer()->mMoveTranslate;
 		mHeading    = PI + (f32)atan2(player.x - mMoveTranslate.x, player.z - mMoveTranslate.z);
-		mHomePos    = mMoveTranslate;
+		Vec pos     = { 0.0f, 0.0f, 0.0f };
+		pos.x       = mMoveTranslate.x;
+		pos.y       = mMoveTranslate.y;
+		pos.z       = mMoveTranslate.z;
+		mHomePos.x  = pos.x;
+		mHomePos.y  = pos.y;
+		mHomePos.z  = pos.z;
 		// in the air, falling under gravity, moved by UpdateGroundMovement
 		mActorStatus.mFlags |= 8;
 		mActorStatus.mFlags |= 0x10;
@@ -651,9 +661,11 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 	case 2:
 		mMoveSpeed -= 0.04f * frames;
 		if (mMoveSpeed <= 0) {
-			mMoveSpeed = 0;
-			mMoveTranslate.Set(mHomePos);
-			mKindStep = 4;
+			mMoveSpeed       = 0;
+			mMoveTranslate.x = mHomePos.x;
+			mMoveTranslate.y = mHomePos.y;
+			mMoveTranslate.z = mHomePos.z;
+			mKindStep        = 4;
 		}
 		break;
 	case 3: {
@@ -661,10 +673,12 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 		mHeading   = atan2(mHomePos.x - mMoveTranslate.x, mHomePos.z - mMoveTranslate.z);
 		mFacing    = mHeading;
 		CVec home(mHomePos);
-		f32 dx = home.x - mMoveTranslate.x, dz = home.z - mMoveTranslate.z;
-		if (sqrtf(dz * dz + (dx * dx + 0.0f)) < 1.0f) {
-			mMoveTranslate.Set(mHomePos);
-			mMoveSpeed = 0;
+		f32 dx = home.x - mMoveTranslate.x, dy = 0.0f, dz = home.z - mMoveTranslate.z;
+		if (sqrtf(dx * dx + dy * dy + dz * dz) < 1.0f) {
+			mMoveTranslate.x = mHomePos.x;
+			mMoveTranslate.y = mHomePos.y;
+			mMoveTranslate.z = mHomePos.z;
+			mMoveSpeed       = 0;
 			++mKindStep;
 		}
 		break;
@@ -690,6 +704,7 @@ static inline void FinishToyMount(XObjActorToy* toy)
 	toy->mAttached->mStatus.mFlags &= ~0x0200000000000000ULL;
 }
 
+// NONMATCHING: regalloc, the stack matches
 void XObjActorToy::StatePickUp(u32 frames)
 {
 	// 0 waits until Tao and Papa are free and reads mAttachedId in, 1 waits for the read, 2 mounts it and goes to StateCarry
@@ -722,11 +737,15 @@ void XObjActorToy::StatePickUp(u32 frames)
 			mAttached->SetScale(1, 1, 1, 0);
 			CJObj joint;
 			Vec position;
+			Mtx mount, translation, rotation, result;
 			switch (GetKind()) {
 			case 0xf: {
-				s32 path[9] = { 0, 3, 0, 0, 0, 0, 0, 5, 0 };
-				joint.Attach(FindJointByPath(mJObj, path, 9));
-				MountAnimatedToyProp(this, joint, HALF_PI, -1.2f, -5.5f, -0.5f);
+				joint.Attach(FindJointByPath(mJObj, (s32[9]) { 0, 3, 0, 0, 0, 0, 0, 5, 0 }, 9));
+				mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+				PSMTXCopy(joint.GetMtx(), mount);
+				RotateHeldProp(mount, result, rotation, 'z', HALF_PI);
+				OffsetHeldProp(result, translation, -1.2f, -5.5f, -0.5f);
+				SetHeldPropMatrix(mAttached, result);
 				break;
 			}
 			case 0x156: {
@@ -734,7 +753,11 @@ void XObjActorToy::StatePickUp(u32 frames)
 				joint.Attach(FindJointByPath(mJObj, path, 4));
 				position = joint.GetPos();
 				mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z, 0);
-				MountAnimatedToyProp(this, joint, 0, 0, 2, 2);
+				mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+				PSMTXCopy(joint.GetMtx(), mount);
+				RotateHeldProp(mount, result, rotation, 'z', 0);
+				OffsetHeldProp(result, translation, 0, 2, 2);
+				SetHeldPropMatrix(mAttached, result);
 				break;
 			}
 			case 0x159: {
@@ -747,9 +770,8 @@ void XObjActorToy::StatePickUp(u32 frames)
 				position.x = GetStagePlacementScale(mAttached).x / position.x;
 				position.y = GetStagePlacementScale(mAttached).y / position.y;
 				position.z = GetStagePlacementScale(mAttached).z / position.z;
-				Mtx scale, translation, rotation, result;
-				PSMTXScale(scale, position.x, position.y, position.z);
-				PSMTXConcat(mAttachedMtx, scale, result);
+				PSMTXScale(mount, position.x, position.y, position.z);
+				PSMTXConcat(mAttachedMtx, mount, result);
 				RotateHeldProp(result, result, rotation, 'y', -PI);
 				RotateHeldProp(result, result, rotation, 'x', -HALF_PI);
 				OffsetHeldProp(result, translation, 5, 12, 2);
@@ -761,7 +783,11 @@ void XObjActorToy::StatePickUp(u32 frames)
 				joint.Attach(FindJointByPath(mJObj, path, 2));
 				position = joint.GetPos();
 				mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z, 0);
-				MountAnimatedToyProp(this, joint, 0, 0, 2, 2);
+				mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+				PSMTXCopy(joint.GetMtx(), mount);
+				RotateHeldProp(mount, result, rotation, 'z', 0);
+				OffsetHeldProp(result, translation, 0, 2, 2);
+				SetHeldPropMatrix(mAttached, result);
 				break;
 			}
 			}
@@ -774,6 +800,7 @@ void XObjActorToy::StatePickUp(u32 frames)
 	}
 }
 
+// NONMATCHING: regalloc, the stack matches
 void XObjActorToy::StateCarry(u32 frames)
 {
 	Vec position;
@@ -793,9 +820,13 @@ void XObjActorToy::StateCarry(u32 frames)
 	case 0xf:
 		if (mAttachedId >= 0 && mAttached) {
 			CJObj joint;
-			s32 path[9] = { 0, 3, 0, 0, 0, 0, 0, 5, 0 };
-			joint.Attach(FindJointByPath(mJObj, path, 9));
-			MountAnimatedToyProp(this, joint, HALF_PI, -1.2f, -5.5f, -0.5f);
+			joint.Attach(FindJointByPath(mJObj, (s32[9]) { 0, 3, 0, 0, 0, 0, 0, 5, 0 }, 9));
+			Mtx mount, translation, rotation, result;
+			mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+			PSMTXCopy(joint.GetMtx(), mount);
+			RotateHeldProp(mount, result, rotation, 'z', HALF_PI);
+			OffsetHeldProp(result, translation, -1.2f, -5.5f, -0.5f);
+			SetHeldPropMatrix(mAttached, result);
 			FinishToyMount(this);
 		}
 		break;
@@ -806,7 +837,12 @@ void XObjActorToy::StateCarry(u32 frames)
 			joint.Attach(FindJointByPath(mJObj, path, 4));
 			position = joint.GetPos();
 			mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z, 0);
-			MountAnimatedToyProp(this, joint, 0, 0, 2, 2);
+			Mtx mount, translation, rotation, result;
+			mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+			PSMTXCopy(joint.GetMtx(), mount);
+			RotateHeldProp(mount, result, rotation, 'z', 0);
+			OffsetHeldProp(result, translation, 0, 2, 2);
+			SetHeldPropMatrix(mAttached, result);
 			FinishToyMount(this);
 		}
 		break;
@@ -839,29 +875,19 @@ void XObjActorToy::StateCarry(u32 frames)
 			joint.Attach(FindJointByPath(mJObj, path, 2));
 			position = joint.GetPos();
 			mAttached->SetPos(position.x, 2.0f + position.y, 2.5f + position.z, 0);
-			MountAnimatedToyProp(this, joint, 0, 0, 1.1f, 1.4f);
+			Mtx mount, translation, rotation, result;
+			mAttached->SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+			PSMTXCopy(joint.GetMtx(), mount);
+			RotateHeldProp(mount, result, rotation, 'z', 0);
+			OffsetHeldProp(result, translation, 0, 1.1f, 1.4f);
+			SetHeldPropMatrix(mAttached, result);
 			FinishToyMount(this);
 		}
 		break;
 	}
 }
 
-static inline void MountToyPiece(CJObj& joint, XObj* const& prop, Mtx mount)
-{
-	Vec scale;
-	Mtx scaling, translation, rotation, result;
-	PSMTXCopy(joint.GetMtx(), mount);
-	HSD_MtxGetScale(mount, &scale);
-	scale.x = GetStagePlacementScale(prop).x / scale.x;
-	scale.y = GetStagePlacementScale(prop).y / scale.y;
-	scale.z = GetStagePlacementScale(prop).z / scale.z;
-	PSMTXScale(scaling, scale.x, scale.y, scale.z);
-	PSMTXConcat(mount, scaling, result);
-	OffsetHeldProp(result, translation, 0, -6.5f, 0);
-	RotateHeldProp(result, result, rotation, 'y', PI / 16);
-	SetHeldPropMatrix(prop, result);
-}
-
+// NONMATCHING: regalloc, retail saves one register more; the stack matches
 extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 {
 	CJObj joint;
@@ -875,9 +901,8 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 	toy->mPendingMove.Set(0, 0, 0);
 	// one of the pool 8 items: every mHideKinds bit but 0x40, which is toy 0x25E's 0x341
 	if (toy->mHideKinds.mFlags & 0x9f) {
-		s32 hand[9] = { 0, 3, 0, 0, 0, 0, 0, 5, 0 };
-		joint.Attach(FindJointByPath(toy->mJObj, hand, 9));
 		CVec position;
+		joint.Attach(FindJointByPath(toy->mJObj, (s32[9]) { 0, 3, 0, 0, 0, 0, 0, 5, 0 }, 9));
 		position = joint.GetPos();
 		s32 kind = -1;
 		if (toy->mHideKinds.Check(1))
@@ -899,14 +924,6 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 					continue;
 				Mtx mount, translation, rotation, result;
 				switch (kind) {
-				case 0x3b: {
-					MtxPtr source = joint.GetMtx();
-					PSMTXCopy(source, mount);
-					PSMTXTrans(translation, -2, -2, -10);
-					PSMTXConcat(source, translation, result);
-					SetHeldPropMatrix(prop, result);
-					break;
-				}
 				case 0x3d:
 				case 0x3e:
 				case 0x3f:
@@ -915,10 +932,28 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 					OffsetHeldProp(result, translation, 0, -2, 8);
 					SetHeldPropMatrix(prop, result);
 					break;
+				case 0x3b: {
+					MtxPtr source = joint.GetMtx();
+					PSMTXCopy(source, mount);
+					PSMTXTrans(translation, -2, -2, -10);
+					PSMTXConcat(source, translation, result);
+					SetHeldPropMatrix(prop, result);
+					break;
+				}
 				case 0x21d: {
 					s32 path[7] = { 0, 3, 0, 0, 0, 0, 0 };
 					joint.Attach(FindJointByPath(toy->mJObj, path, 7));
-					MountToyPiece(joint, prop, toy->mAttachedMtx);
+					Vec scale;
+					PSMTXCopy(joint.GetMtx(), toy->mAttachedMtx);
+					HSD_MtxGetScale(toy->mAttachedMtx, &scale);
+					scale.x = GetStagePlacementScale(prop).x / scale.x;
+					scale.y = GetStagePlacementScale(prop).y / scale.y;
+					scale.z = GetStagePlacementScale(prop).z / scale.z;
+					PSMTXScale(mount, scale.x, scale.y, scale.z);
+					PSMTXConcat(toy->mAttachedMtx, mount, result);
+					OffsetHeldProp(result, translation, 0, -6.5f, 0);
+					RotateHeldProp(result, result, rotation, 'y', PI / 16);
+					SetHeldPropMatrix(prop, result);
 					break;
 				}
 				case 0x21e:
@@ -964,7 +999,18 @@ extern "C" void UpdateToy0FCarriedObjects(XObjActorToy* toy, u32 frames)
 				CJObj mount;
 				s32 path[7] = { 0, 3, 0, 0, 0, 0, 0 };
 				mount.Attach(FindJointByPath(toy->mJObj, path, 7));
-				MountToyPiece(mount, piece.mObj, piece.mMount);
+				Vec scale;
+				Mtx scaling, result, translation, rotation;
+				PSMTXCopy(mount.GetMtx(), piece.mMount);
+				HSD_MtxGetScale(piece.mMount, &scale);
+				scale.x = GetStagePlacementScale(piece.mObj).x / scale.x;
+				scale.y = GetStagePlacementScale(piece.mObj).y / scale.y;
+				scale.z = GetStagePlacementScale(piece.mObj).z / scale.z;
+				PSMTXScale(scaling, scale.x, scale.y, scale.z);
+				PSMTXConcat(piece.mMount, scaling, result);
+				OffsetHeldProp(result, translation, 0, -6.5f, 0);
+				RotateHeldProp(result, result, rotation, 'y', PI / 16);
+				SetHeldPropMatrix(piece.mObj, result);
 				if (toy->mStatus.mFlags & 0x10000)
 					piece.mObj->mStatus.mFlags |= 0x10000ULL;
 				else

@@ -199,129 +199,125 @@ static inline void JennyPropVisibility(XObjActorJenny* jenny, XObj* object)
 }
 
 // Positions the props Jenny holds and turns the carried player toward her head.
+// NONMATCHING: regalloc, the path walks hold the joint and the path pointer in each other's register; the stack matches
 void XObjActorJenny::UpdateAfterAnim(u32 frames)
 {
 	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj joint;
 	XObjChr* player = gGame.GetPlayer();
-	if (mHideKinds.mFlags & 0x1f) {
+	if (mHideKinds.Check(0x1f)) {
 		CVec position;
 		s32 kind = -1;
 		if (mHideKinds.Check(1)) {
-			kind        = 0x3d;
-			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
-			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
+			kind = 0x3d;
+			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[6]) { 0, 3, 1, 0, 0, 0 }, 6));
 			position = joint.GetPos();
 		} else if (mHideKinds.Check(2)) {
-			kind        = 0x3e;
-			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
-			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
+			kind = 0x3e;
+			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[6]) { 0, 3, 1, 0, 0, 0 }, 6));
 			position = joint.GetPos();
 		} else if (mHideKinds.Check(4)) {
-			kind        = 0x3f;
-			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
-			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
+			kind = 0x3f;
+			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[6]) { 0, 3, 1, 0, 0, 0 }, 6));
 			position = joint.GetPos();
 		} else if (mHideKinds.Check(8)) {
-			kind        = 0x3b;
-			s32 hand[6] = { 0, 3, 1, 0, 0, 0 };
-			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
+			kind = 0x3b;
+			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[6]) { 0, 3, 1, 0, 0, 0 }, 6));
 			position = joint.GetPos();
 		} else if (mHideKinds.Check(16)) {
-			kind        = 0x401;
-			s32 hand[6] = { 0, 3, 2, 0, 0, 0 };
-			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
+			kind = 0x401;
+			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[6]) { 0, 3, 2, 0, 0, 0 }, 6));
 			position = joint.GetPos();
 		}
 		Mtx mount, translation, rotation, result;
-		switch (kind) {
-		case 0x3c:
-			break;
-		case 0x401:
-			for (s32 i = 0; i < 288; ++i) {
-				XObj* prop = gGame.mXObjs.mPools[22].Get(i);
-				if (kind == prop->GetKind()) {
-					switch (kind) {
-					case 0x401:
-						PSMTXCopy(joint.GetMtx(), mount);
-						PSMTXRotRad(rotation, 'z', HALF_PI);
-						PSMTXConcat(mount, rotation, result);
-						PSMTXTrans(translation, -4, 4, 0);
-						PSMTXConcat(result, translation, result);
-						SetHeldPropMatrix(prop, result);
-						break;
-					default:
-						SetHeldPropMatrix(prop, joint.GetMtx());
-						break;
+		if (kind >= 0) {
+			switch (kind) {
+			case 0x3c:
+				break;
+			case 0x401:
+				for (s32 i = 0; i < 288; ++i) {
+					XObj* prop = gGame.mXObjs.mPools[22].Get(i);
+					if (kind == prop->GetKind()) {
+						switch (kind) {
+						case 0x401:
+							PSMTXCopy(joint.GetMtx(), mount);
+							PSMTXRotRad(rotation, 'z', HALF_PI);
+							PSMTXConcat(mount, rotation, result);
+							PSMTXTrans(translation, -4, 4, 0);
+							PSMTXConcat(result, translation, result);
+							SetHeldPropMatrix(prop, result);
+							break;
+						default:
+							SetHeldPropMatrix(prop, joint.GetMtx());
+							break;
+						}
+						JennyPropVisibility(this, prop);
 					}
-					JennyPropVisibility(this, prop);
 				}
-			}
-			break;
-		case 0x3b:
-		case 0x3d:
-		case 0x3e:
-		case 0x3f:
-			for (s32 i = 0; i < 64; ++i) {
-				XObj* prop = gGame.mXObjs.mPools[8].Get(i);
-				if (kind == prop->GetKind()) {
-					switch (kind) {
-					case 0x3b: {
-						MtxPtr source = joint.GetMtx();
-						PSMTXCopy(source, mount);
-						PSMTXTrans(translation, -2, -2, -10);
-						PSMTXConcat(source, translation, result);
-						SetHeldPropMatrix(prop, result);
-						break;
+				break;
+			case 0x3b:
+			case 0x3d:
+			case 0x3e:
+			case 0x3f:
+				for (s32 i = 0; i < 64; ++i) {
+					XObj* prop = gGame.mXObjs.mPools[8].Get(i);
+					if (kind == prop->GetKind()) {
+						switch (kind) {
+						case 0x3d:
+						case 0x3e:
+						case 0x3f:
+							PSMTXCopy(joint.GetMtx(), mount);
+							PSMTXRotRad(rotation, 'x', PI);
+							PSMTXConcat(mount, rotation, result);
+							PSMTXTrans(translation, 0, 0, 10);
+							PSMTXConcat(result, translation, result);
+							SetHeldPropMatrix(prop, result);
+							break;
+						case 0x3b: {
+							MtxPtr source = joint.GetMtx();
+							PSMTXCopy(source, mount);
+							PSMTXTrans(translation, -2, -2, -10);
+							PSMTXConcat(source, translation, result);
+							SetHeldPropMatrix(prop, result);
+							break;
+						}
+						default:
+							SetHeldPropMatrix(prop, joint.GetMtx());
+							break;
+						}
+						JennyPropVisibility(this, prop);
 					}
-					case 0x3d:
-					case 0x3e:
-					case 0x3f:
-						PSMTXCopy(joint.GetMtx(), mount);
-						PSMTXRotRad(rotation, 'x', PI);
-						PSMTXConcat(mount, rotation, result);
-						PSMTXTrans(translation, 0, 0, 10);
-						PSMTXConcat(result, translation, result);
-						SetHeldPropMatrix(prop, result);
-						break;
-					default:
-						SetHeldPropMatrix(prop, joint.GetMtx());
-						break;
-					}
-					JennyPropVisibility(this, prop);
 				}
+				break;
 			}
-			break;
 		}
 	}
 	// flag 0x200: the player rides along, three units to the side of the joint
 	if ((mActorStatus.mFlags & 0x200) && (player->mPlayerStatus.mFlags & 0x40000000)) {
-		s32 hand[6] = { 0, 3, 2, 0, 0, 0 };
-		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
+		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[6]) { 0, 3, 2, 0, 0, 0 }, 6));
 		CVec pos = joint.GetPos();
 		{
 			f32 angle = atan2(pos.x - mMoveTranslate.x, pos.z - mMoveTranslate.z);
 			f32 sx    = (f32)sin(angle - HALF_PI);
 			f32 cz    = (f32)cos(angle - HALF_PI);
-			pos.x += 3.0f * sx;
-			pos.z += 3.0f * cz;
+			f32 dx    = 3.0f * sx;
+			f32 dz    = 3.0f * cz;
+			pos.x += dx;
+			pos.y += 2;
+			pos.z += dz;
 		}
-		pos.y += 2;
 		player->SetPos(pos, 0);
-		s32 head[4] = { 0, 3, 0, 0 };
-		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, head, 4));
+		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[4]) { 0, 3, 0, 0 }, 4));
 		pos = joint.GetPos();
 		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
 	}
 	// flag 0x100: the player rides at the joint
 	if ((mActorStatus.mFlags & 0x100) && (player->mPlayerStatus.mFlags & 0x40000000)) {
-		s32 hand[6] = { 0, 3, 2, 0, 0, 0 };
-		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, hand, 6));
+		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[6]) { 0, 3, 2, 0, 0, 0 }, 6));
 		CVec pos = joint.GetPos();
 		pos.y += 2;
 		player->SetPos(pos, 0);
-		s32 head[4] = { 0, 3, 0, 0 };
-		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, head, 4));
+		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[4]) { 0, 3, 0, 0 }, 4));
 		pos = joint.GetPos();
 		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
 	}
