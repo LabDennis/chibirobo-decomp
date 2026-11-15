@@ -1238,6 +1238,11 @@ if wii:
                 # the text drawing unit 0x802AD310-0x802AEBB0; the GameCube cgs.cpp pairs
                 # are the reconstruction base
                 Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii memory manager 0x802A7478-0x802A7FB4 (mem.cpp by its OSPanic file):
+                # the GameCube table allocator over a MEM2 arena plus InitMem1/InitMem2's two
+                # expanded heaps; the small helpers GetAllocSize/GetFreeSize stay calls, so
+                # no auto-inlining here either
+                Object(NonMatching, "game/wii/mem.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # retail has no call to StartWiiSaveJob (declared inline, inlined into its

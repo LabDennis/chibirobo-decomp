@@ -673,6 +673,12 @@ game/wii/cfont.cpp:
 	.sbss start:0x805A2890 end:0x805A28A0
 	.sdata2 start:0x805A7A28 end:0x805A7A48
 
+game/wii/mem.cpp:
+	.text start:0x802A7478 end:0x802A7FB4
+	.rodata start:0x802E50C8 end:0x802E5150
+	.bss start:0x80576B88 end:0x8059ABA8
+	.sbss start:0x805A2858 end:0x805A2870
+
 game/cmodule.cpp:
 	extab start:0x800110D0 end:0x800110E0
 	extabindex start:0x80017990 end:0x800179A8
