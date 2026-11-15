@@ -6,8 +6,11 @@
 // differ only in callee-saved colouring and in vtable/sdata2 referent
 // placement; DrawGsText (89 %) and DrawGsStrokeText additionally diverge in
 // float allocation and stack frame size (retail spills ~0x10 more, plus two
-// f64 spill slots the allocator gives us as held constants), again without
-// a behavioural difference.
+// f64 spill slots the allocator gives us as held constants). In
+// DrawGsStrokeText -ipa file also inlines the single-call-site
+// MeasureStrokeTextWidth where retail kept it a real call; that call-set
+// difference accounts for most of its frame gap. No behavioural difference
+// in any of them.
 
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
