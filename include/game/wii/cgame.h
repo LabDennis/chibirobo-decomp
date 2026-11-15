@@ -24,10 +24,9 @@ struct WiiObjectRef {
 // than the GameCube one, so its vtable sits at 0x41E4, right behind its data.
 class CBase {
 public:
-	u32 mTvFormat;   // _0000, 0 NTSC, 1 PAL, 2 M-PAL, 3 EURGB60
-	u8 mProgressive; // _0004
-	CGs mGs;         // _0008
-	u8 _1B9C[0x2298 - 0x1B9C];
+	u32 mTvFormat;             // _0000, 0 NTSC, 1 PAL, 2 M-PAL, 3 EURGB60
+	u8 mProgressive;           // _0004
+	CGs mGs;                   // _0008
 	CPadEx mPad;               // _2298
 	XSound mSound;             // _22A4
 	u32 mLastRetrace;          // _33E4
@@ -170,7 +169,10 @@ public:
 
 	u8 _04[0x4];
 	f32 mFov; // _08
-	u8 _0C[0x2C - 0x0C];
+	u8 _0C[0x18 - 0x0C];
+	f32 mTop;    // _18, ortho projection bounds, fed to C_MTXOrtho
+	f32 mBottom; // _1C
+	u8 _20[0x2C - 0x20];
 	Mtx44 mProjection; // _2C
 	u8 _6C[0x90 - 0x6C];
 	CCameraView mView; // _90

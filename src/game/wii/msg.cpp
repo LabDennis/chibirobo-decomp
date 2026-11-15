@@ -581,7 +581,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 		textureWidth        = (s32)font->mGlyphs[font->mCharCount].mTexture.Set(icon) / columns;
 		width               = textureWidth * (font->mSize / 22.0f);
 	} else {
-		textureWidth = font->mGlyphs[font->mCharCount].mSprite.mTex->SetChar(text);
+		textureWidth = font->mGlyphs[font->mCharCount].mSprite.mTex->SetChar(text, 0);
 	}
 	f32 x = (width - textureWidth) * 0.5f + (11.0f + font->mCursorX + spacing);
 	f32 y = font->mCursorY + font->mData->mHeights[font->mLine] * 0.5f;

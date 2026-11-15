@@ -10,6 +10,8 @@
 // GameCube class's palette order. name kept from the GameCube class.
 class CFont {
 public:
+	CFont() { mDesc.textureHeader = NULL; }
+
 	TPLDescriptor mDesc; // _00, textureHeader is always &mImage
 	TPLHeader mImage;    // _08
 	f32 mInvSheetWidth;  // _2C
@@ -17,7 +19,9 @@ public:
 	f32 mInvCellWidth;   // _34
 	f32 mInvCellHeight;  // _38
 	CTexObj mTex;        // _3C
-	// _13C is mTex's own vtable, the font itself has none
+	// _140 vtable
+
+	virtual ~CFont() { } // _08
 
 	void Init(const char* resPath, BOOL singleByte);
 
@@ -49,7 +53,11 @@ public:
 #endif
 };
 #endif
+#if defined(VERSION_R24J01)
+STATIC_ASSERT(sizeof(CFont) == 0x144);
+#else
 STATIC_ASSERT(sizeof(CFont) == 0x140);
+#endif
 
 // shift jis lead byte
 inline bool IsSjisLead(u8 c)
@@ -92,8 +100,9 @@ extern const u8 gSingleByteFontAtlas[];
 extern "C" {
 // the glyph texture for one character and how wide it is
 CTexObj* GetFontGlyphTexture(CFont* font, const char* str, u32 arg3, s32* width);
-// nonzero when the loaded font has a glyph for the character
-s8 HasFontGlyph(const char* str);
+// nonzero when the loaded font has a glyph for the character. the font argument
+// is unused; callers pass the scratch font they keep for the texture lookups
+s8 HasFontGlyph(CFont* font, const char* str);
 }
 #endif
 

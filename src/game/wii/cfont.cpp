@@ -102,18 +102,22 @@ s32 LoadFontResource()
 void SetupFontImage(CFont* font, const void* image, OSFontHeader* header)
 {
 	TPLDescriptor desc = { &font->mImage, NULL };
+	font->mDesc        = desc;
 	TPLHeader tpl      = {
-        0,    // height, filled below
-        0,    // width
-        0,    // format
-        NULL, // data
-        GX_CLAMP, GX_CLAMP, GX_LINEAR, GX_LINEAR, 0.0f, 0, 0, 0, 1,
+        header->sheetHeight,
+        header->sheetWidth,
+        header->sheetFormat,
+        (char*)image,
+        GX_CLAMP,
+        GX_CLAMP,
+        GX_LINEAR,
+        GX_LINEAR,
+        0.0f,
+        0,
+        0,
+        0,
+        1,
 	};
-	tpl.height            = header->sheetHeight;
-	tpl.width             = header->sheetWidth;
-	tpl.format            = header->sheetFormat;
-	tpl.data              = (char*)image;
-	font->mDesc           = desc;
 	font->mImage          = tpl;
 	font->mInvSheetWidth  = 1.0f / header->sheetWidth;
 	font->mInvSheetHeight = 1.0f / header->sheetHeight;
@@ -127,16 +131,15 @@ void SetupFontImage(CFont* font, const void* image, OSFontHeader* header)
  */
 extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, u32 arg3, s32* width)
 {
-	void* image;
 	s32 x, y, advance;
 
 	if (sFontPtr.resource == NULL && sFontPtr.header == NULL) {
 		OSFontHeader header;
-		header.cellWidth   = 0;
-		header.cellHeight  = 0;
-		header.sheetFormat = 0;
 		header.sheetWidth  = 0;
 		header.sheetHeight = 0;
+		header.sheetFormat = 0;
+		header.cellWidth   = 0;
+		header.cellHeight  = 0;
 		SetupFontImage(font, NULL, &header);
 		x = y = advance = 0;
 		OSPanic("cfont.cpp", 0x112, "");
@@ -154,24 +157,29 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, u32 arg3, 
 		res->mHeader.cellWidth   = res->mParser.GetCellWidth();
 		res->mHeader.cellHeight  = res->mParser.GetCellHeight();
 		SetupFontImage(font, glyph.pTexture, &res->mHeader);
-		y       = glyph.y;
 		x       = glyph.x;
+		y       = glyph.y;
 		advance = (s32)((f32)glyph.widths.charWidth * (24.0f / res->mHeader.cellWidth));
 	} else if (sFontEnv.useSingleByteFont != FALSE) {
-		image = (void*)gSingleByteFontAtlas;
+		void* image = (void*)gSingleByteFontAtlas;
 		SetupFontImage(font, image, sFontPtr.header);
 		x       = gSingleByteGlyphMetrics[(u8)str[0]][0];
 		y       = gSingleByteGlyphMetrics[(u8)str[0]][1];
 		advance = gSingleByteGlyphMetrics[(u8)str[0]][2];
 	} else {
+		void* image = NULL;
 		OSGetFontTexture(str, &image, &x, &y, &advance);
 		SetupFontImage(font, image, sFontPtr.header);
 	}
 
 	font->mTex.Init(&font->mDesc, 0);
-	PSMTXTrans(font->mTex.mTexMtx.mMtx[0], font->mInvSheetWidth * x, font->mInvSheetHeight * y, 0.0f);
+	f32 ty = font->mInvSheetHeight * y;
+	f32 tx = font->mInvSheetWidth * x;
+	PSMTXTrans(font->mTex.mTexMtx.mMtx[0], tx, ty, 0.0f);
+	f32 cellH                 = font->mInvCellHeight;
 	font->mTex.mTexMtx.mDirty = TRUE;
-	PSMTXScale(font->mTex.mTexMtx.mMtx[2], font->mInvCellWidth, font->mInvCellHeight, 1.0f);
+	f32 cellW                 = font->mInvCellWidth;
+	PSMTXScale(font->mTex.mTexMtx.mMtx[2], cellW, cellH, 1.0f);
 	font->mTex.mTexMtx.mDirty = TRUE;
 	if (width != NULL) {
 		*width = advance;
@@ -179,11 +187,14 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, u32 arg3, 
 	return &font->mTex;
 }
 
+// NONMATCHING: identical instruction stream except stack layout: retail puts
+// the GetCharWidths return value at 0x8(r1) and the widths copy at 0xc(r1);
+// MWCC allocates them the other way round for every source ordering tried.
 /**
  * @note Address: 0x802B41EC
  * @note Size: 0xC8
  */
-extern "C" s8 HasFontGlyph(const char* str)
+extern "C" s8 HasFontGlyph(CFont* font, const char* str)
 {
 	CFile* file = &sFontResource.mFile;
 	if (file->IsLoaded()) {
