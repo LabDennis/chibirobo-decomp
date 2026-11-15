@@ -775,8 +775,9 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 		}
 		break;
 	}
+	int i                = 0;
 	XActPopperShot* shot = act->mShots.mShot;
-	for (int i = 0; i < 10; i++, shot++)
+	for (; i < 10; i++, shot++)
 		UpdatePopperShotFlight(shot, frames);
 	if (act->mCharge.mState) {
 		if (act->mCharge.mTimer < 1 && (act->mCharge.mTimer += (1.f / FRAME_RATE) * frames) > 1)
