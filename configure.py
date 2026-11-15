@@ -1434,10 +1434,10 @@ if wii:
             "progress_category": "runtime",
             "objects": [
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mainloop.c"),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/nubevent.c"),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/nubevent.c"),
                 Object(NonMatching, "TRK_MINNOW_DOLPHIN/nubinit.c"),
                 Object(NonMatching, "TRK_MINNOW_DOLPHIN/msg.c"),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/msgbuf.c"),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/msgbuf.c"),
                 Object(NonMatching, "TRK_MINNOW_DOLPHIN/serpoll.c", extra_cflags=["-sdata 8"]),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/usr_put.c"),
                 Object(NonMatching, "TRK_MINNOW_DOLPHIN/dispatch.c"),
