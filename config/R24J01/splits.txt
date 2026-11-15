@@ -841,16 +841,18 @@ revolution/GX/GXMisc.c:
 	.text start:0x801A84B8 end:0x801A8D4C
 	.sbss start:0x805A23C8 end:0x805A23DC
 
-dolphin/gx/GXGeometry.c:
-	.text start:0x801A8FC4 end:0x801A92B4
+revolution/GX/GXGeometry.c:
+	.text start:0x801A8D4C end:0x801A9314
 
 revolution/GX/GXFrameBuf.c:
 	.text start:0x801A9314 end:0x801A9E8C
 	.data start:0x80323768 end:0x80324014
 	.sdata2 start:0x805A65A8 end:0x805A65B8
 
-dolphin/gx/GXLight.c:
+revolution/GX/GXLight.c:
 	.text start:0x801A9E8C end:0x801AA5E0
+	.data start:0x80324018 end:0x80324034
+	.sdata2 start:0x805A65B8 end:0x805A65EC
 
 revolution/GX/GXTexture.c:
 	.text start:0x801AA5E0 end:0x801AB584
@@ -871,14 +873,17 @@ revolution/GX/GXPixel.c:
 	.data start:0x803242D8 end:0x803242F8
 	.sdata2 start:0x805A6630 end:0x805A6680
 
-dolphin/gx/GXDraw.c:
-	.text start:0x801ACFF4 end:0x801AD814
+revolution/GX/GXDraw.c:
+	.text start:0x801AC7B4 end:0x801AD814
+	.bss start:0x804E89E8 end:0x804E8C70
+	.sdata2 start:0x805A6680 end:0x805A66B0
 
 revolution/GX/GXDisplayList.c:
 	.text start:0x801AD814 end:0x801AD888
 
-dolphin/gx/GXTransform.c:
-	.text start:0x801ADA54 end:0x801ADEE4
+revolution/GX/GXTransform.c:
+	.text start:0x801AD888 end:0x801ADF6C
+	.sdata2 start:0x805A66B0 end:0x805A66C0
 
 revolution/GX/GXPerf.c:
 	.text start:0x801ADF6C end:0x801AE7A8
