@@ -3848,9 +3848,8 @@ extern "C" void DrawPlayerLookMarker(XObjChrLook* look)
 	if (gGame.mMotionControlCamera.IsAction(CAMACTION_SCROLL2) || !(look->mFade > 0.0f))
 		return;
 	CTexObj tex;
-	CTpl* tpl  = &gGame.mTpl;
 	f32 scale  = look->mFade + 0.5f * (f32)sin(PI * look->mFade);
-	tex        = gGame.mTpl.mTex.Init(&((TPLPalette*)tpl->mBuffer)->descriptorArray[111 - StatusTextureOffset], 0);
+	tex        = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[111 - StatusTextureOffset], 0);
 	f32 width  = scale * GXGetTexObjWidth(&tex);
 	f32 height = scale * GXGetTexObjHeight(&tex);
 	Vec pos;
@@ -3860,11 +3859,10 @@ extern "C" void DrawPlayerLookMarker(XObjChrLook* look)
 	pos.z = 0.0f;
 	pos.y += 4.0f * (f32)sin(DEG2RAD * look->mPhase);
 
-	CGs* gs = &gGame.mGs;
-	SetGsDepthCompareBeforeTexture(gs->mCurRenderMode, 0);
-	SetGsAlphaCompare(gs->mCurRenderMode, 4, 0, 0, 3, 255);
-	SetGsBlendMode(gs->mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gs->mCurRenderMode, 1, 7, 0);
+	SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 0);
+	SetGsAlphaCompare(gGame.mGs.mCurRenderMode, 4, 0, 0, 3, 255);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	u32 color    = 0xFFFFFF00 | (u32)(255.0f * look->mFade);
 	Vec rotation = { 0.0f, 0.0f, 0.0f };
@@ -3874,31 +3872,31 @@ extern "C" void DrawPlayerLookMarker(XObjChrLook* look)
 	f32 glow = look->mFade * (0.5f + 0.5f * (f32)sin(PI * look->mPulse));
 	if (glow < 0.0f)
 		glow = 0.0f;
-	SetGsDepthMode(gs->mCurRenderMode, 1, 7, 1);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 	Vec maskRotation = { 0.0f, 0.0f, 0.0f };
 	DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, pos.x, pos.y, pos.z, 0.99f * width, 0.99f * height,
 	                   maskRotation.x, maskRotation.y, maskRotation.z);
-	SetGsBlendMode(gs->mCurRenderMode, 1, 2, 4, 15);
-	SetGsDepthMode(gs->mCurRenderMode, 1, 2, 0);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	Vec glowRotation = { 0.0f, 0.0f, 0.0f };
 	color            = 0xFFFFFF00 | (u32)(255.0f * glow);
 	DrawGsQuad(&gGame.mGs, color, color, color, color, pos.x, pos.y, pos.z, width, height, glowRotation.x, glowRotation.y, glowRotation.z);
 
 	if (look->mMode >= 0) {
-		tex = gGame.mTpl.mTex.Init(&((TPLPalette*)tpl->mBuffer)->descriptorArray[look->mMode], 0);
-		SetGsBlendMode(gs->mCurRenderMode, 1, 4, 5, 15);
-		SetGsDepthMode(gs->mCurRenderMode, 1, 7, 0);
+		tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[look->mMode], 0);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		color = 0xFFFFFF00 | (u32)(255.0f * look->mFade);
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, pos.x, pos.y, pos.z, width, height, look->mTarget.x,
 		                   look->mTarget.y, look->mTarget.z);
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-	SetGsBlendMode(gs->mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gs->mCurRenderMode, 1, 3, 0);
-	SetGsDepthCompareBeforeTexture(gs->mCurRenderMode, 1);
-	InvalidateCaptureGraphics(gs);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
+	SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 1);
+	InvalidateCaptureGraphics(&gGame.mGs);
 }
 
 // steps the marker on what chibi robo looks at
@@ -4168,7 +4166,6 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		scale = 1.35f;
 	}
 
-	CGs& gs = gGame.mGs;
 	for (s32 i = 0; i < 8; ++i) {
 		CTexObj tex = RingTexture(menu, i);
 		u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
@@ -4176,9 +4173,9 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		gEquipmentIconHeight[i] = 100.f * ((f32)h / w);
 	}
 	s32 count = menu->mMenuType == 3 ? 7 : 8;
-	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
-	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsLineWidth(gGame.mGs.mCurRenderMode, 12, 5);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 	if (menu->mMenuType == 3) {
 		s32 start = menu->mFirstVisibleItem, last = (start + 6) % 7;
 		f32 itemSize = menu->mItems[start].mScale * (f32)sin((PI * .5f) * fade);
@@ -4223,9 +4220,9 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			                    { (Vec) { ((right + half) + 2.f * half), labelY, 0 }, clear },
 			                    { (Vec) { ((right + half) + 2.f * half), labelY + half, 0 }, clear },
 			                    { (Vec) { (right + half), labelY + half, 0 }, labelAlpha } };
-		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gs.mCamera->mViewMtx, band, 4);
-		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gs.mCamera->mViewMtx, band + 4, 4);
-		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gs.mCamera->mViewMtx, band + 8, 4);
+		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band, 4);
+		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band + 4, 4);
+		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band + 8, 4);
 		left -= half;
 		right += half;
 		f32 x0 = left - 2.f * half, x3 = right + 2.f * half;
@@ -4283,29 +4280,29 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		else
 			alpha = 1.f;
 		menu->GetItemColor(i);
-		SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		f32 iconAlpha = alpha;
 		if (menu->IsItemEquipped(i))
 			iconAlpha = alpha * .25f;
 		u32 color = 0xffffff00 | (u32)(255.f * alpha);
 		f32 size  = 1.2f * pulse;
-		SetGsDepthMode(gs.mCurRenderMode, 1, 7, 1);
-		SetGsDepthCompareBeforeTexture(gs.mCurRenderMode, 0);
-		SetGsTevMode(gs.mCurTevStage, 0);
-		DrawRingQuad(gs, background, color, x, y, 0, width * size, height * size);
-		DrawRingQuad(gs, tex, 0xffffff00 | (u32)(255.f * iconAlpha), x, y, 0, width * size, height * size);
-		SetGsTevMode(gs.mCurTevStage, 4);
-		SetGsDepthCompareBeforeTexture(gs.mCurRenderMode, 1);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
+		SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		DrawRingQuad(gGame.mGs, background, color, x, y, 0, width * size, height * size);
+		DrawRingQuad(gGame.mGs, tex, 0xffffff00 | (u32)(255.f * iconAlpha), x, y, 0, width * size, height * size);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 1);
 		if (i == menu->mCursorIndex) {
-			SetGsBlendMode(gs.mCurRenderMode, 1, 2, 4, 15);
-			SetGsDepthMode(gs.mCurRenderMode, 1, 2, 0);
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
 			f32 glow = fade * (.2f * (f32)sin(PI * menu->mPhase) + .2f);
 			if (glow < 0)
 				glow = 0;
 			u32 glowColor = 0xffffff00 | (u32)(255.f * glow);
 			DrawGsQuad(&gGame.mGs, glowColor, glowColor, glowColor, glowColor, x, y, 0, width * size, height * size, 0, 0, 0);
-			SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-			SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 		}
 		// an item scrolling off one end of the row also shows at the other end
 		if (menu->mMenuType == 3 && (item.mSlotOffset >= 3.02f || item.mSlotOffset <= -3.02f)) {
@@ -4319,19 +4316,19 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 				alpha = Abs(3.f + item.mSlotOffset);
 			}
 			menu->GetItemColor(i);
-			SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 			u32 wrapColor = 0xffffff00 | (u32)((255.f * fade) * alpha);
-			SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
-			SetGsTevMode(gs.mCurTevStage, 0);
+			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			DrawRingQuad(gGame.mGs, background, wrapColor, x, y, 0, width * size, height * size);
 			DrawRingQuad(gGame.mGs, tex, wrapColor, x, y, 0, width * size, height * size);
-			SetGsTevMode(gs.mCurTevStage, 4);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		}
 	}
-	SetGsCullMode(gs.mCurRenderMode, 2);
-	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 	SetGsChannelEnabled(&gGame.mGs, 0, 0);
-	SetGsDepthMode(gs.mCurRenderMode, 0, 7, 0);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 7, 0);
 	f32 zero = 0.0f;
 	for (s32 i = 0; i < count; ++i) {
 		OctaMenuItem& item = menu->mItems[i];
@@ -4359,8 +4356,8 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 #if !defined(VERSION_JP)
 		spacing *= 0.9f;
 #endif
-		SetGsDepthMode(gs.mCurRenderMode, 1, 7, 1);
-		SetGsTevMode(gs.mCurTevStage, 0);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		CTexObj tile       = RingTexture(menu, -2);
 		menu->mLabelLength = 0;
 		const char* p      = label;
@@ -4399,9 +4396,9 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 				             bob + (baseline + gEquipmentOutlineY[j]), 1, glyphSize, glyphSize, rotation, -zero);
 			DrawRingQuad(gGame.mGs, glyph, 0xfffffb00 | opacity, .5f * padding + cx, cy, 1, glyphSize, glyphSize, rotation, -zero);
 		}
-		SetGsTevMode(gs.mCurTevStage, 4);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
-	SetGsDepthMode(gs.mCurRenderMode, 1, 3, 0);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 }
 
 /**
@@ -5872,32 +5869,30 @@ void XObjChr::DrawObjectEffects()
 		u16 n = 0;
 		for (int turn = 0; turn < 8; ++turn)
 			for (int step = 0; step < 16; ++step) {
-				f32 angle = (TWO_PI / 16) * step;
-				Vec& v    = vertices[n];
-				v.x       = (2.f * (1.f - mBatteryWarningFade) + radius) * (f32)sin(angle);
-				v.y       = (2.f * (1.f - mBatteryWarningFade) + radius) * (f32)cos(angle);
-				v.z       = z;
-				f32 wave  = WrapAngle(phase);
+				f32 angle     = (TWO_PI / 16) * step;
+				vertices[n].x = (2.f * (1.f - mBatteryWarningFade) + radius) * (f32)sin(angle);
+				vertices[n].y = (2.f * (1.f - mBatteryWarningFade) + radius) * (f32)cos(angle);
+				vertices[n].z = z;
+				f32 wave      = WrapAngle(phase);
 				if (wave > PI)
 					wave = 0;
-				vertices[n + 1].x = v.x;
-				vertices[n + 1].y = v.y;
-				vertices[n + 1].z = v.z - 1.5f * (f32)sin(wave);
+				vertices[n + 1].x = vertices[n].x;
+				vertices[n + 1].y = vertices[n].y;
+				vertices[n + 1].z = vertices[n].z - 1.5f * (f32)sin(wave);
 				z += .08f;
 				phase += DEG2RAD * 30;
 				n += 2;
 			}
 		PSMTXMultVecArray(model, vertices, vertices, n);
-		CGs& gs = gGame.mGs;
-		n       = ShadeBatteryWarning(colors, 0xff000000, 200, this);
-		SetGsCullMode(gs.mCurRenderMode, 0);
-		SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-		DrawGsColoredTrianglePrimitive(&gs, GX_TRIANGLESTRIP, gs.mCamera->mViewMtx, vertices, colors, n);
+		n = ShadeBatteryWarning(colors, 0xff000000, 200, this);
+		SetGsCullMode(gGame.mGs.mCurRenderMode, 0);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, colors, n);
 		n = ShadeBatteryWarning(colors, 0xffffff00, 255, this);
-		SetGsBlendMode(gs.mCurRenderMode, 1, 2, 4, 15);
-		DrawGsColoredTrianglePrimitive(&gs, GX_TRIANGLESTRIP, gs.mCamera->mViewMtx, vertices, colors, n);
-		SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-		SetGsCullMode(gs.mCurRenderMode, 2);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+		DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, colors, n);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
 	}
 	Vec ground = { mMoveTranslate.x, mFloorHit.mHeight, mMoveTranslate.z };
 	DrawTumbleRing(&mTumble.mFade, ground, mMoveRotate.y);
