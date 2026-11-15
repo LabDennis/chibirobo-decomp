@@ -14,6 +14,7 @@
 #include "game/globals.h"
 #include "game/gmath.h"
 #include "game/animframe.h"
+#include "game/cgameutil.h"
 
 XObjSpider::~XObjSpider()
 {
@@ -553,57 +554,13 @@ void XObjSpider::DrawObjectEffects()
 		CVec pos(top);
 		f32 endX = pos.x;
 		f32 endZ = pos.z;
-		CGs* gs  = &gGame.mGs;
 		// HSD forgets its cached GX state, so the CGs state is marked dirty and sent again
-		HSD_StateInvalidate(HSD_STATE_ALL);
-		CGs* gs2 = &gGame.mGs;
-		if (gs2->mCurRenderMode != NULL) {
-			CGsRenderMode* mode = gs->mCurRenderMode;
-			if (mode->mPEDirty == 0) {
-				mode->mPEDirty = 1;
-			}
-			if (mode->mCullDirty == 0) {
-				mode->mCullDirty = 1;
-			}
-			if (mode->mLineDirty == 0) {
-				mode->mLineDirty = 1;
-			}
-			if (mode->mPointDirty == 0) {
-				mode->mPointDirty = 1;
-			}
-		}
-		CGsTevStage* stage = gs->mCurTevStage;
-		if (stage != NULL) {
-			if (stage->mStageDirty == 0) {
-				stage->mStageDirty = 1;
-			}
-			if (stage->mNumGensDirty == 0) {
-				stage->mNumGensDirty = 1;
-			}
-			if (stage->mTexGenDirty == 0) {
-				stage->mTexGenDirty = 1;
-			}
-		}
-		CGsChannel* channel = gs->mCurChannel;
-		if (channel != NULL) {
-			if (channel->mDirty == 0) {
-				channel->mDirty = 1;
-			}
-		}
-		CGs* gs3 = &gGame.mGs;
-		if (gs2->mCurRenderMode != NULL) {
-			ApplyGsRenderMode(gs3->mCurRenderMode, 1);
-		}
-		if (gs3->mCurTevStage != NULL) {
-			ApplyGsTevStage(gs3->mCurTevStage, 1);
-		}
-		if (gs3->mCurChannel != NULL) {
-			ApplyGsChannel(gs3->mCurChannel, 1);
-		}
+		InvalidateAll();
+		SetupAll(TRUE);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-		SetGsLineWidth(gs2->mCurRenderMode, 0x12, 5);
+		SetGsLineWidth(gGame.mGs.mCurRenderMode, 0x12, 5);
 		DrawGsLineSegment(&gGame.mGs, NULL, pos.x, pos.y, pos.z, color, endX, 300.0f, endZ, color);
-		SetGsLineWidth(gs2->mCurRenderMode, 0xC, 5);
+		SetGsLineWidth(gGame.mGs.mCurRenderMode, 0xC, 5);
 	}
 }
 

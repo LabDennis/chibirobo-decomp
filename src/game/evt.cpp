@@ -11586,7 +11586,7 @@ s32 CEvt::_cmd_BORN(u8, s32)
 static inline void EvtQueue_Push(u8* script, XObj* owner, s16 useValue, s16 hitValue)
 {
 	s32 cursor = gEventScriptQueue.mRead;
-	for (s32 i = 0; i < 128; i++, cursor++) {
+	for (s32 i = 0; i < 128; cursor++, i++) {
 		s32 index = cursor % 128;
 		if (gEventScriptQueue.mScript[index] == NULL) {
 			gEventScriptQueue.mScript[index]   = script;
@@ -11626,7 +11626,7 @@ static inline void CEvt_Attach(CEvt* evt, u8* script, XObj* owner, s16 useValue 
 	evt->mUseValue      = -1;
 	evt->mHitValue      = -1;
 	evt->mData.mScript  = script;
-	evt->mData.mContext = (evt->mOwner == NULL) ? owner : evt->mOwner;
+	evt->mData.mContext = (evt->mOwner != NULL) ? evt->mOwner : owner;
 	evt->mUseValue      = useValue;
 	evt->mHitValue      = hitValue;
 }
@@ -16951,12 +16951,20 @@ static inline void EvtWaitFor(CEvt* evt, u8 command, u8* start, s32 ready, s32& 
 // a wipe is done once its size stops
 static inline bool EvtZero2(const CScrnWipe& wipe)
 {
-	return 0.0f == wipe.mSpeedWidth && 0.0f == wipe.mSpeedHeight;
+	bool done = false;
+	if (0.0f == wipe.mSpeedWidth && 0.0f == wipe.mSpeedHeight) {
+		done = true;
+	}
+	return done;
 }
 
 static inline bool EvtZero3(const f32* p)
 {
-	return 0.0f == p[0] && 0.0f == p[1] && 0.0f == p[2];
+	bool done = false;
+	if (0.0f == p[0] && 0.0f == p[1] && 0.0f == p[2]) {
+		done = true;
+	}
+	return done;
 }
 
 // a screen color is done once its speed is all zero
@@ -17610,8 +17618,9 @@ extern "C" void CEvt_Update(CEvt* evt, s32 step)
 	if (evt->mData.mScript != NULL) {
 		s32 result = 0;
 		while (result == 0) {
-			u8 command = *evt->mData.mScript;
+			s32 op = *evt->mData.mScript;
 			evt->mData.mScript++;
+			u8 command = op;
 			for (s32 i = 1; i < 50; i++) {
 				if (command == evtCmdTable[i].command) {
 					result = (evt->*evtCmdTable[i].handler)(command, step);
@@ -17624,12 +17633,12 @@ extern "C" void CEvt_Update(CEvt* evt, s32 step)
 	}
 	if (evt->mOwner == NULL && !(gGame.mStatus.mFlags & 0xC00)) {
 		if (evt->mData.mScript == NULL) {
-			for (u32 i = 0; i < 10; i++) {
+			for (s32 i = 0; i < 10; i++) {
 				if (gEventTimers.mFrames[i] > 0) {
 					if ((gEventTimers.mFrames[i] -= step) <= 0) {
 						u8* script = (u8*)gEventTimers.mValue[i];
 						s32 cursor = gEventScriptQueue.mRead;
-						for (s32 j = 0; j < 128; j++, cursor++) {
+						for (s32 j = 0; j < 128; cursor++, j++) {
 							s32 index = cursor % 128;
 							if (gEventScriptQueue.mScript[index] == NULL) {
 								gEventScriptQueue.mScript[index] = script;
