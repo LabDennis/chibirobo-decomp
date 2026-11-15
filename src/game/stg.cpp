@@ -7887,7 +7887,10 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 		id = 0;
 	char text[256];
 	sprintf(text, "%s", GetUtilibotName(id));
-	color = (count <= 0 ? (u32)(0.4f * alpha) : opacity) | 0xFFFFFF00;
+	if (count <= 0)
+		color = (u32)(0.4f * alpha) | 0xFFFFFF00;
+	else
+		color = opacity | 0xFFFFFF00;
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[digitTexture], 0);
 	w   = scale * tex.GetWidth();
@@ -7914,11 +7917,13 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 				top    = (u8)alpha | 0xCECEFF00;
 				bottom = (u8)alpha | 0x5959FF00;
 			}
-			f32 digitX = 80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w))));
-#if !defined(VERSION_JP)
-			digitX = 18.0f * scale + digitX;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom,
+#if defined(VERSION_JP)
+			                   80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w)))),
+#else
+			                   18.0f * scale + (80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w))))),
 #endif
-			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, 8.0f * scale + y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			                   8.0f * scale + y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		}
 	}
@@ -7961,7 +7966,10 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, bool attachment
 		sprintf(text, "%s", GetAttachmentName(id));
 	else
 		sprintf(text, "%s", GetItemName(id));
-	color = (count <= 0 ? (u32)(0.4f * alpha) : opacity) | 0xFFFFFF00;
+	if (count <= 0)
+		color = (u32)(0.4f * alpha) | 0xFFFFFF00;
+	else
+		color = opacity | 0xFFFFFF00;
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[digitTexture], 0);
 	w   = scale * tex.GetWidth();
@@ -7988,11 +7996,13 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, bool attachment
 				top    = (u8)alpha | 0xEFEBC500;
 				bottom = (u8)alpha | 0xEDA83600;
 			}
-			f32 digitX = 80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w))));
-#if !defined(VERSION_JP)
-			digitX = 18.0f * scale + digitX;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom,
+#if defined(VERSION_JP)
+			                   80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w)))),
+#else
+			                   18.0f * scale + (80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w))))),
 #endif
-			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, 8.0f * scale + y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			                   8.0f * scale + y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		}
 	}
