@@ -2,10 +2,13 @@
 #if defined(VERSION_R24J01)
 #include "Dolphin/GX/GXFrameBuffer.h"
 #include "game/wii/cgame.h"
+#include "game/cfile.h"
 extern "C" {
 char* FormatToStaticBuffer(const char* format, ...);
 s32 _prolog(s32 function, s32 count, s32* args);
 }
+// the game's own aligned array new: MEMAllocFromExpHeapEx on the MEM2 game heap
+void* operator new[](size_t size, s32 align);
 #else
 #include "game/cgame.h"
 #include "game/ut.h"
@@ -2672,6 +2675,120 @@ StageDesc stageTable[] = {
 	{ "mariko", "mariko", NULL, -1, -1, 5 },
 	{ NULL, NULL, NULL, 0, 0, 0 },
 };
+
+// the Wii keeps the object, spawn and placement tables in its own data; their
+// accessors are the same as the GameCube file's
+extern UnkStageObj gStageObjectPlacements[];
+extern UnkStageObj spawnTable[];
+extern UnkObjData objTable[];
+extern UnkObjData objTableEx[];
+
+// placement fixup lists: id -1 ends each table
+struct PlacementChain {
+	u8 _00[8];
+	u32 mId;
+	u8 _0C[4];
+	s32* mChain;
+	s32 mIndex;
+};
+
+extern PlacementChain lbl_802F0138[];
+extern PlacementChain lbl_802FDB30[];
+
+/**
+ * @note Address: 0x80092EC8
+ * @note Size: 0xBC
+ */
+extern "C" void fn_80092EC8(void)
+{
+	PlacementChain* entry = lbl_802F0138;
+	for (;;) {
+		if (entry->mId == -1)
+			break;
+		entry->mIndex = 0;
+		if (entry->mChain != NULL)
+			while (entry->mChain[entry->mIndex] != 0)
+				entry->mIndex++;
+		entry++;
+	}
+	entry = lbl_802FDB30;
+	for (;;) {
+		if (entry->mId == -1)
+			break;
+		entry->mIndex = 0;
+		if (entry->mChain != NULL)
+			while (entry->mChain[entry->mIndex] != 0)
+				entry->mIndex++;
+		entry++;
+	}
+}
+
+/**
+ * @note Address: 0x80092F84
+ * @note Size: 0x3C
+ */
+extern "C" UnkObjData* GetObjData(const CoordInfo* info)
+{
+	s32 index = info->mPlacement->mObjectId;
+	if (index >= 10000)
+		return &objTableEx[index - 10000];
+	return &objTable[index];
+}
+
+/**
+ * @note Address: 0x80092FC0
+ * @note Size: 0x14
+ */
+extern "C" UnkStageObj* GetSpawnData(s32 index)
+{
+	return &spawnTable[index];
+}
+
+/**
+ * @note Address: 0x80092FD4
+ * @note Size: 0x14
+ */
+extern "C" UnkStageObj* GetStageObjectPlacementByIndex(s32 index)
+{
+	return &gStageObjectPlacements[index];
+}
+
+extern s32 gItemIconTextureIndices[];
+
+/**
+ * @note Address: 0x80092FE8
+ * @note Size: 0x24
+ */
+extern "C" s32 GetItemIconTextureIndex(s32 index)
+{
+	if (index < 0)
+		return -1;
+	return gItemIconTextureIndices[index];
+}
+
+// the object archives are ResourceFile slots from a shared pool, claimed as objects spawn
+ResourceFile* gObjResourceFiles;
+s32 gObjResourceFileCount;
+
+/**
+ * @note Address: 0x8009300C
+ * @note Size: 0x12C
+ */
+void AttrInfo::Init(CoordInfo* info)
+{
+	UnkObjData* objData    = GetObjData(info);
+	UnkStageObj* placement = info->mPlacement;
+	ResourceFile* files    = gObjResourceFiles;
+	mObjData               = objData;
+	mPlacement             = placement;
+	if (files == NULL)
+		gObjResourceFiles = new (4) ResourceFile[0x530];
+	if ((mObjData ? mObjData->mSource : NULL) == NULL)
+		return;
+	if ((mObjData ? mObjData->mSource : NULL) ? mObjData->mSource->mArchive : NULL)
+		return;
+	(mObjData ? mObjData->mSource : NULL)->mArchive = &gObjResourceFiles[gObjResourceFileCount++];
+}
 #endif
 
 /**

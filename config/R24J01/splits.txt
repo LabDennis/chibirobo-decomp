@@ -183,18 +183,24 @@ game/cprimitive.cpp:
 	.text start:0x802AF8E0 end:0x802AFDA8
 
 game/stage_data.cpp:
-	extab start:0x8000A210 end:0x8000A230
-	extabindex start:0x80012F68 end:0x80012F98
-	.text start:0x80092308 end:0x80092EC8
+	extab start:0x8000A210 end:0x8000A238
+	extabindex start:0x80012F68 end:0x80012FA4
+	.text start:0x80092308 end:0x80093138
 	.rodata start:0x802D8310 end:0x802D83EC
 	.data start:0x802FEEF0 end:0x802FF2C8
+	.sbss start:0x805A1C20 end:0x805A1C28
 	.sdata2 start:0x805A4030 end:0x805A4160
 
 game/globalresources.cpp:
-	extab start:0x8000A238 end:0x8000A248
-	extabindex start:0x80012FA4 end:0x80012FBC
-	.sdata start:0x805A0ED0 end:0x805A0ED4
-	.text start:0x80093138 end:0x800942E8
+	extab start:0x8000A238 end:0x8000A278
+	extabindex start:0x80012FA4 end:0x80013004
+	.sdata start:0x805A0ED0 end:0x805A0F00
+	.sdata2 start:0x805A4160 end:0x805A4180
+	.rodata start:0x802D83EC end:0x802D83FC
+	.data start:0x802FF300 end:0x802FF340
+	.text start:0x80093138 end:0x8009453C
+	.ctors start:0x802C4598 end:0x802C459C
+	.bss start:0x8044C198 end:0x8044C5A8
 
 game/wii/cpadact.cpp:
 	extab start:0x8000A600 end:0x8000A610
@@ -202,6 +208,10 @@ game/wii/cpadact.cpp:
 	.text start:0x800A8164 end:0x800A92CC
 	.sbss start:0x805A1C28 end:0x805A1C2C
 	.sdata2 start:0x805A4430 end:0x805A4468
+
+game/wii/ccamera.cpp:
+	.text start:0x800A92CC end:0x800A9320
+	.ctors start:0x802C45A0 end:0x802C45A4
 
 game/wii/savemanager.cpp:
 	extab start:0x8000A610 end:0x8000A6D0
