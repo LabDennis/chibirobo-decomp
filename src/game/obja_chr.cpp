@@ -4031,7 +4031,7 @@ extern "C" s32 FindPlayerSupportingFloor(XObjChr* chr, s32 group, s32 preferred)
 {
 	s32 result = -1;
 	if (chr->mFloorContacts[group].objectIndex >= 0) {
-		XObj* owner = gGame.mXObjs.mObjects[chr->mFloorContacts[group].objectIndex];
+		XObj* owner = gGame.GetObject(chr->mFloorContacts[group].objectIndex);
 		f32 best    = NAN;
 		for (int i = 0; owner->mFloors[i].mId != -1; i++) {
 			if (owner->mFloorMasks[group] & (1 << i)) {
