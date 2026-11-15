@@ -435,7 +435,7 @@ public:
 	WiiTitleObject mDemo;       // _09D8
 	WiiTitleFigure mFigures[3]; // _1388
 	CTpl mTpl;                  // _4118, the "title.cpp" archive the three textures come out of
-	CTexObj mTex[3];            // _4310, the title screen's textures: logo, footer and dust
+	CTexObj mTex[6];            // _4310, as on the GameCube; the Wii draws three of them: logo, footer and dust
 	s32 mSelection;             // _4928, the entry of the title menu, -1 while the pointer is on none
 	s32 mLastSelection;         // _492C
 	u8 _4930[0x493C - 0x4930];
