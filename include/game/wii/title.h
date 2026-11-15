@@ -339,6 +339,33 @@ public:
 	u8 _515C[0x5168 - 0x515C];
 	f32 mOptionBarLines[3]; // _5168, where its first value goes, by line
 
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+	void State5(u32 frames);
+	void State6(u32 frames);
+	void State7(u32 frames);
+	void State8(u32 frames);
+	void State9(u32 frames);
+	void State10(u32 frames);
+	void State11(u32 frames);
+	void State12(u32 frames);
+	void State13(u32 frames);
+	void State14(u32 frames);
+	void State15(u32 frames);
+	void State16(u32 frames);
+	void State17(u32 frames);
+	void State18(u32 frames);
+	void State19(u32 frames);
+	void State20(u32 frames);
+	void State21(u32 frames);
+	void State22(u32 frames);
+	void State23(u32 frames);
+	void State24(u32 frames);
+	void State25(u32 frames);
+
 	void UpdateSelections();
 };
 
