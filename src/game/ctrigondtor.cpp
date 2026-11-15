@@ -1,5 +1,13 @@
+#include "Version.h"
 #include "game/ctrigon.h"
 
+#if defined(VERSION_R24J01)
+// the weak dtor copy the GameCube file spells out by hand; retail 0x800BEB0C is the
+// minimal body (no member/vtable work)
+CTrigon::~CTrigon()
+{
+}
+#else
 void operator delete(void* object);
 extern "C" {
 extern void* __vt__7CTrigon[];
@@ -19,3 +27,4 @@ extern "C" CTrigon* __dt__7CTrigonFv(CTrigon* object, s32 flags)
 	}
 	return object;
 }
+#endif

@@ -1,4 +1,7 @@
+#include "Version.h"
+#if !defined(VERSION_R24J01)
 #include "game/hsd_jobj.h"
+#endif
 #include "game/ccameraaction.h"
 
 /**

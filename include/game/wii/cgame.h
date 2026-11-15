@@ -145,8 +145,8 @@ public:
 	virtual void SetInterest(const Vec& interest);        // _4C
 	virtual void SetAngle(const Vec& angle);              // _50
 	virtual void vf54();                                  // _54
-	virtual void vf58();                                  // _58
-	virtual void vf5C();                                  // _5C
+	virtual void SetAngleY(f32 y);                        // _58, ConfigureSubwindowCamera passes angleY here
+	virtual void SetAngleX(f32 x);                        // _5C, then angleX here - same order as the GameCube CCamera
 	virtual void vf60();                                  // _60
 	virtual void vf64();                                  // _64
 	virtual void vf68();                                  // _68
@@ -157,7 +157,7 @@ public:
 	virtual void vf7C();                                  // _7C
 	virtual void CalcDistance() { mView.CalcDistance(); } // _80
 	virtual void vf84();                                  // _84
-	virtual void vf88();                                  // _88
+	virtual void vf88(f32, f32, f32, f32, f32, f32);      // _88, FbSubwin::Init passes (0, 0, w, h, 0, 1)
 
 	u8 _04[0x4];
 	f32 mFov; // _08
@@ -319,6 +319,8 @@ struct WiiFlagSource {
 
 class CGame : public CBase {
 public:
+	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
+
 	s32 mLoadStep;
 	u8 _41EC[0x42FC - 0x41EC];
 	s32 mStage;

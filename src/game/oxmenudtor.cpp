@@ -1,3 +1,16 @@
+#include "Version.h"
+#if defined(VERSION_R24J01)
+#include "game/octamenu.h"
+
+// the weak dtor copies the GameCube file spells out by hand; on Wii the mark dtor
+// (0x800C1308) is the minimal body and OXMenu's emits __destroy_arr(mMark, dtor, 0x9B8, 2)
+OXMenuMark::~OXMenuMark()
+{
+}
+OXMenu::~OXMenu()
+{
+}
+#else
 #include "game/octamenu.h"
 #include "PowerPC_EABI_Support/Runtime/MWCPlusLib.h"
 
@@ -25,3 +38,4 @@ extern "C" OXMenu* __dt__6OXMenuFv(OXMenu* menu, s32 flags)
 	}
 	return menu;
 }
+#endif

@@ -1,3 +1,16 @@
+#include "Version.h"
+#if defined(VERSION_R24J01)
+#include "game/ringmenu.h"
+
+// the weak dtor copies the GameCube file spells out by hand; on Wii both are plain
+// out-of-line definitions (retail emits no vtable store and no base-dtor call)
+OctaMenu::~OctaMenu()
+{
+}
+AtcMenu::~AtcMenu()
+{
+}
+#else
 #include "game/octamenu.h"
 
 void operator delete(void* object);
@@ -43,3 +56,4 @@ extern "C" OctaMenu* __dt__8OctaMenuFv(OctaMenu* menu, s32 flags)
 	}
 	return menu;
 }
+#endif

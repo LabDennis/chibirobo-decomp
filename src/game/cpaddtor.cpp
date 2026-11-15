@@ -1,5 +1,13 @@
+#include "Version.h"
 #include "game/cpad.h"
 
+#if defined(VERSION_R24J01)
+// the weak dtor copy the GameCube file spells out by hand; on Wii the emitted body
+// is the minimal one (retail 0x800365D8, past game/wii/init.cpp's range)
+CPad::~CPad()
+{
+}
+#else
 extern "C" void* __vt__4CPad[];
 
 /**
@@ -17,3 +25,4 @@ extern "C" CPad* __dt__4CPadFv(CPad* pad, s32 flags)
 	}
 	return pad;
 }
+#endif

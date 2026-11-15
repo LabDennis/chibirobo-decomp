@@ -1,10 +1,27 @@
 #ifndef _GAME_CTOON_H
 #define _GAME_CTOON_H
 
+#include "Version.h"
+#include "types.h"
+#if defined(VERSION_R24J01)
+#include "Dolphin/GX/GXEnum.h"
+// the Wii build kept the same desc struct the stores prove at +0x800:
+// img_ptr/width/height/format/mipmap/minLOD/maxLOD (retail InitToonTexture 0x802BD294).
+// There is no sysdolphin on Wii, so the layout is declared under the same name.
+typedef struct _HSD_ImageDesc {
+	void* img_ptr;
+	u16 width;
+	u16 height;
+	GXTexFmt format;
+	u32 mipmap;
+	f32 minLOD;
+	f32 maxLOD;
+} HSD_ImageDesc;
+#else
 extern "C" {
 #include <sysdolphin/tobj.h>
 }
-#include "types.h"
+#endif
 
 // the toon ramp CGame keeps at +0x3460, the desc gets handed to SetToonTObj
 struct ToonTexture {

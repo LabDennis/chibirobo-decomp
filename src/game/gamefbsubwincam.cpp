@@ -1,4 +1,10 @@
+#include "Version.h"
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#else
 #include "game/cgame.h"
+#endif
+#include "game/fbtexeff.h"
 
 /**
  * @note Address: 0x800136B4
