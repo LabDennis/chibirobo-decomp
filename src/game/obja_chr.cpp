@@ -2581,6 +2581,12 @@ static inline void TurnJoint(f32 angle, CJointRot* rot)
 	rot->mTarget = angle;
 }
 
+// the joint rests or is already on its way back
+static inline bool IsTurnOver(const CJointRot* rot)
+{
+	return rot->mMode == 0 || rot->mMode == 2;
+}
+
 extern "C" {
 // the idle anim id of each suit, in mCurrent order
 s32 gPlayerSuitIdleAnimations[9] = { 1, 0xCF7, 0xCF9, 0xCF8, 0xCFD, 1, 0xCFA, 0xCFB, 0xCFC };
@@ -6586,16 +6592,11 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 	}
 }
 
-static inline bool CanLookAtObjects(XObjChr* player)
+// an action that is not running, or sits in its resting state
+static inline bool IsActionIdleOr(const XAction& action, s32 rest)
 {
-	if (gGame.mEvt.mData.mScript != NULL || (gGame.mStatus.mFlags & 0x100) || player->mFloorContacts[4].objectIndex >= 0)
-		return false;
-	if (player->GetAttachment() == 1 || player->GetAttachment() == 2 || player->GetAttachment() == 3)
-		return false;
-	return (player->mLift.mState == 0 || player->mLift.mState == 4) && (player->mHang.mState == 0 || player->mHang.mState == 5)
-	    && player->mJump.mState == 0 && (player->mLadder.mState == 0 || player->mLadder.mState == 5)
-	    && (player->mRope.mState == 0 || player->mRope.mState == 5) && player->mPush.mState == 0 && player->mTumble.mState == 0
-	    && player->mCopter.mState == 0 && player->mPopper.mState == 0 && player->mRadar.mState == 0;
+	s32 state = action.mState;
+	return state == 0 || state == rest;
 }
 
 static inline bool IsActiveActionTarget(const XAction& action, const XObj* object)
@@ -6607,9 +6608,20 @@ static inline bool IsActiveActionTarget(const XAction& action, const XObj* objec
  * @note Address: 0x800A9590
  * @note Size: 0x82C
  */
+// NONMATCHING: retail keeps the object in r31 and its look priority in r30, the build the other way round
 extern "C" void UpdatePlayerLookAtObjects(XObjChr* player, u32 frames)
 {
-	bool enabled = CanLookAtObjects(player);
+	BOOL enabled;
+	if (gGame.mEvt.mData.mScript != NULL || (gGame.mStatus.mFlags & 0x100) || player->mFloorContacts[4].objectIndex >= 0)
+		enabled = FALSE;
+	else if (player->GetAttachment() == 1 || player->GetAttachment() == 2 || player->GetAttachment() == 3)
+		enabled = FALSE;
+	else if (IsActionIdleOr(player->mLift, 4) && IsActionIdleOr(player->mHang, 5) && player->mJump.mState == 0
+	         && IsActionIdleOr(player->mLadder, 5) && IsActionIdleOr(player->mRope, 5) && player->mPush.mState == 0
+	         && player->mTumble.mState == 0 && player->mCopter.mState == 0 && player->mPopper.mState == 0 && player->mRadar.mState == 0)
+		enabled = TRUE;
+	else
+		enabled = FALSE;
 	CVec pos(player->mMoveTranslate);
 	s32 path[] = { 0, 1, 0, 1, 2 };
 	CVec head  = GetEventJointWorldPosition(player, 5, path);
@@ -6620,7 +6632,7 @@ extern "C" void UpdatePlayerLookAtObjects(XObjChr* player, u32 frames)
 		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 			XObj* obj = gGame.GetObject(i);
 			if (!(obj->mStatus.mFlags & 1) || !(obj->mStatus.mFlags & 0x10000) || (obj->mStatus.mFlags & 0x4000000000000000ULL)
-			    || obj->mId == player->mId || obj->GetKind() >= 10000)
+			    || (s32)player->mId == (s32)obj->mId || obj->GetKind() >= 10000)
 				continue;
 			if (IsActiveActionTarget(player->mLift, obj) || IsActiveActionTarget(player->mHang, obj)
 			    || IsActiveActionTarget(player->mJump, obj) || IsActiveActionTarget(player->mLadder, obj)
@@ -6628,31 +6640,30 @@ extern "C" void UpdatePlayerLookAtObjects(XObjChr* player, u32 frames)
 			    || IsActiveActionTarget(player->mTumble, obj) || IsActiveActionTarget(player->mCopter, obj)
 			    || IsActiveActionTarget(player->mPopper, obj) || IsActiveActionTarget(player->mRadar, obj))
 				continue;
-			s16 priority = obj->mAttr.mObjData != NULL ? obj->mAttr.mObjData->mLookPriority : 0;
+			s16 priority = obj->GetLookPriority();
 			if (priority == 0)
 				continue;
-			Vec target = obj->mMoveTranslate;
-			if (!(target.y > pos.y - 4.0f && target.y < 4.0f + head.y))
-				continue;
-			f32 dx       = pos.x - target.x;
-			f32 dz       = pos.z - target.z;
-			f32 distance = sqrtf(dx * dx + dz * dz);
-			s16 range    = obj->mAttr.mObjData != NULL ? obj->mAttr.mObjData->mLookRange : 0;
-			if (!(distance < range))
-				continue;
-			f32 yaw = WrapAngle((f32)atan2(target.x - pos.x, target.z - pos.z) - player->mMoveRotate.y);
-			if (yaw <= HALF_PI || yaw >= 3.0f * HALF_PI) {
-				BOOL select = FALSE;
-				if (best == NULL)
-					select = TRUE;
-				else if (priority > bestPriority)
-					select = TRUE;
-				else if (priority == bestPriority && distance < nearest)
-					select = TRUE;
-				if (select) {
-					nearest      = distance;
-					best         = obj;
-					bestPriority = priority;
+			CVec target(obj->mMoveTranslate);
+			if (target.y > pos.y - 4.0f && target.y < 4.0f + head.y) {
+				f32 dx       = pos.x - target.x;
+				f32 dz       = pos.z - target.z;
+				f32 distance = sqrtf(dx * dx + dz * dz);
+				if (distance < obj->GetLookRange()) {
+					f32 yaw = WrapAngle((f32)atan2(target.x - pos.x, target.z - pos.z) - player->mMoveRotate.y);
+					if (yaw <= HALF_PI || yaw >= 3.0f * HALF_PI) {
+						BOOL select = FALSE;
+						if (best == NULL)
+							select = TRUE;
+						else if (priority > bestPriority)
+							select = TRUE;
+						else if (priority >= bestPriority && distance < nearest)
+							select = TRUE;
+						if (select) {
+							nearest      = distance;
+							best         = obj;
+							bestPriority = priority;
+						}
+					}
 				}
 			}
 		}
@@ -6660,7 +6671,7 @@ extern "C" void UpdatePlayerLookAtObjects(XObjChr* player, u32 frames)
 	if (best != NULL) {
 		f32 yaw = atan2(best->mMoveTranslate.x - pos.x, best->mMoveTranslate.z - pos.z);
 		TurnJoint(yaw - player->mMoveRotate.y, &player->mJointRot);
-	} else if (player->mJointRot.mMode != 0 && player->mJointRot.mMode != 2) {
+	} else if (!IsTurnOver(&player->mJointRot)) {
 		player->mJointRot.mMode   = 2;
 		player->mJointRot.mTarget = 0.0f;
 		player->mJointRot.mLookAt = NULL;

@@ -235,12 +235,41 @@ public:
 		}
 		return 0;
 	}
+	// how much the player's head prefers this object, and from how far; 0 without a kind record
+	static s16 GetDataLookPriority(const UnkObjData* data)
+	{
+		if (data != NULL) {
+			return data->mLookPriority;
+		}
+		return 0;
+	}
+	static s16 GetDataLookRange(const UnkObjData* data)
+	{
+		if (data != NULL) {
+			return data->mLookRange;
+		}
+		return 0;
+	}
 	s16 GetCategory() const
 	{
 		if (mAttr.mObjData != NULL) {
 			return GetDataCategory(mAttr.mObjData);
 		}
 		return -1;
+	}
+	s16 GetLookPriority() const
+	{
+		if (mAttr.mObjData != NULL) {
+			return GetDataLookPriority(mAttr.mObjData);
+		}
+		return 0;
+	}
+	s16 GetLookRange() const
+	{
+		if (mAttr.mObjData != NULL) {
+			return GetDataLookRange(mAttr.mObjData);
+		}
+		return 0;
 	}
 	s16 GetItem() const
 	{

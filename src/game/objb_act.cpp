@@ -3495,13 +3495,9 @@ static inline u32 CheckHangClearance(XObj* obj, const CVec& from, const CVec& to
 
 void TryLeaveHang(XActHang* act)
 {
-	const Vec& radiusExtent = GetFloorExtent(act->mOwner->mFloors);
-	f32 radius              = act->mOwner->mMoveScale.x * radiusExtent.x;
-	const Vec& extent       = GetFloorExtent(act->mOwner->mFloors);
-	const Vec& offset       = GetFloorOffset(act->mOwner->mFloors);
-	f32 halfHeight          = 0.5f * (act->mOwner->mMoveScale.x * (offset.y + extent.y));
-	s32 path[]              = { 0 };
-	Vec position            = GetEventJointWorldPosition(act->mOwner, 1, path);
+	f32 radius     = act->mOwner->mMoveScale.x * GetFloorExtent(act->mOwner->mFloors).x;
+	f32 halfHeight = 0.5f * (act->mOwner->mMoveScale.x * (GetFloorOffset(act->mOwner->mFloors).y + GetFloorExtent(act->mOwner->mFloors).y));
+	Vec position   = GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 });
 	position.y += 0.5f;
 
 	u32 blockingHit = 0;
