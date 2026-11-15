@@ -54,7 +54,8 @@ static inline void SetToyBlinkVisibility(XObjActorToy* toy, CJObj& joint)
 	} while (0)
 
 // NONMATCHING: retail calls CJObj's destructor at every return where the build inlines it, and copies each burst's
-// rotation from the six Vecs its .rodata starts with
+// rotation from the six Vecs its .rodata starts with. The speed table is an array of its own in retail's .data, and
+// the heading to the walk target comes from an inline whose vector temporary dies before SetRotationY
 void XObjActorToy::ProcessPendingEvents(u32 frames)
 {
 	XObjActorToy* toy = this;
@@ -215,15 +216,16 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 			if (toy->mKindStep == 2)
 				toy->mMovePhase += 2;
 			toy->mMoveSpeed = gActorToyAnimationData.movementSpeeds[toy->mMovePhase % 60];
-			if (PSVECDistance(&toy->mMoveTranslate, &CVec(toy->mVelocity)) < 0.1f) {
+			f32 distance    = PSVECDistance(&toy->mMoveTranslate, &CVec(toy->mVelocity.x, toy->mVelocity.y, toy->mVelocity.z));
+			if (distance < 0.1f) {
 				toy->mMoveSpeed = 0;
 				toy->mKindStep  = 0;
 				toy->mKindFlags.mFlags &= ~1;
 				toy->SetPos(toy->mVelocity.x, toy->mVelocity.y, toy->mVelocity.z, 0);
-				toy->SetMoveDir(&CVec(toy->mMoveTranslate), 0);
+				toy->SetMoveDir(&CVec(toy->mMoveTranslate.x, toy->mMoveTranslate.y, toy->mMoveTranslate.z), 0);
 			} else {
-				toy->SetMoveDir(&CVec(toy->mVelocity), toy->mMoveSpeed);
-				CVec destination(toy->mVelocity);
+				toy->SetMoveDir(&CVec(toy->mVelocity.x, toy->mVelocity.y, toy->mVelocity.z), toy->mMoveSpeed);
+				CVec destination(toy->mVelocity.x, toy->mVelocity.y, toy->mVelocity.z);
 				toy->SetRotationY((f32)atan2(destination.x - toy->mMoveTranslate.x, destination.z - toy->mMoveTranslate.z), 0);
 			}
 			break;
@@ -245,32 +247,48 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 		joint.Attach(GetObjectJointByPath(toy, 5, second));
 		joint.SetScale(toy->_9A8, toy->_9A8, toy->_9A8, 0);
 		// rode toy 0x157 down to the floor: it hides
-		if ((toy->mKindFlags.mFlags & 1) && toy->mKindStep == 0 && toy->mMoveTranslate.y <= 2.0f) {
-			++toy->mKindStep;
-			toy->mStatus.mFlags &= ~0x10000ULL;
+		if (toy->mKindFlags.mFlags & 1) {
+			switch (toy->mKindStep) {
+			case 0:
+				if (toy->mMoveTranslate.y <= 2.0f) {
+					++toy->mKindStep;
+					toy->mStatus.mFlags &= ~0x10000ULL;
+				}
+				break;
+			case 1:
+				break;
+			case 2:
+				break;
+			}
 		}
 		break;
 	}
 	case 0x157:
 		// step 0: once pushed off the edge (XObj's falling flag) it moves 14 ahead and tells toy 0x156 (flag 0x10); step 1: down on
 		// the floor it hides and toy 0x16C appears in its place
-		if (toy->mKindStep == 0 && (toy->mStatus.mFlags & 0x1000000000000000ULL)) {
-			toy->mActorStatus.mFlags |= 4;
-			toy->mActorStatus.mFlags |= 8;
-			toy->mMoveSpeed  = 0.5f;
-			toy->mVelocity.x = 14.0f * (f32)sin(toy->mHeading) + toy->mMoveTranslate.x;
-			toy->mVelocity.y = toy->mMoveTranslate.y;
-			toy->mVelocity.z = 14.0f * (f32)cos(toy->mHeading) + toy->mMoveTranslate.z;
-			++toy->mKindStep;
-			PlayGameSound(&gGame.mSound, 0x10017, 255);
-			for (s32 i = 0; i < 15; ++i) {
-				XObjActorToy* other = GetToy(i);
-				if (other->GetKind() == 0x156) {
-					other->mKindFlags.mFlags |= 0x10;
-					break;
+		switch (toy->mKindStep) {
+		case 2:
+			break;
+		case 0:
+			if (toy->mStatus.mFlags & 0x1000000000000000ULL) {
+				toy->mActorStatus.mFlags |= 4;
+				toy->mActorStatus.mFlags |= 8;
+				toy->mMoveSpeed  = 0.5f;
+				toy->mVelocity.x = 14.0f * (f32)sin(toy->mHeading) + toy->mMoveTranslate.x;
+				toy->mVelocity.y = toy->mMoveTranslate.y;
+				toy->mVelocity.z = 14.0f * (f32)cos(toy->mHeading) + toy->mMoveTranslate.z;
+				++toy->mKindStep;
+				PlayGameSound(&gGame.mSound, 0x10017, 255);
+				for (s32 i = 0; i < 15; ++i) {
+					XObjActorToy* other = GetToy(i);
+					if (other->GetKind() == 0x156) {
+						other->mKindFlags.mFlags |= 0x10;
+						break;
+					}
 				}
 			}
-		} else if (toy->mKindStep == 1) {
+			break;
+		case 1:
 			if (GetToyHorizontalDistance(&toy->mVelocity, &toy->mMoveTranslate) < 1.0f) {
 				toy->mActorStatus.mFlags &= ~4;
 				toy->mActorStatus.mFlags &= ~8;
@@ -293,6 +311,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 					}
 				}
 			}
+			break;
 		}
 		break;
 	case 0x16c:
