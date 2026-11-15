@@ -187,14 +187,17 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, u32 arg3, 
 	return &font->mTex;
 }
 
-// NONMATCHING: identical instruction stream except stack layout: retail puts
-// the GetCharWidths return value at 0x8(r1) and the widths copy at 0xc(r1);
-// MWCC allocates them the other way round for every source ordering tried.
+// the advance metrics of one character in the loaded resource font
+static inline nw4r::ut::CharWidths GetGlyphWidths(nw4r::ut::ResFont* font, u16 code)
+{
+	return font->GetCharWidths(code);
+}
+
 /**
  * @note Address: 0x802B41EC
  * @note Size: 0xC8
  */
-extern "C" s8 HasFontGlyph(CFont* font, const char* str)
+extern "C" s32 HasFontGlyph(CFont* font, const char* str)
 {
 	CFile* file = &sFontResource.mFile;
 	if (file->IsLoaded()) {
@@ -202,8 +205,7 @@ extern "C" s8 HasFontGlyph(CFont* font, const char* str)
 		if ((code >= 0x81 && code <= 0x9F) || (code >= 0xE0 && code <= 0xFC)) {
 			code = (code << 8) | (u8)str[1];
 		}
-		nw4r::ut::CharWidths glyph  = sFontResource.mParser.GetCharWidths(code);
-		nw4r::ut::CharWidths widths = glyph;
+		nw4r::ut::CharWidths widths = GetGlyphWidths(&sFontResource.mParser, code);
 		return widths.left;
 	}
 	return 0;
