@@ -788,12 +788,6 @@ dolphin/gx/GXAttr.c:
 dolphin/OdemuExi2/DebuggerDriver.c:
 	.text start:0x8017B738 end:0x8017B95C
 
-dolphin/os/OS.c:
-	.text start:0x8017F698 end:0x80180B10
-
-dolphin/os/OSExec.c:
-	.text start:0x801836D4 end:0x80184864
-
 revolution/OS/OSMemory.c:
 	.text start:0x80187B98 end:0x801882D0
 	.data start:0x80310D50 end:0x80310D60
@@ -811,24 +805,6 @@ revolution/OS/OSReset.c:
 
 dolphin/os/__ppc_eabi_init.cpp:
 	.text start:0x8018E5EC end:0x8018E654
-
-dolphin/dvd/dvdfs.c:
-	.text start:0x80190208 end:0x801906E8
-
-dolphin/dvd/dvd.c:
-	.text start:0x801908E8 end:0x80195680
-
-dolphin/dvd/dvderror.c:
-	.text start:0x80196260 end:0x801962C8
-
-dolphin/dvd/dvdFatal.c:
-	.text start:0x801964AC end:0x80196508
-
-dolphin/dvd/dvdlow.c:
-	.text start:0x80197CE0 end:0x80197E48
-
-dolphin/vi/vi.c:
-	.text start:0x80199734 end:0x8019B370
 
 dolphin/gx/GXInit.c:
 	.text start:0x801A5598 end:0x801A664C
@@ -880,3 +856,66 @@ MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/ansi_fp.c:
 
 MSL_C.PPCEABI.bare.H/MSL_Common/FILE_POS.C:
 	.text start:0x80229D2C end:0x80229EF0
+
+revolution/OS/OS.c:
+	.text start:0x8017F698 end:0x80180BB4
+
+revolution/OS/OSExec.c:
+	.text start:0x801831E8 end:0x80184864
+
+revolution/OS/OSUtf.c:
+	.text start:0x8018B738 end:0x8018B970
+
+revolution/OS/OSIpc.c:
+	.text start:0x8018B970 end:0x8018B998
+
+revolution/OS/OSStateTM.c:
+	.text start:0x8018B998 end:0x8018C010
+
+revolution/OS/OSPlayRecord.c:
+	.text start:0x8018C010 end:0x8018C708
+
+revolution/OS/OSNet.c:
+	.text start:0x8018C914 end:0x8018CE78
+
+revolution/OS/OSNandbootInfo.c:
+	.text start:0x8018CE78 end:0x8018D080
+
+revolution/OS/OSPlayTime.c:
+	.text start:0x8018D080 end:0x8018D82C
+
+revolution/OS/OSLaunch.c:
+	.text start:0x8018D82C end:0x8018E5EC
+
+revolution/MTX/quat.c:
+	.text start:0x8018FEA0 end:0x80190208
+
+revolution/DVD/dvdfs.c:
+	.text start:0x80190208 end:0x80190830
+
+revolution/DVD/dvd.c:
+	.text start:0x80190830 end:0x8019568C
+
+revolution/DVD/dvderror.c:
+	.text start:0x801958E4 end:0x801962C8
+
+revolution/DVD/dvdidutils.c:
+	.text start:0x801962C8 end:0x801963B8
+
+revolution/DVD/dvdFatal.c:
+	.text start:0x801963B8 end:0x80196534
+
+revolution/DVD/dvdDeviceError.c:
+	.text start:0x80196534 end:0x801967CC
+
+revolution/DVD/dvd_broadway.c:
+	.text start:0x801967CC end:0x80198D8C
+
+revolution/VI/vi.c:
+	.text start:0x80198D8C end:0x8019B6DC
+
+revolution/VI/i2c.c:
+	.text start:0x8019B6DC end:0x8019BFE0
+
+revolution/VI/vi3in1.c:
+	.text start:0x8019BFE0 end:0x8019D69C
