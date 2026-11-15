@@ -349,6 +349,15 @@ struct WiiCordWire {
 	virtual void SetPosition(const Vec* pos); // _90
 };
 
+// the plug block embedded in the player at +0x9E20, the GameCube's mPlug (XObjPlug). The anchor
+// transform takes the whole block; only the connection word the cord simulation reads is verified
+struct WiiPlayerPlug {
+	u8 _0000[0xD64];
+	s32 mConnection; // _D64, XActLift's _54 with 0x10000 set
+	u8 _D68[0xDA0 - 0xD68];
+};
+STATIC_ASSERT(sizeof(WiiPlayerPlug) == 0xDA0);
+
 // the yes/no menu CMsg__cmd_QUESTION opens on the player, the GameCube's mOXMenu. its input poll
 // is HandleOXMenuInput at 0x800EF58C
 struct WiiOXMenu {
@@ -364,13 +373,17 @@ struct WiiPlayerState {
 	WiiPlayerVtable* mVtable;
 	u8 _0004[0x64 - 0x04];
 	f32 mRotY; // _0064, mMoveRotate.y
-	u8 _0068[0x9920 - 0x68];
+	u8 _0068[0x710 - 0x68];
+	f32 mFloorHitHeight; // _0710, the height the player's own floor probe hit, the GameCube's
+	                     // mFloorHit.mHeight
+	u8 _0714[0x9920 - 0x714];
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
 	u8 _992C[0x999C - 0x992C];
 	WiiPlayerParams mParams; // _999C
-	u8 _9DDC[0xABC0 - 0x9DDC];
+	u8 _9DDC[0x9E20 - 0x9DDC];
+	WiiPlayerPlug mPlug;   // _9E20, the GameCube's mPlug (XObjPlug)
 	WiiCordWire mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
 	u8 _ABC4[0xDC50 - 0xABC4];
 	WiiPlayerSuits mSuits; // _DC50
@@ -428,7 +441,10 @@ public:
 	WiiHomeMenu mHomeMenu;         // _B148
 	u8 _B7A8[0xF70C - 0xB7A8];
 	WiiPlayerState* mPlayer; // _F70C
-	u8 _F710[0xF770 - 0xF710];
+	u8 _F710[0xF720 - 0xF710];
+	void* mMap; // _F720, the static map the cord's floor probe scans, the GameCube's
+	            // mXObjs.mPools[3].mObjects
+	u8 _F724[0xF770 - 0xF724];
 	WiiFlagSource* mCoins; // _F770
 	u8 _F774[0xF784 - 0xF774];
 	WiiFlagSource* mItems; // _F784
@@ -442,7 +458,8 @@ public:
 	WiiFlagSource* mDust; // _F874
 	u8 _F878[0xF8B0 - 0xF878];
 	WiiTitleObject* mObjects[0x400]; // _F8B0, the object table ResolveEventObjectId indexes
-	u8 _108B0[0x108C8 - 0x108B0];
+	s32 mObjectCount;                // _108B0, how many entries mObjects holds
+	u8 _108B4[0x108C8 - 0x108B4];
 	// pointers to spawned objects the renderer walks; entries are grouped in eights,
 	// CMsgFont_Init pushes its two cursors here
 	WiiObjectRef* mObjectRefs; // _108C8

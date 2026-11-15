@@ -125,7 +125,7 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 		for (s32 i = 0; i < cord->mCount; ++i)
 			CopyCordPos(points[i].mTarget, points[i].mPos);
 	}
-	u32 old   = cord->mMode;
+	s32 old   = cord->mMode;
 	s32 state = gGame.GetPlayer()->mPlug.mConnection;
 	if (state < 0)
 		cord->mMode = 3;
@@ -139,6 +139,8 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 			cord->mMode = 2;
 		else if (kind == 3)
 			cord->mMode = 4;
+		else
+			cord->mMode = 0;
 	}
 	if (cord->mMode != old) {
 		switch (cord->mMode) {
@@ -158,6 +160,7 @@ extern "C" void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames)
 			ResetSparks(cord->mNodes, 0xff, -1, 1, 2);
 			ConfigurePlugWireEffect(&gGame.GetPlayer()->mPlug.mWire, -1, 0x52, 1, 0xff);
 			break;
+		case 0:
 		default:
 			ResetSparks(cord->mNodes, 0, 0, 0, 0);
 			ClearWireEffect(&gGame.GetPlayer()->mPlug.mWire);

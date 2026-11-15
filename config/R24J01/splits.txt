@@ -703,12 +703,13 @@ game/ccameraactionreset.cpp:
 	.text start:0x8016670C end:0x80166D50
 
 game/wii/xobjplugcord.cpp:
-	extab start:0x8000D644 end:0x8000D67C
-	extabindex start:0x80014B7C end:0x80014BD0
-	.text start:0x80110C2C end:0x80111ADC
-	.bss start:0x8045BED0 end:0x8045D6E0
-	.sbss start:0x805A1C70 end:0x805A1C74
-	.sdata2 start:0x805A5390 end:0x805A53D0
+	extab start:0x8000D644 end:0x8000D724
+	extabindex start:0x80014B7C end:0x80014C18
+	.text start:0x80110C2C end:0x80113394
+	.bss start:0x8045BED0 end:0x8045D700
+	.sdata start:0x805A1150 end:0x805A1158
+	.sbss start:0x805A1C70 end:0x805A1C80
+	.sdata2 start:0x805A5390 end:0x805A53F8
 
 game/wii/params.cpp:
 	extab start:0x8000D724 end:0x8000D734

@@ -6,6 +6,7 @@
 #include "Dolphin/mtx.h"
 #include "game/ut.h"
 class XObj;
+class WiiTitleObject;
 class XObjPlug;
 class XObjCopter;
 #else
@@ -102,7 +103,7 @@ struct XObjPlugCord {
 	CVec mPull; // _6C, the cord's pull on its pinned first end, the first segment's correction negated; drags the player while the plug is
 	            // connected
 	XObjMapHit mFloorHit;     // _7C
-	u32 mMode;                // _88
+	s32 mMode;                // _88
 	XObjPlugCordNodes mNodes; // _8C
 };
 STATIC_ASSERT(sizeof(XObjPlugCord) == 0x394);
@@ -212,10 +213,11 @@ CVec GetPlugCordPointPosition(const XObjPlugCord* cord, s32 index);
 void GetPlayerPlugCordAnchorTransform(void*, Vec* position, Vec* rotation, Vec* scale);
 void UpdatePlugCordSimulation(XObjPlugCord* cord, u32 frames);
 void ResetPlayerPlugState(XObjPlug* plug, BOOL resetJoint);
-// the cord, the scale arguments go unused; the Wii draw takes the node block, the GameCube
-// the whole cord
+// the cord, the scale arguments go unused; the Wii splits the GS-state entry
+// (DrawPlugCordNodes) from the node loop (DrawPlugCordSparks), the GameCube did both
 #if defined(VERSION_R24J01)
-void DrawPlugCordNodes(XObjPlugCordNodes* nodes, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ);
+void DrawPlugCordNodes(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ);
+void DrawPlugCordSparks(XObjPlugCordNodes* nodes, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ);
 #else
 void DrawPlugCordNodes(XObjPlugCord* cord, Mtx view, f32 scaleX, f32 scaleY, f32 scaleZ);
 #endif
@@ -224,7 +226,12 @@ void SetPlugCordAlphaMode(XObjPlugCord* cord, BOOL enabled, u8 alpha);
 void SetPlugCordEndpointSource(XObjPlugCord* cord, u32 index, const Vec* source);
 void ResetPlugCordPoints(XObjPlugCord* cord, f32 x, f32 y, f32 z);
 f32 FindPlugCordFloor(XObjPlugCord* cord, Vec* pos, f32 radius, f32 height);
+// the Wii object class is not reconstructed; the cord passes the table's WiiTitleObject
+#if defined(VERSION_R24J01)
+BOOL PushPlugCordPointFromObject(CVec* pos, WiiTitleObject* object, f32 radius);
+#else
 BOOL PushPlugCordPointFromObject(CVec* pos, XObj* object, f32 radius);
+#endif
 void InitPlugCord(XObjPlugCord* cord, s32 count, f32 x, f32 y, f32 z, f32 speed);
 void UpdatePlugCordNodes(XObjPlugCordNodes* nodes, XObjPlugCordPoint* points, s32 count, u32 frames);
 void UpdatePlugCordSpark(XObjPlugCordNode* node, XObjPlugCordPoint* points, s32 count, f32 value);

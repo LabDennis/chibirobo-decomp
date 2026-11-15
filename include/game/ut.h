@@ -49,6 +49,7 @@ public:
 	void Set(const Vec& v) { Set(v.x, v.y, v.z); }
 	// in game/cvec.h, they need the sdk's vec functions
 	void operator+=(const Vec& v);
+	void operator-=(const Vec& v);
 	f32 Length() const;
 	CVec& Normalize();
 
