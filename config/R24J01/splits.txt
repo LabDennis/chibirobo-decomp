@@ -859,63 +859,122 @@ MSL_C.PPCEABI.bare.H/MSL_Common/FILE_POS.C:
 
 revolution/OS/OS.c:
 	.text start:0x8017F698 end:0x80180BB4
+	.data start:0x8030F478 end:0x8030F988
+	.bss start:0x804CC4C0 end:0x804CC530
+	.sdata start:0x805A13A8 end:0x805A13D8
+	.sbss start:0x805A1E78 end:0x805A1EC0
+	.sdata2 start:0x805A6410 end:0x805A6418
 
 revolution/OS/OSExec.c:
 	.text start:0x801831E8 end:0x80184864
+	.data start:0x80310150 end:0x803101C0
+	.bss start:0x804CC580 end:0x804CC5A0
+	.sdata start:0x805A13F0 end:0x805A1400
+	.sbss start:0x805A1EE0 end:0x805A1EF8
+	.sdata2 start:0x805A6418 end:0x805A6420
 
 revolution/OS/OSUtf.c:
 	.text start:0x8018B738 end:0x8018B970
+	.data start:0x80311048 end:0x8031CE88
 
 revolution/OS/OSIpc.c:
 	.text start:0x8018B970 end:0x8018B998
+	.sdata start:0x805A1420 end:0x805A1428
+	.sbss start:0x805A1F50 end:0x805A1F58
 
 revolution/OS/OSStateTM.c:
 	.text start:0x8018B998 end:0x8018C010
+	.data start:0x8031CE88 end:0x8031CF50
+	.bss start:0x804CD2E0 end:0x804CD3A0
+	.sbss start:0x805A1F58 end:0x805A1F78
 
 revolution/OS/OSPlayRecord.c:
 	.text start:0x8018C010 end:0x8018C708
+	.data start:0x8031CF50 end:0x8031CF98
+	.bss start:0x804CD3A0 end:0x804CD5A0
+	.sdata start:0x805A1428 end:0x805A1430
+	.sbss start:0x805A1F80 end:0x805A1FA0
 
 revolution/OS/OSNet.c:
 	.text start:0x8018C914 end:0x8018CE78
+	.data start:0x8031CFC0 end:0x8031D128
+	.bss start:0x804CD5C0 end:0x804CD680
+	.sdata start:0x805A1430 end:0x805A1438
+	.sbss start:0x805A1FA0 end:0x805A1FB0
 
 revolution/OS/OSNandbootInfo.c:
 	.text start:0x8018CE78 end:0x8018D080
+	.data start:0x8031D128 end:0x8031D148
 
 revolution/OS/OSPlayTime.c:
 	.text start:0x8018D080 end:0x8018D82C
+	.data start:0x8031D148 end:0x8031D188
+	.bss start:0x804CD680 end:0x804CD6B0
+	.sdata start:0x805A1438 end:0x805A1440
+	.sbss start:0x805A1FB0 end:0x805A1FC8
+	.sdata2 start:0x805A6468 end:0x805A6478
 
 revolution/OS/OSLaunch.c:
 	.text start:0x8018D82C end:0x8018E5EC
+	.data start:0x8031D188 end:0x8031D4A8
+	.sdata start:0x805A1440 end:0x805A1448
+	.sbss start:0x805A1FC8 end:0x805A1FD0
 
 revolution/MTX/quat.c:
 	.text start:0x8018FEA0 end:0x80190208
 
 revolution/DVD/dvdfs.c:
 	.text start:0x80190208 end:0x80190830
+	.data start:0x8031D4A8 end:0x8031D5D8
+	.sdata start:0x805A1450 end:0x805A1460
+	.sbss start:0x805A1FD0 end:0x805A1FF0
 
 revolution/DVD/dvd.c:
 	.text start:0x80190830 end:0x8019568C
 
 revolution/DVD/dvderror.c:
 	.text start:0x801958E4 end:0x801962C8
+	.data start:0x8031D980 end:0x8031D9B0
+	.bss start:0x804D23A0 end:0x804D2600
+	.sbss start:0x805A2098 end:0x805A20A8
 
 revolution/DVD/dvdidutils.c:
 	.text start:0x801962C8 end:0x801963B8
 
 revolution/DVD/dvdFatal.c:
 	.text start:0x801963B8 end:0x80196534
+	.rodata start:0x802DDF18 end:0x802DDF50
+	.data start:0x8031D9B0 end:0x8031E020
+	.sdata start:0x805A1478 end:0x805A1480
+	.sbss start:0x805A20A8 end:0x805A20B0
+	.sdata2 start:0x805A64D0 end:0x805A64D8
 
 revolution/DVD/dvdDeviceError.c:
 	.text start:0x80196534 end:0x801967CC
+	.bss start:0x804D2600 end:0x804D2620
+	.sdata start:0x805A1480 end:0x805A1488
+	.sbss start:0x805A20B0 end:0x805A20B8
 
 revolution/DVD/dvd_broadway.c:
 	.text start:0x801967CC end:0x80198D8C
+	.data start:0x8031E1B8 end:0x8031F0C0
+	.sdata start:0x805A1488 end:0x805A1498
+	.bss start:0x804D2620 end:0x804D27E0
+	.sbss start:0x805A20B8 end:0x805A20E0
 
 revolution/VI/vi.c:
 	.text start:0x80198D8C end:0x8019B6DC
+	.data start:0x8031F0C0 end:0x8031F618
+	.bss start:0x804D27E0 end:0x804D2950
+	.sdata start:0x805A1498 end:0x805A14B8
+	.sbss start:0x805A20E0 end:0x805A2190
 
 revolution/VI/i2c.c:
 	.text start:0x8019B6DC end:0x8019BFE0
 
 revolution/VI/vi3in1.c:
 	.text start:0x8019BFE0 end:0x8019D69C
+	.data start:0x8031F618 end:0x8031FC28
+	.bss start:0x804D2950 end:0x804D2970
+	.sdata start:0x805A14C0 end:0x805A14D0
+	.sbss start:0x805A2198 end:0x805A21B0

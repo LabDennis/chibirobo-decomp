@@ -175,7 +175,39 @@ out:
 	return 0;
 }
 
+// not in the dol: only its message survives. DVDLowWaitForCoverClose, which the linker removed as well, is the
+// one request about the cover without a callback of its own, so this is taken to be its callback; the body is
+// assumed to follow doTransactionCallback.
 static s32 doCoverCallback(s32 result, void* usrData)
+{
+	DVDLowContext* ctx = (DVDLowContext*)usrData;
+	u32 intType        = result;
+
+	if (ctx->magic != DVD_LOW_CONTEXT_MAGIC) {
+		OSReport("(doCoverCallback) Error - context mangled!\n");
+		ctx->magic = DVD_LOW_CONTEXT_MAGIC;
+		goto out;
+	}
+
+	requestInProgress = FALSE;
+	if (ctx->callback) {
+		callbackInProgress = TRUE;
+		if (breakRequested == TRUE) {
+			breakRequested = FALSE;
+			intType |= DVD_INTTYPE_BR;
+		}
+		ctx->callback(intType);
+		callbackInProgress = FALSE;
+	}
+
+out:
+	ctx->inUse = FALSE;
+	return 0;
+}
+
+// 0x80196884, the callback of DVDLowPrepareCoverRegister. Retail reports a mangled context with
+// doTransactionCallback's text (0x801968C4 loads the string at 0x8031E1B8).
+static s32 doPrepareCoverRegisterCallback(s32 result, void* usrData)
 {
 	DVDLowContext* ctx = (DVDLowContext*)usrData;
 	u32 intType        = result;
@@ -184,7 +216,7 @@ static s32 doCoverCallback(s32 result, void* usrData)
 	diRegValCache[1]  = coverRegister[0];
 
 	if (ctx->magic != DVD_LOW_CONTEXT_MAGIC) {
-		OSReport("(doCoverCallback) Error - context mangled!\n");
+		OSReport("(doTransactionCallback) Error - context mangled!\n");
 		ctx->magic = DVD_LOW_CONTEXT_MAGIC;
 		goto out;
 	}
@@ -740,8 +772,8 @@ BOOL DVDLowWaitForCoverClose(DVDLowCallback callback)
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_WAIT_FOR_COVER_CLOSE;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_WAIT_FOR_COVER_CLOSE, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0,
-	                    doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_WAIT_FOR_COVER_CLOSE, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doCoverCallback,
+	                    ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowWaitForCoverClose) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -1277,7 +1309,7 @@ BOOL DVDLowPrepareCoverRegister(DVDLowCallback callback)
 	ctx                                  = newContext(callback, 1);
 
 	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_GET_COVER_REGISTER, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), coverRegister,
-	                    sizeof(coverRegister), doCoverCallback, ctx);
+	                    sizeof(coverRegister), doPrepareCoverRegisterCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowPrepareCoverRegsiter) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;

@@ -77,9 +77,9 @@ static volatile BOOL Prepared;
 BOOL __OSInReboot;
 static volatile u32 LowIntType;
 // Partition type handed to the next program. Descriptive name, not from the SDK.
-// NONMATCHING (data order only): retail has this at .sbss+0 and apploaderPosition at +4; a function static
-// always comes out last here (+0), and a file-scope apploaderPosition moves one load in __OSBootDolSimple.
-u32 __OSNextPartitionType;
+// Explicitly initialised: retail has it at .sbss+0, ahead of the function static apploaderPosition (+4).
+// Without the initialiser it comes out behind it.
+u32 __OSNextPartitionType = 0;
 
 static BOOL PackArgs(void* addr, s32 argc, char** argv)
 {
