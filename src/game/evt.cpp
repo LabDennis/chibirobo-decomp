@@ -7902,12 +7902,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		f32 time = CEvt_Evaluate(this) / 100.0f;
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
 		action->mCameraFlags = 11;
-		Vec eye              = { 0.0f, 0.0f, 0.0f };
-		eye.x                = x;
-		eye.y                = y;
-		eye.z                = z;
-		Vec target           = eye;
-		action->SetEye_Interp(mode, target, time);
+		action->SetEye_Interp(mode, (Vec) { x, y, z }, time);
 		break;
 	}
 	case 240:
@@ -7919,28 +7914,19 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		s32 mode      = CEvt_Evaluate(this);
 		f32 time      = CEvt_Evaluate(this) / 100.0f;
 		u32 type      = command == 240 ? 2 : 1;
-		BOOL relative = (u16)(command - 251) <= 1 ? true : false;
+		BOOL relative = command == 251 || command == 252;
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
 		switch (axis) {
 		case 2: {
-			Vec angle  = { 0.0f, 0.0f, 0.0f };
-			angle.y    = DEG2RAD * degrees;
-			Vec target = angle;
-			action->SetAngle_Interp(mode, target, 2, type, relative, time);
+			action->SetAngle_Interp(mode, (Vec) { 0.0f, DEG2RAD * degrees, 0.0f }, 2, type, relative, time);
 			break;
 		}
 		case 3: {
-			Vec angle  = { 0.0f, 0.0f, 0.0f };
-			angle.x    = DEG2RAD * degrees;
-			Vec target = angle;
-			action->SetAngle_Interp(mode, target, 1, type, relative, time);
+			action->SetAngle_Interp(mode, (Vec) { DEG2RAD * degrees, 0.0f, 0.0f }, 1, type, relative, time);
 			break;
 		}
 		case 5: {
-			Vec angle  = { 0.0f, 0.0f, 0.0f };
-			angle.z    = DEG2RAD * degrees;
-			Vec target = angle;
-			action->SetAngle_Interp(mode, target, 4, type, relative, time);
+			action->SetAngle_Interp(mode, (Vec) { 0.0f, 0.0f, DEG2RAD * degrees }, 4, type, relative, time);
 			break;
 		}
 		}
@@ -7954,12 +7940,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		f32 time = CEvt_Evaluate(this) / 100.0f;
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
 		action->mCameraFlags = 11;
-		Vec interest         = { 0.0f, 0.0f, 0.0f };
-		interest.x           = x;
-		interest.y           = y;
-		interest.z           = z;
-		Vec target           = interest;
-		action->SetInterest_Interp(mode, target, time);
+		action->SetInterest_Interp(mode, (Vec) { x, y, z }, time);
 		break;
 	}
 	case EVT_ATOM_OBJ: {
@@ -7971,8 +7952,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 			Vec target = obj->GetCameraTarget();
 			gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
 			action->mCameraFlags = 11;
-			Vec interest         = target;
-			action->SetInterest_Interp(mode, interest, time);
+			action->SetInterest_Interp(mode, target, time);
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("cam(@OBJ, %d, ...): obj(%d) killed!", id, id));
 		}
@@ -13367,7 +13347,8 @@ s32 CEvt::_cmd_SET(u8, s32)
  */
 extern "C" void CEvt_EvalSet(CEvt* evt)
 {
-	u8 op = *evt->mData.mScript;
+	s32 code = *evt->mData.mScript;
+	u8 op    = code;
 	s32 value;
 	switch (op) {
 	case EVT_EXPR_EQUAL:
@@ -13431,7 +13412,8 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 				} else {
 					gEventFlags.mFlags[(u32)index >> 5] &= ~(1U << (index & 31));
 				}
-			} else if (index != -1 && index != -2 && index != -3) { // Evaluate's read-only flags, setting one does nothing
+			} else if (index == -2 || index == -1) { // Evaluate's read-only flags, setting one does nothing
+			} else if (index != -3) {
 				OSPanic("evt.cpp", 1107, "%s%s", FormatToStaticBuffer("Invalid EvalSet flag[%d] - 0~%d\n", index, 4096), "EvalSet");
 			}
 			break;
@@ -13459,10 +13441,11 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 						if (EVT_PAD->mConnected)
 							HSD_PadRumbleOn(EVT_PAD->mPort);
 					} else if (value == 0) {
-						if (EVT_PAD->mConnected)
-							HSD_PadRumbleOffN(EVT_PAD->mPort);
-						if (EVT_PAD->mConnected)
-							HSD_PadRumbleRemove(EVT_PAD->mPort);
+						CPadOne* pad = EVT_PAD;
+						if (pad->mConnected)
+							HSD_PadRumbleOffN(pad->mPort);
+						if (pad->mConnected)
+							HSD_PadRumbleRemove(pad->mPort);
 					} else {
 						if (EVT_PAD->mConnected)
 							HSD_PadRumbleAdd(EVT_PAD->mPort, 0, -2, 128, (void*)value);
@@ -17422,12 +17405,15 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 	case EVT_ATOM_MONO:
 		EvtWaitFor(this, command, start, EvtZero4(gGame.mColor0.mColor.mSpeed) != 0, yield);
 		break;
-	case EVT_ATOM_WIPE:
-		EvtWaitFor(this, command, start,
-		           (EvtZero2(gGame.mWipeCircle) && EvtZero2(gGame.mWipeTex) && EvtZero2(gGame.mWipeCustom) && EvtZero2(gGame.mWipeTile0))
-		               != 0,
-		           yield);
+	case EVT_ATOM_WIPE: {
+		bool done = false;
+		if (EvtZero2(gGame.mWipeCircle) && EvtZero2(gGame.mWipeTex) && EvtZero2(gGame.mWipeCustom) && EvtZero2(gGame.mWipeTile0)) {
+			done = true;
+		}
+		s32 ready = done != 0;
+		EvtWaitFor(this, command, start, ready, yield);
 		break;
+	}
 	case EVT_ATOM_LETTERBOX:
 		EvtWaitFor(this, command, start, EvtZero2(gGame.mWipeTile1) != 0, yield);
 		break;
@@ -17447,7 +17433,8 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 				if (frame >= 0.0f) {
 					HSD_AObj* aobj = GetAObj(obj->mJObj);
 					f32 current    = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
-					EvtWaitFor(this, command, start, current >= frame, yield);
+					s32 ready      = current >= frame;
+					EvtWaitFor(this, command, start, ready, yield);
 				} else
 					EvtWaitFor(this, command, start, (anim->flags & (AOBJ_NO_ANIM | AOBJ_REWINDED)) != 0, yield);
 			} else if (command == EVT_CMD_CHECK)
@@ -17511,7 +17498,12 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
 				CEvt_Warn(FormatToStaticBuffer("wait(@COLOR, %d) ... obj(%d) is collision!", id, id));
-			EvtWaitFor(this, command, start, EvtZero3(&obj->mColorStep[0].mSpeed.x) && EvtZero3(&obj->mColorStep[1].mSpeed.x), yield);
+			bool done = false;
+			if (EvtZero3(&obj->mColorStep[0].mSpeed.x) && EvtZero3(&obj->mColorStep[1].mSpeed.x)) {
+				done = true;
+			}
+			s32 ready = done;
+			EvtWaitFor(this, command, start, ready, yield);
 		} else {
 			CEvt_Warn(FormatToStaticBuffer("wait(@COLOR, %d, ...) obj(%d) killed!", id, id));
 			if (command == EVT_CMD_CHECK)
@@ -17539,12 +17531,22 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 			ready = 0;
 		if (camera->IsAction(CAMACTION_AREA)) {
 			CCameraActionArea* area = (CCameraActionArea*)EVT_CAMERA_ACTION(CAMACTION_AREA);
-			ready                   = !(area->mEyeInterp != NULL || area->mInterestInterp != NULL || area->mFovInterp != NULL);
+			BOOL busy;
+			if (area->mEyeInterp != NULL || area->mInterestInterp != NULL || area->mFovInterp != NULL)
+				busy = TRUE;
+			else
+				busy = FALSE;
+			ready = !busy;
 		}
 		if (camera->IsAction(CAMACTION_EVT)) {
 			CCameraActionEvt* action = (CCameraActionEvt*)EVT_CAMERA_ACTION(CAMACTION_EVT);
-			ready                    = !(action->mEyeInterp != NULL || action->mInterestInterp != NULL || action->mDistanceInterp != NULL
-                      || action->mFovInterp != NULL || action->mAngleInterp != NULL);
+			BOOL busy;
+			if (action->mEyeInterp != NULL || action->mInterestInterp != NULL || action->mDistanceInterp != NULL
+			    || action->mFovInterp != NULL || action->mAngleInterp != NULL)
+				busy = TRUE;
+			else
+				busy = FALSE;
+			ready = !busy;
 		}
 		if (camera->IsAction(CAMACTION_ANIM)) {
 			XObj* obj = (XObj*)gGame.mXObjs.mPools[0].mObjects;
@@ -17582,9 +17584,12 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 			gEventBeatLatch.mPending = 0;
 			beat += 1000; // so beat 0 is told apart from no beat
 		}
-		if (command == EVT_CMD_WAIT && beat == 0) {
-			mData.mScript = start;
-			yield         = 1;
+		if (command == EVT_CMD_WAIT) {
+			if (beat == 0) {
+				mData.mScript = start;
+				yield         = 1;
+			} else
+				mSelectResult = beat;
 		} else
 			mSelectResult = beat;
 		break;
@@ -17594,9 +17599,12 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		s32 ready = gGame.mMovie.mMovie.mState == 0;
 		if (!ready && frame >= 0)
 			ready = gGame.mMovie.mMovie.mFrame >= frame;
-		if (command == EVT_CMD_WAIT && ready == 0) {
-			mData.mScript = start;
-			yield         = 1;
+		if (command == EVT_CMD_WAIT) {
+			if (ready == 0) {
+				mData.mScript = start;
+				yield         = 1;
+			} else
+				mSelectResult = ready;
 		} else
 			mSelectResult = ready;
 		break;

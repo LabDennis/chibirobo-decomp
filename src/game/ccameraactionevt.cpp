@@ -107,7 +107,7 @@ void CCameraActionEvt::Update(u32 step)
  * @note Address: 0x80143528
  * @note Size: 0xC0
  */
-void CCameraActionEvt::SetEye_Interp(s32 mode, const Vec& eye, f32 time)
+void CCameraActionEvt::SetEye_Interp(s32 mode, Vec eye, f32 time)
 {
 	if (mode == 3 || time <= 0.0f) { // mode 3 or no time means snap
 		mEyeInterp = NULL;
@@ -134,18 +134,18 @@ void CCameraActionEvt::SetInterest_Interp(s32 mode, XObj* target, f32 time)
 	}
 	mTarget = target;
 #if defined(VERSION_R24J01)
-	Vec interest = ((WiiPlayerState*)mTarget)->GetCameraTarget(); // the Wii player's focus point, XObj::GetCameraTarget on GameCube
+	// the Wii player's focus point, XObj::GetCameraTarget on GameCube
+	SetInterest_Interp(mode, ((WiiPlayerState*)mTarget)->GetCameraTarget(), time);
 #else
-	Vec interest = mTarget->GetCameraTarget();
+	SetInterest_Interp(mode, mTarget->GetCameraTarget(), time);
 #endif
-	SetInterest_Interp(mode, interest, time);
 }
 
 /**
  * @note Address: 0x8014332C
  * @note Size: 0xC0
  */
-void CCameraActionEvt::SetInterest_Interp(s32 mode, const Vec& interest, f32 time)
+void CCameraActionEvt::SetInterest_Interp(s32 mode, Vec interest, f32 time)
 {
 	if (mode == 3 || time <= 0.0f) {
 		mInterestInterp = NULL;
@@ -208,7 +208,7 @@ inline void TurnShortWay(f32& to, f32& from)
  * @note Address: 0x80142DE8
  * @note Size: 0x4B4
  */
-void CCameraActionEvt::SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32 type, BOOL relative, f32 time)
+void CCameraActionEvt::SetAngle_Interp(s32 mode, Vec angle, u32 axes, u32 type, BOOL relative, f32 time)
 {
 	CVec dest;
 	CVec from;
