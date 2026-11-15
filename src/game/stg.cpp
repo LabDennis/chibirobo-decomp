@@ -9768,14 +9768,36 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 	}
 }
 
+static inline void StrokeStatusOutline(Vec* outline, u32 color, u16 count)
+{
+	CGs& gs = gGame.mGs;
+	SetGsLineWidth(gs.mCurRenderMode, 18, 5);
+	DrawGsLineStrip(&gs, outline, color, count);
+	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
+}
+
+// a ring of 64 segments around a status icon, 0.09817477 is 2 pi / 64
+static inline void SetStatusRing(Vec* outline, f32 x, f32 y, f32 radius)
+{
+	for (int i = 0; i < 65; i++) {
+		f32 angle    = 0.09817477f * i - 1.5707964f;
+		f32 sine     = (f32)sin(angle);
+		f32 cosine   = (f32)cos(angle);
+		outline[i].x = sine * radius + x;
+		outline[i].y = -cosine * radius + y;
+		outline[i].z = 0.0f;
+	}
+}
+
+// NONMATCHING: registers only. Retail keeps the ring counter and then the colour in r24 and takes the colour
+// straight from the conversion; the build copies it through r0 (one mr more). Float registers are numbered differently
 extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f32 y, f32 alpha, f32 phase)
 {
 	if (!(alpha > 0.0f))
 		return;
 
-	CGs& gs = gGame.mGs;
-	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 	CTexObj tex;
 	f32 bob = 0.0f;
 	if (selected) {
@@ -9792,22 +9814,12 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 			break;
 	}
 
-	// a ring of 64 segments around the icon, 0.09817477 is 2 pi / 64
 	Vec outline[65];
 	f32 centerY = y - 6.0f * 1.2f;
-	for (int i = 0; i < 65; i++) {
-		f32 angle    = 0.09817477f * i - 1.5707964f;
-		f32 sine     = (f32)sin(angle);
-		f32 cosine   = (f32)cos(angle);
-		outline[i].x = sine * (12.0f * 1.2f) + x;
-		outline[i].y = -cosine * (12.0f * 1.2f) + centerY;
-		outline[i].z = 0.0f;
-	}
+	SetStatusRing(outline, x, centerY, 12.0f * 1.2f);
 	f32 opacity = 255.0f * alpha;
 	u32 color   = (u32)opacity;
-	SetGsLineWidth(gs.mCurRenderMode, 18, 5);
-	DrawGsLineStrip(&gs, outline, color, 65);
-	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
+	StrokeStatusOutline(outline, color, 65);
 
 	LoadOverviewTexture(tex, 125);
 	f32 width    = 1.2f * tex.GetWidth();
@@ -9815,39 +9827,40 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 	outline[0].y = centerY + 12.0f * 1.2f;
 	outline[1].x = x + (places * (width - 3.0f * 1.2f) + 34.0f);
 	outline[1].y = outline[0].y;
-	SetGsLineWidth(gs.mCurRenderMode, 18, 5);
-	DrawGsLineStrip(&gs, outline, color, 2);
-	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
+	StrokeStatusOutline(outline, color, 2);
 
 	LoadOverviewTexture(tex, 155);
-	SetGsTevMode(gs.mCurTevStage, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	u16 markerWidth = tex.GetWidth(), markerHeight = tex.GetHeight();
 	color |= 0xC8C8C800;
 	DrawOverviewTexture(tex, color, outline[1].x, outline[1].y, 1.2f * markerWidth, 1.2f * markerHeight);
 
-	f32 scale = icon == 180 - StatusTextureOffset ? 0.7f : 0.8f;
-	tex       = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
-	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 1);
-	SetGsDepthCompareBeforeTexture(gs.mCurRenderMode, 0);
-	SetGsTevMode(gs.mCurTevStage, 0);
+	f32 scale = 0.8f;
+	if (icon == 180 - StatusTextureOffset)
+		scale = 0.7f;
+	tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
+	SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	width      = scale * tex.GetWidth();
 	f32 height = scale * tex.GetHeight();
-	f32 iconY  = bob + (y - 9.0f);
+	f32 base   = bob + (y - 9.0f);
+	f32 iconY  = base;
 	if (icon == 154 - StatusTextureOffset)
-		iconY = 4.0f + iconY;
-	DrawGsTexturedQuad(&gs, &tex, color, color, color, color, x, iconY, 1.0f, width, height, 0, 0, 0);
-	SetGsTevMode(gs.mCurTevStage, 4);
-	SetGsDepthCompareBeforeTexture(gs.mCurRenderMode, 1);
+		iconY = 4.0f + base;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, iconY, 1.0f, width, height, 0, 0, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 1);
 	if (selected) {
-		SetGsBlendMode(gs.mCurRenderMode, 1, 2, 4, 15);
-		SetGsDepthMode(gs.mCurRenderMode, 1, 2, 0);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
 		f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
 		if (pulse < 0.0f)
 			pulse = 0.0f;
 		u32 highlight = (u32)(255.0f * pulse) | 0xFFFFFF00;
-		DrawGsQuad(&gs, highlight, highlight, highlight, highlight, x, iconY, 1.0f, width, height, 0, 0, 0);
-		SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-		SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
+		DrawGsQuad(&gGame.mGs, highlight, highlight, highlight, highlight, x, iconY, 1.0f, width, height, 0, 0, 0);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 	}
 	LoadOverviewTexture(tex, 125);
 	x -= 12.0f;
@@ -9859,15 +9872,13 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 	u8 a          = (u8)opacity;
 	f32 offset    = places * (width - 3.0f * 1.2f) - 98.0f * 1.2f;
 	for (s32 i = 0; i < 7; i++) {
-		f32 divisor = 1.0f;
-		for (s32 j = 0; j < i; j++)
-			divisor *= 10.0f;
-		s32 digit = (s32)(value / divisor);
+		s32 digit = (s32)(value / PCDigitDivisor(i));
 		if (i != 0 && digit == 0)
 			continue;
-		PSMTXTrans(tex.mMtx[0], 0, 0.1f * (digit % 10), 0);
+		digit %= 10;
+		PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
 		tex.mMtxDirty = TRUE;
-		SetGsTevMode(gs.mCurTevStage, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		u32 top, bottom;
 		// digit colours by stat: 154 experience, 152 money, 153 scrap, 180 rank (see DrawOverviewStats)
 		switch (icon) {
@@ -9890,11 +9901,11 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 		default:
 			top = bottom = 0xFFFFFF00 | a;
 		}
-		DrawGsTexturedQuad(&gs, &tex, top, top, bottom, bottom, offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f))), y - 2.4f, 0,
-		                   width, height, 0, 0, 0);
-		SetGsTevMode(gs.mCurTevStage, 4);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f))), y - 2.4f,
+		                   0, width, height, 0, 0, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
-	SetGsTevMode(gs.mCurTevStage, 4);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
 static inline void SetGaugeQuad(Vec* vertices, f32 left, f32 right, f32 top, f32 bottom)
@@ -10010,40 +10021,26 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
-static inline void StrokeStatusOutline(Vec* outline, u32 color, u16 count)
-{
-	CGs& gs = gGame.mGs;
-	SetGsLineWidth(gs.mCurRenderMode, 18, 5);
-	DrawGsLineStrip(&gs, outline, color, count);
-	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
-}
-
+// NONMATCHING: registers and the order of the loop set-up before the digits (retail converts the opacity
+// byte before it loads 3.6f); the statements are retail's
 extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha)
 {
 	if (!(alpha > 0.0f))
 		return;
 	CTexObj tex;
-	CGs& gs = gGame.mGs;
-	f32 bob = 0.0f;
+	f32 bob       = 0.0f;
+	bool skipTens = false;
 	if (selected) {
 		static u32 frame = 0;
 		++frame;
 		bob = 4.0f * (f32)sin(0.017453292f * (((s32)(frame * 20)) % 360));
 	}
-	s32 places    = 4 + (value >= 1000);
-	bool skipTens = false;
+	s32 places = (value >= 1000 ? 1 : 0) + 4;
 	if ((value % 100) / 10 == 0)
 		skipTens = true;
 	Vec outline[65];
 	f32 centerY = y - 6.0f * 1.2f;
-	for (int i = 0; i < 65; i++) {
-		f32 angle    = 0.09817477f * i - 1.5707964f;
-		f32 sine     = (f32)sin(angle);
-		f32 cosine   = (f32)cos(angle);
-		outline[i].x = sine * (12.0f * 1.2f) + x;
-		outline[i].y = -cosine * (12.0f * 1.2f) + centerY;
-		outline[i].z = 0.0f;
-	}
+	SetStatusRing(outline, x, centerY, 12.0f * 1.2f);
 	f32 opacity = 255.0f * alpha;
 	u32 color   = (u32)opacity;
 	StrokeStatusOutline(outline, color, 65);
@@ -10059,20 +10056,20 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	StrokeStatusOutline(outline, color, 2);
 
 	LoadOverviewTexture(tex, 155);
-	SetGsTevMode(gs.mCurTevStage, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	u16 markerWidth = tex.GetWidth(), markerHeight = tex.GetHeight();
 	color |= 0xC8C8C800;
 	DrawOverviewTexture(tex, color, outline[1].x, outline[1].y, 1.2f * markerWidth, 1.2f * markerHeight);
 
 	tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
-	SetGsTevMode(gs.mCurTevStage, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	width      = 0.8f * tex.GetWidth();
 	f32 height = 0.8f * tex.GetHeight();
 	f32 iconY  = bob + (y - 9.0f);
 	if (icon == 154 - StatusTextureOffset)
-		DrawGsTexturedQuad(&gs, &tex, color, color, color, color, x, 4.0f + iconY, 0, width, height, 0, 0, 0);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, 4.0f + iconY, 0, width, height, 0, 0, 0);
 	else
-		DrawGsTexturedQuad(&gs, &tex, color, color, color, color, x, iconY, 0, width, height, 0, 0, 0);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, iconY, 0, width, height, 0, 0, 0);
 	LoadOverviewTexture(tex, 125);
 	x -= 12.0f;
 	y -= 4.0f;
@@ -10082,27 +10079,32 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	tex.mMtxDirty = TRUE;
 	u32 white     = 0xFFFFFF00 | (u8)opacity;
 	f32 offset    = (places - 1) * (width - 3.0f * 1.2f) - 98.0f * 1.2f;
+	u32 upper, lower;
 	for (s32 i = 0; i < 4; i++) {
-		f32 divisor = 1.0f;
-		for (s32 j = 0; j < i; j++)
-			divisor *= 10.0f;
-		s32 digit = (s32)(value / divisor) % 10;
+		s32 digit = (s32)(value / PCDigitDivisor(i)) % 10;
 		if ((i == 3 || i == 1) && digit == 0)
 			continue;
 		PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
 		tex.mMtxDirty = TRUE;
-		SetGsTevMode(gs.mCurTevStage, 0);
-		f32 gap = i < 2 ? width - 3.0f * 1.2f : 0.0f;
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		f32 gap = 0.0f;
+		upper   = white;
+		lower   = white;
+		if (i < 2)
+			gap = width - 3.0f * 1.2f;
 		if (skipTens && i == 0)
 			gap -= width - 3.0f * 1.2f;
-		DrawOverviewTexture(tex, white, gap + (offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f)))), y - 2.4f, width, height);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, gap + (offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f)))),
+		                   y - 2.4f, 0, width, height, 0, 0, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
-	SetGsTevMode(gs.mCurTevStage, 4);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	LoadOverviewTexture(tex, 168);
 	u16 slashWidth = tex.GetWidth(), slashHeight = tex.GetHeight();
-	SetGsTevMode(gs.mCurTevStage, 0);
-	DrawOverviewTexture(tex, white, offset + (7.0f * width + (x - (width - 3.0f * 1.2f))), y - 1.2f, 0.8f * (1.2f * slashWidth),
-	                    0.8f * (1.2f * slashHeight));
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, offset + (7.0f * width + (x - (width - 3.0f * 1.2f))), y - 1.2f, 0,
+	                   0.8f * (1.2f * slashWidth), 0.8f * (1.2f * slashHeight), 0, 0, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
 // The atlas is measured twice; the discard dialog uses the enlarged sample.
