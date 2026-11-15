@@ -592,35 +592,44 @@ static inline void StartPopperTone(int sound)
  */
 void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 frames, f32, f32)
 {
-	BOOL rangeUpgrade        = FindOwnedInventoryItemIndex(act->mOwner->mParams.mInventory.mItems, 0x36) >= 0;
-	BOOL canCharge           = FindOwnedInventoryItemIndex(act->mOwner->mParams.mInventory.mItems, 0x35) >= 0;
-	XActPopperCharge& charge = act->mCharge;
+	BOOL rangeUpgrade, canCharge;
+	if (FindOwnedInventoryItemIndex(act->mOwner->mParams.mInventory.mItems, 0x36) >= 0)
+		rangeUpgrade = TRUE;
+	else
+		rangeUpgrade = FALSE;
+	if (FindOwnedInventoryItemIndex(act->mOwner->mParams.mInventory.mItems, 0x35) >= 0)
+		canCharge = TRUE;
+	else
+		canCharge = FALSE;
 	// with the popper out (attachment 2), holding A charges a shot
 	if (act->mOwner->GetAttachment() == 2) {
 		CPad pad(0);
-		XObjChr* p = act->mOwner;
-		if ((pad.mPad->mButton & 0x100) && canCharge && p->mPopperObj.mAnimId == 4 && !gGame.mEvt.mData.mScript
-		    && !(gGame.mStatus.mFlags & 0x400) && !p->mLift.mState && !p->mHang.mState && !p->mJump.mState && !p->mLadder.mState
-		    && !p->mRope.mState && !p->mPush.mState && !p->mTumble.mState) {
+		if ((pad.mPad->mButton & 0x100) && canCharge && act->mOwner->mPopperObj.mAnimId == 4 && !gGame.mEvt.mData.mScript
+		    && !(gGame.mStatus.mFlags & 0x400) && !act->mOwner->mLift.mState && !act->mOwner->mHang.mState && !act->mOwner->mJump.mState
+		    && !act->mOwner->mLadder.mState && !act->mOwner->mRope.mState && !act->mOwner->mPush.mState && !act->mOwner->mTumble.mState) {
 			if (!(gGame.mStatus.mFlags & 0x20)) {
 				Vec pos;
-				PopperMuzzle(p, pos);
-				charge.mState = 1;
-				charge.mPos   = pos;
-				if (!charge.mGen)
-					charge.mGen = gGame.mParticle.Create(0x10051, 0, charge.mJoint, 1);
+				PopperMuzzle(act->mOwner, pos);
+				act->mCharge.mState = 1;
+				act->mCharge.mPos   = pos;
+				if (!act->mCharge.mGen)
+					act->mCharge.mGen = gGame.mParticle.Create(0x10051, 0, act->mCharge.mJoint, 1);
 				StartPopperTone(0x186);
-				if (charge.mTimer >= .5f)
+				if (act->mCharge.mTimer >= .5f)
 					act->mState = 4;
 			} else {
 				act->mState = 0;
-				ClearPopperCharge(&charge);
+				ClearPopperCharge(&act->mCharge);
 			}
 		} else {
 			// letting go of A: a full charge fires, a partial one is dropped
-			if (act->mState == 4)
-				act->mState = charge.mTimer >= 1 ? 6 : 0;
-			ClearPopperCharge(&charge);
+			if (act->mState == 4) {
+				if (act->mCharge.mTimer >= 1)
+					act->mState = 6;
+				else
+					act->mState = 0;
+			}
+			ClearPopperCharge(&act->mCharge);
 		}
 	}
 	act->mShotStrength = 0;
@@ -733,7 +742,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 				else
 					StartAvailablePopperShot(act, origin, kind, NULL, yaw, pitch, power, speed, range);
 			}
-			ClearPopperCharge(&charge);
+			ClearPopperCharge(&act->mCharge);
 			act->mState = 8;
 		} else if (aobj->flags & 0x44000000) {
 			act->mOwner->SetAnim(0x822, FALSE, NULL, NULL, NULL, 0, 1, 1, 10);
@@ -774,18 +783,18 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 	XActPopperShot* shot = act->mShots.mShot;
 	for (int i = 0; i < 10; i++, shot++)
 		UpdatePopperShotFlight(shot, frames);
-	if (charge.mState) {
-		if (charge.mTimer < 1 && (charge.mTimer += (1.f / FRAME_RATE) * frames) > 1)
-			charge.mTimer = 1;
-		if (charge.mGen || charge.mChargeGen)
-			HSD_JObjSetTranslate(charge.mJoint, &charge.mPos);
-		if (charge.mTimer >= 1) {
-			if (!charge.mChargeGen)
-				charge.mChargeGen = gGame.mParticle.Create(0x1005c, 0, charge.mJoint, 1);
+	if (act->mCharge.mState) {
+		if (act->mCharge.mTimer < 1 && (act->mCharge.mTimer += (1.f / FRAME_RATE) * frames) > 1)
+			act->mCharge.mTimer = 1;
+		if (act->mCharge.mGen || act->mCharge.mChargeGen)
+			HSD_JObjSetTranslate(act->mCharge.mJoint, &act->mCharge.mPos);
+		if (act->mCharge.mTimer >= 1) {
+			if (!act->mCharge.mChargeGen)
+				act->mCharge.mChargeGen = gGame.mParticle.Create(0x1005c, 0, act->mCharge.mJoint, 1);
 			StartPopperTone(0x18b);
 		}
 	} else
-		charge.mTimer = 0;
+		act->mCharge.mTimer = 0;
 }
 
 /**
@@ -883,7 +892,7 @@ void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 	if (shot->mActive) {
 		XObj* target = shot->mHomingTarget;
 		if (target != NULL) {
-			Vec aim = AddScalarToVectorComponents(target->mMoveTranslate, target->GetCollisionHeight() * 0.5f);
+			Vec aim = AddScalarToVectorComponents(target->mMoveTranslate, target->GetCollisionHeight() / 2.0f);
 			SteerPopperAngle(shot->mYaw, (f32)atan2(aim.x - shot->mPos.x, aim.z - shot->mPos.z), frames);
 			f32 dz    = aim.z - shot->mPos.z;
 			f32 dx    = aim.x - shot->mPos.x;
@@ -930,10 +939,12 @@ void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 	FadePopperRing(shot->mRing[1], frames);
 }
 
+// NONMATCHING: registers, and retail has the spark's velocity above its size on the stack (both below the
+// CVec temporaries, so neither is a named local of this function)
 void CheckPopperShotImpact(XActPopperShot* shot)
 {
 	Vec pos  = shot->mPos;
-	BOOL hit = FALSE;
+	BOOL hit = FALSE, ended = FALSE;
 	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.GetObject(i);
 		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || (object->mStatus.mFlags & 0x40000)
@@ -943,9 +954,13 @@ void CheckPopperShotImpact(XActPopperShot* shot)
 		if (sqrtf(dx * dx + dz * dz) > 100.0f + (0.8f + object->mFloorXZExtent))
 			continue;
 		CVec push, contact;
-		if ((ProbeObjectFloor(object, pos, pos, 0.8f, 0.8f, &push, &contact, NULL) & 3) == 3) {
-			hit = TRUE;
-			shot->mPos.Set(contact);
+		u32 touch = ProbeObjectFloor(object, pos, pos, 0.8f, 0.8f, &push, &contact, NULL) & 3;
+		if (touch == 3) {
+			hit          = TRUE;
+			ended        = TRUE;
+			shot->mPos.x = contact.x;
+			shot->mPos.y = contact.y;
+			shot->mPos.z = contact.z;
 			if (gGame.mEvt.mData.mScript != NULL)
 				shot->mHitTarget = object;
 			else
@@ -956,7 +971,8 @@ void CheckPopperShotImpact(XActPopperShot* shot)
 		XObjMapHit ground;
 		XObjMap* map = (XObjMap*)gGame.mXObjs.mPools[3].First();
 		if (FindMapFloor(map, &pos, &ground, NULL) && pos.y <= ground.mHeight) {
-			hit = TRUE;
+			hit   = TRUE;
+			ended = TRUE;
 			shot->mPos.Set(CVec(pos));
 			shot->mPos.y = ground.mHeight;
 		}
@@ -972,13 +988,8 @@ void CheckPopperShotImpact(XActPopperShot* shot)
 		f32 vy       = (50 + rand() % 80) / 100.0f;
 		f32 width    = (200 + rand() % 300) / 500.0f;
 		f32 height   = (10 + rand() % 200) / 500.0f;
-		Vec velocity = { 0.0f, 0.0f, 0.0f }, size = { 0.0f, 0.0f, 1.0f };
-		velocity.x      = vx;
-		velocity.y      = vy;
-		velocity.z      = vz;
-		size.x          = width;
-		size.y          = height;
-		CPtclOne* spark = SpawnPoolParticle(&shot->mDust.mPtcl, &shot->mPos, &size, &velocity, 0xC8C8FFFF);
+		CPtclOne* spark
+		    = SpawnPoolParticle(&shot->mDust.mPtcl, &shot->mPos, &(Vec) { width, height, 1.0f }, &(Vec) { vx, vy, vz }, 0xC8C8FFFF);
 		if (!spark)
 			break;
 		spark->mAlpha      = (192 + (rand() & 63)) / 255.0f;
@@ -989,13 +1000,15 @@ void CheckPopperShotImpact(XActPopperShot* shot)
 		PlayGameSound(&gGame.mSound, 0x194, 255);
 	else
 		PlayGameSound(&gGame.mSound, 0x197, 255);
-	shot->mActive          = FALSE;
-	shot->mRing[1].mPos    = shot->mPos;
-	shot->mRing[1].mAmount = 0.9f;
-	shot->mRing[1].mRadius = 100.0f;
-	shot->mRing[1].mColor  = 0x6464FF96;
-	KillGen(shot->mGen);
-	KillGen(shot->mChargeGen);
+	if (ended) {
+		shot->mActive          = FALSE;
+		shot->mRing[1].mPos    = shot->mPos;
+		shot->mRing[1].mAmount = 0.9f;
+		shot->mRing[1].mRadius = 100.0f;
+		shot->mRing[1].mColor  = 0x6464FF96;
+		KillGen(shot->mGen);
+		KillGen(shot->mChargeGen);
+	}
 }
 
 // fires a shot, kind 1 is the small one
@@ -1236,8 +1249,8 @@ void DrawTumbleRing(XActTumbleFade* fade, const Vec& pos, f32 angle)
 		f32 outer = size * 0.5f + 1.0f;
 		for (int i = 0; i < 25; i++) {
 			f32 ringAngle          = (TWO_PI / 24) * i;
-			verts[i * 2].pos.x     = center.x - size * (f32)sin(ringAngle) * 0.5f;
-			verts[i * 2].pos.z     = center.z + size * (f32)cos(ringAngle) * 0.5f;
+			verts[i * 2].pos.x     = center.x - size * (f32)sin(ringAngle) / 2.0f;
+			verts[i * 2].pos.z     = center.z + size * (f32)cos(ringAngle) / 2.0f;
 			verts[i * 2].pos.y     = center.y;
 			verts[i * 2].color     = color;
 			verts[i * 2 + 1].pos.x = center.x - outer * (f32)sin(ringAngle);
