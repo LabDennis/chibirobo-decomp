@@ -22,14 +22,20 @@ public:
 	u8 _11C[0x8];
 	void (**mVtable)(FbSubwin*); // _124
 	BOOL mEnabled;               // _128, fades in while set, out while not
-	u8 _12C[0x8];                // unverified
-	f32 mAmount;                 // _134, 0 to 1
-	u8 _138[0x10];
+	u32 mFlags;                  // _12C, Draw tests bit 2
+	u8 _130[0x4];
+	f32 mAmount;     // _134, 0 to 1
+	f32 mRectX;      // _138, centre x of the window's rect on screen
+	f32 mRectY;      // _13C, centre y of the window's rect on screen
+	f32 mRectWidth;  // _140, window width, NaN (with mRectHeight) picks the round frame
+	f32 mRectHeight; // _144, window height, NaN picks the round frame
 	CCamera mCamera; // _148
 
 	void Init();
 	void Reset();
 	void Update(u32 frames);
+	void Copy();
+	void Draw();
 };
 
 extern "C" void ConfigureSubwindowCamera(FbSubwin* subwin, const Vec& interest, f32 angleY, f32 angleX, f32 distance, f32 fov);
