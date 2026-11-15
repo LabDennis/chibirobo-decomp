@@ -12,6 +12,7 @@
 #include "game/video.h"
 #include "game/scrollroomdata.h"
 #if defined(VERSION_R24J01)
+#include "game/cscrn.h"
 class CCamera;
 class XObj;
 class XObjCamera;
@@ -848,6 +849,71 @@ void SetMapCameraFovStep(CCameraActionMap* map, s32 index, f32 time);
 void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode);
 }
 #endif // !defined(VERSION_R24J01)
+
+#if defined(VERSION_R24J01)
+class CScrnWipeTile;
+
+// one edge of the drag frame the Wii room camera draws round the screen. the texture
+// pointer addresses a GXTexObj inside the interface tpl
+struct ScrollEdgeQuad {
+	void* mTex;   // _00
+	f32 mX;       // _04
+	f32 mY;       // _08
+	f32 mUnk0C;   // _0C
+	f32 mUnk10;   // _10
+	f32 mScale;   // _14
+	f32 mRot;     // _18
+	f32 mUnk1C;   // _1C
+	BOOL mActive; // _20
+	BOOL mUnk24;  // _24
+};
+
+// the room camera: the nunchuk stick zooms, dragging with the pointer pans, and a wipe
+// plus an edge frame sit on top of the GameCube behavior
+class CCameraActionScroll2 : public CInterfaceCameraAction {
+public:
+	Vec* mCenterPtr;          // _40, always mCenter
+	Vec mCenter;              // _44
+	f32 mMinX;                // _50
+	f32 mMaxX;                // _54
+	f32 mMinZ;                // _58
+	f32 mMaxZ;                // _5C
+	f32 mMaxFov;              // _60
+	f32 mMinFov;              // _64
+	Vec mOffset;              // _68, eye minus interest
+	Vec mStart;               // _74, the interest it started from
+	BOOL mTurned;             // _80, the camera is turned a quarter round x in room 11
+	BOOL mFromStage;          // _84
+	u8 mSavedInfo[0x20];      // _88
+	BOOL mDragging;           // _A8, the drag button is held
+	f32 mDragDamping;         // _AC
+	CVec mDragVec;            // _B0, the pan impulse the drag left, damped toward zero
+	Vec mDragStart;           // _C0, the pointer position the drag started at
+	Vec mDragLast;            // _D0, the pointer position the last update saw
+	u8 _DC[0x44];             // _DC
+	Mtx mMtx;                 // _120
+	u8 _150[0x94];            // _150
+	ScrollEdgeQuad mQuads[4]; // _1E4
+	CScrnWipeTile mWipe;      // _284, its vptr lands at _2B4, behind CScrnColor's color data
+
+	virtual void Init();           // _1C
+	virtual void Update(u32 step); // _10
+	virtual void Reset();          // _14
+	virtual void Draw();           // _20, draws the markers over the room's objects
+	virtual void DrawDebug3d();    // _28
+	virtual u32 GetCameraFlags();  // _58
+
+	void SaveCamInfo(const void* info);
+	Scroll2Limits* GetLimits(s32 room);
+	void ShowObjs();
+	void HideObjs();
+	void ClearHideList();
+	BOOL AddHideObj(s32 id);
+	void DrawQuads();
+	BOOL IsFovUnderMax();
+	virtual ~CCameraActionScroll2() { }
+};
+#endif // defined(VERSION_R24J01)
 
 // follows the player from behind on a damped spring, the stick or dpad turns and zooms it.
 // the member layout is shared with the Wii (mTarget _40 … mMode _6C verified in retail);

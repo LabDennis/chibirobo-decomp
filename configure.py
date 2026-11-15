@@ -1285,6 +1285,9 @@ if wii:
                 # member offsets are shared with the GameCube class (mEyeInterps _18C, mFovInterps
                 # _330, the interp pointers _44-_54); the Wii vtable re-orders the Vec& overloads
                 Object(NonMatching, "game/ccameraactionevt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii layout: no mYaw, drag pan over gWiiPointer, four edge quads and a
+                # CScrnWipeTile at _284 whose vptr sits behind CScrnColor's data at _2B4
+                Object(NonMatching, "game/wii/ccameraactionscroll2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # shared class layout with the GameCube; the Wii file goes through the player
                 # vtable (GetMtxPtr _AC, GetCameraTarget _1B0) and reads the remote's direction
                 # bits from gWiiPointer instead of an HSD pad

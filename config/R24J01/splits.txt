@@ -621,6 +621,11 @@ game/ccameraactionareaex.cpp:
 game/ccameraactionevt.cpp:
 	.text start:0x801618C0 end:0x80161FFC
 
+game/wii/ccameraactionscroll2.cpp:
+	extab start:0x8000F340 end:0x8000F458
+	extabindex start:0x80015D40 end:0x80015DAC
+	.text start:0x80161FFC end:0x80164BFC
+
 game/wii/ccameraactionchase.cpp:
 	extab start:0x8000F270 end:0x8000F2F0
 	extabindex start:0x80015CBC end:0x80015CEC

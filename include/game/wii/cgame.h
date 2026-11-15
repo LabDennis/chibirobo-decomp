@@ -375,7 +375,8 @@ public:
 	u8 _41EC[0x42FC - 0x41EC];
 	s32 mStage;
 	s32 mPrevStage; // _4300
-	u8 _4304[0x4B40 - 0x4304];
+	s32 mRoomCount; // _4304, CCameraActionScroll2::GetLimits bounds the room index with it
+	u8 _4308[0x4B40 - 0x4308];
 	CTpl mTpl;
 	CScrnFade mFade; // _4D38
 	u8 _4D6C[0x5044 - 0x4D6C];
