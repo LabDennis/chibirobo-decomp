@@ -1342,7 +1342,7 @@ if wii:
                 Object(Equivalent, "revolution/AI/ai.c"),
                 # the whole file was built without instruction scheduling: with it on, all 19 functions fall (to 48-90 %)
                 Object(Matching, "revolution/EXI/EXIBios.c", mw_version="GC/3.0a5.2", extra_cflags=["-schedule off"]),
-                Object(NonMatching, "revolution/EXI/EXIUart.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/EXI/EXIUart.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/EXI/EXICommon.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/SI/SIBios.c", cflags=[*cflags_sdk_2004, "-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "dolphin/si/SISamplingRate.c", mw_version="GC/3.0a5.2"),
