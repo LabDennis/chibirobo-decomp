@@ -48,6 +48,8 @@ static u32 PartInfoBuffer[8] ATTRIBUTE_ALIGN(32);
 static OSAlarm ResetAlarm;
 // the low-level driver hands this block to __DVDStopMotorAsync
 DVDCommandBlock __DVDStopMotorCommandBlock;
+// nothing in this game uses it (0x804D2340); pik2wii, Petari and xenoblade define it here as well
+DVDCommandBlock __DVDRestartMotorCommandBlock;
 
 void (*LastState)(DVDCommandBlock*);
 static DVDCommandBlock* executing;
@@ -60,7 +62,8 @@ static u32 LastError;
 static BOOL ResetRequired;
 static u32 MotorState;
 static volatile OSTime LastResetEnd;
-static u32 __DVDNumTmdBytes;
+// 32-byte aligned, as in pik2wii, Petari and xenoblade: that is the unused gap in front of it in .sbss (0x805A2058)
+static u32 __DVDNumTmdBytes ATTRIBUTE_ALIGN(32);
 static DVDGameTOC* GameToc;
 static DVDPartitionInfo* PartInfo;
 static DVDPartitionInfo* BootGameInfo;
@@ -1022,12 +1025,12 @@ static void cbForPrepareCoverRegister(u32 intType)
 	PreparingCover = FALSE;
 
 	if (WaitingForCoverClose) {
-		if (!(DVDLowGetCoverReg() & 1)) {
+		if (!(DVDLowGetCoverRegister() & 1)) {
 			OSCancelAlarm(&CoverAlarm);
 			WaitingForCoverClose = FALSE;
 			CoverClosed();
 		}
-	} else if (DVDLowGetCoverReg() & 1) {
+	} else if (DVDLowGetCoverRegister() & 1) {
 		WaitingForCoverOpen  = FALSE;
 		WaitingForCoverClose = TRUE;
 		if (MotorState == 2) {
@@ -1035,7 +1038,7 @@ static void cbForPrepareCoverRegister(u32 intType)
 		} else {
 			executing->state = DVD_STATE_COVER_OPEN;
 		}
-	} else if (DVDLowGetCoverReg() & 4) {
+	} else if (DVDLowGetCoverRegister() & 4) {
 		OSCancelAlarm(&CoverAlarm);
 		WaitingForCoverOpen = FALSE;
 		DVDLowClearCoverInterrupt(NULL);
@@ -1417,7 +1420,7 @@ static void cbForStateBusy(u32 intType)
 		}
 
 		if (CurrCommand == 38) {
-			coverReg = DVDLowGetCoverReg();
+			coverReg = DVDLowGetCoverRegister();
 			if (__OSGetSystemTime() - LastResetEnd < OSMillisecondsToTicks(100)) {
 				result = 0;
 			} else if (coverReg & 1) {
@@ -1437,7 +1440,7 @@ static void cbForStateBusy(u32 intType)
 		}
 
 		if (CurrCommand == 36) {
-			coverReg = DVDLowGetCoverReg();
+			coverReg = DVDLowGetCoverRegister();
 			if (((coverReg >> 2) & 1) || (coverReg & 1)) {
 				result = 0;
 			} else if (ResumeFromHere != 0) {
@@ -1955,7 +1958,7 @@ u32 __DVDGetCoverStatus(void)
 		return 0;
 	}
 
-	coverReg = DVDLowGetCoverReg();
+	coverReg = DVDLowGetCoverRegister();
 
 	if (__OSGetSystemTime() - LastResetEnd < OSMillisecondsToTicks(100)) {
 		return 0;

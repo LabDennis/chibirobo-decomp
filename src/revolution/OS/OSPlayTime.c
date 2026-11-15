@@ -199,7 +199,7 @@ static void __OSPlayTimeAlarmExpired(OSAlarm* alarm, OSContext* context)
 s32 __OSGetPlayTime(ESTicketView* ticket, s32* type, u32* remaining)
 {
 	ESTicketView aligned ATTRIBUTE_ALIGN(32);
-	ESLimit consumption[8] ATTRIBUTE_ALIGN(32);
+	ESLpEntry consumption[8] ATTRIBUTE_ALIGN(32);
 	u32 count ATTRIBUTE_ALIGN(32);
 	s32 err;
 	u32 i;

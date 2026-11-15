@@ -214,8 +214,8 @@ s32 NWC24SuspendScheduler(void)
 	return err;
 }
 
-// Not in the retail dol (nothing calls it, the linker dropped it); only its name is left in .data
-// (0x8031D0AC), so the body is the counterpart of NWC24SuspendScheduler by assumption.
+// not in the dol (nothing calls it): only its name survives (0x8031D0AC). Body as in xenoblade's OSNet.c, where
+// it is unused as well: NWC24SuspendScheduler with command 3.
 s32 NWC24ResumeScheduler(void)
 {
 	s32 err;

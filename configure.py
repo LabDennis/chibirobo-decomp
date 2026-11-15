@@ -1348,15 +1348,17 @@ if wii:
                 Object(Matching, "revolution/OS/OSIpc.c"),
                 Object(Matching, "revolution/OS/OSStateTM.c"),
                 Object(Matching, "revolution/OS/OSPlayRecord.c"),
-                # OSNet.c and OSLaunch.c keep calls the library flags would expand (NWC24iPrepareShutdown,
-                # NWC24SuspendScheduler, NWC24iRequestShutdown, NWC24iSetRtcCounter_, CheckTmdSysVersion)
+                # OSNet.c keeps four calls the library flags would expand (NWC24iPrepareShutdown,
+                # NWC24SuspendScheduler, NWC24iRequestShutdown, NWC24iSetRtcCounter_) while it expands their
+                # helpers. Not the order (-ipa file sees the whole file), linkage (static, global, weak) or
+                # function statics; by size NWC24iRequestShutdown is 14 statements short of the limit
                 Object(Matching, "revolution/OS/OSNet.c", extra_cflags=["-inline noauto"]),
                 Object(Matching, "revolution/OS/OSNandbootInfo.c"),
                 Object(Matching, "revolution/OS/OSPlayTime.c"),
-                Object(Matching, "revolution/OS/OSLaunch.c", extra_cflags=["-inline noauto"]),
+                Object(Matching, "revolution/OS/OSLaunch.c"),
                 Object(NonMatching, "revolution/MTX/quat.c"),
                 Object(Matching, "revolution/DVD/dvdfs.c"),
-                Object(NonMatching, "revolution/DVD/dvd.c"),
+                Object(Matching, "revolution/DVD/dvd.c"),
                 Object(Matching, "revolution/DVD/dvderror.c"),
                 Object(Matching, "revolution/DVD/dvdidutils.c"),
                 Object(Matching, "revolution/DVD/dvdFatal.c"),

@@ -417,9 +417,9 @@ void OSResetSystem(int reset, u32 resetCode, BOOL forceMenu)
 	OSPanic(__FILE__, 0x4A1, "OSResetSystem() is obsoleted. It doesn't work any longer.\n");
 }
 
-// Not in the retail dol (nothing calls it, the linker dropped it); its message follows
-// OSResetSystem's in .data (0x80310FA8). The line number is therefore not known.
+// not in the dol (nothing calls it): only its message survives, behind OSResetSystem's (0x80310F88). Body as in
+// Petari's OSReset.c; the line it reported is not known.
 void OSSetBootDol(u32 dolOffset)
 {
-	OSPanic(__FILE__, 0x4A7, "OSSetBootDol() is obsoleted. It doesn't work any longer.\n");
+	OSPanic(__FILE__, __LINE__, "OSSetBootDol() is obsoleted. It doesn't work any longer.\n");
 }
