@@ -6138,9 +6138,10 @@ BOOL MenuSave::Update(u32 frames)
 		if (mMode != 1 && mMode != 5 && mMode != 9) {
 			s32 sector;
 			s32 size;
+			s32 channel  = mChannel;
 			mReady       = FALSE;
 			mWrongDevice = FALSE;
-			switch (ProbeMemoryCardCapacity(&gGame.mMemcard.mCard, mChannel, &size, &sector)) {
+			switch (ProbeMemoryCardCapacity(&gGame.mMemcard.mCard, channel, &size, &sector)) {
 			case CARD_RESULT_WRONGDEVICE:
 				mWrongDevice = TRUE;
 				break;
@@ -8584,8 +8585,7 @@ BOOL MenuStatus::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
 		mAnimationFrame++;
-		mPulsePhase += (1.0f / (0.3f * FRAME_RATE)) * frames;
-		if (mPulsePhase >= 2.0f)
+		if ((mPulsePhase += (1.0f / (0.3f * FRAME_RATE)) * frames) >= 2.0f)
 			mPulsePhase = fmod(mPulsePhase, 2.0);
 		CPad pad(0);
 		PCEase(mOffsetX, mTargetOffsetX);
@@ -8608,6 +8608,8 @@ BOOL MenuStatus::Update(u32 frames)
 		ApproachHudValue(&mDiagramY, &mTargetDiagramY, 20.0f);
 		UpdateMenuTitle(this, frames);
 		switch (mShowHelp) {
+		case 0:
+			break;
 		case 1:
 			mHelpAlpha = 0;
 			mShowHelp++;
