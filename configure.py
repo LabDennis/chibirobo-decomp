@@ -1293,10 +1293,10 @@ if wii:
                 # the heavy previous/update methods need XObj/CMotionControlCamera decls (GC-only)
                 Object(NonMatching, "game/ccameraactionreset.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii Params layout matches the GameCube class (mRank _08, mMoney _14,
-                # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs
-                # every function matches, but the file is written in the GameCube's order and the Wii
-                # has its functions the other way round, so it cannot be linked in place
-                Object(Equivalent, "game/params.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs.
+                # the Wii file carries the functions in the Wii's order: the GameCube file's
+                # order is the exact reverse, so a shared source cannot link here
+                Object(Matching, "game/wii/params.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # same Inventory layout on both; the Wii functions carry the FindItem and
                 # CompactSlot helpers inlined with different codegen
                 Object(Equivalent, "game/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),

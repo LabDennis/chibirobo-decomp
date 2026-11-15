@@ -70,6 +70,7 @@ lbl_805A2B74 = .sdata2:0x805A2B74; // type:object size:0x4 scope:local data:byte
 lbl_805A2B78 = .sdata2:0x805A2B78; // type:object size:0x4 scope:local data:byte
 lbl_805A2B80 = .sdata2:0x805A2B80; // type:object size:0x4 scope:local data:byte
 lbl_805A2B84 = .sdata2:0x805A2B84; // type:object size:0x4 scope:local data:byte
+lbl_805A53F8 = .sdata2:0x805A53F8; // type:object size:0x4 scope:global data:float
 InitMem1__2mmFPvUl = .text:0x802A7478; // type:function size:0x5C
 InitMem2__2mmFPvUl = .text:0x802A74D4; // type:function size:0x5C
 Init__2mmFv = .text:0x802A7530; // type:function size:0xF4

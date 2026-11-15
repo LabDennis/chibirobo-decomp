@@ -710,8 +710,11 @@ game/wii/xobjplugcord.cpp:
 	.sbss start:0x805A1C70 end:0x805A1C74
 	.sdata2 start:0x805A5390 end:0x805A53D0
 
-game/params.cpp:
+game/wii/params.cpp:
+	extab start:0x8000D724 end:0x8000D734
+	extabindex start:0x80014C18 end:0x80014C30
 	.text start:0x80113394 end:0x80113910
+	.sdata2 start:0x805A53F8 end:0x805A53FC
 
 game/inventory.cpp:
 	.text start:0x80113910 end:0x801141C0

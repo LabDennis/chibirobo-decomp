@@ -1,23 +1,9 @@
-#if defined(VERSION_R24J01)
-#include "game/wii/cgame.h"
-
-// the Wii port kept the GameCube Params layout (verified member offsets in WiiPlayerParams)
-typedef WiiPlayerParams Params;
-#else
 #include "game/cgame.h"
 #include "game/infoscrn.h"
 #include "game/xchr.h"
-#endif
 
 extern "C" {
-#if defined(VERSION_R24J01)
-void SpawnPlayerPointParticles(WiiPlayerState* player, s32 type, s32 value);
-// the Wii HUD callbacks are empty stubs; the object at CGame+0xAF58 is unreconstructed
-void InfoScrn_OnPlayerLevelChanged(void* scrn, s32 level);
-void InfoScrn_OnPlayerExperienceChanged(void* scrn, s32 delta);
-#else
 void SpawnPlayerPointParticles(XObj* player, s32 type, s32 value);
-#endif
 }
 
 /**
