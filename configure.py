@@ -1099,7 +1099,7 @@ gamecube_libs = [
             Object(Matching, "sysdolphin/baselib/psdisptev.c"),
             Object(Matching, "sysdolphin/baselib/psappsrt.c"),
             Object(Matching, "sysdolphin/baselib/pslist.c"),
-            Object(MatchingFor(JP), "sysdolphin/baselib/axdriver.c"),
+            Object(Matching, "sysdolphin/baselib/axdriver.c"),
             Object(Matching, "sysdolphin/baselib/devcom.c"),
             Object(Matching, "sysdolphin/baselib/dvdsche.c"),
             Object(NonMatching, "sysdolphin/baselib/synth.c"),
