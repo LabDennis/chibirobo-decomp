@@ -1501,7 +1501,9 @@ if wii:
                 # GC/2.6: __copy_longs_* only match with the older compiler (89-91% under Wii/1.3)
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c", mw_version="GC/2.6"),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/rand.c"),
-                Object(Equivalent, "rvl_msl/string.c", mw_version="GC/3.0a5.2", extra_cflags=["-str pool", "-Cpp_exceptions off"]),
+                # retail has an extab entry for strtok (the only function with a frame) and strtok's "" once,
+                # in .sdata2: a read-only string only lands there with -ipa file (.rodata without)
+                Object(Matching, "rvl_msl/string.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-str reuse,readonly", "-ipa file"]),
                 Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common/strtoul.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_acos.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
                 Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_asin.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),

@@ -409,6 +409,8 @@ MSL_C.PPCEABI.bare.H/MSL_Common/rand.c:
 
 rvl_msl/string.c:
 	.text start:0x8022CA8C end:0x8022CEB8
+	extab start:0x8000FED8 end:0x8000FEE0
+	extabindex start:0x80016958 end:0x80016964
 	.sdata start:0x805A18A8 end:0x805A18B0
 	.sdata2 start:0x805A6858 end:0x805A6860
 

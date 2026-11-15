@@ -9,20 +9,7 @@ char* __strerror(int errnum, char* str);
 #define set_char_map(map, ch) map[(u8)(ch) >> 3] |= (u8)(1 << ((ch) & 7))
 #define tst_char_map(map, ch) (map[(u8)(ch) >> 3] & (u8)(1 << ((ch) & 7)))
 
-/**
- * @note Address: 0x80158F54
- * @note Size: 0x1C
- */
-size_t(strlen)(const char* str)
-{
-	size_t len = -1;
-	u8* p      = (u8*)str - 1;
-
-	do
-		len++;
-	while (*++p);
-	return (len);
-}
+// strlen is a file of its own on the Wii (0x80231A40, behind the math library)
 
 /**
  * @note Address: 0x80158E9C
