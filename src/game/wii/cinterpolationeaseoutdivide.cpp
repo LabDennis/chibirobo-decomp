@@ -37,10 +37,7 @@ bool CInterpolationEaseOutDivide::Step(f32 dt)
 	if (mDivisor > 0.0f) {
 		mValue = (last * (mDivisor - 1.0f) + mTarget) / mDivisor;
 	}
-	if ((f32)fabs(mValue - last) < 0.001f) {
-		return true;
-	}
-	return false;
+	return (f32)fabs(mValue - last) < 0.001f;
 }
 
 /**
