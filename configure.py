@@ -1296,7 +1296,11 @@ if wii:
                 # the game's operator delete, in a file of its own: it frees into the MEM1 exp heap
                 # (retail 0x80019A68 loads the InitMem1 global and calls MEMFreeToExpHeap, no null check)
                 Object(Matching, "game/wii/delete.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(Equivalent, "rel/module.c"),
+                # retail has extab entries for the three functions and emits them in reverse (_prolog first):
+                # the game group's compiler with exceptions on and deferred inlining gives both. The object
+                # is byte-exact, but nothing calls _epilog and _unresolved: retail kept them through its
+                # linker script (the REL entry points), the linker here strips them, so it stays unlinked.
+                Object(Equivalent, "rel/module.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),
             ],
         },
         {
