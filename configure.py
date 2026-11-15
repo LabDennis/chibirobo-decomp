@@ -1377,12 +1377,23 @@ if wii:
                 # GameCube file under GC/1.2.5n) and GX as a whole went from 11 to 130 of 191 before any
                 # source change. GC/3.0a3 to 3.0a5 give the same code on GXTexture.c; Wii/1.0 to 1.3 lose
                 # four to five more functions there, and without -ipa file GXInitTexObj falls to 94 %.
+                # GXLight.c and GXTransform.c take `optimizewithasm off` on top: retail leaves every function
+                # there that holds a paired-single asm block unoptimised (the block as written, both arms of
+                # an if/else kept, the pipe address set up right before the block). Per function, without
+                # and with the setting (plain source, the other functions are 100 % either way):
+                #   GXTransform.c  __GXSetProjection 97.4 -> 100   GXSetProjectionv 78.3 -> 100
+                #                  GXGetProjectionv  93.8 -> 100   GXLoadPosMtxImm  47.7 -> 100
+                #                  GXLoadNrmMtxImm   52.7 -> 100   GXLoadTexMtxImm  52.3 -> 100   (12 -> 18 of 18)
+                #   GXLight.c      GXLoadLightObjImm 41.1 -> 100                                  (18 -> 19 of 19)
+                # No spelling gets there without it: `asm volatile` pins the blocks but leaves
+                # GXLoadTexMtxImm at 89.6 %. Petari and wii-news-channel build these files the same way.
                 Object(Matching, "revolution/GX/GXInit.c", cflags=wii_gx_cflags),
                 Object(NonMatching, "revolution/GX/GXFifo.c", cflags=wii_gx_cflags),
                 Object(NonMatching, "revolution/GX/GXAttr.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXMisc.c", cflags=wii_gx_cflags),
                 Object(NonMatching, "revolution/GX/GXGeometry.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXFrameBuf.c", cflags=wii_gx_cflags),
+                Object(Matching, "revolution/GX/GXLight.c", cflags=[*wii_gx_cflags, '-pragma "optimizewithasm off"']),
                 Object(NonMatching, "revolution/GX/GXTexture.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXBump.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXTev.c", cflags=wii_gx_cflags),
@@ -1393,7 +1404,6 @@ if wii:
                 # (GC/1.2.5n + cflags_sdk) the GameCube editions build them with
                 Object(Equivalent, "dolphin/os/OSAudioSystem.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSError.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/gx/GXLight.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/gx/GXTransform.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/gx/GXDraw.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OS.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),

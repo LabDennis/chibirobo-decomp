@@ -860,8 +860,10 @@ revolution/GX/GXFrameBuf.c:
 	.data start:0x80323768 end:0x80324014
 	.sdata2 start:0x805A65A8 end:0x805A65B8
 
-dolphin/gx/GXLight.c:
+revolution/GX/GXLight.c:
 	.text start:0x801A9E8C end:0x801AA5E0
+	.data start:0x80324018 end:0x80324034
+	.sdata2 start:0x805A65B8 end:0x805A65EC
 
 revolution/GX/GXTexture.c:
 	.text start:0x801AA5E0 end:0x801AB584
