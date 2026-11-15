@@ -22,8 +22,19 @@ void UpdateToy117JointVisibility(XObjActorToy* object, u32 frames);
 void UpdateToy6FJointSpin(XObjActorToy* object, u32 frames);
 }
 
+/**
+ * @note Address: 0x801219B0
+ * @note Size: 0x104
+ */
+extern "C" inline f32 GetToyHorizontalDistance(Vec* first, Vec* second)
+{
+	f32 dx = first->x - second->x;
+	f32 dy = 0.0f;
+	f32 dz = first->z - second->z;
+	return sqrtf(dx * dx + dy * dy + dz * dz);
+}
+
 extern "C" {
-f32 GetToyHorizontalDistance(Vec*, Vec*);
 void ApproachHudValue(f32*, f32*, f32);
 void HandleToyKind0FCommand(XObjActorToy*, u32 frames);
 void HandleToyKind110Command(XObjActorToy*, u32 frames);
@@ -692,8 +703,7 @@ void XObjActorToy::StateHitRecovery(u32 frames)
 		mHeading   = atan2(mHomePos.x - mMoveTranslate.x, mHomePos.z - mMoveTranslate.z);
 		mFacing    = mHeading;
 		CVec home(mHomePos);
-		f32 dx = home.x - mMoveTranslate.x, dy = 0.0f, dz = home.z - mMoveTranslate.z;
-		if (sqrtf(dx * dx + dy * dy + dz * dz) < 1.0f) {
+		if (GetToyHorizontalDistance(&home, &mMoveTranslate) < 1.0f) {
 			mMoveTranslate.x = mHomePos.x;
 			mMoveTranslate.y = mHomePos.y;
 			mMoveTranslate.z = mHomePos.z;
@@ -1742,18 +1752,6 @@ void XObjActorToy::UpdateAfterAnim(u32 frames)
 		UpdateToy25EHeldObjects(this, frames);
 		break;
 	}
-}
-
-/**
- * @note Address: 0x801219B0
- * @note Size: 0x104
- */
-extern "C" f32 GetToyHorizontalDistance(Vec* first, Vec* second)
-{
-	f32 dx = first->x - second->x;
-	f32 dy = 0.0f;
-	f32 dz = first->z - second->z;
-	return sqrtf(dx * dx + dy * dy + dz * dz);
 }
 
 extern "C" {
