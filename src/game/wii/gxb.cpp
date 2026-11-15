@@ -6,8 +6,10 @@
 #include "game/screenwipegeometry.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cgs.h"
+#include "game/cprimitive.h"
 #include "game/gmath.h"
 #include "Dolphin/gx.h"
+#include "Dolphin/mtx.h"
 #include <math.h>
 
 // the screen layout globals wii/init.cpp fills in from the console's settings
@@ -17,6 +19,11 @@ extern u32 gScreenRight;
 extern u32 gScreenTop;
 extern u32 gScreenBottom;
 extern f32 gScreenWidthScale; // against the GameCube's 640
+extern s32 gPointerScreenWidth;
+extern s32 gPointerScreenHeight;
+
+// in the Wii's matrix unit (0x8018F304) but missing from its mtx.h
+extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* srcBase, Vec* dstBase, u32 count);
 
 static inline void StepChannel(f32& current, f32& target, f32& speed, u32 frames)
 {
@@ -55,6 +62,88 @@ static inline void CopyVector(CVec& destination, const Vec& source)
 	destination.x = source.x;
 	destination.y = source.y;
 	destination.z = source.z;
+}
+
+// fills the wipe quad's corners from the frame's screen edges; z stays whatever the
+// initializer left
+static inline void SetWipeQuadScreenBounds(WipeQuad& quad)
+{
+	quad.vertices[0].x = (f32)gScreenLeft;
+	quad.vertices[0].y = (f32)gScreenTop;
+	quad.vertices[1].x = (f32)gScreenRight;
+	quad.vertices[1].y = (f32)gScreenTop;
+	quad.vertices[2].x = (f32)gScreenRight;
+	quad.vertices[2].y = (f32)gScreenBottom;
+	quad.vertices[3].x = (f32)gScreenLeft;
+	quad.vertices[3].y = (f32)gScreenBottom;
+}
+
+static inline void BeginWipe(CGs* gs, s32 mode)
+{
+	if (mode) {
+		static const Vec corners[4] = { { 0, 0, -1 }, { 0, 0, -1 }, { 0, 0, -1 }, { 0, 0, -1 } };
+		WipeQuad quad               = { { corners[0], corners[1], corners[2], corners[3] } };
+		SetWipeQuadScreenBounds(quad);
+		gs->mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		DrawWipeQuad(gs, quad, 0);
+	}
+	gs->mCurRenderState->SetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0xFF);
+	SetGsChannelEnabled(gs, 0, 0);
+	gs->mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gs->mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+}
+
+static inline void FinishWipe(const CScrnWipe* wipe, CGs* gs, s32 mode)
+{
+	WipeQuad quad = { 0 };
+	SetWipeQuadScreenBounds(quad);
+	u32 color = ((u32)wipe->mColor.r << 24) | ((u32)wipe->mColor.g << 16) | ((u32)wipe->mColor.b << 8) | (u32)wipe->mColor.a;
+	if (mode)
+		gs->mCurRenderState->SetZMode(GX_TRUE, GX_LESS, GX_TRUE);
+	else
+		gs->mCurRenderState->SetZMode(GX_TRUE, GX_LESS, GX_FALSE);
+	DrawWipeQuad(gs, quad, color);
+	gs->mCurRenderState->SetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 0xFF);
+	gs->mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+}
+
+static inline void BeginWipeMask(CGs* gs, f32 opacity)
+{
+	WipeQuad quad = { 0 };
+	SetWipeQuadScreenBounds(quad);
+	gs->mCurRenderState->SetDstAlpha(GX_FALSE, 0);
+	gs->mCurRenderState->SetColorUpdate(GX_FALSE);
+	gs->mCurRenderState->SetAlphaUpdate(GX_TRUE);
+	gs->mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gs->mCurRenderState->SetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0xFF);
+	gs->mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+	gs->mCurTevStage->SetMode(GX_PASSCLR);
+	DrawWipeQuad(gs, quad, 0xFF000000 | (u32)(255.0f - opacity));
+	gs->mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gs->mCurRenderState->SetAlphaCompare(GX_GREATER, (u8)(s32)(255.0f - opacity), GX_AOP_AND, GX_LEQUAL, 0xFF);
+}
+
+static inline void EndWipeMask(CGs* gs)
+{
+	gs->mCurRenderState->SetColorUpdate(GX_TRUE);
+	gs->mCurRenderState->SetAlphaUpdate(GX_FALSE);
+	gs->mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_INVDSTALPHA, GX_BL_DSTALPHA, GX_LO_SET);
+	gs->mCurRenderState->SetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 0xFF);
+	gs->mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+}
+
+static inline void SetTilePoint(Vec& v, f32 x, f32 y)
+{
+	v.x = x;
+	v.y = y;
+}
+
+static inline void SetTileEdge(Vec* vertices, f32 x, f32 y, f32 outerX, f32 outerY, f32 nextX, f32 nextY)
+{
+	SetTilePoint(vertices[0], x, y);
+	SetTilePoint(vertices[1], outerX, outerY);
+	SetTilePoint(vertices[2], nextX, nextY);
+	SetTilePoint(vertices[3], x, y);
 }
 
 /**
@@ -190,15 +279,12 @@ extern "C" void UpdateScreenFade(CScrnColor* color, u32 frames)
  * @note Address: 0x8003D774
  * @note Size: 0x2B4
  */
-// NONMATCHING: retail builds the quad from the globals before the color test
 extern "C" void DrawScreenColorOverlay(CScrnColor* color, CGs* gs)
 {
 	if (HasColor(color)) {
-		WipeQuad quad = { { { (f32)gScreenLeft, (f32)gScreenTop, 0.0f },
-			                { (f32)gScreenRight, (f32)gScreenTop, 0.0f },
-			                { (f32)gScreenRight, (f32)gScreenBottom, 0.0f },
-			                { (f32)gScreenLeft, (f32)gScreenBottom, 0.0f } } };
-		u32 packed    = ((u32)color->mColor.r << 24) | ((u32)color->mColor.g << 16) | ((u32)color->mColor.b << 8) | (u32)color->mColor.a;
+		WipeQuad quad = { 0 };
+		SetWipeQuadScreenBounds(quad);
+		u32 packed = ((u32)color->mColor.r << 24) | ((u32)color->mColor.g << 16) | ((u32)color->mColor.b << 8) | (u32)color->mColor.a;
 		SetGsChannelEnabled(gs, 0, 0);
 		gs->mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 		gs->mCurRenderState->SetZMode(GX_TRUE, GX_LESS, GX_FALSE);
@@ -351,6 +437,45 @@ void CScrnWipe::Update(u32 frames)
 	}
 }
 
+// NONMATCHING: the four Draw methods share the wipe quad/state scaffolding below. Retail
+// materializes an extra 48-byte stack copy of the quad (x/y copied, z written as 0) before
+// some DrawGsVertexQuad calls; the source behind that copy is undetermined.
+/**
+ * @note Address: 0x8003E308
+ * @note Size: 0xABC
+ */
+void CScrnWipe::Draw(CGs* gs, s32 mode)
+{
+	if (!mActive)
+		return;
+	BeginWipe(gs, mode);
+	BeginWipeMask(gs, mColor.a);
+	f32 edgeWidth = 32.0f;
+	if (edgeWidth > mWidth)
+		edgeWidth = mWidth;
+	f32 edgeHeight = 32.0f * (mHeight / mWidth);
+	if (edgeHeight > mHeight)
+		edgeHeight = mHeight;
+
+	DrawGsCircle(gs, 64, 255, 255, mX, mY, 0.0f, mWidth, mHeight, 0.0f, 0.0f, 0.0f);
+	PrimVertex vertices[130];
+	for (s32 i = 0; i < 65; i++) {
+		f32 angle     = (TWO_PI / 64.0f) * i;
+		PrimVertex* v = &vertices[2 * i];
+		v[0].pos.x    = mX - mWidth * 0.5f * (f32)sin(angle);
+		v[0].pos.y    = mY + mHeight * 0.5f * (f32)cos(angle);
+		v[0].pos.z    = 0.0f;
+		v[0].color    = 255;
+		v[1].pos.x    = mX - (mWidth + edgeWidth) * 0.5f * (f32)sin(angle);
+		v[1].pos.y    = mY + (mHeight + edgeHeight) * 0.5f * (f32)cos(angle);
+		v[1].pos.z    = 0.0f;
+		v[1].color    = 0;
+	}
+	DrawGsTriangleVertices(gs, GX_TRIANGLESTRIP, gs->mCamera->mViewMtx, vertices, 130);
+	EndWipeMask(gs);
+	FinishWipe(this, gs, mode);
+}
+
 /**
  * @note Address: 0x8003EDC4
  * @note Size: 0x50
@@ -363,6 +488,93 @@ void CScrnWipeTile::SetDimensions(BOOL hideWhenDone, f32 x, f32 y, f32 width, f3
 		targetHeight /= gScreenWidthScale;
 	}
 	CScrnWipe::SetDimensions(hideWhenDone, x, y, width, height, targetWidth, targetHeight, time);
+}
+
+/**
+ * @note Address: 0x8003EE14
+ * @note Size: 0xC08
+ */
+void CScrnWipeTile::Draw(CGs* gs, s32 mode)
+{
+	if (!mActive)
+		return;
+	BeginWipe(gs, mode);
+	BeginWipeMask(gs, mColor.a);
+	f32 edgeWidth = 24.0f;
+	if (edgeWidth > mWidth)
+		edgeWidth = mWidth;
+	f32 edgeHeight = 24.0f;
+	if (edgeHeight > mHeight)
+		edgeHeight = mHeight;
+	DrawGsQuad(gs, 255, 255, 255, 255, mX, mY, 0.0f, mWidth, mHeight, 0.0f, 0.0f, mRotation);
+
+	Vec vertices[18] = {};
+	const f32 dx = edgeWidth * 0.5f, dy = edgeHeight * 0.5f;
+	f32 left = -mWidth * 0.5f, right = mWidth * 0.5f;
+	f32 outerLeft = -mWidth * 0.5f - dx, outerRight = mWidth * 0.5f + dx;
+	f32 top = -mHeight * 0.5f, bottom = mHeight * 0.5f;
+	f32 outerTop = -mHeight * 0.5f - dy, outerBottom = mHeight * 0.5f + dy;
+	SetTileEdge(vertices, left, top, outerLeft, outerTop, outerRight, outerTop);
+	SetTileEdge(vertices + 4, right, top, outerRight, outerTop, outerRight, outerBottom);
+	SetTileEdge(vertices + 8, right, bottom, outerRight, outerBottom, outerLeft, outerBottom);
+	SetTileEdge(vertices + 12, left, bottom, outerLeft, outerBottom, outerLeft, outerTop);
+	SetTilePoint(vertices[16], left, top);
+	SetTilePoint(vertices[17], outerLeft, outerTop);
+	u32 colors[18] = { 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255, 255, 0 };
+	Mtx translation, rotation, transform;
+	PSMTXTrans(translation, mX, mY, 0.0f);
+	PSMTXRotRad(rotation, 'z', -mRotation);
+	PSMTXConcat(translation, rotation, transform);
+	PSMTXMultVecArray(transform, vertices, vertices, 18);
+	DrawGsColoredTrianglePrimitive(gs, GX_TRIANGLESTRIP, gs->mCamera->mViewMtx, vertices, colors, 18);
+	EndWipeMask(gs);
+	FinishWipe(this, gs, mode);
+}
+
+/**
+ * @note Address: 0x8003FA1C
+ * @note Size: 0x934
+ */
+void CScrnWipeTex::Draw(CGs* gs, s32 mode)
+{
+	if (!mActive)
+		return;
+	BeginWipe(gs, mode);
+	BeginWipeMask(gs, mColor.a);
+	gs->mCurTevStage->SetMode(GX_MODULATE);
+	gs->mCurRenderState->SetZCompLoc(GX_FALSE);
+	DrawGsTexturedQuad(gs, &mTex, -1, -1, -1, -1, mX, mY, 0.0f, mWidth, mHeight, 0.0f, 0.0f, mRotation);
+	gs->mCurRenderState->SetZCompLoc(GX_TRUE);
+	EndWipeMask(gs);
+	gs->mCurTevStage->SetMode(GX_PASSCLR);
+	FinishWipe(this, gs, mode);
+}
+
+/**
+ * @note Address: 0x80040350
+ * @note Size: 0x70C
+ */
+// the grid of circles the custom wipe closes: the cell size comes from the pointer
+// screen's width so the count survives widescreen
+void CScrnWipeCustom::Draw(CGs* gs, s32 mode)
+{
+	if (!mActive)
+		return;
+	BeginWipe(gs, mode);
+	f32 cell = (f32)gPointerScreenWidth / 16.0f;
+	for (s32 row = 0; row < (f32)gPointerScreenHeight / cell; ++row) {
+		f32 y = row * cell + cell * 0.5f;
+		for (s32 col = 0; col < (f32)gPointerScreenWidth / cell; ++col) {
+			f32 x = col * cell + cell * 0.5f;
+			f32 extra;
+			if (col < 16.0f * 0.5f)
+				extra = 0.2f * col;
+			else
+				extra = 0.2f * ((f32)gPointerScreenWidth / cell - col);
+			DrawGsCircle(gs, 16, 0, 0, x, y, 0.0f, mWidth + mWidth * extra, mHeight + mHeight * extra, 0.0f, 0.0f, 0.0f);
+		}
+	}
+	FinishWipe(this, gs, mode);
 }
 
 /**

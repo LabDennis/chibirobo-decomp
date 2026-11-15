@@ -1409,6 +1409,7 @@ Free__2mmFPv = .text:0x802A791C; // type:function size:0x108
 HSD_SetupTevStage = .text:0x802AA18C; // type:function size:0x10C
 DrawGsCircle = .text:0x802AC270; // type:function size:0x2A0
 DrawGsTrianglePrimitive = .text:0x802ABEEC; // type:function size:0x104
+DrawGsColoredTrianglePrimitive = .text:0x802ABFF0; // type:function size:0x104
 DrawGsVertexQuad = .text:0x802AC1EC; // type:function
 Draw__7CSpriteFPA4_f11_GXTexMapIDUl13_GXTexMtxTypeUlUlUlUl = .text:0x802B17A8; // type:function
 DrawGsStrokeTextFormat = .text:0x802AE0E4; // type:function size:0xF4
