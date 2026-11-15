@@ -723,6 +723,9 @@ game/atcmenudtor.cpp:
 game/drsmenudtor.cpp:
 	.text start:0x800C1018 end:0x800C1058
 
+game/xchrmenu.cpp:
+	.text start:0x800C1058 end:0x800C1308
+
 game/oxmenudtor.cpp:
 	.text start:0x800C1308 end:0x800C13B0
 

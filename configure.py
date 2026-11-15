@@ -1267,6 +1267,9 @@ if wii:
                 Object(Matching, "game/atcmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/drsmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/oxmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # XObjChrMenu's dtor and the OXMenu/OXMenuMark ctors; the mark ctor
+                # inlines the unrecovered Wii XObj ctor, so the unit stays NonMatching
+                Object(NonMatching, "game/xchrmenu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/gamecpadone.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # XPad's dtor and the XObjChrMenu ctor (player members _18BE8/_19EE4); the
                 # GameCube file's hand-spelled weak copies stay GC-only like the menu dtors
