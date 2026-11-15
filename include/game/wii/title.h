@@ -2,6 +2,7 @@
 #define GAME_WII_TITLE_H
 
 #include "game/wii/menuutil.h"
+#include "game/menuhelpchar.h"
 #include "Dolphin/vec.h"
 
 // The Wii title screen (title.cpp), CGame keeps it at _5C70. The layout follows the GameCube Title
@@ -151,7 +152,9 @@ public:
 	s32 mState;       // _0004
 	s32 mMode;        // _0008
 	u32 mOptionState; // _000C, 0 choosing, 2 leaving
-	u8 _0010[0x1C - 0x10];
+	u8 _0010[0x14 - 0x10];
+	f32 mMenuAlpha; // _0014
+	u8 _0018[0x1C - 0x18];
 	f32 mPulseAngle;        // _001C
 	s32 mHighlightDelay;    // _0020, frames until the selected line starts pulsing
 	u32 mSpawnIndex;        // _0024
@@ -181,9 +184,14 @@ public:
 	u8 mStickOn;            // _49AD
 	u8 mSavedPointerOn;     // _49AE, what they were when the page opened, cancel puts them back
 	u8 mSavedStickOn;       // _49AF
-	u8 _49B0[0x4B48 - 0x49B0];
-	TitleName mName; // _4B48
-	u8 _4CE4[0x5058 - 0x4CE4];
+	u8 _49B0[0x4B3C - 0x49B0];
+	f32 mHelpAlpha;        // _4B3C
+	const char* mHelpText; // _4B40
+	u8 _4B44[0x4B48 - 0x4B44];
+	TitleName mName;      // _4B48
+	s32 mHelpCount;       // _4CE4
+	MenuHelpChar mBg[20]; // _4CE8
+	u8 _4DD8[0x5058 - 0x4DD8];
 	CbPane mOptionPanes[3];  // _5058, the pointer's rectangles over the three option lines
 	f32 mOptionBar[3];       // _5148, the highlight on the options page, eased towards the line picked
 	f32 mOptionBarTarget[2]; // _5154, where its second and third value go
