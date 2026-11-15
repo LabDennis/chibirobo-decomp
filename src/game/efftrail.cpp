@@ -3,6 +3,7 @@
 #include "game/xobjmap.h"
 #include "game/xpad.h"
 #include "game/cgame.h"
+#include "game/cgameutil.h"
 #include "game/cjobjset.h"
 #include "game/globals.h"
 #include "game/pointptcl.h"
@@ -15,6 +16,8 @@ STATIC_ASSERT(sizeof(SuitChangeEffect) == 0x1E4);
  * @note Address: 0x80093C14
  * @note Size: 0x490
  */
+// NONMATCHING: retail keeps the halo's width and height in two registers (f28 is a copy of f29), and its frame has the
+// point's position above the halo's two rotation vectors and the point's two below the temporaries of the add
 extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 {
 	if (!trail->active) {
@@ -23,15 +26,7 @@ extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 
 	gGame.mGs.mBillboardEnabled = 1;
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, TRUE, 3, FALSE);
-	if (gGame.mGs.mCurRenderMode) {
-		ApplyGsRenderMode(gGame.mGs.mCurRenderMode, FALSE);
-	}
-	if (gGame.mGs.mCurTevStage) {
-		ApplyGsTevStage(gGame.mGs.mCurTevStage, FALSE);
-	}
-	if (gGame.mGs.mCurChannel) {
-		ApplyGsChannel(gGame.mGs.mCurChannel, FALSE);
-	}
+	SetupAll(FALSE);
 
 	Vec top  = origin;
 	f32 peak = 0.0f;
@@ -64,17 +59,18 @@ extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 			// each point: a wide glow disc under a solid core
 			Vec pos        = origin + point.position;
 			f32 radius     = 4.0f * point.scale;
-			f32 angle      = 4.0f * point.angle;
+			f32 angle      = point.angle;
 			const u32 edge = point.color;
-			u32 center     = edge | (u8)(s32)(255.0f * point.scale);
+			u32 center     = edge;
+			center |= (u8)(s32)(255.0f * point.scale);
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 			Vec glowRotation = { 0.0f, 0.0f, 0.0f };
-			glowRotation.z   = angle;
+			glowRotation.z   = 4.0f * angle;
 			DrawGsCircle(&gGame.mGs, 6, 0xFFFFFF20, 0xFFFFFF00, pos.x, pos.y, pos.z, 2.5f * radius, 2.5f * radius, glowRotation.x,
 			             glowRotation.y, glowRotation.z);
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 			Vec coreRotation = { 0.0f, 0.0f, 0.0f };
-			coreRotation.z   = angle;
+			coreRotation.z   = 4.0f * angle;
 			DrawGsCircle(&gGame.mGs, 3, center, edge, pos.x, pos.y, pos.z, radius, radius, coreRotation.x, coreRotation.y, coreRotation.z);
 		}
 	}
@@ -186,13 +182,13 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 		burst.mState   = 1;
 		for (s32 i = 0; i < burst.mNum; ++i) {
 			PointPtclOne& particle = burst.mPtcls[i];
-			u32 green              = 100 + rand() % 156;
-			u32 red                = 100 + rand() % 156;
-			u32 blue               = 100 + rand() % 156;
-			particle.mColor        = (red << 24) | (green << 16) | (blue << 8);
-			particle.mFade         = 1.0f + 0.02f * i;
-			// Retail consumes a random angle before assigning the evenly spaced directions.
+			u32 color              = (100 + rand() % 156) << 16;
+			color |= (100 + rand() % 156) << 24;
+			particle.mColor = ((100 + rand() % 156) << 8) | color;
+			particle.mFade  = 1.0f + 0.02f * i;
+			// Retail consumes a random angle before assigning the evenly spaced directions, and stores the fade a second time.
 			particle.mAngle = DEG2RAD * (rand() % 360);
+			particle.mFade  = 1.0f + 0.02f * i;
 			if (display.mAmount >= 0) {
 				particle.mAngularSpeed = DEG2RAD * ((3000 - rand() % 6000) / 500.f);
 				particle.mSpeed        = -(10000 + rand() % 10000) / 200.f;
@@ -208,8 +204,7 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 		for (s32 i = display.mCount - 1; i >= 0; --i) {
 			f32& fade = display.digits[i].fade;
 			if (fade < 1.f) {
-				fade += 0.08f * frames;
-				if (fade > 1.f)
+				if ((fade += 0.08f * frames) > 1.f)
 					fade = 1.f;
 				++moving;
 			}
@@ -226,16 +221,14 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 		}
 	} else if (display.mState == 3) { // hold, then fade out
 		if (display.holdFrames > 0.f) {
-			display.holdFrames -= frames;
-			if (display.holdFrames <= 0.f)
+			if ((display.holdFrames -= frames) <= 0.f)
 				display.holdFrames = 0.f;
 		} else {
 			s32 moving = 0;
 			for (s32 i = display.mCount - 1; i >= 0; --i) {
 				f32& fade = display.digits[i].fade;
 				if (fade > 0.f) {
-					fade -= 0.08f * frames;
-					if (fade < 0.f)
+					if ((fade -= 0.08f * frames) < 0.f)
 						fade = 0.f;
 					++moving;
 				}
@@ -249,8 +242,7 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 		for (s32 i = 0; i < burst.mNum; ++i) {
 			PointPtclOne& particle = burst.mPtcls[i];
 			if (particle.mFade > 0.f) {
-				particle.mFade -= 0.015f * frames;
-				if (particle.mFade < 0.f)
+				if ((particle.mFade -= 0.015f * frames) < 0.f)
 					particle.mFade = 0.f;
 				++moving;
 			}
@@ -408,7 +400,6 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 }
 #else
-#include "game/cgameutil.h"
 
 extern "C" {
 void SetJointMaterialColorsAndAlpha(HSD_JObj*, f32**, s32);

@@ -329,10 +329,18 @@ static inline void SetPanCenter(CCameraActionScroll2* camera, Vec position)
 	camera->mCenter.z = position.z;
 }
 
+// CVec's += takes a reference, this one copies b first like retail does here (as CalcSpring in ccameraactionchase.cpp)
+inline void AddCopy(CVec& a, Vec b)
+{
+	PSVECAdd(&a, &b, &a);
+}
+
 /**
  * @note Address: 0x8014567C
  * @note Size: 0x96C
  */
+// NONMATCHING: registers only. retail copies mCenter for the pan three loads first, as from a const source, and numbers the
+// temporaries of the fov clamp differently
 void CCameraActionScroll2::Update(u32 step)
 {
 	// the stick works on the unturned camera: undo the quarter turn here, the end of Update turns it again
@@ -360,76 +368,76 @@ void CCameraActionScroll2::Update(u32 step)
 		CalcLimits(this, GetLimits(gGame.mStage));
 	}
 
-	CVec next;
-	f32 stickX = pad.mPad->mStickX;
-	f32 stickY = pad.mPad->mStickY;
-	if (stickX != 0.0f || stickY != 0.0f) {
-		CVec eye(mEye);
-		CVec toCenter = Vec(mCenter);
-		Vec origin    = eye;
-		PSVECSubtract(&toCenter, &origin, &toCenter);
-		PSVECNormalize(&toCenter, &toCenter);
+	{
+		CVec next;
+		f32 stickX = pad.mPad->mStickX;
+		f32 stickY = pad.mPad->mStickY;
+		if (stickX != 0.0f || stickY != 0.0f) {
+			CVec eye(mEye);
+			CVec toCenter = Vec(mCenter);
+			PSVECSubtract(&toCenter, &Vec(eye), &toCenter);
+			{
+				CVec start(mEye); // never read, retail builds it here
+				PSVECNormalize(&toCenter, &toCenter);
 
-		CVec move = CVec(-stickX, 0.0f, stickY);
-		Mtx rot;
-		PSMTXIdentity(rot);
-		PSMTXRotRad(rot, 'y', atan2(mInterest.x - mEye.x, mInterest.z - mEye.z));
-		PSMTXMultVec(rot, &move, &move);
-		f32 speed = 2.2f * (f32)sin(DEG2RAD * mFov);
-		if (speed > 1.5f) {
-			speed = 1.5f;
-		}
-		PSVECScale(&move, &move, speed);
+				CVec move = CVec(-stickX, 0.0f, stickY);
+				Mtx rot;
+				PSMTXIdentity(rot);
+				PSMTXRotRad(rot, 'y', atan2(mInterest.x - mEye.x, mInterest.z - mEye.z));
+				PSMTXMultVec(rot, &move, &move);
+				f32 speed = 2.2f * (f32)sin(DEG2RAD * mFov);
+				if (speed > 1.5f) {
+					speed = 1.5f;
+				}
+				PSVECScale(&move, &move, speed);
 
-		Mtx tilt;
-		PSMTXIdentity(tilt);
-		f32 dx    = mInterest.x - mEye.x;
-		f32 dz    = mInterest.z - mEye.z;
-		f32 dy    = mInterest.y - mEye.y;
-		f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
-		if (dy < 0.0f) {
-			pitch = HALF_PI - pitch;
-		} else {
-			pitch = pitch - HALF_PI;
-		}
-		PSMTXRotRad(tilt, 'x', pitch);
-		PSMTXRotRad(tilt, 'z', 0.0f);
-		PSMTXMultVec(tilt, &move, &move);
-		PSVECScale(&toCenter, &toCenter, 50.0f);
-		Vec pan = move;
-		PSVECAdd(&toCenter, &pan, &toCenter);
-		PSVECNormalize(&toCenter, &toCenter);
-		PSVECScale(&toCenter, &toCenter, mDistance);
+				Mtx tilt;
+				PSMTXIdentity(tilt);
+				f32 dx    = mInterest.x - mEye.x;
+				f32 dz    = mInterest.z - mEye.z;
+				f32 dy    = mInterest.y - mEye.y;
+				f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
+				PSMTXRotRad(tilt, 'x', dy < 0.0f ? HALF_PI - pitch : pitch - HALF_PI);
+				PSMTXRotRad(tilt, 'z', 0.0f);
+				PSMTXMultVec(tilt, &move, &move);
+				PSVECScale(&toCenter, &toCenter, 50.0f);
+				AddCopy(toCenter, move);
+				PSVECNormalize(&toCenter, &toCenter);
+				PSVECScale(&toCenter, &toCenter, mDistance);
+			}
 
-		next = toCenter + eye;
-		if (gSavedScrollCameraInfo != NULL) {
-			next.y = mInterest.y;
-		} else {
-			next.y = 0.0f;
+			next = toCenter + eye;
+			if (gSavedScrollCameraInfo != NULL) {
+				next.y = mInterest.y;
+			} else {
+				next.y = 0.0f;
+			}
+			SetPanCenter(this, next);
 		}
-		SetPanCenter(this, next);
 	}
 
-	CVec center = Vec(mCenter);
-	if (center.x < mMinX) {
-		center.x = mMinX;
-	} else if (center.x > mMaxX) {
-		center.x = mMaxX;
+	{
+		CVec center = Vec(mCenter);
+		if (center.x < mMinX) {
+			center.x = mMinX;
+		} else if (center.x > mMaxX) {
+			center.x = mMaxX;
+		}
+		if (center.z < mMinZ) {
+			center.z = mMinZ;
+		} else if (center.z > mMaxZ) {
+			center.z = mMaxZ;
+		}
+		SetPanCenter(this, center);
 	}
-	if (center.z < mMinZ) {
-		center.z = mMinZ;
-	} else if (center.z > mMaxZ) {
-		center.z = mMaxZ;
-	}
-	SetPanCenter(this, center);
 
 	SetInterest(GetPanTarget(this));
 	SetEye(mOffset.x + GetPanTarget(this).x, mOffset.y + GetPanTarget(this).y, mOffset.z + GetPanTarget(this).z);
 
 	if (mTurned) {
+		Vec eye(mEye);
 		Mtx turn;
 		PSMTXRotRad(turn, 'x', HALF_PI);
-		Vec eye(mEye);
 		PSMTXMultVec(turn, &eye, &eye);
 		SetEye(eye);
 		Vec interest(mInterest);
