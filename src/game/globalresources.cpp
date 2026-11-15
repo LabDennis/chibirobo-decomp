@@ -369,8 +369,6 @@ extern "C" u8* GetGlobalScriptTable(s32)
 }
 
 // Object IDs from 10000 share collision lists with base objects.
-// NONMATCHING (R24J01): the Wii build schedules the remap lookup differently (82 %); this is the form that
-// matches all three GameCube editions.
 /**
  * @note Address: 0x8006E734
  * @note Size: 0x88
@@ -378,14 +376,21 @@ extern "C" u8* GetGlobalScriptTable(s32)
 extern "C" XObjFloor* GetObjectCollisionList(s32 objectId)
 {
 	if (objectId >= 10000) {
+#if defined(VERSION_R24J01)
+		// the Wii build subtracts first and indexes the table; the GameCube ones fold the 10000 into the table's address
+		s32 index = objectId - 10000;
+		objectId  = gObjectCollisionIdRemap[index];
+#else
 		objectId = gObjectCollisionIdRemap[objectId - 10000];
+#endif
 		if (objectId < 0)
 			return NULL;
 	}
 	u8* collision = gGlobalScriptResources.mCollision;
-	u8* entry     = collision + objectId * 4;
-	if (*(u32*)entry != 0)
+	if (*(u32*)(collision + objectId * 4) != 0) {
+		const u8* entry = collision + objectId * 4;
 		return reinterpret_cast<XObjFloor*>(collision + ReadResourceOffset(entry));
+	}
 	return NULL;
 }
 
