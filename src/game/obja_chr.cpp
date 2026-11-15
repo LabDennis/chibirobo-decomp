@@ -1636,7 +1636,8 @@ static inline void ChooseClimbAction(XObjChr* player, XObj* object, s32 mode, bo
  */
 // NONMATCHING: retail expands nothing in this function: ~CPad is called at both exits of the pad's block (bl __dt__4CPadFv at
 // 0x28C and 0x11CC) where this build expands it, like the state tests that sit out of line behind
-// UpdatePlayerMovementAndContacts. The US and PAL height compare of the ledge branch is dropped here (see there)
+// UpdatePlayerMovementAndContacts. Retail's function alone weighed about 7000 units for the inliner, this one about 2500. The US and PAL
+// height compare of the ledge branch is dropped here (see there)
 extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 {
 	if (GetMaskedPlayerStatus(player, 0x80000000))
@@ -2579,6 +2580,12 @@ static inline void TurnJoint(f32 angle, CJointRot* rot)
 {
 	rot->mMode   = 1;
 	rot->mTarget = angle;
+}
+
+// the joint rests or is already on its way back
+static inline bool IsTurnOver(const CJointRot* rot)
+{
+	return rot->mMode == 0 || rot->mMode == 2;
 }
 
 extern "C" {
@@ -6220,6 +6227,17 @@ static inline void StopBatterySound(s32 id)
 		StopGameSfx(&gGame.mSound, id);
 }
 
+// the battery is flat and the gauge on screen has run down to it
+static inline bool IsBatteryFlat(const XObjChr* p)
+{
+	return p->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
+}
+
+static inline bool IsZeroVec(const Vec& v)
+{
+	return v.x == 0.0f && v.y == 0.0f && v.z == 0.0f;
+}
+
 static inline void FlashBatteryWarning(XObjChr* p, u8 green, f32 duration)
 {
 	p->SetColor(1, 255, green, 0, 0.0f);
@@ -6231,13 +6249,15 @@ static inline void FlashBatteryWarning(XObjChr* p, u8 green, f32 duration)
  * @note Address: 0x800A867C
  * @note Size: 0xF14
  */
+// NONMATCHING: retail divides the table's cost into f0 and moves it to the drain, and it loads the popper's shot strength
+// ahead of the zero it is compared with
 extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 {
+	const CPadOne* pad = &p->mPad;
 	// the row of the action battery costs (GetPlayerActionParameter) for what he does: 0-1 standing, 2 walk, 3 jog, 4 run; -1 none
 	s32 index = -1;
-	s32 lift  = p->mLift.mState;
-	if (lift && !p->mJump.mState) {
-		switch (lift) {
+	if (p->mLift.mState && IsJumpActionState(&p->mJump, 0)) {
+		switch (p->mLift.mState) {
 		case 1:
 		case 2:
 		case 20:
@@ -6249,40 +6269,39 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			break;
 		case 3:
 		case 4:
-			switch (p->mAnimId) {
-			case 0x89:
-			case 0xE0:
-				index = 5;
-				break;
-			case 0x896:
-			case 0xC:
-				index = 2;
-				break;
-			case 0x897:
-			case 0x88:
-				index = 3;
-				break;
-			case 0x898:
-			case 0xD:
-				index = 4;
-				break;
-			case 0x895:
-				index = 34;
-				break;
-			case 0x8B7:
-			case 0x8AE:
-				index = 35;
-				break;
-			case 0x8B1:
-				index = 36;
-				break;
-			default:
-				index = 0;
-				break;
+			if (IsJumpActionState(&p->mJump, 0)) {
+				switch (p->mAnimId) {
+				case 0x89:
+				case 0xE0:
+					index = 5;
+					break;
+				case 0x896:
+				case 0xC:
+					index = 2;
+					break;
+				case 0x897:
+				case 0x88:
+					index = 3;
+					break;
+				case 0x898:
+				case 0xD:
+					index = 4;
+					break;
+				case 0x895:
+					index = 34;
+					break;
+				case 0x8B7:
+				case 0x8AE:
+					index = 35;
+					break;
+				case 0x8B1:
+					index = 36;
+					break;
+				default:
+					index = 0;
+					break;
+				}
 			}
-			break;
-		case 13:
-			index = 9;
 			break;
 		case 27: // using the toothbrush
 		case 28:
@@ -6313,6 +6332,9 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 				index = 38;
 				break;
 			}
+			break;
+		case 13:
+			index = 9;
 			break;
 		}
 	} else if (p->mHang.mState) {
@@ -6396,11 +6418,13 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			break;
 		}
 	} else if (p->mPush.mState) {
-		if (p->mPush.mState == 2) {
+		switch (p->mPush.mState) {
+		case 2:
 			if (p->mPush.mMoveDirection == 1 || p->mPush.mMoveDirection == -1)
 				index = 27;
 			else
 				index = 0;
+			break;
 		}
 	} else if (p->mCopter.mState) {
 		switch (p->mCopter.mState) {
@@ -6502,30 +6526,28 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 		else
 			drain = (f32)(s32)GetPlayerActionParameter(index) / 100.0f;
 	}
-	Params& stats = p->mParams;
-	if ((s32)stats._1C[0] > 0) { // unlimited battery, script commands 850/851
+	if ((s32)p->mParams._1C[0] > 0) { // unlimited battery, script commands 850/851
 		drain = 0.0f;
-		stats.SetBattery(stats.mMaxBattery);
+		p->mParams.SetBattery(p->mParams.mMaxBattery);
 	} else if (p->mPlug.mConnection > 0 && (u8)p->mPlug.mConnection) {
 		drain = 0.0f;
-		stats.SetBattery(stats.mMaxBattery);
+		p->mParams.SetBattery(p->mParams.mMaxBattery);
 	} else if (gGame.mEvt.mData.mScript || (gGame.mStatus.mFlags & 0xC00)) {
 		drain = 0.0f;
-	} else if ((gGame.mStatus.mFlags & 0x80000000) && !(gGame.mStatus.mFlags & 0x120) && p->mPad.mSubStickY != 0.0f) {
+	} else if ((gGame.mStatus.mFlags & 0x80000000) && !(gGame.mStatus.mFlags & 0x120) && pad->mSubStickY != 0.0f) {
 		drain = 0.0f;
 	}
 	if (drain > 0.0f)
 		drain /= (f32)IDLE_SECOND;
 	// mIdleTimer runs down while he stands or idles in place, else resets to a second; at 0 the HUD slides its counters in
+	s32 anim = p->mAnimId;
 	if (!gGame.mEvt.mData.mScript
-	    && (p->mAttachmentRequest >= 0 || InAnimRange(p->mAnimId, 1, 2) || InAnimRange(p->mAnimId, 0x11, 0x12)
-	        || InAnimRange(p->mAnimId, 0xCF7, 0xCFD) || InAnimRange(p->mAnimId, 5, 11) || InAnimRange(p->mAnimId, 0x894, 0x895)
-	        || InAnimRange(p->mAnimId, 0x8AE, 0x8AF) || InAnimRange(p->mAnimId, 0x8B1, 0x8B3) || p->mAnimId == 0x14
-	        || InAnimRange(p->mAnimId, 0x67, 0x68) || p->mAnimId == 0x8A || p->mAnimId == 0x8C || p->mAnimId == 0x3F || p->mAnimId == 0x4A
-	        || p->mAnimId == 0xA1 || p->mAnimId == 0x822 || InAnimRange(p->mAnimId, 0x5D, 0x5E) || p->mAnimId == 0x5F)) {
+	    && (p->mAttachmentRequest >= 0 || InAnimRange(anim, 1, 2) || InAnimRange(anim, 0x11, 0x12) || InAnimRange(anim, 0xCF7, 0xCFD)
+	        || InAnimRange(anim, 5, 11) || InAnimRange(anim, 0x894, 0x895) || InAnimRange(anim, 0x8AE, 0x8AF)
+	        || InAnimRange(anim, 0x8B1, 0x8B3) || anim == 0x14 || InAnimRange(anim, 0x67, 0x68) || anim == 0x8A || anim == 0x8C
+	        || anim == 0x3F || anim == 0x4A || anim == 0xA1 || anim == 0x822 || InAnimRange(anim, 0x5D, 0x5E) || anim == 0x5F)) {
 		if (p->mIdleTimer > 0.0f) {
-			p->mIdleTimer -= (f32)frames;
-			if (p->mIdleTimer < 0.0f)
+			if ((p->mIdleTimer -= (f32)frames) < 0.0f)
 				p->mIdleTimer = 0.0f;
 		}
 	} else {
@@ -6534,19 +6556,19 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 	if (p->mBatteryDrains) {
 		f32 battery;
 		if ((p->mTumble.mState == 8 || p->mTumble.mState == 9) && p->mHitStrength > 0.0f) {
-			battery         = stats.mBattery - p->mHitStrength;
+			battery         = p->mParams.mBattery - p->mHitStrength;
 			p->mHitStrength = 0.0f;
 		} else {
-			battery = stats.mBattery - drain * (f32)frames;
+			battery = p->mParams.mBattery - drain * (f32)frames;
 		}
 		if (battery < 0.0f)
 			battery = 0.0f;
-		if (battery != stats.mBattery)
-			stats.SetBattery(battery);
+		if (battery != p->mParams.mBattery)
+			p->mParams.SetBattery(battery);
 		// the battery ran out: he collapses (tumble 4), the camera turns to him and the sounds of what he was doing stop
-		if (stats.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn) && !gGame.mEvt.mData.mScript
-		    && (gGame.mStatus.mFlags & 0x40000000) && GetStageBatteryDepletedScript() && p->mAttachmentRequest < 0
-		    && (p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mCopter.mState && p->mTumble.mState != 4) {
+		if (IsBatteryFlat(p) && !gGame.mEvt.mData.mScript && (gGame.mStatus.mFlags & 0x40000000) && GetStageBatteryDepletedScript()
+		    && p->mAttachmentRequest < 0 && (p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mCopter.mState
+		    && p->mTumble.mState != 4) {
 			ResetPlayerAttachment(p, -1);
 			p->mTumble.mState = 4;
 			FlashBatteryWarning(p, 0, 0.4f);
@@ -6565,10 +6587,9 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			StopBatterySound(0x18E);
 		}
 	}
-	if (stats.mBattery > 0.0f && stats.mBattery <= 30.0f) {
+	if (p->mParams.mBattery > 0.0f && p->mParams.mBattery <= 30.0f) {
 		p->mBatteryWarningFrames += frames;
-		const Vec& color = p->mColorStep[1].mSpeed;
-		if (color.x == 0.0f && color.y == 0.0f && color.z == 0.0f && p->mBatteryWarningFrames >= IDLE_SECOND && !gGame.mEvt.mData.mScript) {
+		if (IsZeroVec(p->mColorStep[1].mSpeed) && p->mBatteryWarningFrames >= IDLE_SECOND && !gGame.mEvt.mData.mScript) {
 			FlashBatteryWarning(p, 100, 1.0f);
 			p->mBatteryWarningFrames = 0;
 			p->mBatteryWarningFade   = 1.0f;
@@ -6579,23 +6600,17 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 		p->mBatteryWarningFade   = 0.0f;
 	}
 	if (p->mBatteryWarningFade > 0.0f) {
-		p->mBatteryWarningFade -= 0.02f * (f32)frames;
-		if (p->mBatteryWarningFade < 0.0f)
+		if ((p->mBatteryWarningFade -= 0.02f * (f32)frames) < 0.0f)
 			p->mBatteryWarningFade = 0.0f;
 		p->mBatteryWarningAngle -= DEG2RAD * 5.0f * (f32)frames;
 	}
 }
 
-static inline bool CanLookAtObjects(XObjChr* player)
+// an action that is not running, or sits in its resting state
+static inline bool IsActionIdleOr(const XAction& action, s32 rest)
 {
-	if (gGame.mEvt.mData.mScript != NULL || (gGame.mStatus.mFlags & 0x100) || player->mFloorContacts[4].objectIndex >= 0)
-		return false;
-	if (player->GetAttachment() == 1 || player->GetAttachment() == 2 || player->GetAttachment() == 3)
-		return false;
-	return (player->mLift.mState == 0 || player->mLift.mState == 4) && (player->mHang.mState == 0 || player->mHang.mState == 5)
-	    && player->mJump.mState == 0 && (player->mLadder.mState == 0 || player->mLadder.mState == 5)
-	    && (player->mRope.mState == 0 || player->mRope.mState == 5) && player->mPush.mState == 0 && player->mTumble.mState == 0
-	    && player->mCopter.mState == 0 && player->mPopper.mState == 0 && player->mRadar.mState == 0;
+	s32 state = action.mState;
+	return state == 0 || state == rest;
 }
 
 static inline bool IsActiveActionTarget(const XAction& action, const XObj* object)
@@ -6607,9 +6622,20 @@ static inline bool IsActiveActionTarget(const XAction& action, const XObj* objec
  * @note Address: 0x800A9590
  * @note Size: 0x82C
  */
+// NONMATCHING: retail keeps the object in r31 and its look priority in r30, the build the other way round
 extern "C" void UpdatePlayerLookAtObjects(XObjChr* player, u32 frames)
 {
-	bool enabled = CanLookAtObjects(player);
+	BOOL enabled;
+	if (gGame.mEvt.mData.mScript != NULL || (gGame.mStatus.mFlags & 0x100) || player->mFloorContacts[4].objectIndex >= 0)
+		enabled = FALSE;
+	else if (player->GetAttachment() == 1 || player->GetAttachment() == 2 || player->GetAttachment() == 3)
+		enabled = FALSE;
+	else if (IsActionIdleOr(player->mLift, 4) && IsActionIdleOr(player->mHang, 5) && player->mJump.mState == 0
+	         && IsActionIdleOr(player->mLadder, 5) && IsActionIdleOr(player->mRope, 5) && player->mPush.mState == 0
+	         && player->mTumble.mState == 0 && player->mCopter.mState == 0 && player->mPopper.mState == 0 && player->mRadar.mState == 0)
+		enabled = TRUE;
+	else
+		enabled = FALSE;
 	CVec pos(player->mMoveTranslate);
 	s32 path[] = { 0, 1, 0, 1, 2 };
 	CVec head  = GetEventJointWorldPosition(player, 5, path);
@@ -6620,7 +6646,7 @@ extern "C" void UpdatePlayerLookAtObjects(XObjChr* player, u32 frames)
 		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 			XObj* obj = gGame.GetObject(i);
 			if (!(obj->mStatus.mFlags & 1) || !(obj->mStatus.mFlags & 0x10000) || (obj->mStatus.mFlags & 0x4000000000000000ULL)
-			    || obj->mId == player->mId || obj->GetKind() >= 10000)
+			    || (s32)player->mId == (s32)obj->mId || obj->GetKind() >= 10000)
 				continue;
 			if (IsActiveActionTarget(player->mLift, obj) || IsActiveActionTarget(player->mHang, obj)
 			    || IsActiveActionTarget(player->mJump, obj) || IsActiveActionTarget(player->mLadder, obj)
@@ -6628,31 +6654,30 @@ extern "C" void UpdatePlayerLookAtObjects(XObjChr* player, u32 frames)
 			    || IsActiveActionTarget(player->mTumble, obj) || IsActiveActionTarget(player->mCopter, obj)
 			    || IsActiveActionTarget(player->mPopper, obj) || IsActiveActionTarget(player->mRadar, obj))
 				continue;
-			s16 priority = obj->mAttr.mObjData != NULL ? obj->mAttr.mObjData->mLookPriority : 0;
+			s16 priority = obj->GetLookPriority();
 			if (priority == 0)
 				continue;
-			Vec target = obj->mMoveTranslate;
-			if (!(target.y > pos.y - 4.0f && target.y < 4.0f + head.y))
-				continue;
-			f32 dx       = pos.x - target.x;
-			f32 dz       = pos.z - target.z;
-			f32 distance = sqrtf(dx * dx + dz * dz);
-			s16 range    = obj->mAttr.mObjData != NULL ? obj->mAttr.mObjData->mLookRange : 0;
-			if (!(distance < range))
-				continue;
-			f32 yaw = WrapAngle((f32)atan2(target.x - pos.x, target.z - pos.z) - player->mMoveRotate.y);
-			if (yaw <= HALF_PI || yaw >= 3.0f * HALF_PI) {
-				BOOL select = FALSE;
-				if (best == NULL)
-					select = TRUE;
-				else if (priority > bestPriority)
-					select = TRUE;
-				else if (priority == bestPriority && distance < nearest)
-					select = TRUE;
-				if (select) {
-					nearest      = distance;
-					best         = obj;
-					bestPriority = priority;
+			CVec target(obj->mMoveTranslate);
+			if (target.y > pos.y - 4.0f && target.y < 4.0f + head.y) {
+				f32 dx       = pos.x - target.x;
+				f32 dz       = pos.z - target.z;
+				f32 distance = sqrtf(dx * dx + dz * dz);
+				if (distance < obj->GetLookRange()) {
+					f32 yaw = WrapAngle((f32)atan2(target.x - pos.x, target.z - pos.z) - player->mMoveRotate.y);
+					if (yaw <= HALF_PI || yaw >= 3.0f * HALF_PI) {
+						BOOL select = FALSE;
+						if (best == NULL)
+							select = TRUE;
+						else if (priority > bestPriority)
+							select = TRUE;
+						else if (priority >= bestPriority && distance < nearest)
+							select = TRUE;
+						if (select) {
+							nearest      = distance;
+							best         = obj;
+							bestPriority = priority;
+						}
+					}
 				}
 			}
 		}
@@ -6660,7 +6685,7 @@ extern "C" void UpdatePlayerLookAtObjects(XObjChr* player, u32 frames)
 	if (best != NULL) {
 		f32 yaw = atan2(best->mMoveTranslate.x - pos.x, best->mMoveTranslate.z - pos.z);
 		TurnJoint(yaw - player->mMoveRotate.y, &player->mJointRot);
-	} else if (player->mJointRot.mMode != 0 && player->mJointRot.mMode != 2) {
+	} else if (!IsTurnOver(&player->mJointRot)) {
 		player->mJointRot.mMode   = 2;
 		player->mJointRot.mTarget = 0.0f;
 		player->mJointRot.mLookAt = NULL;
@@ -7008,33 +7033,47 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 
 extern "C" void SelectHighestActiveFloor(XObj* object);
 
-static inline bool IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 minHeight)
+/**
+ * @note Address: 0x800B1E0C
+ * @note Size: 0xAC
+ */
+// is position behind the object, within 60 degrees either side. defined ahead of FindNearbyPlayerInteraction, which takes it
+// in; UpdatePlayerMovementAndContacts and UpdatePlayerActions above are too big for that and call it
+extern "C" BOOL IsPositionBehindObject(void*, const Vec* pos, CXObj* object)
 {
-	if (object->GetEventScript() != NULL)
-		return true;
-	// action flags: bit 32 liftable, 33 ledge, 35 ladder, 36 rope, 39 pushable (IsObjectLiftable and friends)
-	u64 flags     = object->mStatus.mFlags;
-	bool eligible = (flags & 0x0000000100000000ULL) && object->mMaxFloorHeight > minHeight;
+	f32 angle = atan2(object->mMoveTranslate.x - pos->x, object->mMoveTranslate.z - pos->z);
+	angle     = WrapAngle(angle - object->mMoveRotate.y);
+	return angle >= 2.0f * PI / 3.0f && angle <= 4.0f * PI / 3.0f;
+}
+
+static inline BOOL IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 minHeight)
+{
+	BOOL eligible = FALSE;
+	if (object->GetEventScript() != NULL) {
+		eligible = TRUE;
+	} else {
+		// action flags: bit 32 liftable, 33 ledge, 35 ladder, 36 rope, 39 pushable (IsObjectLiftable and friends)
+		u64 flags = object->mStatus.mFlags;
+		if ((flags & 0x0000000100000000ULL) && object->mMaxFloorHeight > minHeight)
+			eligible = TRUE;
 #if defined(VERSION_JP)
-	if ((flags & 0x0000008000000000ULL) && (gGame.mStatus.mFlags & 0x0000080000000000ULL))
-		eligible = true;
-	if ((flags & 0x0000000200000000ULL) && (gGame.mStatus.mFlags & 0x0000080000000000ULL)) {
-		f32 difference = Abs(object->mSelectedFloorHeight - player->mMoveTranslate.y);
-		if (difference != 0.0f && difference <= 12.5f)
-			eligible = true;
-	} else
+		if ((flags & 0x0000008000000000ULL) && (gGame.mStatus.mFlags & 0x0000080000000000ULL))
+			eligible = TRUE;
+		if ((flags & 0x0000000200000000ULL) && (gGame.mStatus.mFlags & 0x0000080000000000ULL)) {
+			f32 difference = Abs(object->mSelectedFloorHeight - player->mMoveTranslate.y);
+			if (difference != 0.0f && difference <= 12.5f)
+				eligible = TRUE;
+		} else
 #endif
-	    if (flags & 0x0000000800000000ULL) {
-		if (object->mSelectedFloorIndex == 0 && object->mSelectedFloorHeight > player->mMaxFloorHeight) {
-			f32 angle = WrapAngle(
-			    (f32)atan2(object->mMoveTranslate.x - player->mMoveTranslate.x, object->mMoveTranslate.z - player->mMoveTranslate.z)
-			    - object->mMoveRotate.y);
-			if (angle >= DEG2RAD * 120.0f && angle <= DEG2RAD * 240.0f)
-				eligible = true;
+		    if (flags & 0x0000000800000000ULL) {
+			if (object->mSelectedFloorIndex == 0 && object->mSelectedFloorHeight > player->mMaxFloorHeight) {
+				if (IsPositionBehindObject(&player->mLadder, &player->mMoveTranslate, object))
+					eligible = TRUE;
+			}
+		} else if ((flags & 0x0000001000000000ULL) && object->mSelectedFloorIndex == 0
+		           && object->mSelectedFloorHeight > player->mMaxFloorHeight) {
+			eligible = TRUE;
 		}
-	} else if ((flags & 0x0000001000000000ULL) && object->mSelectedFloorIndex == 0
-	           && object->mSelectedFloorHeight > player->mMaxFloorHeight) {
-		eligible = true;
 	}
 	return eligible;
 }
@@ -7043,6 +7082,8 @@ static inline bool IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 
  * @note Address: 0x800ABDF8
  * @note Size: 0x868
  */
+// NONMATCHING: retail keeps the player's x, z and y in f31, f30 and f29 and the two radii of the loop below them; the build
+// gives the radii the upper registers
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 {
 	f32 radius = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
@@ -7063,7 +7104,7 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.GetObject(i);
 		u64 flags    = object->mStatus.mFlags;
-		if (!(flags & 1) || !(flags & 0x10000) || (flags & 0x10000000) || object->mId == player->mId || object->GetKind() >= 10000
+		if (!(flags & 1) || !(flags & 0x10000) || (flags & 0x10000000) || (s32)player->mId == (s32)object->mId || object->GetKind() >= 10000
 		    || (s16)object->GetPool() == 7)
 			continue;
 		if (player->mFloorContacts[0].objectIndex >= 0 && gGame.GetObject(player->mFloorContacts[0].objectIndex) == object)
@@ -7074,11 +7115,7 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 		f32 dz = object->mMoveTranslate.z - z;
 		if (sqrtf(dx * dx + dz * dz) > 100.0f + (0.9f * radius + object->mFloorXZExtent))
 			continue;
-		u32 hit;
-		{
-			CVec from(x, y, z), to(x, y, z);
-			hit = object->TestFloorCollision(&from, &to, radius + extraRadius, height, &push, &contact, 0, 0);
-		}
+		u32 hit = object->TestFloorCollision(&CVec(x, y, z), &CVec(x, y, z), radius + extraRadius, height, &push, &contact, 0, 0);
 		if ((hit & 3) != 3)
 			continue;
 		SelectHighestActiveFloor(object);
@@ -7249,18 +7286,6 @@ extern "C" u32 GetObjectMarkerOverride(XObj* object)
 extern "C" s32 fn_800B1E04(void*)
 {
 	return 0;
-}
-
-/**
- * @note Address: 0x800B1E0C
- * @note Size: 0xAC
- */
-// is position behind the object, within 60 degrees either side
-extern "C" BOOL IsPositionBehindObject(void*, const Vec* pos, CXObj* object)
-{
-	f32 angle = atan2(object->mMoveTranslate.x - pos->x, object->mMoveTranslate.z - pos->z);
-	angle     = WrapAngle(angle - object->mMoveRotate.y);
-	return angle >= 2.0f * PI / 3.0f && angle <= 4.0f * PI / 3.0f;
 }
 
 /**
