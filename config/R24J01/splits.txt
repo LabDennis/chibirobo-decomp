@@ -575,6 +575,12 @@ game/ccameraactionareaexinit.cpp:
 game/ccameraactionevt.cpp:
 	.text start:0x801618C0 end:0x80161FFC
 
+game/ccameraactionreset.cpp:
+	.text start:0x8016670C end:0x80166D50
+
+game/params.cpp:
+	.text start:0x80113394 end:0x80113910
+
 game/gameosreport.cpp:
 	.text start:0x80019BA4 end:0x80019BF4
 

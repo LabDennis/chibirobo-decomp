@@ -1264,6 +1264,12 @@ if wii:
                 # member offsets are shared with the GameCube class (mEyeInterps _18C, mFovInterps
                 # _330, the interp pointers _44-_54); the Wii vtable re-orders the Vec& overloads
                 Object(Equivalent, "game/ccameraactionevt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # member offsets shared with the GameCube class (mTarget _40, mInterestMode _58);
+                # the heavy previous/update methods need XObj/CMotionControlCamera decls (GC-only)
+                Object(Equivalent, "game/ccameraactionreset.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii Params layout matches the GameCube class (mRank _08, mMoney _14,
+                # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs
+                Object(Matching, "game/params.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii
                 Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),

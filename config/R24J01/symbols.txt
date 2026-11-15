@@ -1855,3 +1855,5 @@ _fseek = .text:0x80229D2C; // type:function size:0x1C4
 Start__6CMovieFPCcfili = .text:0x802C22C4; // type:function size:0x68
 Stop__6CMovieFv = .text:0x802C232C; // type:function size:0x58
 Draw__9CCylinderFPA4_fUc = .text:0x802AFC64; // type:function size:0x50
+ResetPlayerStats = .text:0x80113394; // type:function size:0xF0
+GetOwnedInventoryItemCount = .text:0x80113698; // type:function size:0x13C

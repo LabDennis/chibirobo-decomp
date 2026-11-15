@@ -336,8 +336,11 @@ public:
 	s32 mTitleState; // _5C74, the title screen's step, as the GameCube mTitle.mState
 	u8 _5C78[0xAE00 - 0x5C78];
 	BOOL mMenuActive; // _AE00, a menu is open, as the GameCube mMenu.mActive
-	u8 _AE04[0xB148 - 0xAE04];
-	WiiHomeMenu mHomeMenu; // _B148
+	u8 _AE04[0xAF58 - 0xAE04];
+	// the object the InfoScrn_* HUD calls receive at +0xAF58; the Wii callbacks are
+	// empty stubs, so only its address is verified, not its layout
+	u8 mInfoScrn[0xB148 - 0xAF58]; // _AF58
+	WiiHomeMenu mHomeMenu;         // _B148
 	u8 _B7A8[0xF70C - 0xB7A8];
 	WiiPlayerState* mPlayer; // _F70C
 	u8 _F710[0xF770 - 0xF710];
@@ -373,6 +376,8 @@ public:
 	bool IsLoading() const { return IsLoadStepRunning() && !IsIntroShown(); }
 	bool IsInterruptible() const { return !IsLoading() && mTitleState != 20; }
 	bool IsMenuFree() const { return IsInterruptible() && !mMenuActive; }
+
+	WiiPlayerState* GetPlayer() const { return mPlayer; }
 	bool CanOpenHomeMenu() const { return IsMenuFree() && !mHomeMenu.IsOpen(); }
 };
 STATIC_ASSERT(sizeof(CGame) == 0xEE530);
