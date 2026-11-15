@@ -1488,6 +1488,16 @@ if wii:
                 Object(Matching, "revolution/WPAD/WPADMem.c"),
                 Object(Matching, "revolution/WPAD/debug_msg.c"),
                 Object(Matching, "revolution/KPAD/KPAD.c"),
+                # WUD (Wii remote device manager) after wii-ipl's reconstruction, brought to our September 2008
+                # build from the disassembly. It includes the Bluetooth stack's headers, which include each
+                # other by bare name: the extra flag is an include path, not a code generation setting.
+                # WUD.c: all 86 functions match, and .bss, .sbss, .sdata and .sdata2 are in place. Not linked:
+                # retail's .data ends with four strings ("Not Found", "Found the registered WBC\n", "Removed\n",
+                # "Not Found WBC\n", 0x8032D6BC-0x8032D700) of a function the linker removed, and no reference
+                # has that function. With a stand-in for those 0x44 bytes the unit links to an identical dol.
+                Object(NonMatching, "revolution/WUD/WUD.c", extra_cflags=["-i include/revolution/BTE"]),
+                Object(Matching, "revolution/WUD/WUDHidHost.c", extra_cflags=["-i include/revolution/BTE"]),
+                Object(Matching, "revolution/WUD/debug_msg.c", extra_cflags=["-i include/revolution/BTE"]),
                 # GX, the Wii's own sources (src/dolphin/gx is the GameCube template). Compiler and flags are
                 # the library's: with them GXBump.c matched 5 of 5 named functions at once (1 of 7 as the
                 # GameCube file under GC/1.2.5n) and GX as a whole went from 11 to 130 of 191 before any
