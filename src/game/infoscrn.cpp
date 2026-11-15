@@ -84,8 +84,9 @@ static inline s32 ItemMax()
 {
 	XObjChr* player = gGame.GetPlayer();
 	for (int i = 0; i < 256; i++) {
-		s16 id    = player->mParams.mInventory.mItems[i].mId;
-		s16 count = player->mParams.mInventory.mItems[i].mCount;
+		InventoryItem* items = player->mParams.mInventory.mItems;
+		s16 id               = items[i].mId;
+		s16 count            = items[i].mCount;
 		if (id >= 0 && count > 0) {
 			switch (id) {
 			case 0x57:
@@ -103,26 +104,6 @@ static inline s32 ItemMax()
 extern "C" {
 void DrawScreenColorOverlay(CScrnColor* color, CGs* gs);
 void UpdateScreenFade(CScrnColor* color, u32 frames);
-}
-
-// the disc can't be read, the same test as CBase::IsDiscError
-static inline bool IsDiscError()
-{
-	bool error = false;
-	if ((gGame.mDvdStatus != 0 || gGame.mPrevDvdStatus != 0) && gGame.mDiskOk == 0) {
-		error = true;
-	}
-	return error;
-}
-
-// a stage is up and nothing stops it, the same test as CBase::IsRunning
-static inline bool IsHudOn()
-{
-	bool on = false;
-	if ((gGame.mStatus.mFlags & 1) && !(gGame.mStatus.mFlags & 0x22) && !IsDiscError()) {
-		on = true;
-	}
-	return on;
 }
 
 /**
@@ -497,14 +478,16 @@ static inline void StepHudVisibility(s32& state, f32& alpha, u32 frames)
 
 static inline s32 HighlightedAttachment()
 {
-	const AtcMenu& menu = gGame.GetPlayer()->mMenu.mAtc;
-	return menu.mCursorIndex >= 0 ? menu.mItems[menu.mCursorIndex].mType : 0;
+	XObjChr* player = gGame.GetPlayer();
+	return player->mMenu.mAtc.mCursorIndex >= 0 ? player->mMenu.mAtc.mItems[player->mMenu.mAtc.mCursorIndex].mType : 0;
 }
 
 static inline void AdvanceHudIcon(InfoScrn* h)
 {
-	if (++h->mIconFrameTimer > 1) {
-		if (++h->mIconFrame >= 9)
+	h->mIconFrameTimer++;
+	if (h->mIconFrameTimer > 1) {
+		h->mIconFrame++;
+		if (h->mIconFrame >= 9)
 			h->mIconFrame = 9;
 		h->mIconFrameTimer = 0;
 	}
@@ -522,9 +505,11 @@ static inline void ApproachHudScale(f32& current, f32 target)
  * @note Address: 0x8006AF34
  * @note Size: 0x1B5C
  */
+// NONMATCHING: registers only. retail zeroes the time flag first (r0) and copies that zero into the two flags of IsRunning,
+// the build zeroes IsRunning's flag first; the bss base, the string base and the zero at the top are numbered differently
 extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 {
-	if (!IsHudOn() && !(gGame.mStatus.mFlags & 0x200000000000ULL))
+	if (!gGame.IsRunning() && !(gGame.mStatus.mFlags & 0x200000000000ULL))
 		return;
 	UpdateHudPointValue(&gHudHappyPointCounter, frames);
 	UpdateHudPointValue(&gHudMoneyCounter, frames);
@@ -558,8 +543,9 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		break;
 	}
 	// whatever the state machine above did, the alpha ends up 1
-	h->mHudAlpha = 1;
-	CPad pad(0); // unused, retail builds one here
+	h->mHudAlpha           = 1;
+	static s32 previousPad = -1; // never read, retail has it and its guard here
+	CPad pad(0);                 // unused, retail builds one here
 	switch (h->mAttachmentState) {
 	case 0:
 		if (gGame.GetPlayer()->GetAttachment()) {
@@ -575,8 +561,11 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		}
 		break;
 	case 2:
-		if (h->_B8 != -1 || !gGame.GetPlayer()->GetAttachment())
+		if (h->_B8 != -1) {
 			++h->mAttachmentState;
+		} else if (!gGame.GetPlayer()->GetAttachment()) {
+			++h->mAttachmentState;
+		}
 		break;
 	case 3:
 		h->mAttachmentAlpha -= 0.08f * frames;
@@ -584,6 +573,8 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			h->mAttachmentAlpha = 0;
 			h->mAttachmentState = 0;
 		}
+		break;
+	case 4:
 		break;
 	}
 	static s32 previousAttachment = HighlightedAttachment();
@@ -622,6 +613,8 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 			h->mMenuHudAlpha = 0;
 			h->mMenuHudState = 0;
 		}
+		break;
+	case 4:
 		break;
 	}
 	// as StepHudVisibility, but 0 starts a fade in; 5 pulses the gauge's size, 6 brings it back to 1.4
@@ -712,9 +705,12 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 	}
 	// the clock's warning blink ticks on the frames the day's time moves on (CGame's update makes the same test; 0xc00 is
 	// chibi robo's menu rings or yes/no menu open) and once time is up
-	if ((IsHudOn() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00) && gGame.mTimeState.mDuration > 0
-	     && !gGame.mTimeState.mRunning)
-	    || gGame.mTimeState.mTime >= 1)
+	bool timeMoves = false;
+	if (gGame.IsRunning() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00)
+	    && gGame.mTimeState.mDuration > 0 && !gGame.mTimeState.mRunning) {
+		timeMoves = true;
+	}
+	if (timeMoves || gGame.mTimeState.mTime >= 1)
 		++h->mTimeWarningTick;
 	CJObj joint;
 	CVec position;
@@ -728,10 +724,11 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		if (h->mGaugeTarget && (h->mGaugeTarget->mStatus.mFlags & 1)) {
 			s32 path[] = { 0, 0 };
 			joint.Attach(FindJointByPath(h->mGaugeTarget->mJObj, path, 2));
-			position   = CVec(joint.GetPos());
-			Vec offset = { position.x - h->mGaugeTarget->GetTranslateX(), position.y - h->mGaugeTarget->GetTranslateY(),
-				           position.z - h->mGaugeTarget->GetTranslateZ() };
-			h->mGaugeTarget->ProjectOffsetToScreen(&offset, &position.x, &position.y, NULL, NULL);
+			position = CVec(joint.GetPos());
+			f32 dx   = position.x - h->mGaugeTarget->GetTranslateX();
+			f32 dy   = position.y - h->mGaugeTarget->GetTranslateY();
+			f32 dz   = position.z - h->mGaugeTarget->GetTranslateZ();
+			h->mGaugeTarget->ProjectOffsetToScreen(&(Vec) { dx, dy, dz }, &position.x, &position.y, NULL, NULL);
 			position.z         = 0;
 			h->mObjectGaugePos = position;
 		}
@@ -746,10 +743,11 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		if (h->mGaugeTarget && (h->mGaugeTarget->mStatus.mFlags & 1)) {
 			s32 path[] = { 0, 0 };
 			joint.Attach(FindJointByPath(h->mGaugeTarget->mJObj, path, 2));
-			position   = CVec(joint.GetPos());
-			Vec offset = { position.x - h->mGaugeTarget->GetTranslateX(), position.y - h->mGaugeTarget->GetTranslateY(),
-				           position.z - h->mGaugeTarget->GetTranslateZ() };
-			h->mGaugeTarget->ProjectOffsetToScreen(&offset, &position.x, &position.y, NULL, NULL);
+			position = CVec(joint.GetPos());
+			f32 dx   = position.x - h->mGaugeTarget->GetTranslateX();
+			f32 dy   = position.y - h->mGaugeTarget->GetTranslateY();
+			f32 dz   = position.z - h->mGaugeTarget->GetTranslateZ();
+			h->mGaugeTarget->ProjectOffsetToScreen(&(Vec) { dx, dy, dz }, &position.x, &position.y, NULL, NULL);
 			position.z         = 0;
 			h->mObjectGaugePos = position;
 		}
@@ -784,7 +782,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 // NONMATCHING: the bss address and the zero swap r6 and r7
 extern "C" void DrawGameHud(InfoScrn* scrn)
 {
-	if (IsHudOn() || (gGame.mStatus.mFlags & 0x200000000000ULL)) {
+	if (gGame.IsRunning() || (gGame.mStatus.mFlags & 0x200000000000ULL)) {
 		DrawHudPointCounter(&gHudHappyPointCounter);
 		DrawHudPointCounter(&gHudMoneyCounter);
 		DrawHudPointCounter(&gHudScrapCounter);
@@ -1218,7 +1216,7 @@ extern "C" void InfoScrn_ApplyBatteryHudCommand(InfoScrn* scrn, u8 show, s32 mod
  * @note Address: 0x80066250
  * @note Size: 0x274
  */
-// NONMATCHING: regalloc in the item loop
+// NONMATCHING: regalloc in the item loop (the counter and the items pointer swap r5 and r7)
 extern "C" void InfoScrn_ApplyClockHudCommand(InfoScrn* scrn, u8 show, s32 mode, s32 flag)
 {
 	switch (mode) {
@@ -1882,6 +1880,8 @@ static inline void DrawClockQuad(CTexObj& tex, u32 color, f32 x, f32 y, f32 z, f
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
+// NONMATCHING: registers only (saved float registers and the loop counters of the two discs, the time flag as in
+// UpdateHudIndicators)
 extern "C" void DrawHudClock(InfoScrn* scrn)
 {
 	f32 alpha = scrn->mClockAlpha * gHudOpacityScale;
@@ -1928,10 +1928,13 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 			scrn->mTimeWarningBeeps  = 5;
 		}
 		if (time >= warning) {
-			f32 wave     = sin(DEG2RAD * ((s32)((u32)scrn->mTimeWarningTick * 12) % 360));
-			bool running = gGame.IsRunning() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00)
-			            && gGame.mTimeState.mDuration > 0 && !gGame.mTimeState.mRunning;
-			if (running || time >= 1) {
+			f32 wave       = sin(DEG2RAD * ((s32)((u32)scrn->mTimeWarningTick * 12) % 360));
+			bool timeMoves = false;
+			if (gGame.IsRunning() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00)
+			    && gGame.mTimeState.mDuration > 0 && !gGame.mTimeState.mRunning) {
+				timeMoves = true;
+			}
+			if (timeMoves || time >= 1) {
 				// one beep each time the clock blinks on: five of 0xb5, then 0xb6, which also comes at once when time is up
 				if (wave > 0) {
 					if (scrn->mTimeWarningBeeps >= 0 && !scrn->mTimeWarningBeeped) {
@@ -1946,7 +1949,10 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 				} else
 					scrn->mTimeWarningBeeped = 0;
 			}
-			color = (wave > 0 || scrn->mTimeWarningBeeps < 0 ? 0xffffff00 : 0xa0a0a000) | opacity;
+			if (wave > 0 || scrn->mTimeWarningBeeps < 0)
+				color = 0xffffff00 | opacity;
+			else
+				color = 0xa0a0a000 | opacity;
 		} else
 			color = 0xffffff00 | opacity;
 	}
@@ -1984,7 +1990,8 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 	tw = GXGetTexObjWidth(&tex);
 	th = GXGetTexObjHeight(&tex);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	DrawClockQuad(tex, 0xffffff00 | (u32)(255 * badgeAlpha), 80 - 22 * scale, 80 - 22 * scale, 0, 1.1f * (scale * tw), 1.1f * (scale * th));
+	color = 0xffffff00 | (u32)(255 * badgeAlpha);
+	DrawClockQuad(tex, color, 80 - 22 * scale, 80 - 22 * scale, 0, 1.1f * (scale * tw), 1.1f * (scale * th));
 }
 
 extern "C" bool IsUtilibotStatusIconUnlocked();
