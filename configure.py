@@ -1306,6 +1306,35 @@ if wii:
             ],
         },
         {
+            # NintendoWare for Revolution (nw4r::ut, db, math ...), retail 0x80234080-0x802A5358.
+            # Compiler: the libraries' version strings carry CodeWarrior build 0x4199_60831, GC/3.0a5.2.
+            # Flags: no stmw/lmw anywhere in the block (-use_lmw_stmw off), no RTTI records beside the
+            # vtables (-RTTI off), -ipa file and -fp_contract off as every reference decomp builds NW4R
+            # (xenoblade, pik2wii, wiiplay, ogws).
+            "lib": "nw4r",
+            "mw_version": "GC/3.0a5.2",
+            "cflags": [
+                *wii_cflags, "-Cpp_exceptions off", "-RTTI off", "-fp_contract off", "-ipa file", "-use_lmw_stmw off",
+                "-enc SJIS",
+            ],
+            "progress_category": "nw4r",
+            "objects": [
+                Object(Matching, "nw4r/ut/ut_list.cpp"),
+                Object(Matching, "nw4r/ut/ut_LinkList.cpp"),
+                Object(Matching, "nw4r/ut/ut_binaryFileFormat.cpp"),
+                Object(Matching, "nw4r/ut/ut_CharStrmReader.cpp"),
+                Object(Matching, "nw4r/ut/ut_IOStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_FileStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_DvdFileStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_DvdLockedFileStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_LockedCache.cpp"),
+                Object(Matching, "nw4r/ut/ut_Font.cpp"),
+                Object(Matching, "nw4r/ut/ut_RomFont.cpp"),
+                Object(Matching, "nw4r/ut/ut_ResFontBase.cpp"),
+                Object(Matching, "nw4r/ut/ut_ResFont.cpp"),
+            ],
+        },
+        {
             # These Wii SDK modules share the compiler profile used by New Play Control! Pikmin.
             "lib": "RevolutionSDK-2008",
             "mw_version": "GC/3.0a5.2",
@@ -1625,6 +1654,7 @@ config.progress_categories = [
     for category in (
         ProgressCategory("game", "Game Code"),
         ProgressCategory("sdk", "SDK Code"),
+        ProgressCategory("nw4r", "NW4R Code"),
         ProgressCategory("hsd", "HSD Code"),
         ProgressCategory("runtime", "Runtime Code"),
         ProgressCategory("rels", "REL Code"),

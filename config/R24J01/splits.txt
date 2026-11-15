@@ -1013,3 +1013,59 @@ revolution/VI/vi3in1.c:
 	.bss start:0x804D2950 end:0x804D2970
 	.sdata start:0x805A14C0 end:0x805A14D0
 	.sbss start:0x805A2198 end:0x805A21B0
+
+nw4r/ut/ut_list.cpp:
+	.text start:0x80234080 end:0x802342D0
+
+nw4r/ut/ut_LinkList.cpp:
+	.text start:0x802342D0 end:0x8023443C
+
+nw4r/ut/ut_binaryFileFormat.cpp:
+	.text start:0x8023443C end:0x802344B0
+
+nw4r/ut/ut_CharStrmReader.cpp:
+	.text start:0x802344B0 end:0x802345C0
+
+nw4r/ut/ut_IOStream.cpp:
+	.text start:0x802345C0 end:0x802345DC
+	.ctors start:0x802C4608 end:0x802C460C
+	.sbss start:0x805A2710 end:0x805A2714
+
+nw4r/ut/ut_FileStream.cpp:
+	.text start:0x802345DC end:0x802346E4
+	.ctors start:0x802C460C end:0x802C4610
+	.sbss start:0x805A2718 end:0x805A271C
+
+nw4r/ut/ut_DvdFileStream.cpp:
+	.text start:0x802346E4 end:0x80234CFC
+	.ctors start:0x802C4610 end:0x802C4614
+	.data start:0x803326B0 end:0x80332714
+	.sbss start:0x805A2720 end:0x805A2724
+
+nw4r/ut/ut_DvdLockedFileStream.cpp:
+	.text start:0x80234CFC end:0x802350BC
+	.ctors start:0x802C4614 end:0x802C4618
+	.data start:0x80332718 end:0x8033277C
+	.bss start:0x805307B8 end:0x805307D0
+	.sbss start:0x805A2728 end:0x805A273C
+
+nw4r/ut/ut_LockedCache.cpp:
+	.text start:0x802350BC end:0x80235268
+	.ctors start:0x802C4618 end:0x802C461C
+	.bss start:0x805307D0 end:0x805307EC
+
+nw4r/ut/ut_Font.cpp:
+	.text start:0x80235268 end:0x80235310
+	.data start:0x80332780 end:0x803327B0
+
+nw4r/ut/ut_RomFont.cpp:
+	.text start:0x80235310 end:0x80235350
+	.data start:0x803327B0 end:0x8033280C
+
+nw4r/ut/ut_ResFontBase.cpp:
+	.text start:0x80235350 end:0x80235A50
+	.data start:0x80332810 end:0x80332878
+
+nw4r/ut/ut_ResFont.cpp:
+	.text start:0x80235A50 end:0x80235D54
+	.data start:0x80332878 end:0x803328D4
