@@ -1072,7 +1072,7 @@ gamecube_libs = [
             Object(Matching, "sysdolphin/baselib/controller.c"),
             Object(Matching, "sysdolphin/baselib/rumble.c"),
             Object(Matching, "sysdolphin/baselib/spline.c"),
-            Object(MatchingFor(JP), "sysdolphin/baselib/mtx.c"),
+            Object(Matching, "sysdolphin/baselib/mtx.c"),
             Object(Matching, "sysdolphin/baselib/util.c"),
             Object(Matching, "sysdolphin/baselib/objalloc.c"),
             Object(Matching, "sysdolphin/baselib/robj.c"),
