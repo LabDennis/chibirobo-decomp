@@ -1320,7 +1320,7 @@ if wii:
                 Object(Matching, "revolution/OS/OSContext.c"),
                 Object(NonMatching, "revolution/OS/OSInterrupt.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/OS/OSFatal.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
-                Object(NonMatching, "revolution/OS/OSFont.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/OS/OSFont.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "dolphin/os/OSMessage.c"),
                 Object(Matching, "revolution/OS/OSMutex.c"),
                 Object(Matching, "revolution/OS/OSRtc.c", cflags=[*cflags_sdk_2004, "-ipa file"], mw_version="GC/3.0a5.2"),
