@@ -372,6 +372,23 @@ revolution/WENC/wenc.c:
 	.rodata start:0x802DE670 end:0x802DE6B0
 	.sdata2 start:0x805A6828 end:0x805A6830
 
+revolution/WPAD/WPAD.c:
+	.text start:0x801E71D8 end:0x801EE900
+	.rodata start:0x802DE588 end:0x802DE5C8
+	.data start:0x8032A8B8 end:0x8032AC78
+	.bss start:0x80525F60 end:0x805296C0
+	.sdata start:0x805A17A8 end:0x805A17D8
+	.sbss start:0x805A24B8 end:0x805A2510
+	.sdata2 start:0x805A6720 end:0x805A6728
+
+revolution/WPAD/WPADHIDParser.c:
+	.text start:0x801EE900 end:0x801F2B70
+	.rodata start:0x802DE5C8 end:0x802DE5E0
+	.data start:0x8032AC78 end:0x8032B230
+	.bss start:0x805296C0 end:0x80529740
+	.sbss start:0x805A2510 end:0x805A2528
+	.sdata2 start:0x805A6728 end:0x805A6788
+
 revolution/WPAD/WPADEncrypt.c:
 	.text start:0x801F2B70 end:0x801F3C18
 	.data start:0x8032B230 end:0x8032C558
