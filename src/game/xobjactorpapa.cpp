@@ -245,6 +245,8 @@ void XObjActorPapa::StateNone(u32 frames)
 }
 
 // Carries the selected prop at its hand joint and positions the player when held.
+// Attach is called as a plain function: as the member it shares a size class with CJObj's constructor here (245 and 134
+// units), so the compiler would call both, and retail calls Attach only (its constructor weighs 128 or less).
 void XObjActorPapa::UpdateAfterAnim(u32 frames)
 {
 	UpdateAfterAnim__9XObjActorFUl(this, frames);

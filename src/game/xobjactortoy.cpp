@@ -64,7 +64,9 @@ static inline void SetToyBlinkVisibility(XObjActorToy* toy, CJObj& joint)
 		SetToyBlinkVisibility(toy, joint);                                       \
 	} while (0)
 
-// NONMATCHING: retail calls CJObj's destructor at every return where the build inlines it, and copies each burst's
+// NONMATCHING: retail calls CJObj's destructor at every return where the build inlines it: its inline limit here is one size
+// class lower. With GetObjectJointByPath as an inline of cjobj.h (31 calls of the destructor's class) the build makes
+// retail's calls, but five player functions then take the helper in where retail calls it. Retail also copies each burst's
 // rotation from the six Vecs its .rodata starts with. The speed table is an array of its own in retail's .data, and
 // the heading to the walk target comes from an inline whose vector temporary dies before SetRotationY
 void XObjActorToy::ProcessPendingEvents(u32 frames)

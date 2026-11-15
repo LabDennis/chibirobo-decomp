@@ -150,6 +150,9 @@ static inline void UseToolCharge(XActLift* act, s16 count, s32 level)
 	SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, count, FALSE);
 }
 
+// NONMATCHING: retail calls ~CVec (10 times), ~CJObj and even the one-store setters here, so its inline limit sits at the
+// bottom: the function alone weighed about 7000 units for the inliner. This one weighs about 5000 with the helpers above
+// expanded. Retail has their code expanded while it calls smaller inlines, so in the original it stood in the function.
 void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	s32 placement     = act->mTarget ? GetStagePlacementIndex(act->mTarget->mCoord.mPlacement) : -1;
@@ -2584,7 +2587,8 @@ extern const s32 lbl_8020A5E8[];
  * @note Size: 0x2040
  */
 // NONMATCHING: retail calls ~CJObj for the eight pairs of joints (bl __dt__5CJObjFv) where this build still expands it; the
-// function is about fifty statements short of the size at which the compiler stops. The two squirter SetAnim calls keep the
+// function is 300 to 375 units short of the estimate at which the compiler halves its inline limit to 64, and at that limit
+// HSD_JObjGetMtxPtr (74 units here, expanded in retail) would be called too. The two squirter SetAnim calls keep the
 // item count in r0 and sign-extend it after loading the object (mr r0, r3; mr r3, r30; extsh r0, r0)
 void UpdateHeldObject(XActLift* act, s32)
 {

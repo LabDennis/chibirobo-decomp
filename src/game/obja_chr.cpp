@@ -1636,7 +1636,8 @@ static inline void ChooseClimbAction(XObjChr* player, XObj* object, s32 mode, bo
  */
 // NONMATCHING: retail expands nothing in this function: ~CPad is called at both exits of the pad's block (bl __dt__4CPadFv at
 // 0x28C and 0x11CC) where this build expands it, like the state tests that sit out of line behind
-// UpdatePlayerMovementAndContacts. The US and PAL height compare of the ledge branch is dropped here (see there)
+// UpdatePlayerMovementAndContacts. Retail's function alone weighed about 7000 units for the inliner, this one about 2500. The US and PAL
+// height compare of the ledge branch is dropped here (see there)
 extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 {
 	if (GetMaskedPlayerStatus(player, 0x80000000))
