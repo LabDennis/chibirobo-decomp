@@ -753,6 +753,9 @@ game/ctoon.cpp:
 game/wii/delete.cpp:
 	.text start:0x80019A68 end:0x80019AB4
 
+game/cinterfacecameraaction.cpp:
+	.text start:0x80030AC0 end:0x80031FC4
+
 TRK_MINNOW_DOLPHIN/mainloop.c:
 	.text start:0x80222DEC end:0x80222EE4
 

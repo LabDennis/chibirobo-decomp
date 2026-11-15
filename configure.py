@@ -1307,6 +1307,9 @@ if wii:
                 # is byte-exact, but nothing calls _epilog and _unresolved: retail kept them through its
                 # linker script (the REL entry points), the linker here strips them, so it stays unlinked.
                 Object(Equivalent, "rel/module.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),
+                # the Wii TU 0x80030AC0-0x80031FC4 (wii_units.md #16); the GameCube file's
+                # CInterfaceCameraAction and CVector*Interpolation classes map onto it
+                Object(NonMatching, "game/cinterfacecameraaction.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
             ],
         },
         {
