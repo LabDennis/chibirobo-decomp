@@ -353,8 +353,6 @@ void MEMFreeToExpHeap(MEMiHeapHead* heap, void* memBlock)
 	UnlockHeap(heap);
 }
 
-// NONMATCHING: register allocation and the scheduling of the |align| computation around the register saves
-// differ from retail
 u32 MEMGetAllocatableSizeForExpHeapEx(MEMiHeapHead* heap, s32 align)
 {
 	MEMiExpHeapMBlock* it;
@@ -362,7 +360,8 @@ u32 MEMGetAllocatableSizeForExpHeapEx(MEMiHeapHead* heap, s32 align)
 	u32 smallestPadding;
 	u32 biggestSize;
 
-	align = align < 0 ? -align : align;
+	// the intrinsic, as in ogws: the arithmetic form computes into r4 and moves, retail computes into r31
+	align = __abs(align);
 	exp   = GetExpHeapHeadPtrFromHeapHead_(heap);
 
 	LockHeap(heap);
