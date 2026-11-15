@@ -155,7 +155,7 @@ extern "C" void InitGameRenderState(CBase* base)
 		gGame.mGs.mCurTevStage->Apply();
 	if (gGame.mGs.mCurChannel)
 		gGame.mGs.mCurChannel->Apply();
-	gGame.mGs._1B84 = TRUE;
+	gGame.mGs.mUseShiftJis = TRUE;
 }
 
 /**

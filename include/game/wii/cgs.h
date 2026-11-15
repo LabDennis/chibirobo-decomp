@@ -6,6 +6,7 @@
 #include <Dolphin/gx.h>
 
 class CCamera;
+struct TextChar;
 
 // The Wii graphics state layer. Class names from RTTI; the GS* classes each hold the arguments of
 // one GX call and are handed around by value. Their vtable sits behind the data.
@@ -319,9 +320,14 @@ public:
 	GXBool mZEnable;  // _14
 	GXCompare mZFunc; // _18
 	GXBool mZUpdate;  // _1C
+	u8 _1D[3];
 	u8 _20[0x64 - 0x20];
 	u8 mLineWidth;           // _64
 	GXTexOffset mLineOffset; // _68
+	u8 _6C[4];
+	u8 mPointSize;            // _70
+	GXTexOffset mPointOffset; // _74
+	u8 _78[0x90 - 0x78];
 
 	void SetBlendMode(GXBlendMode type, GXBlendFactor src, GXBlendFactor dst, GXLogicOp op)
 	{
@@ -343,6 +349,12 @@ public:
 		mLineWidth  = width;
 		mLineOffset = offset;
 		GXSetLineWidth(width, offset);
+	}
+	void SetPointSize(u8 pointSize, GXTexOffset offset)
+	{
+		mPointSize   = pointSize;
+		mPointOffset = offset;
+		GXSetPointSize(pointSize, offset);
 	}
 	void Apply(); // 0x802A9CE4
 };
@@ -394,7 +406,8 @@ public:
 	u8 _74[0xB8 - 0x74];
 	u8 mNumTexGens; // _B8
 	u8 _B9[0xC0 - 0xB9];
-	WiiGsTexGen mTexGens[8]; // _C0
+	WiiGsTexGen mTexGen; // _C0
+	u8 _D0[0xE0 - 0xD0];
 
 	void SetOrder(u32 coord, u32 map, u32 color)
 	{
@@ -444,18 +457,26 @@ public:
 	void SetNumTexGens(u8 num) { mNumTexGens = num; }
 	void SetTexGen(u32 coord, u32 func, u32 src, u32 mtx)
 	{
-		mTexGens[coord].mCoord = coord;
-		mTexGens[coord].mFunc  = func;
-		mTexGens[coord].mSrc   = src;
-		mTexGens[coord].mMtx   = mtx;
+		mTexGen.mCoord = coord;
+		mTexGen.mFunc  = func;
+		mTexGen.mSrc   = src;
+		mTexGen.mMtx   = mtx;
 	}
 	void Apply(); // 0x802AA0DC
 };
+STATIC_ASSERT(sizeof(CGsTevStage) == 0xE0);
 
 class CGsChannel {
 public:
+	u32 mId;    // _00
+	u8 mEnable; // _04
+	u8 _05[0x30 - 0x05];
+	CGsChannel* mNext; // _30
+	u8 _34[4];
+
 	void Apply(); // 0x802AA4CC
 };
+STATIC_ASSERT(sizeof(CGsChannel) == 0x38);
 
 // the render mode in use, RTTI gives the base as "_GXRenderModeObj"
 class CGsScreen : public GXRenderModeObj {
@@ -475,16 +496,26 @@ public:
 	GXFifoObj* mFifo;  // _04
 	CGsScreen mScreen; // _08
 	CCamera* mCamera;  // _48, the camera the 2D draws take their view matrix from
-	u8 _4C[0x380 - 0x4C];
+	u8 _4C[4];
+	CGsRenderState mRenderState;     // _50, the CGs's own state, current unless another one was set
+	CGsTevStage mTevStages[2];       // _E0
+	CGsChannel mChannels[4];         // _2A0
 	CGsRenderState* mCurRenderState; // _380
 	CGsTevStage* mCurTevStage;       // _384
 	CGsChannel* mCurChannel;         // _388
-	u8 _38C[0x1B84 - 0x38C];
-	BOOL _1B84; // _1B84, set once the start-up state is applied
-	u8 _1B88[0x1B90 - 0x1B88];
+	BOOL mBillboardEnabled;          // _38C
+	u8 _390[0x1B80 - 0x390];
+	TextChar* mTextChars;      // _1B80, 256 entries allocated by Init
+	s32 mUseShiftJis;          // _1B84
+	f32 mShiftJisWidthScale;   // _1B88
+	f32 mSingleByteWidthScale; // _1B8C
 	// _1B90 vtable
 
 	virtual ~CGs(); // _08
+
+	Vec mTextRot;  // _1B94, the text rotation, cleared by the light setup
+	u32 mTextFont; // _1BA0, the font argument handed to the glyph lookups
+	u8 _1BA4[0x2290 - 0x1BA4];
 
 	void Init(u32 renderStates, u32 tevStages, u32 channels, u32 texGens); // 0x802AA610
 	void SetScreenMode(s32 mode, s32 arg2, s32 arg3);                      // 0x802AAF6C
@@ -577,11 +608,16 @@ void DrawGsCircle(CGs* gs, u32 segments, u32 centerColor, u32 edgeColor, f32 x, 
 void DrawGsVertexQuad(CGs* gs, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1, f32 x2, f32 y2, f32 z2, u32 color2,
                       f32 x3, f32 y3, f32 z3, u32 color3);
 void DrawGsTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32 color, u16 count);
+void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* text, f32 x, f32 y, f32 z, f32 size, f32 height);
+void DrawGsFixedWidthTextFormat(CGs* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...);
 void DrawGsProportionalTextFormat(CGs* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...);
 void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f32 y, f32 z, f32 w, f32 h);
 void DrawGsStrokeTextFormat(CGs* gs, u32 color, const char* fmt, f32 x, f32 y, f32 z, f32 w, f32 h, ...);
-// text widths
+// text extents
 f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size);
+f32 MeasureGameTextHeight(CGs* gs, const char* text, f32 size);
+// applies the channel material and lighting setup for the primitive draws
+s32 SetGsChannelMaterialAndLighting(CGs* gs, s32 matSrc, u32 rgba);
 }
 
 #endif

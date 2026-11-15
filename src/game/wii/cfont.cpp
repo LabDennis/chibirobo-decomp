@@ -183,7 +183,7 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, u32 arg3, 
  * @note Address: 0x802B41EC
  * @note Size: 0xC8
  */
-extern "C" s8 HasFontGlyph(const char* str)
+extern "C" s8 HasFontGlyph(CFont* font, const char* str)
 {
 	CFile* file = &sFontResource.mFile;
 	if (file->IsLoaded()) {
