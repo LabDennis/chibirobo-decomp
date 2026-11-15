@@ -852,8 +852,8 @@ revolution/GX/GXMisc.c:
 	.text start:0x801A84B8 end:0x801A8D4C
 	.sbss start:0x805A23C8 end:0x805A23DC
 
-dolphin/gx/GXGeometry.c:
-	.text start:0x801A8FC4 end:0x801A92B4
+revolution/GX/GXGeometry.c:
+	.text start:0x801A8D4C end:0x801A9314
 
 revolution/GX/GXFrameBuf.c:
 	.text start:0x801A9314 end:0x801A9E8C

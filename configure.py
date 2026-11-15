@@ -1381,6 +1381,7 @@ if wii:
                 Object(NonMatching, "revolution/GX/GXFifo.c", cflags=wii_gx_cflags),
                 Object(NonMatching, "revolution/GX/GXAttr.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXMisc.c", cflags=wii_gx_cflags),
+                Object(NonMatching, "revolution/GX/GXGeometry.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXFrameBuf.c", cflags=wii_gx_cflags),
                 Object(NonMatching, "revolution/GX/GXTexture.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXBump.c", cflags=wii_gx_cflags),
@@ -1392,7 +1393,6 @@ if wii:
                 # (GC/1.2.5n + cflags_sdk) the GameCube editions build them with
                 Object(Equivalent, "dolphin/os/OSAudioSystem.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSError.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/gx/GXGeometry.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/gx/GXLight.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/gx/GXTransform.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/gx/GXDraw.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
