@@ -1559,6 +1559,8 @@ BOOL CXObj::ReadAsync(CObjArchive* archive, const char* path, u32 model, u32 fla
  * @note Address: 0x801A2F38
  * @note Size: 0x134
  */
+// NONMATCHING: retail keeps &mTranslate, &mRotate and &mScale in a register, the code MWCC gives when
+// CJObj::Attach runs on a member (mIntp.Attach in CXObjIntp::ReadCheck) and not on the base of this.
 // Retail calls both Attach and the base ReadCheck out of line.
 void CXObj::Attach(HSD_JObj* jobj)
 {
