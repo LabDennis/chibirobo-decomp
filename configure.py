@@ -1545,6 +1545,10 @@ if wii:
                 Object(Matching, "Runtime.PPCEABI.H/ptmf.c"),
                 Object(Matching, "rvl_runtime/runtime.c", extra_cflags=["-Cpp_exceptions off"]),
                 Object(Matching, "rvl_runtime/__init_cpp_exceptions.cpp", extra_cflags=["-Cpp_exceptions off"]),
+                # ExPPC_UnwindStack stays at 97.3 %: retail keeps the 0 it stores into info->action_pointer in
+                # r31, we get r25 and every other register one lower. Tried without effect: GC/3.0a3 to
+                # 3.0a5.2 and Wii/1.0 to 1.3, -ipa file, -inline on/off/deferred/smart, -O4,s, -O3, the
+                # single -opt switches, -RTTI off, pooled strings. xenoblade has the same source text.
                 Object(NonMatching, "Runtime.PPCEABI.H/Gecko_ExceptionPPC.cp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-RTTI on", "-str reuse,readonly"]),
                 Object(Matching, "Runtime.PPCEABI.H/GCN_mem_alloc.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-rostr", "-str reuse"]),
             ],
