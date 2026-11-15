@@ -171,6 +171,9 @@ game/THPSimple.cpp:
 	.sbss start:0x805A28C8 end:0x805A28F4
 	.sdata2 start:0x805A7B80 end:0x805A7B90
 
+game/cmovie.cpp:
+	.text start:0x802C2278 end:0x802C2564
+
 game/stage_data.cpp:
 	extab start:0x8000A210 end:0x8000A230
 	extabindex start:0x80012F68 end:0x80012F98

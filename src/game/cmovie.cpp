@@ -17,6 +17,22 @@ void CMovie::Init()
 	mFrame  = -1;
 }
 
+#if defined(VERSION_R24J01)
+/**
+ * @note Address: 0x802C22C4
+ * @note Size: 0x68
+ */
+void CMovie::Start(const char* path, f32 volume, BOOL loop, s32 volumeTime, BOOL sound)
+{
+	mState      = CMOVIE_STATE_OPEN;
+	mLoop       = loop;
+	mVolume     = volume * 127.0f;
+	mVolumeTime = volumeTime;
+	strcpy(mPath, path);
+	THPSimpleSetSound(sound);
+	mFrame = -1;
+}
+#else
 /**
  * @note Address: 0x801A9ED4
  * @note Size: 0x5C
@@ -30,7 +46,25 @@ void CMovie::Start(const char* path, BOOL loop, BOOL alpha, BOOL sound)
 	THPSimpleSetSound(sound);
 	mFrame = -1;
 }
+#endif
 
+#if defined(VERSION_R24J01)
+/**
+ * @note Address: 0x802C232C
+ * @note Size: 0x58
+ */
+void CMovie::Stop()
+{
+	mState = CMOVIE_STATE_IDLE;
+	THPSimpleAudioStop();
+	THPSimpleLoadStop();
+	THPSimpleClose();
+	if (mBuffer != NULL) {
+		mm::Free(mBuffer);
+		mBuffer = NULL;
+	}
+}
+#else
 /**
  * @note Address: 0x801A9E7C
  * @note Size: 0x58
@@ -46,7 +80,87 @@ void CMovie::Stop()
 		mBuffer = NULL;
 	}
 }
+#endif
 
+#if defined(VERSION_R24J01)
+/**
+ * @note Address: 0x802C2384
+ * @note Size: 0x1E0
+ */
+s32 CMovie::Update()
+{
+	s32 result;
+	u32 size;
+
+	switch (mState) {
+	case CMOVIE_STATE_OPEN:
+		if (THPSimpleOpen(mPath) > 0) {
+			mState = CMOVIE_STATE_INFO;
+		} else {
+			mState = -2; // negative states are error codes
+			break;
+		}
+		// fall through
+	case CMOVIE_STATE_INFO:
+		result = THPSimpleOpenWait();
+		if (result > 0) {
+			THPSimpleGetVideoInfo(&mVideoInfo);
+			THPSimpleGetAudioInfo(&mAudioInfo);
+			size    = THPSimpleCalcNeedMemory();
+			mBuffer = mm::Alloc(size, "(movie)");
+			if (mBuffer != NULL) {
+				mState = CMOVIE_STATE_PRELOAD;
+				THPSimpleSetBuffer(mBuffer);
+			} else {
+				mState = -1; // out of memory
+			}
+			mLastFrame = THPSimpleGetTotalFrame() - 1;
+			THPSimpleSetVolume(mVolume, 0);
+		} else if (result < 0) {
+			mState = -2;
+		}
+		break;
+	case CMOVIE_STATE_PRELOAD:
+		result = THPSimplePreLoad(mLoop);
+		if (result > 0) {
+			mState = CMOVIE_STATE_READY;
+		} else if (result < 0) {
+			mState = -3;
+		}
+		break;
+	case CMOVIE_STATE_READY:
+		result = THPSimplePreLoadWait();
+		if (result > 0) {
+			mState = CMOVIE_STATE_START;
+		} else {
+			if (result < 0) {
+				mState = -3;
+			}
+			break;
+		}
+		// fall through
+	case CMOVIE_STATE_START:
+		mState = CMOVIE_STATE_PLAY;
+		THPSimpleAudioStart();
+		// fall through
+	case CMOVIE_STATE_PLAY:
+		if (mFrame >= mLastFrame && !mLoop) { // the last frame ends a non-loop
+			Stop();
+		} else {
+			switch (THPSimpleDecode(mAudioInfo.sndNumTracks - 1)) {
+			case 1:
+				mState = -4;
+				break;
+			case 2:
+			case 3:
+				break;
+			}
+		}
+		break;
+	}
+	return 0;
+}
+#else
 /**
  * @note Address: 0x801A9C18
  * @note Size: 0x264
@@ -128,7 +242,9 @@ s32 CMovie::Update()
 	}
 	return 0;
 }
+#endif
 
+#if !defined(VERSION_R24J01)
 /**
  * @note Address: 0x801A9B9C
  * @note Size: 0x7C
@@ -174,3 +290,4 @@ void CMovie::EndDraw()
 {
 	THPSimpleDrawEnd();
 }
+#endif

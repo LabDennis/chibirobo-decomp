@@ -1852,3 +1852,5 @@ __FileWrite = .text:0x8022C53C; // type:function size:0x58
 __StringWrite = .text:0x8022C594; // type:function size:0x6C
 sprintf = .text:0x8022C854; // type:function size:0xD0
 _fseek = .text:0x80229D2C; // type:function size:0x1C4
+Start__6CMovieFPCcfili = .text:0x802C22C4; // type:function size:0x68
+Stop__6CMovieFv = .text:0x802C232C; // type:function size:0x58
