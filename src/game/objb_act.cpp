@@ -246,7 +246,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 				gGame.mParticle.Kill(act->mContactEffectId);
 				act->mContactEffect = NULL;
 			}
-		} else if (IsCarryingSquirter(act) && (u32)(anim - 0x8c2) > 2 && act->mToolEffect) {
+		} else if (IsCarryingSquirter(act) && !(anim == 0x8c2 || anim == 0x8c3 || anim == 0x8c4) && act->mToolEffect) {
 			gGame.mParticle.Kill(act->mToolEffectId);
 			act->mToolEffect = NULL;
 		}
@@ -280,7 +280,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	case 7:
 	case 8:
 	case 9:
-		if (anim != 0x9f && anim != 0xa0 && anim != 0xbc) {
+		if (!(anim == 0x9f || anim == 0xa0 || anim == 0xbc)) {
 			SetPlayerActionTarget(act, &act->mOwner->mPlug);
 			XObjPlug* plug = (XObjPlug*)act->mTarget;
 			plug->mStatus.mFlags |= 0x0400000000000000ULL;
@@ -295,7 +295,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		}
 		// fall through
 	case 10:
-		if (anim != 0x9f && anim != 0xa0 && anim != 0xbc) {
+		if (!(anim == 0x9f || anim == 0xa0 || anim == 0xbc)) {
 			ClearObjectAnimationQueue(act->mOwner);
 			if (IsLiftActionState(act, 7)) {
 				HeldAnim(act->mOwner, 0x9f);
@@ -642,18 +642,14 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 					act->mToolEffect = NULL;
 				}
 			}
-		} else if (anim >= 0x8c2 && anim <= 0x8c5) {
+		} else if (anim == 0x8c2 || anim == 0x8c3 || anim == 0x8c4 || anim == 0x8c5) {
 			if (act->mCheckToolHit) {
 				s32 first[]    = { 0, 0 };
 				HSD_JObj* root = GetObjectJointByPath(act->mTarget, 2, first);
 				s32 second[]   = { 0, 3 };
 				HSD_JObj* tip  = GetObjectJointByPath(act->mTarget, 2, second);
 				CVec pos(GetJointMatrixTranslation(act->mTarget, root));
-				f32 distance;
-				{
-					CVec delta = pos - GetJointMatrixTranslation(act->mTarget, tip);
-					distance   = PSVECMag(&delta);
-				}
+				f32 distance = (pos - GetJointMatrixTranslation(act->mTarget, tip)).Length();
 				if (distance > 0.1f) {
 					Vec scale = GetJointMatrixScale(act->mTarget, root);
 					Vec hit;
@@ -2115,15 +2111,11 @@ static inline Vec GetFloorOffset(const XObjFloor* floor)
 	return value;
 }
 
-static inline f32 JumpMotionLength(XObjChr* owner)
-{
-	CVec motion = GetPlayerFloorSlope(owner);
-	return PSVECMag(&motion);
-}
-
 static inline f32 JumpStickLength(const CPadOne* pad)
 {
-	return sqrtf(pad->mStickX * pad->mStickX + pad->mStickY * pad->mStickY);
+	f32 x = pad->mStickX;
+	f32 y = pad->mStickY;
+	return sqrtf(x * x + y * y);
 }
 static inline void JumpAnim(XActJump* act, s32 id, f32 loop = 1)
 {
@@ -2136,47 +2128,46 @@ static inline void EndJump(XActJump* act)
 	owner->mIdleLoops = 3;
 	act->mState       = 0;
 }
-static inline bool AdvanceJumpArc(XActJump* act, u32 frames)
+static inline BOOL AdvanceJumpArc(XActJump* act, u32 frames)
 {
 	if (act->mArcAngle < HALF_PI) {
 		if ((act->mArcAngle += act->mArcStep * frames) > HALF_PI)
 			act->mArcAngle = HALF_PI;
-		f32 lift = act->mRise * (f32)sin(act->mArcAngle);
+		f32 sine = (f32)sin(act->mArcAngle);
+		f32 lift = act->mRise * sine;
 		act->mOwner->SetTranslateY(act->mArcPosition.y + lift, 0);
 		f32 angle = HSD_JObjGetRotationY(act->mOwner->mJObj);
 		f32 dx    = act->mForward * (act->mArcStep * (f32)sin(angle));
 		f32 dz    = act->mForward * (act->mArcStep * (f32)cos(angle));
 		act->mOwner->SetTranslateX(act->mArcPosition.x += dx, 0);
 		act->mOwner->SetTranslateZ(act->mArcPosition.z += dz, 0);
-		return false;
+		return FALSE;
 	}
-	return true;
-}
-
-static inline bool IsJumpAnim(s32 anim, s32 base, s32 first, s32 second)
-{
-	return anim == base || anim == first || anim == second;
+	return TRUE;
 }
 
 /**
  * @note Address: 0x800CA0B4
  * @note Size: 0x1D00
  */
+// NONMATCHING: retail keeps the cleared playing flag in r4 and loads its other zeros where they are stored; here that zero sits
+// in r0 from the switch on and the state resets use it. Saved registers: retail has the frame count in r27 below the interrupt
+// flag, the game pointer and next (r28 to r30), here it is in r30 above them
 void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end)
 {
-	bool interrupt = false;
+	BOOL interrupt = FALSE;
 	if (!gGame.mEvt.mData.mScript) {
 		CPad pad(0);
 		if (JumpStickLength(pad.mPad) > 0) {
 			switch (act->mState) {
 			case 19:
 				if (frame > 1)
-					interrupt = true;
+					interrupt = TRUE;
 				break;
 			case 4:
 			case 18:
 				if (frame > 3)
-					interrupt = true;
+					interrupt = TRUE;
 				break;
 			case 10:
 			case 13:
@@ -2187,7 +2178,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 		}
 	}
 	s32 next     = -1;
-	bool playing = false;
+	BOOL playing = FALSE;
 	switch (act->mState) {
 	case 1:
 		if (anim != 0x1c) {
@@ -2201,7 +2192,7 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 	case 2:
 	case 3:
 	case 17:
-		if (act->mOwner->GetHeight() <= 0 || (act->mOwner->GetHeight() <= 1.f && JumpMotionLength(act->mOwner) > .5f)) {
+		if (act->mOwner->GetHeight() <= 0 || (act->mOwner->GetHeight() <= 1.f && GetPlayerFloorSlope(act->mOwner).Length() > .5f)) {
 			if (act->mOwner->mLift.mState == 19) {
 				act->mState = 0;
 				return;
@@ -2227,10 +2218,14 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			}
 		} else if (act->mOwner->mLift.mState != 19) {
 			if (act->mState == 3) {
-				if (anim != 0x7c)
-					JumpAnim(act, 0x7c, 0);
-			} else if (anim != 0x1d && anim != 0x93)
-				JumpAnim(act, 0x1d, 0);
+				next    = 0x7c;
+				playing = anim == 0x7c;
+			} else {
+				next    = 0x1d;
+				playing = anim == 0x1d || anim == 0x93;
+			}
+			if (!playing)
+				JumpAnim(act, next, 0);
 		}
 		break;
 	case 4:
@@ -2260,14 +2255,17 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			return;
 		}
 		if ((act->mStrength -= frames) <= 0) {
-			s32 id = 0x90;
+			s32 id;
 			if (act->mTargetStrength >= 50)
 				id = 0x9a;
-			else if (act->mTargetStrength >= 45 && !gGame.mEvt.mData.mScript) {
-				// a hard landing makes him put the mug (item 22) away
-				XObjChr* chr = act->mOwner;
-				if (chr->mLift.mState && IsCarrying(&chr->mLift, 22))
-					PutAway(&chr->mLift);
+			else {
+				id = 0x90;
+				if (act->mTargetStrength >= 45 && !gGame.mEvt.mData.mScript) {
+					// a hard landing makes him put the mug (item 22) away
+					XObjChr* chr = act->mOwner;
+					if (chr->mLift.mState && IsCarrying(&chr->mLift, 22))
+						PutAway(&chr->mLift);
+				}
 			}
 			JumpAnim(act, id);
 			act->mState = 7;
@@ -2285,28 +2283,31 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			EndJump(act);
 		break;
 	case 8:
-		next    = 0x5a;
-		playing = IsJumpAnim(anim, next, 0x10f, 0x115);
+		if (next < 0) {
+			next    = 0x5a;
+			playing = anim == next || anim == 0x10f || anim == 0x115;
+		}
 	// fall through
 	case 11:
 		if (next < 0) {
 			next    = 0x60;
-			playing = IsJumpAnim(anim, next, 0x112, 0x118);
+			playing = anim == next || anim == 0x112 || anim == 0x118;
 		}
 	// fall through
 	case 14:
 		if (next < 0) {
 			next    = 0x63;
-			playing = IsJumpAnim(anim, next, 0x11b, 0x11e);
+			playing = anim == next || anim == 0x11b || anim == 0x11e;
 		}
 		if (!playing) {
 			act->mTargetHeight = act->mTarget->mSelectedFloorHeight;
-			if (act->mOwner->mMoveTranslate.y >= act->mTargetHeight) {
+			const Vec* pos     = &act->mOwner->mMoveTranslate;
+			if (pos->y >= act->mTargetHeight) {
 				act->mState = 0;
 				return;
 			}
 			if (act->mTarget) {
-				f32 yaw = GetFloorFacingAngle(act->mTarget, &act->mOwner->mMoveTranslate, act->mTargetFloor, 0, NULL, NULL);
+				f32 yaw = GetFloorFacingAngle(act->mTarget, pos, act->mTargetFloor, 0, NULL, NULL);
 				if (__fpclassifyf(yaw) != FP_NAN) {
 					StopPlayerMotion(act->mOwner);
 					JumpAnim(act, next);
@@ -2317,7 +2318,21 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				}
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 id = act->mState == 8 ? 0x5b : act->mState == 11 ? 0x61 : 0x64;
+			s32 id = -1;
+			switch (act->mState) {
+			case 8:
+				if (id < 0)
+					id = 0x5b;
+				break;
+			case 11:
+				if (id < 0)
+					id = 0x61;
+				break;
+			case 14:
+				if (id < 0)
+					id = 0x64;
+				break;
+			}
 			JumpAnim(act, id);
 			++act->mState;
 			if (CheckStageFlag(gGame.mStage, 1)) {
@@ -2333,8 +2348,11 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				act->mArcPosition = act->mOwner->mMoveTranslate;
 				act->mRise        = act->mTargetHeight - act->mOwner->mMoveTranslate.y;
 				act->mArcAngle    = 0;
-				act->mArcStep     = act->mRise > 6 ? .8f * (HALF_PI / act->mRise) : DEG2RAD * 12;
-				act->mForward     = 5;
+				if (act->mRise > 6)
+					act->mArcStep = .8f * (HALF_PI / act->mRise);
+				else
+					act->mArcStep = DEG2RAD * 12;
+				act->mForward = 5;
 				{
 					XObjChr* p = act->mOwner;
 					f32 radius = p->mMoveScale.x * GetFloorExtent(p->mFloors).x;
@@ -2351,13 +2369,15 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 						XObj* obj = gGame.GetObject(i);
 						if (!(obj->mStatus.mFlags & 1) || !(obj->mStatus.mFlags & 0x10000) || obj->mStatus.mFlags & 0x100000)
 							continue;
-						if (obj->GetCategory() == 7 || obj->GetCategory() == 20 || act->mOwner->mId == obj->mId || obj->GetKind() >= 10000)
+						if (obj->GetCategory() == 7 || obj->GetCategory() == 20 || (s32)act->mOwner->mId == (s32)obj->mId
+						    || obj->GetKind() >= 10000)
 							continue;
 						f32 dx = obj->mMoveTranslate.x - x, dz = obj->mMoveTranslate.z - z;
 						if (sqrtf(dx * dx + dz * dz) > 100.f + (radius + obj->mFloorXZExtent))
 							continue;
-						CVec push, contact, from(x, y, z), to(x, y, z);
-						if ((obj->TestFloorCollision(&from, &to, radius, height, &push, &contact, 0, 0) & 3) == 3) {
+						CVec push, contact;
+						u32 touch = ProbeObjectFloor(obj, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, NULL) & 3;
+						if (touch == 3) {
 							act->mForward = 0;
 							act->mRise *= .8f;
 							break;
@@ -2373,19 +2393,21 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 		}
 		break;
 	case 9:
-		next    = 0x5b;
-		playing = IsJumpAnim(anim, next, 0x110, 0x116);
+		if (next < 0) {
+			next    = 0x5b;
+			playing = anim == next || anim == 0x110 || anim == 0x116;
+		}
 	// fall through
 	case 12:
 		if (next < 0) {
 			next    = 0x61;
-			playing = IsJumpAnim(anim, next, 0x113, 0x119);
+			playing = anim == next || anim == 0x113 || anim == 0x119;
 		}
 	// fall through
 	case 15:
 		if (next < 0) {
 			next    = 0x64;
-			playing = IsJumpAnim(anim, next, 0x11c, 0x11f);
+			playing = anim == next || anim == 0x11c || anim == 0x11f;
 		}
 		if (!playing)
 			JumpAnim(act, next);
@@ -2395,25 +2417,40 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				act->mState = 17;
 				return;
 			}
-			s32 id = act->mState == 9 ? 0x5c : act->mState == 12 ? 0x62 : 0x65;
+			s32 id = -1;
+			switch (act->mState) {
+			case 9:
+				if (id < 0)
+					id = 0x5c;
+			// fall through
+			case 12:
+				if (id < 0)
+					id = 0x62;
+			// fall through
+			case 15:
+				if (id < 0)
+					id = 0x65;
+			}
 			JumpAnim(act, id);
 			++act->mState;
 		}
 		break;
 	case 10:
-		next    = 0x5c;
-		playing = IsJumpAnim(anim, next, 0x111, 0x117);
+		if (next < 0) {
+			next    = 0x5c;
+			playing = anim == next || anim == 0x111 || anim == 0x117;
+		}
 	// fall through
 	case 13:
 		if (next < 0) {
 			next    = 0x62;
-			playing = IsJumpAnim(anim, next, 0x114, 0x11a);
+			playing = anim == next || anim == 0x114 || anim == 0x11a;
 		}
 	// fall through
 	case 16:
 		if (next < 0) {
 			next    = 0x65;
-			playing = IsJumpAnim(anim, next, 0x11d, 0x120);
+			playing = anim == next || anim == 0x11d || anim == 0x120;
 		}
 		if (!playing) {
 			JumpAnim(act, next);
@@ -2426,6 +2463,9 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			act->mOwner->SetAnimRate(4, 0x5a0);
 		break;
 	case 18:
+		if ((aobj->flags & 0x44000000) || interrupt)
+			EndJump(act);
+		break;
 	case 19:
 		if ((aobj->flags & 0x44000000) || interrupt)
 			EndJump(act);
