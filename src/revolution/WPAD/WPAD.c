@@ -6,7 +6,7 @@
 
 const char* __WPADVersion = "<< RVL_SDK - WPAD \trelease build: Sep 11 2008 17:33:40 (0x4199_60831) >>";
 
-extern volatile BOOL __OSIsReturnToIdle;
+extern BOOL __OSIsReturnToIdle;
 
 static OSAlarm _managerAlarm;
 WPADControlBlock* _wpdcb[WPAD_MAX_CONTROLLERS];
