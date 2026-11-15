@@ -2672,6 +2672,79 @@ StageDesc stageTable[] = {
 	{ "mariko", "mariko", NULL, -1, -1, 5 },
 	{ NULL, NULL, NULL, 0, 0, 0 },
 };
+
+// the Wii keeps the object, spawn and placement tables in its own data; their
+// accessors are the same as the GameCube file's
+extern UnkStageObj gStageObjectPlacements[];
+extern UnkStageObj spawnTable[];
+extern UnkObjData objTable[];
+extern UnkObjData objTableEx[];
+
+// placement fixup lists: id -1 ends each table
+struct PlacementChain {
+	u8 _00[8];
+	s32 mId;
+	u8 _0C[4];
+	s32* mChain;
+	s32 mIndex;
+};
+
+extern PlacementChain lbl_802F0138[];
+extern PlacementChain lbl_8030DB30[];
+
+/**
+ * @note Address: 0x80092EC8
+ * @note Size: 0xBC
+ */
+extern "C" void fn_80092EC8(void)
+{
+	PlacementChain* entry = lbl_802F0138;
+	while (entry->mId != -1) {
+		entry->mIndex = entry->mId + 0x10000;
+		if (entry->mChain != NULL)
+			while (entry->mChain[entry->mIndex] != 0)
+				entry->mIndex++;
+		entry++;
+	}
+	entry = lbl_8030DB30;
+	while (entry->mId != -1) {
+		entry->mIndex = entry->mId + 0x10000;
+		if (entry->mChain != NULL)
+			while (entry->mChain[entry->mIndex] != 0)
+				entry->mIndex++;
+		entry++;
+	}
+}
+
+/**
+ * @note Address: 0x80092F84
+ * @note Size: 0x3C
+ */
+extern "C" UnkObjData* GetObjData(const CoordInfo* info)
+{
+	s32 index = info->mPlacement->mObjectId;
+	if (index >= 10000)
+		return &objTableEx[index - 10000];
+	return &objTable[index];
+}
+
+/**
+ * @note Address: 0x80092FC0
+ * @note Size: 0x14
+ */
+extern "C" UnkStageObj* GetSpawnData(s32 index)
+{
+	return &spawnTable[index];
+}
+
+/**
+ * @note Address: 0x80092FD4
+ * @note Size: 0x14
+ */
+extern "C" UnkStageObj* GetStageObjectPlacementByIndex(s32 index)
+{
+	return &gStageObjectPlacements[index];
+}
 #endif
 
 /**
