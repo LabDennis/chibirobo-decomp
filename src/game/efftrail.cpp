@@ -16,8 +16,9 @@ STATIC_ASSERT(sizeof(SuitChangeEffect) == 0x1E4);
  * @note Address: 0x80093C14
  * @note Size: 0x490
  */
-// NONMATCHING: retail keeps the halo's width and height in two registers (f28 is a copy of f29), and its frame has the
-// point's position above the halo's two rotation vectors and the point's two below the temporaries of the add
+// NONMATCHING: retail keeps the halo's width and height in two registers (f28 is a copy of f29). Its frame has the four
+// rotation vectors as unnamed objects in the order they are used, each with its own zero template: literals handed to
+// a circle call that takes the position and the rotation as Vecs gives that frame (97.7 %), the call itself is not found.
 extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
 {
 	if (!trail->active) {
