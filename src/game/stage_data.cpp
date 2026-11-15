@@ -2,10 +2,13 @@
 #if defined(VERSION_R24J01)
 #include "Dolphin/GX/GXFrameBuffer.h"
 #include "game/wii/cgame.h"
+#include "game/cfile.h"
 extern "C" {
 char* FormatToStaticBuffer(const char* format, ...);
 s32 _prolog(s32 function, s32 count, s32* args);
 }
+// the game's own aligned array new: MEMAllocFromExpHeapEx on the MEM2 game heap
+void* operator new[](size_t size, s32 align);
 #else
 #include "game/cgame.h"
 #include "game/ut.h"
@@ -2748,6 +2751,43 @@ extern "C" UnkStageObj* GetSpawnData(s32 index)
 extern "C" UnkStageObj* GetStageObjectPlacementByIndex(s32 index)
 {
 	return &gStageObjectPlacements[index];
+}
+
+extern s32 gItemIconTextureIndices[];
+
+/**
+ * @note Address: 0x80092FE8
+ * @note Size: 0x24
+ */
+extern "C" s32 GetItemIconTextureIndex(s32 index)
+{
+	if (index < 0)
+		return -1;
+	return gItemIconTextureIndices[index];
+}
+
+// the object archives are ResourceFile slots from a shared pool, claimed as objects spawn
+ResourceFile* gObjResourceFiles;
+s32 gObjResourceFileCount;
+
+/**
+ * @note Address: 0x8009300C
+ * @note Size: 0x12C
+ */
+void AttrInfo::Init(CoordInfo* info)
+{
+	UnkObjData* objData    = GetObjData(info);
+	UnkStageObj* placement = info->mPlacement;
+	ResourceFile* files    = gObjResourceFiles;
+	mObjData               = objData;
+	mPlacement             = placement;
+	if (files == NULL)
+		gObjResourceFiles = new (4) ResourceFile[0x530];
+	if ((mObjData ? mObjData->mSource : NULL) == NULL)
+		return;
+	if ((mObjData ? mObjData->mSource : NULL) ? mObjData->mSource->mArchive : NULL)
+		return;
+	(mObjData ? mObjData->mSource : NULL)->mArchive = &gObjResourceFiles[gObjResourceFileCount++];
 }
 #endif
 
