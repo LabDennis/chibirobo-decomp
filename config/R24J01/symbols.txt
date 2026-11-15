@@ -1,5 +1,8 @@
 InitWiiHomeMenu = .text:0x800AAEC0; // type:function size:0xB0
 __dl__FPv = .text:0x80019A68; // type:function size:0x4C
+__nwa__FUl = .text:0x80019AB4; // type:function size:0x50
+__dla__FPv = .text:0x80019B04; // type:function size:0x4C
+__nwa__FUli = .text:0x80019B50; // type:function size:0x54
 __ct__Q34nw4r2ut7ResFontFv = .text:0x80235A50; // type:function
 __dt__Q34nw4r2ut7ResFontFv = .text:0x80235A8C; // type:function
 SetResource__Q34nw4r2ut7ResFontFPv = .text:0x80235AE4; // type:function
