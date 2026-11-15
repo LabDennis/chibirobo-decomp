@@ -4977,7 +4977,7 @@ Vec XObjChr::GetCameraTarget()
 				CVec joint = GetEventJointWorldPosition(this, 1, path);
 				CVec start = mMoveTranslate;
 				if (GetJointAnimationCurrentFrame(this) > 80.f) {
-					joint = mMoveTranslate;
+					CopyVecToCVec(&joint, &mMoveTranslate);
 					start.y -= mRope.mTargetOffset.y;
 					f32 end = GetJointAnimationEndFrame(this) - 80.f;
 					f32 t   = (GetJointAnimationCurrentFrame(this) - 80.f) / end;
@@ -4988,9 +4988,9 @@ Vec XObjChr::GetCameraTarget()
 					target  = start + (Vec) { 0, 10, 0 };
 				}
 			} else if (IsRopeActionState(&mRope, 6) && anim == 0x24) {
+				CVec start = mMoveTranslate;
 				s32 path[] = { 0 };
 				CVec joint = GetEventJointWorldPosition(this, 1, path);
-				CVec start = mMoveTranslate;
 				start.x    = joint.x;
 				start.z    = joint.z;
 				f32 end    = GetJointAnimationEndFrame(this);
@@ -5126,7 +5126,11 @@ Vec XObjChr::GetCameraTarget()
 		} else {
 			s32 path[] = { 0 };
 			CVec joint = GetEventJointWorldPosition(this, 1, path);
-			target     = joint + (Vec) { 0, 10, 0 };
+			CVec start = mMoveTranslate;
+			start.x    = joint.x;
+			start.y    = joint.y;
+			start.z    = joint.z;
+			target     = start + (Vec) { 0, 10, 0 };
 		}
 		CMotionControlCamera& camera = gGame.mMotionControlCamera;
 		if (camera.IsAction(CAMACTION_AREA) || camera.IsAction(CAMACTION_MAP)) {
