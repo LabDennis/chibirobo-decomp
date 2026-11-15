@@ -1210,6 +1210,9 @@ if wii:
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
                 # retail keeps them as calls
                 Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the RFNU/RFNT font file loader + glyph cache between the console font paths;
+                # the small setup helpers stay calls in retail, so no auto-inlining here either
+                Object(NonMatching, "game/wii/cfont.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # init.cpp (the name is in its OSPanic call): InitTwoLightSet and InitFourLightSet
                 # copy their vectors through the registers retail uses under GC/3.0a3.2 to 3.0a5
                 # and through others under 3.0a5.2, and every Wii build is far off. -ipa file: the
@@ -1223,6 +1226,9 @@ if wii:
                 # into Update (no bl, retail 0x802B2528), with its standalone copy at its own
                 # address (retail 0x802B1D84)
                 Object(Matching, "game/wii/cpad.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the message system between evt.cpp's destructors and cpadact.cpp; the
+                # GameCube file's VERSION_JP branches are the reconstruction base
+                Object(NonMatching, "game/wii/msg.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # retail has no call to StartWiiSaveJob (declared inline, inlined into its

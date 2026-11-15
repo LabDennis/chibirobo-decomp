@@ -12,20 +12,42 @@
 // The functions come in the reverse of the GameCube's order (gxb.cpp from XObjDemo::DrawObject to
 // InitTitleScreen).
 //
-// NONMATCHING: only UpdateTitleOptions (0x8004C548) and Title::UpdateSelections (0x8004E534) have source so
-// far. UpdateSelections is exact. In UpdateTitleOptions this build expands UpdateSelections where retail
-// calls it (0x8004CA20), which leaves it at 70 %. Compiled outside the build with -inline noauto added,
-// every instruction is retail's (99.6 %): what then differs is the name of the callee at 0x80231770, which
-// is fmod and is in symbols.txt as exp, and the offset of the halt message in the string pool, which the
-// rest of the file's strings will move into place. The flag is not set for the unit: two functions are
-// too few neighbours to test it on.
+// NONMATCHING: four functions have source so far: UpdateTitleOptions (0x8004C548), UpdateTitleDust
+// (0x8004CA74), DrawTitleHelpText (0x8004D5C4) and Title::UpdateSelections (0x8004E534). UpdateSelections
+// is exact. In UpdateTitleOptions this build expands UpdateSelections where retail calls it (0x8004CA20),
+// which leaves it at 70 %. Compiled outside the build with -inline noauto added, every instruction is
+// retail's (99.6 %): what then differs is the name of the callee at 0x80231770, which is fmod and is in
+// symbols.txt as exp, and the offset of the halt message in the string pool, which the rest of the file's
+// strings will move into place. The flag is not set for the unit: too few neighbours to test it on.
+// UpdateTitleDust is one bool temp and one branch polarity away from exact (99.7 %): retail keeps a
+// bool temp for each byte range of the SJIS check and inits the flag in another register. In
+// DrawTitleHelpText (82 %) the calls, the quad arguments and the float formulas are retail's, but the
+// glyph loop's float scheduling and register pressure differ: retail saves r15 and folds the padding
+// subtraction and the outline negations into fmsubs/fneg where this build moves and reloads.
 #include "game/wii/title.h"
 #include "game/wii/cgame.h"
+#include "game/wii/cgs.h"
+#include "game/cfont.h"
+#include "game/gmath.h"
 #include "Dolphin/os.h"
 #include "stl/math.h"
+#include <stdlib.h>
 
 extern "C" {
-extern s32 gRefreshRate;
+extern s32 gPointerScreenWidth, gPointerScreenHeight, gRefreshRate;
+}
+
+// the outline offsets of the help text's letter shadows
+f32 gTitleHelpOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gTitleHelpOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+
+// the glyph width is rounded before subtracting it from the cell width (the GameCube's
+// HelpGlyphPadding from drawhelptext.h, which cannot be included here; on the Wii the width
+// division stays single precision)
+static inline f32 HelpGlyphPadding(s32 width, f32 scale)
+{
+	f32 glyphWidth = (f32)(width / 24.0f) * scale;
+	return scale - glyphWidth;
 }
 
 // the letters of the name shrink away
@@ -46,6 +68,50 @@ static inline void ResetSelection(Title* title, s32& selection, const s32& last)
 		selection = -1;
 	} else {
 		selection = last;
+	}
+}
+
+/**
+ * @note Address: 0x8004CA74
+ * @note Size: 0x344
+ */
+// the name is set from a C string: each letter gets a text pointer, a staggered shrink, a random
+// bob and tilt, and the rest of the slots are cleared. SJIS lead bytes count once, only when the
+// game language is Japanese
+extern "C" void UpdateTitleDust(Title* title, const char* text, u32 color)
+{
+	title->mName.mActive = TRUE;
+	title->mName.mCount  = 0;
+	if (text == NULL) {
+		return;
+	}
+	title->mName.mColor = color;
+	for (s32 i = 0; i < 20 && *text; i++, text++) {
+		title->mName.mChars[i].mText  = text;
+		title->mName.mChars[i].mScale = -0.2f * i;
+		title->mName.mChars[i].mWait  = gRefreshRate;
+		title->mName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
+		title->mName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
+		title->mName.mCount++;
+		if (gGame.mLanguage == 0) {
+			u8 c    = *text;
+			u8 lead = TRUE;
+			u8 a    = (c >= 0x81 && c <= 0x9F);
+			if (!a) {
+				u8 b = (c >= 0xE0 && c <= 0xFC);
+				if (!b) {
+					lead = FALSE;
+				}
+			}
+			if (lead) {
+				text++;
+			}
+		}
+	}
+	for (s32 i = title->mName.mCount; i < 20; i++) {
+		title->mName.mChars[i].mText  = NULL;
+		title->mName.mChars[i].mScale = 0.0f;
+		title->mName.mChars[i].mWait  = 0.0f;
 	}
 }
 
@@ -173,6 +239,75 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
 		AddPointerPane(&gPointerPanes, &title->mOptionPanes[1]);
 		AddPointerPane(&gPointerPanes, &title->mOptionPanes[2]);
 	}
+}
+
+/**
+ * @note Address: 0x8004D5C4
+ * @note Size: 0x6D0
+ */
+// the help line at the bottom: one blob per glyph, centred on the pointer's screen size. SJIS lead
+// bytes are only counted when the game language is Japanese (gGame.mLanguage == 0)
+extern "C" void DrawTitleHelpText(Title* menu)
+{
+	f32 alpha   = menu->mMenuAlpha * menu->mHelpAlpha;
+	f32 spacing = 30.0f;
+	f32 centreX = gPointerScreenWidth / 2;
+	f32 centreY = 160.0f + gPointerScreenHeight / 2;
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	(&gGame.mTpl)->mTex.Init(&gGame.mTpl.mPalette->descriptorArray[109 - StatusTextureOffset], 0);
+	CTexObj blob     = gGame.mTpl.mTex;
+	menu->mHelpCount = 0;
+	const char* text = menu->mHelpText;
+	if (text) {
+		const int limit = 20;
+		for (int i = 0; i < limit && *text; i++, text++) {
+			menu->mBg[i].mText = text;
+			menu->mHelpCount++;
+			if (gGame.mLanguage == 0) {
+				u8 c    = *text;
+				u8 lead = TRUE;
+				u8 a    = (c >= 0x81 && c <= 0x9F);
+				if (!a) {
+					u8 b = (c >= 0xE0 && c <= 0xFC);
+					if (!b) {
+						lead = FALSE;
+					}
+				}
+				if (lead) {
+					text++;
+				}
+			}
+		}
+	}
+	f32 zero    = 0.0f;
+	f32 opacity = 255.0f * alpha;
+	for (int i = 0; i < menu->mHelpCount; i++) {
+		MenuHelpChar* glyph = &menu->mBg[i];
+		s32 width;
+		CFont font;
+		CTexObj tex  = *GetFontGlyphTexture(&font, glyph->mText, 0, &width);
+		f32 bob      = 2.0f * (f32)sin(glyph->mAngle0);
+		f32 rotation = sin(0.7f * glyph->mAngle1);
+		f32 swell    = sin(PI * alpha);
+		f32 grow     = sin(HALF_PI * alpha);
+		f32 scale    = 0.2f * swell + grow;
+		f32 x        = 0.5f * spacing + (i * spacing + (centreX - menu->mHelpCount * spacing * 0.5f));
+		f32 y        = centreY + bob;
+		rotation     = -(DEG2RAD * (10.0f * rotation));
+		u32 color    = (u32)opacity | 0xFFFFFF00;
+		DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero, rotation);
+		scale       = 30.0f * (0.8f * scale);
+		f32 padding = HelpGlyphPadding(width, scale);
+		u32 oc      = (u32)opacity;
+		for (int j = 0; j < 4; j++) {
+			DrawGsTexturedQuad(&gGame.mGs, &tex, oc, oc, oc, oc, x + gTitleHelpOutlineX[j] + padding * 0.5f,
+			                   bob + (centreY + gTitleHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+		}
+		color = (u32)opacity | 0xFFFFFB00;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding * 0.5f, y, 1.0f, scale, scale, 0.0f, -zero, rotation);
+	}
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
 void Title::UpdateSelections()
