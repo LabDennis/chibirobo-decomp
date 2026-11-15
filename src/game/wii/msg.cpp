@@ -608,6 +608,112 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	font->mCharCount++;
 }
 
+// the GameCube's PAL formula at the remote's refresh rate
+#define MSG_FADE_RATE (1.0f / (0.3f * gRefreshRate))
+
+/**
+ * @note Address: 0x800A34C0
+ * @note Size: 0x69C
+ */
+extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
+{
+	if (font->mBits.mActive) {
+		if (font->mBits.mFadeIn && font->mAlpha < 1.0f) {
+			// zero-alpha tint and no voice code (mMode stays -1, see CMsgData_Measure): no fade in
+			if (font->mColor.a == 0 && font->mMode < 0) {
+				font->mAlpha        = 1.0f;
+				font->mBits.mFadeIn = FALSE;
+			}
+			f32 alpha    = font->mAlpha + MSG_FADE_RATE * step;
+			font->mAlpha = alpha;
+			if (alpha >= 1.0f) {
+				font->mAlpha        = 1.0f;
+				font->mBits.mFadeIn = FALSE;
+			}
+		}
+		if (font->mBits.mFadeOut) {
+			if (font->mAlpha > 0.0f) {
+				f32 alpha    = font->mAlpha - MSG_FADE_RATE * step;
+				font->mAlpha = alpha;
+				if (alpha <= 0.0f) {
+					font->mAlpha         = 0.0f;
+					font->mBits.mFadeOut = FALSE;
+					font->mBits.mActive  = FALSE;
+				}
+			}
+			font->mTextAlpha = font->mAlpha;
+		}
+		// a select() line or a number input digit is picked: fade the highlight in, else out
+		if (font->mSelectedLine >= 0 || font->mOtherSelection >= 0) {
+			if (font->mHighlightAlpha < 1.0f) {
+				f32 alpha             = font->mHighlightAlpha + MSG_FADE_RATE * step;
+				font->mHighlightAlpha = alpha;
+				if (alpha >= 1.0f) {
+					font->mHighlightAlpha = 1.0f;
+				}
+			}
+		} else if (font->mHighlightAlpha > 0.0f) {
+			f32 alpha             = font->mHighlightAlpha - MSG_FADE_RATE * step;
+			font->mHighlightAlpha = alpha;
+			if (alpha <= 0.0f) {
+				font->mHighlightAlpha = 0.0f;
+			}
+		}
+		if (font->mSelectedLine >= 0) {
+			f32 width = font->mBits.mFitLine ? font->mData->mWidths[font->mSelectedLine] : font->mData->mMaxWidth;
+			font->mCurLineY += 0.8f * (font->mLineY[font->mSelectedLine] - font->mCurLineY);
+			font->mCurLineWidth += 0.7f * (width - font->mCurLineWidth);
+			font->mTexOffset -= 0.008f * step;
+			PSMTXTrans(font->mTexs.mTex[MSG_TEX_LINE].mTexMtx.mMtx[0], font->mTexOffset, 0.0f, 0.0f);
+			font->mTexs.mTex[MSG_TEX_LINE].mTexMtx.mDirty = true;
+		}
+		if (font->mBits.mBlink) {
+			// CMsgFont_Draw fades the button prompt with sin(mBlinkPhase): 6 degrees a frame, wrapped at PI, a pulse every 30 frames
+			font->mBlinkPhase += DEG2RAD * 6.0f * step;
+			font->mBlinkPhase = fmod(font->mBlinkPhase, (f64)PI);
+		}
+	}
+
+	if (font->mBits.mActive) {
+		for (s32 i = 0; i < 400; i++) {
+			// CMsgFont_Draw: bits 1 and 2 shift the glyph, 4 pulses its scale, 8 rocks it; the high nibble sets how the phases move
+			switch (font->mGlyphs[i].mEffect & 0xF0) {
+			case 0x10:
+				// smooth: every phase turns by its share of mSpeed degrees a frame
+				// this one adds in u32 (step is u32) before going to float, so a sum below 0 wraps
+				font->mGlyphs[i].mPhaseY = (s16)(f32)fmod((f32)(font->mGlyphs[i].mPhaseY + font->mGlyphs[i].mSpeed * step), 360.0);
+				font->mGlyphs[i].mPhaseX = (s16)(f32)fmod(font->mGlyphs[i].mPhaseX + (0.5f * font->mGlyphs[i].mSpeed) * step, 360.0);
+				font->mGlyphs[i].mPhaseZ = (s16)(f32)fmod(font->mGlyphs[i].mPhaseZ + (0.7f * font->mGlyphs[i].mSpeed) * step, 360.0);
+				font->mGlyphs[i].mPhaseW = (s16)(f32)fmod(font->mGlyphs[i].mPhaseW + (0.8f * font->mGlyphs[i].mSpeed) * step, 360.0);
+				break;
+			case 0x20:
+				// jitter: fresh random phases every mSpeed updates
+				if (--font->mGlyphs[i].mRefresh <= 0) {
+					font->mGlyphs[i].mPhaseY  = rand() % 360;
+					font->mGlyphs[i].mPhaseX  = rand() % 360;
+					font->mGlyphs[i].mPhaseZ  = rand() % 360;
+					font->mGlyphs[i].mPhaseW  = rand() % 360;
+					font->mGlyphs[i].mRefresh = font->mGlyphs[i].mSpeed;
+				}
+				break;
+			}
+		}
+	}
+	font->mScrollX += 0.01f * step;
+	font->mScrollY += 0.01f * step;
+	PSMTXTrans(font->mFrame.mTex.mTexMtx.mMtx[0], font->mScrollX, font->mScrollY, 0.0f);
+	font->mFrame.mTex.mTexMtx.mDirty = true;
+	// only mode 0 has the portrait, CMsgFont_Draw leaves 40 * scale of room for it; the Wii
+	// updates both cursor objects, where the GameCube had one
+	if (font->mMode == 0) {
+		for (s32 i = 0; i < 2; i++) {
+			if (font->mCursor[i].mStatus & 1) {
+				font->mCursor[i].UpdateObject(step);
+			}
+		}
+	}
+}
+
 /**
  * @note Address: 0x800A5C3C
  * @note Size: 0x1A0

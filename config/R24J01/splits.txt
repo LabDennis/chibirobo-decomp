@@ -501,7 +501,7 @@ MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_asin.c:
 MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_atan2.c:
 	.text start:0x8023176C end:0x80231770
 
-MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_exp.c:
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_fmod.c:
 	.text start:0x80231770 end:0x80231774
 
 MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_pow.c:
@@ -767,8 +767,9 @@ MSL_C.PPCEABI.bare.H/MSL_Common/wchar_io.c:
 MSL_C.PPCEABI.bare.H/PPC_EABI/uart_console_io_gcn.c:
 	.text start:0x8022D4C4 end:0x8022D594
 
-MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_exp.c:
+MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod.c:
 	.text start:0x8022DE7C end:0x8022E1AC
+	.rodata start:0x802DFA38 end:0x802DFA48
 dolphin/gx/GXAttr.c:
 	.text start:0x801A7294 end:0x801A84B8
 
