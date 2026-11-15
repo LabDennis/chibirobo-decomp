@@ -52,11 +52,6 @@ public:
 
 	typedef CharCode (Font::*CharStrmReader)(const void*);
 
-	// _04, set by InitReaderFunc; the constructor loads the entry the table
-	// at 0x80332810 holds, InitReaderFunc switches it per encoding
-	// (0x80235268, table 0x80332780)
-	CharStrmReader mReadFunc;
-
 	Font();
 	virtual ~Font();                                             // _08
 	virtual int GetWidth() const;                                // _0C
@@ -79,6 +74,12 @@ public:
 	virtual void GetGlyph(Glyph* glyph, CharCode c) const;       // _50
 	virtual bool HasGlyph(CharCode c) const;                     // _54
 	virtual Encoding GetEncoding() const;                        // _58
+
+	// _04, set by InitReaderFunc; the constructor loads the entry the table
+	// at 0x80332810 holds, InitReaderFunc switches it per encoding
+	// (0x80235268, table 0x80332780). declared after the virtuals so the
+	// vtable pointer stays at the front, as in retail
+	CharStrmReader mReadFunc;
 
 	// switch mReadFunc to the reader for the given encoding (0x80235268)
 	void InitReaderFunc(Encoding encoding);

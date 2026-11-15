@@ -12,9 +12,12 @@
 // The functions come in the reverse of the GameCube's order (gxb.cpp from XObjDemo::DrawObject to
 // InitTitleScreen).
 //
-// NONMATCHING: four functions have source so far: UpdateTitleOptions (0x8004C548), UpdateTitleDust
-// (0x8004CA74), DrawTitleHelpText (0x8004D5C4) and Title::UpdateSelections (0x8004E534). UpdateSelections
-// is exact. In UpdateTitleOptions this build expands UpdateSelections where retail calls it (0x8004CA20),
+// NONMATCHING: twenty-one functions have source so far: UpdateTitleOptions (0x8004C548), UpdateTitleDust
+// (0x8004CA74), DrawTitleHelpText (0x8004D5C4), Title::UpdateSelections (0x8004E534) and the small
+// states at the end of this file. UpdateSelections and the eight empty states are exact. The nine
+// states that are only an OSPanic tail call (State6, State11-13, State18-22) differ only in the
+// message's offset in the string pool, which the rest of the file's strings will move into place.
+// In UpdateTitleOptions this build expands UpdateSelections where retail calls it (0x8004CA20),
 // which leaves it at 70 %. Compiled outside the build with -inline noauto added, every instruction is
 // retail's (99.6 %): what then differs is the name of the callee at 0x80231770, which is fmod and is in
 // symbols.txt as exp, and the offset of the halt message in the string pool, which the rest of the file's
@@ -326,4 +329,158 @@ void Title::UpdateSelections()
 		mLastChoice = 1;
 		ResetSelection(this, mChoice, mLastChoice);
 	}
+}
+
+/**
+ * @note Address: 0x800472A8
+ * @note Size: 0x4
+ */
+void Title::State0(u32)
+{
+}
+
+/**
+ * @note Address: 0x800480B4
+ * @note Size: 0x4
+ */
+void Title::State4(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048728
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State6(u32)
+{
+	OSPanic("title.cpp", 0xa90, "こに来るのはおかしい");
+}
+
+/**
+ * @note Address: 0x80048740
+ * @note Size: 0x4
+ */
+void Title::State7(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048A0C
+ * @note Size: 0x4
+ */
+void Title::State10(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048A10
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State11(u32)
+{
+	OSPanic("title.cpp", 0xbeb, "ここにくるのおかしい");
+}
+
+/**
+ * @note Address: 0x80048A28
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State12(u32)
+{
+	OSPanic("title.cpp", 0xc64, "ここにくるのおかしい");
+}
+
+/**
+ * @note Address: 0x80048A40
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State13(u32)
+{
+	OSPanic("title.cpp", 0xcc0, "ここにくるのおかしい");
+}
+
+/**
+ * @note Address: 0x80048C9C
+ * @note Size: 0x4
+ */
+void Title::State16(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048CA0
+ * @note Size: 0x4
+ */
+void Title::State17(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048CA4
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State18(u32)
+{
+	OSPanic("title.cpp", 0xe87, "ォブラォン1.09-->1.10で作成したはずの削除です");
+}
+
+/**
+ * @note Address: 0x80048CBC
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State19(u32)
+{
+	OSPanic("title.cpp", 0xe87, "ォブラォン1.09-->1.10で作成したはずの削除です");
+}
+
+/**
+ * @note Address: 0x80048CD4
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State20(u32)
+{
+	OSPanic("title.cpp", 0xeb2, "ここにくるのおかしい");
+}
+
+/**
+ * @note Address: 0x80048CEC
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State21(u32)
+{
+	OSPanic("title.cpp", 0xeb2, "ここにくるのおかしい");
+}
+
+/**
+ * @note Address: 0x80048D04
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State22(u32)
+{
+	OSPanic("title.cpp", 0xeb2, "ここにくるのおかしい");
+}
+
+/**
+ * @note Address: 0x80048D1C
+ * @note Size: 0x4
+ */
+void Title::State23(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048E50
+ * @note Size: 0x4
+ */
+void Title::State25(u32)
+{
 }

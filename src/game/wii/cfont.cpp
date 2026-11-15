@@ -76,20 +76,21 @@ void CFont::SetupFontHeader()
  */
 s32 LoadFontResource()
 {
-	if (sFontEnv.resourcePath == NULL) {
-		return 1;
+	if (sFontEnv.resourcePath != NULL) {
+		s32 ok;
+		if (sFontResource.mFile.ReadEx(sFontEnv.resourcePath, 0, 0)) {
+			sFontResource.mParser.SetResource(sFontResource.mFile.mBuffer);
+			ok = 1;
+		} else {
+			ok = 0;
+		}
+		if (ok != 0) {
+			sFontPtr.resource = &sFontResource;
+		} else {
+			return 0;
+		}
 	}
-	SWiiFontResource* res = &sFontResource;
-	s32 ok                = 0;
-	if (res->mFile.ReadEx(sFontEnv.resourcePath, 0, 0)) {
-		res->mParser.SetResource(res->mFile.mBuffer);
-		ok = 1;
-	}
-	if (ok) {
-		sFontPtr.resource = res;
-		return 1;
-	}
-	return 0;
+	return 1;
 }
 
 // configure the embedded tpl header and the normalized glyph sizes from a
@@ -184,12 +185,14 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, u32 arg3, 
  */
 extern "C" s8 HasFontGlyph(const char* str)
 {
-	if (sFontResource.mFile.IsLoaded()) {
+	CFile* file = &sFontResource.mFile;
+	if (file->IsLoaded()) {
 		u16 code = (u8)str[0];
 		if ((code >= 0x81 && code <= 0x9F) || (code >= 0xE0 && code <= 0xFC)) {
 			code = (code << 8) | (u8)str[1];
 		}
-		nw4r::ut::CharWidths widths = sFontResource.mParser.GetCharWidths(code);
+		nw4r::ut::CharWidths glyph  = sFontResource.mParser.GetCharWidths(code);
+		nw4r::ut::CharWidths widths = glyph;
 		return widths.left;
 	}
 	return 0;
