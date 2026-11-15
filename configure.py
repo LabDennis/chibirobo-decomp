@@ -1353,7 +1353,7 @@ if wii:
                 Object(Matching, "revolution/EXI/EXICommon.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/SI/SIBios.c", cflags=[*cflags_sdk_2004, "-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "dolphin/si/SISamplingRate.c", mw_version="GC/3.0a5.2"),
-                Object(NonMatching, "revolution/ARC/arc.c", extra_cflags=["-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/ARC/arc.c", extra_cflags=["-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/AX/AXAux.c"),
                 Object(Matching, "revolution/AXFX/AXFXHooks.c"),
                 Object(Matching, "revolution/AX/AXCL.c"),

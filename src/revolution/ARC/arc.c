@@ -51,58 +51,8 @@ BOOL ARCInitHandle(void* arcStart, ARCHandle* handle)
 	return TRUE;
 }
 
-static u32 myStrncpy(char* dst, char* src, u32 maxlen)
-{
-	u32 i;
-	for (i = maxlen; i != 0 && *src != 0; i--) {
-		*dst++ = *src++;
-	}
-	return maxlen - i;
-}
+static BOOL ARCGetCurrentDir(ARCHandle* handle, char* path, u32 maxlen);
 
-static u32 entryToPath(ARCHandle* handle, u32 entry, char* path, u32 maxlen)
-{
-	char* name;
-	u32 loc;
-	FSTEntry* FSTEntries = (FSTEntry*)handle->FSTStart;
-
-	if (entry == 0) {
-		return 0;
-	}
-
-	name = handle->FSTStringStart + stringOff(entry);
-	loc  = entryToPath(handle, parentDir(entry), path, maxlen);
-	if (loc == maxlen) {
-		return loc;
-	}
-	*(path + loc++) = '/';
-	loc += myStrncpy(path + loc, name, maxlen - loc);
-	return loc;
-}
-
-static BOOL ARCConvertEntrynumToPath(ARCHandle* handle, s32 entrynum, char* path, u32 maxlen)
-{
-	u32 loc;
-	FSTEntry* FSTEntries = (FSTEntry*)handle->FSTStart;
-
-	loc = entryToPath(handle, (u32)entrynum, path, maxlen);
-	if (loc == maxlen) {
-		path[maxlen - 1] = '\0';
-		return FALSE;
-	}
-	if (entryIsDir(entrynum)) {
-		if (loc == maxlen - 1) {
-			path[loc] = '\0';
-			return FALSE;
-		}
-		path[loc++] = '/';
-	}
-	path[loc] = '\0';
-	return TRUE;
-}
-
-// NONMATCHING: in the innermost of the three inlined entryToPath levels the copy loop of myStrncpy
-// takes its counter and destination in other registers, and name and entry swap r29/r31
 BOOL ARCOpen(ARCHandle* handle, const char* fileName, ARCFileInfo* af)
 {
 	s32 entrynum;
@@ -111,7 +61,7 @@ BOOL ARCOpen(ARCHandle* handle, const char* fileName, ARCFileInfo* af)
 
 	entrynum = ARCConvertPathToEntrynum(handle, fileName);
 	if (entrynum < 0) {
-		ARCConvertEntrynumToPath(handle, handle->currDir, currentDir, sizeof(currentDir));
+		ARCGetCurrentDir(handle, currentDir, sizeof(currentDir));
 		OSReport("Warning: ARCOpen(): file '%s' was not found under %s in the archive.\n", fileName, currentDir);
 		return FALSE;
 	}
@@ -211,7 +161,7 @@ s32 ARCConvertPathToEntrynum(ARCHandle* handle, const char* pathPtr)
 		ptr = pathPtr;
 
 		for (i = dirLookAt + 1; i < nextDir(dirLookAt); i = entryIsDir(i) ? nextDir(i) : (i + 1)) {
-		retry:
+		dot:
 			if (entryIsDir(i) == FALSE && isDir == TRUE) {
 				continue;
 			}
@@ -220,7 +170,7 @@ s32 ARCConvertPathToEntrynum(ARCHandle* handle, const char* pathPtr)
 			// a "." entry is stepped over without the loop's own check and increment
 			if (stringPtr[0] == '.' && stringPtr[1] == '\0') {
 				i++;
-				goto retry;
+				goto dot;
 			}
 
 			if (isSame(ptr, stringPtr) == TRUE) {
@@ -238,6 +188,64 @@ s32 ARCConvertPathToEntrynum(ARCHandle* handle, const char* pathPtr)
 		dirLookAt = i;
 		pathPtr += length + 1;
 	}
+}
+
+static u32 myStrncpy(char* dst, char* src, u32 maxlen)
+{
+	u32 i = maxlen;
+
+	while (i > 0 && *src != 0) {
+		*dst++ = *src++;
+		i--;
+	}
+
+	return maxlen - i;
+}
+
+static u32 entryToPath(ARCHandle* handle, u32 entry, char* path, u32 maxlen)
+{
+	char* name;
+	u32 loc;
+	FSTEntry* FSTEntries = (FSTEntry*)handle->FSTStart;
+
+	if (entry == 0) {
+		return 0;
+	}
+
+	name = handle->FSTStringStart + stringOff(entry);
+	loc  = entryToPath(handle, parentDir(entry), path, maxlen);
+	if (loc == maxlen) {
+		return loc;
+	}
+	*(path + loc++) = '/';
+	loc += myStrncpy(path + loc, name, maxlen - loc);
+	return loc;
+}
+
+static BOOL ARCConvertEntrynumToPath(ARCHandle* handle, s32 entrynum, char* path, u32 maxlen)
+{
+	u32 loc;
+	FSTEntry* FSTEntries = (FSTEntry*)handle->FSTStart;
+
+	loc = entryToPath(handle, (u32)entrynum, path, maxlen);
+	if (loc == maxlen) {
+		path[maxlen - 1] = '\0';
+		return FALSE;
+	}
+	if (entryIsDir(entrynum)) {
+		if (loc == maxlen - 1) {
+			path[loc] = '\0';
+			return FALSE;
+		}
+		path[loc++] = '/';
+	}
+	path[loc] = '\0';
+	return TRUE;
+}
+
+static BOOL ARCGetCurrentDir(ARCHandle* handle, char* path, u32 maxlen)
+{
+	return ARCConvertEntrynumToPath(handle, (s32)handle->currDir, path, maxlen);
 }
 
 void* ARCGetStartAddrInMem(ARCFileInfo* af)
