@@ -11072,31 +11072,33 @@ static inline void DrawInventoryDigit(CTexObj& tex, s32 digit, u32 color, f32 x,
 
 static inline void PrepareInventoryDigits(CTexObj& tex, f32 scale, f32& width, f32& height)
 {
-	tex = InitPCPanelTexture(125);
+	f32 enlarged = 1.0f;
+	tex          = InitPCPanelTexture(125);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	u16 firstWidth = tex.GetWidth(), secondWidth = tex.GetWidth();
-	width           = scale * (1.2f * secondWidth) + (1.0f - scale) * (scale * firstWidth);
+	width           = scale * (1.2f * secondWidth) + (1.0f - enlarged) * (scale * firstWidth);
 	int firstHeight = tex.GetHeight() / 10, secondHeight = tex.GetHeight() / 10;
-	height = scale * (1.2f * secondHeight) + 0.0f * (scale * firstHeight);
+	height = scale * (1.2f * secondHeight) + (1.0f - enlarged) * (scale * firstHeight);
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
 }
-static inline void DrawInventoryCount(CTexObj& tex, s16 count, u32 color, f32 x, f32 y, f32 width, f32 height)
+static inline void DrawInventoryCount(CTexObj& tex, s16 count, f32 alpha, f32 x, f32 y, f32 width, f32 height)
 {
+	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 	if (count >= 10) {
 		DrawInventoryDigit(tex, count / 10, color, x - width / 3.0f, y, width, height);
-		DrawInventoryDigit(tex, count % 10, color, x + width / 3.0f, y, width, height);
+		DrawInventoryDigit(tex, count % 10, color, width / 3.0f + x, y, width, height);
 	} else {
 		DrawInventoryDigit(tex, count, color, x, y, width, height);
 	}
 }
 
-static inline void DrawEmptyInventorySlot(CTexObj& tex, u32 color, f32 x, f32 y, f32 scale)
+static inline void DrawEmptyInventorySlot(CTexObj& tex, f32 alpha, f32 x, f32 y, f32 scale)
 {
 	tex = InitPCPanelTexture(234);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	u16 w = tex.GetWidth(), h = tex.GetHeight();
-	DrawOverviewTexture(tex, color, x, y, scale * w, scale * h);
+	DrawOverviewTexture(tex, (u32)(255.0f * alpha) | 0xC8C8C800, x, y, scale * w, scale * h);
 }
 
 static inline void DrawInventoryHighlight(f32 x, f32 y, f32 w, f32 h, f32 alpha, f32 phase)
@@ -11112,30 +11114,22 @@ static inline void DrawInventoryHighlight(f32 x, f32 y, f32 w, f32 h, f32 alpha,
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 }
 
-static inline void DrawInventoryPreviewIcon(CTexObj& tex, s32 icon, u32 color, f32 x, f32 y, f32 scale, u32 frame)
+static inline void DrawVisibleInventoryIcon(CTexObj& tex, s32 icon, f32 alpha, f32 xx, f32 yy, f32 bob, f32 scale, f32& iw, f32& ih)
 {
 	tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
-	tex.GetWidth();
-	tex.GetHeight();
-	sin(0.017453292f * (((s32)(frame * 20)) % 360));
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
+	SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	u16 w = tex.GetWidth(), h = tex.GetHeight();
-	DrawOverviewTexture(tex, color, x, y, scale * w, scale * h);
+	iw        = scale * tex.GetWidth();
+	ih        = scale * tex.GetHeight();
+	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, xx, yy + bob, 1, iw, ih, 0, 0, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 1);
 }
 
-static inline void DrawVisibleInventoryIcon(CTexObj& tex, s32 icon, u32 color, f32 xx, f32 yy, f32 bob, f32 scale, f32& iw, f32& ih)
-{
-	CGs& gs = gGame.mGs;
-	tex     = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
-	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 1);
-	SetGsDepthCompareBeforeTexture(gs.mCurRenderMode, 0);
-	SetGsTevMode(gs.mCurTevStage, 0);
-	iw = scale * tex.GetWidth();
-	ih = scale * tex.GetHeight();
-	DrawGsTexturedQuad(&gs, &tex, color, color, color, color, xx, yy + bob, 1, iw, ih, 0, 0, 0);
-	SetGsTevMode(gs.mCurTevStage, 4);
-	SetGsDepthCompareBeforeTexture(gs.mCurRenderMode, 1);
-}
+// NONMATCHING: same instructions, other float registers. Retail keeps the first loop's slot position and bob in
+// f31-f29 above the parameters (f25-f28); the build puts the parameters on top.
 extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 scale, f32 phase)
 {
 	static u32 frame = 0;
@@ -11143,12 +11137,12 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 	CGs& gs = gGame.mGs;
 	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
 	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
-	u32 opacity = (u32)(255.0f * alpha), color = opacity | 0xC8C8C800;
 	for (int i = 0; i < 8; i++) {
 		f32 w = 92.0f * scale, h = 80.0f * scale;
-		f32 dx = w * 0.125f + w, dy = h * 0.125f + h;
-		f32 xx = (i % 4) * (w * 0.125f + w) + x;
-		f32 yy = 12.0f + ((-dy * 0.5f) + ((i / 4) * dy + y));
+		f32 dx = w / 8.0f + w, dy = h / 8.0f + h;
+		f32 top = -dy / 2.0f;
+		f32 xx  = (i % 4) * dx + x;
+		f32 yy  = 12.0f + (top + ((i / 4) * dy + y));
 		CTexObj tex;
 		s16 id = sStatusItemTable.mItems[i].mItem, count = sStatusItemTable.mItems[i].mCount;
 		scale = 1.0f;
@@ -11159,56 +11153,69 @@ extern "C" void DrawInventoryGrid(s32 selected, f32 x, f32 y, f32 alpha, f32 sca
 			s32 icon = GetItemIconTextureIndex(id);
 			if (icon >= 0) {
 				f32 iw, ih;
-				DrawVisibleInventoryIcon(tex, icon, color, xx, yy, bob, scale, iw, ih);
+				DrawVisibleInventoryIcon(tex, icon, alpha, xx, yy, bob, scale, iw, ih);
 				if (selected == i)
 					DrawInventoryHighlight(xx, yy + bob, iw, ih, alpha, phase);
 			}
 			f32 digitWidth, digitHeight;
 			PrepareInventoryDigits(tex, scale, digitWidth, digitHeight);
-			DrawInventoryCount(tex, count, color, xx + 22.0f, bob + (yy + 14.0f), digitWidth, digitHeight);
+			DrawInventoryCount(tex, count, alpha, xx + 22.0f * scale, bob + (yy + 14.0f * scale), digitWidth, digitHeight);
 		} else
-			DrawEmptyInventorySlot(tex, color, xx, yy, scale);
+			DrawEmptyInventorySlot(tex, alpha, xx, yy, scale);
 	}
 	f32 w = 92.0f * scale, h = 80.0f * scale;
-	f32 dx = w * 0.125f + w, dy = h * 0.125f + h;
-	f32 yy = 12.0f + ((-dy * 0.5f) + (2.0f * dy + y));
 	for (int i = 0; i < 4; i++) {
 		if (sStatusItemTable.mPage >= (CountMenuItems() - 1) / 4 - 1)
 			break;
-		f32 xx = (i % 4) * (w * 0.125f + w) + x;
+		f32 dx = w / 8.0f + w, dy = h / 8.0f + h;
+		f32 top = -dy / 2.0f;
+		f32 xx  = (i % 4) * dx + x;
+		f32 yy  = 12.0f + (top + (2 * dy + y));
 		CTexObj tex;
 		s16 id = sStatusItemTable.mNext[i].mItem, count = sStatusItemTable.mNext[i].mCount;
 		if (id >= 0 && count > 0) {
 			s32 icon = GetItemIconTextureIndex(id);
-			if (icon >= 0)
-				DrawInventoryPreviewIcon(tex, icon, color, xx, yy, scale, frame);
+			if (icon >= 0) {
+				tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
+				tex.GetWidth();
+				tex.GetHeight();
+				sin(0.017453292f * (((s32)(frame * 20)) % 360));
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				u16 iw = tex.GetWidth(), ih = tex.GetHeight();
+				DrawOverviewTexture(tex, (u32)(255.0f * alpha) | 0xC8C8C800, xx, yy, scale * iw, scale * ih);
+			}
 			f32 digitWidth, digitHeight;
 			PrepareInventoryDigits(tex, scale, digitWidth, digitHeight);
-			DrawInventoryCount(tex, count, color, xx + 22.0f * scale, yy + 14.0f * scale, digitWidth, digitHeight);
+			DrawInventoryCount(tex, count, alpha, xx + 22.0f * scale, yy + 14.0f * scale, digitWidth, digitHeight);
 		} else
-			DrawEmptyInventorySlot(tex, color, xx, yy, scale);
+			DrawEmptyInventorySlot(tex, alpha, xx, yy, scale);
 	}
-	dx = w * 0.125f + w;
-	dy = h * 0.125f + h;
-	dx = w * 0.125f + w;
-	dy = h * 0.125f + h;
-	yy = 12.0f + ((-dy * 0.5f) + (-dy + y));
 	for (int i = 0; i < 4; i++) {
 		CountMenuItems();
 		if (sStatusItemTable.mPage <= 0)
 			break;
-		f32 xx = (i % 4) * (w * 0.125f + w) + x;
+		f32 dx = w / 8.0f + w, dy = h / 8.0f + h;
+		f32 top = -dy / 2.0f;
+		f32 xx  = (i % 4) * dx + x;
+		f32 yy  = 12.0f + (top + (-1 * dy + y));
 		CTexObj tex;
 		s16 id = sStatusItemTable.mPrev[i].mItem, count = sStatusItemTable.mPrev[i].mCount;
 		if (id >= 0 && count > 0) {
 			s32 icon = GetItemIconTextureIndex(id);
-			if (icon >= 0)
-				DrawInventoryPreviewIcon(tex, icon, opacity | 0xFFFFFF00, xx, yy, scale, frame);
+			if (icon >= 0) {
+				tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
+				tex.GetWidth();
+				tex.GetHeight();
+				sin(0.017453292f * (((s32)(frame * 20)) % 360));
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				u16 iw = tex.GetWidth(), ih = tex.GetHeight();
+				DrawOverviewTexture(tex, (u32)(255.0f * alpha) | 0xFFFFFF00, xx, yy, scale * iw, scale * ih);
+			}
 			f32 digitWidth, digitHeight;
 			PrepareInventoryDigits(tex, scale, digitWidth, digitHeight);
-			DrawInventoryCount(tex, count, color, xx + 22.0f * scale, yy + 14.0f * scale, digitWidth, digitHeight);
+			DrawInventoryCount(tex, count, alpha, xx + 22.0f * scale, yy + 14.0f * scale, digitWidth, digitHeight);
 		} else
-			DrawEmptyInventorySlot(tex, color, xx, yy, scale);
+			DrawEmptyInventorySlot(tex, alpha, xx, yy, scale);
 	}
 }
 
