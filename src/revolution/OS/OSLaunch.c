@@ -100,26 +100,26 @@ static BOOL CheckCompanyCode(u64 titleId, BOOL disc)
 	return company == other;
 }
 
-// The IOS the title asks for must have a ticket and its contents on the NAND.
+// The IOS the title asks for must have a ticket and its contents on the NAND. Written as in Petari's
+// OSLaunch.c: with every local initialised the function is too big for -inline auto, and retail calls it.
 static BOOL CheckTmdSysVersion(ESTmdView* tmd)
 {
+	ESSysVersion sysVersion = 0x0000000100000003ULL;
 	char path[65] ATTRIBUTE_ALIGN(32);
-	u32 numTickets;
-	s32 blocks;
-	s32 inodes;
-	u64 sysVersion;
+	s32 err        = 0;
+	u32 numTickets = 0;
+	s32 blocks     = 0;
+	s32 inodes     = 0;
 
-	numTickets = 0;
-	blocks     = 0;
-	inodes     = 0;
 	sysVersion = tmd->head.sysVersion;
-
-	if (ESP_GetTicketViews(sysVersion, NULL, &numTickets) != 0 || numTickets != 1) {
+	err        = ESP_GetTicketViews(sysVersion, NULL, &numTickets);
+	if (err != 0 || numTickets != 1) {
 		return FALSE;
 	}
 
 	sprintf(path, "/title/%08x/%08x/content", (u32)((sysVersion >> 32) & 0xFFFFFFFF), (u32)(sysVersion & 0xFFFFFFFF));
-	if (NANDSecretGetUsage(path, &blocks, &inodes) != NAND_RESULT_OK || (u32)inodes <= 2) {
+	err = NANDSecretGetUsage(path, &blocks, &inodes);
+	if (err != 0 || (u32)inodes <= 2) {
 		return FALSE;
 	}
 
