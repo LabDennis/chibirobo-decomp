@@ -1069,3 +1069,21 @@ nw4r/ut/ut_ResFontBase.cpp:
 nw4r/ut/ut_ResFont.cpp:
 	.text start:0x80235A50 end:0x80235D54
 	.data start:0x80332878 end:0x803328D4
+
+nw4r/math/math_arithmetic.cpp:
+	.text start:0x80282CA0 end:0x80282DDC
+	.data start:0x80333AB0 end:0x803343C0
+	.sdata2 start:0x805A7528 end:0x805A7544
+
+nw4r/math/math_triangular.cpp:
+	.text start:0x80282DDC end:0x80282F08
+	.rodata start:0x802E0280 end:0x802E1290
+	.sdata2 start:0x805A7548 end:0x805A7550
+
+nw4r/math/math_types.cpp:
+	.text start:0x80282F08 end:0x80283314
+	.sdata2 start:0x805A7550 end:0x805A7568
+
+nw4r/math/math_geometry.cpp:
+	.text start:0x80283314 end:0x80283EA8
+	.sdata2 start:0x805A7568 end:0x805A7578
