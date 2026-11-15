@@ -74,6 +74,8 @@ STATIC_ASSERT(sizeof(StageName) == 0x19C);
 // the title screen, CGame keeps it at _4930. class name from RTTI
 class Title {
 public:
+	bool IsActive() const { return mState >= 1 && mState < 23; }
+
 	void State0(u32 frames);
 	void State1(u32 frames);
 	void State2(u32 frames);
