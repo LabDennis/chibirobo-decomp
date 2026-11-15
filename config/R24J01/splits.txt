@@ -34,7 +34,9 @@ game/roboeyeslens.cpp:
 
 revolution/EXI/EXIBios.c:
 	.text start:0x8017C0A8 end:0x8017D93C
+	.data start:0x8030F2D8 end:0x8030F320
 	.bss start:0x804CC1C8 end:0x804CC288
+	.sdata start:0x805A1398 end:0x805A13A0
 	.sbss start:0x805A1E40 end:0x805A1E44
 
 revolution/EXI/EXIUart.c:
@@ -46,8 +48,9 @@ revolution/EXI/EXICommon.c:
 
 revolution/SI/SIBios.c:
 	.text start:0x8017DDFC end:0x8017F36C
-	.data start:0x8030F368 end:0x8030F390
-	.bss start:0x804CC288 end:0x804CC4C0
+	.data start:0x8030F320 end:0x8030F390
+	.bss start:0x804CC288 end:0x804CC4A8
+	.sdata start:0x805A13A0 end:0x805A13A4
 	.sbss start:0x805A1E58 end:0x805A1E68
 
 dolphin/si/SISamplingRate.c:

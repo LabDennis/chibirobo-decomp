@@ -2423,3 +2423,7 @@ HandleEventCommand__9XObjActorFlPl = .text:0x80138214; // type:function size:0x3
 Kind3__10XObjActor3FUl = .text:0x801390D0; // type:function size:0x1E4
 Kind9__10XObjActor3FUl = .text:0x801396DC; // type:function size:0x1908
 Kind10__10XObjActor3FUl = .text:0x8013AFE4; // type:function size:0x424
+__EXIVersion = .sdata:0x805A1398; // type:object size:0x4 scope:global data:4byte
+__SIVersion = .sdata:0x805A13A0; // type:object size:0x4 scope:global data:4byte
+__PADFixBits = .sbss:0x805A1E64; // type:object size:0x4 scope:global data:4byte
+TypeCallback = .bss:0x804CC468; // type:object size:0x40 scope:local

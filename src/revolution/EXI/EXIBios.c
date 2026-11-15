@@ -1,8 +1,8 @@
+#include "revolution/hw_regs.h"
 #include "Dolphin/exi.h"
 
-#pragma scheduling off
 
-char* __EXIVersion = "<< Dolphin SDK - EXI\trelease build: Apr  5 2004 04:14:14 (0x2301) >>";
+const char* __EXIVersion = "<< RVL_SDK - EXI \trelease build: Jul 30 2008 19:19:33 (0x4199_60831) >>";
 
 static EXIControl Ecb[EXI_MAX_CHAN];
 static u32 IDSerialPort1;
@@ -48,10 +48,10 @@ static void SetExiInterruptMask(s32 chan, EXIControl* exi)
 static void CompleteTransfer(s32 chan)
 {
 	EXIControl* exi = &Ecb[chan];
+	int len;
 	u8* buf;
 	u32 data;
 	int i;
-	int len;
 
 	if (exi->state & EXI_STATE_BUSY) {
 		if ((exi->state & EXI_STATE_IMM) && (len = exi->immLen)) {
@@ -746,7 +746,7 @@ s32 EXIGetID(s32 chan, u32 dev, u32* id)
 	}
 
 	interrupt = OSDisableInterrupts();
-	err       = !EXILock(chan, dev, (chan < 2 && dev == 0) ? UnlockedHandler : NULL);
+	err       = !EXILock(chan, dev, (chan < 2 && dev == 0) ? UnlockedHandler : 0);
 	if (!err) {
 		err = !EXISelect(chan, dev, EXI_FREQ_1M);
 		if (!err) {
@@ -814,4 +814,3 @@ char* EXIGetTypeString(u32 type)
 	}
 }
 
-#pragma scheduling reset

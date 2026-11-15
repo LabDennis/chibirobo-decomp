@@ -1,4 +1,5 @@
 #include "revolution/hw_regs.h"
+#include "revolution/os/OSAlarm.h"
 
 #include <dolphin/si.h>
 #include <dolphin/vi.h>
@@ -10,7 +11,7 @@
 #if DEBUG
 const char* __SIVersion = "<< Dolphin SDK - SI\tdebug build: Apr  5 2004 03:55:31 (0x2301) >>";
 #else
-const char* __SIVersion = "<< Dolphin SDK - SI\trelease build: Apr  5 2004 04:14:16 (0x2301) >>";
+const char* __SIVersion = "<< RVL_SDK - SI \trelease build: Jul 30 2008 19:23:33 (0x4199_60831) >>";
 #endif
 
 static SIControl Si = {
