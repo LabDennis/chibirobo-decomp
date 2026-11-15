@@ -48,6 +48,8 @@ static u32 PartInfoBuffer[8] ATTRIBUTE_ALIGN(32);
 static OSAlarm ResetAlarm;
 // the low-level driver hands this block to __DVDStopMotorAsync
 DVDCommandBlock __DVDStopMotorCommandBlock;
+// nothing in this game uses it (0x804D2340); pik2wii, Petari and xenoblade define it here as well
+DVDCommandBlock __DVDRestartMotorCommandBlock;
 
 void (*LastState)(DVDCommandBlock*);
 static DVDCommandBlock* executing;
@@ -60,7 +62,8 @@ static u32 LastError;
 static BOOL ResetRequired;
 static u32 MotorState;
 static volatile OSTime LastResetEnd;
-static u32 __DVDNumTmdBytes;
+// 32-byte aligned, as in pik2wii, Petari and xenoblade: that is the unused gap in front of it in .sbss (0x805A2058)
+static u32 __DVDNumTmdBytes ATTRIBUTE_ALIGN(32);
 static DVDGameTOC* GameToc;
 static DVDPartitionInfo* PartInfo;
 static DVDPartitionInfo* BootGameInfo;

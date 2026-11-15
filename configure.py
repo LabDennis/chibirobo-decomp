@@ -1358,7 +1358,7 @@ if wii:
                 Object(Matching, "revolution/OS/OSLaunch.c"),
                 Object(NonMatching, "revolution/MTX/quat.c"),
                 Object(Matching, "revolution/DVD/dvdfs.c"),
-                Object(NonMatching, "revolution/DVD/dvd.c"),
+                Object(Matching, "revolution/DVD/dvd.c"),
                 Object(Matching, "revolution/DVD/dvderror.c"),
                 Object(Matching, "revolution/DVD/dvdidutils.c"),
                 Object(Matching, "revolution/DVD/dvdFatal.c"),
