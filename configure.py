@@ -1285,6 +1285,9 @@ if wii:
                 # member offsets are shared with the GameCube class (mEyeInterps _18C, mFovInterps
                 # _330, the interp pointers _44-_54); the Wii vtable re-orders the Vec& overloads
                 Object(NonMatching, "game/ccameraactionevt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # SetObj keeps its signature but the Wii body always clears the binding; the camera's
+                # vectors sit in CCamera::mView here
+                Object(Matching, "game/wii/ccameraactionanim.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # member offsets shared with the GameCube class (mTarget _40, mInterestMode _58);
                 # the heavy previous/update methods need XObj/CMotionControlCamera decls (GC-only)
                 Object(NonMatching, "game/ccameraactionreset.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),

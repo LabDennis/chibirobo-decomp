@@ -621,6 +621,11 @@ game/ccameraactionareaex.cpp:
 game/ccameraactionevt.cpp:
 	.text start:0x801618C0 end:0x80161FFC
 
+game/wii/ccameraactionanim.cpp:
+	extab start:0x8000F4E0 end:0x8000F4F0
+	extabindex start:0x80015DDC end:0x80015DF4
+	.text start:0x8016642C end:0x801665C4
+
 game/ccameraactionreset.cpp:
 	.text start:0x8016670C end:0x80166D50
 

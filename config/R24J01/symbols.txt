@@ -2144,6 +2144,7 @@ Init__16CCameraActionEvtFv = .text:0x80161458; // type:function size:0x94
 DrawDebug3d__20CCameraActionScroll2Fv = .text:0x801644DC; // type:function size:0x4
 Update__17CCameraActionAnimFUl = .text:0x801664F0; // type:function size:0xD4
 SetCamera__17CCameraActionAnimFP7CCamera = .text:0x80166448; // type:function size:0xA8
+SetObj__17CCameraActionAnimFP10XObjCamera = .text:0x80166438; // type:function size:0x10
 Init__17CCameraActionAnimFv = .text:0x8016642C; // type:function size:0xC
 Update__18CCameraActionResetFUl = .text:0x80166BA0; // type:function size:0x198
 SetCamera__18CCameraActionResetFP7CCamera = .text:0x80166640; // type:function size:0xCC

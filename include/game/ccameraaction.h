@@ -14,6 +14,7 @@
 #if defined(VERSION_R24J01)
 class CCamera;
 class XObj;
+class XObjCamera;
 #endif
 
 // pal uses the current refresh rate, 50 or 60
@@ -845,21 +846,6 @@ public:
 };
 STATIC_ASSERT(sizeof(CCameraActionScroll2) == 0xAC);
 
-// plays a camera animation, copying an XObjCamera's camera every frame
-class CCameraActionAnim : public CInterfaceCameraAction {
-public:
-	CCamera* mCamera; // _40
-	XObjCamera* mObj; // _44
-
-	virtual void Update(u32 step);           // _10
-	virtual void SetCamera(CCamera* camera); // _18
-	virtual void Init();                     // _1C
-
-	void SetObj(XObjCamera* obj);
-	virtual ~CCameraActionAnim() { }
-};
-STATIC_ASSERT(sizeof(CCameraActionAnim) == 0x48);
-
 class CMotionControlCamera;
 
 extern "C" {
@@ -892,5 +878,21 @@ void SetMapCameraFovStep(CCameraActionMap* map, s32 index, f32 time);
 void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode);
 }
 #endif // !defined(VERSION_R24J01)
+
+// plays a camera animation, copying an XObjCamera's camera every frame; the
+// layout is shared with the Wii (mCamera _40, mObj _44 verified in retail)
+class CCameraActionAnim : public CInterfaceCameraAction {
+public:
+	CCamera* mCamera; // _40
+	XObjCamera* mObj; // _44
+
+	virtual void Update(u32 step);           // _10
+	virtual void SetCamera(CCamera* camera); // _18
+	virtual void Init();                     // _1C
+
+	void SetObj(XObjCamera* obj);
+	virtual ~CCameraActionAnim() { }
+};
+STATIC_ASSERT(sizeof(CCameraActionAnim) == 0x48);
 
 #endif
