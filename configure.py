@@ -1273,6 +1273,10 @@ if wii:
                 # FindEnabledCameraAreaContainingPoint instead of open-coding the record loop; the
                 # DrawGs debug draws and the corner-Vec extern stay GameCube-only
                 Object(NonMatching, "game/ccameraactionareaex.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the whole cord in one unit on the Wii (retail 0x80110C2C-0x80111ADC): nodes, the
+                # draw entry that takes the node block, InitPlugCord's function-scope static point
+                # array and ResetPlugCordPoints share one literal pool
+                Object(NonMatching, "game/wii/xobjplugcord.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # InfoPoint's dtor is the out-of-line definition; the GameCube file's hand-spelled
                 # weak copy stays for GC only (retail Wii body has no vtable store)
@@ -1333,13 +1337,14 @@ if wii:
                 # keeps only CCamera's functions, so the class adds no virtuals of its own
                 Object(NonMatching, "game/wii/cmotioncontrolcamera.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii Params layout matches the GameCube class (mRank _08, mMoney _14,
-                # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs
-                # every function matches, but the file is written in the GameCube's order and the Wii
-                # has its functions the other way round, so it cannot be linked in place
-                Object(Equivalent, "game/params.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # same Inventory layout on both; the Wii functions carry the FindItem and
-                # CompactSlot helpers inlined with different codegen
-                Object(Equivalent, "game/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs.
+                # the Wii file carries the functions in the Wii's order: the GameCube file's
+                # order is the exact reverse, so a shared source cannot link here
+                Object(Matching, "game/wii/params.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # same Inventory layout on both; the Wii file carries the functions in the
+                # Wii's order (exact reverse of the GameCube file). RemoveInventoryItemCount
+                # re-reads mCount for `count` instead of subtracting in one expression
+                Object(NonMatching, "game/wii/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii
                 Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),

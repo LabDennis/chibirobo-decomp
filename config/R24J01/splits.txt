@@ -1085,10 +1085,23 @@ game/wii/ccameraactionscroll.cpp:
 game/wii/cmotioncontrolcamera.cpp:
 	.text start:0x8016753C end:0x8016AD78
 
-game/params.cpp:
-	.text start:0x80113394 end:0x80113910
+game/wii/xobjplugcord.cpp:
+	extab start:0x8000D644 end:0x8000D67C
+	extabindex start:0x80014B7C end:0x80014BD0
+	.text start:0x80110C2C end:0x80111ADC
+	.bss start:0x8045BED0 end:0x8045D6E0
+	.sbss start:0x805A1C70 end:0x805A1C74
+	.sdata2 start:0x805A5390 end:0x805A53D0
 
-game/inventory.cpp:
+game/wii/params.cpp:
+	extab start:0x8000D724 end:0x8000D734
+	extabindex start:0x80014C18 end:0x80014C30
+	.text start:0x80113394 end:0x80113910
+	.sdata2 start:0x805A53F8 end:0x805A53FC
+
+game/wii/inventory.cpp:
+	extab start:0x8000D734 end:0x8000D73C
+	extabindex start:0x80014C30 end:0x80014C3C
 	.text start:0x80113910 end:0x801141C0
 
 game/gameosreport.cpp:
