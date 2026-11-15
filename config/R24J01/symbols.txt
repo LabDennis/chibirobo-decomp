@@ -1730,3 +1730,16 @@ Set__10CPrimitiveFfffffffff = .text:0x802AF8E0; // type:function size:0x11C
 __RTTI__9CFileText = .sdata:0x805A0D48; // type:object size:0x8 scope:weak
 __RTTI__5CFile = .sdata:0x805A0D50; // type:object size:0x8 scope:weak
 __RTTI__11DVDFileInfo = .sdata:0x805A0D58; // type:object size:0x8 scope:weak
+
+InitTitleScreen = .text:0x80044FD8; // type:function size:0x2A0
+__dt__5TitleFv = .text:0x80045278; // type:function size:0x40
+ResetTitleScreenState = .text:0x800452B8; // type:function size:0x264
+UpdateTitleScreen = .text:0x8004551C; // type:function size:0x1D8C
+DrawTitleScreen = .text:0x80048E54; // type:function size:0x1954
+DrawTitleOptions = .text:0x8004A7A8; // type:function size:0x14AC
+DrawTitleLoadScreen = .text:0x8004BC54; // type:function size:0x8F4
+UpdateTitleOptions = .text:0x8004C548; // type:function size:0x52C
+UpdateTitleDust = .text:0x8004CA74; // type:function size:0x344
+DrawTitleNameBubbles = .text:0x8004CF38; // type:function size:0x68C
+DrawTitleHelpText = .text:0x8004D5C4; // type:function size:0x6D0
+GetTitleAndSaveMenuText = .text:0x8007A3CC; // type:function size:0x8
