@@ -15,6 +15,7 @@
 #include "game/fbtexeff.h"
 #include "game/globals.h"
 #include "game/hsd_dobj.h"
+#include "game/objectfloorquery.h"
 #include "game/stagedata.h"
 #include "game/video.h"
 #include "game/gmath.h"
@@ -619,9 +620,13 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			} else if (anim == 0x8c0) {
 				HeldAnim(act->mOwner, 0x8d3);
 				HeldAnim(act->mTarget, 18);
-			} else if (anim == 0x8d3 || anim == 0x8c1) {
+			} else if (anim == 0x8d3) {
 				HeldAnim(act->mTarget, 4);
 				// filled up, the inventory keeps the count at 10 at most
+				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, 11, FALSE);
+				finished = true;
+			} else if (anim == 0x8c1) {
+				HeldAnim(act->mTarget, 4);
 				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, 11, FALSE);
 				finished = true;
 			}
@@ -765,18 +770,6 @@ static inline void Release(XAction* act)
 		target->mStatus.mFlags &= ~0x0800000000000000ULL;
 	}
 	act->Reset();
-}
-
-// whether his hands are up at the top of the ladder
-static inline bool AtLadderTop(XActLadder* act)
-{
-	if (act->mTarget != NULL) {
-		s32 path[] = { 0 };
-		if (14.0f + GetEventJointWorldPosition(act->mOwner, 1, path).y >= act->mTarget->mFloorHeights[0]) {
-			return true;
-		}
-	}
-	return false;
 }
 
 // drops the item he's carrying, it goes in his inventory
@@ -1396,11 +1389,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mAngle = atan2(chrPos.x - ladPos.x, chrPos.z - ladPos.z);
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[] = { 0 };
-			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path2[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			act->mOwner->SetAnim(0x67, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			act->mState = 5;
 		} else {
@@ -1449,14 +1440,11 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mAngle = atan2(chrPos.x - ladPos.x, chrPos.z - ladPos.z);
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[] = { 0 };
-			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path2[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			act->mOwner->SetRotationY(PI + act->mOwner->mMoveRotate.y, 0);
-			s32 path3[] = { 0 };
-			SetJointYawByPath(act->mOwner, 1, path3, 0.0f);
+			SetJointYawByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f);
 			act->mOwner->SetAnim(0x68, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			act->mState = 5;
 		} else {
@@ -1496,8 +1484,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mOwner->SetAnim(0x87, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 				act->mOwner->SetAnim(0x87, TRUE, NULL, NULL, NULL, GetJointAnimationEndFrame(act->mOwner), 1.0f, 1.0f, 10.0f);
 				act->mOwner->UpdateAnim(0);
-				s32 path[] = { 0 };
-				CVec d     = GetEventJointWorldPosition(act->mOwner, 1, path) - act->mOwner->mMoveTranslate;
+				CVec d = GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }) - act->mOwner->mMoveTranslate;
 				act->mOwner->SetTranslateX(act->mOwner->mMoveTranslate.x - d.x, 0);
 				act->mOwner->SetTranslateZ(act->mOwner->mMoveTranslate.z - d.z, 0);
 				act->mOwner->SetTranslateY(act->mTarget->mMaxFloorHeight, 0);
@@ -1525,21 +1512,18 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				}
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[]      = { 0 };
-			HSD_JObj* joint = GetObjectJointByPath(act->mOwner, 1, path);
+			HSD_JObj* joint = GetObjectJointByPath(act->mOwner, 1, (s32[]) { 0 });
 			f32 turn        = HSD_JObjGetRotationY(joint);
 			f32 facing      = HSD_JObjGetRotationY(act->mOwner->mJObj);
 			act->mOwner->SetRotationY(facing + turn, 0);
 			HSD_JObjSetRotationY__FP9_HSD_JObjf(joint, 0.0f);
-			s32 path2[] = { 0 };
-			CVec d      = GetEventJointWorldPosition(act->mOwner, 1, path2) - act->mOwner->mMoveTranslate;
-			f32 angle   = HSD_JObjGetRotationY(act->mOwner->mJObj);
-			d.x         = -d.x;
-			d.z         = -d.z;
+			CVec d    = GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }) - act->mOwner->mMoveTranslate;
+			f32 angle = HSD_JObjGetRotationY(act->mOwner->mJObj);
+			d.x       = -d.x;
+			d.z       = -d.z;
 			act->mOwner->SetPos((act->mOwner->mMoveTranslate + d), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path3[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path3, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			act->mOwner->SetAnim(0x68, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 			act->mState         = 5;
 			act->mMoveDirection = 0;
@@ -1567,20 +1551,18 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 	case 5:
 		if (anim == 0x69 || anim == 0x6A || anim == 0x6B || anim == 0x6C) {
 			if (aobj->flags & 0x44000000) {
-				s32 path[] = { 0 };
-				CVec hand  = GetPlayerJointLocalTranslationByPath(act->mOwner, 1, path);
+				CVec hand = GetPlayerJointLocalTranslationByPath(act->mOwner, 1, (s32[]) { 0 });
 				if (hand.y < 0.0f) {
 					hand.y = (s32)(hand.y - 0.5f);
 				}
-				s32 path2[] = { 0 };
-				SetJointTranslationFromVectorByPath(act->mOwner, 1, path2, hand);
-				s32 path3[] = { 0 };
-				act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path3), 0);
+				SetJointTranslationFromVectorByPath(act->mOwner, 1, (s32[]) { 0 }, hand);
+				act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 				RecordObjectPositionAndHeightChange(act->mOwner);
-				s32 path4[] = { 0 };
-				SetObjectJointTranslationByPath(act->mOwner, 1, path4, 0.0f, 0.0f, 0.0f);
+				SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 				if (act->mMoveDirection == 1) {
-					if (AtLadderTop(act)) {
+					// his hands are up at the top of the ladder
+					if (act->mTarget != NULL
+					    && 14.0f + GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }).y >= act->mTarget->mFloorHeights[0]) {
 						act->mState = 6;
 					} else if (anim == 0x69 || anim == 0x6B) {
 						act->mOwner->SetAnim(0x6A, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
@@ -1606,7 +1588,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			}
 		} else {
 			if (act->mMoveDirection == 1) {
-				if (AtLadderTop(act)) {
+				// his hands are up at the top of the ladder
+				if (act->mTarget != NULL
+				    && 14.0f + GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }).y >= act->mTarget->mFloorHeights[0]) {
 					act->mState = 6;
 				} else if (anim == 0x67) {
 					act->mOwner->SetAnim(0x69, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
@@ -1639,11 +1623,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mOwner->SetAnim(0x6F, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[] = { 0 };
-			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path2[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			chr->mIdleLoops = 3;
@@ -1663,11 +1645,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mOwner->SetAnim(0x71, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[] = { 0 };
-			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path2[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			XObjChr* chr = act->mOwner;
 			chr->SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			chr->mIdleLoops = 3;
@@ -1698,11 +1678,9 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 				act->mOwner->SetAnim(0x73, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			}
 		} else if (aobj->flags & 0x44000000) {
-			s32 path[] = { 0 };
-			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 }), 0);
 			RecordObjectPositionAndHeightChange(act->mOwner);
-			s32 path2[] = { 0 };
-			SetObjectJointTranslationByPath(act->mOwner, 1, path2, 0.0f, 0.0f, 0.0f);
+			SetObjectJointTranslationByPath(act->mOwner, 1, (s32[]) { 0 }, 0.0f, 0.0f, 0.0f);
 			if (act->mOwner->GetAttachment() == 1) {
 				act->mState                 = 0;
 				act->mOwner->mCopter.mState = 4;
@@ -2537,21 +2515,16 @@ void SetLiftPlugConnection(XActLift* act, u32 value, BOOL apply)
 	}
 }
 
-static inline bool CarriedObjectTouches(XObj* object, const Vec& pos, f32 radius, f32 height, CVec& hit, CVec& contact)
-{
-	CVec from(pos), to(pos);
-	return (object->TestFloorCollision(&from, &to, radius, height, &hit, &contact, 0, 0) & 3) == 3;
-}
-
 /**
  * @note Address: 0x800CE354
  * @note Size: 0x5B0
  */
+// NONMATCHING: retail keeps the masked test result in r0 and the CVec vtable in r3 over the two temporaries' destructors, here r4 and r0
 BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 height, BOOL checkItem, BOOL checkEvent, BOOL checkOthers,
                                 Vec* result)
 {
-	s16 item   = act->mTarget->GetItem();
 	BOOL found = FALSE;
+	s32 item   = act->mTarget->GetItem();
 	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.GetObject(i);
 		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000))
@@ -2562,22 +2535,32 @@ BOOL CheckCarriedObjectContacts(XActLift* act, const Vec* pos, f32 radius, f32 h
 			continue;
 		CVec hit, contact;
 		if (checkItem && (object->mStatus.mFlags & 0x40000000000ULL)) {
-			if (CarriedObjectTouches(object, *pos, radius, height, hit, contact) && object->OnItemUsed(pos, item)) {
+			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL) & 3;
+			if (touch == 3 && object->OnItemUsed(pos, item)) {
 				found = TRUE;
 				if (result)
 					*result = contact;
 			}
 		}
 		if (checkEvent && (object->mStatus.mFlags & 0x80000000000ULL)) {
-			if (CarriedObjectTouches(object, *pos, radius, height, hit, contact)) {
+			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL) & 3;
+			if (touch == 3) {
 				object->OnSquirterHit(&contact, act->mOwner->mSquirterContent, act->mOwner->mItemTintWord);
 				found = TRUE;
 				if (result)
 					*result = contact;
 			}
-		} else if (checkOthers && !(object->mStatus.mFlags & 0x2000000000000ULL) && !(object->mStatus.mFlags & 0x100000)
-		           && object != act->mTarget && object != act->mOwner) {
-			if (CarriedObjectTouches(object, *pos, radius, height, hit, contact)) {
+		} else if (checkOthers) {
+			if (object->mStatus.mFlags & 0x2000000000000ULL)
+				continue;
+			if (object->mStatus.mFlags & 0x100000)
+				continue;
+			if (object == act->mTarget)
+				continue;
+			if (object == act->mOwner)
+				continue;
+			u32 touch = ProbeObjectFloor(object, *pos, *pos, radius, height, &hit, &contact, NULL) & 3;
+			if (touch == 3) {
 				object->OnSquirterHit(&contact, act->mOwner->mSquirterContent, act->mOwner->mItemTintWord);
 				found = TRUE;
 				if (result)
@@ -2596,360 +2579,385 @@ void GetJointScale(CJObj*, HSD_JObj*, Vec*);
 f32 GetFirstFloorCollisionRadius(const XObj*);
 extern const s32 lbl_8020A5E8[];
 
-static inline HSD_JObj* HeldItemJoint(XActLift* act)
-{
-	s32 path[] = { 0, 0 };
-	return GetObjectJointByPath(act->mOwner, 2, path);
-}
-static inline s32 HeldItemVariant(XActLift* act)
-{
-	return lbl_8020A5E8[(s16)GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38)];
-}
-static inline void ScaleHeldItem(XActLift* act, XObj* obj)
-{
-	Vec scale;
-	GetJointScale(act->mOwner, HeldItemJoint(act), &scale);
-	obj->SetScale(GetStagePlacementScale(obj) * scale, 0);
-}
-static inline s32 HeldIdleAnim(XActLift* act)
-{
-	switch (act->mOwner->mAnimId) {
-	case 0x895:
-		return 1;
-	case 0x8b7:
-		return 5;
-	case 0x8ae:
-		return 2;
-	case 0x8af:
-		return 3;
-	case 0x8c5:
-		return 14;
-	case 0x8c0:
-		return 9;
-	case 0x8d2:
-		return 17;
-	case 0x8d3:
-		return 18;
-	case 0x8c1:
-		return 10;
-	case 0x8c2:
-		return 11;
-	case 0x8c3:
-		return 12;
-	case 0x8c4:
-		return 13;
-	case 0xe0:
-		if (IsCarryingToothbrush(act))
-			return 0;
-		if (IsCarryingSpoon(act))
-			return 1;
-		if (IsCarryingSquirter(act))
-			return HeldItemVariant(act) + 1;
-		break;
-	case 0xca:
-		if (IsCarryingToothbrush(act))
-			return 3;
-		if (IsCarryingSpoon(act))
-			return 4;
-		if (IsCarryingSquirter(act))
-			return HeldItemVariant(act) + 5;
-		break;
-	default:
-		if (IsCarryingToothbrush(act))
-			return 0;
-		if (IsCarryingSpoon(act))
-			return 1;
-		if (IsCarryingSquirter(act))
-			return HeldItemVariant(act) + 1;
-		break;
-	}
-	return 0;
-}
-static inline HSD_JObj* HeldPlugEndJoint(XObj* obj)
-{
-	s32 path[] = { 0 };
-	return GetObjectJointByPath(obj, 1, path);
-}
-
 /**
  * @note Address: 0x800CECFC
  * @note Size: 0x2040
  */
+// NONMATCHING: retail calls ~CJObj for the eight pairs of joints (bl __dt__5CJObjFv) where this build still expands it; the
+// function is about fifty statements short of the size at which the compiler stops. The two squirter SetAnim calls keep the
+// item count in r0 and sign-extend it after loading the object (mr r0, r3; mr r3, r30; extsh r0, r0)
 void UpdateHeldObject(XActLift* act, s32)
 {
 	if (!act->mTargetState)
 		return;
 	XObj* obj = act->mTarget;
-	if (!obj || !(obj->mStatus.mFlags & 1))
-		return;
-	f32 frame = GetJointAnimationCurrentFrame(act->mOwner), end = GetJointAnimationEndFrame(act->mOwner);
-	switch (act->mTargetState) {
-	case 1:
-		obj->mStatus.mFlags |= 0x0400000000000000ULL;
-		act->mLiftStartOffset = obj->mMoveTranslate - GetPlayerCarryJointWorldPosition(act->mOwner);
-		act->mYawOffset       = obj->mMoveRotate.y - act->mOwner->mMoveRotate.y;
-		obj->SetPos(GetPlayerCarryJointWorldPosition(act->mOwner) - act->mLiftStartOffset * (1.f - frame / end), 0);
-		if (obj->GetCategory() == 24) {
-			act->mYawOffset = 0;
-			obj->SetRotateY(act->mYawOffset + act->mOwner->mMoveRotate.y, DEG2RAD * 6);
-			obj->SetRotationX(0, 0);
-			ResetPlayerPlugState((XObjPlug*)obj, TRUE);
-		}
-		if (obj->GetCategory() == 8 && obj->GetItem() == 22) {
-			act->mYawOffset = 0;
-			obj->SetRotateY(act->mYawOffset + act->mOwner->mMoveRotate.y, DEG2RAD * 6);
-		}
-		act->mTargetState = 2;
-		// fall through
-	case 2: {
-		CVec offset(GetLiftTargetContactOffset(act, obj));
-		f32 progress = 2.f * (frame / end);
-		if (progress > 1)
-			progress = 1;
-		obj->SetPos((GetPlayerCarryJointWorldPosition(act->mOwner) + act->mLiftStartOffset * (1.f - progress)) - offset * progress, 0);
-		break;
-	}
-	case 3:
-		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
-			HSD_JObj* root = obj->mJObj;
-			HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(root, HSD_JObjGetMtxPtr(HeldItemJoint(act)));
-			if (IsCarryingSpoon(act))
-				HeldAnim(obj, 4, TRUE);
-			else if (IsCarryingSquirter(act))
-				HeldAnim(obj, HeldItemVariant(act) + 5, TRUE);
-		} else {
-			UpdateCarriedObjectPosition(act, obj);
-			ScaleHeldItem(act, obj);
-			act->mYawOffset = 0;
-			obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y, 0);
-			if (IsCarryingMug(act))
-				HeldAnim(obj, 2);
-		}
-		break;
-	case 4: {
-		if (obj->mStatus.mFlags & 0x800000) {
-			obj->mStatus.mFlags &= ~0x800000ULL;
-			obj->SetDestinationAlpha(FALSE, 0);
-		}
-		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
-			HSD_JObj* root = obj->mJObj;
-			HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(root, HSD_JObjGetMtxPtr(HeldItemJoint(act)));
-			HeldAnim(obj, HeldIdleAnim(act));
+	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+		f32 frame = GetJointAnimationCurrentFrame(act->mOwner), end = GetJointAnimationEndFrame(act->mOwner);
+		switch (act->mTargetState) {
+		case 1:
+			obj->mStatus.mFlags |= 0x0400000000000000ULL;
+			act->mLiftStartOffset = obj->mMoveTranslate - GetPlayerCarryJointWorldPosition(act->mOwner);
+			act->mYawOffset       = obj->mMoveRotate.y - act->mOwner->mMoveRotate.y;
+			obj->SetPos(GetPlayerCarryJointWorldPosition(act->mOwner) - act->mLiftStartOffset * (1.f - frame / end), 0);
+			if (obj->GetCategory() == 24) {
+				act->mYawOffset = 0;
+				obj->SetRotateY(act->mYawOffset + act->mOwner->mMoveRotate.y, DEG2RAD * 6);
+				obj->SetRotationX(0, 0);
+				ResetPlayerPlugState((XObjPlug*)obj, TRUE);
+			}
+			if (obj->GetCategory() == 8 && obj->GetItem() == 22) {
+				act->mYawOffset = 0;
+				obj->SetRotateY(act->mYawOffset + act->mOwner->mMoveRotate.y, DEG2RAD * 6);
+			}
+			act->mTargetState = 2;
+			// fall through
+		case 2: {
+			CVec offset(GetLiftTargetContactOffset(act, obj));
+			f32 progress = 2.f * (frame / end);
+			if (progress > 1)
+				progress = 1;
+			obj->SetPos((GetPlayerCarryJointWorldPosition(act->mOwner) + act->mLiftStartOffset * (1.f - progress)) - offset * progress, 0);
 			break;
 		}
-		obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y, 0);
-		UpdateCarriedObjectPosition(act, obj);
-		if (IsTargetPool(act, 24)) {
-			CJObj hand(HeldItemJoint(act));
-			s32 path[] = { 0 };
-			CJObj plug(GetObjectJointByPath(obj, 1, path));
-			plug.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
-			plug.SetRotationZ(HSD_JObjGetRotationZ(hand.mJObj), 0);
-		} else if (IsCarryingMug(act)) {
-			s32 id = 4;
-			if (act->mState != 31) {
+		case 3:
+			if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
+				HSD_JObj* root = obj->mJObj;
+				s32 path[]     = { 0, 0 };
+				HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(root, HSD_JObjGetMtxPtr(GetObjectJointByPath(act->mOwner, 2, path)));
+				if (IsCarryingSpoon(act))
+					obj->SetAnim(4, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
+				else if (IsCarryingSquirter(act))
+					obj->SetAnim(lbl_8020A5E8[(s16)GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38)] + 5, TRUE, NULL, NULL, NULL, 0,
+					             1, 0, 10);
+			} else {
+				UpdateCarriedObjectPosition(act, obj);
+				{
+					Vec scale;
+					s32 path[] = { 0, 0 };
+					GetJointScale(act->mOwner, GetObjectJointByPath(act->mOwner, 2, path), &scale);
+					obj->SetScale(GetStagePlacementScale(obj) * scale, 0);
+				}
+				act->mYawOffset = 0;
+				obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y, 0);
+				if (IsCarryingMug(act))
+					obj->SetAnim(2, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+			}
+			break;
+		case 4: {
+			if (obj->mStatus.mFlags & 0x800000) {
+				obj->mStatus.mFlags &= ~0x800000ULL;
+				obj->SetDestinationAlpha(FALSE, 0);
+			}
+			if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
+				HSD_JObj* root = obj->mJObj;
+				s32 path[]     = { 0, 0 };
+				HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(root, HSD_JObjGetMtxPtr(GetObjectJointByPath(act->mOwner, 2, path)));
+				// one of the three is carried, so id is always set
+				s32 id;
 				switch (act->mOwner->mAnimId) {
-				case 12:
-					id = 8;
+				case 0x895:
+					id = 1;
 					break;
-				case 0x88:
+				case 0x8b7:
+					id = 5;
+					break;
+				case 0x8ae:
+					id = 2;
+					break;
+				case 0x8af:
+					id = 3;
+					break;
+				case 0x8c5:
+					id = 14;
+					break;
+				case 0x8c0:
 					id = 9;
 					break;
-				case 13:
+				case 0x8d2:
+					id = 17;
+					break;
+				case 0x8d3:
+					id = 18;
+					break;
+				case 0x8c1:
 					id = 10;
 					break;
+				case 0x8c2:
+					id = 11;
+					break;
+				case 0x8c3:
+					id = 12;
+					break;
+				case 0x8c4:
+					id = 13;
+					break;
+				case 0xe0:
+					if (IsCarryingToothbrush(act))
+						id = 0;
+					else if (IsCarryingSpoon(act))
+						id = 1;
+					else if (IsCarryingSquirter(act))
+						id = lbl_8020A5E8[(s16)GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38)] + 1;
+					break;
+				case 0xca:
+					if (IsCarryingToothbrush(act))
+						id = 3;
+					else if (IsCarryingSpoon(act))
+						id = 4;
+					else if (IsCarryingSquirter(act))
+						id = lbl_8020A5E8[(s16)GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38)] + 5;
+					break;
 				default:
-					id = 1;
+					if (IsCarryingToothbrush(act))
+						id = 0;
+					else if (IsCarryingSpoon(act))
+						id = 1;
+					else if (IsCarryingSquirter(act))
+						id = lbl_8020A5E8[(s16)GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38)] + 1;
+					break;
+				}
+				obj->SetAnim(id, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+				break;
+			}
+			obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y, 0);
+			UpdateCarriedObjectPosition(act, obj);
+			if (IsTargetPool(act, 24)) {
+				s32 handPath[] = { 0, 0 };
+				CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+				s32 path[] = { 0 };
+				CJObj plug(GetObjectJointByPath(obj, 1, path));
+				plug.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
+				plug.SetRotationZ(HSD_JObjGetRotationZ(hand.mJObj), 0);
+			} else if (IsCarryingMug(act)) {
+				s32 id;
+				if (act->mState == 31) {
+					id = 4;
+				} else {
+					switch (act->mOwner->mAnimId) {
+					case 12:
+						id = 8;
+						break;
+					case 0x88:
+						id = 9;
+						break;
+					case 13:
+						id = 10;
+						break;
+					default:
+						id = 1;
+					}
+				}
+				obj->SetAnim(id, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+			}
+			break;
+		}
+		case 5: {
+			UpdateCarriedObjectPosition(act, obj);
+			if (!(GetJointAnimationCurrentFrame(act->mOwner) >= 24))
+				break;
+			obj->SetTranslateY(act->mOwner->mMoveTranslate.y, 0);
+			f32 radius = GetFirstFloorCollisionRadius(act->mOwner);
+			f32 height = act->mOwner->GetCollisionHeight();
+			CVec push, contact;
+			if (obj->TestFloorCollision(&act->mOwner->mMoveTranslate, &act->mOwner->mMoveTranslate, radius, height, &push, &contact, 0, 0)
+			    & 1) {
+				f32 distance = PSVECDistance(&act->mOwner->mMoveTranslate, &contact);
+				f32 s        = sin(act->mOwner->mMoveRotate.y);
+				obj->SetTranslateX(distance * s + obj->mMoveTranslate.x, 0);
+				f32 c = cos(act->mOwner->mMoveRotate.y);
+				obj->SetTranslateZ(distance * c + obj->mMoveTranslate.z, 0);
+			}
+			if (obj->GetCategory() == 24)
+				PlayGameSound(&gGame.mSound, 0x39, 255);
+			else if (obj->GetCategory() != 8)
+				PlayGameSound(&gGame.mSound, GetMaterialSoundId(obj->mFloors->mType >> 8), 255);
+			obj->mStatus.mFlags &= ~0x0400000000000000ULL;
+			act->mTarget = NULL;
+			break;
+		}
+		case 6:
+			UpdateCarriedObjectPosition(act, obj);
+			if (obj->GetCategory() == 24) {
+				s32 handPath[] = { 0, 0 };
+				CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+				s32 endPath[] = { 0 };
+				CJObj end(GetObjectJointByPath(obj, 1, endPath));
+				end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
+				HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
+				if (anim->flags & 0x44000000)
+					act->mTarget = NULL;
+				else if (!((XObjPlug*)obj)->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 90) {
+					((XObjPlug*)obj)->mConnection = act->_54 | 0x10000;
+					obj->mStatus.mFlags &= ~0x0400000000000000ULL;
+				} else if (!((XObjPlug*)obj)->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 34 && act->_54 == 0x200)
+					end.SetRotationZ(-40.f * DEG2RAD, 0);
+			}
+			break;
+		case 7:
+			UpdateCarriedObjectPosition(act, obj);
+			if (obj->GetCategory() == 24) {
+				s32 handPath[] = { 0, 0 };
+				CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+				s32 endPath[] = { 0 };
+				CJObj end(GetObjectJointByPath(obj, 1, endPath));
+				end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
+				HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
+				if (anim->flags & 0x44000000)
+					act->mTargetState = 4;
+				else if ((anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 80)
+					end.SetRotationZ(0, 0);
+				else if (((XObjPlug*)obj)->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 76) {
+					ResetPlayerPlugState((XObjPlug*)obj, FALSE);
+					obj->mStatus.mFlags |= 0x0400000000000000ULL;
 				}
 			}
-			HeldAnim(obj, id);
-		}
-		break;
-	}
-	case 5: {
-		UpdateCarriedObjectPosition(act, obj);
-		if (!(GetJointAnimationCurrentFrame(act->mOwner) >= 24))
 			break;
-		obj->SetTranslateY(act->mOwner->mMoveTranslate.y, 0);
-		CVec push, contact;
-		XObjChr* owner = act->mOwner;
-		f32 radius     = GetFirstFloorCollisionRadius(owner);
-		f32 height     = owner->GetCollisionHeight();
-		if (obj->TestFloorCollision(&act->mOwner->mMoveTranslate, &act->mOwner->mMoveTranslate, radius, height, &push, &contact, 0, 0)
-		    & 1) {
-			f32 distance = PSVECDistance(&act->mOwner->mMoveTranslate, &contact);
-			obj->SetTranslateX(distance * (f32)sin(act->mOwner->mMoveRotate.y) + obj->mMoveTranslate.x, 0);
-			obj->SetTranslateZ(distance * (f32)cos(act->mOwner->mMoveRotate.y) + obj->mMoveTranslate.z, 0);
-		}
-		if (obj->GetCategory() == 24)
-			PlayGameSound(&gGame.mSound, 0x39, 255);
-		else if (obj->GetCategory() != 8)
-			PlayGameSound(&gGame.mSound, GetMaterialSoundId(obj->mFloors->mType >> 8), 255);
-		obj->mStatus.mFlags &= ~0x0400000000000000ULL;
-		act->mTarget = NULL;
-		break;
-	}
-	case 6:
-		UpdateCarriedObjectPosition(act, obj);
-		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
-			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
-			XObjPlug* plug = (XObjPlug*)obj;
-			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
-			if (anim->flags & 0x44000000)
-				act->mTarget = NULL;
-			else if (!plug->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 90) {
-				plug->mConnection = act->_54 | 0x10000;
-				obj->mStatus.mFlags &= ~0x0400000000000000ULL;
-			} else if (!plug->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 34 && act->_54 == 0x200)
-				end.SetRotationZ(-40.f * DEG2RAD, 0);
-		}
-		break;
-	case 7:
-		UpdateCarriedObjectPosition(act, obj);
-		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
-			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
-			XObjPlug* plug = (XObjPlug*)obj;
-			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
-			if (anim->flags & 0x44000000)
-				act->mTargetState = 4;
-			else if ((anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 80)
-				end.SetRotationZ(0, 0);
-			else if (plug->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 76) {
-				ResetPlayerPlugState(plug, FALSE);
-				obj->mStatus.mFlags |= 0x0400000000000000ULL;
-			}
-		}
-		break;
-	case 8:
-		UpdateCarriedObjectPosition(act, obj);
-		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
-			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
-			XObjPlug* plug = (XObjPlug*)obj;
-			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
-			if (anim->flags & 0x44000000)
-				act->mTargetState = 9;
-			else if (!plug->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 24)
-				plug->mConnection = -1;
-		}
-		break;
-	case 10:
-		UpdateCarriedObjectPosition(act, obj);
-		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
-			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
-			XObjPlug* plug = (XObjPlug*)obj;
-			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
-			if (anim->flags & 0x44000000)
-				act->mTargetState = 4;
-			else if (plug->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 0)
-				ResetPlayerPlugState(plug, FALSE);
-		}
-		break;
-	case 11:
-		UpdateCarriedObjectPosition(act, obj);
-		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
-			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
-			end.SetRotationZ(HSD_JObjGetRotationZ(hand.mJObj), 0);
-			XObjPlug* plug = (XObjPlug*)obj;
-			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
-			if (anim->flags & 0x44000000)
-				act->mTargetState = 12;
-			else if (!plug->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 24)
-				plug->mConnection = 0x10400;
-		}
-		break;
-	case 12:
-		UpdateCarriedObjectPosition(act, obj);
-		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
-			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
-			end.SetRotationZ(HSD_JObjGetRotationZ(hand.mJObj), 0);
-		}
-		break;
-	case 13:
-		UpdateCarriedObjectPosition(act, obj);
-		if (obj->GetCategory() == 24) {
-			CJObj hand(HeldItemJoint(act));
-			CJObj end(HeldPlugEndJoint(obj));
-			end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
-			end.SetRotationZ(HSD_JObjGetRotationZ(hand.mJObj), 0);
-			XObjPlug* plug = (XObjPlug*)obj;
-			HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
-			if (anim->flags & 0x44000000)
-				act->mTargetState = 4;
-			else if (plug->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 0)
-				ResetPlayerPlugState(plug, FALSE);
-		}
-		break;
-	case 14:
-		if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
-			HSD_JObj* root = obj->mJObj;
-			HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(root, HSD_JObjGetMtxPtr(HeldItemJoint(act)));
-			if (IsCarryingSpoon(act))
-				HeldAnim(obj, 4, TRUE);
-			else if (IsCarryingSquirter(act))
-				HeldAnim(obj, HeldItemVariant(act) + 5, TRUE);
-		} else {
+		case 8:
 			UpdateCarriedObjectPosition(act, obj);
-			ScaleHeldItem(act, obj);
+			if (obj->GetCategory() == 24) {
+				s32 handPath[] = { 0, 0 };
+				CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+				s32 endPath[] = { 0 };
+				CJObj end(GetObjectJointByPath(obj, 1, endPath));
+				end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
+				HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
+				if (anim->flags & 0x44000000)
+					act->mTargetState = 9;
+				else if (!((XObjPlug*)obj)->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 24)
+					((XObjPlug*)obj)->mConnection = -1;
+			}
+			break;
+		case 10:
+			UpdateCarriedObjectPosition(act, obj);
+			if (obj->GetCategory() == 24) {
+				s32 handPath[] = { 0, 0 };
+				CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+				s32 endPath[] = { 0 };
+				CJObj end(GetObjectJointByPath(obj, 1, endPath));
+				end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
+				HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
+				if (anim->flags & 0x44000000)
+					act->mTargetState = 4;
+				else if (((XObjPlug*)obj)->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 0)
+					ResetPlayerPlugState((XObjPlug*)obj, FALSE);
+			}
+			break;
+		case 11:
+			UpdateCarriedObjectPosition(act, obj);
+			if (obj->GetCategory() == 24) {
+				s32 handPath[] = { 0, 0 };
+				CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+				s32 endPath[] = { 0 };
+				CJObj end(GetObjectJointByPath(obj, 1, endPath));
+				end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
+				end.SetRotationZ(HSD_JObjGetRotationZ(hand.mJObj), 0);
+				HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
+				if (anim->flags & 0x44000000)
+					act->mTargetState = 12;
+				else if (!((XObjPlug*)obj)->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 24)
+					((XObjPlug*)obj)->mConnection = 0x10400;
+			}
+			break;
+		case 12:
+			UpdateCarriedObjectPosition(act, obj);
+			if (obj->GetCategory() == 24) {
+				s32 handPath[] = { 0, 0 };
+				CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+				s32 endPath[] = { 0 };
+				CJObj end(GetObjectJointByPath(obj, 1, endPath));
+				end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
+				end.SetRotationZ(HSD_JObjGetRotationZ(hand.mJObj), 0);
+			}
+			break;
+		case 13:
+			UpdateCarriedObjectPosition(act, obj);
+			if (obj->GetCategory() == 24) {
+				s32 handPath[] = { 0, 0 };
+				CJObj hand(GetObjectJointByPath(act->mOwner, 2, handPath));
+				s32 endPath[] = { 0 };
+				CJObj end(GetObjectJointByPath(obj, 1, endPath));
+				end.SetRotationX(HSD_JObjGetRotationX(hand.mJObj), 0);
+				end.SetRotationZ(HSD_JObjGetRotationZ(hand.mJObj), 0);
+				HSD_AObj* anim = GetAObj(act->mOwner->mJObj);
+				if (anim->flags & 0x44000000)
+					act->mTargetState = 4;
+				else if (((XObjPlug*)obj)->mConnection && (anim ? HSD_AObjGetCurrentFrame(anim) : 0.0f) >= 0)
+					ResetPlayerPlugState((XObjPlug*)obj, FALSE);
+			}
+			break;
+		case 14:
+			if (IsCarryingToothbrush(act) || IsCarryingSpoon(act) || IsCarryingSquirter(act)) {
+				HSD_JObj* root = obj->mJObj;
+				s32 path[]     = { 0, 0 };
+				HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(root, HSD_JObjGetMtxPtr(GetObjectJointByPath(act->mOwner, 2, path)));
+				if (IsCarryingSpoon(act))
+					obj->SetAnim(4, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
+				else if (IsCarryingSquirter(act))
+					obj->SetAnim(lbl_8020A5E8[(s16)GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38)] + 5, TRUE, NULL, NULL, NULL, 0,
+					             1, 0, 10);
+			} else {
+				UpdateCarriedObjectPosition(act, obj);
+				{
+					Vec scale;
+					s32 path[] = { 0, 0 };
+					GetJointScale(act->mOwner, GetObjectJointByPath(act->mOwner, 2, path), &scale);
+					obj->SetScale(GetStagePlacementScale(obj) * scale, 0);
+				}
 
-			if (IsCarryingMug(act))
-				HeldAnim(obj, 3);
-		}
-		break;
-	case 15:
-		if (obj->GetCategory() == 8) {
-			SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, obj->GetItem(), 1, TRUE);
-			((XObjItem*)obj)->SetFlag();
-		}
-		obj->Release();
-		act->mTarget = NULL;
-		break;
-	case 16:
-	case 18: {
-		CVec offset(GetLiftTargetContactOffset(act, obj));
-		Mtx trans, world;
-		PSMTXTrans(trans, offset.x, -offset.y, offset.z);
-		PSMTXConcat(HSD_JObjGetMtxPtr(HeldItemJoint(act)), trans, world);
-		HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(obj->mJObj, world);
-		Vec v;
-		HSD_MtxGetTranslate(world, &v);
-		obj->SetPos(v, 0);
-		HSD_MtxGetScale(world, &v);
-		obj->SetScale(v, 0);
-		break;
-	}
-	case 17:
-		if (obj->GetCategory() == 8) {
-			((XObjItem*)obj)->SetFlag();
-		}
-		obj->Release();
-		act->mTarget = NULL;
-		break;
-	case 19:
-		HSD_JObjClearMtxFlags__FP9_HSD_JObj(obj->mJObj);
-		act->mYawOffset = 0;
-		obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y, 0);
-		UpdateCarriedObjectPosition(act, obj);
-		ScaleHeldItem(act, obj);
-		act->mTargetState = 4;
-		break;
-	case 20:
-		if (GetAObj(obj->mJObj)->flags & 0x44000000) {
+				if (IsCarryingMug(act))
+					obj->SetAnim(3, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+			}
+			break;
+		case 15:
+			if (obj->GetCategory() == 8) {
+				SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, obj->GetItem(), 1, TRUE);
+				((XObjItem*)obj)->SetFlag();
+			}
 			obj->Release();
 			act->mTarget = NULL;
+			break;
+		case 16:
+		case 18: {
+			CVec offset(GetLiftTargetContactOffset(act, obj));
+			Mtx trans, world;
+			PSMTXTrans(trans, offset.x, -offset.y, offset.z);
+			s32 path[] = { 0, 0 };
+			PSMTXConcat(HSD_JObjGetMtxPtr(GetObjectJointByPath(act->mOwner, 2, path)), trans, world);
+			HSD_JObjCopyMtx__FP9_HSD_JObjPA4_f(obj->mJObj, world);
+			Vec v;
+			HSD_MtxGetTranslate(world, &v);
+			obj->SetPos(v, 0);
+			HSD_MtxGetScale(world, &v);
+			obj->SetScale(v, 0);
+			break;
 		}
-		break;
+		case 17:
+			if (obj->GetCategory() == 8) {
+				((XObjItem*)obj)->SetFlag();
+			}
+			obj->Release();
+			act->mTarget = NULL;
+			break;
+		case 19:
+			HSD_JObjClearMtxFlags__FP9_HSD_JObj(obj->mJObj);
+			act->mYawOffset = 0;
+			obj->SetRotationY(act->mYawOffset + act->mOwner->mMoveRotate.y, 0);
+			UpdateCarriedObjectPosition(act, obj);
+			{
+				Vec scale;
+				s32 path[] = { 0, 0 };
+				GetJointScale(act->mOwner, GetObjectJointByPath(act->mOwner, 2, path), &scale);
+				obj->SetScale(GetStagePlacementScale(obj) * scale, 0);
+			}
+			act->mTargetState = 4;
+			break;
+		case 20:
+			if (GetAObj(obj->mJObj)->flags & 0x44000000) {
+				obj->Release();
+				act->mTarget = NULL;
+			}
+			break;
+		}
 	}
 }
 
