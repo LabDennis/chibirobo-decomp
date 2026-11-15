@@ -1472,6 +1472,48 @@ if wii:
             ],
         },
         {
+            # NintendoWare for Revolution (nw4r::ut, db, math ...), retail 0x80234080-0x802A5358.
+            # Compiler: the libraries' version strings carry CodeWarrior build 0x4199_60831, GC/3.0a5.2.
+            # Flags: no stmw/lmw anywhere in the block (-use_lmw_stmw off), no RTTI records beside the
+            # vtables (-RTTI off), -ipa file and -fp_contract off as every reference decomp builds NW4R
+            # (xenoblade, pik2wii, wiiplay, ogws).
+            "lib": "nw4r",
+            "mw_version": "GC/3.0a5.2",
+            "cflags": [
+                "-i include/rvl_msl", *wii_cflags, "-Cpp_exceptions off", "-RTTI off", "-fp_contract off", "-ipa file",
+                "-use_lmw_stmw off", "-enc SJIS",
+            ],
+            "progress_category": "nw4r",
+            "objects": [
+                Object(Matching, "nw4r/ut/ut_list.cpp"),
+                Object(Matching, "nw4r/ut/ut_LinkList.cpp"),
+                Object(Matching, "nw4r/ut/ut_binaryFileFormat.cpp"),
+                Object(Matching, "nw4r/ut/ut_CharStrmReader.cpp"),
+                Object(Matching, "nw4r/ut/ut_IOStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_FileStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_DvdFileStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_DvdLockedFileStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_LockedCache.cpp"),
+                Object(Matching, "nw4r/ut/ut_Font.cpp"),
+                Object(Matching, "nw4r/ut/ut_RomFont.cpp"),
+                Object(Matching, "nw4r/ut/ut_ResFontBase.cpp"),
+                Object(Matching, "nw4r/ut/ut_ResFont.cpp"),
+                # code 3 of 3; FrSqrt (0x80282DB8) is WiiReciprocalSquareRoot in symbols.txt because
+                # src/game/wii/arithmetic.h declares and calls it under that name: links once the game
+                # calls nw4r::math::FrSqrt
+                Object(NonMatching, "nw4r/math/math_arithmetic.cpp"),
+                Object(Matching, "nw4r/math/math_triangular.cpp"),
+                Object(NonMatching, "nw4r/math/math_types.cpp"),
+                # code 5 of 5; retail's .sdata2 starts with 0.5f and 0.0f, here they come after the two
+                # TanDeg constants: a function ahead of FRUSTUM::Set that the linker removed used them
+                # (the reference decomps force the order with a macro)
+                Object(NonMatching, "nw4r/math/math_geometry.cpp"),
+                # nw4r::g3d (0x8025B5A4-0x80282CA0)
+                # nw4r::snd (0x80283EA8-0x802A5358)
+            ],
+        },
+        # homebuttonLib (0x80203864-0x80222DEC)
+        {
             # These Wii SDK modules share the compiler profile used by New Play Control! Pikmin.
             "lib": "RevolutionSDK-2008",
             "mw_version": "GC/3.0a5.2",
@@ -1875,6 +1917,7 @@ config.progress_categories = [
     for category in (
         ProgressCategory("game", "Game Code"),
         ProgressCategory("sdk", "SDK Code"),
+        ProgressCategory("nw4r", "NW4R Code"),
         ProgressCategory("hsd", "HSD Code"),
         ProgressCategory("runtime", "Runtime Code"),
         ProgressCategory("rels", "REL Code"),
