@@ -1297,9 +1297,10 @@ if wii:
                 # the Wii file carries the functions in the Wii's order: the GameCube file's
                 # order is the exact reverse, so a shared source cannot link here
                 Object(Matching, "game/wii/params.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # same Inventory layout on both; the Wii functions carry the FindItem and
-                # CompactSlot helpers inlined with different codegen
-                Object(Equivalent, "game/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # same Inventory layout on both; the Wii file carries the functions in the
+                # Wii's order (exact reverse of the GameCube file). RemoveInventoryItemCount
+                # re-reads mCount for `count` instead of subtracting in one expression
+                Object(NonMatching, "game/wii/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii
                 Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),

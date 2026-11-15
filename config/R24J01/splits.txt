@@ -716,7 +716,9 @@ game/wii/params.cpp:
 	.text start:0x80113394 end:0x80113910
 	.sdata2 start:0x805A53F8 end:0x805A53FC
 
-game/inventory.cpp:
+game/wii/inventory.cpp:
+	extab start:0x8000D734 end:0x8000D73C
+	extabindex start:0x80014C30 end:0x80014C3C
 	.text start:0x80113910 end:0x801141C0
 
 game/gameosreport.cpp:
