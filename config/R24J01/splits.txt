@@ -931,6 +931,10 @@ revolution/DVD/dvdfs.c:
 
 revolution/DVD/dvd.c:
 	.text start:0x80190830 end:0x8019568C
+	.data start:0x8031D5D8 end:0x8031D980
+	.sdata start:0x805A1460 end:0x805A1478
+	.bss start:0x804CD6C0 end:0x804D2370
+	.sbss start:0x805A2000 end:0x805A2098
 
 revolution/DVD/dvderror.c:
 	.text start:0x801958E4 end:0x801962C8
