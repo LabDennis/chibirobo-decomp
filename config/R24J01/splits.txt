@@ -672,29 +672,40 @@ TRK_MINNOW_DOLPHIN/mainloop.c:
 
 TRK_MINNOW_DOLPHIN/nubevent.c:
 	.text start:0x80222EE4 end:0x8022310C
+	.bss start:0x8052DF90 end:0x8052DFB8
 
-TRK_MINNOW_DOLPHIN/nubinit.c:
+rvl_trk/nubinit.c:
 	.text start:0x8022310C end:0x80223290
+	.rodata start:0x802DEC00 end:0x802DEC20
+	.bss start:0x8052DFB8 end:0x8052DFC0
 
-TRK_MINNOW_DOLPHIN/msg.c:
+rvl_trk/msg.c:
 	.text start:0x80223290 end:0x802232BC
 
 TRK_MINNOW_DOLPHIN/msgbuf.c:
 	.text start:0x802232BC end:0x80223AF8
+	.rodata start:0x802DEC20 end:0x802DEC40
+	.bss start:0x8052DFC0 end:0x8052F970
 
-TRK_MINNOW_DOLPHIN/serpoll.c:
-	.text start:0x80223B00 end:0x80223CA4
+rvl_trk/serpoll.c:
+	.text       start:0x80223AF8 end:0x80223CA4
+	.bss start:0x8052F970 end:0x8052F988
+	.sbss start:0x805A26C8 end:0x805A26D0
 
 TRK_MINNOW_DOLPHIN/usr_put.c:
 	.text start:0x80223CA4 end:0x80223D30
 
-TRK_MINNOW_DOLPHIN/dispatch.c:
+rvl_trk/dispatch.c:
 	.text start:0x80223D30 end:0x80223E78
+	.data start:0x80331D78 end:0x80331DE8
 
-TRK_MINNOW_DOLPHIN/msghndlr.c:
+rvl_trk/msghndlr.c:
 	.text start:0x80223E78 end:0x80224F54
+	.rodata start:0x802DEC40 end:0x802DEC78
+	.data start:0x80331DE8 end:0x80331E20
+	.bss start:0x8052F988 end:0x8052F990
 
-TRK_MINNOW_DOLPHIN/support.c:
+rvl_trk/support.c:
 	.text start:0x80224F54 end:0x80225608
 
 TRK_MINNOW_DOLPHIN/mutex_TRK.c:
@@ -708,9 +719,7 @@ TRK_MINNOW_DOLPHIN/flush_cache.c:
 
 TRK_MINNOW_DOLPHIN/mem_TRK.c:
 	.text start:0x802256F0 end:0x802257A8
-
-TRK_MINNOW_DOLPHIN/targimpl.c:
-	.text start:0x802271E0 end:0x802271F8
+	.init start:0x80004338 end:0x8000438C
 
 TRK_MINNOW_DOLPHIN/mpc_7xx_603e.c:
 	.text start:0x80227200 end:0x80227570
@@ -718,26 +727,36 @@ TRK_MINNOW_DOLPHIN/mpc_7xx_603e.c:
 TRK_MINNOW_DOLPHIN/mslsupp.c:
 	.text start:0x80227570 end:0x8022776C
 
-TRK_MINNOW_DOLPHIN/dolphin_trk.c:
+rvl_trk/dolphin_trk.c:
 	.text start:0x8022776C end:0x80227A88
+	.init start:0x800062C0 end:0x800062EC
+	.data start:0x80331E50 end:0x80331E90
+	.bss start:0x8052FF10 end:0x8052FF18
 
-TRK_MINNOW_DOLPHIN/main_TRK.c:
+rvl_trk/main_TRK.c:
 	.text start:0x80227A88 end:0x80227ACC
+	.bss start:0x8052FF18 end:0x8052FF20
 
-TRK_MINNOW_DOLPHIN/dolphin_trk_glue.c:
+rvl_trk/dolphin_trk_glue.c:
 	.text start:0x80227ACC end:0x80227F8C
+	.rodata start:0x802DED00 end:0x802DEE08
+	.data start:0x80331E90 end:0x80331EB8
+	.bss start:0x8052FF20 end:0x8052FF28
 
 TRK_MINNOW_DOLPHIN/targcont.c:
 	.text start:0x80227F8C end:0x80227FC0
 
 TRK_MINNOW_DOLPHIN/target_options.c:
 	.text start:0x80227FC0 end:0x80227FDC
+	.bss start:0x8052FF28 end:0x8052FF30
 
 TRK_MINNOW_DOLPHIN/UDP_Stubs.c:
 	.text start:0x80227FDC end:0x80228024
 
-TRK_MINNOW_DOLPHIN/gdev/main.c:
-	.text start:0x80228024 end:0x80228298
+rvl_trk/gdev/main.c:
+	.text       start:0x80228024 end:0x802282E4
+	.bss start:0x8052FF30 end:0x80530450
+	.sbss start:0x805A26D0 end:0x805A26D8
 
 TRK_MINNOW_DOLPHIN/CircleBuffer.c:
 	.text start:0x802282E4 end:0x8022854C
@@ -770,7 +789,7 @@ MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod.c:
 	.rodata start:0x802DFA38 end:0x802DFA48
 
 dolphin/OdemuExi2/DebuggerDriver.c:
-	.text start:0x8017B738 end:0x8017B95C
+	.text start:0x8017B6E0 end:0x8017B95C
 
 revolution/OS/OSMemory.c:
 	.text start:0x80187B98 end:0x801882D0
@@ -1076,3 +1095,15 @@ rvl_msl/fminmaxdim.c:
 
 rvl_msl/w_log10.c:
 	.text       start:0x80231774 end:0x80231778
+
+rvl_trk/targimpl.c:
+	.text       start:0x802257C4 end:0x802271DC
+	.rodata start:0x802DEC78 end:0x802DED00
+	.data start:0x80331E20 end:0x80331E50
+	.bss start:0x8052F990 end:0x8052FF10
+
+rvl_trk/targsupp.c:
+	.text       start:0x802271E0 end:0x80227200
+
+rvl_trk/string_TRK.c:
+	.text       start:0x802257A8 end:0x802257C4

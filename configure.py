@@ -1485,40 +1485,47 @@ if wii:
             ],
         },
         {
-            # the Wii ships the same MetroTRK stub; GC profile applies (sizes are
-            # verbatim for most units - where they differ the source stays as upstream
-            # wrote it and the unit reports partial)
+            # MetroTRK ("TRK_Hollywood_Revolution"). Units whose code is the GameCube's build upstream's
+            # file; the others have their own file under src/rvl_trk: the Wii build has no MWTRACE calls,
+            # numbers its replies (msghndlr.c, after Petari's), knows no ARAM and no DDH, and has
+            # TRK_strlen and OutputData.
+            # Compiler: GC/2.6 with the GameCube's flags. GC/2.7, which the other Wii decomps name,
+            # gives the same bytes in every unit (main.dol links OK with either); GC/3.0 and the Wii
+            # compilers do not (TRKConstructEvent and nearly every other C function differ).
             "lib": "TRK_MINNOW_DOLPHIN",
             "mw_version": "GC/2.6",
             "cflags": cflags_trk,
             "progress_category": "runtime",
             "objects": [
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mainloop.c"),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/nubevent.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/nubinit.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/msg.c"),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/msgbuf.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/serpoll.c", extra_cflags=["-sdata 8"]),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/nubevent.c"),
+                Object(Matching, "rvl_trk/nubinit.c"),
+                Object(Matching, "rvl_trk/msg.c"),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/msgbuf.c"),
+                Object(Matching, "rvl_trk/serpoll.c", extra_cflags=["-sdata 8"]),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/usr_put.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/dispatch.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/msghndlr.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/support.c"),
+                Object(Matching, "rvl_trk/dispatch.c"),
+                Object(Matching, "rvl_trk/msghndlr.c"),
+                Object(Matching, "rvl_trk/support.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mutex_TRK.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/notify.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/flush_cache.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/mem_TRK.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/targimpl.c"),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/mem_TRK.c"),
+                Object(Matching, "rvl_trk/string_TRK.c"),
+                Object(Matching, "rvl_trk/targimpl.c"),
+                # an assembled file in the original (no assembler here): four trap stubs, not linked
+                Object(NonMatching, "rvl_trk/targsupp.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mpc_7xx_603e.c"),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/dolphin_trk.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/main_TRK.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/dolphin_trk_glue.c"),
+                Object(Matching, "rvl_trk/dolphin_trk.c"),
+                Object(Matching, "rvl_trk/main_TRK.c"),
+                Object(Matching, "rvl_trk/dolphin_trk_glue.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/targcont.c"),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/target_options.c"),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/target_options.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mslsupp.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/UDP_Stubs.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/CircleBuffer.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/gdev/main.c", extra_cflags=["-sdata 8"]),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/MWCriticalSection_gc.cpp"),
+                Object(Matching, "rvl_trk/gdev/main.c", extra_cflags=["-sdata 8"]),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/MWCriticalSection_gc.cpp"),
             ],
         },
         {
