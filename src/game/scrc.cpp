@@ -46,19 +46,10 @@ s32 gSpiderBossVolleySlot;
 s32 gActor3Kind15ActivationCounter;
 }
 
-static inline Vec ActorPlacementRotation(const XObjActor3* actor)
-{
-	Vec rot              = gActor3PlacementRotation;
-	const UnkStageObj* p = actor->mCoord.mPlacement;
-	rot.x                = DEG2RAD * p->mRot[0];
-	rot.y                = DEG2RAD * p->mRot[1];
-	rot.z                = DEG2RAD * p->mRot[2];
-	return rot;
-}
-
 // the robot is out of reach, past the front edge or in one of its climbing anims
-static inline bool IsPlayerAway(XObjChr* player, Vec pos)
+static inline bool IsPlayerAway(XObjChr* player)
 {
+	Vec pos = player->mMoveTranslate;
 	if (pos.z < -4.28f) {
 		return true;
 	}
@@ -143,19 +134,9 @@ static inline bool IsBusyAnim(s32 anim)
 	return false;
 }
 
-extern "C" BOOL IsPlayerWithinActorReach(XObjActor3*);
+extern "C" bool IsPlayerWithinActorReach(XObjActor3*);
 extern "C" BOOL IsUsingMug(XActLift*);
 extern "C" f32 GetPlayerCollisionRadius(XObjChr*);
-
-static inline void StartKind9Effect(XObjActor3* actor, u32 id, f32 size)
-{
-	Vec p, scale;
-	p.x     = actor->mMoveTranslate.x;
-	p.y     = 12.0f + actor->mMoveTranslate.y;
-	p.z     = 12.0f + actor->mMoveTranslate.z;
-	scale.x = scale.y = scale.z = size;
-	actor->mGens[0]             = (s32)gGame.mParticle.CreateSRT(id, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
-}
 
 static inline void EmitKind9Dust(XObjActor3* actor)
 {
@@ -167,13 +148,14 @@ static inline void EmitKind9Dust(XObjActor3* actor)
 	f32 vz     = cosine * (rand() % 100) / 1000.0f;
 	f32 vy     = (rand() % 100) / 800.0f;
 	Vec pos;
-	pos.x          = x + 16.0f * (vx * (rand() % 100) / 100.0f);
-	pos.y          = y;
-	pos.z          = z + 16.0f * (vz * (rand() % 100) / 100.0f);
-	f32 width      = 1.0f + (rand() % 200) / 200.0f;
-	Vec scale      = { width, width, 1 };
-	Vec vel        = { vx, vy, vz };
-	CPtclOne* dust = SpawnPoolParticle(&actor->mDust.mPtcl, &pos, &scale, &vel, 0xffffffa0);
+	pos.x = x + 16.0f * (vx * (rand() % 100) / 100.0f);
+	pos.y = y;
+	pos.z = z + 16.0f * (vz * (rand() % 100) / 100.0f);
+	Vec scale;
+	scale.x = scale.y = 1.0f + (rand() % 200) / 200.0f;
+	scale.z           = 1.0f;
+	Vec vel           = { vx, vy, vz };
+	CPtclOne* dust    = SpawnPoolParticle(&actor->mDust.mPtcl, &pos, &scale, &vel, 0xffffffa0);
 	if (dust) {
 		dust->mAngle      = DEG2RAD * (rand() % 360);
 		dust->mAngleSpeed = DEG2RAD * (20 - rand() % 40);
@@ -199,14 +181,27 @@ static inline BOOL Kind9AnimFinished(XObjActor3* actor, u32 frames)
 
 // Kind9 runs haisui_nezumi (GetKind 0x31B): it paces its window, charges the robot when it comes near and grabs it or ends
 // up stunned
+// NONMATCHING: retail builds each effect's rotation in one temporary and stores 0 to its y after the copy from .rodata, which a
+// rotation passed by value cannot give (a y that is not constant makes a second temporary here); the dust's saved float
+// registers come out in another order and step 6 needs r23 for the joint's third read
 void XObjActor3::Kind9(u32 frames)
 {
 	XObjChr* player = gGame.GetPlayer();
+	Vec pos         = player->mMoveTranslate;
 	CJObj joint;
-	Vec pos = player->mMoveTranslate;
+	Vec p, scale;
 	// the lunge window step 5 opened runs out while it paces
-	if ((mActorFlags.mFlags & 0x20) && mKindStep < 5 && mKindStep >= 1 && (s32)--mExtraEventArgs[6] < 0)
-		mActorFlags.mFlags &= ~0x20;
+	if (mActorFlags.mFlags & 0x20) {
+		switch (mKindStep) {
+		case 1:
+		case 2:
+		case 3:
+		case 4:
+			if ((s32)--mExtraEventArgs[6] < 0)
+				mActorFlags.mFlags &= ~0x20;
+			break;
+		}
+	}
 	// the robot stands on top of it
 	if (mKindStep != 0 && mKindStep < 20 && Abs(pos.x - mMoveTranslate.x) <= 10 && pos.y >= 4 + mMoveTranslate.y
 	    && pos.y <= 8 + mMoveTranslate.y)
@@ -222,8 +217,11 @@ void XObjActor3::Kind9(u32 frames)
 		SetAnim(1, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 		if (--mFrameCount < 0) {
 			mFrameCount = rand() % 120 + 120;
-			mHeading    = rand() % 2 == 0 ? -HALF_PI : HALF_PI;
-			mKindStep   = 2;
+			if (rand() % 2 == 0)
+				mHeading = -HALF_PI;
+			else
+				mHeading = HALF_PI;
+			mKindStep = 2;
 		}
 		if (IsPlayerWithinActorReach(this))
 			mKindStep = 5;
@@ -248,7 +246,13 @@ void XObjActor3::Kind9(u32 frames)
 		if (--mFrameCount < 0 && (mActorFlags.mFlags & 0x20)) {
 			mKindStep   = 4;
 			mFrameCount = 90;
-			StartKind9Effect(this, 0x28, 3);
+			p.x         = mMoveTranslate.x;
+			p.y         = 12.0f + mMoveTranslate.y;
+			p.z         = 12.0f + mMoveTranslate.z;
+			scale.x     = 3.0f;
+			scale.y     = 3.0f;
+			scale.z     = 3.0f;
+			mGens[0]    = (s32)gGame.mParticle.CreateSRT(0x28, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
 		}
 		if (IsPlayerWithinActorReach(this))
 			mKindStep = 5;
@@ -287,19 +291,27 @@ void XObjActor3::Kind9(u32 frames)
 		mExtraEventArgs[6] = 600 / frames;
 #endif
 		mActorFlags.mFlags |= 0x20;
-		StartKind9Effect(this, 0x26, 3);
+		p.x         = mMoveTranslate.x;
+		p.y         = 12.0f + mMoveTranslate.y;
+		p.z         = 12.0f + mMoveTranslate.z;
+		scale.x     = 3.0f;
+		scale.y     = 3.0f;
+		scale.z     = 3.0f;
+		mGens[0]    = (s32)gGame.mParticle.CreateSRT(0x26, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
 		mFrameCount = 15;
 		SetAnim(5, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-		mHeading = mMoveTranslate.x < pos.x ? HALF_PI : -HALF_PI;
+		if (mMoveTranslate.x < pos.x)
+			mHeading = HALF_PI;
+		else
+			mHeading = -HALF_PI;
 		PlayGameSound(&gGame.mSound, 0xb0005, 255);
 		mKindStep = 6;
 		break;
 	case 6:
 		if (Kind9AnimFinished(this, frames)) {
 			gGame.mParticle.Kill((HSD_Generator*)mGens[0]);
-			s32 path[] = { 0, 0, 1, 1 };
-			joint.Attach(GetJointByPath(mJObj, path, 4));
-			Vec p = joint.GetPos();
+			joint.Attach(FindJointByPath(mJObj, (s32[4]) { 0, 0, 1, 1 }, 4));
+			p = joint.GetPos();
 			SetAnim(7, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 			if (mHeading == -HALF_PI)
 				p.x += 2;
@@ -307,7 +319,9 @@ void XObjActor3::Kind9(u32 frames)
 				p.x -= 2;
 				p.z += 4;
 			}
-			Vec scale = { 1, 1, 1 };
+			scale.x   = 1.0f;
+			scale.y   = 1.0f;
+			scale.z   = 1.0f;
 			mGens[0]  = (s32)gGame.mParticle.CreateSRT(0x84, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
 			mKindStep = 7;
 		}
@@ -329,16 +343,27 @@ void XObjActor3::Kind9(u32 frames)
 			mMoveTranslate.x = mWindowLeft;
 			mKindStep        = 4;
 			mFrameCount      = 90;
-			StartKind9Effect(this, 0x28, 3);
+			p.x              = mMoveTranslate.x;
+			p.y              = 12.0f + mMoveTranslate.y;
+			p.z              = 12.0f + mMoveTranslate.z;
+			scale.x          = 3.0f;
+			scale.y          = 3.0f;
+			scale.z          = 3.0f;
+			mGens[0]         = (s32)gGame.mParticle.CreateSRT(0x28, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
 		} else if (mMoveTranslate.x > mWindowRight) {
 			mMoveTranslate.x = mWindowRight;
 			mKindStep        = 4;
 			mFrameCount      = 90;
-			StartKind9Effect(this, 0x28, 3);
+			p.x              = mMoveTranslate.x;
+			p.y              = 12.0f + mMoveTranslate.y;
+			p.z              = 12.0f + mMoveTranslate.z;
+			scale.x          = 3.0f;
+			scale.y          = 3.0f;
+			scale.z          = 3.0f;
+			mGens[0]         = (s32)gGame.mParticle.CreateSRT(0x28, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
 		} else {
-			Vec projected = { pos.x, pos.y, mMoveTranslate.z };
-			f32 dx = projected.x - mMoveTranslate.x, dy = projected.y - mMoveTranslate.y, dz = projected.z - mMoveTranslate.z;
-			if (sqrtf(dz * dz + (dx * dx + dy * dy)) < 32 && !IsPlayerAway(gGame.GetPlayer(), gGame.GetPlayer()->mMoveTranslate)
+			f32 dx = pos.x - mMoveTranslate.x, dy = pos.y - mMoveTranslate.y, dz = mMoveTranslate.z - mMoveTranslate.z;
+			if (sqrtf(dz * dz + (dx * dx + dy * dy)) < 32 && !IsPlayerAway(gGame.GetPlayer())
 			    && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 				SetAnim(9, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 				mKindStep = 9;
@@ -353,6 +378,22 @@ void XObjActor3::Kind9(u32 frames)
 			SetAnim(10, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mKindStep = 10;
 			PlayGameSound(&gGame.mSound, 0xb0002, 255);
+			// both sides set up an effect that is never started
+			if (mHeading == -HALF_PI) {
+				p.x     = mMoveTranslate.x;
+				p.y     = 12.0f + mMoveTranslate.y;
+				p.z     = 12.0f + mMoveTranslate.z;
+				scale.x = 0.2f;
+				scale.y = 0.2f;
+				scale.z = 0.2f;
+			} else {
+				p.x     = mMoveTranslate.x;
+				p.y     = 12.0f + mMoveTranslate.y;
+				p.z     = 12.0f + mMoveTranslate.z;
+				scale.x = 0.2f;
+				scale.y = 0.2f;
+				scale.z = 0.2f;
+			}
 		}
 		break;
 	case 10: { // charges: stunned at the window's edge or by the robot's mug, grabs the robot if it is free
@@ -372,10 +413,8 @@ void XObjActor3::Kind9(u32 frames)
 			mMoveTranslate.x = mWindowRight;
 			StunKind9Actor(this);
 		} else {
-			Vec projected = { pos.x + offset, pos.y, mMoveTranslate.z };
-			f32 dx = projected.x - mMoveTranslate.x, dy = projected.y - mMoveTranslate.y, dz = projected.z - mMoveTranslate.z;
-			if (sqrtf(dz * dz + (dx * dx + dy * dy)) < 10 && !IsPlayerFlashingFromHit(player)
-			    && !IsPlayerAway(gGame.GetPlayer(), gGame.GetPlayer()->mMoveTranslate)) {
+			f32 dx = pos.x + offset - mMoveTranslate.x, dy = pos.y - mMoveTranslate.y, dz = mMoveTranslate.z - mMoveTranslate.z;
+			if (sqrtf(dz * dz + (dx * dx + dy * dy)) < 10 && !IsPlayerFlashingFromHit(player) && !IsPlayerAway(gGame.GetPlayer())) {
 				CPad pad(0);
 				if (radius < 2) { // the robot isn't holding up its mug
 					SetAnim(11, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
@@ -408,10 +447,16 @@ void XObjActor3::Kind9(u32 frames)
 			mFrameCount = 180 / frames;
 #endif
 			mKindStep = 21;
-			if (mActorFlags.mFlags & 0x80)
+			if (mActorFlags.Check(0x80))
 				mActorFlags.mFlags &= ~0x80;
 			if (mActorFlags.mFlags & 0x200) {
-				StartKind9Effect(this, 5, 1);
+				p.x      = mMoveTranslate.x;
+				p.y      = 12.0f + mMoveTranslate.y;
+				p.z      = 12.0f + mMoveTranslate.z;
+				scale.x  = 1.0f;
+				scale.y  = 1.0f;
+				scale.z  = 1.0f;
+				mGens[0] = (s32)gGame.mParticle.CreateSRT(5, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
 				mActorFlags.mFlags &= ~0x200;
 			}
 		}
@@ -445,6 +490,8 @@ void XObjActor3::Kind9(u32 frames)
 			mStatus.mFlags &= ~0x10000ULL;
 			++mKindStep;
 		}
+		break;
+	case 101:
 		break;
 	}
 }
@@ -486,10 +533,10 @@ BOOL XObjActor3::LoadFromPlacement(const CoordInfo& info)
 		mMoveTranslate.x = PlacementPosition(mCoord, gActor3PlacementPosition).x;
 		mMoveTranslate.y = PlacementPosition(mCoord, gActor3PlacementPosition).y;
 		mMoveTranslate.z = PlacementPosition(mCoord, gActor3PlacementPosition).z;
-		mMoveRotate.x    = ActorPlacementRotation(this).x;
-		mMoveRotate.y    = ActorPlacementRotation(this).y;
-		mMoveRotate.z    = ActorPlacementRotation(this).z;
-		mHeading         = ActorPlacementRotation(this).y;
+		mMoveRotate.x    = PlacementRotation(mCoord, gActor3PlacementRotation).x;
+		mMoveRotate.y    = PlacementRotation(mCoord, gActor3PlacementRotation).y;
+		mMoveRotate.z    = PlacementRotation(mCoord, gActor3PlacementRotation).z;
+		mHeading         = PlacementRotation(mCoord, gActor3PlacementRotation).y;
 		for (int i = 0; i < 8; ++i)
 			mParts[i].Clear();
 		if (mPoolIndex == 0) {
@@ -896,63 +943,49 @@ void XObjActor3::Kind10(u32 frames)
  * @note Size: 0x2D0
  */
 // whether the robot stands where the actor can reach it
-extern "C" BOOL IsPlayerWithinActorReach(XObjActor3* actor)
+extern "C" bool IsPlayerWithinActorReach(XObjActor3* actor)
 {
 	XObjChr* player = gGame.GetPlayer();
 	Vec pos         = player->mMoveTranslate;
 	if (!(actor->mActorFlags.mFlags & 4)) {
-		if (IsPlayerAway(player, pos)) {
-			return FALSE;
+		if (IsPlayerAway(gGame.GetPlayer())) {
+			return false;
 		}
 		if (pos.y >= actor->mMoveTranslate.y - 16.0f && pos.y <= actor->mMoveTranslate.y + 16.0f) {
 			if (actor->mHeading == HALF_PI) {
 				if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mWindowRight) {
-					return TRUE;
+					return true;
 				}
 				if (actor->mMoveTranslate.x > pos.x && pos.x > actor->mWindowLeft) {
 					if (IsLongReachAnim(player->mAnimId)) {
 						if (actor->mMoveTranslate.x > pos.x && pos.x > actor->mMoveTranslate.x - 32.0f) {
-							return TRUE;
+							return true;
 						}
 					} else {
 						if (actor->mMoveTranslate.x > pos.x && pos.x > actor->mMoveTranslate.x - 12.0f) {
-							return TRUE;
+							return true;
 						}
 					}
 				}
 			} else {
 				if (actor->mMoveTranslate.x > pos.x && pos.x > actor->mWindowLeft) {
-					return TRUE;
+					return true;
 				}
 				if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mWindowRight) {
 					if (IsLongReachAnim(player->mAnimId)) {
 						if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mMoveTranslate.x + 32.0f) {
-							return TRUE;
+							return true;
 						}
 					} else {
 						if (actor->mMoveTranslate.x < pos.x && pos.x < actor->mMoveTranslate.x + 12.0f) {
-							return TRUE;
+							return true;
 						}
 					}
 				}
 			}
 		}
 	}
-	return FALSE;
-}
-
-static inline void AdvanceActorAlongHeading(XObjActor3* actor, u32 frames, const f32& speed)
-{
-	CVec velocity;
-	velocity.x              = speed * (f32)sin(actor->mHeading);
-	velocity.z              = speed * (f32)cos(actor->mHeading);
-	velocity.y              = 0;
-	const CVec& pos         = actor->mMoveTranslate + velocity * (f32)frames;
-	actor->mMoveTranslate.x = pos.x;
-	actor->mMoveTranslate.y = pos.y;
-	actor->mMoveTranslate.z = pos.z;
-	actor->mMoveTranslate.SetTarget(pos);
-	actor->SetPos(actor->mMoveTranslate, 0);
+	return false;
 }
 
 // Each impact has its own entry in the original action table.
@@ -963,6 +996,7 @@ static inline void BounceBossPart(XObjActor3* part, f32 speed)
 }
 
 // the spider boss's parts: each rides the boss at its orbit offset until launched, then bounces to a stop and blinks out
+// NONMATCHING: saved register numbers, retail has the frame count in r27 and the boss in r31 and r30
 void XObjActor3::Kind11(u32 frames)
 {
 	CPad pad(0);
@@ -1044,6 +1078,7 @@ void XObjActor3::Kind11(u32 frames)
 	case 1: {
 		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
+			f32 x = mOrbitX, y = mOrbitHeight, z = mOrbitZ;
 			SetScale(1, 1, 1, 0);
 			CJObj joint;
 			s32 path[] = { 0 };
@@ -1057,7 +1092,7 @@ void XObjActor3::Kind11(u32 frames)
 			scale.z = GetStagePlacementScale(this).z / scale.z;
 			PSMTXScale(scaleMtx, scale.x, scale.y, scale.z);
 			PSMTXConcat(mount, scaleMtx, result);
-			PSMTXTrans(translation, mOrbitX, mOrbitHeight, mOrbitZ);
+			PSMTXTrans(translation, x, y, z);
 			PSMTXConcat(result, translation, result);
 			HSD_JObj* jobj = mJObj;
 			MtxPtr matrix  = result;
@@ -1073,6 +1108,7 @@ void XObjActor3::Kind11(u32 frames)
 	}
 	case 2: { // launched: falls along its heading and bounces, it stays down at the tenth landing
 		SetColor(1, 0, 0, 0, 0);
+		CVec velocity;
 		mKindTimer -= .09f * frames;
 		mMoveTranslate.y += mKindTimer;
 		f32 floor = 0;
@@ -1092,11 +1128,10 @@ void XObjActor3::Kind11(u32 frames)
 				mKindTimer = 8;
 				PlayGameSound(&gGame.mSound, 0x160020, 255);
 				Vec p;
-				p.x       = mMoveTranslate.x;
-				p.y       = mMoveTranslate.y - floor;
-				p.z       = mMoveTranslate.z;
-				Vec scale = { 1, 1, 1 };
-				mGens[0]  = (s32)gGame.mParticle.CreateSRT(0xb5, 1, p, scale, (Vec) { 0, 0, 0 }, TRUE);
+				p.x      = mMoveTranslate.x;
+				p.y      = mMoveTranslate.y - floor;
+				p.z      = mMoveTranslate.z;
+				mGens[0] = (s32)gGame.mParticle.CreateSRT(0xb5, 1, p, (Vec) { 1, 1, 1 }, (Vec) { 0, 0, 0 }, TRUE);
 				break;
 			}
 			case 1:
@@ -1137,7 +1172,11 @@ void XObjActor3::Kind11(u32 frames)
 			mKindTimer -= .36f * frames;
 		else
 			mKindTimer = -3.4499998f;
-		AdvanceActorAlongHeading(this, frames, .6f);
+		velocity.x = .6f * (f32)sin(mHeading);
+		velocity.z = .6f * (f32)cos(mHeading);
+		velocity.y = 0;
+		mMoveTranslate.SetNow(mMoveTranslate + velocity * (f32)frames);
+		SetPos(mMoveTranslate, 0);
 		break;
 	}
 	case 3:
@@ -1153,6 +1192,7 @@ void XObjActor3::Kind11(u32 frames)
 		}
 		break;
 	case 5: {
+		CVec velocity;
 		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
 		Vec origin           = { 0, 0, 0 };
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
@@ -1167,7 +1207,11 @@ void XObjActor3::Kind11(u32 frames)
 		f32 dx = origin.x - mMoveTranslate.x, dy = origin.y - mMoveTranslate.y, dz = origin.z - mMoveTranslate.z;
 		if (sqrtf(dx * dx + dy * dy + dz * dz) < 16)
 			mKindStep = 6;
-		AdvanceActorAlongHeading(this, frames, .6f);
+		velocity.x = .6f * (f32)sin(mHeading);
+		velocity.z = .6f * (f32)cos(mHeading);
+		velocity.y = 0;
+		mMoveTranslate.SetNow(mMoveTranslate + velocity * (f32)frames);
+		SetPos(mMoveTranslate, 0);
 		break;
 	}
 	case 6: {
@@ -1462,16 +1506,6 @@ static inline bool BossProjectileLanded(XObjActor3* actor, u32 frames)
 	return actor->mMoveTranslate.y <= -1;
 }
 
-static inline void SteerFallingProjectile(XObjActor3* actor, u32 frames)
-{
-	if (actor->mKindTimer >= -3.4499998f)
-		actor->mKindTimer -= .36f * frames;
-	else
-		actor->mKindTimer = -3.4499998f;
-	actor->mHeading = atan2(actor->mOrbitX - actor->mMoveTranslate.x, actor->mOrbitZ - actor->mMoveTranslate.z);
-	AdvanceActorAlongHeading(actor, frames, actor->mMoveSpeed);
-}
-
 static inline void HideBossProjectile(XObjActor3* actor, bool resetPitch)
 {
 	actor->mStatus.mFlags &= ~0x10000ULL;
@@ -1483,6 +1517,8 @@ static inline void HideBossProjectile(XObjActor3* actor, bool resetPitch)
 	actor->mKindStep = 0;
 }
 
+// NONMATCHING: step 11's effect turns with the heading; retail stores it into the one temporary it passes, a rotation by value
+// needs a second one here (12 bytes more frame), see Kind9
 void XObjActor3::Kind13(u32 frames)
 {
 	XObjChr* player = gGame.GetPlayer();
@@ -1495,8 +1531,8 @@ void XObjActor3::Kind13(u32 frames)
 				// lobbed at the robot: the first lands on it, the rest in a ring of 24 round it
 				PlaceBossProjectile(this, boss, 64);
 				mKindTimer = 16;
-				f32 dx = pos.x - mMoveTranslate.x, dz = pos.z - mMoveTranslate.z;
-				mMoveSpeed = .01f * sqrtf(dx * dx + 0.f + dz * dz);
+				f32 dx = pos.x - mMoveTranslate.x, dy = 0, dz = pos.z - mMoveTranslate.z;
+				mMoveSpeed = .01f * sqrtf(dx * dx + dy * dy + dz * dz);
 				if (mMoveSpeed < 1.2f)
 					mMoveSpeed = 1.2f;
 				if (mMoveSpeed > 24)
@@ -1507,7 +1543,9 @@ void XObjActor3::Kind13(u32 frames)
 		break;
 	case 1: {
 		XObjSpiderBoss* boss = ProjectileOwner();
-		bool blocked = ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) && IsSpiderBossProjectileHitSuppressed(boss);
+		bool blocked         = false;
+		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000) && IsSpiderBossProjectileHitSuppressed(boss))
+			blocked = true;
 		f32 dx = pos.x - mMoveTranslate.x, dy = pos.y - mMoveTranslate.y, dz = pos.z - mMoveTranslate.z;
 		if (sqrtf(dx * dx + dy * dy + dz * dz) < 8 && !IsPlayerFlashingFromHit(player) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)
 		    && !blocked) {
@@ -1515,26 +1553,35 @@ void XObjActor3::Kind13(u32 frames)
 			mRumble     = 1;
 			mFrameCount = 30;
 			gGame.mParticle.Kill((HSD_Generator*)mGens[0]);
-			Vec scale = { 1, 1, 1 };
-			mGens[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
+			mGens[0] = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, (Vec) { 1, 1, 1 }, (Vec) { 0, 0, 0 }, TRUE);
 			PlayGameSound(&gGame.mSound, 0x127, 255);
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mKindStep = 2;
 			break;
 		}
+		CVec velocity;
 		if (BossProjectileLanded(this, frames)) {
 			mKindTimer       = 0;
 			mMoveTranslate.y = 0;
 			mFrameCount      = 30;
 			if (mTimerFadeMode == 0) {
-				Vec scale = { 1, 1, 1 };
-				mGens[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
+				mGens[0] = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, (Vec) { 1, 1, 1 }, (Vec) { 0, 0, 0 }, TRUE);
 				PlayGameSound(&gGame.mSound, 0x127, 255);
 			}
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mKindStep = 2;
-		} else
-			SteerFallingProjectile(this, frames);
+			break;
+		}
+		if (mKindTimer >= -3.4499998f)
+			mKindTimer -= .36f * frames;
+		else
+			mKindTimer = -3.4499998f;
+		mHeading   = atan2(mOrbitX - mMoveTranslate.x, mOrbitZ - mMoveTranslate.z);
+		velocity.x = mMoveSpeed * (f32)sin(mHeading);
+		velocity.z = mMoveSpeed * (f32)cos(mHeading);
+		velocity.y = 0;
+		mMoveTranslate.SetNow(mMoveTranslate + velocity * (f32)frames);
+		SetPos(mMoveTranslate, 0);
 		break;
 	}
 	case 2:
@@ -1561,20 +1608,25 @@ void XObjActor3::Kind13(u32 frames)
 		}
 		break;
 	case 11: {
-		f32 dx = pos.x - mMoveTranslate.x, dz = pos.z - mMoveTranslate.z;
-		if (sqrtf(dx * dx + 0.f + dz * dz) < 8 && !IsPlayerFlashingFromHit(player) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
+		f32 dx = pos.x - mMoveTranslate.x, dy = 0, dz = pos.z - mMoveTranslate.z;
+		if (sqrtf(dx * dx + dy * dy + dz * dz) < 8 && !IsPlayerFlashingFromHit(player) && !InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
 			player->OnHitFromPosition(pos, 6);
 			mRumble     = 1;
 			mFrameCount = 30;
-			Vec scale   = { 1, 1, 1 };
-			mGens[0]    = (s32)gGame.mParticle.CreateSRT(0xb2, 1, mMoveTranslate, scale, (Vec) { 0, mHeading, 0 }, TRUE);
+			mGens[0]    = (s32)gGame.mParticle.CreateSRT(0xb2, 1, mMoveTranslate, (Vec) { 1, 1, 1 }, (Vec) { 0, mHeading, 0 }, TRUE);
 			PlayGameSound(&gGame.mSound, 0x127, 255);
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mKindStep = 12;
 		} else if (--mFrameCount < 0)
 			HideBossProjectile(this, true);
-		else
-			AdvanceActorAlongHeading(this, frames, mMoveSpeed);
+		else {
+			CVec velocity;
+			velocity.x = mMoveSpeed * (f32)sin(mHeading);
+			velocity.z = mMoveSpeed * (f32)cos(mHeading);
+			velocity.y = 0;
+			mMoveTranslate.SetNow(mMoveTranslate + velocity * (f32)frames);
+			SetPos(mMoveTranslate, 0);
+		}
 		break;
 	}
 	case 12:
@@ -1584,32 +1636,48 @@ void XObjActor3::Kind13(u32 frames)
 	case 20:
 		if (!(mActorFlags.mFlags & 4)) {
 			XObjSpiderBoss* boss = ProjectileOwner();
+			Vec center           = { 0, 0, 0 };
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				// lobbed round the boss: the first onto its centre, the rest in a ring of 36
 				PlaceBossProjectile(this, boss, 16);
 				mKindTimer = 10;
-				Vec center
-				    = { HSD_JObjGetTranslationX(boss->mJObj), HSD_JObjGetTranslationY(boss->mJObj), HSD_JObjGetTranslationZ(boss->mJObj) };
-				mMoveSpeed = 2.4f;
+				center.x   = HSD_JObjGetTranslationX(boss->mJObj);
+				center.y   = HSD_JObjGetTranslationY(boss->mJObj);
+				center.z   = HSD_JObjGetTranslationZ(boss->mJObj);
+				// the distance to the centre is worked out as in step 0 and not used
+				f32 dx = center.x - mMoveTranslate.x, dy = 0, dz = center.z - mMoveTranslate.z;
+				f32 distance = sqrtf(dx * dx + dy * dy + dz * dz);
+				mMoveSpeed   = 2.4f;
 				AimBossVolley(this, center, 36);
 			}
 		}
 		break;
-	case 21:
+	case 21: {
+		CVec velocity;
 		if (BossProjectileLanded(this, frames)) {
 			mKindTimer       = 0;
 			mMoveTranslate.y = 0;
 			mFrameCount      = 30;
 			if (mTimerFadeMode == 0) {
-				Vec scale = { 1, 1, 1 };
-				mGens[0]  = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, scale, (Vec) { 0, 0, 0 }, TRUE);
-				mRumble   = 1;
+				mGens[0] = (s32)gGame.mParticle.CreateSRT(0xb1, 1, mMoveTranslate, (Vec) { 1, 1, 1 }, (Vec) { 0, 0, 0 }, TRUE);
+				mRumble  = 1;
 			}
 			SetAnim(1, TRUE, NULL, NULL, NULL, 0, 1, 0, 10);
 			mKindStep = 22;
-		} else
-			SteerFallingProjectile(this, frames);
+			break;
+		}
+		if (mKindTimer >= -3.4499998f)
+			mKindTimer -= .36f * frames;
+		else
+			mKindTimer = -3.4499998f;
+		mHeading   = atan2(mOrbitX - mMoveTranslate.x, mOrbitZ - mMoveTranslate.z);
+		velocity.x = mMoveSpeed * (f32)sin(mHeading);
+		velocity.z = mMoveSpeed * (f32)cos(mHeading);
+		velocity.y = 0;
+		mMoveTranslate.SetNow(mMoveTranslate + velocity * (f32)frames);
+		SetPos(mMoveTranslate, 0);
 		break;
+	}
 	case 22:
 		if (GetAnimEndFrame(mJObj) - frames <= GetAnimFrame(mJObj))
 			HideBossProjectile(this, false);

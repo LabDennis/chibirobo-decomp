@@ -175,6 +175,12 @@ public:
 		mTarget.z = z;
 	}
 	void SetTarget(const Vec& v) { SetTarget(v.x, v.y, v.z); }
+	// puts it at a value with its target there too, the speed stays
+	void SetNow(const Vec& v)
+	{
+		Set(v);
+		SetTarget(v);
+	}
 
 	// inlined:
 	bool IsMoving() const;
