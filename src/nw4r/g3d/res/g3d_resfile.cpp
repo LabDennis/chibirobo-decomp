@@ -495,6 +495,11 @@ bool ResFile::HasResAnmChr() const {
         &ref().dict.topLevel))[ResName(&ResNameData_AnmChr)] != NULL;
 }
 
+bool ResFile::HasResAnmVis() const {
+    return ResDic(const_cast<ResDicData*>(
+        &ref().dict.topLevel))[ResName(&ResNameData_AnmVis)] != NULL;
+}
+
 bool ResFile::HasResAnmClr() const {
     return ResDic(const_cast<ResDicData*>(
         &ref().dict.topLevel))[ResName(&ResNameData_AnmClr)] != NULL;

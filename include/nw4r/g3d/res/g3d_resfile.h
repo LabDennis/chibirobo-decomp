@@ -133,6 +133,7 @@ public:
     bool HasResPltt() const;
     bool HasResTex() const;
     bool HasResAnmChr() const;
+    bool HasResAnmVis() const;
     bool HasResAnmClr() const;
     bool HasResAnmTexPat() const;
     bool HasResAnmTexSrt() const;

@@ -1123,6 +1123,7 @@ nw4r/g3d/res/g3d_resanm.cpp:
 
 nw4r/g3d/res/g3d_resanmvis.cpp:
 	.text start:0x80261A98 end:0x80261BB8
+	.sdata2 start:0x805A7290 end:0x805A72A0
 
 nw4r/g3d/res/g3d_resanmclr.cpp:
 	.text start:0x80261BB8 end:0x80261D24
@@ -1169,21 +1170,37 @@ nw4r/g3d/g3d_transform.cpp:
 
 nw4r/g3d/g3d_anmvis.cpp:
 	.text start:0x80265E24 end:0x80266544
+	.sdata start:0x805A1958 end:0x805A1960
+	.rodata start:0x802DFF90 end:0x802DFFB4
+	.data start:0x803332A0 end:0x80333328
+	.sdata2 start:0x805A7318 end:0x805A7328
 
 nw4r/g3d/g3d_anmclr.cpp:
 	.text start:0x80266544 end:0x802672C8
+	.rodata start:0x802DFFB8 end:0x802DFFE8
+	.data start:0x80333328 end:0x803333B8
+	.sdata2 start:0x805A7328 end:0x805A7338
 
 nw4r/g3d/g3d_anmtexpat.cpp:
 	.text start:0x802672C8 end:0x80267CF4
+	.rodata start:0x802DFFE8 end:0x802E0018
+	.data start:0x803333B8 end:0x80333448
+	.sdata2 start:0x805A7338 end:0x805A7348
 
 nw4r/g3d/g3d_anmtexsrt.cpp:
 	.text start:0x80267CF4 end:0x80268770
 
 nw4r/g3d/g3d_anmchr.cpp:
 	.text start:0x80268770 end:0x8026A668
+	.rodata start:0x802E0048 end:0x802E0094
+	.data start:0x803334D8 end:0x80333638
+	.sdata2 start:0x805A7368 end:0x805A7380
 
 nw4r/g3d/g3d_anmshp.cpp:
 	.text start:0x8026A668 end:0x8026AFC4
+	.rodata start:0x802E0098 end:0x802E00BC
+	.data start:0x80333638 end:0x803336D8
+	.sdata2 start:0x805A7380 end:0x805A7390
 
 nw4r/g3d/g3d_anmscn.cpp:
 	.text start:0x8026AFC4 end:0x8026C528
@@ -1194,6 +1211,8 @@ nw4r/g3d/g3d_obj.cpp:
 nw4r/g3d/g3d_anmobj.cpp:
 	.text start:0x8026C644 end:0x8026C6FC
 	.sdata2 start:0x805A73B0 end:0x805A73B4
+	.rodata start:0x802E00F0 end:0x802E00FC
+	.sdata start:0x805A1960 end:0x805A1964
 
 nw4r/g3d/platform/g3d_gpu.cpp:
 	.text start:0x8026C6FC end:0x8026CC0C
@@ -1256,6 +1275,10 @@ nw4r/g3d/g3d_scnroot.cpp:
 
 nw4r/g3d/g3d_scnmdlsmpl.cpp:
 	.text start:0x8027C64C end:0x8027E3D4
+	.rodata start:0x802E0248 end:0x802E025C
+	.data start:0x80333978 end:0x803339E8
+	.sdata start:0x805A1990 end:0x805A19A8
+	.sdata2 start:0x805A74D8 end:0x805A74DC
 
 nw4r/g3d/g3d_scnmdl.cpp:
 	.text start:0x8027E3D4 end:0x80280E94
@@ -1265,9 +1288,14 @@ nw4r/g3d/g3d_calcmaterial.cpp:
 
 nw4r/g3d/g3d_init.cpp:
 	.text start:0x802812A4 end:0x802813A0
+	.data start:0x80333A30 end:0x80333A78
+	.sdata start:0x805A19A8 end:0x805A19AC
 
 nw4r/g3d/g3d_scnproc.cpp:
 	.text start:0x802813A0 end:0x80281690
+	.rodata start:0x802E0270 end:0x802E0280
+	.data start:0x80333A78 end:0x80333AAC
+	.sdata2 start:0x805A74E0 end:0x805A74E4
 
 nw4r/g3d/g3d_fog.cpp:
 	.text start:0x80281690 end:0x8028188C

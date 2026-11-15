@@ -1,4 +1,5 @@
 #include <nw4r/g3d.h>
+
 #include <nw4r/ut/ut_Color.h>
 #include <nw4r/ut/ut_LockedCache.h>
 #include <nw4r/ut/ut_algorithm.h>
@@ -22,12 +23,8 @@ NW4R_G3D_RTTI_DEF(AnmObjTexSrtRes);
  * AnmObjTexSrt
  *
  ******************************************************************************/
-AnmObjTexSrt::AnmObjTexSrt(MEMAllocator* pAllocator, u16* pBindingBuf,
-                           int numBinding)
-    : AnmObj(pAllocator, NULL),
-      mNumBinding(numBinding),
-      mpBinding(pBindingBuf) {
-
+AnmObjTexSrt::AnmObjTexSrt(MEMAllocator *pAllocator, u16 *pBindingBuf, int numBinding)
+    : AnmObj(pAllocator, NULL), mNumBinding(numBinding), mpBinding(pBindingBuf) {
     Release();
 }
 
@@ -47,12 +44,12 @@ void AnmObjTexSrt::Release() {
     SetAnmFlag(FLAG_ANM_BOUND, false);
 }
 
-AnmObjTexSrtRes* AnmObjTexSrt::Attach(int idx, AnmObjTexSrtRes* pRes) {
+AnmObjTexSrtRes *AnmObjTexSrt::Attach(int idx, AnmObjTexSrtRes *pRes) {
 
     return NULL;
 }
 
-AnmObjTexSrtRes* AnmObjTexSrt::Detach(int idx) {
+AnmObjTexSrtRes *AnmObjTexSrt::Detach(int idx) {
 
     return NULL;
 }
@@ -64,14 +61,12 @@ void AnmObjTexSrt::DetachAll() {}
  * AnmObjTexSrtNode
  *
  ******************************************************************************/
-AnmObjTexSrtNode::AnmObjTexSrtNode(MEMAllocator* pAllocator, u16* pBindingBuf,
-                                   int numBinding,
-                                   AnmObjTexSrtRes** ppChildrenBuf,
-                                   int numChildren)
+AnmObjTexSrtNode::AnmObjTexSrtNode(
+    MEMAllocator *pAllocator, u16 *pBindingBuf, int numBinding, AnmObjTexSrtRes **ppChildrenBuf, int numChildren
+)
     : AnmObjTexSrt(pAllocator, pBindingBuf, numBinding),
       mChildrenArraySize(numChildren),
       mpChildrenArray(ppChildrenBuf) {
-
     for (int i = 0; i < mChildrenArraySize; i++) {
         mpChildrenArray[i] = NULL;
     }
@@ -81,8 +76,8 @@ AnmObjTexSrtNode::~AnmObjTexSrtNode() {
     DetachAll();
 }
 
-AnmObjTexSrtRes* AnmObjTexSrtNode::Attach(int idx, AnmObjTexSrtRes* pRes) {
-    AnmObjTexSrtRes* pOld = Detach(idx);
+AnmObjTexSrtRes *AnmObjTexSrtNode::Attach(int idx, AnmObjTexSrtRes *pRes) {
+    AnmObjTexSrtRes *pOld = Detach(idx);
     bool hasAnm = false;
 
     for (u32 i = 0; i < mNumBinding; i++) {
@@ -103,8 +98,8 @@ AnmObjTexSrtRes* AnmObjTexSrtNode::Attach(int idx, AnmObjTexSrtRes* pRes) {
     return pOld;
 }
 
-AnmObjTexSrtRes* AnmObjTexSrtNode::Detach(int idx) {
-    AnmObjTexSrtRes* pOld = mpChildrenArray[idx];
+AnmObjTexSrtRes *AnmObjTexSrtNode::Detach(int idx) {
+    AnmObjTexSrtRes *pOld = mpChildrenArray[idx];
 
     if (pOld != NULL) {
         pOld->G3dProc(G3DPROC_DETACH_PARENT, 0, this);
@@ -115,7 +110,7 @@ AnmObjTexSrtRes* AnmObjTexSrtNode::Detach(int idx) {
             u16 binding = BINDING_UNDEFINED;
 
             for (int j = 0; j < mChildrenArraySize; j++) {
-                AnmObjTexSrtRes* pChild = mpChildrenArray[j];
+                AnmObjTexSrtRes *pChild = mpChildrenArray[j];
 
                 if (pChild == NULL || !pChild->TestDefined(i)) {
                     continue;
@@ -191,7 +186,7 @@ bool AnmObjTexSrtNode::Bind(const ResMdl mdl) {
     bool success = false;
 
     for (int i = 0; i < mChildrenArraySize; i++) {
-        AnmObjTexSrtRes* pChild = mpChildrenArray[i];
+        AnmObjTexSrtRes *pChild = mpChildrenArray[i];
         if (pChild == NULL) {
             continue;
         }
@@ -220,29 +215,29 @@ void AnmObjTexSrtNode::Release() {
     AnmObjTexSrt::Release();
 }
 
-void AnmObjTexSrtNode::G3dProc(u32 task, u32 param, void* pInfo) {
+void AnmObjTexSrtNode::G3dProc(u32 task, u32 param, void *pInfo) {
 
     switch (task) {
-    case G3DPROC_CHILD_DETACHED: {
-        for (int i = 0; i < mChildrenArraySize; i++) {
-            if (mpChildrenArray[i] == pInfo) {
-                Detach(i);
-                return;
+        case G3DPROC_CHILD_DETACHED: {
+            for (int i = 0; i < mChildrenArraySize; i++) {
+                if (mpChildrenArray[i] == pInfo) {
+                    Detach(i);
+                    return;
+                }
             }
+
+            break;
         }
 
-        break;
-    }
+        case G3DPROC_DETACH_PARENT: {
+            SetParent(NULL);
+            break;
+        }
 
-    case G3DPROC_DETACH_PARENT: {
-        SetParent(NULL);
-        break;
-    }
-
-    case G3DPROC_ATTACH_PARENT: {
-        SetParent(static_cast<G3dObj*>(pInfo));
-        break;
-    }
+        case G3DPROC_ATTACH_PARENT: {
+            SetParent(static_cast<G3dObj *>(pInfo));
+            break;
+        }
     }
 }
 
@@ -251,9 +246,8 @@ void AnmObjTexSrtNode::G3dProc(u32 task, u32 param, void* pInfo) {
  * AnmObjTexSrtOverride
  *
  ******************************************************************************/
-AnmObjTexSrtOverride* AnmObjTexSrtOverride::Construct(MEMAllocator* pAllocator,
-                                                      u32* pSize, ResMdl mdl,
-                                                      int numChildren) {
+AnmObjTexSrtOverride *
+AnmObjTexSrtOverride::Construct(MEMAllocator *pAllocator, u32 *pSize, ResMdl mdl, int numChildren) {
     if (!mdl.IsValid()) {
         return NULL;
     }
@@ -263,7 +257,7 @@ AnmObjTexSrtOverride* AnmObjTexSrtOverride::Construct(MEMAllocator* pAllocator,
 
     u32 objSize = sizeof(AnmObjTexSrtOverride);
     u32 bindSize = bindNum * sizeof(u16);
-    u32 childrenSize = numChildren * sizeof(AnmObjTexSrtRes*);
+    u32 childrenSize = numChildren * sizeof(AnmObjTexSrtRes *);
 
     u32 bindOfs = align4(objSize);
     u32 childrenOfs = align4(bindOfs + bindSize);
@@ -277,7 +271,7 @@ AnmObjTexSrtOverride* AnmObjTexSrtOverride::Construct(MEMAllocator* pAllocator,
         return NULL;
     }
 
-    u8* pBuffer = reinterpret_cast<u8*>(Alloc(pAllocator, size));
+    u8 *pBuffer = reinterpret_cast<u8 *>(Alloc(pAllocator, size));
     if (pBuffer == NULL) {
         return NULL;
     }
@@ -292,23 +286,23 @@ AnmObjTexSrtOverride* AnmObjTexSrtOverride::Construct(MEMAllocator* pAllocator,
     // clang-format on
 }
 
-const TexSrtAnmResult* AnmObjTexSrtOverride::GetResult(TexSrtAnmResult* pResult,
-                                                       u32 idx) {
+const TexSrtAnmResult *AnmObjTexSrtOverride::GetResult(TexSrtAnmResult *pResult, u32 idx) {
     for (int i = mChildrenArraySize - 1; i >= 0; i--) {
-        AnmObjTexSrtRes* pChild = mpChildrenArray[i];
+        AnmObjTexSrtRes *pChild = mpChildrenArray[i];
 
         if (pChild == NULL || !pChild->TestExistence(idx)) {
             continue;
         }
 
-        const TexSrtAnmResult* pChildResult = pChild->GetResult(pResult, idx);
+        const TexSrtAnmResult *pChildResult = pChild->GetResult(pResult, idx);
 
-        if (pChildResult->flags != 0) {
+        if (pChildResult->flags != 0 || pChildResult->indFlags != 0) {
             return pChildResult;
         }
     }
 
     pResult->flags = 0;
+    pResult->indFlags = 0;
     return pResult;
 }
 
@@ -317,9 +311,8 @@ const TexSrtAnmResult* AnmObjTexSrtOverride::GetResult(TexSrtAnmResult* pResult,
  * AnmObjTexSrtRes
  *
  ******************************************************************************/
-AnmObjTexSrtRes* AnmObjTexSrtRes::Construct(MEMAllocator* pAllocator,
-                                            u32* pSize, ResAnmTexSrt srt,
-                                            ResMdl mdl, bool cache) {
+AnmObjTexSrtRes *
+AnmObjTexSrtRes::Construct(MEMAllocator *pAllocator, u32 *pSize, ResAnmTexSrt srt, ResMdl mdl, bool cache) {
     if (!srt.IsValid() || !mdl.IsValid()) {
         return NULL;
     }
@@ -342,30 +335,25 @@ AnmObjTexSrtRes* AnmObjTexSrtRes::Construct(MEMAllocator* pAllocator,
         return NULL;
     }
 
-    u8* pBuffer = reinterpret_cast<u8*>(Alloc(pAllocator, size));
+    u8 *pBuffer = reinterpret_cast<u8 *>(Alloc(pAllocator, size));
     if (pBuffer == NULL) {
         return NULL;
     }
 
-    TexSrtAnmResult* pCacheBuf = cache ? reinterpret_cast<TexSrtAnmResult*>(
-                                             pBuffer + sizeof(AnmObjTexSrtRes))
-                                       : NULL;
+    TexSrtAnmResult *pCacheBuf = cache ? reinterpret_cast<TexSrtAnmResult *>(pBuffer + sizeof(AnmObjTexSrtRes)) : NULL;
 
-    u16* pBindingBuf =
-        reinterpret_cast<u16*>(cacheSize + (pBuffer + sizeof(AnmObjTexSrtRes)));
+    u16 *pBindingBuf = reinterpret_cast<u16 *>(cacheSize + (pBuffer + sizeof(AnmObjTexSrtRes)));
 
-    return new (pBuffer)
-        AnmObjTexSrtRes(pAllocator, srt, pBindingBuf, bindNum, pCacheBuf);
+    return new (pBuffer) AnmObjTexSrtRes(pAllocator, srt, pBindingBuf, bindNum, pCacheBuf);
 }
 
-AnmObjTexSrtRes::AnmObjTexSrtRes(MEMAllocator* pAllocator, ResAnmTexSrt srt,
-                                 u16* pBindingBuf, int numBinding,
-                                 TexSrtAnmResult* pCacheBuf)
+AnmObjTexSrtRes::AnmObjTexSrtRes(
+    MEMAllocator *pAllocator, ResAnmTexSrt srt, u16 *pBindingBuf, int numBinding, TexSrtAnmResult *pCacheBuf
+)
     : AnmObjTexSrt(pAllocator, pBindingBuf, numBinding),
       FrameCtrl(0.0f, srt.GetNumFrame(), GetAnmPlayPolicy(srt.GetAnmPolicy())),
       mRes(srt),
       mpResultCache(pCacheBuf) {
-
     if (mpResultCache != NULL) {
         UpdateCache();
     }
@@ -385,6 +373,9 @@ f32 AnmObjTexSrtRes::GetFrame() const {
 
 void AnmObjTexSrtRes::SetUpdateRate(f32 rate) {
     SetRate(rate);
+    if (rate == 0.f && mpResultCache != NULL) {
+        UpdateCache();
+    }
 }
 
 f32 AnmObjTexSrtRes::GetUpdateRate() const {
@@ -392,10 +383,12 @@ f32 AnmObjTexSrtRes::GetUpdateRate() const {
 }
 
 void AnmObjTexSrtRes::UpdateFrame() {
-    UpdateFrm();
+    if (GetRate() != 0.f) {
+        UpdateFrm();
 
-    if (mpResultCache != NULL) {
-        UpdateCache();
+        if (mpResultCache != NULL) {
+            UpdateCache();
+        }
     }
 }
 
@@ -404,7 +397,7 @@ bool AnmObjTexSrtRes::Bind(const ResMdl mdl) {
     bool success = false;
 
     for (u16 i = 0; i < numAnim; i++) {
-        const ResAnmTexSrtMatData* pData = mRes.GetMatAnm(i);
+        const ResAnmTexSrtMatData *pData = mRes.GetMatAnm(i);
 
         // Seek back from name string to start of ResName
         ResName name(ut::AddOffsetToPtr(pData, pData->name - 4));
@@ -422,12 +415,12 @@ bool AnmObjTexSrtRes::Bind(const ResMdl mdl) {
     return success;
 }
 
-const TexSrtAnmResult* AnmObjTexSrtRes::GetResult(TexSrtAnmResult* pResult,
-                                                  u32 idx) {
+const TexSrtAnmResult *AnmObjTexSrtRes::GetResult(TexSrtAnmResult *pResult, u32 idx) {
     u32 id = mpBinding[idx];
 
     if (id & (BINDING_UNDEFINED | BINDING_INVALID)) {
         pResult->flags = 0;
+        pResult->indFlags = 0;
         return pResult;
     }
 
@@ -452,23 +445,23 @@ void AnmObjTexSrtRes::UpdateCache() {
     }
 }
 
-void AnmObjTexSrtRes::G3dProc(u32 task, u32 param, void* pInfo) {
+void AnmObjTexSrtRes::G3dProc(u32 task, u32 param, void *pInfo) {
 
     switch (task) {
-    case G3DPROC_UPDATEFRAME: {
-        UpdateFrame();
-        break;
-    }
+        case G3DPROC_UPDATEFRAME: {
+            UpdateFrame();
+            break;
+        }
 
-    case G3DPROC_DETACH_PARENT: {
-        SetParent(NULL);
-        break;
-    }
+        case G3DPROC_DETACH_PARENT: {
+            SetParent(NULL);
+            break;
+        }
 
-    case G3DPROC_ATTACH_PARENT: {
-        SetParent(static_cast<G3dObj*>(pInfo));
-        break;
-    }
+        case G3DPROC_ATTACH_PARENT: {
+            SetParent(static_cast<G3dObj *>(pInfo));
+            break;
+        }
     }
 }
 
@@ -477,16 +470,15 @@ void AnmObjTexSrtRes::G3dProc(u32 task, u32 param, void* pInfo) {
  * ApplyTexSrtAnmResult
  *
  ******************************************************************************/
-void ApplyTexSrtAnmResult(ResTexSrt srt, const TexSrtAnmResult* pResult) {
-    ResTexSrtData& r = srt.ref();
-
-    u32 flags = pResult->flags;
+void ApplyTexSrtAnmResult(ResTexSrt srt, const TexSrtAnmResult *pResult) {
+    ResTexSrtData &r = srt.ref();
+    u32 mdlFlags = r.flag;
+    u32 anmFlags = pResult->flags;
     u32 mask = 0x0F;
 
-    for (int i = 0; flags != 0;
-         flags >>= TexSrt::NUM_OF_FLAGS, mask <<= 4, i++) {
-
-        if (!(flags & 1)) {
+    for (int i = 0; mdlFlags != 0 && anmFlags != 0;
+         mdlFlags >>= TexSrt::NUM_OF_FLAGS, anmFlags >>= TexSrt::NUM_OF_FLAGS, mask <<= 4, i++) {
+        if (!(mdlFlags & TexSrt::FLAG_ANM_EXISTS) || !(anmFlags & TexSrt::FLAG_ANM_EXISTS)) {
             continue;
         }
 
@@ -496,33 +488,30 @@ void ApplyTexSrtAnmResult(ResTexSrt srt, const TexSrtAnmResult* pResult) {
     }
 }
 
-void ApplyTexSrtAnmResult(ResTexSrt srt, ResMatIndMtxAndScale ind,
-                          const TexSrtAnmResult* pResult) {
+void ApplyTexSrtAnmResult(ResTexSrt srt, ResMatIndMtxAndScale ind, const TexSrtAnmResult *pResult) {
+    // I need this to not inline :(
     ApplyTexSrtAnmResult(srt, pResult);
 
     u32 flags = pResult->indFlags;
 
-    for (int i = TexSrtAnmResult::NUM_OF_MAT_TEX_MTX; flags != 0;
-         i++, flags >>= TexSrt::NUM_OF_FLAGS) {
+    for (int i = TexSrtAnmResult::NUM_OF_MAT_TEX_MTX; flags != 0; i++, flags >>= TexSrt::NUM_OF_FLAGS) {
         if (!(flags & 1)) {
             continue;
         }
 
         math::MTX34 mtx;
 
-        CalcTexMtx(&mtx, true, pResult->srt[i],
-                   static_cast<TexSrt::Flag>(flags & TexSrt::FLAGSET_IDENTITY),
-                   TexSrtTypedef::TEXMATRIXMODE_MAYA);
+        CalcTexMtx(&mtx, true, pResult->srt[i], static_cast<TexSrt::Flag>(flags & TexSrt::FLAGSET_IDENTITY));
 
         s8 scaleExp;
 
         f32 maxElem = 0.000000000000000001f;
-        maxElem = ut::Max(maxElem, math::FAbs(mtx._00));
-        maxElem = ut::Max(maxElem, math::FAbs(mtx._01));
-        maxElem = ut::Max(maxElem, math::FAbs(mtx._03));
-        maxElem = ut::Max(maxElem, math::FAbs(mtx._10));
-        maxElem = ut::Max(maxElem, math::FAbs(mtx._11));
-        maxElem = ut::Max(maxElem, math::FAbs(mtx._13));
+        maxElem = ut::Max(maxElem, ut::Abs(mtx._00));
+        maxElem = ut::Max(maxElem, ut::Abs(mtx._01));
+        maxElem = ut::Max(maxElem, ut::Abs(mtx._03));
+        maxElem = ut::Max(maxElem, ut::Abs(mtx._10));
+        maxElem = ut::Max(maxElem, ut::Abs(mtx._11));
+        maxElem = ut::Max(maxElem, ut::Abs(mtx._13));
 
         scaleExp = static_cast<s8>(math::FGetExpPart(maxElem) + 1);
         f32 invScale = std::ldexpf(1.0f, -scaleExp);
@@ -534,8 +523,7 @@ void ApplyTexSrtAnmResult(ResTexSrt srt, ResMatIndMtxAndScale ind,
         mtx._11 *= invScale;
         mtx._12 = mtx._13 * invScale;
 
-        GXIndTexMtxID id = static_cast<GXIndTexMtxID>(
-            i - TexSrtAnmResult::NUM_OF_MAT_TEX_MTX + 1);
+        GXIndTexMtxID id = static_cast<GXIndTexMtxID>(i - TexSrtAnmResult::NUM_OF_MAT_TEX_MTX + 1);
 
         ind.GXSetIndTexMtx(id, mtx, scaleExp);
     }
