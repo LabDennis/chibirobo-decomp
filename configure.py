@@ -1301,6 +1301,12 @@ if wii:
                 # Wii's order (exact reverse of the GameCube file). RemoveInventoryItemCount
                 # re-reads mCount for `count` instead of subtracting in one expression
                 Object(NonMatching, "game/wii/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii XObj family: no sysdolphin head, nw4r callback base in front (+0x28). The
+                # Wii file carries the GameCube file's functions in exact reverse order. NonMatching:
+                # its 0.0f literal is pooled across TUs at lbl_805A58B0 — a compiled unit can not
+                # export that name for the eight neighbouring auto objects, and claiming the literal
+                # in splits would take it away from the auto object that defines it
+                Object(NonMatching, "game/wii/xobjactorstop.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii
                 Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),
