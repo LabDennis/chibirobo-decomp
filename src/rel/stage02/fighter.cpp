@@ -4488,9 +4488,9 @@ extern "C" void PilotNwing_Update(PilotNwing* link, u32 dt, f32 animFrame)
 extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
 {
 	Mato* item = work->mAim.mTarget;
-	Vec start;
-	Vec local;
 	CVec end;
+	Vec local;
+	Vec start;
 	UnkGame_96BC* player;
 	f32 dist;
 
@@ -4511,7 +4511,8 @@ extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
 		work->mShots.Add(item->GetPos(), end, item);
 	}
 	player           = GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674));
-	player->mBattery = player->mBattery - batteryCost > 0.0f ? player->mBattery - batteryCost : 0.0f;
+	f32 battery      = player->mBattery - batteryCost;
+	player->mBattery = battery > 0.0f ? battery : 0.0f;
 	if (player->mBattery < 0.0f) {
 		player->mBattery = 0.0f;
 	}
