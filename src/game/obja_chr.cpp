@@ -2422,8 +2422,6 @@ static inline bool TestStatus(const XObj* object, u64 mask)
 	return (u8)((object->mStatus.mFlags & mask) != 0);
 }
 
-extern "C" s32 lbl_8065B260;
-
 // out of battery, IsPlayerStopped
 static inline bool IsStopped(const XObjChr* chr)
 {
@@ -4061,8 +4059,8 @@ static inline void ClearPlugState(XObjPlug* plug, BOOL resetJoint)
 {
 	plug->mConnection = 0;
 	if (resetJoint) {
-		s32 path        = lbl_8065B260;
-		HSD_JObj* joint = GetJointByPath(plug->mJObj, &path, 1);
+		s32 path[]      = { 0 };
+		HSD_JObj* joint = GetJointByPath(plug->mJObj, path, 1);
 		HSD_JObjSetRotationX(joint, 0.0f);
 	}
 }
