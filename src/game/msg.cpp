@@ -3982,7 +3982,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		}
 		s32 line = font->mGlyphs[font->mCharCount - 1].mLine;
 		f32 x    = width / 2.0f + (font->mCursorX + (textOffset * 0.5f + font->mWindowX));
-		f32 y    = (font->mData->mHeights[line] / 2.0f + (font->mLineY[line] + (8.0f + font->mWindowY))) - height * 0.25f;
+		f32 y    = (font->mData->mHeights[line] / 2.0f + (font->mLineY[line] + (8.0f + font->mWindowY))) - height / 4.0f;
 		f32 wave = sin(font->mBlinkPhase);
 		if (wave < 0.0f)
 			wave = 0.0f;

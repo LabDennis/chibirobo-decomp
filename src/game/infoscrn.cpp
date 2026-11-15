@@ -654,7 +654,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		ApproachHudScale(h->mBatteryScale, 1.4f);
 		break;
 	}
-	f32 step = (h->mTargetBatteryOffsetY - h->mBatteryOffsetY) * 0.25f;
+	f32 step = (h->mTargetBatteryOffsetY - h->mBatteryOffsetY) / 4.0f;
 	if (step < 0)
 		step = -step;
 	Approach(&h->mBatteryOffsetY, &h->mTargetBatteryOffsetY, step);

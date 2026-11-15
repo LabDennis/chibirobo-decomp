@@ -10649,7 +10649,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 	y += scale;
 	f32 margin = 20.0f * scale, size = 17.0f * scale;
 	f32 labelOffset = 155.0f * scale + margin, rowOffset = 204.0f * scale;
-	f32 originX = left - width * 0.25f, originY = (y - height) - height * 0.25f;
+	f32 originX = left - width / 4.0f, originY = (y - height) - height * 0.25f;
 	if (choice != 2) {
 		f32 inset    = 2.0f * scale;
 		f32 cx       = PCRecycleChoiceX(originX, size, scale, margin, labelOffset, 1.0f);

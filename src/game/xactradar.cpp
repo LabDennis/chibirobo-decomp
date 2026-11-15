@@ -367,19 +367,18 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 		if (act->mTargetDistance < 0)
 			act->mTargetDistance = 0;
 		if (act->mState == 0) {
-			XSound& sound = gGame.mSound;
 			// near, middle or far: each has its own tone and turns the beam red, yellow or blue
 			if (act->mTargetDistance < (s32)GetRadarParameter(0) / 100.f) {
 				StartRadarTone(act, 0x18e, 255, 150, 150, 255, 50, 50);
-				sound.StopIfPlaying(0x18d);
-				sound.StopIfPlaying(0x18c);
+				gGame.mSound.StopIfPlaying(0x18d);
+				gGame.mSound.StopIfPlaying(0x18c);
 			} else if (act->mTargetDistance < (s32)GetRadarParameter(1) / 100.f) {
-				sound.StopIfPlaying(0x18e);
+				gGame.mSound.StopIfPlaying(0x18e);
 				StartRadarTone(act, 0x18d, 255, 255, 150, 255, 255, 50);
-				sound.StopIfPlaying(0x18c);
+				gGame.mSound.StopIfPlaying(0x18c);
 			} else {
-				sound.StopIfPlaying(0x18e);
-				sound.StopIfPlaying(0x18d);
+				gGame.mSound.StopIfPlaying(0x18e);
+				gGame.mSound.StopIfPlaying(0x18d);
 				StartRadarTone(act, 0x18c, 150, 150, 255, 50, 50, 255);
 			}
 		}

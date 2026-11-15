@@ -585,8 +585,7 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 	}
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 	if (burst.mState) {
-		CTexObj& texture = gGame.mTpl.mTex;
-		f32 radius       = 64;
+		f32 radius = 64;
 		for (int i = 0; i < burst.mNum; ++i) {
 			PointPtclOne& p = burst.mPtcls[i];
 			if (!(p.mFade > 0 && p.mFade < 1))
@@ -619,16 +618,16 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 			} else if (p.mState < 0) {
 				CTexObj tex;
 				if (p.mState == -1) { // texture 154, turned toward where it was last frame
-					tex = PointTexture(texture, 154);
+					tex = PointTexture(gGame.mTpl.mTex, 154);
 					if (p.mLastScreenX == px + dx && p.mLastScreenY == py + dy)
 						rotation = p.mLastAngle;
 					else
 						rotation = (f32)atan2(p.mLastScreenX - (px + dx), p.mLastScreenY - (py + dy)) - .52359879f;
 				} else if (p.mState == -2) {
-					tex      = PointTexture(texture, 152);
+					tex      = PointTexture(gGame.mTpl.mTex, 152);
 					rotation = 0;
 				} else if (p.mState == -3) {
-					tex      = PointTexture(texture, 153);
+					tex      = PointTexture(gGame.mTpl.mTex, 153);
 					rotation = 0;
 				}
 				radius    = 44;
