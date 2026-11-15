@@ -2,6 +2,7 @@
 #include "Dolphin/si.h"
 #include "Dolphin/os.h"
 #include <stdlib.h>
+#include "revolution/os/OSReset.h"
 
 const char* __PADVersion = "<< RVL_SDK - PAD \trelease build: Jul 30 2008 19:23:33 (0x4199_60831) >>";
 
@@ -10,7 +11,7 @@ static void SPEC0_MakeStatus(s32 chan, PADStatus* status, u32 data[2]);
 static void SPEC1_MakeStatus(s32 chan, PADStatus* status, u32 data[2]);
 static void SPEC2_MakeStatus(s32 chan, PADStatus* status, u32 data[2]);
 static void PADTypeAndStatusCallback(s32 chan, u32 type);
-static BOOL OnReset(BOOL final);
+static BOOL OnReset(BOOL final, u32 event);
 
 // static symbols.
 static u32 Type[SI_MAX_CHAN];
@@ -28,7 +29,7 @@ static void (*MakeStatus)(s32, PADStatus*, u32[2]) = SPEC2_MakeStatus;
 static u32 CmdReadOrigin = 0x41 << 24;
 static u32 CmdCalibrate  = 0x42 << 24;
 
-static OSResetFunctionInfo ResetFunctionInfo = { OnReset, 127 };
+static OSShutdownFunctionInfo ResetFunctionInfo = { OnReset, 127 };
 
 static BOOL Initialized;
 
@@ -398,7 +399,7 @@ BOOL PADInit(void)
 	}
 
 	SIRefreshSamplingRate();
-	OSRegisterResetFunction(&ResetFunctionInfo);
+	OSRegisterShutdownFunction(&ResetFunctionInfo);
 	return PADReset(PAD_CHAN0_BIT | PAD_CHAN1_BIT | PAD_CHAN2_BIT | PAD_CHAN3_BIT);
 }
 
@@ -858,7 +859,7 @@ void PADSetAnalogMode(u32 mode)
  * @note Address: 0x80174508
  * @note Size: 0xBC
  */
-static BOOL OnReset(BOOL f)
+static BOOL OnReset(BOOL f, u32 event)
 {
 	static BOOL recalibrated = FALSE;
 	BOOL sync;

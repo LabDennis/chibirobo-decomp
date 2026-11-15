@@ -1,4 +1,5 @@
 #include "revolution/os/OSAlarm.h"
+#include "revolution/os/OSReset.h"
 
 #include <dolphin/dolphin.h>
 #include <dolphin/os.h>
@@ -16,15 +17,6 @@ static void SetTimer(OSAlarm * alarm);
 static void InsertAlarm(OSAlarm* alarm, OSTime fire, OSAlarmHandler handler);
 static void DecrementerExceptionCallback(__REGISTER __OSException exception, __REGISTER OSContext* context);
 static void DecrementerExceptionHandler(__OSException exception, OSContext* context);
-typedef BOOL (*OSShutdownFunction)(BOOL final, u32 event);
-typedef struct OSShutdownFunctionInfo OSShutdownFunctionInfo;
-struct OSShutdownFunctionInfo {
-    OSShutdownFunction func;
-    u32 priority;
-    OSShutdownFunctionInfo* next;
-    OSShutdownFunctionInfo* prev;
-};
-extern void OSRegisterShutdownFunction(OSShutdownFunctionInfo* info);
 static BOOL OnReset(BOOL final, u32 event);
 static OSShutdownFunctionInfo ResetFunctionInfo = {OnReset, 0xFFFFFFFF, NULL, NULL};
 static OSAlarmQueue AlarmQueue;
