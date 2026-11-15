@@ -1345,7 +1345,7 @@ if wii:
                 Object(Matching, "dolphin/mtx/mtxvec.c"),
                 Object(Matching, "revolution/MTX/vec.c"),
                 Object(Matching, "revolution/PAD/Pad.c", extra_cflags=["-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
-                Object(Equivalent, "revolution/DVD/dvdqueue.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/DVD/dvdqueue.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/AI/ai.c"),
                 # the whole file was built without instruction scheduling: with it on, all 19 functions fall (to 48-90 %)
                 Object(Matching, "revolution/EXI/EXIBios.c", mw_version="GC/3.0a5.2", extra_cflags=["-schedule off"]),
