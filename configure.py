@@ -1418,7 +1418,7 @@ if wii:
                     extra_cflags=["-Cpp_exceptions off", "-ipa file", "-use_lmw_stmw off"],
                 ),
                 Object(
-                    Equivalent, "revolution/MEM/mem_expHeap.c", mw_version="GC/3.0a5.2",
+                    Matching, "revolution/MEM/mem_expHeap.c", mw_version="GC/3.0a5.2",
                     extra_cflags=["-Cpp_exceptions off", "-ipa file", "-use_lmw_stmw off"],
                 ),
                 Object(

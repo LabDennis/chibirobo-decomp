@@ -682,9 +682,9 @@ OSPriority OSGetThreadPriority(OSThread* thread)
  * @note Address: N/A
  * @note Size: ?
  */
-// Not in the game, so the body cannot be compared. Retail's .bss keeps IdleThread behind
+// Not in the dol; body as in tp's revolution OSThread.c. Retail's .bss keeps IdleThread behind
 // IdleContext, and this compiler drops a static nothing refers to: these two API functions
-// (declared in OSThread.h) are what refers to it.
+// are what refers to it.
 OSThread* OSSetIdleFunction(OSIdleFunction idleFunction, void* param, void* stack, u32 stackSize)
 {
 	if (idleFunction) {

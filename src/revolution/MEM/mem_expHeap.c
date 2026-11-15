@@ -13,53 +13,50 @@ typedef struct MemRegion {
 	void* end;   // at 0x4
 } MemRegion;
 
-static MEMiExpHeapHead* GetExpHeapHeadPtrFromHeapHead_(const MEMiHeapHead* heap)
+static inline MEMiExpHeapHead* GetExpHeapHeadPtrFromHeapHead_(const MEMiHeapHead* heap)
 {
 	return AddU32ToPtr(heap, sizeof(MEMiHeapHead));
 }
 
-static MEMiHeapHead* GetHeapHeadPtrFromExpHeapHead_(const MEMiExpHeapHead* exp)
+static inline MEMiHeapHead* GetHeapHeadPtrFromExpHeapHead_(const MEMiExpHeapHead* exp)
 {
 	return SubU32ToPtr(exp, sizeof(MEMiHeapHead));
 }
 
-static void SetAllocMode_(MEMiExpHeapHead* exp, u16 mode)
+static inline void SetAllocMode_(MEMiExpHeapHead* exp, u16 mode)
 {
 	exp->allocMode = mode;
 }
 
-static u16 GetAllocMode_(const MEMiExpHeapHead* exp)
+static inline u16 GetAllocMode_(const MEMiExpHeapHead* exp)
 {
 	return exp->allocMode;
 }
 
-static MEMiExpHeapMBlock* GetMBlockHeadPtr_(void* memBlock)
+static inline MEMiExpHeapMBlock* GetMBlockHeadPtr_(void* memBlock)
 {
 	return SubU32ToPtr(memBlock, sizeof(MEMiExpHeapMBlock));
 }
 
-static void* GetMemPtrForMBlock_(MEMiExpHeapMBlock* mblock)
+static inline void* GetMemPtrForMBlock_(MEMiExpHeapMBlock* mblock)
 {
 	return AddU32ToPtr(mblock, sizeof(MEMiExpHeapMBlock));
 }
 
-static void* GetMBlockEndAddr_(MEMiExpHeapMBlock* mblock)
+static inline void* GetMBlockEndAddr_(MEMiExpHeapMBlock* mblock)
 {
 	return AddU32ToPtr(GetMemPtrForMBlock_(mblock), mblock->size);
 }
 
-static s32 GetAlignmentForMBlock_(const MEMiExpHeapMBlock* mblock)
+static inline s32 GetAlignmentForMBlock_(const MEMiExpHeapMBlock* mblock)
 {
 	return mblock->align;
 }
 
 static MEMiExpHeapMBlock* RemoveMBlock_(MEMiExpHeapMBlockList* list, MEMiExpHeapMBlock* mblock)
 {
-	MEMiExpHeapMBlock* prev;
-	MEMiExpHeapMBlock* next;
-
-	prev = mblock->prev;
-	next = mblock->next;
+	MEMiExpHeapMBlock* const prev = mblock->prev;
+	MEMiExpHeapMBlock* const next = mblock->next;
 
 	// Fix prev link
 	if (prev != NULL) {
@@ -98,21 +95,20 @@ static MEMiExpHeapMBlock* InsertMBlock_(MEMiExpHeapMBlockList* list, MEMiExpHeap
 	return block;
 }
 
-static MEMiExpHeapMBlock* AppendMBlock_(MEMiExpHeapMBlockList* list, MEMiExpHeapMBlock* block)
+static inline MEMiExpHeapMBlock* AppendMBlock_(MEMiExpHeapMBlockList* list, MEMiExpHeapMBlock* block)
 {
 	return InsertMBlock_(list, block, list->tail);
 }
 
-static void GetRegionOfMBlock_(MemRegion* region, MEMiExpHeapMBlock* mblock)
+static inline void GetRegionOfMBlock_(MemRegion* region, MEMiExpHeapMBlock* mblock)
 {
 	region->start = SubU32ToPtr(mblock, GetAlignmentForMBlock_(mblock));
 	region->end   = GetMBlockEndAddr_(mblock);
 }
 
-static MEMiExpHeapMBlock* InitMBlock_(const MemRegion* region, u16 state)
+static MEMiExpHeapMBlock* InitMBlock_(MemRegion* region, u16 state)
 {
-	MEMiExpHeapMBlock* mblock;
-	mblock = (MEMiExpHeapMBlock*)region->start;
+	MEMiExpHeapMBlock* mblock = (MEMiExpHeapMBlock*)region->start;
 
 	mblock->state    = state;
 	mblock->settings = 0;
@@ -123,7 +119,7 @@ static MEMiExpHeapMBlock* InitMBlock_(const MemRegion* region, u16 state)
 	return mblock;
 }
 
-static MEMiExpHeapMBlock* InitFreeMBlock_(const MemRegion* region)
+static inline MEMiExpHeapMBlock* InitFreeMBlock_(MemRegion* region)
 {
 	return InitMBlock_(region, MEM_EXP_HEAP_MBLOCK_FREE);
 }
@@ -196,26 +192,21 @@ static void* AllocUsedBlockFromFreeBlock_(MEMiExpHeapHead* exp, MEMiExpHeapMBloc
 	return memPtr;
 }
 
-// NONMATCHING: register allocation differs from retail
 static void* AllocFromHead_(MEMiHeapHead* heap, u32 size, s32 align)
 {
-	MEMiExpHeapMBlock* it;
-	MEMiExpHeapHead* exp;
-	MEMiExpHeapMBlock* bestBlk;
-	u32 bestBlkSize;
-	void* bestBlkMemPtr;
-	BOOL isFastAlloc;
+	MEMiExpHeapHead* exp = GetExpHeapHeadPtrFromHeapHead_(heap);
 
-	exp           = GetExpHeapHeadPtrFromHeapHead_(heap);
-	isFastAlloc   = GetAllocMode_(exp) == MEM_EXP_HEAP_ALLOC_FAST;
-	bestBlk       = 0;
-	bestBlkSize   = 0xFFFFFFFF;
-	bestBlkMemPtr = 0;
+	const BOOL isFastAlloc = GetAllocMode_(exp) == MEM_EXP_HEAP_ALLOC_FAST;
 
-	for (it = exp->freeMBlocks.head; it != NULL; it = it->next) {
-		void* start      = GetMemPtrForMBlock_(it);
-		void* alignStart = ROUND_UP_PTR(GetUIntPtr(start), align);
-		u32 padding      = GetOffsetFromPtr(start, alignStart);
+	MEMiExpHeapMBlock* it      = NULL;
+	MEMiExpHeapMBlock* bestBlk = NULL;
+	u32 bestBlkSize            = 0xFFFFFFFF;
+	void* bestBlkMemPtr        = NULL;
+
+	for (it = exp->freeMBlocks.head; it; it = it->next) {
+		void* const start      = GetMemPtrForMBlock_(it);
+		void* const alignStart = ROUND_UP_PTR(GetUIntPtr(start), align);
+		const u32 padding      = GetOffsetFromPtr(start, alignStart);
 
 		if (it->size >= size + padding && bestBlkSize > it->size) {
 			bestBlk       = it;
@@ -228,28 +219,26 @@ static void* AllocFromHead_(MEMiHeapHead* heap, u32 size, s32 align)
 		}
 	}
 
-	return bestBlk != NULL ? AllocUsedBlockFromFreeBlock_(exp, bestBlk, bestBlkMemPtr, size, 0) : NULL;
+	if (!bestBlk) {
+		return NULL;
+	}
+
+	return AllocUsedBlockFromFreeBlock_(exp, bestBlk, bestBlkMemPtr, size, 0);
 }
 
-// NONMATCHING: register allocation differs from retail
 static void* AllocFromTail_(MEMiHeapHead* heap, u32 size, s32 align)
 {
-	MEMiExpHeapMBlock* it;
-	MEMiExpHeapHead* exp;
-	MEMiExpHeapMBlock* bestBlk;
-	u32 bestBlkSize;
-	void* bestBlkMemPtr;
-	BOOL isFastAlloc;
+	MEMiExpHeapHead* exp       = GetExpHeapHeadPtrFromHeapHead_(heap);
+	const BOOL isFastAlloc     = GetAllocMode_(exp) == MEM_EXP_HEAP_ALLOC_FAST;
+	MEMiExpHeapMBlock* it      = NULL;
+	MEMiExpHeapMBlock* bestBlk = NULL;
+	u32 bestBlkSize            = 0xFFFFFFFF;
+	void* bestBlkMemPtr        = NULL;
 
-	exp           = GetExpHeapHeadPtrFromHeapHead_(heap);
-	isFastAlloc   = GetAllocMode_(exp) == MEM_EXP_HEAP_ALLOC_FAST;
-	bestBlk       = 0;
-	bestBlkSize   = 0xFFFFFFFF;
-	bestBlkMemPtr = 0;
-
-	for (it = exp->freeMBlocks.tail; it != NULL; it = it->prev) {
-		void* start = GetMemPtrForMBlock_(it);
-		void* end   = ROUND_DOWN_PTR(GetUIntPtr(SubU32ToPtr(AddU32ToPtr(start, it->size), size)), align);
+	for (it = exp->freeMBlocks.tail; it; it = it->prev) {
+		void* const start    = GetMemPtrForMBlock_(it);
+		void* const blockEnd = AddU32ToPtr(start, it->size);
+		void* const end      = ROUND_DOWN_PTR(GetUIntPtr(SubU32ToPtr(blockEnd, size)), align);
 
 		if (ComparePtr(end, start) >= 0 && bestBlkSize > it->size) {
 			bestBlk       = it;
@@ -262,11 +251,13 @@ static void* AllocFromTail_(MEMiHeapHead* heap, u32 size, s32 align)
 		}
 	}
 
-	return bestBlk != NULL ? AllocUsedBlockFromFreeBlock_(exp, bestBlk, bestBlkMemPtr, size, 1) : NULL;
+	if (!bestBlk) {
+		return NULL;
+	}
+
+	return AllocUsedBlockFromFreeBlock_(exp, bestBlk, bestBlkMemPtr, size, 1);
 }
 
-// NONMATCHING: retail loads merged.end and merged.start once for the size check and keeps them in
-// registers for the new block; this version loads them a second time
 static BOOL RecycleRegion_(MEMiExpHeapHead* exp, const MemRegion* region)
 {
 	MEMiExpHeapMBlock* prev = NULL;
@@ -288,7 +279,7 @@ static BOOL RecycleRegion_(MEMiExpHeapHead* exp, const MemRegion* region)
 		merged.start = prev;
 		prev         = RemoveMBlock_(&exp->freeMBlocks, prev);
 	}
-	if ((u32)GetOffsetFromPtr(merged.start, merged.end) < sizeof(MEMiExpHeapMBlock)) {
+	if (GetOffsetFromPtr(merged.start, merged.end) < sizeof(MEMiExpHeapMBlock)) {
 		return FALSE;
 	}
 	InsertMBlock_(&exp->freeMBlocks, InitFreeMBlock_(&merged), prev);
