@@ -3364,9 +3364,11 @@ static inline void ConfirmDiscardQuantity(MenuStatus* menu, CPad& pad, bool inve
 		PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 		menu->mPhase = 1;
 	} else if (pad.mPad->mTrigger & 0x100) {
-		if (menu->mChoice == 0) {
+		// the first choice is yes
+		bool yes = menu->mChoice ? false : true;
+		if (yes) {
 			MenuStatusEntry* entry = &sStatusItemTable.mItems[menu->mItem];
-			RemoveInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, entry->mItem, menu->mCount);
+			RemoveInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, entry->mItem, (s16)menu->mCount);
 			menu->mTargetItemPanelX    = 725.0f;
 			menu->mTargetDiscardPanelX = 937.0f;
 			menu->mPhase               = 0;
@@ -6136,9 +6138,10 @@ BOOL MenuSave::Update(u32 frames)
 		if (mMode != 1 && mMode != 5 && mMode != 9) {
 			s32 sector;
 			s32 size;
+			s32 channel  = mChannel;
 			mReady       = FALSE;
 			mWrongDevice = FALSE;
-			switch (ProbeMemoryCardCapacity(&gGame.mMemcard.mCard, mChannel, &size, &sector)) {
+			switch (ProbeMemoryCardCapacity(&gGame.mMemcard.mCard, channel, &size, &sector)) {
 			case CARD_RESULT_WRONGDEVICE:
 				mWrongDevice = TRUE;
 				break;
@@ -8582,8 +8585,7 @@ BOOL MenuStatus::Update(u32 frames)
 {
 	if (CMenu::Update(frames) == 4) {
 		mAnimationFrame++;
-		mPulsePhase += (1.0f / (0.3f * FRAME_RATE)) * frames;
-		if (mPulsePhase >= 2.0f)
+		if ((mPulsePhase += (1.0f / (0.3f * FRAME_RATE)) * frames) >= 2.0f)
 			mPulsePhase = fmod(mPulsePhase, 2.0);
 		CPad pad(0);
 		PCEase(mOffsetX, mTargetOffsetX);
@@ -8606,6 +8608,8 @@ BOOL MenuStatus::Update(u32 frames)
 		ApproachHudValue(&mDiagramY, &mTargetDiagramY, 20.0f);
 		UpdateMenuTitle(this, frames);
 		switch (mShowHelp) {
+		case 0:
+			break;
 		case 1:
 			mHelpAlpha = 0;
 			mShowHelp++;
@@ -10233,11 +10237,12 @@ void MenuPC::State3(u32 frames)
 				ResetPCText(menu, 11);
 				menu->mTargetFrameHeight = 0.0f;
 				RestorePCHistory(menu);
+				menu->mPanelTarget = 0.0f;
 			} else {
 				ResetPCText(menu, 2);
 				PlayGameSound(&gGame.mSound, 0x86, 0xFF);
+				menu->mPanelTarget = 0.0f;
 			}
-			menu->mPanelTarget = 0.0f;
 		}
 		break;
 	case 1:
@@ -10263,32 +10268,51 @@ void MenuPC::State3(u32 frames)
 					menu->mMoneyDisplay.target = money;
 					menu->mYesNo               = 2;
 					PlayGameSound(&gGame.mSound, 0x30009, 0xFF);
-					s16 id = entry->mItem;
 					if (entry->mIsAttachment) {
+						s32 id = entry->mItem;
 						if (id >= 0 && id < 9) {
 							s32 level = GetAttachmentCountById(&gGame.GetPlayer()->mAttachments, id) + 1;
 							if (level >= 3)
 								level = 3;
 							SetAttachmentCountById(&gGame.GetPlayer()->mAttachments, id, level);
 						}
-					} else if (id >= 0 && id < 0x9F) {
-						s32 index            = FindOwnedInventoryItemIndex(gGame.GetPlayer()->mParams.mInventory.mItems, id);
-						Inventory& inventory = gGame.GetPlayer()->mParams.mInventory;
-						s16 quantity         = index < 0 ? 0 : inventory.mItems[index].mCount;
-						SetOrAddInventoryItemCount(&inventory, id, quantity + 1, FALSE);
+					} else {
+						s16 id = entry->mItem;
+						if (id >= 0 && id < 0x9F) {
+							s32 index    = FindOwnedInventoryItemIndex(gGame.GetPlayer()->mParams.mInventory.mItems, id);
+							s32 quantity = index >= 0 ? gGame.GetPlayer()->mParams.mInventory.mItems[index].mCount : 0;
+							SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, id, quantity + 1, FALSE);
+						}
 					}
-					if (entry->mCount > 0)
-						entry->mCount--;
+					s16& stock = entry->mCount;
+					if (stock > 0)
+						stock--;
 					// items 0x57, 0x59 and 0x5A replace each other: buying one clears the others from the shop and the inventory
-					if (entry->mItem != 0x58 && entry->mItem >= 0x57 && entry->mItem < 0x5B) {
+					switch (entry->mItem) {
+					case 0x57:
+					case 0x59:
+					case 0x5A:
 						for (s32 i = 0; i < 20; i++) {
 							MenuPCItem& other = table[i];
-							if (other.mItem >= 0 && !other.mIsAttachment && other.mItem != 0x58 && other.mItem >= 0x57 && other.mItem < 0x5B
-							    && other.mItem != entry->mItem) {
-								other.mCount = 0;
-								SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, other.mItem, 0, FALSE);
+							s16 otherId       = other.mItem;
+							if (otherId >= 0 && !other.mIsAttachment) {
+								switch (otherId) {
+								case 0x57:
+								case 0x59:
+								case 0x5A:
+									if (otherId != entry->mItem) {
+										other.mCount = 0;
+										SetOrAddInventoryItemCount(&gGame.GetPlayer()->mParams.mInventory, otherId, 0, FALSE);
+									}
+									break;
+								case 0x58:
+									break;
+								}
 							}
 						}
+						break;
+					case 0x58:
+						break;
 					}
 					menu->mPhase++;
 					return;
@@ -10362,14 +10386,15 @@ static inline void UpdateOwnedItemHelp(MenuStatus* menu)
 		} while (sStatusItemTable.mItems[menu->mItem].mItem < 0 && menu->mItem != 0);
 	}
 	if (menu->mItem != menu->mPreviousItem) {
-		char* help = NULL;
-		{
-			s16 id = sStatusItemTable.mItems[menu->mItem].mItem;
-			if (id >= 0 && CountMenuItems() > 0)
-				help = GetItemName(id);
+		s16 id = sStatusItemTable.mItems[menu->mItem].mItem;
+		if (id >= 0 && CountMenuItems() > 0) {
+			char* msg       = GetItemName(id);
+			menu->mShowHelp = 1;
+			menu->mHelp     = msg;
+		} else {
+			menu->mShowHelp = 1;
+			menu->mHelp     = NULL;
 		}
-		menu->mShowHelp     = 1;
-		menu->mHelp         = help;
 		menu->mPreviousItem = menu->mItem;
 	}
 }
@@ -10387,7 +10412,8 @@ void MenuStatus::State2(u32)
 					menu->mItem = count - 1;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			} else if (pad.mPad->mRepeat & 0x80002) {
-				if (sStatusItemTable.mItems[++menu->mItem].mItem < 0)
+				menu->mItem++;
+				if (sStatusItemTable.mItems[menu->mItem].mItem < 0)
 					menu->mItem = 0;
 				PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 			}
@@ -10428,13 +10454,19 @@ void MenuStatus::State2(u32)
 			menu->mPhase    = 0;
 			PlayGameSound(&gGame.mSound, 0x86, 0xFF);
 			for (int i = 0; i < 4; ++i) {
-				menu->mTabs2[i].mX       = 0.0f;
-				menu->mTabs2[i].mTargetX = menu->mHasFourthTab ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
+				menu->mTabs2[i].mX = 0.0f;
+				if (menu->mHasFourthTab)
+					menu->mTabs2[i].mTargetX = 198.0f + i * 108 - 8.0f;
+				else
+					menu->mTabs2[i].mTargetX = 252.0f + i * 108;
 			}
 			menu->mTargetX = 758.0f;
 			for (int i = 0; i < 4; ++i) {
-				menu->mTabs[i].mX       = 0.0f;
-				menu->mTabs[i].mTargetX = menu->mHasFourthTab ? 198.0f + i * 108 - 8.0f : 252.0f + i * 108;
+				menu->mTabs[i].mX = 0.0f;
+				if (menu->mHasFourthTab)
+					menu->mTabs[i].mTargetX = 198.0f + i * 108 - 8.0f;
+				else
+					menu->mTabs[i].mTargetX = 252.0f + i * 108;
 			}
 			for (int i = 0; i < 4; ++i)
 				menu->mTabs2[i].mTargetX = 758.0f;
