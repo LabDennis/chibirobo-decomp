@@ -1,4 +1,7 @@
 #include "game/ccameraaction.h"
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#endif
 #include "game/gmath.h"
 extern "C" {
 #include <dolphin/os.h>
@@ -121,20 +124,22 @@ void CCameraActionEvt::SetEye_Interp(s32 mode, const Vec& eye, f32 time)
  * @note Address: 0x801433EC
  * @note Size: 0x13C
  */
-#if !defined(VERSION_R24J01)
 void CCameraActionEvt::SetInterest_Interp(s32 mode, XObj* target, f32 time)
 {
 	if (target == NULL) {
-#if !defined(VERSION_PAL)
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
 		OSReport("SetInterest_Interp( unknown data )\n");
 #endif
 		return;
 	}
-	mTarget      = target;
+	mTarget = target;
+#if defined(VERSION_R24J01)
+	Vec interest = ((WiiPlayerState*)mTarget)->GetCameraTarget(); // the Wii player's focus point, XObj::GetCameraTarget on GameCube
+#else
 	Vec interest = mTarget->GetCameraTarget();
+#endif
 	SetInterest_Interp(mode, interest, time);
 }
-#endif
 
 /**
  * @note Address: 0x8014332C
