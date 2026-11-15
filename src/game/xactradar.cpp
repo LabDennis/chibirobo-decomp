@@ -77,20 +77,16 @@ extern "C" void DrawRadarTargetBeam(XActRadar* act)
 	f32 z = 2, phase = act->mAngle[0];
 	for (int turn = 0; turn < 8; ++turn) {
 		for (int step = 0; step < 16; ++step) {
-			f32 angle = (TWO_PI / 16) * step;
-			f32 twist = (TWO_PI / 16) * turn + act->mAngle[1];
-
-			Vec& p   = vertices[n];
-			p.x      = (.007f * n + 1) * ((.1f * (f32)sin(twist) + 1) * (f32)sin(angle));
-			p.y      = (.007f * n + 1) * ((f32)cos(angle) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
-			p.z      = z;
-			f32 wave = WrapAngle(phase);
+			f32 angle     = (TWO_PI / 16) * step;
+			vertices[n].x = (.007f * n + 1) * ((f32)sin(angle) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].y = (.007f * n + 1) * ((f32)cos(angle) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].z = z;
+			f32 wave      = WrapAngle(phase);
 			if (wave > PI)
 				wave = 0;
-			Vec& edge = vertices[(int)n + 1];
-			edge.x    = p.x - ((f32)sin(angle) * (.5f * (f32)sin(wave)));
-			edge.y    = p.y - ((f32)sin(angle) * (.5f * (f32)sin(wave)));
-			edge.z    = p.z - 1.5f * (f32)sin(wave);
+			vertices[n + 1].x = vertices[n].x - ((.5f * (f32)sin(wave)) * (f32)sin(angle));
+			vertices[n + 1].y = vertices[n].y - ((.5f * (f32)sin(wave)) * (f32)sin(angle));
+			vertices[n + 1].z = vertices[n].z - 1.5f * (f32)sin(wave);
 			n += 2;
 			phase += DEG2RAD * 30;
 			z += .1f * span;
