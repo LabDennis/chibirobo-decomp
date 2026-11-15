@@ -606,8 +606,10 @@ typedef CCameraActionAreaEx CamAreaState;
 extern "C" CCameraActionAreaEx gCameraAreaState;
 
 #if defined(VERSION_R24J01)
+extern "C" {
 // the area camera's state, ccameraactionareaex.cpp
 s32 FindFirstCameraAreaContainingPoint(CamAreaState* state, Vec pos);
+}
 #endif
 
 // the camera classes below are GameCube layouts pending their Wii versions

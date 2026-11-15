@@ -1,18 +1,29 @@
 #include "game/ccameraaction.h"
 #include "game/caminfo.h"
 #include <math.h>
+#if !defined(VERSION_R24J01)
 #include "game/cgs.h"
+#endif
 #include "game/stagedata.h"
+#if defined(VERSION_R24J01)
+#include "game/wii/cgame.h"
+#else
 #include "game/cgame.h"
 #include "game/xchr.h"
+#endif
 
 extern "C" void OSReport(const char* format, ...);
+#if !defined(VERSION_R24J01)
 extern "C" Vec lbl_805A0400[];
 
 class CGs;
+#endif
 
 extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state);
 extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32 unused);
+#if defined(VERSION_R24J01)
+extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos);
+#endif
 
 // inlined in retail: only an inlined copy puts the CamAreaInfo copy below its temporary on the stack
 static inline s32 GetAreaMode(s32 index)
@@ -43,6 +54,13 @@ static inline s32 GetAreaMode(s32 index)
  * @note Address: 0x80135D28
  * @note Size: 0x10C
  */
+#if defined(VERSION_R24J01)
+// the Wii build passes the index itself; callers resolve the -1 map-camera case first
+extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state, s32 index)
+{
+	return GetAreaMode(index);
+}
+#else
 extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state)
 {
 	s32 index = state->mActiveArea;
@@ -50,12 +68,17 @@ extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state)
 		return 7;
 	return GetAreaMode(index);
 }
+#endif
 
 static inline Vec AreaPoint(const CamAreaInfo& area, s32 index)
 {
+#if defined(VERSION_R24J01)
+	Vec point = { 0.0f, 0.0f, 0.0f };
+#else
 	Vec point = lbl_805A0400[2 + index];
-	point.x   = area.mRecord->_04[index][0] / 100.0f;
-	point.z   = area.mRecord->_04[index][1] / 100.0f;
+#endif
+	point.x = area.mRecord->_04[index][0] / 100.0f;
+	point.z = area.mRecord->_04[index][1] / 100.0f;
 	return point;
 }
 
@@ -68,6 +91,7 @@ static inline BOOL PointInQuad(const Vec& pos, Vec a, Vec b, Vec c, Vec d)
  * @note Address: 0x801361C4
  * @note Size: 0x890
  */
+#if !defined(VERSION_R24J01)
 // NONMATCHING: retail loads the base of the header-made corner Vecs at entry, the extern lbl_805A0400 stands in for
 // them until the whole file is built, and keeps top - bottom and the height in f26/f27 the other way round
 extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
@@ -232,6 +256,8 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 	}
 }
 
+#endif
+
 static inline BOOL BothAreaTests(BOOL polygon, BOOL height)
 {
 	if (polygon && height)
@@ -268,7 +294,7 @@ extern "C" s32 CollectCameraAreasContainingPoint(CCameraActionAreaEx* state, Vec
  * @note Address: 0x801374F4
  * @note Size: 0x31C
  */
-extern "C" s32 FindFirstCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos)
+s32 FindFirstCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos)
 {
 	s32 index = -1;
 	for (s32 i = 0; i < state->mAreaExCount; ++i) {
@@ -307,8 +333,12 @@ extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, 
 extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 {
 	state->mPrevArea = state->mCurrentArea;
-	Vec pos          = gGame.GetPlayer()->mMoveTranslate;
-	s32 index        = -1;
+#if defined(VERSION_R24J01)
+	Vec pos             = *gGame.GetPlayer()->GetPosition();
+	state->mCurrentArea = FindEnabledCameraAreaContainingPoint(state, pos);
+#else
+	Vec pos   = gGame.GetPlayer()->mMoveTranslate;
+	s32 index = -1;
 	for (s32 i = 1; i < state->mAreaCount; ++i) { // record 0 never counts
 
 		if (CamAreaInfo(&state->mAreaRecords[i]).IsCameraOff())
@@ -319,6 +349,7 @@ extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 		}
 	}
 	state->mCurrentArea = index;
+#endif
 	if (state->mPrevArea != state->mCurrentArea && state->mCurrentArea != -1)
 		state->mActiveArea = state->mCurrentArea;
 }
@@ -334,7 +365,12 @@ extern "C" void SetCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 ind
 		state->mCurrentArea = index;
 		state->mPrevArea    = index;
 		f32 fov;
-		if (GetCameraAreaMode(state) == 1) {
+#if defined(VERSION_R24J01)
+		s32 mode = state->mActiveArea == -1 ? 7 : GetCameraAreaMode(state, state->mActiveArea);
+#else
+		s32 mode = GetCameraAreaMode(state);
+#endif
+		if (mode == 1) {
 			fov = CamInfo(&state->mCameraInfo[state->mGroups[state->mActiveArea].mEntries->mId]).GetFov();
 		} else {
 			fov = 30.5f; // other modes use a fixed fov
@@ -354,7 +390,12 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
 		UpdateCameraAreaIndexFromPlayer(state, unused);
 		if (state->mPrevArea != state->mCurrentArea && state->mCurrentArea != -1) {
 			f32 fov;
-			if (GetCameraAreaMode(state) == 1) {
+#if defined(VERSION_R24J01)
+			s32 mode = state->mActiveArea == -1 ? 7 : GetCameraAreaMode(state, state->mActiveArea);
+#else
+			s32 mode = GetCameraAreaMode(state);
+#endif
+			if (mode == 1) {
 				fov = CamInfo(&state->mCameraInfo[state->mGroups[state->mActiveArea].mEntries->mId]).GetFov();
 			} else {
 				fov = 30.5f; // other modes use a fixed fov

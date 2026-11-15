@@ -309,6 +309,8 @@ struct WiiPlayerState {
 	u8 _19EE4[0x1C994 - 0x19EE4];
 	s32 mSquirterContent; // _1C994
 	s32 mItemTint;        // _1C998
+
+	const Vec* GetPosition() { return mVtable->GetPosition(this); }
 };
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8

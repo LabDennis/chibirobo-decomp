@@ -1236,6 +1236,10 @@ if wii:
                 # the global's __sinit stores the vtable and __construct_arrays mGroups[256] at _2034
                 # (retail 0x801542A0); CCameraActionAreaEx's layout is shared with the GameCube
                 Object(Equivalent, "game/ccameraactionareaexinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii file queries the player position through the vtable GetPosition and calls
+                # FindEnabledCameraAreaContainingPoint instead of open-coding the record loop; the
+                # DrawGs debug draws and the corner-Vec extern stay GameCube-only
+                Object(Equivalent, "game/ccameraactionareaex.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # InfoPoint's dtor is the out-of-line definition; the GameCube file's hand-spelled
                 # weak copy stays for GC only (retail Wii body has no vtable store)
@@ -1270,6 +1274,9 @@ if wii:
                 # the Wii Params layout matches the GameCube class (mRank _08, mMoney _14,
                 # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs
                 Object(Matching, "game/params.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # same Inventory layout on both; the Wii functions carry the FindItem and
+                # CompactSlot helpers inlined with different codegen
+                Object(Equivalent, "game/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii
                 Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),

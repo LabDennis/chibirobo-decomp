@@ -572,6 +572,9 @@ game/ccameraactionareaexm.cpp:
 game/ccameraactionareaexinit.cpp:
 	.text start:0x801542A0 end:0x80154310
 
+game/ccameraactionareaex.cpp:
+	.text start:0x80151FCC end:0x801541F8
+
 game/ccameraactionevt.cpp:
 	.text start:0x801618C0 end:0x80161FFC
 
@@ -580,6 +583,9 @@ game/ccameraactionreset.cpp:
 
 game/params.cpp:
 	.text start:0x80113394 end:0x80113910
+
+game/inventory.cpp:
+	.text start:0x80113910 end:0x801141C0
 
 game/gameosreport.cpp:
 	.text start:0x80019BA4 end:0x80019BF4
