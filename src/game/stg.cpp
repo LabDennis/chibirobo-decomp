@@ -2652,7 +2652,9 @@ extern "C" void SetMenuTextureScale(CTexObj* tex, f32 x, f32 y)
  * @note Address: 0x80049174
  * @note Size: 0x6C
  */
-// NONMATCHING: scheduling
+// NONMATCHING: retail keeps quad in r4, hoists the loads above the stack stores and moves the colour into r4 last.
+// That is the code of a const Vec* quad passed to a DrawGsVertexQuad whose four colours follow the twelve
+// coordinates; cgs.h declares them interleaved, and its other callers are outside this file.
 extern "C" void DrawSolidQuad(CGs* gs, Vec* quad, u32 color)
 {
 	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y, quad[2].z,
@@ -4729,25 +4731,25 @@ BOOL MenuStatus::Draw()
  * @note Size: 0x294
  */
 // two byte text a character at a time, digits and narrow letters moved to the middle of their cell
-// NONMATCHING: regalloc
-extern "C" void DrawDoubleByteMenuText(const char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha)
+extern "C" void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha)
 {
-	const char* p;
+	char* p;
 	u32 shadow;
 	u32 color;
 	u32 count;
 	int i;
-	p      = text;
 	count  = strlen(text) / 2;
+	p      = text;
+	i      = 0;
 	shadow = (u32)(128.0f * alpha) | 0xFFFFFF00;
 	color  = (u32)(255.0f * alpha) | 0x20202000;
-	for (i = 0; i < count; i++, p += 2) {
+	for (; i < count; p += 2, i++) {
 		char c[3];
 		char buf[4];
+		f32 left = i * w + x;
 		c[0]     = p[0];
 		c[1]     = p[1];
 		c[2]     = 0;
-		f32 left = i * w + x;
 		DrawBeveledMenuRect(shadow, left, y, z, w, h, alpha);
 		f32 shift = 0.0f;
 		for (int digit = 0; digit < 10; digit++) {
@@ -6734,42 +6736,42 @@ extern "C" void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 
  * @note Address: 0x8005CD3C
  * @note Size: 0x40C
  */
-// NONMATCHING: register allocation and local static initialization
 extern "C" void DrawStatusItemDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale)
 {
+	static u32 frame = 0; // retail initialises it and never uses it
 	CTexObj tex;
+	f32 iconHeight, iconWidth;
 	if (scale <= 0.0f)
 		return;
 	f32 height = 153.0f * scale;
 #if !defined(VERSION_JP)
-	height = 10.0f * scale + height;
+	height += 10.0f * scale;
 #endif
-	y           = y - height / 2.0f;
+	f32 top     = y - height / 2.0f;
 	u32 opacity = (u32)(255.0f * alpha);
 	u32 color   = opacity | 0xFFFFFF00;
-	DrawTexturedWindowFrame((u32)(220.0f * alpha), color, x, y, 254.0f * scale, height, alpha, 1.0f, 1.0f);
-	y += scale;
+	DrawTexturedWindowFrame((u32)(220.0f * alpha), color, x, top, 254.0f * scale, height, alpha, 1.0f, 1.0f);
+	top += scale;
 	f32 fontSize   = 17.0f * scale;
 	f32 textOffset = 24.0f * scale;
 	char text[256];
 	sprintf(text, "%s", GetItemDescription(id));
-	f32 width   = MeasureGameTextWidth(&gGame.mGs, text, 1, fontSize);
-	f32 padding = 6.0f * scale;
-	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f, (4.0f * scale + (textOffset + (5.0f * fontSize + y))) - padding,
-	                             0.0f, fontSize, fontSize);
+	f32 width = MeasureGameTextWidth(&gGame.mGs, text, 1, fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f,
+	                             (4.0f * scale + (textOffset + (5.0f * fontSize + top))) - 6.0f * scale, 0.0f, fontSize, fontSize);
 	sprintf(text, "%s", GetItemName(id));
-	f32 helpSize = 2.0f * scale + fontSize;
-	width        = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
-	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, x - width / 2.0f, ((4.0f * fontSize + y) + textOffset) - padding,
-	                             0.0f, helpSize, helpSize);
-	s32 icon       = GetItemIconTextureIndex(id);
-	tex            = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[icon], 0);
-	f32 iconWidth  = scale * GXGetTexObjWidth(&tex);
-	f32 iconHeight = scale * GXGetTexObjHeight(&tex);
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, 2.0f * scale + fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, x - width / 2.0f,
+	                             ((4.0f * fontSize + top) + textOffset) - 6.0f * scale, 0.0f, 2.0f * scale + fontSize,
+	                             2.0f * scale + fontSize);
+	s32 icon   = GetItemIconTextureIndex(id);
+	tex        = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[icon], 0);
+	iconWidth  = scale * GXGetTexObjWidth(&tex);
+	iconHeight = scale * GXGetTexObjHeight(&tex);
 	if (icon >= 0) {
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, ((56.0f * scale + x) - 30.0f * scale) - 127.0f * scale,
-		                   46.0f * scale + y, 0.0f, iconWidth, iconHeight, 0.0f, 0.0f, 0.0f);
+		                   46.0f * scale + top, 0.0f, iconWidth, iconHeight, 0.0f, 0.0f, 0.0f);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
 }
