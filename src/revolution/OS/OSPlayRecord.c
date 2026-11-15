@@ -17,14 +17,6 @@ typedef struct OSPlayRecord {
 	u8 padding[0x12];     // _6E
 } OSPlayRecord;
 
-// shortcut: opaque. Its size is not known: .bss leaves it 0xC4 bytes and puts it on a 4-byte boundary, which
-// MWCC only does for a size that is no multiple of 8 (0xB4, 0xBC or 0xC4). Give it its fields when NAND gets the type.
-typedef struct NANDCommandBlock {
-	u32 data[0xBC / sizeof(u32)];
-} NANDCommandBlock;
-
-typedef void (*NANDAsyncCallback)(s32 result, NANDCommandBlock* block);
-
 typedef enum PlayRecordStateKind {
 	PLAY_RECORD_STATE_START,
 	PLAY_RECORD_STATE_OPEN,
@@ -37,14 +29,6 @@ typedef enum PlayRecordStateKind {
 	PLAY_RECORD_STATE_TIMEOUT,
 	PLAY_RECORD_STATE_STOPPED
 } PlayRecordStateKind;
-
-// other files of the library
-s32 NANDInit(void);
-s32 NANDOpenAsync(const char* path, NANDFileInfo* file, u8 access, NANDAsyncCallback callback, NANDCommandBlock* block);
-s32 NANDCloseAsync(NANDFileInfo* file, NANDAsyncCallback callback, NANDCommandBlock* block);
-s32 NANDReadAsync(NANDFileInfo* file, void* buffer, u32 length, NANDAsyncCallback callback, NANDCommandBlock* block);
-s32 NANDWriteAsync(NANDFileInfo* file, const void* buffer, u32 length, NANDAsyncCallback callback, NANDCommandBlock* block);
-s32 NANDSeekAsync(NANDFileInfo* file, s32 offset, s32 whence, NANDAsyncCallback callback, NANDCommandBlock* block);
 
 static void PlayRecordCallback(s32 result, NANDCommandBlock* block);
 

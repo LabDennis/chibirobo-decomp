@@ -4,23 +4,6 @@
 #include "Dolphin/os.h"
 #include "revolution/nand.h"
 
-// shortcut: "revolution/nand.h" has no asynchronous interface yet; move these there when it gets one.
-// The block's size is deduced from retail's .bss: it sits at +0x8C behind NandInfo, which MWCC only does
-// for a size that is no multiple of 8, and __ErrorInfo (aligned to 32) follows at +0x160. That leaves
-// 0xBC, 0xC4, 0xCC or 0xD4; the smallest is taken here.
-typedef struct NANDCommandBlock {
-	u32 work[0x2F];
-} NANDCommandBlock;
-typedef void (*NANDCallback)(s32 result, NANDCommandBlock* block);
-
-s32 NANDPrivateCreateAsync(const char* path, u8 permission, u8 attribute, NANDCallback callback, NANDCommandBlock* block);
-s32 NANDPrivateCreateDirAsync(const char* path, u8 permission, u8 attribute, NANDCallback callback, NANDCommandBlock* block);
-s32 NANDPrivateOpenAsync(const char* path, NANDFileInfo* file, u8 access, NANDCallback callback, NANDCommandBlock* block);
-s32 NANDCloseAsync(NANDFileInfo* file, NANDCallback callback, NANDCommandBlock* block);
-s32 NANDReadAsync(NANDFileInfo* file, void* buffer, u32 length, NANDCallback callback, NANDCommandBlock* block);
-s32 NANDWriteAsync(NANDFileInfo* file, const void* buffer, u32 length, NANDCallback callback, NANDCommandBlock* block);
-s32 NANDSeekAsync(NANDFileInfo* file, s32 offset, s32 whence, NANDCallback callback, NANDCommandBlock* block);
-
 // low-level driver
 BOOL DVDLowPrepareStatusRegister(DVDLowCallback callback);
 BOOL DVDLowPrepareControlRegister(DVDLowCallback callback);
