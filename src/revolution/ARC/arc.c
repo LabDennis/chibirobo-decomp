@@ -101,6 +101,8 @@ static BOOL ARCConvertEntrynumToPath(ARCHandle* handle, s32 entrynum, char* path
 	return TRUE;
 }
 
+// NONMATCHING: in the innermost of the three inlined entryToPath levels the copy loop of myStrncpy
+// takes its counter and destination in other registers, and name and entry swap r29/r31
 BOOL ARCOpen(ARCHandle* handle, const char* fileName, ARCFileInfo* af)
 {
 	s32 entrynum;
@@ -209,11 +211,17 @@ s32 ARCConvertPathToEntrynum(ARCHandle* handle, const char* pathPtr)
 		ptr = pathPtr;
 
 		for (i = dirLookAt + 1; i < nextDir(dirLookAt); i = entryIsDir(i) ? nextDir(i) : (i + 1)) {
+		retry:
 			if (entryIsDir(i) == FALSE && isDir == TRUE) {
 				continue;
 			}
 
 			stringPtr = handle->FSTStringStart + stringOff(i);
+			// a "." entry is stepped over without the loop's own check and increment
+			if (stringPtr[0] == '.' && stringPtr[1] == '\0') {
+				i++;
+				goto retry;
+			}
 
 			if (isSame(ptr, stringPtr) == TRUE) {
 				goto next_hier;
