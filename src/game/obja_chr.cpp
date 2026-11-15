@@ -148,7 +148,7 @@ BOOL IsPlayerAttachmentEquipped(const XObjChr* chr, s32 wanted);
 CPadOne* GetPadForPort(CGame* game, u8 port);
 u32 GetHeldPadButtons(const CPadOne* pad, u32 mask);
 void SetObjectVectorAndTargetFromVec(CObjVec* value, const Vec& v);
-u32 GetPlayerPlugConnection(const XObjPlug* plug);
+s32 GetPlayerPlugConnection(const XObjPlug* plug);
 CVec* NormalizeVectorInPlace(CVec* value);
 BOOL FindMapFloorBelow(const XObjMap* map, const Vec* pos, XObjMapHit* hit, Vec* tri);
 void ScaleVectorInPlace(Vec* value, f32 scale);
@@ -1350,8 +1350,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			}
 		}
 	}
+	s32 count = 0;
 	{
-		u32 count = 0;
 		if (marker & 0x1)
 			++count;
 		if (marker & 0x2)
@@ -1382,13 +1382,14 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				SetPlayerLookMode(&player->mLook, normalMode);
 				SetLookTargetPosition(&player->mLook, 0, 0, -0.52359879f);
 			}
-			if (count > player->mLook.mMarkerCount)
-				player->mLook.mMarkerCount = count;
 		} else {
 			DisablePlayerLook(&player->mLook);
 		}
 	}
-	if (!marker) {
+	if (count) {
+		if (count > player->mLook.mMarkerCount)
+			player->mLook.mMarkerCount = count;
+	} else { // no marker: the stick and the buttons start an action
 		if (!IsHangActionState(&player->mHang, 0)) {
 			if (IsHangActionState(&player->mHang, 5) && (player->mStick[0] > 0) && HasPlayerActionTarget(&player->mHang)) {
 				f32 angle = WrapPlayerActionAngle((player->mStick[2] + GetCameraAngles(gGame.GetCamera())->y) - player->mMoveRotate.y);
@@ -8081,7 +8082,7 @@ extern "C" s32 IsGameMenuActive(const CGame* game)
  * @note Address: 0x800B2EB0
  * @note Size: 0x8
  */
-extern "C" u32 GetPlayerPlugConnection(const XObjPlug* plug)
+extern "C" s32 GetPlayerPlugConnection(const XObjPlug* plug)
 {
 	return plug->mConnection;
 }
