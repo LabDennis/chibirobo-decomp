@@ -305,7 +305,11 @@ struct WiiPlayerVtable {
 	void (*SetRotation)(WiiPlayerState* chr, f32 rotY);
 	void* _74[(0x90 - 0x74) / 4];
 	void (*SetPosition)(WiiPlayerState* chr, const Vec* pos);
-	void* _94[(0x1B0 - 0x94) / 4];
+	void* _94[(0xAC - 0x94) / 4];
+	// the camera actions read the object's world matrix through here; retail feeds the
+	// result straight into PSMTXCopy (0x80160F7C / 0x80161160)
+	MtxP (*GetMtxPtr)(WiiPlayerState* chr);
+	void* _B0[(0x1B0 - 0xB0) / 4];
 	// the camera actions reach the focus point here, the GameCube's XObj::GetCameraTarget
 	Vec (*GetCameraTarget)(WiiPlayerState* chr);
 	void* _1B4[(0x244 - 0x1B4) / 4];
@@ -344,6 +348,7 @@ struct WiiPlayerState {
 	s32 mItemTint;        // _1C998
 
 	const Vec* GetPosition() { return mVtable->GetPosition(this); }
+	MtxP GetMtxPtr() { return mVtable->GetMtxPtr(this); }
 	Vec GetCameraTarget() { return mVtable->GetCameraTarget(this); }
 };
 

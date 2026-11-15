@@ -226,13 +226,14 @@ public:
 	virtual void SetCamera(CCamera* camera) { } // _18, takes eye, interest, angle, distance and fov
 	virtual void Init() { }                     // _1C
 	virtual void Draw() { }                     // _20, the action's markers over the room
-	virtual void DrawDebug2d() { }              // _24, debug text
-	virtual void DrawDebug3d() { }              // _28, debug shapes in the scene
 #if defined(VERSION_R24J01)
-	// the Wii builds carry one extra empty virtual between the debug draws and the setters,
-	// so every slot below is +4 vs. the GameCube numbering used in the comments
-	virtual void vf2C() { } // _2C
+	// the Wii builds carry one extra empty virtual between Draw and the debug draws
+	// (empty blr 0x80031EF0, at _24 in the retail vtables 0x8030DF08/0x8030DF80/0x8030E1D0/
+	// 0x8030E248/0x8030E338), so every slot below is +4 vs. the GameCube numbering in the comments
+	virtual void vf24() { } // _24
 #endif
+	virtual void DrawDebug2d() { }           // _24, debug text
+	virtual void DrawDebug3d() { }           // _28, debug shapes in the scene
 	virtual void SetEye(f32 x, f32 y, f32 z) // _2C
 	{
 		mEye.x = x;
@@ -781,25 +782,6 @@ public:
 };
 STATIC_ASSERT(sizeof(CCameraActionDefault) == 0x40);
 
-// follows the player from behind on a damped spring, the stick or dpad turns and zooms it
-class CCameraActionChase : public CInterfaceCameraAction {
-public:
-	XObj* mTarget;     // _40
-	f32 mRestDistance; // _44
-	f32 mDamping;      // _48
-	CVec mLastPos;     // _4C
-	CVec mPos;         // _5C, the point behind the target the eye is pulled to
-	u32 mMode;         // _6C
-
-	virtual void Update(u32 step);           // _10
-	virtual void Reset();                    // _14
-	virtual void SetCamera(CCamera* camera); // _18
-	virtual void Init();                     // _1C
-	virtual u32 GetCameraFlags();            // _54
-	virtual ~CCameraActionChase() { }
-};
-STATIC_ASSERT(sizeof(CCameraActionChase) == 0x70);
-
 // the room camera, it pans over the room with the stick and zooms with the c stick
 class CCameraActionScroll2 : public CInterfaceCameraAction {
 public:
@@ -866,6 +848,27 @@ void SetMapCameraFovStep(CCameraActionMap* map, s32 index, f32 time);
 void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode);
 }
 #endif // !defined(VERSION_R24J01)
+
+// follows the player from behind on a damped spring, the stick or dpad turns and zooms it.
+// the member layout is shared with the Wii (mTarget _40 … mMode _6C verified in retail);
+// on the Wii mTarget points at the player object and the code casts to WiiPlayerState
+class CCameraActionChase : public CInterfaceCameraAction {
+public:
+	XObj* mTarget;     // _40
+	f32 mRestDistance; // _44
+	f32 mDamping;      // _48
+	CVec mLastPos;     // _4C
+	CVec mPos;         // _5C, the point behind the target the eye is pulled to
+	u32 mMode;         // _6C
+
+	virtual void Update(u32 step);           // _10
+	virtual void Reset();                    // _14
+	virtual void SetCamera(CCamera* camera); // _18
+	virtual void Init();                     // _1C
+	virtual u32 GetCameraFlags();            // _54
+	virtual ~CCameraActionChase() { }
+};
+STATIC_ASSERT(sizeof(CCameraActionChase) == 0x70);
 
 // plays a camera animation, copying an XObjCamera's camera every frame; the
 // layout is shared with the Wii (mCamera _40, mObj _44 verified in retail)
