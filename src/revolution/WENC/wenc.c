@@ -58,9 +58,8 @@ s32 WENCGetEncodeData(WENCInfo* info, u32 flag, const s16* pcmData, s32 samples,
 			l3 = 1;
 		}
 
-		// NONMATCHING: retail inlines abs, the Revolution MSL defines it with __abs; this MSL has abs as a
-		// function, so the build calls it
-		dn = abs(da - xn);
+		// the Revolution MSL's abs is the compiler intrinsic (as in pik1wii, pik2wii and ogws)
+		dn = __abs(da - xn);
 		if (dn >= dl) {
 			l2 = 1;
 			dn -= dl;

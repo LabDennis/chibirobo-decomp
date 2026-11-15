@@ -1369,7 +1369,7 @@ if wii:
                 Object(Matching, "revolution/DSP/dsp.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/DSP/dsp_debug.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Equivalent, "revolution/DSP/dsp_task.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
-                Object(NonMatching, "revolution/WENC/wenc.c"),
+                Object(Matching, "revolution/WENC/wenc.c"),
                 Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
                 Object(Matching, "revolution/WPAD/WPADMem.c"),
                 Object(Matching, "revolution/WPAD/debug_msg.c"),
