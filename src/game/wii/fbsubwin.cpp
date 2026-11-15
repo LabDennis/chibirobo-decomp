@@ -54,8 +54,9 @@ void FbSubwin::Copy()
 	}
 }
 
-// NONMATCHING: 89.4 % — remaining residue is float scheduling/register allocation in the
-// eight DrawGsCircle arg blocks and the safe-screen/tiles expression order.
+// NONMATCHING: 98.1 % — every instruction shape now matches; the residue is callee-register
+// numbering (retail keeps amount=f30, fade=f31 and orders the else-branch floats
+// corner/h/x/y/w into f25..f29; MWCC assigns them differently).
 // NaN dimensions select the circular frame. Explicit dimensions select the tiled frame.
 void FbSubwin::Draw()
 {
@@ -78,24 +79,25 @@ void FbSubwin::Draw()
 	if (ClassifyFloatBits(mRectWidth) == FP_NAN || ClassifyFloatBits(mRectHeight) == FP_NAN) {
 		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[159], 0);
 		CTexObj frame = gGame.mTpl.mTex;
+		f32 scale     = 1.1f;
 		f32 tw        = GXGetTexObjWidth(&frame);
 		f32 th        = GXGetTexObjHeight(&frame);
 		f32 w         = tw * fade;
 		f32 h         = th * fade;
 		f32 left      = gScreenSafeLeft + 4;
 		f32 top       = gScreenSafeTop + 13;
-		f32 x         = left + (tw * 1.1f + 8) + (tw * 1.1f) * 0.5f;
-		f32 y         = top + (th * 1.1f) * 0.5f;
+		f32 x         = left + (tw * scale + 8) + (tw * scale) * 0.5f;
+		f32 y         = top + (th * scale) * 0.5f;
 		f32 aspect    = (f32)mWidth / (f32)mHeight;
 		DrawCorner(0xff000000, x, y, 0, w, h);
-		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
 		if (texture->mImage)
 			DrawQuad(texture->mTex, 0xffffff00 | (u32)(255 * amount), x, y, w * aspect, h);
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
-		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, (GXCompare)3, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
-		DrawQuad(frame, 0xc8c8c800 | (u32)(255 * amount), x, y, w * 1.1f, h * 1.1f);
+		DrawQuad(frame, 0xc8c8c800 | (u32)(255 * amount), x, y, w * scale, h * scale);
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
 	} else {
 		f32 w = mRectWidth * fade, h = mRectHeight * fade, corner = 24 * fade;
@@ -116,26 +118,26 @@ void FbSubwin::Draw()
 		DrawCorner(0xff000000, ((x + w * .5f) - fade) - corner, corner + (fade + (y - h * .5f)), 0, 2 * corner, 2 * corner);
 		DrawCorner(0xff000000, corner + (fade + (x - w * .5f)), ((y + h * .5f) - fade) - corner, 0, 2 * corner, 2 * corner);
 		DrawCorner(0xff000000, ((x + w * .5f) - fade) - corner, ((y + h * .5f) - fade) - corner, 0, 2 * corner, 2 * corner);
+		f32 sx = 6.0f, sy = 4.0f;
 		u32 shadow = (u32)(96 * amount);
 		for (int i = 0; i < 10; ++i) {
-			pos[i].x += 6;
-			pos[i].y += 4;
+			pos[i].x += sx;
+			pos[i].y += sy;
 			pos[i].z = -.1f;
 		}
 		DrawGsTrianglePrimitive(&gGame.mGs, (GXPrimitive)0xa0, gGame.mGs.mCamera->mViewMtx, pos, shadow, 10);
-		DrawCorner(shadow, (corner + (fade + ((6 + x) - w * .5f))), (corner + (fade + ((4 + y) - h * .5f))), -.1f, 2 * corner, 2 * corner);
-		DrawCorner(shadow, (((((6 + x) + w * .5f) - fade) - corner)), (corner + (fade + ((4 + y) - h * .5f))), -.1f, 2 * corner,
+		DrawCorner(shadow, (corner + (fade + ((sx + x) - w * .5f))), (corner + (fade + ((sy + y) - h * .5f))), -.1f, 2 * corner,
 		           2 * corner);
-		DrawCorner(shadow, (corner + (fade + ((6 + x) - w * .5f))), (((((4 + y) + h * .5f) - fade) - corner)), -.1f, 2 * corner,
+		DrawCorner(shadow, ((((sx + x) + w * .5f) - fade) - corner), (corner + (fade + ((sy + y) - h * .5f))), -.1f, 2 * corner,
 		           2 * corner);
-		DrawCorner(shadow, (((((6 + x) + w * .5f) - fade) - corner)), (((((4 + y) + h * .5f) - fade) - corner)), -.1f, 2 * corner,
-		           2 * corner);
-		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+		DrawCorner(shadow, (corner + (fade + ((sx + x) - w * .5f))), (((sy + y) + h * .5f) - fade) - corner, -.1f, 2 * corner, 2 * corner);
+		DrawCorner(shadow, ((((sx + x) + w * .5f) - fade) - corner), (((sy + y) + h * .5f) - fade) - corner, -.1f, 2 * corner, 2 * corner);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);
 		if (texture->mImage)
 			DrawQuad(texture->mTex, 0xffffff00 | (u32)(255 * amount), x, y, w, h);
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
-		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, (GXCompare)3, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
 		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[159], 0);
 		CTexObj frame   = gGame.mTpl.mTex;
 		f32 tw          = GXGetTexObjWidth(&frame);
@@ -160,6 +162,6 @@ void FbSubwin::Draw()
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)4);
 	}
 	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
-	gGame.mGs.mCurRenderState->SetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, (GXCompare)3, 255);
-	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, (GXCompare)3, GX_FALSE);
+	gGame.mGs.mCurRenderState->SetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 255);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
 }
