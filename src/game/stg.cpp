@@ -11101,16 +11101,15 @@ static inline void DrawEmptyInventorySlot(CTexObj& tex, u32 color, f32 x, f32 y,
 
 static inline void DrawInventoryHighlight(f32 x, f32 y, f32 w, f32 h, f32 alpha, f32 phase)
 {
-	CGs& gs = gGame.mGs;
-	SetGsBlendMode(gs.mCurRenderMode, 1, 2, 4, 15);
-	SetGsDepthMode(gs.mCurRenderMode, 1, 2, 0);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
 	f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
 	if (pulse < 0)
 		pulse = 0;
 	u32 white = (u32)(255.0f * pulse) | 0xFFFFFF00;
-	DrawGsQuad(&gs, white, white, white, white, x, y, 1, w, h, 0, 0, 0);
-	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
+	DrawGsQuad(&gGame.mGs, white, white, white, white, x, y, 1, w, h, 0, 0, 0);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 }
 
 static inline void DrawInventoryPreviewIcon(CTexObj& tex, s32 icon, u32 color, f32 x, f32 y, f32 scale, u32 frame)
