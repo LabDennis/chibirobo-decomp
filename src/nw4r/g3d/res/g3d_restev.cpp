@@ -78,6 +78,64 @@ void ResTev::GXSetTevSwapModeTable(GXTevSwapSel swap, GXTevColorChan r,
     // clang-format on
 }
 
+// The alpha combiner's fields (BP 0xC1 + 2 * stage): texture and raster swap in bits 0-3, then d, c, b, a
+// three bits each, bias, op, clamp, scale and destination as in the colour combiner.
+void ResTev::GXSetTevAlphaIn(GXTevStageID stage, GXTevAlphaArg a,
+                             GXTevAlphaArg b, GXTevAlphaArg c,
+                             GXTevAlphaArg d) {
+    u8* pCmd = ref()
+                   .dl.dl.var[stage / TEV_STAGES_PER_DL]
+                   .dl.alphaCalcAndSwap[stage % TEV_STAGES_PER_DL];
+
+    detail::ResWriteBPCmd(pCmd,
+        (d << 4) | (c << 7) | (b << 10) | (a << 13) |
+        ((GX_BP_REG_TEVALPHACOMBINER0 + stage * 2) << GX_BP_OPCODE_SHIFT),
+        0xFF00FFF0);
+}
+
+void ResTev::GXSetTevAlphaOp(GXTevStageID stage, GXTevOp op, GXTevBias bias,
+                             GXTevScale scale, GXBool clamp, GXTevRegID reg) {
+    u8* pCmd = ref()
+                   .dl.dl.var[stage / TEV_STAGES_PER_DL]
+                   .dl.alphaCalcAndSwap[stage % TEV_STAGES_PER_DL];
+
+    // the mask keeps the inputs (and the alpha combiner's swap selectors)
+    if (op <= GX_TEV_SUB) {
+        detail::ResWriteBPCmd(pCmd,
+            ((op & 1) << GX_BP_TEVCOLORCOMBINER_OP_OR_COMPARISON_SHIFT) |
+            (bias << GX_BP_TEVCOLORCOMBINER_BIAS_SHIFT) |
+            (clamp << GX_BP_TEVCOLORCOMBINER_CLAMP_SHIFT) |
+            (scale << GX_BP_TEVCOLORCOMBINER_SCALE_OR_COMPARE_MODE_SHIFT) |
+            (reg << GX_BP_TEVCOLORCOMBINER_DEST_SHIFT) |
+            ((GX_BP_REG_TEVALPHACOMBINER0 + stage * 2) << GX_BP_OPCODE_SHIFT),
+            0xFFFF0000);
+    } else {
+        // comparison operations: bias 3, the mode in the scale field
+        detail::ResWriteBPCmd(pCmd,
+            (clamp << GX_BP_TEVCOLORCOMBINER_CLAMP_SHIFT) |
+            (3 << GX_BP_TEVCOLORCOMBINER_BIAS_SHIFT) |
+            ((op & 1) << GX_BP_TEVCOLORCOMBINER_OP_OR_COMPARISON_SHIFT) |
+            ((op >> 1 & 3) << GX_BP_TEVCOLORCOMBINER_SCALE_OR_COMPARE_MODE_SHIFT) |
+            (reg << GX_BP_TEVCOLORCOMBINER_DEST_SHIFT) |
+            ((GX_BP_REG_TEVALPHACOMBINER0 + stage * 2) << GX_BP_OPCODE_SHIFT),
+            0xFFFF0000);
+    }
+}
+
+void ResTev::GXSetTevKColorSel(GXTevStageID stage, GXTevKColorSel sel) {
+    u8* pCmd = ref().dl.dl.var[stage / TEV_STAGES_PER_DL].dl.tevKonstantSel;
+
+    u32 shift = (stage & 1) ? GX_BP_TEVKSEL_KCSEL_ODD_SHIFT
+                            : GX_BP_TEVKSEL_KCSEL_EVEN_SHIFT;
+    u32 mask = GX_BP_TEVKSEL_KCSEL_EVEN_LMASK << shift;
+
+    detail::ResWriteSSMask(pCmd, mask);
+    detail::ResWriteBPCmd(&pCmd[GX_BP_CMD_SZ],
+        ((GX_BP_REG_TEVKSEL0 + stage / TEV_STAGES_PER_DL) << GX_BP_OPCODE_SHIFT) |
+        (sel << shift),
+        mask | 0xFF000000);
+}
+
 bool ResTev::GXGetTevOrder(GXTevStageID stage, GXTexCoordID* pCoord,
                            GXTexMapID* pMap, GXChannelID* pChannel) const {
     // Convert RAS channel ID to GX channel ID
@@ -146,6 +204,50 @@ bool ResTev::GXGetTevOrder(GXTevStageID stage, GXTexCoordID* pCoord,
     return true;
 }
 
+void ResTev::GXSetTevOrder(GXTevStageID stage, GXTexCoordID coord, GXTexMapID map, GXChannelID channel) {
+    static u8 c2r[0x10] = {0, 1, 0, 1, 0, 1, 7, 5, 6, 0, 0, 0, 0, 0, 0, 7};
+
+    GXTexCoordID currCoord;
+    GXTexMapID currMap;
+    if (GXGetTevOrder(stage, &currCoord, &currMap, NULL)) {
+        if (currCoord != GX_TEXCOORD_NULL && currMap != GX_TEXMAP_NULL) {
+            ref().texCoordToTexMapID[currCoord] = GX_TEXMAP_NULL;
+        }
+    }
+
+    if (coord != GX_TEXCOORD_NULL) {
+        ref().texCoordToTexMapID[coord] = map;
+    }
+
+    u8* pCmd = ref().dl.dl.var[stage / TEV_STAGES_PER_DL].dl.tevOrder;
+
+    // Use the shift to determine if Even or Odd
+    u32 shift = ((stage & 1) ? GX_BP_RAS1_TREF_TEXMAP_ODD_SHIFT : GX_BP_RAS1_TREF_TEXMAP_EVEN_SHIFT);
+
+    // clang-format off
+    u32 mask = (
+        (0xFF << 24) | 
+        ( GX_BP_RAS1_TREF_TEXMAP_EVEN_MASK     | 
+          GX_BP_RAS1_TREF_TEXCOORD_EVEN_MASK   |
+          GX_BP_RAS1_TREF_ENABLE_TEX_EVEN_MASK |
+          GX_BP_RAS1_TREF_COLORCHAN_EVEN_MASK  
+        ) << shift
+    );
+    
+    u32 cmd = ( 
+        ( ( map & GX_BP_RAS1_TREF_TEXMAP_EVEN_LMASK          ) << GX_BP_RAS1_TREF_TEXMAP_EVEN_SHIFT     ) |
+        ( ( coord & GX_BP_RAS1_TREF_TEXCOORD_EVEN_LMASK      ) << GX_BP_RAS1_TREF_TEXCOORD_EVEN_SHIFT   ) |
+        ( ( map != GX_TEXMAP_NULL && !(map & GX_TEX_DISABLE) ) << GX_BP_RAS1_TREF_ENABLE_TEX_EVEN_SHIFT ) |
+        ( ( c2r[channel & 0xF]                               )  << GX_BP_RAS1_TREF_COLORCHAN_EVEN_SHIFT )
+    );
+    // clang-format on
+
+    cmd <<= shift;
+    cmd |= (GX_BP_REG_RAS1_TREF0 + (stage / TEV_STAGES_PER_DL)) << 24;
+
+    detail::ResWriteBPCmd(pCmd, cmd, mask);
+}
+
 void ResTev::GXSetTevColorIn(GXTevStageID stage, GXTevColorArg a,
                              GXTevColorArg b, GXTevColorArg c,
                              GXTevColorArg d) {
@@ -168,6 +270,73 @@ void ResTev::GXSetTevColorIn(GXTevStageID stage, GXTevColorArg a,
           GX_BP_TEVCOLORCOMBINER_OP_OR_COMPARISON_MASK |
           GX_BP_TEVCOLORCOMBINER_BIAS_MASK));
     // clang-format on
+}
+
+void ResTev::GXSetTevColorOp(GXTevStageID stage, GXTevOp op, GXTevBias bias,
+                             GXTevScale scale, GXBool clamp, GXTevRegID reg) {
+    u8* pCmd = ref()
+                   .dl.dl.var[stage / TEV_STAGES_PER_DL]
+                   .dl.tevColorCalc[stage % TEV_STAGES_PER_DL];
+
+    // the mask keeps the inputs (and the alpha combiner's swap selectors)
+    if (op <= GX_TEV_SUB) {
+        detail::ResWriteBPCmd(pCmd,
+            ((op & 1) << GX_BP_TEVCOLORCOMBINER_OP_OR_COMPARISON_SHIFT) |
+            (bias << GX_BP_TEVCOLORCOMBINER_BIAS_SHIFT) |
+            (clamp << GX_BP_TEVCOLORCOMBINER_CLAMP_SHIFT) |
+            (scale << GX_BP_TEVCOLORCOMBINER_SCALE_OR_COMPARE_MODE_SHIFT) |
+            (reg << GX_BP_TEVCOLORCOMBINER_DEST_SHIFT) |
+            ((GX_BP_REG_TEVCOLORCOMBINER0 + stage * 2) << GX_BP_OPCODE_SHIFT),
+            0xFFFF0000);
+    } else {
+        // comparison operations: bias 3, the mode in the scale field
+        detail::ResWriteBPCmd(pCmd,
+            (clamp << GX_BP_TEVCOLORCOMBINER_CLAMP_SHIFT) |
+            (3 << GX_BP_TEVCOLORCOMBINER_BIAS_SHIFT) |
+            ((op & 1) << GX_BP_TEVCOLORCOMBINER_OP_OR_COMPARISON_SHIFT) |
+            ((op >> 1 & 3) << GX_BP_TEVCOLORCOMBINER_SCALE_OR_COMPARE_MODE_SHIFT) |
+            (reg << GX_BP_TEVCOLORCOMBINER_DEST_SHIFT) |
+            ((GX_BP_REG_TEVCOLORCOMBINER0 + stage * 2) << GX_BP_OPCODE_SHIFT),
+            0xFFFF0000);
+    }
+}
+
+// 0x8025F208: no reference names it; it clears the stage's indirect command as GXSetTevDirect does
+void ResTev::GXSetTevDirect(GXTevStageID stage) {
+    u8* pCmd = ref()
+                   .dl.dl.var[stage / TEV_STAGES_PER_DL]
+                   .dl.tevIndirect[stage % TEV_STAGES_PER_DL];
+
+    detail::ResWriteBPCmd(pCmd,
+        (GX_BP_REG_INDTEVSTAGE0 + (stage & 0xF)) << GX_BP_OPCODE_SHIFT);
+}
+
+// NONMATCHING: retail calls GXSetTevOrder in the first loop (0x8025F2AC); here the compiler expands it
+// in place, which also moves the frame and the saved registers.
+void ResTev::SetNumTevStages(u8 num) {
+    if (num < 1 || num > GX_MAX_TEVSTAGE) {
+        return;
+    }
+
+    ResTevData& r = ref();
+
+    if (r.nStages > num) {
+        u32 i;
+
+        for (i = num; i < r.nStages; i++) {
+            GXSetTevOrder(static_cast<GXTevStageID>(i), GX_TEXCOORD_NULL,
+                          GX_TEXMAP_NULL, GX_COLOR_NULL);
+        }
+
+        for (i = (num + 1) / TEV_STAGES_PER_DL;
+             i < (r.nStages + 1) / (u32)TEV_STAGES_PER_DL; i++) {
+            detail::ZeroMemory16ByteBlocks(&r.dl.dl.var[i],
+                                           sizeof(ResTevVariableDL));
+            DCStoreRangeNoSync(&r.dl.dl.var[i], sizeof(ResTevVariableDL));
+        }
+    }
+
+    r.nStages = num;
 }
 
 void ResTev::CallDisplayList(bool sync) const {
