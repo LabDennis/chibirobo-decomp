@@ -76,20 +76,88 @@ public:
 };
 
 // xobj style actor from the dol
-struct UnkDolObjVtbl {
-	u8 _00[0x80];                                                                                            // _00
-	void (*mSetAnim)(void* obj, f32 frame, f32 rate, f32 start, f32 end, s32 a, s32 b, s32 c, s32 d, s32 e); // _80, XObj::SetAnim
-	u8 _84[0x88];                                                                                            // _84
-	void (*mProjectOffsetToScreen)(void* obj, Vec* pos, f32* x, f32* y, f32* z, s32 flag);  // _10C, XObj::ProjectOffsetToScreen
-	f32 (*mGetFloorXZExtent)(void* obj);                                                    // _110, XObj::GetFloorXZExtent
-	f32 (*mGetCollisionHeight)(void* obj);                                                  // _114, XObj::GetCollisionHeight
-	BOOL (*mProjectVisibleBounds)(void* obj, f32 a, f32 b, f32* outA, f32* outB, s32 flag); // _118, XObj::ProjectVisibleBounds
+// non-virtual base, so the vtable pointer ends up at _34
+struct UnkDolObjBase {
+	HSD_JObj* mJObj; // _00, the object's root HSD_JObj (CJObj::mJObj)
+	u8 _04[0x30];    // _04
 };
 
-struct UnkDolObj {
-	HSD_JObj* mJObj;     // _00, the object's root HSD_JObj (CJObj::mJObj)
-	u8 _04[0x30];        // _04
-	UnkDolObjVtbl* vtbl; // _34
+// XObj's slots; only the named ones are called here
+struct UnkDolObjVirt : public UnkDolObjBase {
+	virtual void vf_08(); // _08
+	virtual void vf_0C(); // _0C
+	virtual void vf_10(); // _10
+	virtual void vf_14(); // _14
+	virtual void vf_18(); // _18
+	virtual void vf_1C(); // _1C
+	virtual void vf_20(); // _20
+	virtual void vf_24(); // _24
+	virtual void vf_28(); // _28
+	virtual void vf_2C(); // _2C
+	virtual void vf_30(); // _30
+	virtual void vf_34(); // _34
+	virtual void vf_38(); // _38
+	virtual void vf_3C(); // _3C
+	virtual void vf_40(); // _40
+	virtual void vf_44(); // _44
+	virtual void vf_48(); // _48
+	virtual void vf_4C(); // _4C
+	virtual void vf_50(); // _50
+	virtual void vf_54(); // _54
+	virtual void vf_58(); // _58
+	virtual void vf_5C(); // _5C
+	virtual void vf_60(); // _60
+	virtual void vf_64(); // _64
+	virtual void vf_68(); // _68
+	virtual void vf_6C(); // _6C
+	virtual void vf_70(); // _70
+	virtual void vf_74(); // _74
+	virtual void vf_78(); // _78
+	virtual void vf_7C(); // _7C
+	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
+	                     f32 blendRate);                                                                // _80
+	virtual void vf_84();                                                                               // _84
+	virtual void vf_88();                                                                               // _88
+	virtual void vf_8C();                                                                               // _8C
+	virtual void vf_90();                                                                               // _90
+	virtual void vf_94();                                                                               // _94
+	virtual void vf_98();                                                                               // _98
+	virtual void vf_9C();                                                                               // _9C
+	virtual void vf_A0();                                                                               // _A0
+	virtual void vf_A4();                                                                               // _A4
+	virtual void vf_A8();                                                                               // _A8
+	virtual void vf_AC();                                                                               // _AC
+	virtual void vf_B0();                                                                               // _B0
+	virtual void vf_B4();                                                                               // _B4
+	virtual void vf_B8();                                                                               // _B8
+	virtual void vf_BC();                                                                               // _BC
+	virtual void vf_C0();                                                                               // _C0
+	virtual void vf_C4();                                                                               // _C4
+	virtual void vf_C8();                                                                               // _C8
+	virtual void vf_CC();                                                                               // _CC
+	virtual void vf_D0();                                                                               // _D0
+	virtual void vf_D4();                                                                               // _D4
+	virtual void vf_D8();                                                                               // _D8
+	virtual void vf_DC();                                                                               // _DC
+	virtual void vf_E0();                                                                               // _E0
+	virtual void vf_E4();                                                                               // _E4
+	virtual void vf_E8();                                                                               // _E8
+	virtual void vf_EC();                                                                               // _EC
+	virtual void vf_F0();                                                                               // _F0
+	virtual void vf_F4();                                                                               // _F4
+	virtual void vf_F8();                                                                               // _F8
+	virtual void vf_FC();                                                                               // _FC
+	virtual void vf_100();                                                                              // _100
+	virtual void vf_104();                                                                              // _104
+	virtual void vf_108();                                                                              // _108
+	virtual void ProjectOffsetToScreen(Vec* pos, f32* x, f32* y, f32* z, s32 flag);                     // _10C
+	virtual f32 GetFloorXZExtent();                                                                     // _110
+	virtual f32 GetCollisionHeight();                                                                   // _114
+	virtual BOOL ProjectVisibleBounds(f32 radius, f32 height, f32* outWidth, f32* outHeight, s32 flag); // _118
+	                                                                                                    // _34 vtable
+};
+
+struct UnkDolObj : public UnkDolObjVirt {
 #if defined(VERSION_JP)
 	u8 _38[0x88]; // _38, mode/flag word returned by GetFlags (_54); the real class also leaves it _38
 #else
@@ -2388,8 +2456,7 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
  * @note Size: 0x244
  */
 // NONMATCHING: retail loads 1.0f through one pointer for the compare and again for the
-// assignment (a literal bound to a const reference in an inline), and calls the object's
-// virtuals through r12; UnkDolObj only models the vtable as a struct of function pointers.
+// assignment (a literal bound to a const reference in an inline).
 extern "C" void DrawFighterHud(void)
 {
 	MatoList* targets;
@@ -2412,22 +2479,22 @@ extern "C" void DrawFighterHud(void)
 		if (obj == NULL || !(obj->mStatus & 1) || item->mPending) {
 			continue;
 		}
-		halfW = obj->vtbl->mGetFloorXZExtent(obj) * 0.5f;
+		halfW = obj->GetFloorXZExtent() / 2.0f;
 		if (halfW < 1.0f) {
 			halfW = 1.0f;
 		}
-		height = item->mObj->vtbl->mGetCollisionHeight(item->mObj);
+		height = item->mObj->GetCollisionHeight();
 		if (height < 1.0f) {
 			height = 1.0f;
 		}
-		if (item->mObj->vtbl->mProjectVisibleBounds(item->mObj, halfW, height, &projW, &projH, 0)) {
+		if (item->mObj->ProjectVisibleBounds(halfW, height, &projW, &projH, 0)) {
 			item->mOnScreen = true;
 			if (projW > projH) {
 				projW = projH;
 			}
 			Vec zero = { 0.0f, 0.0f, 0.0f };
-			item->mObj->vtbl->mProjectOffsetToScreen(item->mObj, &zero, &item->mScreenX, &item->mScreenY, &item->mScreenZ, 0);
-			item->mScreenY -= projW * 0.5f; // raise the marker by half the smaller projected extent
+			item->mObj->ProjectOffsetToScreen(&zero, &item->mScreenX, &item->mScreenY, &item->mScreenZ, 0);
+			item->mScreenY -= projW / 2.0f; // raise the marker by half the smaller projected extent
 		} else {
 			item->mOnScreen = false;
 		}
@@ -4090,12 +4157,11 @@ extern "C" void PilotNwing_Update(PilotNwing* link, u32 dt, f32 animFrame)
 	HSD_JObj* jobj;
 
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	s32 carriedJoint[2] = { 0, 0 };
-	jobj                = GetJointByPath(link->mPathObj->mJObj, carriedJoint, 2);
+	jobj = GetJointByPath(link->mPathObj->mJObj, (s32[2]) { 0, 0 }, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, link->mCarriedMtx);
 	HSD_JObjCopyMtx(link->mCarriedObj->mJObj, link->mCarriedMtx);
 	link->mAnimFrame = animFrame;
-	link->mPathObj->vtbl->mSetAnim(link->mPathObj, link->mAnimFrame, 1.0f, 0.0f, 10.0f, 0, 1, 0, 0, 0);
+	link->mPathObj->SetAnim(0, TRUE, NULL, NULL, NULL, link->mAnimFrame, 1.0f, 0.0f, 10.0f);
 	if (link->mAttachedObj0 != NULL) {
 		PSMTXTrans(attach, 0.0f, -1.89f, -1.0f);
 		PSMTXConcat(link->mCarriedMtx, attach, link->mAttachedMtx0);
@@ -5048,18 +5114,16 @@ extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
  */
 extern "C" void Fighter_Update(Fighter* work, u32 dt)
 {
+	Mtx rot;
 	Mtx scale;
 	Mtx offset;
-	Mtx rot;
 	Vec zero;
 	HSD_JObj* jobj;
 	f32 rate;
 
 	work->mTimeLeft -= dt;
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	s32 flightJoint[2] = { 0, 0 };
-	s32 seatJoint[1]   = { 0 };
-	jobj               = GetJointByPath(work->mPath->mJObj, flightJoint, 2);
+	jobj = GetJointByPath(work->mPath->mJObj, (s32[2]) { 0, 0 }, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, work->mBodyMtx);
 	HSD_JObjCopyMtx(work->mBody->mJObj, work->mBodyMtx);
 	zero.x = zero.y = zero.z = 0.0f;
@@ -5067,7 +5131,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 	PSMTXRotRad(rot, 'Y', work->mPlayerRotY);
 	PSMTXTrans(offset, 0.0f, -1.89f, -7.16f);
 	PSMTXConcat(offset, rot, offset);
-	jobj = GetJointByPath(work->mBody->mJObj, seatJoint, 1);
+	jobj = GetJointByPath(work->mBody->mJObj, (s32[1]) { 0 }, 1);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), offset, work->mPlayerMtx);
 	HSD_JObjCopyMtx(GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674))->mJObj, work->mPlayerMtx);
 	if (work->mExtra != NULL) {
@@ -5093,7 +5157,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 		}
 	}
 	work->mFrame = work->mSpeed * rate + work->mFrame;
-	work->mPath->vtbl->mSetAnim(work->mPath, work->mFrame, 1.0f, 0.0f, 10.0f, 0, 1, 0, 0, 0);
+	work->mPath->SetAnim(0, TRUE, NULL, NULL, NULL, work->mFrame, 1.0f, 0.0f, 10.0f);
 	ShotList_Update(&work->mShots, dt);
 }
 
