@@ -1315,6 +1315,88 @@ if wii:
             ],
         },
         {
+            # Broadcom's Bluetooth stack (BTE) after wii-ipl's reconstruction (identical function sizes in all
+            # 732 functions). Sources include their headers by bare name, hence the include path.
+            # Two compilers, as in wii-ipl: the stack itself (bd.c onwards) is GC/3.0a5, the Wii port layer
+            # (gki_*, hcisu_h2, uusb_ppc, the *_cfg tables, bte_*, btu_task1) GC/3.0a5.2 like the rest of
+            # the SDK. Measured on our units: all on 3.0a5.2 leaves btm_inq, l2c_link, rfc_ts_frames and
+            # sdp_main with one or two functions open each, all on 3.0a5 costs a function in uusb_ppc.
+            "lib": "BTE",
+            "mw_version": "GC/3.0a5",
+            "cflags": [*wii_cflags, "-Cpp_exceptions off", "-fp_contract off", "-common off", "-ipa file", "-use_lmw_stmw off", "-i include/revolution/BTE"],
+            "progress_category": "sdk",
+            "objects": [
+                Object(Matching, "revolution/BTE/gki_buffer.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/gki_time.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/gki_ppc.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/hcisu_h2.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/uusb_ppc.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bta_dm_cfg.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bta_hh_cfg.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bta_sys_cfg.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bte_hcisu.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bte_init.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bte_logmsg.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bte_main.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/btu_task1.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bd.c"),
+                Object(Matching, "revolution/BTE/bta_sys_conn.c"),
+                Object(Matching, "revolution/BTE/bta_sys_main.c"),
+                Object(Matching, "revolution/BTE/ptim.c"),
+                Object(Matching, "revolution/BTE/utl.c"),
+                Object(Matching, "revolution/BTE/bta_dm_act.c"),
+                Object(Matching, "revolution/BTE/bta_dm_api.c"),
+                Object(Matching, "revolution/BTE/bta_dm_main.c"),
+                Object(Matching, "revolution/BTE/bta_dm_pm.c"),
+                Object(Matching, "revolution/BTE/bta_hh_act.c"),
+                Object(Matching, "revolution/BTE/bta_hh_api.c"),
+                Object(Matching, "revolution/BTE/bta_hh_main.c"),
+                Object(Matching, "revolution/BTE/bta_hh_utils.c"),
+                Object(Matching, "revolution/BTE/btm_acl.c"),
+                Object(Matching, "revolution/BTE/btm_dev.c"),
+                Object(Matching, "revolution/BTE/btm_devctl.c"),
+                Object(Matching, "revolution/BTE/btm_discovery.c"),
+                Object(Matching, "revolution/BTE/btm_inq.c"),
+                Object(Matching, "revolution/BTE/btm_main.c"),
+                Object(Matching, "revolution/BTE/btm_pm.c"),
+                Object(Matching, "revolution/BTE/btm_sco.c"),
+                Object(Matching, "revolution/BTE/btm_sec.c"),
+                Object(Matching, "revolution/BTE/btu_hcif.c"),
+                Object(Matching, "revolution/BTE/btu_init.c"),
+                Object(Matching, "revolution/BTE/wbt_ext.c"),
+                Object(Matching, "revolution/BTE/gap_api.c"),
+                Object(Matching, "revolution/BTE/gap_conn.c"),
+                Object(Matching, "revolution/BTE/gap_utils.c"),
+                Object(Matching, "revolution/BTE/hcicmds.c"),
+                Object(Matching, "revolution/BTE/hidd_api.c"),
+                Object(Matching, "revolution/BTE/hidd_conn.c"),
+                Object(Matching, "revolution/BTE/hidd_mgmt.c"),
+                Object(Matching, "revolution/BTE/hidd_pm.c"),
+                Object(Matching, "revolution/BTE/hidh_api.c"),
+                Object(Matching, "revolution/BTE/hidh_conn.c"),
+                Object(Matching, "revolution/BTE/l2c_api.c"),
+                Object(Matching, "revolution/BTE/l2c_csm.c"),
+                Object(Matching, "revolution/BTE/l2c_link.c"),
+                Object(Matching, "revolution/BTE/l2c_main.c"),
+                Object(Matching, "revolution/BTE/l2c_utils.c"),
+                Object(Matching, "revolution/BTE/port_api.c"),
+                Object(Matching, "revolution/BTE/port_rfc.c"),
+                Object(Matching, "revolution/BTE/port_utils.c"),
+                Object(Matching, "revolution/BTE/rfc_l2cap_if.c"),
+                Object(Matching, "revolution/BTE/rfc_mx_fsm.c"),
+                Object(Matching, "revolution/BTE/rfc_port_fsm.c"),
+                Object(Matching, "revolution/BTE/rfc_port_if.c"),
+                Object(Matching, "revolution/BTE/rfc_ts_frames.c"),
+                Object(Matching, "revolution/BTE/rfc_utils.c"),
+                Object(Matching, "revolution/BTE/sdp_api.c"),
+                Object(Matching, "revolution/BTE/sdp_db.c"),
+                Object(Matching, "revolution/BTE/sdp_discovery.c"),
+                Object(Matching, "revolution/BTE/sdp_main.c"),
+                Object(Matching, "revolution/BTE/sdp_server.c"),
+                Object(Matching, "revolution/BTE/sdp_utils.c"),
+            ],
+        },
+        {
             # These Wii SDK modules share the compiler profile used by New Play Control! Pikmin.
             "lib": "RevolutionSDK-2008",
             "mw_version": "GC/3.0a5.2",
@@ -1411,9 +1493,6 @@ if wii:
                 Object(Matching, "revolution/DSP/dsp_debug.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Equivalent, "revolution/DSP/dsp_task.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/WENC/wenc.c"),
-                Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
-                Object(Matching, "revolution/WPAD/WPADMem.c"),
-                Object(Matching, "revolution/WPAD/debug_msg.c"),
                 Object(Matching, "revolution/EUART/euart.c"),
                 Object(Matching, "revolution/FS/fs.c"),
                 Object(Matching, "revolution/IPC/ipcMain.c"),
@@ -1430,6 +1509,25 @@ if wii:
                 Object(NonMatching, "revolution/USB/usb.c"),
                 Object(Matching, "revolution/TPL/TPL.c"),
                 Object(Matching, "revolution/ESP/esp.c"),
+                # Both WPAD units take the library flags (-fp hardware): WPAD.c (76 functions) and
+                # WPADHIDParser.c (25) match and link with them, so Petari's -fp off for its WPAD.c of
+                # December 2007 does not apply to this build.
+                Object(Matching, "revolution/WPAD/WPAD.c"),
+                Object(Matching, "revolution/WPAD/WPADHIDParser.c"),
+                Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
+                Object(Matching, "revolution/WPAD/WPADMem.c"),
+                Object(Matching, "revolution/WPAD/debug_msg.c"),
+                Object(Matching, "revolution/KPAD/KPAD.c"),
+                # WUD (Wii remote device manager) after wii-ipl's reconstruction, brought to our September 2008
+                # build from the disassembly. It includes the Bluetooth stack's headers, which include each
+                # other by bare name: the extra flag is an include path, not a code generation setting.
+                # WUD.c: all 86 functions match, and .bss, .sbss, .sdata and .sdata2 are in place. Not linked:
+                # retail's .data ends with four strings ("Not Found", "Found the registered WBC\n", "Removed\n",
+                # "Not Found WBC\n", 0x8032D6BC-0x8032D700) of a function the linker removed, and no reference
+                # has that function. With a stand-in for those 0x44 bytes the unit links to an identical dol.
+                Object(NonMatching, "revolution/WUD/WUD.c", extra_cflags=["-i include/revolution/BTE"]),
+                Object(Matching, "revolution/WUD/WUDHidHost.c", extra_cflags=["-i include/revolution/BTE"]),
+                Object(Matching, "revolution/WUD/debug_msg.c", extra_cflags=["-i include/revolution/BTE"]),
                 # GX, the Wii's own sources (src/dolphin/gx is the GameCube template). Compiler and flags are
                 # the library's: with them GXBump.c matched 5 of 5 named functions at once (1 of 7 as the
                 # GameCube file under GC/1.2.5n) and GX as a whole went from 11 to 130 of 191 before any

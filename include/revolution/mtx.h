@@ -3,6 +3,8 @@
 
 #include "Dolphin/mtx.h"
 
+#define MTXRowCol(m, r, c) ((m)[(r)][(c)])
+
 // the 4x4 routines the Wii SDK adds to the GameCube ones
 void PSMTX44Identity(Mtx44 m);
 void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 out);

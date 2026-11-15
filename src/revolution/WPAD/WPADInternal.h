@@ -2,54 +2,48 @@
 #ifndef REVOLUTION_WPAD_INTERNAL_H
 #define REVOLUTION_WPAD_INTERNAL_H
 
-#include "types.h"
-#include "Dolphin/OS/OSThread.h"
+#include "revolution/os.h"
+#include "revolution/wpad.h"
 
-#define WPAD_MAX_CONTROLLERS     4
-#define WPAD_DPD_MAX_OBJECTS     4
 #define WPAD_RX_DATASIZE         96
 #define WPAD_COMMAND_CMD_MAX_LEN 24
 #define WPAD_COMMAND_EXT_MAX_LEN 12
+#define WPAD_COMMAND_BUF_LEN     22
 
-typedef s32 WPADChannel;
-typedef void (*WPADCallback)(WPADChannel channel, s32 result);
-typedef void (*WPADExtensionCallback)(WPADChannel channel, s32 device);
-typedef void (*WPADConnectCallback)(WPADChannel channel, s32 result);
-typedef void (*WPADSamplingCallback)(WPADChannel channel);
+#define WPAD_FILTER_ACC  0
+#define WPAD_FILTER_DPD  1
+#define WPAD_FILTER_EXT  2
+#define WPAD_MAX_FILTERS 3
 
-typedef struct DPDObject {
-	s16 x;
-	s16 y;
-	u16 size;
-	u8 traceId;
-} DPDObject;
+#define WPAD_HIDREP_VIBRATOR 0x10
+#define WPAD_HIDREP_PORT     0x11
+#define WPAD_HIDREP_REPTYPE  0x12
+#define WPAD_HIDREP_ENDPD    0x13
+#define WPAD_HIDREP_ENSPK    0x14
+#define WPAD_HIDREP_GETSTAT  0x15
+#define WPAD_HIDREP_WRDATA   0x16
+#define WPAD_HIDREP_RDDATA   0x17
+#define WPAD_HIDREP_STRM     0x18
+#define WPAD_HIDREP_MUTE     0x19
+#define WPAD_HIDREP_DPDCSB   0x1A
+#define WPAD_HIDREP_WAIT     0xFF
 
-typedef struct WPADInfo {
-	BOOL dpd;
-	BOOL speaker;
-	BOOL attach;
-	BOOL lowBat;
-	BOOL nearempty;
-	u8 battery;
-	u8 led;
-	u8 protocol;
-	u8 firmware;
-} WPADInfo;
+#define WPAD_I2CDEV_SEL_MASK  (u32)(0xFF000000)
+#define WPAD_I2CDEV_DADR_MASK (u32)(0x00FF0000)
+#define WPAD_I2CDEV_UADR_MASK (u32)(0x0000FF00)
+#define WPAD_I2CDEV_LADR_MASK (u32)(0x000000FF)
+#define WPAD_WRITE_LEN_MASK   (u16)(0x001F)
+#define WPAD_READ_ULEN_MASK   (u16)(0xFF00)
+#define WPAD_READ_LLEN_MASK   (u16)(0x00FF)
 
-typedef struct WPADAcc {
-	s16 x;
-	s16 y;
-	s16 z;
-} WPADAcc;
-
-typedef struct WPADMEMGameInfo {
-	OSTime calendarTimeTick;
-	u16 gameTitle[17];
-	char gameId[4];
-	u8 gameType;
-	u8 checkSum;
-	u8 reserved[8];
-} WPADMEMGameInfo;
+#define SPK_CLK_REG   0x04a20009
+#define SPK_CLK_ON    1
+#define SPK_CLK_OFF   0
+#define SPK_RST_REG   0x04a20001
+#define SPK_DERESET   0x01
+#define SPK_RESET     0x80
+#define SPK_CTRL_REG  0x04a20008
+#define SPK_CTRL_PLAY 1
 
 typedef struct WPADCommand {
 	u32 command;
@@ -156,12 +150,8 @@ typedef struct WPADControlBlock {
 	BOOL oldFw;
 	OSThreadQueue threadq;
 	OSTime lastUpdateTime;
-	u16 diffCountDpd;
-	u16 hystCountDpd;
-	u16 diffCountAcc;
-	u16 hystCountAcc;
-	u16 diffCountfsAcc;
-	u16 hystCountfsAcc;
+	u16 filterDiff[WPAD_MAX_FILTERS];
+	u16 filterSame[WPAD_MAX_FILTERS];
 	OSTime cmdTimer;
 	u8 cmdTimeoutAction;
 	u8 isSetStickOrigin;
@@ -201,13 +191,17 @@ STATIC_ASSERT(sizeof(WPADControlBlock) == 0x9C0);
 
 extern WPADControlBlock* _wpdcb[WPAD_MAX_CONTROLLERS];
 
-#define WPAD_ERR_NONE          0
-#define WPAD_ERR_NO_CONTROLLER (-1)
-#define WPAD_ERR_BUSY          (-2)
-
 void WPADiClearMemBlock(WPADChannel channel);
 s32 WPADWriteExtReg(WPADChannel channel, const void* data, u16 length, u16 address, WPADCallback callback);
 BOOL WPADiSendWriteData(WPADCmdQueue* queue, const void* data, u16 length, u32 address, WPADCallback callback);
+
+void WPADiClearQueue(WPADCmdQueue* queue);
+BOOL WPADiSendSetReportType(WPADCmdQueue* queue, u32 format, BOOL powerSave, WPADCallback callback);
+BOOL WPADiSendWriteDataCmd(WPADCmdQueue* queue, u8 command, u32 address, WPADCallback callback);
+BOOL WPADiSendReadData(WPADCmdQueue* queue, void* buffer, u16 length, u32 address, WPADCallback callback);
+void WPADiCopyOut(s32 chan);
+void WPADiExcludeButton(s32 chan);
+s32 WPADiHIDParser(u8 chan, u8* report);
 
 void DEBUGPrint(const char* format, ...);
 void WPADiCreateKey(WPADChannel channel);

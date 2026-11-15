@@ -373,6 +373,23 @@ revolution/WENC/wenc.c:
 	.rodata start:0x802DE670 end:0x802DE6B0
 	.sdata2 start:0x805A6828 end:0x805A6830
 
+revolution/WPAD/WPAD.c:
+	.text start:0x801E71D8 end:0x801EE900
+	.rodata start:0x802DE588 end:0x802DE5C8
+	.data start:0x8032A8B8 end:0x8032AC78
+	.bss start:0x80525F60 end:0x805296C0
+	.sdata start:0x805A17A8 end:0x805A17D8
+	.sbss start:0x805A24B8 end:0x805A2510
+	.sdata2 start:0x805A6720 end:0x805A6728
+
+revolution/WPAD/WPADHIDParser.c:
+	.text start:0x801EE900 end:0x801F2B70
+	.rodata start:0x802DE5C8 end:0x802DE5E0
+	.data start:0x8032AC78 end:0x8032B230
+	.bss start:0x805296C0 end:0x80529728
+	.sbss start:0x805A2510 end:0x805A2528
+	.sdata2 start:0x805A6728 end:0x805A6788
+
 revolution/WPAD/WPADEncrypt.c:
 	.text start:0x801F2B70 end:0x801F3C18
 	.data start:0x8032B230 end:0x8032C558
@@ -429,6 +446,326 @@ revolution/NAND/NANDCore.c:
 	.bss start:0x804E8EC0 end:0x804E8F00
 	.sdata start:0x805A15A0 end:0x805A15C8
 	.sbss start:0x805A2448 end:0x805A244C
+revolution/KPAD/KPAD.c:
+	.text start:0x801FA5C8 end:0x801FEAB4
+	.data start:0x8032D998 end:0x8032DA30
+	.bss start:0x8052B8E8 end:0x8052D018
+	.sdata start:0x805A17F0 end:0x805A1870
+	.sbss start:0x805A2568 end:0x805A2590
+	.sdata2 start:0x805A6790 end:0x805A6808
+revolution/WUD/WUD.c:
+	.text start:0x801F3D60 end:0x801F9F90
+	.data start:0x8032C558 end:0x8032D700
+	.bss start:0x80529740 end:0x8052B8E8
+	.sdata start:0x805A17D8 end:0x805A17F0
+	.sbss start:0x805A2530 end:0x805A2568
+	.sdata2 start:0x805A6788 end:0x805A6790
+
+revolution/WUD/WUDHidHost.c:
+	.text start:0x801F9F90 end:0x801FA578
+	.data start:0x8032D700 end:0x8032D998
+
+revolution/WUD/debug_msg.c:
+	.text start:0x801FA578 end:0x801FA5C8
+
+revolution/BTE/gki_buffer.c:
+	.text start:0x801B8744 end:0x801B9B88
+	.data start:0x803248C0 end:0x80324A08
+
+revolution/BTE/gki_time.c:
+	.text start:0x801B9B88 end:0x801BA0E0
+
+revolution/BTE/gki_ppc.c:
+	.text start:0x801BA0E0 end:0x801BA370
+	.bss start:0x804F13A0 end:0x80519E80
+
+revolution/BTE/hcisu_h2.c:
+	.text start:0x801BA370 end:0x801BAA0C
+	.rodata start:0x802DE110 end:0x802DE128
+	.data start:0x80324A08 end:0x80324A78
+	.bss start:0x80519E80 end:0x80519EA4
+	.sdata2 start:0x805A66C8 end:0x805A66D8
+
+revolution/BTE/uusb_ppc.c:
+	.text start:0x801BAA0C end:0x801BB604
+	.bss start:0x80519EC0 end:0x8051BF20
+	.sdata start:0x805A16F8 end:0x805A1708
+	.sbss start:0x805A2470 end:0x805A2488
+
+revolution/BTE/bte_hcisu.c:
+	.text start:0x801BB604 end:0x801BB6BC
+	.sbss start:0x805A2488 end:0x805A2490
+
+revolution/BTE/bte_init.c:
+	.text start:0x801BB6BC end:0x801BB6E8
+
+revolution/BTE/bte_logmsg.c:
+	.text start:0x801BB6E8 end:0x801BB84C
+	.bss start:0x8051BF20 end:0x8051C6F0
+	.sdata start:0x805A1738 end:0x805A1740
+
+revolution/BTE/bte_main.c:
+	.text start:0x801BB84C end:0x801BB9A4
+	.bss start:0x8051C700 end:0x8051D730
+	.sdata start:0x805A1740 end:0x805A1748
+	.sbss start:0x805A2490 end:0x805A2498
+
+revolution/BTE/btu_task1.c:
+	.text start:0x801BB9A4 end:0x801BBDF4
+	.bss start:0x8051D730 end:0x8051D7B8
+	.sdata start:0x805A1748 end:0x805A1750
+	.sbss start:0x805A2498 end:0x805A24A0
+
+revolution/BTE/bd.c:
+	.text start:0x801BBDF4 end:0x801BBEC8
+	.sbss2 start:0x805A7BC8 end:0x805A7BD0
+
+revolution/BTE/bta_sys_conn.c:
+	.text start:0x801BBEC8 end:0x801BC11C
+
+revolution/BTE/bta_sys_main.c:
+	.text start:0x801BC11C end:0x801BC360
+	.data start:0x80324A78 end:0x80324AB0
+	.bss start:0x8051D7B8 end:0x8051D848
+	.sbss start:0x805A24A0 end:0x805A24A4
+
+revolution/BTE/ptim.c:
+	.text start:0x801BC360 end:0x801BC540
+
+revolution/BTE/utl.c:
+	.text start:0x801BC540 end:0x801BC584
+
+revolution/BTE/bta_dm_act.c:
+	.text start:0x801BC584 end:0x801BE8C0
+	.rodata start:0x802DE1C8 end:0x802DE270
+	.data start:0x80324AB0 end:0x80324BF0
+	.bss start:0x8051D848 end:0x8051D878
+	.sdata2 start:0x805A66E0 end:0x805A66E8
+
+revolution/BTE/bta_dm_api.c:
+	.text start:0x801BE8C0 end:0x801BED2C
+	.sdata2 start:0x805A66E8 end:0x805A66F8
+
+revolution/BTE/bta_dm_main.c:
+	.text start:0x801BED2C end:0x801BEE8C
+	.rodata start:0x802DE270 end:0x802DE398
+	.bss start:0x8051D878 end:0x8051D9F8
+
+revolution/BTE/bta_dm_pm.c:
+	.text start:0x801BEE8C end:0x801BF8A8
+	.data start:0x80324BF0 end:0x80324C40
+	.bss start:0x8051D9F8 end:0x8051DA28
+
+revolution/BTE/bta_hh_act.c:
+	.text start:0x801BF8A8 end:0x801C0FF0
+	.data start:0x80324C40 end:0x80325138
+	.sdata start:0x805A1750 end:0x805A1758
+
+revolution/BTE/bta_hh_api.c:
+	.text start:0x801C0FF0 end:0x801C13C0
+	.data start:0x80325138 end:0x80325168
+	.sdata2 start:0x805A66F8 end:0x805A6700
+
+revolution/BTE/bta_hh_main.c:
+	.text start:0x801C13C0 end:0x801C1914
+	.rodata start:0x802DE398 end:0x802DE420
+	.data start:0x80325168 end:0x80325448
+	.bss start:0x8051DA28 end:0x8051DC58
+
+revolution/BTE/bta_hh_utils.c:
+	.text start:0x801C1914 end:0x801C1CC0
+	.data start:0x80325448 end:0x80325708
+
+revolution/BTE/btm_acl.c:
+	.text start:0x801C1CC0 end:0x801C3A04
+	.data start:0x80325708 end:0x80325B28
+
+revolution/BTE/btm_dev.c:
+	.text start:0x801C3A04 end:0x801C40D0
+
+revolution/BTE/btm_devctl.c:
+	.text start:0x801C40D0 end:0x801C5A58
+	.data start:0x80325B28 end:0x80325D88
+	.sdata start:0x805A1758 end:0x805A1770
+
+revolution/BTE/btm_discovery.c:
+	.text start:0x801C5A58 end:0x801C5B8C
+
+revolution/BTE/btm_inq.c:
+	.text start:0x801C5B8C end:0x801C7624
+	.data start:0x80325D88 end:0x80325F98
+	.sdata2 start:0x805A6700 end:0x805A6708
+
+revolution/BTE/btm_main.c:
+	.text start:0x801C7624 end:0x801C7680
+	.bss start:0x8051DC58 end:0x80520420
+
+revolution/BTE/btm_pm.c:
+	.text start:0x801C7680 end:0x801C8314
+	.rodata start:0x802DE420 end:0x802DE430
+	.data start:0x80325F98 end:0x80325FD8
+	.sdata2 start:0x805A6708 end:0x805A6710
+
+revolution/BTE/btm_sco.c:
+	.text start:0x801C8314 end:0x801C914C
+	.rodata start:0x802DE430 end:0x802DE440
+	.data start:0x80325FD8 end:0x803262D8
+
+revolution/BTE/btm_sec.c:
+	.text start:0x801C914C end:0x801CC110
+	.data start:0x803262D8 end:0x80326CE8
+	.sdata2 start:0x805A6710 end:0x805A6718
+
+revolution/BTE/btu_hcif.c:
+	.text start:0x801CC110 end:0x801CD36C
+	.data start:0x80326CE8 end:0x80326D78
+
+revolution/BTE/btu_init.c:
+	.text start:0x801CD36C end:0x801CD3E4
+	.sdata2 start:0x805A6718 end:0x805A6720
+
+revolution/BTE/wbt_ext.c:
+	.text start:0x801CD3E4 end:0x801CD4C4
+
+revolution/BTE/gap_api.c:
+	.text start:0x801CD4C4 end:0x801CD524
+
+revolution/BTE/gap_conn.c:
+	.text start:0x801CD524 end:0x801CE060
+	.data start:0x80326D78 end:0x80326E48
+	.sdata start:0x805A1770 end:0x805A1778
+
+revolution/BTE/gap_utils.c:
+	.text start:0x801CE060 end:0x801CE67C
+	.data start:0x80326E48 end:0x80327138
+	.bss start:0x80520420 end:0x805207D0
+
+revolution/BTE/hcicmds.c:
+	.text start:0x801CE67C end:0x801D0D98
+	.rodata start:0x802DE440 end:0x802DE450
+
+revolution/BTE/hidd_api.c:
+	.text start:0x801D0D98 end:0x801D0E00
+
+revolution/BTE/hidd_conn.c:
+	.text start:0x801D0E00 end:0x801D0EC0
+	.data start:0x80327138 end:0x80327168
+
+revolution/BTE/hidd_mgmt.c:
+	.text start:0x801D0EC0 end:0x801D0F88
+	.data start:0x80327168 end:0x80327188
+	.bss start:0x805207D0 end:0x80520918
+
+revolution/BTE/hidd_pm.c:
+	.text start:0x801D0F88 end:0x801D1304
+
+revolution/BTE/hidh_api.c:
+	.text start:0x801D1304 end:0x801D2084
+	.data start:0x80327188 end:0x803272A0
+	.bss start:0x80520918 end:0x80520D20
+
+revolution/BTE/hidh_conn.c:
+	.text start:0x801D2084 end:0x801D40C4
+	.rodata start:0x802DE450 end:0x802DE478
+	.data start:0x803272A0 end:0x80327688
+
+revolution/BTE/l2c_api.c:
+	.text start:0x801D40C4 end:0x801D4C90
+	.data start:0x80327688 end:0x80327E18
+
+revolution/BTE/l2c_csm.c:
+	.text start:0x801D4C90 end:0x801D616C
+	.data start:0x80327E18 end:0x80328650
+
+revolution/BTE/l2c_link.c:
+	.text start:0x801D616C end:0x801D72F8
+	.data start:0x80328650 end:0x803288C0
+
+revolution/BTE/l2c_main.c:
+	.text start:0x801D72F8 end:0x801D8328
+	.data start:0x803288C0 end:0x80328BC0
+	.bss start:0x80520D20 end:0x80521508
+
+revolution/BTE/l2c_utils.c:
+	.text start:0x801D8328 end:0x801DA1EC
+	.data start:0x80328BC0 end:0x80328CA8
+	.sdata start:0x805A1778 end:0x805A1788
+
+revolution/BTE/port_api.c:
+	.text start:0x801DA1EC end:0x801DA23C
+
+revolution/BTE/port_rfc.c:
+	.text start:0x801DA23C end:0x801DB638
+	.data start:0x80328CA8 end:0x80328FD8
+
+revolution/BTE/port_utils.c:
+	.text start:0x801DB638 end:0x801DBC10
+	.data start:0x80328FD8 end:0x80329120
+
+revolution/BTE/rfc_l2cap_if.c:
+	.text start:0x801DBC10 end:0x801DC544
+	.data start:0x80329120 end:0x80329260
+
+revolution/BTE/rfc_mx_fsm.c:
+	.text start:0x801DC544 end:0x801DD188
+	.data start:0x80329260 end:0x80329518
+
+revolution/BTE/rfc_port_fsm.c:
+	.text start:0x801DD188 end:0x801DE328
+	.data start:0x80329518 end:0x80329840
+
+revolution/BTE/rfc_port_if.c:
+	.text start:0x801DE328 end:0x801DE854
+	.bss start:0x80521508 end:0x80521920
+
+revolution/BTE/rfc_ts_frames.c:
+	.text start:0x801DE854 end:0x801DFE9C
+	.data start:0x80329840 end:0x80329918
+	.sdata start:0x805A1788 end:0x805A1798
+
+revolution/BTE/rfc_utils.c:
+	.text start:0x801DFE9C end:0x801E067C
+	.rodata start:0x802DE478 end:0x802DE578
+	.data start:0x80329918 end:0x803299A8
+
+revolution/BTE/sdp_api.c:
+	.text start:0x801E067C end:0x801E14E4
+	.data start:0x803299A8 end:0x803299F8
+
+revolution/BTE/sdp_db.c:
+	.text start:0x801E14E4 end:0x801E21B0
+	.data start:0x803299F8 end:0x80329A90
+
+revolution/BTE/sdp_discovery.c:
+	.text start:0x801E21B0 end:0x801E3428
+	.data start:0x80329A90 end:0x80329BF0
+
+revolution/BTE/sdp_main.c:
+	.text start:0x801E3428 end:0x801E3F94
+	.data start:0x80329BF0 end:0x80329F50
+	.bss start:0x80521920 end:0x80525F54
+
+revolution/BTE/sdp_server.c:
+	.text start:0x801E3F94 end:0x801E4CA4
+	.data start:0x80329F50 end:0x80329F90
+
+revolution/BTE/sdp_utils.c:
+	.text start:0x801E4CA4 end:0x801E5CE4
+	.rodata start:0x802DE578 end:0x802DE588
+	.data start:0x80329F90 end:0x8032A088
+
+revolution/BTE/bta_dm_cfg.c:
+	.rodata start:0x802DE128 end:0x802DE1B8
+	.sdata start:0x805A1708 end:0x805A1720
+	.sbss2 start:0x805A7BC0 end:0x805A7BC8
+
+revolution/BTE/bta_hh_cfg.c:
+	.rodata start:0x802DE1B8 end:0x802DE1C8
+	.sdata start:0x805A1720 end:0x805A1730
+
+revolution/BTE/bta_sys_cfg.c:
+	.sdata start:0x805A1730 end:0x805A1738
+	.sdata2 start:0x805A66D8 end:0x805A66E0
 
 revolution/NAND/NANDSecret.c:
 	.text start:0x801B5DD4 end:0x801B5E8C
