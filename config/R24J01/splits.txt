@@ -198,6 +198,20 @@ game/wii/savemanager.cpp:
 	.text start:0x800A9320 end:0x800AAD1C
 	.ctors start:0x802C45A4 end:0x802C45A8
 
+game/wii/title.cpp:
+	extab start:0x80009364 end:0x800095CC
+	extabindex start:0x800124D0 end:0x80012650
+	.text start:0x80044FD8 end:0x8004F8F8
+	.ctors start:0x802C458C end:0x802C4590
+	.rodata start:0x802C6468 end:0x802C65F8
+	.sdata2 start:0x805A2DE8 end:0x805A2F70
+
+game/wii/menu.cpp:
+	extab start:0x800095CC end:0x8000A0A8
+	extabindex start:0x80012650 end:0x80012E3C
+	.text start:0x8004F8F8 end:0x800870E8
+	.sdata2 start:0x805A2F70 end:0x805A3350
+
 game/wii/homemenu.cpp:
 	extab start:0x8000A6D0 end:0x8000A708
 	extabindex start:0x80013454 end:0x80013490

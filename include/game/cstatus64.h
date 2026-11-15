@@ -8,6 +8,10 @@ class CBitStatus64 {
 public:
 	u64 mFlags;
 	virtual ~CBitStatus64();
+
+	// any of the mask's bits set, as the GameCube CStatus::Check; the ternary is what leaves retail's
+	// srawi of the compared 0 behind (0x800505DC)
+	bool Check(u64 mask) const { return (mFlags & mask) ? true : false; }
 };
 STATIC_ASSERT(sizeof(CBitStatus64) == 0x10);
 
