@@ -753,15 +753,6 @@ dolphin/os/OSAudioSystem.c:
 dolphin/os/OSError.c:
 	.text start:0x80182B44 end:0x801831E8
 
-dolphin/gx/GXTev.c:
-	.text start:0x801AB9D0 end:0x801AC050
-
-dolphin/gx/GXPixel.c:
-	.text start:0x801AC050 end:0x801AC7B4
-
-dolphin/gx/GXPerf.c:
-	.text start:0x801ADF6C end:0x801AE7A8
-
 MSL_C.PPCEABI.bare.H/MSL_Common/buffer_io.c:
 	.text start:0x802296A8 end:0x80229788
 
@@ -780,9 +771,6 @@ MSL_C.PPCEABI.bare.H/PPC_EABI/uart_console_io_gcn.c:
 MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod.c:
 	.text start:0x8022DE7C end:0x8022E1AC
 	.rodata start:0x802DFA38 end:0x802DFA48
-dolphin/gx/GXAttr.c:
-	.text start:0x801A7294 end:0x801A84B8
-
 
 dolphin/OdemuExi2/DebuggerDriver.c:
 	.text start:0x8017B738 end:0x8017B95C
@@ -820,36 +808,6 @@ dolphin/dvd/dvdlow.c:
 dolphin/vi/vi.c:
 	.text start:0x80199734 end:0x8019B370
 
-dolphin/gx/GXInit.c:
-	.text start:0x801A5598 end:0x801A664C
-
-dolphin/gx/GXFifo.c:
-	.text start:0x801A664C end:0x801A7294
-
-dolphin/gx/GXMisc.c:
-	.text start:0x801A84B8 end:0x801A8D4C
-
-dolphin/gx/GXGeometry.c:
-	.text start:0x801A8FC4 end:0x801A92B4
-
-dolphin/gx/GXFrameBuf.c:
-	.text start:0x801A948C end:0x801A9E8C
-
-dolphin/gx/GXLight.c:
-	.text start:0x801A9E8C end:0x801AA5E0
-
-dolphin/gx/GXTexture.c:
-	.text start:0x801AA7C4 end:0x801AB584
-
-dolphin/gx/GXBump.c:
-	.text start:0x801AB740 end:0x801AB9D0
-
-dolphin/gx/GXDraw.c:
-	.text start:0x801ACFF4 end:0x801AD814
-
-dolphin/gx/GXTransform.c:
-	.text start:0x801ADA54 end:0x801ADEE4
-
 dolphin/thp/THPDec.c:
 	.text start:0x801FF434 end:0x80202804
 
@@ -870,3 +828,69 @@ MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/ansi_fp.c:
 
 MSL_C.PPCEABI.bare.H/MSL_Common/FILE_POS.C:
 	.text start:0x80229D2C end:0x80229EF0
+
+revolution/GX/GXInit.c:
+	.text start:0x801A5480 end:0x801A664C
+	.data start:0x80323280 end:0x803234C0
+	.bss start:0x804E8320 end:0x804E89A0
+	.sdata start:0x805A1518 end:0x805A151C
+	.sbss start:0x805A2380 end:0x805A23A8
+	.sdata2 start:0x805A6580 end:0x805A65A8
+
+revolution/GX/GXFifo.c:
+	.text start:0x801A664C end:0x801A7294
+	.data start:0x803234C0 end:0x803234EE
+	.bss start:0x804E89A0 end:0x804E89E8
+	.sbss start:0x805A23A8 end:0x805A23C4
+
+revolution/GX/GXAttr.c:
+	.text start:0x801A7294 end:0x801A84B8
+	.data start:0x803234F0 end:0x80323764
+	.sdata start:0x805A1520 end:0x805A152C
+
+revolution/GX/GXMisc.c:
+	.text start:0x801A84B8 end:0x801A8D4C
+	.sbss start:0x805A23C8 end:0x805A23DC
+
+dolphin/gx/GXGeometry.c:
+	.text start:0x801A8FC4 end:0x801A92B4
+
+revolution/GX/GXFrameBuf.c:
+	.text start:0x801A9314 end:0x801A9E8C
+	.data start:0x80323768 end:0x80324014
+	.sdata2 start:0x805A65A8 end:0x805A65B8
+
+dolphin/gx/GXLight.c:
+	.text start:0x801A9E8C end:0x801AA5E0
+
+revolution/GX/GXTexture.c:
+	.text start:0x801AA5E0 end:0x801AB584
+	.data start:0x80324038 end:0x8032425C
+	.sdata start:0x805A1530 end:0x805A1578
+	.sdata2 start:0x805A65F0 end:0x805A6628
+
+revolution/GX/GXBump.c:
+	.text start:0x801AB584 end:0x801AB9D0
+	.sdata2 start:0x805A6628 end:0x805A662C
+
+revolution/GX/GXTev.c:
+	.text start:0x801AB9D0 end:0x801AC050
+	.data start:0x80324260 end:0x803242D4
+
+revolution/GX/GXPixel.c:
+	.text start:0x801AC050 end:0x801AC7B4
+	.data start:0x803242D8 end:0x803242F8
+	.sdata2 start:0x805A6630 end:0x805A6680
+
+dolphin/gx/GXDraw.c:
+	.text start:0x801ACFF4 end:0x801AD814
+
+revolution/GX/GXDisplayList.c:
+	.text start:0x801AD814 end:0x801AD888
+
+dolphin/gx/GXTransform.c:
+	.text start:0x801ADA54 end:0x801ADEE4
+
+revolution/GX/GXPerf.c:
+	.text start:0x801ADF6C end:0x801AE7A8
+	.data start:0x803242F8 end:0x803243E4
