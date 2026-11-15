@@ -385,7 +385,7 @@ revolution/WPAD/WPADHIDParser.c:
 	.text start:0x801EE900 end:0x801F2B70
 	.rodata start:0x802DE5C8 end:0x802DE5E0
 	.data start:0x8032AC78 end:0x8032B230
-	.bss start:0x805296C0 end:0x80529740
+	.bss start:0x805296C0 end:0x80529728
 	.sbss start:0x805A2510 end:0x805A2528
 	.sdata2 start:0x805A6728 end:0x805A6788
 

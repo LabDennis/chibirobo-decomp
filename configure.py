@@ -1479,10 +1479,11 @@ if wii:
                 Object(Matching, "revolution/DSP/dsp_debug.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Equivalent, "revolution/DSP/dsp_task.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(NonMatching, "revolution/WENC/wenc.c"),
-                # Both WPAD units take the library flags (-fp hardware): WPAD.c matches 76 of 76 functions and
-                # links with them, so Petari's -fp off for its WPAD.c of December 2007 does not apply to this build.
+                # Both WPAD units take the library flags (-fp hardware): WPAD.c (76 functions) and
+                # WPADHIDParser.c (25) match and link with them, so Petari's -fp off for its WPAD.c of
+                # December 2007 does not apply to this build.
                 Object(Matching, "revolution/WPAD/WPAD.c"),
-                Object(NonMatching, "revolution/WPAD/WPADHIDParser.c"),
+                Object(Matching, "revolution/WPAD/WPADHIDParser.c"),
                 Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
                 Object(Matching, "revolution/WPAD/WPADMem.c"),
                 Object(Matching, "revolution/WPAD/debug_msg.c"),

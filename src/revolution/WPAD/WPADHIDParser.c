@@ -1214,7 +1214,6 @@ static void __a1_32_data_type(u8 chan, u8* data, void* rxBuffer)
 {
 	WPADControlBlock* p_cb = _wpdcb[chan];
 	WPADStatus* p_status   = (WPADStatus*)rxBuffer;
-	void* p_extStat        = rxBuffer;
 	WPADTRStatus* p_trStat;
 
 	p_status->button = (u16)((u16)(((u16)((u16)(data[HID_IDX_BYTE7]) & 0xFF) | (u16)((u16)(data[HID_IDX_BYTE8] << 8) & 0xFF00)))
@@ -1235,11 +1234,11 @@ static void __a1_32_data_type(u8 chan, u8* data, void* rxBuffer)
 
 	if (p_cb->infos.attach) {
 		if (p_cb->devType == WPAD_DEV_FREESTYLE) {
-			__parse_fs_data(chan, (WPADFSStatus**)&p_extStat, 0, data + HID_IDX_BYTE9, 8);
+			__parse_fs_data(chan, (WPADFSStatus**)&rxBuffer, 0, data + HID_IDX_BYTE9, 8);
 		} else if (p_cb->devType == WPAD_DEV_CLASSIC) {
-			__parse_cl_data(chan, (WPADCLStatus**)&p_extStat, p_cb->devMode, data + HID_IDX_BYTE9, 8);
+			__parse_cl_data(chan, (WPADCLStatus**)&rxBuffer, p_cb->devMode, data + HID_IDX_BYTE9, 8);
 		} else if (p_cb->devType == WPAD_DEV_TRAIN) {
-			p_trStat         = (WPADTRStatus*)p_extStat;
+			p_trStat         = (WPADTRStatus*)rxBuffer;
 			p_trStat->brake  = data[HID_IDX_BYTE11];
 			p_trStat->mascon = data[HID_IDX_BYTE12];
 			p_trStat->trButton
@@ -1335,7 +1334,6 @@ static void __a1_35_data_type(u8 chan, u8* data, void* rxBuffer)
 {
 	WPADControlBlock* p_cb = _wpdcb[chan];
 	WPADStatus* p_status   = (WPADStatus*)rxBuffer;
-	void* p_extStat        = rxBuffer;
 
 	p_status->button = (u16)((u16)(((u16)((u16)(data[HID_IDX_BYTE7]) & 0xFF) | (u16)((u16)(data[HID_IDX_BYTE8] << 8) & 0xFF00)))
 	                         & (u16)HID_WPAD_BUTTON_MASK);
@@ -1357,11 +1355,11 @@ static void __a1_35_data_type(u8 chan, u8* data, void* rxBuffer)
 
 	if (p_cb->infos.attach) {
 		if (p_cb->devType == WPAD_DEV_FREESTYLE) {
-			__parse_fs_data(chan, (WPADFSStatus**)&p_extStat, 0, data + HID_IDX_BYTE12, 16);
+			__parse_fs_data(chan, (WPADFSStatus**)&rxBuffer, 0, data + HID_IDX_BYTE12, 16);
 		} else if (p_cb->devType == WPAD_DEV_CLASSIC) {
-			__parse_cl_data(chan, (WPADCLStatus**)&p_extStat, p_cb->devMode, data + HID_IDX_BYTE12, 16);
+			__parse_cl_data(chan, (WPADCLStatus**)&rxBuffer, p_cb->devMode, data + HID_IDX_BYTE12, 16);
 		} else if (p_cb->devType == WPAD_DEV_VSM) {
-			__parse_vs_data(chan, (WPADVSStatus**)&p_extStat, (u8)p_cb->dataFormat, data + HID_IDX_BYTE12, 16);
+			__parse_vs_data(chan, (WPADVSStatus**)&rxBuffer, (u8)p_cb->dataFormat, data + HID_IDX_BYTE12, 16);
 		}
 
 		if (!memcmp(checkBuffer, checkInvalidData, 16)) {
@@ -1400,11 +1398,7 @@ static void __a1_36_data_type(u8 chan, u8* data, void* rxBuffer)
 static void __a1_37_data_type(u8 chan, u8* data, void* rxBuffer)
 {
 	WPADControlBlock* p_cb = _wpdcb[chan];
-	WPADStatus* p_status;
-	void* p_extStat;
-
-	p_extStat = rxBuffer;
-	p_status  = (WPADStatus*)rxBuffer;
+	WPADStatus* p_status   = (WPADStatus*)rxBuffer;
 
 	p_status->button = (u16)((u16)(((u16)((u16)(data[HID_IDX_BYTE7]) & 0xFF) | (u16)((u16)(data[HID_IDX_BYTE8] << 8) & 0xFF00)))
 	                         & (u16)HID_WPAD_BUTTON_MASK);
@@ -1429,9 +1423,9 @@ static void __a1_37_data_type(u8 chan, u8* data, void* rxBuffer)
 
 	if (p_cb->infos.attach) {
 		if (p_cb->devType == WPAD_DEV_FREESTYLE) {
-			__parse_fs_data(chan, (WPADFSStatus**)&p_extStat, 0, data + HID_IDX_BYTE22, 6);
+			__parse_fs_data(chan, (WPADFSStatus**)&rxBuffer, 0, data + HID_IDX_BYTE22, 6);
 		} else if (p_cb->devType == WPAD_DEV_CLASSIC || p_cb->devType == WPAD_DEV_GUITAR || p_cb->devType == WPAD_DEV_DRUM) {
-			__parse_cl_data(chan, (WPADCLStatus**)&p_extStat, p_cb->devMode, data + HID_IDX_BYTE22, 6);
+			__parse_cl_data(chan, (WPADCLStatus**)&rxBuffer, p_cb->devMode, data + HID_IDX_BYTE22, 6);
 		}
 
 		if (!memcmp(checkBuffer, checkInvalidData, 6)) {
@@ -1446,7 +1440,6 @@ static void __a1_3d_data_type(u8 chan, u8* data, void* rxBuffer)
 {
 	WPADControlBlock* p_cb = _wpdcb[chan];
 	WPADStatus* p_status   = (WPADStatus*)rxBuffer;
-	void* p_extStat        = rxBuffer;
 
 	if (p_cb->dataFormat == WPAD_FMT_VSM_EX) {
 		p_status->err = WPAD_ERR_NONE;
@@ -1461,7 +1454,7 @@ static void __a1_3d_data_type(u8 chan, u8* data, void* rxBuffer)
 
 	if (p_cb->infos.attach) {
 		if (p_cb->devType == WPAD_DEV_VSM) {
-			__parse_vs_data(chan, (WPADVSStatus**)&p_extStat, (u8)p_cb->dataFormat, data + HID_IDX_BYTE7, 21);
+			__parse_vs_data(chan, (WPADVSStatus**)&rxBuffer, (u8)p_cb->dataFormat, data + HID_IDX_BYTE7, 21);
 		}
 
 		if (!memcmp(checkBuffer, checkInvalidData, 21)) {
@@ -1472,18 +1465,11 @@ static void __a1_3d_data_type(u8 chan, u8* data, void* rxBuffer)
 	}
 }
 
-// NONMATCHING: same instructions, but retail keeps p_cb in r28 and the status pointer in r29 (ours the other way
-// round) and loads accZ after the store to the first axis. Declaration order, assignment as statements and the
-// accelerometer code written out in the handler were tried.
 static void __a1_3e_data_type(u8 chan, u8* data, void* rxBuffer)
 {
 	WPADControlBlock* p_cb = _wpdcb[chan];
-	WPADStatus* p_status;
-	WPADStatusEx* p_exStat;
+	WPADStatus* p_status   = (WPADStatus*)rxBuffer;
 	BOOL enable;
-
-	p_exStat = (WPADStatusEx*)rxBuffer;
-	p_status = (WPADStatus*)rxBuffer;
 
 	if (!_recv3e[chan] && !_recv3f[chan]) {
 		memset(rxBuffer, 0, WPAD_RX_DATASIZE);
@@ -1501,8 +1487,8 @@ static void __a1_3e_data_type(u8 chan, u8* data, void* rxBuffer)
 	p_status->dev         = p_cb->devType;
 	p_cb->infos.nearempty = 0;
 	__parse_acc_data(chan, &p_status, 1, data + HID_IDX_BYTE7, 3);
-	__parse_dpdex_data(chan, &p_exStat, 0, data + HID_IDX_BYTE10, 0);
-	__parse_dpdex_data(chan, &p_exStat, 1, data + HID_IDX_BYTE19, 0);
+	__parse_dpdex_data(chan, (WPADStatusEx**)&rxBuffer, 0, data + HID_IDX_BYTE10, 0);
+	__parse_dpdex_data(chan, (WPADStatusEx**)&rxBuffer, 1, data + HID_IDX_BYTE19, 0);
 
 	enable        = OSDisableInterrupts();
 	_recv3e[chan] = 1;
@@ -1515,18 +1501,11 @@ static void __a1_3e_data_type(u8 chan, u8* data, void* rxBuffer)
 	OSRestoreInterrupts(enable);
 }
 
-// NONMATCHING: same instructions, but retail keeps p_cb in r28 and the status pointer in r29 (ours the other way
-// round) and loads accZ after the store to the first axis. Declaration order, assignment as statements and the
-// accelerometer code written out in the handler were tried.
 static void __a1_3f_data_type(u8 chan, u8* data, void* rxBuffer)
 {
 	WPADControlBlock* p_cb = _wpdcb[chan];
-	WPADStatus* p_status;
-	WPADStatusEx* p_exStat;
+	WPADStatus* p_status   = (WPADStatus*)rxBuffer;
 	BOOL enable;
-
-	p_exStat = (WPADStatusEx*)rxBuffer;
-	p_status = (WPADStatus*)rxBuffer;
 
 	if (!_recv3e[chan] && !_recv3f[chan]) {
 		memset(rxBuffer, 0, WPAD_RX_DATASIZE);
@@ -1544,8 +1523,8 @@ static void __a1_3f_data_type(u8 chan, u8* data, void* rxBuffer)
 	p_status->dev         = p_cb->devType;
 	p_cb->infos.nearempty = 0;
 	__parse_acc_data(chan, &p_status, 2, data + HID_IDX_BYTE7, 3);
-	__parse_dpdex_data(chan, &p_exStat, 2, data + HID_IDX_BYTE10, 0);
-	__parse_dpdex_data(chan, &p_exStat, 3, data + HID_IDX_BYTE19, 0);
+	__parse_dpdex_data(chan, (WPADStatusEx**)&rxBuffer, 2, data + HID_IDX_BYTE10, 0);
+	__parse_dpdex_data(chan, (WPADStatusEx**)&rxBuffer, 3, data + HID_IDX_BYTE19, 0);
 
 	enable        = OSDisableInterrupts();
 	_recv3f[chan] = 1;
