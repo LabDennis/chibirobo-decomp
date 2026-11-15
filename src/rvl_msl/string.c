@@ -2,27 +2,13 @@
 #include "errno.h"
 #include "stdio.h"
 
-char* __strerror(int errnum, char* str);
 #define K1 0x80808080
 #define K2 0xFEFEFEFF
 
 #define set_char_map(map, ch) map[(u8)(ch) >> 3] |= (u8)(1 << ((ch) & 7))
 #define tst_char_map(map, ch) (map[(u8)(ch) >> 3] & (u8)(1 << ((ch) & 7)))
 
-/**
- * @note Address: 0x80158F54
- * @note Size: 0x1C
- */
-size_t(strlen)(const char* str)
-{
-	size_t len = -1;
-	u8* p      = (u8*)str - 1;
-
-	do
-		len++;
-	while (*++p);
-	return (len);
-}
+// strlen is not here on the Wii: it sits in the runtime's __mem.c
 
 /**
  * @note Address: 0x80158E9C
@@ -390,153 +376,4 @@ void strstr(void)
 	// UNUSED FUNCTION
 }
 
-/**
- * @note Address: N/A
- * @note Size: 0x28
- */
-char* strerror(int errnum)
-{
-	static char errstr[100];
-	return __strerror(errnum, errstr);
-}
-
-/**
- * @note Address: N/A
- * @note Size: 0x458
- */
-// stripped from the game, but its messages stay behind in rodata
-char* __strerror(int errnum, char* str)
-{
-	switch (errnum) {
-	case E2BIG:
-		strcpy(str, "Argument list too long");
-		break;
-	case EACCES:
-		strcpy(str, "Permission denied");
-		break;
-	case EAGAIN:
-		strcpy(str, "Resource temporarily unavailable");
-		break;
-	case EBADF:
-		strcpy(str, "Bad file descriptor");
-		break;
-	case EBUSY:
-		strcpy(str, "Device busy");
-		break;
-	case ECHILD:
-		strcpy(str, "No child processes");
-		break;
-	case EDEADLK:
-		strcpy(str, "Resource deadlock avoided");
-		break;
-	case EDOM:
-		strcpy(str, "Numerical argument out of domain");
-		break;
-	case EEXIST:
-		strcpy(str, "File exists");
-		break;
-	case EFAULT:
-		strcpy(str, "Bad address");
-		break;
-	case EFBIG:
-		strcpy(str, "File too large");
-		break;
-	case EFPOS:
-		strcpy(str, "File Position Error");
-		break;
-	case EILSEQ:
-		strcpy(str, "Wide character encoding error");
-		break;
-	case EINTR:
-		strcpy(str, "Interrupted system call");
-		break;
-	case EINVAL:
-		strcpy(str, "Invalid argument");
-		break;
-	case EIO:
-		strcpy(str, "Input/output error");
-		break;
-	case EISDIR:
-		strcpy(str, "Is a directory");
-		break;
-	case EMFILE:
-		strcpy(str, "Too many open files");
-		break;
-	case EMLINK:
-		strcpy(str, "Too many links");
-		break;
-	case ENAMETOOLONG:
-		strcpy(str, "File name too long");
-		break;
-	case ENFILE:
-		strcpy(str, "Too many open files in system");
-		break;
-	case ENODEV:
-		strcpy(str, "Operation not supported by device");
-		break;
-	case ENOENT:
-		strcpy(str, "No such file or directory");
-		break;
-	case ENOERR:
-		strcpy(str, "No error detected");
-		break;
-	case ENOEXEC:
-		strcpy(str, "Exec format error");
-		break;
-	case ENOLCK:
-		strcpy(str, "No locks available");
-		break;
-	case ENOMEM:
-		strcpy(str, "Cannot allocate memory");
-		break;
-	case ENOSPC:
-		strcpy(str, "No space left on device");
-		break;
-	case ENOSYS:
-		strcpy(str, "Function not implemented");
-		break;
-	case ENOTDIR:
-		strcpy(str, "Not a directory");
-		break;
-	case ENOTEMPTY:
-		strcpy(str, "Directory not empty");
-		break;
-	case ENOTTY:
-		strcpy(str, "Inappropriate ioctl for device");
-		break;
-	case ENXIO:
-		strcpy(str, "Device not configured");
-		break;
-	case EPERM:
-		strcpy(str, "Operation not permitted");
-		break;
-	case EPIPE:
-		strcpy(str, "Broken pipe");
-		break;
-	case ERANGE:
-		strcpy(str, "Result too large");
-		break;
-	case EROFS:
-		strcpy(str, "Read-only file system");
-		break;
-	case ESIGPARM:
-		strcpy(str, "Signal error");
-		break;
-	case ESPIPE:
-		strcpy(str, "Illegal seek");
-		break;
-	case ESRCH:
-		strcpy(str, "No such process");
-		break;
-	case EUNKNOWN:
-		strcpy(str, "Unknown error");
-		break;
-	case EXDEV:
-		strcpy(str, "Cross-device link");
-		break;
-	default:
-		sprintf(str, "Unknown Error (%d)", errnum);
-		break;
-	}
-	return str;
-}
+// strerror and __strerror are not in the Wii build: its string pool holds strtok's "" and nothing else

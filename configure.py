@@ -1537,7 +1537,7 @@ if wii:
                 # per-unit mw_version/extra_cflags verified by clean-rebuild tests:
                 # __va_arg, NMWException, GCN_mem_alloc and Gecko_ExceptionPPC drop to
                 # 92-99% under the library default (Wii/1.3)
-                Object(Matching, "Runtime.PPCEABI.H/__mem.c", extra_cflags=["-Cpp_exceptions off"]),
+                Object(Matching, "rvl_runtime/__mem.c", extra_cflags=["-Cpp_exceptions off"]),
                 Object(Matching, "Runtime.PPCEABI.H/__va_arg.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off"]),
                 # the Wii runtime sources differ from upstream's and live under src/rvl_*
                 Object(Matching, "rvl_runtime/global_destructor_chain.c", extra_cflags=["-Cpp_exceptions off"]),
@@ -1587,6 +1587,7 @@ if wii:
                         (Matching, "printf.c"),
                         (Matching, "scanf.c"),
                         (Matching, "signal.c"),
+                        (Matching, "string.c"),
                         (Matching, "strtoul.c"),
                         (Matching, "wstring.c"),
                         (Matching, "wchar_io.c"),
@@ -1614,7 +1615,6 @@ if wii:
                 # GC/2.6: __copy_longs_* only match with the older compiler (89-91% under Wii/1.3)
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c", mw_version="GC/2.6"),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/rand.c"),
-                Object(Equivalent, "rvl_msl/string.c", mw_version="GC/3.0a5.2", extra_cflags=["-str pool", "-Cpp_exceptions off"]),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_acos.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_asin.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_atan2.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
