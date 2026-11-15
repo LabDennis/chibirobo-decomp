@@ -336,11 +336,11 @@ public:
 	virtual void SetCamera(CCamera* camera); // _18
 	virtual void Init();                     // _1C
 
-	void SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32 type, BOOL relative, f32 time);
+	void SetAngle_Interp(s32 mode, Vec angle, u32 axes, u32 type, BOOL relative, f32 time);
 	void SetFov_Interp(s32 mode, f32 fov, f32 time);
-	void SetInterest_Interp(s32 mode, const Vec& interest, f32 time);
+	void SetInterest_Interp(s32 mode, Vec interest, f32 time);
 	void SetInterest_Interp(s32 mode, XObj* target, f32 time);
-	void SetEye_Interp(s32 mode, const Vec& eye, f32 time);
+	void SetEye_Interp(s32 mode, Vec eye, f32 time);
 };
 STATIC_ASSERT(sizeof(CCameraActionEvt) == 0x4E4);
 

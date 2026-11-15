@@ -358,7 +358,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 	}
 	case 4: {
 		u16 frames = ReadMsgS16(msg);
-		u8 volume  = ReadMsgU8(msg);
+		s32 volume = ReadMsgU8(msg);
 		if (!IsGameSoundPlaying(&gGame.mSound, sfx)) {
 			PlayGameSound(&gGame.mSound, sfx, volume);
 		} else {
@@ -1925,10 +1925,10 @@ void CMsgFont_AddChar(CMsgFont* font, const char* text);
 static inline void MsgNextLine(CMsg* msg)
 {
 	msg->mFont.mLine++;
-	CMsgData* data      = msg->mFont.mData;
-	f32 width           = msg->mFont.mFitLine ? data->mWidths[msg->mFont.mLine] : msg->mFont.mWidth;
+	f32 width           = msg->mFont.mFitLine ? msg->mFont.mData->mWidths[msg->mFont.mLine] : msg->mFont.mWidth;
 	msg->mFont.mCursorX = -(width / 2.0f);
-	msg->mFont.mCursorY += msg->mFont.mData->mHeights[msg->mFont.mLine - 1];
+	s32 previous        = msg->mFont.mLine - 1;
+	msg->mFont.mCursorY += msg->mFont.mData->mHeights[previous];
 	msg->mFont.mLineY[msg->mFont.mLine] = msg->mFont.mCursorY + (msg->mFont.mData->mHeights[msg->mFont.mLine] - 22.0f) / 2.0f;
 }
 
@@ -2077,11 +2077,12 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 				HandleOXMenuInput(&gGame.GetPlayer()->mOXMenu, &pad);
 				if (pad.mPad->mTrigger & PAD_BUTTON_A) {
 					gGame.mEvt.mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
-					waiting                  = FALSE;
 				} else {
 					msg->mData.mCursor -= 3;
 					waiting = TRUE;
+					break;
 				}
+				waiting = FALSE;
 			}
 			break;
 		}
