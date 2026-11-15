@@ -462,8 +462,7 @@ extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
  * @note Address: stage03 .text 0xF4
  * @note Size: 0xBC8
  */
-// NONMATCHING: registers in the draw section; retail addresses key->mChar through a dedicated
-// pointer (key + 8, formed before the key loop).
+// NONMATCHING: registers in the draw section
 extern "C" void DecaPanel_Update(DecaPanel* work)
 {
 	if (work->mState != 2) {
@@ -632,7 +631,8 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		draws[11].mH = keyH;
 
 		for (i = 0; i < 12; i++) {
-			if (work->mLocked && key->mChar == decaPanelKeys[i].mChar) {
+			const u8& held = key->mChar;
+			if (work->mLocked && held == decaPanelKeys[i].mChar) {
 				continue; // the held key stays hidden
 			}
 			tex = &work->mTexs[draws[i].mTex];
