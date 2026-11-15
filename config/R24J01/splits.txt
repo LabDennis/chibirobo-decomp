@@ -155,6 +155,7 @@ revolution/DSP/dsp_debug.c:
 
 revolution/DSP/dsp_task.c:
 	.text start:0x801A4BEC end:0x801A5480
+	.data start:0x80323140 end:0x80323280
 	.sbss start:0x805A2368 end:0x805A2380
 
 revolution/ARC/arc.c:
@@ -182,18 +183,24 @@ game/cprimitive.cpp:
 	.text start:0x802AF8E0 end:0x802AFDA8
 
 game/stage_data.cpp:
-	extab start:0x8000A210 end:0x8000A230
-	extabindex start:0x80012F68 end:0x80012F98
-	.text start:0x80092308 end:0x80092EC8
+	extab start:0x8000A210 end:0x8000A238
+	extabindex start:0x80012F68 end:0x80012FA4
+	.text start:0x80092308 end:0x80093138
 	.rodata start:0x802D8310 end:0x802D83EC
 	.data start:0x802FEEF0 end:0x802FF2C8
+	.sbss start:0x805A1C20 end:0x805A1C28
 	.sdata2 start:0x805A4030 end:0x805A4160
 
 game/globalresources.cpp:
-	extab start:0x8000A238 end:0x8000A248
-	extabindex start:0x80012FA4 end:0x80012FBC
-	.sdata start:0x805A0ED0 end:0x805A0ED4
-	.text start:0x80093138 end:0x800942E8
+	extab start:0x8000A238 end:0x8000A278
+	extabindex start:0x80012FA4 end:0x80013004
+	.sdata start:0x805A0ED0 end:0x805A0F00
+	.sdata2 start:0x805A4160 end:0x805A4180
+	.rodata start:0x802D83EC end:0x802D83FC
+	.data start:0x802FF300 end:0x802FF340
+	.text start:0x80093138 end:0x8009453C
+	.ctors start:0x802C4598 end:0x802C459C
+	.bss start:0x8044C198 end:0x8044C5A8
 
 game/wii/cpadact.cpp:
 	extab start:0x8000A600 end:0x8000A610
@@ -201,6 +208,10 @@ game/wii/cpadact.cpp:
 	.text start:0x800A8164 end:0x800A92CC
 	.sbss start:0x805A1C28 end:0x805A1C2C
 	.sdata2 start:0x805A4430 end:0x805A4468
+
+game/wii/ccamera.cpp:
+	.text start:0x800A92CC end:0x800A9320
+	.ctors start:0x802C45A0 end:0x802C45A4
 
 game/wii/savemanager.cpp:
 	extab start:0x8000A610 end:0x8000A6D0
@@ -249,6 +260,12 @@ game/wii/cfile.cpp:
 	.sdata start:0x805A1A40 end:0x805A1A50
 	.sbss start:0x805A28A0 end:0x805A28A8
 	.sdata2 start:0x805A7A48 end:0x805A7A50
+
+game/wii/cresfile.cpp:
+	extab start:0x80010AA0 end:0x80010AD8
+	extabindex start:0x80017420 end:0x80017474
+	.text start:0x802B6094 end:0x802B6560
+	.rodata start:0x802E56C0 end:0x802E56D8
 
 game/wii/msg.cpp:
 	.text start:0x800A1938 end:0x800A8164
@@ -373,6 +390,23 @@ revolution/WENC/wenc.c:
 	.rodata start:0x802DE670 end:0x802DE6B0
 	.sdata2 start:0x805A6828 end:0x805A6830
 
+revolution/WPAD/WPAD.c:
+	.text start:0x801E71D8 end:0x801EE900
+	.rodata start:0x802DE588 end:0x802DE5C8
+	.data start:0x8032A8B8 end:0x8032AC78
+	.bss start:0x80525F60 end:0x805296C0
+	.sdata start:0x805A17A8 end:0x805A17D8
+	.sbss start:0x805A24B8 end:0x805A2510
+	.sdata2 start:0x805A6720 end:0x805A6728
+
+revolution/WPAD/WPADHIDParser.c:
+	.text start:0x801EE900 end:0x801F2B70
+	.rodata start:0x802DE5C8 end:0x802DE5E0
+	.data start:0x8032AC78 end:0x8032B230
+	.bss start:0x805296C0 end:0x80529728
+	.sbss start:0x805A2510 end:0x805A2528
+	.sdata2 start:0x805A6728 end:0x805A6788
+
 revolution/WPAD/WPADEncrypt.c:
 	.text start:0x801F2B70 end:0x801F3C18
 	.data start:0x8032B230 end:0x8032C558
@@ -429,6 +463,326 @@ revolution/NAND/NANDCore.c:
 	.bss start:0x804E8EC0 end:0x804E8F00
 	.sdata start:0x805A15A0 end:0x805A15C8
 	.sbss start:0x805A2448 end:0x805A244C
+revolution/KPAD/KPAD.c:
+	.text start:0x801FA5C8 end:0x801FEAB4
+	.data start:0x8032D998 end:0x8032DA30
+	.bss start:0x8052B8E8 end:0x8052D018
+	.sdata start:0x805A17F0 end:0x805A1870
+	.sbss start:0x805A2568 end:0x805A2590
+	.sdata2 start:0x805A6790 end:0x805A6808
+revolution/WUD/WUD.c:
+	.text start:0x801F3D60 end:0x801F9F90
+	.data start:0x8032C558 end:0x8032D700
+	.bss start:0x80529740 end:0x8052B8E8
+	.sdata start:0x805A17D8 end:0x805A17F0
+	.sbss start:0x805A2530 end:0x805A2568
+	.sdata2 start:0x805A6788 end:0x805A6790
+
+revolution/WUD/WUDHidHost.c:
+	.text start:0x801F9F90 end:0x801FA578
+	.data start:0x8032D700 end:0x8032D998
+
+revolution/WUD/debug_msg.c:
+	.text start:0x801FA578 end:0x801FA5C8
+
+revolution/BTE/gki_buffer.c:
+	.text start:0x801B8744 end:0x801B9B88
+	.data start:0x803248C0 end:0x80324A08
+
+revolution/BTE/gki_time.c:
+	.text start:0x801B9B88 end:0x801BA0E0
+
+revolution/BTE/gki_ppc.c:
+	.text start:0x801BA0E0 end:0x801BA370
+	.bss start:0x804F13A0 end:0x80519E80
+
+revolution/BTE/hcisu_h2.c:
+	.text start:0x801BA370 end:0x801BAA0C
+	.rodata start:0x802DE110 end:0x802DE128
+	.data start:0x80324A08 end:0x80324A78
+	.bss start:0x80519E80 end:0x80519EA4
+	.sdata2 start:0x805A66C8 end:0x805A66D8
+
+revolution/BTE/uusb_ppc.c:
+	.text start:0x801BAA0C end:0x801BB604
+	.bss start:0x80519EC0 end:0x8051BF20
+	.sdata start:0x805A16F8 end:0x805A1708
+	.sbss start:0x805A2470 end:0x805A2488
+
+revolution/BTE/bte_hcisu.c:
+	.text start:0x801BB604 end:0x801BB6BC
+	.sbss start:0x805A2488 end:0x805A2490
+
+revolution/BTE/bte_init.c:
+	.text start:0x801BB6BC end:0x801BB6E8
+
+revolution/BTE/bte_logmsg.c:
+	.text start:0x801BB6E8 end:0x801BB84C
+	.bss start:0x8051BF20 end:0x8051C6F0
+	.sdata start:0x805A1738 end:0x805A1740
+
+revolution/BTE/bte_main.c:
+	.text start:0x801BB84C end:0x801BB9A4
+	.bss start:0x8051C700 end:0x8051D730
+	.sdata start:0x805A1740 end:0x805A1748
+	.sbss start:0x805A2490 end:0x805A2498
+
+revolution/BTE/btu_task1.c:
+	.text start:0x801BB9A4 end:0x801BBDF4
+	.bss start:0x8051D730 end:0x8051D7B8
+	.sdata start:0x805A1748 end:0x805A1750
+	.sbss start:0x805A2498 end:0x805A24A0
+
+revolution/BTE/bd.c:
+	.text start:0x801BBDF4 end:0x801BBEC8
+	.sbss2 start:0x805A7BC8 end:0x805A7BD0
+
+revolution/BTE/bta_sys_conn.c:
+	.text start:0x801BBEC8 end:0x801BC11C
+
+revolution/BTE/bta_sys_main.c:
+	.text start:0x801BC11C end:0x801BC360
+	.data start:0x80324A78 end:0x80324AB0
+	.bss start:0x8051D7B8 end:0x8051D848
+	.sbss start:0x805A24A0 end:0x805A24A4
+
+revolution/BTE/ptim.c:
+	.text start:0x801BC360 end:0x801BC540
+
+revolution/BTE/utl.c:
+	.text start:0x801BC540 end:0x801BC584
+
+revolution/BTE/bta_dm_act.c:
+	.text start:0x801BC584 end:0x801BE8C0
+	.rodata start:0x802DE1C8 end:0x802DE270
+	.data start:0x80324AB0 end:0x80324BF0
+	.bss start:0x8051D848 end:0x8051D878
+	.sdata2 start:0x805A66E0 end:0x805A66E8
+
+revolution/BTE/bta_dm_api.c:
+	.text start:0x801BE8C0 end:0x801BED2C
+	.sdata2 start:0x805A66E8 end:0x805A66F8
+
+revolution/BTE/bta_dm_main.c:
+	.text start:0x801BED2C end:0x801BEE8C
+	.rodata start:0x802DE270 end:0x802DE398
+	.bss start:0x8051D878 end:0x8051D9F8
+
+revolution/BTE/bta_dm_pm.c:
+	.text start:0x801BEE8C end:0x801BF8A8
+	.data start:0x80324BF0 end:0x80324C40
+	.bss start:0x8051D9F8 end:0x8051DA28
+
+revolution/BTE/bta_hh_act.c:
+	.text start:0x801BF8A8 end:0x801C0FF0
+	.data start:0x80324C40 end:0x80325138
+	.sdata start:0x805A1750 end:0x805A1758
+
+revolution/BTE/bta_hh_api.c:
+	.text start:0x801C0FF0 end:0x801C13C0
+	.data start:0x80325138 end:0x80325168
+	.sdata2 start:0x805A66F8 end:0x805A6700
+
+revolution/BTE/bta_hh_main.c:
+	.text start:0x801C13C0 end:0x801C1914
+	.rodata start:0x802DE398 end:0x802DE420
+	.data start:0x80325168 end:0x80325448
+	.bss start:0x8051DA28 end:0x8051DC58
+
+revolution/BTE/bta_hh_utils.c:
+	.text start:0x801C1914 end:0x801C1CC0
+	.data start:0x80325448 end:0x80325708
+
+revolution/BTE/btm_acl.c:
+	.text start:0x801C1CC0 end:0x801C3A04
+	.data start:0x80325708 end:0x80325B28
+
+revolution/BTE/btm_dev.c:
+	.text start:0x801C3A04 end:0x801C40D0
+
+revolution/BTE/btm_devctl.c:
+	.text start:0x801C40D0 end:0x801C5A58
+	.data start:0x80325B28 end:0x80325D88
+	.sdata start:0x805A1758 end:0x805A1770
+
+revolution/BTE/btm_discovery.c:
+	.text start:0x801C5A58 end:0x801C5B8C
+
+revolution/BTE/btm_inq.c:
+	.text start:0x801C5B8C end:0x801C7624
+	.data start:0x80325D88 end:0x80325F98
+	.sdata2 start:0x805A6700 end:0x805A6708
+
+revolution/BTE/btm_main.c:
+	.text start:0x801C7624 end:0x801C7680
+	.bss start:0x8051DC58 end:0x80520420
+
+revolution/BTE/btm_pm.c:
+	.text start:0x801C7680 end:0x801C8314
+	.rodata start:0x802DE420 end:0x802DE430
+	.data start:0x80325F98 end:0x80325FD8
+	.sdata2 start:0x805A6708 end:0x805A6710
+
+revolution/BTE/btm_sco.c:
+	.text start:0x801C8314 end:0x801C914C
+	.rodata start:0x802DE430 end:0x802DE440
+	.data start:0x80325FD8 end:0x803262D8
+
+revolution/BTE/btm_sec.c:
+	.text start:0x801C914C end:0x801CC110
+	.data start:0x803262D8 end:0x80326CE8
+	.sdata2 start:0x805A6710 end:0x805A6718
+
+revolution/BTE/btu_hcif.c:
+	.text start:0x801CC110 end:0x801CD36C
+	.data start:0x80326CE8 end:0x80326D78
+
+revolution/BTE/btu_init.c:
+	.text start:0x801CD36C end:0x801CD3E4
+	.sdata2 start:0x805A6718 end:0x805A6720
+
+revolution/BTE/wbt_ext.c:
+	.text start:0x801CD3E4 end:0x801CD4C4
+
+revolution/BTE/gap_api.c:
+	.text start:0x801CD4C4 end:0x801CD524
+
+revolution/BTE/gap_conn.c:
+	.text start:0x801CD524 end:0x801CE060
+	.data start:0x80326D78 end:0x80326E48
+	.sdata start:0x805A1770 end:0x805A1778
+
+revolution/BTE/gap_utils.c:
+	.text start:0x801CE060 end:0x801CE67C
+	.data start:0x80326E48 end:0x80327138
+	.bss start:0x80520420 end:0x805207D0
+
+revolution/BTE/hcicmds.c:
+	.text start:0x801CE67C end:0x801D0D98
+	.rodata start:0x802DE440 end:0x802DE450
+
+revolution/BTE/hidd_api.c:
+	.text start:0x801D0D98 end:0x801D0E00
+
+revolution/BTE/hidd_conn.c:
+	.text start:0x801D0E00 end:0x801D0EC0
+	.data start:0x80327138 end:0x80327168
+
+revolution/BTE/hidd_mgmt.c:
+	.text start:0x801D0EC0 end:0x801D0F88
+	.data start:0x80327168 end:0x80327188
+	.bss start:0x805207D0 end:0x80520918
+
+revolution/BTE/hidd_pm.c:
+	.text start:0x801D0F88 end:0x801D1304
+
+revolution/BTE/hidh_api.c:
+	.text start:0x801D1304 end:0x801D2084
+	.data start:0x80327188 end:0x803272A0
+	.bss start:0x80520918 end:0x80520D20
+
+revolution/BTE/hidh_conn.c:
+	.text start:0x801D2084 end:0x801D40C4
+	.rodata start:0x802DE450 end:0x802DE478
+	.data start:0x803272A0 end:0x80327688
+
+revolution/BTE/l2c_api.c:
+	.text start:0x801D40C4 end:0x801D4C90
+	.data start:0x80327688 end:0x80327E18
+
+revolution/BTE/l2c_csm.c:
+	.text start:0x801D4C90 end:0x801D616C
+	.data start:0x80327E18 end:0x80328650
+
+revolution/BTE/l2c_link.c:
+	.text start:0x801D616C end:0x801D72F8
+	.data start:0x80328650 end:0x803288C0
+
+revolution/BTE/l2c_main.c:
+	.text start:0x801D72F8 end:0x801D8328
+	.data start:0x803288C0 end:0x80328BC0
+	.bss start:0x80520D20 end:0x80521508
+
+revolution/BTE/l2c_utils.c:
+	.text start:0x801D8328 end:0x801DA1EC
+	.data start:0x80328BC0 end:0x80328CA8
+	.sdata start:0x805A1778 end:0x805A1788
+
+revolution/BTE/port_api.c:
+	.text start:0x801DA1EC end:0x801DA23C
+
+revolution/BTE/port_rfc.c:
+	.text start:0x801DA23C end:0x801DB638
+	.data start:0x80328CA8 end:0x80328FD8
+
+revolution/BTE/port_utils.c:
+	.text start:0x801DB638 end:0x801DBC10
+	.data start:0x80328FD8 end:0x80329120
+
+revolution/BTE/rfc_l2cap_if.c:
+	.text start:0x801DBC10 end:0x801DC544
+	.data start:0x80329120 end:0x80329260
+
+revolution/BTE/rfc_mx_fsm.c:
+	.text start:0x801DC544 end:0x801DD188
+	.data start:0x80329260 end:0x80329518
+
+revolution/BTE/rfc_port_fsm.c:
+	.text start:0x801DD188 end:0x801DE328
+	.data start:0x80329518 end:0x80329840
+
+revolution/BTE/rfc_port_if.c:
+	.text start:0x801DE328 end:0x801DE854
+	.bss start:0x80521508 end:0x80521920
+
+revolution/BTE/rfc_ts_frames.c:
+	.text start:0x801DE854 end:0x801DFE9C
+	.data start:0x80329840 end:0x80329918
+	.sdata start:0x805A1788 end:0x805A1798
+
+revolution/BTE/rfc_utils.c:
+	.text start:0x801DFE9C end:0x801E067C
+	.rodata start:0x802DE478 end:0x802DE578
+	.data start:0x80329918 end:0x803299A8
+
+revolution/BTE/sdp_api.c:
+	.text start:0x801E067C end:0x801E14E4
+	.data start:0x803299A8 end:0x803299F8
+
+revolution/BTE/sdp_db.c:
+	.text start:0x801E14E4 end:0x801E21B0
+	.data start:0x803299F8 end:0x80329A90
+
+revolution/BTE/sdp_discovery.c:
+	.text start:0x801E21B0 end:0x801E3428
+	.data start:0x80329A90 end:0x80329BF0
+
+revolution/BTE/sdp_main.c:
+	.text start:0x801E3428 end:0x801E3F94
+	.data start:0x80329BF0 end:0x80329F50
+	.bss start:0x80521920 end:0x80525F54
+
+revolution/BTE/sdp_server.c:
+	.text start:0x801E3F94 end:0x801E4CA4
+	.data start:0x80329F50 end:0x80329F90
+
+revolution/BTE/sdp_utils.c:
+	.text start:0x801E4CA4 end:0x801E5CE4
+	.rodata start:0x802DE578 end:0x802DE588
+	.data start:0x80329F90 end:0x8032A088
+
+revolution/BTE/bta_dm_cfg.c:
+	.rodata start:0x802DE128 end:0x802DE1B8
+	.sdata start:0x805A1708 end:0x805A1720
+	.sbss2 start:0x805A7BC0 end:0x805A7BC8
+
+revolution/BTE/bta_hh_cfg.c:
+	.rodata start:0x802DE1B8 end:0x802DE1C8
+	.sdata start:0x805A1720 end:0x805A1730
+
+revolution/BTE/bta_sys_cfg.c:
+	.sdata start:0x805A1730 end:0x805A1738
+	.sdata2 start:0x805A66D8 end:0x805A66E0
 
 revolution/NAND/NANDSecret.c:
 	.text start:0x801B5DD4 end:0x801B5E8C
@@ -496,9 +850,6 @@ rvl_msl/string.c:
 	.sdata start:0x805A18A8 end:0x805A18B0
 	.sdata2 start:0x805A6858 end:0x805A6860
 
-MSL_C.PPCEABI.bare.H/MSL_Common/strtoul.c:
-	.text start:0x8022CEB8 end:0x8022D3AC
-
 MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_acos.c:
 	.text start:0x8022D6B0 end:0x8022D974
 	.sdata2 start:0x805A6860 end:0x805A68E8
@@ -516,12 +867,12 @@ MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_log.c:
 	.sbss start:0x805A26F8 end:0x805A2700
 	.sdata2 start:0x805A69C8 end:0x805A6A48
 
-MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_pow.c:
+rvl_msl/e_pow.c:
 	.text start:0x8022E574 end:0x8022EDBC
 	.rodata start:0x802DFA48 end:0x802DFA78
 	.sdata2 start:0x805A6A78 end:0x805A6B88
 
-MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_rem_pio2.c:
+rvl_msl/e_rem_pio2.c:
 	.text start:0x8022EDBC end:0x8022F154
 	.rodata start:0x802DFA78 end:0x802DFC00
 	.sdata2 start:0x805A6B88 end:0x805A6BE0
@@ -601,8 +952,9 @@ MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_sqrt.c:
 MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_sqrt.c:
 	.text start:0x802319C4 end:0x802319C8
 
-Runtime.PPCEABI.H/__mem.c:
+rvl_runtime/__mem.c:
 	.init start:0x800062EC end:0x80006420
+	.text       start:0x80231A40 end:0x80231A5C
 
 Runtime.PPCEABI.H/__va_arg.c:
 	.text start:0x80231A5C end:0x80231B24
@@ -673,6 +1025,21 @@ game/wii/cfont.cpp:
 	.sbss start:0x805A2890 end:0x805A28A0
 	.sdata2 start:0x805A7A28 end:0x805A7A48
 
+game/wii/ut.cpp:
+	extab start:0x8000FFCC end:0x800101A4
+	extabindex start:0x80016A3C end:0x80016ACC
+	.text start:0x802A5418 end:0x802A7478
+	.rodata start:0x802E4EB0 end:0x802E50C8
+	.sdata start:0x805A19D0 end:0x805A19D8
+	.sdata2 start:0x805A7888 end:0x805A78C0
+	.bss start:0x80576A08 end:0x80576B88
+
+game/wii/mem.cpp:
+	.text start:0x802A7478 end:0x802A7FB4
+	.rodata start:0x802E50C8 end:0x802E5150
+	.bss start:0x80576B88 end:0x8059ABA8
+	.sbss start:0x805A2858 end:0x805A2870
+
 game/cmodule.cpp:
 	extab start:0x800110D0 end:0x800110E0
 	extabindex start:0x80017990 end:0x800179A8
@@ -684,10 +1051,11 @@ game/wii/nandfile.cpp:
 	extabindex start:0x800179A8 end:0x80017A38
 	.text start:0x802C1B3C end:0x802C2278
 	.rodata start:0x802E5CB8 end:0x802E5E20
+
 game/cinterpolationeaseout.cpp:
 	.text start:0x80151D1C end:0x80151FCC
 
-game/ccameraactionareaexm.cpp:
+game/wii/ccameraactionareaexm.cpp:
 	.text start:0x80031FC4 end:0x80032038
 
 game/ccameraactionareaexinit.cpp:
@@ -699,13 +1067,62 @@ game/ccameraactionareaex.cpp:
 game/ccameraactionevt.cpp:
 	.text start:0x801618C0 end:0x80161FFC
 
-game/ccameraactionreset.cpp:
-	.text start:0x8016670C end:0x80166D50
+game/wii/ccameraactionscroll2.cpp:
+	extab start:0x8000F340 end:0x8000F458
+	extabindex start:0x80015D40 end:0x80015DAC
+	.text start:0x80161FFC end:0x80164BFC
 
-game/params.cpp:
+game/wii/ccameraactionchase.cpp:
+	extab start:0x8000F270 end:0x8000F2F0
+	extabindex start:0x80015CBC end:0x80015CEC
+	.text start:0x80160D30 end:0x80161458
+	.data start:0x8030DEF8 end:0x8030DF70
+	.sdata2 start:0x805A5E40 end:0x805A5E80
+
+game/wii/ccameraactioneye.cpp:
+	extab start:0x8000F458 end:0x8000F4E0
+	extabindex start:0x80015DAC end:0x80015DDC
+	.text start:0x80164BFC end:0x8016642C
+
+game/wii/ccameraactionanim.cpp:
+	extab start:0x8000F4E0 end:0x8000F4F0
+	extabindex start:0x80015DDC end:0x80015DF4
+	.text start:0x8016642C end:0x801665C4
+
+game/wii/ccameraactionreset.cpp:
+	extab start:0x8000F4F0 end:0x8000F528
+	extabindex start:0x80015DF4 end:0x80015E24
+	.text start:0x801665C4 end:0x80166D50
+	.rodata start:0x802DBA94 end:0x802DBAE8
+	.sdata2 start:0x805A5FB8 end:0x805A5FE0
+
+game/wii/ccameraactionscroll.cpp:
+	extab start:0x8000F528 end:0x8000F548
+	extabindex start:0x80015E24 end:0x80015E54
+	.text start:0x80166D50 end:0x8016753C
+	.sdata2 start:0x805A5FE0 end:0x805A6008
+	.sbss start:0x805A1D78 end:0x805A1D80
+
+game/wii/cmotioncontrolcamera.cpp:
+	.text start:0x8016753C end:0x8016AD78
+
+game/wii/xobjplugcord.cpp:
+	extab start:0x8000D644 end:0x8000D67C
+	extabindex start:0x80014B7C end:0x80014BD0
+	.text start:0x80110C2C end:0x80111ADC
+	.bss start:0x8045BED0 end:0x8045D6E0
+	.sbss start:0x805A1C70 end:0x805A1C74
+	.sdata2 start:0x805A5390 end:0x805A53D0
+
+game/wii/params.cpp:
+	extab start:0x8000D724 end:0x8000D734
+	extabindex start:0x80014C18 end:0x80014C30
 	.text start:0x80113394 end:0x80113910
+	.sdata2 start:0x805A53F8 end:0x805A53FC
 
-game/inventory.cpp:
+game/wii/inventory.cpp:
+	extab start:0x8000D734 end:0x8000D73C
+	extabindex start:0x80014C30 end:0x80014C3C
 	.text start:0x80113910 end:0x801141C0
 
 game/gameosreport.cpp:
@@ -745,8 +1162,11 @@ game/xpaddtor.cpp:
 game/gamefbsubwinfade.cpp:
 	.text start:0x8001A704 end:0x8001A958
 
+game/wii/fbsubwin.cpp:
+	.text start:0x8001A958 end:0x8001BA54
+
 game/gamefbsubwincam.cpp:
-	.text start:0x8001BA54 end:0x8001BB24
+	.text start:0x8001BA54 end:0x8001BB90
 
 game/gameinit.cpp:
 	.text start:0x8001BB90 end:0x8001C2D8
@@ -764,6 +1184,18 @@ game/ctoon.cpp:
 game/wii/delete.cpp:
 	.text start:0x80019A68 end:0x80019AB4
 
+game/wii/new.cpp:
+	.text start:0x80019AB4 end:0x80019BA4
+
+game/cinterfacecameraaction.cpp:
+	.text start:0x80030AC0 end:0x80031FC4
+
+game/wii/cinterpolation.cpp:
+	.text start:0x80032038 end:0x80032C48
+
+game/wii/cinterpolationeaseoutdivide.cpp:
+	.text start:0x80032C48 end:0x8003366C
+
 TRK_MINNOW_DOLPHIN/mainloop.c:
 	.text start:0x80222DEC end:0x80222EE4
 
@@ -771,10 +1203,12 @@ TRK_MINNOW_DOLPHIN/nubevent.c:
 	.text start:0x80222EE4 end:0x8022310C
 	.bss start:0x8052DF90 end:0x8052DFB8
 
-TRK_MINNOW_DOLPHIN/nubinit.c:
+rvl_trk/nubinit.c:
 	.text start:0x8022310C end:0x80223290
+	.rodata start:0x802DEC00 end:0x802DEC20
+	.bss start:0x8052DFB8 end:0x8052DFC0
 
-TRK_MINNOW_DOLPHIN/msg.c:
+rvl_trk/msg.c:
 	.text start:0x80223290 end:0x802232BC
 
 TRK_MINNOW_DOLPHIN/msgbuf.c:
@@ -782,19 +1216,25 @@ TRK_MINNOW_DOLPHIN/msgbuf.c:
 	.rodata start:0x802DEC20 end:0x802DEC40
 	.bss start:0x8052DFC0 end:0x8052F970
 
-TRK_MINNOW_DOLPHIN/serpoll.c:
-	.text start:0x80223B00 end:0x80223CA4
+rvl_trk/serpoll.c:
+	.text       start:0x80223AF8 end:0x80223CA4
+	.bss start:0x8052F970 end:0x8052F988
+	.sbss start:0x805A26C8 end:0x805A26D0
 
 TRK_MINNOW_DOLPHIN/usr_put.c:
 	.text start:0x80223CA4 end:0x80223D30
 
-TRK_MINNOW_DOLPHIN/dispatch.c:
+rvl_trk/dispatch.c:
 	.text start:0x80223D30 end:0x80223E78
+	.data start:0x80331D78 end:0x80331DE8
 
-TRK_MINNOW_DOLPHIN/msghndlr.c:
+rvl_trk/msghndlr.c:
 	.text start:0x80223E78 end:0x80224F54
+	.rodata start:0x802DEC40 end:0x802DEC78
+	.data start:0x80331DE8 end:0x80331E20
+	.bss start:0x8052F988 end:0x8052F990
 
-TRK_MINNOW_DOLPHIN/support.c:
+rvl_trk/support.c:
 	.text start:0x80224F54 end:0x80225608
 
 TRK_MINNOW_DOLPHIN/mutex_TRK.c:
@@ -808,9 +1248,7 @@ TRK_MINNOW_DOLPHIN/flush_cache.c:
 
 TRK_MINNOW_DOLPHIN/mem_TRK.c:
 	.text start:0x802256F0 end:0x802257A8
-
-TRK_MINNOW_DOLPHIN/targimpl.c:
-	.text start:0x802271E0 end:0x802271F8
+	.init start:0x80004338 end:0x8000438C
 
 TRK_MINNOW_DOLPHIN/mpc_7xx_603e.c:
 	.text start:0x80227200 end:0x80227570
@@ -818,26 +1256,36 @@ TRK_MINNOW_DOLPHIN/mpc_7xx_603e.c:
 TRK_MINNOW_DOLPHIN/mslsupp.c:
 	.text start:0x80227570 end:0x8022776C
 
-TRK_MINNOW_DOLPHIN/dolphin_trk.c:
+rvl_trk/dolphin_trk.c:
 	.text start:0x8022776C end:0x80227A88
+	.init start:0x800062C0 end:0x800062EC
+	.data start:0x80331E50 end:0x80331E90
+	.bss start:0x8052FF10 end:0x8052FF18
 
-TRK_MINNOW_DOLPHIN/main_TRK.c:
+rvl_trk/main_TRK.c:
 	.text start:0x80227A88 end:0x80227ACC
+	.bss start:0x8052FF18 end:0x8052FF20
 
-TRK_MINNOW_DOLPHIN/dolphin_trk_glue.c:
+rvl_trk/dolphin_trk_glue.c:
 	.text start:0x80227ACC end:0x80227F8C
+	.rodata start:0x802DED00 end:0x802DEE08
+	.data start:0x80331E90 end:0x80331EB8
+	.bss start:0x8052FF20 end:0x8052FF28
 
 TRK_MINNOW_DOLPHIN/targcont.c:
 	.text start:0x80227F8C end:0x80227FC0
 
 TRK_MINNOW_DOLPHIN/target_options.c:
 	.text start:0x80227FC0 end:0x80227FDC
+	.bss start:0x8052FF28 end:0x8052FF30
 
 TRK_MINNOW_DOLPHIN/UDP_Stubs.c:
 	.text start:0x80227FDC end:0x80228024
 
-TRK_MINNOW_DOLPHIN/gdev/main.c:
-	.text start:0x80228024 end:0x80228298
+rvl_trk/gdev/main.c:
+	.text       start:0x80228024 end:0x802282E4
+	.bss start:0x8052FF30 end:0x80530450
+	.sbss start:0x805A26D0 end:0x805A26D8
 
 TRK_MINNOW_DOLPHIN/CircleBuffer.c:
 	.text start:0x802282E4 end:0x8022854C
@@ -858,24 +1306,19 @@ revolution/OS/OSError.c:
 MSL_C.PPCEABI.bare.H/MSL_Common/buffer_io.c:
 	.text start:0x802296A8 end:0x80229788
 
-MSL_C.PPCEABI.bare.H/MSL_Common/mbstring.c:
-	.text start:0x80229F58 end:0x8022A010
-
 MSL_C.PPCEABI.bare.H/MSL_Common/misc_io.c:
 	.text start:0x8022A54C end:0x8022A55C
 
-MSL_C.PPCEABI.bare.H/MSL_Common/wchar_io.c:
-	.text start:0x8022D440 end:0x8022D4C4
-
 MSL_C.PPCEABI.bare.H/PPC_EABI/uart_console_io_gcn.c:
 	.text start:0x8022D4C4 end:0x8022D594
+	.sbss start:0x805A26E8 end:0x805A26F0
 
 MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod.c:
 	.text start:0x8022DE7C end:0x8022E1AC
 	.rodata start:0x802DFA38 end:0x802DFA48
 
 dolphin/OdemuExi2/DebuggerDriver.c:
-	.text start:0x8017B738 end:0x8017B95C
+	.text start:0x8017B6E0 end:0x8017B95C
 
 revolution/OS/OSMemory.c:
 	.text start:0x80187B98 end:0x801882D0
@@ -900,21 +1343,6 @@ dolphin/thp/THPDec.c:
 
 dolphin/thp/THPAudio.c:
 	.text start:0x80202804 end:0x80202D64
-
-MSL_C.PPCEABI.bare.H/MSL_Common/ansi_files.c:
-	.text start:0x80228AB8 end:0x80228B5C
-
-MSL_C.PPCEABI.bare.H/MSL_Common/direct_io.c:
-	.text start:0x80229788 end:0x80229A90
-
-MSL_C.PPCEABI.bare.H/MSL_Common/printf.c:
-	.text start:0x8022AD80 end:0x8022C924
-
-MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/ansi_fp.c:
-	.text start:0x802294E8 end:0x80229688
-
-MSL_C.PPCEABI.bare.H/MSL_Common/FILE_POS.C:
-	.text start:0x80229D2C end:0x80229EF0
 
 revolution/GX/GXInit.c:
 	.text start:0x801A5480 end:0x801A664C
@@ -986,6 +1414,7 @@ revolution/GX/GXTransform.c:
 revolution/GX/GXPerf.c:
 	.text start:0x801ADF6C end:0x801AE7A8
 	.data start:0x803242F8 end:0x803243E4
+
 revolution/OS/OS.c:
 	.text start:0x8017F698 end:0x80180BB4
 	.data start:0x8030F478 end:0x8030F988
@@ -1111,3 +1540,99 @@ revolution/VI/vi3in1.c:
 	.bss start:0x804D2950 end:0x804D2970
 	.sdata start:0x805A14C0 end:0x805A14D0
 	.sbss start:0x805A2198 end:0x805A21B0
+
+rvl_msl/alloc.c:
+	.text       start:0x802285A4 end:0x80228AB8
+	.rodata start:0x802DEE08 end:0x802DEE20
+	.bss start:0x80530450 end:0x80530488
+	.sbss start:0x805A26D8 end:0x805A26E0
+
+rvl_msl/ansi_files.c:
+	.text       start:0x80228AB8 end:0x80228BC8
+	.data start:0x80331EB8 end:0x80331FF8
+	.bss start:0x80530488 end:0x80530788
+
+rvl_msl/ansi_fp.c:
+	.text       start:0x80228BC8 end:0x80229688
+	.rodata start:0x802DEE20 end:0x802DEF00
+	.data start:0x80331FF8 end:0x8033211C
+	.sdata2 start:0x805A6830 end:0x805A6838
+
+rvl_msl/arith.c:
+	.text       start:0x80229688 end:0x802296A8
+
+rvl_msl/direct_io.c:
+	.text       start:0x80229788 end:0x80229A90
+
+rvl_msl/file_io.c:
+	.text       start:0x80229A90 end:0x80229C80
+
+rvl_msl/FILE_POS.c:
+	.text       start:0x80229C80 end:0x80229EF0
+
+rvl_msl/mbstring.c:
+	.text       start:0x80229EF0 end:0x8022A010
+
+rvl_msl/math_api.c:
+	.text       start:0x8022A450 end:0x8022A54C
+
+rvl_msl/printf.c:
+	.text       start:0x8022A55C end:0x8022C924
+	.rodata start:0x802DF408 end:0x802DF438
+	.data start:0x80332318 end:0x80332568
+	.sdata start:0x805A1898 end:0x805A18A0
+	.sdata2 start:0x805A6850 end:0x805A6858
+
+rvl_msl/scanf.c:
+	.text       start:0x8022C94C end:0x8022C9DC
+
+rvl_msl/strtoul.c:
+	.text       start:0x8022CEB8 end:0x8022D3AC
+	.data start:0x80332568 end:0x803325AC
+
+rvl_msl/wstring.c:
+	.text       start:0x8022D3AC end:0x8022D440
+
+rvl_msl/wchar_io.c:
+	.text       start:0x8022D440 end:0x8022D4C4
+
+rvl_msl/abort_exit_ppc_eabi.c:
+	.text       start:0x8022D594 end:0x8022D5C8
+	.sbss start:0x805A26F0 end:0x805A26F8
+
+rvl_msl/math_sun.c:
+	.text       start:0x8022D5C8 end:0x8022D608
+
+rvl_msl/extras.c:
+	.text       start:0x8022D608 end:0x8022D6B0
+
+rvl_msl/e_log10.c:
+	.text       start:0x8022E460 end:0x8022E574
+	.sbss start:0x805A2700 end:0x805A2708
+	.sdata2 start:0x805A6A48 end:0x805A6A78
+
+rvl_msl/s_ceil.c:
+	.text       start:0x80230FA0 end:0x802310E0
+	.sdata2 start:0x805A6D00 end:0x805A6D10
+
+rvl_msl/signal.c:
+	.text       start:0x8022C9DC end:0x8022CA8C
+	.bss start:0x80530788 end:0x805307A8
+
+rvl_msl/fminmaxdim.c:
+	.text       start:0x8022F154 end:0x8022F22C
+
+rvl_msl/w_log10.c:
+	.text       start:0x80231774 end:0x80231778
+
+rvl_trk/targimpl.c:
+	.text       start:0x802257C4 end:0x802271DC
+	.rodata start:0x802DEC78 end:0x802DED00
+	.data start:0x80331E20 end:0x80331E50
+	.bss start:0x8052F990 end:0x8052FF10
+
+rvl_trk/targsupp.c:
+	.text       start:0x802271E0 end:0x80227200
+
+rvl_trk/string_TRK.c:
+	.text       start:0x802257A8 end:0x802257C4

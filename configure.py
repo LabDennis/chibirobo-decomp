@@ -1065,14 +1065,17 @@ gamecube_libs = [
             Object(NonMatching, "sysdolphin/baselib/lobj.c"),
             Object(Matching, "sysdolphin/baselib/cobj.c"),
             Object(Matching, "sysdolphin/baselib/fobj.c", padding="small_data+data"),
+            # jobj.c matches but cannot link: retail aligns displayfunc.o's .data to 32 bytes, which leaves 8 bytes
+            # behind jobj's. Nothing in our displayfunc.c asks for that alignment; the object that did was removed
+            # by the linker with its function, and we do not make one up.
             Object(NonMatching, "sysdolphin/baselib/jobj.c"),
             Object(Matching, "sysdolphin/baselib/displayfunc.c", padding="small_data+data"),
             Object(Matching, "sysdolphin/baselib/initialize.c"),
-            Object(MatchingFor(PAL), "sysdolphin/baselib/video.c"),
+            Object(Matching, "sysdolphin/baselib/video.c", padding="small_data+data"),
             Object(Matching, "sysdolphin/baselib/controller.c"),
             Object(Matching, "sysdolphin/baselib/rumble.c"),
             Object(Matching, "sysdolphin/baselib/spline.c"),
-            Object(MatchingFor(JP), "sysdolphin/baselib/mtx.c"),
+            Object(Matching, "sysdolphin/baselib/mtx.c"),
             Object(Matching, "sysdolphin/baselib/util.c"),
             Object(Matching, "sysdolphin/baselib/objalloc.c"),
             Object(Matching, "sysdolphin/baselib/robj.c"),
@@ -1099,7 +1102,7 @@ gamecube_libs = [
             Object(Matching, "sysdolphin/baselib/psdisptev.c"),
             Object(Matching, "sysdolphin/baselib/psappsrt.c"),
             Object(Matching, "sysdolphin/baselib/pslist.c"),
-            Object(MatchingFor(JP), "sysdolphin/baselib/axdriver.c"),
+            Object(Matching, "sysdolphin/baselib/axdriver.c"),
             Object(Matching, "sysdolphin/baselib/devcom.c"),
             Object(Matching, "sysdolphin/baselib/dvdsche.c"),
             Object(NonMatching, "sysdolphin/baselib/synth.c"),
@@ -1174,6 +1177,11 @@ if wii:
         "-i include/sdk", "-i include/sdk/dolphin", "-i include/sdk/msl/c",
         *wii_cflags, "-Cpp_exceptions off", "-fp_contract off", "-common off", "-ipa file", "-use_lmw_stmw off",
     ]
+    # the Wii's MSL: its own headers (include/rvl_msl/msl) ahead of the shared ones
+    wii_msl_cflags = [
+        "-i include/rvl_msl/msl", *wii_cflags,
+        "-Cpp_exceptions on", "-str reuse,pool,readonly", "-fp_contract off", "-inline on", "-ipa file",
+    ]
     config.libs = [
         {
             "lib": "game",
@@ -1194,7 +1202,12 @@ if wii:
                 # so (its twelve functions fall to about 80 % under GC/3.0a5 with -ipa file).
                 Object(Equivalent, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(Equivalent, "game/globalresources.cpp", extra_cflags=["-Cpp_exceptions on"]),
+                # the generated tail (0x800942E8-0x8009453C) is the same compiler as the
+                # stage_data group: only GC/3.0a* emits __register_global_object for the
+                # two globals, Wii/1.3 leaves the calls out. No -ipa file: it flips the
+                # string-base register in LoadGlobalResourceData away from retail's r7
+                Object(Equivalent, "game/globalresources.cpp", mw_version="GC/3.0a5",
+                       extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/roboeyeslens.cpp"),
                 # the THP player sits apart from the game's files (0x802C27B4 on) and takes the compiler
                 # without -ipa file: with it MixAudio falls to 99.88 %
@@ -1216,6 +1229,10 @@ if wii:
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
                 # retail keeps them as calls
                 Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the Wii-only resource file unit 0x802B6094-0x802B6560 (cresfile.cpp by its
+                # OSPanic file): ResourceFile's refcounted CFile, the CFileRequest state
+                # machine and CResFile's brres accessor over the nw4r walkers
+                Object(NonMatching, "game/wii/cresfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # the RFNU/RFNT font file loader + glyph cache between the console font paths;
                 # the small setup helpers stay calls in retail, so no auto-inlining here either
                 Object(NonMatching, "game/wii/cfont.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
@@ -1238,7 +1255,19 @@ if wii:
                 # the text drawing unit 0x802AD310-0x802AEBB0; the GameCube cgs.cpp pairs
                 # are the reconstruction base
                 Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii's shared helper unit 0x802A5418-0x802A7478: Shift-JIS, HSD matrix
+                # and collision helpers from the GameCube's ut.cpp + mtx.c; the CVec
+                # operators and PSVEC calls stay calls, so no auto-inlining
+                Object(NonMatching, "game/wii/ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the Wii memory manager 0x802A7478-0x802A7FB4 (mem.cpp by its OSPanic file):
+                # the GameCube table allocator over a MEM2 arena plus InitMem1/InitMem2's two
+                # expanded heaps; the small helpers GetAllocSize/GetFreeSize stay calls, so
+                # no auto-inlining here either
+                Object(NonMatching, "game/wii/mem.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the out-of-line CCamera::SetAngle(const Vec&) copy plus a CThread global
+                # that nothing references - a port leftover
+                Object(NonMatching, "game/wii/ccamera.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # retail has no call to StartWiiSaveJob (declared inline, inlined into its
                 # callers) while BuildWiiSaveBanner and CheckWiiSaveBanner are reached via
@@ -1249,7 +1278,7 @@ if wii:
                 Object(Equivalent, "game/cinterpolationeaseout.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # FindAreaContainingPoint takes Vec by value on the Wii (the retail caller copies all
                 # three words to the stack); gCameraAreaState's _10/_14/_24 offsets are retail-confirmed
-                Object(Equivalent, "game/ccameraactionareaexm.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Matching, "game/wii/ccameraactionareaexm.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the global's __sinit stores the vtable and __construct_arrays mGroups[256] at _2034
                 # (retail 0x801542A0); CCameraActionAreaEx's layout is shared with the GameCube
                 Object(NonMatching, "game/ccameraactionareaexinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1257,6 +1286,10 @@ if wii:
                 # FindEnabledCameraAreaContainingPoint instead of open-coding the record loop; the
                 # DrawGs debug draws and the corner-Vec extern stay GameCube-only
                 Object(NonMatching, "game/ccameraactionareaex.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the whole cord in one unit on the Wii (retail 0x80110C2C-0x80111ADC): nodes, the
+                # draw entry that takes the node block, InitPlugCord's function-scope static point
+                # array and ResetPlugCordPoints share one literal pool
+                Object(NonMatching, "game/wii/xobjplugcord.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # InfoPoint's dtor is the out-of-line definition; the GameCube file's hand-spelled
                 # weak copy stays for GC only (retail Wii body has no vtable store)
@@ -1294,28 +1327,151 @@ if wii:
                 # member offsets are shared with the GameCube class (mEyeInterps _18C, mFovInterps
                 # _330, the interp pointers _44-_54); the Wii vtable re-orders the Vec& overloads
                 Object(NonMatching, "game/ccameraactionevt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii layout: no mYaw, drag pan over gWiiPointer, four edge quads and a
+                # CScrnWipeTile at _284 whose vptr sits behind CScrnColor's data at _2B4
+                Object(NonMatching, "game/wii/ccameraactionscroll2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # shared class layout with the GameCube; the Wii file goes through the player
+                # vtable (GetMtxPtr _AC, GetCameraTarget _1B0) and reads the remote's direction
+                # bits from gWiiPointer instead of an HSD pad
+                Object(NonMatching, "game/wii/ccameraactionchase.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii class is larger (pointer tracker and two response curves); the
+                # remote's pointer aims the look while the GameCube file is stick-only
+                Object(NonMatching, "game/wii/ccameraactioneye.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # SetObj keeps its signature but the Wii body always clears the binding; the camera's
+                # vectors sit in CCamera::mView here
+                Object(Matching, "game/wii/ccameraactionanim.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # member offsets shared with the GameCube class (mTarget _40, mInterestMode _58);
-                # the heavy previous/update methods need XObj/CMotionControlCamera decls (GC-only)
-                Object(NonMatching, "game/ccameraactionreset.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii file runs the functions in the binary's own order and goes through the
+                # Wii player vtable and CCamera::mView where the GameCube used XObj and mCamera
+                Object(NonMatching, "game/wii/ccameraactionreset.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # member offsets shared with the GameCube classes; the Wii file consumes the
+                # remote's dpad bits on gWiiPointer.mFlags and the player Y rotation comes
+                # through a vtable call instead of HSD_JObjGetRotationY
+                Object(NonMatching, "game/wii/ccameraactionscroll.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii camera is the base subobject, so the GameCube control fields sit 0x64
+                # higher; the remote's flag words replace the HSD pad reads and the Wii vtable
+                # keeps only CCamera's functions, so the class adds no virtuals of its own
+                Object(NonMatching, "game/wii/cmotioncontrolcamera.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii Params layout matches the GameCube class (mRank _08, mMoney _14,
-                # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs
-                # every function matches, but the file is written in the GameCube's order and the Wii
-                # has its functions the other way round, so it cannot be linked in place
-                Object(Equivalent, "game/params.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # same Inventory layout on both; the Wii functions carry the FindItem and
-                # CompactSlot helpers inlined with different codegen
-                Object(Equivalent, "game/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # mScrap _18, mInventory _3C); the HUD callbacks it calls are empty stubs.
+                # the Wii file carries the functions in the Wii's order: the GameCube file's
+                # order is the exact reverse, so a shared source cannot link here
+                Object(Matching, "game/wii/params.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # same Inventory layout on both; the Wii file carries the functions in the
+                # Wii's order (exact reverse of the GameCube file). RemoveInventoryItemCount
+                # re-reads mCount for `count` instead of subtracting in one expression
+                Object(NonMatching, "game/wii/inventory.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii
                 Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),
                 # the game's operator delete, in a file of its own: it frees into the MEM1 exp heap
                 # (retail 0x80019A68 loads the InitMem1 global and calls MEMFreeToExpHeap, no null check)
                 Object(Matching, "game/wii/delete.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii TU 0x80019AB4-0x80019BA4 (wii_units.md #3): the game's operator
+                # new[]/delete[] pair on the MEM1 heap plus the aligned operator new[] on the
+                # game heap, emitted new[], delete[], new[](aligned)
+                Object(Matching, "game/wii/new.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii TU 0x8001A958-0x8001BA54 (wii_units.md #7): FbSubwin::Copy and FbSubwin::Draw,
+                # ported to the Wii CGs member setters; Draw is still off
+                Object(NonMatching, "game/wii/fbsubwin.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # retail has extab entries for the three functions and emits them in reverse (_prolog first):
                 # the game group's compiler with exceptions on and deferred inlining gives both. The object
                 # is byte-exact, but nothing calls _epilog and _unresolved: retail kept them through its
                 # linker script (the REL entry points), the linker here strips them, so it stays unlinked.
                 Object(Equivalent, "rel/module.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),
+                # the Wii TU 0x80030AC0-0x80031FC4 (wii_units.md #16); the GameCube file's
+                # CInterfaceCameraAction and CVector*Interpolation classes map onto it
+                Object(NonMatching, "game/cinterfacecameraaction.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii TU 0x80032038-0x80032C48 (wii_units.md #18): every vector
+                # interpolation plus the Linear/None scalar methods, in the Wii's
+                # reversed order (the GameCube spreads them over three files)
+                Object(NonMatching, "game/wii/cinterpolation.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii TU 0x80032C48-0x8003366C (wii_units.md #19): the divide
+                # interpolations and the Linear/None Update tail-calls; the Wii-only
+                # tail (deleting dtors, CThread::Create, the unit's __sinit) is open
+                Object(NonMatching, "game/wii/cinterpolationeaseoutdivide.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+            ],
+        },
+        {
+            # Broadcom's Bluetooth stack (BTE) after wii-ipl's reconstruction (identical function sizes in all
+            # 732 functions). Sources include their headers by bare name, hence the include path.
+            # Two compilers, as in wii-ipl: the stack itself (bd.c onwards) is GC/3.0a5, the Wii port layer
+            # (gki_*, hcisu_h2, uusb_ppc, the *_cfg tables, bte_*, btu_task1) GC/3.0a5.2 like the rest of
+            # the SDK. Measured on our units: all on 3.0a5.2 leaves btm_inq, l2c_link, rfc_ts_frames and
+            # sdp_main with one or two functions open each, all on 3.0a5 costs a function in uusb_ppc.
+            "lib": "BTE",
+            "mw_version": "GC/3.0a5",
+            "cflags": [*wii_cflags, "-Cpp_exceptions off", "-fp_contract off", "-common off", "-ipa file", "-use_lmw_stmw off", "-i include/revolution/BTE"],
+            "progress_category": "sdk",
+            "objects": [
+                Object(Matching, "revolution/BTE/gki_buffer.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/gki_time.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/gki_ppc.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/hcisu_h2.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/uusb_ppc.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bta_dm_cfg.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bta_hh_cfg.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bta_sys_cfg.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bte_hcisu.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bte_init.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bte_logmsg.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bte_main.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/btu_task1.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/BTE/bd.c"),
+                Object(Matching, "revolution/BTE/bta_sys_conn.c"),
+                Object(Matching, "revolution/BTE/bta_sys_main.c"),
+                Object(Matching, "revolution/BTE/ptim.c"),
+                Object(Matching, "revolution/BTE/utl.c"),
+                Object(Matching, "revolution/BTE/bta_dm_act.c"),
+                Object(Matching, "revolution/BTE/bta_dm_api.c"),
+                Object(Matching, "revolution/BTE/bta_dm_main.c"),
+                Object(Matching, "revolution/BTE/bta_dm_pm.c"),
+                Object(Matching, "revolution/BTE/bta_hh_act.c"),
+                Object(Matching, "revolution/BTE/bta_hh_api.c"),
+                Object(Matching, "revolution/BTE/bta_hh_main.c"),
+                Object(Matching, "revolution/BTE/bta_hh_utils.c"),
+                Object(Matching, "revolution/BTE/btm_acl.c"),
+                Object(Matching, "revolution/BTE/btm_dev.c"),
+                Object(Matching, "revolution/BTE/btm_devctl.c"),
+                Object(Matching, "revolution/BTE/btm_discovery.c"),
+                Object(Matching, "revolution/BTE/btm_inq.c"),
+                Object(Matching, "revolution/BTE/btm_main.c"),
+                Object(Matching, "revolution/BTE/btm_pm.c"),
+                Object(Matching, "revolution/BTE/btm_sco.c"),
+                Object(Matching, "revolution/BTE/btm_sec.c"),
+                Object(Matching, "revolution/BTE/btu_hcif.c"),
+                Object(Matching, "revolution/BTE/btu_init.c"),
+                Object(Matching, "revolution/BTE/wbt_ext.c"),
+                Object(Matching, "revolution/BTE/gap_api.c"),
+                Object(Matching, "revolution/BTE/gap_conn.c"),
+                Object(Matching, "revolution/BTE/gap_utils.c"),
+                Object(Matching, "revolution/BTE/hcicmds.c"),
+                Object(Matching, "revolution/BTE/hidd_api.c"),
+                Object(Matching, "revolution/BTE/hidd_conn.c"),
+                Object(Matching, "revolution/BTE/hidd_mgmt.c"),
+                Object(Matching, "revolution/BTE/hidd_pm.c"),
+                Object(Matching, "revolution/BTE/hidh_api.c"),
+                Object(Matching, "revolution/BTE/hidh_conn.c"),
+                Object(Matching, "revolution/BTE/l2c_api.c"),
+                Object(Matching, "revolution/BTE/l2c_csm.c"),
+                Object(Matching, "revolution/BTE/l2c_link.c"),
+                Object(Matching, "revolution/BTE/l2c_main.c"),
+                Object(Matching, "revolution/BTE/l2c_utils.c"),
+                Object(Matching, "revolution/BTE/port_api.c"),
+                Object(Matching, "revolution/BTE/port_rfc.c"),
+                Object(Matching, "revolution/BTE/port_utils.c"),
+                Object(Matching, "revolution/BTE/rfc_l2cap_if.c"),
+                Object(Matching, "revolution/BTE/rfc_mx_fsm.c"),
+                Object(Matching, "revolution/BTE/rfc_port_fsm.c"),
+                Object(Matching, "revolution/BTE/rfc_port_if.c"),
+                Object(Matching, "revolution/BTE/rfc_ts_frames.c"),
+                Object(Matching, "revolution/BTE/rfc_utils.c"),
+                Object(Matching, "revolution/BTE/sdp_api.c"),
+                Object(Matching, "revolution/BTE/sdp_db.c"),
+                Object(Matching, "revolution/BTE/sdp_discovery.c"),
+                Object(Matching, "revolution/BTE/sdp_main.c"),
+                Object(Matching, "revolution/BTE/sdp_server.c"),
+                Object(Matching, "revolution/BTE/sdp_utils.c"),
             ],
         },
         {
@@ -1413,11 +1569,8 @@ if wii:
                 Object(Equivalent, "revolution/AXFX/AXFXReverbHiExpDpl2.c"),
                 Object(Matching, "revolution/DSP/dsp.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/DSP/dsp_debug.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
-                Object(Equivalent, "revolution/DSP/dsp_task.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/DSP/dsp_task.c", cflags=cflags_sdk_2004, mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/WENC/wenc.c"),
-                Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
-                Object(Matching, "revolution/WPAD/WPADMem.c"),
-                Object(Matching, "revolution/WPAD/debug_msg.c"),
                 Object(Matching, "revolution/EUART/euart.c"),
                 Object(Matching, "revolution/FS/fs.c"),
                 Object(Matching, "revolution/IPC/ipcMain.c"),
@@ -1434,6 +1587,25 @@ if wii:
                 Object(NonMatching, "revolution/USB/usb.c"),
                 Object(Matching, "revolution/TPL/TPL.c"),
                 Object(Matching, "revolution/ESP/esp.c"),
+                # Both WPAD units take the library flags (-fp hardware): WPAD.c (76 functions) and
+                # WPADHIDParser.c (25) match and link with them, so Petari's -fp off for its WPAD.c of
+                # December 2007 does not apply to this build.
+                Object(Matching, "revolution/WPAD/WPAD.c"),
+                Object(Matching, "revolution/WPAD/WPADHIDParser.c"),
+                Object(Matching, "revolution/WPAD/WPADEncrypt.c"),
+                Object(Matching, "revolution/WPAD/WPADMem.c"),
+                Object(Matching, "revolution/WPAD/debug_msg.c"),
+                Object(Matching, "revolution/KPAD/KPAD.c"),
+                # WUD (Wii remote device manager) after wii-ipl's reconstruction, brought to our September 2008
+                # build from the disassembly. It includes the Bluetooth stack's headers, which include each
+                # other by bare name: the extra flag is an include path, not a code generation setting.
+                # WUD.c: all 86 functions match, and .bss, .sbss, .sdata and .sdata2 are in place. Not linked:
+                # retail's .data ends with four strings ("Not Found", "Found the registered WBC\n", "Removed\n",
+                # "Not Found WBC\n", 0x8032D6BC-0x8032D700) of a function the linker removed, and no reference
+                # has that function. With a stand-in for those 0x44 bytes the unit links to an identical dol.
+                Object(NonMatching, "revolution/WUD/WUD.c", extra_cflags=["-i include/revolution/BTE"]),
+                Object(Matching, "revolution/WUD/WUDHidHost.c", extra_cflags=["-i include/revolution/BTE"]),
+                Object(Matching, "revolution/WUD/debug_msg.c", extra_cflags=["-i include/revolution/BTE"]),
                 # GX, the Wii's own sources (src/dolphin/gx is the GameCube template). Compiler and flags are
                 # the library's: with them GXBump.c matched 5 of 5 named functions at once (1 of 7 as the
                 # GameCube file under GC/1.2.5n) and GX as a whole went from 11 to 130 of 191 before any
@@ -1514,9 +1686,13 @@ if wii:
             ],
         },
         {
-            # the Wii ships the same MetroTRK stub; GC profile applies (sizes are
-            # verbatim for most units - where they differ the source stays as upstream
-            # wrote it and the unit reports partial)
+            # MetroTRK ("TRK_Hollywood_Revolution"). Units whose code is the GameCube's build upstream's
+            # file; the others have their own file under src/rvl_trk: the Wii build has no MWTRACE calls,
+            # numbers its replies (msghndlr.c, after Petari's), knows no ARAM and no DDH, and has
+            # TRK_strlen and OutputData.
+            # Compiler: GC/2.6 with the GameCube's flags. GC/2.7, which the other Wii decomps name,
+            # gives the same bytes in every unit (main.dol links OK with either); GC/3.0 and the Wii
+            # compilers do not (TRKConstructEvent and nearly every other C function differ).
             "lib": "TRK_MINNOW_DOLPHIN",
             "mw_version": "GC/2.6",
             "cflags": cflags_trk,
@@ -1524,30 +1700,33 @@ if wii:
             "objects": [
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mainloop.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/nubevent.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/nubinit.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/msg.c"),
+                Object(Matching, "rvl_trk/nubinit.c"),
+                Object(Matching, "rvl_trk/msg.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/msgbuf.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/serpoll.c", extra_cflags=["-sdata 8"]),
+                Object(Matching, "rvl_trk/serpoll.c", extra_cflags=["-sdata 8"]),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/usr_put.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/dispatch.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/msghndlr.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/support.c"),
+                Object(Matching, "rvl_trk/dispatch.c"),
+                Object(Matching, "rvl_trk/msghndlr.c"),
+                Object(Matching, "rvl_trk/support.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mutex_TRK.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/notify.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/flush_cache.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/mem_TRK.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/targimpl.c"),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/mem_TRK.c"),
+                Object(Matching, "rvl_trk/string_TRK.c"),
+                Object(Matching, "rvl_trk/targimpl.c"),
+                # an assembled file in the original (no assembler here): four trap stubs, not linked
+                Object(NonMatching, "rvl_trk/targsupp.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mpc_7xx_603e.c"),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/dolphin_trk.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/main_TRK.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/dolphin_trk_glue.c"),
+                Object(Matching, "rvl_trk/dolphin_trk.c"),
+                Object(Matching, "rvl_trk/main_TRK.c"),
+                Object(Matching, "rvl_trk/dolphin_trk_glue.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/targcont.c"),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/target_options.c"),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/target_options.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mslsupp.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/UDP_Stubs.c"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/CircleBuffer.c"),
-                Object(NonMatching, "TRK_MINNOW_DOLPHIN/gdev/main.c", extra_cflags=["-sdata 8"]),
-                Object(Equivalent, "TRK_MINNOW_DOLPHIN/MWCriticalSection_gc.cpp"),
+                Object(Matching, "rvl_trk/gdev/main.c", extra_cflags=["-sdata 8"]),
+                Object(Matching, "TRK_MINNOW_DOLPHIN/MWCriticalSection_gc.cpp"),
             ],
         },
         {
@@ -1559,7 +1738,7 @@ if wii:
                 # per-unit mw_version/extra_cflags verified by clean-rebuild tests:
                 # __va_arg, NMWException, GCN_mem_alloc and Gecko_ExceptionPPC drop to
                 # 92-99% under the library default (Wii/1.3)
-                Object(Matching, "Runtime.PPCEABI.H/__mem.c", extra_cflags=["-Cpp_exceptions off"]),
+                Object(Matching, "rvl_runtime/__mem.c", extra_cflags=["-Cpp_exceptions off"]),
                 Object(Matching, "Runtime.PPCEABI.H/__va_arg.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off"]),
                 # the Wii runtime sources differ from upstream's and live under src/rvl_*
                 Object(Matching, "rvl_runtime/global_destructor_chain.c", extra_cflags=["-Cpp_exceptions off"]),
@@ -1567,6 +1746,10 @@ if wii:
                 Object(Matching, "Runtime.PPCEABI.H/ptmf.c"),
                 Object(Matching, "rvl_runtime/runtime.c", extra_cflags=["-Cpp_exceptions off"]),
                 Object(Matching, "rvl_runtime/__init_cpp_exceptions.cpp", extra_cflags=["-Cpp_exceptions off"]),
+                # ExPPC_UnwindStack stays at 97.3 %: retail keeps the 0 it stores into info->action_pointer in
+                # r31, we get r25 and every other register one lower. Tried without effect: GC/3.0a3 to
+                # 3.0a5.2 and Wii/1.0 to 1.3, -ipa file, -inline on/off/deferred/smart, -O4,s, -O3, the
+                # single -opt switches, -RTTI off, pooled strings. xenoblade has the same source text.
                 Object(NonMatching, "Runtime.PPCEABI.H/Gecko_ExceptionPPC.cp", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-RTTI on", "-str reuse,readonly"]),
                 Object(Matching, "Runtime.PPCEABI.H/GCN_mem_alloc.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-rostr", "-str reuse"]),
             ],
@@ -1580,58 +1763,92 @@ if wii:
             "progress_category": "runtime",
             "objects": [
                 # per-unit flags verified by clean-rebuild tests: the Double_precision
-                # units were built with GC/3.0a5.2 and most need -fp_contract off
-                # (fuzzy drops to 60-94% otherwise); s_tan is the exception that
-                # matches under the library default
-                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common/errno.c"),
+                # units most need -fp_contract off (fuzzy drops to 60-94% otherwise); s_tan
+                # is the exception that matches under the library default.
+                # Their compiler is GC/3.0a5 (GC/3.0a3 gives the same code): under GC/3.0a5.2
+                # __ieee754_asin, __kernel_tan and atan lose the dead store of p/q that retail
+                # keeps (98.7, 98.7, 97.2 %) and __ieee754_pow falls from 99.8 to 94.3 %, while
+                # every other unit of the directory is the same under both. printf.c is the
+                # other way round (double2hex 94.4 %, __pformatter 92.8 % under GC/3.0a5).
+                # The files under src/rvl_msl are the Wii's MSL, after xenoblade's (2009), with printf.c and
+                # signal.c after Petari's (2007): our printf still has the four-argument __pformatter.
+                # Compiler GC/3.0a5.2 with -ipa file, -inline on, -fp_contract off, pooled strings and
+                # exceptions on (every file with a non-leaf function has extab entries in retail).
+                # Evidence: with exactly these flags alloc.c, ansi_fp.c, file_io.c, mbstring.c, strtoul.c
+                # and the rest come out byte for byte without a source change; Wii/1.1 and Wii/1.3 lose
+                # __num2dec, __two_exp, __fwrite, _fseek and about thirty more functions.
+                *[
+                    Object(status, f"rvl_msl/{name}", mw_version="GC/3.0a5.2", cflags=wii_msl_cflags)
+                    for status, name in [
+                        (Matching, "alloc.c"),
+                        (Matching, "ansi_files.c"),
+                        (Matching, "ansi_fp.c"),
+                        (Matching, "arith.c"),
+                        (Matching, "direct_io.c"),
+                        (Matching, "file_io.c"),
+                        (Matching, "FILE_POS.c"),
+                        (Matching, "mbstring.c"),
+                        (Matching, "math_api.c"),
+                        (Matching, "printf.c"),
+                        (Matching, "scanf.c"),
+                        (Matching, "signal.c"),
+                        (Matching, "string.c"),
+                        (Matching, "strtoul.c"),
+                        (Matching, "wstring.c"),
+                        (Matching, "wchar_io.c"),
+                        (Matching, "abort_exit_ppc_eabi.c"),
+                        (Matching, "math_sun.c"),
+                        (Matching, "extras.c"),
+                    ]
+                ],
+                # the math files among them: GC/3.0a5 like the rest of Double_precision (see below), no extab
+                *[
+                    Object(status, f"rvl_msl/{name}", mw_version="GC/3.0a5", cflags=wii_msl_cflags, extra_cflags=["-Cpp_exceptions off"])
+                    for status, name in [
+                        (Matching, "e_log10.c"),
+                        (Matching, "e_pow.c"),
+                        (Matching, "e_rem_pio2.c"),
+                        (Matching, "fminmaxdim.c"),
+                        (Matching, "s_ceil.c"),
+                        (Matching, "w_log10.c"),
+                    ]
+                ],
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/errno.c"),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/float.c"),
                 # the Wii MSL sources differ from upstream's and live under src/rvl_msl
                 Object(Matching, "rvl_msl/mem.c", mw_version="GC/3.0a5.2"),
                 # GC/2.6: __copy_longs_* only match with the older compiler (89-91% under Wii/1.3)
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/mem_funcs.c", mw_version="GC/2.6"),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/rand.c"),
-                # retail has an extab entry for strtok (the only function with a frame) and strtok's "" once,
-                # in .sdata2: a read-only string only lands there with -ipa file (.rodata without)
-                Object(Matching, "rvl_msl/string.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions on", "-str reuse,readonly", "-ipa file"]),
-                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common/strtoul.c", mw_version="GC/3.0a5.2"),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_acos.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_asin.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_atan2.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_log.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_pow.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_rem_pio2.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_sqrt.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_cos.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "rvl_msl/k_rem_pio2.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_sin.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_tan.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_atan.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_copysign.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_cos.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_floor.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_frexp.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_ldexp.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_modf.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_sin.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_acos.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_asin.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_atan2.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_log.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_sqrt.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_cos.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "rvl_msl/k_rem_pio2.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_sin.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/k_tan.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_atan.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_copysign.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_cos.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_floor.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_frexp.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_ldexp.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_modf.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_sin.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off"]),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/s_tan.c", extra_cflags=["-Cpp_exceptions off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_acos.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_asin.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_atan2.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_fmod.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_pow.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_sqrt.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_acos.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_asin.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_atan2.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_fmod.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_pow.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/w_sqrt.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
                 # GC MSL units paired to free Wii ranges
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/buffer_io.c"),
-                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common/mbstring.c"),
                 Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common/misc_io.c"),
-                Object(Equivalent, "MSL_C.PPCEABI.bare.H/MSL_Common/wchar_io.c"),
-                Object(Equivalent, "MSL_C.PPCEABI.bare.H/PPC_EABI/uart_console_io_gcn.c", mw_version="GC/2.6"),
-                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod.c", mw_version="GC/3.0a5.2", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
-                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common/ansi_files.c"),
-                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/ansi_fp.c", extra_cflags=["-str pool"]),
-                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common/direct_io.c"),
-                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common/FILE_POS.C"),
-                Object(NonMatching, "MSL_C.PPCEABI.bare.H/MSL_Common/printf.c", extra_cflags=["-str pool"]),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/PPC_EABI/uart_console_io_gcn.c", mw_version="GC/2.6"),
+                Object(Matching, "MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions off", "-fp_contract off"]),
             ],
         },
     ]
