@@ -1244,6 +1244,12 @@ if wii:
                 # FindAreaContainingPoint takes Vec by value on the Wii (the retail caller copies all
                 # three words to the stack); gCameraAreaState's _10/_14/_24 offsets are retail-confirmed
                 Object(Matching, "game/wii/ccameraactionareaexm.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii interpolation unit 0x80032038-0x80032FD4: the seven camera
+                # interpolation classes share one file (on the GameCube they sit in
+                # cinterfacecameraaction.cpp, cinterpolationnone.cpp and
+                # cinterpolationeaseoutdivide.cpp); each vector/scalar pair emits
+                # interleaved and the scalar Update tail-calls land at the end
+                Object(Matching, "game/wii/cinterpolation.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the global's __sinit stores the vtable and __construct_arrays mGroups[256] at _2034
                 # (retail 0x801542A0); CCameraActionAreaEx's layout is shared with the GameCube
                 Object(NonMatching, "game/ccameraactionareaexinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),

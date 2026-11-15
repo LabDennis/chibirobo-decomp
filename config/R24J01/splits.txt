@@ -604,6 +604,14 @@ game/cinterpolationeaseout.cpp:
 game/wii/ccameraactionareaexm.cpp:
 	.text start:0x80031FC4 end:0x80032038
 
+game/wii/cinterpolation.cpp:
+	extab start:0x80008358 end:0x800083F0
+	extabindex start:0x80011DA4 end:0x80011E88
+	.text start:0x80032038 end:0x80032FD4
+	.data start:0x802E6110 end:0x802E6250
+	.rodata start:0x802C4BCC end:0x802C4CE8
+	.sdata start:0x805A0948 end:0x805A0998
+
 game/ccameraactionareaexinit.cpp:
 	.text start:0x801542A0 end:0x80154310
 
