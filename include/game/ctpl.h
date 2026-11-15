@@ -75,6 +75,8 @@ public:
 	CTexObj& Init(TPLDescriptor* desc, u32 tlutName);
 	u32 Set(const CTexObj& other);
 	u32 SetChar(const char* str);
+	u16 GetWidth() const { return GXGetTexObjWidth(this); }
+	u16 GetHeight() const { return GXGetTexObjHeight(this); }
 	void Draw(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType, const Vec* pos, u32 color0, u32 color1, u32 color2, u32 color3);
 	void DrawLit(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType, const Vec* pos, u32 color0, u32 color1, u32 color2, u32 color3);
 

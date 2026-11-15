@@ -11,6 +11,7 @@ extern "C" {
 }
 #include "game/cjobjset.h"
 #include "game/cgame.h"
+#include "game/cgameutil.h"
 #include "game/cgs.h"
 #include "game/cptcl.h"
 #include "game/cscrn.h"
@@ -2734,19 +2735,13 @@ extern "C" void DrawTitleOptions(Title* title)
 
 static inline void BeginTitleOverlay()
 {
-	CGs& gs = gGame.mGs;
-	SetGsChannelEnabled(&gs, 4, 0);
-	SetGsColorUpdate(gs.mCurRenderMode, 1);
-	SetGsAlphaUpdate(gs.mCurRenderMode, 0);
-	SetGsAlphaCompare(gs.mCurRenderMode, 4, 0, 0, 3, 255);
-	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gs.mCurRenderMode, 0, 7, 0);
-	if (gs.mCurRenderMode)
-		ApplyGsRenderMode(gs.mCurRenderMode, FALSE);
-	if (gs.mCurTevStage)
-		ApplyGsTevStage(gs.mCurTevStage, FALSE);
-	if (gs.mCurChannel)
-		ApplyGsChannel(gs.mCurChannel, FALSE);
+	SetGsChannelEnabled(&gGame.mGs, 4, 0);
+	SetGsColorUpdate(gGame.mGs.mCurRenderMode, 1);
+	SetGsAlphaUpdate(gGame.mGs.mCurRenderMode, 0);
+	SetGsAlphaCompare(gGame.mGs.mCurRenderMode, 4, 0, 0, 3, 255);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 7, 0);
+	SetupAll(FALSE);
 }
 
 static inline void DrawTitleCursors(Title* title, f32 halfWidth, f32 y)
@@ -2812,56 +2807,48 @@ extern "C" void DrawTitleScreen(Title* title)
 		active = true;
 	if (!active)
 		return;
-	CGame& game       = gGame;
-	CGs& gs           = game.mGs;
-	gGame.mGs.mCamera = game.GetScreenCamera();
-	if (BeginGsCamera(&game)) {
+	gGame.mGs.mCamera = ((CBase*)&gGame)->GetScreenCamera();
+	if (BeginGsCamera(&gGame)) {
 		if (title->mMenuAlpha > 0.0f) {
 			BeginTitleOverlay();
 
 			for (s32 i = 0; i < 16; ++i) {
 				f32 alpha = title->mMenuAlpha;
-				SetGsTevMode(gs.mCurTevStage, 0);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 				TitleDust& dust = title->mDust[i];
 
-				f32 w     = dust.mSpeedX * GXGetTexObjWidth(&title->mTex[dustTexture]);
-				u16 h     = GXGetTexObjHeight(&title->mTex[dustTexture]);
+				f32 w     = dust.mSpeedX * title->mTex[dustTexture].GetWidth();
+				f32 h     = dust.mSpeedX * title->mTex[dustTexture].GetHeight();
 				u32 color = 0xffffff00 | (u32)(255.0f * dust.mSpeedY * alpha);
-				DrawGsTexturedQuad(&gGame.mGs, &title->mTex[dustTexture], color, color, color, color, dust.mX, dust.mY, 0.0f, w,
-				                   dust.mSpeedX * h, 0, 0, 0);
-				SetGsTevMode(gs.mCurTevStage, 4);
+				DrawGsTexturedQuad(&gGame.mGs, &title->mTex[dustTexture], color, color, color, color, dust.mX, dust.mY, 0.0f, w, h, 0, 0,
+				                   0);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 			}
-			SetGsTevMode(gs.mCurTevStage, 0);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			u16 w     = GXGetTexObjWidth(&title->mTex[gTitleLogoTextures[gTitleLogoIndex]]);
 			u16 h     = GXGetTexObjHeight(&title->mTex[gTitleLogoTextures[gTitleLogoIndex]]);
 			u32 color = 0xffffff00 | (u32)(255.0f * title->mMenuAlpha);
 			DrawGsTexturedQuad(&gGame.mGs, &title->mTex[gTitleLogoTextures[gTitleLogoIndex]], color, color, color, color, 320, 130, 0, w, h,
 			                   0, 0, 0);
-			SetGsTevMode(gs.mCurTevStage, 4);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		}
 		EndGsCamera(&gGame.mGs);
 	}
 	if (title->mDemo.mState && (title->mDemo.mStatus.mFlags & 1)) {
-		HSD_StateInvalidate(-1);
-		if (gs.mCurRenderMode)
-			gs.mCurRenderMode->Invalidate();
-		if (gs.mCurTevStage)
-			gs.mCurTevStage->Invalidate();
-		if (gs.mCurChannel && !gs.mCurChannel->mDirty)
-			gs.mCurChannel->mDirty = TRUE;
+		InvalidateAll();
 		title->mDemo.DrawObject();
 	}
-	gGame.mGs.mCamera = game.GetScreenCamera();
-	if (!BeginGsCamera(&game))
+	gGame.mGs.mCamera = ((CBase*)&gGame)->GetScreenCamera();
+	if (!BeginGsCamera(&gGame))
 		return;
 	if (title->mMenuAlpha > 0.0f) {
 		BeginTitleOverlay();
-		SetGsTevMode(gs.mCurTevStage, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		CTexObj& tex = title->mTex[footerTexture];
 		u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
 		u32 color = (u32)(255.0f * title->mMenuAlpha);
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 320.0f, 398.0f, 0, .6f * w, .6f * h, 0, 0, 0);
-		SetGsTevMode(gs.mCurTevStage, 4);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
 	DrawPanelBackground<SavePanel>(title->mLoadAlpha + title->mOptionAlpha);
 	DrawTitleHelpText(title);
@@ -2869,13 +2856,13 @@ extern "C" void DrawTitleScreen(Title* title)
 	DrawTitleOptions(title);
 	DrawTitleNameBubbles(title);
 	if (title->mState == 10 || title->mState == 11 || title->mState == 12) {
-		f32 wave            = 127.0f * (f32)sin(DEG2RAD * title->mPulseAngle);
-		f32 alpha           = title->mMenuAlpha;
-		const GXColor& text = gTitlePalette[gTitlePaletteIndex].text;
-		u32 rgb             = ((u32)text.r << 24) | ((u32)text.g << 16) | ((u32)text.b << 8);
-		u32 lit             = rgb | (u8)(127.0f + alpha * wave);
-		u32 normal          = rgb | (u8)(255.0f * alpha);
-		f32 progress        = title->mCursor.mAnimId == 1 ? GetAnimProgress(title) : 0.0f;
+		f32 wave  = 127.0f * (f32)sin(DEG2RAD * title->mPulseAngle);
+		f32 alpha = title->mMenuAlpha;
+		u32 rgb   = ((u32)gTitlePalette[gTitlePaletteIndex].text.r << 24) | ((u32)gTitlePalette[gTitlePaletteIndex].text.g << 16)
+		        | ((u32)gTitlePalette[gTitlePaletteIndex].text.b << 8);
+		u32 lit      = rgb | (u8)(127.0f + alpha * wave);
+		u32 normal   = rgb | (u8)(255.0f * alpha);
+		f32 progress = title->mCursor.mAnimId == 1 ? GetAnimProgress(title) : 0.0f;
 #if defined(VERSION_JP)
 		enum { first = 0x13, second = 0x14, third = 0x35 };
 #else
@@ -2942,7 +2929,7 @@ extern "C" void DrawTitleScreen(Title* title)
 #if defined(VERSION_JP)
 			width = 72;
 #else
-			width = MeasureGameTextWidth(&gs, GetLocalizedInterfaceText(0x16), 1, 24.0f);
+			width = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x16), 1, 24.0f);
 #endif
 			break;
 		}

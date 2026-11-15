@@ -2652,7 +2652,9 @@ extern "C" void SetMenuTextureScale(CTexObj* tex, f32 x, f32 y)
  * @note Address: 0x80049174
  * @note Size: 0x6C
  */
-// NONMATCHING: scheduling
+// NONMATCHING: retail keeps quad in r4, hoists the loads above the stack stores and moves the colour into r4 last.
+// That is the code of a const Vec* quad passed to a DrawGsVertexQuad whose four colours follow the twelve
+// coordinates; cgs.h declares them interleaved, and its other callers are outside this file.
 extern "C" void DrawSolidQuad(CGs* gs, Vec* quad, u32 color)
 {
 	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y, quad[2].z,
@@ -4528,8 +4530,8 @@ static inline void DrawPCNumberSuffix(CTexObj& tex, int index, f32 x, f32 y, f32
 {
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[index], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	u16 w     = GXGetTexObjWidth(&tex);
-	u16 h     = GXGetTexObjHeight(&tex);
+	u16 w     = tex.GetWidth();
+	u16 h     = tex.GetHeight();
 	u32 color = (u32)opacity | 0xFFFFFF00;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 128.0f * scale + x, y, 0.0f, scale * (1.1f * w), scale * h, 0.0f, 0.0f,
 	                   0.0f);
@@ -4551,15 +4553,15 @@ extern "C" void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, 
 	if (icon) {
 		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCBlueNumberIcon], 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		u16 w     = GXGetTexObjWidth(&tex);
-		u16 h     = GXGetTexObjHeight(&tex);
+		u16 w     = tex.GetWidth();
+		u16 h     = tex.GetHeight();
 		u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x - 16.0f, y, 0.0f, 0.65f * (scale * w), 0.65f * (scale * h), 0.0f,
 		                   0.0f, 0.0f);
 	}
 	tex   = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCNumberDigits], 0);
-	f32 w = scale * GXGetTexObjWidth(&tex);
-	f32 h = scale * (GXGetTexObjHeight(&tex) / 10);
+	f32 w = scale * tex.GetWidth();
+	f32 h = scale * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
 #if defined(VERSION_JP)
@@ -4609,15 +4611,15 @@ extern "C" void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, 
 	if (icon) {
 		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCGoldNumberIcon], 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		u16 w     = GXGetTexObjWidth(&tex);
-		u16 h     = GXGetTexObjHeight(&tex);
+		u16 w     = tex.GetWidth();
+		u16 h     = tex.GetHeight();
 		u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x - 16.0f, y, 0.0f, 0.8f * (scale * w), 0.8f * (scale * h), 0.0f,
 		                   0.0f, 0.0f);
 	}
 	tex   = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCNumberDigits], 0);
-	f32 w = scale * GXGetTexObjWidth(&tex);
-	f32 h = scale * (GXGetTexObjHeight(&tex) / 10);
+	f32 w = scale * tex.GetWidth();
+	f32 h = scale * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
 #if defined(VERSION_JP)
@@ -4729,25 +4731,25 @@ BOOL MenuStatus::Draw()
  * @note Size: 0x294
  */
 // two byte text a character at a time, digits and narrow letters moved to the middle of their cell
-// NONMATCHING: regalloc
-extern "C" void DrawDoubleByteMenuText(const char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha)
+extern "C" void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha)
 {
-	const char* p;
+	char* p;
 	u32 shadow;
 	u32 color;
 	u32 count;
 	int i;
-	p      = text;
 	count  = strlen(text) / 2;
+	p      = text;
+	i      = 0;
 	shadow = (u32)(128.0f * alpha) | 0xFFFFFF00;
 	color  = (u32)(255.0f * alpha) | 0x20202000;
-	for (i = 0; i < count; i++, p += 2) {
+	for (; i < count; p += 2, i++) {
 		char c[3];
 		char buf[4];
+		f32 left = i * w + x;
 		c[0]     = p[0];
 		c[1]     = p[1];
 		c[2]     = 0;
-		f32 left = i * w + x;
 		DrawBeveledMenuRect(shadow, left, y, z, w, h, alpha);
 		f32 shift = 0.0f;
 		for (int digit = 0; digit < 10; digit++) {
@@ -6565,8 +6567,8 @@ extern "C" void DrawPlayerStatusIcon(s32 id, u8 available, bool selected, f32 x,
 			bob = 4.0f * (f32)sin(0.017453292f * ((frame * 20) % 360));
 		}
 		tex        = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[id], 0);
-		width      = scale * GXGetTexObjWidth(&tex);
-		f32 height = scale * GXGetTexObjHeight(&tex);
+		width      = scale * tex.GetWidth();
+		f32 height = scale * tex.GetHeight();
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 		SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
@@ -6675,8 +6677,8 @@ extern "C" void DrawStatusDiagram(MenuStatus* menu)
 		y     = menu->mDiagramY + menu->mOffsetY;
 		tex   = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[181 - StatusTextureOffset], 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		u16 width  = GXGetTexObjWidth(&tex);
-		u16 height = GXGetTexObjHeight(&tex);
+		u16 width  = tex.GetWidth();
+		u16 height = tex.GetHeight();
 		f32 labelX = x - 182.0f;
 		f32 labelY = 210.0f + y;
 		u32 color  = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
@@ -6734,42 +6736,42 @@ extern "C" void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 
  * @note Address: 0x8005CD3C
  * @note Size: 0x40C
  */
-// NONMATCHING: register allocation and local static initialization
 extern "C" void DrawStatusItemDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale)
 {
+	static u32 frame = 0; // retail initialises it and never uses it
 	CTexObj tex;
+	f32 iconHeight, iconWidth;
 	if (scale <= 0.0f)
 		return;
 	f32 height = 153.0f * scale;
 #if !defined(VERSION_JP)
-	height = 10.0f * scale + height;
+	height += 10.0f * scale;
 #endif
-	y           = y - height / 2.0f;
+	f32 top     = y - height / 2.0f;
 	u32 opacity = (u32)(255.0f * alpha);
 	u32 color   = opacity | 0xFFFFFF00;
-	DrawTexturedWindowFrame((u32)(220.0f * alpha), color, x, y, 254.0f * scale, height, alpha, 1.0f, 1.0f);
-	y += scale;
+	DrawTexturedWindowFrame((u32)(220.0f * alpha), color, x, top, 254.0f * scale, height, alpha, 1.0f, 1.0f);
+	top += scale;
 	f32 fontSize   = 17.0f * scale;
 	f32 textOffset = 24.0f * scale;
 	char text[256];
 	sprintf(text, "%s", GetItemDescription(id));
-	f32 width   = MeasureGameTextWidth(&gGame.mGs, text, 1, fontSize);
-	f32 padding = 6.0f * scale;
-	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f, (4.0f * scale + (textOffset + (5.0f * fontSize + y))) - padding,
-	                             0.0f, fontSize, fontSize);
+	f32 width = MeasureGameTextWidth(&gGame.mGs, text, 1, fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - width / 2.0f,
+	                             (4.0f * scale + (textOffset + (5.0f * fontSize + top))) - 6.0f * scale, 0.0f, fontSize, fontSize);
 	sprintf(text, "%s", GetItemName(id));
-	f32 helpSize = 2.0f * scale + fontSize;
-	width        = MeasureGameTextWidth(&gGame.mGs, text, 1, helpSize);
-	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, x - width / 2.0f, ((4.0f * fontSize + y) + textOffset) - padding,
-	                             0.0f, helpSize, helpSize);
-	s32 icon       = GetItemIconTextureIndex(id);
-	tex            = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[icon], 0);
-	f32 iconWidth  = scale * GXGetTexObjWidth(&tex);
-	f32 iconHeight = scale * GXGetTexObjHeight(&tex);
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, 2.0f * scale + fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, opacity | 0xFFAA0000, text, x - width / 2.0f,
+	                             ((4.0f * fontSize + top) + textOffset) - 6.0f * scale, 0.0f, 2.0f * scale + fontSize,
+	                             2.0f * scale + fontSize);
+	s32 icon   = GetItemIconTextureIndex(id);
+	tex        = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[icon], 0);
+	iconWidth  = scale * tex.GetWidth();
+	iconHeight = scale * tex.GetHeight();
 	if (icon >= 0) {
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, ((56.0f * scale + x) - 30.0f * scale) - 127.0f * scale,
-		                   46.0f * scale + y, 0.0f, iconWidth, iconHeight, 0.0f, 0.0f, 0.0f);
+		                   46.0f * scale + top, 0.0f, iconWidth, iconHeight, 0.0f, 0.0f, 0.0f);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
 }
@@ -7380,8 +7382,8 @@ extern "C" void DrawStatusMenuTabs(MenuStatus* menu)
 			tex    = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[FirstStatusTabTexture + 1], 0);
 			break;
 		}
-		f32 width  = 1.2f * GXGetTexObjWidth(&tex);
-		f32 height = 1.2f * GXGetTexObjHeight(&tex);
+		f32 width  = 1.2f * tex.GetWidth();
+		f32 height = 1.2f * tex.GetHeight();
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 		SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
@@ -7874,8 +7876,8 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 		return;
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[rowTexture], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	f32 w       = 0.7f * (scale * (1.1f * GXGetTexObjWidth(&tex)));
-	f32 h       = 0.7f * (scale * GXGetTexObjHeight(&tex));
+	f32 w       = 0.7f * (scale * (1.1f * tex.GetWidth()));
+	f32 h       = 0.7f * (scale * tex.GetHeight());
 	alpha       = 255.0f * alpha;
 	u32 opacity = (u32)alpha;
 	u32 color   = opacity | 0xC8C8C800;
@@ -7889,8 +7891,8 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 	color = (count <= 0 ? (u32)(0.4f * alpha) : opacity) | 0xFFFFFF00;
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[digitTexture], 0);
-	w   = scale * GXGetTexObjWidth(&tex);
-	h   = scale * (GXGetTexObjHeight(&tex) / 10);
+	w   = scale * tex.GetWidth();
+	h   = scale * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
 	for (int i = 0; i < 4; i++) {
@@ -7924,8 +7926,8 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 #if defined(VERSION_JP)
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[146], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	u16 iconW = GXGetTexObjWidth(&tex);
-	u16 iconH = GXGetTexObjHeight(&tex);
+	u16 iconW = tex.GetWidth();
+	u16 iconH = tex.GetHeight();
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 80.0f * scale + (12.0f * scale + (203.0f * scale + x)),
 	                   8.5f * scale + y, 0.0f, 0.9f * (scale * (1.1f * iconW)), 0.9f * (scale * iconH), 0.0f, 0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -7947,8 +7949,8 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, bool attachment
 		return;
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[rowTexture], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	f32 w       = 0.7f * (scale * (1.1f * GXGetTexObjWidth(&tex)));
-	f32 h       = 0.7f * (scale * GXGetTexObjHeight(&tex));
+	f32 w       = 0.7f * (scale * (1.1f * tex.GetWidth()));
+	f32 h       = 0.7f * (scale * tex.GetHeight());
 	alpha       = 255.0f * alpha;
 	u32 opacity = (u32)alpha;
 	u32 color   = opacity | 0xC8C8C800;
@@ -7963,8 +7965,8 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, bool attachment
 	color = (count <= 0 ? (u32)(0.4f * alpha) : opacity) | 0xFFFFFF00;
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[digitTexture], 0);
-	w   = scale * GXGetTexObjWidth(&tex);
-	h   = scale * (GXGetTexObjHeight(&tex) / 10);
+	w   = scale * tex.GetWidth();
+	h   = scale * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
 	for (int i = 0; i < 4; i++) {
@@ -7998,8 +8000,8 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, bool attachment
 #if defined(VERSION_JP)
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[142], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	u16 iconW = GXGetTexObjWidth(&tex);
-	u16 iconH = GXGetTexObjHeight(&tex);
+	u16 iconW = tex.GetWidth();
+	u16 iconH = tex.GetHeight();
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 80.0f * scale + (12.0f * scale + (203.0f * scale + x)),
 	                   9.0f * scale + y, 0.0f, scale * (1.1f * iconW), scale * iconH, 0.0f, 0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -8019,6 +8021,7 @@ static inline f32 SaveNumberLabelX(f32 x, f32 offsetScale)
 #endif
 }
 
+// NONMATCHING: one fadds in the digit position has its operands the other way round (fadds f0, f24, f0)
 extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f32 y, f32 alpha, f32 offsetScale, f32)
 {
 	if (!(alpha > 0.0f))
@@ -8038,20 +8041,19 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	}
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[icon], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	f32 w       = 0.6f * GXGetTexObjWidth(&tex);
-	f32 h       = 0.6f * GXGetTexObjHeight(&tex);
+	f32 w       = 0.6f * tex.GetWidth();
+	f32 h       = 0.6f * tex.GetHeight();
 	f32 opacity = 255.0f * alpha;
 	u32 color   = (u32)opacity | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCNumberDigits], 0);
-	w   = 1.2f * GXGetTexObjWidth(&tex);
-	h   = 1.2f * (GXGetTexObjHeight(&tex) / 10);
+	w   = 1.2f * tex.GetWidth();
+	h   = 1.2f * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
+	f32 offset    = 12.0f + ((6.0f * (w - 3.0f * 1.2f) - 98.0f * 1.2f) - 12.0f);
 	u8 alphaByte  = opacity;
 	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
-
-	f32 offset = 12.0f + ((6.0f * (w - 3.0f * 1.2f) - 98.0f * 1.2f) - 12.0f);
 	for (int i = 0; i < 4; i++) {
 		f32 div = 1.0f;
 		if (i > 0) {
@@ -8060,7 +8062,8 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 		}
 		s32 digit = value / div;
 		if (i != 3 || digit != 0) {
-			PSMTXTrans(tex.mMtx[0], 0.0f, 0.1f * (digit % 10), 0.0f);
+			digit %= 10;
+			PSMTXTrans(tex.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
 			tex.mMtxDirty = TRUE;
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			f32 gap = 0.0f;
@@ -8077,7 +8080,7 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	const s32 separator = 129;
 #endif
 	tex    = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[separator], 0);
-	u16 sw = GXGetTexObjWidth(&tex), sh = GXGetTexObjHeight(&tex);
+	u16 sw = tex.GetWidth(), sh = tex.GetHeight();
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	f32 sepX = SaveNumberLabelX(12.0f + (x + 81.0f * 1.2f), offsetScale);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, sepX, y - 1.2f, 0.0f, 0.7f * (1.2f * sw), 0.7f * (1.2f * sh), 0.0f, 0.0f,
@@ -8108,9 +8111,6 @@ extern "C" void DrawSaveStat(s32 icon, s32 value, u8, f32 x, f32 y, f32 alpha, f
 	const int rankIcon = 180, expIcon = 154, specialIcon = 243, missingTexture = 167;
 #endif
 	switch (icon) {
-	case rankIcon:
-		iconScale = 0.6f;
-		break;
 	case expIcon:
 		iconOffset = 4.0f;
 		break;
@@ -8118,8 +8118,11 @@ extern "C" void DrawSaveStat(s32 icon, s32 value, u8, f32 x, f32 y, f32 alpha, f
 		if (value == -1)
 			missing = true;
 		break;
+	case rankIcon:
+		iconScale = 0.6f;
+		break;
 	}
-	u16 iw = GXGetTexObjWidth(&tex), ih = GXGetTexObjHeight(&tex);
+	u16 iw = tex.GetWidth(), ih = tex.GetHeight();
 	alpha     = 255.0f * alpha;
 	u32 color = (u32)alpha | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y + iconOffset, 0.0f, iconScale * iw, iconScale * ih, 0.0f, 0.0f,
@@ -8128,8 +8131,8 @@ extern "C" void DrawSaveStat(s32 icon, s32 value, u8, f32 x, f32 y, f32 alpha, f
 	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
 	if (missing) {
 		tex   = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[missingTexture], 0);
-		f32 w = 1.2f * GXGetTexObjWidth(&tex);
-		f32 h = 1.2f * GXGetTexObjHeight(&tex);
+		f32 w = 1.2f * tex.GetWidth();
+		f32 h = 1.2f * tex.GetHeight();
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		f32 offset = 12.0f + ((7.0f * (w - 3.0f * 1.2f) - 98.0f * 1.2f) - 12.0f);
 		DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, SaveNumberLabelX(offset + (7.0f * w + x), offsetScale), y - 2.4f,
@@ -8137,8 +8140,8 @@ extern "C" void DrawSaveStat(s32 icon, s32 value, u8, f32 x, f32 y, f32 alpha, f
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	} else {
 		tex   = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCNumberDigits], 0);
-		f32 w = 1.2f * GXGetTexObjWidth(&tex);
-		f32 h = 1.2f * (GXGetTexObjHeight(&tex) / 10);
+		f32 w = 1.2f * tex.GetWidth();
+		f32 h = 1.2f * (tex.GetHeight() / 10);
 		PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 		tex.mMtxDirty = TRUE;
 		f32 offset    = 12.0f + ((7.0f * (w - 3.0f * 1.2f) - 98.0f * 1.2f) - 12.0f);
@@ -8150,7 +8153,8 @@ extern "C" void DrawSaveStat(s32 icon, s32 value, u8, f32 x, f32 y, f32 alpha, f
 			}
 			s32 digit = value / div;
 			if (i == 0 || digit != 0) {
-				PSMTXTrans(tex.mMtx[0], 0.0f, 0.1f * (digit % 10), 0.0f);
+				digit %= 10;
+				PSMTXTrans(tex.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
 				tex.mMtxDirty = TRUE;
 				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 				DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom,
@@ -8210,7 +8214,7 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	} else {
 		CTexObj& label = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[146], 0);
 		barX           = x - 4.0f;
-		barW           = (0.7f * (scale * (1.1f * (2 * GXGetTexObjWidth(&label)))) + width) - 5.0f * scale;
+		barW           = (0.7f * (scale * (1.1f * (2 * label.GetWidth()))) + width) - 5.0f * scale;
 	}
 	f32 barH     = step + scale;
 	u32 barColor = (u32)(200.0f * alpha) | 0x181CC600;
@@ -9055,7 +9059,7 @@ extern "C" void DrawSaveSlotDetails(MenuSaveSlot* slot, u8 emptyMessage, s16 ind
 		f32 offsetY = -24.0f * sy;
 		tex         = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[111 + iconOffset], 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
+		u16 w = tex.GetWidth(), h = tex.GetHeight();
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		f32 iconX = 100.0f * sx + (x - 10.0f * (17.0f * sx));
 #if !defined(VERSION_JP)
@@ -9120,7 +9124,7 @@ static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 height, f
 	tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
 	PSMTXTrans(tex.mMtx[0], sBannerScrollX, sBannerScrollY, 0.0f);
 	tex.mMtxDirty = TRUE;
-	u16 h = GXGetTexObjHeight(&tex), w = GXGetTexObjWidth(&tex);
+	u16 h = tex.GetHeight(), w = tex.GetWidth();
 	PSMTXScale(tex.mMtx[1], 660.0f / w, height / h, 1.0f);
 	tex.mMtxDirty = TRUE;
 	SetGsDepthMode(gs.mCurRenderMode, 1, 4, 1);
@@ -9564,27 +9568,23 @@ extern "C" s32 DrawJapaneseSaveStatusMessage(s32 channel, s32 status, f32 x, f32
 }
 #endif
 
-struct StatusGridTextures {
-	s32 locked, unlocked;
-};
-StatusGridTextures gStatusGridTextures[24] = {
+// the texture of each status icon while locked and once unlocked
+s32 gStatusGridTextures[48] = {
 #if defined(VERSION_JP)
-	{ 192, 193 }, { 222, 223 }, { 188, 189 }, { 208, 209 }, { 200, 201 }, { 198, 199 }, { 186, 187 }, { 214, 215 },
-	{ 202, 203 }, { 184, 185 }, { 182, 183 }, { 206, 207 }, { 218, 219 }, { 180, 181 }, { 226, 227 }, { 224, 225 },
-	{ 196, 197 }, { 204, 205 }, { 194, 195 }, { 212, 213 }, { 190, 191 }, { 210, 211 }, { 216, 217 }, { 220, 221 },
+	192, 193, 222, 223, 188, 189, 208, 209, 200, 201, 198, 199, 186, 187, 214, 215, 202, 203, 184, 185, 182, 183, 206, 207,
+	218, 219, 180, 181, 226, 227, 224, 225, 196, 197, 204, 205, 194, 195, 212, 213, 190, 191, 210, 211, 216, 217, 220, 221,
 #else
-	{ 194, 195 }, { 224, 225 }, { 190, 191 }, { 210, 211 }, { 202, 203 }, { 200, 201 }, { 188, 189 }, { 216, 217 },
-	{ 204, 205 }, { 186, 187 }, { 184, 185 }, { 208, 209 }, { 220, 221 }, { 182, 183 }, { 228, 229 }, { 226, 227 },
-	{ 198, 199 }, { 206, 207 }, { 196, 197 }, { 214, 215 }, { 192, 193 }, { 212, 213 }, { 218, 219 }, { 222, 223 },
+	194, 195, 224, 225, 190, 191, 210, 211, 202, 203, 200, 201, 188, 189, 216, 217, 204, 205, 186, 187, 184, 185, 208, 209,
+	220, 221, 182, 183, 228, 229, 226, 227, 198, 199, 206, 207, 196, 197, 214, 215, 192, 193, 212, 213, 218, 219, 222, 223,
 #endif
 };
 extern "C" u8* GetStatusIconDescription(s32 id);
 
-static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32 bob, f32& width, f32& height, bool selected)
+static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32 scale, f32 bob, f32& width, f32& height, bool selected)
 {
-	width  = GXGetTexObjWidth(&tex);
+	width  = scale * tex.GetWidth();
 	width  = 0.8f * width;
-	height = GXGetTexObjHeight(&tex);
+	height = scale * tex.GetHeight();
 	height = 0.8f * height;
 
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
@@ -9629,6 +9629,8 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 	                             helpSize, helpSize);
 }
 
+// NONMATCHING: same instructions, other registers: retail has selected in r31, i in r30 and menu in r29,
+// the build menu in r31 and the two locals in r21 and r20; the float registers follow
 extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 {
 	// drawn on its own page (mode 8) and during the mode 4 slide between pages
@@ -9636,38 +9638,43 @@ extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 		f32 left     = ((menu->mGridX - 42.0f) + menu->mOffsetX) - 201.0f;
 		f32 top      = ((180.0f + menu->mGridY) + menu->mOffsetY) - 81.0f;
 		s32 selected = menu->mPhase == 100 ? -1 : menu->mIconSelection; // no highlight under the description window
-		CTexObj tex;
-		static u32 frame = 0;
-		++frame;
+		{
+			CTexObj tex;
+			static u32 frame = 0;
+			++frame;
 
-		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
-		for (int i = 0; i < 24; i++) {
-			f32 x     = 2.0f + ((i % 6) * 80.0f + left);
-			f32 y     = 2.0f + ((i / 6) * 60.0f + top);
-			u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
-			if (gStatusIconUnlocked[i] != 0)
-				tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[gStatusGridTextures[i].unlocked], 0);
-			else
-				tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[gStatusGridTextures[i].locked], 0);
-			f32 bob = (f32)sin(0.017453292f * (((s32)(frame * 20)) % 360)) * 4.0f;
-			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			f32 width, height;
-			if (selected == i)
-				DrawStatusGridIcon(tex, color, x, y, bob, width, height, true);
-			else
-				DrawStatusGridIcon(tex, color, x, y, bob, width, height, false);
-			if (selected == i) {
-				SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-				f32 wave  = (f32)sin(3.1415927f * menu->mPulsePhase);
-				f32 pulse = (0.2f * wave + 0.2f) * menu->mAlpha;
-				if (pulse < 0)
-					pulse = 0;
-				color = (u32)(255.0f * pulse) | 0xFFFFFF00;
-				DrawGsQuad(&gGame.mGs, color, color, color, color, x, y + bob, 1.0f, width, height, 0, 0, 0);
-				SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+			for (int i = 0; i < 24; i++) {
+				f32 x     = 2.0f + ((i % 6) * 80.0f + left);
+				f32 y     = 2.0f + ((i / 6) * 60.0f + top);
+				u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
+				if (gStatusIconUnlocked[i] != 0) {
+					int id = i * 2 + 1;
+					tex    = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[gStatusGridTextures[id]], 0);
+				} else {
+					int id = i * 2;
+					tex    = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[gStatusGridTextures[id]], 0);
+				}
+				f32 bob = (f32)sin(0.017453292f * (((s32)(frame * 20)) % 360)) * 4.0f;
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				f32 width, height;
+				if (selected == i)
+					DrawStatusGridIcon(tex, color, x, y, 1.0f, bob, width, height, true);
+				else
+					DrawStatusGridIcon(tex, color, x, y, 1.0f, bob, width, height, false);
+				if (selected == i) {
+					SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+					SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
+					f32 wave  = (f32)sin(3.1415927f * menu->mPulsePhase);
+					f32 pulse = (0.2f * wave + 0.2f) * menu->mAlpha;
+					if (pulse < 0)
+						pulse = 0;
+					color = (u32)(255.0f * pulse) | 0xFFFFFF00;
+					DrawGsQuad(&gGame.mGs, color, color, color, color, x, y + bob, 1.0f, width, height, 0, 0, 0);
+					SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+					SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+				}
 			}
 		}
 		DrawStatusGridDescription(menu, true);
@@ -9719,7 +9726,7 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		s32 selected = menu->mPhase == 100 ? -1 : menu->mOverviewSelection;
 		DrawOverviewStats(menu, selected, x, y);
 		LoadOverviewTexture(tex, 173);
-		u16 width = GXGetTexObjWidth(&tex), height = GXGetTexObjHeight(&tex);
+		u16 width = tex.GetWidth(), height = tex.GetHeight();
 		BeginOverviewTexture(tex);
 		u32 color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
 		DrawOverviewTexture(tex, color, ((x - 24.0f) - 48.0f) - 12.0f, y + 14.0f, 0.6f * (1.1f * width), 0.6f * height);
@@ -9733,7 +9740,7 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		f32 row3 = 14.0f + ((y - 82.0f) + 156.0f);
 		DrawStatusOverviewEntry(menu, 0xAC, 8, selected, left, row3);
 		LoadOverviewTexture(tex, 178);
-		f32 w = 1.4f * (1.1f * GXGetTexObjWidth(&tex)), h = 1.4f * GXGetTexObjHeight(&tex);
+		f32 w = 1.4f * (1.1f * tex.GetWidth()), h = 1.4f * tex.GetHeight();
 		BeginOverviewTexture(tex);
 		if (menu->mIconLit)
 			color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
@@ -9744,8 +9751,8 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 		DrawOverviewTexture(tex, color, center, middle, w, h);
 		if (gEventFlags.mFlags[28 / 32] & (1u << (28 % 32))) {
 			LoadOverviewTexture(tex, 245);
-			width  = GXGetTexObjWidth(&tex);
-			height = GXGetTexObjHeight(&tex);
+			width  = tex.GetWidth();
+			height = tex.GetHeight();
 			BeginOverviewTexture(tex);
 			color = (u32)(255.0f * menu->mAlpha) | 0xC8C8C800;
 			DrawOverviewTexture(tex, color, 18.0f + center, 56.5f + middle, 1.4f * (1.1f * width), 1.4f * height);
@@ -9761,14 +9768,36 @@ extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 	}
 }
 
+static inline void StrokeStatusOutline(Vec* outline, u32 color, u16 count)
+{
+	CGs& gs = gGame.mGs;
+	SetGsLineWidth(gs.mCurRenderMode, 18, 5);
+	DrawGsLineStrip(&gs, outline, color, count);
+	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
+}
+
+// a ring of 64 segments around a status icon, 0.09817477 is 2 pi / 64
+static inline void SetStatusRing(Vec* outline, f32 x, f32 y, f32 radius)
+{
+	for (int i = 0; i < 65; i++) {
+		f32 angle    = 0.09817477f * i - 1.5707964f;
+		f32 sine     = (f32)sin(angle);
+		f32 cosine   = (f32)cos(angle);
+		outline[i].x = sine * radius + x;
+		outline[i].y = -cosine * radius + y;
+		outline[i].z = 0.0f;
+	}
+}
+
+// NONMATCHING: registers only. Retail keeps the ring counter and then the colour in r24 and takes the colour
+// straight from the conversion; the build copies it through r0 (one mr more). Float registers are numbered differently
 extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f32 y, f32 alpha, f32 phase)
 {
 	if (!(alpha > 0.0f))
 		return;
 
-	CGs& gs = gGame.mGs;
-	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 	CTexObj tex;
 	f32 bob = 0.0f;
 	if (selected) {
@@ -9785,82 +9814,71 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 			break;
 	}
 
-	// a ring of 64 segments around the icon, 0.09817477 is 2 pi / 64
 	Vec outline[65];
 	f32 centerY = y - 6.0f * 1.2f;
-	for (int i = 0; i < 65; i++) {
-		f32 angle    = 0.09817477f * i - 1.5707964f;
-		f32 sine     = (f32)sin(angle);
-		f32 cosine   = (f32)cos(angle);
-		outline[i].x = sine * (12.0f * 1.2f) + x;
-		outline[i].y = -cosine * (12.0f * 1.2f) + centerY;
-		outline[i].z = 0.0f;
-	}
+	SetStatusRing(outline, x, centerY, 12.0f * 1.2f);
 	f32 opacity = 255.0f * alpha;
 	u32 color   = (u32)opacity;
-	SetGsLineWidth(gs.mCurRenderMode, 18, 5);
-	DrawGsLineStrip(&gs, outline, color, 65);
-	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
+	StrokeStatusOutline(outline, color, 65);
 
 	LoadOverviewTexture(tex, 125);
-	f32 width    = 1.2f * GXGetTexObjWidth(&tex);
+	f32 width    = 1.2f * tex.GetWidth();
 	outline[0].x = x;
 	outline[0].y = centerY + 12.0f * 1.2f;
 	outline[1].x = x + (places * (width - 3.0f * 1.2f) + 34.0f);
 	outline[1].y = outline[0].y;
-	SetGsLineWidth(gs.mCurRenderMode, 18, 5);
-	DrawGsLineStrip(&gs, outline, color, 2);
-	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
+	StrokeStatusOutline(outline, color, 2);
 
 	LoadOverviewTexture(tex, 155);
-	SetGsTevMode(gs.mCurTevStage, 0);
-	u16 markerWidth = GXGetTexObjWidth(&tex), markerHeight = GXGetTexObjHeight(&tex);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	u16 markerWidth = tex.GetWidth(), markerHeight = tex.GetHeight();
 	color |= 0xC8C8C800;
 	DrawOverviewTexture(tex, color, outline[1].x, outline[1].y, 1.2f * markerWidth, 1.2f * markerHeight);
 
-	f32 scale = icon == 180 - StatusTextureOffset ? 0.7f : 0.8f;
-	tex       = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
-	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 1);
-	SetGsDepthCompareBeforeTexture(gs.mCurRenderMode, 0);
-	SetGsTevMode(gs.mCurTevStage, 0);
-	width      = scale * GXGetTexObjWidth(&tex);
-	f32 height = scale * GXGetTexObjHeight(&tex);
-	f32 iconY  = bob + (y - 9.0f);
+	f32 scale = 0.8f;
+	if (icon == 180 - StatusTextureOffset)
+		scale = 0.7f;
+	tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
+	SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	width      = scale * tex.GetWidth();
+	f32 height = scale * tex.GetHeight();
+	f32 base   = bob + (y - 9.0f);
+	f32 iconY  = base;
 	if (icon == 154 - StatusTextureOffset)
-		iconY = 4.0f + iconY;
-	DrawGsTexturedQuad(&gs, &tex, color, color, color, color, x, iconY, 1.0f, width, height, 0, 0, 0);
-	SetGsTevMode(gs.mCurTevStage, 4);
-	SetGsDepthCompareBeforeTexture(gs.mCurRenderMode, 1);
+		iconY = 4.0f + base;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, iconY, 1.0f, width, height, 0, 0, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 1);
 	if (selected) {
-		SetGsBlendMode(gs.mCurRenderMode, 1, 2, 4, 15);
-		SetGsDepthMode(gs.mCurRenderMode, 1, 2, 0);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
 		f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
 		if (pulse < 0.0f)
 			pulse = 0.0f;
 		u32 highlight = (u32)(255.0f * pulse) | 0xFFFFFF00;
-		DrawGsQuad(&gs, highlight, highlight, highlight, highlight, x, iconY, 1.0f, width, height, 0, 0, 0);
-		SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-		SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
+		DrawGsQuad(&gGame.mGs, highlight, highlight, highlight, highlight, x, iconY, 1.0f, width, height, 0, 0, 0);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 	}
 	LoadOverviewTexture(tex, 125);
 	x -= 12.0f;
 	y -= 4.0f;
-	width  = 1.2f * GXGetTexObjWidth(&tex);
-	height = 1.2f * (GXGetTexObjHeight(&tex) / 10);
+	width  = 1.2f * tex.GetWidth();
+	height = 1.2f * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
 	u8 a          = (u8)opacity;
 	f32 offset    = places * (width - 3.0f * 1.2f) - 98.0f * 1.2f;
 	for (s32 i = 0; i < 7; i++) {
-		f32 divisor = 1.0f;
-		for (s32 j = 0; j < i; j++)
-			divisor *= 10.0f;
-		s32 digit = (s32)(value / divisor);
+		s32 digit = (s32)(value / PCDigitDivisor(i));
 		if (i != 0 && digit == 0)
 			continue;
-		PSMTXTrans(tex.mMtx[0], 0, 0.1f * (digit % 10), 0);
+		digit %= 10;
+		PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
 		tex.mMtxDirty = TRUE;
-		SetGsTevMode(gs.mCurTevStage, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		u32 top, bottom;
 		// digit colours by stat: 154 experience, 152 money, 153 scrap, 180 rank (see DrawOverviewStats)
 		switch (icon) {
@@ -9883,11 +9901,11 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 		default:
 			top = bottom = 0xFFFFFF00 | a;
 		}
-		DrawGsTexturedQuad(&gs, &tex, top, top, bottom, bottom, offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f))), y - 2.4f, 0,
-		                   width, height, 0, 0, 0);
-		SetGsTevMode(gs.mCurTevStage, 4);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f))), y - 2.4f,
+		                   0, width, height, 0, 0, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
-	SetGsTevMode(gs.mCurTevStage, 4);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
 static inline void SetGaugeQuad(Vec* vertices, f32 left, f32 right, f32 top, f32 bottom)
@@ -9902,32 +9920,17 @@ static inline void SetGaugeQuad(Vec* vertices, f32 left, f32 right, f32 top, f32
 	vertices[3].y = bottom;
 }
 
-static inline void DrawGaugeNumber(CTexObj& tex, s32 number, u32 color, f32 x, f32 y, f32 width, f32 height, f32 offset, f32 shift)
-{
-	for (s32 i = 0; i < 5; i++) {
-		f32 divisor = 1.0f;
-		for (s32 j = 0; j < i; j++)
-			divisor *= 10.0f;
-		s32 digit = (s32)(number / divisor);
-		if (i != 0 && digit == 0)
-			continue;
-		PSMTXTrans(tex.mMtx[0], 0, 0.1f * (digit % 10), 0);
-		tex.mMtxDirty = TRUE;
-		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		DrawOverviewTexture(tex, color, (offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f)))) - shift, y - 2.4f, width, height);
-	}
-}
-
+// NONMATCHING: retail holds the white of the left cap in a second register (mr r23, r28 after the or), the build
+// uses one; the float temporaries of the vertex set-up and the saved registers are numbered differently
 extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 {
 	if (!(alpha > 0.0f))
 		return;
 	CTexObj tex;
-	CGs& gs = gGame.mGs;
-	SetGsChannelEnabled(&gs, 0, 0);
-	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gs.mCurRenderMode, 0, 3, 0);
-	SetGsLineWidth(gs.mCurRenderMode, 6, 5);
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 3, 0);
+	SetGsLineWidth(gGame.mGs.mCurRenderMode, 6, 5);
 
 	f32 left         = 16.0f + x;
 	f32 right        = 168.0f + left;
@@ -9942,83 +9945,102 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	SetGaugeQuad(vertices + 12, shadowX, 168.0f + shadowX, shadowY, 16.0f + shadowY);
 	SetGaugeQuad(vertices + 16, left, fill, shadowY, (bottom - 4.0f) - 1.0f);
 	u32 shade = (u32)(100.0f * alpha);
-	DrawSolidQuad(&gs, vertices + 12, shade | 0x0A0A0A00);
+	DrawSolidQuad(&gGame.mGs, vertices + 12, shade | 0x0A0A0A00);
 	f32 opacity = 255.0f * alpha;
 	u32 a       = (u32)opacity;
-	DrawGsLineStrip(&gs, vertices, a | 0xC8C8C800, 5);
-	DrawSolidQuad(&gs, vertices, (u32)(40.0f * alpha) | 0xA0FFFF00);
-	DrawSolidQuad(&gs, vertices + 16, shade | 0x40FF8000);
-	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
+	DrawGsLineStrip(&gGame.mGs, vertices, a | 0xC8C8C800, 5);
+	DrawSolidQuad(&gGame.mGs, vertices, (u32)(40.0f * alpha) | 0xA0FFFF00);
+	DrawSolidQuad(&gGame.mGs, vertices + 16, shade | 0x40FF8000);
+	SetGsLineWidth(gGame.mGs.mCurRenderMode, 12, 5);
 
 	u32 white = a | 0xFFFFFF00;
+	u32 color = white;
+	f32 scale = 1.0f;
 	LoadOverviewTexture(tex, 242);
-	f32 width  = 0.85f * GXGetTexObjWidth(&tex);
-	f32 height = 0.85f * GXGetTexObjHeight(&tex);
-	SetGsTevMode(gs.mCurTevStage, 0);
+	f32 width  = 0.85f * (scale * tex.GetWidth());
+	f32 height = 0.85f * (scale * tex.GetHeight());
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	f32 capY = (8.0f + y) - 0.5f;
-	DrawGsTexturedQuad(&gs, &tex, white, white, white, white, 2.0f + (left - width / 2.0f), capY, 0, width, height, 0, 0, 3.1415927f);
-	SetGsTevMode(gs.mCurTevStage, 4);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 2.0f + (left - width / 2.0f), capY, 0, width, height, 0, 0,
+	                   3.1415927f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	LoadOverviewTexture(tex, 241);
-	width  = 0.95f * GXGetTexObjWidth(&tex);
-	height = 0.95f * GXGetTexObjHeight(&tex);
-	SetGsTevMode(gs.mCurTevStage, 0);
-	DrawGsTexturedQuad(&gs, &tex, white, white, white, white, (width * 0.5f + right) - 4.0f, capY, 0, width, height, 0, 0, 3.1415927f);
-	SetGsTevMode(gs.mCurTevStage, 4);
+	width  = 0.95f * (scale * tex.GetWidth());
+	height = 0.95f * (scale * tex.GetHeight());
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, white, white, white, white, (width * 0.5f + right) - 4.0f, capY, 0, width, height, 0, 0,
+	                   3.1415927f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 
 	s32 current = (s32)(10000.0f * value);
 	x += 101.0f * 1.2f;
 	y -= 4.8f;
 	LoadOverviewTexture(tex, 125);
-	width  = 1.2f * GXGetTexObjWidth(&tex);
-	height = 1.2f * (GXGetTexObjHeight(&tex) / 10);
+	width  = 1.2f * tex.GetWidth();
+	height = 1.2f * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
-	u32 textColor = 0xFFFFFF00 | (u8)opacity;
+	color         = 0xFFFFFF00 | (u8)opacity;
 	f32 offset    = (3.0f * (width - 3.0f * 1.2f) - 98.0f * 1.2f) - 16.0f;
-	DrawGaugeNumber(tex, 10000, textColor, x, y, width, height, offset, 0);
-	DrawGaugeNumber(tex, current, textColor, x, y, width, height, offset, 6.0f * (width - 3.0f * 1.2f));
-	SetGsTevMode(gs.mCurTevStage, 4);
+	u32 upper, lower;
+	for (s32 i = 0; i < 5; i++) {
+		s32 digit = (s32)(10000 / PCDigitDivisor(i));
+		if (i != 0 && digit == 0)
+			continue;
+		digit %= 10;
+		PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
+		tex.mMtxDirty = TRUE;
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		upper = color;
+		lower = color;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f))),
+		                   y - 2.4f, 0, width, height, 0, 0, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	}
+	f32 shift = 6.0f * (width - 3.0f * 1.2f);
+	for (s32 i = 0; i < 5; i++) {
+		s32 digit = (s32)(current / PCDigitDivisor(i));
+		if (i != 0 && digit == 0)
+			continue;
+		digit %= 10;
+		PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
+		tex.mMtxDirty = TRUE;
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		upper = color;
+		lower = color;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower,
+		                   (offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f)))) - shift, y - 2.4f, 0, width, height, 0, 0, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	}
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	LoadOverviewTexture(tex, 168);
-	u16 slashWidth = GXGetTexObjWidth(&tex), slashHeight = GXGetTexObjHeight(&tex);
-	SetGsTevMode(gs.mCurTevStage, 0);
-	DrawOverviewTexture(tex, textColor, offset + (7.0f * width + (x - 5.0f * (width - 3.0f * 1.2f))), y - 1.2f, 0.8f * (1.2f * slashWidth),
-	                    0.8f * (1.2f * slashHeight));
+	u16 slashWidth = tex.GetWidth(), slashHeight = tex.GetHeight();
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, offset + (7.0f * width + (x - 5.0f * (width - 3.0f * 1.2f))), y - 1.2f,
+	                   0, 0.8f * (1.2f * slashWidth), 0.8f * (1.2f * slashHeight), 0, 0, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
-static inline void StrokeStatusOutline(Vec* outline, u32 color, u16 count)
-{
-	CGs& gs = gGame.mGs;
-	SetGsLineWidth(gs.mCurRenderMode, 18, 5);
-	DrawGsLineStrip(&gs, outline, color, count);
-	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
-}
-
+// NONMATCHING: registers and the order of the loop set-up before the digits (retail converts the opacity
+// byte before it loads 3.6f); the statements are retail's
 extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32 x, f32 y, f32 alpha)
 {
 	if (!(alpha > 0.0f))
 		return;
 	CTexObj tex;
-	CGs& gs = gGame.mGs;
-	f32 bob = 0.0f;
+	f32 bob       = 0.0f;
+	bool skipTens = false;
 	if (selected) {
 		static u32 frame = 0;
 		++frame;
 		bob = 4.0f * (f32)sin(0.017453292f * (((s32)(frame * 20)) % 360));
 	}
-	s32 places    = 4 + (value >= 1000);
-	bool skipTens = false;
+	s32 places = (value >= 1000 ? 1 : 0) + 4;
 	if ((value % 100) / 10 == 0)
 		skipTens = true;
 	Vec outline[65];
 	f32 centerY = y - 6.0f * 1.2f;
-	for (int i = 0; i < 65; i++) {
-		f32 angle    = 0.09817477f * i - 1.5707964f;
-		f32 sine     = (f32)sin(angle);
-		f32 cosine   = (f32)cos(angle);
-		outline[i].x = sine * (12.0f * 1.2f) + x;
-		outline[i].y = -cosine * (12.0f * 1.2f) + centerY;
-		outline[i].z = 0.0f;
-	}
+	SetStatusRing(outline, x, centerY, 12.0f * 1.2f);
 	f32 opacity = 255.0f * alpha;
 	u32 color   = (u32)opacity;
 	StrokeStatusOutline(outline, color, 65);
@@ -10026,7 +10048,7 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	if (skipTens)
 		--visible;
 	LoadOverviewTexture(tex, 125);
-	f32 width    = 1.2f * GXGetTexObjWidth(&tex);
+	f32 width    = 1.2f * tex.GetWidth();
 	outline[0].x = x;
 	outline[0].y = centerY + 12.0f * 1.2f;
 	outline[1].x = x + (visible * (width - 3.0f * 1.2f) + 34.0f);
@@ -10034,50 +10056,55 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	StrokeStatusOutline(outline, color, 2);
 
 	LoadOverviewTexture(tex, 155);
-	SetGsTevMode(gs.mCurTevStage, 0);
-	u16 markerWidth = GXGetTexObjWidth(&tex), markerHeight = GXGetTexObjHeight(&tex);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	u16 markerWidth = tex.GetWidth(), markerHeight = tex.GetHeight();
 	color |= 0xC8C8C800;
 	DrawOverviewTexture(tex, color, outline[1].x, outline[1].y, 1.2f * markerWidth, 1.2f * markerHeight);
 
 	tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
-	SetGsTevMode(gs.mCurTevStage, 0);
-	width      = 0.8f * GXGetTexObjWidth(&tex);
-	f32 height = 0.8f * GXGetTexObjHeight(&tex);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	width      = 0.8f * tex.GetWidth();
+	f32 height = 0.8f * tex.GetHeight();
 	f32 iconY  = bob + (y - 9.0f);
 	if (icon == 154 - StatusTextureOffset)
-		DrawGsTexturedQuad(&gs, &tex, color, color, color, color, x, 4.0f + iconY, 0, width, height, 0, 0, 0);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, 4.0f + iconY, 0, width, height, 0, 0, 0);
 	else
-		DrawGsTexturedQuad(&gs, &tex, color, color, color, color, x, iconY, 0, width, height, 0, 0, 0);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, iconY, 0, width, height, 0, 0, 0);
 	LoadOverviewTexture(tex, 125);
 	x -= 12.0f;
 	y -= 4.0f;
-	width  = 1.2f * GXGetTexObjWidth(&tex);
-	height = 1.2f * (GXGetTexObjHeight(&tex) / 10);
+	width  = 1.2f * tex.GetWidth();
+	height = 1.2f * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
 	u32 white     = 0xFFFFFF00 | (u8)opacity;
 	f32 offset    = (places - 1) * (width - 3.0f * 1.2f) - 98.0f * 1.2f;
+	u32 upper, lower;
 	for (s32 i = 0; i < 4; i++) {
-		f32 divisor = 1.0f;
-		for (s32 j = 0; j < i; j++)
-			divisor *= 10.0f;
-		s32 digit = (s32)(value / divisor) % 10;
+		s32 digit = (s32)(value / PCDigitDivisor(i)) % 10;
 		if ((i == 3 || i == 1) && digit == 0)
 			continue;
 		PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
 		tex.mMtxDirty = TRUE;
-		SetGsTevMode(gs.mCurTevStage, 0);
-		f32 gap = i < 2 ? width - 3.0f * 1.2f : 0.0f;
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		f32 gap = 0.0f;
+		upper   = white;
+		lower   = white;
+		if (i < 2)
+			gap = width - 3.0f * 1.2f;
 		if (skipTens && i == 0)
 			gap -= width - 3.0f * 1.2f;
-		DrawOverviewTexture(tex, white, gap + (offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f)))), y - 2.4f, width, height);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, gap + (offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f)))),
+		                   y - 2.4f, 0, width, height, 0, 0, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
-	SetGsTevMode(gs.mCurTevStage, 4);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	LoadOverviewTexture(tex, 168);
-	u16 slashWidth = GXGetTexObjWidth(&tex), slashHeight = GXGetTexObjHeight(&tex);
-	SetGsTevMode(gs.mCurTevStage, 0);
-	DrawOverviewTexture(tex, white, offset + (7.0f * width + (x - (width - 3.0f * 1.2f))), y - 1.2f, 0.8f * (1.2f * slashWidth),
-	                    0.8f * (1.2f * slashHeight));
+	u16 slashWidth = tex.GetWidth(), slashHeight = tex.GetHeight();
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, offset + (7.0f * width + (x - (width - 3.0f * 1.2f))), y - 1.2f, 0,
+	                   0.8f * (1.2f * slashWidth), 0.8f * (1.2f * slashHeight), 0, 0, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
 // The atlas is measured twice; the discard dialog uses the enlarged sample.
@@ -10126,7 +10153,7 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 		f32 sine = (f32)sin(angle), cosine = (f32)cos(angle);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		LoadOverviewTexture(tex, 128);
-		u16 width = GXGetTexObjWidth(&tex), height = GXGetTexObjHeight(&tex);
+		u16 width = tex.GetWidth(), height = tex.GetHeight();
 		u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFEA0000;
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, radius * sine + x, 16.0f + (radius * cosine + y), 0,
 		                   1.4f * (1.1f * width), 1.4f * height, 0, 0, 3.1415927f + angle);
@@ -10138,9 +10165,9 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 		LoadOverviewTexture(tex, 125);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		s32 count  = menu->mCount;
-		u16 firstW = GXGetTexObjWidth(&tex), secondW = GXGetTexObjWidth(&tex);
+		u16 firstW = tex.GetWidth(), secondW = tex.GetWidth();
 		f32 width  = DiscardDigitExtent(firstW, secondW, 1);
-		u16 firstH = GXGetTexObjHeight(&tex), secondH = GXGetTexObjHeight(&tex);
+		u16 firstH = tex.GetHeight(), secondH = tex.GetHeight();
 		f32 height = DiscardDigitExtent(firstH / 10, secondH / 10, 1);
 		PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 		tex.mMtxDirty = TRUE;
@@ -10643,7 +10670,7 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 			break;
 	}
 	tex            = InitPCPanelTexture(125);
-	u16 digitWidth = GXGetTexObjWidth(&tex);
+	u16 digitWidth = tex.GetWidth();
 #if !defined(VERSION_JP)
 	u16 iconWidth = GXGetTexObjWidth(&InitPCPanelTexture(144));
 #endif
@@ -10687,7 +10714,7 @@ static inline void DrawPCPriceUnit(CTexObj& tex, f32 scale, f32 left, f32 digitY
 {
 	tex = InitPCPanelTexture(kind == ItemPriceList ? 144 : 148);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	u16 unitW = GXGetTexObjWidth(&tex), unitH = GXGetTexObjHeight(&tex);
+	u16 unitW = tex.GetWidth(), unitH = tex.GetHeight();
 	DrawOverviewTexture(tex, white, 287.0f * scale + (18.0f * scale + left), digitY, 1.1f * unitW, unitH);
 }
 #endif
@@ -10697,7 +10724,7 @@ static inline f32 DrawPCPurchasePrice(CTexObj& tex, const MenuPCItem& row, f32 o
                                       f32 extraH)
 {
 	tex   = InitPCPanelTexture(125);
-	f32 w = scale * GXGetTexObjWidth(&tex), h = scale * (GXGetTexObjHeight(&tex) / 10);
+	f32 w = scale * tex.GetWidth(), h = scale * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
 	f32 digitY    = extraH * scale + (156.0f * scale + top);
@@ -10807,7 +10834,7 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	if (id && (gEventFlags.mFlags[335 / 32] & (1u << (335 % 32))))
 		icon = 239;
 	tex   = InitPCPanelTexture(icon);
-	u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
+	u16 w = tex.GetWidth(), h = tex.GetHeight();
 	DrawOverviewTexture(tex, white, 52.0f * scale + left, 48.0f * scale + top, scale * w, scale * h);
 }
 
@@ -10875,13 +10902,13 @@ extern "C" void DrawPCItemPurchasePanel(s32 selected, s32 choice, f32 x, f32 y, 
 	if (row.mIsAttachment) {
 		icon = (id == 2 ? 92 : 93) - StatusTextureOffset;
 		tex  = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
-		w    = 0.8f * (scale * GXGetTexObjWidth(&tex));
-		h    = 0.8f * (scale * GXGetTexObjHeight(&tex));
+		w    = 0.8f * (scale * tex.GetWidth());
+		h    = 0.8f * (scale * tex.GetHeight());
 	} else {
 		icon = GetItemIconTextureIndex(id);
 		tex  = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
-		w    = scale * GXGetTexObjWidth(&tex);
-		h    = scale * GXGetTexObjHeight(&tex);
+		w    = scale * tex.GetWidth();
+		h    = scale * tex.GetHeight();
 	}
 	if (icon < 0)
 		return;
@@ -10894,7 +10921,7 @@ extern "C" u8* GetPCRankingName(s32 index);
 static inline void DrawPCRankingDigits(CTexObj& tex, const s32& value, f32 x, f32 y, f32 scale, u32 upper, u32 lower, bool rank)
 {
 	tex   = InitPCPanelTexture(125);
-	f32 w = scale * GXGetTexObjWidth(&tex), h = scale * (GXGetTexObjHeight(&tex) / 10);
+	f32 w = scale * tex.GetWidth(), h = scale * (tex.GetHeight() / 10);
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
 	for (int i = 0; i < (rank ? 7 : 6); i++) {
@@ -11000,7 +11027,7 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 			f32 rowY = (menu->mRankingOffsets[i] + (top + i * 48)) - 48.0f;
 			tex      = InitPCPanelTexture(180);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			f32 w = 1.1f * (1.1f * GXGetTexObjWidth(&tex)), h = 1.1f * GXGetTexObjHeight(&tex);
+			f32 w = 1.1f * (1.1f * tex.GetWidth()), h = 1.1f * tex.GetHeight();
 			DrawOverviewTexture(tex, light, (w / 2.0f + left) - 34.0f, 1.0f + (h / 2.0f + rowY), w, h);
 			const PCRankingRow& row = menu->mRankingRows[i];
 			s32 rankValue           = row.rank;
@@ -11022,7 +11049,7 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 			DrawPCRankingDigits(tex, row.score, left, rowY, scale, a | 0xCECEFF00, a | 0xE037EE00, false);
 			tex = InitPCPanelTexture(154);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			u16 iconWidth = GXGetTexObjWidth(&tex), iconHeight = GXGetTexObjHeight(&tex);
+			u16 iconWidth = tex.GetWidth(), iconHeight = tex.GetHeight();
 			DrawOverviewTexture(tex, light, 140.0f * scale + left, rowY + 10.0f * scale, 0.6f * (scale * iconWidth),
 			                    0.6f * (scale * iconHeight));
 			sprintf(text, "%s", GetPCRankingName(row.nameIndex));
@@ -11047,9 +11074,9 @@ static inline void PrepareInventoryDigits(CTexObj& tex, f32 scale, f32& width, f
 {
 	tex = InitPCPanelTexture(125);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	u16 firstWidth = GXGetTexObjWidth(&tex), secondWidth = GXGetTexObjWidth(&tex);
+	u16 firstWidth = tex.GetWidth(), secondWidth = tex.GetWidth();
 	width           = scale * (1.2f * secondWidth) + (1.0f - scale) * (scale * firstWidth);
-	int firstHeight = GXGetTexObjHeight(&tex) / 10, secondHeight = GXGetTexObjHeight(&tex) / 10;
+	int firstHeight = tex.GetHeight() / 10, secondHeight = tex.GetHeight() / 10;
 	height = scale * (1.2f * secondHeight) + 0.0f * (scale * firstHeight);
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
@@ -11068,32 +11095,31 @@ static inline void DrawEmptyInventorySlot(CTexObj& tex, u32 color, f32 x, f32 y,
 {
 	tex = InitPCPanelTexture(234);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
+	u16 w = tex.GetWidth(), h = tex.GetHeight();
 	DrawOverviewTexture(tex, color, x, y, scale * w, scale * h);
 }
 
 static inline void DrawInventoryHighlight(f32 x, f32 y, f32 w, f32 h, f32 alpha, f32 phase)
 {
-	CGs& gs = gGame.mGs;
-	SetGsBlendMode(gs.mCurRenderMode, 1, 2, 4, 15);
-	SetGsDepthMode(gs.mCurRenderMode, 1, 2, 0);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
 	f32 pulse = alpha * (0.2f * (f32)sin(3.1415927f * phase) + 0.2f);
 	if (pulse < 0)
 		pulse = 0;
 	u32 white = (u32)(255.0f * pulse) | 0xFFFFFF00;
-	DrawGsQuad(&gs, white, white, white, white, x, y, 1, w, h, 0, 0, 0);
-	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 0);
+	DrawGsQuad(&gGame.mGs, white, white, white, white, x, y, 1, w, h, 0, 0, 0);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 }
 
 static inline void DrawInventoryPreviewIcon(CTexObj& tex, s32 icon, u32 color, f32 x, f32 y, f32 scale, u32 frame)
 {
 	tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
-	GXGetTexObjWidth(&tex);
-	GXGetTexObjHeight(&tex);
+	tex.GetWidth();
+	tex.GetHeight();
 	sin(0.017453292f * (((s32)(frame * 20)) % 360));
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
+	u16 w = tex.GetWidth(), h = tex.GetHeight();
 	DrawOverviewTexture(tex, color, x, y, scale * w, scale * h);
 }
 
@@ -11104,8 +11130,8 @@ static inline void DrawVisibleInventoryIcon(CTexObj& tex, s32 icon, u32 color, f
 	SetGsDepthMode(gs.mCurRenderMode, 1, 7, 1);
 	SetGsDepthCompareBeforeTexture(gs.mCurRenderMode, 0);
 	SetGsTevMode(gs.mCurTevStage, 0);
-	iw = scale * GXGetTexObjWidth(&tex);
-	ih = scale * GXGetTexObjHeight(&tex);
+	iw = scale * tex.GetWidth();
+	ih = scale * tex.GetHeight();
 	DrawGsTexturedQuad(&gs, &tex, color, color, color, color, xx, yy + bob, 1, iw, ih, 0, 0, 0);
 	SetGsTevMode(gs.mCurTevStage, 4);
 	SetGsDepthCompareBeforeTexture(gs.mCurRenderMode, 1);
