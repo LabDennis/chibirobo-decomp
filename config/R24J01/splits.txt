@@ -250,6 +250,12 @@ game/wii/cfile.cpp:
 	.sbss start:0x805A28A0 end:0x805A28A8
 	.sdata2 start:0x805A7A48 end:0x805A7A50
 
+game/wii/cresfile.cpp:
+	extab start:0x80010AA0 end:0x80010AD8
+	extabindex start:0x80017420 end:0x80017474
+	.text start:0x802B6094 end:0x802B6560
+	.rodata start:0x802E56C0 end:0x802E56D8
+
 game/wii/msg.cpp:
 	.text start:0x800A1938 end:0x800A8164
 
