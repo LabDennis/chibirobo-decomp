@@ -162,38 +162,38 @@ public:
 	f32 mTexOffset;  // _44CA4
 	s32 mCharCount;  // _44CA8
 	s32 mLine;       // _44CAC
-	WiiTitleObject* mPlacement;   // _44CB0, an object to follow
-	Vec mPosition;                // _44CB4
-	f32 mCursorX;                 // _44CC0, current line start x
-	f32 mWindowX;                 // _44CC4
-	f32 mWidth;                   // _44CC8, full message width
-	f32 mCursorY;                 // _44CCC, accumulated line heights
-	f32 mWindowY;                 // _44CD0
-	f32 mHeight;                  // _44CD4
-	f32 mLineY[10];               // _44CD8
-	f32 mSize;                    // _44D00
-	f32 mPrevSize;                // _44D04
-	u32 mGlyphColor;              // _44D08, rgba out of the color table
-	f32 mGlyphAngle;              // _44D0C
-	f32 mGlyphScaleX;             // _44D10
-	f32 mGlyphScaleY;             // _44D14
-	u8 mEffect;                   // _44D18
-	u8 mAmount;                   // _44D19
-	s8 mSpeed;                    // _44D1A
-	u8 _44D1B;                    // _44D1B
-	s32 mSelectedLine;  // _44D1C
-	f32 mCurLineY;      // _44D20
-	f32 mCurLineWidth;  // _44D24
-	s32 mPointerState;  // _44D28, the pointer's select state: 0 off, 1 hovering a line, 2 click held
-	s32 mSelectDone;    // _44D2C, a pointer confirm or cancel landed; the next frame fades out
-	s8 mDigits[9];      // _44D30, the number input's displayed digits, MsgSetDigits copies them in
+	WiiTitleObject* mPlacement; // _44CB0, an object to follow
+	Vec mPosition;              // _44CB4
+	f32 mCursorX;               // _44CC0, current line start x
+	f32 mWindowX;               // _44CC4
+	f32 mWidth;                 // _44CC8, full message width
+	f32 mCursorY;               // _44CCC, accumulated line heights
+	f32 mWindowY;               // _44CD0
+	f32 mHeight;                // _44CD4
+	f32 mLineY[10];             // _44CD8
+	f32 mSize;                  // _44D00
+	f32 mPrevSize;              // _44D04
+	u32 mGlyphColor;            // _44D08, rgba out of the color table
+	f32 mGlyphAngle;            // _44D0C
+	f32 mGlyphScaleX;           // _44D10
+	f32 mGlyphScaleY;           // _44D14
+	u8 mEffect;                 // _44D18
+	u8 mAmount;                 // _44D19
+	s8 mSpeed;                  // _44D1A
+	u8 _44D1B;                  // _44D1B
+	s32 mSelectedLine;          // _44D1C
+	f32 mCurLineY;              // _44D20
+	f32 mCurLineWidth;          // _44D24
+	s32 mPointerState;          // _44D28, the pointer's select state: 0 off, 1 hovering a line, 2 click held
+	s32 mSelectDone;            // _44D2C, a pointer confirm or cancel landed; the next frame fades out
+	s8 mDigits[9];              // _44D30, the number input's displayed digits, MsgSetDigits copies them in
 	u8 _44D39[0x44D3C - 0x44D39];
 	s32 mDigitCount;     // _44D3C
 	s32 mFirstEditDigit; // _44D40
 	s32 mOtherSelection; // _44D44, the digit under edit, -1 before MsgSetDigits arms it
-	f32 mAlpha;                   // _44D48
-	f32 mTextAlpha;               // _44D4C
-	f32 mHighlightAlpha;          // _44D50
+	f32 mAlpha;          // _44D48
+	f32 mTextAlpha;      // _44D4C
+	f32 mHighlightAlpha; // _44D50
 	// _44D54 vtable
 
 	CMsgFont()

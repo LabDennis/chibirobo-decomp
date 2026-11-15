@@ -60,8 +60,8 @@ void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable);  // 0x802AB734
 void PlayMessageGlyphSound(XSound* sound, u32 group, f32 strength, u8 first, u8 second); // 0x8003BB08
 void ClearGameSoundQueue(XSound* sound, s32 group);                                      // 0x8003BE20
 void SelectPlayerEquipmentRing(WiiPlayerState* player, s32 selection);                   // 0x800D2700
-void OpenPlayerYesNoMenu(WiiPlayerState* player, s32 crossMask, s32 selectedIndex);   // 0x800D2B50
-void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad);                                   // fn_800EF58C
+void OpenPlayerYesNoMenu(WiiPlayerState* player, s32 crossMask, s32 selectedIndex);      // 0x800D2B50
+void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad);                                      // fn_800EF58C
 extern s32 gRefreshRate;
 }
 
@@ -903,9 +903,9 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 							top = (f32)gScreenSafeBottom - msg->mFont.mHeight;
 						}
 						f32 margin = 40.0f + msg->mData.mHeights[msg->mData.mWidestLine];
-						if (gWiiPointer.mPointer.x >= msg->mFont.mWindowX - msg->mFont.mWidth * 0.5f - margin &&
-						    gWiiPointer.mPointer.x <= msg->mFont.mWindowX + msg->mFont.mWidth * 0.5f + margin &&
-						    gWiiPointer.mPointer.y >= top - 8.0f && gWiiPointer.mPointer.y <= top + msg->mFont.mHeight + 8.0f) {
+						if (gWiiPointer.mPointer.x >= msg->mFont.mWindowX - msg->mFont.mWidth * 0.5f - margin
+						    && gWiiPointer.mPointer.x <= msg->mFont.mWindowX + msg->mFont.mWidth * 0.5f + margin
+						    && gWiiPointer.mPointer.y >= top - 8.0f && gWiiPointer.mPointer.y <= top + msg->mFont.mHeight + 8.0f) {
 							if (msg->mFont.mPointerState == 2) {
 								hit = -1;
 							} else {
@@ -917,10 +917,10 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 									}
 									f32 rowTop = top + msg->mFont.mLineY[row];
 									f32 h      = msg->mData.mHeights[row];
-									if (gWiiPointer.mPointer.x >= msg->mFont.mWindowX - w * 0.5f &&
-									    gWiiPointer.mPointer.x <= msg->mFont.mWindowX + w * 0.5f &&
-									    gWiiPointer.mPointer.y >= rowTop - h * 0.25f &&
-									    gWiiPointer.mPointer.y <= rowTop + h + h * 0.25f) {
+									if (gWiiPointer.mPointer.x >= msg->mFont.mWindowX - w * 0.5f
+									    && gWiiPointer.mPointer.x <= msg->mFont.mWindowX + w * 0.5f
+									    && gWiiPointer.mPointer.y >= rowTop - h * 0.25f
+									    && gWiiPointer.mPointer.y <= rowTop + h + h * 0.25f) {
 										hit = row + 1;
 										break;
 									}
@@ -980,8 +980,7 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 						msg->mFont.mSelectDone    = 1;
 						msg->mFont.mBits.mFadeOut = TRUE;
 						PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
-					} else if (msg->mFont.mPointerState == 2 &&
-					           !(gWiiPointer.mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA)))) {
+					} else if (msg->mFont.mPointerState == 2 && !(gWiiPointer.mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA)))) {
 						msg->mSelectResult       = msg->mSelectedLine;
 						msg->mFont.mSelectDone   = 1;
 						msg->mFont.mPointerState = 0;
