@@ -9566,27 +9566,23 @@ extern "C" s32 DrawJapaneseSaveStatusMessage(s32 channel, s32 status, f32 x, f32
 }
 #endif
 
-struct StatusGridTextures {
-	s32 locked, unlocked;
-};
-StatusGridTextures gStatusGridTextures[24] = {
+// the texture of each status icon while locked and once unlocked
+s32 gStatusGridTextures[48] = {
 #if defined(VERSION_JP)
-	{ 192, 193 }, { 222, 223 }, { 188, 189 }, { 208, 209 }, { 200, 201 }, { 198, 199 }, { 186, 187 }, { 214, 215 },
-	{ 202, 203 }, { 184, 185 }, { 182, 183 }, { 206, 207 }, { 218, 219 }, { 180, 181 }, { 226, 227 }, { 224, 225 },
-	{ 196, 197 }, { 204, 205 }, { 194, 195 }, { 212, 213 }, { 190, 191 }, { 210, 211 }, { 216, 217 }, { 220, 221 },
+	192, 193, 222, 223, 188, 189, 208, 209, 200, 201, 198, 199, 186, 187, 214, 215, 202, 203, 184, 185, 182, 183, 206, 207,
+	218, 219, 180, 181, 226, 227, 224, 225, 196, 197, 204, 205, 194, 195, 212, 213, 190, 191, 210, 211, 216, 217, 220, 221,
 #else
-	{ 194, 195 }, { 224, 225 }, { 190, 191 }, { 210, 211 }, { 202, 203 }, { 200, 201 }, { 188, 189 }, { 216, 217 },
-	{ 204, 205 }, { 186, 187 }, { 184, 185 }, { 208, 209 }, { 220, 221 }, { 182, 183 }, { 228, 229 }, { 226, 227 },
-	{ 198, 199 }, { 206, 207 }, { 196, 197 }, { 214, 215 }, { 192, 193 }, { 212, 213 }, { 218, 219 }, { 222, 223 },
+	194, 195, 224, 225, 190, 191, 210, 211, 202, 203, 200, 201, 188, 189, 216, 217, 204, 205, 186, 187, 184, 185, 208, 209,
+	220, 221, 182, 183, 228, 229, 226, 227, 198, 199, 206, 207, 196, 197, 214, 215, 192, 193, 212, 213, 218, 219, 222, 223,
 #endif
 };
 extern "C" u8* GetStatusIconDescription(s32 id);
 
-static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32 bob, f32& width, f32& height, bool selected)
+static inline void DrawStatusGridIcon(CTexObj& tex, u32 color, f32 x, f32 y, f32 scale, f32 bob, f32& width, f32& height, bool selected)
 {
-	width  = GXGetTexObjWidth(&tex);
+	width  = scale * GXGetTexObjWidth(&tex);
 	width  = 0.8f * width;
-	height = GXGetTexObjHeight(&tex);
+	height = scale * GXGetTexObjHeight(&tex);
 	height = 0.8f * height;
 
 	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
@@ -9631,6 +9627,8 @@ static inline void DrawStatusGridDescription(MenuStatus* menu, bool iconGrid)
 	                             helpSize, helpSize);
 }
 
+// NONMATCHING: same instructions, other registers: retail has selected in r31, i in r30 and menu in r29,
+// the build menu in r31 and the two locals in r21 and r20; the float registers follow
 extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 {
 	// drawn on its own page (mode 8) and during the mode 4 slide between pages
@@ -9638,38 +9636,43 @@ extern "C" void DrawStatusIconGrid(MenuStatus* menu)
 		f32 left     = ((menu->mGridX - 42.0f) + menu->mOffsetX) - 201.0f;
 		f32 top      = ((180.0f + menu->mGridY) + menu->mOffsetY) - 81.0f;
 		s32 selected = menu->mPhase == 100 ? -1 : menu->mIconSelection; // no highlight under the description window
-		CTexObj tex;
-		static u32 frame = 0;
-		++frame;
+		{
+			CTexObj tex;
+			static u32 frame = 0;
+			++frame;
 
-		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
-		for (int i = 0; i < 24; i++) {
-			f32 x     = 2.0f + ((i % 6) * 80.0f + left);
-			f32 y     = 2.0f + ((i / 6) * 60.0f + top);
-			u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
-			if (gStatusIconUnlocked[i] != 0)
-				tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[gStatusGridTextures[i].unlocked], 0);
-			else
-				tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[gStatusGridTextures[i].locked], 0);
-			f32 bob = (f32)sin(0.017453292f * (((s32)(frame * 20)) % 360)) * 4.0f;
-			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			f32 width, height;
-			if (selected == i)
-				DrawStatusGridIcon(tex, color, x, y, bob, width, height, true);
-			else
-				DrawStatusGridIcon(tex, color, x, y, bob, width, height, false);
-			if (selected == i) {
-				SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-				f32 wave  = (f32)sin(3.1415927f * menu->mPulsePhase);
-				f32 pulse = (0.2f * wave + 0.2f) * menu->mAlpha;
-				if (pulse < 0)
-					pulse = 0;
-				color = (u32)(255.0f * pulse) | 0xFFFFFF00;
-				DrawGsQuad(&gGame.mGs, color, color, color, color, x, y + bob, 1.0f, width, height, 0, 0, 0);
-				SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-				SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+			for (int i = 0; i < 24; i++) {
+				f32 x     = 2.0f + ((i % 6) * 80.0f + left);
+				f32 y     = 2.0f + ((i / 6) * 60.0f + top);
+				u32 color = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
+				if (gStatusIconUnlocked[i] != 0) {
+					int id = i * 2 + 1;
+					tex    = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[gStatusGridTextures[id]], 0);
+				} else {
+					int id = i * 2;
+					tex    = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[gStatusGridTextures[id]], 0);
+				}
+				f32 bob = (f32)sin(0.017453292f * (((s32)(frame * 20)) % 360)) * 4.0f;
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				f32 width, height;
+				if (selected == i)
+					DrawStatusGridIcon(tex, color, x, y, 1.0f, bob, width, height, true);
+				else
+					DrawStatusGridIcon(tex, color, x, y, 1.0f, bob, width, height, false);
+				if (selected == i) {
+					SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+					SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
+					f32 wave  = (f32)sin(3.1415927f * menu->mPulsePhase);
+					f32 pulse = (0.2f * wave + 0.2f) * menu->mAlpha;
+					if (pulse < 0)
+						pulse = 0;
+					color = (u32)(255.0f * pulse) | 0xFFFFFF00;
+					DrawGsQuad(&gGame.mGs, color, color, color, color, x, y + bob, 1.0f, width, height, 0, 0, 0);
+					SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+					SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+				}
 			}
 		}
 		DrawStatusGridDescription(menu, true);
@@ -9904,32 +9907,17 @@ static inline void SetGaugeQuad(Vec* vertices, f32 left, f32 right, f32 top, f32
 	vertices[3].y = bottom;
 }
 
-static inline void DrawGaugeNumber(CTexObj& tex, s32 number, u32 color, f32 x, f32 y, f32 width, f32 height, f32 offset, f32 shift)
-{
-	for (s32 i = 0; i < 5; i++) {
-		f32 divisor = 1.0f;
-		for (s32 j = 0; j < i; j++)
-			divisor *= 10.0f;
-		s32 digit = (s32)(number / divisor);
-		if (i != 0 && digit == 0)
-			continue;
-		PSMTXTrans(tex.mMtx[0], 0, 0.1f * (digit % 10), 0);
-		tex.mMtxDirty = TRUE;
-		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		DrawOverviewTexture(tex, color, (offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f)))) - shift, y - 2.4f, width, height);
-	}
-}
-
+// NONMATCHING: retail holds the white of the left cap in a second register (mr r23, r28 after the or), the build
+// uses one; the float temporaries of the vertex set-up and the saved registers are numbered differently
 extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 {
 	if (!(alpha > 0.0f))
 		return;
 	CTexObj tex;
-	CGs& gs = gGame.mGs;
-	SetGsChannelEnabled(&gs, 0, 0);
-	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gs.mCurRenderMode, 0, 3, 0);
-	SetGsLineWidth(gs.mCurRenderMode, 6, 5);
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 3, 0);
+	SetGsLineWidth(gGame.mGs.mCurRenderMode, 6, 5);
 
 	f32 left         = 16.0f + x;
 	f32 right        = 168.0f + left;
@@ -9944,28 +9932,32 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	SetGaugeQuad(vertices + 12, shadowX, 168.0f + shadowX, shadowY, 16.0f + shadowY);
 	SetGaugeQuad(vertices + 16, left, fill, shadowY, (bottom - 4.0f) - 1.0f);
 	u32 shade = (u32)(100.0f * alpha);
-	DrawSolidQuad(&gs, vertices + 12, shade | 0x0A0A0A00);
+	DrawSolidQuad(&gGame.mGs, vertices + 12, shade | 0x0A0A0A00);
 	f32 opacity = 255.0f * alpha;
 	u32 a       = (u32)opacity;
-	DrawGsLineStrip(&gs, vertices, a | 0xC8C8C800, 5);
-	DrawSolidQuad(&gs, vertices, (u32)(40.0f * alpha) | 0xA0FFFF00);
-	DrawSolidQuad(&gs, vertices + 16, shade | 0x40FF8000);
-	SetGsLineWidth(gs.mCurRenderMode, 12, 5);
+	DrawGsLineStrip(&gGame.mGs, vertices, a | 0xC8C8C800, 5);
+	DrawSolidQuad(&gGame.mGs, vertices, (u32)(40.0f * alpha) | 0xA0FFFF00);
+	DrawSolidQuad(&gGame.mGs, vertices + 16, shade | 0x40FF8000);
+	SetGsLineWidth(gGame.mGs.mCurRenderMode, 12, 5);
 
 	u32 white = a | 0xFFFFFF00;
+	u32 color = white;
+	f32 scale = 1.0f;
 	LoadOverviewTexture(tex, 242);
-	f32 width  = 0.85f * GXGetTexObjWidth(&tex);
-	f32 height = 0.85f * GXGetTexObjHeight(&tex);
-	SetGsTevMode(gs.mCurTevStage, 0);
+	f32 width  = 0.85f * (scale * GXGetTexObjWidth(&tex));
+	f32 height = 0.85f * (scale * GXGetTexObjHeight(&tex));
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	f32 capY = (8.0f + y) - 0.5f;
-	DrawGsTexturedQuad(&gs, &tex, white, white, white, white, 2.0f + (left - width / 2.0f), capY, 0, width, height, 0, 0, 3.1415927f);
-	SetGsTevMode(gs.mCurTevStage, 4);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 2.0f + (left - width / 2.0f), capY, 0, width, height, 0, 0,
+	                   3.1415927f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	LoadOverviewTexture(tex, 241);
-	width  = 0.95f * GXGetTexObjWidth(&tex);
-	height = 0.95f * GXGetTexObjHeight(&tex);
-	SetGsTevMode(gs.mCurTevStage, 0);
-	DrawGsTexturedQuad(&gs, &tex, white, white, white, white, (width * 0.5f + right) - 4.0f, capY, 0, width, height, 0, 0, 3.1415927f);
-	SetGsTevMode(gs.mCurTevStage, 4);
+	width      = 0.95f * (scale * GXGetTexObjWidth(&tex));
+	u16 rightH = GXGetTexObjHeight(&tex);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, white, white, white, white, (width * 0.5f + right) - 4.0f, capY, 0, width,
+	                   0.95f * (scale * rightH), 0, 0, 3.1415927f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 
 	s32 current = (s32)(10000.0f * value);
 	x += 101.0f * 1.2f;
@@ -9975,16 +9967,45 @@ extern "C" void DrawStatusGauge(f32 value, f32 x, f32 y, f32 alpha)
 	height = 1.2f * (GXGetTexObjHeight(&tex) / 10);
 	PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 	tex.mMtxDirty = TRUE;
-	u32 textColor = 0xFFFFFF00 | (u8)opacity;
+	color         = 0xFFFFFF00 | (u8)opacity;
 	f32 offset    = (3.0f * (width - 3.0f * 1.2f) - 98.0f * 1.2f) - 16.0f;
-	DrawGaugeNumber(tex, 10000, textColor, x, y, width, height, offset, 0);
-	DrawGaugeNumber(tex, current, textColor, x, y, width, height, offset, 6.0f * (width - 3.0f * 1.2f));
-	SetGsTevMode(gs.mCurTevStage, 4);
+	u32 upper, lower;
+	for (s32 i = 0; i < 5; i++) {
+		s32 digit = (s32)(10000 / PCDigitDivisor(i));
+		if (i != 0 && digit == 0)
+			continue;
+		digit %= 10;
+		PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
+		tex.mMtxDirty = TRUE;
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		upper = color;
+		lower = color;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f))),
+		                   y - 2.4f, 0, width, height, 0, 0, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	}
+	f32 shift = 6.0f * (width - 3.0f * 1.2f);
+	for (s32 i = 0; i < 5; i++) {
+		s32 digit = (s32)(current / PCDigitDivisor(i));
+		if (i != 0 && digit == 0)
+			continue;
+		digit %= 10;
+		PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
+		tex.mMtxDirty = TRUE;
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		upper = color;
+		lower = color;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower,
+		                   (offset + (7.0f * width + (x - i * (width - 3.0f * 1.2f)))) - shift, y - 2.4f, 0, width, height, 0, 0, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	}
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	LoadOverviewTexture(tex, 168);
 	u16 slashWidth = GXGetTexObjWidth(&tex), slashHeight = GXGetTexObjHeight(&tex);
-	SetGsTevMode(gs.mCurTevStage, 0);
-	DrawOverviewTexture(tex, textColor, offset + (7.0f * width + (x - 5.0f * (width - 3.0f * 1.2f))), y - 1.2f, 0.8f * (1.2f * slashWidth),
-	                    0.8f * (1.2f * slashHeight));
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, upper, upper, lower, lower, offset + (7.0f * width + (x - 5.0f * (width - 3.0f * 1.2f))), y - 1.2f,
+	                   0, 0.8f * (1.2f * slashWidth), 0.8f * (1.2f * slashHeight), 0, 0, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
 static inline void StrokeStatusOutline(Vec* outline, u32 color, u16 count)
