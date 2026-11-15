@@ -1314,7 +1314,7 @@ if wii:
                 ),
                 Object(Matching, "revolution/AX/AX.c"),
                 Object(Matching, "revolution/OS/OSArena.c"),
-                Object(NonMatching, "revolution/OS/OSAlarm.c", cflags=[*cflags_sdk_2004, "-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/OS/OSAlarm.c", cflags=[*cflags_sdk_2004, "-ipa file", "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/OS/OSAlloc.c"),
                 Object(Matching, "revolution/OS/OSCache.c"),
                 Object(Matching, "revolution/OS/OSContext.c"),
