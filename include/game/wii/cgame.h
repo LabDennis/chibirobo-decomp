@@ -234,6 +234,7 @@ public:
 
 	s32 GetActionType();          // 0x80169548, mTable index of mAction
 	void ChangeAction(long type); // 0x80169768
+	void ApplyAction();           // 0x80169BE0
 	BOOL SetMemento(const CCameraMemento* memento);
 };
 
@@ -304,7 +305,10 @@ struct WiiPlayerVtable {
 	void (*SetRotation)(WiiPlayerState* chr, f32 rotY);
 	void* _74[(0x90 - 0x74) / 4];
 	void (*SetPosition)(WiiPlayerState* chr, const Vec* pos);
-	void* _94[(0x244 - 0x94) / 4];
+	void* _94[(0x1B0 - 0x94) / 4];
+	// the camera actions reach the focus point here, the GameCube's XObj::GetCameraTarget
+	Vec (*GetCameraTarget)(WiiPlayerState* chr);
+	void* _1B4[(0x244 - 0x1B4) / 4];
 	const Vec* (*GetPosition)(WiiPlayerState* chr);
 };
 
@@ -340,6 +344,7 @@ struct WiiPlayerState {
 	s32 mItemTint;        // _1C998
 
 	const Vec* GetPosition() { return mVtable->GetPosition(this); }
+	Vec GetCameraTarget() { return mVtable->GetCameraTarget(this); }
 };
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8

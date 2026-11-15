@@ -228,7 +228,12 @@ public:
 	virtual void Draw() { }                     // _20, the action's markers over the room
 	virtual void DrawDebug2d() { }              // _24, debug text
 	virtual void DrawDebug3d() { }              // _28, debug shapes in the scene
-	virtual void SetEye(f32 x, f32 y, f32 z)    // _2C
+#if defined(VERSION_R24J01)
+	// the Wii builds carry one extra empty virtual between the debug draws and the setters,
+	// so every slot below is +4 vs. the GameCube numbering used in the comments
+	virtual void vf2C() { } // _2C
+#endif
+	virtual void SetEye(f32 x, f32 y, f32 z) // _2C
 	{
 		mEye.x = x;
 		mEye.y = y;
@@ -246,22 +251,6 @@ public:
 		mAngle.y = y;
 		mAngle.z = z;
 	}
-#if defined(VERSION_R24J01)
-	// R24J01: SetTarget opens the Vec& group, then eye, interest, angle. Retail tailcalls from
-	// CCameraActionEvt's *_Interp setters land on _3C/_40/_44, SetFov on _4C; _38's body calls _30
-	virtual void SetTarget(const Vec& target) { SetInterest(target.x, target.y, target.z); }           // _38
-	virtual void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }                               // _3C
-	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _40
-	virtual void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }                   // _44
-	virtual void SetDistance(f32 distance) { mDistance = distance; }                                   // _48
-	virtual void SetFov(f32 fov) { mFov = fov; }                                                       // _4C
-	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                                                    // _50
-	virtual u32 GetMode() { return 0; }                                                                // _54
-	virtual u32 GetCameraFlags() { return mCameraFlags; }                                              // _58
-	virtual f32 GetFollowDivisor();                                                                    // _5C
-	virtual u32 GetInterestMode() { return 0; }                                                        // _60
-	virtual XObj* GetTarget() { return NULL; }                                                         // _64
-#else
 	virtual void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }                               // _38
 	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _3C
 	virtual void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }                   // _40
@@ -273,7 +262,6 @@ public:
 	virtual f32 GetFollowDivisor();                                                                    // _58
 	virtual u32 GetInterestMode() { return 0; }                                                        // _5C
 	virtual XObj* GetTarget() { return NULL; }                                                         // _60
-#endif
 
 	// set the mode word along with the vector
 	void SetEye(const Vec& eye, u32 mode)

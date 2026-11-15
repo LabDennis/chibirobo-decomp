@@ -626,8 +626,12 @@ game/wii/ccameraactionanim.cpp:
 	extabindex start:0x80015DDC end:0x80015DF4
 	.text start:0x8016642C end:0x801665C4
 
-game/ccameraactionreset.cpp:
-	.text start:0x8016670C end:0x80166D50
+game/wii/ccameraactionreset.cpp:
+	extab start:0x8000F4F0 end:0x8000F528
+	extabindex start:0x80015DF4 end:0x80015E24
+	.text start:0x801665C4 end:0x80166D50
+	.rodata start:0x802DBA94 end:0x802DBAE8
+	.sdata2 start:0x805A5FB8 end:0x805A5FE0
 
 game/params.cpp:
 	.text start:0x80113394 end:0x80113910
