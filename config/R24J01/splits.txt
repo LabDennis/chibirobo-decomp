@@ -558,6 +558,9 @@ Runtime.PPCEABI.H/GCN_mem_alloc.c:
 	.text start:0x80233FC8 end:0x80234080
 	.rodata start:0x802DFDE0 end:0x802DFE50
 
+game/wii/cgs.cpp:
+	.text start:0x802AE0E4 end:0x802AE1D8
+
 game/wii/cpad.cpp:
 	extab start:0x8001082C end:0x800108CC
 	extabindex start:0x800170A8 end:0x80017198

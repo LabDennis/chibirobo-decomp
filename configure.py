@@ -1229,6 +1229,9 @@ if wii:
                 # the message system between evt.cpp's destructors and cpadact.cpp; the
                 # GameCube file's VERSION_JP branches are the reconstruction base
                 Object(NonMatching, "game/wii/msg.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the text drawing unit 0x802AD310-0x802AEBB0; the GameCube cgs.cpp pairs
+                # are the reconstruction base
+                Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/wii/nandfile.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # retail has no call to StartWiiSaveJob (declared inline, inlined into its

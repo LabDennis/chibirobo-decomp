@@ -1763,6 +1763,8 @@ IntersectLinesXZ = .text:0x802A665C; // type:function size:0x1CC
 Compact__2mmFi = .text:0x802A7A24; // type:function size:0x2CC
 MeasureGameTextWidth = .text:0x802AD310; // type:function size:0x220
 DrawGsProportionalTextFormat = .text:0x802AD5EC; // type:function size:0xF8
+DrawGsFixedWidthTextFormat = .text:0x802AD6E4; // type:function size:0xF8
+DrawGsText = .text:0x802AD7DC; // type:function size:0x828
 Set__10CPrimitiveFfffffffff = .text:0x802AF8E0; // type:function size:0x11C
 
 
@@ -2246,8 +2248,6 @@ DrawGsTriangleVertices = .text:0x802AC0F4; // type:function size:0xF8
 DrawGsQuad = .text:0x802AC510; // type:function size:0x2AC
 DrawGsSphere = .text:0x802ACD10; // type:function size:0x1C8
 DrawGsSphereWithMatrix = .text:0x802ACED8; // type:function size:0xA0
-DrawGsFixedWidthTextFormat = .text:0x802AD6E4; // type:function size:0xF8
-DrawGsText = .text:0x802AD7DC; // type:function size:0x828
 DrawLit__7CSpriteFPA4_f11_GXTexMapIDUl13_GXTexMtxTypeUlUlUlUl = .text:0x802B1824; // type:function size:0x7C
 Draw__7CTexObjF11_GXTexMapIDUl13_GXTexMtxTypePC3VecUlUlUlUl = .text:0x802B5260; // type:function size:0x1C0
 DrawLit__7CTexObjF11_GXTexMapIDUl13_GXTexMtxTypePC3VecUlUlUlUl = .text:0x802B5420; // type:function size:0x158
