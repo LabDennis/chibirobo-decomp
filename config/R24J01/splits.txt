@@ -748,8 +748,11 @@ revolution/OS/OSAudioSystem.c:
 	.text start:0x801817D4 end:0x80181C88
 	.data start:0x8030F998 end:0x8030FA18
 
-dolphin/os/OSError.c:
-	.text start:0x80182B44 end:0x801831E8
+revolution/OS/OSError.c:
+	.text start:0x80182B40 end:0x801831E8
+	.data start:0x8030FE30 end:0x80310150
+	.bss start:0x804CC530 end:0x804CC578
+	.sdata start:0x805A13E8 end:0x805A13F0
 
 dolphin/gx/GXTev.c:
 	.text start:0x801AB9D0 end:0x801AC050
@@ -791,11 +794,20 @@ dolphin/os/OS.c:
 dolphin/os/OSExec.c:
 	.text start:0x801836D4 end:0x80184864
 
-dolphin/os/OSMemory.c:
-	.text start:0x80187BF8 end:0x801882D0
+revolution/OS/OSMemory.c:
+	.text start:0x80187B98 end:0x801882D0
+	.data start:0x80310D50 end:0x80310D60
+	.sbss start:0x805A1F20 end:0x805A1F24
 
-dolphin/os/OSReset.c:
+revolution/OS/OSReboot.c:
+	.text start:0x801885D4 end:0x80188654
+	.sbss start:0x805A1F28 end:0x805A1F30
+
+revolution/OS/OSReset.c:
 	.text start:0x80188654 end:0x80189164
+	.data start:0x80310D60 end:0x80310FE8
+	.sdata start:0x805A1410 end:0x805A1418
+	.sbss start:0x805A1F30 end:0x805A1F40
 
 dolphin/os/__ppc_eabi_init.cpp:
 	.text start:0x8018E5EC end:0x8018E654
