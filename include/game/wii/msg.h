@@ -153,7 +153,7 @@ public:
 	GXColor mColor;            // _11C, the window tint CMsg::SetColor writes
 	WiiTitleObject mCursor[2]; // _120, _AD0
 	s32 mMode;                 // _1480
-	u8 _1484[4];               // _1484
+	u32 _1484;                 // _1484, suppresses the portrait while set (draw skips it, Init's wipe scale ignores it)
 	MsgFontGlyph mGlyphs[400]; // _1488
 	MsgTexSet mTexs;           // _44788
 	u32 mBlinkIcon;  // _44C9C, which prompt the blinking button wait shows: -1 none, 0 and 1 index mTexs from MSG_TEX_CURSOR, 2 and up a

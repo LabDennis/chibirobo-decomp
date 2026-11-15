@@ -20,6 +20,38 @@ struct WiiAnimSlot {
 };
 STATIC_ASSERT(sizeof(WiiAnimSlot) == 0x8);
 
+// a part object inside the cursor object's _F0 list; CMsgFont_Draw hands each one the
+// cursor's animation position at _01C
+class WiiCursorPart {
+public:
+	virtual ~WiiCursorPart() { } // _08
+	virtual void vf00C();
+	virtual void vf010();
+	virtual void vf014();
+	virtual void vf018();
+	virtual void vf01C(f32 frame);
+};
+
+// the parts list a WiiTitleObject keeps at _F0; _040 returns one entry by index
+class WiiCursorParts {
+public:
+	virtual ~WiiCursorParts() { } // _08
+	virtual void vf00C();
+	virtual void vf010();
+	virtual void vf014();
+	virtual void vf018();
+	virtual void vf01C();
+	virtual void vf020();
+	virtual void vf024();
+	virtual void vf028();
+	virtual void vf02C();
+	virtual void vf030();
+	virtual void vf034();
+	virtual void vf038();
+	virtual void vf03C();
+	virtual WiiCursorPart* vf040(s32 index);
+};
+
 // the title's two objects, the cursor and the demo figure. The Wii XObj is not reconstructed: these are
 // its virtuals up to the one the title code calls, the unnamed ones only keep its place
 class WiiTitleObject {
@@ -50,25 +82,25 @@ public:
 	virtual void vf064();
 	virtual void vf068();
 	virtual void vf06C();
-	virtual void vf070();
+	virtual void vf070(void*); // _070, given the other cursor's vf26C result
 	virtual void vf074();
 	virtual void vf078();
 	virtual void vf07C();
 	virtual void vf080();
-	virtual void vf084();
+	virtual void vf084(f32 x, f32 y, f32 z); // _084, a position
 	virtual void vf088();
 	virtual void vf08C(f32 x, f32 y, f32 z);
-	virtual void vf090();
+	virtual void vf090(void*); // _090, given the other cursor's vf244 result
 	virtual void vf094();
-	virtual void vf098();
-	virtual void vf09C(f32 x, f32 y, f32 z);
+	virtual void vf098(void*);     // _098, given the other cursor's vf258 result
+	virtual void vf09C(f32 scale); // _09C, a uniform scale
 	virtual void vf0A0();
 	virtual void vf0A4();
 	virtual void vf0A8();
 	virtual void vf0AC();
 	virtual void vf0B0();
 	virtual void vf0B4();
-	virtual void vf0B8();
+	virtual Vec vf0B8(s32 index); // _0B8, the object's own position
 	virtual void vf0BC();
 	virtual void vf0C0();
 	virtual void vf0C4();
@@ -94,10 +126,10 @@ public:
 	virtual void vf110();
 	virtual void vf114();
 	virtual void vf118(f32 frames); // _118, steps the playing animation, the GameCube's UpdateAnim
-	virtual void vf11C();
+	virtual s32 vf11C();            // _11C, the playing animation's id
 	virtual void vf120();
 	virtual void vf124();
-	virtual void vf128();
+	virtual f32 vf128(); // _128, the playing animation's frame
 	virtual void vf12C();
 	// _130, nonzero once the current animation has played out at the given frame count
 	virtual s32 vf130(f32 frames);
@@ -114,10 +146,81 @@ public:
 	virtual void vf15C();
 	virtual void vf160();
 	virtual void UpdateObject(u32 frames); // _164
+	virtual void vf168();
+	virtual void vf16C();
+	virtual void vf170();
+	virtual void vf174();
+	virtual void vf178();
+	virtual void vf17C();
+	virtual void vf180();
+	virtual void vf184();
+	virtual void vf188();
+	virtual void vf18C();
+	virtual void vf190(); // _190, draws the object, the GameCube's DrawObject
+	virtual void vf194();
+	virtual void vf198();
+	virtual void vf19C();
+	virtual void vf1A0();
+	virtual void vf1A4();
+	virtual void vf1A8();
+	virtual void vf1AC();
+	virtual void vf1B0();
+	virtual void vf1B4();
+	virtual void vf1B8();
+	virtual void vf1BC();
+	virtual void vf1C0();
+	virtual void vf1C4();
+	virtual void vf1C8();
+	virtual void vf1CC();
+	virtual void vf1D0();
+	// _1D4, projects a world position onto the screen, the GameCube's ProjectOffsetToScreen
+	virtual void vf1D4(const Vec* pos, f32* x, f32* y, s32, s32);
+	virtual void vf1D8();
+	virtual void vf1DC();
+	virtual void vf1E0();
+	virtual void vf1E4();
+	virtual void vf1E8();
+	virtual void vf1EC();
+	virtual void vf1F0();
+	virtual void vf1F4();
+	virtual void vf1F8();
+	virtual void vf1FC();
+	virtual void vf200();
+	virtual void vf204();
+	virtual void vf208();
+	virtual void vf20C();
+	virtual void vf210();
+	virtual void vf214();
+	virtual void vf218();
+	virtual void vf21C();
+	virtual void vf220();
+	virtual void vf224();
+	virtual void vf228();
+	virtual void vf22C();
+	virtual void vf230();
+	virtual Vec vf234(const char* joint); // _234, a joint's world position by name
+	virtual void vf238();
+	virtual void vf23C();
+	virtual void vf240();
+	virtual void* vf244(); // _244, a pose component the draw copies between the cursors
+	virtual void vf248();
+	virtual void vf24C();
+	virtual void vf250();
+	virtual void vf254();
+	virtual void* vf258(); // _258, another pose component
+	virtual void vf25C();
+	virtual void vf260();
+	virtual void vf264();
+	virtual void vf268();
+	virtual void* vf26C(); // _26C, another pose component
 
-	u8 _004[0x154 - 0x004];
+	u8 _004[0x0F0 - 0x004];
+	WiiCursorParts* mParts; // _0F0, up to six parts the message draw steps with the anim frame
+	u8 _0F4[0x154 - 0x0F4];
 	u32 mStatus; // _154, bit 0 marks a finished LoadFromPlacement, bit 11 the caller's scale set
-	u8 _158[0x794 - 0x158];
+	u8 _158[0x168 - 0x158];
+	void* mKind; // _168, the object's spawn data; +0x16 is the s16 object kind
+	u8 _16C[0x794 - 0x16C];
 	s32 mAnmHead;             // _794, the slot PushAnim probes first
 	WiiAnimSlot mAnmQueue[4]; // _798
 	u8 _7B8[0x9B0 - 0x7B8];

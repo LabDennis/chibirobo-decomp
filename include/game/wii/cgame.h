@@ -1,6 +1,7 @@
 #ifndef GAME_WII_CGAME_H
 #define GAME_WII_CGAME_H
 
+#include "Dolphin/mtx.h"
 #include "game/wii/cpad.h"
 #include "game/wii/csound.h"
 #include "game/wii/cgs.h"
@@ -173,7 +174,8 @@ public:
 	Mtx44 mProjection; // _2C
 	u8 _6C[0x90 - 0x6C];
 	CCameraView mView; // _90
-	u8 _D8[0x1F8 - 0xD8];
+	Mtx mViewMtx;      // _D8, the computed view matrix the 2D draws multiply into
+	u8 _108[0x1F8 - 0x108];
 };
 STATIC_ASSERT(sizeof(CCamera) == 0x1F8);
 
@@ -358,7 +360,9 @@ public:
 	u8 _4304[0x4B40 - 0x4304];
 	CTpl mTpl;
 	CScrnFade mFade; // _4D38
-	u8 _4D6C[0x5078 - 0x4D6C];
+	u8 _4D6C[0x5044 - 0x4D6C];
+	u32 mWipeTileActive; // _5044, the screen wipe's active flag, the GameCube's mWipeTile1.mActive
+	u8 _5048[0x5078 - 0x5048];
 	CScrnRoboeyes mRoboeyes;
 	u8 _511C[0x5978 - 0x511C];
 	s32 mLogoState; // _5978, the boot logos' step, as the GameCube mLogo.mState
@@ -377,7 +381,13 @@ public:
 	WiiFlagSource* mCoins; // _F770
 	u8 _F774[0xF784 - 0xF774];
 	WiiFlagSource* mItems; // _F784
-	u8 _F788[0xF874 - 0xF788];
+	u8 _F788[0xF7AC - 0xF788];
+	// the spawn pool CMsgFont_Draw scans for the portrait object (kind 10); sits just before mObjects
+	u8* mObjPoolObjects; // _F7AC
+	s32 mObjPoolCount;   // _F7B0
+	u8 _F7B4[0xF7BC - 0xF7B4];
+	s32 mObjPoolStride; // _F7BC
+	u8 _F7C0[0xF874 - 0xF7C0];
 	WiiFlagSource* mDust; // _F874
 	u8 _F878[0xF8B0 - 0xF878];
 	WiiTitleObject* mObjects[0x400]; // _F8B0, the object table ResolveEventObjectId indexes

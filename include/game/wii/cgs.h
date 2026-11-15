@@ -5,6 +5,8 @@
 #include "game/ut.h"
 #include <Dolphin/gx.h>
 
+class CCamera;
+
 // The Wii graphics state layer. Class names from RTTI; the GS* classes each hold the arguments of
 // one GX call and are handed around by value. Their vtable sits behind the data.
 
@@ -317,6 +319,9 @@ public:
 	GXBool mZEnable;  // _14
 	GXCompare mZFunc; // _18
 	GXBool mZUpdate;  // _1C
+	u8 _20[0x64 - 0x20];
+	u8 mLineWidth;           // _64
+	GXTexOffset mLineOffset; // _68
 
 	void SetBlendMode(GXBlendMode type, GXBlendFactor src, GXBlendFactor dst, GXLogicOp op)
 	{
@@ -333,6 +338,12 @@ public:
 		mZUpdate = update;
 		GXSetZMode(enable, func, update);
 	}
+	void SetLineWidth(u8 width, GXTexOffset offset)
+	{
+		mLineWidth  = width;
+		mLineOffset = offset;
+		GXSetLineWidth(width, offset);
+	}
 	void Apply(); // 0x802A9CE4
 };
 
@@ -342,6 +353,14 @@ struct WiiGsTevIn {
 	u32 mB; // _04
 	u32 mC; // _08
 	u32 mD; // _0C
+};
+
+// one texgen row of a tev stage, the SetTexGen arguments in order
+struct WiiGsTexGen {
+	u32 mCoord; // _00
+	u32 mFunc;  // _04
+	u32 mSrc;   // _08
+	u32 mMtx;   // _0C
 };
 
 // in GXSetTevColorOp order, as the GameCube GsTevOp. Every known call passes 0 for bias and scale, so
@@ -372,6 +391,10 @@ public:
 	WiiGsTevOp mAlphaOp; // _4C
 	u8 _60[4];
 	WiiGsTevIn mAlphaIn; // _64
+	u8 _74[0xB8 - 0x74];
+	u8 mNumTexGens; // _B8
+	u8 _B9[0xC0 - 0xB9];
+	WiiGsTexGen mTexGens[8]; // _C0
 
 	void SetOrder(u32 coord, u32 map, u32 color)
 	{
@@ -418,6 +441,14 @@ public:
 		mAlphaOp.mReg   = reg;
 		mCustom         = TRUE;
 	}
+	void SetNumTexGens(u8 num) { mNumTexGens = num; }
+	void SetTexGen(u32 coord, u32 func, u32 src, u32 mtx)
+	{
+		mTexGens[coord].mCoord = coord;
+		mTexGens[coord].mFunc  = func;
+		mTexGens[coord].mSrc   = src;
+		mTexGens[coord].mMtx   = mtx;
+	}
 	void Apply(); // 0x802AA0DC
 };
 
@@ -443,7 +474,8 @@ public:
 	void* mFifoBuffer; // _00
 	GXFifoObj* mFifo;  // _04
 	CGsScreen mScreen; // _08
-	u8 _48[0x380 - 0x48];
+	CCamera* mCamera;  // _48, the camera the 2D draws take their view matrix from
+	u8 _4C[0x380 - 0x4C];
 	CGsRenderState* mCurRenderState; // _380
 	CGsTevStage* mCurTevStage;       // _384
 	CGsChannel* mCurChannel;         // _388
@@ -541,6 +573,11 @@ void CopyFbTexture(WiiFbTexture* texture, GXTexFmt format, BOOL clear, BOOL flus
 void DrawFbTexture(WiiFbTexture* texture, u32 color, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz);
 void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx,
                         f32 ry, f32 rz);
+void DrawGsCircle(CGs* gs, u32 segments, u32 centerColor, u32 edgeColor, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz);
+void DrawGsVertexQuad(CGs* gs, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1, f32 x2, f32 y2, f32 z2, u32 color2,
+                      f32 x3, f32 y3, f32 z3, u32 color3);
+void DrawGsTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32 color, u16 count);
+void DrawGsProportionalTextFormat(CGs* gs, u32 color, const char* format, f32 x, f32 y, f32 z, f32 size, f32 height, ...);
 // text widths
 f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional, f32 size);
 }
