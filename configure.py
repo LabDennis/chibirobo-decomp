@@ -1065,6 +1065,9 @@ gamecube_libs = [
             Object(NonMatching, "sysdolphin/baselib/lobj.c"),
             Object(Matching, "sysdolphin/baselib/cobj.c"),
             Object(Matching, "sysdolphin/baselib/fobj.c", padding="small_data+data"),
+            # jobj.c matches but cannot link: retail aligns displayfunc.o's .data to 32 bytes, which leaves 8 bytes
+            # behind jobj's. Nothing in our displayfunc.c asks for that alignment; the object that did was removed
+            # by the linker with its function, and we do not make one up.
             Object(NonMatching, "sysdolphin/baselib/jobj.c"),
             Object(Matching, "sysdolphin/baselib/displayfunc.c", padding="small_data+data"),
             Object(Matching, "sysdolphin/baselib/initialize.c"),
