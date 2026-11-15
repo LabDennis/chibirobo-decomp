@@ -1400,12 +1400,12 @@ if wii:
                 Object(NonMatching, "revolution/GX/GXPixel.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXDraw.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXDisplayList.c", cflags=wii_gx_cflags),
+                Object(Matching, "revolution/GX/GXTransform.c", cflags=[*wii_gx_cflags, '-pragma "optimizewithasm off"']),
                 Object(Matching, "revolution/GX/GXPerf.c", cflags=wii_gx_cflags),
                 # GC SDK units paired to free Wii ranges - same DolphinLib profile
                 # (GC/1.2.5n + cflags_sdk) the GameCube editions build them with
                 Object(Equivalent, "dolphin/os/OSAudioSystem.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSError.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/gx/GXTransform.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OS.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSExec.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSMemory.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),

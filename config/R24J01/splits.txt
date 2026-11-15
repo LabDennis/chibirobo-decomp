@@ -892,8 +892,9 @@ revolution/GX/GXDraw.c:
 revolution/GX/GXDisplayList.c:
 	.text start:0x801AD814 end:0x801AD888
 
-dolphin/gx/GXTransform.c:
-	.text start:0x801ADA54 end:0x801ADEE4
+revolution/GX/GXTransform.c:
+	.text start:0x801AD888 end:0x801ADF6C
+	.sdata2 start:0x805A66B0 end:0x805A66C0
 
 revolution/GX/GXPerf.c:
 	.text start:0x801ADF6C end:0x801AE7A8
