@@ -175,32 +175,31 @@ out:
 	return 0;
 }
 
-// not in the dol: only its message survives. DVDLowWaitForCoverClose, which the linker removed as well, is the
-// one request about the cover without a callback of its own, so this is taken to be its callback; the body is
-// assumed to follow doTransactionCallback.
+// not in the dol: only its message survives (0x8031E1EC). Body as in pik1wii's dvd_broadway.c, where it is
+// unused as well and leaves the context pointer unset; it is set here the way doTransactionCallback does.
 static s32 doCoverCallback(s32 result, void* usrData)
 {
 	DVDLowContext* ctx = (DVDLowContext*)usrData;
-	u32 intType        = result;
+
+	requestInProgress = FALSE;
 
 	if (ctx->magic != DVD_LOW_CONTEXT_MAGIC) {
 		OSReport("(doCoverCallback) Error - context mangled!\n");
 		ctx->magic = DVD_LOW_CONTEXT_MAGIC;
-		goto out;
-	}
+	} else {
+		if (ctx->callback) {
+			callbackInProgress = TRUE;
 
-	requestInProgress = FALSE;
-	if (ctx->callback) {
-		callbackInProgress = TRUE;
-		if (breakRequested == TRUE) {
-			breakRequested = FALSE;
-			intType |= DVD_INTTYPE_BR;
+			if (breakRequested == TRUE) {
+				breakRequested = FALSE;
+				result |= DVD_INTTYPE_BR;
+			}
+
+			ctx->callback(result);
+			callbackInProgress = FALSE;
 		}
-		ctx->callback(intType);
-		callbackInProgress = FALSE;
 	}
 
-out:
 	ctx->inUse = FALSE;
 	return 0;
 }
@@ -409,35 +408,37 @@ BOOL DVDLowOpenPartition(u32 offset, void* eTicket, u32 numCerts, void* certific
 	return TRUE;
 }
 
-// not in the dol: only its messages survive. Parameters and the command word are a reading of the name and of
-// DVDLowOpenPartitionWithTmdAndTicketView, which shares two of the messages.
+// not in the dol: its name and three messages survive (0x8031E5C8-0x8031E67C), in this order of first use.
+// Body as in pik1wii's dvd_broadway.c (unused there too), except for the command word and the ticket length,
+// which pik1wii copies from the ticket view variant; those two are IOS's values, not read from the dol.
 BOOL DVDLowOpenPartitionWithTmdAndTicket(u32 offset, void* eTicket, u32 numTmdBytes, void* tmd, u32 numCerts, void* certificates,
                                          DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
 	s32 rv;
 
-	if (certificates && ((u32)certificates & 31)) {
+	if (eTicket && ((u32)eTicket & 31)) {
+		OSReport("(%s) eTicket memory is unaligned\n", __FUNCTION__);
 		return FALSE;
 	}
 
-	if ((u32)eTicket & 31) {
-		OSReport("(%s) eTicket memory is unaligned\n", __FUNCTION__);
+	if (certificates && ((u32)certificates & 31)) {
 		return FALSE;
 	}
 
 	if (!tmd) {
 		OSReport("(%s) tmd parameter cannot be NULL\n", __FUNCTION__);
 		return FALSE;
-	}
-
-	if ((u32)tmd & 31) {
+	} else if ((u32)tmd & 31) {
 		OSReport("(%s) tmd memory is unaligned\n", __FUNCTION__);
 		return FALSE;
 	}
 
 	if (!eTicket) {
 		OSReport("(%s) eTicket parameter cannot be NULL\n", __FUNCTION__);
+		return FALSE;
+	} else if ((u32)eTicket & 31) {
+		OSReport("(%s) eTicket memory is unaligned\n", __FUNCTION__);
 		return FALSE;
 	}
 
@@ -645,56 +646,12 @@ BOOL DVDLowGetNoDiscOpenPartitionParams(u32 offset, void* eTicket, u32* numTmdBy
 	return TRUE;
 }
 
-// not in the dol: only its name survives, every message it prints is shared with the two functions above.
-// Parameters and the command word are a reading of the name.
-BOOL DVDLowNoDiscOpenPartition(u32 offset, void* eTicket, u32 numTmdBytes, void* tmd, u32 certificatesSize, void* certificates,
-                               u32 dataWordOffset, void* h3Hash, DVDLowCallback callback)
+// not in the dol: only its name survives (0x8031E804), as the __FUNCTION__ of a message it shares with the two
+// functions above. Which of their messages it printed, its parameters and what it sent to IOS are not known,
+// so only one such report stands here.
+void DVDLowNoDiscOpenPartition(void)
 {
-	DVDLowContext* ctx;
-	s32 rv;
-
-	if (!eTicket || !tmd || !certificates || !h3Hash) {
-		OSReport("(%s) Error: NULL pointer argument\n", __FUNCTION__);
-		return FALSE;
-	}
-
-	if (((u32)eTicket & 31) || ((u32)tmd & 31) || ((u32)certificates & 31) || ((u32)h3Hash & 31)) {
-		OSReport("(%s) pointer argument is unaligned\n", __FUNCTION__);
-		return FALSE;
-	}
-
-	ctx = newContext(callback, 1);
-	nextCommandBuf(&freeCommandBuf);
-	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_NO_DISC_OPEN_PARTITION;
-	diCommand[freeCommandBuf].arg[0]     = offset;
-	diCommand[freeCommandBuf].arg[1]     = dataWordOffset;
-
-	ioVec[0].base   = &diCommand[freeCommandBuf];
-	ioVec[0].length = sizeof(DVDLowCommand);
-
-	ioVec[1].base   = eTicket;
-	ioVec[1].length = DVD_LOW_TICKET_SIZE;
-
-	ioVec[2].base   = tmd;
-	ioVec[2].length = numTmdBytes;
-
-	ioVec[3].base   = certificates;
-	ioVec[3].length = certificatesSize;
-
-	ioVec[4].base   = h3Hash;
-	ioVec[4].length = DVD_LOW_H3_HASH_SIZE;
-
-	ioVec[5].base   = lastTicketError;
-	ioVec[5].length = sizeof(lastTicketError);
-
-	rv = IOS_IoctlvAsync(DiFD, DVD_LOW_CMD_NO_DISC_OPEN_PARTITION, 5, 1, ioVec, doTransactionCallback, ctx);
-	if (rv != 0) {
-		OSReport("@@@ (%s) IOS_IoctlvAsync returned error: %d\n", __FUNCTION__, rv);
-		ctx->inUse = FALSE;
-		return FALSE;
-	}
-
-	return TRUE;
+	OSReport("(%s) Error: NULL pointer argument\n", __FUNCTION__);
 }
 
 BOOL DVDLowClosePartition(DVDLowCallback callback)
@@ -762,13 +719,14 @@ BOOL DVDLowStopMotor(BOOL eject, BOOL saving, DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its message survives
+// not in the dol: only its message survives (0x8031E8DC). Body as in pik1wii's dvd_broadway.c (unused there
+// too); the command word is IOS's, not read from the dol.
 BOOL DVDLowWaitForCoverClose(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
 	s32 rv;
 
-	ctx = newContext(callback, 1);
+	ctx = newContext(callback, 2);
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_WAIT_FOR_COVER_CLOSE;
 
@@ -823,16 +781,16 @@ BOOL DVDLowRequestError(DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its message survives. The message carries the name of the function below, which retail
-// keeps without any check; what this one was called and did is unknown.
-BOOL DVDLowSetSpinupFlagChecked(u32 spinUp)
+// not in the dol: only its message survives (0x8031E994). The message names the function below, which retail
+// keeps without this check, so it stood in a removed function whose own name and whose work are unknown.
+// Only the check that the message belongs to is written (as in DVDLowGetCoverStatus).
+BOOL DVDLowSetSpinupFlagChecked(void)
 {
 	if (callbackInProgress == TRUE) {
 		OSReport("(DVDLowSetSpinupFlag): Synch functions can't be called in callbacks\n");
 		return FALSE;
 	}
 
-	spinUpValue = spinUp;
 	return TRUE;
 }
 
@@ -842,7 +800,8 @@ BOOL DVDLowSetSpinupFlag(u32 spinUp)
 	return TRUE;
 }
 
-// not in the dol: only its message survives
+// not in the dol: only its message survives (0x8031E9DC). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
 BOOL DVDLowNotifyReset(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
@@ -852,8 +811,7 @@ BOOL DVDLowNotifyReset(DVDLowCallback callback)
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_NOTIFY_RESET;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_NOTIFY_RESET, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback,
-	                    ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_NOTIFY_RESET, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowNotifyReset) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -905,31 +863,35 @@ BOOL DVDLowAudioBufferConfig(BOOL enable, u32 size, DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its messages survive
-BOOL DVDLowGetCoverStatus(u32* status)
+// not in the dol: its two messages (0x8031EA94, 0x8031EADC) and its 32-byte answer buffer in .bss survive.
+// Body as in pik1wii's dvd_broadway.c (unused there too); the command word is IOS's.
+u32 DVDLowGetCoverStatus(void)
 {
+	u32 status;
 	s32 rv;
 
 	if (callbackInProgress == TRUE) {
 		OSReport("(DVDLowGetCoverStatus): Synch functions can't be called in callbacks\n");
-		return FALSE;
+		return 0;
 	}
 
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_GET_COVER_STATUS;
 
 	rv = IOS_Ioctl(DiFD, DVD_LOW_CMD_GET_COVER_STATUS, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), coverStatus, sizeof(coverStatus));
+	status = coverStatus[0];
+
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowGetCoverStatus) IOS_Ioctl returned error: %d\n", rv);
-		return FALSE;
+		status = 0xDEADDEAD;
 	}
 
-	*status = coverStatus[0];
-	return TRUE;
+	return status;
 }
 
-// not in the dol: only its message survives
-BOOL DVDLowReadDVD(void* destAddr, u32 length, u32 lsn, DVDLowCallback callback)
+// not in the dol: only its message survives (0x8031EB18). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
+BOOL DVDLowReadDVD(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
 	s32 rv;
@@ -937,11 +899,8 @@ BOOL DVDLowReadDVD(void* destAddr, u32 length, u32 lsn, DVDLowCallback callback)
 	ctx = newContext(callback, 1);
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_READ_DVD;
-	diCommand[freeCommandBuf].arg[0]     = length;
-	diCommand[freeCommandBuf].arg[1]     = lsn;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DVD, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), destAddr, length,
-	                    doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DVD, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowReadDVD) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -951,8 +910,9 @@ BOOL DVDLowReadDVD(void* destAddr, u32 length, u32 lsn, DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its message survives
-BOOL DVDLowReadDVDConfig(BOOL set, u32 confCode, u32 value, DVDLowCallback callback)
+// not in the dol: only its message survives (0x8031EB50). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
+BOOL DVDLowReadDVDConfig(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
 	s32 rv;
@@ -960,12 +920,8 @@ BOOL DVDLowReadDVDConfig(BOOL set, u32 confCode, u32 value, DVDLowCallback callb
 	ctx = newContext(callback, 1);
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_READ_DVD_CONFIG;
-	diCommand[freeCommandBuf].arg[0]     = set;
-	diCommand[freeCommandBuf].arg[1]     = confCode;
-	diCommand[freeCommandBuf].arg[2]     = value;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DVD_CONFIG, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), diRegValCache,
-	                    sizeof(diRegValCache), doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DVD_CONFIG, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowReadDVDConfig) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -975,8 +931,9 @@ BOOL DVDLowReadDVDConfig(BOOL set, u32 confCode, u32 value, DVDLowCallback callb
 	return TRUE;
 }
 
-// not in the dol: only its message survives
-BOOL DVDLowReadDvdCopyright(void* copyright, DVDLowCallback callback)
+// not in the dol: only its message survives (0x8031EB90). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
+BOOL DVDLowReadDvdCopyright(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
 	s32 rv;
@@ -985,8 +942,7 @@ BOOL DVDLowReadDvdCopyright(void* copyright, DVDLowCallback callback)
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_READ_DVD_COPYRIGHT;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DVD_COPYRIGHT, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), copyright, 0x20,
-	                    doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DVD_COPYRIGHT, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowReadDvdCopyright) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -996,8 +952,9 @@ BOOL DVDLowReadDvdCopyright(void* copyright, DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its message survives
-BOOL DVDLowReadDvdPhysical(void* physical, u8 position, DVDLowCallback callback)
+// not in the dol: only its message survives (0x8031EBD0). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
+BOOL DVDLowReadDvdPhysical(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
 	s32 rv;
@@ -1005,10 +962,8 @@ BOOL DVDLowReadDvdPhysical(void* physical, u8 position, DVDLowCallback callback)
 	ctx = newContext(callback, 1);
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_READ_DVD_PHYSICAL;
-	diCommand[freeCommandBuf].arg[0]     = position;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DVD_PHYSICAL, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), physical, 0x20,
-	                    doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DVD_PHYSICAL, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowReadDvdPhysical) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -1018,8 +973,9 @@ BOOL DVDLowReadDvdPhysical(void* physical, u8 position, DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its message survives
-BOOL DVDLowReadDvdDiscKey(void* discKey, DVDLowCallback callback)
+// not in the dol: only its message survives (0x8031EC10). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
+BOOL DVDLowReadDvdDiscKey(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
 	s32 rv;
@@ -1028,8 +984,7 @@ BOOL DVDLowReadDvdDiscKey(void* discKey, DVDLowCallback callback)
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_READ_DVD_DISC_KEY;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DVD_DISC_KEY, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), discKey, 0x20,
-	                    doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DVD_DISC_KEY, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowReadDvdDiscKey) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -1061,8 +1016,9 @@ BOOL DVDLowReportKey(void* keyData, u32 format, u32 lsn, DVDLowCallback callback
 	return TRUE;
 }
 
-// not in the dol: only its message survives
-BOOL DVDLowOffset(BOOL set, u32 offset, DVDLowCallback callback)
+// not in the dol: only its message survives (0x8031EC8C). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
+BOOL DVDLowOffset(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
 	s32 rv;
@@ -1070,11 +1026,8 @@ BOOL DVDLowOffset(BOOL set, u32 offset, DVDLowCallback callback)
 	ctx = newContext(callback, 1);
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_OFFSET;
-	diCommand[freeCommandBuf].arg[0]     = set;
-	diCommand[freeCommandBuf].arg[1]     = offset;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_OFFSET, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), diRegValCache, sizeof(diRegValCache),
-	                    doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_OFFSET, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowOffset) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -1084,7 +1037,8 @@ BOOL DVDLowOffset(BOOL set, u32 offset, DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its message survives
+// not in the dol: only its message survives (0x8031ECC4). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
 BOOL DVDLowStopLaser(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
@@ -1094,8 +1048,7 @@ BOOL DVDLowStopLaser(DVDLowCallback callback)
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_STOP_LASER;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_STOP_LASER, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), diRegValCache,
-	                    sizeof(diRegValCache), doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_STOP_LASER, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowStopLaser) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -1105,8 +1058,9 @@ BOOL DVDLowStopLaser(DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its message survives
-BOOL DVDLowReadDiskBca(void* bca, DVDLowCallback callback)
+// not in the dol: only its message survives (0x8031ED00). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
+BOOL DVDLowReadDiskBca(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
 	s32 rv;
@@ -1115,8 +1069,7 @@ BOOL DVDLowReadDiskBca(void* bca, DVDLowCallback callback)
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_READ_DISK_BCA;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DISK_BCA, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), bca, 0x40,
-	                    doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_READ_DISK_BCA, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowReadDiskBca) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -1126,8 +1079,9 @@ BOOL DVDLowReadDiskBca(void* bca, DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its message survives
-BOOL DVDLowSerMeasControl(BOOL fwe, BOOL eepromCheck, DVDLowCallback callback)
+// not in the dol: only its message survives (0x8031ED3C). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
+BOOL DVDLowSerMeasControl(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
 	s32 rv;
@@ -1135,11 +1089,8 @@ BOOL DVDLowSerMeasControl(BOOL fwe, BOOL eepromCheck, DVDLowCallback callback)
 	ctx = newContext(callback, 1);
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_SER_MEAS_CONTROL;
-	diCommand[freeCommandBuf].arg[0]     = fwe;
-	diCommand[freeCommandBuf].arg[1]     = eepromCheck;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_SER_MEAS_CONTROL, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), diRegValCache,
-	                    sizeof(diRegValCache), doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_SER_MEAS_CONTROL, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowSerMeasControl) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -1149,7 +1100,8 @@ BOOL DVDLowSerMeasControl(BOOL fwe, BOOL eepromCheck, DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its message survives
+// not in the dol: only its message survives (0x8031ED7C). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
 BOOL DVDLowRequestDiscStatus(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
@@ -1159,8 +1111,7 @@ BOOL DVDLowRequestDiscStatus(DVDLowCallback callback)
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_REQUEST_DISC_STATUS;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_REQUEST_DISC_STATUS, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), diRegValCache,
-	                    sizeof(diRegValCache), doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_REQUEST_DISC_STATUS, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowRequestDiscStatus) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -1170,7 +1121,8 @@ BOOL DVDLowRequestDiscStatus(DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its message survives
+// not in the dol: only its message survives (0x8031EDC0). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
 BOOL DVDLowRequestRetryNumber(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
@@ -1180,8 +1132,7 @@ BOOL DVDLowRequestRetryNumber(DVDLowCallback callback)
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_REQUEST_RETRY_NUMBER;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_REQUEST_RETRY_NUMBER, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), diRegValCache,
-	                    sizeof(diRegValCache), doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_REQUEST_RETRY_NUMBER, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowRequestRetryNumber) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;
@@ -1260,15 +1211,16 @@ BOOL DVDLowSeek(u32 offset, DVDLowCallback callback)
 	return TRUE;
 }
 
-u32 DVDLowGetCoverReg(void)
+u32 DVDLowGetCoverRegister(void)
 {
 	return diRegValCache[1];
 }
 
-// not in the dol: only its messages survive. They carry the name of the function above, which retail keeps as a
-// plain read of what DVDLowPrepareCoverRegister fetched; this one asked IOS and waited. Its own name is unknown.
-u32 DVDLowGetCoverRegSync(void)
+// not in the dol: its two messages (0x8031EEEC, 0x8031EF30), which give its name, and its 32-byte answer buffer
+// in .bss survive. Body as in pik1wii's dvd_broadway.c (unused there too); the command word is IOS's.
+u32 DVDLowGetCoverReg(void)
 {
+	u32 val;
 	s32 rv;
 
 	if (callbackInProgress == TRUE) {
@@ -1281,12 +1233,14 @@ u32 DVDLowGetCoverRegSync(void)
 
 	rv = IOS_Ioctl(DiFD, DVD_LOW_CMD_GET_COVER_REGISTER, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), coverRegisterSync,
 	               sizeof(coverRegisterSync));
+	val = coverRegisterSync[0];
+
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowGetCoverReg) IOS_Ioctl returned error: %d\n", rv);
-		return 0;
+		val = 0;
 	}
 
-	return coverRegisterSync[0];
+	return val;
 }
 
 u32 DVDLowGetStatusRegister(void)
@@ -1394,7 +1348,8 @@ BOOL DVDLowClearCoverInterrupt(DVDLowCallback callback)
 	return TRUE;
 }
 
-// not in the dol: only its message survives
+// not in the dol: only its message survives (0x8031F080). Written as the plain request its neighbours send; its
+// parameters and what it handed to IOS besides the command are not known and not written. The command word is IOS's.
 BOOL DVDLowEnableDvdVideo(DVDLowCallback callback)
 {
 	DVDLowContext* ctx;
@@ -1404,8 +1359,7 @@ BOOL DVDLowEnableDvdVideo(DVDLowCallback callback)
 	nextCommandBuf(&freeCommandBuf);
 	diCommand[freeCommandBuf].theCommand = DVD_LOW_CMD_ENABLE_DVD_VIDEO;
 
-	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_ENABLE_DVD_VIDEO, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0,
-	                    doTransactionCallback, ctx);
+	rv = IOS_IoctlAsync(DiFD, DVD_LOW_CMD_ENABLE_DVD_VIDEO, &diCommand[freeCommandBuf], sizeof(DVDLowCommand), NULL, 0, doTransactionCallback, ctx);
 	if (rv != 0) {
 		OSReport("@@@ (DVDLowEnableDvdVideo) IOS_IoctlAsync returned error: %d\n", rv);
 		ctx->inUse = FALSE;

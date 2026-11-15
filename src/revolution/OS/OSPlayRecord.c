@@ -4,12 +4,17 @@
 
 #include "Dolphin/os.h"
 
-// one record of play_rec.dat
+#define OS_RECORD_NAND_PATH "/title/00000001/00000002/data/play_rec.dat"
+
+// one record of play_rec.dat (fields after wii-ipl's private/os/OSPlayRecord.h)
 typedef struct OSPlayRecord {
-	u32 checkSum;
-	u8 unknown04[0x5C];
-	OSTime lastTime;
-	u8 unknown68[0x18];
+	u32 checkSum;         // _00, sum of all words that follow
+	u16 titleName[2][21]; // _04
+	OSTime playStartTime; // _58
+	OSTime playTime;      // _60
+	char gameCode[4];     // _68
+	char makerCode[2];    // _6C
+	u8 padding[0x12];     // _6E
 } OSPlayRecord;
 
 // shortcut: opaque. Its size is not known: .bss leaves it 0xC4 bytes and puts it on a 4-byte boundary, which
@@ -57,22 +62,72 @@ static BOOL PlayRecordError;
 static BOOL PlayRecordGet;
 static s32 PlayRecordState = PLAY_RECORD_STATE_STOPPED;
 
-// Stamps the record with the current time and renews its checksum. Both users expand it in place and the
-// linker dropped the function itself: only its being the first to use PlayRecord shows in the dol
-// (PlayRecord lies first in .bss, ahead of the alarm the code reaches first).
-void UpdatePlayRecord(void)
+static u32 RecordCheckSum(OSPlayRecord* record)
 {
-	u32* word;
-	u32 checkSum;
+	u32* ptr = (u32*)record->titleName;
+	u32 sum  = 0;
 	u32 i;
 
-	PlayRecord.lastTime = OSGetTime();
-	checkSum            = 0;
-	word                = (u32*)&PlayRecord + 1;
-	for (i = 0; i < sizeof(OSPlayRecord) / sizeof(u32) - 1; i++, word++) {
-		checkSum += *word;
+	for (i = 0; i < (sizeof(OSPlayRecord) - sizeof(u32)) / sizeof(u32); i++) {
+		sum = sum + *ptr;
+		ptr++;
 	}
-	PlayRecord.checkSum = checkSum;
+
+	return sum;
+}
+
+// The next two are not in the dol: only the system menu calls them. What shows of them here is that PlayRecord
+// lies first in .bss, ahead of the alarm the remaining code reaches first. Bodies as in wii-ipl's OSPlayRecord.c,
+// where they are linked.
+void __OSCreatePlayRecord(u16* titleName, char* gameCode, char* makerCode)
+{
+	NANDFileInfo recFile;
+	s32 ret;
+
+	memcpy(PlayRecord.titleName, titleName, sizeof(PlayRecord.titleName));
+	memcpy(PlayRecord.gameCode, gameCode, sizeof(PlayRecord.gameCode));
+	memcpy(PlayRecord.makerCode, makerCode, sizeof(PlayRecord.makerCode));
+
+	PlayRecord.playStartTime = OSGetTime();
+	PlayRecord.playTime      = PlayRecord.playStartTime;
+
+	memset(PlayRecord.padding, 0, sizeof(PlayRecord.padding));
+
+	PlayRecord.checkSum = RecordCheckSum(&PlayRecord);
+
+	ret = NANDCreate(OS_RECORD_NAND_PATH, 0x3F, 0);
+	if (ret == NAND_RESULT_OK || ret == NAND_RESULT_EXISTS) {
+		ret = NANDOpen(OS_RECORD_NAND_PATH, &recFile, NAND_ACCESS_WRITE);
+		if (ret == NAND_RESULT_OK) {
+			NANDWrite(&recFile, &PlayRecord, sizeof(PlayRecord));
+			NANDClose(&recFile);
+		}
+	}
+}
+
+BOOL __OSReadPlayRecord(OSPlayRecord* record)
+{
+	NANDFileInfo fileInfo;
+	s32 result;
+
+	result = NANDOpen(OS_RECORD_NAND_PATH, &fileInfo, NAND_ACCESS_READ);
+	if (result == NAND_RESULT_OK) {
+		result = NANDRead(&fileInfo, &PlayRecord, sizeof(OSPlayRecord));
+		NANDClose(&fileInfo);
+		if (result != sizeof(OSPlayRecord)) {
+			return FALSE;
+		}
+	} else {
+		return FALSE;
+	}
+
+	if (RecordCheckSum(&PlayRecord) != PlayRecord.checkSum) {
+		return FALSE;
+	}
+
+	memcpy(record, &PlayRecord, sizeof(OSPlayRecord));
+
+	return TRUE;
 }
 
 static void PlayRecordAlarmCallback(OSAlarm* alarm, OSContext* context)
@@ -118,7 +173,7 @@ static void PlayRecordCallback(s32 result, NANDCommandBlock* block)
 		case PLAY_RECORD_STATE_READ:
 			if (result == sizeof(OSPlayRecord)) {
 				PlayRecordGet           = TRUE;
-				PlayRecordLastCloseTime = PlayRecord.lastTime;
+				PlayRecordLastCloseTime = PlayRecord.playTime;
 				PlayRecordState         = PLAY_RECORD_STATE_SEEK;
 			} else {
 				PlayRecordError = TRUE;
@@ -154,7 +209,7 @@ static void PlayRecordCallback(s32 result, NANDCommandBlock* block)
 				return;
 			}
 			if (result == NAND_RESULT_OK) {
-				PlayRecordLastCloseTime = PlayRecord.lastTime;
+				PlayRecordLastCloseTime = PlayRecord.playTime;
 				PlayRecordState         = PLAY_RECORD_STATE_OPEN;
 			} else {
 				PlayRecordState = PLAY_RECORD_STATE_END;
@@ -173,7 +228,7 @@ static void PlayRecordCallback(s32 result, NANDCommandBlock* block)
 
 	switch (PlayRecordState) {
 	case PLAY_RECORD_STATE_OPEN:
-		error = NANDOpenAsync("/title/00000001/00000002/data/play_rec.dat", &FileInfo, NAND_ACCESS_RW, PlayRecordCallback, &Block);
+		error = NANDOpenAsync(OS_RECORD_NAND_PATH, &FileInfo, NAND_ACCESS_RW, PlayRecordCallback, &Block);
 		break;
 	case PLAY_RECORD_STATE_READ:
 		error = NANDReadAsync(&FileInfo, &PlayRecord, sizeof(OSPlayRecord), PlayRecordCallback, &Block);
@@ -186,7 +241,8 @@ static void PlayRecordCallback(s32 result, NANDCommandBlock* block)
 		OSSetAlarm(&PlayRecordAlarm, OSSecondsToTicks((OSTime)60), PlayRecordAlarmCallback);
 		break;
 	case PLAY_RECORD_STATE_WRITE:
-		UpdatePlayRecord();
+		PlayRecord.playTime = OSGetTime();
+		PlayRecord.checkSum = RecordCheckSum(&PlayRecord);
 		error = NANDWriteAsync(&FileInfo, &PlayRecord, sizeof(OSPlayRecord), PlayRecordCallback, &Block);
 		break;
 	case PLAY_RECORD_STATE_CLOSE:
@@ -252,7 +308,8 @@ void __OSStopPlayRecord(void)
 		OSCancelAlarm(&PlayRecordAlarm);
 		OSRestoreInterrupts(enabled);
 
-		UpdatePlayRecord();
+		PlayRecord.playTime = OSGetTime();
+		PlayRecord.checkSum = RecordCheckSum(&PlayRecord);
 		NANDWrite(&FileInfo, &PlayRecord, sizeof(OSPlayRecord));
 		NANDClose(&FileInfo);
 	} else {

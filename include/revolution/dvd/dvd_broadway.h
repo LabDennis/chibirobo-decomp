@@ -33,7 +33,7 @@ BOOL DVDLowReportKey(void* keyData, u32 format, u32 lsn, DVDLowCallback callback
 BOOL DVDLowSetMaxRotation(u32 subcmd, DVDLowCallback callback);
 BOOL DVDLowRead(void* destAddr, u32 length, u32 offset, DVDLowCallback callback);
 BOOL DVDLowSeek(u32 offset, DVDLowCallback callback);
-u32 DVDLowGetCoverReg(void);
+u32 DVDLowGetCoverRegister(void);
 u32 DVDLowGetStatusRegister(void);
 u32 DVDLowGetControlRegister(void);
 BOOL DVDLowPrepareCoverRegister(DVDLowCallback callback);

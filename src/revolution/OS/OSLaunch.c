@@ -12,6 +12,7 @@
 #define SYSTEM_MENU_TITLE_ID 0x0000000100000002ULL
 
 // other files of the library
+extern BOOL __OSInNandBoot;
 u8 OSGetAppType(void);
 s8 SCGetProductArea(void);
 u32 __DVDGetCoverStatus(void);
@@ -475,30 +476,47 @@ static void __OSLaunchTitle(u64 titleId, u32 launchCode, char** argv, BOOL check
 	__OSLaunchMenu();
 }
 
-// The four functions marked "Not in the retail dol" below are stand-ins. Nothing calls them, the linker
-// dropped them, and all that is left of each is its messages in .data (0x8031D2A0-0x8031D4A4). They
-// are written out only as far as those messages go, so that the strings keep their place.
-
-// Not in the retail dol: only its message is left (0x8031D2A0).
+// not in the dol (only the system menu calls it): only its message survives (0x8031D2A0). Body as in wii-ipl's
+// OSExec.c, where it is linked.
 void __OSLaunchTitlevForSystem(u64 titleId, u32 launchCode, char** argv)
 {
-	if (!__OSInIPL) {
-		OSReport("__OSLaunchTitlevForSystem(): only system can call this function\n");
-		return;
-	}
+	__OSUnRegisterStateEvent();
+	OSSetArenaLo((void*)0x81280000);
+	OSSetArenaHi((void*)0x812F0000);
 
-	__OSLaunchTitle(titleId, launchCode, argv, FALSE);
+	if (__OSInIPL && !__OSInNandBoot) {
+		__OSLaunchTitle(titleId, launchCode, argv, FALSE);
+	} else {
+		OSReport("__OSLaunchTitlevForSystem(): only system can call this function\n");
+		__OSReturnToMenuForError();
+	}
 }
 
-// Not in the retail dol: only its message is left (0x8031D2E4).
-void __OSLaunchTitlelForSystem(u64 titleId, u32 launchCode, ...)
+// not in the dol (only the system menu calls it): only its message survives (0x8031D2E4). Body as in wii-ipl's
+// OSExec.c, where it is linked.
+void __OSLaunchTitlelForSystem(u64 titleId, u32 launchCode, const char* arg, ...)
 {
-	if (!__OSInIPL) {
-		OSReport("__OSLaunchTitlelForSystem(): only system can call this function\n");
-		return;
+	va_list ap;
+	char** argv;
+	s32 i;
+
+	__OSUnRegisterStateEvent();
+	OSSetArenaLo((void*)0x81280000);
+	OSSetArenaHi((void*)0x812F0000);
+
+	argv = OSAllocFromMEM1ArenaLo(4, 0x1000);
+	va_start(ap, arg);
+	i = 0;
+	while ((argv[i++] = (char*)arg) != NULL) {
+		arg = va_arg(ap, const char*);
 	}
 
-	__OSLaunchTitle(titleId, launchCode, NULL, FALSE);
+	if (__OSInIPL && !__OSInNandBoot) {
+		__OSLaunchTitle(titleId, launchCode, argv, FALSE);
+	} else {
+		OSReport("__OSLaunchTitlelForSystem(): only system can call this function\n");
+		__OSReturnToMenuForError();
+	}
 }
 
 void __OSReturnToMenuForSetting(u32 launchCode, const char* arg, ...)
@@ -522,7 +540,9 @@ void __OSReturnToMenuForSetting(u32 launchCode, const char* arg, ...)
 	__OSReturnToMenuForError();
 }
 
-// Not in the retail dol: only its message and the page it opens are left (0x8031D328, 0x8031D374).
+// not in the dol and in none of the other Wii decompilations: its message (0x8031D328) and the page it opens
+// (0x8031D374) survive. That the message is for disc applications (application type 0x80) and that the page goes
+// to the system menu as a launch argument is a reading of the two texts.
 void OSLaunchManualViewer(void)
 {
 	if (OSGetAppType() == 0x80) {
@@ -533,9 +553,10 @@ void OSLaunchManualViewer(void)
 	__OSReturnToMenuForSetting(0, "/startup?initpage=showHelp", NULL);
 }
 
-// Not in the retail dol: only its messages are left (0x8031D390-0x8031D4A4). Which title it starts
-// for each product area is not known.
-void OSLaunchPDChannel(u64 titleId, u32 launchCode)
+// not in the dol and in none of the other Wii decompilations: only its five messages survive (0x8031D390-0x8031D4A4).
+// The order of the areas is that of the texts, the two values of the last one are named by it. Which title it
+// started and how is not known and not written.
+void OSLaunchPDChannel(u32 titleId, u32 launchCode)
 {
 	if (OSGetAppType() == 0x80) {
 		OSReport("OSLaunchPDChannel(): You can't call this API from DVD application.\n");
@@ -554,6 +575,5 @@ void OSLaunchPDChannel(u64 titleId, u32 launchCode)
 		break;
 	}
 
-	OSReport("OSLaunchPDChannel(): Launch PDChannel, TitleID=0x%08x LaunchCode=0x%08x.\n", (u32)titleId, launchCode);
-	__OSLaunchTitle(titleId, launchCode, NULL, TRUE);
+	OSReport("OSLaunchPDChannel(): Launch PDChannel, TitleID=0x%08x LaunchCode=0x%08x.\n", titleId, launchCode);
 }

@@ -461,19 +461,23 @@ void __VISetRGBModeImm(void)
 	__VIWriteI2CRegister8(0x01, videoMode);
 }
 
-// The public setters are not in the dol: __VIInit3in1 expands the ones it calls, and of VISetCGMS only the
-// message is left, so its check and its line number are a reading of that message.
+// The public setters below are not in the dol on their own: __VIInit3in1 expands the ones it calls, which is
+// where their bodies are read from (the same functions stand in Petari's and wii-ipl's vi3in1.c).
+// Of VISetCGMS only the message survives (0x8031FBB0, behind the file name its OSPanic passes). Its body is wii-ipl's; that later version has no message,
+// so the check in front of it is a reading of the text and not known.
 void VISetCGMS(u8 word0, u8 word1, u8 word2)
 {
 	if ((word2 & 0x0C) && VIGetDTVStatus() && VIGetScanMode() == VI_PROGRESSIVE) {
-		OSPanic(__FILE__, 0,
+		OSPanic(__FILE__, __LINE__,
 		        "VISetCGMS(): Tried to set APS Trigger bit(WORD2[3:2]) \nwhen the scan is progressive in DTV mode, which is forbidden\n");
 	}
 
-	cgmsWord0 = word0;
-	cgmsWord1 = word1;
-	cgmsWord2 = word2;
-	__VI3in1Changed |= VI_3IN1_CGMS;
+	if (cgmsWord0 != word0 || cgmsWord1 != word1 || cgmsWord2 != word2) {
+		cgmsWord0 = word0;
+		cgmsWord1 = word1;
+		cgmsWord2 = word2;
+		__VI3in1Changed |= VI_3IN1_CGMS;
+	}
 }
 
 void VISetWSS(u8 word0, u8 word1, u8 word2, u8 word3)

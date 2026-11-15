@@ -650,7 +650,8 @@ static void ImportAdjustingValues(void)
 	displayOffsetV = 0;
 }
 
-// Not in the dol on their own: VIInit expands both.
+// Not in the dol on their own: VIInit expands both, which is where their bodies are read from (both stand in
+// Petari's vi.c as well).
 BOOL VIEnableDimming(BOOL enable)
 {
 	BOOL old;
