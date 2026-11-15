@@ -291,7 +291,7 @@ extern "C" void ApplySpiderPlacement(XObjSpider* spider)
 		break;
 	}
 	// a hanging one shows its thread and starts mPlacementParam1 above its home
-	if (spider->mFlags.mFlags & 0x40) {
+	if (spider->mFlags.Check(0x40)) {
 		spider->mFlags.mFlags |= 0x80;
 		spider->mFlags.mFlags |= 0x100;
 		spider->mMoveTranslate.y = spider->mPlacementParam1 + spider->mHome.y;
