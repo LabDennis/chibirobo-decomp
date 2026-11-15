@@ -151,6 +151,7 @@ revolution/DSP/dsp_debug.c:
 
 revolution/DSP/dsp_task.c:
 	.text start:0x801A4BEC end:0x801A5480
+	.data start:0x80323140 end:0x80323280
 	.sbss start:0x805A2368 end:0x805A2380
 
 revolution/ARC/arc.c:
