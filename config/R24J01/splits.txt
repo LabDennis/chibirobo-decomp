@@ -1087,3 +1087,174 @@ nw4r/math/math_types.cpp:
 nw4r/math/math_geometry.cpp:
 	.text start:0x80283314 end:0x80283EA8
 	.sdata2 start:0x805A7568 end:0x805A7578
+
+nw4r/g3d/res/g3d_rescommon.cpp:
+	.text start:0x8025B5A4 end:0x8025B734
+
+nw4r/g3d/res/g3d_resdict.cpp:
+	.text start:0x8025B734 end:0x8025BA34
+
+nw4r/g3d/res/g3d_resfile.cpp:
+	.text start:0x8025BA34 end:0x8025CF84
+
+nw4r/g3d/res/g3d_resmdl.cpp:
+	.text start:0x8025CF84 end:0x8025E494
+
+nw4r/g3d/res/g3d_resshp.cpp:
+	.text start:0x8025E494 end:0x8025ED28
+
+nw4r/g3d/res/g3d_restev.cpp:
+	.text start:0x8025ED28 end:0x8025F40C
+
+nw4r/g3d/res/g3d_resmat.cpp:
+	.text start:0x8025F40C end:0x80260EDC
+
+nw4r/g3d/res/g3d_resvtx.cpp:
+	.text start:0x80260EDC end:0x8026129C
+
+nw4r/g3d/res/g3d_restex.cpp:
+	.text start:0x8026129C end:0x80261438
+
+nw4r/g3d/res/g3d_resnode.cpp:
+	.text start:0x80261438 end:0x8026186C
+
+nw4r/g3d/res/g3d_resanm.cpp:
+	.text start:0x8026186C end:0x80261A98
+
+nw4r/g3d/res/g3d_resanmvis.cpp:
+	.text start:0x80261A98 end:0x80261BB8
+
+nw4r/g3d/res/g3d_resanmclr.cpp:
+	.text start:0x80261BB8 end:0x80261D24
+
+nw4r/g3d/res/g3d_resanmtexpat.cpp:
+	.text start:0x80261D24 end:0x80262260
+
+nw4r/g3d/res/g3d_resanmtexsrt.cpp:
+	.text start:0x80262260 end:0x80262674
+
+nw4r/g3d/res/g3d_resanmchr.cpp:
+	.text start:0x80262674 end:0x8026430C
+
+nw4r/g3d/res/g3d_reslightset.cpp:
+	.text start:0x8026430C end:0x802644B0
+
+nw4r/g3d/res/g3d_resanmamblight.cpp:
+	.text start:0x802644B0 end:0x80264580
+
+nw4r/g3d/res/g3d_resanmlight.cpp:
+	.text start:0x80264580 end:0x80264978
+
+nw4r/g3d/res/g3d_resanmfog.cpp:
+	.text start:0x80264978 end:0x80264AD8
+
+nw4r/g3d/res/g3d_resanmcamera.cpp:
+	.text start:0x80264AD8 end:0x80264DF0
+
+nw4r/g3d/res/g3d_resanmscn.cpp:
+	.text start:0x80264DF0 end:0x802659CC
+
+nw4r/g3d/res/g3d_resanmshp.cpp:
+	.text start:0x802659CC end:0x80265B34
+
+nw4r/g3d/g3d_transform.cpp:
+	.text start:0x80265B34 end:0x80265E24
+
+nw4r/g3d/g3d_anmvis.cpp:
+	.text start:0x80265E24 end:0x80266544
+
+nw4r/g3d/g3d_anmclr.cpp:
+	.text start:0x80266544 end:0x802672C8
+
+nw4r/g3d/g3d_anmtexpat.cpp:
+	.text start:0x802672C8 end:0x80267CF4
+
+nw4r/g3d/g3d_anmtexsrt.cpp:
+	.text start:0x80267CF4 end:0x80268770
+
+nw4r/g3d/g3d_anmchr.cpp:
+	.text start:0x80268770 end:0x8026A668
+
+nw4r/g3d/g3d_anmshp.cpp:
+	.text start:0x8026A668 end:0x8026AFC4
+
+nw4r/g3d/g3d_anmscn.cpp:
+	.text start:0x8026AFC4 end:0x8026C528
+
+nw4r/g3d/g3d_obj.cpp:
+	.text start:0x8026C528 end:0x8026C644
+
+nw4r/g3d/g3d_anmobj.cpp:
+	.text start:0x8026C644 end:0x8026C6FC
+
+nw4r/g3d/platform/g3d_gpu.cpp:
+	.text start:0x8026C6FC end:0x8026CC0C
+
+nw4r/g3d/platform/g3d_cpu.cpp:
+	.text start:0x8026CC0C end:0x8026CE30
+
+nw4r/g3d/g3d_state.cpp:
+	.text start:0x8026CE30 end:0x8027064C
+
+nw4r/g3d/g3d_draw1mat1shp.cpp:
+	.text start:0x8027064C end:0x80271380
+
+nw4r/g3d/g3d_calcview.cpp:
+	.text start:0x80271380 end:0x8027355C
+
+nw4r/g3d/g3d_dcc.cpp:
+	.text start:0x8027355C end:0x80273638
+
+nw4r/g3d/g3d_workmem.cpp:
+	.text start:0x80273638 end:0x80273678
+
+nw4r/g3d/g3d_calcworld.cpp:
+	.text start:0x80273678 end:0x80274130
+
+nw4r/g3d/g3d_draw.cpp:
+	.text start:0x80274130 end:0x80275F8C
+
+nw4r/g3d/g3d_camera.cpp:
+	.text start:0x80275F8C end:0x80276EC4
+
+nw4r/g3d/dcc/g3d_basic.cpp:
+	.text start:0x80276EC4 end:0x80277188
+
+nw4r/g3d/dcc/g3d_maya.cpp:
+	.text start:0x80277188 end:0x80277E48
+
+nw4r/g3d/dcc/g3d_xsi.cpp:
+	.text start:0x80277E48 end:0x80278A08
+
+nw4r/g3d/dcc/g3d_3dsmax.cpp:
+	.text start:0x80278A08 end:0x802794B8
+
+nw4r/g3d/g3d_scnobj.cpp:
+	.text start:0x802794B8 end:0x8027AB88
+
+nw4r/g3d/g3d_scnroot.cpp:
+	.text start:0x8027AB88 end:0x8027C64C
+
+nw4r/g3d/g3d_scnmdlsmpl.cpp:
+	.text start:0x8027C64C end:0x8027E3D4
+
+nw4r/g3d/g3d_scnmdl.cpp:
+	.text start:0x8027E3D4 end:0x80280E94
+
+nw4r/g3d/g3d_calcmaterial.cpp:
+	.text start:0x80280E94 end:0x802812A4
+
+nw4r/g3d/g3d_init.cpp:
+	.text start:0x802812A4 end:0x802813A0
+
+nw4r/g3d/g3d_scnproc.cpp:
+	.text start:0x802813A0 end:0x80281690
+
+nw4r/g3d/g3d_fog.cpp:
+	.text start:0x80281690 end:0x8028188C
+
+nw4r/g3d/g3d_light.cpp:
+	.text start:0x8028188C end:0x802824A8
+
+nw4r/g3d/g3d_calcvtx.cpp:
+	.text start:0x802824A8 end:0x80282CA0

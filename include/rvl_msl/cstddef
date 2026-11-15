@@ -1,0 +1,12 @@
+// C++ face of the Wii MSL stddef header: what NW4R reaches through std::
+#ifndef _RVL_MSL_CSTDDEF
+#define _RVL_MSL_CSTDDEF
+
+#include <types.h>
+
+namespace std {
+using ::size_t;
+typedef unsigned long uintptr_t;
+} // namespace std
+
+#endif

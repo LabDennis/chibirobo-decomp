@@ -1,0 +1,15 @@
+// C++ face of the Wii MSL string header: what NW4R reaches through std::
+#ifndef _RVL_MSL_CSTRING
+#define _RVL_MSL_CSTRING
+
+#include <string.h>
+
+namespace std {
+using ::memcmp;
+using ::memcpy;
+using ::memset;
+using ::strcmp;
+using ::strlen;
+} // namespace std
+
+#endif

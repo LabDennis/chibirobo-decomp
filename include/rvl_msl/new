@@ -1,0 +1,9 @@
+// C++ face of the Wii MSL new header: placement new
+#ifndef _RVL_MSL_NEW
+#define _RVL_MSL_NEW
+
+#include <types.h>
+
+inline void* operator new(size_t, void* ptr) { return ptr; }
+
+#endif
