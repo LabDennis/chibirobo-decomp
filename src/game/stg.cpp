@@ -7073,19 +7073,20 @@ extern "C" void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32 wi
 		Vec size = GetStagePlacementScale(cursor) * scale;
 		cursor->SetScale(size, 0);
 		cursor->SetRotationY(0.2617994f, 0);
-		pos.y = 4.0f + (height * scale + pos.y);
-		cursor->SetPos((pos.x - 16.0f) - 8.0f, pos.y, pos.z, 0);
+		f32 cursorY = 4.0f + (height * scale + pos.y);
+		cursor->SetPos((pos.x - 16.0f) - 8.0f, cursorY, pos.z, 0);
 		cursor->DrawObject();
 		cursor->SetRotationY(-0.2617994f, 0);
-		cursor->SetPos(8.0f + (16.0f + (pos.x + width)), pos.y, pos.z, 0);
+		cursor->SetPos(8.0f + (16.0f + (pos.x + width)), cursorY, pos.z, 0);
 		cursor->DrawObject();
+		CGs* gs = &gGame.mGs;
 		HSD_StateInvalidate(-1);
 		if (gGame.mGs.mCurRenderMode)
-			gGame.mGs.mCurRenderMode->Invalidate();
-		if (gGame.mGs.mCurTevStage)
-			gGame.mGs.mCurTevStage->Invalidate();
-		if (gGame.mGs.mCurChannel && !gGame.mGs.mCurChannel->mDirty)
-			gGame.mGs.mCurChannel->mDirty = TRUE;
+			gs->mCurRenderMode->Invalidate();
+		if (gs->mCurTevStage)
+			gs->mCurTevStage->Invalidate();
+		if (gs->mCurChannel && !gs->mCurChannel->mDirty)
+			gs->mCurChannel->mDirty = TRUE;
 	}
 }
 
