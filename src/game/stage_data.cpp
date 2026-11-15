@@ -8,7 +8,7 @@ char* FormatToStaticBuffer(const char* format, ...);
 s32 _prolog(s32 function, s32 count, s32* args);
 }
 // the game's own aligned array new: MEMAllocFromExpHeapEx on the MEM2 game heap
-void* operator new[](size_t size, s32 align);
+void* operator new[](size_t size, int align);
 #else
 #include "game/cgame.h"
 #include "game/ut.h"
