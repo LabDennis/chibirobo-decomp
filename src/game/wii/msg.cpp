@@ -54,12 +54,12 @@ s32 CMsg__cmd_WAIT(CMsg* msg);                           // 0x800A74C0
 s32 CMsg__cmd_ANIM(CMsg* msg);                           // 0x800A7784
 s32 CMsg__cmd_SFX(CMsg* msg);                            // 0x800A7A68
 s32 CMsg__cmd_SETFONT(CMsg* msg, u8 command);            // 0x800A7ED4
-void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable);  // fn_802AB734
+void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable);  // 0x802AB734
 
 // Wii-side services the GameCube file called by these names
-void PlayMessageGlyphSound(XSound* sound, s32 group, u8 first, u8 second, f32 scale); // fn_8003BB08
-void ClearGameSoundQueue(XSound* sound, s32 group);                                   // fn_8003BE20
-void SelectPlayerEquipmentRing(WiiPlayerState* player, s32 selection);                // fn_800D2700
+void PlayMessageGlyphSound(XSound* sound, u32 group, f32 strength, u8 first, u8 second); // 0x8003BB08
+void ClearGameSoundQueue(XSound* sound, s32 group);                                      // 0x8003BE20
+void SelectPlayerEquipmentRing(WiiPlayerState* player, s32 selection);                   // 0x800D2700
 void OpenPlayerYesNoMenu(WiiPlayerState* player, s32 crossMask, s32 selectedIndex);   // 0x800D2B50
 void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad);                                   // fn_800EF58C
 extern s32 gRefreshRate;
@@ -817,7 +817,7 @@ extern "C" void CMsg_Update(CMsg* msg, u32 step)
 			CMsgFont_AddChar(&msg->mFont, text);
 			msg->mCharTimer = msg->mCharDelay;
 			if (msg->mGlyphSoundGroup >= 0) {
-				PlayMessageGlyphSound(&gGame.mSound, msg->mGlyphSoundGroup, text[0], text[1], msg->mFont.mSize / 22.0f);
+				PlayMessageGlyphSound(&gGame.mSound, msg->mGlyphSoundGroup, msg->mFont.mSize / 22.0f, text[0], text[1]);
 			}
 			break;
 		}
