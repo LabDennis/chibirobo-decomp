@@ -978,13 +978,19 @@ static s32* getBufTableTail(s32* p)
 	return p;
 }
 
+// NONMATCHING: inlined into HSD_SynthSFXFreeVoice, HSD_SynthSFXKeyOff and HSD_SynthPStreamMasterClockCallback, where
+// retail has the same instructions with other volatile registers (the buffer index in r7, here r4). Retail indexes
+// the table with the value read back from *p, hence i.
 static void unlinkBufTable(s32* p, s32 ix)
 {
+	s32 i;
+
 	while (*p != ix) {
 		p = &lbl_80656364[*p];
 	}
-	*p               = lbl_80656364[ix];
-	lbl_80656364[ix] = -1;
+	i               = *p;
+	*p              = lbl_80656364[i];
+	lbl_80656364[i] = -1;
 }
 
 static void freeBeatMarkers(s32 buf)
