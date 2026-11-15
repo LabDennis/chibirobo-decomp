@@ -1310,6 +1310,14 @@ if wii:
                 # the Wii TU 0x80030AC0-0x80031FC4 (wii_units.md #16); the GameCube file's
                 # CInterfaceCameraAction and CVector*Interpolation classes map onto it
                 Object(NonMatching, "game/cinterfacecameraaction.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii TU 0x80032038-0x80032C48 (wii_units.md #18): every vector
+                # interpolation plus the Linear/None scalar methods, in the Wii's
+                # reversed order (the GameCube spreads them over three files)
+                Object(NonMatching, "game/wii/cinterpolation.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii TU 0x80032C48-0x8003366C (wii_units.md #19): the divide
+                # interpolations and the Linear/None Update tail-calls; the Wii-only
+                # tail (deleting dtors, CThread::Create, the unit's __sinit) is open
+                Object(NonMatching, "game/wii/cinterpolationeaseoutdivide.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
             ],
         },
         {
