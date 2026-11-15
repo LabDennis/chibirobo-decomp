@@ -246,24 +246,33 @@ public:
 		mAngle.z = z;
 	}
 #if defined(VERSION_R24J01)
-	// R24J01: the Vec& slots order interest, angle, target and each tailcalls through the _3C
-	// vtable: _38 calls _30, _3C calls _34, _40 calls _38 (vtables lbl_8030DDB8/lbl_8030DE5C)
-	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _38
-	virtual void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }                   // _3C
-	virtual void SetTarget(const Vec& target) { SetInterest(target); }                                 // _40
+	// R24J01: SetTarget opens the Vec& group, then eye, interest, angle. Retail tailcalls from
+	// CCameraActionEvt's *_Interp setters land on _3C/_40/_44, SetFov on _4C; _38's body calls _30
+	virtual void SetTarget(const Vec& target) { SetInterest(target.x, target.y, target.z); }           // _38
+	virtual void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }                               // _3C
+	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _40
+	virtual void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }                   // _44
+	virtual void SetDistance(f32 distance) { mDistance = distance; }                                   // _48
+	virtual void SetFov(f32 fov) { mFov = fov; }                                                       // _4C
+	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                                                    // _50
+	virtual u32 GetMode() { return 0; }                                                                // _54
+	virtual u32 GetCameraFlags() { return mCameraFlags; }                                              // _58
+	virtual f32 GetFollowDivisor();                                                                    // _5C
+	virtual u32 GetInterestMode() { return 0; }                                                        // _60
+	virtual XObj* GetTarget() { return NULL; }                                                         // _64
 #else
 	virtual void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }                               // _38
 	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _3C
 	virtual void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }                   // _40
+	virtual void SetDistance(f32 distance) { mDistance = distance; }                                   // _44
+	virtual void SetFov(f32 fov) { mFov = fov; }                                                       // _48
+	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                                                    // _4C
+	virtual u32 GetMode() { return 0; }                                                                // _50
+	virtual u32 GetCameraFlags() { return mCameraFlags; }                                              // _54
+	virtual f32 GetFollowDivisor();                                                                    // _58
+	virtual u32 GetInterestMode() { return 0; }                                                        // _5C
+	virtual XObj* GetTarget() { return NULL; }                                                         // _60
 #endif
-	virtual void SetDistance(f32 distance) { mDistance = distance; } // _44
-	virtual void SetFov(f32 fov) { mFov = fov; }                     // _48
-	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                  // _4C
-	virtual u32 GetMode() { return 0; }                              // _50
-	virtual u32 GetCameraFlags() { return mCameraFlags; }            // _54
-	virtual f32 GetFollowDivisor();                                  // _58
-	virtual u32 GetInterestMode() { return 0; }                      // _5C
-	virtual XObj* GetTarget() { return NULL; }                       // _60
 
 	// set the mode word along with the vector
 	void SetEye(const Vec& eye, u32 mode)
@@ -293,6 +302,56 @@ public:
 	virtual BOOL IsCameraArea(s32 id);            // _78, whether an area camera entry exists
 	virtual BOOL IsAreaEnabled(s32 index);        // _7C
 };
+
+// the camera event scripts drive, every part eases to where the script says
+class CCameraActionEvt : public CInterfaceCameraAction {
+public:
+	CCameraActionEvt() { }
+	XObj* mTarget;                                      // _40, the interest follows it while nothing eases it
+	CInterfaceVectorInterpolation* mEyeInterp;          // _44
+	CInterfaceVectorInterpolation* mInterestInterp;     // _48
+	CInterfaceInterpolation* mDistanceInterp;           // _4C
+	CInterfaceInterpolation* mFovInterp;                // _50
+	CInterfaceVectorInterpolation* mAngleInterp;        // _54
+	CStatus mAxes;                                      // _58, which angles SetAngle_Interp moves
+	u32 _60;                                            // _60, no access in the source
+	CVectorLinearInterpolation mEyeLinear;              // _64
+	CVectorEaseInOutInterpolation mEyeEaseInOut;        // _98
+	CVectorEaseOutInterpolation mEyeEaseOut;            // _F4
+	CVectorNoneInterpolation mEyeNone;                  // _158
+	CInterfaceVectorInterpolation* mEyeInterps[4];      // _18C, by mode, 3 sets it at once
+	CVectorLinearInterpolation mInterestLinear;         // _19C
+	CVectorEaseInOutInterpolation mInterestEaseInOut;   // _1D0
+	CVectorEaseOutInterpolation mInterestEaseOut;       // _22C
+	CVectorNoneInterpolation mInterestNone;             // _290
+	CInterfaceVectorInterpolation* mInterestInterps[4]; // _2C4
+	CInterpolationLinear mFovLinear;                    // _2D4
+	CInterpolationEaseInOut mFovEaseInOut;              // _2E4
+	CInterpolationEaseOut mFovEaseOut;                  // _300
+	CInterpolationNone mFovNone;                        // _320
+	CInterfaceInterpolation* mFovInterps[4];            // _330
+	CInterpolationLinear mDistanceLinear;               // _340
+	CInterpolationEaseInOut mDistanceEaseInOut;         // _350
+	CInterpolationEaseOut mDistanceEaseOut;             // _36C
+	CInterpolationNone mDistanceNone;                   // _38C
+	CInterfaceInterpolation* mDistanceInterps[4];       // _39C
+	CVectorLinearInterpolation mAngleLinear;            // _3AC
+	CVectorEaseInOutInterpolation mAngleEaseInOut;      // _3E0
+	CVectorEaseOutInterpolation mAngleEaseOut;          // _43C
+	CVectorNoneInterpolation mAngleNone;                // _4A0
+	CInterfaceVectorInterpolation* mAngleInterps[4];    // _4D4
+
+	virtual void Update(u32 step);           // _10
+	virtual void SetCamera(CCamera* camera); // _18
+	virtual void Init();                     // _1C
+
+	void SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32 type, BOOL relative, f32 time);
+	void SetFov_Interp(s32 mode, f32 fov, f32 time);
+	void SetInterest_Interp(s32 mode, const Vec& interest, f32 time);
+	void SetInterest_Interp(s32 mode, XObj* target, f32 time);
+	void SetEye_Interp(s32 mode, const Vec& eye, f32 time);
+};
+STATIC_ASSERT(sizeof(CCameraActionEvt) == 0x4E4);
 
 // GameCube layout pending the Wii one
 #if !defined(VERSION_R24J01)
@@ -745,56 +804,6 @@ public:
 	virtual ~CCameraActionChase() { }
 };
 STATIC_ASSERT(sizeof(CCameraActionChase) == 0x70);
-
-// the camera event scripts drive, every part eases to where the script says
-class CCameraActionEvt : public CInterfaceCameraAction {
-public:
-	CCameraActionEvt() { }
-	XObj* mTarget;                                      // _40, the interest follows it while nothing eases it
-	CInterfaceVectorInterpolation* mEyeInterp;          // _44
-	CInterfaceVectorInterpolation* mInterestInterp;     // _48
-	CInterfaceInterpolation* mDistanceInterp;           // _4C
-	CInterfaceInterpolation* mFovInterp;                // _50
-	CInterfaceVectorInterpolation* mAngleInterp;        // _54
-	CStatus mAxes;                                      // _58, which angles SetAngle_Interp moves
-	u32 _60;                                            // _60, no access in the source
-	CVectorLinearInterpolation mEyeLinear;              // _64
-	CVectorEaseInOutInterpolation mEyeEaseInOut;        // _98
-	CVectorEaseOutInterpolation mEyeEaseOut;            // _F4
-	CVectorNoneInterpolation mEyeNone;                  // _158
-	CInterfaceVectorInterpolation* mEyeInterps[4];      // _18C, by mode, 3 sets it at once
-	CVectorLinearInterpolation mInterestLinear;         // _19C
-	CVectorEaseInOutInterpolation mInterestEaseInOut;   // _1D0
-	CVectorEaseOutInterpolation mInterestEaseOut;       // _22C
-	CVectorNoneInterpolation mInterestNone;             // _290
-	CInterfaceVectorInterpolation* mInterestInterps[4]; // _2C4
-	CInterpolationLinear mFovLinear;                    // _2D4
-	CInterpolationEaseInOut mFovEaseInOut;              // _2E4
-	CInterpolationEaseOut mFovEaseOut;                  // _300
-	CInterpolationNone mFovNone;                        // _320
-	CInterfaceInterpolation* mFovInterps[4];            // _330
-	CInterpolationLinear mDistanceLinear;               // _340
-	CInterpolationEaseInOut mDistanceEaseInOut;         // _350
-	CInterpolationEaseOut mDistanceEaseOut;             // _36C
-	CInterpolationNone mDistanceNone;                   // _38C
-	CInterfaceInterpolation* mDistanceInterps[4];       // _39C
-	CVectorLinearInterpolation mAngleLinear;            // _3AC
-	CVectorEaseInOutInterpolation mAngleEaseInOut;      // _3E0
-	CVectorEaseOutInterpolation mAngleEaseOut;          // _43C
-	CVectorNoneInterpolation mAngleNone;                // _4A0
-	CInterfaceVectorInterpolation* mAngleInterps[4];    // _4D4
-
-	virtual void Update(u32 step);           // _10
-	virtual void SetCamera(CCamera* camera); // _18
-	virtual void Init();                     // _1C
-
-	void SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32 type, BOOL relative, f32 time);
-	void SetFov_Interp(s32 mode, f32 fov, f32 time);
-	void SetInterest_Interp(s32 mode, const Vec& interest, f32 time);
-	void SetInterest_Interp(s32 mode, XObj* target, f32 time);
-	void SetEye_Interp(s32 mode, const Vec& eye, f32 time);
-};
-STATIC_ASSERT(sizeof(CCameraActionEvt) == 0x4E4);
 
 // the room camera, it pans over the room with the stick and zooms with the c stick
 class CCameraActionScroll2 : public CInterfaceCameraAction {

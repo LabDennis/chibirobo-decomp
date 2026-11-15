@@ -2607,6 +2607,7 @@ void CSprite::Init(f32 tx, f32 ty, f32 tz, f32 sx, f32 sy, f32 sz, f32 rx, f32 r
 	mCenter  = zero;
 }
 
+#if !defined(VERSION_R24J01)
 /**
  * @note Address: 0x8019BA88
  * @note Size: 0x7C
@@ -2630,6 +2631,7 @@ void CSprite::DrawLit(Mtx view, GXTexMapID map, u32 mtxId, GXTexMtxType mtxType,
 		mTex->DrawLit(map, mtxId, mtxType, &mCenter, color0, color1, color2, color3);
 	}
 }
+#endif
 
 /**
  * @note Address: 0x8019B9A8

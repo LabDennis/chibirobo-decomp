@@ -174,6 +174,9 @@ game/THPSimple.cpp:
 game/cmovie.cpp:
 	.text start:0x802C2278 end:0x802C2564
 
+game/cprimitive.cpp:
+	.text start:0x802AF8E0 end:0x802AFDA8
+
 game/stage_data.cpp:
 	extab start:0x8000A210 end:0x8000A230
 	extabindex start:0x80012F68 end:0x80012F98
@@ -568,6 +571,9 @@ game/ccameraactionareaexm.cpp:
 
 game/ccameraactionareaexinit.cpp:
 	.text start:0x801542A0 end:0x80154310
+
+game/ccameraactionevt.cpp:
+	.text start:0x801618C0 end:0x80161FFC
 
 game/gameosreport.cpp:
 	.text start:0x80019BA4 end:0x80019BF4

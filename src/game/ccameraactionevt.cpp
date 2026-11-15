@@ -35,6 +35,7 @@ void CCameraActionEvt::Init()
  * @note Address: 0x8014384C
  * @note Size: 0xD4
  */
+#if !defined(VERSION_R24J01)
 void CCameraActionEvt::SetCamera(CCamera* camera)
 {
 	SetEye(camera->mEye);
@@ -97,6 +98,8 @@ void CCameraActionEvt::Update(u32 step)
 	}
 }
 
+#endif
+
 /**
  * @note Address: 0x80143528
  * @note Size: 0xC0
@@ -118,6 +121,7 @@ void CCameraActionEvt::SetEye_Interp(s32 mode, const Vec& eye, f32 time)
  * @note Address: 0x801433EC
  * @note Size: 0x13C
  */
+#if !defined(VERSION_R24J01)
 void CCameraActionEvt::SetInterest_Interp(s32 mode, XObj* target, f32 time)
 {
 	if (target == NULL) {
@@ -130,6 +134,7 @@ void CCameraActionEvt::SetInterest_Interp(s32 mode, XObj* target, f32 time)
 	Vec interest = mTarget->GetCameraTarget();
 	SetInterest_Interp(mode, interest, time);
 }
+#endif
 
 /**
  * @note Address: 0x8014332C
