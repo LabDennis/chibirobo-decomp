@@ -181,15 +181,16 @@ public:
 	u8 mAmount;                   // _44D19
 	s8 mSpeed;                    // _44D1A
 	u8 _44D1B;                    // _44D1B
-	s32 mSelectedLine;            // _44D1C
-	f32 mCurLineY;                // _44D20
-	f32 mCurLineWidth;            // _44D24
-	s32 mDigitsPacked;            // _44D28, the first digit group word, zeroed as one store
-	u8 _44D2C[0x44D34 - 0x44D2C]; // _44D2C
-	s32 mDigitCount;              // _44D34
-	s32 mFirstEditDigit;          // _44D38
-	u8 _44D3C[0x44D44 - 0x44D3C]; // _44D3C
-	s32 mOtherSelection;          // _44D44
+	s32 mSelectedLine;  // _44D1C
+	f32 mCurLineY;      // _44D20
+	f32 mCurLineWidth;  // _44D24
+	s32 mPointerState;  // _44D28, the pointer's select state: 0 off, 1 hovering a line, 2 click held
+	s32 mSelectDone;    // _44D2C, a pointer confirm or cancel landed; the next frame fades out
+	s8 mDigits[9];      // _44D30, the number input's displayed digits, MsgSetDigits copies them in
+	u8 _44D39[0x44D3C - 0x44D39];
+	s32 mDigitCount;     // _44D3C
+	s32 mFirstEditDigit; // _44D40
+	s32 mOtherSelection; // _44D44, the digit under edit, -1 before MsgSetDigits arms it
 	f32 mAlpha;                   // _44D48
 	f32 mTextAlpha;               // _44D4C
 	f32 mHighlightAlpha;          // _44D50
@@ -221,8 +222,8 @@ public:
 	s32 mSelectedLine;            // _45610, the line the select() cursor is on, -1 when no select runs
 	s32 mSelectResult;            // _45614, the select() answer
 	s32 mDefaultLine;             // _45618, the line select() starts on
-	s8 mDigits[9];                // _4561C, three displayed groups
-	u8 _45625[0x45628 - 0x45625]; // _45625
+	s8 mDigits[10];               // _4561C, three displayed groups, the tenth folds into the answer
+	u8 _45626[0x45628 - 0x45626]; // _45626
 	s32 mDigitCount;              // _45628, digits of the number input
 	s32 mFirstEditDigit;          // _4562C, first digit the player may change
 	s32 mSelectedDigit;           // _45630, the digit the number input cursor is on

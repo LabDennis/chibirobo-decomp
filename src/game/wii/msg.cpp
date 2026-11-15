@@ -65,6 +65,13 @@ void HandleOXMenuInput(WiiOXMenu* menu, CPad* pad);                             
 extern s32 gRefreshRate;
 }
 
+// the GameCube's FindObj: object commands only resolve while an event script runs. The Wii's
+// ResolveEventObjectId (0x8009453C) reads the same two leading words as the GameCube CEvtData
+static inline WiiTitleObject* FindObj(s16 id)
+{
+	return gGame.mEvtData.mScript != NULL ? (WiiTitleObject*)ResolveEventObjectId((const CEvtData*)&gGame.mEvtData, id) : NULL;
+}
+
 // read before stepping, the script can point into the message's own bytes
 static inline u32 ReadMsgU8(CMsg* msg)
 {
@@ -97,6 +104,7 @@ static inline void CopyMessageBytes(u8*& dst, u8*& src, int N)
 
 extern "C" {
 extern s32 gPointerScreenWidth;
+extern s32 gScreenSafeTop;
 extern s32 gScreenSafeBottom;
 }
 
@@ -505,7 +513,7 @@ extern "C" void ResetMessageState(CMsgFont* font)
 	font->mGlyphScaleX    = 1.0f;
 	font->mEffect         = 0;
 	font->mSelectedLine   = -1;
-	font->mDigitsPacked   = 0;
+	font->mPointerState   = 0;
 	font->mOtherSelection = -1;
 	font->mAlpha          = 0.0f;
 	font->mTextAlpha      = 1.0f;
@@ -849,6 +857,201 @@ extern "C" void CMsg_Draw(CMsg* msg)
 	}
 }
 
+static inline void MsgSetDigits(CMsg* msg, const s8* digits, s32 count, s32 first, s32 selected)
+{
+	for (s32 i = 0; i < 9; i += 3) {
+		for (s32 j = 0; j < 3; j++) {
+			msg->mFont.mDigits[i + j] = digits[i + j];
+		}
+	}
+	msg->mFont.mDigitCount     = count;
+	msg->mFont.mFirstEditDigit = first;
+	msg->mFont.mOtherSelection = selected;
+}
+
+/**
+ * @note Address: 0x800A687C
+ * @note Size: 0xB44
+ */
+// the GameCube's select and number input, driven by the remote pointer on the Wii: hovering a
+// line tracks mPointerState (0 off, 1 hover, 2 click held), the dpad bits of the pointer's
+// flags walk the selection and its A/B bits confirm or cancel. sfx: 0xF3 cancel, 0xF4 move,
+// 0xF5 confirm
+extern "C" s32 CMsg__cmd_END(CMsg* msg)
+{
+	if (msg->mFont.mBits.mActive) {
+		if (!msg->mFont.mBits.mFadeOut) {
+			if (msg->mCommand == EVT_CMD_SELECT) {
+				if (msg->mSelectedLine < 0) {
+					msg->mSelectedLine       = msg->mDefaultLine;
+					msg->mFont.mSelectedLine = msg->mSelectedLine;
+					msg->mFont.mCurLineY     = msg->mFont.mLineY[msg->mFont.mSelectedLine];
+					msg->mFont.mCurLineWidth = 0.0f;
+					msg->mFont.mSelectDone   = 0;
+				} else if (msg->mFont.mSelectDone != 0) {
+					msg->mSelectedLine        = -1;
+					msg->mFont.mBits.mFadeOut = TRUE;
+					msg->mFont.mSelectedLine  = -1;
+				} else if (!gGame.GetStatusFlags(0x20)) {
+					s32 hit = 0;
+					if (gWiiPointer.mPointerValid) {
+						f32 top = msg->mFont.mWindowY;
+						if (top < (f32)gScreenSafeTop) {
+							top = (f32)gScreenSafeTop;
+						}
+						if (top + msg->mFont.mHeight > (f32)gScreenSafeBottom) {
+							top = (f32)gScreenSafeBottom - msg->mFont.mHeight;
+						}
+						f32 margin = 40.0f + msg->mData.mHeights[msg->mData.mWidestLine];
+						if (gWiiPointer.mPointer.x >= msg->mFont.mWindowX - msg->mFont.mWidth * 0.5f - margin &&
+						    gWiiPointer.mPointer.x <= msg->mFont.mWindowX + msg->mFont.mWidth * 0.5f + margin &&
+						    gWiiPointer.mPointer.y >= top - 8.0f && gWiiPointer.mPointer.y <= top + msg->mFont.mHeight + 8.0f) {
+							if (msg->mFont.mPointerState == 2) {
+								hit = -1;
+							} else {
+								for (s32 i = 0; i < msg->mData.mLineCount; i++) {
+									s32 row = msg->mSelectedLine >= 0 ? (msg->mSelectedLine + i) % msg->mData.mLineCount : i;
+									f32 w   = 24.0f + msg->mData.mMaxWidth;
+									if (msg->mFont.mColor.a != 0) {
+										w = margin * 2.0f + msg->mFont.mWidth;
+									}
+									f32 rowTop = top + msg->mFont.mLineY[row];
+									f32 h      = msg->mData.mHeights[row];
+									if (gWiiPointer.mPointer.x >= msg->mFont.mWindowX - w * 0.5f &&
+									    gWiiPointer.mPointer.x <= msg->mFont.mWindowX + w * 0.5f &&
+									    gWiiPointer.mPointer.y >= rowTop - h * 0.25f &&
+									    gWiiPointer.mPointer.y <= rowTop + h + h * 0.25f) {
+										hit = row + 1;
+										break;
+									}
+								}
+							}
+						}
+					}
+					if (hit != 0) {
+						if (!(gWiiPointer.mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA)))) {
+							if (msg->mFont.mPointerState == 0) {
+								msg->mFont.mPointerState = 1;
+								PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+							}
+							if (hit > 0 && hit - 1 != msg->mSelectedLine) {
+								msg->mSelectedLine       = hit - 1;
+								msg->mFont.mSelectedLine = msg->mSelectedLine;
+								PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+							}
+						}
+					} else {
+						msg->mFont.mPointerState = 0;
+					}
+					if (gWiiPointer.Check(4)) { // the remote's up moves the highlight
+						if (msg->mFont.mPointerState == 0) {
+							if (--msg->mSelectedLine < 0) {
+								msg->mSelectedLine = msg->mData.mLineCount - 1;
+							}
+							msg->mFont.mSelectedLine = msg->mSelectedLine;
+							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+						}
+					} else if (gWiiPointer.Check(8)) { // down
+						if (msg->mFont.mPointerState == 0) {
+							if (++msg->mSelectedLine >= msg->mData.mLineCount) {
+								msg->mSelectedLine = 0;
+							}
+							msg->mFont.mSelectedLine = msg->mSelectedLine;
+							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+						}
+					} else if (gWiiPointer.Check(1)) { // A
+						if (msg->mFont.mPointerState != 0) {
+							msg->mFont.mPointerState = 2;
+							PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+						} else {
+							msg->mSelectResult        = msg->mSelectedLine;
+							msg->mFont.mPointerState  = 1;
+							msg->mFont.mSelectDone    = 1;
+							msg->mSelectedLine        = -1;
+							msg->mFont.mSelectedLine  = -1;
+							msg->mFont.mBits.mFadeOut = TRUE;
+							PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+						}
+					} else if (gWiiPointer.Check(2)) { // B
+						msg->mSelectResult        = -1;
+						msg->mSelectedLine        = -1;
+						msg->mFont.mSelectedLine  = -1;
+						msg->mFont.mPointerState  = 0;
+						msg->mFont.mSelectDone    = 1;
+						msg->mFont.mBits.mFadeOut = TRUE;
+						PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+					} else if (msg->mFont.mPointerState == 2 &&
+					           !(gWiiPointer.mButton & ((1ULL << RemoteA) | (1ULL << GameCubeA)))) {
+						msg->mSelectResult       = msg->mSelectedLine;
+						msg->mFont.mSelectDone   = 1;
+						msg->mFont.mPointerState = 0;
+						PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+					}
+				}
+			} else if (msg->mDigitCount > 0) {
+				if (msg->mFont.mOtherSelection < 0) {
+					MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+				} else if (gWiiPointer.Check(4)) {
+					if (++msg->mDigits[msg->mSelectedDigit] > 9) {
+						msg->mDigits[msg->mSelectedDigit] = 0;
+					}
+					MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				} else if (gWiiPointer.Check(8)) {
+					if (--msg->mDigits[msg->mSelectedDigit] < 0) {
+						msg->mDigits[msg->mSelectedDigit] = 9;
+					}
+					MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+					PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+				} else if (gWiiPointer.Check(0x10)) {
+					if (++msg->mSelectedDigit > msg->mDigitCount - 1) {
+						msg->mSelectedDigit = msg->mDigitCount - 1;
+					} else {
+						MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+					}
+				} else if (gWiiPointer.Check(0x20)) {
+					if (--msg->mSelectedDigit < msg->mFirstEditDigit) {
+						msg->mSelectedDigit = msg->mFirstEditDigit;
+					} else {
+						MsgSetDigits(msg, msg->mDigits, msg->mDigitCount, msg->mFirstEditDigit, msg->mSelectedDigit);
+						PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+					}
+				} else if (gWiiPointer.Check(1)) {
+					msg->mFont.mBits.mFadeOut  = TRUE;
+					msg->mFont.mOtherSelection = -1;
+					PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+					s32 result = 0;
+					for (s32 i = 9; i >= 0; i--) {
+						result = result * 10 + msg->mDigits[i];
+					}
+					gGame.mSelectResult = result;
+				} else if (gWiiPointer.Check(2)) {
+					msg->mFont.mBits.mFadeOut  = TRUE;
+					msg->mFont.mOtherSelection = -1;
+					PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+					gGame.mSelectResult = -1;
+				}
+			} else if (msg->mStay != 0) {
+				if (msg->mStay == 1) {
+					if (gGame.GetPlayer()->mOXMenu.mStarted < 0) {
+						msg->mStay++;
+					}
+				} else {
+					msg->mFont.mBits.mFadeOut = TRUE;
+				}
+			} else {
+				msg->mFont.mBits.mFadeOut = TRUE;
+			}
+		}
+		msg->mData.mCursor--;
+	} else {
+		msg->mData.mCursor      = NULL;
+		msg->mData.mIconColumns = 0;
+	}
+	return 1;
+}
+
 /**
  * @note Address: 0x800A73C0
  * @note Size: 0x100
@@ -927,6 +1130,41 @@ extern "C" s32 CMsg__cmd_WAIT(CMsg* msg)
 	f32 frames = (command / 10) * (f32)gRefreshRate;
 	frames += (command % 10) * (f32)gRefreshRate / 10.0f;
 	msg->mWaitTimer = frames;
+	return 0;
+}
+
+/**
+ * @note Address: 0x800A7784
+ * @note Size: 0x2E4
+ */
+// the GameCube's shape with a Wii queue: MSG_ANIM_QUEUE drops the anim into a four slot ring
+// behind the playing one, otherwise vf108 (the Wii's SetAnim) starts it right away
+extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
+{
+	u8 flags = ReadMsgU8(msg);
+	s16 id   = ReadMsgS16(msg);
+	s32 anim = ReadMsgU8(msg);
+	anim |= ReadMsgU8(msg) << 8;
+	anim |= ReadMsgU8(msg) << 16;
+	anim |= ReadMsgU8(msg) << 24;
+	if (flags & MSG_ANIM_VARIABLE) {
+		anim = gEventVars.mVars[anim];
+	}
+	WiiTitleObject* obj = FindObj(id);
+	if (obj != NULL && (obj->mStatus & 1)) {
+		if (anim == -1) {
+			if (!obj->vf130((f32)gGame.mRetraceStep)) {
+				msg->mData.mCursor -= 8;
+				return 1;
+			}
+		} else if (!(flags & MSG_ANIM_QUEUE)) {
+			obj->ClearAnmQueue();
+			obj->vf108(anim, 0, 0.0f, 1.0f, 0.0f, 15.0f);
+			obj->vf118(1.0f);
+		} else {
+			obj->PushAnim(anim, 0, 100);
+		}
+	}
 	return 0;
 }
 
