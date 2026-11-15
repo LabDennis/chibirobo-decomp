@@ -747,11 +747,15 @@ TRK_MINNOW_DOLPHIN/CircleBuffer.c:
 TRK_MINNOW_DOLPHIN/MWCriticalSection_gc.cpp:
 	.text start:0x8022854C end:0x802285A4
 
-dolphin/os/OSAudioSystem.c:
-	.text start:0x801819F4 end:0x80181C88
+revolution/OS/OSAudioSystem.c:
+	.text start:0x801817D4 end:0x80181C88
+	.data start:0x8030F998 end:0x8030FA18
 
-dolphin/os/OSError.c:
-	.text start:0x80182B44 end:0x801831E8
+revolution/OS/OSError.c:
+	.text start:0x80182B40 end:0x801831E8
+	.data start:0x8030FE30 end:0x80310150
+	.bss start:0x804CC530 end:0x804CC578
+	.sdata start:0x805A13E8 end:0x805A13F0
 
 MSL_C.PPCEABI.bare.H/MSL_Common/buffer_io.c:
 	.text start:0x802296A8 end:0x80229788
@@ -775,17 +779,20 @@ MSL_C.PPCEABI.bare.H/MSL_Common_Embedded/Math/Double_precision/e_fmod.c:
 dolphin/OdemuExi2/DebuggerDriver.c:
 	.text start:0x8017B738 end:0x8017B95C
 
-dolphin/os/OS.c:
-	.text start:0x8017F698 end:0x80180B10
+revolution/OS/OSMemory.c:
+	.text start:0x80187B98 end:0x801882D0
+	.data start:0x80310D50 end:0x80310D60
+	.sbss start:0x805A1F20 end:0x805A1F24
 
-dolphin/os/OSExec.c:
-	.text start:0x801836D4 end:0x80184864
+revolution/OS/OSReboot.c:
+	.text start:0x801885D4 end:0x80188654
+	.sbss start:0x805A1F28 end:0x805A1F30
 
-dolphin/os/OSMemory.c:
-	.text start:0x80187BF8 end:0x801882D0
-
-dolphin/os/OSReset.c:
+revolution/OS/OSReset.c:
 	.text start:0x80188654 end:0x80189164
+	.data start:0x80310D60 end:0x80310FE8
+	.sdata start:0x805A1410 end:0x805A1418
+	.sbss start:0x805A1F30 end:0x805A1F40
 
 dolphin/os/__ppc_eabi_init.cpp:
 	.text start:0x8018E5EC end:0x8018E654
@@ -807,6 +814,35 @@ dolphin/dvd/dvdlow.c:
 
 dolphin/vi/vi.c:
 	.text start:0x80199734 end:0x8019B370
+dolphin/gx/GXInit.c:
+	.text start:0x801A5598 end:0x801A664C
+
+dolphin/gx/GXFifo.c:
+	.text start:0x801A664C end:0x801A7294
+
+dolphin/gx/GXMisc.c:
+	.text start:0x801A84B8 end:0x801A8D4C
+
+dolphin/gx/GXGeometry.c:
+	.text start:0x801A8FC4 end:0x801A92B4
+
+dolphin/gx/GXFrameBuf.c:
+	.text start:0x801A948C end:0x801A9E8C
+
+dolphin/gx/GXLight.c:
+	.text start:0x801A9E8C end:0x801AA5E0
+
+dolphin/gx/GXTexture.c:
+	.text start:0x801AA7C4 end:0x801AB584
+
+dolphin/gx/GXBump.c:
+	.text start:0x801AB740 end:0x801AB9D0
+
+dolphin/gx/GXDraw.c:
+	.text start:0x801ACFF4 end:0x801AD814
+
+dolphin/gx/GXTransform.c:
+	.text start:0x801ADA54 end:0x801ADEE4
 
 dolphin/thp/THPDec.c:
 	.text start:0x801FF434 end:0x80202804
@@ -894,3 +930,128 @@ dolphin/gx/GXTransform.c:
 revolution/GX/GXPerf.c:
 	.text start:0x801ADF6C end:0x801AE7A8
 	.data start:0x803242F8 end:0x803243E4
+revolution/OS/OS.c:
+	.text start:0x8017F698 end:0x80180BB4
+	.data start:0x8030F478 end:0x8030F988
+	.bss start:0x804CC4C0 end:0x804CC530
+	.sdata start:0x805A13A8 end:0x805A13D8
+	.sbss start:0x805A1E78 end:0x805A1EC0
+	.sdata2 start:0x805A6410 end:0x805A6418
+
+revolution/OS/OSExec.c:
+	.text start:0x801831E8 end:0x80184864
+	.data start:0x80310150 end:0x803101C0
+	.bss start:0x804CC580 end:0x804CC5A0
+	.sdata start:0x805A13F0 end:0x805A1400
+	.sbss start:0x805A1EE0 end:0x805A1EF8
+	.sdata2 start:0x805A6418 end:0x805A6420
+
+revolution/OS/OSUtf.c:
+	.text start:0x8018B738 end:0x8018B970
+	.data start:0x80311048 end:0x8031CE88
+
+revolution/OS/OSIpc.c:
+	.text start:0x8018B970 end:0x8018B998
+	.sdata start:0x805A1420 end:0x805A1428
+	.sbss start:0x805A1F50 end:0x805A1F58
+
+revolution/OS/OSStateTM.c:
+	.text start:0x8018B998 end:0x8018C010
+	.data start:0x8031CE88 end:0x8031CF50
+	.bss start:0x804CD2E0 end:0x804CD3A0
+	.sbss start:0x805A1F58 end:0x805A1F78
+
+revolution/OS/OSPlayRecord.c:
+	.text start:0x8018C010 end:0x8018C708
+	.data start:0x8031CF50 end:0x8031CF98
+	.bss start:0x804CD3A0 end:0x804CD5A0
+	.sdata start:0x805A1428 end:0x805A1430
+	.sbss start:0x805A1F80 end:0x805A1FA0
+
+revolution/OS/OSNet.c:
+	.text start:0x8018C914 end:0x8018CE78
+	.data start:0x8031CFC0 end:0x8031D128
+	.bss start:0x804CD5C0 end:0x804CD680
+	.sdata start:0x805A1430 end:0x805A1438
+	.sbss start:0x805A1FA0 end:0x805A1FB0
+
+revolution/OS/OSNandbootInfo.c:
+	.text start:0x8018CE78 end:0x8018D080
+	.data start:0x8031D128 end:0x8031D148
+
+revolution/OS/OSPlayTime.c:
+	.text start:0x8018D080 end:0x8018D82C
+	.data start:0x8031D148 end:0x8031D188
+	.bss start:0x804CD680 end:0x804CD6B0
+	.sdata start:0x805A1438 end:0x805A1440
+	.sbss start:0x805A1FB0 end:0x805A1FC8
+	.sdata2 start:0x805A6468 end:0x805A6478
+
+revolution/OS/OSLaunch.c:
+	.text start:0x8018D82C end:0x8018E5EC
+	.data start:0x8031D188 end:0x8031D4A8
+	.sdata start:0x805A1440 end:0x805A1448
+	.sbss start:0x805A1FC8 end:0x805A1FD0
+
+revolution/MTX/quat.c:
+	.text start:0x8018FEA0 end:0x80190208
+
+revolution/DVD/dvdfs.c:
+	.text start:0x80190208 end:0x80190830
+	.data start:0x8031D4A8 end:0x8031D5D8
+	.sdata start:0x805A1450 end:0x805A1460
+	.sbss start:0x805A1FD0 end:0x805A1FF0
+
+revolution/DVD/dvd.c:
+	.text start:0x80190830 end:0x8019568C
+	.data start:0x8031D5D8 end:0x8031D980
+	.sdata start:0x805A1460 end:0x805A1478
+	.bss start:0x804CD6C0 end:0x804D2370
+	.sbss start:0x805A2000 end:0x805A2098
+
+revolution/DVD/dvderror.c:
+	.text start:0x801958E4 end:0x801962C8
+	.data start:0x8031D980 end:0x8031D9B0
+	.bss start:0x804D23A0 end:0x804D2600
+	.sbss start:0x805A2098 end:0x805A20A8
+
+revolution/DVD/dvdidutils.c:
+	.text start:0x801962C8 end:0x801963B8
+
+revolution/DVD/dvdFatal.c:
+	.text start:0x801963B8 end:0x80196534
+	.rodata start:0x802DDF18 end:0x802DDF50
+	.data start:0x8031D9B0 end:0x8031E020
+	.sdata start:0x805A1478 end:0x805A1480
+	.sbss start:0x805A20A8 end:0x805A20B0
+	.sdata2 start:0x805A64D0 end:0x805A64D8
+
+revolution/DVD/dvdDeviceError.c:
+	.text start:0x80196534 end:0x801967CC
+	.bss start:0x804D2600 end:0x804D2620
+	.sdata start:0x805A1480 end:0x805A1488
+	.sbss start:0x805A20B0 end:0x805A20B8
+
+revolution/DVD/dvd_broadway.c:
+	.text start:0x801967CC end:0x80198D8C
+	.data start:0x8031E1B8 end:0x8031F0C0
+	.sdata start:0x805A1488 end:0x805A1498
+	.bss start:0x804D2620 end:0x804D27E0
+	.sbss start:0x805A20B8 end:0x805A20E0
+
+revolution/VI/vi.c:
+	.text start:0x80198D8C end:0x8019B6DC
+	.data start:0x8031F0C0 end:0x8031F618
+	.bss start:0x804D27E0 end:0x804D2950
+	.sdata start:0x805A1498 end:0x805A14B8
+	.sbss start:0x805A20E0 end:0x805A2190
+
+revolution/VI/i2c.c:
+	.text start:0x8019B6DC end:0x8019BFE0
+
+revolution/VI/vi3in1.c:
+	.text start:0x8019BFE0 end:0x8019D69C
+	.data start:0x8031F618 end:0x8031FC28
+	.bss start:0x804D2950 end:0x804D2970
+	.sdata start:0x805A14C0 end:0x805A14D0
+	.sbss start:0x805A2198 end:0x805A21B0
