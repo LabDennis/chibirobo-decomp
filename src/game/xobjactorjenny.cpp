@@ -177,14 +177,18 @@ void XObjActorJenny::UpdateObject(u32 frames)
 		}
 	}
 
-	XSound& sound = gGame.mSound;
 	if (mAnimId == 0x47) { // this anim loops a sound
-		if (!IsGameSoundPlaying(&sound, 0x19B)) {
-			u8 volume = (mActorStatus.mFlags & 0x800) ? 0xFF : GetSoundVolumeAtPosition(&sound, &mMoveTranslate, 0); // 0x800: full volume
-			PlayGameSound(&sound, 0x19B, volume);
+		if (!IsGameSoundPlaying(&gGame.mSound, 0x19B)) {
+			u8 volume;
+			if (mActorStatus.mFlags & 0x800) { // full volume
+				volume = 0xFF;
+			} else {
+				volume = GetSoundVolumeAtPosition(&gGame.mSound, &mMoveTranslate, 0);
+			}
+			PlayGameSound(&gGame.mSound, 0x19B, volume);
 		}
 	} else {
-		sound.StopIfPlaying(0x19B);
+		gGame.mSound.StopIfPlaying(0x19B);
 	}
 }
 
@@ -396,20 +400,24 @@ static inline void ReleasePlayerAt(XObjChr* player, const Vec& position)
  */
 void XObjActorJenny::ProcessPendingEvents(u32)
 {
-	CVec firstPos;
 	CJObj joint;
+	CVec firstPos;
 	XObjChr* player = gGame.GetPlayer();
-	if (mActorStatus.mFlags & 2) { // flag 2: a random sound
+	if (mActorStatus.Check(2)) { // flag 2: a random sound
 		mActorStatus.mFlags &= ~2;
 		PlayGameSound(&gGame.mSound, rand() % 10 + 0x92, 0xFF);
 	}
 	switch (mCmd[0]) {
 	case 2: // joint flag 8 on or off
 
-		if (mCmd[1] == 8)
+		switch (mCmd[1]) {
+		case 8:
 			mJointFlags.mFlags |= 8;
-		else
+			break;
+		default:
 			mJointFlags.mFlags &= ~8;
+			break;
+		}
 		mCmd[0] = 0;
 		break;
 	case 3: // swap what she carries
@@ -448,8 +456,11 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 				if (mCmd[1] == object->GetKind()) {
 					mHeldObjects[0] = object;
 					object->mStatus.mFlags |= 0x10000ULL;
-					if (mCmd[1] == 0x401)
+					switch (mCmd[1]) {
+					case 0x401:
 						mHideKinds.mFlags |= 0x10;
+						break;
+					}
 				}
 			}
 			break;
@@ -462,10 +473,12 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 		mCmd[0] = 0;
 		break;
 	case 4:
-		if (mCmd[1] == 1) { // carry the player offset to the side
+		switch (mCmd[1]) {
+		case 1: // carry the player offset to the side
 			mActorStatus.mFlags |= 0x200;
 			HoldPlayerForJenny(player);
-		} else { // set him down at the second joint
+			break;
+		default: { // set him down at the second joint
 
 			mActorStatus.mFlags &= ~0x200;
 			s32 first[] = { 0, 3, 1, 0, 0, 0 };
@@ -475,24 +488,32 @@ void XObjActorJenny::ProcessPendingEvents(u32)
 			joint.Attach(FindJointByPath(mJObj, second, 6));
 			CVec secondPos(joint.GetPos());
 			// Retail computes this midpoint, then releases the player at the second joint.
-			firstPos.x -= (firstPos.x - secondPos.x) * 0.5f;
-			firstPos.z -= (firstPos.z - secondPos.z) * 0.5f;
+			f32 dx = (firstPos.x - secondPos.x) * 0.5f;
+			f32 dz = (firstPos.z - secondPos.z) * 0.5f;
+			firstPos.x -= dx;
+			firstPos.z -= dz;
 			firstPos.y = mMoveTranslate.y;
 			ReleasePlayerAt(player, secondPos);
+			break;
+		}
 		}
 		mCmd[0] = 0;
 		break;
 	case 5:
-		if (mCmd[1] == 1) { // carry the player at the joint
+		switch (mCmd[1]) {
+		case 1: // carry the player at the joint
 			mActorStatus.mFlags |= 0x100;
 			HoldPlayerForJenny(player);
-		} else { // set him down at the joint
+			break;
+		default: { // set him down at the joint
 
 			mActorStatus.mFlags &= ~0x100;
 			s32 path[] = { 0, 3, 2, 0, 0, 0 };
 			joint.Attach(FindJointByPath(mJObj, path, 6));
 			CVec position(joint.GetPos());
 			ReleasePlayerAt(player, position);
+			break;
+		}
 		}
 		mCmd[0] = 0;
 		break;
