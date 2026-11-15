@@ -44,10 +44,12 @@ static inline void SetAttachmentParent(XObjChr* player, XObjAttachment& attachme
  * @note Address: 0x800B97FC
  * @note Size: 0x1584
  */
+// NONMATCHING: retail builds a second CVec from each sampled offset before it stores it (a copy made from the Vec part),
+// and walks the idle joints with other registers
 BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 {
-	u32 status  = (u32)mStatus.mFlags;
-	u32 flags[] = { status & 0x800000, status & 0x200000, status & 0x40, status & 0x20000, status & 0x400000 };
+	u32 flags[] = { mStatus.mFlags & 0x800000, mStatus.mFlags & 0x200000, mStatus.mFlags & 0x40, mStatus.mFlags & 0x20000,
+		            mStatus.mFlags & 0x400000 };
 	// Each ready model falls through to the next load. A pending one resumes at the same step.
 	switch (mLoadStep) {
 	case 0: {
@@ -67,15 +69,19 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 		SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 		mIdleLoops = 3;
 		{
-			s32 branch1Child0[] = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
-			s32 branch1Child1[] = { 0, 1, 0, 1, 2, 0, 0, 1, 1 };
-			s32 branch3Child0[] = { 0, 1, 0, 1, 2, 0, 0, 3, 0 };
-			s32 branch3Child1[] = { 0, 1, 0, 1, 2, 0, 0, 3, 1 };
 			struct JointPath {
 				s32 depth;
 				s32* nodes;
 			};
-			JointPath joints[] = { { 9, branch1Child0 }, { 9, branch1Child1 }, { 9, branch3Child0 }, { 9, branch3Child1 } };
+			JointPath joints[]  = { { 9, NULL }, { 9, NULL }, { 9, NULL }, { 9, NULL } };
+			s32 branch1Child0[] = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
+			joints[0].nodes     = branch1Child0;
+			s32 branch1Child1[] = { 0, 1, 0, 1, 2, 0, 0, 1, 1 };
+			joints[1].nodes     = branch1Child1;
+			s32 branch3Child0[] = { 0, 1, 0, 1, 2, 0, 0, 3, 0 };
+			joints[2].nodes     = branch3Child0;
+			s32 branch3Child1[] = { 0, 1, 0, 1, 2, 0, 0, 3, 1 };
+			joints[3].nodes     = branch3Child1;
 			for (int i = 0; i < 4; ++i) { // two branch tips each on branches 1 and 3
 				XObjChrIdleJoint& idle = mIdleJoints[i];
 				idle.mJObj             = FindJointByPath(mJObj, joints[i].nodes, joints[i].depth);
