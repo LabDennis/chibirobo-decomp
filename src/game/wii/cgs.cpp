@@ -1,11 +1,13 @@
 // The Wii's text drawing unit, .text 0x802AD310-0x802AEBB0: the GameCube
 // cgs.cpp pair (wii_gc_pairs.txt) plus the Wii's own helpers in between.
 //
-// NONMATCHING: five of the unit's nine functions match at 100 %, four stay
-// fuzzy: GetGlyph and MeasureGameTextWidth differ only in callee-saved
-// register choice and the IsSjisLead bool materialization, DrawGsText and
-// DrawGsStrokeText additionally diverge in float scheduling and stack slot
-// order — no behavioural difference found in any of them.
+// NONMATCHING: five of the unit's nine functions match at 100 %. GetGlyph
+// (99 %) and MeasureGameTextWidth (99 %) are structurally identical and
+// differ only in callee-saved colouring and in vtable/sdata2 referent
+// placement; DrawGsText (89 %) and DrawGsStrokeText additionally diverge in
+// float allocation and stack frame size (retail spills ~0x10 more, plus two
+// f64 spill slots the allocator gives us as held constants), again without
+// a behavioural difference.
 
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
@@ -80,9 +82,6 @@ static inline void SetColor(CTile* tile, u32 color)
 	tile->mColor0 = tile->mColor1 = tile->mColor2 = tile->mColor3 = color;
 }
 
-// NONMATCHING: same switch and control flow; retail keeps gs in r30 and the
-// glyph pointer in r31 while MWCC swaps them, and it orders the escape-branch
-// compares slightly differently.
 /**
  * @note Address: 0x802AD1C0
  * @note Size: 0x150
@@ -113,13 +112,13 @@ const char* GetGlyph(CGs* gs, const char* text, TextGlyph* glyph)
 			glyph->mStr[0] = '\0';
 			break;
 		default:
-			glyph->mStr[0] = *text;
+			glyph->mStr[0] = *--text;
 			glyph->mStr[1] = '\0';
 			break;
 		}
 		break;
 	default:
-		if (gs->mUseShiftJis && IsSjisLead(*text)) {
+		if (gs->mUseShiftJis && ((u8)*text >= 0x81 && (u8)*text <= 0x9F || (u8)*text >= 0xE0 && (u8)*text <= 0xFC)) {
 			glyph->mStr[0] = *text;
 			glyph->mStr[1] = *++text;
 		} else {
@@ -158,7 +157,7 @@ extern "C" f32 MeasureGameTextWidth(CGs* gs, const char* text, BOOL proportional
 			if (proportional) {
 				width[0] += charWidth * (size / 24.0f);
 			} else if (gs->mUseShiftJis) {
-				if (IsSjisLead(glyph.mStr[0])) {
+				if ((u8)glyph.mStr[0] >= 0x81 && (u8)glyph.mStr[0] <= 0x9F || (u8)glyph.mStr[0] >= 0xE0 && (u8)glyph.mStr[0] <= 0xFC) {
 					width[0] += size * gs->mShiftJisWidthScale;
 				} else {
 					width[0] += 0.5f * size * gs->mShiftJisWidthScale;
@@ -233,13 +232,11 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	f32 curX = x;
 	f32 curY = y;
 	TextGlyph glyph;
-	s32 i;
 
 	// an ortho camera has y growing down the screen, so the line step flips
-	f32 lineHeight      = gs->mCamera->mTop < gs->mCamera->mBottom ? -height : height;
-	glyph.mColor        = color;
-	glyph.mBgColor      = 0;
-	TextChar* textChars = gs->mTextChars;
+	f32 lineHeight = gs->mCamera->mTop < gs->mCamera->mBottom ? -height : height;
+	glyph.mColor   = color;
+	glyph.mBgColor = 0;
 
 	f32 textWidth = MeasureGameTextWidth(gs, text, proportional, size);
 
@@ -258,15 +255,18 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 			continue;
 		}
 
-		TextChar* chr     = &textChars[count];
+		TextChar* chr     = &gs->mTextChars[count];
 		chr->mSprite.mTex = &chr->mTex;
 		s32 charWidth     = chr->mSprite.mTex->SetChar(glyph.mStr, gs->mTextFont);
-		u8 wide           = IsSjisLead(glyph.mStr[0]);
+		BOOL wide         = TRUE;
+		if (!IsSjisLead(glyph.mStr[0])) {
+			wide = FALSE;
+		}
 		f32 advance;
 		if (proportional) {
 			// the glyph's left bearing shifts it inside its cell
 			CFont font;
-			s32 bearing = HasFontGlyph(&font, glyph.mStr);
+			f32 bearing = HasFontGlyph(&font, glyph.mStr);
 			curX += bearing * (size / 24.0f);
 			charWidth -= bearing;
 			advance = charWidth * (size / 24.0f);
@@ -307,6 +307,8 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 		count++;
 	}
 
+	TextChar* textChars = gs->mTextChars;
+
 	// backgrounds first, flat color
 	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	if (gs->mCurTevStage == &gs->mTevStages[0]) {
@@ -316,14 +318,14 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	}
 	SetupDrawState(gs);
 	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
-		for (i = 0; i < count; i++) {
+		for (s32 i = 0; i < count; i++) {
 			if (textChars[i].mHasBg) {
 				textChars[i].mBg.DrawLit(gs->mCamera->mViewMtx, textChars[i].mBg.mColor0, textChars[i].mBg.mColor1,
 				                         textChars[i].mBg.mColor2, textChars[i].mBg.mColor3);
 			}
 		}
 	} else {
-		for (i = 0; i < count; i++) {
+		for (s32 i = 0; i < count; i++) {
 			if (textChars[i].mHasBg) {
 				textChars[i].mBg.Draw(gs->mCamera->mViewMtx, textChars[i].mBg.mColor0, textChars[i].mBg.mColor1, textChars[i].mBg.mColor2,
 				                      textChars[i].mBg.mColor3);
@@ -340,12 +342,12 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	}
 	SetupDrawState(gs);
 	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
-		for (i = 0; i < count; i++) {
+		for (s32 i = 0; i < count; i++) {
 			textChars[i].mSprite.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, textChars[i].mSprite.mColor0,
 			                             textChars[i].mSprite.mColor1, textChars[i].mSprite.mColor2, textChars[i].mSprite.mColor3);
 		}
 	} else {
-		for (i = 0; i < count; i++) {
+		for (s32 i = 0; i < count; i++) {
 			textChars[i].mSprite.Draw(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, textChars[i].mSprite.mColor0,
 			                          textChars[i].mSprite.mColor1, textChars[i].mSprite.mColor2, textChars[i].mSprite.mColor3);
 		}

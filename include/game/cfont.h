@@ -102,7 +102,7 @@ extern "C" {
 CTexObj* GetFontGlyphTexture(CFont* font, const char* str, u32 arg3, s32* width);
 // nonzero when the loaded font has a glyph for the character. the font argument
 // is unused; callers pass the scratch font they keep for the texture lookups
-s8 HasFontGlyph(CFont* font, const char* str);
+s32 HasFontGlyph(CFont* font, const char* str);
 }
 #endif
 
