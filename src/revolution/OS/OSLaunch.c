@@ -112,7 +112,7 @@ static BOOL CheckTmdSysVersion(ESTmdView* tmd)
 	numTickets = 0;
 	blocks     = 0;
 	inodes     = 0;
-	sysVersion = tmd->sysVersion;
+	sysVersion = tmd->head.sysVersion;
 
 	if (ESP_GetTicketViews(sysVersion, NULL, &numTickets) != 0 || numTickets != 1) {
 		return FALSE;
@@ -128,7 +128,7 @@ static BOOL CheckTmdSysVersion(ESTmdView* tmd)
 
 static inline BOOL CheckTmdCountryCode(ESTmdView* tmd)
 {
-	u32 area = *(u32*)&tmd->reserved[0];
+	u32 area = *(u32*)&tmd->head.reserved[0];
 
 	if (area == 3) {
 		return TRUE;
@@ -143,7 +143,7 @@ static inline BOOL CheckTmdCountryCode(ESTmdView* tmd)
 
 static inline BOOL IsNandTitle(ESTmdView* tmd)
 {
-	if (tmd->reserved[0x18] & 1) {
+	if (tmd->head.reserved[0x18] & 1) {
 		return TRUE;
 	}
 
