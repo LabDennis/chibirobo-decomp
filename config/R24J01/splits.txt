@@ -29,6 +29,9 @@ game/wii/soundbank.cpp:
 	.rodata start:0x802C6100 end:0x802C62B0
 	.data start:0x802E7170 end:0x802E7238
 
+game/wii/gxb.cpp:
+	.text start:0x8003CEA0 end:0x80040E08
+
 game/roboeyeslens.cpp:
 	.text start:0x80040E08 end:0x80040E4C
 
@@ -1136,6 +1139,9 @@ game/wii/inventory.cpp:
 
 game/gameosreport.cpp:
 	.text start:0x80019BA4 end:0x80019BF4
+
+game/wii/fbmirror.cpp:
+	.text start:0x80019BF4 end:0x8001A704
 
 game/infopointdtor.cpp:
 	.text start:0x80092244 end:0x80092284
