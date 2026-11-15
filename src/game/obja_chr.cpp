@@ -7032,33 +7032,47 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 
 extern "C" void SelectHighestActiveFloor(XObj* object);
 
-static inline bool IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 minHeight)
+/**
+ * @note Address: 0x800B1E0C
+ * @note Size: 0xAC
+ */
+// is position behind the object, within 60 degrees either side. defined ahead of FindNearbyPlayerInteraction, which takes it
+// in; UpdatePlayerMovementAndContacts and UpdatePlayerActions above are too big for that and call it
+extern "C" BOOL IsPositionBehindObject(void*, const Vec* pos, CXObj* object)
 {
-	if (object->GetEventScript() != NULL)
-		return true;
-	// action flags: bit 32 liftable, 33 ledge, 35 ladder, 36 rope, 39 pushable (IsObjectLiftable and friends)
-	u64 flags     = object->mStatus.mFlags;
-	bool eligible = (flags & 0x0000000100000000ULL) && object->mMaxFloorHeight > minHeight;
+	f32 angle = atan2(object->mMoveTranslate.x - pos->x, object->mMoveTranslate.z - pos->z);
+	angle     = WrapAngle(angle - object->mMoveRotate.y);
+	return angle >= 2.0f * PI / 3.0f && angle <= 4.0f * PI / 3.0f;
+}
+
+static inline BOOL IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 minHeight)
+{
+	BOOL eligible = FALSE;
+	if (object->GetEventScript() != NULL) {
+		eligible = TRUE;
+	} else {
+		// action flags: bit 32 liftable, 33 ledge, 35 ladder, 36 rope, 39 pushable (IsObjectLiftable and friends)
+		u64 flags = object->mStatus.mFlags;
+		if ((flags & 0x0000000100000000ULL) && object->mMaxFloorHeight > minHeight)
+			eligible = TRUE;
 #if defined(VERSION_JP)
-	if ((flags & 0x0000008000000000ULL) && (gGame.mStatus.mFlags & 0x0000080000000000ULL))
-		eligible = true;
-	if ((flags & 0x0000000200000000ULL) && (gGame.mStatus.mFlags & 0x0000080000000000ULL)) {
-		f32 difference = Abs(object->mSelectedFloorHeight - player->mMoveTranslate.y);
-		if (difference != 0.0f && difference <= 12.5f)
-			eligible = true;
-	} else
+		if ((flags & 0x0000008000000000ULL) && (gGame.mStatus.mFlags & 0x0000080000000000ULL))
+			eligible = TRUE;
+		if ((flags & 0x0000000200000000ULL) && (gGame.mStatus.mFlags & 0x0000080000000000ULL)) {
+			f32 difference = Abs(object->mSelectedFloorHeight - player->mMoveTranslate.y);
+			if (difference != 0.0f && difference <= 12.5f)
+				eligible = TRUE;
+		} else
 #endif
-	    if (flags & 0x0000000800000000ULL) {
-		if (object->mSelectedFloorIndex == 0 && object->mSelectedFloorHeight > player->mMaxFloorHeight) {
-			f32 angle = WrapAngle(
-			    (f32)atan2(object->mMoveTranslate.x - player->mMoveTranslate.x, object->mMoveTranslate.z - player->mMoveTranslate.z)
-			    - object->mMoveRotate.y);
-			if (angle >= DEG2RAD * 120.0f && angle <= DEG2RAD * 240.0f)
-				eligible = true;
+		    if (flags & 0x0000000800000000ULL) {
+			if (object->mSelectedFloorIndex == 0 && object->mSelectedFloorHeight > player->mMaxFloorHeight) {
+				if (IsPositionBehindObject(&player->mLadder, &player->mMoveTranslate, object))
+					eligible = TRUE;
+			}
+		} else if ((flags & 0x0000001000000000ULL) && object->mSelectedFloorIndex == 0
+		           && object->mSelectedFloorHeight > player->mMaxFloorHeight) {
+			eligible = TRUE;
 		}
-	} else if ((flags & 0x0000001000000000ULL) && object->mSelectedFloorIndex == 0
-	           && object->mSelectedFloorHeight > player->mMaxFloorHeight) {
-		eligible = true;
 	}
 	return eligible;
 }
@@ -7067,6 +7081,8 @@ static inline bool IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 
  * @note Address: 0x800ABDF8
  * @note Size: 0x868
  */
+// NONMATCHING: retail keeps the player's x, z and y in f31, f30 and f29 and the two radii of the loop below them; the build
+// gives the radii the upper registers
 extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 {
 	f32 radius = player->mMoveScale.x * GetFloorExtent(&player->mFloors, 0).x;
@@ -7087,7 +7103,7 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.GetObject(i);
 		u64 flags    = object->mStatus.mFlags;
-		if (!(flags & 1) || !(flags & 0x10000) || (flags & 0x10000000) || object->mId == player->mId || object->GetKind() >= 10000
+		if (!(flags & 1) || !(flags & 0x10000) || (flags & 0x10000000) || (s32)player->mId == (s32)object->mId || object->GetKind() >= 10000
 		    || (s16)object->GetPool() == 7)
 			continue;
 		if (player->mFloorContacts[0].objectIndex >= 0 && gGame.GetObject(player->mFloorContacts[0].objectIndex) == object)
@@ -7098,11 +7114,7 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 		f32 dz = object->mMoveTranslate.z - z;
 		if (sqrtf(dx * dx + dz * dz) > 100.0f + (0.9f * radius + object->mFloorXZExtent))
 			continue;
-		u32 hit;
-		{
-			CVec from(x, y, z), to(x, y, z);
-			hit = object->TestFloorCollision(&from, &to, radius + extraRadius, height, &push, &contact, 0, 0);
-		}
+		u32 hit = object->TestFloorCollision(&CVec(x, y, z), &CVec(x, y, z), radius + extraRadius, height, &push, &contact, 0, 0);
 		if ((hit & 3) != 3)
 			continue;
 		SelectHighestActiveFloor(object);
@@ -7273,18 +7285,6 @@ extern "C" u32 GetObjectMarkerOverride(XObj* object)
 extern "C" s32 fn_800B1E04(void*)
 {
 	return 0;
-}
-
-/**
- * @note Address: 0x800B1E0C
- * @note Size: 0xAC
- */
-// is position behind the object, within 60 degrees either side
-extern "C" BOOL IsPositionBehindObject(void*, const Vec* pos, CXObj* object)
-{
-	f32 angle = atan2(object->mMoveTranslate.x - pos->x, object->mMoveTranslate.z - pos->z);
-	angle     = WrapAngle(angle - object->mMoveRotate.y);
-	return angle >= 2.0f * PI / 3.0f && angle <= 4.0f * PI / 3.0f;
 }
 
 /**
