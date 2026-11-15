@@ -825,7 +825,7 @@ static inline f32 FacingPushEdge(XObj* edgeObject, XObjChr* owner)
 	GetOutwardPerpendicularToEdge(&player, &a, &b, &normal);
 	return WrapAngle(atan2(normal.x, normal.z));
 }
-void UpdatePushedObject(XActPush* act)
+void UpdatePushedObject(XActPush* act, u32 frames)
 {
 	if (!act->mTargetState)
 		return;

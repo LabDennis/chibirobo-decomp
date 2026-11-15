@@ -39,6 +39,7 @@ public:
 	CVec operator/(f32 s) const; // in the dol, 0x8002442C
 
 	bool operator!=(Vec v) const { return x != v.x || y != v.y || z != v.z; }
+	bool operator==(Vec v) const { return x == v.x && y == v.y && z == v.z; }
 
 	void Set(f32 x, f32 y, f32 z)
 	{

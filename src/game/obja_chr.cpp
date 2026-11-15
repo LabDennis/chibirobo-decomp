@@ -2012,9 +2012,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr*, u32, f32, f32);
 extern "C" void UpdatePlayerActionAnimations(XObjChr*, u32);
 extern "C" void UpdatePlayerHeadOffset(XObjChr*, u32);
 extern "C" void UpdatePlayerBattery(XObjChr*, u32);
-extern "C" void UpdatePushedObject(XActPush*);
+extern "C" void UpdatePushedObject(XActPush*, u32 frames);
 extern "C" s32 GetPlayerGroundType(XObjChr*);
-extern "C" void UpdatePlayerFrameEffects(XObjChr*);
+extern "C" void UpdatePlayerFrameEffects(XObjChr*, u32 frames);
 extern "C" void UpdatePlayerLookMarker(XObjChrLook*, u32);
 extern "C" void UpdateTumbleFade(XActTumbleFade*, BOOL, u32);
 extern "C" void UpdateRadarBeamAnimation(XActRadar*, u32);
@@ -2030,6 +2030,12 @@ XObjChrItemAnim gPlayerItemAnimationTable[] = {
 	{ -1, 0, { 0 }, 0.0f },
 };
 
+// the battery is flat and the gauge on screen has run down to it, IsPlayerStopped
+static inline bool IsStopped(const XObjChr* chr)
+{
+	return chr->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
+}
+
 void XObjChr::UpdateObject(u32 frames)
 {
 	PlayerTurnState& turn = gPlayerTurnState;
@@ -2038,7 +2044,7 @@ void XObjChr::UpdateObject(u32 frames)
 		pad->Update(frames);
 	else
 		pad->Clear();
-	if ((mMenu.mAtc.mOpen > 0 || mMenu.mDrs.mOpen > 0) && mTumble.mState) {
+	if (mMenu.IsOpening() && mTumble.mState) {
 		PlayGameSound(&gGame.mSound, 0x86, 255);
 		if (mMenu.mAtc.mMenuType != 3)
 			mMenu.mSel = mMenu.mPrevSel;
@@ -2058,16 +2064,18 @@ void XObjChr::UpdateObject(u32 frames)
 		if (mFloorContacts[4].objectIndex < 0 && !_A14 && (pad->mTrigger & PAD_BUTTON_A) && !(gGame.mStatus.mFlags & 0x100)
 		    && (mHitObjectIndex < 0 || mHitObjectIndex == mFloorContacts[0].objectIndex
 		        || (!IsLiftTargetPlug(&mLift) && mHitObjectIndex >= 0 && (gGame.GetObject(mHitObjectIndex)->mStatus.mFlags & 0x20)))) {
-			for (mNearDistance = 2; mNearDistance <= 10; ++mNearDistance) {
-				mFloorContacts[4].objectIndex = FindNearbyPlayerInteraction(this, mNearDistance);
-				if (mFloorContacts[4].objectIndex >= 0) {
-					XObj* object = gGame.GetObject(mFloorContacts[4].objectIndex);
-					mContactPos.Set(object->mMoveTranslate);
+			mNearDistance = 2;
+			do {
+				if ((mFloorContacts[4].objectIndex = FindNearbyPlayerInteraction(this, mNearDistance)) >= 0) {
+					XObj* object           = gGame.GetObject(mFloorContacts[4].objectIndex);
+					mContactPos.x          = object->mMoveTranslate.x;
+					mContactPos.y          = object->mMoveTranslate.y;
+					mContactPos.z          = object->mMoveTranslate.z;
 					mLastContactFloorIndex = object->mSelectedFloorIndex;
 					mEdgePos               = CVec(*GetCurrentEdgeWorldOffsetPosition(object));
 					break;
 				}
-			}
+			} while ((mNearDistance += 1.0f) <= 10);
 		}
 		if (mFloorContacts[4].objectIndex >= 0) {
 			mStick[2] = WrapAngle((f32)atan2(mEdgePos.x - mMoveTranslate.x, mEdgePos.z - mMoveTranslate.z))
@@ -2082,7 +2090,8 @@ void XObjChr::UpdateObject(u32 frames)
 
 	f32 speed = 1.2f * mStick[0];
 
-	if (!mHang.mState && !mJump.mState && !mLadder.mState && !mRope.mState && !mPush.mState && !mTumble.mState && !mCopter.mState
+	s32 hangState = mHang.mState;
+	if (!hangState && !mJump.mState && !mLadder.mState && !mRope.mState && !mPush.mState && !mTumble.mState && !mCopter.mState
 	    && (mPopper.mState == 0 || mPopper.mState == 8 || mPopper.mState == 4) && !mRadar.mState)
 		speed *= 1.2f;
 	if (speed > 0 && speed < 0.5f)
@@ -2095,20 +2104,19 @@ void XObjChr::UpdateObject(u32 frames)
 
 		if (gGame.mStatus.mFlags & 0x100) {
 			if (gGame.mStatus.mFlags & 0x200) {
-				f32 target = mMoveRotate.mTarget.y;
 				if ((mStick[2] >= 0 && mStick[2] <= HALF_PI) || (mStick[2] <= 0 && mStick[2] >= -HALF_PI))
-					direction = WrapAngle(target + (2 * DEG2RAD * frames) * (mStick[2] / HALF_PI));
+					direction = WrapAngle(mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * (mStick[2] / HALF_PI));
 				else if (mStick[2] >= HALF_PI && mStick[2] <= 130 * DEG2RAD)
-					direction = WrapAngle(target + (2 * DEG2RAD * frames) * ((130 * DEG2RAD - mStick[2]) / (40 * DEG2RAD)));
+					direction = WrapAngle(mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * ((130 * DEG2RAD - mStick[2]) / (40 * DEG2RAD)));
 				else if (mStick[2] <= -HALF_PI && mStick[2] >= -130 * DEG2RAD)
-					direction = WrapAngle(target + (2 * DEG2RAD * frames) * ((-130 * DEG2RAD - mStick[2]) / HALF_PI));
+					direction = WrapAngle(mMoveRotate.mTarget.y + (2 * DEG2RAD * frames) * ((-130 * DEG2RAD - mStick[2]) / HALF_PI));
 				else
-					direction = -WrapAngle(mStick[2] + target);
+					direction = -WrapAngle(mStick[2] + mMoveRotate.mTarget.y);
 			} else {
 				direction = NAN;
 				speed     = 0;
 			}
-		} else if (mHang.mState == 5) {
+		} else if (hangState == 5) {
 			f32 yaw   = mMoveRotate.y;
 			f32 angle = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y) - yaw);
 			if (angle >= 30 * DEG2RAD && angle < 150 * DEG2RAD) {
@@ -2128,7 +2136,7 @@ void XObjChr::UpdateObject(u32 frames)
 			mCopter.mMoveDirection = 1;
 			direction              = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
 		} else if (mCopter.mState == 4 || mCopter.mState == 7 || mCopter.mState == 8) {
-			if ((gGame.mStatus.mFlags & 0x40000000) && mParams.mBattery <= 0 && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
+			if ((gGame.mStatus.mFlags & 0x40000000) && IsStopped(this)) {
 				direction = NAN;
 				speed     = 0;
 			} else {
@@ -2139,29 +2147,33 @@ void XObjChr::UpdateObject(u32 frames)
 		} else if (mPopper.mState == 3 || mPopper.mState == 4 || mPopper.mState == 8) {
 			direction = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
 		} else if (mRope.mState == 5) {
-			direction = NAN;
-			if (mPad.mStickY > 0.1f) {
+			if (pad->mStickY > 0.1f) {
 				mRope.mMoveDirection = 1;
-				if (mAnimId == 139.0f || mAnimId == 138.0f)
+				f32 anim             = mAnimId;
+				if (anim == 139.0f || anim == 138.0f)
 					speed = 0.32f;
-				else if (mAnimId == 141.0f || mAnimId == 140.0f)
+				else if (anim == 141.0f || anim == 140.0f)
 					speed = 0.12f;
 				else
 					speed = 0;
-			} else if (mPad.mStickY < -0.1f) {
+			} else if (pad->mStickY < -0.1f) {
 				mRope.mMoveDirection = -1;
 				speed                = 0.4f;
 			} else {
 				mRope.mMoveDirection = 0;
 			}
-		} else if (mLadder.mState == 5) {
 			direction = NAN;
-			if (mPad.mStickY > 0.1f || mPad.mStickY < -0.1f) {
-				mLadder.mMoveDirection = mPad.mStickY > 0 ? 1 : -1;
+		} else if (mLadder.mState == 5) {
+			if (pad->mStickY > 0.1f) {
+				mLadder.mMoveDirection = 1;
+				speed                  = 0;
+			} else if (pad->mStickY < -0.1f) {
+				mLadder.mMoveDirection = -1;
 				speed                  = 0;
 			} else {
 				mLadder.mMoveDirection = 0;
 			}
+			direction = NAN;
 		} else if (mPush.mState == 2) {
 			f32 yaw      = mMoveRotate.y;
 			f32 relative = WrapAngle(HALF_PI + ((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y) - yaw));
@@ -2169,10 +2181,13 @@ void XObjChr::UpdateObject(u32 frames)
 				mPush.mMoveDirection = 1;
 			} else {
 				mPush.mMoveDirection = -1;
-				yaw += PI;
+				yaw                  = PI + yaw;
 			}
 			direction = TWO_PI + WrapAngle(yaw);
-			speed     = mPush.mTarget && !mPush.mPushPositionClamped ? 1.5f : 0;
+			if (!mPush.mTarget || mPush.mPushPositionClamped)
+				speed = 0;
+			else
+				speed = 1.5f;
 		} else {
 			direction = WrapAngle((mStick[2] + gGame.mMotionControlCamera.mCamera.mAngle.y));
 		}
@@ -2181,7 +2196,7 @@ void XObjChr::UpdateObject(u32 frames)
 		mMoveAngle = direction;
 	} else {
 		direction = NAN;
-		if (mHang.mState == 5 && mHang.mMoveDirection)
+		if (hangState == 5 && mHang.mMoveDirection)
 			mHang.mMoveDirection = 0;
 		else if (mCopter.mState == 3 && mCopter.mMoveDirection)
 			mCopter.mMoveDirection = 0;
@@ -2242,13 +2257,13 @@ void XObjChr::UpdateObject(u32 frames)
 		}
 	}
 	if (__fpclassifyf(mWalkHeading) != FP_NAN) {
-		CObjVec& pos = mMoveTranslate;
-		if (pos.x == pos.mTarget.x && pos.y == pos.mTarget.y && pos.z == pos.mTarget.z) {
-			pos.mSpeed.Set(0, 0, 0);
+		CVec& target = mMoveTranslate.mTarget;
+		if (mMoveTranslate == target) {
+			mMoveTranslate.mSpeed.Set(0, 0, 0);
 			mWalkHeading = NAN;
-		} else if (PSVECDistance(&pos, &pos.mTarget) <= 0.000001f) {
-			SetPos(pos.mTarget, 0);
-			pos.mSpeed.Set(0, 0, 0);
+		} else if (PSVECDistance(&mMoveTranslate, &target) <= 0.000001f) {
+			SetPos(target, 0);
+			mMoveTranslate.mSpeed.Set(0, 0, 0);
 			mWalkHeading = NAN;
 		}
 	}
@@ -2258,9 +2273,9 @@ void XObjChr::UpdateObject(u32 frames)
 		mFallDistance = 0.0f;
 	UpdatePlayerBattery(this, frames);
 	UpdateHeldObject(&mLift, frames);
-	UpdatePushedObject(&mPush);
+	UpdatePushedObject(&mPush, frames);
 	mGroundType = GetPlayerGroundType(this);
-	UpdatePlayerFrameEffects(this);
+	UpdatePlayerFrameEffects(this, frames);
 	s32 path[]    = { 0, 1, 0, 1, 2, 0, 1 };
 	f32 jointY    = GetEventJointWorldPosition(this, 7, path).y;
 	mLook.mOffset = (Vec) { 0, (jointY - mMoveTranslate.y) + 3.0f * mMoveScale.y, 0 };
@@ -2420,12 +2435,6 @@ u32 CheckStageFlag(s32 stage, u32 mask);
 static inline bool TestStatus(const XObj* object, u64 mask)
 {
 	return (u8)((object->mStatus.mFlags & mask) != 0);
-}
-
-// out of battery, IsPlayerStopped
-static inline bool IsStopped(const XObjChr* chr)
-{
-	return chr->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
 }
 
 // out of battery and slumped over
@@ -6042,7 +6051,7 @@ void XObjAttachment::DrawWithView(Mtx view)
  * @note Address: 0x800A7C70
  * @note Size: 0x1AC
  */
-extern "C" void UpdatePlayerFrameEffects(XObjChr* player)
+extern "C" void UpdatePlayerFrameEffects(XObjChr* player, u32 frames)
 {
 	player->mFrameTime.mLastFrame = player->mFrameTime.mFrame;
 	HSD_AObj* aobj                = GetAObj(player->mJObj);
@@ -6221,12 +6230,6 @@ static inline void StopBatterySound(s32 id)
 {
 	if (IsGameSoundPlaying(&gGame.mSound, id))
 		StopGameSfx(&gGame.mSound, id);
-}
-
-// the battery is flat and the gauge on screen has run down to it
-static inline bool IsBatteryFlat(const XObjChr* p)
-{
-	return p->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
 }
 
 static inline bool IsZeroVec(const Vec& v)
@@ -6450,7 +6453,7 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 			case 6:
 			case 7:
 			case 8:
-				if (p->mPopper.mShotStrength != 0.0f)
+				if (p->mPopper.mShotStrength)
 					index = 30;
 				break;
 			default:
@@ -6562,7 +6565,7 @@ extern "C" void UpdatePlayerBattery(XObjChr* p, u32 frames)
 		if (battery != p->mParams.mBattery)
 			p->mParams.SetBattery(battery);
 		// the battery ran out: he collapses (tumble 4), the camera turns to him and the sounds of what he was doing stop
-		if (IsBatteryFlat(p) && !gGame.mEvt.mData.mScript && (gGame.mStatus.mFlags & 0x40000000) && GetStageBatteryDepletedScript()
+		if (IsStopped(p) && !gGame.mEvt.mData.mScript && (gGame.mStatus.mFlags & 0x40000000) && GetStageBatteryDepletedScript()
 		    && p->mAttachmentRequest < 0 && (p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mCopter.mState
 		    && p->mTumble.mState != 4) {
 			ResetPlayerAttachment(p, -1);
