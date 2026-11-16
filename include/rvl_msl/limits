@@ -1,0 +1,25 @@
+// C++ face of the Wii MSL <limits>: what NW4R reaches through std::
+#ifndef _RVL_MSL_LIMITS
+#define _RVL_MSL_LIMITS
+
+#include <float.h>
+
+namespace std {
+
+template <typename T> class numeric_limits {
+public:
+    static const T epsilon() {
+        return T();
+    }
+};
+
+template <> class numeric_limits<float> {
+public:
+    static const float epsilon() {
+        return FLT_EPSILON;
+    }
+};
+
+} // namespace std
+
+#endif

@@ -20,9 +20,16 @@ namespace nw4r
             if(!(exp))                \
             nw4r::db::Panic(__FILE__, __LINE__, __VA_ARGS__)
 
+        // Final builds of the libraries carry no warnings: retail nw4r::ef inlines math::FSqrt as
+        // `x <= 0 ? 0 : x * FrSqrt(x)` with no call to db::Warning (0x80247824, 0x80250FC8).
+        // NW4R_ASSERT is the switch NW4RAssert.hpp uses.
+        #if defined(NW4R_ASSERT)
         #define NW4R_DB_ASSERT_WARN(exp, ...) \
             if(!(exp))                \
             nw4r::db::Warning(__FILE__, __LINE__, __VA_ARGS__)
+        #else
+        #define NW4R_DB_ASSERT_WARN(exp, ...) ((void)0)
+        #endif
 
         /* DECL_WEAK */ void VPanic(const char* file, int line, const char* fmt, std::va_list vlist, bool halt);
         /* DECL_WEAK */ void Panic(const char* file, int line, const char* fmt, ...);

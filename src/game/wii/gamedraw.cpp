@@ -115,14 +115,6 @@ static inline bool IsSJISLead(char c)
 	return IsSJISByte(c) ? true : false;
 }
 
-inline void CSoundTrackSlot::Stop(int fadeFrames)
-{
-	if (IsAttachedSound()) {
-		((nw4r::snd::detail::BasicSound*)mTrack)->Stop(fadeFrames);
-	}
-}
-
-// as gamemain.cpp defines it
 inline void CSound::StopAllTracks(f32 fade)
 {
 	s32 frames = gRefreshRate * fade;
@@ -176,17 +168,11 @@ static inline void DrawSceneQueue(MtxP view)
 	}
 }
 
-// shortcut: csound.h spells the 64 tracks as flat slots; drop the cast once they are CSoundHandle
-static inline nw4r::snd::SoundHandle& TrackHandle(s32 i)
-{
-	return *(nw4r::snd::SoundHandle*)&gGame.mSound.mTracks[i].mTrack;
-}
-
 // the first track playing sound id, as retail expands it ahead of the jingle loops
-static inline CSoundTrackSlot* FindTrack(u32 id)
+static inline CSoundHandle* FindTrack(u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (TrackHandle(i).IsAttachedSound() && TrackHandle(i).GetId() == id) {
+		if (gGame.mSound.mTracks[i].IsAttachedSound() && gGame.mSound.mTracks[i].GetId() == id) {
 			return &gGame.mSound.mTracks[i];
 		}
 	}
@@ -197,8 +183,8 @@ static inline CSoundTrackSlot* FindTrack(u32 id)
 static inline bool IsTrackPaused(u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (TrackHandle(i).IsAttachedSound() && TrackHandle(i).GetId() == id) {
-			return TrackHandle(i).IsPause();
+		if (gGame.mSound.mTracks[i].IsAttachedSound() && gGame.mSound.mTracks[i].GetId() == id) {
+			return gGame.mSound.mTracks[i].IsPause();
 		}
 	}
 	return false;
@@ -527,7 +513,7 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 	if (game->_D9B5C > 0 && --game->_D9B5C == 0) {
 		s32 frames = gRefreshRate * fade;
 		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = TrackHandle(i);
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
 			if (handle.IsAttachedSound() && handle.IsPause()) {
 				handle.Pause(false, frames);
 			}
@@ -550,7 +536,7 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 					s32 frames = gRefreshRate * 0.2f;
 					u32 id     = music & 0xFFFF;
 					for (int i = 0; i < 0x40; i++) {
-						nw4r::snd::SoundHandle& handle = TrackHandle(i);
+						nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
 						if (handle.IsAttachedSound() && handle.GetId() == id && !handle.IsPause()) {
 							handle.Pause(true, frames);
 						}
@@ -560,7 +546,7 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 		} else if (FindTrack(4) != NULL && IsTrackPaused(4)) {
 			s32 frames = gRefreshRate * fade;
 			for (int i = 0; i < 0x40; i++) {
-				nw4r::snd::SoundHandle& handle = TrackHandle(i);
+				nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
 				if (handle.IsAttachedSound() && handle.GetId() == 4 && handle.IsPause()) {
 					handle.Pause(false, frames);
 				}
@@ -581,7 +567,7 @@ extern "C" void PauseGameSounds(CGame* game, f32 fade)
 	if (game->_D9B5C == 0) {
 		s32 frames = gRefreshRate * fade;
 		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = TrackHandle(i);
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
 			if (handle.IsAttachedSound() && !handle.IsPause()) {
 				handle.Pause(true, frames);
 			}
@@ -600,7 +586,7 @@ extern "C" void PauseGameSounds(CGame* game, f32 fade)
 	if (game->_D9B60 > 0 && FindTrack(4) != NULL && !IsTrackPaused(4)) {
 		s32 frames = gRefreshRate * fade;
 		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = TrackHandle(i);
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
 			if (handle.IsAttachedSound() && handle.GetId() == 4 && !handle.IsPause()) {
 				handle.Pause(true, frames);
 			}
@@ -776,8 +762,8 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 // the scene animation is at its last frame, or will be within this step
 bool CObj::IsAnmScnEnd()
 {
-	f32 frame = mObject.m_pAnmScn != NULL ? mObject.m_pAnmScn->GetFrame() : 0.0f;
-	f32 end   = mObject.m_pAnmScn != NULL ? mObject.m_pAnmScn->mRes.GetNumFrame() - 1 : 0.0f;
+	f32 frame = mObject.m_resources.scn != NULL ? mObject.m_resources.scn->GetFrame() : 0.0f;
+	f32 end   = mObject.m_resources.scn != NULL ? mObject.m_resources.scn->mRes.GetNumFrame() - 1 : 0.0f;
 	return frame + mAnimRate[1] >= end;
 }
 
@@ -808,7 +794,7 @@ extern "C" void StopSceneCameraAnm(CGame* game)
 {
 	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
 	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
-		nw4r::g3d::ResFile* file = (nw4r::g3d::ResFile*)&camera->mObject._00;
+		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
 		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
 			camera->ReleaseModelWork();
 			game->GetPerspectiveCamera()->Init(1.0f, 80000.0f, 30.0f, gScreenWidthScale, &gGame.mGs.mScreen);
@@ -828,7 +814,7 @@ extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate)
 {
 	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
 	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
-		nw4r::g3d::ResFile* file = (nw4r::g3d::ResFile*)&camera->mObject._00;
+		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
 		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
 			camera->SetAnmScn(id, frame, rate);
 			return camera;

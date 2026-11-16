@@ -4065,10 +4065,31 @@ extern "C" CamMapEntry* GetNearestMapCameraEntry(CCameraActionMap* map, const Ve
 	return &map->mIntersectionEntries[idx];
 }
 
+// the outward normal of an area side from a to b, turned about the up or the down axis; on the
+// Wii this is its own function at 0x8015F35C, called by both intersection collectors
+static inline void GetMapAreaEdgeNormal(const Vec& a, const Vec& b, Vec* out, BOOL up)
+{
+	Vec axis;
+	if (up) {
+		axis = (Vec) { 0.0f, 1.0f, 0.0f };
+	} else {
+		axis = (Vec) { 0.0f, -1.0f, 0.0f };
+	}
+	Vec edge;
+	edge.x = a.x - b.x;
+	edge.z = a.z - b.z;
+	edge.y = 0.0f;
+	CVec normal;
+	C_VECCrossProduct(&axis, &edge, &normal);
+	PSVECNormalize(&normal, &normal);
+	*out = normal;
+}
+
 /**
  * @note Address: 0x8013D804
  * @note Size: 0x468
  */
+// NONMATCHING: the frame is 0x10 bigger, retail gives the caller's normal no stack slot of its own
 extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Vec& from, const Vec& to, CamMapEntry* out, s32 type)
 {
 	if (out == NULL) {
@@ -4120,31 +4141,13 @@ extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Ve
 			Vec start = from;
 			Vec hit;
 			if (IntersectLinesXZ(&a, &b, &end, &start, &hit, 1)) {
-				Vec down = { 0.0f, -1.0f, 0.0f };
-				f32 nx, ny, nz;
-				{
-					CVec normal;
-					Vec edge;
-					Vec downCopy;
-					downCopy.x = down.x;
-					downCopy.y = down.y;
-					downCopy.z = down.z;
-					edge.x     = a.x - b.x;
-					edge.z     = a.z - b.z;
-					edge.y     = 0.0f;
-					C_VECCrossProduct(&downCopy, &edge, &normal);
-					PSVECNormalize(&normal, &normal);
-					nx = normal.x;
-					ny = normal.y;
-					nz = normal.z;
-				}
+				Vec normal;
+				GetMapAreaEdgeNormal(a, b, &normal, FALSE);
 				count++;
 				entry->mPos         = hit;
 				entry->mSide        = side;
 				entry->mRecordIndex = i;
-				entry->mNormal.x    = nx;
-				entry->mNormal.y    = ny;
-				entry->mNormal.z    = nz;
+				entry->mNormal      = normal;
 				entry++;
 			}
 		}
@@ -4466,6 +4469,7 @@ extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Ve
  * @note Address: 0x8013DC6C
  * @note Size: 0x600
  */
+// NONMATCHING: the frame is 0x10 bigger, retail gives the caller's normal no stack slot of its own
 s32 CCameraActionMap::CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type)
 {
 	if (out == NULL) {
@@ -4527,31 +4531,13 @@ s32 CCameraActionMap::CalcIntersectVec(const Vec& from, const Vec& to, CamMapEnt
 				        __FUNCTION__);
 			}
 			if (intersects) {
-				Vec down = { 0.0f, -1.0f, 0.0f };
-				f32 nx, ny, nz;
-				{
-					CVec normal;
-					Vec edge;
-					Vec downCopy;
-					downCopy.x = down.x;
-					downCopy.y = down.y;
-					downCopy.z = down.z;
-					edge.x     = a.x - b.x;
-					edge.z     = a.z - b.z;
-					edge.y     = 0.0f;
-					C_VECCrossProduct(&downCopy, &edge, &normal);
-					PSVECNormalize(&normal, &normal);
-					nx = normal.x;
-					ny = normal.y;
-					nz = normal.z;
-				}
+				Vec normal;
+				GetMapAreaEdgeNormal(a, b, &normal, FALSE);
 				count++;
 				entry->mPos         = hit;
 				entry->mSide        = side;
 				entry->mRecordIndex = i;
-				entry->mNormal.x    = nx;
-				entry->mNormal.y    = ny;
-				entry->mNormal.z    = nz;
+				entry->mNormal      = normal;
 				entry++;
 			}
 		}

@@ -994,7 +994,7 @@ extern const ScopeStageSounds lbl_802C49C8[];
 extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
 // gamesound.cpp's, the track playing an archive sound
-CSoundTrackSlot* FindSound(CSound* sound, u32 id);
+CSoundHandle* FindSound(CSound* sound, u32 id);
 
 // the scope takes obj if nothing keeps it from looking and it is nearer to the eye than its pick so far.
 // Retail has these lines twice, the name is ours

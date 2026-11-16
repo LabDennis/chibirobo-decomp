@@ -1210,7 +1210,6 @@ if wii:
                 # string-base register in LoadGlobalResourceData away from retail's r7
                 Object(Equivalent, "game/globalresources.cpp", mw_version="GC/3.0a5",
                        extra_cflags=["-Cpp_exceptions on"]),
-                Object(Equivalent, "game/roboeyeslens.cpp"),
                 # the THP player sits apart from the game's files (0x802C27B4 on) and takes the compiler
                 # without -ipa file: with it MixAudio falls to 99.88 %
                 Object(Equivalent, "game/THPDraw.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),
@@ -1233,7 +1232,7 @@ if wii:
                 # no auto-inlining of the small file functions: under -inline auto the
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
                 # retail keeps them as calls
-                Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(Matching, "game/wii/cfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # the Wii texture/tpl + sound unit 0x802B4DAC-0x802B6094 (ctpl.cpp by its GC
                 # file): CTexObj's quad draws, CTpl's TPL bind and the game's nw4r sound
                 # setup — loader threads, archive open/group load, track fades, 3D actor init
@@ -1292,7 +1291,6 @@ if wii:
                 # callers) while BuildWiiSaveBanner and CheckWiiSaveBanner are reached via
                 # bl - auto-inlining was off for the unit
                 Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
-                Object(Equivalent, "game/wii/soundbank.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # shared GameCube game units found on the Wii (wii_gc_pairs.txt)
                 Object(Equivalent, "game/cinterpolationeaseout.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # FindAreaContainingPoint takes Vec by value on the Wii (the retail caller copies all
@@ -1434,15 +1432,10 @@ if wii:
                 Object(NonMatching, "game/wii/cinterpolationeaseoutdivide.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii range 0x8003366C-0x800354DC (wii_units.md #20): constructors and the nw4r sound wrappers
                 Object(NonMatching, "game/wii/unit_8003366C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the Wii range 0x80036618-0x8003AA58 (wii_units.md #23): the game sound front end (InitGameSound, PlayWiiSoundEffect)
-                Object(NonMatching, "game/wii/gamesound.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the Wii range 0x8003AB00-0x8003CEA0 (wii_units.md #25): positional sound and the stage sound effects
-                # (these and msg.cpp use the nw4r sound headers, which need the Wii MSL's <cstdarg> and <new>)
+                # the Wii sound file 0x80036694-0x8003CEB0 (wii_units.md #23-#25): the sound front end,
+                # the sound banks, the sound picks, the glyph sounds, the stage reverb and AnimSfx. The
+                # nw4r sound headers need the Wii MSL's <cstdarg> and <new>
                 Object(NonMatching, "game/wii/sound.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the Wii range 0x80040E4C-0x8004328C (wii_units.md #28): pointer cursor, HUD drawing and the dust particles
-                Object(NonMatching, "game/wii/unit_80040E4C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the Wii range 0x8004328C-0x80044FD8 (wii_units.md #28): the small XObj-family virtuals behind them
-                Object(NonMatching, "game/wii/unit_8004328C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
             ],
         },
         {
@@ -1554,33 +1547,65 @@ if wii:
                 Object(Matching, "nw4r/ut/ut_RomFont.cpp"),
                 Object(Matching, "nw4r/ut/ut_ResFontBase.cpp"),
                 Object(Matching, "nw4r/ut/ut_ResFont.cpp"),
-                # code 3 of 3; FrSqrt (0x80282DB8) is WiiReciprocalSquareRoot in symbols.txt because
-                # src/game/wii/arithmetic.h declares and calls it under that name: links once the game
-                # calls nw4r::math::FrSqrt
-                Object(NonMatching, "nw4r/math/math_arithmetic.cpp"),
+                # nw4r::db (0x80235D54-0x802362B8)
+                Object(Matching, "nw4r/db/db_console.cpp"),
+                Object(Matching, "nw4r/db/db_assert.cpp"),
+                Object(Matching, "nw4r/math/math_arithmetic.cpp"),
                 Object(Matching, "nw4r/math/math_triangular.cpp"),
                 Object(NonMatching, "nw4r/math/math_types.cpp"),
                 # code 5 of 5; retail's .sdata2 starts with 0.5f and 0.0f, here they come after the two
                 # TanDeg constants: a function ahead of FRUSTUM::Set that the linker removed used them
                 # (the reference decomps force the order with a macro)
                 Object(NonMatching, "nw4r/math/math_geometry.cpp"),
+                # nw4r::ef (0x802362B8-0x8025B5A4), version text of 23.1.2009; after wiiplay's older ef (8.6.2007)
+                # NonMatching: emitter, util and smooth stripe have 100 % code but their literal pools
+                # differ from retail (emitter 8 bytes shorter, util and postfield in another order,
+                # smooth stripe .sdata2/.sbss); animcurve, postfield, particle and particlemanager
+                # have open functions (see // NONMATCHING in the files).
+                Object(Matching, "nw4r/ef/ef_draworder.cpp"),
+                Object(Matching, "nw4r/ef/ef_effect.cpp"),
+                Object(Matching, "nw4r/ef/ef_effectsystem.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_emitter.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_animcurve.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_postfield.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_particle.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_particlemanager.cpp"),
+                Object(Matching, "nw4r/ef/ef_resource.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_util.cpp"),
+                Object(Matching, "nw4r/ef/ef_handle.cpp"),
+                Object(Matching, "nw4r/ef/ef_emitterform.cpp"),
+                Object(Matching, "nw4r/ef/ef_creationqueue.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_emform.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_point.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_line.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_disc.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_sphere.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_cylinder.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_torus.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_cube.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawstrategybuilder.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawstrategyimpl.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawbillboardstrategy.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawdirectionalstrategy.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawfreestrategy.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawlinestrategy.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawpointstrategy.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawstripestrategy.cpp"),
+                Object(NonMatching, "nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.cpp"),
+                Object(Matching, "nw4r/ef/ef_res_emitter_ac.cpp"),
                 # nw4r::g3d (0x8025B5A4-0x80282CA0)
                 Object(Matching, "nw4r/g3d/res/g3d_rescommon.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resdict.cpp"),
-                # 33 of 34, not linked: 0x8025BCB8 is ResFile::GetResAnmChrNumEntries but keeps the name fn_8025BCB8
-                # that game/wii/title.cpp declares.
-                Object(NonMatching, "nw4r/g3d/res/g3d_resfile.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resfile.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resmdl.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resshp.cpp"),
-                # 11 of 12: SetNumTevStages (see the comment in the source).
+                # 11 of 12: SetNumTevStages expands GXSetTevOrder, which retail calls (see the comment in the source).
                 Object(NonMatching, "nw4r/g3d/res/g3d_restev.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resmat.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resvtx.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_restex.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resnode.cpp"),
-                # 2 of 2, not linked: GetResColorAnmResult emits ut::Color's weak destructor; retail's copy lies in an
-                # earlier unit that is not identified yet, so the link keeps ours as well.
-                Object(NonMatching, "nw4r/g3d/res/g3d_resanm.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanm.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resanmvis.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resanmclr.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resanmtexpat.cpp"),
@@ -1604,43 +1629,30 @@ if wii:
                 Object(Matching, "nw4r/g3d/g3d_anmtexsrt.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_anmchr.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_anmshp.cpp"),
-                # 44 of 44, not linked: AnmScnRes::GetNumLightSet is a header inline whose retail copy is
-                # fn_8009C3D4 in the game's range (slot 0x38 of the vtable at 0x803336D8); until that symbol
-                # carries the name the link keeps ours as well and everything behind moves by 8 bytes.
-                Object(NonMatching, "nw4r/g3d/g3d_anmscn.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_anmscn.cpp"),
                 # 5 of 5, not linked: retail emits G3dObj's weak virtuals as IsDerivedFrom, GetTypeName, GetTypeObj
                 # (0x8026C5EC), this source as GetTypeName, GetTypeObj, IsDerivedFrom. xenoblade gets retail's
-                # order with a DECOMP_FORCEACTIVE reference to IsDerivedFrom at the end of the file.
+                # order with a DECOMP_FORCEACTIVE reference to IsDerivedFrom at the end of the file, wiiplay and ogws
+                # too. The compiler emits a class's weak virtuals in reverse order of declaration; defining
+                # IsDerivedFrom inline behind the class instead of inside it changes nothing.
                 Object(NonMatching, "nw4r/g3d/g3d_obj.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_anmobj.cpp"),
                 Object(Matching, "nw4r/g3d/platform/g3d_gpu.cpp"),
                 Object(Matching, "nw4r/g3d/platform/g3d_cpu.cpp"),
-                # 42 of 42, not linked: its static initializer hands LightObj's destructor to __construct_array
-                # (0x802704E0). Retail's copy of that weak function is dtor_8009C394 in the game's range;
-                # until that symbol is called __dt__Q34nw4r3g3d8LightObjFv the link keeps ours as well.
-                Object(NonMatching, "nw4r/g3d/g3d_state.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_state.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_draw1mat1shp.cpp"),
-                # 11 of 11 once .rodata 0x802E0140-0x802E015C (bbFunc) is in its split: without it dtk exports the
-                # six Calc_BILLBOARD_* functions and they are not compared. Left out because they call
-                # nw4r::math::FrSqrt, which symbols.txt has to call WiiReciprocalSquareRoot for the game's sake
-                # (22 lines in callcheck); the same name keeps the unit from linking.
-                Object(NonMatching, "nw4r/g3d/g3d_calcview.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_calcview.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_dcc.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_workmem.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_calcworld.cpp"),
-                # 10 of 13: std::sort and __sort132 as in g3d_scnroot.
-                Object(NonMatching, "nw4r/g3d/g3d_draw.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_draw.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_camera.cpp"),
                 Object(Matching, "nw4r/g3d/dcc/g3d_basic.cpp"),
                 Object(Matching, "nw4r/g3d/dcc/g3d_maya.cpp"),
                 Object(Matching, "nw4r/g3d/dcc/g3d_xsi.cpp"),
                 Object(Matching, "nw4r/g3d/dcc/g3d_3dsmax.cpp"),
-                # 33 of 34: SetBoundingVolume ends with one unreachable blr more than retail.
-                Object(NonMatching, "nw4r/g3d/g3d_scnobj.cpp"),
-                # 39 of 42: the three std::sort functions. Retail calls std::__sort132 out of line (0x8027C15C); the
-                # references (wiiplay, ogws, ss) get that with a never_inline attribute in the MSL header, which
-                # include/rvl_msl/algorithm does not carry.
-                Object(NonMatching, "nw4r/g3d/g3d_scnroot.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_scnobj.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_scnroot.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_scnmdlsmpl.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_scnmdl.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_calcmaterial.cpp"),

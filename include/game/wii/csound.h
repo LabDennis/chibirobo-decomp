@@ -3,27 +3,61 @@
 
 #include "types.h"
 #include "Dolphin/mtx.h"
+#include "nw4r/snd/snd_SoundHandle.h"
 
 class CSound;
 
-// one mixer track: current/target/step for volume and pan, faded by
-// UpdateGameSound every frame; the SFX commands only reach mTrack
-struct CSoundTrackSlot {
-	void* mTrack;      // _00
+// a sound handle with the volume and pitch it fades to. The class has no RTTI, the name is ours.
+// CSound keeps 64 of them, one per sound it can play at once
+class CSoundHandle : public nw4r::snd::SoundHandle {
+public:
 	f32 mVolume;       // _04
 	f32 mVolumeTarget; // _08
 	f32 mVolumeStep;   // _0C
-	f32 mPan;          // _10
-	f32 mPanTarget;    // _14
-	f32 mPanStep;      // _18
+	f32 mPitch;        // _10
+	f32 mPitchTarget;  // _14
+	f32 mPitchStep;    // _18
 	u8 _1C[4];
 
-	// mTrack is an nw4r::snd::SoundHandle (one pointer to the sound); these are its two inlines
-	// (Stop is defined where it is used, behind nw4r/snd/snd_BasicSound.h)
-	bool IsAttachedSound() const { return mTrack != NULL; }
-	void Stop(int fadeFrames);
+	// frames of 0 set the value at once, otherwise UpdateGameSound steps to it
+	void SetVolume(f32 volume, s32 frames)
+	{
+		mVolumeTarget = volume;
+		if (frames == 0 || mVolumeTarget == mVolume) {
+			mVolume = mVolumeTarget;
+		} else {
+			mVolumeStep = (mVolumeTarget - mVolume) / frames;
+		}
+		nw4r::snd::SoundHandle::SetVolume(mVolume, 0);
+	}
+	void SetPitch(f32 pitch, s32 frames)
+	{
+		mPitchTarget = pitch;
+		if (frames == 0 || mPitchTarget == mPitch) {
+			mPitch = mPitchTarget;
+		} else {
+			mPitchStep = (mPitchTarget - mPitch) / frames;
+		}
+		nw4r::snd::SoundHandle::SetPitch(mPitch);
+	}
+	f32 GetVolume() const { return mVolume; }
+	f32 GetPitch() const { return mPitch; }
+	f32 GetVolumeTarget() const { return mVolumeTarget; }
+	f32 GetPitchTarget() const { return mPitchTarget; }
+	void Pause(s32 frames)
+	{
+		if (!IsPause()) {
+			nw4r::snd::SoundHandle::Pause(true, frames);
+		}
+	}
+	void Resume(s32 frames)
+	{
+		if (IsPause()) {
+			nw4r::snd::SoundHandle::Pause(false, frames);
+		}
+	}
 };
-STATIC_ASSERT(sizeof(CSoundTrackSlot) == 0x20);
+STATIC_ASSERT(sizeof(CSoundHandle) == 0x20);
 
 // the nw4r archive player seen through the offsets this unit touches; CSound
 // holds its bytes flat, with the track table broken out as its own member
@@ -69,7 +103,7 @@ class CSound {
 public:
 	u8 mDvdSoundArchive[0x190];                  // CDvdSoundArchive: path open, size@_124, data@_18C
 	u8 mArchivePlayer[0xF4];                     // CSoundArchivePlayer head
-	CSoundTrackSlot mTracks[0x40];               // the player's 64-track table
+	CSoundHandle mTracks[0x40];                  // the player's 64-track table
 	u8 mArchivePlayerTail[0x8F8 - 0xF4 - 0x800]; // through _A88
 	u8 mSoundHeap[0x2C];                         // CSoundHeap
 	u32 mSoundHeapSize;
@@ -147,8 +181,8 @@ void SetWiiSfxVolume(XSound* sound, s32 id, f32 volume, f32 fade); // 0x80039DB4
 BOOL LoadWiiSoundBankByName(XSound* sound, const char* name);
 // gamesound.cpp; the slot results are CSound::mTracks entries
 void UpdateXSound(XSound* sound, s32 step);                        // 0x800366EC
-CSoundTrackSlot* GetGameSoundSlot(XSound* sound, s32 sfx);         // 0x800394B0
-CSoundTrackSlot* GetGameMusicSlot(XSound* sound);                  // 0x80039924
+CSoundHandle* GetGameSoundSlot(XSound* sound, s32 sfx);            // 0x800394B0
+CSoundHandle* GetGameMusicSlot(XSound* sound);                     // 0x80039924
 void SetGameSfxPitch(XSound* sound, s32 sfx, f32 cents, f32 fade); // 0x80039FDC
 void FadeInGameSfx(XSound* sound, s32 sfx, f32 fade);              // 0x8003A13C
 void FadeOutGameSfx(XSound* sound, s32 sfx, f32 fade);             // 0x8003A60C
