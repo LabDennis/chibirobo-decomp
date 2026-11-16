@@ -51,8 +51,8 @@ static inline bool isMusic(s32 sfx)
 static inline CSoundHandle* findFreeHandle(XSound* sound)
 {
 	for (s32 i = 0; i < 0x40; i++) {
-		if (!((CSoundHandle&)sound->mTracks[i]).IsAttachedSound()) {
-			return (CSoundHandle*)&sound->mTracks[i];
+		if (!sound->mTracks[i].IsAttachedSound()) {
+			return &sound->mTracks[i];
 		}
 	}
 	return NULL;
@@ -83,8 +83,8 @@ static inline CSoundHandle* startSound(XSound* sound, u32 id, f32 volume, s32 fa
 static inline void stopTracks(XSound* sound, u32 id, s32 frames)
 {
 	for (s32 i = 0; i < 0x40; i++) {
-		if (((CSoundHandle&)sound->mTracks[i]).IsAttachedSound() && ((CSoundHandle&)sound->mTracks[i]).GetId() == id) {
-			((CSoundHandle&)sound->mTracks[i]).Stop(frames);
+		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
+			sound->mTracks[i].Stop(frames);
 		}
 	}
 }
@@ -105,8 +105,8 @@ static inline void pauseMusic(XSound* sound, f32 seconds)
 {
 	u32 id = sound->mCurrentMusicId & 0xFFFF;
 	for (s32 i = 0; i < 0x40; i++) {
-		if (((CSoundHandle&)sound->mTracks[i]).IsAttachedSound() && ((CSoundHandle&)sound->mTracks[i]).GetId() == id) {
-			((CSoundHandle&)sound->mTracks[i]).Pause(0);
+		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
+			sound->mTracks[i].Pause(0);
 		}
 	}
 	s32 frames               = gRefreshRate * seconds;
@@ -217,9 +217,6 @@ extern "C" BOOL CanPlayNightStream(XSound* sound)
  * @note Address: 0x8003AC64
  * @note Size: 0x518
  */
-// NONMATCHING: csound.h types the 64 handles as CSoundTrackSlot with a void*, so the loops reach them through a
-// cast and keep their own pointer (addi rX, sound, 0x284) where retail indexes off the sound object. With
-// mTracks typed as CSoundHandle this function is 100 %.
 // one of the five footstep sounds of the floor chibi robo walks on, -1 on a silent one; three kinds of
 // floor play a sound of their own under it
 extern "C" s32 SelectFootstepSound(XSound* sound)
@@ -249,9 +246,6 @@ extern "C" s32 SelectFootstepSound(XSound* sound)
  * @note Address: 0x8003B17C
  * @note Size: 0x230
  */
-// NONMATCHING: csound.h types the 64 handles as CSoundTrackSlot with a void*, so the loops reach them through a
-// cast and keep their own pointer (addi rX, sound, 0x284) where retail indexes off the sound object. With
-// mTracks typed as CSoundHandle this function is 100 %.
 extern "C" s32 SelectAlternatingSound7E(XSound* sound)
 {
 	for (u32 i = 0; i < 4; i++) {
@@ -275,9 +269,6 @@ extern "C" s32 SelectAlternatingSound7E(XSound* sound)
  * @note Address: 0x8003B3AC
  * @note Size: 0x230
  */
-// NONMATCHING: csound.h types the 64 handles as CSoundTrackSlot with a void*, so the loops reach them through a
-// cast and keep their own pointer (addi rX, sound, 0x284) where retail indexes off the sound object. With
-// mTracks typed as CSoundHandle this function is 100 %.
 // 0x7E and 0x82 each play the four sounds of their set in turn: starting one set stops the other, and a set
 // does not start again while one of its own sounds still plays
 extern "C" s32 SelectAlternatingSound82(XSound* sound)
@@ -303,9 +294,6 @@ extern "C" s32 SelectAlternatingSound82(XSound* sound)
  * @note Address: 0x8003B5DC
  * @note Size: 0x154
  */
-// NONMATCHING: csound.h types the 64 handles as CSoundTrackSlot with a void*, so the loops reach them through a
-// cast and keep their own pointer (addi rX, sound, 0x284) where retail indexes off the sound object. With
-// mTracks typed as CSoundHandle this function is 100 %.
 // 0x16A's sequence: pauses the music and gives the next sound unless 0x16A still plays
 extern "C" s32 SelectVoiceSequenceSound(XSound* sound)
 {
@@ -325,9 +313,6 @@ extern "C" s32 SelectVoiceSequenceSound(XSound* sound)
  * @note Address: 0x8003B730
  * @note Size: 0x158
  */
-// NONMATCHING: csound.h types the 64 handles as CSoundTrackSlot with a void*, so the loops reach them through a
-// cast and keep their own pointer (addi rX, sound, 0x284) where retail indexes off the sound object. With
-// mTracks typed as CSoundHandle this function is 100 %.
 // 0x17D's sequence; silent while the cooking music (0xFF0037) plays, otherwise it pauses the music
 extern "C" s32 SelectCookingSequenceSound(XSound* sound)
 {
@@ -360,9 +345,6 @@ extern "C" s32 SelectSequenceSound1A4(XSound* sound)
  * @note Address: 0x8003B8C4
  * @note Size: 0x244
  */
-// NONMATCHING: csound.h types the 64 handles as CSoundTrackSlot with a void*, so the loops reach them through a
-// cast and keep their own pointer (addi rX, sound, 0x284) where retail indexes off the sound object. With
-// mTracks typed as CSoundHandle this function is 100 %.
 // PlayWiiSoundEffect's 0x1E2 and its neighbours: pause bgm or bgm_night for three seconds and pick one of six sounds
 extern "C" s32 SelectVariantSound(XSound* sound, u32 sfx)
 {
@@ -594,9 +576,6 @@ extern "C" s32 SelectMappedSound(s32 sfx)
  * @note Address: 0x8003BEAC
  * @note Size: 0x380
  */
-// NONMATCHING: csound.h types the 64 handles as CSoundTrackSlot with a void*, so the loops reach them through a
-// cast and keep their own pointer (addi rX, sound, 0x284) where retail indexes off the sound object. With
-// mTracks typed as CSoundHandle this function is 100 %.
 // PlayWiiSoundEffect's 0x1F9-0x1FB: pause bgm or bgm_night for two seconds and stop whichever of the three plays
 extern "C" s32 PauseMusicForJingle(XSound* sound, s32 sfx)
 {

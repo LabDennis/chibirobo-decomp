@@ -13,14 +13,6 @@
 // The unit's first four functions (0x80036618..0x80036694) are not this file's: CCamera::CalcUp,
 // CCamera::CalcInterest, CCameraActionMap::GetTarget and CCamera's viewport virtual at slot 0x84 are
 // in-class virtuals the file in front of this one (gxa.cpp on the GameCube) left behind.
-//
-// NONMATCHING, all functions that walk the 64 handles: csound.h spells CSound::mTracks as plain
-// structs with a void* in front, so the handle calls go through a pointer cast (Handle below) and
-// the compiler walks a pointer where retail indexes the member (lwz r7, 0x284(r6)). With mTracks
-// typed as SoundHandle-derived objects (CSoundHandle, csound3dactor.h) and the calls written on
-// sound->mTracks[i] itself, GetGameSoundSlot, StopWiiSfx, PauseWiiSfx, ResumeWiiSfx, SetWiiSfxVolume,
-// SetGameSfxPitch, FadeInGameSfx and FadeOutGameSfx compile to retail's bytes, UpdateXSound to all
-// but its clear loop.
 
 extern s32 gRefreshRate;
 // the frames a started sound takes to reach its volume and pitch; nothing in retail writes it
@@ -46,15 +38,8 @@ s32 SelectMappedSound(s32 sfx);
 s32 PauseMusicForJingle(XSound* sound, s32 sfx);
 }
 
-// shortcut: csound.h still holds the nw4r objects as raw bytes and the handle as void*, and other
-// lanes' sources depend on that; these three give them their types. Drop them once CSound's
-// members are typed (mTracks are 64 CSoundHandle, see csound3dactor.h; mArchivePlayer is a
-// nw4r::snd::SoundArchivePlayer; mArchivePlayerTail is the output line flag).
-static inline nw4r::snd::SoundHandle& Handle(CSoundTrackSlot* slot)
-{
-	return *(nw4r::snd::SoundHandle*)&slot->mTrack;
-}
-
+// shortcut: csound.h still holds the archive player as raw bytes; these two give its parts their
+// types. Drop them once CSound::mArchivePlayer is a nw4r::snd::SoundArchivePlayer.
 // the player's SoundStartable base, behind its 0xC of DisposeCallback: snd_SoundArchivePlayer.h
 // does not compile with the game's include paths (<new>, <climits>)
 static inline nw4r::snd::SoundStartable& ArchivePlayer(CSound* sound)
@@ -71,10 +56,10 @@ bool isAllSfx(XSound* sound, s32 sfx);
 s32 SecondsToFrames(f32 seconds);
 f32 CentsToPitch(f32 cents);
 s32 Random(s32 max);
-static inline void SetSlotVolume(CSoundTrackSlot* slot, f32 volume, s32 frames, BOOL apply);
-void SetSlotPitch(CSoundTrackSlot* slot, f32 pitch, s32 frames, BOOL apply);
-CSoundTrackSlot* FindSound(CSound* sound, u32 id);
-CSoundTrackSlot* StartSound(CSound* sound, u32 id, f32 volume, s32 fadeFrames);
+static inline void SetSlotVolume(CSoundHandle* slot, f32 volume, s32 frames, BOOL apply);
+void SetSlotPitch(CSoundHandle* slot, f32 pitch, s32 frames, BOOL apply);
+CSoundHandle* FindSound(CSound* sound, u32 id);
+CSoundHandle* StartSound(CSound* sound, u32 id, f32 volume, s32 fadeFrames);
 static inline void StopSound(CSound* sound, u32 id, s32 fadeFrames);
 static inline void ResumeSound(CSound* sound, u32 id, s32 fadeFrames);
 static inline void SetSoundVolume(CSound* sound, u32 id, f32 volume, s32 frames);
@@ -146,7 +131,7 @@ BOOL XSound::LoadGroupAsync(s32 groupId)
 // GameCube's UpdateGameSound is the counterpart (that name is the CSound update's here).
 // NONMATCHING: retail clears mStartedSfx in a counted loop of four rounds with eight stores each
 // (0x80036738), this compiler writes the 32 stores out; for, while, do-while, pointer and nested
-// forms were tried. The rest matches once the handles are typed (see the top of the file).
+// forms were tried.
 extern "C" void UpdateXSound(XSound* sound, s32 step)
 {
 	UpdateGameSound(sound, step);
@@ -221,12 +206,11 @@ extern "C" void UpdateXSound(XSound* sound, s32 step)
  * @note Size: 0x100
  */
 // the slot playing the archive sound id, or NULL
-// NONMATCHING: the handle typing (see the top of the file); with typed handles the code is retail's
-// but the walker, the index and the handle take r5, r7, r6 where retail has r6, r5, r7
-CSoundTrackSlot* FindSound(CSound* sound, u32 id)
+// NONMATCHING: the walker, the index and the handle take r5, r7, r6 where retail has r6, r5, r7
+CSoundHandle* FindSound(CSound* sound, u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (Handle(&sound->mTracks[i]).IsAttachedSound() && Handle(&sound->mTracks[i]).GetId() == id) {
+		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
 			return &sound->mTracks[i];
 		}
 	}
@@ -261,7 +245,7 @@ extern "C" BOOL IsPlayerCarryingPlug(WiiPlayerState* player)
 // (0x64C bytes against 0x640). Nothing honest supplies that weight, so the helpers expand here.
 extern "C" s32 PlayWiiSoundEffect(XSound* sound, s32 sfx, f32 volume, f32 fade)
 {
-	CSoundTrackSlot* slot;
+	CSoundHandle* slot;
 	if (isAllSfx(sound, sfx)) {
 		if (sfx == 0xFF0000) {
 			return 0;
@@ -443,10 +427,10 @@ bool isAllSfx(XSound* sound, s32 sfx)
 	return (sfx & 0x00FF0000) == 0x00FF0000;
 }
 
-static inline CSoundTrackSlot* FindFreeSlot(CSound* sound)
+static inline CSoundHandle* FindFreeSlot(CSound* sound)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (!Handle(&sound->mTracks[i]).IsAttachedSound()) {
+		if (!sound->mTracks[i].IsAttachedSound()) {
 			return &sound->mTracks[i];
 		}
 	}
@@ -454,7 +438,7 @@ static inline CSoundTrackSlot* FindFreeSlot(CSound* sound)
 }
 
 // the slot's volume moves to its target over frames; UpdateGameSound steps it
-static inline void SetSlotVolume(CSoundTrackSlot* slot, f32 volume, s32 frames, BOOL apply)
+static inline void SetSlotVolume(CSoundHandle* slot, f32 volume, s32 frames, BOOL apply)
 {
 	slot->mVolumeTarget = volume;
 	if (frames == 0 || slot->mVolumeTarget == slot->mVolume) {
@@ -463,7 +447,7 @@ static inline void SetSlotVolume(CSoundTrackSlot* slot, f32 volume, s32 frames, 
 		slot->mVolumeStep = (slot->mVolumeTarget - slot->mVolume) / frames;
 	}
 	if (apply) {
-		Handle(slot).SetVolume(slot->mVolume, 0);
+		slot->nw4r::snd::SoundHandle::SetVolume(slot->mVolume, 0);
 	}
 }
 
@@ -471,21 +455,20 @@ static inline void SetSlotVolume(CSoundTrackSlot* slot, f32 volume, s32 frames, 
  * @note Address: 0x800377C0
  * @note Size: 0x1F8
  */
-// NONMATCHING: the handle typing (see the top of the file); with typed handles one pair is left:
-// retail stores the volume target ahead of the compare of gSoundFadeFrames (0x8003786C), ours after
-CSoundTrackSlot* StartSound(CSound* sound, u32 id, f32 volume, s32 fadeFrames)
+// NONMATCHING: retail stores the volume target ahead of the compare of gSoundFadeFrames (0x8003786C), ours after
+CSoundHandle* StartSound(CSound* sound, u32 id, f32 volume, s32 fadeFrames)
 {
-	CSoundTrackSlot* slot = FindFreeSlot(sound);
+	CSoundHandle* slot = FindFreeSlot(sound);
 	if (slot != NULL) {
-		if (ArchivePlayer(sound).StartSound(&Handle(slot), id)) {
-			Handle(slot).SetOutputLineFlag(OutputLineFlag(sound));
+		if (ArchivePlayer(sound).StartSound(&(*slot), id)) {
+			slot->SetOutputLineFlag(OutputLineFlag(sound));
 			SetSlotVolume(slot, volume, gSoundFadeFrames, TRUE);
 			SetSlotPitch(slot, 1.0f, gSoundFadeFrames, TRUE);
 			if (OutputLineFlag(sound) & 2) {
-				Handle(slot).SetRemoteOutVolume(0, 0.5f);
+				slot->SetRemoteOutVolume(0, 0.5f);
 			}
 			if (fadeFrames > 0) {
-				Handle(slot).FadeIn(fadeFrames);
+				slot->FadeIn(fadeFrames);
 			}
 		} else {
 			slot = NULL;
@@ -501,16 +484,16 @@ CSoundTrackSlot* StartSound(CSound* sound, u32 id, f32 volume, s32 fadeFrames)
  * @note Size: 0x8C
  */
 // csound.h calls these three fields pan; what they hold goes to SetPitch
-void SetSlotPitch(CSoundTrackSlot* slot, f32 pitch, s32 frames, BOOL apply)
+void SetSlotPitch(CSoundHandle* slot, f32 pitch, s32 frames, BOOL apply)
 {
-	slot->mPanTarget = pitch;
-	if (frames == 0 || slot->mPanTarget == slot->mPan) {
-		slot->mPan = slot->mPanTarget;
+	slot->mPitchTarget = pitch;
+	if (frames == 0 || slot->mPitchTarget == slot->mPitch) {
+		slot->mPitch = slot->mPitchTarget;
 	} else {
-		slot->mPanStep = (slot->mPanTarget - slot->mPan) / frames;
+		slot->mPitchStep = (slot->mPitchTarget - slot->mPitch) / frames;
 	}
 	if (apply) {
-		Handle(slot).SetPitch(slot->mPan);
+		slot->nw4r::snd::SoundHandle::SetPitch(slot->mPitch);
 	}
 }
 
@@ -554,7 +537,7 @@ s32 Random(s32 max)
  * @note Size: 0x19AC
  */
 // returns the slot the sound plays in; csound.h declares the result as s32
-// NONMATCHING: the handle typing (see the top of the file). With typed handles 97.3 %: where a
+// NONMATCHING: where a
 // case returns its last search, retail tests the result and returns it either way (cmpwi r3, 0;
 // beqlr; blr at 0x800383EC, 0x8003939C, 0x800394A4) and ours loads the 0 again (bnelr; li r3, 0).
 extern "C" s32 IsWiiSfxPlaying(XSound* sound, s32 sfx)
@@ -579,7 +562,7 @@ extern "C" s32 IsWiiSfxPlaying(XSound* sound, s32 sfx)
 		return 0;
 	}
 
-	CSoundTrackSlot* slot;
+	CSoundHandle* slot;
 	// 0x88 and 0x16A stand for every sound PlayWiiSoundEffect picks for them
 	switch (sfx) {
 	case 0x88:
@@ -656,8 +639,7 @@ extern "C" s32 IsWiiSfxPlaying(XSound* sound, s32 sfx)
  * @note Size: 0x474
  */
 // the slot a sound plays in, without IsWiiSfxPlaying's shortcuts; CEvt's SFX command asks it
-// NONMATCHING: the handle typing only (see the top of the file)
-extern "C" CSoundTrackSlot* GetGameSoundSlot(XSound* sound, s32 sfx)
+extern "C" CSoundHandle* GetGameSoundSlot(XSound* sound, s32 sfx)
 {
 	if (isAllSfx(sound, sfx)) {
 		if (sound->mCurrentMusicId == sfx) {
@@ -681,7 +663,7 @@ extern "C" CSoundTrackSlot* GetGameSoundSlot(XSound* sound, s32 sfx)
  */
 // NONMATCHING: retail leaves GetGameSoundSlot a call here (a tail branch); this compiler expands
 // it, in either order of the two and with or without -ipa file
-extern "C" CSoundTrackSlot* GetGameMusicSlot(XSound* sound)
+extern "C" CSoundHandle* GetGameMusicSlot(XSound* sound)
 {
 	if (sound->mCurrentMusicId != 0) {
 		return GetGameSoundSlot(sound, sound->mCurrentMusicId);
@@ -692,8 +674,8 @@ extern "C" CSoundTrackSlot* GetGameMusicSlot(XSound* sound)
 static inline void StopSound(CSound* sound, u32 id, s32 fadeFrames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (Handle(&sound->mTracks[i]).IsAttachedSound() && Handle(&sound->mTracks[i]).GetId() == id) {
-			Handle(&sound->mTracks[i]).Stop(fadeFrames);
+		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
+			sound->mTracks[i].Stop(fadeFrames);
 		}
 	}
 }
@@ -702,7 +684,6 @@ static inline void StopSound(CSound* sound, u32 id, s32 fadeFrames)
  * @note Address: 0x8003993C
  * @note Size: 0x16C
  */
-// NONMATCHING: the handle typing only (see the top of the file)
 extern "C" void StopWiiSfx(XSound* sound, s32 sfx, f32 fade)
 {
 	if (isAllSfx(sound, sfx)) {
@@ -717,9 +698,9 @@ extern "C" void StopWiiSfx(XSound* sound, s32 sfx, f32 fade)
 static inline void PauseSound(CSound* sound, u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (Handle(&sound->mTracks[i]).IsAttachedSound() && Handle(&sound->mTracks[i]).GetId() == id) {
-			if (!Handle(&sound->mTracks[i]).IsPause()) {
-				Handle(&sound->mTracks[i]).Pause(true, 0);
+		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
+			if (!sound->mTracks[i].IsPause()) {
+				sound->mTracks[i].nw4r::snd::SoundHandle::Pause(true, 0);
 			}
 		}
 	}
@@ -730,7 +711,6 @@ static inline void PauseSound(CSound* sound, u32 id)
  * @note Size: 0x12C
  */
 // the music comes back after resumeDelay seconds; 0 never runs out
-// NONMATCHING: the handle typing only (see the top of the file)
 extern "C" void PauseWiiSfx(XSound* sound, s32 sfx, f32 resumeDelay)
 {
 	if (isAllSfx(sound, sfx)) {
@@ -743,9 +723,9 @@ extern "C" void PauseWiiSfx(XSound* sound, s32 sfx, f32 resumeDelay)
 static inline void ResumeSound(CSound* sound, u32 id, s32 fadeFrames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (Handle(&sound->mTracks[i]).IsAttachedSound() && Handle(&sound->mTracks[i]).GetId() == id) {
-			if (Handle(&sound->mTracks[i]).IsPause()) {
-				Handle(&sound->mTracks[i]).Pause(false, fadeFrames);
+		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
+			if (sound->mTracks[i].IsPause()) {
+				sound->mTracks[i].nw4r::snd::SoundHandle::Pause(false, fadeFrames);
 			}
 		}
 	}
@@ -755,7 +735,6 @@ static inline void ResumeSound(CSound* sound, u32 id, s32 fadeFrames)
  * @note Address: 0x80039BD4
  * @note Size: 0x1E0
  */
-// NONMATCHING: the handle typing only (see the top of the file)
 extern "C" void ResumeWiiSfx(XSound* sound, s32 sfx, f32 fade)
 {
 	if (isAllSfx(sound, sfx)) {
@@ -773,7 +752,7 @@ extern "C" void ResumeWiiSfx(XSound* sound, s32 sfx, f32 fade)
 static inline void SetSoundVolume(CSound* sound, u32 id, f32 volume, s32 frames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (Handle(&sound->mTracks[i]).IsAttachedSound() && Handle(&sound->mTracks[i]).GetId() == id) {
+		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
 			SetSlotVolume(&sound->mTracks[i], volume, frames, TRUE);
 		}
 	}
@@ -784,7 +763,6 @@ static inline void SetSoundVolume(CSound* sound, u32 id, f32 volume, s32 frames)
  * @note Size: 0x228
  */
 // a music id moves the playing music, anything else that one sfx
-// NONMATCHING: the handle typing only (see the top of the file)
 extern "C" void SetWiiSfxVolume(XSound* sound, s32 sfx, f32 volume, f32 fade)
 {
 	if (isAllSfx(sound, sfx)) {
@@ -797,7 +775,7 @@ extern "C" void SetWiiSfxVolume(XSound* sound, s32 sfx, f32 volume, f32 fade)
 static inline void SetSoundPitch(CSound* sound, u32 id, f32 pitch, s32 frames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (Handle(&sound->mTracks[i]).IsAttachedSound() && Handle(&sound->mTracks[i]).GetId() == id) {
+		if (sound->mTracks[i].IsAttachedSound() && sound->mTracks[i].GetId() == id) {
 			SetSlotPitch(&sound->mTracks[i], pitch, frames, TRUE);
 		}
 	}
@@ -807,7 +785,6 @@ static inline void SetSoundPitch(CSound* sound, u32 id, f32 pitch, s32 frames)
  * @note Address: 0x80039FDC
  * @note Size: 0x160
  */
-// NONMATCHING: the handle typing only (see the top of the file)
 extern "C" void SetGameSfxPitch(XSound* sound, s32 sfx, f32 cents, f32 fade)
 {
 	SetSoundPitch(sound, sfx, CentsToPitch(cents), SecondsToFrames(fade));
@@ -830,7 +807,6 @@ static inline f32 getMusicVolume(XSound* sound, s32 sfx)
  * @note Address: 0x8003A13C
  * @note Size: 0x4D0
  */
-// NONMATCHING: the handle typing only (see the top of the file)
 extern "C" void FadeInGameSfx(XSound* sound, s32 sfx, f32 fade)
 {
 	if (isAllSfx(sound, sfx)) {
@@ -848,7 +824,6 @@ extern "C" void FadeInGameSfx(XSound* sound, s32 sfx, f32 fade)
  * @note Address: 0x8003A60C
  * @note Size: 0x44C
  */
-// NONMATCHING: the handle typing only (see the top of the file)
 extern "C" void FadeOutGameSfx(XSound* sound, s32 sfx, f32 fade)
 {
 	if (isAllSfx(sound, sfx)) {

@@ -11,9 +11,13 @@ void* fn_8025BA34(CResFile* file, s32 index);
 void fn_8025C76C(CResFile* file, void** ref);
 void fn_8025CBA0(CResFile* file);
 void fn_8025D9A4(void** dic);
-// the nw4r panic (file, line, message, ...); ends in PPCHalt
-void fn_80236070(const char* file, int line, const char* message, ...);
 }
+
+namespace nw4r {
+namespace db {
+void Panic(const char* file, int line, const char* fmt, ...);
+}
+} // namespace nw4r
 
 // the g3d assert strings live in .data in retail
 static char sG3dResfileAcAssert[] = "NW4R:Failed assertion !((u32)p & 0x1f)";
@@ -133,7 +137,7 @@ void CFileRequest::Release()
 void CResFile::Init(void* data, BOOL bindCommon, BOOL bindAll)
 {
 	if (((u32)data & 0x1f) != 0) {
-		fn_80236070(sG3dResfileAcFile, 0x3c, sG3dResfileAcAssert);
+		nw4r::db::Panic(sG3dResfileAcFile, 0x3c, sG3dResfileAcAssert);
 	}
 	mRef = data;
 	if (bindCommon) {

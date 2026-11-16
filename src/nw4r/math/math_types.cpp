@@ -274,6 +274,10 @@ MTX34* MTX34RotAxisFIdx(MTX34* pMtx, const VEC3* pAxis, f32 fidx) {
 // 65536 pair in r0 for the whole block and loads the table address first; here the compiler loads the
 // pair's address into r4 just before psq_lx and builds no frame. Tried: non-const and const local array
 // (copied to the stack, 81 %), static const (this), declaration order, a named scratch local (dropped).
+// A local `u32 work[2]` that the lwz and lhz read by name (psq_st/psq_l do not take a name) gives retail's
+// frame and size (0x160), but the pair's address still goes to r4 behind ps_merge00 instead of r0 ahead
+// of it, and the diff counts that as 90.9 %, so it is not in. `psq_lx f0, 0, pArray` and `la r0, array`
+// change nothing or lose more. No reference decomp matches this function either.
 MTX34* MTX34RotXYZFIdx(register MTX34* pMtx, register f32 x, register f32 y, register f32 z)
 {
 	static const f32 array[2] = { 65536, 65536 };

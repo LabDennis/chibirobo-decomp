@@ -36,18 +36,21 @@ void fn_8029A458(void* heap);
 void fn_8029A4AC(void* heap, s32 level);
 void fn_8029AFAC(u32 voices, u32 groups);
 void fn_8029B1AC();
-void fn_8028B274(void* track, f32 volume, u32 arg);
-void fn_8028B318(void* track, f32 pan);
 u32 fn_802958C0(void* actor, void* arg);
 void fn_80295914(void* actor, void* arg, void* data, u32 size);
 void fn_80295848(void* sound, f32 volume);
 void fn_80295850(void* sound, f32 pan);
 void fn_80295858(void* sound, f32 pitch);
 void fn_80295690(void* sound, Mtx mtx);
-// the nw4r list insert and its panic (file, line, message, ...)
+// the nw4r list insert
 void fn_802343E0(void* list, void* item, void* iter);
-void fn_80236070(const char* file, int line, const char* message, ...);
 }
+
+namespace nw4r {
+namespace db {
+void Panic(const char* file, int line, const char* fmt, ...);
+}
+} // namespace nw4r
 extern MEMiHeapHead* gWiiGameHeap;
 
 // the LinkList assert strings retail keeps in .data behind the vtables
@@ -435,45 +438,37 @@ extern "C" void UpdateGameSound(CSound* sound, u32 step)
 		fn_8029A458(sound->mSoundHeap);
 	}
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mTracks[i].mTrack == NULL) {
+		if (!sound->mTracks[i].IsAttachedSound()) {
 			continue;
 		}
-		if (sound->mTracks[i].mTrack != NULL) {
+		if (sound->mTracks[i].IsAttachedSound()) {
 			if (sound->mTracks[i].mVolume < sound->mTracks[i].mVolumeTarget) {
 				sound->mTracks[i].mVolume += sound->mTracks[i].mVolumeStep * step;
 				if (sound->mTracks[i].mVolume > sound->mTracks[i].mVolumeTarget) {
 					sound->mTracks[i].mVolume = sound->mTracks[i].mVolumeTarget;
 				}
-				if (sound->mTracks[i].mTrack != NULL) {
-					fn_8028B274(sound->mTracks[i].mTrack, sound->mTracks[i].mVolume, 0);
-				}
+				sound->mTracks[i].nw4r::snd::SoundHandle::SetVolume(sound->mTracks[i].mVolume, 0);
 			} else if (sound->mTracks[i].mVolume > sound->mTracks[i].mVolumeTarget) {
 				sound->mTracks[i].mVolume += sound->mTracks[i].mVolumeStep * step;
 				if (sound->mTracks[i].mVolume < sound->mTracks[i].mVolumeTarget) {
 					sound->mTracks[i].mVolume = sound->mTracks[i].mVolumeTarget;
 				}
-				if (sound->mTracks[i].mTrack != NULL) {
-					fn_8028B274(sound->mTracks[i].mTrack, sound->mTracks[i].mVolume, 0);
-				}
+				sound->mTracks[i].nw4r::snd::SoundHandle::SetVolume(sound->mTracks[i].mVolume, 0);
 			}
 		}
-		if (sound->mTracks[i].mTrack != NULL) {
-			if (sound->mTracks[i].mPan < sound->mTracks[i].mPanTarget) {
-				sound->mTracks[i].mPan += sound->mTracks[i].mPanStep * step;
-				if (sound->mTracks[i].mPan > sound->mTracks[i].mPanTarget) {
-					sound->mTracks[i].mPan = sound->mTracks[i].mPanTarget;
+		if (sound->mTracks[i].IsAttachedSound()) {
+			if (sound->mTracks[i].mPitch < sound->mTracks[i].mPitchTarget) {
+				sound->mTracks[i].mPitch += sound->mTracks[i].mPitchStep * step;
+				if (sound->mTracks[i].mPitch > sound->mTracks[i].mPitchTarget) {
+					sound->mTracks[i].mPitch = sound->mTracks[i].mPitchTarget;
 				}
-				if (sound->mTracks[i].mTrack != NULL) {
-					fn_8028B318(sound->mTracks[i].mTrack, sound->mTracks[i].mPan);
+				sound->mTracks[i].nw4r::snd::SoundHandle::SetPitch(sound->mTracks[i].mPitch);
+			} else if (sound->mTracks[i].mPitch > sound->mTracks[i].mPitchTarget) {
+				sound->mTracks[i].mPitch += sound->mTracks[i].mPitchStep * step;
+				if (sound->mTracks[i].mPitch < sound->mTracks[i].mPitchTarget) {
+					sound->mTracks[i].mPitch = sound->mTracks[i].mPitchTarget;
 				}
-			} else if (sound->mTracks[i].mPan > sound->mTracks[i].mPanTarget) {
-				sound->mTracks[i].mPan += sound->mTracks[i].mPanStep * step;
-				if (sound->mTracks[i].mPan < sound->mTracks[i].mPanTarget) {
-					sound->mTracks[i].mPan = sound->mTracks[i].mPanTarget;
-				}
-				if (sound->mTracks[i].mTrack != NULL) {
-					fn_8028B318(sound->mTracks[i].mTrack, sound->mTracks[i].mPan);
-				}
+				sound->mTracks[i].nw4r::snd::SoundHandle::SetPitch(sound->mTracks[i].mPitch);
 			}
 		}
 	}
@@ -496,7 +491,7 @@ void CSound3D::Init(void* arg)
 	mFlags     = 0x20;
 	void* item = &mNode[4];
 	if (&mSound == NULL) {
-		fn_80236070(sLinkListFile, 0x233, sLinkListAssert);
+		nw4r::db::Panic(sLinkListFile, 0x233, sLinkListAssert);
 	}
 	fn_802343E0(&mNode, &item, mList);
 	fn_80295848(mSound, 1.0f);
