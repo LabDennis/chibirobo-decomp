@@ -100,6 +100,7 @@ void InfoScrn_ApplyScoreHudCommand(InfoScrn* scrn, u8 show, s32 mode);
 void InfoScrn_ApplyObjectGaugeCommand(InfoScrn* scrn, WiiTitleObject* obj, u8 show, s32 mode, s32 param);
 void InfoScrn_ApplyClockHudCommand(InfoScrn* scrn, u8 show, s32 mode, s32 flag);
 BOOL InfoScrn_IsBatteryGaugeEmpty(InfoScrn* scrn);
+void ResumeScrapCounterPulse(InfoScrn* scrn);
 }
 
 #endif

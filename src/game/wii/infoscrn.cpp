@@ -902,7 +902,7 @@ extern "C" void HideScrapCounter()
  * @note Size: 0x14
  */
 // the scrap counter pulses again once it comes back on screen
-extern "C" void ResumeScrapCounterPulse()
+extern "C" void ResumeScrapCounterPulse(InfoScrn*)
 {
 	gHudScrapCounter.mState = 2;
 }

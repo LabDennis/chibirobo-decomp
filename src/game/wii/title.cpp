@@ -38,6 +38,7 @@
 #include "game/stagedata.h"
 #include "game/cscrn.h"
 #include "game/wii/saveslots.h"
+#include "game/wii/infoscrn.h"
 #include "Dolphin/os.h"
 #include "stl/math.h"
 #include <stdio.h>
@@ -59,6 +60,8 @@ void ApproachHudValue(f32* value, f32* target, f32 step);
 s32 IndexOfLargestOfThree(OSTime first, OSTime second, OSTime third);
 // one dust mote's per-frame update, the body of the GameCube UpdateTitleDust's loop
 void fn_8004DC94(TitleDust* dust, u32 frames);
+// fills a file menu record from a scanned save header (menu.cpp, 0x8007A2E8)
+void fn_8007A2E8(WiiMenuSaveSlot* slot, WiiSaveScanEntry* entry, BOOL used);
 // the pane-event slots in Title's vtable
 void fn_8004DF38();
 void fn_8004DF3C(Title* title, CbPane* pane);
@@ -526,16 +529,6 @@ void Title::State4(u32)
 }
 
 /**
- * @note Address: 0x800483F0
- * @note Size: 0x28
- */
-// the mode table's entry 26: retail's fn_800483F0 waits out the file-menu's confirm before State24
-// runs; the body is not read yet
-void Title::State24(u32)
-{
-}
-
-/**
  * @note Address: 0x80048418
  */
 // the last gTitleModeUpdates entry, the file-menu mode past State25
@@ -559,6 +552,49 @@ void Title::State6(u32)
  */
 void Title::State7(u32)
 {
+}
+
+/**
+ * @note Address: 0x80048744
+ * @note Size: 0x198
+ */
+// NONMATCHING: retail tests -9, -11 and -4 in a row, an if chain, and still keeps three copies of the
+// same body; written as an if chain this build merges the bodies (70 %), as a switch it keeps them but
+// searches the values as a tree
+// waits for the save file to be read: into the game when it was, else the error is shown
+void Title::State8(u32)
+{
+	s32 result = SaveScan()->mFile.mResult;
+	if (result == 0) {
+		HideName(this);
+		StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
+		mTargetPanelY                                   = -200.0f;
+		mAlpha                                          = 0.0f;
+		((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
+		ResumeScrapCounterPulse((InfoScrn*)gGame.mInfoScrn);
+		SetMode(25);
+		mState   = 13;
+		mTimeout = 10002;
+		return;
+	}
+	mResult = result;
+	switch (result) {
+	case -9:
+	case -11:
+		SetMode(19);
+		mShowMessage = 1;
+		break;
+	case -4:
+		SetMode(19);
+		mShowMessage = 1;
+		break;
+	default:
+		SetMode(19);
+		mShowMessage = 1;
+		break;
+	}
+	gSaveFatal.mActive = 1;
+	mAlpha             = 1.0f;
 }
 
 /**
@@ -653,6 +689,51 @@ void Title::State14(u32)
 }
 
 /**
+ * @note Address: 0x80048B20
+ * @note Size: 0x17C
+ */
+// NONMATCHING: the error tail as in State8
+// waits for the file's write: its record is refreshed and the game starts, or the error is shown
+void Title::State15(u32 frames)
+{
+	s32 result = SaveScan()->mFile.mResult;
+	mDelay -= frames;
+	if (mDelay < 0) {
+		mDelay = 0;
+	}
+	if (result == 0) {
+		u32 blocks, inodes;
+		GetNandGameFreeSpace(&SaveScan()->mFile, &blocks, &inodes);
+		mFreeBlocks             = blocks;
+		mFreeEntries            = inodes;
+		WiiSaveScanEntry* entry = &SaveScan()->mScanEntries[mFile];
+		if (entry->mStatus & 1) {
+			fn_8007A2E8(&gTitleSaveSlots[mFile], entry, TRUE);
+		}
+		SetMode(24);
+		return;
+	}
+	mResult = result;
+	switch (result) {
+	case -9:
+	case -11:
+		SetMode(19);
+		mShowMessage = 1;
+		break;
+	case -4:
+		SetMode(19);
+		mShowMessage = 1;
+		break;
+	default:
+		SetMode(19);
+		mShowMessage = 1;
+		break;
+	}
+	gSaveFatal.mActive = 1;
+	mAlpha             = 1.0f;
+}
+
+/**
  * @note Address: 0x80048C9C
  * @note Size: 0x4
  */
@@ -724,6 +805,36 @@ void Title::State22(u32)
  */
 void Title::State23(u32)
 {
+}
+
+/**
+ * @note Address: 0x80048D20
+ * @note Size: 0x130
+ */
+// waits out the delay, then fades the labels and leaves for the game
+void Title::State24(u32 frames)
+{
+	switch (mModeParam) {
+	case 0:
+		mDelay -= frames;
+		if (mDelay < 0) {
+			mDelay = 0;
+			++mModeParam;
+		}
+		break;
+	case 1:
+		HideName(this);
+		mTargetPanelY = -200.0f;
+		mOffset       = 0.0f;
+		mAlpha        = 0.0f;
+		mChoice       = 0;
+		mState        = 13;
+		SetMode(25);
+		PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+		StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
+		((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
+		break;
+	}
 }
 
 /**

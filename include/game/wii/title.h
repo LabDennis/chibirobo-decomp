@@ -348,10 +348,11 @@ public:
 	f32 mTargetPanelY; // _4940
 	f32 mLoadScroll;   // _4944, the load screen's scroll position
 	u8 _4948[4];
-	f32 mLoadOffset; // _494C
-	f32 mOffset;     // _4950
-	u8 _4954[0x495C - 0x4954];
-	s32 mResult; // _495C, the save operation's result
+	f32 mLoadOffset;  // _494C
+	f32 mOffset;      // _4950
+	u32 mFreeBlocks;  // _4954, the NAND's free blocks and inodes after a write
+	u32 mFreeEntries; // _4958
+	s32 mResult;      // _495C, the save operation's result
 	u8 _4960[4];
 	u8 mReady;       // _4964, the "press start" prompt is up
 	u8 mShowMessage; // _4965, the status line is being shown
@@ -360,10 +361,10 @@ public:
 	f32 mLoadAlpha; // _4968
 	f32 mAlpha;     // _496C
 	s32 mLastMode;  // _4970
-	s32 mModeParam; // _4974
-	u8 _4978[4];
-	s32 mFile;     // _497C, the save file picked, -1 with the pointer on none
-	s32 mLastFile; // _4980
+	s32 mModeParam; // _4974, the mode's own step
+	s32 mDelay;     // _4978
+	s32 mFile;      // _497C, the save file picked, -1 with the pointer on none
+	s32 mLastFile;  // _4980
 	u8 _4984[4];
 	s32 mChoice;     // _4988, yes or no, -1 with the pointer on neither
 	s32 mLastChoice; // _498C
