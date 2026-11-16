@@ -76,8 +76,12 @@ inline void __selection_sort(TIt first, TIt last, TCompare compare) {
     }
 }
 
+// never_inline: wiiplay, ogws, ss and pik2wii carry the attribute at this place in their MSL
+// algorithm header. Retail calls __sort132 out of line from every std::sort (g3d_draw 0x80275D2C,
+// g3d_scnroot 0x8027C15C); without the attribute the compiler expands it into sort and the three
+// sort instances of the two units stay at 60 to 75 %.
 template <typename TCompare, typename TIt>
-void __sort132(TIt a1, TIt a2, TIt a3, TCompare compare) {
+void __sort132(TIt a1, TIt a2, TIt a3, TCompare compare) __attribute__((never_inline)) {
     bool b1 = !compare(*a3, *a1);
     bool b2 = !compare(*a2, *a3);
 

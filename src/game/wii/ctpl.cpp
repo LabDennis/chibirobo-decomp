@@ -42,10 +42,15 @@ void fn_80295848(void* sound, f32 volume);
 void fn_80295850(void* sound, f32 pan);
 void fn_80295858(void* sound, f32 pitch);
 void fn_80295690(void* sound, Mtx mtx);
-// the nw4r list insert and its panic (file, line, message, ...)
+// the nw4r list insert
 void fn_802343E0(void* list, void* item, void* iter);
-void fn_80236070(const char* file, int line, const char* message, ...);
 }
+
+namespace nw4r {
+namespace db {
+void Panic(const char* file, int line, const char* fmt, ...);
+}
+} // namespace nw4r
 extern MEMiHeapHead* gWiiGameHeap;
 
 // the LinkList assert strings retail keeps in .data behind the vtables
@@ -486,7 +491,7 @@ void CSound3D::Init(void* arg)
 	mFlags     = 0x20;
 	void* item = &mNode[4];
 	if (&mSound == NULL) {
-		fn_80236070(sLinkListFile, 0x233, sLinkListAssert);
+		nw4r::db::Panic(sLinkListFile, 0x233, sLinkListAssert);
 	}
 	fn_802343E0(&mNode, &item, mList);
 	fn_80295848(mSound, 1.0f);
