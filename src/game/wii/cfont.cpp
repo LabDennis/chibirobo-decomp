@@ -74,7 +74,7 @@ void CFont::SetupFontHeader()
  * @note Address: 0x802B3CD4
  * @note Size: 0x9C
  */
-s32 LoadFontResource()
+BOOL CFont::LoadResource()
 {
 	if (sFontEnv.resourcePath != NULL) {
 		s32 ok;

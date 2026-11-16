@@ -3,6 +3,7 @@
 
 #include "game/cprimitive.h"
 #include "game/ctpl.h"
+#include "game/cfont.h"
 #include "game/ut.h"
 #include <Dolphin/gx.h>
 
@@ -748,7 +749,7 @@ public:
 	BOOL _1BA8;                // _1BA8, Update queues the map's model on the list while it is set
 	u8 _1BAC[0x1FE4 - 0x1BAC];
 	WiiGsSlot _1FE4[9]; // _1FE4, FinalizeStageObjectSetup clears each one's three flags
-	u8 _214C[0x2290 - 0x214C];
+	CFont mFont;        // _214C, the game font; CBase::BeforeUpdate loads its resource
 
 	// whether the current state is the CGs's own; the draws only touch that one
 	bool IsOwnTevStage() const { return mCurTevStage == &mTevStages[0]; }

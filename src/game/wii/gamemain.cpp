@@ -419,6 +419,16 @@ void CBase::Update(u32 frames)
 }
 
 /**
+ * @note Address: 0x800182C0
+ * @note Size: 0x8
+ */
+// the base game is ready once the font is read
+BOOL CBase::BeforeUpdate()
+{
+	return mGs.mFont.LoadResource();
+}
+
+/**
  * @note Address: 0x800182BC
  * @note Size: 0x4
  */

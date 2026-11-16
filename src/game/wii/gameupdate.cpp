@@ -93,8 +93,6 @@ BOOL fn_802BDBCC(void* obj, const char* path, s32 arg);
 BOOL fn_802BDC98(void* obj, s32 arg);
 }
 
-s32 LoadFontResource();
-
 extern s32 gRefreshRate;
 extern u8 gPowerButtonPressed;
 
@@ -315,13 +313,13 @@ static inline bool FadeStopped(const CScrnColor& fade)
  * @note Address: 0x8001C7B0
  * @note Size: 0xD50
  */
-// NONMATCHING: LoadFontResource and CSound3D::Init take no argument in their declarations, retail passes
-// one to each (the font object in CGs at _2154 and, it seems, whatever is left in r4); retail reads the
+// NONMATCHING: CSound3D::Init takes no argument in its declaration, retail passes one (it seems, whatever is
+// left in r4); retail reads the
 // attachment overrides out of the whole word of gCmdLineArgs (its bitfields are u32 on the Wii, u8 in
 // cmdline.h, which gameinit.cpp initializes for both); and the logo and title states are loaded once for
 // their two tests, as if they sat in objects of their own (CGame destroys one at _5978 and one at _5C70)
 // the GameCube function with the Wii's resources: one step a frame until the stage runs, true when done
-bool CGame::BeforeUpdate()
+BOOL CGame::BeforeUpdate()
 {
 	// Ready steps fall through. Pending reads resume at the same step next frame.
 	switch (mLoadStep) {
@@ -340,7 +338,7 @@ bool CGame::BeforeUpdate()
 			++mLoadStep;
 		}
 	case 3:
-		if (!LoadFontResource())
+		if (!mGs.mFont.LoadResource())
 			break;
 		++mLoadStep;
 	case 4:

@@ -251,7 +251,7 @@ public:
 	virtual void Start();                           // _10, 0x80017D4C
 	virtual void ResetNewGameState();               // _14, CBase's is empty
 	virtual void vf18();
-	virtual bool BeforeUpdate();     // _1C
+	virtual BOOL BeforeUpdate();     // _1C
 	virtual void Update(u32 frames); // _20
 	// _24, _28 the scene through the main camera, _2C the screen-space layer, _30 retraces per frame
 	virtual void Draw();
@@ -1256,7 +1256,7 @@ public:
 	void Reset(u32 code);
 
 	void ResetNewGameState();        // _14 override, 0x8001C37C
-	bool BeforeUpdate();             // _1C override, 0x8001C7B0
+	BOOL BeforeUpdate();             // _1C override, 0x8001C7B0
 	void Update(u32 frames);         // _20 override, 0x8001E830
 	void SetupStageCamera(s32 mode); // 0x8001DC88
 
