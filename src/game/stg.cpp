@@ -10864,10 +10864,10 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	f32 iconX = 52.0f * scale + left, iconY = 48.0f * scale + top;
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	s32 icon;
-	if (id && (gEventFlags.mFlags[335 / 32] & (1u << (335 % 32))))
-		icon = 239;
-	else
+	if (id == 0 || !(gEventFlags.mFlags[335 / 32] & (1u << (335 % 32))))
 		icon = 238;
+	else
+		icon = 239;
 	tex   = InitPCPanelTexture(icon);
 	u16 w = tex.GetWidth(), h = tex.GetHeight();
 	DrawOverviewTexture(tex, white, iconX, iconY, scale * w, scale * h);
