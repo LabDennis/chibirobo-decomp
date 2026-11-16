@@ -1028,6 +1028,7 @@ extern "C" s32 ConvertHudTextToFullWidth(char* text)
  * @note Address: 0x8008F080
  * @note Size: 0x34
  */
+// NONMATCHING: retail holds the gauge and scaled maximum in f0/f1; this source uses f2/f0.
 extern "C" BOOL InfoScrn_IsBatteryGaugeFull(InfoScrn* scrn)
 {
 	return scrn->mBatteryGauge == 10.0f * gGame.GetPlayer()->mParams.mMaxBattery;
