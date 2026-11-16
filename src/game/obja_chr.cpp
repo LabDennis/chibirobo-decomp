@@ -6980,6 +6980,8 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 			if (aobj->flags & 0x44000000)
 				player->SetAnim(0x5E, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 			break;
+		case 0x5E:
+			break;
 		case 0x5F:
 			FinishPlayerActionAnimation(player, aobj);
 			break;
@@ -6999,7 +7001,7 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 	}
 	for (XObjChrItemAnim* entry = gPlayerItemAnimationTable; entry->mItem >= 0; ++entry) {
 		if (entry->mItem == player->mSuits.mCurrent) {
-			HSD_JObj* joint = FindJointByPath(player->mJObj, entry->mPath, entry->mDepth);
+			HSD_JObj* joint = GetJointByPath(player->mJObj, entry->mPath, entry->mDepth);
 			if (GetAObj(joint) == NULL) {
 				CJArchive& archive        = player->mSuits.mObjects[player->mSuits.mCurrent].mArchive;
 				HSD_AnimJoint* anim       = archive.GetAnimJoint(0, entry->mDepth, entry->mPath);
@@ -7019,8 +7021,8 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 		++player->mFlashCount;
 		if (player->mFlashTimer > 0) {
 			f32 red = 128.0f * ((f32)player->mFlashTimer / IDLE_SECOND);
-			player->SetColor(1, (s32)red, 0, 0, 0.0f);
-			StartScreenFade(&gGame.mScrnTex.mColor, (s32)red, 0, 0, 0, (s32)red, 0, 0, 0, 0.0f);
+			player->SetColor(1, (u8)red, 0, 0, 0.0f);
+			StartScreenFade(&gGame.mScrnTex.mColor, (u8)red, 0, 0, 0, (u8)red, 0, 0, 0, 0.0f);
 		} else {
 			player->SetColor(1, 0, 0, 0, 0.0f);
 			StartScreenFade(&gGame.mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
