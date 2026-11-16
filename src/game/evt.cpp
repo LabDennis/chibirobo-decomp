@@ -14325,9 +14325,9 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_AND:
 	case EVT_EXPR_OR:
 	case EVT_EXPR_XOR: {
+		u8 binary = op;
 		s32 rhs   = CEvt_Evaluate(evt);
 		s32 lhs   = CEvt_Evaluate(evt);
-		u8 binary = op;
 		if (binary == EVT_EXPR_EQUAL)
 			result = lhs == rhs;
 		if (binary == EVT_EXPR_NOT_EQUAL)
