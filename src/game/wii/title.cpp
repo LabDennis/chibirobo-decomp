@@ -246,7 +246,7 @@ extern "C" void DrawTitleScreen(Title* title)
 	}
 	if (((CBase*)&gGame)->vf5C()) {
 		for (s32 i = 0; i < 3; ++i) {
-			WiiTitleFigure& fig = title->mFigures[i];
+			XObjDemo& fig = title->mFigures[i];
 			if (fig.mState != 0 && (fig.mStatus & 1)) {
 				fig.vf174();
 			}
@@ -1145,7 +1145,7 @@ void fn_8004DC94(TitleDust* dust, u32 frames)
  * @note Size: 0x64
  */
 // ResetObjectState: the figure's own bookkeeping goes back to blank
-void WiiTitleFigure::vf154()
+void XObjDemo::vf154()
 {
 	ResetObjectState__4XObjFv((XObj*)this);
 	mState      = 0;
@@ -1162,7 +1162,7 @@ void WiiTitleFigure::vf154()
  * @note Size: 0x2C
  */
 // LoadFromPlacement: the base call's result becomes a plain flag
-s32 WiiTitleFigure::vf158(const CoordInfo& info)
+s32 XObjDemo::vf158(const CoordInfo& info)
 {
 	return LoadFromPlacement__4XObjFRC9CoordInfo((XObj*)this, info) != 0;
 }
@@ -1172,7 +1172,7 @@ s32 WiiTitleFigure::vf158(const CoordInfo& info)
  * @note Size: 0x4
  */
 // Release
-void WiiTitleFigure::vf040()
+void XObjDemo::vf040()
 {
 	Release__4XObjFv((XObj*)this);
 }
@@ -1182,7 +1182,7 @@ void WiiTitleFigure::vf040()
  * @note Size: 0x78
  */
 // UpdateObject: state 2 waits for the screen fade to finish, then goes quiet
-void WiiTitleFigure::vf164(u32 frames)
+void XObjDemo::vf164(u32 frames)
 {
 	if (mState == 0) {
 		return;
@@ -1200,7 +1200,7 @@ void WiiTitleFigure::vf164(u32 frames)
  * @note Size: 0x24
  */
 // DrawObject front: only draws while the figure is live
-void WiiTitleFigure::vf174()
+void XObjDemo::vf174()
 {
 	if (mState != 0) {
 		vf178(0);

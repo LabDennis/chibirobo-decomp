@@ -4,6 +4,7 @@
 #include "game/wii/menuutil.h"
 #include "game/menuhelpchar.h"
 #include "game/ctpl.h"
+#include "game/wii/cgs.h"
 #include "Dolphin/vec.h"
 class CoordInfo;
 class CCamera;
@@ -266,11 +267,11 @@ public:
 };
 STATIC_ASSERT(sizeof(WiiTitleObject) == 0x9B0);
 
-// one of the three demo figures behind mDemo; the file's RTTI names the class XObjDemo. Its head
+// one of the three demo figures behind mDemo, the class RTTI names XObjDemo. Its head
 // layout matches WiiTitleObject: the placement status sits at _154 and the state at _9A8
-class WiiTitleFigure {
+class XObjDemo {
 public:
-	virtual void vf008();
+	virtual ~XObjDemo() { } // _08, 0x8002F990
 	virtual void vf00C();
 	virtual void vf010();
 	virtual void vf014();
@@ -372,10 +373,10 @@ public:
 	u8 _9B0[0xBA8 - 0x9B0];
 	s32 mNextAnim; // _BA8, -1 when nothing is queued
 	s32 _BAC;
-	u8 _BB0[0xF10 - 0xBB0];
-	s32 mAnimIds[8]; // _F10, all -1 once ResetObjectState ran
+	CLight mLights[8]; // _BB0, built and destroyed with the figure
+	s32 mAnimIds[8];   // _F10, all -1 once ResetObjectState ran
 };
-STATIC_ASSERT(sizeof(WiiTitleFigure) == 0xF30);
+STATIC_ASSERT(sizeof(XObjDemo) == 0xF30);
 
 // one mote of dust drifting over the menu, the GameCube TitleDust
 struct TitleDust {
@@ -453,22 +454,22 @@ void AddPointerPane(CbPaneList* list, CbPane* pane);
 class Title : public MenuUtil {
 public:
 	// _0000 vtable
-	s32 mState;                 // _0004
-	s32 mMode;                  // _0008
-	u32 mOptionState;           // _000C, 0 choosing, 2 leaving
-	s32 mTimeout;               // _0010, counts down the press-start / leave delays
-	f32 mMenuAlpha;             // _0014
-	f32 mTitleAlpha;            // _0018, the second fade that gates the press-start prompt
-	f32 mPulseAngle;            // _001C
-	s32 mHighlightDelay;        // _0020, frames until the selected line starts pulsing
-	u32 mSpawnIndex;            // _0024
-	WiiTitleObject mCursor;     // _0028
-	WiiTitleObject mDemo;       // _09D8
-	WiiTitleFigure mFigures[3]; // _1388
-	CTpl mTpl;                  // _4118, the "title.cpp" archive the three textures come out of
-	CTexObj mTex[6];            // _4310, as on the GameCube; the Wii draws three of them: logo, footer and dust
-	s32 mSelection;             // _4928, the entry of the title menu, -1 while the pointer is on none
-	s32 mLastSelection;         // _492C
+	s32 mState;             // _0004
+	s32 mMode;              // _0008
+	u32 mOptionState;       // _000C, 0 choosing, 2 leaving
+	s32 mTimeout;           // _0010, counts down the press-start / leave delays
+	f32 mMenuAlpha;         // _0014
+	f32 mTitleAlpha;        // _0018, the second fade that gates the press-start prompt
+	f32 mPulseAngle;        // _001C
+	s32 mHighlightDelay;    // _0020, frames until the selected line starts pulsing
+	u32 mSpawnIndex;        // _0024
+	WiiTitleObject mCursor; // _0028
+	WiiTitleObject mDemo;   // _09D8
+	XObjDemo mFigures[3];   // _1388
+	CTpl mTpl;              // _4118, the "title.cpp" archive the three textures come out of
+	CTexObj mTex[6];        // _4310, as on the GameCube; the Wii draws three of them: logo, footer and dust
+	s32 mSelection;         // _4928, the entry of the title menu, -1 while the pointer is on none
+	s32 mLastSelection;     // _492C
 	u8 _4930[0x493C - 0x4930];
 	f32 mPanelY;       // _493C
 	f32 mTargetPanelY; // _4940

@@ -184,6 +184,7 @@ __dt__13CEffectSystemFv = .text:0x8002F544; // type:function size:0x90
 __dt__Q213CEffectSystem8ResourceFv = .text:0x8002F5D4; // type:function size:0x90
 __dt__5TitleFv = .text:0x8002F838; // type:function size:0xEC
 __dt__6CbPaneFv = .text:0x8002F924; // type:function size:0x6C
+__dt__8XObjDemoFv = .text:0x8002F990; // type:function size:0x90
 __dt__6MenuExFv = .text:0x8002F7CC; // type:function size:0x6C
 __dt__4LogoFv = .text:0x8002FA8C; // type:function size:0x80
 __dt__14GameScrnColor1Fv = .text:0x8002FB78; // type:function size:0x6C
