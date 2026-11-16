@@ -11,8 +11,10 @@
 // in front of it, which shift its assert in the string pool. GetGlyph (99 %) and MeasureGameTextWidth (99 %) are structurally identical and
 // differ only in callee-saved colouring and in vtable/sdata2 referent placement; DrawGsText (91 %) and DrawGsStrokeText (87 %) additionally
 // diverge in float allocation and stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held
-// constants). No behavioural difference in any of them. Not written yet: CGs::Init (0x802AA610), the scene list helper
-// (0x802AB860) and SetGsChannelMaterialAndLighting.
+// constants). No behavioural difference in any of them. SetGsChannelMaterialAndLighting (90 %): retail copies the light's
+// color a second time for the alpha channel, colours its components in other registers and computes the
+// material components ahead of their tests.
+// Not written yet: CGs::Init (0x802AA610) and the scene list helper (0x802AB860).
 
 // the revolution GX header first: the Wii's FIFO getters take the object to fill. GXReadDrawSync gets
 // the same treatment, the Dolphin header under it declares it void
@@ -844,6 +846,54 @@ void CGs::EndFrame()
 void CGs::SwapBuffers()
 {
 	SwapFrameBuffer();
+}
+
+// the own color channel (and the alpha one behind it) takes matSrc and rgba as its material; when
+// it is lit, the ambient lights of the list give its ambient color and the enabled lights other
+// than ambient its light mask
+extern "C" s32 SetGsChannelMaterialAndLighting(CGs* gs, s32 matSrc, u32 rgba)
+{
+	CGsChannel* color0 = &gs->mChannels[0];
+	if (gs->mCurChannel == color0) {
+		color0->mCtrl.mMatSrc          = (GXColorSrc)matSrc;
+		gs->mChannels[2].mCtrl.mMatSrc = (GXColorSrc)matSrc;
+		if (color0->mCtrl.mEnable) {
+			if (color0->mCtrl.mAmbSrc == GX_SRC_REG) {
+				for (CLight* light = gs->mLight; light != NULL; light = light->mNext) {
+					if ((u8)light->mFlags == 1) {
+						GXColor ambient = light->GetColor();
+						color0->mAmbColor.Set(ambient);
+						gs->mChannels[2].mAmbColor.Set(ambient);
+					}
+				}
+			}
+			u8 r = rgba >> 24;
+			u8 g = rgba >> 16;
+			u8 b = rgba >> 8;
+			u8 a = rgba;
+			color0->mMatColor.Set(r, g, b, a);
+			gs->mChannels[2].mMatColor.Set(r, g, b, a);
+			u32 mask = 0;
+			int n    = 0;
+			for (CLight* light = gs->mLight; light != NULL; light = light->mNext) {
+				if ((light->mFlags & 0x8000) && (u8)light->mFlags != 1) {
+					mask |= 1 << n++;
+				}
+			}
+			color0->mCtrl.mLightMask          = mask;
+			gs->mChannels[2].mCtrl.mLightMask = mask;
+		} else {
+			u8 r = rgba >> 24;
+			u8 g = rgba >> 16;
+			u8 b = rgba >> 8;
+			u8 a = rgba;
+			color0->mMatColor.Set(r, g, b, a);
+			color0->mCtrl.mLightMask = 0;
+			gs->mChannels[2].mMatColor.Set(r, g, b, a);
+			gs->mChannels[2].mCtrl.mLightMask = 0;
+		}
+	}
+	return 0;
 }
 
 extern "C" {
