@@ -69,6 +69,18 @@ static inline f32 FramesToClock(f32 frames)
 	return hundredths + (6000.0f * (s32)minutes + ((s32)seconds % 60) * 100);
 }
 
+// whether the day's time moves on this frame (CGame's update makes the same test, xobjspidersmall's CanPlaySe
+// too; 0xc00 is chibi robo's menu rings or yes/no menu open)
+static inline bool TimeMoves()
+{
+	bool moves = false;
+	if (gGame.IsRunning() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00)
+	    && gGame.mTimeState.mDuration > 0 && !gGame.mTimeState.mRunning) {
+		moves = true;
+	}
+	return moves;
+}
+
 // 10 to the n
 static inline f32 Pow10(int n)
 {
@@ -505,8 +517,7 @@ static inline void ApproachHudScale(f32& current, f32 target)
  * @note Address: 0x8006AF34
  * @note Size: 0x1B5C
  */
-// NONMATCHING: registers only. retail zeroes the time flag first (r0) and copies that zero into the two flags of IsRunning,
-// the build zeroes IsRunning's flag first; the bss base, the string base and the zero at the top are numbered differently
+// NONMATCHING: registers only. the bss base, the string base and the zero at the top are numbered differently
 extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 {
 	if (!gGame.IsRunning() && !(gGame.mStatus.mFlags & 0x200000000000ULL))
@@ -703,14 +714,8 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		ApproachHudScale(h->mClockScale, 1);
 		break;
 	}
-	// the clock's warning blink ticks on the frames the day's time moves on (CGame's update makes the same test; 0xc00 is
-	// chibi robo's menu rings or yes/no menu open) and once time is up
-	bool timeMoves = false;
-	if (gGame.IsRunning() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00)
-	    && gGame.mTimeState.mDuration > 0 && !gGame.mTimeState.mRunning) {
-		timeMoves = true;
-	}
-	if (timeMoves || gGame.mTimeState.mTime >= 1)
+	// the clock's warning blink ticks on the frames the day's time moves on and once time is up
+	if (TimeMoves() || gGame.mTimeState.mTime >= 1)
 		++h->mTimeWarningTick;
 	CJObj joint;
 	CVec position;
@@ -1880,8 +1885,7 @@ static inline void DrawClockQuad(CTexObj& tex, u32 color, f32 x, f32 y, f32 z, f
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
-// NONMATCHING: registers only (saved float registers and the loop counters of the two discs, the time flag as in
-// UpdateHudIndicators)
+// NONMATCHING: registers only (saved float registers and the loop counters of the two discs)
 extern "C" void DrawHudClock(InfoScrn* scrn)
 {
 	f32 alpha = scrn->mClockAlpha * gHudOpacityScale;
@@ -1928,13 +1932,8 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 			scrn->mTimeWarningBeeps  = 5;
 		}
 		if (time >= warning) {
-			f32 wave       = sin(DEG2RAD * ((s32)((u32)scrn->mTimeWarningTick * 12) % 360));
-			bool timeMoves = false;
-			if (gGame.IsRunning() && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !(gGame.mStatus.mFlags & 0xc00)
-			    && gGame.mTimeState.mDuration > 0 && !gGame.mTimeState.mRunning) {
-				timeMoves = true;
-			}
-			if (timeMoves || time >= 1) {
+			f32 wave = sin(DEG2RAD * ((s32)((u32)scrn->mTimeWarningTick * 12) % 360));
+			if (TimeMoves() || time >= 1) {
 				// one beep each time the clock blinks on: five of 0xb5, then 0xb6, which also comes at once when time is up
 				if (wave > 0) {
 					if (scrn->mTimeWarningBeeps >= 0 && !scrn->mTimeWarningBeeped) {
