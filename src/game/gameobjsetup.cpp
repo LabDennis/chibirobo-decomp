@@ -253,7 +253,7 @@ static inline bool FadeStopped(const CScrnColor& fade)
 }
 
 // NONMATCHING: registers in the precache loop and the clock sum, and retail narrows the answer to a byte
-bool CGame::BeforeUpdate()
+BOOL CGame::BeforeUpdate()
 {
 	// Ready stages fall through. Pending reads resume at the same stage next frame.
 	switch (mLoadStep) {
