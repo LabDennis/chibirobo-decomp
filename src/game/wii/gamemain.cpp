@@ -30,7 +30,7 @@ void OSRestart(u32 code);
 void OSReturnToMenu();
 void OSReturnToDataManager();
 BOOL DVDCheckDiskAsync(DVDCommandBlock* block, DVDCBCallback callback);
-void OnDiskChecked(s32 result, DVDCommandBlock* block); // 0x80019414, no source yet
+void OnDiskChecked(s32 result, DVDCommandBlock* block);
 const char* GetLocalizedInterfaceText(s32 id);
 int sprintf(char* buf, const char* fmt, ...);
 }
@@ -225,6 +225,17 @@ void CBase::UpdateDvdStatus()
 		}
 		break;
 	}
+}
+
+/**
+ * @note Address: 0x80019414
+ * @note Size: 0x14
+ */
+void OnDiskChecked(s32 result, DVDCommandBlock* block)
+{
+	u8* data            = (u8*)block->userData;
+	*(s32*)(data + 8)   = result;
+	*(bool*)(data + 64) = false;
 }
 
 /**
