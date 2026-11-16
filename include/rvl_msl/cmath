@@ -29,4 +29,10 @@ using ::modff;
 inline float tanf(float x) { return tan(x); }
 } // namespace std
 
+// nw4r::snd (Sound3DCalculator): retail rounds each result to float (frsp behind `bl cos`)
+namespace std {
+inline float cos(float x) { return ::cos(x); }
+using ::pow;
+} // namespace std
+
 #endif
