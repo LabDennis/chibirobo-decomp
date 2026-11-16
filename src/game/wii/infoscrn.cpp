@@ -29,6 +29,7 @@ extern "C" {
 s32 gRefreshRate;
 s32 gScreenSafeLeft;
 s32 gScreenSafeBottom;
+extern s32 gScreenSafeTop;
 s32 gPointerScreenWidth;
 s32 gPointerScreenHeight;
 Vec fn_800E5A2C(WiiPlayerState* player);
@@ -119,6 +120,16 @@ static inline void Approach(f32* cur, f32* target, f32 step)
 			*cur = *target;
 		}
 	}
+}
+
+// 10 to the n
+static inline f32 Pow10(int n)
+{
+	f32 p = 1.0f;
+	for (int i = 0; i < n; i++) {
+		p *= 10.0f;
+	}
+	return p;
 }
 
 /**
@@ -933,6 +944,167 @@ extern "C" void AllowIdleHudCounters()
 	gHudHappyPointCounter.mSuppressIdleDisplay = FALSE;
 	gHudMoneyCounter.mSuppressIdleDisplay      = FALSE;
 	gHudScrapCounter.mSuppressIdleDisplay      = FALSE;
+}
+
+static inline void DrawClockDisc(f32 x, f32 y, f32 rx, f32 ry, u32 color)
+{
+	Vec points[65];
+	for (s32 i = 0; i < 65; ++i) {
+		f32 angle = 0.09817477f * i - HALF_PI;
+		f32 s = sin(angle), c = -(f32)cos(angle);
+		points[i].x = x + s * rx;
+		points[i].y = y + c * ry;
+		points[i].z = 0;
+	}
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, points, color, 65);
+}
+
+/**
+ * @note Address: 0x8008C238
+ * @note Size: 0x13A0
+ */
+extern "C" void DrawHudClock(InfoScrn* scrn)
+{
+	f32 alpha = scrn->mClockAlpha * gHudOpacityScale;
+	if (!(alpha > 0.0f))
+		return;
+	CTexObj tex;
+	f32 x     = (f32)(gScreenSafeLeft + 0x28);
+	f32 y     = (f32)(gScreenSafeTop + 0x30);
+	f32 scale = 1.1f * scrn->mClockScale;
+	u32 color;
+	if (gGame.mTimeState.mMode == 0) {
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[157], 0);
+		tex   = gGame.mTpl.mTex;
+		color = 0x326c0200 | (u32)(255 * alpha);
+	} else {
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[158], 0);
+		tex   = gGame.mTpl.mTex;
+		color = 0x1e3fb000 | (u32)(255 * alpha);
+	}
+	u16 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
+	DrawClockDisc(x, y, 1.1f * (scale * tw * 0.5f), 1.1f * (scale * th * 0.5f), color);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[159], 0);
+	tex = gGame.mTpl.mTex;
+	tw  = GXGetTexObjWidth(&tex);
+	th  = GXGetTexObjHeight(&tex);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255 * alpha) | 0xC8C8C800, (u32)(255 * alpha) | 0xC8C8C800, (u32)(255 * alpha) | 0xC8C8C800,
+	                   (u32)(255 * alpha) | 0xC8C8C800, x, y, 1.0f, scale * tw, scale * th, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	if (gGame.mTimeState.mMode == 0) {
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[157], 0);
+		tex = gGame.mTpl.mTex;
+	} else {
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[158], 0);
+		tex = gGame.mTpl.mTex;
+	}
+	f32 width = scale * GXGetTexObjWidth(&tex), height = scale * GXGetTexObjHeight(&tex);
+	DrawClockDisc(x, y, 0.9f * (width / 2.0f), 0.9f * (height * 0.5f), (u32)(120 * alpha));
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	f32 time = gGame.mTimeState.mTime;
+	f32 fill = time;
+	// the fill waits at 0.89 until time is up
+	if (time >= 0.89f && time < 0.999f)
+		fill = 0.89f;
+	if (gGame.GetStatusFlags(0x400))
+		color = 0xa0a0a000 | (u32)(255 * alpha);
+	else {
+		// the last five seconds of the day, which lasts 600 seconds / mDuration (see CGame's update)
+		f32 warning = 1.0f - (TIMER_RATE * 5) / ((TIMER_RATE * 600) / gGame.mTimeState.mDuration);
+		if (time < warning) {
+			scrn->mTimeWarningBeeped = 0;
+			scrn->mTimeWarningBeeps  = 5;
+		}
+		if (time >= warning) {
+			f32 wave       = sin(DEG2RAD * ((s32)((u32)scrn->mTimeWarningTick * 12) % 360));
+			bool timeMoves = false;
+			BOOL running   = FALSE;
+			if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x20000000022ULL) && !gGame.mMenuActive) {
+				BOOL diskFail = FALSE;
+				if ((gGame.mDvdStatus || gGame.mPrevDvdStatus) && !gGame.mDiskOk)
+					diskFail = TRUE;
+				if (!diskFail && !gGame.mResetRequested)
+					running = TRUE;
+			}
+			if (running && !gGame.mEvtData.mScript && !gGame.mMenuActive && !gGame.GetStatusFlags(0xC00) && gGame.mTimeState.mDuration > 0
+			    && !gGame.mTimeState.mRunning) {
+				timeMoves = true;
+			}
+			if (timeMoves || time >= 1) {
+				// one beep each time the clock blinks on: five of 0x122, then 0x123, which also comes at once when time is up
+				if (wave > 0) {
+					if (scrn->mTimeWarningBeeps >= 0 && !scrn->mTimeWarningBeeped) {
+						if (scrn->mTimeWarningBeeps == 0 || time >= 0.999f) {
+							PlayWiiSoundEffect(&gGame.mSound, 0x123, 1.0f, 0.0f);
+							scrn->mTimeWarningBeeps = 0;
+						} else
+							PlayWiiSoundEffect(&gGame.mSound, 0x122, 1.0f, 0.0f);
+						--scrn->mTimeWarningBeeps;
+						scrn->mTimeWarningBeeped = 1;
+					}
+				} else
+					scrn->mTimeWarningBeeped = 0;
+			}
+			if (wave > 0 || scrn->mTimeWarningBeeps < 0)
+				color = 0xffffff00 | (u32)(255 * alpha);
+			else
+				color = 0xa0a0a000 | (u32)(255 * alpha);
+		} else
+			color = 0xffffff00 | (u32)(255 * alpha);
+	}
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 1.0f, width, height, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1, fill, 1);
+	tex.mTexMtx.mDirty = TRUE;
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0, 0, 0);
+	tex.mTexMtx.mDirty = TRUE;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	u32 fillColor = (u32)(160 * alpha);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, fillColor, fillColor, fillColor, fillColor, x, y - (1 - fill) * height / 2.0f, 1.0f, width,
+	                   height * fill, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[160], 0);
+	tex    = gGame.mTpl.mTex;
+	width  = 0.9f * (scale * GXGetTexObjWidth(&tex));
+	height = 0.9f * (scale * GXGetTexObjHeight(&tex));
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(140 * alpha) | 0xC8C8C800, (u32)(140 * alpha) | 0xC8C8C800, (u32)(140 * alpha) | 0xC8C8C800,
+	                   (u32)(140 * alpha) | 0xC8C8C800, x - 4 * scale, y - 14 * scale, 1.0f, width, height, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[160], 0);
+	tex = gGame.mTpl.mTex;
+	tw  = GXGetTexObjWidth(&tex);
+	th  = GXGetTexObjHeight(&tex);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(140 * alpha) | 0xC8C8C800, (u32)(140 * alpha) | 0xC8C8C800, (u32)(140 * alpha) | 0xC8C8C800,
+	                   (u32)(140 * alpha) | 0xC8C8C800, x - 16 * scale, y - 2 * scale, 1.0f, 0.7f * (scale * tw), 0.7f * (scale * th), 0.0f,
+	                   0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	f32 badgeAlpha = scrn->mItemMaxAlpha * gHudOpacityScale;
+	switch ((s32)(f32)scrn->mItemMax) {
+	case 10:
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[233], 0);
+		tex = gGame.mTpl.mTex;
+		break;
+	case 15:
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[234], 0);
+		tex = gGame.mTpl.mTex;
+		break;
+	default:
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[232], 0);
+		tex = gGame.mTpl.mTex;
+		break;
+	}
+	tw = GXGetTexObjWidth(&tex);
+	th = GXGetTexObjHeight(&tex);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255 * badgeAlpha) | 0xFFFFFF00, (u32)(255 * badgeAlpha) | 0xFFFFFF00,
+	                   (u32)(255 * badgeAlpha) | 0xFFFFFF00, (u32)(255 * badgeAlpha) | 0xFFFFFF00, x - 22 * scale, y - 22 * scale, 0.0f,
+	                   1.1f * (scale * tw), 1.1f * (scale * th), 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
 /**
@@ -1954,5 +2126,128 @@ extern "C" void UpdateHudPointValue(InfoPoint* point, u32 frames)
 			break;
 		}
 		break;
+	}
+}
+
+// NONMATCHING: functionally complete Wii port of the GameCube counter. The Wii drops the
+// 65-vertex line circle for a textured quad (descriptor 269, 33x33) and whites it out
+// (0xFFFFFF00 | a); the circle is still computed into pos[0..64] and then only slots 0 and
+// 1 are overwritten for the underline. Descriptors 125->126, 155->156 against the GameCube.
+/**
+ * @note Address: 0x80091538
+ * @note Size: 0xD0C
+ */
+extern "C" void DrawHudPointCounter(InfoPoint* point)
+{
+	f32 alpha = point->mOpacity * gHudOpacityScale;
+	if (alpha > 0.0f) {
+		CTexObj tex;
+		s32 len = 1;
+		f32 x0  = point->mPos[0].x;
+		f32 y0  = point->mPos[0].y;
+		f32 x2  = point->mPos[2].x;
+		f32 x4  = point->mPos[4].x;
+		while (true) {
+			if ((s32)(point->mValue[0] / Pow10(len)) == 0) {
+				break;
+			}
+			len++;
+		}
+
+		Vec pos[65];
+		f32 cy = y0 - 6.0f * 1.2f;
+		for (int i = 0; i < 65; i++) {
+			f32 s;
+			f32 angle = 0.09817477f * i - HALF_PI;
+			s         = sin(angle);
+			f32 c     = -(f32)cos(angle);
+			pos[i].x  = x0 + s * (12.0f * 1.2f);
+			pos[i].y  = cy + c * (12.0f * 1.2f);
+			pos[i].z  = 0.0f;
+		}
+		u32 a = (u32)(255.0f * alpha);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[269], 0);
+		tex = gGame.mTpl.mTex;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
+		                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, x0, cy, 0.0f, 33.0f, 33.0f, 0.0f, 0.0f,
+		                   0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
+		tex              = gGame.mTpl.mTex;
+		u16 tw           = GXGetTexObjWidth(&tex);
+		f32 lineY        = cy + 12.0f * 1.2f;
+		point->mValue[3] = len * (1.2f * tw - 3.0f * 1.2f) + 34.0f;
+		pos[0].x         = x0;
+		pos[0].y         = lineY;
+		pos[1].x         = x0 + point->mValue[2];
+		pos[1].y         = lineY;
+		gGame.mGs.mCurRenderState->SetLineWidth(0x12, GX_TO_ONE);
+		DrawGsLineStrip(&gGame.mGs, pos, a, 2);
+		gGame.mGs.mCurRenderState->SetLineWidth(0x0C, GX_TO_ONE);
+
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[156], 0);
+		tex = gGame.mTpl.mTex;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		u16 ew = GXGetTexObjWidth(&tex);
+		u16 eh = GXGetTexObjHeight(&tex);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+		                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, pos[1].x, pos[1].y, 0.0f, 1.2f * ew,
+		                   1.2f * eh, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[point->mResource], 0);
+		tex = gGame.mTpl.mTex;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		f32 iconW = 0.8f * GXGetTexObjWidth(&tex);
+		f32 iconY = y0 - 18.0f * 0.5f;
+		f32 iconH = 0.8f * GXGetTexObjHeight(&tex);
+		u32 ic    = (u32)(255.0f * alpha * point->mIconAlphaScale) | 0xC8C8C800;
+		if (point->mIndex == INFOPOINT_ID + 2) {
+			DrawGsTexturedQuad(&gGame.mGs, &tex, ic, ic, ic, ic, x4, 4.0f + iconY, 0.0f, iconW, iconH, 0.0f, 0.0f, 0.0f);
+		} else {
+			DrawGsTexturedQuad(&gGame.mGs, &tex, ic, ic, ic, ic, x4, iconY, 0.0f, iconW, iconH, 0.0f, 0.0f, 0.0f);
+		}
+
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
+		tex    = gGame.mTpl.mTex;
+		f32 dx = x2 - 12.0f;
+		f32 dy = y0 - 4.0f;
+		f32 w  = 1.2f * GXGetTexObjWidth(&tex);
+		f32 h  = 1.2f * (GXGetTexObjHeight(&tex) / 10);
+		PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+		f32 step           = 7.0f * w;
+		f32 base           = len * (w - 3.0f * 1.2f) - 98.0f * 1.2f;
+		tex.mTexMtx.mDirty = TRUE;
+		for (int i = 0; i < 7; i++) {
+			s32 v = (s32)(point->mValue[0] / Pow10(i));
+			if (i != 0 && v == 0) {
+				continue;
+			}
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * (v % 10), 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			u32 top;
+			u32 bottom;
+			switch (point->mIndex) {
+			case INFOPOINT_ID + 2:
+				top    = (u8)(s32)(255.0f * alpha) | 0xCECEFF00;
+				bottom = (u8)(s32)(255.0f * alpha) | 0xE037EE00;
+				break;
+			case INFOPOINT_ID:
+				top    = (u8)(s32)(255.0f * alpha) | 0xEFEBC500;
+				bottom = (u8)(s32)(255.0f * alpha) | 0xEDA83600;
+				break;
+			case INFOPOINT_ID + 1:
+				top    = (u8)(s32)(255.0f * alpha) | 0xCECEFF00;
+				bottom = (u8)(s32)(255.0f * alpha) | 0x5959FF00;
+				break;
+			}
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, base + (step + (dx - i * (w - 3.0f * 1.2f))), dy - 2.0f, 0.0f, w,
+			                   h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 	}
 }
