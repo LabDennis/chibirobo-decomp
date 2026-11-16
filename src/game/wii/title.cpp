@@ -104,6 +104,9 @@ s32 gTitleLogoIndex             = 1;
 f32 gTitleFileSlideSpeed[2] = { 1.0f, 1.0f };
 
 // the outline offsets of the help text's letter shadows
+// the outline offsets of the name's letter shadows, then of the help text's
+f32 gTitleNameOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gTitleNameOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 f32 gTitleHelpOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
 f32 gTitleHelpOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 
@@ -1911,6 +1914,61 @@ void fn_8004CDB8(Title* title, u32 frames)
 		}
 		if (!visible)
 			title->mName.mActive = 0;
+	}
+}
+
+/**
+ * @note Address: 0x8004CF38
+ * @note Size: 0x68C
+ */
+// NONMATCHING: written from the GameCube's; the Wii centres the row on the pointer screen and halves by
+// multiplying
+// draws the title's name: a bubble per letter, then the letter with a shadow on four sides
+extern "C" void DrawTitleNameBubbles(Title* title)
+{
+	if (title->mName.mActive) {
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		f32 centreX = gPointerScreenWidth / 2;
+		(&gGame.mTpl)->mTex.Init(&gGame.mTpl.mPalette->descriptorArray[108 - StatusTextureOffset], 0);
+		CTexObj bubble = gGame.mTpl.mTex;
+		f32 zero       = 0.0f;
+		u32 color      = title->mName.mColor & 0xFFFFFF00;
+		for (s32 i = 0; i < title->mName.mCount; i++) {
+			f32 scale = title->mName.mChars[i].mScale;
+			if (scale <= zero) {
+				continue;
+			}
+			CFont font;
+			s32 width;
+			CTexObj letter  = *GetFontGlyphTexture(&font, title->mName.mChars[i].mText, 0, &width);
+			f32 bob         = 4.0f * (f32)sin(title->mName.mChars[i].mBob);
+			f32 tilt        = sin(0.7f * title->mName.mChars[i].mTilt);
+			f32 rot         = -(DEG2RAD * (10.0f * tilt));
+			f32 swell       = sin(PI * scale);
+			f32 pop         = 0.2f * swell + (f32)sin(HALF_PI * scale);
+			f32 x           = 24.0f + (48.0f * i + (centreX - 48.0f * title->mName.mCount * 0.5f));
+			f32 y           = 64.0f + bob;
+			u32 bubbleColor = (u32)(255.0f * scale) | 0xFFFFFF00;
+			DrawGsTexturedQuad(&gGame.mGs, &bubble, bubbleColor, bubbleColor, bubbleColor, bubbleColor, x, y, 0.0f, 20.0f * (2.0f * pop),
+			                   20.0f * (2.0f * pop), zero, -zero, rot);
+			f32 size   = 20.0f * (1.7f * pop);
+			f32 shrink = width / 24.0f * size;
+			f32 off    = size - shrink;
+			u32 alpha  = 255.0f * scale;
+			for (s32 j = 0; j < 4; j++) {
+				DrawGsTexturedQuad(&gGame.mGs, &letter, alpha, alpha, alpha, alpha, off * 0.5f + (x + gTitleNameOutlineX[j]),
+				                   bob + (64.0f + gTitleNameOutlineY[j]), 0.0f, size, size, zero, -zero, rot);
+			}
+			u32 letterColor = color | (u32)(255.0f * scale);
+			DrawGsTexturedQuad(&gGame.mGs, &letter, letterColor, letterColor, letterColor, letterColor, off * 0.5f + x, y, 0.0f, size, size,
+			                   zero, -zero, rot);
+		}
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
 	}
 }
 
