@@ -1190,6 +1190,9 @@ game/gameosreport.cpp:
 game/wii/fbmirror.cpp:
 	.text start:0x80019BF4 end:0x8001A704
 
+game/wii/gamedraw.cpp:
+	.text start:0x80024AE8 end:0x8002CFB8
+
 game/infopointdtor.cpp:
 	.text start:0x80092244 end:0x80092284
 
@@ -1211,10 +1214,8 @@ game/oxmenudtor.cpp:
 game/cpaddtor.cpp:
 	.text start:0x800365D8 end:0x80036618
 
-game/cspritedtor.cpp:
-	extab start:0x80007900 end:0x800079F0
-	extabindex start:0x80011A80 end:0x80011AC8
-	.text start:0x8002FE00 end:0x80030088
+game/wii/gamedtor.cpp:
+	.text start:0x8002CFB8 end:0x80030A54
 
 game/cpadexdtor.cpp:
 	.text start:0x80030A54 end:0x80030AC0
@@ -1238,6 +1239,9 @@ game/gamefbsubwincam.cpp:
 game/gameinit.cpp:
 	.text start:0x8001BB90 end:0x8001C2D8
 
+game/wii/gameupdate.cpp:
+	.text start:0x8001C2D8 end:0x80024AE8
+
 game/ctrigondtor.cpp:
 	.text start:0x800BEB0C end:0x800BEB4C
 
@@ -1247,6 +1251,9 @@ game/wii/xobj_ut.cpp:
 
 game/ctoon.cpp:
 	.text start:0x802BD294 end:0x802BD3B4
+
+game/wii/gamemain.cpp:
+	.text       start:0x80017BC0 end:0x80019A68
 
 game/wii/delete.cpp:
 	.text start:0x80019A68 end:0x80019AB4

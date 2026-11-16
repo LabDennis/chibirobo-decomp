@@ -17,6 +17,11 @@ struct CSoundTrackSlot {
 	f32 mPanTarget;    // _14
 	f32 mPanStep;      // _18
 	u8 _1C[4];
+
+	// mTrack is an nw4r::snd::SoundHandle (one pointer to the sound); these are its two inlines
+	// (Stop is defined where it is used, behind nw4r/snd/snd_BasicSound.h)
+	bool IsAttachedSound() const { return mTrack != NULL; }
+	void Stop(int fadeFrames);
 };
 STATIC_ASSERT(sizeof(CSoundTrackSlot) == 0x20);
 
@@ -79,6 +84,10 @@ public:
 	BOOL OpenArchiveFile(const char* path); // reads "<path>.brsar" into the archive's heap buffer
 
 	CSound3DManager mSound3DManager; // _AC0
+
+	// stops every playing track over fade seconds; Reset and the message script's SFX -2 both expand it.
+	// Defined in gamemain.cpp: the files do not agree on gRefreshRate's type yet, so it cannot stand here
+	void StopAllTracks(f32 fade);
 };
 STATIC_ASSERT(sizeof(CSound) == 0xB60);
 
@@ -127,7 +136,7 @@ STATIC_ASSERT(offsetof(XSound, mPausedMusicId) == 0x1138);
 
 extern "C" {
 void InitAudio(CSound* sound, u32 heapSize);
-void ShutdownAudio();
+void ShutdownAudio(CSound* sound);
 void UpdateGameSound(CSound* sound, u32 step);
 s32 PlayWiiSoundEffect(XSound* sound, s32 id, f32 volume, f32 pan);
 s32 IsWiiSfxPlaying(XSound* sound, s32 id);                        // 0x80037B04

@@ -379,7 +379,6 @@ public:
 		return mObject.m_pScnMdl != NULL ? mObject.m_pScnMdl->mpWorldMtxArray[node.GetMtxID()] : NULL;
 	}
 
-protected:
 	s32 mLoadState;        // _08, 1 while the resource file is being read
 	u32 mModel;            // _0C
 	u32 mLoadFlags;        // _10
@@ -412,10 +411,9 @@ public:
 	// the trivial body: retail's aggregate destructors inline it to nothing, the
 	// standalone __dt__4XObjFv at 0x8002D57C is the deleting variant
 	virtual ~XObj() { }
-	virtual void InitializeObject(); // _14C, first of XObj's own virtuals; retail's out-of-line
-	                                 // definition keeps the GameCube u32 parameter, but callers
-	                                 // here emit no argument (the callee never reads it)
-
+	virtual void InitializeObject();                       // _14C, first of XObj's own virtuals; retail's out-of-line
+	                                                       // definition keeps the GameCube u32 parameter, but callers
+	                                                       // here emit no argument (the callee never reads it)
 	virtual void ResetForNewGame();                        // _150
 	virtual void ResetObjectState();                       // _154
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
@@ -423,19 +421,19 @@ public:
 	virtual void vf160();
 	virtual void UpdateObject(u32 frames); // _164
 	virtual void vf168();
-	virtual void vf16C();
+	virtual void vf16C(); // _16C, empty
 	virtual void vf170();
-	virtual void DrawObject();           // _174
-	virtual void DrawWithView(Mtx view); // _178
-	virtual void vf17C();
-	virtual void vf180();
-	virtual void vf184();
-	virtual void vf188();
-	virtual void DrawCollisionShapes(); // _18C
-	virtual void vf190();
-	virtual void DrawDebugStatus(); // _194
+	virtual void DrawObject();                                       // _174
+	virtual void DrawWithView(Mtx view);                             // _178
+	virtual void DrawReflection(Mtx view);                           // _17C
+	virtual void DrawGroundShadow();                                 // _180
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity); // _184
+	virtual void DrawObjectEffects();                                // _188
+	virtual void DrawCollisionShapes();                              // _18C
+	virtual void DrawScreenOverlay();                                // _190
+	virtual void DrawDebugStatus();                                  // _194
 	virtual void vf198();
-	virtual void vf19C();
+	virtual void vf19C(u32 color, f32 z, f32 x, f32 y); // _19C, CGame::DrawHud calls it on its mHudObject
 	virtual void vf1A0();
 	virtual void vf1A4();
 	virtual void vf1A8();
@@ -451,8 +449,8 @@ public:
 	virtual s32 OnPlayerContact(s32 unused, s32 value);               // _1CC
 	virtual BOOL TestFloorCrossing(const Vec& start, const Vec& end); // _1D0
 	virtual void vf1D4();
-	virtual void vf1D8();
-	virtual void vf1DC();
+	virtual f32 GetFloorXZExtent();   // _1D8
+	virtual f32 GetCollisionHeight(); // _1DC
 	virtual void vf1E0();
 	virtual void vf1E4();
 	virtual s32 HandleEventCommand(s32 count, s32* args);                // _1E8
@@ -464,24 +462,24 @@ public:
 	virtual void OnSquirterHit(const Vec* contact, s32 value, s32 tint); // _200
 	virtual BOOL OnItemUsed(const Vec* position, s32 value);             // _204
 	virtual void vf208();
-	virtual void vf20C();
-	virtual void vf210();
-	virtual void OnMoveRequest();                                  // _214, runs ahead of the three requests below
-	virtual void RequestRotationY(f32 y);                          // _218
-	virtual void RequestRotateY(f32 target, f32 speed);            // _21C
-	virtual void RequestMoveDir(const Vec* dir, f32 speed);        // _220
-	virtual BOOL HasModel();                                       // _224
-	virtual nw4r::g3d::ResNode GetResNodeOrFirst(u32 index);       // _228, the first node when index is out of range
-	virtual nw4r::g3d::ResNode FindResNode(const char* name);      // _22C
-	virtual CVec GetJointPos(nw4r::g3d::ResNode node);             // _230
-	virtual CVec GetJointPos(const char* name);                    // _234
-	virtual CVec GetJointPos(u32 index);                           // _238
-	virtual CVec GetJointWorldPos(const char* name);               // _23C
-	virtual CVec GetJointWorldPos(u32 index);                      // _240
-	virtual CVec* GetPos();                                        // _244
-	virtual CVec GetJointTranslate(const char* name);              // _248
-	virtual CVec GetJointTranslate(u32 index);                     // _24C
-	virtual CVec GetJointScale(nw4r::g3d::ResNode node);           // _250, the scale in the node's world matrix
+	virtual void OnMicrophonePeak(s32 unused, s32 volume);    // _20C, empty
+	virtual void vf210();                                     // _210, empty
+	virtual void OnMoveRequest();                             // _214, runs ahead of the three requests below
+	virtual void RequestRotationY(f32 y);                     // _218
+	virtual void RequestRotateY(f32 target, f32 speed);       // _21C
+	virtual void RequestMoveDir(const Vec* dir, f32 speed);   // _220
+	virtual BOOL HasModel();                                  // _224
+	virtual nw4r::g3d::ResNode GetResNodeOrFirst(u32 index);  // _228, the first node when index is out of range
+	virtual nw4r::g3d::ResNode FindResNode(const char* name); // _22C
+	virtual CVec GetJointPos(nw4r::g3d::ResNode node);        // _230
+	virtual CVec GetJointPos(const char* name);               // _234
+	virtual CVec GetJointPos(u32 index);                      // _238
+	virtual CVec GetJointWorldPos(const char* name);          // _23C
+	virtual CVec GetJointWorldPos(u32 index);                 // _240
+	virtual CVec* GetPos();                              // _244, &mMoveTranslate; the GameCube-named reading of this slot was GetPosition
+	virtual CVec GetJointTranslate(const char* name);    // _248
+	virtual CVec GetJointTranslate(u32 index);           // _24C
+	virtual CVec GetJointScale(nw4r::g3d::ResNode node); // _250, the scale in the node's world matrix
 	virtual void GetJointScale(nw4r::g3d::ResNode node, Vec* out); // _254
 	virtual CVec* GetScale();                                      // _258
 	virtual f32 GetPosX();                                         // _25C
@@ -507,13 +505,16 @@ public:
 	virtual void ClearAnim();                                                                                                   // _110
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);                              // _148
 
-private:
 	CStatus64 mStatus; // _150
 	CoordInfo mCoord;  // _160
 	AttrInfo mAttr;    // _168
 	u8 _174[0x28];
 	CVec mLastPos; // _19C
-	u8 _1AC[0x54C];
+	u8 _1AC[0x640 - 0x1AC];
+	f32 mFloorXZExtent; // _640
+	u8 _644[0x6C8 - 0x644];
+	f32 mMaxFloorHeight; // _6C8, NAN while there is none
+	u8 _6CC[0x6F8 - 0x6CC];
 	CVec mToppleOffset; // _6F8
 	u8 _708[0xC];
 	CVec mVec714;             // _714

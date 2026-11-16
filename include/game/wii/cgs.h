@@ -7,6 +7,7 @@
 #include <Dolphin/gx.h>
 
 class CCamera;
+class CLight;
 struct TextChar;
 struct PrimVertex;
 
@@ -689,15 +690,28 @@ public:
 
 	u8 _004[0xE4 - 0x004];
 	s32 mPending; // _E4, the queued draws still waiting
+	u8 _E8[0x2888 - 0xE8];
+	void* _2888; // _2888, set when the stage's scene brings its own lights and fog
 };
+
+// nine of these sit in the CGs at _1FE4; only the three flag bytes the stage setup clears are known
+struct WiiGsSlot {
+	u8 _00;
+	u8 _01[7];
+	u8 _08;
+	u8 _09[0xF];
+	u8 _18;
+	u8 _19[0xF];
+};
+STATIC_ASSERT(sizeof(WiiGsSlot) == 0x28);
 
 class CGs {
 public:
-	void* mFifoBuffer; // _00
-	GXFifoObj* mFifo;  // _04
-	CGsScreen mScreen; // _08
-	CCamera* mCamera;  // _48, the camera the 2D draws take their view matrix from
-	u8 _4C[4];
+	void* mFifoBuffer;               // _00
+	GXFifoObj* mFifo;                // _04
+	CGsScreen mScreen;               // _08
+	CCamera* mCamera;                // _48, the camera the 2D draws take their view matrix from
+	CLight* mLight;                  // _4C, the light list the scene draws under, CBase::SetLight stores it
 	CGsRenderState mRenderState;     // _50, the CGs's own state, current unless another one was set
 	CGsTevStage mTevStages[2];       // _E0
 	CGsChannel mChannels[4];         // _2A0
@@ -731,7 +745,9 @@ public:
 	Vec mTextRot;              // _1B94, the text rotation, cleared by the light setup
 	u32 mTextFont;             // _1BA0, the font argument handed to the glyph lookups
 	WiiGsSceneObj* mSceneHead; // _1BA4, the list the scene pass drains
-	u8 _1BA8[0x2290 - 0x1BA8];
+	u8 _1BA8[0x1FE4 - 0x1BA8];
+	WiiGsSlot _1FE4[9]; // _1FE4, FinalizeStageObjectSetup clears each one's three flags
+	u8 _214C[0x2290 - 0x214C];
 
 	// whether the current state is the CGs's own; the draws only touch that one
 	bool IsOwnTevStage() const { return mCurTevStage == &mTevStages[0]; }
@@ -747,9 +763,11 @@ public:
 	void SetTevStage(CGsTevStage* stage, s32 index, GSTevOrder order, GSTevColorOp colorOp, GSTevColorIn colorIn, GSTevAlphaOp alphaOp,
 	                 GSTevAlphaIn alphaIn);                                                                   // 0x802AB1DC
 	void SetChannel(CGsChannel* channel, GXChannelID id, GSChanCtrl ctrl, GXColor ambient, GXColor material); // 0x802AB344
-	void ResetZMode();  // 0x802AB864, depth test and write and color update back on
-	void EndFrame();    // 0x802AB8CC, queues the frame's copy and waits for the retrace
-	void SwapBuffers(); // 0x802AB8F0
+	BOOL BeginCamera();                     // 0x802AB790, loads mCamera's matrices; FALSE when there is none
+	void fn_802AB81C(MtxP view, BOOL flag); // 0x802AB81C, loads mLight under view and keeps what the scene list returns
+	void ResetZMode();                      // 0x802AB864, depth test and write and color update back on
+	void EndFrame();                        // 0x802AB8CC, queues the frame's copy and waits for the retrace
+	void SwapBuffers();                     // 0x802AB8F0
 };
 
 // GXSetFog's arguments, kept so the fog can be put back
