@@ -117,7 +117,7 @@ typedef char CFileText_size_check[sizeof(CFileText) == 0xF0 ? 1 : -1];
 // a pooled resource file: GetResult counts a use, Close only really closes once they run out
 class ResourceFile : public CFile {
 public:
-	ResourceFile();
+	ResourceFile() { mRefCount = 0; }
 	virtual ~ResourceFile();
 
 	virtual s32 GetResult(); // _18

@@ -30,7 +30,7 @@ game/wii/soundbank.cpp:
 	.data start:0x802E7170 end:0x802E7238
 
 game/wii/gxb.cpp:
-	.text start:0x8003CEA0 end:0x80040E08
+	.text start:0x8003CEB0 end:0x80040E08
 
 game/roboeyeslens.cpp:
 	.text start:0x80040E08 end:0x80040E4C
@@ -2476,3 +2476,18 @@ nw4r/g3d/g3d_light.cpp:
 nw4r/g3d/g3d_calcvtx.cpp:
 	.text start:0x802824A8 end:0x80282CA0
 	.sdata2 start:0x805A7520 end:0x805A7524
+
+game/wii/unit_8003366C.cpp:
+	.text start:0x8003366C end:0x800354DC
+
+game/wii/gamesound.cpp:
+	.text start:0x80036618 end:0x8003AA58
+
+game/wii/sound.cpp:
+	.text start:0x8003AB00 end:0x8003CEB0
+
+game/wii/unit_80040E4C.cpp:
+	.text start:0x80040E4C end:0x8004328C
+
+game/wii/unit_8004328C.cpp:
+	.text start:0x8004328C end:0x80044FD8
