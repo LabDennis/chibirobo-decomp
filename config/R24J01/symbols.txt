@@ -7010,3 +7010,5 @@ vf16C__4XObjFv = .text:0x80024BD4; // type:function
 DrawWithView__4XObjFPA4_f = .text:0x800AE4B4; // type:function
 UpdateStageNameBubbles = .text:0x8002C044; // type:function
 DrawHud__5CGameFv = .text:0x800287F0; // type:function
+__dt__7CCameraFv = .text:0x80024BD8; // type:function
+__dt__5CFontFv = .text:0x8002CB7C; // type:function

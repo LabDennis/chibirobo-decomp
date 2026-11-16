@@ -16,6 +16,12 @@ void fn_802AEDEC(WiiGsSceneObj** head, Mtx view); // sorts the queued scene draw
 }
 
 extern s32 gRefreshRate;
+extern s32 gPointerScreenWidth;
+extern s32 gPointerScreenHeight;
+extern s32 gScreenLeft;
+extern s32 gScreenTop;
+extern s32 gScreenRight;
+extern s32 gScreenBottom;
 #include "revolution/mem.h"
 
 // the expanded heap mm::InitMem1 creates over the MEM1 arena; every operator delete site reads it
@@ -258,6 +264,75 @@ void CGame::ProjectOffsetToScreen(const Vec* pos, f32* x, f32* y, f32* z, void* 
 CLight* CBase::GetScreenLight()
 {
 	return (CLight*)mLights[8];
+}
+
+/**
+ * @note Address: 0x80029DF4
+ * @note Size: 0x53C
+ */
+// NONMATCHING: retail calls the Wii MSL's out-of-line __fpclassifyf, see XObj::GetCollisionHeight
+// draws the movie, centred at its own size unless mMovieRect says otherwise. with alpha it's drawn
+// three times over, without it over a black screen
+extern "C" void DrawGameMovie(CGame* game)
+{
+	if (game->mHomeMenu.IsRunning()) {
+		return;
+	}
+	if (game->mMovie.mState != 0) {
+		f32 w   = fpclassify(game->mMovieRect[2]) == FP_NAN ? (f32)game->mMovie.mVideoInfo.xSize : game->mMovieRect[2];
+		f32 h   = fpclassify(game->mMovieRect[3]) == FP_NAN ? (f32)game->mMovie.mVideoInfo.ySize : game->mMovieRect[3];
+		f32 x   = fpclassify(game->mMovieRect[0]) == FP_NAN ? ((f32)gPointerScreenWidth - w) * 0.5f : game->mMovieRect[0];
+		f32 y   = fpclassify(game->mMovieRect[1]) == FP_NAN ? ((f32)gPointerScreenHeight - h) * 0.5f : game->mMovieRect[1];
+		CGs* gs = &gGame.mGs;
+		gs->mCurRenderState->SetColorUpdate(GX_TRUE);
+		gs->mCurRenderState->SetAlphaUpdate(GX_FALSE);
+		gs->mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		// the Start flag's bit 0, which cmovie.h's Wii branch calls mVolumeTime: the movie carries alpha
+		if (game->mMovie.mVolumeTime) {
+			gs->mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gs->mCurRenderState->SetAlphaCompare(GX_GEQUAL, 0x20, GX_AOP_AND, GX_EQUAL, 255);
+			if (gs->mCurRenderState != NULL) {
+				gs->mCurRenderState->Apply();
+			}
+			if (gGame.mGs.mCurTevStage != NULL) {
+				gGame.mGs.mCurTevStage->Apply();
+			}
+			if (gGame.mGs.mCurChannel != NULL) {
+				gGame.mGs.mCurChannel->Apply();
+			}
+			if (game->mMovie.BeginDraw() >= 0) {
+				for (s32 i = 0; i < 3; i++) {
+					game->mMovie.Draw(x, y, 0.0f, w, h);
+				}
+				game->mMovie.EndDraw();
+			}
+		} else {
+			gs->mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			gs->mCurRenderState->SetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 255);
+			if (gs->mCurRenderState != NULL) {
+				gs->mCurRenderState->Apply();
+			}
+			if (gGame.mGs.mCurTevStage != NULL) {
+				gGame.mGs.mCurTevStage->Apply();
+			}
+			if (gGame.mGs.mCurChannel != NULL) {
+				gGame.mGs.mCurChannel->Apply();
+			}
+			Vec quad[4] = { 0 };
+			quad[0].x   = (f32)gScreenLeft;
+			quad[0].y   = (f32)gScreenTop;
+			quad[1].x   = (f32)gScreenRight;
+			quad[1].y   = (f32)gScreenTop;
+			quad[2].x   = (f32)gScreenRight;
+			quad[2].y   = (f32)gScreenBottom;
+			quad[3].x   = (f32)gScreenLeft;
+			quad[3].y   = (f32)gScreenBottom;
+			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, 0xFF, quad[1].x, quad[1].y, quad[1].z, 0xFF, quad[2].x, quad[2].y,
+			                 quad[2].z, 0xFF, quad[3].x, quad[3].y, quad[3].z, 0xFF);
+			game->mMovie.DrawFrame(x, y, 0.0f, w, h);
+		}
+		gGame.mGs.mCurRenderState->SetAlphaCompare(GX_GEQUAL, 0, GX_AOP_AND, GX_EQUAL, 255);
+	}
 }
 
 /**
