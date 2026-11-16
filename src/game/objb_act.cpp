@@ -1791,16 +1791,17 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 		if (anim != 0x13) {
 			if (act->mTarget) {
 				f32 angle = GetFloorFacingAngle(act->mTarget, &act->mOwner->mMoveTranslate, act->mTargetFloor, 1, &contact, &normal);
-				if (__fpclassifyf(angle) == FP_NAN) {
+				if (__fpclassifyf(angle) != FP_NAN) {
+					StopPlayerMotion(act->mOwner);
+					HangAnim(act, 0x13, 0);
+					act->mOwner->SetRotationY(angle, 0);
+					start.Set(act->mOwner->mMoveTranslate);
+					contact.y = start.y;
+				} else {
 					act->mState  = 0;
 					act->mTarget = NULL;
 					return;
 				}
-				StopPlayerMotion(act->mOwner);
-				HangAnim(act, 0x13, 0);
-				act->mOwner->SetRotationY(angle, 0);
-				start.Set(act->mOwner->mMoveTranslate);
-				contact.y = start.y;
 			}
 			ReleaseHangPlug(act);
 		} else if (aobj->flags & 0x44000000) {
