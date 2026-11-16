@@ -216,9 +216,9 @@ public:
 	s32 mBatteryWarningFrames;           // _9AB4
 	f32 mBatteryWarningFade;             // _9AB8
 	f32 mBatteryWarningAngle;            // _9ABC
-	s32 mGaugeTarget; // _9AC0, the object (XObj* held as s32) whose hold time mGaugeTime counts toward the auto action; 0 for none, reset
-	                  // when the target changes or the action fires
-	f32 mGaugeTime;   // _9AC4, time shown on the player gauge
+	XObj* mGaugeTarget;                  // _9AC0, the object whose hold time mGaugeTime counts toward the auto action; NULL for none, reset
+	                                     // when the target changes or the action fires
+	f32 mGaugeTime;                      // _9AC4, time shown on the player gauge
 	s32 mLoadStep;
 	u8 _9ACC[4];                   // _9AC8
 	XObjPlug mPlug;                // _9AD0

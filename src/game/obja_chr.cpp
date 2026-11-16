@@ -934,15 +934,15 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		SetVectorComponents(&player->mFloorSlope, 0, 0, 0);
 	}
 	if (player->mInAir) {
-		f32 floor = player->mFloorHit.mHeight;
-		if (player->mMoveTranslate.y == floor) {
-			SetObjectYAndTarget(&player->mMoveTranslate, floor);
+		if (player->mMoveTranslate.y == player->mFloorHit.mHeight) {
+			SetObjectYAndTarget(&player->mMoveTranslate, player->mFloorHit.mHeight);
 			SetObjectVerticalSpeed(&player->mMoveTranslate, 0);
-		} else if (player->mMoveTranslate.y > floor && CanFallDuringHangAction(&player->mHang) && CanFallDuringJumpAction(&player->mJump)
-		           && CanFallDuringLadderAction(&player->mLadder) && CanFallDuringRopeAction(&player->mRope)
-		           && CanFallDuringPushAction(&player->mPush) && CanFallDuringTumbleAction(&player->mTumble)
-		           && CanFallDuringCopterAction(&player->mCopter) && CanFallDuringPopperAction(&player->mPopper)
-		           && CanFallDuringRadarAction(&player->mRadar) && GetMaskedPlayerStatusFlags(player, 2)) {
+		} else if (player->mMoveTranslate.y > player->mFloorHit.mHeight && CanFallDuringHangAction(&player->mHang)
+		           && CanFallDuringJumpAction(&player->mJump) && CanFallDuringLadderAction(&player->mLadder)
+		           && CanFallDuringRopeAction(&player->mRope) && CanFallDuringPushAction(&player->mPush)
+		           && CanFallDuringTumbleAction(&player->mTumble) && CanFallDuringCopterAction(&player->mCopter)
+		           && CanFallDuringPopperAction(&player->mPopper) && CanFallDuringRadarAction(&player->mRadar)
+		           && GetMaskedPlayerStatusFlags(player, 2)) {
 			SetObjectTargetY(&player->mMoveTranslate, player->mFloorHit.mHeight);
 			f32 speed;
 			if (IsCopterActionState(&player->mCopter, 4) || IsCopterActionState(&player->mCopter, 7)
@@ -1028,7 +1028,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			} else {
 				SetObjectTargetY(&player->mMoveTranslate, player->mFloorHit.mHeight);
 				f32 speed = 0.2f + GetObjectVectorSpeed(&player->mMoveTranslate)->y;
-				SetObjectVerticalSpeed(&player->mMoveTranslate, speed > 5 ? 5 : speed);
+				if (speed > 5)
+					speed = 5;
+				SetObjectVerticalSpeed(&player->mMoveTranslate, speed);
 			}
 		} else {
 			SetObjectVerticalSpeed(&player->mMoveTranslate, 0);
@@ -1054,10 +1056,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		}
 	}
 	{
-		f32 reach = 0.5f * radius;
 		Vec probePoint;
-		probePoint.x            = (player->mMoveTranslate.x + offset.x) + reach * PlayerActionSine(player->mMoveRotate.y);
-		probePoint.z            = (player->mMoveTranslate.z + offset.z) + reach * PlayerActionCosine(player->mMoveRotate.y);
+		probePoint.x            = (player->mMoveTranslate.x + offset.x) + (0.5f * radius) * PlayerActionSine(player->mMoveRotate.y);
+		probePoint.z            = (player->mMoveTranslate.z + offset.z) + (0.5f * radius) * PlayerActionCosine(player->mMoveRotate.y);
 		probePoint.y            = player->mMoveTranslate.y;
 		f32 probeRadius         = 0.9f * radius;
 		player->mHitObjectIndex = player->mActionObjectIndex = player->mFloorContacts[2].objectIndex = -1;
@@ -1110,9 +1111,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	}
 	{
 		player->mLetickerIndex = -1;
-		s32 floorIdx           = player->mFloorContacts[0].objectIndex;
-		if (!((player->mHitObjectIndex >= 0 && player->mHitObjectIndex != floorIdx)
-		      || (player->mFloorContacts[2].objectIndex >= 0 && player->mFloorContacts[2].objectIndex != floorIdx)
+		if (!((player->mHitObjectIndex >= 0 && player->mHitObjectIndex != player->mFloorContacts[0].objectIndex)
+		      || (player->mFloorContacts[2].objectIndex >= 0
+		          && player->mFloorContacts[2].objectIndex != player->mFloorContacts[0].objectIndex)
 		      || !IsLiftActionState(&player->mLift, 4) || !IsLiftTargetPlug(&player->mLift))) {
 			for (s32 i = 0; i < GetObjectPoolUsedCount(&gGame, 9); ++i) {
 				XObj* object = (XObj*)GetObjectFromPool(&gGame, 9, i);
@@ -1136,14 +1137,15 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	// available: actions the objects around him offer, 1 event, 2 push, 4 lift, 8 climb (japan), 0x10 ladder, 0x20 rope,
 	// 0x40 never (fn_800B1E04), 0x80 plug in; marker: the ones whose marker shows. actionMode: what a full gauge on target
 	// starts, 1-3 jump up 4, 8 or 12.5, 4 grab a ledge, 5 climb up from a hang, 6 let go of it, 9 push (japan)
-	u32 available              = 0;
-	XObj* target               = NULL;
-	s32 actionMode             = -1;
-	u32 marker                 = 0;
+	s32 count                  = 0;
 	player->mLook.mMarkerCount = 0;
 	if (IsPlayerLookMarkerVisible(&player->mLook))
 		++player->mLook.mMarkerCount;
 	DisablePlayerLook(&player->mLook);
+	u32 available  = 0;
+	XObj* target   = NULL;
+	s32 actionMode = -1;
+	u32 marker     = 0;
 	if (!IsEventScriptActive(&gGame) && !(GetMaskedGameStatus(&gGame, 0x500)) && player->mAttachmentRequest < 0
 	    && (IsLiftActionState(&player->mLift, 0) || (IsLiftActionState(&player->mLift, 4) && !IsCarryingMug(&player->mLift)))
 	    && IsHangActionState(&player->mHang, 0) && IsJumpActionState(&player->mJump, 0) && IsLadderActionState(&player->mLadder, 0)
@@ -1151,7 +1153,6 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	    && IsCopterActionState(&player->mCopter, 0) && IsPopperActionState(&player->mPopper, 0) && IsRadarActionState(&player->mRadar, 0)) {
 		{
 			s32 index = player->mFloorContacts[2].objectIndex;
-			available = 0;
 			if (index >= 0 && index != player->mFloorContacts[0].objectIndex) {
 				XObj* object = GetGameObjectByIndex(&gGame, index);
 				if (!player->_A14 || !GetMaskedObjectStatus(object, 0x100000)) {
@@ -1293,7 +1294,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				    && index != player->mFloorContacts[0].objectIndex && GetCharacterObjectApproachResult(player, object))
 					available |= 0x80;
 				if (player->mGaugeTarget)
-					player->mHitObjectIndex = index;
+					player->mHitObjectIndex = player->mActionObjectIndex;
 			}
 		}
 		{
@@ -1323,7 +1324,6 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			}
 		}
 	}
-	s32 count = 0;
 	{
 		if (marker & 0x1)
 			++count;
@@ -1411,7 +1411,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			if (target && !GetMaskedObjectStatus(target, 0x0002000000000000ULL) && !GetHeldPadButtons(&player->mPad, PAD_BUTTON_B)
 			    && magnitude > 0) {
 				f32 threshold = FRAME_RATE * GetAutoActionHoldTime();
-				if ((s32)target == player->mGaugeTarget) {
+				if (target == player->mGaugeTarget) {
 					if (GetAutoActionChargeRate() > 0)
 						player->mGaugeTime += frames * GetAutoActionChargeRate();
 					else
@@ -1420,7 +1420,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					if (cap > 0 && magnitude <= 0.7f && player->mGaugeTime > threshold * cap)
 						player->mGaugeTime = threshold * cap;
 				} else {
-					player->mGaugeTarget = (s32)target;
+					player->mGaugeTarget = target;
 					player->mGaugeTime   = 0;
 				}
 				if (player->mGaugeTime >= threshold) {
@@ -1457,15 +1457,15 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						SetPlayerActionTarget(&player->mPush, hit);
 						SetPushTargetState(&player->mPush, 0);
 					}
-					player->mGaugeTarget = 0;
+					player->mGaugeTarget = NULL;
 					player->mGaugeTime   = 0;
 				}
 			} else {
-				player->mGaugeTarget = 0;
+				player->mGaugeTarget = NULL;
 				player->mGaugeTime   = 0;
 			}
 		} else {
-			player->mGaugeTarget = 0;
+			player->mGaugeTarget = NULL;
 			player->mGaugeTime   = 0;
 		}
 	}
