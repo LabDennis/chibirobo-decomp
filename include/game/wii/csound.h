@@ -3,22 +3,61 @@
 
 #include "types.h"
 #include "Dolphin/mtx.h"
+#include "nw4r/snd/snd_SoundHandle.h"
 
 class CSound;
 
-// one mixer track: current/target/step for volume and pan, faded by
-// UpdateGameSound every frame; the SFX commands only reach mTrack
-struct CSoundTrackSlot {
-	void* mTrack;      // _00
+// a sound handle with the volume and pitch it fades to. The class has no RTTI, the name is ours.
+// CSound keeps 64 of them, one per sound it can play at once
+class CSoundHandle : public nw4r::snd::SoundHandle {
+public:
 	f32 mVolume;       // _04
 	f32 mVolumeTarget; // _08
 	f32 mVolumeStep;   // _0C
-	f32 mPan;          // _10
-	f32 mPanTarget;    // _14
-	f32 mPanStep;      // _18
+	f32 mPitch;        // _10
+	f32 mPitchTarget;  // _14
+	f32 mPitchStep;    // _18
 	u8 _1C[4];
+
+	// frames of 0 set the value at once, otherwise UpdateGameSound steps to it
+	void SetVolume(f32 volume, s32 frames)
+	{
+		mVolumeTarget = volume;
+		if (frames == 0 || mVolumeTarget == mVolume) {
+			mVolume = mVolumeTarget;
+		} else {
+			mVolumeStep = (mVolumeTarget - mVolume) / frames;
+		}
+		nw4r::snd::SoundHandle::SetVolume(mVolume, 0);
+	}
+	void SetPitch(f32 pitch, s32 frames)
+	{
+		mPitchTarget = pitch;
+		if (frames == 0 || mPitchTarget == mPitch) {
+			mPitch = mPitchTarget;
+		} else {
+			mPitchStep = (mPitchTarget - mPitch) / frames;
+		}
+		nw4r::snd::SoundHandle::SetPitch(mPitch);
+	}
+	f32 GetVolume() const { return mVolume; }
+	f32 GetPitch() const { return mPitch; }
+	f32 GetVolumeTarget() const { return mVolumeTarget; }
+	f32 GetPitchTarget() const { return mPitchTarget; }
+	void Pause(s32 frames)
+	{
+		if (!IsPause()) {
+			nw4r::snd::SoundHandle::Pause(true, frames);
+		}
+	}
+	void Resume(s32 frames)
+	{
+		if (IsPause()) {
+			nw4r::snd::SoundHandle::Pause(false, frames);
+		}
+	}
 };
-STATIC_ASSERT(sizeof(CSoundTrackSlot) == 0x20);
+STATIC_ASSERT(sizeof(CSoundHandle) == 0x20);
 
 // the nw4r archive player seen through the offsets this unit touches; CSound
 // holds its bytes flat, with the track table broken out as its own member
@@ -64,7 +103,7 @@ class CSound {
 public:
 	u8 mDvdSoundArchive[0x190];                  // CDvdSoundArchive: path open, size@_124, data@_18C
 	u8 mArchivePlayer[0xF4];                     // CSoundArchivePlayer head
-	CSoundTrackSlot mTracks[0x40];               // the player's 64-track table
+	CSoundHandle mTracks[0x40];                  // the player's 64-track table
 	u8 mArchivePlayerTail[0x8F8 - 0xF4 - 0x800]; // through _A88
 	u8 mSoundHeap[0x2C];                         // CSoundHeap
 	u32 mSoundHeapSize;
@@ -79,19 +118,59 @@ public:
 	BOOL OpenArchiveFile(const char* path); // reads "<path>.brsar" into the archive's heap buffer
 
 	CSound3DManager mSound3DManager; // _AC0
+
+	// stops every playing track over fade seconds; Reset and the message script's SFX -2 both expand it.
+	// Defined in gamemain.cpp: the files do not agree on gRefreshRate's type yet, so it cannot stand here
+	void StopAllTracks(f32 fade);
 };
 STATIC_ASSERT(sizeof(CSound) == 0xB60);
 
 class XSound : public CSound {
 public:
-	u8 mPlaybackState[0x113C - 0xB60]; // Begins with CSoundFxReverbHiDpl2.
+	// the archive calls go straight to CSound; retail still has them as XSound's own vtable entries
+	virtual BOOL OpenArchive(const char* path, s32 initialGroup);
+	virtual BOOL OpenArchiveAsync(const char* path, s32 initialGroup);
+	virtual BOOL LoadGroup(s32 groupId);
+	virtual BOOL LoadGroupAsync(s32 groupId);
+
+	u8 mPlaybackState[0xF74 - 0xB60]; // Begins with CSoundFxReverbHiDpl2.
+	s32 mStartedSfx[32];              // _F74, ids started since the last update; zero means free
+	s32 mMusicPitchFrames;            // _FF4
+	s32 mAltSoundIndex;               // _FF8, the GameCube XSound's fields of the same names from here on
+	s32 mVoiceSeqIndex;               // _FFC
+	s32 mSoundSeqIndex;               // _1000
+	s32 mCooldown;                    // _1004
+	u8 _1008[0x100C - 0x1008];
+	u8 mQueueRead;  // _100C
+	u8 mQueueWrite; // _100D
+	u8 _100E[0x1018 - 0x100E];
+	s32 mQueuedSoundIds[64]; // _1018
+	s32 mLastQueuedSoundId;  // _1118
+	u8 _111C[0x1120 - 0x111C];
+	s32 mCurrentMusicId;     // _1120
+	f32 mMusicPitch;         // _1124, in cents; a float on the Wii
+	s16 mTargetMusicPitch;   // _1128
+	s32 _112C;               // _112C, written 0 when a music track starts
+	s32 mMusicResumeDelay;   // _1130
+	s32 mMusicFadeOutFrames; // _1134
+	s32 mPausedMusicId;      // _1138
 	f32 mMusicVolume;
 };
 STATIC_ASSERT(sizeof(XSound) == 0x1140);
+#ifndef offsetof
+#define offsetof(type, member) ((u32) & (((type*)0)->member))
+#endif
+STATIC_ASSERT(offsetof(XSound, mStartedSfx) == 0xF74);
+STATIC_ASSERT(offsetof(XSound, mAltSoundIndex) == 0xFF8);
+STATIC_ASSERT(offsetof(XSound, mQueuedSoundIds) == 0x1018);
+STATIC_ASSERT(offsetof(XSound, mMusicPitch) == 0x1124);
+STATIC_ASSERT(offsetof(XSound, mQueueRead) == 0x100C);
+STATIC_ASSERT(offsetof(XSound, mCurrentMusicId) == 0x1120);
+STATIC_ASSERT(offsetof(XSound, mPausedMusicId) == 0x1138);
 
 extern "C" {
 void InitAudio(CSound* sound, u32 heapSize);
-void ShutdownAudio();
+void ShutdownAudio(CSound* sound);
 void UpdateGameSound(CSound* sound, u32 step);
 s32 PlayWiiSoundEffect(XSound* sound, s32 id, f32 volume, f32 pan);
 s32 IsWiiSfxPlaying(XSound* sound, s32 id);                        // 0x80037B04
@@ -100,10 +179,13 @@ void PauseWiiSfx(XSound* sound, s32 id, f32 fade);                 // 0x80039AA8
 void ResumeWiiSfx(XSound* sound, s32 id, f32 fade);                // 0x80039BD4
 void SetWiiSfxVolume(XSound* sound, s32 id, f32 volume, f32 fade); // 0x80039DB4
 BOOL LoadWiiSoundBankByName(XSound* sound, const char* name);
-// SoundArchivePlayer track helpers used by the SFX -2 (all tracks) paths
-void StopWiiSfxTrack(void* track, u32 frames);                  // 0x8028A04C
-s32 IsWiiSfxTrackPaused(void* track);                           // 0x8028A59C
-void SetWiiSfxTrackPaused(void* track, u32 paused, u32 frames); // 0x8028A234
+// gamesound.cpp; the slot results are CSound::mTracks entries
+void UpdateXSound(XSound* sound, s32 step);                        // 0x800366EC
+CSoundHandle* GetGameSoundSlot(XSound* sound, s32 sfx);            // 0x800394B0
+CSoundHandle* GetGameMusicSlot(XSound* sound);                     // 0x80039924
+void SetGameSfxPitch(XSound* sound, s32 sfx, f32 cents, f32 fade); // 0x80039FDC
+void FadeInGameSfx(XSound* sound, s32 sfx, f32 fade);              // 0x8003A13C
+void FadeOutGameSfx(XSound* sound, s32 sfx, f32 fade);             // 0x8003A60C
 }
 
 #endif

@@ -6,6 +6,7 @@
 #include "game/ctpl.h"
 #include "Dolphin/vec.h"
 class CoordInfo;
+class CCamera;
 class CVec;
 struct UnkStageObj;
 struct XObjFloor;
@@ -180,9 +181,10 @@ public:
 	virtual void vf1D0();
 	// _1D4, projects a world position onto the screen, the GameCube's ProjectOffsetToScreen
 	virtual void vf1D4(const Vec* pos, f32* x, f32* y, s32, s32);
-	virtual void vf1D8();
-	virtual void vf1DC();
-	virtual void vf1E0();
+	virtual f32 vf1D8(); // _1D8, the GameCube's GetFloorXZExtent
+	virtual f32 vf1DC(); // _1DC, the GameCube's GetCollisionHeight
+	// _1E0, the GameCube's ProjectVisibleBounds
+	virtual BOOL vf1E0(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight);
 	virtual void vf1E4();
 	virtual void vf1E8();
 	virtual void vf1EC();
@@ -241,10 +243,19 @@ public:
 	f32 mFloorXZExtent; // _640, horizontal reach of the floors, the GameCube's _6F8
 	u8 _644[0x648 - 0x644];
 	f32 mFloorHeights[32]; // _648, a height per floor
-	u8 _6C8[0x794 - 0x6C8];
+	u8 _6C8[0x6D4 - 0x6C8];
+	BOOL mScreenBoundsValid; // _6D4, the four below hold the object's bounds on screen
+	u8 _6D8[0x6E0 - 0x6D8];
+	f32 mScreenTop;    // _6E0
+	f32 mScreenBottom; // _6E4
+	f32 mScreenLeft;   // _6E8
+	f32 mScreenRight;  // _6EC
+	u8 _6F0[0x794 - 0x6F0];
 	s32 mAnmHead;             // _794, the slot PushAnim probes first
 	WiiAnimSlot mAnmQueue[4]; // _798
-	u8 _7B8[0x9B0 - 0x7B8];
+	u8 _7B8[0x998 - 0x7B8];
+	s32 _998; // _998, the robo eyes label an item only while this is clear
+	u8 _99C[0x9B0 - 0x99C];
 
 	void ClearAnmQueue()
 	{

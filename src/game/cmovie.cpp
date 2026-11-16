@@ -116,6 +116,11 @@ s32 CMovie::Update()
 			}
 			mLastFrame = THPSimpleGetTotalFrame() - 1;
 			THPSimpleSetVolume(mVolume, 0);
+			// what is left of the GameCube's size report, the kilobyte and megabyte figures.
+			// NONMATCHING (data): retail's .sdata2 holds neither 1024.0f, 1048576.0f nor the
+			// conversion constant, so its report took the figures some other way; the code is retail's
+			f32 kb = size / 1024.0f;
+			f32 mb = size / 1048576.0f;
 		} else if (result < 0) {
 			mState = -2;
 		}

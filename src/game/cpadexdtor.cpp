@@ -1,10 +1,18 @@
 #include "Version.h"
 #if defined(VERSION_R24J01)
 #include "game/wii/cpad.h"
+#include "revolution/mem.h"
 
-// NONMATCHING (Wii): retail 0x80030A54 inlines operator delete as
-// MEMFreeToExpHeap(gWiiMem1Heap, pad) inside a throw() frame - its TU saw a different
-// operator delete declaration than our New.cp provides, so ours calls __dl__FPv
+// the expanded heap mm::InitMem1 creates over the MEM1 arena; every operator delete site reads it
+extern MEMiHeapHead* gWiiMem1Heap;
+
+// retail's game file defines operator delete itself (0x80019A68, wii/delete.cpp here) and expands it
+// in its destructors; this part of the file sees it as the same inline body cspritedtor.cpp uses
+inline void operator delete(void* ptr) throw()
+{
+	MEMFreeToExpHeap(gWiiMem1Heap, ptr);
+}
+
 CPadEx::~CPadEx()
 {
 }

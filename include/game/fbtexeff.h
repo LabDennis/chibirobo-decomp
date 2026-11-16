@@ -104,6 +104,8 @@ public:
 	u8 _04[0xE8];
 	u32 mMdl;  // _EC, the model's nw4r ResMdl handle
 	void* mF0; // _F0, the object the node matrices live in
+	u8 _F4[0x150 - 0xF4];
+	u64 mStatus; // _150, the object's status flags
 };
 
 // a mirror, renders the scene again through a camera reflected in a named node's plane;
@@ -128,6 +130,11 @@ public:
 	bool IsUsed() const { return mJoint ? true : false; }
 };
 STATIC_ASSERT(sizeof(FbMirror) == 0x37C);
+
+// the mirrors CGame holds. RTTI names the class "CGame::FbMirrorEx"; its vtable (0x802E5FF4) has FbMirror's five
+// functions and it adds no members, the constructor at 0x80035418 is the compiler's
+class CGame::FbMirrorEx : public FbMirror { };
+STATIC_ASSERT(sizeof(CGame::FbMirrorEx) == 0x37C);
 
 // the game's mirrors
 extern "C" FbMirror gFramebufferMirrors[5];

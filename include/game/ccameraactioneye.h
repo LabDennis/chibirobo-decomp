@@ -3,7 +3,7 @@
 
 #include "game/ccameraaction.h"
 #if defined(VERSION_R24J01)
-#include "game/wii/xobj.h"
+#include "game/ut.h"
 #else
 #include "game/cobj.h"
 #endif
@@ -11,6 +11,49 @@
 // split out since cobj.h puts .rodata in every file that includes it
 
 #if defined(VERSION_R24J01)
+
+// a value with a target and a per frame speed to step it there, the decl copied
+// from cobj.h which pulls the GameCube-only HSD headers; same pattern as
+// gxa_shared.h. when wii/xobj.h is already in, its CObjVec (the retail-verified
+// one, a TVec) is the class and this copy stays out
+#ifndef GAME_WII_XOBJ_H
+class CObjVec : public CVec {
+public:
+	CVec mTarget; // _10
+	CVec mSpeed;  // _20
+
+	u8 Step(u32 frames);
+
+	// puts it at a value with nowhere to go
+	void Reset(f32 x, f32 y, f32 z)
+	{
+		this->x   = x;
+		this->y   = y;
+		this->z   = z;
+		mTarget.x = x;
+		mTarget.y = y;
+		mTarget.z = z;
+		mSpeed.x  = 0.0f;
+		mSpeed.y  = 0.0f;
+		mSpeed.z  = 0.0f;
+	}
+	void Reset(const Vec& v) { Reset(v.x, v.y, v.z); }
+	void SetTarget(f32 x, f32 y, f32 z)
+	{
+		mTarget.x = x;
+		mTarget.y = y;
+		mTarget.z = z;
+	}
+	void SetTarget(const Vec& v) { SetTarget(v.x, v.y, v.z); }
+	// puts it at a value with its target there too, the speed stays
+	void SetNow(const Vec& v)
+	{
+		Set(v);
+		SetTarget(v);
+	}
+};
+STATIC_ASSERT(sizeof(CObjVec) == 0x30);
+#endif
 
 // a two-point cubic in x and y: the end points at +00, the tangents at +10;
 // the pointer position runs through it for the look response (fn_8016A844

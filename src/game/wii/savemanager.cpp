@@ -39,8 +39,8 @@ struct WiiSaveJob {
 extern "C" {
 extern MEMiHeapHead* gWiiGameHeap;
 // the event flags and variables, CEvtFlags/CEvtVars on the GameCube; the Wii keeps the same globals
-extern CEvtFlags gEventFlags;
-extern CEvtVars gEventVars;
+extern u32 gEventFlags[0x80];
+extern s32 gEventVars[0x800];
 extern s32 GetStageNum();
 
 CThread gWiiSaveThread;
@@ -467,8 +467,8 @@ extern "C" void CaptureWiiSaveSlot(WiiSaveManager* manager, bool newGame)
 	manager->mSlot.mHeader.mActive       = gGame.mPlayer->mParams._1C[0];
 	manager->mSlot.mHeader.mMenuControls = gGame.mMenuControls;
 	memcpy(manager->mSlot.mData.mPlayer, gGame.mPlayer->mParams.mInventory.mItems, sizeof(manager->mSlot.mData.mPlayer));
-	memcpy(manager->mSlot.mData.mEvtFlags, gEventFlags.mFlags, sizeof(manager->mSlot.mData.mEvtFlags));
-	memcpy(manager->mSlot.mData.mEvtVars, gEventVars.mVars, sizeof(manager->mSlot.mData.mEvtVars));
+	memcpy(manager->mSlot.mData.mEvtFlags, gEventFlags, sizeof(manager->mSlot.mData.mEvtFlags));
+	memcpy(manager->mSlot.mData.mEvtVars, gEventVars, sizeof(manager->mSlot.mData.mEvtVars));
 	memcpy(manager->mSlot.mData.mCoinFlags, gGame.mCoins->mFlags, sizeof(manager->mSlot.mData.mCoinFlags));
 	memcpy(manager->mSlot.mData.mItemFlags, gGame.mItems->mFlags, sizeof(manager->mSlot.mData.mItemFlags));
 	memcpy(manager->mSlot.mData.mDustFlags, gGame.mDust->mFlags, sizeof(manager->mSlot.mData.mDustFlags));
@@ -580,8 +580,8 @@ extern "C" void ApplyWiiSaveSlot(WiiSaveManager* manager)
 		gGame.mPlayer->mParams._1C[0] = 0;
 	gGame.mPlayTime = manager->mSlot.mHeader.mPlayTime;
 	memcpy(gGame.mPlayer->mParams.mInventory.mItems, manager->mSlot.mData.mPlayer, sizeof(manager->mSlot.mData.mPlayer));
-	memcpy(gEventFlags.mFlags, manager->mSlot.mData.mEvtFlags, sizeof(gEventFlags.mFlags));
-	memcpy(gEventVars.mVars, manager->mSlot.mData.mEvtVars, sizeof(gEventVars.mVars));
+	memcpy(gEventFlags, manager->mSlot.mData.mEvtFlags, sizeof(gEventFlags));
+	memcpy(gEventVars, manager->mSlot.mData.mEvtVars, sizeof(gEventVars));
 	memcpy(gGame.mCoins->mFlags, manager->mSlot.mData.mCoinFlags, sizeof(manager->mSlot.mData.mCoinFlags));
 	memcpy(gGame.mItems->mFlags, manager->mSlot.mData.mItemFlags, sizeof(manager->mSlot.mData.mItemFlags));
 	memcpy(gGame.mDust->mFlags, manager->mSlot.mData.mDustFlags, sizeof(manager->mSlot.mData.mDustFlags));

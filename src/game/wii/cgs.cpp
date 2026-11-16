@@ -1,16 +1,25 @@
-// The Wii's text drawing unit, .text 0x802AD310-0x802AEBB0: the GameCube
-// cgs.cpp pair (wii_gc_pairs.txt) plus the Wii's own helpers in between.
+// The Wii's cgs.cpp from the camera on, .text 0x802A80FC-0x802AEA44: camera, light and fog, the
+// included cgs_scrn.cpp and cgs_chan.cpp, then the GameCube cgs.cpp functions in the GameCube file's
+// order, plus the Wii's own text helpers.
 //
-// NONMATCHING: five of the unit's nine functions match at 100 %. GetGlyph
-// (99 %) and MeasureGameTextWidth (99 %) are structurally identical and
-// differ only in callee-saved colouring and in vtable/sdata2 referent
-// placement; DrawGsText (89 %) and DrawGsStrokeText additionally diverge in
-// float allocation and stack frame size (retail spills ~0x10 more, plus two
-// f64 spill slots the allocator gives us as held constants). In
-// DrawGsStrokeText -ipa file also inlines the single-call-site
-// MeasureStrokeTextWidth where retail kept it a real call; that call-set
-// difference accounts for most of its frame gap. No behavioural difference
-// in any of them.
+// NONMATCHING: in the frame buffer queue QueueFrameCopy (98 %) and OnCopyDone (88 %) give the queue's
+// address and the popped request other registers than retail. The perspective CCamera::Init (79 %) reads the frame buffer height before the
+// width for the aspect; CCameraView::CalcUp (92 %) reads the next angle before it narrows the last sine; CLight::GetPosition (83 %) tests
+// the light kind before it saves its registers and CLight::GetViewDirection (93 %) zeroes a second, unused vector on the stack.
+// DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %) read the camera's bottom before its top for the flip test where we read top
+// first (an inline for the test makes it worse). GetXfbHeight (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue
+// in front of it, which shift its assert in the string pool. GetGlyph (99 %) and MeasureGameTextWidth (99 %) are structurally identical and
+// differ only in callee-saved colouring and in vtable/sdata2 referent placement; DrawGsText (91 %) and DrawGsStrokeText (87 %) additionally
+// diverge in float allocation and stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held
+// constants). No behavioural difference in any of them. Not written yet: CGs::Init (0x802AA610), the camera begin and scene list calls
+// (0x802AB790, 0x802AB81C, 0x802AB860) and SetGsChannelMaterialAndLighting.
+
+// the revolution GX header first: the Wii's FIFO getters take the object to fill. GXReadDrawSync gets
+// the same treatment, the Dolphin header under it declares it void
+#define GXReadDrawSync __GXReadDrawSync_dolphin
+#include "revolution/gx.h"
+#undef GXReadDrawSync
+extern "C" u16 GXReadDrawSync(void);
 
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
@@ -18,6 +27,633 @@
 #include "game/wii/cgame.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include "Dolphin/vi.h"
+
+#include "arithmetic.h"
+#include "game/gmath.h"
+#include <math.h>
+#include <string.h>
+#include "game/cthread.h"
+#include "game/mm.h"
+
+extern "C" {
+void C_MTXFrustum(Mtx44 mtx, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f);
+void PSMTX44Identity(Mtx44 mtx);
+void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 ab);
+u32 C_MTX44Inverse(Mtx44 src, Mtx44 inv);
+}
+
+// The camera, light and fog code in front of the screen code, 0x802A80FC-0x802A90C8. It belongs to this
+// translation unit (the camera and light vtables sit in its data); which included files it came from is
+// not known, none of it asserts.
+
+void CCamera::InitView(const GXRenderModeObj* rmode)
+{
+	mView.mDirty      = TRUE;
+	mView.mEye.x      = 0.0f;
+	mView.mEye.y      = 0.0f;
+	mView.mEye.z      = 0.0f;
+	mView.mInterest.x = 0.0f;
+	mView.mInterest.y = 0.0f;
+	mView.mInterest.z = 0.0f;
+	mView.mAngle.x    = 0.0f;
+	mView.mAngle.y    = 0.0f;
+	mView.mAngle.z    = 0.0f;
+	mView.mUp.x       = 0.0f;
+	mView.mUp.y       = 1.0f;
+	mView.mUp.z       = 0.0f;
+	mView.mDirty      = TRUE;
+	PSMTX44Identity(mViewMtx);
+	mViewSource = NULL;
+	CCamera::vf88(0.0f, 0.0f, rmode->fbWidth, rmode->efbHeight, 0.0f, 1.0f);
+	PSMTX44Identity(mViewportMtx);
+}
+
+void CCamera::Init(f32 near, f32 far, f32 fov, f32 scale, const GXRenderModeObj* rmode)
+{
+	mFov              = fov;
+	mType             = 0;
+	mNear             = near;
+	mFar              = far;
+	mProjectionDirty  = TRUE;
+	mIsOrtho          = 0.0f;
+	mProjectionSource = NULL;
+	mAspect           = (rmode->fbWidth * scale) / rmode->efbHeight;
+	mScale            = scale;
+	InitView(rmode);
+}
+
+void CCamera::vf10(f32 near, f32 far, f32 top, f32 bottom, f32 left, f32 right, f32 scale, const GXRenderModeObj* rmode)
+{
+	mType             = 1;
+	mTop              = top;
+	mBottom           = bottom;
+	mLeft             = left * scale;
+	mRight            = right * scale;
+	mNear             = near;
+	mFar              = far;
+	mProjectionDirty  = TRUE;
+	mIsOrtho          = 0.0f;
+	mProjectionSource = NULL;
+	mScale            = scale;
+	InitView(rmode);
+}
+
+void CCamera::Init(f32 top, f32 bottom, f32 left, f32 right, f32 near, f32 far, f32 scale, const GXRenderModeObj* rmode)
+{
+	mType             = 2;
+	mTop              = top;
+	mBottom           = bottom;
+	mLeft             = left * scale;
+	mRight            = right * scale;
+	mNear             = near;
+	mFar              = far;
+	mProjectionDirty  = TRUE;
+	mIsOrtho          = 1.0f;
+	mProjectionSource = NULL;
+	mScale            = scale;
+	InitView(rmode);
+}
+
+BOOL CCamera::SetCurrent()
+{
+	BOOL projection;
+	if (mProjectionDirty && mProjectionSource == NULL) {
+		switch (mType) {
+		case 0:
+			C_MTXPerspective(mProjection, mFov, mAspect, mNear, mFar);
+			break;
+		case 1:
+			C_MTXFrustum(mProjection, mTop, mBottom, mLeft, mRight, mNear, mFar);
+			break;
+		case 2:
+			C_MTXOrtho(mProjection, mTop, mBottom, mLeft, mRight, mNear, mFar);
+			break;
+		}
+		mProjectionDirty = FALSE;
+	} else if (mProjectionSource != NULL) {
+		PSMTX44Copy(mProjectionSource, mProjection);
+	} else {
+		projection = FALSE;
+		goto view;
+	}
+	mProjParams[0] = mProjection[0][0];
+	mProjParams[1] = mProjection[0][2];
+	mProjParams[2] = mProjection[1][1];
+	mProjParams[3] = mProjection[1][2];
+	mProjParams[4] = mProjection[2][2];
+	mProjParams[5] = mProjection[2][3];
+	projection     = TRUE;
+view:
+	BOOL changed = projection != FALSE;
+
+	BOOL view;
+	if (mView.mDirty && mViewSource == NULL) {
+		C_MTXLookAt(mViewMtx, &mView.mEye, &mView.mUp, &mView.mInterest);
+		mView.mDirty = FALSE;
+		view         = TRUE;
+	} else if (mViewSource != NULL) {
+		PSMTXCopy(mViewSource, mViewMtx);
+		view = TRUE;
+	} else {
+		view = FALSE;
+	}
+	changed = (changed | view) != FALSE;
+
+	BOOL viewport;
+	if (mViewportDirty) {
+		mViewportDirty     = FALSE;
+		mViewportMtx[0][0] = 0.5f * mViewport[2];
+		mViewportMtx[1][1] = 0.5f * -mViewport[3];
+		mViewportMtx[0][3] = 0.5f * mViewport[2] + mViewport[0];
+		mViewportMtx[1][3] = 0.5f * mViewport[3] + mViewport[1];
+		viewport           = TRUE;
+	} else {
+		viewport = FALSE;
+	}
+
+	changed = (changed | viewport) != FALSE;
+	if (changed) {
+		Mtx44 viewMtx;
+		Mtx44 viewportMtx;
+		Mtx44 clip;
+		PSMTX44Copy(mViewMtx, viewMtx);
+		PSMTX44Copy(mViewportMtx, viewportMtx);
+		PSMTX44Concat(viewportMtx, mProjection, clip);
+		PSMTX44Concat(clip, viewMtx, mScreenMtx);
+		C_MTX44Inverse(mScreenMtx, mScreenInv);
+	}
+	return TRUE;
+}
+
+void CCamera::EndCurrent()
+{
+}
+
+void CCameraView::CalcEye()
+{
+	f32 y = HALF_PI + mAngle.y;
+	f32 x = mAngle.x;
+
+	mEye.x       = mInterest.x + mDistance * (f32)cos(y) * (f32)cos(x);
+	f32 cosPitch = (f32)cos(x);
+	f32 sinYaw   = (f32)sin(y);
+	f32 zOffset  = mDistance * -sinYaw;
+	mEye.z       = mInterest.z + zOffset * cosPitch;
+	mEye.y       = mInterest.y + mDistance * (f32)sin(x);
+	mDirty       = TRUE;
+}
+
+// mirrors CalcEye with the pitch pushed past PI
+void CCameraView::CalcInterest()
+{
+	f32 y = HALF_PI + mAngle.y;
+	f32 x = PI + mAngle.x;
+
+	mInterest.x  = mEye.x + mDistance * (f32)cos(y) * (f32)cos(x);
+	f32 cosPitch = (f32)cos(x);
+	f32 sinYaw   = (f32)sin(y);
+	f32 zOffset  = mDistance * -sinYaw;
+	mInterest.z  = mEye.z + zOffset * cosPitch;
+	mInterest.y  = mEye.y + mDistance * (f32)sin(x);
+	mDirty       = TRUE;
+}
+
+void CCameraView::CalcAngle()
+{
+	f32 dy    = mInterest.y - mEye.y;
+	f32 dz    = mInterest.z - mEye.z;
+	f32 dx    = mInterest.x - mEye.x;
+	f32 angle = (f32)atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy)); // horizontal run against |rise|
+
+	mAngle.x = dy < 0.0f ? HALF_PI - angle : angle - HALF_PI;
+	mAngle.y = (f32)atan2(mInterest.x - mEye.x, mInterest.z - mEye.z);
+	mDirty   = TRUE;
+}
+
+void CCameraView::CalcUp()
+{
+	mUp.x  = -(f32)cos(mAngle.y) * (f32)sin(mAngle.z);
+	mUp.z  = (f32)sin(mAngle.y) * (f32)sin(mAngle.z);
+	mUp.y  = (f32)cos(mAngle.z);
+	mDirty = TRUE;
+}
+
+void CCameraView::CalcDistance()
+{
+	mDistance = PSVECDistance(&mEye, &mInterest);
+	mDirty    = TRUE;
+}
+
+CMtxP CCamera::GetViewSource()
+{
+	return mViewSource;
+}
+
+void CCamera::SetAngleZ(f32 z)
+{
+	mView.mAngle.z = z;
+	mView.mDirty   = TRUE;
+}
+
+MtxP CCamera::GetProjectionSource()
+{
+	return mProjectionSource;
+}
+
+void CCamera::SetProjectionSource(MtxP projection)
+{
+	mProjectionSource = projection;
+	if (projection == NULL) {
+		mProjectionDirty = TRUE;
+	}
+}
+
+void CLight::Reset(u8 r, u8 g, u8 b, u8 a)
+{
+	memset(this, 0, sizeof(GXLightObj));
+	mFlags      = 0;
+	mPosition.x = 1.0f;
+	mPosition.y = 1.0f;
+	mPosition.z = 1.0f;
+	mInterest.x = 0.0f;
+	mInterest.y = 0.0f;
+	mInterest.z = 0.0f;
+	mNext       = NULL;
+	SetColor(r, g, b, a);
+	vf2C();
+}
+
+void CLight::SetColor(u8 r, u8 g, u8 b, u8 a)
+{
+	GXColor color = { r, g, b, a };
+	GXInitLightColor(this, color);
+}
+
+void CLight::vf2C()
+{
+	mFlags |= 0x8000;
+}
+
+void CLight::InitAmbient(u8 r, u8 g, u8 b, u8 a)
+{
+	Reset(r, g, b, a);
+	mFlags |= 1;
+}
+
+void CLight::InitInfinite(const Vec& position, u8 r, u8 g, u8 b, u8 a)
+{
+	Reset(r, g, b, a);
+	mFlags |= 2;
+	SetPosition(position);
+	GXInitLightAttn(this, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+}
+
+void CLight::SetPosition(const Vec& position)
+{
+	mPosition.Set(position);
+}
+
+void CLight::InitPoint(const Vec& position, u8 r, u8 g, u8 b, u8 a)
+{
+	Reset(r, g, b, a);
+	mFlags |= 4;
+	SetPosition(position);
+	GXInitLightSpot(this, 0.0f, GX_SP_OFF);
+	GXInitLightDistAttn(this, 10000.0f, 0.99f, GX_DA_STEEP);
+}
+
+void CLight::InitSpot(const Vec& position, const Vec& interest, u8 r, u8 g, u8 b, u8 a)
+{
+	Reset(r, g, b, a);
+	mFlags |= 8;
+	SetPosition(position);
+	SetInterest(interest);
+	GXInitLightSpot(this, 30.0f, GX_SP_COS2);
+	GXInitLightDistAttn(this, 10000.0f, 0.99f, GX_DA_STEEP);
+}
+
+void CLight::SetInterest(const Vec& interest)
+{
+	mInterest.Set(interest);
+}
+
+CVec CLight::GetViewPosition(Mtx view)
+{
+	Vec position = GetPosition();
+	PSMTXMultVec(view, &position, &position);
+	CVec result;
+	result.Set(position.x, position.y, position.z);
+	return result;
+}
+
+CVec CLight::GetPosition()
+{
+	if (mFlags & 2) {
+		CVec position;
+		PSVECNormalize(&mPosition, &position);
+		position.x += 1.0e19f;
+		position.y += 1.0e19f;
+		position.z += 1.0e19f;
+		return position;
+	}
+	return mPosition;
+}
+
+CVec CLight::GetViewDirection(Mtx view)
+{
+	CVec direction;
+	if (0.0f != PSVECMag(&mInterest)) {
+		PSMTXMultVecSR(view, &mInterest, &direction);
+		PSVECNormalize(&direction, &direction);
+	} else {
+		Vec zero        = { 0.0f, 0.0f, 0.0f };
+		(Vec&)direction = zero;
+	}
+	return direction;
+}
+
+CColor CLight::GetColor()
+{
+	CColor color;
+	GXGetLightColor(this, &color);
+	return color;
+}
+
+void CLight::SetInterest(f32 x, f32 y, f32 z)
+{
+	mInterest.x = x;
+	mInterest.y = y;
+	mInterest.z = z;
+}
+
+void CLight::InitSpot(const Vec& position, const Vec& interest, u32 color)
+{
+	InitSpot(position, interest, color >> 24, color >> 16, color >> 8, color);
+}
+
+void CLight::InitPoint(const Vec& position, u32 color)
+{
+	InitPoint(position, color >> 24, color >> 16, color >> 8, color);
+}
+
+void CLight::InitInfinite(const Vec& position, u32 color)
+{
+	InitInfinite(position, color >> 24, color >> 16, color >> 8, color);
+}
+
+void CLight::InitAmbient(u32 color)
+{
+	InitAmbient(color >> 24, color >> 16, color >> 8, color);
+}
+
+void CFog::Init(GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ)
+{
+	mType   = type;
+	mStartZ = startZ;
+	mEndZ   = endZ;
+	mNearZ  = nearZ;
+	mFarZ   = farZ;
+	mColor.Set(color);
+	GXSetFog(mType, mStartZ, mEndZ, mNearZ, mFarZ, mColor);
+}
+
+// The frame buffer queue, 0x802A90C8-0x802A977C. Two external frame buffers take turns: a copy is queued
+// with the FIFO position it waits for, a GX breakpoint there tells when the GPU got that far, and the
+// retrace callbacks put the finished buffer on screen. Class names from RTTI; the queue entry's is ours.
+
+// a ring of s32 values, its storage on the game heap
+class CQueueS32 {
+public:
+	s32* mBuf;  // _00
+	u32 mSize;  // _04
+	u32 mHead;  // _08
+	u32 mCount; // _0C
+	// _10 vtable
+
+	CQueueS32()
+	{
+		mBuf   = NULL;
+		mCount = 0;
+		mHead  = 0;
+		mSize  = 0;
+	}
+	virtual ~CQueueS32() { } // _08
+
+	void Init(u32 size)
+	{
+		mSize = size;
+		mBuf  = (s32*)MEMAllocFromExpHeapEx(gWiiGameHeap, size * sizeof(s32), 4);
+		for (u32 i = 0; i < mSize; i++) {
+			mBuf[i] = 0;
+		}
+		mCount = 0;
+		mHead  = 0;
+	}
+	// where the next value goes, -1 when the queue is full
+	s32 GetTailIndex() const
+	{
+		if (mCount < mSize) {
+			return (mHead + mCount) % mSize;
+		}
+		return -1;
+	}
+	void Push(s32 value)
+	{
+		if (mCount < mSize) {
+			mBuf[(mHead + mCount) % mSize] = value;
+			mCount++;
+		}
+	}
+	s32 Pop()
+	{
+		s32 value   = mBuf[mHead];
+		mBuf[mHead] = 0;
+		mHead       = (mHead + 1) % mSize;
+		mCount--;
+		return value;
+	}
+	s32 Peek() const { return mBuf[mHead % mSize]; }
+};
+
+// the same ring holding pointers
+class CQueuePtr : public CQueueS32 {
+public:
+	void Push(void* ptr) { CQueueS32::Push((s32)ptr); }
+	void* Pop() { return (void*)CQueueS32::Pop(); }
+	void* Peek() const { return (void*)CQueueS32::Peek(); }
+};
+
+namespace _fb {
+// one display copy: the FIFO write position it waits for and the buffer it copies into
+struct CopyRequest {
+	void* mFifoPos; // _00
+	u32 _04;        // _04, always 0
+	void* mXfb;     // _08
+};
+
+// a ring of copy requests that keeps the requests themselves
+class Queue : public CQueuePtr {
+public:
+	CopyRequest mEntries[5]; // _14
+
+	void Push(const CopyRequest& request)
+	{
+		CopyRequest* entry = &mEntries[GetTailIndex()];
+		*entry             = request;
+		CQueuePtr::Push(entry);
+	}
+	CopyRequest Pop() { return *(CopyRequest*)CQueuePtr::Pop(); }
+	CopyRequest Peek() const { return *(CopyRequest*)CQueuePtr::Peek(); }
+};
+} // namespace _fb
+
+// an OSThreadQueue with a vtable
+class CThreadQueue : public OSThreadQueue {
+public:
+	// _08 vtable
+
+	virtual ~CThreadQueue() { } // _08
+	virtual void Init();        // _0C
+};
+
+static _fb::Queue sCopyQueue; // the copies the GPU has not reached yet
+static _fb::Queue sDoneQueue; // the copies it finished, drained by the frame thread
+static CThreadQueue sFrameQueue;
+static CThread sFrameThread;
+static void* sXfb[2];
+static void* sCopyXfb;    // the buffer the next copy goes to
+static void* sDisplayXfb; // the buffer on screen
+static u8 sBreakPtSet;
+static u8 sCopyPending; // the breakpoint fired for the buffer on screen; finish it after the retrace
+static u8 sRetraced;
+static u16 sDoneToken;
+static u16 sToken = 1;
+
+static void OnCopyDone();
+static void OnBreakPt();
+static void OnPreRetrace(u32 count);
+static void OnPostRetrace(u32 count);
+static void* FrameThreadProc(void* arg);
+
+void AllocFrameBuffers(u32 size)
+{
+	sXfb[0]     = mm::Alloc(size, "(xfb_1)");
+	sXfb[1]     = mm::Alloc(size, "(xfb_2)");
+	sCopyXfb    = sXfb[1];
+	sDisplayXfb = sXfb[0];
+	sCopyQueue.Init(5);
+	sDoneQueue.Init(5);
+	OSInitThreadQueue(&sFrameQueue);
+}
+
+void CThreadQueue::Init()
+{
+	OSInitThreadQueue(this);
+}
+
+void StartFrameThread()
+{
+	sFrameThread.Create(FrameThreadProc, NULL, 0x1000, 14, OS_THREAD_ATTR_DETACH);
+	OSResumeThread(&sFrameThread.mThread);
+	VISetPreRetraceCallback(OnPreRetrace);
+	VISetPostRetraceCallback(OnPostRetrace);
+	GXSetBreakPtCallback(OnBreakPt);
+	GXCopyDisp(sCopyXfb, GX_TRUE);
+}
+
+void QueueFrameCopy()
+{
+	GXFifoObj fifo;
+	void* readPtr;
+	void* writePtr;
+
+	GXFlush();
+	GXGetCPUFifo(&fifo);
+	GXGetFifoPtrs(&fifo, &readPtr, &writePtr);
+	void* fifoPos = writePtr;
+	void* xfb     = sCopyXfb;
+	BOOL enabled  = OSDisableInterrupts();
+	_fb::CopyRequest request;
+	request.mFifoPos = fifoPos;
+	request._04      = 0;
+	request.mXfb     = xfb;
+	sCopyQueue.Push(request);
+	OSRestoreInterrupts(enabled);
+	if (!sBreakPtSet) {
+		sBreakPtSet = TRUE;
+		GXEnableBreakPt(writePtr);
+	}
+	GXSetDrawSync(sToken);
+	GXCopyDisp(sCopyXfb, GX_TRUE);
+	GXFlush();
+}
+
+void SwapFrameBuffer()
+{
+	sToken++;
+	sCopyXfb     = sCopyXfb == sXfb[0] ? sXfb[1] : sXfb[0];
+	BOOL enabled = OSDisableInterrupts();
+	if (sCopyQueue.mCount > 1) {
+		OSSleepThread(&sFrameQueue);
+	}
+	OSRestoreInterrupts(enabled);
+}
+
+static void OnCopyDone()
+{
+	sDoneQueue.Push(sCopyQueue.Pop());
+	OSWakeupThread(&sFrameQueue);
+	if (sCopyQueue.mCount == 0) {
+		GXDisableBreakPt();
+		sBreakPtSet = FALSE;
+	} else {
+		GXEnableBreakPt(sCopyQueue.Peek().mFifoPos);
+	}
+}
+
+static void OnBreakPt()
+{
+	if (sCopyQueue.Peek().mXfb == sDisplayXfb) {
+		sCopyPending = TRUE;
+	} else {
+		OnCopyDone();
+	}
+}
+
+static void OnPreRetrace(u32 count)
+{
+	u16 token = GXReadDrawSync();
+	if (token == (u16)(sDoneToken + 1)) {
+		sDoneToken  = token;
+		sDisplayXfb = sDisplayXfb == sXfb[0] ? sXfb[1] : sXfb[0];
+		VISetNextFrameBuffer(sDisplayXfb);
+		VIFlush();
+		sRetraced = TRUE;
+	}
+}
+
+static void OnPostRetrace(u32 count)
+{
+	if (sCopyPending && sRetraced) {
+		OnCopyDone();
+		sCopyPending = FALSE;
+		sRetraced    = FALSE;
+	}
+}
+
+static void* FrameThreadProc(void* arg)
+{
+	for (;;) {
+		OSSleepThread(&sFrameQueue);
+		sDoneQueue.CQueueS32::Pop();
+	}
+}
+
+// The screen, render state, tev stage and channel code sits in front of this file's own and is part
+// of the same translation unit: the asserts of cgs_scrn.cpp and cgs_chan.cpp share one string pool.
+#include "cgs_scrn.cpp"
+#include "cgs_chan.cpp"
 
 // sends whatever render, tev and channel state changed since the last draw
 static inline void SetupDrawState(CGs* gs)
@@ -83,6 +719,342 @@ static inline void SetColor(CSprite* sprite, u32 color)
 static inline void SetColor(CTile* tile, u32 color)
 {
 	tile->mColor0 = tile->mColor1 = tile->mColor2 = tile->mColor3 = color;
+}
+
+void CGs::SetScreenMode(s32 mode, u16 hor, u16 ver)
+{
+	mScreen.SetMode(mode, hor, ver);
+	VISetBlack(TRUE);
+}
+
+void CGs::InitFrameBuffers()
+{
+	AllocFrameBuffers(mScreen.GetXfbSize());
+}
+
+void CGs::StartFrameThread()
+{
+	::StartFrameThread();
+}
+
+void CGs::SetRenderState(CGsRenderState* state, GSBlendMode blend, GSZMode zMode, GSAlphaCompare alphaCompare, GSColorUpdate colorUpdate,
+                         GSAlphaUpdate alphaUpdate, GSDstAlpha dstAlpha, GSZCompLoc zCompLoc, GSDither dither, GSLineWidth lineWidth,
+                         GSPointSize pointSize, GSCullMode cullMode, GSClipMode clipMode)
+{
+	if (state != NULL) {
+		mCurRenderState = state;
+	} else {
+		mCurRenderState = &mRenderState;
+	}
+	mCurRenderState->Set(blend, zMode, alphaCompare, colorUpdate, alphaUpdate, dstAlpha, zCompLoc, dither, lineWidth, pointSize, cullMode,
+	                     clipMode);
+}
+
+void CGs::SetTevStage(CGsTevStage* stage, s32 index, GSTevOrder order, GSTevColorOp colorOp, GSTevColorIn colorIn, GSTevAlphaOp alphaOp,
+                      GSTevAlphaIn alphaIn)
+{
+	if (stage != NULL) {
+		mCurTevStage = stage;
+	} else {
+		mCurTevStage = &mTevStages[0];
+	}
+	mCurTevStage->Set((GXTevStageID)index, order, colorOp, colorIn, alphaOp, alphaIn);
+}
+
+void CGs::SetChannel(CGsChannel* channel, GXChannelID id, GSChanCtrl ctrl, GXColor ambient, GXColor material)
+{
+	if (channel != NULL) {
+		mCurChannel = channel;
+		mCurChannel->Set(id, ctrl, ambient, material);
+		return;
+	}
+	switch (id) {
+	case GX_COLOR0:
+	case GX_COLOR1:
+	case GX_ALPHA0:
+	case GX_ALPHA1:
+		mChannels[id].Set(id, ctrl, ambient, material);
+		break;
+	case GX_COLOR0A0:
+		mChannels[0].Set(GX_COLOR0, ctrl, ambient, material);
+		mChannels[2].Set(GX_ALPHA0, ctrl, ambient, material);
+		break;
+	case GX_COLOR1A1:
+		mChannels[1].Set(GX_COLOR1, ctrl, ambient, material);
+		mChannels[3].Set(GX_ALPHA1, ctrl, ambient, material);
+		break;
+	}
+	// the color channels chain to their alpha halves
+	mCurChannel = &mChannels[0];
+	mCurChannel->SetNext(&mChannels[2]);
+}
+
+extern "C" void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable)
+{
+	if (gs->IsOwnChannel()) {
+		switch (chan) {
+		case GX_COLOR0:
+		case GX_ALPHA0:
+			gs->mChannels[chan].mCtrl.mEnable = enable;
+			break;
+		case GX_COLOR0A0:
+			gs->mChannels[0].mCtrl.mEnable = enable;
+			gs->mChannels[2].mCtrl.mEnable = enable;
+			break;
+		}
+	} else {
+		gs->mCurChannel->mCtrl.mEnable = enable;
+	}
+}
+
+extern "C" void EndGsCamera(CGs* gs)
+{
+	gs->mCamera->EndCurrent();
+	gs->mCamera = NULL;
+}
+
+void CGs::ResetZMode()
+{
+	mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+	mCurRenderState->SetColorUpdate(GX_TRUE);
+}
+
+void CGs::EndFrame()
+{
+	QueueFrameCopy();
+	VIWaitForRetrace();
+}
+
+void CGs::SwapBuffers()
+{
+	SwapFrameBuffer();
+}
+
+extern "C" {
+u16 GXGetTexObjWidth(const GXTexObj* obj);
+u16 GXGetTexObjHeight(const GXTexObj* obj);
+}
+
+// places a flat shape on screen, w and h are its full size. an ortho camera has y growing
+// down the screen, so the shape gets flipped back
+static inline void SetFlatTransform(CGs* gs, CPrimitive* prim, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz)
+{
+	if (gs->mCamera->mTop < gs->mCamera->mBottom) {
+		prim->SetTrans(x, y, z);
+		prim->SetScale(w / 2.0f, -h / 2.0f, 1.0f);
+		prim->SetRot(-rx, ry, -rz);
+	} else {
+		prim->SetTrans(x, y, z);
+		prim->SetScale(w / 2.0f, h / 2.0f, 1.0f);
+		prim->SetRot(rx, ry, rz);
+	}
+	if (gs->mBillboardEnabled) {
+		prim->mBillboard  = 2;
+		prim->mBillboardZ = rz;
+	} else {
+		prim->mBillboard = 0;
+	}
+	prim->mDirty    = TRUE;
+	prim->mRotOrder = gs->mRotOrder;
+}
+
+extern "C" {
+void DrawGsLineSegment(CGs* gs, Mtx view, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1)
+{
+	// no matrix means the camera's
+	MtxP mtx;
+	if (view == NULL) {
+		mtx = gs->mCamera->mViewMtx;
+	} else {
+		mtx = view;
+	}
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mLine.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	PrimVertex vtx[2] = {
+		{ { x0, y0, z0 }, color0 },
+		{ { x1, y1, z1 }, color1 },
+	};
+	gs->mLine.Draw(mtx, vtx, 2);
+}
+
+void DrawGsLineStrip(CGs* gs, Vec* pos, u32 color, u16 count)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mLine.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	gs->mLine.Draw(gs->mCamera->mViewMtx, pos, color, count);
+}
+
+void DrawGsColoredLineStrip(CGs* gs, Vec* pos, u32* color, u16 count)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mLine.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	gs->mLine.Draw(gs->mCamera->mViewMtx, pos, color, count);
+}
+
+void DrawGsTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32 color, u16 count)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
+		gs->mTriangle.DrawLit(view, pos, color, count, type);
+	} else {
+		gs->mTriangle.Draw(view, pos, color, count, type);
+	}
+}
+
+void DrawGsColoredTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32* color, u16 count)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
+		gs->mTriangle.DrawLit(view, pos, color, count, type);
+	} else {
+		gs->mTriangle.Draw(view, pos, color, count, type);
+	}
+}
+
+void DrawGsTriangleVertices(CGs* gs, GXPrimitive type, Mtx view, PrimVertex* vtx, u16 count)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
+		gs->mTriangle.DrawLit(view, vtx, count, type);
+	} else {
+		gs->mTriangle.Draw(view, vtx, count, type);
+	}
+}
+
+void DrawGsVertexQuad(CGs* gs, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1, f32 x2, f32 y2, f32 z2, u32 color2,
+                      f32 x3, f32 y3, f32 z3, u32 color3)
+{
+	PrimVertex vtx[4] = {
+		{ { x0, y0, z0 }, color0 },
+		{ { x1, y1, z1 }, color1 },
+		{ { x2, y2, z2 }, color2 },
+		{ { x3, y3, z3 }, color3 },
+	};
+	DrawGsTriangleVertices(gs, GX_TRIANGLEFAN, gs->mCamera->mViewMtx, vtx, 4);
+}
+
+void DrawGsCircle(CGs* gs, u32 segments, u32 centerColor, u32 edgeColor, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	SetFlatTransform(gs, &gs->mCircle, x, y, z, w, h, rx, ry, rz);
+	gs->mCircle.mFixedMtx = NULL;
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
+		gs->mCircle.DrawLit(gs->mCamera->mViewMtx, segments, centerColor, edgeColor);
+	} else {
+		gs->mCircle.Draw(gs->mCamera->mViewMtx, segments, centerColor, edgeColor);
+	}
+}
+
+void DrawGsQuad(CGs* gs, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	SetFlatTransform(gs, &gs->mTile, x, y, z, w, h, rx, ry, rz);
+	gs->mTile.mFixedMtx = NULL;
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
+		gs->mTile.DrawLit(gs->mCamera->mViewMtx, color0, color1, color2, color3);
+	} else {
+		gs->mTile.Draw(gs->mCamera->mViewMtx, color0, color1, color2, color3);
+	}
+}
+
+void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx,
+                        f32 ry, f32 rz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	if (gs->IsOwnTevStage()) {
+		gs->mCurTevStage->SetOrder(GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+		gs->mCurTevStage->SetNumTexGens(1);
+		gs->mCurTevStage->SetTexGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0);
+	}
+	SetupDrawState(gs);
+
+	// negative size means use the texture's own
+	if (w < 0.0f) {
+		u16 size = GXGetTexObjWidth(tex);
+		w        = size;
+	}
+	if (h < 0.0f) {
+		u16 size = GXGetTexObjHeight(tex);
+		h        = size;
+	}
+
+	SetFlatTransform(gs, &gs->mSprite2, x, y, z, w, h, rx, ry, rz);
+	gs->mSprite2.mTex      = tex;
+	gs->mSprite2.mFixedMtx = NULL;
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
+		gs->mSprite2.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, color0, color1, color2, color3);
+	} else {
+		gs->mSprite2.Draw(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, color0, color1, color2, color3);
+	}
+
+	if (gs->IsOwnTevStage()) {
+		gs->mCurTevStage->SetOrder(GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+		gs->mCurTevStage->SetNumTexGens(0);
+	}
+}
+
+void DrawGsCube(CGs* gs, u32 color, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
+	SetupDrawState(gs);
+	gs->mCube.SetTrans(tx, ty, tz);
+	gs->mCube.SetScale(sx, sy, sz);
+	gs->mCube.SetRot(rx, ry, rz);
+	gs->mCube.mRotOrder = gs->mRotOrder;
+	gs->mCube.mFixedMtx = NULL;
+	gs->mCube.Draw(gs->mCamera->mViewMtx);
+}
+
+void DrawGsSphere(CGs* gs, u32 color, u8 major, u8 minor, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
+	SetupDrawState(gs);
+	gs->mSphere.SetTrans(tx, ty, tz);
+	gs->mSphere.SetScale(sx, sy, sz);
+	gs->mSphere.SetRot(rx, ry, rz);
+	gs->mSphere.mRotOrder = gs->mRotOrder;
+	gs->mSphere.mFixedMtx = NULL;
+	gs->mSphere.Draw(gs->mCamera->mViewMtx, major, minor);
+}
+
+void DrawGsSphereWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 major, u8 minor)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
+	SetupDrawState(gs);
+	gs->mSphere.mFixedMtx = mtx;
+	gs->mSphere.Draw(gs->mCamera->mViewMtx, major, minor);
+}
+
+void DrawGsCylinder(CGs* gs, u32 color, u8 sides, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
+	SetupDrawState(gs);
+	gs->mCylinder.SetTrans(tx, ty, tz);
+	gs->mCylinder.SetScale(sx, sy, sz);
+	gs->mCylinder.SetRot(rx, ry, rz);
+	gs->mCylinder.mRotOrder = gs->mRotOrder;
+	gs->mCylinder.mFixedMtx = NULL;
+	gs->mCylinder.Draw(gs->mCamera->mViewMtx, sides);
+}
+
+void DrawGsCylinderWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 sides)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
+	SetupDrawState(gs);
+	gs->mCylinder.mFixedMtx = mtx;
+	gs->mCylinder.Draw(gs->mCamera->mViewMtx, sides);
+}
 }
 
 /**
@@ -314,13 +1286,13 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 
 	// backgrounds first, flat color
 	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
-	if (gs->mCurTevStage == &gs->mTevStages[0]) {
+	if (gs->IsOwnTevStage()) {
 		gs->mCurTevStage->SetOrder(GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
 		gs->mCurTevStage->SetMode(GX_PASSCLR);
 		gs->mCurTevStage->SetNumTexGens(0);
 	}
 	SetupDrawState(gs);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
 		for (s32 i = 0; i < count; i++) {
 			if (textChars[i].mHasBg) {
 				textChars[i].mBg.DrawLit(gs->mCamera->mViewMtx, textChars[i].mBg.mColor0, textChars[i].mBg.mColor1,
@@ -337,14 +1309,14 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	}
 
 	// then the characters, textured
-	if (gs->mCurTevStage == &gs->mTevStages[0]) {
+	if (gs->IsOwnTevStage()) {
 		gs->mCurTevStage->SetOrder(GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
 		gs->mCurTevStage->SetMode(GX_MODULATE);
 		gs->mCurTevStage->SetNumTexGens(1);
 		gs->mCurTevStage->SetTexGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0);
 	}
 	SetupDrawState(gs);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
 		for (s32 i = 0; i < count; i++) {
 			textChars[i].mSprite.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, textChars[i].mSprite.mColor0,
 			                             textChars[i].mSprite.mColor1, textChars[i].mSprite.mColor2, textChars[i].mSprite.mColor3);
@@ -356,7 +1328,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 		}
 	}
 
-	if (gs->mCurTevStage == &gs->mTevStages[0]) {
+	if (gs->IsOwnTevStage()) {
 		gs->mCurTevStage->SetOrder(GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
 		gs->mCurTevStage->SetMode(GX_PASSCLR);
 		gs->mCurTevStage->SetNumTexGens(0);
@@ -492,7 +1464,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 	PSMTXRotRad(rotX, 'x', gs->mTextRot.x);
 	PSMTXRotRad(rotY, 'y', gs->mTextRot.y);
 	PSMTXRotRad(rotZ, 'z', gs->mTextRot.z);
-	if (gs->mCamera->mTop < gs->mCamera->mBottom) {
+	if (gs->mCamera->mBottom > gs->mCamera->mTop) {
 		PSMTXScale(scale, w, h, 1.0f);
 	} else {
 		PSMTXScale(scale, w, -h, 1.0f);
