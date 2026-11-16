@@ -11,6 +11,7 @@
 #include "game/ccameraactioneye.h"
 #include "game/ut.h"
 #include "game/inventory.h"
+#include "game/cstopwatch.h"
 #
 
 class CCamera;
@@ -36,7 +37,10 @@ public:
 	u32 mRetraceStep;          // _33E8
 	CStatus64 mStatus;         // _33F0
 	CTpl mIconTpl;             // _3400, the icons shown in the screen's corner; the first says the HOME Menu is not available
-	u8 _35F8[0x4148 - 0x35F8]; // the perspective and the screen camera, 0x1F8 each, start here
+	u8 _35F8[0x39E8 - 0x35F8]; // the perspective and the screen camera, 0x1F8 each (CCamera is defined further down)
+	CLight mLights[16];        // _39E8
+	CFog mFog;                 // _40A8
+	CStopwatch mStopwatch[2];  // _40C8
 	void* mMem1Base;           // _4148, 0x80000000
 	void* mMem1Start;          // _414C, the MEM1 arena's start before the heaps are made
 	void* mMem1ArenaLo;        // _4150
@@ -425,32 +429,96 @@ public:
 };
 STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x2D8);
 
+// the Wii area action, 0x2FC against the GameCube's 0x294. Only the members CCameraActions' constructor
+// (0x80034ACC) builds are placed: they sit at the GameCube class's offsets and carry its names. The plain
+// fields between and behind them are not reconstructed, and neither are the virtuals it overrides
+class CCameraActionArea : public CCameraActionAreaExM {
+public:
+	u8 _40[0x70 - 0x40];
+	CVectorEaseInOutInterpolation mInterestEaseInOut;    // _70
+	CVectorLinearInterpolation mEyeLinear;               // _CC
+	CVectorEaseInOutInterpolation mEyeEaseInOut;         // _100
+	CVectorEaseOutInterpolation mEyeEaseOut;             // _15C
+	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _1C0
+	u8 _1F8[0x20C - 0x1F8];
+	CInterpolationLinear mFovLinear;               // _20C
+	CInterpolationEaseInOut mFovEaseInOut;         // _21C
+	CInterpolationEaseOut mFovEaseOut;             // _238
+	CInterpolationEaseOutDivide mFovEaseOutDivide; // _258
+	u8 _268[0x2FC - 0x268];
+
+	virtual void Update(u32 step); // _10
+};
+STATIC_ASSERT(sizeof(CCameraActionArea) == 0x2FC);
+
+// the Wii map action, 0x128C against the GameCube's 0x11EC, placed the same way: every member the constructor
+// builds up to _11E0 is where the GameCube class has it, the vec group at _11FC is new
+class CCameraActionMap : public CCameraActionAreaExM {
+public:
+	u8 _40[0x48 - 0x40];
+	CVec mPreviousInterest; // _48
+	u8 _58[0x60 - 0x58];
+	CVec mSpringPrevTarget; // _60
+	CVec mSpringTarget;     // _70
+	u8 _80[0x8C - 0x80];
+	CObjVec _8C; // _8C
+	u8 _BC[0xC8 - 0xBC];
+	CInterpolationEaseOutDivide mFovEaseOutDivide; // _C8
+	CVec mPreviousEye;                             // _D8
+	u8 _E8[0xDB8 - 0xE8];
+	CVectorEaseInOutInterpolation mTurnEaseInOut; // _DB8
+	CInterpolationEaseInOut mHeightEaseInOut;     // _E14
+	u8 _E30[0xE34 - 0xE30];
+	CInterpolationEaseInOut mAbsHeightEaseInOut; // _E34
+	u8 _E50[0xE68 - 0xE50];
+	CInterpolationEaseOutDivide mTargetHeightOffsetEase; // _E68
+	u8 _E78[0xE7C - 0xE78];
+	CInterpolationEaseInOut mEyeYOffsetEaseInOut; // _E7C
+	u8 _E98[0xF2C - 0xE98];
+	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _F2C
+	u8 _F64[0xF68 - 0xF64];
+	CVec mTargetEye;      // _F68
+	CVec mPrevTargetEye;  // _F78
+	CVec mOrbitEye;       // _F88
+	CVec mOrbitAngle;     // _F98
+	CVec mPrevOrbitEye;   // _FA8
+	CVec mPrevOrbitAngle; // _FB8
+	u8 _FC8[0x11D8 - 0xFC8];
+	CStatus mStatus;         // _11D8
+	CStatus mPreviousStatus; // _11E0
+	u8 _11E8[0x11FC - 0x11E8];
+	CObjVec _11FC; // _11FC
+	u8 _122C[0x128C - 0x122C];
+
+	virtual void Update(u32 step); // _10
+};
+STATIC_ASSERT(sizeof(CCameraActionMap) == 0x128C);
+
 // every camera action in one block, CGame keeps the block at +0xD78F8 and the table it fills
-// in at +0xD9B24 as mCameraActions. The area and map actions are not reconstructed yet, so
-// their slots stay untyped.
+// in at +0xD9B24 as mCameraActions.
 class CCameraActions {
 public:
 	CCameraActionDefault mDefault;                 // _00
-	u8 mArea[0x33C - 0x40];                        // _40, the Wii CCameraActionArea, 0x2FC
+	CCameraActionArea mArea;                       // _40
 	CCameraActionChase mChase;                     // _33C
 	CCameraActionEvt mEvt;                         // _3AC
 	CCameraActionScroll2 mScroll2;                 // _890
 	u8 _B78[0xB7C - 0xB78];                        // _B78
 	CCameraActionEye mEye;                         // _B7C
 	CCameraActionAnim mAnim;                       // _CA0
-	u8 mMap[0x1F74 - 0xCE8];                       // _CE8, the Wii CCameraActionMap, 0x128C
+	CCameraActionMap mMap;                         // _CE8
 	CCameraActionLadr mLadr;                       // _1F74
 	CCameraActionReset mReset;                     // _1FB8
 	CCameraActionScroll mScroll;                   // _21C0
 	CInterfaceCameraAction* mTable[CAMACTION_NUM]; // _222C
-	// _2258 vtable
+	// _225C vtable: the constructor at 0x80034ACC stores the CCameraActions one (0x802E60C8) there, behind the table
 
 	CCameraActions() { }
-	// no vtable: Init writes mTable[0] = this+0 and _2258 holds mTable[CAMACTION_SCROLL]
+	virtual ~CCameraActions() { } // _08
 
 	void Init();
 };
-STATIC_ASSERT(sizeof(CCameraActions) == 0x225C);
+STATIC_ASSERT(sizeof(CCameraActions) == 0x2260);
 
 // the action pointers indexed by CAMACTION_*, CGame keeps them at +0xD9B24; they are the tail
 // of the CCameraActions block at +0xD78F8
@@ -614,10 +682,7 @@ struct WiiPlayerState {
 	f32 mRotY; // _0064, mMoveRotate.y
 	u8 _0068[0x9CC - 0x68];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
-	u8 _09D0[0x9DF8 - 0x9D0];
-	f32 mHeldMoveAngle; // _9DF8, the heading the player snaps back to after a look
-	f32 mMoveAngle;     // _9DFC
-	u8 _09E0[0xAA0 - 0x9E0];
+	u8 _09D0[0xAA0 - 0x9D0];
 	WiiPlayerAction mLift; // _0AA0, the carry action; its mState decides whether looking is free
 	u8 _0AA8[0xB50 - 0xAA8];
 	WiiPlayerAction mHang; // _0B50
@@ -637,7 +702,10 @@ struct WiiPlayerState {
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
 	u8 _992C[0x999C - 0x992C];
 	WiiPlayerParams mParams; // _999C
-	u8 _9DDC[0xABC0 - 0x9DDC];
+	u8 _9DDC[0x9DF8 - 0x9DDC];
+	f32 mHeldMoveAngle; // _9DF8, the heading the player snaps back to after a look
+	f32 mMoveAngle;     // _9DFC
+	u8 _9E00[0xABC0 - 0x9E00];
 	WiiCordWire mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
 	u8 _ABC4[0xDC50 - 0xABC4];
 	WiiPlayerSuits mSuits; // _DC50
@@ -645,11 +713,13 @@ struct WiiPlayerState {
 	u8 mAttachments[0x48]; // _19E9C
 	u8 _19EE4[0x19EE8 - 0x19EE4];
 	WiiAtcMenu mAtcMenu; // _19EE8
-	u8 _19EF8[0x1A420 - 0x19F18];
+	u8 _1A3F8[0x1A420 - 0x1A3F8];
 	WiiOXMenu mOXMenu; // _1A420
 	u8 _1B7B4[0x1C994 - 0x1B7B4];
 	s32 mSquirterContent; // _1C994
 	s32 mItemTint;        // _1C998
+	u8 _1C99C[0x1C9A4 - 0x1C99C];
+	s32 mGroundType; // _1C9A4, the floor he walks on, picks the footstep sounds
 
 	const Vec* GetPosition() { return mVtable->GetPosition(this); }
 	MtxP GetMtxPtr() { return mVtable->GetMtxPtr(this); }
@@ -660,6 +730,8 @@ struct WiiPlayerState {
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
 };
+STATIC_ASSERT(offsetof(WiiPlayerState, mOXMenu) == 0x1A420);
+STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8
 struct WiiFlagSource {
@@ -676,20 +748,47 @@ struct WiiEvtData {
 	WiiTitleObject* mContext; // _04
 };
 
+// a screen color with a texture to draw it through, CGame keeps it at _57CC; the GameCube struct of the same name
+struct ScrnTex {
+	f32 mAngle;        // _00
+	CScrnColor mColor; // _04
+	CTexObj mTex;      // _38
+};
+STATIC_ASSERT(sizeof(ScrnTex) == 0x13C);
+
+// the two screen colors behind it, at _5908 and _593C. Each sits in a struct of its own as on the GameCube, but the
+// Wii has a constructor for each (0x80033EC8, 0x80033F0C), so they are two types; the second one's name is ours
+struct GameScrnColor {
+	CScrnColor mColor; // _00
+};
+struct GameScrnColor1 {
+	CScrnColor mColor; // _00
+};
+
 class CGame : public CBase {
 public:
+	// the five mirrors CGame keeps at _ECD5C, 0x37C each; defined in game/fbtexeff.h behind its base FbMirror
+	class FbMirrorEx;
+
 	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
 	CCamera* GetCamera();                   // _4C override, &mMotionControlCamera
 
 	s32 mLoadStep;
-	u8 _41EC[0x42FC - 0x41EC];
+	u8 _41EC[0x41F4 - 0x41EC];
+	CFileArchive mArchive; // _41F4
 	s32 mStage;
 	s32 mPrevStage; // _4300
 	s32 mRoomCount; // _4304, CCameraActionScroll2::GetLimits bounds the room index with it
 	u8 _4308[0x4B40 - 0x4308];
 	CTpl mTpl;
 	CScrnFade mFade; // _4D38
-	u8 _4D6C[0x5044 - 0x4D6C];
+	// the wipes at _4D6C, _4DD4, _4F40 and _4FA8
+	CScrnWipeCircle mWipeCircle;
+	CScrnWipeTex mWipeTex;
+	CScrnWipeCustom mWipeCustom;
+	CScrnWipeTile mWipeTile0;
+	// the CScrnWipeCine sits here, _5010 to _5078; three of its fields are spelled out below
+	u8 _5010[0x5044 - 0x5010];
 	u32 mWipeTileActive; // _5044, the screen wipe's active flag, the GameCube's mWipeTile1.mActive
 	u8 _5048[0x5050 - 0x5048];
 	f32 mWipeTileY; // _5050, the GameCube's mWipeTile1.mY
@@ -697,7 +796,11 @@ public:
 	f32 mWipeTileHeight; // _5058, the GameCube's mWipeTile1.mHeight
 	u8 _505C[0x5078 - 0x505C];
 	CScrnRoboeyes mRoboeyes;
-	u8 _511C[0x5978 - 0x511C];
+	u8 _511C[0x57CC - 0x511C];
+	ScrnTex mScrnTex;       // _57CC
+	GameScrnColor mColor0;  // _5908
+	GameScrnColor1 mColor1; // _593C
+	u8 _5970[0x5978 - 0x5970];
 	s32 mLogoState; // _5978, the boot logos' step, as the GameCube mLogo.mState
 	u8 _597C[0x5C74 - 0x597C];
 	s32 mTitleState; // _5C74, the title screen's step, as the GameCube mTitle.mState
@@ -708,13 +811,20 @@ public:
 	// empty stubs, so only its address is verified, not its layout
 	u8 mInfoScrn[0xB148 - 0xAF58]; // _AF58
 	WiiHomeMenu mHomeMenu;         // _B148
-	u8 _B7A8[0xF70C - 0xB7A8];
+	u8 _B7A8[0xF6AC - 0xB7A8];
+	CScrnQuake mQuake; // _F6AC
+	u8 _F6E4[0xF70C - 0xF6E4];
 	WiiPlayerState* mPlayer; // _F70C
-	u8 _F710[0xF770 - 0xF710];
+	u8 _F710[0xF71C - 0xF710];
+	s32 mPlayerStride; // _F71C, the size of one entry in the pool mPlayer points into
+	u8 _F720[0xF770 - 0xF720];
 	WiiFlagSource* mCoins; // _F770
 	u8 _F774[0xF784 - 0xF774];
 	WiiFlagSource* mItems; // _F784
-	u8 _F788[0xF7AC - 0xF788];
+	s32 mItemCount;        // _F788, the item pool's objects in use
+	u8 _F78C[0xF794 - 0xF78C];
+	s32 mItemStride; // _F794
+	u8 _F798[0xF7AC - 0xF798];
 	// the spawn pool CMsgFont_Draw scans for the portrait object (kind 10); sits just before mObjects
 	u8* mObjPoolObjects; // _F7AC
 	s32 mObjPoolCount;   // _F7B0
@@ -731,7 +841,9 @@ public:
 	// CMsgFont_Init pushes its two cursors here
 	WiiObjectRef* mObjectRefs; // _108C8
 	s32 mObjectRefCount;       // _108CC
-	u8 _108D0[0x4C8E4 - 0x108D0];
+	u8 _108D0[0x108E0 - 0x108D0];
+	ResourceFile mObjArchives[0x400]; // _108E0, the pooled object archives, the GameCube's mObjArchives
+	u8 _4C8E0[0x4C8E4 - 0x4C8E0];
 	WiiEvtData mEvtData; // _4C8E4
 	u8 _4C8EC[0x4C8F0 - 0x4C8EC];
 	s32 mSelectResult; // _4C8F0, the yes/no answer CMsg__cmd_QUESTION stores, in mEvt on the GameCube
@@ -739,9 +851,13 @@ public:
 	WiiTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
 	CCameraActions mCameraActions;             // _D78F8, mTable lands at _D9B24
-	u8 _D9B54[0xEC1A0 - 0xD9B54];
+	u8 _D9B58[0xEC1A0 - 0xD9B58];
 	f32 mPlayTime; // _EC1A0
-	u8 _EC1A4[0xEE1DC - 0xEC1A4];
+	u8 _EC1A4[0xEC1AC - 0xEC1A4];
+	f32 mScopeTimer; // _EC1AC, the robo eyes' lenses pulse while it runs and hide from 5 on
+	u8 _EC1B0[0xEE104 - 0xEC1B0];
+	s32 _EE104; // AnimSfx::CheckStart starts no sound while this is set
+	u8 _EE108[0xEE1DC - 0xEE108];
 	u32 mMenuControls;
 	u8 _EE1E0[0xEE530 - 0xEE1E0];
 
@@ -764,6 +880,9 @@ public:
 	bool IsMenuFree() const { return IsInterruptible() && !mMenuActive; }
 
 	WiiPlayerState* GetPlayer() const { return mPlayer; }
+	// 0x80037134, the sound code asks for player 0 through the pool
+	WiiPlayerState* GetPlayer(s32 index) { return (WiiPlayerState*)((u8*)mPlayer + index * mPlayerStride); }
+	s32 GetTimeMode() { return mTimeState.mMode; } // 0x800377B4
 	bool CanOpenHomeMenu() const { return IsMenuFree() && !mHomeMenu.IsOpen(); }
 
 	// 0x8002AEC8, projects a world position onto the screen under camera (the motion-control

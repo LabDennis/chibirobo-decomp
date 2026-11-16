@@ -1256,14 +1256,14 @@ if wii:
                 # into Update (no bl, retail 0x802B2528), with its standalone copy at its own
                 # address (retail 0x802B1D84)
                 Object(Matching, "game/wii/cpad.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
-                # the message system between evt.cpp's destructors and cpadact.cpp; the
-                # GameCube file's VERSION_JP branches are the reconstruction base
-                Object(NonMatching, "game/wii/msg.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # cgs.cpp from the camera on, 0x802A80FC-0x802AEA44; it includes cgs_scrn.cpp and
                 # cgs_chan.cpp, whose asserts share its string pool. No auto-inlining:
                 # retail calls DrawGsTriangleVertices from DrawGsVertexQuad and MeasureStrokeTextWidth
                 # from DrawGsStrokeText, both of which -inline auto folds into their one caller
                 Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the message system between evt.cpp's destructors and cpadact.cpp; the
+                # GameCube file's VERSION_JP branches are the reconstruction base
+                Object(NonMatching, "game/wii/msg.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the Wii's shared helper unit 0x802A5418-0x802A7478: Shift-JIS, HSD matrix
                 # and collision helpers from the GameCube's ut.cpp + mtx.c; the CVec
                 # operators and PSVEC calls stay calls, so no auto-inlining
@@ -1411,6 +1411,17 @@ if wii:
                 # interpolations and the Linear/None Update tail-calls; the Wii-only
                 # tail (deleting dtors, CThread::Create, the unit's __sinit) is open
                 Object(NonMatching, "game/wii/cinterpolationeaseoutdivide.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii range 0x8003366C-0x800354DC (wii_units.md #20): constructors and the nw4r sound wrappers
+                Object(NonMatching, "game/wii/unit_8003366C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii range 0x80036618-0x8003AA58 (wii_units.md #23): the game sound front end (InitGameSound, PlayWiiSoundEffect)
+                Object(NonMatching, "game/wii/gamesound.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii range 0x8003AB00-0x8003CEA0 (wii_units.md #25): positional sound and the stage sound effects
+                # (these and msg.cpp use the nw4r sound headers, which need the Wii MSL's <cstdarg> and <new>)
+                Object(NonMatching, "game/wii/sound.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # the Wii range 0x80040E4C-0x8004328C (wii_units.md #28): pointer cursor, HUD drawing and the dust particles
+                Object(NonMatching, "game/wii/unit_80040E4C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii range 0x8004328C-0x80044FD8 (wii_units.md #28): the small XObj-family virtuals behind them
+                Object(NonMatching, "game/wii/unit_8004328C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
             ],
         },
         {
@@ -1533,6 +1544,90 @@ if wii:
                 # (the reference decomps force the order with a macro)
                 Object(NonMatching, "nw4r/math/math_geometry.cpp"),
                 # nw4r::g3d (0x8025B5A4-0x80282CA0)
+                Object(Matching, "nw4r/g3d/res/g3d_rescommon.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resdict.cpp"),
+                # 33 of 34, not linked: 0x8025BCB8 is ResFile::GetResAnmChrNumEntries but keeps the name fn_8025BCB8
+                # that game/wii/title.cpp declares.
+                Object(NonMatching, "nw4r/g3d/res/g3d_resfile.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resmdl.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resshp.cpp"),
+                # 11 of 12: SetNumTevStages (see the comment in the source).
+                Object(NonMatching, "nw4r/g3d/res/g3d_restev.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resmat.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resvtx.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_restex.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resnode.cpp"),
+                # 2 of 2, not linked: GetResColorAnmResult emits ut::Color's weak destructor; retail's copy lies in an
+                # earlier unit that is not identified yet, so the link keeps ours as well.
+                Object(NonMatching, "nw4r/g3d/res/g3d_resanm.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanmvis.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanmclr.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanmtexpat.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanmtexsrt.cpp"),
+                # -fp_contract on for this unit: retail contracts the multiply-adds of CalcAnimationFVS (three
+                # instances) and GetAnmRotation (the unit has 58 fmadds/fmsubs, first at 0x80262A2C); with -fp_contract off
+                # these four are 0x10 to 0x84 bytes longer and nothing else in the unit changes. xenoblade's
+                # g3d_resanmchr.cpp starts with the same setting as a pragma.
+                Object(Matching, "nw4r/g3d/res/g3d_resanmchr.cpp", extra_cflags=["-fp_contract on"]),
+                Object(Matching, "nw4r/g3d/res/g3d_reslightset.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanmamblight.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanmlight.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanmfog.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanmcamera.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanmscn.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanmshp.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_transform.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_anmvis.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_anmclr.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_anmtexpat.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_anmtexsrt.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_anmchr.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_anmshp.cpp"),
+                # 44 of 44, not linked: AnmScnRes::GetNumLightSet is a header inline whose retail copy is
+                # fn_8009C3D4 in the game's range (slot 0x38 of the vtable at 0x803336D8); until that symbol
+                # carries the name the link keeps ours as well and everything behind moves by 8 bytes.
+                Object(NonMatching, "nw4r/g3d/g3d_anmscn.cpp"),
+                # 5 of 5, not linked: retail emits G3dObj's weak virtuals as IsDerivedFrom, GetTypeName, GetTypeObj
+                # (0x8026C5EC), this source as GetTypeName, GetTypeObj, IsDerivedFrom. xenoblade gets retail's
+                # order with a DECOMP_FORCEACTIVE reference to IsDerivedFrom at the end of the file.
+                Object(NonMatching, "nw4r/g3d/g3d_obj.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_anmobj.cpp"),
+                Object(Matching, "nw4r/g3d/platform/g3d_gpu.cpp"),
+                Object(Matching, "nw4r/g3d/platform/g3d_cpu.cpp"),
+                # 42 of 42, not linked: its static initializer hands LightObj's destructor to __construct_array
+                # (0x802704E0). Retail's copy of that weak function is dtor_8009C394 in the game's range;
+                # until that symbol is called __dt__Q34nw4r3g3d8LightObjFv the link keeps ours as well.
+                Object(NonMatching, "nw4r/g3d/g3d_state.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_draw1mat1shp.cpp"),
+                # 11 of 11 once .rodata 0x802E0140-0x802E015C (bbFunc) is in its split: without it dtk exports the
+                # six Calc_BILLBOARD_* functions and they are not compared. Left out because they call
+                # nw4r::math::FrSqrt, which symbols.txt has to call WiiReciprocalSquareRoot for the game's sake
+                # (22 lines in callcheck); the same name keeps the unit from linking.
+                Object(NonMatching, "nw4r/g3d/g3d_calcview.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_dcc.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_workmem.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_calcworld.cpp"),
+                # 10 of 13: std::sort and __sort132 as in g3d_scnroot.
+                Object(NonMatching, "nw4r/g3d/g3d_draw.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_camera.cpp"),
+                Object(Matching, "nw4r/g3d/dcc/g3d_basic.cpp"),
+                Object(Matching, "nw4r/g3d/dcc/g3d_maya.cpp"),
+                Object(Matching, "nw4r/g3d/dcc/g3d_xsi.cpp"),
+                Object(Matching, "nw4r/g3d/dcc/g3d_3dsmax.cpp"),
+                # 33 of 34: SetBoundingVolume ends with one unreachable blr more than retail.
+                Object(NonMatching, "nw4r/g3d/g3d_scnobj.cpp"),
+                # 39 of 42: the three std::sort functions. Retail calls std::__sort132 out of line (0x8027C15C); the
+                # references (wiiplay, ogws, ss) get that with a never_inline attribute in the MSL header, which
+                # include/rvl_msl/algorithm does not carry.
+                Object(NonMatching, "nw4r/g3d/g3d_scnroot.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_scnmdlsmpl.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_scnmdl.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_calcmaterial.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_init.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_scnproc.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_fog.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_light.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_calcvtx.cpp"),
                 # nw4r::snd (0x80283EA8-0x802A5358)
                 Object(Matching, "nw4r/snd/snd_AxManager.cpp"),
                 Object(Matching, "nw4r/snd/snd_AxVoice.cpp"),

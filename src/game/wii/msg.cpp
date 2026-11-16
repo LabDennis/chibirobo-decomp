@@ -29,6 +29,7 @@
 #include "game/wii/cpad.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/csound.h"
+#include "nw4r/snd/snd_BasicSound.h"
 #include "Dolphin/os.h"
 #include <math.h>
 #include <stdio.h>
@@ -1775,7 +1776,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 			for (int i = 0; i < 0x40; ++i) {
 				void* track = gGame.mSound.mTracks[i].mTrack;
 				if (track != NULL)
-					StopWiiSfxTrack(track, frames);
+					((nw4r::snd::detail::BasicSound*)track)->Stop(frames);
 			}
 		} else {
 			StopWiiSfx(&gGame.mSound, sfx, 0.0f);
@@ -1809,8 +1810,8 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
 			for (int i = 0; i < 0x40; ++i) {
 				void* track = gGame.mSound.mTracks[i].mTrack;
-				if (track != NULL && !IsWiiSfxTrackPaused(track))
-					SetWiiSfxTrackPaused(track, 1, frames);
+				if (track != NULL && !((nw4r::snd::detail::BasicSound*)track)->IsPause())
+					((nw4r::snd::detail::BasicSound*)track)->Pause(true, frames);
 			}
 		} else {
 			PauseWiiSfx(&gGame.mSound, sfx, 0.0f);
@@ -1821,8 +1822,8 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
 			for (int i = 0; i < 0x40; ++i) {
 				void* track = gGame.mSound.mTracks[i].mTrack;
-				if (track != NULL && IsWiiSfxTrackPaused(track))
-					SetWiiSfxTrackPaused(track, 0, frames);
+				if (track != NULL && ((nw4r::snd::detail::BasicSound*)track)->IsPause())
+					((nw4r::snd::detail::BasicSound*)track)->Pause(false, frames);
 			}
 		} else {
 			ResumeWiiSfx(&gGame.mSound, sfx, 0.0f);

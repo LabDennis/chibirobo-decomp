@@ -46,7 +46,9 @@ extern GXRenderModeObj GXEurgb60Hz480ProgSoft;
 extern GXRenderModeObj GXEurgb60Hz480ProgAa;
 }
 
-// include/nw4r/g3d/g3d_state.h on all-releases; this branch's base does not have the g3d headers yet
+// nw4r/g3d/g3d_state.h's declaration. The header itself cannot come in here: it pulls in the revolution GX
+// headers, whose GXGetCPUFifo(GXFifoObj*) and GXGetGPFifo(GXFifoObj*) clash with the Dolphin GX headers cgs.h
+// uses (GXFifoObj* GXGetCPUFifo())
 namespace nw4r {
 namespace g3d {
 namespace G3DState {

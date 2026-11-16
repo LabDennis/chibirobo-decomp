@@ -21,6 +21,7 @@ public:
 	GXLogicOp mOp;      // _0C
 	// _10 vtable
 
+	GSBlendMode() { }
 	GSBlendMode(GXBlendMode type, GXBlendFactor src, GXBlendFactor dst, GXLogicOp op) { Set(type, src, dst, op); }
 	void Set(GXBlendMode type, GXBlendFactor src, GXBlendFactor dst, GXLogicOp op)
 	{
@@ -42,6 +43,7 @@ public:
 	GXBool mUpdate;  // _08
 	// _0C vtable
 
+	GSZMode() { }
 	GSZMode(GXBool enable, GXCompare func, GXBool update) { Set(enable, func, update); }
 	void Set(GXBool enable, GXCompare func, GXBool update)
 	{
@@ -64,6 +66,7 @@ public:
 	u8 mRef1;         // _10
 	// _14 vtable
 
+	GSAlphaCompare() { }
 	GSAlphaCompare(GXCompare comp0, u8 ref0, GXAlphaOp op, GXCompare comp1, u8 ref1) { Set(comp0, ref0, op, comp1, ref1); }
 	void Set(GXCompare comp0, u8 ref0, GXAlphaOp op, GXCompare comp1, u8 ref1)
 	{
@@ -84,6 +87,7 @@ public:
 	GXBool mEnable; // _00
 	// _04 vtable
 
+	GSColorUpdate() { }
 	GSColorUpdate(GXBool enable) { Set(enable); }
 	void Set(GXBool enable)
 	{
@@ -100,6 +104,7 @@ public:
 	GXBool mEnable; // _00
 	// _04 vtable
 
+	GSAlphaUpdate() { }
 	GSAlphaUpdate(GXBool enable) { Set(enable); }
 	void Set(GXBool enable)
 	{
@@ -117,6 +122,7 @@ public:
 	u8 mAlpha;      // _01
 	// _04 vtable
 
+	GSDstAlpha() { }
 	GSDstAlpha(GXBool enable, u8 alpha) { Set(enable, alpha); }
 	void Set(GXBool enable, u8 alpha)
 	{
@@ -134,6 +140,7 @@ public:
 	GXBool mBeforeTex; // _00
 	// _04 vtable
 
+	GSZCompLoc() { }
 	GSZCompLoc(GXBool beforeTex) { Set(beforeTex); }
 	void Set(GXBool beforeTex)
 	{
@@ -150,6 +157,7 @@ public:
 	GXBool mEnable; // _00
 	// _04 vtable
 
+	GSDither() { }
 	GSDither(GXBool enable) { Set(enable); }
 	void Set(GXBool enable)
 	{
@@ -167,6 +175,7 @@ public:
 	GXTexOffset mOffset; // _04
 	// _08 vtable
 
+	GSLineWidth() { }
 	GSLineWidth(u8 width, GXTexOffset offset) { Set(width, offset); }
 	void Set(u8 width, GXTexOffset offset)
 	{
@@ -185,6 +194,7 @@ public:
 	GXTexOffset mOffset; // _04
 	// _08 vtable
 
+	GSPointSize() { }
 	GSPointSize(u8 size, GXTexOffset offset) { Set(size, offset); }
 	void Set(u8 size, GXTexOffset offset)
 	{
@@ -202,6 +212,7 @@ public:
 	GXCullMode mMode; // _00
 	// _04 vtable
 
+	GSCullMode() { }
 	GSCullMode(GXCullMode mode) { Set(mode); }
 	void Set(GXCullMode mode)
 	{
@@ -218,6 +229,7 @@ public:
 	GXClipMode mMode; // _00
 	// _04 vtable
 
+	GSClipMode() { }
 	GSClipMode(GXClipMode mode) { Set(mode); }
 	void Set(GXClipMode mode)
 	{
@@ -237,6 +249,7 @@ public:
 	GXChannelID mColor;  // _08
 	// _0C vtable
 
+	GSTevOrder() { }
 	GSTevOrder(GXTexCoordID coord, GXTexMapID map, GXChannelID color) { Set(coord, map, color); }
 	void Set(GXTexCoordID coord, GXTexMapID map, GXChannelID color)
 	{
@@ -258,6 +271,7 @@ public:
 	GXTevRegID mReg;   // _10
 	// _14 vtable
 
+	GSTevColorOp() { }
 	GSTevColorOp(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg) { Set(op, bias, scale, clamp, reg); }
 	void Set(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg)
 	{
@@ -280,6 +294,7 @@ public:
 	GXTevColorArg mD; // _0C
 	// _10 vtable
 
+	GSTevColorIn() { }
 	GSTevColorIn(GXTevColorArg a, GXTevColorArg b, GXTevColorArg c, GXTevColorArg d) { Set(a, b, c, d); }
 	void Set(GXTevColorArg a, GXTevColorArg b, GXTevColorArg c, GXTevColorArg d)
 	{
@@ -302,6 +317,7 @@ public:
 	GXTevRegID mReg;   // _10
 	// _14 vtable
 
+	GSTevAlphaOp() { }
 	GSTevAlphaOp(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg) { Set(op, bias, scale, clamp, reg); }
 	void Set(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg)
 	{
@@ -324,6 +340,7 @@ public:
 	GXTevAlphaArg mD; // _0C
 	// _10 vtable
 
+	GSTevAlphaIn() { }
 	GSTevAlphaIn(GXTevAlphaArg a, GXTevAlphaArg b, GXTevAlphaArg c, GXTevAlphaArg d) { Set(a, b, c, d); }
 	void Set(GXTevAlphaArg a, GXTevAlphaArg b, GXTevAlphaArg c, GXTevAlphaArg d)
 	{
@@ -347,6 +364,7 @@ public:
 	GXAttnFn mAttnFn;    // _14
 	// _18 vtable
 
+	GSChanCtrl() { }
 	GSChanCtrl(GXBool enable, GXColorSrc ambSrc, GXColorSrc matSrc, u32 lightMask, GXDiffuseFn diffFn, GXAttnFn attnFn)
 	{
 		Set(enable, ambSrc, matSrc, lightMask, diffFn, attnFn);

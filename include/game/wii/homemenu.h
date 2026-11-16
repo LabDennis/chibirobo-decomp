@@ -41,6 +41,8 @@ struct WiiHomeMenu {
 	s32 _65C;                        // _65C, written 0, keeps the menu from starting while set
 
 	bool IsOpen() const { return mState >= HomeMenuOpen && mMenuStep >= 0; }
+	// the capture frame counts too: the robo eyes hold still from it on
+	bool IsActive() const { return mState >= HomeMenuCapture && mMenuStep >= 0; }
 };
 STATIC_ASSERT(sizeof(WiiHomeMenu) == 0x660);
 

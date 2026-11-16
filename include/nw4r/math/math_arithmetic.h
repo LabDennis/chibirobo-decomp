@@ -80,9 +80,7 @@ inline f32 FModf(f32 x, f32* pY) {
 }
 
 inline f32 FSqrt(f32 x) {
-#line 627
-    NW4R_DB_ASSERT_WARN(x >= 0.0f, "FSqrt: Input is out of the domain.");
-
+    // the final library has no domain warning here (retail g3d_calcview, 0x80271518)
     return x <= 0.0f ? 0.0f : x * FrSqrt(x);
 }
 

@@ -8,7 +8,7 @@
 class WiiTitleObject;
 
 // the hud over the game on the Wii, CGame's mInfoScrn at _AF58 (0x1F0 bytes, the GameCube's
-// is 0x1DC). No vtable: retail has no __vt__9InfoScrn. Versus the GameCube layout it drops
+// is 0x1DC). The vtable sits at _1E0, before the last member. Versus the GameCube layout it drops
 // _98, inserts an s32 at _9C (so every member from mHudState on sits 4 bytes later), another
 // s32 at _190 before mObjectGaugeAlpha (+8 from there on) and a trailing Vec
 // at _1E4. Member offsets verified against InitInfoScreen (0x800870E8), UpdateHudIndicators
@@ -81,7 +81,7 @@ public:
 	f32 _1D4;                     // _1D4, the GameCube's _1CC
 	s32 mSelectedSaveSlot;        // _1D8
 	f32 mBatteryGauge;            // _1DC, the battery gauge, 10 a watt
-	s32 _1E0;                     // _1E0, a Wii-only word no surviving function touches
+	virtual ~InfoScrn() { }       // _1E0 vtable (retail stores the InfoScrn vtable here in the constructor at 0x800345F0)
 	Vec _1E4;                     // _1E4, a Wii-only vector, zeroed in InitInfoScreen
 };
 STATIC_ASSERT(sizeof(InfoScrn) == 0x1F0);

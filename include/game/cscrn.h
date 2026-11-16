@@ -130,11 +130,23 @@ public:
 	virtual ~CScrnWipeTile() { } // _08 (weak)
 #if defined(VERSION_R24J01)
 	void SetDimensions(BOOL hideWhenDone, f32 x, f32 y, f32 width, f32 height, f32 targetWidth, f32 targetHeight, f32 time);
+	// 0x80033080 (weak), one branch to CScrnWipe's; CScrnWipeCine's vtable has it too
+	virtual void Start(u8 r, u8 g, u8 b, u8 a, BOOL hideWhenDone, f32 x, f32 y, f32 width, f32 height, f32 targetWidth, f32 targetHeight,
+	                   f32 time)
+	{
+		CScrnWipe::Start(r, g, b, a, hideWhenDone, x, y, width, height, targetWidth, targetHeight, time);
+	}
 #endif
 	void Draw(CGs* gs, s32 mode);
 };
 
 #if defined(VERSION_R24J01)
+// the tile wipe CGame keeps at _5010 on the Wii, where the GameCube has its second CScrnWipeTile; class name and base from RTTI
+class CScrnWipeCine : public CScrnWipeTile {
+public:
+	virtual ~CScrnWipeCine(); // _08
+};
+
 struct RoboeyesLensValue {
 	f32 value;
 	f32 target;
@@ -158,6 +170,8 @@ public:
 	                             f32 targetWidth, f32 targetHeight, f32 time, u8 targetA, BOOL hideWhenDone);
 
 	void ResetLensState(f32 width, f32 height);
+	// 0x80042078, the two lens rings; single draws the left one alone, already merged
+	void DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f32 width, f32 height);
 #endif
 #if defined(VERSION_R24J01)
 	f32 mAngle; // _68
