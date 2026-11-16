@@ -350,7 +350,9 @@ public:
 	u8 _4948[4];
 	f32 mLoadOffset; // _494C
 	f32 mOffset;     // _4950
-	u8 _4954[0x4964 - 0x4954];
+	u8 _4954[0x495C - 0x4954];
+	s32 mResult; // _495C, the save operation's result
+	u8 _4960[4];
 	u8 mReady;       // _4964, the "press start" prompt is up
 	u8 mShowMessage; // _4965, the status line is being shown
 	u8 mWrongDevice; // _4966, a save scan finished but no usable slot answered
@@ -427,6 +429,13 @@ public:
 	void fn_80048418(u32 frames);
 
 	void UpdateSelections();
+
+	void SetMode(s32 mode)
+	{
+		mLastMode  = mMode;
+		mMode      = mode;
+		mModeParam = 0;
+	}
 };
 
 extern "C" void UpdateTitleOptions(Title* title, u32 frames);

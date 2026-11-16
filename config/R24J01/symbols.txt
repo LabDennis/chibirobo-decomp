@@ -1983,6 +1983,7 @@ IsPointerActive__8MenuUtilFv = .text:0x8005074C; // type:function size:0x3C
 IsStickUsedOverPointer__8MenuUtilFv = .text:0x80050788; // type:function size:0xA0
 UpdateSelections__5TitleFv = .text:0x8004E534; // type:function size:0x1B8
 AddPointerPane = .text:0x8005573C; // type:function size:0x20
+gTitleSaveSlots = .bss:0x80445230; // type:object size:0xFC
 gPointerPanes = .bss:0x8044532C; // type:object size:0x404
 __dt__19CCameraActionScrollFv = .text:0x8002DE54; // type:function size:0x6C
 __dt__27CInterpolationEaseOutDivideFv = .text:0x8002DEC0; // type:function size:0x6C

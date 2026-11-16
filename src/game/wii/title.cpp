@@ -123,19 +123,6 @@ static inline void HideName(Title* title)
 	}
 }
 
-// what a selection becomes when its screen opens or the controls change: nothing while the pointer
-// chooses or is the only way to choose, else what it was last
-static inline void ResetSelection(Title* title, s32& selection, const s32& last)
-{
-	if (title->IsPointerActive()) {
-		selection = -1;
-	} else if ((gGame.mMenuControls & MenuControlPointer) && !(gGame.mMenuControls & MenuControlStick)) {
-		selection = -1;
-	} else {
-		selection = last;
-	}
-}
-
 // the pixel engine state every 2D draw on the title screen needs, the GameCube's BeginTitleOverlay
 static inline void BeginTitleOverlay()
 {
@@ -174,304 +161,6 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32
 	return width;
 }
 
-/**
- * @note Address: 0x80048E54
- * @note Size: 0x1950
- */
-// NONMATCHING: the pass structure, the overlay, the dust, the logo, the figures, the footer and the
-// save-fatal check are as retail. What follows the option block in retail -- the cursor halves the
-// demo object draws at interpolated positions, the option bar snap behind _5174 and the three
-// options-page lines -- is still being read; the entries and the guards match the GameCube shape.
-extern "C" void DrawTitleScreen(Title* title)
-{
-	enum { dustTexture = 2, footerTexture = 1 };
-	bool active = false;
-	if (title->mState >= 1 && title->mState < 23) {
-		active = true;
-	}
-	if (!active) {
-		return;
-	}
-	bool homeMenu = false;
-	if (gGame.mHomeMenu.mState >= 2 && gGame.mHomeMenu.mMenuStep >= 3) {
-		homeMenu = true;
-	}
-	if (homeMenu) {
-		return;
-	}
-	if (((CBase*)&gGame)->vf5C()) {
-		if (title->mMenuAlpha > 0.0f) {
-			BeginTitleOverlay();
-			for (s32 i = 0; i < 16; ++i) {
-				f32 alpha = title->mMenuAlpha;
-				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-				TitleDust& dust = title->mDust[i];
-				f32 w           = dust.mSpeedX * (f32)GXGetTexObjWidth(&title->mTex[dustTexture]);
-				f32 h           = dust.mSpeedX * (f32)GXGetTexObjHeight(&title->mTex[dustTexture]);
-				u32 color       = 0xffffff00 | (u32)(255.0f * dust.mSpeedY * alpha);
-				DrawGsTexturedQuad(&gGame.mGs, &title->mTex[dustTexture], color, color, color, color, dust.mX, dust.mY, 0.0f, w, h, 0.0f,
-				                   0.0f, 0.0f);
-				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
-			}
-			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-			CTexObj& logo = title->mTex[gTitleLogoTextures[gTitleLogoIndex]];
-			u16 w         = GXGetTexObjWidth(&logo);
-			u16 h         = GXGetTexObjHeight(&logo);
-			u32 color     = 0xffffff00 | (u32)(255.0f * title->mMenuAlpha);
-			DrawGsTexturedQuad(&gGame.mGs, &logo, color, color, color, color, (f32)(gPointerScreenWidth / 2),
-			                   (f32)(gPointerScreenHeight / 2 - 0x68) - 6.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
-			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
-		}
-		((CBase*)&gGame)->vf54();
-	}
-	if (((CBase*)&gGame)->vf5C()) {
-		for (s32 i = 0; i < 3; ++i) {
-			XObjDemo& fig = title->mDemo[i];
-			if (fig.mState != 0 && fig.mStatus.Check(1)) {
-				fig.DrawObject();
-			}
-		}
-		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
-		fn_802AEDEC(&gGame.mGs.mSceneHead, camera->mViewMtx);
-		WiiGsSceneObj* obj = gGame.mGs.mSceneHead;
-		while (obj->mPending != 0) {
-			obj->vf038(obj->mPending - 1);
-		}
-		((CBase*)&gGame)->vf54();
-	}
-	if (!((CBase*)&gGame)->vf5C()) {
-		return;
-	}
-	if (title->mMenuAlpha > 0.0f) {
-		BeginTitleOverlay();
-		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-		CTexObj& tex = title->mTex[footerTexture];
-		f32 w        = 0.6f * (f32)GXGetTexObjWidth(&tex);
-		f32 h        = 0.6f * (f32)GXGetTexObjHeight(&tex);
-		u32 color    = (u32)(255.0f * title->mMenuAlpha);
-		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, (f32)(gPointerScreenWidth / 2), (f32)(gScreenSafeBottom - 0x14),
-		                   0.0f, w, h, 0.0f, 0.0f, 0.0f);
-		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
-	}
-	gRingScreenWidth    = 0x280;
-	gPointerScreenWidth = 0x280;
-	s32 w               = gGame.mAspectRatio != 0 ? 0x356 : 0x280;
-	s32 off             = (w - 0x280) / 2;
-	CCamera* camera     = ((CBase*)&gGame)->GetScreenCamera();
-	camera->vf24(0.0f, (f32)gPointerScreenHeight, -(f32)off, (f32)w - (f32)off);
-	((CBase*)&gGame)->vf5C();
-	DrawPanelBackground<SavePanel>(title->mLoadAlpha + title->mOptionAlpha);
-	DrawTitleHelpText(title);
-	DrawTitleLoadScreen(title);
-	DrawTitleOptions(title);
-	DrawTitleNameBubbles(title);
-	if ((title->mMode == 0x13 || title->mMode == 0xE) && gSaveFatal.mActive && gSaveFatal.mMessage != NULL) {
-		OSFatal(gSaveFatal.mFg, gSaveFatal.mBg, gSaveFatal.mMessage);
-	}
-	InitGameOrthoCamera(camera, &gGame.mGs.mScreen);
-	((CBase*)&gGame)->vf5C();
-	gRingScreenWidth    = w;
-	gPointerScreenWidth = w;
-	if ((u32)(title->mState - 10) <= 2) {
-		f32 y0  = (f32)(gScreenSafeBottom - 0x36) - 40.0f - 30.0f;
-		u32 rgb = ((u32)gTitlePalette[gTitlePaletteIndex].text.r << 24) | ((u32)gTitlePalette[gTitlePaletteIndex].text.g << 16)
-		        | ((u32)gTitlePalette[gTitlePaletteIndex].text.b << 8);
-		u32 normal   = rgb | (u8)(255.0f * title->mMenuAlpha);
-		u32 lit      = normal;
-		f32 progress = title->mCursor[0].GetAnimId() == 1 ? title->mCursor[0].GetAnimFrame() / title->mCursor[0].GetAnimEndFrame() : 0.0f;
-		f32 w0       = DrawTitleEntry(title, 0, 0, y0, progress, normal, lit);
-		f32 w1       = DrawTitleEntry(title, 1, 1, y0 + 38.0f, progress, normal, lit);
-		f32 w2       = DrawTitleEntry(title, 2, 2, y0 + 2.0f * 38.0f, progress, normal, lit);
-		f32 y        = y0 + 2.0f * 38.0f;
-		f32 width    = w2;
-		switch (title->mSelection) {
-		case 0:
-			y     = y0;
-			width = w0;
-			break;
-		case 1:
-			y     = y0 + 38.0f;
-			width = w1;
-			break;
-		case 2:
-			break;
-		}
-		// retail draws the cursor halves here through the demo object at the option-line's y
-	}
-	// state 0x15's options-page lines and the cursor draws end the pass in retail
-	((CBase*)&gGame)->vf54();
-}
-
-/**
- * @note Address: 0x8004CA74
- * @note Size: 0x344
- */
-// the name is set from a C string: each letter gets a text pointer, a staggered shrink, a random
-// bob and tilt, and the rest of the slots are cleared. SJIS lead bytes count once, only when the
-// game language is Japanese
-extern "C" void UpdateTitleDust(Title* title, const char* text, u32 color)
-{
-	title->mName.mActive = TRUE;
-	title->mName.mCount  = 0;
-	if (text == NULL) {
-		return;
-	}
-	title->mName.mColor = color;
-	for (s32 i = 0; i < 20 && *text; i++, text++) {
-		title->mName.mChars[i].mText  = text;
-		title->mName.mChars[i].mScale = -0.2f * i;
-		title->mName.mChars[i].mWait  = gRefreshRate;
-		title->mName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
-		title->mName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
-		title->mName.mCount++;
-		if (gGame.mLanguage == 0) {
-			u8 c    = *text;
-			u8 lead = TRUE;
-			u8 a    = (c >= 0x81 && c <= 0x9F);
-			if (!a) {
-				u8 b = (c >= 0xE0 && c <= 0xFC);
-				if (!b) {
-					lead = FALSE;
-				}
-			}
-			if (lead) {
-				text++;
-			}
-		}
-	}
-	for (s32 i = title->mName.mCount; i < 20; i++) {
-		title->mName.mChars[i].mText  = NULL;
-		title->mName.mChars[i].mScale = 0.0f;
-		title->mName.mChars[i].mWait  = 0.0f;
-	}
-}
-
-// the options page: the pointer and the stick can each be turned off, but not both; OK (or A on the
-// third line) writes the two to gGame.mMenuControls, B leaves them as they were
-extern "C" void UpdateTitleOptions(Title* title, u32 frames)
-{
-	bool showPanes        = true;
-	bool stickOverPointer = false;
-
-	if (title->mOptionLine != -1) {
-		title->mLastOptionLine = title->mOptionLine;
-	}
-	title->mCursor[0].UpdateObject(frames);
-	title->mCursor[1].UpdateObject(frames);
-	title->mHighlightDelay += frames;
-	if (title->mHighlightDelay >= (f32)gRefreshRate) {
-		title->mHighlightDelay = (f32)gRefreshRate;
-		title->mPulseAngle     = fmod(title->mPulseAngle + frames * 9, 360.0);
-	}
-
-	s32 line = title->mOptionLine;
-	if (line == -1) {
-		line = title->mLastOptionLine;
-	}
-	title->mOptionBar[0] += 0.8f * (title->mOptionBarLines[line] - title->mOptionBar[0]);
-	title->mOptionBar[1] += 0.8f * (title->mOptionBarTarget[0] - title->mOptionBar[1]);
-	title->mOptionBar[2] += 0.8f * (title->mOptionBarTarget[1] - title->mOptionBar[2]);
-
-	switch (title->mOptionState) {
-	case 0:
-		if (title->IsStickUsedOverPointer()) {
-			stickOverPointer = true;
-		}
-		if (!stickOverPointer) {
-			if (title->IsStickUp()) {
-				if (title->mOptionLine > 0) {
-					title->mOptionLine--;
-					PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
-					title->mPulseAngle = 45.0f;
-				}
-			} else if (title->IsStickDown()) {
-				if (title->mOptionLine < 2) {
-					title->mOptionLine++;
-					PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
-					title->mPulseAngle = 45.0f;
-				}
-			}
-		}
-		if (title->IsConfirmPressed() && title->mOptionLine != -1) {
-			showPanes = false;
-			switch (title->mOptionLine) {
-			case 0:
-				if (title->mPointerOn) {
-					title->mPointerOn = false;
-					if (!title->mStickOn) {
-						title->mStickOn = true;
-					}
-				} else {
-					title->mPointerOn = true;
-				}
-				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
-				break;
-			case 1:
-				if (title->mStickOn) {
-					title->mStickOn = false;
-					if (!title->mPointerOn) {
-						title->mPointerOn = true;
-					}
-				} else {
-					title->mStickOn = true;
-				}
-				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
-				break;
-			case 2:
-				if (title->mPointerOn) {
-					gGame.mMenuControls |= MenuControlPointer;
-				} else {
-					gGame.mMenuControls &= ~MenuControlPointer;
-				}
-				if (title->mStickOn) {
-					gGame.mMenuControls |= MenuControlStick;
-				} else {
-					gGame.mMenuControls &= ~MenuControlStick;
-				}
-				title->mOptionState = 2;
-				title->mPulseAngle  = 90.0f;
-				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
-				break;
-			}
-		} else if (title->IsCancelPressed()) {
-			title->mOptionState = 2;
-			title->mPulseAngle  = 90.0f;
-			PlayWiiSoundEffect(&gGame.mSound, 243, 1.0f, 0.0f);
-			showPanes         = false;
-			title->mPointerOn = title->mSavedPointerOn;
-			title->mStickOn   = title->mSavedStickOn;
-		}
-		break;
-	case 1:
-		OSPanic(__FILE__, 5496, "ここにきたら不正");
-		break;
-	case 2:
-		showPanes                 = false;
-		title->mPulseAngle        = 0.0f;
-		title->mState             = 11;
-		title->mTargetOptionAlpha = 0.0f;
-		title->mOptionState       = 0;
-		title->mOptionLine        = 0;
-		title->mTargetPanelY      = -200.0f;
-		title->mOffset            = 0.0f;
-		title->mAlpha             = 0.0f;
-		HideName(title);
-		title->mPanes[8].mPointed  = false;
-		title->mPanes[8].mPicked   = false;
-		title->mPanes[9].mPointed  = false;
-		title->mPanes[9].mPicked   = false;
-		title->mPanes[10].mPointed = false;
-		title->mPanes[10].mPicked  = false;
-		title->UpdateSelections();
-		break;
-	}
-	if (showPanes) {
-		AddPointerPane(&gPointerPanes, &title->mPanes[8]);
-		AddPointerPane(&gPointerPanes, &title->mPanes[9]);
-		AddPointerPane(&gPointerPanes, &title->mPanes[10]);
-	}
-}
-
 // the shared ease for the panel offset pair, the GameCube's ApproachTitleOffset
 static inline void ApproachTitleOffset(f32& value, f32& target)
 {
@@ -492,6 +181,11 @@ static inline void UpdateTitleDust(Title* title, u32 frames)
 }
 
 extern void (Title::*gTitleModeUpdates[])(u32);
+
+static inline bool FadeDone()
+{
+	return 0.0f == gGame.mFade.mSpeed.r && 0.0f == gGame.mFade.mSpeed.g && 0.0f == gGame.mFade.mSpeed.b && 0.0f == gGame.mFade.mSpeed.a;
+}
 
 /**
  * @note Address: 0x8004551C
@@ -559,27 +253,12 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		if (title->mMode != 1 && title->mMode != 8 && title->mMode != 12 && title->mMode != 15) {
 			title->mReady       = 0;
 			title->mWrongDevice = 0;
-			// retail keeps rescanning the three NAND slots while the menu sits anywhere
-			// interactive; a finished scan raises mReady through mCardScanState
-			switch (title->mCardScanState) {
-			case 0:
-				StartWiiSaveSlotScan(SaveScan(), 3);
-				title->mCardScanState = 1;
-				break;
-			case 1:
-				if (!title->mSaveFound) {
-					for (s32 i = 0; i < 3; ++i) {
-						if (SaveScan()->mScanEntries[i].mStatus & 1) {
-							title->mSaveFound = 1;
-							break;
-						}
-					}
-				}
-				break;
-			}
+			// the GameCube probed the card here; the NAND is always there
+			title->mReady = 1;
 			if (!title->mReady)
 				title->mShowMessage = 0;
 			if (!title->mReady) {
+				OSPanic("title.cpp", 0x1a9, "ここにくるのはまずい");
 				if (title->mState != 20 && title->mSelection == 1)
 					title->mSelection = 0;
 				title->mSaveFound     = 0;
@@ -675,7 +354,8 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		break;
 	case 8: {
 		char path[64];
-		sprintf(path, "tpl/title%s.tpl", "");
+		const char* suffix = ""; // the GameCube's language suffix, none on the Wii
+		sprintf(path, "tpl/title%s.tpl", suffix);
 		if (!title->mTpl.ReadEx(path, 0, 0)) {
 			break;
 		}
@@ -830,6 +510,529 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 }
 
 /**
+ * @note Address: 0x800472A8
+ * @note Size: 0x4
+ */
+void Title::State0(u32)
+{
+}
+
+/**
+ * @note Address: 0x800480B4
+ * @note Size: 0x4
+ */
+void Title::State4(u32)
+{
+}
+
+/**
+ * @note Address: 0x800483F0
+ * @note Size: 0x28
+ */
+// the mode table's entry 26: retail's fn_800483F0 waits out the file-menu's confirm before State24
+// runs; the body is not read yet
+void Title::State24(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048418
+ */
+// the last gTitleModeUpdates entry, the file-menu mode past State25
+void Title::fn_80048418(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048728
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State6(u32)
+{
+	OSPanic("title.cpp", 0xa90, "ここに来るのはおかしい");
+}
+
+/**
+ * @note Address: 0x80048740
+ * @note Size: 0x4
+ */
+void Title::State7(u32)
+{
+}
+
+/**
+ * @note Address: 0x800488DC
+ * @note Size: 0x130
+ */
+// the save error screen of the GameCube's card check, which the Wii never reaches: a new scan when the
+// save system asks for one, back to the error choice on A
+void Title::State9(u32)
+{
+	OSPanic("title.cpp", 0xbbd, "ここに来るのはおかしい");
+	if (mWrongDevice == 1 || mReady == 1) {
+		for (s32 i = 0; i < 3; ++i) {
+			ResetSaveSlotRecord(&gTitleSaveSlots[i]);
+		}
+		StartWiiSaveSlotScan(SaveScan(), 10);
+		SetMode(1);
+		PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+		mOffset = 0.0f;
+		return;
+	}
+	if (IsConfirmPressed()) {
+		SetMode(5);
+		mOffset = -32.0f;
+		mChoice = 1;
+		PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+	}
+}
+
+/**
+ * @note Address: 0x80048A0C
+ * @note Size: 0x4
+ */
+void Title::State10(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048A10
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State11(u32)
+{
+	OSPanic("title.cpp", 0xbeb, "ここにくるのはおかしい");
+}
+
+/**
+ * @note Address: 0x80048A28
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State12(u32)
+{
+	OSPanic("title.cpp", 0xc64, "ここにくるのはおかしい");
+}
+
+/**
+ * @note Address: 0x80048A40
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State13(u32)
+{
+	OSPanic("title.cpp", 0xcc0, "ここにくるのはおかしい");
+}
+
+/**
+ * @note Address: 0x80048A58
+ * @note Size: 0xC8
+ */
+// a save error is shown until A, then the file menu comes back
+void Title::State14(u32)
+{
+	if (IsConfirmPressed()) {
+		switch (mResult) {
+		case -11:
+		case -9:
+			SetMode(26);
+			mOffset = -32.0f;
+			UpdateSelections();
+			break;
+		case -10:
+		default:
+			SetMode(26);
+			mOffset = -32.0f;
+			UpdateSelections();
+			break;
+		}
+		PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+	}
+}
+
+/**
+ * @note Address: 0x80048C9C
+ * @note Size: 0x4
+ */
+void Title::State16(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048CA0
+ * @note Size: 0x4
+ */
+void Title::State17(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048CA4
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State18(u32)
+{
+	OSPanic("title.cpp", 0xe87, "ガイドライン1.09-->1.10で削除したはずの遷移です");
+}
+
+/**
+ * @note Address: 0x80048CBC
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State19(u32)
+{
+	OSPanic("title.cpp", 0xe87, "ガイドライン1.09-->1.10で削除したはずの遷移です");
+}
+
+/**
+ * @note Address: 0x80048CD4
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State20(u32)
+{
+	OSPanic("title.cpp", 0xeb2, "ここにくるのはおかしい");
+}
+
+/**
+ * @note Address: 0x80048CEC
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State21(u32)
+{
+	OSPanic("title.cpp", 0xeb2, "ここにくるのはおかしい");
+}
+
+/**
+ * @note Address: 0x80048D04
+ * @note Size: 0x18
+ */
+// unreachable on the Wii
+void Title::State22(u32)
+{
+	OSPanic("title.cpp", 0xeb2, "ここにくるのはおかしい");
+}
+
+/**
+ * @note Address: 0x80048D1C
+ * @note Size: 0x4
+ */
+void Title::State23(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048E50
+ * @note Size: 0x4
+ */
+void Title::State25(u32)
+{
+}
+
+/**
+ * @note Address: 0x80048E54
+ * @note Size: 0x1950
+ */
+// NONMATCHING: the pass structure, the overlay, the dust, the logo, the figures, the footer and the
+// save-fatal check are as retail. What follows the option block in retail -- the cursor halves the
+// demo object draws at interpolated positions, the option bar snap behind _5174 and the three
+// options-page lines -- is still being read; the entries and the guards match the GameCube shape.
+extern "C" void DrawTitleScreen(Title* title)
+{
+	enum { dustTexture = 2, footerTexture = 1 };
+	bool active = false;
+	if (title->mState >= 1 && title->mState < 23) {
+		active = true;
+	}
+	if (!active) {
+		return;
+	}
+	bool homeMenu = false;
+	if (gGame.mHomeMenu.mState >= 2 && gGame.mHomeMenu.mMenuStep >= 3) {
+		homeMenu = true;
+	}
+	if (homeMenu) {
+		return;
+	}
+	if (((CBase*)&gGame)->vf5C()) {
+		if (title->mMenuAlpha > 0.0f) {
+			BeginTitleOverlay();
+			for (s32 i = 0; i < 16; ++i) {
+				f32 alpha = title->mMenuAlpha;
+				gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+				TitleDust& dust = title->mDust[i];
+				f32 w           = dust.mSpeedX * (f32)GXGetTexObjWidth(&title->mTex[dustTexture]);
+				f32 h           = dust.mSpeedX * (f32)GXGetTexObjHeight(&title->mTex[dustTexture]);
+				u32 color       = 0xffffff00 | (u32)(255.0f * dust.mSpeedY * alpha);
+				DrawGsTexturedQuad(&gGame.mGs, &title->mTex[dustTexture], color, color, color, color, dust.mX, dust.mY, 0.0f, w, h, 0.0f,
+				                   0.0f, 0.0f);
+				gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+			}
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			CTexObj& logo = title->mTex[gTitleLogoTextures[gTitleLogoIndex]];
+			u16 w         = GXGetTexObjWidth(&logo);
+			u16 h         = GXGetTexObjHeight(&logo);
+			u32 color     = 0xffffff00 | (u32)(255.0f * title->mMenuAlpha);
+			DrawGsTexturedQuad(&gGame.mGs, &logo, color, color, color, color, (f32)(gPointerScreenWidth / 2),
+			                   (f32)(gPointerScreenHeight / 2 - 0x68) - 6.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+		((CBase*)&gGame)->vf54();
+	}
+	if (((CBase*)&gGame)->vf5C()) {
+		for (s32 i = 0; i < 3; ++i) {
+			XObjDemo& fig = title->mDemo[i];
+			if (fig.mState != 0 && fig.mStatus.Check(1)) {
+				fig.DrawObject();
+			}
+		}
+		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
+		fn_802AEDEC(&gGame.mGs.mSceneHead, camera->mViewMtx);
+		WiiGsSceneObj* obj = gGame.mGs.mSceneHead;
+		while (obj->mPending != 0) {
+			obj->vf038(obj->mPending - 1);
+		}
+		((CBase*)&gGame)->vf54();
+	}
+	if (!((CBase*)&gGame)->vf5C()) {
+		return;
+	}
+	if (title->mMenuAlpha > 0.0f) {
+		BeginTitleOverlay();
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		CTexObj& tex = title->mTex[footerTexture];
+		f32 w        = 0.6f * (f32)GXGetTexObjWidth(&tex);
+		f32 h        = 0.6f * (f32)GXGetTexObjHeight(&tex);
+		u32 color    = (u32)(255.0f * title->mMenuAlpha);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, (f32)(gPointerScreenWidth / 2), (f32)(gScreenSafeBottom - 0x14),
+		                   0.0f, w, h, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+	gRingScreenWidth    = 0x280;
+	gPointerScreenWidth = 0x280;
+	s32 w               = gGame.mAspectRatio != 0 ? 0x356 : 0x280;
+	s32 off             = (w - 0x280) / 2;
+	CCamera* camera     = ((CBase*)&gGame)->GetScreenCamera();
+	camera->vf24(0.0f, (f32)gPointerScreenHeight, -(f32)off, (f32)w - (f32)off);
+	((CBase*)&gGame)->vf5C();
+	DrawPanelBackground<SavePanel>(title->mLoadAlpha + title->mOptionAlpha);
+	DrawTitleHelpText(title);
+	DrawTitleLoadScreen(title);
+	DrawTitleOptions(title);
+	DrawTitleNameBubbles(title);
+	if ((title->mMode == 0x13 || title->mMode == 0xE) && gSaveFatal.mActive && gSaveFatal.mMessage != NULL) {
+		OSFatal(gSaveFatal.mFg, gSaveFatal.mBg, gSaveFatal.mMessage);
+	}
+	InitGameOrthoCamera(camera, &gGame.mGs.mScreen);
+	((CBase*)&gGame)->vf5C();
+	gRingScreenWidth    = w;
+	gPointerScreenWidth = w;
+	if ((u32)(title->mState - 10) <= 2) {
+		f32 y0  = (f32)(gScreenSafeBottom - 0x36) - 40.0f - 30.0f;
+		u32 rgb = ((u32)gTitlePalette[gTitlePaletteIndex].text.r << 24) | ((u32)gTitlePalette[gTitlePaletteIndex].text.g << 16)
+		        | ((u32)gTitlePalette[gTitlePaletteIndex].text.b << 8);
+		u32 normal   = rgb | (u8)(255.0f * title->mMenuAlpha);
+		u32 lit      = normal;
+		f32 progress = title->mCursor[0].GetAnimId() == 1 ? title->mCursor[0].GetAnimFrame() / title->mCursor[0].GetAnimEndFrame() : 0.0f;
+		f32 w0       = DrawTitleEntry(title, 0, 0, y0, progress, normal, lit);
+		f32 w1       = DrawTitleEntry(title, 1, 1, y0 + 38.0f, progress, normal, lit);
+		f32 w2       = DrawTitleEntry(title, 2, 2, y0 + 2.0f * 38.0f, progress, normal, lit);
+		f32 y        = y0 + 2.0f * 38.0f;
+		f32 width    = w2;
+		switch (title->mSelection) {
+		case 0:
+			y     = y0;
+			width = w0;
+			break;
+		case 1:
+			y     = y0 + 38.0f;
+			width = w1;
+			break;
+		case 2:
+			break;
+		}
+		// retail draws the cursor halves here through the demo object at the option-line's y
+	}
+	// state 0x15's options-page lines and the cursor draws end the pass in retail
+	((CBase*)&gGame)->vf54();
+}
+
+// the options page: the pointer and the stick can each be turned off, but not both; OK (or A on the
+// third line) writes the two to gGame.mMenuControls, B leaves them as they were
+extern "C" void UpdateTitleOptions(Title* title, u32 frames)
+{
+	bool showPanes        = true;
+	bool stickOverPointer = false;
+
+	if (title->mOptionLine != -1) {
+		title->mLastOptionLine = title->mOptionLine;
+	}
+	title->mCursor[0].UpdateObject(frames);
+	title->mCursor[1].UpdateObject(frames);
+	title->mHighlightDelay += frames;
+	if (title->mHighlightDelay >= (f32)gRefreshRate) {
+		title->mHighlightDelay = (f32)gRefreshRate;
+		title->mPulseAngle     = fmod(title->mPulseAngle + frames * 9, 360.0);
+	}
+
+	s32 line = title->mOptionLine;
+	if (line == -1) {
+		line = title->mLastOptionLine;
+	}
+	title->mOptionBar[0] += 0.8f * (title->mOptionBarLines[line] - title->mOptionBar[0]);
+	title->mOptionBar[1] += 0.8f * (title->mOptionBarTarget[0] - title->mOptionBar[1]);
+	title->mOptionBar[2] += 0.8f * (title->mOptionBarTarget[1] - title->mOptionBar[2]);
+
+	switch (title->mOptionState) {
+	case 0:
+		if (title->IsStickUsedOverPointer()) {
+			stickOverPointer = true;
+		}
+		if (!stickOverPointer) {
+			if (title->IsStickUp()) {
+				if (title->mOptionLine > 0) {
+					title->mOptionLine--;
+					PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+					title->mPulseAngle = 45.0f;
+				}
+			} else if (title->IsStickDown()) {
+				if (title->mOptionLine < 2) {
+					title->mOptionLine++;
+					PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+					title->mPulseAngle = 45.0f;
+				}
+			}
+		}
+		if (title->IsConfirmPressed() && title->mOptionLine != -1) {
+			showPanes = false;
+			switch (title->mOptionLine) {
+			case 0:
+				if (title->mPointerOn) {
+					title->mPointerOn = false;
+					if (!title->mStickOn) {
+						title->mStickOn = true;
+					}
+				} else {
+					title->mPointerOn = true;
+				}
+				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+				break;
+			case 1:
+				if (title->mStickOn) {
+					title->mStickOn = false;
+					if (!title->mPointerOn) {
+						title->mPointerOn = true;
+					}
+				} else {
+					title->mStickOn = true;
+				}
+				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+				break;
+			case 2:
+				if (title->mPointerOn) {
+					gGame.mMenuControls |= MenuControlPointer;
+				} else {
+					gGame.mMenuControls &= ~MenuControlPointer;
+				}
+				if (title->mStickOn) {
+					gGame.mMenuControls |= MenuControlStick;
+				} else {
+					gGame.mMenuControls &= ~MenuControlStick;
+				}
+				title->mOptionState = 2;
+				title->mPulseAngle  = 90.0f;
+				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+				break;
+			}
+		} else if (title->IsCancelPressed()) {
+			title->mOptionState = 2;
+			title->mPulseAngle  = 90.0f;
+			PlayWiiSoundEffect(&gGame.mSound, 243, 1.0f, 0.0f);
+			showPanes         = false;
+			title->mPointerOn = title->mSavedPointerOn;
+			title->mStickOn   = title->mSavedStickOn;
+		}
+		break;
+	case 1:
+		OSPanic(__FILE__, 5496, "ここにきたら不正");
+		break;
+	case 2:
+		showPanes                 = false;
+		title->mPulseAngle        = 0.0f;
+		title->mState             = 11;
+		title->mTargetOptionAlpha = 0.0f;
+		title->mOptionState       = 0;
+		title->mOptionLine        = 0;
+		title->mTargetPanelY      = -200.0f;
+		title->mOffset            = 0.0f;
+		title->mAlpha             = 0.0f;
+		HideName(title);
+		title->mPanes[8].mPointed  = false;
+		title->mPanes[8].mPicked   = false;
+		title->mPanes[9].mPointed  = false;
+		title->mPanes[9].mPicked   = false;
+		title->mPanes[10].mPointed = false;
+		title->mPanes[10].mPicked  = false;
+		title->UpdateSelections();
+		break;
+	}
+	if (showPanes) {
+		AddPointerPane(&gPointerPanes, &title->mPanes[8]);
+		AddPointerPane(&gPointerPanes, &title->mPanes[9]);
+		AddPointerPane(&gPointerPanes, &title->mPanes[10]);
+	}
+}
+
+/**
+ * @note Address: 0x8004CA74
+ * @note Size: 0x344
+ */
+// the name is set from a C string: each letter gets a text pointer, a staggered shrink, a random
+// bob and tilt, and the rest of the slots are cleared. SJIS lead bytes count once, only when the
+// game language is Japanese
+extern "C" void UpdateTitleDust(Title* title, const char* text, u32 color)
+{
+	title->mName.mActive = TRUE;
+	title->mName.mCount  = 0;
+	if (text == NULL) {
+		return;
+	}
+	title->mName.mColor = color;
+	for (s32 i = 0; i < 20 && *text; i++, text++) {
+		title->mName.mChars[i].mText  = text;
+		title->mName.mChars[i].mScale = -0.2f * i;
+		title->mName.mChars[i].mWait  = gRefreshRate;
+		title->mName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
+		title->mName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
+		title->mName.mCount++;
+		if (gGame.mLanguage == 0) {
+			u8 c    = *text;
+			u8 lead = TRUE;
+			u8 a    = (c >= 0x81 && c <= 0x9F);
+			if (!a) {
+				u8 b = (c >= 0xE0 && c <= 0xFC);
+				if (!b) {
+					lead = FALSE;
+				}
+			}
+			if (lead) {
+				text++;
+			}
+		}
+	}
+	for (s32 i = title->mName.mCount; i < 20; i++) {
+		title->mName.mChars[i].mText  = NULL;
+		title->mName.mChars[i].mScale = 0.0f;
+		title->mName.mChars[i].mWait  = 0.0f;
+	}
+}
+
+/**
  * @note Address: 0x8004D5C4
  * @note Size: 0x6D0
  */
@@ -896,196 +1099,6 @@ extern "C" void DrawTitleHelpText(Title* menu)
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding * 0.5f, y, 1.0f, scale, scale, 0.0f, -zero, rotation);
 	}
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
-}
-
-void Title::UpdateSelections()
-{
-	if (mState == 11) {
-		ResetSelection(this, mSelection, mLastSelection);
-	}
-	if (mState == 21) {
-		mLastOptionLine = 0;
-		ResetSelection(this, mOptionLine, mLastOptionLine);
-	}
-	if (mMode == 2) {
-		ResetSelection(this, mFile, mLastFile);
-	}
-	if (mMode == 3 || mMode == 5 || mMode == 26 || mMode == 27) {
-		mLastChoice = 1;
-		ResetSelection(this, mChoice, mLastChoice);
-	}
-}
-
-/**
- * @note Address: 0x800472A8
- * @note Size: 0x4
- */
-void Title::State0(u32)
-{
-}
-
-/**
- * @note Address: 0x800480B4
- * @note Size: 0x4
- */
-void Title::State4(u32)
-{
-}
-
-/**
- * @note Address: 0x80048728
- * @note Size: 0x18
- */
-// unreachable on the Wii
-void Title::State6(u32)
-{
-	OSPanic("title.cpp", 0xa90, "こに来るのはおかしい");
-}
-
-/**
- * @note Address: 0x80048740
- * @note Size: 0x4
- */
-void Title::State7(u32)
-{
-}
-
-/**
- * @note Address: 0x80048A0C
- * @note Size: 0x4
- */
-void Title::State10(u32)
-{
-}
-
-/**
- * @note Address: 0x80048A10
- * @note Size: 0x18
- */
-// unreachable on the Wii
-void Title::State11(u32)
-{
-	OSPanic("title.cpp", 0xbeb, "ここにくるのおかしい");
-}
-
-/**
- * @note Address: 0x80048A28
- * @note Size: 0x18
- */
-// unreachable on the Wii
-void Title::State12(u32)
-{
-	OSPanic("title.cpp", 0xc64, "ここにくるのおかしい");
-}
-
-/**
- * @note Address: 0x80048A40
- * @note Size: 0x18
- */
-// unreachable on the Wii
-void Title::State13(u32)
-{
-	OSPanic("title.cpp", 0xcc0, "ここにくるのおかしい");
-}
-
-/**
- * @note Address: 0x80048C9C
- * @note Size: 0x4
- */
-void Title::State16(u32)
-{
-}
-
-/**
- * @note Address: 0x80048CA0
- * @note Size: 0x4
- */
-void Title::State17(u32)
-{
-}
-
-/**
- * @note Address: 0x80048CA4
- * @note Size: 0x18
- */
-// unreachable on the Wii
-void Title::State18(u32)
-{
-	OSPanic("title.cpp", 0xe87, "ォブラォン1.09-->1.10で作成したはずの削除です");
-}
-
-/**
- * @note Address: 0x80048CBC
- * @note Size: 0x18
- */
-// unreachable on the Wii
-void Title::State19(u32)
-{
-	OSPanic("title.cpp", 0xe87, "ォブラォン1.09-->1.10で作成したはずの削除です");
-}
-
-/**
- * @note Address: 0x80048CD4
- * @note Size: 0x18
- */
-// unreachable on the Wii
-void Title::State20(u32)
-{
-	OSPanic("title.cpp", 0xeb2, "ここにくるのおかしい");
-}
-
-/**
- * @note Address: 0x80048CEC
- * @note Size: 0x18
- */
-// unreachable on the Wii
-void Title::State21(u32)
-{
-	OSPanic("title.cpp", 0xeb2, "ここにくるのおかしい");
-}
-
-/**
- * @note Address: 0x80048D04
- * @note Size: 0x18
- */
-// unreachable on the Wii
-void Title::State22(u32)
-{
-	OSPanic("title.cpp", 0xeb2, "ここにくるのおかしい");
-}
-
-/**
- * @note Address: 0x80048D1C
- * @note Size: 0x4
- */
-void Title::State23(u32)
-{
-}
-
-/**
- * @note Address: 0x80048E50
- * @note Size: 0x4
- */
-void Title::State25(u32)
-{
-}
-
-/**
- * @note Address: 0x800483F0
- * @note Size: 0x28
- */
-// the mode table's entry 26: retail's fn_800483F0 waits out the file-menu's confirm before State24
-// runs; the body is not read yet
-void Title::State24(u32)
-{
-}
-
-/**
- * @note Address: 0x80048418
- */
-// the last gTitleModeUpdates entry, the file-menu mode past State25
-void Title::fn_80048418(u32)
-{
 }
 
 /**
@@ -1158,11 +1171,6 @@ BOOL XObjDemo::LoadFromPlacement(const CoordInfo& info)
 void XObjDemo::Release()
 {
 	XObj::Release();
-}
-
-static inline bool FadeDone()
-{
-	return 0.0f == gGame.mFade.mSpeed.r && 0.0f == gGame.mFade.mSpeed.g && 0.0f == gGame.mFade.mSpeed.b && 0.0f == gGame.mFade.mSpeed.a;
 }
 
 /**
@@ -1246,6 +1254,48 @@ void fn_8004DF3C(Title* title, CbPane* pane)
 	}
 	if (title->mState == 21 && pane->mKind >= 8 && pane->mKind < 11 && title->mOptionLine != -1) {
 		title->mOptionLine = -1;
+	}
+}
+
+void Title::UpdateSelections()
+{
+	if (mState == 11) {
+		if (IsPointerActive()) {
+			mSelection = -1;
+		} else if ((gGame.mMenuControls & MenuControlPointer) && !(gGame.mMenuControls & MenuControlStick)) {
+			mSelection = -1;
+		} else {
+			mSelection = mLastSelection;
+		}
+	}
+	if (mState == 21) {
+		mLastOptionLine = 0;
+		if (IsPointerActive()) {
+			mOptionLine = -1;
+		} else if ((gGame.mMenuControls & MenuControlPointer) && !(gGame.mMenuControls & MenuControlStick)) {
+			mOptionLine = -1;
+		} else {
+			mOptionLine = mLastOptionLine;
+		}
+	}
+	if (mMode == 2) {
+		if (IsPointerActive()) {
+			mFile = -1;
+		} else if ((gGame.mMenuControls & MenuControlPointer) && !(gGame.mMenuControls & MenuControlStick)) {
+			mFile = -1;
+		} else {
+			mFile = mLastFile;
+		}
+	}
+	if (mMode == 3 || mMode == 5 || mMode == 26 || mMode == 27) {
+		mLastChoice = 1;
+		if (IsPointerActive()) {
+			mChoice = -1;
+		} else if ((gGame.mMenuControls & MenuControlPointer) && !(gGame.mMenuControls & MenuControlStick)) {
+			mChoice = -1;
+		} else {
+			mChoice = mLastChoice;
+		}
 	}
 }
 

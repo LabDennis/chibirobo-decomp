@@ -58,4 +58,10 @@ struct WiiMenuSaveSlot {
 };
 STATIC_ASSERT(sizeof(WiiMenuSaveSlot) == 0x54);
 
+extern "C" {
+// the three save files the title's file menu shows
+extern WiiMenuSaveSlot gTitleSaveSlots[3];
+void ResetSaveSlotRecord(WiiMenuSaveSlot* slot);
+}
+
 #endif
