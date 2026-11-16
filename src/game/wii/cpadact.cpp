@@ -251,7 +251,7 @@ static inline void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 			if (!homeMenu) {
 				// the logos are still running or the game has not loaded yet
 				bool starting = false;
-				if ((gGame.GetStatusFlags(1ULL << 34) && gGame.mLogoState != 12) || gGame.mLoadStep < 2) {
+				if ((gGame.GetStatusFlags(1ULL << 34) && gGame.mLogo.mState != 12) || gGame.mLoadStep < 2) {
 					starting = true;
 				}
 				if (!starting && act.mTransitionCooldown == 0.0f) {

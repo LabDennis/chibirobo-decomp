@@ -74,7 +74,7 @@ extern "C" s32 ClassifyFloatBits(f32 value); // the Wii MSL's out-of-line __fpcl
 // ResolveEventObjectId (0x8009453C) reads the same two leading words as the GameCube CEvtData
 static inline WiiTitleObject* FindObj(s16 id)
 {
-	return gGame.mEvtData.mScript != NULL ? (WiiTitleObject*)ResolveEventObjectId((const CEvtData*)&gGame.mEvtData, id) : NULL;
+	return gGame.mEvt.mData.mScript != NULL ? (WiiTitleObject*)ResolveEventObjectId(&gGame.mEvt.mData, id) : NULL;
 }
 
 // read before stepping, the script can point into the message's own bytes
@@ -1610,12 +1610,12 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 					for (s32 i = 9; i >= 0; i--) {
 						result = result * 10 + msg->mDigits[i];
 					}
-					gGame.mSelectResult = result;
+					gGame.mEvt.mSelectResult = result;
 				} else if (gWiiPointer.Check(2)) {
 					msg->mFont.mBits.mFadeOut  = TRUE;
 					msg->mFont.mOtherSelection = -1;
 					PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
-					gGame.mSelectResult = -1;
+					gGame.mEvt.mSelectResult = -1;
 				}
 			} else if (msg->mStay != 0) {
 				if (msg->mStay == 1) {
@@ -1654,7 +1654,7 @@ extern "C" s32 CMsg__cmd_QUESTION(CMsg* msg)
 	CPad pad(0);
 	HandleOXMenuInput(&player->mOXMenu, &pad);
 	if (gWiiPointer.Check(1)) {
-		gGame.mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
+		gGame.mEvt.mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
 		return FALSE;
 	}
 	msg->mData.mCursor -= 3;

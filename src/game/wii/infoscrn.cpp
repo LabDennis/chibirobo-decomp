@@ -554,7 +554,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		}
 		break;
 	case 2:
-		if (gGame.mEvtData.mScript)
+		if (gGame.mEvt.mData.mScript)
 			++h->mHudState;
 		break;
 	case 3:
@@ -565,7 +565,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		}
 		break;
 	case 4:
-		if (!gGame.mEvtData.mScript)
+		if (!gGame.mEvt.mData.mScript)
 			h->mHudState = 1;
 		break;
 	}
@@ -743,7 +743,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		if (!diskFail && !gGame.mResetRequested)
 			running = TRUE;
 	}
-	if (running && !gGame.mEvtData.mScript && !gGame.mMenuActive && !gGame.GetStatusFlags(0xC00) && gGame.mTimeState.mDuration > 0
+	if (running && !gGame.mEvt.mData.mScript && !gGame.mMenuActive && !gGame.GetStatusFlags(0xC00) && gGame.mTimeState.mDuration > 0
 	    && !gGame.mTimeState.mRunning) {
 		timeMoves = true;
 	}

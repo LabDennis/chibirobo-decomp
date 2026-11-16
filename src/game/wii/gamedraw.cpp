@@ -68,7 +68,6 @@ void DrawPlayerEquipmentRings(void* rings);
 void DrawOXMenu(WiiOXMenu* menu);
 void fn_80094E90(void* evt);
 void CMsg_Draw(CMsg* msg);
-void DrawCurrentLogo(void* logo);
 void fn_80084C84(void* menus);
 void DrawObjectLoadingProgress(InfoScrn* scrn);
 void DrawOpenMenus(void* menus);
@@ -628,7 +627,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		game->mMovie.Stop();
 	}
 	ClearMainMenuExtraRows(game->mMenus[0]);
-	fn_80094904(game->_4C8E0, TRUE, TRUE, TRUE, TRUE); // the event state in front of mEvtData
+	fn_80094904(&game->mEvt, TRUE, TRUE, TRUE, TRUE); // the event state in front of mEvtData
 	CMsg* msgs = (CMsg*)game->mMsgs;
 	for (s32 i = 0; i < 2; i++) {
 		ResetMsgState(&msgs[i]);
@@ -1768,7 +1767,7 @@ void CGame::Draw()
 				DrawOXMenu(&mPlayer->mOXMenu);
 			}
 			if (!mMotionControlCamera.IsAction(4)) {
-				fn_80094E90(_4C8E0);
+				fn_80094E90(&mEvt);
 				CMsg* msgs = (CMsg*)mMsgs;
 				for (s32 i = 0; i < 2; i++) {
 					CMsg_Draw(&msgs[i]);
@@ -1779,7 +1778,7 @@ void CGame::Draw()
 		vf54();
 	}
 	if (!mHomeMenu.IsRunning()) {
-		DrawCurrentLogo(&mLogoState);
+		DrawCurrentLogo(&mLogo);
 	}
 	if (vf5C()) {
 		if (gGame.mGs.mCurRenderState != NULL) {

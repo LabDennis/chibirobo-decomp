@@ -296,7 +296,7 @@ static inline BOOL LoadStageAndEventObjects(CGame* game)
 	if (LoadStageByIndex(game->mStage)) {
 		ApplyStageClearColor();
 		for (const StageEventObject* entry = GetStageEventObjectPairs(); entry->objectIndex >= 0; ++entry) { // the pairs end at a -1
-			fn_800A10E4((CEvt*)game->_4C8E0, entry->eventId, entry->objectIndex);
+			fn_800A10E4(&game->mEvt, entry->eventId, entry->objectIndex);
 		}
 		Vec origin = { 0.0f, 0.0f, 0.0f };
 		((CSound3D*)&gGame.mSound.mSound3DManager)->SetListener(0.0f, &origin);
@@ -330,10 +330,10 @@ bool CGame::BeforeUpdate()
 	case 1:
 		++mLoadStep;
 	case 2:
-		if (GetStatusFlags(0x400000000ULL) && mLogoState != 12) {
+		if (GetStatusFlags(0x400000000ULL) && mLogo.mState != 12) {
 			if (!IsLogoActive())
-				mLogoState = 1;
-			if (mLogoState <= 3)
+				mLogo.mState = 1;
+			if (mLogo.mState <= 3)
 				break;
 			++mLoadStep;
 		} else {
@@ -417,7 +417,7 @@ bool CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 	case 16:
-		if (!fn_80094B04((CEvt*)_4C8E0))
+		if (!fn_80094B04(&mEvt))
 			break;
 		++mLoadStep;
 	case 17:
@@ -433,7 +433,7 @@ bool CGame::BeforeUpdate()
 	}
 	case 19:
 		if (GetStatusFlags(0x400000000ULL)) {
-			if (mLogoState != 12)
+			if (mLogo.mState != 12)
 				break;
 			++mLoadStep;
 		} else {
@@ -473,11 +473,11 @@ bool CGame::BeforeUpdate()
 	case 24: {
 		u8* script = GetStageSetupScript();
 		if (script)
-			StartOrQueueEventScript((CEvt*)_4C8E0, script, 0, -1, -1);
+			StartOrQueueEventScript(&mEvt, script, 0, -1, -1);
 		++mLoadStep;
 	}
 	case 25:
-		if (mEvtData.mScript) // waits for the setup script
+		if (mEvt.mData.mScript) // waits for the setup script
 			break;
 		if (CheckStageFlag(mStage, 4)) // stage flag 4 sets flag 0x40
 			SetStatusFlags(0x40);
@@ -507,7 +507,7 @@ bool CGame::BeforeUpdate()
 		if (!FadeStopped(mFade))
 			break;
 		StartScreenFade(&mFade, 0, 0, 0, 255, 0, 0, 0, 0, 0.5f);
-		StartOrQueueEventScript((CEvt*)_4C8E0, GetStageEntryScript(), 0, -1, -1);
+		StartOrQueueEventScript(&mEvt, GetStageEntryScript(), 0, -1, -1);
 		u32 minutes = GetStageEntryTimeComponent(1), hours = GetStageEntryTimeComponent(0);
 		_EC1A4 = (s32)(hours * 216000 + (minutes * 3600 + GetStageEntryTimeComponent(2) * 60)); // the clock, in frames
 		SetStatusFlags(1);
@@ -516,7 +516,7 @@ bool CGame::BeforeUpdate()
 	}
 	if (IsLoadStepRunning()) {
 		// past the first steps, and the logos done or never shown: the loading screen may come up
-		if (mLoadStep > 2 && (!GetStatusFlags(0x400000000ULL) || mLogoState == 12)) {
+		if (mLoadStep > 2 && (!GetStatusFlags(0x400000000ULL) || mLogo.mState == 12)) {
 			if (!GetStatusFlags(0x100000000000000ULL))
 				SetStatusFlags(0x100000000000000ULL);
 			if (!(_41B0 & 1)) {
@@ -1120,7 +1120,7 @@ void CGame::Update(u32 frames)
 				_EC1A8 = 0.0f;
 			}
 		}
-	} else if (mEvtData.mScript == NULL && !IsMessageSelecting((CMsg*)mMsgs[0]) && !GetStatusFlags(0x800) && !IsMenuOpen(mMenus[1])
+	} else if (mEvt.mData.mScript == NULL && !IsMessageSelecting((CMsg*)mMsgs[0]) && !GetStatusFlags(0x800) && !IsMenuOpen(mMenus[1])
 	           && !IsMenuOpen(mMenus[2]) && !IsMenuOpen(mMenus[4])
 	           && !(mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
 	                && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
@@ -1141,9 +1141,9 @@ void CGame::Update(u32 frames)
 	// _41B0); NAN while nothing on screen wants the pointer
 	bool wanted = false;
 	if (GetStatusFlags(1)) {
-		if ((!(mMenuControls & 2) && GetStatusFlags(0x400) && mEvtData.mScript == NULL) || (!(mMenuControls & 2) && GetStatusFlags(0x800))
+		if ((!(mMenuControls & 2) && GetStatusFlags(0x400) && mEvt.mData.mScript == NULL) || (!(mMenuControls & 2) && GetStatusFlags(0x800))
 		    || (!(mMenuControls & 2) && (IsMenuOpen(mMenus[1]) || IsMenuOpen(mMenus[2]) || IsMenuOpen(mMenus[4])))
-		    || (mMotionControlCamera.IsAction(CAMACTION_EYE) && mEvtData.mScript == NULL && (!(mMenuControls & 2) || !mMenuActive))
+		    || (mMotionControlCamera.IsAction(CAMACTION_EYE) && mEvt.mData.mScript == NULL && (!(mMenuControls & 2) || !mMenuActive))
 		    || mMotionControlCamera.IsAction(CAMACTION_SCROLL2)
 		    || (mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
 		        && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
@@ -1229,7 +1229,7 @@ void CGame::Update(u32 frames)
 		BuildObjectDrawList(this);
 	}
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL)) {
-		if (!GetStatusFlags(0x20) && !mMenuActive && mEvtData.mScript == NULL) {
+		if (!GetStatusFlags(0x20) && !mMenuActive && mEvt.mData.mScript == NULL) {
 			if (gWiiPointer.mFlags & 0x400) {
 				fn_80084B90(&mMenuActive, 1);
 			} else if (gWiiPointer.mFlags & 0x80) {
@@ -1295,7 +1295,7 @@ void CGame::Update(u32 frames)
 		}
 	}
 	if (GetStatusFlags(0x2000000000000ULL)) { // flag 0x2000000000000 arms the stage timer
-		if (IsRunning() && mEvtData.mScript == NULL && !mMenuActive && !GetStatusFlags(0xC00) && mTimeState.mDuration > 0.0f) {
+		if (IsRunning() && mEvt.mData.mScript == NULL && !mMenuActive && !GetStatusFlags(0xC00) && mTimeState.mDuration > 0.0f) {
 			if (!mTimeState.mRunning) {
 				mTimeState.mTime = frames * (mTimeState.mDuration / (600.0f * gRefreshRate)) + mTimeState.mTime;
 				if (mTimeState.mTime >= 1.0f) { // a full timer runs down
@@ -1306,13 +1306,13 @@ void CGame::Update(u32 frames)
 				mTimeState.mRunning = FALSE;
 				u8* script          = GetStageTimerExpiredScript();
 				if (script != NULL) {
-					StartOrQueueEventScript((CEvt*)_4C8E0, script, 0, -1, -1);
+					StartOrQueueEventScript(&mEvt, script, 0, -1, -1);
 				}
 			}
 		}
 	}
 	if (!GetStatusFlags(0x200000000000002ULL)) {
-		fn_80094C20((CEvt*)_4C8E0, frames);
+		fn_80094C20(&mEvt, frames);
 		for (i = 0; i < 2; i++) {
 			CMsg_Update((CMsg*)mMsgs[i], frames);
 		}
@@ -1365,7 +1365,7 @@ void CGame::Update(u32 frames)
 		}
 	}
 	if (!mHomeMenu.IsOpen()) {
-		UpdateBootLogos((Logo*)&mLogoState, frames);
+		UpdateBootLogos(&mLogo, frames);
 		UpdateTitleScreen((Title*)mTitle, frames);
 		if (!GetStatusFlags(0x200000000000000ULL)) {
 			fn_8008492C(&mMenuActive, frames);
@@ -1500,7 +1500,7 @@ void CGame::Update(u32 frames)
 	PointerPick pick = { NAN, NULL };
 	ScopePick scope  = { NAN, NULL, 0.0f, FALSE, 0 };
 	if (gWiiPointer.mPointerValid && GetStatusFlags(1) && (GetPlayer()->mPlayerFlags & 0x20000000)
-	    && !((XObjChrMenu*)GetPlayer()->_19EE4)->IsOpen() && mEvtData.mScript == NULL && !IsLoadStepRunning()) {
+	    && !((XObjChrMenu*)GetPlayer()->_19EE4)->IsOpen() && mEvt.mData.mScript == NULL && !IsLoadStepRunning()) {
 		// in tenths: popper parameter 0 is the range, 1 the range with the upgrade
 		f32 range = (s32)GetPopperParameter(FindOwnedInventoryItemIndex(GetPlayer()->mParams.mInventory.mItems, 0x36) >= 0) / 10.0f;
 		const Vec* pointer   = &gWiiPointer.mPointer;

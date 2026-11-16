@@ -841,7 +841,7 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes)
 {
 	if (!gGame.GetStatusFlags(0x100))
 		return;
-	if (gGame.mEvtData.mScript != NULL)
+	if (gGame.mEvt.mData.mScript != NULL)
 		return;
 	struct Label {
 		WiiTitleObject* object;

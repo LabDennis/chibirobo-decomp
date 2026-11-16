@@ -9,6 +9,8 @@
 #include "game/wii/saveslots.h"
 #include "game/wii/fbeffect.h"
 #include "game/wii/infoscrn.h"
+#include "game/logo.h"
+#include "game/evt.h"
 #include "game/cscrn.h"
 #include "game/cfile.h"
 #include "game/cmovie.h"
@@ -890,13 +892,6 @@ struct WiiFlagSource {
 
 class WiiTitleObject;
 
-// the running event's object resolver at CGame+0x4C8E4, the GameCube's CEvtData: the message
-// commands test mScript, ResolveEventObjectId (0x8009453C) falls back to mContext for id -1
-struct WiiEvtData {
-	u8* mScript;              // _00
-	WiiTitleObject* mContext; // _04
-};
-
 // a screen color with a texture to draw it through, CGame keeps it at _57CC; the GameCube struct of the same name
 struct ScrnTex {
 	f32 mAngle;        // _00
@@ -1066,10 +1061,9 @@ public:
 	GameScrnColor1 mColor1;      // _593C
 	s32 mOutlineWidthControl;    // _5970
 	f32 mOutlineWidth;           // _5974
-	s32 mLogoState;              // _5978, the boot logos' step, as the GameCube mLogo.mState
-	u8 _597C[0x5C70 - 0x597C];
-	u8 mTitle[4];    // _5C70, where the Wii Title (title.h) starts, its vtable; mTitleState is its first member
-	s32 mTitleState; // _5C74, the title screen's step, as the GameCube mTitle.mState
+	Logo mLogo;                  // _5978
+	u8 mTitle[4];                // _5C70, where the Wii Title (title.h) starts, its vtable; mTitleState is its first member
+	s32 mTitleState;             // _5C74, the title screen's step, as the GameCube mTitle.mState
 	u8 _5C78[0xAE00 - 0x5C78];
 	BOOL mMenuActive; // _AE00, a menu is open, as the GameCube mMenu.mActive
 	CMenu* mMenus[5]; // _AE04, the GameCube mMenu.mMenus; [0] is the main menu
@@ -1116,11 +1110,8 @@ public:
 	WiiObjectRef* mEffectRefs;    // _108D8, the objects whose effects are drawn, the ones the mirrors show
 	s32 mEffectRefCount;          // _108DC
 	ObjArchiveTable mObjArchives; // _108E0
-	u8 _4C8E0[0x4C8E4 - 0x4C8E0];
-	WiiEvtData mEvtData; // _4C8E4
-	u8 _4C8EC[0x4C8F0 - 0x4C8EC];
-	s32 mSelectResult; // _4C8F0, the yes/no answer CMsg__cmd_QUESTION stores, in mEvt on the GameCube
-	u8 _4C8F4[0x4C950 - 0x4C8F4];
+	CEvt mEvt;                    // _4C8E0
+	u8 _4C94C[0x4C950 - 0x4C94C];
 	u8 mMsgs[2][0x45660];                      // _4C950, CMsg[2]; msg.h needs this header, so they stay untyped here
 	WiiTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
@@ -1199,9 +1190,9 @@ public:
 	// the checks OpenWiiHomeMenu makes. Retail keeps each one's result apart, so they are separate
 	// inline functions; where one ends and the next begins, and all their names, are ours
 	bool IsLoadStepRunning() const { return mLoadStep > 0 && mLoadStep < 30; }
-	bool IsLogoActive() const { return mLogoState >= 1 && mLogoState < 12; }
+	bool IsLogoActive() const { return mLogo.mState >= 1 && mLogo.mState < 12; }
 	bool IsTitleActive() const { return mTitleState >= 1 && mTitleState < 23; }
-	bool IsLogoShown() const { return IsLogoActive() && mLogoState > 2; }
+	bool IsLogoShown() const { return IsLogoActive() && mLogo.mState > 2; }
 	bool IsIntroShown() const { return IsLogoShown() || IsTitleActive(); }
 	// loading with neither the logos nor the title on screen
 	bool IsLoading() const { return IsLoadStepRunning() && !IsIntroShown(); }
@@ -1263,6 +1254,8 @@ STATIC_ASSERT(offsetof(CBase, _41E0) == 0x41E0);
 STATIC_ASSERT(offsetof(CGame, mBlur) == 0x52E4);
 STATIC_ASSERT(offsetof(CGame, mMenus) == 0xAE04);
 STATIC_ASSERT(offsetof(CGame, mTitle) == 0x5C70);
+STATIC_ASSERT(offsetof(CGame, mLogo) == 0x5978);
+STATIC_ASSERT(offsetof(CGame, mEvt) == 0x4C8E0);
 
 extern "C" CGame gGame;
 #endif

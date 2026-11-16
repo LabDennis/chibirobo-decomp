@@ -166,7 +166,7 @@ void CMotionControlCamera::Update(u32 step)
 		return;
 	}
 
-	if (gGame.mEvtData.mScript == NULL && gGame.GetStatusFlags(0x1000000000000ULL)) {
+	if (gGame.mEvt.mData.mScript == NULL && gGame.GetStatusFlags(0x1000000000000ULL)) {
 		CCameraActionScroll2* room = (CCameraActionScroll2*)GetAction(CAMACTION_SCROLL2);
 		if (room->GetLimits(gGame.mStage) != NULL && !gGame.GetStatusFlags(0x600000000000C00ULL)) {
 			// the remote's button opens the room camera over the area, scroll and map cameras
@@ -203,7 +203,7 @@ void CMotionControlCamera::Update(u32 step)
 	}
 
 	BOOL look = FALSE;
-	if (((gWiiPointer.mFlags & 0x10000) || (gWiiPointer.mFlags & 0x2)) && gGame.mEvtData.mScript == NULL) {
+	if (((gWiiPointer.mFlags & 0x10000) || (gWiiPointer.mFlags & 0x2)) && gGame.mEvt.mData.mScript == NULL) {
 		// CBase::IsRunning's test, written out
 		bool running = false;
 		if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x2000000000000022ULL)) {
