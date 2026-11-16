@@ -48,6 +48,13 @@ static inline u16 ShadeRadarBeam(XActRadar* act, u32* colors, u32 base)
 	return n;
 }
 
+static inline f32 TargetPitch(const Vec& from, const Vec& to)
+{
+	f32 dz = to.z - from.z, dx = to.x - from.x, dy = to.y - from.y;
+	f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
+	return dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
+}
+
 extern "C" void DrawRadarTargetBeam(XActRadar* act)
 {
 	if (!(act->mFade > 0))
@@ -55,11 +62,8 @@ extern "C" void DrawRadarTargetBeam(XActRadar* act)
 	CVec origin = GetRadarDishWorldPosition(&act->mOwner->mRadarObj);
 	CVec target = act->mTarget->mMoveTranslate + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
 	f32 yaw     = atan2(target.x - origin.x, target.z - origin.z);
-	f32 dx = target.x - origin.x, dy = target.y - origin.y, dz = target.z - origin.z;
-	f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
-	pitch     = dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
-	pitch -= DEG2RAD * 3;
-	f32 span = PSVECDistance(&origin, &target) / 20;
+	f32 pitch   = TargetPitch(origin, target) - DEG2RAD * 3;
+	f32 span    = PSVECDistance(&origin, &target) / 20;
 	if (span > 1)
 		span = 1;
 	Mtx trans, scale, rotY, rotX, model;
@@ -77,15 +81,16 @@ extern "C" void DrawRadarTargetBeam(XActRadar* act)
 	f32 z = 2, phase = act->mAngle[0];
 	for (int turn = 0; turn < 8; ++turn) {
 		for (int step = 0; step < 16; ++step) {
-			f32 angle     = (TWO_PI / 16) * step;
-			vertices[n].x = (.007f * n + 1) * ((f32)sin(angle) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
-			vertices[n].y = (.007f * n + 1) * ((f32)cos(angle) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].x
+			    = (.007f * n + 1) * ((f32)sin((TWO_PI / 16) * step) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].y
+			    = (.007f * n + 1) * ((f32)cos((TWO_PI / 16) * step) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
 			vertices[n].z = z;
 			f32 wave      = WrapAngle(phase);
 			if (wave > PI)
 				wave = 0;
-			vertices[n + 1].x = vertices[n].x - ((.5f * (f32)sin(wave)) * (f32)sin(angle));
-			vertices[n + 1].y = vertices[n].y - ((.5f * (f32)sin(wave)) * (f32)sin(angle));
+			vertices[n + 1].x = vertices[n].x - ((.5f * (f32)sin(wave)) * (f32)sin((TWO_PI / 16) * step));
+			vertices[n + 1].y = vertices[n].y - ((.5f * (f32)sin(wave)) * (f32)sin((TWO_PI / 16) * step));
 			vertices[n + 1].z = vertices[n].z - 1.5f * (f32)sin(wave);
 			n += 2;
 			phase += DEG2RAD * 30;
@@ -197,13 +202,6 @@ static inline void FinishRadarAnimation(XActRadar* act)
 	act->mYaw.angle = act->mYaw.targetAngle = act->mYaw.reached = 0;
 	act->mPitch.angle = act->mPitch.targetAngle = act->mPitch.reached = 0;
 	StopRadarTones();
-}
-
-static inline f32 TargetPitch(const Vec& from, const Vec& to)
-{
-	f32 dz = to.z - from.z, dx = to.x - from.x, dy = to.y - from.y;
-	f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
-	return dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
 }
 
 static inline void StepRadarPitch(XActRadar* act, u32 frames, f32 step, bool clamp)
@@ -535,11 +533,11 @@ static inline int ActivePopperShots(XActPopper* act)
 }
 
 static inline void StartAvailablePopperShot(XActPopper* act, const Vec& origin, s32 kind, XObj* target, f32 yaw, f32 pitch, f32 power,
-                                            f32 speed, f32 range)
+                                            f32 speed, f32 range, f32 strength)
 {
 	for (int i = 0; i < 10; ++i)
 		if (!act->mShots.mShot[i].mActive) {
-			StartPopperShot(&act->mShots.mShot[i], origin, kind, target, yaw, pitch, power, speed, range, act->mShotStrength);
+			StartPopperShot(&act->mShots.mShot[i], origin, kind, target, yaw, pitch, power, speed, range, strength);
 			break;
 		}
 }
@@ -684,7 +682,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 				} else {
 					origin = CJObj_GetJointWorldPositionByPath(&act->mOwner->mPopperObj, 4, (s32[4]) { 0, 1, 0, 0 });
 				}
-				f32 yaw, pitch;
+				f32 speed, range, yaw, pitch;
 				if (gGame.mStatus.mFlags & 0x100) {
 					yaw   = gGame.mMotionControlCamera.mCamera.mAngle.y;
 					pitch = gGame.mMotionControlCamera.mCamera.mAngle.x;
@@ -694,7 +692,9 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 				}
 				f32 power = act->mState == 6 ? 3 : 1;
 				// in tenths: popper parameter 2 is the speed, 0 the range and 1 the range with the upgrade
-				f32 speed = (s32)GetPopperParameter(2) / 10.f, range = (s32)GetPopperParameter(rangeUpgrade) / 10.f;
+				speed = (s32)GetPopperParameter(2) / 10.f;
+				range = (s32)GetPopperParameter(rangeUpgrade) / 10.f;
+
 				XObj* target = NULL;
 				for (int i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 					XObj* obj = gGame.GetObject(i);
@@ -732,9 +732,9 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 				}
 				s32 kind = GetAttachmentCountById(&act->mOwner->mAttachments, 2);
 				if (target)
-					StartAvailablePopperShot(act, origin, kind, target, yaw, pitch, power, speed, range);
+					StartAvailablePopperShot(act, origin, kind, target, yaw, pitch, power, speed, range, act->mShotStrength);
 				else
-					StartAvailablePopperShot(act, origin, kind, NULL, yaw, pitch, power, speed, range);
+					StartAvailablePopperShot(act, origin, kind, NULL, yaw, pitch, power, speed, range, act->mShotStrength);
 			}
 			ClearPopperCharge(&act->mCharge);
 			act->mState = 8;
