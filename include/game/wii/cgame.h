@@ -777,7 +777,9 @@ struct WiiPlayerState {
 	WiiPlayerAction mPush; // _0C78
 	u8 _0C80[0xCD0 - 0xC80];
 	WiiPlayerAction mTumble; // _0CD0
-	u8 _0CD8[0x95AC - 0xCD8];
+	u8 _0CD8[0xD50 - 0xCD8];
+	WiiPlayerAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
+	u8 _0D58[0x95AC - 0xD58];
 	u8 mSfx[0x5C]; // _95AC, his AnimSfx (game/wii/animsfx.h, which needs this header)
 	u8 _9608[0x9920 - 0x9608];
 	s32 mAttachment;        // _9920, the AtcMenu pick
@@ -1004,16 +1006,20 @@ public:
 	XObj* mHudObject;
 	f32 mHudObjectX;
 	f32 mHudObjectY;
-	s32 _ECCF4;
-	u8 _ECCF8[4];
-	s32 _ECCFC; // -1
-	s32 _ECD00; // -1
-	s32 _ECD04;
-	s32 _ECD08;
-	s32 _ECD0C;
-	s32 _ECD10;
-	s32 _ECD14; // -1
-	f32 _ECD18[4];
+	// _ECCF4 on: the object the roboeyes' scope picks, nearest to the camera among those the pointer is on
+	XObj* mScopeTarget;
+	f32 mScopeSpeed;                // _ECCF8, how fast the pointer moved when it picked it
+	s32 mScopeMarker;               // _ECCFC, the target's _18C, -1 when it is an item
+	s32 mScopeItem;                 // _ECD00, the target's item, -1 when it has a marker
+	s32 mScopeTicks;                // _ECD04, marker sounds since the last long one
+	BOOL mScopeRareItem;            // _ECD08, the item is one of a few special ones
+	s32 mScopeLevel;                // _ECD0C, 1 to 3 by the speed, picks the row of the stage's sounds
+	s32 mScopeSoundIndex;           // _ECD10
+	s32 mScopeSound;                // _ECD14, the sound last played for the target, -1 for none
+	f32 mScopeZoom;                 // _ECD18, eases back to 1
+	f32 mScopeAngle;                // _ECD1C, turns while the zoom is up
+	f32 mScopeFade;                 // _ECD20
+	f32 mScopeFade2;                // _ECD24
 	u8 mFloorReflect;               // _ECD28, an object asked for the floor reflection
 	Mtx mFloorReflectMtx;           // _ECD2C, PSMTXReflect about the floor
 	u8 mMirrors[0xEDEC8 - 0xECD5C]; // _ECD5C, FbMirror[5]; fbtexeff.h needs this header, so they stay untyped here
@@ -1093,6 +1099,8 @@ STATIC_ASSERT(offsetof(CGame, mSetupStep) == 0x41EC);
 STATIC_ASSERT(offsetof(CGame, mDrawRefs) == 0x108C0);
 STATIC_ASSERT(offsetof(CGame, mLightList) == 0xD9B58);
 STATIC_ASSERT(offsetof(CGame, mHudObject) == 0xECCE8);
+STATIC_ASSERT(offsetof(CGame, mScopeFade2) == 0xECD24);
+STATIC_ASSERT(offsetof(WiiPlayerState, mPopper) == 0xD50);
 STATIC_ASSERT(offsetof(CGame, mFloorReflectMtx) == 0xECD2C);
 STATIC_ASSERT(offsetof(CGame, mMirrors) == 0xECD5C);
 STATIC_ASSERT(offsetof(CGame, _EE1E0) == 0xEE1E0);

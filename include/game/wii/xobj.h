@@ -532,7 +532,9 @@ public:
 	virtual void OnHitFromPosition(const Vec& position, f32 strength);   // _1FC
 	virtual void OnSquirterHit(const Vec* contact, s32 value, s32 tint); // _200
 	virtual BOOL OnItemUsed(const Vec* position, s32 value);             // _204
-	virtual void vf208();
+	// _208, Update tells each live object every frame whether the pointer is on it, with the pointer's
+	// motion and speed on the screen
+	virtual void vf208(const Vec* pointer, const Vec* motion, BOOL over, f32 speed);
 	virtual void PauseSounds(f32 fade);                       // _20C, empty; PauseGameSounds calls it on every live object
 	virtual void ResumeSounds(f32 fade);                      // _210, empty; ResumeGameSounds' counterpart
 	virtual void OnMoveRequest();                             // _214, runs ahead of the three requests below
@@ -588,13 +590,19 @@ public:
 	// the next step passes the end frame; see the slot comments)
 	// which pool of XOBJS the object's data record puts it in, -1 before it has one (the GameCube XObj's inline)
 	s32 GetPool() const { return mAttr.mObjData != NULL ? GetObjDataPool(mAttr.mObjData) : -1; }
+	// the object id of its placement, -1 without one (the GameCube XObj's inline)
+	s32 GetKind() const { return mAttr.mPlacement != NULL ? mAttr.mPlacement->mObjectId : -1; }
+	// the item index its data record names, -1 before it has one (the GameCube XObj's inline)
+	s32 GetObjFlags() const { return mAttr.mObjData != NULL ? GetObjDataFlags(mAttr.mObjData) : -1; }
 
 	CStatus64 mStatus; // _150
 	CoordInfo mCoord;  // _160
 	AttrInfo mAttr;    // _168
 	u8 _174[0x188 - 0x174];
 	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
-	u8 _189[0x19C - 0x189];
+	u8 _189[0x18C - 0x189];
+	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
+	u8 _190[0x19C - 0x190];
 	CVec mLastPos; // _19C
 	u8 _1AC[0x1B8 - 0x1AC];
 	f32 mLastAnimFrame; // _1B8, the frame the animation had after the last update
@@ -602,7 +610,15 @@ public:
 	f32 mFloorXZExtent; // _640
 	u8 _644[0x6C8 - 0x644];
 	f32 mMaxFloorHeight; // _6C8, NAN while there is none
-	u8 _6CC[0x6F8 - 0x6CC];
+	u8 _6CC[0x6D4 - 0x6CC];
+	BOOL mScreenBoundsValid; // _6D4, the four below hold the object's bounds on screen
+	u8 _6D8[4];
+	s32 _6DC;          // _6DC, set when the pointer swept across the bounds within one frame
+	f32 mScreenTop;    // _6E0
+	f32 mScreenBottom; // _6E4
+	f32 mScreenLeft;   // _6E8
+	f32 mScreenRight;  // _6EC
+	u8 _6F0[0x6F8 - 0x6F0];
 	CVec mToppleOffset; // _6F8
 	u8 _708[0xC];
 	CVec mVec714;             // _714

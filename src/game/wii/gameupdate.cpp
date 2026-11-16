@@ -10,6 +10,9 @@
 #include "game/wii/msg.h"
 #include "game/wii/homemenu.h"
 #include "game/wii/saveslots.h"
+#include "game/wii/xchrmenu.h"
+#include "game/globals.h"
+#include "arithmetic.h"
 #include "game/attachmentvalues.h"
 #include "game/cmdline.h"
 #include "game/cscrn.h"
@@ -54,6 +57,7 @@ extern "C" {
 void ResetPooledObjects(XObjPool* pools); // 0x800C5424
 void InitBatteryGauge(InfoScrn* scrn, f32 battery);
 void PSMTXReflect(Mtx m, const Vec* p, const Vec* n);
+void PSMTX44MultVec(const Mtx44 m, const Vec* src, Vec* dst);
 BOOL FinalizeStageObjectSetup(CGame* game);
 void BuildObjectDrawList(CGame* game);
 void Reset2__16CCameraActionMapFv(CInterfaceCameraAction* action);
@@ -122,6 +126,11 @@ void fn_800D1B64(WiiPlayerState* player, u32 frames);
 void fn_800A13D0(void* effects, CCamera* camera);
 void fn_802BE03C(void* effects, const Vec* eye, MtxP view, f32 (*projection)[4], u32 frames, u32 index, f32 near, f32 far);
 extern u8 lbl_8044EE4C[];
+// the pointer's position in the last frame, and each stage's scope sounds (0x802C49C8)
+extern Vec lbl_80444E98;
+Vec fn_8010BEE0(WiiPlayerAction* popper);                     // the popper's muzzle, the GameCube's joint path 0 1 0 0
+void fn_800E8140(WiiPlayerState* player, f32 yaw, f32 pitch); // where the eye camera's popper aims
+void fn_80114564(XObj* obj);                                  // the scope's new item target
 }
 
 BOOL fn_80169658(CMotionControlCamera* camera);
@@ -674,21 +683,21 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		game->GetStatusFlags(0x2000000000ULL);
 		game->GetStatusFlags(0x100000000000ULL);
 		game->GetStatusFlags(0x8000000000ULL);
-		game->mHudObject  = NULL;
-		game->mHudObjectX = 0.0f;
-		game->mHudObjectY = 0.0f;
-		game->_ECCF4      = 0;
-		game->_ECCFC      = -1;
-		game->_ECD00      = -1;
-		game->_ECD04      = 0;
-		game->_ECD08      = 0;
-		game->_ECD0C      = 0;
-		game->_ECD10      = 0;
-		game->_ECD14      = -1;
-		game->_ECD18[0]   = 0.0f;
-		game->_ECD18[1]   = 0.0f;
-		game->_ECD18[2]   = 0.0f;
-		game->_ECD18[3]   = 0.0f;
+		game->mHudObject       = NULL;
+		game->mHudObjectX      = 0.0f;
+		game->mHudObjectY      = 0.0f;
+		game->mScopeTarget     = NULL;
+		game->mScopeMarker     = -1;
+		game->mScopeItem       = -1;
+		game->mScopeTicks      = 0;
+		game->mScopeRareItem   = 0;
+		game->mScopeLevel      = 0;
+		game->mScopeSoundIndex = 0;
+		game->mScopeSound      = -1;
+		game->mScopeZoom       = 0.0f;
+		game->mScopeAngle      = 0.0f;
+		game->mScopeFade       = 0.0f;
+		game->mScopeFade2      = 0.0f;
 	}
 	}
 	return game->mSetupStep == 5;
@@ -953,16 +962,117 @@ static inline bool IsPlayerIdle(WiiPlayerState* player)
 	    && player->mPush.mState == 0 && player->mTumble.mState == 0;
 }
 
+// what the pointer is on and within the popper's reach, the HUD shows it
+struct PointerPick {
+	f32 mDist;
+	XObj* mObj;
+};
+
+// what the scope picks: the object nearest to the eye camera among those the pointer is on
+struct ScopePick {
+	f32 mDist;
+	XObj* mObj;
+	f32 mSpeed; // how fast the pointer moved
+	BOOL mOn;   // the pointer is on it, not only swept across it
+	s32 mLevel; // 1 to 3 by the speed
+};
+
+// the pointer as Update hands it to the objects
+struct PointerMotion {
+	const Vec* mPos;
+	Vec mMove;  // its move on the screen this frame, in screen widths and heights
+	f32 mSpeed; // the move's length in screen widths
+};
+
+// the sounds a stage's items play under the scope, mCount for each of the three levels
+struct ScopeStageSounds {
+	const s32* mSounds;
+	s32 mCount;
+};
+extern const ScopeStageSounds lbl_802C49C8[];
+
+extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
+extern s32 gPointerScreenWidth, gPointerScreenHeight;
+// gamesound.cpp's, the track playing an archive sound
+CSoundTrackSlot* FindSound(CSound* sound, u32 id);
+
+// the scope takes obj if nothing keeps it from looking and it is nearer to the eye than its pick so far.
+// Retail has these lines twice, the name is ours
+static inline void PickScopeTarget(CGame* game, ScopePick* scope, XObj* obj, XObj* held, const Vec* eye, const PointerMotion& motion,
+                                   BOOL on)
+{
+	if (!game->GetStatusFlags(0x100) && game->GetPlayer()->GetAttachment() != 2
+	    && !(game->mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->_2D0
+	         && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->_5C != 0)
+	    && !(game->mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)game->mCameraActions.mTable[CAMACTION_MAP])->_11F8)
+	    && (obj->_18C >= 0 || (obj->GetPool() == 8 && obj != held))) {
+		f32 dist = PSVECDistance(obj->GetPos(), eye) - obj->mFloorXZExtent;
+		if (scope->mObj == NULL || dist < scope->mDist) {
+			scope->mDist  = dist;
+			scope->mObj   = obj;
+			scope->mSpeed = motion.mSpeed;
+			scope->mOn    = on;
+		}
+	}
+}
+
+// the eye camera's popper aims along the ray through the pointer. Retail has these lines twice, the name
+// is ours
+static inline void AimAtPointer(CGame* game)
+{
+	CCamera* camera = game->GetCamera();
+	Vec pointer     = gWiiPointer.mPointer;
+	CVec screen(pointer);
+	CVec world;
+	Vec clip;
+	clip.x = screen.x / camera->mScale;
+	clip.y = screen.y;
+	clip.z = screen.z;
+	PSMTX44MultVec(camera->mScreenInv, &clip, &world);
+	CVec from = world;
+	CVec to   = world + (world - camera->mView.mEye);
+	f32 yaw   = atan2(to.x - from.x, to.z - from.z);
+	f32 dz    = to.z - from.z;
+	f32 dx    = to.x - from.x;
+	f32 dy    = to.y - from.y;
+	f32 pitch = atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy));
+	fn_800E8140(game->GetPlayer(), yaw, dy < 0.0f ? HALF_PI - pitch : pitch - HALF_PI);
+}
+
+// two sets of items the scope marks, each a bit mask over a run of item indices; the names are ours
+static inline bool IsScopeRareItemA(s32 item)
+{
+	bool rare = false;
+	if ((u32)(item - 0x12) <= 0x22 && (0x780000003ULL & (1ULL << (item - 0x12)))) {
+		rare = true;
+	}
+	return rare;
+}
+
+static inline bool IsScopeRareItemB(s32 item)
+{
+	bool rare = false;
+	if ((u32)(item - 0x5B) <= 0x2F && (0xF00400000001ULL & (1ULL << (item - 0x5B)))) {
+		rare = true;
+	}
+	return rare;
+}
+
+static inline bool IsScopeRareItem(s32 item)
+{
+	return IsScopeRareItemA(item) || IsScopeRareItemB(item);
+}
+
 /**
  * @note Address: 0x8001E830
  * @note Size: 0x57C4
  */
-// NONMATCHING: incomplete. Everything up to the camera update (0x800226EC) is written; retail goes on with
-// the remote pointer's pick of the object under it, the roboeyes' scope and their sounds (0x800226F0 to
-// 0x80023FE0), which this source does not have yet. The written part calls PauseGameSounds,
-// ResumeGameSounds and IsSystemMessage3Shown where retail expands them (they are defined in the next
-// file's range), calls vf16C without the frame count retail passes, and the three nw4r camera reads of
-// the stage camera object (the GameCube had none) stand as their CCamera fallback only
+// NONMATCHING: the source calls PauseGameSounds, ResumeGameSounds and IsSystemMessage3Shown where retail
+// expands them (they are defined in the next file's range), and gamesound.cpp's FindSound, which retail
+// expands in the scope's night check; it calls vf16C without the frame count retail passes; the three
+// nw4r camera reads of the stage camera object (the GameCube had none) stand as their CCamera fallback
+// only; isnan is fdlibm's function where retail calls the Wii MSL's __fpclassifyf. The rest is
+// register and stack placement that follows from those
 // the GameCube function with the Wii's pointer, home menu, movie and sound pauses
 void CGame::Update(u32 frames)
 {
@@ -1384,7 +1494,271 @@ void CGame::Update(u32 frames)
 			fn_800B4988(obj);
 		}
 	}
-	// todo: retail goes on here (0x800226F0) with the remote pointer's pick and the roboeyes
+
+	// the pointer picks what it is on: the nearest such object within the popper's reach for the HUD,
+	// and the nearest to the eye camera for the scope's sounds
+	PointerPick pick = { NAN, NULL };
+	ScopePick scope  = { NAN, NULL, 0.0f, FALSE, 0 };
+	if (gWiiPointer.mPointerValid && GetStatusFlags(1) && (GetPlayer()->mPlayerFlags & 0x20000000)
+	    && !((XObjChrMenu*)GetPlayer()->_19EE4)->IsOpen() && mEvtData.mScript == NULL && !IsLoadStepRunning()) {
+		// in tenths: popper parameter 0 is the range, 1 the range with the upgrade
+		f32 range = (s32)GetPopperParameter(FindOwnedInventoryItemIndex(GetPlayer()->mParams.mInventory.mItems, 0x36) >= 0) / 10.0f;
+		const Vec* pointer   = &gWiiPointer.mPointer;
+		PointerMotion motion = { pointer };
+		if (gWiiPads[0].IsRemoteActive()) {
+			motion.mMove.x = gWiiPads[0].mSamples[0].pointer.velocity.x;
+			motion.mMove.y = gWiiPads[0].mSamples[0].pointer.velocity.y;
+			motion.mSpeed  = gWiiPads[0].mSamples[0].pointer.speed;
+			if (motion.mPos->x >= gScreenLeft && motion.mPos->x <= gScreenRight && motion.mPos->y >= gScreenTop
+			    && motion.mPos->y <= gScreenBottom) {
+				Vec zero = { 0.0f, 0.0f, 0.0f };
+				CVec center(zero);
+				CVec from(lbl_80444E98);
+				Vec toPos = { motion.mPos->x, motion.mPos->y, 0.0f };
+				CVec to(toPos);
+				CVec eye = GetCamera()->mView.mEye;
+				CVec muzzle(fn_8010BEE0(&GetPlayer()->mPopper));
+				XObj* held = GetPlayer()->mLift.mState == 0 ? NULL : GetPlayer()->mLiftTarget;
+				for (i = 0; i < mObjectRefCount; i++) {
+					XObj* obj = (XObj*)mObjectRefs[i].mObj;
+					if (obj == NULL) {
+						continue;
+					}
+					if ((obj->mStatus.mFlags & 0x10001) != 0x10001 || !(obj->mStatus.mFlags & 0x100)
+					    || (obj->mStatus.mFlags & 0x1000000000800ULL)) {
+						continue;
+					}
+					bool on = false;
+					f32 y   = motion.mPos->y;
+					f32 x   = motion.mPos->x;
+					if (obj->mScreenBoundsValid && !isnan(obj->mScreenLeft) && !isnan(obj->mScreenTop) && !isnan(obj->mScreenRight)
+					    && !isnan(obj->mScreenBottom) && x >= obj->mScreenLeft && x <= obj->mScreenRight && y >= obj->mScreenTop
+					    && y <= obj->mScreenBottom) {
+						on = true;
+					}
+					if (on) {
+						obj->vf208(motion.mPos, &motion.mMove, TRUE, motion.mSpeed);
+						if (GetPlayer()->GetAttachment() == 2 && GetPlayer()->mHang.mState == 0 && GetPlayer()->mJump.mState == 0
+						    && GetPlayer()->mLadder.mState == 0 && GetPlayer()->mRope.mState == 0 && GetPlayer()->mPush.mState == 0
+						    && GetPlayer()->mTumble.mState == 0 && !(obj->mStatus.mFlags & 0x40000) && obj->_18C != 1 && obj->_18C != 3
+						    && obj->_18C != 4 && obj->_18C != 10 && obj->_18C != 0x15 && obj->GetKind() != 0x324) {
+							f32 dist = PSVECDistance(&muzzle, &obj->mToppleOffset) - obj->mFloorXZExtent;
+							// a 0x46F before a 0x6B wins regardless of the order, a 0x6B never displaces a 0x46F
+							if (obj->GetKind() == 0x46F && pick.mObj != NULL && pick.mObj->GetKind() == 0x6B) {
+								if (dist < range) {
+									pick.mDist = dist;
+									pick.mObj  = obj;
+								}
+							} else if (!(obj->GetKind() == 0x6B && pick.mObj != NULL && pick.mObj->GetKind() == 0x46F)) {
+								if ((pick.mObj == NULL || dist < pick.mDist) && dist < range) {
+									pick.mDist = dist;
+									pick.mObj  = obj;
+								}
+							}
+						}
+						PickScopeTarget(this, &scope, obj, held, &eye, motion, TRUE);
+					} else {
+						// off it: the pointer may still have crossed its rectangle since the last frame
+						bool crossed = false;
+						if (obj->mScreenBoundsValid) {
+							f32 left   = obj->mScreenLeft;
+							f32 right  = obj->mScreenRight;
+							f32 top    = obj->mScreenTop;
+							f32 bottom = obj->mScreenBottom;
+							if (!isnan(left) && !isnan(top) && !isnan(right) && !isnan(bottom)) {
+								f32 width  = right - left;
+								f32 height = bottom - top;
+								center.x   = width * 0.5f + left;
+								center.y   = height * 0.5f + top;
+								if ((center.x - from.x) * (center.x - to.x) < 0.0f) {
+									Vec path, toCenter, normal, side, offset;
+									PSVECSubtract(&from, &to, &path);
+									PSVECSubtract(&from, &center, &toCenter);
+									PSVECCrossProduct(&toCenter, &path, &normal);
+									PSVECCrossProduct(&path, &normal, &side);
+									PSVECNormalize(&side, &side);
+									PSVECSubtract(&from, &center, &offset);
+									if (PSVECDotProduct(&side, &offset) < ((height - width) * 0.5f + width) * 0.5f
+									    && !(from.y > top && to.y > top) && !(from.y < bottom && to.y < bottom)) {
+										crossed        = true;
+										CVec step      = to - from;
+										motion.mMove.x = step.x / gPointerScreenWidth;
+										motion.mMove.y = step.y / gPointerScreenHeight;
+										motion.mSpeed  = PSVECMag(&step) / gPointerScreenWidth;
+									}
+								}
+							}
+						}
+						if (crossed) {
+							obj->_6DC = TRUE;
+							obj->vf208(motion.mPos, &motion.mMove, TRUE, motion.mSpeed);
+							PickScopeTarget(this, &scope, obj, held, &eye, motion, FALSE);
+						} else {
+							obj->vf208(motion.mPos, &motion.mMove, FALSE, motion.mSpeed);
+						}
+					}
+				}
+			}
+		}
+		lbl_80444E98 = *motion.mPos;
+		if (GetStatusFlags(0x100) && GetPlayer()->GetAttachment() == 2) {
+			AimAtPointer(this);
+		} else {
+			fn_800E8140(GetPlayer(), GetPlayer()->mRotY, 0.0f);
+		}
+	} else if (GetStatusFlags(0x100) && GetPlayer()->GetAttachment() == 2) {
+		// the eye camera keeps the last aim while the pointer is briefly off the screen
+		if (_EC2B4 > 0.0f) {
+			AimAtPointer(this);
+		} else {
+			fn_800E8140(GetPlayer(), GetPlayer()->mRotY, 0.0f);
+		}
+	}
+
+	// the HUD's object fades in and its marker turns while the pointer stays on it
+	if (pick.mObj != mHudObject) {
+		mHudObject  = pick.mObj;
+		mHudObjectX = 0.0f;
+	}
+	if (mHudObject != NULL) {
+		if (mHudObjectX < 1.0f) {
+			if ((mHudObjectX += 0.1f * frames) > 1.0f) {
+				mHudObjectX = 1.0f;
+			}
+		}
+		mHudObjectY += DEG2RAD * 3.0f * frames;
+	} else if (mHudObjectX > 0.0f) {
+		if ((mHudObjectX -= 0.1f * frames) < 0.0f) {
+			mHudObjectX = 0.0f;
+		}
+	}
+
+	// a new scope target: its marker clicks, every tenth time a longer sound; an item plays one of its
+	// stage's sounds for the speed the pointer came at, at night a random one of twenty
+	if (scope.mObj != mScopeTarget) {
+		mScopeTarget = scope.mObj;
+		if (scope.mObj != NULL) {
+			if (scope.mObj->_18C >= 0) {
+				mScopeMarker = scope.mObj->_18C;
+				mScopeItem   = -1;
+			} else {
+				s32 item       = scope.mObj->GetObjFlags();
+				mScopeItem     = item;
+				mScopeMarker   = -1;
+				mScopeRareItem = IsScopeRareItem(item);
+				fn_80114564(mScopeTarget);
+			}
+			if (scope.mSpeed < 0.007f) {
+				scope.mLevel = 1;
+			} else if (scope.mSpeed < 0.02f) {
+				scope.mLevel = 2;
+			} else {
+				scope.mLevel = 3;
+			}
+			if (mScopeZoom > scope.mLevel) {
+				if (mScopeZoom > 2.0f) {
+					mScopeLevel = 3;
+				} else if (mScopeZoom > 1.0f) {
+					mScopeLevel = 2;
+				} else {
+					mScopeLevel = 1;
+				}
+			} else {
+				mScopeLevel = scope.mLevel;
+				mScopeSpeed = scope.mSpeed;
+				mScopeZoom  = scope.mLevel;
+			}
+			if (mScopeMarker >= 0) {
+				if (IsWiiSfxPlaying(&gGame.mSound, 0x262)) {
+					StopWiiSfx(&gGame.mSound, 0x262, 0.1f);
+				}
+				if (++mScopeTicks >= 10) {
+					PlayWiiSoundEffect(&gGame.mSound, 0x263, 1.0f, 0.0f);
+					mScopeTicks = 0;
+				} else {
+					PlayWiiSoundEffect(&gGame.mSound, 0x262, 1.0f, 0.0f);
+				}
+			} else if (mScopeItem >= 0) {
+				if (mTimeState.mMode == 1 && mTimeState.mTime > 0.5f
+				    && (gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0) == 0
+				    && FindSound(&gGame.mSound, 0x10) == NULL) {
+					if (mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mScopeSound)) {
+						StopWiiSfx(&gGame.mSound, mScopeSound, 0.1f);
+					}
+					s32 index = rand() % 20;
+					if (index == mScopeSound) {
+						mScopeSound = (index + 1) % 20;
+					} else {
+						mScopeSound = index;
+					}
+					PlayWiiSoundEffect(&gGame.mSound, mScopeSound + 0x264, 1.0f, 0.0f);
+				} else if (lbl_802C49C8[mStage].mSounds != NULL) {
+					if (mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mScopeSound)) {
+						StopWiiSfx(&gGame.mSound, mScopeSound, 0.2f);
+					}
+					const ScopeStageSounds& sounds = lbl_802C49C8[mStage];
+					mScopeSoundIndex               = (mScopeSoundIndex + 1) % sounds.mCount;
+					mScopeSound                    = sounds.mSounds[mScopeSoundIndex + (mScopeLevel - 1) * sounds.mCount];
+					PlayWiiSoundEffect(&gGame.mSound, mScopeSound, 1.0f, 0.0f);
+				} else if (mStage == 11) {
+					switch (mScopeItem) {
+					case 0:
+						PlayWiiSoundEffect(&gGame.mSound, 0x431, 1.0f, 0.0f);
+						break;
+					case 0x7C:
+						PlayWiiSoundEffect(&gGame.mSound, 0x432, 1.0f, 0.0f);
+						break;
+					}
+				} else if (mStage == 18) {
+					switch (mScopeItem) {
+					case 0xE:
+						PlayWiiSoundEffect(&gGame.mSound, 0x455, 1.0f, 0.0f);
+						break;
+					case 0x6E:
+						PlayWiiSoundEffect(&gGame.mSound, 0x456, 1.0f, 0.0f);
+						break;
+					}
+				} else if (mStage == 22) {
+					switch (mScopeItem) {
+					case 0:
+						PlayWiiSoundEffect(&gGame.mSound, 0x47D, 1.0f, 0.0f);
+						break;
+					case 0x6D:
+						PlayWiiSoundEffect(&gGame.mSound, 0x47E, 1.0f, 0.0f);
+						break;
+					}
+				}
+			}
+		}
+	}
+	if (mScopeTarget != NULL) {
+		if (mScopeFade < 1.0f) {
+			mScopeFade = 1.0f;
+		}
+		if (mScopeFade2 < 1.0f) {
+			mScopeFade2 = 1.0f;
+		}
+	} else {
+		if (mScopeFade > 0.0f) {
+			if ((mScopeFade -= 0.05f * frames) <= 0.0f) {
+				mScopeFade = 0.0f;
+				mScopeZoom = 1.0f;
+			}
+		}
+		if (mScopeFade2 > 0.0f) {
+			if ((mScopeFade2 -= 0.02f * frames) <= 0.0f) {
+				mScopeFade2 = 0.0f;
+			}
+		}
+	}
+	if (mScopeZoom > 1.0f) {
+		if ((mScopeZoom -= 0.01f * frames) < 1.0f) {
+			mScopeZoom = 1.0f;
+		}
+	}
+	if (mScopeZoom > 0.0f) {
+		mScopeAngle += frames * (DEG2RAD * 3.0f * (mScopeZoom * mScopeZoom));
+	}
 }
 
 /**
