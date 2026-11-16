@@ -128,6 +128,17 @@ static inline void OnCardRemoved(Title* title)
 	}
 }
 
+// as gamemain.cpp and gamedraw.cpp define it (see csound.h)
+inline void CSound::StopAllTracks(f32 fade)
+{
+	s32 frames = gRefreshRate * fade;
+	for (int i = 0; i < 0x40; ++i) {
+		if (mTracks[i].IsAttachedSound()) {
+			mTracks[i].Stop(frames);
+		}
+	}
+}
+
 // the pixel engine state every 2D draw on the title screen needs, the GameCube's BeginTitleOverlay
 static inline void BeginTitleOverlay()
 {
@@ -189,6 +200,79 @@ extern void (Title::*gTitleModeUpdates[])(u32);
 static inline bool FadeDone()
 {
 	return 0.0f == gGame.mFade.mSpeed.r && 0.0f == gGame.mFade.mSpeed.g && 0.0f == gGame.mFade.mSpeed.b && 0.0f == gGame.mFade.mSpeed.a;
+}
+
+/**
+ * @note Address: 0x800452B8
+ * @note Size: 0x264
+ */
+// everything the title screen tracks back to its start; the sound tracks fade out over a second
+extern "C" void ResetTitleScreenState(Title* title)
+{
+	title->mState          = 0;
+	title->mMode           = 0;
+	title->mTimeout        = -1;
+	title->mMenuAlpha      = 0.0f;
+	title->mTitleAlpha     = 0.0f;
+	title->mPulseAngle     = 90.0f;
+	title->mHighlightDelay = 0;
+	title->mSpawnIndex     = 0;
+	title->mCursor[0].ResetObjectState();
+	title->mCursor[0].mAngle      = 0.0f;
+	title->mCursor[0].mAngleSpeed = 0.0f;
+	title->mCursor[1].ResetObjectState();
+	title->mCursor[1].mAngle      = 0.0f;
+	title->mCursor[1].mAngleSpeed = 0.0f;
+	for (s32 i = 0; i < 3; ++i) {
+		title->mDemo[i].ResetObjectState();
+	}
+	title->mSelection         = 0;
+	title->mFile              = 0;
+	title->mChoice            = 0;
+	title->mLastSelection     = -1;
+	title->mLastFile          = -1;
+	title->mLastChoice        = -1;
+	title->mLoadAlpha         = 0.0f;
+	title->mAlpha             = 0.0f;
+	title->mLastMode          = 0;
+	title->mModeParam         = 0;
+	title->mDelay             = 0;
+	title->mPanelX            = -10.0f;
+	title->mPanelY            = -200.0f;
+	title->mTargetPanelX      = -10.0f;
+	title->mTargetPanelY      = -200.0f;
+	title->_4944              = 0.0f;
+	title->mLoadOffset        = 0.0f;
+	title->_494C              = 0.0f;
+	title->mOffset            = 0.0f;
+	title->mOptionLine        = 0;
+	title->mLastOptionLine    = -1;
+	title->mOptionState       = 0;
+	title->mOptionAlpha       = 0.0f;
+	title->mTargetOptionAlpha = 0.0f;
+	if (gGame.mMenuControls & MenuControlPointer) {
+		title->mPointerOn = 1;
+	} else {
+		title->mPointerOn = 0;
+	}
+	if (gGame.mMenuControls & MenuControlStick) {
+		title->mStickOn = 1;
+	} else {
+		title->mStickOn = 0;
+	}
+	title->mChannel = 0;
+	for (s32 i = 0; i < 3; ++i) {
+		ResetSaveSlotRecord(&gTitleSaveSlots[i]);
+	}
+	title->mLoadScroll    = 0.0f;
+	title->mSaveFound     = 0;
+	title->mCardScanState = 0;
+	gGame.mSound.StopAllTracks(1.0f);
+	title->mShowMessage   = 0;
+	title->mOptionBarSnap = 0;
+	title->mSaveError     = 0;
+	title->mSaveErrorCode = 0;
+	title->mNewestFile    = -1;
 }
 
 /**

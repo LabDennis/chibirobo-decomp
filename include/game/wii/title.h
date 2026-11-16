@@ -370,7 +370,8 @@ public:
 	s32 mNewestFile; // _4984, the save written last, -1 while the new-game entry was picked
 	s32 mChoice;     // _4988, yes or no, -1 with the pointer on neither
 	s32 mLastChoice; // _498C
-	u8 _4990[0x4998 - 0x4990];
+	u8 _4990[4];
+	s32 mChannel;      // _4994, the GameCube's card slot; cleared and never read on the Wii
 	u8 mCardScanState; // _4998, where the slot scan is: 0 fresh, 1 scanning, 2 done
 	u8 mSaveFound;     // _4999, a save is on the card and the second entry shows
 	u8 _499A[2];
