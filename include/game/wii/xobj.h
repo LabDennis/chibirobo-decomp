@@ -508,6 +508,15 @@ public:
 	virtual void ClearAnim();                                                                                                   // _110
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);                              // _148
 
+	// the object's kind, -1 without its data record
+	s16 GetCategory() const
+	{
+		if (mAttr.mObjData != NULL) {
+			return mAttr.mObjData->GetCategory();
+		}
+		return -1;
+	}
+
 	CStatus64 mStatus; // _150
 	CoordInfo mCoord;  // _160
 	AttrInfo mAttr;    // _168
@@ -543,6 +552,20 @@ STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 	private:                           \
 		u8 _tail[size - sizeof(XObj)]; \
 	};                                 \
+	STATIC_ASSERT(sizeof(name) == size)
+
+// the same with the one virtual these classes add behind XObj's (_28C): CGame::DrawScene's last pass
+// calls it on the leticker, army and spider objects, each through its own class
+#define WII_XOBJ_DECL_LATE_DRAW(name, size) \
+	class name : public XObj {              \
+	public:                                 \
+		name();                             \
+		virtual ~name();                    \
+		virtual void DrawLate(); /* _28C */ \
+                                            \
+	private:                                \
+		u8 _tail[size - sizeof(XObj)];      \
+	};                                      \
 	STATIC_ASSERT(sizeof(name) == size)
 
 WII_XOBJ_DECL(XObjScnCam, 0x9C0);
@@ -584,16 +607,16 @@ WII_XOBJ_DECL(XObjActor3, 0x21C8);
 WII_XOBJ_DECL(XObjSound, 0xA10);
 WII_XOBJ_DECL(XObjCoin, 0xA30);
 WII_XOBJ_DECL(XObjItem, 0x9B0);
-WII_XOBJ_DECL(XObjLeticker, 0xAC8);
+WII_XOBJ_DECL_LATE_DRAW(XObjLeticker, 0xAC8);
 WII_XOBJ_DECL(XObjActorToy, 0x2208);
 WII_XOBJ_DECL(XObjActorJenny, 0xD98);
 WII_XOBJ_DECL(XObjActorMama, 0xD88);
 WII_XOBJ_DECL(XObjActorPapa, 0xD90);
 WII_XOBJ_DECL(XObjActorTao, 0xDF8);
 WII_XOBJ_DECL(XObjActorDeca, 0xDA0);
-WII_XOBJ_DECL(XObjArmy, 0xB30);
-WII_XOBJ_DECL(XObjSpider, 0xDF8);
-WII_XOBJ_DECL(XObjSpiderSmall, 0xB50);
+WII_XOBJ_DECL_LATE_DRAW(XObjArmy, 0xB30);
+WII_XOBJ_DECL_LATE_DRAW(XObjSpider, 0xDF8);
+WII_XOBJ_DECL_LATE_DRAW(XObjSpiderSmall, 0xB50);
 WII_XOBJ_DECL(XObjSpiderBoss, 0xCE0);
 WII_XOBJ_DECL(XObjDust, 0xA00);
 WII_XOBJ_DECL(XObjHBox, 0x1368);

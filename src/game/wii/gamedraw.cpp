@@ -94,6 +94,18 @@ inline void CSound::StopAllTracks(f32 fade)
 	}
 }
 
+// the queued scene draws, sorted under the camera's view and popped one by one
+static inline void DrawSceneQueue(CCamera* camera)
+{
+	fn_802AEDEC(&gGame.mGs.mSceneHead, camera->mViewMtx);
+	WiiGsSceneObj* obj = gGame.mGs.mSceneHead;
+	while (obj->mPending != 0) {
+		if (obj->mPending != 0) {
+			obj->vf038(obj->mPending - 1);
+		}
+	}
+}
+
 // shortcut: csound.h spells the 64 tracks as flat slots; drop the cast once they are CSoundHandle
 static inline nw4r::snd::SoundHandle& TrackHandle(s32 i)
 {
@@ -739,11 +751,143 @@ void CGame::DrawHud()
 }
 
 /**
+ * @note Address: 0x80027D48
+ * @note Size: 0x13C
+ */
+// the effects that stay over the screen color while it is up: the 0x200 objects, and the ones that
+// carry both of the flags 0x0400000000000000 and 0x0000400000000000
+extern "C" void DrawObjectEffectsOverFade(CGame* game)
+{
+	if (!game->GetStatusFlags(1)) {
+		return;
+	}
+	if (game->mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	if (game->mColor0.mColor.mColor.a > 0.0f) {
+		for (s32 i = 0; i < game->mEffectRefCount; i++) {
+			XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+			if (obj->mStatus.mFlags & 1) {
+				if (obj->mStatus.mFlags & 0x200) {
+					obj->DrawObjectEffects();
+				} else if ((obj->mStatus.mFlags & 0x0400000000000000) && (obj->mStatus.mFlags & 0x0000400000000000)) {
+					obj->DrawObjectEffects();
+				}
+			}
+		}
+	}
+}
+
+/**
  * @note Address: 0x80027D44
  * @note Size: 0x4
  */
 void XObj::DrawObjectEffects()
 {
+}
+
+/**
+ * @note Address: 0x80027BF4
+ * @note Size: 0x150
+ */
+// every live object's effects, then the stage's function 3; while the screen color is up the ones
+// DrawObjectEffectsOverFade draws over it are left out
+extern "C" void DrawObjectEffectsPass(CGame* game)
+{
+	if (!game->GetStatusFlags(1)) {
+		return;
+	}
+	if (game->mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	for (s32 i = 0; i < game->mEffectRefCount; i++) {
+		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		if (obj->mStatus.mFlags & 1) {
+			if (game->mColor0.mColor.mColor.a > 0.0f
+			    && ((obj->mStatus.mFlags & 0x200)
+			        || ((obj->mStatus.mFlags & 0x0400000000000000) && (obj->mStatus.mFlags & 0x0000400000000000)))) {
+				continue;
+			}
+			obj->DrawObjectEffects();
+		}
+	}
+	CallStageModule(3, 0, NULL);
+}
+
+/**
+ * @note Address: 0x800276F8
+ * @note Size: 0x4FC
+ */
+// draws the scene list through the main camera: kind 3 first, then the rest, then once more into the
+// alpha only (the 0x820040 objects and what the player carries) for the outline, and last the late pass
+// of the leticker, army and spider objects
+void CGame::DrawScene()
+{
+	if (!GetStatusFlags(1)) {
+		return;
+	}
+	if (mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = mMenuActive && _AE34;
+	if (menuShown) {
+		return;
+	}
+	XObj* targets[2]       = { NULL, NULL };
+	WiiPlayerState* player = mPlayer;
+	targets[0]             = player->mLiftPlugTarget;
+	if (targets[1] == NULL) {
+		targets[1] = player->mLiftTarget;
+	}
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+	for (s32 i = 0; i < mSceneRefCount; i++) {
+		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+		if (obj->GetCategory() == 3) {
+			obj->DrawObject();
+		}
+	}
+	for (s32 i = 0; i < mSceneRefCount; i++) {
+		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+		if (obj->GetCategory() != 3) {
+			obj->DrawObject();
+		}
+	}
+	DrawSceneQueue(GetCamera());
+
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+	gGame.mGs.mCurRenderState->SetDstAlpha(GX_TRUE, 4);
+	for (s32 i = 0; i < mSceneRefCount; i++) {
+		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+		if (obj->GetCategory() != 3 && ((obj->mStatus.mFlags & 0x820040) || obj == targets[1])) {
+			obj->DrawObject();
+		}
+	}
+	DrawSceneQueue(GetCamera());
+
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+	for (s32 i = 0; i < mSceneRefCount; i++) {
+		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+		if (obj->GetCategory() == 9) {
+			((XObjLeticker*)obj)->DrawLate();
+		} else if (obj->GetCategory() == 16) {
+			((XObjArmy*)obj)->DrawLate();
+		} else if (obj->GetCategory() == 17) {
+			((XObjSpider*)obj)->DrawLate();
+		} else if (obj->GetCategory() == 18) {
+			((XObjSpiderSmall*)obj)->DrawLate();
+		}
+	}
+	CallStageModule(2, 0, NULL);
+	DrawSceneQueue(GetCamera());
 }
 
 /**

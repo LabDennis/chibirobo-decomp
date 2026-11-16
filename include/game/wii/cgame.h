@@ -730,6 +730,7 @@ struct WiiAtcMenu {
 };
 
 class CSound3DActor;
+class XObj;
 
 // one of the player's positioned sounds; ChangeGameStage stops both
 struct WiiPlayerSound {
@@ -747,7 +748,11 @@ struct WiiPlayerState {
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
 	u8 _09D0[0xAA0 - 0x9D0];
 	WiiPlayerAction mLift; // _0AA0, the carry action; its mState decides whether looking is free
-	u8 _0AA8[0xB50 - 0xAA8];
+	u8 _0AA8[0xAC0 - 0xAA8];
+	XObj* mLiftTarget; // _0AC0, what he carries, the GameCube's mLift.mTarget
+	u8 _0AC4[0xAF0 - 0xAC4];
+	XObj* mLiftPlugTarget; // _0AF0, the GameCube's mLift.mPlugTarget
+	u8 _0AF4[0xB50 - 0xAF4];
 	WiiPlayerAction mHang; // _0B50
 	u8 _0B58[0xBA0 - 0xB58];
 	WiiPlayerAction mJump; // _0BA0
@@ -924,9 +929,12 @@ public:
 	s32 mDrawRefCount;       // _108C4
 	// pointers to spawned objects the renderer walks; entries are grouped in eights,
 	// CMsgFont_Init pushes its two cursors here
-	WiiObjectRef* mObjectRefs; // _108C8
-	s32 mObjectRefCount;       // _108CC
-	u8 _108D0[0x108E0 - 0x108D0];
+	WiiObjectRef* mObjectRefs;        // _108C8
+	s32 mObjectRefCount;              // _108CC
+	WiiObjectRef* mSceneRefs;         // _108D0, the objects DrawScene draws
+	s32 mSceneRefCount;               // _108D4
+	WiiObjectRef* mEffectRefs;        // _108D8, the objects whose effects are drawn
+	s32 mEffectRefCount;              // _108DC
 	ResourceFile mObjArchives[0x400]; // _108E0, the pooled object archives, the GameCube's mObjArchives
 	u8 _4C8E0[0x4C8E4 - 0x4C8E0];
 	WiiEvtData mEvtData; // _4C8E4

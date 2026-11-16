@@ -8384,3 +8384,5 @@ EndGsCamera = .text:0x802AB7E4; // type:function size:0x38 scope:global
 gSpiderSmallSoundId = .sbss:0x805A1CB4; // type:object size:0x4 data:4byte
 gMessageFontDefaultColor = .sdata:0x805A0D30; // type:object size:0x4 data:byte
 StartStageNameBubbles = .text:0x8002BC40; // type:function size:0x404
+DrawObjectEffectsOverFade = .text:0x80027D48; // type:function size:0x13C
+DrawObjectEffectsPass = .text:0x80027BF4; // type:function size:0x150
