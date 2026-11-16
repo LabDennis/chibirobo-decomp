@@ -62,6 +62,8 @@ s32 IndexOfLargestOfThree(OSTime first, OSTime second, OSTime third);
 void fn_8004DC94(TitleDust* dust, u32 frames);
 // the name's per-frame update
 void fn_8004CDB8(Title* title, u32 frames);
+// sets the name that pops in over the menu (0x8004CA74; the symbol's name is older than the reading)
+void UpdateTitleDust(Title* title, const char* text, u32 color);
 bool IsSaveSlotIntact(const WiiMenuSaveSlot* slot);
 // fills a file menu record from a scanned save header (menu.cpp, 0x8007A2E8)
 void fn_8007A2E8(WiiMenuSaveSlot* slot, WiiSaveScanEntry* entry, BOOL used);
@@ -98,6 +100,8 @@ const TitlePaletteEntry gTitlePalette[] = {
 const s32 gTitleLogoTextures[3] = { 0, 0, 0 };
 s32 gTitlePaletteIndex          = 3;
 s32 gTitleLogoIndex             = 1;
+// how fast the file rows slide out to the file picked and back
+f32 gTitleFileSlideSpeed[2] = { 1.0f, 1.0f };
 
 // the outline offsets of the help text's letter shadows
 f32 gTitleHelpOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
@@ -388,7 +392,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	}
 	case 3:
 		if (title->mCursor[0].LoadFromPlacement(CoordInfo(GetSpawnData(title->mSpawnIndex)))) {
-			if (title->mCursor[0].mRequest.mFile->mSize == 0x3CA80) {
+			if ((title->mCursor[0].mRequest.mFile != NULL ? title->mCursor[0].mRequest.mFile->mSize : 0) == 0x3CA80) {
 				title->mCursor[0].SetScale(4.0f);
 			}
 			++title->mState;
@@ -396,7 +400,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		break;
 	case 4:
 		if (title->mCursor[1].LoadFromPlacement(CoordInfo(GetSpawnData(title->mSpawnIndex)))) {
-			if (title->mCursor[1].mRequest.mFile->mSize == 0x3CA80) {
+			if ((title->mCursor[1].mRequest.mFile != NULL ? title->mCursor[1].mRequest.mFile->mSize : 0) == 0x3CA80) {
 				title->mCursor[1].SetScale(4.0f);
 			}
 			++title->mState;
@@ -645,36 +649,84 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	case 12: {
 		title->mCursor[0].UpdateObject(frames);
 		title->mCursor[1].UpdateObject(frames);
+		for (s32 i = 0; i < 3; ++i) {
+			title->mDemo[i].UpdateObject(frames);
+		}
 		UpdateTitleDust(title, frames);
-		if (!title->mCursor[0].IsAnimDone() || title->mCursor[0].GetAnimId() == 0
+		if (title->mCursor[0].IsAnimDone() || title->mCursor[0].GetAnimId() == 0
 		    || title->mCursor[0].mObject.m_resFile.GetResAnmChrNumEntries() < 2) {
-			title->mPulseAngle = 0;
+			title->mCursor[0].SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+			title->mCursor[1].SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+			title->mPulseAngle = 0.0f;
 			switch (title->mSelection) {
 			case 0:
-			case 1:
-				title->mTargetPanelY = 0;
-				title->mAlpha        = 1;
+				title->mTargetPanelY = 0.0f;
+				title->mAlpha        = 1.0f;
 				title->mState        = 20;
+				UpdateTitleDust(title, GetTitleAndSaveMenuText(0), (u32)(255.0f * title->mLoadAlpha) | 0xFFFFFF00);
+				title->mFileSlides[0] = 0.0f;
+				title->mFileSlides[1] = 0.0f;
+				title->mFileSlides[2] = 0.0f;
+				break;
+			case 1:
+				title->mTargetPanelY = 0.0f;
+				title->mAlpha        = 1.0f;
+				title->mState        = 20;
+				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+				UpdateTitleDust(title, GetTitleAndSaveMenuText(1), (u32)(255.0f * title->mLoadAlpha) | 0xFFFFFF00);
+				title->mFileSlides[0] = 0.0f;
+				title->mFileSlides[1] = 0.0f;
+				title->mFileSlides[2] = 0.0f;
 				break;
 			case 2:
-				title->mTargetPanelY      = 0;
-				title->mTargetOptionAlpha = 1;
+				title->mTargetPanelY      = 0.0f;
+				title->mTargetOptionAlpha = 1.0f;
 				title->mState             = 21;
 				title->mOptionState       = 0;
-				title->mOptionLine        = 0;
+				title->UpdateSelections();
+				title->mOptionBar[0]   = title->mOptionBarLines[title->mLastOptionLine];
+				title->mOptionBarSnap  = 1;
+				title->mSavedPointerOn = title->mPointerOn;
+				title->mSavedStickOn   = title->mStickOn;
+				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+				UpdateTitleDust(title, GetTitleAndSaveMenuText(2), (u32)(255.0f * title->mLoadAlpha) | 0xFFFFFF00);
 				break;
 			}
 		}
 		break;
 	}
 	case 20:
-		title->mCursor[1].UpdateObject(frames);
+		for (s32 i = 0; i < 3; ++i) {
+			title->mDemo[i].UpdateObject(frames);
+		}
 		UpdateTitleDust(title, frames);
+		if (!IsWiiSfxPlaying(&gGame.mSound, 0xFF0003)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xFF0003, 1.0f, 0.0f);
+		}
+		// the file rows slide out to the one picked
+		for (s32 i = 0; i < 3; ++i) {
+			if (title->mFile == i) {
+				if (title->mFileSlides[i] < 1.0f) {
+					if ((title->mFileSlides[i] += 0.1f * gTitleFileSlideSpeed[0] * frames) > 1.0f) {
+						title->mFileSlides[i] = 1.0f;
+					}
+				}
+			} else if (title->mFileSlides[i] > 0.0f) {
+				if ((title->mFileSlides[i] -= 0.1f * gTitleFileSlideSpeed[1] * frames) < 0.0f) {
+					title->mFileSlides[i] = 0.0f;
+				}
+			}
+		}
 		(title->*gTitleModeUpdates[title->mMode])(frames);
 		break;
 	case 21:
-		title->mCursor[1].UpdateObject(frames);
+		for (s32 i = 0; i < 3; ++i) {
+			title->mDemo[i].UpdateObject(frames);
+		}
 		UpdateTitleDust(title, frames);
+		if (!IsWiiSfxPlaying(&gGame.mSound, 0xFF0003)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xFF0003, 1.0f, 0.0f);
+		}
 		UpdateTitleOptions(title, frames);
 		break;
 	case 13:
