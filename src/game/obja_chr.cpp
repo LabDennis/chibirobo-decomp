@@ -4393,9 +4393,9 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			f32 padding   = HelpGlyphPadding(width, glyphSize);
 
 			for (s32 j = 0; j < 4; ++j)
-				DrawRingQuad(gGame.mGs, glyph, opacity, .5f * padding + (cx + gEquipmentOutlineX[j]),
+				DrawRingQuad(gGame.mGs, glyph, opacity, padding / 2.0f + (cx + gEquipmentOutlineX[j]),
 				             bob + (baseline + gEquipmentOutlineY[j]), 1, glyphSize, glyphSize, rotation, -zero);
-			DrawRingQuad(gGame.mGs, glyph, 0xfffffb00 | opacity, .5f * padding + cx, cy, 1, glyphSize, glyphSize, rotation, -zero);
+			DrawRingQuad(gGame.mGs, glyph, 0xfffffb00 | opacity, padding / 2.0f + cx, cy, 1, glyphSize, glyphSize, rotation, -zero);
 		}
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
