@@ -6975,3 +6975,5 @@ __ct__7CObjVecFv = .text:0x800BE7C0; // type:function size:0x20
 __ct__9CJArchiveFv = .text:0x800BE7E0; // type:function size:0x48
 __ct__6CLightFv = .text:0x80033B68; // type:function
 __dt__6CLightFv = .text:0x8002FA20; // type:function
+__dt__5CFileFv = .text:0x800180C4; // type:function size:0x6C scope:weak
+IsLoaded__5CFileFv = .text:0x80033058; // type:function size:0x28 scope:weak

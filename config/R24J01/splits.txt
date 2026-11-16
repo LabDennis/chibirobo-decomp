@@ -180,7 +180,11 @@ game/THPSimple.cpp:
 	.sdata2 start:0x805A7B80 end:0x805A7B90
 
 game/cmovie.cpp:
+	extab start:0x80011140 end:0x80011178
+	extabindex start:0x80017A38 end:0x80017A8C
 	.text start:0x802C2278 end:0x802C269C
+	.rodata start:0x802E5E20 end:0x802E5E28
+	.sdata2 start:0x805A7B78 end:0x805A7B80
 
 game/cprimitive.cpp:
 	.text start:0x802AF8E0 end:0x802AFDA8
