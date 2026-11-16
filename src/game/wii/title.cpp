@@ -673,21 +673,21 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		}
 		break;
 	case 5:
-		if (title->mFigures[0].vf158(CoordInfo(GetSpawnData(0x31)))) {
+		if (title->mFigures[0].LoadFromPlacement(CoordInfo(GetSpawnData(0x31)))) {
 			title->mFigures[0].vf09C(6.0f);
 			title->mFigures[0].vf070(HALF_PI);
 			++title->mState;
 		}
 		break;
 	case 6:
-		if (title->mFigures[1].vf158(CoordInfo(GetSpawnData(0x32)))) {
+		if (title->mFigures[1].LoadFromPlacement(CoordInfo(GetSpawnData(0x32)))) {
 			title->mFigures[1].vf09C(6.0f);
 			title->mFigures[1].vf070(HALF_PI);
 			++title->mState;
 		}
 		break;
 	case 7:
-		if (title->mFigures[2].vf158(CoordInfo(GetSpawnData(0x33)))) {
+		if (title->mFigures[2].LoadFromPlacement(CoordInfo(GetSpawnData(0x33)))) {
 			title->mFigures[2].vf09C(6.0f);
 			title->mFigures[2].vf070(HALF_PI);
 			++title->mState;
@@ -829,7 +829,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	}
 	case 22:
 		for (s32 i = 0; i < 3; ++i) {
-			title->mFigures[i].vf040();
+			title->mFigures[i].Release();
 		}
 		title->mCursor.vf040();
 		title->mDemo.vf040();
@@ -1145,7 +1145,7 @@ void fn_8004DC94(TitleDust* dust, u32 frames)
  * @note Size: 0x64
  */
 // ResetObjectState: the figure's own bookkeeping goes back to blank
-void XObjDemo::vf154()
+void XObjDemo::ResetObjectState()
 {
 	ResetObjectState__4XObjFv((XObj*)this);
 	mState      = 0;
@@ -1162,7 +1162,7 @@ void XObjDemo::vf154()
  * @note Size: 0x2C
  */
 // LoadFromPlacement: the base call's result becomes a plain flag
-s32 XObjDemo::vf158(const CoordInfo& info)
+s32 XObjDemo::LoadFromPlacement(const CoordInfo& info)
 {
 	return LoadFromPlacement__4XObjFRC9CoordInfo((XObj*)this, info) != 0;
 }
@@ -1172,7 +1172,7 @@ s32 XObjDemo::vf158(const CoordInfo& info)
  * @note Size: 0x4
  */
 // Release
-void XObjDemo::vf040()
+void XObjDemo::Release()
 {
 	Release__4XObjFv((XObj*)this);
 }
@@ -1182,7 +1182,7 @@ void XObjDemo::vf040()
  * @note Size: 0x78
  */
 // UpdateObject: state 2 waits for the screen fade to finish, then goes quiet
-void XObjDemo::vf164(u32 frames)
+void XObjDemo::UpdateObject(u32 frames)
 {
 	if (mState == 0) {
 		return;

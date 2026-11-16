@@ -285,7 +285,7 @@ public:
 	virtual void vf034();
 	virtual void vf038();
 	virtual void vf03C();
-	virtual void vf040(); // _040, Release
+	virtual void Release(); // _040
 	virtual void vf044();
 	virtual void vf048();
 	virtual void vf04C();
@@ -354,11 +354,11 @@ public:
 	virtual void vf148();
 	virtual void vf14C();
 	virtual void vf150();
-	virtual void vf154();
-	virtual s32 vf158(const CoordInfo& info); // _158, LoadFromPlacement
+	virtual void ResetObjectState();
+	virtual s32 LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void vf15C();
 	virtual void vf160();
-	virtual void vf164(u32 frames); // _164, UpdateObject
+	virtual void UpdateObject(u32 frames); // _164
 	virtual void vf168();
 	virtual void vf16C();
 	virtual void vf170();
