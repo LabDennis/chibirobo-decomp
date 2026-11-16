@@ -762,8 +762,8 @@ struct WiiOXMenu {
 struct WiiPlayerState;
 class XAction {
 public:
-	u8 _00[4];
-	s32 mState; // _04
+	WiiPlayerState* mOwner; // _00
+	s32 mState;             // _04
 	// _08 vtable
 
 	virtual void Init(WiiPlayerState* owner); // _08

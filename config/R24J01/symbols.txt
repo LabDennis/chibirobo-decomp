@@ -435,6 +435,7 @@ __dt__8XObjReadFv = .text:0x800C62E4; // type:function size:0x40
 __dt__9CMsgQueueFv = .text:0x800C6324; // type:function size:0x40
 ResetForNewGame__9XObjFlagsFv = .text:0x800C636C; // type:function size:0x9C
 Reset__7XActionFv = .text:0x800C6428; // type:function size:0x18
+Init__7XActionFP14WiiPlayerState = .text:0x800C6440; // type:function size:0x14
 SetVectorComponents = .text:0x800CC808; // type:function size:0x10
 ClearObjectStatusFlags = .text:0x800CC818; // type:function size:0x24
 HasPlayerActionTarget = .text:0x800CCD24; // type:function size:0x14
