@@ -7,6 +7,7 @@
 #include "nw4r/snd/snd_RemoteSpeakerManager.h"
 #include "revolution/mem.h"
 #include <string.h>
+#include <math.h>
 #include "nw4r/snd/snd_BasicSound.h"
 
 extern "C" {
@@ -33,6 +34,8 @@ extern MEMiHeapHead* gWiiMem1Heap;
 extern s32 gRefreshRate;
 extern s32 gPointerScreenWidth;
 extern s32 gPointerScreenHeight;
+extern s32 gScreenSafeLeft;
+extern s32 gScreenSafeBottom;
 
 // the remote's battery query: Update asks WPAD every three seconds while pad 0 holds a remote
 struct WiiBatteryCheck {
@@ -210,6 +213,24 @@ void CBase::UpdateDvdStatus()
 		}
 		break;
 	}
+}
+
+/**
+ * @note Address: 0x80019300
+ * @note Size: 0x114
+ */
+// where the icons of mIconTpl go: the safe area's lower left corner, the battery icon's height above
+// it while it is shown, sliding in as mBatteryAlpha rises
+extern "C" Vec GetCornerIconPosition(CGame* game)
+{
+	f32 alpha = game->mBatteryAlpha;
+	game->mIconTpl.mTex.Init(&game->mIconTpl.mPalette->descriptorArray[1], 0);
+	f32 height = GXGetTexObjHeight(&game->mIconTpl.mTex);
+	Vec pos    = { 0.0f, 0.0f, 0.0f };
+	pos.x      = gScreenSafeLeft;
+	f32 shown  = sin(3.1415927f * alpha / 2.0f);
+	pos.y      = gScreenSafeBottom - (height - height * (1.0f - shown));
+	return pos;
 }
 
 /**
