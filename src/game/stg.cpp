@@ -9848,8 +9848,8 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 	LoadOverviewTexture(tex, 155);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	u16 markerWidth = tex.GetWidth(), markerHeight = tex.GetHeight();
-	color |= 0xC8C8C800;
-	DrawOverviewTexture(tex, color, outline[1].x, outline[1].y, 1.2f * markerWidth, 1.2f * markerHeight);
+	u32 tint = color | 0xC8C8C800;
+	DrawOverviewTexture(tex, tint, outline[1].x, outline[1].y, 1.2f * markerWidth, 1.2f * markerHeight);
 
 	f32 scale = 0.8f;
 	if (icon == 180 - StatusTextureOffset)
@@ -9864,7 +9864,7 @@ extern "C" void DrawPlayerStatusValue(s32 icon, s32 value, u8 selected, f32 x, f
 	f32 iconY  = base;
 	if (icon == 154 - StatusTextureOffset)
 		iconY = 4.0f + base;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, iconY, 1.0f, width, height, 0, 0, 0);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, tint, tint, tint, tint, x, iconY, 1.0f, width, height, 0, 0, 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 1);
 	if (selected) {
@@ -10074,8 +10074,8 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	LoadOverviewTexture(tex, 155);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	u16 markerWidth = tex.GetWidth(), markerHeight = tex.GetHeight();
-	color |= 0xC8C8C800;
-	DrawOverviewTexture(tex, color, outline[1].x, outline[1].y, 1.2f * markerWidth, 1.2f * markerHeight);
+	u32 tint = color | 0xC8C8C800;
+	DrawOverviewTexture(tex, tint, outline[1].x, outline[1].y, 1.2f * markerWidth, 1.2f * markerHeight);
 
 	tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[icon], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
@@ -10083,9 +10083,9 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	f32 height = 0.8f * tex.GetHeight();
 	f32 iconY  = bob + (y - 9.0f);
 	if (icon == 154 - StatusTextureOffset)
-		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, 4.0f + iconY, 0, width, height, 0, 0, 0);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, tint, tint, tint, tint, x, 4.0f + iconY, 0, width, height, 0, 0, 0);
 	else
-		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, iconY, 0, width, height, 0, 0, 0);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, tint, tint, tint, tint, x, iconY, 0, width, height, 0, 0, 0);
 	LoadOverviewTexture(tex, 125);
 	x -= 12.0f;
 	y -= 4.0f;
