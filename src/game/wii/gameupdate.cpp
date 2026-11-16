@@ -254,9 +254,9 @@ void CBase::ClearStatusFlags(u64 mask)
 // Retail expands the same code three times; the name is ours
 static inline BOOL IsStageBusy(CGame* game)
 {
-	if (game->mMenuActive) {
-		fn_8008492C(&game->mMenuActive, 10);
-		if (game->mMenuActive) {
+	if (game->mMenu.mActive) {
+		fn_8008492C(&game->mMenu.mActive, 10);
+		if (game->mMenu.mActive) {
 			return TRUE;
 		}
 	}
@@ -399,7 +399,7 @@ bool CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 	case 11:
-		if (!fn_80084848(&mMenuActive))
+		if (!fn_80084848(&mMenu.mActive))
 			break;
 		++mLoadStep;
 	case 12:
@@ -1114,14 +1114,14 @@ void CGame::Update(u32 frames)
 
 	// _EC1A8 fades the pointer's cursor: out while the eye camera aims the radar, half way while nothing
 	// else wants the pointer, in while something does
-	if (mMotionControlCamera.IsAction(CAMACTION_EYE) && GetPlayer()->GetAttachment() == 2 && !mMenuActive && !GetStatusFlags(0x800)) {
+	if (mMotionControlCamera.IsAction(CAMACTION_EYE) && GetPlayer()->GetAttachment() == 2 && !mMenu.mActive && !GetStatusFlags(0x800)) {
 		if (_EC1A8 > 0.0f) {
 			if ((_EC1A8 -= 0.05f * frames) < 0.0f) {
 				_EC1A8 = 0.0f;
 			}
 		}
-	} else if (mEvt.mData.mScript == NULL && !IsMessageSelecting(GetMsg(0)) && !GetStatusFlags(0x800) && !IsMenuOpen(mMenus[1])
-	           && !IsMenuOpen(mMenus[2]) && !IsMenuOpen(mMenus[4])
+	} else if (mEvt.mData.mScript == NULL && !IsMessageSelecting(GetMsg(0)) && !GetStatusFlags(0x800) && !IsMenuOpen(mMenu.mMenus[1])
+	           && !IsMenuOpen(mMenu.mMenus[2]) && !IsMenuOpen(mMenu.mMenus[4])
 	           && !(mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
 	                && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 	           && !(mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)mCameraActions.mTable[CAMACTION_MAP])->_11F8)
@@ -1142,8 +1142,8 @@ void CGame::Update(u32 frames)
 	bool wanted = false;
 	if (GetStatusFlags(1)) {
 		if ((!(mMenuControls & 2) && GetStatusFlags(0x400) && mEvt.mData.mScript == NULL) || (!(mMenuControls & 2) && GetStatusFlags(0x800))
-		    || (!(mMenuControls & 2) && (IsMenuOpen(mMenus[1]) || IsMenuOpen(mMenus[2]) || IsMenuOpen(mMenus[4])))
-		    || (mMotionControlCamera.IsAction(CAMACTION_EYE) && mEvt.mData.mScript == NULL && (!(mMenuControls & 2) || !mMenuActive))
+		    || (!(mMenuControls & 2) && (IsMenuOpen(mMenu.mMenus[1]) || IsMenuOpen(mMenu.mMenus[2]) || IsMenuOpen(mMenu.mMenus[4])))
+		    || (mMotionControlCamera.IsAction(CAMACTION_EYE) && mEvt.mData.mScript == NULL && (!(mMenuControls & 2) || !mMenu.mActive))
 		    || mMotionControlCamera.IsAction(CAMACTION_SCROLL2)
 		    || (mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
 		        && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
@@ -1229,11 +1229,11 @@ void CGame::Update(u32 frames)
 		BuildObjectDrawList(this);
 	}
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL)) {
-		if (!GetStatusFlags(0x20) && !mMenuActive && mEvt.mData.mScript == NULL) {
+		if (!GetStatusFlags(0x20) && !mMenu.mActive && mEvt.mData.mScript == NULL) {
 			if (gWiiPointer.mFlags & 0x400) {
-				fn_80084B90(&mMenuActive, 1);
+				fn_80084B90(&mMenu.mActive, 1);
 			} else if (gWiiPointer.mFlags & 0x80) {
-				fn_80084B90(&mMenuActive, 1);
+				fn_80084B90(&mMenu.mActive, 1);
 			}
 		}
 		GetStatusFlags(0x20);
@@ -1252,7 +1252,7 @@ void CGame::Update(u32 frames)
 	}
 	mDrawLists[1].mCount = 0;
 	if (!IsLoadStepRunning()) {
-		if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
+		if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 			for (i = 0; i < mDrawLists[0].mCount; i++) {
 				XObj* obj = (XObj*)mDrawLists[0].mRefs[i].mObj;
 				if ((obj->mStatus.mFlags & 1) && obj->_188 && obj->mBaseMtxPtr == NULL) {
@@ -1295,7 +1295,7 @@ void CGame::Update(u32 frames)
 		}
 	}
 	if (GetStatusFlags(0x2000000000000ULL)) { // flag 0x2000000000000 arms the stage timer
-		if (IsRunning() && mEvt.mData.mScript == NULL && !mMenuActive && !GetStatusFlags(0xC00) && mTimeState.mDuration > 0.0f) {
+		if (IsRunning() && mEvt.mData.mScript == NULL && !mMenu.mActive && !GetStatusFlags(0xC00) && mTimeState.mDuration > 0.0f) {
 			if (!mTimeState.mRunning) {
 				mTimeState.mTime = frames * (mTimeState.mDuration / (600.0f * gRefreshRate)) + mTimeState.mTime;
 				if (mTimeState.mTime >= 1.0f) { // a full timer runs down
@@ -1368,7 +1368,7 @@ void CGame::Update(u32 frames)
 		UpdateBootLogos(&mLogo, frames);
 		UpdateTitleScreen((Title*)mTitle, frames);
 		if (!GetStatusFlags(0x200000000000000ULL)) {
-			fn_8008492C(&mMenuActive, frames);
+			fn_8008492C(&mMenu.mActive, frames);
 		}
 	}
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL)) {
@@ -1390,7 +1390,7 @@ void CGame::Update(u32 frames)
 	}
 
 	// the 3D sound listens from a little in front of the camera, or of the point mListener.mPoint names
-	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
+	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		CCamera* camera = GetCamera();
 		if (!isnan(mListener.mPoint.x)) {
 			CVec dir = camera->mView.mEye - mListener.mPoint;
@@ -1422,7 +1422,7 @@ void CGame::Update(u32 frames)
 	StepSceneDraws(frames);
 
 	s32 count = mDrawLists[1].mCount;
-	if (!IsLoadStepRunning() && GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
+	if (!IsLoadStepRunning() && GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		for (i = 0; i < mDrawLists[0].mCount; i++) {
 			XObj* obj = (XObj*)mDrawLists[0].mRefs[i].mObj;
 			if (obj->mStatus.mFlags & 1) {
@@ -1445,15 +1445,15 @@ void CGame::Update(u32 frames)
 		}
 	}
 	StepSceneDraws(frames);
-	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
+	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		fn_800D1BF0(GetPlayer(), frames);
 	}
 	StepSceneDraws(frames);
-	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
+	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		fn_800D1B64(GetPlayer(), frames);
 	}
 	StepSceneDraws(frames);
-	if (!GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
+	if (!GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		fn_800A13D0(&lbl_8044EE4C, GetCamera());
 		fn_800A13D0(mEvtPtcl.mEmitters, GetCamera());
 	}
@@ -1475,7 +1475,7 @@ void CGame::Update(u32 frames)
 		fn_802BDC98(&mEffects, 1);
 	}
 
-	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000000ULL) && !mMenuActive && !mHomeMenu.IsOpen()) {
+	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000000ULL) && !mMenu.mActive && !mHomeMenu.IsOpen()) {
 		mMotionControlCamera.Update(frames);
 	}
 	if (!mHomeMenu.IsOpen()) {

@@ -808,7 +808,7 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	gs->mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 	u32 alpha = color & 0xff;
 	static f32 scanline;
-	if (!gGame.mMenuActive) {
+	if (!gGame.mMenu.mActive) {
 		if (++scanline >= 4.0f)
 			scanline = 0;
 	}
@@ -968,7 +968,7 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes)
 // single draws the left lens alone, already merged, without its trail
 void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f32 width, f32 height)
 {
-	if (gGame.mMenuActive)
+	if (gGame.mMenu.mActive)
 		return;
 	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 	gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);

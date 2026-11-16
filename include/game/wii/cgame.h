@@ -1044,6 +1044,21 @@ struct ObjArchiveTable {
 	ResourceFile mArchives[0x400]; // _00
 };
 
+// the menus and what they share, the GameCube class of the same name (RTTI); the constructor in 0x800332D8 stores
+// its vtable at _30, ahead of the Wii's further members, and builds the CTexObj at _50
+class MenuEx {
+public:
+	BOOL mActive;     // _00, a menu is open
+	CMenu* mMenus[5]; // _04, [0] is the main menu
+	u8 _18[0x30 - 0x18];
+	virtual ~MenuEx() { } // _30 vtable
+	s32 _34;              // _34, DrawHud draws nothing while a menu is open and this is set
+	u8 _38[0x50 - 0x38];
+	CTexObj mTex; // _50
+	u8 _154[0x158 - 0x154];
+};
+STATIC_ASSERT(sizeof(MenuEx) == 0x158);
+
 // the point the 3D sound listens from, a Wii piece in a struct of its own: CGame's destructor calls one destructor
 // (0x8002D288) for both vectors and the constructor in 0x800332D8 builds them together. The names are ours
 struct GameListener {
@@ -1114,11 +1129,7 @@ public:
 	u8 mTitle[4];                // _5C70, where the Wii Title (title.h) starts, its vtable; mTitleState is its first member
 	s32 mTitleState;             // _5C74, the title screen's step, as the GameCube mTitle.mState
 	u8 _5C78[0xAE00 - 0x5C78];
-	BOOL mMenuActive; // _AE00, a menu is open, as the GameCube mMenu.mActive
-	CMenu* mMenus[5]; // _AE04, the GameCube mMenu.mMenus; [0] is the main menu
-	u8 _AE18[0xAE34 - 0xAE18];
-	s32 _AE34; // _AE34, DrawHud draws nothing while a menu is open and this is set
-	u8 _AE38[0xAF58 - 0xAE38];
+	MenuEx mMenu;           // _AE00
 	InfoScrn mInfoScrn;     // _AF58
 	WiiHomeMenu mHomeMenu;  // _B148
 	CEffectSystem mEffects; // _B7A8
@@ -1213,11 +1224,11 @@ public:
 	// loading with neither the logos nor the title on screen
 	bool IsLoading() const { return IsLoadStepRunning() && !IsIntroShown(); }
 	bool IsInterruptible() const { return !IsLoading() && mTitleState != 20; }
-	bool IsMenuFree() const { return IsInterruptible() && !mMenuActive; }
+	bool IsMenuFree() const { return IsInterruptible() && !mMenu.mActive; }
 	// the stage runs: no suspend, no menu, the disc readable and no reset coming
 	bool IsRunning() const
 	{
-		return GetStatusFlags(1) && !GetStatusFlags(0x200000000000022ULL) && !mMenuActive && !IsDiscError() && !mResetRequested;
+		return GetStatusFlags(1) && !GetStatusFlags(0x200000000000022ULL) && !mMenu.mActive && !IsDiscError() && !mResetRequested;
 	}
 
 	CMsg* GetMsg(s32 index) { return &mMsgs[index]; }
@@ -1269,7 +1280,7 @@ STATIC_ASSERT(offsetof(CGame, _EC2D0) == 0xEC2D0);
 STATIC_ASSERT(offsetof(CGame, mShadowFocus) == 0xEE200);
 STATIC_ASSERT(offsetof(CBase, _41E0) == 0x41E0);
 STATIC_ASSERT(offsetof(CGame, mBlur) == 0x52E4);
-STATIC_ASSERT(offsetof(CGame, mMenus) == 0xAE04);
+STATIC_ASSERT(offsetof(CGame, mMenu) == 0xAE00);
 STATIC_ASSERT(offsetof(CGame, mTitle) == 0x5C70);
 STATIC_ASSERT(offsetof(CGame, mLogo) == 0x5978);
 STATIC_ASSERT(offsetof(CGame, mEvt) == 0x4C8E0);

@@ -196,7 +196,7 @@ static inline bool IsTrackPaused(u32 id)
  */
 s32 CGame::FrameInterval()
 {
-	return (IsLogoActive() || IsTitleActive() || mMenuActive || mHomeMenu.IsOpen()) ? 1 : 2;
+	return (IsLogoActive() || IsTitleActive() || mMenu.mActive || mHomeMenu.IsOpen()) ? 1 : 2;
 }
 
 /**
@@ -626,7 +626,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	if (game->mMovie.mState != 0) { // cut any playing movie
 		game->mMovie.Stop();
 	}
-	ClearMainMenuExtraRows(game->mMenus[0]);
+	ClearMainMenuExtraRows(game->mMenu.mMenus[0]);
 	fn_80094904(&game->mEvt, TRUE, TRUE, TRUE, TRUE); // the event state in front of mEvtData
 	CMsg* msgs = game->mMsgs;
 	for (s32 i = 0; i < 2; i++) {
@@ -714,7 +714,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		game->SetStatusFlags(0x0001000000000000);
 		game->ClearStatusFlags(0x80);
 		ResetTitleScreenState(game->mTitle);
-		fn_800848C0(&game->mMenuActive); // the menu group starts at its active word
+		fn_800848C0(&game->mMenu.mActive); // the menu group starts at its active word
 		ResetGameHudState(scrn);
 		((FbSubwin*)game->mSubwin)->Reset();
 		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
@@ -941,7 +941,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 	if (game->mHomeMenu.IsOpen()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
@@ -1097,7 +1097,7 @@ void CGame::DrawHud()
 		if (mHomeMenu.IsRunning()) {
 			return;
 		}
-		bool menuShown = mMenuActive && _AE34;
+		bool menuShown = mMenu.mActive && mMenu._34;
 		if (menuShown) {
 			return;
 		}
@@ -1135,7 +1135,7 @@ extern "C" void DrawObjectEffectsOverFade(CGame* game)
 	if (game->mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
@@ -1175,7 +1175,7 @@ extern "C" void DrawObjectEffectsPass(CGame* game)
 	if (game->mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
@@ -1208,7 +1208,7 @@ void CGame::DrawScene()
 	if (mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = mMenuActive && _AE34;
+	bool menuShown = mMenu.mActive && mMenu._34;
 	if (menuShown) {
 		return;
 	}
@@ -1275,7 +1275,7 @@ extern "C" void RenderMirrorTextures(CGame* game)
 	if (game->mHomeMenu.IsOpen()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
@@ -1323,7 +1323,7 @@ extern "C" void RenderSubwindow(CGame* game)
 	if (game->mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
@@ -1369,7 +1369,7 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 	if (game->mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
@@ -1479,7 +1479,7 @@ extern "C" void RenderFloorReflection(CGame* game)
 	if (game->mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
@@ -1639,7 +1639,7 @@ void CGame::Draw()
 			gGame.mGs.mCurChannel->Apply();
 		}
 		DrawObjectEffectsPass(this);
-		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
+		if (!mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)) {
 			MtxP view = GetEffectView(this);
 			for (u32 i = 0; i < 6; i++) {
 				if (i != 1 && i != 4) {
@@ -1686,7 +1686,7 @@ void CGame::Draw()
 			gGame.mGs.mCurChannel->Apply();
 		}
 		DrawObjectEffectsOverFade(this);
-		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
+		if (!mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)) {
 			MtxP view = GetEffectView(this);
 			for (u32 i = 0; i < 6; i++) {
 				if (i == 1) {
@@ -1730,10 +1730,10 @@ void CGame::Draw()
 		                 quad[2].z, 0, quad[3].x, quad[3].y, quad[3].z, 0);
 		gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
 		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
-		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
+		if (!mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)) {
 			FbSubwin* subwin = (FbSubwin*)mSubwin;
-			if (GetStatusFlags(1) && GetStatusFlags(0x100) && !mHomeMenu.IsRunning() && !(mMenuActive && _AE34) && subwin->mAmount > 0.0f
-			    && !(subwin->mFlags & 4)) {
+			if (GetStatusFlags(1) && GetStatusFlags(0x100) && !mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)
+			    && subwin->mAmount > 0.0f && !(subwin->mFlags & 4)) {
 				subwin->Draw();
 			}
 			mRoboeyes.Draw(&gGame.mGs, 0);
@@ -1750,7 +1750,7 @@ void CGame::Draw()
 			mWipeCustom.Draw(&gGame.mGs, 1);
 			mWipeTile.Draw(&gGame.mGs, 1);
 			mWipeCine.Draw(&gGame.mGs, 1);
-			if (GetStatusFlags(1) && !mMenuActive) {
+			if (GetStatusFlags(1) && !mMenu.mActive) {
 				bool faded = mFade.mColor.r != 0.0f || mFade.mColor.g != 0.0f || mFade.mColor.b != 0.0f || mFade.mColor.a != 0.0f;
 				if (!faded || mFade.mColor.a < 1.0f) {
 					mMotionControlCamera.fn_80169528();
@@ -1791,9 +1791,9 @@ void CGame::Draw()
 			gGame.mGs.mCurChannel->Apply();
 		}
 		if (!mHomeMenu.IsRunning()) {
-			fn_80084C84(&mMenuActive);
+			fn_80084C84(&mMenu.mActive);
 			DrawObjectLoadingProgress(&mInfoScrn);
-			DrawOpenMenus(&mMenuActive);
+			DrawOpenMenus(&mMenu.mActive);
 			vf7C();
 		}
 		fn_80028998(this);
@@ -1893,7 +1893,7 @@ extern "C" void UpdateResetRequest(CGame* game)
 		} else if (game->mLoadStep <= 20) {
 			game->Reset(3);
 		} else {
-			fn_80084BF0(&game->mMenuActive, 6);
+			fn_80084BF0(&game->mMenu.mActive, 6);
 			ChangeGameStage(game, 10000, TRUE);
 		}
 		break;
