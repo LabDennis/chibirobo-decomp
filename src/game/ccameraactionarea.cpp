@@ -57,6 +57,27 @@ inline s32 FindFacing(const Vec& dir, s32 slotIndex)
 	return bestIndex;
 }
 
+// FindFacing for the current slot, picking into the area's entry index as it goes
+inline void SelectFacing(CCameraActionArea* area, const Vec& dir)
+{
+	CVec look(dir);
+	CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
+	f32 best            = -1.0f;
+	CamAreaEntry* entry = slot->mEntries;
+	for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
+		CVec facing;
+		YawDir(facing, entry->mAngle);
+		f32 dot = PSVECDotProduct(&look, &facing);
+		if (dot > best) {
+			area->mEntryIndex = i;
+			best              = dot;
+		}
+	}
+	if (best == -1.0f) {
+		area->mEntryIndex = 0;
+	}
+}
+
 extern "C" void SelectAreaCameraEntry(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, f32 time);
 extern "C" void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode, s32 adjustFov, f32 time);
 
@@ -1058,8 +1079,9 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 			area->mEntryIndex = 0;
 		}
 	} else if (buttons & previous) {
+		CamAreaSlot* slot = &gCameraAreaState.mGroups[slotIndex];
 		if (--area->mEntryIndex < 0) {
-			area->mEntryIndex = gCameraAreaState.mGroups[slotIndex].mEntryCount - 1;
+			area->mEntryIndex = slot->mEntryCount - 1;
 		}
 	} else if (currentArea != previousArea && currentArea != -1) {
 		// entered another area: the entry facing nearest the current view (after SetCamera) or the current entry's angle
@@ -1071,22 +1093,7 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		} else {
 			YawDir(dir, area->mEntry->mAngle);
 		}
-		CVec look(dir);
-		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
-		f32 best            = -1.0f;
-		CamAreaEntry* entry = slot->mEntries;
-		for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
-			CVec facing;
-			YawDir(facing, entry->mAngle);
-			f32 dot = PSVECDotProduct(&look, &facing);
-			if (dot > best) {
-				area->mEntryIndex = i;
-				best              = dot;
-			}
-		}
-		if (best == -1.0f) {
-			area->mEntryIndex = 0;
-		}
+		SelectFacing(area, dir);
 	}
 	area->mEntry = &gCameraAreaState.mGroups[slotIndex].mEntries[area->mEntryIndex];
 	return area->mEntry->mId;
