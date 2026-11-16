@@ -47,10 +47,10 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 			CFont font;
 			s32 width;
 			CTexObj letter = *GetFontGlyphTexture(&font, game->mStageName.mChars[i].mText, &width);
-			f32 bob;
 			f32 tilt;
 			f32 swell;
 			f32 pop;
+			f32 bob;
 			f32 x;
 			f32 rot;
 			f32 y;
