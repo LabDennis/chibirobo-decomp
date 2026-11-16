@@ -4296,13 +4296,12 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		}
 		// an menu->mItems[i] scrolling off one end of the row also shows at the other end
 		if (menu->mMenuType == 3 && (menu->mItems[i].mSlotOffset >= 3.02f || menu->mItems[i].mSlotOffset <= -3.02f)) {
-			f32 span   = 7.f * scale;
-			f32 radius = 20.f * menu->mItems[i].mScale + 60.f;
+			f32 span = 7.f * scale;
 			if (menu->mItems[i].mSlotOffset >= 3.02f) {
-				x     = x - span * radius;
+				x     = x - span * (20.f * menu->mItems[i].mScale + 60.f);
 				alpha = Abs(menu->mItems[i].mSlotOffset - 3.f);
-			} else {
-				x     = x + span * radius;
+			} else if (menu->mItems[i].mSlotOffset <= -3.02f) {
+				x     = x + span * (20.f * menu->mItems[i].mScale + 60.f);
 				alpha = Abs(3.f + menu->mItems[i].mSlotOffset);
 			}
 			menu->GetItemColor(i);
