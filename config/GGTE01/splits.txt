@@ -1932,7 +1932,7 @@ game/cfont.cpp:
 	extabindex  start:0x80006DAC end:0x80006DC4
 	.text       start:0x8019E8F4 end:0x8019F378
 	.rodata     start:0x8020ECA8 end:0x8020EE38
-	.data       start:0x80237AA0 end:0x80258708
+	.data       start:0x80237AA0 end:0x80258708 align:32
 	.sdata      start:0x8065AD68 end:0x8065AD70
 	.sbss       start:0x8065B860 end:0x8065B878
 	.sdata2     start:0x8065F680 end:0x8065F6A8
