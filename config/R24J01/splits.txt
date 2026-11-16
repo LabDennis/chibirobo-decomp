@@ -1076,6 +1076,9 @@ game/wii/cobjvec.cpp:
 	.text start:0x802A7FB4 end:0x802A80FC
 	.sdata2 start:0x805A78C0 end:0x805A78C8
 
+game/wii/ctrigon.cpp:
+	.text start:0x802BA4F4 end:0x802BD294
+
 game/wii/cobj.cpp:
 	extab start:0x80010AD8 end:0x80010CA8
 	extabindex start:0x80017474 end:0x80017714

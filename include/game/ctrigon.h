@@ -3,6 +3,21 @@
 
 #if defined(VERSION_R24J01)
 #include "types.h"
+#include "Dolphin/mtx.h"
+
+struct TRIGON_INFO;
+
+// fills out[3] with world space corners
+typedef void (*TrigonGetVtxFunc)(const TRIGON_INFO* tri, Vec* out);
+
+// the Wii triangle: the GameCube one without the sort distance; the getters read the
+// matrix at _10 and the fraction bits at _14. the rest is not recovered yet
+struct TRIGON_INFO {
+	void* mVtx[3];            // _00, into the shape's position array
+	TrigonGetVtxFunc mGetVtx; // _0C
+	MtxP mMtx;                // _10, NULL when it's identity
+	u16 mFrac;                // _14
+};
 
 // Wii CTrigon - XObjMap keeps one at _9C8 and its ctor stores the vtable at
 // _9E8, so the Wii layout has 0x20 bytes of unrecovered fields ahead of it.
