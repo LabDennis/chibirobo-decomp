@@ -938,6 +938,12 @@ void XObjActor3::Kind10(u32 frames)
 	}
 }
 
+// the spider boss, the only object in pool 19
+static inline XObjSpiderBoss* GetSpiderBoss()
+{
+	return (XObjSpiderBoss*)gGame.mXObjs.mPools[19].mObjects;
+}
+
 /**
  * @note Address: 0x8011132C
  * @note Size: 0x2D0
@@ -996,7 +1002,8 @@ static inline void BounceBossPart(XObjActor3* part, f32 speed)
 }
 
 // the spider boss's parts: each rides the boss at its orbit offset until launched, then bounces to a stop and blinks out
-// NONMATCHING: saved register numbers, retail has the frame count in r27 and the boss in r31 and r30
+// NONMATCHING: two `(48 - n) * .5f` products have their operands the other way round and case 5 picks other scratch
+// registers
 void XObjActor3::Kind11(u32 frames)
 {
 	CPad pad(0);
@@ -1005,7 +1012,7 @@ void XObjActor3::Kind11(u32 frames)
 		if (mActorFlags.mFlags & 4)
 			break;
 		Vec origin           = { 0, 0, 0 };
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
 			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
@@ -1076,7 +1083,7 @@ void XObjActor3::Kind11(u32 frames)
 		break;
 	}
 	case 1: {
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 			f32 x = mOrbitX, y = mOrbitHeight, z = mOrbitZ;
 			SetScale(1, 1, 1, 0);
@@ -1193,7 +1200,7 @@ void XObjActor3::Kind11(u32 frames)
 		break;
 	case 5: {
 		CVec velocity;
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		Vec origin           = { 0, 0, 0 };
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
@@ -1216,7 +1223,7 @@ void XObjActor3::Kind11(u32 frames)
 	}
 	case 6: {
 		Vec origin           = { 0, 0, 0 };
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
 			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
@@ -1301,6 +1308,7 @@ extern "C" void LaunchSpiderBossPartByIndex(s32 n)
  * @note Address: 0x8010F318
  * @note Size: 0x804
  */
+// NONMATCHING: retail keeps the joint reads in other saved registers and saves r24 too
 void XObjActor3::Kind12(u32 frames)
 {
 	switch (mKindStep) {
@@ -1316,7 +1324,7 @@ void XObjActor3::Kind12(u32 frames)
 		}
 		break;
 	case 1: {
-		XObjSpiderBoss* boss = (XObjSpiderBoss*)gGame.mXObjs.mPools[19].First();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 			mHeading = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
 			SetScale(1.0f, 1.0f, 1.0f, 0);
@@ -1464,11 +1472,6 @@ extern "C" void LaunchSpiderBossCenterPart(void)
 
 extern "C" bool IsSpiderBossProjectileHitSuppressed(XObjSpiderBoss* boss);
 
-static inline XObjSpiderBoss* ProjectileOwner()
-{
-	return (XObjSpiderBoss*)gGame.mXObjs.mPools[19].mObjects;
-}
-
 static inline void PlaceBossProjectile(XObjActor3* actor, XObjSpiderBoss* boss, int spread)
 {
 	actor->mMoveTranslate.x = HSD_JObjGetTranslationX(boss->mJObj);
@@ -1526,7 +1529,7 @@ void XObjActor3::Kind13(u32 frames)
 	switch (mKindStep) {
 	case 0:
 		if (!(mActorFlags.mFlags & 4)) {
-			XObjSpiderBoss* boss = ProjectileOwner();
+			XObjSpiderBoss* boss = GetSpiderBoss();
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				// lobbed at the robot: the first lands on it, the rest in a ring of 24 round it
 				PlaceBossProjectile(this, boss, 64);
@@ -1542,7 +1545,7 @@ void XObjActor3::Kind13(u32 frames)
 		}
 		break;
 	case 1: {
-		XObjSpiderBoss* boss = ProjectileOwner();
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		bool blocked         = false;
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000) && IsSpiderBossProjectileHitSuppressed(boss))
 			blocked = true;
@@ -1590,7 +1593,7 @@ void XObjActor3::Kind13(u32 frames)
 		break;
 	case 10: // fired straight at the robot, gone after 120 frames
 		if (!(mActorFlags.mFlags & 4)) {
-			XObjSpiderBoss* boss = ProjectileOwner();
+			XObjSpiderBoss* boss = GetSpiderBoss();
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				mMoveTranslate.x = HSD_JObjGetTranslationX(boss->mJObj);
 				mMoveTranslate.y = 10 + HSD_JObjGetTranslationY(boss->mJObj);
@@ -1635,7 +1638,7 @@ void XObjActor3::Kind13(u32 frames)
 		break;
 	case 20:
 		if (!(mActorFlags.mFlags & 4)) {
-			XObjSpiderBoss* boss = ProjectileOwner();
+			XObjSpiderBoss* boss = GetSpiderBoss();
 			Vec center           = { 0, 0, 0 };
 			if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
 				// lobbed round the boss: the first onto its centre, the rest in a ring of 36
@@ -2192,7 +2195,6 @@ extern "C" void HandleSpiderCounterCommand(XObjActor3* actor)
  * @note Size: 0x420
  */
 // the robot gets on the actor at its first joint, or off it
-// NONMATCHING: the robot and the joint's vectors take each other's registers
 extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 {
 	CJObj joint;
@@ -2216,7 +2218,8 @@ extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 			player->mPlayerStatus.mFlags |= 0x20000000;
 			player->mPlayerStatus.mFlags |= 7;
 			player->mPad.mReset = 1;
-			HSD_JObjClearMtxFlags(player->mJObj);
+			HSD_JObj* jobj      = player->mJObj;
+			HSD_JObjClearMtxFlags(jobj);
 			break;
 		}
 		actor->mEventCommand = 0;
