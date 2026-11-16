@@ -551,6 +551,12 @@ void SetAttachmentCountById(AttachmentValues* values, s32 id, s32 value)
 	values->SetCount(id, value);
 }
 
+// out of battery: the battery is flat and the gauge on screen has run down to it
+BOOL IsPlayerStopped(const WiiPlayerState* chr)
+{
+	return chr->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
+}
+
 u8 IsPlayerFlashingFromHit(WiiPlayerState* chr)
 {
 	return chr->mFlashTimer > 0;
