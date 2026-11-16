@@ -10335,10 +10335,7 @@ void MenuPC::State3(u32 frames)
 					}
 					s16& stock = entry->mCount;
 					s16 left   = stock;
-					if (left > 0) {
-						left--;
-						stock = left;
-					}
+					stock      = left > 0 ? left - 1 : left;
 					// items 0x57, 0x59 and 0x5A replace each other: buying one clears the others from the shop and the inventory
 					switch (entry->mItem) {
 					case 0x57:
