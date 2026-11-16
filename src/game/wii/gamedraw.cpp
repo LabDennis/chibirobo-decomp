@@ -41,8 +41,8 @@ void* fn_80246C04(void* handle);                    // the emitter behind it
 void fn_802BEA5C(void* emitter, BOOL);              // kills the emitter
 void fn_802BE3A8(void* particles, u32 group, BOOL); // kills a particle group
 void ClearSoundEffects(XSound* sound, s32 frames);
-s32 GetWiiSaveSlotStage(WiiSaveManager* manager, int index);
-void ResetTitleScreenState(void* title);
+s32 GetWiiSaveSlotStage(CSaveFile* manager, int index);
+void ResetTitleScreenState(Title* title);
 void fn_800848C0(void* menus); // the GameCube's ResetMenuGroup
 void fn_80084BF0(void* menus, s32 menu);
 BOOL fn_800C61C8();
@@ -61,14 +61,13 @@ void fn_802BE4D4(void* obj, GXFogType type, const GXColor& color, f32 startZ, f3
 void* fn_8027AE0C(WiiGsSceneObj* scene, s32 index); // the scene's fog
 void fn_8028175C(void** fog, GXFogType* type, f32* startZ, f32* endZ, f32* nearZ, f32* farZ, GXColor* color);
 void fn_802BE19C(void* effects, MtxP view, u32 group); // draws one group of the effects
-void DrawTitleScreen(void* title);
+void DrawTitleScreen(Title* title);
 void DrawGameHud(InfoScrn* scrn);
 void DrawScreenColorOverlay(CScrnColor* color, CGs* gs);
 void DrawPlayerEquipmentRings(void* rings);
 void DrawOXMenu(WiiOXMenu* menu);
 void fn_80094E90(void* evt);
 void CMsg_Draw(CMsg* msg);
-void DrawCurrentLogo(void* logo);
 void fn_80084C84(void* menus);
 void DrawObjectLoadingProgress(InfoScrn* scrn);
 void DrawOpenMenus(void* menus);
@@ -142,7 +141,7 @@ static inline WiiStageInfo* GetStageInfo()
 // scene camera's own view
 static inline MtxP GetEffectView(CGame* game)
 {
-	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	bool scene         = false;
 	if (camera != NULL && (camera->mStatus.mFlags & 1) && camera->mScene != NULL && camera->mScene->_2888 != NULL) {
 		scene = true;
@@ -197,7 +196,7 @@ static inline bool IsTrackPaused(u32 id)
  */
 s32 CGame::FrameInterval()
 {
-	return (IsLogoActive() || IsTitleActive() || mMenuActive || mHomeMenu.IsOpen()) ? 1 : 2;
+	return (IsLogoActive() || IsTitleActive() || mMenu.mActive || mHomeMenu.IsOpen()) ? 1 : 2;
 }
 
 /**
@@ -366,7 +365,7 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 						const s32 anims[2]             = { 1011, 1007 };
 						game->mStageName.mChars[i]._14 = TRUE;
 						game->mStageName.mChars[i]._18 = 1.0f;
-						((CObj*)&game->_EC2CC[4])->SetAnim(anims[rand() % 2], TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+						((CObj*)game->mPointer.mCursor)->SetAnim(anims[rand() % 2], TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 						s32 first = GetStageFirstSoundId(game->mStage);
 						if (first >= 0) {
 							for (s32 j = 0; j < game->mStageName.mCount; j++) {
@@ -519,8 +518,8 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 				handle.Pause(false, frames);
 			}
 		}
-		for (s32 i = 0; i < game->mDrawRefCount; i++) {
-			XObj* object = (XObj*)game->mDrawRefs[i].mObj;
+		for (s32 i = 0; i < game->mDrawLists[0].mCount; i++) {
+			XObj* object = (XObj*)game->mDrawLists[0].mRefs[i].mObj;
 			if (object->mStatus.mFlags & 1) {
 				object->ResumeSounds(fade);
 			}
@@ -573,8 +572,8 @@ extern "C" void PauseGameSounds(CGame* game, f32 fade)
 				handle.Pause(true, frames);
 			}
 		}
-		for (s32 i = 0; i < game->mDrawRefCount; i++) {
-			XObj* object = (XObj*)game->mDrawRefs[i].mObj;
+		for (s32 i = 0; i < game->mDrawLists[0].mCount; i++) {
+			XObj* object = (XObj*)game->mDrawLists[0].mRefs[i].mObj;
 			if (object->mStatus.mFlags & 1) {
 				object->PauseSounds(fade);
 			}
@@ -627,15 +626,15 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	if (game->mMovie.mState != 0) { // cut any playing movie
 		game->mMovie.Stop();
 	}
-	ClearMainMenuExtraRows(game->mMenus[0]);
-	fn_80094904(game->_4C8E0, TRUE, TRUE, TRUE, TRUE); // the event state in front of mEvtData
-	CMsg* msgs = (CMsg*)game->mMsgs;
+	ClearMainMenuExtraRows(game->mMenu.mMenus[0]);
+	fn_80094904(&game->mEvt, TRUE, TRUE, TRUE, TRUE); // the event state in front of mEvtData
+	CMsg* msgs = game->mMsgs;
 	for (s32 i = 0; i < 2; i++) {
 		ResetMsgState(&msgs[i]);
 		CMsg_ResetPos(&msgs[i]);
 		msgs[i].SetColor(gMessageFontDefaultColor);
 	}
-	CGame::FbMirrorEx* mirrors = (CGame::FbMirrorEx*)game->mMirrors;
+	CGame::FbMirrorEx* mirrors = game->mMirrors;
 	for (s32 i = 0; i < 5; i++) { // let go of the mirrors' objects and textures
 		FbMirror* mirror = &mirrors[i];
 		if (mirror->IsUsed() && mirror->mJoint != NULL) {
@@ -653,16 +652,16 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	}
 	UnloadStageDataAndModule();
 	for (s32 i = 0; i < 0x80; i++) { // kill every emitter still running
-		void* emitter = game->mEmitters[i];
+		void* emitter = game->mEvtPtcl.mEmitters[i];
 		s32 state     = fn_80246BD8(emitter) ? *(s32*)((u8*)fn_80246C04(emitter) + 0xC) : 0;
 		if (!(state == 0 || state == 3)) {
 			fn_802BEA5C(emitter, TRUE);
 		}
 	}
 	for (u32 i = 0; i < 6; i++) {
-		fn_802BE3A8(game->_B7A8, i, TRUE);
+		fn_802BE3A8(&game->mEffects, i, TRUE);
 	}
-	WiiPlayerState* player = game->mPlayer;
+	WiiPlayerState* player = game->GetPlayer();
 	for (s32 i = 0; i < 2; i++) {
 		CSound3DActor* actor          = ((AnimSfx*)player->mSfx)->mActors[i].mActor;
 		nw4r::snd::SoundHandle* sound = actor != NULL && actor->mHandle.IsAttachedSound() ? &actor->mHandle : NULL;
@@ -673,10 +672,10 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	gGame.mSound.StopAllTracks(0.0f);
 	ClearSoundEffects(&gGame.mSound, 0);
 	gGame.mSound.RestoreHeapLevel(1);
-	Vec nan        = { NAN, NAN, NAN };
-	game->_EE1F0.x = nan.x;
-	game->_EE1F0.y = nan.y;
-	game->_EE1F0.z = nan.z;
+	Vec nan                  = { NAN, NAN, NAN };
+	game->mListener.mPoint.x = nan.x;
+	game->mListener.mPoint.y = nan.y;
+	game->mListener.mPoint.z = nan.z;
 	gWiiPointer.ResetRumble(FALSE);
 	game->ClearStatusFlags(0x020000000000002F);
 	game->ClearStatusFlags(0xC00);
@@ -685,7 +684,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	game->mRoboeyes.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	game->SetStatusFlags(0x0040000000000000);
 	game->SetStatusFlags(0x0000800000000000);
-	InfoScrn* scrn = (InfoScrn*)game->mInfoScrn;
+	InfoScrn* scrn = &game->mInfoScrn;
 	InfoScrn_ApplyScoreHudCommand(scrn, 0, 0);
 	for (s32 i = 0; i < 4; i++) {
 		InfoScrn_ApplyObjectGaugeCommand(scrn, NULL, 0, 0, i);
@@ -714,10 +713,10 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		game->SetStatusFlags(0x20000000);
 		game->SetStatusFlags(0x0001000000000000);
 		game->ClearStatusFlags(0x80);
-		ResetTitleScreenState(game->mTitle);
-		fn_800848C0(&game->mMenuActive); // the menu group starts at its active word
+		ResetTitleScreenState(&game->mTitle);
+		fn_800848C0(&game->mMenu.mActive); // the menu group starts at its active word
 		ResetGameHudState(scrn);
-		((FbSubwin*)game->mSubwin)->Reset();
+		game->mSubwin.Reset();
 		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
 		game->mWipeCircle.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 		game->mWipeTex.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -732,7 +731,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		blur->mSpeed    = 0.0f;
 		game->mLoadStep = 20;
 	} else if (stage == 20000) {
-		((FbSubwin*)game->mSubwin)->Reset();
+		game->mSubwin.Reset();
 		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
 		game->mWipeCircle.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 		game->mWipeTex.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -777,7 +776,7 @@ bool CObj::IsAnmScnEnd()
 // whether the scene camera's animation is done; without a scene of its own it always is
 extern "C" BOOL IsSceneCameraAnmEnd(CGame* game)
 {
-	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	if (camera != NULL && (camera->mStatus.mFlags & 1) && camera->mScene != NULL && camera->mScene->_2888 != NULL) {
 		return camera->IsAnmScnEnd();
 	}
@@ -793,7 +792,7 @@ extern "C" BOOL IsSceneCameraAnmEnd(CGame* game)
 // lets go of the scene camera's animation and puts the perspective camera back to its defaults
 extern "C" void StopSceneCameraAnm(CGame* game)
 {
-	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
 		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
 		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
@@ -813,7 +812,7 @@ extern "C" void StopSceneCameraAnm(CGame* game)
 // scene animations
 extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate)
 {
-	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
 		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
 		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
@@ -942,12 +941,12 @@ extern "C" void RenderSceneShadow(CGame* game)
 	if (game->mHomeMenu.IsOpen()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
 	CVec focus;
-	CCamera* camera = (CCamera*)game->mShadowCamera;
+	CCamera* camera = &game->mShadow.mCamera;
 	if (game->mShadowFocus != NULL && (game->mShadowFocus->mStatus.mFlags & 1)) {
 		CVec* pos = game->mShadowFocus->GetPos();
 		focus.x   = pos->x;
@@ -966,8 +965,8 @@ extern "C" void RenderSceneShadow(CGame* game)
 	camera->SetEye(focus.x, 400.0f + focus.y, focus.z);
 	camera->SetInterest(focus);
 	camera->SetUp(0.0f, 0.0f, 1.0f);
-	camera->vf88(1.0f, 1.0f, game->mShadowTexWidth - 2, game->mShadowTexHeight - 2, 0.0f, 1.0f);
-	game->mShadowStrength = alpha;
+	camera->vf88(1.0f, 1.0f, game->mShadow.mTexWidth - 2, game->mShadow.mTexHeight - 2, 0.0f, 1.0f);
+	game->mShadow.mStrength = alpha;
 	game->BeginCamera(camera);
 	fn_802AEF34(&gGame.mGs.mSceneHead, camera, TRUE);
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
@@ -975,9 +974,9 @@ extern "C" void RenderSceneShadow(CGame* game)
 	gGame.mGs.mCurRenderState->SetDstAlpha(GX_FALSE, 0);
 
 	f32 interestY = game->GetCamera()->mView.mInterest.y;
-	f32 strength  = game->mShadowStrength;
-	for (s32 i = 0; i < game->mEffectRefCount; i++) {
-		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+	f32 strength  = game->mShadow.mStrength;
+	for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+		XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 		if (!(obj->mStatus.mFlags & 4)) {
 			continue;
 		}
@@ -1044,8 +1043,8 @@ extern "C" void RenderSceneShadow(CGame* game)
 		gGame.mGs.mCurChannel->Apply();
 	}
 
-	for (s32 i = 0; i < game->mEffectRefCount; i++) {
-		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+	for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+		XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 		if (obj->GetCategory() == 3 || !(obj->mStatus.mFlags & 8)) {
 			continue;
 		}
@@ -1073,9 +1072,9 @@ extern "C" void RenderSceneShadow(CGame* game)
 	}
 
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
-	GXSetTexCopySrc(0, 0, game->mShadowTexWidth, game->mShadowTexHeight);
-	GXSetTexCopyDst(game->mShadowTexWidth, game->mShadowTexHeight, GX_CTF_A8, GX_FALSE);
-	GXCopyTex(game->mShadowImage, GX_TRUE);
+	GXSetTexCopySrc(0, 0, game->mShadow.mTexWidth, game->mShadow.mTexHeight);
+	GXSetTexCopyDst(game->mShadow.mTexWidth, game->mShadow.mTexHeight, GX_CTF_A8, GX_FALSE);
+	GXCopyTex(game->mShadow.mImage, GX_TRUE);
 	GXPixModeSync();
 	GXInvalidateTexAll();
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
@@ -1098,18 +1097,18 @@ void CGame::DrawHud()
 		if (mHomeMenu.IsRunning()) {
 			return;
 		}
-		bool menuShown = mMenuActive && _AE34;
+		bool menuShown = mMenu.mActive && mMenu._34;
 		if (menuShown) {
 			return;
 		}
-		for (s32 i = 0; i < mObjectCount; i++) {
-			XObj* object = (XObj*)mObjects[i];
+		for (s32 i = 0; i < mXObjs.mObjectCount; i++) {
+			XObj* object = (XObj*)mXObjs.mObjects[i];
 			if (object->mStatus.mFlags & 1) {
 				object->DrawScreenOverlay();
 			}
 		}
-		if (mHudObject != NULL) {
-			mHudObject->vf19C(0xFF0000C8, 0.0f, mHudObjectX, mHudObjectY);
+		if (mPointer.mHudObject != NULL) {
+			mPointer.mHudObject->vf19C(0xFF0000C8, 0.0f, mPointer.mHudObjectX, mPointer.mHudObjectY);
 		}
 		CallStageModule(4, 0, NULL);
 		fn_802AEDEC(&gGame.mGs.mSceneHead, GetCamera()->mViewMtx);
@@ -1136,13 +1135,13 @@ extern "C" void DrawObjectEffectsOverFade(CGame* game)
 	if (game->mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
 	if (game->mColor0.mColor.mColor.a > 0.0f) {
-		for (s32 i = 0; i < game->mEffectRefCount; i++) {
-			XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+			XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 			if (obj->mStatus.mFlags & 1) {
 				if (obj->mStatus.mFlags & 0x200) {
 					obj->DrawObjectEffects();
@@ -1176,12 +1175,12 @@ extern "C" void DrawObjectEffectsPass(CGame* game)
 	if (game->mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
-	for (s32 i = 0; i < game->mEffectRefCount; i++) {
-		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+	for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+		XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 		if (obj->mStatus.mFlags & 1) {
 			if (game->mColor0.mColor.mColor.a > 0.0f
 			    && ((obj->mStatus.mFlags & 0x200)
@@ -1209,25 +1208,25 @@ void CGame::DrawScene()
 	if (mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = mMenuActive && _AE34;
+	bool menuShown = mMenu.mActive && mMenu._34;
 	if (menuShown) {
 		return;
 	}
 	XObj* targets[2]       = { NULL, NULL };
-	WiiPlayerState* player = mPlayer;
+	WiiPlayerState* player = GetPlayer();
 	targets[0]             = player->mLiftPlugTarget;
 	if (targets[1] == NULL) {
 		targets[1] = player->mLift.mTarget;
 	}
 	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
-	for (s32 i = 0; i < mSceneRefCount; i++) {
-		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+	for (s32 i = 0; i < mDrawLists[2].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[2].mRefs[i].mObj;
 		if (obj->GetCategory() == 3) {
 			obj->DrawObject();
 		}
 	}
-	for (s32 i = 0; i < mSceneRefCount; i++) {
-		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+	for (s32 i = 0; i < mDrawLists[2].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[2].mRefs[i].mObj;
 		if (obj->GetCategory() != 3) {
 			obj->DrawObject();
 		}
@@ -1237,8 +1236,8 @@ void CGame::DrawScene()
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
 	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
 	gGame.mGs.mCurRenderState->SetDstAlpha(GX_TRUE, 4);
-	for (s32 i = 0; i < mSceneRefCount; i++) {
-		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+	for (s32 i = 0; i < mDrawLists[2].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[2].mRefs[i].mObj;
 		if (obj->GetCategory() != 3 && ((obj->mStatus.mFlags & 0x820040) || obj == targets[1])) {
 			obj->DrawObject();
 		}
@@ -1246,8 +1245,8 @@ void CGame::DrawScene()
 	DrawSceneQueue(GetCamera()->mViewMtx);
 
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
-	for (s32 i = 0; i < mSceneRefCount; i++) {
-		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+	for (s32 i = 0; i < mDrawLists[2].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[2].mRefs[i].mObj;
 		if (obj->GetCategory() == 9) {
 			((XObjLeticker*)obj)->DrawLate();
 		} else if (obj->GetCategory() == 16) {
@@ -1276,11 +1275,11 @@ extern "C" void RenderMirrorTextures(CGame* game)
 	if (game->mHomeMenu.IsOpen()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
-	CGame::FbMirrorEx* mirrors = (CGame::FbMirrorEx*)game->mMirrors;
+	CGame::FbMirrorEx* mirrors = game->mMirrors;
 	for (s32 i = 0; i < 5; i++) {
 		FbMirror* mirror = &mirrors[i];
 		if (mirror->mJoint == NULL || !mirror->mVisible) {
@@ -1296,8 +1295,8 @@ extern "C" void RenderMirrorTextures(CGame* game)
 		PSMTXCopy(mirror->mView, view);
 		camera.vf64(view);
 		if (game->BeginCamera(&camera)) {
-			for (s32 j = 0; j < game->mSceneRefCount; j++) {
-				XObj* obj = (XObj*)game->mSceneRefs[j].mObj;
+			for (s32 j = 0; j < game->mDrawLists[2].mCount; j++) {
+				XObj* obj = (XObj*)game->mDrawLists[2].mRefs[j].mObj;
 				if (obj->mStatus.mFlags & 0x2000) {
 					obj->DrawReflection(view);
 				}
@@ -1324,18 +1323,18 @@ extern "C" void RenderSubwindow(CGame* game)
 	if (game->mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
-	FbSubwin* subwin = (FbSubwin*)game->mSubwin;
+	FbSubwin* subwin = &game->mSubwin;
 	if (!(subwin->mAmount > 0.0f)) {
 		return;
 	}
 	if (game->BeginCamera(&subwin->mCamera)) {
 		GXSetScissor(0, 0, gPointerScreenWidth / 2, gPointerScreenHeight / 2);
-		for (s32 i = 0; i < game->mObjectCount; i++) {
-			XObj* obj = (XObj*)game->mObjects[i];
+		for (s32 i = 0; i < game->mXObjs.mObjectCount; i++) {
+			XObj* obj = (XObj*)game->mXObjs.mObjects[i];
 			bool draw = false;
 			if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 				if (obj->mStatus.mFlags & 0x2000000) {
@@ -1370,7 +1369,7 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 	if (game->mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
@@ -1406,7 +1405,7 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 	}
 	if (game->BeginSceneCamera()) {
 		XObj* targets[2]       = { NULL, NULL };
-		WiiPlayerState* player = game->mPlayer;
+		WiiPlayerState* player = game->GetPlayer();
 		targets[0]             = player->mLiftPlugTarget;
 		if (targets[1] == NULL) {
 			targets[1] = player->mLift.mTarget;
@@ -1427,8 +1426,8 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
 		gGame.mGs.mCurRenderState->SetDstAlpha(GX_TRUE, 0);
-		for (s32 i = 0; i < game->mSceneRefCount; i++) {
-			XObj* obj = (XObj*)game->mSceneRefs[i].mObj;
+		for (s32 i = 0; i < game->mDrawLists[2].mCount; i++) {
+			XObj* obj = (XObj*)game->mDrawLists[2].mRefs[i].mObj;
 			if (obj->mStatus.mFlags & 0x40) {
 				obj->DrawObject();
 			} else if (obj == targets[1] && player->mLift.mState != 24) { // not while he plugs it in
@@ -1480,18 +1479,18 @@ extern "C" void RenderFloorReflection(CGame* game)
 	if (game->mHomeMenu.IsRunning()) {
 		return;
 	}
-	bool menuShown = game->mMenuActive && game->_AE34;
+	bool menuShown = game->mMenu.mActive && game->mMenu._34;
 	if (menuShown) {
 		return;
 	}
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
 	CCamera camera = *game->GetCamera();
 	Mtx view;
-	PSMTXConcat(camera.mViewMtx, game->mFloorReflectMtx, view);
+	PSMTXConcat(camera.mViewMtx, game->mPointer.mFloorReflectMtx, view);
 	camera.vf64(view);
 	if (game->BeginCamera(&camera)) {
-		for (s32 i = 0; i < game->mEffectRefCount; i++) {
-			XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+			XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 			if ((obj->mStatus.mFlags & 0x20000000) && (obj->mBaseMtxPtr == NULL || (obj->mStatus.mFlags & 0x0000400000000000))) {
 				obj->SetCullMode(1);
 				obj->DrawReflection(view);
@@ -1500,8 +1499,8 @@ extern "C" void RenderFloorReflection(CGame* game)
 		DrawSceneQueue(view);
 		game->vf54();
 	}
-	for (s32 i = 0; i < game->mEffectRefCount; i++) {
-		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+	for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+		XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 		if ((obj->mStatus.mFlags & 0x20000000) && (obj->mBaseMtxPtr == NULL || (obj->mStatus.mFlags & 0x0000400000000000))) {
 			obj->ResetCullMode();
 		}
@@ -1542,7 +1541,7 @@ void XObj::DrawObject()
  */
 CCamera* CBase::GetScreenCamera()
 {
-	return (CCamera*)mCameras[1];
+	return &mCameras[1];
 }
 
 /**
@@ -1594,7 +1593,7 @@ void CGame::Draw()
 	fn_802AB860(&gGame.mGs);
 	SetCameraLight();
 	if (gGame.mGs.mSceneHead->_2888 != NULL) {
-		fn_802BE414(_B7A8, gGame.mGs.mLight);
+		fn_802BE414(&mEffects, gGame.mGs.mLight);
 		void* fog = fn_8027AE0C(gGame.mGs.mSceneHead, 0);
 		GXFogType type;
 		f32 startZ;
@@ -1604,12 +1603,12 @@ void CGame::Draw()
 		GXColor color;
 		fn_8028175C(&fog, &type, &startZ, &endZ, &nearZ, &farZ, &color);
 		GXColor fogColor = color;
-		fn_802BE4D4(_B7A8, type, fogColor, startZ, endZ, nearZ, farZ);
+		fn_802BE4D4(&mEffects, type, fogColor, startZ, endZ, nearZ, farZ);
 	}
 	RenderSubwindow(this);
 	RenderMirrorTextures(this);
 	RenderFloorReflection(this);
-	if (GetStatusFlags(0x40) && !(mPlayer->mStatus & 0x200000)) {
+	if (GetStatusFlags(0x40) && !(GetPlayer()->mStatus & 0x200000)) {
 		DrawObjectAlphaMask(this);
 	}
 	if (BeginSceneCamera()) {
@@ -1640,11 +1639,11 @@ void CGame::Draw()
 			gGame.mGs.mCurChannel->Apply();
 		}
 		DrawObjectEffectsPass(this);
-		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
+		if (!mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)) {
 			MtxP view = GetEffectView(this);
 			for (u32 i = 0; i < 6; i++) {
 				if (i != 1 && i != 4) {
-					fn_802BE19C(_B7A8, view, i);
+					fn_802BE19C(&mEffects, view, i);
 				}
 			}
 		}
@@ -1662,8 +1661,8 @@ void CGame::Draw()
 	if (mColor0.mColor.mColor.a > 0.0f && GetStatusFlags(1)) { // what stays over the screen color
 		outline->Draw(FBEFF_COPY_I8 | FBEFF_OVERLAY);
 		if (BeginSceneCamera()) {
-			for (s32 i = 0; i < mSceneRefCount; i++) {
-				XObj* obj = (XObj*)mSceneRefs[i].mObj;
+			for (s32 i = 0; i < mDrawLists[2].mCount; i++) {
+				XObj* obj = (XObj*)mDrawLists[2].mRefs[i].mObj;
 				if (obj->mStatus.mFlags & 0x200) {
 					obj->DrawObject();
 				} else if ((obj->mStatus.mFlags & 0x0400000000000000) && (obj->mStatus.mFlags & 0x0000400000000000)) {
@@ -1687,11 +1686,11 @@ void CGame::Draw()
 			gGame.mGs.mCurChannel->Apply();
 		}
 		DrawObjectEffectsOverFade(this);
-		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
+		if (!mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)) {
 			MtxP view = GetEffectView(this);
 			for (u32 i = 0; i < 6; i++) {
 				if (i == 1) {
-					fn_802BE19C(_B7A8, view, i);
+					fn_802BE19C(&mEffects, view, i);
 				}
 			}
 		}
@@ -1700,9 +1699,9 @@ void CGame::Draw()
 
 	SetScreenLight();
 	if (gGame.mGs.mSceneHead->_2888 != NULL) {
-		fn_802BE414(_B7A8, gGame.mGs.mLight);
+		fn_802BE414(&mEffects, gGame.mGs.mLight);
 	}
-	DrawTitleScreen(mTitle);
+	DrawTitleScreen(&mTitle);
 	if (vf5C()) {
 		if (gGame.mGs.mCurRenderState != NULL) {
 			gGame.mGs.mCurRenderState->Apply();
@@ -1714,7 +1713,7 @@ void CGame::Draw()
 			gGame.mGs.mCurChannel->Apply();
 		}
 		DrawHud();
-		fn_802BE19C(_B7A8, GetScreenCamera()->mViewMtx, 4);
+		fn_802BE19C(&mEffects, GetScreenCamera()->mViewMtx, 4);
 		Vec quad[4] = { { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f } }; // the depth goes back
 		quad[0].x   = (f32)gScreenLeft;
 		quad[0].y   = (f32)gScreenTop;
@@ -1731,14 +1730,14 @@ void CGame::Draw()
 		                 quad[2].z, 0, quad[3].x, quad[3].y, quad[3].z, 0);
 		gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
 		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
-		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
-			FbSubwin* subwin = (FbSubwin*)mSubwin;
-			if (GetStatusFlags(1) && GetStatusFlags(0x100) && !mHomeMenu.IsRunning() && !(mMenuActive && _AE34) && subwin->mAmount > 0.0f
-			    && !(subwin->mFlags & 4)) {
+		if (!mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)) {
+			FbSubwin* subwin = &mSubwin;
+			if (GetStatusFlags(1) && GetStatusFlags(0x100) && !mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)
+			    && subwin->mAmount > 0.0f && !(subwin->mFlags & 4)) {
 				subwin->Draw();
 			}
 			mRoboeyes.Draw(&gGame.mGs, 0);
-			DrawGameHud((InfoScrn*)mInfoScrn);
+			DrawGameHud(&mInfoScrn);
 			if (GetStatusFlags(1)) {
 				mMotionControlCamera.Draw();
 			}
@@ -1751,7 +1750,7 @@ void CGame::Draw()
 			mWipeCustom.Draw(&gGame.mGs, 1);
 			mWipeTile.Draw(&gGame.mGs, 1);
 			mWipeCine.Draw(&gGame.mGs, 1);
-			if (GetStatusFlags(1) && !mMenuActive) {
+			if (GetStatusFlags(1) && !mMenu.mActive) {
 				bool faded = mFade.mColor.r != 0.0f || mFade.mColor.g != 0.0f || mFade.mColor.b != 0.0f || mFade.mColor.a != 0.0f;
 				if (!faded || mFade.mColor.a < 1.0f) {
 					mMotionControlCamera.fn_80169528();
@@ -1762,14 +1761,14 @@ void CGame::Draw()
 			}
 			DrawStageNameBubbles(this);
 			if (GetStatusFlags(0x400)) {
-				DrawPlayerEquipmentRings(mPlayer->_19EE4);
+				DrawPlayerEquipmentRings(GetPlayer()->_19EE4);
 			}
 			if (GetStatusFlags(0x800)) {
-				DrawOXMenu(&mPlayer->mOXMenu);
+				DrawOXMenu(&GetPlayer()->mOXMenu);
 			}
 			if (!mMotionControlCamera.IsAction(4)) {
-				fn_80094E90(_4C8E0);
-				CMsg* msgs = (CMsg*)mMsgs;
+				fn_80094E90(&mEvt);
+				CMsg* msgs = mMsgs;
 				for (s32 i = 0; i < 2; i++) {
 					CMsg_Draw(&msgs[i]);
 				}
@@ -1779,7 +1778,7 @@ void CGame::Draw()
 		vf54();
 	}
 	if (!mHomeMenu.IsRunning()) {
-		DrawCurrentLogo(&mLogoState);
+		DrawCurrentLogo(&mLogo);
 	}
 	if (vf5C()) {
 		if (gGame.mGs.mCurRenderState != NULL) {
@@ -1792,9 +1791,9 @@ void CGame::Draw()
 			gGame.mGs.mCurChannel->Apply();
 		}
 		if (!mHomeMenu.IsRunning()) {
-			fn_80084C84(&mMenuActive);
-			DrawObjectLoadingProgress((InfoScrn*)mInfoScrn);
-			DrawOpenMenus(&mMenuActive);
+			fn_80084C84(&mMenu.mActive);
+			DrawObjectLoadingProgress(&mInfoScrn);
+			DrawOpenMenus(&mMenu.mActive);
 			vf7C();
 		}
 		fn_80028998(this);
@@ -1806,8 +1805,8 @@ void CGame::Draw()
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
 	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
 	gGame.mGs.ResetZMode();
-	for (s32 i = 0; i < mObjectCount; i++) {
-		XObj* obj = (XObj*)mObjects[i];
+	for (s32 i = 0; i < mXObjs.mObjectCount; i++) {
+		XObj* obj = (XObj*)mXObjs.mObjects[i];
 		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 			ClearActiveObjectFloors(obj);
 		}
@@ -1870,7 +1869,7 @@ extern "C" void UpdateResetRequest(CGame* game)
 		return;
 	}
 	// the effect manager's two live counts
-	if (*(s32*)&gGame._B7A8[0x8] != 0 || *(s32*)&gGame._B7A8[0x270] != 0) {
+	if (gGame.mEffects.mResources[0].mLiveCount != 0 || gGame.mEffects.mResources[1].mLiveCount != 0) {
 		return;
 	}
 	if (gGame.mSound.mLoadPending) {
@@ -1894,7 +1893,7 @@ extern "C" void UpdateResetRequest(CGame* game)
 		} else if (game->mLoadStep <= 20) {
 			game->Reset(3);
 		} else {
-			fn_80084BF0(&game->mMenuActive, 6);
+			fn_80084BF0(&game->mMenu.mActive, 6);
 			ChangeGameStage(game, 10000, TRUE);
 		}
 		break;

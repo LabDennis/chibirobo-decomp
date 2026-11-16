@@ -14,9 +14,19 @@
 #include "game/ut.h"
 #include "game/wii/cgs.h"
 #include "game/wii/cresfile.h"
+#include "game/wii/xobjs.h"
 #include "revolution/mem.h"
 
-struct XObjFloor;
+// one of an object's floors, a list of them ends at an id of -1; the GameCube struct with the ground type split in two
+struct XObjFloor {
+	s16 mId;              // _00
+	u8 mMaterial;         // _02, ground types 13 and up count as none
+	u8 mFlags;            // _03, bit 0 includes this floor in contact tests, bit 1 in screen bounds
+	s32 mCenterOffset[3]; // _04, in hundredths
+	s32 mYawDegrees;      // _10
+	s32 mExtent[3];       // _14, in hundredths
+};
+STATIC_ASSERT(sizeof(XObjFloor) == 0x20);
 
 // the Wii XObj family, as far as xobj_ut.cpp's pool setup verifies it: names and
 // sizes come from the retail RTTI strings and the element strides the pool
@@ -1360,42 +1370,6 @@ WII_XOBJ_DECL(XObjSpiderBoss, 0xCE0);
 WII_XOBJ_DECL(XObjDust, 0xA00);
 WII_XOBJ_DECL(XObjHBox, 0x1368);
 WII_XOBJ_DECL(XObjFree, 0x9B8);
-
-// one of XOBJS's object pools, same layout as the GameCube one
-struct XObjPool {
-	u8* mObjects;      // _00
-	s32 mUsed;         // _04, objects handed out so far
-	s32 mCount;        // _08
-	const char* mName; // _0C
-	s32 mStride;       // _10, size of one object
-
-	void Set(void* objects, s32 count, const char* name, s32 stride)
-	{
-		mObjects = (u8*)objects;
-		mUsed    = 0;
-		mCount   = count;
-		mName    = name;
-		mStride  = stride;
-	}
-
-	XObj* Get(s32 i) const { return (XObj*)(mObjects + i * mStride); }
-};
-STATIC_ASSERT(sizeof(XObjPool) == 0x14);
-
-// the objects: a pool per kind and the table of the ones in use, same layout as
-// the GameCube XOBJS
-class XOBJS {
-public:
-	XObjPool mPools[0x17]; // _000
-	XObj* mObjects[0x400]; // _1CC, the object table
-	s32 mObjectCount;      // _11CC
-	s32 mLoadObjectIndex;  // _11D0
-	s32 mLoadState;        // _11D4, UpdateStageObjectLoading's state, 0 when idle
-	// _11D8 vtable
-
-	virtual ~XOBJS() { }
-};
-STATIC_ASSERT(sizeof(XOBJS) == 0x11DC);
 
 // a small shadow helper the unit defines; only its trivial dtor is verified so
 // far (retail 0x800BD66C, the deleting variant with no member calls)

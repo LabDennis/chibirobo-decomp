@@ -37,7 +37,7 @@ inline void operator delete(void* ptr) throw()
 	MEMFreeToExpHeap(gWiiMem1Heap, ptr);
 }
 
-struct WiiSaveManager;
+struct CSaveFile;
 class CMsg;
 
 // the head of the stage's info record, as far as this file reads it: the GameCube's UnkStageInfo
@@ -61,6 +61,7 @@ void PSMTX44MultVec(const Mtx44 m, const Vec* src, Vec* dst);
 BOOL FinalizeStageObjectSetup(CGame* game);
 void BuildObjectDrawList(CGame* game);
 void Reset2__16CCameraActionMapFv(CInterfaceCameraAction* action);
+void LoadStageCameraAreaState(CCameraActionAreaEx* state);
 // only the addresses are retail's, the signatures are read off the calls in this file
 BOOL fn_800C54A4(XObjPool* pools);        // the objects' loading step, true once they are all read
 void fn_800C7F70(void* map);              // takes the map object, the first of pool 3
@@ -75,8 +76,8 @@ void fn_8028175C(void** fog, GXFogType* type, f32* startZ, f32* endZ, f32* nearZ
 BOOL HideHudPointCounters(InfoScrn* scrn);
 BOOL LoadWiiHomeMenu(WiiHomeMenu* menu);
 s32 LoadMessageCursorObject(CMsg* msg);
-void ApplyWiiSaveSlot(WiiSaveManager* manager);
-void RestoreSavedPlayerAndCamera(WiiSaveManager* manager);
+void ApplyWiiSaveSlot(CSaveFile* manager);
+void RestoreSavedPlayerAndCamera(CSaveFile* manager);
 void ApplyStageSoundEffects(XSound* sound);
 BOOL LoadGlobalResourceData();
 u32 GetStartingAttachmentLevel(s32 index);
@@ -92,8 +93,6 @@ void fn_800C5814(XObjPool* pools);                   // reads the stage's object
 BOOL fn_802BDBCC(void* obj, const char* path, s32 arg);
 BOOL fn_802BDC98(void* obj, s32 arg);
 }
-
-s32 LoadFontResource();
 
 extern s32 gRefreshRate;
 extern u8 gPowerButtonPressed;
@@ -212,12 +211,12 @@ void CGame::ResetNewGameState()
 	mTimeState.mRunning  = FALSE;
 	mPlayTime            = 0.0f;
 	_EC1A4               = 0.0f;
-	_EC1A8               = 1.0f;
-	mScopeTimer          = 0.0f;
-	_EC2B4               = NAN;
-	_EC2C8               = -1.0f;
-	ResetPooledObjects((XObjPool*)mXObjPools);
-	InitBatteryGauge((InfoScrn*)mInfoScrn, GetPlayer()->mParams.mBattery);
+	mPointer.mAlpha      = 1.0f;
+	mPointer.mScopeTimer = 0.0f;
+	mPointer._10C        = NAN;
+	mPointer._120        = -1.0f;
+	ResetPooledObjects(mXObjs.mPools);
+	InitBatteryGauge(&mInfoScrn, GetPlayer()->mParams.mBattery);
 
 	mScrnTex.mAngle = 0.0f;
 	StartScreenFade(&mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
@@ -226,9 +225,9 @@ void CGame::ResetNewGameState()
 	mOutlineWidthControl = 0;
 	mOutlineWidth        = 0.5f;
 	Vec zero             = { 0.0f, 0.0f, 0.0f };
-	_EE1E0.Set(zero);
+	mListener.mPos.Set(zero);
 	Vec nan = { NAN, NAN, NAN };
-	_EE1F0.Set(nan);
+	mListener.mPoint.Set(nan);
 	_D9B60             = 0;
 	_D9B5C             = 0;
 	mStageName.mActive = FALSE;
@@ -254,16 +253,16 @@ void CBase::ClearStatusFlags(u64 mask)
 // Retail expands the same code three times; the name is ours
 static inline BOOL IsStageBusy(CGame* game)
 {
-	if (game->mMenuActive) {
-		fn_8008492C(&game->mMenuActive, 10);
-		if (game->mMenuActive) {
+	if (game->mMenu.mActive) {
+		fn_8008492C(&game->mMenu.mActive, 10);
+		if (game->mMenu.mActive) {
 			return TRUE;
 		}
 	}
 	if (game->_41F0 > 0) {
 		if (--game->_41F0 <= 0) {
 			game->mLightList = game->mLights;
-			fn_800C5814((XObjPool*)game->mXObjPools);
+			fn_800C5814(game->mXObjs.mPools);
 		} else {
 			return TRUE;
 		}
@@ -296,7 +295,7 @@ static inline BOOL LoadStageAndEventObjects(CGame* game)
 	if (LoadStageByIndex(game->mStage)) {
 		ApplyStageClearColor();
 		for (const StageEventObject* entry = GetStageEventObjectPairs(); entry->objectIndex >= 0; ++entry) { // the pairs end at a -1
-			fn_800A10E4((CEvt*)game->_4C8E0, entry->eventId, entry->objectIndex);
+			fn_800A10E4(&game->mEvt, entry->eventId, entry->objectIndex);
 		}
 		Vec origin = { 0.0f, 0.0f, 0.0f };
 		((CSound3D*)&gGame.mSound.mSound3DManager)->SetListener(0.0f, &origin);
@@ -315,13 +314,13 @@ static inline bool FadeStopped(const CScrnColor& fade)
  * @note Address: 0x8001C7B0
  * @note Size: 0xD50
  */
-// NONMATCHING: LoadFontResource and CSound3D::Init take no argument in their declarations, retail passes
-// one to each (the font object in CGs at _2154 and, it seems, whatever is left in r4); retail reads the
+// NONMATCHING: CSound3D::Init takes no argument in its declaration, retail passes one (it seems, whatever is
+// left in r4); retail reads the
 // attachment overrides out of the whole word of gCmdLineArgs (its bitfields are u32 on the Wii, u8 in
 // cmdline.h, which gameinit.cpp initializes for both); and the logo and title states are loaded once for
 // their two tests, as if they sat in objects of their own (CGame destroys one at _5978 and one at _5C70)
 // the GameCube function with the Wii's resources: one step a frame until the stage runs, true when done
-bool CGame::BeforeUpdate()
+BOOL CGame::BeforeUpdate()
 {
 	// Ready steps fall through. Pending reads resume at the same step next frame.
 	switch (mLoadStep) {
@@ -330,17 +329,17 @@ bool CGame::BeforeUpdate()
 	case 1:
 		++mLoadStep;
 	case 2:
-		if (GetStatusFlags(0x400000000ULL) && mLogoState != 12) {
+		if (GetStatusFlags(0x400000000ULL) && mLogo.mState != 12) {
 			if (!IsLogoActive())
-				mLogoState = 1;
-			if (mLogoState <= 3)
+				mLogo.mState = 1;
+			if (mLogo.mState <= 3)
 				break;
 			++mLoadStep;
 		} else {
 			++mLoadStep;
 		}
 	case 3:
-		if (!LoadFontResource())
+		if (!mGs.mFont.LoadResource())
 			break;
 		++mLoadStep;
 	case 4:
@@ -373,9 +372,9 @@ bool CGame::BeforeUpdate()
 		}
 	case 7: {
 		CoordInfo spawn(GetSpawnData(12)); // spawn placement 12
-		if (!((XObj*)_EC2D0)->LoadFromPlacement(spawn))
+		if (!((XObj*)mPointer.mCursor)->LoadFromPlacement(spawn))
 			break;
-		((XObj*)_EC2D0)->SetScale(6.0f);
+		((XObj*)mPointer.mCursor)->SetScale(6.0f);
 		++mLoadStep;
 	}
 	case 8:
@@ -383,23 +382,23 @@ bool CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 		mTpl.mTex.Init(&mTpl.mPalette->descriptorArray[261], 0);
-		_EC1B0 = mTpl.mTex;
-		_41E0  = &_EC1B0;
+		mPointer.mTex = mTpl.mTex;
+		_41E0         = &mPointer.mTex;
 		mTpl.mTex.Init(&mTpl.mPalette->descriptorArray[122], 0); // the outline texture
 		mScrnTex.mTex        = mTpl.mTex;
 		mOutline.mPatternTex = &mScrnTex.mTex;
 		mOutline.mFrame      = 0;
 		mOutline.mThick2     = 0.0f;
 	case 9:
-		if (!fn_802BDBCC(_B7A8, "eff/cb_robo", 0))
+		if (!fn_802BDBCC(&mEffects, "eff/cb_robo", 0))
 			break;
 		++mLoadStep;
 	case 10:
-		if (!fn_802BDC98(_B7A8, 0))
+		if (!fn_802BDC98(&mEffects, 0))
 			break;
 		++mLoadStep;
 	case 11:
-		if (!fn_80084848(&mMenuActive))
+		if (!fn_80084848(&mMenu.mActive))
 			break;
 		++mLoadStep;
 	case 12:
@@ -413,17 +412,17 @@ bool CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 	case 15:
-		if (!HideHudPointCounters((InfoScrn*)mInfoScrn))
+		if (!HideHudPointCounters(&mInfoScrn))
 			break;
 		++mLoadStep;
 	case 16:
-		if (!fn_80094B04((CEvt*)_4C8E0))
+		if (!fn_80094B04(&mEvt))
 			break;
 		++mLoadStep;
 	case 17:
-		if (!LoadMessageCursorObject((CMsg*)mMsgs[0]))
+		if (!LoadMessageCursorObject(&mMsgs[0]))
 			break;
-		LoadMessageCursorObject((CMsg*)mMsgs[1]);
+		LoadMessageCursorObject(&mMsgs[1]);
 		++mLoadStep;
 	case 18: {
 		CoordInfo spawn(GetSpawnData(14)); // spawn placement 14
@@ -433,7 +432,7 @@ bool CGame::BeforeUpdate()
 	}
 	case 19:
 		if (GetStatusFlags(0x400000000ULL)) {
-			if (mLogoState != 12)
+			if (mLogo.mState != 12)
 				break;
 			++mLoadStep;
 		} else {
@@ -443,10 +442,10 @@ bool CGame::BeforeUpdate()
 	case 20:
 		if (IsStageBusy(this))
 			break;
-		if (GetStatusFlags(0x20000000) && mTitleState != 23) {
+		if (GetStatusFlags(0x20000000) && mTitle.mState != 23) {
 			if (!IsTitleActive()) {
 				ResetNewGameState();
-				mTitleState = 1;
+				mTitle.mState = 1;
 			}
 			break;
 		}
@@ -458,13 +457,13 @@ bool CGame::BeforeUpdate()
 			ApplyWiiSaveSlot(&mSaveManager);
 			mMemcardLoaded = FALSE;
 			SetStatusFlags(0x8000);
-			InitBatteryGauge((InfoScrn*)mInfoScrn, GetPlayer()->mParams.mBattery);
+			InitBatteryGauge(&mInfoScrn, GetPlayer()->mParams.mBattery);
 		}
 		++mLoadStep;
 	case 22:
 		if (IsStageBusy(this))
 			break;
-		_EC2C8 = -1.0f;
+		mPointer._120 = -1.0f;
 		++mLoadStep;
 	case 23:
 		if (!LoadStageAndEventObjects(this))
@@ -473,11 +472,11 @@ bool CGame::BeforeUpdate()
 	case 24: {
 		u8* script = GetStageSetupScript();
 		if (script)
-			StartOrQueueEventScript((CEvt*)_4C8E0, script, 0, -1, -1);
+			StartOrQueueEventScript(&mEvt, script, 0, -1, -1);
 		++mLoadStep;
 	}
 	case 25:
-		if (mEvtData.mScript) // waits for the setup script
+		if (mEvt.mData.mScript) // waits for the setup script
 			break;
 		if (CheckStageFlag(mStage, 4)) // stage flag 4 sets flag 0x40
 			SetStatusFlags(0x40);
@@ -507,7 +506,7 @@ bool CGame::BeforeUpdate()
 		if (!FadeStopped(mFade))
 			break;
 		StartScreenFade(&mFade, 0, 0, 0, 255, 0, 0, 0, 0, 0.5f);
-		StartOrQueueEventScript((CEvt*)_4C8E0, GetStageEntryScript(), 0, -1, -1);
+		StartOrQueueEventScript(&mEvt, GetStageEntryScript(), 0, -1, -1);
 		u32 minutes = GetStageEntryTimeComponent(1), hours = GetStageEntryTimeComponent(0);
 		_EC1A4 = (s32)(hours * 216000 + (minutes * 3600 + GetStageEntryTimeComponent(2) * 60)); // the clock, in frames
 		SetStatusFlags(1);
@@ -516,7 +515,7 @@ bool CGame::BeforeUpdate()
 	}
 	if (IsLoadStepRunning()) {
 		// past the first steps, and the logos done or never shown: the loading screen may come up
-		if (mLoadStep > 2 && (!GetStatusFlags(0x400000000ULL) || mLogoState == 12)) {
+		if (mLoadStep > 2 && (!GetStatusFlags(0x400000000ULL) || mLogo.mState == 12)) {
 			if (!GetStatusFlags(0x100000000000000ULL))
 				SetStatusFlags(0x100000000000000ULL);
 			if (!(_41B0 & 1)) {
@@ -566,7 +565,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 	s32 i;
 	switch (game->mSetupStep) {
 	case 0:
-		if (!fn_800C54A4((XObjPool*)game->mXObjPools)) {
+		if (!fn_800C54A4(game->mXObjs.mPools)) {
 			break;
 		}
 		if (game->mResetRequested) {
@@ -574,19 +573,19 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		}
 		game->mSetupStep++;
 	case 1: {
-		fn_800C7F70(*(void**)&game->mXObjPools[3 * 0x14]);
+		fn_800C7F70((void*)game->mXObjs.mPools[3].mObjects);
 		game->ClearStatusFlags(0x2000000000ULL);
 		game->ClearStatusFlags(0x8000000000ULL);
 		game->ClearStatusFlags(0x100000000000ULL);
-		game->mFloorReflect = FALSE;
-		mirror              = (FbMirror*)game->mMirrors;
-		mirrors             = 0;
-		for (i = 0; i < game->mObjectCount; i++) {
-			obj = (CMirrorObj*)game->mObjects[i];
+		game->mPointer.mFloorReflect = FALSE;
+		mirror                       = game->mMirrors;
+		mirrors                      = 0;
+		for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+			obj = (CMirrorObj*)game->mXObjs.mObjects[i];
 			if (obj->mStatus & 1) {
 				if (!game->GetStatusFlags(0x2000000000ULL) && (obj->mStatus & 0x20000000)) {
 					game->SetStatusFlags(0x2000000000ULL); // the stage wants the floor reflection
-					game->mFloorReflect = TRUE;
+					game->mPointer.mFloorReflect = TRUE;
 
 					Vec rot   = { 0.0f, 0.0f, 0.0f };
 					Vec trans = { 0.0f, 0.0f, 0.0f };
@@ -609,7 +608,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 					PSMTXTranspose(mtx, mtx);
 					PSMTXMultVec(mtx, &normal, &normal);
 					PSVECNormalize(&normal, &normal);
-					PSMTXReflect(game->mFloorReflectMtx, &point, &normal);
+					PSMTXReflect(game->mPointer.mFloorReflectMtx, &point, &normal);
 				}
 				if ((obj->mStatus & 0x400) && mirrors < 5) { // flag 0x400 makes an object a mirror
 					game->SetStatusFlags(0x100000000000ULL);
@@ -627,17 +626,17 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		game->mSetupStep++;
 	}
 	case 2:
-		if (!fn_800CDC08(game->mPlayer)) {
+		if (!fn_800CDC08(game->GetPlayer())) {
 			break;
 		}
 		game->mSetupStep++;
 	case 3:
-		if (!fn_800CE4B0(game->mPlayer)) {
+		if (!fn_800CE4B0(game->GetPlayer())) {
 			break;
 		}
 		game->mSetupStep++;
 	case 4:
-		if (!fn_800CD700(game->mPlayer)) {
+		if (!fn_800CD700(game->GetPlayer())) {
 			break;
 		}
 		game->mSetupStep++;
@@ -653,7 +652,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			gGame.mGs._1FE4[i]._00 = FALSE;
 		}
 		game->SetCameraLight();
-		fn_802BE414(game->_B7A8, gGame.mGs.mLight);
+		fn_802BE414(&game->mEffects, gGame.mGs.mLight);
 		if (gGame.mGs.mSceneHead->_2888 != NULL) {
 			void* fog = fn_8027AE0C(gGame.mGs.mSceneHead, 0);
 			GXFogType type;
@@ -664,17 +663,17 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			GXColor color;
 			fn_8028175C(&fog, &type, &startZ, &endZ, &nearZ, &farZ, &color);
 			GXColor fogColor = color;
-			fn_802BE4D4(game->_B7A8, type, fogColor, startZ, endZ, nearZ, farZ);
+			fn_802BE4D4(&game->mEffects, type, fogColor, startZ, endZ, nearZ, farZ);
 		} else {
 			GXColor none = { 0, 0, 0, 0 };
 			game->mFog.Init(GX_FOG_NONE, none, 0.0f, 0.0f, 0.0f, 0.0f);
 			GXColor black = { 0, 0, 0, 0 };
-			fn_802BE4D4(game->_B7A8, GX_FOG_NONE, black, 0.0f, 0.0f, 0.0f, 0.0f);
+			fn_802BE4D4(&game->mEffects, GX_FOG_NONE, black, 0.0f, 0.0f, 0.0f, 0.0f);
 		}
 		BuildObjectDrawList(game);
 		if (game->GetStatusFlags(0x2000000000ULL)) {
 			f32 fade        = GetStageInfo()->mMirrorFade / 100.0f;
-			CMirrorObj* map = *(CMirrorObj**)&game->mXObjPools[3 * 0x14];
+			CMirrorObj* map = (CMirrorObj*)game->mXObjs.mPools[3].mObjects;
 			if ((map->mStatus & 1) && fade > 0.0f) {
 				// the GameCube made the map translucent here, nothing is left of that
 			}
@@ -683,21 +682,21 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		game->GetStatusFlags(0x2000000000ULL);
 		game->GetStatusFlags(0x100000000000ULL);
 		game->GetStatusFlags(0x8000000000ULL);
-		game->mHudObject       = NULL;
-		game->mHudObjectX      = 0.0f;
-		game->mHudObjectY      = 0.0f;
-		game->mScopeTarget     = NULL;
-		game->mScopeMarker     = -1;
-		game->mScopeItem       = -1;
-		game->mScopeTicks      = 0;
-		game->mScopeRareItem   = 0;
-		game->mScopeLevel      = 0;
-		game->mScopeSoundIndex = 0;
-		game->mScopeSound      = -1;
-		game->mScopeZoom       = 0.0f;
-		game->mScopeAngle      = 0.0f;
-		game->mScopeFade       = 0.0f;
-		game->mScopeFade2      = 0.0f;
+		game->mPointer.mHudObject       = NULL;
+		game->mPointer.mHudObjectX      = 0.0f;
+		game->mPointer.mHudObjectY      = 0.0f;
+		game->mPointer.mScopeTarget     = NULL;
+		game->mPointer.mScopeMarker     = -1;
+		game->mPointer.mScopeItem       = -1;
+		game->mPointer.mScopeTicks      = 0;
+		game->mPointer.mScopeRareItem   = 0;
+		game->mPointer.mScopeLevel      = 0;
+		game->mPointer.mScopeSoundIndex = 0;
+		game->mPointer.mScopeSound      = -1;
+		game->mPointer.mScopeZoom       = 0.0f;
+		game->mPointer.mScopeAngle      = 0.0f;
+		game->mPointer.mScopeFade       = 0.0f;
+		game->mPointer.mScopeFade2      = 0.0f;
 	}
 	}
 	return game->mSetupStep == 5;
@@ -717,7 +716,7 @@ void CGame::SetupStageCamera(s32 mode)
 	if (GetStageCameraAreaRecords() && GetStageCameraInfoRecords()) {
 		((CCameraActionAreaExM*)mCameraActions.mTable[CAMACTION_AREA])->LoadAreaState();
 	}
-	((CCameraActionAnim*)mCameraActions.mTable[CAMACTION_ANIM])->SetObj(*(XObjCamera**)&mXObjPools[0]);
+	((CCameraActionAnim*)mCameraActions.mTable[CAMACTION_ANIM])->SetObj((XObjCamera*)mXObjs.mPools[0].mObjects);
 	mMotionControlCamera.Init();
 	if (mode == 1 || mode == 7) { // both modes start on the map camera
 		mMotionControlCamera.ChangeAction(7);
@@ -726,14 +725,24 @@ void CGame::SetupStageCamera(s32 mode)
 	} else {
 		mMotionControlCamera.ChangeAction(mode);
 	}
-	for (s32 i = 0; i < mObjectCount; i++) {
-		mMotionControlCamera.UpdateTarget((XObj*)mObjects[i]);
+	for (s32 i = 0; i < mXObjs.mObjectCount; i++) {
+		mMotionControlCamera.UpdateTarget((XObj*)mXObjs.mObjects[i]);
 	}
 	if (GetStatusFlags(0x100)) { // flag 0x100: a fresh roboeyes wipe
 		ClearStatusFlags(0x300);
 		mRoboeyes.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	}
 	fn_8027AE04(gGame.mGs.mSceneHead, 0);
+}
+
+/**
+ * @note Address: 0x8001DE7C
+ * @note Size: 0xC
+ */
+// reloads the stage's camera area tables into the state all area actions share
+void CCameraActionAreaExM::LoadAreaState()
+{
+	LoadStageCameraAreaState(&gCameraAreaState);
 }
 
 /**
@@ -790,7 +799,7 @@ CCamera* CBase::GetCamera()
  */
 CCamera* CBase::GetPerspectiveCamera()
 {
-	return (CCamera*)mCameras[0];
+	return &mCameras[0];
 }
 
 /**
@@ -799,44 +808,44 @@ CCamera* CBase::GetPerspectiveCamera()
  */
 // NONMATCHING: the object and the loop counter swap registers in both loops (r6/r8)
 // lists the objects in draw order: the ones with flag 0x4000 first, then the rest, then the player and
-// last the first object of pool 0. Each entry keeps the object's slot in mObjects
+// last the first object of pool 0. Each entry keeps the object's slot in mXObjs.mObjects
 extern "C" void BuildObjectDrawList(CGame* game)
 {
 	CMirrorObj* obj;
 	s32 i;
 	for (i = 0; i < 0x400; i++) {
-		game->mDrawRefs[i].mObj = NULL;
+		game->mDrawLists[0].mRefs[i].mObj = NULL;
 	}
-	game->mDrawRefCount = 0;
-	for (i = 0; i < game->mObjectCount; i++) {
-		obj = (CMirrorObj*)game->mObjects[i];
-		if (obj != (CMirrorObj*)game->mPlayer && obj != *(CMirrorObj**)&game->mXObjPools[0] && (obj->mStatus & 1)
+	game->mDrawLists[0].mCount = 0;
+	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		obj = (CMirrorObj*)game->mXObjs.mObjects[i];
+		if (obj != (CMirrorObj*)game->GetPlayer() && obj != (CMirrorObj*)game->mXObjs.mPools[0].mObjects && (obj->mStatus & 1)
 		    && (obj->mStatus & 0x4000)) {
-			game->mDrawRefs[game->mDrawRefCount].mObj   = obj;
-			game->mDrawRefs[game->mDrawRefCount].mFlags = i;
-			game->mDrawRefCount++;
+			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = i;
+			game->mDrawLists[0].mCount++;
 		}
 	}
-	for (i = 0; i < game->mObjectCount; i++) {
-		obj = (CMirrorObj*)game->mObjects[i];
-		if (obj != (CMirrorObj*)game->mPlayer && obj != *(CMirrorObj**)&game->mXObjPools[0] && (obj->mStatus & 1)
+	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		obj = (CMirrorObj*)game->mXObjs.mObjects[i];
+		if (obj != (CMirrorObj*)game->GetPlayer() && obj != (CMirrorObj*)game->mXObjs.mPools[0].mObjects && (obj->mStatus & 1)
 		    && !(obj->mStatus & 0x4000)) {
-			game->mDrawRefs[game->mDrawRefCount].mObj   = obj;
-			game->mDrawRefs[game->mDrawRefCount].mFlags = i;
-			game->mDrawRefCount++;
+			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = i;
+			game->mDrawLists[0].mCount++;
 		}
 	}
-	obj = (CMirrorObj*)game->mPlayer;
+	obj = (CMirrorObj*)game->GetPlayer();
 	if (obj->mStatus & 1) {
-		game->mDrawRefs[game->mDrawRefCount].mObj   = obj;
-		game->mDrawRefs[game->mDrawRefCount].mFlags = 0;
-		game->mDrawRefCount++;
+		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = 0;
+		game->mDrawLists[0].mCount++;
 	}
-	obj = *(CMirrorObj**)&game->mXObjPools[0];
+	obj = (CMirrorObj*)game->mXObjs.mPools[0].mObjects;
 	if (obj->mStatus & 1) {
-		game->mDrawRefs[game->mDrawRefCount].mObj   = obj;
-		game->mDrawRefs[game->mDrawRefCount].mFlags = 0;
-		game->mDrawRefCount++;
+		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = 0;
+		game->mDrawLists[0].mCount++;
 	}
 }
 
@@ -852,8 +861,8 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 	s32 i;
 	if (game->GetStatusFlags(0x8000000000ULL)) { // only while flag 0x8000000000 stands
 		CMotionControlCamera* camera = &game->mMotionControlCamera;
-		for (i = 0; i < game->mObjectCount; i++) {
-			obj = (XObj*)game->mObjects[i];
+		for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+			obj = (XObj*)game->mXObjs.mObjects[i];
 			if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 				if (!game->GetStatusFlags(0x100) && (obj->mStatus.mFlags & 0x80000000) && obj->IsOutsideCameraDepth(camera)) {
 					obj->mStatus.mFlags |= 0x1000000000000ULL; // out of depth: mirror-only
@@ -865,65 +874,65 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 	}
 
 	for (i = 0; i < 0x400; i++) {
-		game->mSceneRefs[i].mObj = NULL;
+		game->mDrawLists[2].mRefs[i].mObj = NULL;
 	}
-	game->mSceneRefCount = 0;
+	game->mDrawLists[2].mCount = 0;
 	for (i = 0; i < 0x400; i++) {
-		game->mEffectRefs[i].mObj = NULL;
+		game->mDrawLists[3].mRefs[i].mObj = NULL;
 	}
-	game->mEffectRefCount = 0;
+	game->mDrawLists[3].mCount = 0;
 
-	for (i = 0; i < ((XObjPool*)game->mXObjPools)[3].mUsed; i++) {
-		obj = ((XObjPool*)game->mXObjPools)[3].Get(i);
+	for (i = 0; i < game->mXObjs.mPools[3].mUsed; i++) {
+		obj = game->mXObjs.mPools[3].Get(i);
 		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && !(obj->mStatus.mFlags & 0xA00040)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
-				game->mSceneRefs[game->mSceneRefCount].mObj   = obj;
-				game->mSceneRefs[game->mSceneRefCount].mFlags = 0;
-				game->mSceneRefCount++;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mObj   = obj;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mIndex = 0;
+				game->mDrawLists[2].mCount++;
 			}
-			game->mEffectRefs[game->mEffectRefCount].mObj   = obj;
-			game->mEffectRefs[game->mEffectRefCount].mFlags = 0;
-			game->mEffectRefCount++;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mObj   = obj;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mIndex = 0;
+			game->mDrawLists[3].mCount++;
 		}
 	}
-	for (i = 0; i < game->mObjectCount; i++) {
-		obj = (XObj*)game->mObjects[i];
+	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		obj = (XObj*)game->mXObjs.mObjects[i];
 		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && !(obj->mStatus.mFlags & 0xA00040)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
-				game->mSceneRefs[game->mSceneRefCount].mObj   = obj;
-				game->mSceneRefs[game->mSceneRefCount].mFlags = 0;
-				game->mSceneRefCount++;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mObj   = obj;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mIndex = 0;
+				game->mDrawLists[2].mCount++;
 			}
-			game->mEffectRefs[game->mEffectRefCount].mObj   = obj;
-			game->mEffectRefs[game->mEffectRefCount].mFlags = 0;
-			game->mEffectRefCount++;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mObj   = obj;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mIndex = 0;
+			game->mDrawLists[3].mCount++;
 		}
 	}
-	for (i = 0; i < game->mObjectCount; i++) {
-		obj = (XObj*)game->mObjects[i];
+	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		obj = (XObj*)game->mXObjs.mObjects[i];
 		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && (obj->mStatus.mFlags & 0xA00000)
 		    && !(obj->mStatus.mFlags & 0x40)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
-				game->mSceneRefs[game->mSceneRefCount].mObj   = obj;
-				game->mSceneRefs[game->mSceneRefCount].mFlags = 0;
-				game->mSceneRefCount++;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mObj   = obj;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mIndex = 0;
+				game->mDrawLists[2].mCount++;
 			}
-			game->mEffectRefs[game->mEffectRefCount].mObj   = obj;
-			game->mEffectRefs[game->mEffectRefCount].mFlags = 0;
-			game->mEffectRefCount++;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mObj   = obj;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mIndex = 0;
+			game->mDrawLists[3].mCount++;
 		}
 	}
-	for (i = 0; i < game->mObjectCount; i++) {
-		obj = (XObj*)game->mObjects[i];
+	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		obj = (XObj*)game->mXObjs.mObjects[i];
 		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && (obj->mStatus.mFlags & 0x40)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
-				game->mSceneRefs[game->mSceneRefCount].mObj   = obj;
-				game->mSceneRefs[game->mSceneRefCount].mFlags = 0;
-				game->mSceneRefCount++;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mObj   = obj;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mIndex = 0;
+				game->mDrawLists[2].mCount++;
 			}
-			game->mEffectRefs[game->mEffectRefCount].mObj   = obj;
-			game->mEffectRefs[game->mEffectRefCount].mFlags = 0;
-			game->mEffectRefCount++;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mObj   = obj;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mIndex = 0;
+			game->mDrawLists[3].mCount++;
 		}
 	}
 }
@@ -1099,41 +1108,41 @@ void CGame::Update(u32 frames)
 	}
 
 	if (gWiiPointer.mPointerValid) {
-		mScopeTimer = 0.0f;
-	} else if (_EC2C8 >= 0.0f) {
-		if (_EC2C8 < 1.0f) {
-			if ((_EC2C8 += 0.1f * frames) > 1.0f) {
-				_EC2C8 = 1.0f;
+		mPointer.mScopeTimer = 0.0f;
+	} else if (mPointer._120 >= 0.0f) {
+		if (mPointer._120 < 1.0f) {
+			if ((mPointer._120 += 0.1f * frames) > 1.0f) {
+				mPointer._120 = 1.0f;
 			}
 		}
-	} else if (mScopeTimer < 5.0f) {
-		if ((mScopeTimer += 2.0f * (1.0f / gRefreshRate) * frames) > 5.0f) {
-			mScopeTimer = 5.0f;
+	} else if (mPointer.mScopeTimer < 5.0f) {
+		if ((mPointer.mScopeTimer += 2.0f * (1.0f / gRefreshRate) * frames) > 5.0f) {
+			mPointer.mScopeTimer = 5.0f;
 		}
 	}
 
 	// _EC1A8 fades the pointer's cursor: out while the eye camera aims the radar, half way while nothing
 	// else wants the pointer, in while something does
-	if (mMotionControlCamera.IsAction(CAMACTION_EYE) && GetPlayer()->GetAttachment() == 2 && !mMenuActive && !GetStatusFlags(0x800)) {
-		if (_EC1A8 > 0.0f) {
-			if ((_EC1A8 -= 0.05f * frames) < 0.0f) {
-				_EC1A8 = 0.0f;
+	if (mMotionControlCamera.IsAction(CAMACTION_EYE) && GetPlayer()->GetAttachment() == 2 && !mMenu.mActive && !GetStatusFlags(0x800)) {
+		if (mPointer.mAlpha > 0.0f) {
+			if ((mPointer.mAlpha -= 0.05f * frames) < 0.0f) {
+				mPointer.mAlpha = 0.0f;
 			}
 		}
-	} else if (mEvtData.mScript == NULL && !IsMessageSelecting((CMsg*)mMsgs[0]) && !GetStatusFlags(0x800) && !IsMenuOpen(mMenus[1])
-	           && !IsMenuOpen(mMenus[2]) && !IsMenuOpen(mMenus[4])
+	} else if (mEvt.mData.mScript == NULL && !IsMessageSelecting(GetMsg(0)) && !GetStatusFlags(0x800) && !IsMenuOpen(mMenu.mMenus[1])
+	           && !IsMenuOpen(mMenu.mMenus[2]) && !IsMenuOpen(mMenu.mMenus[4])
 	           && !(mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
 	                && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 	           && !(mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)mCameraActions.mTable[CAMACTION_MAP])->_11F8)
 	           && !(fn_80169658(&mMotionControlCamera) && ((u8*)fn_80169674())[0x74]) && !(mStage == 3 && CallStageModule(0x10, 0, NULL))) {
-		if (_EC1A8 > 0.5f) {
-			if ((_EC1A8 -= 0.1f * frames) < 0.5f) {
-				_EC1A8 = 0.5f;
+		if (mPointer.mAlpha > 0.5f) {
+			if ((mPointer.mAlpha -= 0.1f * frames) < 0.5f) {
+				mPointer.mAlpha = 0.5f;
 			}
 		}
-	} else if (_EC1A8 < 1.0f) {
-		if ((_EC1A8 += 0.1f * frames) > 1.0f) {
-			_EC1A8 = 1.0f;
+	} else if (mPointer.mAlpha < 1.0f) {
+		if ((mPointer.mAlpha += 0.1f * frames) > 1.0f) {
+			mPointer.mAlpha = 1.0f;
 		}
 	}
 
@@ -1141,9 +1150,9 @@ void CGame::Update(u32 frames)
 	// _41B0); NAN while nothing on screen wants the pointer
 	bool wanted = false;
 	if (GetStatusFlags(1)) {
-		if ((!(mMenuControls & 2) && GetStatusFlags(0x400) && mEvtData.mScript == NULL) || (!(mMenuControls & 2) && GetStatusFlags(0x800))
-		    || (!(mMenuControls & 2) && (IsMenuOpen(mMenus[1]) || IsMenuOpen(mMenus[2]) || IsMenuOpen(mMenus[4])))
-		    || (mMotionControlCamera.IsAction(CAMACTION_EYE) && mEvtData.mScript == NULL && (!(mMenuControls & 2) || !mMenuActive))
+		if ((!(mMenuControls & 2) && GetStatusFlags(0x400) && mEvt.mData.mScript == NULL) || (!(mMenuControls & 2) && GetStatusFlags(0x800))
+		    || (!(mMenuControls & 2) && (IsMenuOpen(mMenu.mMenus[1]) || IsMenuOpen(mMenu.mMenus[2]) || IsMenuOpen(mMenu.mMenus[4])))
+		    || (mMotionControlCamera.IsAction(CAMACTION_EYE) && mEvt.mData.mScript == NULL && (!(mMenuControls & 2) || !mMenu.mActive))
 		    || mMotionControlCamera.IsAction(CAMACTION_SCROLL2)
 		    || (mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
 		        && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
@@ -1157,19 +1166,19 @@ void CGame::Update(u32 frames)
 			if (_41B0 & 8) {
 				_41B0 &= ~8;
 			}
-			if (isnan(_EC2B4) || _EC2B4 < gRefreshRate * 5) {
-				_EC2B4 = gRefreshRate * 5;
+			if (isnan(mPointer._10C) || mPointer._10C < gRefreshRate * 5) {
+				mPointer._10C = gRefreshRate * 5;
 			}
-		} else if (isnan(_EC2B4)) {
-			_EC2B4 = 0.0f;
+		} else if (isnan(mPointer._10C)) {
+			mPointer._10C = 0.0f;
 		}
 		if (!(_41B0 & 8)) {
-			if (_EC2B4 > 0.0f) {
-				if ((_EC2B4 -= frames) < 0.0f) {
-					_EC2B4 = 0.0f;
+			if (mPointer._10C > 0.0f) {
+				if ((mPointer._10C -= frames) < 0.0f) {
+					mPointer._10C = 0.0f;
 				}
 			}
-			if (0.0f == _EC2B4) {
+			if (0.0f == mPointer._10C) {
 				_41B0 |= 8;
 			}
 		}
@@ -1177,8 +1186,8 @@ void CGame::Update(u32 frames)
 		if (_41B0 & 8) {
 			_41B0 &= ~8;
 		}
-		if (!isnan(_EC2B4)) {
-			_EC2B4 = NAN;
+		if (!isnan(mPointer._10C)) {
+			mPointer._10C = NAN;
 		}
 	}
 
@@ -1192,7 +1201,7 @@ void CGame::Update(u32 frames)
 		}
 		if (gGame.mGs._1BA8) {
 			WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
-			scene->vf034(scene->mPending, ((XObjPool*)mXObjPools)[3].Get(0)->mObject.m_pScnMdl);
+			scene->vf034(scene->mPending, mXObjs.mPools[3].Get(0)->mObject.m_pScnMdl);
 			StepSceneDraws(frames);
 		}
 		UpdateXSound(&gGame.mSound, frames);
@@ -1202,7 +1211,7 @@ void CGame::Update(u32 frames)
 		ClearStatusFlags(8);
 		ResumeGameSounds(this, 0.0f);
 	}
-	if (GetStatusFlags(1) || (mTitleState >= 11 && mTitleState < 23)) {
+	if (GetStatusFlags(1) || (mTitle.mState >= 11 && mTitle.mState < 23)) {
 		if (IsSystemMessage3Shown()) { // the message that the remote is gone stops the game
 			if (!GetStatusFlags(0x800000000000000ULL)) {
 				SetStatusFlags(0x800000000000000ULL);
@@ -1211,7 +1220,7 @@ void CGame::Update(u32 frames)
 			}
 			if (gGame.mGs._1BA8) {
 				WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
-				scene->vf034(scene->mPending, ((XObjPool*)mXObjPools)[3].Get(0)->mObject.m_pScnMdl);
+				scene->vf034(scene->mPending, mXObjs.mPools[3].Get(0)->mObject.m_pScnMdl);
 				StepSceneDraws(frames);
 			}
 			UpdateWiiHomeMenu(&mHomeMenu, frames);
@@ -1229,11 +1238,11 @@ void CGame::Update(u32 frames)
 		BuildObjectDrawList(this);
 	}
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL)) {
-		if (!GetStatusFlags(0x20) && !mMenuActive && mEvtData.mScript == NULL) {
+		if (!GetStatusFlags(0x20) && !mMenu.mActive && mEvt.mData.mScript == NULL) {
 			if (gWiiPointer.mFlags & 0x400) {
-				fn_80084B90(&mMenuActive, 1);
+				fn_80084B90(&mMenu.mActive, 1);
 			} else if (gWiiPointer.mFlags & 0x80) {
-				fn_80084B90(&mMenuActive, 1);
+				fn_80084B90(&mMenu.mActive, 1);
 			}
 		}
 		GetStatusFlags(0x20);
@@ -1248,13 +1257,13 @@ void CGame::Update(u32 frames)
 	}
 
 	for (i = 0; i < 0x400; i++) {
-		mObjectRefs[i].mObj = NULL;
+		mDrawLists[1].mRefs[i].mObj = NULL;
 	}
-	mObjectRefCount = 0;
+	mDrawLists[1].mCount = 0;
 	if (!IsLoadStepRunning()) {
-		if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
-			for (i = 0; i < mDrawRefCount; i++) {
-				XObj* obj = (XObj*)mDrawRefs[i].mObj;
+		if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
+			for (i = 0; i < mDrawLists[0].mCount; i++) {
+				XObj* obj = (XObj*)mDrawLists[0].mRefs[i].mObj;
 				if ((obj->mStatus.mFlags & 1) && obj->_188 && obj->mBaseMtxPtr == NULL) {
 					obj->vf15C();
 					obj->UpdateObject(frames);
@@ -1295,7 +1304,7 @@ void CGame::Update(u32 frames)
 		}
 	}
 	if (GetStatusFlags(0x2000000000000ULL)) { // flag 0x2000000000000 arms the stage timer
-		if (IsRunning() && mEvtData.mScript == NULL && !mMenuActive && !GetStatusFlags(0xC00) && mTimeState.mDuration > 0.0f) {
+		if (IsRunning() && mEvt.mData.mScript == NULL && !mMenu.mActive && !GetStatusFlags(0xC00) && mTimeState.mDuration > 0.0f) {
 			if (!mTimeState.mRunning) {
 				mTimeState.mTime = frames * (mTimeState.mDuration / (600.0f * gRefreshRate)) + mTimeState.mTime;
 				if (mTimeState.mTime >= 1.0f) { // a full timer runs down
@@ -1306,15 +1315,15 @@ void CGame::Update(u32 frames)
 				mTimeState.mRunning = FALSE;
 				u8* script          = GetStageTimerExpiredScript();
 				if (script != NULL) {
-					StartOrQueueEventScript((CEvt*)_4C8E0, script, 0, -1, -1);
+					StartOrQueueEventScript(&mEvt, script, 0, -1, -1);
 				}
 			}
 		}
 	}
 	if (!GetStatusFlags(0x200000000000002ULL)) {
-		fn_80094C20((CEvt*)_4C8E0, frames);
+		fn_80094C20(&mEvt, frames);
 		for (i = 0; i < 2; i++) {
-			CMsg_Update((CMsg*)mMsgs[i], frames);
+			CMsg_Update(&mMsgs[i], frames);
 		}
 	}
 	if (IsRunning()) {
@@ -1365,17 +1374,17 @@ void CGame::Update(u32 frames)
 		}
 	}
 	if (!mHomeMenu.IsOpen()) {
-		UpdateBootLogos((Logo*)&mLogoState, frames);
-		UpdateTitleScreen((Title*)mTitle, frames);
+		UpdateBootLogos(&mLogo, frames);
+		UpdateTitleScreen(&mTitle, frames);
 		if (!GetStatusFlags(0x200000000000000ULL)) {
-			fn_8008492C(&mMenuActive, frames);
+			fn_8008492C(&mMenu.mActive, frames);
 		}
 	}
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL)) {
-		UpdateHudTransitionsAndIndicators((InfoScrn*)mInfoScrn, frames);
-		((CFbTexEff*)mSubwin)->Update(frames);
+		UpdateHudTransitionsAndIndicators(&mInfoScrn, frames);
+		((CFbTexEff*)&mSubwin)->Update(frames);
 		for (i = 0; i < 5; i++) {
-			FbMirror* mirror = &((FbMirror*)mMirrors)[i];
+			FbMirror* mirror = &mMirrors[i];
 			bool off         = true;
 			if (mirror->mJoint != NULL && !(mirror->mJoint->mStatus & 0x1000000000000ULL)) {
 				off = false;
@@ -1389,29 +1398,29 @@ void CGame::Update(u32 frames)
 		UpdateStageNameBubbles(this, frames);
 	}
 
-	// the 3D sound listens from a little in front of the camera, or of the point _EE1F0 names
-	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
+	// the 3D sound listens from a little in front of the camera, or of the point mListener.mPoint names
+	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		CCamera* camera = GetCamera();
-		if (!isnan(_EE1F0.x)) {
-			CVec dir = camera->mView.mEye - _EE1F0;
+		if (!isnan(mListener.mPoint.x)) {
+			CVec dir = camera->mView.mEye - mListener.mPoint;
 			PSVECNormalize(&dir, &dir);
-			_EE1E0 = _EE1F0 + dir * 50.0f;
+			mListener.mPos = mListener.mPoint + dir * 50.0f;
 		} else {
 			CVec dir = camera->mView.mInterest - camera->mView.mEye;
 			PSVECNormalize(&dir, &dir);
-			_EE1E0 = camera->mView.mEye + dir * 50.0f;
+			mListener.mPos = camera->mView.mEye + dir * 50.0f;
 		}
-		((CSound3D*)&gGame.mSound.mSound3DManager)->SetListener(GetCamera()->mView.mAngle.y, &_EE1E0);
+		((CSound3D*)&gGame.mSound.mSound3DManager)->SetListener(GetCamera()->mView.mAngle.y, &mListener.mPos);
 	}
 	UpdateXSound(&gGame.mSound, frames);
-	for (i = 0; i < mObjectRefCount; i++) {
-		XObj* obj = (XObj*)mObjectRefs[i].mObj;
+	for (i = 0; i < mDrawLists[1].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if (obj->mStatus.mFlags & 1) {
 			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, obj->mObject.m_pScnMdl);
 		}
 	}
-	if (IsLoadStepRunning() && mLoadStep > 20 && (((XObj*)_EC2D0)->mStatus.mFlags & 1)) { // the loading screen's robot
-		XObj* robot = (XObj*)_EC2D0;
+	if (IsLoadStepRunning() && mLoadStep > 20 && (((XObj*)mPointer.mCursor)->mStatus.mFlags & 1)) { // the loading screen's robot
+		XObj* robot = (XObj*)mPointer.mCursor;
 		if (robot->GetAnimId() != 1 && robot->IsAnimDone()) {
 			robot->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		}
@@ -1421,10 +1430,10 @@ void CGame::Update(u32 frames)
 	}
 	StepSceneDraws(frames);
 
-	s32 count = mObjectRefCount;
-	if (!IsLoadStepRunning() && GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
-		for (i = 0; i < mDrawRefCount; i++) {
-			XObj* obj = (XObj*)mDrawRefs[i].mObj;
+	s32 count = mDrawLists[1].mCount;
+	if (!IsLoadStepRunning() && GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
+		for (i = 0; i < mDrawLists[0].mCount; i++) {
+			XObj* obj = (XObj*)mDrawLists[0].mRefs[i].mObj;
 			if (obj->mStatus.mFlags & 1) {
 				if (obj->_188 && obj->mBaseMtxPtr == NULL) {
 					obj->vf16C();
@@ -1438,24 +1447,24 @@ void CGame::Update(u32 frames)
 		fn_800D1A8C(GetPlayer(), frames);
 		fn_800D1AF8(GetPlayer(), frames);
 	}
-	for (i = count; i < mObjectRefCount; i++) { // the ones the objects listed while they ran
-		XObj* obj = (XObj*)mObjectRefs[i].mObj;
+	for (i = count; i < mDrawLists[1].mCount; i++) { // the ones the objects listed while they ran
+		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if ((obj->mStatus.mFlags & 1) && !(obj->_188 && obj->mBaseMtxPtr == NULL)) {
 			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, obj->mObject.m_pScnMdl);
 		}
 	}
 	StepSceneDraws(frames);
-	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
+	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		fn_800D1BF0(GetPlayer(), frames);
 	}
 	StepSceneDraws(frames);
-	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
+	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		fn_800D1B64(GetPlayer(), frames);
 	}
 	StepSceneDraws(frames);
-	if (!GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
+	if (!GetStatusFlags(0x200000000000002ULL) && !mMenu.mActive) {
 		fn_800A13D0(&lbl_8044EE4C, GetCamera());
-		fn_800A13D0(mEmitters, GetCamera());
+		fn_800A13D0(mEvtPtcl.mEmitters, GetCamera());
 	}
 
 	// the effects follow the camera: the stage camera object's when its scene brings one, else the game's
@@ -1464,22 +1473,22 @@ void CGame::Update(u32 frames)
 		Vec eye        = camera.mView.mEye;
 		for (u32 j = 0; j < 6; j++) {
 			if (j != 4) {
-				fn_802BE03C(_B7A8, &eye, camera.mViewMtx, camera.mProjection, frames, j, camera.mNear, camera.mFar);
+				fn_802BE03C(&mEffects, &eye, camera.mViewMtx, camera.mProjection, frames, j, camera.mNear, camera.mFar);
 			}
 		}
 		CCamera screen = *GetCamera();
 		eye            = screen.mView.mEye;
-		fn_802BE03C(_B7A8, &eye, screen.mViewMtx, screen.mProjection, frames, 4, screen.mNear, screen.mFar);
+		fn_802BE03C(&mEffects, &eye, screen.mViewMtx, screen.mProjection, frames, 4, screen.mNear, screen.mFar);
 	} else if (mResetRequested) {
-		fn_802BDC98(_B7A8, 0);
-		fn_802BDC98(_B7A8, 1);
+		fn_802BDC98(&mEffects, 0);
+		fn_802BDC98(&mEffects, 1);
 	}
 
-	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000000ULL) && !mMenuActive && !mHomeMenu.IsOpen()) {
+	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000000ULL) && !mMenu.mActive && !mHomeMenu.IsOpen()) {
 		mMotionControlCamera.Update(frames);
 	}
 	if (!mHomeMenu.IsOpen()) {
-		XObj* camera = ((XObjPool*)mXObjPools)[0].Get(0);
+		XObj* camera = mXObjs.mPools[0].Get(0);
 		if (camera != NULL && (camera->mStatus.mFlags & 1) && ((XObjScnCam*)camera)->mScene != NULL
 		    && ((XObjScnCam*)camera)->mScene->_2888 != NULL) {
 			fn_800C7764(camera, GetCamera());
@@ -1488,8 +1497,8 @@ void CGame::Update(u32 frames)
 	if (BeginSceneCamera()) {
 		vf54();
 	}
-	for (i = 0; i < mObjectRefCount; i++) {
-		XObj* obj = (XObj*)mObjectRefs[i].mObj;
+	for (i = 0; i < mDrawLists[1].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if (obj->mStatus.mFlags & 1) {
 			fn_800B4988(obj);
 		}
@@ -1500,7 +1509,7 @@ void CGame::Update(u32 frames)
 	PointerPick pick = { NAN, NULL };
 	ScopePick scope  = { NAN, NULL, 0.0f, FALSE, 0 };
 	if (gWiiPointer.mPointerValid && GetStatusFlags(1) && (GetPlayer()->mPlayerFlags & 0x20000000)
-	    && !((XObjChrMenu*)GetPlayer()->_19EE4)->IsOpen() && mEvtData.mScript == NULL && !IsLoadStepRunning()) {
+	    && !((XObjChrMenu*)GetPlayer()->_19EE4)->IsOpen() && mEvt.mData.mScript == NULL && !IsLoadStepRunning()) {
 		// in tenths: popper parameter 0 is the range, 1 the range with the upgrade
 		f32 range = (s32)GetPopperParameter(FindOwnedInventoryItemIndex(GetPlayer()->mParams.mInventory.mItems, 0x36) >= 0) / 10.0f;
 		const Vec* pointer   = &gWiiPointer.mPointer;
@@ -1519,8 +1528,8 @@ void CGame::Update(u32 frames)
 				CVec eye = GetCamera()->mView.mEye;
 				CVec muzzle(fn_8010BEE0(&GetPlayer()->mPopper));
 				XObj* held = GetPlayer()->mLift.mState == 0 ? NULL : GetPlayer()->mLift.mTarget;
-				for (i = 0; i < mObjectRefCount; i++) {
-					XObj* obj = (XObj*)mObjectRefs[i].mObj;
+				for (i = 0; i < mDrawLists[1].mCount; i++) {
+					XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 					if (obj == NULL) {
 						continue;
 					}
@@ -1608,7 +1617,7 @@ void CGame::Update(u32 frames)
 		}
 	} else if (GetStatusFlags(0x100) && GetPlayer()->GetAttachment() == 2) {
 		// the eye camera keeps the last aim while the pointer is briefly off the screen
-		if (_EC2B4 > 0.0f) {
+		if (mPointer._10C > 0.0f) {
 			AimAtPointer(this);
 		} else {
 			fn_800E8140(GetPlayer(), GetPlayer()->mRotY, 0.0f);
@@ -1616,37 +1625,37 @@ void CGame::Update(u32 frames)
 	}
 
 	// the HUD's object fades in and its marker turns while the pointer stays on it
-	if (pick.mObj != mHudObject) {
-		mHudObject  = pick.mObj;
-		mHudObjectX = 0.0f;
+	if (pick.mObj != mPointer.mHudObject) {
+		mPointer.mHudObject  = pick.mObj;
+		mPointer.mHudObjectX = 0.0f;
 	}
-	if (mHudObject != NULL) {
-		if (mHudObjectX < 1.0f) {
-			if ((mHudObjectX += 0.1f * frames) > 1.0f) {
-				mHudObjectX = 1.0f;
+	if (mPointer.mHudObject != NULL) {
+		if (mPointer.mHudObjectX < 1.0f) {
+			if ((mPointer.mHudObjectX += 0.1f * frames) > 1.0f) {
+				mPointer.mHudObjectX = 1.0f;
 			}
 		}
-		mHudObjectY += DEG2RAD * 3.0f * frames;
-	} else if (mHudObjectX > 0.0f) {
-		if ((mHudObjectX -= 0.1f * frames) < 0.0f) {
-			mHudObjectX = 0.0f;
+		mPointer.mHudObjectY += DEG2RAD * 3.0f * frames;
+	} else if (mPointer.mHudObjectX > 0.0f) {
+		if ((mPointer.mHudObjectX -= 0.1f * frames) < 0.0f) {
+			mPointer.mHudObjectX = 0.0f;
 		}
 	}
 
 	// a new scope target: its marker clicks, every tenth time a longer sound; an item plays one of its
 	// stage's sounds for the speed the pointer came at, at night a random one of twenty
-	if (scope.mObj != mScopeTarget) {
-		mScopeTarget = scope.mObj;
+	if (scope.mObj != mPointer.mScopeTarget) {
+		mPointer.mScopeTarget = scope.mObj;
 		if (scope.mObj != NULL) {
 			if (scope.mObj->_18C >= 0) {
-				mScopeMarker = scope.mObj->_18C;
-				mScopeItem   = -1;
+				mPointer.mScopeMarker = scope.mObj->_18C;
+				mPointer.mScopeItem   = -1;
 			} else {
-				s32 item       = scope.mObj->GetObjFlags();
-				mScopeItem     = item;
-				mScopeMarker   = -1;
-				mScopeRareItem = IsScopeRareItem(item);
-				fn_80114564(mScopeTarget);
+				s32 item                = scope.mObj->GetObjFlags();
+				mPointer.mScopeItem     = item;
+				mPointer.mScopeMarker   = -1;
+				mPointer.mScopeRareItem = IsScopeRareItem(item);
+				fn_80114564(mPointer.mScopeTarget);
 			}
 			if (scope.mSpeed < 0.007f) {
 				scope.mLevel = 1;
@@ -1655,53 +1664,53 @@ void CGame::Update(u32 frames)
 			} else {
 				scope.mLevel = 3;
 			}
-			if (mScopeZoom > scope.mLevel) {
-				if (mScopeZoom > 2.0f) {
-					mScopeLevel = 3;
-				} else if (mScopeZoom > 1.0f) {
-					mScopeLevel = 2;
+			if (mPointer.mScopeZoom > scope.mLevel) {
+				if (mPointer.mScopeZoom > 2.0f) {
+					mPointer.mScopeLevel = 3;
+				} else if (mPointer.mScopeZoom > 1.0f) {
+					mPointer.mScopeLevel = 2;
 				} else {
-					mScopeLevel = 1;
+					mPointer.mScopeLevel = 1;
 				}
 			} else {
-				mScopeLevel = scope.mLevel;
-				mScopeSpeed = scope.mSpeed;
-				mScopeZoom  = scope.mLevel;
+				mPointer.mScopeLevel = scope.mLevel;
+				mPointer.mScopeSpeed = scope.mSpeed;
+				mPointer.mScopeZoom  = scope.mLevel;
 			}
-			if (mScopeMarker >= 0) {
+			if (mPointer.mScopeMarker >= 0) {
 				if (IsWiiSfxPlaying(&gGame.mSound, 0x262)) {
 					StopWiiSfx(&gGame.mSound, 0x262, 0.1f);
 				}
-				if (++mScopeTicks >= 10) {
+				if (++mPointer.mScopeTicks >= 10) {
 					PlayWiiSoundEffect(&gGame.mSound, 0x263, 1.0f, 0.0f);
-					mScopeTicks = 0;
+					mPointer.mScopeTicks = 0;
 				} else {
 					PlayWiiSoundEffect(&gGame.mSound, 0x262, 1.0f, 0.0f);
 				}
-			} else if (mScopeItem >= 0) {
+			} else if (mPointer.mScopeItem >= 0) {
 				if (mTimeState.mMode == 1 && mTimeState.mTime > 0.5f
 				    && (gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0) == 0
 				    && FindSound(&gGame.mSound, 0x10) == NULL) {
-					if (mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mScopeSound)) {
-						StopWiiSfx(&gGame.mSound, mScopeSound, 0.1f);
+					if (mPointer.mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mPointer.mScopeSound)) {
+						StopWiiSfx(&gGame.mSound, mPointer.mScopeSound, 0.1f);
 					}
 					s32 index = rand() % 20;
-					if (index == mScopeSound) {
-						mScopeSound = (index + 1) % 20;
+					if (index == mPointer.mScopeSound) {
+						mPointer.mScopeSound = (index + 1) % 20;
 					} else {
-						mScopeSound = index;
+						mPointer.mScopeSound = index;
 					}
-					PlayWiiSoundEffect(&gGame.mSound, mScopeSound + 0x264, 1.0f, 0.0f);
+					PlayWiiSoundEffect(&gGame.mSound, mPointer.mScopeSound + 0x264, 1.0f, 0.0f);
 				} else if (lbl_802C49C8[mStage].mSounds != NULL) {
-					if (mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mScopeSound)) {
-						StopWiiSfx(&gGame.mSound, mScopeSound, 0.2f);
+					if (mPointer.mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mPointer.mScopeSound)) {
+						StopWiiSfx(&gGame.mSound, mPointer.mScopeSound, 0.2f);
 					}
 					const ScopeStageSounds& sounds = lbl_802C49C8[mStage];
-					mScopeSoundIndex               = (mScopeSoundIndex + 1) % sounds.mCount;
-					mScopeSound                    = sounds.mSounds[mScopeSoundIndex + (mScopeLevel - 1) * sounds.mCount];
-					PlayWiiSoundEffect(&gGame.mSound, mScopeSound, 1.0f, 0.0f);
+					mPointer.mScopeSoundIndex      = (mPointer.mScopeSoundIndex + 1) % sounds.mCount;
+					mPointer.mScopeSound           = sounds.mSounds[mPointer.mScopeSoundIndex + (mPointer.mScopeLevel - 1) * sounds.mCount];
+					PlayWiiSoundEffect(&gGame.mSound, mPointer.mScopeSound, 1.0f, 0.0f);
 				} else if (mStage == 11) {
-					switch (mScopeItem) {
+					switch (mPointer.mScopeItem) {
 					case 0:
 						PlayWiiSoundEffect(&gGame.mSound, 0x431, 1.0f, 0.0f);
 						break;
@@ -1710,7 +1719,7 @@ void CGame::Update(u32 frames)
 						break;
 					}
 				} else if (mStage == 18) {
-					switch (mScopeItem) {
+					switch (mPointer.mScopeItem) {
 					case 0xE:
 						PlayWiiSoundEffect(&gGame.mSound, 0x455, 1.0f, 0.0f);
 						break;
@@ -1719,7 +1728,7 @@ void CGame::Update(u32 frames)
 						break;
 					}
 				} else if (mStage == 22) {
-					switch (mScopeItem) {
+					switch (mPointer.mScopeItem) {
 					case 0:
 						PlayWiiSoundEffect(&gGame.mSound, 0x47D, 1.0f, 0.0f);
 						break;
@@ -1731,33 +1740,33 @@ void CGame::Update(u32 frames)
 			}
 		}
 	}
-	if (mScopeTarget != NULL) {
-		if (mScopeFade < 1.0f) {
-			mScopeFade = 1.0f;
+	if (mPointer.mScopeTarget != NULL) {
+		if (mPointer.mScopeFade < 1.0f) {
+			mPointer.mScopeFade = 1.0f;
 		}
-		if (mScopeFade2 < 1.0f) {
-			mScopeFade2 = 1.0f;
+		if (mPointer.mScopeFade2 < 1.0f) {
+			mPointer.mScopeFade2 = 1.0f;
 		}
 	} else {
-		if (mScopeFade > 0.0f) {
-			if ((mScopeFade -= 0.05f * frames) <= 0.0f) {
-				mScopeFade = 0.0f;
-				mScopeZoom = 1.0f;
+		if (mPointer.mScopeFade > 0.0f) {
+			if ((mPointer.mScopeFade -= 0.05f * frames) <= 0.0f) {
+				mPointer.mScopeFade = 0.0f;
+				mPointer.mScopeZoom = 1.0f;
 			}
 		}
-		if (mScopeFade2 > 0.0f) {
-			if ((mScopeFade2 -= 0.02f * frames) <= 0.0f) {
-				mScopeFade2 = 0.0f;
+		if (mPointer.mScopeFade2 > 0.0f) {
+			if ((mPointer.mScopeFade2 -= 0.02f * frames) <= 0.0f) {
+				mPointer.mScopeFade2 = 0.0f;
 			}
 		}
 	}
-	if (mScopeZoom > 1.0f) {
-		if ((mScopeZoom -= 0.01f * frames) < 1.0f) {
-			mScopeZoom = 1.0f;
+	if (mPointer.mScopeZoom > 1.0f) {
+		if ((mPointer.mScopeZoom -= 0.01f * frames) < 1.0f) {
+			mPointer.mScopeZoom = 1.0f;
 		}
 	}
-	if (mScopeZoom > 0.0f) {
-		mScopeAngle += frames * (DEG2RAD * 3.0f * (mScopeZoom * mScopeZoom));
+	if (mPointer.mScopeZoom > 0.0f) {
+		mPointer.mScopeAngle += frames * (DEG2RAD * 3.0f * (mPointer.mScopeZoom * mPointer.mScopeZoom));
 	}
 }
 
