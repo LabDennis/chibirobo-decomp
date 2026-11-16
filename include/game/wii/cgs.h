@@ -626,39 +626,6 @@ public:
 
 	virtual ~CGsChannel() { } // _08
 
-	// a component is only written when it changes
-	void SetAmbColor(s32 r, s32 g, s32 b, s32 a)
-	{
-		if (mAmbColor.r != r) {
-			mAmbColor.r = r;
-		}
-		if (mAmbColor.g != g) {
-			mAmbColor.g = g;
-		}
-		if (mAmbColor.b != b) {
-			mAmbColor.b = b;
-		}
-		if (mAmbColor.a != a) {
-			mAmbColor.a = a;
-		}
-	}
-	void SetAmbColor(GXColor color) { SetAmbColor(color.r, color.g, color.b, color.a); }
-	void SetMatColor(s32 r, s32 g, s32 b, s32 a)
-	{
-		if (mMatColor.r != r) {
-			mMatColor.r = r;
-		}
-		if (mMatColor.g != g) {
-			mMatColor.g = g;
-		}
-		if (mMatColor.b != b) {
-			mMatColor.b = b;
-		}
-		if (mMatColor.a != a) {
-			mMatColor.a = a;
-		}
-	}
-	void SetMatColor(GXColor color) { SetMatColor(color.r, color.g, color.b, color.a); }
 	void SetCtrl(GXChannelID id, GSChanCtrl ctrl);                                // 0x802AA298
 	void Set(GXChannelID id, GSChanCtrl ctrl, GXColor ambient, GXColor material); // 0x802AA2D4
 	void SetNext(CGsChannel* next);                                               // 0x802AA418
@@ -815,6 +782,12 @@ public:
 	virtual void SetColor(u8 r, u8 g, u8 b, u8 a); // _44
 
 	CLight* mNext; // _68
+
+	void Reset(u8 r, u8 g, u8 b, u8 a); // 0x802A89E0, a cleared light of that color, shared by the four Init kinds
+	CVec GetViewPosition(Mtx view);     // 0x802A8D1C
+	CVec GetPosition();                 // 0x802A8DA4, an infinite light's is pushed far out along its direction
+	CVec GetViewDirection(Mtx view);    // 0x802A8E64
+	CColor GetColor();                  // 0x802A8F18
 };
 STATIC_ASSERT(sizeof(CLight) == 0x6C);
 

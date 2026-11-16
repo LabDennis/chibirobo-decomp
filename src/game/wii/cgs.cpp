@@ -1,15 +1,18 @@
-// The Wii's cgs.cpp from the screen mode on, .text 0x802A977C-0x802AEA44: the GameCube cgs.cpp
-// functions in the GameCube file's order, plus the Wii's own text helpers.
+// The Wii's cgs.cpp from the camera on, .text 0x802A80FC-0x802AEA44: camera, light and fog, the
+// included cgs_scrn.cpp and cgs_chan.cpp, then the GameCube cgs.cpp functions in the GameCube file's
+// order, plus the Wii's own text helpers.
 //
-// NONMATCHING: DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %) read the camera's bottom
-// before its top for the flip test where we read top first (an inline for the test makes it worse).
-// GetXfbHeight (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue in front of
-// it, which shift its assert in the string pool. GetGlyph (99 %) and MeasureGameTextWidth (99 %) are
-// structurally identical and differ only in callee-saved colouring and in vtable/sdata2 referent
-// placement; DrawGsText (91 %) and DrawGsStrokeText (87 %) additionally diverge in float allocation and
-// stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held
-// constants). No behavioural difference in any of them. Not written yet: CGs::Init (0x802AA610), the
-// camera begin/end and scene list calls (0x802AB790-0x802AB864) and SetGsChannelMaterialAndLighting.
+// NONMATCHING: the perspective CCamera::Init (79 %) reads the frame buffer height before the width
+// for the aspect; CCameraView::CalcUp (92 %) reads the next angle before it narrows the last sine;
+// CLight::GetPosition (83 %) tests the light kind before it saves its registers and
+// CLight::GetViewDirection (93 %) zeroes a second, unused vector on the stack. DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %)
+// read the camera's bottom before its top for the flip test where we read top first (an inline for the test makes it worse). GetXfbHeight
+// (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue in front of it, which shift its assert in the string pool.
+// GetGlyph (99 %) and MeasureGameTextWidth (99 %) are structurally identical and differ only in callee-saved colouring and in vtable/sdata2
+// referent placement; DrawGsText (91 %) and DrawGsStrokeText (87 %) additionally diverge in float allocation and stack frame size (retail
+// spills ~0x10 more, plus two f64 spill slots the allocator gives us as held constants). No behavioural difference in any of them. Not
+// written yet: CGs::Init (0x802AA610), the camera begin/end and scene list calls (0x802AB790-0x802AB864) and
+// SetGsChannelMaterialAndLighting.
 
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
@@ -18,6 +21,393 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include "Dolphin/vi.h"
+
+#include "arithmetic.h"
+#include "game/gmath.h"
+#include <math.h>
+#include <string.h>
+
+extern "C" {
+void C_MTXFrustum(Mtx44 mtx, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f);
+void PSMTX44Identity(Mtx44 mtx);
+void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 ab);
+u32 C_MTX44Inverse(Mtx44 src, Mtx44 inv);
+}
+
+// The camera, light and fog code in front of the screen code, 0x802A80FC-0x802A90C8. It belongs to this
+// translation unit (the camera and light vtables sit in its data); which included files it came from is
+// not known, none of it asserts.
+
+void CCamera::InitView(const GXRenderModeObj* rmode)
+{
+	mView.mDirty      = TRUE;
+	mView.mEye.x      = 0.0f;
+	mView.mEye.y      = 0.0f;
+	mView.mEye.z      = 0.0f;
+	mView.mInterest.x = 0.0f;
+	mView.mInterest.y = 0.0f;
+	mView.mInterest.z = 0.0f;
+	mView.mAngle.x    = 0.0f;
+	mView.mAngle.y    = 0.0f;
+	mView.mAngle.z    = 0.0f;
+	mView.mUp.x       = 0.0f;
+	mView.mUp.y       = 1.0f;
+	mView.mUp.z       = 0.0f;
+	mView.mDirty      = TRUE;
+	PSMTX44Identity(mViewMtx);
+	mViewSource = NULL;
+	CCamera::vf88(0.0f, 0.0f, rmode->fbWidth, rmode->efbHeight, 0.0f, 1.0f);
+	PSMTX44Identity(mViewportMtx);
+}
+
+void CCamera::Init(f32 near, f32 far, f32 fov, f32 scale, const GXRenderModeObj* rmode)
+{
+	mFov              = fov;
+	mType             = 0;
+	mNear             = near;
+	mFar              = far;
+	mProjectionDirty  = TRUE;
+	mIsOrtho          = 0.0f;
+	mProjectionSource = NULL;
+	mAspect           = (rmode->fbWidth * scale) / rmode->efbHeight;
+	mScale            = scale;
+	InitView(rmode);
+}
+
+void CCamera::vf10(f32 near, f32 far, f32 top, f32 bottom, f32 left, f32 right, f32 scale, const GXRenderModeObj* rmode)
+{
+	mType             = 1;
+	mTop              = top;
+	mBottom           = bottom;
+	mLeft             = left * scale;
+	mRight            = right * scale;
+	mNear             = near;
+	mFar              = far;
+	mProjectionDirty  = TRUE;
+	mIsOrtho          = 0.0f;
+	mProjectionSource = NULL;
+	mScale            = scale;
+	InitView(rmode);
+}
+
+void CCamera::Init(f32 top, f32 bottom, f32 left, f32 right, f32 near, f32 far, f32 scale, const GXRenderModeObj* rmode)
+{
+	mType             = 2;
+	mTop              = top;
+	mBottom           = bottom;
+	mLeft             = left * scale;
+	mRight            = right * scale;
+	mNear             = near;
+	mFar              = far;
+	mProjectionDirty  = TRUE;
+	mIsOrtho          = 1.0f;
+	mProjectionSource = NULL;
+	mScale            = scale;
+	InitView(rmode);
+}
+
+BOOL CCamera::SetCurrent()
+{
+	BOOL projection;
+	if (mProjectionDirty && mProjectionSource == NULL) {
+		switch (mType) {
+		case 0:
+			C_MTXPerspective(mProjection, mFov, mAspect, mNear, mFar);
+			break;
+		case 1:
+			C_MTXFrustum(mProjection, mTop, mBottom, mLeft, mRight, mNear, mFar);
+			break;
+		case 2:
+			C_MTXOrtho(mProjection, mTop, mBottom, mLeft, mRight, mNear, mFar);
+			break;
+		}
+		mProjectionDirty = FALSE;
+	} else if (mProjectionSource != NULL) {
+		PSMTX44Copy(mProjectionSource, mProjection);
+	} else {
+		projection = FALSE;
+		goto view;
+	}
+	mProjParams[0] = mProjection[0][0];
+	mProjParams[1] = mProjection[0][2];
+	mProjParams[2] = mProjection[1][1];
+	mProjParams[3] = mProjection[1][2];
+	mProjParams[4] = mProjection[2][2];
+	mProjParams[5] = mProjection[2][3];
+	projection     = TRUE;
+view:
+	BOOL changed = projection != FALSE;
+
+	BOOL view;
+	if (mView.mDirty && mViewSource == NULL) {
+		C_MTXLookAt(mViewMtx, &mView.mEye, &mView.mUp, &mView.mInterest);
+		mView.mDirty = FALSE;
+		view         = TRUE;
+	} else if (mViewSource != NULL) {
+		PSMTXCopy(mViewSource, mViewMtx);
+		view = TRUE;
+	} else {
+		view = FALSE;
+	}
+	changed = (changed | view) != FALSE;
+
+	BOOL viewport;
+	if (mViewportDirty) {
+		mViewportDirty     = FALSE;
+		mViewportMtx[0][0] = 0.5f * mViewport[2];
+		mViewportMtx[1][1] = 0.5f * -mViewport[3];
+		mViewportMtx[0][3] = 0.5f * mViewport[2] + mViewport[0];
+		mViewportMtx[1][3] = 0.5f * mViewport[3] + mViewport[1];
+		viewport           = TRUE;
+	} else {
+		viewport = FALSE;
+	}
+
+	changed = (changed | viewport) != FALSE;
+	if (changed) {
+		Mtx44 viewMtx;
+		Mtx44 viewportMtx;
+		Mtx44 clip;
+		PSMTX44Copy(mViewMtx, viewMtx);
+		PSMTX44Copy(mViewportMtx, viewportMtx);
+		PSMTX44Concat(viewportMtx, mProjection, clip);
+		PSMTX44Concat(clip, viewMtx, mScreenMtx);
+		C_MTX44Inverse(mScreenMtx, mScreenInv);
+	}
+	return TRUE;
+}
+
+void CCamera::EndCurrent()
+{
+}
+
+void CCameraView::CalcEye()
+{
+	f32 y = HALF_PI + mAngle.y;
+	f32 x = mAngle.x;
+
+	mEye.x       = mInterest.x + mDistance * (f32)cos(y) * (f32)cos(x);
+	f32 cosPitch = (f32)cos(x);
+	f32 sinYaw   = (f32)sin(y);
+	f32 zOffset  = mDistance * -sinYaw;
+	mEye.z       = mInterest.z + zOffset * cosPitch;
+	mEye.y       = mInterest.y + mDistance * (f32)sin(x);
+	mDirty       = TRUE;
+}
+
+// mirrors CalcEye with the pitch pushed past PI
+void CCameraView::CalcInterest()
+{
+	f32 y = HALF_PI + mAngle.y;
+	f32 x = PI + mAngle.x;
+
+	mInterest.x  = mEye.x + mDistance * (f32)cos(y) * (f32)cos(x);
+	f32 cosPitch = (f32)cos(x);
+	f32 sinYaw   = (f32)sin(y);
+	f32 zOffset  = mDistance * -sinYaw;
+	mInterest.z  = mEye.z + zOffset * cosPitch;
+	mInterest.y  = mEye.y + mDistance * (f32)sin(x);
+	mDirty       = TRUE;
+}
+
+void CCameraView::CalcAngle()
+{
+	f32 dy    = mInterest.y - mEye.y;
+	f32 dz    = mInterest.z - mEye.z;
+	f32 dx    = mInterest.x - mEye.x;
+	f32 angle = (f32)atan2(FSqrt(dx * dx + dz * dz), FSqrt(dy * dy)); // horizontal run against |rise|
+
+	mAngle.x = dy < 0.0f ? HALF_PI - angle : angle - HALF_PI;
+	mAngle.y = (f32)atan2(mInterest.x - mEye.x, mInterest.z - mEye.z);
+	mDirty   = TRUE;
+}
+
+void CCameraView::CalcUp()
+{
+	mUp.x  = -(f32)cos(mAngle.y) * (f32)sin(mAngle.z);
+	mUp.z  = (f32)sin(mAngle.y) * (f32)sin(mAngle.z);
+	mUp.y  = (f32)cos(mAngle.z);
+	mDirty = TRUE;
+}
+
+void CCameraView::CalcDistance()
+{
+	mDistance = PSVECDistance(&mEye, &mInterest);
+	mDirty    = TRUE;
+}
+
+CMtxP CCamera::GetViewSource()
+{
+	return mViewSource;
+}
+
+void CCamera::SetAngleZ(f32 z)
+{
+	mView.mAngle.z = z;
+	mView.mDirty   = TRUE;
+}
+
+MtxP CCamera::GetProjectionSource()
+{
+	return mProjectionSource;
+}
+
+void CCamera::SetProjectionSource(MtxP projection)
+{
+	mProjectionSource = projection;
+	if (projection == NULL) {
+		mProjectionDirty = TRUE;
+	}
+}
+
+void CLight::Reset(u8 r, u8 g, u8 b, u8 a)
+{
+	memset(this, 0, sizeof(GXLightObj));
+	mFlags      = 0;
+	mPosition.x = 1.0f;
+	mPosition.y = 1.0f;
+	mPosition.z = 1.0f;
+	mInterest.x = 0.0f;
+	mInterest.y = 0.0f;
+	mInterest.z = 0.0f;
+	mNext       = NULL;
+	SetColor(r, g, b, a);
+	vf2C();
+}
+
+void CLight::SetColor(u8 r, u8 g, u8 b, u8 a)
+{
+	GXColor color = { r, g, b, a };
+	GXInitLightColor(this, color);
+}
+
+void CLight::vf2C()
+{
+	mFlags |= 0x8000;
+}
+
+void CLight::InitAmbient(u8 r, u8 g, u8 b, u8 a)
+{
+	Reset(r, g, b, a);
+	mFlags |= 1;
+}
+
+void CLight::InitInfinite(const Vec& position, u8 r, u8 g, u8 b, u8 a)
+{
+	Reset(r, g, b, a);
+	mFlags |= 2;
+	SetPosition(position);
+	GXInitLightAttn(this, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f);
+}
+
+void CLight::SetPosition(const Vec& position)
+{
+	mPosition.Set(position);
+}
+
+void CLight::InitPoint(const Vec& position, u8 r, u8 g, u8 b, u8 a)
+{
+	Reset(r, g, b, a);
+	mFlags |= 4;
+	SetPosition(position);
+	GXInitLightSpot(this, 0.0f, GX_SP_OFF);
+	GXInitLightDistAttn(this, 10000.0f, 0.99f, GX_DA_STEEP);
+}
+
+void CLight::InitSpot(const Vec& position, const Vec& interest, u8 r, u8 g, u8 b, u8 a)
+{
+	Reset(r, g, b, a);
+	mFlags |= 8;
+	SetPosition(position);
+	SetInterest(interest);
+	GXInitLightSpot(this, 30.0f, GX_SP_COS2);
+	GXInitLightDistAttn(this, 10000.0f, 0.99f, GX_DA_STEEP);
+}
+
+void CLight::SetInterest(const Vec& interest)
+{
+	mInterest.Set(interest);
+}
+
+CVec CLight::GetViewPosition(Mtx view)
+{
+	Vec position = GetPosition();
+	PSMTXMultVec(view, &position, &position);
+	CVec result;
+	result.Set(position.x, position.y, position.z);
+	return result;
+}
+
+CVec CLight::GetPosition()
+{
+	if (mFlags & 2) {
+		CVec position;
+		PSVECNormalize(&mPosition, &position);
+		position.x += 1.0e19f;
+		position.y += 1.0e19f;
+		position.z += 1.0e19f;
+		return position;
+	}
+	return mPosition;
+}
+
+CVec CLight::GetViewDirection(Mtx view)
+{
+	CVec direction;
+	if (0.0f != PSVECMag(&mInterest)) {
+		PSMTXMultVecSR(view, &mInterest, &direction);
+		PSVECNormalize(&direction, &direction);
+	} else {
+		Vec zero        = { 0.0f, 0.0f, 0.0f };
+		(Vec&)direction = zero;
+	}
+	return direction;
+}
+
+CColor CLight::GetColor()
+{
+	CColor color;
+	GXGetLightColor(this, &color);
+	return color;
+}
+
+void CLight::SetInterest(f32 x, f32 y, f32 z)
+{
+	mInterest.x = x;
+	mInterest.y = y;
+	mInterest.z = z;
+}
+
+void CLight::InitSpot(const Vec& position, const Vec& interest, u32 color)
+{
+	InitSpot(position, interest, color >> 24, color >> 16, color >> 8, color);
+}
+
+void CLight::InitPoint(const Vec& position, u32 color)
+{
+	InitPoint(position, color >> 24, color >> 16, color >> 8, color);
+}
+
+void CLight::InitInfinite(const Vec& position, u32 color)
+{
+	InitInfinite(position, color >> 24, color >> 16, color >> 8, color);
+}
+
+void CLight::InitAmbient(u32 color)
+{
+	InitAmbient(color >> 24, color >> 16, color >> 8, color);
+}
+
+void CFog::Init(GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ)
+{
+	mType   = type;
+	mStartZ = startZ;
+	mEndZ   = endZ;
+	mNearZ  = nearZ;
+	mFarZ   = farZ;
+	mColor.Set(color);
+	GXSetFog(mType, mStartZ, mEndZ, mNearZ, mFarZ, mColor);
+}
 
 // The screen, render state, tev stage and channel code sits in front of this file's own and is part
 // of the same translation unit: the asserts of cgs_scrn.cpp and cgs_chan.cpp share one string pool.

@@ -154,8 +154,8 @@ void CGsChannel::SetCtrl(GXChannelID id, GSChanCtrl ctrl)
 void CGsChannel::Set(GXChannelID id, GSChanCtrl ctrl, GXColor ambient, GXColor material)
 {
 	SetCtrl(id, ctrl);
-	SetAmbColor(ambient);
-	SetMatColor(material);
+	mAmbColor.Set(ambient);
+	mMatColor.Set(material);
 }
 
 void CGsChannel::SetNext(CGsChannel* next)
