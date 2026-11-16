@@ -4058,9 +4058,9 @@ s32 CEvt::_cmd_SCALE(u8 cmd, s32)
 				CVec step = (CVec(x, y, z) - obj->mMoveScale) / (60.0f * time);
 #endif
 				obj->mMoveScale.mTarget.Set(x, y, z);
-				step.x = Abs(step.x);
-				step.y = Abs(step.y);
-				step.z = Abs(step.z);
+				step.x = ABS(step.x);
+				step.y = ABS(step.y);
+				step.z = ABS(step.z);
 				obj->mMoveScale.mSpeed.Set(step);
 			}
 		} else {
@@ -6481,9 +6481,8 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 				if (angle > PI)
 					angle = TWO_PI - angle;
 				obj->mMoveRotate.mSpeed.x = 0.0f;
-				if (angle < 0.0f)
-					angle = -angle;
-				obj->mMoveRotate.mSpeed.y = angle / (FRAMES_PER_SEC * time);
+				f32 speed                 = ABS(angle);
+				obj->mMoveRotate.mSpeed.y = speed / (FRAMES_PER_SEC * time);
 				obj->mMoveRotate.mSpeed.z = 0.0f;
 				if (anim != -1) {
 					if (anim & 0xFFFF0000) {
@@ -14326,9 +14325,9 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_AND:
 	case EVT_EXPR_OR:
 	case EVT_EXPR_XOR: {
+		u8 binary = op;
 		s32 rhs   = CEvt_Evaluate(evt);
 		s32 lhs   = CEvt_Evaluate(evt);
-		u8 binary = op;
 		if (binary == EVT_EXPR_EQUAL)
 			result = lhs == rhs;
 		if (binary == EVT_EXPR_NOT_EQUAL)
