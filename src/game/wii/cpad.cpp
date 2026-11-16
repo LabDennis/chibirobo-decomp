@@ -46,8 +46,6 @@ s32 KPADCalibrateDPD(s32 channel);
 void KPADDisableStickCrossClamp();
 void KPADSetObjInterval(f32 value);
 void KPADSetFSStickClamp(s8 inner, s8 outer);
-BOOL EnableWiiRemoteSpeaker(RemoteSpeakerChannel*, void (*completion)(s32, s32));
-BOOL DisableWiiRemoteSpeaker(RemoteSpeakerChannel*, void (*completion)(s32, s32));
 }
 
 struct WiiStickRange {
@@ -55,41 +53,6 @@ struct WiiStickRange {
 };
 static WiiStickRange sStickRanges[2];
 static WiiRawSample sRawSamples[16];
-
-// Hardware masks returned by KPAD for the Wii Remote and its extensions.
-enum {
-	WPAD_BUTTON_LEFT  = 0x0001,
-	WPAD_BUTTON_RIGHT = 0x0002,
-	WPAD_BUTTON_DOWN  = 0x0004,
-	WPAD_BUTTON_UP    = 0x0008,
-	WPAD_BUTTON_PLUS  = 0x0010,
-	WPAD_BUTTON_2     = 0x0100,
-	WPAD_BUTTON_1     = 0x0200,
-	WPAD_BUTTON_B     = 0x0400,
-	WPAD_BUTTON_A     = 0x0800,
-	WPAD_BUTTON_MINUS = 0x1000,
-	WPAD_BUTTON_Z     = 0x2000,
-	WPAD_BUTTON_C     = 0x4000,
-	WPAD_BUTTON_HOME  = 0x8000
-};
-
-enum {
-	WPAD_CL_BUTTON_UP    = 0x0001,
-	WPAD_CL_BUTTON_LEFT  = 0x0002,
-	WPAD_CL_TRIGGER_ZR   = 0x0004,
-	WPAD_CL_BUTTON_X     = 0x0008,
-	WPAD_CL_BUTTON_A     = 0x0010,
-	WPAD_CL_BUTTON_Y     = 0x0020,
-	WPAD_CL_BUTTON_B     = 0x0040,
-	WPAD_CL_TRIGGER_ZL   = 0x0080,
-	WPAD_CL_TRIGGER_R    = 0x0200,
-	WPAD_CL_BUTTON_PLUS  = 0x0400,
-	WPAD_CL_BUTTON_HOME  = 0x0800,
-	WPAD_CL_BUTTON_MINUS = 0x1000,
-	WPAD_CL_TRIGGER_L    = 0x2000,
-	WPAD_CL_BUTTON_DOWN  = 0x4000,
-	WPAD_CL_BUTTON_RIGHT = 0x8000
-};
 
 // In table order: Remote directions, two extra repeat masks, +, -; then GC directions, L, R, X, Y.
 static const u64 sRepeatGroups[]
@@ -199,7 +162,7 @@ void CPadOne::Update(const PADStatus* status, s32 frames)
 	u32 device;
 	s32 probe = WPADProbe(mPort, &device);
 	if ((probe == 0 || probe == -2) && device != 0xfd) {
-		if (GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), mPort)->state != 4) {
+		if (!nw4r::snd::detail::RemoteSpeakerManager::GetInstance().GetRemoteSpeaker(mPort).IsAvailable()) {
 			return;
 		}
 	}
@@ -567,12 +530,12 @@ void CPadOne::SetConnectCallback()
 
 void CPadOne::EnableRemoteSpeaker()
 {
-	EnableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), mPort), SpeakerEnabled);
+	nw4r::snd::detail::RemoteSpeakerManager::GetInstance().GetRemoteSpeaker(mPort).Setup(SpeakerEnabled);
 }
 
 void CPadOne::DisableRemoteSpeaker()
 {
-	DisableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), mPort), SpeakerDisabled);
+	nw4r::snd::detail::RemoteSpeakerManager::GetInstance().GetRemoteSpeaker(mPort).Shutdown(SpeakerDisabled);
 }
 
 static void SpeakerEnabled(s32, s32)
@@ -586,9 +549,9 @@ static void SpeakerDisabled(s32, s32)
 static void OnPadConnection(s32 channel, s32 result)
 {
 	if (result == 0) {
-		EnableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), channel), SpeakerEnabled);
+		nw4r::snd::detail::RemoteSpeakerManager::GetInstance().GetRemoteSpeaker(channel).Setup(SpeakerEnabled);
 	} else if (result == -1) {
-		DisableWiiRemoteSpeaker(GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), channel), SpeakerDisabled);
+		nw4r::snd::detail::RemoteSpeakerManager::GetInstance().GetRemoteSpeaker(channel).Shutdown(SpeakerDisabled);
 	}
 }
 

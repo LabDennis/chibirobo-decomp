@@ -8,7 +8,7 @@
 class XObj2D : public XObj {
 public:
 	virtual ~XObj2D() { }
-	virtual void ExecCallbackA(); // _0C
+	virtual void ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _0C
 };
 
 // the menus' pointer, an XObj2D with a little on top: it spins. class name from RTTI

@@ -754,7 +754,7 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 	if (font->mWindowY + font->mHeight > gScreenSafeBottom)
 		font->mWindowY = gScreenSafeBottom - font->mHeight;
 	f32 portraitScale;
-	if (gGame.mWipeTileActive != 0 && font->_1484 == 0)
+	if (gGame.mWipeCine.mActive != 0 && font->_1484 == 0)
 		portraitScale = 0.84615386f;
 	else
 		portraitScale = font->mHeight / 52.0f;

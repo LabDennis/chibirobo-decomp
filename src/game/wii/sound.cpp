@@ -720,7 +720,7 @@ void AnimSfx::Init(WiiPlayerState* owner, AnimSfxEvent* events)
 // whether the event's start or end frame went by
 BOOL AnimSfx::CheckStart(AnimSfxEvent* event, f32 min, f32 max)
 {
-	if (gGame._EE104) {
+	if (gGame.mMovie.mState) {
 		return FALSE;
 	}
 	f32 a = event->mStart;

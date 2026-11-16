@@ -54,6 +54,14 @@ public:
 
 	void Set(f32 tx, f32 ty, f32 tz, f32 sx, f32 sy, f32 sz, f32 rx, f32 ry, f32 rz);
 	MtxP LoadMtx(Mtx view);
+#if defined(VERSION_R24J01)
+	// functions of their own on the Wii, the GameCube file has them inline. The names are ours
+	void CalcNormal(Vec* pos, u16 count, Vec* normal);        // 0x802AF9FC
+	void CalcNormal(PrimVertex* vtx, u16 count, Vec* normal); // 0x802AFA0C
+	MtxP LoadMtxNrm(Mtx view);                                // 0x802AFC64
+	void SetVtxPosClr(Mtx view, GXVtxAttrFmtList* fmt);       // 0x802AFCB4
+	void SetVtxPosNrmClr(Mtx view, GXVtxAttrFmtList* fmt);    // 0x802AFDA8
+#endif
 
 	void SetTrans(f32 x, f32 y, f32 z)
 	{
@@ -107,6 +115,19 @@ public:
 	void Draw(Mtx view, Vec* pos, u32 color, u16 count, GXPrimitive type);
 };
 typedef char CTriangle_size_check[sizeof(CTriangle) == 0x16C ? 1 : -1];
+
+#if defined(VERSION_R24J01)
+// Wii only, the name is RTTI. CGs has one behind its triangle; nothing in the game draws it
+class CCircline : public CPrimitive {
+public:
+	u32 _168;    // _168
+	Vec mCenter; // _16C
+
+	virtual ~CCircline() { }                                                                   // _08
+	virtual void Init(f32 tx, f32 ty, f32 tz, f32 sx, f32 sy, f32 sz, f32 rx, f32 ry, f32 rz); // _0C
+};
+typedef char CCircline_size_check[sizeof(CCircline) == 0x178 ? 1 : -1];
+#endif
 
 // a unit circle fan, the size comes from the scale
 class CCircle : public CPrimitive {
