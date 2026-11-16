@@ -14,6 +14,7 @@
 #include "game/ut.h"
 #include "game/wii/cgs.h"
 #include "game/wii/cresfile.h"
+#include "revolution/mem.h"
 
 // the Wii XObj family, as far as xobj_ut.cpp's pool setup verifies it: names and
 // sizes come from the retail RTTI strings and the element strides the pool
@@ -129,11 +130,364 @@ public:
 	}
 };
 
-// the scene model, as far as the game reads it
-class ScnMdlSimple {
+// the animation resources a brres file holds, each nw4r's handle with the name accessor and the
+// object check of its g3d_resanm*_ac.h; the data only as far as the name offset
+struct ResAnmChrData {
+	u8 _00[0x18];
+	s32 name; // _18
+};
+
+class ResAnmChr {
 public:
-	u8 _00[0xEC];
-	Mtx* mpWorldMtxArray; // _EC, one per ResNodeData::mMtxID
+	ResAnmChrData* mpData; // _00
+
+	ResAnmChr(void* p = NULL)
+	    : mpData((ResAnmChrData*)p)
+	{
+	}
+	bool IsValid() const { return mpData != NULL; }
+	const ResAnmChrData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resanmchr_ac.h", 39, "%s::%s: Object not valid.", "ResAnmChr", __FUNCTION__);
+		}
+		return *mpData;
+	}
+	const char* GetName() const
+	{
+		const ResAnmChrData& r = ref();
+		return r.name != 0 ? (const char*)&r + r.name : NULL;
+	}
+};
+
+struct ResAnmVisData {
+	u8 _00[0x18];
+	s32 name; // _18
+};
+
+class ResAnmVis {
+public:
+	ResAnmVisData* mpData; // _00
+
+	ResAnmVis(void* p = NULL)
+	    : mpData((ResAnmVisData*)p)
+	{
+	}
+	bool IsValid() const { return mpData != NULL; }
+	const ResAnmVisData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resanmvis_ac.h", 39, "%s::%s: Object not valid.", "ResAnmVis", __FUNCTION__);
+		}
+		return *mpData;
+	}
+	const char* GetName() const
+	{
+		const ResAnmVisData& r = ref();
+		return r.name != 0 ? (const char*)&r + r.name : NULL;
+	}
+};
+
+struct ResAnmClrData {
+	u8 _00[0x18];
+	s32 name; // _18
+};
+
+class ResAnmClr {
+public:
+	ResAnmClrData* mpData; // _00
+
+	ResAnmClr(void* p = NULL)
+	    : mpData((ResAnmClrData*)p)
+	{
+	}
+	bool IsValid() const { return mpData != NULL; }
+	const ResAnmClrData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resanmclr_ac.h", 39, "%s::%s: Object not valid.", "ResAnmClr", __FUNCTION__);
+		}
+		return *mpData;
+	}
+	const char* GetName() const
+	{
+		const ResAnmClrData& r = ref();
+		return r.name != 0 ? (const char*)&r + r.name : NULL;
+	}
+};
+
+struct ResAnmTexPatData {
+	u8 _00[0x28];
+	s32 name; // _28
+};
+
+class ResAnmTexPat {
+public:
+	ResAnmTexPatData* mpData; // _00
+
+	ResAnmTexPat(void* p = NULL)
+	    : mpData((ResAnmTexPatData*)p)
+	{
+	}
+	bool IsValid() const { return mpData != NULL; }
+	const ResAnmTexPatData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resanmtexpat_ac.h", 92, "%s::%s: Object not valid.", "ResAnmTexPat", __FUNCTION__);
+		}
+		return *mpData;
+	}
+	const char* GetName() const
+	{
+		const ResAnmTexPatData& r = ref();
+		return r.name != 0 ? (const char*)&r + r.name : NULL;
+	}
+};
+
+struct ResAnmTexSrtData {
+	u8 _00[0x18];
+	s32 name; // _18
+};
+
+class ResAnmTexSrt {
+public:
+	ResAnmTexSrtData* mpData; // _00
+
+	ResAnmTexSrt(void* p = NULL)
+	    : mpData((ResAnmTexSrtData*)p)
+	{
+	}
+	bool IsValid() const { return mpData != NULL; }
+	const ResAnmTexSrtData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resanmtexsrt_ac.h", 38, "%s::%s: Object not valid.", "ResAnmTexSrt", __FUNCTION__);
+		}
+		return *mpData;
+	}
+	const char* GetName() const
+	{
+		const ResAnmTexSrtData& r = ref();
+		return r.name != 0 ? (const char*)&r + r.name : NULL;
+	}
+};
+
+struct ResAnmShpData {
+	u8 _00[0x1C];
+	s32 name; // _1C
+};
+
+class ResAnmShp {
+public:
+	ResAnmShpData* mpData; // _00
+
+	ResAnmShp(void* p = NULL)
+	    : mpData((ResAnmShpData*)p)
+	{
+	}
+	bool IsValid() const { return mpData != NULL; }
+	const ResAnmShpData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resanmshp_ac.h", 166, "%s::%s: Object not valid.", "ResAnmShp", __FUNCTION__);
+		}
+		return *mpData;
+	}
+	const char* GetName() const
+	{
+		const ResAnmShpData& r = ref();
+		return r.name != 0 ? (const char*)&r + r.name : NULL;
+	}
+};
+
+class ResAnmScn {
+public:
+	void* mpData; // _00
+
+	bool IsValid() const { return mpData != NULL; }
+	bool Bind(const ResAnmScn scene); // 0x80265718
+	void Release();
+	bool Bind() { return Bind(*this); }
+};
+
+// the brres file itself
+class ResFile {
+public:
+	void* mpData; // _00
+
+	bool IsValid() const { return mpData != NULL; }
+
+	ResAnmChr GetResAnmChr(const char* pName) const;
+	ResAnmChr GetResAnmChr(int idx) const;
+	u32 GetResAnmChrNumEntries() const;
+	ResAnmVis GetResAnmVis(const char* pName) const;
+	ResAnmVis GetResAnmVis(int idx) const;
+	u32 GetResAnmVisNumEntries() const;
+	ResAnmClr GetResAnmClr(const char* pName) const;
+	ResAnmClr GetResAnmClr(int idx) const;
+	u32 GetResAnmClrNumEntries() const;
+	ResAnmTexPat GetResAnmTexPat(const char* pName) const;
+	ResAnmTexPat GetResAnmTexPat(int idx) const;
+	u32 GetResAnmTexPatNumEntries() const;
+	ResAnmTexSrt GetResAnmTexSrt(const char* pName) const;
+	ResAnmTexSrt GetResAnmTexSrt(int idx) const;
+	u32 GetResAnmTexSrtNumEntries() const;
+	ResAnmShp GetResAnmShp(const char* pName) const;
+	ResAnmShp GetResAnmShp(int idx) const;
+	u32 GetResAnmShpNumEntries() const;
+	ResAnmScn GetResAnmScn(int idx) const;
+	u32 GetResAnmScnNumEntries() const;
+
+	bool HasResAnmChr() const;
+	bool HasResAnmVis() const;
+	bool HasResAnmClr() const;
+	bool HasResAnmTexPat() const;
+	bool HasResAnmTexSrt() const;
+	bool HasResAnmShp() const;
+	bool HasResAnmScn() const;
+
+	void Release();
+	void Terminate();
+};
+
+// the parts of a material the game's colour stage edits, each with g3d_resmat_ac.h's and
+// g3d_restev_ac.h's checks
+struct ResGenModeData {
+	u8 nTexGens;  // _00
+	u8 nChans;    // _01
+	u8 nTevs;     // _02
+	u8 nInds;     // _03
+	u32 cullMode; // _04
+};
+
+class ResGenMode {
+public:
+	ResGenModeData* mpData; // _00
+
+	ResGenMode(void* p = NULL)
+	    : mpData((ResGenModeData*)p)
+	{
+		if ((u32)p & 0x3) {
+			db::Panic("g3d_resmat_ac.h", 175, "NW4R:Failed assertion !((u32)p & 0x3)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	ResGenModeData* ptr() const { return mpData; }
+	void GXSetNumTevStages(u8 num);
+	u8 GXGetNumTevStages() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resmat_ac.h", 209, "NW4R:Failed assertion IsValid()");
+		}
+		return IsValid() ? ptr()->nTevs : 0;
+	}
+};
+
+class ResMatTevColor {
+public:
+	void* mpData; // _00
+
+	ResMatTevColor(void* p = NULL)
+	    : mpData(p)
+	{
+		if ((u32)p & 0x1f) {
+			db::Panic("g3d_resmat_ac.h", 378, "NW4R:Failed assertion !((u32)p & 0x1f)");
+		}
+	}
+	bool IsValid() const { return mpData != NULL; }
+	void DCStore(bool sync);
+	void GXSetTevColor(GXTevRegID id, GXColor color);
+	void GXSetTevKColor(GXTevKColorID id, GXColor color);
+	void EndEdit() { DCStore(false); }
+};
+
+struct ResTevData {
+	u32 size;                     // _00
+	s32 toResMdlData;             // _04
+	u32 id;                       // _08
+	u8 nStages;                   // _0C
+	u8 PADDING_0xD[0x10 - 0xD];   // _0D
+	u8 texCoordToTexMapID[8];     // _10
+	u8 PADDING_0x18[0x20 - 0x18]; // _18, the game tags the last byte when it adds its colour stage
+};
+
+class ResTev {
+public:
+	ResTevData* mpData; // _00
+
+	ResTev(void* p = NULL)
+	    : mpData((ResTevData*)p)
+	{
+	}
+	bool IsValid() const { return mpData != NULL; }
+	ResTevData* ptr() const { return mpData; }
+	const ResTevData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_restev_ac.h", 37, "%s::%s: Object not valid.", "ResTev", __FUNCTION__);
+		}
+		return *mpData;
+	}
+	void GXSetTevOrder(GXTevStageID stage, GXTexCoordID coord, GXTexMapID map, GXChannelID channel);
+	void GXSetTevColorIn(GXTevStageID stage, GXTevColorArg a, GXTevColorArg b, GXTevColorArg c, GXTevColorArg d);
+	void GXSetTevColorOp(GXTevStageID stage, GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg);
+	void GXSetTevAlphaIn(GXTevStageID stage, GXTevAlphaArg a, GXTevAlphaArg b, GXTevAlphaArg c, GXTevAlphaArg d);
+	void GXSetTevAlphaOp(GXTevStageID stage, GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg);
+	void GXSetTevKColorSel(GXTevStageID stage, GXTevKColorSel sel);
+	void SetNumTevStages(u8 num);
+	void DCStore(bool sync);
+	u8 GetNumTevStages() const { return ref().nStages; }
+	void EndEdit() { DCStore(false); }
+};
+
+struct ResMatData {
+	u32 size;               // _00
+	s32 toResMdlData;       // _04
+	s32 name;               // _08
+	u32 id;                 // _0C
+	u32 flag;               // _10
+	ResGenModeData genMode; // _14
+	u8 _1C[0x3C - 0x1C];
+	s32 toResMatDLData; // _3C
+};
+
+struct ResMatDLData {
+	u8 dlPix[0x20];      // _00
+	u8 dlTevColor[0x80]; // _20
+};
+
+class ResMat {
+public:
+	ResMatData* mpData; // _00
+
+	bool IsValid() const { return mpData != NULL; }
+	ResMatData& ref()
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resmat_ac.h", 621, "%s::%s: Object not valid.", "ResMat", __FUNCTION__);
+		}
+		return *mpData;
+	}
+	const ResMatData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resmat_ac.h", 621, "%s::%s: Object not valid.", "ResMat", __FUNCTION__);
+		}
+		return *mpData;
+	}
+	const char* GetName() const
+	{
+		const ResMatData& r = ref();
+		return r.name != 0 ? (const char*)&r + r.name : NULL;
+	}
+	ResGenMode GetResGenMode() { return ResGenMode(&ref().genMode); }
+	ResMatDLData* GetResMatDLData()
+	{
+		s32 ofs = ref().toResMatDLData;
+		return ofs != 0 ? (ResMatDLData*)((u8*)mpData + ofs) : NULL;
+	}
+	ResMatTevColor GetResMatTevColor() { return ResMatTevColor(&GetResMatDLData()->dlTevColor); }
+	ResTev GetResTev();
 };
 
 // nw4r's handle to a model resource
@@ -141,9 +495,238 @@ class ResMdl {
 public:
 	void* mpData; // _00
 
+	bool IsValid() const { return mpData != NULL; }
 	ResNode GetResNode(const char* name) const; // 0x8025CFC8
 	ResNode GetResNode(u32 index) const;        // 0x8025D05C
 	u32 GetResNodeNumEntries() const;           // 0x8025D104
+	ResMat GetResMat(int idx) const;
+	ResMat GetResMat(u32 idx) const;
+	u32 GetResMatNumEntries() const;
+	void Release();
+	void Terminate();
+};
+
+// the scene objects, as far as the game reaches them: the virtuals in nw4r's slot order and
+// the members the game's model object sets up
+class G3dObj {
+public:
+	class TypeObj;
+	virtual bool IsDerivedFrom(TypeObj other) const;        // _08
+	virtual void G3dProc(u32 task, u32 param, void* pInfo); // _0C
+	virtual ~G3dObj();                                      // _10
+	virtual const TypeObj GetTypeObj() const;               // _14
+	virtual const char* GetTypeName() const;                // _18
+
+	void Destroy();
+
+private:
+	G3dObj* mpParent;     // _04
+	MEMAllocator* mpHeap; // _08
+};
+
+class ScnObj : public G3dObj {
+public:
+	enum Timing { CALLBACK_TIMING_A = (1 << 0), CALLBACK_TIMING_B = (1 << 1), CALLBACK_TIMING_C = (1 << 2) };
+
+	enum ExecOp {
+		EXECOP_CALC_WORLD = (1 << 0),
+		EXECOP_CALC_MAT   = (1 << 1),
+		EXECOP_CALC_VIEW  = (1 << 2),
+		EXECOP_DRAW_OPA   = (1 << 4),
+		EXECOP_DRAW_XLU   = (1 << 5)
+	};
+
+	enum ForEachResult { FOREACH_RESULT_OK, FOREACH_RESULT_GLOBAL, FOREACH_RESULT_LOCAL };
+	typedef ForEachResult (*ForEachFunc)(ScnObj* pObj, void* pInfo);
+
+	virtual ForEachResult ForEach(ForEachFunc pFunc, void* pInfo, bool postOrder); // _1C
+	virtual bool SetScnObjOption(u32 option, u32 value);                           // _20
+	virtual bool GetScnObjOption(u32 option, u32* pValue) const;                   // _24
+	virtual f32 GetValueForSortOpa() const;                                        // _28
+	virtual f32 GetValueForSortXlu() const;                                        // _2C
+	virtual void CalcWorldMtx(const math::MTX34* pParent, u32* pParam);            // _30
+
+	void SetScnObjCallback(IScnObjCallback* pCallback) { mpFuncObjExec = pCallback; }
+	void EnableScnObjCallbackTiming(Timing timing);
+	void EnableScnObjCallbackExecOp(ExecOp op);
+
+private:
+	u8 _0C[0xD4 - 0xC];             // the matrices, bounding volumes, flags and priorities
+	IScnObjCallback* mpFuncObjExec; // _D4
+	u8 mCallbackTiming;             // _D8
+	u8 mCallbackDeleteOption;       // _D9
+	u16 mCallbackExecOpMask;        // _DA
+};
+
+class ScnLeaf : public ScnObj {
+private:
+	u8 mScale[0xC]; // _DC, nw4r's VEC3
+};
+
+class AnmObj;
+class AnmObjChr;
+
+class ScnMdlSimple : public ScnLeaf {
+public:
+	enum AnmObjType {
+		ANMOBJTYPE_CHR,
+		ANMOBJTYPE_VIS,
+		ANMOBJTYPE_MATCLR,
+		ANMOBJTYPE_TEXPAT,
+		ANMOBJTYPE_TEXSRT,
+		ANMOBJTYPE_SHP,
+		ANMOBJTYPE_NOT_SPECIFIED
+	};
+
+	virtual bool SetAnmObj(AnmObj* pObj, AnmObjType type);  // _34
+	virtual bool RemoveAnmObj(AnmObj* pObj);                // _38
+	virtual AnmObj* RemoveAnmObj(AnmObjType type);          // _3C
+	virtual AnmObj* GetAnmObj(AnmObjType type);             // _40
+	virtual const AnmObj* GetAnmObj(AnmObjType type) const; // _44
+
+	void EnableScnMdlCallbackTiming(Timing timing);
+	void SetScnMdlCallback(ICalcWorldCallback* pCallback) { mpCalcWorldCallback = pCallback; }
+	void SetScnMdlCallbackNodeID(u32 id) { mCwcbNodeID = id; }
+
+	ResMdl mResMdl;       // _E8
+	Mtx* mpWorldMtxArray; // _EC, one per ResNodeData::mMtxID
+
+private:
+	u8 _F0[0x11C - 0xF0];
+	ICalcWorldCallback* mpCalcWorldCallback; // _11C
+	u8 mCwcbTiming;                          // _120
+	u8 mCwcbDeleteOption;                    // _121
+	u16 mCwcbNodeID;                         // _122
+};
+
+class ScnMdl : public ScnMdlSimple {
+public:
+	// a material's buffered copy the model keeps for editing
+	class CopiedMatAccess {
+	public:
+		CopiedMatAccess(ScnMdl* pScnMdl, u32 id);
+
+		ResGenMode GetResGenMode(bool markDirty);
+		ResMatTevColor GetResMatTevColor(bool markDirty);
+		ResTev GetResTev(bool markDirty);
+
+	private:
+		u8 _00[0x34];
+	};
+
+	static ScnMdl* Construct(MEMAllocator* pAllocator, u32* pSize, ResMdl mdl, u32 bufferOption, int numView);
+};
+
+// the animation objects, with the virtuals the game calls in nw4r's slot order
+class AnmObj : public G3dObj {
+public:
+	virtual void SetFrame(f32 frame);     // _1C
+	virtual f32 GetFrame() const;         // _20
+	virtual void UpdateFrame();           // _24
+	virtual void SetUpdateRate(f32 rate); // _28
+	virtual f32 GetUpdateRate() const;    // _2C
+	virtual bool Bind(const ResMdl mdl);  // _30
+	virtual void Release();               // _34
+
+private:
+	u32 mFlags; // _0C
+};
+
+class AnmObjChrRes;
+
+class AnmObjChr : public AnmObj {
+public:
+	enum BindOption { BIND_ONE, BIND_PARTIAL, NUM_OF_BIND_OPTION };
+
+	virtual const ChrAnmResult* GetResult(ChrAnmResult* pResult, u32 idx); // _38
+	virtual AnmObjChrRes* Attach(int idx, AnmObjChrRes* pRes);             // _3C
+	virtual AnmObjChrRes* Detach(int idx);                                 // _40
+	virtual void DetachAll();                                              // _44
+	virtual void SetWeight(int idx, f32 weight);                           // _48
+	virtual f32 GetWeight(int idx) const;                                  // _4C
+	virtual bool Bind(const ResMdl mdl, u32 target, BindOption option);    // _50
+	virtual void Release(const ResMdl mdl, u32 target, BindOption option); // _54
+
+	using AnmObj::Bind;
+	using AnmObj::Release;
+
+protected:
+	int mNumBinding;      // _10
+	u16* const mpBinding; // _14
+};
+
+class AnmObjChrNode : public AnmObjChr {
+public:
+	// the child check carries g3d_anmchr.h's line
+	AnmObjChrRes* GetChild(int idx)
+	{
+		(void)((idx >= 0 && idx <= mChildrenArraySize - 1)
+		       || (db::Panic("g3d_anmchr.h", 152, "idx is out of bounds(%d)\n%d <= idx <= %d not satisfied.", idx, 0,
+		                     mChildrenArraySize - 1),
+		           0));
+		return mpChildrenArray[idx];
+	}
+
+protected:
+	int mChildrenArraySize;         // _18
+	AnmObjChrRes** mpChildrenArray; // _1C
+};
+
+class AnmObjChrBlend : public AnmObjChrNode {
+public:
+	static AnmObjChrBlend* Construct(MEMAllocator* pAllocator, u32* pSize, ResMdl mdl, int numChildren);
+
+private:
+	f32* mpWeightArray; // _20
+};
+
+class AnmObjChrRes : public AnmObjChr {
+public:
+	static AnmObjChrRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmChr chr, ResMdl mdl, bool cache);
+
+	ResAnmChr GetResAnm() { return mRes; }
+
+private:
+	u8 mFrameCtrl[0x14]; // _18, nw4r's FrameCtrl base
+	ResAnmChr mRes;      // _2C
+};
+
+class AnmObjVisRes : public AnmObj {
+public:
+	static AnmObjVisRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmVis vis, ResMdl mdl);
+};
+
+class AnmObjMatClrRes : public AnmObj {
+public:
+	static AnmObjMatClrRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmClr clr, ResMdl mdl, bool cache);
+};
+
+class AnmObjTexPatRes : public AnmObj {
+public:
+	static AnmObjTexPatRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmTexPat pat, ResMdl mdl, bool cache);
+};
+
+class AnmObjTexSrtRes : public AnmObj {
+public:
+	static AnmObjTexSrtRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmTexSrt srt, ResMdl mdl, bool cache);
+};
+
+class AnmObjShpRes : public AnmObj {
+public:
+	static AnmObjShpRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmShp shp, ResMdl mdl, bool cache);
+};
+
+// the scene animation (lights, fog, cameras)
+class AnmScn : public G3dObj {
+public:
+	virtual void SetFrame(f32 frame);     // _1C
+	virtual f32 GetFrame() const;         // _20
+	virtual void SetUpdateRate(f32 rate); // _24
+};
+
+class AnmScnRes : public AnmScn {
+public:
+	static AnmScnRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmScn scn, bool cache);
 };
 
 } // namespace g3d
@@ -193,27 +776,92 @@ public:
 // at _140, CJArchive an NW_Anm with the vtable at _58, and both constructors
 // clear the two leading words. member names are the ones the unit's nw4r
 // pointer checks print ("m_pScnMdl", "m_resources.scn")
+// the cross-fade of NW_Obj's skeletal animations: nw4r's blend object with four children, the
+// newest at 0, and per child the anim's name and the weight it gains or loses a frame. the
+// member name is the one its pointer check prints ("m_pBlend"); the class name is not known
+class NW_ChrBlend {
+public:
+	void Init(MEMAllocator* allocator, u32* size, nw4r::g3d::ResMdl mdl);  // 0x802B8E7C
+	void Attach(nw4r::g3d::AnmObjChrRes* chr, f32 blend, f32 blendFrames); // 0x802B8FD4
+	void SetUpdateRate(nw4r::g3d::AnmObj* obj, f32 rate);                  // 0x802B9238
+	void Update(f32 frames);                                               // 0x802B9364
+	void DetachAll();                                                      // 0x802B94F8
+
+	nw4r::g3d::AnmObjChrBlend* m_pBlend; // _00
+	const char* mNames[4];               // _04
+	f32 mWeightSteps[4];                 // _14
+};
+STATIC_ASSERT(sizeof(NW_ChrBlend) == 0x24);
+
+// the game's wrapper around an nw4r scene model, base of NW_Anm (RTTI). its
+// vtable sits behind the members, at _58: CObj keeps one at _E8 with the vtable
+// at _140, CJArchive an NW_Anm with the vtable at _58, and both constructors
+// clear the two leading words. member names are the ones the unit's nw4r
+// pointer checks print ("m_pScnMdl", "m_resources.chr" and the rest)
 class NW_Obj {
 public:
 	NW_Obj()
 	{
-		_00 = 0;
-		_04 = 0;
+		m_resFile.mpData = NULL;
+		m_resMdl.mpData  = NULL;
 	}
 
-	CVec GetNodeRotate(nw4r::g3d::ResNode node) const;                     // 0x80043518, in radians
-	CVec GetNodeTranslate(nw4r::g3d::ResNode node) const;                  // 0x80043988
-	void Release(BOOL freeResource);                                       // 0x802B6690
-	void SetAnim(void* anim, s32 id, f32 frame, f32 blend, f32 blendRate); // 0x802B68D8
-	void RemoveAnimAll();                                                  // 0x802B842C
-	void SetAnmScn(u32 id, f32 frame);                                     // 0x802B8600, checks m_resources.scn
-	void ReleaseWork();                                                    // 0x802B8674, frees what hangs at its _4C
-	void SetColors(GXColor add, GXColor mul);                              // 0x802B8C8C
+	void CreateScnMdl(int numView, BOOL blend, BOOL noTevColor, const char* name);             // 0x802B6560
+	CVec GetNodeRotate(nw4r::g3d::ResNode node) const;                                         // 0x80043518, in radians
+	CVec GetNodeTranslate(nw4r::g3d::ResNode node) const;                                      // 0x80043988
+	void Release(BOOL freeResource);                                                           // 0x802B6690
+	nw4r::g3d::AnmObjChrRes* GetAnmObjChrRes() const;                                          // 0x802B6850
+	void SetAnim(const char* name, s32 id, f32 frame, f32 blend, f32 blendFrames);             // 0x802B68D8
+	const char* SetAnmChr(const char* name, s32 id, f32 frame, f32 blend, f32 blendFrames);    // 0x802B698C
+	void RemoveAnmChr();                                                                       // 0x802B6B00
+	const char* SetAnmVis(const char* name, s32 id, f32 frame);                                // 0x802B6B84
+	void RemoveAnmVis();                                                                       // 0x802B6CD8
+	const char* SetAnmClr(const char* name, s32 id, f32 frame);                                // 0x802B6D50
+	void RemoveAnmClr();                                                                       // 0x802B6EA4
+	const char* SetAnmTexPat(const char* name, s32 id, f32 frame);                             // 0x802B6F1C
+	void RemoveAnmTexPat();                                                                    // 0x802B7070
+	const char* SetAnmTexSrt(const char* name, s32 id, f32 frame);                             // 0x802B70E8
+	void RemoveAnmTexSrt();                                                                    // 0x802B723C
+	const char* SetAnmShp(const char* name, s32 id, f32 frame);                                // 0x802B72B4
+	void RemoveAnmShp();                                                                       // 0x802B7408
+	BOOL SetResAnmChr(const nw4r::g3d::ResAnmChr& chr, f32 frame, f32 blend, f32 blendFrames); // 0x802B7480
+	void CreateAnmChr(const nw4r::g3d::ResAnmChr& chr, f32 frame, f32 blend, f32 blendFrames); // 0x802B74EC
+	BOOL SetResAnmVis(const nw4r::g3d::ResAnmVis& vis, f32 frame);                             // 0x802B77A4
+	void CreateAnmVis(const nw4r::g3d::ResAnmVis& vis, f32 frame);                             // 0x802B7810
+	BOOL SetResAnmClr(const nw4r::g3d::ResAnmClr& clr, f32 frame);                             // 0x802B79FC
+	void CreateAnmClr(const nw4r::g3d::ResAnmClr& clr, f32 frame);                             // 0x802B7A68
+	BOOL SetResAnmTexPat(const nw4r::g3d::ResAnmTexPat& pat, f32 frame);                       // 0x802B7C58
+	void CreateAnmTexPat(const nw4r::g3d::ResAnmTexPat& pat, f32 frame);                       // 0x802B7D84
+	BOOL SetResAnmTexSrt(const nw4r::g3d::ResAnmTexSrt& srt, f32 frame);                       // 0x802B7F74
+	void CreateAnmTexSrt(const nw4r::g3d::ResAnmTexSrt& srt, f32 frame);                       // 0x802B7FE0
+	BOOL SetResAnmShp(const nw4r::g3d::ResAnmShp& shp, f32 frame);                             // 0x802B81D0
+	void CreateAnmShp(const nw4r::g3d::ResAnmShp& shp, f32 frame);                             // 0x802B823C
+	void RemoveAnimAll();                                                                      // 0x802B842C
+	void SetUpdateRate(f32 rate);                                                              // 0x802B8490
+	void UpdateBlend(f32 frames);                                                              // 0x802B857C
+	void RemoveAnmChrAll();                                                                    // 0x802B8594
+	void SetAnmScn(u32 id, f32 frame);                                                         // 0x802B8600
+	void ReleaseWork();                                                                        // 0x802B8674, frees the scene anim
+	void CreateAnmScn(nw4r::g3d::ResAnmScn& scn, f32 frame);                                   // 0x802B86B8
+	void InitColorTev();                                                                       // 0x802B886C
+	void SetColors(GXColor add, GXColor mul);                                                  // 0x802B8C8C
 
-	u32 _00;
-	u32 _04;                            // the model's nw4r::g3d::ResMdl
-	nw4r::g3d::ScnMdlSimple* m_pScnMdl; // _08, NULL without a model
-	u8 _0C[0x4C];
+	nw4r::g3d::ResFile m_resFile; // _00
+	nw4r::g3d::ResMdl m_resMdl;   // _04
+	nw4r::g3d::ScnMdl* m_pScnMdl; // _08, NULL without a model
+	NW_ChrBlend m_blend;          // _0C
+	u8 m_flags;                   // _30, 1: the skeletal anims cross-fade through m_blend
+	struct {
+		nw4r::g3d::AnmObjChrRes* chr;       // _34
+		nw4r::g3d::AnmObjVisRes* vis;       // _38
+		nw4r::g3d::AnmObjMatClrRes* matclr; // _3C
+		nw4r::g3d::AnmObjTexPatRes* texpat; // _40
+		nw4r::g3d::AnmObjTexSrtRes* texsrt; // _44
+		nw4r::g3d::AnmObjShpRes* shp;       // _48
+		nw4r::g3d::AnmScnRes* scn;          // _4C
+	} m_resources;
+	const char* mDefaultTexPat; // _50, the pattern anim played while no other is asked for
+	const char* mTexPatName;    // _54, the pattern anim playing
 
 	virtual ~NW_Obj() { } // _58
 };
@@ -270,6 +918,13 @@ private:
 	u8 _00[0xC];
 };
 STATIC_ASSERT(sizeof(XObjMapListB) == 0xC);
+
+// an animation as the objects ask for it: its index in the object's own file and the name it is
+// looked up by in mAnmSource. the type's name is not known
+struct CObjAnim {
+	s32 mId;           // _00
+	const char* mName; // _04
+};
 
 // the shared base of the game's scene objects: the two nw4r callback
 // interfaces plus CObj's own members. the member list below is decoded from
@@ -350,10 +1005,10 @@ public:
 	virtual void SetMoveDir(const Vec* dir, f32 speed);                                      // _100
 	virtual void SetRotateY(f32 target, f32 speed);                                          // _104
 	virtual void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate); // _108
-	virtual void vf10C();
-	virtual void ClearAnim();           // _110
-	virtual void SetAnimRate(f32 rate); // _114
-	virtual void vf118();
+	virtual void SetAnim(const CObjAnim* anim, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate); // _10C
+	virtual void ClearAnim();                                                                              // _110
+	virtual void SetAnimRate(f32 rate);                                                                    // _114
+	virtual void UpdateAnim(f32 speed); // _118, the GameCube's UpdateAnim
 	virtual void vf11C();
 	virtual f32 GetAnimRate(s32 index); // _120
 	virtual f32 GetAnimRate();          // _124
@@ -370,6 +1025,9 @@ public:
 
 	void Init();
 	BOOL Load(ResourceFile* file, const char* path, u32 model, u32 flags, u32 offset, u32 size);
+	void SetAnmSource(NW_Obj* source);                // 0x802B9B64
+	void ClearAnmSource();                            // 0x802B9BEC
+	void SetMatAnim(const CObjAnim* anim, f32 frame); // 0x802BA134
 	void SetAnmScnRate(f32 rate);
 
 	// the node's world matrix, NULL without a model. retail expands the same code in GetWorldMtx
@@ -399,8 +1057,8 @@ public:
 	CColor mColor1;        // _DC
 	u8 mColorsChanged;     // _E4, set until the next material callback hands them to the model
 	NW_Obj mObject;        // _E8
-	u8 _144[4];
-	u8 _148; // cleared by SetAnim
+	NW_Obj* mAnmSource;    // _144, a second file the anims are looked up in by name first, or NULL
+	u8 mAnimFromSource;    // _148, the playing anim came from mAnmSource
 	u8 _149[7];
 };
 STATIC_ASSERT(sizeof(CObj) == 0x150);
