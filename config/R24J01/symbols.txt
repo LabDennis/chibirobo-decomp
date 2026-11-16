@@ -8395,3 +8395,5 @@ RenderSubwindow = .text:0x80026E28; // type:function size:0x298
 SetPos__4CObjFfff = .text:0x80024BB8; // type:function size:0x1C
 sStageNameShadowX = .data:0x802E5F40; // type:object size:0x10
 sStageNameShadowY = .data:0x802E5F50; // type:object size:0x10
+RenderFloorReflection = .text:0x80026440; // type:function size:0x50C
+RenderMirrorTextures = .text:0x8002695C; // type:function size:0x4CC

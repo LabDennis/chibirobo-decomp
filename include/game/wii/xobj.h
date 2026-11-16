@@ -494,8 +494,8 @@ public:
 	virtual void SetBaseMtx(Mtx mtx); // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
 	virtual void ClearBaseMtx();      // _1B8
 	virtual void vf1BC();
-	virtual void vf1C0();
-	virtual void vf1C4();
+	virtual void SetCullMode(s32 mode); // _1C0, the floor reflection draws with 1
+	virtual void ResetCullMode();       // _1C4, and puts it back after
 	virtual u32 TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 arg6,
 	                               s32 arg7);                         // _1C8
 	virtual s32 OnPlayerContact(s32 unused, s32 value);               // _1CC

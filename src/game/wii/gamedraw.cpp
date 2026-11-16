@@ -1056,6 +1056,53 @@ void CGame::DrawScene()
 }
 
 /**
+ * @note Address: 0x8002695C
+ * @note Size: 0x4CC
+ */
+// NONMATCHING: not tuned; the camera copy and the loop's registers differ
+// draws what each live mirror shows into its texture: the 0x2000 objects through the mirror's camera
+extern "C" void RenderMirrorTextures(CGame* game)
+{
+	if (!game->GetStatusFlags(1) || !game->GetStatusFlags(0x1000)) {
+		return;
+	}
+	if (game->mHomeMenu.IsOpen()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	CGame::FbMirrorEx* mirrors = (CGame::FbMirrorEx*)game->mMirrors;
+	for (s32 i = 0; i < 5; i++) {
+		FbMirror* mirror = &mirrors[i];
+		if (mirror->mJoint == NULL || !mirror->mVisible) {
+			continue;
+		}
+		bool off = mirror->mJoint == NULL || (mirror->mJoint->mStatus & 0x0001000000000000);
+		if (off) {
+			continue;
+		}
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+		CCamera camera = mirror->mCamera;
+		Mtx view;
+		PSMTXCopy(mirror->mView, view);
+		camera.vf64(view);
+		if (game->BeginCamera(&camera)) {
+			for (s32 j = 0; j < game->mSceneRefCount; j++) {
+				XObj* obj = (XObj*)game->mSceneRefs[j].mObj;
+				if (obj->mStatus.mFlags & 0x2000) {
+					obj->DrawReflection(view);
+				}
+			}
+			DrawSceneQueue(view);
+			game->vf54();
+			mirror->Copy();
+		}
+	}
+}
+
+/**
  * @note Address: 0x80026E28
  * @note Size: 0x298
  */
@@ -1122,6 +1169,49 @@ f32 XObj::GetCollisionHeight()
 f32 XObj::GetFloorXZExtent()
 {
 	return mFloorXZExtent;
+}
+
+/**
+ * @note Address: 0x80026440
+ * @note Size: 0x50C
+ */
+// NONMATCHING: not tuned; the camera copy and the loop's registers differ
+// draws the 0x20000000 objects mirrored in the floor through a copy of the main camera under the
+// floor's reflection
+extern "C" void RenderFloorReflection(CGame* game)
+{
+	if (!game->GetStatusFlags(1) || !game->GetStatusFlags(0x20)) {
+		return;
+	}
+	if (game->mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+	CCamera camera = *game->GetCamera();
+	Mtx view;
+	PSMTXConcat(camera.mViewMtx, game->mFloorReflectMtx, view);
+	camera.vf64(view);
+	if (game->BeginCamera(&camera)) {
+		for (s32 i = 0; i < game->mEffectRefCount; i++) {
+			XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+			if ((obj->mStatus.mFlags & 0x20000000) && (obj->mBaseMtxPtr == NULL || (obj->mStatus.mFlags & 0x0000400000000000))) {
+				obj->SetCullMode(1);
+				obj->DrawReflection(view);
+			}
+		}
+		DrawSceneQueue(view);
+		game->vf54();
+	}
+	for (s32 i = 0; i < game->mEffectRefCount; i++) {
+		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		if ((obj->mStatus.mFlags & 0x20000000) && (obj->mBaseMtxPtr == NULL || (obj->mStatus.mFlags & 0x0000400000000000))) {
+			obj->ResetCullMode();
+		}
+	}
 }
 
 /**
