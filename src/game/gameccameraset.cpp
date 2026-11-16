@@ -64,7 +64,8 @@ void CGame::Draw()
 	CVec interest = GetCamera()->mInterest;
 	bool shaking  = mQuake.mShake[0].x != 0.0f || mQuake.mShake[0].y != 0.0f || mQuake.mShake[0].z != 0.0f;
 	if (shaking) { // the shake nudges the interest
-		GetCamera()->SetInterest(interest + mQuake.mShake[0] * (f32)mQuake.mSign);
+		Vec offset = mQuake.mShake[0] * (f32)mQuake.mSign;
+		GetCamera()->SetInterest(interest + offset);
 		GetCamera()->CalcEye();
 	}
 	mGs.mCamera = GetCamera();
