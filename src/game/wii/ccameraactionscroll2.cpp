@@ -19,6 +19,15 @@ extern "C" {
 #include "game/cscrn.h"
 #include "game/cmotioncontrolcamera.h"
 #include "game/wii/cpadact.h"
+#include "JSystem/JMath/Inline.h"
+
+// the Wii build inlines the five JMathInlineVEC helpers as paired-single code;
+// the longer SDK calls (PSVECNormalize, PSVECDistance) stay out of line
+#define PSVECAdd        JMathInlineVEC::PSVECAdd
+#define PSVECSubtract   JMathInlineVEC::PSVECSubtract
+#define PSVECScale      JMathInlineVEC::PSVECScale
+#define PSVECDotProduct JMathInlineVEC::PSVECDotProduct
+#define PSVECSquareMag  JMathInlineVEC::PSVECSquareMag
 
 #define ROOM_LIMITS gScrollCameraLimitTables
 #define PLAYER      gGame.GetPlayer()
@@ -862,7 +871,7 @@ void CCameraActionScroll2::DrawQuads()
  */
 BOOL CCameraActionScroll2::IsFovUnderMax()
 {
-	return mFov <= mMaxFov;
+	return !(mFov > mMaxFov);
 }
 
 /**

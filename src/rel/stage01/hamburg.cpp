@@ -329,14 +329,19 @@ static inline bool IsActive(Stage01Actor* actor)
 	return true;
 }
 
-static inline bool IsHeld(Stage01Actor* actor)
+// the player is carrying actor
+static inline bool IsLifting(Stage01Actor* player, Stage01Actor* actor)
 {
-	Stage01Actor* player = STAGE01_PLAYER;
-	bool held            = false;
+	bool held = false;
 	if (player->mLiftState != 0 && player->mLiftTarget == actor) {
 		held = true;
 	}
 	return held;
+}
+
+static inline bool IsHeld(Stage01Actor* actor)
+{
+	return IsLifting(STAGE01_PLAYER, actor);
 }
 
 static inline bool IsOnGasPlate(Stage01Actor* actor)
@@ -2668,7 +2673,7 @@ void HamObj::StatePutDown()
 			break;
 		}
 
-		if (IsHeld(mActor)) {
+		if (IsLifting(player, mActor)) {
 			STAGE01_PLAYER->mLiftTarget = NULL; // the player lets go
 		}
 		mActor->mStatus &= ~0x400000000000000ULL; // drop the carried flag

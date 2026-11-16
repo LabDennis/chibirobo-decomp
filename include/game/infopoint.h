@@ -38,8 +38,11 @@ public:
 };
 STATIC_ASSERT(sizeof(InfoPoint) == 0x88);
 
-// the points' ids, the first is gHudMoneyCounter's. japan has two fewer before them
-#if defined(VERSION_JP)
+// the points' ids, the first is gHudMoneyCounter's. japan has two fewer before them,
+// the Wii build three more
+#if defined(VERSION_R24J01)
+#define INFOPOINT_ID 0x99
+#elif defined(VERSION_JP)
 #define INFOPOINT_ID 0x96
 #else
 #define INFOPOINT_ID 0x98

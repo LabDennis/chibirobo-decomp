@@ -1225,6 +1225,9 @@ if wii:
                 Object(Matching, "game/wii/homemenu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/title.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/menu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the hud unit 0x800870E8-0x80092244, ported from the GameCube's infoscrn.cpp:
+                # GetStatusFlags replaces mStatus.mFlags reads, the timer runs off gRefreshRate
+                Object(NonMatching, "game/wii/infoscrn.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # no auto-inlining of the small file functions: under -inline auto the
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
                 # retail keeps them as calls
@@ -1290,6 +1293,12 @@ if wii:
                 # draw entry that takes the node block, InitPlugCord's function-scope static point
                 # array and ResetPlugCordPoints share one literal pool
                 Object(NonMatching, "game/wii/xobjplugcord.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # on Wii the two destructors live alone here; CamAreaSlot's ctor is emitted as the
+                # first function of ccameraactionmap2.cpp (retail 0x80154310)
+                Object(NonMatching, "game/ccameraactionareaexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the Wii binary merged the area and map camera code into one file; only the
+                # CamAreaSlot ctor at its head is reconstructed so far
+                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # InfoPoint's dtor is the out-of-line definition; the GameCube file's hand-spelled
                 # weak copy stays for GC only (retail Wii body has no vtable store)
@@ -1374,6 +1383,8 @@ if wii:
                 # Wii TU 0x8001A958-0x8001BA54 (wii_units.md #7): FbSubwin::Copy and FbSubwin::Draw,
                 # ported to the Wii CGs member setters; Draw is still off
                 Object(NonMatching, "game/wii/fbsubwin.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/gxb.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/fbmirror.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # retail has extab entries for the three functions and emits them in reverse (_prolog first):
                 # the game group's compiler with exceptions on and deferred inlining gives both. The object
                 # is byte-exact, but nothing calls _epilog and _unresolved: retail kept them through its
@@ -1474,6 +1485,120 @@ if wii:
                 Object(Matching, "revolution/BTE/sdp_utils.c"),
             ],
         },
+        {
+            # NintendoWare for Revolution (nw4r::ut, db, math ...), retail 0x80234080-0x802A5358.
+            # Compiler: the libraries' version strings carry CodeWarrior build 0x4199_60831, GC/3.0a5.2.
+            # Flags: no stmw/lmw anywhere in the block (-use_lmw_stmw off), no RTTI records beside the
+            # vtables (-RTTI off), -ipa file and -fp_contract off as every reference decomp builds NW4R
+            # (xenoblade, pik2wii, wiiplay, ogws).
+            "lib": "nw4r",
+            "mw_version": "GC/3.0a5.2",
+            "cflags": [
+                "-i include/rvl_msl", *wii_cflags, "-Cpp_exceptions off", "-RTTI off", "-fp_contract off", "-ipa file",
+                "-use_lmw_stmw off", "-enc SJIS",
+            ],
+            "progress_category": "nw4r",
+            "objects": [
+                Object(Matching, "nw4r/ut/ut_list.cpp"),
+                Object(Matching, "nw4r/ut/ut_LinkList.cpp"),
+                Object(Matching, "nw4r/ut/ut_binaryFileFormat.cpp"),
+                Object(Matching, "nw4r/ut/ut_CharStrmReader.cpp"),
+                Object(Matching, "nw4r/ut/ut_IOStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_FileStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_DvdFileStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_DvdLockedFileStream.cpp"),
+                Object(Matching, "nw4r/ut/ut_LockedCache.cpp"),
+                Object(Matching, "nw4r/ut/ut_Font.cpp"),
+                Object(Matching, "nw4r/ut/ut_RomFont.cpp"),
+                Object(Matching, "nw4r/ut/ut_ResFontBase.cpp"),
+                Object(Matching, "nw4r/ut/ut_ResFont.cpp"),
+                # code 3 of 3; FrSqrt (0x80282DB8) is WiiReciprocalSquareRoot in symbols.txt because
+                # src/game/wii/arithmetic.h declares and calls it under that name: links once the game
+                # calls nw4r::math::FrSqrt
+                Object(NonMatching, "nw4r/math/math_arithmetic.cpp"),
+                Object(Matching, "nw4r/math/math_triangular.cpp"),
+                Object(NonMatching, "nw4r/math/math_types.cpp"),
+                # code 5 of 5; retail's .sdata2 starts with 0.5f and 0.0f, here they come after the two
+                # TanDeg constants: a function ahead of FRUSTUM::Set that the linker removed used them
+                # (the reference decomps force the order with a macro)
+                Object(NonMatching, "nw4r/math/math_geometry.cpp"),
+                # nw4r::g3d (0x8025B5A4-0x80282CA0)
+                # nw4r::snd (0x80283EA8-0x802A5358)
+                Object(Matching, "nw4r/snd/snd_AxManager.cpp"),
+                Object(Matching, "nw4r/snd/snd_AxVoice.cpp"),
+                Object(Matching, "nw4r/snd/snd_AxVoiceManager.cpp"),
+                Object(Matching, "nw4r/snd/snd_AxfxImpl.cpp"),
+                Object(Matching, "nw4r/snd/snd_Bank.cpp"),
+                Object(Matching, "nw4r/snd/snd_BankFile.cpp"),
+                Object(Matching, "nw4r/snd/snd_BasicPlayer.cpp"),
+                # code 40 of 40 by content; Stop, Pause and IsPause are StopWiiSfxTrack, SetWiiSfxTrackPaused and
+                # IsWiiSfxTrackPaused in symbols.txt, the names src/game/wii/msg.cpp calls
+                Object(NonMatching, "nw4r/snd/snd_BasicSound.cpp"),
+                Object(Matching, "nw4r/snd/snd_BiquadFilterPreset.cpp"),
+                Object(Matching, "nw4r/snd/snd_Channel.cpp"),
+                Object(Matching, "nw4r/snd/snd_DisposeCallbackManager.cpp"),
+                Object(Matching, "nw4r/snd/snd_DvdSoundArchive.cpp"),
+                Object(Matching, "nw4r/snd/snd_EnvGenerator.cpp"),
+                Object(Matching, "nw4r/snd/snd_ExternalSoundPlayer.cpp"),
+                Object(Matching, "nw4r/snd/snd_FrameHeap.cpp"),
+                Object(Matching, "nw4r/snd/snd_FxReverbHiDpl2.cpp"),
+                Object(Matching, "nw4r/snd/snd_InstancePool.cpp"),
+                Object(Matching, "nw4r/snd/snd_Lfo.cpp"),
+                Object(Matching, "nw4r/snd/snd_MidiSeqPlayer.cpp"),
+                Object(Matching, "nw4r/snd/snd_MmlParser.cpp"),
+                Object(Matching, "nw4r/snd/snd_MmlSeqTrack.cpp"),
+                Object(Matching, "nw4r/snd/snd_MmlSeqTrackAllocator.cpp"),
+                Object(Matching, "nw4r/snd/snd_PlayerHeap.cpp"),
+                # code 12 of 12 by content; Setup and Shutdown are EnableWiiRemoteSpeaker and DisableWiiRemoteSpeaker
+                # in symbols.txt, the names src/game/wii/cpad.cpp calls
+                Object(NonMatching, "nw4r/snd/snd_RemoteSpeaker.cpp"),
+                # GetInstance and GetRemoteSpeaker are GetRemoteSpeakerManager and GetRemoteSpeakerChannel to the game
+                Object(NonMatching, "nw4r/snd/snd_RemoteSpeakerManager.cpp"),
+                Object(Matching, "nw4r/snd/snd_SeqFile.cpp"),
+                Object(Matching, "nw4r/snd/snd_SeqPlayer.cpp"),
+                # code complete; calls BasicSound::Stop (StopWiiSfxTrack in symbols.txt)
+                Object(NonMatching, "nw4r/snd/snd_SeqSound.cpp"),
+                Object(Matching, "nw4r/snd/snd_SeqSoundHandle.cpp"),
+                Object(Matching, "nw4r/snd/snd_SeqTrack.cpp"),
+                Object(Matching, "nw4r/snd/snd_Sound3DActor.cpp"),
+                Object(Matching, "nw4r/snd/snd_Sound3DCalculator.cpp"),
+                Object(Matching, "nw4r/snd/snd_Sound3DEngine.cpp"),
+                Object(Matching, "nw4r/snd/snd_Sound3DListener.cpp"),
+                Object(Matching, "nw4r/snd/snd_Sound3DManager.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundActor.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundArchive.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundArchiveFile.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundArchiveLoader.cpp"),
+                # code complete; calls BasicSound::Stop (StopWiiSfxTrack in symbols.txt)
+                Object(NonMatching, "nw4r/snd/snd_SoundArchivePlayer.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundHandle.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundHeap.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundPlayer.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundStartable.cpp"),
+                # code complete; calls RemoteSpeakerManager::GetInstance (GetRemoteSpeakerManager in symbols.txt)
+                Object(NonMatching, "nw4r/snd/snd_SoundSystem.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundThread.cpp"),
+                Object(Matching, "nw4r/snd/snd_StrmChannel.cpp"),
+                Object(Matching, "nw4r/snd/snd_StrmFile.cpp"),
+                Object(Matching, "nw4r/snd/snd_StrmPlayer.cpp"),
+                Object(Matching, "nw4r/snd/snd_StrmSound.cpp"),
+                Object(Matching, "nw4r/snd/snd_StrmSoundHandle.cpp"),
+                Object(Matching, "nw4r/snd/snd_Task.cpp"),
+                Object(Matching, "nw4r/snd/snd_TaskManager.cpp"),
+                Object(Matching, "nw4r/snd/snd_TaskThread.cpp"),
+                Object(Matching, "nw4r/snd/snd_Voice.cpp"),
+                Object(Matching, "nw4r/snd/snd_VoiceManager.cpp"),
+                Object(Matching, "nw4r/snd/snd_Util.cpp"),
+                Object(Matching, "nw4r/snd/snd_WaveArchive.cpp"),
+                Object(Matching, "nw4r/snd/snd_WaveFile.cpp"),
+                Object(Matching, "nw4r/snd/snd_WaveSound.cpp"),
+                Object(Matching, "nw4r/snd/snd_WaveSoundHandle.cpp"),
+                Object(Matching, "nw4r/snd/snd_WsdFile.cpp"),
+                Object(Matching, "nw4r/snd/snd_WsdPlayer.cpp"),
+                Object(Matching, "nw4r/snd/snd_adpcm.cpp"),
+            ],
+        },
+        # homebuttonLib (0x80203864-0x80222DEC)
         {
             # These Wii SDK modules share the compiler profile used by New Play Control! Pikmin.
             "lib": "RevolutionSDK-2008",
@@ -1878,6 +2003,7 @@ config.progress_categories = [
     for category in (
         ProgressCategory("game", "Game Code"),
         ProgressCategory("sdk", "SDK Code"),
+        ProgressCategory("nw4r", "NW4R Code"),
         ProgressCategory("hsd", "HSD Code"),
         ProgressCategory("runtime", "Runtime Code"),
         ProgressCategory("rels", "REL Code"),

@@ -52,6 +52,8 @@ public:
 	// _100 vtable
 
 	virtual ~CTexObj() { }
+	CTexObj& Init(void* image, u16 width, u16 height, GXTexFmt format, GXTexWrapMode wrapS, GXTexWrapMode wrapT,
+	              GXBool mipmap); // 0x802B4EE8
 	void Init(TPLDescriptor* desc, u32 tlutName);
 	u32 Set(const CTexObj& other);
 	u32 SetChar(const char* str, u32 font); // the font index goes to GetFontGlyphTexture's arg3

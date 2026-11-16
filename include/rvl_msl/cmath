@@ -1,0 +1,38 @@
+// C++ face of the Wii MSL math header: what NW4R reaches through std::
+#ifndef _RVL_MSL_CMATH
+#define _RVL_MSL_CMATH
+
+#include <math.h>
+
+extern "C" double modf(double, double*);
+
+// the float versions are MSL's inline wrappers around the double routines
+inline float ceilf(float x) { return ceil(x); }
+inline float floorf(float x) { return floor(x); }
+inline float fmodf(float x, float y) { return fmod(x, y); }
+inline float modff(float x, float* iptr)
+{
+	double i;
+	float frac = modf(x, &i);
+	*iptr      = i;
+	return frac;
+}
+
+namespace std {
+using ::acos;
+using ::asin;
+using ::ceilf;
+using ::floorf;
+using ::fmodf;
+using ::modff;
+// include/stl/math.h declares the GameCube MSL's out-of-line tanf; the Wii MSL's is this wrapper (retail calls tan)
+inline float tanf(float x) { return tan(x); }
+} // namespace std
+
+// nw4r::snd (Sound3DCalculator): retail rounds each result to float (frsp behind `bl cos`)
+namespace std {
+inline float cos(float x) { return ::cos(x); }
+using ::pow;
+} // namespace std
+
+#endif

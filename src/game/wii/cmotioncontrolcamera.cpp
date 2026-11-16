@@ -47,9 +47,9 @@ extern "C" f32 GetMapCameraHorizontalTargetDistance(CCameraActionMap* map);
 // of the Wii 0x128C layout; the class is not reconstructed yet, so it stays storage
 static u8 gMapCameraActions[2][0x128C];
 
-// a camera action the stage keeps ready, owned by the map camera's unit; a reference so the
-// extern can name the abstract interface type
-extern CInterfaceCameraAction& lbl_8045DD54;
+// a camera action the stage keeps ready, owned by the map camera's unit; its concrete class is
+// not reconstructed yet, so the extern names the storage and the uses cast it to the interface
+extern u8 lbl_8045DD54[];
 
 inline CInterfaceCameraAction* CMotionControlCamera::GetAction(s32 type)
 {
@@ -111,7 +111,7 @@ void CCameraActions::Init()
 void CMotionControlCamera::InitCamera()
 {
 	InitMotionControlCameraDefaults(this);
-	lbl_8045DD54.Init();
+	((CInterfaceCameraAction*)lbl_8045DD54)->Init();
 }
 
 /**
@@ -121,9 +121,9 @@ void CMotionControlCamera::InitCamera()
 void CMotionControlCamera::Init()
 {
 	InitMotionControlCameraDefaults(this);
-	mEye          = mView.mEye;
-	mInterest     = mView.mInterest;
-	mAngle        = mView.mAngle;
+	mEye.Set(mView.mEye);
+	mInterest.Set(mView.mInterest);
+	mAngle.Set(mView.mAngle);
 	mMode         = 0;
 	mAction       = NULL;
 	mPrevAction   = NULL;
@@ -412,9 +412,8 @@ void CMotionControlCamera::fn_80169528()
  */
 s32 CMotionControlCamera::GetActionType()
 {
-	CInterfaceCameraAction* action = mAction;
 	for (s32 i = 0; i < CAMACTION_NUM; i++) {
-		if (action == GetAction(i)) {
+		if (mAction == GetAction(i)) {
 			return i;
 		}
 	}
@@ -436,7 +435,7 @@ bool CMotionControlCamera::IsAction(s32 type)
  */
 BOOL fn_80169658(CMotionControlCamera* camera)
 {
-	return camera->mAction == &lbl_8045DD54;
+	return camera->mAction == (CInterfaceCameraAction*)lbl_8045DD54;
 }
 
 /**
@@ -445,7 +444,7 @@ BOOL fn_80169658(CMotionControlCamera* camera)
  */
 CInterfaceCameraAction* fn_80169674()
 {
-	return &lbl_8045DD54;
+	return (CInterfaceCameraAction*)lbl_8045DD54;
 }
 
 /**
@@ -496,8 +495,7 @@ void CMotionControlCamera::PopAction()
 		mAction       = mPushedAction;
 		mPushedAction = NULL;
 		ReadAction();
-		BOOL scroll = IsCurrent(CAMACTION_SCROLL);
-		if (scroll) {
+		if (mAction == GetAction(CAMACTION_SCROLL)) {
 			StartAction();
 		}
 		CopyAction();
@@ -554,8 +552,9 @@ void CMotionControlCamera::ReadAction()
 	}
 }
 
-// NONMATCHING: the push, player calls, wipe and sound are decoded from retail; the arg order
-// of StartTransition and the player vtable call's identity are not fully proven yet
+// NONMATCHING: only residue is vf28C's vptr landing in r5 instead of r12 (player-vtable
+// register wall) plus literal-pool address shifts; the wipe is the virtual
+// CScrnWipe::StartTransition on gGame.mRoboeyes, not the free function
 /**
  * @note Address: 0x80169E6C
  * @note Size: 0x308
@@ -568,13 +567,13 @@ void CMotionControlCamera::StartEye()
 		StopPlayerMotion(PLAYER);
 		PLAYER->vf28C(1);
 		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mRotY, 0.0f);
-		StartScreenWipeColorTransition(&gGame.mRoboeyes, 0xFF, 0xFF, 0xFF, 0, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2.0f,
-		                               gPointerScreenHeight / 2.0f, 550.0f, 500.0f, 430.0f, 400.0f, 0.15f, 0xFF, 0);
+		gGame.mRoboeyes.StartTransition(0xFF, 0xFF, 0xFF, 0, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2, gPointerScreenHeight / 2, 550.0f,
+		                                500.0f, 430.0f, 400.0f, 0.15f, 0xFF, 0);
 		PlayWiiSoundEffect(&gGame.mSound, 0x71, 1.0f, 0.0f);
 	}
 }
 
-// NONMATCHING: same caveats as StartEye; the GameCube PopAction inline expanded in retail
+// NONMATCHING: same residue as StartEye (vf28C register, literal-pool addresses)
 /**
  * @note Address: 0x8016A174
  * @note Size: 0x30C
@@ -588,8 +587,8 @@ void CMotionControlCamera::EndEye()
 		// the second argument stays 1 in EndEye as well; whatever it selects happens in the
 		// joint state, not here
 		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mRotY, 0.0f);
-		StartScreenWipeColorTransition(&gGame.mRoboeyes, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2.0f,
-		                               gPointerScreenHeight / 2.0f, 430.0f, 400.0f, 550.0f, 500.0f, 0.2f, 0, 1);
+		gGame.mRoboeyes.StartTransition(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2, gPointerScreenHeight / 2, 430.0f,
+		                                400.0f, 550.0f, 500.0f, 0.2f, 0, 1);
 		PlayWiiSoundEffect(&gGame.mSound, 0x6F, 1.0f, 0.0f);
 	}
 }
@@ -642,7 +641,7 @@ extern "C" f32 GetAreaCameraFovRatio(CMotionControlCamera* camera)
 {
 	f32 baseFov = ((CCameraActionAreaExM*)CMotionControlCamera::GetAction(CAMACTION_AREA))->GetBaseFov();
 	if (baseFov) {
-		return camera->mFov / baseFov;
+		return camera->CCamera::mFov / baseFov;
 	}
 	return 1.0f;
 }
@@ -673,15 +672,16 @@ f32 CMotionControlCamera::GetMapDistance()
  * @note Address: 0x8016A81C
  * @note Size: 0x28
  */
+// NONMATCHING: retail routes both clamps through bare bge/ble branches into one
+// shared f3->f2->f1 move chain; every spelling here folds the compares to cror or
+// early blr/beqlr instead (best seen: 67%)
 extern "C" f32 fn_8016A81C(f32 value, f32 min, f32 max)
 {
-	if (value < min) {
-		return min;
+	f32 result = min;
+	if (value >= min) {
+		result = value <= max ? value : max;
 	}
-	if (value <= max) {
-		max = value;
-	}
-	return max;
+	return result;
 }
 
 // the look response curves, two hermite segments a piece; the pointer look evaluates them

@@ -71,7 +71,7 @@ public:
 	virtual u64 GetStatusFlags(u64 mask) const; // _40, the game's status flags under mask
 	virtual void vf44();
 	virtual CCamera* GetScreenCamera(); // _48, the orthographic camera the screen-space layer draws under
-	virtual void vf4C();
+	virtual CCamera* GetCamera();       // _4C, the scene camera - CGame's is mMotionControlCamera
 	virtual void vf50();
 	virtual void vf54(); // _54, ends the current render pass
 	virtual void vf58();
@@ -134,9 +134,10 @@ public:
 // but the setters the start-up code and the save manager call sit on its vtable at the offsets below
 class CCamera {
 public:
-	virtual ~CCamera() { }                                                                  // _08
-	virtual void Init(f32 near, f32 far, f32 fov, f32 scale, const GXRenderModeObj* rmode); // _0C
-	virtual void vf10();                                                                    // _10
+	virtual ~CCamera() { }                                                                    // _08
+	virtual void Init(f32 near, f32 far, f32 fov, f32 scale, const GXRenderModeObj* rmode);   // _0C
+	virtual void vf10(f32 near, f32 far, f32 top, f32 bottom, f32 left, f32 right, f32 scale, // _10
+	                  const GXRenderModeObj* rmode); // FbMirror::Init passes (0.1, 32768, ±11.5, 1)
 	// an orthographic camera
 	virtual void Init(f32 top, f32 bottom, f32 left, f32 right, f32 near, f32 far, f32 scale, const GXRenderModeObj* rmode); // _14
 	virtual void SetFov(f32 fov)                                                                                             // _18
@@ -144,15 +145,30 @@ public:
 		mFov             = fov;
 		mProjectionDirty = TRUE;
 	}
-	virtual void vf1C();                                         // _1C
-	virtual void vf20();                                         // _20
-	virtual void vf24(f32 top, f32 bottom, f32 left, f32 right); // _24
-	virtual void vf28();                                         // _28
-	virtual void vf2C();                                         // _2C
-	virtual void vf30();                                         // _30
-	virtual void SetEye(f32 x, f32 y, f32 z);                    // _34
-	virtual void SetInterest(f32 x, f32 y, f32 z);               // _38
-	virtual void SetAngle(f32 x, f32 y, f32 z)                   // _3C
+	virtual void vf1C(f32 near) // _1C, the mirror camera's near plane
+	{
+		mNear            = near;
+		mProjectionDirty = TRUE;
+	}
+	virtual void vf20(f32 far) // _20, the far plane
+	{
+		mFar             = far;
+		mProjectionDirty = TRUE;
+	}
+	virtual void vf24(f32 top, f32 bottom, f32 left, f32 right) // _24
+	{
+		mTop             = top;
+		mBottom          = bottom;
+		mLeft            = left;
+		mRight           = right;
+		mProjectionDirty = TRUE;
+	}
+	virtual void vf28();                           // _28
+	virtual void vf2C();                           // _2C
+	virtual void vf30();                           // _30
+	virtual void SetEye(f32 x, f32 y, f32 z);      // _34
+	virtual void SetInterest(f32 x, f32 y, f32 z); // _38
+	virtual void SetAngle(f32 x, f32 y, f32 z)     // _3C
 	{
 		mView.mAngle.x = x;
 		mView.mAngle.y = y;
@@ -165,7 +181,11 @@ public:
 		mView.mDistance = distance;
 		mView.mDirty    = TRUE;
 	}
-	virtual void SetEye(const Vec& eye);          // _48
+	virtual void SetEye(const Vec& eye) // _48
+	{
+		mView.mEye.Set(eye.x, eye.y, eye.z);
+		mView.mDirty = TRUE;
+	}
 	virtual void SetInterest(const Vec& interest) // _4C
 	{
 		mView.mInterest.Set(interest.x, interest.y, interest.z);
@@ -183,31 +203,53 @@ public:
 		mView.mAngle.x = x;
 		mView.mDirty   = TRUE;
 	}
-	virtual void vf60();                                  // _60
-	virtual void vf64();                                  // _64
-	virtual void vf68();                                  // _68
-	virtual void vf6C();                                  // _6C
-	virtual void CalcEye() { mView.CalcEye(); }           // _70
-	virtual void CalcInterest();                          // _74, Update calls it where the GameCube called CalcInterest
-	virtual void CalcAngle() { mView.CalcAngle(); }       // _78
-	virtual void CalcUp();                                // _7C, Update calls it for the 0x40000 flag, the GameCube's CalcUp
-	virtual void CalcDistance() { mView.CalcDistance(); } // _80
-	virtual void vf84();                                  // _84
-	virtual void vf88(f32, f32, f32, f32, f32, f32);      // _88, FbSubwin::Init passes (0, 0, w, h, 0, 1)
+	virtual void vf60();          // _60
+	virtual void vf64(CMtxP view) // _64, points the camera at an external view matrix
+	{
+		mViewSource = view;
+		if (view == NULL) {
+			mView.mDirty = TRUE;
+		}
+	}
+	virtual void vf68();                                             // _68
+	virtual void vf6C();                                             // _6C
+	virtual void CalcEye() { mView.CalcEye(); }                      // _70
+	virtual void CalcInterest();                                     // _74, Update calls it where the GameCube called CalcInterest
+	virtual void CalcAngle() { mView.CalcAngle(); }                  // _78
+	virtual void CalcUp();                                           // _7C, Update calls it for the 0x40000 flag, the GameCube's CalcUp
+	virtual void CalcDistance() { mView.CalcDistance(); }            // _80
+	virtual void vf84();                                             // _84
+	virtual void vf88(f32 x, f32 y, f32 w, f32 h, f32 near, f32 far) // _88, FbSubwin::Init passes (0, 0, w, h, 0, 1)
+	{
+		mViewport[0]   = x;
+		mViewport[1]   = y;
+		mViewport[2]   = w;
+		mViewport[3]   = h;
+		mViewport[4]   = near;
+		mViewport[5]   = far;
+		mViewportDirty = TRUE;
+	}
 
 	u8 _04[0x4];
 	f32 mFov; // _08
-	u8 _0C[0x18 - 0x0C];
-	f32 mTop;    // _18, ortho projection bounds, fed to C_MTXOrtho
-	f32 mBottom; // _1C
-	u8 _20[0x28 - 0x20];
+	u8 _0C[0x10 - 0x0C];
+	f32 mNear;           // _10
+	f32 mFar;            // _14
+	f32 mTop;            // _18, ortho projection bounds, fed to C_MTXOrtho
+	f32 mBottom;         // _1C
+	f32 mLeft;           // _20
+	f32 mRight;          // _24
 	u8 mProjectionDirty; // _28, SetFov sets it - the projection matrix is rebuilt lazily
 	u8 _29[0x2C - 0x29];
 	Mtx44 mProjection; // _2C
 	u8 _6C[0x90 - 0x6C];
 	CCameraView mView; // _90
 	Mtx mViewMtx;      // _D8, the computed view matrix the 2D draws multiply into
-	u8 _108[0x1F8 - 0x108];
+	u8 _108[0x118 - 0x108];
+	CMtxP mViewSource; // _118, an external view matrix the camera follows; clearing it dirties the view
+	f32 mViewport[6];  // _11C
+	u8 mViewportDirty; // _134
+	u8 _135[0x1F8 - 0x135];
 };
 STATIC_ASSERT(sizeof(CCamera) == 0x1F8);
 #ifndef offsetof
@@ -542,6 +584,18 @@ struct WiiPlayerAction {
 	s32 mState; // _04
 };
 
+// the attachment ring's menu on the player at _19EE8, the GameCube's mMenu.mAtc. The HUD reads the
+// highlighted item's type; the item count is a bound, the menu only uses a handful
+struct WiiAtcMenuItem {
+	s32 mType; // _00
+	u8 _04[0x24];
+};
+struct WiiAtcMenu {
+	s32 mCursorIndex;            // _00
+	u8 _04[0xC];                 // _04
+	WiiAtcMenuItem mItems[0x20]; // _10
+};
+
 // the Wii player object: a different, larger class than the GameCube XObjChr. These are the members
 // the save manager reads and writes, at offsets verified against retail.
 struct WiiPlayerState {
@@ -579,7 +633,9 @@ struct WiiPlayerState {
 	WiiPlayerSuits mSuits; // _DC50
 	u8 _DC64[0x19E9C - 0xDC64];
 	u8 mAttachments[0x48]; // _19E9C
-	u8 _19EE4[0x1A420 - 0x19EE4];
+	u8 _19EE4[0x19EE8 - 0x19EE4];
+	WiiAtcMenu mAtcMenu; // _19EE8
+	u8 _19EF8[0x1A420 - 0x19F18];
 	WiiOXMenu mOXMenu; // _1A420
 	u8 _1B7B4[0x1C994 - 0x1B7B4];
 	s32 mSquirterContent; // _1C994
@@ -590,6 +646,9 @@ struct WiiPlayerState {
 	Vec GetCameraTarget() { return mVtable->GetCameraTarget(this); }
 	f32 GetRotationY() { return mVtable->GetRotationY(this); }
 	void vf28C(s32 held) { mVtable->vf28C(this, held); }
+	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
+	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
+	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
 };
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8
@@ -610,6 +669,7 @@ struct WiiEvtData {
 class CGame : public CBase {
 public:
 	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
+	CCamera* GetCamera();                   // _4C override, &mMotionControlCamera
 
 	s32 mLoadStep;
 	u8 _41EC[0x42FC - 0x41EC];
@@ -621,7 +681,11 @@ public:
 	CScrnFade mFade; // _4D38
 	u8 _4D6C[0x5044 - 0x4D6C];
 	u32 mWipeTileActive; // _5044, the screen wipe's active flag, the GameCube's mWipeTile1.mActive
-	u8 _5048[0x5078 - 0x5048];
+	u8 _5048[0x5050 - 0x5048];
+	f32 mWipeTileY; // _5050, the GameCube's mWipeTile1.mY
+	u8 _5054[0x5058 - 0x5054];
+	f32 mWipeTileHeight; // _5058, the GameCube's mWipeTile1.mHeight
+	u8 _505C[0x5078 - 0x505C];
 	CScrnRoboeyes mRoboeyes;
 	u8 _511C[0x5978 - 0x511C];
 	s32 mLogoState; // _5978, the boot logos' step, as the GameCube mLogo.mState
@@ -650,7 +714,9 @@ public:
 	WiiFlagSource* mDust; // _F874
 	u8 _F878[0xF8B0 - 0xF878];
 	WiiTitleObject* mObjects[0x400]; // _F8B0, the object table ResolveEventObjectId indexes
-	u8 _108B0[0x108C8 - 0x108B0];
+	s32 mObjectCount;                // _108B0
+	s32 mLoadObjectIndex;            // _108B4
+	u8 _108B8[0x108C8 - 0x108B8];
 	// pointers to spawned objects the renderer walks; entries are grouped in eights,
 	// CMsgFont_Init pushes its two cursors here
 	WiiObjectRef* mObjectRefs; // _108C8
@@ -689,6 +755,10 @@ public:
 
 	WiiPlayerState* GetPlayer() const { return mPlayer; }
 	bool CanOpenHomeMenu() const { return IsMenuFree() && !mHomeMenu.IsOpen(); }
+
+	// 0x8002AEC8, projects a world position onto the screen under camera (the motion-control
+	// camera when it is null); the GameCube had it on XObj
+	void ProjectOffsetToScreen(const Vec* pos, f32* x, f32* y, f32* z, void* camera);
 };
 STATIC_ASSERT(sizeof(CGame) == 0xEE530);
 

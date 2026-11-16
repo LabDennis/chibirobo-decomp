@@ -1,6 +1,14 @@
 #include "game/ccameraaction.h"
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
+#include "JSystem/JMath/Inline.h"
+// the Wii build times the interpolators off its own refresh counter
+extern s32 gRefreshRate;
+#undef FRAME_TIME
+#define FRAME_TIME (1.0f / gRefreshRate)
+// the Wii build inlines the five JMathInlineVEC helpers as paired-single code;
+// the longer SDK calls (PSVECNormalize, PSVECDistance) stay out of line
+#define PSVECAdd JMathInlineVEC::PSVECAdd
 #endif
 #include "game/gmath.h"
 extern "C" {
@@ -34,11 +42,80 @@ void CCameraActionEvt::Init()
 	mTarget             = NULL;
 }
 
+#if defined(VERSION_R24J01)
+/**
+ * @note Address: 0x801614EC
+ * @note Size: 0xD4
+ */
+void CCameraActionEvt::SetCamera(CCamera* camera)
+{
+	SetEye(camera->mView.mEye);
+	SetInterest(camera->mView.mInterest);
+	SetDistance(camera->mView.mDistance);
+	SetFov(camera->mFov);
+	SetAngle(camera->mView.mAngle);
+	mCameraFlags = 0;
+	mAxes.mFlags &= ~7;
+	mTarget         = NULL;
+	mEyeInterp      = NULL;
+	mInterestInterp = NULL;
+	mDistanceInterp = NULL;
+	mFovInterp      = NULL;
+	mAngleInterp    = NULL;
+}
+
+// NONMATCHING: identical instruction stream, but retail keeps this in r31 and step in r30
+// while this build assigns step to r31 and this to r30 (99.1%)
+/**
+ * @note Address: 0x801615C0
+ * @note Size: 0x300
+ */
+void CCameraActionEvt::Update(u32 step)
+{
+	if (mEyeInterp != NULL) {
+		if (!mEyeInterp->Update(step, FRAME_TIME)) {
+			SetEye(mEyeInterp->Get());
+		} else {
+			mEyeInterp = NULL;
+		}
+	}
+	if (mInterestInterp != NULL) {
+		if (!mInterestInterp->Update(step, FRAME_TIME)) {
+			SetInterest(mInterestInterp->Get());
+		} else {
+			mInterestInterp = NULL;
+		}
+	} else if (mTarget != NULL) { // no interp: keep tracking the target
+		SetInterest(((WiiPlayerState*)mTarget)->GetCameraTarget());
+	}
+	if (mDistanceInterp != NULL) {
+		if (!mDistanceInterp->Update(step, FRAME_TIME)) {
+			SetDistance(mDistanceInterp->Get());
+		} else {
+			mDistanceInterp = NULL;
+		}
+	}
+	if (mFovInterp != NULL) {
+		if (!mFovInterp->Update(step, FRAME_TIME)) {
+			SetFov(mFovInterp->Get());
+		} else {
+			mFovInterp = NULL;
+		}
+	}
+	if (mAngleInterp != NULL) {
+		if (!mAngleInterp->Update(step, FRAME_TIME)) {
+			SetAngle(mAngleInterp->Get());
+		} else {
+			mAngleInterp = NULL;
+		}
+	}
+}
+
+#else
 /**
  * @note Address: 0x8014384C
  * @note Size: 0xD4
  */
-#if !defined(VERSION_R24J01)
 void CCameraActionEvt::SetCamera(CCamera* camera)
 {
 	SetEye(camera->mEye);
@@ -107,7 +184,7 @@ void CCameraActionEvt::Update(u32 step)
  * @note Address: 0x80143528
  * @note Size: 0xC0
  */
-void CCameraActionEvt::SetEye_Interp(s32 mode, const Vec& eye, f32 time)
+void CCameraActionEvt::SetEye_Interp(s32 mode, Vec eye, f32 time)
 {
 	if (mode == 3 || time <= 0.0f) { // mode 3 or no time means snap
 		mEyeInterp = NULL;
@@ -134,18 +211,18 @@ void CCameraActionEvt::SetInterest_Interp(s32 mode, XObj* target, f32 time)
 	}
 	mTarget = target;
 #if defined(VERSION_R24J01)
-	Vec interest = ((WiiPlayerState*)mTarget)->GetCameraTarget(); // the Wii player's focus point, XObj::GetCameraTarget on GameCube
+	// the Wii player's focus point, XObj::GetCameraTarget on GameCube
+	SetInterest_Interp(mode, ((WiiPlayerState*)mTarget)->GetCameraTarget(), time);
 #else
-	Vec interest = mTarget->GetCameraTarget();
+	SetInterest_Interp(mode, mTarget->GetCameraTarget(), time);
 #endif
-	SetInterest_Interp(mode, interest, time);
 }
 
 /**
  * @note Address: 0x8014332C
  * @note Size: 0xC0
  */
-void CCameraActionEvt::SetInterest_Interp(s32 mode, const Vec& interest, f32 time)
+void CCameraActionEvt::SetInterest_Interp(s32 mode, Vec interest, f32 time)
 {
 	if (mode == 3 || time <= 0.0f) {
 		mInterestInterp = NULL;
@@ -188,9 +265,13 @@ inline void TurnShortWay(f32& to, f32& from)
 	to    = t;
 	if (t != f) {
 		f32 diff = t - f;
+#if defined(VERSION_R24J01)
+		diff = fabs(diff); // the Wii build spells the absolute value through the library
+#else
 		if (diff < 0.0f) {
 			diff = -diff;
 		}
+#endif
 		if (diff >= TWO_PI) {
 			diff -= TWO_PI;
 		}
@@ -208,7 +289,7 @@ inline void TurnShortWay(f32& to, f32& from)
  * @note Address: 0x80142DE8
  * @note Size: 0x4B4
  */
-void CCameraActionEvt::SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32 type, BOOL relative, f32 time)
+void CCameraActionEvt::SetAngle_Interp(s32 mode, Vec angle, u32 axes, u32 type, BOOL relative, f32 time)
 {
 	CVec dest;
 	CVec from;
@@ -223,7 +304,11 @@ void CCameraActionEvt::SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32
 		PSVECAdd(&dest, (Vec*)&angle, &dest);
 	}
 	if (!relative) {
+#if defined(VERSION_R24J01)
+		dest.Set(Vec(angle)); // Wii assigns through Set() off a Vec copy of the arg
+#else
 		dest = CVec(angle);
+#endif
 	}
 
 	mAxes.mFlags &= ~7;

@@ -79,6 +79,7 @@ public:
 	// any of the mask's bits set
 	// the ternary keeps the test and branch, a plain bool folds to a bare clrlwi in shun's CmdCheckOnOffFlag
 	bool Check(u32 mask) const { return (mFlags & mask) ? true : false; }
+	void Clear() { mFlags = 0; }
 };
 typedef char CStatus_size_check[sizeof(CStatus) == 0x8 ? 1 : -1];
 
