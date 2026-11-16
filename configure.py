@@ -1535,8 +1535,8 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_MmlSeqTrack.cpp"),
                 Object(Matching, "nw4r/snd/snd_MmlSeqTrackAllocator.cpp"),
                 Object(Matching, "nw4r/snd/snd_PlayerHeap.cpp"),
-                # Setup and Shutdown are EnableWiiRemoteSpeaker and DisableWiiRemoteSpeaker to the game (cpad.cpp);
-                # Update: retail has ExecCommand expanded in it (see the source); WPAD's stream functions have no name yet
+                # code 12 of 12 by content; Setup and Shutdown are EnableWiiRemoteSpeaker and DisableWiiRemoteSpeaker
+                # in symbols.txt, the names src/game/wii/cpad.cpp calls
                 Object(NonMatching, "nw4r/snd/snd_RemoteSpeaker.cpp"),
                 # GetInstance and GetRemoteSpeaker are GetRemoteSpeakerManager and GetRemoteSpeakerChannel to the game
                 Object(NonMatching, "nw4r/snd/snd_RemoteSpeakerManager.cpp"),

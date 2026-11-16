@@ -99,10 +99,6 @@ bool RemoteSpeaker::IsEnabledOutput() const {
     return mPlayFlag;
 }
 
-// NONMATCHING: retail (0x80290700, 0xD4 bytes) has ExecCommand expanded behind this function's blr
-// (`b +8; blr; cmpwi r4, 2 ...`), the shape of an expansion at the end of the file. Neither order of
-// the two functions nor -inline all/deferred/level=8/nobottomup nor another compiler build expands
-// it here; `inline` on ExecCommand does (92 %, the compare hoisted) but is not what was compiled.
 void RemoteSpeaker::Update() {
 
     if (mCommandBusyFlag) {
