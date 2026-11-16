@@ -2473,6 +2473,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			DrawLoadText(LoadPromptText(0x94, 0), 320.0f, (top - 6.0f) + title->mLoadOffset, color);
 			DrawLoadText(LoadPromptText(0x95, 0), 320.0f, (21.0f + top) + title->mLoadOffset, color);
 #endif
+			lines = 2;
 		} else {
 			sprintf(text, "%s", LoadPromptText(0xbc, 0x12));
 			showMessage = true;
@@ -3994,7 +3995,7 @@ static inline void ShowTitleChoice(Title* title, s32 id)
 			title->mName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
 			title->mName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
 			title->mName.mCount++;
-			if (HelpTextIsJapanese() && IsSjisLead(*text))
+			if (HelpTextIsJapanese() && (IsSjisLead(*text) & 1))
 				text++;
 		}
 		for (s32 i = title->mName.mCount; i < 20; i++) {
