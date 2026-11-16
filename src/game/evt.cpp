@@ -4058,9 +4058,9 @@ s32 CEvt::_cmd_SCALE(u8 cmd, s32)
 				CVec step = (CVec(x, y, z) - obj->mMoveScale) / (60.0f * time);
 #endif
 				obj->mMoveScale.mTarget.Set(x, y, z);
-				step.x = Abs(step.x);
-				step.y = Abs(step.y);
-				step.z = Abs(step.z);
+				step.x = ABS(step.x);
+				step.y = ABS(step.y);
+				step.z = ABS(step.z);
 				obj->mMoveScale.mSpeed.Set(step);
 			}
 		} else {
