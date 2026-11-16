@@ -17,6 +17,18 @@ extern "C" void OSReport(const char* format, ...);
 extern "C" Vec lbl_805A0400[];
 
 class CGs;
+
+static const u32 sAreaCameraDebugColors[7] = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
+static const u32 sMapCameraDebugColors[7]  = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
+#if !defined(VERSION_PAL)
+static const char sCameraAreaDataAddressFormat[]
+    = "CCameraActionAreaEx :: "
+      "\x83\x4A\x83\x81\x83\x89\x83\x66\x81\x5B\x83\x5E\x82\xCC\x83\x41\x83\x68\x83\x8C\x83\x58\x82\xCD"
+      "0x%x\x82\xC5\x82\xB7\x81\x42\n";
+static const char sCameraAreaZoomResetMessage[] = "reset zoom lv = CAM_AREA_ZOOM_LV1\n";
+static const char sAreaCameraDebugIndexFormat[] = "DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n";
+static const char sMapCameraDebugIndexFormat[]  = "DEBUG:CCameraActionMap::DrawDebug3d():%d\n";
+#endif
 #endif
 
 extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state);
@@ -99,8 +111,10 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 	if (state->mAreaRecords == NULL)
 		return;
 	// [0..4] cycle per area, [5] marks the camera path between a group's entries
-	u32 colors[7] = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
-	f32 scale     = 2.0f / sqrtf(3.0f);
+	u32 colors[7];
+	for (s32 i = 0; i < 7; ++i)
+		colors[i] = sMapCameraDebugColors[i];
+	f32 scale = 2.0f / sqrtf(3.0f);
 	for (s32 i = 0; i < state->mAreaCount; ++i) {
 		u16 flags = CamAreaInfo(&state->mAreaRecords[i]).mRecord->mFlags & 4;
 		if (flags == 0) // skip areas whose camera is off
@@ -112,13 +126,13 @@ extern "C" void DrawDebug3d__19CCameraActionAreaExFv(CCameraActionAreaEx* state)
 			if (++selected >= state->mAreaCount)
 				selected = state->mAreaCount - 1;
 #if !defined(VERSION_PAL)
-			OSReport("DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n", selected);
+			OSReport(sAreaCameraDebugIndexFormat, selected);
 #endif
 		} else if (pad.mPad->mTrigger & 1) { // d-pad left
 			if (--selected <= 0)
 				selected = 0;
 #if !defined(VERSION_PAL)
-			OSReport("DEBUG:CCameraActionAreaEx::DrawDebug3d():%d\n", selected);
+			OSReport(sAreaCameraDebugIndexFormat, selected);
 #endif
 		}
 
@@ -184,8 +198,10 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 	}
 	if (records == NULL)
 		return;
-	u32 colors[7] = { 0xFF000064, 0x00FF0064, 0x0000FF64, 0xFFFF0064, 0xFF00FF64, 0xFFFFFF64, 0xFF960064 };
-	f32 scale     = 2.0f / sqrtf(3.0f);
+	u32 colors[7];
+	for (s32 i = 0; i < 7; ++i)
+		colors[i] = sAreaCameraDebugColors[i];
+	f32 scale = 2.0f / sqrtf(3.0f);
 	for (s32 i = 0; i < count; ++records, ++i) {
 		static s32 selected = 0;
 		CPad pad(3);
@@ -193,11 +209,11 @@ extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode)
 		if (pad.mPad->mTrigger & 2) { // d-pad right
 			if (++selected >= count)
 				selected = count - 1;
-			OSReport("DEBUG:CCameraActionMap::DrawDebug3d():%d\n", selected);
+			OSReport(sMapCameraDebugIndexFormat, selected);
 		} else if (pad.mPad->mTrigger & 1) { // d-pad left
 			if (--selected <= 0)
 				selected = 0;
-			OSReport("DEBUG:CCameraActionMap::DrawDebug3d():%d\n", selected);
+			OSReport(sMapCameraDebugIndexFormat, selected);
 		}
 #endif
 		selected = i;
@@ -451,7 +467,11 @@ extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 	state->mActiveArea  = -1;
 	state->mBaseFov     = 30.5f;
 #if !defined(VERSION_PAL)
+#if defined(VERSION_R24J01)
 	OSReport("reset zoom lv = CAM_AREA_ZOOM_LV1\n");
+#else
+	OSReport(sCameraAreaZoomResetMessage);
+#endif
 #endif
 }
 
@@ -464,10 +484,14 @@ extern "C" void InitCameraAreaEntries(CCameraActionAreaEx* state)
 	// the compiler emits its array dtor, CamAreaEntry's dtor and ctor at 0x80135C5C to 0x80135D10
 	static CamAreaEntry gCameraAreaEntries[2048];
 #if !defined(VERSION_PAL)
+#if defined(VERSION_R24J01)
 	OSReport("CCameraActionAreaEx :: "
 	         "\x83\x4A\x83\x81\x83\x89\x83\x66\x81\x5B\x83\x5E\x82\xCC\x83\x41\x83\x68\x83\x8C\x83\x58\x82\xCD"
 	         "0x%x\x82\xC5\x82\xB7\x81\x42\n",
 	         gCameraAreaEntries);
+#else
+	OSReport(sCameraAreaDataAddressFormat, gCameraAreaEntries);
+#endif
 #endif
 	for (int i = 0; i < 2048; ++i)
 		state->mEntryPool[i] = &gCameraAreaEntries[i];

@@ -95,20 +95,12 @@ typedef char CScrnWipe_size_check[sizeof(CScrnWipe) == 0x64 ? 1 : -1];
 
 class CScrnWipeCircle : public CScrnWipe {
 public:
-#if defined(VERSION_R24J01)
-	virtual ~CScrnWipeCircle();
-#else
 	virtual ~CScrnWipeCircle() { } // _08 (weak)
-#endif
 };
 
 class CScrnWipeTex : public CScrnWipe {
 public:
-#if defined(VERSION_R24J01)
-	virtual ~CScrnWipeTex();
-#else
 	virtual ~CScrnWipeTex() { } // _08 (weak)
-#endif
 	void Draw(CGs* gs, s32 mode);
 
 	CTexObj mTex; // _64
@@ -117,11 +109,7 @@ STATIC_ASSERT(sizeof(CScrnWipeTex) == sizeof(CScrnWipe) + sizeof(CTexObj));
 
 class CScrnWipeCustom : public CScrnWipe {
 public:
-#if defined(VERSION_R24J01)
-	virtual ~CScrnWipeCustom();
-#else
 	virtual ~CScrnWipeCustom() { } // _08 (weak)
-#endif
 	void Draw(CGs* gs, s32 mode);
 };
 
@@ -130,11 +118,30 @@ public:
 	virtual ~CScrnWipeTile() { } // _08 (weak)
 #if defined(VERSION_R24J01)
 	void SetDimensions(BOOL hideWhenDone, f32 x, f32 y, f32 width, f32 height, f32 targetWidth, f32 targetHeight, f32 time);
+	// 0x80033080 (weak), one branch to CScrnWipe's; CScrnWipeCine's vtable has it too
+	virtual void Start(u8 r, u8 g, u8 b, u8 a, BOOL hideWhenDone, f32 x, f32 y, f32 width, f32 height, f32 targetWidth, f32 targetHeight,
+	                   f32 time)
+	{
+		CScrnWipe::Start(r, g, b, a, hideWhenDone, x, y, width, height, targetWidth, targetHeight, time);
+	}
 #endif
 	void Draw(CGs* gs, s32 mode);
+#if defined(VERSION_R24J01)
+	// 0x8001C34C, the vtable's own copy: it only hands everything on to CScrnWipe's
+	void StartTransition(u8 r, u8 g, u8 b, u8 a, u8 targetR, u8 targetG, u8 targetB, f32 x, f32 y, f32 width, f32 height, f32 targetWidth,
+	                     f32 targetHeight, f32 time, u8 targetA, BOOL hideWhenDone);
+#endif
 };
 
 #if defined(VERSION_R24J01)
+// the cinema bars of the cutscenes, a Wii class: a tile wipe that never stretches to the wide screen
+// (vtable 0x802E6330). CGame keeps it at _5010 between the tile and the roboeyes wipe
+class CScrnWipeCine : public CScrnWipeTile {
+public:
+	virtual ~CScrnWipeCine() { } // _08 (weak), 0x8002FE6C
+	void Reset();                // 0x8001C2D8
+};
+
 struct RoboeyesLensValue {
 	f32 value;
 	f32 target;
@@ -144,11 +151,7 @@ struct RoboeyesLensValue {
 // chibi robo's eyes closing over the screen
 class CScrnRoboeyes : public CScrnWipe {
 public:
-#if defined(VERSION_R24J01)
-	virtual ~CScrnRoboeyes();
-#else
-	virtual ~CScrnRoboeyes() { } // _08 (weak)
-#endif
+	virtual ~CScrnRoboeyes() { }          // _08 (weak)
 	virtual void Reset();                 // _0C, Reset__13CScrnRoboeyesFv
 	virtual void Update(u32 frames);      // _10, Update__13CScrnRoboeyesFUl
 	virtual void Draw(CGs* gs, s32 mode); // _14, Draw__13CScrnRoboeyesFP3CGsl
@@ -158,6 +161,8 @@ public:
 	                             f32 targetWidth, f32 targetHeight, f32 time, u8 targetA, BOOL hideWhenDone);
 
 	void ResetLensState(f32 width, f32 height);
+	// 0x80042078, the two lens rings; single draws the left one alone, already merged
+	void DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f32 width, f32 height);
 #endif
 #if defined(VERSION_R24J01)
 	f32 mAngle; // _68

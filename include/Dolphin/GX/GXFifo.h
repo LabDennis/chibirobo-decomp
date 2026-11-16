@@ -130,6 +130,12 @@ static inline void GXTexCoord2u8(u8 s, u8 t)
 	GXWGFifo.u8 = t;
 }
 
+static inline void GXPosition2u8(u8 x, u8 y)
+{
+	GXWGFifo.u8 = x;
+	GXWGFifo.u8 = y;
+}
+
 static inline void GXPosition2u16(u16 x, u16 y)
 {
 	GXWGFifo.u16 = x;

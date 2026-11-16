@@ -73,11 +73,8 @@ CObjVec::CObjVec()
 {
 }
 
-// the two leading words are cleared by hand; the NW_Anm tag and the CFile
-// initialize themselves
+// the NW_Anm and the CFile initialize themselves
 CJArchive::CJArchive()
-    : _00(0)
-    , _04(0)
 {
 }
 
