@@ -1223,6 +1223,9 @@ game/wii/xobj_ut.cpp:
 game/ctoon.cpp:
 	.text start:0x802BD294 end:0x802BD3B4
 
+game/wii/gamemain.cpp:
+	.text       start:0x80017BC0 end:0x80019A68
+
 game/wii/delete.cpp:
 	.text start:0x80019A68 end:0x80019AB4
 

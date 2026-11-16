@@ -628,6 +628,9 @@ public:
 	void SetChannel(CGsChannel* channel, GXChannelID id, GSChanCtrl ctrl, GXColor ambient, GXColor material); // 0x802AB344
 	BOOL BeginCamera();                     // 0x802AB790, loads mCamera's matrices; FALSE when there is none
 	void EndCamera();                       // 0x802AB7E4
+	void fn_802AAFC0();                     // 0x802AAFC0, CBase::Run calls it once before the loop
+	void fn_802AB8CC();                     // 0x802AB8CC, and these two at the top of every frame
+	void fn_802AB8F0();                     // 0x802AB8F0
 	void fn_802AB81C(MtxP view, BOOL flag); // 0x802AB81C, loads mLight under view and keeps what the scene list returns
 };
 

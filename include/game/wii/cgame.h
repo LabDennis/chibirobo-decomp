@@ -13,6 +13,7 @@
 #include "game/ccameraactioneye.h"
 #include "game/ut.h"
 #include "game/inventory.h"
+#include "game/cstopwatch.h"
 #include "game/cmovie.h"
 #
 
@@ -41,7 +42,8 @@ public:
 	CTpl mIconTpl;             // _3400, the icons shown in the screen's corner; the first says the HOME Menu is not available
 	u8 mCameras[2][0x1F8];     // _35F8, CCamera[2] by ~CBase, bytes while CCamera is defined below: the perspective and the screen camera
 	u8 mLights[16][0x6C];      // _39E8, CLight[16]: the default set, the screen set starts at [8]
-	u8 _40A8[0x4148 - 0x40A8]; // _40A8
+	u8 _40A8[0x40C8 - 0x40A8]; // _40A8
+	CStopwatch mStopwatch[2];  // _40C8, the whole frame, and the pad, BeforeUpdate and Draw
 	void* mMem1Base;           // _4148, 0x80000000
 	void* mMem1Start;          // _414C, the MEM1 arena's start before the heaps are made
 	void* mMem1ArenaLo;        // _4150
@@ -53,7 +55,10 @@ public:
 	s32 mDvdStatus;            // _4164
 	s32 mPrevDvdStatus;        // _4168
 	BOOL mDiskOk;              // _416C
-	u8 _4170[0x41A8 - 0x4170];
+	bool mDvdError;            // _4170, the drive stopped reading; cleared when it reads again
+	DVDCommandBlock mDiskCheckBlock; // _4174, DVDCheckDiskAsync runs on it once, its userData is &mDvdStatus
+	bool mDiskChecking;              // _41A4
+	u8 _41A5[0x41A8 - 0x41A5];
 	bool mResetRequested; // _41A8
 	s32 mResetType;       // _41AC, 3 restarts the game, 4 returns to the Wii Menu
 	u8 _41B0[0x41BC - 0x41B0];
@@ -99,6 +104,10 @@ public:
 	virtual void vf7C();
 	virtual void vf80();
 	virtual void Reset(u32 code);
+
+	void Run(int argc, char** argv); // 0x80017BD8, main's whole body
+	void UpdateDvdStatus();          // 0x80019428
+	void fn_80018364();              // 0x80018364, Update calls it first
 
 	// asks for a reset unless one is already on its way
 	void RequestReset(s32 type)
