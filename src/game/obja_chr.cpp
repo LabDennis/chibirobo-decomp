@@ -5077,10 +5077,10 @@ Vec XObjChr::GetCameraTarget()
 		} else if (IsJumpActionState(&mJump, 9) || IsJumpActionState(&mJump, 12) || IsJumpActionState(&mJump, 15)
 		           || IsJumpActionState(&mJump, 17)) {
 			target   = mMoveTranslate + (Vec) { 0, 10, 0 };
-			target.y = 10.f + mJump.mArcPosition.y;
+			target.y = 10.f + mJump.GetArcPosition().y;
 		} else if (IsJumpActionState(&mJump, 10) || IsJumpActionState(&mJump, 13) || IsJumpActionState(&mJump, 16)) {
 			CVec start = mMoveTranslate;
-			CVec arc   = mJump.mArcPosition;
+			CVec arc   = mJump.GetArcPosition();
 			f32 end    = GetJointAnimationEndFrame(this);
 			f32 t      = GetJointAnimationCurrentFrame(this) / end;
 			target     = arc + (start - arc) * t + (Vec) { 0, 10, 0 };
