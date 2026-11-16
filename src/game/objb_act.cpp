@@ -1145,7 +1145,17 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			RopeAnim(act, 0x8c, 0);
 			act->mState = 5;
 		} else {
-			ApproachRope(act, frames, frame > 80, false, .2f);
+			if (act->mTarget) {
+				CVec delta = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+				act->mPos.x += delta.x;
+				act->mPos.z += delta.z;
+				if (act->mDist > 0 && frame > 80) {
+					if ((act->mDist -= .2f * frames) < 0)
+						act->mDist = 0;
+					act->mOwner->SetTranslateX(act->mDist * (f32)sin(act->mAngle) + act->mPos.x, 0);
+					act->mOwner->SetTranslateZ(act->mDist * (f32)cos(act->mAngle) + act->mPos.z, 0);
+				}
+			}
 			ReleaseRopePlug(act, frame, 80);
 		}
 		break;
@@ -1156,10 +1166,11 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				RopeAnim(act, 0x8a, 1, TRUE);
 				act->mOwner->UpdateAnim(0);
 				s32 p1[]   = { 0 };
-				Vec local  = GetPlayerJointLocalTranslationByPath(act->mOwner, 1, p1);
+				CVec local = GetPlayerJointLocalTranslationByPath(act->mOwner, 1, p1);
 				s32 p2[]   = { 0 };
 				CVec delta = GetEventJointWorldPosition(act->mOwner, 1, p2) - act->mOwner->mMoveTranslate;
-				act->mOwner->SetTranslateY(act->mOwner->mMoveTranslate.y - delta.y, 0);
+				delta.y    = -delta.y;
+				act->mOwner->SetTranslateY(act->mOwner->mMoveTranslate.y + delta.y, 0);
 				RopeAnim(act, 0x85, 1);
 				LocateRope(act);
 			}
