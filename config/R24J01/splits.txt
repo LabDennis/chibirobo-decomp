@@ -1170,6 +1170,11 @@ game/oxmenudtor.cpp:
 game/cpaddtor.cpp:
 	.text start:0x800365D8 end:0x80036618
 
+game/cspritedtor.cpp:
+	extab start:0x80007900 end:0x800079F0
+	extabindex start:0x80011A80 end:0x80011AC8
+	.text start:0x8002FE00 end:0x80030088
+
 game/cpadexdtor.cpp:
 	.text start:0x80030A54 end:0x80030AC0
 
