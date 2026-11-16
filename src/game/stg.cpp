@@ -7947,7 +7947,7 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 
 extern "C" u8* GetAttachmentName(s32 id);
 
-extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, bool attachment, f32 x, f32 y, f32 alpha, f32 scale)
+extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, u8 attachment, f32 x, f32 y, f32 alpha, f32 scale)
 {
 #if defined(VERSION_JP)
 	const int rowTexture = 144, digitTexture = 123;
@@ -8238,15 +8238,14 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	InitMenuSelectionBar(tex);
 	f32 barY = 2.0f + ((step / 2.0f + (step * selected + rowY)) - 2.0f * scale);
 	DrawMenuSelectionBar(tex, barX, barY, barW, barH, alpha, textureOffset, barColor);
-	MenuPCPage& page  = kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage;
 	MenuPCItem* items = kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries;
 	for (int i = 0; i < 9; i++)
-		DrawPCListRow<kind>(page.mRows[i], left, step * i + rowY, alpha, scale);
-	if (page.mStart < PCShopMaxPage(items) - 1)
-		DrawPCListRow<kind>(page.mNext[0], left, 9.0f * step + rowY, alpha, scale);
+		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mRows[i], left, step * i + rowY, alpha, scale);
+	if ((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mStart < PCShopMaxPage(items) - 1)
+		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mNext[0], left, 9.0f * step + rowY, alpha, scale);
 	CountPCShopItems(kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries);
-	if (page.mStart > 0)
-		DrawPCListRow<kind>(page.mPrev[0], left, rowY - step, alpha, scale);
+	if ((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mStart > 0)
+		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mPrev[0], left, rowY - step, alpha, scale);
 #if defined(VERSION_JP)
 	DrawPCListMask(97.0f, 40.0f, opacity | 0x0A0A0A00);
 	DrawPCListMask(292.5f, 40.0f, opacity | 0x0A0A0A00);
