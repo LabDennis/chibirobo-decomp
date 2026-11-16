@@ -8200,6 +8200,7 @@ __ct__5CBaseFv = .text:0x8003366C; // type:function
 __ct__11CGsTevStageFv = .text:0x80033A74; // type:function
 __ct__10CGsChannelFv = .text:0x80033B3C; // type:function
 __ct__4CTplFv = .text:0x80033B94; // type:function
+__ct__12CSoundHandleFv = .text:0x80033B88; // type:function size:0xC
 __ct__7CCameraFv = .text:0x80033BE0; // type:function
 __ct__10CStopwatchFv = .text:0x80033C08; // type:function
 __ct__9CScrnFadeFv = .text:0x80033C18; // type:function
