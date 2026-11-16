@@ -5,6 +5,7 @@
 // update, draw and menu code is still to do. CanFallDuringLadderAction, CanFallDuringRopeAction and
 // CanCopterActionSlideOnSlope (74-81 %): retail starts each bool at TRUE and clears it, as an inlined
 // helper returning the first two compares would; this build tests the other way round.
+#include "game/attachmentvalues.h"
 #include "game/ringmenu.h"
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
@@ -271,6 +272,25 @@ void SetObjectVectorSpeedZ(CObjVec* value, f32 z)
 	value->mSpeed.z = z;
 }
 
+Vec* GetHangFloorCenter(XActHang* act)
+{
+	return &act->mFloorCenter;
+}
+
+f32 GetHangDistance(const XActHang* act)
+{
+	return act->mDistance;
+}
+
+void SetTumbleStateAndFade(WiiPlayerState* chr, s32 state, BOOL restart)
+{
+	chr->mTumble.mState = state;
+	if (restart) {
+		chr->mTumble.mFade.mActive = TRUE;
+		chr->mTumble.mFade.mAmount = 0.0f;
+	}
+}
+
 XObjFloor** GetObjectFloorTableAddress(XObj* object)
 {
 	return &object->mFloors;
@@ -437,6 +457,11 @@ UnkStageObj* GetIndexedCoordPlacement(const CoordInfo* info, s32 index)
 CoordInfo* GetObjectCoordInfo(XObj* object)
 {
 	return &object->mCoord;
+}
+
+void SetAttachmentCountById(AttachmentValues* values, s32 id, s32 value)
+{
+	values->SetCount(id, value);
 }
 
 u8 IsPlayerFlashingFromHit(WiiPlayerState* chr)

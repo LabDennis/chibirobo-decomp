@@ -766,6 +766,33 @@ public:
 };
 STATIC_ASSERT(sizeof(XAction) == 0x2C);
 
+// hanging from a ledge
+class XActHang : public XAction {
+public:
+	BOOL mStickAway;      // _2C, set when the stick points away
+	Vec mHangStartOffset; // _30, player position relative to the target
+	Vec mFloorCenter;     // _3C
+	f32 mDistance;        // _48
+	u8 _4C[0x50 - 0x4C];  // _4C
+};
+STATIC_ASSERT(sizeof(XActHang) == 0x50);
+
+// the ring on the floor around him while he tumbles
+struct XActTumbleFade {
+	BOOL mActive; // _00
+	Vec mOffset;  // _04, from his feet, turned with him
+	f32 mAmount;  // _10
+};
+STATIC_ASSERT(sizeof(XActTumbleFade) == 0x14);
+
+class XActTumble : public XAction {
+public:
+	XActTumbleFade mFade; // _2C
+	f32 mSavedYaw;        // _40
+	u8 _44[0x48 - 0x44];  // _44, the GameCube's idle particle
+};
+STATIC_ASSERT(sizeof(XActTumble) == 0x48);
+
 // the attachment ring's menu on the player at _19EE8, the GameCube's mMenu.mAtc. The HUD reads the
 // highlighted item's type; the item count is a bound, the menu only uses a handful
 struct WiiAtcMenuItem {
@@ -800,8 +827,8 @@ struct WiiPlayerState {
 	u8 _0ACC[0xAF0 - 0xACC];
 	XObj* mLiftPlugTarget; // _0AF0, the GameCube's mLift.mPlugTarget
 	u8 _0AF4[0xB50 - 0xAF4];
-	XAction mHang; // _0B50
-	u8 _0B7C[0xBA0 - 0xB7C];
+	XActHang mHang; // _0B50
+
 	XAction mJump; // _0BA0
 	u8 _0BCC[0xBF4 - 0xBCC];
 	XAction mLadder; // _0BF4
@@ -810,8 +837,8 @@ struct WiiPlayerState {
 	u8 _0C64[0xC78 - 0xC64];
 	XAction mPush; // _0C78
 	u8 _0CA4[0xCD0 - 0xCA4];
-	XAction mTumble; // _0CD0
-	u8 _0CFC[0xD50 - 0xCFC];
+	XActTumble mTumble; // _0CD0
+	u8 _0D18[0xD50 - 0xD18];
 	XAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
 	u8 _0D7C[0x95AC - 0xD7C];
 	u8 mSfx[0x5C]; // _95AC, his AnimSfx (game/wii/animsfx.h, which needs this header)
