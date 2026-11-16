@@ -477,6 +477,7 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
  * @note Address: 0x8019EC40
  * @note Size: 0x738
  */
+// NONMATCHING: the strings sit further into retail's .rodata, and the glyph range loop swaps r29 and r30
 #if defined(VERSION_JP)
 void CFont::Init()
 #else

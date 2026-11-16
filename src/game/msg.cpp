@@ -609,6 +609,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
  * @note Address: 0x80080580
  * @note Size: 0x364
  */
+// NONMATCHING: the reads keep the cursor and the byte in each other's register
 extern "C" s32 CMsg__cmd_ANIM(CMsg* msg)
 {
 	u8 flags = ReadMsgU8(msg);

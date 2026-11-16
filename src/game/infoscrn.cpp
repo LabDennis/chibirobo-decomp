@@ -122,6 +122,7 @@ void UpdateScreenFade(CScrnColor* color, u32 frames);
  * @note Address: 0x8006D850
  * @note Size: 0x2A4
  */
+// NONMATCHING: .rodata, retail's block starts with the header's six Vecs, so the Vec initializers sit 0x48 further
 extern "C" void InitInfoScreen(InfoScrn* scrn)
 {
 	scrn->mFade.Reset();
@@ -223,6 +224,7 @@ extern "C" BOOL HideHudPointCounters(InfoScrn* scrn)
  * @note Address: 0x8006D5A4
  * @note Size: 0x280
  */
+// NONMATCHING: .rodata, as in InitInfoScreen
 extern "C" void ResetGameHudState(InfoScrn* scrn)
 {
 	scrn->mHudAlpha        = 0.0f;

@@ -116,6 +116,7 @@ void CMotionControlCamera::RestoreAction()
  * @note Address: 0x80149E24
  * @note Size: 0xB1C
  */
+// NONMATCHING: retail takes &PLAYER->mLift before it tests the lift's state, and PlayerCanLook's two flags swap registers
 void CMotionControlCamera::Update(u32 step)
 {
 	if (gGame.mStatus.mFlags & 0x20) {
@@ -1027,6 +1028,8 @@ void CMotionControlCamera::Update(u32 step)
  * @note Address: 0x8014978C
  * @note Size: 0x698
  */
+// NONMATCHING: the argument copy and the two results of Follow's (target - value) / divide sit in the other order
+// on the stack
 void CMotionControlCamera::Interpolate(u32 step)
 {
 	switch (mMode) {
