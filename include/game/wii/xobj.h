@@ -321,11 +321,19 @@ public:
 	virtual void SetScaleZ(f32 z);               // _80
 	virtual void SetPos(f32 x, f32 y, f32 z);    // _84
 	virtual void SetRot(f32 x, f32 y, f32 z);    // _88
-	virtual void SetScale(f32 x, f32 y, f32 z);  // _8C
-	virtual void SetPos(const Vec& pos);         // _90
-	virtual void SetRot(const Vec& rot);         // _94
-	virtual void SetScale(const Vec& scale);     // _98
-	virtual void SetScale(f32 scale);
+	virtual void SetScale(f32 x, f32 y, f32 z)   // _8C
+	{
+		mMoveScale.x   = x;
+		mMoveScale.y   = y;
+		mMoveScale.z   = z;
+		mMoveTarget2.x = x;
+		mMoveTarget2.y = y;
+		mMoveTarget2.z = z;
+	}
+	virtual void SetPos(const Vec& pos);     // _90
+	virtual void SetRot(const Vec& rot);     // _94
+	virtual void SetScale(const Vec& scale); // _98
+	virtual void SetScale(f32 scale) { SetScale(scale, scale, scale); }
 	virtual MtxP GetWorldMtx(nw4r::g3d::ResNode node);                                       // _A0, NULL without a model
 	virtual MtxP GetWorldMtx(const char* name);                                              // _A4
 	virtual MtxP GetWorldMtx(u32 index);                                                     // _A8
@@ -357,13 +365,17 @@ public:
 	virtual void ClearAnim();           // _110
 	virtual void SetAnimRate(f32 rate); // _114
 	virtual void vf118();
-	virtual s32 GetAnimId();
+	virtual s32 GetAnimId() { return mAnimId; }
 	virtual f32 GetAnimRate(s32 index); // _120
 	virtual f32 GetAnimRate();          // _124
 	virtual f32 GetAnimFrame();         // _128
 	virtual f32 GetAnimEndFrame();      // _12C
 	virtual bool IsAnimEnd(f32 frames); // _130, the animation runs out within frames
-	virtual BOOL IsAnimDone();
+	virtual bool IsAnimDone()
+	{
+		f32 frame = GetAnimFrame();
+		return frame + mAnimRate[1] >= GetAnimEndFrame();
+	}
 	virtual void SetAnmScn(u32 id, f32 frame, f32 rate); // _138
 	virtual void ReleaseModelWork();                     // _13C
 	virtual void vf140();
@@ -421,7 +433,7 @@ public:
 	virtual void ResetObjectState();                       // _154
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void vf15C();
-	virtual void vf160();
+	virtual void vf160() { mLastAnimFrame = GetAnimFrame(); }
 	virtual void UpdateObject(u32 frames); // _164
 	virtual void vf168();
 	virtual void vf16C(); // _16C, empty
@@ -521,7 +533,9 @@ public:
 	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x19C - 0x189];
 	CVec mLastPos; // _19C
-	u8 _1AC[0x640 - 0x1AC];
+	u8 _1AC[0x1B8 - 0x1AC];
+	f32 mLastAnimFrame; // _1B8, the frame the animation had after the last update
+	u8 _1BC[0x640 - 0x1BC];
 	f32 mFloorXZExtent; // _640
 	u8 _644[0x6C8 - 0x644];
 	f32 mMaxFloorHeight; // _6C8, NAN while there is none
