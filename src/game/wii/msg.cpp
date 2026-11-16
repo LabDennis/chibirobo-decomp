@@ -483,9 +483,9 @@ extern "C" void CMsgFont_Init(CMsgFont* font, u8* data, f32 x, f32 y, WiiTitleOb
 	font->mMode                      = mode;
 	for (s32 i = 0; i < 2; i++) {
 		font->mCursor[i].vf09C(0.0f);
-		gGame.mObjectRefs[gGame.mObjectRefCount].mObj   = &font->mCursor[i];
-		gGame.mObjectRefs[gGame.mObjectRefCount].mFlags = 0;
-		gGame.mObjectRefCount++;
+		gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount].mObj   = &font->mCursor[i];
+		gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount].mIndex = 0;
+		gGame.mDrawLists[1].mCount++;
 	}
 	for (s32 i = 0; i < 400; i++) {
 		font->mGlyphs[i].mSprite.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);

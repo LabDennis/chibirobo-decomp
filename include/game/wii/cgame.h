@@ -29,8 +29,14 @@ class CCamera;
 // flags halfword (CMsgFont_Init sets 0x800 on its cursor's own status instead)
 struct WiiObjectRef {
 	void* mObj; // _00
-	s16 mFlags; // _04
+	s16 mIndex; // _04, the object's slot in mObjects
 	s16 _06;
+};
+
+// objects in draw order, the GameCube's XObjDrawList; the Wii list points at its entries
+struct XObjDrawList {
+	WiiObjectRef* mRefs; // _00
+	s32 mCount;          // _04
 };
 
 // Verified Wii fields accessed by the controller, stage, start-up and save code. The Wii CBase is larger
@@ -1141,16 +1147,10 @@ public:
 	s32 mObjectCount;                // _108B0
 	s32 mLoadObjectIndex;            // _108B4
 	u8 _108B8[0x108C0 - 0x108B8];
-	WiiObjectRef* mDrawRefs; // _108C0, the objects in draw order, BuildObjectDrawList fills it
-	s32 mDrawRefCount;       // _108C4
-	// pointers to spawned objects the renderer walks; entries are grouped in eights,
-	// CMsgFont_Init pushes its two cursors here
-	WiiObjectRef* mObjectRefs;    // _108C8
-	s32 mObjectRefCount;          // _108CC
-	WiiObjectRef* mSceneRefs;     // _108D0, the objects DrawScene draws; BuildSceneDrawLists fills both lists each frame
-	s32 mSceneRefCount;           // _108D4
-	WiiObjectRef* mEffectRefs;    // _108D8, the objects whose effects are drawn, the ones the mirrors show
-	s32 mEffectRefCount;          // _108DC
+	// [0] the objects in draw order, BuildObjectDrawList fills it; [1] the spawned objects the renderer walks, entries
+	// grouped in eights, CMsgFont_Init pushes its two cursors here; [2] the objects DrawScene draws and [3] the ones whose
+	// effects are drawn (the ones the mirrors show), BuildSceneDrawLists fills both each frame
+	XObjDrawList mDrawLists[4];   // _108C0
 	ObjArchiveTable mObjArchives; // _108E0
 	CEvt mEvt;                    // _4C8E0
 	u8 _4C94C[0x4C950 - 0x4C94C];
@@ -1265,7 +1265,7 @@ STATIC_ASSERT(offsetof(CGame, _EC2B4) == 0xEC2B4);
 STATIC_ASSERT(offsetof(CGame, _EC2C8) == 0xEC2C8);
 STATIC_ASSERT(offsetof(CGame, mStageName) == 0xEDEC8);
 STATIC_ASSERT(offsetof(CGame, mSetupStep) == 0x41EC);
-STATIC_ASSERT(offsetof(CGame, mDrawRefs) == 0x108C0);
+STATIC_ASSERT(offsetof(CGame, mDrawLists) == 0x108C0);
 STATIC_ASSERT(offsetof(CGame, mLightList) == 0xD9B58);
 STATIC_ASSERT(offsetof(CGame, mHudObject) == 0xECCE8);
 STATIC_ASSERT(offsetof(CGame, mScopeFade2) == 0xECD24);

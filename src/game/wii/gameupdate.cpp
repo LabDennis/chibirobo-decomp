@@ -805,38 +805,38 @@ extern "C" void BuildObjectDrawList(CGame* game)
 	CMirrorObj* obj;
 	s32 i;
 	for (i = 0; i < 0x400; i++) {
-		game->mDrawRefs[i].mObj = NULL;
+		game->mDrawLists[0].mRefs[i].mObj = NULL;
 	}
-	game->mDrawRefCount = 0;
+	game->mDrawLists[0].mCount = 0;
 	for (i = 0; i < game->mObjectCount; i++) {
 		obj = (CMirrorObj*)game->mObjects[i];
 		if (obj != (CMirrorObj*)game->mPlayer && obj != *(CMirrorObj**)&game->mXObjPools[0] && (obj->mStatus & 1)
 		    && (obj->mStatus & 0x4000)) {
-			game->mDrawRefs[game->mDrawRefCount].mObj   = obj;
-			game->mDrawRefs[game->mDrawRefCount].mFlags = i;
-			game->mDrawRefCount++;
+			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = i;
+			game->mDrawLists[0].mCount++;
 		}
 	}
 	for (i = 0; i < game->mObjectCount; i++) {
 		obj = (CMirrorObj*)game->mObjects[i];
 		if (obj != (CMirrorObj*)game->mPlayer && obj != *(CMirrorObj**)&game->mXObjPools[0] && (obj->mStatus & 1)
 		    && !(obj->mStatus & 0x4000)) {
-			game->mDrawRefs[game->mDrawRefCount].mObj   = obj;
-			game->mDrawRefs[game->mDrawRefCount].mFlags = i;
-			game->mDrawRefCount++;
+			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = i;
+			game->mDrawLists[0].mCount++;
 		}
 	}
 	obj = (CMirrorObj*)game->mPlayer;
 	if (obj->mStatus & 1) {
-		game->mDrawRefs[game->mDrawRefCount].mObj   = obj;
-		game->mDrawRefs[game->mDrawRefCount].mFlags = 0;
-		game->mDrawRefCount++;
+		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = 0;
+		game->mDrawLists[0].mCount++;
 	}
 	obj = *(CMirrorObj**)&game->mXObjPools[0];
 	if (obj->mStatus & 1) {
-		game->mDrawRefs[game->mDrawRefCount].mObj   = obj;
-		game->mDrawRefs[game->mDrawRefCount].mFlags = 0;
-		game->mDrawRefCount++;
+		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
+		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = 0;
+		game->mDrawLists[0].mCount++;
 	}
 }
 
@@ -865,38 +865,38 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 	}
 
 	for (i = 0; i < 0x400; i++) {
-		game->mSceneRefs[i].mObj = NULL;
+		game->mDrawLists[2].mRefs[i].mObj = NULL;
 	}
-	game->mSceneRefCount = 0;
+	game->mDrawLists[2].mCount = 0;
 	for (i = 0; i < 0x400; i++) {
-		game->mEffectRefs[i].mObj = NULL;
+		game->mDrawLists[3].mRefs[i].mObj = NULL;
 	}
-	game->mEffectRefCount = 0;
+	game->mDrawLists[3].mCount = 0;
 
 	for (i = 0; i < ((XObjPool*)game->mXObjPools)[3].mUsed; i++) {
 		obj = ((XObjPool*)game->mXObjPools)[3].Get(i);
 		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && !(obj->mStatus.mFlags & 0xA00040)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
-				game->mSceneRefs[game->mSceneRefCount].mObj   = obj;
-				game->mSceneRefs[game->mSceneRefCount].mFlags = 0;
-				game->mSceneRefCount++;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mObj   = obj;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mIndex = 0;
+				game->mDrawLists[2].mCount++;
 			}
-			game->mEffectRefs[game->mEffectRefCount].mObj   = obj;
-			game->mEffectRefs[game->mEffectRefCount].mFlags = 0;
-			game->mEffectRefCount++;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mObj   = obj;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mIndex = 0;
+			game->mDrawLists[3].mCount++;
 		}
 	}
 	for (i = 0; i < game->mObjectCount; i++) {
 		obj = (XObj*)game->mObjects[i];
 		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && !(obj->mStatus.mFlags & 0xA00040)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
-				game->mSceneRefs[game->mSceneRefCount].mObj   = obj;
-				game->mSceneRefs[game->mSceneRefCount].mFlags = 0;
-				game->mSceneRefCount++;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mObj   = obj;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mIndex = 0;
+				game->mDrawLists[2].mCount++;
 			}
-			game->mEffectRefs[game->mEffectRefCount].mObj   = obj;
-			game->mEffectRefs[game->mEffectRefCount].mFlags = 0;
-			game->mEffectRefCount++;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mObj   = obj;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mIndex = 0;
+			game->mDrawLists[3].mCount++;
 		}
 	}
 	for (i = 0; i < game->mObjectCount; i++) {
@@ -904,26 +904,26 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && (obj->mStatus.mFlags & 0xA00000)
 		    && !(obj->mStatus.mFlags & 0x40)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
-				game->mSceneRefs[game->mSceneRefCount].mObj   = obj;
-				game->mSceneRefs[game->mSceneRefCount].mFlags = 0;
-				game->mSceneRefCount++;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mObj   = obj;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mIndex = 0;
+				game->mDrawLists[2].mCount++;
 			}
-			game->mEffectRefs[game->mEffectRefCount].mObj   = obj;
-			game->mEffectRefs[game->mEffectRefCount].mFlags = 0;
-			game->mEffectRefCount++;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mObj   = obj;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mIndex = 0;
+			game->mDrawLists[3].mCount++;
 		}
 	}
 	for (i = 0; i < game->mObjectCount; i++) {
 		obj = (XObj*)game->mObjects[i];
 		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && (obj->mStatus.mFlags & 0x40)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
-				game->mSceneRefs[game->mSceneRefCount].mObj   = obj;
-				game->mSceneRefs[game->mSceneRefCount].mFlags = 0;
-				game->mSceneRefCount++;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mObj   = obj;
+				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mIndex = 0;
+				game->mDrawLists[2].mCount++;
 			}
-			game->mEffectRefs[game->mEffectRefCount].mObj   = obj;
-			game->mEffectRefs[game->mEffectRefCount].mFlags = 0;
-			game->mEffectRefCount++;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mObj   = obj;
+			game->mDrawLists[3].mRefs[game->mDrawLists[3].mCount].mIndex = 0;
+			game->mDrawLists[3].mCount++;
 		}
 	}
 }
@@ -1248,13 +1248,13 @@ void CGame::Update(u32 frames)
 	}
 
 	for (i = 0; i < 0x400; i++) {
-		mObjectRefs[i].mObj = NULL;
+		mDrawLists[1].mRefs[i].mObj = NULL;
 	}
-	mObjectRefCount = 0;
+	mDrawLists[1].mCount = 0;
 	if (!IsLoadStepRunning()) {
 		if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
-			for (i = 0; i < mDrawRefCount; i++) {
-				XObj* obj = (XObj*)mDrawRefs[i].mObj;
+			for (i = 0; i < mDrawLists[0].mCount; i++) {
+				XObj* obj = (XObj*)mDrawLists[0].mRefs[i].mObj;
 				if ((obj->mStatus.mFlags & 1) && obj->_188 && obj->mBaseMtxPtr == NULL) {
 					obj->vf15C();
 					obj->UpdateObject(frames);
@@ -1404,8 +1404,8 @@ void CGame::Update(u32 frames)
 		((CSound3D*)&gGame.mSound.mSound3DManager)->SetListener(GetCamera()->mView.mAngle.y, &mListener.mPos);
 	}
 	UpdateXSound(&gGame.mSound, frames);
-	for (i = 0; i < mObjectRefCount; i++) {
-		XObj* obj = (XObj*)mObjectRefs[i].mObj;
+	for (i = 0; i < mDrawLists[1].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if (obj->mStatus.mFlags & 1) {
 			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, obj->mObject.m_pScnMdl);
 		}
@@ -1421,10 +1421,10 @@ void CGame::Update(u32 frames)
 	}
 	StepSceneDraws(frames);
 
-	s32 count = mObjectRefCount;
+	s32 count = mDrawLists[1].mCount;
 	if (!IsLoadStepRunning() && GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
-		for (i = 0; i < mDrawRefCount; i++) {
-			XObj* obj = (XObj*)mDrawRefs[i].mObj;
+		for (i = 0; i < mDrawLists[0].mCount; i++) {
+			XObj* obj = (XObj*)mDrawLists[0].mRefs[i].mObj;
 			if (obj->mStatus.mFlags & 1) {
 				if (obj->_188 && obj->mBaseMtxPtr == NULL) {
 					obj->vf16C();
@@ -1438,8 +1438,8 @@ void CGame::Update(u32 frames)
 		fn_800D1A8C(GetPlayer(), frames);
 		fn_800D1AF8(GetPlayer(), frames);
 	}
-	for (i = count; i < mObjectRefCount; i++) { // the ones the objects listed while they ran
-		XObj* obj = (XObj*)mObjectRefs[i].mObj;
+	for (i = count; i < mDrawLists[1].mCount; i++) { // the ones the objects listed while they ran
+		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if ((obj->mStatus.mFlags & 1) && !(obj->_188 && obj->mBaseMtxPtr == NULL)) {
 			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, obj->mObject.m_pScnMdl);
 		}
@@ -1488,8 +1488,8 @@ void CGame::Update(u32 frames)
 	if (BeginSceneCamera()) {
 		vf54();
 	}
-	for (i = 0; i < mObjectRefCount; i++) {
-		XObj* obj = (XObj*)mObjectRefs[i].mObj;
+	for (i = 0; i < mDrawLists[1].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if (obj->mStatus.mFlags & 1) {
 			fn_800B4988(obj);
 		}
@@ -1519,8 +1519,8 @@ void CGame::Update(u32 frames)
 				CVec eye = GetCamera()->mView.mEye;
 				CVec muzzle(fn_8010BEE0(&GetPlayer()->mPopper));
 				XObj* held = GetPlayer()->mLift.mState == 0 ? NULL : GetPlayer()->mLift.mTarget;
-				for (i = 0; i < mObjectRefCount; i++) {
-					XObj* obj = (XObj*)mObjectRefs[i].mObj;
+				for (i = 0; i < mDrawLists[1].mCount; i++) {
+					XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 					if (obj == NULL) {
 						continue;
 					}

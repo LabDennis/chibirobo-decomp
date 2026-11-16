@@ -399,6 +399,21 @@ BOOL CanRadarActionSlideOnSlope(const XAction*)
 	return true;
 }
 
+XObj* GetDrawListObject(const CGame* game, s32 list, s32 index)
+{
+	return (XObj*)game->mDrawLists[list].mRefs[index].mObj;
+}
+
+s32 GetDrawListIndex(const CGame* game, s32 list, s32 index)
+{
+	return game->mDrawLists[list].mRefs[index].mIndex;
+}
+
+s32 GetDrawListCount(const CGame* game, s32 list)
+{
+	return game->mDrawLists[list].mCount;
+}
+
 f32 GetObjectHitFloorHeight(const XObj* object)
 {
 	return object->mFloorHeights[object->mHitFloorIndex];
@@ -447,6 +462,30 @@ f32 GetAutoActionSoftTiltCap()
 void SetPlayerActionState(XAction* action, s32 state)
 {
 	action->mState = state;
+}
+
+void SetPlayerHangState(WiiPlayerState* chr, s32 state, XObj* target)
+{
+	SetPlayerActionState(&chr->mHang, state);
+	if (target != NULL) {
+		SetPlayerActionTarget(&chr->mHang, target);
+	}
+}
+
+void SetPlayerLadderState(WiiPlayerState* chr, s32 state, XObj* target)
+{
+	SetPlayerActionState(&chr->mLadder, state);
+	if (target != NULL) {
+		SetPlayerActionTarget(&chr->mLadder, target);
+	}
+}
+
+void SetPlayerRopeState(WiiPlayerState* chr, s32 state, XObj* target)
+{
+	SetPlayerActionState(&chr->mRope, state);
+	if (target != NULL) {
+		SetPlayerActionTarget(&chr->mRope, target);
+	}
 }
 
 UnkStageObj* GetIndexedCoordPlacement(const CoordInfo* info, s32 index)

@@ -518,8 +518,8 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 				handle.Pause(false, frames);
 			}
 		}
-		for (s32 i = 0; i < game->mDrawRefCount; i++) {
-			XObj* object = (XObj*)game->mDrawRefs[i].mObj;
+		for (s32 i = 0; i < game->mDrawLists[0].mCount; i++) {
+			XObj* object = (XObj*)game->mDrawLists[0].mRefs[i].mObj;
 			if (object->mStatus.mFlags & 1) {
 				object->ResumeSounds(fade);
 			}
@@ -572,8 +572,8 @@ extern "C" void PauseGameSounds(CGame* game, f32 fade)
 				handle.Pause(true, frames);
 			}
 		}
-		for (s32 i = 0; i < game->mDrawRefCount; i++) {
-			XObj* object = (XObj*)game->mDrawRefs[i].mObj;
+		for (s32 i = 0; i < game->mDrawLists[0].mCount; i++) {
+			XObj* object = (XObj*)game->mDrawLists[0].mRefs[i].mObj;
 			if (object->mStatus.mFlags & 1) {
 				object->PauseSounds(fade);
 			}
@@ -975,8 +975,8 @@ extern "C" void RenderSceneShadow(CGame* game)
 
 	f32 interestY = game->GetCamera()->mView.mInterest.y;
 	f32 strength  = game->mShadow.mStrength;
-	for (s32 i = 0; i < game->mEffectRefCount; i++) {
-		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+	for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+		XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 		if (!(obj->mStatus.mFlags & 4)) {
 			continue;
 		}
@@ -1043,8 +1043,8 @@ extern "C" void RenderSceneShadow(CGame* game)
 		gGame.mGs.mCurChannel->Apply();
 	}
 
-	for (s32 i = 0; i < game->mEffectRefCount; i++) {
-		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+	for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+		XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 		if (obj->GetCategory() == 3 || !(obj->mStatus.mFlags & 8)) {
 			continue;
 		}
@@ -1140,8 +1140,8 @@ extern "C" void DrawObjectEffectsOverFade(CGame* game)
 		return;
 	}
 	if (game->mColor0.mColor.mColor.a > 0.0f) {
-		for (s32 i = 0; i < game->mEffectRefCount; i++) {
-			XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+			XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 			if (obj->mStatus.mFlags & 1) {
 				if (obj->mStatus.mFlags & 0x200) {
 					obj->DrawObjectEffects();
@@ -1179,8 +1179,8 @@ extern "C" void DrawObjectEffectsPass(CGame* game)
 	if (menuShown) {
 		return;
 	}
-	for (s32 i = 0; i < game->mEffectRefCount; i++) {
-		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+	for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+		XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 		if (obj->mStatus.mFlags & 1) {
 			if (game->mColor0.mColor.mColor.a > 0.0f
 			    && ((obj->mStatus.mFlags & 0x200)
@@ -1219,14 +1219,14 @@ void CGame::DrawScene()
 		targets[1] = player->mLift.mTarget;
 	}
 	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
-	for (s32 i = 0; i < mSceneRefCount; i++) {
-		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+	for (s32 i = 0; i < mDrawLists[2].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[2].mRefs[i].mObj;
 		if (obj->GetCategory() == 3) {
 			obj->DrawObject();
 		}
 	}
-	for (s32 i = 0; i < mSceneRefCount; i++) {
-		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+	for (s32 i = 0; i < mDrawLists[2].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[2].mRefs[i].mObj;
 		if (obj->GetCategory() != 3) {
 			obj->DrawObject();
 		}
@@ -1236,8 +1236,8 @@ void CGame::DrawScene()
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
 	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
 	gGame.mGs.mCurRenderState->SetDstAlpha(GX_TRUE, 4);
-	for (s32 i = 0; i < mSceneRefCount; i++) {
-		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+	for (s32 i = 0; i < mDrawLists[2].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[2].mRefs[i].mObj;
 		if (obj->GetCategory() != 3 && ((obj->mStatus.mFlags & 0x820040) || obj == targets[1])) {
 			obj->DrawObject();
 		}
@@ -1245,8 +1245,8 @@ void CGame::DrawScene()
 	DrawSceneQueue(GetCamera()->mViewMtx);
 
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
-	for (s32 i = 0; i < mSceneRefCount; i++) {
-		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+	for (s32 i = 0; i < mDrawLists[2].mCount; i++) {
+		XObj* obj = (XObj*)mDrawLists[2].mRefs[i].mObj;
 		if (obj->GetCategory() == 9) {
 			((XObjLeticker*)obj)->DrawLate();
 		} else if (obj->GetCategory() == 16) {
@@ -1295,8 +1295,8 @@ extern "C" void RenderMirrorTextures(CGame* game)
 		PSMTXCopy(mirror->mView, view);
 		camera.vf64(view);
 		if (game->BeginCamera(&camera)) {
-			for (s32 j = 0; j < game->mSceneRefCount; j++) {
-				XObj* obj = (XObj*)game->mSceneRefs[j].mObj;
+			for (s32 j = 0; j < game->mDrawLists[2].mCount; j++) {
+				XObj* obj = (XObj*)game->mDrawLists[2].mRefs[j].mObj;
 				if (obj->mStatus.mFlags & 0x2000) {
 					obj->DrawReflection(view);
 				}
@@ -1426,8 +1426,8 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
 		gGame.mGs.mCurRenderState->SetDstAlpha(GX_TRUE, 0);
-		for (s32 i = 0; i < game->mSceneRefCount; i++) {
-			XObj* obj = (XObj*)game->mSceneRefs[i].mObj;
+		for (s32 i = 0; i < game->mDrawLists[2].mCount; i++) {
+			XObj* obj = (XObj*)game->mDrawLists[2].mRefs[i].mObj;
 			if (obj->mStatus.mFlags & 0x40) {
 				obj->DrawObject();
 			} else if (obj == targets[1] && player->mLift.mState != 24) { // not while he plugs it in
@@ -1489,8 +1489,8 @@ extern "C" void RenderFloorReflection(CGame* game)
 	PSMTXConcat(camera.mViewMtx, game->mFloorReflectMtx, view);
 	camera.vf64(view);
 	if (game->BeginCamera(&camera)) {
-		for (s32 i = 0; i < game->mEffectRefCount; i++) {
-			XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+			XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 			if ((obj->mStatus.mFlags & 0x20000000) && (obj->mBaseMtxPtr == NULL || (obj->mStatus.mFlags & 0x0000400000000000))) {
 				obj->SetCullMode(1);
 				obj->DrawReflection(view);
@@ -1499,8 +1499,8 @@ extern "C" void RenderFloorReflection(CGame* game)
 		DrawSceneQueue(view);
 		game->vf54();
 	}
-	for (s32 i = 0; i < game->mEffectRefCount; i++) {
-		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+	for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {
+		XObj* obj = (XObj*)game->mDrawLists[3].mRefs[i].mObj;
 		if ((obj->mStatus.mFlags & 0x20000000) && (obj->mBaseMtxPtr == NULL || (obj->mStatus.mFlags & 0x0000400000000000))) {
 			obj->ResetCullMode();
 		}
@@ -1661,8 +1661,8 @@ void CGame::Draw()
 	if (mColor0.mColor.mColor.a > 0.0f && GetStatusFlags(1)) { // what stays over the screen color
 		outline->Draw(FBEFF_COPY_I8 | FBEFF_OVERLAY);
 		if (BeginSceneCamera()) {
-			for (s32 i = 0; i < mSceneRefCount; i++) {
-				XObj* obj = (XObj*)mSceneRefs[i].mObj;
+			for (s32 i = 0; i < mDrawLists[2].mCount; i++) {
+				XObj* obj = (XObj*)mDrawLists[2].mRefs[i].mObj;
 				if (obj->mStatus.mFlags & 0x200) {
 					obj->DrawObject();
 				} else if ((obj->mStatus.mFlags & 0x0400000000000000) && (obj->mStatus.mFlags & 0x0000400000000000)) {
