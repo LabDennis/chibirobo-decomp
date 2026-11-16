@@ -534,7 +534,7 @@ void CFont::Init(BOOL builtin)
 			cache->glyphs         = (FontGlyph*)mm::Alloc(50 * sizeof(FontGlyph), "(dynamic)");
 			if (cache->glyphs != NULL) {
 				cache->next = 0;
-				for (s32 i = 0; i < 50; i++) {
+				for (int i = 0; i < 50; i++) {
 					cache->glyphs[i].code = 0;
 				}
 			} else {
