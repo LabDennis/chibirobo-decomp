@@ -57,8 +57,6 @@ void OSFatal(GXColor fg, GXColor bg, const char* msg);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 void ApproachHudValue(f32* value, f32* target, f32 step);
 s32 IndexOfLargestOfThree(OSTime first, OSTime second, OSTime third);
-// the pending-animation count of the cursor object's queue member at _E8 (its type is not yet read)
-s32 fn_8025BCB8(void* queue);
 // one dust mote's per-frame update, the body of the GameCube UpdateTitleDust's loop
 void fn_8004DC94(TitleDust* dust, u32 frames);
 // the pane-event slots in Title's vtable
@@ -68,6 +66,17 @@ void fn_8004DF3C(Title* title, CbPane* pane);
 
 // the figure overrides call their XObj bases by name; XObj's own declaration is still pending
 class XObj;
+
+// the cursor object's member at _E8 is an nw4r::g3d::ResFile (one pointer); the game's headers do not
+// include the library's yet, so only the one method called here is declared
+namespace nw4r {
+namespace g3d {
+class ResFile {
+public:
+	u32 GetResAnmChrNumEntries() const;
+};
+} // namespace g3d
+} // namespace nw4r
 extern "C" {
 void ResetObjectState__4XObjFv(XObj* obj);
 s32 LoadFromPlacement__4XObjFRC9CoordInfo(XObj* obj, const CoordInfo& info);
@@ -760,7 +769,8 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		title->mCursor.UpdateObject(frames);
 		title->mDemo.UpdateObject(frames);
 		UpdateTitleDust(title, frames);
-		if (title->mCursor.vf134() == 0 || title->mCursor.vf11C() == 0 || fn_8025BCB8((u8*)&title->mCursor + 0xE8) < 2) {
+		if (title->mCursor.vf134() == 0 || title->mCursor.vf11C() == 0
+		    || ((nw4r::g3d::ResFile*)((u8*)&title->mCursor + 0xE8))->GetResAnmChrNumEntries() < 2) {
 			title->mPulseAngle = 0;
 			switch (title->mSelection) {
 			case 0:

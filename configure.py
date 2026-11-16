@@ -1519,10 +1519,7 @@ if wii:
                 Object(Matching, "nw4r/ut/ut_RomFont.cpp"),
                 Object(Matching, "nw4r/ut/ut_ResFontBase.cpp"),
                 Object(Matching, "nw4r/ut/ut_ResFont.cpp"),
-                # code 3 of 3; FrSqrt (0x80282DB8) is WiiReciprocalSquareRoot in symbols.txt because
-                # src/game/wii/arithmetic.h declares and calls it under that name: links once the game
-                # calls nw4r::math::FrSqrt
-                Object(NonMatching, "nw4r/math/math_arithmetic.cpp"),
+                Object(Matching, "nw4r/math/math_arithmetic.cpp"),
                 Object(Matching, "nw4r/math/math_triangular.cpp"),
                 Object(NonMatching, "nw4r/math/math_types.cpp"),
                 # code 5 of 5; retail's .sdata2 starts with 0.5f and 0.0f, here they come after the two
