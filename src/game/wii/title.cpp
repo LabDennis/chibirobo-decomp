@@ -170,7 +170,7 @@ static inline void BeginTitleOverlay()
 
 // one menu entry line: it pulses while the cursor's animation runs, but only once the highlight
 // delay has counted down
-static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32 progress, u32 normal, u32 lit)
+static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 x, f32 y, f32 progress, u32 normal, u32 lit)
 {
 	const char* text = GetTitleAndSaveMenuText(textId);
 	f32 size         = 24.0f + (title->mSelection == entry ? 2.0f * (f32)sin(4.712389f * progress) : 0.0f);
@@ -180,8 +180,8 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32
 		selected = true;
 	}
 	if (entry != 1 || title->mSaveFound) {
-		DrawGsProportionalTextFormat(&gGame.mGs, selected ? lit : normal, text, (f32)(gPointerScreenWidth / 2) - width * 0.5f,
-		                             (size - 24.0f) * 0.5f + (y - size), 0.0f, 24.0f, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, selected ? lit : normal, text, x - width * 0.5f, (size - 24.0f) * 0.5f + (y - size), 0.0f,
+		                             24.0f, size);
 	}
 	return width;
 }
@@ -1668,30 +1668,42 @@ extern "C" void DrawTitleScreen(Title* title)
 	}
 	InitGameOrthoCamera(camera, &gGame.mGs.mScreen);
 	((CBase*)&gGame)->vf5C();
+	w                   = gGame.mAspectRatio != 0 ? 0x356 : 0x280;
 	gRingScreenWidth    = w;
 	gPointerScreenWidth = w;
+	f32 top             = -40.0f;
+	f32 gap             = 38.0f;
 	if ((u32)(title->mState - 10) <= 2) {
-		f32 y0  = (f32)(gScreenSafeBottom - 0x36) - 40.0f - 30.0f;
+		f32 y   = (f32)(gScreenSafeBottom - 0x36) + top - 30.0f;
+		f32 x   = gPointerScreenWidth / 2;
 		u32 rgb = ((u32)gTitlePalette[gTitlePaletteIndex].text.r << 24) | ((u32)gTitlePalette[gTitlePaletteIndex].text.g << 16)
 		        | ((u32)gTitlePalette[gTitlePaletteIndex].text.b << 8);
 		u32 normal   = rgb | (u8)(255.0f * title->mMenuAlpha);
 		u32 lit      = normal;
 		f32 progress = title->mCursor[0].GetAnimId() == 1 ? title->mCursor[0].GetAnimFrame() / title->mCursor[0].GetAnimEndFrame() : 0.0f;
-		f32 w0       = DrawTitleEntry(title, 0, 0, y0, progress, normal, lit);
-		f32 w1       = DrawTitleEntry(title, 1, 1, y0 + 38.0f, progress, normal, lit);
-		f32 w2       = DrawTitleEntry(title, 2, 2, y0 + 2.0f * 38.0f, progress, normal, lit);
-		f32 y        = y0 + 2.0f * 38.0f;
-		f32 width    = w2;
-		switch (title->mSelection) {
+		f32 w0       = DrawTitleEntry(title, 0, 0, x, y, progress, normal, lit);
+		y            = top + ((f32)(gScreenSafeBottom - 0x36) + gap) - 30.0f;
+		f32 w1       = DrawTitleEntry(title, 1, 1, x, y, progress, normal, lit);
+		y            = top + ((f32)(gScreenSafeBottom - 0x36) + 2.0f * gap) - 30.0f;
+		f32 w2       = DrawTitleEntry(title, 2, 2, x, y, progress, normal, lit);
+		f32 width;
+		switch (title->mSelection != -1 ? title->mSelection : title->mLastSelection) {
+		case -1:
+			OSPanic("title.cpp", 0x1077, "ここにはこない");
+			width = 0.0f;
+			y     = gScreenSafeBottom + 200;
+			break;
 		case 0:
-			y     = y0;
 			width = w0;
+			y     = (f32)(gScreenSafeBottom - 0x36) + top - 30.0f;
 			break;
 		case 1:
-			y     = y0 + 38.0f;
 			width = w1;
+			y     = top + ((f32)(gScreenSafeBottom - 0x36) + gap) - 30.0f;
 			break;
 		case 2:
+			width = w2;
+			y     = top + ((f32)(gScreenSafeBottom - 0x36) + 2.0f * gap) - 30.0f;
 			break;
 		}
 		// retail draws the cursor halves here through the demo object at the option-line's y
