@@ -538,14 +538,16 @@ void XOBJS::ReadAll()
 	for (i = 0; GetStagePlacementByIndex(i)->mObjectId >= 0; i++) { // the placement list ends at id -1
 		CoordInfo info(GetStagePlacementByIndex(i));
 		if (mObjects[i] == NULL) {
-			XObjPool& pool = mPools[GetObjData(&info)->mCategory];
-			if (pool.mUsed >= pool.mCount) {
-				OSPanic(__FILE__, 161, "%s%s", FormatToStaticBuffer("%s:: cnt=%d, max=%d\n", pool.mName, pool.mUsed, pool.mCount),
-				        __FUNCTION__);
+			s32 category = GetObjData(&info)->mCategory;
+			if (mPools[category].mUsed >= mPools[category].mCount) {
+				OSPanic(
+				    __FILE__, 161, "%s%s",
+				    FormatToStaticBuffer("%s:: cnt=%d, max=%d\n", mPools[category].mName, mPools[category].mUsed, mPools[category].mCount),
+				    __FUNCTION__);
 			}
-			mObjects[i]             = pool.Get(pool.mUsed);
-			mObjects[i]->mPoolIndex = pool.mUsed;
-			pool.mUsed++;
+			mObjects[i]             = mPools[category].Get(mPools[category].mUsed);
+			mObjects[i]->mPoolIndex = mPools[category].mUsed;
+			mPools[category].mUsed++;
 		}
 	}
 	mObjectCount     = i;
@@ -818,6 +820,9 @@ extern "C" void InitializeObjectPools(XOBJS* list)
 	XOBJ_POOL(20, XObjDust, 64, "DUST");
 	XOBJ_POOL(21, XObjHBox, 16, "HBOX");
 	XOBJ_POOL(22, XObjFree, 288, "FREE");
+
+	// retail walks the 23 pools once more and does nothing: whatever the loop did is gone from the release build
+	for (s32 i = 0; i < (s32)ARRAY_SIZE(list->mPools); i++) { }
 
 	list->mLoadState = 0;
 
