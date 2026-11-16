@@ -11,7 +11,11 @@ char* FormatToStaticBuffer(const char* fmt, ...);
 const char* GetLocalizedInterfaceText(s32 id);
 extern CThread gMovieUpdateThread;
 extern u8* gMovieUpdateThreadStack;
+s32 CallStageModule(s32 function, s32 count, s32* args);
+void fn_802AEDEC(WiiGsSceneObj** head, Mtx view); // sorts the queued scene draws under view, as title.cpp calls it
 }
+
+extern s32 gRefreshRate;
 #include "revolution/mem.h"
 
 // the expanded heap mm::InitMem1 creates over the MEM1 arena; every operator delete site reads it
@@ -155,6 +159,47 @@ extern "C" void* UpdateMovie(void* arg)
 }
 
 /**
+ * @note Address: 0x8002C044
+ * @note Size: 0x254
+ */
+// NONMATCHING: the second loop's counter and the count of moving letters swap registers
+// steps the stage name's letters: each grows in, waits while the game runs, and shrinks away, bobbing
+// and rocking all the while; the name is done once every letter is gone
+extern "C" void UpdateStageNameBubbles(CGame* game, u32 frames)
+{
+	if (game->mStageName.mActive && game->mStageName.mActive > 0) {
+		for (s32 i = 0; i < game->mStageName.mCount; i++) {
+			if (game->mStageName.mChars[i].mWait > 0.0f) {
+				if (game->mStageName.mChars[i].mScale < 1.0f) {
+					if ((game->mStageName.mChars[i].mScale += (1.0f / (0.3f * gRefreshRate)) * frames) > 1.0f) {
+						game->mStageName.mChars[i].mScale = 1.0f;
+					}
+				} else if (game->GetStatusFlags(1)) {
+					if ((game->mStageName.mChars[i].mWait -= frames) < 0.0f) {
+						game->mStageName.mChars[i].mWait = 0.0f;
+					}
+				}
+			} else if (game->mStageName.mChars[i].mScale > 0.0f) {
+				if ((game->mStageName.mChars[i].mScale -= (1.0f / (0.3f * gRefreshRate)) * frames) < 0.0f) {
+					game->mStageName.mChars[i].mScale = 0.0f;
+				}
+			}
+		}
+		s32 moving = 0;
+		for (s32 i = 0; i < game->mStageName.mCount; i++) {
+			if (0.0f != game->mStageName.mChars[i].mScale) {
+				moving++;
+				game->mStageName.mChars[i].mBob += DEG2RAD * 5.0f * frames;  // bobs five degrees a frame
+				game->mStageName.mChars[i].mTilt += DEG2RAD * 3.0f * frames; // tilts three
+			}
+		}
+		if (moving == 0) {
+			game->mStageName.mActive = FALSE;
+		}
+	}
+}
+
+/**
  * @note Address: 0x8002BBE0
  * @note Size: 0x60
  */
@@ -213,6 +258,44 @@ void CGame::ProjectOffsetToScreen(const Vec* pos, f32* x, f32* y, f32* z, void* 
 CLight* CBase::GetScreenLight()
 {
 	return (CLight*)mLights[8];
+}
+
+/**
+ * @note Address: 0x800287F0
+ * @note Size: 0x1A8
+ */
+// NONMATCHING: retail leaves through a branch pair after the menu test and keeps the scene object in
+// r30
+// every live object's DrawScreenOverlay, then the stage's function 4 and the queued scene draws;
+// nothing while the HOME Menu or a menu covers the frame
+void CGame::DrawHud()
+{
+	if (GetStatusFlags(1)) {
+		if (mHomeMenu.IsRunning()) {
+			return;
+		}
+		bool menuShown = mMenuActive && _AE34;
+		if (menuShown) {
+			return;
+		}
+		for (s32 i = 0; i < mObjectCount; i++) {
+			XObj* object = (XObj*)mObjects[i];
+			if (object->mStatus.mFlags & 1) {
+				object->DrawScreenOverlay();
+			}
+		}
+		if (mHudObject != NULL) {
+			mHudObject->vf19C(0xFF0000C8, 0.0f, mHudObjectX, mHudObjectY);
+		}
+		CallStageModule(4, 0, NULL);
+		fn_802AEDEC(&gGame.mGs.mSceneHead, GetCamera()->mViewMtx);
+		WiiGsSceneObj* obj = gGame.mGs.mSceneHead;
+		while (obj->mPending != 0) {
+			if (obj->mPending != 0) { // retail tests the count again before it pops a draw
+				obj->vf038(obj->mPending - 1);
+			}
+		}
+	}
 }
 
 /**

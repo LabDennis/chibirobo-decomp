@@ -690,6 +690,28 @@ struct WiiEvtData {
 	WiiTitleObject* mContext; // _04
 };
 
+// one letter of the stage name that pops in: the GameCube StageNameChar and two words more
+struct WiiStageNameChar {
+	const char* mText; // _00, the letter, one or two bytes
+	f32 mScale;        // _04, grows to 1 and shrinks away
+	f32 mWait;         // _08, frames until it shrinks
+	f32 mBob;          // _0C, the angle it bobs up and down by
+	f32 mTilt;         // _10, the angle it rocks by
+	u8 _14[8];
+};
+STATIC_ASSERT(sizeof(WiiStageNameChar) == 0x1C);
+
+// the stage name drawn a letter at a time over bubbles
+struct WiiStageName {
+	BOOL mActive;                // _00
+	s32 mCount;                  // _04
+	u32 mColor;                  // _08, the letters' color, the alpha comes from their scale
+	WiiStageNameChar mChars[20]; // _0C
+};
+STATIC_ASSERT(sizeof(WiiStageName) == 0x23C);
+
+class XObj;
+
 class CGame : public CBase {
 public:
 	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
@@ -724,7 +746,9 @@ public:
 	s32 mTitleState; // _5C74, the title screen's step, as the GameCube mTitle.mState
 	u8 _5C78[0xAE00 - 0x5C78];
 	BOOL mMenuActive; // _AE00, a menu is open, as the GameCube mMenu.mActive
-	u8 _AE04[0xAF58 - 0xAE04];
+	u8 _AE04[0xAE34 - 0xAE04];
+	s32 _AE34; // _AE34, DrawHud draws nothing while a menu is open and this is set
+	u8 _AE38[0xAF58 - 0xAE38];
 	// the object the InfoScrn_* HUD calls receive at +0xAF58; the Wii callbacks are
 	// empty stubs, so only its address is verified, not its layout
 	u8 mInfoScrn[0xB148 - 0xAF58]; // _AF58
@@ -764,12 +788,18 @@ public:
 	CLight* mLightList; // _D9B58, the lights of the stage, GetLight returns it
 	u8 _D9B5C[0xEC1A0 - 0xD9B5C];
 	f32 mPlayTime; // _EC1A0
-	u8 _EC1A4[0xEE104 - 0xEC1A4];
-	CMovie mMovie;       // _EE104
-	u32 mMovieFlags;     // _EE1C0, the Start flags
-	f32 mMovieRect[4];   // _EE1C4, where the movie draws, NAN for its own size and the centre
-	f32 mMovieVolume;    // _EE1D4
-	bool mMovieOnThread; // _EE1D8, the staff roll: UpdateMovie steps it on a thread of its own
+	u8 _EC1A4[0xECCE8 - 0xEC1A4];
+	// _ECCE8, an object DrawHud draws through its vf19C at the two coordinates behind it, when there is one
+	XObj* mHudObject;
+	f32 mHudObjectX;
+	f32 mHudObjectY;
+	u8 _ECCF4[0xEDEC8 - 0xECCF4];
+	WiiStageName mStageName; // _EDEC8
+	CMovie mMovie;           // _EE104
+	u32 mMovieFlags;         // _EE1C0, the Start flags
+	f32 mMovieRect[4];       // _EE1C4, where the movie draws, NAN for its own size and the centre
+	f32 mMovieVolume;        // _EE1D4
+	bool mMovieOnThread;     // _EE1D8, the staff roll: UpdateMovie steps it on a thread of its own
 	u8 _EE1D9[0xEE1DC - 0xEE1D9];
 	u32 mMenuControls;
 	u8 _EE1E0[0xEE530 - 0xEE1E0];

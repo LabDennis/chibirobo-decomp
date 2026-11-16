@@ -300,7 +300,7 @@ public:
 	virtual void DrawScreenOverlay();                                // _190
 	virtual void DrawDebugStatus();                                  // _194
 	virtual void vf198();
-	virtual void vf19C();
+	virtual void vf19C(u32 color, f32 z, f32 x, f32 y); // _19C, CGame::DrawHud calls it on its mHudObject
 	virtual void vf1A0();
 	virtual void vf1A4();
 	virtual void vf1A8();

@@ -7008,3 +7008,5 @@ DrawObject__4XObjFv = .text:0x800263AC; // type:function
 GetPosition__4XObjFv = .text:0x80024CA8; // type:function
 vf16C__4XObjFv = .text:0x80024BD4; // type:function
 DrawWithView__4XObjFPA4_f = .text:0x800AE4B4; // type:function
+UpdateStageNameBubbles = .text:0x8002C044; // type:function
+DrawHud__5CGameFv = .text:0x800287F0; // type:function
