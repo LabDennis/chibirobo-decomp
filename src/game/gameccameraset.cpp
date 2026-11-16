@@ -60,6 +60,7 @@ static inline void DrawSubwindowObjects(const XOBJS& objects, CCamera* camera)
 // a different cast form than the current source
 void CGame::Draw()
 {
+	s32 i;
 	CVec interest = GetCamera()->mInterest;
 	bool shaking  = mQuake.mShake[0].x != 0.0f || mQuake.mShake[0].y != 0.0f || mQuake.mShake[0].z != 0.0f;
 	if (shaking) { // the shake nudges the interest
@@ -118,7 +119,7 @@ void CGame::Draw()
 	if (BeginGsCamera(this)) {
 		SetupAll(TRUE);
 		if (mStatus.mFlags & 1) {
-			for (s32 i = 0; i < mDrawLists[2].mCount; ++i) {
+			for (i = 0; i < mDrawLists[2].mCount; ++i) {
 				XObj* object = mDrawLists[2].mObjects[i];
 				if ((object->mStatus.mFlags & 1)
 				    && !(mColor0.mColor.mColor.a > 0 // the overlay suppresses flagged effects
@@ -153,7 +154,7 @@ void CGame::Draw()
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		SetupAll(TRUE);
 		if ((mStatus.mFlags & 1) && mColor0.mColor.mColor.a > 0) {
-			for (s32 i = 0; i < mDrawLists[2].mCount; ++i) {
+			for (i = 0; i < mDrawLists[2].mCount; ++i) {
 				XObj* object = mDrawLists[2].mObjects[i];
 				if (!(object->mStatus.mFlags & 1))
 					continue;
