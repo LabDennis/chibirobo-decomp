@@ -2,13 +2,20 @@
 #define _GAME_CTRIGON_H
 
 #if defined(VERSION_R24J01)
-// Wii CTrigon - only the destructor is reconstructed so far: retail __dt__7CTrigonFv
-// (0x800BEB0C) is the minimal body. The class stays virtual like the GameCube one; the
-// triangle-pool fields are not recovered yet.
+#include "types.h"
+
+// Wii CTrigon - XObjMap keeps one at _9C8 and its ctor stores the vtable at
+// _9E8, so the Wii layout has 0x20 bytes of unrecovered fields ahead of it.
+// only the destructor is reconstructed so far: retail __dt__7CTrigonFv
+// (0x800BEB0C) is the minimal body
 class CTrigon {
 public:
-	virtual ~CTrigon();
+	u8 _00[0x20]; // _00, the triangle pool fields are not recovered yet
+	// _20 vtable
+
+	virtual ~CTrigon() { } // _08
 };
+STATIC_ASSERT(sizeof(CTrigon) == 0x24);
 #else
 // the HSD headers have to come first, see game/hsd_jobj.h
 #include "game/hsd_jobj.h"

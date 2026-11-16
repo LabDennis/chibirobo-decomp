@@ -56,4 +56,41 @@ extern "C" void InitializeObjectPools(XOBJS* list)
 	gAllObjectsReader.Create(ReadObjectListThread, NULL, 0x2000, 17, 1);
 	gSingleObjectReader.Create(ReadSingleObjectThread, NULL, 0x2000, 16, 1);
 }
+
+// the light object's own state is only its CLight array; everything before it
+// is the inlined XObj construction
+XObjLight::XObjLight()
+{
+}
+
+// everything is the member classes' own constructors
+XObj::XObj()
+{
+}
+
+// the member ctors install the three vtables (TVec, then the two CVecs)
+CObjVec::CObjVec()
+{
+}
+
+// the two leading words are cleared by hand; the NW_Anm tag and the CFile
+// initialize themselves
+CJArchive::CJArchive()
+    : _00(0)
+    , _04(0)
+{
+}
+
+XObjLight::~XObjLight()
+{
+}
+
+XObjMap::XObjMap()
+    : _9AC(0)
+{
+}
+
+XObjMap::~XObjMap()
+{
+}
 #endif

@@ -95,7 +95,7 @@ public:
 #if defined(VERSION_R24J01)
 	// the Wii object archive comes from a shared ResourceFile pool, claimed on Init
 	void Init(CoordInfo* info);
-	~AttrInfo() { }
+	virtual ~AttrInfo() { } // _08, XObj's ctor stores __vt__8AttrInfo on the Wii too
 #else
 	virtual ~AttrInfo() { } // _08
 #endif
