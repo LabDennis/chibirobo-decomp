@@ -1512,7 +1512,49 @@ if wii:
                 # nw4r::snd (0x80283EA8-0x802A5358)
             ],
         },
-        # homebuttonLib (0x80203864-0x80222DEC)
+        {
+            # homebuttonLib, the HOME Button Menu (retail 0x80203864-0x80222DEC, RVL_SDK HBM of Sep 24 2008):
+            # homebutton::, its own copies of NW4R (nw4hbm::lyt, math, ut) and of MIX/SYN/SEQ.
+            # Compiler: measured on ut_CharWriter (27 functions), ut_ResFont, ut_TagProcessorBase,
+            # HBMFrameController, lyt_arcResourceAccessor and math_triangular: GC/3.0a5 and GC/3.0a5.2 both
+            # give retail's code in every function (pik2wii builds its HBM with GC/3.0a5), Wii/1.0 and
+            # Wii/1.0a (xenoblade's and ss's choice for their later HBM) lose 12 of the 27 in ut_CharWriter and
+            # all of math_triangular. The version string carries build 0x4199_60831, which is GC/3.0a5.2.
+            # Flags: -ipa file (without it 8 of ut_CharWriter's 27 change), -RTTI on (the RTTI records sit
+            # beside the vtables in .data), -sdata 0 -sdata2 0 (the block reads no small data at all, floats
+            # come from .rodata), no stmw/lmw anywhere in the block.
+            "lib": "homebuttonLib",
+            "mw_version": "GC/3.0a5.2",
+            "cflags": [
+                "-i include/homebuttonLib", "-i include/rvl_msl/msl", *wii_cflags, "-Cpp_exceptions off", "-RTTI on",
+                "-fp_contract off", "-ipa file", "-use_lmw_stmw off", "-sdata 0", "-sdata2 0", "-enc SJIS",
+            ],
+            "progress_category": "sdk",
+            "objects": [
+                Object(Matching, "homebuttonLib/HBMFrameController.cpp"),
+                Object(Matching, "homebuttonLib/HBMAnmController.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/lyt/lyt_arcResourceAccessor.cpp"),
+                Object(NonMatching, "homebuttonLib/nw4hbm/lyt/lyt_bounding.cpp"),
+                Object(NonMatching, "homebuttonLib/nw4hbm/lyt/lyt_common.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/lyt/lyt_drawInfo.cpp"),
+                Object(NonMatching, "homebuttonLib/nw4hbm/lyt/lyt_layout.cpp"),
+                Object(NonMatching, "homebuttonLib/nw4hbm/lyt/lyt_pane.cpp"),
+                Object(NonMatching, "homebuttonLib/nw4hbm/lyt/lyt_picture.cpp"),
+                Object(NonMatching, "homebuttonLib/nw4hbm/lyt/lyt_resourceAccessor.cpp"),
+                Object(NonMatching, "homebuttonLib/nw4hbm/lyt/lyt_textBox.cpp"),
+                Object(NonMatching, "homebuttonLib/nw4hbm/lyt/lyt_window.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/math/math_triangular.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/ut/ut_binaryFileFormat.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/ut/ut_CharStrmReader.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/ut/ut_CharWriter.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/ut/ut_Font.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/ut/ut_LinkList.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/ut/ut_list.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/ut/ut_ResFont.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/ut/ut_ResFontBase.cpp"),
+                Object(Matching, "homebuttonLib/nw4hbm/ut/ut_TagProcessorBase.cpp"),
+            ],
+        },
         {
             # These Wii SDK modules share the compiler profile used by New Play Control! Pikmin.
             "lib": "RevolutionSDK-2008",
