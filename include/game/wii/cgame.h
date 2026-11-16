@@ -67,10 +67,10 @@ public:
 	virtual ~CBase() { }                            // _08
 	virtual void Initialize(int argc, char** argv); // _0C
 	virtual void Start();                           // _10, 0x80017D4C
-	virtual void vf14();
+	virtual void ResetNewGameState();               // _14, CBase's is empty
 	virtual void vf18();
-	virtual void vf1C();
-	virtual void vf20();
+	virtual void BeforeUpdate();     // _1C
+	virtual void Update(u32 frames); // _20
 	// _24, _28 the scene through the main camera, _2C the screen-space layer, _30 retraces per frame
 	virtual void Draw();
 	virtual void DrawScene();
@@ -92,9 +92,9 @@ public:
 	virtual CLight* GetDefaultLight();
 	virtual CLight* GetScreenLight();
 	virtual CLight* GetLight();
-	virtual void SetLight(CLight* light, CMtxP view, BOOL arg3);
+	virtual void SetLight(CLight* light, MtxP view, BOOL flag);
 	virtual void vf70();
-	virtual void SetSceneLight();
+	virtual void SetCameraLight();
 	virtual void SetScreenLight();
 	virtual void vf7C();
 	virtual void vf80();
@@ -118,6 +118,26 @@ struct WiiTimeState {
 	s32 mRunning;
 };
 STATIC_ASSERT(sizeof(WiiTimeState) == 0x10);
+
+// one letter of a name that pops in, the GameCube StageNameChar with two more words
+struct StageNameChar {
+	const char* mText; // _00
+	f32 mScale;        // _04
+	f32 mWait;         // _08
+	f32 mBob;          // _0C
+	f32 mTilt;         // _10
+	u8 _14[8];
+};
+STATIC_ASSERT(sizeof(StageNameChar) == 0x1C);
+
+// the stage name drawn a letter at a time
+struct StageName {
+	BOOL mActive;             // _00
+	s32 mCount;               // _04
+	u32 mColor;               // _08
+	StageNameChar mChars[20]; // _0C
+};
+STATIC_ASSERT(sizeof(StageName) == 0x23C);
 
 class CInterfaceCameraAction;
 
@@ -692,26 +712,6 @@ struct WiiEvtData {
 	WiiTitleObject* mContext; // _04
 };
 
-// one letter of the stage name that pops in: the GameCube StageNameChar and two words more
-struct WiiStageNameChar {
-	const char* mText; // _00, the letter, one or two bytes
-	f32 mScale;        // _04, grows to 1 and shrinks away
-	f32 mWait;         // _08, frames until it shrinks
-	f32 mBob;          // _0C, the angle it bobs up and down by
-	f32 mTilt;         // _10, the angle it rocks by
-	u8 _14[8];
-};
-STATIC_ASSERT(sizeof(WiiStageNameChar) == 0x1C);
-
-// the stage name drawn a letter at a time over bubbles
-struct WiiStageName {
-	BOOL mActive;                // _00
-	s32 mCount;                  // _04
-	u32 mColor;                  // _08, the letters' color, the alpha comes from their scale
-	WiiStageNameChar mChars[20]; // _0C
-};
-STATIC_ASSERT(sizeof(WiiStageName) == 0x23C);
-
 class XObj;
 
 class CGame : public CBase {
@@ -727,8 +727,14 @@ public:
 	CLight* GetLight();
 	void Reset(u32 code);
 
+	void ResetNewGameState();        // _14 override, 0x8001C37C
+	void BeforeUpdate();             // _1C override, 0x8001C7B0
+	void Update(u32 frames);         // _20 override, 0x8001E830
+	void SetupStageCamera(s32 mode); // 0x8001DC88
+
 	s32 mLoadStep;
-	u8 _41EC[0x41F4 - 0x41EC];
+	s32 mSetupStep; // _41EC, how far FinalizeStageObjectSetup is, done at 5
+	u8 _41F0[0x41F4 - 0x41F0];
 	CFileArchive mArchive; // _41F4
 	s32 mStage;
 	s32 mPrevStage; // _4300
@@ -742,8 +748,15 @@ public:
 	CScrnWipeTile mWipeTile;     // _4FA8
 	CScrnWipeCine mWipeCine;     // _5010, the letterbox bars; the message window and the HUD read its mActive, mY and mHeight
 	CScrnRoboeyes mRoboeyes;
-	u8 _511C[0x5978 - 0x511C];
-	s32 mLogoState; // _5978, the boot logos' step, as the GameCube mLogo.mState
+	u8 _511C[0x57CC - 0x511C];
+	f32 mScrnTexAngle;        // _57CC, the GameCube's mScrnTex.mAngle
+	CScrnColor mScrnTexColor; // _57D0, mScrnTex.mColor
+	u8 _5804[0x5908 - 0x5804];
+	CScrnColor mColor0;       // _5908
+	CScrnColor mColor1;       // _593C
+	s32 mOutlineWidthControl; // _5970
+	f32 mOutlineWidth;        // _5974
+	s32 mLogoState;           // _5978, the boot logos' step, as the GameCube mLogo.mState
 	u8 _597C[0x5C74 - 0x597C];
 	s32 mTitleState; // _5C74, the title screen's step, as the GameCube mTitle.mState
 	u8 _5C78[0xAE00 - 0x5C78];
@@ -756,9 +769,9 @@ public:
 	u8 mInfoScrn[0xB148 - 0xAF58]; // _AF58
 	WiiHomeMenu mHomeMenu;         // _B148
 	u8 _B7A8[0xF6AC - 0xB7A8];
-	CScrnQuake mQuake; // _F6AC
-	u8 _F6E4[0xF70C - 0xF6E4];
-	WiiPlayerState* mPlayer; // _F70C
+	CScrnQuake mQuake;              // _F6AC
+	u8 mXObjPools[0xF70C - 0xF6E4]; // _F6E4, where the XOBJS block starts: its first two XObjPools
+	WiiPlayerState* mPlayer;        // _F70C
 	u8 _F710[0xF770 - 0xF710];
 	WiiFlagSource* mCoins; // _F770
 	u8 _F774[0xF784 - 0xF774];
@@ -775,7 +788,9 @@ public:
 	WiiTitleObject* mObjects[0x400]; // _F8B0, the object table ResolveEventObjectId indexes
 	s32 mObjectCount;                // _108B0
 	s32 mLoadObjectIndex;            // _108B4
-	u8 _108B8[0x108C8 - 0x108B8];
+	u8 _108B8[0x108C0 - 0x108B8];
+	WiiObjectRef* mDrawRefs; // _108C0, the objects in draw order, BuildObjectDrawList fills it
+	s32 mDrawRefCount;       // _108C4
 	// pointers to spawned objects the renderer walks; entries are grouped in eights,
 	// CMsgFont_Init pushes its two cursors here
 	WiiObjectRef* mObjectRefs; // _108C8
@@ -788,24 +803,50 @@ public:
 	WiiTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
 	CCameraActions mCameraActions;             // _D78F8, mTable lands at _D9B24
-	CLight* mLightList; // _D9B58, the lights of the stage, GetLight returns it
-	u8 _D9B5C[0xEC1A0 - 0xD9B5C];
+	CLight* mLightList;                        // _D9B58, the lights the scene draws under, CBase's own set when the stage brings none
+	s32 _D9B5C;                                // _D9B5C, ResetNewGameState clears both
+	s32 _D9B60;                                // _D9B60
+	u8 _D9B64[0xEC180 - 0xD9B64];
+	BOOL mMemcardLoaded; // _EC180
+	u8 _EC184[0xEC1A0 - 0xEC184];
 	f32 mPlayTime; // _EC1A0
-	u8 _EC1A4[0xECCE8 - 0xEC1A4];
-	// _ECCE8, an object DrawHud draws through its vf19C at the two coordinates behind it, when there is one
+	f32 _EC1A4;    // _EC1A4
+	f32 _EC1A8;    // _EC1A8, a new game starts it at 1
+	f32 _EC1AC;    // _EC1AC
+	u8 _EC1B0[0xEC2B4 - 0xEC1B0];
+	f32 _EC2B4; // _EC2B4, a new game starts it at NAN
+	u8 _EC2B8[0xEC2C8 - 0xEC2B8];
+	f32 _EC2C8; // _EC2C8, a new game starts it at -1
+	u8 _EC2CC[0xECCE8 - 0xEC2CC];
+	// _ECCE8 to _ECD24: one block FinalizeStageObjectSetup resets when the stage is up.
+	// _ECCE8 is an object DrawHud draws through its vf19C at the two coordinates behind it, when there is one
 	XObj* mHudObject;
 	f32 mHudObjectX;
 	f32 mHudObjectY;
-	u8 _ECCF4[0xEDEC8 - 0xECCF4];
-	WiiStageName mStageName; // _EDEC8
-	CMovie mMovie;           // _EE104
-	u32 mMovieFlags;         // _EE1C0, the Start flags
-	f32 mMovieRect[4];       // _EE1C4, where the movie draws, NAN for its own size and the centre
-	f32 mMovieVolume;        // _EE1D4
-	bool mMovieOnThread;     // _EE1D8, the staff roll: UpdateMovie steps it on a thread of its own
+	s32 _ECCF4;
+	u8 _ECCF8[4];
+	s32 _ECCFC; // -1
+	s32 _ECD00; // -1
+	s32 _ECD04;
+	s32 _ECD08;
+	s32 _ECD0C;
+	s32 _ECD10;
+	s32 _ECD14; // -1
+	f32 _ECD18[4];
+	u8 mFloorReflect;               // _ECD28, an object asked for the floor reflection
+	Mtx mFloorReflectMtx;           // _ECD2C, PSMTXReflect about the floor
+	u8 mMirrors[0xEDEC8 - 0xECD5C]; // _ECD5C, FbMirror[5]; fbtexeff.h needs this header, so they stay untyped here
+	StageName mStageName;           // _EDEC8
+	CMovie mMovie;                  // _EE104
+	u32 mMovieFlags;                // _EE1C0, the Start flags
+	f32 mMovieRect[4];              // _EE1C4, where the movie draws, NAN for its own size and the centre
+	f32 mMovieVolume;               // _EE1D4
+	bool mMovieOnThread;            // _EE1D8, the staff roll: UpdateMovie steps it on a thread of its own
 	u8 _EE1D9[0xEE1DC - 0xEE1D9];
 	u32 mMenuControls;
-	u8 _EE1E0[0xEE530 - 0xEE1E0];
+	CVec _EE1E0; // _EE1E0, a new game zeroes it
+	CVec _EE1F0; // _EE1F0, and fills this one with NAN
+	u8 _EE200[0xEE530 - 0xEE200];
 
 	void SetStage(s32 stage)
 	{
@@ -835,6 +876,22 @@ public:
 	void ProjectOffsetToScreen(const Vec* pos, f32* x, f32* y, f32* z, void* camera);
 };
 STATIC_ASSERT(sizeof(CGame) == 0xEE530);
+STATIC_ASSERT(offsetof(CGame, mScrnTexAngle) == 0x57CC);
+STATIC_ASSERT(offsetof(CGame, mColor0) == 0x5908);
+STATIC_ASSERT(offsetof(CGame, mOutlineWidth) == 0x5974);
+STATIC_ASSERT(offsetof(CGame, mXObjPools) == 0xF6E4);
+STATIC_ASSERT(offsetof(CGame, _D9B5C) == 0xD9B5C);
+STATIC_ASSERT(offsetof(CGame, mMemcardLoaded) == 0xEC180);
+STATIC_ASSERT(offsetof(CGame, _EC2B4) == 0xEC2B4);
+STATIC_ASSERT(offsetof(CGame, _EC2C8) == 0xEC2C8);
+STATIC_ASSERT(offsetof(CGame, mStageName) == 0xEDEC8);
+STATIC_ASSERT(offsetof(CGame, mSetupStep) == 0x41EC);
+STATIC_ASSERT(offsetof(CGame, mDrawRefs) == 0x108C0);
+STATIC_ASSERT(offsetof(CGame, mLightList) == 0xD9B58);
+STATIC_ASSERT(offsetof(CGame, mHudObject) == 0xECCE8);
+STATIC_ASSERT(offsetof(CGame, mFloorReflectMtx) == 0xECD2C);
+STATIC_ASSERT(offsetof(CGame, mMirrors) == 0xECD5C);
+STATIC_ASSERT(offsetof(CGame, _EE1E0) == 0xEE1E0);
 
 extern "C" CGame gGame;
 #endif

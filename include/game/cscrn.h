@@ -120,14 +120,20 @@ public:
 	void SetDimensions(BOOL hideWhenDone, f32 x, f32 y, f32 width, f32 height, f32 targetWidth, f32 targetHeight, f32 time);
 #endif
 	void Draw(CGs* gs, s32 mode);
+#if defined(VERSION_R24J01)
+	// 0x8001C34C, the vtable's own copy: it only hands everything on to CScrnWipe's
+	void StartTransition(u8 r, u8 g, u8 b, u8 a, u8 targetR, u8 targetG, u8 targetB, f32 x, f32 y, f32 width, f32 height, f32 targetWidth,
+	                     f32 targetHeight, f32 time, u8 targetA, BOOL hideWhenDone);
+#endif
 };
 
 #if defined(VERSION_R24J01)
-// the letterbox bars of the cutscenes, a Wii class: CGame keeps it at _5010 between the tile and
-// the roboeyes wipe. Only its vtable (0x802E6330) and its destructor are known
-class CScrnWipeCine : public CScrnWipe {
+// the cinema bars of the cutscenes, a Wii class: a tile wipe that never stretches to the wide screen
+// (vtable 0x802E6330). CGame keeps it at _5010 between the tile and the roboeyes wipe
+class CScrnWipeCine : public CScrnWipeTile {
 public:
 	virtual ~CScrnWipeCine() { } // _08 (weak), 0x8002FE6C
+	void Reset();                // 0x8001C2D8
 };
 
 struct RoboeyesLensValue {
