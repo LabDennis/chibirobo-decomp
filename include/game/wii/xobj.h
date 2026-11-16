@@ -37,10 +37,10 @@ void Panic(const char* file, int line, const char* fmt, ...);
 }
 
 // the parts of nw4r::math CObj's world callback uses; math_types.h itself needs the Wii MSL's
-// <cmath>, which the game's include path does not have yet
-namespace math {
-// a file that includes nw4r/math/math_types.h first (with the Wii MSL's include path) takes the library's own
+// <cmath>, which the game's include path does not have yet (a unit built with include/rvl_msl that
+// includes it first gets the real one)
 #ifndef NW4R_MATH_TYPES_H
+namespace math {
 struct VEC3;
 struct MTX34 {
 	f32 m[3][4];
@@ -50,8 +50,8 @@ inline MTX34* MTX34RotXYZRad(MTX34* pMtx, f32 rx, f32 ry, f32 rz)
 {
 	return MTX34RotXYZFIdx(pMtx, rx * (128.0f / 3.1415927f), ry * (128.0f / 3.1415927f), rz * (128.0f / 3.1415927f));
 }
-#endif
 } // namespace math
+#endif
 
 namespace g3d {
 
@@ -376,11 +376,19 @@ public:
 	virtual void SetScaleZ(f32 z);               // _80
 	virtual void SetPos(f32 x, f32 y, f32 z);    // _84
 	virtual void SetRot(f32 x, f32 y, f32 z);    // _88
-	virtual void SetScale(f32 x, f32 y, f32 z);  // _8C
-	virtual void SetPos(const Vec& pos);         // _90
-	virtual void SetRot(const Vec& rot);         // _94
-	virtual void SetScale(const Vec& scale);     // _98
-	virtual void vf9C();
+	virtual void SetScale(f32 x, f32 y, f32 z)   // _8C
+	{
+		mMoveScale.x   = x;
+		mMoveScale.y   = y;
+		mMoveScale.z   = z;
+		mMoveTarget2.x = x;
+		mMoveTarget2.y = y;
+		mMoveTarget2.z = z;
+	}
+	virtual void SetPos(const Vec& pos);     // _90
+	virtual void SetRot(const Vec& rot);     // _94
+	virtual void SetScale(const Vec& scale); // _98
+	virtual void SetScale(f32 scale) { SetScale(scale, scale, scale); }
 	virtual MtxP GetWorldMtx(nw4r::g3d::ResNode node);                                       // _A0, NULL without a model
 	virtual MtxP GetWorldMtx(const char* name);                                              // _A4
 	virtual MtxP GetWorldMtx(u32 index);                                                     // _A8
@@ -412,13 +420,17 @@ public:
 	virtual void ClearAnim();           // _110
 	virtual void SetAnimRate(f32 rate); // _114
 	virtual void vf118();
-	virtual void vf11C();
+	virtual s32 GetAnimId() { return mAnimId; }
 	virtual f32 GetAnimRate(s32 index); // _120
 	virtual f32 GetAnimRate();          // _124
 	virtual f32 GetAnimFrame();         // _128
 	virtual f32 GetAnimEndFrame();      // _12C
 	virtual bool IsAnimEnd(f32 frames); // _130, the animation runs out within frames
-	virtual void vf134();
+	virtual bool IsAnimDone()
+	{
+		f32 frame = GetAnimFrame();
+		return frame + mAnimRate[1] >= GetAnimEndFrame();
+	}
 	virtual void SetAnmScn(u32 id, f32 frame, f32 rate); // _138
 	virtual void ReleaseModelWork();                     // _13C
 	virtual bool IsAnmScnEnd();                          // _140, the scene animation has run out
@@ -476,7 +488,7 @@ public:
 	virtual void ResetObjectState();                       // _154
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void vf15C();
-	virtual void vf160();
+	virtual void vf160() { mLastAnimFrame = GetAnimFrame(); }
 	virtual void UpdateObject(u32 frames); // _164
 	virtual void vf168();
 	virtual void vf16C(); // _16C, empty
@@ -511,7 +523,7 @@ public:
 	virtual f32 GetCollisionHeight(); // _1DC
 	// _1E0, the object's bounds on screen under camera, the GameCube's; FALSE when it is out of view
 	virtual BOOL ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight);
-	virtual void vf1E4();
+	virtual BOOL IsOutsideCameraDepth(CCamera* camera);                  // _1E4, TRUE when the model lies outside the camera's depth range
 	virtual s32 HandleEventCommand(s32 count, s32* args);                // _1E8
 	virtual const void* GetEventScript();                                // _1EC
 	virtual void SetColor(s32 blend, u8 r, u8 g, u8 b, f32 time);        // _1F0
@@ -572,13 +584,21 @@ public:
 		}
 		return -1;
 	}
+	// (_9C SetScale(f32) scales all three axes alike, _11C GetAnimId returns mAnimId, _134 IsAnimDone is TRUE once
+	// the next step passes the end frame; see the slot comments)
+	// which pool of XOBJS the object's data record puts it in, -1 before it has one (the GameCube XObj's inline)
+	s32 GetPool() const { return mAttr.mObjData != NULL ? GetObjDataPool(mAttr.mObjData) : -1; }
 
 	CStatus64 mStatus; // _150
 	CoordInfo mCoord;  // _160
 	AttrInfo mAttr;    // _168
-	u8 _174[0x28];
+	u8 _174[0x188 - 0x174];
+	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
+	u8 _189[0x19C - 0x189];
 	CVec mLastPos; // _19C
-	u8 _1AC[0x640 - 0x1AC];
+	u8 _1AC[0x1B8 - 0x1AC];
+	f32 mLastAnimFrame; // _1B8, the frame the animation had after the last update
+	u8 _1BC[0x640 - 0x1BC];
 	f32 mFloorXZExtent; // _640
 	u8 _644[0x6C8 - 0x644];
 	f32 mMaxFloorHeight; // _6C8, NAN while there is none
@@ -626,15 +646,13 @@ STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 
 class WiiGsSceneObj;
 
-// the scene camera, pool 0's one object; the stage's scene it plays is at _9A8
+// the stage camera object, the first of pool 0: its scene (_9A8) brings the stage's own camera, lights and fog
 class XObjScnCam : public XObj {
 public:
 	XObjScnCam();
 	virtual ~XObjScnCam();
 
 	WiiGsSceneObj* mScene; // _9A8
-
-private:
 	u8 _9AC[0x9C0 - 0x9AC];
 };
 STATIC_ASSERT(sizeof(XObjScnCam) == 0x9C0);

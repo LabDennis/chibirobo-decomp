@@ -7,6 +7,7 @@
 #include "game/wii/cgs.h"
 #include "game/wii/homemenu.h"
 #include "game/wii/saveslots.h"
+#include "game/wii/fbeffect.h"
 #include "game/cscrn.h"
 #include "game/cfile.h"
 #include "game/cmovie.h"
@@ -62,12 +63,18 @@ public:
 	u8 _41A5[0x41A8 - 0x41A5];
 	bool mResetRequested; // _41A8
 	s32 mResetType;       // _41AC, 3 restarts the game, 4 returns to the Wii Menu
-	u8 _41B0[0x41BC - 0x41B0];
+	u32 _41B0;            // _41B0, BeforeUpdate sets the low three bits once the loading screen may show
+	u8 _41B4[0x41BC - 0x41B4];
 	// _41BC, the interface text drawn over the frame, NULL when there is none, and its alpha at _41C8
 	const char* mSystemMessage;
-	u8 _41C0[0x41C8 - 0x41C0];
+	u8 _41C0;
+	u8 _41C1;
+	u8 _41C2;
+	u8 _41C3;
+	u8 _41C4[0x41C8 - 0x41C4];
 	f32 mSystemMessageAlpha;
-	u8 _41CC[0x41E4 - 0x41CC];
+	u8 _41CC[0x41E0 - 0x41CC];
+	CTexObj* _41E0; // _41E0, BeforeUpdate points it at CGame's copy of misc.tpl's texture 261
 	// _41E4 vtable
 
 	virtual ~CBase() { }                            // _08
@@ -75,7 +82,7 @@ public:
 	virtual void Start();                           // _10, 0x80017D4C
 	virtual void ResetNewGameState();               // _14, CBase's is empty
 	virtual void vf18();
-	virtual void BeforeUpdate();     // _1C
+	virtual bool BeforeUpdate();     // _1C
 	virtual void Update(u32 frames); // _20
 	// _24, _28 the scene through the main camera, _2C the screen-space layer, _30 retraces per frame
 	virtual void Draw();
@@ -109,6 +116,9 @@ public:
 	void Run(int argc, char** argv); // 0x80017BD8, main's whole body
 	void UpdateDvdStatus();          // 0x80019428
 	void fn_80018364();              // 0x80018364, Update calls it first
+
+	// the drive reports trouble and the disc is not back yet
+	bool IsDiscError() const { return (mDvdStatus != 0 || mPrevDvdStatus != 0) && !mDiskOk; }
 
 	// asks for a reset unless one is already on its way
 	void RequestReset(s32 type)
@@ -484,7 +494,9 @@ STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x2D8);
 // fields between and behind them are not reconstructed, and neither are the virtuals it overrides
 class CCameraActionArea : public CCameraActionAreaExM {
 public:
-	u8 _40[0x70 - 0x40];
+	u8 _40[0x5C - 0x40];
+	s32 _5C; // _5C, with _2D0 set the area action keeps the pointer's cursor up
+	u8 _60[0x70 - 0x60];
 	CVectorEaseInOutInterpolation mInterestEaseInOut;    // _70
 	CVectorLinearInterpolation mEyeLinear;               // _CC
 	CVectorEaseInOutInterpolation mEyeEaseInOut;         // _100
@@ -495,7 +507,9 @@ public:
 	CInterpolationEaseInOut mFovEaseInOut;         // _21C
 	CInterpolationEaseOut mFovEaseOut;             // _238
 	CInterpolationEaseOutDivide mFovEaseOutDivide; // _258
-	u8 _268[0x2FC - 0x268];
+	u8 _268[0x2D0 - 0x268];
+	u8 _2D0;
+	u8 _2D1[0x2FC - 0x2D1];
 
 	virtual ~CCameraActionArea() { } // _08, 0x8002ECD0
 	virtual void Update(u32 step);   // _10
@@ -540,7 +554,9 @@ public:
 	u8 _FC8[0x11D8 - 0xFC8];
 	CStatus mStatus;         // _11D8
 	CStatus mPreviousStatus; // _11E0
-	u8 _11E8[0x11FC - 0x11E8];
+	u8 _11E8[0x11F8 - 0x11E8];
+	u8 _11F8; // _11F8, set while the map action wants the pointer's cursor
+	u8 _11F9[0x11FC - 0x11F9];
 	u8 _11FC[0x30];
 	u8 _122C[0x128C - 0x122C];
 
@@ -733,11 +749,6 @@ class CSound3DActor;
 class XObj;
 
 // one of the player's positioned sounds; ChangeGameStage stops both
-struct WiiPlayerSound {
-	CSound3DActor* mActor; // _00
-	u8 _04[8];
-};
-
 // the Wii player object: a different, larger class than the GameCube XObjChr. These are the members
 // the save manager reads and writes, at offsets verified against retail.
 struct WiiPlayerState {
@@ -766,9 +777,9 @@ struct WiiPlayerState {
 	WiiPlayerAction mPush; // _0C78
 	u8 _0C80[0xCD0 - 0xC80];
 	WiiPlayerAction mTumble; // _0CD0
-	u8 _0CD8[0x95BC - 0xCD8];
-	WiiPlayerSound mSounds[2]; // _95BC
-	u8 _95D4[0x9920 - 0x95D4];
+	u8 _0CD8[0x95AC - 0xCD8];
+	u8 mSfx[0x5C]; // _95AC, his AnimSfx (game/wii/animsfx.h, which needs this header)
+	u8 _9608[0x9920 - 0x9608];
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
@@ -804,7 +815,7 @@ struct WiiPlayerState {
 };
 STATIC_ASSERT(offsetof(WiiPlayerState, mOXMenu) == 0x1A420);
 STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);
-STATIC_ASSERT(offsetof(WiiPlayerState, mSounds) == 0x95BC);
+STATIC_ASSERT(offsetof(WiiPlayerState, mSfx) == 0x95AC);
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8
 struct WiiFlagSource {
@@ -840,6 +851,28 @@ struct GameScrnColor1 {
 
 class XObj;
 
+// one of the game's menus, the GameCube class of the same name with two more virtuals. Its state leads
+// the object and the vtable sits behind the members, at _14C; the menus MenuEx keeps derive from it
+class CMenu {
+public:
+	s32 mState; // _00, 0 while closed
+	u8 _004[0x14C - 0x4];
+	// _14C vtable
+
+	virtual void Init();             // _08
+	virtual BOOL LoadTexture();      // _0C
+	virtual void Reset();            // _10
+	virtual BOOL Update(u32 frames); // _14
+	virtual BOOL Draw();             // _18
+	virtual void Open();             // _1C
+	virtual void Close();            // _20
+	virtual BOOL IsOpen() { return mState != 0; }
+	virtual void Suspend(BOOL fade); // _28
+	virtual void Resume();           // _2C
+	virtual void vf28();
+	virtual void vf2C();
+};
+
 class CGame : public CBase {
 public:
 	virtual ~CGame(); // _08, 0x8002CFB8
@@ -857,13 +890,14 @@ public:
 	void Reset(u32 code);
 
 	void ResetNewGameState();        // _14 override, 0x8001C37C
-	void BeforeUpdate();             // _1C override, 0x8001C7B0
+	bool BeforeUpdate();             // _1C override, 0x8001C7B0
 	void Update(u32 frames);         // _20 override, 0x8001E830
 	void SetupStageCamera(s32 mode); // 0x8001DC88
 
 	s32 mLoadStep;
-	s32 mSetupStep;        // _41EC, how far FinalizeStageObjectSetup is, done at 5
-	s32 _41F0;             // _41F0, ChangeGameStage sets it to 3
+	s32 mSetupStep; // _41EC, how far FinalizeStageObjectSetup is, done at 5
+	s32 _41F0; // _41F0, frames until the stage's objects are read again (BeforeUpdate's steps 20 to 22 wait for it); ChangeGameStage sets
+	           // it to 3
 	CFileArchive mArchive; // _41F4
 	s32 mStage;
 	s32 mPrevStage; // _4300
@@ -877,30 +911,30 @@ public:
 	CScrnWipeTile mWipeTile;     // _4FA8
 	CScrnWipeCine mWipeCine;     // _5010, the letterbox bars; the message window and the HUD read its mActive, mY and mHeight
 	CScrnRoboeyes mRoboeyes;
-	u8 mOutline[0x1C8];       // _511C, FbEffect (fbeffect.h), the GameCube's CFbOutline
-	u8 mBlur[0x1A8];          // _52E4, FbBlur (fbeffect.h)
-	u8 mSubwin[0x340];        // _548C, FbSubwin; fbtexeff.h needs this header, so it stays untyped here
-	ScrnTex mScrnTex;         // _57CC
-	GameScrnColor mColor0;    // _5908
-	GameScrnColor1 mColor1;   // _593C
-	s32 mOutlineWidthControl; // _5970
-	f32 mOutlineWidth;        // _5974
-	s32 mLogoState;           // _5978, the boot logos' step, as the GameCube mLogo.mState
+	FbEffect mOutline;           // _511C
+	FbBlur mBlur;                // _52E4
+	u8 mSubwin[0x57CC - 0x548C]; // _548C, the FbSubwin of game/fbtexeff.h, which needs this header
+	ScrnTex mScrnTex;            // _57CC
+	GameScrnColor mColor0;       // _5908
+	GameScrnColor1 mColor1;      // _593C
+	s32 mOutlineWidthControl;    // _5970
+	f32 mOutlineWidth;           // _5974
+	s32 mLogoState;              // _5978, the boot logos' step, as the GameCube mLogo.mState
 	u8 _597C[0x5C70 - 0x597C];
 	u8 mTitle[4];    // _5C70, where the Wii Title (title.h) starts, its vtable; mTitleState is its first member
 	s32 mTitleState; // _5C74, the title screen's step, as the GameCube mTitle.mState
 	u8 _5C78[0xAE00 - 0x5C78];
 	BOOL mMenuActive; // _AE00, a menu is open, as the GameCube mMenu.mActive
-	void* mMainMenu;  // _AE04, the menu group's first menu, as the GameCube mMenu.mMenus[0]
-	u8 _AE08[0xAE34 - 0xAE08];
+	CMenu* mMenus[5]; // _AE04, the GameCube mMenu.mMenus; [0] is the main menu
+	u8 _AE18[0xAE34 - 0xAE18];
 	s32 _AE34; // _AE34, DrawHud draws nothing while a menu is open and this is set
 	u8 _AE38[0xAF58 - 0xAE38];
 	// the object the InfoScrn_* HUD calls receive at +0xAF58; the Wii callbacks are
 	// empty stubs, so only its address is verified, not its layout
 	u8 mInfoScrn[0xB148 - 0xAF58]; // _AF58
 	WiiHomeMenu mHomeMenu;         // _B148
-	u8 _B7A8[0xBCA8 - 0xB7A8];     // _B7A8, the effect manager (ceffect.cpp), the GameCube's mParticle
-	u8 mEmitters[0x80][0x74];      // _BCA8, its emitter handles
+	u8 _B7A8[0xBCA8 - 0xB7A8]; // _B7A8, the effect manager (ceffect.cpp), the GameCube's mParticle; Update hands it the camera each frame
+	u8 mEmitters[0x80][0x74];  // _BCA8, its emitter handles, stepped with the camera like the global at 0x8044EE4C
 	u8 _F6A8[0xF6AC - 0xF6A8];
 	CScrnQuake mQuake;              // _F6AC
 	u8 mXObjPools[0xF70C - 0xF6E4]; // _F6E4, where the XOBJS block starts: its first two XObjPools
@@ -933,9 +967,9 @@ public:
 	// CMsgFont_Init pushes its two cursors here
 	WiiObjectRef* mObjectRefs;        // _108C8
 	s32 mObjectRefCount;              // _108CC
-	WiiObjectRef* mSceneRefs;         // _108D0, the objects DrawScene draws
+	WiiObjectRef* mSceneRefs;         // _108D0, the objects DrawScene draws; BuildSceneDrawLists fills both lists each frame
 	s32 mSceneRefCount;               // _108D4
-	WiiObjectRef* mEffectRefs;        // _108D8, the objects whose effects are drawn
+	WiiObjectRef* mEffectRefs;        // _108D8, the objects whose effects are drawn, the ones the mirrors show
 	s32 mEffectRefCount;              // _108DC
 	ResourceFile mObjArchives[0x400]; // _108E0, the pooled object archives, the GameCube's mObjArchives
 	u8 _4C8E0[0x4C8E4 - 0x4C8E0];
@@ -959,11 +993,12 @@ public:
 	f32 _EC1A4;      // _EC1A4
 	f32 _EC1A8;      // _EC1A8, a new game starts it at 1
 	f32 mScopeTimer; // _EC1AC, the robo eyes' lenses pulse while it runs and hide from 5 on
-	u8 _EC1B0[0xEC2B4 - 0xEC1B0];
-	f32 _EC2B4; // _EC2B4, a new game starts it at NAN
+	CTexObj _EC1B0;  // _EC1B0, a copy of misc.tpl's texture 261
+	f32 _EC2B4;      // _EC2B4, a new game starts it at NAN
 	u8 _EC2B8[0xEC2C8 - 0xEC2B8];
 	f32 _EC2C8; // _EC2C8, a new game starts it at -1
-	u8 _EC2CC[0xECCE8 - 0xEC2CC];
+	u8 _EC2CC[0xEC2D0 - 0xEC2CC];
+	u8 _EC2D0[0xECCE8 - 0xEC2D0]; // _EC2D0, an XObj BeforeUpdate places at spawn 12; xobj.h needs this header
 	// _ECCE8 to _ECD24: one block FinalizeStageObjectSetup resets when the stage is up.
 	// _ECCE8 is an object DrawHud draws through its vf19C at the two coordinates behind it, when there is one
 	XObj* mHudObject;
@@ -994,10 +1029,11 @@ public:
 	CVec _EE1F0; // _EE1F0, and fills this one with NAN
 	// _EE200 to _EE518: the shadow RenderSceneShadow casts from straight above, a Wii piece the GameCube had
 	// as a CShadow on the light; the names are ours
-	XObj* mShadowFocus;      // _EE200, what the shadow camera looks down on, the scene camera's interest without one
-	f32 mShadowWidth;        // _EE204, 100 unless positive
-	f32 mShadowHeight;       // _EE208, 100 unless positive
-	f32 mShadowAlpha;        // _EE20C, 1 unless positive
+	XObj* mShadowFocus; // _EE200, BeforeUpdate's step 27 resets the four; what the shadow camera looks down on, the scene camera's interest
+	                    // without one
+	f32 mShadowWidth;   // _EE204, 100 unless positive
+	f32 mShadowHeight;  // _EE208, 100 unless positive
+	f32 mShadowAlpha;   // _EE20C, 1 unless positive
 	u8 mShadowCamera[0x1F8]; // _EE210, a CCamera: as a member it would join CGame's constructor and destructor
 	u8 mShadowTex[0x104];    // _EE408, the CTexObj that shows it
 	u16 mShadowTexWidth;     // _EE50C
@@ -1023,6 +1059,11 @@ public:
 	bool IsLoading() const { return IsLoadStepRunning() && !IsIntroShown(); }
 	bool IsInterruptible() const { return !IsLoading() && mTitleState != 20; }
 	bool IsMenuFree() const { return IsInterruptible() && !mMenuActive; }
+	// the stage runs: no suspend, no menu, the disc readable and no reset coming
+	bool IsRunning() const
+	{
+		return GetStatusFlags(1) && !GetStatusFlags(0x200000000000022ULL) && !mMenuActive && !IsDiscError() && !mResetRequested;
+	}
 
 	WiiPlayerState* GetPlayer() const { return mPlayer; }
 	// 0x80037134, the sound code asks for player 0 through the pool
@@ -1060,6 +1101,16 @@ STATIC_ASSERT(offsetof(CGame, mTitleState) == 0x5C74);
 STATIC_ASSERT(offsetof(CGame, mEmitters) == 0xBCA8);
 STATIC_ASSERT(offsetof(CGame, mMsgs) == 0x4C950);
 STATIC_ASSERT(offsetof(CGame, mShadowTexWidth) == 0xEE50C);
+STATIC_ASSERT(offsetof(CGame, _41F0) == 0x41F0);
+STATIC_ASSERT(offsetof(CGame, mOutline) == 0x511C);
+STATIC_ASSERT(offsetof(CGame, mSaveManager) == 0xD9B80);
+STATIC_ASSERT(offsetof(CGame, _EC1B0) == 0xEC1B0);
+STATIC_ASSERT(offsetof(CGame, _EC2D0) == 0xEC2D0);
+STATIC_ASSERT(offsetof(CGame, mShadowFocus) == 0xEE200);
+STATIC_ASSERT(offsetof(CBase, _41E0) == 0x41E0);
+STATIC_ASSERT(offsetof(CGame, mBlur) == 0x52E4);
+STATIC_ASSERT(offsetof(CGame, mMenus) == 0xAE04);
+STATIC_ASSERT(offsetof(CGame, mTitle) == 0x5C70);
 
 extern "C" CGame gGame;
 #endif

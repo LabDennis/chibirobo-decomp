@@ -8,6 +8,7 @@
 #include "nw4r/snd/snd_BasicSound.h"
 #include "nw4r/snd/snd_SoundHandle.h"
 #include "game/wii/csound3dactor.h"
+#include "game/wii/animsfx.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/infoscrn.h"
 #include "game/wii/msg.h"
@@ -639,7 +640,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	if (game->mMovie.mState != 0) { // cut any playing movie
 		game->mMovie.Stop();
 	}
-	ClearMainMenuExtraRows(game->mMainMenu);
+	ClearMainMenuExtraRows(game->mMenus[0]);
 	fn_80094904(game->_4C8E0, TRUE, TRUE, TRUE, TRUE); // the event state in front of mEvtData
 	CMsg* msgs = (CMsg*)game->mMsgs;
 	for (s32 i = 0; i < 2; i++) {
@@ -676,7 +677,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	}
 	WiiPlayerState* player = game->mPlayer;
 	for (s32 i = 0; i < 2; i++) {
-		CSound3DActor* actor          = player->mSounds[i].mActor;
+		CSound3DActor* actor          = ((AnimSfx*)player->mSfx)->mActors[i].mActor;
 		nw4r::snd::SoundHandle* sound = actor != NULL && actor->mHandle.IsAttachedSound() ? &actor->mHandle : NULL;
 		if (sound != NULL && actor != NULL) {
 			actor->mHandle.Stop(gRefreshRate * 0.0f);
@@ -738,7 +739,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		game->mWipeCine.StartTransition(0, 0, 0, 0, 0, 0, 0, gPointerScreenWidth / 2, gPointerScreenHeight / 2, gPointerScreenWidth,
 		                                gPointerScreenHeight, gPointerScreenWidth, gPointerScreenHeight, 0.0f, 0, TRUE);
 		StartScreenShake(&game->mQuake, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-		FbBlur* blur    = (FbBlur*)game->mBlur;
+		FbBlur* blur    = &game->mBlur;
 		blur->mAlpha    = 0.0f;
 		blur->mTarget   = 0.0f;
 		blur->mSpeed    = 0.0f;
@@ -753,7 +754,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		game->mWipeCine.StartTransition(0, 0, 0, 0, 0, 0, 0, gPointerScreenWidth / 2, gPointerScreenHeight / 2, gPointerScreenWidth,
 		                                gPointerScreenHeight, gPointerScreenWidth, gPointerScreenHeight, 0.0f, 0, TRUE);
 		StartScreenShake(&game->mQuake, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
-		FbBlur* blur    = (FbBlur*)game->mBlur;
+		FbBlur* blur    = &game->mBlur;
 		blur->mAlpha    = 0.0f;
 		blur->mTarget   = 0.0f;
 		blur->mSpeed    = 0.0f;
@@ -1629,7 +1630,7 @@ void CGame::Draw()
 		DrawScene();
 		vf54();
 	}
-	FbEffect* outline = (FbEffect*)mOutline;
+	FbEffect* outline = &mOutline;
 	if (vf5C()) {
 		if (GetStatusFlags(1)) {
 			if (GetStatusFlags(0x40)) {
@@ -1639,7 +1640,7 @@ void CGame::Draw()
 				outline->Draw(FBEFF_OUTLINE);
 			}
 		}
-		((FbBlur*)mBlur)->Draw();
+		mBlur.Draw();
 		vf54();
 	}
 	if (BeginSceneCamera()) {
