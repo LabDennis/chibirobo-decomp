@@ -1242,6 +1242,9 @@ if wii:
                 # OSPanic file): ResourceFile's refcounted CFile, the CFileRequest state
                 # machine and CResFile's brres accessor over the nw4r walkers
                 Object(NonMatching, "game/wii/cresfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the frame buffer effects 0x802BF9F8-0x802C19B8 (fbeffect.cpp by its string pool):
+                # FbBase, FbBlur and FbEffect, the GameCube's CFbBlur and CFbOutline on a common base
+                Object(NonMatching, "game/wii/fbeffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # the RFNU/RFNT font file loader + glyph cache between the console font paths;
                 # the small setup helpers stay calls in retail, so no auto-inlining here either
                 Object(Matching, "game/wii/cfont.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
