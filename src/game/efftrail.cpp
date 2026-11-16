@@ -559,6 +559,8 @@ static inline void DrawPointQuad(CTexObj& tex, u32 top, u32 bottom, f32 x, f32 y
 	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, x, y, 0, w, h, 0, 0, rotation);
 }
 
+// NONMATCHING: retail's joint offset is an unnamed Vec below the GetPos copy, IsAction's result is tested as an int,
+// and the burst loop loads x and y after the sin calls and does not merge the two circle sizes
 extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 {
 	CMotionControlCamera& camera = gGame.mMotionControlCamera;
@@ -652,10 +654,10 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 		digits.mMtxDirty = TRUE;
 		for (int i = display.mCount - 1; i >= 0; --i) {
 			const PointDigit& digit = display.digits[i];
-			f32 fade                = digit.fade;
-			if (!(fade > 0))
+			if (!(digit.fade > 0))
 				continue;
-			f32 px = 17.f * (display.mCount - 1 - i) + ((x + 8.5f) - display.mCount * 17.f * .5f);
+			f32 px = 17.f * (display.mCount - 1 - i) + ((x + 8.5f) - display.mCount * 17.f * .5f), py = y;
+			f32 fade = digit.fade;
 			if (fade > 1)
 				fade = 1;
 			f32 angle = PI * fade;
@@ -665,12 +667,12 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 			u8 alpha = (u8)(s32)(255 * fade);
 			u32 top = display.colors.mColor | alpha, bottom = display.colors.mColor2 | alpha;
 			if (digit.glyph == 76) { // the icon
-				DrawPointQuad(icon, alpha, alpha, px, y - rise, 1.2f * (19 + expand), 24 + expand, 0);
-				DrawPointQuad(icon, top, bottom, px, y - rise, 19 + expand, .8f * (24 + expand), 0);
+				DrawPointQuad(icon, alpha, alpha, px, py - rise, 1.2f * (19 + expand), 24 + expand, 0);
+				DrawPointQuad(icon, top, bottom, px, py - rise, 19 + expand, .8f * (24 + expand), 0);
 			} else {
 				PSMTXTrans(digits.mMtx[0], 0, .1f * digit.glyph, 0);
 				digits.mMtxDirty = TRUE;
-				DrawPointQuad(digits, top, bottom, px, y - rise, 19 + expand, 24 + expand, 0);
+				DrawPointQuad(digits, top, bottom, px, py - rise, 19 + expand, 24 + expand, 0);
 			}
 		}
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
