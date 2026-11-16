@@ -279,9 +279,9 @@ inline void DecaPanel::ResetInput()
 	mCursorX   = 0;
 	mCursorY   = 3; // row 3 column 0, the 'C'
 	mLocked    = 0;
-	s32 idx = mCursorX + mCursorY * 3;
-	f32 x   = decaPanelKeys[idx].x;
-	f32 y   = decaPanelKeys[idx].y;
+	s32 idx    = mCursorX + mCursorY * 3;
+	f32 x      = decaPanelKeys[idx].x;
+	f32 y      = decaPanelKeys[idx].y;
 	mCurX = mTargetX = x;
 	mCurY = mTargetY = y;
 }

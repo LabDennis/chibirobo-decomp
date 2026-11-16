@@ -1147,7 +1147,7 @@ gamecube_libs = [
             Object(Matching, "rel/stage04/jenny.cpp"),
             Object(NonMatching, "rel/trash.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "rel/stage06/parent.cpp"),
-            Object(MatchingFor(JP), "rel/stage07/living.cpp", extra_cflags=["-inline auto,deferred"]),
+            Object(NonMatching, "rel/stage07/living.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "rel/stage08/stage08.cpp"),
             Object(Matching, "rel/stage09/ambient.cpp"),
             Object(Matching, "rel/stage11/haisui.cpp"),
