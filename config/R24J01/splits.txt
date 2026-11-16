@@ -2280,6 +2280,7 @@ nw4r/g3d/res/g3d_resnode.cpp:
 
 nw4r/g3d/res/g3d_resanm.cpp:
 	.text start:0x8026186C end:0x80261A98
+	.sdata2 start:0x805A7278 end:0x805A728C
 
 nw4r/g3d/res/g3d_resanmvis.cpp:
 	.text start:0x80261A98 end:0x80261BB8

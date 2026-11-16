@@ -1535,15 +1535,13 @@ if wii:
                 Object(Matching, "nw4r/g3d/res/g3d_resfile.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resmdl.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resshp.cpp"),
-                # 11 of 12: SetNumTevStages (see the comment in the source).
+                # 11 of 12: SetNumTevStages expands GXSetTevOrder, which retail calls (see the comment in the source).
                 Object(NonMatching, "nw4r/g3d/res/g3d_restev.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resmat.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resvtx.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_restex.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resnode.cpp"),
-                # 2 of 2, not linked: GetResColorAnmResult emits ut::Color's weak destructor; retail's copy lies in an
-                # earlier unit that is not identified yet, so the link keeps ours as well.
-                Object(NonMatching, "nw4r/g3d/res/g3d_resanm.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resanm.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resanmvis.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resanmclr.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resanmtexpat.cpp"),
