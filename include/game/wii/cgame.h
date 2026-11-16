@@ -511,6 +511,8 @@ STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x2D8);
 // fields between and behind them are not reconstructed, and neither are the virtuals it overrides
 class CCameraActionArea : public CCameraActionAreaExM {
 public:
+	virtual void DrawDebug3d(); // _28, 0x80156E58
+
 	u8 _40[0x5C - 0x40];
 	s32 mControlEnabled; // _5C, with _2D0 set the area action keeps the pointer's cursor up
 	u8 _60[0x64 - 0x60];
@@ -542,6 +544,8 @@ STATIC_ASSERT(sizeof(CCameraActionArea) == 0x2FC);
 // builds up to _11E0 is where the GameCube class has it, the vec group at _11FC is new
 class CCameraActionMap : public CCameraActionAreaExM {
 public:
+	virtual void DrawDebug3d(); // _28, 0x8015F34C
+
 	s32 mInterestMode; // _40, what GetInterestMode returns
 	u8 _44[0x48 - 0x44];
 	CVec mPreviousInterest; // _48

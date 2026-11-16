@@ -593,6 +593,10 @@ public:
 	CamAreaEntry* mEntryPool[2048]; // _30, entries in the shared placement pool
 	s32 mGroupCount;                // _2030, number of camera groups
 	CamAreaSlot mGroups[256];       // _2034, count unknown, 256 fills out the 0x3C34 object
+
+#if defined(VERSION_R24J01)
+	void DrawDebug3d(); // 0x80153184, the areas' debug shapes; the area and map actions draw them through it
+#endif
 };
 STATIC_ASSERT(sizeof(CCameraActionAreaEx) == 0x3C34);
 // todo: old name, the prototypes below still use it

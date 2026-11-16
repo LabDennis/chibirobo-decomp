@@ -7,6 +7,8 @@ extern "C" {
 #include <dolphin/os.h>
 }
 
+extern "C" void DrawMapCameraAreaDebug3D(CCameraActionAreaEx* state, s32 mode);
+
 // the Wii build merged the area and map camera code into this file; the retail
 // rodata carries "ccameraactionmap2.cpp" as the __FILE__ string for both halves.
 // CamAreaSlot's constructor is the file's first emitted function.
@@ -88,4 +90,15 @@ u32 CCameraActionMap::GetInterestMode()
 u32 CCameraActionMap::GetCameraFlags()
 {
 	return CAMFLAG_EYE | CAMFLAG_INTEREST | CAMFLAG_FOV;
+}
+
+// the area tables' debug shapes, the GameCube's DrawDebug3d of both area actions
+void CCameraActionArea::DrawDebug3d()
+{
+	gCameraAreaState.DrawDebug3d();
+}
+
+void CCameraActionMap::DrawDebug3d()
+{
+	DrawMapCameraAreaDebug3D(&gCameraAreaState, 1);
 }
