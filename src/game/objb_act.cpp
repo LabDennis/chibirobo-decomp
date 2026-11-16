@@ -615,20 +615,20 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 	}
 	case 36:
 		if (aobj->flags & 0x44000000) {
-			bool finished = false;
+			BOOL finished = FALSE;
 			s16 count     = (s16)(GetOwnedInventoryItemCount(&act->mOwner->mParams, 0x38) - 1);
 			if (anim == 0x8c2) {
 				UseToolCharge(act, count, 3);
-				finished = true;
+				finished = TRUE;
 			} else if (anim == 0x8c3) {
 				UseToolCharge(act, count, 2);
-				finished = true;
+				finished = TRUE;
 			} else if (anim == 0x8c4) {
 				UseToolCharge(act, count, 1);
-				finished = true;
+				finished = TRUE;
 			} else if (anim == 0x8c5) {
 				HeldAnim(act->mTarget, 1);
-				finished = true;
+				finished = TRUE;
 			} else if (anim == 0x8d2) {
 				HeldAnim(act->mOwner, 0x8c0);
 				HeldAnim(act->mTarget, 9);
@@ -639,11 +639,11 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 				HeldAnim(act->mTarget, 4);
 				// filled up, the inventory keeps the count at 10 at most
 				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, 11, FALSE);
-				finished = true;
+				finished = TRUE;
 			} else if (anim == 0x8c1) {
 				HeldAnim(act->mTarget, 4);
 				SetOrAddInventoryItemCount(&act->mOwner->mParams.mInventory, 0x38, 11, FALSE);
-				finished = true;
+				finished = TRUE;
 			}
 			act->mTarget->UpdateAnim(frames);
 			if (finished) {
@@ -678,12 +678,14 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 					if (act->mCheckToolHit && !act->mToolEffect) {
 						act->mToolEffectId   = -1;
 						HSD_JObj* attachment = NULL;
-						if (anim != 0x8c5) {
+						if (anim == 0x8c5) {
+							if (frame > 10) {
+								attachment         = tip;
+								act->mToolEffectId = 0x42;
+							}
+						} else {
 							attachment         = root;
 							act->mToolEffectId = 0x3c;
-						} else if (frame > 10) {
-							attachment         = tip;
-							act->mToolEffectId = 0x42;
 						}
 						if (act->mToolEffectId >= 0)
 							act->mToolEffect = CreateParticleByBankAndId(&gGame, 1, act->mToolEffectId, 0, attachment, TRUE);
