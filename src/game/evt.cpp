@@ -6481,9 +6481,8 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 				if (angle > PI)
 					angle = TWO_PI - angle;
 				obj->mMoveRotate.mSpeed.x = 0.0f;
-				if (angle < 0.0f)
-					angle = -angle;
-				obj->mMoveRotate.mSpeed.y = angle / (FRAMES_PER_SEC * time);
+				f32 speed                 = ABS(angle);
+				obj->mMoveRotate.mSpeed.y = speed / (FRAMES_PER_SEC * time);
 				obj->mMoveRotate.mSpeed.z = 0.0f;
 				if (anim != -1) {
 					if (anim & 0xFFFF0000) {
