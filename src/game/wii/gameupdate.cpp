@@ -391,11 +391,11 @@ bool CGame::BeforeUpdate()
 		mOutline.mFrame      = 0;
 		mOutline.mThick2     = 0.0f;
 	case 9:
-		if (!fn_802BDBCC(_B7A8, "eff/cb_robo", 0))
+		if (!fn_802BDBCC(&mEffects, "eff/cb_robo", 0))
 			break;
 		++mLoadStep;
 	case 10:
-		if (!fn_802BDC98(_B7A8, 0))
+		if (!fn_802BDC98(&mEffects, 0))
 			break;
 		++mLoadStep;
 	case 11:
@@ -653,7 +653,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			gGame.mGs._1FE4[i]._00 = FALSE;
 		}
 		game->SetCameraLight();
-		fn_802BE414(game->_B7A8, gGame.mGs.mLight);
+		fn_802BE414(&game->mEffects, gGame.mGs.mLight);
 		if (gGame.mGs.mSceneHead->_2888 != NULL) {
 			void* fog = fn_8027AE0C(gGame.mGs.mSceneHead, 0);
 			GXFogType type;
@@ -664,12 +664,12 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			GXColor color;
 			fn_8028175C(&fog, &type, &startZ, &endZ, &nearZ, &farZ, &color);
 			GXColor fogColor = color;
-			fn_802BE4D4(game->_B7A8, type, fogColor, startZ, endZ, nearZ, farZ);
+			fn_802BE4D4(&game->mEffects, type, fogColor, startZ, endZ, nearZ, farZ);
 		} else {
 			GXColor none = { 0, 0, 0, 0 };
 			game->mFog.Init(GX_FOG_NONE, none, 0.0f, 0.0f, 0.0f, 0.0f);
 			GXColor black = { 0, 0, 0, 0 };
-			fn_802BE4D4(game->_B7A8, GX_FOG_NONE, black, 0.0f, 0.0f, 0.0f, 0.0f);
+			fn_802BE4D4(&game->mEffects, GX_FOG_NONE, black, 0.0f, 0.0f, 0.0f, 0.0f);
 		}
 		BuildObjectDrawList(game);
 		if (game->GetStatusFlags(0x2000000000ULL)) {
@@ -1464,15 +1464,15 @@ void CGame::Update(u32 frames)
 		Vec eye        = camera.mView.mEye;
 		for (u32 j = 0; j < 6; j++) {
 			if (j != 4) {
-				fn_802BE03C(_B7A8, &eye, camera.mViewMtx, camera.mProjection, frames, j, camera.mNear, camera.mFar);
+				fn_802BE03C(&mEffects, &eye, camera.mViewMtx, camera.mProjection, frames, j, camera.mNear, camera.mFar);
 			}
 		}
 		CCamera screen = *GetCamera();
 		eye            = screen.mView.mEye;
-		fn_802BE03C(_B7A8, &eye, screen.mViewMtx, screen.mProjection, frames, 4, screen.mNear, screen.mFar);
+		fn_802BE03C(&mEffects, &eye, screen.mViewMtx, screen.mProjection, frames, 4, screen.mNear, screen.mFar);
 	} else if (mResetRequested) {
-		fn_802BDC98(_B7A8, 0);
-		fn_802BDC98(_B7A8, 1);
+		fn_802BDC98(&mEffects, 0);
+		fn_802BDC98(&mEffects, 1);
 	}
 
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000000ULL) && !mMenuActive && !mHomeMenu.IsOpen()) {

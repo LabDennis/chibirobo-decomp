@@ -659,7 +659,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		}
 	}
 	for (u32 i = 0; i < 6; i++) {
-		fn_802BE3A8(game->_B7A8, i, TRUE);
+		fn_802BE3A8(&game->mEffects, i, TRUE);
 	}
 	WiiPlayerState* player = game->mPlayer;
 	for (s32 i = 0; i < 2; i++) {
@@ -1593,7 +1593,7 @@ void CGame::Draw()
 	fn_802AB860(&gGame.mGs);
 	SetCameraLight();
 	if (gGame.mGs.mSceneHead->_2888 != NULL) {
-		fn_802BE414(_B7A8, gGame.mGs.mLight);
+		fn_802BE414(&mEffects, gGame.mGs.mLight);
 		void* fog = fn_8027AE0C(gGame.mGs.mSceneHead, 0);
 		GXFogType type;
 		f32 startZ;
@@ -1603,7 +1603,7 @@ void CGame::Draw()
 		GXColor color;
 		fn_8028175C(&fog, &type, &startZ, &endZ, &nearZ, &farZ, &color);
 		GXColor fogColor = color;
-		fn_802BE4D4(_B7A8, type, fogColor, startZ, endZ, nearZ, farZ);
+		fn_802BE4D4(&mEffects, type, fogColor, startZ, endZ, nearZ, farZ);
 	}
 	RenderSubwindow(this);
 	RenderMirrorTextures(this);
@@ -1643,7 +1643,7 @@ void CGame::Draw()
 			MtxP view = GetEffectView(this);
 			for (u32 i = 0; i < 6; i++) {
 				if (i != 1 && i != 4) {
-					fn_802BE19C(_B7A8, view, i);
+					fn_802BE19C(&mEffects, view, i);
 				}
 			}
 		}
@@ -1690,7 +1690,7 @@ void CGame::Draw()
 			MtxP view = GetEffectView(this);
 			for (u32 i = 0; i < 6; i++) {
 				if (i == 1) {
-					fn_802BE19C(_B7A8, view, i);
+					fn_802BE19C(&mEffects, view, i);
 				}
 			}
 		}
@@ -1699,7 +1699,7 @@ void CGame::Draw()
 
 	SetScreenLight();
 	if (gGame.mGs.mSceneHead->_2888 != NULL) {
-		fn_802BE414(_B7A8, gGame.mGs.mLight);
+		fn_802BE414(&mEffects, gGame.mGs.mLight);
 	}
 	DrawTitleScreen(mTitle);
 	if (vf5C()) {
@@ -1713,7 +1713,7 @@ void CGame::Draw()
 			gGame.mGs.mCurChannel->Apply();
 		}
 		DrawHud();
-		fn_802BE19C(_B7A8, GetScreenCamera()->mViewMtx, 4);
+		fn_802BE19C(&mEffects, GetScreenCamera()->mViewMtx, 4);
 		Vec quad[4] = { { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f } }; // the depth goes back
 		quad[0].x   = (f32)gScreenLeft;
 		quad[0].y   = (f32)gScreenTop;
@@ -1869,7 +1869,7 @@ extern "C" void UpdateResetRequest(CGame* game)
 		return;
 	}
 	// the effect manager's two live counts
-	if (*(s32*)&gGame._B7A8[0x8] != 0 || *(s32*)&gGame._B7A8[0x270] != 0) {
+	if (gGame.mEffects.mResources[0].mLiveCount != 0 || gGame.mEffects.mResources[1].mLiveCount != 0) {
 		return;
 	}
 	if (gGame.mSound.mLoadPending) {

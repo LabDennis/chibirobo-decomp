@@ -998,6 +998,27 @@ public:
 	void State8(u32 frames);
 };
 
+// the effect manager (ceffect.cpp), CGame's at _B7A8, the GameCube's mParticle; Update hands it the camera each frame.
+// Class name from RTTI, the constructor in 0x800332D8 stores its vtable at _4FC and builds the two sets at _08
+class CEffectSystem {
+public:
+	// one set of effect resources, with two CFiles at _84 (constructor 0x8003467C, destructor 0x8002F5D4); the name is ours
+	struct Resource {
+		s32 mLiveCount; // _00, effects still running out of the set
+		u8 _04[0x84 - 0x4];
+		CFile mFiles[2]; // _84
+		u8 _25C[0x268 - 0x25C];
+	};
+
+	u8 _00[0x8];
+	Resource mResources[2]; // _08
+	u8 _4D8[0x4FC - 0x4D8];
+	// _4FC vtable
+
+	virtual ~CEffectSystem() { }
+};
+STATIC_ASSERT(sizeof(CEffectSystem) == 0x500);
+
 // the event particles, CGame's at _BCA8 (class name from RTTI, vtable at _3A00 by the constructor in 0x800332D8):
 // the emitter handles, stepped with the camera like the global at 0x8044EE4C
 class CEvtPtcl {
@@ -1090,11 +1111,11 @@ public:
 	u8 _AE18[0xAE34 - 0xAE18];
 	s32 _AE34; // _AE34, DrawHud draws nothing while a menu is open and this is set
 	u8 _AE38[0xAF58 - 0xAE38];
-	InfoScrn mInfoScrn;        // _AF58
-	WiiHomeMenu mHomeMenu;     // _B148
-	u8 _B7A8[0xBCA8 - 0xB7A8]; // _B7A8, the effect manager (ceffect.cpp), the GameCube's mParticle; Update hands it the camera each frame
-	CEvtPtcl mEvtPtcl;         // _BCA8
-	CScrnQuake mQuake;         // _F6AC
+	InfoScrn mInfoScrn;             // _AF58
+	WiiHomeMenu mHomeMenu;          // _B148
+	CEffectSystem mEffects;         // _B7A8
+	CEvtPtcl mEvtPtcl;              // _BCA8
+	CScrnQuake mQuake;              // _F6AC
 	u8 mXObjPools[0xF70C - 0xF6E4]; // _F6E4, where the XOBJS block starts: its first two XObjPools
 	WiiPlayerState* mPlayer;        // _F70C
 	u8 _F710[0xF71C - 0xF710];
@@ -1253,6 +1274,7 @@ STATIC_ASSERT(offsetof(CGame, mListener) == 0xEE1E0);
 STATIC_ASSERT(offsetof(CGame, mSubwin) == 0x548C);
 STATIC_ASSERT(offsetof(CGame, mTitleState) == 0x5C74);
 STATIC_ASSERT(offsetof(CGame, mEvtPtcl) == 0xBCA8);
+STATIC_ASSERT(offsetof(CGame, mEffects) == 0xB7A8);
 STATIC_ASSERT(offsetof(CGame, mInfoScrn) == 0xAF58);
 STATIC_ASSERT(offsetof(CGame, mObjArchives) == 0x108E0);
 STATIC_ASSERT(offsetof(CGame, mMsgs) == 0x4C950);
