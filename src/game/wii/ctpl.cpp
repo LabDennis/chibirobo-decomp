@@ -353,7 +353,7 @@ extern "C" void InitAudio(CSound* sound, u32 heapSize)
 	sound->mLoadPending   = FALSE;
 }
 
-extern "C" void ShutdownAudio()
+extern "C" void ShutdownAudio(CSound* sound)
 {
 	fn_8029B1AC();
 	AXQuit();

@@ -55,7 +55,7 @@ f32 gHudOpacityScale = 1.0f;
 // the y the bottom row is drawn at, the wipe's own bottom edge clamped to the safe area
 static inline f32 GetHudBottomEdge()
 {
-	f32 bottom = gGame.mWipeTileHeight * 0.5f + gGame.mWipeTileY;
+	f32 bottom = gGame.mWipeCine.mHeight * 0.5f + gGame.mWipeCine.mY;
 	if (bottom >= (f32)gScreenSafeBottom) {
 		bottom = (f32)gScreenSafeBottom;
 	}

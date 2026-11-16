@@ -65,6 +65,11 @@ namespace nw4r { namespace snd
 				mSound->Pause(flag, fadeFrames);
 		}
 
+		void SetRemoteOutVolume(int remote, f32 volume) {
+			if (IsAttachedSound())
+				mSound->SetRemoteOutVolume(remote, volume);
+		}
+
 		void SetPan(f32 pan) {
 			if (IsAttachedSound())
 				mSound->SetPan(pan);
