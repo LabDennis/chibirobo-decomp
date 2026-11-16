@@ -1437,8 +1437,6 @@ if wii:
                 # the Wii range 0x8003AB00-0x8003CEA0 (wii_units.md #25): positional sound and the stage sound effects
                 # (these and msg.cpp use the nw4r sound headers, which need the Wii MSL's <cstdarg> and <new>)
                 Object(NonMatching, "game/wii/sound.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the Wii range 0x80040E4C-0x8004328C (wii_units.md #28): pointer cursor, HUD drawing and the dust particles
-                Object(NonMatching, "game/wii/unit_80040E4C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii range 0x8004328C-0x80044FD8 (wii_units.md #28): the small XObj-family virtuals behind them
                 Object(NonMatching, "game/wii/unit_8004328C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
             ],
