@@ -94,7 +94,7 @@ void XObjMap::Release()
  */
 BOOL XObjMap::LoadFromPlacement(const CoordInfo& info)
 {
-	// NONMATCHING: the dol copies a zero path template before storing the index
+	// NONMATCHING: regalloc, the loop index and the trigon count trade registers
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
 		int i;
 		int j;
@@ -102,7 +102,7 @@ BOOL XObjMap::LoadFromPlacement(const CoordInfo& info)
 		for (i = 0;; i++) {
 			s32 path[]     = { 0 };
 			path[0]        = i;
-			HSD_JObj* jobj = GetJointByPath(mJObj, path, 1);
+			HSD_JObj* jobj = FindJointByPath(mJObj, path, 1);
 			if (jobj == NULL) {
 				break;
 			}
