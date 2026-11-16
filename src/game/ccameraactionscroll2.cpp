@@ -252,6 +252,13 @@ void CCameraActionScroll2::ShowObjs()
 	}
 }
 
+static inline void SetPanCenter(CCameraActionScroll2* camera, Vec position)
+{
+	camera->mCenter.x = position.x;
+	camera->mCenter.y = position.y;
+	camera->mCenter.z = position.z;
+}
+
 // todo: cleanup
 /**
  * @note Address: N/A
@@ -295,12 +302,13 @@ void CCameraActionScroll2::Reset()
 		mFromStage        = FALSE;
 		CamInfoData* data = GetStageCameraInfoRecords();
 		if (data != NULL) {
-			Vec interest = CamInfo(data).GetInterest();
-			interest.y += 170.0f;
-			SetInterest(interest);
-			Vec eye = CamInfo(data).GetEye();
-			eye.y += 170.0f;
-			SetEye(eye);
+			// both raised by 170 through the same local
+			Vec pos = CamInfo(data).GetInterest();
+			pos.y += 170.0f;
+			SetInterest(pos);
+			pos = CamInfo(data).GetEye();
+			pos.y += 170.0f;
+			SetEye(pos);
 			SetDistance(PSVECDistance(&mEye, &mInterest));
 			SetFov(CamInfo(data).GetFov());
 		}
@@ -315,20 +323,14 @@ void CCameraActionScroll2::Reset()
 		}
 	}
 
-	mStart.x    = mInterest.x;
-	mStart.y    = mInterest.y;
-	mStart.z    = mInterest.z;
-	CVec offset = mEye - mInterest;
-	mOffset.x   = offset.x;
-	mOffset.y   = offset.y;
-	mOffset.z   = offset.z;
-	CVec center = mInterest;
-	mCenter.x   = center.x;
-	mCenter.y   = center.y;
-	mCenter.z   = center.z;
-	mCenterPtr  = &mCenter;
-	CVec front  = CVec(0.0f, 0.0f, 1.0f);
-	mYaw        = atan2(mInterest.x - front.x, mInterest.z - front.z);
+	mStart.x = mInterest.x;
+	mStart.y = mInterest.y;
+	mStart.z = mInterest.z;
+	mOffset  = mEye - mInterest;
+	SetPanCenter(this, mInterest);
+	mCenterPtr = &mCenter;
+	CVec front = CVec(0.0f, 0.0f, 1.0f);
+	mYaw       = atan2(mInterest.x - front.x, mInterest.z - front.z);
 	CalcLimits(this, GetLimits(gGame.mStage));
 	Update(1);
 }
@@ -336,13 +338,6 @@ void CCameraActionScroll2::Reset()
 static inline Vec GetPanTarget(const CCameraActionScroll2* camera)
 {
 	return *camera->mCenterPtr;
-}
-
-static inline void SetPanCenter(CCameraActionScroll2* camera, Vec position)
-{
-	camera->mCenter.x = position.x;
-	camera->mCenter.y = position.y;
-	camera->mCenter.z = position.z;
 }
 
 // CVec's += takes a reference, this one copies b first like retail does here (as CalcSpring in ccameraactionchase.cpp)
