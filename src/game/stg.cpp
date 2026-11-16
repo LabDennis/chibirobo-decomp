@@ -6927,12 +6927,12 @@ static inline void FinishStageLabel(char* text)
 static inline int CopyStageFileName(char* dst, const char* name)
 {
 	int count = 0;
-	for (; *name; name++, count++) {
+	for (int i = 0; *name; i++, name++) {
 		char c   = *name;
 		u8 lower = c >= 'a' && c <= 'z';
 		if (lower)
 			c -= 'a' - 'A';
-		dst[count] = c;
+		dst[count++] = c;
 	}
 	return count;
 }
@@ -6963,12 +6963,12 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 	}
 	// with this status bit only the stages in sStageOrder; without it every room, a rule, then stages 100 and up
 	if (gGame.mStatus.mFlags & 0x0008000000000000ULL) {
-		for (s32* stage = sStageOrder; *stage >= 0; stage++) {
-			char* line         = menu->mLabels[menu->mCount];
-			int length         = CopyStageFileName(line, GetStageFileName(*stage));
+		int i = 0;
+		for (s32* stage = sStageOrder; *stage >= 0; stage++, i++) {
+			int length         = CopyStageFileName(menu->mLabels[i], GetStageFileName(*stage));
 			const char* format = IsJapanese() ? "(%2d) %-.20s" : "(%2d) %-.30s";
-			sprintf(line + length, format, *stage, FormatToStaticBuffer("%s%s", GetStageName(*stage), GetStageDesc(*stage)));
-			FinishStageLabel(line + length);
+			sprintf(menu->mLabels[i] + length, format, *stage, FormatToStaticBuffer("%s%s", GetStageName(*stage), GetStageDesc(*stage)));
+			FinishStageLabel(menu->mLabels[i] + length);
 			menu->mCount++;
 		}
 		MeasureStageLabels(menu);
@@ -6977,10 +6977,9 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 	} else {
 		menu->mCount = gGame.mRoomCount;
 		for (int i = 0; i < gGame.mRoomCount; i++) {
-			char* line = menu->mLabels[i];
-			int length = CopyStageFileName(line, GetStageFileName(i));
-			sprintf(line + length, "(%2d) %-.18s", i, FormatToStaticBuffer("%s%s", GetStageName(i), GetStageDesc(i)));
-			FinishStageLabel(line + length);
+			int length = CopyStageFileName(menu->mLabels[i], GetStageFileName(i));
+			sprintf(menu->mLabels[i] + length, "(%2d) %-.18s", i, FormatToStaticBuffer("%s%s", GetStageName(i), GetStageDesc(i)));
+			FinishStageLabel(menu->mLabels[i] + length);
 		}
 		strcpy(menu->mLabels[menu->mCount], "\x01");
 		menu->mCount++;
@@ -6994,7 +6993,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 	}
 }
 
-static inline u32 StageRowBlue(int row, u8 normal, u8 current)
+static inline u8 StageRowBlue(int row, u8 normal, u8 current)
 {
 	if (gGame.mStatus.mFlags & 0x0008000000000000ULL)
 		return (u8)(sStageOrder[row] == gGame.mStage ? current : normal);
@@ -7166,7 +7165,7 @@ BOOL MenuMCTest::Update(u32 frames)
 		Memcard* card = &gGame.mMemcard.mCard;
 		if (card->mBusy)
 			return IsOpen();
-		s32 result = card->mCard.mResult;
+		s32 result = gGame.mMemcard.mCard.mCard.mResult;
 		switch (mOperation) {
 		case 1: // the preview read finished: one line per file
 			for (int i = 0; i < mFileCount; i++) {
@@ -7189,14 +7188,14 @@ BOOL MenuMCTest::Update(u32 frames)
 						sprintf(mText[i], "(%d) none", i);
 				} else {
 					if (i == mFileCount / 2)
-						strcpy(mText[i], card->mCard.GetResultString(card->mCard.mResult));
+						strcpy(mText[i], gGame.mMemcard.mCard.mCard.GetResultString(gGame.mMemcard.mCard.mCard.mResult));
 					else
 						strcpy(mText[i], "");
 				}
 			}
 			if (result == 0)
-				sprintf(mText[mFileCount + 1], "SLOT: %c   FREE BLOCKS: %d   FREE ENTRIES: %d", sMenuMain.mChannel + 'A', card->mFreeBlocks,
-				        card->mFreeEntries);
+				sprintf(mText[mFileCount + 1], "SLOT: %c   FREE BLOCKS: %d   FREE ENTRIES: %d", sMenuMain.mChannel + 'A',
+				        gGame.mMemcard.mCard.mFreeBlocks, gGame.mMemcard.mCard.mFreeEntries);
 			mOperation = 0;
 			break;
 		case 3: // a save or a delete finished: read the list again
@@ -7208,7 +7207,7 @@ BOOL MenuMCTest::Update(u32 frames)
 				mOperation = 0;
 				for (int i = 0; i < mFileCount; i++) {
 					if (i == mFileCount / 2)
-						strcpy(mText[i], card->mCard.GetResultString(card->mCard.mResult));
+						strcpy(mText[i], gGame.mMemcard.mCard.mCard.GetResultString(gGame.mMemcard.mCard.mCard.mResult));
 					else
 						strcpy(mText[i], "");
 				}
@@ -7225,7 +7224,7 @@ BOOL MenuMCTest::Update(u32 frames)
 			} else {
 				for (int i = 0; i < mFileCount; i++) {
 					if (i == mFileCount / 2)
-						strcpy(mText[i], card->mCard.GetResultString(card->mCard.mResult));
+						strcpy(mText[i], gGame.mMemcard.mCard.mCard.GetResultString(gGame.mMemcard.mCard.mCard.mResult));
 					else
 						strcpy(mText[i], "");
 				}
