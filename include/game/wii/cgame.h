@@ -990,7 +990,19 @@ public:
 	u32 mMenuControls;
 	CVec _EE1E0; // _EE1E0, a new game zeroes it
 	CVec _EE1F0; // _EE1F0, and fills this one with NAN
-	u8 _EE200[0xEE530 - 0xEE200];
+	// _EE200 to _EE518: the shadow RenderSceneShadow casts from straight above, a Wii piece the GameCube had
+	// as a CShadow on the light; the names are ours
+	XObj* mShadowFocus;      // _EE200, what the shadow camera looks down on, the scene camera's interest without one
+	f32 mShadowWidth;        // _EE204, 100 unless positive
+	f32 mShadowHeight;       // _EE208, 100 unless positive
+	f32 mShadowAlpha;        // _EE20C, 1 unless positive
+	u8 mShadowCamera[0x1F8]; // _EE210, a CCamera: as a member it would join CGame's constructor and destructor
+	u8 mShadowTex[0x104];    // _EE408, the CTexObj that shows it
+	u16 mShadowTexWidth;     // _EE50C
+	u16 mShadowTexHeight;    // _EE50E
+	void* mShadowImage;      // _EE510, what the frame buffer is copied to
+	f32 mShadowStrength;     // _EE514, the alpha the shadows draw at
+	u8 _EE518[0xEE530 - 0xEE518];
 
 	void SetStage(s32 stage)
 	{
@@ -1045,6 +1057,7 @@ STATIC_ASSERT(offsetof(CGame, mSubwin) == 0x548C);
 STATIC_ASSERT(offsetof(CGame, mTitleState) == 0x5C74);
 STATIC_ASSERT(offsetof(CGame, mEmitters) == 0xBCA8);
 STATIC_ASSERT(offsetof(CGame, mMsgs) == 0x4C950);
+STATIC_ASSERT(offsetof(CGame, mShadowTexWidth) == 0xEE50C);
 
 extern "C" CGame gGame;
 #endif

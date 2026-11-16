@@ -478,7 +478,7 @@ public:
 	virtual void DrawObject();                                       // _174
 	virtual void DrawWithView(Mtx view);                             // _178
 	virtual void DrawReflection(Mtx view);                           // _17C
-	virtual void DrawGroundShadow();                                 // _180
+	virtual void DrawGroundShadow(f32 opacity);                      // _180
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity); // _184
 	virtual void DrawObjectEffects();                                // _188
 	virtual void DrawCollisionShapes();                              // _18C

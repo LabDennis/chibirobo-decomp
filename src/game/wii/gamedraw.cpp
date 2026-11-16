@@ -17,6 +17,7 @@
 #include "game/mm.h"
 #include "game/cfont.h"
 #include "game/stagetable.h"
+#include "game/stagedata.h"
 #include <math.h>
 #include <stdlib.h>
 
@@ -43,6 +44,14 @@ void ResetTitleScreenState(void* title);
 void fn_800848C0(void* menus); // the GameCube's ResetMenuGroup
 void fn_80084BF0(void* menus, s32 menu);
 BOOL fn_800C61C8();
+void fn_8027B6B8(WiiGsSceneObj* scene, BOOL, s32);             // switches the scene's draws to and from the alpha pass
+void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL); // sorts the queued scene draws under camera
+void fn_8027B40C(WiiGsSceneObj* scene);                        // the shadow pass' five scene draws
+void fn_8027B484(WiiGsSceneObj* scene);
+void fn_8027B570(WiiGsSceneObj* scene);
+void fn_8027B644(WiiGsSceneObj* scene);
+void fn_8027B5D0(WiiGsSceneObj* scene);
+void fn_8027AE04(WiiGsSceneObj* scene, s32 index); // as gameupdate.cpp declares it
 void ResetGameHudState(InfoScrn* scrn);
 u8* GetStageDisplayName(s32 index);
 extern GXColor gMessageFontDefaultColor;
@@ -101,6 +110,18 @@ inline void CSound::StopAllTracks(f32 fade)
 			mTracks[i].Stop(frames);
 		}
 	}
+}
+
+// the head of the stage's info record, as far as this file reads it: the GameCube's UnkStageInfo
+// (game/cgameutil.h, which the Wii cannot include). todo: one definition with gameupdate.cpp's
+struct WiiStageInfo {
+	u8 _00[0x10];
+	u8 mFlags; // _10, bit 0 keeps the shadows at full strength
+};
+
+static inline WiiStageInfo* GetStageInfo()
+{
+	return *(WiiStageInfo**)GetStageEnvironment();
 }
 
 // the queued scene draws, sorted under view and popped one by one
@@ -878,6 +899,165 @@ extern "C" void DrawGameMovie(CGame* game)
 }
 
 /**
+ * @note Address: 0x80027E84
+ * @note Size: 0x96C
+ */
+// NONMATCHING: written from the retail code, not tuned; retail's FSqrt is nw4r's with the domain warning
+// (WiiReportMathError), the header's has none
+// renders the shadow from straight above the focus object (or the scene camera's interest) into a
+// texture: the 0x4 objects cast it into the alpha, the 0x8 ones get their ground shadow drawn, both
+// fading over a hundred units unless the stage keeps them at full strength
+extern "C" void RenderSceneShadow(CGame* game)
+{
+	if (!game->GetStatusFlags(1)) {
+		return;
+	}
+	if (game->mHomeMenu.IsOpen()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	CVec focus;
+	CCamera* camera = (CCamera*)game->mShadowCamera;
+	if (game->mShadowFocus != NULL && (game->mShadowFocus->mStatus.mFlags & 1)) {
+		CVec* pos = game->mShadowFocus->GetPos();
+		focus.x   = pos->x;
+		focus.y   = pos->y;
+		focus.z   = pos->z;
+	} else {
+		CCamera* scene = game->GetCamera();
+		focus.x        = scene->mView.mInterest.x;
+		focus.y        = scene->mView.mInterest.y;
+		focus.z        = scene->mView.mInterest.z;
+	}
+	f32 width  = game->mShadowWidth > 0.0f ? game->mShadowWidth : 100.0f;
+	f32 height = game->mShadowHeight > 0.0f ? game->mShadowHeight : 100.0f;
+	f32 alpha  = game->mShadowAlpha > 0.0f ? game->mShadowAlpha : 1.0f;
+	camera->Init(height, -height, -width, width, camera->mNear, camera->mFar, 1.0f, &gGame.mGs.mScreen);
+	camera->SetEye(focus.x, 400.0f + focus.y, focus.z);
+	camera->SetInterest(focus);
+	camera->SetUp(0.0f, 0.0f, 1.0f);
+	camera->vf88(1.0f, 1.0f, game->mShadowTexWidth - 2, game->mShadowTexHeight - 2, 0.0f, 1.0f);
+	game->mShadowStrength = alpha;
+	game->BeginCamera(camera);
+	fn_802AEF34(&gGame.mGs.mSceneHead, camera, TRUE);
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+	gGame.mGs.mCurRenderState->SetDstAlpha(GX_FALSE, 0);
+
+	f32 interestY = game->GetCamera()->mView.mInterest.y;
+	f32 strength  = game->mShadowStrength;
+	for (s32 i = 0; i < game->mEffectRefCount; i++) {
+		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		if (!(obj->mStatus.mFlags & 4)) {
+			continue;
+		}
+		if (interestY - obj->GetPos()->y >= 40.0f) {
+			continue;
+		}
+		CVec* pos = obj->GetPos();
+		f32 dz    = focus.z - pos->z;
+		f32 dx    = focus.x - pos->x;
+		f32 dist  = nw4r::math::FSqrt(dx * dx + dz * dz);
+		f32 fade;
+		if (GetStageInfo()->mFlags & 1) {
+			fade = 1.0f;
+		} else { // else it fades over a hundred units
+			fade = (100.0f - dist) / 100.0f;
+			if (fade < 0.0f) {
+				fade = 0.0f;
+			}
+			if (fade > 0.8f) {
+				fade = 0.8f;
+			}
+		}
+		strength = sin(3.1415927f * fade * 0.5f); // a half-sine falloff
+		obj->DrawGroundShadow(strength);
+	}
+
+	fn_8027B6B8(gGame.mGs.mSceneHead, TRUE, 4);
+	GXColor color = { 0, 0, 0, 0 };
+	color.a       = 100.0f * strength;
+	GXSetNumTexGens(0);
+	GXSetNumChans(1);
+	GXSetNumTevStages(1);
+	GXSetNumIndStages(0);
+	GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+	GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+	GXSetChanAmbColor(GX_COLOR0A0, color);
+	GXSetChanMatColor(GX_COLOR0A0, color);
+	GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+	GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
+	GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+	GXSetBlendMode(GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_COPY);
+	fn_8027B40C(gGame.mGs.mSceneHead);
+	fn_8027B484(gGame.mGs.mSceneHead);
+	fn_8027B570(gGame.mGs.mSceneHead);
+	fn_8027B644(gGame.mGs.mSceneHead);
+	fn_8027B5D0(gGame.mGs.mSceneHead);
+	WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
+	while (scene->mPending != 0) {
+		if (scene->mPending != 0) {
+			scene->vf038(scene->mPending - 1);
+		}
+	}
+	fn_8027B6B8(gGame.mGs.mSceneHead, FALSE, 2);
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+	if (gGame.mGs.mCurRenderState != NULL) {
+		gGame.mGs.mCurRenderState->Apply();
+	}
+	if (gGame.mGs.mCurTevStage != NULL) {
+		gGame.mGs.mCurTevStage->Apply();
+	}
+	if (gGame.mGs.mCurChannel != NULL) {
+		gGame.mGs.mCurChannel->Apply();
+	}
+
+	for (s32 i = 0; i < game->mEffectRefCount; i++) {
+		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		if (obj->GetCategory() == 3 || !(obj->mStatus.mFlags & 8)) {
+			continue;
+		}
+		if (interestY - obj->GetPos()->y >= 40.0f) {
+			continue;
+		}
+		CVec* pos = obj->GetPos();
+		f32 dz    = focus.z - pos->z;
+		f32 dx    = focus.x - pos->x;
+		f32 dist  = nw4r::math::FSqrt(dx * dx + dz * dz);
+		f32 fade;
+		if (GetStageInfo()->mFlags & 1) {
+			fade = 1.0f;
+		} else {
+			fade = (100.0f - dist) / 100.0f;
+			if (fade < 0.0f) {
+				fade = 0.0f;
+			}
+			if (fade > 0.8f) {
+				fade = 0.8f;
+			}
+		}
+		f32 opacity = sin(3.1415927f * fade * 0.5f);
+		obj->DrawGroundShadowAt(obj->GetPos(), opacity);
+	}
+
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+	GXSetTexCopySrc(0, 0, game->mShadowTexWidth, game->mShadowTexHeight);
+	GXSetTexCopyDst(game->mShadowTexWidth, game->mShadowTexHeight, GX_CTF_A8, GX_FALSE);
+	GXCopyTex(game->mShadowImage, GX_TRUE);
+	GXPixModeSync();
+	GXInvalidateTexAll();
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+	fn_8027AE04(gGame.mGs.mSceneHead, 0);
+}
+
+/**
  * @note Address: 0x800287F0
  * @note Size: 0x1A8
  */
@@ -1146,6 +1326,94 @@ extern "C" void RenderSubwindow(CGame* game)
 		game->vf54();
 	}
 	subwin->Copy();
+}
+
+/**
+ * @note Address: 0x80027114
+ * @note Size: 0x5E4
+ */
+// NONMATCHING: not tuned; the clear quad's corners are built in another order
+// clears the screen's alpha through the screen camera, then draws the 0x40 objects and what the player
+// carries (unless he is plugging it in) into the alpha only, for the outline pass
+extern "C" void DrawObjectAlphaMask(CGame* game)
+{
+	if (!game->GetStatusFlags(1) || !game->GetStatusFlags(0x40)) {
+		return;
+	}
+	if (game->mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	if (game->vf5C()) {
+		SetGsChannelEnabled(&gGame.mGs, 4, 0);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
+		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetDstAlpha(GX_FALSE, 0);
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		Vec quad[4] = { 0 }; // a full-screen clear
+		quad[0].x   = (f32)gScreenLeft;
+		quad[0].y   = (f32)gScreenTop;
+		quad[1].x   = (f32)gScreenRight;
+		quad[1].y   = (f32)gScreenTop;
+		quad[2].x   = (f32)gScreenRight;
+		quad[2].y   = (f32)gScreenBottom;
+		quad[3].x   = (f32)gScreenLeft;
+		quad[3].y   = (f32)gScreenBottom;
+		DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, 4, quad[1].x, quad[1].y, quad[1].z, 4, quad[2].x, quad[2].y,
+		                 quad[2].z, 4, quad[3].x, quad[3].y, quad[3].z, 4);
+		gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+		game->vf54();
+	}
+	if (game->BeginSceneCamera()) {
+		XObj* targets[2]       = { NULL, NULL };
+		WiiPlayerState* player = game->mPlayer;
+		targets[0]             = player->mLiftPlugTarget;
+		if (targets[1] == NULL) {
+			targets[1] = player->mLiftTarget;
+		}
+		fn_8027B6B8(gGame.mGs.mSceneHead, TRUE, 4);
+		GXSetNumTexGens(0);
+		GXSetNumChans(1);
+		GXSetNumTevStages(1);
+		GXSetNumIndStages(0);
+		GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+		GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+		GXColor white = { 0xFF, 0xFF, 0xFF, 0xFF };
+		GXSetChanAmbColor(GX_COLOR0A0, white);
+		GXColor mat = { 0xFF, 0xFF, 0xFF, 0xFF };
+		GXSetChanMatColor(GX_COLOR0A0, mat);
+		GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+		GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetDstAlpha(GX_TRUE, 0);
+		for (s32 i = 0; i < game->mSceneRefCount; i++) {
+			XObj* obj = (XObj*)game->mSceneRefs[i].mObj;
+			if (obj->mStatus.mFlags & 0x40) {
+				obj->DrawObject();
+			} else if (obj == targets[1] && player->mLift.mState != 24) { // not while he plugs it in
+				obj->DrawObject();
+			}
+		}
+		DrawSceneQueue(NULL);
+		fn_8027B6B8(gGame.mGs.mSceneHead, FALSE, 2);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+		gGame.mGs.mCurRenderState->SetDstAlpha(GX_FALSE, 0);
+		game->vf54();
+	}
 }
 
 /**
