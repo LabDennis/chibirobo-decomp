@@ -37,7 +37,7 @@ inline void operator delete(void* ptr) throw()
 	MEMFreeToExpHeap(gWiiMem1Heap, ptr);
 }
 
-struct WiiSaveManager;
+struct CSaveFile;
 class CMsg;
 
 // the head of the stage's info record, as far as this file reads it: the GameCube's UnkStageInfo
@@ -75,8 +75,8 @@ void fn_8028175C(void** fog, GXFogType* type, f32* startZ, f32* endZ, f32* nearZ
 BOOL HideHudPointCounters(InfoScrn* scrn);
 BOOL LoadWiiHomeMenu(WiiHomeMenu* menu);
 s32 LoadMessageCursorObject(CMsg* msg);
-void ApplyWiiSaveSlot(WiiSaveManager* manager);
-void RestoreSavedPlayerAndCamera(WiiSaveManager* manager);
+void ApplyWiiSaveSlot(CSaveFile* manager);
+void RestoreSavedPlayerAndCamera(CSaveFile* manager);
 void ApplyStageSoundEffects(XSound* sound);
 BOOL LoadGlobalResourceData();
 u32 GetStartingAttachmentLevel(s32 index);
@@ -226,9 +226,9 @@ void CGame::ResetNewGameState()
 	mOutlineWidthControl = 0;
 	mOutlineWidth        = 0.5f;
 	Vec zero             = { 0.0f, 0.0f, 0.0f };
-	_EE1E0.Set(zero);
+	mListener.mPos.Set(zero);
 	Vec nan = { NAN, NAN, NAN };
-	_EE1F0.Set(nan);
+	mListener.mPoint.Set(nan);
 	_D9B60             = 0;
 	_D9B5C             = 0;
 	mStageName.mActive = FALSE;
@@ -1389,19 +1389,19 @@ void CGame::Update(u32 frames)
 		UpdateStageNameBubbles(this, frames);
 	}
 
-	// the 3D sound listens from a little in front of the camera, or of the point _EE1F0 names
+	// the 3D sound listens from a little in front of the camera, or of the point mListener.mPoint names
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
 		CCamera* camera = GetCamera();
-		if (!isnan(_EE1F0.x)) {
-			CVec dir = camera->mView.mEye - _EE1F0;
+		if (!isnan(mListener.mPoint.x)) {
+			CVec dir = camera->mView.mEye - mListener.mPoint;
 			PSVECNormalize(&dir, &dir);
-			_EE1E0 = _EE1F0 + dir * 50.0f;
+			mListener.mPos = mListener.mPoint + dir * 50.0f;
 		} else {
 			CVec dir = camera->mView.mInterest - camera->mView.mEye;
 			PSVECNormalize(&dir, &dir);
-			_EE1E0 = camera->mView.mEye + dir * 50.0f;
+			mListener.mPos = camera->mView.mEye + dir * 50.0f;
 		}
-		((CSound3D*)&gGame.mSound.mSound3DManager)->SetListener(GetCamera()->mView.mAngle.y, &_EE1E0);
+		((CSound3D*)&gGame.mSound.mSound3DManager)->SetListener(GetCamera()->mView.mAngle.y, &mListener.mPos);
 	}
 	UpdateXSound(&gGame.mSound, frames);
 	for (i = 0; i < mObjectRefCount; i++) {

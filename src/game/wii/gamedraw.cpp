@@ -41,7 +41,7 @@ void* fn_80246C04(void* handle);                    // the emitter behind it
 void fn_802BEA5C(void* emitter, BOOL);              // kills the emitter
 void fn_802BE3A8(void* particles, u32 group, BOOL); // kills a particle group
 void ClearSoundEffects(XSound* sound, s32 frames);
-s32 GetWiiSaveSlotStage(WiiSaveManager* manager, int index);
+s32 GetWiiSaveSlotStage(CSaveFile* manager, int index);
 void ResetTitleScreenState(void* title);
 void fn_800848C0(void* menus); // the GameCube's ResetMenuGroup
 void fn_80084BF0(void* menus, s32 menu);
@@ -672,10 +672,10 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	gGame.mSound.StopAllTracks(0.0f);
 	ClearSoundEffects(&gGame.mSound, 0);
 	gGame.mSound.RestoreHeapLevel(1);
-	Vec nan        = { NAN, NAN, NAN };
-	game->_EE1F0.x = nan.x;
-	game->_EE1F0.y = nan.y;
-	game->_EE1F0.z = nan.z;
+	Vec nan                  = { NAN, NAN, NAN };
+	game->mListener.mPoint.x = nan.x;
+	game->mListener.mPoint.y = nan.y;
+	game->mListener.mPoint.z = nan.z;
 	gWiiPointer.ResetRumble(FALSE);
 	game->ClearStatusFlags(0x020000000000002F);
 	game->ClearStatusFlags(0xC00);
@@ -946,7 +946,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 		return;
 	}
 	CVec focus;
-	CCamera* camera = (CCamera*)game->mShadowCamera;
+	CCamera* camera = &game->mShadow.mCamera;
 	if (game->mShadowFocus != NULL && (game->mShadowFocus->mStatus.mFlags & 1)) {
 		CVec* pos = game->mShadowFocus->GetPos();
 		focus.x   = pos->x;
@@ -965,8 +965,8 @@ extern "C" void RenderSceneShadow(CGame* game)
 	camera->SetEye(focus.x, 400.0f + focus.y, focus.z);
 	camera->SetInterest(focus);
 	camera->SetUp(0.0f, 0.0f, 1.0f);
-	camera->vf88(1.0f, 1.0f, game->mShadowTexWidth - 2, game->mShadowTexHeight - 2, 0.0f, 1.0f);
-	game->mShadowStrength = alpha;
+	camera->vf88(1.0f, 1.0f, game->mShadow.mTexWidth - 2, game->mShadow.mTexHeight - 2, 0.0f, 1.0f);
+	game->mShadow.mStrength = alpha;
 	game->BeginCamera(camera);
 	fn_802AEF34(&gGame.mGs.mSceneHead, camera, TRUE);
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
@@ -974,7 +974,7 @@ extern "C" void RenderSceneShadow(CGame* game)
 	gGame.mGs.mCurRenderState->SetDstAlpha(GX_FALSE, 0);
 
 	f32 interestY = game->GetCamera()->mView.mInterest.y;
-	f32 strength  = game->mShadowStrength;
+	f32 strength  = game->mShadow.mStrength;
 	for (s32 i = 0; i < game->mEffectRefCount; i++) {
 		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
 		if (!(obj->mStatus.mFlags & 4)) {
@@ -1072,9 +1072,9 @@ extern "C" void RenderSceneShadow(CGame* game)
 	}
 
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
-	GXSetTexCopySrc(0, 0, game->mShadowTexWidth, game->mShadowTexHeight);
-	GXSetTexCopyDst(game->mShadowTexWidth, game->mShadowTexHeight, GX_CTF_A8, GX_FALSE);
-	GXCopyTex(game->mShadowImage, GX_TRUE);
+	GXSetTexCopySrc(0, 0, game->mShadow.mTexWidth, game->mShadow.mTexHeight);
+	GXSetTexCopyDst(game->mShadow.mTexWidth, game->mShadow.mTexHeight, GX_CTF_A8, GX_FALSE);
+	GXCopyTex(game->mShadow.mImage, GX_TRUE);
 	GXPixModeSync();
 	GXInvalidateTexAll();
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);

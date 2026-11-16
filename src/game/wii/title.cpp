@@ -85,11 +85,11 @@ void UpdateObject__4XObjFUl(XObj* obj, u32 frames);
 }
 
 // the slot-scan object inside CGame at _D9B80 and the save job's busy word at _EB0A0; the scan
-// object starts like WiiSaveManager (file, then the scan entries) but CGame's region is smaller,
+// object starts like CSaveFile (file, then the scan entries) but CGame's region is smaller,
 // so the members the title screen touches are reached by offset
-static inline WiiSaveManager* SaveScan()
+static inline CSaveFile* SaveScan()
 {
-	return (WiiSaveManager*)((u8*)&gGame + 0xD9B80);
+	return (CSaveFile*)((u8*)&gGame + 0xD9B80);
 }
 static inline s32* SaveBusy()
 {

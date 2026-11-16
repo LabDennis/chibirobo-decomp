@@ -31,7 +31,7 @@
 #include "stl/mem.h"
 
 struct WiiSaveJob {
-	WiiSaveManager* mManager;
+	CSaveFile* mManager;
 	s32 mSlot;
 	s32 mNewGame;
 };
@@ -46,8 +46,8 @@ const char* gWiiSaveBannerPath = "banner.bin";
 void* gWiiSaveNandWorkBuffer;
 u8* gWiiSaveThreadStack;
 
-void ScanWiiSaveSlots(WiiSaveManager* manager, int count);
-void CaptureWiiSaveSlot(WiiSaveManager* manager, bool newGame);
+void ScanWiiSaveSlots(CSaveFile* manager, int count);
+void CaptureWiiSaveSlot(CSaveFile* manager, bool newGame);
 s32 GetDefaultStageIndex();
 void ResetPlayerHeadOffset(WiiPlayerState* player);
 void ResetPlayerPlug(WiiPlayerState* player);
@@ -59,7 +59,7 @@ void* RunWiiSaveSlotRead(void* param);
 void* RunWiiSaveSlotDelete(void* param);
 }
 
-extern "C" void InitializeWiiSaveManager(WiiSaveManager* manager)
+extern "C" void InitializeWiiSaveManager(CSaveFile* manager)
 {
 	InitializeNandGameFile(&manager->mFile);
 	gWiiSaveNandWorkBuffer = MEMAllocFromExpHeapEx(gWiiGameHeap, 0x4000, 32);
@@ -69,13 +69,13 @@ extern "C" void InitializeWiiSaveManager(WiiSaveManager* manager)
 	GetNandGameFreeSpace(&manager->mFile, &blocks, &inodes);
 }
 
-extern "C" void UpdateWiiSaveJob(WiiSaveManager* manager)
+extern "C" void UpdateWiiSaveJob(CSaveFile* manager)
 {
 	if (manager->mJobStarted && OSIsThreadTerminated(&gWiiSaveThread.mThread))
 		manager->mJobStarted = 0;
 }
 
-extern "C" int CheckWiiSaveBanner(WiiSaveManager* manager, bool removeInvalid)
+extern "C" int CheckWiiSaveBanner(CSaveFile* manager, bool removeInvalid)
 {
 	WiiGameSaveFile* file = &manager->mFile;
 	u32 flags             = 0;
@@ -102,7 +102,7 @@ extern "C" int CheckWiiSaveBanner(WiiSaveManager* manager, bool removeInvalid)
 	return flags;
 }
 
-extern "C" void BuildWiiSaveBanner(WiiSaveManager* manager)
+extern "C" void BuildWiiSaveBanner(CSaveFile* manager)
 {
 	memset(manager->mBanner.comment[0], 0x30, 0x20);
 	memset(manager->mBanner.comment[1], 0x30, 0x20);
@@ -121,7 +121,7 @@ extern "C" void BuildWiiSaveBanner(WiiSaveManager* manager)
 	manager->mBanner.iconSpeed = (manager->mBanner.iconSpeed & ~(3 << (2 * 8))) | (0 << (2 * 8));
 }
 
-extern "C" s32 WriteWiiSaveBanner(WiiSaveManager* manager)
+extern "C" s32 WriteWiiSaveBanner(CSaveFile* manager)
 {
 	BuildWiiSaveBanner(manager);
 	WiiGameSaveFile* file = &manager->mFile;
@@ -164,7 +164,7 @@ static inline bool VerifyWiiSaveSlotChecksum(WiiSaveSlot& slot)
 	return storedChecksum == GetWiiSaveSlotChecksum(slot);
 }
 
-void ScanWiiSaveSlots(WiiSaveManager* manager, int count)
+void ScanWiiSaveSlots(CSaveFile* manager, int count)
 {
 	static WiiSaveSlot sScanSlot;
 	char path[0x40];
@@ -285,7 +285,7 @@ void ScanWiiSaveSlots(WiiSaveManager* manager, int count)
 	}
 }
 
-static inline void StartWiiSaveJob(WiiSaveManager* manager, OSThreadStartFunction entry)
+static inline void StartWiiSaveJob(CSaveFile* manager, OSThreadStartFunction entry)
 {
 	gWiiSaveThread.mStack     = gWiiSaveThreadStack;
 	gWiiSaveThread.mStackSize = 0x2000;
@@ -294,12 +294,12 @@ static inline void StartWiiSaveJob(WiiSaveManager* manager, OSThreadStartFunctio
 	manager->mJobStarted = 1;
 }
 
-static inline void MakeWiiSaveSlotPath(WiiSaveManager* manager, int slot)
+static inline void MakeWiiSaveSlotPath(CSaveFile* manager, int slot)
 {
 	sprintf(manager->mSlotPath, "CB_SKIP(%d)", slot);
 }
 
-extern "C" void StartWiiSaveSlotScan(WiiSaveManager* manager, int count)
+extern "C" void StartWiiSaveSlotScan(CSaveFile* manager, int count)
 {
 	gWiiSaveJob.mManager = manager;
 	gWiiSaveJob.mSlot    = count;
@@ -313,7 +313,7 @@ extern "C" void* RunWiiSaveSlotScan(void* param)
 	return NULL;
 }
 
-extern "C" s32 WriteWiiSaveSlot(WiiSaveManager* manager, int slot, bool newGame)
+extern "C" s32 WriteWiiSaveSlot(CSaveFile* manager, int slot, bool newGame)
 {
 	MakeWiiSaveSlotPath(manager, slot);
 	memset(&manager->mSlot, 0, sizeof(manager->mSlot));
@@ -356,7 +356,7 @@ extern "C" s32 WriteWiiSaveSlot(WiiSaveManager* manager, int slot, bool newGame)
 	return 0;
 }
 
-extern "C" void StartWiiSaveSlotWrite(WiiSaveManager* manager, int slot, int newGame)
+extern "C" void StartWiiSaveSlotWrite(CSaveFile* manager, int slot, int newGame)
 {
 	gWiiSaveJob.mManager = manager;
 	gWiiSaveJob.mNewGame = newGame;
@@ -371,7 +371,7 @@ extern "C" void* RunWiiSaveSlotWrite(void* param)
 	return NULL;
 }
 
-extern "C" s32 ReadWiiSaveSlot(WiiSaveManager* manager, int slot)
+extern "C" s32 ReadWiiSaveSlot(CSaveFile* manager, int slot)
 {
 	MakeWiiSaveSlotPath(manager, slot);
 	memset(&manager->mSlot, 0, sizeof(manager->mSlot));
@@ -395,7 +395,7 @@ extern "C" s32 ReadWiiSaveSlot(WiiSaveManager* manager, int slot)
 	return 0;
 }
 
-extern "C" void StartWiiSaveSlotRead(WiiSaveManager* manager, int slot)
+extern "C" void StartWiiSaveSlotRead(CSaveFile* manager, int slot)
 {
 	gWiiSaveJob.mManager = manager;
 	gWiiSaveJob.mSlot    = slot;
@@ -409,7 +409,7 @@ extern "C" void* RunWiiSaveSlotRead(void* param)
 	return NULL;
 }
 
-extern "C" void StartWiiSaveSlotDelete(WiiSaveManager* manager, int slot)
+extern "C" void StartWiiSaveSlotDelete(CSaveFile* manager, int slot)
 {
 	gWiiSaveJob.mManager = manager;
 	gWiiSaveJob.mSlot    = slot;
@@ -418,8 +418,8 @@ extern "C" void StartWiiSaveSlotDelete(WiiSaveManager* manager, int slot)
 
 extern "C" void* RunWiiSaveSlotDelete(void* param)
 {
-	WiiSaveJob* job         = static_cast<WiiSaveJob*>(param);
-	WiiSaveManager* manager = job->mManager;
+	WiiSaveJob* job    = static_cast<WiiSaveJob*>(param);
+	CSaveFile* manager = job->mManager;
 	MakeWiiSaveSlotPath(manager, job->mSlot);
 	DeleteNandGameFile(&manager->mFile, manager->mSlotPath);
 	return NULL;
@@ -432,7 +432,7 @@ static inline void CopyVec(Vec& dst, const Vec& src)
 	dst.z = src.z;
 }
 
-extern "C" void CaptureWiiSaveSlot(WiiSaveManager* manager, bool newGame)
+extern "C" void CaptureWiiSaveSlot(CSaveFile* manager, bool newGame)
 {
 	manager->mSlot.mHeader.mSignature = 0x53464342;
 	manager->mSlot.mHeader.mVersion   = 0x100;
@@ -490,7 +490,7 @@ extern "C" void CaptureWiiSaveSlot(WiiSaveManager* manager, bool newGame)
 }
 
 // reads a saved stage back into a live stage index, the inverse of the remap CaptureWiiSaveSlot does
-extern "C" s32 GetWiiSaveSlotStage(WiiSaveManager* manager, int index)
+extern "C" s32 GetWiiSaveSlotStage(CSaveFile* manager, int index)
 {
 	s32 stage = manager->mSlot.mHeader.mStages[index];
 	if (stage >= 100)
@@ -553,7 +553,7 @@ static inline void RequestSuit(WiiPlayerState* chr, s32 value)
 
 // applies the loaded slot to the live game state; the position and the camera go through
 // RestoreSavedPlayerAndCamera afterwards
-extern "C" void ApplyWiiSaveSlot(WiiSaveManager* manager)
+extern "C" void ApplyWiiSaveSlot(CSaveFile* manager)
 {
 	s32 stage = manager->mSlot.mHeader.mStages[0];
 	if (stage >= 100)
@@ -593,7 +593,7 @@ extern "C" void ApplyWiiSaveSlot(WiiSaveManager* manager)
  * @note Address: 0x800AAB18
  * @note Size: 0x1D4
  */
-extern "C" void RestoreSavedPlayerAndCamera(WiiSaveManager* manager)
+extern "C" void RestoreSavedPlayerAndCamera(CSaveFile* manager)
 {
 	// the Wii player class is not reconstructed; the +0x90 slot takes the position
 	// Vec, +0x70 the rotation

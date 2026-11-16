@@ -1015,6 +1015,26 @@ struct ObjArchiveTable {
 	ResourceFile mArchives[0x400]; // _00
 };
 
+// the point the 3D sound listens from, a Wii piece in a struct of its own: CGame's destructor calls one destructor
+// (0x8002D288) for both vectors and the constructor in 0x800332D8 builds them together. The names are ours
+struct GameListener {
+	CVec mPos;   // _00, a new game zeroes it
+	CVec mPoint; // _10, a new game fills it with NAN; the listener stands 50 in front of it, towards the camera
+};
+
+// the shadow camera of RenderSceneShadow and the texture it renders to, a struct of its own like GameListener
+// (destructor 0x8002D21C, built by 0x80035464 in the constructor); the name is ours
+struct GameShadow {
+	CCamera mCamera; // _000
+	CTexObj mTex;    // _1F8, shows it
+	u16 mTexWidth;   // _2FC
+	u16 mTexHeight;  // _2FE
+	void* mImage;    // _300, what the frame buffer is copied to
+	f32 mStrength;   // _304, the alpha the shadows draw at
+	u8 _308[0x320 - 0x308];
+};
+STATIC_ASSERT(sizeof(GameShadow) == 0x320);
+
 class CGame : public CBase {
 public:
 	virtual ~CGame(); // _08, 0x8002CFB8
@@ -1120,8 +1140,8 @@ public:
 	s32 _D9B5C;                                // _D9B5C, ResetNewGameState clears both
 	s32 _D9B60;                                // _D9B60
 	u8 _D9B64[0xD9B80 - 0xD9B64];
-	WiiSaveManager mSaveManager; // _D9B80
-	u8 _D9B80[0xEC180 - 0xD9B80 - sizeof(WiiSaveManager)];
+	CSaveFile mSaveManager; // _D9B80
+	u8 _D9B80[0xEC180 - 0xD9B80 - sizeof(CSaveFile)];
 	BOOL mMemcardLoaded; // _EC180
 	u8 _EC184[0xEC1A0 - 0xEC184];
 	f32 mPlayTime;   // _EC1A0
@@ -1164,8 +1184,7 @@ public:
 	bool mMovieOnThread;            // _EE1D8, the staff roll: UpdateMovie steps it on a thread of its own
 	u8 _EE1D9[0xEE1DC - 0xEE1D9];
 	u32 mMenuControls;
-	CVec _EE1E0; // _EE1E0, a new game zeroes it
-	CVec _EE1F0; // _EE1F0, and fills this one with NAN
+	GameListener mListener; // _EE1E0
 	// _EE200 to _EE518: the shadow RenderSceneShadow casts from straight above, a Wii piece the GameCube had
 	// as a CShadow on the light; the names are ours
 	XObj* mShadowFocus; // _EE200, BeforeUpdate's step 27 resets the four; what the shadow camera looks down on, the scene camera's interest
@@ -1173,13 +1192,7 @@ public:
 	f32 mShadowWidth;   // _EE204, 100 unless positive
 	f32 mShadowHeight;  // _EE208, 100 unless positive
 	f32 mShadowAlpha;   // _EE20C, 1 unless positive
-	u8 mShadowCamera[0x1F8]; // _EE210, a CCamera: as a member it would join CGame's constructor and destructor
-	u8 mShadowTex[0x104];    // _EE408, the CTexObj that shows it
-	u16 mShadowTexWidth;     // _EE50C
-	u16 mShadowTexHeight;    // _EE50E
-	void* mShadowImage;      // _EE510, what the frame buffer is copied to
-	f32 mShadowStrength;     // _EE514, the alpha the shadows draw at
-	u8 _EE518[0xEE530 - 0xEE518];
+	GameShadow mShadow; // _EE210
 
 	void SetStage(s32 stage)
 	{
@@ -1236,14 +1249,14 @@ STATIC_ASSERT(offsetof(CGame, mScopeFade2) == 0xECD24);
 STATIC_ASSERT(offsetof(WiiPlayerState, mPopper) == 0xD50);
 STATIC_ASSERT(offsetof(CGame, mFloorReflectMtx) == 0xECD2C);
 STATIC_ASSERT(offsetof(CGame, mMirrors) == 0xECD5C);
-STATIC_ASSERT(offsetof(CGame, _EE1E0) == 0xEE1E0);
+STATIC_ASSERT(offsetof(CGame, mListener) == 0xEE1E0);
 STATIC_ASSERT(offsetof(CGame, mSubwin) == 0x548C);
 STATIC_ASSERT(offsetof(CGame, mTitleState) == 0x5C74);
 STATIC_ASSERT(offsetof(CGame, mEvtPtcl) == 0xBCA8);
 STATIC_ASSERT(offsetof(CGame, mInfoScrn) == 0xAF58);
 STATIC_ASSERT(offsetof(CGame, mObjArchives) == 0x108E0);
 STATIC_ASSERT(offsetof(CGame, mMsgs) == 0x4C950);
-STATIC_ASSERT(offsetof(CGame, mShadowTexWidth) == 0xEE50C);
+STATIC_ASSERT(offsetof(CGame, mShadow) == 0xEE210);
 STATIC_ASSERT(offsetof(CGame, _41F0) == 0x41F0);
 STATIC_ASSERT(offsetof(CGame, mOutline) == 0x511C);
 STATIC_ASSERT(offsetof(CGame, mSaveManager) == 0xD9B80);
