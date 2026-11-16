@@ -3,6 +3,8 @@
 #include "Dolphin/vi.h"
 #include "Dolphin/dvd.h"
 #include "Dolphin/gx.h"
+#include "revolution/wpad.h"
+#include "nw4r/snd/snd_RemoteSpeakerManager.h"
 #include "revolution/mem.h"
 #include "nw4r/snd/snd_BasicSound.h"
 
@@ -19,11 +21,22 @@ void OSReturnToMenu();
 void OSReturnToDataManager();
 BOOL DVDCheckDiskAsync(DVDCommandBlock* block, DVDCBCallback callback);
 void OnDiskChecked(s32 result, DVDCommandBlock* block); // 0x80019414, no source yet
+const char* GetLocalizedInterfaceText(s32 id);
 }
+
+static void OnBatteryInfo(s32 chan, s32 result);
 
 // the expanded heap mm::InitMem1 creates over the MEM1 arena
 extern MEMiHeapHead* gWiiMem1Heap;
 extern s32 gRefreshRate;
+
+// the remote's battery query: Update asks WPAD every three seconds while pad 0 holds a remote
+struct WiiBatteryCheck {
+	bool mDone;     // _00, the answer is in mInfo
+	s32 mWait;      // _04, frames to the next query
+	WPADInfo mInfo; // _08
+};
+WiiBatteryCheck gBatteryCheck;
 
 // set by the power button's callback, CBase::Update turns it into a shutdown request
 extern u8 gPowerButtonPressed;
@@ -140,6 +153,142 @@ void CBase::UpdateDvdStatus()
 }
 
 /**
+ * @note Address: 0x80018364
+ * @note Size: 0x44C
+ */
+// NONMATCHING: retail enters the mLastProbe == -1 block through beq/b, the shape a switch on it would give;
+// the if/else here falls through to it (registers otherwise follow)
+// the interface message in the screen's corner (3 while the remote is away, 5 when it points off
+// the screen, 4 for an unsupported controller) and the low-battery icon, both fading in and out
+void CBase::UpdateSystemMessage()
+{
+	if (!(_41B0 & 1)) {
+		return;
+	}
+	CPadOne* pad = &gWiiPads[0];
+	u32 step     = mRetraceStep;
+	u32 device   = pad->mDeviceType;
+	s32 probe    = pad->mProbeResult;
+	if (mLastProbe == -1) {
+		if (probe != -2 && probe != -3) {
+			mLastProbe           = probe;
+			mLastDeviceType      = device;
+			mSystemMessage       = GetLocalizedInterfaceText(3);
+			_41C0                = _41C1;
+			mNoRemoteFrames      = 0.0f;
+			mSystemMessageTarget = -(s32)((_41B0 >> 1) & 1);
+			mBatteryLow          = false;
+		}
+	} else {
+		if (probe != -2 && probe != -3) {
+			mLastProbe      = probe;
+			mLastDeviceType = device;
+		}
+		if (probe == 0) {
+			mNoRemoteFrames += 1.0f;
+			if (mNoRemoteFrames > 10.0f) {
+				mNoRemoteFrames = 10.0f;
+			}
+		} else {
+			mNoRemoteFrames = 0.0f;
+		}
+		if (mNoRemoteFrames > 1.0f) {
+			if (probe == 0 || probe == -2) {
+				if (pad->mSamples[0].pointerValid < 2 && (_41B0 & 8)) {
+					mSystemMessage       = GetLocalizedInterfaceText(5);
+					_41C0                = _41C3;
+					mSystemMessageTarget = -1.0f;
+					mNoRemoteFrames      = 0.0f;
+				} else if (mLastDeviceType != 1 && (_41B0 & 4)) {
+					mSystemMessage       = GetLocalizedInterfaceText(4);
+					_41C0                = _41C2;
+					mSystemMessageTarget = -1.0f;
+				} else {
+					mSystemMessageTarget = 0.0f;
+				}
+			} else {
+				mSystemMessageTarget = 0.0f;
+			}
+		}
+		if (mLastProbe == 0) {
+			if (gBatteryCheck.mWait > 0 && (gBatteryCheck.mWait -= step) <= 0) {
+				gBatteryCheck.mWait = 0;
+			} else if (gBatteryCheck.mWait == 0
+			           && !nw4r::snd::detail::RemoteSpeakerManager::GetInstance().GetRemoteSpeaker(pad->mPort).IsEnabledOutput()) {
+				gBatteryCheck.mDone = false;
+				if (WPADGetInfoAsync(0, &gBatteryCheck.mInfo, OnBatteryInfo) == 0) {
+					gBatteryCheck.mWait = gRefreshRate * 3;
+				}
+			}
+		} else {
+			gBatteryCheck.mDone = false;
+		}
+		if (gBatteryCheck.mDone) {
+			if (gBatteryCheck.mInfo.battery <= 1) {
+				mBatteryLow = true;
+			} else {
+				mBatteryLow = false;
+			}
+		}
+	}
+
+	if (0.0f != mSystemMessageTarget) {
+		if (mSystemMessageAlpha < 1.0f) {
+			mSystemMessageAlpha += 0.1f * step;
+			if (mSystemMessageAlpha > 1.0f) {
+				mSystemMessageAlpha = 1.0f;
+			}
+		}
+	} else if (mSystemMessageAlpha > 0.0f) {
+		mSystemMessageAlpha -= 0.1f * step;
+		if (mSystemMessageAlpha < 0.0f) {
+			mSystemMessageAlpha = 0.0f;
+			mSystemMessage      = NULL;
+		}
+	}
+	if (mBatteryLow) {
+		if (mBatteryAlpha < 1.0f) {
+			mBatteryAlpha += 0.1f * step;
+			if (mBatteryAlpha > 1.0f) {
+				mBatteryAlpha = 1.0f;
+			}
+		}
+	} else if (mBatteryAlpha > 0.0f) {
+		mBatteryAlpha -= 0.1f * step;
+		if (mBatteryAlpha < 0.0f) {
+			mBatteryAlpha = 0.0f;
+		}
+	}
+	if (1.0f == mBatteryAlpha) {
+		mBatteryBlink -= 0.025f * step;
+		if (mBatteryBlink <= 0.0f) {
+			mBatteryBlink = 1.0f;
+		}
+	} else {
+		mBatteryBlink = 1.0f;
+	}
+	if (mSystemMessageAlpha > 0.0f) {
+		mSystemMessageBlink -= 0.025f * step;
+		if (mSystemMessageBlink <= 0.0f) {
+			mSystemMessageBlink = 1.0f;
+		}
+	} else {
+		mSystemMessageBlink = 1.0f;
+	}
+}
+
+/**
+ * @note Address: 0x8001834C
+ * @note Size: 0x18
+ */
+static void OnBatteryInfo(s32 chan, s32 result)
+{
+	if (result == 0) {
+		gBatteryCheck.mDone = true;
+	}
+}
+
+/**
  * @note Address: 0x80018348
  * @note Size: 0x4
  */
@@ -162,7 +311,7 @@ void CBase::DrawScene()
 // the corner icon, the drive, and the two buttons on the console: power shuts down, reset restarts
 void CBase::Update(u32 frames)
 {
-	fn_80018364();
+	UpdateSystemMessage();
 	UpdateDvdStatus();
 	if (!mResetRequested) {
 		BOOL reset = OSGetResetButtonState();

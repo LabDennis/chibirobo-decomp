@@ -64,17 +64,23 @@ public:
 	bool mResetRequested; // _41A8
 	s32 mResetType;       // _41AC, 3 restarts the game, 4 returns to the Wii Menu
 	u32 _41B0;            // _41B0, BeforeUpdate sets the low three bits once the loading screen may show
-	u8 _41B4[0x41BC - 0x41B4];
+	u32 mLastDeviceType;  // _41B4, pad 0's last mDeviceType the corner message saw
+	s32 mLastProbe;       // _41B8, and its last mProbeResult, -1 before the first frame
 	// _41BC, the interface text drawn over the frame, NULL when there is none, and its alpha at _41C8
 	const char* mSystemMessage;
 	u8 _41C0;
 	u8 _41C1;
 	u8 _41C2;
 	u8 _41C3;
-	u8 _41C4[0x41C8 - 0x41C4];
+	bool mBatteryLow; // _41C4, the remote's battery is down to its last bar
+	u8 _41C5[0x41C8 - 0x41C5];
 	f32 mSystemMessageAlpha;
-	u8 _41CC[0x41E0 - 0x41CC];
-	CTexObj* _41E0; // _41E0, BeforeUpdate points it at CGame's copy of misc.tpl's texture 261
+	f32 mBatteryAlpha;        // _41CC, the low-battery icon fades in and out with mBatteryLow
+	f32 mBatteryBlink;        // _41D0, counts down from 1 while the icon is fully shown
+	f32 mSystemMessageBlink;  // _41D4, the same for the message
+	f32 mSystemMessageTarget; // _41D8, nonzero while the message should be up
+	f32 mNoRemoteFrames;      // _41DC, frames pad 0 has reported no remote, up to 10
+	CTexObj* _41E0;           // _41E0, BeforeUpdate points it at CGame's copy of misc.tpl's texture 261
 	// _41E4 vtable
 
 	virtual ~CBase() { }                            // _08
@@ -115,7 +121,7 @@ public:
 
 	void Run(int argc, char** argv); // 0x80017BD8, main's whole body
 	void UpdateDvdStatus();          // 0x80019428
-	void fn_80018364();              // 0x80018364, Update calls it first
+	void UpdateSystemMessage();      // 0x80018364, Update calls it first: the corner message and the battery icon
 
 	// the drive reports trouble and the disc is not back yet
 	bool IsDiscError() const { return (mDvdStatus != 0 || mPrevDvdStatus != 0) && !mDiskOk; }

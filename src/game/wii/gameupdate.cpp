@@ -1087,7 +1087,7 @@ void CGame::Update(u32 frames)
 			}
 		}
 	}
-	fn_80018364();
+	UpdateSystemMessage();
 	UpdateDvdStatus();
 	if (!mResetRequested) {
 		BOOL pressed = OSGetResetButtonState();
