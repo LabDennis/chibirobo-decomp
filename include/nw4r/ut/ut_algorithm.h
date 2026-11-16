@@ -96,4 +96,24 @@ template <typename T> inline void* RoundDown(T* pPtr, unsigned int alignment) {
 } // namespace ut
 } // namespace nw4r
 
+// nw4r::snd: the absolute value of a float is one fabs (Voice::TransformDpl2Pan, AxVoice::SetVe).
+// xenoblade's, wiiplay's and ss's ut_algorithm.h carry this specialization.
+namespace nw4r {
+namespace ut {
+namespace {
+
+template <> inline f32 Abs(register f32 x) {
+    register f32 ax;
+
+    asm {
+        fabs ax, x
+    }
+
+    return ax;
+}
+
+} // namespace
+} // namespace ut
+} // namespace nw4r
+
 #endif
