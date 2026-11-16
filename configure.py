@@ -1358,7 +1358,11 @@ if wii:
                 Object(Matching, "nw4r/g3d/res/g3d_resanmclr.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resanmtexpat.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resanmtexsrt.cpp"),
-                Object(NonMatching, "nw4r/g3d/res/g3d_resanmchr.cpp"),
+                # -fp_contract on for this unit: retail contracts the multiply-adds of CalcAnimationFVS (three
+                # instances) and GetAnmRotation (the unit has 58 fmadds/fmsubs, first at 0x80262A2C); with -fp_contract off
+                # these four are 0x10 to 0x84 bytes longer and nothing else in the unit changes. xenoblade's
+                # g3d_resanmchr.cpp starts with the same setting as a pragma.
+                Object(Matching, "nw4r/g3d/res/g3d_resanmchr.cpp", extra_cflags=["-fp_contract on"]),
                 Object(Matching, "nw4r/g3d/res/g3d_reslightset.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resanmamblight.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resanmlight.cpp"),
@@ -1381,8 +1385,11 @@ if wii:
                 Object(Matching, "nw4r/g3d/g3d_anmobj.cpp"),
                 Object(Matching, "nw4r/g3d/platform/g3d_gpu.cpp"),
                 Object(Matching, "nw4r/g3d/platform/g3d_cpu.cpp"),
+                # 42 of 42, not linked: its static initializer hands LightObj's destructor to __construct_array
+                # (0x802704E0). Retail's copy of that weak function is dtor_8009C394 in the game's range;
+                # until that symbol is called __dt__Q34nw4r3g3d8LightObjFv the link keeps ours as well.
                 Object(NonMatching, "nw4r/g3d/g3d_state.cpp"),
-                Object(NonMatching, "nw4r/g3d/g3d_draw1mat1shp.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_draw1mat1shp.cpp"),
                 # 11 of 11 once .rodata 0x802E0140-0x802E015C (bbFunc) is in its split: without it dtk exports the
                 # six Calc_BILLBOARD_* functions and they are not compared. Left out because they call
                 # nw4r::math::FrSqrt, which symbols.txt has to call WiiReciprocalSquareRoot for the game's sake
@@ -1390,7 +1397,7 @@ if wii:
                 Object(NonMatching, "nw4r/g3d/g3d_calcview.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_dcc.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_workmem.cpp"),
-                Object(NonMatching, "nw4r/g3d/g3d_calcworld.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_calcworld.cpp"),
                 Object(NonMatching, "nw4r/g3d/g3d_draw.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_camera.cpp"),
                 Object(Matching, "nw4r/g3d/dcc/g3d_basic.cpp"),
@@ -1400,7 +1407,7 @@ if wii:
                 Object(NonMatching, "nw4r/g3d/g3d_scnobj.cpp"),
                 Object(NonMatching, "nw4r/g3d/g3d_scnroot.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_scnmdlsmpl.cpp"),
-                Object(NonMatching, "nw4r/g3d/g3d_scnmdl.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_scnmdl.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_calcmaterial.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_init.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_scnproc.cpp"),

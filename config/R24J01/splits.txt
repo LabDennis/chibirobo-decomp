@@ -1141,6 +1141,8 @@ nw4r/g3d/res/g3d_resanmtexsrt.cpp:
 
 nw4r/g3d/res/g3d_resanmchr.cpp:
 	.text start:0x80262674 end:0x8026430C
+	.rodata start:0x802DFF70 end:0x802DFF90
+	.sdata2 start:0x805A72B8 end:0x805A72D8
 
 nw4r/g3d/res/g3d_reslightset.cpp:
 	.text start:0x8026430C end:0x802644B0
@@ -1228,9 +1230,13 @@ nw4r/g3d/platform/g3d_cpu.cpp:
 
 nw4r/g3d/g3d_state.cpp:
 	.text start:0x8026CE30 end:0x8027064C
+	.ctors start:0x802C4630 end:0x802C4634
+	.data start:0x80333818 end:0x80333830
 
 nw4r/g3d/g3d_draw1mat1shp.cpp:
 	.text start:0x8027064C end:0x80271380
+	.rodata start:0x802E0130 end:0x802E0140
+	.sdata2 start:0x805A7400 end:0x805A7420
 
 nw4r/g3d/g3d_calcview.cpp:
 	.text start:0x80271380 end:0x8027355C
@@ -1245,6 +1251,9 @@ nw4r/g3d/g3d_workmem.cpp:
 
 nw4r/g3d/g3d_calcworld.cpp:
 	.text start:0x80273678 end:0x80274130
+	.data start:0x80333830 end:0x8033383C
+	.sdata start:0x805A1970 end:0x805A1978
+	.sdata2 start:0x805A7430 end:0x805A7438
 
 nw4r/g3d/g3d_draw.cpp:
 	.text start:0x80274130 end:0x80275F8C
@@ -1287,6 +1296,8 @@ nw4r/g3d/g3d_scnmdlsmpl.cpp:
 
 nw4r/g3d/g3d_scnmdl.cpp:
 	.text start:0x8027E3D4 end:0x80280E94
+	.rodata start:0x802E0260 end:0x802E026C
+	.data start:0x803339E8 end:0x80333A30
 
 nw4r/g3d/g3d_calcmaterial.cpp:
 	.text start:0x80280E94 end:0x802812A4

@@ -13,13 +13,14 @@ namespace g3d {
 // Forward declarations
 namespace G3DState {
 class IndMtxOp;
-} // namespace G3DState
+}
 
 enum Draw1Mat1ShpCtrl {
     DRAW1MAT1SHP_CTRL_NOPPCSYNC = (1 << 0),
     DRAW1MAT1SHP_CTRL_NOSWAPSHP = (1 << 1),
     DRAW1MAT1SHP_CTRL_CULL_FRONT = (1 << 2),
     DRAW1MAT1SHP_CTRL_FORCE_LIGHTOFF = (1 << 3),
+    DRAW1MAT1SHP_CTRL_IGNORE_MAT = (1 << 4),
 };
 
 struct Draw1Mat1ShpSwap {
@@ -34,18 +35,17 @@ struct Draw1Mat1ShpSwap {
     ResMatTexCoordGen texCoordGen;       // at 0x20
     ResMatMisc misc;                     // at 0x24
     ResTexSrt texSrt;                    // at 0x28
-    ResVtxPosData** vtxPosTable;         // at 0x2C
-    ResVtxNrmData** vtxNrmTable;         // at 0x30
-    ResVtxClrData** vtxClrTable;         // at 0x34
+    ResVtxPosData **vtxPosTable;         // at 0x2C
+    ResVtxNrmData **vtxNrmTable;         // at 0x30
+    ResVtxClrData **vtxClrTable;         // at 0x34
 
-    Draw1Mat1ShpSwap()
-        : vtxPosTable(NULL), vtxNrmTable(NULL), vtxClrTable(NULL) {}
+    Draw1Mat1ShpSwap() : vtxPosTable(NULL), vtxNrmTable(NULL), vtxClrTable(NULL) {}
 };
 
-void Draw1Mat1ShpDirectly(ResMat mat, ResShp shp, const math::MTX34* pViewPos,
-                          const math::MTX34* pViewNrm, u32 ctrl,
-                          Draw1Mat1ShpSwap* pSwap,
-                          G3DState::IndMtxOp* pIndMtxOp);
+void Draw1Mat1ShpDirectly(
+    ResMat mat, ResShp shp, const math::MTX34 *pViewPos, const math::MTX34 *pViewNrm, u32 ctrl, Draw1Mat1ShpSwap *pSwap,
+    G3DState::IndMtxOp *pIndMtxOp
+);
 
 } // namespace g3d
 } // namespace nw4r

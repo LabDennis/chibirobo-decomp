@@ -1,5 +1,9 @@
 #ifndef NW4R_G3D_RES_RES_ANM_CHR_H
 #define NW4R_G3D_RES_RES_ANM_CHR_H
+
+/** NOTICE: Revision change from 4->5. Structures, Enums, and/or Functions may have changed and not yet done so
+ * (Zeldex72, Feb 1, 2025) */
+
 #include <nw4r/types_nw4r.h>
 
 #include <nw4r/g3d/res/g3d_resanm.h>
@@ -44,13 +48,18 @@ struct ChrAnmResult {
     math::VEC3 rawR; // at 0x10
     math::MTX34 rt;  // at 0x1C
 
-    void GetScale(math::VEC3* pScale) const;
-    bool GetRotateDeg(math::VEC3* pRotate) const;
-    void GetTranslate(math::VEC3* pTrans) const;
-    void GetRotTrans(math::MTX34* pRotTrans) const;
+    void GetScale(math::VEC3 *pScale) const;
+    void GetMtx(math::MTX34 *pMtx) const;
+    bool GetRotateDeg(math::VEC3 *pRotate) const;
+    void GetTranslate(math::VEC3 *pTranslate) const;
+    void GetRotTrans(math::MTX34 *pRotTrans) const;
 
-    void SetScale(const math::VEC3* pScale);
-    void SetRotTrans(const math::MTX34* pRotTrans);
+    void SetScale(const math::VEC3 *pScale);
+    void SetMtx(const math::MTX34 *pMtx);
+    void SetRotateDeg(const math::VEC3 *pRotate);
+    void SetRotateMtx(const math::MTX33 *pRot);
+    void SetTranslate(const math::VEC3 *pTranslate);
+    void SetRotTrans(const math::MTX34 *pRotTrans);
 };
 
 /******************************************************************************
@@ -199,15 +208,12 @@ struct ResAnmChrNodeData {
 
         FLAG_HAS_SRT_MASK = FLAG_HAS_SCALE | FLAG_HAS_ROT | FLAG_HAS_TRANS,
 
-        FLAG_SCALE_FMT_MASK =
-            FLAG_SCALE_FVS32_FMT | FLAG_SCALE_FVS48_FMT | FLAG_SCALE_FVS96_FMT,
+        FLAG_SCALE_FMT_MASK = FLAG_SCALE_FVS32_FMT | FLAG_SCALE_FVS48_FMT | FLAG_SCALE_FVS96_FMT,
 
-        FLAG_ROT_FMT_MASK = FLAG_ROT_FVS32_FMT | FLAG_ROT_FVS48_FMT |
-                            FLAG_ROT_FVS96_FMT | FLAG_ROT_CV8_FMT |
+        FLAG_ROT_FMT_MASK = FLAG_ROT_FVS32_FMT | FLAG_ROT_FVS48_FMT | FLAG_ROT_FVS96_FMT | FLAG_ROT_CV8_FMT |
                             FLAG_ROT_CV16_FMT | FLAG_ROT_CV32_FMT,
 
-        FLAG_TRANS_FMT_MASK =
-            FLAG_TRANS_FVS32_FMT | FLAG_TRANS_FVS48_FMT | FLAG_TRANS_FVS96_FMT
+        FLAG_TRANS_FMT_MASK = FLAG_TRANS_FVS32_FMT | FLAG_TRANS_FVS48_FMT | FLAG_TRANS_FVS96_FMT
     };
 
     union AnmData {
@@ -240,7 +246,7 @@ struct ResAnmChrData {
 
 class ResAnmChr : public ResCommon<ResAnmChrData> {
 public:
-    static const u32 SIGNATURE = FOURCC('C', 'H', 'R', '0');
+    static const u32 SIGNATURE = 'CHR0';
     static const int REVISION = 5;
 
 public:
@@ -254,15 +260,13 @@ public:
         return GetRevision() == REVISION;
     }
 
-    void GetAnmResult(ChrAnmResult* pResult, u32 idx, f32 frame) const;
+    void GetAnmResult(ChrAnmResult *pResult, u32 idx, f32 frame) const;
 
-    const ResAnmChrNodeData* GetNodeAnm(int idx) const {
-        return static_cast<ResAnmChrNodeData*>(
-            ofs_to_obj<ResDic>(ref().toChrDataDic)[idx]);
+    const ResAnmChrNodeData *GetNodeAnm(int idx) const {
+        return static_cast<ResAnmChrNodeData *>(ofs_to_obj<ResDic>(ref().toChrDataDic)[idx]);
     }
-    const ResAnmChrNodeData* GetNodeAnm(u32 idx) const {
-        return static_cast<ResAnmChrNodeData*>(
-            ofs_to_obj<ResDic>(ref().toChrDataDic)[idx]);
+    const ResAnmChrNodeData *GetNodeAnm(u32 idx) const {
+        return static_cast<ResAnmChrNodeData *>(ofs_to_obj<ResDic>(ref().toChrDataDic)[idx]);
     }
 
     s32 GetNodeAnmIndex(const ResName name) const {

@@ -1,4 +1,5 @@
 #include <nw4r/g3d.h>
+
 #include <nw4r/ut/ut_Color.h>
 #include <nw4r/ut/ut_LockedCache.h>
 #include <nw4r/ut/ut_algorithm.h>
@@ -13,7 +14,7 @@ namespace nw4r {
 namespace g3d {
 namespace detail {
 
-G3DState::IndMtxOp* GetIndMtxOp(ResMat mat, ResNode node, ResShp shp) {
+G3DState::IndMtxOp *GetIndMtxOp(ResMat mat, ResNode node, ResShp shp) {
     if (!mat.IsValid() || !shp.IsValid()) {
         return NULL;
     }
@@ -23,17 +24,13 @@ G3DState::IndMtxOp* GetIndMtxOp(ResMat mat, ResNode node, ResShp shp) {
     ResMatMiscData::IndirectMethod method[GX_ITM_2 - GX_ITM_0 + 1];
     s8 lightRef[GX_ITM_2 - GX_ITM_0 + 1];
 
-    misc.GetIndirectTexMtxCalcMethod(GX_ITM_0, &method[GX_ITM_0 - 1],
-                                     &lightRef[GX_ITM_0 - 1]);
+    misc.GetIndirectTexMtxCalcMethod(GX_ITM_0, &method[GX_ITM_0 - 1], &lightRef[GX_ITM_0 - 1]);
 
-    misc.GetIndirectTexMtxCalcMethod(GX_ITM_1, &method[GX_ITM_1 - 1],
-                                     &lightRef[GX_ITM_1 - 1]);
+    misc.GetIndirectTexMtxCalcMethod(GX_ITM_1, &method[GX_ITM_1 - 1], &lightRef[GX_ITM_1 - 1]);
 
-    misc.GetIndirectTexMtxCalcMethod(GX_ITM_2, &method[GX_ITM_2 - 1],
-                                     &lightRef[GX_ITM_2 - 1]);
+    misc.GetIndirectTexMtxCalcMethod(GX_ITM_2, &method[GX_ITM_2 - 1], &lightRef[GX_ITM_2 - 1]);
 
-    if (method[GX_ITM_0 - 1] == ResMatMiscData::WARP &&
-        method[GX_ITM_1 - 1] == ResMatMiscData::WARP &&
+    if (method[GX_ITM_0 - 1] == ResMatMiscData::WARP && method[GX_ITM_1 - 1] == ResMatMiscData::WARP &&
         method[GX_ITM_2 - 1] == ResMatMiscData::WARP) {
         return NULL;
     }
@@ -43,7 +40,7 @@ G3DState::IndMtxOp* GetIndMtxOp(ResMat mat, ResNode node, ResShp shp) {
 
     u32 i;
 
-    G3DState::IndMtxOp& rOp = *G3DState::GetIndMtxOp();
+    G3DState::IndMtxOp &rOp = *G3DState::GetIndMtxOp();
     rOp.Reset();
 
     for (i = 0; i < GX_ITM_2 - GX_ITM_0 + 1; i++) {
@@ -58,8 +55,7 @@ G3DState::IndMtxOp* GetIndMtxOp(ResMat mat, ResNode node, ResShp shp) {
 
             if (shp.ptr()->curMtxIdx >= 0) {
                 if (shp.ptr()->curMtxIdx == node.GetMtxID()) {
-                    const math::MTX33* pViewNrm =
-                        G3DState::GetViewNrmMtxPtr(shp.ptr()->curMtxIdx);
+                    const math::MTX33 *pViewNrm = G3DState::GetViewNrmMtxPtr(shp.ptr()->curMtxIdx);
 
                     nrmMtx._00 = pViewNrm->_00;
                     nrmMtx._01 = pViewNrm->_01;
@@ -75,18 +71,16 @@ G3DState::IndMtxOp* GetIndMtxOp(ResMat mat, ResNode node, ResShp shp) {
                 } else {
                     ResMdl mdl = mat.GetParent();
 
-                    int shpNodeID = mdl.GetResMdlInfo().GetNodeIDFromMtxID(
-                        shp.ptr()->curMtxIdx);
+                    int shpNodeID = mdl.GetResMdlInfo().GetNodeIDFromMtxID(shp.ptr()->curMtxIdx);
 
                     ResNode shpNode = mdl.GetResNode(shpNodeID);
 
                     math::MTX34Mult(
-                        &nrmMtx,
-                        static_cast<math::MTX34*>(&shpNode.ref().invModelMtx),
-                        static_cast<math::MTX34*>(&node.ref().modelMtx));
+                        &nrmMtx, static_cast<math::MTX34 *>(&shpNode.ref().invModelMtx),
+                        static_cast<math::MTX34 *>(&node.ref().modelMtx)
+                    );
 
-                    const math::MTX33* pViewNrm =
-                        G3DState::GetViewNrmMtxPtr(shp.ptr()->curMtxIdx);
+                    const math::MTX33 *pViewNrm = G3DState::GetViewNrmMtxPtr(shp.ptr()->curMtxIdx);
 
                     // clang-format off
                     math::MTX34 viewNrm34(
@@ -123,7 +117,7 @@ G3DState::IndMtxOp* GetIndMtxOp(ResMat mat, ResNode node, ResShp shp) {
             }
         }
 
-        const LightObj* pLight = G3DState::GetLightObj(lightRef[i]);
+        const LightObj *pLight = G3DState::GetLightObj(lightRef[i]);
 
         if (pLight != NULL && pLight->IsEnable()) {
             math::VEC3 lightVec;
@@ -131,9 +125,7 @@ G3DState::IndMtxOp* GetIndMtxOp(ResMat mat, ResNode node, ResShp shp) {
             if (pLight->IsSpotLight()) {
                 pLight->GetLightDir(&lightVec);
 
-                if (lightVec.x == 0.0f && lightVec.y == 0.0f &&
-                    lightVec.z == 0.0f) {
-
+                if (lightVec.x == 0.0f && lightVec.y == 0.0f && lightVec.z == 0.0f) {
                     pLight->GetLightPos(&lightVec);
                     lightVec = -lightVec;
                     math::VEC3Normalize(&lightVec, &lightVec);
@@ -165,9 +157,7 @@ G3DState::IndMtxOp* GetIndMtxOp(ResMat mat, ResNode node, ResShp shp) {
 
 namespace {
 
-void SetupDraw1Mat1ShpSwap(Draw1Mat1ShpSwap* pSwap,
-                           DrawResMdlReplacement* pReplacement, u32 id) {
-
+void SetupDraw1Mat1ShpSwap(Draw1Mat1ShpSwap *pSwap, DrawResMdlReplacement *pReplacement, u32 id) {
     if (pReplacement->texObjDataArray != NULL) {
         pSwap->texObj = ResTexObj(&pReplacement->texObjDataArray[id]);
     } else {
@@ -217,15 +207,13 @@ void SetupDraw1Mat1ShpSwap(Draw1Mat1ShpSwap* pSwap,
     }
 
     if (pReplacement->indMtxAndScaleDLArray != NULL) {
-        pSwap->indMtxAndScale =
-            ResMatIndMtxAndScale(&pReplacement->indMtxAndScaleDLArray[id]);
+        pSwap->indMtxAndScale = ResMatIndMtxAndScale(&pReplacement->indMtxAndScaleDLArray[id]);
     } else {
         pSwap->indMtxAndScale = ResMatIndMtxAndScale(NULL);
     }
 
     if (pReplacement->texCoordGenDLArray != NULL) {
-        pSwap->texCoordGen =
-            ResMatTexCoordGen(&pReplacement->texCoordGenDLArray[id]);
+        pSwap->texCoordGen = ResMatTexCoordGen(&pReplacement->texCoordGenDLArray[id]);
     } else {
         pSwap->texCoordGen = ResMatTexCoordGen(NULL);
     }
@@ -236,14 +224,18 @@ void SetupDraw1Mat1ShpSwap(Draw1Mat1ShpSwap* pSwap,
         pSwap->tev = ResTev(NULL);
     }
 
-    pSwap->vtxPosTable = pReplacement->vtxPosTable;
-    pSwap->vtxNrmTable = pReplacement->vtxNrmTable;
-    pSwap->vtxClrTable = pReplacement->vtxClrTable;
+    if (pReplacement->flag & 1) {
+        pSwap->vtxPosTable = NULL;
+        pSwap->vtxNrmTable = NULL;
+        pSwap->vtxClrTable = NULL;
+    } else {
+        pSwap->vtxPosTable = pReplacement->vtxPosTable;
+        pSwap->vtxNrmTable = pReplacement->vtxNrmTable;
+        pSwap->vtxClrTable = pReplacement->vtxClrTable;
+    }
 }
 
-inline bool FrontToBack(const detail::workmem::MdlZ& rLhs,
-                        const detail::workmem::MdlZ& rRhs) {
-
+inline bool FrontToBack(const detail::workmem::MdlZ &rLhs, const detail::workmem::MdlZ &rRhs) {
     if (rLhs.priority < rRhs.priority) {
         return true;
     }
@@ -259,9 +251,7 @@ inline bool FrontToBack(const detail::workmem::MdlZ& rLhs,
     return false;
 }
 
-inline bool BackToFront(const detail::workmem::MdlZ& rLhs,
-                        const detail::workmem::MdlZ& rRhs) {
-
+inline bool BackToFront(const detail::workmem::MdlZ &rLhs, const detail::workmem::MdlZ &rRhs) {
     if (rLhs.priority < rRhs.priority) {
         return true;
     }
@@ -281,9 +271,8 @@ inline bool BackToFront(const detail::workmem::MdlZ& rLhs,
     return false;
 }
 
-void DrawResMdlLoop(const ResMdl mdl, const u8* pByteCode, u32 drawMode) {
-
-#define pDrawCmd reinterpret_cast<const ResByteCodeData::DrawParams*>(pByteCode)
+void DrawResMdlLoop(const ResMdl mdl, const u8 *pByteCode, u32 drawMode) {
+#define pDrawCmd reinterpret_cast<const ResByteCodeData::DrawParams *>(pByteCode)
 
     u8 c;
 
@@ -293,38 +282,37 @@ void DrawResMdlLoop(const ResMdl mdl, const u8* pByteCode, u32 drawMode) {
     ResShp shp;
     ResNode node;
 
-    bool ignoreMat = (drawMode & RESMDL_DRAWMODE_IGNORE_MATERIAL);
     u32 ctrl = DRAW1MAT1SHP_CTRL_NOPPCSYNC;
 
     if (drawMode & RESMDL_DRAWMODE_FORCE_LIGHTOFF) {
         ctrl |= DRAW1MAT1SHP_CTRL_FORCE_LIGHTOFF;
     }
 
-    for (; (c = *pByteCode) != ResByteCodeData::END;
-         pByteCode += sizeof(ResByteCodeData::DrawParams)) {
+    if (drawMode & RESMDL_DRAWMODE_IGNORE_MATERIAL) {
+        ctrl |= RESMDL_DRAWMODE_NOPPCSYNC;
+    }
 
+    for (; (c = *pByteCode) != ResByteCodeData::END; pByteCode += sizeof(ResByteCodeData::DrawParams)) {
         node = mdl.GetResNode(pDrawCmd->nodeIdHi << 8 | pDrawCmd->nodeIdLo);
-        if (!node.IsVisible()) {
-            continue;
-        }
-
-        mat = mdl.GetResMat(pDrawCmd->matIdHi << 8 | pDrawCmd->matIdLo);
         shp = mdl.GetResShp(pDrawCmd->shpIdHi << 8 | pDrawCmd->shpIdLo);
 
-        Draw1Mat1ShpDirectly(ignoreMat || mat == prevMat ? ResMat(NULL) : mat,
-                             shp, NULL, NULL, ctrl, NULL,
-                             detail::GetIndMtxOp(mat, node, shp));
+        if (node.IsVisible() && shp.IsVisible()) {
+            mat = mdl.GetResMat(pDrawCmd->matIdHi << 8 | pDrawCmd->matIdLo);
 
-        prevMat = mat;
+            Draw1Mat1ShpDirectly(
+                mat, shp, NULL, NULL, mat == prevMat ? ctrl | RESMDL_DRAWMODE_NOPPCSYNC : ctrl, NULL,
+                detail::GetIndMtxOp(mat, node, shp)
+            );
+
+            prevMat = mat;
+        }
     }
 
 #undef pDrawCmd
 }
 
-void DrawResMdlLoop(const ResMdl mdl, const u8* pByteCode,
-                    DrawResMdlReplacement* pReplacement, u32 drawMode) {
-
-#define pDrawCmd reinterpret_cast<const ResByteCodeData::DrawParams*>(pByteCode)
+void DrawResMdlLoop(const ResMdl mdl, const u8 *pByteCode, DrawResMdlReplacement *pReplacement, u32 drawMode) {
+#define pDrawCmd reinterpret_cast<const ResByteCodeData::DrawParams *>(pByteCode)
 
     u8 c;
 
@@ -336,17 +324,19 @@ void DrawResMdlLoop(const ResMdl mdl, const u8* pByteCode,
 
     Draw1Mat1ShpSwap swap;
 
-    bool ignoreMat = (drawMode & RESMDL_DRAWMODE_IGNORE_MATERIAL);
     u32 ctrl = DRAW1MAT1SHP_CTRL_NOPPCSYNC;
 
     if (drawMode & RESMDL_DRAWMODE_FORCE_LIGHTOFF) {
         ctrl |= DRAW1MAT1SHP_CTRL_FORCE_LIGHTOFF;
     }
 
-    for (; (c = *pByteCode) != ResByteCodeData::END;
-         pByteCode += sizeof(ResByteCodeData::DrawParams)) {
+    if (drawMode & RESMDL_DRAWMODE_IGNORE_MATERIAL) {
+        ctrl |= RESMDL_DRAWMODE_NOPPCSYNC;
+    }
 
+    for (; (c = *pByteCode) != ResByteCodeData::END; pByteCode += sizeof(ResByteCodeData::DrawParams)) {
         node = mdl.GetResNode(pDrawCmd->nodeIdHi << 8 | pDrawCmd->nodeIdLo);
+        shp = mdl.GetResShp(pDrawCmd->shpIdHi << 8 | pDrawCmd->shpIdLo);
 
         bool visible;
         // @bug Replacement pointer not validated
@@ -356,27 +346,24 @@ void DrawResMdlLoop(const ResMdl mdl, const u8* pByteCode,
             visible = node.IsVisible();
         }
 
-        if (!visible) {
-            continue;
+        if (visible && shp.IsVisible()) {
+            mat = mdl.GetResMat(pDrawCmd->matIdHi << 8 | pDrawCmd->matIdLo);
+
+            SetupDraw1Mat1ShpSwap(&swap, pReplacement, mat.GetID());
+
+            Draw1Mat1ShpDirectly(
+                mat, shp, NULL, NULL, mat == prevMat ? ctrl | RESMDL_DRAWMODE_NOPPCSYNC : ctrl, &swap,
+                detail::GetIndMtxOp(mat, node, shp)
+            );
+
+            prevMat = mat;
         }
-
-        mat = mdl.GetResMat(pDrawCmd->matIdHi << 8 | pDrawCmd->matIdLo);
-        shp = mdl.GetResShp(pDrawCmd->shpIdHi << 8 | pDrawCmd->shpIdLo);
-
-        SetupDraw1Mat1ShpSwap(&swap, pReplacement, mat.GetID());
-
-        Draw1Mat1ShpDirectly(ignoreMat || mat == prevMat ? ResMat(NULL) : mat,
-                             shp, NULL, NULL, ctrl, &swap,
-                             detail::GetIndMtxOp(mat, node, shp));
-
-        prevMat = mat;
     }
 
 #undef pDrawCmd
 }
 
-void DrawResMdlLoop(const ResMdl mdl, const detail::workmem::MdlZ* pMdlZArray,
-                    u32 numMdlZ, u32 drawMode) {
+void DrawResMdlLoop(const ResMdl mdl, const detail::workmem::MdlZ *pMdlZArray, u32 numMdlZ, u32 drawMode) {
     u32 i;
 
     ResMat mat;
@@ -385,31 +372,37 @@ void DrawResMdlLoop(const ResMdl mdl, const detail::workmem::MdlZ* pMdlZArray,
     ResShp shp;
     ResNode node;
 
-    bool ignoreMat = (drawMode & RESMDL_DRAWMODE_IGNORE_MATERIAL);
     u32 ctrl = DRAW1MAT1SHP_CTRL_NOPPCSYNC;
 
     if (drawMode & RESMDL_DRAWMODE_FORCE_LIGHTOFF) {
         ctrl |= DRAW1MAT1SHP_CTRL_FORCE_LIGHTOFF;
     }
 
+    if (drawMode & RESMDL_DRAWMODE_IGNORE_MATERIAL) {
+        ctrl |= RESMDL_DRAWMODE_NOPPCSYNC;
+    }
+
     for (i = 0; i < numMdlZ; i++) {
-        const detail::workmem::MdlZ& rMdlZ = pMdlZArray[i];
+        const detail::workmem::MdlZ &rMdlZ = pMdlZArray[i];
 
-        mat = mdl.GetResMat(rMdlZ.matID);
         shp = mdl.GetResShp(rMdlZ.shpID);
-        node = mdl.GetResNode(rMdlZ.nodeID);
+        if (shp.IsVisible()) {
+            mat = mdl.GetResMat(rMdlZ.matID);
+            node = mdl.GetResNode(rMdlZ.nodeID);
 
-        Draw1Mat1ShpDirectly(ignoreMat || mat == prevMat ? ResMat(NULL) : mat,
-                             shp, NULL, NULL, ctrl, NULL,
-                             detail::GetIndMtxOp(mat, node, shp));
-
-        prevMat = mat;
+            Draw1Mat1ShpDirectly(
+                mat, shp, NULL, NULL, mat == prevMat ? ctrl | RESMDL_DRAWMODE_NOPPCSYNC : ctrl, NULL,
+                detail::GetIndMtxOp(mat, node, shp)
+            );
+            prevMat = mat;
+        }
     }
 }
 
-void DrawResMdlLoop(const ResMdl mdl, const detail::workmem::MdlZ* pMdlZArray,
-                    u32 numMdlZ, DrawResMdlReplacement* pReplacement,
-                    u32 drawMode) {
+void DrawResMdlLoop(
+    const ResMdl mdl, const detail::workmem::MdlZ *pMdlZArray, u32 numMdlZ, DrawResMdlReplacement *pReplacement,
+    u32 drawMode
+) {
     u32 i;
 
     ResMat mat;
@@ -420,36 +413,39 @@ void DrawResMdlLoop(const ResMdl mdl, const detail::workmem::MdlZ* pMdlZArray,
 
     Draw1Mat1ShpSwap swap;
 
-    bool ignoreMat = (drawMode & RESMDL_DRAWMODE_IGNORE_MATERIAL);
     u32 ctrl = DRAW1MAT1SHP_CTRL_NOPPCSYNC;
 
     if (drawMode & RESMDL_DRAWMODE_FORCE_LIGHTOFF) {
         ctrl |= DRAW1MAT1SHP_CTRL_FORCE_LIGHTOFF;
     }
 
+    if (drawMode & RESMDL_DRAWMODE_IGNORE_MATERIAL) {
+        ctrl |= RESMDL_DRAWMODE_NOPPCSYNC;
+    }
+
     for (i = 0; i < numMdlZ; i++) {
-        const detail::workmem::MdlZ& rMdlZ = pMdlZArray[i];
+        const detail::workmem::MdlZ &rMdlZ = pMdlZArray[i];
 
-        mat = mdl.GetResMat(rMdlZ.matID);
         shp = mdl.GetResShp(rMdlZ.shpID);
-        node = mdl.GetResNode(rMdlZ.nodeID);
+        if (shp.IsVisible()) {
+            mat = mdl.GetResMat(rMdlZ.matID);
+            node = mdl.GetResNode(rMdlZ.nodeID);
 
-        SetupDraw1Mat1ShpSwap(&swap, pReplacement, mat.GetID());
-
-        Draw1Mat1ShpDirectly(ignoreMat || mat == prevMat ? ResMat(NULL) : mat,
-                             shp, NULL, NULL, ctrl, &swap,
-                             detail::GetIndMtxOp(mat, node, shp));
-
-        prevMat = mat;
+            SetupDraw1Mat1ShpSwap(&swap, pReplacement, mat.GetID());
+            Draw1Mat1ShpDirectly(
+                mat, shp, NULL, NULL, mat == prevMat ? ctrl | RESMDL_DRAWMODE_NOPPCSYNC : ctrl, &swap,
+                detail::GetIndMtxOp(mat, node, shp)
+            );
+            prevMat = mat;
+        }
     }
 }
 
-detail::workmem::MdlZ* SetUpMdlZ(u32* pNumMdlZ, const ResMdl mdl,
-                                 const math::MTX34* pViewPosMtxArray,
-                                 const u8* pByteCode,
-                                 DrawResMdlReplacement* pReplacement) {
-
-#define pDrawCmd reinterpret_cast<const ResByteCodeData::DrawParams*>(pByteCode)
+detail::workmem::MdlZ *SetUpMdlZ(
+    u32 *pNumMdlZ, const ResMdl mdl, const math::MTX34 *pViewPosMtxArray, const u8 *pByteCode,
+    DrawResMdlReplacement *pReplacement
+) {
+#define pDrawCmd reinterpret_cast<const ResByteCodeData::DrawParams *>(pByteCode)
 
     u16 nodeID;
     u8 c;
@@ -458,11 +454,9 @@ detail::workmem::MdlZ* SetUpMdlZ(u32* pNumMdlZ, const ResMdl mdl,
     u32 mtxID;
 
     u32 viewMtxNum = mdl.GetResMdlInfo().GetNumViewMtx();
-    detail::workmem::MdlZ* pMdlZArray = detail::workmem::GetMdlZTemporary();
+    detail::workmem::MdlZ *pMdlZArray = detail::workmem::GetMdlZTemporary();
 
-    for (; (c = *pByteCode) != ResByteCodeData::END;
-         pByteCode += sizeof(ResByteCodeData::DrawParams)) {
-
+    for (; (c = *pByteCode) != ResByteCodeData::END; pByteCode += sizeof(ResByteCodeData::DrawParams)) {
         nodeID = pDrawCmd->nodeIdHi << 8 | pDrawCmd->nodeIdLo;
         node = mdl.GetResNode(nodeID);
 
@@ -477,15 +471,18 @@ detail::workmem::MdlZ* SetUpMdlZ(u32* pNumMdlZ, const ResMdl mdl,
             continue;
         }
 
-        detail::workmem::MdlZ& rMdlZ = pMdlZArray[mdlZNum];
+        detail::workmem::MdlZ &rMdlZ = pMdlZArray[mdlZNum];
 
         rMdlZ.nodeID = nodeID;
         rMdlZ.matID = pDrawCmd->matIdHi << 8 | pDrawCmd->matIdLo;
         rMdlZ.shpID = pDrawCmd->shpIdHi << 8 | pDrawCmd->shpIdLo;
 
-        // @bug Matrix ID not validated
         mtxID = node.GetMtxID();
-        rMdlZ.Z = pViewPosMtxArray[mtxID]._23;
+        if (mtxID < viewMtxNum) {
+            rMdlZ.Z = pViewPosMtxArray[mtxID]._23;
+        } else {
+            rMdlZ.Z = 0.f;
+        }
 
         rMdlZ.priority = pDrawCmd->priority;
 
@@ -500,14 +497,12 @@ detail::workmem::MdlZ* SetUpMdlZ(u32* pNumMdlZ, const ResMdl mdl,
 
 } // namespace
 
-void DrawResMdlDirectly(const ResMdl mdl, const math::MTX34* pViewPosMtxArray,
-                        const math::MTX33* pViewNrmMtxArray,
-                        const math::MTX34* pViewEnvMtxArray,
-                        const u8* pByteCodeOpa, const u8* pByteCodeXlu,
-                        DrawResMdlReplacement* pReplacement, u32 drawMode) {
-
-    G3DState::SetViewPosNrmMtxArray(pViewPosMtxArray, pViewNrmMtxArray,
-                                    pViewEnvMtxArray);
+void DrawResMdlDirectly(
+    const ResMdl mdl, const math::MTX34 *pViewPosMtxArray, const math::MTX33 *pViewNrmMtxArray,
+    const math::MTX34 *pViewEnvMtxArray, const u8 *pByteCodeOpa, const u8 *pByteCodeXlu,
+    DrawResMdlReplacement *pReplacement, u32 drawMode
+) {
+    G3DState::SetViewPosNrmMtxArray(pViewPosMtxArray, pViewNrmMtxArray, pViewEnvMtxArray);
 
     if (!(drawMode & RESMDL_DRAWMODE_NOPPCSYNC)) {
         ut::LC::QueueWait(0);
@@ -517,14 +512,12 @@ void DrawResMdlDirectly(const ResMdl mdl, const math::MTX34* pViewPosMtxArray,
     if (pByteCodeOpa != NULL) {
         if (drawMode & RESMDL_DRAWMODE_SORT_OPA_Z) {
             u32 numMdlZ;
-            detail::workmem::MdlZ* pMdlZArray = SetUpMdlZ(
-                &numMdlZ, mdl, pViewPosMtxArray, pByteCodeOpa, pReplacement);
+            detail::workmem::MdlZ *pMdlZArray = SetUpMdlZ(&numMdlZ, mdl, pViewPosMtxArray, pByteCodeOpa, pReplacement);
 
             std::sort(pMdlZArray, pMdlZArray + numMdlZ, FrontToBack);
 
             if (pReplacement != NULL) {
-                DrawResMdlLoop(mdl, pMdlZArray, numMdlZ, pReplacement,
-                               drawMode);
+                DrawResMdlLoop(mdl, pMdlZArray, numMdlZ, pReplacement, drawMode);
             } else {
                 DrawResMdlLoop(mdl, pMdlZArray, numMdlZ, drawMode);
             }
@@ -538,14 +531,12 @@ void DrawResMdlDirectly(const ResMdl mdl, const math::MTX34* pViewPosMtxArray,
     if (pByteCodeXlu != NULL) {
         if (drawMode & RESMDL_DRAWMODE_SORT_XLU_Z) {
             u32 numMdlZ;
-            detail::workmem::MdlZ* pMdlZArray = SetUpMdlZ(
-                &numMdlZ, mdl, pViewPosMtxArray, pByteCodeXlu, pReplacement);
+            detail::workmem::MdlZ *pMdlZArray = SetUpMdlZ(&numMdlZ, mdl, pViewPosMtxArray, pByteCodeXlu, pReplacement);
 
             std::sort(pMdlZArray, pMdlZArray + numMdlZ, BackToFront);
 
             if (pReplacement != NULL) {
-                DrawResMdlLoop(mdl, pMdlZArray, numMdlZ, pReplacement,
-                               drawMode);
+                DrawResMdlLoop(mdl, pMdlZArray, numMdlZ, pReplacement, drawMode);
             } else {
                 DrawResMdlLoop(mdl, pMdlZArray, numMdlZ, drawMode);
             }
