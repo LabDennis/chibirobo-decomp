@@ -7001,10 +7001,10 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 		if (entry->mItem == player->mSuits.mCurrent) {
 			HSD_JObj* joint = FindJointByPath(player->mJObj, entry->mPath, entry->mDepth);
 			if (GetAObj(joint) == NULL) {
-				CJArchive& archive        = player->mSuits.mObjects[player->mSuits.mCurrent].mArchive;
-				HSD_AnimJoint* anim       = archive.GetAnimJoint(0, entry->mDepth, entry->mPath);
-				HSD_MatAnimJoint* mat     = archive.GetMatAnimJoint(0, entry->mDepth, entry->mPath);
-				HSD_ShapeAnimJoint* shape = archive.GetShapeAnimJoint(0, entry->mDepth, entry->mPath);
+				XObj& suit                = player->mSuits.mObjects[player->mSuits.mCurrent];
+				HSD_AnimJoint* anim       = suit.mArchive.GetAnimJoint(0, entry->mDepth, entry->mPath);
+				HSD_MatAnimJoint* mat     = suit.mArchive.GetMatAnimJoint(0, entry->mDepth, entry->mPath);
+				HSD_ShapeAnimJoint* shape = suit.mArchive.GetShapeAnimJoint(0, entry->mDepth, entry->mPath);
 				HSD_JObjAddAnim(joint, anim, mat, shape);
 				HSD_JObjReqAnim(joint, entry->mFrame);
 			}
@@ -7019,8 +7019,8 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 		++player->mFlashCount;
 		if (player->mFlashTimer > 0) {
 			f32 red = 128.0f * ((f32)player->mFlashTimer / IDLE_SECOND);
-			player->SetColor(1, (s32)red, 0, 0, 0.0f);
-			StartScreenFade(&gGame.mScrnTex.mColor, (s32)red, 0, 0, 0, (s32)red, 0, 0, 0, 0.0f);
+			player->SetColor(1, red, 0, 0, 0.0f);
+			StartScreenFade(&gGame.mScrnTex.mColor, red, 0, 0, 0, red, 0, 0, 0, 0.0f);
 		} else {
 			player->SetColor(1, 0, 0, 0, 0.0f);
 			StartScreenFade(&gGame.mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
