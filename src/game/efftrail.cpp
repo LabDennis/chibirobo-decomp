@@ -183,10 +183,8 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 		burst.mState   = 1;
 		for (s32 i = 0; i < burst.mNum; ++i) {
 			PointPtclOne& particle = burst.mPtcls[i];
-			u32 color              = (100 + rand() % 156) << 16;
-			color |= (100 + rand() % 156) << 24;
-			particle.mColor = ((100 + rand() % 156) << 8) | color;
-			particle.mFade  = 1.0f + 0.02f * i;
+			particle.mColor        = (100 + rand() % 156) << 24 | (100 + rand() % 156) << 16 | (100 + rand() % 156) << 8;
+			particle.mFade         = 1.0f + 0.02f * i;
 			// Retail consumes a random angle before assigning the evenly spaced directions, and stores the fade a second time.
 			particle.mAngle = DEG2RAD * (rand() % 360);
 			particle.mFade  = 1.0f + 0.02f * i;
