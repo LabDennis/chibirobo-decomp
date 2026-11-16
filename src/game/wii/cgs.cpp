@@ -4,7 +4,7 @@
 //
 // NONMATCHING: in the frame buffer queue QueueFrameCopy (98 %) and OnCopyDone (88 %) give the queue's
 // address and the popped request other registers than retail. The perspective CCamera::Init (79 %) reads the frame buffer height before the
-// width for the aspect; CCameraView::CalcUp (92 %) reads the next angle before it narrows the last sine; CLight::GetPosition (83 %) tests
+// width for the aspect; CLight::GetPosition (83 %) tests
 // the light kind before it saves its registers and CLight::GetViewDirection (93 %) zeroes a second, unused vector on the stack.
 // DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %) read the camera's bottom before its top for the flip test where we read top
 // first (an inline for the test makes it worse). GetXfbHeight (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue
@@ -34,6 +34,7 @@ extern "C" u16 GXReadDrawSync(void);
 #include "arithmetic.h"
 #include "game/gmath.h"
 #include <math.h>
+#include <cmath>
 #include <string.h>
 #include "game/cthread.h"
 #include "game/mm.h"
@@ -237,9 +238,9 @@ void CCameraView::CalcAngle()
 
 void CCameraView::CalcUp()
 {
-	mUp.x  = -(f32)cos(mAngle.y) * (f32)sin(mAngle.z);
-	mUp.z  = (f32)sin(mAngle.y) * (f32)sin(mAngle.z);
-	mUp.y  = (f32)cos(mAngle.z);
+	mUp.x  = -std::cosf(mAngle.y) * std::sinf(mAngle.z);
+	mUp.z  = std::sinf(mAngle.y) * std::sinf(mAngle.z);
+	mUp.y  = std::cosf(mAngle.z);
 	mDirty = TRUE;
 }
 
