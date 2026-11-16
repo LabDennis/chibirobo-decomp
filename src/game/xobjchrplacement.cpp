@@ -83,10 +83,9 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 			s32 branch3Child1[] = { 0, 1, 0, 1, 2, 0, 0, 3, 1 };
 			joints[3].nodes     = branch3Child1;
 			for (int i = 0; i < 4; ++i) { // two branch tips each on branches 1 and 3
-				XObjChrIdleJoint& idle = mIdleJoints[i];
-				idle.mJObj             = FindJointByPath(mJObj, joints[i].nodes, joints[i].depth);
-				idle.mAnimJoint        = mArchive.GetAnimJoint(14, joints[i].depth, joints[i].nodes);
-				idle.mLastAdHead       = NULL;
+				mIdleJoints[i].mJObj       = FindJointByPath(mJObj, joints[i].nodes, joints[i].depth);
+				mIdleJoints[i].mAnimJoint  = mArchive.GetAnimJoint(14, joints[i].depth, joints[i].nodes);
+				mIdleJoints[i].mLastAdHead = NULL;
 			}
 			s32 attachment[]     = { 0, 1, 0, 1, 2, 0, 0, 5 };
 			mAttachmentJoint     = FindJointByPath(mJObj, attachment, 8);
@@ -173,10 +172,9 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 			EnableLighting(GetEnvData()[9] / 100.0f);
 		++mLoadStep;
 	case 10: {
-		CTpl& tpl               = gGame.mTpl;
-		TPLDescriptor* textures = ((TPLPalette*)tpl.mBuffer)->descriptorArray;
-		mTex[0]                 = tpl.mTex.Init(&textures[122 - StatusTextureOffset], 0);
-		mTex[1]                 = tpl.mTex.Init(&((TPLPalette*)tpl.mBuffer)->descriptorArray[123 - StatusTextureOffset], 0);
+		TPLDescriptor* textures = ((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray;
+		mTex[0]                 = gGame.mTpl.mTex.Init(&textures[122 - StatusTextureOffset], 0);
+		mTex[1]                 = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[123 - StatusTextureOffset], 0);
 		++mLoadStep;
 	}
 	case 11:
