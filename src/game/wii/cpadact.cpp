@@ -7,13 +7,13 @@ extern s32 gPointerScreenWidth, gPointerScreenHeight;
 extern s32 gScreenLeft, gScreenRight, gScreenTop, gScreenBottom;
 extern s32 gScreenSafeRight, gScreenSafeBottom, gRefreshRate;
 void KPADSetConnectCallback(s32 channel, void (*callback)(s32, s32));
-void fn_801EA484(s32 channel);
+void WPADDisconnect(s32 channel);
 }
 
 static void SecondaryRemoteConnected(s32 channel, s32 result)
 {
 	if (result == 0) {
-		fn_801EA484(channel);
+		WPADDisconnect(channel);
 	}
 }
 

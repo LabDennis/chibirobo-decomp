@@ -116,6 +116,9 @@ public:
 class CScrnWipeTile : public CScrnWipe {
 public:
 	virtual ~CScrnWipeTile() { } // _08 (weak)
+#if defined(VERSION_R24J01)
+	void SetDimensions(BOOL hideWhenDone, f32 x, f32 y, f32 width, f32 height, f32 targetWidth, f32 targetHeight, f32 time);
+#endif
 	void Draw(CGs* gs, s32 mode);
 };
 
@@ -140,8 +143,13 @@ public:
 
 	void ResetLensState(f32 width, f32 height);
 #endif
+#if defined(VERSION_R24J01)
+	f32 mAngle; // _68
+	f32 mPhase; // _6C
+#else
 	f32 mAngle; // _64
 	f32 mPhase; // _68
+#endif
 #if defined(VERSION_R24J01)
 	RoboeyesLensValue mSeparation;
 	RoboeyesLensValue mLeftWidth;
@@ -183,7 +191,11 @@ void StartScreenWipe(CScrnWipe* wipe, u8 r, u8 g, u8 b, u8 a, BOOL hideWhenDone,
 // CScrnRoboeyes
 // CScrnQuake
 void UpdateScreenShake(CScrnQuake* quake, u32 frames);
+#if defined(VERSION_R24J01)
+void StartScreenShake(CScrnQuake* quake, f64 x0, f64 y0, f64 z0, f64 x1, f64 y1, f64 z1, f32 time);
+#else
 void StartScreenShake(CScrnQuake* quake, f32 x0, f32 y0, f32 z0, f32 x1, f32 y1, f32 z1, f32 time);
+#endif
 void ResetScreenShake(CScrnQuake* quake);
 }
 

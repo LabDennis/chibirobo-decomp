@@ -515,11 +515,12 @@ typedef struct SCBtDeviceInfo {
 
 typedef struct SCBtDeviceInfoArray {
 	u8 numRegist; // 0x00
-	// SCBtDeviceInfo  devices[SC_MAX_DEV_ENTRY];  // 0x01
 	union {
 		struct {
-			SCBtDeviceInfo regist[SC_MAX_DEV_ENTRY_FOR_STD]; // at 0x1
-			SCBtDeviceInfo active[SC_MAX_DEV_ENTRY_FOR_SMP]; // at 0x2BD
+			SCBtDeviceInfo regist[SC_MAX_DEV_ENTRY_FOR_STD]; // 0x1
+			SCBtDeviceInfo active[4];                        // 0x2BD, the remote last used on each channel
+			SCBtDeviceInfo wbc;                              // 0x3D5, the balance board
+			SCBtDeviceInfo unk_0x41B;
 		};
 
 		SCBtDeviceInfo devices[SC_MAX_DEV_ENTRY];

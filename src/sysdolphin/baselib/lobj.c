@@ -198,6 +198,20 @@ HSD_LObj* HSD_LObjGetActiveByIndex(s32 idx)
 }
 
 /**
+ * @note Address: N/A
+ * @note Size: ?
+ */
+void HSD_LObjClearActive(void)
+{
+	int i;
+
+	for (i = 0; i < MAX_GXLIGHT; i++) {
+		active_lights[i] = NULL;
+	}
+	nb_active_lights = 0;
+}
+
+/**
  * @note Address: 0x801BD0F4
  * @note Size: 0x24C
  */
@@ -652,33 +666,25 @@ static void setup_spec_lightobj(HSD_LObj* lobj, Mtx mtx, s32 spec_id)
  * @note Address: 0x801BD8F8
  * @note Size: 0xBBC
  */
-// NONMATCHING: retail keeps &active_lights from the top in r26 for the last two loops; here it is recomputed
+// NONMATCHING: retail keeps &active_lights from the top in r26 for the last two loops; here it is loaded again
+// before them. With `int idx` as HSD_LObjGetActiveByIndex's parameter the address is kept and size and
+// instructions are retail's, but vmtx then sits in r26 where retail has it in r29 (99.08 %, less than this form).
+// No order of the locals' declarations, in the loop or at the top, moves it there.
 void HSD_LObjSetupInit(HSD_CObj* cobj)
 {
 	MtxPtr vmtx;
 	s32 i, num, idx;
 	HSD_SList* list;
 
-	lightmask_diffuse = GX_LIGHT_NULL;
-	list              = current_lights;
-	vmtx              = cobj->view_mtx;
-
-	active_lights[0]   = NULL;
-	active_lights[1]   = NULL;
-	active_lights[2]   = NULL;
-	active_lights[3]   = NULL;
-	active_lights[4]   = NULL;
-	active_lights[5]   = NULL;
-	active_lights[6]   = NULL;
-	active_lights[7]   = NULL;
-	active_lights[8]   = NULL;
+	idx                = 0;
+	lightmask_diffuse  = GX_LIGHT_NULL;
 	lightmask_specular = GX_LIGHT_NULL;
 	lightmask_attnfunc = GX_LIGHT_NULL;
 	lightmask_alpha    = GX_LIGHT_NULL;
-	nb_active_lights   = 0;
-	idx                = 0;
+	vmtx               = cobj->view_mtx;
+	HSD_LObjClearActive();
 
-	for (; idx < MAX_GXLIGHT - 1 && list; list = list->next) {
+	for (list = current_lights; idx < MAX_GXLIGHT - 1 && list; list = list->next) {
 		HSD_LObj* lobj = list->data;
 		u32 flags;
 		u32 type;

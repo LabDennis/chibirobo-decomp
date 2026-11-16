@@ -23,7 +23,7 @@ s32 ResourceFile::GetResult()
 {
 	s32 result = CFile::GetResult();
 	if (result == 0) {
-		mUseCount++;
+		mRefCount++;
 		CloseHandle();
 	}
 	return result;
@@ -31,7 +31,7 @@ s32 ResourceFile::GetResult()
 
 BOOL ResourceFile::Close()
 {
-	if (--mUseCount == 0) {
+	if (--mRefCount == 0) {
 		CFile::Close();
 		return TRUE;
 	}
@@ -106,9 +106,9 @@ BOOL CFileRequest::Update()
 		mState = 0;
 		break;
 	case 10: {
-		s32 useCount = mFile != NULL ? mFile->mUseCount : 0;
+		s32 useCount = mFile != NULL ? mFile->mRefCount : 0;
 		if (useCount > 0) {
-			mFile->mUseCount++;
+			mFile->mRefCount++;
 			mState = 0;
 		} else if (mFile->mBuffer == NULL) {
 			mState = 0;

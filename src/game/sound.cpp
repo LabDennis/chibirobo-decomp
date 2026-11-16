@@ -496,7 +496,7 @@ extern "C" void PlayMessageGlyphSound(XSound* sound, u32 group, f32 strength, u8
 		if (volume >= 512) {
 			volume = 511;
 		}
-		PlayGameSound(sound, ids[index], volume);
+		PlayGameSound(sound, ids[index], volume & 0xFF);
 		if (volume > 255) {
 			PlayGameSound(sound, ids[index], 255);
 		}
@@ -783,7 +783,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 			stopSfx(sound, sfx);
 			return 1;
 		}
-		u8 index = sfx;
+		u8 index = sfx & 0xFF;
 		if (index >= 0x6D) {
 			index = 0;
 		}
@@ -826,8 +826,9 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		if (surface >= 13) {
 			surface = 0;
 		}
+		s32 step;
 		if (surface == 12) {
-			sfx = -1;
+			step = -1;
 		} else {
 			switch (surface) {
 			case 8:
@@ -840,8 +841,9 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 				HSD_AudioSFXStartParam(0x19E, 50, 127, 0, 0);
 				break;
 			}
-			sfx = sSurfaceSoundIds[surface][HSD_Randi(5)];
+			step = sSurfaceSoundIds[surface][HSD_Randi(5)];
 		}
+		sfx = step;
 		if (sfx < 0) {
 			return -1;
 		}
@@ -875,23 +877,27 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 			return -1;
 		}
 		break;
-	case 0xFD:
+	case 0xFD: {
 		if (IsGameSoundPlaying(sound, 0xFFFF0000)) {
 			PauseMusic(sound, 120);
 		}
+		s32 next;
 		if (IsGameSoundPlaying(sound, 0xFD)) {
-			sfx = -1;
+			next = -1;
 		} else {
 			if (sound->mVoiceSeqIndex < 0 || (u32)sound->mVoiceSeqIndex >= 25) {
 				sound->mVoiceSeqIndex = 0;
 			}
-			sfx = sSoundFDSequence[sound->mVoiceSeqIndex++];
+			next = sSoundFDSequence[sound->mVoiceSeqIndex++];
 		}
+		sfx = next;
 		break;
-	case 0x110:
+	}
+	case 0x110: {
+		s32 next;
 		// 0xFFFF0037 is cooking.hps
 		if (IsGameSoundPlaying(sound, 0xFFFF0037)) {
-			sfx = -1;
+			next = -1;
 		} else {
 			if (IsGameSoundPlaying(sound, 0xFFFF0000)) {
 				PauseMusic(sound, 120);
@@ -899,12 +905,14 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 			if (sound->mVoiceSeqIndex < 0 || (u32)sound->mVoiceSeqIndex >= 8) {
 				sound->mVoiceSeqIndex = 0;
 			}
-			sfx = sSound110Sequence[sound->mVoiceSeqIndex++];
+			next = sSound110Sequence[sound->mVoiceSeqIndex++];
 		}
+		sfx = next;
 		if (sfx < 0) {
 			return -1;
 		}
 		break;
+	}
 	case 0x175:
 	case 0x176:
 	case 0x177:
@@ -915,11 +923,7 @@ extern "C" s32 PlayGameSound(XSound* sound, s32 sfx, u8 vol)
 		if (IsGameSoundPlaying(sound, 0xFFFF0010)) {
 			PauseMusic(sound, 180);
 		}
-		if (sfx == 0x175) {
-			sfx = sSound175Variants[HSD_Randi(6)];
-		} else {
-			sfx = sSound176Variants[HSD_Randi(6)];
-		}
+		sfx = sfx == 0x175 ? sSound175Variants[HSD_Randi(6)] : sSound176Variants[HSD_Randi(6)];
 		break;
 	case 0x137:
 		if (sound->mSoundSeqIndex < 0 || (u32)sound->mSoundSeqIndex >= 11) {

@@ -3,18 +3,6 @@
 
 #include "game/cfile.h"
 
-// a CFile that counts the users holding its buffer: Close only really closes
-// once the last user lets go
-class ResourceFile : public CFile {
-public:
-	ResourceFile() { mUseCount = 0; }
-
-	virtual s32 GetResult(); // _18
-	virtual BOOL Close();    // _20
-
-	s32 mUseCount; // _EC
-};
-
 // the asynchronous read a resource owner keeps next to the loaded resource
 class CFileRequest {
 public:

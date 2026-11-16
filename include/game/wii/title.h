@@ -101,8 +101,8 @@ public:
 	virtual void vf0A8();
 	virtual void vf0AC();
 	virtual void vf0B0();
-	virtual void vf0B4();
-	virtual Vec vf0B8(s32 index); // _0B8, the object's own position
+	virtual Vec vf0B4(const s32* path); // _0B4, a joint's world position by path
+	virtual Vec vf0B8(s32 index);       // _0B8, the object's own position
 	virtual void vf0BC();
 	virtual void vf0C0();
 	virtual void vf0C4();
@@ -220,11 +220,13 @@ public:
 	UnkStageObj* mSpawn; // _014, the placement the object loaded from
 	u8 _018[0x0F0 - 0x018];
 	WiiCursorParts* mParts; // _0F0, up to six parts the message draw steps with the anim frame
-	u8 _0F4[0x154 - 0x0F4];
-	u32 mStatus; // _154, bit 0 marks a finished LoadFromPlacement, bit 11 the caller's scale set
+	u8 _0F4[0x150 - 0x0F4];
+	u64 mStatus; // _150, the flags are a 64-bit mask: clearing one bit stores both words; bit 0 of the
+	             // low word at _154 marks a finished LoadFromPlacement, bit 11 the caller's scale set
 	u8 _158[0x168 - 0x158];
-	void* mKind; // _168, the object's spawn data; +0x16 is the s16 object kind
-	u8 _16C[0x794 - 0x16C];
+	void* mKind;      // _168, the object's spawn data; +0x16 is the s16 object kind
+	void* mSpawnData; // _16C, the placement record; _00 is the object kind the scroll map checks
+	u8 _170[0x794 - 0x170];
 	s32 mAnmHead;             // _794, the slot PushAnim probes first
 	WiiAnimSlot mAnmQueue[4]; // _798
 	u8 _7B8[0x9B0 - 0x7B8];
