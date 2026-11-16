@@ -89,7 +89,11 @@ public:
 // an ARC image, files read while it's the current archive come out of it
 class CFileArchive : public CFile {
 public:
-	virtual ~CFileArchive() { }                                                   // _08 (weak)
+#if defined(VERSION_R24J01)
+	virtual ~CFileArchive();
+#else
+	virtual ~CFileArchive() { } // _08 (weak)
+#endif
 	virtual s32 ReadAsync(const char* path, u32 offset, u32 size, BOOL fromAram); // _14
 	virtual s32 GetResult();                                                      // _18
 	virtual BOOL ReadEx(const char* path, u32 offset, u32 size);                  // _24
