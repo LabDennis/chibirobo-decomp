@@ -1,3 +1,4 @@
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "nw4r/math/math_types.h"
 #include "game/wii/cgame.h"
 #include "game/cthread.h"
@@ -859,7 +860,7 @@ CLight* CBase::GetScreenLight()
  * @note Address: 0x80029DF4
  * @note Size: 0x53C
  */
-// NONMATCHING: retail calls the Wii MSL's out-of-line __fpclassifyf, see XObj::GetCollisionHeight
+// NONMATCHING: integer/float register allocation and centring multiply operand order differ.
 // draws the movie, centred at its own size unless mMovieRect says otherwise. with alpha it's drawn
 // three times over, without it over a black screen
 extern "C" void DrawGameMovie(CGame* game)
@@ -879,7 +880,7 @@ extern "C" void DrawGameMovie(CGame* game)
 		// the Start flag's bit 0, which cmovie.h's Wii branch calls mVolumeTime: the movie carries alpha
 		if (game->mMovie.mVolumeTime) {
 			gs->mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
-			gs->mCurRenderState->SetAlphaCompare(GX_GEQUAL, 0x20, GX_AOP_AND, GX_EQUAL, 255);
+			gs->mCurRenderState->SetAlphaCompare(GX_GREATER, 0x20, GX_AOP_AND, GX_LEQUAL, 255);
 			if (gs->mCurRenderState != NULL) {
 				gs->mCurRenderState->Apply();
 			}
@@ -920,7 +921,7 @@ extern "C" void DrawGameMovie(CGame* game)
 			                 quad[2].z, 0xFF, quad[3].x, quad[3].y, quad[3].z, 0xFF);
 			game->mMovie.DrawFrame(x, y, 0.0f, w, h);
 		}
-		gGame.mGs.mCurRenderState->SetAlphaCompare(GX_GEQUAL, 0, GX_AOP_AND, GX_EQUAL, 255);
+		gGame.mGs.mCurRenderState->SetAlphaCompare(GX_GREATER, 0, GX_AOP_AND, GX_LEQUAL, 255);
 	}
 }
 
@@ -1446,8 +1447,7 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
  * @note Address: 0x800270C8
  * @note Size: 0x4C
  */
-// NONMATCHING: retail calls the Wii MSL's out-of-line __fpclassifyf (0x8022A450); the MSL header the
-// game shares with the GameCube defines it inline
+// NONMATCHING: retail schedules the first height load before the saved-register stores.
 f32 XObj::GetCollisionHeight()
 {
 	if (__fpclassifyf(mMaxFloorHeight) == FP_NAN) {

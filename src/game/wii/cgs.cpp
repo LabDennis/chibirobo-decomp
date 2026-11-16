@@ -11,8 +11,8 @@
 // in front of it, which shift its assert in the string pool. GetGlyph (99 %) and MeasureGameTextWidth (99 %) are structurally identical and
 // differ only in callee-saved colouring and in vtable/sdata2 referent placement; DrawGsText (91 %) and DrawGsStrokeText (87 %) additionally
 // diverge in float allocation and stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held
-// constants). No behavioural difference in any of them. Not written yet: CGs::Init (0x802AA610), the camera begin and scene list calls
-// (0x802AB790, 0x802AB81C, 0x802AB860) and SetGsChannelMaterialAndLighting.
+// constants). No behavioural difference in any of them. Not written yet: CGs::Init (0x802AA610), the scene list helper
+// (0x802AB860) and SetGsChannelMaterialAndLighting.
 
 // the revolution GX header first: the Wii's FIFO getters take the object to fill. GXReadDrawSync gets
 // the same treatment, the Dolphin header under it declares it void
@@ -41,6 +41,8 @@ void C_MTXFrustum(Mtx44 mtx, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f);
 void PSMTX44Identity(Mtx44 mtx);
 void PSMTX44Concat(Mtx44 a, Mtx44 b, Mtx44 ab);
 u32 C_MTX44Inverse(Mtx44 src, Mtx44 inv);
+void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL flag);
+CLight* fn_802AF1D0(WiiGsSceneObj** head, CLight* light, MtxP view, BOOL flag);
 }
 
 // The camera, light and fog code in front of the screen code, 0x802A80FC-0x802A90C8. It belongs to this
@@ -805,6 +807,20 @@ extern "C" void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable)
 	} else {
 		gs->mCurChannel->mCtrl.mEnable = enable;
 	}
+}
+
+BOOL CGs::BeginCamera()
+{
+	if (mCamera->SetCurrent()) {
+		fn_802AEF34(&mSceneHead, mCamera, FALSE);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void CGs::fn_802AB81C(MtxP view, BOOL flag)
+{
+	mLight = fn_802AF1D0(&mSceneHead, mLight, view, flag);
 }
 
 extern "C" void EndGsCamera(CGs* gs)

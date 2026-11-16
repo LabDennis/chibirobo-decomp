@@ -672,16 +672,9 @@ f32 CMotionControlCamera::GetMapDistance()
  * @note Address: 0x8016A81C
  * @note Size: 0x28
  */
-// NONMATCHING: retail routes both clamps through bare bge/ble branches into one
-// shared f3->f2->f1 move chain; every spelling here folds the compares to cror or
-// early blr/beqlr instead (best seen: 67%)
 extern "C" f32 fn_8016A81C(f32 value, f32 min, f32 max)
 {
-	f32 result = min;
-	if (value >= min) {
-		result = value <= max ? value : max;
-	}
-	return result;
+	return value < min ? min : value > max ? max : value;
 }
 
 // the look response curves, two hermite segments a piece; the pointer look evaluates them
