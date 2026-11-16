@@ -104,7 +104,6 @@ static inline void SetRingItems(OctaMenu& ring, s32 a, s32 b, s32 c, s32 d, s32 
  * @note Address: 0x800BC0E4
  * @note Size: 0x39C
  */
-// NONMATCHING: same code size; only regalloc and store ordering differ
 void XObjChr::InitializeObject(u32 id)
 {
 	InitializeObject__4XObjFUl(this, id);
@@ -113,8 +112,7 @@ void XObjChr::InitializeObject(u32 id)
 	mLook.mObject = NULL;
 	Vec zero      = { 0.0f, 0.0f, 0.0f };
 	mLook.mOffset = zero;
-	mLook.mFade = mLook.mPhase = mLook.mPulse = 0.0f;
-	mLook.mObject                             = NULL;
+	mLook.mPulse = mLook.mPhase = mLook.mFade = 0.0f;
 	mLoadStep                                 = 0;
 	mPlug.InitializeObject(id);
 	mCopterObj.InitializeObject(id);
@@ -122,28 +120,22 @@ void XObjChr::InitializeObject(u32 id)
 	mRadarObj.InitializeObject(id);
 	mOXObj.InitializeObject(id);
 	InitializeAttachmentMenuEntries(&mAttachments);
-	{
-		OctaMenu& ring = mMenu.mAtc; // the attachment ring
-		SetupPlayerRing(ring, this, -1.0f);
-		SetRingItems(ring, 1, 2, 3, 4, 6, 5, 7, 8); // the items in ring order
-		ring.mRowOffset        = -1.5f;
-		ring.mFirstVisibleItem = 4;
+	SetupPlayerRing(mMenu.mAtc, this, -1.0f);
+	SetRingItems(mMenu.mAtc, 1, 2, 3, 4, 6, 5, 7, 8); // the attachment ring, items in ring order
+	mMenu.mAtc.mRowOffset        = -1.5f;
+	mMenu.mAtc.mFirstVisibleItem = 4;
+	SetupPlayerRing(mMenu.mDrs, this, 1.0f);
+	if (mMenu.mDrs.mMenuType == 3) { // the costume ring; menu type 3 gets its own order
+		SetRingItems(mMenu.mDrs, 1, 4, 6, 3, 2, 7, 8, 5);
+	} else {
+		SetRingItems(mMenu.mDrs, 3, 5, 4, 1, 6, 8, 7, 2);
 	}
-	{
-		OctaMenu& ring = mMenu.mDrs; // the costume ring
-		SetupPlayerRing(ring, this, 1.0f);
-		if (ring.mMenuType == 3) { // menu type 3 gets its own order
-			SetRingItems(ring, 1, 4, 6, 3, 2, 7, 8, 5);
-		} else {
-			SetRingItems(ring, 3, 5, 4, 1, 6, 8, 7, 2);
-		}
-		ring.mRowOffset        = 0.9f;
-		ring.mFirstVisibleItem = 4;
-	}
-	mMenu.mPrevSel         = 0;
-	mMenu.mSel             = 0;
-	mOXMenu.mChr           = this;
-	mOXMenu.mSelectedIndex = 0;
+	mMenu.mDrs.mRowOffset        = 0.9f;
+	mMenu.mDrs.mFirstVisibleItem = 4;
+	mMenu.mPrevSel               = 0;
+	mMenu.mSel                   = 0;
+	mOXMenu.mChr                 = this;
+	mOXMenu.mSelectedIndex       = 0;
 #if !defined(VERSION_JP)
 	mOXMenu.mLoadStep = 0;
 #endif
