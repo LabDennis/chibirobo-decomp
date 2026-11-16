@@ -1321,7 +1321,7 @@ if wii:
                 # menu dtors: the GameCube files' hand-spelled weak copies stay GC-only; on Wii the
                 # classes keep inline/base dtors and the units define the out-of-line destructors
                 Object(Matching, "game/atcmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(Equivalent, "game/drsmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Matching, "game/drsmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/oxmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # XObjChrMenu's dtor and the OXMenu/OXMenuMark ctors; the mark ctor
                 # inlines the unrecovered Wii XObj ctor, so the unit stays NonMatching
