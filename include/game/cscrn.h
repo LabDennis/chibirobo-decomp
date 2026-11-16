@@ -95,20 +95,12 @@ typedef char CScrnWipe_size_check[sizeof(CScrnWipe) == 0x64 ? 1 : -1];
 
 class CScrnWipeCircle : public CScrnWipe {
 public:
-#if defined(VERSION_R24J01)
-	virtual ~CScrnWipeCircle();
-#else
 	virtual ~CScrnWipeCircle() { } // _08 (weak)
-#endif
 };
 
 class CScrnWipeTex : public CScrnWipe {
 public:
-#if defined(VERSION_R24J01)
-	virtual ~CScrnWipeTex();
-#else
 	virtual ~CScrnWipeTex() { } // _08 (weak)
-#endif
 	void Draw(CGs* gs, s32 mode);
 
 	CTexObj mTex; // _64
@@ -117,11 +109,7 @@ STATIC_ASSERT(sizeof(CScrnWipeTex) == sizeof(CScrnWipe) + sizeof(CTexObj));
 
 class CScrnWipeCustom : public CScrnWipe {
 public:
-#if defined(VERSION_R24J01)
-	virtual ~CScrnWipeCustom();
-#else
 	virtual ~CScrnWipeCustom() { } // _08 (weak)
-#endif
 	void Draw(CGs* gs, s32 mode);
 };
 
@@ -135,6 +123,13 @@ public:
 };
 
 #if defined(VERSION_R24J01)
+// the letterbox bars of the cutscenes, a Wii class: CGame keeps it at _5010 between the tile and
+// the roboeyes wipe. Only its vtable (0x802E6330) and its destructor are known
+class CScrnWipeCine : public CScrnWipe {
+public:
+	virtual ~CScrnWipeCine() { } // _08 (weak), 0x8002FE6C
+};
+
 struct RoboeyesLensValue {
 	f32 value;
 	f32 target;
@@ -144,11 +139,7 @@ struct RoboeyesLensValue {
 // chibi robo's eyes closing over the screen
 class CScrnRoboeyes : public CScrnWipe {
 public:
-#if defined(VERSION_R24J01)
-	virtual ~CScrnRoboeyes();
-#else
-	virtual ~CScrnRoboeyes() { } // _08 (weak)
-#endif
+	virtual ~CScrnRoboeyes() { }          // _08 (weak)
 	virtual void Reset();                 // _0C, Reset__13CScrnRoboeyesFv
 	virtual void Update(u32 frames);      // _10, Update__13CScrnRoboeyesFUl
 	virtual void Draw(CGs* gs, s32 mode); // _14, Draw__13CScrnRoboeyesFP3CGsl

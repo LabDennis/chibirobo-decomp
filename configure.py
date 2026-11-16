@@ -1321,10 +1321,10 @@ if wii:
                 # GameCube file's hand-spelled weak copies stay GC-only like the menu dtors
                 Object(NonMatching, "game/xpaddtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/cpaddtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the contiguous run of trivial deleting dtors at 0x8002FE00-0x80030088 is emitted
-                # out-of-line here; the GameCube file's hand-spelled weak copies stay GC-only
-                Object(NonMatching, "game/cspritedtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/cpadexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # ~CGame and the weak destructors of CGame's and CBase's members the compiler emits behind
+                # it (retail 0x8002CFB8 on); the classes still missing keep ~CGame under the inline budget
+                Object(NonMatching, "game/wii/gamedtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # Wii-only verified members: fade state and the texture matrices live four
                 # bytes later than the GameCube layout (WiiFbTexture is one word bigger)
                 Object(Equivalent, "game/gamefbsubwinfade.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),

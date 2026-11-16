@@ -7,6 +7,8 @@
 #include "game/wii/cgs.h"
 #include "game/wii/homemenu.h"
 #include "game/cscrn.h"
+#include "game/cfile.h"
+#include "game/cmovie.h"
 #include "game/cmotioncontrolcamera.h"
 #include "game/ccameraactioneye.h"
 #include "game/ut.h"
@@ -54,7 +56,7 @@ public:
 	u8 _41B0[0x41E4 - 0x41B0];
 	// _41E4 vtable
 
-	virtual ~CBase();                               // _08
+	virtual ~CBase() { }                            // _08
 	virtual void Initialize(int argc, char** argv); // _0C
 	virtual void Start();                           // _10, 0x80017D4C
 	virtual void vf14();
@@ -421,26 +423,26 @@ STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x2D8);
 class CCameraActions {
 public:
 	CCameraActionDefault mDefault;                 // _00
-	u8 mArea[0x33C - 0x40];                        // _40, the Wii CCameraActionArea, 0x2FC
+	CCameraActionArea mArea;                       // _40
 	CCameraActionChase mChase;                     // _33C
 	CCameraActionEvt mEvt;                         // _3AC
 	CCameraActionScroll2 mScroll2;                 // _890
 	u8 _B78[0xB7C - 0xB78];                        // _B78
 	CCameraActionEye mEye;                         // _B7C
 	CCameraActionAnim mAnim;                       // _CA0
-	u8 mMap[0x1F74 - 0xCE8];                       // _CE8, the Wii CCameraActionMap, 0x128C
+	CCameraActionMap mMap;                         // _CE8
 	CCameraActionLadr mLadr;                       // _1F74
 	CCameraActionReset mReset;                     // _1FB8
 	CCameraActionScroll mScroll;                   // _21C0
 	CInterfaceCameraAction* mTable[CAMACTION_NUM]; // _222C
-	// _2258 vtable
+	// _225C vtable, 0x802E60C8
 
 	CCameraActions() { }
-	// no vtable: Init writes mTable[0] = this+0 and _2258 holds mTable[CAMACTION_SCROLL]
+	virtual ~CCameraActions() { } // _08, 0x8002DD80
 
 	void Init();
 };
-STATIC_ASSERT(sizeof(CCameraActions) == 0x225C);
+STATIC_ASSERT(sizeof(CCameraActions) == 0x2260);
 
 // the action pointers indexed by CAMACTION_*, CGame keeps them at +0xD9B24; they are the tail
 // of the CCameraActions block at +0xD78F8
@@ -668,24 +670,24 @@ struct WiiEvtData {
 
 class CGame : public CBase {
 public:
+	virtual ~CGame();                       // _08, 0x8002CFB8
 	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
 	CCamera* GetCamera();                   // _4C override, &mMotionControlCamera
 
 	s32 mLoadStep;
-	u8 _41EC[0x42FC - 0x41EC];
+	u8 _41EC[0x41F4 - 0x41EC];
+	CFileArchive mArchive; // _41F4
 	s32 mStage;
 	s32 mPrevStage; // _4300
 	s32 mRoomCount; // _4304, CCameraActionScroll2::GetLimits bounds the room index with it
 	u8 _4308[0x4B40 - 0x4308];
 	CTpl mTpl;
-	CScrnFade mFade; // _4D38
-	u8 _4D6C[0x5044 - 0x4D6C];
-	u32 mWipeTileActive; // _5044, the screen wipe's active flag, the GameCube's mWipeTile1.mActive
-	u8 _5048[0x5050 - 0x5048];
-	f32 mWipeTileY; // _5050, the GameCube's mWipeTile1.mY
-	u8 _5054[0x5058 - 0x5054];
-	f32 mWipeTileHeight; // _5058, the GameCube's mWipeTile1.mHeight
-	u8 _505C[0x5078 - 0x505C];
+	CScrnFade mFade;             // _4D38
+	CScrnWipeCircle mWipeCircle; // _4D6C
+	CScrnWipeTex mWipeTex;       // _4DD4
+	CScrnWipeCustom mWipeCustom; // _4F40
+	CScrnWipeTile mWipeTile;     // _4FA8
+	CScrnWipeCine mWipeCine;     // _5010, the letterbox bars; the message window and the HUD read its mActive, mY and mHeight
 	CScrnRoboeyes mRoboeyes;
 	u8 _511C[0x5978 - 0x511C];
 	s32 mLogoState; // _5978, the boot logos' step, as the GameCube mLogo.mState
@@ -698,7 +700,9 @@ public:
 	// empty stubs, so only its address is verified, not its layout
 	u8 mInfoScrn[0xB148 - 0xAF58]; // _AF58
 	WiiHomeMenu mHomeMenu;         // _B148
-	u8 _B7A8[0xF70C - 0xB7A8];
+	u8 _B7A8[0xF6AC - 0xB7A8];
+	CScrnQuake mQuake; // _F6AC
+	u8 _F6E4[0xF70C - 0xF6E4];
 	WiiPlayerState* mPlayer; // _F70C
 	u8 _F710[0xF770 - 0xF710];
 	WiiFlagSource* mCoins; // _F770
@@ -729,9 +733,11 @@ public:
 	WiiTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
 	CCameraActions mCameraActions;             // _D78F8, mTable lands at _D9B24
-	u8 _D9B54[0xEC1A0 - 0xD9B54];
+	u8 _D9B58[0xEC1A0 - 0xD9B58];
 	f32 mPlayTime; // _EC1A0
-	u8 _EC1A4[0xEE1DC - 0xEC1A4];
+	u8 _EC1A4[0xEE104 - 0xEC1A4];
+	CMovie mMovie; // _EE104
+	u8 _EE1C0[0xEE1DC - 0xEE1C0];
 	u32 mMenuControls;
 	u8 _EE1E0[0xEE530 - 0xEE1E0];
 
