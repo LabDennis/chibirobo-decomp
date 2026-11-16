@@ -2312,19 +2312,15 @@ void XObjChr::UpdateObject(u32 frames)
 			turn.total     = 0.0f;
 		}
 	}
-	f32& margin = mCameraTargetMargin;
-	if (margin < mCameraTargetMarginSetting) {
-		margin += 0.01f * frames;
-		if (margin > mCameraTargetMarginSetting)
-			margin = mCameraTargetMarginSetting;
-	} else if (margin > mCameraTargetMarginSetting) {
-		margin -= 0.01f * frames;
-		if (margin < mCameraTargetMarginSetting)
-			margin = mCameraTargetMarginSetting;
+	if (mCameraTargetMargin < mCameraTargetMarginSetting) {
+		if ((mCameraTargetMargin += 0.01f * frames) > mCameraTargetMarginSetting)
+			mCameraTargetMargin = mCameraTargetMarginSetting;
+	} else if (mCameraTargetMargin > mCameraTargetMarginSetting) {
+		if ((mCameraTargetMargin -= 0.01f * frames) < mCameraTargetMarginSetting)
+			mCameraTargetMargin = mCameraTargetMarginSetting;
 	}
 	if (mIdleModeTimer > 0) {
-		mIdleModeTimer -= frames;
-		if (mIdleModeTimer < 0)
+		if ((mIdleModeTimer -= frames) < 0)
 			mIdleModeTimer = 0;
 	}
 	if (mIdleMode > 0 && mIdleModeTimer == 0) {
