@@ -357,6 +357,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		gPointerPanes.mMenu    = title;
 		gPointerPanes.mEnabled = 1;
 		gPointerPanes.mActive  = 1;
+		// NONMATCHING: retail keeps this loop as a counted loop, this build unrolls it
 		for (s32 i = 0; i < 11; ++i) {
 			title->mPanes[i].mPointed = 0;
 			title->mPanes[i].mPicked  = 0;
@@ -511,9 +512,10 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		CColor dim;
 		dim.Set(255, 255, 255, 255);
 		dim.Set((s32)(dim.r * 0.3f), (s32)(dim.g * 0.3f), (s32)(dim.b * 0.3f), (s32)(dim.a * 0.3f));
-		title->mCursor[1].SetAnimRate(0.0f);
+		f32 rate = 0.0f;
+		title->mCursor[1].SetAnimRate(rate);
 		title->mCursor[1].SetColor(0, dim.r, dim.g, dim.b, 0.0f);
-		title->mCursor[0].SetAnimRate(0.0f);
+		title->mCursor[0].SetAnimRate(rate);
 		title->mCursor[0].SetColor(0, dim.r, dim.g, dim.b, 0.0f);
 		break;
 	}
