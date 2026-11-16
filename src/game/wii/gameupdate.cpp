@@ -61,6 +61,7 @@ void PSMTX44MultVec(const Mtx44 m, const Vec* src, Vec* dst);
 BOOL FinalizeStageObjectSetup(CGame* game);
 void BuildObjectDrawList(CGame* game);
 void Reset2__16CCameraActionMapFv(CInterfaceCameraAction* action);
+void LoadStageCameraAreaState(CCameraActionAreaEx* state);
 // only the addresses are retail's, the signatures are read off the calls in this file
 BOOL fn_800C54A4(XObjPool* pools);        // the objects' loading step, true once they are all read
 void fn_800C7F70(void* map);              // takes the map object, the first of pool 3
@@ -732,6 +733,16 @@ void CGame::SetupStageCamera(s32 mode)
 		mRoboeyes.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	}
 	fn_8027AE04(gGame.mGs.mSceneHead, 0);
+}
+
+/**
+ * @note Address: 0x8001DE7C
+ * @note Size: 0xC
+ */
+// reloads the stage's camera area tables into the state all area actions share
+void CCameraActionAreaExM::LoadAreaState()
+{
+	LoadStageCameraAreaState(&gCameraAreaState);
 }
 
 /**
