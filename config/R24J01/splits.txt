@@ -30,10 +30,7 @@ game/wii/soundbank.cpp:
 	.data start:0x802E7170 end:0x802E7238
 
 game/wii/gxb.cpp:
-	.text start:0x8003CEB0 end:0x80040E08
-
-game/roboeyeslens.cpp:
-	.text start:0x80040E08 end:0x80040E4C
+	.text start:0x8003CEB0 end:0x80044FD8
 
 revolution/EXI/EXIBios.c:
 	.text start:0x8017C0A8 end:0x8017D93C
@@ -2716,9 +2713,3 @@ game/wii/gamesound.cpp:
 
 game/wii/sound.cpp:
 	.text start:0x8003AB00 end:0x8003CEB0
-
-game/wii/unit_80040E4C.cpp:
-	.text start:0x80040E4C end:0x8004328C
-
-game/wii/unit_8004328C.cpp:
-	.text start:0x8004328C end:0x80044FD8

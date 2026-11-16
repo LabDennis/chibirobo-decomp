@@ -10,7 +10,7 @@
 // 0x80033A74 0x0C8 CGsTevStage::CGsTevStage()
 // 0x80033B3C 0x02C CGsChannel::CGsChannel()
 // 0x80033B68 0x020 CLight::CLight()
-// 0x80033B88 0x00C the 0x20 entries of CSoundArchivePlayer's table at _F4 (CSoundTrackSlot in csound.h)
+// 0x80033B88 0x00C the 0x20 entries of CSoundArchivePlayer's table at _F4 (CSoundHandle in csound.h)
 // 0x80033B94 0x04C CTpl::CTpl()
 // 0x80033BE0 0x028 CCamera::CCamera()
 // 0x80033C08 0x010 CStopwatch::CStopwatch()
