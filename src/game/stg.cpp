@@ -2862,12 +2862,12 @@ void MenuPC::State6(u32)
  * @note Address: 0x80051C60
  * @note Size: 0x5C
  */
-extern "C" BOOL IsUtilibotStatusIconUnlocked()
+extern "C" bool IsUtilibotStatusIconUnlocked()
 {
-	BOOL found = FALSE;
+	bool found = false;
 	u32 id     = GetStatusIconEventFlagId(3);
 	if (gEventFlags.mFlags[id / 32] & (1u << (id % 32))) {
-		found = TRUE;
+		found = true;
 	}
 	return found;
 }
@@ -8492,11 +8492,7 @@ void MenuPC::Open()
 	mChoices[mChoiceCount] = 7; // mode 7, the Utilibot catalog
 	mChoiceCount++;
 	// mode 10, recycling scrap into money, comes with status icon 3
-	int flag      = GetStatusIconEventFlagId(3);
-	bool unlocked = false;
-	if (gEventFlags.mFlags[flag >> 5] & (1u << (flag & 31)))
-		unlocked = true;
-	if (unlocked) {
+	if (IsUtilibotStatusIconUnlocked()) {
 		mChoices[mChoiceCount] = 10;
 		mChoiceCount++;
 	}
@@ -8511,16 +8507,20 @@ void MenuPC::Open()
 	PopulateShopHistoryPage(&gShopHistoryPage);
 	ClearPCShopPage<PriceList>();
 	PopulateShopCatalogPage(&gShopCatalogPage);
-	mScroll             = 0;
-	mScrollTarget       = 0;
-	mMoneyDisplay.shown = mMoneyDisplay.target = GetMoney();
-	mScrapDisplay.shown = mScrapDisplay.target = GetScrap();
-	mDepositDisplay.shown                      = mDepositBalance;
-	mDepositDisplay.target                     = mDepositBalance;
-	_424                                       = 0;
-	_428                                       = 0;
-	mScrapRate                                 = 1;
-	mExitState                                 = -1;
+	mScroll                = 0;
+	mScrollTarget          = 0;
+	s32 money              = GetMoney();
+	mMoneyDisplay.shown    = money;
+	mMoneyDisplay.target   = money;
+	s32 scrap              = GetScrap();
+	mScrapDisplay.shown    = scrap;
+	mScrapDisplay.target   = scrap;
+	mDepositDisplay.shown  = mDepositBalance;
+	mDepositDisplay.target = mDepositBalance;
+	_424                   = 0;
+	_428                   = 0;
+	mScrapRate             = 1;
+	mExitState             = -1;
 	StopGameSfx(&gGame.mSound, 0x30007);
 	gGame.mStatus.mFlags |= 2;
 }
