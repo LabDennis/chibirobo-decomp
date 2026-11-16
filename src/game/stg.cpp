@@ -9205,13 +9205,6 @@ static inline s32 SaveStatusLines(MenuSave* menu, s32 id, f32 panelX, f32 panelY
 {
 	return DrawSaveLinesAt(menu, id, SaveMessageX(panelX), SaveMessageY(menu, panelY));
 }
-static inline s32 DrawSavePhaseMessage(MenuSave* menu, s32 first, s32 next, f32 panelX, f32 panelY)
-{
-	f32 x = SaveMessageX(panelX), y = SaveMessageY(menu, panelY);
-	if (menu->mPhase == 0)
-		return DrawSaveLinesAt(menu, first, x, y);
-	return DrawSaveLinesAt(menu, next, x, y);
-}
 
 #if defined(VERSION_JP)
 static inline u32 SavePromptHalfWidth(u32 cells)
@@ -9293,15 +9286,25 @@ BOOL MenuSave::Draw()
 		case 5:
 			lines = SaveStatusLines(this, 4, panelX, panelY);
 			break;
-		case 8:
-			lines = DrawSavePhaseMessage(this, 5, 6, panelX, panelY);
+		case 8: {
+			f32 x = SaveMessageX(panelX), y = SaveMessageY(this, panelY);
+			if (mPhase == 0)
+				lines = DrawSaveLinesAt(this, 5, x, y);
+			else
+				lines = DrawSaveLinesAt(this, 6, x, y);
 			break;
+		}
 		case 9:
 			lines = SaveStatusLines(this, 7, panelX, panelY);
 			break;
-		case 10:
-			lines = DrawSavePhaseMessage(this, 7, 9, panelX, panelY);
+		case 10: {
+			f32 x = SaveMessageX(panelX), y = SaveMessageY(this, panelY);
+			if (mPhase == 0)
+				lines = DrawSaveLinesAt(this, 7, x, y);
+			else
+				lines = DrawSaveLinesAt(this, 9, x, y);
 			break;
+		}
 		case 6:
 		case 11: {
 			f32 y = SaveMessageY(this, panelY);
@@ -9319,10 +9322,13 @@ BOOL MenuSave::Draw()
 #if defined(VERSION_JP)
 			lines = SaveStatusLines(this, 13, panelX, panelY);
 #else
+		{
+			f32 x = SaveMessageX(panelX), y = SaveMessageY(this, panelY);
 			if (mFormatCancelled == 1)
-				lines = SaveStatusLines(this, 17, panelX, panelY);
+				lines = DrawSaveLinesAt(this, 17, x, y);
 			else
-				lines = SaveStatusLines(this, 13, panelX, panelY);
+				lines = DrawSaveLinesAt(this, 13, x, y);
+		}
 #endif
 			break;
 		case 14:
@@ -11012,15 +11018,15 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 				menu->mRankingRows[3] = gPCRankingRows[2];
 				menu->mRankingRows[2] = gPCRankingRows[1];
 				menu->mRankingRows[1] = gPCRankingRows[0];
-			} else {
-				ClearRankingRow(menu->mRankingRows[4]);
-				LoadRankingRow(menu, 3, 1);
-				LoadRankingRow(menu, 2, 2);
-				LoadRankingRow(menu, 1, 3);
-				LoadRankingRow(menu, 0, 4);
-				menu->mPhase++;
+				break;
 			}
-			break;
+			ClearRankingRow(menu->mRankingRows[4]);
+			LoadRankingRow(menu, 3, 1);
+			LoadRankingRow(menu, 2, 2);
+			LoadRankingRow(menu, 1, 3);
+			LoadRankingRow(menu, 0, 4);
+			menu->mPhase++;
+			// fall through: the scroll starts in the same frame
 		case 1:
 			for (int i = 0; i < 4; i++)
 				menu->mRankingOffsets[i] += 0.4f;
