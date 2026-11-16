@@ -5897,12 +5897,12 @@ static inline void PCEase(f32& value, f32& target)
 {
 	f32 speed = target - value;
 	f32 rate  = 0.25f;
-	speed     = speed * rate;
-	if (speed < 0.0f)
-		speed = -speed;
-	if (speed < 1.0f)
-		speed = 1.0f;
-	PCSlide(value, target, speed);
+	rate      = speed * rate;
+	if (rate < 0.0f)
+		rate = -rate;
+	if (rate < 1.0f)
+		rate = 1.0f;
+	PCSlide(value, target, rate);
 }
 
 static inline XObj* PCWorldObject(s32 index)
