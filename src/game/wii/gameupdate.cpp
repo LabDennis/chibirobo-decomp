@@ -217,7 +217,7 @@ void CGame::ResetNewGameState()
 	_EC2B4               = NAN;
 	_EC2C8               = -1.0f;
 	ResetPooledObjects((XObjPool*)mXObjPools);
-	InitBatteryGauge((InfoScrn*)mInfoScrn, GetPlayer()->mParams.mBattery);
+	InitBatteryGauge(&mInfoScrn, GetPlayer()->mParams.mBattery);
 
 	mScrnTex.mAngle = 0.0f;
 	StartScreenFade(&mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
@@ -413,7 +413,7 @@ bool CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 	case 15:
-		if (!HideHudPointCounters((InfoScrn*)mInfoScrn))
+		if (!HideHudPointCounters(&mInfoScrn))
 			break;
 		++mLoadStep;
 	case 16:
@@ -458,7 +458,7 @@ bool CGame::BeforeUpdate()
 			ApplyWiiSaveSlot(&mSaveManager);
 			mMemcardLoaded = FALSE;
 			SetStatusFlags(0x8000);
-			InitBatteryGauge((InfoScrn*)mInfoScrn, GetPlayer()->mParams.mBattery);
+			InitBatteryGauge(&mInfoScrn, GetPlayer()->mParams.mBattery);
 		}
 		++mLoadStep;
 	case 22:
@@ -1372,7 +1372,7 @@ void CGame::Update(u32 frames)
 		}
 	}
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL)) {
-		UpdateHudTransitionsAndIndicators((InfoScrn*)mInfoScrn, frames);
+		UpdateHudTransitionsAndIndicators(&mInfoScrn, frames);
 		((CFbTexEff*)mSubwin)->Update(frames);
 		for (i = 0; i < 5; i++) {
 			FbMirror* mirror = &((FbMirror*)mMirrors)[i];
@@ -1455,7 +1455,7 @@ void CGame::Update(u32 frames)
 	StepSceneDraws(frames);
 	if (!GetStatusFlags(0x200000000000002ULL) && !mMenuActive) {
 		fn_800A13D0(&lbl_8044EE4C, GetCamera());
-		fn_800A13D0(mEmitters, GetCamera());
+		fn_800A13D0(mEvtPtcl.mEmitters, GetCamera());
 	}
 
 	// the effects follow the camera: the stage camera object's when its scene brings one, else the game's

@@ -5,9 +5,6 @@ typedef WiiPlayerParams Params;
 
 extern "C" {
 void SpawnPlayerPointParticles(WiiPlayerState* player, s32 type, s32 value);
-// the Wii HUD callbacks are empty stubs; the object at CGame+0xAF58 is unreconstructed
-void InfoScrn_OnPlayerLevelChanged(void* scrn, s32 level);
-void InfoScrn_OnPlayerExperienceChanged(void* scrn, s32 delta);
 }
 
 /**

@@ -653,7 +653,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	}
 	UnloadStageDataAndModule();
 	for (s32 i = 0; i < 0x80; i++) { // kill every emitter still running
-		void* emitter = game->mEmitters[i];
+		void* emitter = game->mEvtPtcl.mEmitters[i];
 		s32 state     = fn_80246BD8(emitter) ? *(s32*)((u8*)fn_80246C04(emitter) + 0xC) : 0;
 		if (!(state == 0 || state == 3)) {
 			fn_802BEA5C(emitter, TRUE);
@@ -685,7 +685,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	game->mRoboeyes.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	game->SetStatusFlags(0x0040000000000000);
 	game->SetStatusFlags(0x0000800000000000);
-	InfoScrn* scrn = (InfoScrn*)game->mInfoScrn;
+	InfoScrn* scrn = &game->mInfoScrn;
 	InfoScrn_ApplyScoreHudCommand(scrn, 0, 0);
 	for (s32 i = 0; i < 4; i++) {
 		InfoScrn_ApplyObjectGaugeCommand(scrn, NULL, 0, 0, i);
@@ -1738,7 +1738,7 @@ void CGame::Draw()
 				subwin->Draw();
 			}
 			mRoboeyes.Draw(&gGame.mGs, 0);
-			DrawGameHud((InfoScrn*)mInfoScrn);
+			DrawGameHud(&mInfoScrn);
 			if (GetStatusFlags(1)) {
 				mMotionControlCamera.Draw();
 			}
@@ -1793,7 +1793,7 @@ void CGame::Draw()
 		}
 		if (!mHomeMenu.IsRunning()) {
 			fn_80084C84(&mMenuActive);
-			DrawObjectLoadingProgress((InfoScrn*)mInfoScrn);
+			DrawObjectLoadingProgress(&mInfoScrn);
 			DrawOpenMenus(&mMenuActive);
 			vf7C();
 		}

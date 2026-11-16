@@ -8,6 +8,7 @@
 #include "game/wii/homemenu.h"
 #include "game/wii/saveslots.h"
 #include "game/wii/fbeffect.h"
+#include "game/wii/infoscrn.h"
 #include "game/cscrn.h"
 #include "game/cfile.h"
 #include "game/cmovie.h"
@@ -1002,6 +1003,23 @@ public:
 	void State8(u32 frames);
 };
 
+// the event particles, CGame's at _BCA8 (class name from RTTI, vtable at _3A00 by the constructor in 0x800332D8):
+// the emitter handles, stepped with the camera like the global at 0x8044EE4C
+class CEvtPtcl {
+public:
+	u8 mEmitters[0x80][0x74]; // _00
+	// _3A00 vtable
+
+	virtual ~CEvtPtcl() { }
+};
+STATIC_ASSERT(sizeof(CEvtPtcl) == 0x3A04);
+
+// the pooled object archives, the GameCube struct of the same name; CGame's destructor calls its
+// destructor (0x8002F2E8) on _108E0
+struct ObjArchiveTable {
+	ResourceFile mArchives[0x400]; // _00
+};
+
 class CGame : public CBase {
 public:
 	virtual ~CGame(); // _08, 0x8002CFB8
@@ -1058,14 +1076,11 @@ public:
 	u8 _AE18[0xAE34 - 0xAE18];
 	s32 _AE34; // _AE34, DrawHud draws nothing while a menu is open and this is set
 	u8 _AE38[0xAF58 - 0xAE38];
-	// the object the InfoScrn_* HUD calls receive at +0xAF58; the Wii callbacks are
-	// empty stubs, so only its address is verified, not its layout
-	u8 mInfoScrn[0xB148 - 0xAF58]; // _AF58
-	WiiHomeMenu mHomeMenu;         // _B148
+	InfoScrn mInfoScrn;        // _AF58
+	WiiHomeMenu mHomeMenu;     // _B148
 	u8 _B7A8[0xBCA8 - 0xB7A8]; // _B7A8, the effect manager (ceffect.cpp), the GameCube's mParticle; Update hands it the camera each frame
-	u8 mEmitters[0x80][0x74];  // _BCA8, its emitter handles, stepped with the camera like the global at 0x8044EE4C
-	u8 _F6A8[0xF6AC - 0xF6A8];
-	CScrnQuake mQuake;              // _F6AC
+	CEvtPtcl mEvtPtcl;         // _BCA8
+	CScrnQuake mQuake;         // _F6AC
 	u8 mXObjPools[0xF70C - 0xF6E4]; // _F6E4, where the XOBJS block starts: its first two XObjPools
 	WiiPlayerState* mPlayer;        // _F70C
 	u8 _F710[0xF71C - 0xF710];
@@ -1094,13 +1109,13 @@ public:
 	s32 mDrawRefCount;       // _108C4
 	// pointers to spawned objects the renderer walks; entries are grouped in eights,
 	// CMsgFont_Init pushes its two cursors here
-	WiiObjectRef* mObjectRefs;        // _108C8
-	s32 mObjectRefCount;              // _108CC
-	WiiObjectRef* mSceneRefs;         // _108D0, the objects DrawScene draws; BuildSceneDrawLists fills both lists each frame
-	s32 mSceneRefCount;               // _108D4
-	WiiObjectRef* mEffectRefs;        // _108D8, the objects whose effects are drawn, the ones the mirrors show
-	s32 mEffectRefCount;              // _108DC
-	ResourceFile mObjArchives[0x400]; // _108E0, the pooled object archives, the GameCube's mObjArchives
+	WiiObjectRef* mObjectRefs;    // _108C8
+	s32 mObjectRefCount;          // _108CC
+	WiiObjectRef* mSceneRefs;     // _108D0, the objects DrawScene draws; BuildSceneDrawLists fills both lists each frame
+	s32 mSceneRefCount;           // _108D4
+	WiiObjectRef* mEffectRefs;    // _108D8, the objects whose effects are drawn, the ones the mirrors show
+	s32 mEffectRefCount;          // _108DC
+	ObjArchiveTable mObjArchives; // _108E0
 	u8 _4C8E0[0x4C8E4 - 0x4C8E0];
 	WiiEvtData mEvtData; // _4C8E4
 	u8 _4C8EC[0x4C8F0 - 0x4C8EC];
@@ -1233,7 +1248,9 @@ STATIC_ASSERT(offsetof(CGame, mMirrors) == 0xECD5C);
 STATIC_ASSERT(offsetof(CGame, _EE1E0) == 0xEE1E0);
 STATIC_ASSERT(offsetof(CGame, mSubwin) == 0x548C);
 STATIC_ASSERT(offsetof(CGame, mTitleState) == 0x5C74);
-STATIC_ASSERT(offsetof(CGame, mEmitters) == 0xBCA8);
+STATIC_ASSERT(offsetof(CGame, mEvtPtcl) == 0xBCA8);
+STATIC_ASSERT(offsetof(CGame, mInfoScrn) == 0xAF58);
+STATIC_ASSERT(offsetof(CGame, mObjArchives) == 0x108E0);
 STATIC_ASSERT(offsetof(CGame, mMsgs) == 0x4C950);
 STATIC_ASSERT(offsetof(CGame, mShadowTexWidth) == 0xEE50C);
 STATIC_ASSERT(offsetof(CGame, _41F0) == 0x41F0);
