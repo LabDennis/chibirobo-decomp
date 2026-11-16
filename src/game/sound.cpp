@@ -540,32 +540,6 @@ extern "C" void SetGameSoundStereo(XSound* sound, s32 stereo)
 	}
 }
 
-inline void XSound::registerName(const char* name, s32 bank)
-{
-	if (name == NULL) {
-		return;
-	}
-	for (u32 i = 0; i < 16; ++i) {
-		if (mStageRequests.entries[i].mName != NULL && strcmp(mStageRequests.entries[i].mName, name) == 0) {
-			return;
-		}
-	}
-	for (u32 i = 0; i < 16; ++i) {
-		if (mStageRequests.entries[i].mName == NULL) {
-			++mLoadRequestCount;
-			mStageRequests.entries[i].mName = name;
-			mStageRequests.entries[i].mBank = bank;
-#if !defined(VERSION_PAL)
-			OSReport("Register:%s\n", name);
-#endif
-			return;
-		}
-	}
-#if !defined(VERSION_PAL)
-	OSReport("Ssm::Load xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
-#endif
-}
-
 /**
  * @note Address: 0x8001E044
  * @note Size: 0xD8
