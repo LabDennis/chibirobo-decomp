@@ -2864,7 +2864,7 @@ static inline f32 GetTextWidth(CGs* gs, const char* text, BOOL proportional, f32
 			} else if (IsSjisLead(glyph.mStr[0]) & 1) {
 				width[0] += size;
 			} else {
-				width[0] += size * 0.5f;
+				width[0] += size / 2.0f;
 			}
 #else
 			} else if (gs->mUseShiftJis) {
@@ -3332,8 +3332,6 @@ extern "C" void DrawGsFixedWidthTextFormat(CGs* gs, u32 color, const char* forma
  */
 // draws text with one sprite per character and a background tile behind each when the
 // background color isn't zero
-// NONMATCHING: japan's build hoists size * 0.5f out of the loop where retail
-// fuses it into the curX accumulate; float regalloc differs throughout.
 extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* text, f32 x, f32 y, f32 z, f32 size, f32 height)
 {
 	f32 offsX;
@@ -3396,7 +3394,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 		f32 v = 2.0f * (-(curY - y) / lineHeight) + 1.0f;
 #if defined(VERSION_JP)
 		if (!proportional && wide && charWidth < size) {
-			u += (size - charWidth) * 0.5f / size;
+			u += (size - charWidth) / 2.0f / size;
 		}
 #else
 		if (gs->mUseShiftJis) {
