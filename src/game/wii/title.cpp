@@ -67,18 +67,6 @@ void fn_8004DF38();
 void fn_8004DF3C(Title* title, CbPane* pane);
 }
 
-// the slot-scan object inside CGame at _D9B80 and the save job's busy word at _EB0A0; the scan
-// object starts like WiiSaveManager (file, then the scan entries) but CGame's region is smaller,
-// so the members the title screen touches are reached by offset
-static inline WiiSaveManager* SaveScan()
-{
-	return (WiiSaveManager*)((u8*)&gGame + 0xD9B80);
-}
-static inline s32* SaveBusy()
-{
-	return (s32*)((u8*)&gGame + 0xEB0A0);
-}
-
 // the pending fatal the save system left for the title screen: the message, two colors and the flag
 // that raises it while a menu state still owns the frame
 struct WiiFatalInfo {
@@ -164,12 +152,11 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32
 	return width;
 }
 
-// the shared ease for the panel offset pair, the GameCube's ApproachTitleOffset
+// the shared ease for the panel offset pair, the GameCube's ApproachTitleOffset; the Wii takes the absolute value with fabsf, which its MSL
+// inlines to __fabsf
 static inline void ApproachTitleOffset(f32& value, f32& target)
 {
-	f32 speed = (target - value) * .25f;
-	if (speed < 0)
-		speed = -speed;
+	f32 speed = __fabsf((target - value) * .25f);
 	if (speed <= 1)
 		speed = 1;
 	ApproachHudValue(&value, &target, speed);
@@ -271,7 +258,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		bool running = title->mState >= 1 && title->mState < 23;
 		if (!running)
 			return;
-		if (*SaveBusy())
+		if (gGame.mSaveManager.mJobStarted)
 			return;
 	}
 	// 1 starts the slot scan, 2 reads its result, 3-7 load the cursor, the demo and the
@@ -281,7 +268,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	switch (title->mState) {
 	case 1:
 		title->mState = 2;
-		StartWiiSaveSlotScan(SaveScan(), 3);
+		StartWiiSaveSlotScan(&gGame.mSaveManager, 3);
 		gPointerPanes.mMenu    = title;
 		gPointerPanes.mEnabled = 1;
 		gPointerPanes.mActive  = 1;
@@ -294,7 +281,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	case 2: {
 		bool found = false;
 		for (s32 i = 0; i < 3; ++i) {
-			if (SaveScan()->mScanEntries[i].mStatus & 1) {
+			if (gGame.mSaveManager.mScanEntries[i].mStatus & 1) {
 				found = true;
 			}
 		}
@@ -362,23 +349,23 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		if (!title->mTpl.ReadEx(path, 0, 0)) {
 			break;
 		}
-		StartWiiSaveSlotScan(SaveScan(), 3);
+		StartWiiSaveSlotScan(&gGame.mSaveManager, 3);
 		title->mState = 9;
 		break;
 	}
 	case 9: {
-		if (*SaveBusy() != 0) {
+		if (gGame.mSaveManager.mJobStarted != 0) {
 			break;
 		}
 		title->mState = 10;
-		s32 result    = SaveScan()->mFile.mResult;
+		s32 result    = gGame.mSaveManager.mFile.mResult;
 		if (result < 0 && (result == -9 || result == -11)) {
 			title->mSaveErrorCode = result;
 			title->mSaveError     = 1;
 		}
 		OSTime stamps[3];
 		for (s32 i = 0; i < 3; ++i) {
-			WiiSaveScanEntry* entry = &SaveScan()->mScanEntries[i];
+			WiiSaveScanEntry* entry = &gGame.mSaveManager.mScanEntries[i];
 			stamps[i]               = 0;
 			if (entry->mStatus & 1) {
 				stamps[i] = (entry->mStatus & 2) ? 0 : ((WiiSaveSlotHeader*)entry->mData)->mTimestamp;
@@ -521,6 +508,68 @@ void Title::State0(u32)
 }
 
 /**
+ * @note Address: 0x800472AC
+ * @note Size: 0x240
+ */
+// waits for the slot scan: the file menu opens on the newest save, or the error is shown
+void Title::State1(u32 frames)
+{
+	s32 result = gGame.mSaveManager.mFile.mResult;
+	mDelay -= frames;
+	if (mDelay < 0) {
+		mDelay = 0;
+	}
+	if (result == 0) {
+		OSTime timestamps[3];
+		for (s32 i = 0; i < 3; ++i) {
+			WiiSaveScanEntry* entry = &gGame.mSaveManager.mScanEntries[i];
+			if (entry->mStatus & 1) {
+				fn_8007A2E8(&gTitleSaveSlots[i], entry, TRUE);
+				timestamps[i] = ((WiiSaveSlotHeader*)entry->mData)->mTimestamp;
+				if (entry->mStatus & 2) {
+					gTitleSaveSlots[i].mState = 1;
+					timestamps[i]             = 0;
+				}
+			} else if (entry->mStatus & 8) {
+				gTitleSaveSlots[i]._48 = 1;
+				timestamps[i]          = 0;
+			} else if (entry->mStatus & 0x10) {
+				gTitleSaveSlots[i]._4C = 1;
+				timestamps[i]          = 0;
+			} else {
+				gTitleSaveSlots[i]._44 = 1;
+				timestamps[i]          = 0;
+			}
+		}
+		SetMode(2);
+		if (mSelection == 0) {
+			mFile       = 0;
+			mNewestFile = -1;
+		} else {
+			mFile = mNewestFile = IndexOfLargestOfThree(timestamps[0], timestamps[1], timestamps[2]);
+		}
+		mLastFile = mFile;
+		UpdateSelections();
+		mAlpha = 1.0f;
+		return;
+	}
+	mResult = result;
+	if (result == -9 || result == -11) {
+		SetMode(14);
+		mOffset = -32.0f;
+	} else if (result == -4) {
+		SetMode(19);
+		mShowMessage       = 1;
+		gSaveFatal.mActive = 1;
+	} else {
+		SetMode(14);
+		mOffset            = -32.0f;
+		gSaveFatal.mActive = 1;
+	}
+	mAlpha = 1.0f;
+}
+
+/**
  * @note Address: 0x800480B4
  * @note Size: 0x4
  */
@@ -564,7 +613,7 @@ void Title::State7(u32)
 // waits for the save file to be read: into the game when it was, else the error is shown
 void Title::State8(u32)
 {
-	s32 result = SaveScan()->mFile.mResult;
+	s32 result = gGame.mSaveManager.mFile.mResult;
 	if (result == 0) {
 		HideName(this);
 		StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
@@ -610,7 +659,7 @@ void Title::State9(u32)
 		for (s32 i = 0; i < 3; ++i) {
 			ResetSaveSlotRecord(&gTitleSaveSlots[i]);
 		}
-		StartWiiSaveSlotScan(SaveScan(), 10);
+		StartWiiSaveSlotScan(&gGame.mSaveManager, 10);
 		SetMode(1);
 		PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
 		mOffset = 0.0f;
@@ -696,17 +745,17 @@ void Title::State14(u32)
 // waits for the file's write: its record is refreshed and the game starts, or the error is shown
 void Title::State15(u32 frames)
 {
-	s32 result = SaveScan()->mFile.mResult;
+	s32 result = gGame.mSaveManager.mFile.mResult;
 	mDelay -= frames;
 	if (mDelay < 0) {
 		mDelay = 0;
 	}
 	if (result == 0) {
 		u32 blocks, inodes;
-		GetNandGameFreeSpace(&SaveScan()->mFile, &blocks, &inodes);
+		GetNandGameFreeSpace(&gGame.mSaveManager.mFile, &blocks, &inodes);
 		mFreeBlocks             = blocks;
 		mFreeEntries            = inodes;
-		WiiSaveScanEntry* entry = &SaveScan()->mScanEntries[mFile];
+		WiiSaveScanEntry* entry = &gGame.mSaveManager.mScanEntries[mFile];
 		if (entry->mStatus & 1) {
 			fn_8007A2E8(&gTitleSaveSlots[mFile], entry, TRUE);
 		}

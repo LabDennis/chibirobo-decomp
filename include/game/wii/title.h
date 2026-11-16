@@ -343,29 +343,31 @@ public:
 	CTexObj mTex[6];     // _4310, as on the GameCube; the Wii draws three of them: logo, footer and dust
 	s32 mSelection;      // _4928, the entry of the title menu, -1 while the pointer is on none
 	s32 mLastSelection;  // _492C
-	u8 _4930[0x493C - 0x4930];
-	f32 mPanelY;       // _493C
-	f32 mTargetPanelY; // _4940
-	f32 mLoadScroll;   // _4944, the load screen's scroll position
-	u8 _4948[4];
-	f32 mLoadOffset;  // _494C
-	f32 mOffset;      // _4950
-	u32 mFreeBlocks;  // _4954, the NAND's free blocks and inodes after a write
-	u32 mFreeEntries; // _4958
-	s32 mResult;      // _495C, the save operation's result
+	f32 mLoadScroll;     // _4930, the load screen's scroll position
+	f32 mPanelX;         // _4934
+	f32 mPanelY;         // _4938
+	f32 mTargetPanelX;   // _493C
+	f32 mTargetPanelY;   // _4940
+	f32 _4944;           // _4944
+	f32 mLoadOffset;     // _4948
+	f32 _494C;           // _494C
+	f32 mOffset;         // _4950
+	u32 mFreeBlocks;     // _4954, the NAND's free blocks and inodes after a write
+	u32 mFreeEntries;    // _4958
+	s32 mResult;         // _495C, the save operation's result
 	u8 _4960[4];
 	u8 mReady;       // _4964, the "press start" prompt is up
 	u8 mShowMessage; // _4965, the status line is being shown
 	u8 mWrongDevice; // _4966, a save scan finished but no usable slot answered
 	u8 _4967;
-	f32 mLoadAlpha; // _4968
-	f32 mAlpha;     // _496C
-	s32 mLastMode;  // _4970
-	s32 mModeParam; // _4974, the mode's own step
-	s32 mDelay;     // _4978
-	s32 mFile;      // _497C, the save file picked, -1 with the pointer on none
-	s32 mLastFile;  // _4980
-	u8 _4984[4];
+	f32 mLoadAlpha;  // _4968
+	f32 mAlpha;      // _496C
+	s32 mLastMode;   // _4970
+	s32 mModeParam;  // _4974, the mode's own step
+	s32 mDelay;      // _4978
+	s32 mFile;       // _497C, the save file picked, -1 with the pointer on none
+	s32 mLastFile;   // _4980
+	s32 mNewestFile; // _4984, the save written last, -1 while the new-game entry was picked
 	s32 mChoice;     // _4988, yes or no, -1 with the pointer on neither
 	s32 mLastChoice; // _498C
 	u8 _4990[0x4998 - 0x4990];
