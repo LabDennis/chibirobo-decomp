@@ -4157,7 +4157,7 @@ extern "C" void PilotNwing_Update(PilotNwing* link, u32 dt, f32 animFrame)
 	HSD_JObj* jobj;
 
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	jobj = GetJointByPath(link->mPathObj->mJObj, (s32[2]) { 0, 0 }, 2);
+	jobj = FindJointByPath(link->mPathObj->mJObj, (s32[2]) { 0, 0 }, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, link->mCarriedMtx);
 	HSD_JObjCopyMtx(link->mCarriedObj->mJObj, link->mCarriedMtx);
 	link->mAnimFrame = animFrame;
@@ -5124,7 +5124,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 
 	work->mTimeLeft -= dt;
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	jobj = GetJointByPath(work->mPath->mJObj, (s32[2]) { 0, 0 }, 2);
+	jobj = FindJointByPath(work->mPath->mJObj, (s32[2]) { 0, 0 }, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, work->mBodyMtx);
 	HSD_JObjCopyMtx(work->mBody->mJObj, work->mBodyMtx);
 	zero.x = zero.y = zero.z = 0.0f;
@@ -5132,7 +5132,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 	PSMTXRotRad(rot, 'Y', work->mPlayerRotY);
 	PSMTXTrans(offset, 0.0f, -1.89f, -7.16f);
 	PSMTXConcat(offset, rot, offset);
-	jobj = GetJointByPath(work->mBody->mJObj, (s32[1]) { 0 }, 1);
+	jobj = FindJointByPath(work->mBody->mJObj, (s32[1]) { 0 }, 1);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), offset, work->mPlayerMtx);
 	HSD_JObjCopyMtx(GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674))->mJObj, work->mPlayerMtx);
 	if (work->mExtra != NULL) {

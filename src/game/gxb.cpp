@@ -4432,34 +4432,6 @@ static inline void ClearStageBank(XSound* sound)
 	HSD_SynthSFXBankClear(sound->mStageBank);
 }
 
-// queues a name for the stage bank unless it is already there, sound.cpp has the same
-static inline void RegisterStageSoundName(XSound* sound, const char* name)
-{
-	s32 bank = sound->mStageBank;
-	if (name == NULL) {
-		return;
-	}
-	for (u32 i = 0; i < 16; ++i) {
-		if (sound->mStageRequests.entries[i].mName != NULL && strcmp(sound->mStageRequests.entries[i].mName, name) == 0) {
-			return;
-		}
-	}
-	for (u32 i = 0; i < 16; ++i) {
-		if (sound->mStageRequests.entries[i].mName == NULL) {
-			++sound->mLoadRequestCount;
-			sound->mStageRequests.entries[i].mName = name;
-			sound->mStageRequests.entries[i].mBank = bank;
-#if !defined(VERSION_PAL)
-			OSReport("Register:%s\n", name);
-#endif
-			return;
-		}
-	}
-#if !defined(VERSION_PAL)
-	OSReport("Ssm::Load xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\n");
-#endif
-}
-
 /**
  * @note Address: 0x8001F8D8
  * @note Size: 0xA4
@@ -4527,7 +4499,7 @@ extern "C" BOOL LoadGameSoundBank(XSound* sound, s32 stage)
 #if !defined(VERSION_PAL)
 	OSReport(">>>%s\n", stageSfxTable[stage]);
 #endif
-	RegisterStageSoundName(sound, stageSfxTable[stage]);
+	sound->registerName(stageSfxTable[stage], sound->mStageBank);
 	return TRUE;
 }
 
