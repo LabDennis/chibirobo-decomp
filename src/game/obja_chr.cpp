@@ -4615,10 +4615,12 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 				mLift.mState = 23;
 			result = -1;
 			break;
-		case 550:
-			gGame.GetPlayer()->mParams.mInventory.mCompact = TRUE;
-			CompactInventory(&gGame.GetPlayer()->mParams.mInventory);
+		case 550: {
+			Inventory* inventory = &gGame.GetPlayer()->mParams.mInventory;
+			inventory->mCompact  = TRUE;
+			CompactInventory(inventory);
 			break;
+		}
 		case 551:
 			gGame.GetPlayer()->mParams.mInventory.mCompact = FALSE;
 			break;
