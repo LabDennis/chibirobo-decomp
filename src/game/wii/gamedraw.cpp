@@ -1,11 +1,29 @@
+#include "nw4r/math/math_types.h"
 #include "game/wii/cgame.h"
 #include "game/cthread.h"
 #include "game/wii/xobj.h"
 #include "Dolphin/os.h"
 #include "Dolphin/vi.h"
 #include <string.h>
+#include "nw4r/snd/snd_BasicSound.h"
+#include "nw4r/snd/snd_SoundHandle.h"
+#include "game/wii/csound3dactor.h"
+#include "game/wii/animsfx.h"
+#include "game/wii/cpadact.h"
+#include "game/wii/infoscrn.h"
+#include "game/wii/msg.h"
+#include "game/wii/fbeffect.h"
+#include "game/fbtexeff.h"
+#include "game/cmdline.h"
+#include "game/mm.h"
+#include "game/cfont.h"
+#include "game/stagetable.h"
+#include "game/stagedata.h"
+#include <math.h>
+#include <stdlib.h>
 
 extern "C" {
+void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 void* UpdateMovie(void* arg);
 char* FormatToStaticBuffer(const char* fmt, ...);
 const char* GetLocalizedInterfaceText(s32 id);
@@ -13,9 +31,62 @@ extern CThread gMovieUpdateThread;
 extern u8* gMovieUpdateThreadStack;
 s32 CallStageModule(s32 function, s32 count, s32* args);
 void fn_802AEDEC(WiiGsSceneObj** head, Mtx view); // sorts the queued scene draws under view, as title.cpp calls it
+void ClearMainMenuExtraRows(void* menu);
+void fn_80094904(void* evt, BOOL, BOOL, BOOL, BOOL); // resets the event state, the GameCube's ResetEventScriptState
+void ResetMsgState(CMsg* msg);
+void UnloadStageDataAndModule();
+BOOL fn_80246BD8(void* handle);                     // the emitter handle is valid
+void* fn_80246C04(void* handle);                    // the emitter behind it
+void fn_802BEA5C(void* emitter, BOOL);              // kills the emitter
+void fn_802BE3A8(void* particles, u32 group, BOOL); // kills a particle group
+void ClearSoundEffects(XSound* sound, s32 frames);
+s32 GetWiiSaveSlotStage(WiiSaveManager* manager, int index);
+void ResetTitleScreenState(void* title);
+void fn_800848C0(void* menus); // the GameCube's ResetMenuGroup
+void fn_80084BF0(void* menus, s32 menu);
+BOOL fn_800C61C8();
+void fn_8027B6B8(WiiGsSceneObj* scene, BOOL, s32);             // switches the scene's draws to and from the alpha pass
+void fn_802AEF34(WiiGsSceneObj** head, CCamera* camera, BOOL); // sorts the queued scene draws under camera
+void fn_8027B40C(WiiGsSceneObj* scene);                        // the shadow pass' five scene draws
+void fn_8027B484(WiiGsSceneObj* scene);
+void fn_8027B570(WiiGsSceneObj* scene);
+void fn_8027B644(WiiGsSceneObj* scene);
+void fn_8027B5D0(WiiGsSceneObj* scene);
+void fn_8027AE04(WiiGsSceneObj* scene, s32 index); // as gameupdate.cpp declares it
+void fn_8001E1C8(CGame* game);
+void fn_802AB860(CGs* gs);
+void fn_802BE414(void* obj, CLight* light); // as gameupdate.cpp declares them
+void fn_802BE4D4(void* obj, GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ);
+void* fn_8027AE0C(WiiGsSceneObj* scene, s32 index); // the scene's fog
+void fn_8028175C(void** fog, GXFogType* type, f32* startZ, f32* endZ, f32* nearZ, f32* farZ, GXColor* color);
+void fn_802BE19C(void* effects, MtxP view, u32 group); // draws one group of the effects
+void DrawTitleScreen(void* title);
+void DrawGameHud(InfoScrn* scrn);
+void DrawScreenColorOverlay(CScrnColor* color, CGs* gs);
+void DrawPlayerEquipmentRings(void* rings);
+void DrawOXMenu(WiiOXMenu* menu);
+void fn_80094E90(void* evt);
+void CMsg_Draw(CMsg* msg);
+void DrawCurrentLogo(void* logo);
+void fn_80084C84(void* menus);
+void DrawObjectLoadingProgress(InfoScrn* scrn);
+void DrawOpenMenus(void* menus);
+void fn_80028998(CGame* game);
+void ClearActiveObjectFloors(XObj* obj);
+void ResetGameHudState(InfoScrn* scrn);
+u8* GetStageDisplayName(s32 index);
+extern GXColor gMessageFontDefaultColor;
+s32 GetStageNum();
+s32 GetDefaultStageIndex();
 }
 
 extern s32 gRefreshRate;
+// the stage name's four shadow copies, one pixel off to each corner
+f32 sStageNameShadowX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 sStageNameShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+extern f32 gScreenWidthScale;
+// a sound id XObjSpiderSmall keeps while it fights (0x80128CD4), cleared once its tracks are let go
+extern u32 gSpiderSmallSoundId;
 extern s32 gPointerScreenWidth;
 extern s32 gPointerScreenHeight;
 extern s32 gScreenLeft;
@@ -31,6 +102,92 @@ extern MEMiHeapHead* gWiiMem1Heap;
 inline void operator delete(void* ptr) throw()
 {
 	MEMFreeToExpHeap(gWiiMem1Heap, ptr);
+}
+
+// a lead byte of a two byte shift jis character
+static inline bool IsSJISByte(char c)
+{
+	return ((u8)c >= 0x81 && (u8)c <= 0x9F) || ((u8)c >= 0xE0 && (u8)c <= 0xFC);
+}
+
+static inline bool IsSJISLead(char c)
+{
+	return IsSJISByte(c) ? true : false;
+}
+
+inline void CSound::StopAllTracks(f32 fade)
+{
+	s32 frames = gRefreshRate * fade;
+	for (int i = 0; i < 0x40; ++i) {
+		if (mTracks[i].IsAttachedSound()) {
+			mTracks[i].Stop(frames);
+		}
+	}
+}
+
+// the head of the stage's info record, as far as this file reads it: the GameCube's UnkStageInfo
+// (game/cgameutil.h, which the Wii cannot include). todo: one definition with gameupdate.cpp's
+struct WiiStageInfo {
+	u8 _00[0x10];
+	u8 mFlags; // _10, bit 0 keeps the shadows at full strength
+};
+
+static inline WiiStageInfo* GetStageInfo()
+{
+	return *(WiiStageInfo**)GetStageEnvironment();
+}
+
+// the view the effects draw under: the scene camera's animated camera when its scene has one, else the
+// scene camera's own view
+static inline MtxP GetEffectView(CGame* game)
+{
+	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	bool scene         = false;
+	if (camera != NULL && (camera->mStatus.mFlags & 1) && camera->mScene != NULL && camera->mScene->_2888 != NULL) {
+		scene = true;
+	}
+	if (scene) {
+		MtxP view = ((nw4r::g3d::ScnRoot*)camera->mScene)->GetCurrentCamera();
+		if (view == NULL) {
+			nw4r::db::Panic("g3d_rescommon_ac.h", 140, "NW4R:Pointer must not be NULL (mpData)");
+		}
+		return view;
+	}
+	return game->GetCamera()->mViewMtx;
+}
+
+// the queued scene draws, sorted under view and popped one by one
+static inline void DrawSceneQueue(MtxP view)
+{
+	fn_802AEDEC(&gGame.mGs.mSceneHead, view);
+	WiiGsSceneObj* obj = gGame.mGs.mSceneHead;
+	while (obj->mPending != 0) {
+		if (obj->mPending != 0) {
+			obj->vf038(obj->mPending - 1);
+		}
+	}
+}
+
+// the first track playing sound id, as retail expands it ahead of the jingle loops
+static inline CSoundHandle* FindTrack(u32 id)
+{
+	for (int i = 0; i < 0x40; i++) {
+		if (gGame.mSound.mTracks[i].IsAttachedSound() && gGame.mSound.mTracks[i].GetId() == id) {
+			return &gGame.mSound.mTracks[i];
+		}
+	}
+	return NULL;
+}
+
+// whether the first track playing sound id is paused
+static inline bool IsTrackPaused(u32 id)
+{
+	for (int i = 0; i < 0x40; i++) {
+		if (gGame.mSound.mTracks[i].IsAttachedSound() && gGame.mSound.mTracks[i].GetId() == id) {
+			return gGame.mSound.mTracks[i].IsPause();
+		}
+	}
+	return false;
 }
 
 /**
@@ -165,6 +322,93 @@ extern "C" void* UpdateMovie(void* arg)
 }
 
 /**
+ * @note Address: 0x8002C298
+ * @note Size: 0x8E4
+ */
+// NONMATCHING: written from the GameCube's and the retail code, not tuned: the float registers and the
+// literal pool differ; the GameCube's tev and blend calls are the CGs inlines here
+// draws the stage name: a bubble per letter, then the letter with a shadow on four sides. while a stage
+// loads the pointer pops a bubble: it jumps, the loading object plays one of two animations and the
+// stage's sound for that letter plays
+extern "C" void DrawStageNameBubbles(CGame* game)
+{
+	const f32 spacing   = 58.0f;
+	const f32 glyphSize = 25.0f;
+	if (game->mStageName.mActive && !game->GetStatusFlags(2)) {
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		game->mTpl.mTex.Init(&game->mTpl.mPalette->descriptorArray[139], 0);
+		CTexObj bubble = game->mTpl.mTex;
+		f32 center     = gPointerScreenWidth / 2;
+		u32 color      = game->mStageName.mColor & 0xFFFFFF00; // rgb only; alpha comes from the scale
+		for (s32 i = 0; i < game->mStageName.mCount; i++) {
+			f32 scale = game->mStageName.mChars[i].mScale;
+			if (scale <= 0.0f) {
+				continue;
+			}
+			CFont font;
+			s32 width;
+			CTexObj letter = *GetFontGlyphTexture(&font, game->mStageName.mChars[i].mText, 1, &width);
+			f32 bob        = 4.0f * (f32)sin(game->mStageName.mChars[i].mBob);
+			f32 rot        = DEG2RAD * (10.0f * (f32)sin(0.7f * game->mStageName.mChars[i].mTilt));
+			f32 swell      = sin(3.1415927f * scale);
+			f32 pop        = 0.2f * swell + (f32)sin(1.5707964f * scale);
+			f32 x          = spacing * 0.5f + (spacing * i + (center - spacing * game->mStageName.mCount * 0.5f));
+			f32 y          = 150.0f;
+			if (gWiiPointer.mPointerValid && game->IsLoadStepRunning() && game->mLoadStep > 20) {
+				f32 half = glyphSize * (2.2f * pop) * 0.5f;
+				if (gWiiPointer.mPointer.x >= x - half && gWiiPointer.mPointer.x <= x + half && gWiiPointer.mPointer.y >= 150.0f - half
+				    && gWiiPointer.mPointer.y <= 150.0f + half) {
+					if (!game->mStageName.mChars[i]._14) {
+						const s32 anims[2]             = { 1011, 1007 };
+						game->mStageName.mChars[i]._14 = TRUE;
+						game->mStageName.mChars[i]._18 = 1.0f;
+						((CObj*)&game->_EC2CC[4])->SetAnim(anims[rand() % 2], TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+						s32 first = GetStageFirstSoundId(game->mStage);
+						if (first >= 0) {
+							for (s32 j = 0; j < game->mStageName.mCount; j++) {
+								if (IsWiiSfxPlaying(&gGame.mSound, first + j)) {
+									StopWiiSfx(&gGame.mSound, first + j, 0.1f);
+								}
+							}
+							PlayWiiSoundEffect(&gGame.mSound, first + i, 1.0f, 0.0f);
+						}
+					}
+				} else {
+					game->mStageName.mChars[i]._14 = FALSE;
+				}
+			} else {
+				game->mStageName.mChars[i]._14 = FALSE;
+			}
+			if (game->mStageName.mChars[i]._18 > 0.0f) { // the jump
+				if ((game->mStageName.mChars[i]._18 -= 0.035f * game->mRetraceStep) <= 0.0f) {
+					game->mStageName.mChars[i]._18 = 0.0f;
+				}
+				y = 150.0f - 30.0f * (f32)sin(0.9f * (3.1415927f * game->mStageName.mChars[i]._18));
+			}
+			DrawGsTexturedQuad(&gGame.mGs, &bubble, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
+			                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, x, y + bob, 0.0f,
+			                   glyphSize * (2.2f * pop), glyphSize * (2.2f * pop), 0.0f, -0.0f, -rot);
+			f32 size   = glyphSize * (1.5f * pop);
+			f32 shrink = width / 24.0f * size;
+			u32 alpha  = 255.0f * scale;
+			for (s32 j = 0; j < 4; j++) {
+				DrawGsTexturedQuad(&gGame.mGs, &letter, alpha, alpha, alpha, alpha, (size - shrink) * 0.5f + (x + sStageNameShadowX[j]),
+				                   bob + (y + sStageNameShadowY[j]), 0.0f, size, size, 0.0f, -0.0f, -rot);
+			}
+			alpha = 255.0f * scale;
+			DrawGsTexturedQuad(&gGame.mGs, &letter, color | alpha, color | alpha, color | alpha, color | alpha, (size - shrink) * 0.5f + x,
+			                   y + bob, 0.0f, size, size, 0.0f, -0.0f, -rot);
+		}
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	}
+}
+
+/**
  * @note Address: 0x8002C044
  * @note Size: 0x254
  */
@@ -206,6 +450,44 @@ extern "C" void UpdateStageNameBubbles(CGame* game, u32 frames)
 }
 
 /**
+ * @note Address: 0x8002BC40
+ * @note Size: 0x404
+ */
+// sets the stage's name up to pop in letter by letter in color, each letter waiting wait seconds
+// before it shrinks away; the slots behind the name stay blank
+extern "C" void StartStageNameBubbles(CGame* game, u32 color, f32 wait)
+{
+	game->mStageName.mActive = TRUE;
+	game->mStageName.mCount  = 0;
+	if (game->mStage < GetStageNum()) {
+		char* name = (char*)GetStageDisplayName(game->mStage);
+		if (name != NULL) {
+			game->mStageName.mColor = color;
+			for (s32 i = 0; i < 20 && *name != '\0'; i++, name++) {
+				game->mStageName.mChars[i].mText  = name;
+				game->mStageName.mChars[i].mScale = -0.2f * i; // later letters start hidden
+				game->mStageName.mChars[i].mWait  = wait * gRefreshRate;
+				game->mStageName.mChars[i].mBob   = DEG2RAD * (rand() % 360); // a random phase
+				game->mStageName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
+				game->mStageName.mChars[i]._14    = 0;
+				game->mStageName.mChars[i]._18    = 0.0f;
+				game->mStageName.mCount++;
+				if (gGame.mLanguage == 0 && IsSJISLead(*name)) {
+					name++;
+				}
+			}
+			for (s32 i = game->mStageName.mCount; i < 20; i++) {
+				game->mStageName.mChars[i].mText  = NULL;
+				game->mStageName.mChars[i].mScale = 0.0f;
+				game->mStageName.mChars[i].mWait  = 0.0f;
+				game->mStageName.mChars[i]._14    = 0;
+				game->mStageName.mChars[i]._18    = 0.0f;
+			}
+		}
+	}
+}
+
+/**
  * @note Address: 0x8002BBE0
  * @note Size: 0x60
  */
@@ -219,10 +501,105 @@ bool CGame::IsSystemMessage3Shown()
 }
 
 /**
+ * @note Address: 0x8002B6D8
+ * @note Size: 0x500
+ */
+// NONMATCHING: the tracks are reached through a cast of CSound's flat track table (see gamesound.cpp)
+// undoes one PauseGameSounds. the last resume lets the tracks, the objects' sounds and the movie go
+// again; the music pause underneath holds the jingle (sound 4) until its own count runs out
+extern "C" void ResumeGameSounds(CGame* game, f32 fade)
+{
+	// _D9B5C counts the pauses, _D9B60 the music pauses under them
+	if (game->_D9B5C > 0 && --game->_D9B5C == 0) {
+		s32 frames = gRefreshRate * fade;
+		for (int i = 0; i < 0x40; i++) {
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
+			if (handle.IsAttachedSound() && handle.IsPause()) {
+				handle.Pause(false, frames);
+			}
+		}
+		for (s32 i = 0; i < game->mDrawRefCount; i++) {
+			XObj* object = (XObj*)game->mDrawRefs[i].mObj;
+			if (object->mStatus.mFlags & 1) {
+				object->ResumeSounds(fade);
+			}
+		}
+		if (game->mMovie.mState != 0) {
+			THPSimpleSetVolume(127.0f * game->mMovieVolume, 1000.0f * fade);
+		}
+	}
+	if (game->_D9B60 > 0) {
+		if (--game->_D9B60 == 0) {
+			if (gSpiderSmallSoundId != 0) {
+				u32 music = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
+				if (music != 0) {
+					s32 frames = gRefreshRate * 0.2f;
+					u32 id     = music & 0xFFFF;
+					for (int i = 0; i < 0x40; i++) {
+						nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
+						if (handle.IsAttachedSound() && handle.GetId() == id && !handle.IsPause()) {
+							handle.Pause(true, frames);
+						}
+					}
+				}
+			}
+		} else if (FindTrack(4) != NULL && IsTrackPaused(4)) {
+			s32 frames = gRefreshRate * fade;
+			for (int i = 0; i < 0x40; i++) {
+				nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
+				if (handle.IsAttachedSound() && handle.GetId() == 4 && handle.IsPause()) {
+					handle.Pause(false, frames);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * @note Address: 0x8002B2F0
+ * @note Size: 0x3E8
+ */
+// NONMATCHING: the tracks are reached through a cast of CSound's flat track table (see gamesound.cpp)
+// holds every playing track, the objects' own sounds and the movie's volume; pauses nest, only the
+// first one acts. a nested pause holds the jingle (sound 4) too
+extern "C" void PauseGameSounds(CGame* game, f32 fade)
+{
+	if (game->_D9B5C == 0) {
+		s32 frames = gRefreshRate * fade;
+		for (int i = 0; i < 0x40; i++) {
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
+			if (handle.IsAttachedSound() && !handle.IsPause()) {
+				handle.Pause(true, frames);
+			}
+		}
+		for (s32 i = 0; i < game->mDrawRefCount; i++) {
+			XObj* object = (XObj*)game->mDrawRefs[i].mObj;
+			if (object->mStatus.mFlags & 1) {
+				object->PauseSounds(fade);
+			}
+		}
+		if (game->mMovie.mState != 0) {
+			THPSimpleSetVolume(0, 1000.0f * fade);
+		}
+	}
+	game->_D9B5C++;
+	if (game->_D9B60 > 0 && FindTrack(4) != NULL && !IsTrackPaused(4)) {
+		s32 frames = gRefreshRate * fade;
+		for (int i = 0; i < 0x40; i++) {
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
+			if (handle.IsAttachedSound() && handle.GetId() == 4 && !handle.IsPause()) {
+				handle.Pause(true, frames);
+			}
+		}
+	}
+	game->_D9B60++;
+}
+
+/**
  * @note Address: 0x8002B2EC
  * @note Size: 0x4
  */
-void XObj::vf210()
+void XObj::ResumeSounds(f32)
 {
 }
 
@@ -230,8 +607,220 @@ void XObj::vf210()
  * @note Address: 0x8002B2E8
  * @note Size: 0x4
  */
-void XObj::OnMicrophonePeak(s32, s32)
+void XObj::PauseSounds(f32)
 {
+}
+
+/**
+ * @note Address: 0x8002A330
+ * @note Size: 0xB98
+ */
+// NONMATCHING: FbSubwin::Reset is a virtual call in retail (fbtexeff.h's Wii class has no CFbTexEff base
+// yet); the float literals are addressed from the whole file's pool
+// changes to another stage: 10000 is the title, 20000 the stage from the save, below 0 the next
+// one. everything that belongs to the old stage is let go of, and the new stage's name is set up to
+// pop in when showName is set
+extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
+{
+	StartScreenFade(&game->mFade, 0, 0, 0, 255, 0, 0, 0, 255, 0.0f);
+	if (game->mMovie.mState != 0) { // cut any playing movie
+		game->mMovie.Stop();
+	}
+	ClearMainMenuExtraRows(game->mMenus[0]);
+	fn_80094904(game->_4C8E0, TRUE, TRUE, TRUE, TRUE); // the event state in front of mEvtData
+	CMsg* msgs = (CMsg*)game->mMsgs;
+	for (s32 i = 0; i < 2; i++) {
+		ResetMsgState(&msgs[i]);
+		CMsg_ResetPos(&msgs[i]);
+		msgs[i].SetColor(gMessageFontDefaultColor);
+	}
+	CGame::FbMirrorEx* mirrors = (CGame::FbMirrorEx*)game->mMirrors;
+	for (s32 i = 0; i < 5; i++) { // let go of the mirrors' objects and textures
+		FbMirror* mirror = &mirrors[i];
+		if (mirror->IsUsed() && mirror->mJoint != NULL) {
+			if (mirror->mJointAnm != NULL) { // the object's own material animation goes back
+				memcpy(mirror->mJointAnm, mirror->mJointAnmCopy, 0x20);
+				mirror->mJointAnm = NULL;
+			}
+			mirror->mJoint   = NULL;
+			mirror->mVisible = FALSE;
+			if (mirror->mTexture.mOwnsImage && mirror->mTexture.mImage != NULL) {
+				mm::Free(mirror->mTexture.mImage);
+				mirror->mTexture.mImage = NULL;
+			}
+		}
+	}
+	UnloadStageDataAndModule();
+	for (s32 i = 0; i < 0x80; i++) { // kill every emitter still running
+		void* emitter = game->mEmitters[i];
+		s32 state     = fn_80246BD8(emitter) ? *(s32*)((u8*)fn_80246C04(emitter) + 0xC) : 0;
+		if (!(state == 0 || state == 3)) {
+			fn_802BEA5C(emitter, TRUE);
+		}
+	}
+	for (u32 i = 0; i < 6; i++) {
+		fn_802BE3A8(game->_B7A8, i, TRUE);
+	}
+	WiiPlayerState* player = game->mPlayer;
+	for (s32 i = 0; i < 2; i++) {
+		CSound3DActor* actor          = ((AnimSfx*)player->mSfx)->mActors[i].mActor;
+		nw4r::snd::SoundHandle* sound = actor != NULL && actor->mHandle.IsAttachedSound() ? &actor->mHandle : NULL;
+		if (sound != NULL && actor != NULL) {
+			actor->mHandle.Stop(gRefreshRate * 0.0f);
+		}
+	}
+	gGame.mSound.StopAllTracks(0.0f);
+	ClearSoundEffects(&gGame.mSound, 0);
+	gGame.mSound.RestoreHeapLevel(1);
+	Vec nan        = { NAN, NAN, NAN };
+	game->_EE1F0.x = nan.x;
+	game->_EE1F0.y = nan.y;
+	game->_EE1F0.z = nan.z;
+	gWiiPointer.ResetRumble(FALSE);
+	game->ClearStatusFlags(0x020000000000002F);
+	game->ClearStatusFlags(0xC00);
+	game->ClearStatusFlags(0x8000);
+	game->ClearStatusFlags(0x300);
+	game->mRoboeyes.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	game->SetStatusFlags(0x0040000000000000);
+	game->SetStatusFlags(0x0000800000000000);
+	InfoScrn* scrn = (InfoScrn*)game->mInfoScrn;
+	InfoScrn_ApplyScoreHudCommand(scrn, 0, 0);
+	for (s32 i = 0; i < 4; i++) {
+		InfoScrn_ApplyObjectGaugeCommand(scrn, NULL, 0, 0, i);
+	}
+
+	if (stage == 10000) {
+		if (gCmdLineArgs.mStage < 0 || game->GetStatusFlags(0x0008000000000000)) {
+			game->SetStage(GetDefaultStageIndex());
+		} else {
+			game->SetStage(gCmdLineArgs.mStage);
+		}
+	} else if (stage == 20000) {
+		game->SetStage(GetWiiSaveSlotStage(&game->mSaveManager, 1));
+		game->SetStage(GetWiiSaveSlotStage(&game->mSaveManager, 0));
+		game->mMemcardLoaded = TRUE;
+	} else if (stage >= 0) {
+		game->SetStage(stage);
+	} else {
+		game->mPrevStage = game->mStage;
+		if (++game->mStage >= game->mRoomCount) {
+			game->mStage = 0;
+		}
+	}
+
+	if (stage == 10000) {
+		game->SetStatusFlags(0x20000000);
+		game->SetStatusFlags(0x0001000000000000);
+		game->ClearStatusFlags(0x80);
+		ResetTitleScreenState(game->mTitle);
+		fn_800848C0(&game->mMenuActive); // the menu group starts at its active word
+		ResetGameHudState(scrn);
+		((FbSubwin*)game->mSubwin)->Reset();
+		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
+		game->mWipeCircle.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeTex.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeCustom.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeTile.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeCine.StartTransition(0, 0, 0, 0, 0, 0, 0, gPointerScreenWidth / 2, gPointerScreenHeight / 2, gPointerScreenWidth,
+		                                gPointerScreenHeight, gPointerScreenWidth, gPointerScreenHeight, 0.0f, 0, TRUE);
+		StartScreenShake(&game->mQuake, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		FbBlur* blur    = &game->mBlur;
+		blur->mAlpha    = 0.0f;
+		blur->mTarget   = 0.0f;
+		blur->mSpeed    = 0.0f;
+		game->mLoadStep = 20;
+	} else if (stage == 20000) {
+		((FbSubwin*)game->mSubwin)->Reset();
+		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
+		game->mWipeCircle.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeTex.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeCustom.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeTile.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeCine.StartTransition(0, 0, 0, 0, 0, 0, 0, gPointerScreenWidth / 2, gPointerScreenHeight / 2, gPointerScreenWidth,
+		                                gPointerScreenHeight, gPointerScreenWidth, gPointerScreenHeight, 0.0f, 0, TRUE);
+		StartScreenShake(&game->mQuake, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		FbBlur* blur    = &game->mBlur;
+		blur->mAlpha    = 0.0f;
+		blur->mTarget   = 0.0f;
+		blur->mSpeed    = 0.0f;
+		game->mLoadStep = 21;
+	} else {
+		game->mLoadStep = 22;
+	}
+	game->_41F0 = 3;
+	if (showName) {
+		StartStageNameBubbles(game, 0x80FFFF00, 2.0f); // pale cyan for two seconds
+	}
+}
+
+/**
+ * @note Address: 0x8002B1F4
+ * @note Size: 0xF4
+ */
+// NONMATCHING: retail rounds the frame through a double before it adds the rate
+// the scene animation is at its last frame, or will be within this step
+bool CObj::IsAnmScnEnd()
+{
+	f32 frame = mObject.m_resources.scn != NULL ? mObject.m_resources.scn->GetFrame() : 0.0f;
+	f32 end   = mObject.m_resources.scn != NULL ? mObject.m_resources.scn->mRes.GetNumFrame() - 1 : 0.0f;
+	return frame + mAnimRate[1] >= end;
+}
+
+/**
+ * @note Address: 0x8002B18C
+ * @note Size: 0x68
+ */
+// NONMATCHING: retail tests the live bit as a negated bool and keeps each check's result in a flag of its own,
+// the trace of inlines whose names are not known
+// whether the scene camera's animation is done; without a scene of its own it always is
+extern "C" BOOL IsSceneCameraAnmEnd(CGame* game)
+{
+	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	if (camera != NULL && (camera->mStatus.mFlags & 1) && camera->mScene != NULL && camera->mScene->_2888 != NULL) {
+		return camera->IsAnmScnEnd();
+	}
+	return TRUE;
+}
+
+/**
+ * @note Address: 0x8002B088
+ * @note Size: 0x104
+ */
+// NONMATCHING: retail tests the live bit as a negated bool and keeps each check's result in a flag of its own,
+// the trace of inlines whose names are not known
+// lets go of the scene camera's animation and puts the perspective camera back to its defaults
+extern "C" void StopSceneCameraAnm(CGame* game)
+{
+	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
+		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
+		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
+			camera->ReleaseModelWork();
+			game->GetPerspectiveCamera()->Init(1.0f, 80000.0f, 30.0f, gScreenWidthScale, &gGame.mGs.mScreen);
+		}
+	}
+}
+
+/**
+ * @note Address: 0x8002AF94
+ * @note Size: 0xF4
+ */
+// NONMATCHING: retail tests the live bit as a negated bool and keeps each check's result in a flag of its own,
+// the trace of inlines whose names are not known
+// plays scene animation id on the scene camera from frame at rate; the camera, or NULL when it has no
+// scene animations
+extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate)
+{
+	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
+		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
+		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
+			camera->SetAnmScn(id, frame, rate);
+			return camera;
+		}
+	}
+	return NULL;
 }
 
 /**
@@ -336,6 +925,165 @@ extern "C" void DrawGameMovie(CGame* game)
 }
 
 /**
+ * @note Address: 0x80027E84
+ * @note Size: 0x96C
+ */
+// NONMATCHING: written from the retail code, not tuned; retail's FSqrt is nw4r's with the domain warning
+// (WiiReportMathError), the header's has none
+// renders the shadow from straight above the focus object (or the scene camera's interest) into a
+// texture: the 0x4 objects cast it into the alpha, the 0x8 ones get their ground shadow drawn, both
+// fading over a hundred units unless the stage keeps them at full strength
+extern "C" void RenderSceneShadow(CGame* game)
+{
+	if (!game->GetStatusFlags(1)) {
+		return;
+	}
+	if (game->mHomeMenu.IsOpen()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	CVec focus;
+	CCamera* camera = (CCamera*)game->mShadowCamera;
+	if (game->mShadowFocus != NULL && (game->mShadowFocus->mStatus.mFlags & 1)) {
+		CVec* pos = game->mShadowFocus->GetPos();
+		focus.x   = pos->x;
+		focus.y   = pos->y;
+		focus.z   = pos->z;
+	} else {
+		CCamera* scene = game->GetCamera();
+		focus.x        = scene->mView.mInterest.x;
+		focus.y        = scene->mView.mInterest.y;
+		focus.z        = scene->mView.mInterest.z;
+	}
+	f32 width  = game->mShadowWidth > 0.0f ? game->mShadowWidth : 100.0f;
+	f32 height = game->mShadowHeight > 0.0f ? game->mShadowHeight : 100.0f;
+	f32 alpha  = game->mShadowAlpha > 0.0f ? game->mShadowAlpha : 1.0f;
+	camera->Init(height, -height, -width, width, camera->mNear, camera->mFar, 1.0f, &gGame.mGs.mScreen);
+	camera->SetEye(focus.x, 400.0f + focus.y, focus.z);
+	camera->SetInterest(focus);
+	camera->SetUp(0.0f, 0.0f, 1.0f);
+	camera->vf88(1.0f, 1.0f, game->mShadowTexWidth - 2, game->mShadowTexHeight - 2, 0.0f, 1.0f);
+	game->mShadowStrength = alpha;
+	game->BeginCamera(camera);
+	fn_802AEF34(&gGame.mGs.mSceneHead, camera, TRUE);
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+	gGame.mGs.mCurRenderState->SetDstAlpha(GX_FALSE, 0);
+
+	f32 interestY = game->GetCamera()->mView.mInterest.y;
+	f32 strength  = game->mShadowStrength;
+	for (s32 i = 0; i < game->mEffectRefCount; i++) {
+		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		if (!(obj->mStatus.mFlags & 4)) {
+			continue;
+		}
+		if (interestY - obj->GetPos()->y >= 40.0f) {
+			continue;
+		}
+		CVec* pos = obj->GetPos();
+		f32 dz    = focus.z - pos->z;
+		f32 dx    = focus.x - pos->x;
+		f32 dist  = nw4r::math::FSqrt(dx * dx + dz * dz);
+		f32 fade;
+		if (GetStageInfo()->mFlags & 1) {
+			fade = 1.0f;
+		} else { // else it fades over a hundred units
+			fade = (100.0f - dist) / 100.0f;
+			if (fade < 0.0f) {
+				fade = 0.0f;
+			}
+			if (fade > 0.8f) {
+				fade = 0.8f;
+			}
+		}
+		strength = sin(3.1415927f * fade * 0.5f); // a half-sine falloff
+		obj->DrawGroundShadow(strength);
+	}
+
+	fn_8027B6B8(gGame.mGs.mSceneHead, TRUE, 4);
+	GXColor color = { 0, 0, 0, 0 };
+	color.a       = 100.0f * strength;
+	GXSetNumTexGens(0);
+	GXSetNumChans(1);
+	GXSetNumTevStages(1);
+	GXSetNumIndStages(0);
+	GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+	GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+	GXSetChanAmbColor(GX_COLOR0A0, color);
+	GXSetChanMatColor(GX_COLOR0A0, color);
+	GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+	GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
+	GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+	GXSetBlendMode(GX_BM_NONE, GX_BL_ZERO, GX_BL_ZERO, GX_LO_COPY);
+	fn_8027B40C(gGame.mGs.mSceneHead);
+	fn_8027B484(gGame.mGs.mSceneHead);
+	fn_8027B570(gGame.mGs.mSceneHead);
+	fn_8027B644(gGame.mGs.mSceneHead);
+	fn_8027B5D0(gGame.mGs.mSceneHead);
+	WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
+	while (scene->mPending != 0) {
+		if (scene->mPending != 0) {
+			scene->vf038(scene->mPending - 1);
+		}
+	}
+	fn_8027B6B8(gGame.mGs.mSceneHead, FALSE, 2);
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+	if (gGame.mGs.mCurRenderState != NULL) {
+		gGame.mGs.mCurRenderState->Apply();
+	}
+	if (gGame.mGs.mCurTevStage != NULL) {
+		gGame.mGs.mCurTevStage->Apply();
+	}
+	if (gGame.mGs.mCurChannel != NULL) {
+		gGame.mGs.mCurChannel->Apply();
+	}
+
+	for (s32 i = 0; i < game->mEffectRefCount; i++) {
+		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		if (obj->GetCategory() == 3 || !(obj->mStatus.mFlags & 8)) {
+			continue;
+		}
+		if (interestY - obj->GetPos()->y >= 40.0f) {
+			continue;
+		}
+		CVec* pos = obj->GetPos();
+		f32 dz    = focus.z - pos->z;
+		f32 dx    = focus.x - pos->x;
+		f32 dist  = nw4r::math::FSqrt(dx * dx + dz * dz);
+		f32 fade;
+		if (GetStageInfo()->mFlags & 1) {
+			fade = 1.0f;
+		} else {
+			fade = (100.0f - dist) / 100.0f;
+			if (fade < 0.0f) {
+				fade = 0.0f;
+			}
+			if (fade > 0.8f) {
+				fade = 0.8f;
+			}
+		}
+		f32 opacity = sin(3.1415927f * fade * 0.5f);
+		obj->DrawGroundShadowAt(obj->GetPos(), opacity);
+	}
+
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+	GXSetTexCopySrc(0, 0, game->mShadowTexWidth, game->mShadowTexHeight);
+	GXSetTexCopyDst(game->mShadowTexWidth, game->mShadowTexHeight, GX_CTF_A8, GX_FALSE);
+	GXCopyTex(game->mShadowImage, GX_TRUE);
+	GXPixModeSync();
+	GXInvalidateTexAll();
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+	fn_8027AE04(gGame.mGs.mSceneHead, 0);
+}
+
+/**
  * @note Address: 0x800287F0
  * @note Size: 0x1A8
  */
@@ -374,11 +1122,324 @@ void CGame::DrawHud()
 }
 
 /**
+ * @note Address: 0x80027D48
+ * @note Size: 0x13C
+ */
+// the effects that stay over the screen color while it is up: the 0x200 objects, and the ones that
+// carry both of the flags 0x0400000000000000 and 0x0000400000000000
+extern "C" void DrawObjectEffectsOverFade(CGame* game)
+{
+	if (!game->GetStatusFlags(1)) {
+		return;
+	}
+	if (game->mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	if (game->mColor0.mColor.mColor.a > 0.0f) {
+		for (s32 i = 0; i < game->mEffectRefCount; i++) {
+			XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+			if (obj->mStatus.mFlags & 1) {
+				if (obj->mStatus.mFlags & 0x200) {
+					obj->DrawObjectEffects();
+				} else if ((obj->mStatus.mFlags & 0x0400000000000000) && (obj->mStatus.mFlags & 0x0000400000000000)) {
+					obj->DrawObjectEffects();
+				}
+			}
+		}
+	}
+}
+
+/**
  * @note Address: 0x80027D44
  * @note Size: 0x4
  */
 void XObj::DrawObjectEffects()
 {
+}
+
+/**
+ * @note Address: 0x80027BF4
+ * @note Size: 0x150
+ */
+// every live object's effects, then the stage's function 3; while the screen color is up the ones
+// DrawObjectEffectsOverFade draws over it are left out
+extern "C" void DrawObjectEffectsPass(CGame* game)
+{
+	if (!game->GetStatusFlags(1)) {
+		return;
+	}
+	if (game->mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	for (s32 i = 0; i < game->mEffectRefCount; i++) {
+		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		if (obj->mStatus.mFlags & 1) {
+			if (game->mColor0.mColor.mColor.a > 0.0f
+			    && ((obj->mStatus.mFlags & 0x200)
+			        || ((obj->mStatus.mFlags & 0x0400000000000000) && (obj->mStatus.mFlags & 0x0000400000000000)))) {
+				continue;
+			}
+			obj->DrawObjectEffects();
+		}
+	}
+	CallStageModule(3, 0, NULL);
+}
+
+/**
+ * @note Address: 0x800276F8
+ * @note Size: 0x4FC
+ */
+// draws the scene list through the main camera: kind 3 first, then the rest, then once more into the
+// alpha only (the 0x820040 objects and what the player carries) for the outline, and last the late pass
+// of the leticker, army and spider objects
+void CGame::DrawScene()
+{
+	if (!GetStatusFlags(1)) {
+		return;
+	}
+	if (mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = mMenuActive && _AE34;
+	if (menuShown) {
+		return;
+	}
+	XObj* targets[2]       = { NULL, NULL };
+	WiiPlayerState* player = mPlayer;
+	targets[0]             = player->mLiftPlugTarget;
+	if (targets[1] == NULL) {
+		targets[1] = player->mLiftTarget;
+	}
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+	for (s32 i = 0; i < mSceneRefCount; i++) {
+		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+		if (obj->GetCategory() == 3) {
+			obj->DrawObject();
+		}
+	}
+	for (s32 i = 0; i < mSceneRefCount; i++) {
+		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+		if (obj->GetCategory() != 3) {
+			obj->DrawObject();
+		}
+	}
+	DrawSceneQueue(GetCamera()->mViewMtx);
+
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+	gGame.mGs.mCurRenderState->SetDstAlpha(GX_TRUE, 4);
+	for (s32 i = 0; i < mSceneRefCount; i++) {
+		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+		if (obj->GetCategory() != 3 && ((obj->mStatus.mFlags & 0x820040) || obj == targets[1])) {
+			obj->DrawObject();
+		}
+	}
+	DrawSceneQueue(GetCamera()->mViewMtx);
+
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+	for (s32 i = 0; i < mSceneRefCount; i++) {
+		XObj* obj = (XObj*)mSceneRefs[i].mObj;
+		if (obj->GetCategory() == 9) {
+			((XObjLeticker*)obj)->DrawLate();
+		} else if (obj->GetCategory() == 16) {
+			((XObjArmy*)obj)->DrawLate();
+		} else if (obj->GetCategory() == 17) {
+			((XObjSpider*)obj)->DrawLate();
+		} else if (obj->GetCategory() == 18) {
+			((XObjSpiderSmall*)obj)->DrawLate();
+		}
+	}
+	CallStageModule(2, 0, NULL);
+	DrawSceneQueue(GetCamera()->mViewMtx);
+}
+
+/**
+ * @note Address: 0x8002695C
+ * @note Size: 0x4CC
+ */
+// NONMATCHING: not tuned; the camera copy and the loop's registers differ
+// draws what each live mirror shows into its texture: the 0x2000 objects through the mirror's camera
+extern "C" void RenderMirrorTextures(CGame* game)
+{
+	if (!game->GetStatusFlags(1) || !game->GetStatusFlags(0x1000)) {
+		return;
+	}
+	if (game->mHomeMenu.IsOpen()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	CGame::FbMirrorEx* mirrors = (CGame::FbMirrorEx*)game->mMirrors;
+	for (s32 i = 0; i < 5; i++) {
+		FbMirror* mirror = &mirrors[i];
+		if (mirror->mJoint == NULL || !mirror->mVisible) {
+			continue;
+		}
+		bool off = mirror->mJoint == NULL || (mirror->mJoint->mStatus & 0x0001000000000000);
+		if (off) {
+			continue;
+		}
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+		CCamera camera = mirror->mCamera;
+		Mtx view;
+		PSMTXCopy(mirror->mView, view);
+		camera.vf64(view);
+		if (game->BeginCamera(&camera)) {
+			for (s32 j = 0; j < game->mSceneRefCount; j++) {
+				XObj* obj = (XObj*)game->mSceneRefs[j].mObj;
+				if (obj->mStatus.mFlags & 0x2000) {
+					obj->DrawReflection(view);
+				}
+			}
+			DrawSceneQueue(view);
+			game->vf54();
+			mirror->Copy();
+		}
+	}
+}
+
+/**
+ * @note Address: 0x80026E28
+ * @note Size: 0x298
+ */
+// NONMATCHING: FbSubwin::Copy is a virtual call in retail (see ChangeGameStage)
+// draws the subwindow's view into its quarter of the screen and copies it: the 0x2000000 objects always,
+// the rest when they are in the subwindow camera's view
+extern "C" void RenderSubwindow(CGame* game)
+{
+	if (!game->GetStatusFlags(1) || !game->GetStatusFlags(0x100)) {
+		return;
+	}
+	if (game->mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	FbSubwin* subwin = (FbSubwin*)game->mSubwin;
+	if (!(subwin->mAmount > 0.0f)) {
+		return;
+	}
+	if (game->BeginCamera(&subwin->mCamera)) {
+		GXSetScissor(0, 0, gPointerScreenWidth / 2, gPointerScreenHeight / 2);
+		for (s32 i = 0; i < game->mObjectCount; i++) {
+			XObj* obj = (XObj*)game->mObjects[i];
+			bool draw = false;
+			if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+				if (obj->mStatus.mFlags & 0x2000000) {
+					draw = true;
+				} else if (obj->ProjectVisibleBounds(NULL, NULL, &subwin->mCamera, obj->GetFloorXZExtent() * 0.5f,
+				                                     obj->GetCollisionHeight())) {
+					draw = true;
+				}
+			}
+			if (draw) {
+				obj->DrawObject();
+			}
+		}
+		DrawSceneQueue(NULL);
+		game->vf54();
+	}
+	subwin->Copy();
+}
+
+/**
+ * @note Address: 0x80027114
+ * @note Size: 0x5E4
+ */
+// NONMATCHING: not tuned; the clear quad's corners are built in another order
+// clears the screen's alpha through the screen camera, then draws the 0x40 objects and what the player
+// carries (unless he is plugging it in) into the alpha only, for the outline pass
+extern "C" void DrawObjectAlphaMask(CGame* game)
+{
+	if (!game->GetStatusFlags(1) || !game->GetStatusFlags(0x40)) {
+		return;
+	}
+	if (game->mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	if (game->vf5C()) {
+		SetGsChannelEnabled(&gGame.mGs, 4, 0);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
+		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetDstAlpha(GX_FALSE, 0);
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		Vec quad[4] = { 0 }; // a full-screen clear
+		quad[0].x   = (f32)gScreenLeft;
+		quad[0].y   = (f32)gScreenTop;
+		quad[1].x   = (f32)gScreenRight;
+		quad[1].y   = (f32)gScreenTop;
+		quad[2].x   = (f32)gScreenRight;
+		quad[2].y   = (f32)gScreenBottom;
+		quad[3].x   = (f32)gScreenLeft;
+		quad[3].y   = (f32)gScreenBottom;
+		DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, 4, quad[1].x, quad[1].y, quad[1].z, 4, quad[2].x, quad[2].y,
+		                 quad[2].z, 4, quad[3].x, quad[3].y, quad[3].z, 4);
+		gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+		game->vf54();
+	}
+	if (game->BeginSceneCamera()) {
+		XObj* targets[2]       = { NULL, NULL };
+		WiiPlayerState* player = game->mPlayer;
+		targets[0]             = player->mLiftPlugTarget;
+		if (targets[1] == NULL) {
+			targets[1] = player->mLiftTarget;
+		}
+		fn_8027B6B8(gGame.mGs.mSceneHead, TRUE, 4);
+		GXSetNumTexGens(0);
+		GXSetNumChans(1);
+		GXSetNumTevStages(1);
+		GXSetNumIndStages(0);
+		GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+		GXSetChanCtrl(GX_COLOR1A1, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+		GXColor white = { 0xFF, 0xFF, 0xFF, 0xFF };
+		GXSetChanAmbColor(GX_COLOR0A0, white);
+		GXColor mat = { 0xFF, 0xFF, 0xFF, 0xFF };
+		GXSetChanMatColor(GX_COLOR0A0, mat);
+		GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+		GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetDstAlpha(GX_TRUE, 0);
+		for (s32 i = 0; i < game->mSceneRefCount; i++) {
+			XObj* obj = (XObj*)game->mSceneRefs[i].mObj;
+			if (obj->mStatus.mFlags & 0x40) {
+				obj->DrawObject();
+			} else if (obj == targets[1] && player->mLift.mState != 24) { // not while he plugs it in
+				obj->DrawObject();
+			}
+		}
+		DrawSceneQueue(NULL);
+		fn_8027B6B8(gGame.mGs.mSceneHead, FALSE, 2);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+		gGame.mGs.mCurRenderState->SetDstAlpha(GX_FALSE, 0);
+		game->vf54();
+	}
 }
 
 /**
@@ -402,6 +1463,49 @@ f32 XObj::GetCollisionHeight()
 f32 XObj::GetFloorXZExtent()
 {
 	return mFloorXZExtent;
+}
+
+/**
+ * @note Address: 0x80026440
+ * @note Size: 0x50C
+ */
+// NONMATCHING: not tuned; the camera copy and the loop's registers differ
+// draws the 0x20000000 objects mirrored in the floor through a copy of the main camera under the
+// floor's reflection
+extern "C" void RenderFloorReflection(CGame* game)
+{
+	if (!game->GetStatusFlags(1) || !game->GetStatusFlags(0x20)) {
+		return;
+	}
+	if (game->mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+	CCamera camera = *game->GetCamera();
+	Mtx view;
+	PSMTXConcat(camera.mViewMtx, game->mFloorReflectMtx, view);
+	camera.vf64(view);
+	if (game->BeginCamera(&camera)) {
+		for (s32 i = 0; i < game->mEffectRefCount; i++) {
+			XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+			if ((obj->mStatus.mFlags & 0x20000000) && (obj->mBaseMtxPtr == NULL || (obj->mStatus.mFlags & 0x0000400000000000))) {
+				obj->SetCullMode(1);
+				obj->DrawReflection(view);
+			}
+		}
+		DrawSceneQueue(view);
+		game->vf54();
+	}
+	for (s32 i = 0; i < game->mEffectRefCount; i++) {
+		XObj* obj = (XObj*)game->mEffectRefs[i].mObj;
+		if ((obj->mStatus.mFlags & 0x20000000) && (obj->mBaseMtxPtr == NULL || (obj->mStatus.mFlags & 0x0000400000000000))) {
+			obj->ResetCullMode();
+		}
+	}
 }
 
 /**
@@ -451,12 +1555,353 @@ BOOL CBase::vf5C()
 }
 
 /**
+ * @note Address: 0x80025050
+ * @note Size: 0x1304
+ */
+// NONMATCHING: written from the retail code, not tuned; FbSubwin's Draw is a virtual call in retail (see
+// ChangeGameStage) and the effect view's two inlines are guesses
+// the frame: the shadow, subwindow, mirror and floor passes, the scene, the outline and blur, the effects,
+// then the screen layer (hud, wipes, movie, stage name, messages), the menus and the HOME Menu on top.
+// the quake shakes the camera's interest for the frame only
+void CGame::Draw()
+{
+	if (mResetRequested) {
+		if (mHomeMenu.IsActive() && vf5C()) {
+			DrawWiiHomeMenu(&mHomeMenu);
+			vf54();
+		}
+		return;
+	}
+	CVec interest = GetCamera()->mView.mInterest;
+	bool shaking  = mQuake.mShake[0].x != 0.0f || mQuake.mShake[0].y != 0.0f || mQuake.mShake[0].z != 0.0f;
+	if (shaking) {
+		CVec offset = mQuake.mShake[0] * (f32)mQuake.mSign;
+		CVec moved  = interest + offset;
+		GetCamera()->SetInterest(moved);
+		GetCamera()->CalcEye();
+	}
+	fn_8001E1C8(this);
+	if (gGame.mGs.mCurRenderState != NULL) {
+		gGame.mGs.mCurRenderState->Apply();
+	}
+	if (gGame.mGs.mCurTevStage != NULL) {
+		gGame.mGs.mCurTevStage->Apply();
+	}
+	if (gGame.mGs.mCurChannel != NULL) {
+		gGame.mGs.mCurChannel->Apply();
+	}
+	RenderSceneShadow(this);
+	fn_802AB860(&gGame.mGs);
+	SetCameraLight();
+	if (gGame.mGs.mSceneHead->_2888 != NULL) {
+		fn_802BE414(_B7A8, gGame.mGs.mLight);
+		void* fog = fn_8027AE0C(gGame.mGs.mSceneHead, 0);
+		GXFogType type;
+		f32 startZ;
+		f32 endZ;
+		f32 nearZ;
+		f32 farZ;
+		GXColor color;
+		fn_8028175C(&fog, &type, &startZ, &endZ, &nearZ, &farZ, &color);
+		GXColor fogColor = color;
+		fn_802BE4D4(_B7A8, type, fogColor, startZ, endZ, nearZ, farZ);
+	}
+	RenderSubwindow(this);
+	RenderMirrorTextures(this);
+	RenderFloorReflection(this);
+	if (GetStatusFlags(0x40) && !(mPlayer->mStatus & 0x200000)) {
+		DrawObjectAlphaMask(this);
+	}
+	if (BeginSceneCamera()) {
+		DrawScene();
+		vf54();
+	}
+	FbEffect* outline = &mOutline;
+	if (vf5C()) {
+		if (GetStatusFlags(1)) {
+			if (GetStatusFlags(0x40)) {
+				outline->Draw(FBEFF_COPY_A8 | 0x10);
+			}
+			if (GetStatusFlags(0x10000)) {
+				outline->Draw(FBEFF_OUTLINE);
+			}
+		}
+		mBlur.Draw();
+		vf54();
+	}
+	if (BeginSceneCamera()) {
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		DrawObjectEffectsPass(this);
+		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
+			MtxP view = GetEffectView(this);
+			for (u32 i = 0; i < 6; i++) {
+				if (i != 1 && i != 4) {
+					fn_802BE19C(_B7A8, view, i);
+				}
+			}
+		}
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		vf54();
+	}
+	if (mColor0.mColor.mColor.a > 0.0f && GetStatusFlags(1)) { // what stays over the screen color
+		outline->Draw(FBEFF_COPY_I8 | FBEFF_OVERLAY);
+		if (BeginSceneCamera()) {
+			for (s32 i = 0; i < mSceneRefCount; i++) {
+				XObj* obj = (XObj*)mSceneRefs[i].mObj;
+				if (obj->mStatus.mFlags & 0x200) {
+					obj->DrawObject();
+				} else if ((obj->mStatus.mFlags & 0x0400000000000000) && (obj->mStatus.mFlags & 0x0000400000000000)) {
+					obj->DrawObject();
+				}
+			}
+			DrawSceneQueue(GetCamera()->mViewMtx);
+			vf54();
+		}
+	}
+	if (BeginSceneCamera()) {
+		gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		DrawObjectEffectsOverFade(this);
+		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
+			MtxP view = GetEffectView(this);
+			for (u32 i = 0; i < 6; i++) {
+				if (i == 1) {
+					fn_802BE19C(_B7A8, view, i);
+				}
+			}
+		}
+		vf54();
+	}
+
+	SetScreenLight();
+	if (gGame.mGs.mSceneHead->_2888 != NULL) {
+		fn_802BE414(_B7A8, gGame.mGs.mLight);
+	}
+	DrawTitleScreen(mTitle);
+	if (vf5C()) {
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		DrawHud();
+		fn_802BE19C(_B7A8, GetScreenCamera()->mViewMtx, 4);
+		Vec quad[4] = { { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f } }; // the depth goes back
+		quad[0].x   = (f32)gScreenLeft;
+		quad[0].y   = (f32)gScreenTop;
+		quad[1].x   = (f32)gScreenRight;
+		quad[1].y   = (f32)gScreenTop;
+		quad[2].x   = (f32)gScreenRight;
+		quad[2].y   = (f32)gScreenBottom;
+		quad[3].x   = (f32)gScreenLeft;
+		quad[3].y   = (f32)gScreenBottom;
+		gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
+		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, 0, quad[1].x, quad[1].y, quad[1].z, 0, quad[2].x, quad[2].y,
+		                 quad[2].z, 0, quad[3].x, quad[3].y, quad[3].z, 0);
+		gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
+			FbSubwin* subwin = (FbSubwin*)mSubwin;
+			if (GetStatusFlags(1) && GetStatusFlags(0x100) && !mHomeMenu.IsRunning() && !(mMenuActive && _AE34) && subwin->mAmount > 0.0f
+			    && !(subwin->mFlags & 4)) {
+				subwin->Draw();
+			}
+			mRoboeyes.Draw(&gGame.mGs, 0);
+			DrawGameHud((InfoScrn*)mInfoScrn);
+			if (GetStatusFlags(1)) {
+				mMotionControlCamera.Draw();
+			}
+			if (mMovieFlags & 2) { // a movie under the wipes
+				DrawGameMovie(this);
+			}
+			DrawScreenColorOverlay(&mFade, &gGame.mGs);
+			mWipeCircle.Draw(&gGame.mGs, 0);
+			mWipeTex.Draw(&gGame.mGs, 1);
+			mWipeCustom.Draw(&gGame.mGs, 1);
+			mWipeTile.Draw(&gGame.mGs, 1);
+			mWipeCine.Draw(&gGame.mGs, 1);
+			if (GetStatusFlags(1) && !mMenuActive) {
+				bool faded = mFade.mColor.r != 0.0f || mFade.mColor.g != 0.0f || mFade.mColor.b != 0.0f || mFade.mColor.a != 0.0f;
+				if (!faded || mFade.mColor.a < 1.0f) {
+					mMotionControlCamera.fn_80169528();
+				}
+			}
+			if (!(mMovieFlags & 2)) {
+				DrawGameMovie(this);
+			}
+			DrawStageNameBubbles(this);
+			if (GetStatusFlags(0x400)) {
+				DrawPlayerEquipmentRings(mPlayer->_19EE4);
+			}
+			if (GetStatusFlags(0x800)) {
+				DrawOXMenu(&mPlayer->mOXMenu);
+			}
+			if (!mMotionControlCamera.IsAction(4)) {
+				fn_80094E90(_4C8E0);
+				CMsg* msgs = (CMsg*)mMsgs;
+				for (s32 i = 0; i < 2; i++) {
+					CMsg_Draw(&msgs[i]);
+				}
+			}
+			DrawSceneQueue(GetScreenCamera()->mViewMtx);
+		}
+		vf54();
+	}
+	if (!mHomeMenu.IsRunning()) {
+		DrawCurrentLogo(&mLogoState);
+	}
+	if (vf5C()) {
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		if (!mHomeMenu.IsRunning()) {
+			fn_80084C84(&mMenuActive);
+			DrawObjectLoadingProgress((InfoScrn*)mInfoScrn);
+			DrawOpenMenus(&mMenuActive);
+			vf7C();
+		}
+		fn_80028998(this);
+		DrawWiiHomeMenu(&mHomeMenu);
+		DrawDiscError();
+		DrawSceneQueue(GetScreenCamera()->mViewMtx);
+		vf54();
+	}
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+	gGame.mGs.ResetZMode();
+	for (s32 i = 0; i < mObjectCount; i++) {
+		XObj* obj = (XObj*)mObjects[i];
+		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+			ClearActiveObjectFloors(obj);
+		}
+	}
+	GetCamera()->SetInterest(interest); // the shake was for this frame only
+}
+
+/**
  * @note Address: 0x8002504C
  * @note Size: 0x4
  */
 void CGame::Reset(u32 code)
 {
 	CBase::Reset(code);
+}
+
+/**
+ * @note Address: 0x80024CC0
+ * @note Size: 0x38C
+ */
+// NONMATCHING: the effect manager is still bytes, so its two counts are read through casts; the strings
+// are addressed from the whole file's pool
+// carries out a requested reset once nothing is busy: without a disc it returns to the menu at once,
+// otherwise it waits for the HOME Menu, a suit change, the effects and the sound to settle. a reset to
+// the title from a running game changes the stage instead of restarting
+extern "C" void UpdateResetRequest(CGame* game)
+{
+	if (!game->mResetRequested || game->mSaveManager.mJobStarted) {
+		return;
+	}
+	if (!game->mDiskOk) {
+		if (game->mResetType == 2) {
+			game->Reset(2);
+		} else {
+			game->mResetRequested = false;
+			game->mPad.Clear();
+			game->Reset(4);
+		}
+		return;
+	}
+	if (game->GetStatusFlags(0x40)) {
+		game->ClearStatusFlags(0x40);
+	}
+	if (!game->mStageName.mActive) {
+		game->mStageName.mActive = FALSE;
+		for (s32 i = 0; i < 20; i++) {
+			game->mStageName.mChars[i].mScale = 0.0f;
+			game->mStageName.mChars[i].mWait  = 0.0f;
+			game->mStageName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
+			game->mStageName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
+		}
+	}
+	if (game->mHomeMenu.IsOpen()) {
+		return;
+	}
+	if (fn_800C61C8()) {
+		return;
+	}
+	if (game->GetPlayer()->mSuits.mLoadStep != 0) {
+		return;
+	}
+	// the effect manager's two live counts
+	if (*(s32*)&gGame._B7A8[0x8] != 0 || *(s32*)&gGame._B7A8[0x270] != 0) {
+		return;
+	}
+	if (gGame.mSound.mLoadPending) {
+		return;
+	}
+	game->mResetRequested = false;
+	game->mPad.Clear();
+	switch (game->mResetType) {
+	case 2:
+		game->Reset(2);
+		break;
+	case 4:
+		game->Reset(4);
+		break;
+	case 5:
+		game->Reset(5);
+		break;
+	case 3:
+		if (!game->mDiskOk) {
+			game->Reset(4);
+		} else if (game->mLoadStep <= 20) {
+			game->Reset(3);
+		} else {
+			fn_80084BF0(&game->mMenuActive, 6);
+			ChangeGameStage(game, 10000, TRUE);
+		}
+		break;
+	default:
+		OSPanic("game.cpp", 2979, "Unknown reset type - %d\n", game->mResetType);
+		break;
+	}
 }
 
 /**
@@ -505,15 +1950,29 @@ void XObj::vf16C()
 }
 
 /**
+ * @note Address: 0x80024BB8
+ * @note Size: 0x1C
+ */
+// moves the object there at once: the target goes along, so nothing steps
+void CObj::SetPos(f32 x, f32 y, f32 z)
+{
+	mMoveTranslate.x = x;
+	mMoveTranslate.y = y;
+	mMoveTranslate.z = z;
+	mMoveTarget0.x   = x;
+	mMoveTarget0.y   = y;
+	mMoveTarget0.z   = z;
+}
+
+/**
  * @note Address: 0x80024B4C
  * @note Size: 0x6C
  */
-// NONMATCHING: retail has nw4r::math::VEC3Add's paired-single code inline here; the nw4r math headers
-// do not compile under the game's include paths, so this calls the SDK function as the GameCube did
+// NONMATCHING: retail builds the sum in a local and copies it out, this one builds it in the result
 CVec CVec::operator+(Vec v) const
 {
 	CVec sum = *this;
-	PSVECAdd(&sum, &v, &sum);
+	nw4r::math::VEC3Add((nw4r::math::VEC3*)&sum, (nw4r::math::VEC3*)&sum, (nw4r::math::VEC3*)&v);
 	return sum;
 }
 
@@ -521,10 +1980,10 @@ CVec CVec::operator+(Vec v) const
  * @note Address: 0x80024AE8
  * @note Size: 0x64
  */
-// NONMATCHING: nw4r::math::VEC3Scale inline in retail, see operator+
+// NONMATCHING: as operator+
 CVec CVec::operator*(f32 s) const
 {
 	CVec product = *this;
-	PSVECScale(&product, &product, s);
+	nw4r::math::VEC3Scale((nw4r::math::VEC3*)&product, (nw4r::math::VEC3*)&product, s);
 	return product;
 }
