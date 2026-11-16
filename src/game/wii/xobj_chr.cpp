@@ -24,17 +24,17 @@ void ClearObjectStatusFlags(XObj* object, u64 mask)
 	object->mStatus.mFlags &= ~mask;
 }
 
-BOOL HasPlayerActionTarget(const WiiPlayerAction* action)
+BOOL HasPlayerActionTarget(const XAction* action)
 {
 	return action->mTarget != NULL;
 }
 
-XObj* GetPlayerActionTarget(const WiiPlayerAction* action)
+XObj* GetPlayerActionTarget(const XAction* action)
 {
 	return action->mTarget;
 }
 
-BOOL IsLiftActionState(const WiiPlayerAction* act, s32 wanted)
+BOOL IsLiftActionState(const XAction* act, s32 wanted)
 {
 	return (u8)(wanted == act->mState);
 }
@@ -45,12 +45,12 @@ s32 GetObjectPlacementParam(const XObj* object, s32 index)
 	return entries[index];
 }
 
-BOOL IsPushActionState(const WiiPlayerAction* act, s32 wanted)
+BOOL IsPushActionState(const XAction* act, s32 wanted)
 {
 	return (u8)(wanted == act->mState);
 }
 
-void SetPushActionState(WiiPlayerAction* act, s32 state)
+void SetPushActionState(XAction* act, s32 state)
 {
 	act->mState = state;
 }
@@ -70,7 +70,7 @@ BOOL IsPlayerAttachmentEquipped(const WiiPlayerState* chr, s32 wanted)
 	return (u8)(wanted == chr->GetAttachment());
 }
 
-void SetPlayerActionTarget(WiiPlayerAction* action, XObj* target)
+void SetPlayerActionTarget(XAction* action, XObj* target)
 {
 	action->mTarget      = target;
 	action->mTargetFloor = action->mTarget->mSelectedFloorIndex;
@@ -99,7 +99,7 @@ void CopyVecToCVec(Vec* dst, const Vec* src)
 	dst->z = src->z;
 }
 
-BOOL IsTumbleActionState(const WiiPlayerAction* act, s32 wanted)
+BOOL IsTumbleActionState(const XAction* act, s32 wanted)
 {
 	return (u8)(wanted == act->mState);
 }
@@ -109,37 +109,37 @@ u32 GetMaskedPlayerStatusFlags(const WiiPlayerState* chr, u32 mask)
 	return mask & chr->mPlayerFlags;
 }
 
-BOOL IsHangActionState(const WiiPlayerAction* act, s32 wanted)
+BOOL IsHangActionState(const XAction* act, s32 wanted)
 {
 	return (u8)(wanted == act->mState);
 }
 
-BOOL IsJumpActionState(const WiiPlayerAction* action, s32 state)
+BOOL IsJumpActionState(const XAction* action, s32 state)
 {
 	return state == action->mState;
 }
 
-BOOL IsLadderActionState(const WiiPlayerAction* action, s32 state)
+BOOL IsLadderActionState(const XAction* action, s32 state)
 {
 	return state == action->mState;
 }
 
-BOOL IsRopeActionState(const WiiPlayerAction* action, s32 state)
+BOOL IsRopeActionState(const XAction* action, s32 state)
 {
 	return state == action->mState;
 }
 
-BOOL IsCopterActionState(const WiiPlayerAction* action, s32 state)
+BOOL IsCopterActionState(const XAction* action, s32 state)
 {
 	return state == action->mState;
 }
 
-BOOL IsPopperActionState(const WiiPlayerAction* act, s32 wanted)
+BOOL IsPopperActionState(const XAction* act, s32 wanted)
 {
 	return (u8)(wanted == act->mState);
 }
 
-BOOL IsRadarActionState(const WiiPlayerAction* act, s32 wanted)
+BOOL IsRadarActionState(const XAction* act, s32 wanted)
 {
 	return (u8)(wanted == act->mState);
 }
@@ -160,7 +160,7 @@ f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to)
 	return atan2(to->x - from->x, to->z - from->z);
 }
 
-u32 GetPlayerActionMoveDirection(const WiiPlayerAction* action)
+u32 GetPlayerActionMoveDirection(const XAction* action)
 {
 	return action->mMoveDirection;
 }
@@ -186,7 +186,7 @@ void ResetPlayerHeadOffset(WiiPlayerState* chr)
 	chr->mHeadOffsetReady = 0;
 }
 
-BOOL IsPlayerActionMoveDirection(const WiiPlayerAction* action, s32 wanted)
+BOOL IsPlayerActionMoveDirection(const XAction* action, s32 wanted)
 {
 	return action->mMoveDirection == wanted;
 }
@@ -211,17 +211,17 @@ f32 GetSelectedFloorHeight(const XObj* object)
 	return object->mSelectedFloorHeight;
 }
 
-void SetHangActionState(WiiPlayerAction* act, s32 state)
+void SetHangActionState(XAction* act, s32 state)
 {
 	act->mState = state;
 }
 
-void SetPushTargetState(WiiPlayerAction* act, s32 value)
+void SetPushTargetState(XAction* act, s32 value)
 {
 	act->mTargetState = value;
 }
 
-void SetCopterActionState(WiiPlayerAction* action, s32 state)
+void SetCopterActionState(XAction* action, s32 state)
 {
 	action->mState = state;
 }
@@ -292,14 +292,14 @@ void SetObjectVerticalSpeed(CObjVec* value, f32 y)
 	value->mSpeed.y = y;
 }
 
-BOOL CanFallDuringLadderAction(const WiiPlayerAction* act)
+BOOL CanFallDuringLadderAction(const XAction* act)
 {
 	s32 state = act->mState;
 	bool idle = state == 0 || state == 10;
 	return idle || state == 11;
 }
 
-BOOL CanFallDuringRopeAction(const WiiPlayerAction* act)
+BOOL CanFallDuringRopeAction(const XAction* act)
 {
 	s32 state  = act->mState;
 	bool idle  = state == 0 || state == 9;
@@ -307,17 +307,17 @@ BOOL CanFallDuringRopeAction(const WiiPlayerAction* act)
 	return ended || state == 11;
 }
 
-BOOL CanFallDuringTumbleAction(const WiiPlayerAction* act)
+BOOL CanFallDuringTumbleAction(const XAction* act)
 {
 	return !(act->mState == 8 || act->mState == 9);
 }
 
-BOOL CanFallDuringPopperAction(const WiiPlayerAction*)
+BOOL CanFallDuringPopperAction(const XAction*)
 {
 	return true;
 }
 
-BOOL CanFallDuringRadarAction(const WiiPlayerAction*)
+BOOL CanFallDuringRadarAction(const XAction*)
 {
 	return true;
 }
@@ -328,53 +328,53 @@ CVec* NormalizeVectorInPlace(CVec* value)
 	return value;
 }
 
-BOOL CanLiftActionSlideOnSlope(const WiiPlayerAction*)
+BOOL CanLiftActionSlideOnSlope(const XAction*)
 {
 	return true;
 }
 
-BOOL IsHangActionIdle(const WiiPlayerAction* act)
+BOOL IsHangActionIdle(const XAction* act)
 {
 	return (u8)(act->mState == 0);
 }
 
-BOOL CanJumpActionSlideOnSlope(const WiiPlayerAction* act)
+BOOL CanJumpActionSlideOnSlope(const XAction* act)
 {
 	return act->mState == 0 || act->mState == 4;
 }
 
-BOOL CanLadderActionSlideOnSlope(const WiiPlayerAction* act)
+BOOL CanLadderActionSlideOnSlope(const XAction* act)
 {
 	return act->mState == 0 || act->mState == 11;
 }
 
-BOOL CanRopeActionSlideOnSlope(const WiiPlayerAction* act)
+BOOL CanRopeActionSlideOnSlope(const XAction* act)
 {
 	return act->mState == 0 || act->mState == 10;
 }
 
-BOOL CanPushActionSlideOnSlope(const WiiPlayerAction*)
+BOOL CanPushActionSlideOnSlope(const XAction*)
 {
 	return true;
 }
 
-BOOL CanTumbleActionSlideOnSlope(const WiiPlayerAction*)
+BOOL CanTumbleActionSlideOnSlope(const XAction*)
 {
 	return true;
 }
 
-BOOL CanCopterActionSlideOnSlope(const WiiPlayerAction* act)
+BOOL CanCopterActionSlideOnSlope(const XAction* act)
 {
 	bool idle = act->mState == 0 || act->mState == 6;
 	return idle || act->mState == 9;
 }
 
-BOOL CanPopperActionSlideOnSlope(const WiiPlayerAction*)
+BOOL CanPopperActionSlideOnSlope(const XAction*)
 {
 	return true;
 }
 
-BOOL CanRadarActionSlideOnSlope(const WiiPlayerAction*)
+BOOL CanRadarActionSlideOnSlope(const XAction*)
 {
 	return true;
 }
@@ -384,12 +384,12 @@ f32 GetObjectHitFloorHeight(const XObj* object)
 	return object->mFloorHeights[object->mHitFloorIndex];
 }
 
-s32 GetActionTargetFloor(const WiiPlayerAction* action)
+s32 GetActionTargetFloor(const XAction* action)
 {
 	return action->mTargetFloor;
 }
 
-BOOL CanFallDuringPushAction(const WiiPlayerAction*)
+BOOL CanFallDuringPushAction(const XAction*)
 {
 	return true;
 }
@@ -424,7 +424,7 @@ f32 GetAutoActionSoftTiltCap()
 	return (f32)(s32)GetInteractionParameter(2) / 100.0f;
 }
 
-void SetPlayerActionState(WiiPlayerAction* action, s32 state)
+void SetPlayerActionState(XAction* action, s32 state)
 {
 	action->mState = state;
 }

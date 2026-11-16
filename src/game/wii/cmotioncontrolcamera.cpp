@@ -26,7 +26,7 @@ void StopPlayerMotion(WiiPlayerState* player);
 void SetPlayerEyeCameraJointsHidden(WiiPlayerState* player, BOOL hidden, f32 rotY, f32 unused);
 s32 PlayWiiSoundEffect(XSound* sound, s32 id, f32 volume, f32 pan);
 // the lift object's class is not reconstructed on Wii, only its state word is mapped
-BOOL IsCarryingMug(WiiPlayerAction* action);
+BOOL IsCarryingMug(XAction* action);
 // the player's pad re-read, PLAYER->mPad.Update(0) on the GameCube
 void fn_800CE48C(WiiPlayerState* player);
 }

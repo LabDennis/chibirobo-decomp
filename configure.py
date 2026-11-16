@@ -1348,6 +1348,8 @@ if wii:
                 Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the event script runner, 0x8009453C-0x800A18B8 (wii_units.md Nr. 38)
                 Object(NonMatching, "game/wii/evt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # chibi robo's action base, 0x800C6428-0x800C6584 (wii_units.md Nr. 57)
+                Object(NonMatching, "game/wii/xaction.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the player object, 0x800C9E84-0x800E9D30 (wii_units.md Nr. 60 and 61)
                 Object(NonMatching, "game/wii/xobj_chr.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the helpers the GameCube file inlines stay calls in retail: no auto-inlining

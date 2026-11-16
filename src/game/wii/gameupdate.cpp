@@ -128,7 +128,7 @@ void fn_802BE03C(void* effects, const Vec* eye, MtxP view, f32 (*projection)[4],
 extern u8 lbl_8044EE4C[];
 // the pointer's position in the last frame, and each stage's scope sounds (0x802C49C8)
 extern Vec lbl_80444E98;
-Vec fn_8010BEE0(WiiPlayerAction* popper);                     // the popper's muzzle, the GameCube's joint path 0 1 0 0
+Vec fn_8010BEE0(XAction* popper);                             // the popper's muzzle, the GameCube's joint path 0 1 0 0
 void fn_800E8140(WiiPlayerState* player, f32 yaw, f32 pitch); // where the eye camera's popper aims
 void fn_80114564(XObj* obj);                                  // the scope's new item target
 }

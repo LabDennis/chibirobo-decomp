@@ -27,7 +27,7 @@ extern s32 gSoundFadeFrames;
 extern nw4r::snd::detail::FxReverbHiParam gSoundReverbParam;
 
 extern "C" {
-BOOL IsLiftTargetPlug(WiiPlayerAction* action);
+BOOL IsLiftTargetPlug(XAction* action);
 BOOL IsPlayerCarryingPlug(WiiPlayerState* player);
 void InitGameSound(XSound* sound, u32 heapSize);
 
