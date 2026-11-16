@@ -6740,12 +6740,18 @@ extern s32 lbl_8065B268;
 
 static inline f32 PlayerGaitRate(f32 speed, bool slow)
 {
-	f32 rate = slow ? speed : 0.5f * speed;
-	if (rate > 1.0f)
-		rate = 1.0f;
-	f32 minimum = slow ? 0.5f : 0.7f;
-	if (rate < minimum)
-		rate = minimum;
+	f32 rate;
+	if (slow) {
+		rate = speed > 1.0f ? 1.0f : speed;
+		if (rate < 0.5f)
+			rate = 0.5f;
+	} else {
+		rate = 0.5f * speed;
+		if (rate > 1.0f)
+			rate = 1.0f;
+		if (rate < 0.7f)
+			rate = 0.7f;
+	}
 	return rate;
 }
 
@@ -6776,9 +6782,15 @@ static inline void SetPlayerIdleAnim(XObjChr* p, s32 id)
  */
 extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim, u32, f32, f32)
 {
-	f32 motion = 0.0f;
-	if (!(gGame.mStatus.mFlags & 0x20) && !gGame.mEvt.mData.mScript)
-		motion = sqrtf(p->mPad.mStickX * p->mPad.mStickX + p->mPad.mStickY * p->mPad.mStickY);
+	CPadOne* pad = &p->mPad;
+	f32 motion;
+	if ((gGame.mStatus.mFlags & 0x20) || gGame.mEvt.mData.mScript) {
+		motion = 0.0f;
+	} else {
+		f32 x  = pad->mStickX;
+		f32 y  = pad->mStickY;
+		motion = sqrtf(x * x + y * y);
+	}
 	if (motion == 0.0f && p->mFloorContacts[4].objectIndex >= 0)
 		motion = 0.8f;
 	if (motion > 0.0f && (gGame.mStatus.mFlags & 0x100) && !(gGame.mStatus.mFlags & 0x200))
@@ -6807,124 +6819,123 @@ extern "C" void UpdatePlayerLocomotionAnimation(XObjChr* p, s32, HSD_AObj* anim,
 			p->mIdleLoops = 3;
 		}
 	}
-	if (!((p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mHang.mState && !p->mJump.mState && !p->mLadder.mState && !p->mRope.mState
-	      && !p->mPush.mState && !p->mTumble.mState && !p->mCopter.mState
-	      && (p->mPopper.mState == 0 || p->mPopper.mState == 8 || p->mPopper.mState == 4) && !p->mRadar.mState))
-		return;
-
-	switch (p->mAnimId) {
-	// standing and idle anims: moving starts the walk, standing still he may fidget
-	case 0:
-	case 1:
-	case 2:
-	case 8:
-	case 0x11:
-	case 0x12:
-	case 0x4A:
-	case 0xA1:
-	case 0xA3:
-	case 0x822:
-	case 0x874:
-	case 0x894:
-	case 0x8B2:
-	case 0xCF7:
-	case 0xCF8:
-	case 0xCF9:
-	case 0xCFA:
-	case 0xCFB:
-	case 0xCFC:
-	case 0xCFD: {
-		bool script = gGame.mEvt.mData.mScript != NULL;
-		if (script && __fpclassifyf(p->mWalkHeading) == FP_NAN
-		    && (p->mCopterObj.mVisible || p->mPopperObj.mVisible || p->mRadarObj.mVisible || p->mOXObj.mVisible))
-			break;
-		if (motion != 0.0f) {
-			SetPlayerIdleAnim(p, 3);
-			p->mIdleLoops = 0;
-			break;
-		}
-		if (p->mLift.mState != 0 || p->mFloorContacts[2].objectIndex >= 0 || p->mSuits.mChangeStep)
-			break;
-		if (p->GetAttachment() == 1 || p->GetAttachment() == 3) {
-			SetPlayerIdleAnim(p, 0x4A);
-		} else if (p->GetAttachment() == 2) {
-			SetPlayerIdleAnim(p, 0x822);
-		} else if ((gGame.mStatus.mFlags & 0x100) || script) {
-			SetPlayerIdleAnim(p, 0x11);
-			p->mIdleLoops = 3;
-		} else if (anim->flags & 0x44000000) {
-			if (p->mIdleLoops > 0)
-				--p->mIdleLoops;
-			if (p->mIdleLoops == 0 && (p->mPlayerStatus.mFlags & 4)) {
-				s32 id = 0x11;
-				if (!gGame.mEvt.mData.mScript && (p->mHitObjectIndex < 0 || p->mHitObjectIndex == p->mFloorContacts[0].objectIndex)) {
-					// one time in four he fidgets, bits 4-5 of the same roll pick which
-					s32 pick = rand();
-					if (!(pick & 3)) {
-						switch (pick & 0x30) {
-						case 0x10:
-							id = 1;
-							break;
-						case 0x20:
-							id = 2;
-							break;
-						case 0x30:
-							id = 0x12;
-							break;
-						default:
-							id = gPlayerSuitIdleAnimations[p->mSuits.mCurrent];
-							break;
-						}
-						p->mIdleLoops = rand() % 10 + 5;
-					}
-				}
-				SetPlayerIdleAnim(p, id);
+	if ((p->mLift.mState == 0 || p->mLift.mState == 4) && !p->mHang.mState && !p->mJump.mState && !p->mLadder.mState && !p->mRope.mState
+	    && !p->mPush.mState && !p->mTumble.mState && !p->mCopter.mState
+	    && (p->mPopper.mState == 0 || p->mPopper.mState == 8 || p->mPopper.mState == 4) && !p->mRadar.mState) {
+		switch (p->mAnimId) {
+		// standing and idle anims: moving starts the walk, standing still he may fidget
+		case 0:
+		case 1:
+		case 2:
+		case 8:
+		case 0x11:
+		case 0x12:
+		case 0x4A:
+		case 0xA1:
+		case 0xA3:
+		case 0x822:
+		case 0x874:
+		case 0x894:
+		case 0x8B2:
+		case 0xCF7:
+		case 0xCF8:
+		case 0xCF9:
+		case 0xCFA:
+		case 0xCFB:
+		case 0xCFC:
+		case 0xCFD: {
+			BOOL script = gGame.mEvt.mData.mScript != NULL;
+			if (script && __fpclassifyf(p->mWalkHeading) == FP_NAN
+			    && (p->mCopterObj.mVisible || p->mPopperObj.mVisible || p->mRadarObj.mVisible || p->mOXObj.mVisible))
+				break;
+			if (motion != 0.0f) {
+				SetPlayerIdleAnim(p, 3);
+				p->mIdleLoops = 0;
+				break;
 			}
-		}
-		break;
-	}
-	// walking, anim 3 and its variants (gPlayerAnimVariants)
-	case 3:
-	case 0xC:
-	case 0x818:
-	case 0x896:
-		if (motion == 0.0f) {
-			if (p->GetAttachment() == 1 || p->GetAttachment() == 3)
+			if (p->mLift.mState != 0 || p->mFloorContacts[2].objectIndex >= 0 || p->mSuits.mChangeStep)
+				break;
+			if (p->GetAttachment() == 1 || p->GetAttachment() == 3) {
 				SetPlayerIdleAnim(p, 0x4A);
-			else {
+			} else if (p->GetAttachment() == 2) {
+				SetPlayerIdleAnim(p, 0x822);
+			} else if ((gGame.mStatus.mFlags & 0x100) || script) {
 				SetPlayerIdleAnim(p, 0x11);
 				p->mIdleLoops = 3;
+			} else if (anim->flags & 0x44000000) {
+				if (p->mIdleLoops > 0)
+					--p->mIdleLoops;
+				if (p->mIdleLoops == 0 && (p->mPlayerStatus.mFlags & 4)) {
+					s32 id = 0x11;
+					if (!gGame.mEvt.mData.mScript && (p->mHitObjectIndex < 0 || p->mHitObjectIndex == p->mFloorContacts[0].objectIndex)) {
+						// one time in four he fidgets, bits 4-5 of the same roll pick which
+						s32 pick = rand();
+						if (!(pick & 3)) {
+							switch (pick & 0x30) {
+							case 0x10:
+								id = 1;
+								break;
+							case 0x20:
+								id = 2;
+								break;
+							case 0x30:
+								id = 0x12;
+								break;
+							default:
+								id = gPlayerSuitIdleAnimations[p->mSuits.mCurrent];
+								break;
+							}
+							p->mIdleLoops = rand() % 10 + 5;
+						}
+					}
+					SetPlayerIdleAnim(p, id);
+				}
 			}
-		} else if (speed >= 1.25f) {
-			ChangePlayerGait(p, 0x77, PlayerGaitRate(speed, false));
-		} else {
-			p->SetAnimRate(PlayerGaitRate(speed, true), 0x5A0);
+			break;
 		}
-		break;
-	// jogging, anim 0x77 and its variants
-	case 0x77:
-	case 0x88:
-	case 0x882:
-	case 0x897:
-		if (speed < 1.25f)
-			ChangePlayerGait(p, 3, PlayerGaitRate(speed, true));
-		else if (speed >= 1.9f)
-			ChangePlayerGait(p, 4, PlayerGaitRate(speed, false));
-		else
-			p->SetAnimRate(PlayerGaitRate(speed, false), 0x5A0);
-		break;
-	// running, anim 4 and its variants
-	case 4:
-	case 0xD:
-	case 0x819:
-	case 0x898:
-		if (speed < 1.25f)
-			ChangePlayerGait(p, 3, PlayerGaitRate(speed, true));
-		else if (speed < 1.9f)
-			ChangePlayerGait(p, 0x77, PlayerGaitRate(speed, true));
-		else
-			p->SetAnimRate(PlayerGaitRate(speed, false), 0x5A0);
-		break;
+		// walking, anim 3 and its variants (gPlayerAnimVariants)
+		case 3:
+		case 0xC:
+		case 0x818:
+		case 0x896:
+			if (motion == 0.0f) {
+				if (p->GetAttachment() == 1 || p->GetAttachment() == 3)
+					SetPlayerIdleAnim(p, 0x4A);
+				else {
+					SetPlayerIdleAnim(p, 0x11);
+					p->mIdleLoops = 3;
+				}
+			} else if (speed >= 1.25f) {
+				ChangePlayerGait(p, 0x77, PlayerGaitRate(speed, false));
+			} else {
+				p->SetAnimRate(PlayerGaitRate(speed, true), 0x5A0);
+			}
+			break;
+		// jogging, anim 0x77 and its variants
+		case 0x77:
+		case 0x88:
+		case 0x882:
+		case 0x897:
+			if (speed < 1.25f)
+				ChangePlayerGait(p, 3, PlayerGaitRate(speed, true));
+			else if (speed >= 1.9f)
+				ChangePlayerGait(p, 4, PlayerGaitRate(speed, false));
+			else
+				p->SetAnimRate(PlayerGaitRate(speed, false), 0x5A0);
+			break;
+		// running, anim 4 and its variants
+		case 4:
+		case 0xD:
+		case 0x819:
+		case 0x898:
+			if (speed < 1.25f)
+				ChangePlayerGait(p, 3, PlayerGaitRate(speed, true));
+			else if (speed < 1.9f)
+				ChangePlayerGait(p, 0x77, PlayerGaitRate(speed, true));
+			else
+				p->SetAnimRate(PlayerGaitRate(speed, false), 0x5A0);
+			break;
+		}
 	}
 }
 
