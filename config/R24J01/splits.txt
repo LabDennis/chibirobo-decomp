@@ -1730,6 +1730,93 @@ nw4r/ut/ut_ResFont.cpp:
 	.text start:0x80235A50 end:0x80235D54
 	.data start:0x80332878 end:0x803328D4
 
+nw4r/ef/ef_draworder.cpp:
+	.text start:0x802362B8 end:0x802363C4
+
+nw4r/ef/ef_effect.cpp:
+	.text start:0x802363C4 end:0x80236F6C
+
+nw4r/ef/ef_effectsystem.cpp:
+	.text start:0x80236F6C end:0x80237988
+
+nw4r/ef/ef_emitter.cpp:
+	.text start:0x80237988 end:0x80239A7C
+
+nw4r/ef/ef_animcurve.cpp:
+	.text start:0x80239A7C end:0x80241FA0
+
+nw4r/ef/ef_particle.cpp:
+	.text start:0x80241FA0 end:0x80242DC0
+
+nw4r/ef/ef_particlemanager.cpp:
+	.text start:0x80242DC0 end:0x802450FC
+
+nw4r/ef/ef_resource.cpp:
+	.text start:0x802450FC end:0x80245CD0
+
+nw4r/ef/ef_util.cpp:
+	.text start:0x80245CD0 end:0x80246BA0
+
+nw4r/ef/ef_handle.cpp:
+	.text start:0x80246BA0 end:0x80246C44
+
+nw4r/ef/ef_emitterform.cpp:
+	.text start:0x80246C44 end:0x802471E0
+
+nw4r/ef/ef_creationqueue.cpp:
+	.text start:0x802471E0 end:0x80247620
+
+nw4r/ef/emform/ef_emform.cpp:
+	.text start:0x80247620 end:0x802476D8
+
+nw4r/ef/emform/ef_point.cpp:
+	.text start:0x802476D8 end:0x80247A20
+
+nw4r/ef/emform/ef_line.cpp:
+	.text start:0x80247A20 end:0x80247D58
+
+nw4r/ef/emform/ef_disc.cpp:
+	.text start:0x80247D58 end:0x8024828C
+
+nw4r/ef/emform/ef_sphere.cpp:
+	.text start:0x8024828C end:0x80248AE0
+
+nw4r/ef/emform/ef_cylinder.cpp:
+	.text start:0x80248AE0 end:0x80249290
+
+nw4r/ef/emform/ef_torus.cpp:
+	.text start:0x80249290 end:0x802498CC
+
+nw4r/ef/emform/ef_cube.cpp:
+	.text start:0x802498CC end:0x8024B4F4
+
+nw4r/ef/drawstrategy/ef_drawstrategybuilder.cpp:
+	.text start:0x8024B4F4 end:0x8024B898
+
+nw4r/ef/drawstrategy/ef_drawstrategyimpl.cpp:
+	.text start:0x8024B898 end:0x8024DB78
+
+nw4r/ef/drawstrategy/ef_drawbillboardstrategy.cpp:
+	.text start:0x8024DB78 end:0x8024FC14
+
+nw4r/ef/drawstrategy/ef_drawdirectionalstrategy.cpp:
+	.text start:0x8024FC14 end:0x80251EF0
+
+nw4r/ef/drawstrategy/ef_drawfreestrategy.cpp:
+	.text start:0x80251EF0 end:0x802528D0
+
+nw4r/ef/drawstrategy/ef_drawlinestrategy.cpp:
+	.text start:0x802528D0 end:0x80252EB0
+
+nw4r/ef/drawstrategy/ef_drawpointstrategy.cpp:
+	.text start:0x80252EB0 end:0x80253300
+
+nw4r/ef/drawstrategy/ef_drawstripestrategy.cpp:
+	.text start:0x80253300 end:0x802568B4
+
+nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.cpp:
+	.text start:0x802568B4 end:0x8025B538
+
 nw4r/math/math_arithmetic.cpp:
 	.text start:0x80282CA0 end:0x80282DDC
 	.data start:0x80333AB0 end:0x803343C0
