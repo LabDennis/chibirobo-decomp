@@ -6,7 +6,7 @@
 
 extern "C" u32 GetPickupRewardValue(s32 index);
 
-static inline bool IsCoinItemInRange(const XObjCoin* coin, s32 first, s32 end)
+static inline bool IsCoinItemInRange(XObjCoin* coin, s32 first, s32 end)
 {
 	bool inRange = false;
 	if (coin->GetItem() >= first && coin->GetItem() < end)
@@ -46,8 +46,8 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 		AddPlayerScrap(&player->mParams, scrap);
 		sound = 0x123;
 	} else if (IsCoinItemInRange(this, 200, 300)) { // items 200..299 are battery
-		Params& stats = player->mParams;
 		s32 reward    = GetPickupRewardValue(GetItem() - 193);
+		Params& stats = player->mParams;
 		stats.SetBattery(reward + stats.mBattery);
 		sound  = 0x8e;
 		effect = 20;
