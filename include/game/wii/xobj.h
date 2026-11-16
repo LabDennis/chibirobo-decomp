@@ -39,6 +39,8 @@ void Panic(const char* file, int line, const char* fmt, ...);
 // the parts of nw4r::math CObj's world callback uses; math_types.h itself needs the Wii MSL's
 // <cmath>, which the game's include path does not have yet
 namespace math {
+// a file that includes nw4r/math/math_types.h first (with the Wii MSL's include path) takes the library's own
+#ifndef NW4R_MATH_TYPES_H
 struct VEC3;
 struct MTX34 {
 	f32 m[3][4];
@@ -48,6 +50,7 @@ inline MTX34* MTX34RotXYZRad(MTX34* pMtx, f32 rx, f32 ry, f32 rz)
 {
 	return MTX34RotXYZFIdx(pMtx, rx * (128.0f / 3.1415927f), ry * (128.0f / 3.1415927f), rz * (128.0f / 3.1415927f));
 }
+#endif
 } // namespace math
 
 namespace g3d {
@@ -462,8 +465,8 @@ public:
 	virtual void OnSquirterHit(const Vec* contact, s32 value, s32 tint); // _200
 	virtual BOOL OnItemUsed(const Vec* position, s32 value);             // _204
 	virtual void vf208();
-	virtual void OnMicrophonePeak(s32 unused, s32 volume);    // _20C, empty
-	virtual void vf210();                                     // _210, empty
+	virtual void PauseSounds(f32 fade);                       // _20C, empty; PauseGameSounds calls it on every live object
+	virtual void ResumeSounds(f32 fade);                      // _210, empty; ResumeGameSounds' counterpart
 	virtual void OnMoveRequest();                             // _214, runs ahead of the three requests below
 	virtual void RequestRotationY(f32 y);                     // _218
 	virtual void RequestRotateY(f32 target, f32 speed);       // _21C

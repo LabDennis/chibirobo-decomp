@@ -1,9 +1,22 @@
+#include "nw4r/math/math_types.h"
 #include "game/wii/cgame.h"
 #include "game/cthread.h"
 #include "game/wii/xobj.h"
 #include "Dolphin/os.h"
 #include "Dolphin/vi.h"
 #include <string.h>
+#include "nw4r/snd/snd_BasicSound.h"
+#include "nw4r/snd/snd_SoundHandle.h"
+#include "game/wii/csound3dactor.h"
+#include "game/wii/cpadact.h"
+#include "game/wii/infoscrn.h"
+#include "game/wii/msg.h"
+#include "game/wii/fbeffect.h"
+#include "game/fbtexeff.h"
+#include "game/cmdline.h"
+#include "game/mm.h"
+#include <math.h>
+#include <stdlib.h>
 
 extern "C" {
 void* UpdateMovie(void* arg);
@@ -13,9 +26,28 @@ extern CThread gMovieUpdateThread;
 extern u8* gMovieUpdateThreadStack;
 s32 CallStageModule(s32 function, s32 count, s32* args);
 void fn_802AEDEC(WiiGsSceneObj** head, Mtx view); // sorts the queued scene draws under view, as title.cpp calls it
+void ClearMainMenuExtraRows(void* menu);
+void fn_80094904(void* evt, BOOL, BOOL, BOOL, BOOL); // resets the event state, the GameCube's ResetEventScriptState
+void ResetMsgState(CMsg* msg);
+void UnloadStageDataAndModule();
+BOOL fn_80246BD8(void* handle);                     // the emitter handle is valid
+void* fn_80246C04(void* handle);                    // the emitter behind it
+void fn_802BEA5C(void* emitter, BOOL);              // kills the emitter
+void fn_802BE3A8(void* particles, u32 group, BOOL); // kills a particle group
+void ClearSoundEffects(XSound* sound, s32 frames);
+s32 GetWiiSaveSlotStage(WiiSaveManager* manager, int index);
+void ResetTitleScreenState(void* title);
+void fn_800848C0(void* menus); // the GameCube's ResetMenuGroup
+void ResetGameHudState(InfoScrn* scrn);
+u8* GetStageDisplayName(s32 index);
+extern GXColor gMessageFontDefaultColor;
+s32 GetStageNum();
+s32 GetDefaultStageIndex();
 }
 
 extern s32 gRefreshRate;
+// a sound id XObjSpiderSmall keeps while it fights (0x80128CD4), cleared once its tracks are let go
+extern u32 gSpiderSmallSoundId;
 extern s32 gPointerScreenWidth;
 extern s32 gPointerScreenHeight;
 extern s32 gScreenLeft;
@@ -31,6 +63,63 @@ extern MEMiHeapHead* gWiiMem1Heap;
 inline void operator delete(void* ptr) throw()
 {
 	MEMFreeToExpHeap(gWiiMem1Heap, ptr);
+}
+
+// a lead byte of a two byte shift jis character
+static inline bool IsSJISByte(char c)
+{
+	return ((u8)c >= 0x81 && (u8)c <= 0x9F) || ((u8)c >= 0xE0 && (u8)c <= 0xFC);
+}
+
+static inline bool IsSJISLead(char c)
+{
+	return IsSJISByte(c) ? true : false;
+}
+
+inline void CSoundTrackSlot::Stop(int fadeFrames)
+{
+	if (IsAttachedSound()) {
+		((nw4r::snd::detail::BasicSound*)mTrack)->Stop(fadeFrames);
+	}
+}
+
+// as gamemain.cpp defines it
+inline void CSound::StopAllTracks(f32 fade)
+{
+	s32 frames = gRefreshRate * fade;
+	for (int i = 0; i < 0x40; ++i) {
+		if (mTracks[i].IsAttachedSound()) {
+			mTracks[i].Stop(frames);
+		}
+	}
+}
+
+// shortcut: csound.h spells the 64 tracks as flat slots; drop the cast once they are CSoundHandle
+static inline nw4r::snd::SoundHandle& TrackHandle(s32 i)
+{
+	return *(nw4r::snd::SoundHandle*)&gGame.mSound.mTracks[i].mTrack;
+}
+
+// the first track playing sound id, as retail expands it ahead of the jingle loops
+static inline CSoundTrackSlot* FindTrack(u32 id)
+{
+	for (int i = 0; i < 0x40; i++) {
+		if (TrackHandle(i).IsAttachedSound() && TrackHandle(i).GetId() == id) {
+			return &gGame.mSound.mTracks[i];
+		}
+	}
+	return NULL;
+}
+
+// whether the first track playing sound id is paused
+static inline bool IsTrackPaused(u32 id)
+{
+	for (int i = 0; i < 0x40; i++) {
+		if (TrackHandle(i).IsAttachedSound() && TrackHandle(i).GetId() == id) {
+			return TrackHandle(i).IsPause();
+		}
+	}
+	return false;
 }
 
 /**
@@ -206,6 +295,44 @@ extern "C" void UpdateStageNameBubbles(CGame* game, u32 frames)
 }
 
 /**
+ * @note Address: 0x8002BC40
+ * @note Size: 0x404
+ */
+// sets the stage's name up to pop in letter by letter in color, each letter waiting wait seconds
+// before it shrinks away; the slots behind the name stay blank
+extern "C" void StartStageNameBubbles(CGame* game, u32 color, f32 wait)
+{
+	game->mStageName.mActive = TRUE;
+	game->mStageName.mCount  = 0;
+	if (game->mStage < GetStageNum()) {
+		char* name = (char*)GetStageDisplayName(game->mStage);
+		if (name != NULL) {
+			game->mStageName.mColor = color;
+			for (s32 i = 0; i < 20 && *name != '\0'; i++, name++) {
+				game->mStageName.mChars[i].mText  = name;
+				game->mStageName.mChars[i].mScale = -0.2f * i; // later letters start hidden
+				game->mStageName.mChars[i].mWait  = wait * gRefreshRate;
+				game->mStageName.mChars[i].mBob   = DEG2RAD * (rand() % 360); // a random phase
+				game->mStageName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
+				game->mStageName.mChars[i]._14    = 0;
+				game->mStageName.mChars[i]._18    = 0.0f;
+				game->mStageName.mCount++;
+				if (gGame.mLanguage == 0 && IsSJISLead(*name)) {
+					name++;
+				}
+			}
+			for (s32 i = game->mStageName.mCount; i < 20; i++) {
+				game->mStageName.mChars[i].mText  = NULL;
+				game->mStageName.mChars[i].mScale = 0.0f;
+				game->mStageName.mChars[i].mWait  = 0.0f;
+				game->mStageName.mChars[i]._14    = 0;
+				game->mStageName.mChars[i]._18    = 0.0f;
+			}
+		}
+	}
+}
+
+/**
  * @note Address: 0x8002BBE0
  * @note Size: 0x60
  */
@@ -219,10 +346,105 @@ bool CGame::IsSystemMessage3Shown()
 }
 
 /**
+ * @note Address: 0x8002B6D8
+ * @note Size: 0x500
+ */
+// NONMATCHING: the tracks are reached through a cast of CSound's flat track table (see gamesound.cpp)
+// undoes one PauseGameSounds. the last resume lets the tracks, the objects' sounds and the movie go
+// again; the music pause underneath holds the jingle (sound 4) until its own count runs out
+extern "C" void ResumeGameSounds(CGame* game, f32 fade)
+{
+	// _D9B5C counts the pauses, _D9B60 the music pauses under them
+	if (game->_D9B5C > 0 && --game->_D9B5C == 0) {
+		s32 frames = gRefreshRate * fade;
+		for (int i = 0; i < 0x40; i++) {
+			nw4r::snd::SoundHandle& handle = TrackHandle(i);
+			if (handle.IsAttachedSound() && handle.IsPause()) {
+				handle.Pause(false, frames);
+			}
+		}
+		for (s32 i = 0; i < game->mDrawRefCount; i++) {
+			XObj* object = (XObj*)game->mDrawRefs[i].mObj;
+			if (object->mStatus.mFlags & 1) {
+				object->ResumeSounds(fade);
+			}
+		}
+		if (game->mMovie.mState != 0) {
+			THPSimpleSetVolume(127.0f * game->mMovieVolume, 1000.0f * fade);
+		}
+	}
+	if (game->_D9B60 > 0) {
+		if (--game->_D9B60 == 0) {
+			if (gSpiderSmallSoundId != 0) {
+				u32 music = gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0;
+				if (music != 0) {
+					s32 frames = gRefreshRate * 0.2f;
+					u32 id     = music & 0xFFFF;
+					for (int i = 0; i < 0x40; i++) {
+						nw4r::snd::SoundHandle& handle = TrackHandle(i);
+						if (handle.IsAttachedSound() && handle.GetId() == id && !handle.IsPause()) {
+							handle.Pause(true, frames);
+						}
+					}
+				}
+			}
+		} else if (FindTrack(4) != NULL && IsTrackPaused(4)) {
+			s32 frames = gRefreshRate * fade;
+			for (int i = 0; i < 0x40; i++) {
+				nw4r::snd::SoundHandle& handle = TrackHandle(i);
+				if (handle.IsAttachedSound() && handle.GetId() == 4 && handle.IsPause()) {
+					handle.Pause(false, frames);
+				}
+			}
+		}
+	}
+}
+
+/**
+ * @note Address: 0x8002B2F0
+ * @note Size: 0x3E8
+ */
+// NONMATCHING: the tracks are reached through a cast of CSound's flat track table (see gamesound.cpp)
+// holds every playing track, the objects' own sounds and the movie's volume; pauses nest, only the
+// first one acts. a nested pause holds the jingle (sound 4) too
+extern "C" void PauseGameSounds(CGame* game, f32 fade)
+{
+	if (game->_D9B5C == 0) {
+		s32 frames = gRefreshRate * fade;
+		for (int i = 0; i < 0x40; i++) {
+			nw4r::snd::SoundHandle& handle = TrackHandle(i);
+			if (handle.IsAttachedSound() && !handle.IsPause()) {
+				handle.Pause(true, frames);
+			}
+		}
+		for (s32 i = 0; i < game->mDrawRefCount; i++) {
+			XObj* object = (XObj*)game->mDrawRefs[i].mObj;
+			if (object->mStatus.mFlags & 1) {
+				object->PauseSounds(fade);
+			}
+		}
+		if (game->mMovie.mState != 0) {
+			THPSimpleSetVolume(0, 1000.0f * fade);
+		}
+	}
+	game->_D9B5C++;
+	if (game->_D9B60 > 0 && FindTrack(4) != NULL && !IsTrackPaused(4)) {
+		s32 frames = gRefreshRate * fade;
+		for (int i = 0; i < 0x40; i++) {
+			nw4r::snd::SoundHandle& handle = TrackHandle(i);
+			if (handle.IsAttachedSound() && handle.GetId() == 4 && !handle.IsPause()) {
+				handle.Pause(true, frames);
+			}
+		}
+	}
+	game->_D9B60++;
+}
+
+/**
  * @note Address: 0x8002B2EC
  * @note Size: 0x4
  */
-void XObj::vf210()
+void XObj::ResumeSounds(f32)
 {
 }
 
@@ -230,8 +452,151 @@ void XObj::vf210()
  * @note Address: 0x8002B2E8
  * @note Size: 0x4
  */
-void XObj::OnMicrophonePeak(s32, s32)
+void XObj::PauseSounds(f32)
 {
+}
+
+/**
+ * @note Address: 0x8002A330
+ * @note Size: 0xB98
+ */
+// NONMATCHING: FbSubwin::Reset is a virtual call in retail (fbtexeff.h's Wii class has no CFbTexEff base
+// yet); the float literals are addressed from the whole file's pool
+// changes to another stage: 10000 is the title, 20000 the stage from the save, below 0 the next
+// one. everything that belongs to the old stage is let go of, and the new stage's name is set up to
+// pop in when showName is set
+extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
+{
+	StartScreenFade(&game->mFade, 0, 0, 0, 255, 0, 0, 0, 255, 0.0f);
+	if (game->mMovie.mState != 0) { // cut any playing movie
+		game->mMovie.Stop();
+	}
+	ClearMainMenuExtraRows(game->mMainMenu);
+	fn_80094904(game->_4C8E0, TRUE, TRUE, TRUE, TRUE); // the event state in front of mEvtData
+	CMsg* msgs = (CMsg*)game->mMsgs;
+	for (s32 i = 0; i < 2; i++) {
+		ResetMsgState(&msgs[i]);
+		CMsg_ResetPos(&msgs[i]);
+		msgs[i].SetColor(gMessageFontDefaultColor);
+	}
+	CGame::FbMirrorEx* mirrors = (CGame::FbMirrorEx*)game->mMirrors;
+	for (s32 i = 0; i < 5; i++) { // let go of the mirrors' objects and textures
+		FbMirror* mirror = &mirrors[i];
+		if (mirror->IsUsed() && mirror->mJoint != NULL) {
+			if (mirror->mJointAnm != NULL) { // the object's own material animation goes back
+				memcpy(mirror->mJointAnm, mirror->mJointAnmCopy, 0x20);
+				mirror->mJointAnm = NULL;
+			}
+			mirror->mJoint   = NULL;
+			mirror->mVisible = FALSE;
+			if (mirror->mTexture.mOwnsImage && mirror->mTexture.mImage != NULL) {
+				mm::Free(mirror->mTexture.mImage);
+				mirror->mTexture.mImage = NULL;
+			}
+		}
+	}
+	UnloadStageDataAndModule();
+	for (s32 i = 0; i < 0x80; i++) { // kill every emitter still running
+		void* emitter = game->mEmitters[i];
+		s32 state     = fn_80246BD8(emitter) ? *(s32*)((u8*)fn_80246C04(emitter) + 0xC) : 0;
+		if (!(state == 0 || state == 3)) {
+			fn_802BEA5C(emitter, TRUE);
+		}
+	}
+	for (u32 i = 0; i < 6; i++) {
+		fn_802BE3A8(game->_B7A8, i, TRUE);
+	}
+	WiiPlayerState* player = game->mPlayer;
+	for (s32 i = 0; i < 2; i++) {
+		CSound3DActor* actor          = player->mSounds[i].mActor;
+		nw4r::snd::SoundHandle* sound = actor != NULL && actor->mHandle.IsAttachedSound() ? &actor->mHandle : NULL;
+		if (sound != NULL && actor != NULL) {
+			actor->mHandle.Stop(gRefreshRate * 0.0f);
+		}
+	}
+	gGame.mSound.StopAllTracks(0.0f);
+	ClearSoundEffects(&gGame.mSound, 0);
+	gGame.mSound.RestoreHeapLevel(1);
+	Vec nan        = { NAN, NAN, NAN };
+	game->_EE1F0.x = nan.x;
+	game->_EE1F0.y = nan.y;
+	game->_EE1F0.z = nan.z;
+	gWiiPointer.ResetRumble(FALSE);
+	game->ClearStatusFlags(0x020000000000002F);
+	game->ClearStatusFlags(0xC00);
+	game->ClearStatusFlags(0x8000);
+	game->ClearStatusFlags(0x300);
+	game->mRoboeyes.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	game->SetStatusFlags(0x0040000000000000);
+	game->SetStatusFlags(0x0000800000000000);
+	InfoScrn* scrn = (InfoScrn*)game->mInfoScrn;
+	InfoScrn_ApplyScoreHudCommand(scrn, 0, 0);
+	for (s32 i = 0; i < 4; i++) {
+		InfoScrn_ApplyObjectGaugeCommand(scrn, NULL, 0, 0, i);
+	}
+
+	if (stage == 10000) {
+		if (gCmdLineArgs.mStage < 0 || game->GetStatusFlags(0x0008000000000000)) {
+			game->SetStage(GetDefaultStageIndex());
+		} else {
+			game->SetStage(gCmdLineArgs.mStage);
+		}
+	} else if (stage == 20000) {
+		game->SetStage(GetWiiSaveSlotStage(&game->mSaveManager, 1));
+		game->SetStage(GetWiiSaveSlotStage(&game->mSaveManager, 0));
+		game->mMemcardLoaded = TRUE;
+	} else if (stage >= 0) {
+		game->SetStage(stage);
+	} else {
+		game->mPrevStage = game->mStage;
+		if (++game->mStage >= game->mRoomCount) {
+			game->mStage = 0;
+		}
+	}
+
+	if (stage == 10000) {
+		game->SetStatusFlags(0x20000000);
+		game->SetStatusFlags(0x0001000000000000);
+		game->ClearStatusFlags(0x80);
+		ResetTitleScreenState(game->mTitle);
+		fn_800848C0(&game->mMenuActive); // the menu group starts at its active word
+		ResetGameHudState(scrn);
+		((FbSubwin*)game->mSubwin)->Reset();
+		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
+		game->mWipeCircle.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeTex.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeCustom.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeTile.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeCine.StartTransition(0, 0, 0, 0, 0, 0, 0, gPointerScreenWidth / 2, gPointerScreenHeight / 2, gPointerScreenWidth,
+		                                gPointerScreenHeight, gPointerScreenWidth, gPointerScreenHeight, 0.0f, 0, TRUE);
+		StartScreenShake(&game->mQuake, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		FbBlur* blur    = (FbBlur*)game->mBlur;
+		blur->mAlpha    = 0.0f;
+		blur->mTarget   = 0.0f;
+		blur->mSpeed    = 0.0f;
+		game->mLoadStep = 20;
+	} else if (stage == 20000) {
+		((FbSubwin*)game->mSubwin)->Reset();
+		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
+		game->mWipeCircle.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeTex.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeCustom.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeTile.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		game->mWipeCine.StartTransition(0, 0, 0, 0, 0, 0, 0, gPointerScreenWidth / 2, gPointerScreenHeight / 2, gPointerScreenWidth,
+		                                gPointerScreenHeight, gPointerScreenWidth, gPointerScreenHeight, 0.0f, 0, TRUE);
+		StartScreenShake(&game->mQuake, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+		FbBlur* blur    = (FbBlur*)game->mBlur;
+		blur->mAlpha    = 0.0f;
+		blur->mTarget   = 0.0f;
+		blur->mSpeed    = 0.0f;
+		game->mLoadStep = 21;
+	} else {
+		game->mLoadStep = 22;
+	}
+	game->_41F0 = 3;
+	if (showName) {
+		StartStageNameBubbles(game, 0x80FFFF00, 2.0f); // pale cyan for two seconds
+	}
 }
 
 /**
@@ -508,12 +873,11 @@ void XObj::vf16C()
  * @note Address: 0x80024B4C
  * @note Size: 0x6C
  */
-// NONMATCHING: retail has nw4r::math::VEC3Add's paired-single code inline here; the nw4r math headers
-// do not compile under the game's include paths, so this calls the SDK function as the GameCube did
+// NONMATCHING: retail builds the sum in a local and copies it out, this one builds it in the result
 CVec CVec::operator+(Vec v) const
 {
 	CVec sum = *this;
-	PSVECAdd(&sum, &v, &sum);
+	nw4r::math::VEC3Add((nw4r::math::VEC3*)&sum, (nw4r::math::VEC3*)&sum, (nw4r::math::VEC3*)&v);
 	return sum;
 }
 
@@ -521,10 +885,10 @@ CVec CVec::operator+(Vec v) const
  * @note Address: 0x80024AE8
  * @note Size: 0x64
  */
-// NONMATCHING: nw4r::math::VEC3Scale inline in retail, see operator+
+// NONMATCHING: as operator+
 CVec CVec::operator*(f32 s) const
 {
 	CVec product = *this;
-	PSVECScale(&product, &product, s);
+	nw4r::math::VEC3Scale((nw4r::math::VEC3*)&product, (nw4r::math::VEC3*)&product, s);
 	return product;
 }
