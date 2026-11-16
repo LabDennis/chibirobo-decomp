@@ -7071,3 +7071,4 @@ SetPosition__6CLightFRC3Vec = .text:0x802A8BA0; // type:function size:0x1C scope
 InitPoint__6CLightFRC3VecUcUcUcUc = .text:0x802A8BBC; // type:function size:0x90 scope:global
 InitSpot__6CLightFRC3VecRC3VecUcUcUcUc = .text:0x802A8C4C; // type:function size:0xB4 scope:global
 SetInterest__6CLightFRC3Vec = .text:0x802A8D00; // type:function size:0x1C scope:global
+EndGsCamera = .text:0x802AB7E4; // type:function size:0x38 scope:global

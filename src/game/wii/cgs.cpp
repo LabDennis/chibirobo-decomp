@@ -11,7 +11,7 @@
 // GetGlyph (99 %) and MeasureGameTextWidth (99 %) are structurally identical and differ only in callee-saved colouring and in vtable/sdata2
 // referent placement; DrawGsText (91 %) and DrawGsStrokeText (87 %) additionally diverge in float allocation and stack frame size (retail
 // spills ~0x10 more, plus two f64 spill slots the allocator gives us as held constants). No behavioural difference in any of them. Not
-// written yet: CGs::Init (0x802AA610), the camera begin/end and scene list calls (0x802AB790-0x802AB864) and
+// written yet: CGs::Init (0x802AA610), the camera begin and scene list calls (0x802AB790, 0x802AB81C, 0x802AB860) and
 // SetGsChannelMaterialAndLighting.
 
 #include "game/wii/cgs.h"
@@ -564,6 +564,12 @@ extern "C" void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable)
 	} else {
 		gs->mCurChannel->mCtrl.mEnable = enable;
 	}
+}
+
+extern "C" void EndGsCamera(CGs* gs)
+{
+	gs->mCamera->EndCurrent();
+	gs->mCamera = NULL;
 }
 
 void CGs::ResetZMode()

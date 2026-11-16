@@ -848,6 +848,7 @@ f32 MeasureGameTextHeight(CGs* gs, const char* text, f32 size);
 // applies the channel material and lighting setup for the primitive draws
 s32 SetGsChannelMaterialAndLighting(CGs* gs, s32 matSrc, u32 rgba);
 void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable);
+void EndGsCamera(CGs* gs); // 0x802AB7E4
 }
 
 #endif
