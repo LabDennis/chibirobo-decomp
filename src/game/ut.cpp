@@ -2236,7 +2236,7 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 // wall and push what's left of the move. returns 0 for no hit, 1 when it got stopped
 // and 3 when it bounced, then push is the move reflected off the wall times scale
 // the wall's two ends get checked like posts, corners picks the softer version of that
-extern "C" int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
+extern "C" u32 ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
                                             Vec* contact, f32* dist, f32 radius, f32 scale, int corners)
 {
 	CVec from(*fromPos);
