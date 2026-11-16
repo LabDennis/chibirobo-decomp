@@ -311,32 +311,34 @@ void ResTev::GXSetTevDirect(GXTevStageID stage) {
         (GX_BP_REG_INDTEVSTAGE0 + (stage & 0xF)) << GX_BP_OPCODE_SHIFT);
 }
 
-// NONMATCHING: retail calls GXSetTevOrder in the first loop (0x8025F2AC); here the compiler expands it
-// in place, which also moves the frame and the saved registers.
+// NONMATCHING: retail calls GXSetTevOrder in the first loop (0x8025F2AC); here -inline auto expands it
+// in place, which also moves the frame and the saved registers. Measured: GXSetTevOrder is just under
+// the compiler's size limit for expanding a plain function. Two more statements in it (even two empty
+// ones) and this function is retail's, instruction for instruction; one more is not enough, and neither
+// are a nested if plus a stage / 2 local. So the original GXSetTevOrder was written slightly longer
+// (probably its register field macros), in a way that compiles to the same code; which way is not known.
 void ResTev::SetNumTevStages(u8 num) {
-    if (num < 1 || num > GX_MAX_TEVSTAGE) {
-        return;
-    }
+    if (num >= 1 && num <= GX_MAX_TEVSTAGE) {
+        ResTevData& r = ref();
 
-    ResTevData& r = ref();
+        if (r.nStages > num) {
+            u32 i;
 
-    if (r.nStages > num) {
-        u32 i;
+            for (i = num; i < r.nStages; i++) {
+                GXSetTevOrder(static_cast<GXTevStageID>(i), GX_TEXCOORD_NULL,
+                              GX_TEXMAP_NULL, GX_COLOR_NULL);
+            }
 
-        for (i = num; i < r.nStages; i++) {
-            GXSetTevOrder(static_cast<GXTevStageID>(i), GX_TEXCOORD_NULL,
-                          GX_TEXMAP_NULL, GX_COLOR_NULL);
+            for (i = (num + 1) / TEV_STAGES_PER_DL;
+                 i < (r.nStages + 1) / (u32)TEV_STAGES_PER_DL; i++) {
+                detail::ZeroMemory16ByteBlocks(&r.dl.dl.var[i],
+                                               sizeof(ResTevVariableDL));
+                DCStoreRangeNoSync(&r.dl.dl.var[i], sizeof(ResTevVariableDL));
+            }
         }
 
-        for (i = (num + 1) / TEV_STAGES_PER_DL;
-             i < (r.nStages + 1) / (u32)TEV_STAGES_PER_DL; i++) {
-            detail::ZeroMemory16ByteBlocks(&r.dl.dl.var[i],
-                                           sizeof(ResTevVariableDL));
-            DCStoreRangeNoSync(&r.dl.dl.var[i], sizeof(ResTevVariableDL));
-        }
+        r.nStages = num;
     }
-
-    r.nStages = num;
 }
 
 void ResTev::CallDisplayList(bool sync) const {
