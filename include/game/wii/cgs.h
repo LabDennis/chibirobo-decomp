@@ -430,6 +430,23 @@ public:
 	virtual ~GSTevSwapModeTable() { } // _08
 };
 
+// the stage's constant colors, class names from RTTI; CGsTevStage's constructor (0x80033A74) stores
+// GSTevColor's vtable at _B0 and GSTevKColor's at _B4, which leaves the second no room for data
+class GSTevColor {
+public:
+	GXColor mColor; // _00, by its name; no reader checked yet
+	// _04 vtable
+
+	virtual ~GSTevColor() { } // _08
+};
+
+class GSTevKColor {
+public:
+	// _00 vtable
+
+	virtual ~GSTevKColor() { } // _08
+};
+
 class GSTexGens {
 public:
 	u8 mNum; // _00
@@ -562,11 +579,12 @@ public:
 	GSTevKAlphaSel mKAlphaSel;         // _80
 	GSTevSwapMode mSwapMode;           // _88
 	GSTevSwapModeTable mSwapModeTable; // _94
-	u8 _AC[0xB8 - 0xAC];
-	GSTexGens mTexGens;    // _B8
-	GSTexCoordGen mTexGen; // _C0
-	CGsTevStage* mNext;    // _D4
-	BOOL mIndirect;        // _D8, the stage keeps its indirect setup; otherwise Setup sets it direct
+	GSTevColor mColor;                 // _AC
+	GSTevKColor mKColor;               // _B4
+	GSTexGens mTexGens;                // _B8
+	GSTexCoordGen mTexGen;             // _C0
+	CGsTevStage* mNext;                // _D4
+	BOOL mIndirect;                    // _D8, the stage keeps its indirect setup; otherwise Setup sets it direct
 	// _DC vtable
 
 	virtual ~CGsTevStage() { } // _08
