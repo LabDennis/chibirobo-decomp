@@ -6,6 +6,7 @@
 #include "game/ctpl.h"
 #include "Dolphin/vec.h"
 class CoordInfo;
+class CCamera;
 struct UnkStageObj;
 
 // The Wii title screen (title.cpp), CGame keeps it at _5C70. The layout follows the GameCube Title
@@ -177,9 +178,10 @@ public:
 	virtual void vf1D0();
 	// _1D4, projects a world position onto the screen, the GameCube's ProjectOffsetToScreen
 	virtual void vf1D4(const Vec* pos, f32* x, f32* y, s32, s32);
-	virtual void vf1D8();
-	virtual void vf1DC();
-	virtual void vf1E0();
+	virtual f32 vf1D8(); // _1D8, the GameCube's GetFloorXZExtent
+	virtual f32 vf1DC(); // _1DC, the GameCube's GetCollisionHeight
+	// _1E0, the GameCube's ProjectVisibleBounds
+	virtual BOOL vf1E0(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight);
 	virtual void vf1E4();
 	virtual void vf1E8();
 	virtual void vf1EC();
@@ -226,10 +228,19 @@ public:
 	u8 _158[0x168 - 0x158];
 	void* mKind;      // _168, the object's spawn data; +0x16 is the s16 object kind
 	void* mSpawnData; // _16C, the placement record; _00 is the object kind the scroll map checks
-	u8 _170[0x794 - 0x170];
+	u8 _170[0x6D4 - 0x170];
+	BOOL mScreenBoundsValid; // _6D4, the four below hold the object's bounds on screen
+	u8 _6D8[0x6E0 - 0x6D8];
+	f32 mScreenTop;    // _6E0
+	f32 mScreenBottom; // _6E4
+	f32 mScreenLeft;   // _6E8
+	f32 mScreenRight;  // _6EC
+	u8 _6F0[0x794 - 0x6F0];
 	s32 mAnmHead;             // _794, the slot PushAnim probes first
 	WiiAnimSlot mAnmQueue[4]; // _798
-	u8 _7B8[0x9B0 - 0x7B8];
+	u8 _7B8[0x998 - 0x7B8];
+	s32 _998; // _998, the robo eyes label an item only while this is clear
+	u8 _99C[0x9B0 - 0x99C];
 
 	void ClearAnmQueue()
 	{

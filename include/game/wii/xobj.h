@@ -19,27 +19,67 @@
 // sizes come from the retail RTTI strings and the element strides the pool
 // constructors pass to __construct_new_array.
 //
-// CObj's vtable (retail 0x80355EF8, RTTI "CObj") has two parts, one per
-// polymorphic base: RTTI names them nw4r::g3d::ICalcWorldCallback at object _00
-// (the destructor and three callbacks) and nw4r::g3d::IScnObjCallback at object
-// _04 (the destructor and five callbacks, the part's header at vtable +_18).
-// MWCC appends the derived class's own virtuals behind the last part and calls
-// them through the pointer at _00, so CObj's own run from +_38 to +_148 and
-// XObj's start at +_14C - InitializeObject, verified against
-// InitializeObjectPools' virtual calls.
+// XObj's vtable (retail __vt__4XObj at 0x80302438) has two parts, so XObj's
+// chain carries two polymorphic bases: RTTI names them nw4r::g3d::
+// ICalcWorldCallback at object _00 (4 slots) and nw4r::g3d::IScnObjCallback at
+// object _04 (the destructor and five callbacks, the part's header at +_18; the
+// three CObj does not override are weak empty bodies at 0x80031E18-0x80031E20).
+// MWCC appends a class's own virtuals behind the last part and reaches them
+// through the first part's pointer, so the slot comments of CObj and XObj below
+// count from the start of the whole table: CObj's own run from _38 to _148 (the
+// last two are its overriders of IScnObjCallback's, which the second part
+// reaches through this-adjusting thunks), XObj's from
+// _14C (verified against InitializeObjectPools' virtual calls and against the
+// calls inside the two classes' small virtuals at 0x800433FC-0x80044500).
 namespace nw4r {
+namespace db {
+void Panic(const char* file, int line, const char* fmt, ...);
+}
+
+// the parts of nw4r::math CObj's world callback uses; math_types.h itself needs the Wii MSL's
+// <cmath>, which the game's include path does not have yet
+namespace math {
+struct VEC3;
+struct MTX34 {
+	f32 m[3][4];
+};
+MTX34* MTX34RotXYZFIdx(MTX34* pMtx, f32 fx, f32 fy, f32 fz);
+inline MTX34* MTX34RotXYZRad(MTX34* pMtx, f32 rx, f32 ry, f32 rz)
+{
+	return MTX34RotXYZFIdx(pMtx, rx * (128.0f / 3.1415927f), ry * (128.0f / 3.1415927f), rz * (128.0f / 3.1415927f));
+}
+} // namespace math
+
 namespace g3d {
 
 class ScnObj;
-class ScnMdl;
+class ResMdl;
 
+// what the world callback writes for a node, as far as the game uses it
+struct ChrAnmResult {
+	void SetScale(const math::VEC3* pScale);        // 0x80263EB8
+	void SetRotTrans(const math::MTX34* pRotTrans); // 0x80264180
+};
+
+// the callback's node binding; the members are nw4r's
+class FuncObjCalcWorld {
+public:
+	u16 GetCallbackNodeID() const { return mNodeID; }
+
+private:
+	void* mpCallback; // _00
+	u8 mTiming;       // _04
+	u8 _05;
+	u16 mNodeID; // _06
+};
+
+// the three hooks of nw4r's world-matrix pass; their parameters are not recovered
 class ICalcWorldCallback {
 public:
-	virtual ~ICalcWorldCallback() { } // _08
-	// _0C.._14 not yet recovered
-	virtual void _unk_00C();
-	virtual void _unk_010();
-	virtual void _unk_014();
+	virtual ~ICalcWorldCallback() { }                                                          // _08
+	virtual void ExecCallbackA(ChrAnmResult* pResult, ResMdl mdl, FuncObjCalcWorld* pFuncObj); // _0C
+	virtual void ExecCallbackB();                                                              // _10
+	virtual void ExecCallbackC();                                                              // _14
 };
 
 class IScnObjCallback {
@@ -52,6 +92,58 @@ public:
 	virtual void _unk_014();
 	virtual void _unk_018();
 	virtual void _unk_01C();
+};
+
+// a node (bone) of a model resource, as far as the game reads it
+struct ResNodeData {
+	u8 _00[0x10];
+	u32 mMtxID; // _10, the node's index in the model's world matrix array
+	u8 _14[0x18];
+	Vec mRotate;    // _2C, in degrees
+	Vec mTranslate; // _38
+};
+
+// nw4r's handle to a node; the two checks carry g3d_resnode_ac.h's lines
+class ResNode {
+public:
+	ResNodeData* mpData; // _00
+
+	bool IsValid() const { return mpData != NULL; }
+	ResNodeData* ptr() const { return mpData; }
+	ResNodeData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resnode_ac.h", 44, "%s::%s: Object not valid.", "ResNode", "ref");
+		}
+		return *mpData;
+	}
+	u32 GetMtxID() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resnode_ac.h", 83, "NW4R:Failed assertion IsValid()");
+		}
+		if (IsValid()) {
+			return ptr()->mMtxID;
+		}
+		return 0;
+	}
+};
+
+// the scene model, as far as the game reads it
+class ScnMdlSimple {
+public:
+	u8 _00[0xEC];
+	Mtx* mpWorldMtxArray; // _EC, one per ResNodeData::mMtxID
+};
+
+// nw4r's handle to a model resource
+class ResMdl {
+public:
+	void* mpData; // _00
+
+	ResNode GetResNode(const char* name) const; // 0x8025CFC8
+	ResNode GetResNode(u32 index) const;        // 0x8025D05C
+	u32 GetResNodeNumEntries() const;           // 0x8025D104
 };
 
 } // namespace g3d
@@ -72,9 +164,13 @@ public:
 
 // same shape and role as the GameCube CObjVec: a current vec with the target it
 // walks to and the step's speed, only the current vec is a TVec here
+// ccameraactioneye.h (which cgame.h includes) carries a second copy of the class for the camera
+// code; until the two are one, a file that needs both headers includes that one first and takes it
+#ifndef _GAME_CCAMERAACTIONEYE_H
 class CObjVec : public TVec {
 public:
 	CObjVec();
+	u8 Step(u32 frames); // 0x802A7FB4
 
 	CVec mTarget; // _10
 	CVec mSpeed;  // _20
@@ -82,6 +178,7 @@ public:
 	virtual ~CObjVec() { }
 };
 STATIC_ASSERT(sizeof(CObjVec) == 0x30);
+#endif
 
 // small polymorphic members the aggregate constructors only tag with a vtable;
 // their names come from the retail RTTI strings, their members are not yet
@@ -104,15 +201,18 @@ public:
 		_04 = 0;
 	}
 
+	CVec GetNodeRotate(nw4r::g3d::ResNode node) const;                     // 0x80043518, in radians
+	CVec GetNodeTranslate(nw4r::g3d::ResNode node) const;                  // 0x80043988
 	void Release(BOOL freeResource);                                       // 0x802B6690
 	void SetAnim(void* anim, s32 id, f32 frame, f32 blend, f32 blendRate); // 0x802B68D8
 	void RemoveAnimAll();                                                  // 0x802B842C
 	void SetAnmScn(u32 id, f32 frame);                                     // 0x802B8600, checks m_resources.scn
+	void ReleaseWork();                                                    // 0x802B8674, frees what hangs at its _4C
 	void SetColors(GXColor add, GXColor mul);                              // 0x802B8C8C
 
 	u32 _00;
-	u32 _04;
-	nw4r::g3d::ScnMdl* m_pScnMdl; // _08
+	u32 _04;                            // the model's nw4r::g3d::ResMdl
+	nw4r::g3d::ScnMdlSimple* m_pScnMdl; // _08, NULL without a model
 	u8 _0C[0x4C];
 
 	virtual ~NW_Obj() { } // _58
@@ -138,8 +238,7 @@ STATIC_ASSERT(sizeof(CAnmQueue) == 0x68);
 
 // the Wii object archive, replacing the GameCube CJArchive/CJAnim pair: the
 // retail ctor (0x800BE7E0) constructs an NW_Anm and the CFile the archive reads
-// go through. XObj keeps one and
-// XObjChr a second one
+// go through. XObj keeps one and XObjChr a second one
 class CJArchive {
 public:
 	CJArchive();
@@ -195,74 +294,77 @@ public:
 		mMoveSpeed2.Set(0.0f, 0.0f, 0.0f);
 	}
 	virtual ~CObj() { }
-	virtual BOOL ReadAsync(ResourceFile* file, const char* path, u32 model, u32 flags, u32 offset, u32 size); // _38
-	virtual BOOL ReadCheck();                                                                                 // _3C
-	virtual void Release();                                                                                   // _40
-	virtual void _unk_044();
-	virtual void _unk_048();
-	virtual void _unk_04C();
-	virtual void _unk_050();
-	virtual void _unk_054();
-	virtual void _unk_058();
-	virtual void _unk_05C();
-	virtual void _unk_060();
-	virtual void _unk_064();
-	virtual void _unk_068();
-	virtual void _unk_06C();
-	virtual void _unk_070();
-	virtual void _unk_074();
-	virtual void _unk_078();
-	virtual void _unk_07C();
-	virtual void _unk_080();
-	virtual void _unk_084();
-	virtual void _unk_088();
-	virtual void _unk_08C();
-	virtual void _unk_090();
-	virtual void _unk_094();
-	virtual void _unk_098();
-	virtual void _unk_09C();
-	virtual void _unk_0A0();
-	virtual void _unk_0A4();
-	virtual void _unk_0A8();
-	virtual void _unk_0AC();
-	virtual void _unk_0B0();
-	virtual void _unk_0B4();
-	virtual void _unk_0B8();
-	virtual void _unk_0BC();
-	virtual void _unk_0C0();
-	virtual void _unk_0C4();
-	virtual void _unk_0C8();
-	virtual void _unk_0CC();
-	virtual void _unk_0D0();
-	virtual void _unk_0D4();
-	virtual void _unk_0D8();
-	virtual void _unk_0DC();
-	virtual void _unk_0E0();
-	virtual void _unk_0E4();
-	virtual void _unk_0E8();
-	virtual void _unk_0EC();
-	virtual void _unk_0F0();
-	virtual void _unk_0F4();
-	virtual void _unk_0F8();
-	virtual void _unk_0FC();
+	virtual void ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _0C
+	virtual void ExecCallbackB();                                                                                               // _10
+	virtual void ExecCallbackC();                                                                                               // _14
+	virtual BOOL ReadAsync(ResourceFile* file, const char* path, u32 model, u32 flags, u32 offset, u32 size);                   // _38
+	virtual BOOL ReadCheck();                                                                                                   // _3C
+	virtual void Release();                                                                                                     // _40
+	virtual u8 StepTranslate(u32 frames);                                                                                       // _44
+	virtual u8 StepRotate(u32 frames);                                                                                          // _48
+	virtual u8 StepScale(u32 frames);                                                                                           // _4C
+	virtual nw4r::g3d::ResNode GetResNode(const char* name);                                                                    // _50
+	virtual nw4r::g3d::ResNode GetResNode(u32 index);                                                                           // _54
+	virtual nw4r::g3d::ResNode GetResNode();     // _58, the first node
+	virtual nw4r::g3d::ResNode GetRootResNode(); // _5C
+	virtual void SetTranslateX(f32 x);           // _60
+	virtual void SetTranslateY(f32 y);           // _64
+	virtual void SetTranslateZ(f32 z);           // _68
+	virtual void SetRotationX(f32 x);            // _6C
+	virtual void SetRotationY(f32 y);            // _70
+	virtual void SetRotationZ(f32 z);            // _74
+	virtual void SetScaleX(f32 x);               // _78
+	virtual void SetScaleY(f32 y);               // _7C
+	virtual void SetScaleZ(f32 z);               // _80
+	virtual void SetPos(f32 x, f32 y, f32 z);    // _84
+	virtual void SetRot(f32 x, f32 y, f32 z);    // _88
+	virtual void SetScale(f32 x, f32 y, f32 z);  // _8C
+	virtual void SetPos(const Vec& pos);         // _90
+	virtual void SetRot(const Vec& rot);         // _94
+	virtual void SetScale(const Vec& scale);     // _98
+	virtual void vf9C();
+	virtual MtxP GetWorldMtx(nw4r::g3d::ResNode node);                                       // _A0, NULL without a model
+	virtual MtxP GetWorldMtx(const char* name);                                              // _A4
+	virtual MtxP GetWorldMtx(u32 index);                                                     // _A8
+	virtual MtxP GetWorldMtx();                                                              // _AC
+	virtual CVec GetWorldPos(nw4r::g3d::ResNode node);                                       // _B0
+	virtual CVec GetWorldPos(const char* name);                                              // _B4
+	virtual CVec GetWorldPos(u32 index);                                                     // _B8
+	virtual CVec GetWorldPos();                                                              // _BC
+	virtual CVec GetNodeTranslate(nw4r::g3d::ResNode node);                                  // _C0, the node's own translation
+	virtual CVec GetNodeTranslate(const char* name);                                         // _C4
+	virtual CVec GetNodeTranslate(u32 index);                                                // _C8
+	virtual CVec GetNodeTranslate();                                                         // _CC
+	virtual f32 GetNodeRotateX(nw4r::g3d::ResNode node);                                     // _D0, the node's own rotation, in radians
+	virtual f32 GetNodeRotateX(const char* name);                                            // _D4
+	virtual f32 GetNodeRotateX(u32 index);                                                   // _D8
+	virtual f32 GetNodeRotateX();                                                            // _DC
+	virtual f32 GetNodeRotateY(nw4r::g3d::ResNode node);                                     // _E0
+	virtual f32 GetNodeRotateY(const char* name);                                            // _E4
+	virtual f32 GetNodeRotateY(u32 index);                                                   // _E8
+	virtual f32 GetNodeRotateY();                                                            // _EC
+	virtual f32 GetNodeRotateZ(nw4r::g3d::ResNode node);                                     // _F0
+	virtual f32 GetNodeRotateZ(const char* name);                                            // _F4
+	virtual f32 GetNodeRotateZ(u32 index);                                                   // _F8
+	virtual f32 GetNodeRotateZ();                                                            // _FC
 	virtual void SetMoveDir(const Vec* dir, f32 speed);                                      // _100
 	virtual void SetRotateY(f32 target, f32 speed);                                          // _104
 	virtual void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate); // _108
-	virtual void _unk_10C();
+	virtual void vf10C();
 	virtual void ClearAnim();           // _110
 	virtual void SetAnimRate(f32 rate); // _114
-	virtual void _unk_118();
-	virtual void _unk_11C();
-	virtual void _unk_120();
-	virtual void _unk_124();
-	virtual void _unk_128();
-	virtual void _unk_12C();
-	virtual void _unk_130();
-	virtual void _unk_134();
+	virtual void vf118();
+	virtual void vf11C();
+	virtual f32 GetAnimRate(s32 index); // _120
+	virtual f32 GetAnimRate();          // _124
+	virtual f32 GetAnimFrame();         // _128
+	virtual f32 GetAnimEndFrame();      // _12C
+	virtual bool IsAnimEnd(f32 frames); // _130, the animation runs out within frames
+	virtual void vf134();
 	virtual void SetAnmScn(u32 id, f32 frame, f32 rate); // _138
-	virtual void _unk_13C();
-	virtual void _unk_140();
-	virtual void _unk_144();
+	virtual void ReleaseModelWork();                     // _13C
+	virtual void vf140();
+	virtual void _unk_00C(); // _144, IScnObjCallback's
 	// the IScnObjCallback override: overriding a second base's virtual adds a slot here
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info); // _148
 
@@ -270,7 +372,14 @@ public:
 	BOOL Load(ResourceFile* file, const char* path, u32 model, u32 flags, u32 offset, u32 size);
 	void SetAnmScnRate(f32 rate);
 
-private:
+	// the node's world matrix, NULL without a model. retail expands the same code in GetWorldMtx
+	// (0x8001A3C0) and in GetWorldPos (0x80043B54), with the node copied first as an argument is
+	MtxP GetNodeWorldMtx(nw4r::g3d::ResNode node) const
+	{
+		return mObject.m_pScnMdl != NULL ? mObject.m_pScnMdl->mpWorldMtxArray[node.GetMtxID()] : NULL;
+	}
+
+protected:
 	s32 mLoadState;        // _08, 1 while the resource file is being read
 	u32 mModel;            // _0C
 	u32 mLoadFlags;        // _10
@@ -286,16 +395,13 @@ private:
 	CVec mMoveTarget2;     // _A0
 	CVec mMoveSpeed2;      // _B0
 	s32 mAnimId;           // _C0
-	f32 mAnimRate;         // _C4
-	f32 mLastAnimRate;     // _C8
-	f32 mAnmScnRate;       // _CC
-	f32 mLastAnmScnRate;   // _D0
+	f32 mAnimRate[4];      // _C4, the animation's rate and the one last handed on, then the same for the scene anm
 	CColor mColor0;        // _D4, the two colors the materials blend in
 	CColor mColor1;        // _DC
 	u8 mColorsChanged;     // _E4, set until the next material callback hands them to the model
 	NW_Obj mObject;        // _E8
 	u8 _144[4];
-	u8 _148;
+	u8 _148; // cleared by SetAnim
 	u8 _149[7];
 };
 STATIC_ASSERT(sizeof(CObj) == 0x150);
@@ -310,6 +416,97 @@ public:
 	                                 // definition keeps the GameCube u32 parameter, but callers
 	                                 // here emit no argument (the callee never reads it)
 
+	virtual void ResetForNewGame();                        // _150
+	virtual void ResetObjectState();                       // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
+	virtual void vf15C();
+	virtual void vf160();
+	virtual void UpdateObject(u32 frames); // _164
+	virtual void vf168();
+	virtual void vf16C();
+	virtual void vf170();
+	virtual void DrawObject();           // _174
+	virtual void DrawWithView(Mtx view); // _178
+	virtual void vf17C();
+	virtual void vf180();
+	virtual void vf184();
+	virtual void vf188();
+	virtual void DrawCollisionShapes(); // _18C
+	virtual void vf190();
+	virtual void DrawDebugStatus(); // _194
+	virtual void vf198();
+	virtual void vf19C();
+	virtual void vf1A0();
+	virtual void vf1A4();
+	virtual void vf1A8();
+	virtual void vf1AC();
+	virtual Vec GetCameraTarget();    // _1B0, where a camera looks at this object
+	virtual void SetBaseMtx(Mtx mtx); // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
+	virtual void ClearBaseMtx();      // _1B8
+	virtual void vf1BC();
+	virtual void vf1C0();
+	virtual void vf1C4();
+	virtual u32 TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 arg6,
+	                               s32 arg7);                         // _1C8
+	virtual s32 OnPlayerContact(s32 unused, s32 value);               // _1CC
+	virtual BOOL TestFloorCrossing(const Vec& start, const Vec& end); // _1D0
+	virtual void vf1D4();
+	virtual void vf1D8();
+	virtual void vf1DC();
+	virtual void vf1E0();
+	virtual void vf1E4();
+	virtual s32 HandleEventCommand(s32 count, s32* args);                // _1E8
+	virtual const void* GetEventScript();                                // _1EC
+	virtual void SetColor(s32 blend, u8 r, u8 g, u8 b, f32 time);        // _1F0
+	virtual void OnPushDisplacement(const Vec& displacement);            // _1F4
+	virtual BOOL ReceivePlugPower(f32 amount);                           // _1F8
+	virtual void OnHitFromPosition(const Vec& position, f32 strength);   // _1FC
+	virtual void OnSquirterHit(const Vec* contact, s32 value, s32 tint); // _200
+	virtual BOOL OnItemUsed(const Vec* position, s32 value);             // _204
+	virtual void vf208();
+	virtual void vf20C();
+	virtual void vf210();
+	virtual void OnMoveRequest();                                  // _214, runs ahead of the three requests below
+	virtual void RequestRotationY(f32 y);                          // _218
+	virtual void RequestRotateY(f32 target, f32 speed);            // _21C
+	virtual void RequestMoveDir(const Vec* dir, f32 speed);        // _220
+	virtual BOOL HasModel();                                       // _224
+	virtual nw4r::g3d::ResNode GetResNodeOrFirst(u32 index);       // _228, the first node when index is out of range
+	virtual nw4r::g3d::ResNode FindResNode(const char* name);      // _22C
+	virtual CVec GetJointPos(nw4r::g3d::ResNode node);             // _230
+	virtual CVec GetJointPos(const char* name);                    // _234
+	virtual CVec GetJointPos(u32 index);                           // _238
+	virtual CVec GetJointWorldPos(const char* name);               // _23C
+	virtual CVec GetJointWorldPos(u32 index);                      // _240
+	virtual CVec* GetPos();                                        // _244
+	virtual CVec GetJointTranslate(const char* name);              // _248
+	virtual CVec GetJointTranslate(u32 index);                     // _24C
+	virtual CVec GetJointScale(nw4r::g3d::ResNode node);           // _250, the scale in the node's world matrix
+	virtual void GetJointScale(nw4r::g3d::ResNode node, Vec* out); // _254
+	virtual CVec* GetScale();                                      // _258
+	virtual f32 GetPosX();                                         // _25C
+	virtual f32 GetPosY();                                         // _260
+	virtual f32 GetPosZ();                                         // _264
+	virtual f32 GetRotX();                                         // _268
+	virtual f32 GetRotY();                                         // _26C
+	virtual f32 GetRotZ();                                         // _270
+	virtual f32 GetScaleX();                                       // _274
+	virtual f32 GetScaleY();                                       // _278
+	virtual f32 GetScaleZ();                                       // _27C
+	virtual void vf280();
+	virtual void vf284(); // _284, calls vf280
+	virtual void vf288();
+	// CObj's
+	virtual void ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj); // _0C
+	virtual void ExecCallbackB();                                                                                               // _10
+	virtual void Release();                                                                                                     // _40
+	virtual nw4r::g3d::ResNode GetResNode(const char* name);                                                                    // _50
+	virtual nw4r::g3d::ResNode GetResNode(u32 index);                                                                           // _54
+	virtual nw4r::g3d::ResNode GetResNode();                                                                                    // _58
+	virtual void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate);                                    // _108
+	virtual void ClearAnim();                                                                                                   // _110
+	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);                              // _148
+
 private:
 	CStatus64 mStatus; // _150
 	CoordInfo mCoord;  // _160
@@ -319,12 +516,15 @@ private:
 	u8 _1AC[0x54C];
 	CVec mToppleOffset; // _6F8
 	u8 _708[0xC];
-	CVec mVec714; // _714
-	CEvt mEvt;    // _724
-	u8 _790[0x28];
+	CVec mVec714;             // _714
+	CEvt mEvt;                // _724
+	const void* mEventScript; // _790, the event script the object starts when used
+	u8 _794[0x24];
 	CAnmQueue mAnmQueue; // _7B8
 	CJArchive mArchive;  // _820
-	u8 _968[0x40];
+	Mtx mBaseMtx;        // _968, SetBaseMtx's copy
+	MtxP mBaseMtxPtr;    // _998, NULL or mBaseMtx
+	u8 _99C[0xC];
 };
 STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 

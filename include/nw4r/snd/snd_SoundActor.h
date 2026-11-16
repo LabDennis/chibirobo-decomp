@@ -78,6 +78,10 @@ namespace nw4r { namespace snd
 			return mActorParam.volume;
 		}
 
+		void SetPitch(f32 pitch) {
+			mActorParam.pitch = pitch;
+		}
+
 	// static members
 	public:
 		static int const ACTOR_PLAYER_COUNT = 4;

@@ -24,16 +24,16 @@ void CObj::Init()
 	mMoveScale.Set(1.0f, 1.0f, 1.0f);
 	mMoveTarget2.Set(1.0f, 1.0f, 1.0f);
 	mMoveSpeed2.Set(0.0f, 0.0f, 0.0f);
-	mAnimId         = -1;
-	mLastAnimRate   = 0.0f;
-	mAnimRate       = 0.0f;
-	mLastAnmScnRate = 0.0f;
-	mAnmScnRate     = 0.0f;
-	GXColor add     = { 0, 0, 0, 0 };
-	mColor0         = add;
-	GXColor mul     = { 0xFF, 0xFF, 0xFF, 0 };
-	mColor1         = mul;
-	mColorsChanged  = TRUE;
+	mAnimId        = -1;
+	mAnimRate[1]   = 0.0f;
+	mAnimRate[0]   = 0.0f;
+	mAnimRate[3]   = 0.0f;
+	mAnimRate[2]   = 0.0f;
+	GXColor add    = { 0, 0, 0, 0 };
+	mColor0        = add;
+	GXColor mul    = { 0xFF, 0xFF, 0xFF, 0 };
+	mColor1        = mul;
+	mColorsChanged = TRUE;
 }
 
 /**
@@ -169,9 +169,9 @@ void CObj::SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blend
 		// a new anim always takes the rate too
 		force = TRUE;
 	}
-	if (rate != mAnimRate || force) {
-		mAnimRate     = rate;
-		mLastAnimRate = 0.01f + rate;
+	if (rate != mAnimRate[0] || force) {
+		mAnimRate[0] = rate;
+		mAnimRate[1] = 0.01f + rate;
 	}
 }
 
@@ -191,9 +191,9 @@ void CObj::ClearAnim()
  */
 void CObj::SetAnimRate(f32 rate)
 {
-	mAnimRate = rate;
+	mAnimRate[0] = rate;
 	// off by a bit so the next update always sets it
-	mLastAnimRate = 0.01f + rate;
+	mAnimRate[1] = 0.01f + rate;
 }
 
 /**
@@ -212,8 +212,25 @@ void CObj::SetAnmScn(u32 id, f32 frame, f32 rate)
  */
 void CObj::SetAnmScnRate(f32 rate)
 {
-	mAnmScnRate     = rate;
-	mLastAnmScnRate = 0.01f + rate;
+	mAnimRate[2] = rate;
+	mAnimRate[3] = 0.01f + rate;
+}
+
+/**
+ * @note Address: 0x802BA3A8
+ * @note Size: 0x94
+ */
+// the root node takes the object's own rotation, translation and scale
+void CObj::ExecCallbackA(nw4r::g3d::ChrAnmResult* pResult, nw4r::g3d::ResMdl mdl, nw4r::g3d::FuncObjCalcWorld* pFuncObj)
+{
+	if (pFuncObj->GetCallbackNodeID() == 0) {
+		nw4r::math::MTX34 rot;
+		nw4r::math::MTX34 rotTrans;
+		nw4r::math::MTX34RotXYZRad(&rot, mMoveRotate.x, mMoveRotate.y, mMoveRotate.z);
+		PSMTXTransApply(rot.m, rotTrans.m, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
+		pResult->SetRotTrans(&rotTrans);
+		pResult->SetScale((const nw4r::math::VEC3*)&mMoveScale);
+	}
 }
 
 /**
@@ -230,4 +247,12 @@ void CObj::ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, 
 		}
 		break;
 	}
+}
+
+/**
+ * @note Address: 0x802BA4E0
+ * @note Size: 0x4
+ */
+void CObj::ExecCallbackB()
+{
 }

@@ -16,13 +16,6 @@ inline void operator delete(void* ptr) throw()
 	MEMFreeToExpHeap(gWiiMem1Heap, ptr);
 }
 
-// RTTI names CScrnWipeCine; no header declares it, so it is declared here as the
-// polymorphic trivially-destroyed class its vtable and deleting dtor prove it to be
-class CScrnWipeCine {
-public:
-	virtual ~CScrnWipeCine();
-};
-
 // retail lays these weak deleting dtors out contiguously at 0x8002FE00-0x80030088
 CScrnRoboeyes::~CScrnRoboeyes()
 {

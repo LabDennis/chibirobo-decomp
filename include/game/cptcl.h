@@ -13,7 +13,7 @@ class CTexObj;
 class CPtclOne {
 public:
 #if defined(VERSION_R24J01)
-	u8 mActive; // _00, a byte on the Wii
+	bool mActive; // _00, one byte on the Wii
 #else
 	BOOL mActive; // _00
 #endif
