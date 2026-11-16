@@ -86,13 +86,13 @@ inline bool PlayerCanLook()
 void CCameraActions::Init()
 {
 	mTable[CAMACTION_DEFAULT] = &mDefault;
-	mTable[CAMACTION_AREA]    = (CInterfaceCameraAction*)mArea;
+	mTable[CAMACTION_AREA]    = &mArea;
 	mTable[CAMACTION_CHASE]   = &mChase;
 	mTable[CAMACTION_EVT]     = &mEvt;
 	mTable[CAMACTION_SCROLL2] = &mScroll2;
 	mTable[CAMACTION_EYE]     = &mEye;
 	mTable[CAMACTION_ANIM]    = &mAnim;
-	mTable[CAMACTION_MAP]     = (CInterfaceCameraAction*)mMap;
+	mTable[CAMACTION_MAP]     = &mMap;
 	mTable[CAMACTION_LADR]    = &mLadr;
 	mTable[CAMACTION_RESET]   = &mReset;
 	mTable[CAMACTION_10]      = NULL;
