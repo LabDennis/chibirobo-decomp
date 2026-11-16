@@ -385,15 +385,14 @@ extern "C" void BuildObjectDrawList(CGame* game)
  * @note Address: 0x8001146C
  * @note Size: 0x1A0
  */
-// NONMATCHING: the light count isn't read again for the second GetLights
 // picks the lights to draw with: an object's own when it has some, else the game's. only the
 // object lights cast shadows then
 extern "C" void SelectSceneLights(CGame* game)
 {
 	game->mLightList = NULL;
-	XObjMap* map     = (XObjMap*)game->mXObjs.mPools[3].mObjects;
-	if ((map->mStatus.mFlags & 1) && map->GetLights() != NULL) {
-		game->mLightList = map->GetLights();
+	if ((((XObjMap*)game->mXObjs.mPools[3].First())->mStatus.mFlags & 1)
+	    && ((XObjMap*)game->mXObjs.mPools[3].First())->GetLights() != NULL) {
+		game->mLightList = ((XObjMap*)game->mXObjs.mPools[3].First())->GetLights();
 	} else {
 		XObjLight* sceneLight = (XObjLight*)game->mXObjs.mPools[1].mObjects;
 		if (sceneLight->mStatus.mFlags & 1) {

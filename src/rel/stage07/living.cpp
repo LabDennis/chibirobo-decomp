@@ -15,14 +15,21 @@ extern "C" u8 gGame[];
 
 #define MAINGAME_AT(type, offset) (*(type*)(gGame + (offset)))
 
+// The functions are ordered bottom-up below because retail links them in reverse under -inline auto,deferred.
+
+struct Stage07Camera {
+	u8 _00[0xA4];  // _00
+	Vec mInterest; // _A4, CCamera::mInterest inside CGame::mMotionControlCamera
+};
+
 #if defined(VERSION_JP)
-#define STAGE07_FLAG_LIST   MAINGAME_AT(void*, 0xE7114)
-#define STAGE07_SOUND       (&MAINGAME_AT(u8, 0xE713C))
-#define STAGE07_FIELD_E5DDC (&MAINGAME_AT(Vec, 0xE50F4))
+#define STAGE07_FLAG_LIST MAINGAME_AT(void*, 0xE7114)
+#define STAGE07_SOUND     (&MAINGAME_AT(u8, 0xE713C))
+#define STAGE07_CAMERA    (&MAINGAME_AT(Stage07Camera, 0xE5050))
 #else
-#define STAGE07_FLAG_LIST   MAINGAME_AT(void*, 0xE7DFC)
-#define STAGE07_SOUND       (&MAINGAME_AT(u8, 0xE7E24))
-#define STAGE07_FIELD_E5DDC (&MAINGAME_AT(Vec, 0xE5DDC))
+#define STAGE07_FLAG_LIST MAINGAME_AT(void*, 0xE7DFC)
+#define STAGE07_SOUND     (&MAINGAME_AT(u8, 0xE7E24))
+#define STAGE07_CAMERA    (&MAINGAME_AT(Stage07Camera, 0xE5D38))
 #endif
 
 extern "C" void AddHideObj__20CCameraActionScroll2Fl(void* obj, s32 value);
@@ -130,16 +137,74 @@ RelCmdFunc _prolog_cmds[]    = {
 }
 
 /**
- * @note Address: stage07 .text 0x0
- * @note Size: 0x78
+ * @note Address: stage07 .text 0x11E0
+ * @note Size: 0x20
  */
-extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* values)
+extern "C" void InitStage(void* arg)
 {
+	InitTrash(arg);
+}
+
+/**
+ * @note Address: stage07 .text 0x10D0
+ * @note Size: 0x110
+ */
+extern "C" void UpdateStage(void* arg)
+{
+	Stage07Actor* actor;
+	void* obj = STAGE07_SOUND;
 	s32 i;
 
-	for (i = 0; i < count; i++) {
-		AddHideObj__20CCameraActionScroll2Fl(STAGE07_FLAG_LIST, values[i]); // every arg is an id for the hide list
+	if (IsGameSoundPlaying(obj, 0x1000D)) {
+		for (i = 0; i < STAGE07_GAME->mActorCount; i++) {
+			// Loading mMotionControlCamera inside the loop keeps the +0xA4 member offset in-loop while hoisting the base.
+			Stage07Camera* camera = STAGE07_CAMERA;
+			actor                 = STAGE07_GAME->GetActor(i);
+			// live, drawn objects of kind 0xD0 drive the loop's volume
+			if ((actor->mStatus & 1) && (actor->mStatus & 0x10000) && *actor->mCoord == 0xD0) {
+				PSVECDistance(&camera->mInterest, &actor->mMoveTranslate); // its result is unused
+				SetGameSfxVolume(obj, 0x1000D, GetSoundVolumeAtPosition(obj, &actor->mMoveTranslate, 1), 0);
+			}
+		}
 	}
+	UpdateTrash(arg);
+}
+
+/**
+ * @note Address: stage07 .text 0x10B0
+ * @note Size: 0x20
+ */
+extern "C" void DrawStage(void* arg)
+{
+	DrawTrashStack(arg);
+}
+
+/**
+ * @note Address: stage07 .text 0x10A8
+ * @note Size: 0x8
+ */
+extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args)
+{
+	return 0;
+}
+
+/**
+ * @note Address: stage07 .text 0x1080
+ * @note Size: 0x28
+ */
+extern "C" s32 CmdSetFafaPartVisibility(s32 cmd, s32 count, s32* args)
+{
+	SetFafaPartVisibility(args[0]);
+	return 0;
+}
+
+/**
+ * @note Address: stage07 .text 0x1058
+ * @note Size: 0x28
+ */
+extern "C" s32 CmdSetObj37PartVisibility(s32 cmd, s32 count, s32* args)
+{
+	SetObj37PartVisibility(args[0]);
 	return 0;
 }
 
@@ -216,150 +281,17 @@ extern "C" void SetObj37PartVisibility(s32 mode)
 // CVec::~CVec, inline
 
 /**
- * @note Address: stage07 .text 0x1058
- * @note Size: 0x28
+ * @note Address: stage07 .text 0x0
+ * @note Size: 0x78
  */
-extern "C" s32 CmdSetObj37PartVisibility(s32 cmd, s32 count, s32* args)
+extern "C" s32 CmdAddObjFlagList(s32 cmd, s32 count, s32* values)
 {
-	SetObj37PartVisibility(args[0]);
-	return 0;
-}
-
-/**
- * @note Address: stage07 .text 0x1080
- * @note Size: 0x28
- */
-extern "C" s32 CmdSetFafaPartVisibility(s32 cmd, s32 count, s32* args)
-{
-	SetFafaPartVisibility(args[0]);
-	return 0;
-}
-
-/**
- * @note Address: stage07 .text 0x10A8
- * @note Size: 0x8
- */
-extern "C" s32 CmdNop(s32 cmd, s32 count, s32* args)
-{
-	return 0;
-}
-
-/**
- * @note Address: stage07 .text 0x10B0
- * @note Size: 0x20
- */
-extern "C" void DrawStage(void* arg)
-{
-	DrawTrashStack(arg);
-}
-
-/**
- * @note Address: stage07 .text 0x10D0
- * @note Size: 0x110
- */
-// NONMATCHING: retail splits the field address into a hoisted addis and an
-// in-loop addi; this build folds it into one pointer.
-extern "C" void UpdateStage(void* arg)
-{
-	Stage07Actor* actor;
-	void* obj = STAGE07_SOUND;
 	s32 i;
 
-	if (IsGameSoundPlaying(obj, 0x1000D)) {
-		for (i = 0; i < STAGE07_GAME->mActorCount; i++) {
-			actor = STAGE07_GAME->GetActor(i);
-			// live, drawn objects of kind 0xD0 drive the loop's volume
-			if ((actor->mStatus & 1) && (actor->mStatus & 0x10000) && *actor->mCoord == 0xD0) {
-				PSVECDistance(STAGE07_FIELD_E5DDC, &actor->mMoveTranslate); // its result is unused
-				SetGameSfxVolume(obj, 0x1000D, GetSoundVolumeAtPosition(obj, &actor->mMoveTranslate, 1), 0);
-			}
-		}
+	for (i = 0; i < count; i++) {
+		AddHideObj__20CCameraActionScroll2Fl(STAGE07_FLAG_LIST, values[i]); // every arg is an id for the hide list
 	}
-	UpdateTrash(arg);
-}
-// UpdateStage
-/*
-    stwu     r1, -0x30(r1)
-    mflr     r0
-    lis      r5, gGame@ha
-    lis      r4, 0x1
-    stw      r0, 0x34(r1)
-    addi     r5, r5, gGame@l
-    addi     r4, r4, 0xd
-    stmw     r25, 0x14(r1)
-    addis    r27, r5, 0xe
-    addi     r27, r27, 0x7e24
-    mr       r25, r3
-    mr       r3, r27
-    bl       IsGameSoundPlaying
-    cmpwi    r3, 0x0
-    beq      .L_000011C4
-    lis      r3, gGame@ha
-    li       r26, 0x0
-    addi     r30, r3, gGame@l
-    addis    r29, r30, 0xe
-    addis    r28, r30, 0x1
-    b        .L_000011B8
-.L_00001124:
-    addis    r3, r30, 0x1
-    li       r0, 0x1
-    lwz      r31, -0x67a0(r3)
-    li       r5, 0x0
-    lwz      r3, 0x228(r31)
-    lwz      r6, 0x22c(r31)
-    and      r4, r3, r5
-    and      r0, r6, r0
-    xor      r3, r0, r5
-    xor      r0, r4, r5
-    or.      r0, r3, r0
-    beq      .L_000011B0
-    lis      r3, 0x1
-    xor      r0, r4, r5
-    and      r3, r6, r3
-    xor      r3, r3, r5
-    or.      r0, r3, r0
-    beq      .L_000011B0
-    lwz      r3, 0x238(r31)
-    lwz      r0, 0x0(r3)
-    cmpwi    r0, 0xd0
-    bne      .L_000011B0
-    addi     r3, r29, 0x5ddc
-    addi     r4, r31, 0xc8
-    bl       PSVECDistance
-    mr       r3, r27
-    addi     r4, r31, 0xc8
-    li       r5, 0x1
-    bl       GetSoundVolumeAtPosition
-    lis      r4, 0x1
-    mr       r5, r3
-    mr       r3, r27
-    li       r6, 0x0
-    addi     r4, r4, 0xd
-    bl       SetGameSfxVolume
-.L_000011B0:
-    addi     r30, r30, 0x4
-    addi     r26, r26, 0x1
-.L_000011B8:
-    lwz      r0, -0x57a0(r28)
-    cmpw     r26, r0
-    blt      .L_00001124
-.L_000011C4:
-    mr       r3, r25
-    bl       UpdateTrash
-    lmw      r25, 0x14(r1)
-    lwz      r0, 0x34(r1)
-    mtlr     r0
-    addi     r1, r1, 0x30
-    blr
-*/
-
-/**
- * @note Address: stage07 .text 0x11E0
- * @note Size: 0x20
- */
-extern "C" void InitStage(void* arg)
-{
-	InitTrash(arg);
+	return 0;
 }
 
 /**

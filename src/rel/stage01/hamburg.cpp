@@ -116,27 +116,9 @@ struct HamObj {
 	Stage01Actor* GetActor();
 	f32 GetStackHeight();
 
-	void SetState(StateFunc func)
-	{
-		mState     = func;
-		mStateTime = 0;
-	}
-
-	void StartSlide(f32 distance, f32 speed, f32 angle)
-	{
-		if (mState != &HamObj::StateFlip) {
-			mMoveAngle     = angle;
-			mSlideDistance = distance;
-			mMoveSpeed     = speed;
-			SetState(&HamObj::StateSlide);
-		}
-	}
-
-	void SetRot(f32 rot)
-	{
-		mRotZ = rot;
-		mActor->SetRotationZ(mRotZ, 0);
-	}
+	void SetState(StateFunc func);
+	void StartSlide(f32 distance, f32 speed, f32 angle);
+	void SetRot(f32 rot);
 
 	HamObj* mAbove;       // _00, the HamObj stacked on this one, NULL for none
 	Stage01Actor* mActor; // _04
@@ -429,6 +411,28 @@ inline Vec* Stage01Actor::GetPos()
 inline f32 HamObj::GetStackHeight()
 {
 	return GetActor()->GetKindRef().GetSize().y + 2.0f * mStackLevel;
+}
+
+inline void HamObj::SetState(StateFunc func)
+{
+	mState     = func;
+	mStateTime = 0;
+}
+
+inline void HamObj::StartSlide(f32 distance, f32 speed, f32 angle)
+{
+	if (mState != &HamObj::StateFlip) {
+		mMoveAngle     = angle;
+		mSlideDistance = distance;
+		mMoveSpeed     = speed;
+		SetState(&HamObj::StateSlide);
+	}
+}
+
+inline void HamObj::SetRot(f32 rot)
+{
+	mRotZ = rot;
+	mActor->SetRotationZ(mRotZ, 0);
 }
 
 // yaw on the XZ plane
@@ -828,6 +832,34 @@ extern "C" void InitStage(u32 arg)
 {
 	ResetYakiRates();
 	InitAnas();
+}
+
+// particle helpers emit their static const / array initializers between UpdateStage and CheckYakiResult
+static inline const Vec& GetCookLevelRotation(void)
+{
+	static const Vec rot = { 0.0f, 0.0f, 0.0f };
+	return rot;
+}
+
+static inline const Vec& GetOvercookRotation(void)
+{
+	static const Vec rot = { 0.0f, 0.0f, 0.0f };
+	return rot;
+}
+
+static inline const Vec& GetBurnRotation(void)
+{
+	static const Vec rot = { 0.0f, 0.0f, 0.0f };
+	return rot;
+}
+
+static inline void StartHamCookingEffect(HamObj* slot)
+{
+	if (slot->mYakiEffect == 0) { // start the cooking particles on joint 0 once
+		s32 path[]        = { 0 };
+		HSD_JObj* jobj    = GetJointByPath(slot->mActor->mJObj, path, 1);
+		slot->mYakiEffect = STAGE01_PARTICLE->Create(0x78, 0, jobj, 1);
+	}
 }
 
 /**
@@ -3846,20 +3878,17 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 		scale.x = scale.y = scale.z = 1.0f;
 
 		if (level < 4 && oldLevel < level) { // crossing into a new doneness puffs once
-			static const Vec rot = { 0.0f, 0.0f, 0.0f };
-			STAGE01_PARTICLE->CreateSRT(0x3A, 1, pos, scale, rot, 1);
+			STAGE01_PARTICLE->CreateSRT(0x3A, 1, pos, scale, GetCookLevelRotation(), 1);
 		}
 		if (level == 4) { // well done: re-puff every 180 units of cook time
 			if (slot->mYakiTime[slot->mSide] % 180 == 0) {
-				static const Vec rot = { 0.0f, 0.0f, 0.0f };
 				STAGE01_PARTICLE->Kill(0x3B);
-				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, rot, 1);
+				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, GetOvercookRotation(), 1);
 			}
 		} else if (level >= 5) { // burnt: every 120 units of cook time
 			if (slot->mYakiTime[slot->mSide] % 120 == 0) {
-				static const Vec rot = { 0.0f, 0.0f, 0.0f };
 				STAGE01_PARTICLE->Kill(0x3B);
-				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, rot, 1);
+				STAGE01_PARTICLE->CreateSRT(0x3B, 1, pos, scale, GetBurnRotation(), 1);
 			}
 		}
 
@@ -3870,11 +3899,7 @@ extern "C" void HamObj_Update(HamObj* slot, u32 step)
 			yakiLoopLevel = 2; // a side at doneness 4+ switches the cooking loop
 		}
 
-		if (slot->mYakiEffect == 0) { // start the cooking particles on joint 0 once
-			s32 path[]        = { 0 };
-			HSD_JObj* jobj    = GetJointByPath(slot->mActor->mJObj, path, 1);
-			slot->mYakiEffect = STAGE01_PARTICLE->Create(0x78, 0, jobj, 1);
-		}
+		StartHamCookingEffect(slot);
 	}
 
 	if (slot->mState != NULL) {
