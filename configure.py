@@ -1692,7 +1692,7 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_SeqFile.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqPlayer.cpp"),
                 # code complete; calls BasicSound::Stop (StopWiiSfxTrack in symbols.txt)
-                Object(NonMatching, "nw4r/snd/snd_SeqSound.cpp"),
+                Object(Matching, "nw4r/snd/snd_SeqSound.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqSoundHandle.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqTrack.cpp"),
                 Object(Matching, "nw4r/snd/snd_Sound3DActor.cpp"),
