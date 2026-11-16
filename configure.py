@@ -1256,12 +1256,14 @@ if wii:
                 # into Update (no bl, retail 0x802B2528), with its standalone copy at its own
                 # address (retail 0x802B1D84)
                 Object(Matching, "game/wii/cpad.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # cgs.cpp from the camera on, 0x802A80FC-0x802AEA44; it includes cgs_scrn.cpp and
+                # cgs_chan.cpp, whose asserts share its string pool. No auto-inlining:
+                # retail calls DrawGsTriangleVertices from DrawGsVertexQuad and MeasureStrokeTextWidth
+                # from DrawGsStrokeText, both of which -inline auto folds into their one caller
+                Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # the message system between evt.cpp's destructors and cpadact.cpp; the
                 # GameCube file's VERSION_JP branches are the reconstruction base
                 Object(NonMatching, "game/wii/msg.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the text drawing unit 0x802AD310-0x802AEBB0; the GameCube cgs.cpp pairs
-                # are the reconstruction base
-                Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii's shared helper unit 0x802A5418-0x802A7478: Shift-JIS, HSD matrix
                 # and collision helpers from the GameCube's ut.cpp + mtx.c; the CVec
                 # operators and PSVEC calls stay calls, so no auto-inlining
@@ -1339,7 +1341,8 @@ if wii:
                 # Wii CMovie carries a volume (float at _88, scaled by 127.0f) and a time arg:
                 # the whole tail of the layout shifts one word versus the GameCube class
                 Object(Equivalent, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(NonMatching, "game/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the helpers the GameCube file inlines stay calls in retail: no auto-inlining
+                Object(NonMatching, "game/wii/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # member offsets are shared with the GameCube class (mEyeInterps _18C, mFovInterps
                 # _330, the interp pointers _44-_54); the Wii vtable re-orders the Vec& overloads
                 Object(NonMatching, "game/ccameraactionevt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1651,11 +1654,8 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_MmlSeqTrack.cpp"),
                 Object(Matching, "nw4r/snd/snd_MmlSeqTrackAllocator.cpp"),
                 Object(Matching, "nw4r/snd/snd_PlayerHeap.cpp"),
-                # code 12 of 12 by content; Setup and Shutdown are EnableWiiRemoteSpeaker and DisableWiiRemoteSpeaker
-                # in symbols.txt, the names src/game/wii/cpad.cpp calls
-                Object(NonMatching, "nw4r/snd/snd_RemoteSpeaker.cpp"),
-                # GetInstance and GetRemoteSpeaker are GetRemoteSpeakerManager and GetRemoteSpeakerChannel to the game
-                Object(NonMatching, "nw4r/snd/snd_RemoteSpeakerManager.cpp"),
+                Object(Matching, "nw4r/snd/snd_RemoteSpeaker.cpp"),
+                Object(Matching, "nw4r/snd/snd_RemoteSpeakerManager.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqFile.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqPlayer.cpp"),
                 # code complete; calls BasicSound::Stop (StopWiiSfxTrack in symbols.txt)
@@ -1677,8 +1677,7 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_SoundHeap.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundPlayer.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundStartable.cpp"),
-                # code complete; calls RemoteSpeakerManager::GetInstance (GetRemoteSpeakerManager in symbols.txt)
-                Object(NonMatching, "nw4r/snd/snd_SoundSystem.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundSystem.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundThread.cpp"),
                 Object(Matching, "nw4r/snd/snd_StrmChannel.cpp"),
                 Object(Matching, "nw4r/snd/snd_StrmFile.cpp"),

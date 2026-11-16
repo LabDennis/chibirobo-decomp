@@ -64,6 +64,25 @@ class CColor : public _GXColor {
 public:
 	CColor() { }
 	virtual ~CColor() { } // _08
+#if defined(VERSION_R24J01)
+	// a component is only written when it changes
+	void Set(s32 r, s32 g, s32 b, s32 a)
+	{
+		if (this->r != r) {
+			this->r = r;
+		}
+		if (this->g != g) {
+			this->g = g;
+		}
+		if (this->b != b) {
+			this->b = b;
+		}
+		if (this->a != a) {
+			this->a = a;
+		}
+	}
+	void Set(GXColor color) { Set(color.r, color.g, color.b, color.a); }
+#endif
 
 	// _04 vtable
 };
