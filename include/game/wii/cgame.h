@@ -1286,9 +1286,8 @@ public:
 	s32 mOutlineWidthControl; // _5970
 	f32 mOutlineWidth;        // _5974
 	Logo mLogo;               // _5978
-	u8 mTitle[4];             // _5C70, where the Wii Title (title.h) starts, its vtable; mTitleState is its first member
-	s32 mTitleState;          // _5C74, the title screen's step, as the GameCube mTitle.mState
-	u8 _5C78[0xAE00 - 0x5C78];
+	Title mTitle;             // _5C70
+	u8 _5C70[0xAE00 - 0x5C70 - sizeof(Title)];
 	MenuEx mMenu;           // _AE00
 	InfoScrn mInfoScrn;     // _AF58
 	WiiHomeMenu mHomeMenu;  // _B148
@@ -1350,12 +1349,12 @@ public:
 	// inline functions; where one ends and the next begins, and all their names, are ours
 	bool IsLoadStepRunning() const { return mLoadStep > 0 && mLoadStep < 30; }
 	bool IsLogoActive() const { return mLogo.mState >= 1 && mLogo.mState < 12; }
-	bool IsTitleActive() const { return mTitleState >= 1 && mTitleState < 23; }
+	bool IsTitleActive() const { return mTitle.mState >= 1 && mTitle.mState < 23; }
 	bool IsLogoShown() const { return IsLogoActive() && mLogo.mState > 2; }
 	bool IsIntroShown() const { return IsLogoShown() || IsTitleActive(); }
 	// loading with neither the logos nor the title on screen
 	bool IsLoading() const { return IsLoadStepRunning() && !IsIntroShown(); }
-	bool IsInterruptible() const { return !IsLoading() && mTitleState != 20; }
+	bool IsInterruptible() const { return !IsLoading() && mTitle.mState != 20; }
 	bool IsMenuFree() const { return IsInterruptible() && !mMenu.mActive; }
 	// the stage runs: no suspend, no menu, the disc readable and no reset coming
 	bool IsRunning() const
@@ -1392,7 +1391,6 @@ STATIC_ASSERT(offsetof(WiiPlayerState, mPopper) == 0xD50);
 STATIC_ASSERT(offsetof(CGame, mMirrors) == 0xECD5C);
 STATIC_ASSERT(offsetof(CGame, mListener) == 0xEE1E0);
 STATIC_ASSERT(offsetof(CGame, mSubwin) == 0x548C);
-STATIC_ASSERT(offsetof(CGame, mTitleState) == 0x5C74);
 STATIC_ASSERT(offsetof(CGame, mEvtPtcl) == 0xBCA8);
 STATIC_ASSERT(offsetof(CGame, mEffects) == 0xB7A8);
 STATIC_ASSERT(offsetof(CGame, mInfoScrn) == 0xAF58);

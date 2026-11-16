@@ -42,7 +42,7 @@ void fn_802BEA5C(void* emitter, BOOL);              // kills the emitter
 void fn_802BE3A8(void* particles, u32 group, BOOL); // kills a particle group
 void ClearSoundEffects(XSound* sound, s32 frames);
 s32 GetWiiSaveSlotStage(CSaveFile* manager, int index);
-void ResetTitleScreenState(void* title);
+void ResetTitleScreenState(Title* title);
 void fn_800848C0(void* menus); // the GameCube's ResetMenuGroup
 void fn_80084BF0(void* menus, s32 menu);
 BOOL fn_800C61C8();
@@ -61,7 +61,7 @@ void fn_802BE4D4(void* obj, GXFogType type, const GXColor& color, f32 startZ, f3
 void* fn_8027AE0C(WiiGsSceneObj* scene, s32 index); // the scene's fog
 void fn_8028175C(void** fog, GXFogType* type, f32* startZ, f32* endZ, f32* nearZ, f32* farZ, GXColor* color);
 void fn_802BE19C(void* effects, MtxP view, u32 group); // draws one group of the effects
-void DrawTitleScreen(void* title);
+void DrawTitleScreen(Title* title);
 void DrawGameHud(InfoScrn* scrn);
 void DrawScreenColorOverlay(CScrnColor* color, CGs* gs);
 void DrawPlayerEquipmentRings(void* rings);
@@ -713,7 +713,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		game->SetStatusFlags(0x20000000);
 		game->SetStatusFlags(0x0001000000000000);
 		game->ClearStatusFlags(0x80);
-		ResetTitleScreenState(game->mTitle);
+		ResetTitleScreenState(&game->mTitle);
 		fn_800848C0(&game->mMenu.mActive); // the menu group starts at its active word
 		ResetGameHudState(scrn);
 		game->mSubwin.Reset();
@@ -1701,7 +1701,7 @@ void CGame::Draw()
 	if (gGame.mGs.mSceneHead->_2888 != NULL) {
 		fn_802BE414(&mEffects, gGame.mGs.mLight);
 	}
-	DrawTitleScreen(mTitle);
+	DrawTitleScreen(&mTitle);
 	if (vf5C()) {
 		if (gGame.mGs.mCurRenderState != NULL) {
 			gGame.mGs.mCurRenderState->Apply();

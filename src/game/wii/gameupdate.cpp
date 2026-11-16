@@ -443,10 +443,10 @@ bool CGame::BeforeUpdate()
 	case 20:
 		if (IsStageBusy(this))
 			break;
-		if (GetStatusFlags(0x20000000) && mTitleState != 23) {
+		if (GetStatusFlags(0x20000000) && mTitle.mState != 23) {
 			if (!IsTitleActive()) {
 				ResetNewGameState();
-				mTitleState = 1;
+				mTitle.mState = 1;
 			}
 			break;
 		}
@@ -1202,7 +1202,7 @@ void CGame::Update(u32 frames)
 		ClearStatusFlags(8);
 		ResumeGameSounds(this, 0.0f);
 	}
-	if (GetStatusFlags(1) || (mTitleState >= 11 && mTitleState < 23)) {
+	if (GetStatusFlags(1) || (mTitle.mState >= 11 && mTitle.mState < 23)) {
 		if (IsSystemMessage3Shown()) { // the message that the remote is gone stops the game
 			if (!GetStatusFlags(0x800000000000000ULL)) {
 				SetStatusFlags(0x800000000000000ULL);
@@ -1366,7 +1366,7 @@ void CGame::Update(u32 frames)
 	}
 	if (!mHomeMenu.IsOpen()) {
 		UpdateBootLogos(&mLogo, frames);
-		UpdateTitleScreen((Title*)mTitle, frames);
+		UpdateTitleScreen(&mTitle, frames);
 		if (!GetStatusFlags(0x200000000000000ULL)) {
 			fn_8008492C(&mMenu.mActive, frames);
 		}
