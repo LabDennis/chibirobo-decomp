@@ -10,6 +10,9 @@
 #include "game/wii/title.h"
 #include "game/menusave.h"
 #include "game/globals.h"
+#include "game/evt.h"
+
+extern "C" void LayoutMainMenuRows(MenuMain* menu);
 
 bool MenuUtil::IsConfirmPressed()
 {
@@ -68,6 +71,44 @@ bool MenuUtil::IsStickUsedOverPointer()
 			return true;
 	}
 	return false;
+}
+
+void CMenu::Open()
+{
+	mState = 1;
+	Resume();
+	mWindowOpen = TRUE;
+}
+
+extern "C" void ClearMainMenuExtraRows(MenuMain* menu)
+{
+	for (int i = 0; i < 5; i++) {
+		menu->mExtraRows[i].mText   = NULL;
+		menu->mExtraRows[i].mAction = 0;
+	}
+	LayoutMainMenuRows(menu);
+}
+
+extern "C" void AddMainMenuExtraRow(MenuMain* menu, char* text, s32 id)
+{
+	for (int i = 0; i < 5; i++) {
+		if (menu->mExtraRows[i].mText == NULL) {
+			menu->mExtraRows[i].mText   = text;
+			menu->mExtraRows[i].mAction = id;
+			break;
+		}
+	}
+	LayoutMainMenuRows(menu);
+}
+
+extern "C" BOOL IsUtilibotStatusIconUnlocked()
+{
+	BOOL found = FALSE;
+	u32 id     = GetStatusIconEventFlagId(3);
+	if (gEventFlags.mFlags[id / 32] & (1u << (id % 32))) {
+		found = TRUE;
+	}
+	return found;
 }
 
 void CMenu::Suspend(BOOL fade)

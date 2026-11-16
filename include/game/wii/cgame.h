@@ -864,7 +864,9 @@ class XObj;
 class CMenu {
 public:
 	s32 mState; // _00, 0 while closed
-	u8 _004[0x13C - 0x4];
+	u8 _004[0xC - 0x4];
+	BOOL mWindowOpen; // _0C
+	u8 _010[0x13C - 0x10];
 	BOOL mSuspended;   // _13C
 	BOOL mSuspendFade; // _140
 	u8 _144[0x14C - 0x144];
@@ -882,6 +884,17 @@ public:
 	virtual void Resume();           // _2C
 	virtual void vf28();
 	virtual void vf2C();
+};
+
+class MenuMain : public CMenu {
+public:
+	struct ExtraRow {
+		char* mText; // _00
+		s32 mAction; // _04
+	};
+
+	u8 _150[0x1D4 - 0x150];
+	ExtraRow mExtraRows[5]; // _1D4
 };
 
 class CGame : public CBase {
