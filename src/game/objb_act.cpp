@@ -3056,8 +3056,8 @@ void HSD_JObjClearMtxFlags__FP9_HSD_JObj(HSD_JObj* jobj)
 extern "C" const Vec* GetScaledTargetFloorExtent(const XAction* act)
 {
 	const XObj* target = act->mTarget;
-	const Vec& scaled  = target->mMoveScale * GetFloorExtent(&target->mFloors[act->mTargetFloor]);
-	return &scaled;
+	// the address of the product's temporary, as retail returns it (MWCC warns: not an lvalue)
+	return &(target->mMoveScale * GetFloorExtent(&target->mFloors[act->mTargetFloor]));
 }
 
 /**

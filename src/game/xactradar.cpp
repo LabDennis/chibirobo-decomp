@@ -352,8 +352,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 	if (act->mTarget) {
 		CVec from = act->mOwner->mMoveTranslate, to = act->mTarget->mMoveTranslate;
 		f32 dist             = PSVECDistance(&from, &to);
-		f32 radius           = act->mTarget->GetFloorXZExtent();
-		act->mTargetDistance = dist - (act->mOwner->GetFloorXZExtent() + radius);
+		act->mTargetDistance = dist - (act->mTarget->GetFloorXZExtent() + act->mOwner->GetFloorXZExtent());
 		if (act->mTargetDistance < 0)
 			act->mTargetDistance = 0;
 		if (act->mState == 0) {
