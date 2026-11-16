@@ -5882,8 +5882,7 @@ void XObjChr::DrawObjectEffects()
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
 	}
-	Vec ground = { mMoveTranslate.x, mFloorHit.mHeight, mMoveTranslate.z };
-	DrawTumbleRing(&mTumble.mFade, ground, mMoveRotate.y);
+	DrawTumbleRing(&mTumble.mFade, (Vec) { mMoveTranslate.x, mFloorHit.mHeight, mMoveTranslate.z }, mMoveRotate.y);
 	DrawRadarTargetBeam(&mRadar);
 	DrawPopperShotParticles(&mPopper);
 	DrawParticlePool(&mDust.mPtcl);
