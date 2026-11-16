@@ -29,8 +29,8 @@ public:
     ut::Link mActivityLink; // at 0x14
 
 public:
-    virtual void SendClosing() {} // at 0x8
-    virtual void DestroyFunc() {} // at 0xC
+    virtual void SendClosing() = 0; // at 0x8
+    virtual void DestroyFunc() = 0; // at 0xC
 
     void ChangeLifeStatus(LifeStatus status) {
         mLifeStatus = status;
