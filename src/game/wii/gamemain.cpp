@@ -16,6 +16,14 @@ void OSStartStopwatch(void* sw);
 void OSStopStopwatch(void* sw);
 s64 OSCheckStopwatch(void* sw);
 BOOL OSGetResetButtonState();
+void OSInitStopwatch(void* sw, const char* name);
+void* OSSetPowerCallback(void (*callback)());
+void InitGameRuntime(CBase* base);
+CCamera* InitGamePerspectiveCamera(CCamera* camera, const GXRenderModeObj* rmode);
+CCamera* InitGameOrthoCamera(CCamera* camera, const GXRenderModeObj* rmode);
+CLight* InitFourLightSet(CLight* lights);
+CLight* InitTwoLightSet(CLight* lights);
+CFog* InitGameFog(CFog* fog);
 void OSRebootSystem();
 void OSShutdownSystem();
 void OSRestart(u32 code);
@@ -31,6 +39,13 @@ static void OnBatteryInfo(s32 chan, s32 result);
 
 // the expanded heap mm::InitMem1 creates over the MEM1 arena
 extern MEMiHeapHead* gWiiMem1Heap;
+
+// the original file defines operator delete itself (0x80019A68, game/wii/delete.cpp) and the
+// compiler expands it in the destructors it emits; this piece of the file sees it as an inline
+inline void operator delete(void* ptr) throw()
+{
+	MEMFreeToExpHeap(gWiiMem1Heap, ptr);
+}
 extern s32 gRefreshRate;
 extern s32 gPointerScreenWidth;
 extern s32 gPointerScreenHeight;
@@ -44,6 +59,10 @@ struct WiiBatteryCheck {
 	WPADInfo mInfo; // _08
 };
 WiiBatteryCheck gBatteryCheck;
+
+// the TPL with the corner icons, built into the game; it lies in this file's .rodata, which is not split yet
+// shortcut: declared here, defined where the rodata of the whole file lands
+extern u8 gCornerIconTplData[];
 
 // set by the power button's callback, CBase::Update turns it into a shutdown request
 extern u8 gPowerButtonPressed;
@@ -412,6 +431,62 @@ void CBase::Update(u32 frames)
  */
 void CBase::ResetNewGameState()
 {
+}
+
+/**
+ * @note Address: 0x80017D4C
+ * @note Size: 0x344
+ */
+// NONMATCHING: retail keeps the local CTpl's address in r29 from its construction on and loads the TPL
+// data's address after the inline CFile constructor; the copy and the rest follow
+// CBase's start: the runtime, the corner icons, the cameras, lights and fog, the timers, and the state
+// the drive, reset and corner-message code keeps
+void CBase::Start()
+{
+	InitGameRuntime(this);
+	mLastRetrace   = 0;
+	mRetraceStep   = 0;
+	mStatus.mFlags = 0;
+	{
+		CTpl tpl;
+		tpl.Bind(gCornerIconTplData);
+		mIconTpl = tpl;
+	}
+	InitGamePerspectiveCamera((CCamera*)mCameras[0], &gGame.mGs.mScreen);
+	InitGameOrthoCamera((CCamera*)mCameras[1], &gGame.mGs.mScreen);
+	InitFourLightSet(&mLights[0]);
+	InitTwoLightSet(&mLights[8]);
+	InitGameFog(&mFog);
+	OSInitStopwatch(&mStopwatch[0], "__$update$");
+	OSInitStopwatch(&mStopwatch[1], "__$draw$  ");
+	_41B0                    = 0;
+	mLastDeviceType          = 0xFF;
+	mLastProbe               = 0;
+	mSystemMessage           = NULL;
+	_41C3                    = 0;
+	_41C2                    = 0;
+	_41C1                    = 0;
+	_41C0                    = 0;
+	mBatteryLow              = false;
+	mSystemMessageBlink      = 0.0f;
+	mBatteryBlink            = 0.0f;
+	mBatteryAlpha            = 0.0f;
+	mSystemMessageAlpha      = 0.0f;
+	mNoRemoteFrames          = 0.0f;
+	mSystemMessageTarget     = 0.0f;
+	_41E0                    = NULL;
+	gBatteryCheck.mDone      = false;
+	gBatteryCheck.mWait      = 0;
+	mPrevDvdStatus           = 0;
+	mDvdStatus               = 0;
+	mDiskOk                  = TRUE;
+	mDvdError                = false;
+	mDiskChecking            = false;
+	mDiskCheckBlock.userData = &mDvdStatus;
+	gPowerButtonPressed      = FALSE;
+	mResetRequested          = false;
+	mResetType               = 0;
+	OSSetPowerCallback(OnPowerButton);
 }
 
 /**

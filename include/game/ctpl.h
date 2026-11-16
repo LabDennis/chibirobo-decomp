@@ -106,7 +106,11 @@ const int StatusTextureOffset = 0;
 class CTpl : public CFile {
 public:
 #if defined(VERSION_R24J01)
-	virtual ~CTpl();
+	virtual ~CTpl() // _08 (weak), 0x80018224
+	{
+		mBound   = false;
+		mPalette = NULL;
+	}
 	virtual s32 ReadAsync(const char* path, u32 offset, u32 size, BOOL fromAram); // _14
 #else
 	virtual ~CTpl() { mBound = FALSE; } // _08 (weak)

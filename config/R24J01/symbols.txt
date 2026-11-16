@@ -8407,3 +8407,7 @@ DrawObjectAlphaMask = .text:0x80027114; // type:function size:0x5E4
 OnBatteryInfo__Fll = .text:0x8001834C; // type:function size:0x18 scope:local
 gBatteryCheck = .bss:0x80444E78; // type:object size:0x28
 DrawDiscError__5CBaseFv = .text:0x80019540; // type:function size:0x39C
+__dt__4CTplFv = .text:0x80018224; // type:function size:0x78 scope:weak
+__ct__5CFileFv = .text:0x80018090; // type:function size:0x34 scope:weak
+__ct__7CTexObjFv = .text:0x80018130; // type:function size:0x1C scope:weak
+gCornerIconTplData = .rodata:0x802DBB60; // type:object
