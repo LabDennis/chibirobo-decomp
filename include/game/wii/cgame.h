@@ -915,22 +915,39 @@ struct GameScrnColor1 {
 
 class XObj;
 
+// the frame a menu draws behind itself, the GameCube struct one word longer; CMenu::Init sets what is named
+struct MenuWindow {
+	BOOL mOpen;  // _00
+	f32 mX;      // _04, center
+	f32 mY;      // _08
+	f32 mWidth;  // _0C
+	f32 mHeight; // _10
+	u8 _14[0x128 - 0x14];
+	f32 mDrawAlpha; // _128
+};
+STATIC_ASSERT(sizeof(MenuWindow) == 0x12C);
+
+class MenuCursor;
+
 // one of the game's menus, the GameCube class of the same name with two more virtuals. Its state leads
-// the object and the vtable sits behind the members, at _14C; the menus MenuEx keeps derive from it
+// the object and the vtable sits behind the members, at _14C; the menus MenuEx keeps derive from it.
+// Reset comes before LoadTexture here: MenuMain's vtable has its Reset at _0C and CMenu::Init calls _0C
 class CMenu {
 public:
-	s32 mState; // _00, 0 while closed
-	u8 _004[0xC - 0x4];
-	BOOL mWindowOpen; // _0C
-	u8 _010[0x13C - 0x10];
-	BOOL mSuspended;   // _13C
-	BOOL mSuspendFade; // _140
-	u8 _144[0x14C - 0x144];
+	s32 mState;          // _00, 0 while closed
+	f32 mAlpha;          // _04
+	s32 mSelection;      // _08, the row the cursor is on
+	MenuWindow mWindow;  // _0C
+	MenuCursor* mCursor; // _138, MenuEx's
+	BOOL mSuspended;     // _13C, another menu is on top
+	BOOL mSuspendFade;   // _140, fade out while suspended
+	f32 mFade;           // _144
+	f32 mSuspendAlpha;   // _148
 	// _14C vtable
 
 	virtual void Init();             // _08
-	virtual BOOL LoadTexture();      // _0C
-	virtual void Reset();            // _10
+	virtual void Reset();            // _0C
+	virtual BOOL LoadTexture();      // _10
 	virtual BOOL Update(u32 frames); // _14
 	virtual BOOL Draw();             // _18
 	virtual void Open();             // _1C
@@ -949,11 +966,27 @@ public:
 		s32 mAction; // _04
 	};
 
-	u8 _150[0x1D4 - 0x150];
+	u8 _150[0x1D0 - 0x150];
+	s32 mChannel;           // _1D0
 	ExtraRow mExtraRows[5]; // _1D4
 
+	virtual void Init();
+	virtual void Reset();
 	virtual void Open();
 	virtual void Resume();
+};
+
+class MenuStageSelect : public CMenu {
+public:
+	virtual void Init();
+};
+
+class MenuSave : public CMenu {
+public:
+	u8 _150[0x2C4 - 0x150];
+	s32 mLastFile; // _2C4, -1 for none
+
+	virtual void Reset();
 };
 
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
