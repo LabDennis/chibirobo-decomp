@@ -16,7 +16,7 @@
 // CGame::GetStatusFlags, the timer runs off gRefreshRate instead of a fixed rate, the
 // object gauge gains a parameter and the counters keep the same layout.
 //
-// todo: DrawHudBatteryGauge, DrawHudClock, DrawHudGaugeIcon, InfoScrn_DrawPlayerHudIcon,
+// todo: DrawHudClock, DrawHudGaugeIcon, InfoScrn_DrawPlayerHudIcon,
 // InfoScrn_DrawTimer, DrawHudScanlines, DrawTexturedWindowFrame, InitHudPointCounter,
 // UpdateHudPointValue, DrawHudPointCounter
 
@@ -30,6 +30,7 @@ s32 gRefreshRate;
 s32 gScreenSafeLeft;
 s32 gScreenSafeBottom;
 extern s32 gScreenSafeTop;
+extern s32 gScreenSafeRight;
 s32 gPointerScreenWidth;
 s32 gPointerScreenHeight;
 Vec fn_800E5A2C(WiiPlayerState* player);
@@ -944,6 +945,296 @@ extern "C" void AllowIdleHudCounters()
 	gHudHappyPointCounter.mSuppressIdleDisplay = FALSE;
 	gHudMoneyCounter.mSuppressIdleDisplay      = FALSE;
 	gHudScrapCounter.mSuppressIdleDisplay      = FALSE;
+}
+
+// the shared texture in the tpl reinitialised for one descriptor, then copied to draw with
+static inline void HudTexture(CTexObj& tex, s32 id)
+{
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[id], 0);
+	tex = gGame.mTpl.mTex;
+}
+
+static inline void SetBatterySlice(CTexObj& tex, f32 height, f32 top)
+{
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1, height, 1);
+	tex.mTexMtx.mDirty = TRUE;
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0, top, 0);
+	tex.mTexMtx.mDirty = TRUE;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+}
+static inline f32 BatteryDigitX(int place, f32 offset, f32 spacing)
+{
+	return 2.f + (2.f * spacing + ((f32)(gScreenSafeRight - 105) + offset - place * spacing));
+}
+static inline void DrawBatteryQuad(CTexObj& tex, u32 color, f32 x, f32 y, f32 w, f32 h)
+{
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0, w, h, 0, 0, 0);
+}
+static inline void DrawBatteryOverlay(CTexObj& tex, u32 color, s32 place, f32 offset, f32 y, f32 w, f32 height, f32 gap, f32 fill, f32 rest)
+{
+	DrawBatteryQuad(tex, color, BatteryDigitX(place, offset, w + gap), y - rest * height * .5f, w, height * fill);
+}
+static inline void DrawBatteryDigitPart(CTexObj& tex, u32 color, int place, f32 offset, f32 y, f32 scale, f32 gap, f32 texHeight,
+                                        f32 texTop, f32 part, f32 shift, bool up = false)
+{
+	HudTexture(tex, 126);
+	SetBatterySlice(tex, texHeight, texTop);
+	f32 w = scale * GXGetTexObjWidth(&tex);
+	f32 h = scale * GXGetTexObjHeight(&tex) / 10.f;
+	DrawBatteryQuad(tex, color, BatteryDigitX(place, offset, w + gap), up ? y - shift * h * .5f : y + shift * h * .5f, w, h * part);
+}
+static inline u32 BatteryDigitColor(int whole, u32 low, u32 active, u32 inactive)
+{
+	if (gGame.GetPlayer()->mParams.mBattery <= 30.f && whole > 0)
+		return low;
+	if (whole > 0)
+		return active;
+	return inactive;
+}
+
+/**
+ * @note Address: 0x80089658
+ * @note Size: 0x2990
+ */
+// NONMATCHING: ported from the GameCube's DrawHudBatteryGauge — the textures move one slot up
+// (125/126/127/168), the x anchor is gScreenSafeRight - 105 instead of 512, the background quad
+// sits at z 1 and _1E4.y over 0.3 makes it draw behind the digits with the z test and comp loc
+// flipped, and _1E4.y over 0 draws an orange glow quad and a black one under DrawGsQuad. Retail
+// also keeps a dead mBatteryValue == max compare inside the digit-change block, written below as
+// the roll reset it most plausibly was; the rest is register and schedule noise in the big loop
+extern "C" void DrawHudBatteryGauge(InfoScrn* h)
+{
+	f32 alpha = h->mBatteryAlpha * gHudOpacityScale;
+	if (gGame.GetStatusFlags(0x400))
+		h->mTargetDimAlpha = 1;
+	else
+		h->mTargetDimAlpha = 0;
+	f32 target = 10.f * gGame.GetPlayer()->mParams.mBattery;
+	f32 max    = 10.f * gGame.GetPlayer()->mParams.mMaxBattery;
+	f32 y      = 22.f + (GetHudBottomEdge() - 50.f);
+	if (target <= 0 && h->mBatteryValue > 0) {
+		h->mBatteryEmpty      = 1;
+		h->mBatteryEmptyTimer = h->mBatteryEmptyStep = 0;
+	}
+	if (target > 0)
+		h->mBatteryEmpty = 0;
+	if ((s32)gGame.GetPlayer()->mParams._1C[0] > 0) {
+		h->mBatteryDim            = 1;
+		h->mTargetBatteryDimAlpha = 1;
+	} else {
+		h->mBatteryDim            = 0;
+		h->mTargetBatteryDimAlpha = 0;
+	}
+	Approach(&h->mBatteryDimAlpha, &h->mTargetBatteryDimAlpha, .18f);
+	const f32 fade = 1.f - h->mBatteryDimAlpha;
+	f32 scale      = h->mBatteryScale;
+	CTexObj tex;
+	HudTexture(tex, 125);
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	u16 tw = GXGetTexObjWidth(&tex), th = GXGetTexObjHeight(&tex);
+	f32 opacity = 255.f * alpha;
+	// the Wii draws the background behind everything at z 1, flipping the z test while _1E4.y is up
+	f32 w  = scale * (1.3f * tw);
+	f32 z  = h->_1E4.y;
+	f32 ht = scale * (1.2f * th);
+	if (z > 0.3f) {
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_FALSE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	} else
+		z = 0;
+	f32 x = (f32)(gScreenSafeRight - 105) + 13.f * scale;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, 0xc8c8c800 | (u32)opacity, 0xc8c8c800 | (u32)opacity, 0xc8c8c800 | (u32)opacity,
+	                   0xc8c8c800 | (u32)opacity, x, y, 1.0f, w, ht, 0.0f, 0.0f, 0.0f);
+	if (z > 0) {
+		gGame.mGs.mCurRenderState->SetZCompLoc(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+	}
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	HudTexture(tex, 126);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 1, .1f, 1);
+	tex.mTexMtx.mDirty = TRUE;
+	h->mBatteryTarget  = target;
+	f32 change         = h->mBatteryValue - h->mBatteryTarget;
+	f32 step           = Abs((h->mBatteryTarget - h->mBatteryValue) / 20.f);
+	if (step >= 53.999996f)
+		step = 53.999996f;
+	if (step <= 1)
+		step = 1;
+	Approach(&h->mBatteryValue, &h->mBatteryTarget, step);
+	h->mBatteryGauge = h->mBatteryValue;
+	u32 digitAlpha   = (u32)(opacity * fade);
+	u32 red          = 0xff646400 | digitAlpha;
+	u32 green        = 0x89ff2900 | digitAlpha;
+	u32 gray         = 0x50505000 | digitAlpha;
+	f32 gap          = 7.6f * scale;
+	f32 smallScale = .9f * scale, smallX = 7.9f * scale, largeX = 2.f * scale;
+	for (int i = 0; i < 4; ++i) {
+		f32 digitScale = scale, offset = largeX;
+		if (target <= 0 && h->mBatteryValue <= 0 && h->mBatteryEmpty == 1)
+			break;
+		if (i == 0) {
+			digitScale = smallScale;
+			offset     = smallX;
+		}
+		if (!h->mDigitRolling[i])
+			h->mDigitDelta[i] = change;
+		if (change != 0)
+			h->mDigitLastDelta[i] = change;
+		int divisor = 1;
+		for (int p = 0; p < i; ++p)
+			divisor *= 10;
+		int whole = (s32)h->mBatteryValue / divisor, digit = whole % 10;
+		if (h->mDigitValue[i] != digit) {
+			h->mDigitRoll[i]    = 0;
+			h->mDigitRolling[i] = 1;
+			if (h->mBatteryValue == max)
+				h->mDigitRoll[i] = 0;
+		}
+		if (!gGame.GetStatusFlags(0x200000000000ULL))
+			h->mDigitRoll[i] += .08f;
+		if (h->mDigitRoll[i] > 1) {
+			h->mDigitRoll[i]    = 1;
+			h->mDigitRolling[i] = 0;
+		}
+		h->mDigitValue[i] = digit;
+		f32 amount;
+		if (!i) {
+			f32 value = h->mBatteryValue / divisor;
+			amount    = 1.f - (value - (s32)value);
+		} else
+			amount = h->mDigitRoll[i];
+		u32 color;
+
+		if (h->mDigitDelta[i] > 0) {
+			color = BatteryDigitColor(whole, red, green, gray);
+			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit + (1.f - amount) / 10.f, amount,
+			                     (1.f - amount), true);
+			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount), .1f * ((whole + 1) % 10), (1.f - amount),
+			                     amount);
+		} else if (h->mDigitDelta[i] < 0) {
+			color = BatteryDigitColor(whole, red, green, gray);
+			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit, amount, (1.f - amount));
+			DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount), .1f * ((whole - 1) % 10) + amount / 10.f,
+			                     (1.f - amount), amount, true);
+		} else {
+			color = BatteryDigitColor(whole, red, green, gray);
+			if (h->mDigitLastDelta[i] > 0) {
+				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit + (1.f - amount) / 10.f, amount,
+				                     (1.f - amount), true);
+				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount), .1f * ((whole + 1) % 10),
+				                     (1.f - amount), amount);
+			} else if (h->mDigitLastDelta[i] < 0) {
+				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * amount, .1f * digit, amount, (1.f - amount));
+				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f * (1.f - amount),
+				                     .1f * ((whole - 1) % 10) + amount / 10.f, (1.f - amount), amount, true);
+			} else {
+				DrawBatteryDigitPart(tex, color, i, offset, y, digitScale, gap, .1f, .1f * digit, 1, 0);
+			}
+		}
+	}
+	if (target <= 0 && h->mBatteryValue <= 0 && h->mBatteryEmpty == 1) {
+		++h->mBatteryEmptyTimer;
+		if (h->mBatteryEmptyTimer > 1) {
+			++h->mBatteryEmptyStep;
+			if (h->mBatteryEmptyStep >= 9)
+				h->mBatteryEmptyStep = 9;
+			h->mBatteryEmptyTimer = 0;
+		}
+		for (int i = 0; i < 4; ++i) {
+			f32 digitScale = scale, offset = largeX;
+			if (i == 0) {
+				digitScale = smallScale;
+				offset     = smallX;
+			}
+
+			int frame = h->mBatteryEmptyStep % 10 + 1;
+			HudTexture(tex, 126);
+			f32 fill = .1f * frame;
+			SetBatterySlice(tex, .1f * (1.f - fill), 0);
+			f32 digitW = digitScale * GXGetTexObjWidth(&tex);
+			f32 digitH = digitScale * GXGetTexObjHeight(&tex) / 10.f;
+			f32 rest   = .1f * (10 - frame);
+			DrawBatteryQuad(tex, gray, BatteryDigitX(i, offset, digitW + gap), y + fill * digitH * .5f, digitW, digitH * rest);
+
+			if (i == 0) {
+				digitScale = .8f * scale;
+				offset     = 11.2f * scale;
+			} else
+				offset = 1.7f * scale;
+			HudTexture(tex, 127);
+			f32 w = digitScale * GXGetTexObjWidth(&tex), ht = digitScale * GXGetTexObjHeight(&tex);
+			SetBatterySlice(tex, fill, rest);
+			u32 emptyColor = 0x5176ff00 | digitAlpha;
+			DrawBatteryOverlay(tex, emptyColor, i, offset, y, w, ht, gap, fill, rest);
+		}
+	}
+	if (h->mBatteryDim == 1) {
+		for (int i = 0; i < 4; ++i) {
+
+			f32 digitScale = scale, offset = largeX, verticalOffset = -2.f;
+			if (i == 0) {
+				digitScale     = smallScale;
+				offset         = smallX;
+				verticalOffset = 0.f;
+			}
+
+			HudTexture(tex, 126);
+			SetBatterySlice(tex, 0, 0);
+			f32 digitW     = digitScale * GXGetTexObjWidth(&tex);
+			u16 texH       = GXGetTexObjHeight(&tex);
+			f32 digitH     = digitScale * texH / 10.f;
+			u32 digitColor = (u32)(h->mBatteryDimAlpha * opacity) | 0x50505000;
+			DrawBatteryQuad(tex, digitColor, BatteryDigitX(i, offset, digitW + gap), (y + verticalOffset) + digitH * .5f, digitW,
+			                digitH * 0.f);
+
+			if (i == 0) {
+				digitScale     = .8f * scale;
+				offset         = 11.2f * scale;
+				verticalOffset = 0.f;
+			} else
+				offset = 1.7f * scale;
+			HudTexture(tex, 168);
+			f32 w = digitScale * GXGetTexObjWidth(&tex), ht = digitScale * GXGetTexObjHeight(&tex);
+			SetBatterySlice(tex, 1, 0);
+			u32 overlayColor = (u32)(h->mBatteryDimAlpha * opacity) | 0x89ff2900;
+			DrawBatteryOverlay(tex, overlayColor, i, offset, y + verticalOffset, w, ht, gap, 1.f, 0.f);
+		}
+	}
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	for (int i = 0; i < 4; ++i) {
+		f32 size = scale, offset = largeX;
+		if (i == 0) {
+			size   = smallScale;
+			offset = 9.9f * scale;
+		}
+		HudTexture(tex, 126);
+		f32 w = 1.4f * (size * GXGetTexObjWidth(&tex)), ht = size * GXGetTexObjHeight(&tex) / 10.f;
+		f32 x = BatteryDigitX(i, offset, w + .4f * scale) - w * .5f, top = y - ht * .5f;
+		Vec points[]
+		    = { (Vec) { x, top, 0 }, (Vec) { x + w, top, 0 }, (Vec) { x + w, top + ht, 0 }, (Vec) { x, top + ht, 0 }, (Vec) { x, top, 0 } };
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, points,
+		                        0x0a0a0a00 | (u32)((120.f * alpha) * h->mDimAlpha), 5);
+	}
+	// while _1E4.y is up an orange glow trails the battery, stretched along _1E4.z and equal-tested
+	// against the background's z, then a black quad behind it at z -1
+	if (z > 0) {
+		f32 a = 80.f * z;
+		if (a > 100.f)
+			a = 100.f;
+		u32 glowColor = 0xff800000 | (u32)(a * alpha);
+		HudTexture(tex, 119);
+		PSMTXTrans(tex.mTexMtx.mMtx[0], h->_1E4.z, 0, 0);
+		tex.mTexMtx.mDirty = TRUE;
+		PSMTXScale(tex.mTexMtx.mMtx[2], 3, 1, 1);
+		tex.mTexMtx.mDirty = TRUE;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, glowColor, glowColor, glowColor, glowColor, x, y, 1.0f, w, ht, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		DrawGsQuad(&gGame.mGs, 0, 0, 0, 0, x, y, -1.0f, w, ht, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+	}
 }
 
 static inline void DrawClockDisc(f32 x, f32 y, f32 rx, f32 ry, u32 color)
