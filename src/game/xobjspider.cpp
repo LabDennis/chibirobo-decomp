@@ -540,7 +540,7 @@ void XObjSpider::DrawDebugStatus()
  * @note Address: 0x800F29A4
  * @note Size: 0x498
  */
-// NONMATCHING: the joint path and the two points are laid out differently on the stack
+// NONMATCHING: retail loads the end x and z straight into f31 and f30, the build copies them from scratch registers
 // the thread it hangs from, a line from its joint up to the ceiling
 void XObjSpider::DrawObjectEffects()
 {
@@ -815,7 +815,8 @@ extern "C" void LaunchSpiderShot(XObjSpider* spider)
  * @note Address: 0x800F1068
  * @note Size: 0x6C8
  */
-// NONMATCHING: the matrix pointers and the tie loop take other registers
+// NONMATCHING: retail has 12 more bytes of locals and saves r25 too; the matrix pointers and the tie loop take
+// other registers
 // reads the object it holds up and keeps it on its joint, and moves the tied objects
 // along with their joints
 extern "C" void UpdateSpiderAttachments(XObjSpider* spider, u32 frames)
