@@ -1161,6 +1161,9 @@ game/gameosreport.cpp:
 game/wii/fbmirror.cpp:
 	.text start:0x80019BF4 end:0x8001A704
 
+game/wii/gamedraw.cpp:
+	.text start:0x80024AE8 end:0x8002CFB8
+
 game/infopointdtor.cpp:
 	.text start:0x80092244 end:0x80092284
 

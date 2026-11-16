@@ -41,6 +41,8 @@ struct WiiHomeMenu {
 	s32 _65C;                        // _65C, written 0, keeps the menu from starting while set
 
 	bool IsOpen() const { return mState >= HomeMenuOpen && mMenuStep >= 0; }
+	// the library runs: the menu draws over the whole frame
+	bool IsRunning() const { return mState >= HomeMenuOpen && mMenuStep >= 3; }
 };
 STATIC_ASSERT(sizeof(WiiHomeMenu) == 0x660);
 

@@ -135,6 +135,9 @@ public:
 
 // same shape and role as the GameCube CObjVec: a current vec with the target it
 // walks to and the step's speed, only the current vec is a TVec here
+// todo: game/ccameraactioneye.h carries a second Wii CObjVec (on CVec, with the step functions) for
+// the camera units; a file that has it already keeps that one until the two are merged
+#ifndef _GAME_CCAMERAACTIONEYE_H
 class CObjVec : public TVec {
 public:
 	CObjVec();
@@ -145,6 +148,7 @@ public:
 	virtual ~CObjVec() { }
 };
 STATIC_ASSERT(sizeof(CObjVec) == 0x30);
+#endif
 
 // small polymorphic members the aggregate constructors only tag with a vtable;
 // their names come from the retail RTTI strings, their members are not yet
@@ -243,7 +247,6 @@ public:
 	}
 	virtual ~CObj() { }
 
-private:
 	u8 _08[0x24];
 	CResource mResource; // _2C
 	TVec mMoveTranslate; // _30
@@ -276,14 +279,82 @@ public:
 	virtual void InitializeObject(); // _14C, first of XObj's own virtuals; retail's out-of-line
 	                                 // definition keeps the GameCube u32 parameter, but callers
 	                                 // here emit no argument (the callee never reads it)
+	// the rest of XObj's own virtuals, _150 to _244, read off retail's __vt__4XObj through the primary
+	// vptr. Names are the GameCube's where the slot's neighbours or its body place it, vfXXX is unknown
+	virtual void ResetForNewGame();                        // _150
+	virtual void ResetObjectState();                       // _154
+	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
+	virtual void vf15C();
+	virtual void vf160();
+	virtual void UpdateObject(u32 frames); // _164
+	virtual void vf168();
+	virtual void vf16C(); // _16C, empty
+	virtual void vf170();
+	virtual void DrawObject();                                       // _174, DrawWithView(NULL)
+	virtual void DrawWithView(Mtx view);                             // _178
+	virtual void DrawReflection(Mtx view);                           // _17C
+	virtual void DrawGroundShadow();                                 // _180
+	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity); // _184
+	virtual void DrawObjectEffects();                                // _188
+	virtual void DrawCollisionShapes();                              // _18C
+	virtual void DrawScreenOverlay();                                // _190
+	virtual void DrawDebugStatus();                                  // _194
+	virtual void vf198();
+	virtual void vf19C(u32 color, f32 z, f32 x, f32 y); // _19C, CGame::DrawHud calls it on its mHudObject
+	virtual void vf1A0();
+	virtual void vf1A4();
+	virtual void vf1A8();
+	virtual void vf1AC();
+	virtual void vf1B0();
+	virtual void vf1B4();
+	virtual void vf1B8();
+	virtual void vf1BC();
+	virtual void vf1C0();
+	virtual void vf1C4();
+	virtual u32 TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 arg6,
+	                               s32 arg7);                         // _1C8
+	virtual s32 OnPlayerContact(s32 unused, s32 value);               // _1CC
+	virtual BOOL TestFloorCrossing(const Vec& start, const Vec& end); // _1D0
+	virtual void vf1D4();
+	virtual f32 GetFloorXZExtent();   // _1D8
+	virtual f32 GetCollisionHeight(); // _1DC
+	virtual void vf1E0();
+	virtual void vf1E4();
+	virtual void vf1E8();
+	virtual const void* GetEventScript();                                // _1EC
+	virtual void SetColor(s32 blend, u8 r, u8 g, u8 b, f32 time);        // _1F0
+	virtual void OnPushDisplacement(const Vec& displacement);            // _1F4
+	virtual BOOL ReceivePlugPower(f32 amount);                           // _1F8
+	virtual void OnHitFromPosition(const Vec& position, f32 strength);   // _1FC
+	virtual void OnSquirterHit(const Vec* contact, s32 value, s32 tint); // _200
+	virtual BOOL OnItemUsed(const Vec* position, s32 value);             // _204
+	virtual void vf208();
+	virtual void OnMicrophonePeak(s32 unused, s32 volume); // _20C, empty
+	virtual void vf210();                                  // _210, empty
+	virtual void vf214();
+	virtual void vf218();
+	virtual void vf21C();
+	virtual void vf220();
+	virtual void vf224();
+	virtual void vf228();
+	virtual void vf22C();
+	virtual void vf230();
+	virtual void vf234();
+	virtual void vf238();
+	virtual void vf23C();
+	virtual void vf240();
+	virtual const Vec* GetPosition(); // _244, mMoveTranslate
 
-private:
 	CStatus64 mStatus; // _150
 	CoordInfo mCoord;  // _160
 	AttrInfo mAttr;    // _168
 	u8 _174[0x28];
 	CVec mLastPos; // _19C
-	u8 _1AC[0x54C];
+	u8 _1AC[0x640 - 0x1AC];
+	f32 mFloorXZExtent; // _640
+	u8 _644[0x6C8 - 0x644];
+	f32 mMaxFloorHeight; // _6C8, NAN while there is none
+	u8 _6CC[0x6F8 - 0x6CC];
 	CVec mToppleOffset; // _6F8
 	u8 _708[0xC];
 	CVec mVec714; // _714

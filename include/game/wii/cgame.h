@@ -13,6 +13,7 @@
 #include "game/ccameraactioneye.h"
 #include "game/ut.h"
 #include "game/inventory.h"
+#include "game/cmovie.h"
 #
 
 class CCamera;
@@ -38,7 +39,9 @@ public:
 	u32 mRetraceStep;          // _33E8
 	CStatus64 mStatus;         // _33F0
 	CTpl mIconTpl;             // _3400, the icons shown in the screen's corner; the first says the HOME Menu is not available
-	u8 _35F8[0x4148 - 0x35F8]; // the perspective and the screen camera, 0x1F8 each, start here
+	u8 mCameras[2][0x1F8];     // _35F8, CCamera[2] by ~CBase, bytes while CCamera is defined below: the perspective and the screen camera
+	u8 mLights[16][0x6C];      // _39E8, CLight[16]: the default set, the screen set starts at [8]
+	u8 _40A8[0x4148 - 0x40A8]; // _40A8
 	void* mMem1Base;           // _4148, 0x80000000
 	void* mMem1Start;          // _414C, the MEM1 arena's start before the heaps are made
 	void* mMem1ArenaLo;        // _4150
@@ -53,7 +56,12 @@ public:
 	u8 _4170[0x41A8 - 0x4170];
 	bool mResetRequested; // _41A8
 	s32 mResetType;       // _41AC, 3 restarts the game, 4 returns to the Wii Menu
-	u8 _41B0[0x41E4 - 0x41B0];
+	u8 _41B0[0x41BC - 0x41B0];
+	// _41BC, the interface text drawn over the frame, NULL when there is none, and its alpha at _41C8
+	const char* mSystemMessage;
+	u8 _41C0[0x41C8 - 0x41C0];
+	f32 mSystemMessageAlpha;
+	u8 _41CC[0x41E4 - 0x41CC];
 	// _41E4 vtable
 
 	virtual ~CBase() { }                            // _08
@@ -63,21 +71,34 @@ public:
 	virtual void vf18();
 	virtual void vf1C();
 	virtual void vf20();
-	virtual void vf24();
-	virtual void vf28();
-	virtual void vf2C();
-	virtual void vf30();
+	// _24, _28 the scene through the main camera, _2C the screen-space layer, _30 retraces per frame
+	virtual void Draw();
+	virtual void DrawScene();
+	virtual void DrawHud();
+	virtual s32 FrameInterval();
 	virtual void SetStatusFlags(u64 mask);   // _34, 0x8001D5B4
 	virtual void ClearStatusFlags(u64 mask); // _38, 0x8001C78C
-	virtual void vf3C();
+	virtual void ToggleStatusFlags(u64 mask);
 	virtual u64 GetStatusFlags(u64 mask) const; // _40, the game's status flags under mask
-	virtual void vf44();
+	virtual CCamera* GetPerspectiveCamera();
 	virtual CCamera* GetScreenCamera(); // _48, the orthographic camera the screen-space layer draws under
 	virtual CCamera* GetCamera();       // _4C, the scene camera - CGame's is mMotionControlCamera
-	virtual void vf50();
+	virtual BOOL BeginCamera(CCamera* camera);
 	virtual void vf54(); // _54, ends the current render pass
-	virtual void vf58();
+	virtual BOOL BeginSceneCamera();
 	virtual BOOL vf5C(); // _5C, begins a render pass; the draws between it and vf54 run only when it holds
+	// _60 mLights[0], _64 mLights[8], _68 GetDefaultLight unless overridden, _6C, _70 empty,
+	// _74 SetLight(GetLight(), the camera's view, TRUE), _78 the screen light under the screen camera
+	virtual CLight* GetDefaultLight();
+	virtual CLight* GetScreenLight();
+	virtual CLight* GetLight();
+	virtual void SetLight(CLight* light, CMtxP view, BOOL arg3);
+	virtual void vf70();
+	virtual void SetSceneLight();
+	virtual void SetScreenLight();
+	virtual void vf7C();
+	virtual void vf80();
+	virtual void Reset(u32 code);
 
 	// asks for a reset unless one is already on its way
 	void RequestReset(s32 type)
@@ -123,7 +144,7 @@ public:
 	CVec mEye;      // _00
 	CVec mInterest; // _10
 	CVec mAngle;    // _20
-	CVec _30;       // _30
+	CVec mUp;       // _30
 	f32 mDistance;  // _40
 	u8 mDirty;      // _44, the view matrix is out of date
 
@@ -177,8 +198,8 @@ public:
 		mView.mAngle.z = z;
 		mView.mDirty   = TRUE;
 	}
-	virtual void vf40();                   // _40
-	virtual void SetDistance(f32 distance) // _44
+	virtual void SetUp(f32 x, f32 y, f32 z); // _40
+	virtual void SetDistance(f32 distance)   // _44
 	{
 		mView.mDistance = distance;
 		mView.mDirty    = TRUE;
@@ -244,7 +265,10 @@ public:
 	u8 mProjectionDirty; // _28, SetFov sets it - the projection matrix is rebuilt lazily
 	u8 _29[0x2C - 0x29];
 	Mtx44 mProjection; // _2C
-	u8 _6C[0x90 - 0x6C];
+	u8 _6C[0x70 - 0x6C];
+	// _70, the projection as GXProject takes it, and at _8C what widens a projected x to the screen
+	f32 mProjectionv[7];
+	f32 mScale;
 	CCameraView mView; // _90
 	Mtx mViewMtx;      // _D8, the computed view matrix the 2D draws multiply into
 	u8 _108[0x118 - 0x108];
@@ -668,11 +692,40 @@ struct WiiEvtData {
 	WiiTitleObject* mContext; // _04
 };
 
+// one letter of the stage name that pops in: the GameCube StageNameChar and two words more
+struct WiiStageNameChar {
+	const char* mText; // _00, the letter, one or two bytes
+	f32 mScale;        // _04, grows to 1 and shrinks away
+	f32 mWait;         // _08, frames until it shrinks
+	f32 mBob;          // _0C, the angle it bobs up and down by
+	f32 mTilt;         // _10, the angle it rocks by
+	u8 _14[8];
+};
+STATIC_ASSERT(sizeof(WiiStageNameChar) == 0x1C);
+
+// the stage name drawn a letter at a time over bubbles
+struct WiiStageName {
+	BOOL mActive;                // _00
+	s32 mCount;                  // _04
+	u32 mColor;                  // _08, the letters' color, the alpha comes from their scale
+	WiiStageNameChar mChars[20]; // _0C
+};
+STATIC_ASSERT(sizeof(WiiStageName) == 0x23C);
+
+class XObj;
+
 class CGame : public CBase {
 public:
 	virtual ~CGame();                       // _08, 0x8002CFB8
 	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
 	CCamera* GetCamera();                   // _4C override, &mMotionControlCamera
+	// _24, _28, _2C, _30 (the logos, title and menus run at 60, the game at 30), _68 mLightList, _84
+	void Draw();
+	void DrawScene();
+	void DrawHud();
+	s32 FrameInterval();
+	CLight* GetLight();
+	void Reset(u32 code);
 
 	s32 mLoadStep;
 	u8 _41EC[0x41F4 - 0x41EC];
@@ -695,7 +748,9 @@ public:
 	s32 mTitleState; // _5C74, the title screen's step, as the GameCube mTitle.mState
 	u8 _5C78[0xAE00 - 0x5C78];
 	BOOL mMenuActive; // _AE00, a menu is open, as the GameCube mMenu.mActive
-	u8 _AE04[0xAF58 - 0xAE04];
+	u8 _AE04[0xAE34 - 0xAE04];
+	s32 _AE34; // _AE34, DrawHud draws nothing while a menu is open and this is set
+	u8 _AE38[0xAF58 - 0xAE38];
 	// the object the InfoScrn_* HUD calls receive at +0xAF58; the Wii callbacks are
 	// empty stubs, so only its address is verified, not its layout
 	u8 mInfoScrn[0xB148 - 0xAF58]; // _AF58
@@ -733,11 +788,22 @@ public:
 	WiiTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
 	CCameraActions mCameraActions;             // _D78F8, mTable lands at _D9B24
-	u8 _D9B58[0xEC1A0 - 0xD9B58];
+	CLight* mLightList; // _D9B58, the lights of the stage, GetLight returns it
+	u8 _D9B5C[0xEC1A0 - 0xD9B5C];
 	f32 mPlayTime; // _EC1A0
-	u8 _EC1A4[0xEE104 - 0xEC1A4];
-	CMovie mMovie; // _EE104
-	u8 _EE1C0[0xEE1DC - 0xEE1C0];
+	u8 _EC1A4[0xECCE8 - 0xEC1A4];
+	// _ECCE8, an object DrawHud draws through its vf19C at the two coordinates behind it, when there is one
+	XObj* mHudObject;
+	f32 mHudObjectX;
+	f32 mHudObjectY;
+	u8 _ECCF4[0xEDEC8 - 0xECCF4];
+	WiiStageName mStageName; // _EDEC8
+	CMovie mMovie;           // _EE104
+	u32 mMovieFlags;         // _EE1C0, the Start flags
+	f32 mMovieRect[4];       // _EE1C4, where the movie draws, NAN for its own size and the centre
+	f32 mMovieVolume;        // _EE1D4
+	bool mMovieOnThread;     // _EE1D8, the staff roll: UpdateMovie steps it on a thread of its own
+	u8 _EE1D9[0xEE1DC - 0xEE1D9];
 	u32 mMenuControls;
 	u8 _EE1E0[0xEE530 - 0xEE1E0];
 
@@ -761,6 +827,8 @@ public:
 
 	WiiPlayerState* GetPlayer() const { return mPlayer; }
 	bool CanOpenHomeMenu() const { return IsMenuFree() && !mHomeMenu.IsOpen(); }
+	// interface text 3 is up over the frame (0x8002BBE0)
+	bool IsSystemMessage3Shown();
 
 	// 0x8002AEC8, projects a world position onto the screen under camera (the motion-control
 	// camera when it is null); the GameCube had it on XObj

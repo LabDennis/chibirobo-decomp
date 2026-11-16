@@ -1392,6 +1392,9 @@ if wii:
                 Object(NonMatching, "game/wii/fbsubwin.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/gxb.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/fbmirror.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii file 12 of wii_units.md, 0x80024AE8-0x8002CFB8: the draw, stage change, sound pause
+                # and movie part of the game's main file, with the weak functions emitted between them
+                Object(NonMatching, "game/wii/gamedraw.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # retail has extab entries for the three functions and emits them in reverse (_prolog first):
                 # the game group's compiler with exceptions on and deferred inlining gives both. The object
                 # is byte-exact, but nothing calls _epilog and _unresolved: retail kept them through its

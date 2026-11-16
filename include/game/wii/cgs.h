@@ -610,6 +610,8 @@ public:
 	void SetTevStage(CGsTevStage* stage, s32 index, GSTevOrder order, GSTevColorOp colorOp, GSTevColorIn colorIn, GSTevAlphaOp alphaOp,
 	                 GSTevAlphaIn alphaIn);                                                                   // 0x802AB1DC
 	void SetChannel(CGsChannel* channel, GXChannelID id, GSChanCtrl ctrl, GXColor ambient, GXColor material); // 0x802AB344
+	BOOL BeginCamera(); // 0x802AB790, loads mCamera's matrices; FALSE when there is none
+	void EndCamera();   // 0x802AB7E4
 };
 
 // GXSetFog's arguments, kept so the fog can be put back
