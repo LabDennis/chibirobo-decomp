@@ -895,6 +895,9 @@ public:
 
 	u8 _150[0x1D4 - 0x150];
 	ExtraRow mExtraRows[5]; // _1D4
+
+	virtual void Open();
+	virtual void Resume();
 };
 
 class CGame : public CBase {

@@ -8,7 +8,6 @@
 #include "game/wii/cgame.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/title.h"
-#include "game/menusave.h"
 #include "game/globals.h"
 #include "game/evt.h"
 
@@ -80,6 +79,21 @@ void CMenu::Open()
 	mWindowOpen = TRUE;
 }
 
+void MenuMain::Open()
+{
+	CMenu::Open();
+	PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+	gGame.SetStatusFlags(2);
+}
+
+void MenuMain::Resume()
+{
+	if (mSuspended) {
+		gGame.SetStatusFlags(2);
+	}
+	CMenu::Resume();
+}
+
 extern "C" void ClearMainMenuExtraRows(MenuMain* menu)
 {
 	for (int i = 0; i < 5; i++) {
@@ -130,7 +144,28 @@ extern "C" void AddPointerPane(CbPaneList* list, CbPane* pane)
 	}
 }
 
-extern "C" bool IsSaveSlotIntact(const MenuSaveSlot* slot)
+extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
+{
+	slot->mUsed       = 0;
+	slot->mLevel      = 0;
+	slot->mBattery    = 0.0f;
+	slot->mMaxBattery = 0.0f;
+	slot->mMoney      = 0;
+	slot->mExp        = 0;
+	slot->mScrap      = 0;
+	slot->mRank       = 0;
+	slot->mHours      = 0;
+	slot->mMinutes    = 0;
+	slot->mStage      = 0;
+	slot->mTimeMode   = 0;
+	slot->mState      = 0;
+	slot->mActive     = 0;
+	slot->_44         = 0;
+	slot->_48         = 0;
+	slot->_4C         = 0;
+}
+
+extern "C" bool IsSaveSlotIntact(const WiiMenuSaveSlot* slot)
 {
 	return slot->mState != 1;
 }
