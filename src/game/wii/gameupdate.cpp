@@ -212,10 +212,10 @@ void CGame::ResetNewGameState()
 	mTimeState.mRunning  = FALSE;
 	mPlayTime            = 0.0f;
 	_EC1A4               = 0.0f;
-	_EC1A8               = 1.0f;
-	mScopeTimer          = 0.0f;
-	_EC2B4               = NAN;
-	_EC2C8               = -1.0f;
+	mPointer.mAlpha      = 1.0f;
+	mPointer.mScopeTimer = 0.0f;
+	mPointer._10C        = NAN;
+	mPointer._120        = -1.0f;
 	ResetPooledObjects(mXObjs.mPools);
 	InitBatteryGauge(&mInfoScrn, GetPlayer()->mParams.mBattery);
 
@@ -373,9 +373,9 @@ bool CGame::BeforeUpdate()
 		}
 	case 7: {
 		CoordInfo spawn(GetSpawnData(12)); // spawn placement 12
-		if (!((XObj*)_EC2D0)->LoadFromPlacement(spawn))
+		if (!((XObj*)mPointer.mCursor)->LoadFromPlacement(spawn))
 			break;
-		((XObj*)_EC2D0)->SetScale(6.0f);
+		((XObj*)mPointer.mCursor)->SetScale(6.0f);
 		++mLoadStep;
 	}
 	case 8:
@@ -383,8 +383,8 @@ bool CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 		mTpl.mTex.Init(&mTpl.mPalette->descriptorArray[261], 0);
-		_EC1B0 = mTpl.mTex;
-		_41E0  = &_EC1B0;
+		mPointer.mTex = mTpl.mTex;
+		_41E0         = &mPointer.mTex;
 		mTpl.mTex.Init(&mTpl.mPalette->descriptorArray[122], 0); // the outline texture
 		mScrnTex.mTex        = mTpl.mTex;
 		mOutline.mPatternTex = &mScrnTex.mTex;
@@ -464,7 +464,7 @@ bool CGame::BeforeUpdate()
 	case 22:
 		if (IsStageBusy(this))
 			break;
-		_EC2C8 = -1.0f;
+		mPointer._120 = -1.0f;
 		++mLoadStep;
 	case 23:
 		if (!LoadStageAndEventObjects(this))
@@ -578,15 +578,15 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		game->ClearStatusFlags(0x2000000000ULL);
 		game->ClearStatusFlags(0x8000000000ULL);
 		game->ClearStatusFlags(0x100000000000ULL);
-		game->mFloorReflect = FALSE;
-		mirror              = game->mMirrors;
-		mirrors             = 0;
+		game->mPointer.mFloorReflect = FALSE;
+		mirror                       = game->mMirrors;
+		mirrors                      = 0;
 		for (i = 0; i < game->mXObjs.mObjectCount; i++) {
 			obj = (CMirrorObj*)game->mXObjs.mObjects[i];
 			if (obj->mStatus & 1) {
 				if (!game->GetStatusFlags(0x2000000000ULL) && (obj->mStatus & 0x20000000)) {
 					game->SetStatusFlags(0x2000000000ULL); // the stage wants the floor reflection
-					game->mFloorReflect = TRUE;
+					game->mPointer.mFloorReflect = TRUE;
 
 					Vec rot   = { 0.0f, 0.0f, 0.0f };
 					Vec trans = { 0.0f, 0.0f, 0.0f };
@@ -609,7 +609,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 					PSMTXTranspose(mtx, mtx);
 					PSMTXMultVec(mtx, &normal, &normal);
 					PSVECNormalize(&normal, &normal);
-					PSMTXReflect(game->mFloorReflectMtx, &point, &normal);
+					PSMTXReflect(game->mPointer.mFloorReflectMtx, &point, &normal);
 				}
 				if ((obj->mStatus & 0x400) && mirrors < 5) { // flag 0x400 makes an object a mirror
 					game->SetStatusFlags(0x100000000000ULL);
@@ -683,21 +683,21 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		game->GetStatusFlags(0x2000000000ULL);
 		game->GetStatusFlags(0x100000000000ULL);
 		game->GetStatusFlags(0x8000000000ULL);
-		game->mHudObject       = NULL;
-		game->mHudObjectX      = 0.0f;
-		game->mHudObjectY      = 0.0f;
-		game->mScopeTarget     = NULL;
-		game->mScopeMarker     = -1;
-		game->mScopeItem       = -1;
-		game->mScopeTicks      = 0;
-		game->mScopeRareItem   = 0;
-		game->mScopeLevel      = 0;
-		game->mScopeSoundIndex = 0;
-		game->mScopeSound      = -1;
-		game->mScopeZoom       = 0.0f;
-		game->mScopeAngle      = 0.0f;
-		game->mScopeFade       = 0.0f;
-		game->mScopeFade2      = 0.0f;
+		game->mPointer.mHudObject       = NULL;
+		game->mPointer.mHudObjectX      = 0.0f;
+		game->mPointer.mHudObjectY      = 0.0f;
+		game->mPointer.mScopeTarget     = NULL;
+		game->mPointer.mScopeMarker     = -1;
+		game->mPointer.mScopeItem       = -1;
+		game->mPointer.mScopeTicks      = 0;
+		game->mPointer.mScopeRareItem   = 0;
+		game->mPointer.mScopeLevel      = 0;
+		game->mPointer.mScopeSoundIndex = 0;
+		game->mPointer.mScopeSound      = -1;
+		game->mPointer.mScopeZoom       = 0.0f;
+		game->mPointer.mScopeAngle      = 0.0f;
+		game->mPointer.mScopeFade       = 0.0f;
+		game->mPointer.mScopeFade2      = 0.0f;
 	}
 	}
 	return game->mSetupStep == 5;
@@ -1099,25 +1099,25 @@ void CGame::Update(u32 frames)
 	}
 
 	if (gWiiPointer.mPointerValid) {
-		mScopeTimer = 0.0f;
-	} else if (_EC2C8 >= 0.0f) {
-		if (_EC2C8 < 1.0f) {
-			if ((_EC2C8 += 0.1f * frames) > 1.0f) {
-				_EC2C8 = 1.0f;
+		mPointer.mScopeTimer = 0.0f;
+	} else if (mPointer._120 >= 0.0f) {
+		if (mPointer._120 < 1.0f) {
+			if ((mPointer._120 += 0.1f * frames) > 1.0f) {
+				mPointer._120 = 1.0f;
 			}
 		}
-	} else if (mScopeTimer < 5.0f) {
-		if ((mScopeTimer += 2.0f * (1.0f / gRefreshRate) * frames) > 5.0f) {
-			mScopeTimer = 5.0f;
+	} else if (mPointer.mScopeTimer < 5.0f) {
+		if ((mPointer.mScopeTimer += 2.0f * (1.0f / gRefreshRate) * frames) > 5.0f) {
+			mPointer.mScopeTimer = 5.0f;
 		}
 	}
 
 	// _EC1A8 fades the pointer's cursor: out while the eye camera aims the radar, half way while nothing
 	// else wants the pointer, in while something does
 	if (mMotionControlCamera.IsAction(CAMACTION_EYE) && GetPlayer()->GetAttachment() == 2 && !mMenu.mActive && !GetStatusFlags(0x800)) {
-		if (_EC1A8 > 0.0f) {
-			if ((_EC1A8 -= 0.05f * frames) < 0.0f) {
-				_EC1A8 = 0.0f;
+		if (mPointer.mAlpha > 0.0f) {
+			if ((mPointer.mAlpha -= 0.05f * frames) < 0.0f) {
+				mPointer.mAlpha = 0.0f;
 			}
 		}
 	} else if (mEvt.mData.mScript == NULL && !IsMessageSelecting(GetMsg(0)) && !GetStatusFlags(0x800) && !IsMenuOpen(mMenu.mMenus[1])
@@ -1126,14 +1126,14 @@ void CGame::Update(u32 frames)
 	                && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 	           && !(mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)mCameraActions.mTable[CAMACTION_MAP])->_11F8)
 	           && !(fn_80169658(&mMotionControlCamera) && ((u8*)fn_80169674())[0x74]) && !(mStage == 3 && CallStageModule(0x10, 0, NULL))) {
-		if (_EC1A8 > 0.5f) {
-			if ((_EC1A8 -= 0.1f * frames) < 0.5f) {
-				_EC1A8 = 0.5f;
+		if (mPointer.mAlpha > 0.5f) {
+			if ((mPointer.mAlpha -= 0.1f * frames) < 0.5f) {
+				mPointer.mAlpha = 0.5f;
 			}
 		}
-	} else if (_EC1A8 < 1.0f) {
-		if ((_EC1A8 += 0.1f * frames) > 1.0f) {
-			_EC1A8 = 1.0f;
+	} else if (mPointer.mAlpha < 1.0f) {
+		if ((mPointer.mAlpha += 0.1f * frames) > 1.0f) {
+			mPointer.mAlpha = 1.0f;
 		}
 	}
 
@@ -1157,19 +1157,19 @@ void CGame::Update(u32 frames)
 			if (_41B0 & 8) {
 				_41B0 &= ~8;
 			}
-			if (isnan(_EC2B4) || _EC2B4 < gRefreshRate * 5) {
-				_EC2B4 = gRefreshRate * 5;
+			if (isnan(mPointer._10C) || mPointer._10C < gRefreshRate * 5) {
+				mPointer._10C = gRefreshRate * 5;
 			}
-		} else if (isnan(_EC2B4)) {
-			_EC2B4 = 0.0f;
+		} else if (isnan(mPointer._10C)) {
+			mPointer._10C = 0.0f;
 		}
 		if (!(_41B0 & 8)) {
-			if (_EC2B4 > 0.0f) {
-				if ((_EC2B4 -= frames) < 0.0f) {
-					_EC2B4 = 0.0f;
+			if (mPointer._10C > 0.0f) {
+				if ((mPointer._10C -= frames) < 0.0f) {
+					mPointer._10C = 0.0f;
 				}
 			}
-			if (0.0f == _EC2B4) {
+			if (0.0f == mPointer._10C) {
 				_41B0 |= 8;
 			}
 		}
@@ -1177,8 +1177,8 @@ void CGame::Update(u32 frames)
 		if (_41B0 & 8) {
 			_41B0 &= ~8;
 		}
-		if (!isnan(_EC2B4)) {
-			_EC2B4 = NAN;
+		if (!isnan(mPointer._10C)) {
+			mPointer._10C = NAN;
 		}
 	}
 
@@ -1410,8 +1410,8 @@ void CGame::Update(u32 frames)
 			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, obj->mObject.m_pScnMdl);
 		}
 	}
-	if (IsLoadStepRunning() && mLoadStep > 20 && (((XObj*)_EC2D0)->mStatus.mFlags & 1)) { // the loading screen's robot
-		XObj* robot = (XObj*)_EC2D0;
+	if (IsLoadStepRunning() && mLoadStep > 20 && (((XObj*)mPointer.mCursor)->mStatus.mFlags & 1)) { // the loading screen's robot
+		XObj* robot = (XObj*)mPointer.mCursor;
 		if (robot->GetAnimId() != 1 && robot->IsAnimDone()) {
 			robot->SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 		}
@@ -1608,7 +1608,7 @@ void CGame::Update(u32 frames)
 		}
 	} else if (GetStatusFlags(0x100) && GetPlayer()->GetAttachment() == 2) {
 		// the eye camera keeps the last aim while the pointer is briefly off the screen
-		if (_EC2B4 > 0.0f) {
+		if (mPointer._10C > 0.0f) {
 			AimAtPointer(this);
 		} else {
 			fn_800E8140(GetPlayer(), GetPlayer()->mRotY, 0.0f);
@@ -1616,37 +1616,37 @@ void CGame::Update(u32 frames)
 	}
 
 	// the HUD's object fades in and its marker turns while the pointer stays on it
-	if (pick.mObj != mHudObject) {
-		mHudObject  = pick.mObj;
-		mHudObjectX = 0.0f;
+	if (pick.mObj != mPointer.mHudObject) {
+		mPointer.mHudObject  = pick.mObj;
+		mPointer.mHudObjectX = 0.0f;
 	}
-	if (mHudObject != NULL) {
-		if (mHudObjectX < 1.0f) {
-			if ((mHudObjectX += 0.1f * frames) > 1.0f) {
-				mHudObjectX = 1.0f;
+	if (mPointer.mHudObject != NULL) {
+		if (mPointer.mHudObjectX < 1.0f) {
+			if ((mPointer.mHudObjectX += 0.1f * frames) > 1.0f) {
+				mPointer.mHudObjectX = 1.0f;
 			}
 		}
-		mHudObjectY += DEG2RAD * 3.0f * frames;
-	} else if (mHudObjectX > 0.0f) {
-		if ((mHudObjectX -= 0.1f * frames) < 0.0f) {
-			mHudObjectX = 0.0f;
+		mPointer.mHudObjectY += DEG2RAD * 3.0f * frames;
+	} else if (mPointer.mHudObjectX > 0.0f) {
+		if ((mPointer.mHudObjectX -= 0.1f * frames) < 0.0f) {
+			mPointer.mHudObjectX = 0.0f;
 		}
 	}
 
 	// a new scope target: its marker clicks, every tenth time a longer sound; an item plays one of its
 	// stage's sounds for the speed the pointer came at, at night a random one of twenty
-	if (scope.mObj != mScopeTarget) {
-		mScopeTarget = scope.mObj;
+	if (scope.mObj != mPointer.mScopeTarget) {
+		mPointer.mScopeTarget = scope.mObj;
 		if (scope.mObj != NULL) {
 			if (scope.mObj->_18C >= 0) {
-				mScopeMarker = scope.mObj->_18C;
-				mScopeItem   = -1;
+				mPointer.mScopeMarker = scope.mObj->_18C;
+				mPointer.mScopeItem   = -1;
 			} else {
-				s32 item       = scope.mObj->GetObjFlags();
-				mScopeItem     = item;
-				mScopeMarker   = -1;
-				mScopeRareItem = IsScopeRareItem(item);
-				fn_80114564(mScopeTarget);
+				s32 item                = scope.mObj->GetObjFlags();
+				mPointer.mScopeItem     = item;
+				mPointer.mScopeMarker   = -1;
+				mPointer.mScopeRareItem = IsScopeRareItem(item);
+				fn_80114564(mPointer.mScopeTarget);
 			}
 			if (scope.mSpeed < 0.007f) {
 				scope.mLevel = 1;
@@ -1655,53 +1655,53 @@ void CGame::Update(u32 frames)
 			} else {
 				scope.mLevel = 3;
 			}
-			if (mScopeZoom > scope.mLevel) {
-				if (mScopeZoom > 2.0f) {
-					mScopeLevel = 3;
-				} else if (mScopeZoom > 1.0f) {
-					mScopeLevel = 2;
+			if (mPointer.mScopeZoom > scope.mLevel) {
+				if (mPointer.mScopeZoom > 2.0f) {
+					mPointer.mScopeLevel = 3;
+				} else if (mPointer.mScopeZoom > 1.0f) {
+					mPointer.mScopeLevel = 2;
 				} else {
-					mScopeLevel = 1;
+					mPointer.mScopeLevel = 1;
 				}
 			} else {
-				mScopeLevel = scope.mLevel;
-				mScopeSpeed = scope.mSpeed;
-				mScopeZoom  = scope.mLevel;
+				mPointer.mScopeLevel = scope.mLevel;
+				mPointer.mScopeSpeed = scope.mSpeed;
+				mPointer.mScopeZoom  = scope.mLevel;
 			}
-			if (mScopeMarker >= 0) {
+			if (mPointer.mScopeMarker >= 0) {
 				if (IsWiiSfxPlaying(&gGame.mSound, 0x262)) {
 					StopWiiSfx(&gGame.mSound, 0x262, 0.1f);
 				}
-				if (++mScopeTicks >= 10) {
+				if (++mPointer.mScopeTicks >= 10) {
 					PlayWiiSoundEffect(&gGame.mSound, 0x263, 1.0f, 0.0f);
-					mScopeTicks = 0;
+					mPointer.mScopeTicks = 0;
 				} else {
 					PlayWiiSoundEffect(&gGame.mSound, 0x262, 1.0f, 0.0f);
 				}
-			} else if (mScopeItem >= 0) {
+			} else if (mPointer.mScopeItem >= 0) {
 				if (mTimeState.mMode == 1 && mTimeState.mTime > 0.5f
 				    && (gGame.mSound.mMusicFadeOutFrames <= 0 ? gGame.mSound.mCurrentMusicId : 0) == 0
 				    && FindSound(&gGame.mSound, 0x10) == NULL) {
-					if (mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mScopeSound)) {
-						StopWiiSfx(&gGame.mSound, mScopeSound, 0.1f);
+					if (mPointer.mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mPointer.mScopeSound)) {
+						StopWiiSfx(&gGame.mSound, mPointer.mScopeSound, 0.1f);
 					}
 					s32 index = rand() % 20;
-					if (index == mScopeSound) {
-						mScopeSound = (index + 1) % 20;
+					if (index == mPointer.mScopeSound) {
+						mPointer.mScopeSound = (index + 1) % 20;
 					} else {
-						mScopeSound = index;
+						mPointer.mScopeSound = index;
 					}
-					PlayWiiSoundEffect(&gGame.mSound, mScopeSound + 0x264, 1.0f, 0.0f);
+					PlayWiiSoundEffect(&gGame.mSound, mPointer.mScopeSound + 0x264, 1.0f, 0.0f);
 				} else if (lbl_802C49C8[mStage].mSounds != NULL) {
-					if (mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mScopeSound)) {
-						StopWiiSfx(&gGame.mSound, mScopeSound, 0.2f);
+					if (mPointer.mScopeSound >= 0 && IsWiiSfxPlaying(&gGame.mSound, mPointer.mScopeSound)) {
+						StopWiiSfx(&gGame.mSound, mPointer.mScopeSound, 0.2f);
 					}
 					const ScopeStageSounds& sounds = lbl_802C49C8[mStage];
-					mScopeSoundIndex               = (mScopeSoundIndex + 1) % sounds.mCount;
-					mScopeSound                    = sounds.mSounds[mScopeSoundIndex + (mScopeLevel - 1) * sounds.mCount];
-					PlayWiiSoundEffect(&gGame.mSound, mScopeSound, 1.0f, 0.0f);
+					mPointer.mScopeSoundIndex      = (mPointer.mScopeSoundIndex + 1) % sounds.mCount;
+					mPointer.mScopeSound           = sounds.mSounds[mPointer.mScopeSoundIndex + (mPointer.mScopeLevel - 1) * sounds.mCount];
+					PlayWiiSoundEffect(&gGame.mSound, mPointer.mScopeSound, 1.0f, 0.0f);
 				} else if (mStage == 11) {
-					switch (mScopeItem) {
+					switch (mPointer.mScopeItem) {
 					case 0:
 						PlayWiiSoundEffect(&gGame.mSound, 0x431, 1.0f, 0.0f);
 						break;
@@ -1710,7 +1710,7 @@ void CGame::Update(u32 frames)
 						break;
 					}
 				} else if (mStage == 18) {
-					switch (mScopeItem) {
+					switch (mPointer.mScopeItem) {
 					case 0xE:
 						PlayWiiSoundEffect(&gGame.mSound, 0x455, 1.0f, 0.0f);
 						break;
@@ -1719,7 +1719,7 @@ void CGame::Update(u32 frames)
 						break;
 					}
 				} else if (mStage == 22) {
-					switch (mScopeItem) {
+					switch (mPointer.mScopeItem) {
 					case 0:
 						PlayWiiSoundEffect(&gGame.mSound, 0x47D, 1.0f, 0.0f);
 						break;
@@ -1731,33 +1731,33 @@ void CGame::Update(u32 frames)
 			}
 		}
 	}
-	if (mScopeTarget != NULL) {
-		if (mScopeFade < 1.0f) {
-			mScopeFade = 1.0f;
+	if (mPointer.mScopeTarget != NULL) {
+		if (mPointer.mScopeFade < 1.0f) {
+			mPointer.mScopeFade = 1.0f;
 		}
-		if (mScopeFade2 < 1.0f) {
-			mScopeFade2 = 1.0f;
+		if (mPointer.mScopeFade2 < 1.0f) {
+			mPointer.mScopeFade2 = 1.0f;
 		}
 	} else {
-		if (mScopeFade > 0.0f) {
-			if ((mScopeFade -= 0.05f * frames) <= 0.0f) {
-				mScopeFade = 0.0f;
-				mScopeZoom = 1.0f;
+		if (mPointer.mScopeFade > 0.0f) {
+			if ((mPointer.mScopeFade -= 0.05f * frames) <= 0.0f) {
+				mPointer.mScopeFade = 0.0f;
+				mPointer.mScopeZoom = 1.0f;
 			}
 		}
-		if (mScopeFade2 > 0.0f) {
-			if ((mScopeFade2 -= 0.02f * frames) <= 0.0f) {
-				mScopeFade2 = 0.0f;
+		if (mPointer.mScopeFade2 > 0.0f) {
+			if ((mPointer.mScopeFade2 -= 0.02f * frames) <= 0.0f) {
+				mPointer.mScopeFade2 = 0.0f;
 			}
 		}
 	}
-	if (mScopeZoom > 1.0f) {
-		if ((mScopeZoom -= 0.01f * frames) < 1.0f) {
-			mScopeZoom = 1.0f;
+	if (mPointer.mScopeZoom > 1.0f) {
+		if ((mPointer.mScopeZoom -= 0.01f * frames) < 1.0f) {
+			mPointer.mScopeZoom = 1.0f;
 		}
 	}
-	if (mScopeZoom > 0.0f) {
-		mScopeAngle += frames * (DEG2RAD * 3.0f * (mScopeZoom * mScopeZoom));
+	if (mPointer.mScopeZoom > 0.0f) {
+		mPointer.mScopeAngle += frames * (DEG2RAD * 3.0f * (mPointer.mScopeZoom * mPointer.mScopeZoom));
 	}
 }
 

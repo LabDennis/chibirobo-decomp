@@ -365,7 +365,7 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 						const s32 anims[2]             = { 1011, 1007 };
 						game->mStageName.mChars[i]._14 = TRUE;
 						game->mStageName.mChars[i]._18 = 1.0f;
-						((CObj*)&game->_EC2CC[4])->SetAnim(anims[rand() % 2], TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+						((CObj*)game->mPointer.mCursor)->SetAnim(anims[rand() % 2], TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
 						s32 first = GetStageFirstSoundId(game->mStage);
 						if (first >= 0) {
 							for (s32 j = 0; j < game->mStageName.mCount; j++) {
@@ -1107,8 +1107,8 @@ void CGame::DrawHud()
 				object->DrawScreenOverlay();
 			}
 		}
-		if (mHudObject != NULL) {
-			mHudObject->vf19C(0xFF0000C8, 0.0f, mHudObjectX, mHudObjectY);
+		if (mPointer.mHudObject != NULL) {
+			mPointer.mHudObject->vf19C(0xFF0000C8, 0.0f, mPointer.mHudObjectX, mPointer.mHudObjectY);
 		}
 		CallStageModule(4, 0, NULL);
 		fn_802AEDEC(&gGame.mGs.mSceneHead, GetCamera()->mViewMtx);
@@ -1486,7 +1486,7 @@ extern "C" void RenderFloorReflection(CGame* game)
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
 	CCamera camera = *game->GetCamera();
 	Mtx view;
-	PSMTXConcat(camera.mViewMtx, game->mFloorReflectMtx, view);
+	PSMTXConcat(camera.mViewMtx, game->mPointer.mFloorReflectMtx, view);
 	camera.vf64(view);
 	if (game->BeginCamera(&camera)) {
 		for (s32 i = 0; i < game->mDrawLists[3].mCount; i++) {

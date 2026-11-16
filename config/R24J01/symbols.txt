@@ -163,6 +163,7 @@ __dt__5CGameFv = .text:0x8002CFB8; // type:function size:0x264
 __dt__10GameShadowFv = .text:0x8002D21C; // type:function size:0x6C
 __dt__12GameListenerFv = .text:0x8002D288; // type:function size:0x6C
 __dt__Q25CGame10FbMirrorExFv = .text:0x8002D3CC; // type:function size:0x6C
+__dt__11GamePointerFv = .text:0x8002D438; // type:function size:0x6C
 __dt__24CVectorNoneInterpolationFv = .text:0x8002E240; // type:function size:0x90
 __dt__27CVectorEaseOutInterpolationFv = .text:0x8002E33C; // type:function size:0x90
 __dt__29CVectorEaseInOutInterpolationFv = .text:0x8002E3CC; // type:function size:0x90

@@ -1183,6 +1183,41 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuEx) == 0x158);
 
+// the pointer's cursor and what hangs off it, a struct of its own: CGame's destructor calls one destructor
+// (0x8002D438) on _EC1A8 and the constructor builds it in 0x800351CC, with the Cursor (RTTI) at _128. The name is ours
+struct GamePointer {
+	f32 mAlpha;      // _000, fades the cursor; a new game starts it at 1
+	f32 mScopeTimer; // _004, the robo eyes' lenses pulse while it runs and hide from 5 on
+	CTexObj mTex;    // _008, a copy of misc.tpl's texture 261
+	f32 _10C;        // _10C, a new game starts it at NAN
+	u8 _110[0x120 - 0x110];
+	f32 _120; // _120, a new game starts it at -1
+	u8 _124[0x128 - 0x124];
+	u8 mCursor[0xB40 - 0x128]; // _128, the Cursor BeforeUpdate places at spawn 12; xobj.h needs this header
+	// _B40 to _B7C: one block FinalizeStageObjectSetup resets when the stage is up.
+	// _B40 is an object DrawHud draws through its vf19C at the two coordinates behind it, when there is one
+	XObj* mHudObject;
+	f32 mHudObjectX;
+	f32 mHudObjectY;
+	// _B4C on: the object the roboeyes' scope picks, nearest to the camera among those the pointer is on
+	XObj* mScopeTarget;
+	f32 mScopeSpeed;      // _B50, how fast the pointer moved when it picked it
+	s32 mScopeMarker;     // _B54, the target's _18C, -1 when it is an item
+	s32 mScopeItem;       // _B58, the target's item, -1 when it has a marker
+	s32 mScopeTicks;      // _B5C, marker sounds since the last long one
+	BOOL mScopeRareItem;  // _B60, the item is one of a few special ones
+	s32 mScopeLevel;      // _B64, 1 to 3 by the speed, picks the row of the stage's sounds
+	s32 mScopeSoundIndex; // _B68
+	s32 mScopeSound;      // _B6C, the sound last played for the target, -1 for none
+	f32 mScopeZoom;       // _B70, eases back to 1
+	f32 mScopeAngle;      // _B74, turns while the zoom is up
+	f32 mScopeFade;       // _B78
+	f32 mScopeFade2;      // _B7C
+	u8 mFloorReflect;     // _B80, an object asked for the floor reflection
+	Mtx mFloorReflectMtx; // _B84, PSMTXReflect about the floor
+};
+STATIC_ASSERT(sizeof(GamePointer) == 0xBB4);
+
 // the point the 3D sound listens from, a Wii piece in a struct of its own: CGame's destructor calls one destructor
 // (0x8002D288) for both vectors and the constructor in 0x800332D8 builds them together. The names are ours
 struct GameListener {
@@ -1283,37 +1318,9 @@ public:
 	u8 _D9B80[0xEC180 - 0xD9B80 - sizeof(CSaveFile)];
 	BOOL mMemcardLoaded; // _EC180
 	u8 _EC184[0xEC1A0 - 0xEC184];
-	f32 mPlayTime;   // _EC1A0
-	f32 _EC1A4;      // _EC1A4
-	f32 _EC1A8;      // _EC1A8, a new game starts it at 1
-	f32 mScopeTimer; // _EC1AC, the robo eyes' lenses pulse while it runs and hide from 5 on
-	CTexObj _EC1B0;  // _EC1B0, a copy of misc.tpl's texture 261
-	f32 _EC2B4;      // _EC2B4, a new game starts it at NAN
-	u8 _EC2B8[0xEC2C8 - 0xEC2B8];
-	f32 _EC2C8; // _EC2C8, a new game starts it at -1
-	u8 _EC2CC[0xEC2D0 - 0xEC2CC];
-	u8 _EC2D0[0xECCE8 - 0xEC2D0]; // _EC2D0, an XObj BeforeUpdate places at spawn 12; xobj.h needs this header
-	// _ECCE8 to _ECD24: one block FinalizeStageObjectSetup resets when the stage is up.
-	// _ECCE8 is an object DrawHud draws through its vf19C at the two coordinates behind it, when there is one
-	XObj* mHudObject;
-	f32 mHudObjectX;
-	f32 mHudObjectY;
-	// _ECCF4 on: the object the roboeyes' scope picks, nearest to the camera among those the pointer is on
-	XObj* mScopeTarget;
-	f32 mScopeSpeed;        // _ECCF8, how fast the pointer moved when it picked it
-	s32 mScopeMarker;       // _ECCFC, the target's _18C, -1 when it is an item
-	s32 mScopeItem;         // _ECD00, the target's item, -1 when it has a marker
-	s32 mScopeTicks;        // _ECD04, marker sounds since the last long one
-	BOOL mScopeRareItem;    // _ECD08, the item is one of a few special ones
-	s32 mScopeLevel;        // _ECD0C, 1 to 3 by the speed, picks the row of the stage's sounds
-	s32 mScopeSoundIndex;   // _ECD10
-	s32 mScopeSound;        // _ECD14, the sound last played for the target, -1 for none
-	f32 mScopeZoom;         // _ECD18, eases back to 1
-	f32 mScopeAngle;        // _ECD1C, turns while the zoom is up
-	f32 mScopeFade;         // _ECD20
-	f32 mScopeFade2;        // _ECD24
-	u8 mFloorReflect;       // _ECD28, an object asked for the floor reflection
-	Mtx mFloorReflectMtx;   // _ECD2C, PSMTXReflect about the floor
+	f32 mPlayTime;          // _EC1A0
+	f32 _EC1A4;             // _EC1A4
+	GamePointer mPointer;   // _EC1A8
 	FbMirrorEx mMirrors[5]; // _ECD5C
 	StageName mStageName;   // _EDEC8
 	CMovie mMovie;          // _EE104; AnimSfx::CheckStart starts no sound while its first word is set
@@ -1374,19 +1381,14 @@ STATIC_ASSERT(offsetof(CGame, mScrnTex) == 0x57CC);
 STATIC_ASSERT(offsetof(CGame, mColor0) == 0x5908);
 STATIC_ASSERT(offsetof(CGame, mOutlineWidth) == 0x5974);
 STATIC_ASSERT(offsetof(CGame, mXObjs) == 0xF6E4);
-STATIC_ASSERT(offsetof(CGame, mScopeTimer) == 0xEC1AC);
+STATIC_ASSERT(offsetof(CGame, mPointer) == 0xEC1A8);
 STATIC_ASSERT(offsetof(CGame, _D9B5C) == 0xD9B5C);
 STATIC_ASSERT(offsetof(CGame, mMemcardLoaded) == 0xEC180);
-STATIC_ASSERT(offsetof(CGame, _EC2B4) == 0xEC2B4);
-STATIC_ASSERT(offsetof(CGame, _EC2C8) == 0xEC2C8);
 STATIC_ASSERT(offsetof(CGame, mStageName) == 0xEDEC8);
 STATIC_ASSERT(offsetof(CGame, mSetupStep) == 0x41EC);
 STATIC_ASSERT(offsetof(CGame, mDrawLists) == 0x108C0);
 STATIC_ASSERT(offsetof(CGame, mLightList) == 0xD9B58);
-STATIC_ASSERT(offsetof(CGame, mHudObject) == 0xECCE8);
-STATIC_ASSERT(offsetof(CGame, mScopeFade2) == 0xECD24);
 STATIC_ASSERT(offsetof(WiiPlayerState, mPopper) == 0xD50);
-STATIC_ASSERT(offsetof(CGame, mFloorReflectMtx) == 0xECD2C);
 STATIC_ASSERT(offsetof(CGame, mMirrors) == 0xECD5C);
 STATIC_ASSERT(offsetof(CGame, mListener) == 0xEE1E0);
 STATIC_ASSERT(offsetof(CGame, mSubwin) == 0x548C);
@@ -1400,8 +1402,6 @@ STATIC_ASSERT(offsetof(CGame, mShadow) == 0xEE210);
 STATIC_ASSERT(offsetof(CGame, _41F0) == 0x41F0);
 STATIC_ASSERT(offsetof(CGame, mOutline) == 0x511C);
 STATIC_ASSERT(offsetof(CGame, mSaveManager) == 0xD9B80);
-STATIC_ASSERT(offsetof(CGame, _EC1B0) == 0xEC1B0);
-STATIC_ASSERT(offsetof(CGame, _EC2D0) == 0xEC2D0);
 STATIC_ASSERT(offsetof(CGame, mShadowFocus) == 0xEE200);
 STATIC_ASSERT(offsetof(CBase, _41E0) == 0x41E0);
 STATIC_ASSERT(offsetof(CGame, mBlur) == 0x52E4);

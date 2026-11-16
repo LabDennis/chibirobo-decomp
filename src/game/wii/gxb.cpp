@@ -980,11 +980,11 @@ void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f
 	}
 	if (gGame.GetPlayer()->GetAttachment() == 2) {
 		f32 fade;
-		if (gGame.mScopeTimer > 0.0f) {
-			if (gGame.mScopeTimer >= 5.0f)
+		if (gGame.mPointer.mScopeTimer > 0.0f) {
+			if (gGame.mPointer.mScopeTimer >= 5.0f)
 				fade = 0.0f;
 			else
-				fade = sinf(HALF_PI * (1.0f - (f32)fmod(gGame.mScopeTimer, 1.0)));
+				fade = sinf(HALF_PI * (1.0f - (f32)fmod(gGame.mPointer.mScopeTimer, 1.0)));
 		} else {
 			fade = 1.0f;
 		}
