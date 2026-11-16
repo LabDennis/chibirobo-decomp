@@ -17,7 +17,16 @@
 #include "game/wii/xobjs.h"
 #include "revolution/mem.h"
 
-struct XObjFloor;
+// one of an object's floors, a list of them ends at an id of -1; the GameCube struct with the ground type split in two
+struct XObjFloor {
+	s16 mId;              // _00
+	u8 mMaterial;         // _02, ground types 13 and up count as none
+	u8 mFlags;            // _03, bit 0 includes this floor in contact tests, bit 1 in screen bounds
+	s32 mCenterOffset[3]; // _04, in hundredths
+	s32 mYawDegrees;      // _10
+	s32 mExtent[3];       // _14, in hundredths
+};
+STATIC_ASSERT(sizeof(XObjFloor) == 0x20);
 
 // the Wii XObj family, as far as xobj_ut.cpp's pool setup verifies it: names and
 // sizes come from the retail RTTI strings and the element strides the pool

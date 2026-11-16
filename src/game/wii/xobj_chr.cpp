@@ -508,6 +508,11 @@ u64 GetHeldPadButtons(const CPadOne* pad, u64 mask)
 	return pad->mButton & mask;
 }
 
+BOOL IsActionTargetFloorId(const XAction* action, s32 wanted)
+{
+	return action->mTarget->mFloors[action->mTargetFloor].mId == wanted;
+}
+
 void* GetObjectFromPool(const CGame* game, s32 pool, s32 index)
 {
 	return game->mXObjs.mPools[pool].Get(index);
