@@ -7,4 +7,9 @@
 #define offsetof(type, member) ((size_t) & (((type*)0)->member))
 #endif
 
+namespace std {
+using ::size_t;
+typedef unsigned long uintptr_t;
+} // namespace std
+
 #endif
