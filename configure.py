@@ -1200,7 +1200,9 @@ if wii:
                 #   and lowers one by 0.01 (CPadAct::Update, 94.76 to 94.75).
                 # The units without an mw_version keep the library's Wii/1.3: nandfile.cpp matches only
                 # so (its twelve functions fall to about 80 % under GC/3.0a5 with -ipa file).
-                Object(Equivalent, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the GameCube file as it is: -inline deferred emits its functions last to first, which is
+                # retail's order (Load, Unload, Print); with -ipa file they come out first to last
+                Object(Matching, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline noauto,deferred"]),
                 Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the generated tail (0x800942E8-0x8009453C) is the same compiler as the
                 # stage_data group: only GC/3.0a* emits __register_global_object for the
@@ -1240,9 +1242,17 @@ if wii:
                 # OSPanic file): ResourceFile's refcounted CFile, the CFileRequest state
                 # machine and CResFile's brres accessor over the nw4r walkers
                 Object(NonMatching, "game/wii/cresfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the model objects 0x802B6560-0x802BA4F4 (cobj.cpp by its assert file) and the particle
+                # effects 0x802BD3B4-0x802BF9F8 (ceffect.cpp): only what does not go through nw4r::g3d
+                # or nw4r::ef is written, the rest waits on those libraries' headers
+                Object(NonMatching, "game/wii/cobj.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/wii/ceffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the frame buffer effects 0x802BF9F8-0x802C19B8 (fbeffect.cpp by its string pool):
+                # FbBase, FbBlur and FbEffect, the GameCube's CFbBlur and CFbOutline on a common base
+                Object(NonMatching, "game/wii/fbeffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # the RFNU/RFNT font file loader + glyph cache between the console font paths;
                 # the small setup helpers stay calls in retail, so no auto-inlining here either
-                Object(NonMatching, "game/wii/cfont.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(Matching, "game/wii/cfont.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # init.cpp (the name is in its OSPanic call): InitTwoLightSet and InitFourLightSet
                 # copy their vectors through the registers retail uses under GC/3.0a3.2 to 3.0a5
                 # and through others under 3.0a5.2, and every Wii build is far off. -ipa file: the
@@ -1256,12 +1266,14 @@ if wii:
                 # into Update (no bl, retail 0x802B2528), with its standalone copy at its own
                 # address (retail 0x802B1D84)
                 Object(Matching, "game/wii/cpad.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # cgs.cpp from the camera on, 0x802A80FC-0x802AEA44; it includes cgs_scrn.cpp and
+                # cgs_chan.cpp, whose asserts share its string pool. No auto-inlining:
+                # retail calls DrawGsTriangleVertices from DrawGsVertexQuad and MeasureStrokeTextWidth
+                # from DrawGsStrokeText, both of which -inline auto folds into their one caller
+                Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # the message system between evt.cpp's destructors and cpadact.cpp; the
                 # GameCube file's VERSION_JP branches are the reconstruction base
                 Object(NonMatching, "game/wii/msg.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the text drawing unit 0x802AD310-0x802AEBB0; the GameCube cgs.cpp pairs
-                # are the reconstruction base
-                Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii's shared helper unit 0x802A5418-0x802A7478: Shift-JIS, HSD matrix
                 # and collision helpers from the GameCube's ut.cpp + mtx.c; the CVec
                 # operators and PSVEC calls stay calls, so no auto-inlining
@@ -1321,10 +1333,10 @@ if wii:
                 # GameCube file's hand-spelled weak copies stay GC-only like the menu dtors
                 Object(NonMatching, "game/xpaddtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/cpaddtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the contiguous run of trivial deleting dtors at 0x8002FE00-0x80030088 is emitted
-                # out-of-line here; the GameCube file's hand-spelled weak copies stay GC-only
-                Object(NonMatching, "game/cspritedtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/cpadexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # ~CGame and the weak destructors of CGame's and CBase's members the compiler emits behind
+                # it (retail 0x8002CFB8 on); the classes still missing keep ~CGame under the inline budget
+                Object(NonMatching, "game/wii/gamedtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # Wii-only verified members: fade state and the texture matrices live four
                 # bytes later than the GameCube layout (WiiFbTexture is one word bigger)
                 Object(Equivalent, "game/gamefbsubwinfade.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1336,10 +1348,11 @@ if wii:
                 # the pool unit: InitializeObjectPools and ~CustomShadow match; the XObj/Light/Map
                 # ctors still wait on the Wii member-class models (TVec, CResource, NW_Anm, ...)
                 Object(NonMatching, "game/wii/xobj_ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # Wii CMovie carries a volume (float at _88, scaled by 127.0f) and a time arg:
-                # the whole tail of the layout shifts one word versus the GameCube class
-                Object(Equivalent, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(NonMatching, "game/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the helpers the GameCube file inlines stay calls in retail: no auto-inlining
+                Object(NonMatching, "game/wii/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # -inline noauto like the engine files around it (cfile, ctpl, THPSimple): Update
+                # calls Stop where auto-inlining would expand it
+                Object(NonMatching, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # member offsets are shared with the GameCube class (mEyeInterps _18C, mFovInterps
                 # _330, the interp pointers _44-_54); the Wii vtable re-orders the Vec& overloads
                 Object(NonMatching, "game/ccameraactionevt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1380,6 +1393,10 @@ if wii:
                 # the desc struct is kept under the HSD_ImageDesc name (retail stores at +0x800
                 # match its field layout); no sysdolphin on Wii
                 Object(Equivalent, "game/ctoon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),
+                # the head of the Wii game file (retail 0x80017BC0-0x80019A68): main, CBase's loop, its
+                # empty virtuals, the drive and reset watch and operator new; Start, the corner icon
+                # and the two system-message virtuals have no source yet
+                Object(NonMatching, "game/wii/gamemain.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the game's operator delete, in a file of its own: it frees into the MEM1 exp heap
                 # (retail 0x80019A68 loads the InitMem1 global and calls MEMFreeToExpHeap, no null check)
                 Object(Matching, "game/wii/delete.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1392,6 +1409,12 @@ if wii:
                 Object(NonMatching, "game/wii/fbsubwin.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/gxb.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/fbmirror.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii file 12 of wii_units.md, 0x80024AE8-0x8002CFB8: the draw, stage change, sound pause
+                # and movie part of the game's main file, with the weak functions emitted between them
+                Object(NonMatching, "game/wii/gamedraw.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # Wii TU 0x8001C2D8-0x80024AE8 (wii_units.md #11): CGame's new game reset, BeforeUpdate, the floor
+                # reflection and Update with CBase's small virtuals; retail has extab entries for them
+                Object(NonMatching, "game/wii/gameupdate.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # retail has extab entries for the three functions and emits them in reverse (_prolog first):
                 # the game group's compiler with exceptions on and deferred inlining gives both. The object
                 # is byte-exact, but nothing calls _epilog and _unresolved: retail kept them through its
@@ -1651,11 +1674,8 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_MmlSeqTrack.cpp"),
                 Object(Matching, "nw4r/snd/snd_MmlSeqTrackAllocator.cpp"),
                 Object(Matching, "nw4r/snd/snd_PlayerHeap.cpp"),
-                # code 12 of 12 by content; Setup and Shutdown are EnableWiiRemoteSpeaker and DisableWiiRemoteSpeaker
-                # in symbols.txt, the names src/game/wii/cpad.cpp calls
-                Object(NonMatching, "nw4r/snd/snd_RemoteSpeaker.cpp"),
-                # GetInstance and GetRemoteSpeaker are GetRemoteSpeakerManager and GetRemoteSpeakerChannel to the game
-                Object(NonMatching, "nw4r/snd/snd_RemoteSpeakerManager.cpp"),
+                Object(Matching, "nw4r/snd/snd_RemoteSpeaker.cpp"),
+                Object(Matching, "nw4r/snd/snd_RemoteSpeakerManager.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqFile.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqPlayer.cpp"),
                 # code complete; calls BasicSound::Stop (StopWiiSfxTrack in symbols.txt)
@@ -1677,8 +1697,7 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_SoundHeap.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundPlayer.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundStartable.cpp"),
-                # code complete; calls RemoteSpeakerManager::GetInstance (GetRemoteSpeakerManager in symbols.txt)
-                Object(NonMatching, "nw4r/snd/snd_SoundSystem.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundSystem.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundThread.cpp"),
                 Object(Matching, "nw4r/snd/snd_StrmChannel.cpp"),
                 Object(Matching, "nw4r/snd/snd_StrmFile.cpp"),

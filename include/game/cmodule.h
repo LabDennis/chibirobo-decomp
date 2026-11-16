@@ -28,7 +28,7 @@ public:
 
 	virtual ~CModule() { } // _08 (weak)
 
-	BOOL IsLoaded() { return mModule != NULL; }
+	BOOL IsLoaded() const { return mModule != NULL; }
 	void Epilog()
 	{
 		if (IsLoaded()) {

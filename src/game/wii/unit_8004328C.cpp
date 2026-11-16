@@ -23,10 +23,9 @@ extern s32 gPointerScreenWidth, gPointerScreenHeight, gRefreshRate;
 void HSD_MtxGetScale(Mtx m, Vec* out);
 }
 
-// CObj's model members are still untyped in xobj.h: the nw4r::g3d::ResMdl at _EC and the NW_Obj
-// that most likely starts at _E8 are reached through these two
-#define COBJ_RESMDL ((nw4r::g3d::ResMdl*)&_EC)
-#define COBJ_NW_OBJ ((NW_Obj*)&_E8)
+// the nw4r::g3d::ResMdl handle is the NW_Obj's second word, still untyped in xobj.h
+#define COBJ_RESMDL ((nw4r::g3d::ResMdl*)&mObject._04)
+#define COBJ_NW_OBJ (&mObject)
 
 /**
  * @note Address: 0x8004330C
@@ -346,7 +345,7 @@ CVec CObj::GetNodeTranslate()
  * @note Address: 0x80043B54
  * @note Size: 0xF4
  */
-// NONMATCHING: retail reads mScnMdl and tests it ahead of saving the registers, and loads the three
+// NONMATCHING: retail reads mObject.m_pScnMdl and tests it ahead of saving the registers, and loads the three
 // floats of the temporary CVec in the opposite registers (z in f0); the frame and the rest are retail's
 // the translation column of the node's world matrix
 CVec CObj::GetWorldPos(nw4r::g3d::ResNode node)
@@ -387,11 +386,11 @@ CVec CObj::GetWorldPos()
  * @note Address: 0x80043D88
  * @note Size: 0x68
  */
-// NONMATCHING: one instruction out of place, retail reads mScnMdl ahead of saving r31 (an early
+// NONMATCHING: one instruction out of place, retail reads mObject.m_pScnMdl ahead of saving r31 (an early
 // return, a conditional expression and an inline test were tried)
 MtxP CObj::GetWorldMtx(const char* name)
 {
-	if (mScnMdl != NULL) {
+	if (mObject.m_pScnMdl != NULL) {
 		return GetWorldMtx(GetResNode(name));
 	}
 	return NULL;
@@ -401,11 +400,11 @@ MtxP CObj::GetWorldMtx(const char* name)
  * @note Address: 0x80043DF0
  * @note Size: 0x68
  */
-// NONMATCHING: one instruction out of place, retail reads mScnMdl ahead of saving r31 (an early
+// NONMATCHING: one instruction out of place, retail reads mObject.m_pScnMdl ahead of saving r31 (an early
 // return, a conditional expression and an inline test were tried)
 MtxP CObj::GetWorldMtx(u32 index)
 {
-	if (mScnMdl != NULL) {
+	if (mObject.m_pScnMdl != NULL) {
 		return GetWorldMtx(GetResNode(index));
 	}
 	return NULL;
@@ -415,11 +414,11 @@ MtxP CObj::GetWorldMtx(u32 index)
  * @note Address: 0x80043E58
  * @note Size: 0x68
  */
-// NONMATCHING: one instruction out of place, retail reads mScnMdl ahead of saving r31 (an early
+// NONMATCHING: one instruction out of place, retail reads mObject.m_pScnMdl ahead of saving r31 (an early
 // return, a conditional expression and an inline test were tried)
 MtxP CObj::GetWorldMtx()
 {
-	if (mScnMdl != NULL) {
+	if (mObject.m_pScnMdl != NULL) {
 		return GetWorldMtx(GetResNode());
 	}
 	return NULL;
@@ -794,7 +793,7 @@ CVec XObj::GetJointPos(nw4r::g3d::ResNode node)
  */
 BOOL XObj::HasModel()
 {
-	return mScnMdl != NULL;
+	return mObject.m_pScnMdl != NULL;
 }
 
 /**
