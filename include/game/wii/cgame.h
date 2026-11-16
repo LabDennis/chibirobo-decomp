@@ -1006,6 +1006,130 @@ public:
 	void State8(u32 frames);
 };
 
+// Wii FbSubwin - partial: only the members below are verified, by the retail functions'
+// offsets (CreateFbTexture writes _04/_06, Init stores _58/_5C/_BC, the function-table
+// pointer is at _124, four bytes later than the GameCube class because WiiFbTexture is
+// one word bigger, _128/_134 are the fade state, the camera is embedded at _148). The
+// gaps stay unverified.
+class FbSubwin {
+public:
+	u8 _000[0x4];
+	u16 mWidth;    // _04, written by CreateFbTexture
+	u16 mHeight;   // _06, written by CreateFbTexture
+	u8 _008[0x50]; // unverified (rest of the WiiFbTexture head)
+	u8 mTexDirty;  // _58, texture-matrix flag, set TRUE around the matrix writes
+	u8 _059[0x3];
+	Mtx mTexMtx[4]; // _5C, the texture's matrices; Init writes [0] and [2]
+	u8 _11C[0x8];
+	void (**mVtable)(FbSubwin*); // _124
+	BOOL mEnabled;               // _128, fades in while set, out while not
+	u32 mFlags;                  // _12C, Draw tests bit 2
+	u8 _130[0x4];
+	f32 mAmount;     // _134, 0 to 1
+	f32 mRectX;      // _138, centre x of the window's rect on screen
+	f32 mRectY;      // _13C, centre y of the window's rect on screen
+	f32 mRectWidth;  // _140, window width, NaN (with mRectHeight) picks the round frame
+	f32 mRectHeight; // _144, window height, NaN picks the round frame
+	CCamera mCamera; // _148
+
+	void Init();
+	void Reset();
+	void Update(u32 frames);
+	void Copy();
+	void Draw();
+};
+
+// frame buffer effects that draw through a copied texture; the Wii base keeps the bigger
+// WiiFbTexture and drops mActive (WiiFbTexture::mOwnsImage took its slot), the vtable sits
+// at _124 right behind the texture.
+class CFbTexEff {
+public:
+	WiiFbTexture mTexture; // _00
+	// _124 vtable
+
+	virtual void Init();             // _08
+	virtual void Reset();            // _0C
+	virtual void Copy();             // _10
+	virtual void Update(u32 frames); // _14
+	virtual void Draw();             // _18
+};
+
+// the model object a mirror binds to: a stage object's scene carrier. Only what the retail
+// functions prove is filled in - the vtable's _50 finds a node by name ("mirror" is the
+// mirror surface), _A0 returns a node's matrix, _EC is the model's nw4r resource handle and
+// _F0 a related data object. The name is ours.
+class CMirrorObj {
+public:
+	virtual void vf08();
+	virtual void vf0C();
+	virtual void vf10();
+	virtual void vf14();
+	virtual void vf18();
+	virtual void vf1C();
+	virtual void vf20();
+	virtual void vf24();
+	virtual void vf28();
+	virtual void vf2C();
+	virtual void vf30();
+	virtual void vf34();
+	virtual void vf38();
+	virtual void vf3C();
+	virtual void vf40();
+	virtual void vf44();
+	virtual void vf48();
+	virtual void vf4C();
+	virtual void* vf50(const char* name); // _50
+	virtual void vf54();
+	virtual void vf58();
+	virtual void vf5C();
+	virtual void vf60();
+	virtual void vf64();
+	virtual void vf68();
+	virtual void vf6C();
+	virtual void vf70();
+	virtual void vf74();
+	virtual void vf78();
+	virtual void vf7C();
+	virtual void vf80();
+	virtual void vf84();
+	virtual void vf88();
+	virtual void vf8C();
+	virtual void vf90();
+	virtual void vf94();
+	virtual void vf98();
+	virtual void vf9C();
+	virtual MtxP vfA0(void** node); // _A0
+
+	u8 _04[0xE8];
+	u32 mMdl;  // _EC, the model's nw4r ResMdl handle
+	void* mF0; // _F0, the object the node matrices live in
+	u8 _F4[0x150 - 0xF4];
+	u64 mStatus; // _150, the object's status flags
+};
+
+// a mirror, renders the scene again through a camera reflected in a named node's plane;
+// the Wii version keeps its own 256-square texture and binds the model's "mirror_mat"
+// material animation so the mirror shows the copy
+class FbMirror : public CFbTexEff {
+public:
+	CMirrorObj* mJoint;     // _128
+	void* mJointAnm;        // _12C, the ResAnmTexPat bound to "mirror_mat"
+	u8 mJointAnmCopy[0x20]; // _130, a copy of the anm with the mirror's texture patched in
+	CCamera mCamera;        // _150
+	BOOL mVisible;          // _348, the eye is in front of the mirror
+	Mtx mView;              // _34C
+
+	virtual void Init();             // _08, Init__8FbMirrorFv
+	virtual void Reset();            // _0C, Reset__8FbMirrorFv
+	virtual void Copy();             // _10, Copy__8FbMirrorFv
+	virtual void Update(u32 frames); // _14, Update__8FbMirrorFUl
+	virtual void Draw();             // _18, Draw__8FbMirrorFv
+
+	void SetMirror(CMirrorObj* obj); // fn_80019F24
+	bool IsUsed() const { return mJoint ? true : false; }
+};
+STATIC_ASSERT(sizeof(FbMirror) == 0x37C);
+
 // the effect manager (ceffect.cpp), CGame's at _B7A8, the GameCube's mParticle; Update hands it the camera each frame.
 // Class name from RTTI, the constructor in 0x800332D8 stores its vtable at _4FC and builds the two sets at _08
 class CEffectSystem {
@@ -1082,8 +1206,9 @@ STATIC_ASSERT(sizeof(GameShadow) == 0x320);
 class CGame : public CBase {
 public:
 	virtual ~CGame(); // _08, 0x8002CFB8
-	// the five mirrors CGame keeps at _ECD5C, 0x37C each; defined in game/fbtexeff.h behind its base FbMirror
-	class FbMirrorEx;
+	// the mirrors CGame holds. RTTI names the class "CGame::FbMirrorEx"; its vtable (0x802E5FF4) has FbMirror's five
+	// functions and it adds no members, the constructor at 0x80035418 is the compiler's
+	class FbMirrorEx : public FbMirror { };
 
 	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
 	CCamera* GetCamera();                   // _4C override, &mMotionControlCamera
@@ -1117,17 +1242,17 @@ public:
 	CScrnWipeTile mWipeTile;     // _4FA8
 	CScrnWipeCine mWipeCine;     // _5010, the letterbox bars; the message window and the HUD read its mActive, mY and mHeight
 	CScrnRoboeyes mRoboeyes;
-	FbEffect mOutline;           // _511C
-	FbBlur mBlur;                // _52E4
-	u8 mSubwin[0x57CC - 0x548C]; // _548C, the FbSubwin of game/fbtexeff.h, which needs this header
-	ScrnTex mScrnTex;            // _57CC
-	GameScrnColor mColor0;       // _5908
-	GameScrnColor1 mColor1;      // _593C
-	s32 mOutlineWidthControl;    // _5970
-	f32 mOutlineWidth;           // _5974
-	Logo mLogo;                  // _5978
-	u8 mTitle[4];                // _5C70, where the Wii Title (title.h) starts, its vtable; mTitleState is its first member
-	s32 mTitleState;             // _5C74, the title screen's step, as the GameCube mTitle.mState
+	FbEffect mOutline;        // _511C
+	FbBlur mBlur;             // _52E4
+	FbSubwin mSubwin;         // _548C
+	ScrnTex mScrnTex;         // _57CC
+	GameScrnColor mColor0;    // _5908
+	GameScrnColor1 mColor1;   // _593C
+	s32 mOutlineWidthControl; // _5970
+	f32 mOutlineWidth;        // _5974
+	Logo mLogo;               // _5978
+	u8 mTitle[4];             // _5C70, where the Wii Title (title.h) starts, its vtable; mTitleState is its first member
+	s32 mTitleState;          // _5C74, the title screen's step, as the GameCube mTitle.mState
 	u8 _5C78[0xAE00 - 0x5C78];
 	MenuEx mMenu;           // _AE00
 	InfoScrn mInfoScrn;     // _AF58
@@ -1175,27 +1300,27 @@ public:
 	f32 mHudObjectY;
 	// _ECCF4 on: the object the roboeyes' scope picks, nearest to the camera among those the pointer is on
 	XObj* mScopeTarget;
-	f32 mScopeSpeed;                // _ECCF8, how fast the pointer moved when it picked it
-	s32 mScopeMarker;               // _ECCFC, the target's _18C, -1 when it is an item
-	s32 mScopeItem;                 // _ECD00, the target's item, -1 when it has a marker
-	s32 mScopeTicks;                // _ECD04, marker sounds since the last long one
-	BOOL mScopeRareItem;            // _ECD08, the item is one of a few special ones
-	s32 mScopeLevel;                // _ECD0C, 1 to 3 by the speed, picks the row of the stage's sounds
-	s32 mScopeSoundIndex;           // _ECD10
-	s32 mScopeSound;                // _ECD14, the sound last played for the target, -1 for none
-	f32 mScopeZoom;                 // _ECD18, eases back to 1
-	f32 mScopeAngle;                // _ECD1C, turns while the zoom is up
-	f32 mScopeFade;                 // _ECD20
-	f32 mScopeFade2;                // _ECD24
-	u8 mFloorReflect;               // _ECD28, an object asked for the floor reflection
-	Mtx mFloorReflectMtx;           // _ECD2C, PSMTXReflect about the floor
-	u8 mMirrors[0xEDEC8 - 0xECD5C]; // _ECD5C, FbMirror[5]; fbtexeff.h needs this header, so they stay untyped here
-	StageName mStageName;           // _EDEC8
-	CMovie mMovie;                  // _EE104; AnimSfx::CheckStart starts no sound while its first word is set
-	u32 mMovieFlags;                // _EE1C0, the Start flags
-	f32 mMovieRect[4];              // _EE1C4, where the movie draws, NAN for its own size and the centre
-	f32 mMovieVolume;               // _EE1D4
-	bool mMovieOnThread;            // _EE1D8, the staff roll: UpdateMovie steps it on a thread of its own
+	f32 mScopeSpeed;        // _ECCF8, how fast the pointer moved when it picked it
+	s32 mScopeMarker;       // _ECCFC, the target's _18C, -1 when it is an item
+	s32 mScopeItem;         // _ECD00, the target's item, -1 when it has a marker
+	s32 mScopeTicks;        // _ECD04, marker sounds since the last long one
+	BOOL mScopeRareItem;    // _ECD08, the item is one of a few special ones
+	s32 mScopeLevel;        // _ECD0C, 1 to 3 by the speed, picks the row of the stage's sounds
+	s32 mScopeSoundIndex;   // _ECD10
+	s32 mScopeSound;        // _ECD14, the sound last played for the target, -1 for none
+	f32 mScopeZoom;         // _ECD18, eases back to 1
+	f32 mScopeAngle;        // _ECD1C, turns while the zoom is up
+	f32 mScopeFade;         // _ECD20
+	f32 mScopeFade2;        // _ECD24
+	u8 mFloorReflect;       // _ECD28, an object asked for the floor reflection
+	Mtx mFloorReflectMtx;   // _ECD2C, PSMTXReflect about the floor
+	FbMirrorEx mMirrors[5]; // _ECD5C
+	StageName mStageName;   // _EDEC8
+	CMovie mMovie;          // _EE104; AnimSfx::CheckStart starts no sound while its first word is set
+	u32 mMovieFlags;        // _EE1C0, the Start flags
+	f32 mMovieRect[4];      // _EE1C4, where the movie draws, NAN for its own size and the centre
+	f32 mMovieVolume;       // _EE1D4
+	bool mMovieOnThread;    // _EE1D8, the staff roll: UpdateMovie steps it on a thread of its own
 	u8 _EE1D9[0xEE1DC - 0xEE1D9];
 	u32 mMenuControls;
 	GameListener mListener; // _EE1E0

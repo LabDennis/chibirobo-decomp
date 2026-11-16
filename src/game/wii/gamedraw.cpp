@@ -634,7 +634,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		CMsg_ResetPos(&msgs[i]);
 		msgs[i].SetColor(gMessageFontDefaultColor);
 	}
-	CGame::FbMirrorEx* mirrors = (CGame::FbMirrorEx*)game->mMirrors;
+	CGame::FbMirrorEx* mirrors = game->mMirrors;
 	for (s32 i = 0; i < 5; i++) { // let go of the mirrors' objects and textures
 		FbMirror* mirror = &mirrors[i];
 		if (mirror->IsUsed() && mirror->mJoint != NULL) {
@@ -716,7 +716,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		ResetTitleScreenState(game->mTitle);
 		fn_800848C0(&game->mMenu.mActive); // the menu group starts at its active word
 		ResetGameHudState(scrn);
-		((FbSubwin*)game->mSubwin)->Reset();
+		game->mSubwin.Reset();
 		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
 		game->mWipeCircle.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 		game->mWipeTex.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -731,7 +731,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		blur->mSpeed    = 0.0f;
 		game->mLoadStep = 20;
 	} else if (stage == 20000) {
-		((FbSubwin*)game->mSubwin)->Reset();
+		game->mSubwin.Reset();
 		StartScreenFade(&game->mFade, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
 		game->mWipeCircle.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 		game->mWipeTex.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
@@ -1279,7 +1279,7 @@ extern "C" void RenderMirrorTextures(CGame* game)
 	if (menuShown) {
 		return;
 	}
-	CGame::FbMirrorEx* mirrors = (CGame::FbMirrorEx*)game->mMirrors;
+	CGame::FbMirrorEx* mirrors = game->mMirrors;
 	for (s32 i = 0; i < 5; i++) {
 		FbMirror* mirror = &mirrors[i];
 		if (mirror->mJoint == NULL || !mirror->mVisible) {
@@ -1327,7 +1327,7 @@ extern "C" void RenderSubwindow(CGame* game)
 	if (menuShown) {
 		return;
 	}
-	FbSubwin* subwin = (FbSubwin*)game->mSubwin;
+	FbSubwin* subwin = &game->mSubwin;
 	if (!(subwin->mAmount > 0.0f)) {
 		return;
 	}
@@ -1731,7 +1731,7 @@ void CGame::Draw()
 		gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
 		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
 		if (!mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)) {
-			FbSubwin* subwin = (FbSubwin*)mSubwin;
+			FbSubwin* subwin = &mSubwin;
 			if (GetStatusFlags(1) && GetStatusFlags(0x100) && !mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)
 			    && subwin->mAmount > 0.0f && !(subwin->mFlags & 4)) {
 				subwin->Draw();

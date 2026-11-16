@@ -579,7 +579,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		game->ClearStatusFlags(0x8000000000ULL);
 		game->ClearStatusFlags(0x100000000000ULL);
 		game->mFloorReflect = FALSE;
-		mirror              = (FbMirror*)game->mMirrors;
+		mirror              = game->mMirrors;
 		mirrors             = 0;
 		for (i = 0; i < game->mXObjs.mObjectCount; i++) {
 			obj = (CMirrorObj*)game->mXObjs.mObjects[i];
@@ -1373,9 +1373,9 @@ void CGame::Update(u32 frames)
 	}
 	if (GetStatusFlags(1) && !GetStatusFlags(0x200000000000002ULL)) {
 		UpdateHudTransitionsAndIndicators(&mInfoScrn, frames);
-		((CFbTexEff*)mSubwin)->Update(frames);
+		((CFbTexEff*)&mSubwin)->Update(frames);
 		for (i = 0; i < 5; i++) {
-			FbMirror* mirror = &((FbMirror*)mMirrors)[i];
+			FbMirror* mirror = &mMirrors[i];
 			bool off         = true;
 			if (mirror->mJoint != NULL && !(mirror->mJoint->mStatus & 0x1000000000000ULL)) {
 				off = false;
