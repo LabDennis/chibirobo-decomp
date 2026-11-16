@@ -1671,7 +1671,7 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_BasicPlayer.cpp"),
                 # code 40 of 40 by content; Stop, Pause and IsPause are StopWiiSfxTrack, SetWiiSfxTrackPaused and
                 # IsWiiSfxTrackPaused in symbols.txt, the names src/game/wii/msg.cpp calls
-                Object(NonMatching, "nw4r/snd/snd_BasicSound.cpp"),
+                Object(Matching, "nw4r/snd/snd_BasicSound.cpp"),
                 Object(Matching, "nw4r/snd/snd_BiquadFilterPreset.cpp"),
                 Object(Matching, "nw4r/snd/snd_Channel.cpp"),
                 Object(Matching, "nw4r/snd/snd_DisposeCallbackManager.cpp"),
