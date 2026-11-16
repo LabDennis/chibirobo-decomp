@@ -9339,7 +9339,11 @@ BOOL MenuSave::Draw()
 		case 17:
 			break;
 		}
+#if defined(VERSION_JP)
+		if (lines <= 2)
+#else
 		if (lines < 2)
+#endif
 			lines = 2;
 		mOffset = -(lines - 2) * 21;
 		if (showMessage) {
@@ -9363,14 +9367,13 @@ BOOL MenuSave::Draw()
 				lineOffset = (lines - 2) * 21;
 #if defined(VERSION_JP)
 			sprintf(text, "%s", GetLocalizedInterfaceText(0x40));
-			u32 cells  = strlen(text) / 2;
-			f32 center = 320.0f + panelX;
+			u32 cells = strlen(text) / 2;
 
 			f32 barX;
 			if (mChoice == 0)
-				barX = ((32.0f + center) - SavePromptHalfWidth(cells)) - 2.0f;
+				barX = ((32.0f + (320.0f + panelX)) - SavePromptHalfWidth(cells)) - 2.0f;
 			else
-				barX = 60.0f + (10.0f + ((32.0f + center) - SavePromptHalfWidth(cells)));
+				barX = 60.0f + (10.0f + ((32.0f + (320.0f + panelX)) - SavePromptHalfWidth(cells)));
 			f32 barWidth = 0.9f * (3 * 21.0f);
 #else
 			f32 barX     = mChoice == 0 ? 281.25f : 358.75f;
