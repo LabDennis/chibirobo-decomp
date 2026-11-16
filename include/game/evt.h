@@ -222,6 +222,7 @@ public:
 };
 STATIC_ASSERT(sizeof(CEvtData) == 0xC);
 
+#if defined(VERSION_R24J01)
 // the non-polymorphic field base of CStack, name from RTTI
 class CStackS32 {
 public:
@@ -247,6 +248,27 @@ public:
 
 	virtual ~CStack() { } // _08
 };
+#else
+// a word stack, CEvt has three. name from RTTI. The GameCube constructor stores the fields in
+// CGame::CGame in the order of a single class; with the CStackS32 base the Wii uses, that
+// constructor stops matching (100 to 99.9 %), so the split stays on the Wii side
+class CStack {
+public:
+	CStack()
+	{
+		mBuf   = NULL;
+		mSize  = 0;
+		mCount = 0;
+	}
+
+	s32* mBuf;  // _00
+	s32 mCount; // _04
+	s32 mSize;  // _08
+	// _0C vtable
+
+	virtual ~CStack() { } // _08
+};
+#endif
 STATIC_ASSERT(sizeof(CStack) == 0x10);
 
 class CCameraMemento;
