@@ -8840,3 +8840,4 @@ Release__7CTrigonFv = .text:0x802BCD44; // type:function
 Check__7CTrigonFP3VeciPf = .text:0x802BCDCC; // type:function
 SearchNear__7CTrigonFP3VeciPf = .text:0x802BCEC8; // type:function
 Search__7CTrigonFP3VecPf = .text:0x802BD078; // type:function
+GetVtxSize__7CTrigonFP14_GXVtxDescListP17_GXVtxAttrFmtListPiPiPiPi = .text:0x802BC21C; // type:function size:0x1C8

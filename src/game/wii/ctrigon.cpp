@@ -3,7 +3,7 @@
 // keeps them in source order, and the two selector switches stay functions of their own.
 // The readers are global functions as in the GameCube map (no local scope there either).
 // NONMATCHING: only the vertex readers and their selectors are reconstructed; the triangle
-// parser on the NW4R shapes, the vertex size scan, Create, the two destructors and the
+// parser on the NW4R shapes, Create, the two destructors and the
 // counter global are not written yet. TrigonGetVtxS8 and SearchNear differ from retail
 // in register choice (SearchNear: retail adds i + at again for the result instead of
 // reusing the index it tested).
@@ -36,6 +36,131 @@ void* TrigonGetIdxS8U8(void* base, u8* dl);
 void* TrigonGetIdxS8U16(void* base, u8* dl);
 void* TrigonGetIdxU8U8(void* base, u8* dl);
 void* TrigonGetIdxU8U16(void* base, u8* dl);
+}
+
+/**
+ * @note Address: 0x802BC21C
+ * @note Size: 0x1C8
+ */
+// the bytes one vertex takes in the display list, and the index size of each attribute. the
+// color's direct size comes from the first format entry
+int CTrigon::GetVtxSize(GXVtxDescList* desc, GXVtxAttrFmtList* fmt, int* pos, int* nrm, int* tex, int* clr)
+{
+	int size    = 0;
+	int posSize = 0;
+	int nrmSize = 0;
+	int texSize = 0;
+	int clrSize = 0;
+
+	// the position matrix index through the last texture coordinate
+	for (int i = 0; i < GX_VA_TEX7 + 1; i++, desc++) {
+		if (desc->mType == GX_NONE) {
+			continue;
+		}
+		switch (desc->mAttr) {
+		case GX_VA_PNMTXIDX: // matrix indices take a byte
+		case GX_VA_TEX0MTXIDX:
+		case GX_VA_TEX1MTXIDX:
+		case GX_VA_TEX2MTXIDX:
+		case GX_VA_TEX3MTXIDX:
+		case GX_VA_TEX4MTXIDX:
+		case GX_VA_TEX5MTXIDX:
+		case GX_VA_TEX6MTXIDX:
+		case GX_VA_TEX7MTXIDX:
+			size += 1;
+			break;
+		case GX_VA_POS: // the index's own size, not the attribute's
+			switch (desc->mType) {
+			case GX_INDEX8:
+				posSize = 1;
+				size += 1;
+				break;
+			case GX_INDEX16:
+				posSize = 2;
+				size += 2;
+				break;
+			}
+			break;
+		case GX_VA_NRM:
+		case GX_VA_NBT:
+			switch (desc->mType) {
+			case GX_INDEX8:
+				nrmSize = 1;
+				size += 1;
+				break;
+			case GX_INDEX16:
+				nrmSize = 2;
+				size += 2;
+				break;
+			}
+			break;
+		case GX_VA_TEX0:
+		case GX_VA_TEX1:
+		case GX_VA_TEX2:
+		case GX_VA_TEX3:
+		case GX_VA_TEX4:
+		case GX_VA_TEX5:
+		case GX_VA_TEX6:
+		case GX_VA_TEX7:
+			switch (desc->mType) {
+			case GX_INDEX8:
+				texSize = 1;
+				size += 1;
+				break;
+			case GX_INDEX16:
+				texSize = 2;
+				size += 2;
+				break;
+			}
+			break;
+		case GX_VA_CLR0:
+		case GX_VA_CLR1:
+			switch (desc->mType) {
+			case GX_INDEX8:
+				clrSize = 1;
+				size += 1;
+				break;
+			case GX_INDEX16:
+				clrSize = 2;
+				size += 2;
+				break;
+			case GX_DIRECT:
+				switch (fmt->mType) {
+				case GX_RGB565:
+				case GX_RGBA4:
+					clrSize = 2;
+					size += 2;
+					break;
+				case GX_RGB8:
+				case GX_RGBA6:
+					clrSize = 3;
+					size += 3;
+					break;
+				case GX_RGBX8:
+				case GX_RGBA8:
+					clrSize = 4;
+					size += 4;
+					break;
+				}
+				break;
+			}
+			break;
+		}
+	}
+
+	if (pos) {
+		*pos = posSize;
+	}
+	if (nrm) {
+		*nrm = nrmSize;
+	}
+	if (tex) {
+		*tex = texSize;
+	}
+	if (clr) {
+		*clr = clrSize;
+	}
+	return size;
 }
 
 /**

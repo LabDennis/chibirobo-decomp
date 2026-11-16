@@ -1078,6 +1078,7 @@ game/wii/cobjvec.cpp:
 
 game/wii/ctrigon.cpp:
 	.text start:0x802BA4F4 end:0x802BD294
+	.data start:0x80356090 end:0x80356268
 	.sdata2 start:0x805A7AA8 end:0x805A7AD0
 
 game/wii/cobj.cpp:

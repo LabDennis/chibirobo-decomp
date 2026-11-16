@@ -4,6 +4,7 @@
 #if defined(VERSION_R24J01)
 #include "types.h"
 #include "Dolphin/mtx.h"
+#include "Dolphin/GX/GXTypes.h"
 
 struct TRIGON_INFO;
 
@@ -54,6 +55,7 @@ public:
 	}
 	virtual ~CTrigon() { } // _08
 
+	int GetVtxSize(GXVtxDescList* desc, GXVtxAttrFmtList* fmt, int* pos, int* nrm, int* tex, int* clr);
 	void Release();
 	int Check(Vec* pos, int hint, f32* floorY);
 	int SearchNear(Vec* pos, int hint, f32* floorY);
