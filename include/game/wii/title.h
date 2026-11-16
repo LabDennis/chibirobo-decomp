@@ -2,6 +2,9 @@
 #define GAME_WII_TITLE_H
 
 #include "game/wii/menuutil.h"
+// before xobj.h: see its note on the two CObjVec
+#include "game/ccameraactioneye.h"
+#include "game/wii/xobjdemo.h"
 #include "game/menuhelpchar.h"
 #include "game/ctpl.h"
 #include "Dolphin/vec.h"
@@ -55,8 +58,9 @@ public:
 	virtual WiiCursorPart* vf040(s32 index);
 };
 
-// the title's two objects, the cursor and the demo figure. The Wii XObj is not reconstructed: these are
-// its virtuals up to the one the title code calls, the unnamed ones only keep its place
+// a stand-in for XObj that the message, roboeyes, scroll camera and gauge code still reach objects
+// through: XObj's virtuals up to the last one they call, the unnamed ones only keep its place (the
+// title's own objects are Cursor and XObjDemo)
 class WiiTitleObject {
 public:
 	virtual void vf008();
@@ -265,117 +269,6 @@ public:
 };
 STATIC_ASSERT(sizeof(WiiTitleObject) == 0x9B0);
 
-// one of the three demo figures behind mDemo; the file's RTTI names the class XObjDemo. Its head
-// layout matches WiiTitleObject: the placement status sits at _154 and the state at _9A8
-class WiiTitleFigure {
-public:
-	virtual void vf008();
-	virtual void vf00C();
-	virtual void vf010();
-	virtual void vf014();
-	virtual void vf018();
-	virtual void vf01C();
-	virtual void vf020();
-	virtual void vf024();
-	virtual void vf028();
-	virtual void vf02C();
-	virtual void vf030();
-	virtual void vf034();
-	virtual void vf038();
-	virtual void vf03C();
-	virtual void vf040(); // _040, Release
-	virtual void vf044();
-	virtual void vf048();
-	virtual void vf04C();
-	virtual void vf050();
-	virtual void vf054();
-	virtual void vf058();
-	virtual void vf05C();
-	virtual void vf060();
-	virtual void vf064();
-	virtual void vf068();
-	virtual void vf06C();
-	virtual void vf070(f32 angle); // _070
-	virtual void vf074();
-	virtual void vf078();
-	virtual void vf07C();
-	virtual void vf080();
-	virtual void vf084();
-	virtual void vf088();
-	virtual void vf08C();
-	virtual void vf090();
-	virtual void vf094();
-	virtual void vf098();
-	virtual void vf09C(f32 scale); // _09C
-	virtual void vf0A0();
-	virtual void vf0A4();
-	virtual void vf0A8();
-	virtual void vf0AC();
-	virtual void vf0B0();
-	virtual void vf0B4();
-	virtual void vf0B8();
-	virtual void vf0BC();
-	virtual void vf0C0();
-	virtual void vf0C4();
-	virtual void vf0C8();
-	virtual void vf0CC();
-	virtual void vf0D0();
-	virtual void vf0D4();
-	virtual void vf0D8();
-	virtual void vf0DC();
-	virtual void vf0E0();
-	virtual void vf0E4();
-	virtual void vf0E8();
-	virtual void vf0EC();
-	virtual void vf0F0();
-	virtual void vf0F4();
-	virtual void vf0F8();
-	virtual void vf0FC();
-	virtual void vf100();
-	virtual void vf104();
-	virtual void vf108();
-	virtual void vf10C();
-	virtual void vf110();
-	virtual void vf114();
-	virtual void vf118();
-	virtual s32 vf11C(); // _11C, the playing animation id
-	virtual void vf120();
-	virtual void vf124();
-	virtual void vf128();
-	virtual void vf12C();
-	virtual void vf130();
-	virtual s32 vf134(); // _134, the animation flags check
-	virtual void vf138();
-	virtual void vf13C();
-	virtual void vf140();
-	virtual void vf144();
-	virtual void vf148();
-	virtual void vf14C();
-	virtual void vf150();
-	virtual void vf154();
-	virtual s32 vf158(const CoordInfo& info); // _158, LoadFromPlacement
-	virtual void vf15C();
-	virtual void vf160();
-	virtual void vf164(u32 frames); // _164, UpdateObject
-	virtual void vf168();
-	virtual void vf16C();
-	virtual void vf170();
-	virtual void vf174();    // _174, DrawObject front
-	virtual void vf178(s32); // _178, DrawObject mode
-
-	u8 _004[0x154 - 0x004];
-	u32 mStatus; // _154, bit 0 marks a finished LoadFromPlacement
-	u8 _158[0x9A8 - 0x158];
-	s32 mState;      // _9A8
-	s32 mStateParam; // _9AC
-	u8 _9B0[0xBA8 - 0x9B0];
-	s32 mNextAnim; // _BA8, -1 when nothing is queued
-	s32 _BAC;
-	u8 _BB0[0xF10 - 0xBB0];
-	s32 mAnimIds[8]; // _F10, all -1 once ResetObjectState ran
-};
-STATIC_ASSERT(sizeof(WiiTitleFigure) == 0xF30);
-
 // one mote of dust drifting over the menu, the GameCube TitleDust
 struct TitleDust {
 	u32 mState;  // _00
@@ -435,22 +328,21 @@ void AddPointerPane(CbPaneList* list, CbPane* pane);
 class Title : public MenuUtil {
 public:
 	// _0000 vtable
-	s32 mState;                 // _0004
-	s32 mMode;                  // _0008
-	u32 mOptionState;           // _000C, 0 choosing, 2 leaving
-	s32 mTimeout;               // _0010, counts down the press-start / leave delays
-	f32 mMenuAlpha;             // _0014
-	f32 mTitleAlpha;            // _0018, the second fade that gates the press-start prompt
-	f32 mPulseAngle;            // _001C
-	s32 mHighlightDelay;        // _0020, frames until the selected line starts pulsing
-	u32 mSpawnIndex;            // _0024
-	WiiTitleObject mCursor;     // _0028
-	WiiTitleObject mDemo;       // _09D8
-	WiiTitleFigure mFigures[3]; // _1388
-	CTpl mTpl;                  // _4118, the "title.cpp" archive the three textures come out of
-	CTexObj mTex[6];            // _4310, as on the GameCube; the Wii draws three of them: logo, footer and dust
-	s32 mSelection;             // _4928, the entry of the title menu, -1 while the pointer is on none
-	s32 mLastSelection;         // _492C
+	s32 mState;          // _0004
+	s32 mMode;           // _0008
+	u32 mOptionState;    // _000C, 0 choosing, 2 leaving
+	s32 mTimeout;        // _0010, counts down the press-start / leave delays
+	f32 mMenuAlpha;      // _0014
+	f32 mTitleAlpha;     // _0018, the second fade that gates the press-start prompt
+	f32 mPulseAngle;     // _001C
+	s32 mHighlightDelay; // _0020, frames until the selected line starts pulsing
+	u32 mSpawnIndex;     // _0024
+	Cursor mCursor[2];   // _0028, both loaded from the same placement; the first one's anim drives the entries
+	XObjDemo mDemo[3];   // _1388
+	CTpl mTpl;           // _4118, the "title.cpp" archive the three textures come out of
+	CTexObj mTex[6];     // _4310, as on the GameCube; the Wii draws three of them: logo, footer and dust
+	s32 mSelection;      // _4928, the entry of the title menu, -1 while the pointer is on none
+	s32 mLastSelection;  // _492C
 	u8 _4930[0x493C - 0x4930];
 	f32 mPanelY;       // _493C
 	f32 mTargetPanelY; // _4940

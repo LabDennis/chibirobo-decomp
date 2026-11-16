@@ -2405,6 +2405,7 @@ ResetObjectState__8XObjDemoFv = .text:0x8004DE08; // type:function size:0x64
 LoadFromPlacement__8XObjDemoFRC9CoordInfo = .text:0x8004DE6C; // type:function size:0x2C
 Release__8XObjDemoFv = .text:0x8004DE98; // type:function size:0x4
 UpdateObject__8XObjDemoFUl = .text:0x8004DE9C; // type:function size:0x78
+DrawObject__8XObjDemoFv = .text:0x8004DF14; // type:function size:0x24
 DrawSavePlayTime = .text:0x8007E3CC; // type:function size:0x8F8
 FindNearbyPlayerInteraction = .text:0x800DC068; // type:function size:0x7CC
 UpdatePlayerActionAnimations = .text:0x800DC834; // type:function size:0x50C

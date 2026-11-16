@@ -64,26 +64,6 @@ void fn_8004DF38();
 void fn_8004DF3C(Title* title, CbPane* pane);
 }
 
-// the figure overrides call their XObj bases by name; XObj's own declaration is still pending
-class XObj;
-
-// the cursor object's member at _E8 is an nw4r::g3d::ResFile (one pointer); the game's headers do not
-// include the library's yet, so only the one method called here is declared
-namespace nw4r {
-namespace g3d {
-class ResFile {
-public:
-	u32 GetResAnmChrNumEntries() const;
-};
-} // namespace g3d
-} // namespace nw4r
-extern "C" {
-void ResetObjectState__4XObjFv(XObj* obj);
-s32 LoadFromPlacement__4XObjFRC9CoordInfo(XObj* obj, const CoordInfo& info);
-void Release__4XObjFv(XObj* obj);
-void UpdateObject__4XObjFUl(XObj* obj, u32 frames);
-}
-
 // the slot-scan object inside CGame at _D9B80 and the save job's busy word at _EB0A0; the scan
 // object starts like WiiSaveManager (file, then the scan entries) but CGame's region is smaller,
 // so the members the title screen touches are reached by offset
@@ -246,9 +226,9 @@ extern "C" void DrawTitleScreen(Title* title)
 	}
 	if (((CBase*)&gGame)->vf5C()) {
 		for (s32 i = 0; i < 3; ++i) {
-			WiiTitleFigure& fig = title->mFigures[i];
-			if (fig.mState != 0 && (fig.mStatus & 1)) {
-				fig.vf174();
+			XObjDemo& fig = title->mDemo[i];
+			if (fig.mState != 0 && fig.mStatus.Check(1)) {
+				fig.DrawObject();
 			}
 		}
 		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
@@ -298,7 +278,7 @@ extern "C" void DrawTitleScreen(Title* title)
 		        | ((u32)gTitlePalette[gTitlePaletteIndex].text.b << 8);
 		u32 normal   = rgb | (u8)(255.0f * title->mMenuAlpha);
 		u32 lit      = normal;
-		f32 progress = title->mCursor.vf11C() == 1 ? title->mCursor.vf128() / title->mCursor.vf12C() : 0.0f;
+		f32 progress = title->mCursor[0].GetAnimId() == 1 ? title->mCursor[0].GetAnimFrame() / title->mCursor[0].GetAnimEndFrame() : 0.0f;
 		f32 w0       = DrawTitleEntry(title, 0, 0, y0, progress, normal, lit);
 		f32 w1       = DrawTitleEntry(title, 1, 1, y0 + 38.0f, progress, normal, lit);
 		f32 w2       = DrawTitleEntry(title, 2, 2, y0 + 2.0f * 38.0f, progress, normal, lit);
@@ -376,8 +356,8 @@ extern "C" void UpdateTitleOptions(Title* title, u32 frames)
 	if (title->mOptionLine != -1) {
 		title->mLastOptionLine = title->mOptionLine;
 	}
-	title->mCursor.UpdateObject(frames);
-	title->mDemo.UpdateObject(frames);
+	title->mCursor[0].UpdateObject(frames);
+	title->mCursor[1].UpdateObject(frames);
 	title->mHighlightDelay += frames;
 	if (title->mHighlightDelay >= (f32)gRefreshRate) {
 		title->mHighlightDelay = (f32)gRefreshRate;
@@ -657,39 +637,39 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		// fall through: loading starts on the same frame as cursor selection
 	}
 	case 3:
-		if (title->mCursor.vf158(CoordInfo(GetSpawnData(title->mSpawnIndex)))) {
-			if (*(u32*)((u8*)title->mCursor.mSpawn + 0xC8) == 0x3CA80) {
-				title->mCursor.vf09C(4.0f);
+		if (title->mCursor[0].LoadFromPlacement(CoordInfo(GetSpawnData(title->mSpawnIndex)))) {
+			if (title->mCursor[0].mRequest.mFile->mSize == 0x3CA80) {
+				title->mCursor[0].SetScale(4.0f);
 			}
 			++title->mState;
 		}
 		break;
 	case 4:
-		if (title->mDemo.vf158(CoordInfo(GetSpawnData(title->mSpawnIndex)))) {
-			if (*(u32*)((u8*)title->mDemo.mSpawn + 0xC8) == 0x3CA80) {
-				title->mDemo.vf09C(4.0f);
+		if (title->mCursor[1].LoadFromPlacement(CoordInfo(GetSpawnData(title->mSpawnIndex)))) {
+			if (title->mCursor[1].mRequest.mFile->mSize == 0x3CA80) {
+				title->mCursor[1].SetScale(4.0f);
 			}
 			++title->mState;
 		}
 		break;
 	case 5:
-		if (title->mFigures[0].vf158(CoordInfo(GetSpawnData(0x31)))) {
-			title->mFigures[0].vf09C(6.0f);
-			title->mFigures[0].vf070(HALF_PI);
+		if (title->mDemo[0].LoadFromPlacement(CoordInfo(GetSpawnData(0x31)))) {
+			title->mDemo[0].SetScale(6.0f);
+			title->mDemo[0].SetRotationY(HALF_PI);
 			++title->mState;
 		}
 		break;
 	case 6:
-		if (title->mFigures[1].vf158(CoordInfo(GetSpawnData(0x32)))) {
-			title->mFigures[1].vf09C(6.0f);
-			title->mFigures[1].vf070(HALF_PI);
+		if (title->mDemo[1].LoadFromPlacement(CoordInfo(GetSpawnData(0x32)))) {
+			title->mDemo[1].SetScale(6.0f);
+			title->mDemo[1].SetRotationY(HALF_PI);
 			++title->mState;
 		}
 		break;
 	case 7:
-		if (title->mFigures[2].vf158(CoordInfo(GetSpawnData(0x33)))) {
-			title->mFigures[2].vf09C(6.0f);
-			title->mFigures[2].vf070(HALF_PI);
+		if (title->mDemo[2].LoadFromPlacement(CoordInfo(GetSpawnData(0x33)))) {
+			title->mDemo[2].SetScale(6.0f);
+			title->mDemo[2].SetRotationY(HALF_PI);
 			++title->mState;
 		}
 		break;
@@ -735,8 +715,8 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 			if ((title->mTitleAlpha += (1.f / gRefreshRate) * frames) > 1)
 				title->mTitleAlpha = 1;
 		}
-		title->mCursor.UpdateObject(frames);
-		title->mDemo.UpdateObject(frames);
+		title->mCursor[0].UpdateObject(frames);
+		title->mCursor[1].UpdateObject(frames);
 		UpdateTitleDust(title, frames);
 		if (title->mMenuAlpha == 1 && title->mTitleAlpha == 1)
 			title->mState = 11;
@@ -748,8 +728,8 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 			title->mHighlightDelay = gRefreshRate;
 			title->mPulseAngle     = (f32)fmod(title->mPulseAngle + (f32)(frames * 9), 360.);
 		}
-		title->mCursor.UpdateObject(frames);
-		title->mDemo.UpdateObject(frames);
+		title->mCursor[0].UpdateObject(frames);
+		title->mCursor[1].UpdateObject(frames);
 		UpdateTitleDust(title, frames);
 		title->UpdateSelections();
 		if (title->IsConfirmPressed()) {
@@ -766,11 +746,11 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		break;
 	}
 	case 12: {
-		title->mCursor.UpdateObject(frames);
-		title->mDemo.UpdateObject(frames);
+		title->mCursor[0].UpdateObject(frames);
+		title->mCursor[1].UpdateObject(frames);
 		UpdateTitleDust(title, frames);
-		if (title->mCursor.vf134() == 0 || title->mCursor.vf11C() == 0
-		    || ((nw4r::g3d::ResFile*)((u8*)&title->mCursor + 0xE8))->GetResAnmChrNumEntries() < 2) {
+		if (!title->mCursor[0].IsAnimDone() || title->mCursor[0].GetAnimId() == 0
+		    || title->mCursor[0].mObject.m_resFile.GetResAnmChrNumEntries() < 2) {
 			title->mPulseAngle = 0;
 			switch (title->mSelection) {
 			case 0:
@@ -791,12 +771,12 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		break;
 	}
 	case 20:
-		title->mDemo.UpdateObject(frames);
+		title->mCursor[1].UpdateObject(frames);
 		UpdateTitleDust(title, frames);
 		(title->*gTitleModeUpdates[title->mMode])(frames);
 		break;
 	case 21:
-		title->mDemo.UpdateObject(frames);
+		title->mCursor[1].UpdateObject(frames);
 		UpdateTitleDust(title, frames);
 		UpdateTitleOptions(title, frames);
 		break;
@@ -805,7 +785,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		StartScreenFade(&gGame.mFade, gTitlePalette[gTitlePaletteIndex].background.r, gTitlePalette[gTitlePaletteIndex].background.g,
 		                gTitlePalette[gTitlePaletteIndex].background.b, 0, 0, 0, 0, 255, .5f);
 		for (s32 i = 0; i < 3; ++i) {
-			title->mFigures[i].mState = 0;
+			title->mDemo[i].mState = 0;
 		}
 		// fall through
 	case 14: {
@@ -829,10 +809,10 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	}
 	case 22:
 		for (s32 i = 0; i < 3; ++i) {
-			title->mFigures[i].vf040();
+			title->mDemo[i].Release();
 		}
-		title->mCursor.vf040();
-		title->mDemo.vf040();
+		title->mCursor[0].Release();
+		title->mCursor[1].Release();
 		title->mTpl.Close();
 		if (title->mTimeout >= 0) {
 			ChangeGameStage(&gGame, title->mTimeout, TRUE);
@@ -1144,16 +1124,16 @@ void fn_8004DC94(TitleDust* dust, u32 frames)
  * @note Address: 0x8004DE08
  * @note Size: 0x64
  */
-// ResetObjectState: the figure's own bookkeeping goes back to blank
-void WiiTitleFigure::vf154()
+// XObjDemo's ResetObjectState
+void XObjDemo::ResetObjectState()
 {
-	ResetObjectState__4XObjFv((XObj*)this);
+	XObj::ResetObjectState();
 	mState      = 0;
-	mStateParam = 0;
-	mNextAnim   = -1;
-	_BAC        = 0;
-	for (s32 i = 0; i < 8; i++) {
-		mAnimIds[i] = -1;
+	mLoop       = FALSE;
+	mCameraAnim = -1;
+	mLightCount = 0;
+	for (s32 i = 0; i < 8; ++i) {
+		mLightAnims[i] = -1;
 	}
 }
 
@@ -1161,49 +1141,58 @@ void WiiTitleFigure::vf154()
  * @note Address: 0x8004DE6C
  * @note Size: 0x2C
  */
-// LoadFromPlacement: the base call's result becomes a plain flag
-s32 WiiTitleFigure::vf158(const CoordInfo& info)
+// XObjDemo's LoadFromPlacement; the Wii builds no camera or lights from the archive
+BOOL XObjDemo::LoadFromPlacement(const CoordInfo& info)
 {
-	return LoadFromPlacement__4XObjFRC9CoordInfo((XObj*)this, info) != 0;
+	if (XObj::LoadFromPlacement(info)) {
+		return TRUE;
+	}
+	return FALSE;
 }
 
 /**
  * @note Address: 0x8004DE98
  * @note Size: 0x4
  */
-// Release
-void WiiTitleFigure::vf040()
+// XObjDemo's Release
+void XObjDemo::Release()
 {
-	Release__4XObjFv((XObj*)this);
+	XObj::Release();
+}
+
+static inline bool FadeDone()
+{
+	return 0.0f == gGame.mFade.mSpeed.r && 0.0f == gGame.mFade.mSpeed.g && 0.0f == gGame.mFade.mSpeed.b && 0.0f == gGame.mFade.mSpeed.a;
 }
 
 /**
  * @note Address: 0x8004DE9C
  * @note Size: 0x78
  */
-// UpdateObject: state 2 waits for the screen fade to finish, then goes quiet
-void WiiTitleFigure::vf164(u32 frames)
+// NONMATCHING: retail loads mState a second time for the compare with 2 (0x8004DEA8); every other
+// instruction is retail's
+// XObjDemo's update: state 2 waits for the screen fade to finish, then goes quiet
+void XObjDemo::UpdateObject(u32 frames)
 {
 	if (mState == 0) {
 		return;
 	}
-	if (mState == 2 && gGame.mFade.mSpeed.r == 0.0f && gGame.mFade.mSpeed.g == 0.0f && gGame.mFade.mSpeed.b == 0.0f
-	    && gGame.mFade.mSpeed.a == 0.0f) {
+	if (mState == 2 && FadeDone()) {
 		mState = 0;
 		return;
 	}
-	UpdateObject__4XObjFUl((XObj*)this, frames);
+	XObj::UpdateObject(frames);
 }
 
 /**
  * @note Address: 0x8004DF14
  * @note Size: 0x24
  */
-// DrawObject front: only draws while the figure is live
-void WiiTitleFigure::vf174()
+// XObjDemo's DrawObject, only while the demo runs
+void XObjDemo::DrawObject()
 {
 	if (mState != 0) {
-		vf178(0);
+		DrawWithView(NULL);
 	}
 }
 
