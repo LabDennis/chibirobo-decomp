@@ -215,7 +215,7 @@ static inline void DrawRoboeyesLens(CGs* gs, Vec* points, f32 x, f32 y, f32 rx, 
 	}
 }
 
-// NONMATCHING: retail keeps &gGame.mTpl.mTex in a register across the bracket loop
+// NONMATCHING: float registers only (retail keeps width and height in f19/f20, this build in f15/f16)
 void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)
@@ -272,8 +272,8 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	case 2:
 		lw.target = width / 6.0f;
 		lh.target = height / 6.0f;
-		rw.target = width * .5f;
-		rh.target = height * .5f;
+		rw.target = width / 2.0f;
+		rh.target = height / 2.0f;
 		if (gGame.GetPlayer()->GetAttachment() != 2) {
 			focus.target = 0;
 			state        = 3;
@@ -302,9 +302,9 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	rw.Update();
 	rh.Update();
 	f32 offset = separation.value;
-	f32 rx = .6f * (rw.value * .5f), ry = .6f * (rh.value * .5f);
+	f32 rx = .6f * (rw.value / 2.0f), ry = .6f * (rh.value / 2.0f);
 	Vec points[65];
-	DrawRoboeyesLens(gs, points, x - offset, y, .6f * (lw.value * .5f), .6f * (lh.value * .5f), color, alpha, trail, false);
+	DrawRoboeyesLens(gs, points, x - offset, y, .6f * (lw.value / 2.0f), .6f * (lh.value / 2.0f), color, alpha, trail, false);
 	DrawRoboeyesLens(gs, points, x + offset, y, rx, ry, color, alpha, trail, true);
 	if (state == 2) {
 		CTexObj tex;
@@ -317,8 +317,7 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 			f32 radius = rx + pulse;
 			f32 sx = (f32)sin(a), cy = (f32)cos(a);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			CTpl& tpl = gGame.mTpl;
-			tex       = tpl.mTex.Init(&((TPLPalette*)tpl.mBuffer)->descriptorArray[128 - StatusTextureOffset], 0);
+			tex   = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[128 - StatusTextureOffset], 0);
 			u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, tint, tint, tint, tint, radius * sx + x, radius * cy + y, 0, 1.4f * (1.1f * w), 1.4f * h,
 			                   0, 0, a);
@@ -2099,7 +2098,7 @@ extern "C" void DrawTitleHelpText(Title* menu)
 		f32 swell    = sin(PI * alpha);
 		f32 grow     = sin(HALF_PI * alpha);
 		f32 scale    = 0.2f * swell + grow;
-		f32 x        = 0.5f * spacing + (i * spacing + (320.0f - menu->mHelpCount * spacing * 0.5f));
+		f32 x        = spacing / 2.0f + (i * spacing + (320.0f - menu->mHelpCount * spacing / 2.0f));
 		f32 y        = 384.0f + bob;
 		rotation     = -(DEG2RAD * (10.0f * rotation));
 		u32 color    = (u32)opacity | 0xFFFFFF00;
@@ -2671,10 +2670,7 @@ extern "C" void DrawTitleOptions(Title* title)
 #if defined(VERSION_PAL)
 		top = (224.0f - (4.0f * (size * 0.5f) * 0.5f - size * 0.25f)) - h * 0.5f;
 #endif
-		u32 color = normal;
-		if (IsLineLit(title, 0)) {
-			color = lit;
-		}
+		u32 color = IsLineLit(title, 0) ? lit : normal;
 #if defined(VERSION_JP)
 		text     = GetLocalizedInterfaceText(0x49);
 		f32 half = size * 0.5f;
@@ -2705,12 +2701,9 @@ extern "C" void DrawTitleOptions(Title* title)
 		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f, y, 0.0f, size,
 		                             size);
 
-		color = normal;
-		if (IsLineLit(title, 1)) {
-			color = lit;
-		}
-		text = GetLocalizedInterfaceText(0x13);
-		x    = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f - 8.0f;
+		color = IsLineLit(title, 1) ? lit : normal;
+		text  = GetLocalizedInterfaceText(0x13);
+		x     = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f - 8.0f;
 		DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f,
 		                             y = size + (4.0f * (2.0f * (size / 2.0f)) + top), 0.0f, size, size);
 		text = title->mMono ? GetLocalizedInterfaceText(0x14) : GetLocalizedInterfaceText(0x15);
