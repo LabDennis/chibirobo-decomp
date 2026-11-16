@@ -13,7 +13,7 @@
 #include <math.h>
 
 // the screen layout globals wii/init.cpp fills in from the console's settings
-extern u32 gRefreshRate;
+extern s32 gRefreshRate;
 extern u32 gScreenLeft;
 extern u32 gScreenRight;
 extern u32 gScreenTop;
@@ -209,6 +209,8 @@ extern "C" void UpdateScreenShake(CScrnQuake* quake, u32 frames)
  * @note Address: 0x8003D228
  * @note Size: 0x1DC
  */
+// NONMATCHING: register choice only: retail has the green and blue speeds in f5/f7, this build in f6/f5.
+// The speeds are computed alpha first, as retail orders its loads.
 extern "C" void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u8 r1, u8 g1, u8 b1, u8 a1, f32 time)
 {
 	color->mColor.r  = r0;
@@ -229,10 +231,14 @@ extern "C" void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u
 		color->mSpeed.b = 0.0f;
 		color->mSpeed.a = 0.0f;
 	} else {
-		color->mSpeed.r = ((f32)r1 - (f32)r0) / (gRefreshRate * time);
-		color->mSpeed.g = ((f32)g1 - (f32)g0) / (gRefreshRate * time);
-		color->mSpeed.b = ((f32)b1 - (f32)b0) / (gRefreshRate * time);
-		color->mSpeed.a = ((f32)a1 - (f32)a0) / (gRefreshRate * time);
+		f32 speedA      = ((f32)a1 - (f32)a0) / (gRefreshRate * time);
+		f32 speedB      = ((f32)b1 - (f32)b0) / (gRefreshRate * time);
+		f32 speedG      = ((f32)g1 - (f32)g0) / (gRefreshRate * time);
+		f32 speedR      = ((f32)r1 - (f32)r0) / (gRefreshRate * time);
+		color->mSpeed.r = speedR;
+		color->mSpeed.g = speedG;
+		color->mSpeed.b = speedB;
+		color->mSpeed.a = speedA;
 	}
 }
 
@@ -240,6 +246,8 @@ extern "C" void StartScreenFade(CScrnColor* color, u8 r0, u8 g0, u8 b0, u8 a0, u
  * @note Address: 0x8003D404
  * @note Size: 0x178
  */
+// NONMATCHING: register choice only: retail has the green and blue speeds in f5/f7, this build in f6/f5.
+// The speeds are computed alpha first, as retail orders its loads.
 extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8 a, f32 time)
 {
 	color->mTarget.r = r;
@@ -256,10 +264,14 @@ extern "C" void SetScreenFadeTargetColor(CScrnColor* color, u8 r, u8 g, u8 b, u8
 		color->mSpeed.b = 0.0f;
 		color->mSpeed.a = 0.0f;
 	} else {
-		color->mSpeed.r = ((f32)r - color->mColor.r) / (gRefreshRate * time);
-		color->mSpeed.g = ((f32)g - color->mColor.g) / (gRefreshRate * time);
-		color->mSpeed.b = ((f32)b - color->mColor.b) / (gRefreshRate * time);
-		color->mSpeed.a = ((f32)a - color->mColor.a) / (gRefreshRate * time);
+		f32 speedA      = ((f32)a - color->mColor.a) / (gRefreshRate * time);
+		f32 speedB      = ((f32)b - color->mColor.b) / (gRefreshRate * time);
+		f32 speedG      = ((f32)g - color->mColor.g) / (gRefreshRate * time);
+		f32 speedR      = ((f32)r - color->mColor.r) / (gRefreshRate * time);
+		color->mSpeed.r = speedR;
+		color->mSpeed.g = speedG;
+		color->mSpeed.b = speedB;
+		color->mSpeed.a = speedA;
 	}
 }
 
@@ -323,14 +335,15 @@ void CScrnWipe::Reset()
  * @note Address: 0x8003DA98
  * @note Size: 0xF4
  */
-// NONMATCHING: the widescreen offset's codegen wants the dead 0.0f load for 4:3
 void CScrnWipe::SetDimensions(BOOL hideWhenDone, f32 x, f32 y, f32 width, f32 height, f32 targetWidth, f32 targetHeight, f32 time)
 {
 	mActive       = TRUE;
 	mHideWhenDone = hideWhenDone;
 	if (mScaleToWidescreen) {
-		x += gGame.mAspectRatio == 1 ? 107.0f : 0.0f;
+		// the 4:3 picture's left edge on a 16:9 screen
+		f32 offset = gGame.mAspectRatio == 1 ? 107.0f : 0.0f;
 		if (gGame.mAspectRatio == 1) {
+			x += offset;
 			width *= gScreenWidthScale;
 			height *= gScreenWidthScale;
 			targetWidth *= gScreenWidthScale;
@@ -403,10 +416,14 @@ void CScrnWipe::StartTransition(u8 r, u8 g, u8 b, u8 a, u8 targetR, u8 targetG, 
 		mSpeed.b = 0.0f;
 		mSpeed.a = 0.0f;
 	} else {
-		mSpeed.r = ((f32)targetR - (f32)r) / (gRefreshRate * time);
-		mSpeed.g = ((f32)targetG - (f32)g) / (gRefreshRate * time);
-		mSpeed.b = ((f32)targetB - (f32)b) / (gRefreshRate * time);
-		mSpeed.a = ((f32)targetA - (f32)a) / (gRefreshRate * time);
+		f32 speedA = ((f32)targetA - (f32)a) / (gRefreshRate * time);
+		f32 speedB = ((f32)targetB - (f32)b) / (gRefreshRate * time);
+		f32 speedG = ((f32)targetG - (f32)g) / (gRefreshRate * time);
+		f32 speedR = ((f32)targetR - (f32)r) / (gRefreshRate * time);
+		mSpeed.r   = speedR;
+		mSpeed.g   = speedG;
+		mSpeed.b   = speedB;
+		mSpeed.a   = speedA;
 	}
 	if (mHideWhenDone && SizeStopped(this))
 		mActive = FALSE;
@@ -604,13 +621,7 @@ void CScrnRoboeyes::Reset()
 	mScaleToWidescreen         = FALSE;
 	mAngle                     = 0.0f;
 	mPhase                     = 0.0f;
-	mSeparation.value = mSeparation.target = 150.0f;
-	mLeftWidth.value = mLeftWidth.target = 430.0f;
-	mLeftHeight.value = mLeftHeight.target = 400.0f;
-	mRightWidth.value = mRightWidth.target = 430.0f;
-	mRightHeight.value = mRightHeight.target = 400.0f;
-	mFocus.value = mFocus.target = 0.0f;
-	mLensState                   = 0;
+	ResetLensState(430.0f, 400.0f);
 }
 
 /**
@@ -639,11 +650,33 @@ void CScrnRoboeyes::StartTransition(u8 r, u8 g, u8 b, u8 a, u8 targetR, u8 targe
 		mSpeed.b = 0.0f;
 		mSpeed.a = 0.0f;
 	} else {
-		mSpeed.r = ((f32)targetR - (f32)r) / (gRefreshRate * time);
-		mSpeed.g = ((f32)targetG - (f32)g) / (gRefreshRate * time);
-		mSpeed.b = ((f32)targetB - (f32)b) / (gRefreshRate * time);
-		mSpeed.a = ((f32)targetA - (f32)a) / (gRefreshRate * time);
+		f32 speedA = ((f32)targetA - (f32)a) / (gRefreshRate * time);
+		f32 speedB = ((f32)targetB - (f32)b) / (gRefreshRate * time);
+		f32 speedG = ((f32)targetG - (f32)g) / (gRefreshRate * time);
+		f32 speedR = ((f32)targetR - (f32)r) / (gRefreshRate * time);
+		mSpeed.r   = speedR;
+		mSpeed.g   = speedG;
+		mSpeed.b   = speedB;
+		mSpeed.a   = speedA;
 	}
 	if (mHideWhenDone && SizeStopped(this))
 		mActive = FALSE;
+	if (hideWhenDone)
+		ResetLensState(width, height);
+}
+
+/**
+ * @note Address: 0x80040E08
+ * @note Size: 0x44
+ */
+// the lenses back to one eye of the given size, both open and centred
+void CScrnRoboeyes::ResetLensState(f32 width, f32 height)
+{
+	mSeparation.value = mSeparation.target = 150.0f;
+	mLeftWidth.value = mLeftWidth.target = width;
+	mLeftHeight.value = mLeftHeight.target = height;
+	mRightWidth.value = mRightWidth.target = width;
+	mRightHeight.value = mRightHeight.target = height;
+	mFocus.value = mFocus.target = 0.0f;
+	mLensState                   = 0;
 }

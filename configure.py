@@ -1210,7 +1210,6 @@ if wii:
                 # string-base register in LoadGlobalResourceData away from retail's r7
                 Object(Equivalent, "game/globalresources.cpp", mw_version="GC/3.0a5",
                        extra_cflags=["-Cpp_exceptions on"]),
-                Object(Equivalent, "game/roboeyeslens.cpp"),
                 # the THP player sits apart from the game's files (0x802C27B4 on) and takes the compiler
                 # without -ipa file: with it MixAudio falls to 99.88 %
                 Object(Equivalent, "game/THPDraw.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),
