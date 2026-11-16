@@ -1,29 +1,12 @@
 #include <nw4hbm/lyt.h>
 #include <nw4hbm/ut.h>
 
+#include <new>
+
 namespace nw4hbm {
 namespace lyt {
 
 NW4R_UT_RTTI_DEF_DERIVED(Picture, Pane);
-
-// TODO(kiwi) Don't know what this actually looks like...
-Picture::Picture(u8 num) : Pane(NULL) {
-    num = ut::Min<u8>(num, GX_MAX_TEXCOORD);
-    Init(num);
-}
-
-Picture::Picture(const TexMap& rTexMap) : Pane() {
-    Init(1);
-
-    mpMaterial = Layout::NewObj<Material>();
-    
-    if (mpMaterial != NULL) {
-        mpMaterial->ReserveGXMem(1,1,1,0,
-                   false, 0,0,false,
-                    false,false,false);
-        Append(rTexMap);
-    }
-}
 
 Picture::Picture(const res::Picture* pRes, const ResBlockSet& rBlockSet)
     : Pane(pRes) {
@@ -40,14 +23,17 @@ Picture::Picture(const res::Picture* pRes, const ResBlockSet& rBlockSet)
             reinterpret_cast<const u8*>(pRes) + sizeof(res::Picture), num);
     }
 
-    const u32* const pMatOffsetTbl = detail::ConvertOffsToPtr<u32>(
-        rBlockSet.pMaterialList, sizeof(res::MaterialList));
+    if (Material* pMemMaterial = static_cast<Material*>(
+            Layout::AllocMemory(sizeof(*pMemMaterial)))) {
+        const u32* pMatOffsetTbl = detail::ConvertOffsToPtr<u32>(
+            rBlockSet.pMaterialList, sizeof(res::MaterialList));
 
-    const res::Material* const pResMaterial =
-        detail::ConvertOffsToPtr<res::Material>(
-            rBlockSet.pMaterialList, pMatOffsetTbl[pRes->materialIdx]);
+        const res::Material* pResMaterial =
+            detail::ConvertOffsToPtr<res::Material>(
+                rBlockSet.pMaterialList, pMatOffsetTbl[pRes->materialIdx]);
 
-    mpMaterial = Layout::NewObj<Material>(pResMaterial, rBlockSet);
+        mpMaterial = new (pMemMaterial) Material(pResMaterial, rBlockSet);
+    }
 }
 
 void Picture::Init(u8 num) {
@@ -58,14 +44,22 @@ void Picture::Init(u8 num) {
 
 Picture::~Picture() {
     if (mpMaterial != NULL && !mpMaterial->IsUserAllocated()) {
-        Layout::DeleteObj(mpMaterial);
+        mpMaterial->~Material();
+        Layout::FreeMemory(mpMaterial);
         mpMaterial = NULL;
     }
 
     mTexCoordAry.Free();
 }
 
-void Picture::Append(const TexMap& rTexMap) {
+void Picture::Append(TPLPalette* pTplRes) {
+    GXTexObj texObj;
+    detail::InitGXTexObjFromTPL(&texObj, pTplRes, 0);
+
+    Append(texObj);
+}
+
+void Picture::Append(const GXTexObj& rTexObj) {
     if (mpMaterial->GetTextureNum() >= mpMaterial->GetTextureCap() ||
         mpMaterial->GetTextureNum() >= mpMaterial->GetTexCoordGenCap()) {
         return;
@@ -74,7 +68,7 @@ void Picture::Append(const TexMap& rTexMap) {
     u8 idx = mpMaterial->GetTextureNum();
 
     mpMaterial->SetTextureNum(idx + 1);
-    mpMaterial->SetTexture(idx, rTexMap);
+    mpMaterial->SetTexture(idx, rTexObj);
 
     mpMaterial->SetTexCoordGenNum(mpMaterial->GetTextureNum());
     mpMaterial->SetTexCoordGen(idx, TexCoordGen());
@@ -92,10 +86,6 @@ void Picture::ReserveTexCoord(u8 num) {
 
 void Picture::SetTexCoordNum(u8 num) {
     mTexCoordAry.SetSize(num);
-}
-
-void Picture::SetTexCoord(u32 idx, const detail::TexCoord coord) {
-    mTexCoordAry.SetCoord(idx, coord);
 }
 
 ut::Color Picture::GetVtxColor(u32 idx) const {

@@ -66,6 +66,16 @@ int __ieee754_rem_pio2(double, double *);
 
 double nan(const char* arg);
 
+double log10(double);
+
+inline float powf(float x, float y) {
+    return pow(x, y);
+}
+
+inline float log10f(float x) {
+    return log10(x);
+}
+
 #ifdef __cplusplus
 };
 #endif // ifdef __cplusplus

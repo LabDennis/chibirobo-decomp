@@ -3,20 +3,19 @@
 #include <nw4hbm/types_nw4hbm.h>
 
 #include <nw4hbm/lyt/lyt_common.h>
-#include <nw4hbm/lyt/lyt_texMap.h>
 #include <nw4hbm/lyt/lyt_resources.h>
 #include <nw4hbm/lyt/lyt_types.h>
 
 #include <nw4hbm/ut.h>
 
 #include "revolution/gx.h"
+#include "Dolphin/tpl.h"
 
 namespace nw4hbm {
 namespace lyt {
 
 // Forward declarations
 class AnimTransform;
-class AnimResource;
 struct ResBlockSet;
 
 namespace detail {
@@ -79,13 +78,9 @@ public:
 
     virtual AnimationLink*
     FindAnimationLink(AnimTransform* pAnimTrans); // at 0x20
-    virtual AnimationLink*
-    FindAnimationLink(const AnimResource& rResource); // at 0x24
 
     virtual void SetAnimationEnable(AnimTransform* pAnimTrans,
-                                    bool enable); // at 0x28
-    virtual void SetAnimationEnable(const AnimResource& rResource,
-                                    bool enable); // at 0x2C
+                                    bool enable); // at 0x24
 
     void AddAnimationLink(AnimationLink* pAnimLink);
 
@@ -149,8 +144,8 @@ public:
         return mGXMemCap.blendMode;
     }
 
-    const TexMap* GetTexMapAry() const;
-    TexMap* GetTexMapAry();
+    const GXTexObj* GetTexMapAry() const;
+    GXTexObj* GetTexMapAry();
 
     const TexSRT* GetTexSRTAry() const;
     TexSRT* GetTexSRTAry();
@@ -182,18 +177,10 @@ public:
     const TevStage* GetTevStageAry() const;
     TevStage* GetTevStageAry();
 
-    const TexMap& GetTexture(u8 idx) const {
-        return GetTexMapAry()[idx];
-    }
-    void GetTexture(GXTexObj* pTexObj, u8 idx) const {
-        GetTexMapAry()[idx].Get(pTexObj);
-    }
-    void SetTexture(u8 idx, const TexMap& rTexMap) {
-        GetTexMapAry()[idx].Set(rTexMap);
-    }
-    void SetTextureNoWrap(u8 idx, const TexMap& rTexMap) {
-        GetTexMapAry()[idx].SetNoWrap(rTexMap);
-    }
+    void GetTexture(GXTexObj* pTexObj, u8 idx) const;
+    void SetTexture(u8 idx, const GXTexObj& rTexObj);
+    void SetTexture(u8 idx, TPLPalette* pTplRes);
+    void SetTextureNoWrap(u8 idx, TPLPalette* pTplRes);
 
     const TexSRT& GetTexSRT(u32 idx) const {
         return GetTexSRTAry()[idx];
@@ -239,19 +226,16 @@ protected:
     static const int MAX_IND_SRT = (GX_ITM_2 - GX_ITM_0) + 1;
 
 protected:
-    AnimationLinkList mAnimList; // at 0x4
+    char mName[NW4R_LYT_MATERIAL_NAME_LEN]; // at 0x4
+    AnimationLinkList mAnimList;            // at 0x18
 
-    GXColorS10 mTevCols[TEVCOLOR_MAX];  // at 0x10
-    ut::Color mTevKCols[GX_MAX_KCOLOR]; // at 0x28
+    GXColorS10 mTevCols[TEVCOLOR_MAX];  // at 0x24
+    ut::Color mTevKCols[GX_MAX_KCOLOR]; // at 0x3C
 
-    detail::BitGXNums mGXMemCap; // at 0x38
-    detail::BitGXNums mGXMemNum; // at 0x3C
-    void* mpGXMem;               // at 0x40
-
-    char mName[NW4R_LYT_MATERIAL_NAME_LEN + 1]; // at 0x44
-    bool mbUserAllocated;                       // at 0x59
-
-    u8 PADDING_0x5A[0x5C - 0x5A]; // at 0x5A
+    detail::BitGXNums mGXMemCap; // at 0x4C
+    detail::BitGXNums mGXMemNum; // at 0x50
+    bool mbUserAllocated;        // at 0x54
+    void* mpGXMem;               // at 0x58
 
 private:
     void Init();

@@ -31,19 +31,6 @@ namespace lyt {
 
 NW4R_UT_RTTI_DEF_BASE(Pane);
 
-namespace detail {
-
-/******************************************************************************
- *
- * PaneBase
- *
- ******************************************************************************/
-PaneBase::PaneBase() {}
-
-PaneBase::~PaneBase() {}
-
-} // namespace detail
-
 /******************************************************************************
  *
  * Pane
@@ -62,9 +49,9 @@ Pane::Pane() {
     mScale = math::VEC2(1,1);
     mSize = Size(0,0);
     
-    mAlpha = -1;
-    mGlbAlpha = -1;
-    mFlag = false;
+    mAlpha = 255;
+    mGlbAlpha = mAlpha;
+    mFlag = 0;
     SetVisible(true);
 }
 
@@ -90,7 +77,6 @@ void Pane::Init() {
     mpParent = NULL;
     mpMaterial = NULL;
     mbUserAllocated = false;
-    mpExtUserDataList = NULL;
 }
 
 Pane::~Pane() {
@@ -98,25 +84,25 @@ Pane::~Pane() {
         mChildList.Erase(it);
 
         if (!it->IsUserAllocated()) {
-            Layout::DeleteObj(&*it);
+            it->~Pane();
+            Layout::FreeMemory(&*it);
         }
     })
 
     UnbindAnimationSelf(NULL);
 
     if (mpMaterial != NULL && !mpMaterial->IsUserAllocated()) {
-        Layout::DeleteObj(mpMaterial);
+        mpMaterial->~Material();
+        Layout::FreeMemory(mpMaterial);
     }
 }
 
 void Pane::SetName(const char* pName) {
-    std::strncpy(mName, pName, NW4R_LYT_RES_NAME_LEN);
-    mName[NW4R_LYT_RES_NAME_LEN] = '\0';
+    std::strncpy(mName, pName, sizeof(mName));
 }
 
 void Pane::SetUserData(const char* pUserData) {
-    std::strncpy(mUserData, pUserData, NW4R_LYT_PANE_USERDATA_LEN);
-    mUserData[NW4R_LYT_PANE_USERDATA_LEN] = '\0';
+    std::strncpy(mUserData, pUserData, sizeof(mUserData));
 }
 
 void Pane::AppendChild(Pane* pChild) {
@@ -126,16 +112,6 @@ void Pane::AppendChild(Pane* pChild) {
 void Pane::InsertChild(PaneList::Iterator next, Pane* pChild) {
     mChildList.Insert(next, pChild);
     pChild->mpParent = this;
-}
-
-void Pane::PrependChild(Pane* pChild) {
-    mChildList.Insert( mChildList.GetBeginIter(), pChild);
-    pChild->mpParent = this;
-}
-
-void Pane::RemoveChild(Pane* pChild) {
-    mChildList.Erase(pChild);
-    pChild->mpParent = NULL;
 }
 
 ut::Rect Pane::GetPaneRect(const DrawInfo& rInfo) const {
@@ -204,13 +180,13 @@ void Pane::SetVtxColorElement(u32 idx, u8 value) {
 }
 
 Pane* Pane::FindPaneByName(const char* pName, bool recursive) {
-    if (detail::EqualsResName(mName, pName)) {
+    if (detail::EqualsPaneName(mName, pName)) {
         return this;
     }
 
     if (recursive) {
         NW4R_UT_LINKLIST_FOREACH (it, mChildList, {
-            Pane* pResult = it->FindPaneByName(pName, recursive);
+            Pane* pResult = it->FindPaneByName(pName, true);
 
             if (pResult != NULL) {
                 return pResult;
@@ -230,7 +206,7 @@ Material* Pane::FindMaterialByName(const char* pName, bool recursive) {
 
     if (recursive) {
         NW4R_UT_LINKLIST_FOREACH (it, mChildList, {
-            Material* pResult = it->FindMaterialByName(pName, recursive);
+            Material* pResult = it->FindMaterialByName(pName, true);
 
             if (pResult != NULL) {
                 return pResult;
@@ -242,6 +218,8 @@ Material* Pane::FindMaterialByName(const char* pName, bool recursive) {
 }
 
 void Pane::CalculateMtx(const DrawInfo& rInfo) {
+    const f32 invAlpha = 1.0f / 255.0f;
+
     if (!IsVisible() && !rInfo.IsInvisiblePaneCalculateMtx()) {
         return;
     }
@@ -288,7 +266,7 @@ void Pane::CalculateMtx(const DrawInfo& rInfo) {
 
     if (modifyInfo) {
         DrawInfo& rMtInfo = const_cast<DrawInfo&>(rInfo);
-        rMtInfo.SetGlobalAlpha(glbAlpha * mAlpha * (1.0f / 255.0f));
+        rMtInfo.SetGlobalAlpha(glbAlpha * mAlpha * invAlpha);
         rMtInfo.SetInfluencedAlpha(true);
     }
 
@@ -315,8 +293,10 @@ void Pane::Draw(const DrawInfo& rInfo) {
 }
 
 void Pane::DrawSelf(const DrawInfo& rInfo) {
-#pragma unused(rInfo)
-    // Debug draw stripped out
+    if (mpParent != NULL && rInfo.IsDebugDrawMode()) {
+        LoadMtx(rInfo);
+        detail::DrawLine(GetVtxPos(), mSize, ut::Color::GREEN);
+    }
 }
 
 void Pane::Animate(u32 option) {
@@ -366,7 +346,12 @@ void Pane::UnbindAnimationSelf(AnimTransform* pAnimTrans) {
         mpMaterial->UnbindAnimation(pAnimTrans);
     }
 
-    detail::UnbindAnimationLink(&mAnimList, pAnimTrans);
+    NW4R_UT_LINKLIST_FOREACH_SAFE (it, mAnimList, {
+        if (pAnimTrans == NULL || it->GetAnimTransform() == pAnimTrans) {
+            mAnimList.Erase(it);
+            it->Reset();
+        }
+    })
 }
 
 void Pane::AddAnimationLink(AnimationLink* pAnimLink) {
@@ -374,24 +359,33 @@ void Pane::AddAnimationLink(AnimationLink* pAnimLink) {
 }
 
 AnimationLink* Pane::FindAnimationLink(AnimTransform* pAnimTrans) {
-    return detail::FindAnimationLink(&mAnimList, pAnimTrans);
+    if (AnimationLink* pAnimLink =
+            detail::FindAnimationLink(&mAnimList, pAnimTrans)) {
+        return pAnimLink;
+    }
+
+    if (mpMaterial != NULL) {
+        if (AnimationLink* pAnimLink =
+                mpMaterial->FindAnimationLink(pAnimTrans)) {
+            return pAnimLink;
+        }
+    }
+
+    return NULL;
 }
 
 void Pane::SetAnimationEnable(AnimTransform* pAnimTrans, bool enable,
                               bool recursive) {
 
-    AnimationLink* pAnimLink = FindAnimationLink(pAnimTrans);
-
-    if (pAnimLink != NULL) {
+    if (AnimationLink* pAnimLink =
+            detail::FindAnimationLink(&mAnimList, pAnimTrans)) {
         pAnimLink->SetEnable(enable);
     }
 
-    u8 materialNum = GetMaterialNum();
-
-    for (u8 i = 0; i < materialNum; i++) {
-        GetMaterial(i)->SetAnimationEnable(pAnimTrans, enable);
+    if (mpMaterial != NULL) {
+        mpMaterial->SetAnimationEnable(pAnimTrans, enable);
     }
-    
+
     if (recursive) {
         NW4R_UT_LINKLIST_FOREACH (it, mChildList, 
             { it->SetAnimationEnable(pAnimTrans, enable, recursive); })
@@ -400,16 +394,25 @@ void Pane::SetAnimationEnable(AnimTransform* pAnimTrans, bool enable,
 
 void Pane::LoadMtx(const DrawInfo& rInfo) {
     math::MTX34 mtx;
-    math::MTX34* pMtx = NULL;
+    MtxP pMtx = NULL;
 
     if (rInfo.IsMultipleViewMtxOnDraw()) {
         math::MTX34Mult(&mtx, &rInfo.GetViewMtx(), &mGlbMtx);
-        pMtx = &mtx;
-    }else{
-        pMtx = &mGlbMtx;
+
+        if (rInfo.IsYAxisUp()) {
+            ReverseYAxis(&mtx);
+        }
+
+        pMtx = mtx;
+    } else if (rInfo.IsYAxisUp()) {
+        math::MTX34Copy(&mtx, &mGlbMtx);
+        ReverseYAxis(&mtx);
+        pMtx = mtx;
+    } else {
+        pMtx = mGlbMtx;
     }
 
-    GXLoadPosMtxImm(*pMtx, GX_PNMTX0);
+    GXLoadPosMtxImm(pMtx, GX_PNMTX0);
     GXSetCurrentMtx(GX_PNMTX0);
 }
 
@@ -441,13 +444,13 @@ math::VEC2 Pane::GetVtxPos() const {
         break;
     }
 
-    case HORIZONTALPOSITION_CENTER: {
-        base.y = mSize.height / 2;
+    case VERTICALPOSITION_CENTER: {
+        base.y = -mSize.height / 2;
         break;
     }
 
-    case HORIZONTALPOSITION_RIGHT: {
-        base.y = mSize.height;
+    case VERTICALPOSITION_BOTTOM: {
+        base.y = -mSize.height;
         break;
     }
     }
@@ -455,17 +458,8 @@ math::VEC2 Pane::GetVtxPos() const {
     return base;
 }
 
-u8 Pane::GetMaterialNum() const {
-    return mpMaterial != NULL ? 1 : 0;
-}
-
 Material* Pane::GetMaterial() const {
     return mpMaterial;
-}
-
-Material* Pane::GetMaterial(u32 index) const {
-    if(index == 0) return GetMaterial();
-    return NULL;
 }
 
 } // namespace lyt

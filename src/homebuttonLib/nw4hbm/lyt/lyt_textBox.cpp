@@ -4,6 +4,14 @@
 #include <cstring>
 #include <cwchar>
 
+namespace nw4hbm {
+namespace lyt {
+
+NW4R_UT_RTTI_DEF_DERIVED(TextBox, Pane);
+
+} // namespace lyt
+} // namespace nw4hbm
+
 /******************************************************************************
  *
  * Utility functions
@@ -14,15 +22,170 @@ namespace {
 using namespace nw4hbm;
 using namespace nw4hbm::lyt;
 
-inline u8 ClampColor(s16 value) {
+u8 ClampColor(s16 value);
+
+ut::Color GetColor(const GXColorS10& rSrc) {
+    GXColor dst;
+
+    dst.r = ClampColor(rSrc.r);
+    dst.g = ClampColor(rSrc.g);
+    dst.b = ClampColor(rSrc.b);
+    dst.a = ClampColor(rSrc.a);
+
+    return dst;
+}
+
+u8 ClampColor(s16 value) {
     return value < 0 ? 0 : (value > 255 ? 255 : value);
 }
 
-ut::Color GetColor(const GXColorS10& rColor16) {
-    GXColor color8 = {ClampColor(rColor16.r), ClampColor(rColor16.g),
-                      ClampColor(rColor16.b), ClampColor(rColor16.a)};
+template <typename T>
+int CalcLineRectImpl(ut::Rect* pRect, ut::TextWriterBase<T>* pTextWriter,
+                     const T* pStr, int len, f32 maxWidth, bool* pbOver) {
+    ut::PrintContext<T> context = {pTextWriter, pStr, 0.0f, 0.0f, 0};
+    const ut::Font* pFont = pTextWriter->GetFont();
 
-    return ut::Color(color8);
+    f32 x = 0.0f;
+    bool charSpace = false;
+
+    ut::CharStrmReader reader = pFont->GetCharStrmReader();
+    const T* pPrevPos = static_cast<const T*>(reader.GetCurrentPos());
+
+    pRect->left = 0.0f;
+    pRect->right = 0.0f;
+    pRect->top = ut::Min(0.0f, pTextWriter->GetLineHeight());
+    pRect->bottom = ut::Max(0.0f, pTextWriter->GetLineHeight());
+
+    *pbOver = false;
+
+    reader.Set(pStr);
+
+    ut::Rect prevRect = *pRect;
+
+    for (u16 ch = reader.Next();
+         static_cast<const T*>(reader.GetCurrentPos()) - pStr <= len;
+         pPrevPos = static_cast<const T*>(reader.GetCurrentPos()),
+             ch = reader.Next(), prevRect = *pRect) {
+        if ((int)ch < L' ') {
+            typename ut::TagProcessorBase<T>::Operation oper;
+            ut::Rect rect(x, 0.0f, 0.0f, 0.0f);
+
+            context.str = static_cast<const T*>(reader.GetCurrentPos());
+            context.flags = 0;
+            context.flags |=
+                charSpace ? 0 : ut::PrintContext<T>::FLAGS_CHARSPACE;
+
+            pTextWriter->SetCursorX(x);
+
+            oper = pTextWriter->GetTagProcessor().CalcRect(&rect, ch, &context);
+
+            reader.Set(context.str);
+
+            pRect->left = ut::Min(pRect->left, rect.left);
+            pRect->top = ut::Min(pRect->top, rect.top);
+            pRect->right = ut::Max(pRect->right, rect.right);
+            pRect->bottom = ut::Max(pRect->bottom, rect.bottom);
+
+            x = pTextWriter->GetCursorX();
+
+            if (pRect->GetWidth() > maxWidth) {
+                *pbOver = true;
+                break;
+            }
+
+            if (oper == ut::TagProcessorBase<T>::OPERATION_END_DRAW) {
+                return len;
+            } else if (oper ==
+                       ut::TagProcessorBase<T>::OPERATION_NO_CHAR_SPACE) {
+                charSpace = false;
+            } else if (oper == ut::TagProcessorBase<T>::OPERATION_CHAR_SPACE) {
+                charSpace = true;
+            } else if (oper == ut::TagProcessorBase<T>::OPERATION_NEXT_LINE) {
+                goto end_draw;
+            }
+        } else {
+            if (charSpace) {
+                x += pTextWriter->GetCharSpace();
+            }
+
+            charSpace = true;
+
+            if (pTextWriter->IsWidthFixed()) {
+                x += pTextWriter->GetFixedWidth();
+            } else {
+                x += pTextWriter->GetFont()->GetCharWidth(ch) *
+                     pTextWriter->GetScaleH();
+            }
+
+            pRect->left = ut::Min(pRect->left, x);
+            pRect->right = ut::Max(pRect->right, x);
+
+            if (pRect->GetWidth() > maxWidth) {
+                *pbOver = true;
+                goto end_draw;
+            }
+        }
+    }
+
+end_draw:
+    if (*pbOver && pPrevPos != NULL) {
+        *pRect = prevRect;
+        return pPrevPos - pStr;
+    } else {
+        return static_cast<const T*>(reader.GetCurrentPos()) - pStr;
+    }
+}
+
+template <typename T>
+void CalcStringRectImpl(ut::Rect* pRect, ut::TextWriterBase<T>* pTextWriter,
+                        const T* pStr, int len, f32 maxWidth) {
+    int remain = len;
+    const T* pPos = pStr;
+
+    pRect->left = 0.0f;
+    pRect->right = 0.0f;
+    pRect->top = 0.0f;
+    pRect->bottom = 0.0f;
+    pTextWriter->SetCursor(0.0f, 0.0f);
+
+    do {
+        ut::Rect rect;
+        bool over;
+        int read =
+            CalcLineRectImpl(&rect, pTextWriter, pPos, remain, maxWidth, &over);
+
+        if (over) {
+            CalcLineRectImpl(&rect, pTextWriter, L"\n", 1, maxWidth, &over);
+        }
+
+        pPos += read;
+        remain -= read;
+
+        pRect->left = ut::Min(pRect->left, rect.left);
+        pRect->top = ut::Min(pRect->top, rect.top);
+        pRect->right = ut::Max(pRect->right, rect.right);
+        pRect->bottom = ut::Max(pRect->bottom, rect.bottom);
+    } while (remain > 0);
+}
+
+template <typename T>
+int CalcLineStrNum(f32* pWidth, ut::TextWriterBase<T>* pTextWriter,
+                   const T* pStr, int len, f32 maxWidth, bool* pbOver) {
+    ut::Rect rect;
+    ut::TextWriterBase<T> clone = *pTextWriter;
+    clone.SetCursor(0.0f, 0.0f);
+
+    int ret = CalcLineRectImpl(&rect, &clone, pStr, len, maxWidth, pbOver);
+
+    *pWidth = rect.GetWidth();
+    return ret;
+}
+
+template <typename T>
+void CalcStringRect(ut::Rect* pRect, ut::TextWriterBase<T>* pTextWriter,
+                    const T* pStr, int len, f32 maxWidth) {
+    ut::TextWriterBase<T> clone = *pTextWriter;
+    CalcStringRectImpl(pRect, &clone, pStr, len, maxWidth);
 }
 
 } // namespace
@@ -30,13 +193,17 @@ ut::Color GetColor(const GXColorS10& rColor16) {
 namespace nw4hbm {
 namespace lyt {
 
-NW4R_UT_RTTI_DEF_DERIVED(TextBox, Pane);
-
 /******************************************************************************
  *
  * TextBox
  *
  ******************************************************************************/
+TextBox::TextBox(u16 len, const wchar_t* pStr, const ut::Font* pFont) : Pane() {
+    Init(len);
+    SetString(pStr);
+    SetFont(pFont);
+}
+
 TextBox::TextBox(const res::TextBox* pRes, const ResBlockSet& rBlockSet)
     : Pane(pRes) {
 
@@ -161,8 +328,18 @@ void TextBox::SetVtxColorElement(u32 idx, u8 value) {
         value;
 }
 
-ut::Rect TextBox::GetTextDrawRect(const DrawInfo& rInfo) const {
+const ut::Rect TextBox::GetTextDrawRect(const DrawInfo& rInfo) const {
     ut::WideTextWriter writer;
+
+    writer.SetFont(*mpFont);
+    writer.SetFontSize(mFontSize.width, mFontSize.height);
+    writer.SetLineSpace(mLineSpace);
+    writer.SetCharSpace(mCharSpace);
+
+    if (mpTagProcessor != NULL) {
+        writer.SetTagProcessor(mpTagProcessor);
+    }
+
     ut::Rect rect = GetTextDrawRect(&writer);
 
     if (rInfo.IsYAxisUp()) {
@@ -181,7 +358,10 @@ void TextBox::DrawSelf(const DrawInfo& rInfo) {
     LoadMtx(rInfo);
 
     ut::WideTextWriter writer;
-    ut::Rect rect = GetTextDrawRect(&writer);
+    writer.SetFont(*mpFont);
+    writer.SetFontSize(mFontSize.width, mFontSize.height);
+    writer.SetLineSpace(mLineSpace);
+    writer.SetCharSpace(mCharSpace);
 
     ut::Color top =
         detail::MultipleAlpha(mTextColors[TEXTCOLOR_TOP], mGlbAlpha);
@@ -194,12 +374,39 @@ void TextBox::DrawSelf(const DrawInfo& rInfo) {
 
     ut::Color min = GetColor(mpMaterial->GetTevColor(TEVCOLOR_REG0));
     ut::Color max = GetColor(mpMaterial->GetTevColor(TEVCOLOR_REG1));
-
     writer.SetColorMapping(min, max);
+
+    if (mpTagProcessor != NULL) {
+        writer.SetTagProcessor(mpTagProcessor);
+    }
+
     writer.SetupGX();
 
+    ut::Rect rect = GetTextDrawRect(&writer);
+
+    f32 hMag = GetTextMagH();
+    wchar_t* pPos = mTextBuf;
+    f32 textWidth = rect.GetWidth();
+
     writer.SetCursor(rect.left, rect.top);
-    writer.Print(mTextBuf, mTextLen);
+
+    for (int remain = mTextLen; remain > 0;) {
+        f32 lineWidth;
+        bool over;
+        int lineStrNum = CalcLineStrNum(&lineWidth, &writer, pPos, remain,
+                                        mSize.width, &over);
+        f32 textPosX = hMag * (textWidth - lineWidth);
+
+        writer.SetCursorX(rect.left + textPosX);
+        writer.Print(pPos, lineStrNum);
+
+        if (over) {
+            writer.Print(L"\n");
+        }
+
+        pPos += lineStrNum;
+        remain -= lineStrNum;
+    }
 }
 
 u16 TextBox::GetStringBufferLength() const {
@@ -282,27 +489,14 @@ void TextBox::SetFont(const ut::Font* pFont) {
     }
 }
 
-ut::Rect TextBox::GetTextDrawRect(ut::WideTextWriter* pWriter) const {
+const ut::Rect TextBox::GetTextDrawRect(ut::WideTextWriter* pWriter) const {
     ut::Rect rect;
 
     pWriter->SetCursor(0.0f, 0.0f);
+    CalcStringRect(&rect, pWriter, mTextBuf, mTextLen, mSize.width);
 
-    pWriter->SetFont(*mpFont);
-    pWriter->SetFontSize(mFontSize.width, mFontSize.height);
+    math::VEC2 base = Pane::GetVtxPos();
 
-    pWriter->SetLineSpace(mLineSpace);
-    pWriter->SetCharSpace(mCharSpace);
-
-    pWriter->SetWidthLimit(mSize.width);
-    pWriter->SetDrawFlag(MakeDrawFlag());
-
-    if (mpTagProcessor != NULL) {
-        pWriter->SetTagProcessor(mpTagProcessor);
-    }
-
-    pWriter->CalcStringRect(&rect, mTextBuf, mTextLen);
-
-    math::VEC2 base = GetVtxPos();
     rect.MoveTo(base.x + (mSize.width - rect.GetWidth()) * GetTextMagH(),
                 base.y + (mSize.height - rect.GetHeight()) * GetTextMagV());
 
@@ -355,28 +549,6 @@ f32 TextBox::GetTextMagV() const {
     }
 
     return mag;
-}
-
-u32 TextBox::MakeDrawFlag() const {
-    u32 flag = 0;
-
-    switch (GetTextPositionH()) {
-    case HORIZONTALPOSITION_CENTER: {
-        flag |= ut::WideTextWriter::DRAWFLAG_ALIGN_TEXT_CENTER;
-        break;
-    }
-
-    case HORIZONTALPOSITION_RIGHT: {
-        flag |= ut::WideTextWriter::DRAWFLAG_ALIGN_TEXT_RIGHT;
-        break;
-    }
-
-    default: {
-        break;
-    }
-    }
-
-    return flag;
 }
 
 } // namespace lyt

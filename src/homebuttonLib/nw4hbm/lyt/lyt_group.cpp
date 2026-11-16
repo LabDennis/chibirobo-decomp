@@ -2,6 +2,7 @@
 #include <nw4hbm/ut.h>
 
 #include <cstring>
+#include <new>
 
 namespace nw4hbm {
 namespace lyt {
@@ -14,8 +15,7 @@ namespace lyt {
 Group::Group(const res::Group* pRes, Pane* pRootPane) {
     Init();
 
-    std::strncpy(mName, pRes->name, NW4R_LYT_RES_NAME_LEN);
-    mName[NW4R_LYT_RES_NAME_LEN] = '\0';
+    std::memcpy(mName, pRes->name, sizeof(mName));
 
     const char* pNameBase =
         detail::ConvertOffsToPtr<char>(pRes, sizeof(res::Group));
@@ -37,14 +37,14 @@ void Group::Init() {
 Group::~Group() {
     NW4R_UT_LINKLIST_FOREACH_SAFE (it, mPaneLinkList, {
         mPaneLinkList.Erase(it);
-        Layout::DeleteObj(&*it);
+        Layout::FreeMemory(&*it);
     })
 }
 
 void Group::AppendPane(Pane* pPane) {
-    detail::PaneLink* pLink = Layout::NewObj<detail::PaneLink>();
+    if (void* pMem = Layout::AllocMemory(sizeof(detail::PaneLink))) {
+        detail::PaneLink* pLink = new (pMem) detail::PaneLink();
 
-    if (pLink != NULL) {
         pLink->mTarget = pPane;
         mPaneLinkList.PushBack(pLink);
     }
@@ -60,7 +60,8 @@ GroupContainer::~GroupContainer() {
         mGroupList.Erase(it);
         
         if (!it->IsUserAllocated()) {
-            Layout::DeleteObj(&*it);
+            it->~Group();
+            Layout::FreeMemory(&*it);
         }
     })
 }
@@ -71,7 +72,7 @@ void GroupContainer::AppendGroup(Group* pGroup) {
 
 Group* GroupContainer::FindGroupByName(const char* pName) {
     NW4R_UT_LINKLIST_FOREACH (it, mGroupList, {
-        if (detail::EqualsResName(it->GetName(), pName)) {
+        if (detail::EqualsPaneName(it->GetName(), pName)) {
             return &*it;
         }
     })

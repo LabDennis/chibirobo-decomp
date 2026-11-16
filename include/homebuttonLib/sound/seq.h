@@ -1,7 +1,7 @@
 #ifndef RVL_SDK_HBMSEQ_H
 #define RVL_SDK_HBMSEQ_H
 
-#include <revolution/types.h>
+#include <types.h>
 
 #include "syn.h"
 

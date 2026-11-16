@@ -40,7 +40,7 @@ void drawLine_(f32 x0, f32 y0, f32 x1, f32 y1, f32 z, u8 width,
     PSMTXTrans(modelMtx, 0.0f, 0.0f, 0.0f);
     GXLoadPosMtxImm(modelMtx, GX_PNMTX0);
 
-    GXSetLineWidth(width, 0);
+    GXSetLineWidth(width, GX_TO_ZERO);
 
     GXBegin(GX_LINES, GX_VTXFMT0, 2);
     {
@@ -115,6 +115,28 @@ void Manager::addComponent(Component* pComponent) {
     } else {
         nw4hbm::ut::List_Append(&mIDToComponent,
                               new IDToComponent(id, pComponent));
+    }
+}
+
+void Manager::delComponent(Component* pComponent) {
+    IDToComponent* p = static_cast<IDToComponent*>(
+        nw4hbm::ut::List_GetNext(&mIDToComponent, NULL));
+
+    while (p != NULL) {
+        if (p->mpComponent == pComponent) {
+            break;
+        }
+
+        p = static_cast<IDToComponent*>(
+            nw4hbm::ut::List_GetNext(&mIDToComponent, p));
+    }
+
+    nw4hbm::ut::List_Remove(&mIDToComponent, p);
+
+    if (mpAllocator != NULL) {
+        MEMFreeToAllocator(mpAllocator, p);
+    } else {
+        delete p;
     }
 }
 
@@ -213,6 +235,10 @@ void PaneManager::createLayoutScene(const nw4hbm::lyt::Layout& rLayout) {
     walkInChildren(rLayout.GetRootPane()->GetChildList());
 }
 
+void PaneManager::addLayoutScene(const nw4hbm::lyt::Layout& rLayout) {
+    walkInChildren(rLayout.GetRootPane()->GetChildList());
+}
+
 void PaneManager::walkInChildren(nw4hbm::lyt::PaneList& rPaneList) {
     NW4R_UT_LINKLIST_FOREACH(it, rPaneList, {
         PaneComponent* pComponent = NULL;
@@ -247,6 +273,40 @@ void PaneManager::walkInChildren(nw4hbm::lyt::PaneList& rPaneList) {
     });
 }
 
+void PaneManager::delLayoutScene(const nw4hbm::lyt::Layout& rLayout) {
+    walkInChildrenDel(rLayout.GetRootPane()->GetChildList());
+}
+
+void PaneManager::walkInChildrenDel(nw4hbm::lyt::PaneList& rPaneList) {
+    NW4R_UT_LINKLIST_FOREACH(it, rPaneList, {
+        PaneToComponent* pLink = static_cast<PaneToComponent*>(
+            nw4hbm::ut::List_GetNext(&mPaneToComponent, NULL));
+
+        while (pLink != NULL) {
+            if (pLink->mpPane == &*it) {
+                break;
+            }
+
+            pLink = static_cast<PaneToComponent*>(
+                nw4hbm::ut::List_GetNext(&mPaneToComponent, pLink));
+        }
+
+        delComponent(pLink->mpComponent);
+        nw4hbm::ut::List_Remove(&mPaneToComponent, pLink);
+        suIDCounter--;
+
+        if (mpAllocator != NULL) {
+            MEMFreeToAllocator(mpAllocator, pLink->mpComponent);
+            MEMFreeToAllocator(mpAllocator, pLink);
+        } else {
+            delete pLink->mpComponent;
+            delete pLink;
+        }
+
+        walkInChildrenDel(it->GetChildList());
+    });
+}
+
 PaneComponent* PaneManager::getPaneComponentByPane(nw4hbm::lyt::Pane* pPane) {
     for (u32 i = 0; i < nw4hbm::ut::List_GetSize(&mIDToComponent); i++) {
         PaneToComponent* pIt = static_cast<PaneToComponent*>(
@@ -260,6 +320,15 @@ PaneComponent* PaneManager::getPaneComponentByPane(nw4hbm::lyt::Pane* pPane) {
     return NULL;
 }
 
+// The pragma is the SDK's own line by the rule for library code: ogws and wiiplay (both
+// with this file matching), tp and xenoblade carry it at this place. Without it the
+// compiler puts a "list empty" test (lhz/cmpwi/beq) in front of the hoisted load of
+// &Bounding::typeInfo, which retail loads once at function entry (82.7 %). wii-ipl's
+// later file matches without the pragma, with List_GetNth(..., (u16)i); that form and
+// about twenty others give the guarded load here, under GC/3.0a5 and GC/3.0a5.2.
+#pragma push
+#pragma opt_propagation off
+
 void PaneManager::setAllBoundingBoxComponentTriggerTarget(bool target) {
     for (u32 i = 0; i < nw4hbm::ut::List_GetSize(&mIDToComponent); i++) {
         PaneToComponent* pIt = static_cast<PaneToComponent*>(
@@ -270,6 +339,8 @@ void PaneManager::setAllBoundingBoxComponentTriggerTarget(bool target) {
         }
     }
 }
+
+#pragma pop
 
 bool PaneComponent::contain(f32 x, f32 y) {
     if (mpManager == NULL) {

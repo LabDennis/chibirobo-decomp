@@ -62,6 +62,7 @@ public:
     NW4R_UT_RTTI_DECL(TextBox);
 
 public:
+    TextBox(u16 len, const wchar_t* pStr, const ut::Font* pFont);
     TextBox(const res::TextBox* pRes, const ResBlockSet& rBlockSet);
     virtual ~TextBox(); // at 0x8
 
@@ -80,8 +81,8 @@ public:
     virtual u16 SetString(const wchar_t* pStr, u16 pos = 0);      // at 0x6C
     virtual u16 SetString(const wchar_t* pStr, u16 pos, u16 len); // at 0x70
 
-    ut::Rect GetTextDrawRect(const DrawInfo& rInfo) const;
-    ut::Rect GetTextDrawRect(ut::WideTextWriter* pWriter) const;
+    const ut::Rect GetTextDrawRect(const DrawInfo& rInfo) const;
+    const ut::Rect GetTextDrawRect(ut::WideTextWriter* pWriter) const;
 
     const wchar_t* GetString() const {
         return mTextBuf;
@@ -93,7 +94,7 @@ public:
     const ut::Font* GetFont() const;
     void SetFont(const ut::Font* pFont);
 
-    ut::Color GetTextColor(u32 idx) const {
+    const ut::Color GetTextColor(u32 idx) const {
         return mTextColors[idx];
     }
     void SetTextColor(u32 idx, ut::Color color) {
@@ -144,8 +145,6 @@ public:
 
     f32 GetTextMagH() const;
     f32 GetTextMagV() const;
-
-    u32 MakeDrawFlag() const;
 
 protected:
     wchar_t* mTextBuf;                    // at 0xD4

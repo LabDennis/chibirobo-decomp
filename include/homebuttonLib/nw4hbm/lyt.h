@@ -13,7 +13,6 @@
 #include <nw4hbm/lyt/lyt_picture.h>
 #include <nw4hbm/lyt/lyt_resources.h>
 #include <nw4hbm/lyt/lyt_resourceAccessor.h>
-#include <nw4hbm/lyt/lyt_texMap.h>
 #include <nw4hbm/lyt/lyt_textBox.h>
 #include <nw4hbm/lyt/lyt_types.h>
 #include <nw4hbm/lyt/lyt_window.h>

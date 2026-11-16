@@ -1,12 +1,11 @@
-#include "seq.h"
+#include <sound/seq.h>
 
 
-#include <revolution/types.h>
+#include <types.h>
 
-#include "syn.h"
+#include <sound/syn.h>
 
-// #include <revolution/os.h>
-// #include <revolution/os/OSInterrupt.h>
+#include <revolution/os.h>
 
 
 
@@ -111,8 +110,8 @@ static void __HBMSEQRemoveSequenceFromList(HBMSEQSEQUENCE *sequence)
 static u32 __HBMSEQGetIntTrack(HBMSEQTRACK *track)
 {
 	u32 value;
+	ASSERT(track);
 
-	ASSERTLINE(106, track);
 
 	value = *track->current & 0x7f;
 
@@ -131,8 +130,8 @@ static u32 __HBMSEQGetIntTrack(HBMSEQTRACK *track)
 static void __HBMSEQHandleSysExEvent(HBMSEQTRACK *track)
 {
 	u32 length;
+	ASSERT(track);
 
-	ASSERTLINE(129, track);
 
 	length = __HBMSEQGetIntTrack(track);
 	track->current += length;
@@ -141,8 +140,9 @@ static void __HBMSEQHandleSysExEvent(HBMSEQTRACK *track)
 static void __HBMSEQSetTicksPerFrame(HBMSEQTRACK *track, f32 bps)
 {
 	HBMSEQSEQUENCE *sequence;
+	ASSERT(track);
+	ASSERT(track);
 
-	ASSERTLINE(143, track);
 
 	sequence = track->sequence;
 
@@ -170,7 +170,6 @@ static void __HBMSEQTrackEnd(HBMSEQTRACK *track)
 {
 	HBMSEQSEQUENCE *sequence;
 
-	ASSERTLINE(185, track);
 
 	sequence = track->sequence;
 
@@ -185,8 +184,8 @@ static void __HBMSEQHandleMetaEvent(HBMSEQTRACK *track)
 {
 	u8 type;
 	u32 length;
+	ASSERT(track);
 
-	ASSERTLINE(204, track);
 
 	// doubled statements
 	type = *track->current; ++track->current;
@@ -239,9 +238,9 @@ static void __HBMSEQHandleSynthEvent(HBMSYNSYNTH *synth, HBMSEQTRACK *track)
 static void __HBMSEQRunEvent(HBMSYNSYNTH *synth, HBMSEQTRACK *track)
 {
 	u8 event;
+	ASSERT(synth);
+	ASSERT(track);
 
-	ASSERTLINE(280, synth);
-	ASSERTLINE(281, track);
 
 	event = *track->current;
 
@@ -317,9 +316,9 @@ static void __HBMSEQReadHeader(HBMSEQSEQUENCE *sequence, u8 *midiStream)
 	u8 *read = midiStream;
 	u32 bytes;
 	u32 fileType;
-
-	OSAssertMessage_Line(383, *(u32 *)read == MIDI_TRACK_HEADER_MAGIC,
+	ASSERTMSG(*(u32 *)read == MIDI_TRACK_HEADER_MAGIC,
 	                     "!!!midiStream is not a valid MIDI file\n!!!");
+
 	read += sizeof(u32);
 
 	// doubled statements
@@ -327,9 +326,9 @@ static void __HBMSEQReadHeader(HBMSEQSEQUENCE *sequence, u8 *midiStream)
 	fileType = *(u16 *)read; read += sizeof(u16);
 	sequence->nTracks = *(u16 *)read; read += sizeof(u16);
 	sequence->timeFormat = *(s16 *)read; read += sizeof(s16);
-
-	OSAssertMessage_Line(398, sequence->timeFormat >= 0,
+	ASSERTMSG(sequence->timeFormat >= 0,
 	                     "!!!HBMSEQ does not support SMPTE time!!!\n");
+
 
 	// fileType, sequence->nTracks, and sequence->timeFormat, respectively
 	bytes -= sizeof(u16) + sizeof(u16) + sizeof(s16);
@@ -343,7 +342,7 @@ static void __HBMSEQReadHeader(HBMSEQSEQUENCE *sequence, u8 *midiStream)
 		break;
 
 	case MIDI_FILE_FORMAT_1:
-		OSAssertMessage_Line(420, sequence->nTracks < HBMSEQ_MAX_TRACKS,
+		ASSERTMSG(sequence->nTracks < HBMSEQ_MAX_TRACKS,
 		                     "exceeded HBMSEQ_MAX_TRACKS, please increase "
 		                     "HBMSEQ_MAX_TRACKS\n");
 
@@ -352,7 +351,8 @@ static void __HBMSEQReadHeader(HBMSEQSEQUENCE *sequence, u8 *midiStream)
 
 	// case MIDI_FILE_FORMAT_2: // not supported
 	default:
-		OSAssertMessage_Line(428, FALSE, "!!!Invalid MIDI file type\n!!!");
+		ASSERTMSG(FALSE, "!!!Invalid MIDI file type\n!!!");
+		break;
 	}
 
 	sequence->tracksRunning = sequence->nTracks;
@@ -437,10 +437,10 @@ void HBMSEQRunAudioFrame(void)
 void HBMSEQAddSequence(HBMSEQSEQUENCE *sequence, u8 *midiStream,
                        u8 *wavetable, u8 *samples, u8 *zerobuffer)
 {
-	ASSERTLINE(551, sequence);
-	ASSERTLINE(552, midiStream);
-	ASSERTLINE(553, wavetable);
-	ASSERTLINE(554, samples);
+	ASSERT(sequence);
+	ASSERT(midiStream);
+	ASSERT(wavetable);
+	ASSERT(samples);
 
 	HBMSYNInitSynth(&sequence->synth, wavetable, samples, zerobuffer);
 	sequence->state = HBM_SEQ_STATE_0;
@@ -450,7 +450,7 @@ void HBMSEQAddSequence(HBMSEQSEQUENCE *sequence, u8 *midiStream,
 
 void HBMSEQRemoveSequence(HBMSEQSEQUENCE *sequence)
 {
-	ASSERTLINE(581, sequence);
+	ASSERT(sequence);
 
 	__HBMSEQRemoveSequenceFromList(sequence);
 	HBMSYNQuitSynth(&sequence->synth);
@@ -459,8 +459,8 @@ void HBMSEQRemoveSequence(HBMSEQSEQUENCE *sequence)
 void HBMSEQSetState(HBMSEQSEQUENCE *sequence, HBMSEQSTATE state)
 {
 	int i;
+	ASSERT(sequence);
 
-	ASSERTLINE(598, sequence);
 
 	switch (state)
 	{
@@ -512,21 +512,21 @@ void HBMSEQSetState(HBMSEQSEQUENCE *sequence, HBMSEQSTATE state)
 
 HBMSEQSTATE HBMSEQGetState(HBMSEQSEQUENCE *sequence)
 {
-	ASSERTLINE(666, sequence);
+	ASSERT(sequence);
 
 	return sequence->state;
 }
 
 void HBMSEQSetVolume(HBMSEQSEQUENCE *sequence, s32 dB)
 {
-	ASSERTLINE(677, sequence);
+	ASSERT(sequence);
 
 	HBMSYNSetMasterVolume(&sequence->synth, dB);
 }
 
 s32 HBMSEQGetVolume(HBMSEQSEQUENCE *sequence)
 {
-	ASSERTLINE(688, sequence);
+	ASSERT(sequence);
 
 	return HBMSYNGetMasterVolume(&sequence->synth);
 }

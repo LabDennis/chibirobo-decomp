@@ -15,8 +15,6 @@ namespace lyt {
 // Forward declarations
 class DrawInfo;
 class Material;
-class AnimResource;
-class ExtUserDataList;
 
 /******************************************************************************
  *
@@ -36,8 +34,8 @@ namespace detail {
  ******************************************************************************/
 class PaneBase {
 public:
-    PaneBase();
-    virtual ~PaneBase(); // at 0x8
+    PaneBase() {}
+    virtual ~PaneBase() {} // at 0x8
 
 public:
     NW4R_UT_LINKLIST_NODE_DECL(); // at 0x4
@@ -124,18 +122,14 @@ public:
 
     virtual AnimationLink*
     FindAnimationLink(AnimTransform* pAnimTrans); // at 0x54
-    
-    virtual void
-    SetAnimationEnable(AnimTransform* pAnimTrans, bool enable, bool recursive); // at 0x58
-    
-    virtual u8 GetMaterialNum() const; // at 0x5C
-    virtual Material* GetMaterial() const;       // at 0x60
-    virtual Material* GetMaterial(u32 index) const;  // at 0x64
-    virtual void LoadMtx(const DrawInfo& rInfo); // at 0x68
+
+    virtual void SetAnimationEnable(AnimTransform* pAnimTrans, bool enable,
+                                    bool recursive); // at 0x58
+
+    virtual Material* GetMaterial() const;       // at 0x5C
+    virtual void LoadMtx(const DrawInfo& rInfo); // at 0x60
 
     void AppendChild(Pane* pChild);
-    void PrependChild(Pane* pChild);
-    void RemoveChild(Pane* pChild);
 
     ut::Rect GetPaneRect(const DrawInfo& rInfo) const;
 
@@ -276,20 +270,17 @@ protected:
 
     math::MTX34 mMtx;    // at 0x54
     math::MTX34 mGlbMtx; // at 0x84
-    
-    const ExtUserDataList* mpExtUserDataList; //at 0xB4
 
-    u8 mAlpha;        // at 0xB8
-    u8 mGlbAlpha;     // at 0xB9
-    u8 mBasePosition; // at 0xBA
-    u8 unkBB[0xCF - 0xBB];
-    u8 mFlag;         // at 0xBB
+    char mName[NW4R_LYT_RES_NAME_LEN];          // at 0xB4
+    char mUserData[NW4R_LYT_PANE_USERDATA_LEN]; // at 0xC4
 
-    char mName[NW4R_LYT_RES_NAME_LEN + 1];          // at 0xBC
-    char mUserData[NW4R_LYT_PANE_USERDATA_LEN + 1]; // at 0xCD
+    u8 mBasePosition; // at 0xCC
+    u8 mAlpha;        // at 0xCD
+    u8 mGlbAlpha;     // at 0xCE
+    u8 mFlag;         // at 0xCF
 
-    bool mbUserAllocated; // at 0xD6
-    u8 mPadding;          // at 0xD7
+    bool mbUserAllocated; // at 0xD0
+    u8 mPadding[3];       // at 0xD1
 
 protected:
     void InsertChild(PaneList::Iterator next, Pane* pChild);

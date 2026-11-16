@@ -18,7 +18,7 @@ namespace detail {
  * Utility functions
  *
  ******************************************************************************/
-bool EqualsResName(const char* pLhs, const char* pRhs) {
+bool EqualsPaneName(const char* pLhs, const char* pRhs) {
     return std::strncmp(pLhs, pRhs, NW4R_LYT_RES_NAME_LEN) == 0;
 }
 
@@ -27,11 +27,11 @@ bool EqualsMaterialName(const char* pLhs, const char* pRhs) {
 }
 
 bool TestFileHeader(const res::BinaryFileHeader& rHeader) {
-    return rHeader.byteOrder == NW4R_BYTEORDER_BIG;
+    return rHeader.byteOrder == NW4R_BYTEORDER_BIG && rHeader.version == 8;
 }
 
 bool TestFileHeader(const res::BinaryFileHeader& rHeader, u32 signature) {
-    return GetSignatureInt(rHeader.signature) == signature &&
+    return static_cast<u32>(GetSignatureInt(rHeader.signature)) == signature &&
            TestFileHeader(rHeader);
 }
 
@@ -44,8 +44,9 @@ TexCoordAry::TexCoordAry() : mCap(0), mNum(0), mpData(NULL) {}
 
 void TexCoordAry::Free() {
     if (mpData != NULL) {
-        Layout::DeleteObj(mpData);
+        Layout::FreeMemory(mpData);
         mpData = NULL;
+
         mCap = 0;
         mNum = 0;
     }
@@ -54,11 +55,8 @@ void TexCoordAry::Free() {
 void TexCoordAry::Reserve(u8 num) {
     if (mCap < num) {
         Free();
-
-        //TODO(amber) according to tfp2 this should be NewArray, but it's not?
-        //mpData = Layout::NewArray<TexCoord>(num);
-        void* pMem = Layout::AllocMemory(num * sizeof(TexCoord));
-        mpData = pMem != NULL ? static_cast<TexCoord*>(pMem) : NULL;
+        mpData = static_cast<TexCoord*>(
+            Layout::AllocMemory(sizeof(*mpData) * num));
 
         if (mpData != NULL) {
             mCap = num;
@@ -67,35 +65,34 @@ void TexCoordAry::Reserve(u8 num) {
 }
 
 void TexCoordAry::SetSize(u8 num) {
-    if (mpData != NULL && num <= mCap) {
-        // clang-format off
-        static TexCoord pCoords = {
-            math::VEC2(0.0f, 0.0f),
-            math::VEC2(1.0f, 0.0f),
-            math::VEC2(0.0f, 1.0f),
-            math::VEC2(1.0f, 1.0f)
-        };
-        // clang-format on
+    if (mpData == NULL) {
+        return;
+    }
 
-        for (int j = mNum; j < num; j++) {
-            for (int i = 0; i < VERTEXCOLOR_MAX; i++) {
-                mpData[j][i] = pCoords[i];
-            }
+    if (num > mCap) {
+        return;
+    }
+
+    // clang-format off
+    static TexCoord texCoords = {
+        math::VEC2(0.0f, 0.0f),
+        math::VEC2(1.0f, 0.0f),
+        math::VEC2(0.0f, 1.0f),
+        math::VEC2(1.0f, 1.0f)
+    };
+    // clang-format on
+
+    for (int j = mNum; j < num; j++) {
+        for (int i = 0; i < VERTEXCOLOR_MAX; i++) {
+            mpData[j][i] = texCoords[i];
         }
-
-        mNum = num;
     }
-}
 
-void TexCoordAry::SetCoord(u32 idx, const math::VEC2* coord) {
-    for(int i = 0; i < VERTEXCOLOR_MAX; i++)
-    {
-        mpData[idx][i] = coord[i];
-    }
+    mNum = num;
 }
 
 void TexCoordAry::Copy(const void* pSrc, u8 num) {
-    mNum = ut::Max<u8>(mNum, num);
+    mNum = ut::Max(mNum, num);
     const TexCoord* pSrcCoords = static_cast<const TexCoord*>(pSrc);
 
     for (int j = 0; j < num; j++) {
@@ -103,10 +100,6 @@ void TexCoordAry::Copy(const void* pSrc, u8 num) {
             mpData[j][i] = pSrcCoords[j][i];
         }
     }
-}
-
-//unused
-void DrawLine(const math::VEC2 &pos, const Size &size, ut::Color &color) {
 }
 
 /******************************************************************************
@@ -193,7 +186,7 @@ void DrawQuad(const math::VEC2& rBase, const Size& rSize, u8 num,
                            pCoords[i][VERTEXCOLOR_RT].y);
         }
 
-        GXPosition2f32(rBase.x + rSize.width, rBase.y - rSize.height);
+        GXPosition2f32(rBase.x + rSize.width, rBase.y + rSize.height);
         if (pColors != NULL) {
             GXColor1u32(pColors[VERTEXCOLOR_RB]);
         }
@@ -202,7 +195,7 @@ void DrawQuad(const math::VEC2& rBase, const Size& rSize, u8 num,
                            pCoords[i][VERTEXCOLOR_RB].y);
         }
 
-        GXPosition2f32(rBase.x, rBase.y - rSize.height);
+        GXPosition2f32(rBase.x, rBase.y + rSize.height);
         if (pColors != NULL) {
             GXColor1u32(pColors[VERTEXCOLOR_LB]);
         }
@@ -224,6 +217,81 @@ void DrawQuad(const math::VEC2& rBase, const Size& rSize, u8 num,
     }
 
     DrawQuad(rBase, rSize, num, pCoords, pColors ? colorWork : NULL);
+}
+
+void DrawLine(const math::VEC2& rPos, const Size& rSize, ut::Color color) {
+    GXClearVtxDesc();
+
+    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XY, GX_F32, 0);
+
+    GXSetNumChans(1);
+    GXSetChanCtrl(GX_COLOR0A0, GX_FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL,
+                  GX_DF_NONE, GX_AF_NONE);
+
+    GXSetChanMatColor(GX_COLOR0A0, color);
+    GXSetNumTexGens(0);
+    GXSetNumTevStages(1);
+    GXSetNumIndStages(0);
+
+    GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+    GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
+    GXSetTevDirect(GX_TEVSTAGE0);
+
+    GXSetTevSwapMode(GX_TEVSTAGE0, GX_TEV_SWAP0, GX_TEV_SWAP0);
+    GXSetTevSwapModeTable(GX_TEV_SWAP0, GX_CH_RED, GX_CH_GREEN, GX_CH_BLUE,
+                          GX_CH_ALPHA);
+
+    GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_AND, GX_ALWAYS, 0);
+    GXSetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+
+    GXSetLineWidth(6, GX_TO_ZERO);
+
+    GXBegin(GX_LINESTRIP, GX_VTXFMT0, 5);
+    {
+        GXPosition2f32(rPos.x, rPos.y);
+        GXPosition2f32(rPos.x + rSize.width, rPos.y);
+        GXPosition2f32(rPos.x + rSize.width, rPos.y + rSize.height);
+        GXPosition2f32(rPos.x, rPos.y + rSize.height);
+        GXPosition2f32(rPos.x, rPos.y);
+    }
+    GXEnd();
+}
+
+void InitGXTexObjFromTPL(GXTexObj* pTexObj, TPLPalette* pPalette, u32 id) {
+    // An unbound palette still holds file offsets
+    if (pPalette->descriptorArray < reinterpret_cast<TPLDescriptor*>(0x80000000)) {
+        TPLBind(pPalette);
+    }
+
+    TPLDescriptor* pDesc = TPLGet(pPalette, id);
+
+    GXBool mipMap =
+        pDesc->textureHeader->minLOD != pDesc->textureHeader->maxLOD ? GX_TRUE
+                                                                     : GX_FALSE;
+
+    if (pDesc->CLUTHeader != NULL) {
+        GXInitTexObjCI(pTexObj, pDesc->textureHeader->data,
+                       pDesc->textureHeader->width,
+                       pDesc->textureHeader->height,
+                       static_cast<GXCITexFmt>(pDesc->textureHeader->format),
+                       pDesc->textureHeader->wrapS, pDesc->textureHeader->wrapT,
+                       mipMap, 0);
+
+        GXInitTexObjUserData(pTexObj, pDesc->CLUTHeader);
+    } else {
+        GXInitTexObj(pTexObj, pDesc->textureHeader->data,
+                     pDesc->textureHeader->width, pDesc->textureHeader->height,
+                     static_cast<GXTexFmt>(pDesc->textureHeader->format),
+                     pDesc->textureHeader->wrapS, pDesc->textureHeader->wrapT,
+                     mipMap);
+    }
+
+    GXInitTexObjLOD(pTexObj, pDesc->textureHeader->minFilter,
+                    pDesc->textureHeader->magFilter,
+                    pDesc->textureHeader->minLOD, pDesc->textureHeader->maxLOD,
+                    pDesc->textureHeader->LODBias, GX_FALSE,
+                    pDesc->textureHeader->edgeLODEnable, GX_ANISO_1);
 }
 
 } // namespace detail

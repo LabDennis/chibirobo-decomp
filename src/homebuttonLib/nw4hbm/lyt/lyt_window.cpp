@@ -143,7 +143,7 @@ void GetLBFrameSize(math::VEC2* pPoint, Size* pSize, const math::VEC2& rBase,
                     const Size& rWindowSize,
                     const WindowFrameSize& rFrameSize) {
 
-    *pPoint = math::VEC2(rBase.x, rBase.y - rFrameSize.t);
+    *pPoint = math::VEC2(rBase.x, rBase.y + rFrameSize.t);
 
     pSize->width = rFrameSize.l;
     pSize->height = rWindowSize.height - rFrameSize.t;
@@ -184,7 +184,7 @@ void GetRBFrameSize(math::VEC2* pPoint, Size* pSize, const math::VEC2& rBase,
                     const WindowFrameSize& rFrameSize) {
 
     *pPoint = math::VEC2(rBase.x + rFrameSize.l,
-                         rBase.y - rWindowSize.height + rFrameSize.b);
+                         rBase.y + rWindowSize.height - rFrameSize.b);
 
     pSize->width = rWindowSize.width - rFrameSize.l;
     pSize->height = rFrameSize.b;
@@ -232,88 +232,87 @@ NW4R_UT_RTTI_DEF_DERIVED(Window, Pane);
 Window::Window(const res::Window* pRes, const ResBlockSet& rBlockSet)
     : Pane(pRes) {
 
-    const res::WindowContent* pResContent =
-        detail::ConvertOffsToPtr<res::WindowContent>(pRes, pRes->contentOffset);
-    
-    u8 num = ut::Min<u8>(pResContent->texCoordNum, GX_MAX_TEXCOORD);
-    InitContent(num);
     mContentInflation = pRes->inflation;
 
     const u32* const pMatOffsetTbl = detail::ConvertOffsToPtr<u32>(
-    rBlockSet.pMaterialList, sizeof(res::MaterialList));
+        rBlockSet.pMaterialList, sizeof(res::MaterialList));
+
+    const res::WindowContent* pResContent =
+        detail::ConvertOffsToPtr<res::WindowContent>(pRes, pRes->contentOffset);
 
     for (int i = 0; i < VERTEXCOLOR_MAX; i++) {
         mContent.vtxColors[i] = pResContent->vtxCols[i];
     }
 
-    if (num > 0 && !mContent.texCoordAry.IsEmpty()) {
-        mContent.texCoordAry.Copy(reinterpret_cast<const u8*>(pResContent) +
-                                  sizeof(res::WindowContent),
-                                  num);
+    if (pResContent->texCoordNum > 0) {
+        u8 num = ut::Min<u8>(pResContent->texCoordNum, GX_MAX_TEXCOORD);
+        mContent.texCoordAry.Reserve(num);
+
+        if (!mContent.texCoordAry.IsEmpty()) {
+            mContent.texCoordAry.Copy(&pResContent[1], num);
+        }
     }
 
+    if (void* pMaterialBuf = Layout::AllocMemory(sizeof(Material))) {
+        const res::Material* pResMaterial =
+            detail::ConvertOffsToPtr<res::Material>(
+                rBlockSet.pMaterialList,
+                pMatOffsetTbl[pResContent->materialIdx]);
 
-    const res::Material* const pResMaterial =
-        detail::ConvertOffsToPtr<res::Material>(
-            rBlockSet.pMaterialList,
-            pMatOffsetTbl[pResContent->materialIdx]);
-
-    mpMaterial = Layout::NewObj<Material>(pResMaterial, rBlockSet);
+        mpMaterial = new (pMaterialBuf) Material(pResMaterial, rBlockSet);
+    }
 
     mFrameNum = 0;
     mFrames = NULL;
 
     if (pRes->frameNum > 0) {
-        InitFrame(pRes->frameNum);
+        if ((mFrames = static_cast<Frame*>(
+                 Layout::AllocMemory(sizeof(Frame) * pRes->frameNum)))) {
+            mFrameNum = pRes->frameNum;
 
-        const u32* const pFrmOffsetTbl = detail::ConvertOffsToPtr<u32>(
-            pRes, pRes->frameOffsetTableOffset);
+            const u32* pFrmOffsetTbl = detail::ConvertOffsToPtr<u32>(
+                pRes, pRes->frameOffsetTableOffset);
 
-        for (int i = 0; i < mFrameNum; i++) {
-            const res::WindowFrame* const pResFrame =
-                detail::ConvertOffsToPtr<res::WindowFrame>(
-                    pRes, pFrmOffsetTbl[i]);
+            for (int i = 0; i < mFrameNum; i++) {
+                const res::WindowFrame* pResFrame =
+                    detail::ConvertOffsToPtr<res::WindowFrame>(
+                        pRes, pFrmOffsetTbl[i]);
 
-            mFrames[i].textureFlip = pResFrame->textureFlip;
+                mFrames[i].textureFlip = pResFrame->textureFlip;
+                mFrames[i].pMaterial = NULL;
 
-            const res::Material* const pResMaterial =
-                detail::ConvertOffsToPtr<res::Material>(
-                    rBlockSet.pMaterialList,
-                    pMatOffsetTbl[pResFrame->materialIdx]);
+                if (void* pMaterialBuf =
+                        Layout::AllocMemory(sizeof(Material))) {
+                    const res::Material* pResMaterial =
+                        detail::ConvertOffsToPtr<res::Material>(
+                            rBlockSet.pMaterialList,
+                            pMatOffsetTbl[pResFrame->materialIdx]);
 
-            mFrames[i].pMaterial = Layout::NewObj<Material>(pResMaterial, rBlockSet);
+                    mFrames[i].pMaterial =
+                        new (pMaterialBuf) Material(pResMaterial, rBlockSet);
+                }
+            }
         }
     }
 }
 
-void Window::InitContent(u8 texNum) {
-    if (texNum > 0) {
-        ReserveTexCoord(texNum);
-    }
-}
-
-void Window::InitFrame(u8 frameNum) {
-    mFrameNum = 0;
-    mFrames = Layout::NewArray<Frame>(frameNum);
-    
-    if (mFrames != NULL) {
-        mFrameNum = frameNum;
-    }
-}
-
 Window::~Window() {
-    Layout::DeleteArray(mFrames, mFrameNum);
+    if (mFrames != NULL) {
+        for (int i = 0; i < mFrameNum; i++) {
+            mFrames[i].pMaterial->~Material();
+            Layout::FreeMemory(mFrames[i].pMaterial);
+        }
+
+        Layout::FreeMemory(mFrames);
+    }
 
     if (mpMaterial != NULL && !mpMaterial->IsUserAllocated()) {
-        Layout::DeleteObj(mpMaterial);
+        mpMaterial->~Material();
+        Layout::FreeMemory(mpMaterial);
         mpMaterial = NULL;
     }
 
     mContent.texCoordAry.Free();
-}
-
-void Window::ReserveTexCoord(u8 num) {
-    mContent.texCoordAry.Reserve(num);
 }
 
 Material* Window::FindMaterialByName(const char* pName, bool recursive) {
@@ -333,7 +332,7 @@ Material* Window::FindMaterialByName(const char* pName, bool recursive) {
 
     if (recursive) {
         NW4R_UT_LINKLIST_FOREACH (it, mChildList, {
-            Material* pMaterial = it->FindMaterialByName(pName, recursive);
+            Material* pMaterial = it->FindMaterialByName(pName, true);
             
             if (pMaterial != NULL) {
                 return pMaterial;
@@ -344,7 +343,7 @@ Material* Window::FindMaterialByName(const char* pName, bool recursive) {
     return NULL;
 }
 
-AnimationLink* Window::FindAnimationLinkSelf(AnimTransform* pAnimTrans) {
+AnimationLink* Window::FindAnimationLink(AnimTransform* pAnimTrans) {
     AnimationLink* pAnimLink = Pane::FindAnimationLink(pAnimTrans);
 
     if (pAnimLink != NULL) {
@@ -443,7 +442,7 @@ void Window::DrawContent(const math::VEC2& rBase,
     // clang-format off
     detail::DrawQuad(
         math::VEC2(rBase.x + rFrameSize.l - mContentInflation.l,
-                   rBase.y - rFrameSize.t + mContentInflation.t),
+                   rBase.y + rFrameSize.t - mContentInflation.t),
 
         Size(mSize.width - rFrameSize.l + mContentInflation.l - rFrameSize.r + mContentInflation.r,
              mSize.height - rFrameSize.t + mContentInflation.t - rFrameSize.b + mContentInflation.b),
@@ -456,20 +455,19 @@ void Window::DrawContent(const math::VEC2& rBase,
     // clang-format on
 }
 
+// NONMATCHING: 98.8 %. Register allocation in the first (top-left) quad only:
+// retail keeps the white vertex colour in r0 and the flip table bytes in
+// r5/r8/r10, this code uses r5 and r9/r6/r0. Same instructions otherwise.
 void Window::DrawFrame(const math::VEC2& rBase, const Frame& rFrame,
                        const WindowFrameSize& rFrameSize, u8 alpha) {
-
-    if (rFrame.pMaterial->GetTextureNum() == 0) {
-        return;
-    }
 
     bool useVtxColor = rFrame.pMaterial->SetupGX(
         detail::IsModulateVertexColor(NULL, alpha), alpha);
 
     detail::SetVertexFormat(useVtxColor, 1);
 
-    Size texSize = detail::GetTextureSize(rFrame.pMaterial, 0);
-    ut::Color vtxColors[VERTEXCOLOR_MAX];
+    const Size texSize = detail::GetTextureSize(rFrame.pMaterial, 0);
+    const ut::Color vtxColors[VERTEXCOLOR_MAX];
     detail::TexCoord texCoords[1];
 
     math::VEC2 point;
@@ -502,7 +500,7 @@ void Window::DrawFrame4(const math::VEC2& rBase, const Frame* pFrames,
     bool modVtxColor = detail::IsModulateVertexColor(NULL, alpha);
 
 #define DRAW_FRAME(FRAME)                                                      \
-    if (pFrames[WINDOWFRAME_##FRAME].pMaterial->GetTextureNum() > 0) {         \
+    {                                                                          \
         bool useVtxColor = pFrames[WINDOWFRAME_##FRAME].pMaterial->SetupGX(    \
             modVtxColor, alpha);                                               \
                                                                                \
@@ -537,7 +535,7 @@ void Window::DrawFrame8(const math::VEC2& rBase, const Frame* pFrames,
     bool modVtxColor = detail::IsModulateVertexColor(NULL, alpha);
 
 #define DRAW_FRAME_EX(FRAME, TEXCOORD, SIZE, POINT)                            \
-    if (pFrames[WINDOWFRAME_##FRAME].pMaterial->GetTextureNum() > 0) {         \
+    {                                                                          \
         bool useVtxColor = pFrames[WINDOWFRAME_##FRAME].pMaterial->SetupGX(    \
             modVtxColor, alpha);                                               \
                                                                                \
@@ -577,31 +575,31 @@ void Window::DrawFrame8(const math::VEC2& rBase, const Frame* pFrames,
                Size(rFrameSize.r,
                     mSize.height - rFrameSize.t - rFrameSize.b),
                math::VEC2(rBase.x + mSize.width - rFrameSize.r,
-                          rBase.y - rFrameSize.t));
+                          rBase.y + rFrameSize.t));
 
     DRAW_FRAME(RB,
                Size(rFrameSize.r,
                     rFrameSize.b),
                math::VEC2(rBase.x + mSize.width - rFrameSize.r,
-                          rBase.y - mSize.height + rFrameSize.b));
+                          rBase.y + mSize.height - rFrameSize.b));
 
     DRAW_FRAME_EX(B, RB,
                Size(mSize.width - rFrameSize.l - rFrameSize.r,
                     rFrameSize.b),
                math::VEC2(rBase.x + rFrameSize.l,
-                          rBase.y - mSize.height + rFrameSize.b));
+                          rBase.y + mSize.height - rFrameSize.b));
 
     DRAW_FRAME(LB,
                Size(rFrameSize.l,
                     rFrameSize.b),
                math::VEC2(rBase.x,
-                          rBase.y - mSize.height + rFrameSize.b));
+                          rBase.y + mSize.height - rFrameSize.b));
 
     DRAW_FRAME_EX(L, LB,
                Size(rFrameSize.l,
                     mSize.height - rFrameSize.t - rFrameSize.b),
                math::VEC2(rBase.x,
-                          rBase.y - rFrameSize.t));
+                          rBase.y + rFrameSize.t));
     // clang-format on
 
 #undef DRAW_FRAME
@@ -643,28 +641,16 @@ WindowFrameSize Window::GetFrameSize(u8 frameNum, const Frame* pFrames) {
     return frameSize;
 }
 
-u8 Window::GetMaterialNum() const {
-    return mFrameNum + 1;
-}
-
-Material* Window::GetMaterial(u32 index) const {
-    if(index == 0) {
-        return GetContentMaterial();
-    }
-
-    return GetFrameMaterial(index - 1);
-}
-
-Material* Window::GetContentMaterial() const {
-    return GetMaterial();
-}
-
 Material* Window::GetFrameMaterial(u32 idx) const {
     if (idx >= mFrameNum) {
         return NULL;
     }
 
     return mFrames[idx].pMaterial;
+}
+
+Material* Window::GetContentMaterial() const {
+    return GetMaterial();
 }
 
 } // namespace lyt

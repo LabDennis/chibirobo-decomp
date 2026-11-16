@@ -2,7 +2,8 @@
 #define RVL_SDK_HBMMIX_H
 
 #include <revolution/ax.h>
-#include <revolution/types.h>
+#include <revolution/ax_voice.h>
+#include <types.h>
 
 
 typedef int HBMMIXIndex;

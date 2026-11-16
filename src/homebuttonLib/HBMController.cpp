@@ -16,22 +16,18 @@ Controller* Controller::sThis[WPAD_MAX_CONTROLLERS];
 
 void Controller::wpadConnectCallback(s32 chan, s32 result) {
     switch (result) {
-    case WPAD_ERR_OK: {
+    case WPAD_ERR_NONE: {
         if (!sThis[chan]->mCallbackFlag) {
-            sThis[chan]->mOldExtensionCallback =
-                WPADSetExtensionCallback(chan, &wpadExtensionCallback);
-
+            WPADSetExtensionCallback(chan, &wpadExtensionCallback);
             sThis[chan]->mCallbackFlag = true;
         }
 
-        WPADControlSpeaker(chan, WPAD_SPEAKER_OFF, NULL);
+        WPADControlSpeaker(chan, WPAD_SPEAKER_DISABLE, NULL);
         break;
     }
 
     case WPAD_ERR_NO_CONTROLLER: {
         WPADSetExtensionCallback(chan, sThis[chan]->mOldExtensionCallback);
-        sThis[chan]->mOldExtensionCallback = NULL;
-
         sThis[chan]->mCallbackFlag = false;
         sThis[chan]->mCheckSoundTimeFlag = false;
         sThis[chan]->mCheckSoundIntervalFlag = false;
@@ -39,7 +35,8 @@ void Controller::wpadConnectCallback(s32 chan, s32 result) {
     }
     }
 
-    if (sThis[chan]->mOldConnectCallback != NULL) {
+    if (sThis[chan]->mOldConnectCallback != NULL &&
+        sThis[chan]->mOldConnectCallback != &wpadConnectCallback) {
         sThis[chan]->mOldConnectCallback(chan, result);
     }
 }
@@ -90,18 +87,20 @@ Controller::~Controller() {
 }
 
 void Controller::initCallback() {
-    s32 type;
+    u32 type;
 
+    WPADSetCallbackByKPAD(FALSE);
     mOldConnectCallback =
         WPADSetConnectCallback(mHBController.chan, &wpadConnectCallback);
+    WPADSetCallbackByKPAD(TRUE);
+
+    mOldExtensionCallback =
+        WPADSetExtensionCallback(mHBController.chan, &wpadExtensionCallback);
 
     mRumbleFlag = true;
 
     switch (WPADProbe(mHBController.chan, &type)) {
-    case WPAD_ERR_OK: {
-        mOldExtensionCallback = WPADSetExtensionCallback(
-            mHBController.chan, &wpadExtensionCallback);
-
+    case WPAD_ERR_NONE: {
         mCallbackFlag = true;
         break;
     }
@@ -114,7 +113,11 @@ void Controller::initCallback() {
 }
 
 void Controller::clearCallback() {
+    WPADControlSpeaker(mHBController.chan, WPAD_SPEAKER_ENABLE, NULL);
+
+    WPADSetCallbackByKPAD(FALSE);
     WPADSetConnectCallback(mHBController.chan, mOldConnectCallback);
+    WPADSetCallbackByKPAD(TRUE);
     mOldConnectCallback = NULL;
 
     WPADSetExtensionCallback(mHBController.chan, mOldExtensionCallback);
@@ -148,21 +151,21 @@ void Controller::setKpad(const HBMKPadData* pPadData, bool updatePos) {
         u32 r = pPadData->kpad->ex_status.cl.release;
 
         // clang-format off
-		if (h & WPAD_BUTTON_CL_A)     mHBController.hold    |= WPAD_BUTTON_A;
-		if (t & WPAD_BUTTON_CL_A)     mHBController.trig    |= WPAD_BUTTON_A;
-		if (r & WPAD_BUTTON_CL_A)     mHBController.release |= WPAD_BUTTON_A;
+		if (h & WPAD_CL_BUTTON_A)     mHBController.hold    |= WPAD_BUTTON_A;
+		if (t & WPAD_CL_BUTTON_A)     mHBController.trig    |= WPAD_BUTTON_A;
+		if (r & WPAD_CL_BUTTON_A)     mHBController.release |= WPAD_BUTTON_A;
 
-		if (h & WPAD_BUTTON_CL_PLUS)  mHBController.hold    |= WPAD_BUTTON_PLUS;
-		if (t & WPAD_BUTTON_CL_PLUS)  mHBController.trig    |= WPAD_BUTTON_PLUS;
-		if (r & WPAD_BUTTON_CL_PLUS)  mHBController.release |= WPAD_BUTTON_PLUS;
+		if (h & WPAD_CL_BUTTON_PLUS)  mHBController.hold    |= WPAD_BUTTON_PLUS;
+		if (t & WPAD_CL_BUTTON_PLUS)  mHBController.trig    |= WPAD_BUTTON_PLUS;
+		if (r & WPAD_CL_BUTTON_PLUS)  mHBController.release |= WPAD_BUTTON_PLUS;
 
-		if (h & WPAD_BUTTON_CL_MINUS) mHBController.hold    |= WPAD_BUTTON_MINUS;
-		if (t & WPAD_BUTTON_CL_MINUS) mHBController.trig    |= WPAD_BUTTON_MINUS;
-		if (r & WPAD_BUTTON_CL_MINUS) mHBController.release |= WPAD_BUTTON_MINUS;
+		if (h & WPAD_CL_BUTTON_MINUS) mHBController.hold    |= WPAD_BUTTON_MINUS;
+		if (t & WPAD_CL_BUTTON_MINUS) mHBController.trig    |= WPAD_BUTTON_MINUS;
+		if (r & WPAD_CL_BUTTON_MINUS) mHBController.release |= WPAD_BUTTON_MINUS;
 
-		if (h & WPAD_BUTTON_CL_HOME)  mHBController.hold    |= WPAD_BUTTON_HOME;
-		if (t & WPAD_BUTTON_CL_HOME)  mHBController.trig    |= WPAD_BUTTON_HOME;
-		if (r & WPAD_BUTTON_CL_HOME)  mHBController.release |= WPAD_BUTTON_HOME;
+		if (h & WPAD_CL_BUTTON_HOME)  mHBController.hold    |= WPAD_BUTTON_HOME;
+		if (t & WPAD_CL_BUTTON_HOME)  mHBController.trig    |= WPAD_BUTTON_HOME;
+		if (r & WPAD_CL_BUTTON_HOME)  mHBController.release |= WPAD_BUTTON_HOME;
         // clang-format on
     }
 }
@@ -197,14 +200,12 @@ f32 Controller::getSpeakerVol() const {
 }
 
 
-//void Controller::playSound(nw4hbm::snd::SoundArchivePlayer* /* pPlayer */,
-/*
-                           int id) {
+void Controller::playSound(int id) {
     if (mSoundOffFlag) {
         return;
     }
 
-    getRemoteSpk()->Play(getChan(), id, getSpeakerVol() * HBM_MAX_VOLUME);
+    getRemoteSpk()->Play(getChan(), id, getSpeakerVol() * 10.0f);
 
     if (WPADIsSpeakerEnabled(getChan())) {
         if (!mCheckSoundTimeFlag) {
@@ -215,7 +216,6 @@ f32 Controller::getSpeakerVol() const {
         mCheckSoundIntervalFlag = false;
     }
 }
-*/
 
 bool Controller::isPlayingSound() const {
     return getRemoteSpk()->isPlaying(getChan());
@@ -238,6 +238,44 @@ void Controller::initSound() {
     mCheckSoundIntervalFlag = false;
 }
 
+void Controller::updateSound() {
+    int chan = getChan();
+
+    if (!isPlayingSound()) {
+        if (mCheckSoundTimeFlag) {
+            if (!mCheckSoundIntervalFlag) {
+                mStopSoundTime = OSGetTime();
+                mCheckSoundIntervalFlag = true;
+            } else {
+                OSTime time = OSGetTime();
+                if (OSTicksToMilliseconds(static_cast<u32>(time) - static_cast<u32>(mStopSoundTime)) >= 1000) {
+                    mCheckSoundTimeFlag = false;
+                    mCheckSoundIntervalFlag = false;
+                }
+            }
+        }
+
+        return;
+    } else {
+        if (mCheckSoundTimeFlag) {
+            mCheckSoundIntervalFlag = false;
+
+            OSTime time = OSGetTime();
+            if (OSTicksToMilliseconds(static_cast<u32>(time) - static_cast<u32>(mPlaySoundTime)) >= 480000) {
+                mCheckSoundTimeFlag = false;
+                mCheckSoundIntervalFlag = false;
+                soundOff(1000);
+                return;
+            }
+        }
+
+        // Average radio sensitivity is 80 (see __wpadCalcRadioQuality)
+        if (!mSoundOffFlag && WPADGetRadioSensitivity(chan) <= 85) {
+            soundOff(1000);
+        }
+    }
+}
+
 void Controller::soundOff(int msec) {
     int chan = getChan();
 
@@ -249,7 +287,7 @@ void Controller::soundOff(int msec) {
 
     OSSetAlarmUserData(&sAlarmSoundOff[chan], reinterpret_cast<void*>(chan));
     OSCancelAlarm(&sAlarmSoundOff[chan]);
-    OSSetAlarm(&sAlarmSoundOff[chan], OS_MSEC_TO_TICKS(msec), &soundOnCallback);
+    OSSetAlarm(&sAlarmSoundOff[chan], OSMillisecondsToTicks(msec), &soundOnCallback);
 
     mSoundOffFlag = true;
 }
@@ -273,7 +311,7 @@ HBController* Controller::getController() {
 }
 
 void Controller::startMotor() {
-    if (getChan() < WPAD_MAX_CONTROLLERS && !isPlayingSound() && mRumbleFlag) {
+    if (getChan() < WPAD_MAX_CONTROLLERS && mRumbleFlag && !isPlayingSound()) {
         setRumble();
         WPADControlMotor(getChan(), WPAD_MOTOR_RUMBLE);
     }
@@ -288,18 +326,18 @@ void Controller::stopMotor() {
 
 s32 Controller::getInfoAsync(WPADInfo* pInfo) {
     if (getChan() >= WPAD_MAX_CONTROLLERS) {
-        return WPAD_ERR_COMMUNICATION_ERROR;
+        return WPAD_ERR_BUSY;
     }
 
     if (isPlayingSound() || isRumbling()) {
-        return WPAD_ERR_COMMUNICATION_ERROR;
+        return WPAD_ERR_BUSY;
     }
 
     return WPADGetInfoAsync(getChan(), pInfo, &ControllerCallback);
 }
 
 void Controller::ControllerCallback(s32 chan, s32 result) {
-    if (result == WPAD_ERR_OK && chan < WPAD_MAX_CONTROLLERS) {
+    if (result == WPAD_ERR_NONE && chan < WPAD_MAX_CONTROLLERS) {
         sBatteryFlag[chan] = true;
     }
 }

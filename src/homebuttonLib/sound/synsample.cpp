@@ -1,10 +1,10 @@
-#include "synprivate.h"
+#include <sound/synprivate.h>
 
 
-#include <revolution/types.h>
+#include <types.h>
 
-// #include <revolution/ax.h>
-// #include <revolution/os.h>
+#include <revolution/ax.h>
+#include <revolution/os.h>
 
 
 
@@ -101,10 +101,10 @@ static void __HBMSYNSetupAdpcm(HBMSYNVOICE *voice)
 		sampleEnd = sampleStart
 		          + __HBMSYNGetNibbleAddress(voice->region->loopStart
 		                                     + voice->region->loopLength - 1);
+		ASSERT((sampleStart & 0x000f) == 0);
+		ASSERT((sampleLoop & 0x000f) > 1);
+		ASSERT((sampleEnd & 0x000f) > 1);
 
-		ASSERTLINE(64, (sampleStart & 0x000f) == 0);
-		ASSERTLINE(65, (sampleLoop & 0x000f) > 1);
-		ASSERTLINE(66, (sampleEnd & 0x000f) > 1);
 
 		sampleStart += sizeof(u16);
 		p = (u32 *)&axvpb->pb.addr;
@@ -120,12 +120,12 @@ static void __HBMSYNSetupAdpcm(HBMSYNVOICE *voice)
 		axvpb->pb.adpcmLoop.loop_yn2		= *adpcmloop;
 
 		axvpb->sync &=
-			~(AX_VPB_SYNC_FLAG_ADDR_LOOP_FLAG | AX_VPB_SYNC_FLAG_ADDR_LOOP_ADDR
-		      | AX_VPB_SYNC_FLAG_ADDR_END_ADDR
-		      | AX_VPB_SYNC_FLAG_ADDR_CURRENT_ADDR);
+			~(AX_PBSYNC_LOOP_FLAG | AX_PBSYNC_LOOP_ADDR
+		      | AX_PBSYNC_END_ADDR
+		      | AX_PBSYNC_CURR_ADDR);
 
-		axvpb->sync |= AX_VPB_SYNC_FLAG_ADDR | AX_VPB_SYNC_FLAG_ADPCM
-		             | AX_VPB_SYNC_FLAG_ADPCM_LOOP;
+		axvpb->sync |= AX_PBSYNC_ADDR | AX_PBSYNC_ADPCM
+		             | AX_PBSYNC_ADPCM_LOOP;
 	}
 	else
 	{
@@ -142,9 +142,9 @@ static void __HBMSYNSetupAdpcm(HBMSYNVOICE *voice)
 		sampleLoop = voice->synth->samplesBaseNibble + voice->sample->offset;
 		sampleEnd =
 			sampleStart + __HBMSYNGetNibbleAddress(voice->sample->length - 1);
+		ASSERT((sampleStart & 0x000f) == 0);
+		ASSERT((sampleEnd & 0x000f) > 1);
 
-		ASSERTLINE(120, (sampleStart & 0x000f) == 0);
-		ASSERTLINE(121, (sampleEnd & 0x000f) > 1);
 
 		sampleStart += sizeof(u16);
 		p = (u32 *)&axvpb->pb.addr;
@@ -153,11 +153,11 @@ static void __HBMSYNSetupAdpcm(HBMSYNVOICE *voice)
 		                   adpcm);
 
 		axvpb->sync &=
-			~(AX_VPB_SYNC_FLAG_ADDR_LOOP_FLAG | AX_VPB_SYNC_FLAG_ADDR_LOOP_ADDR
-		      | AX_VPB_SYNC_FLAG_ADDR_END_ADDR
-		      | AX_VPB_SYNC_FLAG_ADDR_CURRENT_ADDR);
+			~(AX_PBSYNC_LOOP_FLAG | AX_PBSYNC_LOOP_ADDR
+		      | AX_PBSYNC_END_ADDR
+		      | AX_PBSYNC_CURR_ADDR);
 
-		axvpb->sync |= AX_VPB_SYNC_FLAG_ADDR | AX_VPB_SYNC_FLAG_ADPCM;
+		axvpb->sync |= AX_PBSYNC_ADDR | AX_PBSYNC_ADPCM;
 	}
 }
 
@@ -201,10 +201,10 @@ static void __HBMSYNSetupPcm16(HBMSYNVOICE *voice)
 	}
 
 	axvpb->sync &= ~(
-		AX_VPB_SYNC_FLAG_ADDR_LOOP_FLAG | AX_VPB_SYNC_FLAG_ADDR_LOOP_ADDR
-		| AX_VPB_SYNC_FLAG_ADDR_END_ADDR | AX_VPB_SYNC_FLAG_ADDR_CURRENT_ADDR);
+		AX_PBSYNC_LOOP_FLAG | AX_PBSYNC_LOOP_ADDR
+		| AX_PBSYNC_END_ADDR | AX_PBSYNC_CURR_ADDR);
 
-	axvpb->sync |= AX_VPB_SYNC_FLAG_ADDR | AX_VPB_SYNC_FLAG_ADPCM;
+	axvpb->sync |= AX_PBSYNC_ADDR | AX_PBSYNC_ADPCM;
 }
 
 static void __HBMSYNSetupPcm8(HBMSYNVOICE *voice)
@@ -247,15 +247,15 @@ static void __HBMSYNSetupPcm8(HBMSYNVOICE *voice)
 	}
 
 	axvpb->sync &= ~(
-		AX_VPB_SYNC_FLAG_ADDR_LOOP_FLAG | AX_VPB_SYNC_FLAG_ADDR_LOOP_ADDR
-		| AX_VPB_SYNC_FLAG_ADDR_END_ADDR | AX_VPB_SYNC_FLAG_ADDR_CURRENT_ADDR);
+		AX_PBSYNC_LOOP_FLAG | AX_PBSYNC_LOOP_ADDR
+		| AX_PBSYNC_END_ADDR | AX_PBSYNC_CURR_ADDR);
 
-	axvpb->sync |= AX_VPB_SYNC_FLAG_ADDR | AX_VPB_SYNC_FLAG_ADPCM;
+	axvpb->sync |= AX_PBSYNC_ADDR | AX_PBSYNC_ADPCM;
 }
 
 void __HBMSYNSetupSample(HBMSYNVOICE *voice)
 {
-	ASSERTLINE(346, voice);
+	ASSERT(voice);
 
 	switch (voice->sample->format)
 	{
@@ -272,7 +272,7 @@ void __HBMSYNSetupSample(HBMSYNVOICE *voice)
 		break;
 
 	default:
-		OSAssertMessage_Line(370, FALSE, "unknown sample format\n");
+		ASSERTMSG(FALSE, "unknown sample format\n");
 		break;
 	}
 }

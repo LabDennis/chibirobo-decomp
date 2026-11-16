@@ -1,7 +1,7 @@
 #ifndef RVL_SDK_HBMSYN_H
 #define RVL_SDK_HBMSYN_H
 
-#include <revolution/types.h>
+#include <types.h>
 
 #define HBMSYN_NUM_MIDI_CHANNELS 16
 #define HBMSYN_NUM_MIDI_NOTES 128

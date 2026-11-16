@@ -1,13 +1,12 @@
-#include "mix.h"
+#include <sound/mix.h>
 
 
-#include <string>
+#include <cstring>
 
-#include <revolution/types.h>
+#include <types.h>
 
-// #include <revolution/ax.h>
-// #include <revolution/os.h>
-// #include <revolution/os/OSInterrupt.h>
+#include <revolution/ax.h>
+#include <revolution/os.h>
 
 
 
@@ -221,8 +220,8 @@ static BOOL __init;
 static void __HBMMIXSetPan(HBMMIXChannel *channel)
 {
 	int pan, span, ipan, ispan;
+	ASSERT((channel->pan <= 127) && (channel->pan >= 0));
 
-	ASSERTLINE(211, (channel->pan <= 127) && (channel->pan >= 0));
 
 	pan = channel->pan;
 	ipan = 127 - pan;
@@ -302,8 +301,8 @@ static u16 __HBMMIXGetVolume(int db_)
 void HBMMIXInit(void)
 {
 	int i;
+	ASSERT(AXIsInit());
 
-	ASSERTLINE(332, AXIsInit());
 
 	if (AXIsInit() && !__init)
 	{
@@ -335,7 +334,7 @@ void HBMMIXQuit(void)
 
 void HBMMIXSetSoundMode(HBMMIXSoundMode mode)
 {
-	ASSERTLINE(397, (mode == HBMMIX_SOUND_MODE_MONO)
+	ASSERT((mode == HBMMIX_SOUND_MODE_MONO)
 	                     || (mode == HBMMIX_SOUND_MODE_STEREO)
 	                     || (mode == HBMMIX_SOUND_MODE_DPL2));
 
@@ -353,8 +352,8 @@ void HBMMIXInitChannel(AXVPB *axvpb, int input, int auxA, int pan, int fader)
 	HBMMIXChannel *c;
 	u32 mixerCtrl;
 	u16 *p;
+	ASSERT(axvpb);
 
-	ASSERTLINE(449, axvpb);
 
 	HBMMIXIndex index = HBMGetIndex(axvpb->index);
 	c = &__HBMMIXChannel[index];
@@ -428,54 +427,82 @@ void HBMMIXInitChannel(AXVPB *axvpb, int input, int auxA, int pan, int fader)
 
 	p = (u16 *)&axvpb->pb.mix;
 
-#define DO_THING_(src_, flag_)						\
-	do												\
-	{												\
-		if ((*p++ = c->src_))						\
-			mixerCtrl |= AX_MIXER_CTRL_ ## flag_;	\
-													\
-		*p++ = 0;									\
-	} while (0)
+	if ((*p++ = c->vL))
+		mixerCtrl |= AX_MIXER_CTRL_L;
 
-#define DO_THING_LR_(srcInfix_, flagInfix_)	\
-	DO_THING_(v ## srcInfix_ ## L, flagInfix_ ## L);	\
-	DO_THING_(v ## srcInfix_ ## R, flagInfix_ ## R)
+	*p++ = 0;
 
-	DO_THING_LR_( ,   );
-	DO_THING_LR_(A, A_);
-	DO_THING_LR_(B, B_);
-	DO_THING_LR_(C, C_);
+	if ((*p++ = c->vR))
+		mixerCtrl |= AX_MIXER_CTRL_R;
 
-#undef DO_THING_LR_
+	*p++ = 0;
 
-#define DO_THING_S_(srcInfix_, flagInfix_)	\
-	DO_THING_(v ## srcInfix_ ## S, flagInfix_ ## S)
+	if ((*p++ = c->vAL))
+		mixerCtrl |= AX_MIXER_CTRL_A_L;
 
-	DO_THING_S_( ,   );
-	DO_THING_S_(A, A_);
-	DO_THING_S_(B, B_);
-	DO_THING_S_(C, C_);
+	*p++ = 0;
 
-#undef DO_THING_S_
+	if ((*p++ = c->vAR))
+		mixerCtrl |= AX_MIXER_CTRL_A_R;
 
-#undef DO_THING_
+	*p++ = 0;
+
+	if ((*p++ = c->vBL))
+		mixerCtrl |= AX_MIXER_CTRL_B_L;
+
+	*p++ = 0;
+
+	if ((*p++ = c->vBR))
+		mixerCtrl |= AX_MIXER_CTRL_B_R;
+
+	*p++ = 0;
+
+	if ((*p++ = c->vCL))
+		mixerCtrl |= AX_MIXER_CTRL_C_L;
+
+	*p++ = 0;
+
+	if ((*p++ = c->vCR))
+		mixerCtrl |= AX_MIXER_CTRL_C_R;
+
+	*p++ = 0;
+
+	if ((*p++ = c->vS))
+		mixerCtrl |= AX_MIXER_CTRL_S;
+
+	*p++ = 0;
+
+	if ((*p++ = c->vAS))
+		mixerCtrl |= AX_MIXER_CTRL_A_S;
+
+	*p++ = 0;
+
+	if ((*p++ = c->vBS))
+		mixerCtrl |= AX_MIXER_CTRL_B_S;
+
+	*p++ = 0;
+
+	if ((*p++ = c->vCS))
+		mixerCtrl |= AX_MIXER_CTRL_C_S;
+
+	*p++ = 0;
 
 	axvpb->pb.mixerCtrl = mixerCtrl;
-	axvpb->sync |= AX_VPB_SYNC_FLAG_MIXER_CTRL | AX_VPB_SYNC_FLAG_MIX
-	             | AX_VPB_SYNC_FLAG_VE;
+	axvpb->sync |= AX_PBSYNC_MIXER_CTRL | AX_PBSYNC_MIX
+	             | AX_PBSYNC_VE;
 
 	p = (u16 *)&axvpb->pb.rmtMix;
 	memset(p, 0, sizeof axvpb->pb.rmtMix);
 
 	axvpb->pb.rmtMixerCtrl = 0;
-	axvpb->sync |= AX_VPB_SYNC_FLAG_RMT_MIXER_CTRL | AX_VPB_SYNC_FLAG_RMT_MIX;
+	axvpb->sync |= AX_PBSYNC_RMT_MIXER_CTRL | AX_PBSYNC_RMTMIX;
 
 	OSRestoreInterrupts(intrStatus);
 }
 
 void HBMMIXReleaseChannel(AXVPB *axvpb)
 {
-	ASSERTLINE(590, axvpb);
+	ASSERT(axvpb);
 
 	int index = HBMGetIndex(axvpb->index);
 	__HBMMIXChannel[index].axvpb = NULL;
@@ -638,49 +665,88 @@ void HBMMIXUpdateSettings(void)
 			{
 				axvpb->pb.ve.currentVolume = c->v;
 				axvpb->pb.ve.currentDelta = (c->v1 - c->v) / 96;
-				axvpb->sync |= AX_VPB_SYNC_FLAG_VE;
+				axvpb->sync |= AX_PBSYNC_VE;
 			}
 
 			if (setNewMixLevel)
 			{
 				u16 *p = (u16 *)&axvpb->pb.mix;
 
-#define DO_THING_(src_, flag1_, flag2_)				\
-	do												\
-	{												\
-		if ((*p++ = c->src_))						\
-			mixerCtrl |= AX_MIXER_CTRL_ ## flag1_;	\
-													\
-		if ((*p++ = (c->src_##1 - c->src_) / 96))	\
-			mixerCtrl |= AX_MIXER_CTRL_ ## flag2_;	\
-	} while (0)
+				if ((*p++ = c->vL))
+					mixerCtrl |= AX_MIXER_CTRL_L;
 
-#define DO_THING_LR_(srcInfix_, flagInfix_)	\
-	DO_THING_(v ## srcInfix_ ## L, flagInfix_ ## L, flagInfix_ ## DELTA);	\
-	DO_THING_(v ## srcInfix_ ## R, flagInfix_ ## R, flagInfix_ ## DELTA)
+				if ((*p++ = (c->vL1 - c->vL) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_DELTA;
 
-				DO_THING_LR_( ,   );
-				DO_THING_LR_(A, A_);
-				DO_THING_LR_(B, B_);
-				DO_THING_LR_(C, C_);
+				if ((*p++ = c->vR))
+					mixerCtrl |= AX_MIXER_CTRL_R;
 
-#undef DO_THING_LR_
+				if ((*p++ = (c->vR1 - c->vR) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_DELTA;
 
-#define DO_THING_S_(srcInfix_, flagInfix_)	\
-	DO_THING_(v ## srcInfix_ ## S, flagInfix_ ## S, flagInfix_ ## DELTA_S)
+				if ((*p++ = c->vAL))
+					mixerCtrl |= AX_MIXER_CTRL_A_L;
 
-				DO_THING_S_( ,   );
-				DO_THING_S_(A, A_);
-				DO_THING_S_(B, B_);
-				DO_THING_S_(C, C_);
+				if ((*p++ = (c->vAL1 - c->vAL) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_A_DELTA;
 
-#undef DO_THING_S_
+				if ((*p++ = c->vAR))
+					mixerCtrl |= AX_MIXER_CTRL_A_R;
 
-#undef DO_THING_
+				if ((*p++ = (c->vAR1 - c->vAR) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_A_DELTA;
+
+				if ((*p++ = c->vBL))
+					mixerCtrl |= AX_MIXER_CTRL_B_L;
+
+				if ((*p++ = (c->vBL1 - c->vBL) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_B_DELTA;
+
+				if ((*p++ = c->vBR))
+					mixerCtrl |= AX_MIXER_CTRL_B_R;
+
+				if ((*p++ = (c->vBR1 - c->vBR) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_B_DELTA;
+
+				if ((*p++ = c->vCL))
+					mixerCtrl |= AX_MIXER_CTRL_C_L;
+
+				if ((*p++ = (c->vCL1 - c->vCL) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_C_DELTA;
+
+				if ((*p++ = c->vCR))
+					mixerCtrl |= AX_MIXER_CTRL_C_R;
+
+				if ((*p++ = (c->vCR1 - c->vCR) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_C_DELTA;
+
+				if ((*p++ = c->vS))
+					mixerCtrl |= AX_MIXER_CTRL_S;
+
+				if ((*p++ = (c->vS1 - c->vS) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_DELTA_S;
+
+				if ((*p++ = c->vAS))
+					mixerCtrl |= AX_MIXER_CTRL_A_S;
+
+				if ((*p++ = (c->vAS1 - c->vAS) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_A_DELTA_S;
+
+				if ((*p++ = c->vBS))
+					mixerCtrl |= AX_MIXER_CTRL_B_S;
+
+				if ((*p++ = (c->vBS1 - c->vBS) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_B_DELTA_S;
+
+				if ((*p++ = c->vCS))
+					mixerCtrl |= AX_MIXER_CTRL_C_S;
+
+				if ((*p++ = (c->vCS1 - c->vCS) / 96))
+					mixerCtrl |= AX_MIXER_CTRL_C_DELTA_S;
 
 				axvpb->pb.mixerCtrl = mixerCtrl;
 				axvpb->sync |=
-					AX_VPB_SYNC_FLAG_MIXER_CTRL | AX_VPB_SYNC_FLAG_MIX;
+					AX_PBSYNC_MIXER_CTRL | AX_PBSYNC_MIX;
 			}
 		}
 	}

@@ -1,11 +1,11 @@
-#include "synprivate.h"
+#include <sound/synprivate.h>
 
 
-#include <revolution/types.h>
+#include <types.h>
 
-#include "mix.h"
+#include <sound/mix.h>
 
-// #include <revolution/os.h>
+#include <revolution/os.h>
 
 
 
@@ -78,7 +78,7 @@ s32 __HBMSYNAttackAttnTable[100] =
 
 void __HBMSYNSetupVolume(HBMSYNVOICE *voice)
 {
-	ASSERTLINE(80, voice);
+	ASSERT(voice);
 
 	voice->attn =
 		voice->region->attn + __HBMSYNVolumeAttenuation[voice->keyVel];
@@ -86,7 +86,7 @@ void __HBMSYNSetupVolume(HBMSYNVOICE *voice)
 
 void __HBMSYNSetupPan(HBMSYNVOICE *voice)
 {
-	ASSERTLINE(93, voice);
+	ASSERT(voice);
 
 	voice->pan = voice->synth->pan[voice->midiChannel];
 }

@@ -1,9 +1,9 @@
-#include "synprivate.h"
+#include <sound/synprivate.h>
 
 
-#include <revolution/types.h>
+#include <types.h>
 
-// #include <revolution/ax.h>
+#include <revolution/ax.h>
 
 
 
@@ -180,8 +180,8 @@ void __HBMSYNSetupSrc(HBMSYNVOICE *voice)
 	/* src.last_samples[2]     */ *p++ = 0;
 	/* src.last_samples[3]     */ *p   = 0;
 
-	voice->axvpb->sync &= ~AX_VPB_SYNC_FLAG_SRC_RATIO;
-	voice->axvpb->sync |= AX_VPB_SYNC_FLAG_SRC_TYPE | AX_VPB_SYNC_FLAG_SRC;
+	voice->axvpb->sync &= ~AX_PBSYNC_SRC_RATIO;
+	voice->axvpb->sync |= AX_PBSYNC_SELECT | AX_PBSYNC_SRC;
 }
 
 void __HBMSYNUpdateSrc(HBMSYNVOICE *voice)
@@ -189,5 +189,5 @@ void __HBMSYNUpdateSrc(HBMSYNVOICE *voice)
 	u32 ratio = voice->srcRatio * __HBMSYNGetRelativePitch(voice) * 65536.0f;
 
 	*(u32 *)&voice->axvpb->pb.src.ratioHi = ratio;
-	voice->axvpb->sync |= AX_VPB_SYNC_FLAG_SRC_RATIO;
+	voice->axvpb->sync |= AX_PBSYNC_SRC_RATIO;
 }

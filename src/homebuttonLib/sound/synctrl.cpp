@@ -1,13 +1,12 @@
-#include "synprivate.h"
+#include <sound/synprivate.h>
 
 
-#include <revolution/types.h>
+#include <types.h>
 
-#include "mix.h"
+#include <sound/mix.h>
 
-// #include <revolution/ax.h>
-// #include <revolution/os.h>
-// #include <revolution/os/OSInterrupt.h>
+#include <revolution/ax.h>
+#include <revolution/os.h>
 
 
 
@@ -79,9 +78,9 @@ f32 __HBMSYNn128[128] = // x/128, rounded to 5 decimal places
 static void __HBMSYNProgramChange(HBMSYNSYNTH *synth, u8 midiChannel,
                                   u8 program)
 {
-	ASSERTLINE(54, synth);
-	ASSERTLINE(55, midiChannel < 16);
-	ASSERTLINE(56, program < 128);
+	ASSERT(synth);
+	ASSERT(midiChannel < 16);
+	ASSERT(program < 128);
 
 	synth->inst[midiChannel] = &synth->melodicInst[program];
 }
@@ -89,10 +88,10 @@ static void __HBMSYNProgramChange(HBMSYNSYNTH *synth, u8 midiChannel,
 void __HBMSYNSetController(HBMSYNSYNTH *synth, u8 midiChannel, u8 function,
                            u8 value)
 {
-	ASSERTLINE(67, synth);
-	ASSERTLINE(68, midiChannel < 16);
-	ASSERTLINE(69, function < 128);
-	ASSERTLINE(70, value < 128);
+	ASSERT(synth);
+	ASSERT(midiChannel < 16);
+	ASSERT(function < 128);
+	ASSERT(value < 128);
 
 	switch (function)
 	{
@@ -115,8 +114,8 @@ void __HBMSYNSetController(HBMSYNSYNTH *synth, u8 midiChannel, u8 function,
 
 static void __HBMSYNResetController(HBMSYNSYNTH *synth, u8 midiChannel)
 {
-	ASSERTLINE(102, synth);
-	ASSERTLINE(103, midiChannel < 16);
+	ASSERT(synth);
+	ASSERT(midiChannel < 16);
 
 	__HBMSYNSetController(synth, midiChannel, MIDI_CC_CHANNEL_VOLUME, 100);
 	__HBMSYNSetController(synth, midiChannel, MIDI_CC_PAN, 64);
@@ -128,8 +127,8 @@ static void __HBMSYNResetController(HBMSYNSYNTH *synth, u8 midiChannel)
 void __HBMSYNResetAllControllers(HBMSYNSYNTH *synth)
 {
 	u8 midiChannel;
+	ASSERT(synth);
 
-	ASSERTLINE(121, synth);
 
 	for (midiChannel = 0; midiChannel < HBMSYN_NUM_MIDI_CHANNELS; ++midiChannel)
 	{
@@ -141,10 +140,10 @@ void __HBMSYNResetAllControllers(HBMSYNSYNTH *synth)
 static void __HBMSYNNoteOff(HBMSYNSYNTH *synth, u8 midiChannel, u8 keyNum)
 {
 	HBMSYNVOICE *voice;
+	ASSERT(synth);
+	ASSERT(midiChannel < 16);
+	ASSERT(keyNum < 128);
 
-	ASSERTLINE(138, synth);
-	ASSERTLINE(139, midiChannel < 16);
-	ASSERTLINE(140, keyNum < 128);
 
 	voice = synth->voice[midiChannel][keyNum];
 
@@ -158,10 +157,10 @@ static void __HBMSYNNoteOff(HBMSYNSYNTH *synth, u8 midiChannel, u8 keyNum)
 static void __HBMSYNNoteOn(HBMSYNSYNTH *synth, u8 midiChannel, u8 keyNum,
                            u8 keyVel)
 {
-	ASSERTLINE(162, synth);
-	ASSERTLINE(163, midiChannel < 16);
-	ASSERTLINE(164, keyNum < 128);
-	ASSERTLINE(165, keyVel < 128);
+	ASSERT(synth);
+	ASSERT(midiChannel < 16);
+	ASSERT(keyNum < 128);
+	ASSERT(keyVel < 128);
 
 	if (keyVel)
 	{
@@ -209,7 +208,7 @@ static void __HBMSYNNoteOn(HBMSYNSYNTH *synth, u8 midiChannel, u8 keyNum,
 					__HBMSYNSetupSrc(voice);
 
 					axvpb->pb.state = 1;
-					axvpb->sync |= AX_VPB_SYNC_FLAG_STATE;
+					axvpb->sync |= AX_PBSYNC_STATE;
 				}
 				else
 				{
@@ -239,9 +238,9 @@ static void __HBMSYNMidiIn(HBMSYNSYNTH *synth, u8 *input)
 	u8 midiChannel;
 	u8 _2ndByte;
 	u8 _3rdByte;
+	ASSERT(synth);
+	ASSERT(input);
 
-	ASSERTLINE(275, synth);
-	ASSERTLINE(276, input);
 
 	ch = input;
 

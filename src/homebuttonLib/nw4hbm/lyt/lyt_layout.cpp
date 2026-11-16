@@ -315,31 +315,33 @@ void Layout::SetTagProcessor(ut::WideTagProcessor* pProcessor) {
 Pane* Layout::BuildPaneObj(s32 kind, const void* pBinary,
                            const ResBlockSet& rBlockSet) {
 
+    // The break behind each block is the style of Build's first case. Without them the function has
+    // fewer than 30 statements and is expanded into Build, which retail calls (ss found the same).
     switch (kind) {
     case res::Pane::SIGNATURE: {
         const res::Pane* pRes = static_cast<const res::Pane*>(pBinary);
         return Layout::NewObj<Pane>(pRes);
-    }
+    } break;
 
     case res::Picture::SIGNATURE: {
         const res::Picture* pRes = static_cast<const res::Picture*>(pBinary);
         return Layout::NewObj<Picture>(pRes, rBlockSet);
-    }
+    } break;
 
     case res::TextBox::SIGNATURE: {
         const res::TextBox* pRes = static_cast<const res::TextBox*>(pBinary);
         return Layout::NewObj<TextBox>(pRes, rBlockSet);
-    }
+    } break;
 
     case res::Window::SIGNATURE: {
         const res::Window* pRes = static_cast<const res::Window*>(pBinary);
         return Layout::NewObj<Window>(pRes, rBlockSet);
-    }
+    } break;
 
     case res::Bounding::SIGNATURE: {
         const res::Bounding* pRes = static_cast<const res::Bounding*>(pBinary);
         return Layout::NewObj<Bounding>(pRes, rBlockSet);
-    }
+    } break;
 
     default: {
         return NULL;

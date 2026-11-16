@@ -1,12 +1,12 @@
-#include "synprivate.h"
+#include <sound/synprivate.h>
 
 
 #include <climits>
 #include <cmath>
 
-#include <revolution/types.h>
+#include <types.h>
 
-// #include <revolution/os.h>
+#include <revolution/os.h>
 
 
 
@@ -30,7 +30,7 @@ s32 __HBMSYNGetEnvelopeTime(s32 scale, s32 mod, u8 key)
 
 void __HBMSYNSetupVolumeEnvelope(HBMSYNVOICE *voice)
 {
-	ASSERTLINE(38, voice);
+	ASSERT(voice);
 
 	if (voice->art->eg1Attack == LONG_MIN)
 	{
@@ -87,7 +87,7 @@ void __HBMSYNSetupVolumeEnvelope(HBMSYNVOICE *voice)
 
 void __HBMSYNRunVolumeEnvelope(HBMSYNVOICE *voice)
 {
-	ASSERTLINE(101, voice);
+	ASSERT(voice);
 
 	switch (voice->veState)
 	{

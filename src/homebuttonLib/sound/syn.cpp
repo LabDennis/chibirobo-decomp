@@ -1,18 +1,15 @@
-#include "syn.h"
+#include <sound/syn.h>
 
 
-#include <macros.h>
 
-#include <revolution/types.h>
+#include <types.h>
 
-#include "synprivate.h"
+#include <sound/synprivate.h>
 
-#include "mix.h"
+#include <sound/mix.h>
 
-// #include <revolution/ax.h>
-// #include <revolution/os.h>
-// #include <revolution/os/OSAddress.h>
-// #include <revolution/os/OSInterrupt.h>
+#include <revolution/ax.h>
+#include <revolution/os.h>
 
 
 
@@ -84,8 +81,8 @@ static void __HBMSYNRemoveSynthFromList(HBMSYNSYNTH *synth)
 void HBMSYNInit(void)
 {
 	int i;
+	ASSERT(AXIsInit());
 
-	ASSERTLINE(95, AXIsInit());
 
 	if (AXIsInit() && !__init)
 	{
@@ -121,26 +118,26 @@ void HBMSYNRunAudioFrame(void)
 }
 
 void HBMSYNInitSynth(HBMSYNSYNTH *synth, u8 *wavetable, u8 *samples,
-                     u8 *zerobuffer ATTR_UNUSED)
+                     u8 *zerobuffer)
 {
 	u32 *p;
 	u32 mramBase;
 	u32 midiChannel, noteNumber;
+	ASSERT(synth);
+	ASSERT(wavetable);
+	ASSERT(samples);
 
-	ASSERTLINE(173, synth);
-	ASSERTLINE(174, wavetable);
-	ASSERTLINE(175, samples);
 
 	p = (u32 *)wavetable;
 	mramBase = (u32)OSCachedToPhysical(samples);
 
 	// doubled statements
-	synth->percussiveInst		= POINTER_ADD_TYPE(WTINST *,   wavetable, *p); ++p;
-	synth->melodicInst			= POINTER_ADD_TYPE(WTINST *,   wavetable, *p); ++p;
-	synth->region				= POINTER_ADD_TYPE(WTREGION *, wavetable, *p); ++p;
-	synth->art					= POINTER_ADD_TYPE(WTART *,    wavetable, *p); ++p;
-	synth->sample				= POINTER_ADD_TYPE(WTSAMPLE *, wavetable, *p); ++p;
-	synth->adpcm				= POINTER_ADD_TYPE(WTADPCM *,  wavetable, *p); ++p;
+	synth->percussiveInst		= (WTINST *)((u32)wavetable + *p); ++p;
+	synth->melodicInst			= (WTINST *)((u32)wavetable + *p); ++p;
+	synth->region				= (WTREGION *)((u32)wavetable + *p); ++p;
+	synth->art					= (WTART *)((u32)wavetable + *p); ++p;
+	synth->sample				= (WTSAMPLE *)((u32)wavetable + *p); ++p;
+	synth->adpcm				= (WTADPCM *)((u32)wavetable + *p); ++p;
 
 	synth->samplesBaseWord		= mramBase >> 1;
 	synth->samplesBaseByte		= mramBase;
@@ -191,9 +188,9 @@ void HBMSYNQuitSynth(HBMSYNSYNTH *synth)
 void HBMSYNMidiInput(HBMSYNSYNTH *synth, u8 *input)
 {
 	u8 *src;
+	ASSERT(synth);
+	ASSERT(input);
 
-	ASSERTLINE(254, synth);
-	ASSERTLINE(255, input);
 
 	src = input;
 
@@ -203,22 +200,21 @@ void HBMSYNMidiInput(HBMSYNSYNTH *synth, u8 *input)
 	*synth->inputPosition = *src; ++synth->inputPosition; ++src;
 
 	++synth->inputCounter;
-
-	OSAssertMessage_Line(
-		268, synth->inputCounter < HBMSYN_INPUT_BUFFER_SIZE,
+	ASSERTMSG(synth->inputCounter < HBMSYN_INPUT_BUFFER_SIZE,
 		"synth input buffer exceeded, increase HBMSYN_INPUT_BUFFER_SIZE");
+
 }
 
 void HBMSYNSetMasterVolume(HBMSYNSYNTH *synth, s32 dB)
 {
-	ASSERTLINE(277, synth);
+	ASSERT(synth);
 
 	synth->masterVolume = dB << 16;
 }
 
 s32 HBMSYNGetMasterVolume(HBMSYNSYNTH *synth)
 {
-	ASSERTLINE(288, synth);
+	ASSERT(synth);
 
 	return synth->masterVolume >> 16;
 }

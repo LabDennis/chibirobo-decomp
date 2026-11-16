@@ -66,6 +66,7 @@ private:
         BlackFader(int maxFrame) {
             init(maxFrame);
             setColor(0, 0, 0);
+            setColorFlag(true);
         }
 
         int getFrame() const {
@@ -79,6 +80,13 @@ private:
             red_ = r;
             green_ = g;
             blue_ = b;
+        }
+
+        bool getColorFlag() const {
+            return colorFlag_;
+        }
+        void setColorFlag(bool flag) {
+            colorFlag_ = flag;
         }
 
         bool isDone();
@@ -95,6 +103,7 @@ private:
         int frame_;    // at 0x0
         int maxFrame_; // at 0x4
         int state_;    // at 0x8
+        bool colorFlag_; // at 0xC, false fades to black whatever the colour
         u8 red_;       // at 0xD
         u8 green_;     // at 0xE
         u8 blue_;      // at 0xF
@@ -140,11 +149,6 @@ public:
     void setReassignedFlag(bool flag) {
         mReassignedFlag = flag;
     }
-    /*
-    nw4hbm::snd::SoundArchivePlayer* getSoundArchivePlayer() const {
-        return mpSoundArchivePlayer;
-    }
-    */
     void setSimpleSyncAlarm(int type);
     void setSimpleSyncFlag(bool flag) {
         mSimpleSyncFlag = flag;
@@ -153,7 +157,7 @@ public:
     void setVolume(int vol);
 
     bool getVibFlag();
-    int getPaneNo(const char* pName);
+    int getPaneNo(const nw4hbm::lyt::Pane* pPane);
 
     void setVibFlag(bool flag);
 
@@ -164,9 +168,9 @@ public:
     void update(const HBMControllerData* pController);
     void updateTrigPane();
 
-    void startPointEvent(const char* pName, void* pData);
-    void startLeftEvent(const char* pName);
-    void startTrigEvent(const char* pName);
+    void startPointEvent(const nw4hbm::lyt::Pane* pPane, void* pData);
+    void startLeftEvent(const nw4hbm::lyt::Pane* pPane);
+    void startTrigEvent(const nw4hbm::lyt::Pane* pPane);
 
     int findAnimator(int pane, int anm);
     int findGroupAnimator(int grPane, int grAnm);
@@ -212,83 +216,79 @@ private:
     static HomeButton* spHomeButtonObj;
     static OSMutex sMutex;
 
-    // TODO(kiwi) Document states
     eSeq mSequence;                                            // at 0x0
     const HBMDataInfo* mpHBInfo;                               // at 0x4
-    int mButtonNum;                                            // at 0x8
-    int mAnmNum;                                               // at 0xC
-    int mState;                                                // at 0x10
-    int mSelectAnmNum;                                         // at 0x14
-    int mMsgCount;                                             // at 0x18
-    int mPaneCounter[res::eBtn_Max + res::eFuncTouchPane_Max]; // at 0x1C
-    int mPadDrawTime[WPAD_MAX_CONTROLLERS];                    // at 0x54
-    int mForcusSEWaitTime;                                     // at 0x64
-    int mBar0AnmRev;                                           // at 0x68
-    int mBar1AnmRev;                                           // at 0x6C
-    int mBar0AnmRevHold;                                       // at 0x70
-    int mBar1AnmRevHold;                                       // at 0x74
-    int mGetPadInfoTime;                                       // at 0x78
-    bool mControllerFlag[WPAD_MAX_CONTROLLERS];                // at 0x7C
-    int mVolumeNum;                                            // at 0x80
-    bool mVibFlag;                                             // at 0x84
-    bool mControlFlag;                                         // at 0x85
-    bool mLetterFlag;                                          // at 0x86
-    bool mAdjustFlag;                                          // at 0x87
-    bool mReassignedFlag;                                      // at 0x88
-    bool mSimpleSyncFlag;                                      // at 0x89
-    bool mEndSimpleSyncFlag;                                   // at 0x8A
-    bool mInitFlag;                                            // at 0x8B
-    bool mForceSttInitProcFlag;                                // at 0x8C
-    bool mForceSttFadeInProcFlag;                              // at 0x8D
-    bool mEndInitSoundFlag;                                    // at 0x8E
-    bool mForceStopSyncFlag;                                   // at 0x8F
-    bool mForceEndMsgAnmFlag;                                  // at 0x90
-    bool mStartBlackOutFlag;                                   // at 0x91
-    int mSoundRetryCnt;                                        // at 0x94
-    int mDialogFlag[4];                                        // at 0x98
-    char* mpLayoutName;                                        // at 0xA8
-    char* mpAnmName;                                           // at 0xAC
-    HBMSelectBtnNum mSelectBtnNum;                             // at 0xB0
-    u8 unkB4[8];
-    wchar_t* mpText[7][6];                                     // at 0xBC
-    WPADInfo mWpadInfo[WPAD_MAX_CONTROLLERS];                  // at 0x15C
-    WPADSyncDeviceCallback mSimpleSyncCallback;                // at 0x1BC
-    f32 mOnPaneVibFrame[WPAD_MAX_CONTROLLERS];                 // at 0x1C0
-    f32 mOnPaneVibWaitFrame[WPAD_MAX_CONTROLLERS];             // at 0x1D0
-    int mWaitStopMotorCount;                                   // at 0x1E0
-    int mDisConnectCount;                                      // at 0x1E4
-    nw4hbm::lyt::Layout* mpLayout;                             // at 0x1E8
-    nw4hbm::lyt::Layout* mpCursorLayout[res::eCursorLyt_Max];  // at 0x1EC
-    nw4hbm::lyt::ArcResourceAccessor* mpResAccessor;           // at 0x1FC
-    gui::PaneManager* mpPaneManager;                           // at 0x200
-    HomeButtonEventHandler* mpHomeButtonEventHandler;          // at 0x204
-    nw4hbm::lyt::DrawInfo mDrawInfo;                           // at 0x208
-    Controller* mpController[WPAD_MAX_CONTROLLERS];            // at 0x25C
-    RemoteSpk* mpRemoteSpk;                                    // at 0x26C
+    int unk8;                                                  // at 0x8, zeroed, never read
+    int mButtonNum;                                            // at 0xC
+    int mAnmNum;                                               // at 0x10
+    int mState;                                                // at 0x14
+    int mSelectAnmNum;                                         // at 0x18
+    int mMsgCount;                                             // at 0x1C
+    int mPaneCounter[res::eBtn_Max + res::eFuncTouchPane_Max]; // at 0x20
+    int mPadDrawTime[WPAD_MAX_CONTROLLERS];                    // at 0x58
+    int mForcusSEWaitTime;                                     // at 0x68
+    int mBar0AnmRev;                                           // at 0x6C
+    int mBar1AnmRev;                                           // at 0x70
+    int mBar0AnmRevHold;                                       // at 0x74
+    int mBar1AnmRevHold;                                       // at 0x78
+    int mGetPadInfoTime;                                       // at 0x7C
+    bool mControllerFlag[WPAD_MAX_CONTROLLERS];                // at 0x80
+    int mVolumeNum;                                            // at 0x84
+    int mLastConnectChan;                                      // at 0x88
+    bool mVibFlag;                                             // at 0x8C
+    bool mControlFlag;                                         // at 0x8D
+    bool mLetterFlag;                                          // at 0x8E
+    bool mAdjustFlag;                                          // at 0x8F
+    bool mReassignedFlag;                                      // at 0x90
+    bool mSimpleSyncFlag;                                      // at 0x91
+    bool mEndSimpleSyncFlag;                                   // at 0x92
+    bool mAllConnectedFlag;                                    // at 0x93
+    bool mInitFlag;                                            // at 0x94
+    bool mForceSttInitProcFlag;                                // at 0x95
+    bool mForceSttFadeInProcFlag;                              // at 0x96
+    bool mEndInitSoundFlag;                                    // at 0x97
+    bool mForceStopSyncFlag;                                   // at 0x98
+    bool mForceEndMsgAnmFlag;                                  // at 0x99
+    bool mStartBlackOutFlag;                                   // at 0x9A
+    int mSoundRetryCnt;                                        // at 0x9C
+    int mDialogFlag[4];                                        // at 0xA0
+    char* mpLayoutName;                                        // at 0xB0
+    char* mpAnmName;                                           // at 0xB4
+    HBMSelectBtnNum mSelectBtnNum;                             // at 0xB8
+    wchar_t* mpText[10][6];                                    // at 0xBC
+    WPADInfo mWpadInfo[WPAD_MAX_CONTROLLERS];                  // at 0x1AC
+    WPADSyncDeviceCallback mSimpleSyncCallback;                // at 0x20C
+    f32 mOnPaneVibFrame[WPAD_MAX_CONTROLLERS];                 // at 0x210
+    f32 mOnPaneVibWaitFrame[WPAD_MAX_CONTROLLERS];             // at 0x220
+    int mWaitStopMotorCount;                                   // at 0x230
+    int mDisConnectCount;                                      // at 0x234
+    nw4hbm::lyt::Layout* mpLayout;                             // at 0x238
+    nw4hbm::lyt::Layout* mpCursorLayout[res::eCursorLyt_Max];  // at 0x23C
+    nw4hbm::lyt::ArcResourceAccessor* mpResAccessor;           // at 0x24C
+    gui::PaneManager* mpPaneManager;                           // at 0x250
+    HomeButtonEventHandler* mpHomeButtonEventHandler;          // at 0x254
+    nw4hbm::lyt::DrawInfo mDrawInfo;                           // at 0x258
+    Controller* mpController[WPAD_MAX_CONTROLLERS];            // at 0x2AC
+    RemoteSpk* mpRemoteSpk;                                    // at 0x2BC
 
-    GroupAnmController* mpAnmController[res::eAnimator_Max];         // at 0x270
-    GroupAnmController* mpGroupAnmController[res::eGrAnimator_Max];  // at 0x2A0
-    GroupAnmController* mpPairGroupAnmController[res::ePairAnm_Max]; // at 0x3C8
+    GroupAnmController* mpAnmController[res::eAnimator_Max];         // at 0x2C0
+    GroupAnmController* mpGroupAnmController[res::eGrAnimator_Max];  // at 0x2F0
+    GroupAnmController* mpPairGroupAnmController[res::ePairAnm_Max]; // at 0x418
 
-    BlackFader mFader;                                     // at 0x404
-    OSAlarm mAlarm[WPAD_MAX_CONTROLLERS];                  // at 0x418
-    OSAlarm mSpeakerAlarm[WPAD_MAX_CONTROLLERS];           // at 0x4D8
-    OSAlarm mSimpleSyncAlarm;                              // at 0x598
-    int iReConnectTime;                                    // at 0x5c8
-    int iReConnectTime2;                                   // at 0x5CC
-    //nw4hbm::snd::SoundArchivePlayer* mpSoundArchivePlayer; // at 0x5D0
-    //nw4hbm::snd::DvdSoundArchive* mpDvdSoundArchive;       // at 0x5D4
-    //nw4hbm::snd::MemorySoundArchive* mpMemorySoundArchive; // at 0x5D8
-    //nw4hbm::snd::NandSoundArchive* mpNandSoundArchive;     // at 0x5DC
-    //nw4hbm::snd::SoundHeap* mpSoundHeap;                   // at 0x5E0
-    //nw4hbm::snd::SoundHandle* mpSoundHandle;               // at 0x5E4
-    //u16 mAppVolume[nw4hbm::snd::AUX_BUS_NUM];              // at 0x5E8
-    AXFXAllocHook mAxFxAlloc;                              // at 0x5F0
-    AXFXFreeHook mAxFxFree;                                // at 0x5F4
-    AXFX_REVERBHI mAxFxReverb;                             // at 0x5F8
-    AXAuxCallback mAuxCallback;                            // at 0x758
-    void* mpAuxContext;                                    // at 0x75C
-    f32 mFadeOutSeTime;                                    // at 0x760
+    BlackFader mFader;                           // at 0x454
+    OSAlarm mAlarm[WPAD_MAX_CONTROLLERS];        // at 0x468
+    OSAlarm mSpeakerAlarm[WPAD_MAX_CONTROLLERS]; // at 0x528
+    OSAlarm mSimpleSyncAlarm;                    // at 0x5E8
+    BOOL mVIBlackFlag;                           // at 0x618, always TRUE
+    int iReConnectTime;                          // at 0x61C
+    int iReConnectTime2;                         // at 0x620
+    u16 mAppVolume[3];                           // at 0x624
+    AXFXAllocHook mAxFxAlloc;                    // at 0x62C
+    AXFXFreeHook mAxFxFree;                      // at 0x630
+    AXFX_REVERBHI mAxFxReverb;                   // at 0x634
+    AXAuxCallback mAuxCallback;                  // at 0x794
+    void* mpAuxContext;                          // at 0x798
+    f32 mFadeOutSeTime;                          // at 0x79C
 
 private:
     static const int scSoundHeapSize_but2;

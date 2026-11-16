@@ -70,7 +70,7 @@ public:
 
     void initSound();
     void updateSound();
-    //void playSound(nw4hbm::snd::SoundArchivePlayer* pPlayer, int id);
+    void playSound(int id);
 
     void soundOn();
     void soundOff(int msec);
@@ -94,10 +94,9 @@ private:
     static Controller* sThis[WPAD_MAX_CONTROLLERS];
 
     HBController mHBController;                  // at 0x0
-    //nw4hbm::snd::SoundHandle mSoundHandle;       // at 0x4
-    RemoteSpk* remotespk;                        // at 0x24
-    WPADConnectCallback mOldConnectCallback;     // at 0x28
-    WPADExtensionCallback mOldExtensionCallback; // at 0x2C
+    RemoteSpk* remotespk;                        // at 0x20
+    WPADConnectCallback mOldConnectCallback;     // at 0x24
+    WPADExtensionCallback mOldExtensionCallback; // at 0x28
     s64 mPlaySoundTime;                          // at 0x30
     s64 mStopSoundTime;                          // at 0x38
     bool mCallbackFlag;                          // at 0x40

@@ -1,12 +1,12 @@
-#include "synprivate.h"
+#include <sound/synprivate.h>
 
 
-#include <revolution/types.h>
+#include <types.h>
 
-#include "mix.h"
+#include <sound/mix.h>
 
-// #include <revolution/ax.h>
-// #include <revolution/os.h>
+#include <revolution/ax.h>
+#include <revolution/os.h>
 
 
 
@@ -16,8 +16,8 @@ void __HBMSYNClearVoiceReferences(void *p)
 	HBMSYNSYNTH *synth;
 	HBMSYNVOICE *voice;
 	int index;
+	ASSERT(p);
 
-	ASSERTLINE(27, p);
 
 	axvpb = (AXVPB *)p;
 	synth = (HBMSYNSYNTH *)axvpb->userContext;
@@ -37,7 +37,7 @@ void __HBMSYNClearVoiceReferences(void *p)
 
 void __HBMSYNSetVoiceToRelease(HBMSYNVOICE *voice)
 {
-	ASSERTLINE(53, voice);
+	ASSERT(voice);
 
 	voice->veState = EnvStateRelease;
 }

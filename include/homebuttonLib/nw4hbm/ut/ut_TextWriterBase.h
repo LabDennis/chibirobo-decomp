@@ -9,6 +9,7 @@
 
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 #include <cwchar>
 
 namespace nw4hbm {
@@ -52,80 +53,62 @@ public:
     TextWriterBase();
     ~TextWriterBase();
 
-    f32 GetWidthLimit() const {
-        return mWidthLimit;
-    }
-    void SetWidthLimit(f32 limit) {
-        mWidthLimit = limit;
-    }
-    void ResetWidthLimit() {
-        mWidthLimit = NW4R_MATH_FLT_MAX;
-    }
-
-    f32 GetCharSpace() const {
-        return mCharSpace;
-    }
-    void SetCharSpace(f32 space) {
-        mCharSpace = space;
-    }
-
-    f32 GetLineSpace() const {
-        return mLineSpace;
-    }
-    void SetLineSpace(f32 space) {
-        mLineSpace = space;
-    }
-
-    int GetTabWidth() const;
-    /*
-    int GetTabWidth() const {
-        return mTabWidth;
-    }
-    */
-    void SetTabWidth(int width) {
-        mTabWidth = width;
-    }
-
-    u32 GetDrawFlag() const {
-        return mDrawFlag;
-    }
-    void SetDrawFlag(u32 flag) {
-        mDrawFlag = flag;
-    }
-
-    TagProcessorBase<T>* GetTagProcessor() const {
-        return mTagProcessor;
-    }
-    void SetTagProcessor(TagProcessorBase<T>* pProcessor) {
-        mTagProcessor = pProcessor;
-    }
-    void ResetTagProcessor() {
-        mTagProcessor = &mDefaultTagProcessor;
-    }
-
+    void SetLineHeight(f32 lineHeight);
     f32 GetLineHeight() const;
 
-    f32 CalcLineWidth(const T* pStr, int len);
-    f32 CalcStringWidth(const T* pStr, int len) const;
-    void CalcStringRect(Rect* pRect, const T* pStr, int len) const;
+    void SetLineSpace(f32 space);
+    void SetCharSpace(f32 space);
 
-    int VSNPrintf(T* buffer, u32 count, const T* pStr, std::va_list args);
+    f32 GetLineSpace() const;
+    f32 GetCharSpace() const;
+
+    void SetTabWidth(int width);
+    int GetTabWidth() const;
+
+    void SetDrawFlag(u32 flag);
+    u32 GetDrawFlag() const;
+
+    void SetTagProcessor(TagProcessorBase<T>* pProcessor);
+    void ResetTagProcessor();
+    TagProcessorBase<T>& GetTagProcessor() const;
+
+    f32 CalcFormatStringWidth(const T* pStr, ...) const;
+    f32 CalcFormatStringHeight(const T* pStr, ...) const;
+
+    void CalcFormatStringRect(Rect* pRect, const T* pStr, ...) const;
+    void CalcVStringRect(Rect* pRect, const T* pStr, std::va_list args) const;
+
+    f32 CalcStringWidth(const T* pStr, int len) const;
+    f32 CalcStringWidth(const T* pStr) const;
+
+    f32 CalcStringHeight(const T* pStr, int len) const;
+    f32 CalcStringHeight(const T* pStr) const;
+
+    void CalcStringRect(Rect* pRect, const T* pStr, int len) const;
+    void CalcStringRect(Rect* pRect, const T* pStr) const;
+
+    f32 Printf(const T* pStr, ...);
     f32 VPrintf(const T* pStr, std::va_list args);
     f32 Print(const T* pStr, int len);
-    f32 PrintMutable(const T* pStr, int len);
+    f32 Print(const T* pStr);
 
-    static T* GetBuffer() {
-        return mFormatBuffer;
-    }
-    static T* SetBuffer(T* pBuffer, u32 size) {
-        T* pOldBuffer = mFormatBuffer;
-        mFormatBuffer = pBuffer;
-        mFormatBufferSize = size;
-        return pOldBuffer;
-    }
+    static T* SetBuffer(T* pBuffer, u32 size);
+    static T* SetBuffer(u32 size);
 
-    static u32 GetBufferSize() {
-        return mFormatBufferSize;
+    static u32 GetBufferSize();
+    static T* GetBuffer();
+
+    static int VSNPrintf(T* pBuffer, u32 count, const T* pStr,
+                         std::va_list args) {
+        return sizeof(T) == sizeof(char)
+                   ? std::vsnprintf((char*)pBuffer, count, (const char*)pStr,
+                                    args)
+                   : std::vswprintf((wchar_t*)pBuffer, count,
+                                    (const wchar_t*)pStr, args);
+    }
+    static int StrLen(const T* pStr) {
+        return sizeof(T) == sizeof(char) ? std::strlen((const char*)pStr)
+                                         : std::wcslen((const wchar_t*)pStr);
     }
 
 private:
@@ -136,44 +119,28 @@ private:
                                          DRAWFLAG_MASK_ALIGN_V;
 
 private:
+    f32 CalcLineWidth(const T* pStr, int len);
+    int CalcLineRectImpl(Rect* pRect, const T* pStr, int len);
+    void CalcStringRectImpl(Rect* pRect, const T* pStr, int len);
+
+    f32 PrintImpl(const T* pStr, int len);
+    f32 AdjustCursor(f32* pX, f32* pY, const T* pStr, int len);
+
     bool IsDrawFlagSet(u32 mask, u32 flag) const {
         return (mDrawFlag & mask) == flag;
     }
 
-    bool CalcLineRectImpl(Rect* pRect, const T** ppStr, int len);
-    void CalcStringRectImpl(Rect* pRect, const T* pStr, int len);
-
-    f32 PrintImpl(const T* pStr, int len, bool bMutable);
-    f32 AdjustCursor(f32* pX, f32* pY, const T* pStr, int len);
-
 private:
-    f32 mWidthLimit;                    // at 0x4C
-    f32 mCharSpace;                     // at 0x50
-    f32 mLineSpace;                     // at 0x54
-    int mTabWidth;                      // at 0x58
-    u32 mDrawFlag;                      // at 0x5C
-    TagProcessorBase<T>* mTagProcessor; // at 0x60
+    f32 mCharSpace;                     // at 0x4C
+    f32 mLineSpace;                     // at 0x50
+    int mTabWidth;                      // at 0x54
+    u32 mDrawFlag;                      // at 0x58
+    TagProcessorBase<T>* mTagProcessor; // at 0x5C
 
     static T* mFormatBuffer;
     static u32 mFormatBufferSize;
     static TagProcessorBase<T> mDefaultTagProcessor;
 };
-
-template <>
-inline int TextWriterBase<char>::VSNPrintf(char* pBuffer, u32 count,
-                                           const char* pStr,
-                                           std::va_list args) {
-
-    return std::vsnprintf(pBuffer, count, pStr, args);
-}
-
-template <>
-inline int TextWriterBase<wchar_t>::VSNPrintf(wchar_t* pBuffer, u32 count,
-                                              const wchar_t* pStr,
-                                              std::va_list args) {
-
-    return std::vswprintf(pBuffer, count, pStr, args);
-}
 
 } // namespace ut
 } // namespace nw4hbm
