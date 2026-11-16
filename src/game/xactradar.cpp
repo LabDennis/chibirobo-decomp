@@ -53,9 +53,7 @@ extern "C" void DrawRadarTargetBeam(XActRadar* act)
 	if (!(act->mFade > 0))
 		return;
 	CVec origin = GetRadarDishWorldPosition(&act->mOwner->mRadarObj);
-	Vec offset  = { 0, 0, 0 };
-	offset.y    = act->mTarget->GetCollisionHeight() * .5f;
-	CVec target = act->mTarget->mMoveTranslate + offset;
+	CVec target = act->mTarget->mMoveTranslate + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
 	f32 yaw     = atan2(target.x - origin.x, target.z - origin.z);
 	f32 dx = target.x - origin.x, dy = target.y - origin.y, dz = target.z - origin.z;
 	f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
@@ -79,20 +77,16 @@ extern "C" void DrawRadarTargetBeam(XActRadar* act)
 	f32 z = 2, phase = act->mAngle[0];
 	for (int turn = 0; turn < 8; ++turn) {
 		for (int step = 0; step < 16; ++step) {
-			f32 angle = (TWO_PI / 16) * step;
-			f32 twist = (TWO_PI / 16) * turn + act->mAngle[1];
-
-			Vec& p   = vertices[n];
-			p.x      = (.007f * n + 1) * ((.1f * (f32)sin(twist) + 1) * (f32)sin(angle));
-			p.y      = (.007f * n + 1) * ((f32)cos(angle) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
-			p.z      = z;
-			f32 wave = WrapAngle(phase);
+			f32 angle     = (TWO_PI / 16) * step;
+			vertices[n].x = (.007f * n + 1) * ((f32)sin(angle) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].y = (.007f * n + 1) * ((f32)cos(angle) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].z = z;
+			f32 wave      = WrapAngle(phase);
 			if (wave > PI)
 				wave = 0;
-			Vec& edge = vertices[(int)n + 1];
-			edge.x    = p.x - ((f32)sin(angle) * (.5f * (f32)sin(wave)));
-			edge.y    = p.y - ((f32)sin(angle) * (.5f * (f32)sin(wave)));
-			edge.z    = p.z - 1.5f * (f32)sin(wave);
+			vertices[n + 1].x = vertices[n].x - ((.5f * (f32)sin(wave)) * (f32)sin(angle));
+			vertices[n + 1].y = vertices[n].y - ((.5f * (f32)sin(wave)) * (f32)sin(angle));
+			vertices[n + 1].z = vertices[n].z - 1.5f * (f32)sin(wave);
 			n += 2;
 			phase += DEG2RAD * 30;
 			z += .1f * span;
@@ -281,7 +275,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 		break;
 	}
 	case 4:
-		if (act->mYaw.reached == 0) {
+		if (!act->mYaw.reached) {
 			act->mYaw.angle += (TWO_PI / FRAME_RATE) * frames;
 			if (act->mYaw.angle >= act->mYaw.targetAngle) {
 				act->mYaw.angle = WrapAngle(act->mYaw.angle);
@@ -297,28 +291,26 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 			}
 			SetRadarDishYaw(&act->mOwner->mRadarObj, act->mYaw.angle);
 		}
-		if (act->mPitch.reached == 0) {
+		if (!act->mPitch.reached) {
 			StepRadarPitch(act, frames, 3 * DEG2RAD, false);
-			if (act->mPitch.reached != 0) {
+			if (act->mPitch.reached) {
 				if (act->mTarget) {
 					CVec from               = GetRadarDishWorldPosition(&act->mOwner->mRadarObj);
-					Vec offset              = { 0, 0, 0 };
-					offset.y                = act->mTarget->GetCollisionHeight() * .5f;
-					CVec to                 = act->mTarget->mMoveTranslate + offset;
+					CVec to                 = act->mTarget->mMoveTranslate + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
 					act->mPitch.targetAngle = TargetPitch(from, to);
 				} else
 					act->mPitch.targetAngle = 0;
 			}
 			SetRadarDishPitch(&act->mOwner->mRadarObj, act->mPitch.angle);
 		}
-		if (act->mYaw.reached != 0 && act->mPitch.reached != 0) {
+		if (act->mYaw.reached && act->mPitch.reached) {
 			act->mState         = 5;
 			act->mYaw.reached   = 0;
 			act->mPitch.reached = 0;
 		}
 		break;
 	case 5:
-		if (act->mYaw.reached == 0) {
+		if (!act->mYaw.reached) {
 			act->mYaw.angle += (TWO_PI / FRAME_RATE) * frames;
 			if (act->mYaw.angle >= act->mYaw.targetAngle) {
 				act->mYaw.angle   = act->mYaw.targetAngle;
@@ -326,11 +318,11 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 			}
 			SetRadarDishYaw(&act->mOwner->mRadarObj, act->mYaw.angle);
 		}
-		if (act->mPitch.reached == 0) {
+		if (!act->mPitch.reached) {
 			StepRadarPitch(act, frames, DEG2RAD, true);
 			SetRadarDishPitch(&act->mOwner->mRadarObj, act->mPitch.angle);
 		}
-		if (act->mYaw.reached != 0 && act->mPitch.reached != 0) {
+		if (act->mYaw.reached && act->mPitch.reached) {
 			act->mState = 0;
 			if (act->mTarget)
 				PlayGameSound(&gGame.mSound, 0x43, 255);
@@ -347,9 +339,7 @@ void UpdateRadarTargeting(XActRadar* act, s32 anim, HSD_AObj* aobj, u32 frames, 
 				act->mState = 5;
 			} else {
 				CVec from       = GetRadarDishWorldPosition(&act->mOwner->mRadarObj);
-				Vec offset      = { 0, 0, 0 };
-				offset.y        = act->mTarget->GetCollisionHeight() * .5f;
-				CVec to         = act->mTarget->mMoveTranslate + offset;
+				CVec to         = act->mTarget->mMoveTranslate + (Vec) { 0, act->mTarget->GetCollisionHeight() / 2.f, 0 };
 				f32 yaw         = (f32)atan2(to.x - from.x, to.z - from.z);
 				act->mYaw.angle = WrapAngle(yaw - act->mOwner->mMoveRotate.y);
 				SetRadarDishYaw(&act->mOwner->mRadarObj, act->mYaw.angle);
@@ -712,7 +702,7 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 					u64 flags = obj->mStatus.mFlags;
 					if (!(flags & 1) || !(flags & 0x10000) || !(flags & 0x100) || (flags & 0x40000) || (flags & 0x100000))
 						continue;
-					Vec aim   = AddScalarToVectorComponents(obj->mMoveTranslate, obj->GetCollisionHeight() * .5f);
+					Vec aim   = AddScalarToVectorComponents(obj->mMoveTranslate, obj->GetCollisionHeight() / 2.f);
 					f32 delta = WrapAngle((f32)atan2(aim.x - origin.x, aim.z - origin.z) - yaw);
 					if (delta > PI)
 						delta = TWO_PI - delta;
@@ -785,8 +775,9 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 		}
 		break;
 	}
+	int i                = 0;
 	XActPopperShot* shot = act->mShots.mShot;
-	for (int i = 0; i < 10; i++, shot++)
+	for (; i < 10; i++, shot++)
 		UpdatePopperShotFlight(shot, frames);
 	if (act->mCharge.mState) {
 		if (act->mCharge.mTimer < 1 && (act->mCharge.mTimer += (1.f / FRAME_RATE) * frames) > 1)

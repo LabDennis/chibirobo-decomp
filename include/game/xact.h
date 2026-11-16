@@ -187,7 +187,7 @@ STATIC_ASSERT(sizeof(XActPopperShot) == 0xD84);
 
 // the popper's charge effect
 struct XActPopperCharge {
-	u32 mState;                // _00
+	s32 mState;                // _00
 	f32 mTimer;                // _04
 	Vec mPos;                  // _08
 	HSD_Generator* mGen;       // _14

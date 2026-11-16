@@ -67,40 +67,55 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 		return;
 	object->mStatus.mFlags &= ~0x0010000000000000ULL;
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) { // the list ends at id -1
-		Vec center = object->mMoveScale
-		           * (object->mToppleOffset + ReadFloorCoordinates(object->mFloors[i].mCenterOffset, gObjectFloorOffsetTemplate));
-		Vec extent = object->mMoveScale * ReadFloorCoordinates(object->mFloors[i].mExtent, lbl_80378148);
-		f32 yaw    = object->mMoveRotate.y + DEG2RAD * object->mFloors[i].mYawDegrees;
+		Vec center  = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object, i));
+		Vec extent  = object->mMoveScale * ReadObjectFloorExtent(object, i);
+		f32 baseYaw = object->mMoveRotate.y;
+		f32 turn    = DEG2RAD * object->mFloors[i].mYawDegrees;
+		f32 yaw     = baseYaw + turn;
 		switch (object->mFloors[i].mId) {
 		case 0:
 		case 1: { // a disc: the top of its column
 			CVec point(0.0f, 0.0f, 0.0f);
-			Mtx transform;
-			MakeFloorTransform(object, center, extent, yaw, transform);
+			Mtx world, local, rotate, scale, transform;
+			PSMTXTrans(world, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(world, rotate, transform);
+			PSMTXConcat(transform, local, transform);
+			PSMTXConcat(transform, scale, transform);
 			PSMTXMultVec(transform, &point, &point);
 			object->mFloorHeights[i] = point.y + extent.y;
 			break;
 		}
 		case 2: { // a box: the top of its cube
-			Mtx transform;
-			MakeFloorTransform(object, center, extent, yaw, transform);
-			f32 h = (2.0f / sqrtf(3.0f)) * 0.5f; // cube corners at unit radius
+			Mtx world, local, rotate, scale, transform;
+			PSMTXTrans(world, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(world, rotate, transform);
+			PSMTXConcat(transform, local, transform);
+			PSMTXConcat(transform, scale, transform);
+			f32 h = (2.0f / sqrtf(3.0f)) / 2.0f; // cube corners at unit radius
 			static Vec corners[8]
 			    = { { -h, h, -h }, { h, h, -h }, { h, h, -h }, { h, h, h }, { h, h, h }, { -h, h, h }, { -h, h, h }, { -h, h, -h } };
-			Vec world[8];
-			PSMTXMultVecArray(transform, corners, world, 8);
-			object->mFloorHeights[i] = world[0].y - 0.01f;
+			Vec points[8];
+			PSMTXMultVecArray(transform, corners, points, 8);
+			object->mFloorHeights[i] = points[0].y - 0.01f;
 			break;
 		}
 		case 3: // a wall has no floor height
 			break;
 		case 5: { // a quad: it and the three records after it share one height
+			Mtx translate, rotate, scaling, transform;
 			Vec corners[4];
 			for (s32 j = 0; j < 4; ++j)
-				corners[j] = object->mToppleOffset + ReadFloorCoordinates(object->mFloors[i + j].mCenterOffset, gObjectFloorOffsetTemplate);
-			Vec scale = object->mMoveScale * ReadFloorCoordinates(object->mFloors[i].mExtent, lbl_80378148);
-			f32 angle = object->mMoveRotate.y + DEG2RAD * object->mFloors[i].mYawDegrees;
-			Mtx translate, rotate, scaling, transform;
+				corners[j] = object->mToppleOffset + ReadObjectFloorOffset(object, i + j);
+			Vec scale     = object->mMoveScale * ReadObjectFloorExtent(object, i);
+			f32 baseAngle = object->mMoveRotate.y;
+			f32 turnAngle = DEG2RAD * object->mFloors[i].mYawDegrees;
+			f32 angle     = baseAngle + turnAngle;
 			PSMTXTrans(translate, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
 			PSMTXScale(scaling, scale.x, scale.y, scale.z);
 			PSMTXRotRad(rotate, 'y', angle);
@@ -108,7 +123,7 @@ extern "C" void UpdateObjectFloorHeights(XObj* object)
 			PSMTXConcat(transform, scaling, transform);
 			PSMTXMultVecArray(transform, corners, corners, 4);
 			object->mFloorHeights[i] = object->mFloorHeights[i + 1] = object->mFloorHeights[i + 2] = object->mFloorHeights[i + 3]
-			    = extent.y * 0.5f + corners[0].y - 0.01f;
+			    = extent.y / 2.0f + corners[0].y - 0.01f;
 			i += 3;
 			break;
 		}
@@ -132,35 +147,8 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return;
 	f32 maxX = 0.0f, maxZ = 0.0f;
-	// Type 3 starts two vectors before the four type-5 corners in the original frame.
-	struct Geometry {
-		Vec samples[6];
-		Mtx polygon;
-		Mtx polygonScale;
-		Mtx polygonRotate;
-		Mtx polygonWorld;
-		Mtx segment;
-		Mtx segmentScale;
-		Mtx segmentTurn;
-		Mtx segmentRotate;
-		Mtx segmentLocal;
-		Mtx segmentWorld;
-		Mtx prismResult;
-		Mtx prismScale;
-		Mtx prismRotate;
-		Mtx prismLocal;
-		Mtx prismWorld;
-		Mtx roundResult;
-		Mtx roundScale;
-		Mtx roundRotate;
-		Mtx roundLocal;
-		Mtx roundWorld;
-		Vec prismPoints[8];
-	} geometry;
-
 	for (s32 i = 0; object->mFloors[i].mId != -1; ++i) {
-		Vec zero = { 0, 0, 0 };
-		CVec origin(zero);
+		CVec origin((Vec) { 0, 0, 0 });
 		Vec center     = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object, i));
 		Vec extent     = object->mMoveScale * ReadObjectFloorExtent(object, i);
 		f32 baseYaw    = object->mMoveRotate.y;
@@ -170,65 +158,73 @@ extern "C" void UpdateObjectFloorXZExtent(XObj* object)
 		case 0:
 		case 1: { // a disc
 			CVec point(0, 0, 0);
-			PSMTXTrans(geometry.roundWorld, origin.x, origin.y, origin.z);
-			PSMTXTrans(geometry.roundLocal, center.x, center.y, center.z);
-			PSMTXScale(geometry.roundScale, extent.x, extent.y, extent.z);
-			PSMTXRotRad(geometry.roundRotate, 'y', yaw);
-			PSMTXConcat(geometry.roundWorld, geometry.roundRotate, geometry.roundResult);
-			PSMTXConcat(geometry.roundResult, geometry.roundLocal, geometry.roundResult);
-			PSMTXConcat(geometry.roundResult, geometry.roundScale, geometry.roundResult);
-			PSMTXMultVec(geometry.roundResult, &point, &point);
-			ExpandRadius(point.x + extent.x, point.z + extent.z, maxX, maxZ);
+			Mtx world, local, rotate, scale, result;
+			PSMTXTrans(world, origin.x, origin.y, origin.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(world, rotate, result);
+			PSMTXConcat(result, local, result);
+			PSMTXConcat(result, scale, result);
+			PSMTXMultVec(result, &point, &point);
+			f32 x = point.x + extent.x;
+			f32 z = point.z + extent.z;
+			ExpandRadius(x, z, maxX, maxZ);
 			break;
 		}
 		case 2: { // a box
-			PSMTXTrans(geometry.prismWorld, origin.x, origin.y, origin.z);
-			PSMTXTrans(geometry.prismLocal, center.x, center.y, center.z);
-			PSMTXScale(geometry.prismScale, extent.x, extent.y, extent.z);
-			PSMTXRotRad(geometry.prismRotate, 'y', yaw);
-			PSMTXConcat(geometry.prismWorld, geometry.prismRotate, geometry.prismResult);
-			PSMTXConcat(geometry.prismResult, geometry.prismLocal, geometry.prismResult);
-			PSMTXConcat(geometry.prismResult, geometry.prismScale, geometry.prismResult);
-			f32 h = (2.0f / sqrtf(3.0f)) * 0.5f;
+			Mtx world, local, rotate, scale, result;
+			PSMTXTrans(world, origin.x, origin.y, origin.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(world, rotate, result);
+			PSMTXConcat(result, local, result);
+			PSMTXConcat(result, scale, result);
+			f32 h = (2.0f / sqrtf(3.0f)) / 2.0f;
 			static Vec corners[8]
 			    = { { -h, h, -h }, { h, h, -h }, { h, h, -h }, { h, h, h }, { h, h, h }, { -h, h, h }, { -h, h, h }, { -h, h, -h } };
-			Vec* world = geometry.prismPoints;
-			PSMTXMultVecArray(geometry.prismResult, corners, world, 8);
+			Vec points[8];
+			PSMTXMultVecArray(result, corners, points, 8);
 			for (int j = 0; j < 4; ++j)
-				ExpandRadius(world[j].x, world[j].z, maxX, maxZ);
+				ExpandRadius(points[j].x, points[j].z, maxX, maxZ);
 			break;
 		}
 		case 3: { // a wall segment
-
-			PSMTXTrans(geometry.segmentWorld, origin.x, origin.y, origin.z);
-			PSMTXTrans(geometry.segmentLocal, center.x, center.y, center.z);
-			PSMTXScale(geometry.segmentScale, extent.x, extent.y, extent.z);
-			PSMTXRotRad(geometry.segmentRotate, 'y', baseYaw);
-			PSMTXRotRad(geometry.segmentTurn, 'y', floorAngle);
-			PSMTXConcat(geometry.segmentWorld, geometry.segmentRotate, geometry.segment);
-			PSMTXConcat(geometry.segment, geometry.segmentLocal, geometry.segment);
-			PSMTXConcat(geometry.segment, geometry.segmentTurn, geometry.segment);
-			PSMTXConcat(geometry.segment, geometry.segmentScale, geometry.segment);
+			Mtx world, local, rotate, turn, scale, result;
+			PSMTXTrans(world, origin.x, origin.y, origin.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', baseYaw);
+			PSMTXRotRad(turn, 'y', floorAngle);
+			PSMTXConcat(world, rotate, result);
+			PSMTXConcat(result, local, result);
+			PSMTXConcat(result, turn, result);
+			PSMTXConcat(result, scale, result);
 			static Vec ends[2] = { { -.5f, 0, 0 }, { .5f, 0, 0 } };
-			PSMTXMultVecArray(geometry.segment, ends, geometry.samples, 2);
-			// Retail scans four samples after transforming two; the last two are the type-5 corners.
+			Vec line[2];
+			PSMTXMultVecArray(result, ends, line, 2);
+			// retail scans four points after transforming two
 			for (int j = 0; j < 4; ++j)
-				ExpandRadius(geometry.samples[j].x, geometry.samples[j].z, maxX, maxZ);
+				ExpandRadius(line[j].x, line[j].z, maxX, maxZ);
 			break;
 		}
 		case 5: { // a quad from this and the next three records
-			Vec* corners = geometry.samples + 2;
+			Mtx world, rotate, scale, result;
+			Vec corners[4];
 			for (int j = 0; j < 4; ++j)
 				corners[j] = object->mToppleOffset + ReadObjectFloorOffset(object, i + j);
-			Vec extent = object->mMoveScale * ReadObjectFloorExtent(object, i);
-			f32 angle  = object->mMoveRotate.y + DEG2RAD * object->mFloors[i].mYawDegrees;
+			Vec extent    = object->mMoveScale * ReadObjectFloorExtent(object, i);
+			f32 baseAngle = object->mMoveRotate.y;
+			f32 turnAngle = DEG2RAD * object->mFloors[i].mYawDegrees;
+			f32 angle     = baseAngle + turnAngle;
 
-			PSMTXTrans(geometry.polygonWorld, origin.x, origin.y, origin.z);
-			PSMTXScale(geometry.polygonScale, extent.x, extent.y, extent.z);
-			PSMTXRotRad(geometry.polygonRotate, 'y', angle);
-			PSMTXConcat(geometry.polygonWorld, geometry.polygonRotate, geometry.polygon);
-			PSMTXConcat(geometry.polygon, geometry.polygonScale, geometry.polygon);
-			PSMTXMultVecArray(geometry.polygon, corners, corners, 4);
+			PSMTXTrans(world, origin.x, origin.y, origin.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', angle);
+			PSMTXConcat(world, rotate, result);
+			PSMTXConcat(result, scale, result);
+			PSMTXMultVecArray(result, corners, corners, 4);
 			for (int j = 0; j < 4; ++j)
 				ExpandRadius(corners[j].x, corners[j].z, maxX, maxZ);
 			break;
@@ -252,41 +248,53 @@ static inline void FloorNormalAngle(const CVec& normal, Vec* out, f32& angle)
 
 extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut)
 {
-	const XObjFloor& floorRecord = object->mFloors[index];
 	CVec from(*pos);
 	from.y = 0.0f;
 	CVec middle;
-	static Vec origin = { 0.0f, 0.0f, 0.0f };
-	f32 angle         = NAN;
+	f32 angle = NAN;
 
-	Vec center = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(floorRecord));
-	Vec extent = object->mMoveScale * ReadObjectFloorExtent(floorRecord);
-	f32 yaw    = (object->mMoveRotate.y + DEG2RAD * floorRecord.mYawDegrees);
-	switch (floorRecord.mId) {
+	Vec center   = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object, index));
+	Vec extent   = object->mMoveScale * ReadObjectFloorExtent(object, index);
+	f32 baseYaw  = object->mMoveRotate.y;
+	f32 floorYaw = DEG2RAD * object->mFloors[index].mYawDegrees;
+	f32 yaw      = baseYaw + floorYaw;
+	switch (object->mFloors[index].mId) {
 	case 0:
 	case 1: { // a disc: face its center
-		Mtx transform;
-		MakeFloorTransform(object, center, extent, yaw, transform);
-
+		Mtx world, local, rotate, scale, transform;
+		PSMTXTrans(world, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
+		PSMTXTrans(local, center.x, center.y, center.z);
+		PSMTXScale(scale, extent.x, extent.y, extent.z);
+		PSMTXRotRad(rotate, 'y', yaw);
+		PSMTXConcat(world, rotate, transform);
+		PSMTXConcat(transform, local, transform);
+		PSMTXConcat(transform, scale, transform);
+		static Vec origin = { 0.0f, 0.0f, 0.0f };
 		PSMTXMultVec(transform, &origin, &middle);
 		middle.y = 0.0f;
 		angle    = atan2(middle.x - from.x, middle.z - from.z);
 		break;
 	}
 	case 2: { // a box: face the wall edge the ray crosses
-		Mtx transform;
-		MakeFloorTransform(object, center, extent, yaw, transform);
-
+		Mtx world, local, rotate, scale, transform;
+		PSMTXTrans(world, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
+		PSMTXTrans(local, center.x, center.y, center.z);
+		PSMTXScale(scale, extent.x, extent.y, extent.z);
+		PSMTXRotRad(rotate, 'y', yaw);
+		PSMTXConcat(world, rotate, transform);
+		PSMTXConcat(transform, local, transform);
+		PSMTXConcat(transform, scale, transform);
+		static Vec origin = { 0.0f, 0.0f, 0.0f };
 		PSMTXMultVec(transform, &origin, &middle);
 		middle.y = 0.0f;
-		f32 h    = (2.0f / sqrtf(3.0f)) * 0.5f;
+		f32 h    = (2.0f / sqrtf(3.0f)) / 2.0f;
 		static Vec corners[8]
 		    = { { -h, h, -h }, { h, h, -h }, { h, h, -h }, { h, h, h }, { h, h, h }, { -h, h, h }, { -h, h, h }, { -h, h, -h } };
-		Vec world[8];
-		PSMTXMultVecArray(transform, corners, world, 8);
+		Vec points[8];
+		PSMTXMultVecArray(transform, corners, points, 8);
 		for (s32 i = 0; i < 4; ++i) {
-			Vec& a = world[2 * i];
-			Vec& b = world[2 * i + 1];
+			Vec& a = points[2 * i];
+			Vec& b = points[2 * i + 1];
 			CVec hit, normal;
 			if (IntersectLinesXZ(&from, &middle, &a, &b, &hit, 1)) {
 
@@ -314,10 +322,12 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 		Mtx translate, rotate, scaling, transform;
 		Vec corners[4];
 		for (s32 j = 0; j < 4; ++j)
-			corners[j] = object->mToppleOffset + ReadObjectFloorOffset(object->mFloors[index - 3 + j]);
-		Vec scale = object->mMoveScale * ReadObjectFloorExtent(object->mFloors[index]);
+			corners[j] = object->mToppleOffset + ReadObjectFloorOffset(object, index - 3 + j);
+		Vec scale = object->mMoveScale * ReadObjectFloorExtent(object, index);
 
-		f32 angleY = object->mMoveRotate.y + DEG2RAD * object->mFloors[index].mYawDegrees;
+		f32 baseAngle = object->mMoveRotate.y;
+		f32 turnAngle = DEG2RAD * object->mFloors[index].mYawDegrees;
+		f32 angleY    = baseAngle + turnAngle;
 		PSMTXTrans(translate, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
 		PSMTXScale(scaling, scale.x, scale.y, scale.z);
 		PSMTXRotRad(rotate, 'y', angleY);
@@ -425,26 +435,31 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 		return 0;
 	}
 	u32 result = 0;
-	CVec start(*from);
+	CVec start(*(const CVec*)from); // the callers pass CVecs
 	start.y = 0;
-	CVec dest(*to);
+	CVec dest(*(const CVec*)to);
 	dest.y = 0;
 	CVec hit;
 	s32 i = cursor ? *cursor : 0; // a cursor lets a caller resume after a hit
 	for (; mFloors[i].mId != -1; ++i) {
-		u32 collision          = 0;
-		const XObjFloor& floor = mFloors[i];
-		Vec center             = mMoveScale * (mToppleOffset + ReadObjectFloorOffset(floor));
-		Vec extent             = mMoveScale * ReadObjectFloorExtent(floor);
-		f32 objYaw             = mMoveRotate.y;
-		f32 angle              = DEG2RAD * floor.mYawDegrees;
-		f32 yaw                = objYaw + angle;
-		switch (floor.mId) {
+		u32 collision = 0;
+		Vec center    = mMoveScale * (mToppleOffset + ReadObjectFloorOffset(this, i));
+		Vec extent    = mMoveScale * ReadObjectFloorExtent(this, i);
+		f32 objYaw    = mMoveRotate.y;
+		f32 angle     = DEG2RAD * mFloors[i].mYawDegrees;
+		f32 yaw       = objYaw + angle;
+		switch (mFloors[i].mId) {
 		case 0:
 		case 1: { // a disc
 			CVec middle(0, 0, 0);
-			Mtx transform;
-			MakeFloorTransform(this, center, extent, yaw, transform);
+			Mtx world, local, rotate, scale, transform;
+			PSMTXTrans(world, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(world, rotate, transform);
+			PSMTXConcat(transform, local, transform);
+			PSMTXConcat(transform, scale, transform);
 			PSMTXMultVec(transform, &middle, &middle);
 			const f32 y = middle.y;
 			middle.y    = 0;
@@ -465,9 +480,15 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			break;
 		}
 		case 2: { // a box
-			Mtx transform;
-			MakeFloorTransform(this, center, extent, yaw, transform);
-			f32 h = (2.f / sqrtf(3.f)) * .5f;
+			Mtx base, local, rotate, scale, transform;
+			PSMTXTrans(base, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
+			PSMTXTrans(local, center.x, center.y, center.z);
+			PSMTXScale(scale, extent.x, extent.y, extent.z);
+			PSMTXRotRad(rotate, 'y', yaw);
+			PSMTXConcat(base, rotate, transform);
+			PSMTXConcat(transform, local, transform);
+			PSMTXConcat(transform, scale, transform);
+			f32 h = (2.f / sqrtf(3.f)) / 2.f;
 			static Vec corners[8]
 			    = { { -h, h, -h }, { h, h, -h }, { h, h, -h }, { h, h, h }, { h, h, h }, { -h, h, h }, { -h, h, h }, { -h, h, -h } };
 			Vec world[8];
@@ -509,8 +530,9 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			Vec wall[2];
 			static Vec ends[2] = { { -.5f, 0, 0 }, { .5f, 0, 0 } };
 			PSMTXMultVecArray(transform, ends, wall, 2);
-			if (ResolveCircleWallCollisionXZ(&start, &dest, &wall[0], &wall[1], push, contact, &mEdges[i].mContactOffset, NULL, radius, 0,
-			                                 1)) {
+			u32 touched = ResolveCircleWallCollisionXZ(&start, &dest, &wall[0], &wall[1], push, contact, &mEdges[i].mContactOffset, NULL,
+			                                           radius, 0, 1);
+			if (touched) {
 				collision  = 3; // the wall stops the sweep
 				contact->y = from->y;
 				StoreFloorEdge(mEdges[i], mMoveTranslate, wall[0], wall[1]);
@@ -518,13 +540,13 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			break;
 		}
 		case 5: { // a quad from this and the next three records
+			Mtx translate, rotate, scale, transform;
 			Vec quad[4];
 			for (s32 j = 0; j < 4; ++j)
-				quad[j] = mToppleOffset + ReadObjectFloorOffset(mFloors[i + j]);
-			Vec size       = mMoveScale * ReadObjectFloorExtent(floor);
-			f32 floorAngle = DEG2RAD * floor.mYawDegrees;
+				quad[j] = mToppleOffset + ReadObjectFloorOffset(this, i + j);
+			Vec size       = mMoveScale * ReadObjectFloorExtent(this, i);
+			f32 floorAngle = DEG2RAD * mFloors[i].mYawDegrees;
 			f32 rotY       = mMoveRotate.y + floorAngle;
-			Mtx translate, rotate, scale, transform;
 			PSMTXTrans(translate, mMoveTranslate.x, mMoveTranslate.y, mMoveTranslate.z);
 			PSMTXScale(scale, size.x, size.y, size.z);
 			PSMTXRotRad(rotate, 'y', rotY);
@@ -546,11 +568,11 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 				hit.z     = to->z;
 			}
 			if (collision) {
-				if (to->y <= mFloorHeights[i] && to->y >= (quad[0].y - extent.y * .5f - height)) {
+				if (to->y <= mFloorHeights[i] && to->y >= (quad[0].y - extent.y / 2.f - height)) {
 					StoreSweepContact(from, to, contact, dest, hit, mFloorHeights[i]);
 					collision = 3;
 				} else
-					collision = to->y < (quad[0].y - extent.y * .5f - height) ? 0 : 1; // above it
+					collision = to->y < (quad[0].y - extent.y / 2.f - height) ? 0 : 1; // above it
 			}
 			i += 3;
 			break;
@@ -580,11 +602,12 @@ u32 XObj::TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 hei
 			    && (!(gGame.mStatus.mFlags & 0x40000000) || !IsPlayerStopped(player) || !player->mBatteryDrains
 			        || (mStatus.mFlags & 0x8000))) {
 				mStatus.mFlags |= 0x8000000000000000ULL;
-				StartOrQueueEventScript(&gGame.mEvt, (u8*)GetEventScript(), this, -1, -1);
+				u8* script = (u8*)GetEventScript();
+				StartOrQueueEventScript(&gGame.mEvt, script, this, -1, -1);
 			}
 		}
 		if (flags & 1) { // let the object's own handler react and adjust the result
-			const CVec& delta = CVec(*contact) - *from;
+			const CVec& delta = *(CVec*)contact - *from;
 			PSVECMag(push);
 			result = OnPlayerContact((s32)&delta, result);
 		}
@@ -677,8 +700,8 @@ void XObj::DrawGroundShadowAt(const Vec* origin, f32 opacity)
 	u32 center = (u32)(160.0f * opacity);
 	DrawGsCircle(&gGame.mGs, 12, center, edge, position.x, position.y, position.z, size.x, size.z, rotation.x, rotation.y, rotation.z);
 	PrimVertex vertices[26]; // a rim of transparent vertices fades the edge out
-	f32 halfWidth  = size.x * 0.5f;
-	f32 halfHeight = size.z * 0.5f;
+	f32 halfWidth  = size.x / 2.0f;
+	f32 halfHeight = size.z / 2.0f;
 	for (s32 i = 0; i < 13; i++) {
 		f32 angle                 = (PI / 6.0f) * i;
 		vertices[i * 2].pos.x     = position.x - halfWidth * (f32)sin(angle);
