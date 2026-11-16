@@ -864,7 +864,10 @@ class XObj;
 class CMenu {
 public:
 	s32 mState; // _00, 0 while closed
-	u8 _004[0x14C - 0x4];
+	u8 _004[0x13C - 0x4];
+	BOOL mSuspended;   // _13C
+	BOOL mSuspendFade; // _140
+	u8 _144[0x14C - 0x144];
 	// _14C vtable
 
 	virtual void Init();             // _08

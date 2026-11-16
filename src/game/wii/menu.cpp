@@ -70,6 +70,18 @@ bool MenuUtil::IsStickUsedOverPointer()
 	return false;
 }
 
+void CMenu::Suspend(BOOL fade)
+{
+	mSuspended   = TRUE;
+	mSuspendFade = fade;
+}
+
+void CMenu::Resume()
+{
+	mSuspended   = FALSE;
+	mSuspendFade = FALSE;
+}
+
 extern "C" void AddPointerPane(CbPaneList* list, CbPane* pane)
 {
 	if (list->mCount < 0x100) {
