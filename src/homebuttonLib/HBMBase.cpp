@@ -68,9 +68,14 @@ static void initgx() {
 }
 
 static void drawBlackPlate(f32 left, f32 top, f32 right, f32 bottom) {
-    // unused: retail's .rodata for this file starts with 00 00 00 FF and no code reads it, which is
-    // what an unread local with an initializer leaves behind. That such a colour existed is in the
-    // binary; that it stood in this function and was called black is our reading.
+    // unused. For a local with an initializer the compiler emits two things: the initial values as
+    // a block of read-only data, and code that copies them into the variable. Nothing reads black, so
+    // the copy is removed as dead code, but the data block stays. Retail shows exactly that: this
+    // file's .rodata starts with 00 00 00 FF and no instruction in the program refers to it. With
+    // this line the file builds byte for byte like retail; without it those eight bytes are missing.
+    // Most likely a leftover: the colour was used once, the use went away and the line stayed.
+    // In the binary: that such a colour existed, and that it came first in the file's data.
+    // Our reading: that it stood in this function and was called black.
     GXColor black = {0, 0, 0, 255};
 
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
