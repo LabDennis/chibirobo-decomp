@@ -287,49 +287,47 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	}
 	Vec savedRotation = player->mMoveRotate;
 	{
-		CObjVec& motion      = player->mMotion;
-		XActHang& hangAction = player->mHang;
-		if (!IsHangActionState(&hangAction, 0)) {
-			if (IsHangActionState(&hangAction, 5)) {
-				SetObjectVectorSpeedX(&motion, 0);
-				SetObjectVectorSpeedZ(&motion, 0);
-				if (HasPlayerActionTarget(&hangAction) && IsActionTargetFloorId(&hangAction, 0)) {
+		if (!IsHangActionState(&player->mHang, 0)) {
+			if (IsHangActionState(&player->mHang, 5)) {
+				SetObjectVectorSpeedX(&player->mMotion, 0);
+				SetObjectVectorSpeedZ(&player->mMotion, 0);
+				if (HasPlayerActionTarget(&player->mHang) && IsActionTargetFloorId(&player->mHang, 0)) {
 					// on a round ledge he shuffles along the circle around its centre
-					Vec center = *GetHangFloorCenter(&hangAction);
-					f32 radius = GetHangDistance(&hangAction);
+					Vec center = *GetHangFloorCenter(&player->mHang);
+					f32 radius = GetHangDistance(&player->mHang);
 					f32 period = (TWO_PI * radius) / (0.3f * speed);
 					f32 angle
-					    = movementFrames * ((TWO_PI / period) * (s32)GetPlayerActionMoveDirection(&hangAction)) + player->mMoveRotate.y;
+					    = movementFrames * ((TWO_PI / period) * (s32)GetPlayerActionMoveDirection(&player->mHang)) + player->mMoveRotate.y;
 					player->SetRotationY(WrapPlayerActionAngle(angle), 0);
 					f32 facing = PI + angle;
-					SetVectorX(&motion, (radius * PlayerActionSine(facing) + center.x) - player->mMoveTranslate.x);
-					SetVectorZ(&motion, (radius * PlayerActionCosine(facing) + center.z) - player->mMoveTranslate.z);
+					SetVectorX(&player->mMotion, (radius * PlayerActionSine(facing) + center.x) - player->mMoveTranslate.x);
+					SetVectorZ(&player->mMotion, (radius * PlayerActionCosine(facing) + center.z) - player->mMoveTranslate.z);
 					PlayerActionSine(facing);
 					PlayerActionCosine(facing);
 				} else {
-					SetVectorX(&motion, targetX);
-					SetVectorZ(&motion, targetZ);
+					SetVectorX(&player->mMotion, targetX);
+					SetVectorZ(&player->mMotion, targetZ);
 				}
 			} else {
-				SetObjectVectorAndTargetXYZ(&motion, 0, 0, 0);
+				SetObjectVectorAndTargetXYZ(&player->mMotion, 0, 0, 0);
 			}
 		} else if (IsPushActionState(&player->mPush, 2)) {
-			SetObjectVectorSpeedX(&motion, 0);
-			SetObjectVectorSpeedZ(&motion, 0);
+			SetObjectVectorSpeedX(&player->mMotion, 0);
+			SetObjectVectorSpeedZ(&player->mMotion, 0);
 			s32 animation = GetObjectAnimationId(player);
 			if (animation == 64 || animation == 65) {
-				SetVectorX(&motion, targetX);
-				SetVectorZ(&motion, targetZ);
+				SetVectorX(&player->mMotion, targetX);
+				SetVectorZ(&player->mMotion, targetZ);
 			} else {
-				SetVectorX(&motion, 0);
-				SetVectorZ(&motion, 0);
+				SetVectorX(&player->mMotion, 0);
+				SetVectorZ(&player->mMotion, 0);
 			}
 		} else if (!IsRopeActionState(&player->mRope, 0)) {
 			if (IsRopeActionState(&player->mRope, 5)) {
-				SetObjectVectorSpeedX(&motion, 0);
-				SetObjectVectorSpeedZ(&motion, 0);
-				SetVectorX(&motion, 0);
-				SetVectorZ(&motion, 0);
+				SetObjectVectorSpeedX(&player->mMotion, 0);
+				SetObjectVectorSpeedZ(&player->mMotion, 0);
+				SetVectorX(&player->mMotion, 0);
+				SetVectorZ(&player->mMotion, 0);
 				f32 sign = (s32)GetPlayerActionMoveDirection(&player->mRope);
 				if (sign > 0)
 					sign = 1;
@@ -337,24 +335,24 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					sign = -1;
 				SetObjectYAndTarget(&player->mMoveTranslate, player->mMoveTranslate.y + sign * (speed * movementFrames));
 			} else {
-				SetObjectVectorAndTargetXYZ(&motion, 0, 0, 0);
+				SetObjectVectorAndTargetXYZ(&player->mMotion, 0, 0, 0);
 			}
 		} else if (!IsLadderActionState(&player->mLadder, 0)) {
 			if (IsLadderActionState(&player->mLadder, 5)) {
-				SetObjectVectorSpeedX(&motion, 0);
-				SetObjectVectorSpeedZ(&motion, 0);
-				SetVectorX(&motion, 0);
-				SetVectorZ(&motion, 0);
+				SetObjectVectorSpeedX(&player->mMotion, 0);
+				SetObjectVectorSpeedZ(&player->mMotion, 0);
+				SetVectorX(&player->mMotion, 0);
+				SetVectorZ(&player->mMotion, 0);
 				f32 climbDir = (s32)GetPlayerActionMoveDirection(&player->mLadder);
 				SetObjectYAndTarget(&player->mMoveTranslate, player->mMoveTranslate.y + speed * climbDir);
 			} else {
-				SetObjectVectorAndTargetXYZ(&motion, 0, 0, 0);
+				SetObjectVectorAndTargetXYZ(&player->mMotion, 0, 0, 0);
 			}
 		} else {
 			f32 step = (1.3f * 1.2f) * (0.05f * movementFrames);
 			if (!(GetMaskedGameStatus(&gGame, 0x100))) {
-				Vec* current = GetObjectVectorCurrent(&motion);
-				Vec* target  = GetObjectVectorTarget(&motion);
+				Vec* current = GetObjectVectorCurrent(&player->mMotion);
+				Vec* target  = GetObjectVectorTarget(&player->mMotion);
 				f32 rate     = GetPlayerAnimationRateMultiplier(player);
 				f32 distance = GetVectorDistance(current, target) / rate;
 				if (distance >= 3.0f) {
@@ -364,8 +362,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					step *= difference / 2.5f;
 				}
 			}
-			SetObjectVectorSpeedX(&motion, step);
-			SetObjectVectorSpeedZ(&motion, step);
+			SetObjectVectorSpeedX(&player->mMotion, step);
+			SetObjectVectorSpeedZ(&player->mMotion, step);
 		}
 	}
 	player->mMotion.Step(frames);
@@ -407,20 +405,20 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						rate = DEG2RAD;
 					}
 				}
-				XActLift& lift  = player->mLift;
-				CObjVec& motion = player->mMotion;
 				if (GetObjectAnimationId(player) == 0x895
-				    && (IsLiftActionState(&lift, 27) || IsLiftActionState(&lift, 28) || IsLiftActionState(&lift, 4))) {
-					SetObjectXAndTarget(&motion, 0);
-					SetObjectZAndTarget(&motion, 0);
+				    && (IsLiftActionState(&player->mLift, 27) || IsLiftActionState(&player->mLift, 28)
+				        || IsLiftActionState(&player->mLift, 4))) {
+					SetObjectXAndTarget(&player->mMotion, 0);
+					SetObjectZAndTarget(&player->mMotion, 0);
 					if (ClassifyFloatBits(direction) != FP_NAN && direction >= 0.0f)
 						player->SetRotateY(direction, 0.25f * rate);
 				} else if (GetHeldPadButtons(GetPadForPort(&gGame, 0), PAD_BUTTON_A) && !(GetMaskedGameStatus(&gGame, 0x400))
-				           && IsJumpActionState(&player->mJump, 0) && IsLiftActionState(&lift, 4)
-				           && (IsCarryingToothbrush(&lift) || IsCarryingSpoon(&lift) || IsCarryingSquirter(&lift))
+				           && IsJumpActionState(&player->mJump, 0) && IsLiftActionState(&player->mLift, 4)
+				           && (IsCarryingToothbrush(&player->mLift) || IsCarryingSpoon(&player->mLift)
+				               || IsCarryingSquirter(&player->mLift))
 				           && GetObjectAnimationId(player) != 0x8ae && GetObjectAnimationId(player) != 0x8af) {
-					SetObjectXAndTarget(&motion, 0.7f * motion.x);
-					SetObjectZAndTarget(&motion, 0.7f * motion.z);
+					SetObjectXAndTarget(&player->mMotion, 0.7f * player->mMotion.x);
+					SetObjectZAndTarget(&player->mMotion, 0.7f * player->mMotion.z);
 					player->mMoveSpeed = GetPlayerAnimationRateMultiplier(player);
 					if (ClassifyFloatBits(direction) != FP_NAN && direction >= 0.0f) {
 						f32 diff = WrapPlayerActionAngle(player->mMoveRotate.y - WrapPlayerActionAngle(direction));
@@ -778,28 +776,28 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				}
 			}
 		}
-		XActPush& pushAction = player->mPush;
-		if (IsPushActionState(&pushAction, 2) && !IsPlayerActionMoveDirection(&pushAction, 0) && HasPlayerActionTarget(&pushAction)) {
-			XObj* target  = GetPlayerActionTarget(&pushAction);
+		if (IsPushActionState(&player->mPush, 2) && !IsPlayerActionMoveDirection(&player->mPush, 0)
+		    && HasPlayerActionTarget(&player->mPush)) {
+			XObj* target  = GetPlayerActionTarget(&player->mPush);
 			Vec targetPos = *GetObjectMoveTranslation(target);
 			f32 angle     = 0;
-			if (IsPlayerActionMoveDirection(&pushAction, 1))
+			if (IsPlayerActionMoveDirection(&player->mPush, 1))
 				angle = GetObjectMoveRotation(player)->y;
-			else if (IsPlayerActionMoveDirection(&pushAction, -1))
+			else if (IsPlayerActionMoveDirection(&player->mPush, -1))
 				angle = PI + GetObjectMoveRotation(player)->y;
 			targetPos.x += 2.5f * (0.4f * PlayerActionSine(angle));
 			targetPos.z += 2.5f * (0.4f * PlayerActionCosine(angle));
-			s32 index        = GetActionTargetFloor(&pushAction);
+			s32 index        = GetActionTargetFloor(&player->mPush);
 			Vec centerOffset = GetFloorCenterOffset(GetObjectFloorTableAddress(target), index);
 			Vec scaledOffset = *GetObjectMoveScale(target) * centerOffset;
-			index            = GetActionTargetFloor(&pushAction);
+			index            = GetActionTargetFloor(&player->mPush);
 			Vec shape        = GetFloorExtent(GetObjectFloorTableAddress(target), index);
 			Vec extent       = *GetObjectMoveScale(target) * shape;
-			index            = GetActionTargetFloor(&pushAction);
+			index            = GetActionTargetFloor(&player->mPush);
 			f32 floorYaw     = GetFloorYawRadians(GetObjectFloorTableAddress(target), index);
 			f32 yaw          = GetObjectMoveRotation(target)->y + floorYaw;
 			scaledOffset.y   = 0;
-			if (IsActionTargetFloorId(&pushAction, 2)) {
+			if (IsActionTargetFloorId(&player->mPush, 2)) {
 				extent.y *= (2.0f / SquareRootFloat(3.0f)) / 2.0f;
 				extent.x *= (2.0f / SquareRootFloat(3.0f)) / 2.0f;
 				extent.z *= (2.0f / SquareRootFloat(3.0f)) / 2.0f;
@@ -910,8 +908,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				}
 			}
 		} else {
-			XActRope& ropeAction = player->mRope;
-			if (IsRopeActionState(&ropeAction, 5) && IsPlayerActionMoveDirection(&ropeAction, -1) && HasPlayerActionTarget(&ropeAction)) {
+			if (IsRopeActionState(&player->mRope, 5) && IsPlayerActionMoveDirection(&player->mRope, -1)
+			    && HasPlayerActionTarget(&player->mRope)) {
 				s32 path   = 0;
 				CVec joint = GetEventJointWorldPosition(player, 1, &path);
 				Vec point;
@@ -921,7 +919,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				u32 hit;
 				{
 					CVec from(point), to(point);
-					hit = GetPlayerActionTarget(&ropeAction)->TestFloorCollision(&from, &to, 0.5f, 0.5f, &push, &contact, 0, 0);
+					hit = GetPlayerActionTarget(&player->mRope)->TestFloorCollision(&from, &to, 0.5f, 0.5f, &push, &contact, 0, 0);
 				}
 				if ((hit & 3) != 3) {
 					SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->mLastPos + hang);
@@ -952,32 +950,31 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		SetVectorComponents(&player->mFloorSlope, 0, 0, 0);
 	}
 	if (player->mInAir) {
-		CObjVec& motion = player->mMoveTranslate;
-		f32 floor       = player->mFloorHit.mHeight;
-		if (motion.y == floor) {
-			SetObjectYAndTarget(&motion, floor);
-			SetObjectVerticalSpeed(&motion, 0);
-		} else if (motion.y > floor && CanFallDuringHangAction(&player->mHang) && CanFallDuringJumpAction(&player->mJump)
+		f32 floor = player->mFloorHit.mHeight;
+		if (player->mMoveTranslate.y == floor) {
+			SetObjectYAndTarget(&player->mMoveTranslate, floor);
+			SetObjectVerticalSpeed(&player->mMoveTranslate, 0);
+		} else if (player->mMoveTranslate.y > floor && CanFallDuringHangAction(&player->mHang) && CanFallDuringJumpAction(&player->mJump)
 		           && CanFallDuringLadderAction(&player->mLadder) && CanFallDuringRopeAction(&player->mRope)
 		           && CanFallDuringPushAction(&player->mPush) && CanFallDuringTumbleAction(&player->mTumble)
 		           && CanFallDuringCopterAction(&player->mCopter) && CanFallDuringPopperAction(&player->mPopper)
 		           && CanFallDuringRadarAction(&player->mRadar) && GetMaskedPlayerStatusFlags(player, 2)) {
-			SetObjectTargetY(&motion, player->mFloorHit.mHeight);
+			SetObjectTargetY(&player->mMoveTranslate, player->mFloorHit.mHeight);
 			f32 speed;
 			if (IsCopterActionState(&player->mCopter, 4) || IsCopterActionState(&player->mCopter, 7)
 			    || IsCopterActionState(&player->mCopter, 8)) {
 				f32 acceleration = GetCopterDescentAcceleration();
 				f32 limit        = GetCopterDescentSpeedLimit();
-				speed            = acceleration + GetObjectVectorSpeed(&motion)->y;
+				speed            = acceleration + GetObjectVectorSpeed(&player->mMoveTranslate)->y;
 				if (speed > limit)
 					speed = limit;
 			} else {
-				speed = 0.15f + GetObjectVectorSpeed(&motion)->y;
+				speed = 0.15f + GetObjectVectorSpeed(&player->mMoveTranslate)->y;
 				if (speed > 10.0f)
 					speed = 10.0f;
 			}
-			SetObjectVerticalSpeed(&motion, speed);
-			f32 drop = motion.y - player->mFloorHit.mHeight;
+			SetObjectVerticalSpeed(&player->mMoveTranslate, speed);
+			f32 drop = player->mMoveTranslate.y - player->mFloorHit.mHeight;
 			if (speed > 0.1f && drop > 1) {
 				if (!(player->mFloorContacts[0].objectIndex >= 0
 				      || (!IsLiftActionState(&player->mLift, 0) && !IsLiftActionState(&player->mLift, 4))
@@ -1037,20 +1034,20 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					}
 				}
 			}
-		} else if (motion.y < player->mFloorHit.mHeight && canRise) {
+		} else if (player->mMoveTranslate.y < player->mFloorHit.mHeight && canRise) {
 			if (IsRopeActionState(&player->mRope, 5)) {
-				SetObjectYAndTarget(&motion, player->mFloorHit.mHeight);
-				SetObjectVerticalSpeed(&motion, 0);
+				SetObjectYAndTarget(&player->mMoveTranslate, player->mFloorHit.mHeight);
+				SetObjectVerticalSpeed(&player->mMoveTranslate, 0);
 			} else if (IsLadderActionState(&player->mLadder, 5)) {
-				SetObjectYAndTarget(&motion, player->mFloorHit.mHeight);
-				SetObjectVerticalSpeed(&motion, 0);
+				SetObjectYAndTarget(&player->mMoveTranslate, player->mFloorHit.mHeight);
+				SetObjectVerticalSpeed(&player->mMoveTranslate, 0);
 			} else {
-				SetObjectTargetY(&motion, player->mFloorHit.mHeight);
-				f32 speed = 0.2f + GetObjectVectorSpeed(&motion)->y;
-				SetObjectVerticalSpeed(&motion, speed > 5 ? 5 : speed);
+				SetObjectTargetY(&player->mMoveTranslate, player->mFloorHit.mHeight);
+				f32 speed = 0.2f + GetObjectVectorSpeed(&player->mMoveTranslate)->y;
+				SetObjectVerticalSpeed(&player->mMoveTranslate, speed > 5 ? 5 : speed);
 			}
 		} else {
-			SetObjectVerticalSpeed(&motion, 0);
+			SetObjectVerticalSpeed(&player->mMoveTranslate, 0);
 		}
 	}
 	{
@@ -4125,31 +4122,30 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 	// menu type 3 puts the items in a row that scrolls sideways, type 0 on a square, the others on a circle
 	if (menu->mMenuType == 3) {
 		for (s32 i = 0; i < 8; ++i) {
-			OctaMenuItem& item = menu->mItems[i];
-			s32 slot           = i - menu->mFirstVisibleItem;
+			s32 slot = i - menu->mFirstVisibleItem;
 			if (slot < 0)
 				slot += 7;
-			slotY[i]               = menu->mRowOffset + gEquipmentRowY[slot];
-			item.mTargetSlotOffset = menu->mFade * gEquipmentRowX[slot];
+			slotY[i]                          = menu->mRowOffset + gEquipmentRowY[slot];
+			menu->mItems[i].mTargetSlotOffset = menu->mFade * gEquipmentRowX[slot];
 			if (menu->mFade < 1.f) {
-				item.mSlotOffset = item.mTargetSlotOffset;
+				menu->mItems[i].mSlotOffset = menu->mItems[i].mTargetSlotOffset;
 			} else {
-				if (item.mSlotOffset < 0 && item.mTargetSlotOffset == 3)
-					item.mSlotOffset = 4;
-				else if (item.mSlotOffset > 0 && item.mTargetSlotOffset == -3)
-					item.mSlotOffset = -4;
-				f32 step = item.mTargetSlotOffset - item.mSlotOffset;
+				if (menu->mItems[i].mSlotOffset < 0 && menu->mItems[i].mTargetSlotOffset == 3)
+					menu->mItems[i].mSlotOffset = 4;
+				else if (menu->mItems[i].mSlotOffset > 0 && menu->mItems[i].mTargetSlotOffset == -3)
+					menu->mItems[i].mSlotOffset = -4;
+				f32 step = menu->mItems[i].mTargetSlotOffset - menu->mItems[i].mSlotOffset;
 				if (step > 1) {
-					step             = 1;
-					item.mSlotOffset = item.mTargetSlotOffset - 1;
+					step                        = 1;
+					menu->mItems[i].mSlotOffset = menu->mItems[i].mTargetSlotOffset - 1;
 				}
 				if (step < -1) {
-					step             = -1;
-					item.mSlotOffset = item.mTargetSlotOffset + 1;
+					step                        = -1;
+					menu->mItems[i].mSlotOffset = menu->mItems[i].mTargetSlotOffset + 1;
 				}
-				item.mSlotOffset += .4f * step;
+				menu->mItems[i].mSlotOffset += .4f * step;
 			}
-			slotX[i] = item.mSlotOffset;
+			slotX[i] = menu->mItems[i].mSlotOffset;
 		}
 		scale = 1.1f;
 	} else if (menu->mMenuType == 0) {
@@ -4234,18 +4230,17 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 	}
 	CTexObj background = RingTexture(menu, -1);
 	for (s32 i = 0; i < count; ++i) {
-		CTexObj tex        = RingTexture(menu, i);
-		OctaMenuItem& item = menu->mItems[i];
+		CTexObj tex = RingTexture(menu, i);
 		f32 width = gEquipmentIconWidth[i], height = gEquipmentIconHeight[i];
-		sin(item.mPulsePhase);
-		sin(item._0C);
-		sin(.5f * item._0C);
-		sin(.7f * item._0C);
+		sin(menu->mItems[i].mPulsePhase);
+		sin(menu->mItems[i]._0C);
+		sin(.5f * menu->mItems[i]._0C);
+		sin(.7f * menu->mItems[i]._0C);
 		f32 pulse;
 		if (menu->mMenuType == 3)
-			pulse = item.mScale * (f32)sin((PI * .5f) * fade);
+			pulse = menu->mItems[i].mScale * (f32)sin((PI * .5f) * fade);
 		else
-			pulse = item.mScale * (f32)sin(2.0943952f * fade);
+			pulse = menu->mItems[i].mScale * (f32)sin(2.0943952f * fade);
 		f32 x, y;
 
 		if (menu->mMenuType == 3) {
@@ -4259,7 +4254,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 				menu->mCursorX = menu->mFade < 1.f ? x : 320.f;
 			}
 		} else {
-			f32 radius = 60.f + 20.f * item.mScale;
+			f32 radius = 60.f + 20.f * menu->mItems[i].mScale;
 			x          = originX + fade * (radius * (scale * slotX[i]));
 			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
 		}
@@ -4272,7 +4267,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 				x += 100.f * (slotX[i] * (f32)sin(PI * menu->mGlow));
 			}
 		}
-		f32 slot = item.mSlotOffset;
+		f32 slot = menu->mItems[i].mSlotOffset;
 		f32 alpha;
 		if (slot >= 3.02f)
 			alpha = Abs(4.f - slot);
@@ -4305,16 +4300,16 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 		}
-		// an item scrolling off one end of the row also shows at the other end
-		if (menu->mMenuType == 3 && (item.mSlotOffset >= 3.02f || item.mSlotOffset <= -3.02f)) {
+		// an menu->mItems[i] scrolling off one end of the row also shows at the other end
+		if (menu->mMenuType == 3 && (menu->mItems[i].mSlotOffset >= 3.02f || menu->mItems[i].mSlotOffset <= -3.02f)) {
 			f32 span   = 7.f * scale;
-			f32 radius = 20.f * item.mScale + 60.f;
-			if (item.mSlotOffset >= 3.02f) {
+			f32 radius = 20.f * menu->mItems[i].mScale + 60.f;
+			if (menu->mItems[i].mSlotOffset >= 3.02f) {
 				x     = x - span * radius;
-				alpha = Abs(item.mSlotOffset - 3.f);
+				alpha = Abs(menu->mItems[i].mSlotOffset - 3.f);
 			} else {
 				x     = x + span * radius;
-				alpha = Abs(3.f + item.mSlotOffset);
+				alpha = Abs(3.f + menu->mItems[i].mSlotOffset);
 			}
 			menu->GetItemColor(i);
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
