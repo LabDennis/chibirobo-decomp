@@ -187,6 +187,7 @@ __dt__14GameScrnColor1Fv = .text:0x8002FB78; // type:function size:0x6C
 __dt__13GameScrnColorFv = .text:0x8002FBE4; // type:function size:0x6C
 __dt__7ScrnTexFv = .text:0x8002FC50; // type:function size:0x6C
 __dt__8FbSubwinFv = .text:0x8002FCBC; // type:function size:0x6C
+__dt__10CStopwatchFv = .text:0x8003028C; // type:function size:0x6C
 __dt__6CPadExFv = .text:0x80030A54; // type:function size:0x6C
 GetTarget__22CInterfaceCameraActionFv = .text:0x80031E24; // type:function size:0x8
 GetInterestMode__22CInterfaceCameraActionFv = .text:0x80031E2C; // type:function size:0x8
