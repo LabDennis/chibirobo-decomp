@@ -578,7 +578,7 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjspiderbossstate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjflagsclear.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjcoinparam.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(MatchingFor(JP), "game/titlestates.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(Matching, "game/titlestates.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossupdate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjspiderbossinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactor3init.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -592,7 +592,7 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjplugnode.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjchritem.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/fbsubwindraw.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(MatchingFor(JP), "game/msgdataformat.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(MatchingFor(US, JP), "game/msgdataformat.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/memcardreadstate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/memcardwritestate.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjcurrentedge.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -633,7 +633,7 @@ gamecube_libs = [
             Object(Matching, "game/xobjactorse.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjhboxpart.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjhbox.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/cinterpolationeaseout.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(Matching, "game/cinterpolationeaseout.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/ccameraactionareaex.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/evt.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/msg.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -1000,7 +1000,7 @@ gamecube_libs = [
             Object(Matching, "game/cshadow.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cgs.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cprimitive.cpp", extra_cflags=["-inline auto,deferred"]),
-            Object(MatchingFor(JP), "game/cpad.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
+            Object(Matching, "game/cpad.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cfont.cpp"),
             Object(Matching, "game/cfile.cpp", extra_cflags=["-inline auto,deferred"], padding="small_data"),
             Object(Matching, "game/ctpl.cpp", extra_cflags=["-inline auto,deferred"]),
@@ -1147,7 +1147,7 @@ gamecube_libs = [
             Object(Matching, "rel/stage04/jenny.cpp"),
             Object(NonMatching, "rel/trash.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "rel/stage06/parent.cpp"),
-            Object(MatchingFor(JP), "rel/stage07/living.cpp", extra_cflags=["-inline auto,deferred"]),
+            Object(Matching, "rel/stage07/living.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "rel/stage08/stage08.cpp"),
             Object(Matching, "rel/stage09/ambient.cpp"),
             Object(Matching, "rel/stage11/haisui.cpp"),
@@ -1292,7 +1292,7 @@ if wii:
                 # bl - auto-inlining was off for the unit
                 Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # shared GameCube game units found on the Wii (wii_gc_pairs.txt)
-                Object(Equivalent, "game/cinterpolationeaseout.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Matching, "game/cinterpolationeaseout.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # FindAreaContainingPoint takes Vec by value on the Wii (the retail caller copies all
                 # three words to the stack); gCameraAreaState's _10/_14/_24 offsets are retail-confirmed
                 Object(Matching, "game/wii/ccameraactionareaexm.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1309,7 +1309,7 @@ if wii:
                 Object(NonMatching, "game/wii/xobjplugcord.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # on Wii the two destructors live alone here; CamAreaSlot's ctor is emitted as the
                 # first function of ccameraactionmap2.cpp (retail 0x80154310)
-                Object(NonMatching, "game/ccameraactionareaexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Matching, "game/ccameraactionareaexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii binary merged the area and map camera code into one file; only the
                 # CamAreaSlot ctor at its head is reconstructed so far
                 Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1321,7 +1321,7 @@ if wii:
                 # menu dtors: the GameCube files' hand-spelled weak copies stay GC-only; on Wii the
                 # classes keep inline/base dtors and the units define the out-of-line destructors
                 Object(Matching, "game/atcmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(Equivalent, "game/drsmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Matching, "game/drsmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/oxmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # XObjChrMenu's dtor and the OXMenu/OXMenuMark ctors; the mark ctor
                 # inlines the unrecovered Wii XObj ctor, so the unit stays NonMatching
@@ -1331,7 +1331,7 @@ if wii:
                 # GameCube file's hand-spelled weak copies stay GC-only like the menu dtors
                 Object(NonMatching, "game/xpaddtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/cpaddtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(NonMatching, "game/cpadexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Matching, "game/cpadexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # ~CGame and the weak destructors of CGame's and CBase's members the compiler emits behind
                 # it (retail 0x8002CFB8 on); the classes still missing keep ~CGame under the inline budget
                 Object(NonMatching, "game/wii/gamedtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1350,7 +1350,7 @@ if wii:
                 Object(NonMatching, "game/wii/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # -inline noauto like the engine files around it (cfile, ctpl, THPSimple): Update
                 # calls Stop where auto-inlining would expand it
-                Object(NonMatching, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(Matching, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # member offsets are shared with the GameCube class (mEyeInterps _18C, mFovInterps
                 # _330, the interp pointers _44-_54); the Wii vtable re-orders the Vec& overloads
                 Object(NonMatching, "game/ccameraactionevt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -1591,7 +1591,7 @@ if wii:
                 Object(Matching, "nw4r/ef/drawstrategy/ef_drawlinestrategy.cpp"),
                 Object(Matching, "nw4r/ef/drawstrategy/ef_drawpointstrategy.cpp"),
                 Object(Matching, "nw4r/ef/drawstrategy/ef_drawstripestrategy.cpp"),
-                Object(NonMatching, "nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.cpp"),
                 Object(Matching, "nw4r/ef/ef_res_emitter_ac.cpp"),
                 # nw4r::g3d (0x8025B5A4-0x80282CA0)
                 Object(Matching, "nw4r/g3d/res/g3d_rescommon.cpp"),
@@ -1671,7 +1671,7 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_BasicPlayer.cpp"),
                 # code 40 of 40 by content; Stop, Pause and IsPause are StopWiiSfxTrack, SetWiiSfxTrackPaused and
                 # IsWiiSfxTrackPaused in symbols.txt, the names src/game/wii/msg.cpp calls
-                Object(NonMatching, "nw4r/snd/snd_BasicSound.cpp"),
+                Object(Matching, "nw4r/snd/snd_BasicSound.cpp"),
                 Object(Matching, "nw4r/snd/snd_BiquadFilterPreset.cpp"),
                 Object(Matching, "nw4r/snd/snd_Channel.cpp"),
                 Object(Matching, "nw4r/snd/snd_DisposeCallbackManager.cpp"),
@@ -1692,7 +1692,7 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_SeqFile.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqPlayer.cpp"),
                 # code complete; calls BasicSound::Stop (StopWiiSfxTrack in symbols.txt)
-                Object(NonMatching, "nw4r/snd/snd_SeqSound.cpp"),
+                Object(Matching, "nw4r/snd/snd_SeqSound.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqSoundHandle.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqTrack.cpp"),
                 Object(Matching, "nw4r/snd/snd_Sound3DActor.cpp"),
