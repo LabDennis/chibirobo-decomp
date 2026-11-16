@@ -8406,3 +8406,4 @@ RenderMirrorTextures = .text:0x8002695C; // type:function size:0x4CC
 DrawObjectAlphaMask = .text:0x80027114; // type:function size:0x5E4
 OnBatteryInfo__Fll = .text:0x8001834C; // type:function size:0x18 scope:local
 gBatteryCheck = .bss:0x80444E78; // type:object size:0x28
+DrawDiscError__5CBaseFv = .text:0x80019540; // type:function size:0x39C

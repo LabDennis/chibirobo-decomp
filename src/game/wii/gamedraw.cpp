@@ -1813,7 +1813,7 @@ void CGame::Draw()
 		}
 		fn_80028998(this);
 		DrawWiiHomeMenu(&mHomeMenu);
-		vf80();
+		DrawDiscError();
 		DrawSceneQueue(GetScreenCamera()->mViewMtx);
 		vf54();
 	}

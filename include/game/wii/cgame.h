@@ -116,7 +116,7 @@ public:
 	virtual void SetCameraLight();
 	virtual void SetScreenLight();
 	virtual void vf7C();
-	virtual void vf80();
+	virtual void DrawDiscError(); // _80, the drive's error message over the frame while the disc cannot be read
 	virtual void Reset(u32 code);
 
 	void Run(int argc, char** argv); // 0x80017BD8, main's whole body

@@ -6,6 +6,7 @@
 #include "revolution/wpad.h"
 #include "nw4r/snd/snd_RemoteSpeakerManager.h"
 #include "revolution/mem.h"
+#include <string.h>
 #include "nw4r/snd/snd_BasicSound.h"
 
 extern "C" {
@@ -22,6 +23,7 @@ void OSReturnToDataManager();
 BOOL DVDCheckDiskAsync(DVDCommandBlock* block, DVDCBCallback callback);
 void OnDiskChecked(s32 result, DVDCommandBlock* block); // 0x80019414, no source yet
 const char* GetLocalizedInterfaceText(s32 id);
+int sprintf(char* buf, const char* fmt, ...);
 }
 
 static void OnBatteryInfo(s32 chan, s32 result);
@@ -29,6 +31,8 @@ static void OnBatteryInfo(s32 chan, s32 result);
 // the expanded heap mm::InitMem1 creates over the MEM1 arena
 extern MEMiHeapHead* gWiiMem1Heap;
 extern s32 gRefreshRate;
+extern s32 gPointerScreenWidth;
+extern s32 gPointerScreenHeight;
 
 // the remote's battery query: Update asks WPAD every three seconds while pad 0 holds a remote
 struct WiiBatteryCheck {
@@ -113,6 +117,62 @@ void CBase::Reset(u32 code)
 void OnPowerButton()
 {
 	gPowerButtonPressed = TRUE;
+}
+
+/**
+ * @note Address: 0x80019540
+ * @note Size: 0x39C
+ */
+// NONMATCHING: retail keeps the text's top in a fifth callee-saved float and stores mTextFont before
+// the table copy; one more spelling of the locals not found
+// the drive's message for the status DVDGetDriveStatus reports, centred on a dark box
+void CBase::DrawDiscError()
+{
+	if (IsDiscError()) {
+		f32 width  = gPointerScreenWidth;
+		f32 height = gPointerScreenHeight;
+		// the drive statuses that have a message, and the interface text each shows
+		struct {
+			s32 status;
+			s32 text;
+		} texts[6] = {
+			{ 5, 0x55 }, { 4, 0x56 }, { 6, 0x57 }, { 11, 0x58 }, { 1, 0x59 }, { 0, -1 },
+		};
+		gGame.mGs.mTextFont = 1;
+		const char* text    = NULL;
+		for (s32 i = 0; texts[i].text >= 0; i++) {
+			if (texts[i].status == mDvdStatus) {
+				text = GetLocalizedInterfaceText(texts[i].text);
+			}
+		}
+		if (text != NULL) {
+			gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+			char buf[0x138];
+			sprintf(buf, text, GetLocalizedInterfaceText(0));
+			f32 size       = 24.0f;
+			f32 textWidth  = MeasureGameTextWidth(&gGame.mGs, buf, TRUE, size);
+			f32 textHeight = MeasureGameTextHeight(&gGame.mGs, buf, size);
+			f32 y          = height * 0.5f - textHeight * 0.5f;
+			f32 x          = width * 0.5f - textWidth * 0.5f;
+			Vec quad[4]    = { { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f }, { 0.0f, 0.0f, 0.0f } };
+			quad[0].x      = x - size;
+			quad[0].y      = y - size;
+			quad[1].x      = x + textWidth + size;
+			quad[1].y      = y - size;
+			quad[2].x      = x + textWidth + size;
+			quad[2].y      = y + textHeight + size;
+			quad[3].x      = x - size;
+			quad[3].y      = y + textHeight + size;
+			DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, 200, quad[1].x, quad[1].y, quad[1].z, 200, quad[2].x, quad[2].y,
+			                 quad[2].z, 200, quad[3].x, quad[3].y, quad[3].z, 200);
+			DrawGsProportionalTextFormat(&gGame.mGs, 0xFFFFFFFF, buf, x, y, 0.0f, size, size);
+			gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+			gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_NONE, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		}
+		gGame.mGs.mTextFont = 0;
+	}
 }
 
 /**
