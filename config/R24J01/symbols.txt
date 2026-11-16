@@ -8392,3 +8392,6 @@ IsSceneCameraAnmEnd = .text:0x8002B18C; // type:function size:0x68
 IsAnmScnEnd__4CObjFv = .text:0x8002B1F4; // type:function size:0xF4
 UpdateResetRequest = .text:0x80024CC0; // type:function size:0x38C
 RenderSubwindow = .text:0x80026E28; // type:function size:0x298
+SetPos__4CObjFfff = .text:0x80024BB8; // type:function size:0x1C
+sStageNameShadowX = .data:0x802E5F40; // type:object size:0x10
+sStageNameShadowY = .data:0x802E5F50; // type:object size:0x10

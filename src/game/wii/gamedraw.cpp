@@ -15,6 +15,8 @@
 #include "game/fbtexeff.h"
 #include "game/cmdline.h"
 #include "game/mm.h"
+#include "game/cfont.h"
+#include "game/stagetable.h"
 #include <math.h>
 #include <stdlib.h>
 
@@ -49,6 +51,9 @@ s32 GetDefaultStageIndex();
 }
 
 extern s32 gRefreshRate;
+// the stage name's four shadow copies, one pixel off to each corner
+f32 sStageNameShadowX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 sStageNameShadowY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
 extern f32 gScreenWidthScale;
 // a sound id XObjSpiderSmall keeps while it fights (0x80128CD4), cleared once its tracks are let go
 extern u32 gSpiderSmallSoundId;
@@ -267,6 +272,93 @@ extern "C" void* UpdateMovie(void* arg)
 		}
 	} while (movie->mState != 0);
 	return NULL;
+}
+
+/**
+ * @note Address: 0x8002C298
+ * @note Size: 0x8E4
+ */
+// NONMATCHING: written from the GameCube's and the retail code, not tuned: the float registers and the
+// literal pool differ; the GameCube's tev and blend calls are the CGs inlines here
+// draws the stage name: a bubble per letter, then the letter with a shadow on four sides. while a stage
+// loads the pointer pops a bubble: it jumps, the loading object plays one of two animations and the
+// stage's sound for that letter plays
+extern "C" void DrawStageNameBubbles(CGame* game)
+{
+	const f32 spacing   = 58.0f;
+	const f32 glyphSize = 25.0f;
+	if (game->mStageName.mActive && !game->GetStatusFlags(2)) {
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		game->mTpl.mTex.Init(&game->mTpl.mPalette->descriptorArray[139], 0);
+		CTexObj bubble = game->mTpl.mTex;
+		f32 center     = gPointerScreenWidth / 2;
+		u32 color      = game->mStageName.mColor & 0xFFFFFF00; // rgb only; alpha comes from the scale
+		for (s32 i = 0; i < game->mStageName.mCount; i++) {
+			f32 scale = game->mStageName.mChars[i].mScale;
+			if (scale <= 0.0f) {
+				continue;
+			}
+			CFont font;
+			s32 width;
+			CTexObj letter = *GetFontGlyphTexture(&font, game->mStageName.mChars[i].mText, 1, &width);
+			f32 bob        = 4.0f * (f32)sin(game->mStageName.mChars[i].mBob);
+			f32 rot        = DEG2RAD * (10.0f * (f32)sin(0.7f * game->mStageName.mChars[i].mTilt));
+			f32 swell      = sin(3.1415927f * scale);
+			f32 pop        = 0.2f * swell + (f32)sin(1.5707964f * scale);
+			f32 x          = spacing * 0.5f + (spacing * i + (center - spacing * game->mStageName.mCount * 0.5f));
+			f32 y          = 150.0f;
+			if (gWiiPointer.mPointerValid && game->IsLoadStepRunning() && game->mLoadStep > 20) {
+				f32 half = glyphSize * (2.2f * pop) * 0.5f;
+				if (gWiiPointer.mPointer.x >= x - half && gWiiPointer.mPointer.x <= x + half && gWiiPointer.mPointer.y >= 150.0f - half
+				    && gWiiPointer.mPointer.y <= 150.0f + half) {
+					if (!game->mStageName.mChars[i]._14) {
+						const s32 anims[2]             = { 1011, 1007 };
+						game->mStageName.mChars[i]._14 = TRUE;
+						game->mStageName.mChars[i]._18 = 1.0f;
+						((CObj*)&game->_EC2CC[4])->SetAnim(anims[rand() % 2], TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+						s32 first = GetStageFirstSoundId(game->mStage);
+						if (first >= 0) {
+							for (s32 j = 0; j < game->mStageName.mCount; j++) {
+								if (IsWiiSfxPlaying(&gGame.mSound, first + j)) {
+									StopWiiSfx(&gGame.mSound, first + j, 0.1f);
+								}
+							}
+							PlayWiiSoundEffect(&gGame.mSound, first + i, 1.0f, 0.0f);
+						}
+					}
+				} else {
+					game->mStageName.mChars[i]._14 = FALSE;
+				}
+			} else {
+				game->mStageName.mChars[i]._14 = FALSE;
+			}
+			if (game->mStageName.mChars[i]._18 > 0.0f) { // the jump
+				if ((game->mStageName.mChars[i]._18 -= 0.035f * game->mRetraceStep) <= 0.0f) {
+					game->mStageName.mChars[i]._18 = 0.0f;
+				}
+				y = 150.0f - 30.0f * (f32)sin(0.9f * (3.1415927f * game->mStageName.mChars[i]._18));
+			}
+			DrawGsTexturedQuad(&gGame.mGs, &bubble, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
+			                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, x, y + bob, 0.0f,
+			                   glyphSize * (2.2f * pop), glyphSize * (2.2f * pop), 0.0f, -0.0f, -rot);
+			f32 size   = glyphSize * (1.5f * pop);
+			f32 shrink = width / 24.0f * size;
+			u32 alpha  = 255.0f * scale;
+			for (s32 j = 0; j < 4; j++) {
+				DrawGsTexturedQuad(&gGame.mGs, &letter, alpha, alpha, alpha, alpha, (size - shrink) * 0.5f + (x + sStageNameShadowX[j]),
+				                   bob + (y + sStageNameShadowY[j]), 0.0f, size, size, 0.0f, -0.0f, -rot);
+			}
+			alpha = 255.0f * scale;
+			DrawGsTexturedQuad(&gGame.mGs, &letter, color | alpha, color | alpha, color | alpha, color | alpha, (size - shrink) * 0.5f + x,
+			                   y + bob, 0.0f, size, size, 0.0f, -0.0f, -rot);
+		}
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	}
 }
 
 /**
@@ -1210,6 +1302,21 @@ BOOL CBase::BeginSceneCamera()
  */
 void XObj::vf16C()
 {
+}
+
+/**
+ * @note Address: 0x80024BB8
+ * @note Size: 0x1C
+ */
+// moves the object there at once: the target goes along, so nothing steps
+void CObj::SetPos(f32 x, f32 y, f32 z)
+{
+	mMoveTranslate.x = x;
+	mMoveTranslate.y = y;
+	mMoveTranslate.z = z;
+	mMoveTarget0.x   = x;
+	mMoveTarget0.y   = y;
+	mMoveTarget0.z   = z;
 }
 
 /**
