@@ -66,6 +66,9 @@ void fn_8007A2E8(WiiMenuSaveSlot* slot, WiiSaveScanEntry* entry, BOOL used);
 // the pane-event slots in Title's vtable
 void fn_8004DF38();
 void fn_8004DF3C(Title* title, CbPane* pane);
+void fn_8004E040(Title* title, CbPane* pane);
+void fn_8004E37C(Title* title);
+void fn_8004E430(Title* title);
 }
 
 // the pending fatal the save system left for the title screen: the message, two colors and the flag
@@ -1885,18 +1888,11 @@ void fn_8004DF3C(Title* title, CbPane* pane)
 		break;
 	case 3:
 	case 4:
-		switch (title->mMode) {
-		case 3:
-		case 4:
-		case 5:
-		case 6:
-		case 11:
-		case 26:
-		case 27:
+		if (title->mMode == 3 || title->mMode == 4 || title->mMode == 5 || title->mMode == 26 || title->mMode == 27 || title->mMode == 6
+		    || title->mMode == 11) {
 			if (title->mChoice == pane->mKind - 3 && title->mChoice != -1) {
 				title->mChoice = -1;
 			}
-			break;
 		}
 		break;
 	case 5:
@@ -1912,6 +1908,159 @@ void fn_8004DF3C(Title* title, CbPane* pane)
 	}
 }
 
+/**
+ * @note Address: 0x8004E040
+ * @note Size: 0x334
+ */
+// the pointer moved onto a pane: whichever index it stands for is picked, with the cursor sound; the
+// slot sits in Title's vtable
+void fn_8004E040(Title* title, CbPane* pane)
+{
+	switch (pane->mKind) {
+	case 0:
+		if (title->mFile != 0) {
+			title->mFile = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+		}
+		break;
+	case 1:
+		if (title->mFile != 1) {
+			title->mFile = 1;
+			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+		}
+		break;
+	case 2:
+		if (title->mFile != 2) {
+			title->mFile = 2;
+			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+		}
+		break;
+	case 3:
+	case 4:
+		break;
+	case 5:
+		if (title->mSelection != 0) {
+			title->mSelection  = 0;
+			title->mPulseAngle = 45.0f;
+			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+		}
+		break;
+	case 6:
+		if (title->mSelection != 1) {
+			title->mSelection = 1;
+			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+		}
+		break;
+	case 7:
+		if (title->mSelection != 2) {
+			title->mSelection = 2;
+			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+		}
+		break;
+	}
+	if (title->mState == 21) {
+		switch (pane->mKind) {
+		case 8:
+			if (title->mOptionLine != 0) {
+				title->mOptionLine = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+				title->mPulseAngle = 45.0f;
+			}
+			break;
+		case 9:
+			if (title->mOptionLine != 1) {
+				title->mOptionLine = 1;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+				title->mPulseAngle = 45.0f;
+			}
+			break;
+		case 10:
+			if (title->mOptionLine != 2) {
+				title->mOptionLine = 2;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+				title->mPulseAngle = 45.0f;
+			}
+			break;
+		}
+	}
+	if (title->mMode == 3 || title->mMode == 4 || title->mMode == 5 || title->mMode == 26 || title->mMode == 27 || title->mMode == 6
+	    || title->mMode == 11) {
+		switch (pane->mKind) {
+		case 3:
+			if (title->mChoice != 0) {
+				title->mChoice = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+			}
+			break;
+		case 4:
+			if (title->mChoice != 1) {
+				title->mChoice = 1;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+			}
+			break;
+		}
+	}
+}
+
+/**
+ * @note Address: 0x8004E37C
+ * @note Size: 0xB4
+ */
+// with the pointer and the stick both on, the pointer took over: nothing stays picked. Title's vtable
+// reaches it through the branch at 0x8004E374
+void fn_8004E37C(Title* title)
+{
+	u32 controls = gGame.mMenuControls;
+	if (!(controls & MenuControlStick) || !(controls & MenuControlPointer)) {
+		return;
+	}
+	if (title->mState == 11) {
+		title->mSelection = -1;
+	}
+	if (title->mState == 21) {
+		title->mOptionLine = -1;
+	}
+	if (title->mState == 20 && title->mMode == 2) {
+		title->mFile = -1;
+	}
+	if (title->mMode == 3 || title->mMode == 4 || title->mMode == 5 || title->mMode == 26 || title->mMode == 27 || title->mMode == 6
+	    || title->mMode == 11) {
+		title->mChoice = -1;
+	}
+}
+
+/**
+ * @note Address: 0x8004E430
+ * @note Size: 0x104
+ */
+// and the stick took over again: whatever was picked last comes back. Title's vtable reaches it through
+// the branch at 0x8004E378
+void fn_8004E430(Title* title)
+{
+	u32 controls = gGame.mMenuControls;
+	if (!(controls & MenuControlStick) || !(controls & MenuControlPointer)) {
+		return;
+	}
+	if (title->mState == 11 && title->mSelection == -1 && title->mLastSelection != -1) {
+		title->mSelection = title->mLastSelection;
+	}
+	if (title->mState == 21 && title->mOptionLine == -1 && title->mLastOptionLine != -1) {
+		title->mOptionLine = title->mLastOptionLine;
+	}
+	if (title->mState == 20 && title->mMode == 2 && title->mFile == -1 && title->mLastFile != -1) {
+		title->mFile = title->mLastFile;
+	}
+	if ((title->mMode == 3 || title->mMode == 4 || title->mMode == 5 || title->mMode == 26 || title->mMode == 27 || title->mMode == 6
+	     || title->mMode == 11)
+	    && title->mChoice == -1 && title->mLastChoice != -1) {
+		title->mChoice = title->mLastChoice;
+	}
+}
+
+/**
+ * @note Address: 0x8004E534
+ * @note Size: 0x1B8
+ */
 void Title::UpdateSelections()
 {
 	if (mState == 11) {
