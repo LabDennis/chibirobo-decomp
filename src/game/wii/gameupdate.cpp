@@ -5,6 +5,9 @@
 #include "game/wii/cgame.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/infoscrn.h"
+#include "game/wii/xobj.h"
+#include "game/attachmentvalues.h"
+#include "game/cmdline.h"
 #include "game/cscrn.h"
 #include "game/fbtexeff.h"
 #include "game/stagedata.h"
@@ -14,6 +17,8 @@
 #include <stdlib.h>
 
 #include "revolution/mem.h"
+#include "revolution/sc.h"
+#include "nw4r/snd/snd_AxManager.h"
 
 // the expanded heap mm::InitMem1 creates over the MEM1 arena; every operator delete site reads it
 extern MEMiHeapHead* gWiiMem1Heap;
@@ -25,7 +30,8 @@ inline void operator delete(void* ptr) throw()
 	MEMFreeToExpHeap(gWiiMem1Heap, ptr);
 }
 
-struct XObjPool;
+struct WiiSaveManager;
+class CMsg;
 
 // the head of the stage's info record, as far as this file reads it: the GameCube's UnkStageInfo
 // (game/cgameutil.h, which the Wii cannot include). The loaded stage's EnvInfo starts with a pointer to it
@@ -58,7 +64,28 @@ void fn_802BE4D4(void* obj, GXFogType type, const GXColor& color, f32 startZ, f3
 void fn_8027AE04(WiiGsSceneObj* scene, s32 index);
 void* fn_8027AE0C(WiiGsSceneObj* scene, s32 index); // the scene's fog
 void fn_8028175C(void** fog, GXFogType* type, f32* startZ, f32* endZ, f32* nearZ, f32* farZ, GXColor* color);
+BOOL HideHudPointCounters(InfoScrn* scrn);
+BOOL LoadWiiHomeMenu(WiiHomeMenu* menu);
+s32 LoadMessageCursorObject(CMsg* msg);
+void ApplyWiiSaveSlot(WiiSaveManager* manager);
+void RestoreSavedPlayerAndCamera(WiiSaveManager* manager);
+void ApplyStageSoundEffects(XSound* sound);
+BOOL LoadGlobalResourceData();
+u32 GetStartingAttachmentLevel(s32 index);
+u32 GetStageEntryTimeComponent(s32 index);
+u32 CheckStageFlag(s32 stage, u32 flag);
+BOOL LoadStageByIndex(s32 stage);
+void ApplyStageClearColor();
+BOOL fn_80084848(void* menu);                        // the menus' resources, the GameCube's LoadMenuGroupResources
+void fn_8008492C(void* menu, s32 frames);            // steps the open menus
+BOOL fn_80094B04(CEvt* evt);                         // the GameCube's LoadEventResources
+void fn_800A10E4(CEvt* evt, s16 eventId, s16 index); // the GameCube's RegisterEventObjectId
+void fn_800C5814(XObjPool* pools);                   // reads the stage's objects in again
+BOOL fn_802BDBCC(void* obj, const char* path, s32 arg);
+BOOL fn_802BDC98(void* obj, s32 arg);
 }
+
+s32 LoadFontResource();
 
 /**
  * @note Address: 0x8001C2D8
@@ -68,6 +95,25 @@ void CScrnWipeCine::Reset()
 {
 	CScrnWipe::Reset();
 	mScaleToWidescreen = FALSE;
+}
+
+/**
+ * @note Address: 0x8001C30C
+ * @note Size: 0x20
+ */
+// the screen's size out of the render mode
+void FbEffect::Init(const GXRenderModeObj* rmode, void* buf, f32 aspect)
+{
+	Init(rmode->fbWidth, rmode->efbHeight, buf, aspect);
+}
+
+/**
+ * @note Address: 0x8001C32C
+ * @note Size: 0x20
+ */
+void FbBlur::Init(const GXRenderModeObj* rmode, void* buf, f32 aspect)
+{
+	Init(rmode->fbWidth, rmode->efbHeight, buf, aspect);
 }
 
 /**
@@ -140,6 +186,287 @@ void CGame::ResetNewGameState()
 void CBase::ClearStatusFlags(u64 mask)
 {
 	mStatus.mFlags &= ~mask;
+}
+
+// a menu still open or the objects not read in again yet: steps 20 to 22 of BeforeUpdate wait for both.
+// Retail expands the same code three times; the name is ours
+static inline BOOL IsStageBusy(CGame* game)
+{
+	if (game->mMenuActive) {
+		fn_8008492C(&game->mMenuActive, 10);
+		if (game->mMenuActive) {
+			return TRUE;
+		}
+	}
+	if (game->_41F0 > 0) {
+		if (--game->_41F0 <= 0) {
+			game->mLightList = game->mLights;
+			fn_800C5814((XObjPool*)game->mXObjPools);
+		} else {
+			return TRUE;
+		}
+	}
+	return FALSE;
+}
+
+static inline BOOL LoadStartingAttachments(CGame* game)
+{
+	if (LoadGlobalResourceData()) {
+		if (!gCmdLineArgs.mCopterLevelOverride) { // attachment slot 1 takes its starting level from the global resource table
+			u32 level = GetStartingAttachmentLevel(0);
+			SetAttachmentCountById((AttachmentValues*)game->GetPlayer()->mAttachments, 1, level);
+		}
+		if (!gCmdLineArgs.mPopperLevelOverride) { // slot 2
+			u32 level = GetStartingAttachmentLevel(1);
+			SetAttachmentCountById((AttachmentValues*)game->GetPlayer()->mAttachments, 2, level);
+		}
+		if (!gCmdLineArgs.mRadarLevelOverride) { // slot 3
+			u32 level = GetStartingAttachmentLevel(2);
+			SetAttachmentCountById((AttachmentValues*)game->GetPlayer()->mAttachments, 3, level);
+		}
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static inline BOOL LoadStageAndEventObjects(CGame* game)
+{
+	if (LoadStageByIndex(game->mStage)) {
+		ApplyStageClearColor();
+		for (const StageEventObject* entry = GetStageEventObjectPairs(); entry->objectIndex >= 0; ++entry) { // the pairs end at a -1
+			fn_800A10E4((CEvt*)game->_4C8E0, entry->eventId, entry->objectIndex);
+		}
+		Vec origin = { 0.0f, 0.0f, 0.0f };
+		((CSound3D*)&gGame.mSound.mSound3DManager)->SetListener(0.0f, &origin);
+		((CSound3D*)&gGame.mSound.mSound3DManager)->SetVolumePanPitch(10.0f, 10.0f, 50.0f);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static inline bool FadeStopped(const CScrnColor& fade)
+{
+	return 0.0f == fade.mSpeed.r && 0.0f == fade.mSpeed.g && 0.0f == fade.mSpeed.b && 0.0f == fade.mSpeed.a;
+}
+
+/**
+ * @note Address: 0x8001C7B0
+ * @note Size: 0xD50
+ */
+// NONMATCHING: LoadFontResource and CSound3D::Init take no argument in their declarations, retail passes
+// one to each (the font object in CGs at _2154 and, it seems, whatever is left in r4); retail reads the
+// attachment overrides out of the whole word of gCmdLineArgs (its bitfields are u32 on the Wii, u8 in
+// cmdline.h, which gameinit.cpp initializes for both); and the logo and title states are loaded once for
+// their two tests, as if they sat in objects of their own (CGame destroys one at _5978 and one at _5C70)
+// the GameCube function with the Wii's resources: one step a frame until the stage runs, true when done
+bool CGame::BeforeUpdate()
+{
+	// Ready steps fall through. Pending reads resume at the same step next frame.
+	switch (mLoadStep) {
+	case 0:
+		return TRUE;
+	case 1:
+		++mLoadStep;
+	case 2:
+		if (GetStatusFlags(0x400000000ULL) && mLogoState != 12) {
+			if (!IsLogoActive())
+				mLogoState = 1;
+			if (mLogoState <= 3)
+				break;
+			++mLoadStep;
+		} else {
+			++mLoadStep;
+		}
+	case 3:
+		if (!LoadFontResource())
+			break;
+		++mLoadStep;
+	case 4:
+		if (!gGame.mSound.OpenArchiveAsync("snd/cb_robo", 0))
+			break;
+		++mLoadStep;
+	case 5:
+		if (gGame.mSound.mLoadPending)
+			break;
+		switch (SCGetSoundMode()) {
+		case SC_SOUND_MODE_MONO:
+			nw4r::snd::detail::AxManager::GetInstance().SetOutputMode(nw4r::snd::OUTPUT_MODE_MONO);
+			break;
+		case SC_SOUND_MODE_STEREO:
+			nw4r::snd::detail::AxManager::GetInstance().SetOutputMode(nw4r::snd::OUTPUT_MODE_STEREO);
+			break;
+		case SC_SOUND_MODE_SURROUND:
+			nw4r::snd::detail::AxManager::GetInstance().SetOutputMode(nw4r::snd::OUTPUT_MODE_DPL2);
+			break;
+		}
+		((CSound3D*)&gGame.mSound.mSound3DManager)->Init(NULL);
+		++mLoadStep;
+	case 6:
+		if (GetStatusFlags(0x200000000ULL)) {
+			if (!mArchive.ReadEx("/cb.bin", 0, 0))
+				break;
+			++mLoadStep;
+		} else {
+			++mLoadStep;
+		}
+	case 7: {
+		CoordInfo spawn(GetSpawnData(12)); // spawn placement 12
+		if (!((XObj*)_EC2D0)->LoadFromPlacement(spawn))
+			break;
+		((XObj*)_EC2D0)->SetScale(6.0f);
+		++mLoadStep;
+	}
+	case 8:
+		if (!mTpl.ReadEx("tpl/misc.tpl", 0, 0))
+			break;
+		++mLoadStep;
+		mTpl.mTex.Init(&mTpl.mPalette->descriptorArray[261], 0);
+		_EC1B0 = mTpl.mTex;
+		_41E0  = &_EC1B0;
+		mTpl.mTex.Init(&mTpl.mPalette->descriptorArray[122], 0); // the outline texture
+		mScrnTex.mTex        = mTpl.mTex;
+		mOutline.mPatternTex = &mScrnTex.mTex;
+		mOutline.mFrame      = 0;
+		mOutline.mThick2     = 0.0f;
+	case 9:
+		if (!fn_802BDBCC(_B7A8, "eff/cb_robo", 0))
+			break;
+		++mLoadStep;
+	case 10:
+		if (!fn_802BDC98(_B7A8, 0))
+			break;
+		++mLoadStep;
+	case 11:
+		if (!fn_80084848(&mMenuActive))
+			break;
+		++mLoadStep;
+	case 12:
+		if (!LoadWiiHomeMenu(&mHomeMenu))
+			break;
+		++mLoadStep;
+	case 13:
+		++mLoadStep;
+	case 14:
+		if (!LoadStartingAttachments(this))
+			break;
+		++mLoadStep;
+	case 15:
+		if (!HideHudPointCounters((InfoScrn*)mInfoScrn))
+			break;
+		++mLoadStep;
+	case 16:
+		if (!fn_80094B04((CEvt*)_4C8E0))
+			break;
+		++mLoadStep;
+	case 17:
+		if (!LoadMessageCursorObject((CMsg*)mCMsgs[0]))
+			break;
+		LoadMessageCursorObject((CMsg*)mCMsgs[1]);
+		++mLoadStep;
+	case 18: {
+		CoordInfo spawn(GetSpawnData(14)); // spawn placement 14
+		if (!((XObj*)GetPlayer())->LoadFromPlacement(spawn))
+			break;
+		++mLoadStep;
+	}
+	case 19:
+		if (GetStatusFlags(0x400000000ULL)) {
+			if (mLogoState != 12)
+				break;
+			++mLoadStep;
+		} else {
+			++mLoadStep;
+		}
+		break;
+	case 20:
+		if (IsStageBusy(this))
+			break;
+		if (GetStatusFlags(0x20000000) && mTitleState != 23) {
+			if (!IsTitleActive()) {
+				ResetNewGameState();
+				mTitleState = 1;
+			}
+			break;
+		}
+		++mLoadStep;
+	case 21:
+		if (IsStageBusy(this))
+			break;
+		if (mMemcardLoaded) { // a save restores the battery too
+			ApplyWiiSaveSlot((WiiSaveManager*)mSaveManager);
+			mMemcardLoaded = FALSE;
+			SetStatusFlags(0x8000);
+			InitBatteryGauge((InfoScrn*)mInfoScrn, GetPlayer()->mParams.mBattery);
+		}
+		++mLoadStep;
+	case 22:
+		if (IsStageBusy(this))
+			break;
+		_EC2C8 = -1.0f;
+		++mLoadStep;
+	case 23:
+		if (!LoadStageAndEventObjects(this))
+			break;
+		++mLoadStep;
+	case 24: {
+		u8* script = GetStageSetupScript();
+		if (script)
+			StartOrQueueEventScript((CEvt*)_4C8E0, script, 0, -1, -1);
+		++mLoadStep;
+	}
+	case 25:
+		if (mEvtData.mScript) // waits for the setup script
+			break;
+		if (CheckStageFlag(mStage, 4)) // stage flag 4 sets flag 0x40
+			SetStatusFlags(0x40);
+		mSetupStep = 0;
+		++mLoadStep;
+	case 26:
+		if (!FinalizeStageObjectSetup(this))
+			break;
+		++mLoadStep;
+		if (GetStatusFlags(0x40))
+			break;
+	case 27:
+		ClearStatusFlags(0x40);
+		_EE200 = 0;
+		_EE204 = 0.0f;
+		_EE208 = 0.0f;
+		_EE20C = 1.0f;
+		if (GetStatusFlags(0x8000))
+			RestoreSavedPlayerAndCamera((WiiSaveManager*)mSaveManager);
+		++mLoadStep;
+	case 28:
+		if (!CallStageModule(0, 0, NULL))
+			break;
+		ApplyStageSoundEffects(&gGame.mSound);
+		++mLoadStep;
+	case 29: {
+		if (!FadeStopped(mFade))
+			break;
+		StartScreenFade(&mFade, 0, 0, 0, 255, 0, 0, 0, 0, 0.5f);
+		StartOrQueueEventScript((CEvt*)_4C8E0, GetStageEntryScript(), 0, -1, -1);
+		u32 minutes = GetStageEntryTimeComponent(1), hours = GetStageEntryTimeComponent(0);
+		_EC1A4 = (s32)(hours * 216000 + (minutes * 3600 + GetStageEntryTimeComponent(2) * 60)); // the clock, in frames
+		SetStatusFlags(1);
+		++mLoadStep;
+	}
+	}
+	if (IsLoadStepRunning()) {
+		// past the first steps, and the logos done or never shown: the loading screen may come up
+		if (mLoadStep > 2 && (!GetStatusFlags(0x400000000ULL) || mLogoState == 12)) {
+			if (!GetStatusFlags(0x100000000000000ULL))
+				SetStatusFlags(0x100000000000000ULL);
+			if (!(_41B0 & 1)) {
+				_41B0 |= 7;
+				_41C1 = 1;
+				_41C0 = 0;
+				_41C3 = 1;
+			}
+		}
+		return FALSE;
+	}
+	return TRUE;
 }
 
 /**
@@ -448,6 +775,94 @@ extern "C" void BuildObjectDrawList(CGame* game)
 		game->mDrawRefs[game->mDrawRefCount].mObj   = obj;
 		game->mDrawRefs[game->mDrawRefCount].mFlags = 0;
 		game->mDrawRefCount++;
+	}
+}
+
+/**
+ * @note Address: 0x8001E1C8
+ * @note Size: 0x668
+ */
+// sorts the objects into the ones to draw and the ones mirrors show, those of pool 3 first, then the plain
+// ones, then the 0xA00000 ones, then the 0x40 ones. Objects out of view are only mirrored
+extern "C" void BuildSceneDrawLists(CGame* game)
+{
+	XObj* obj;
+	s32 i;
+	if (game->GetStatusFlags(0x8000000000ULL)) { // only while flag 0x8000000000 stands
+		CMotionControlCamera* camera = &game->mMotionControlCamera;
+		for (i = 0; i < game->mObjectCount; i++) {
+			obj = (XObj*)game->mObjects[i];
+			if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+				if (!game->GetStatusFlags(0x100) && (obj->mStatus.mFlags & 0x80000000) && obj->IsOutsideCameraDepth(camera)) {
+					obj->mStatus.mFlags |= 0x1000000000000ULL; // out of depth: mirror-only
+				} else {
+					obj->mStatus.mFlags &= ~0x1000000000000ULL;
+				}
+			}
+		}
+	}
+
+	for (i = 0; i < 0x400; i++) {
+		game->mShownRefs[i].mObj = NULL;
+	}
+	game->mShownRefCount = 0;
+	for (i = 0; i < 0x400; i++) {
+		game->mMirrorRefs[i].mObj = NULL;
+	}
+	game->mMirrorRefCount = 0;
+
+	for (i = 0; i < ((XObjPool*)game->mXObjPools)[3].mUsed; i++) {
+		obj = ((XObjPool*)game->mXObjPools)[3].Get(i);
+		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && !(obj->mStatus.mFlags & 0xA00040)) {
+			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
+				game->mShownRefs[game->mShownRefCount].mObj   = obj;
+				game->mShownRefs[game->mShownRefCount].mFlags = 0;
+				game->mShownRefCount++;
+			}
+			game->mMirrorRefs[game->mMirrorRefCount].mObj   = obj;
+			game->mMirrorRefs[game->mMirrorRefCount].mFlags = 0;
+			game->mMirrorRefCount++;
+		}
+	}
+	for (i = 0; i < game->mObjectCount; i++) {
+		obj = (XObj*)game->mObjects[i];
+		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && !(obj->mStatus.mFlags & 0xA00040)) {
+			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
+				game->mShownRefs[game->mShownRefCount].mObj   = obj;
+				game->mShownRefs[game->mShownRefCount].mFlags = 0;
+				game->mShownRefCount++;
+			}
+			game->mMirrorRefs[game->mMirrorRefCount].mObj   = obj;
+			game->mMirrorRefs[game->mMirrorRefCount].mFlags = 0;
+			game->mMirrorRefCount++;
+		}
+	}
+	for (i = 0; i < game->mObjectCount; i++) {
+		obj = (XObj*)game->mObjects[i];
+		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && (obj->mStatus.mFlags & 0xA00000)
+		    && !(obj->mStatus.mFlags & 0x40)) {
+			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
+				game->mShownRefs[game->mShownRefCount].mObj   = obj;
+				game->mShownRefs[game->mShownRefCount].mFlags = 0;
+				game->mShownRefCount++;
+			}
+			game->mMirrorRefs[game->mMirrorRefCount].mObj   = obj;
+			game->mMirrorRefs[game->mMirrorRefCount].mFlags = 0;
+			game->mMirrorRefCount++;
+		}
+	}
+	for (i = 0; i < game->mObjectCount; i++) {
+		obj = (XObj*)game->mObjects[i];
+		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && (obj->mStatus.mFlags & 0x40)) {
+			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
+				game->mShownRefs[game->mShownRefCount].mObj   = obj;
+				game->mShownRefs[game->mShownRefCount].mFlags = 0;
+				game->mShownRefCount++;
+			}
+			game->mMirrorRefs[game->mMirrorRefCount].mObj   = obj;
+			game->mMirrorRefs[game->mMirrorRefCount].mFlags = 0;
+			game->mMirrorRefCount++;
+		}
 	}
 }
 

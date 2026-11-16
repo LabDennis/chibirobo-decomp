@@ -54,8 +54,8 @@ public:
 	u8 mValid;    // _1A4
 
 	virtual void Init(u16 w, u16 h, void* buf, f32 aspect); // _08
-	// _0C (weak)
-	virtual void Init(const GXRenderModeObj* rmode, void* buf, f32 aspect) { Init(rmode->fbWidth, rmode->efbHeight, buf, aspect); }
+	// _0C, defined in game/wii/gameupdate.cpp
+	virtual void Init(const GXRenderModeObj* rmode, void* buf, f32 aspect);
 	virtual void Update(u32 frames); // _10
 	virtual void Draw();             // _14
 	virtual void Copy();             // _18
@@ -84,8 +84,8 @@ public:
 	f32 mZoom;             // _1C4
 
 	virtual void Init(u16 w, u16 h, void* buf, f32 aspect); // _08
-	// _0C (weak)
-	virtual void Init(const GXRenderModeObj* rmode, void* buf, f32 aspect) { Init(rmode->fbWidth, rmode->efbHeight, buf, aspect); }
+	// _0C, defined in game/wii/gameupdate.cpp
+	virtual void Init(const GXRenderModeObj* rmode, void* buf, f32 aspect);
 	virtual void Update(u32 frames); // _10
 	virtual void Draw() { }          // _14
 	virtual void Copy() { }          // _18

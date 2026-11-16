@@ -1414,7 +1414,7 @@ if wii:
                 Object(NonMatching, "game/wii/gamedraw.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # Wii TU 0x8001C2D8-0x80024AE8 (wii_units.md #11): CGame's new game reset, BeforeUpdate, the floor
                 # reflection and Update with CBase's small virtuals; retail has extab entries for them
-                Object(NonMatching, "game/wii/gameupdate.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/gameupdate.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # retail has extab entries for the three functions and emits them in reverse (_prolog first):
                 # the game group's compiler with exceptions on and deferred inlining gives both. The object
                 # is byte-exact, but nothing calls _epilog and _unresolved: retail kept them through its

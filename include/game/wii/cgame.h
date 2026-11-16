@@ -6,6 +6,7 @@
 #include "game/wii/csound.h"
 #include "game/wii/cgs.h"
 #include "game/wii/homemenu.h"
+#include "game/wii/fbeffect.h"
 #include "game/cscrn.h"
 #include "game/cfile.h"
 #include "game/cmovie.h"
@@ -61,12 +62,18 @@ public:
 	u8 _41A5[0x41A8 - 0x41A5];
 	bool mResetRequested; // _41A8
 	s32 mResetType;       // _41AC, 3 restarts the game, 4 returns to the Wii Menu
-	u8 _41B0[0x41BC - 0x41B0];
+	u32 _41B0;            // _41B0, BeforeUpdate sets the low three bits once the loading screen may show
+	u8 _41B4[0x41BC - 0x41B4];
 	// _41BC, the interface text drawn over the frame, NULL when there is none, and its alpha at _41C8
 	const char* mSystemMessage;
-	u8 _41C0[0x41C8 - 0x41C0];
+	u8 _41C0;
+	u8 _41C1;
+	u8 _41C2;
+	u8 _41C3;
+	u8 _41C4[0x41C8 - 0x41C4];
 	f32 mSystemMessageAlpha;
-	u8 _41CC[0x41E4 - 0x41CC];
+	u8 _41CC[0x41E0 - 0x41CC];
+	CTexObj* _41E0; // _41E0, BeforeUpdate points it at CGame's copy of misc.tpl's texture 261
 	// _41E4 vtable
 
 	virtual ~CBase() { }                            // _08
@@ -74,7 +81,7 @@ public:
 	virtual void Start();                           // _10, 0x80017D4C
 	virtual void ResetNewGameState();               // _14, CBase's is empty
 	virtual void vf18();
-	virtual void BeforeUpdate();     // _1C
+	virtual bool BeforeUpdate();     // _1C
 	virtual void Update(u32 frames); // _20
 	// _24, _28 the scene through the main camera, _2C the screen-space layer, _30 retraces per frame
 	virtual void Draw();
@@ -837,13 +844,13 @@ public:
 	void Reset(u32 code);
 
 	void ResetNewGameState();        // _14 override, 0x8001C37C
-	void BeforeUpdate();             // _1C override, 0x8001C7B0
+	bool BeforeUpdate();             // _1C override, 0x8001C7B0
 	void Update(u32 frames);         // _20 override, 0x8001E830
 	void SetupStageCamera(s32 mode); // 0x8001DC88
 
 	s32 mLoadStep;
-	s32 mSetupStep; // _41EC, how far FinalizeStageObjectSetup is, done at 5
-	u8 _41F0[0x41F4 - 0x41F0];
+	s32 mSetupStep;        // _41EC, how far FinalizeStageObjectSetup is, done at 5
+	s32 _41F0;             // _41F0, frames until the stage's objects are read again (BeforeUpdate's steps 20 to 22 wait for it)
 	CFileArchive mArchive; // _41F4
 	s32 mStage;
 	s32 mPrevStage; // _4300
@@ -857,7 +864,8 @@ public:
 	CScrnWipeTile mWipeTile;     // _4FA8
 	CScrnWipeCine mWipeCine;     // _5010, the letterbox bars; the message window and the HUD read its mActive, mY and mHeight
 	CScrnRoboeyes mRoboeyes;
-	u8 _511C[0x57CC - 0x511C];
+	FbEffect mOutline; // _511C
+	u8 _52E4[0x57CC - 0x52E4];
 	ScrnTex mScrnTex;         // _57CC
 	GameScrnColor mColor0;    // _5908
 	GameScrnColor1 mColor1;   // _593C
@@ -907,31 +915,38 @@ public:
 	// CMsgFont_Init pushes its two cursors here
 	WiiObjectRef* mObjectRefs; // _108C8
 	s32 mObjectRefCount;       // _108CC
-	u8 _108D0[0x108E0 - 0x108D0];
+	// BuildSceneDrawLists fills these two each frame: the objects drawn, and the ones the mirrors show
+	WiiObjectRef* mShownRefs;         // _108D0
+	s32 mShownRefCount;               // _108D4
+	WiiObjectRef* mMirrorRefs;        // _108D8
+	s32 mMirrorRefCount;              // _108DC
 	ResourceFile mObjArchives[0x400]; // _108E0, the pooled object archives, the GameCube's mObjArchives
 	u8 _4C8E0[0x4C8E4 - 0x4C8E0];
 	WiiEvtData mEvtData; // _4C8E4
 	u8 _4C8EC[0x4C8F0 - 0x4C8EC];
 	s32 mSelectResult; // _4C8F0, the yes/no answer CMsg__cmd_QUESTION stores, in mEvt on the GameCube
-	u8 _4C8F4[0xD7610 - 0x4C8F4];
+	u8 _4C8F4[0x4C950 - 0x4C8F4];
+	u8 mCMsgs[2][0x45660];                     // _4C950, CMsg[2] (game/wii/msg.h, which needs this header)
 	WiiTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
 	CCameraActions mCameraActions;             // _D78F8, mTable lands at _D9B24
 	CLight* mLightList;                        // _D9B58, the lights the scene draws under, CBase's own set when the stage brings none
 	s32 _D9B5C;                                // _D9B5C, ResetNewGameState clears both
 	s32 _D9B60;                                // _D9B60
-	u8 _D9B64[0xEC180 - 0xD9B64];
-	BOOL mMemcardLoaded; // _EC180
+	u8 _D9B64[0xD9B80 - 0xD9B64];
+	u8 mSaveManager[0xEC180 - 0xD9B80]; // _D9B80, the WiiSaveManager of game/wii/saveslots.h
+	BOOL mMemcardLoaded;                // _EC180
 	u8 _EC184[0xEC1A0 - 0xEC184];
 	f32 mPlayTime;   // _EC1A0
 	f32 _EC1A4;      // _EC1A4
 	f32 _EC1A8;      // _EC1A8, a new game starts it at 1
 	f32 mScopeTimer; // _EC1AC, the robo eyes' lenses pulse while it runs and hide from 5 on
-	u8 _EC1B0[0xEC2B4 - 0xEC1B0];
-	f32 _EC2B4; // _EC2B4, a new game starts it at NAN
+	CTexObj _EC1B0;  // _EC1B0, a copy of misc.tpl's texture 261
+	f32 _EC2B4;      // _EC2B4, a new game starts it at NAN
 	u8 _EC2B8[0xEC2C8 - 0xEC2B8];
 	f32 _EC2C8; // _EC2C8, a new game starts it at -1
-	u8 _EC2CC[0xECCE8 - 0xEC2CC];
+	u8 _EC2CC[0xEC2D0 - 0xEC2CC];
+	u8 _EC2D0[0xECCE8 - 0xEC2D0]; // _EC2D0, an XObj BeforeUpdate places at spawn 12; xobj.h needs this header
 	// _ECCE8 to _ECD24: one block FinalizeStageObjectSetup resets when the stage is up.
 	// _ECCE8 is an object DrawHud draws through its vf19C at the two coordinates behind it, when there is one
 	XObj* mHudObject;
@@ -960,7 +975,11 @@ public:
 	u32 mMenuControls;
 	CVec _EE1E0; // _EE1E0, a new game zeroes it
 	CVec _EE1F0; // _EE1F0, and fills this one with NAN
-	u8 _EE200[0xEE530 - 0xEE200];
+	s32 _EE200;  // _EE200, BeforeUpdate's step 27 resets the four
+	f32 _EE204;
+	f32 _EE208;
+	f32 _EE20C;
+	u8 _EE210[0xEE530 - 0xEE210];
 
 	void SetStage(s32 stage)
 	{
@@ -1011,6 +1030,14 @@ STATIC_ASSERT(offsetof(CGame, mHudObject) == 0xECCE8);
 STATIC_ASSERT(offsetof(CGame, mFloorReflectMtx) == 0xECD2C);
 STATIC_ASSERT(offsetof(CGame, mMirrors) == 0xECD5C);
 STATIC_ASSERT(offsetof(CGame, _EE1E0) == 0xEE1E0);
+STATIC_ASSERT(offsetof(CGame, _41F0) == 0x41F0);
+STATIC_ASSERT(offsetof(CGame, mOutline) == 0x511C);
+STATIC_ASSERT(offsetof(CGame, mCMsgs) == 0x4C950);
+STATIC_ASSERT(offsetof(CGame, mSaveManager) == 0xD9B80);
+STATIC_ASSERT(offsetof(CGame, _EC1B0) == 0xEC1B0);
+STATIC_ASSERT(offsetof(CGame, _EC2D0) == 0xEC2D0);
+STATIC_ASSERT(offsetof(CGame, _EE200) == 0xEE200);
+STATIC_ASSERT(offsetof(CBase, _41E0) == 0x41E0);
 
 extern "C" CGame gGame;
 #endif

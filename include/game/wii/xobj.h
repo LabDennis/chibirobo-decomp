@@ -322,7 +322,7 @@ public:
 	virtual void SetPos(const Vec& pos);         // _90
 	virtual void SetRot(const Vec& rot);         // _94
 	virtual void SetScale(const Vec& scale);     // _98
-	virtual void vf9C();
+	virtual void SetScale(f32 scale);
 	virtual MtxP GetWorldMtx(nw4r::g3d::ResNode node);                                       // _A0, NULL without a model
 	virtual MtxP GetWorldMtx(const char* name);                                              // _A4
 	virtual MtxP GetWorldMtx(u32 index);                                                     // _A8
@@ -452,7 +452,7 @@ public:
 	virtual f32 GetFloorXZExtent();   // _1D8
 	virtual f32 GetCollisionHeight(); // _1DC
 	virtual void vf1E0();
-	virtual void vf1E4();
+	virtual BOOL IsOutsideCameraDepth(CCamera* camera);
 	virtual s32 HandleEventCommand(s32 count, s32* args);                // _1E8
 	virtual const void* GetEventScript();                                // _1EC
 	virtual void SetColor(s32 blend, u8 r, u8 g, u8 b, f32 time);        // _1F0
@@ -504,6 +504,11 @@ public:
 	virtual void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate);                                    // _108
 	virtual void ClearAnim();                                                                                                   // _110
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);                              // _148
+
+	// (_9C SetScale(f32) scales all three axes alike; _1E4 IsOutsideCameraDepth is TRUE when the model lies
+	// outside the camera's depth range)
+	// which pool of XOBJS the object's data record puts it in, -1 before it has one (the GameCube XObj's inline)
+	s32 GetPool() const { return mAttr.mObjData != NULL ? GetObjDataPool(mAttr.mObjData) : -1; }
 
 	CStatus64 mStatus; // _150
 	CoordInfo mCoord;  // _160
