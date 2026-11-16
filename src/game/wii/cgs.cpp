@@ -2,17 +2,24 @@
 // included cgs_scrn.cpp and cgs_chan.cpp, then the GameCube cgs.cpp functions in the GameCube file's
 // order, plus the Wii's own text helpers.
 //
-// NONMATCHING: the perspective CCamera::Init (79 %) reads the frame buffer height before the width
-// for the aspect; CCameraView::CalcUp (92 %) reads the next angle before it narrows the last sine;
-// CLight::GetPosition (83 %) tests the light kind before it saves its registers and
-// CLight::GetViewDirection (93 %) zeroes a second, unused vector on the stack. DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %)
-// read the camera's bottom before its top for the flip test where we read top first (an inline for the test makes it worse). GetXfbHeight
-// (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue in front of it, which shift its assert in the string pool.
-// GetGlyph (99 %) and MeasureGameTextWidth (99 %) are structurally identical and differ only in callee-saved colouring and in vtable/sdata2
-// referent placement; DrawGsText (91 %) and DrawGsStrokeText (87 %) additionally diverge in float allocation and stack frame size (retail
-// spills ~0x10 more, plus two f64 spill slots the allocator gives us as held constants). No behavioural difference in any of them. Not
-// written yet: CGs::Init (0x802AA610), the camera begin and scene list calls (0x802AB790, 0x802AB81C, 0x802AB860) and
-// SetGsChannelMaterialAndLighting.
+// NONMATCHING: in the frame buffer queue QueueFrameCopy (98 %) and OnCopyDone (88 %) give the queue's
+// address and the popped request other registers than retail. The perspective CCamera::Init (79 %) reads the frame buffer height before the
+// width for the aspect; CCameraView::CalcUp (92 %) reads the next angle before it narrows the last sine; CLight::GetPosition (83 %) tests
+// the light kind before it saves its registers and CLight::GetViewDirection (93 %) zeroes a second, unused vector on the stack.
+// DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %) read the camera's bottom before its top for the flip test where we read top
+// first (an inline for the test makes it worse). GetXfbHeight (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue
+// in front of it, which shift its assert in the string pool. GetGlyph (99 %) and MeasureGameTextWidth (99 %) are structurally identical and
+// differ only in callee-saved colouring and in vtable/sdata2 referent placement; DrawGsText (91 %) and DrawGsStrokeText (87 %) additionally
+// diverge in float allocation and stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held
+// constants). No behavioural difference in any of them. Not written yet: CGs::Init (0x802AA610), the camera begin and scene list calls
+// (0x802AB790, 0x802AB81C, 0x802AB860) and SetGsChannelMaterialAndLighting.
+
+// the revolution GX header first: the Wii's FIFO getters take the object to fill. GXReadDrawSync gets
+// the same treatment, the Dolphin header under it declares it void
+#define GXReadDrawSync __GXReadDrawSync_dolphin
+#include "revolution/gx.h"
+#undef GXReadDrawSync
+extern "C" u16 GXReadDrawSync(void);
 
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
@@ -26,6 +33,8 @@
 #include "game/gmath.h"
 #include <math.h>
 #include <string.h>
+#include "game/cthread.h"
+#include "game/mm.h"
 
 extern "C" {
 void C_MTXFrustum(Mtx44 mtx, f32 t, f32 b, f32 l, f32 r, f32 n, f32 f);
@@ -407,6 +416,238 @@ void CFog::Init(GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 
 	mFarZ   = farZ;
 	mColor.Set(color);
 	GXSetFog(mType, mStartZ, mEndZ, mNearZ, mFarZ, mColor);
+}
+
+// The frame buffer queue, 0x802A90C8-0x802A977C. Two external frame buffers take turns: a copy is queued
+// with the FIFO position it waits for, a GX breakpoint there tells when the GPU got that far, and the
+// retrace callbacks put the finished buffer on screen. Class names from RTTI; the queue entry's is ours.
+
+// a ring of s32 values, its storage on the game heap
+class CQueueS32 {
+public:
+	s32* mBuf;  // _00
+	u32 mSize;  // _04
+	u32 mHead;  // _08
+	u32 mCount; // _0C
+	// _10 vtable
+
+	CQueueS32()
+	{
+		mBuf   = NULL;
+		mCount = 0;
+		mHead  = 0;
+		mSize  = 0;
+	}
+	virtual ~CQueueS32() { } // _08
+
+	void Init(u32 size)
+	{
+		mSize = size;
+		mBuf  = (s32*)MEMAllocFromExpHeapEx(gWiiGameHeap, size * sizeof(s32), 4);
+		for (u32 i = 0; i < mSize; i++) {
+			mBuf[i] = 0;
+		}
+		mCount = 0;
+		mHead  = 0;
+	}
+	// where the next value goes, -1 when the queue is full
+	s32 GetTailIndex() const
+	{
+		if (mCount < mSize) {
+			return (mHead + mCount) % mSize;
+		}
+		return -1;
+	}
+	void Push(s32 value)
+	{
+		if (mCount < mSize) {
+			mBuf[(mHead + mCount) % mSize] = value;
+			mCount++;
+		}
+	}
+	s32 Pop()
+	{
+		s32 value   = mBuf[mHead];
+		mBuf[mHead] = 0;
+		mHead       = (mHead + 1) % mSize;
+		mCount--;
+		return value;
+	}
+	s32 Peek() const { return mBuf[mHead % mSize]; }
+};
+
+// the same ring holding pointers
+class CQueuePtr : public CQueueS32 {
+public:
+	void Push(void* ptr) { CQueueS32::Push((s32)ptr); }
+	void* Pop() { return (void*)CQueueS32::Pop(); }
+	void* Peek() const { return (void*)CQueueS32::Peek(); }
+};
+
+namespace _fb {
+// one display copy: the FIFO write position it waits for and the buffer it copies into
+struct CopyRequest {
+	void* mFifoPos; // _00
+	u32 _04;        // _04, always 0
+	void* mXfb;     // _08
+};
+
+// a ring of copy requests that keeps the requests themselves
+class Queue : public CQueuePtr {
+public:
+	CopyRequest mEntries[5]; // _14
+
+	void Push(const CopyRequest& request)
+	{
+		CopyRequest* entry = &mEntries[GetTailIndex()];
+		*entry             = request;
+		CQueuePtr::Push(entry);
+	}
+	CopyRequest Pop() { return *(CopyRequest*)CQueuePtr::Pop(); }
+	CopyRequest Peek() const { return *(CopyRequest*)CQueuePtr::Peek(); }
+};
+} // namespace _fb
+
+// an OSThreadQueue with a vtable
+class CThreadQueue : public OSThreadQueue {
+public:
+	// _08 vtable
+
+	virtual ~CThreadQueue() { } // _08
+	virtual void Init();        // _0C
+};
+
+static _fb::Queue sCopyQueue; // the copies the GPU has not reached yet
+static _fb::Queue sDoneQueue; // the copies it finished, drained by the frame thread
+static CThreadQueue sFrameQueue;
+static CThread sFrameThread;
+static void* sXfb[2];
+static void* sCopyXfb;    // the buffer the next copy goes to
+static void* sDisplayXfb; // the buffer on screen
+static u8 sBreakPtSet;
+static u8 sCopyPending; // the breakpoint fired for the buffer on screen; finish it after the retrace
+static u8 sRetraced;
+static u16 sDoneToken;
+static u16 sToken = 1;
+
+static void OnCopyDone();
+static void OnBreakPt();
+static void OnPreRetrace(u32 count);
+static void OnPostRetrace(u32 count);
+static void* FrameThreadProc(void* arg);
+
+void AllocFrameBuffers(u32 size)
+{
+	sXfb[0]     = mm::Alloc(size, "(xfb_1)");
+	sXfb[1]     = mm::Alloc(size, "(xfb_2)");
+	sCopyXfb    = sXfb[1];
+	sDisplayXfb = sXfb[0];
+	sCopyQueue.Init(5);
+	sDoneQueue.Init(5);
+	OSInitThreadQueue(&sFrameQueue);
+}
+
+void CThreadQueue::Init()
+{
+	OSInitThreadQueue(this);
+}
+
+void StartFrameThread()
+{
+	sFrameThread.Create(FrameThreadProc, NULL, 0x1000, 14, OS_THREAD_ATTR_DETACH);
+	OSResumeThread(&sFrameThread.mThread);
+	VISetPreRetraceCallback(OnPreRetrace);
+	VISetPostRetraceCallback(OnPostRetrace);
+	GXSetBreakPtCallback(OnBreakPt);
+	GXCopyDisp(sCopyXfb, GX_TRUE);
+}
+
+void QueueFrameCopy()
+{
+	GXFifoObj fifo;
+	void* readPtr;
+	void* writePtr;
+
+	GXFlush();
+	GXGetCPUFifo(&fifo);
+	GXGetFifoPtrs(&fifo, &readPtr, &writePtr);
+	void* fifoPos = writePtr;
+	void* xfb     = sCopyXfb;
+	BOOL enabled  = OSDisableInterrupts();
+	_fb::CopyRequest request;
+	request.mFifoPos = fifoPos;
+	request._04      = 0;
+	request.mXfb     = xfb;
+	sCopyQueue.Push(request);
+	OSRestoreInterrupts(enabled);
+	if (!sBreakPtSet) {
+		sBreakPtSet = TRUE;
+		GXEnableBreakPt(writePtr);
+	}
+	GXSetDrawSync(sToken);
+	GXCopyDisp(sCopyXfb, GX_TRUE);
+	GXFlush();
+}
+
+void SwapFrameBuffer()
+{
+	sToken++;
+	sCopyXfb     = sCopyXfb == sXfb[0] ? sXfb[1] : sXfb[0];
+	BOOL enabled = OSDisableInterrupts();
+	if (sCopyQueue.mCount > 1) {
+		OSSleepThread(&sFrameQueue);
+	}
+	OSRestoreInterrupts(enabled);
+}
+
+static void OnCopyDone()
+{
+	sDoneQueue.Push(sCopyQueue.Pop());
+	OSWakeupThread(&sFrameQueue);
+	if (sCopyQueue.mCount == 0) {
+		GXDisableBreakPt();
+		sBreakPtSet = FALSE;
+	} else {
+		GXEnableBreakPt(sCopyQueue.Peek().mFifoPos);
+	}
+}
+
+static void OnBreakPt()
+{
+	if (sCopyQueue.Peek().mXfb == sDisplayXfb) {
+		sCopyPending = TRUE;
+	} else {
+		OnCopyDone();
+	}
+}
+
+static void OnPreRetrace(u32 count)
+{
+	u16 token = GXReadDrawSync();
+	if (token == (u16)(sDoneToken + 1)) {
+		sDoneToken  = token;
+		sDisplayXfb = sDisplayXfb == sXfb[0] ? sXfb[1] : sXfb[0];
+		VISetNextFrameBuffer(sDisplayXfb);
+		VIFlush();
+		sRetraced = TRUE;
+	}
+}
+
+static void OnPostRetrace(u32 count)
+{
+	if (sCopyPending && sRetraced) {
+		OnCopyDone();
+		sCopyPending = FALSE;
+		sRetraced    = FALSE;
+	}
+}
+
+static void* FrameThreadProc(void* arg)
+{
+	for (;;) {
+		OSSleepThread(&sFrameQueue);
+		sDoneQueue.CQueueS32::Pop();
+	}
 }
 
 // The screen, render state, tev stage and channel code sits in front of this file's own and is part
