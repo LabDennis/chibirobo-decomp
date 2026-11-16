@@ -5146,7 +5146,7 @@ Vec XObjChr::GetCameraTarget()
 			target.x += leadX + (7.f * rate) * (mMoveTranslate.x - mLastPos.x);
 			target.z += leadZ + (7.f * rate) * (mMoveTranslate.z - mLastPos.z);
 		}
-		f32 coord[] = { target.x, target.y, target.z };
+		f32* coord = &target.x;
 		for (s32 i = 0; i < 3; ++i) {
 			f32& old = mCameraTarget[i];
 			if (ClassifyFloatBits(old) == FP_NAN) {
@@ -5160,7 +5160,7 @@ Vec XObjChr::GetCameraTarget()
 				old += (coord[i] - margin) - old;
 			coord[i] = old;
 		}
-		return (Vec) { coord[0], coord[1], coord[2] };
+		return target;
 	}
 	return (Vec) { 0, 0, 0 };
 }
