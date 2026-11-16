@@ -61,7 +61,8 @@ static inline void DrawSubwindowObjects(const XOBJS& objects, CCamera* camera)
 void CGame::Draw()
 {
 	CVec interest = GetCamera()->mInterest;
-	if (mQuake.mShake[0].x != 0 || mQuake.mShake[0].y != 0 || mQuake.mShake[0].z != 0) { // the shake nudges the interest
+	bool shaking  = mQuake.mShake[0].x != 0.0f || mQuake.mShake[0].y != 0.0f || mQuake.mShake[0].z != 0.0f;
+	if (shaking) { // the shake nudges the interest
 		GetCamera()->SetInterest(interest + mQuake.mShake[0] * (f32)mQuake.mSign);
 		GetCamera()->CalcEye();
 	}
