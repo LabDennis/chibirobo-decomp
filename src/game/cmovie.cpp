@@ -291,3 +291,51 @@ void CMovie::EndDraw()
 	THPSimpleDrawEnd();
 }
 #endif
+
+#if defined(VERSION_R24J01)
+/**
+ * @note Address: 0x802C2564
+ * @note Size: 0x84
+ */
+s32 CMovie::DrawFrame(f32 x, f32 y, f32 z, f32 w, f32 h)
+{
+	if (mState >= CMOVIE_STATE_START) {
+		mFrame = THPSimpleDrawCurrentFrame(x, y, z, w, h, mVolumeTime);
+		return mFrame;
+	}
+	return -1;
+}
+
+/**
+ * @note Address: 0x802C25E8
+ * @note Size: 0x68
+ */
+void CMovie::Draw(f32 x, f32 y, f32 z, f32 w, f32 h)
+{
+	if (mState >= CMOVIE_STATE_START) {
+		THPSimpleDrawQuad(x, y, z, w, h);
+	}
+}
+
+/**
+ * @note Address: 0x802C2650
+ * @note Size: 0x48
+ */
+s32 CMovie::BeginDraw()
+{
+	if (mState >= CMOVIE_STATE_START) {
+		mFrame = THPSimpleDrawBegin(mVolumeTime);
+		return mFrame;
+	}
+	return -1;
+}
+
+/**
+ * @note Address: 0x802C2698
+ * @note Size: 0x4
+ */
+void CMovie::EndDraw()
+{
+	THPSimpleDrawEnd();
+}
+#endif

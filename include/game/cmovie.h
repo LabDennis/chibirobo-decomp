@@ -47,8 +47,8 @@ public:
 	void EndDraw();
 	s32 BeginDraw();
 #if defined(VERSION_R24J01)
-	void Draw(s32 x, s32 y, s32 z, s32 w, s32 h);
-	s32 DrawFrame(s32 x, s32 y, s32 z, s32 w, s32 h);
+	void Draw(f32 x, f32 y, f32 z, f32 w, f32 h);
+	s32 DrawFrame(f32 x, f32 y, f32 z, f32 w, f32 h);
 #else
 	void Draw(f32 x, f32 y, f32 w, f32 h);
 	s32 DrawFrame(f32 x, f32 y, f32 w, f32 h);

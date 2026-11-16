@@ -180,7 +180,7 @@ game/THPSimple.cpp:
 	.sdata2 start:0x805A7B80 end:0x805A7B90
 
 game/cmovie.cpp:
-	.text start:0x802C2278 end:0x802C2564
+	.text start:0x802C2278 end:0x802C269C
 
 game/cprimitive.cpp:
 	.text start:0x802AF8E0 end:0x802AFDA8
