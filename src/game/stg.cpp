@@ -10707,9 +10707,10 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 #if !defined(VERSION_JP)
 	u16 iconWidth = GXGetTexObjWidth(&InitPCPanelTexture(144));
 #endif
+#if defined(VERSION_JP)
 	f32 numberX = places * (scale * digitWidth) + (120.0f * scale + originX);
-#if !defined(VERSION_JP)
-	numberX -= scale * (1.1f * iconWidth);
+#else
+	f32 numberX = (places * (scale * digitWidth) + (120.0f * scale + originX)) - scale * (1.1f * iconWidth);
 #endif
 	DrawPCGoldNumber(false, numberX, (originY + height), alpha, scale, money);
 #if defined(VERSION_JP)
