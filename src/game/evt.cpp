@@ -16923,7 +16923,7 @@ extern "C" CVec GetEventJObjWorldPosition(CJObj* obj, HSD_JObj* jobj)
  * @note Address: 0x8007E978
  * @note Size: 0x4
  */
-extern "C" void CEvt_Draw(void)
+extern "C" void CEvt_Draw(CEvt* evt)
 {
 }
 
