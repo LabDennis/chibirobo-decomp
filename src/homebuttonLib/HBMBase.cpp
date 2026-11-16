@@ -68,8 +68,9 @@ static void initgx() {
 }
 
 static void drawBlackPlate(f32 left, f32 top, f32 right, f32 bottom) {
-    // Unused, but retail carries its initializer: the first word of this
-    // file's .rodata is 00 00 00 FF, with nothing reading it.
+    // unused: retail's .rodata for this file starts with 00 00 00 FF and no code reads it, which is
+    // what an unread local with an initializer leaves behind. That such a colour existed is in the
+    // binary; that it stood in this function and was called black is our reading.
     GXColor black = {0, 0, 0, 255};
 
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
