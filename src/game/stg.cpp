@@ -9156,10 +9156,11 @@ static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 height, f
 extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide)
 {
 	CTexObj tex;
+	f32 height = 88.0f;
 	sBannerScrollX -= 0.008f;
 	sBannerScrollY -= 0.008f;
 
-	DrawMenuBannerStrip(tex, x, y + 10.0f, 88.0f, alpha);
+	DrawMenuBannerStrip(tex, x, y + 10.0f, height, alpha);
 	if (title) {
 		char text[256];
 		sprintf(text, "%s", title);
@@ -9169,7 +9170,7 @@ extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha,
 		DrawDoubleByteMenuText(text, 8.0f + left, 8.0f + (15.0f + textTop), -10.0f, 30.0f, 30.0f, alpha);
 	}
 	f32 bottomY = (356.0f - y) - 6.0f + slide;
-	f32 height  = 88.0f - slide;
+	height -= slide;
 	if (height < 8.0f)
 		height = 8.0f;
 	DrawMenuBannerStrip(tex, x, bottomY, height, alpha);
