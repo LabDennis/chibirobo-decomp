@@ -900,6 +900,19 @@ public:
 	virtual void Resume();
 };
 
+// the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
+class MenuStatus : public CMenu {
+public:
+	void State6(u32 frames);
+	void State7(u32 frames);
+};
+
+class MenuPC : public CMenu {
+public:
+	void State6(u32 frames);
+	void State8(u32 frames);
+};
+
 class CGame : public CBase {
 public:
 	virtual ~CGame(); // _08, 0x8002CFB8

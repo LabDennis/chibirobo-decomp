@@ -174,3 +174,34 @@ extern "C" const char* GetTitleAndSaveMenuText(s32 index)
 {
 	return GetLocalizedInterfaceText(index + 95);
 }
+
+// the status and PC menus' empty states
+void MenuStatus::State7(u32)
+{
+}
+
+void MenuStatus::State6(u32)
+{
+}
+
+void MenuPC::State8(u32)
+{
+}
+
+void MenuPC::State6(u32)
+{
+}
+
+extern "C" s32 IndexOfLargestOfThree(s64 a, s64 b, s64 c)
+{
+	if (a >= b) {
+		if (a >= c) {
+			return 0;
+		}
+		return 2;
+	}
+	if (b >= c) {
+		return 1;
+	}
+	return 2;
+}
