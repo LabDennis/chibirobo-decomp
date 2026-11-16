@@ -182,8 +182,8 @@ game/THPSimple.cpp:
 game/cmovie.cpp:
 	.text start:0x802C2278 end:0x802C269C
 
-game/cprimitive.cpp:
-	.text start:0x802AF8E0 end:0x802AFDA8
+game/wii/cprimitive.cpp:
+	.text start:0x802AF8B8 end:0x802B193C
 
 game/stage_data.cpp:
 	extab start:0x8000A210 end:0x8000A238
