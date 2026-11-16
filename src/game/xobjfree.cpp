@@ -24,6 +24,7 @@ void XObjFree::OnHitFromPosition(const Vec& pos, f32 value)
  * @note Address: 0x800DD694
  * @note Size: 0x2D8
  */
+// NONMATCHING: this, the shape anim and the material aobj take other saved registers
 void XObjFree::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend, f32 blendRate)
 {
 	if (mStatus.mFlags & 0x1000ULL) {

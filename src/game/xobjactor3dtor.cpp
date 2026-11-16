@@ -38,7 +38,9 @@ static inline void HideItems(s32 kind)
  */
 // the event commands: 100 carries another object at one of its joints, or lets go of all
 // of them, anything else is kept for the kind's function to read
-// NONMATCHING: argv[1] and the 0x40B item loop take other registers, as in game/xobjspider
+// NONMATCHING: argv[1] and the 0x40B item loop take other registers, as in game/xobjspider. retail loads argv[1]
+// into r5 at the top and the OSReport passes it as its second %d; written as xobjspider does (a const local
+// passed to OSReport), the saved registers shift and the function drops to 98.4 %
 s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
 {
 	switch (argv[0]) {
