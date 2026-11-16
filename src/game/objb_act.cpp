@@ -1859,7 +1859,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 				                                            : PI + GetObjectEdgeOutwardYaw(act->mTarget, &act->mOwner->mMoveTranslate, act->mTargetFloor);
 				yaw                   = WrapAngle(yaw);
 				act->mHangStartOffset = act->mOwner->mMoveTranslate - act->mTarget->mMoveTranslate;
-				CVec pos(act->mOwner->mMoveTranslate);
+				Vec pos               = act->mOwner->mMoveTranslate;
 				pos.x += 1.5f * (f32)sin(PI + yaw);
 				pos.z += 1.5f * (f32)cos(PI + yaw);
 				act->mOwner->SetPos(pos, 0);
@@ -1943,7 +1943,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 				local.z  = -local.z;
 				s32 p3[] = { 0 };
 				SetJointTranslationFromVectorByPath(act->mOwner, 1, p3, local);
-				CVec pos(act->mOwner->mMoveTranslate);
+				Vec pos = act->mOwner->mMoveTranslate;
 				f32 distance;
 				if (RoundHangFloor(act)) {
 					CVec owner(act->mOwner->mMoveTranslate);
