@@ -501,8 +501,10 @@ STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x2D8);
 class CCameraActionArea : public CCameraActionAreaExM {
 public:
 	u8 _40[0x5C - 0x40];
-	s32 _5C; // _5C, with _2D0 set the area action keeps the pointer's cursor up
-	u8 _60[0x70 - 0x60];
+	s32 mControlEnabled; // _5C, with _2D0 set the area action keeps the pointer's cursor up
+	u8 _60[0x64 - 0x60];
+	XObj* mTarget; // _64
+	u8 _68[0x70 - 0x68];
 	CVectorEaseInOutInterpolation mInterestEaseInOut;    // _70
 	CVectorLinearInterpolation mEyeLinear;               // _CC
 	CVectorEaseInOutInterpolation mEyeEaseInOut;         // _100
@@ -519,6 +521,9 @@ public:
 
 	virtual ~CCameraActionArea() { } // _08, 0x8002ECD0
 	virtual void Update(u32 step);   // _10
+	virtual u32 GetCameraFlags();    // _58
+	virtual u32 GetInterestMode();   // _60
+	virtual XObj* GetTarget();       // _64
 };
 STATIC_ASSERT(sizeof(CCameraActionArea) == 0x2FC);
 
@@ -526,7 +531,8 @@ STATIC_ASSERT(sizeof(CCameraActionArea) == 0x2FC);
 // builds up to _11E0 is where the GameCube class has it, the vec group at _11FC is new
 class CCameraActionMap : public CCameraActionAreaExM {
 public:
-	u8 _40[0x48 - 0x40];
+	s32 mInterestMode; // _40, what GetInterestMode returns
+	u8 _44[0x48 - 0x44];
 	CVec mPreviousInterest; // _48
 	u8 _58[0x60 - 0x58];
 	CVec mSpringPrevTarget; // _60
@@ -539,12 +545,16 @@ public:
 	u8 _BC[0xC8 - 0xBC];
 	CInterpolationEaseOutDivide mFovEaseOutDivide; // _C8
 	CVec mPreviousEye;                             // _D8
-	u8 _E8[0xDB8 - 0xE8];
+	u8 _E8[0xDA4 - 0xE8];
+	s32 mPrevMapArea; // _DA4
+	s32 mMapArea;     // _DA8
+	u8 _DAC[0xDB8 - 0xDAC];
 	CVectorEaseInOutInterpolation mTurnEaseInOut; // _DB8
 	CInterpolationEaseInOut mHeightEaseInOut;     // _E14
 	u8 _E30[0xE34 - 0xE30];
 	CInterpolationEaseInOut mAbsHeightEaseInOut; // _E34
-	u8 _E50[0xE68 - 0xE50];
+	u8 _E50[0xE64 - 0xE50];
+	CInterfaceInterpolation* mTargetHeightOffsetInterp;  // _E64
 	CInterpolationEaseOutDivide mTargetHeightOffsetEase; // _E68
 	u8 _E78[0xE7C - 0xE78];
 	CInterpolationEaseInOut mEyeYOffsetEaseInOut; // _E7C
@@ -560,7 +570,8 @@ public:
 	u8 _FC8[0x11D8 - 0xFC8];
 	CStatus mStatus;         // _11D8
 	CStatus mPreviousStatus; // _11E0
-	u8 _11E8[0x11F8 - 0x11E8];
+	BOOL mKeepPreviousEye;   // _11E8
+	u8 _11EC[0x11F8 - 0x11EC];
 	u8 _11F8; // _11F8, set while the map action wants the pointer's cursor
 	u8 _11F9[0x11FC - 0x11F9];
 	u8 _11FC[0x30];
@@ -568,6 +579,9 @@ public:
 
 	virtual ~CCameraActionMap() { } // _08, 0x8002E5C4
 	virtual void Update(u32 step);  // _10
+	virtual u32 GetCameraFlags();   // _58
+	virtual f32 GetFollowDivisor(); // _5C
+	virtual u32 GetInterestMode();  // _60
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x128C);
 
@@ -732,12 +746,52 @@ struct WiiOXMenu {
 	s32 mConfirmedIndex; // _1390
 };
 
-// one player action slot on the Wii player: only the state word at +4 is verified, the
-// camera reads it to tell whether the look controls are free
-struct WiiPlayerAction {
+// one of chibi robo's actions on the Wii player, the GameCube's XAction (RTTI) with the same head: the camera reads
+// mState to tell whether the look controls are free, the action accessors of xobj_chr.cpp reach the rest
+struct WiiPlayerState;
+class XAction {
+public:
 	u8 _00[4];
 	s32 mState; // _04
+	// _08 vtable
+
+	virtual void Init(WiiPlayerState* owner); // _08
+	virtual void Reset();                     // _0C
+
+	s32 mMoveDirection; // _0C
+	CVec mTargetOffset; // _10
+	XObj* mTarget;      // _20
+	s32 mTargetState;   // _24
+	s32 mTargetFloor;   // _28, the selected floor when the target was picked
 };
+STATIC_ASSERT(sizeof(XAction) == 0x2C);
+
+// hanging from a ledge
+class XActHang : public XAction {
+public:
+	BOOL mStickAway;      // _2C, set when the stick points away
+	Vec mHangStartOffset; // _30, player position relative to the target
+	Vec mFloorCenter;     // _3C
+	f32 mDistance;        // _48
+	u8 _4C[0x50 - 0x4C];  // _4C
+};
+STATIC_ASSERT(sizeof(XActHang) == 0x50);
+
+// the ring on the floor around him while he tumbles
+struct XActTumbleFade {
+	BOOL mActive; // _00
+	Vec mOffset;  // _04, from his feet, turned with him
+	f32 mAmount;  // _10
+};
+STATIC_ASSERT(sizeof(XActTumbleFade) == 0x14);
+
+class XActTumble : public XAction {
+public:
+	XActTumbleFade mFade; // _2C
+	f32 mSavedYaw;        // _40
+	u8 _44[0x48 - 0x44];  // _44, the GameCube's idle particle
+};
+STATIC_ASSERT(sizeof(XActTumble) == 0x48);
 
 // the attachment ring's menu on the player at _19EE8, the GameCube's mMenu.mAtc. The HUD reads the
 // highlighted item's type; the item count is a bound, the menu only uses a handful
@@ -765,27 +819,28 @@ struct WiiPlayerState {
 	u64 mStatus; // _0150, the object status flags, as XObj's
 	u8 _0158[0x9CC - 0x158];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
-	u8 _09D0[0xAA0 - 0x9D0];
-	WiiPlayerAction mLift; // _0AA0, the carry action; its mState decides whether looking is free
-	u8 _0AA8[0xAC0 - 0xAA8];
-	XObj* mLiftTarget; // _0AC0, what he carries, the GameCube's mLift.mTarget
-	u8 _0AC4[0xAF0 - 0xAC4];
+	u8 _09D0[0xA90 - 0x9D0];
+	s32 mFlashTimer; // _0A90
+	u8 _0A94[0xA9C - 0xA94];
+	f32 mMoveSpeedScale; // _0A9C
+	XAction mLift;       // _0AA0, the carry action; its mState decides whether looking is free, mTarget is what he carries
+	u8 _0ACC[0xAF0 - 0xACC];
 	XObj* mLiftPlugTarget; // _0AF0, the GameCube's mLift.mPlugTarget
 	u8 _0AF4[0xB50 - 0xAF4];
-	WiiPlayerAction mHang; // _0B50
-	u8 _0B58[0xBA0 - 0xB58];
-	WiiPlayerAction mJump; // _0BA0
-	u8 _0BA8[0xBF4 - 0xBA8];
-	WiiPlayerAction mLadder; // _0BF4
-	u8 _0BFC[0xC38 - 0xBFC];
-	WiiPlayerAction mRope; // _0C38
-	u8 _0C40[0xC78 - 0xC40];
-	WiiPlayerAction mPush; // _0C78
-	u8 _0C80[0xCD0 - 0xC80];
-	WiiPlayerAction mTumble; // _0CD0
-	u8 _0CD8[0xD50 - 0xCD8];
-	WiiPlayerAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
-	u8 _0D58[0x95AC - 0xD58];
+	XActHang mHang; // _0B50
+
+	XAction mJump; // _0BA0
+	u8 _0BCC[0xBF4 - 0xBCC];
+	XAction mLadder; // _0BF4
+	u8 _0C20[0xC38 - 0xC20];
+	XAction mRope; // _0C38
+	u8 _0C64[0xC78 - 0xC64];
+	XAction mPush; // _0C78
+	u8 _0CA4[0xCD0 - 0xCA4];
+	XActTumble mTumble; // _0CD0
+	u8 _0D18[0xD50 - 0xD18];
+	XAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
+	u8 _0D7C[0x95AC - 0xD7C];
 	u8 mSfx[0x5C]; // _95AC, his AnimSfx (game/wii/animsfx.h, which needs this header)
 	u8 _9608[0x9920 - 0x9608];
 	s32 mAttachment;        // _9920, the AtcMenu pick
@@ -807,10 +862,11 @@ struct WiiPlayerState {
 	u8 _1A3F8[0x1A420 - 0x1A3F8];
 	WiiOXMenu mOXMenu; // _1A420
 	u8 _1B7B4[0x1C994 - 0x1B7B4];
-	s32 mSquirterContent; // _1C994
-	s32 mItemTint;        // _1C998
-	u8 _1C99C[0x1C9A4 - 0x1C99C];
-	s32 mGroundType; // _1C9A4, the floor he walks on, picks the footstep sounds
+	s32 mSquirterContent;  // _1C994
+	s32 mItemTint;         // _1C998
+	f32 mHeadOffset;       // _1C99C
+	BOOL mHeadOffsetReady; // _1C9A0
+	s32 mGroundType;       // _1C9A4, the floor he walks on, picks the footstep sounds
 
 	const Vec* GetPosition() { return mVtable->GetPosition(this); }
 	MtxP GetMtxPtr() { return mVtable->GetMtxPtr(this); }
@@ -859,22 +915,39 @@ struct GameScrnColor1 {
 
 class XObj;
 
+// the frame a menu draws behind itself, the GameCube struct one word longer; CMenu::Init sets what is named
+struct MenuWindow {
+	BOOL mOpen;  // _00
+	f32 mX;      // _04, center
+	f32 mY;      // _08
+	f32 mWidth;  // _0C
+	f32 mHeight; // _10
+	u8 _14[0x128 - 0x14];
+	f32 mDrawAlpha; // _128
+};
+STATIC_ASSERT(sizeof(MenuWindow) == 0x12C);
+
+class MenuCursor;
+
 // one of the game's menus, the GameCube class of the same name with two more virtuals. Its state leads
-// the object and the vtable sits behind the members, at _14C; the menus MenuEx keeps derive from it
+// the object and the vtable sits behind the members, at _14C; the menus MenuEx keeps derive from it.
+// Reset comes before LoadTexture here: MenuMain's vtable has its Reset at _0C and CMenu::Init calls _0C
 class CMenu {
 public:
-	s32 mState; // _00, 0 while closed
-	u8 _004[0xC - 0x4];
-	BOOL mWindowOpen; // _0C
-	u8 _010[0x13C - 0x10];
-	BOOL mSuspended;   // _13C
-	BOOL mSuspendFade; // _140
-	u8 _144[0x14C - 0x144];
+	s32 mState;          // _00, 0 while closed
+	f32 mAlpha;          // _04
+	s32 mSelection;      // _08, the row the cursor is on
+	MenuWindow mWindow;  // _0C
+	MenuCursor* mCursor; // _138, MenuEx's
+	BOOL mSuspended;     // _13C, another menu is on top
+	BOOL mSuspendFade;   // _140, fade out while suspended
+	f32 mFade;           // _144
+	f32 mSuspendAlpha;   // _148
 	// _14C vtable
 
 	virtual void Init();             // _08
-	virtual BOOL LoadTexture();      // _0C
-	virtual void Reset();            // _10
+	virtual void Reset();            // _0C
+	virtual BOOL LoadTexture();      // _10
 	virtual BOOL Update(u32 frames); // _14
 	virtual BOOL Draw();             // _18
 	virtual void Open();             // _1C
@@ -893,11 +966,40 @@ public:
 		s32 mAction; // _04
 	};
 
-	u8 _150[0x1D4 - 0x150];
+	u8 _150[0x1D0 - 0x150];
+	s32 mChannel;           // _1D0
 	ExtraRow mExtraRows[5]; // _1D4
 
+	virtual void Init();
+	virtual void Reset();
 	virtual void Open();
 	virtual void Resume();
+};
+
+class MenuStageSelect : public CMenu {
+public:
+	virtual void Init();
+};
+
+class MenuSave : public CMenu {
+public:
+	u8 _150[0x2C4 - 0x150];
+	s32 mLastFile; // _2C4, -1 for none
+
+	virtual void Reset();
+};
+
+// the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
+class MenuStatus : public CMenu {
+public:
+	void State6(u32 frames);
+	void State7(u32 frames);
+};
+
+class MenuPC : public CMenu {
+public:
+	void State6(u32 frames);
+	void State8(u32 frames);
 };
 
 class CGame : public CBase {

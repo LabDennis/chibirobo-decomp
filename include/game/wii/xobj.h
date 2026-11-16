@@ -16,6 +16,8 @@
 #include "game/wii/cresfile.h"
 #include "revolution/mem.h"
 
+struct XObjFloor;
+
 // the Wii XObj family, as far as xobj_ut.cpp's pool setup verifies it: names and
 // sizes come from the retail RTTI strings and the element strides the pool
 // constructors pass to __construct_new_array.
@@ -1223,23 +1225,29 @@ public:
 	// the item index its data record names, -1 before it has one (the GameCube XObj's inline)
 	s32 GetObjFlags() const { return mAttr.mObjData != NULL ? GetObjDataFlags(mAttr.mObjData) : -1; }
 
-	CStatus64 mStatus; // _150
-	CoordInfo mCoord;  // _160
-	AttrInfo mAttr;    // _168
-	u8 _174[0x188 - 0x174];
+	CStatus64 mStatus;  // _150
+	CoordInfo mCoord;   // _160
+	AttrInfo mAttr;     // _168
+	XObjFloor* mFloors; // _174, the object's collision floor list
+	u8 _178[0x188 - 0x178];
 	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
 	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
-	u8 _190[0x19C - 0x190];
-	CVec mLastPos; // _19C
+	u8 _190[0x194 - 0x190];
+	s32 mPlacementParam0; // _194, the placement entry's, copied on load; its meaning is up to the kind
+	s32 mPlacementParam1; // _198
+	CVec mLastPos;        // _19C
 	u8 _1AC[0x1B8 - 0x1AC];
 	f32 mLastAnimFrame; // _1B8, the frame the animation had after the last update
-	u8 _1BC[0x640 - 0x1BC];
+	s32 mHitFloorIndex; // _1BC
+	u8 _1C0[0x640 - 0x1C0];
 	f32 mFloorXZExtent; // _640
-	u8 _644[0x6C8 - 0x644];
-	f32 mMaxFloorHeight; // _6C8, NAN while there is none
-	u8 _6CC[0x6D4 - 0x6CC];
-	BOOL mScreenBoundsValid; // _6D4, the four below hold the object's bounds on screen
+	u8 _644[0x648 - 0x644];
+	f32 mFloorHeights[32];    // _648, a height per floor
+	f32 mMaxFloorHeight;      // _6C8, NAN while there is none
+	f32 mSelectedFloorHeight; // _6CC, highest active floor, NaN when none is active
+	s32 mSelectedFloorIndex;  // _6D0
+	BOOL mScreenBoundsValid;  // _6D4, the four below hold the object's bounds on screen
 	u8 _6D8[4];
 	s32 _6DC;          // _6DC, set when the pointer swept across the bounds within one frame
 	f32 mScreenTop;    // _6E0

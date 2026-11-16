@@ -253,6 +253,15 @@ game/wii/homemenu.cpp:
 	.sbss start:0x805A1C38 end:0x805A1C40
 	.sdata2 start:0x805A4470 end:0x805A44D0
 
+game/wii/evt.cpp:
+	.text start:0x8009453C end:0x800A18B8
+
+game/wii/xaction.cpp:
+	.text start:0x800C6428 end:0x800C6584
+
+game/wii/xobj_chr.cpp:
+	.text start:0x800C9E84 end:0x800E9D30
+
 game/ringmenupointer.cpp:
 	extab start:0x8000C4EC end:0x8000C4F4
 	extabindex start:0x80014534 end:0x80014540
@@ -1118,7 +1127,7 @@ game/ccameraactionareaexdtor.cpp:
 	.sdata start:0x805A1278 end:0x805A1280
 
 game/wii/ccameraactionmap2.cpp:
-	.text start:0x80154310 end:0x80154320
+	.text start:0x80154310 end:0x80160D30
 
 game/ccameraactionareaex.cpp:
 	.text start:0x80151FCC end:0x801541F8

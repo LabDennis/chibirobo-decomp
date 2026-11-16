@@ -128,7 +128,7 @@ void fn_802BE03C(void* effects, const Vec* eye, MtxP view, f32 (*projection)[4],
 extern u8 lbl_8044EE4C[];
 // the pointer's position in the last frame, and each stage's scope sounds (0x802C49C8)
 extern Vec lbl_80444E98;
-Vec fn_8010BEE0(WiiPlayerAction* popper);                     // the popper's muzzle, the GameCube's joint path 0 1 0 0
+Vec fn_8010BEE0(XAction* popper);                             // the popper's muzzle, the GameCube's joint path 0 1 0 0
 void fn_800E8140(WiiPlayerState* player, f32 yaw, f32 pitch); // where the eye camera's popper aims
 void fn_80114564(XObj* obj);                                  // the scope's new item target
 }
@@ -1003,7 +1003,7 @@ static inline void PickScopeTarget(CGame* game, ScopePick* scope, XObj* obj, XOb
 {
 	if (!game->GetStatusFlags(0x100) && game->GetPlayer()->GetAttachment() != 2
 	    && !(game->mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->_2D0
-	         && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->_5C != 0)
+	         && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 	    && !(game->mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)game->mCameraActions.mTable[CAMACTION_MAP])->_11F8)
 	    && (obj->_18C >= 0 || (obj->GetPool() == 8 && obj != held))) {
 		f32 dist = PSVECDistance(obj->GetPos(), eye) - obj->mFloorXZExtent;
@@ -1123,7 +1123,7 @@ void CGame::Update(u32 frames)
 	} else if (mEvtData.mScript == NULL && !IsMessageSelecting((CMsg*)mMsgs[0]) && !GetStatusFlags(0x800) && !IsMenuOpen(mMenus[1])
 	           && !IsMenuOpen(mMenus[2]) && !IsMenuOpen(mMenus[4])
 	           && !(mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
-	                && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_5C != 0)
+	                && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 	           && !(mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)mCameraActions.mTable[CAMACTION_MAP])->_11F8)
 	           && !(fn_80169658(&mMotionControlCamera) && ((u8*)fn_80169674())[0x74]) && !(mStage == 3 && CallStageModule(0x10, 0, NULL))) {
 		if (_EC1A8 > 0.5f) {
@@ -1146,7 +1146,7 @@ void CGame::Update(u32 frames)
 		    || (mMotionControlCamera.IsAction(CAMACTION_EYE) && mEvtData.mScript == NULL && (!(mMenuControls & 2) || !mMenuActive))
 		    || mMotionControlCamera.IsAction(CAMACTION_SCROLL2)
 		    || (mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
-		        && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_5C != 0)
+		        && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 		    || (mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)mCameraActions.mTable[CAMACTION_MAP])->_11F8)
 		    || (fn_80169658(&mMotionControlCamera) && ((u8*)fn_80169674())[0x74]) || (mStage == 3 && CallStageModule(0x10, 0, NULL))) {
 			wanted = true;
@@ -1518,7 +1518,7 @@ void CGame::Update(u32 frames)
 				CVec to(toPos);
 				CVec eye = GetCamera()->mView.mEye;
 				CVec muzzle(fn_8010BEE0(&GetPlayer()->mPopper));
-				XObj* held = GetPlayer()->mLift.mState == 0 ? NULL : GetPlayer()->mLiftTarget;
+				XObj* held = GetPlayer()->mLift.mState == 0 ? NULL : GetPlayer()->mLift.mTarget;
 				for (i = 0; i < mObjectRefCount; i++) {
 					XObj* obj = (XObj*)mObjectRefs[i].mObj;
 					if (obj == NULL) {
