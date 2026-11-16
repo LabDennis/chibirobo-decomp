@@ -85,9 +85,12 @@ extern f32 gStage02TimerOutlineX[], gStage02TimerOutlineY[];
 #if !defined(VERSION_JP)
 static inline void DrawTimerLabel(f32 scale)
 {
+	// retail keeps a second CTexObj scoped to the label drawing (vtable stored
+	// before the label calls, destroyed right after); it is never read
+	CTexObj labelTex;
 	const f32 size = 20.0f;
 	f32 width      = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size);
-	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 40.0f, 0.0f, (width - 4.0f) * scale, 12.0f, 0.0f, 0.0f, 0.0f);
+	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 40.0f, 0.0f, scale * (width - 4.0f), 12.0f, 0.0f, 0.0f, 0.0f);
 	f32 left = 320.0f - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size) * 0.5f;
 	for (int i = 0; i < 4; ++i)
 		DrawGsProportionalTextFormat(&gGame.mGs, 0xFF, GetLocalizedInterfaceText(0x5B), left + gStage02TimerOutlineX[i],
@@ -95,6 +98,13 @@ static inline void DrawTimerLabel(f32 scale)
 	DrawGsProportionalTextFormat(&gGame.mGs, -1, GetLocalizedInterfaceText(0x5B), left, 27.0f, 0.0f, size, size);
 }
 #endif
+/**
+ * @note Address: 0x801095E8
+ * @note Size: 0x7F0
+ */
+// Draw the stage02 countdown above the spider panel.
+// NONMATCHING: the locals and the quad arguments take other registers, and the
+// literal-pool slots differ
 extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 {
 	f32 alpha = actor->mTimerPanelAlpha;
@@ -157,10 +167,17 @@ extern "C" void DrawStage02TimerPanel(XObjActor3* actor)
 
 	dw = 1.4f * TexSize(GXGetTexObjWidth(&tex) / 11, 1.0f);
 	dh = 1.4f * TexSize(GXGetTexObjHeight(&tex), 1.0f);
+	x  = 110.0f;
+#if !defined(VERSION_JP)
+	x += 11.0f;
+#endif
 	PSMTXTrans(tex.mMtx[0], 10.0f / 11.0f, 0.0f, 0.0f); // the eleventh glyph
 	tex.mMtxDirty = TRUE;
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	s32 digits = count < 10.0f ? 1 : 2; // the glyph slides with the digit count
+	s32 digits = 2; // the glyph slides with the digit count
+	if (count < 10.0f) {
+		digits = 1;
+	}
 	DrawGsTexturedQuad(&gGame.mGs, &tex, c0, c0, c1, c1, 7.0f * dw + (x - digits * (dw - 8.0f)) - 32.0f, 76.0f, 0.0f, dw, dh, 0.0f, 0.0f,
 	                   0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
