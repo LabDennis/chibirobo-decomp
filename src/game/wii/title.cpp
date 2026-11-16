@@ -524,31 +524,121 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		}
 		title->mCursor[0].UpdateObject(frames);
 		title->mCursor[1].UpdateObject(frames);
+		for (s32 i = 0; i < 3; ++i) {
+			title->mDemo[i].UpdateObject(frames);
+		}
 		UpdateTitleDust(title, frames);
-		if (title->mMenuAlpha == 1 && title->mTitleAlpha == 1)
+		if (1.0f == title->mMenuAlpha && 1.0f == title->mTitleAlpha) {
 			title->mState = 11;
+			title->UpdateSelections();
+		}
 		break;
 	}
 	case 11: {
+		bool addPanes = true;
+		bool stick    = false;
+		s32 anim;
+		ResourceFile* file;
+		if (title->mSelection != -1) {
+			title->mLastSelection = title->mSelection;
+		}
+		// with nothing picked the highlight bar eases back to the line picked last
+		if (title->mSelection == -1) {
+			title->mOptionBar[0] += 0.8f * (title->mEntryLines[title->mLastSelection] - title->mOptionBar[0]);
+			title->mOptionBar[1] += 0.8f * (title->mOptionBarTarget[0] - title->mOptionBar[1]);
+			title->mOptionBar[2] += 0.8f * (title->mOptionBarTarget[1] - title->mOptionBar[2]);
+		}
+		if (title->IsStickUsedOverPointer()) {
+			stick = true;
+		}
 		title->mHighlightDelay += frames;
-		if (title->mHighlightDelay >= gRefreshRate) {
-			title->mHighlightDelay = gRefreshRate;
+		if ((f32)title->mHighlightDelay >= (f32)gRefreshRate) {
+			title->mHighlightDelay = (f32)gRefreshRate;
 			title->mPulseAngle     = (f32)fmod(title->mPulseAngle + (f32)(frames * 9), 360.);
 		}
 		title->mCursor[0].UpdateObject(frames);
 		title->mCursor[1].UpdateObject(frames);
+		for (s32 i = 0; i < 3; ++i) {
+			title->mDemo[i].UpdateObject(frames);
+		}
 		UpdateTitleDust(title, frames);
-		title->UpdateSelections();
-		if (title->IsConfirmPressed()) {
+		if (!IsWiiSfxPlaying(&gGame.mSound, 0xFF0003)) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xFF0003, 1.0f, 0.0f);
+		}
+		if (!stick) {
+			if (title->IsStickUp()) {
+				if (title->mSaveFound) {
+					if (title->mSelection > 0) {
+						title->mSelection--;
+						title->mPulseAngle = 45.0f;
+						PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+					}
+				} else if (title->mSelection != 0) {
+					title->mSelection  = 0;
+					title->mPulseAngle = 45.0f;
+					PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+				}
+			} else if (title->IsStickDown()) {
+				if (title->mSaveFound) {
+					if (title->mSelection < 2) {
+						title->mSelection++;
+						title->mPulseAngle = 45.0f;
+						PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+					}
+				} else if (title->mSelection != 2) {
+					title->mSelection  = 2;
+					title->mPulseAngle = 45.0f;
+					PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+				}
+			}
+		}
+		if (title->IsConfirmPressed() && title->mSelection != -1) {
 			switch (title->mSelection) {
 			case 0:
 			case 1:
+				for (s32 i = 0; i < 3; ++i) {
+					ResetSaveSlotRecord(&gTitleSaveSlots[i]);
+				}
+				StartWiiSaveSlotScan(&gGame.mSaveManager, 3);
+				title->SetMode(1);
+				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
 				title->mState = 12;
+				anim          = 1;
+				file          = title->mCursor[0].mRequest.mFile;
+				if ((file != NULL ? file->mSize : 0) == 0x3CA80) {
+					anim = 12;
+				}
+				title->mCursor[0].SetAnim(anim, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+				title->mCursor[1].SetAnim(anim, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+				title->mPulseAngle = 90.0f;
 				break;
 			case 2:
+				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
 				title->mState = 12;
+				anim          = 1;
+				file          = title->mCursor[0].mRequest.mFile;
+				if ((file != NULL ? file->mSize : 0) == 0x3CA80) {
+					anim = 12;
+				}
+				title->mCursor[0].SetAnim(anim, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+				title->mCursor[1].SetAnim(anim, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+				title->mPulseAngle = 90.0f;
 				break;
 			}
+			addPanes                  = false;
+			title->mPanes[5].mPointed = false;
+			title->mPanes[5].mPicked  = false;
+			title->mPanes[6].mPointed = false;
+			title->mPanes[6].mPicked  = false;
+			title->mPanes[7].mPointed = false;
+			title->mPanes[7].mPicked  = false;
+		}
+		if (addPanes) {
+			AddPointerPane(&gPointerPanes, &title->mPanes[5]);
+			if (title->mSaveFound) {
+				AddPointerPane(&gPointerPanes, &title->mPanes[6]);
+			}
+			AddPointerPane(&gPointerPanes, &title->mPanes[7]);
 		}
 		break;
 	}
