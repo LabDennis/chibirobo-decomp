@@ -225,11 +225,10 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	}
 	CVec ladder(0, 0, 0);
 	{
-		const XActLadder& ladderAction = player->mLadder;
-		if (!IsLadderActionState(&ladderAction, 0) && !IsLadderActionState(&ladderAction, 2) && !IsLadderActionState(&ladderAction, 3)
-		    && HasPlayerActionTarget(&ladderAction)) {
-			XObj* target = GetPlayerActionTarget(&ladderAction);
-			if (IsLadderActionState(&ladderAction, 1)) {
+		if (!IsLadderActionState(&player->mLadder, 0) && !IsLadderActionState(&player->mLadder, 2)
+		    && !IsLadderActionState(&player->mLadder, 3) && HasPlayerActionTarget(&player->mLadder)) {
+			XObj* target = GetPlayerActionTarget(&player->mLadder);
+			if (IsLadderActionState(&player->mLadder, 1)) {
 				f32 previous = GetObjectPreviousMoveTranslation(target)->y;
 				ladder.y     = GetObjectMoveTranslation(target)->y - previous;
 			} else {
@@ -241,10 +240,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	}
 	CVec rope(0, 0, 0);
 	{
-		const XActRope& ropeAction = player->mRope;
-		if (!IsRopeActionState(&ropeAction, 0) && !IsRopeActionState(&ropeAction, 2) && HasPlayerActionTarget(&ropeAction)) {
-			XObj* target = GetPlayerActionTarget(&ropeAction);
-			if (IsRopeActionState(&ropeAction, 1) || IsRopeActionState(&ropeAction, 3)) {
+		if (!IsRopeActionState(&player->mRope, 0) && !IsRopeActionState(&player->mRope, 2) && HasPlayerActionTarget(&player->mRope)) {
+			XObj* target = GetPlayerActionTarget(&player->mRope);
+			if (IsRopeActionState(&player->mRope, 1) || IsRopeActionState(&player->mRope, 3)) {
 				f32 previous = GetObjectPreviousMoveTranslation(target)->y;
 				rope.y       = GetObjectMoveTranslation(target)->y - previous;
 			} else {
