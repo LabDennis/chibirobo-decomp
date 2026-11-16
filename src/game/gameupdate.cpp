@@ -175,7 +175,7 @@ void CGame::Update(u32 frames)
 			mOutline.Update(frames);
 			mScrnTex.mAngle = fmod(DEG2RAD * 6.0f * frames + mScrnTex.mAngle, TWO_PI); // six degrees a frame
 			mOutline.mThick = 0.0f;
-			u8 lineAlpha    = 100.0f * (f32)sin(mScrnTex.mAngle) + 150.0f; // pulses the outline alpha
+			f32 lineAlpha   = 100.0f * (f32)sin(mScrnTex.mAngle) + 150.0f; // pulses the outline alpha
 
 			mOutline.SetLineColor(0xFF, 0xFF, 0xFF);
 			mOutline.mColor0.a = lineAlpha;
