@@ -1556,11 +1556,8 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_MmlSeqTrack.cpp"),
                 Object(Matching, "nw4r/snd/snd_MmlSeqTrackAllocator.cpp"),
                 Object(Matching, "nw4r/snd/snd_PlayerHeap.cpp"),
-                # code 12 of 12 by content; Setup and Shutdown are EnableWiiRemoteSpeaker and DisableWiiRemoteSpeaker
-                # in symbols.txt, the names src/game/wii/cpad.cpp calls
-                Object(NonMatching, "nw4r/snd/snd_RemoteSpeaker.cpp"),
-                # GetInstance and GetRemoteSpeaker are GetRemoteSpeakerManager and GetRemoteSpeakerChannel to the game
-                Object(NonMatching, "nw4r/snd/snd_RemoteSpeakerManager.cpp"),
+                Object(Matching, "nw4r/snd/snd_RemoteSpeaker.cpp"),
+                Object(Matching, "nw4r/snd/snd_RemoteSpeakerManager.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqFile.cpp"),
                 Object(Matching, "nw4r/snd/snd_SeqPlayer.cpp"),
                 # code complete; calls BasicSound::Stop (StopWiiSfxTrack in symbols.txt)
@@ -1582,8 +1579,7 @@ if wii:
                 Object(Matching, "nw4r/snd/snd_SoundHeap.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundPlayer.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundStartable.cpp"),
-                # code complete; calls RemoteSpeakerManager::GetInstance (GetRemoteSpeakerManager in symbols.txt)
-                Object(NonMatching, "nw4r/snd/snd_SoundSystem.cpp"),
+                Object(Matching, "nw4r/snd/snd_SoundSystem.cpp"),
                 Object(Matching, "nw4r/snd/snd_SoundThread.cpp"),
                 Object(Matching, "nw4r/snd/snd_StrmChannel.cpp"),
                 Object(Matching, "nw4r/snd/snd_StrmFile.cpp"),
