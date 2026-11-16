@@ -7983,3 +7983,15 @@ sort<PQ54nw4r3g3d6detail7workmem4MdlZ,RPFRCQ54nw4r3g3d6detail7workmem4MdlZRCQ54n
 __sort132<RPFRCQ54nw4r3g3d6detail7workmem4MdlZRCQ54nw4r3g3d6detail7workmem4MdlZ_b,PQ54nw4r3g3d6detail7workmem4MdlZ>__3stdFPQ54nw4r3g3d6detail7workmem4MdlZPQ54nw4r3g3d6detail7workmem4MdlZPQ54nw4r3g3d6detail7workmem4MdlZRPFRCQ54nw4r3g3d6detail7workmem4MdlZRCQ54nw4r3g3d6detail7workmem4MdlZ_b_v = .text:0x80275D2C; // type:function size:0x260 scope:weak
 sort<PPQ34nw4r3g3d6ScnObj,RPFPCQ34nw4r3g3d6ScnObjPCQ34nw4r3g3d6ScnObj_b>__3stdFPPQ34nw4r3g3d6ScnObjPPQ34nw4r3g3d6ScnObjRPFPCQ34nw4r3g3d6ScnObjPCQ34nw4r3g3d6ScnObj_b_v = .text:0x8027BDDC; // type:function size:0x380 scope:weak
 __sort132<RPFPCQ34nw4r3g3d6ScnObjPCQ34nw4r3g3d6ScnObj_b,PPQ34nw4r3g3d6ScnObj>__3stdFPPQ34nw4r3g3d6ScnObjPPQ34nw4r3g3d6ScnObjPPQ34nw4r3g3d6ScnObjRPFPCQ34nw4r3g3d6ScnObjPCQ34nw4r3g3d6ScnObj_b_v = .text:0x8027C15C; // type:function size:0x100 scope:weak
+Console_Printf__Q24nw4r2dbFPQ44nw4r2db6detail11ConsoleHeadPCce = .text:0x80235D54; // type:function size:0x68
+Console_GetTotalLines__Q24nw4r2dbFPQ44nw4r2db6detail11ConsoleHead = .text:0x80235DBC; // type:function size:0x6C
+Assertion_Printf___Q24nw4r2dbFPCce = .text:0x80235E28; // type:function size:0x98 scope:local
+ShowStack___Q24nw4r2dbFUl = .text:0x80235EC0; // type:function size:0xAC scope:local
+VPanic__Q24nw4r2dbFPCciPCcP16__va_list_structb = .text:0x80235F6C; // type:function size:0x104
+Panic__Q24nw4r2dbFPCciPCce = .text:0x80236070; // type:function size:0x94
+WarningAlarmFunc___Q24nw4r2dbFP7OSAlarmP9OSContext = .text:0x802362A0; // type:function size:0x18 scope:local
+sWarningAlarm$512 = .bss:0x805307F0; // type:object size:0x30 scope:local
+sDispWarningAuto__Q24nw4r2db = .sdata:0x805A18D0; // type:object size:0x1 scope:local
+sWarningTime__Q24nw4r2db = .sbss:0x805A2740; // type:object size:0x4 scope:local
+sAssertionConsole__Q24nw4r2db = .sbss:0x805A2744; // type:object size:0x4 scope:local
+sInitializedAlarm$513 = .sbss:0x805A2748; // type:object size:0x1 scope:local

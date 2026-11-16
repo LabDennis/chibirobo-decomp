@@ -1519,6 +1519,9 @@ if wii:
                 Object(Matching, "nw4r/ut/ut_RomFont.cpp"),
                 Object(Matching, "nw4r/ut/ut_ResFontBase.cpp"),
                 Object(Matching, "nw4r/ut/ut_ResFont.cpp"),
+                # nw4r::db (0x80235D54-0x802362B8)
+                Object(Matching, "nw4r/db/db_console.cpp"),
+                Object(Matching, "nw4r/db/db_assert.cpp"),
                 Object(Matching, "nw4r/math/math_arithmetic.cpp"),
                 Object(Matching, "nw4r/math/math_triangular.cpp"),
                 Object(NonMatching, "nw4r/math/math_types.cpp"),
@@ -1567,7 +1570,9 @@ if wii:
                 Object(Matching, "nw4r/g3d/g3d_anmscn.cpp"),
                 # 5 of 5, not linked: retail emits G3dObj's weak virtuals as IsDerivedFrom, GetTypeName, GetTypeObj
                 # (0x8026C5EC), this source as GetTypeName, GetTypeObj, IsDerivedFrom. xenoblade gets retail's
-                # order with a DECOMP_FORCEACTIVE reference to IsDerivedFrom at the end of the file.
+                # order with a DECOMP_FORCEACTIVE reference to IsDerivedFrom at the end of the file, wiiplay and ogws
+                # too. The compiler emits a class's weak virtuals in reverse order of declaration; defining
+                # IsDerivedFrom inline behind the class instead of inside it changes nothing.
                 Object(NonMatching, "nw4r/g3d/g3d_obj.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_anmobj.cpp"),
                 Object(Matching, "nw4r/g3d/platform/g3d_gpu.cpp"),
