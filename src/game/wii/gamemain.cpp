@@ -437,6 +437,15 @@ void CBase::ResetNewGameState()
 }
 
 /**
+ * @note Address: 0x8001829C
+ * @note Size: 0x20
+ */
+void CBase::InitFont(const char* path)
+{
+	mGs.mFont.Init(path, gGame.mLanguage != 0);
+}
+
+/**
  * @note Address: 0x80017D4C
  * @note Size: 0x344
  */

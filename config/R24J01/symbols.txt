@@ -192,6 +192,7 @@ __dt__8FbSubwinFv = .text:0x8002FCBC; // type:function size:0x6C
 __dt__10CStopwatchFv = .text:0x8003028C; // type:function size:0x6C
 __ct__Q213CEffectSystem8ResourceFv = .text:0x8003467C; // type:function size:0x4C
 __ct__10GameShadowFv = .text:0x80035464; // type:function size:0x40
+InitFont__5CBaseFPCc = .text:0x8001829C; // type:function size:0x20
 BeforeUpdate__5CBaseFv = .text:0x800182C0; // type:function size:0x8
 __dt__6CPadExFv = .text:0x80030A54; // type:function size:0x6C
 GetTarget__22CInterfaceCameraActionFv = .text:0x80031E24; // type:function size:0x8

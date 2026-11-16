@@ -250,9 +250,9 @@ public:
 	virtual void Initialize(int argc, char** argv); // _0C
 	virtual void Start();                           // _10, 0x80017D4C
 	virtual void ResetNewGameState();               // _14, CBase's is empty
-	virtual void vf18();
-	virtual BOOL BeforeUpdate();     // _1C
-	virtual void Update(u32 frames); // _20
+	virtual void InitFont(const char* path); // _18, CGame::Start passes the font file named on the command line or NULL; the name is ours
+	virtual BOOL BeforeUpdate();             // _1C
+	virtual void Update(u32 frames);         // _20
 	// _24, _28 the scene through the main camera, _2C the screen-space layer, _30 retraces per frame
 	virtual void Draw();
 	virtual void DrawScene();
