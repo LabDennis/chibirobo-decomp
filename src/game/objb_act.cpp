@@ -1237,8 +1237,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 		} else if (anim == 0x23)
 			RopeAnim(act, 0x8c, 0);
 		if (act->mMoveDirection == 1 || act->mMoveDirection == 2) {
-			s32 path[] = { 0, 0 };
-			if (act->mTarget && GetEventJointWorldPosition(act->mOwner, 2, path).y >= act->mTarget->mFloorHeights[0]) {
+			if (act->mTarget && GetEventJointWorldPosition(act->mOwner, 2, (s32[]) { 0, 0 }).y >= act->mTarget->mFloorHeights[0]) {
 				act->mOwner->SetTranslateY(act->mTarget->mFloorHeights[0] - act->mTargetOffset.y, 0);
 				RopeAnim(act, 0x24, 0);
 				act->mState = 6;
