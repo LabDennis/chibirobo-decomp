@@ -7,6 +7,7 @@
 extern "C" char* strncat(char* dst, const char* src, size_t n);
 
 namespace std {
+using ::memcmp;
 using ::memcpy;
 using ::memset;
 using ::strcmp;
