@@ -63,6 +63,27 @@ typedef char CVec_size_check[sizeof(CVec) == 0x10 ? 1 : -1];
 class CColor : public _GXColor {
 public:
 	CColor() { }
+#if defined(VERSION_R24J01)
+	// the Wii sets a color one changed component at a time (the object color setters around
+	// 0x800AE340 do it on the member). The conversion runs that on the new object's own,
+	// still unset components: CObj::Init and CObj::Load compare against registers nothing wrote
+	CColor(GXColor c) { Set(c.r, c.g, c.b, c.a); }
+	void Set(int r, int g, int b, int a)
+	{
+		if (this->r != r) {
+			this->r = r;
+		}
+		if (this->g != g) {
+			this->g = g;
+		}
+		if (this->b != b) {
+			this->b = b;
+		}
+		if (this->a != a) {
+			this->a = a;
+		}
+	}
+#endif
 	virtual ~CColor() { } // _08
 #if defined(VERSION_R24J01)
 	// a component is only written when it changes

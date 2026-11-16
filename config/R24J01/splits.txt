@@ -180,7 +180,11 @@ game/THPSimple.cpp:
 	.sdata2 start:0x805A7B80 end:0x805A7B90
 
 game/cmovie.cpp:
+	extab start:0x80011140 end:0x80011178
+	extabindex start:0x80017A38 end:0x80017A8C
 	.text start:0x802C2278 end:0x802C269C
+	.rodata start:0x802E5E20 end:0x802E5E28
+	.sdata2 start:0x805A7B78 end:0x805A7B80
 
 game/wii/cprimitive.cpp:
 	.text start:0x802AF8B8 end:0x802B193C
@@ -1060,6 +1064,31 @@ game/wii/mem.cpp:
 	.rodata start:0x802E50C8 end:0x802E5150
 	.bss start:0x80576B88 end:0x8059ABA8
 	.sbss start:0x805A2858 end:0x805A2870
+
+game/wii/cobj.cpp:
+	extab start:0x80010AD8 end:0x80010CA8
+	extabindex start:0x80017474 end:0x80017714
+	.text start:0x802B6560 end:0x802BA4F4
+	.rodata start:0x802E56D8 end:0x802E59A0
+	.sdata2 start:0x805A7A78 end:0x805A7AA8
+
+game/wii/ceffect.cpp:
+	extab start:0x80010DF0 end:0x80011088
+	extabindex start:0x800177C8 end:0x80017924
+	.text start:0x802BD3B4 end:0x802BF9F8
+	.rodata start:0x802E5AC0 end:0x802E5C50
+	.sbss start:0x805A28B0 end:0x805A28C0
+	.sdata2 start:0x805A7AD8 end:0x805A7B08
+
+game/wii/fbeffect.cpp:
+	extab start:0x80011088 end:0x800110D0
+	extabindex start:0x80017924 end:0x80017990
+	.text start:0x802BF9F8 end:0x802C19B8
+	.rodata start:0x802E5C50 end:0x802E5CB0
+	.data start:0x80356620 end:0x80356690
+	.sdata start:0x805A1B10 end:0x805A1B28
+	.sbss start:0x805A28C0 end:0x805A28C8
+	.sdata2 start:0x805A7B08 end:0x805A7B78
 
 game/cmodule.cpp:
 	extab start:0x800110D0 end:0x800110E0

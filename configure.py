@@ -1200,7 +1200,9 @@ if wii:
                 #   and lowers one by 0.01 (CPadAct::Update, 94.76 to 94.75).
                 # The units without an mw_version keep the library's Wii/1.3: nandfile.cpp matches only
                 # so (its twelve functions fall to about 80 % under GC/3.0a5 with -ipa file).
-                Object(Equivalent, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                # the GameCube file as it is: -inline deferred emits its functions last to first, which is
+                # retail's order (Load, Unload, Print); with -ipa file they come out first to last
+                Object(Matching, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline noauto,deferred"]),
                 Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the generated tail (0x800942E8-0x8009453C) is the same compiler as the
                 # stage_data group: only GC/3.0a* emits __register_global_object for the
@@ -1240,9 +1242,17 @@ if wii:
                 # OSPanic file): ResourceFile's refcounted CFile, the CFileRequest state
                 # machine and CResFile's brres accessor over the nw4r walkers
                 Object(NonMatching, "game/wii/cresfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the model objects 0x802B6560-0x802BA4F4 (cobj.cpp by its assert file) and the particle
+                # effects 0x802BD3B4-0x802BF9F8 (ceffect.cpp): only what does not go through nw4r::g3d
+                # or nw4r::ef is written, the rest waits on those libraries' headers
+                Object(NonMatching, "game/wii/cobj.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/wii/ceffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the frame buffer effects 0x802BF9F8-0x802C19B8 (fbeffect.cpp by its string pool):
+                # FbBase, FbBlur and FbEffect, the GameCube's CFbBlur and CFbOutline on a common base
+                Object(NonMatching, "game/wii/fbeffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # the RFNU/RFNT font file loader + glyph cache between the console font paths;
                 # the small setup helpers stay calls in retail, so no auto-inlining here either
-                Object(NonMatching, "game/wii/cfont.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(Matching, "game/wii/cfont.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # init.cpp (the name is in its OSPanic call): InitTwoLightSet and InitFourLightSet
                 # copy their vectors through the registers retail uses under GC/3.0a3.2 to 3.0a5
                 # and through others under 3.0a5.2, and every Wii build is far off. -ipa file: the
@@ -1343,6 +1353,10 @@ if wii:
                 Object(Equivalent, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the helpers the GameCube file inlines stay calls in retail: no auto-inlining
                 Object(NonMatching, "game/wii/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # -inline noauto like the engine files around it (cfile, ctpl, THPSimple): Update
+                # calls Stop where auto-inlining would expand it
+                Object(NonMatching, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # member offsets are shared with the GameCube class (mEyeInterps _18C, mFovInterps
                 # _330, the interp pointers _44-_54); the Wii vtable re-orders the Vec& overloads
                 Object(NonMatching, "game/ccameraactionevt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
