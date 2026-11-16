@@ -1612,7 +1612,11 @@ void CCameraActionArea::DrawDebug2d()
  */
 void CCameraActionArea::Update(u32 step)
 {
-	mPadControlEnabled = (gGame.mStatus.mFlags & 0xC00) ? FALSE : TRUE;
+	if (gGame.mStatus.mFlags & 0xC00) {
+		mPadControlEnabled = FALSE;
+	} else {
+		mPadControlEnabled = TRUE;
+	}
 	// retail does this, nothing reads the result
 	if (mTarget != NULL && mTarget->mJObj != NULL) {
 		CPad pad(0);
