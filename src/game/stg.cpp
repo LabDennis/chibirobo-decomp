@@ -10134,11 +10134,6 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
-// The atlas is measured twice; the discard dialog uses the enlarged sample.
-static inline f32 DiscardDigitExtent(s32 normal, s32 enlarged, f32 mix)
-{
-	return (1.0f - mix) * normal + (1.4f * mix) * enlarged;
-}
 static inline void DrawDiscardDigit(MenuStatus* menu, CTexObj& tex, s32 digit, f32 x, f32 y, f32 width, f32 height, f32 alpha)
 {
 	PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
@@ -10194,11 +10189,11 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 	case 1: {
 		LoadOverviewTexture(tex, 125);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		s32 count  = menu->mCount;
-		u16 firstW = tex.GetWidth(), secondW = tex.GetWidth();
-		f32 width  = DiscardDigitExtent(firstW, secondW, 1);
-		u16 firstH = tex.GetHeight(), secondH = tex.GetHeight();
-		f32 height = DiscardDigitExtent(firstH / 10, secondH / 10, 1);
+		s32 count = menu->mCount;
+		// the atlas is measured twice, a blend between the plain and the enlarged digit with the enlarged one picked
+		f32 mix    = 1.0f;
+		f32 width  = (1.0f - mix) * tex.GetWidth() + (1.4f * mix) * tex.GetWidth();
+		f32 height = (1.0f - mix) * (tex.GetHeight() / 10) + (1.4f * mix) * (tex.GetHeight() / 10);
 		PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 		tex.mMtxDirty = TRUE;
 		if (count >= 10) {
