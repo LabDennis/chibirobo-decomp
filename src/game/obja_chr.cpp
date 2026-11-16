@@ -4408,283 +4408,285 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 {
 	s32 result = 0;
-	if (count <= 0)
-		return result;
-	switch (args[0]) {
-	case 100:
-		return mPlug.mConnection;
-	case 101: {
-		XObj* obj = FindObj(args[1]);
-		return obj->GetCategory() == 9 ? GetClearLetickerApproachSide(obj, &mMoveTranslate) : 1;
-	}
-	case 102: {
-		s32 connection    = args[2];
-		XObj* target      = FindObj(args[1]);
-		mLift.mState      = 7;
-		mLift.mPlugTarget = target;
-		SetLiftPlugConnection(&mLift, connection, FALSE);
-		result = -1;
-		break;
-	}
-	case 103: {
-		XObj* target = FindObj(args[1]);
-		SetPos(target->mMoveTranslate, 0);
-		SetRotationY(PI + target->mMoveRotate.y, 0);
-		HSD_AObj* anim = GetAObj(mJObj);
-		if (anim) {
+	if (count > 0) {
+		switch (args[0]) {
+		case 100:
+			return mPlug.mConnection;
+		case 101: {
+			XObj* obj = FindObj(args[1]);
+			return obj->GetCategory() == 9 ? GetClearLetickerApproachSide(obj, &mMoveTranslate) : 1;
+		}
+		case 102: {
+			s32 connection    = args[2];
+			XObj* target      = FindObj(args[1]);
 			mLift.mState      = 7;
 			mLift.mPlugTarget = target;
-			SetLiftPlugConnection(&mLift, args[2], FALSE);
-			do {
-				f32 end   = anim ? HSD_AObjGetEndFrame(anim) : 0;
-				f32 frame = anim ? HSD_AObjGetCurrentFrame(anim) : 0;
-				UpdateLiftActionAnimation(&mLift, mAnimId, anim, 2, frame, end);
-				UpdateObject__4XObjFUl(this, 2);
-				mPlug.UpdateObject(2);
-				UpdateHeldObject(&mLift, 2);
-			} while (mLift.mState == 7);
+			SetLiftPlugConnection(&mLift, connection, FALSE);
+			result = -1;
+			break;
 		}
-		result = -1;
-		break;
-	}
-	case 104: {
-		XObj* target      = FindObj(args[1]);
-		mLift.mState      = 11;
-		mLift.mPlugTarget = target;
-		result            = -1;
-		break;
-	}
-	case 105:
-		if (mPlug.mConnection) {
-			PlayGameSound(&gGame.mSound, 0x37, 255);
+		case 103: {
+			XObj* target = FindObj(args[1]);
+			SetPos(target->mMoveTranslate, 0);
+			SetRotationY(PI + target->mMoveRotate.y, 0);
+			HSD_AObj* anim = GetAObj(mJObj);
+			if (anim) {
+				mLift.mState      = 7;
+				mLift.mPlugTarget = target;
+				SetLiftPlugConnection(&mLift, args[2], FALSE);
+				do {
+					f32 end   = anim ? HSD_AObjGetEndFrame(anim) : 0;
+					f32 frame = anim ? HSD_AObjGetCurrentFrame(anim) : 0;
+					UpdateLiftActionAnimation(&mLift, mAnimId, anim, 2, frame, end);
+					UpdateObject__4XObjFUl(this, 2);
+					mPlug.UpdateObject(2);
+					UpdateHeldObject(&mLift, 2);
+				} while (mLift.mState == 7);
+			}
+			result = -1;
+			break;
+		}
+		case 104: {
+			XObj* target      = FindObj(args[1]);
+			mLift.mState      = 11;
+			mLift.mPlugTarget = target;
+			result            = -1;
+			break;
+		}
+		case 105:
+			if (mPlug.mConnection) {
+				PlayGameSound(&gGame.mSound, 0x37, 255);
+				ClearPlugState(&mPlug, TRUE);
+			}
+			break;
+		case 106: {
+			XObj* target      = FindObj(args[1]);
+			mLift.mState      = 8;
+			mLift.mPlugTarget = target;
+			result            = -1;
+			break;
+		}
+		case 107:
+			FindObj(args[1]);
 			ClearPlugState(&mPlug, TRUE);
-		}
-		break;
-	case 106: {
-		XObj* target      = FindObj(args[1]);
-		mLift.mState      = 8;
-		mLift.mPlugTarget = target;
-		result            = -1;
-		break;
-	}
-	case 107:
-		FindObj(args[1]);
-		ClearPlugState(&mPlug, TRUE);
-		result = -1;
-		break;
-	case 108: {
-		XObj* target      = FindObj(args[1]);
-		mLift.mState      = 9;
-		mLift.mPlugTarget = target;
-		result            = -1;
-		break;
-	}
-	case 109:
-		FindObj(args[1]);
-		ClearPlugState(&mPlug, TRUE);
-		result = -1;
-		break;
-	case 110: {
-		mPlug.mConnection = 0;
-		s32 path[]        = { 0 };
-		CJObj joint(GetJointByPath(mPlug.mJObj, path, 1));
-		joint.SetRotationX(0, 0);
-		joint.SetRotationZ(0, 0);
-		result = -1;
-		break;
-	}
-	case 111:
-		SetLiftPlugConnection(&mLift, args[1], TRUE);
-		break;
-	case 120:
-		// shows or hides his plug
-		if (args[1])
-			gGame.mStatus.mFlags |= 0x0040000000000000ULL;
-		else
-			gGame.mStatus.mFlags &= ~0x0040000000000000ULL;
-		break;
-	case 200:
-		// head turns: 205 by an angle in degrees, 207 towards a point given in hundredths, 208 towards an object,
-		// 220 keeps following an object, 225 towards the camera
-		switch (args[1]) {
-		case 205:
-			TurnJoint(DEG2RAD * args[2], &mHeadTurn.mNeck);
+			result = -1;
 			break;
-		case 207: {
-			Vec target = { 0, 0, 0 };
-			target.x   = args[2] / 100.f;
-			target.z   = args[3] / 100.f;
-			TurnJoint((f32)atan2(target.x - mMoveTranslate.x, target.z - mMoveTranslate.z) - mMoveRotate.y, &mHeadTurn.mNeck);
+		case 108: {
+			XObj* target      = FindObj(args[1]);
+			mLift.mState      = 9;
+			mLift.mPlugTarget = target;
+			result            = -1;
 			break;
 		}
-		case 208: {
-			XObj* target = FindObj(args[2]);
-			TurnJoint((f32)atan2(target->mMoveTranslate.x - mMoveTranslate.x, target->mMoveTranslate.z - mMoveTranslate.z) - mMoveRotate.y,
-			          &mHeadTurn.mNeck);
+		case 109:
+			FindObj(args[1]);
+			ClearPlugState(&mPlug, TRUE);
+			result = -1;
+			break;
+		case 110: {
+			mPlug.mConnection = 0;
+			s32 path[]        = { 0 };
+			CJObj joint(GetJointByPath(mPlug.mJObj, path, 1));
+			joint.SetRotationX(0, 0);
+			joint.SetRotationZ(0, 0);
+			result = -1;
 			break;
 		}
-		case 220: {
-			XObj* target            = FindObj(args[2]);
-			mHeadTurn.mNeck.mMode   = 1;
-			mHeadTurn.mNeck.mLookAt = target;
+		case 111:
+			SetLiftPlugConnection(&mLift, args[1], TRUE);
 			break;
-		}
-		case 225: {
-			CVec& eye = gGame.mMotionControlCamera.mCamera.mEye;
-			TurnJoint((f32)atan2(eye.x - mMoveTranslate.x, eye.z - mMoveTranslate.z) - mMoveRotate.y, &mHeadTurn.mNeck);
+		case 120:
+			// shows or hides his plug
+			if (args[1])
+				gGame.mStatus.mFlags |= 0x0040000000000000ULL;
+			else
+				gGame.mStatus.mFlags &= ~0x0040000000000000ULL;
 			break;
-		}
-		}
-		return 0;
-	case 201:
-		mHeadTurn.mNeck.mMode   = 2;
-		mHeadTurn.mNeck.mTarget = 0;
-		mHeadTurn.mNeck.mLookAt = NULL;
-		return 0;
-	case 202:
-		return mHeadTurn.mNeck.mMode <= 0;
-	case 300:
-		mRope.SetState(4, FindObj(args[1]));
-		result = -1;
-		break;
-	case 301:
-		mLadder.SetState(4, FindObj(args[1]));
-		result = -1;
-		break;
-	case 302:
-		mJump.SetState(14, FindObj(args[1]));
-		result = -1;
-		break;
-	case 303:
-		if (args[1])
-			mRadar.mState = 1;
-		else
-			mRadar.mState = 2;
-		result = -1;
-		break;
-	case 400:
-		return mAttachmentRequest < 0;
-	case 450:
-		if (args[1] >= 0 && args[1] < 3)
-			mSuits.mSpecial = args[1];
-		break;
-	case 451:
-		return mSuits.mSpecial;
-	case 503:
-		if (args[1] == 16) {
-			RequestScriptAttachment(this, 4);
-			mScriptAttach = 1;
-		} else if (args[1] == 21) {
-			RequestScriptAttachment(this, 5);
-			mScriptAttach = 1;
-		} else if (args[1] == 22) {
-			RequestScriptAttachment(this, 6);
-			mScriptAttach = 1;
-		} else {
-			mLift.mState         = 24;
-			mLift.mPendingItemId = args[1];
-		}
-		result = -1;
-		break;
-	case 513:
-		return ScriptLiftReady(this);
-	case 500:
-		// takes out an item he owns: the toothbrush (16), spoon (21), mug (22) and squirter (56) go on as attachments
-		// 4 to 7, anything else he lifts
-		if (FindOwnedInventoryItemIndex(mParams.mInventory.mItems, args[1]) >= 0) {
+		case 200:
+			// head turns: 205 by an angle in degrees, 207 towards a point given in hundredths, 208 towards an object,
+			// 220 keeps following an object, 225 towards the camera
+			switch (args[1]) {
+			case 205:
+				TurnJoint(DEG2RAD * args[2], &mHeadTurn.mNeck);
+				break;
+			case 207: {
+				Vec target = { 0, 0, 0 };
+				target.x   = args[2] / 100.f;
+				target.z   = args[3] / 100.f;
+				TurnJoint((f32)atan2(target.x - mMoveTranslate.x, target.z - mMoveTranslate.z) - mMoveRotate.y, &mHeadTurn.mNeck);
+				break;
+			}
+			case 208: {
+				XObj* target = FindObj(args[2]);
+				TurnJoint((f32)atan2(target->mMoveTranslate.x - mMoveTranslate.x, target->mMoveTranslate.z - mMoveTranslate.z)
+				              - mMoveRotate.y,
+				          &mHeadTurn.mNeck);
+				break;
+			}
+			case 220: {
+				XObj* target            = FindObj(args[2]);
+				mHeadTurn.mNeck.mMode   = 1;
+				mHeadTurn.mNeck.mLookAt = target;
+				break;
+			}
+			case 225: {
+				CVec& eye = gGame.mMotionControlCamera.mCamera.mEye;
+				TurnJoint((f32)atan2(eye.x - mMoveTranslate.x, eye.z - mMoveTranslate.z) - mMoveRotate.y, &mHeadTurn.mNeck);
+				break;
+			}
+			}
+			return 0;
+		case 201:
+			mHeadTurn.mNeck.mMode   = 2;
+			mHeadTurn.mNeck.mTarget = 0;
+			mHeadTurn.mNeck.mLookAt = NULL;
+			return 0;
+		case 202:
+			return mHeadTurn.mNeck.mMode <= 0;
+		case 300:
+			mRope.SetState(4, FindObj(args[1]));
+			result = -1;
+			break;
+		case 301:
+			mLadder.SetState(4, FindObj(args[1]));
+			result = -1;
+			break;
+		case 302:
+			mJump.SetState(14, FindObj(args[1]));
+			result = -1;
+			break;
+		case 303:
+			if (args[1])
+				mRadar.mState = 1;
+			else
+				mRadar.mState = 2;
+			result = -1;
+			break;
+		case 400:
+			return mAttachmentRequest < 0;
+		case 450:
+			if (args[1] >= 0 && args[1] < 3)
+				mSuits.mSpecial = args[1];
+			break;
+		case 451:
+			return mSuits.mSpecial;
+		case 503:
 			if (args[1] == 16) {
 				RequestScriptAttachment(this, 4);
+				mScriptAttach = 1;
 			} else if (args[1] == 21) {
 				RequestScriptAttachment(this, 5);
+				mScriptAttach = 1;
 			} else if (args[1] == 22) {
 				RequestScriptAttachment(this, 6);
-			} else if (args[1] == 56) {
-				RequestScriptAttachment(this, 7);
+				mScriptAttach = 1;
 			} else {
-				mLift.mState         = 20;
+				mLift.mState         = 24;
 				mLift.mPendingItemId = args[1];
 			}
+			result = -1;
+			break;
+		case 513:
+			return ScriptLiftReady(this);
+		case 500:
+			// takes out an item he owns: the toothbrush (16), spoon (21), mug (22) and squirter (56) go on as attachments
+			// 4 to 7, anything else he lifts
+			if (FindOwnedInventoryItemIndex(mParams.mInventory.mItems, args[1]) >= 0) {
+				if (args[1] == 16) {
+					RequestScriptAttachment(this, 4);
+				} else if (args[1] == 21) {
+					RequestScriptAttachment(this, 5);
+				} else if (args[1] == 22) {
+					RequestScriptAttachment(this, 6);
+				} else if (args[1] == 56) {
+					RequestScriptAttachment(this, 7);
+				} else {
+					mLift.mState         = 20;
+					mLift.mPendingItemId = args[1];
+				}
+			}
+			result = -1;
+			break;
+		case 510:
+			return ScriptLiftReady(this);
+		case 501:
+			if (mLift.mTarget) {
+				if (IsAttachment(this, 4) || IsAttachment(this, 5) || IsAttachment(this, 6) || IsAttachment(this, 7)
+				    || IsAttachment(this, 8))
+					RequestScriptAttachment(this, 0);
+				else if (mLift.mTarget->GetCategory() == 8)
+					mLift.mState = 19;
+			}
+			result = -1;
+			break;
+		case 514:
+			return ScriptLiftReady(this);
+		case 502:
+			if (mLift.mTarget && mLift.mTarget->GetCategory() == 8)
+				mLift.mState = 23;
+			result = -1;
+			break;
+		case 550:
+			gGame.GetPlayer()->mParams.mInventory.mCompact = TRUE;
+			CompactInventory(&gGame.GetPlayer()->mParams.mInventory);
+			break;
+		case 551:
+			gGame.GetPlayer()->mParams.mInventory.mCompact = FALSE;
+			break;
+		case 600:
+			SetPlugSparkMode(&mPlug, args[1]);
+			result = -1;
+			break;
+		case 601:
+			DisablePlugSparkEffect(&mPlug);
+			result = -1;
+			break;
+		case 700:
+			mInAir = 1;
+			break;
+		case 701:
+			mInAir = 0;
+			break;
+		case 702:
+			return mInAir;
+		case 800:
+			mBatteryDrains = 1;
+			break;
+		case 801:
+			mBatteryDrains = 0;
+			break;
+		case 802:
+			return mBatteryDrains;
+		case 850:
+			mParams._1C[0] = 1;
+			break;
+		case 851:
+			mParams._1C[0] = 0;
+			break;
+		case 852:
+			return (s32)mParams._1C[0] > 0;
+		case 900:
+			mSquirterContent = args[1];
+			mItemTintWord    = ((u32)args[2] << 24) | ((u32)args[3] << 16) | ((u32)args[4] << 8) | 255;
+			break;
+		case 901:
+			mCameraTargetMarginSetting = args[1] / 100.f;
+			break;
+		case 902:
+			StopShots(this);
+			break;
+		case -1:
+			ResetPlayerAttachment(this, 17);
+			break;
+		case -2: {
+			// keeps where the anim took him: moves him onto the joint, then zeroes its translation
+			s32 path[] = { 0 };
+			SetPos(GetEventJointWorldPosition(this, 1, path), 0);
+			s32 root[] = { 0 };
+			SetObjectJointTranslationByPath(this, 1, root, 0, 0, 0);
+			break;
 		}
-		result = -1;
-		break;
-	case 510:
-		return ScriptLiftReady(this);
-	case 501:
-		if (mLift.mTarget) {
-			if (IsAttachment(this, 4) || IsAttachment(this, 5) || IsAttachment(this, 6) || IsAttachment(this, 7) || IsAttachment(this, 8))
-				RequestScriptAttachment(this, 0);
-			else if (mLift.mTarget->GetCategory() == 8)
-				mLift.mState = 19;
 		}
-		result = -1;
-		break;
-	case 514:
-		return ScriptLiftReady(this);
-	case 502:
-		if (mLift.mTarget && mLift.mTarget->GetCategory() == 8)
-			mLift.mState = 23;
-		result = -1;
-		break;
-	case 550:
-		gGame.GetPlayer()->mParams.mInventory.mCompact = TRUE;
-		CompactInventory(&gGame.GetPlayer()->mParams.mInventory);
-		break;
-	case 551:
-		gGame.GetPlayer()->mParams.mInventory.mCompact = FALSE;
-		break;
-	case 600:
-		SetPlugSparkMode(&mPlug, args[1]);
-		result = -1;
-		break;
-	case 601:
-		DisablePlugSparkEffect(&mPlug);
-		result = -1;
-		break;
-	case 700:
-		mInAir = 1;
-		break;
-	case 701:
-		mInAir = 0;
-		break;
-	case 702:
-		return mInAir;
-	case 800:
-		mBatteryDrains = 1;
-		break;
-	case 801:
-		mBatteryDrains = 0;
-		break;
-	case 802:
-		return mBatteryDrains;
-	case 850:
-		mParams._1C[0] = 1;
-		break;
-	case 851:
-		mParams._1C[0] = 0;
-		break;
-	case 852:
-		return (s32)mParams._1C[0] > 0;
-	case 900:
-		mSquirterContent = args[1];
-		mItemTintWord    = ((u32)args[2] << 24) | ((u32)args[3] << 16) | ((u32)args[4] << 8) | 255;
-		break;
-	case 901:
-		mCameraTargetMarginSetting = args[1] / 100.f;
-		break;
-	case 902:
-		StopShots(this);
-		break;
-	case -1:
-		ResetPlayerAttachment(this, 17);
-		break;
-	case -2: {
-		// keeps where the anim took him: moves him onto the joint, then zeroes its translation
-		s32 path[] = { 0 };
-		SetPos(GetEventJointWorldPosition(this, 1, path), 0);
-		s32 root[] = { 0 };
-		SetObjectJointTranslationByPath(this, 1, root, 0, 0, 0);
-		break;
-	}
 	}
 	return result;
 }
