@@ -902,9 +902,7 @@ void UpdatePopperShotFlight(XActPopperShot* shot, u32 frames)
 		PSMTXRotRad(pitch, 'x', shot->mPitch);
 		PSMTXConcat(translation, yaw, transform);
 		PSMTXConcat(transform, pitch, transform);
-		Vec step    = { 0.0f, 0.0f, 0.0f };
-		step.z      = shot->mSpeed * frames;
-		Vec forward = step;
+		Vec forward = (Vec) { 0.0f, 0.0f, shot->mSpeed * frames };
 		PSMTXMultVec(transform, &forward, &shot->mPos);
 		if (shot->mGen || shot->mChargeGen) {
 			HSD_JObjSetTranslate(shot->mJoint, &shot->mPos);
