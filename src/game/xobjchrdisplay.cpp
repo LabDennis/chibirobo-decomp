@@ -26,7 +26,6 @@ static inline void ResetRingMode(OctaMenu& ring)
  * @note Address: 0x800BBDAC
  * @note Size: 0x338
  */
-// NONMATCHING: retail writes gPlayerSuitChangeEffect without the extra compare/branch this source produces
 void XObjChr::ResetForNewGame()
 {
 	ResetPlayerStats(&mParams);
@@ -41,7 +40,11 @@ void XObjChr::ResetForNewGame()
 	mPopperObj.ResetForNewGame();
 	mRadarObj.ResetForNewGame();
 	mOXObj.ResetForNewGame();
-	mSuits.mLoadStep = mSuits.mChangeStep = mSuits.mRequested = mSuits.mCurrent = mSuits.mSpecial = 0;
+	mSuits.mLoadStep   = 0;
+	mSuits.mChangeStep = 0;
+	mSuits.mRequested  = 0;
+	mSuits.mCurrent    = 0;
+	mSuits.mSpecial    = 0;
 	for (s32 i = 0; i < 9; ++i)
 		mSuits.mObjects[i].ResetForNewGame();
 	ApplyPlayerSuit(this);
@@ -49,8 +52,9 @@ void XObjChr::ResetForNewGame()
 	RefreshAttachmentMenuEntries(&mAttachments);
 	ResetRingMode(mMenu.mAtc);
 	ResetRingMode(mMenu.mDrs);
-	mMenu.mPrevSel = mMenu.mSel = 0;
-	mOXMenu.mSelectedIndex      = 0;
+	mMenu.mPrevSel         = 0;
+	mMenu.mSel             = 0;
+	mOXMenu.mSelectedIndex = 0;
 #if !defined(VERSION_JP)
 	mOXMenu.mLoadStep = 0;
 #endif
@@ -63,17 +67,10 @@ void XObjChr::ResetForNewGame()
 	for (s32 i = 0; i < 10; ++i) {
 		PointPtcl& p = gPointParticlePool[i];
 		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
-		p.display.mState = p.burst.mState = 0;
+		p.display.mState = 0;
+		p.burst.mState   = 0;
 	}
-	gPlayerSuitChangeEffect.active = FALSE;
-	// NONMATCHING: retail emits the clear as two branch-free straight-line runs
-	// (one base for rings[0], a second base at +0xf0 for rings[1]). Nested loops
-	// and two separate loops both keep a bound check under MWCC, so the flat
-	// loop stays as the honest form.
-	for (s32 i = 0; i < 20; ++i) {
-		gPlayerSuitChangeEffect.rings[0][i].scale = 0.0f;
-		gPlayerSuitChangeEffect.rings[0][i].angle = 0.0f;
-	}
+	gPlayerSuitChangeEffect.Reset();
 	mPlayerStatus.mFlags = 0;
 	mPlayerStatus.mFlags = 0;
 	mPlayerStatus.mFlags |= 0x20000000;
