@@ -51,6 +51,10 @@ const char* GetLocalizedInterfaceText(s32 index);
 void DrawTitleHelpText(Title* title);
 void DrawTitleLoadScreen(Title* title);
 void DrawTitleOptions(Title* title);
+// infoscrn.cpp's window frame (0x8008F884)
+void DrawTexturedWindowFrame(u32 color, s32 a, f32 x, f32 y, f32 w, f32 h, f32 sx, f32 sy, f32 sz);
+// the options page's highlight bar behind a line (0x8004EDFC)
+void fn_8004EDFC(Title* title, BOOL selected, f32 x, f32 y, f32 size, f32 width);
 void DrawTitleNameBubbles(Title* title);
 void fn_802AEDEC(WiiGsSceneObj** head, Mtx view);
 CCamera* InitGameOrthoCamera(CCamera* camera, GXRenderModeObj* mode);
@@ -1717,6 +1721,111 @@ extern "C" void DrawTitleScreen(Title* title)
 
 // the options page: the pointer and the stick can each be turned off, but not both; OK (or A on the
 // third line) writes the two to gGame.mMenuControls, B leaves them as they were
+/**
+ * @note Address: 0x8004BC54
+ * @note Size: 0x8F4
+ */
+// NONMATCHING: read from retail's code; the float registers and spills differ
+// the options page: the frame, its heading, the pointer and stick settings with their highlight bars and OK
+extern "C" void DrawTitleOptions(Title* title)
+{
+	if (title->mOptionAlpha > 0.0f) {
+		f32 alpha  = title->mOptionAlpha;
+		f32 cx     = gPointerScreenWidth / 2;
+		f32 cy     = gPointerScreenHeight / 2;
+		f32 w      = (f32)(gPointerScreenWidth / 2) * alpha;
+		f32 h      = (f32)(gPointerScreenHeight / 2) * alpha;
+		u32 normal = 0xFFFFFF00 | (u8)(255.0f * alpha);
+		u32 lit    = 0xFFB62800 | (u8)(255.0f * alpha);
+		DrawTexturedWindowFrame(160.0f * alpha, (u32)(255.0f * title->mOptionAlpha) | 0xFFFFFF00, cx, 223.0f - h * 0.5f, w, h, 1.0f, 1.0f,
+		                        1.0f);
+		GetLocalizedInterfaceText(300);
+		f32 size         = 24.0f * title->mOptionAlpha;
+		const char* text = GetLocalizedInterfaceText(300);
+		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, cx - textWidth * 0.5f, size + (cy - h * 0.5f), 0.0f, size, size);
+
+		size        = 24.0f * title->mOptionAlpha;
+		f32 gap     = 8.0f;
+		f32 labelW  = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x11), TRUE, size);
+		f32 labelW2 = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x14), TRUE, size);
+		labelW      = labelW > labelW2 ? labelW : labelW2;
+		f32 valueW  = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x12), TRUE, size);
+		f32 valueW2 = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x13), TRUE, size);
+		f32 valueW3 = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x15), TRUE, size);
+		f32 valueW4 = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x16), TRUE, size);
+		valueW      = valueW > valueW2 ? valueW : valueW2;
+		valueW3     = valueW3 > valueW ? valueW3 : valueW;
+		valueW4     = valueW4 > valueW3 ? valueW4 : valueW3;
+		f32 barW    = valueW4 + 16.0f;
+		f32 lineW;
+		if (title->mOptionLine == 0) {
+			lineW = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x11), TRUE, size);
+		} else if (title->mOptionLine == 1) {
+			lineW = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x14), TRUE, size);
+		} else if (title->mOptionLine == 2) {
+			lineW = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x17), TRUE, size);
+		}
+
+		// the pointer line
+		bool selected = false;
+		if (title->mOptionLine == 0 && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
+			selected = true;
+		}
+		u32 color = selected ? lit : normal;
+		DrawGsProportionalTextFormat(&gGame.mGs, color, GetLocalizedInterfaceText(0x11), cx - labelW - gap, 3.0f * size + (cy - h * 0.5f),
+		                             0.0f, size, size);
+		selected = false;
+		if (title->mOptionLine == 0 && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
+			selected = true;
+		}
+		f32 valueX = gap + (cx + labelW) - barW * 0.5f;
+		fn_8004EDFC(title, selected, valueX, size * 0.5f + (3.0f * size + (cy - h * 0.5f)), size, barW);
+		text       = title->mPointerOn ? GetLocalizedInterfaceText(0x12) : GetLocalizedInterfaceText(0x13);
+		u32 shadow = 100.0f * title->mOptionAlpha;
+		textWidth  = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, shadow, text, 2.0f + valueX - textWidth * 0.5f, 2.0f + (3.0f * size + (cy - h * 0.5f)),
+		                             0.0f, size, size);
+		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, valueX - textWidth * 0.5f, 3.0f * size + (cy - h * 0.5f), 0.0f, size, size);
+
+		// the stick line
+		selected = false;
+		if (title->mOptionLine == 1 && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
+			selected = true;
+		}
+		color = selected ? lit : normal;
+		DrawGsProportionalTextFormat(&gGame.mGs, color, GetLocalizedInterfaceText(0x14), cx - labelW - gap, 5.0f * size + (cy - h * 0.5f),
+		                             0.0f, size, size);
+		selected = false;
+		if (title->mOptionLine == 1 && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
+			selected = true;
+		}
+		fn_8004EDFC(title, selected, valueX, size * 0.5f + (5.0f * size + (cy - h * 0.5f)), size, barW);
+		text      = title->mStickOn ? GetLocalizedInterfaceText(0x15) : GetLocalizedInterfaceText(0x16);
+		shadow    = 100.0f * title->mOptionAlpha;
+		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, shadow, text, 2.0f + valueX - textWidth * 0.5f, 2.0f + (5.0f * size + (cy - h * 0.5f)),
+		                             0.0f, size, size);
+		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, valueX - textWidth * 0.5f, 5.0f * size + (cy - h * 0.5f), 0.0f, size, size);
+
+		// OK pulses with the cursor's animation
+		f32 progress = title->mCursor[0].GetAnimId() == 1 ? title->mCursor[0].GetAnimFrame() / title->mCursor[0].GetAnimEndFrame() : 0.0f;
+		if (title->mOptionLine == 2) {
+			sin(4.712389f * progress);
+		}
+		selected = false;
+		if (title->mOptionLine == 2 && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
+			selected = true;
+		}
+		color     = selected ? lit : normal;
+		text      = GetLocalizedInterfaceText(0x17);
+		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, cx - textWidth * 0.5f, 7.0f * size + (cy - h * 0.5f), 0.0f, size, size);
+	}
+}
+
 extern "C" void UpdateTitleOptions(Title* title, u32 frames)
 {
 	bool showPanes        = true;
