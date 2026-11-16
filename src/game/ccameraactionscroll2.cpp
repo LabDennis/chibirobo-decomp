@@ -153,6 +153,22 @@ inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, u32 color)
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
+#if !defined(VERSION_PAL)
+// draws a label sprite up and to the right of a marker; retail lays its CTexObj out below all of Draw's own, as an inline's
+inline void DrawScrollMapLabel(s32 index, f32 x, f32 y, u32 color)
+{
+	CTexObj tex;
+	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[index - StatusTextureOffset], 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	u16 w    = GXGetTexObjWidth(&tex);
+	u16 h    = GXGetTexObjHeight(&tex);
+	f32 zoom = 1.0f;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + 23.4f, y + -20.8f, 0.0f, MARK_SCALE * (1.1f * w) / zoom,
+	                   MARK_SCALE * h / zoom, 0.0f, 0.0f, 0.0f);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+}
+#endif
+
 // the functions sit in reverse address order: -inline deferred emits a file's functions last to first
 /**
  * @note Address: 0x801469A8
@@ -663,15 +679,7 @@ void CCameraActionScroll2::Draw()
 			DrawGsProportionalTextFormat(&gGame.mGs, labelColor, GetLocalizedInterfaceText(0x115), markX, (markY - 20.8f) - 11.0f, 0.0f,
 			                             22.0f, 22.0f);
 #else
-			CTexObj tex;
-			tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[161 - StatusTextureOffset], 0);
-			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			u16 w    = GXGetTexObjWidth(&tex);
-			u16 h    = GXGetTexObjHeight(&tex);
-			f32 zoom = 1.0f;
-			DrawGsTexturedQuad(&gGame.mGs, &tex, labelColor, labelColor, labelColor, labelColor, markX + 23.4f, markY + -20.8f, 0.0f,
-			                   MARK_SCALE * (1.1f * w) / zoom, MARK_SCALE * h / zoom, 0.0f, 0.0f, 0.0f);
-			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+			DrawScrollMapLabel(161, markX, markY, labelColor);
 #endif
 		} else {
 			DrawScrollMapMarker(163, x, y, color);
@@ -730,34 +738,37 @@ void CCameraActionScroll2::Draw()
 	u32 alpha      = (u32)fade;
 	u32 white      = alpha | 0xFFFFFF00;
 	f32 frame      = CAPTION_ICON_FRAME * msg.mFrame;
-	captionX -= MeasureGameTextWidth(&gGame.mGs, msg.mText, 1, 20.0f);
-	s32 line     = 0;
-	f32 captionY = 24.0f * line + 62.0f;
-	for (s32 i = 0; i < 4; i++) {
-		DrawGsProportionalTextFormat(&gGame.mGs, alpha, msg.mText, captionX + CAPTION_OUTLINE_X[i], captionY + CAPTION_OUTLINE_Y[i], 0.0f,
-		                             20.0f, 20.0f);
-	}
-	DrawGsProportionalTextFormat(&gGame.mGs, white, msg.mText, captionX, captionY, 0.0f, 20.0f, 20.0f);
+	// one caption line: retail keeps the line counter in a register and converts it for the y
+	for (s32 line = 0; line < 1; line++) {
+		captionX -= MeasureGameTextWidth(&gGame.mGs, msg.mText, 1, 20.0f);
+		f32 captionY = 24.0f * line + 62.0f;
+		for (s32 i = 0; i < 4; i++) {
+			DrawGsProportionalTextFormat(&gGame.mGs, alpha, msg.mText, captionX + CAPTION_OUTLINE_X[i], captionY + CAPTION_OUTLINE_Y[i],
+			                             0.0f, 20.0f, 20.0f);
+		}
+		DrawGsProportionalTextFormat(&gGame.mGs, white, msg.mText, captionX, captionY, 0.0f, 20.0f, 20.0f);
 
-	CTexObj icon;
-	icon = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
-	PSMTXScale(icon.mMtx[1], CAPTION_ICON_FRAME, 1.0f, 1.0f);
-	icon.mMtxDirty = TRUE;
-	PSMTXTrans(icon.mMtx[0], frame, 0.0f, 0.0f);
-	icon.mMtxDirty = TRUE;
-	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	DrawGsTexturedQuad(&gGame.mGs, &icon, white, white, white, white, captionX - 12.0f, captionY + 10.0f, 0.0f, 24.0f, 24.0f, 0.0f, 0.0f,
-	                   0.0f);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		CTexObj icon;
+		icon = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
+		PSMTXScale(icon.mMtx[1], CAPTION_ICON_FRAME, 1.0f, 1.0f);
+		icon.mMtxDirty = TRUE;
+		PSMTXTrans(icon.mMtx[0], frame, 0.0f, 0.0f);
+		icon.mMtxDirty = TRUE;
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		DrawGsTexturedQuad(&gGame.mGs, &icon, white, white, white, white, captionX - 12.0f, captionY + 10.0f, 0.0f, 24.0f, 24.0f, 0.0f,
+		                   0.0f, 0.0f);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	}
 
 	if (gGame.mStage >= 0 && gGame.mStage < 10) {
 		static const s32 sRoomBaseCounts[10] = { 0, 9, 11, 4, 7, 0, 12, 9, 0, 8 };
 		s32 base                             = sRoomBaseCounts[gGame.mStage];
 		// script variables from 0x603 on hold a count per room
 		s32 count = gEventVars.mVars[0x603 + gGame.mStage];
+		// shown as count/base: the hundreds go left of the slash, the low two digits right of it
+		s32 value = base + count * 100;
 		if (base > 0) {
-			// shown as count/base: the hundreds go left of the slash, the low two digits right of it
-			DrawSeparatedStatusValue(0xAB - StatusTextureOffset, base + count * 100, false, 56.0f, 378.0f, 1.0f);
+			DrawSeparatedStatusValue(0xAB - StatusTextureOffset, value, false, 56.0f, 378.0f, 1.0f);
 		}
 	}
 }
