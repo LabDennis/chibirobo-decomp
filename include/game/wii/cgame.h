@@ -11,6 +11,7 @@
 #include "game/wii/infoscrn.h"
 #include "game/logo.h"
 #include "game/evt.h"
+#include "game/wii/msg.h"
 #include "game/cscrn.h"
 #include "game/cfile.h"
 #include "game/cmovie.h"
@@ -1153,7 +1154,7 @@ public:
 	ObjArchiveTable mObjArchives; // _108E0
 	CEvt mEvt;                    // _4C8E0
 	u8 _4C94C[0x4C950 - 0x4C94C];
-	u8 mMsgs[2][0x45660];                      // _4C950, CMsg[2]; msg.h needs this header, so they stay untyped here
+	CMsg mMsgs[2];                             // _4C950
 	WiiTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
 	CCameraActions mCameraActions;             // _D78F8, mTable lands at _D9B24
@@ -1238,6 +1239,7 @@ public:
 		return GetStatusFlags(1) && !GetStatusFlags(0x200000000000022ULL) && !mMenuActive && !IsDiscError() && !mResetRequested;
 	}
 
+	CMsg* GetMsg(s32 index) { return &mMsgs[index]; }
 	WiiPlayerState* GetPlayer() const { return mPlayer; }
 	// 0x80037134, the sound code asks for player 0 through the pool
 	WiiPlayerState* GetPlayer(s32 index) { return (WiiPlayerState*)((u8*)mPlayer + index * mPlayerStride); }

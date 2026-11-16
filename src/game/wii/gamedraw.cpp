@@ -628,7 +628,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	}
 	ClearMainMenuExtraRows(game->mMenus[0]);
 	fn_80094904(&game->mEvt, TRUE, TRUE, TRUE, TRUE); // the event state in front of mEvtData
-	CMsg* msgs = (CMsg*)game->mMsgs;
+	CMsg* msgs = game->mMsgs;
 	for (s32 i = 0; i < 2; i++) {
 		ResetMsgState(&msgs[i]);
 		CMsg_ResetPos(&msgs[i]);
@@ -1768,7 +1768,7 @@ void CGame::Draw()
 			}
 			if (!mMotionControlCamera.IsAction(4)) {
 				fn_80094E90(&mEvt);
-				CMsg* msgs = (CMsg*)mMsgs;
+				CMsg* msgs = mMsgs;
 				for (s32 i = 0; i < 2; i++) {
 					CMsg_Draw(&msgs[i]);
 				}

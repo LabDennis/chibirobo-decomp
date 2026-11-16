@@ -421,9 +421,9 @@ bool CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 	case 17:
-		if (!LoadMessageCursorObject((CMsg*)mMsgs[0]))
+		if (!LoadMessageCursorObject(&mMsgs[0]))
 			break;
-		LoadMessageCursorObject((CMsg*)mMsgs[1]);
+		LoadMessageCursorObject(&mMsgs[1]);
 		++mLoadStep;
 	case 18: {
 		CoordInfo spawn(GetSpawnData(14)); // spawn placement 14
@@ -1120,7 +1120,7 @@ void CGame::Update(u32 frames)
 				_EC1A8 = 0.0f;
 			}
 		}
-	} else if (mEvt.mData.mScript == NULL && !IsMessageSelecting((CMsg*)mMsgs[0]) && !GetStatusFlags(0x800) && !IsMenuOpen(mMenus[1])
+	} else if (mEvt.mData.mScript == NULL && !IsMessageSelecting(GetMsg(0)) && !GetStatusFlags(0x800) && !IsMenuOpen(mMenus[1])
 	           && !IsMenuOpen(mMenus[2]) && !IsMenuOpen(mMenus[4])
 	           && !(mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
 	                && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
@@ -1314,7 +1314,7 @@ void CGame::Update(u32 frames)
 	if (!GetStatusFlags(0x200000000000002ULL)) {
 		fn_80094C20(&mEvt, frames);
 		for (i = 0; i < 2; i++) {
-			CMsg_Update((CMsg*)mMsgs[i], frames);
+			CMsg_Update(&mMsgs[i], frames);
 		}
 	}
 	if (IsRunning()) {
