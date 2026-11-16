@@ -60,6 +60,8 @@ void ApproachHudValue(f32* value, f32* target, f32 step);
 s32 IndexOfLargestOfThree(OSTime first, OSTime second, OSTime third);
 // one dust mote's per-frame update, the body of the GameCube UpdateTitleDust's loop
 void fn_8004DC94(TitleDust* dust, u32 frames);
+// the name's per-frame update
+void fn_8004CDB8(Title* title, u32 frames);
 bool IsSaveSlotIntact(const WiiMenuSaveSlot* slot);
 // fills a file menu record from a scanned save header (menu.cpp, 0x8007A2E8)
 void fn_8007A2E8(WiiMenuSaveSlot* slot, WiiSaveScanEntry* entry, BOOL used);
@@ -296,29 +298,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	ApproachHudValue(&title->mOptionAlpha, &title->mTargetOptionAlpha, .08f * frames);
 	title->mLoadScroll -= .008f * frames;
 	if (title->mState != 0 && title->mState != 1 && title->mState != 23) {
-		if (title->mName.mActive && title->mName.mActive > 0) {
-			for (s32 i = 0; i < title->mName.mCount; ++i) {
-				if (title->mName.mChars[i].mWait > 0) {
-					if (title->mName.mChars[i].mScale < 1) {
-						if ((title->mName.mChars[i].mScale += (1.f / (.3f * gRefreshRate)) * frames) > 1)
-							title->mName.mChars[i].mScale = 1;
-					}
-				} else if (title->mName.mChars[i].mScale > 0) {
-					if ((title->mName.mChars[i].mScale -= (1.f / (.3f * gRefreshRate)) * frames) < 0)
-						title->mName.mChars[i].mScale = 0;
-				}
-			}
-			s32 visible = 0;
-			for (s32 i = 0; i < title->mName.mCount; ++i) {
-				if (0 != title->mName.mChars[i].mScale) {
-					++visible;
-					title->mName.mChars[i].mBob += (5.f * DEG2RAD) * frames;
-					title->mName.mChars[i].mTilt += (3.f * DEG2RAD) * frames;
-				}
-			}
-			if (!visible)
-				title->mName.mActive = 0;
-		}
+		fn_8004CDB8(title, frames);
 		switch (title->mHelpFadeState) {
 		case 0:
 			break;
@@ -1687,6 +1667,38 @@ extern "C" void UpdateTitleDust(Title* title, const char* text, u32 color)
 		title->mName.mChars[i].mText  = NULL;
 		title->mName.mChars[i].mScale = 0.0f;
 		title->mName.mChars[i].mWait  = 0.0f;
+	}
+}
+
+/**
+ * @note Address: 0x8004CDB8
+ * @note Size: 0x180
+ */
+// the name's letters grow in while they wait and shrink away after; once none shows, the name is off
+void fn_8004CDB8(Title* title, u32 frames)
+{
+	if (title->mName.mActive && title->mName.mActive > 0) {
+		for (s32 i = 0; i < title->mName.mCount; ++i) {
+			if (title->mName.mChars[i].mWait > 0) {
+				if (title->mName.mChars[i].mScale < 1) {
+					if ((title->mName.mChars[i].mScale += (1.f / (.3f * gRefreshRate)) * frames) > 1)
+						title->mName.mChars[i].mScale = 1;
+				}
+			} else if (title->mName.mChars[i].mScale > 0) {
+				if ((title->mName.mChars[i].mScale -= (1.f / (.3f * gRefreshRate)) * frames) < 0)
+					title->mName.mChars[i].mScale = 0;
+			}
+		}
+		s32 visible = 0;
+		for (s32 i = 0; i < title->mName.mCount; ++i) {
+			if (0 != title->mName.mChars[i].mScale) {
+				++visible;
+				title->mName.mChars[i].mBob += (5.f * DEG2RAD) * frames;
+				title->mName.mChars[i].mTilt += (3.f * DEG2RAD) * frames;
+			}
+		}
+		if (!visible)
+			title->mName.mActive = 0;
 	}
 }
 
