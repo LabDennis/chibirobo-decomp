@@ -5719,15 +5719,15 @@ void XObjChr::DrawScreenOverlay()
 		Vec offset = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;
 		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
-		x -= 31.0f;
+		f32 left     = x - 31.0f;
 		f32 duration = (f32)(s32)GetInteractionParameter(0) / 100.0f;
-		DrawPlayerGauge(x, y, 62.0f, mGaugeTime / (IDLE_SECOND * duration), 0x00FF0064);
+		DrawPlayerGauge(left, y, 62.0f, mGaugeTime / (IDLE_SECOND * duration), 0x00FF0064);
 	}
 	if (!camera->IsAction(CAMACTION_SCROLL2) && (mAnimId == 0x7A || mAnimId == 0xCA)) {
 		Vec offset = { 0.0f, 0.0f, 0.0f };
 		f32 x, y;
 		ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
-		x -= 36.0f;
+		f32 left     = x - 36.0f;
 		f32 frame    = GetAnimFrame(mJObj);
 		f32 fraction = frame / GetAnimEndFrame(mJObj);
 		u32 color;
@@ -5735,7 +5735,7 @@ void XObjChr::DrawScreenOverlay()
 			color = 0xFFC80064;
 		else
 			color = 0xFF000064;
-		DrawPlayerGauge(x, y, 72.0f, fraction, color);
+		DrawPlayerGauge(left, y, 72.0f, fraction, color);
 	}
 	s32 row = 0;
 	for (s32 i = 0; i < 10; ++i) {
