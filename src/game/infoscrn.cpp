@@ -1721,13 +1721,13 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 	if (step <= 1)
 		step = 1;
 	ApproachHudValue(&h->mBatteryValue, &h->mBatteryTarget, step);
+	f32 gap        = 7.6f * scale;
+	f32 smallScale = .9f * scale, smallX = 7.9f * scale, largeX = 2.f * scale;
 	h->mBatteryGauge = h->mBatteryValue;
 	u32 digitAlpha   = (u32)(opacity * fade);
 	u32 red          = 0xff646400 | digitAlpha;
 	u32 green        = 0x89ff2900 | digitAlpha;
 	u32 gray         = 0x50505000 | digitAlpha;
-	f32 gap          = 7.6f * scale;
-	f32 smallScale = .9f * scale, smallX = 7.9f * scale, largeX = 2.f * scale;
 	for (int i = 0; i < 4; ++i) {
 		f32 digitScale = scale, offset = largeX;
 		if (target <= 0 && h->mBatteryValue <= 0 && h->mBatteryEmpty == 1)
@@ -1741,8 +1741,11 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 		if (change != 0)
 			h->mDigitLastDelta[i] = change;
 		int divisor = 1;
-		for (int p = 0; p < i; ++p)
-			divisor *= 10;
+		if (i > 0) {
+			for (int p = 0; p < i; ++p) {
+				divisor *= 10;
+			}
+		}
 		int whole = (s32)h->mBatteryValue / divisor, digit = whole % 10;
 		if (h->mDigitValue[i] != digit) {
 			h->mDigitRoll[i]    = 0;
