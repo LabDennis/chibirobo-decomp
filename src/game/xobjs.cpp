@@ -819,6 +819,9 @@ extern "C" void InitializeObjectPools(XOBJS* list)
 	XOBJ_POOL(21, XObjHBox, 16, "HBOX");
 	XOBJ_POOL(22, XObjFree, 288, "FREE");
 
+	// retail walks the 23 pools once more and does nothing: whatever the loop did is gone from the release build
+	for (s32 i = 0; i < (s32)ARRAY_SIZE(list->mPools); i++) { }
+
 	list->mLoadState = 0;
 
 	gAllObjectsReader.Create(ReadObjectListThread, NULL, 0x2000, 17, OS_THREAD_ATTR_DETACH);
