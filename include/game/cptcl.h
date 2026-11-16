@@ -12,7 +12,11 @@ class CTexObj;
 // one particle
 class CPtclOne {
 public:
-	BOOL mActive;    // _00
+#if defined(VERSION_R24J01)
+	u8 mActive; // _00, a byte on the Wii
+#else
+	BOOL mActive; // _00
+#endif
 	CVec mPos;       // _04
 	CVec mSize;      // _14
 	CVec mVel;       // _24
@@ -57,6 +61,10 @@ public:
 	// _10 vtable
 
 	virtual ~CPtcl() { } // _08
+#if defined(VERSION_R24J01)
+	// retail 0x802BEE80, second slot of the vtable at 0x80356268; its name is not known
+	virtual void SetRenderState(CGs* gs); // _0C
+#endif
 
 	CPtclOne* Get(s32 i) { return (CPtclOne*)(mPtcls + (u32)i * (u32)mStride); }
 };
@@ -69,7 +77,11 @@ struct DustParticlePool {
 typedef char DustParticlePool_size_check[sizeof(DustParticlePool) == 0xFB4 ? 1 : -1];
 
 extern "C" {
+#if defined(VERSION_R24J01)
+void DrawParticlePool(CPtcl* ptcl, CGs* gs);
+#else
 void DrawParticlePool(CPtcl* ptcl);
+#endif
 void UpdateParticlePool(CPtcl* ptcl, u32 frames);
 void ClearParticlePool(CPtcl* ptcl);
 CPtclOne* SpawnPoolParticle(CPtcl* ptcl, const Vec* pos, const Vec* size, const Vec* vel, u32 color);
