@@ -2242,6 +2242,7 @@ nw4r/g3d/res/g3d_resdict.cpp:
 
 nw4r/g3d/res/g3d_resfile.cpp:
 	.text start:0x8025BA34 end:0x8025CF84
+	.data start:0x80333020 end:0x80333180
 
 nw4r/g3d/res/g3d_resmdl.cpp:
 	.text start:0x8025CF84 end:0x8025E024
@@ -2384,6 +2385,11 @@ nw4r/g3d/g3d_state.cpp:
 	.text start:0x8026CE30 end:0x8027064C
 	.ctors start:0x802C4630 end:0x802C4634
 	.data start:0x80333818 end:0x80333830
+	.rodata start:0x802E0100 end:0x802E0130
+	.bss start:0x8053D0C0 end:0x8054267C
+	.sdata start:0x805A1968 end:0x805A1970
+	.sbss start:0x805A2798 end:0x805A27B8
+	.sdata2 start:0x805A73D8 end:0x805A7400
 
 nw4r/g3d/g3d_draw1mat1shp.cpp:
 	.text start:0x8027064C end:0x80271380
@@ -2393,6 +2399,7 @@ nw4r/g3d/g3d_draw1mat1shp.cpp:
 nw4r/g3d/g3d_calcview.cpp:
 	.text start:0x80271380 end:0x8027355C
 	.sdata2 start:0x805A7420 end:0x805A742C
+	.rodata start:0x802E0140 end:0x802E015C
 
 nw4r/g3d/g3d_dcc.cpp:
 	.text start:0x8027355C end:0x80273638

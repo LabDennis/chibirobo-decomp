@@ -1529,9 +1529,7 @@ if wii:
                 # nw4r::g3d (0x8025B5A4-0x80282CA0)
                 Object(Matching, "nw4r/g3d/res/g3d_rescommon.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resdict.cpp"),
-                # 33 of 34, not linked: 0x8025BCB8 is ResFile::GetResAnmChrNumEntries but keeps the name fn_8025BCB8
-                # that game/wii/title.cpp declares.
-                Object(NonMatching, "nw4r/g3d/res/g3d_resfile.cpp"),
+                Object(Matching, "nw4r/g3d/res/g3d_resfile.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resmdl.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resshp.cpp"),
                 # 11 of 12: SetNumTevStages (see the comment in the source).
@@ -1566,10 +1564,7 @@ if wii:
                 Object(Matching, "nw4r/g3d/g3d_anmtexsrt.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_anmchr.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_anmshp.cpp"),
-                # 44 of 44, not linked: AnmScnRes::GetNumLightSet is a header inline whose retail copy is
-                # fn_8009C3D4 in the game's range (slot 0x38 of the vtable at 0x803336D8); until that symbol
-                # carries the name the link keeps ours as well and everything behind moves by 8 bytes.
-                Object(NonMatching, "nw4r/g3d/g3d_anmscn.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_anmscn.cpp"),
                 # 5 of 5, not linked: retail emits G3dObj's weak virtuals as IsDerivedFrom, GetTypeName, GetTypeObj
                 # (0x8026C5EC), this source as GetTypeName, GetTypeObj, IsDerivedFrom. xenoblade gets retail's
                 # order with a DECOMP_FORCEACTIVE reference to IsDerivedFrom at the end of the file.
@@ -1577,16 +1572,9 @@ if wii:
                 Object(Matching, "nw4r/g3d/g3d_anmobj.cpp"),
                 Object(Matching, "nw4r/g3d/platform/g3d_gpu.cpp"),
                 Object(Matching, "nw4r/g3d/platform/g3d_cpu.cpp"),
-                # 42 of 42, not linked: its static initializer hands LightObj's destructor to __construct_array
-                # (0x802704E0). Retail's copy of that weak function is dtor_8009C394 in the game's range;
-                # until that symbol is called __dt__Q34nw4r3g3d8LightObjFv the link keeps ours as well.
-                Object(NonMatching, "nw4r/g3d/g3d_state.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_state.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_draw1mat1shp.cpp"),
-                # 11 of 11 once .rodata 0x802E0140-0x802E015C (bbFunc) is in its split: without it dtk exports the
-                # six Calc_BILLBOARD_* functions and they are not compared. Left out because they call
-                # nw4r::math::FrSqrt, which symbols.txt has to call WiiReciprocalSquareRoot for the game's sake
-                # (22 lines in callcheck); the same name keeps the unit from linking.
-                Object(NonMatching, "nw4r/g3d/g3d_calcview.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_calcview.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_dcc.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_workmem.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_calcworld.cpp"),
