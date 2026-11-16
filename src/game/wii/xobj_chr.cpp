@@ -5,6 +5,7 @@
 // update, draw and menu code is still to do. CanFallDuringLadderAction, CanFallDuringRopeAction and
 // CanCopterActionSlideOnSlope (74-81 %): retail starts each bool at TRUE and clears it, as an inlined
 // helper returning the first two compares would; this build tests the other way round.
+#include "game/ringmenu.h"
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
 #include "game/gmath.h"
@@ -444,3 +445,8 @@ u8 IsPlayerFlashingFromHit(WiiPlayerState* chr)
 }
 
 } // extern "C"
+
+// nothing to decide on the base menu
+void OctaMenu::ConfirmSelection()
+{
+}

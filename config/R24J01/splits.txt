@@ -1120,7 +1120,7 @@ game/ccameraactionareaexdtor.cpp:
 	.sdata start:0x805A1278 end:0x805A1280
 
 game/wii/ccameraactionmap2.cpp:
-	.text start:0x80154310 end:0x80154320
+	.text start:0x80154310 end:0x80160D30
 
 game/ccameraactionareaex.cpp:
 	.text start:0x80151FCC end:0x801541F8

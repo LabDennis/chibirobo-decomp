@@ -501,8 +501,10 @@ STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x2D8);
 class CCameraActionArea : public CCameraActionAreaExM {
 public:
 	u8 _40[0x5C - 0x40];
-	s32 _5C; // _5C, with _2D0 set the area action keeps the pointer's cursor up
-	u8 _60[0x70 - 0x60];
+	s32 mControlEnabled; // _5C, with _2D0 set the area action keeps the pointer's cursor up
+	u8 _60[0x64 - 0x60];
+	XObj* mTarget; // _64
+	u8 _68[0x70 - 0x68];
 	CVectorEaseInOutInterpolation mInterestEaseInOut;    // _70
 	CVectorLinearInterpolation mEyeLinear;               // _CC
 	CVectorEaseInOutInterpolation mEyeEaseInOut;         // _100
@@ -519,6 +521,9 @@ public:
 
 	virtual ~CCameraActionArea() { } // _08, 0x8002ECD0
 	virtual void Update(u32 step);   // _10
+	virtual u32 GetCameraFlags();    // _58
+	virtual u32 GetInterestMode();   // _60
+	virtual XObj* GetTarget();       // _64
 };
 STATIC_ASSERT(sizeof(CCameraActionArea) == 0x2FC);
 
@@ -526,7 +531,8 @@ STATIC_ASSERT(sizeof(CCameraActionArea) == 0x2FC);
 // builds up to _11E0 is where the GameCube class has it, the vec group at _11FC is new
 class CCameraActionMap : public CCameraActionAreaExM {
 public:
-	u8 _40[0x48 - 0x40];
+	s32 mInterestMode; // _40, what GetInterestMode returns
+	u8 _44[0x48 - 0x44];
 	CVec mPreviousInterest; // _48
 	u8 _58[0x60 - 0x58];
 	CVec mSpringPrevTarget; // _60
@@ -539,12 +545,16 @@ public:
 	u8 _BC[0xC8 - 0xBC];
 	CInterpolationEaseOutDivide mFovEaseOutDivide; // _C8
 	CVec mPreviousEye;                             // _D8
-	u8 _E8[0xDB8 - 0xE8];
+	u8 _E8[0xDA4 - 0xE8];
+	s32 mPrevMapArea; // _DA4
+	s32 mMapArea;     // _DA8
+	u8 _DAC[0xDB8 - 0xDAC];
 	CVectorEaseInOutInterpolation mTurnEaseInOut; // _DB8
 	CInterpolationEaseInOut mHeightEaseInOut;     // _E14
 	u8 _E30[0xE34 - 0xE30];
 	CInterpolationEaseInOut mAbsHeightEaseInOut; // _E34
-	u8 _E50[0xE68 - 0xE50];
+	u8 _E50[0xE64 - 0xE50];
+	CInterfaceInterpolation* mTargetHeightOffsetInterp;  // _E64
 	CInterpolationEaseOutDivide mTargetHeightOffsetEase; // _E68
 	u8 _E78[0xE7C - 0xE78];
 	CInterpolationEaseInOut mEyeYOffsetEaseInOut; // _E7C
@@ -560,7 +570,8 @@ public:
 	u8 _FC8[0x11D8 - 0xFC8];
 	CStatus mStatus;         // _11D8
 	CStatus mPreviousStatus; // _11E0
-	u8 _11E8[0x11F8 - 0x11E8];
+	BOOL mKeepPreviousEye;   // _11E8
+	u8 _11EC[0x11F8 - 0x11EC];
 	u8 _11F8; // _11F8, set while the map action wants the pointer's cursor
 	u8 _11F9[0x11FC - 0x11F9];
 	u8 _11FC[0x30];
@@ -568,6 +579,9 @@ public:
 
 	virtual ~CCameraActionMap() { } // _08, 0x8002E5C4
 	virtual void Update(u32 step);  // _10
+	virtual u32 GetCameraFlags();   // _58
+	virtual f32 GetFollowDivisor(); // _5C
+	virtual u32 GetInterestMode();  // _60
 };
 STATIC_ASSERT(sizeof(CCameraActionMap) == 0x128C);
 

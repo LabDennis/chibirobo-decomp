@@ -1003,7 +1003,7 @@ static inline void PickScopeTarget(CGame* game, ScopePick* scope, XObj* obj, XOb
 {
 	if (!game->GetStatusFlags(0x100) && game->GetPlayer()->GetAttachment() != 2
 	    && !(game->mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->_2D0
-	         && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->_5C != 0)
+	         && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 	    && !(game->mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)game->mCameraActions.mTable[CAMACTION_MAP])->_11F8)
 	    && (obj->_18C >= 0 || (obj->GetPool() == 8 && obj != held))) {
 		f32 dist = PSVECDistance(obj->GetPos(), eye) - obj->mFloorXZExtent;
@@ -1123,7 +1123,7 @@ void CGame::Update(u32 frames)
 	} else if (mEvtData.mScript == NULL && !IsMessageSelecting((CMsg*)mMsgs[0]) && !GetStatusFlags(0x800) && !IsMenuOpen(mMenus[1])
 	           && !IsMenuOpen(mMenus[2]) && !IsMenuOpen(mMenus[4])
 	           && !(mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
-	                && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_5C != 0)
+	                && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 	           && !(mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)mCameraActions.mTable[CAMACTION_MAP])->_11F8)
 	           && !(fn_80169658(&mMotionControlCamera) && ((u8*)fn_80169674())[0x74]) && !(mStage == 3 && CallStageModule(0x10, 0, NULL))) {
 		if (_EC1A8 > 0.5f) {
@@ -1146,7 +1146,7 @@ void CGame::Update(u32 frames)
 		    || (mMotionControlCamera.IsAction(CAMACTION_EYE) && mEvtData.mScript == NULL && (!(mMenuControls & 2) || !mMenuActive))
 		    || mMotionControlCamera.IsAction(CAMACTION_SCROLL2)
 		    || (mMotionControlCamera.IsAction(CAMACTION_AREA) && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_2D0
-		        && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->_5C != 0)
+		        && ((CCameraActionArea*)mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 		    || (mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)mCameraActions.mTable[CAMACTION_MAP])->_11F8)
 		    || (fn_80169658(&mMotionControlCamera) && ((u8*)fn_80169674())[0x74]) || (mStage == 3 && CallStageModule(0x10, 0, NULL))) {
 			wanted = true;
