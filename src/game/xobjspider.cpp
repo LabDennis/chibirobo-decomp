@@ -1752,6 +1752,7 @@ void XObjSpider::State8(u32 frames)
  * @note Address: 0x800EAF18
  * @note Size: 0xA10
  */
+// NONMATCHING: .rodata, the joint paths and the assert string sit at other offsets of the unit's block
 // the slot model's anims, it opens, follows mObj's joint while the anim plays, then
 // closes and hides
 extern "C" void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s32 mode)
@@ -1778,7 +1779,8 @@ extern "C" void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s3
 			CJObj joint;
 			s32 path[8] = { 0, 0, 0, 0, 1, 1, 0, 0 };
 			joint.Attach(FindJointByPath(carry->mObj->mJObj, path, 8));
-			carry->mPos = GetJointPosition(joint.mJObj);
+			CVec pos(GetJointPosition(joint.mJObj));
+			carry->mPos = pos;
 		}
 		f32 end = GetAnimEndFrame(gSpiderCarryModels[slot]->mJObj);
 		if (end - frames <= GetAnimFrame(gSpiderCarryModels[slot]->mJObj)) {
@@ -1791,7 +1793,8 @@ extern "C" void UpdateSpiderCarryModel(CarryInfo* carry, u8 slot, u32 frames, s3
 			CJObj joint;
 			s32 path[8] = { 0, 0, 0, 0, 1, 1, 0, 0 };
 			joint.Attach(FindJointByPath(carry->mObj->mJObj, path, 8));
-			carry->mPos = GetJointPosition(joint.mJObj);
+			CVec pos(GetJointPosition(joint.mJObj));
+			carry->mPos = pos;
 		}
 		f32 closeEnd = GetAnimEndFrame(gSpiderCarryModels[slot]->mJObj);
 		if (closeEnd - frames <= GetAnimFrame(gSpiderCarryModels[slot]->mJObj)) {
