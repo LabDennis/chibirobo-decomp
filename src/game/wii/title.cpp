@@ -1177,6 +1177,12 @@ void XObjDemo::Release()
 	Release__4XObjFv((XObj*)this);
 }
 
+// the screen fade has stopped, as in the GameCube's gxb.cpp
+static inline bool FadeDone()
+{
+	return 0.0f == gGame.mFade.mSpeed.r && 0.0f == gGame.mFade.mSpeed.g && 0.0f == gGame.mFade.mSpeed.b && 0.0f == gGame.mFade.mSpeed.a;
+}
+
 /**
  * @note Address: 0x8004DE9C
  * @note Size: 0x78
@@ -1187,8 +1193,7 @@ void XObjDemo::UpdateObject(u32 frames)
 	if (mState == 0) {
 		return;
 	}
-	if (mState == 2 && gGame.mFade.mSpeed.r == 0.0f && gGame.mFade.mSpeed.g == 0.0f && gGame.mFade.mSpeed.b == 0.0f
-	    && gGame.mFade.mSpeed.a == 0.0f) {
+	if (mState == 2 && FadeDone()) {
 		mState = 0;
 		return;
 	}
