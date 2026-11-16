@@ -825,7 +825,7 @@ static inline f32 FacingPushEdge(XObj* edgeObject, XObjChr* owner)
 	GetOutwardPerpendicularToEdge(&player, &a, &b, &normal);
 	return WrapAngle(atan2(normal.x, normal.z));
 }
-void UpdatePushedObject(XActPush* act)
+void UpdatePushedObject(XActPush* act, u32 frames)
 {
 	if (!act->mTargetState)
 		return;
@@ -873,26 +873,26 @@ void UpdatePushedObject(XActPush* act)
 				rotation.z -= HALF_PI;
 				speed.z = 0.1f;
 				dz      = 0;
-				dx      = extent.x * (2.0f / sqrtf(3.0f)) * 0.5f;
+				dx      = extent.x * (2.0f / sqrtf(3.0f)) / 2.0f;
 			} else if ((angle > (270 * DEG2RAD - pushAngleTolerance) && angle < (270 * DEG2RAD + pushAngleTolerance))) {
 				rotation.z += HALF_PI;
 				speed.z = 0.1f;
 				dz      = 0;
-				dx      = -(extent.x * (2.0f / sqrtf(3.0f))) * 0.5f;
+				dx      = -(extent.x * (2.0f / sqrtf(3.0f))) / 2.0f;
 			} else if ((angle > (0 * DEG2RAD - pushAngleTolerance) && angle < (0 * DEG2RAD + pushAngleTolerance))) {
 				rotation.x += HALF_PI;
 				speed.x = 0.1f;
 				dx      = 0;
-				dz      = extent.z * (2.0f / sqrtf(3.0f)) * 0.5f;
+				dz      = extent.z * (2.0f / sqrtf(3.0f)) / 2.0f;
 			} else if ((angle > (180 * DEG2RAD - pushAngleTolerance) && angle < (180 * DEG2RAD + pushAngleTolerance))) {
 				rotation.x -= HALF_PI;
 				speed.x = 0.1f;
 				dx      = 0;
-				dz      = -(extent.z * (2.0f / sqrtf(3.0f))) * 0.5f;
+				dz      = -(extent.z * (2.0f / sqrtf(3.0f))) / 2.0f;
 			}
 			target->mMoveRotate.mTarget.Set(rotation);
 			target->mMoveRotate.mSpeed.Set(speed);
-			target->mToppleOffset = CVec(dx, -(extent.y * (2.0f / sqrtf(3.0f))) * 0.5f, dz);
+			target->mToppleOffset = CVec(dx, -(extent.y * (2.0f / sqrtf(3.0f))) / 2.0f, dz);
 		}
 		break;
 	}
@@ -3511,7 +3511,8 @@ Vec GetTargetFloorPosition(XAction* act)
 		CVec position = act->mTarget->mMoveTranslate;
 		CVec offset   = act->mTarget->mMoveScale * GetFloorOffset(&act->mTarget->mFloors[act->mTargetFloor]);
 		CVec extent   = act->mTarget->mMoveScale * GetFloorExtent(&act->mTarget->mFloors[act->mTargetFloor]);
-		f32 yaw       = act->mTarget->mMoveRotate.y + DEG2RAD * act->mTarget->mFloors[act->mTargetFloor].mYawDegrees;
+		f32 yaw       = act->mTarget->mMoveRotate.y;
+		yaw += DEG2RAD * act->mTarget->mFloors[act->mTargetFloor].mYawDegrees;
 		Mtx translate, local, rotate, scale, result;
 		PSMTXTrans(translate, position.x, position.y, position.z);
 		PSMTXTrans(local, offset.x, offset.y, offset.z);

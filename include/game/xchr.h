@@ -81,7 +81,7 @@ struct XObjChrLook {
 	f32 mFade;        // _24, the marker fades in over 0.3 seconds
 	f32 mPhase;       // _28, degrees
 	f32 mPulse;       // _2C, 0 to 2
-	u32 mMarkerCount; // _30, visible look markers the update found
+	s32 mMarkerCount; // _30, visible look markers the update found
 };
 STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 

@@ -54,18 +54,20 @@ struct UnkTexMtxs {
 	u8 _60[0x60]; // _60
 };
 
+struct GXTlutObj {
+	u32 dummy[3]; // _00
+};
+
 struct TPLDescriptor;
 
 class CTexObj : public _GXTexObj {
 public:
-	u32 mImage;      // _20, TPLHeader* in the dol CTexObj, kept as u32 here, unused in the REL
-	u32 mClut;       // _24, TPLClutHeader* in the dol CTexObj, kept as u32 here, unused in the REL
-	u32 _28;         // _28, first word of the dol CTexObj's GXTlutObj mTlutObj (_28-_33), unused in the REL
-	u32 _2C;         // _2C, second word of the dol CTexObj's GXTlutObj mTlutObj (_28-_33), unused in the REL
-	u32 _30;         // _30, third word of the dol CTexObj's GXTlutObj mTlutObj (_28-_33), unused in the REL
-	u32 mTlutName;   // _34, the palette's tlut name, as in the dol CTexObj. Unused in the REL
-	s32 mMtxDirty;   // _38, set to 1 after the matrices change so the next draw rebuilds mMtx[3]
-	UnkTexMtxs mMtx; // _3C, the four texture matrices (Mtx mMtx[4] in the dol CTexObj); here a struct because it is copied as one block
+	u32 mImage;         // _20, TPLHeader* in the dol CTexObj, kept as u32 here, unused in the REL
+	u32 mClut;          // _24, TPLClutHeader* in the dol CTexObj, kept as u32 here, unused in the REL
+	GXTlutObj mTlutObj; // _28, the palette, copied as one block; unused in the REL
+	u32 mTlutName;      // _34, the palette's tlut name, as in the dol CTexObj. Unused in the REL
+	s32 mMtxDirty;      // _38, set to 1 after the matrices change so the next draw rebuilds mMtx[3]
+	UnkTexMtxs mMtx;    // _3C, the four texture matrices (Mtx mMtx[4] in the dol CTexObj); here a struct because it is copied as one block
 
 	CTexObj() { }
 	virtual ~CTexObj() { }
@@ -74,20 +76,88 @@ public:
 };
 
 // xobj style actor from the dol
-struct UnkDolObjVtbl {
-	u8 _00[0x80];                                                                                            // _00
-	void (*mSetAnim)(void* obj, f32 frame, f32 rate, f32 start, f32 end, s32 a, s32 b, s32 c, s32 d, s32 e); // _80, XObj::SetAnim
-	u8 _84[0x88];                                                                                            // _84
-	void (*mProjectOffsetToScreen)(void* obj, Vec* pos, f32* x, f32* y, f32* z, s32 flag);  // _10C, XObj::ProjectOffsetToScreen
-	f32 (*mGetFloorXZExtent)(void* obj);                                                    // _110, XObj::GetFloorXZExtent
-	f32 (*mGetCollisionHeight)(void* obj);                                                  // _114, XObj::GetCollisionHeight
-	BOOL (*mProjectVisibleBounds)(void* obj, f32 a, f32 b, f32* outA, f32* outB, s32 flag); // _118, XObj::ProjectVisibleBounds
+// non-virtual base, so the vtable pointer ends up at _34
+struct UnkDolObjBase {
+	HSD_JObj* mJObj; // _00, the object's root HSD_JObj (CJObj::mJObj)
+	u8 _04[0x30];    // _04
 };
 
-struct UnkDolObj {
-	HSD_JObj* mJObj;     // _00, the object's root HSD_JObj (CJObj::mJObj)
-	u8 _04[0x30];        // _04
-	UnkDolObjVtbl* vtbl; // _34
+// XObj's slots; only the named ones are called here
+struct UnkDolObjVirt : public UnkDolObjBase {
+	virtual void vf_08(); // _08
+	virtual void vf_0C(); // _0C
+	virtual void vf_10(); // _10
+	virtual void vf_14(); // _14
+	virtual void vf_18(); // _18
+	virtual void vf_1C(); // _1C
+	virtual void vf_20(); // _20
+	virtual void vf_24(); // _24
+	virtual void vf_28(); // _28
+	virtual void vf_2C(); // _2C
+	virtual void vf_30(); // _30
+	virtual void vf_34(); // _34
+	virtual void vf_38(); // _38
+	virtual void vf_3C(); // _3C
+	virtual void vf_40(); // _40
+	virtual void vf_44(); // _44
+	virtual void vf_48(); // _48
+	virtual void vf_4C(); // _4C
+	virtual void vf_50(); // _50
+	virtual void vf_54(); // _54
+	virtual void vf_58(); // _58
+	virtual void vf_5C(); // _5C
+	virtual void vf_60(); // _60
+	virtual void vf_64(); // _64
+	virtual void vf_68(); // _68
+	virtual void vf_6C(); // _6C
+	virtual void vf_70(); // _70
+	virtual void vf_74(); // _74
+	virtual void vf_78(); // _78
+	virtual void vf_7C(); // _7C
+	virtual void SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void* shapeAnim, f32 frame, f32 rate, f32 blend,
+	                     f32 blendRate);                                                                // _80
+	virtual void vf_84();                                                                               // _84
+	virtual void vf_88();                                                                               // _88
+	virtual void vf_8C();                                                                               // _8C
+	virtual void vf_90();                                                                               // _90
+	virtual void vf_94();                                                                               // _94
+	virtual void vf_98();                                                                               // _98
+	virtual void vf_9C();                                                                               // _9C
+	virtual void vf_A0();                                                                               // _A0
+	virtual void vf_A4();                                                                               // _A4
+	virtual void vf_A8();                                                                               // _A8
+	virtual void vf_AC();                                                                               // _AC
+	virtual void vf_B0();                                                                               // _B0
+	virtual void vf_B4();                                                                               // _B4
+	virtual void vf_B8();                                                                               // _B8
+	virtual void vf_BC();                                                                               // _BC
+	virtual void vf_C0();                                                                               // _C0
+	virtual void vf_C4();                                                                               // _C4
+	virtual void vf_C8();                                                                               // _C8
+	virtual void vf_CC();                                                                               // _CC
+	virtual void vf_D0();                                                                               // _D0
+	virtual void vf_D4();                                                                               // _D4
+	virtual void vf_D8();                                                                               // _D8
+	virtual void vf_DC();                                                                               // _DC
+	virtual void vf_E0();                                                                               // _E0
+	virtual void vf_E4();                                                                               // _E4
+	virtual void vf_E8();                                                                               // _E8
+	virtual void vf_EC();                                                                               // _EC
+	virtual void vf_F0();                                                                               // _F0
+	virtual void vf_F4();                                                                               // _F4
+	virtual void vf_F8();                                                                               // _F8
+	virtual void vf_FC();                                                                               // _FC
+	virtual void vf_100();                                                                              // _100
+	virtual void vf_104();                                                                              // _104
+	virtual void vf_108();                                                                              // _108
+	virtual void ProjectOffsetToScreen(Vec* pos, f32* x, f32* y, f32* z, s32 flag);                     // _10C
+	virtual f32 GetFloorXZExtent();                                                                     // _110
+	virtual f32 GetCollisionHeight();                                                                   // _114
+	virtual BOOL ProjectVisibleBounds(f32 radius, f32 height, f32* outWidth, f32* outHeight, s32 flag); // _118
+	                                                                                                    // _34 vtable
+};
+
+struct UnkDolObj : public UnkDolObjVirt {
 #if defined(VERSION_JP)
 	u8 _38[0x88]; // _38, mode/flag word returned by GetFlags (_54); the real class also leaves it _38
 #else
@@ -675,15 +745,15 @@ extern "C" void ShotList_Update(ShotList* shots, u32 dt);
  * @note Size: 0x16D4
  */
 // draws a caption with a black shadow on every side
-inline void DrawCaption(s32 id, f32 x, f32 y)
+inline void DrawCaption(s32 id, f32 x, f32 y, f32 scale)
 {
 	s32 i;
 	f32 cx;
 	f32 cy;
 
 	DrawGsQuad(gGame, 0xFF, 0xFF, 0xFF, 0xFF, x, y, 0.0f,
-	           1.0f * (MeasureGameTextWidth(gGame, GetLocalizedInterfaceText(id), 1, 20.0f) - 4.0f), 12.0f, 0.0f, 0.0f, 0.0f);
-	cx = x - MeasureGameTextWidth(gGame, GetLocalizedInterfaceText(id), 1, 20.0f) * 0.5f;
+	           scale * (MeasureGameTextWidth(gGame, GetLocalizedInterfaceText(id), 1, 20.0f) - 4.0f), 12.0f, 0.0f, 0.0f, 0.0f);
+	cx = x - MeasureGameTextWidth(gGame, GetLocalizedInterfaceText(id), 1, 20.0f) / 2.0f;
 	cy = y - 13.0f;
 	for (i = 0; i < 4; i++) {
 		DrawGsProportionalTextFormat((CGs*)gGame, 0xFF, GetLocalizedInterfaceText(id), cx + captionShadowX[i], cy + captionShadowY[i], 0.0f,
@@ -692,9 +762,14 @@ inline void DrawCaption(s32 id, f32 x, f32 y)
 	DrawGsProportionalTextFormat((CGs*)gGame, -1, GetLocalizedInterfaceText(id), cx, cy, 0.0f, 20.0f, 20.0f);
 }
 
+// NONMATCHING: registers (the pool walk, the caption loop, digW/digH), the order of two literal
+// loads at PSMTXTrans, and where the digit loops set d = 0. Japan computes the scaled widths of the
+// time and gauge textures before SetGsTevMode where the others convert them after it.
 extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 {
 	CTexObj tex;
+	f32 scale = 1.0f;
+	f32 alpha = 255.0f;
 	s32 i;
 	s32 d;
 	f32 x;
@@ -706,13 +781,21 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 	u32 base;
 	s32 hi;
 	s32 lo;
+	u16 tw;
+	u16 th;
+	s32 stage;
+	s32 stage02;
 
 	if (time >= 100) {
 		time = 99;
 	}
-	if (FindStageIndexByName("stage02") == GAME_FIELD(s32, GAME_STAGE)) {
+	stage   = GAME_FIELD(s32, GAME_STAGE);
+	stage02 = FindStageIndexByName("stage02");
+	if (stage02 == stage) {
+		s32 stride = GAME_FIELD(s32, GAME_OFS(0x9708, 0x96C0));
+		u8* pool   = GAME_FIELD(u8*, GAME_OFS(0x96F8, 0x96B0));
 		for (i = 0; i < 48; i++) {
-			UnkDolObj* obj = (UnkDolObj*)(GAME_FIELD(u8*, GAME_OFS(0x96F8, 0x96B0)) + i * GAME_FIELD(s32, GAME_OFS(0x9708, 0x96C0)));
+			UnkDolObj* obj = (UnkDolObj*)(pool + i * stride);
 			s32 kind       = obj->mPlacement != NULL ? *obj->mPlacement : -1;
 			if (kind != 0x149) {
 				continue;
@@ -723,24 +806,28 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 
 			// score
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x18), 0);
-			w   = 1.0f * GXGetTexObjWidth(&tex);
-			x   = 640.0f - w * 0.5f - 40.0f;
+			tw  = GXGetTexObjWidth(&tex);
+			w   = scale * tw;
+			th  = GXGetTexObjHeight(&tex);
+			x   = 640.0f - w / 2.0f - 40.0f;
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
-			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, x, 40.0f, 0.0f, w, 1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, x, 40.0f, 0.0f, w, scale * th, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 #if !defined(VERSION_JP)
 			{
 				CTexObj unused;
-				DrawCaption(0x5A, x, 40.0f);
+				DrawCaption(0x5A, x, 40.0f, scale);
 			}
 #endif
 			tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 8), 0);
 			left = 20.0f + (x - 12.0f - 88.0f);
-			digW = 0.8f * (1.0f * (GXGetTexObjWidth(&tex) / 11));
-			digH = 0.8f * (1.0f * GXGetTexObjHeight(&tex));
+			tw   = GXGetTexObjWidth(&tex);
+			digW = 0.8f * (scale * (tw / 11));
+			th   = GXGetTexObjHeight(&tex);
+			digH = 0.8f * (scale * th);
 			PSMTXScale(tex.mMtx.mScale, 0.09090909f, 1.0f, 1.0f);
 			tex.mMtxDirty = 1;
-			base          = 255.0f;
+			base          = alpha;
 			hi            = base | 0xFAE0CF00;
 			lo            = base | 0xE9813A00;
 			onesOffset    = 7.0f * digW;
@@ -748,8 +835,10 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				f32 div = 1.0f;
 				s32 k;
 				s32 digit;
-				for (k = 0; k < d; k++) {
-					div *= 10.0f;
+				if (d > 0) {
+					for (k = 0; k < d; k++) {
+						div *= 10.0f;
+					}
 				}
 				digit = score / div;
 				if (d == 0 || digit != 0) {
@@ -764,23 +853,25 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 
 			// time
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x20), 0);
+			tw  = GXGetTexObjWidth(&tex);
+			th  = GXGetTexObjHeight(&tex);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
-			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, 1.0f * GXGetTexObjWidth(&tex),
-			                   1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, scale * tw, scale * th, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 #if !defined(VERSION_JP)
 			{
 				CTexObj unused;
-				DrawCaption(0x5B, 320.0f, 40.0f);
+				DrawCaption(0x5B, 320.0f, 40.0f, scale);
 			}
 #endif
 			tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 8), 0);
-			digW = 1.4f * (1.0f * (GXGetTexObjWidth(&tex) / 11));
-			digH = 1.4f * (1.0f * GXGetTexObjHeight(&tex));
-#if defined(VERSION_JP)
+			tw   = GXGetTexObjWidth(&tex);
+			digW = 1.4f * (scale * (tw / 11));
+			th   = GXGetTexObjHeight(&tex);
+			digH = 1.4f * (scale * th);
 			left = 110.0f;
-#else
-			left = 110.0f + 11.0f;
+#if !defined(VERSION_JP)
+			left += 11.0f;
 #endif
 			PSMTXScale(tex.mMtx.mScale, 0.09090909f, 1.0f, 1.0f);
 			hi            = base | 0x1F33FF00;
@@ -791,8 +882,10 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 				f32 div = 1.0f;
 				s32 k;
 				s32 digit;
-				for (k = 0; k < d; k++) {
-					div *= 10.0f;
+				if (d > 0) {
+					for (k = 0; k < d; k++) {
+						div *= 10.0f;
+					}
 				}
 				digit = time / div;
 				if (d == 0 || digit != 0) {
@@ -804,12 +897,13 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 					SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				}
 			}
-			digW = 1.4f * (1.0f * (GXGetTexObjWidth(&tex) / 11));
-			digH = 1.4f * (1.0f * GXGetTexObjHeight(&tex));
-#if defined(VERSION_JP)
+			tw   = GXGetTexObjWidth(&tex);
+			digW = 1.4f * (scale * (tw / 11));
+			th   = GXGetTexObjHeight(&tex);
+			digH = 1.4f * (scale * th);
 			left = 110.0f;
-#else
-			left = 110.0f + 11.0f;
+#if !defined(VERSION_JP)
+			left += 11.0f;
 #endif
 			PSMTXTrans(tex.mMtx.mTrans, 0.90909094f, 0.0f, 0.0f);
 			tex.mMtxDirty = 1;
@@ -823,26 +917,32 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 
 			// gauge
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x28), 0);
+			tw  = GXGetTexObjWidth(&tex);
+			th  = GXGetTexObjHeight(&tex);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
-			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, 1.0f * GXGetTexObjWidth(&tex),
-			                   1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, scale * tw, scale * th, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 #if !defined(VERSION_JP)
 			{
 				CTexObj unused;
-				DrawCaption(0x5C, 100.0f, 44.0f);
+				DrawCaption(0x5C, 100.0f, 44.0f, scale);
 			}
 #endif
 			tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x30), 0);
-			w    = 1.0f * GXGetTexObjWidth(&tex);
-			digH = 1.0f * GXGetTexObjHeight(&tex);
+			tw   = GXGetTexObjWidth(&tex);
+			w    = scale * tw;
+			th   = GXGetTexObjHeight(&tex);
+			digH = scale;
+			digH *= th;
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 72.0f, 0.0f, w, digH, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x38), 0);
+			tw  = GXGetTexObjWidth(&tex);
+			th  = GXGetTexObjHeight(&tex);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
-			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f - w * 0.5f + gauge * w / 100.0f, 72.0f, 0.0f,
-			                   1.0f * GXGetTexObjWidth(&tex), 1.0f * GXGetTexObjHeight(&tex), 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f - w / 2.0f + gauge * w / 100.0f, 72.0f, 0.0f, scale * tw, scale * th,
+			                   0.0f, 0.0f, 0.0f);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 			break;
 		}
@@ -2355,6 +2455,8 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
  * @note Address: stage02 .text 0x18F4
  * @note Size: 0x244
  */
+// NONMATCHING: retail loads 1.0f through one pointer for the compare and again for the
+// assignment (a literal bound to a const reference in an inline).
 extern "C" void DrawFighterHud(void)
 {
 	MatoList* targets;
@@ -2377,22 +2479,22 @@ extern "C" void DrawFighterHud(void)
 		if (obj == NULL || !(obj->mStatus & 1) || item->mPending) {
 			continue;
 		}
-		halfW = 0.5f * obj->vtbl->mGetFloorXZExtent(obj);
+		halfW = obj->GetFloorXZExtent() / 2.0f;
 		if (halfW < 1.0f) {
 			halfW = 1.0f;
 		}
-		height = item->mObj->vtbl->mGetCollisionHeight(item->mObj);
+		height = item->mObj->GetCollisionHeight();
 		if (height < 1.0f) {
 			height = 1.0f;
 		}
-		if (item->mObj->vtbl->mProjectVisibleBounds(item->mObj, halfW, height, &projW, &projH, 0)) {
-			Vec zero        = { 0.0f, 0.0f, 0.0f };
+		if (item->mObj->ProjectVisibleBounds(halfW, height, &projW, &projH, 0)) {
 			item->mOnScreen = true;
 			if (projW > projH) {
 				projW = projH;
 			}
-			item->mObj->vtbl->mProjectOffsetToScreen(item->mObj, &zero, &item->mScreenX, &item->mScreenY, &item->mScreenZ, 0);
-			item->mScreenY -= projW * 0.5f; // raise the marker by half the smaller projected extent
+			Vec zero = { 0.0f, 0.0f, 0.0f };
+			item->mObj->ProjectOffsetToScreen(&zero, &item->mScreenX, &item->mScreenY, &item->mScreenZ, 0);
+			item->mScreenY -= projW / 2.0f; // raise the marker by half the smaller projected extent
 		} else {
 			item->mOnScreen = false;
 		}
@@ -2883,7 +2985,10 @@ extern "C" void UpdateFighter(u32 dt)
 			} else {
 				range = (s32)READ_LE32(fighterWork.mParams + 0xC) / 100.0f;
 			}
-			if (range >= dist && (best == NULL || dist < bestDist)) {
+			if (range < dist) {
+				continue;
+			}
+			if (best == NULL || dist < bestDist) {
 				best     = item;
 				bestDist = dist;
 			}
@@ -4052,12 +4157,11 @@ extern "C" void PilotNwing_Update(PilotNwing* link, u32 dt, f32 animFrame)
 	HSD_JObj* jobj;
 
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	s32 carriedJoint[2] = { 0, 0 };
-	jobj                = GetJointByPath(link->mPathObj->mJObj, carriedJoint, 2);
+	jobj = GetJointByPath(link->mPathObj->mJObj, (s32[2]) { 0, 0 }, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, link->mCarriedMtx);
 	HSD_JObjCopyMtx(link->mCarriedObj->mJObj, link->mCarriedMtx);
 	link->mAnimFrame = animFrame;
-	link->mPathObj->vtbl->mSetAnim(link->mPathObj, link->mAnimFrame, 1.0f, 0.0f, 10.0f, 0, 1, 0, 0, 0);
+	link->mPathObj->SetAnim(0, TRUE, NULL, NULL, NULL, link->mAnimFrame, 1.0f, 0.0f, 10.0f);
 	if (link->mAttachedObj0 != NULL) {
 		PSMTXTrans(attach, 0.0f, -1.89f, -1.0f);
 		PSMTXConcat(link->mCarriedMtx, attach, link->mAttachedMtx0);
@@ -4384,9 +4488,9 @@ extern "C" void PilotNwing_Update(PilotNwing* link, u32 dt, f32 animFrame)
 extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
 {
 	Mato* item = work->mAim.mTarget;
-	Vec start;
-	Vec local;
 	CVec end;
+	Vec local;
+	Vec start;
 	UnkGame_96BC* player;
 	f32 dist;
 
@@ -4407,7 +4511,8 @@ extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
 		work->mShots.Add(item->GetPos(), end, item);
 	}
 	player           = GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674));
-	player->mBattery = player->mBattery - batteryCost > 0.0f ? player->mBattery - batteryCost : 0.0f;
+	f32 battery      = player->mBattery - batteryCost;
+	player->mBattery = battery > 0.0f ? battery : 0.0f;
 	if (player->mBattery < 0.0f) {
 		player->mBattery = 0.0f;
 	}
@@ -5010,18 +5115,16 @@ extern "C" void Fighter_Fire(Fighter* work, s32 batteryCost)
  */
 extern "C" void Fighter_Update(Fighter* work, u32 dt)
 {
+	Mtx rot;
 	Mtx scale;
 	Mtx offset;
-	Mtx rot;
 	Vec zero;
 	HSD_JObj* jobj;
 	f32 rate;
 
 	work->mTimeLeft -= dt;
 	PSMTXScale(scale, 0.5f, 0.5f, 0.5f);
-	s32 flightJoint[2] = { 0, 0 };
-	s32 seatJoint[1]   = { 0 };
-	jobj               = GetJointByPath(work->mPath->mJObj, flightJoint, 2);
+	jobj = GetJointByPath(work->mPath->mJObj, (s32[2]) { 0, 0 }, 2);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), scale, work->mBodyMtx);
 	HSD_JObjCopyMtx(work->mBody->mJObj, work->mBodyMtx);
 	zero.x = zero.y = zero.z = 0.0f;
@@ -5029,7 +5132,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 	PSMTXRotRad(rot, 'Y', work->mPlayerRotY);
 	PSMTXTrans(offset, 0.0f, -1.89f, -7.16f);
 	PSMTXConcat(offset, rot, offset);
-	jobj = GetJointByPath(work->mBody->mJObj, seatJoint, 1);
+	jobj = GetJointByPath(work->mBody->mJObj, (s32[1]) { 0 }, 1);
 	PSMTXConcat(HSD_JObjGetMtxPtr(jobj), offset, work->mPlayerMtx);
 	HSD_JObjCopyMtx(GAME_FIELD(UnkGame_96BC*, GAME_OFS(0x96BC, 0x9674))->mJObj, work->mPlayerMtx);
 	if (work->mExtra != NULL) {
@@ -5055,7 +5158,7 @@ extern "C" void Fighter_Update(Fighter* work, u32 dt)
 		}
 	}
 	work->mFrame = work->mSpeed * rate + work->mFrame;
-	work->mPath->vtbl->mSetAnim(work->mPath, work->mFrame, 1.0f, 0.0f, 10.0f, 0, 1, 0, 0, 0);
+	work->mPath->SetAnim(0, TRUE, NULL, NULL, NULL, work->mFrame, 1.0f, 0.0f, 10.0f);
 	ShotList_Update(&work->mShots, dt);
 }
 
@@ -5760,20 +5863,27 @@ extern "C" void Fighter_Init(Fighter* work, UnkDolObj* body, UnkDolObj* path, vo
  * @note Address: stage02 .text 0x44F0
  * @note Size: 0xCB4
  */
-// NONMATCHING: retail reads the 1.0f-scale operands and the 32.0f panel offset as named .rodata
-// objects (gFighterHudTextureScale, gFighterPanelYOffset), so it keeps a real lfs+fmuls where
-// literals fold away. No source form reproduces both the loads and their placement.
+// NONMATCHING: registers only. Retail copies the halved opening of the center panel into a new
+// register and forms 180.0f - half through a temporary; the build halves it in place.
 extern "C" void FighterPanels_Draw(FighterPanels* fade)
 {
 	CTexObj tex;
+	f32 scale = 1.0f;
 	s32 i;
+	u16 tw;
+	u16 th;
+	s32 stage;
+	s32 stage02;
 
-	if (FindStageIndexByName("stage02") == GAME_FIELD(s32, GAME_STAGE)) {
+	stage   = GAME_FIELD(s32, GAME_STAGE);
+	stage02 = FindStageIndexByName("stage02");
+	if (stage02 == stage) {
 		for (i = 0; i < 48; i++) {
 			UnkDolObj* obj = (UnkDolObj*)(GAME_FIELD(u8*, GAME_OFS(0x96F8, 0x96B0)) + i * GAME_FIELD(s32, GAME_OFS(0x9708, 0x96C0)));
 			s32 kind       = obj->mPlacement != NULL ? *obj->mPlacement : -1;
 			f32 y;
 			f32 half;
+			f32 top;
 			f32 w;
 			f32 h;
 			// kind 0x149 is the object that carries the stage02 panel textures
@@ -5783,28 +5893,35 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 			if (fade->mLowerOpen > 0.0f) {
 				// the open panel: a fill, the current animation frame, and the same strip above and below the opening
 				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x50), 0);
-				w   = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
-#if defined(VERSION_JP)
-				y = 320.0f;
-#else
-				y = 320.0f - 32.0f;
+				tw  = GXGetTexObjWidth(&tex);
+				w   = 1.1f * (scale * tw);
+				th  = GXGetTexObjHeight(&tex);
+				y   = 320.0f;
+#if !defined(VERSION_JP)
+				y -= 32.0f;
 #endif
-				half = fade->mLowerOpen * (1.0f * GXGetTexObjHeight(&tex));
+				half = fade->mLowerOpen * (scale * th);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, half, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + (fade->mLowerFrame + 25) * 8), 0);
-				w   = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
-				h   = fade->mLowerOpen * (1.0f * GXGetTexObjHeight(&tex));
+				tw  = GXGetTexObjWidth(&tex);
+				w   = 1.1f * (scale * tw);
+				th  = GXGetTexObjHeight(&tex);
+				h   = fade->mLowerOpen * (scale * th);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x58), 0);
 				half *= 0.5f;
-				w = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
-				h = 1.0f * GXGetTexObjHeight(&tex);
+				top = y;
+				top -= half;
+				tw = GXGetTexObjWidth(&tex);
+				w  = 1.1f * (scale * tw);
+				th = GXGetTexObjHeight(&tex);
+				h  = scale * th;
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
-				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y - half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, top, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, y + half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
@@ -5812,29 +5929,35 @@ extern "C" void FighterPanels_Draw(FighterPanels* fade)
 			}
 			if (fade->mCenterOpen > 0.0f) {
 				// the open panel: a fill, the current animation frame, and the same strip above and below the opening
-				u16 texW;
 				tex  = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x40), 0);
-				texW = GXGetTexObjWidth(&tex);
-				half = fade->mCenterOpen * (1.0f * GXGetTexObjHeight(&tex));
+				tw   = GXGetTexObjWidth(&tex);
+				th   = GXGetTexObjHeight(&tex);
+				half = fade->mCenterOpen * (scale * th);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
-				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 180.0f, 0.0f, 1.1f * (1.0f * texW), half, 0.0f, 0.0f, 0.0f);
+				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 180.0f, 0.0f, 1.1f * (scale * tw), half, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				if (fade->mCenterVariant == 0) {
 					tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + (fade->mCenterFrame + 12) * 8), 0);
 				} else {
 					tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + (fade->mCenterFrame + 18) * 8), 0);
 				}
-				w = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
-				h = fade->mCenterOpen * (1.0f * GXGetTexObjHeight(&tex));
+				tw = GXGetTexObjWidth(&tex);
+				w  = 1.1f * (scale * tw);
+				th = GXGetTexObjHeight(&tex);
+				h  = fade->mCenterOpen * (scale * th);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 180.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x48), 0);
 				half *= 0.5f;
-				w = 1.1f * (1.0f * GXGetTexObjWidth(&tex));
-				h = 1.0f * GXGetTexObjHeight(&tex);
+				top = 180.0f;
+				top -= half;
+				tw = GXGetTexObjWidth(&tex);
+				w  = 1.1f * (scale * tw);
+				th = GXGetTexObjHeight(&tex);
+				h  = scale * th;
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
-				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 180.0f - half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, top, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 				SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 				DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 180.0f + half, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
@@ -7291,7 +7414,8 @@ extern "C" void ShotList_Update(ShotList* list, u32 dt)
 				entry->mPos.y = entry->mVelocity.y * dt + entry->mPos.y;
 				entry->mPos.z = entry->mVelocity.z * dt + entry->mPos.z;
 				for (j = 9; j > 0; j--) {
-					entry->mTrail[j] = entry->mTrail[j - 1];
+					Vec* prev        = &entry->mTrail[j - 1];
+					entry->mTrail[j] = *prev;
 				}
 				entry->mTrail[0] = entry->mPos;
 			}

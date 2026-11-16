@@ -26,6 +26,17 @@ public:
 	{
 	}
 	virtual ~ARCacheInfo() { } // _08
+
+	// a block of size bytes at the base address, which moves on past it
+	void Add(u32 size, s32 objectId, const char* name)
+	{
+		mEntries[mCount].address  = mBaseAddress;
+		mEntries[mCount].size     = size;
+		mEntries[mCount].objectId = objectId;
+		mEntries[mCount].name     = name;
+		++mCount;
+		mBaseAddress += size;
+	}
 };
 STATIC_ASSERT(sizeof(ARCacheInfo) == 0x400C);
 

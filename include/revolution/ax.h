@@ -64,6 +64,7 @@ u32 AXGetMode(void);
 u16 AXGetAuxAReturnVolume(void);
 u16 AXGetAuxBReturnVolume(void);
 u16 AXGetAuxCReturnVolume(void);
+#define AX_MAX_VOLUME 32768
 void AXSetMasterVolume(u16 volume);
 void AXSetAuxAReturnVolume(u16 volume);
 void AXSetAuxBReturnVolume(u16 volume);

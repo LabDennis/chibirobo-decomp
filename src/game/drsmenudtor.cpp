@@ -2,9 +2,13 @@
 #if defined(VERSION_R24J01)
 #include "game/ringmenu.h"
 
-// NONMATCHING (Wii): ~OctaMenu lives in atcmenudtor.cpp, so this emits a base-dtor
-// call retail's 0x800C1018 doesn't have; the rest is the same minimal shape.
-// the weak dtor copy the GameCube file spells out by hand
+// the weak dtor copies the GameCube file spells out by hand; on Wii they are plain
+// out-of-line definitions (retail emits no vtable store and no base-dtor call), so
+// ~OctaMenu is defined inline here as well: it has to be in the TU to be inlined
+// away, and only the inline copy avoids re-emitting OctaMenu's vtable
+inline OctaMenu::~OctaMenu()
+{
+}
 DrsMenu::~DrsMenu()
 {
 }

@@ -7,6 +7,7 @@
 
 class CCamera;
 struct TextChar;
+struct PrimVertex;
 
 // The Wii graphics state layer. Class names from RTTI; the GS* classes each hold the arguments of
 // one GX call and are handed around by value. Their vtable sits behind the data.
@@ -332,7 +333,12 @@ public:
 	GXBool mColorUpdate; // _3C
 	u8 _3D[0x44 - 0x3D];
 	GXBool mAlphaUpdate; // _44
-	u8 _45[0x64 - 0x45];
+	u8 _45[0x4C - 0x45];
+	GXBool mDstAlphaEnable; // _4C
+	u8 mDstAlpha;           // _4D
+	u8 _4E[0x54 - 0x4E];
+	GXBool mZCompLoc; // _54
+	u8 _55[0x64 - 0x55];
 	u8 mLineWidth;           // _64
 	GXTexOffset mLineOffset; // _68
 	u8 _6C[4];
@@ -368,6 +374,17 @@ public:
 	{
 		mAlphaUpdate = enable;
 		GXSetAlphaUpdate(enable);
+	}
+	void SetDstAlpha(GXBool enable, u8 alpha)
+	{
+		mDstAlphaEnable = enable;
+		mDstAlpha       = alpha;
+		GXSetDstAlpha(enable, alpha);
+	}
+	void SetZCompLoc(GXBool beforeTex)
+	{
+		mZCompLoc = beforeTex;
+		GXSetZCompLoc(beforeTex);
 	}
 	void SetAlphaCompare(GXCompare comp0, u8 ref0, GXAlphaOp aop, GXCompare comp1, u8 ref1)
 	{
@@ -670,9 +687,13 @@ void CopyFbTexture(WiiFbTexture* texture, GXTexFmt format, BOOL clear, BOOL flus
 void DrawFbTexture(WiiFbTexture* texture, u32 color, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz);
 void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx,
                         f32 ry, f32 rz);
+void DrawGsSphereWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 major, u8 minor);
 void DrawGsCircle(CGs* gs, u32 segments, u32 centerColor, u32 edgeColor, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz);
 void DrawGsVertexQuad(CGs* gs, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1, f32 x2, f32 y2, f32 z2, u32 color2,
                       f32 x3, f32 y3, f32 z3, u32 color3);
+void DrawGsQuad(CGs* gs, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz);
+void DrawGsTriangleVertices(CGs* gs, GXPrimitive type, Mtx view, PrimVertex* vtx, u16 count);
+void DrawGsColoredTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32* color, u16 count);
 void DrawGsTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32 color, u16 count);
 void DrawGsLineStrip(CGs* gs, Vec* pos, u32 color, u16 count);
 void DrawGsLineSegment(CGs* gs, Mtx view, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1);

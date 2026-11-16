@@ -53,8 +53,15 @@ public:
 
 	virtual ~CTexObj() { }
 	void Init(TPLDescriptor* desc, u32 tlutName);
+	void Init(void* image, u16 width, u16 height, GXTexFmt format, GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXBool mipmap);
+	void Init(void* image, u16 width, u16 height, GXTexFmt format, GXTexWrapMode wrapS, GXTexWrapMode wrapT, GXBool mipmap, u32 tlutName);
+	void InitMatrices();
+	void LoadTexture(GXTexMapID map);
+	void Load(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType);
 	u32 Set(const CTexObj& other);
 	u32 SetChar(const char* str, u32 font); // the font index goes to GetFontGlyphTexture's arg3
+	void Draw(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType, const Vec* pos, u32 color0, u32 color1, u32 color2, u32 color3);
+	void DrawLit(GXTexMapID map, u32 mtxId, GXTexMtxType mtxType, const Vec* pos, u32 color0, u32 color1, u32 color2, u32 color3);
 };
 STATIC_ASSERT(sizeof(CTexObj) == 0x104);
 #else
@@ -100,12 +107,15 @@ class CTpl : public CFile {
 public:
 #if defined(VERSION_R24J01)
 	virtual ~CTpl();
+	virtual s32 ReadAsync(const char* path, u32 offset, u32 size, BOOL fromAram); // _14
 #else
 	virtual ~CTpl() { mBound = FALSE; } // _08 (weak)
 #endif
 	virtual s32 GetResult(); // _18
 #if defined(VERSION_R24J01)
-	virtual BOOL Close(); // _20
+	virtual BOOL Close();  // _20
+	void Bind(void* data); // converts the offsets in a just-loaded palette
+	void BindPalette(TPLPalette* pal);
 #else
 	virtual void Close(); // _20
 #endif

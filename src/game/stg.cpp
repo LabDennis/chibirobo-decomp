@@ -4802,23 +4802,22 @@ extern "C" void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f
 	}
 }
 
-// empties one entry of the status table
-static inline void ClearStatusEntry(MenuStatusEntry* e)
-{
-	e->mItem          = -1;
-	e->mCount         = -1;
-	e->mStatus.mFlags = 0;
-}
-
+// empties the status table. the flags go through CStatus, which is why retail addresses them apart from the two shorts
 static inline void ClearStatusTable(MenuStatusTable* table)
 {
 	table->mPage = 0;
 	for (int i = 0; i < 256; i++) {
-		ClearStatusEntry(&table->mItems[i]);
+		table->mItems[i].mItem  = -1;
+		table->mItems[i].mCount = -1;
+		table->mItems[i].mStatus.Clear();
 	}
 	for (int i = 0; i < 4; i++) {
-		ClearStatusEntry(&table->mPrev[i]);
-		ClearStatusEntry(&table->mNext[i]);
+		table->mPrev[i].mItem  = -1;
+		table->mPrev[i].mCount = -1;
+		table->mPrev[i].mStatus.Clear();
+		table->mNext[i].mItem  = -1;
+		table->mNext[i].mCount = -1;
+		table->mNext[i].mStatus.Clear();
 	}
 }
 
@@ -6688,7 +6687,7 @@ extern "C" void DrawStatusDiagram(MenuStatus* menu)
 		x           = 42.0f + x;
 		y           = 84.0f + y;
 		labelX      = x - 42.0f;
-		labelY      = y - 12.0f;
+		labelY      = -12.0f + y;
 		f32 targetY = 114.0f + y;
 		f32 columnX = StatusLabelColumn(labelX, false);
 		DrawStatusCallout(menu, 7, columnX, labelY, 42.0f + ((labelX - 200.0f) - 100.0f), targetY - 7.0f);
@@ -6698,9 +6697,9 @@ extern "C" void DrawStatusDiagram(MenuStatus* menu)
 		columnX = StatusLabelColumn(labelX, false);
 		labelY += 22.0f;
 		DrawStatusCallout(menu, 6, columnX, labelY, 42.0f + (9.0f + (labelX - 200.0f)), targetY - 46.0f);
-		y       = targetY - 27.0f;
 		columnX = StatusLabelColumn(labelX, true);
 		labelY += 22.0f;
+		y = targetY - 27.0f;
 		DrawStatusCallout(menu, 5, columnX, labelY, 42.0f + ((labelX - 200.0f) - 2.0f), y);
 		columnX = StatusLabelColumn(labelX, false);
 		labelY += 22.0f;
@@ -7074,19 +7073,20 @@ extern "C" void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32 wi
 		Vec size = GetStagePlacementScale(cursor) * scale;
 		cursor->SetScale(size, 0);
 		cursor->SetRotationY(0.2617994f, 0);
-		pos.y = 4.0f + (height * scale + pos.y);
-		cursor->SetPos((pos.x - 16.0f) - 8.0f, pos.y, pos.z, 0);
+		f32 cursorY = 4.0f + (height * scale + pos.y);
+		cursor->SetPos((pos.x - 16.0f) - 8.0f, cursorY, pos.z, 0);
 		cursor->DrawObject();
 		cursor->SetRotationY(-0.2617994f, 0);
-		cursor->SetPos(8.0f + (16.0f + (pos.x + width)), pos.y, pos.z, 0);
+		cursor->SetPos(8.0f + (16.0f + (pos.x + width)), cursorY, pos.z, 0);
 		cursor->DrawObject();
+		CGs* gs = &gGame.mGs;
 		HSD_StateInvalidate(-1);
 		if (gGame.mGs.mCurRenderMode)
-			gGame.mGs.mCurRenderMode->Invalidate();
-		if (gGame.mGs.mCurTevStage)
-			gGame.mGs.mCurTevStage->Invalidate();
-		if (gGame.mGs.mCurChannel && !gGame.mGs.mCurChannel->mDirty)
-			gGame.mGs.mCurChannel->mDirty = TRUE;
+			gs->mCurRenderMode->Invalidate();
+		if (gs->mCurTevStage)
+			gs->mCurTevStage->Invalidate();
+		if (gs->mCurChannel && !gs->mCurChannel->mDirty)
+			gs->mCurChannel->mDirty = TRUE;
 	}
 }
 
@@ -7888,7 +7888,10 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 		id = 0;
 	char text[256];
 	sprintf(text, "%s", GetUtilibotName(id));
-	color = (count <= 0 ? (u32)(0.4f * alpha) : opacity) | 0xFFFFFF00;
+	if (count <= 0)
+		color = (u32)(0.4f * alpha) | 0xFFFFFF00;
+	else
+		color = opacity | 0xFFFFFF00;
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[digitTexture], 0);
 	w   = scale * tex.GetWidth();
@@ -7915,11 +7918,13 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 				top    = (u8)alpha | 0xCECEFF00;
 				bottom = (u8)alpha | 0x5959FF00;
 			}
-			f32 digitX = 80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w))));
-#if !defined(VERSION_JP)
-			digitX = 18.0f * scale + digitX;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom,
+#if defined(VERSION_JP)
+			                   80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w)))),
+#else
+			                   18.0f * scale + (80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w))))),
 #endif
-			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, 8.0f * scale + y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			                   8.0f * scale + y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		}
 	}
@@ -7962,7 +7967,10 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, bool attachment
 		sprintf(text, "%s", GetAttachmentName(id));
 	else
 		sprintf(text, "%s", GetItemName(id));
-	color = (count <= 0 ? (u32)(0.4f * alpha) : opacity) | 0xFFFFFF00;
+	if (count <= 0)
+		color = (u32)(0.4f * alpha) | 0xFFFFFF00;
+	else
+		color = opacity | 0xFFFFFF00;
 	DrawGsProportionalTextFormat(&gGame.mGs, color, text, 3.0f * scale + x, y, 0.0f, fontSize, fontSize);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[digitTexture], 0);
 	w   = scale * tex.GetWidth();
@@ -7989,11 +7997,13 @@ extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, bool attachment
 				top    = (u8)alpha | 0xEFEBC500;
 				bottom = (u8)alpha | 0xEDA83600;
 			}
-			f32 digitX = 80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w))));
-#if !defined(VERSION_JP)
-			digitX = 18.0f * scale + digitX;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom,
+#if defined(VERSION_JP)
+			                   80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w)))),
+#else
+			                   18.0f * scale + (80.0f * scale + (12.0f * scale + (67.0f * scale + (7.0f * w + (x - i * w))))),
 #endif
-			DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, digitX, 8.0f * scale + y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			                   8.0f * scale + y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		}
 	}
@@ -8241,7 +8251,7 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 
 static inline char* StatusTabHelp(s32 selection)
 {
-	return selection >= 4 ? NULL : GetLocalizedInterfaceText(StatusTitleText + gStatusTabTextOffsets[selection]);
+	return GetLocalizedInterfaceText((selection >= 4 ? 0 : gStatusTabTextOffsets[selection]) + StatusTitleText);
 }
 
 void MenuStatus::Open()
@@ -8329,9 +8339,10 @@ void MenuStatus::Open()
 	else
 		mShowGauge = FALSE;
 	mGaugeValue = gEventVars.mVars[0x220 / 4] / 10000.0f;
-	for (int i = 0; i < 24; i++)
+	int i;
+	for (i = 0; i < 24; i++)
 		gStatusIconUnlocked[i] = 0;
-	for (int i = 0; i < 24; i++) {
+	for (i = 0; i < 24; i++) {
 		int flag = GetStatusIconEventFlagId(i);
 		if (flag >= 0 && (gEventFlags.mFlags[(u32)flag / 32] & (1u << (flag & 31))))
 			gStatusIconUnlocked[i] = 1;
@@ -8717,8 +8728,8 @@ BOOL MenuItem::Update(u32 frames)
 						mSelection = count - 1;
 					PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 				} else if (pad.mPad->mRepeat & 0x80002) {
-					s32 next = ++mSelection;
-					if (sStatusItemTable.mItems[next].mItem < 0)
+					mSelection++;
+					if (sStatusItemTable.mItems[mSelection].mItem < 0)
 						mSelection = 0;
 					PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 				}
@@ -8750,13 +8761,13 @@ BOOL MenuItem::Update(u32 frames)
 					}
 				}
 			}
-			if (sStatusItemTable.mItems[mSelection].mItem < 0) {
+			if (sStatusItemTable.GetItem(mSelection) < 0) {
 				do {
 					--mSelection;
 				} while (sStatusItemTable.mItems[mSelection].mItem < 0 && mSelection != 0);
 			}
 			if (mSelection != mPrevSelection) {
-				s16 id = sStatusItemTable.mItems[mSelection].mItem;
+				s16 id = sStatusItemTable.GetItem(mSelection);
 				if (id >= 0 && CountMenuItems() > 0) {
 					char* text = GetItemName(id);
 					mShowHelp  = 1;
@@ -8768,9 +8779,8 @@ BOOL MenuItem::Update(u32 frames)
 				mPrevSelection = mSelection;
 			}
 			if (pad.mPad->mTrigger & 0x100) {
-				const MenuStatusEntry& item = sStatusItemTable.mItems[mSelection];
-				s16 id                      = item.mItem;
-				s16 amount                  = item.mCount;
+				s16 id     = sStatusItemTable.GetItem(mSelection);
+				s16 amount = sStatusItemTable.mItems[mSelection].mCount;
 				if (count > 0 && id >= 0 && amount > 0)
 					selectedItem = id;
 				else
@@ -10225,7 +10235,8 @@ void MenuPC::State3(u32 frames)
 					PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 				}
 				if (pad.mPad->mRepeat & 0x20004) {
-					if (gShopHistoryPage.mStart < PCShopMaxPage(table) - 1) {
+					MenuPCItem* row = table; // the history restore below still needs the table
+					if (gShopHistoryPage.mStart < PCShopMaxPage(row) - 1) {
 						menu->mScrollTarget = -17.0f;
 						menu->mPhase        = 10;
 						break;
@@ -10247,8 +10258,7 @@ void MenuPC::State3(u32 frames)
 			}
 		}
 		if (pad.mPad->mTrigger & 0x100) {
-			if (gShopHistoryPage.mRows[menu->mPurchaseSelection].mItem >= 0
-			    && gShopHistoryPage.mRows[menu->mPurchaseSelection].mCount > 0) {
+			if (gShopHistoryPage.GetItem(menu->mPurchaseSelection) >= 0 && gShopHistoryPage.mRows[menu->mPurchaseSelection].mCount > 0) {
 				PlayGameSound(&gGame.mSound, 0x88, 0xFF);
 				menu->mPanelTarget = 1.0f;
 				menu->mPhase++;
@@ -10263,7 +10273,13 @@ void MenuPC::State3(u32 frames)
 			if (menu->mShopOnly) {
 				ResetPCText(menu, 11);
 				menu->mTargetFrameHeight = 0.0f;
-				RestorePCHistory(menu);
+				// the history is this state's table
+				if (menu->mHistoryCount > 0) {
+					for (int i = 0; i < menu->mHistoryCount; table++, i++) {
+						gEventVars.mVars[menu->mHistoryStart + i + menu->mHistoryCount] = table->mCount;
+					}
+					gEventVars.mVars[196] = menu->mDepositBalance;
+				}
 				menu->mPanelTarget = 0.0f;
 			} else {
 				ResetPCText(menu, 2);
@@ -10312,8 +10328,11 @@ void MenuPC::State3(u32 frames)
 						}
 					}
 					s16& stock = entry->mCount;
-					if (stock > 0)
-						stock--;
+					s16 left   = stock;
+					if (left > 0) {
+						left--;
+						stock = left;
+					}
 					// items 0x57, 0x59 and 0x5A replace each other: buying one clears the others from the shop and the inventory
 					switch (entry->mItem) {
 					case 0x57:
@@ -10407,7 +10426,7 @@ static inline void FinishStatusItemScroll(MenuStatus* menu)
 
 static inline void UpdateOwnedItemHelp(MenuStatus* menu)
 {
-	if (sStatusItemTable.mItems[menu->mItem].mItem < 0) {
+	if (sStatusItemTable.GetItem(menu->mItem) < 0) {
 		do {
 			--menu->mItem;
 		} while (sStatusItemTable.mItems[menu->mItem].mItem < 0 && menu->mItem != 0);

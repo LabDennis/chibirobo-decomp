@@ -159,28 +159,29 @@ s32 HSD_DevComRequest(s32, u32, void*, u32, s32, s32, u32 (*)(void*, u32*), void
 u32 ARGetSize();
 }
 
-static inline BOOL PreloadStageArchives()
+static inline BOOL PreloadStageArchives(ARPreCache* cache)
 {
-	ARPreCache& cache = gAramPrecache;
-	switch (cache.mLoadStep) {
+	switch (cache->mLoadStep) {
 	case 0:
-		if (cache.mFile0.ConvertPathToEntrynum("/qp/pc.idx") < 0 || cache.mFile1.ConvertPathToEntrynum("/qp/pc.bin") < 0)
+		if (cache->mFile0.ConvertPathToEntrynum("/qp/pc.idx") < 0)
 			return TRUE;
-		++cache.mLoadStep;
+		if (cache->mFile1.ConvertPathToEntrynum("/qp/pc.bin") < 0)
+			return TRUE;
+		++cache->mLoadStep;
 	case 1: {
-		if (!cache.mFile0.ReadEx("/qp/pc.idx", 0, 0))
+		if (!cache->mFile0.ReadEx("/qp/pc.idx", 0, 0))
 			break;
-		++cache.mLoadStep;
+		++cache->mLoadStep;
 		s32 entry   = DVDConvertPathToEntrynum("/qp/pc.bin");
 		u32 address = gARAMCacheInfo.mBaseAddress;
-		HSD_DevComRequest(entry, 0, (void*)address, ARGetSize() - gARAMCacheInfo.mBaseAddress, 0x23, 1, TakeNextCounterValue, &cache);
+		HSD_DevComRequest(entry, 0, (void*)address, ARGetSize() - gARAMCacheInfo.mBaseAddress, 0x23, 1, TakeNextCounterValue, cache);
 		break;
 	}
 	case 3: {
 		XObjSource* src = GetObjectSources();
-		const u8* pair  = (const u8*)cache.mFile0.mBuffer;
+		const u8* pair  = (const u8*)cache->mFile0.mBuffer;
 		if (pair) {
-			for (s32 id = 0;; ++id, ++src) { // offset/size pairs end at 0xffffffff
+			for (s32 id = 0;; ++src, ++id) { // offset/size pairs end at 0xffffffff
 				if (*(const u32*)pair == 0xffffffff || src->mCache.address == 0xffffffff)
 					break;
 				if (src->mCache.size != 1)
@@ -192,17 +193,12 @@ static inline BOOL PreloadStageArchives()
 				src->mCache.size    = size;
 				u32 padded          = (size + 31) & ~31u; // aram blocks align to 32
 
-				gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].address  = gARAMCacheInfo.mBaseAddress;
-				gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].size     = padded;
-				gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].objectId = id;
-				gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].name     = src->mName;
-				++gARAMCacheInfo.mCount;
-				gARAMCacheInfo.mBaseAddress += padded;
+				gARAMCacheInfo.Add(padded, id, src->mName);
 				pair += 8;
 			}
 		}
-		cache.mFile0.Close();
-		++cache.mLoadStep;
+		cache->mFile0.Close();
+		++cache->mLoadStep;
 	}
 	case 4:
 		return TRUE;
@@ -212,24 +208,52 @@ static inline BOOL PreloadStageArchives()
 
 static inline BOOL LoadStartingAttachments(CGame* game)
 {
-	if (!LoadGlobalResourceData())
-		return FALSE;
-	if (!gCmdLineArgs.mCopterLevelOverride) { // attachment slot 1 takes its starting level from the global resource table
-		u32 level = GetStartingAttachmentLevel(0);
-		SetAttachmentCountById(&game->GetPlayer()->mAttachments, 1, level);
+	if (LoadGlobalResourceData()) {
+		if (!gCmdLineArgs.mCopterLevelOverride) { // attachment slot 1 takes its starting level from the global resource table
+			u32 level = GetStartingAttachmentLevel(0);
+			SetAttachmentCountById(&game->GetPlayer()->mAttachments, 1, level);
+		}
+		if (!gCmdLineArgs.mPopperLevelOverride) { // slot 2
+			u32 level = GetStartingAttachmentLevel(1);
+			SetAttachmentCountById(&game->GetPlayer()->mAttachments, 2, level);
+		}
+		if (!gCmdLineArgs.mRadarLevelOverride) { // slot 3
+			u32 level = GetStartingAttachmentLevel(2);
+			SetAttachmentCountById(&game->GetPlayer()->mAttachments, 3, level);
+		}
+		return TRUE;
 	}
-	if (!gCmdLineArgs.mPopperLevelOverride) { // slot 2
-		u32 level = GetStartingAttachmentLevel(1);
-		SetAttachmentCountById(&game->GetPlayer()->mAttachments, 2, level);
-	}
-	if (!gCmdLineArgs.mRadarLevelOverride) { // slot 3
-		u32 level = GetStartingAttachmentLevel(2);
-		SetAttachmentCountById(&game->GetPlayer()->mAttachments, 3, level);
+	return FALSE;
+}
+
+// the stage's flag 2 makes no difference to the answer
+static inline BOOL CheckStageStartFlag()
+{
+	if (CheckStageFlag(gGame.mStage, 2)) {
+		return TRUE;
 	}
 	return TRUE;
 }
 
-BOOL CGame::BeforeUpdate()
+static inline BOOL LoadStageAndEventObjects(CGame* game)
+{
+	if (LoadStageByIndex(game->mStage)) {
+		ApplyStageClearColor();
+		for (const StageEventObject* entry = GetStageEventObjectPairs(); entry->objectIndex >= 0; ++entry) { // the pairs end at a -1
+			RegisterEventObjectId(&game->mEvt, entry->eventId, entry->objectIndex);
+		}
+		return TRUE;
+	}
+	return FALSE;
+}
+
+static inline bool FadeStopped(const CScrnColor& fade)
+{
+	return 0.0f == fade.mSpeed.r && 0.0f == fade.mSpeed.g && 0.0f == fade.mSpeed.b && 0.0f == fade.mSpeed.a;
+}
+
+// NONMATCHING: registers in the precache loop and the clock sum, and retail narrows the answer to a byte
+bool CGame::BeforeUpdate()
 {
 	// Ready stages fall through. Pending reads resume at the same stage next frame.
 	switch (mLoadStep) {
@@ -250,9 +274,13 @@ BOOL CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 	case 4:
-		if ((mStatus.mFlags & 0x200000000ULL) && !mArchive.ReadEx("/qp.bin", 0, 0))
-			break;
-		++mLoadStep;
+		if (mStatus.mFlags & 0x200000000ULL) {
+			if (!mArchive.ReadEx("/qp.bin", 0, 0))
+				break;
+			++mLoadStep;
+		} else {
+			++mLoadStep;
+		}
 	case 5:
 		if (!mTpl.ReadEx("tpl/misc.tpl", 0, 0))
 			break;
@@ -267,12 +295,18 @@ BOOL CGame::BeforeUpdate()
 				mLogo.mState = 1;
 			if (mLogo.mState <= 2)
 				break;
+			++mLoadStep;
+		} else {
+			++mLoadStep;
 		}
-		++mLoadStep;
 	case 7:
-		if ((mStatus.mFlags & 0x40000000000ULL) && !PreloadStageArchives())
-			break;
-		++mLoadStep;
+		if (mStatus.mFlags & 0x40000000000ULL) {
+			if (!PreloadStageArchives(&gAramPrecache))
+				break;
+			++mLoadStep;
+		} else {
+			++mLoadStep;
+		}
 	case 8:
 		if ((mStatus.mFlags & 0x400000000ULL) && mLogo.mState != 15)
 			break;
@@ -315,7 +349,7 @@ BOOL CGame::BeforeUpdate()
 		++mLoadStep;
 	case 19:
 		if ((mStatus.mFlags & 0x20000000) && mTitle.mState != 23) {
-			if (!(mTitle.mState >= 1 && mTitle.mState < 23)) {
+			if (!mTitle.IsActive()) {
 				ResetNewGameState();
 				mTitle.mState = 1;
 			}
@@ -333,18 +367,14 @@ BOOL CGame::BeforeUpdate()
 	case 21:
 		++mLoadStep;
 	case 22:
-		CheckStageFlag(gGame.mStage, 2);
+		if (!CheckStageStartFlag())
+			break;
 		++mLoadStep;
 		break;
-	case 23: {
-		if (!LoadStageByIndex(mStage))
+	case 23:
+		if (!LoadStageAndEventObjects(this))
 			break;
-		ApplyStageClearColor();
-		for (const StageEventObject* entry = GetStageEventObjectPairs(); entry->objectIndex >= 0; ++entry) { // the pairs end at a -1
-			RegisterEventObjectId(&mEvt, entry->eventId, entry->objectIndex);
-		}
 		++mLoadStep;
-	}
 	case 24: {
 		u8* script = GetStageSetupScript();
 		if (script)
@@ -368,7 +398,7 @@ BOOL CGame::BeforeUpdate()
 		CallStageModule(0, 0, NULL);
 		++mLoadStep;
 	case 28: {
-		if (mFade.mSpeed.r != 0 || mFade.mSpeed.g != 0 || mFade.mSpeed.b != 0 || mFade.mSpeed.a != 0)
+		if (!FadeStopped(mFade))
 			break;
 		StartScreenFade(&mFade, 0, 0, 0, 255, 0, 0, 0, 0, 0.5f);
 		StartOrQueueEventScript(&mEvt, GetStageEntryScript(), 0, -1, -1);
@@ -378,5 +408,5 @@ BOOL CGame::BeforeUpdate()
 		++mLoadStep;
 	}
 	}
-	return !(mLoadStep > 0 && mLoadStep < 29);
+	return IsLoading() == false;
 }

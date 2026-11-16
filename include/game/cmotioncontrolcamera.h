@@ -2,12 +2,16 @@
 #define _GAME_CMOTIONCONTROLCAMERA_H
 
 #include "game/ccameraaction.h"
+#if !defined(VERSION_R24J01)
 #include "game/ccameraactioneye.h"
+#endif
 
 // the game's camera and the actions that drive it. class names are RTTI, layouts are from
 // CGame's ctor at 0x80019480 and the action ctor at 0x80019E5C
 
-// where the actions sit in CCameraActions's table
+// where the actions sit in CCameraActions's table; the Wii build gets the same
+// numbering from wii/cgame.h
+#if !defined(VERSION_R24J01)
 enum {
 	CAMACTION_DEFAULT, // 0
 	CAMACTION_AREA,    // 1
@@ -23,6 +27,7 @@ enum {
 	CAMACTION_SCROLL,  // 11
 	CAMACTION_NUM,
 };
+#endif // !defined(VERSION_R24J01)
 
 // what the camera's flags say an action drives, from its GetCameraFlags
 enum {
@@ -33,6 +38,7 @@ enum {
 	CAMFLAG_ANGLE    = 0x10,
 };
 
+#if !defined(VERSION_R24J01)
 // every camera action in one block, CGame keeps it at +0xE5FAC
 class CCameraActions {
 public:
@@ -257,5 +263,6 @@ public:
 	BOOL IsCurrent(s32 type) const { return mAction == GetAction(type) ? TRUE : FALSE; }
 };
 STATIC_ASSERT(sizeof(CMotionControlCamera) == 0x274);
+#endif // !defined(VERSION_R24J01)
 
 #endif
