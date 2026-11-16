@@ -57,10 +57,10 @@ public:
 	virtual ~CBase();                               // _08
 	virtual void Initialize(int argc, char** argv); // _0C
 	virtual void Start();                           // _10, 0x80017D4C
-	virtual void vf14();
+	virtual void ResetNewGameState();               // _14, CBase's is empty
 	virtual void vf18();
-	virtual void vf1C();
-	virtual void vf20();
+	virtual void BeforeUpdate();     // _1C
+	virtual void Update(u32 frames); // _20
 	virtual void vf24();
 	virtual void vf28();
 	virtual void vf2C();
@@ -69,13 +69,19 @@ public:
 	virtual void ClearStatusFlags(u64 mask); // _38, 0x8001C78C
 	virtual void vf3C();
 	virtual u64 GetStatusFlags(u64 mask) const; // _40, the game's status flags under mask
-	virtual void vf44();
-	virtual CCamera* GetScreenCamera(); // _48, the orthographic camera the screen-space layer draws under
-	virtual CCamera* GetCamera();       // _4C, the scene camera - CGame's is mMotionControlCamera
+	virtual CCamera* GetPerspectiveCamera();    // _44, the first of the two cameras at _35F8
+	virtual CCamera* GetScreenCamera();         // _48, the orthographic camera the screen-space layer draws under
+	virtual CCamera* GetCamera();               // _4C, the scene camera - CGame's is mMotionControlCamera
 	virtual void vf50();
 	virtual void vf54(); // _54, ends the current render pass
 	virtual void vf58();
-	virtual BOOL vf5C(); // _5C, begins a render pass; the draws between it and vf54 run only when it holds
+	virtual BOOL vf5C();               // _5C, begins a render pass; the draws between it and vf54 run only when it holds
+	virtual CLight* GetDefaultLight(); // _60, the light set behind the two cameras, at _39E8
+	virtual CLight* GetScreenLight();  // _64
+	virtual CLight* GetLight();        // _68, GetDefaultLight unless overridden
+	virtual void SetLight(CLight* light, MtxP view, BOOL flag); // _6C, makes light the CGs's and loads it under view
+	virtual void vf70();
+	virtual void SetCameraLight(); // _74, GetLight under GetCamera's view matrix
 
 	// asks for a reset unless one is already on its way
 	void RequestReset(s32 type)
@@ -95,6 +101,26 @@ struct WiiTimeState {
 	s32 mRunning;
 };
 STATIC_ASSERT(sizeof(WiiTimeState) == 0x10);
+
+// one letter of a name that pops in, the GameCube StageNameChar with two more words
+struct StageNameChar {
+	const char* mText; // _00
+	f32 mScale;        // _04
+	f32 mWait;         // _08
+	f32 mBob;          // _0C
+	f32 mTilt;         // _10
+	u8 _14[8];
+};
+STATIC_ASSERT(sizeof(StageNameChar) == 0x1C);
+
+// the stage name drawn a letter at a time
+struct StageName {
+	BOOL mActive;             // _00
+	s32 mCount;               // _04
+	u32 mColor;               // _08
+	StageNameChar mChars[20]; // _0C
+};
+STATIC_ASSERT(sizeof(StageName) == 0x23C);
 
 class CInterfaceCameraAction;
 
@@ -670,9 +696,14 @@ class CGame : public CBase {
 public:
 	void Initialize(int argc, char** argv); // _0C override, parses /stage: /slot: (gameinit.cpp)
 	CCamera* GetCamera();                   // _4C override, &mMotionControlCamera
+	void ResetNewGameState();               // _14 override, 0x8001C37C
+	void BeforeUpdate();                    // _1C override, 0x8001C7B0
+	void Update(u32 frames);                // _20 override, 0x8001E830
+	void SetupStageCamera(s32 mode);        // 0x8001DC88
 
 	s32 mLoadStep;
-	u8 _41EC[0x42FC - 0x41EC];
+	s32 mSetupStep; // _41EC, how far FinalizeStageObjectSetup is, done at 5
+	u8 _41F0[0x42FC - 0x41F0];
 	s32 mStage;
 	s32 mPrevStage; // _4300
 	s32 mRoomCount; // _4304, CCameraActionScroll2::GetLimits bounds the room index with it
@@ -687,8 +718,15 @@ public:
 	f32 mWipeTileHeight; // _5058, the GameCube's mWipeTile1.mHeight
 	u8 _505C[0x5078 - 0x505C];
 	CScrnRoboeyes mRoboeyes;
-	u8 _511C[0x5978 - 0x511C];
-	s32 mLogoState; // _5978, the boot logos' step, as the GameCube mLogo.mState
+	u8 _511C[0x57CC - 0x511C];
+	f32 mScrnTexAngle;        // _57CC, the GameCube's mScrnTex.mAngle
+	CScrnColor mScrnTexColor; // _57D0, mScrnTex.mColor
+	u8 _5804[0x5908 - 0x5804];
+	CScrnColor mColor0;       // _5908
+	CScrnColor mColor1;       // _593C
+	s32 mOutlineWidthControl; // _5970
+	f32 mOutlineWidth;        // _5974
+	s32 mLogoState;           // _5978, the boot logos' step, as the GameCube mLogo.mState
 	u8 _597C[0x5C74 - 0x597C];
 	s32 mTitleState; // _5C74, the title screen's step, as the GameCube mTitle.mState
 	u8 _5C78[0xAE00 - 0x5C78];
@@ -698,8 +736,9 @@ public:
 	// empty stubs, so only its address is verified, not its layout
 	u8 mInfoScrn[0xB148 - 0xAF58]; // _AF58
 	WiiHomeMenu mHomeMenu;         // _B148
-	u8 _B7A8[0xF70C - 0xB7A8];
-	WiiPlayerState* mPlayer; // _F70C
+	u8 _B7A8[0xF6E4 - 0xB7A8];
+	u8 mXObjPools[0xF70C - 0xF6E4]; // _F6E4, where the XOBJS block starts: its first two XObjPools
+	WiiPlayerState* mPlayer;        // _F70C
 	u8 _F710[0xF770 - 0xF710];
 	WiiFlagSource* mCoins; // _F770
 	u8 _F774[0xF784 - 0xF774];
@@ -716,7 +755,9 @@ public:
 	WiiTitleObject* mObjects[0x400]; // _F8B0, the object table ResolveEventObjectId indexes
 	s32 mObjectCount;                // _108B0
 	s32 mLoadObjectIndex;            // _108B4
-	u8 _108B8[0x108C8 - 0x108B8];
+	u8 _108B8[0x108C0 - 0x108B8];
+	WiiObjectRef* mDrawRefs; // _108C0, the objects in draw order, BuildObjectDrawList fills it
+	s32 mDrawRefCount;       // _108C4
 	// pointers to spawned objects the renderer walks; entries are grouped in eights,
 	// CMsgFont_Init pushes its two cursors here
 	WiiObjectRef* mObjectRefs; // _108C8
@@ -729,11 +770,45 @@ public:
 	WiiTimeState mTimeState;                   // _D7610
 	CMotionControlCamera mMotionControlCamera; // _D7620
 	CCameraActions mCameraActions;             // _D78F8, mTable lands at _D9B24
-	u8 _D9B54[0xEC1A0 - 0xD9B54];
+	u8 _D9B54[0xD9B58 - 0xD9B54];
+	CLight* mLightList; // _D9B58, the lights the scene draws under, CBase's own set when the stage brings none
+	s32 _D9B5C;         // _D9B5C, ResetNewGameState clears both
+	s32 _D9B60;         // _D9B60
+	u8 _D9B64[0xEC180 - 0xD9B64];
+	BOOL mMemcardLoaded; // _EC180
+	u8 _EC184[0xEC1A0 - 0xEC184];
 	f32 mPlayTime; // _EC1A0
-	u8 _EC1A4[0xEE1DC - 0xEC1A4];
+	f32 _EC1A4;    // _EC1A4
+	f32 _EC1A8;    // _EC1A8, a new game starts it at 1
+	f32 _EC1AC;    // _EC1AC
+	u8 _EC1B0[0xEC2B4 - 0xEC1B0];
+	f32 _EC2B4; // _EC2B4, a new game starts it at NAN
+	u8 _EC2B8[0xEC2C8 - 0xEC2B8];
+	f32 _EC2C8; // _EC2C8, a new game starts it at -1
+	u8 _EC2CC[0xECCE8 - 0xEC2CC];
+	// _ECCE8 to _ECD24: one block FinalizeStageObjectSetup resets when the stage is up
+	s32 _ECCE8;
+	f32 _ECCEC;
+	f32 _ECCF0;
+	s32 _ECCF4;
+	u8 _ECCF8[4];
+	s32 _ECCFC; // -1
+	s32 _ECD00; // -1
+	s32 _ECD04;
+	s32 _ECD08;
+	s32 _ECD0C;
+	s32 _ECD10;
+	s32 _ECD14; // -1
+	f32 _ECD18[4];
+	u8 mFloorReflect;               // _ECD28, an object asked for the floor reflection
+	Mtx mFloorReflectMtx;           // _ECD2C, PSMTXReflect about the floor
+	u8 mMirrors[0xEDEC8 - 0xECD5C]; // _ECD5C, FbMirror[5]; fbtexeff.h needs this header, so they stay untyped here
+	StageName mStageName;           // _EDEC8
+	u8 _EE104[0xEE1DC - 0xEE104];
 	u32 mMenuControls;
-	u8 _EE1E0[0xEE530 - 0xEE1E0];
+	CVec _EE1E0; // _EE1E0, a new game zeroes it
+	CVec _EE1F0; // _EE1F0, and fills this one with NAN
+	u8 _EE200[0xEE530 - 0xEE200];
 
 	void SetStage(s32 stage)
 	{
@@ -761,6 +836,22 @@ public:
 	void ProjectOffsetToScreen(const Vec* pos, f32* x, f32* y, f32* z, void* camera);
 };
 STATIC_ASSERT(sizeof(CGame) == 0xEE530);
+STATIC_ASSERT(offsetof(CGame, mScrnTexAngle) == 0x57CC);
+STATIC_ASSERT(offsetof(CGame, mColor0) == 0x5908);
+STATIC_ASSERT(offsetof(CGame, mOutlineWidth) == 0x5974);
+STATIC_ASSERT(offsetof(CGame, mXObjPools) == 0xF6E4);
+STATIC_ASSERT(offsetof(CGame, _D9B5C) == 0xD9B5C);
+STATIC_ASSERT(offsetof(CGame, mMemcardLoaded) == 0xEC180);
+STATIC_ASSERT(offsetof(CGame, _EC2B4) == 0xEC2B4);
+STATIC_ASSERT(offsetof(CGame, _EC2C8) == 0xEC2C8);
+STATIC_ASSERT(offsetof(CGame, mStageName) == 0xEDEC8);
+STATIC_ASSERT(offsetof(CGame, mSetupStep) == 0x41EC);
+STATIC_ASSERT(offsetof(CGame, mDrawRefs) == 0x108C0);
+STATIC_ASSERT(offsetof(CGame, mLightList) == 0xD9B58);
+STATIC_ASSERT(offsetof(CGame, _ECCE8) == 0xECCE8);
+STATIC_ASSERT(offsetof(CGame, mFloorReflectMtx) == 0xECD2C);
+STATIC_ASSERT(offsetof(CGame, mMirrors) == 0xECD5C);
+STATIC_ASSERT(offsetof(CGame, _EE1E0) == 0xEE1E0);
 
 extern "C" CGame gGame;
 #endif

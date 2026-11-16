@@ -1209,6 +1209,9 @@ game/gamefbsubwincam.cpp:
 game/gameinit.cpp:
 	.text start:0x8001BB90 end:0x8001C2D8
 
+game/wii/gameupdate.cpp:
+	.text start:0x8001C2D8 end:0x80024AE8
+
 game/ctrigondtor.cpp:
 	.text start:0x800BEB0C end:0x800BEB4C
 

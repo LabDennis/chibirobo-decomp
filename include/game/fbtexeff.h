@@ -104,6 +104,8 @@ public:
 	u8 _04[0xE8];
 	u32 mMdl;  // _EC, the model's nw4r ResMdl handle
 	void* mF0; // _F0, the object the node matrices live in
+	u8 _F4[0x150 - 0xF4];
+	u64 mStatus; // _150, the object's status flags
 };
 
 // a mirror, renders the scene again through a camera reflected in a named node's plane;
