@@ -1,16 +1,13 @@
-// The Wii's text drawing unit, .text 0x802AD310-0x802AEBB0: the GameCube
-// cgs.cpp pair (wii_gc_pairs.txt) plus the Wii's own helpers in between.
+// The Wii's cgs.cpp from the shape draws on, .text 0x802ABBD4-0x802AEA44: the GameCube cgs.cpp
+// functions in the GameCube file's order, plus the Wii's own text helpers.
 //
-// NONMATCHING: five of the unit's nine functions match at 100 %. GetGlyph
-// (99 %) and MeasureGameTextWidth (99 %) are structurally identical and
-// differ only in callee-saved colouring and in vtable/sdata2 referent
-// placement; DrawGsText (89 %) and DrawGsStrokeText additionally diverge in
-// float allocation and stack frame size (retail spills ~0x10 more, plus two
-// f64 spill slots the allocator gives us as held constants). In
-// DrawGsStrokeText -ipa file also inlines the single-call-site
-// MeasureStrokeTextWidth where retail kept it a real call; that call-set
-// difference accounts for most of its frame gap. No behavioural difference
-// in any of them.
+// NONMATCHING: DrawGsCircle, DrawGsQuad (99.9 %) and DrawGsTexturedQuad (97 %) read the camera's
+// bottom before its top for the flip test where we read top first; DrawGsTexturedQuad also reloads
+// mCurTevStage after comparing it. GetGlyph (99 %) and MeasureGameTextWidth (99 %) are structurally
+// identical and differ only in callee-saved colouring and in vtable/sdata2 referent placement;
+// DrawGsText (89 %) and DrawGsStrokeText (87 %) additionally diverge in float allocation and stack
+// frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held
+// constants). No behavioural difference in any of them.
 
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
@@ -83,6 +80,233 @@ static inline void SetColor(CSprite* sprite, u32 color)
 static inline void SetColor(CTile* tile, u32 color)
 {
 	tile->mColor0 = tile->mColor1 = tile->mColor2 = tile->mColor3 = color;
+}
+
+extern "C" {
+u16 GXGetTexObjWidth(const GXTexObj* obj);
+u16 GXGetTexObjHeight(const GXTexObj* obj);
+}
+
+// places a flat shape on screen, w and h are its full size. an ortho camera has y growing
+// down the screen, so the shape gets flipped back
+static inline void SetFlatTransform(CGs* gs, CPrimitive* prim, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz)
+{
+	if (gs->mCamera->mTop < gs->mCamera->mBottom) {
+		prim->SetTrans(x, y, z);
+		prim->SetScale(w / 2.0f, -h / 2.0f, 1.0f);
+		prim->SetRot(-rx, ry, -rz);
+	} else {
+		prim->SetTrans(x, y, z);
+		prim->SetScale(w / 2.0f, h / 2.0f, 1.0f);
+		prim->SetRot(rx, ry, rz);
+	}
+	if (gs->mBillboardEnabled) {
+		prim->mBillboard  = 2;
+		prim->mBillboardZ = rz;
+	} else {
+		prim->mBillboard = 0;
+	}
+	prim->mDirty    = TRUE;
+	prim->mRotOrder = gs->mRotOrder;
+}
+
+extern "C" {
+void DrawGsLineSegment(CGs* gs, Mtx view, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1)
+{
+	// no matrix means the camera's
+	MtxP mtx;
+	if (view == NULL) {
+		mtx = gs->mCamera->mViewMtx;
+	} else {
+		mtx = view;
+	}
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mLine.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	PrimVertex vtx[2] = {
+		{ { x0, y0, z0 }, color0 },
+		{ { x1, y1, z1 }, color1 },
+	};
+	gs->mLine.Draw(mtx, vtx, 2);
+}
+
+void DrawGsLineStrip(CGs* gs, Vec* pos, u32 color, u16 count)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mLine.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	gs->mLine.Draw(gs->mCamera->mViewMtx, pos, color, count);
+}
+
+void DrawGsColoredLineStrip(CGs* gs, Vec* pos, u32* color, u16 count)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mLine.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	gs->mLine.Draw(gs->mCamera->mViewMtx, pos, color, count);
+}
+
+void DrawGsTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32 color, u16 count)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+		gs->mTriangle.DrawLit(view, pos, color, count, type);
+	} else {
+		gs->mTriangle.Draw(view, pos, color, count, type);
+	}
+}
+
+void DrawGsColoredTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32* color, u16 count)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+		gs->mTriangle.DrawLit(view, pos, color, count, type);
+	} else {
+		gs->mTriangle.Draw(view, pos, color, count, type);
+	}
+}
+
+void DrawGsTriangleVertices(CGs* gs, GXPrimitive type, Mtx view, PrimVertex* vtx, u16 count)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+		gs->mTriangle.DrawLit(view, vtx, count, type);
+	} else {
+		gs->mTriangle.Draw(view, vtx, count, type);
+	}
+}
+
+void DrawGsVertexQuad(CGs* gs, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1, f32 x2, f32 y2, f32 z2, u32 color2,
+                      f32 x3, f32 y3, f32 z3, u32 color3)
+{
+	PrimVertex vtx[4] = {
+		{ { x0, y0, z0 }, color0 },
+		{ { x1, y1, z1 }, color1 },
+		{ { x2, y2, z2 }, color2 },
+		{ { x3, y3, z3 }, color3 },
+	};
+	DrawGsTriangleVertices(gs, GX_TRIANGLEFAN, gs->mCamera->mViewMtx, vtx, 4);
+}
+
+void DrawGsCircle(CGs* gs, u32 segments, u32 centerColor, u32 edgeColor, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	SetFlatTransform(gs, &gs->mCircle, x, y, z, w, h, rx, ry, rz);
+	gs->mCircle.mFixedMtx = NULL;
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+		gs->mCircle.DrawLit(gs->mCamera->mViewMtx, segments, centerColor, edgeColor);
+	} else {
+		gs->mCircle.Draw(gs->mCamera->mViewMtx, segments, centerColor, edgeColor);
+	}
+}
+
+void DrawGsQuad(CGs* gs, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	SetupDrawState(gs);
+	SetFlatTransform(gs, &gs->mTile, x, y, z, w, h, rx, ry, rz);
+	gs->mTile.mFixedMtx = NULL;
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+		gs->mTile.DrawLit(gs->mCamera->mViewMtx, color0, color1, color2, color3);
+	} else {
+		gs->mTile.Draw(gs->mCamera->mViewMtx, color0, color1, color2, color3);
+	}
+}
+
+void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx,
+                        f32 ry, f32 rz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
+	if (gs->mCurTevStage == &gs->mTevStages[0]) {
+		gs->mCurTevStage->SetOrder(GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+		gs->mCurTevStage->SetNumTexGens(1);
+		gs->mCurTevStage->SetTexGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0);
+	}
+	SetupDrawState(gs);
+
+	// negative size means use the texture's own
+	if (w < 0.0f) {
+		u16 size = GXGetTexObjWidth(tex);
+		w        = size;
+	}
+	if (h < 0.0f) {
+		u16 size = GXGetTexObjHeight(tex);
+		h        = size;
+	}
+
+	SetFlatTransform(gs, &gs->mSprite2, x, y, z, w, h, rx, ry, rz);
+	gs->mSprite2.mTex      = tex;
+	gs->mSprite2.mFixedMtx = NULL;
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+		gs->mSprite2.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, color0, color1, color2, color3);
+	} else {
+		gs->mSprite2.Draw(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, color0, color1, color2, color3);
+	}
+
+	if (gs->mCurTevStage == &gs->mTevStages[0]) {
+		gs->mCurTevStage->SetOrder(GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+		gs->mCurTevStage->SetNumTexGens(0);
+	}
+}
+
+void DrawGsCube(CGs* gs, u32 color, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
+	SetupDrawState(gs);
+	gs->mCube.SetTrans(tx, ty, tz);
+	gs->mCube.SetScale(sx, sy, sz);
+	gs->mCube.SetRot(rx, ry, rz);
+	gs->mCube.mRotOrder = gs->mRotOrder;
+	gs->mCube.mFixedMtx = NULL;
+	gs->mCube.Draw(gs->mCamera->mViewMtx);
+}
+
+void DrawGsSphere(CGs* gs, u32 color, u8 major, u8 minor, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
+	SetupDrawState(gs);
+	gs->mSphere.SetTrans(tx, ty, tz);
+	gs->mSphere.SetScale(sx, sy, sz);
+	gs->mSphere.SetRot(rx, ry, rz);
+	gs->mSphere.mRotOrder = gs->mRotOrder;
+	gs->mSphere.mFixedMtx = NULL;
+	gs->mSphere.Draw(gs->mCamera->mViewMtx, major, minor);
+}
+
+void DrawGsSphereWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 major, u8 minor)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
+	SetupDrawState(gs);
+	gs->mSphere.mFixedMtx = mtx;
+	gs->mSphere.Draw(gs->mCamera->mViewMtx, major, minor);
+}
+
+void DrawGsCylinder(CGs* gs, u32 color, u8 sides, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
+	SetupDrawState(gs);
+	gs->mCylinder.SetTrans(tx, ty, tz);
+	gs->mCylinder.SetScale(sx, sy, sz);
+	gs->mCylinder.SetRot(rx, ry, rz);
+	gs->mCylinder.mRotOrder = gs->mRotOrder;
+	gs->mCylinder.mFixedMtx = NULL;
+	gs->mCylinder.Draw(gs->mCamera->mViewMtx, sides);
+}
+
+void DrawGsCylinderWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 sides)
+{
+	SetGsChannelMaterialAndLighting(gs, GX_SRC_REG, color);
+	SetupDrawState(gs);
+	gs->mCylinder.mFixedMtx = mtx;
+	gs->mCylinder.Draw(gs->mCamera->mViewMtx, sides);
+}
 }
 
 /**
@@ -492,7 +716,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 	PSMTXRotRad(rotX, 'x', gs->mTextRot.x);
 	PSMTXRotRad(rotY, 'y', gs->mTextRot.y);
 	PSMTXRotRad(rotZ, 'z', gs->mTextRot.z);
-	if (gs->mCamera->mTop < gs->mCamera->mBottom) {
+	if (gs->mCamera->mBottom > gs->mCamera->mTop) {
 		PSMTXScale(scale, w, h, 1.0f);
 	} else {
 		PSMTXScale(scale, w, -h, 1.0f);

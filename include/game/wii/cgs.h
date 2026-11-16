@@ -1,6 +1,7 @@
 #ifndef GAME_WII_CGS_H
 #define GAME_WII_CGS_H
 
+#include "game/cprimitive.h"
 #include "game/ctpl.h"
 #include "game/ut.h"
 #include <Dolphin/gx.h>
@@ -586,7 +587,21 @@ public:
 	CGsTevStage* mCurTevStage;       // _384
 	CGsChannel* mCurChannel;         // _388
 	BOOL mBillboardEnabled;          // _38C
-	u8 _390[0x1B80 - 0x390];
+	u8 _390[0x8CC - 0x390];
+	CLine mLine;               // _8CC
+	CTriangle mTriangle;       // _A38
+	CCircline mCircline;       // _BA4
+	CCircle mCircle;           // _D1C
+	CTile mTile;               // _E98
+	CSprite mSprite2;          // _101C
+	CCube mCube;               // _11A4
+	COctahedron mOctahedron;   // _130C
+	CDodeca mDodeca;           // _1474
+	CIcosahedron mIcosahedron; // _15DC
+	CSphere mSphere;           // _1744
+	CCylinder mCylinder;       // _18AC
+	CTorus mTorus;             // _1A14
+	s32 mRotOrder;             // _1B7C
 	TextChar* mTextChars;      // _1B80, 256 entries allocated by Init
 	s32 mUseShiftJis;          // _1B84
 	f32 mShiftJisWidthScale;   // _1B88
@@ -687,7 +702,14 @@ void CopyFbTexture(WiiFbTexture* texture, GXTexFmt format, BOOL clear, BOOL flus
 void DrawFbTexture(WiiFbTexture* texture, u32 color, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz);
 void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx,
                         f32 ry, f32 rz);
+void DrawGsLineSegment(CGs* gs, Mtx view, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1);
+void DrawGsLineStrip(CGs* gs, Vec* pos, u32 color, u16 count);
+void DrawGsColoredLineStrip(CGs* gs, Vec* pos, u32* color, u16 count);
+void DrawGsCube(CGs* gs, u32 color, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz);
+void DrawGsSphere(CGs* gs, u32 color, u8 major, u8 minor, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz);
 void DrawGsSphereWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 major, u8 minor);
+void DrawGsCylinder(CGs* gs, u32 color, u8 sides, f32 tx, f32 ty, f32 tz, f32 rx, f32 ry, f32 rz, f32 sx, f32 sy, f32 sz);
+void DrawGsCylinderWithMatrix(CGs* gs, Mtx mtx, u32 color, u8 sides);
 void DrawGsCircle(CGs* gs, u32 segments, u32 centerColor, u32 edgeColor, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rx, f32 ry, f32 rz);
 void DrawGsVertexQuad(CGs* gs, f32 x0, f32 y0, f32 z0, u32 color0, f32 x1, f32 y1, f32 z1, u32 color1, f32 x2, f32 y2, f32 z2, u32 color2,
                       f32 x3, f32 y3, f32 z3, u32 color3);

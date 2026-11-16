@@ -6997,3 +6997,7 @@ Init__7CSpriteFfffffffff = .text:0x802B1748; // type:function size:0x60 scope:gl
 Draw__5CCubeFPA4_f = .text:0x802B18A0; // type:function size:0x24 scope:global
 Draw__7CSphereFPA4_fUcUc = .text:0x802B18C4; // type:function size:0x44 scope:global
 Draw__9CCylinderFPA4_fUc = .text:0x802B1908; // type:function size:0x34 scope:global
+DrawGsColoredLineStrip = .text:0x802ABE1C; // type:function size:0xD0 scope:global
+DrawGsCube = .text:0x802ACB68; // type:function size:0x1A8 scope:global
+DrawGsCylinder = .text:0x802ACF78; // type:function size:0x1B8 scope:global
+DrawGsCylinderWithMatrix = .text:0x802AD130; // type:function size:0x90 scope:global
