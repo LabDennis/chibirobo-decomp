@@ -1795,7 +1795,7 @@ nw4r::g3d::ResNode CObj::GetRootResNode()
  * @note Address: 0x80043FA0
  * @note Size: 0x8
  */
-u8 CObj::StepScale(u32 frames)
+u8 CObj::StepScale(f32 frames)
 {
 	return ((CObjVec*)&mMoveScale)->Step(frames);
 }
@@ -1804,7 +1804,7 @@ u8 CObj::StepScale(u32 frames)
  * @note Address: 0x80043FA8
  * @note Size: 0x8
  */
-u8 CObj::StepRotate(u32 frames)
+u8 CObj::StepRotate(f32 frames)
 {
 	return ((CObjVec*)&mMoveRotate)->Step(frames);
 }
@@ -1813,7 +1813,7 @@ u8 CObj::StepRotate(u32 frames)
  * @note Address: 0x80043FB0
  * @note Size: 0x8
  */
-u8 CObj::StepTranslate(u32 frames)
+u8 CObj::StepTranslate(f32 frames)
 {
 	return ((CObjVec*)&mMoveTranslate)->Step(frames);
 }

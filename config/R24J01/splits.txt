@@ -1058,9 +1058,9 @@ game/wii/cfont.cpp:
 	.sdata2 start:0x805A7A28 end:0x805A7A48
 
 game/wii/ut.cpp:
-	extab start:0x8000FFCC end:0x800101A4
-	extabindex start:0x80016A3C end:0x80016ACC
-	.text start:0x802A5418 end:0x802A7478
+	extab start:0x8000FFC4 end:0x800101A4
+	extabindex start:0x80016A30 end:0x80016ACC
+	.text start:0x802A5358 end:0x802A7478
 	.rodata start:0x802E4EB0 end:0x802E50C8
 	.sdata start:0x805A19D0 end:0x805A19D8
 	.sdata2 start:0x805A7888 end:0x805A78C0
@@ -1071,6 +1071,10 @@ game/wii/mem.cpp:
 	.rodata start:0x802E50C8 end:0x802E5150
 	.bss start:0x80576B88 end:0x8059ABA8
 	.sbss start:0x805A2858 end:0x805A2870
+
+game/wii/cobjvec.cpp:
+	.text start:0x802A7FB4 end:0x802A80FC
+	.sdata2 start:0x805A78C0 end:0x805A78C8
 
 game/wii/cobj.cpp:
 	extab start:0x80010AD8 end:0x80010CA8

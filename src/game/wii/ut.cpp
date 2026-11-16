@@ -1,4 +1,4 @@
-// the Wii's helper unit, .text 0x802A5418-0x802A7478: the Shift-JIS, matrix and
+// the Wii's helper unit, .text 0x802A5358-0x802A7478: the Shift-JIS, matrix and
 // collision helpers the GameCube kept in game/ut.cpp, plus the HSD matrix
 // routines of sysdolphin/baselib/mtx.c folded in with it. Functions are in
 // retail order; the GameCube file's deferred-inline ordering does not apply.
@@ -11,6 +11,7 @@
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 extern "C" {
 // the Wii unit carries the two HSD matrix helpers itself; their GameCube twins
@@ -49,6 +50,28 @@ static const char* sFullWidthCharacters
 static char sFullWidthTextBuffer[0x80];
 // the formatted text, panics and the event debug lines all go through here
 static char sFormattedTextBuffer[0x100];
+
+// reads len hex digits, or the whole string when len is 0. any other character is skipped but
+// still counts toward len
+extern "C" u32 ParseHexDigits(const char* str, s32 len)
+{
+	u32 val = 0;
+	if (len == 0) {
+		len = strlen(str);
+	}
+	for (int i = 0; i < len; i++) {
+		char c = *str;
+		if (c >= '0' && c <= '9') {
+			val = val * 16 + (c - '0');
+		} else if (c >= 'A' && c <= 'F') {
+			val = val * 16 + (c - 'A' + 10);
+		} else if (c >= 'a' && c <= 'f') {
+			val = val * 16 + (c - 'a' + 10);
+		}
+		str++;
+	}
+	return val;
+}
 
 // src with each character from sHalfWidthCharacters swapped for its full width twin, the rest copied
 // as is. when dst is NULL the static buffer is used and returned

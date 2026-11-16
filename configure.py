@@ -1273,7 +1273,7 @@ if wii:
                 # the message system between evt.cpp's destructors and cpadact.cpp; the
                 # GameCube file's VERSION_JP branches are the reconstruction base
                 Object(NonMatching, "game/wii/msg.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the Wii's shared helper unit 0x802A5418-0x802A7478: Shift-JIS, HSD matrix
+                # the Wii's shared helper unit 0x802A5358-0x802A7478: Shift-JIS, HSD matrix
                 # and collision helpers from the GameCube's ut.cpp + mtx.c; the CVec
                 # operators and PSVEC calls stay calls, so no auto-inlining
                 Object(NonMatching, "game/wii/ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
@@ -1282,6 +1282,8 @@ if wii:
                 # expanded heaps; the small helpers GetAllocSize/GetFreeSize stay calls, so
                 # no auto-inlining here either
                 Object(NonMatching, "game/wii/mem.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # CObjVec::Step between mem.cpp and cgs.cpp, file name unknown
+                Object(Matching, "game/wii/cobjvec.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the out-of-line CCamera::SetAngle(const Vec&) copy plus a CThread global
                 # that nothing references - a port leftover
