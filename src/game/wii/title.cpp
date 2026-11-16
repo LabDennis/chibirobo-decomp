@@ -60,6 +60,7 @@ void ApproachHudValue(f32* value, f32* target, f32 step);
 s32 IndexOfLargestOfThree(OSTime first, OSTime second, OSTime third);
 // one dust mote's per-frame update, the body of the GameCube UpdateTitleDust's loop
 void fn_8004DC94(TitleDust* dust, u32 frames);
+bool IsSaveSlotIntact(const WiiMenuSaveSlot* slot);
 // fills a file menu record from a scanned save header (menu.cpp, 0x8007A2E8)
 void fn_8007A2E8(WiiMenuSaveSlot* slot, WiiSaveScanEntry* entry, BOOL used);
 // the pane-event slots in Title's vtable
@@ -580,6 +581,136 @@ void Title::State1(u32 frames)
 		gSaveFatal.mActive = 1;
 	}
 	mAlpha = 1.0f;
+}
+
+/**
+ * @note Address: 0x800474EC
+ * @note Size: 0x6CC
+ */
+// picks one of the three save files: a new game starts on an empty one, a used one loads, B goes back
+void Title::State2(u32)
+{
+	bool addPanes = true;
+	bool stick    = false;
+	if (mFile != -1) {
+		mLastFile = mFile;
+	}
+	if ((!mReady || !mSaveFound) && mSelection == 1) {
+		OSPanic("title.cpp", 0x6cf, "ロード後にメモカが抜かれることはない。ファイルは必ずある");
+	}
+	if (!mReady) {
+		OSPanic("title.cpp", 0x6e5, "メモカが抜かれることはない。");
+		OnCardRemoved(this);
+		return;
+	}
+	mOffset = 0.0f;
+	if (IsStickUsedOverPointer()) {
+		stick = true;
+	}
+	if (!stick) {
+		if (IsStickLeft()) {
+			if (--mFile < 0) {
+				mFile = 2;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+		} else if (IsStickRight()) {
+			if (++mFile > 2) {
+				mFile = 0;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+		}
+	}
+	if (IsConfirmPressed() && mFile != -1) {
+		addPanes           = false;
+		mPanes[0].mPointed = false;
+		mPanes[0].mPicked  = false;
+		mPanes[1].mPointed = false;
+		mPanes[1].mPicked  = false;
+		mPanes[2].mPointed = false;
+		mPanes[2].mPicked  = false;
+		switch (mSelection) {
+		case 0:
+			if (gTitleSaveSlots[mFile].mUsed == 1) {
+				SetMode(3);
+				UpdateSelections();
+				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+			} else if (gTitleSaveSlots[mFile]._44 == 1) {
+				StartWiiSaveSlotWrite(&gGame.mSaveManager, mFile, FALSE);
+				SetMode(15);
+				mDelay  = 1.5f * gRefreshRate;
+				mOffset = -32.0f;
+				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+			} else {
+				if (gTitleSaveSlots[mFile]._48 == 1) {
+					mResult = -9;
+				} else if (gTitleSaveSlots[mFile]._4C == 1) {
+					mResult = -11;
+				}
+				SetMode(14);
+				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+				mOffset = -32.0f;
+			}
+			return;
+		case 1:
+			if (gTitleSaveSlots[mFile].mUsed == 1) {
+				if (!IsSaveSlotIntact(&gTitleSaveSlots[mFile])) {
+					PlayWiiSoundEffect(&gGame.mSound, 243, 1.0f, 0.0f);
+					return;
+				}
+				if (gTitleSaveSlots[mFile].mStage == 0) {
+					HideName(this);
+					mTargetPanelY = -200.0f;
+					mAlpha        = 0.0f;
+					mChoice       = 0;
+					mState        = 13;
+					SetMode(25);
+					PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+					StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
+					((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
+					return;
+				}
+				if (gTitleSaveSlots[mFile].mStage == 14) {
+					HideName(this);
+					StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
+					mAlpha                                          = 0.0f;
+					mTargetPanelY                                   = -200.0f;
+					((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
+					PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+					SetMode(25);
+					mState   = 13;
+					mTimeout = 14;
+					return;
+				}
+				StartWiiSaveSlotRead(&gGame.mSaveManager, mFile);
+				SetMode(8);
+				PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+			} else {
+				PlayWiiSoundEffect(&gGame.mSound, 243, 1.0f, 0.0f);
+			}
+			return;
+		}
+	} else if (IsCancelPressed()) {
+		SetMode(25);
+		mState = 11;
+		PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+		mOffset       = 0.0f;
+		mTargetPanelY = -200.0f;
+		mAlpha        = 0.0f;
+		HideName(this);
+		mPanes[0].mPointed = false;
+		mPanes[0].mPicked  = false;
+		mPanes[1].mPointed = false;
+		mPanes[1].mPicked  = false;
+		mPanes[2].mPointed = false;
+		mPanes[2].mPicked  = false;
+		addPanes           = false;
+		UpdateSelections();
+	}
+	if (addPanes) {
+		for (s32 i = 0; i < 3; i++) {
+			AddPointerPane(&gPointerPanes, &mPanes[i]);
+		}
+	}
 }
 
 /**
