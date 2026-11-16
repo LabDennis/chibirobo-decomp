@@ -378,10 +378,12 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			} else {
 				f32 rate;
 				{
-					f32 current    = WrapPlayerActionAngle(player->mMoveRotate.y);
-					f32 desired    = ClassifyFloatBits(direction) != FP_NAN && direction >= 0.0f
-					                   ? WrapPlayerActionAngle(direction)
-					                   : WrapPlayerActionAngle(GetObjectVectorTarget(&player->mMoveRotate)->y);
+					f32 current = WrapPlayerActionAngle(player->mMoveRotate.y);
+					f32 desired;
+					if (ClassifyFloatBits(direction) != FP_NAN && direction >= 0.0f)
+						desired = WrapPlayerActionAngle(direction);
+					else
+						desired = WrapPlayerActionAngle(GetObjectVectorTarget(&player->mMoveRotate)->y);
 					f32 difference = desired - current;
 					if (difference < 0)
 						difference = -difference;
@@ -615,22 +617,19 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		if (CanFallDuringHangAction(&player->mHang) || IsHangActionState(&player->mHang, 9)) {
 			for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
 				XObj* object = GetDrawListObject(&gGame, 0, i);
-				{
-					BOOL checkable = IsObjectActive(object) && (GetMaskedObjectStatus(object, 0x10000))
-					              && !(GetMaskedObjectStatus(object, 0x0004000000100000ULL)) && GetObjectId(object) != GetObjectId(player);
-					if (checkable && (GetMaskedObjectStatus(object, 0x08000000)) && IsPushActionState(&player->mPush, 2)
-					    && IsPlayerActionMoveDirection(&player->mPush, 1)) {
-						s32 floorIdx = player->mFloorContacts[1].objectIndex;
-						if (floorIdx < 0 || GetGameObjectByIndex(&gGame, floorIdx) != object)
-							checkable = false;
-					}
-					if (checkable) {
-						f32 range = 100.0f + (radius + GetObjectFloorXZExtent(object));
-						checkable = !(GetHorizontalDistance(GetObjectMoveTranslation(object), &position) > range);
-					}
-					if (!checkable)
+				if (!IsObjectActive(object) || !(GetMaskedObjectStatus(object, 0x10000))
+				    || (GetMaskedObjectStatus(object, 0x0004000000100000ULL)) || GetObjectId(object) == GetObjectId(player))
+					continue;
+				// what he pushes only counts while he stands on it
+				if ((GetMaskedObjectStatus(object, 0x08000000)) && IsPushActionState(&player->mPush, 2)
+				    && IsPlayerActionMoveDirection(&player->mPush, 1)) {
+					s32 floorIdx = player->mFloorContacts[1].objectIndex;
+					if (floorIdx < 0 || GetGameObjectByIndex(&gGame, floorIdx) != object)
 						continue;
 				}
+				f32 range = 100.0f + (radius + GetObjectFloorXZExtent(object));
+				if (GetHorizontalDistance(GetObjectMoveTranslation(object), &position) > range)
+					continue;
 				BOOL touched = false;
 				// one floor per call: the cursor resumes after the floor that was hit and is -1 once all are tested
 				for (s32 cursor = 0; cursor != -1;) {
@@ -649,9 +648,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							if (GetMaskedObjectStatus(object, 0x0002000000000000ULL)) {
 								blocked = false;
 							} else {
+								blocked = true;
 								if (liftState22 && GetMaskedObjectStatus(object, 0x4000) && !GetMaskedObjectStatus(object, 0x10))
 									SetObjectStatusFlags(object, 0x10);
-								blocked = true;
 							}
 						} else if (player->mMoveTranslate.y + 1.0f >= top) {
 							blocked = false;
@@ -663,9 +662,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							if (GetMaskedObjectStatus(object, 0x0002000000000000ULL)) {
 								blocked = false;
 							} else {
+								blocked = true;
 								if (liftState22 && GetMaskedObjectStatus(object, 0x4000) && !GetMaskedObjectStatus(object, 0x10))
 									SetObjectStatusFlags(object, 0x10);
-								blocked = true;
 							}
 						}
 						if (blocked && GetMaskedPlayerStatusFlags(player, 1) && CanFallDuringLadderAction(&player->mLadder)
@@ -721,14 +720,13 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				body.z = joint.z + 3.0f * PlayerActionCosine(side) - 2.5f * PlayerActionCosine(player->mMoveRotate.y);
 				body.y = player->mMoveTranslate.y + 1.0f;
 				Vec lower, upper;
-				lower.x        = joint.x + 3.0f * PlayerActionSine(side);
-				lower.z        = joint.z + 3.0f * PlayerActionCosine(side);
-				lower.y        = joint.y - 1.0f;
-				upper.x        = joint.x + 3.0f * PlayerActionSine(side);
-				upper.z        = joint.z + 3.0f * PlayerActionCosine(side);
-				upper.y        = joint.y + 0.5f;
-				BOOL supported = false;
-				BOOL restored  = false;
+				lower.x       = joint.x + 3.0f * PlayerActionSine(side);
+				lower.z       = joint.z + 3.0f * PlayerActionCosine(side);
+				lower.y       = joint.y - 1.0f;
+				upper.x       = joint.x + 3.0f * PlayerActionSine(side);
+				upper.z       = joint.z + 3.0f * PlayerActionCosine(side);
+				upper.y       = joint.y + 0.5f;
+				u32 supported = false;
 				for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
 					XObj* object = GetDrawListObject(&gGame, 0, i);
 
@@ -748,7 +746,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						if ((bodyHit & 3) == 3) {
 							SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->mLastPos + hang);
 							SetObjectVectorAndTargetFromVec(&player->mMoveRotate, savedRotation);
-							restored = true;
+							supported = true; // already put back
 							break;
 						}
 						u32 upperHit;
@@ -759,7 +757,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						if ((upperHit & 3) == 3) {
 							SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->mLastPos + hang);
 							SetObjectVectorAndTargetFromVec(&player->mMoveRotate, savedRotation);
-							restored = true;
+							supported = true; // already put back
 							break;
 						}
 					}
@@ -774,7 +772,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							supported = true;
 					}
 				}
-				if (!supported && !restored) {
+				if (!supported) {
 					SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->mLastPos + hang);
 					SetObjectVectorAndTargetFromVec(&player->mMoveRotate, savedRotation);
 				}
@@ -1280,38 +1278,32 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						}
 					}
 				} else if (IsObjectLadder(object)) {
-					{
-						BOOL inReach = GetSelectedFloorIndex(object) == 0;
-						if (inReach) {
-							if (index == player->mFloorContacts[0].objectIndex) {
-								f32 facing = GetObjectMoveRotation(object)->y;
-								f32 angle  = WrapPlayerActionAngle(GetObjectMoveRotation(player)->y - facing);
-								inReach    = angle <= HALF_PI || angle >= 1.5f * PI;
-							} else {
-								f32 playerHeight = GetObjectMaxFloorHeight(player);
-								inReach          = GetSelectedFloorHeight(object) > playerHeight
-								       && IsPositionBehindObject(&player->mLadder, GetObjectMoveTranslation(player), object);
-							}
+					if (GetSelectedFloorIndex(object) == 0) {
+						if (index == player->mFloorContacts[0].objectIndex) {
+							f32 facing = GetObjectMoveRotation(object)->y;
+							f32 angle  = WrapPlayerActionAngle(GetObjectMoveRotation(player)->y - facing);
+							if (angle <= HALF_PI || angle >= 1.5f * PI)
+								available |= 0x10;
+						} else {
+							f32 playerHeight = GetObjectMaxFloorHeight(player);
+							if (GetSelectedFloorHeight(object) > playerHeight
+							    && IsPositionBehindObject(&player->mLadder, GetObjectMoveTranslation(player), object))
+								available |= 0x10;
 						}
-						if (inReach)
-							available |= 0x10;
 					}
 				} else if (IsObjectRope(object)) {
-					{
-						BOOL inReach = GetSelectedFloorIndex(object) == 0;
-						if (inReach) {
-							if (index == player->mFloorContacts[0].objectIndex) {
-								f32 facing = GetObjectMoveRotation(object)->y;
-								f32 angle  = WrapPlayerActionAngle(GetObjectMoveRotation(player)->y - facing);
-								inReach    = angle <= HALF_PI || angle >= 1.5f * PI;
-							} else {
-								f32 playerHeight = GetObjectMaxFloorHeight(player);
-								// a rope can be grabbed from any side
-								inReach = GetSelectedFloorHeight(object) > playerHeight;
-							}
+					if (GetSelectedFloorIndex(object) == 0) {
+						if (index == player->mFloorContacts[0].objectIndex) {
+							f32 facing = GetObjectMoveRotation(object)->y;
+							f32 angle  = WrapPlayerActionAngle(GetObjectMoveRotation(player)->y - facing);
+							if (angle <= HALF_PI || angle >= 1.5f * PI)
+								available |= 0x20;
+						} else {
+							f32 playerHeight = GetObjectMaxFloorHeight(player);
+							// a rope can be grabbed from any side
+							if (GetSelectedFloorHeight(object) > playerHeight)
+								available |= 0x20;
 						}
-						if (inReach)
-							available |= 0x20;
 					}
 				} else if (fn_800B1E04(object)) {
 					available |= 0x40;
