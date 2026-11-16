@@ -2132,13 +2132,12 @@ extern "C" void DrawTitleHelpText(Title* menu)
 		CFont font;
 		CTexObj tex  = *GetFontGlyphTexture(&font, glyph->mText, 0, &width);
 		f32 bob      = 2.0f * (f32)sin(glyph->mAngle0);
-		f32 rotation = sin(0.7f * glyph->mAngle1);
+		f32 rotation = -(DEG2RAD * (10.0f * (f32)sin(0.7f * glyph->mAngle1)));
 		f32 swell    = sin(PI * alpha);
 		f32 grow     = sin(HALF_PI * alpha);
 		f32 scale    = 0.2f * swell + grow;
 		f32 x        = 0.5f * spacing + (i * spacing + (centreX - menu->mHelpCount * spacing * 0.5f));
 		f32 y        = centreY + bob;
-		rotation     = -(DEG2RAD * (10.0f * rotation));
 		u32 color    = (u32)opacity | 0xFFFFFF00;
 		DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero, rotation);
 		scale       = 30.0f * (0.8f * scale);
