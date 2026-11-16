@@ -100,10 +100,6 @@ void PauseWiiSfx(XSound* sound, s32 id, f32 fade);                 // 0x80039AA8
 void ResumeWiiSfx(XSound* sound, s32 id, f32 fade);                // 0x80039BD4
 void SetWiiSfxVolume(XSound* sound, s32 id, f32 volume, f32 fade); // 0x80039DB4
 BOOL LoadWiiSoundBankByName(XSound* sound, const char* name);
-// SoundArchivePlayer track helpers used by the SFX -2 (all tracks) paths
-void StopWiiSfxTrack(void* track, u32 frames);                  // 0x8028A04C
-s32 IsWiiSfxTrackPaused(void* track);                           // 0x8028A59C
-void SetWiiSfxTrackPaused(void* track, u32 paused, u32 frames); // 0x8028A234
 }
 
 #endif
