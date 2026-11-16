@@ -744,7 +744,9 @@ struct WiiPlayerState {
 	WiiPlayerVtable* mVtable;
 	u8 _0004[0x64 - 0x04];
 	f32 mRotY; // _0064, mMoveRotate.y
-	u8 _0068[0x9CC - 0x68];
+	u8 _0068[0x150 - 0x68];
+	u64 mStatus; // _0150, the object status flags, as XObj's
+	u8 _0158[0x9CC - 0x158];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
 	u8 _09D0[0xAA0 - 0x9D0];
 	WiiPlayerAction mLift; // _0AA0, the carry action; its mState decides whether looking is free
@@ -875,7 +877,7 @@ public:
 	CScrnWipeTile mWipeTile;     // _4FA8
 	CScrnWipeCine mWipeCine;     // _5010, the letterbox bars; the message window and the HUD read its mActive, mY and mHeight
 	CScrnRoboeyes mRoboeyes;
-	u8 _511C[0x52E4 - 0x511C];
+	u8 mOutline[0x1C8];       // _511C, FbEffect (fbeffect.h), the GameCube's CFbOutline
 	u8 mBlur[0x1A8];          // _52E4, FbBlur (fbeffect.h)
 	u8 mSubwin[0x340];        // _548C, FbSubwin; fbtexeff.h needs this header, so it stays untyped here
 	ScrnTex mScrnTex;         // _57CC

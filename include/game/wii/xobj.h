@@ -177,6 +177,12 @@ public:
 	ResAnmScn mRes; // _20
 };
 
+// the scene root, as far as the game calls it: the current camera's handle is reduced to its data
+class ScnRoot {
+public:
+	MtxP GetCurrentCamera(); // 0x8027ADC8
+};
+
 // the scene model, as far as the game reads it
 class ScnMdlSimple {
 public:

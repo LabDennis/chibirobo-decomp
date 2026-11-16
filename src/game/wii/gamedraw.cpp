@@ -52,6 +52,26 @@ void fn_8027B570(WiiGsSceneObj* scene);
 void fn_8027B644(WiiGsSceneObj* scene);
 void fn_8027B5D0(WiiGsSceneObj* scene);
 void fn_8027AE04(WiiGsSceneObj* scene, s32 index); // as gameupdate.cpp declares it
+void fn_8001E1C8(CGame* game);
+void fn_802AB860(CGs* gs);
+void fn_802BE414(void* obj, CLight* light); // as gameupdate.cpp declares them
+void fn_802BE4D4(void* obj, GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ);
+void* fn_8027AE0C(WiiGsSceneObj* scene, s32 index); // the scene's fog
+void fn_8028175C(void** fog, GXFogType* type, f32* startZ, f32* endZ, f32* nearZ, f32* farZ, GXColor* color);
+void fn_802BE19C(void* effects, MtxP view, u32 group); // draws one group of the effects
+void DrawTitleScreen(void* title);
+void DrawGameHud(InfoScrn* scrn);
+void DrawScreenColorOverlay(CScrnColor* color, CGs* gs);
+void DrawPlayerEquipmentRings(void* rings);
+void DrawOXMenu(WiiOXMenu* menu);
+void fn_80094E90(void* evt);
+void CMsg_Draw(CMsg* msg);
+void DrawCurrentLogo(void* logo);
+void fn_80084C84(void* menus);
+void DrawObjectLoadingProgress(InfoScrn* scrn);
+void DrawOpenMenus(void* menus);
+void fn_80028998(CGame* game);
+void ClearActiveObjectFloors(XObj* obj);
 void ResetGameHudState(InfoScrn* scrn);
 u8* GetStageDisplayName(s32 index);
 extern GXColor gMessageFontDefaultColor;
@@ -122,6 +142,25 @@ struct WiiStageInfo {
 static inline WiiStageInfo* GetStageInfo()
 {
 	return *(WiiStageInfo**)GetStageEnvironment();
+}
+
+// the view the effects draw under: the scene camera's animated camera when its scene has one, else the
+// scene camera's own view
+static inline MtxP GetEffectView(CGame* game)
+{
+	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	bool scene         = false;
+	if (camera != NULL && (camera->mStatus.mFlags & 1) && camera->mScene != NULL && camera->mScene->_2888 != NULL) {
+		scene = true;
+	}
+	if (scene) {
+		MtxP view = ((nw4r::g3d::ScnRoot*)camera->mScene)->GetCurrentCamera();
+		if (view == NULL) {
+			nw4r::db::Panic("g3d_rescommon_ac.h", 140, "NW4R:Pointer must not be NULL (mpData)");
+		}
+		return view;
+	}
+	return game->GetCamera()->mViewMtx;
 }
 
 // the queued scene draws, sorted under view and popped one by one
@@ -1526,6 +1565,267 @@ CCamera* CBase::GetScreenCamera()
 BOOL CBase::vf5C()
 {
 	return BeginCamera(GetScreenCamera());
+}
+
+/**
+ * @note Address: 0x80025050
+ * @note Size: 0x1304
+ */
+// NONMATCHING: written from the retail code, not tuned; FbSubwin's Draw is a virtual call in retail (see
+// ChangeGameStage) and the effect view's two inlines are guesses
+// the frame: the shadow, subwindow, mirror and floor passes, the scene, the outline and blur, the effects,
+// then the screen layer (hud, wipes, movie, stage name, messages), the menus and the HOME Menu on top.
+// the quake shakes the camera's interest for the frame only
+void CGame::Draw()
+{
+	if (mResetRequested) {
+		if (mHomeMenu.IsActive() && vf5C()) {
+			DrawWiiHomeMenu(&mHomeMenu);
+			vf54();
+		}
+		return;
+	}
+	CVec interest = GetCamera()->mView.mInterest;
+	bool shaking  = mQuake.mShake[0].x != 0.0f || mQuake.mShake[0].y != 0.0f || mQuake.mShake[0].z != 0.0f;
+	if (shaking) {
+		CVec offset = mQuake.mShake[0] * (f32)mQuake.mSign;
+		CVec moved  = interest + offset;
+		GetCamera()->SetInterest(moved);
+		GetCamera()->CalcEye();
+	}
+	fn_8001E1C8(this);
+	if (gGame.mGs.mCurRenderState != NULL) {
+		gGame.mGs.mCurRenderState->Apply();
+	}
+	if (gGame.mGs.mCurTevStage != NULL) {
+		gGame.mGs.mCurTevStage->Apply();
+	}
+	if (gGame.mGs.mCurChannel != NULL) {
+		gGame.mGs.mCurChannel->Apply();
+	}
+	RenderSceneShadow(this);
+	fn_802AB860(&gGame.mGs);
+	SetCameraLight();
+	if (gGame.mGs.mSceneHead->_2888 != NULL) {
+		fn_802BE414(_B7A8, gGame.mGs.mLight);
+		void* fog = fn_8027AE0C(gGame.mGs.mSceneHead, 0);
+		GXFogType type;
+		f32 startZ;
+		f32 endZ;
+		f32 nearZ;
+		f32 farZ;
+		GXColor color;
+		fn_8028175C(&fog, &type, &startZ, &endZ, &nearZ, &farZ, &color);
+		GXColor fogColor = color;
+		fn_802BE4D4(_B7A8, type, fogColor, startZ, endZ, nearZ, farZ);
+	}
+	RenderSubwindow(this);
+	RenderMirrorTextures(this);
+	RenderFloorReflection(this);
+	if (GetStatusFlags(0x40) && !(mPlayer->mStatus & 0x200000)) {
+		DrawObjectAlphaMask(this);
+	}
+	if (BeginSceneCamera()) {
+		DrawScene();
+		vf54();
+	}
+	FbEffect* outline = (FbEffect*)mOutline;
+	if (vf5C()) {
+		if (GetStatusFlags(1)) {
+			if (GetStatusFlags(0x40)) {
+				outline->Draw(FBEFF_COPY_A8 | 0x10);
+			}
+			if (GetStatusFlags(0x10000)) {
+				outline->Draw(FBEFF_OUTLINE);
+			}
+		}
+		((FbBlur*)mBlur)->Draw();
+		vf54();
+	}
+	if (BeginSceneCamera()) {
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		DrawObjectEffectsPass(this);
+		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
+			MtxP view = GetEffectView(this);
+			for (u32 i = 0; i < 6; i++) {
+				if (i != 1 && i != 4) {
+					fn_802BE19C(_B7A8, view, i);
+				}
+			}
+		}
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		vf54();
+	}
+	if (mColor0.mColor.mColor.a > 0.0f && GetStatusFlags(1)) { // what stays over the screen color
+		outline->Draw(FBEFF_COPY_I8 | FBEFF_OVERLAY);
+		if (BeginSceneCamera()) {
+			for (s32 i = 0; i < mSceneRefCount; i++) {
+				XObj* obj = (XObj*)mSceneRefs[i].mObj;
+				if (obj->mStatus.mFlags & 0x200) {
+					obj->DrawObject();
+				} else if ((obj->mStatus.mFlags & 0x0400000000000000) && (obj->mStatus.mFlags & 0x0000400000000000)) {
+					obj->DrawObject();
+				}
+			}
+			DrawSceneQueue(GetCamera()->mViewMtx);
+			vf54();
+		}
+	}
+	if (BeginSceneCamera()) {
+		gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		DrawObjectEffectsOverFade(this);
+		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
+			MtxP view = GetEffectView(this);
+			for (u32 i = 0; i < 6; i++) {
+				if (i == 1) {
+					fn_802BE19C(_B7A8, view, i);
+				}
+			}
+		}
+		vf54();
+	}
+
+	SetScreenLight();
+	if (gGame.mGs.mSceneHead->_2888 != NULL) {
+		fn_802BE414(_B7A8, gGame.mGs.mLight);
+	}
+	DrawTitleScreen(mTitle);
+	if (vf5C()) {
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		DrawHud();
+		fn_802BE19C(_B7A8, GetScreenCamera()->mViewMtx, 4);
+		Vec quad[4] = { { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f }, { 0.0f, 0.0f, -1.0f } }; // the depth goes back
+		quad[0].x   = (f32)gScreenLeft;
+		quad[0].y   = (f32)gScreenTop;
+		quad[1].x   = (f32)gScreenRight;
+		quad[1].y   = (f32)gScreenTop;
+		quad[2].x   = (f32)gScreenRight;
+		quad[2].y   = (f32)gScreenBottom;
+		quad[3].x   = (f32)gScreenLeft;
+		quad[3].y   = (f32)gScreenBottom;
+		gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
+		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		DrawGsVertexQuad(&gGame.mGs, quad[0].x, quad[0].y, quad[0].z, 0, quad[1].x, quad[1].y, quad[1].z, 0, quad[2].x, quad[2].y,
+		                 quad[2].z, 0, quad[3].x, quad[3].y, quad[3].z, 0);
+		gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+		gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
+		if (!mHomeMenu.IsRunning() && !(mMenuActive && _AE34)) {
+			FbSubwin* subwin = (FbSubwin*)mSubwin;
+			if (GetStatusFlags(1) && GetStatusFlags(0x100) && !mHomeMenu.IsRunning() && !(mMenuActive && _AE34) && subwin->mAmount > 0.0f
+			    && !(subwin->mFlags & 4)) {
+				subwin->Draw();
+			}
+			mRoboeyes.Draw(&gGame.mGs, 0);
+			DrawGameHud((InfoScrn*)mInfoScrn);
+			if (GetStatusFlags(1)) {
+				mMotionControlCamera.Draw();
+			}
+			if (mMovieFlags & 2) { // a movie under the wipes
+				DrawGameMovie(this);
+			}
+			DrawScreenColorOverlay(&mFade, &gGame.mGs);
+			mWipeCircle.Draw(&gGame.mGs, 0);
+			mWipeTex.Draw(&gGame.mGs, 1);
+			mWipeCustom.Draw(&gGame.mGs, 1);
+			mWipeTile.Draw(&gGame.mGs, 1);
+			mWipeCine.Draw(&gGame.mGs, 1);
+			if (GetStatusFlags(1) && !mMenuActive) {
+				bool faded = mFade.mColor.r != 0.0f || mFade.mColor.g != 0.0f || mFade.mColor.b != 0.0f || mFade.mColor.a != 0.0f;
+				if (!faded || mFade.mColor.a < 1.0f) {
+					mMotionControlCamera.fn_80169528();
+				}
+			}
+			if (!(mMovieFlags & 2)) {
+				DrawGameMovie(this);
+			}
+			DrawStageNameBubbles(this);
+			if (GetStatusFlags(0x400)) {
+				DrawPlayerEquipmentRings(mPlayer->_19EE4);
+			}
+			if (GetStatusFlags(0x800)) {
+				DrawOXMenu(&mPlayer->mOXMenu);
+			}
+			if (!mMotionControlCamera.IsAction(4)) {
+				fn_80094E90(_4C8E0);
+				CMsg* msgs = (CMsg*)mMsgs;
+				for (s32 i = 0; i < 2; i++) {
+					CMsg_Draw(&msgs[i]);
+				}
+			}
+			DrawSceneQueue(GetScreenCamera()->mViewMtx);
+		}
+		vf54();
+	}
+	if (!mHomeMenu.IsRunning()) {
+		DrawCurrentLogo(&mLogoState);
+	}
+	if (vf5C()) {
+		if (gGame.mGs.mCurRenderState != NULL) {
+			gGame.mGs.mCurRenderState->Apply();
+		}
+		if (gGame.mGs.mCurTevStage != NULL) {
+			gGame.mGs.mCurTevStage->Apply();
+		}
+		if (gGame.mGs.mCurChannel != NULL) {
+			gGame.mGs.mCurChannel->Apply();
+		}
+		if (!mHomeMenu.IsRunning()) {
+			fn_80084C84(&mMenuActive);
+			DrawObjectLoadingProgress((InfoScrn*)mInfoScrn);
+			DrawOpenMenus(&mMenuActive);
+			vf7C();
+		}
+		fn_80028998(this);
+		DrawWiiHomeMenu(&mHomeMenu);
+		vf80();
+		DrawSceneQueue(GetScreenCamera()->mViewMtx);
+		vf54();
+	}
+	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
+	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
+	gGame.mGs.ResetZMode();
+	for (s32 i = 0; i < mObjectCount; i++) {
+		XObj* obj = (XObj*)mObjects[i];
+		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+			ClearActiveObjectFloors(obj);
+		}
+	}
+	GetCamera()->SetInterest(interest); // the shake was for this frame only
 }
 
 /**
