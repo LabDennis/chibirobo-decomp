@@ -383,6 +383,7 @@ game/msg.cpp:
 
 game/msgdataformat.cpp:
 	.text       start:0x800869AC end:0x80086F24
+	.data       start:0x802255F8 end:0x8022565C
 
 game/memcardcheck.cpp:
 	.text       start:0x80086F24 end:0x80087190
