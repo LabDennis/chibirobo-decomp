@@ -116,27 +116,9 @@ struct HamObj {
 	Stage01Actor* GetActor();
 	f32 GetStackHeight();
 
-	void SetState(StateFunc func)
-	{
-		mState     = func;
-		mStateTime = 0;
-	}
-
-	void StartSlide(f32 distance, f32 speed, f32 angle)
-	{
-		if (mState != &HamObj::StateFlip) {
-			mMoveAngle     = angle;
-			mSlideDistance = distance;
-			mMoveSpeed     = speed;
-			SetState(&HamObj::StateSlide);
-		}
-	}
-
-	void SetRot(f32 rot)
-	{
-		mRotZ = rot;
-		mActor->SetRotationZ(mRotZ, 0);
-	}
+	void SetState(StateFunc func);
+	void StartSlide(f32 distance, f32 speed, f32 angle);
+	void SetRot(f32 rot);
 
 	HamObj* mAbove;       // _00, the HamObj stacked on this one, NULL for none
 	Stage01Actor* mActor; // _04
@@ -429,6 +411,28 @@ inline Vec* Stage01Actor::GetPos()
 inline f32 HamObj::GetStackHeight()
 {
 	return GetActor()->GetKindRef().GetSize().y + 2.0f * mStackLevel;
+}
+
+inline void HamObj::SetState(StateFunc func)
+{
+	mState     = func;
+	mStateTime = 0;
+}
+
+inline void HamObj::StartSlide(f32 distance, f32 speed, f32 angle)
+{
+	if (mState != &HamObj::StateFlip) {
+		mMoveAngle     = angle;
+		mSlideDistance = distance;
+		mMoveSpeed     = speed;
+		SetState(&HamObj::StateSlide);
+	}
+}
+
+inline void HamObj::SetRot(f32 rot)
+{
+	mRotZ = rot;
+	mActor->SetRotationZ(mRotZ, 0);
 }
 
 // yaw on the XZ plane
