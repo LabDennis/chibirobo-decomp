@@ -9741,7 +9741,9 @@ static inline void DrawOverviewStats(MenuStatus* menu, s32 selected, f32 x, f32 
 }
 // NONMATCHING: registers. Retail passes `selected == 0` and the others to DrawPlayerStatusValue as bool (srwi,
 // no extrwi mask), so its parameter is probably bool; declared bool here, the register allocation moves and the
-// function scores lower (90.2 -> 89.4), so it stays u8
+// function scores lower (90.2 -> 89.4), so it stays u8. Retail also adds the -12.0f column shift as an operand
+// (fadds with -12, and the first quad's x is 0.0f + that sum), so the shift and the zero probably came in as
+// inline parameters; a local shift folds to fsubs 12, a literal + -12.0f keeps the fadds but not the 0.0f
 extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 {
 	if (menu->mMode == 9 || menu->mMode == 4) {
