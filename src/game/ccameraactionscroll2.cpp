@@ -270,12 +270,7 @@ inline void CalcLimits(CCameraActionScroll2* camera, Scroll2Limits* limits)
 	camera->mMinFov = limits->mMinFov;
 	f32 xBlend      = (camera->mFov - camera->mMinFov) / (camera->mMaxFov - camera->mMinFov);
 	// 0 keeps the narrow limits, 1 the wide ones; z is fully wide from mMidFov up
-	f32 zBlend;
-	if (camera->mFov > limits->mMidFov) {
-		zBlend = 1.0f;
-	} else {
-		zBlend = (camera->mFov - camera->mMinFov) / (limits->mMidFov - camera->mMinFov);
-	}
+	f32 zBlend    = camera->mFov > limits->mMidFov ? 1.0f : (camera->mFov - camera->mMinFov) / (limits->mMidFov - camera->mMinFov);
 	camera->mMinX = xBlend * (limits->mWideMinX - limits->mNarrowMinX) + limits->mNarrowMinX;
 	camera->mMaxX = xBlend * (limits->mWideMaxX - limits->mNarrowMaxX) + limits->mNarrowMaxX;
 	camera->mMinZ = zBlend * (limits->mWideMinZ - limits->mNarrowMinZ) + limits->mNarrowMinZ;
@@ -367,7 +362,7 @@ void CCameraActionScroll2::Update(u32 step)
 	}
 
 	CPad pad(0);
-	if (pad.mPad->mSubStickY != 0.0f) {
+	if (pad.mPad->mSubStickY) {
 		f32 fov = mFov - 0.3f * pad.mPad->mSubStickY * step;
 		if (fov < mMinFov) {
 			fov = mMinFov;
