@@ -79,7 +79,7 @@ BOOL IsObjectActive(XObj* object);
 BOOL IsPlayerActionMoveDirection(const XAction* action, s32 wanted);
 u32 GetMaskedPlayerStatusFlags(const XObjChr* chr, u32 mask);
 u64 GetMaskedObjectStatus(const XObj* object, u64 mask);
-u32 GetObjectId(const CXObj* object);
+s32 GetObjectId(const CXObj* object);
 void SetObjectStatusFlags(XObj* object, u64 mask);
 void ClearObjectStatusFlags(XObj* object, u64 mask);
 XObj* GetDrawListObject(const CGame* game, s32 list, s32 index);
@@ -206,8 +206,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		    && player->mFloorContacts[0].objectIndex == player->mFloorContacts[1].objectIndex) {
 			{
 				XObj* support     = GetGameObjectByIndex(&gGame, player->mFloorContacts[0].objectIndex);
-				Vec previous      = *GetObjectPreviousMoveTranslation(support);
-				const CVec& delta = *GetObjectMoveTranslation(support) - previous;
+				const CVec& delta = *GetObjectMoveTranslation(support) - *GetObjectPreviousMoveTranslation(support);
 				CopyVecToCVec(&floor, &delta);
 			}
 		}
@@ -218,8 +217,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	{
 		if (!IsHangActionState(&player->mHang, 0) && HasPlayerActionTarget(&player->mHang)) {
 			XObj* support     = GetPlayerActionTarget(&player->mHang);
-			Vec previous      = *GetObjectPreviousMoveTranslation(support);
-			const CVec& delta = *GetObjectMoveTranslation(support) - previous;
+			const CVec& delta = *GetObjectMoveTranslation(support) - *GetObjectPreviousMoveTranslation(support);
 			CopyVecToCVec(&hang, &delta);
 		}
 	}
@@ -232,8 +230,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				f32 previous = GetObjectPreviousMoveTranslation(target)->y;
 				ladder.y     = GetObjectMoveTranslation(target)->y - previous;
 			} else {
-				Vec previous      = *GetObjectPreviousMoveTranslation(target);
-				const CVec& delta = *GetObjectMoveTranslation(target) - previous;
+				const CVec& delta = *GetObjectMoveTranslation(target) - *GetObjectPreviousMoveTranslation(target);
 				CopyVecToCVec(&ladder, &delta);
 			}
 		}
@@ -246,16 +243,16 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				f32 previous = GetObjectPreviousMoveTranslation(target)->y;
 				rope.y       = GetObjectMoveTranslation(target)->y - previous;
 			} else {
-				Vec previous      = *GetObjectPreviousMoveTranslation(target);
-				const CVec& delta = *GetObjectMoveTranslation(target) - previous;
+				const CVec& delta = *GetObjectMoveTranslation(target) - *GetObjectPreviousMoveTranslation(target);
 				CopyVecToCVec(&rope, &delta);
 			}
 		}
 	}
-	u32 movementFrames = frames > 2 ? 2 : frames;
+	u32 movementFrames = frames;
+	if (movementFrames > 2)
+		movementFrames = 2;
 	f32 targetX, targetZ;
 	{
-		targetX = targetZ = 0.0f;
 		if (ClassifyFloatBits(direction) != FP_NAN) {
 			f32 angle = direction >= 0.0f ? direction : -direction;
 			if (angle > TWO_PI)
@@ -276,6 +273,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				f32 zSpeed = (speed * PlayerActionCosine(angle)) * factor;
 				targetZ    = movementFrames * (GetPlayerAnimationRateMultiplier(player) * zSpeed);
 			}
+		} else {
+			targetX = targetZ = 0.0f;
 		}
 		SetObjectVectorTargetX(&player->mMotion, targetX);
 		SetObjectVectorTargetZ(&player->mMotion, targetZ);
@@ -453,8 +452,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	Vec position = player->mMoveTranslate;
 	{
 		f32 dx = floor.x + 0.3f * player->mMotion.x;
-		f32 dz = floor.z + 0.3f * player->mMotion.z;
 		position.x += player->mSlopeMotion.x + (rope.x + (ladder.x + (hang.x + dx)));
+		f32 dz = floor.z + 0.3f * player->mMotion.z;
 		position.z += player->mSlopeMotion.z + (rope.z + (ladder.z + (hang.z + dz)));
 	}
 	{
@@ -524,14 +523,12 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		}
 	}
 	{
-		BOOL hit
-		    = FindMapFloorBelow(static_cast<const XObjMap*>(map), &position, &player->mFloorHit, reinterpret_cast<Vec*>(player->_95E8));
+		BOOL hit = FindMapFloorBelow(static_cast<const XObjMap*>(map), &position, &player->mFloorHit, player->mFloorTriangle);
 		if (hit) {
 			SetVectorX(&player->mMoveTranslate, position.x);
 			SetVectorZ(&player->mMoveTranslate, position.z);
-			Vec* triangle = reinterpret_cast<Vec*>(player->_95E8);
 			CVec normal;
-			CalcTriangleNormal(triangle, triangle + 1, triangle + 2, &normal);
+			CalcTriangleNormal(&player->mFloorTriangle[0], &player->mFloorTriangle[1], &player->mFloorTriangle[2], &normal);
 			NormalizeVectorInPlace(&normal);
 			Vec down   = { 0, -1, 0 };
 			Vec origin = { 0, 0, 0 };
@@ -595,15 +592,16 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			Vec scale;
 			GetJointScale(player, GetObjectJointByPath(player, 2, boundsPath), &scale);
 			radius += 2.5f * scale.x;
-			liftState22 = IsLiftActionState(&player->mLift, 22); // lift state 22: he is taking the mug out
+			if (IsLiftActionState(&player->mLift, 22)) // lift state 22: he is taking the mug out
+				liftState22 = 1;
 		}
 		PSMTXRotRad(rotation, 'y', player->mMoveRotate.y);
 	}
 	Vec offset = player->mMoveScale * GetFloorCenterOffset(&player->mFloors, 0);
 	PSMTXMultVec(rotation, &offset, &offset);
 	__as__3VecFRC3Vec(&position, &player->mMoveTranslate);
-	u32 queryFlags   = IsEventScriptActive(&gGame) ? 0 : 2;
 	u32 contactFlags = 0;
+	u32 queryFlags   = IsEventScriptActive(&gGame) ? 0 : 2;
 	f32 floorHeight  = player->mFloorHit.mHeight;
 	s32 floorIndex   = -1;
 	BOOL canRise     = FALSE;
@@ -614,7 +612,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
 				XObj* object = GetDrawListObject(&gGame, 0, i);
 				if (!IsObjectActive(object) || !(GetMaskedObjectStatus(object, 0x10000))
-				    || (GetMaskedObjectStatus(object, 0x0004000000100000ULL)) || GetObjectId(object) == GetObjectId(player))
+				    || (GetMaskedObjectStatus(object, 0x0004000000100000ULL)) || GetObjectId(player) == GetObjectId(object))
 					continue;
 				// what he pushes only counts while he stands on it
 				if ((GetMaskedObjectStatus(object, 0x08000000)) && IsPushActionState(&player->mPush, 2)
@@ -708,9 +706,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			}
 		} else {
 			if (IsHangActionState(&player->mHang, 5) && HasPlayerActionTarget(&player->mHang)) {
-				f32 side  = player->mMoveRotate.y + HALF_PI * (s32)(0u - GetPlayerActionMoveDirection(&player->mHang));
-				s32 path  = 0;
-				Vec joint = GetEventJointWorldPosition(player, 1, &path);
+				f32 side   = player->mMoveRotate.y + HALF_PI * (s32)(0u - GetPlayerActionMoveDirection(&player->mHang));
+				s32 path[] = { 0 };
+				Vec joint  = GetEventJointWorldPosition(player, 1, path);
 				Vec body;
 				body.x = joint.x + 3.0f * PlayerActionSine(side) - 2.5f * PlayerActionSine(player->mMoveRotate.y);
 				body.z = joint.z + 3.0f * PlayerActionCosine(side) - 2.5f * PlayerActionCosine(player->mMoveRotate.y);
@@ -730,7 +728,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					    || (GetMaskedObjectStatus(object, 0x0004000000100000ULL)))
 						continue;
 					if ((s16)GetObjectPoolId(object) == 7 || (s16)GetObjectPoolId(object) == 20
-					    || GetObjectId(object) == GetObjectId(player))
+					    || GetObjectId(player) == GetObjectId(object))
 						continue;
 					f32 range = 100.0f + (radius + GetObjectFloorXZExtent(object));
 					if (GetHorizontalDistance(GetObjectMoveTranslation(object), &body) <= range) {
@@ -765,7 +763,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							lowerHit = object->TestFloorCollision(&from, &to, 0.5f, 0.5f, &push, &contact, 0, 0);
 						}
 						if ((lowerHit & 3) == 3)
-							supported = true;
+							supported |= lowerHit;
 					}
 				}
 				if (!supported) {
@@ -786,11 +784,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			targetPos.x += 2.5f * (0.4f * PlayerActionSine(angle));
 			targetPos.z += 2.5f * (0.4f * PlayerActionCosine(angle));
 			s32 index        = GetActionTargetFloor(&player->mPush);
-			Vec centerOffset = GetFloorCenterOffset(GetObjectFloorTableAddress(target), index);
-			Vec scaledOffset = *GetObjectMoveScale(target) * centerOffset;
+			Vec scaledOffset = *GetObjectMoveScale(target) * GetFloorCenterOffset(GetObjectFloorTableAddress(target), index);
 			index            = GetActionTargetFloor(&player->mPush);
-			Vec shape        = GetFloorExtent(GetObjectFloorTableAddress(target), index);
-			Vec extent       = *GetObjectMoveScale(target) * shape;
+			Vec extent       = *GetObjectMoveScale(target) * GetFloorExtent(GetObjectFloorTableAddress(target), index);
 			index            = GetActionTargetFloor(&player->mPush);
 			f32 floorYaw     = GetFloorYawRadians(GetObjectFloorTableAddress(target), index);
 			f32 yaw          = GetObjectMoveRotation(target)->y + floorYaw;
@@ -814,9 +810,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			Vec boxCenter = { 0, 0, 0 };
 			PSMTXMultVec(transform, &boxCenter, &boxCenter);
 			f32 ratio   = extent.x / extent.z;
-			Vec boxRear = { 0, 0, ratio - 1.0f };
+			Vec boxRear = (Vec) { 0, 0, -1.0f + ratio };
 			PSMTXMultVec(transform, &boxRear, &boxRear);
-			Vec boxFront = { 0, 0, 1.0f - ratio };
+			Vec boxFront = (Vec) { 0, 0, 1.0f - ratio };
 			PSMTXMultVec(transform, &boxFront, &boxFront);
 			for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
 				XObj* object = GetDrawListObject(&gGame, 0, i);
@@ -827,39 +823,32 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 					continue;
 				if ((s16)GetObjectPoolId(object) == 7 || (s16)GetObjectPoolId(object) == 20 || object == player)
 					continue;
-				u32 id = GetObjectId(object);
-				if (GetObjectId(GetPlayerActionTarget(&player->mPush)) == id)
+				if (GetObjectId(GetPlayerActionTarget(&player->mPush)) == GetObjectId(object))
 					continue;
 				f32 range = 100.0f + (boxRadius + GetObjectFloorXZExtent(object));
 				if (GetHorizontalDistance(GetObjectMoveTranslation(object), &boxCenter) > range)
 					continue;
 				{
-					BOOL centerBlocked = false;
+					u32 hit;
 					{
-						u32 hit;
-						{
-							CVec from(boxCenter), to(boxCenter);
-							hit = object->TestFloorCollision(&from, &to, boxRadius, boxHeight, &push, &contact, 0, 0);
-						}
-						if ((hit & 3) == 3) {
-							f32 top   = GetObjectHitFloorHeight(object);
-							f32 delta = boxCenter.y - top;
-							if (delta < 0)
-								delta = -delta;
-							if (delta <= 1 && !GetMaskedObjectStatus(object, 0x40000000)) {
-								GetPlayerActionTarget(&player->mPush)->SetTranslateY(top, 0);
-							} else {
-								SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->mLastPos);
-								SetObjectVectorAndTargetFromVec(&player->mMoveRotate, savedRotation);
-								centerBlocked = true;
-							}
+						CVec from(boxCenter), to(boxCenter);
+						hit = object->TestFloorCollision(&from, &to, boxRadius, boxHeight, &push, &contact, 0, 0);
+					}
+					if ((hit & 3) == 3) {
+						f32 top   = GetObjectHitFloorHeight(object);
+						f32 delta = boxCenter.y - top;
+						if (delta < 0)
+							delta = -delta;
+						if (delta <= 1 && !GetMaskedObjectStatus(object, 0x40000000)) {
+							GetPlayerActionTarget(&player->mPush)->SetTranslateY(top, 0);
+						} else {
+							SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->mLastPos);
+							SetObjectVectorAndTargetFromVec(&player->mMoveRotate, savedRotation);
+							break;
 						}
 					}
-					if (centerBlocked)
-						break;
 				}
 				if (boxDepth / boxRadius > 8.0f) {
-					BOOL rearBlocked = false;
 					{
 						u32 hit;
 						{
@@ -876,12 +865,11 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							} else {
 								SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->mLastPos);
 								SetObjectVectorAndTargetFromVec(&player->mMoveRotate, savedRotation);
-								rearBlocked = true;
+								break;
 							}
 						}
 					}
-					BOOL frontBlocked = false;
-					if (!rearBlocked) {
+					{
 						u32 hit;
 						{
 							CVec from(boxFront), to(boxFront);
@@ -897,19 +885,17 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 							} else {
 								SetObjectVectorAndTargetFromVec(&player->mMoveTranslate, player->mLastPos);
 								SetObjectVectorAndTargetFromVec(&player->mMoveRotate, savedRotation);
-								frontBlocked = true;
+								break;
 							}
 						}
 					}
-					if (rearBlocked || frontBlocked)
-						break;
 				}
 			}
 		} else {
 			if (IsRopeActionState(&player->mRope, 5) && IsPlayerActionMoveDirection(&player->mRope, -1)
 			    && HasPlayerActionTarget(&player->mRope)) {
-				s32 path   = 0;
-				CVec joint = GetEventJointWorldPosition(player, 1, &path);
+				s32 path[] = { 0 };
+				CVec joint = GetEventJointWorldPosition(player, 1, path);
 				Vec point;
 				point.x = joint.x;
 				point.z = joint.z;
@@ -1080,7 +1066,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			XObj* object = GetGameObjectByIndex(&gGame, i);
 
 			if (!IsObjectActive(object) || !(GetMaskedObjectStatus(object, 0x10000)) || GetMaskedObjectStatus(object, 0x0004000000000000ULL)
-			    || GetMaskedObjectStatus(object, 0x0002000000000000ULL) || GetObjectId(object) == GetObjectId(player))
+			    || GetMaskedObjectStatus(object, 0x0002000000000000ULL) || GetObjectId(player) == GetObjectId(object))
 				continue;
 			if (GetHorizontalDistance(GetObjectMoveTranslation(object), &probePoint)
 			    > 100.0f + (probeRadius + GetObjectFloorXZExtent(object)))
@@ -7735,7 +7721,7 @@ extern "C" BOOL IsPlayerActionMoveDirection(const XAction* action, s32 wanted)
  * @note Address: 0x800B26B4
  * @note Size: 0x8
  */
-extern "C" u32 GetObjectId(const CXObj* object)
+extern "C" s32 GetObjectId(const CXObj* object)
 {
 	return object->mId;
 }

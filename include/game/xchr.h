@@ -202,7 +202,7 @@ public:
 	s32 mScriptAttach;                   // _95DC, the request came from an event command
 	s32 mClimbType;                      // _95E0, mNextClimbType after the swap; nonzero re-runs the A-press handling once
 	s32 mNextClimbType;                  // _95E4, climb to start once the swap ends, 1 ladder, 2 rope
-	u8 _95E8[0x960C - 0x95E8];           // _95E8
+	Vec mFloorTriangle[3];               // _95E8, the map triangle under him, from FindMapFloorBelow
 	CObjVec mSlopeMotion;                // _960C, slide speed down a floor slope
 	CVec mFloorSlope;                    // _963C
 	Params mParams;                      // _964C
