@@ -1584,8 +1584,7 @@ if wii:
                 Object(Matching, "nw4r/g3d/dcc/g3d_maya.cpp"),
                 Object(Matching, "nw4r/g3d/dcc/g3d_xsi.cpp"),
                 Object(Matching, "nw4r/g3d/dcc/g3d_3dsmax.cpp"),
-                # 33 of 34: SetBoundingVolume ends with one unreachable blr more than retail.
-                Object(NonMatching, "nw4r/g3d/g3d_scnobj.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_scnobj.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_scnroot.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_scnmdlsmpl.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_scnmdl.cpp"),

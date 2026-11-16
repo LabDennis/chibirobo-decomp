@@ -3562,7 +3562,7 @@ sort<PQ54nw4r3g3d6detail7workmem4MdlZ,PFRCQ54nw4r3g3d6detail7workmem4MdlZRCQ54nw
 Invalidate__Q34nw4r3g3d8G3DStateFUl = .text:0x8026FE84; // type:function size:0x16C
 sort<PPQ34nw4r3g3d6ScnObj,PFPCQ34nw4r3g3d6ScnObjPCQ34nw4r3g3d6ScnObj_b>__3stdFPPQ34nw4r3g3d6ScnObjPPQ34nw4r3g3d6ScnObjPFPCQ34nw4r3g3d6ScnObjPCQ34nw4r3g3d6ScnObj_b_v = .text:0x8027BA5C; // type:function size:0x380 scope:weak
 CalcSkinning__Q24nw4r3g3dFPQ34nw4r4math5MTX34PUlQ34nw4r3g3d6ResMdlPCUc = .text:0x80273C3C; // type:function size:0x4F4
-SetBoundingVolume__Q34nw4r3g3d6ScnObjFQ44nw4r3g3d6ScnObj24ScnObjBoundingVolumeTypePCQ34nw4r4math4AABB = .text:0x802799B4; // type:function size:0x80
+SetBoundingVolume__Q34nw4r3g3d6ScnObjFQ44nw4r3g3d6ScnObj24ScnObjBoundingVolumeTypePCQ34nw4r4math4AABB = .text:0x802799B4; // type:function size:0x84
 ScnMdl_G3DPROC_CALC_MAT__Q34nw4r3g3d6ScnMdlFUlPv = .text:0x8027F5E0; // type:function size:0x770
 CopyTo__Q34nw4r3g3d10ResMatMiscCFPv = .text:0x8025FB8C; // type:function size:0x6C
 GetResMdl__Q34nw4r3g3d7ResFileCFi = .text:0x8025BA34; // type:function size:0x98
@@ -3574,7 +3574,6 @@ GetResAnmShpNumEntries__Q34nw4r3g3d7ResFileCFv = .text:0x8025C3E8; // type:funct
 __dt__Q34nw4r3g3d8LightSetFv = .text:0x8026B594; // type:function size:0x40 scope:weak
 IsDerivedFrom__Q34nw4r3g3d6G3dObjCFQ44nw4r3g3d6G3dObj7TypeObj = .text:0x8026C5EC; // type:function size:0x1C scope:weak
 SetOrtho__Q34nw4r3g3d6CameraFffffff = .text:0x802764F8; // type:function size:0x40
-ExecCallback_CALC_WORLD__Q34nw4r3g3d15IScnObjCallbackFQ44nw4r3g3d6ScnObj6TimingPQ34nw4r3g3d6ScnObjUlPv = .text:0x80279A34; // type:function size:0x4 scope:weak
 SetArray__Q34nw4r3g3d12ResVtxFurPosFUs = .text:0x80261198; // type:function size:0x74
 DCStore__Q34nw4r3g3d12ResVtxFurVecFb = .text:0x8026126C; // type:function size:0x18
 DCStore__Q34nw4r3g3d12ResVtxFurPosFb = .text:0x80261284; // type:function size:0x18
