@@ -1578,8 +1578,7 @@ if wii:
                 Object(Matching, "nw4r/g3d/g3d_dcc.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_workmem.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_calcworld.cpp"),
-                # 10 of 13: std::sort and __sort132 as in g3d_scnroot.
-                Object(NonMatching, "nw4r/g3d/g3d_draw.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_draw.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_camera.cpp"),
                 Object(Matching, "nw4r/g3d/dcc/g3d_basic.cpp"),
                 Object(Matching, "nw4r/g3d/dcc/g3d_maya.cpp"),
@@ -1587,10 +1586,7 @@ if wii:
                 Object(Matching, "nw4r/g3d/dcc/g3d_3dsmax.cpp"),
                 # 33 of 34: SetBoundingVolume ends with one unreachable blr more than retail.
                 Object(NonMatching, "nw4r/g3d/g3d_scnobj.cpp"),
-                # 39 of 42: the three std::sort functions. Retail calls std::__sort132 out of line (0x8027C15C); the
-                # references (wiiplay, ogws, ss) get that with a never_inline attribute in the MSL header, which
-                # include/rvl_msl/algorithm does not carry.
-                Object(NonMatching, "nw4r/g3d/g3d_scnroot.cpp"),
+                Object(Matching, "nw4r/g3d/g3d_scnroot.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_scnmdlsmpl.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_scnmdl.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_calcmaterial.cpp"),

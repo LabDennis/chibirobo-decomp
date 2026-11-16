@@ -2416,6 +2416,8 @@ nw4r/g3d/g3d_calcworld.cpp:
 
 nw4r/g3d/g3d_draw.cpp:
 	.text start:0x80274130 end:0x80275F8C
+	.sdata start:0x805A1978 end:0x805A1980
+	.sdata2 start:0x805A7438 end:0x805A7448
 
 nw4r/g3d/g3d_camera.cpp:
 	.text start:0x80275F8C end:0x80276EC4
@@ -2445,6 +2447,10 @@ nw4r/g3d/g3d_scnobj.cpp:
 
 nw4r/g3d/g3d_scnroot.cpp:
 	.text start:0x8027AB88 end:0x8027C64C
+	.rodata start:0x802E0238 end:0x802E0248
+	.data start:0x80333908 end:0x80333978
+	.sdata start:0x805A1980 end:0x805A1990
+	.sdata2 start:0x805A74D0 end:0x805A74D8
 
 nw4r/g3d/g3d_scnmdlsmpl.cpp:
 	.text start:0x8027C64C end:0x8027E3D4
