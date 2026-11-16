@@ -264,7 +264,7 @@ static f32 decaPanelDigitPos[6][2] = {
 static s32 decaPanelDigitCells[10] = { 9, 0, 1, 2, 3, 4, 5, 6, 7, 8 };
 
 static DecaPanel decaPanel;
-static SavedObjFlagList savedObjFlags;
+extern SavedObjFlagList savedObjFlags;
 
 inline void DecaPanel::ResetInput()
 {
@@ -295,31 +295,6 @@ inline UnkObj* GetObjById(s16 id)
 inline u32 FadeColor(f32 fade)
 {
 	return (u32)(255.0f * fade) | 0xFFFFFF00;
-}
-
-// todo: cleanup
-/**
- * @note Address: N/A
- * @note Size: ?
- */
-inline void DecaPanel::LoadTextures()
-{
-	s32 i;
-
-	switch (mState) { // 1: grab the tpl once, 2: ready
-	case 1:
-		if (mTpl.ReadEx("tpl/stage03.tpl", 0, 0)) {
-			for (i = 0; i < 5; i++) {
-				mTexs[i] = mTpl.mTex.Init((TPLDescriptor*)(*(u8**)(mTpl.mData + 8) + i * 8), 0);
-			}
-			mState  = 2;
-			mActive = 0;
-			mFade   = 0.0f;
-		}
-		break;
-	case 2:
-		break;
-	}
 }
 
 // todo: cleanup
@@ -1665,6 +1640,33 @@ extern "C" void DrawStageHud(void* arg)
 	DecaPanel_Update(&decaPanel);
 }
 
+static const char sStage03TplPath[] = "tpl/stage03.tpl";
+
+// todo: cleanup
+/**
+ * @note Address: N/A
+ * @note Size: ?
+ */
+inline void DecaPanel::LoadTextures()
+{
+	s32 i;
+
+	switch (mState) { // 1: grab the tpl once, 2: ready
+	case 1:
+		if (mTpl.ReadEx(sStage03TplPath, 0, 0)) {
+			for (i = 0; i < 5; i++) {
+				mTexs[i] = mTpl.mTex.Init((TPLDescriptor*)(*(u8**)(mTpl.mData + 8) + i * 8), 0);
+			}
+			mState  = 2;
+			mActive = 0;
+			mFade   = 0.0f;
+		}
+		break;
+	case 2:
+		break;
+	}
+}
+
 /**
  * @note Address: stage03 .text 0x10C0
  * @note Size: 0x35C
@@ -1700,6 +1702,8 @@ extern "C" void UpdateStage(s32 frames)
 
 	decaPanel.LoadTextures();
 }
+
+SavedObjFlagList savedObjFlags;
 
 /**
  * @note Address: stage03 .text 0x141C
