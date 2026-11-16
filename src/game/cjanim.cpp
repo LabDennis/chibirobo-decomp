@@ -310,6 +310,8 @@ extern "C" BOOL IsOutsideCameraDepth__4XObjFP7CCamera(const XObj* object, CCamer
  * @note Address: 0x8008B338
  * @note Size: 0x29C
  */
+// NONMATCHING: retail calls cos and sin through float inlines (MSL's C++ cosf/sinf, which return (f32)cos(x));
+// include/stl/math.h only declares the out-of-line C cosf/sinf, so angle and cosine get each other's register
 BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight)
 {
 	camera          = camera != NULL ? camera : &gGame.mMotionControlCamera.mCamera;
