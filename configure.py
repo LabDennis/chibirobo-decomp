@@ -1210,7 +1210,6 @@ if wii:
                 # string-base register in LoadGlobalResourceData away from retail's r7
                 Object(Equivalent, "game/globalresources.cpp", mw_version="GC/3.0a5",
                        extra_cflags=["-Cpp_exceptions on"]),
-                Object(Equivalent, "game/roboeyeslens.cpp"),
                 # the THP player sits apart from the game's files (0x802C27B4 on) and takes the compiler
                 # without -ipa file: with it MixAudio falls to 99.88 %
                 Object(Equivalent, "game/THPDraw.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),
@@ -1233,7 +1232,7 @@ if wii:
                 # no auto-inlining of the small file functions: under -inline auto the
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
                 # retail keeps them as calls
-                Object(NonMatching, "game/wii/cfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(Matching, "game/wii/cfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # the Wii texture/tpl + sound unit 0x802B4DAC-0x802B6094 (ctpl.cpp by its GC
                 # file): CTexObj's quad draws, CTpl's TPL bind and the game's nw4r sound
                 # setup — loader threads, archive open/group load, track fades, 3D actor init
@@ -1438,10 +1437,6 @@ if wii:
                 # the Wii range 0x8003AB00-0x8003CEA0 (wii_units.md #25): positional sound and the stage sound effects
                 # (these and msg.cpp use the nw4r sound headers, which need the Wii MSL's <cstdarg> and <new>)
                 Object(NonMatching, "game/wii/sound.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the Wii range 0x80040E4C-0x8004328C (wii_units.md #28): pointer cursor, HUD drawing and the dust particles
-                Object(NonMatching, "game/wii/unit_80040E4C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the Wii range 0x8004328C-0x80044FD8 (wii_units.md #28): the small XObj-family virtuals behind them
-                Object(NonMatching, "game/wii/unit_8004328C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
             ],
         },
         {
@@ -1563,6 +1558,42 @@ if wii:
                 # TanDeg constants: a function ahead of FRUSTUM::Set that the linker removed used them
                 # (the reference decomps force the order with a macro)
                 Object(NonMatching, "nw4r/math/math_geometry.cpp"),
+                # nw4r::ef (0x802362B8-0x8025B5A4), version text of 23.1.2009; after wiiplay's older ef (8.6.2007)
+                # NonMatching: emitter, util and smooth stripe have 100 % code but their literal pools
+                # differ from retail (emitter 8 bytes shorter, util and postfield in another order,
+                # smooth stripe .sdata2/.sbss); animcurve, postfield, particle and particlemanager
+                # have open functions (see // NONMATCHING in the files).
+                Object(Matching, "nw4r/ef/ef_draworder.cpp"),
+                Object(Matching, "nw4r/ef/ef_effect.cpp"),
+                Object(Matching, "nw4r/ef/ef_effectsystem.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_emitter.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_animcurve.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_postfield.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_particle.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_particlemanager.cpp"),
+                Object(Matching, "nw4r/ef/ef_resource.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_util.cpp"),
+                Object(Matching, "nw4r/ef/ef_handle.cpp"),
+                Object(Matching, "nw4r/ef/ef_emitterform.cpp"),
+                Object(Matching, "nw4r/ef/ef_creationqueue.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_emform.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_point.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_line.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_disc.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_sphere.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_cylinder.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_torus.cpp"),
+                Object(Matching, "nw4r/ef/emform/ef_cube.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawstrategybuilder.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawstrategyimpl.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawbillboardstrategy.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawdirectionalstrategy.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawfreestrategy.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawlinestrategy.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawpointstrategy.cpp"),
+                Object(Matching, "nw4r/ef/drawstrategy/ef_drawstripestrategy.cpp"),
+                Object(NonMatching, "nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.cpp"),
+                Object(Matching, "nw4r/ef/ef_res_emitter_ac.cpp"),
                 # nw4r::g3d (0x8025B5A4-0x80282CA0)
                 Object(Matching, "nw4r/g3d/res/g3d_rescommon.cpp"),
                 Object(Matching, "nw4r/g3d/res/g3d_resdict.cpp"),

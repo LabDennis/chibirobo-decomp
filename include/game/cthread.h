@@ -2,6 +2,10 @@
 #define _GAME_CTHREAD_H
 
 #include "Dolphin/OS/OSThread.h"
+#if defined(VERSION_R24J01)
+#include "revolution/mem.h"
+extern MEMiHeapHead* gWiiGameHeap;
+#endif
 
 class CThread {
 public:
@@ -15,8 +19,23 @@ public:
 	u32 mStackSize;   // _31C
 	// _320 vtable
 
-	virtual ~CThread() { }                                                                         // _08
+	virtual ~CThread() { } // _08
+#if defined(VERSION_R24J01)
+	// inline on the Wii: no caller in retail calls it, they all have the body, and its out-of-line
+	// copy (0x800331D4) sits among the weak virtuals of the file that holds gGame
+	virtual BOOL Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr) // _0C
+	{
+		mStack     = (u8*)MEMAllocFromExpHeapEx(gWiiGameHeap, stackSize, 4);
+		mStackSize = stackSize;
+		if (OSCreateThread(&mThread, func, param, mStack + stackSize, stackSize, priority, attr)) {
+			mStackSize = stackSize;
+			return TRUE;
+		}
+		return FALSE;
+	}
+#else
 	virtual BOOL Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr); // _0C
+#endif
 
 	// todo: cleanup, card jobs and the movie all start threads like this
 	inline void Start(OSThreadStartFunction entry, void* arg, u8* stack, u32 size)
