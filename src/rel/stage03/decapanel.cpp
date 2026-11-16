@@ -279,8 +279,11 @@ inline void DecaPanel::ResetInput()
 	mCursorX   = 0;
 	mCursorY   = 3; // row 3 column 0, the 'C'
 	mLocked    = 0;
-	mCurX = mTargetX = decaPanelKeys[mCursorX + mCursorY * 3].x;
-	mCurY = mTargetY = decaPanelKeys[mCursorX + mCursorY * 3].y;
+	s32 idx = mCursorX + mCursorY * 3;
+	f32 x   = decaPanelKeys[idx].x;
+	f32 y   = decaPanelKeys[idx].y;
+	mCurX = mTargetX = x;
+	mCurY = mTargetY = y;
 }
 
 inline UnkObj* GetObjById(s16 id)
@@ -382,8 +385,6 @@ extern "C" s32 CmdCloseDecaPanel(s32 cmd, s32 count, s32* args)
  * @note Address: stage03 .text 0x60
  * @note Size: 0x94
  */
-// NONMATCHING: regalloc — the key-index offset and the decaPanel
-// base swap r6/r8; instruction sequence is identical.
 extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
 {
 	decaPanel.ResetInput();
@@ -437,7 +438,7 @@ extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
  * @note Address: stage03 .text 0xF4
  * @note Size: 0xBC8
  */
-// NONMATCHING: registers in the draw section
+// NONMATCHING: regalloc ties across the input and draw sections (754/754 insns)
 extern "C" void DecaPanel_Update(DecaPanel* work)
 {
 	if (work->mState != 2) {
@@ -545,9 +546,9 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 
 	if (work->mFade > 0.0f) {
 		DecaPanelKey* key;
-		CTexObj* tex;
 		f32 keyW, keyH, wideW, wideH;
 		s32 i;
+		CTexObj* tex;
 
 		SetGsBlendMode(gGame.mCurRenderMode, 1, 4, 5, 15);
 		SetGsTevMode(gGame.mCurTevStage, 0);
@@ -616,10 +617,10 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			PSMTXTrans(tex->mMtx[0], draws[i].mTrans, 0.0f, 0.0f);
 			tex->mMtxDirty    = 1;
 			DecaPanelKey* pos = &decaPanelKeys[draws[i].mKey];
-			f32 x             = 0.9f;
-			x *= pos->x;
-			u32 color = FadeColor(work->mFade);
-			f32 y     = 0.9f * pos->y;
+			f32 x             = pos->x;
+			x                 = 0.9f * x;
+			u32 color         = FadeColor(work->mFade);
+			f32 y             = 0.9f * pos->y;
 			DrawGsTexturedQuad(&gGame, tex, color, color, color, color, 320.0f + x, 200.0f + y, 0.0f, draws[i].mW, draws[i].mH, 0.0f, 0.0f,
 			                   0.0f);
 		}
@@ -630,7 +631,7 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		tex->mMtxDirty = 1;
 		keyW           = 0.9f * (tex->GetWidth() / 10);
 		keyH           = 0.9f * tex->GetHeight();
-		for (i = 0; i < 6; i++) {
+		for (s32 i = 0; i < 6; i++) {
 			u8 ch = work->mDigits[i];
 			if (ch != ' ') {
 				PSMTXTrans(tex->mMtx[0], 0.1f * decaPanelDigitCells[ch - '0'], 0.0f, 0.0f);
@@ -1677,10 +1678,12 @@ extern "C" void UpdateStage(s32 frames)
 
 	sTimer += frames;
 	if (IsGameSoundPlaying(gGame.mSound, 0xFFFF000E)) {
-		AXDriverSetAllStreamPitches(5.0f * (f32)sin(DEG2RAD * sTimer)); // wobble the stream's pitch
+		f32 p = (f32)sin(DEG2RAD * sTimer);
+		AXDriverSetAllStreamPitches(5.0f * p); // wobble the stream's pitch
 	}
 	if (IsGameSoundPlaying(gGame.mSound, 0xFFFF000F)) {
-		AXDriverSetAllStreamPitches(5.0f * (f32)sin(DEG2RAD * sTimer));
+		f32 p = (f32)sin(DEG2RAD * sTimer);
+		AXDriverSetAllStreamPitches(5.0f * p);
 	}
 	// a rare ambient sound, only while no event script is loaded
 	if (gGame.mObjTable.mList == NULL && HSD_Randi(5000) < 10) {
@@ -1709,8 +1712,6 @@ SavedObjFlagList savedObjFlags;
  * @note Address: stage03 .text 0x141C
  * @note Size: 0x84
  */
-// NONMATCHING: regalloc — the key-index offset and the ' '/1
-// constants land in different scratch regs; sequence is identical.
 extern "C" void InitStage(void* arg)
 {
 	decaPanel.mActive = 0;
