@@ -96,26 +96,28 @@ static inline void CopyVector(CVec& destination, const Vec& source)
 	destination.z = source.z;
 }
 
-// fills the wipe quad's corners from the frame's screen edges; z stays whatever the
-// initializer left
-static inline void SetWipeQuadScreenBounds(WipeQuad& quad)
+// the frame's screen edges into four corner points; their z stays what the caller set
+static inline void SetScreenCorners(Vec& topLeft, Vec& topRight, Vec& bottomRight, Vec& bottomLeft)
 {
-	quad.vertices[0].x = (f32)gScreenLeft;
-	quad.vertices[0].y = (f32)gScreenTop;
-	quad.vertices[1].x = (f32)gScreenRight;
-	quad.vertices[1].y = (f32)gScreenTop;
-	quad.vertices[2].x = (f32)gScreenRight;
-	quad.vertices[2].y = (f32)gScreenBottom;
-	quad.vertices[3].x = (f32)gScreenLeft;
-	quad.vertices[3].y = (f32)gScreenBottom;
+	topLeft.x     = (f32)gScreenLeft;
+	topLeft.y     = (f32)gScreenTop;
+	topRight.x    = (f32)gScreenRight;
+	topRight.y    = (f32)gScreenTop;
+	bottomRight.x = (f32)gScreenRight;
+	bottomRight.y = (f32)gScreenBottom;
+	bottomLeft.x  = (f32)gScreenLeft;
+	bottomLeft.y  = (f32)gScreenBottom;
 }
 
 static inline void BeginWipe(CGs* gs, s32 mode)
 {
 	if (mode) {
-		static const Vec corners[4] = { { 0, 0, -1 }, { 0, 0, -1 }, { 0, 0, -1 }, { 0, 0, -1 } };
-		WipeQuad quad               = { { corners[0], corners[1], corners[2], corners[3] } };
-		SetWipeQuadScreenBounds(quad);
+		Vec topLeft     = { 0.0f, 0.0f, -1.0f };
+		Vec topRight    = { 0.0f, 0.0f, -1.0f };
+		Vec bottomRight = { 0.0f, 0.0f, -1.0f };
+		Vec bottomLeft  = { 0.0f, 0.0f, -1.0f };
+		SetScreenCorners(topLeft, topRight, bottomRight, bottomLeft);
+		WipeQuad quad = { { topLeft, topRight, bottomRight, bottomLeft } };
 		gs->mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 		DrawWipeQuad(gs, quad, 0);
 	}
@@ -127,9 +129,13 @@ static inline void BeginWipe(CGs* gs, s32 mode)
 
 static inline void FinishWipe(const CScrnWipe* wipe, CGs* gs, s32 mode)
 {
-	WipeQuad quad = { 0 };
-	SetWipeQuadScreenBounds(quad);
-	u32 color = ((u32)wipe->mColor.r << 24) | ((u32)wipe->mColor.g << 16) | ((u32)wipe->mColor.b << 8) | (u32)wipe->mColor.a;
+	Vec topLeft     = { 0.0f, 0.0f, 0.0f };
+	Vec topRight    = { 0.0f, 0.0f, 0.0f };
+	Vec bottomRight = { 0.0f, 0.0f, 0.0f };
+	Vec bottomLeft  = { 0.0f, 0.0f, 0.0f };
+	SetScreenCorners(topLeft, topRight, bottomRight, bottomLeft);
+	WipeQuad quad = { { topLeft, topRight, bottomRight, bottomLeft } };
+	u32 color     = ((u32)wipe->mColor.r << 24) | ((u32)wipe->mColor.g << 16) | ((u32)wipe->mColor.b << 8) | (u32)wipe->mColor.a;
 	if (mode)
 		gs->mCurRenderState->SetZMode(GX_TRUE, GX_LESS, GX_TRUE);
 	else
@@ -141,8 +147,12 @@ static inline void FinishWipe(const CScrnWipe* wipe, CGs* gs, s32 mode)
 
 static inline void BeginWipeMask(CGs* gs, f32 opacity)
 {
-	WipeQuad quad = { 0 };
-	SetWipeQuadScreenBounds(quad);
+	Vec topLeft     = { 0.0f, 0.0f, 0.0f };
+	Vec topRight    = { 0.0f, 0.0f, 0.0f };
+	Vec bottomRight = { 0.0f, 0.0f, 0.0f };
+	Vec bottomLeft  = { 0.0f, 0.0f, 0.0f };
+	SetScreenCorners(topLeft, topRight, bottomRight, bottomLeft);
+	WipeQuad quad = { { topLeft, topRight, bottomRight, bottomLeft } };
 	gs->mCurRenderState->SetDstAlpha(GX_FALSE, 0);
 	gs->mCurRenderState->SetColorUpdate(GX_FALSE);
 	gs->mCurRenderState->SetAlphaUpdate(GX_TRUE);
@@ -326,9 +336,13 @@ extern "C" void UpdateScreenFade(CScrnColor* color, u32 frames)
 extern "C" void DrawScreenColorOverlay(CScrnColor* color, CGs* gs)
 {
 	if (HasColor(color)) {
-		WipeQuad quad = { 0 };
-		SetWipeQuadScreenBounds(quad);
-		u32 packed = ((u32)color->mColor.r << 24) | ((u32)color->mColor.g << 16) | ((u32)color->mColor.b << 8) | (u32)color->mColor.a;
+		Vec topLeft     = { 0.0f, 0.0f, 0.0f };
+		Vec topRight    = { 0.0f, 0.0f, 0.0f };
+		Vec bottomRight = { 0.0f, 0.0f, 0.0f };
+		Vec bottomLeft  = { 0.0f, 0.0f, 0.0f };
+		SetScreenCorners(topLeft, topRight, bottomRight, bottomLeft);
+		WipeQuad quad = { { topLeft, topRight, bottomRight, bottomLeft } };
+		u32 packed    = ((u32)color->mColor.r << 24) | ((u32)color->mColor.g << 16) | ((u32)color->mColor.b << 8) | (u32)color->mColor.a;
 		SetGsChannelEnabled(gs, 0, 0);
 		gs->mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 		gs->mCurRenderState->SetZMode(GX_TRUE, GX_LESS, GX_FALSE);
@@ -486,9 +500,9 @@ void CScrnWipe::Update(u32 frames)
 	}
 }
 
-// NONMATCHING: the four Draw methods share the wipe quad/state scaffolding below. Retail
-// materializes an extra 48-byte stack copy of the quad (x/y copied, z written as 0) before
-// some DrawGsVertexQuad calls; the source behind that copy is undetermined.
+// NONMATCHING: the four Draw methods share the wipe quad/state scaffolding above (the screen quad is
+// four corner points copied into a WipeQuad, as retail's stack shows). What is left differs in the
+// frame (retail's is 0x20 smaller, one callee-saved float fewer) and in register choice.
 /**
  * @note Address: 0x8003E308
  * @note Size: 0xABC
