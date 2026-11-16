@@ -76,10 +76,10 @@ void XObjCoin::UpdateObject(u32 frames)
 		f32 speed;
 		if (mSpin >= 0.0f) {
 			mSpin += 4.0f * radians;
-			speed = (1.5f + (f32)sin(mSpin)) * 0.5f;
+			speed = (1.5f + (f32)sin(mSpin)) / 2.0f;
 		} else {
 			mSpin -= 4.0f * radians;
-			speed = -(1.5f + (f32)sin(mSpin)) * 0.5f;
+			speed = -(1.5f + (f32)sin(mSpin)) / 2.0f;
 		}
 		mMoveRotate.y += 8.0f * radians * speed * frames;
 	} else if (IsCoinItemInRange(this, 100, 200)) {
@@ -105,15 +105,16 @@ void XObjCoin::UpdateObject(u32 frames)
 				break;
 			}
 		} else {
-			if (mMoveScale.x == 0.0f && mMoveScale.y == 0.0f && mMoveScale.z == 0.0f)
+			if (mMoveScale == (Vec) { 0.0f, 0.0f, 0.0f })
 				Release();
-			mFade -= 0.02f * frames;
-			if (mFade <= 0.0f)
+			if ((mFade -= 0.02f * frames) <= 0.0f)
 				mFade = 0.0f;
 			PSVECScale(&mMoveScale, &mMoveScale, 1.12f * mFade);
 		}
 	}
 	switch (mParam0) {
+	case 0:
+		break;
 	case 1: // a dropped coin gets its heading and fall speed
 		mState      = 1;
 		mFallFrames = 0;
