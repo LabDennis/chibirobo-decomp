@@ -1291,7 +1291,6 @@ if wii:
                 # callers) while BuildWiiSaveBanner and CheckWiiSaveBanner are reached via
                 # bl - auto-inlining was off for the unit
                 Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
-                Object(Equivalent, "game/wii/soundbank.cpp", extra_cflags=["-Cpp_exceptions on"]),
                 # shared GameCube game units found on the Wii (wii_gc_pairs.txt)
                 Object(Equivalent, "game/cinterpolationeaseout.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # FindAreaContainingPoint takes Vec by value on the Wii (the retail caller copies all
@@ -1432,10 +1431,9 @@ if wii:
                 Object(NonMatching, "game/wii/cinterpolationeaseoutdivide.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii range 0x8003366C-0x800354DC (wii_units.md #20): constructors and the nw4r sound wrappers
                 Object(NonMatching, "game/wii/unit_8003366C.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the Wii range 0x80036618-0x8003AA58 (wii_units.md #23): the game sound front end (InitGameSound, PlayWiiSoundEffect)
-                Object(NonMatching, "game/wii/gamesound.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the Wii range 0x8003AB00-0x8003CEA0 (wii_units.md #25): positional sound and the stage sound effects
-                # (these and msg.cpp use the nw4r sound headers, which need the Wii MSL's <cstdarg> and <new>)
+                # the Wii sound file 0x80036694-0x8003CEB0 (wii_units.md #23-#25): the sound front end,
+                # the sound banks, the sound picks, the glyph sounds, the stage reverb and AnimSfx. The
+                # nw4r sound headers need the Wii MSL's <cstdarg> and <new>
                 Object(NonMatching, "game/wii/sound.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
             ],
         },
