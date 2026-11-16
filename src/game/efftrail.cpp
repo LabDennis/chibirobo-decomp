@@ -260,27 +260,24 @@ extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 cou
 static inline void DrawRingStrip(Mtx transform, u32 color, Vec* vertices, bool separate)
 {
 	PSMTXMultVecArray(transform, vertices, vertices, 50);
-	CGs& gs = gGame.mGs;
 	if (separate) {
 		for (s32 i = 0; i < 48; i += 2)
-			DrawGsTrianglePrimitive(&gs, GX_TRIANGLESTRIP, gs.mCamera->mViewMtx, &vertices[i], color, 4);
+			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, &vertices[i], color, 4);
 	} else {
-		DrawGsTrianglePrimitive(&gs, GX_TRIANGLESTRIP, gs.mCamera->mViewMtx, vertices, color, 50);
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
 	}
 }
 
 static inline void BuildRingStrip(Vec* vertices, f32 firstRadius, f32 firstZ, f32 secondRadius, f32 secondZ)
 {
-	for (s32 i = 0; i <= 24; i++) {
-		f32 angle = (TWO_PI / 24.0f) * i;
-		Vec& a    = vertices[2 * i];
-		Vec& b    = vertices[2 * i + 1];
-		b.x       = -(secondRadius * (f32)sin(angle));
-		b.y       = secondRadius * (f32)cos(angle);
-		b.z       = secondZ;
-		a.x       = -(firstRadius * (f32)sin(angle));
-		a.y       = firstRadius * (f32)cos(angle);
-		a.z       = firstZ;
+	for (s32 i = 0; i < 25; i++) {
+		f32 angle             = (TWO_PI / 24.0f) * i;
+		vertices[2 * i + 1].x = -(secondRadius * (f32)sin(angle));
+		vertices[2 * i + 1].y = secondRadius * (f32)cos(angle);
+		vertices[2 * i + 1].z = secondZ;
+		vertices[2 * i].x     = -(firstRadius * (f32)sin(angle));
+		vertices[2 * i].y     = firstRadius * (f32)cos(angle);
+		vertices[2 * i].z     = firstZ;
 	}
 }
 
