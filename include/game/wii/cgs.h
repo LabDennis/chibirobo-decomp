@@ -685,7 +685,7 @@ public:
 	virtual void vf028();
 	virtual void vf02C();
 	virtual void vf030();
-	virtual void vf034();
+	virtual void vf034(s32 index, void* model); // queues a model's draw
 	virtual void vf038(s32 index);
 
 	u8 _004[0xE4 - 0x004];
@@ -745,7 +745,8 @@ public:
 	Vec mTextRot;              // _1B94, the text rotation, cleared by the light setup
 	u32 mTextFont;             // _1BA0, the font argument handed to the glyph lookups
 	WiiGsSceneObj* mSceneHead; // _1BA4, the list the scene pass drains
-	u8 _1BA8[0x1FE4 - 0x1BA8];
+	BOOL _1BA8;                // _1BA8, Update queues the map's model on the list while it is set
+	u8 _1BAC[0x1FE4 - 0x1BAC];
 	WiiGsSlot _1FE4[9]; // _1FE4, FinalizeStageObjectSetup clears each one's three flags
 	u8 _214C[0x2290 - 0x214C];
 

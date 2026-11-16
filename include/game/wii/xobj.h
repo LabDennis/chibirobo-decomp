@@ -37,7 +37,9 @@ void Panic(const char* file, int line, const char* fmt, ...);
 }
 
 // the parts of nw4r::math CObj's world callback uses; math_types.h itself needs the Wii MSL's
-// <cmath>, which the game's include path does not have yet
+// <cmath>, which the game's include path does not have yet (a unit built with include/rvl_msl that
+// includes it first gets the real one)
+#ifndef NW4R_MATH_TYPES_H
 namespace math {
 struct VEC3;
 struct MTX34 {
@@ -49,6 +51,7 @@ inline MTX34* MTX34RotXYZRad(MTX34* pMtx, f32 rx, f32 ry, f32 rz)
 	return MTX34RotXYZFIdx(pMtx, rx * (128.0f / 3.1415927f), ry * (128.0f / 3.1415927f), rz * (128.0f / 3.1415927f));
 }
 } // namespace math
+#endif
 
 namespace g3d {
 
@@ -354,13 +357,13 @@ public:
 	virtual void ClearAnim();           // _110
 	virtual void SetAnimRate(f32 rate); // _114
 	virtual void vf118();
-	virtual void vf11C();
+	virtual s32 GetAnimId();
 	virtual f32 GetAnimRate(s32 index); // _120
 	virtual f32 GetAnimRate();          // _124
 	virtual f32 GetAnimFrame();         // _128
 	virtual f32 GetAnimEndFrame();      // _12C
 	virtual bool IsAnimEnd(f32 frames); // _130, the animation runs out within frames
-	virtual void vf134();
+	virtual BOOL IsAnimDone();
 	virtual void SetAnmScn(u32 id, f32 frame, f32 rate); // _138
 	virtual void ReleaseModelWork();                     // _13C
 	virtual void vf140();
@@ -505,7 +508,8 @@ public:
 	virtual void ClearAnim();                                                                                                   // _110
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);                              // _148
 
-	// (_9C SetScale(f32) scales all three axes alike; _1E4 IsOutsideCameraDepth is TRUE when the model lies
+	// (_9C SetScale(f32) scales all three axes alike, _11C GetAnimId returns mAnimId, _134 IsAnimDone is TRUE once
+	// the next step passes the end frame; _1E4 IsOutsideCameraDepth is TRUE when the model lies
 	// outside the camera's depth range)
 	// which pool of XOBJS the object's data record puts it in, -1 before it has one (the GameCube XObj's inline)
 	s32 GetPool() const { return mAttr.mObjData != NULL ? GetObjDataPool(mAttr.mObjData) : -1; }
@@ -513,7 +517,9 @@ public:
 	CStatus64 mStatus; // _150
 	CoordInfo mCoord;  // _160
 	AttrInfo mAttr;    // _168
-	u8 _174[0x28];
+	u8 _174[0x188 - 0x174];
+	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
+	u8 _189[0x19C - 0x189];
 	CVec mLastPos; // _19C
 	u8 _1AC[0x640 - 0x1AC];
 	f32 mFloorXZExtent; // _640
@@ -547,7 +553,16 @@ STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 	};                                 \
 	STATIC_ASSERT(sizeof(name) == size)
 
-WII_XOBJ_DECL(XObjScnCam, 0x9C0);
+// the stage camera object, the first of pool 0: its scene brings the stage's own camera, lights and fog
+class XObjScnCam : public XObj {
+public:
+	XObjScnCam();
+	virtual ~XObjScnCam();
+
+	WiiGsSceneObj* mScene; // _9A8
+	u8 _9AC[0x9C0 - 0x9AC];
+};
+STATIC_ASSERT(sizeof(XObjScnCam) == 0x9C0);
 
 // the light object: its dtor (0x800BE828) destroys CLight[8] at _9AC, the
 // ctor (0x800BE364) is the XObj initialization plus that array

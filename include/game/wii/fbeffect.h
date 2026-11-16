@@ -96,6 +96,21 @@ public:
 
 	// inlined:
 	void Copy(GXTexFmt format);
+	void SetLineColor(u8 r, u8 g, u8 b)
+	{
+		GXColor color = { r, g, b, 4 };
+		mColor0       = color;
+	}
+	void SetColor2(u8 r, u8 g, u8 b)
+	{
+		GXColor color = { r, g, b, 0x80 };
+		mColor2       = color;
+	}
+	void SetColor3(u8 r, u8 g, u8 b, u8 a)
+	{
+		GXColor color = { r, g, b, a };
+		mColor3       = color;
+	}
 };
 STATIC_ASSERT(sizeof(FbEffect) == 0x1C8);
 
