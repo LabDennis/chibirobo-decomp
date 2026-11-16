@@ -15,7 +15,9 @@ enum AnimCurveType {
     AC_TYPE_PARTICLE_F32 = 3,
     AC_TYPE_PARTICLE_ROTATE = 6,
     AC_TYPE_PARTICLE_TEXTURE = 4,
-    AC_TYPE_CHILD = 5
+    AC_TYPE_CHILD = 5,
+    AC_TYPE_POSTFIELD = 2,
+    AC_TYPE_FIELD = 7
 };
 
 enum AnimCurveTarget {
@@ -143,6 +145,78 @@ struct AnimCurveNameTable {
     u16 PADDING_0x2; // at 0x2
     Name datas[1];   // at 0x4
 };
+
+// AC_TYPE_FIELD: the block behind the name table. The curve animates power
+struct AnimCurveFieldParam {
+    enum Kind {
+        KIND_GRAVITY,
+        KIND_SPEED,
+        KIND_MAGNET,
+        KIND_NEWTON,
+        KIND_VORTEX,
+        KIND_SPIN = 6,
+        KIND_RANDOM,
+        KIND_TAIL
+    };
+
+    enum Space {
+        SPACE_GLOBAL,
+        SPACE_EMITTER,
+        SPACE_LOCAL,
+        SPACE_GLOBAL_SCALE
+    };
+
+    enum Type { TYPE_VELOCITY, TYPE_POSITION };
+
+    enum RandomOption {
+        RANDOM_OPT_SPEED = (1 << 0),
+        RANDOM_OPT_CUBE = (1 << 1),
+        RANDOM_OPT_X = (1 << 2),
+        RANDOM_OPT_Y = (1 << 3),
+        RANDOM_OPT_Z = (1 << 4)
+    };
+
+    u8 space;        // at 0x0
+    u8 type;         // at 0x1
+    u8 PADDING_0x2;  // at 0x2
+    u8 option;       // at 0x3
+    f32 power;       // at 0x4
+
+    union {
+        struct {
+            math::_VEC3 rot; // at 0x8
+        } gravity;
+
+        struct {
+            math::_VEC3 pos; // at 0x8
+        } magnet;
+
+        struct {
+            f32 range;       // at 0x8
+            math::_VEC3 pos; // at 0xC
+        } newton;
+
+        struct {
+            f32 outerSpeed;  // at 0x8
+            f32 radius;      // at 0xC
+            math::_VEC3 rot; // at 0x10
+        } vortex;
+
+        struct {
+            math::_VEC3 rot; // at 0x8
+        } spin;
+
+        struct {
+            f32 diffuse;  // at 0x8
+            u16 interval; // at 0xC
+        } random;
+    };
+};
+
+// AC_TYPE_POSTFIELD: AnimCurvePostFieldParam and AnimCurvePostFieldInfo are in
+// ef_postfield.h (the info block holds an EmitterInheritSetting)
+struct AnimCurvePostFieldParam;
+struct AnimCurvePostFieldInfo;
 
 class ResAnimCurve {
 private:

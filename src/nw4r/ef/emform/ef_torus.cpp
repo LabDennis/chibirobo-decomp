@@ -15,18 +15,18 @@ void EmitterFormTorus::Emission(Emitter* pEmitter, ParticleManager* pManager,
 
     f32 sizeX, sizeY, sizeZ;
 
-    sizeX = math::FAbs(pParams[0]) > NW4R_MATH_FLT_EPSILON
+    sizeX = std::fabsf(pParams[0]) > NW4R_MATH_FLT_EPSILON
                 ? pParams[0]
                 : NW4R_MATH_FLT_EPSILON;
 
-    sizeY = math::FAbs(pParams[4]) > NW4R_MATH_FLT_EPSILON
+    sizeY = std::fabsf(pParams[4]) > NW4R_MATH_FLT_EPSILON
                 ? pParams[4]
                 : NW4R_MATH_FLT_EPSILON;
 
     if (flags & EmitterDesc::EMIT_FLAG_XYZ_SAME_SIZE) {
         sizeZ = sizeX;
     } else {
-        sizeZ = math::FAbs(pParams[5]) > NW4R_MATH_FLT_EPSILON
+        sizeZ = std::fabsf(pParams[5]) > NW4R_MATH_FLT_EPSILON
                     ? pParams[5]
                     : NW4R_MATH_FLT_EPSILON;
     }
@@ -44,11 +44,11 @@ void EmitterFormTorus::Emission(Emitter* pEmitter, ParticleManager* pManager,
     if (flags & EmitterDesc::EMIT_FLAG_17) {
         f32 f = std::fmodf(pParams[3] - pParams[2], NW4R_MATH_PI * 2);
 
-        if (f < NW4R_EF_EMIT_ANGLE_MIN || f > NW4R_EF_EMIT_ANGLE_MAX) {
+        if (f < NW4R_EF_EMIT_ANGLE_MIN || f > NW4R_EF_EMIT_ANGLE_MAX ||
+            pEmitter->mParameter.mEmitEmitDiv == 1) {
             dangle =
                 (pParams[3] - pParams[2]) / pEmitter->mParameter.mEmitEmitDiv;
         } else {
-            // @bug EmitDiv value of 1 will cause division by zero
             dangle = (pParams[3] - pParams[2]) /
                      (pEmitter->mParameter.mEmitEmitDiv - 1);
         }
@@ -74,26 +74,21 @@ void EmitterFormTorus::Emission(Emitter* pEmitter, ParticleManager* pManager,
             ringAngle = pEmitter->mRandom.RandFloat() * NW4R_MATH_PI * 2;
         }
 
-        f32 sa = std::sinf(angleOffset + angle);
-        f32 ca = std::cosf(angleOffset + angle);
+        f32 sa, ca;
+        SinCosRad(&sa, &ca, angleOffset + angle);
 
-        f32 sr = std::sinf(ringAngle);
-        f32 cr = std::cosf(ringAngle);
+        f32 sr, cr;
+        SinCosRad(&sr, &cr, ringAngle);
 
         pos.x = (inner * cr * sa + sa) * sizeX / (1.0f + inner);
         pos.y = sizeY * sr;
         pos.z = (-inner * cr * ca - ca) * sizeZ / (1.0f + inner);
 
         math::VEC3 fromOrigin = pos;
-        if (fromOrigin.x != 0.0f || fromOrigin.y != 0.0f ||
-            fromOrigin.z != 0.0f) {
-            math::VEC3Normalize(&fromOrigin, &fromOrigin);
-        }
+        VecNormalize(&fromOrigin, &fromOrigin);
 
         math::VEC3 fromYAxis(pos.x, 0.0f, pos.z);
-        if (fromYAxis.x != 0.0f || fromYAxis.z != 0.0f) {
-            math::VEC3Normalize(&fromYAxis, &fromYAxis);
-        }
+        VecNormalize(&fromYAxis, &fromYAxis);
 
         math::VEC3 normal;
         if (inner == 0.0f) {
@@ -106,9 +101,7 @@ void EmitterFormTorus::Emission(Emitter* pEmitter, ParticleManager* pManager,
             normal.z = (-inner * cr * ca) * sizeZ / (1.0f + inner);
         }
 
-        if (normal.x != 0.0f || normal.y != 0.0f || normal.z != 0.0f) {
-            math::VEC3Normalize(&normal, &normal);
-        }
+        VecNormalize(&normal, &normal);
 
         CalcVelocity(&vel, pEmitter, pos, normal, fromOrigin, fromYAxis);
 

@@ -10,9 +10,7 @@ void EmitterFormCube::EmissionSub(math::VEC3& rPos, math::VEC3& rNormal,
                                   u16 life, f32 lifeRnd,
                                   const math::MTX34* pSpace) {
 
-    if (rNormal.x != 0.0f || rNormal.y != 0.0f || rNormal.z != 0.0f) {
-        math::VEC3Normalize(&rNormal, &rNormal);
-    }
+    VecNormalize(&rNormal, &rNormal);
 
     math::VEC3 fromOrigin = rPos;
 
@@ -22,9 +20,7 @@ void EmitterFormCube::EmissionSub(math::VEC3& rPos, math::VEC3& rNormal,
         fromOrigin.z = 2.0f * pEmitter->mRandom.RandFloat() - 1.0f;
     }
 
-    if (fromOrigin.x != 0.0f || fromOrigin.y != 0.0f || fromOrigin.z != 0.0f) {
-        math::VEC3Normalize(&fromOrigin, &fromOrigin);
-    }
+    VecNormalize(&fromOrigin, &fromOrigin);
 
     math::VEC3 fromYAxis = rPos;
     fromYAxis.y = 0.0f;
@@ -34,9 +30,7 @@ void EmitterFormCube::EmissionSub(math::VEC3& rPos, math::VEC3& rNormal,
         fromYAxis.z = 2.0f * pEmitter->mRandom.RandFloat() - 1.0f;
     }
 
-    if (fromYAxis.x != 0.0f || fromYAxis.y != 0.0f || fromYAxis.z != 0.0f) {
-        math::VEC3Normalize(&fromYAxis, &fromYAxis);
-    }
+    VecNormalize(&fromYAxis, &fromYAxis);
 
     math::VEC3 vel;
     CalcVelocity(&vel, pEmitter, rPos, rNormal, fromOrigin, fromYAxis);
@@ -66,8 +60,14 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
     f32 outerX, outerY, outerZ;
 
     outerX = pParams[0];
-    outerY = pParams[1];
-    outerZ = pParams[2];
+
+    if (flags & EmitterDesc::EMIT_FLAG_XYZ_SAME_SIZE) {
+        outerY = outerX;
+        outerZ = outerX;
+    } else {
+        outerY = pParams[1];
+        outerZ = pParams[2];
+    }
 
     if (outerX < 1e-5f) {
         outerX = 1e-5f;
@@ -89,7 +89,7 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
     f32 innerRev = 1.0f - inner;
 
     f32 diffuseNrm = pEmitter->mParameter.mVelDiffusionEmitterNormal;
-    if (math::FAbs(diffuseNrm - NW4R_MATH_PI) <
+    if (std::fabsf(diffuseNrm - NW4R_MATH_PI) <
         NW4R_MATH_PI * NW4R_MATH_FLT_EPSILON) {
 
         diffuseNrm -= NW4R_MATH_PI * NW4R_MATH_FLT_EPSILON;
@@ -155,8 +155,8 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
             f32 x = baseX * outerX;
             f32 y = baseY * outerZ;
 
-            f32 maxDepth = 1.0f - MAX(math::FAbs(baseX), math::FAbs(baseY));
-            f32 dist = MAX(math::FAbs(baseX), math::FAbs(baseY));
+            f32 maxDepth = 1.0f - MAX(std::fabsf(baseX), std::fabsf(baseY));
+            f32 dist = MAX(std::fabsf(baseX), std::fabsf(baseY));
 
             math::VEC3 pos;
             math::VEC3 normal;
@@ -180,14 +180,14 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
             }
 
             if (diffuseNrm == 0.0f ||
-                (math::FAbs(pos.x) < 1e-5f && math::FAbs(pos.z) < 1e-5f)) {
+                (std::fabsf(pos.x) < 1e-5f && std::fabsf(pos.z) < 1e-5f)) {
 
                 normal.x = 0.0f;
                 normal.y = -1.0f;
                 normal.z = 0.0f;
             } else {
                 f32 cone = dist * diffuseNrm;
-                f32 ylen = 1.0f / std::tanf(cone);
+                f32 ylen = math::FInv(std::tanf(cone));
 
                 normal.x = pos.x;
                 normal.y = ylen * -math::FSqrt(pos.x * pos.x + pos.z * pos.z);
@@ -205,8 +205,8 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
                 f32 baseX = countX * div - 1.0f;
                 f32 x = baseX * outerX;
 
-                f32 maxDepth = 1.0f - MAX(math::FAbs(baseX), math::FAbs(baseY));
-                f32 dist = MAX(math::FAbs(baseX), math::FAbs(baseY));
+                f32 maxDepth = 1.0f - MAX(std::fabsf(baseX), std::fabsf(baseY));
+                f32 dist = MAX(std::fabsf(baseX), std::fabsf(baseY));
 
                 math::VEC3 pos;
                 math::VEC3 normal;
@@ -230,14 +230,14 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
                 }
 
                 if (diffuseNrm == 0.0f ||
-                    (math::FAbs(pos.x) < 1e-5f && math::FAbs(pos.y) < 1e-5f)) {
+                    (std::fabsf(pos.x) < 1e-5f && std::fabsf(pos.y) < 1e-5f)) {
 
                     normal.x = 0.0f;
                     normal.y = 0.0f;
                     normal.z = -1.0f;
                 } else {
                     f32 cone = dist * diffuseNrm;
-                    f32 ylen = 1.0f / std::tanf(cone);
+                    f32 ylen = math::FInv(std::tanf(cone));
 
                     normal.x = pos.x;
                     normal.y = pos.y;
@@ -254,8 +254,8 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
                 f32 baseX = countX * div - 1.0f;
                 f32 x = baseX * outerZ;
 
-                f32 maxDepth = 1.0f - MAX(math::FAbs(baseX), math::FAbs(baseY));
-                f32 dist = MAX(math::FAbs(baseX), math::FAbs(baseY));
+                f32 maxDepth = 1.0f - MAX(std::fabsf(baseX), std::fabsf(baseY));
+                f32 dist = MAX(std::fabsf(baseX), std::fabsf(baseY));
 
                 math::VEC3 pos;
                 math::VEC3 normal;
@@ -279,14 +279,14 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
                 }
 
                 if (diffuseNrm == 0.0f ||
-                    (math::FAbs(pos.y) < 1e-5f && math::FAbs(pos.z) < 1e-5f)) {
+                    (std::fabsf(pos.y) < 1e-5f && std::fabsf(pos.z) < 1e-5f)) {
 
                     normal.x = 1.0f;
                     normal.y = 0.0f;
                     normal.z = 0.0f;
                 } else {
                     f32 cone = dist * diffuseNrm;
-                    f32 ylen = 1.0f / std::tanf(cone);
+                    f32 ylen = math::FInv(std::tanf(cone));
 
                     normal.x = ylen * math::FSqrt(pos.y * pos.y + pos.z * pos.z);
 
@@ -302,8 +302,8 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
                 f32 baseX = countX * div - 1.0f;
                 f32 x = baseX * outerX;
 
-                f32 maxDepth = 1.0f - MAX(math::FAbs(baseX), math::FAbs(baseY));
-                f32 dist = MAX(math::FAbs(baseX), math::FAbs(baseY));
+                f32 maxDepth = 1.0f - MAX(std::fabsf(baseX), std::fabsf(baseY));
+                f32 dist = MAX(std::fabsf(baseX), std::fabsf(baseY));
 
                 math::VEC3 pos;
                 math::VEC3 normal;
@@ -327,14 +327,14 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
                 }
 
                 if (diffuseNrm == 0.0f ||
-                    (math::FAbs(pos.x) < 1e-5f && math::FAbs(pos.y) < 1e-5f)) {
+                    (std::fabsf(pos.x) < 1e-5f && std::fabsf(pos.y) < 1e-5f)) {
 
                     normal.x = 0.0f;
                     normal.y = 0.0f;
                     normal.z = 1.0f;
                 } else {
                     f32 cone = dist * diffuseNrm;
-                    f32 ylen = 1.0f / std::tanf(cone);
+                    f32 ylen = math::FInv(std::tanf(cone));
 
                     normal.x = pos.x;
                     normal.y = pos.y;
@@ -349,8 +349,8 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
                 f32 baseX = countX * div - 1.0f;
                 f32 x = baseX * outerZ;
 
-                f32 maxDepth = 1.0f - MAX(math::FAbs(baseX), math::FAbs(baseY));
-                f32 dist = MAX(math::FAbs(baseX), math::FAbs(baseY));
+                f32 maxDepth = 1.0f - MAX(std::fabsf(baseX), std::fabsf(baseY));
+                f32 dist = MAX(std::fabsf(baseX), std::fabsf(baseY));
 
                 math::VEC3 pos;
                 math::VEC3 normal;
@@ -374,14 +374,14 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
                 }
 
                 if (diffuseNrm == 0.0f ||
-                    (math::FAbs(pos.y) < 1e-5f && math::FAbs(pos.z) < 1e-5f)) {
+                    (std::fabsf(pos.y) < 1e-5f && std::fabsf(pos.z) < 1e-5f)) {
 
                     normal.x = -1.0f;
                     normal.y = 0.0f;
                     normal.z = 0.0f;
                 } else {
                     f32 cone = dist * diffuseNrm;
-                    f32 ylen = 1.0f / std::tanf(cone);
+                    f32 ylen = math::FInv(std::tanf(cone));
 
                     normal.x =
                         ylen * -math::FSqrt(pos.y * pos.y + pos.z * pos.z);
@@ -450,8 +450,8 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
                 f32 x = baseX * outerX;
                 f32 y = baseY * outerZ;
 
-                f32 maxDepth = 1.0f - MAX(math::FAbs(baseX), math::FAbs(baseY));
-                f32 dist = MAX(math::FAbs(baseX), math::FAbs(baseY));
+                f32 maxDepth = 1.0f - MAX(std::fabsf(baseX), std::fabsf(baseY));
+                f32 dist = MAX(std::fabsf(baseX), std::fabsf(baseY));
 
                 math::VEC3 pos;
                 math::VEC3 normal;
@@ -475,14 +475,14 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
                 }
 
                 if (diffuseNrm == 0.0f ||
-                    (math::FAbs(pos.x) < 1e-5f && math::FAbs(pos.z) < 1e-5f)) {
+                    (std::fabsf(pos.x) < 1e-5f && std::fabsf(pos.z) < 1e-5f)) {
 
                     normal.x = 0.0f;
                     normal.y = 1.0f;
                     normal.z = 0.0f;
                 } else {
                     f32 cone = dist * diffuseNrm;
-                    f32 ylen = 1.0f / std::tanf(cone);
+                    f32 ylen = math::FInv(std::tanf(cone));
 
                     normal.x = pos.x;
                     normal.y = ylen * math::FSqrt(pos.x * pos.x + pos.z * pos.z);
@@ -582,13 +582,13 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
             math::VEC3 pos;
             math::VEC3 normal(0.0f, 0.0f, 0.0f);
 
-            if (y >= 0.0f && y >= math::FAbs(x) && y >= math::FAbs(z)) {
+            if (y >= 0.0f && y >= std::fabsf(x) && y >= std::fabsf(z)) {
                 normal.y = 1.0f;
-            } else if (y < 0.0f && -y >= math::FAbs(x) && -y >= math::FAbs(z)) {
+            } else if (y < 0.0f && -y >= std::fabsf(x) && -y >= std::fabsf(z)) {
                 normal.y = -1.0f;
-            } else if (x >= 0.0f && x >= math::FAbs(y) && x >= math::FAbs(z)) {
+            } else if (x >= 0.0f && x >= std::fabsf(y) && x >= std::fabsf(z)) {
                 normal.x = 1.0f;
-            } else if (x < 0.0f && -x >= math::FAbs(y) && -x >= math::FAbs(z)) {
+            } else if (x < 0.0f && -x >= std::fabsf(y) && -x >= std::fabsf(z)) {
                 normal.x = -1.0f;
             } else if (z >= 0.0f) {
                 normal.z = 1.0f;
@@ -604,30 +604,30 @@ void EmitterFormCube::Emission(Emitter* pEmitter, ParticleManager* pManager,
                 f32 dist;
 
                 if (normal.x != 0.0f) {
-                    dist = MAX(math::FAbs(pos.y), math::FAbs(pos.z));
+                    dist = MAX(std::fabsf(pos.y), std::fabsf(pos.z));
 
                     f32 cone = dist * diffuseNrm;
-                    f32 ylen = 1.0f / std::tanf(cone);
+                    f32 ylen = math::FInv(std::tanf(cone));
 
                     normal.x *=
                         ylen * math::FSqrt(pos.y * pos.y + pos.z * pos.z);
                     normal.y = pos.y;
                     normal.z = pos.z;
                 } else if (normal.y != 0.0f) {
-                    dist = MAX(math::FAbs(pos.x), math::FAbs(pos.z));
+                    dist = MAX(std::fabsf(pos.x), std::fabsf(pos.z));
 
                     f32 cone = dist * diffuseNrm;
-                    f32 ylen = 1.0f / std::tanf(cone);
+                    f32 ylen = math::FInv(std::tanf(cone));
 
                     normal.x = pos.x;
                     normal.y *=
                         ylen * math::FSqrt(pos.x * pos.x + pos.z * pos.z);
                     normal.z = pos.z;
                 } else {
-                    dist = MAX(math::FAbs(pos.x), math::FAbs(pos.y));
+                    dist = MAX(std::fabsf(pos.x), std::fabsf(pos.y));
 
                     f32 cone = dist * diffuseNrm;
-                    f32 ylen = 1.0f / std::tanf(cone);
+                    f32 ylen = math::FInv(std::tanf(cone));
 
                     normal.x = pos.x;
                     normal.y = pos.y;

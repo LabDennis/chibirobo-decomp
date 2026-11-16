@@ -9,6 +9,13 @@ namespace ef {
 
 class DrawStripeStrategy : public DrawStrategyImpl {
 public:
+    // Bits of the `flags` argument the draw functions pass on
+    enum DrawFlag {
+        FLAG_TEXCOORD = 1 << 0,     // send a texture coordinate per vertex
+        FLAG_BILLBOARD = 1 << 3,    // face the screen (ASSIST_ST_BILLBOARD)
+        FLAG_ELDERS_FIRST = 1 << 4, // draw order of the emitter
+    };
+
     struct Trigonometric {
         f32 mSin; // at 0x0
         f32 mCos; // at 0x4
@@ -56,9 +63,7 @@ private:
         const EmitterDrawSetting& rSetting =
             *pManager->mResource->GetEmitterDrawSetting();
 
-        InitTexture(rSetting);
-        InitTev(rSetting, rInfo);
-        InitColor(pManager, rSetting, rInfo);
+        InitGP(pManager, rSetting, rInfo);
 
         GXEnableTexOffsets(GX_TEXCOORD0, TRUE, TRUE);
 
@@ -100,7 +105,22 @@ private:
     void DrawStripeTube_ConnectRing(AheadContextStripe* pContext, int flags);
     void DrawStripeTube_ConnectEmitter(AheadContextStripe* pContext,
                                        int flags);
-    void DrawStripeTube(AheadContextStripe* pContext, int flags);
+    void DrawStripeTube(AheadContextStripe* pContext, int flags, bool xfFlush);
+
+    // Eight degenerate vertices, sent before a tube when the XF state may be stale
+    void DrawDummy(int flags) {
+        GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 8);
+
+        for (int i = 0; i < 8; i++) {
+            GXPosition3f32(0.0f, 0.0f, 0.0f);
+
+            if (flags & FLAG_TEXCOORD) {
+                GXTexCoord2f32(0.0f, 0.0f);
+            }
+        }
+
+        GXEnd();
+    }
 
     math::VEC3 GetInitialPrevAxis(const EmitterDrawSetting& rSetting,
                                   const AheadContextStripe& rContext);

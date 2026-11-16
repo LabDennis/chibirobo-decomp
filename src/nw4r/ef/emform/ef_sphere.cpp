@@ -17,7 +17,7 @@ void EmitterFormSphere::Emission(Emitter* pEmitter, ParticleManager* pManager,
 
     f32 sizeX, sizeY, sizeZ;
 
-    sizeX = math::FAbs(pParams[0]) > NW4R_MATH_FLT_EPSILON
+    sizeX = std::fabsf(pParams[0]) > NW4R_MATH_FLT_EPSILON
                 ? pParams[0]
                 : NW4R_MATH_FLT_EPSILON;
 
@@ -25,11 +25,11 @@ void EmitterFormSphere::Emission(Emitter* pEmitter, ParticleManager* pManager,
         sizeY = sizeX;
         sizeZ = sizeX;
     } else {
-        sizeY = math::FAbs(pParams[4]) > NW4R_MATH_FLT_EPSILON
+        sizeY = std::fabsf(pParams[4]) > NW4R_MATH_FLT_EPSILON
                     ? pParams[4]
                     : NW4R_MATH_FLT_EPSILON;
 
-        sizeZ = math::FAbs(pParams[5]) > NW4R_MATH_FLT_EPSILON
+        sizeZ = std::fabsf(pParams[5]) > NW4R_MATH_FLT_EPSILON
                     ? pParams[5]
                     : NW4R_MATH_FLT_EPSILON;
     }
@@ -99,19 +99,16 @@ void EmitterFormSphere::Emission(Emitter* pEmitter, ParticleManager* pManager,
             math::VEC3 normal;
             math::VEC3 fromYAxis;
 
-            fromYAxis.x = -std::sinf(angle);
             fromYAxis.y = 0.0f;
-            fromYAxis.z = std::cosf(angle);
+            SinCosRad(&fromYAxis.x, &fromYAxis.z, angle);
+            fromYAxis.x *= -1.0f;
 
-            pos.x = sizeX * radius * std::cosf(x) * fromYAxis.x;
-            pos.y = sizeY * radius * -std::sinf(x);
-            pos.z = sizeZ * radius * std::cosf(x) * fromYAxis.z;
+            SinCosRad(&pos.y, x);
+            pos.x = sizeX * radius * pos.z * fromYAxis.x;
+            pos.y = -sizeY * radius * pos.y;
+            pos.z = sizeZ * radius * fromYAxis.z * pos.z;
 
-            if (pos.x != 0.0f || pos.y != 0.0f || pos.z != 0.0f) {
-                math::VEC3Normalize(&normal, &pos);
-            } else {
-                normal.x = normal.y = normal.z = 0.0f;
-            }
+            VecNormalize(&normal, &pos);
 
             if (std::cosf(x) < 0.0f) {
                 fromYAxis.x = -fromYAxis.x;
@@ -157,23 +154,22 @@ void EmitterFormSphere::Emission(Emitter* pEmitter, ParticleManager* pManager,
             f32 x = pEmitter->mRandom.RandFloat() * NW4R_MATH_PI +
                     (NW4R_MATH_PI / 2);
 
-            pos.x = sizeX * dist * -std::cosf(x) * std::sinf(angle);
-            pos.y = sizeY * dist * -std::sinf(x);
-            pos.z = sizeZ * dist * std::cosf(x) * std::cosf(angle);
+            f32 sx, cx;
+            SinCosRad(&sx, &cx, x);
+
+            f32 sa, ca;
+            SinCosRad(&sa, &ca, angle);
+
+            pos.x = sizeX * dist * -cx * sa;
+            pos.y = sizeY * dist * -sx;
+            pos.z = sizeZ * dist * cx * ca;
 
             math::VEC3 normal;
-            if (pos.x != 0.0f || pos.y != 0.0f || pos.z != 0.0f) {
-                math::VEC3Normalize(&normal, &pos);
-            } else {
-                normal.x = normal.y = normal.z = 0.0f;
-            }
+            VecNormalize(&normal, &pos);
 
             math::VEC3 fromYAxis = pos;
             fromYAxis.y = 0.0f;
-
-            if (fromYAxis.x != 0.0f || fromYAxis.z != 0.0f) {
-                math::VEC3Normalize(&fromYAxis, &fromYAxis);
-            }
+            VecNormalize(&fromYAxis, &fromYAxis);
 
             CalcVelocity(&vel, pEmitter, pos, normal, normal, fromYAxis);
 

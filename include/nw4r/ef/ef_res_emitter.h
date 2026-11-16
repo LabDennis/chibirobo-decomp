@@ -151,6 +151,7 @@ struct EmitterDrawSetting {
 
     enum DirType {
         DIR_NO_DESIGN = 5,
+        DIR_NO_DESIGN_7 = 7, // name unknown; handled like DIR_NO_DESIGN
     };
 
     u16 mFlags;                     // at 0x0
@@ -160,34 +161,36 @@ struct EmitterDrawSetting {
     u8 mNumTevs;                    // at 0x5
     u8 mFlagClamp;                  // at 0x6
     u8 mIndirectTargetStage;        // at 0x7
-    TevStageColor mTevColor[4];     // at 0x8
-    TevStageColorOp mTevColorOp[4]; // at 0x18
-    TevStageAlpha mTevAlpha[4];     // at 0x2C
-    TevStageColorOp mTevAlphaOp[4]; // at 0x3C
-    u8 mTevKColorSel[4];            // at 0x50
-    u8 mTevKAlphaSel[4];            // at 0x54
-    BlendMode mBlendMode;           // at 0x58
-    ColorInput mColorInput;         // at 0x5C
-    u8 mZCompareFunc;               // at 0x64
-    u8 mAlphaFlickType;             // at 0x65
-    u16 mAlphaFlickCycle;           // at 0x66
-    u8 mAlphaFlickRandom;           // at 0x68
-    u8 mAlphaFlickAmplitude;        // at 0x69
-    Lighting mLighting;             // at 0x6A
-    f32 mIndTexOffsetMtx[2][3];     // at 0x84
-    s8 mIndTexScaleExp;             // at 0x9C
-    s8 pivotX;                      // at 0x9D
-    s8 pivotY;                      // at 0x9E
-    u8 PADDING_0xA3;                // at 0x9F
-    u8 ptcltype;                    // at 0xA0
-    u8 typeOption;                  // at 0xA1
-    u8 typeDir;                     // at 0xA2
-    u8 typeAxis;                    // at 0xA3
-    u8 typeOption0;                 // at 0xA4
-    u8 typeOption1;                 // at 0xA5
-    u8 typeOption2;                 // at 0xA6
-    u8 PADDING_0xAB;                // at 0xA7
-    f32 zOffset;                    // at 0xA8
+    u8 mTevTexture[4];              // at 0x8
+    TevStageColor mTevColor[4];     // at 0xC
+    TevStageColorOp mTevColorOp[4]; // at 0x1C
+    TevStageAlpha mTevAlpha[4];     // at 0x30
+    TevStageColorOp mTevAlphaOp[4]; // at 0x40
+    u8 mTevKColorSel[4];            // at 0x54
+    u8 mTevKAlphaSel[4];            // at 0x58
+    BlendMode mBlendMode;           // at 0x5C
+    ColorInput mColorInput;         // at 0x60
+    ColorInput mAlphaInput;         // at 0x68
+    u8 mZCompareFunc;               // at 0x70
+    u8 mAlphaFlickType;             // at 0x71
+    u16 mAlphaFlickCycle;           // at 0x72
+    u8 mAlphaFlickRandom;           // at 0x74
+    u8 mAlphaFlickAmplitude;        // at 0x75
+    Lighting mLighting;             // at 0x76
+    f32 mIndTexOffsetMtx[2][3];     // at 0x90
+    s8 mIndTexScaleExp;             // at 0xA8
+    s8 pivotX;                      // at 0xA9
+    s8 pivotY;                      // at 0xAA
+    u8 PADDING_0xA3;                // at 0xAB
+    u8 ptcltype;                    // at 0xAC
+    u8 typeOption;                  // at 0xAD
+    u8 typeDir;                     // at 0xAE
+    u8 typeAxis;                    // at 0xAF
+    u8 typeOption0;                 // at 0xB0
+    u8 typeOption1;                 // at 0xB1
+    u8 typeOption2;                 // at 0xB2
+    u8 PADDING_0xAB;                // at 0xB3
+    f32 zOffset;                    // at 0xB4
 };
 
 struct EmitterDesc {
@@ -203,6 +206,12 @@ struct EmitterDesc {
         CMN_FLAG_EMIT_INHERIT_ROT = (1 << 8),
 
         CMN_FLAG_DISABLE_CALC = (1 << 9),
+
+        CMN_FLAG_INHERIT_PTCL_PIVOT = (1 << 10),
+        CMN_FLAG_EMIT_INHERIT_PIVOT = (1 << 11),
+
+        CMN_FLAG_CHILD_PTCL_INHERIT_SCALE = (1 << 12),
+        CMN_FLAG_CHILD_PTCL_INHERIT_ROT = (1 << 13),
 
         CMN_FLAG_RELOCATED = (1 << 30),
     };
@@ -383,6 +392,48 @@ public:
     }
 };
 
+// Handle on the emitter section of an emitter resource
+class ResEmitterDesc {
+private:
+    EmitterDesc* mData; // at 0x0
+
+public:
+    explicit ResEmitterDesc(EmitterDesc* pData = NULL) : mData(pData) {}
+    ResEmitterDesc(const ResEmitterDesc& rOther) : mData(rOther.mData) {}
+
+    bool IsValid() const {
+        return mData != NULL;
+    }
+
+    EmitterDesc* ptr() {
+        return mData;
+    }
+
+    u16 GetEmitLife();
+};
+
+// Handle on the particle section of an emitter resource
+class ResParticleParameterDesc {
+private:
+    ParticleParameterDesc* mData; // at 0x0
+
+public:
+    explicit ResParticleParameterDesc(ParticleParameterDesc* pData = NULL)
+        : mData(pData) {}
+    ResParticleParameterDesc(const ResParticleParameterDesc& rOther)
+        : mData(rOther.mData) {}
+
+    bool IsValid() const {
+        return mData != NULL;
+    }
+
+    ParticleParameterDesc* ptr() {
+        return mData;
+    }
+
+    void SetColor(int layer, int idx, const GXColor& rColor);
+};
+
 class ResEmitter {
 private:
     EmitterResource* mData; // at 0x0
@@ -399,6 +450,8 @@ public:
         return mData;
     }
 
+    ResEmitterDesc GetEmitterDesc();
+    ResParticleParameterDesc GetParticleParameterDesc();
     ResAnimCurve GetPtclTrack(u16 idx);
 };
 

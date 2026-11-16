@@ -341,6 +341,13 @@ u32 Resource::NumEmitter(EffectProject* pEffProject) const {
     return mNumEmitter;
 }
 
+ResEmitter Resource::GetEmitterIndexOf(u32 idx,
+                                       EffectProject* pEffProject) const {
+
+    EmitterResource* const pResource = _GetEmitterIndexOf(idx, pEffProject);
+    return ResEmitter(pResource);
+}
+
 EmitterResource*
 Resource::_GetEmitterIndexOf(u32 idx, EffectProject* pEffProject) const {
     if (pEffProject != NULL) {
@@ -391,7 +398,7 @@ TextureProject* Resource::AddTexture(u8* pData) {
     return pTexProject;
 }
 
-u32 Resource::relocateCurveTexture(u8* pCmdList) {
+u32 Resource::relocateCurveTexture(u8* pCmdList, EmitterResource* pResource) {
     u32 error = 0;
 
     AnimCurveHeader* pHeader = reinterpret_cast<AnimCurveHeader*>(pCmdList);
@@ -408,6 +415,10 @@ u32 Resource::relocateCurveTexture(u8* pCmdList) {
 
     AnimCurveNameTable* pNameTable = reinterpret_cast<AnimCurveNameTable*>(
         reinterpret_cast<u8*>(pRandomTable) + pHeader->randomTable);
+
+    if (pHeader->nameTable == 0) {
+        return 0;
+    }
 
     u8* pName = reinterpret_cast<u8*>(pNameTable) +
                 offsetof(AnimCurveNameTable, datas) +
@@ -430,7 +441,7 @@ u32 Resource::relocateCurveTexture(u8* pCmdList) {
     return error;
 }
 
-u32 Resource::relocateCurveChild(u8* pCmdList) {
+u32 Resource::relocateCurveChild(u8* pCmdList, EmitterResource* pResource) {
     u32 error = 0;
 
     AnimCurveHeader* pHeader = reinterpret_cast<AnimCurveHeader*>(pCmdList);
@@ -447,6 +458,10 @@ u32 Resource::relocateCurveChild(u8* pCmdList) {
 
     AnimCurveNameTable* pNameTable = reinterpret_cast<AnimCurveNameTable*>(
         reinterpret_cast<u8*>(pRandomTable) + pHeader->randomTable);
+
+    if (pHeader->nameTable == 0) {
+        return 0;
+    }
 
     u8* pName = reinterpret_cast<u8*>(pNameTable) +
                 offsetof(AnimCurveNameTable, datas) +
@@ -473,6 +488,9 @@ u32 Resource::RelocateCommand() {
     u32 error = 0;
 
     for (u32 idx = 0; idx < NumEmitter(NULL); idx++) {
+        // Unresolved names of this emitter
+        u8 miss = 0;
+
         EmitterResource* pResource = _GetEmitterIndexOf(idx, NULL);
         if (pResource == NULL) {
             continue;
@@ -490,7 +508,7 @@ u32 Resource::RelocateCommand() {
             ppWork[i] = _FindTexture(reinterpret_cast<char*>(pPtr), NULL);
 
             if (pPtr[0] != 0 && ppWork[i] == NULL) {
-                error++;
+                miss++;
             }
 
             pPtr += size;
@@ -501,32 +519,36 @@ u32 Resource::RelocateCommand() {
 
 #define pTrackAsHeader reinterpret_cast<AnimCurveHeader*>(pPtr)
 
-            if (pTrackAsHeader->magic != NW4R_EF_MAGIC_ANIMCURVE) {
-                continue;
-            }
+            if (pTrackAsHeader->magic == NW4R_EF_MAGIC_ANIMBAKED ||
+                pTrackAsHeader->magic == NW4R_EF_MAGIC_ANIMCURVE) {
 
-            // Load curveFlag and kindEnable
-            u16 ctrl = *reinterpret_cast<u16*>(&pTrackAsHeader->curveFlag);
+                switch (pTrackAsHeader->curveFlag) {
+                case AC_TYPE_PARTICLE_TEXTURE: {
+                    miss += relocateCurveTexture(pPtr, pResource);
+                    break;
+                }
 
-            switch (ctrl) {
-            case (AC_TYPE_PARTICLE_TEXTURE << 8 | 0b001): {
-                error += relocateCurveTexture(pPtr);
-                break;
-            }
-
-            case (AC_TYPE_CHILD << 8 | 0b001): {
-                error += relocateCurveChild(pPtr);
-                break;
-            }
-
-            case (AC_TYPE_PARTICLE_U8 << 8 | 0b111):
-            case (AC_TYPE_PARTICLE_F32 << 8 | 0b011): {
-                break;
-            }
+                case AC_TYPE_POSTFIELD:
+                case AC_TYPE_CHILD: {
+                    miss += relocateCurveChild(pPtr, pResource);
+                    break;
+                }
+                }
             }
 
 #undef pTrackAsHeader
         }
+
+        // An emitter with a missing texture or child cannot be created
+        if (miss != 0) {
+            pResource->GetEmitterDesc()->commonFlag &=
+                ~EmitterDesc::CMN_FLAG_RELOCATED;
+        } else {
+            pResource->GetEmitterDesc()->commonFlag |=
+                EmitterDesc::CMN_FLAG_RELOCATED;
+        }
+
+        error += miss;
     }
 
     return error;

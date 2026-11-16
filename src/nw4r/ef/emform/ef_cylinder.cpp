@@ -5,15 +5,6 @@
 namespace nw4r {
 namespace ef {
 
-static f32 ToFloat(u32 value) {
-    return static_cast<f32>(value) / 65536.0f;
-}
-
-static void MixRandomSeed(Emitter* pEmitter) {
-    u32& randomSeed = reinterpret_cast<u32&>(pEmitter->mRandom);
-    randomSeed = randomSeed * 0x343FD + 0x269EC3;
-}
-
 void EmitterFormCylinder::EmissionSub(
     Emitter* pEmitter, ParticleManager* pManager, int count, u32 flags,
     f32* pParams, u16 life, f32 lifeRnd, const math::MTX34* pSpace, f32 sizeX,
@@ -23,10 +14,7 @@ void EmitterFormCylinder::EmissionSub(
         math::VEC3 pos;
         math::VEC3 vel;
 
-        u32 randomSeed = static_cast<u32>(pEmitter->mRandom.Rand());
-        u32 seed = *reinterpret_cast<u32*>(&pEmitter->mRandom);
-        f32 dist = ToFloat(seed >> 16);
-
+        f32 dist = pEmitter->mRandom.RandFloat();
         f32 inner = pParams[1] / 100.0f;
 
         if (flags & EmitterDesc::EMIT_FLAG_24) {
@@ -36,13 +24,11 @@ void EmitterFormCylinder::EmissionSub(
         }
 
         if (!(flags & EmitterDesc::EMIT_FLAG_17)) {
-            u32 angleSeed = seed * 0x343FD + 0x269EC3;
-            *reinterpret_cast<u32*>(&pEmitter->mRandom) = angleSeed;
-            angle = (pParams[3] - pParams[2]) * ToFloat(angleSeed >> 16);
+            angle = (pParams[3] - pParams[2]) * pEmitter->mRandom.RandFloat();
         }
 
-        f32 sa = std::sinf(angleOffset + angle);
-        f32 ca = std::cosf(angleOffset + angle);
+        f32 sa, ca;
+        SinCosRad(&sa, &ca, angleOffset + angle);
 
         math::VEC3 fromYAxis(sa, 0.0f, -ca);
 
@@ -51,22 +37,16 @@ void EmitterFormCylinder::EmissionSub(
         if (flags & EmitterDesc::EMIT_FLAG_17) {
             pos.y = height;
         } else {
-            u16 heightRandom = pEmitter->mRandom.Rand();
-            pos.y = (ToFloat(heightRandom) * 2.0f - 1.0f) * sizeY;
+            pos.y = (pEmitter->mRandom.RandFloat() * 2.0f - 1.0f) * sizeY;
         }
 
         pos.z = fromYAxis.z * dist * sizeZ;
 
         math::VEC3 normal(pos.x, 0.0f, pos.z);
-        if (pos.x != 0.0f || pos.z != 0.0f) {
-            math::VEC3Normalize(&normal, &normal);
-        }
+        VecNormalize(&normal, &normal);
 
         math::VEC3 fromOrigin = pos;
-        if (fromOrigin.x != 0.0f || fromOrigin.y != 0.0f ||
-            fromOrigin.z != 0.0f) {
-            math::VEC3Normalize(&fromOrigin, &fromOrigin);
-        }
+        VecNormalize(&fromOrigin, &fromOrigin);
 
         CalcVelocity(&vel, pEmitter, pos, normal, fromOrigin, fromYAxis);
 
@@ -99,18 +79,18 @@ void EmitterFormCylinder::Emission(Emitter* pEmitter, ParticleManager* pManager,
 
     f32 sizeX, sizeY, sizeZ;
 
-    sizeX = math::FAbs(pParams[0]) > NW4R_MATH_FLT_EPSILON
+    sizeX = std::fabsf(pParams[0]) > NW4R_MATH_FLT_EPSILON
                 ? pParams[0]
                 : NW4R_MATH_FLT_EPSILON;
 
-    sizeY = math::FAbs(pParams[4]) > NW4R_MATH_FLT_EPSILON
+    sizeY = std::fabsf(pParams[4]) > NW4R_MATH_FLT_EPSILON
                 ? pParams[4]
                 : NW4R_MATH_FLT_EPSILON;
 
     if (flags & EmitterDesc::EMIT_FLAG_XYZ_SAME_SIZE) {
         sizeZ = sizeX;
     } else {
-        sizeZ = math::FAbs(pParams[5]) > NW4R_MATH_FLT_EPSILON
+        sizeZ = std::fabsf(pParams[5]) > NW4R_MATH_FLT_EPSILON
                     ? pParams[5]
                     : NW4R_MATH_FLT_EPSILON;
     }
@@ -128,11 +108,11 @@ void EmitterFormCylinder::Emission(Emitter* pEmitter, ParticleManager* pManager,
     if (flags & EmitterDesc::EMIT_FLAG_17) {
         f32 f = std::fmodf(pParams[3] - pParams[2], NW4R_MATH_PI * 2);
 
-        if (f < NW4R_EF_EMIT_ANGLE_MIN || f > NW4R_EF_EMIT_ANGLE_MAX) {
+        if (f < NW4R_EF_EMIT_ANGLE_MIN || f > NW4R_EF_EMIT_ANGLE_MAX ||
+            pEmitter->mParameter.mEmitEmitDiv == 1) {
             dangle =
                 (pParams[3] - pParams[2]) / pEmitter->mParameter.mEmitEmitDiv;
         } else {
-            // @bug EmitDiv value of 1 will cause division by zero
             dangle = (pParams[3] - pParams[2]) /
                      (pEmitter->mParameter.mEmitEmitDiv - 1);
         }

@@ -30,14 +30,14 @@ void EmitterFormLine::Emission(Emitter* pEmitter, ParticleManager* pManager,
 
         fpos *= pParams[0];
 
-        f32 sx = std::sinf(pParams[1]);
-        f32 cx = std::cosf(pParams[1]);
+        f32 sx, cx;
+        SinCosRad(&sx, &cx, pParams[1]);
 
-        f32 sy = std::sinf(pParams[2]);
-        f32 cy = std::cosf(pParams[2]);
+        f32 sy, cy;
+        SinCosRad(&sy, &cy, pParams[2]);
 
-        f32 sz = std::sinf(pParams[3]);
-        f32 cz = std::cosf(pParams[3]);
+        f32 sz, cz;
+        SinCosRad(&sz, &cz, pParams[3]);
 
         math::VEC3 pos;
         pos.x = (cx * cz * sy + sx * sz) * fpos;

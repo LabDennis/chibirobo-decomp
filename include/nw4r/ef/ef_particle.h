@@ -90,7 +90,8 @@ public:
         return &mParameter;
     }
 
-    void Draw_GetColor(int layer, GXColor* pColorPri, GXColor* pColorSec);
+    // 0x80242B8C: the alpha flicker factor of this frame, 255 = none
+    u8 Draw_GetAlphaFlick();
 
     void GetColor(int layer, int index, GXColor* pColor) {
         pColor->r = mParameter.mColor[layer][index].r;
@@ -272,6 +273,16 @@ private:
         NUM_OF_TEX_WRAP_ST = 4
     };
 };
+
+inline int ParticleManager::RetireParticle(Particle* pParticle) {
+    if (pParticle->mLifeStatus != NW4R_EF_LS_ACTIVE) {
+        return 0;
+    }
+
+    mActivityList.ToWait(pParticle);
+    pParticle->Destroy();
+    return 1;
+}
 
 } // namespace ef
 } // namespace nw4r

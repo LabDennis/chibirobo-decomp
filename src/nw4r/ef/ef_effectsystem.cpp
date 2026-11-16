@@ -8,7 +8,7 @@
 
 namespace {
 
-NW4R_LIB_VERSION(EF, "Jun  8 2007", "11:16:29", "0x4199_60831");
+NW4R_LIB_VERSION(EF, "Jan 23 2009", "03:31:37", "0x4199_60831");
 
 } // namespace
 
@@ -19,12 +19,14 @@ static DrawOrder gBasicDrawOrder;
 static DrawStrategyBuilder gBasicDrawStrategyBuilder;
 static EmitFormBuilder gBasicEmitFormBuilder;
 
-bool EffectSystem::mDisplayVersion = true;
+static DrawInfo gBasicDrawInfo;
+
+BOOL EffectSystem::mDisplayVersion;
 EffectSystem EffectSystem::instance;
 
 EffectSystem::EffectSystem() {
-    if (mDisplayVersion) {
-        mDisplayVersion = false;
+    if (!mDisplayVersion) {
+        mDisplayVersion = TRUE;
         OSRegisterVersion(NW4R_EF_Version_);
     }
 
@@ -71,13 +73,15 @@ bool EffectSystem::Closing(Effect* pEffect) {
     return true;
 }
 
-Effect* EffectSystem::CreateEffect(const char* pName, u32 groupID,
+Effect* EffectSystem::CreateEffect(EmitterResource* pResource, u32 groupID,
                                    u16 calcRemain) {
 
-    EmitterResource* pResource =
-        Resource::GetInstance()->_FindEmitter(pName, NULL);
-
     if (pResource == NULL) {
+        return NULL;
+    }
+
+    if (!(pResource->GetEmitterDesc()->commonFlag &
+          EmitterDesc::CMN_FLAG_RELOCATED)) {
         return NULL;
     }
 
@@ -177,6 +181,105 @@ void EffectSystem::Calc(u32 groupID, bool onlyBillboard) {
 void EffectSystem::Draw(const DrawInfo& rInfo, u32 groupID) {
     NW4R_UT_LIST_FOREACH (Effect, it, mActivityList[groupID].mActiveList,
                           { it->Draw(rInfo); });
+}
+
+void EffectSystem::SetProcessCamera(const math::VEC3& rPos,
+                                    const math::MTX34& rMtx, f32 near,
+                                    f32 far) {
+    mProcessCameraPos = rPos;
+    math::MTX34Copy(&mProcessCameraMtx, &rMtx);
+    mProcessCameraNear = near;
+    mProcessCameraFar = far;
+}
+
+// pFront stands directly before pBack in the list; they change places
+void EffectSystem::SwapEffect(ut::List* pList, Effect* pFront, Effect* pBack) {
+    ut::Link* pFrontLink = &pFront->mActivityLink;
+    ut::Link* pBackLink = &pBack->mActivityLink;
+    Effect* pPrev = static_cast<Effect*>(pFrontLink->prevObject);
+    Effect* pNext = static_cast<Effect*>(pBackLink->nextObject);
+
+    if (pPrev == NULL) {
+        pList->headObject = pBack;
+    } else {
+        pPrev->mActivityLink.nextObject = pBack;
+    }
+
+    pBackLink->prevObject = pPrev;
+    pBackLink->nextObject = pFront;
+    pFrontLink->prevObject = pBack;
+    pFrontLink->nextObject = pNext;
+
+    if (pNext == NULL) {
+        pList->tailObject = pFront;
+    } else {
+        pNext->mActivityLink.prevObject = pFront;
+    }
+}
+
+// Shaker sort of one group's active effects
+void EffectSystem::SortEffect(EffectCompareFunc pFunc, u32 groupID) {
+    ut::List* pList = &mActivityList[groupID].mActiveList;
+    u16 begin;
+    u16 end;
+    Effect* pBack;
+    u16 i;
+    u32 n;
+    Effect* pStart;
+    Effect* pFront;
+    u16 last;
+
+    if (pList->numObjects <= 1) {
+        return;
+    }
+
+    begin = 0;
+    end = pList->numObjects - 1;
+    pStart = NULL;
+
+    for (n = 0; n < 0xFFFF; n++) {
+        last = begin;
+
+        if (pStart == NULL) {
+            pStart = static_cast<Effect*>(List_GetFirst(pList));
+        }
+
+        pFront = pStart;
+        for (i = begin; i < end; i++) {
+            pBack = static_cast<Effect*>(List_GetNext(pList, pFront));
+
+            if (pFunc(pBack, pFront)) {
+                SwapEffect(pList, pFront, pBack);
+                last = i;
+                pStart = pBack;
+            } else {
+                pFront = pBack;
+            }
+        }
+
+        end = last;
+        if (end == begin) {
+            break;
+        }
+
+        pBack = pStart;
+        for (i = last; i > begin; i--) {
+            pFront = static_cast<Effect*>(List_GetPrev(pList, pBack));
+
+            if (pFunc(pBack, pFront)) {
+                SwapEffect(pList, pFront, pBack);
+                last = i;
+                pStart = pFront;
+            } else {
+                pBack = pFront;
+            }
+        }
+
+        begin = last;
+        if (begin == end) {
+            break;
+        }
+    }
 }
 
 } // namespace ef

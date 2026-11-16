@@ -81,41 +81,6 @@ public:
             translate.x = 0.0f;
             translate.y = 0.0f;
         }
-
-        bool IsEqual(const TextureData* _pData, f32 _scaleS, f32 _scaleT,
-                     f32 _transS, f32 _transT, GXTexWrapMode _wrapS,
-                     GXTexWrapMode _wrapT, math::VEC2 _scale, f32 _rotate,
-                     math::VEC2 _translate) {
-
-            if (data != _pData || scaleS != _scaleS || scaleT != _scaleT ||
-                transS != _transS || transT != _transT || wrapS != _wrapS ||
-                wrapT != _wrapT || scale.x != _scale.x || scale.y != _scale.y ||
-                rotate != _rotate || translate.x != _translate.x ||
-                translate.y != _translate.y) {
-                return false;
-            }
-
-            return true;
-        }
-
-        void Set(const TextureData* _pData, f32 _scaleS, f32 _scaleT,
-                 f32 _transS, f32 _transT, GXTexWrapMode _wrapS,
-                 GXTexWrapMode _wrapT, math::VEC2 _scale, f32 _rotate,
-                 math::VEC2 _translate) {
-
-            data = _pData;
-            scaleS = _scaleS;
-            scaleT = _scaleT;
-            transS = _transS;
-            transT = _transT;
-            wrapS = _wrapS;
-            wrapT = _wrapT;
-            scale.x = _scale.x;
-            scale.y = _scale.y;
-            rotate = _rotate;
-            translate.x = _translate.x;
-            translate.y = _translate.y;
-        }
     };
 
 public:
@@ -128,6 +93,8 @@ public:
     GetGetNextDrawParticleFunc(int drawOrder); // at 0x14
 
 protected:
+    void InitGP(ParticleManager* pManager, const EmitterDrawSetting& rSetting,
+                const DrawInfo& rInfo);
     void InitTexture(const EmitterDrawSetting& rSetting);
     void InitTev(const EmitterDrawSetting& rSetting, const DrawInfo& rInfo);
     void InitColor(ParticleManager* pManager,
@@ -312,11 +279,11 @@ protected:
     static bool Normalize(math::VEC3* pVec) {
         f32 sqMag = math::VEC3Dot(pVec, pVec);
 
-        if (sqMag < std::numeric_limits<f32>::epsilon()) {
+        if (sqMag < NW4R_MATH_FLT_EPSILON) {
             return false;
         }
 
-        *pVec /= math::FSqrt(sqMag);
+        *pVec *= math::FrSqrt(sqMag);
         return true;
     }
 
@@ -331,6 +298,159 @@ protected:
     }
 
 private:
+    static void CheckUseColor(bool use[COLOR_LAYER_MAX][COLOR_IDX_MAX],
+                              u8 type) {
+        switch (type) {
+        case ColorInput::TEVCOLOR1_1: {
+            use[COLOR_LAYER_0][COLOR_IDX_PRI] = true;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR1_2: {
+            use[COLOR_LAYER_0][COLOR_IDX_SEC] = true;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR1_MULT: {
+            use[COLOR_LAYER_0][COLOR_IDX_PRI] = true;
+            use[COLOR_LAYER_0][COLOR_IDX_SEC] = true;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR2_3: {
+            use[COLOR_LAYER_1][COLOR_IDX_PRI] = true;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR2_2: {
+            use[COLOR_LAYER_1][COLOR_IDX_SEC] = true;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR2_MULT: {
+            use[COLOR_LAYER_1][COLOR_IDX_PRI] = true;
+            use[COLOR_LAYER_1][COLOR_IDX_SEC] = true;
+            break;
+        }
+
+        default: {
+            break;
+        }
+        }
+    }
+
+    void GetTevColor(GXColor* pColor, u8 type) {
+        switch (type) {
+        case ColorInput::TEVCOLOR1_1: {
+            pColor->r = mColor[COLOR_LAYER_0][COLOR_IDX_PRI].r;
+            pColor->g = mColor[COLOR_LAYER_0][COLOR_IDX_PRI].g;
+            pColor->b = mColor[COLOR_LAYER_0][COLOR_IDX_PRI].b;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR1_2: {
+            pColor->r = mColor[COLOR_LAYER_0][COLOR_IDX_SEC].r;
+            pColor->g = mColor[COLOR_LAYER_0][COLOR_IDX_SEC].g;
+            pColor->b = mColor[COLOR_LAYER_0][COLOR_IDX_SEC].b;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR1_MULT: {
+            pColor->g = (mColor[COLOR_LAYER_0][COLOR_IDX_PRI].g *
+                             mColor[COLOR_LAYER_0][COLOR_IDX_SEC].g +
+                         128) >>
+                        8;
+            pColor->b = (mColor[COLOR_LAYER_0][COLOR_IDX_PRI].b *
+                             mColor[COLOR_LAYER_0][COLOR_IDX_SEC].b +
+                         128) >>
+                        8;
+            pColor->r = (mColor[COLOR_LAYER_0][COLOR_IDX_PRI].r *
+                             mColor[COLOR_LAYER_0][COLOR_IDX_SEC].r +
+                         128) >>
+                        8;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR2_3: {
+            pColor->r = mColor[COLOR_LAYER_1][COLOR_IDX_PRI].r;
+            pColor->g = mColor[COLOR_LAYER_1][COLOR_IDX_PRI].g;
+            pColor->b = mColor[COLOR_LAYER_1][COLOR_IDX_PRI].b;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR2_2: {
+            pColor->r = mColor[COLOR_LAYER_1][COLOR_IDX_SEC].r;
+            pColor->g = mColor[COLOR_LAYER_1][COLOR_IDX_SEC].g;
+            pColor->b = mColor[COLOR_LAYER_1][COLOR_IDX_SEC].b;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR2_MULT: {
+            pColor->g = (mColor[COLOR_LAYER_1][COLOR_IDX_PRI].g *
+                             mColor[COLOR_LAYER_1][COLOR_IDX_SEC].g +
+                         128) >>
+                        8;
+            pColor->b = (mColor[COLOR_LAYER_1][COLOR_IDX_PRI].b *
+                             mColor[COLOR_LAYER_1][COLOR_IDX_SEC].b +
+                         128) >>
+                        8;
+            pColor->r = (mColor[COLOR_LAYER_1][COLOR_IDX_PRI].r *
+                             mColor[COLOR_LAYER_1][COLOR_IDX_SEC].r +
+                         128) >>
+                        8;
+            break;
+        }
+
+        default: {
+            break;
+        }
+        }
+    }
+
+    void GetTevAlpha(GXColor* pColor, u8 type) {
+        switch (type) {
+        case ColorInput::TEVCOLOR1_1: {
+            pColor->a = mColor[COLOR_LAYER_0][COLOR_IDX_PRI].a;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR1_2: {
+            pColor->a = mColor[COLOR_LAYER_0][COLOR_IDX_SEC].a;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR1_MULT: {
+            pColor->a = (mColor[COLOR_LAYER_0][COLOR_IDX_PRI].a *
+                             mColor[COLOR_LAYER_0][COLOR_IDX_SEC].a +
+                         128) >>
+                        8;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR2_3: {
+            pColor->a = mColor[COLOR_LAYER_1][COLOR_IDX_PRI].a;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR2_2: {
+            pColor->a = mColor[COLOR_LAYER_1][COLOR_IDX_SEC].a;
+            break;
+        }
+
+        case ColorInput::TEVCOLOR2_MULT: {
+            pColor->a = (mColor[COLOR_LAYER_1][COLOR_IDX_PRI].a *
+                             mColor[COLOR_LAYER_1][COLOR_IDX_SEC].a +
+                         128) >>
+                        8;
+            break;
+        }
+
+        default: {
+            break;
+        }
+        }
+    }
+
     bool _SetupACmp(Particle* pParticle, const EmitterDrawSetting& rSetting,
                     bool first);
     bool _SetupTevReg(Particle* pParticle, const EmitterDrawSetting& rSetting,
@@ -353,13 +473,15 @@ private:
 
 protected:
     PrevTexture mPrevTexture[TEX_LAYER_MAX];            // at 0x4
-    GXColor mPrevColor[COLOR_LAYER_MAX][COLOR_IDX_MAX]; // at 0x94
-    int mPrevARef0;                                     // at 0xA4
-    int mPrevARef1;                                     // at 0xA8
-    bool mUseColor1;                                    // at 0xAC
-    bool mUseColor2;                                    // at 0xAD
-    u8 mNumTexmap;                                      // at 0xAE
-    int mTexmapMap[TEX_LAYER_MAX];                      // at 0xB0
+    GXColor mPrevTevColor[GX_MAX_TEVREG - 1];           // at 0x94
+    GXColor mPrevTevKColor[GX_MAX_KCOLOR];              // at 0xA0
+    int mPrevARef0;                                     // at 0xB0
+    int mPrevARef1;                                     // at 0xB4
+    bool mUseColor[COLOR_LAYER_MAX][COLOR_IDX_MAX];     // at 0xB8
+    bool mUseAlpha[COLOR_LAYER_MAX][COLOR_IDX_MAX];     // at 0xBC
+    GXColor mColor[COLOR_LAYER_MAX][COLOR_IDX_MAX];     // at 0xC0
+    u8 mNumTexmap;                                      // at 0xD0
+    int mTexmapMap[TEX_LAYER_MAX];                      // at 0xD4
 
     static const math::VEC3 mXUnitVec;
     static const math::VEC3 mYUnitVec;

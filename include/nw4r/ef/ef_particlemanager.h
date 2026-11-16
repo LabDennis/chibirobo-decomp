@@ -27,6 +27,7 @@ public:
     enum Flag {
         FLAG_MTX_INHERIT_SCALE = (1 << 0),
         FLAG_MTX_INHERIT_ROT = (1 << 1),
+        FLAG_MTX_INHERIT_PIVOT = (1 << 2),
     };
 
     struct ParticleModifier {
@@ -92,7 +93,8 @@ public:
 
     bool Closing(Particle* pParticle);
 
-    int RetireParticle(Particle* pParticle);
+    // Defined in ef_particle.h, it needs the whole Particle
+    inline int RetireParticle(Particle* pParticle);
     int RetireParticleAll();
 
     math::MTX34* CalcGlobalMtx(math::MTX34* pResult);
@@ -103,7 +105,9 @@ public:
     void BeginDraw();
     void EndDraw();
 
-    const math::MTX34* Draw_GetMtxPMtoEM() const;
+    const math::MTX34* Draw_GetMtxPMtoEM() const {
+        return &smDrawMtxPMtoEM;
+    }
 
     void Draw_ModifyColor(Particle* pParticle, GXColor* pColorPri,
                           GXColor* pColorSec);
@@ -148,6 +152,10 @@ public:
 
     void SetMtxDirty() {
         mMtxDirty = true;
+
+        if (smMtxInvId == GetObjectIdx()) {
+            smMtxInvId = -1;
+        }
     }
 
     static void ModifierTravFunc_SetSimpleLightType(void* pObject,

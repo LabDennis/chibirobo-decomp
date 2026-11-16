@@ -1743,7 +1743,10 @@ nw4r/ef/ef_emitter.cpp:
 	.text start:0x80237988 end:0x80239A7C
 
 nw4r/ef/ef_animcurve.cpp:
-	.text start:0x80239A7C end:0x80241FA0
+	.text start:0x80239A7C end:0x8023E9C4
+
+nw4r/ef/ef_postfield.cpp:
+	.text start:0x8023E9C4 end:0x80241FA0
 
 nw4r/ef/ef_particle.cpp:
 	.text start:0x80241FA0 end:0x80242DC0
@@ -1816,6 +1819,9 @@ nw4r/ef/drawstrategy/ef_drawstripestrategy.cpp:
 
 nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.cpp:
 	.text start:0x802568B4 end:0x8025B538
+
+nw4r/ef/ef_res_emitter_ac.cpp:
+	.text start:0x8025B538 end:0x8025B5A4
 
 nw4r/math/math_arithmetic.cpp:
 	.text start:0x80282CA0 end:0x80282DDC

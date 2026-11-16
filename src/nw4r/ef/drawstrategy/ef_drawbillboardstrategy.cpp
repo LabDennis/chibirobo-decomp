@@ -4,7 +4,7 @@ namespace nw4r {
 namespace ef {
 
 static u8 billboard_tex0_u8[] ATTRIBUTE_ALIGN(32) = {0x00, 0x01, 0x00, 0x00,
-                                 0x01, 0x00, 0x01, 0x01};
+                                                     0x01, 0x00, 0x01, 0x01};
 
 DrawBillboardStrategy::DrawBillboardStrategy() {}
 
@@ -15,7 +15,8 @@ void DrawBillboardStrategy::Draw(const DrawInfo& rInfo,
         *pManager->mResource->GetEmitterDrawSetting();
 
     switch (rSetting.typeOption) {
-    case EmitterDrawSetting::ASSIST_BB_NORMAL: {
+    case EmitterDrawSetting::ASSIST_BB_NORMAL:
+    case EmitterDrawSetting::ASSIST_BB_NOROLL: {
         DrawNormalBillboard(rInfo, pManager);
         break;
     }
@@ -32,50 +33,73 @@ void DrawBillboardStrategy::Draw(const DrawInfo& rInfo,
     }
 }
 
+inline void DrawBillboardStrategy::DispPolygon(const math::VEC3& rP,
+                                               const math::VEC3& rD1,
+                                               const math::VEC3& rD2,
+                                               bool texCoord) {
+
+    GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+    {
+        GXPosition(rP - rD1);
+        if (texCoord) {
+            GXTexCoord1x8(0);
+        }
+
+        GXPosition(rP - rD2);
+        if (texCoord) {
+            GXTexCoord1x8(1);
+        }
+
+        GXPosition(rP + rD1);
+        if (texCoord) {
+            GXTexCoord1x8(2);
+        }
+
+        GXPosition(rP + rD2);
+        if (texCoord) {
+            GXTexCoord1x8(3);
+        }
+    }
+    GXEnd();
+}
+
 void DrawBillboardStrategy::DrawNormalBillboard(const DrawInfo& rInfo,
                                                 ParticleManager* pManager) {
+    math::MTX34 viewMtx;
+    rInfo.GetViewMtxZOffset(&viewMtx);
+
     const EmitterDrawSetting& rSetting =
         *pManager->mResource->GetEmitterDrawSetting();
 
     InitGraphics(rInfo, pManager);
 
-    const math::MTX34& rInfoMtx = *rInfo.GetViewMtx();
-
-    math::MTX34 viewMtx;
-
-    u8 flags = mNumTexmap > 0 ? 1 : 0;
+    bool texCoord = mNumTexmap > 0;
 
     math::VEC2 pivot;
     pivot.x = rSetting.pivotX / 100.0f;
     pivot.y = rSetting.pivotY / 100.0f;
 
-    pManager->CalcGlobalMtx(&viewMtx);
-    math::MTX34Mult(&viewMtx, &rInfoMtx, &viewMtx);
+    math::MTX34 glbMtx;
+    pManager->CalcGlobalMtx(&glbMtx);
+    math::MTX34Mult(&glbMtx, &viewMtx, &glbMtx);
 
-    if (rSetting.zOffset != 0.0f) {
-        CalcZOffset(&viewMtx, pManager, rInfo, rSetting.zOffset);
-    }
-
-    f32 vx = math::FSqrt(viewMtx._00 * viewMtx._00 + viewMtx._10 * viewMtx._10 +
-                         viewMtx._20 * viewMtx._20);
-
-    f32 vy = math::FSqrt(viewMtx._01 * viewMtx._01 + viewMtx._11 * viewMtx._11 +
-                         viewMtx._21 * viewMtx._21);
+    f32 vx = MtxColVecLen(&glbMtx, 0);
+    f32 vy = MtxColVecLen(&glbMtx, 1);
 
     f32 vz = 0.0f;
 
     f32 rc, rs;
     f32 mag;
 
-    mag =
-        math::FSqrt(rInfoMtx._01 * rInfoMtx._01 + rInfoMtx._11 * rInfoMtx._11);
-    if (mag == 0.0f) {
+    mag = math::FSqrt(viewMtx._01 * viewMtx._01 + viewMtx._11 * viewMtx._11);
+    if (rSetting.typeOption == EmitterDrawSetting::ASSIST_BB_NOROLL ||
+        mag == 0.0f) {
         rs = 0.0f;
         rc = 1.0f;
     } else {
-        f32 denom = 1.0f / mag;
-        rs = -rInfoMtx._01 * denom;
-        rc = rInfoMtx._11 * denom;
+        f32 denom = math::FInv(mag);
+        rs = -viewMtx._01 * denom;
+        rc = viewMtx._11 * denom;
     }
 
     GetFirstDrawParticleFunc pGetFirstFunc = GetGetFirstDrawParticleFunc(
@@ -102,52 +126,49 @@ void DrawBillboardStrategy::DrawNormalBillboard(const DrawInfo& rInfo,
         SetupGP(pIt, rSetting, rInfo, first, false);
         first = false;
 
-        DispParticle_Normal(pIt, viewMtx, vx, vy, vz, rc, rs, sx, sy, pivot,
-                            flags);
+        DispParticle_Normal(pIt, glbMtx, vx, vy, vz, rc, rs, sx, sy, pivot,
+                            texCoord);
     }
 }
 
 inline void DrawBillboardStrategy::DispParticle_Normal(
-    Particle* pParticle, const math::MTX34& rViewMtx, f32 vx, f32 vy, f32 vz,
-    f32 rc, f32 rs, f32 sx, f32 sy, const math::VEC2& rPivot, int flags) {
-
+    register Particle* pParticle, register const math::MTX34& rMtx,
+    register f32 vx, register f32 vy, f32 vz, register f32 rc,
+    register f32 rs, register f32 sx, register f32 sy,
+    const math::VEC2& rPivot, bool texCoord) {
 
     math::VEC3 rot;
     pParticle->Draw_GetRotate(&rot);
 
-    math::VEC3 p0;  // sp+24
-    math::VEC3 d0;  // sp+30
-    math::VEC3 d1;  // sp+3c
-    math::VEC3 pos; // sp+48
-
-    math::VEC3Transform(&pos, &rViewMtx, &pParticle->mParameter.mPosition);
-
-    f32 px = rPivot.x;
-    f32 py = rPivot.y;
-
-    f32 vx_rc = vx * rc;
-    f32 vx_rs = vx * rs;
-    f32 vy_rc = vy * rc;
-    f32 vy_rs = vy * rs;
-
     if (rot.z != 0.0f) {
+        math::VEC3 pos;
+        math::VEC3 p0;
+        math::VEC3 d0;
+        math::VEC3 d1;
+
+        math::VEC3Transform(&pos, &rMtx, &pParticle->mParameter.mPosition);
+
+        f32 px = rPivot.x;
+        f32 py = rPivot.y;
+
+        f32 vx_rc = vx * rc;
+        f32 vx_rs = vx * rs;
+        f32 vy_rc = vy * rc;
+        f32 vy_rs = vy * rs;
+
         f32 cr, sr;
-        math::SinCosRad(&sr, &cr, -rot.z);
+        SinCosRad(&sr, &cr, -rot.z);
 
         f32 cr_sx = cr * sx;
         f32 sr_sx = sr * sx;
         f32 cr_sy = cr * sy;
         f32 sr_sy = sr * sy;
-        f32 rc_sx = rc * sx;
-        f32 rs_sy = rs * sy;
-        f32 rs_sx = rs * sx;
-        f32 rc_sy = rc * sy;
 
         f32 exp0 = (px - cr_sx * px) - sr_sy * py;
         f32 exp1 = (py + sr_sx * px) - cr_sy * py;
 
-        p0.x = vx_rc * exp0 + vy_rs * exp1 + pos.x;
-        p0.y = vx_rs * exp0 - vy_rc * exp1 + pos.y;
+        p0.x = pos.x + (vx_rc * exp0 + vy_rs * exp1);
+        p0.y = pos.y + (vx_rs * exp0 - vy_rc * exp1);
         p0.z = pos.z;
 
         f32 vx_rc_cr_sx = vx_rc * cr_sx;
@@ -160,79 +181,144 @@ inline void DrawBillboardStrategy::DispParticle_Normal(
         f32 vy_rc_cr_sy = vy_rc * cr_sy;
 
         d0.x = vx_rc_cr_sx - vx_rc_sr_sy - vy_rs_sr_sx - vy_rs_cr_sy;
-        d0.y = vx_rs_cr_sx - vx_rs_sr_sy + vy_rc_sr_sx + vy_rc_cr_sy;
+        d0.y = vy_rc_cr_sy + (vy_rc_sr_sx + (vx_rs_cr_sx - vx_rs_sr_sy));
         d0.z = 0.0f;
 
-        d1.x = vx_rc_cr_sx + vx_rc_sr_sy - vy_rs_sr_sx + vy_rs_cr_sy;
-        d1.y = vx_rs_cr_sx + vx_rs_sr_sy + vy_rc_sr_sx - vy_rc_cr_sy;
+        d1.x = vy_rs_cr_sy + (vx_rc_cr_sx + vx_rc_sr_sy - vy_rs_sr_sx);
+        d1.y = vy_rc_sr_sx + (vx_rs_cr_sx + vx_rs_sr_sy) - vy_rc_cr_sy;
         d1.z = 0.0f;
+
+        DispPolygon(p0, d0, d1, texCoord);
     } else {
-        f32 exp0 = px - sx * px;
-        f32 exp1 = py - sy * py;
+        // No roll: the four corners come straight out of paired-single
+        // registers, two components at a time. f0-f12 are used the way
+        // PSMTXMultVec uses them.
+        math::VEC3 vtx[4];
+        register const math::VEC2* pPivot = &rPivot;
+        register math::VEC3* pVtx = vtx;
+        register f32 work0, work1, work2, axisX, axisY, offset;
+        register f32 sideX, posXY, d1, p0, d0, posZ;
 
-        p0.x = vx_rc * exp0 + vy_rs * exp1 + pos.x;
-        p0.y = vx_rs * exp0 - vy_rc * exp1 + pos.y;
-        p0.z = pos.z;
+        // clang-format off
+        asm {
+            // Position into view space: f6 = x, f12 = y, f5 becomes z
+            psq_l   f0, Particle.mParameter.mPosition.x(pParticle), 0, 0
+            psq_l   f2, 0(rMtx), 0, 0
+            psq_l   f1, Particle.mParameter.mPosition.z(pParticle), 1, 0
+            ps_mul  f4, f2, f0
+            psq_l   f3, 8(rMtx), 0, 0
+            ps_madd f5, f3, f1, f4
+            psq_l   f8, 16(rMtx), 0, 0
+            ps_sum0 f6, f5, f6, f5
+            psq_l   f9, 24(rMtx), 0, 0
+            ps_mul  f10, f8, f0
+            ps_madd f11, f9, f1, f10
+            psq_l   f2, 32(rMtx), 0, 0
+            ps_sum0 f12, f11, f12, f11
+            psq_l   f3, 40(rMtx), 0, 0
+            ps_mul  f4, f2, f0
+            ps_madd f5, f3, f1, f4
 
-        f32 vx_rc_sx = vx_rc * sx;
-        f32 vy_rs_sy = vy_rs * sy;
-        f32 vx_rs_sx = vx_rs * sx;
-        f32 vy_rc_sy = vy_rc * sy;
+            // axisX = (vx * rc, vx * rs), axisY = (vy * rs, -vy * rc)
+            ps_merge00 work0, rs, rc
+            ps_merge00 work1, sx, sy
+            ps_muls0   axisY, work0, vy
+            ps_muls0   axisX, work0, vx
+            psq_l      work0, 0(pPivot), 0, 0
+            ps_neg     work2, axisY
+            ps_merge10 axisX, axisX, axisX
+            // offset = pivot - size * pivot
+            ps_nmsub   offset, work1, work0, work0
+            ps_merge01 axisY, axisY, work2
+            // sideX = axisX * sx, work1 = axisY * sy
+            ps_muls0   sideX, axisX, work1
+            ps_muls1   work1, axisY, work1
 
-        d0.x = vx_rc_sx - vy_rs_sy;
-        d0.y = vx_rs_sx + vy_rc_sy;
-        d0.z = 0.0f;
+            // p0 = pos + axisX * offset.x + axisY * offset.y
+            ps_merge00 posXY, f6, f12
+            ps_madds0  work2, axisX, offset, posXY
+            // d1 = sideX + sideY, d0 = sideX - sideY
+            ps_add     d1, sideX, work1
+            ps_neg     work1, work1
+            ps_madds1  p0, axisY, offset, work2
+            ps_add     d0, sideX, work1
+            ps_sum0    posZ, f5, f6, f5
 
-        d1.x = vx_rc_sx + vy_rs_sy;
-        d1.y = vx_rs_sx - vy_rc_sy;
-        d1.z = 0.0f;
+            ps_sub work2, p0, d0
+            psq_st posZ, 8(pVtx), 1, 0
+            psq_st work2, 0(pVtx), 0, 0
+            ps_sub work2, p0, d1
+            psq_st posZ, 20(pVtx), 1, 0
+            psq_st work2, 12(pVtx), 0, 0
+            ps_add work2, p0, d0
+            psq_st posZ, 32(pVtx), 1, 0
+            psq_st work2, 24(pVtx), 0, 0
+            ps_add work2, p0, d1
+            psq_st posZ, 44(pVtx), 1, 0
+            psq_st work2, 36(pVtx), 0, 0
+        }
+        // clang-format on
+
+        GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+        {
+            GXPosition(vtx[0]);
+            if (texCoord) {
+                GXTexCoord1x8(0);
+            }
+
+            GXPosition(vtx[1]);
+            if (texCoord) {
+                GXTexCoord1x8(1);
+            }
+
+            GXPosition(vtx[2]);
+            if (texCoord) {
+                GXTexCoord1x8(2);
+            }
+
+            GXPosition(vtx[3]);
+            if (texCoord) {
+                GXTexCoord1x8(3);
+            }
+        }
+        GXEnd();
     }
-
-    DispPolygon(p0, d0, d1, flags);
 }
 
 void DrawBillboardStrategy::DrawYBillboard(const DrawInfo& rInfo,
                                            ParticleManager* pManager) {
+    math::MTX34 viewMtx;
+    rInfo.GetViewMtxZOffset(&viewMtx);
+
     const EmitterDrawSetting& rSetting =
         *pManager->mResource->GetEmitterDrawSetting();
 
     InitGraphics(rInfo, pManager);
 
-    const math::MTX34& rInfoMtx = *rInfo.GetViewMtx();
-
-    math::MTX34 viewMtx;
-
-    u8 flags = mNumTexmap > 0 ? 1 : 0;
+    bool texCoord = mNumTexmap > 0;
 
     math::VEC2 pivot(rSetting.pivotX / 100.0f, rSetting.pivotY / 100.0f);
 
-    pManager->CalcGlobalMtx(&viewMtx);
-    math::MTX34Mult(&viewMtx, &rInfoMtx, &viewMtx);
+    math::MTX34 glbMtx;
+    pManager->CalcGlobalMtx(&glbMtx);
+    math::MTX34Mult(&glbMtx, &viewMtx, &glbMtx);
 
-    if (rSetting.zOffset != 0.0f) {
-        CalcZOffset(&viewMtx, pManager, rInfo, rSetting.zOffset);
-    }
-
-    f32 vx = math::FSqrt(viewMtx._00 * viewMtx._00 + viewMtx._10 * viewMtx._10 +
-                         viewMtx._20 * viewMtx._20);
-
-    f32 vy = math::FSqrt(viewMtx._01 * viewMtx._01 + viewMtx._11 * viewMtx._11 +
-                         viewMtx._21 * viewMtx._21);
+    f32 vx = MtxColVecLen(&glbMtx, 0);
+    f32 vy = MtxColVecLen(&glbMtx, 1);
 
     f32 vz = 0.0f;
 
     f32 rs, rc;
     f32 mag;
 
-    mag =
-        math::FSqrt(rInfoMtx._11 * rInfoMtx._11 + rInfoMtx._21 * rInfoMtx._21);
+    mag = math::FSqrt(viewMtx._11 * viewMtx._11 + viewMtx._21 * viewMtx._21);
     if (mag == 0.0f) {
         rs = 0.0f;
         rc = 1.0f;
     } else {
-        f32 denom = 1.0f / mag;
-        rc = rInfoMtx._21 * denom;
-        rs = rInfoMtx._11 * denom;
+        f32 denom = math::FInv(mag);
+        rc = viewMtx._21 * denom;
+        rs = viewMtx._11 * denom;
     }
 
     GetFirstDrawParticleFunc pGetFirstFunc = GetGetFirstDrawParticleFunc(
@@ -263,15 +349,14 @@ void DrawBillboardStrategy::DrawYBillboard(const DrawInfo& rInfo,
         SetupGP(pIt, rSetting, rInfo, first, false);
         first = false;
 
-        DispParticle_YBillboard(pIt, viewMtx, vx, vy, vz, rc, rs, sx, sy,
-                                pivot, flags);
+        DispParticle_YBillboard(pIt, glbMtx, vx, vy, vz, rc, rs, sx, sy,
+                                pivot, texCoord);
     }
 }
 
 inline void DrawBillboardStrategy::DispParticle_YBillboard(
-    Particle* pParticle, const math::MTX34& rViewMtx, f32 vx, f32 vy, f32 vz,
-    f32 rc, f32 rs, f32 sx, f32 sy, const math::VEC2& rPivot, int flags) {
-
+    Particle* pParticle, const math::MTX34& rMtx, f32 vx, f32 vy, f32 vz,
+    f32 rc, f32 rs, f32 sx, f32 sy, const math::VEC2& rPivot, bool texCoord) {
 
     math::VEC3 rot;
     pParticle->Draw_GetRotate(&rot);
@@ -281,7 +366,7 @@ inline void DrawBillboardStrategy::DispParticle_YBillboard(
     math::VEC3 d0;
     math::VEC3 d1;
 
-    math::VEC3Transform(&pos, &rViewMtx, &pParticle->mParameter.mPosition);
+    math::VEC3Transform(&pos, &rMtx, &pParticle->mParameter.mPosition);
 
     f32 vy_rs = vy * rs;
     f32 vy_rc = vy * rc;
@@ -291,7 +376,7 @@ inline void DrawBillboardStrategy::DispParticle_YBillboard(
 
     if (rot.z != 0.0f) {
         f32 sr, cr;
-        math::SinCosRad(&sr, &cr, -rot.z);
+        SinCosRad(&sr, &cr, -rot.z);
 
         f32 cr_sx = cr * sx;
         f32 sr_sx = sr * sx;
@@ -329,40 +414,35 @@ inline void DrawBillboardStrategy::DispParticle_YBillboard(
         d1.z = -vy_rc * sy;
     }
 
-    DispPolygon(p0, d0, d1, flags);
+    DispPolygon(p0, d0, d1, texCoord);
 }
 
 void DrawBillboardStrategy::DrawDirectionalBillboard(
     const DrawInfo& rInfo, ParticleManager* pManager) {
+    math::MTX34 viewMtx;
+    rInfo.GetViewMtxZOffset(&viewMtx);
+
+    bool texCoord;
+
     const EmitterDrawSetting& rSetting =
         *pManager->mResource->GetEmitterDrawSetting();
 
     InitGraphics(rInfo, pManager);
 
-    const math::MTX34& rInfoMtx = *rInfo.GetViewMtx();
-
-    math::MTX34 viewMtx;
-
-    int flags = mNumTexmap > 0 ? 1 : 0;
+    texCoord = mNumTexmap > 0;
 
     math::VEC2 pivot;
     pivot.x = rSetting.pivotX / 100.0f;
     pivot.y = rSetting.pivotY / 100.0f;
 
-    pManager->CalcGlobalMtx(&viewMtx);
-    math::MTX34Mult(&viewMtx, &rInfoMtx, &viewMtx);
+    math::MTX34 glbMtx;
+    pManager->CalcGlobalMtx(&glbMtx);
+    math::MTX34Mult(&glbMtx, &viewMtx, &glbMtx);
 
-    if (rSetting.zOffset != 0.0f) {
-        CalcZOffset(&viewMtx, pManager, rInfo, rSetting.zOffset);
-    }
+    f32 vx = MtxColVecLen(&glbMtx, 0);
+    f32 vy = MtxColVecLen(&glbMtx, 1);
 
-    f32 vx = math::FSqrt(viewMtx._00 * viewMtx._00 + viewMtx._10 * viewMtx._10 +
-                         viewMtx._20 * viewMtx._20);
-
-    f32 vy = math::FSqrt(viewMtx._01 * viewMtx._01 + viewMtx._11 * viewMtx._11 +
-                         viewMtx._21 * viewMtx._21);
-
-    AheadContext context(rInfoMtx, pManager);
+    AheadContext context(viewMtx, pManager);
     CalcAheadFunc pCalcAheadFunc = GetCalcAheadFunc(pManager);
 
     GetFirstDrawParticleFunc pGetFirstFunc = GetGetFirstDrawParticleFunc(
@@ -395,7 +475,7 @@ void DrawBillboardStrategy::DrawDirectionalBillboard(
 
         math::VEC3 axisY;
         pCalcAheadFunc(&axisY, &context, pIt);
-        math::VEC3TransformNormal(&axisY, &viewMtx, &axisY);
+        math::VEC3TransformNormal(&axisY, &glbMtx, &axisY);
 
         f32 rc, rs;
         f32 mag = math::FSqrt(axisY.x * axisY.x + axisY.y * axisY.y);
@@ -403,7 +483,7 @@ void DrawBillboardStrategy::DrawDirectionalBillboard(
             rs = 0.0f;
             rc = 1.0f;
         } else {
-            f32 denom = 1.0f / mag;
+            f32 denom = math::FInv(mag);
             rs = -axisY.x * denom;
             rc = axisY.y * denom;
         }
@@ -416,22 +496,22 @@ void DrawBillboardStrategy::DrawDirectionalBillboard(
             ratio += 0.5f * len / sy;
         }
 
-        DispParticle_Directional(pIt, viewMtx, vx, vy, ratio, rc, rs, sx, sy,
-                                 pivot, flags);
+        DispParticle_Directional(pIt, glbMtx, vx, vy, ratio, rc, rs, sx, sy,
+                                 pivot, texCoord);
     }
 }
 
 inline void DrawBillboardStrategy::DispParticle_Directional(
-    Particle* pParticle, const math::MTX34& rViewMtx, f32 vx, f32 vy,
+    Particle* pParticle, const math::MTX34& rMtx, f32 vx, f32 vy,
     f32 ratio, f32 rc, f32 rs, f32 sx, f32 sy, const math::VEC2& rPivot,
-    int flags) {
+    bool texCoord) {
 
     math::VEC3 pos;
     math::VEC3 p0;
     math::VEC3 d0;
     math::VEC3 d1;
 
-    math::VEC3Transform(&pos, &rViewMtx, &pParticle->mParameter.mPosition);
+    math::VEC3Transform(&pos, &rMtx, &pParticle->mParameter.mPosition);
 
     p0.z = pos.z;
 
@@ -461,87 +541,18 @@ inline void DrawBillboardStrategy::DispParticle_Directional(
     d1.y = vx_rs_sx - vy_rc_sy;
     d1.z = 0.0f;
 
-    DispPolygon(p0, d0, d1, flags);
-}
-
-void DrawBillboardStrategy::DispPolygon(const math::VEC3& rP,
-                                        const math::VEC3& rD1,
-                                        const math::VEC3& rD2, int flags) {
-
-    GXBegin(GX_QUADS, GX_VTXFMT0, 4);
-    {
-        GXPosition(rP - rD1);
-        if (flags != 0) {
-            GXTexCoord1x8(0);
-        }
-
-        GXPosition(rP - rD2);
-        if (flags != 0) {
-            GXTexCoord1x8(1);
-        }
-
-        GXPosition(rP + rD1);
-        if (flags != 0) {
-            GXTexCoord1x8(2);
-        }
-
-        GXPosition(rP + rD2);
-        if (flags != 0) {
-            GXTexCoord1x8(3);
-        }
-    }
-    GXEnd();
-}
-
-void DrawBillboardStrategy::CalcZOffset(math::MTX34* pMtx,
-                                        const ParticleManager* pManager,
-                                        const DrawInfo& rInfo, f32 offsetZ) {
-
-    f32 proj[GX_PROJECTION_SZ];
-    GXGetProjectionv(proj);
-
-    switch (static_cast<GXProjectionType>(proj[0])) {
-    case GX_PERSPECTIVE: {
-        math::MTX34 glbMtx;
-        pManager->mManagerEM->CalcGlobalMtx(&glbMtx);
-
-        math::VEC3 pos(glbMtx._03, glbMtx._13, glbMtx._23);
-        math::VEC3TransformCoord(&pos, rInfo.GetViewMtx(), &pos);
-
-        if (Normalize(&pos)) {
-            if (pos.z >= 0.0f) {
-                pMtx->_03 += pos.x * offsetZ;
-                pMtx->_13 += pos.y * offsetZ;
-                pMtx->_23 += pos.z * offsetZ;
-            } else {
-                pMtx->_03 -= pos.x * offsetZ;
-                pMtx->_13 -= pos.y * offsetZ;
-                pMtx->_23 -= pos.z * offsetZ;
-            }
-        }
-        break;
-    }
-
-    case GX_ORTHOGRAPHIC: {
-        pMtx->_23 += offsetZ;
-        break;
-    }
-
-    default: {
-        break;
-    }
-    }
+    DispPolygon(p0, d0, d1, texCoord);
 }
 
 void DrawBillboardStrategy::InitGraphics(const DrawInfo& rInfo,
                                          ParticleManager* pManager) {
 
-    const EmitterDrawSetting& rSetting =
-        *pManager->mResource->GetEmitterDrawSetting();
+    // Retail calls this function from all three Draw functions. Without the
+    // local it is one statement lighter and -inline auto expands it there.
+    EmitterResource* pResource = pManager->mResource;
+    const EmitterDrawSetting& rSetting = *pResource->GetEmitterDrawSetting();
 
-    InitTexture(rSetting);
-    InitTev(rSetting, rInfo);
-    InitColor(pManager, rSetting, rInfo);
+    InitGP(pManager, rSetting, rInfo);
 
     GXEnableTexOffsets(GX_TEXCOORD0, TRUE, TRUE);
 

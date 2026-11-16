@@ -54,6 +54,7 @@ void ParticleParameter::Initialize(ParticleParameterDesc* pDesc,
     mTextureReverse = pDesc->textureReverse;
     mACmpRef0 = pDesc->mACmpRef0;
     mACmpRef1 = pDesc->mACmpRef1;
+    mCollisionStatus = 0;
 }
 
 bool Particle::Initialize(u16 life, math::VEC3 pos, math::VEC3 vel,
@@ -86,7 +87,7 @@ bool Particle::Initialize(u16 life, math::VEC3 pos, math::VEC3 vel,
     mRandSeed = pManager->mManagerEM->mRandom.Rand();
     mLife = life;
     mParameter.mAlphaFlickRnd =
-        (pManager->mManagerEM->mRandom.Rand() % 254) - 127;
+        (pManager->mManagerEM->mRandom.Rand() % 254) - 126;
 
     mParameter.mPosition = pos;
     mParameter.mPrevPosition = mParameter.mPosition;
@@ -152,12 +153,71 @@ bool Particle::Initialize(u16 life, math::VEC3 pos, math::VEC3 vel,
         }
 
         if (pSetting->alpha != 0) {
+            GXColor modPri = {255, 255, 255, 255};
+            GXColor modSec = {255, 255, 255, 255};
+
+            pReferencePtcl->mParticleManager->Draw_ModifyColor(
+                pReferencePtcl, &modPri, &modSec);
+
             for (int i = 0; i < COLOR_LAYER_MAX; i++) {
-                for (int j = 0; j < COLOR_IDX_MAX; j++) {
-                    // clang-format off
-                    mParameter.mColor[i][j].a = pSetting->alpha *
-                        pReferencePtcl->mParameter.mColor[i][j].a / 100;
-                    // clang-format on
+                if (pSetting->alphaFuncPri != 0) {
+                    u32 alpha = 255;
+
+                    if (pSetting->alphaFuncPri & EmitterInheritSetting::ALPHAFUNC_PRI) {
+                        alpha = 255 * (pReferencePtcl->mParameter
+                                           .mColor[i][COLOR_IDX_PRI]
+                                           .a +
+                                       1);
+                        alpha >>= 8;
+                    }
+
+                    if (pSetting->alphaFuncPri & EmitterInheritSetting::ALPHAFUNC_SEC) {
+                        alpha = alpha * pReferencePtcl->mParameter
+                                            .mColor[i][COLOR_IDX_SEC]
+                                            .a +
+                                255;
+                        alpha >>= 8;
+                    }
+
+                    if (pSetting->alphaFuncPri & EmitterInheritSetting::ALPHAFUNC_DRAW) {
+                        alpha = alpha * pReferencePtcl->Draw_GetAlphaFlick() +
+                                255;
+                        alpha = alpha * modPri.a + 255;
+                        alpha >>= 16;
+                    }
+
+                    mParameter.mColor[i][COLOR_IDX_PRI].a =
+                        alpha * pSetting->alpha / 100;
+                }
+
+                if (pSetting->alphaFuncSec != 0) {
+                    u32 alpha = 255;
+
+                    if (pSetting->alphaFuncSec & EmitterInheritSetting::ALPHAFUNC_PRI) {
+                        alpha = 255 * (pReferencePtcl->mParameter
+                                           .mColor[i][COLOR_IDX_PRI]
+                                           .a +
+                                       1);
+                        alpha >>= 8;
+                    }
+
+                    if (pSetting->alphaFuncSec & EmitterInheritSetting::ALPHAFUNC_SEC) {
+                        alpha = alpha * pReferencePtcl->mParameter
+                                            .mColor[i][COLOR_IDX_SEC]
+                                            .a +
+                                255;
+                        alpha >>= 8;
+                    }
+
+                    if (pSetting->alphaFuncSec & EmitterInheritSetting::ALPHAFUNC_DRAW) {
+                        alpha = alpha * pReferencePtcl->Draw_GetAlphaFlick() +
+                                255;
+                        alpha = alpha * modPri.a + 255;
+                        alpha >>= 16;
+                    }
+
+                    mParameter.mColor[i][COLOR_IDX_SEC].a =
+                        alpha * pSetting->alpha / 100;
                 }
             }
         }
@@ -165,16 +225,15 @@ bool Particle::Initialize(u16 life, math::VEC3 pos, math::VEC3 vel,
         if (pSetting->color != 0) {
             for (int i = 0; i < COLOR_LAYER_MAX; i++) {
                 for (int j = 0; j < COLOR_IDX_MAX; j++) {
-                    // clang-format off
-                    mParameter.mColor[i][j].r = pSetting->color *
-                        pReferencePtcl->mParameter.mColor[i][j].r / 100;
+                    GXColor color;
+                    pReferencePtcl->GetColor(i, j, &color);
 
-                    mParameter.mColor[i][j].g = pSetting->color *
-                        pReferencePtcl->mParameter.mColor[i][j].g / 100;
-
-                    mParameter.mColor[i][j].b = pSetting->color *
-                        pReferencePtcl->mParameter.mColor[i][j].b / 100;
-                    // clang-format on
+                    mParameter.mColor[i][j].r =
+                        color.r * pSetting->color / 100;
+                    mParameter.mColor[i][j].g =
+                        color.g * pSetting->color / 100;
+                    mParameter.mColor[i][j].b =
+                        color.b * pSetting->color / 100;
                 }
             }
         }
@@ -202,90 +261,86 @@ bool Particle::Initialize(u16 life, math::VEC3 pos, math::VEC3 vel,
     return true;
 }
 
-void Particle::Draw_GetColor(int layer, GXColor* pColorPri,
-                             GXColor* pColorSec) {
-
+// NONMATCHING: retail loads mParticleManager one instruction earlier, before
+// the link register is stored; everything else is identical
+u8 Particle::Draw_GetAlphaFlick() {
     const EmitterDesc* pDesc = mParticleManager->mResource->GetEmitterDesc();
     const EmitterDrawSetting& rSetting = pDesc->drawSetting;
-
-    GetColor(layer, COLOR_IDX_PRI, pColorPri);
-    GetColor(layer, COLOR_IDX_SEC, pColorSec);
 
     u32 cycleL;
     u16 cycle;
     u16 pos;
     s16 alpha;
 
-    if (rSetting.mAlphaFlickType != EmitterDrawSetting::ALPHAFLICK_NONE) {
-        cycleL = rSetting.mAlphaFlickCycle +
-                 rSetting.mAlphaFlickCycle * mParameter.mAlphaFlickRnd *
-                     rSetting.mAlphaFlickRandom / 12700;
-
-        if (cycleL <= 0xFFFF) {
-            cycle = cycleL;
-        } else {
-            cycle = 0xFFFF;
-        }
-
-        pos = (mTick - 1) % cycle;
-        alpha = 0;
-
-        switch (rSetting.mAlphaFlickType) {
-        case EmitterDrawSetting::ALPHAFLICK_TRIANGLE: {
-            if (pos * 2 <= cycle) {
-                alpha = 128 - rSetting.mAlphaFlickAmplitude +
-                        rSetting.mAlphaFlickAmplitude * (pos * 4) / cycle;
-            } else {
-                alpha = 128 + rSetting.mAlphaFlickAmplitude * 3 +
-                        -(rSetting.mAlphaFlickAmplitude * pos * 4) / cycle;
-            }
-            break;
-        }
-
-        case EmitterDrawSetting::ALPHAFLICK_SAWTOOTH1: {
-            alpha = 128 + rSetting.mAlphaFlickAmplitude +
-                    -(rSetting.mAlphaFlickAmplitude * pos * 2) / cycle;
-            break;
-        }
-
-        case EmitterDrawSetting::ALPHAFLICK_SAWTOOTH2: {
-            alpha = 128 - rSetting.mAlphaFlickAmplitude +
-                    rSetting.mAlphaFlickAmplitude * (pos * 2) / cycle;
-            break;
-        }
-
-        case EmitterDrawSetting::ALPHAFLICK_SQUARE: {
-            if (pos * 2 <= cycle) {
-                alpha = 128 + rSetting.mAlphaFlickAmplitude;
-            } else {
-                alpha = 128 - rSetting.mAlphaFlickAmplitude;
-            }
-            break;
-        }
-
-        case EmitterDrawSetting::ALPHAFLICK_SINE: {
-            alpha = 128 + rSetting.mAlphaFlickAmplitude *
-                              std::sinf(2 * NW4R_MATH_PI * pos / cycle);
-            break;
-        }
-
-        default: {
-            break;
-        }
-        }
-
-        if (alpha < 0) {
-            alpha = 0;
-        }
-        if (alpha > 255) {
-            alpha = 255;
-        }
-
-        pColorPri->a = (pColorPri->a * alpha + 128) >> 8;
-        pColorSec->a = (pColorSec->a * alpha + 128) >> 8;
+    if (rSetting.mAlphaFlickType == EmitterDrawSetting::ALPHAFLICK_NONE) {
+        return 255;
     }
 
-    mParticleManager->Draw_ModifyColor(this, pColorPri, pColorSec);
+    cycleL = rSetting.mAlphaFlickCycle +
+             rSetting.mAlphaFlickCycle * mParameter.mAlphaFlickRnd *
+                 rSetting.mAlphaFlickRandom / 12700;
+
+    if (cycleL <= 0xFFFF) {
+        cycle = cycleL;
+    } else {
+        cycle = 0xFFFF;
+    }
+
+    pos = (mTick - 1) % cycle;
+    alpha = 0;
+
+    switch (rSetting.mAlphaFlickType) {
+    case EmitterDrawSetting::ALPHAFLICK_TRIANGLE: {
+        if (pos * 2 <= cycle) {
+            alpha = 128 - rSetting.mAlphaFlickAmplitude +
+                    rSetting.mAlphaFlickAmplitude * (pos * 4) / cycle;
+        } else {
+            alpha = 128 + rSetting.mAlphaFlickAmplitude * 3 +
+                    -(rSetting.mAlphaFlickAmplitude * pos * 4) / cycle;
+        }
+        break;
+    }
+
+    case EmitterDrawSetting::ALPHAFLICK_SAWTOOTH1: {
+        alpha = 128 + rSetting.mAlphaFlickAmplitude +
+                -(rSetting.mAlphaFlickAmplitude * pos * 2) / cycle;
+        break;
+    }
+
+    case EmitterDrawSetting::ALPHAFLICK_SAWTOOTH2: {
+        alpha = 128 - rSetting.mAlphaFlickAmplitude +
+                rSetting.mAlphaFlickAmplitude * (pos * 2) / cycle;
+        break;
+    }
+
+    case EmitterDrawSetting::ALPHAFLICK_SQUARE: {
+        if (pos * 2 <= cycle) {
+            alpha = 128 + rSetting.mAlphaFlickAmplitude;
+        } else {
+            alpha = 128 - rSetting.mAlphaFlickAmplitude;
+        }
+        break;
+    }
+
+    case EmitterDrawSetting::ALPHAFLICK_SINE: {
+        alpha = 128 + rSetting.mAlphaFlickAmplitude *
+                          math::SinRad(2 * NW4R_MATH_PI * pos / cycle);
+        break;
+    }
+
+    default: {
+        break;
+    }
+    }
+
+    if (alpha < 0) {
+        alpha = 0;
+    }
+    if (alpha > 255) {
+        alpha = 255;
+    }
+
+    return alpha;
 }
 
 } // namespace ef

@@ -14,7 +14,26 @@ public:
     virtual void Draw(const DrawInfo& rInfo,
                       ParticleManager* pManager); // at 0xC
 
-    void InitGraphics(const DrawInfo& rInfo, ParticleManager* pManager);
+    void InitGraphics(const DrawInfo& rInfo, ParticleManager* pManager) {
+        const EmitterDrawSetting& rSetting =
+            *pManager->mResource->GetEmitterDrawSetting();
+
+        InitGP(pManager, rSetting, rInfo);
+
+        GXEnableTexOffsets(GX_TEXCOORD0, TRUE, TRUE);
+
+        GXClearVtxDesc();
+        GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+
+        if (mNumTexmap > 0) {
+            GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+        }
+
+        GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+        GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
+
+        GXSetCurrentMtx(GX_PNMTX0);
+    }
 };
 
 } // namespace ef

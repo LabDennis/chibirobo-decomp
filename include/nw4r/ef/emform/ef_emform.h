@@ -2,6 +2,8 @@
 #define NW4R_EF_EMFORM_EMFORM_H
 #include "nw4r/types_nw4r.h"
 
+#include <cmath>
+
 namespace nw4r {
 namespace ef {
 

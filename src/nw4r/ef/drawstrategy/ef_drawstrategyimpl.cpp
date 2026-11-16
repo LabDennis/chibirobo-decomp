@@ -26,7 +26,7 @@ const math::MTX34 DrawStrategyImpl::mIdentityMtx(
  ******************************************************************************/
 DrawStrategyImpl::DrawStrategyImpl() {}
 
-void DrawStrategyImpl::InitTexture(const EmitterDrawSetting& rSetting) {
+inline void DrawStrategyImpl::InitTexture(const EmitterDrawSetting& rSetting) {
     mNumTexmap = 0;
 
     mTexmapMap[TEX_LAYER_1] = -1;
@@ -49,6 +49,15 @@ void DrawStrategyImpl::InitTexture(const EmitterDrawSetting& rSetting) {
     }
 
     GXSetNumTexGens(mNumTexmap);
+}
+
+void DrawStrategyImpl::InitGP(ParticleManager* pManager,
+                              const EmitterDrawSetting& rSetting,
+                              const DrawInfo& rInfo) {
+
+    InitTexture(rSetting);
+    InitTev(rSetting, rInfo);
+    InitColor(pManager, rSetting, rInfo);
 }
 
 void DrawStrategyImpl::InitTev(const EmitterDrawSetting& rSetting,
@@ -87,14 +96,13 @@ void DrawStrategyImpl::InitTev(const EmitterDrawSetting& rSetting,
             static_cast<GXBool>(rSetting.mTevColorOp[i].mClamp),
             static_cast<GXTevRegID>(rSetting.mTevColorOp[i].mOutReg));
 
-        // @bug Copy-paste error, should use mTevAlphaOp
         GXSetTevAlphaOp(
             static_cast<GXTevStageID>(i),
-            static_cast<GXTevOp>(rSetting.mTevColorOp[i].mOp),
-            static_cast<GXTevBias>(rSetting.mTevColorOp[i].mBias),
-            static_cast<GXTevScale>(rSetting.mTevColorOp[i].mScale),
-            static_cast<GXBool>(rSetting.mTevColorOp[i].mClamp),
-            static_cast<GXTevRegID>(rSetting.mTevColorOp[i].mOutReg));
+            static_cast<GXTevOp>(rSetting.mTevAlphaOp[i].mOp),
+            static_cast<GXTevBias>(rSetting.mTevAlphaOp[i].mBias),
+            static_cast<GXTevScale>(rSetting.mTevAlphaOp[i].mScale),
+            static_cast<GXBool>(rSetting.mTevAlphaOp[i].mClamp),
+            static_cast<GXTevRegID>(rSetting.mTevAlphaOp[i].mOutReg));
 
         GXSetTevKColorSel(
             static_cast<GXTevStageID>(i),
@@ -107,25 +115,17 @@ void DrawStrategyImpl::InitTev(const EmitterDrawSetting& rSetting,
         GXSetTevSwapMode(static_cast<GXTevStageID>(i), GX_TEV_SWAP0,
                          GX_TEV_SWAP0);
 
-        if (i == GX_TEVSTAGE0) {
-            if (mTexmapMap[TEX_LAYER_1] < 0) {
-                GXSetTevOrder(static_cast<GXTevStageID>(i), GX_TEXCOORD_NULL,
-                              GX_TEXMAP_NULL, GX_COLOR0A0);
-            } else {
-                GXSetTevOrder(static_cast<GXTevStageID>(i), GX_TEXCOORD0,
-                              GX_TEXMAP0, GX_COLOR0A0);
-            }
+        if (rSetting.mTevTexture[i] == TEX_LAYER_1) {
+            GXSetTevOrder(static_cast<GXTevStageID>(i), GX_TEXCOORD0,
+                          GX_TEXMAP0, GX_COLOR0A0);
+        } else if (rSetting.mTevTexture[i] == TEX_LAYER_2) {
+            GXSetTevOrder(static_cast<GXTevStageID>(i),
+                          static_cast<GXTexCoordID>(mTexmapMap[TEX_LAYER_2]),
+                          static_cast<GXTexMapID>(mTexmapMap[TEX_LAYER_2]),
+                          GX_COLOR0A0);
         } else {
-            if (mTexmapMap[TEX_LAYER_2] < 0) {
-                GXSetTevOrder(static_cast<GXTevStageID>(i), GX_TEXCOORD_NULL,
-                              GX_TEXMAP_NULL, GX_COLOR0A0);
-            } else {
-                GXSetTevOrder(
-                    static_cast<GXTevStageID>(i),
-                    static_cast<GXTexCoordID>(mTexmapMap[TEX_LAYER_2]),
-                    static_cast<GXTexMapID>(mTexmapMap[TEX_LAYER_2]),
-                    GX_COLOR0A0);
-            }
+            GXSetTevOrder(static_cast<GXTevStageID>(i), GX_TEXCOORD_NULL,
+                          GX_TEXMAP_NULL, GX_COLOR0A0);
         }
     }
 
@@ -140,10 +140,15 @@ void DrawStrategyImpl::InitTev(const EmitterDrawSetting& rSetting,
         GXSetIndTexMtx(GX_ITM_0, rSetting.mIndTexOffsetMtx,
                        rSetting.mIndTexScaleExp);
 
-        GXSetTevIndirect(
-            static_cast<GXTevStageID>(rSetting.mIndirectTargetStage),
-            GX_IND_TEX_STAGE_0, GX_ITF_8, GX_ITB_STU, GX_ITM_0, GX_ITW_OFF,
-            GX_ITW_OFF, FALSE, FALSE, GX_ITBA_OFF);
+        u8 mask = 1;
+        for (i = 0; i < rSetting.mNumTevs; i++, mask <<= 1) {
+            if (rSetting.mIndirectTargetStage & mask) {
+                GXSetTevIndirect(static_cast<GXTevStageID>(i),
+                                 GX_IND_TEX_STAGE_0, GX_ITF_8, GX_ITB_STU,
+                                 GX_ITM_0, GX_ITW_OFF, GX_ITW_OFF, FALSE, FALSE,
+                                 GX_ITBA_OFF);
+            }
+        }
     } else {
         GXSetNumIndStages(0);
     }
@@ -161,11 +166,9 @@ void DrawStrategyImpl::InitTev(const EmitterDrawSetting& rSetting,
                    static_cast<GXLogicOp>(rSetting.mBlendMode.mOp));
 
     GXSetZMode(
-        rSetting.mFlags & EmitterDrawSetting::FLAG_ZCOMP_ENABLE_TEST ? TRUE
-                                                                     : FALSE,
+        (rSetting.mFlags & EmitterDrawSetting::FLAG_ZCOMP_ENABLE_TEST) != 0,
         static_cast<GXCompare>(rSetting.mZCompareFunc),
-        rSetting.mFlags & EmitterDrawSetting::FLAG_ZCOMP_ENABLE_UPDATE ? TRUE
-                                                                       : FALSE);
+        (rSetting.mFlags & EmitterDrawSetting::FLAG_ZCOMP_ENABLE_UPDATE) != 0);
 
     if (rSetting.mFlags & EmitterDrawSetting::FLAG_FOG_ENABLE) {
         GXFogType type;
@@ -184,7 +187,6 @@ void DrawStrategyImpl::InitColor(ParticleManager* pManager,
                                  const EmitterDrawSetting& rSetting,
                                  const DrawInfo& rInfo) {
 
-
     int i;
 
     mPrevARef0 = -1;
@@ -192,65 +194,84 @@ void DrawStrategyImpl::InitColor(ParticleManager* pManager,
 
     GXSetNumChans(1);
 
-    if (rInfo.IsLightEnable() &&
-        rSetting.mColorInput.mRasColor == ColorInput::RASCOLOR_LIGHTING) {
-
-        GXSetChanCtrl(GX_COLOR0, TRUE, GX_SRC_REG, GX_SRC_REG,
-                      rInfo.GetLightMask(), GX_DF_NONE,
-                      rInfo.IsSpotLight() ? GX_AF_SPOT : GX_AF_NONE);
-    } else {
-        GXSetChanCtrl(GX_COLOR0, FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL,
+    if (!rInfo.IsLightEnable()) {
+        GXSetChanCtrl(GX_COLOR0A0, FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL,
                       GX_DF_NONE, GX_AF_NONE);
+    } else {
+        if (rSetting.mColorInput.mRasColor == ColorInput::RASCOLOR_LIGHTING) {
+            GXSetChanCtrl(GX_COLOR0, TRUE, GX_SRC_REG, GX_SRC_REG,
+                          rInfo.GetLightMask(), GX_DF_NONE,
+                          rInfo.IsSpotLight() ? GX_AF_SPOT : GX_AF_NONE);
+        } else {
+            GXSetChanCtrl(GX_COLOR0, FALSE, GX_SRC_REG, GX_SRC_REG,
+                          GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+        }
+
+        if (rSetting.mAlphaInput.mRasColor == ColorInput::RASCOLOR_LIGHTING) {
+            GXSetChanCtrl(GX_ALPHA0, TRUE, GX_SRC_REG, GX_SRC_REG,
+                          rInfo.GetLightMaskA(), GX_DF_NONE,
+                          rInfo.IsSpotLight() ? GX_AF_SPOT : GX_AF_NONE);
+        } else {
+            GXSetChanCtrl(GX_ALPHA0, FALSE, GX_SRC_REG, GX_SRC_REG,
+                          GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+        }
     }
 
-    GXSetChanCtrl(GX_ALPHA0, FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL,
-                  GX_DF_NONE, GX_AF_NONE);
     GXSetChanCtrl(GX_COLOR1A1, FALSE, GX_SRC_REG, GX_SRC_REG, GX_LIGHT_NULL,
                   GX_DF_NONE, GX_AF_NONE);
 
-    GXColor mat;
-    mat.a = mat.r = mat.g = mat.b = 255;
+    GXSetChanMatColor(GX_COLOR0A0, rInfo.GetChanMatColor());
+    GXSetChanAmbColor(GX_COLOR0A0, rInfo.GetChanAmbColor());
 
-    GXColor amb;
-    amb.a = amb.r = amb.g = amb.b = 0;
+    mUseColor[COLOR_LAYER_0][COLOR_IDX_PRI] = false;
+    mUseColor[COLOR_LAYER_0][COLOR_IDX_SEC] = false;
+    mUseColor[COLOR_LAYER_1][COLOR_IDX_PRI] = false;
+    mUseColor[COLOR_LAYER_1][COLOR_IDX_SEC] = false;
 
-    GXSetChanMatColor(GX_COLOR0A0, mat);
-    GXSetChanAmbColor(GX_COLOR0A0, amb);
-
-    mUseColor1 = false;
-    mUseColor2 = false;
+    mUseAlpha[COLOR_LAYER_0][COLOR_IDX_PRI] = false;
+    mUseAlpha[COLOR_LAYER_0][COLOR_IDX_SEC] = false;
+    mUseAlpha[COLOR_LAYER_1][COLOR_IDX_PRI] = false;
+    mUseAlpha[COLOR_LAYER_1][COLOR_IDX_SEC] = false;
 
     for (i = 0; i < GX_MAX_TEVREG - 1; i++) {
-        if (rSetting.mColorInput.mTevColor[i] == ColorInput::TEVCOLOR1_1 ||
-            rSetting.mColorInput.mTevColor[i] == ColorInput::TEVCOLOR1_2) {
-            mUseColor1 = true;
-        }
-
-        // @bug Copy-paste error, should use TEVCOLOR2_*
-        if (rSetting.mColorInput.mTevColor[i] == ColorInput::TEVCOLOR1_1 ||
-            rSetting.mColorInput.mTevColor[i] == ColorInput::TEVCOLOR1_2) {
-            mUseColor2 = true;
-        }
+        CheckUseColor(mUseColor, rSetting.mColorInput.mTevColor[i]);
+        CheckUseColor(mUseAlpha, rSetting.mAlphaInput.mTevColor[i]);
     }
 
     for (i = 0; i < GX_MAX_KCOLOR; i++) {
-        if (rSetting.mColorInput.mTevKColor[i] == ColorInput::TEVCOLOR1_1 ||
-            rSetting.mColorInput.mTevKColor[i] == ColorInput::TEVCOLOR1_2) {
-            mUseColor1 = true;
-        }
-
-        if (rSetting.mColorInput.mTevKColor[i] == ColorInput::TEVCOLOR2_3 ||
-            rSetting.mColorInput.mTevKColor[i] == ColorInput::TEVCOLOR2_2) {
-            mUseColor2 = true;
-        }
+        CheckUseColor(mUseColor, rSetting.mColorInput.mTevKColor[i]);
+        CheckUseColor(mUseAlpha, rSetting.mAlphaInput.mTevKColor[i]);
     }
+}
+
+inline bool DrawStrategyImpl::_SetupACmp(Particle* pParticle,
+                                         const EmitterDrawSetting& rSetting,
+                                         bool first) {
+
+    // @bug Copy-paste error, double comparison
+    if (first || mPrevARef0 != pParticle->mParameter.mACmpRef0 ||
+        mPrevARef0 != pParticle->mParameter.mACmpRef0) {
+
+        // @bug Copy-paste error, assigns ref0 to prev ref1
+        mPrevARef0 = pParticle->mParameter.mACmpRef0;
+        mPrevARef1 = pParticle->mParameter.mACmpRef0;
+
+        GXSetAlphaCompare(static_cast<GXCompare>(rSetting.mACmpComp0),
+                          pParticle->mParameter.mACmpRef0,
+                          static_cast<GXAlphaOp>(rSetting.mACmpOp),
+                          static_cast<GXCompare>(rSetting.mACmpComp1),
+                          pParticle->mParameter.mACmpRef1);
+
+        return true;
+    }
+
+    return false;
 }
 
 void DrawStrategyImpl::SetupGP(Particle* pParticle,
                                const EmitterDrawSetting& rSetting,
                                const DrawInfo& rInfo, bool first,
                                bool xfDirty) {
-
 
     struct VtxDescData {
         GXAttrType type;     // at 0x0
@@ -262,7 +283,7 @@ void DrawStrategyImpl::SetupGP(Particle* pParticle,
     bool xfBug;
 
     changed = _SetupACmp(pParticle, rSetting, first);
-    xfBug = changed;
+    xfBug = xfDirty || changed;
 
     changed = _SetupTevReg(pParticle, rSetting, first);
     xfBug = xfBug || changed;
@@ -276,25 +297,32 @@ void DrawStrategyImpl::SetupGP(Particle* pParticle,
         return;
     }
 
+    if (!xfBug) {
+        return;
+    }
+
     VtxDescData vtxDescPos;
     VtxDescData vtxDescNrm;
     VtxDescData vtxDescTex0;
+    VtxDescData vtxDescClr[2];
     u8 shift;
 
     GXGetVtxDesc(GX_VA_POS, &vtxDescPos.type);
     GXGetVtxDesc(GX_VA_NRM, &vtxDescNrm.type);
+    GXGetVtxDesc(GX_VA_CLR0, &vtxDescClr[0].type);
+    GXGetVtxDesc(GX_VA_CLR1, &vtxDescClr[1].type);
     GXGetVtxDesc(GX_VA_TEX0, &vtxDescTex0.type);
 
     GXGetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, &vtxDescPos.compCnt,
                     &vtxDescPos.compType, &shift);
     GXGetVtxAttrFmt(GX_VTXFMT0, GX_VA_NRM, &vtxDescNrm.compCnt,
                     &vtxDescNrm.compType, &shift);
+    GXGetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, &vtxDescClr[0].compCnt,
+                    &vtxDescClr[0].compType, &shift);
+    GXGetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR1, &vtxDescClr[1].compCnt,
+                    &vtxDescClr[1].compType, &shift);
     GXGetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, &vtxDescTex0.compCnt,
                     &vtxDescTex0.compType, &shift);
-
-    if (!xfBug) {
-        return;
-    }
 
     GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, 8);
     {
@@ -456,6 +484,47 @@ void DrawStrategyImpl::SetupGP(Particle* pParticle,
                 }
             }
 
+            for (int j = 0; j < 2; j++) {
+                if (vtxDescClr[j].type != GX_NONE) {
+                    switch (vtxDescClr[j].type) {
+                    case GX_DIRECT: {
+
+                        switch (vtxDescClr[j].compCnt) {
+                        case GX_CLR_RGB: {
+                            GXColor3u8(0, 0, 0);
+                            break;
+                        }
+
+                        case GX_CLR_RGBA: {
+                            GXColor4u8(0, 0, 0, 0);
+                            break;
+                        }
+
+                        default: {
+                            break;
+                        }
+                        }
+
+                        break;
+                    }
+
+                    case GX_INDEX8: {
+                        GXColor1x8(0);
+                        break;
+                    }
+
+                    case GX_INDEX16: {
+                        GXColor1x16(0);
+                        break;
+                    }
+
+                    default: {
+                        break;
+                    }
+                    }
+                }
+            }
+
             if (vtxDescTex0.type != GX_NONE) {
                 switch (vtxDescTex0.type) {
                 case GX_DIRECT: {
@@ -561,140 +630,149 @@ void DrawStrategyImpl::SetupGP(Particle* pParticle,
     GXEnd();
 }
 
-bool DrawStrategyImpl::_SetupACmp(Particle* pParticle,
-                                  const EmitterDrawSetting& rSetting,
-                                  bool first) {
-
-    // @bug Copy-paste error, double comparison
-    if (first || mPrevARef0 != pParticle->mParameter.mACmpRef0 ||
-        mPrevARef0 != pParticle->mParameter.mACmpRef0) {
-
-        // @bug Copy-paste error, assigns ref0 to prev ref1
-        mPrevARef0 = pParticle->mParameter.mACmpRef0;
-        mPrevARef1 = pParticle->mParameter.mACmpRef0;
-
-        GXSetAlphaCompare(static_cast<GXCompare>(rSetting.mACmpComp0),
-                          pParticle->mParameter.mACmpRef0,
-                          static_cast<GXAlphaOp>(rSetting.mACmpOp),
-                          static_cast<GXCompare>(rSetting.mACmpComp1),
-                          pParticle->mParameter.mACmpRef1);
-
-        return true;
-    }
-
-    return false;
-}
-
 bool DrawStrategyImpl::_SetupTevReg(Particle* pParticle,
                                     const EmitterDrawSetting& rSetting,
                                     bool first) {
 
     bool changed = false;
-    GXColor colorPri, colorSec;
+    int i;
 
-    if (mUseColor1) {
-        pParticle->Draw_GetColor(COLOR_LAYER_0, &colorPri, &colorSec);
+    if (mUseColor[COLOR_LAYER_0][COLOR_IDX_PRI]) {
+        mColor[COLOR_LAYER_0][COLOR_IDX_PRI].r = pParticle->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_PRI].r;
+        mColor[COLOR_LAYER_0][COLOR_IDX_PRI].g = pParticle->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_PRI].g;
+        mColor[COLOR_LAYER_0][COLOR_IDX_PRI].b = pParticle->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_PRI].b;
+    }
 
-        if (first ||
-            (mPrevColor[COLOR_LAYER_0][COLOR_IDX_PRI].r != colorPri.r ||
-             mPrevColor[COLOR_LAYER_0][COLOR_IDX_PRI].g != colorPri.g ||
-             mPrevColor[COLOR_LAYER_0][COLOR_IDX_PRI].b != colorPri.b ||
-             mPrevColor[COLOR_LAYER_0][COLOR_IDX_PRI].a != colorPri.a) ||
-            (mPrevColor[COLOR_LAYER_0][COLOR_IDX_SEC].r != colorSec.r ||
-             mPrevColor[COLOR_LAYER_0][COLOR_IDX_SEC].g != colorSec.g ||
-             mPrevColor[COLOR_LAYER_0][COLOR_IDX_SEC].b != colorSec.b ||
-             mPrevColor[COLOR_LAYER_0][COLOR_IDX_SEC].a != colorSec.a)) {
+    if (mUseColor[COLOR_LAYER_0][COLOR_IDX_SEC]) {
+        mColor[COLOR_LAYER_0][COLOR_IDX_SEC].r = pParticle->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_SEC].r;
+        mColor[COLOR_LAYER_0][COLOR_IDX_SEC].g = pParticle->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_SEC].g;
+        mColor[COLOR_LAYER_0][COLOR_IDX_SEC].b = pParticle->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_SEC].b;
+    }
 
-            changed = true;
+    if (mUseColor[COLOR_LAYER_1][COLOR_IDX_PRI]) {
+        mColor[COLOR_LAYER_1][COLOR_IDX_PRI].r = pParticle->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_PRI].r;
+        mColor[COLOR_LAYER_1][COLOR_IDX_PRI].g = pParticle->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_PRI].g;
+        mColor[COLOR_LAYER_1][COLOR_IDX_PRI].b = pParticle->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_PRI].b;
+    }
 
-            mPrevColor[COLOR_LAYER_0][COLOR_IDX_PRI] = colorPri;
-            mPrevColor[COLOR_LAYER_0][COLOR_IDX_SEC] = colorSec;
+    if (mUseColor[COLOR_LAYER_1][COLOR_IDX_SEC]) {
+        mColor[COLOR_LAYER_1][COLOR_IDX_SEC].r = pParticle->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_SEC].r;
+        mColor[COLOR_LAYER_1][COLOR_IDX_SEC].g = pParticle->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_SEC].g;
+        mColor[COLOR_LAYER_1][COLOR_IDX_SEC].b = pParticle->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_SEC].b;
+    }
 
-            for (int i = 0; i < GX_MAX_TEVREG - 1; i++) {
-                if (rSetting.mColorInput.mTevColor[i] ==
-                    ColorInput::TEVCOLOR1_1) {
+    u8 flick = 255;
 
-                    GXSetTevColor(static_cast<GXTevRegID>(GX_TEVREG0 + i),
-                                  colorPri);
-                }
+    if ((mUseAlpha[COLOR_LAYER_0][COLOR_IDX_PRI] ||
+         mUseAlpha[COLOR_LAYER_0][COLOR_IDX_SEC] ||
+         mUseAlpha[COLOR_LAYER_1][COLOR_IDX_PRI] ||
+         mUseAlpha[COLOR_LAYER_1][COLOR_IDX_SEC]) &&
+        rSetting.mAlphaFlickType != EmitterDrawSetting::ALPHAFLICK_NONE) {
 
-                // @bug Typo of 'i'
-                if (rSetting.mColorInput.mTevColor[1] ==
-                    ColorInput::TEVCOLOR1_2) {
+        flick = pParticle->Draw_GetAlphaFlick();
+    }
 
-                    GXSetTevColor(static_cast<GXTevRegID>(GX_TEVREG0 + i),
-                                  colorSec);
-                }
-            }
+    if (mUseAlpha[COLOR_LAYER_0][COLOR_IDX_PRI]) {
+        mColor[COLOR_LAYER_0][COLOR_IDX_PRI].a = pParticle->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_PRI].a;
 
-            for (int i = 0; i < GX_MAX_KCOLOR; i++) {
-                if (rSetting.mColorInput.mTevKColor[i] ==
-                    ColorInput::TEVCOLOR1_1) {
-
-                    GXSetTevKColor(static_cast<GXTevKColorID>(GX_KCOLOR0 + i),
-                                   colorPri);
-                }
-
-                if (rSetting.mColorInput.mTevKColor[i] ==
-                    ColorInput::TEVCOLOR1_2) {
-
-                    GXSetTevKColor(static_cast<GXTevKColorID>(GX_KCOLOR0 + i),
-                                   colorSec);
-                }
-            }
+        if (flick != 255) {
+            mColor[COLOR_LAYER_0][COLOR_IDX_PRI].a = (mColor[COLOR_LAYER_0][COLOR_IDX_PRI].a * flick + 128) >> 8;
         }
     }
 
-    if (mUseColor2) {
-        pParticle->Draw_GetColor(COLOR_LAYER_1, &colorPri, &colorSec);
+    if (mUseAlpha[COLOR_LAYER_0][COLOR_IDX_SEC]) {
+        mColor[COLOR_LAYER_0][COLOR_IDX_SEC].a = pParticle->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_SEC].a;
 
-        if (first ||
-            (mPrevColor[COLOR_LAYER_1][COLOR_IDX_PRI].r != colorPri.r ||
-             mPrevColor[COLOR_LAYER_1][COLOR_IDX_PRI].g != colorPri.g ||
-             mPrevColor[COLOR_LAYER_1][COLOR_IDX_PRI].b != colorPri.b ||
-             mPrevColor[COLOR_LAYER_1][COLOR_IDX_PRI].a != colorPri.a) ||
-            (mPrevColor[COLOR_LAYER_1][COLOR_IDX_SEC].r != colorSec.r ||
-             mPrevColor[COLOR_LAYER_1][COLOR_IDX_SEC].g != colorSec.g ||
-             mPrevColor[COLOR_LAYER_1][COLOR_IDX_SEC].b != colorSec.b ||
-             mPrevColor[COLOR_LAYER_1][COLOR_IDX_SEC].a != colorSec.a)) {
+        if (flick != 255) {
+            mColor[COLOR_LAYER_0][COLOR_IDX_SEC].a = (mColor[COLOR_LAYER_0][COLOR_IDX_SEC].a * flick + 128) >> 8;
+        }
+    }
 
+    if (mUseAlpha[COLOR_LAYER_1][COLOR_IDX_PRI]) {
+        mColor[COLOR_LAYER_1][COLOR_IDX_PRI].a = pParticle->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_PRI].a;
+
+        if (flick != 255) {
+            mColor[COLOR_LAYER_1][COLOR_IDX_PRI].a = (mColor[COLOR_LAYER_1][COLOR_IDX_PRI].a * flick + 128) >> 8;
+        }
+    }
+
+    if (mUseAlpha[COLOR_LAYER_1][COLOR_IDX_SEC]) {
+        mColor[COLOR_LAYER_1][COLOR_IDX_SEC].a = pParticle->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_SEC].a;
+
+        if (flick != 255) {
+            mColor[COLOR_LAYER_1][COLOR_IDX_SEC].a = (mColor[COLOR_LAYER_1][COLOR_IDX_SEC].a * flick + 128) >> 8;
+        }
+    }
+
+    if (pParticle->mParticleManager->mModifier.mLight.mType !=
+        ParticleManager::ParticleModifier::SIMPLELIGHT_OFF) {
+
+        if (mUseColor[COLOR_LAYER_0][COLOR_IDX_PRI] ||
+            mUseColor[COLOR_LAYER_0][COLOR_IDX_SEC] ||
+            mUseAlpha[COLOR_LAYER_0][COLOR_IDX_PRI] ||
+            mUseAlpha[COLOR_LAYER_0][COLOR_IDX_SEC]) {
+
+            pParticle->mParticleManager->Draw_ModifyColor(
+                pParticle, &mColor[COLOR_LAYER_0][COLOR_IDX_PRI],
+                &mColor[COLOR_LAYER_0][COLOR_IDX_SEC]);
+        }
+
+        if (mUseColor[COLOR_LAYER_1][COLOR_IDX_PRI] ||
+            mUseColor[COLOR_LAYER_1][COLOR_IDX_SEC] ||
+            mUseAlpha[COLOR_LAYER_1][COLOR_IDX_PRI] ||
+            mUseAlpha[COLOR_LAYER_1][COLOR_IDX_SEC]) {
+
+            pParticle->mParticleManager->Draw_ModifyColor(
+                pParticle, &mColor[COLOR_LAYER_1][COLOR_IDX_PRI],
+                &mColor[COLOR_LAYER_1][COLOR_IDX_SEC]);
+        }
+    }
+
+    for (i = 0; i < GX_MAX_TEVREG - 1; i++) {
+        GXColor color = {0, 0, 0, 0};
+
+        if (rSetting.mColorInput.mTevColor[i] == ColorInput::TEVCOLOR_NULL &&
+            rSetting.mAlphaInput.mTevColor[i] == ColorInput::TEVCOLOR_NULL) {
+            continue;
+        }
+
+        GetTevColor(&color, rSetting.mColorInput.mTevColor[i]);
+        GetTevAlpha(&color, rSetting.mAlphaInput.mTevColor[i]);
+
+        if (first || color.r != mPrevTevColor[i].r || color.g != mPrevTevColor[i].g ||
+            color.b != mPrevTevColor[i].b || color.a != mPrevTevColor[i].a) {
+
+            GXSetTevColor(static_cast<GXTevRegID>(GX_TEVREG0 + i), color);
             changed = true;
 
-            mPrevColor[COLOR_LAYER_1][COLOR_IDX_PRI] = colorPri;
-            mPrevColor[COLOR_LAYER_1][COLOR_IDX_SEC] = colorSec;
+            mPrevTevColor[i].r = color.r;
+            mPrevTevColor[i].g = color.g;
+            mPrevTevColor[i].b = color.b;
+            mPrevTevColor[i].a = color.a;
+        }
+    }
 
-            for (int i = 0; i < GX_MAX_TEVREG - 1; i++) {
-                if (rSetting.mColorInput.mTevColor[i] ==
-                    ColorInput::TEVCOLOR2_3) {
+    for (i = 0; i < GX_MAX_KCOLOR; i++) {
+        GXColor color = {0, 0, 0, 0};
 
-                    GXSetTevColor(static_cast<GXTevRegID>(GX_TEVREG0 + i),
-                                  colorPri);
-                }
+        if (rSetting.mColorInput.mTevKColor[i] == ColorInput::TEVCOLOR_NULL &&
+            rSetting.mAlphaInput.mTevKColor[i] == ColorInput::TEVCOLOR_NULL) {
+            continue;
+        }
 
-                // @bug Typo of 'i'
-                if (rSetting.mColorInput.mTevColor[1] ==
-                    ColorInput::TEVCOLOR2_2) {
+        GetTevColor(&color, rSetting.mColorInput.mTevKColor[i]);
+        GetTevAlpha(&color, rSetting.mAlphaInput.mTevKColor[i]);
 
-                    GXSetTevColor(static_cast<GXTevRegID>(GX_TEVREG0 + i),
-                                  colorSec);
-                }
-            }
+        if (first || color.r != mPrevTevKColor[i].r || color.g != mPrevTevKColor[i].g ||
+            color.b != mPrevTevKColor[i].b || color.a != mPrevTevKColor[i].a) {
 
-            for (int i = 0; i < GX_MAX_KCOLOR; i++) {
-                if (rSetting.mColorInput.mTevKColor[i] ==
-                    ColorInput::TEVCOLOR2_3) {
+            GXSetTevKColor(static_cast<GXTevKColorID>(GX_KCOLOR0 + i), color);
+            changed = true;
 
-                    GXSetTevKColor(static_cast<GXTevKColorID>(GX_KCOLOR0 + i),
-                                   colorPri);
-                }
-
-                if (rSetting.mColorInput.mTevKColor[i] ==
-                    ColorInput::TEVCOLOR2_2) {
-
-                    GXSetTevKColor(static_cast<GXTevKColorID>(GX_KCOLOR0 + i),
-                                   colorSec);
-                }
-            }
+            mPrevTevKColor[i].r = color.r;
+            mPrevTevKColor[i].g = color.g;
+            mPrevTevKColor[i].b = color.b;
+            mPrevTevKColor[i].a = color.a;
         }
     }
 
@@ -718,27 +796,17 @@ bool DrawStrategyImpl::_SetupTexture(Particle* pParticle,
 
         const TextureData* pTexData = pParticle->mParameter.mTexture[i];
 
-        f32 scaleS = pParticle->Draw_GetTextureScaleS(i);
-        f32 scaleT = pParticle->Draw_GetTextureScaleT(i);
-
-        f32 transS = pParticle->Draw_GetTextureTransS(i);
-        f32 transT = pParticle->Draw_GetTextureTransT(i);
-
         GXTexWrapMode wrapS = pParticle->GetTextureWrapS(i);
         GXTexWrapMode wrapT = pParticle->GetTextureWrapT(i);
 
-        if (first || !mPrevTexture[i].IsEqual(
-                         pTexData, scaleS, scaleT, transS, transT, wrapS, wrapT,
-                         pParticle->mParameter.mTextureScale[i],
-                         pParticle->mParameter.mTextureRotate[i],
-                         pParticle->mParameter.mTextureTranslate[i])) {
+        if (first || pTexData != mPrevTexture[i].data ||
+            wrapS != mPrevTexture[i].wrapS || wrapT != mPrevTexture[i].wrapT) {
 
             changed = true;
 
-            mPrevTexture[i].Set(pTexData, scaleS, scaleT, transS, transT, wrapS,
-                                wrapT, pParticle->mParameter.mTextureScale[i],
-                                pParticle->mParameter.mTextureRotate[i],
-                                pParticle->mParameter.mTextureTranslate[i]);
+            mPrevTexture[i].data = pTexData;
+            mPrevTexture[i].wrapS = wrapS;
+            mPrevTexture[i].wrapT = wrapT;
 
             int format = pTexData->format;
 
@@ -781,107 +849,113 @@ bool DrawStrategyImpl::_SetupTexture(Particle* pParticle,
             }
             }
 
-            f32 maxLod = pTexData->mipmap + -1.0f;
-            f32 lodBias = 0.0f;
-
-            GXInitTexObjLOD(
-                &texObj, pTexData->mipmap > 1 ? GX_LIN_MIP_LIN : GX_LINEAR,
-                GX_LINEAR, 0.0f, maxLod, lodBias, FALSE, FALSE, GX_ANISO_1);
+            GXInitTexObjLOD(&texObj,
+                            static_cast<GXTexFilter>(pTexData->min_filt),
+                            static_cast<GXTexFilter>(pTexData->mag_filt), 0.0f,
+                            pTexData->mipmap + -1.0f, pTexData->lod_bias, FALSE,
+                            FALSE, GX_ANISO_1);
 
             GXLoadTexObj(&texObj, static_cast<GXTexMapID>(mTexmapMap[i]));
+        }
+
+        f32 scaleS = pParticle->Draw_GetTextureScaleS(i);
+        f32 scaleT = pParticle->Draw_GetTextureScaleT(i);
+
+        f32 transS = pParticle->Draw_GetTextureTransS(i);
+        f32 transT = pParticle->Draw_GetTextureTransT(i);
+
+        if (first || scaleS != mPrevTexture[i].scaleS ||
+            scaleT != mPrevTexture[i].scaleT ||
+            transS != mPrevTexture[i].transS ||
+            transT != mPrevTexture[i].transT ||
+            pParticle->mParameter.mTextureScale[i].x !=
+                mPrevTexture[i].scale.x ||
+            pParticle->mParameter.mTextureScale[i].y !=
+                mPrevTexture[i].scale.y ||
+            pParticle->mParameter.mTextureRotate[i] != mPrevTexture[i].rotate ||
+            pParticle->mParameter.mTextureTranslate[i].x !=
+                mPrevTexture[i].translate.x ||
+            pParticle->mParameter.mTextureTranslate[i].y !=
+                mPrevTexture[i].translate.y) {
+
+            changed = true;
+
+            mPrevTexture[i].scaleS = scaleS;
+            mPrevTexture[i].scaleT = scaleT;
+            mPrevTexture[i].transS = transS;
+            mPrevTexture[i].transT = transT;
+            mPrevTexture[i].scale.x = pParticle->mParameter.mTextureScale[i].x;
+            mPrevTexture[i].scale.y = pParticle->mParameter.mTextureScale[i].y;
+            mPrevTexture[i].rotate = pParticle->mParameter.mTextureRotate[i];
+            mPrevTexture[i].translate.x =
+                pParticle->mParameter.mTextureTranslate[i].x;
+            mPrevTexture[i].translate.y =
+                pParticle->mParameter.mTextureTranslate[i].y;
 
             math::MTX34 mtx;
             math::MTX34Identity(&mtx);
 
-            math::MTX34 work;
-            math::MTX34Identity(&work);
-            {
-                work._03 = pParticle->mParameter.mTextureTranslate[i].x;
-                work._13 = pParticle->mParameter.mTextureTranslate[i].y;
-            }
-            math::MTX34Mult(&mtx, &work, &mtx);
+            mtx._03 = pParticle->mParameter.mTextureTranslate[i].x;
+            mtx._13 = pParticle->mParameter.mTextureTranslate[i].y;
 
             if (pParticle->mParameter.mTextureRotate[i] != 0.0f) {
-                math::MTX34Identity(&work);
-                {
-                    work._03 = -0.5f;
-                    work._13 = -0.5f;
-                }
-                math::MTX34Mult(&mtx, &work, &mtx);
+                f32 tx = mtx._03 - 0.5f;
+                f32 ty = mtx._13 - 0.5f;
 
-                math::MTX34Identity(&work);
-                {
-                    f32 cr = std::cosf(pParticle->mParameter.mTextureRotate[i]);
-                    work._00 = work._11 = cr;
+                f32 sr, cr;
+                SinCosRad(&sr, &cr, pParticle->mParameter.mTextureRotate[i]);
 
-                    f32 sr = std::sinf(pParticle->mParameter.mTextureRotate[i]);
-                    work._01 = -sr;
-                    work._10 = sr;
-                }
-                math::MTX34Mult(&mtx, &work, &mtx);
+                mtx._00 = mtx._11 = cr;
+                mtx._10 = sr;
+                mtx._01 = -sr;
 
-                math::MTX34Identity(&work);
-                {
-                    work._03 = 0.5f;
-                    work._13 = 0.5f;
-                }
-                math::MTX34Mult(&mtx, &work, &mtx);
+                mtx._03 = 0.5f + cr * tx - sr * ty;
+                mtx._13 = 0.5f + sr * tx + cr * ty;
             }
 
-            math::MTX34Identity(&work);
-            {
-                work._03 = -0.5f;
-                work._13 = -0.5f;
+            if (scaleS != 1.0f || scaleT != 1.0f ||
+                pParticle->mParameter.mTextureScale[i].x != 1.0f ||
+                pParticle->mParameter.mTextureScale[i].y != 1.0f ||
+                transS != 0.0f || transT != 0.0f) {
+
+                f32 sx = scaleS * pParticle->mParameter.mTextureScale[i].x;
+                f32 sy = scaleT * pParticle->mParameter.mTextureScale[i].y;
+
+                mtx._00 *= sx;
+                mtx._01 *= sx;
+                mtx._03 =
+                    transS +
+                    scaleS * (0.5f + (mtx._03 - 0.5f) *
+                                         pParticle->mParameter.mTextureScale[i].x);
+
+                mtx._10 *= sy;
+                mtx._11 *= sy;
+                mtx._13 =
+                    transT +
+                    scaleT * (0.5f + (mtx._13 - 0.5f) *
+                                         pParticle->mParameter.mTextureScale[i].y);
             }
-            math::MTX34Mult(&mtx, &work, &mtx);
-
-            math::MTX34Identity(&work);
-            {
-                work._00 = pParticle->mParameter.mTextureScale[i].x;
-                work._11 = pParticle->mParameter.mTextureScale[i].y;
-            }
-            math::MTX34Mult(&mtx, &work, &mtx);
-
-            math::MTX34Identity(&work);
-            {
-                work._03 = 0.5f;
-                work._13 = 0.5f;
-            }
-            math::MTX34Mult(&mtx, &work, &mtx);
-
-            work._00 = scaleS;
-            work._01 = 0.0f;
-            work._02 = 0.0f;
-            work._03 = transS;
-
-            work._10 = 0.0f;
-            work._11 = scaleT;
-            work._12 = 0.0f;
-            work._13 = transT;
-
-            work._20 = 0.0f;
-            work._21 = 0.0f;
-            work._22 = 1.0f;
-            work._23 = 0.0f;
-
-            math::MTX34Mult(&mtx, &work, &mtx);
 
             if (!((rSetting.mFlags >> (i + 7 /* FLAG_TEX1_PROJ */)) & 1)) {
                 GXLoadTexMtxImm(mtx, GX_TEXMTX0 + mTexmapMap[i] * 3,
                                 GX_MTX2x4);
 
-                GXSetTexCoordGen(static_cast<GXTexCoordID>(mTexmapMap[i]),
-                                 GX_TG_MTX2x4, GX_TG_TEX0,
-                                 GX_TEXMTX0 + mTexmapMap[i] * 3);
+                if (first) {
+                    GXSetTexCoordGen(static_cast<GXTexCoordID>(mTexmapMap[i]),
+                                     GX_TG_MTX2x4, GX_TG_TEX0,
+                                     GX_TEXMTX0 + mTexmapMap[i] * 3);
+                }
             } else {
                 math::MTX34Mult(&mtx, rInfo.GetProjMtx(), &mtx);
 
                 GXLoadTexMtxImm(mtx, GX_PTTEXMTX0 + mTexmapMap[i] * 3,
                                 GX_MTX3x4);
 
-                GXSetTexCoordGen2(static_cast<GXTexCoordID>(mTexmapMap[i]),
-                                  GX_TG_MTX3x4, GX_TG_POS, GX_PNMTX0, FALSE,
-                                  GX_PTTEXMTX0 + mTexmapMap[i] * 3);
+                if (first) {
+                    GXSetTexCoordGen2(static_cast<GXTexCoordID>(mTexmapMap[i]),
+                                      GX_TG_MTX3x4, GX_TG_POS, GX_PNMTX0, FALSE,
+                                      GX_PTTEXMTX0 + mTexmapMap[i] * 3);
+                }
             }
         }
     }
@@ -979,7 +1053,8 @@ DrawStrategyImpl::AheadContext::AheadContext(const math::MTX34& rViewMtx,
     EmitterDrawSetting& rDesc = *pManager->mResource->GetEmitterDrawSetting();
 
     switch (rDesc.typeDir) {
-    case EmitterDrawSetting::DIR_NO_DESIGN: {
+    case EmitterDrawSetting::DIR_NO_DESIGN:
+    case EmitterDrawSetting::DIR_NO_DESIGN_7: {
         math::MTX34& rMtx = mCommon.mParticleManagerMtxInv;
         math::VEC3 worldAxisY(rMtx._01, rMtx._11, rMtx._21);
 

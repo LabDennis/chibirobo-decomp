@@ -28,14 +28,12 @@ void EmitterFormPoint::Emission(Emitter* pEmitter, ParticleManager* pManager,
         f32 radius = math::FSqrt(1.0f - normal.x * normal.x);
         rx = pEmitter->mRandom.RandFloat() * NW4R_MATH_PI * 2;
 
-        normal.y = std::cosf(rx) * radius;
-        normal.z = std::sinf(rx) * radius;
+        SinCosRad(&normal.z, &normal.y, rx);
+        normal.y *= radius;
+        normal.z *= radius;
 
         math::VEC3 fromYAxis(normal.x, 0.0f, normal.z);
-
-        if (normal.x != 0.0f || normal.z != 0.0f) {
-            math::VEC3Normalize(&fromYAxis, &fromYAxis);
-        }
+        VecNormalize(&fromYAxis, &fromYAxis);
 
         math::VEC3 vel;
         CalcVelocity(&vel, pEmitter, pos, normal, normal, fromYAxis);

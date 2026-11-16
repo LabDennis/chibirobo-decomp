@@ -17,14 +17,19 @@ DrawLineStrategy::DrawLineStrategy() {}
 void DrawLineStrategy::Draw(const DrawInfo& rInfo, ParticleManager* pManager) {
     InitGraphics(rInfo, pManager);
 
+    bool texCoord;
+
     const EmitterDrawSetting& rSetting =
         *pManager->mResource->GetEmitterDrawSetting();
+
+    texCoord = mNumTexmap > 0;
 
     math::MTX34 glbMtx;
     math::MTX34 posMtx;
 
     pManager->CalcGlobalMtx(&glbMtx);
-    math::MTX34Mult(&posMtx, rInfo.GetViewMtx(), &glbMtx);
+    rInfo.GetViewMtxZOffset(&posMtx);
+    math::MTX34Mult(&posMtx, &posMtx, &glbMtx);
     GXLoadPosMtxImm(posMtx, GX_PNMTX0);
 
     GetFirstDrawParticleFunc pGetFirstFunc = GetGetFirstDrawParticleFunc(
@@ -40,12 +45,12 @@ void DrawLineStrategy::Draw(const DrawInfo& rInfo, ParticleManager* pManager) {
          pParticle = pGetNextFunc(pManager, pParticle)) {
 
         f32 sx = pParticle->Draw_GetSizeX();
-        if (sx < std::numeric_limits<f32>::epsilon()) {
+        if (sx < NW4R_MATH_FLT_EPSILON) {
             continue;
         }
 
         f32 sy = pParticle->Draw_GetSizeY();
-        if (sy < std::numeric_limits<f32>::epsilon()) {
+        if (sy < NW4R_MATH_FLT_EPSILON) {
             continue;
         }
 
@@ -76,33 +81,8 @@ void DrawLineStrategy::Draw(const DrawInfo& rInfo, ParticleManager* pManager) {
         }
 
         first = false;
-        DrawPolygon(p0, p1, mNumTexmap > 0);
+        DrawPolygon(p0, p1, texCoord);
     }
-}
-
-void DrawLineStrategy::InitGraphics(const DrawInfo& rInfo,
-                                    ParticleManager* pManager) {
-
-    const EmitterDrawSetting& rSetting =
-        *pManager->mResource->GetEmitterDrawSetting();
-
-    InitTexture(rSetting);
-    InitTev(rSetting, rInfo);
-    InitColor(pManager, rSetting, rInfo);
-
-    GXEnableTexOffsets(GX_TEXCOORD0, TRUE, TRUE);
-
-    GXClearVtxDesc();
-    GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-
-    if (mNumTexmap > 0) {
-        GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-    }
-
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-    GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-
-    GXSetCurrentMtx(GX_PNMTX0);
 }
 
 static void DrawPolygon(const nw4r::math::VEC3& rP0,

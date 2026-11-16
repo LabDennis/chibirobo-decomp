@@ -4,6 +4,7 @@
 #include "nw4r/ut/ut_algorithm.h"
 #include "nw4r/ut/ut_list.h"
 
+#include <cmath>
 #include <cstring>
 
 namespace nw4r {
@@ -30,16 +31,6 @@ bool ParticleManager::Closing(Particle* pParticle) {
     pParticle->mLifeStatus = NW4R_EF_LS_CLOSING;
 
     return true;
-}
-
-int ParticleManager::RetireParticle(Particle* pParticle) {
-    if (pParticle->mLifeStatus != NW4R_EF_LS_ACTIVE) {
-        return 0;
-    }
-
-    mActivityList.ToWait(pParticle);
-    pParticle->Destroy();
-    return 1;
 }
 
 int ParticleManager::RetireParticleAll() {
@@ -121,60 +112,267 @@ ParticleManager::CreateParticle(u16 life, math::VEC3 pos, math::VEC3 vel,
     return pParticle;
 }
 
-struct FieldGravityParam {
-    f32 power;       // at 0x0
-    math::VEC3 dir;  // at 0x4
-    u8 space;        // at 0x10
-    u8 type;         // at 0x11
-};
+// The particle as the field sees it: in the emitter's space, or in the world
+// with the emitter as origin
+static inline math::VEC3 CalcFieldPos(AnimCurveFieldParam* pParam,
+                                      const math::MTX34* pLocToEm,
+                                      const math::MTX34* pLocToGlb,
+                                      const math::MTX34* pEmToGlb,
+                                      const math::VEC3* pPrevPos) {
+    math::VEC3 pos;
 
-struct FieldRandomParam {
-    f32 power;    // at 0x0
-    f32 diffuse;  // at 0x4
-    u16 interval; // at 0x8
-    u8 flags;     // at 0xA
-    u8 type;      // at 0xB
-};
+    if (pParam->space == AnimCurveFieldParam::SPACE_EMITTER) {
+        math::VEC3Transform(&pos, pLocToEm, pPrevPos);
+    } else {
+        math::VEC3Transform(&pos, pLocToGlb, pPrevPos);
 
-struct FieldSpinParam {
-    f32 speed;      // at 0x0
-    math::VEC3 rot; // at 0x4
-    u8 space;       // at 0x10
-    u8 type;        // at 0x11
-    u8 reserved0;   // at 0x12
-    u8 reserved1;   // at 0x13
-};
+        math::VEC3 origin(0.0f, 0.0f, 0.0f);
+        math::VEC3Transform(&origin, pEmToGlb, &origin);
+        math::VEC3Sub(&pos, &pos, &origin);
+    }
 
-struct FieldMagnetParam {
-    f32 power;      // at 0x0
-    math::VEC3 pos; // at 0x4
-    u8 space;       // at 0x10
-    u8 type;        // at 0x11
-    u8 reserved0;   // at 0x12
-    u8 reserved1;   // at 0x13
-};
+    return pos;
+}
 
-struct FieldNewtonParam {
-    f32 power;      // at 0x0
-    f32 range;      // at 0x4
-    math::VEC3 pos; // at 0x8
-    u8 space;       // at 0x14
-    u8 type;        // at 0x15
-    u8 reserved0;   // at 0x16
-    u8 reserved1;   // at 0x17
-};
+static inline void CalcFieldSpeed(math::VEC3* pOut, AnimCurveFieldParam* pParam,
+                                  const math::VEC3* pVel) {
+    math::VEC3Scale(pOut, pVel, pParam->power - 1.0f);
+}
 
-struct FieldVortexParam {
-    f32 innerSpeed; // at 0x0
-    f32 outerSpeed; // at 0x4
-    f32 radius;     // at 0x8
-    math::VEC3 rot; // at 0xC
-    u8 space;       // at 0x18
-    u8 type;        // at 0x19
-    u8 reserved0;   // at 0x1A
-    u8 reserved1;   // at 0x1B
-};
+static inline void CalcFieldGravity(math::VEC3* pOut,
+                                    AnimCurveFieldParam* pParam) {
+    Rotation2VecY(pParam->gravity.rot, pOut);
+    *pOut *= pParam->power;
+}
 
+static inline void CalcFieldRandom(math::VEC3* pOut,
+                                   AnimCurveFieldParam* pParam,
+                                   AnimCurveHeader* pHeader, Particle* pParticle,
+                                   u32 tick, u16 seed,
+                                   const math::VEC3* pPrevVel,
+                                   const math::VEC3* pPrevDir,
+                                   const math::MTX34* pLocToEmNoTrans) {
+    f32 sinPhi;
+    f32 cosPhi;
+
+    union {
+        u32 value;
+        u8 bytes[4];
+    } rndSeed;
+
+    rndSeed.value = seed * 0x3F81F635 +
+                    pHeader->randomSeed * 0x30A74193 +
+                    static_cast<u16>(tick) * 0x371097E7 +
+                    0x4BF53;
+
+    rndSeed.bytes[2] ^= rndSeed.bytes[3];
+    rndSeed.bytes[1] ^= rndSeed.bytes[2];
+    rndSeed.bytes[0] ^= rndSeed.bytes[1];
+
+    if (!(pHeader->processFlag &
+          AnimCurveHeader::PROC_FLAG_TIMING)) {
+        if (tick == 0) {
+            return;
+        }
+
+        if (tick % (pParam->random.interval + 1) != 0) {
+            return;
+        }
+    } else {
+        if (pParticle->mTick != 0 &&
+            tick % (pParam->random.interval + 1) != 0) {
+            return;
+        }
+    }
+
+    // The power is the particle's speed
+    if (pParam->option & AnimCurveFieldParam::RANDOM_OPT_SPEED) {
+        math::VEC3 dir;
+
+        switch (pParam->type) {
+        case AnimCurveFieldParam::TYPE_VELOCITY: {
+            dir = *pPrevVel;
+            break;
+        }
+
+        case AnimCurveFieldParam::TYPE_POSITION: {
+            if (pParticle->mTick == 0) {
+                dir = *pPrevVel;
+            } else {
+                dir = *pPrevDir / pParticle->mParameter.mMomentum;
+            }
+            break;
+        }
+        }
+
+        math::VEC3Transform(&dir, pLocToEmNoTrans, &dir);
+        pParam->power = math::VEC3Len(&dir);
+    }
+
+    if (pParam->option & AnimCurveFieldParam::RANDOM_OPT_CUBE) {
+        u32 rnd0 = rndSeed.value;
+        pOut->x = static_cast<s16>(rnd0 >> 16) / 32768.0f;
+        u32 rnd1 = rnd0 * 0x343FD + 0x269EC3;
+        pOut->y = static_cast<s16>(rnd1 >> 16) / 32768.0f;
+        u32 rnd2 = rnd1 * 0x343FD + 0x269EC3;
+        pOut->z = static_cast<s16>(rnd2 >> 16) / 32768.0f;
+
+        if (pParam->option &
+            AnimCurveFieldParam::RANDOM_OPT_SPEED) {
+            if (!VecNormalize(pOut, pOut)) {
+                pOut->y = 1.0f;
+            }
+        }
+
+        math::VEC3Scale(pOut, pOut, pParam->power);
+    } else {
+        math::VEC3 dir;
+
+        if (pParticle->mTick == 0) {
+            dir = *pPrevVel;
+        } else {
+            dir = *pPrevDir;
+        }
+
+        math::VEC3Transform(&dir, pLocToEmNoTrans, &dir);
+
+        if (!VecNormalize(&dir, &dir)) {
+            dir.y = 1.0f;
+        }
+
+        math::MTX34 mtxDir;
+        GetDirMtxY(&mtxDir, dir);
+
+        if (pParam->random.diffuse != 0.0f) {
+            u32 rnd0 = rndSeed.value;
+            f32 theta = (rnd0 >> 16) / 65535.0f *
+                        pParam->random.diffuse;
+            u32 rnd1 = rnd0 * 0x343FD + 0x269EC3;
+            f32 phi = 2.0f * (NW4R_MATH_PI *
+                              ((rnd1 >> 16) / 65535.0f));
+            u32 rnd2 = rnd1 * 0x343FD + 0x269EC3;
+
+            SinCosRad(&pOut->x, theta);
+            pOut->z = pOut->x;
+            SinCosRad(&sinPhi, &cosPhi, phi);
+            pOut->x *= sinPhi;
+            pOut->z *= cosPhi;
+
+            if (pParam->option &
+                AnimCurveFieldParam::RANDOM_OPT_SPEED) {
+                math::VEC3Scale(pOut, pOut, pParam->power);
+            } else {
+                math::VEC3Scale(
+                    pOut, pOut,
+                    (rnd2 >> 16) / 65535.0f * pParam->power);
+            }
+        } else {
+            pOut->x = 0.0f;
+
+            if (pParam->option &
+                AnimCurveFieldParam::RANDOM_OPT_SPEED) {
+                pOut->y = pParam->power;
+            } else {
+                pOut->y = static_cast<s16>(rndSeed.value >> 16) /
+                      32768.0f * pParam->power;
+            }
+
+            pOut->z = 0.0f;
+        }
+
+        math::VEC3Transform(pOut, &mtxDir, pOut);
+    }
+
+    if (!(pParam->option & AnimCurveFieldParam::RANDOM_OPT_X)) {
+        pOut->x = 0.0f;
+    }
+    if (!(pParam->option & AnimCurveFieldParam::RANDOM_OPT_Y)) {
+        pOut->y = 0.0f;
+    }
+    if (!(pParam->option & AnimCurveFieldParam::RANDOM_OPT_Z)) {
+        pOut->z = 0.0f;
+    }
+}
+
+static inline void CalcFieldSpin(math::VEC3* pOut, AnimCurveFieldParam* pParam,
+ const math::VEC3* pPos) {
+    math::VEC3 axis;
+    Rotation2VecY(pParam->spin.rot, &axis);
+
+    math::MTX34 mtxRot;
+    math::MTX34RotAxisRad(&mtxRot, &axis, pParam->power);
+
+    math::VEC3Transform(pOut, &mtxRot, pPos);
+    math::VEC3Sub(pOut, pOut, pPos);
+}
+
+static inline void CalcFieldMagnet(math::VEC3* pOut, AnimCurveFieldParam* pParam,
+ const math::VEC3* pPos) {
+    math::VEC3Sub(
+        pOut, static_cast<math::VEC3*>(&pParam->magnet.pos),
+        pPos);
+    VecNormalize(pOut, pOut);
+    math::VEC3Scale(pOut, pOut, pParam->power);
+}
+
+static inline void CalcFieldNewton(math::VEC3* pOut, AnimCurveFieldParam* pParam,
+ const math::VEC3* pPos) {
+    math::VEC3Sub(
+        pOut, static_cast<math::VEC3*>(&pParam->newton.pos),
+        pPos);
+    f32 lenSq = math::VEC3LenSq(pOut);
+
+    VecNormalize(pOut, pOut);
+    math::VEC3Scale(pOut, pOut, pParam->power);
+
+    f32 rangeSq = pParam->newton.range * pParam->newton.range;
+    if (lenSq > rangeSq) {
+        math::VEC3Scale(pOut, pOut, rangeSq / lenSq);
+    }
+}
+
+static inline void CalcFieldVortex(math::VEC3* pOut, AnimCurveFieldParam* pParam,
+ const math::VEC3* pPos) {
+    math::VEC3 axis;
+    Rotation2VecY(pParam->vortex.rot, &axis);
+
+    pParam->vortex.radius *= pParam->vortex.radius;
+
+    math::VEC3 dist;
+    math::VEC3Scale(&dist, &axis,
+                    math::VEC3Dot(&axis, pPos));
+    math::VEC3Sub(&dist, pPos, &dist);
+    f32 distSq = math::VEC3LenSq(&dist);
+
+    if (distSq == 0.0f) {
+        return;
+    }
+
+    f32 speed;
+
+    if (distSq >= pParam->vortex.radius) {
+        speed = pParam->vortex.outerSpeed;
+    } else {
+        f32 ratio = distSq / pParam->vortex.radius;
+        speed = (1.0f - ratio) * pParam->power +
+                ratio * pParam->vortex.outerSpeed;
+    }
+
+    VecNormalize(&dist, &dist);
+    math::VEC3Cross(pOut, &dist, &axis);
+    math::VEC3Scale(pOut, pOut, speed);
+}
+
+// NONMATCHING: two things are left, the code is otherwise retail's instruction
+// for instruction (same frame, same stack slots).
+// - Retail calls __fpclassifyf (0x8022A450) for the isnan of the tail field;
+//   our MSL header defines it inline, so it is expanded here (+0x58 bytes).
+// - With that call forced, six registers are rotated: retail keeps kind in r29
+//   above the five hoisted addresses (&pos, &prevPos, &mtxLocToEmNoTrans,
+//   &fieldPos, &v in r28-r24), ours has them in r29-r25 and kind in r24.
+// The field helpers above are inlines in retail too: their locals sit behind
+// Calc's own in the frame and their pointer arguments are the hoisted
+// addresses. Their names and parameter lists are ours.
 void ParticleManager::Calc() {
     Particle* pFirst = static_cast<Particle*>(
         ut::List_GetNext(&mActivityList.mActiveList, mLastCalced));
@@ -183,7 +381,16 @@ void ParticleManager::Calc() {
         return;
     }
 
+    u8 kind;
+    AnimCurveHeader* pHeader;
     Particle* pIt = pFirst;
+    u16 i;
+    bool postField;
+    AnimCurvePostFieldInfo* pPostInfo;
+    EmitterResource* pPostChild;
+    u32 tick;
+    u32 life;
+    u16 seed;
 
     if (mManagerEM->mManagerEF->mCallBack.mPrevPtclCalc != NULL) {
         mManagerEM->mManagerEF->mCallBack.mPrevPtclCalc(
@@ -199,6 +406,12 @@ void ParticleManager::Calc() {
     math::MTX34 mtxEmToGlb;
     mManagerEM->CalcGlobalMtx(&mtxEmToGlb);
 
+    // The emitter's scale: the length of its (1, 1, 1) over sqrt(3)
+    math::VEC3 emScale(mtxEmToGlb._02 + (mtxEmToGlb._00 + mtxEmToGlb._01),
+                       mtxEmToGlb._12 + (mtxEmToGlb._10 + mtxEmToGlb._11),
+                       mtxEmToGlb._22 + (mtxEmToGlb._20 + mtxEmToGlb._21));
+    f32 scale = 0.57735026f * math::VEC3Len(&emScale);
+
     math::MTX34 mtxEmToLoc;
     math::MTX34Mult(&mtxEmToLoc, &mtxGlbToLoc, &mtxEmToGlb);
 
@@ -209,6 +422,9 @@ void ParticleManager::Calc() {
     mtxGlbToLocNoTrans._03 = 0.0f;
     mtxGlbToLocNoTrans._13 = 0.0f;
     mtxGlbToLocNoTrans._23 = 0.0f;
+
+    math::MTX34 mtxLocToGlbNoTrans;
+    math::MTX34Inv(&mtxLocToGlbNoTrans, &mtxGlbToLocNoTrans);
 
     math::MTX34 mtxLocToEmNoTrans = mtxLocToEm;
     mtxLocToEmNoTrans._03 = 0.0f;
@@ -255,31 +471,23 @@ void ParticleManager::Calc() {
 
         math::VEC3 addVel(0.0f, 0.0f, 0.0f);
         math::VEC3 addPos(0.0f, 0.0f, 0.0f);
-        f32 vortexSpeed;
 
-        for (u16 i = pIt->mTick == 0 ? 0 : mResource->NumPtclInitTrack();
+        AnimCurvePostFieldParam postParam;
+        postField = false;
+        pPostChild = NULL;
+
+        for (i = pIt->mTick == 0 ? 0 : mResource->NumPtclInitTrack();
              i < mResource->NumPtclTrack(); i++) {
 
-            u8* pPtclTrack = mResource->GetPtclTrack(i);
+            pHeader = reinterpret_cast<AnimCurveHeader*>(
+                mResource->GetPtclTrack(i));
 
-#define pTrackAsHeader reinterpret_cast<AnimCurveHeader*>(pPtclTrack)
-
-            if (pTrackAsHeader->processFlag & AnimCurveHeader::PROC_FLAG_STOP) {
+            if (pHeader->processFlag & AnimCurveHeader::PROC_FLAG_STOP) {
                 continue;
             }
 
-            if (pIt->mTick != 0 && pTrackAsHeader->frameLength <= 1 &&
-                pTrackAsHeader->kindType < AC_TARGET_TEXTUREINDTRANSLATE + 1) {
-                continue;
-            }
 
-            u32 tick;
-            u32 life;
-            u16 seed;
-
-            if (pTrackAsHeader->processFlag &
-                AnimCurveHeader::PROC_FLAG_TIMING) {
-
+            if (pHeader->processFlag & AnimCurveHeader::PROC_FLAG_TIMING) {
                 tick = pIt->mParticleManager->mManagerEM->mTick;
 
                 if (pIt->mParticleManager->mManagerEM->mParameter.mComFlags &
@@ -297,572 +505,288 @@ void ParticleManager::Calc() {
                 seed = pIt->mRandSeed;
             }
 
-            if (pTrackAsHeader->magic != NW4R_EF_MAGIC_ANIMCURVE) {
-                continue;
-            }
+            if (pHeader->magic == NW4R_EF_MAGIC_ANIMBAKED ||
+                pHeader->magic == NW4R_EF_MAGIC_ANIMCURVE) {
 
-            // Load curveFlag and kindEnable
-            u16 ctrl = *reinterpret_cast<u16*>(&pTrackAsHeader->curveFlag);
-            u8 kind = pTrackAsHeader->kindType;
+            u8 type = pHeader->curveFlag;
+            kind = pHeader->kindType;
 
-            switch (ctrl >> 8) {
-            case AC_TYPE_PARTICLE_U8: {
-                u8* pTarget;
-
-                switch (kind) {
-                case AC_TARGET_ALPHA0PRI: {
-                    pTarget =
-                        &pIt->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_PRI].a;
-                    break;
-                }
-                case AC_TARGET_ALPHA0SEC: {
-                    pTarget =
-                        &pIt->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_SEC].a;
-                    break;
-                }
-                case AC_TARGET_ALPHA1PRI: {
-                    pTarget =
-                        &pIt->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_PRI].a;
-                    break;
-                }
-                case AC_TARGET_ALPHA1SEC: {
-                    pTarget =
-                        &pIt->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_SEC].a;
-                    break;
-                }
-
-                case AC_TARGET_ACMPREF0: {
-                    pTarget = &pIt->mParameter.mACmpRef0;
-                    break;
-                }
-                case AC_TARGET_ACMPREF1: {
-                    pTarget = &pIt->mParameter.mACmpRef1;
-                    break;
-                }
-
-                case AC_TARGET_COLOR0PRI: {
-                    pTarget =
-                        &pIt->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_PRI].r;
-                    break;
-                }
-                case AC_TARGET_COLOR0SEC: {
-                    pTarget =
-                        &pIt->mParameter.mColor[COLOR_LAYER_0][COLOR_IDX_SEC].r;
-                    break;
-                }
-                case AC_TARGET_COLOR1PRI: {
-                    pTarget =
-                        &pIt->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_PRI].r;
-                    break;
-                }
-                case AC_TARGET_COLOR1SEC: {
-                    pTarget =
-                        &pIt->mParameter.mColor[COLOR_LAYER_1][COLOR_IDX_SEC].r;
-                    break;
-                }
-
-                default: {
-                    continue;
-                }
-                }
-
-                AnimCurveExecuteU8(pPtclTrack, pTarget, tick, seed, life);
-                break;
-            }
-
-            case AC_TYPE_PARTICLE_F32: {
-                switch (kind) {
-                case AC_TARGET_SIZE: {
-                    AnimCurveExecuteF32(
-                        pPtclTrack,
-                        reinterpret_cast<f32*>(&pIt->mParameter.mSize), tick,
-                        seed, life);
-                    break;
-                }
-
-                case AC_TARGET_SCALE: {
-                    AnimCurveExecuteF32(
-                        pPtclTrack,
-                        reinterpret_cast<f32*>(&pIt->mParameter.mScale), tick,
-                        seed, life);
-                    break;
-                }
-
-                case AC_TARGET_TEXTURE1SCALE: {
-                    AnimCurveExecuteF32(pPtclTrack,
-                                        reinterpret_cast<f32*>(
-                                            &pIt->mParameter
-                                                 .mTextureScale[TEX_LAYER_1]),
-                                        tick, seed, life);
-                    break;
-                }
-
-                case AC_TARGET_TEXTURE2SCALE: {
-                    AnimCurveExecuteF32(pPtclTrack,
-                                        reinterpret_cast<f32*>(
-                                            &pIt->mParameter
-                                                 .mTextureScale[TEX_LAYER_2]),
-                                        tick, seed, life);
-                    break;
-                }
-
-                case AC_TARGET_TEXTUREINDSCALE: {
-                    AnimCurveExecuteF32(pPtclTrack,
-                                        reinterpret_cast<f32*>(
-                                            &pIt->mParameter
-                                                 .mTextureScale[TEX_LAYER_IND]),
-                                        tick, seed, life);
-                    break;
-                }
-
-                case AC_TARGET_TEXTURE1TRANSLATE: {
-                    AnimCurveExecuteF32(
-                        pPtclTrack,
-                        reinterpret_cast<f32*>(
-                            &pIt->mParameter.mTextureTranslate[TEX_LAYER_1]),
-                        tick, seed, life);
-                    break;
-                }
-
-                case AC_TARGET_TEXTURE2TRANSLATE: {
-                    AnimCurveExecuteF32(
-                        pPtclTrack,
-                        reinterpret_cast<f32*>(
-                            &pIt->mParameter.mTextureTranslate[TEX_LAYER_2]),
-                        tick, seed, life);
-                    break;
-                }
-
-                case AC_TARGET_TEXTUREINDTRANSLATE: {
-                    AnimCurveExecuteF32(
-                        pPtclTrack,
-                        reinterpret_cast<f32*>(
-                            &pIt->mParameter.mTextureTranslate[TEX_LAYER_IND]),
-                        tick, seed, life);
-                    break;
-                }
-
-                case AC_TARGET_TEXTURE1ROTATE: {
-                    AnimCurveExecuteF32(
-                        pPtclTrack, &pIt->mParameter.mTextureRotate[TEX_LAYER_1],
-                        tick, seed, life);
-                    break;
-                }
-
-                case AC_TARGET_TEXTURE2ROTATE: {
-                    AnimCurveExecuteF32(
-                        pPtclTrack, &pIt->mParameter.mTextureRotate[TEX_LAYER_2],
-                        tick, seed, life);
-                    break;
-                }
-
-                case AC_TARGET_TEXTUREINDROTATE: {
-                    AnimCurveExecuteF32(
-                        pPtclTrack,
-                        &pIt->mParameter.mTextureRotate[TEX_LAYER_IND], tick,
-                        seed, life);
-                    break;
-                }
-
-                case AC_TARGET_FIELD_SPEED: {
-                    f32 speed;
-                    AnimCurveExecuteF32(pPtclTrack, &speed, tick, seed, life);
-                    math::VEC3 v;
-                    math::VEC3Scale(&v, &prevVel, speed - 1.0f);
-                    addVel += v;
-                    break;
-                }
-
-                case AC_TARGET_UNK32: {
-                    FieldGravityParam* pParam = reinterpret_cast<FieldGravityParam*>(
-                        pPtclTrack + sizeof(AnimCurveHeader) +
-                        pTrackAsHeader->keyTable + pTrackAsHeader->rangeTable +
-                        pTrackAsHeader->randomTable + pTrackAsHeader->nameTable);
-
-                    f32 power = pParam->power;
-                    AnimCurveExecuteF32(pPtclTrack, &power, tick, seed, life);
-
-                    math::VEC3 v;
-                    v.x = pParam->dir.x * power;
-                    v.y = pParam->dir.y * power;
-                    v.z = pParam->dir.z * power;
-
-                    if (pParam->space) {
-                        math::VEC3Transform(&v, &mtxEmToLocNoTrans, &v);
-                    } else {
-                        math::VEC3Transform(&v, &mtxGlbToLocNoTrans, &v);
-                    }
-
-                    switch (pParam->type) {
-                    case 0: {
-                        addVel += v;
-                        break;
-                    }
-                    case 1: {
-                        addPos += v;
-                        break;
-                    }
-                    }
-                    break;
-                }
-
-                case AC_TARGET_UNK39: {
-                    FieldRandomParam* pParam = reinterpret_cast<FieldRandomParam*>(
-                        pPtclTrack + sizeof(AnimCurveHeader) +
-                        pTrackAsHeader->keyTable + pTrackAsHeader->rangeTable +
-                        pTrackAsHeader->randomTable + pTrackAsHeader->nameTable);
-
-                    f32 power;
-
-                    union {
-                        u32 value;
-                        u8 bytes[4];
-                    } rndSeed;
-
-                    rndSeed.value = seed * 0x3F81F635 +
-                                    pTrackAsHeader->randomSeed * 0x30A74193 +
-                                    static_cast<u16>(tick) * 0x371097E7 +
-                                    0x4BF53;
-
-                    rndSeed.bytes[2] ^= rndSeed.bytes[3];
-                    rndSeed.bytes[1] ^= rndSeed.bytes[2];
-                    rndSeed.bytes[0] ^= rndSeed.bytes[1];
-
-                    if (!(pTrackAsHeader->processFlag &
-                          AnimCurveHeader::PROC_FLAG_TIMING)) {
-                        if (tick == 0) {
-                            break;
-                        }
-
-                        if (tick % (pParam->interval + 1) != 0) {
-                            break;
-                        }
-                    } else {
-                        if (pIt->mTick != 0 &&
-                            tick % (pParam->interval + 1) != 0) {
-                            break;
-                        }
-                    }
-
-                    power = pParam->power;
-                    AnimCurveExecuteF32(pPtclTrack, &power, tick, seed, life);
-
-                    math::VEC3 v;
-
-                    if (pParam->flags & 2) {
-                        u32 rnd0 = rndSeed.value;
-                        v.x = static_cast<s16>(rnd0 >> 16) / 32768.0f * power;
-                        u32 rnd1 = rnd0 * 0x343FD + 0x269EC3;
-                        v.y = static_cast<s16>(rnd1 >> 16) / 32768.0f * power;
-                        u32 rnd2 = rnd1 * 0x343FD + 0x269EC3;
-                        v.z = static_cast<s16>(rnd2 >> 16) / 32768.0f * power;
-                    } else {
-                        math::VEC3 dir;
-
-                        if (pIt->mTick == 0) {
-                            dir = prevVel;
-                        } else {
-                            dir = prevDir;
-                        }
-
-                        math::VEC3Transform(&dir, &mtxLocToEmNoTrans, &dir);
-
-                        if (math::VEC3LenSq(&dir) < NW4R_MATH_FLT_MIN) {
-                            dir.y = 1.0f;
-                        } else {
-                            math::VEC3Normalize(&dir, &dir);
-                        }
-
-                        math::MTX34 mtxDir;
-                        GetDirMtxY(&mtxDir, dir);
-
-                        if (pParam->diffuse != 0.0f) {
-                            u32 rnd0 = rndSeed.value;
-                            f32 theta =
-                                (rnd0 >> 16) / 65535.0f * pParam->diffuse;
-                            u32 rnd1 = rnd0 * 0x343FD + 0x269EC3;
-                            f32 phi =
-                                2.0f * (NW4R_MATH_PI * ((rnd1 >> 16) / 65535.0f));
-
-                            v.x = sinf(theta) * sinf(phi);
-                            v.y = cosf(theta);
-                            v.z = sinf(theta) * cosf(phi);
-
-                            u32 rnd2 = rnd1 * 0x343FD + 0x269EC3;
-                            math::VEC3Scale(&v, &v, (rnd2 >> 16) / 65535.0f * power);
-                            math::VEC3Transform(&v, &mtxDir, &v);
-                        } else {
-                            v.x = 0.0f;
-                            v.y = static_cast<s16>(rndSeed.value >> 16) / 32768.0f * power;
-                            v.z = 0.0f;
-                            math::VEC3Transform(&v, &mtxDir, &v);
-                        }
-                    }
-
-                    math::VEC3Transform(&v, &mtxEmToLocNoTrans, &v);
-
-                    switch (pParam->type) {
-                    case 0: {
-                        addVel += v;
-                        break;
-                    }
-                    case 1: {
-                        addPos += v;
-                        break;
-                    }
-                    }
-                    break;
-                }
-
-                case AC_TARGET_UNK38: {
-                    FieldSpinParam param = *reinterpret_cast<FieldSpinParam*>(
-                        pPtclTrack + sizeof(AnimCurveHeader) +
-                        pTrackAsHeader->keyTable + pTrackAsHeader->rangeTable +
-                        pTrackAsHeader->randomTable + pTrackAsHeader->nameTable);
-
-                    AnimCurveExecuteF32(pPtclTrack, &param.speed, tick, seed,
-                                        life);
-
-                    math::VEC3 axis;
-                    Rotation2VecY(param.rot, &axis);
-
-                    math::MTX34 mtxRot;
-                    math::MTX34RotAxisRad(&mtxRot, &axis, param.speed);
-
-                    math::VEC3 pos;
-                    if (param.space) {
-                        math::VEC3Transform(&pos, &mtxLocToEm, &prevPos);
-                    } else {
-                        math::VEC3Transform(&pos, &mtxLocToGlb, &prevPos);
-                        math::VEC3 origin(0.0f, 0.0f, 0.0f);
-                        math::VEC3Transform(&origin, &mtxEmToGlb, &origin);
-                        math::VEC3Sub(&pos, &pos, &origin);
-                    }
-
-                    math::VEC3 v;
-                    math::VEC3Transform(&v, &mtxRot, &pos);
-                    math::VEC3Sub(&v, &v, &pos);
-
-                    if (param.space) {
-                        math::VEC3Transform(&v, &mtxEmToLocNoTrans, &v);
-                    } else {
-                        math::VEC3Transform(&v, &mtxGlbToLocNoTrans, &v);
-                    }
-
-                    switch (param.type) {
-                    case 0: {
-                        addVel += v;
-                        break;
-                    }
-                    case 1: {
-                        addPos += v;
-                        break;
-                    }
-                    }
-                    break;
-                }
-
-                case AC_TARGET_UNK34: {
-                    FieldMagnetParam param = *reinterpret_cast<FieldMagnetParam*>(
-                        pPtclTrack + sizeof(AnimCurveHeader) +
-                        pTrackAsHeader->keyTable + pTrackAsHeader->rangeTable +
-                        pTrackAsHeader->randomTable + pTrackAsHeader->nameTable);
-
-                    AnimCurveExecuteF32(pPtclTrack, &param.power, tick, seed,
-                                        life);
-
-                    math::VEC3 pos;
-                    if (param.space) {
-                        math::VEC3Transform(&pos, &mtxLocToEm, &prevPos);
-                    } else {
-                        math::VEC3Transform(&pos, &mtxLocToGlb, &prevPos);
-                        math::VEC3 origin(0.0f, 0.0f, 0.0f);
-                        math::VEC3Transform(&origin, &mtxEmToGlb, &origin);
-                        math::VEC3Sub(&pos, &pos, &origin);
-                    }
-
-                    math::VEC3 v;
-                    math::VEC3Sub(&v, &param.pos, &pos);
-                    if (v.x != 0.0f || v.y != 0.0f || v.z != 0.0f) {
-                        math::VEC3Normalize(&v, &v);
-                    }
-
-                    math::VEC3Scale(&v, &v, param.power);
-
-                    if (param.space) {
-                        math::VEC3Transform(&v, &mtxEmToLocNoTrans, &v);
-                    } else {
-                        math::VEC3Transform(&v, &mtxGlbToLocNoTrans, &v);
-                    }
-
-                    switch (param.type) {
-                    case 0: {
-                        addVel += v;
-                        break;
-                    }
-                    case 1: {
-                        addPos += v;
-                        break;
-                    }
-                    }
-                    break;
-                }
-
-                case AC_TARGET_UNK35: {
-                    FieldNewtonParam param = *reinterpret_cast<FieldNewtonParam*>(
-                        pPtclTrack + sizeof(AnimCurveHeader) +
-                        pTrackAsHeader->keyTable + pTrackAsHeader->rangeTable +
-                        pTrackAsHeader->randomTable + pTrackAsHeader->nameTable);
-
-                    AnimCurveExecuteF32(pPtclTrack, &param.power, tick, seed,
-                                        life);
-
-                    math::VEC3 pos;
-                    if (param.space) {
-                        math::VEC3Transform(&pos, &mtxLocToEm, &prevPos);
-                    } else {
-                        math::VEC3Transform(&pos, &mtxLocToGlb, &prevPos);
-                        math::VEC3 origin(0.0f, 0.0f, 0.0f);
-                        math::VEC3Transform(&origin, &mtxEmToGlb, &origin);
-                        math::VEC3Sub(&pos, &pos, &origin);
-                    }
-
-                    math::VEC3 v;
-                    math::VEC3Sub(&v, &param.pos, &pos);
-                    f32 lenSq = math::VEC3LenSq(&v);
-
-                    if (v.x != 0.0f || v.y != 0.0f || v.z != 0.0f) {
-                        math::VEC3Normalize(&v, &v);
-                    }
-
-                    math::VEC3Scale(&v, &v, param.power);
-
-                    f32 rangeSq = param.range * param.range;
-                    if (lenSq > rangeSq) {
-                        math::VEC3Scale(&v, &v, rangeSq / lenSq);
-                    }
-
-                    if (param.space) {
-                        math::VEC3Transform(&v, &mtxEmToLocNoTrans, &v);
-                    } else {
-                        math::VEC3Transform(&v, &mtxGlbToLocNoTrans, &v);
-                    }
-
-                    switch (param.type) {
-                    case 0: {
-                        addVel += v;
-                        break;
-                    }
-                    case 1: {
-                        addPos += v;
-                        break;
-                    }
-                    }
-                    break;
-                }
-
-                case AC_TARGET_UNK36: {
-                    FieldVortexParam param = *reinterpret_cast<FieldVortexParam*>(
-                        pPtclTrack + sizeof(AnimCurveHeader) +
-                        pTrackAsHeader->keyTable + pTrackAsHeader->rangeTable +
-                        pTrackAsHeader->randomTable + pTrackAsHeader->nameTable);
-
-                    AnimCurveExecuteF32(pPtclTrack, &param.innerSpeed, tick,
-                                        seed, life);
-
-                    math::VEC3 axis;
-                    Rotation2VecY(param.rot, &axis);
-
-                    math::VEC3 pos;
-                    if (param.space) {
-                        math::VEC3Transform(&pos, &mtxLocToEm, &prevPos);
-                    } else {
-                        math::VEC3Transform(&pos, &mtxLocToGlb, &prevPos);
-                        math::VEC3 origin(0.0f, 0.0f, 0.0f);
-                        math::VEC3Transform(&origin, &mtxEmToGlb, &origin);
-                        math::VEC3Sub(&pos, &pos, &origin);
-                    }
-
-                    param.radius *= param.radius;
-
-                    math::VEC3 dist;
-                    math::VEC3Scale(&dist, &axis, math::VEC3Dot(&axis, &pos));
-                    math::VEC3Sub(&dist, &pos, &dist);
-                    f32 distSq = math::VEC3LenSq(&dist);
-
-                    if (distSq == 0.0f) {
-                        break;
-                    }
-
-                    if (distSq >= param.radius) {
-                        vortexSpeed = param.outerSpeed;
-                    } else {
-                        f32 ratio = distSq / param.radius;
-                        vortexSpeed = (1.0f - ratio) * param.innerSpeed +
-                                ratio * param.outerSpeed;
-                    }
-
-                    math::VEC3Normalize(&dist, &dist);
-
-                    math::VEC3 v;
-                    math::VEC3Cross(&v, &dist, &axis);
-                    math::VEC3Scale(&v, &v, vortexSpeed);
-
-                    if (param.space) {
-                        math::VEC3Transform(&v, &mtxEmToLocNoTrans, &v);
-                    } else {
-                        math::VEC3Transform(&v, &mtxGlbToLocNoTrans, &v);
-                    }
-
-                    switch (param.type) {
-                    case 0: {
-                        addVel += v;
-                        break;
-                    }
-                    case 1: {
-                        addPos += v;
-                        break;
-                    }
-                    }
-                    break;
-                }
-                }
-                break;
-            }
-
-            case AC_TYPE_PARTICLE_ROTATE: {
-                switch (kind) {
-                case AC_TARGET_ROTATE: {
-                    AnimCurveExecuteRotate(
-                        pPtclTrack,
-                        reinterpret_cast<f32*>(&pIt->mParameter.mRotate), tick,
-                        seed, life);
-                    break;
-                }
-                }
-                break;
-            }
-
+            switch (type) {
             case AC_TYPE_PARTICLE_TEXTURE: {
-                AnimCurveExecuteTexture(pPtclTrack, pIt, tick, seed, life);
+                AnimCurveExecuteTexture(reinterpret_cast<u8*>(pHeader), pIt, tick, seed, life);
                 break;
             }
 
             case AC_TYPE_CHILD: {
-                AnimCurveExecuteChild(pPtclTrack, pIt, tick, seed, life);
+                AnimCurveExecuteChild(reinterpret_cast<u8*>(pHeader), pIt, tick, seed, life);
+                break;
+            }
+
+            case AC_TYPE_PARTICLE_ROTATE: {
+                AnimCurveExecuteRotate(
+                    reinterpret_cast<u8*>(pHeader),
+                    reinterpret_cast<f32*>(&pIt->mParameter.mRotate), tick,
+                    seed, life);
+                break;
+            }
+
+            case AC_TYPE_PARTICLE_U8: {
+                AnimCurveExecuteU8(
+                    reinterpret_cast<u8*>(pHeader),
+                    reinterpret_cast<u8*>(&pIt->mParameter) + kind, tick, seed,
+                    life);
+                break;
+            }
+
+            case AC_TYPE_PARTICLE_F32: {
+                AnimCurveExecuteF32(
+                    reinterpret_cast<u8*>(pHeader),
+                    reinterpret_cast<f32*>(
+                        reinterpret_cast<u8*>(&pIt->mParameter) + kind),
+                    tick, seed, life);
+                break;
+            }
+
+            case AC_TYPE_FIELD: {
+                AnimCurveFieldParam param;
+                std::memcpy(&param,
+                            reinterpret_cast<u8*>(pHeader) + sizeof(AnimCurveHeader) +
+                                pHeader->keyTable + pHeader->rangeTable +
+                                pHeader->randomTable + pHeader->nameTable,
+                            sizeof(param));
+
+                if (pHeader->keyTable != 0) {
+                    AnimCurveExecuteF32(reinterpret_cast<u8*>(pHeader), &param.power, tick, seed,
+                                        life);
+                }
+
+                // The particle from the field's point of view
+                math::VEC3 fieldPos;
+
+                if (kind == AnimCurveFieldParam::KIND_SPIN ||
+                    kind == AnimCurveFieldParam::KIND_MAGNET ||
+                    kind == AnimCurveFieldParam::KIND_NEWTON ||
+                    kind == AnimCurveFieldParam::KIND_VORTEX) {
+                    fieldPos = CalcFieldPos(&param, &mtxLocToEm, &mtxLocToGlb,
+                                            &mtxEmToGlb, &prevPos);
+                }
+
+                math::VEC3 v(0.0f, 0.0f, 0.0f);
+
+                switch (kind) {
+                case AnimCurveFieldParam::KIND_SPEED: {
+                    CalcFieldSpeed(&v, &param, &prevVel);
+                    break;
+                }
+
+                case AnimCurveFieldParam::KIND_GRAVITY: {
+                    CalcFieldGravity(&v, &param);
+                    break;
+                }
+
+                case AnimCurveFieldParam::KIND_RANDOM: {
+                    CalcFieldRandom(&v, &param, pHeader, pIt, tick, seed,
+                                    &prevVel, &prevDir, &mtxLocToEmNoTrans);
+                    break;
+                }
+
+                case AnimCurveFieldParam::KIND_SPIN: {
+                    CalcFieldSpin(&v, &param, &fieldPos);
+                    break;
+                }
+
+                case AnimCurveFieldParam::KIND_MAGNET: {
+                    CalcFieldMagnet(&v, &param, &fieldPos);
+                    break;
+                }
+
+                case AnimCurveFieldParam::KIND_NEWTON: {
+                    CalcFieldNewton(&v, &param, &fieldPos);
+                    break;
+                }
+
+                case AnimCurveFieldParam::KIND_VORTEX: {
+                    CalcFieldVortex(&v, &param, &fieldPos);
+                    break;
+                }
+
+                // Pulls along the way the emitter went in this frame
+                case AnimCurveFieldParam::KIND_TAIL: {
+                    if (fpclassify(mManagerEM->mPrevGlobalPos.x) == FP_NAN) {
+                        break;
+                    }
+
+                    math::MTX34 mtx;
+                    mManagerEM->CalcGlobalMtx(&mtx);
+
+                    math::VEC3 pos(mtx._03, mtx._13, mtx._23);
+                    math::VEC3Sub(&v, &pos, &mManagerEM->mPrevGlobalPos);
+                    math::VEC3Scale(&v, &v, param.power);
+                    break;
+                }
+                }
+
+                switch (param.space) {
+                case AnimCurveFieldParam::SPACE_EMITTER: {
+                    math::VEC3Transform(&v, &mtxEmToLocNoTrans, &v);
+                    break;
+                }
+
+                case AnimCurveFieldParam::SPACE_GLOBAL: {
+                    math::VEC3Transform(&v, &mtxGlbToLocNoTrans, &v);
+                    break;
+                }
+
+                case AnimCurveFieldParam::SPACE_GLOBAL_SCALE: {
+                    v *= scale;
+                    math::VEC3Transform(&v, &mtxGlbToLocNoTrans, &v);
+                    break;
+                }
+                }
+
+                switch (param.type) {
+                case AnimCurveFieldParam::TYPE_VELOCITY: {
+                    addVel += v;
+                    break;
+                }
+
+                case AnimCurveFieldParam::TYPE_POSITION: {
+                    addPos += v;
+                    break;
+                }
+                }
+                break;
+            }
+
+            case AC_TYPE_POSTFIELD: {
+                if (pHeader->infoTable != 0) {
+                    AnimCurveNameTable* pNameTbl =
+                        reinterpret_cast<AnimCurveNameTable*>(
+                            reinterpret_cast<u8*>(pHeader) + sizeof(AnimCurveHeader) +
+                            pHeader->keyTable + pHeader->rangeTable +
+                            pHeader->randomTable);
+
+                    pPostInfo = reinterpret_cast<AnimCurvePostFieldInfo*>(
+                        reinterpret_cast<u8*>(pNameTbl) + pHeader->nameTable);
+
+                    std::memcpy(&postParam, pPostInfo, sizeof(postParam));
+
+                    if (pHeader->nameTable > 4) {
+                        pPostChild = reinterpret_cast<EmitterResource*>(
+                            pNameTbl->datas[pPostInfo->childName].work);
+                    }
+                }
+
+                if (pHeader->keyTable != 0) {
+                    AnimCurveExecuteF32(
+                        reinterpret_cast<u8*>(pHeader),
+                        reinterpret_cast<f32*>(
+                            reinterpret_cast<u8*>(&postParam) + kind),
+                        tick, seed, life);
+                }
+
+                postField = true;
                 break;
             }
             }
+            }
+        }
 
-#undef pTrackAsHeader
+        if (postField) {
+            math::VEC3 vel = pIt->mParameter.mVelocity;
+            vel += addVel;
+
+            bool retire = false;
+
+            BOOL collided = AnimCurveExecutePostField(
+                pIt, &postParam, pPostInfo, pPostChild, &mtxEmToGlb,
+                &mtxGlbToLoc, &prevPos, addPos, &vel, &retire);
+
+            if (retire) {
+                RetireParticle(pIt);
+                continue;
+            }
+
+            if (collided) {
+                pIt->mParameter.mVelocity = vel;
+
+                pIt->AddPosition(&addPos);
+                pIt->AddPosition(&pIt->mParameter.mVelocity);
+            }
+
+            // Particles that leave the box come back in on the other side
+            if (pPostInfo->wrap & AnimCurvePostFieldInfo::WRAP_ENABLE) {
+                math::MTX34 mtxBox;
+                math::MTX34Identity(&mtxBox);
+                MtxScale(&mtxBox,
+                         static_cast<math::VEC3*>(&pPostInfo->wrapScale),
+                         &mtxBox);
+
+                math::MTX34 mtxRot;
+                MtxRotXYZRad(&mtxRot, pPostInfo->wrapRotate.x,
+                             pPostInfo->wrapRotate.y, pPostInfo->wrapRotate.z);
+                math::MTX34Mult(&mtxBox, &mtxRot, &mtxBox);
+
+                math::MTX34Trans(
+                    &mtxBox,
+                    static_cast<math::VEC3*>(&pPostInfo->wrapTranslate),
+                    &mtxBox);
+
+                if (pPostInfo->wrap &
+                    AnimCurvePostFieldInfo::WRAP_CENTER_EMITTER) {
+                    math::VEC3 emPos(mtxEmToGlb._03, mtxEmToGlb._13,
+                                     mtxEmToGlb._23);
+                    math::MTX34Trans(&mtxBox, &emPos, &mtxBox);
+                }
+
+                math::MTX34Mult(&mtxBox, &mtxGlbToLoc, &mtxBox);
+
+                math::MTX34 mtxBoxInv;
+                math::MTX34Inv(&mtxBoxInv, &mtxBox);
+
+                math::VEC3 pos;
+                math::VEC3Transform(&pos, &mtxBoxInv,
+                                    &pIt->mParameter.mPosition);
+
+                bool wrapped = false;
+
+                if (pos.x > 1.0f) {
+                    pos.x = std::fmodf(1.0f + pos.x, 2.0f) - 1.0f;
+                    wrapped = true;
+                } else if (pos.x < -1.0f) {
+                    pos.x = 1.0f + std::fmodf(pos.x - 1.0f, 2.0f);
+                    wrapped = true;
+                }
+
+                if (pos.y > 1.0f) {
+                    pos.y = std::fmodf(1.0f + pos.y, 2.0f) - 1.0f;
+                    wrapped = true;
+                } else if (pos.y < -1.0f) {
+                    pos.y = 1.0f + std::fmodf(pos.y - 1.0f, 2.0f);
+                    wrapped = true;
+                }
+
+                if (pos.z > 1.0f) {
+                    pos.z = std::fmodf(1.0f + pos.z, 2.0f) - 1.0f;
+                    wrapped = true;
+                } else if (pos.z < -1.0f) {
+                    pos.z = 1.0f + std::fmodf(pos.z - 1.0f, 2.0f);
+                    wrapped = true;
+                }
+
+                if (wrapped) {
+                    math::VEC3Transform(&pIt->mParameter.mPosition, &mtxBox,
+                                        &pos);
+                }
+            }
+        } else {
+            pIt->mParameter.mVelocity += addVel;
+
+            pIt->AddPosition(&addPos);
+            pIt->AddPosition(&pIt->mParameter.mVelocity);
         }
 
         pIt->mTick++;
-
-        pIt->mParameter.mVelocity += addVel;
-
-        pIt->AddPosition(&addPos);
-        pIt->AddPosition(&pIt->mParameter.mVelocity);
     }
 
     mLastCalced =
@@ -883,7 +807,18 @@ void ParticleManager::Draw(const DrawInfo& rInfo) {
         return;
     }
 
-    mDrawStrategy->Draw(rInfo, this);
+    DrawInfo info = rInfo;
+
+    f32 zOffset = mResource->GetEmitterDrawSetting()->zOffset;
+    if (zOffset != 0.0f) {
+        math::MTX34 mtx;
+        mManagerEM->CalcGlobalMtx(&mtx);
+
+        math::VEC3 pos(mtx._03, mtx._13, mtx._23);
+        info.SetZOffset(zOffset, pos);
+    }
+
+    mDrawStrategy->Draw(info, this);
 }
 
 math::MTX34* ParticleManager::CalcGlobalMtx(math::MTX34* pResult) {
@@ -893,7 +828,8 @@ math::MTX34* ParticleManager::CalcGlobalMtx(math::MTX34* pResult) {
 
         mManagerEM->RestructMatrix(&mMtx, &orig, mFlag & FLAG_MTX_INHERIT_SCALE,
                                    mFlag & FLAG_MTX_INHERIT_ROT,
-                                   mInheritTranslate);
+                                   mInheritTranslate,
+                                   mFlag & FLAG_MTX_INHERIT_PIVOT);
 
         mMtxDirty = false;
     }
@@ -953,10 +889,6 @@ void ParticleManager::BeginDraw() {
 
     math::MTX34Inv(&emMtx, &emMtx);
     math::MTX34Mult(&smDrawMtxPMtoEM, &emMtx, &pmMtx);
-}
-
-const math::MTX34* ParticleManager::Draw_GetMtxPMtoEM() const {
-    return &smDrawMtxPMtoEM;
 }
 
 void ParticleManager::EndDraw() {}

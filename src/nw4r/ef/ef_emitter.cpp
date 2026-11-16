@@ -188,6 +188,9 @@ bool Emitter::InitializeDatas(EmitterResource* pResource, Effect* pEffect) {
     mParent = NULL;
     mManagerEF = NULL;
 
+    mGlobalPos.x = mGlobalPos.y = mGlobalPos.z = mPrevGlobalPos.x =
+        mPrevGlobalPos.y = mPrevGlobalPos.z = 0.0f;
+
     return true;
 }
 
@@ -234,6 +237,12 @@ bool Emitter::Initialize(Effect* pParent, EmitterResource* pResource,
     pManager->mInheritTranslate =
         pResource->GetEmitterDesc()->inheritPtclTranslate;
 
+    if (pResource->GetEmitterDesc()->commonFlag &
+        EmitterDesc::CMN_FLAG_INHERIT_PTCL_PIVOT) {
+
+        pManager->mFlag |= ParticleManager::FLAG_MTX_INHERIT_PIVOT;
+    }
+
     pManager->mWeight = drawWeight;
     mManagerEF->ParticleManagerAdd(pManager);
 
@@ -242,7 +251,13 @@ bool Emitter::Initialize(Effect* pParent, EmitterResource* pResource,
 
 Emitter* Emitter::CreateEmitter(EmitterResource* pResource,
                                 EmitterInheritSetting* pSetting,
-                                Particle* pParticle, u16 calcRemain) {
+                                Particle* pParticle, u16 calcRemain,
+                                const math::VEC3* pPos) {
+
+    if (!(pResource->GetEmitterDesc()->commonFlag &
+          EmitterDesc::CMN_FLAG_RELOCATED)) {
+        return NULL;
+    }
 
     Emitter* pEmitter =
         mManagerEF->CreateEmitter(pResource, pSetting->weight, 0);
@@ -256,85 +271,159 @@ Emitter* Emitter::CreateEmitter(EmitterResource* pResource,
     pEmitter->mParent->Ref();
     pEmitter->mParameter.mInherit = 0;
 
-    if (mResource->GetEmitterDesc()->commonFlag &
-        EmitterDesc::CMN_FLAG_EMIT_INHERIT_SCALE) {
-
+    if (mParameter.mComFlags & EmitterDesc::CMN_FLAG_EMIT_INHERIT_SCALE) {
         pEmitter->mParameter.mInherit |= EmitterParameter::INHERIT_FLAG_SCALE;
     }
 
-    if (mResource->GetEmitterDesc()->commonFlag &
-        EmitterDesc::CMN_FLAG_EMIT_INHERIT_ROT) {
-
+    if (mParameter.mComFlags & EmitterDesc::CMN_FLAG_EMIT_INHERIT_ROT) {
         pEmitter->mParameter.mInherit |= EmitterParameter::INHERIT_FLAG_ROT;
     }
 
     pEmitter->mParameter.mInheritTranslate =
         mResource->GetEmitterDesc()->inheritChildEmitTranslate;
 
+    if (mParameter.mComFlags & EmitterDesc::CMN_FLAG_EMIT_INHERIT_PIVOT) {
+        pEmitter->mParameter.mInherit |= EmitterParameter::INHERIT_FLAG_PIVOT;
+    }
+
+    math::VEC3 transSave = pEmitter->mParameter.mTranslate;
+
+    pEmitter->mParameter.mTranslate.x = 0.0f;
+    pEmitter->mParameter.mTranslate.y = 0.0f;
+    pEmitter->mParameter.mTranslate.z = 0.0f;
+    pEmitter->SetMtxDirty();
+
+    math::MTX34 mtx;
+    math::MTX34 tmp;
+
+    math::MTX34Identity(&mtx);
+    MtxRotXYZRad(&mtx, pEmitter->mParameter.mRotate.x,
+                 pEmitter->mParameter.mRotate.y,
+                 pEmitter->mParameter.mRotate.z);
+    MtxScale(&mtx, &mtx, &pEmitter->mParameter.mScale);
+
+    pEmitter->CalcGlobalMtx(&tmp);
+    math::MTX34Inv(&tmp, &tmp);
+    math::MTX34Mult(&mtx, &mtx, &tmp);
+
     if (pParticle != NULL) {
-        math::VEC3 transSave = pEmitter->mParameter.mTranslate;
-
-        pEmitter->mParameter.mTranslate.x = 0.0f;
-        pEmitter->mParameter.mTranslate.y = 0.0f;
-        pEmitter->mParameter.mTranslate.z = 0.0f;
-        pEmitter->SetMtxDirty();
-
-        math::MTX34 mtx;
-        math::MTX34 tmp;
-
-        math::MTX34Identity(&mtx);
-        math::MTX34RotXYZRad(&mtx, pEmitter->mParameter.mRotate.x,
-                             pEmitter->mParameter.mRotate.y,
-                             pEmitter->mParameter.mRotate.z);
-        math::MTX34Scale(&mtx, &mtx, &pEmitter->mParameter.mScale);
-
-        pEmitter->CalcGlobalMtx(&tmp);
-        math::MTX34Inv(&tmp, &tmp);
-        math::MTX34Mult(&mtx, &mtx, &tmp);
-
         pParticle->mParticleManager->CalcGlobalMtx(&tmp);
         math::MTX34Mult(&mtx, &mtx, &tmp);
+    }
 
-        math::MTX34Trans(&mtx, &mtx, &pParticle->mParameter.mPosition);
-        math::MTX34RotXYZRad(&tmp, pEmitter->mParameter.mRotate.x,
-                             pEmitter->mParameter.mRotate.y,
-                             pEmitter->mParameter.mRotate.z);
-        math::MTX34Scale(&tmp, &tmp, &pEmitter->mParameter.mScale);
-
-        math::MTX34Inv(&tmp, &tmp);
-        math::MTX34Mult(&mtx, &mtx, &tmp);
-
-        pEmitter->mParameter.mTranslate.x = transSave.x + mtx._03;
-        pEmitter->mParameter.mTranslate.y = transSave.y + mtx._13;
-        pEmitter->mParameter.mTranslate.z = transSave.z + mtx._23;
-        pEmitter->SetMtxDirty();
-
-        if (pSetting->speed != 0 || pSetting->scale != 0 ||
-            pSetting->alpha != 0 || pSetting->color != 0 ||
-            (pSetting->flag & EmitterInheritSetting::FLAG_INHERIT_ROT)) {
-
-            pEmitter->mpReferenceParticle = pParticle;
-            pParticle->Ref();
-
-            pEmitter->mInheritSetting = *pSetting;
+    if (pPos == NULL) {
+        if (pParticle != NULL) {
+            math::MTX34Trans(&mtx, &mtx, &pParticle->mParameter.mPosition);
         }
+    } else {
+        math::MTX34Trans(&mtx, &mtx, pPos);
+    }
+
+    MtxRotXYZRad(&tmp, pEmitter->mParameter.mRotate.x,
+                 pEmitter->mParameter.mRotate.y,
+                 pEmitter->mParameter.mRotate.z);
+    MtxScale(&tmp, &tmp, &pEmitter->mParameter.mScale);
+
+    math::MTX34Inv(&tmp, &tmp);
+    math::MTX34Mult(&mtx, &mtx, &tmp);
+
+    pEmitter->mParameter.mTranslate.x = transSave.x + mtx._03;
+    pEmitter->mParameter.mTranslate.y = transSave.y + mtx._13;
+    pEmitter->mParameter.mTranslate.z = transSave.z + mtx._23;
+    pEmitter->SetMtxDirty();
+
+    if (pSetting->speed != 0 || pSetting->scale != 0 || pSetting->alpha != 0 ||
+        pSetting->color != 0 ||
+        (pSetting->flag & EmitterInheritSetting::FLAG_INHERIT_ROT)) {
+
+        pEmitter->mpReferenceParticle = pParticle;
+        pParticle->Ref();
+
+        pEmitter->mInheritSetting = *pSetting;
     }
 
     return pEmitter;
 }
 
-void Emitter::CreateEmitterTmp(EmitterResource* pResource,
+inline ParticleManager* Emitter::FindParticleManager(EmitterResource* pResource,
+                                                     bool inheritS,
+                                                     bool inheritR, s8 inheritT,
+                                                     bool pivot, u8 weight) {
+
+    ParticleManager* pIt = static_cast<ParticleManager*>(
+        ut::List_GetFirst(&mActivityList.mActiveList));
+
+    // clang-format off
+    for (; pIt != NULL; pIt = static_cast<ParticleManager*>(
+            ut::List_GetNext(&mActivityList.mActiveList, pIt)))
+    // clang-format on
+    {
+        if (pIt->mResource != pResource) {
+            continue;
+        }
+
+        // clang-format off
+        if (((pIt->mFlag & EmitterParameter::INHERIT_FLAG_SCALE) != 0) != inheritS ||
+            ((pIt->mFlag & EmitterParameter::INHERIT_FLAG_ROT) != 0) != inheritR) {
+            continue;
+        }
+        // clang-format on
+
+        if (pIt->mInheritTranslate != inheritT) {
+            continue;
+        }
+
+        if (((pIt->mFlag & ParticleManager::FLAG_MTX_INHERIT_PIVOT) != 0) !=
+            pivot) {
+            continue;
+        }
+
+        if (pIt->mWeight != weight) {
+            continue;
+        }
+
+        return pIt;
+    }
+
+    return NULL;
+}
+
+bool Emitter::CreateEmitterTmp(EmitterResource* pResource,
                                EmitterInheritSetting* pSetting,
-                               Particle* pParticle, u16 calcRemain) {
+                               Particle* pParticle, u16 calcRemain,
+                               const math::VEC3* pPos) {
+
+    if (!(pResource->GetEmitterDesc()->commonFlag &
+          EmitterDesc::CMN_FLAG_RELOCATED)) {
+        return false;
+    }
 
     Emitter tempEmitter;
-
-    (void)pResource->GetEmitterDesc(); // unused
 
     tempEmitter.InitializeDatas(pResource, mManagerEF);
     tempEmitter.mCalcRemain += calcRemain;
     tempEmitter.mManagerEF = mManagerEF;
     tempEmitter.mParent = this;
+    tempEmitter.mParameter.mInherit = 0;
+
+    if (mParameter.mComFlags & EmitterDesc::CMN_FLAG_CHILD_PTCL_INHERIT_SCALE) {
+        tempEmitter.mParameter.mInherit |= EmitterParameter::INHERIT_FLAG_SCALE;
+    }
+
+    if (mParameter.mComFlags & EmitterDesc::CMN_FLAG_CHILD_PTCL_INHERIT_ROT) {
+        tempEmitter.mParameter.mInherit |= EmitterParameter::INHERIT_FLAG_ROT;
+    }
+
+    tempEmitter.mParameter.mInheritTranslate =
+        mResource->GetEmitterDesc()->inheritChildPtclTranslate;
+
+    if (tempEmitter.mParameter.mInheritTranslate != 0) {
+        tempEmitter.mParameter.mInheritTranslate = 100;
+    }
+
+    if (mParameter.mComFlags & EmitterDesc::CMN_FLAG_EMIT_INHERIT_PIVOT) {
+        tempEmitter.mParameter.mInherit |= EmitterParameter::INHERIT_FLAG_PIVOT;
+    }
 
     Emitter* pEmitter = &tempEmitter;
 
@@ -353,17 +442,15 @@ void Emitter::CreateEmitterTmp(EmitterResource* pResource,
         pParticle->GetMoveDir(&dir);
         math::VEC3Transform(&dir, &tmpMtx, &dir);
 
-        if (dir.x != 0.0f || dir.y != 0.0f || dir.z != 0.0f) {
-            math::VEC3Normalize(&dir, &dir);
-
+        if (VecNormalize(&dir, &dir)) {
             if (pSetting->speed < 0) {
                 math::VEC3Scale(&dir, &dir, -1.0f);
             }
 
             GetDirMtxY(&dirMtx, dir);
-            math::MTX34RotXYZRad(&tmpMtx, pEmitter->mParameter.mRotate.x,
-                                 pEmitter->mParameter.mRotate.y,
-                                 pEmitter->mParameter.mRotate.z);
+            MtxRotXYZRad(&tmpMtx, pEmitter->mParameter.mRotate.x,
+                         pEmitter->mParameter.mRotate.y,
+                         pEmitter->mParameter.mRotate.z);
 
             math::MTX34Mult(&dirMtx, &dirMtx, &tmpMtx);
             MtxGetRotation(dirMtx, &pEmitter->mParameter.mRotate);
@@ -381,23 +468,32 @@ void Emitter::CreateEmitterTmp(EmitterResource* pResource,
     math::MTX34 tmp;
 
     math::MTX34Identity(&mtx);
-    math::MTX34RotXYZRad(&mtx, pEmitter->mParameter.mRotate.x,
-                         pEmitter->mParameter.mRotate.y,
-                         pEmitter->mParameter.mRotate.z);
-    math::MTX34Scale(&mtx, &mtx, &pEmitter->mParameter.mScale);
+    MtxRotXYZRad(&mtx, pEmitter->mParameter.mRotate.x,
+                 pEmitter->mParameter.mRotate.y,
+                 pEmitter->mParameter.mRotate.z);
+    MtxScale(&mtx, &mtx, &pEmitter->mParameter.mScale);
 
     pEmitter->CalcGlobalMtx(&tmp);
     math::MTX34Inv(&tmp, &tmp);
     math::MTX34Mult(&mtx, &mtx, &tmp);
 
-    pParticle->mParticleManager->CalcGlobalMtx(&tmp);
-    math::MTX34Mult(&mtx, &mtx, &tmp);
+    if (pParticle != NULL) {
+        pParticle->mParticleManager->CalcGlobalMtx(&tmp);
+        math::MTX34Mult(&mtx, &mtx, &tmp);
+    }
 
-    math::MTX34Trans(&mtx, &mtx, &pParticle->mParameter.mPosition);
-    math::MTX34RotXYZRad(&tmp, pEmitter->mParameter.mRotate.x,
-                         pEmitter->mParameter.mRotate.y,
-                         pEmitter->mParameter.mRotate.z);
-    math::MTX34Scale(&tmp, &tmp, &pEmitter->mParameter.mScale);
+    if (pPos == NULL) {
+        if (pParticle != NULL) {
+            math::MTX34Trans(&mtx, &mtx, &pParticle->mParameter.mPosition);
+        }
+    } else {
+        math::MTX34Trans(&mtx, &mtx, pPos);
+    }
+
+    MtxRotXYZRad(&tmp, pEmitter->mParameter.mRotate.x,
+                 pEmitter->mParameter.mRotate.y,
+                 pEmitter->mParameter.mRotate.z);
+    MtxScale(&tmp, &tmp, &pEmitter->mParameter.mScale);
 
     math::MTX34Inv(&tmp, &tmp);
     math::MTX34Mult(&mtx, &mtx, &tmp);
@@ -411,17 +507,20 @@ void Emitter::CreateEmitterTmp(EmitterResource* pResource,
     tempEmitter.CalcBillboard();
 
     // clang-format off
-    bool inheritS = (mParameter.mComFlags & EmitterDesc::CMN_FLAG_EMIT_INHERIT_SCALE) &&
+    bool inheritS = (mParameter.mComFlags & EmitterDesc::CMN_FLAG_CHILD_PTCL_INHERIT_SCALE) &&
         (pResource->GetEmitterDesc()->commonFlag & EmitterDesc::CMN_FLAG_INHERIT_PTCL_SCALE);
 
-    bool inheritR = (mParameter.mComFlags & EmitterDesc::CMN_FLAG_EMIT_INHERIT_ROT) &&
+    bool inheritR = (mParameter.mComFlags & EmitterDesc::CMN_FLAG_CHILD_PTCL_INHERIT_ROT) &&
         (pResource->GetEmitterDesc()->commonFlag & EmitterDesc::CMN_FLAG_INHERIT_PTCL_ROT);
+
+    bool pivot = (mParameter.mComFlags & EmitterDesc::CMN_FLAG_EMIT_INHERIT_PIVOT) ||
+        (pResource->GetEmitterDesc()->commonFlag & EmitterDesc::CMN_FLAG_INHERIT_PTCL_PIVOT);
     // clang-format on
 
     s8 inheritT;
 
     const s8 parentChildT =
-        mResource->GetEmitterDesc()->inheritChildEmitTranslate;
+        mResource->GetEmitterDesc()->inheritChildPtclTranslate;
 
     const s8 myPtclT = pResource->GetEmitterDesc()->inheritPtclTranslate;
 
@@ -432,22 +531,21 @@ void Emitter::CreateEmitterTmp(EmitterResource* pResource,
     } else if (myPtclT == 100) {
         inheritT = parentChildT;
     } else {
-        inheritT = mResource->GetEmitterDesc()->inheritChildEmitTranslate *
-                   pResource->GetEmitterDesc()->inheritPtclTranslate / 100;
+        inheritT = parentChildT * myPtclT / 100;
     }
 
     ParticleManager* pManager = FindParticleManager(
-        pResource, inheritS, inheritR, inheritT, pSetting->weight);
+        pResource, inheritS, inheritR, inheritT, pivot, pSetting->weight);
 
     if (pManager == NULL) {
         pManager =
             mManagerEF->mManagerES->GetMemoryManager()->AllocParticleManager();
 
         if (pManager == NULL) {
-            return;
+            return false;
         }
         if (!pManager->Initialize(this, pResource)) {
-            return;
+            return false;
         }
 
         mActivityList.ToActive(pManager);
@@ -462,6 +560,11 @@ void Emitter::CreateEmitterTmp(EmitterResource* pResource,
         }
 
         pManager->mInheritTranslate = inheritT;
+
+        if (pivot) {
+            pManager->mFlag |= ParticleManager::FLAG_MTX_INHERIT_PIVOT;
+        }
+
         pManager->mWeight = pSetting->weight;
         mManagerEF->ParticleManagerAdd(pManager);
     }
@@ -501,43 +604,8 @@ void Emitter::CreateEmitterTmp(EmitterResource* pResource,
 
         RetireParticleManager(pManager);
     }
-}
 
-ParticleManager* Emitter::FindParticleManager(EmitterResource* pResource,
-                                              bool inheritS, bool inheritR,
-                                              s8 inheritT, u8 weight) {
-
-    ParticleManager* pIt = static_cast<ParticleManager*>(
-        ut::List_GetFirst(&mActivityList.mActiveList));
-
-    // clang-format off
-    for (; pIt != NULL; pIt = static_cast<ParticleManager*>(
-            ut::List_GetNext(&mActivityList.mActiveList, pIt)))
-    // clang-format on
-    {
-        if (pIt->mResource != pResource) {
-            continue;
-        }
-
-        // clang-format off
-        if (((pIt->mFlag & EmitterParameter::INHERIT_FLAG_SCALE) != 0) != inheritS ||
-            ((pIt->mFlag & EmitterParameter::INHERIT_FLAG_ROT) != 0) != inheritR) {
-            continue;
-        }
-        // clang-format on
-
-        if (pIt->mInheritTranslate != inheritT) {
-            continue;
-        }
-
-        if (pIt->mWeight != weight) {
-            continue;
-        }
-
-        return pIt;
-    }
-
-    return NULL;
+    return true;
 }
 
 static f32 GetLODratio(math::VEC3& rEmitPos, math::VEC3& rCamPos, f32 cameraFar,
@@ -598,9 +666,13 @@ void Emitter::Emission(ParticleManager* pManager, const math::MTX34* pSpace) {
         if (mParameter.mEmitFlags & EmitterDesc::EMIT_FLAG_8) {
             EffectSystem* pSystem = mManagerEF->mManagerES;
 
+            math::VEC3 pos;
+            math::VEC3Transform(&pos, CalcGlobalMtx(NULL),
+                                &mParameter.mTranslate);
+
             // clang-format off
             f32 ratio = GetLODratio(
-                mParameter.mTranslate,
+                pos,
                 pSystem->mProcessCameraPos,
                 pSystem->mProcessCameraFar,
                 pSystem->mProcessCameraNear,
@@ -707,131 +779,21 @@ void Emitter::CalcEmitter() {
             continue;
         }
 
-        if (pTrackAsHeader->magic != NW4R_EF_MAGIC_ANIMCURVE) {
-            continue;
-        }
+        if (pTrackAsHeader->magic == NW4R_EF_MAGIC_ANIMBAKED ||
+            pTrackAsHeader->magic == NW4R_EF_MAGIC_ANIMCURVE) {
 
-        // Load curveFlag and kindEnable
-        u16 ctrl = *reinterpret_cast<u16*>(&pTrackAsHeader->curveFlag);
-        u8 kind = pTrackAsHeader->kindType;
+            // The target is the track's byte offset into the parameters
+            u8 kind = pTrackAsHeader->kindType;
 
-        switch (ctrl) {
-        case (AC_TYPE_PARTICLE_U8 << 8 | 0b001):
-        case (AC_TYPE_PARTICLE_U8 << 8 | 0b111): {
-            continue;
-        }
+            AnimCurveExecuteF32(pEmitTrack,
+                                reinterpret_cast<f32*>(
+                                    reinterpret_cast<u8*>(&mParameter) + kind),
+                                animTime, mRandSeed, animSpan);
 
-        case (AC_TYPE_PARTICLE_F32 << 8 | 0b001): {
-            f32* pTarget;
-
-            switch (kind) {
-            case AC_TARGET_EMIT_SPEED_ORIG: {
-                pTarget = &mParameter.mVelPowerRadiationDir;
-                break;
+            // Translate, scale and rotate are the last members
+            if (kind >= offsetof(EmitterParameter, mTranslate)) {
+                mtxDirty = true;
             }
-
-            case AC_TARGET_EMIT_SPEED_YAXIS: {
-                pTarget = &mParameter.mVelPowerYAxis;
-                break;
-            }
-
-            case AC_TARGET_EMIT_SPEED_RANDOM: {
-                pTarget = &mParameter.mVelPowerRandomDir;
-                break;
-            }
-
-            case AC_TARGET_EMIT_EMISSION: {
-                pTarget = &mParameter.mEmitRatio;
-                break;
-            }
-
-            default: {
-                continue;
-            }
-            }
-
-            AnimCurveExecuteF32(pEmitTrack, pTarget, animTime, mRandSeed,
-                                animSpan);
-            continue;
-        }
-
-        case (AC_TYPE_PARTICLE_F32 << 8 | 0b011): {
-            switch (kind) {
-            case AC_TARGET_EMIT_SPEED_NORMAL: {
-                AnimCurveExecuteF32(pEmitTrack, &mParameter.mVelPowerNormalDir,
-                                    animTime, mRandSeed, animSpan);
-            }
-
-            default: {
-                continue;
-            }
-            }
-        }
-
-        case (AC_TYPE_PARTICLE_F32 << 8 | 0b111): {
-            f32* pTarget;
-
-            switch (kind) {
-            case AC_TARGET_EMIT_SCALE: {
-                pTarget = reinterpret_cast<f32*>(&mParameter.mScale);
-                break;
-            }
-
-            case AC_TARGET_EMIT_ROTATE: {
-                pTarget = reinterpret_cast<f32*>(&mParameter.mRotate);
-                break;
-            }
-
-            case AC_TARGET_EMIT_TRANSLATE: {
-                pTarget = reinterpret_cast<f32*>(&mParameter.mTranslate);
-                break;
-            }
-
-            default: {
-                continue;
-            }
-            }
-
-            AnimCurveExecuteF32(pEmitTrack, pTarget, animTime, mRandSeed,
-                                animSpan);
-
-            mtxDirty = true;
-            continue;
-        }
-
-        default: {
-            break;
-        }
-        }
-
-        switch (ctrl & 0xFF00) {
-        case (AC_TYPE_PARTICLE_F32 << 8): {
-            f32* pTarget;
-
-            switch (kind) {
-            case AC_TARGET_EMIT_SPEED_SPECDIR: {
-                pTarget = &mParameter.mVelPowerSpecDir;
-                break;
-            }
-
-            case AC_TARGET_EMIT_COMMONPARAM: {
-                pTarget = mParameter.mParams;
-                break;
-            }
-
-            default: {
-                continue;
-            }
-            }
-
-            AnimCurveExecuteF32(pEmitTrack, pTarget, animTime, mRandSeed,
-                                animSpan);
-            continue;
-        }
-
-        default: {
-            break;
-        }
         }
 
 #undef pTrackAsHeader
@@ -914,44 +876,38 @@ void Emitter::CalcBillboard() {
     }
 
     math::MTX34 glbMtx;
+    mMtxDirty = true;
     mParameter.mRotate.z = 0.0f;
     mParameter.mRotate.y = 0.0f;
     mParameter.mRotate.x = 0.0f;
 
-    mMtxDirty = true;
     CalcGlobalMtx(&glbMtx);
 
     math::MTX34 mtx;
     math::MTX34Mult(&mtx, &mManagerEF->mManagerES->mProcessCameraMtx, &glbMtx);
 
-    // clang-format off
     math::MTX34 tmp = mtx;
-    tmp._00 = math::FSqrt(tmp._00 * tmp._00 + tmp._10 * tmp._10 + tmp._20 * tmp._20);
+    tmp._00 = MtxColVecLen(&tmp, 0);
     tmp._10 = tmp._20 = 0.0f;
 
-    tmp._11 = math::FSqrt(tmp._01 * tmp._01 + tmp._11 * tmp._11 + tmp._21 * tmp._21);
+    tmp._11 = MtxColVecLen(&tmp, 1);
     tmp._01 = tmp._21 = 0.0f;
 
-    tmp._22 = math::FSqrt(tmp._02 * tmp._02 + tmp._12 * tmp._12 + tmp._22 * tmp._22);
+    tmp._22 = MtxColVecLen(&tmp, 2);
     tmp._02 = tmp._12 = 0.0f;
-    // clang-format on
 
     if ((mParameter.mEmitFlags & EmitterDesc::EMIT_FLAG_15)) {
         math::MTX34 base;
-        math::MTX34RotXYZRad(&base, NW4R_MATH_PI / 2.0f, 0.0f, 0.0f);
+        MtxRotXYZRad(&base, NW4R_MATH_PI / 2.0f, 0.0f, 0.0f);
         math::MTX34Mult(&tmp, &tmp, &base);
     }
 
     math::MTX34Inv(&mtx, &mtx);
     math::MTX34Mult(&mtx, &mtx, &tmp);
 
-    math::VEC3 vec;
-    vec.x = 1.0f / mParameter.mScale.x;
-    vec.y = 1.0f / mParameter.mScale.y;
-    vec.z = 1.0f / mParameter.mScale.z;
-
-    math::MTX34Scale(&mtx, &mtx, &vec);
-    math::MTX34Scale(&mtx, &mParameter.mScale, &mtx);
+    // Retail passes the rotation (zeroed above), not the scale
+    MtxInvScale(&mtx, &mtx, &mParameter.mRotate);
+    MtxScale(&mtx, &mParameter.mScale, &mtx);
     MtxGetRotation(mtx, &mParameter.mRotate);
 
     SetMtxDirty();
@@ -959,7 +915,7 @@ void Emitter::CalcBillboard() {
 
 math::MTX34* Emitter::RestructMatrix(math::MTX34* pResult, math::MTX34* pOrig,
                                      bool inheritS, bool inheritR,
-                                     s8 inheritT) {
+                                     s8 inheritT, bool pivot) {
 
     if (inheritS && inheritR && inheritT == 100) {
         *pResult = *pOrig;
@@ -973,26 +929,44 @@ math::MTX34* Emitter::RestructMatrix(math::MTX34* pResult, math::MTX34* pOrig,
 
     math::MTX34Identity(pResult);
 
-    if (inheritT != 0) {
-        math::VEC3 trans;
-        MtxGetTranslate(*pOrig, &trans);
+    math::VEC3 trans;
+    MtxGetTranslate(*pOrig, &trans);
 
-        math::VEC3Scale(&trans, &trans, static_cast<f32>(inheritT) / 100.0f);
+    if (inheritT == 100) {
         math::MTX34Trans(pResult, pResult, &trans);
+    } else if (inheritT != 0) {
+        math::VEC3 scaled;
+        math::MTX34Trans(
+            pResult, pResult,
+            math::VEC3Scale(&scaled, &trans,
+                            static_cast<f32>(inheritT) / 100.0f));
     }
 
-    if (inheritR) {
-        math::MTX34 rot;
-        MtxGetRotationMtx(*pOrig, &rot);
+    if (inheritR || inheritS) {
+        // Rotate and scale about the parent's origin
+        if (pivot && inheritT != 100) {
+            math::MTX34Trans(pResult, pResult, &trans);
+        }
 
-        math::MTX34Mult(pResult, pResult, &rot);
-    }
+        if (inheritR) {
+            math::MTX34 rot;
+            MtxGetRotationMtx(*pOrig, &rot);
 
-    if (inheritS) {
-        math::VEC3 scale;
-        MtxGetScale(*pOrig, &scale);
+            math::MTX34Mult(pResult, pResult, &rot);
+        }
 
-        math::MTX34Scale(pResult, pResult, &scale);
+        if (inheritS) {
+            math::VEC3 scale;
+            MtxGetScale(*pOrig, &scale);
+
+            MtxScale(pResult, pResult, &scale);
+        }
+
+        if (pivot && inheritT != 100) {
+            math::VEC3 back;
+            math::MTX34Trans(pResult, pResult,
+                             math::VEC3Scale(&back, &trans, -1.0f));
+        }
     }
 
     return pResult;
@@ -1012,15 +986,16 @@ math::MTX34* Emitter::CalcGlobalMtx(math::MTX34* pResult) {
                 &mMtx, &orig,
                 mParameter.mInherit & EmitterParameter::INHERIT_FLAG_SCALE,
                 mParameter.mInherit & EmitterParameter::INHERIT_FLAG_ROT,
-                mParameter.mInheritTranslate);
+                mParameter.mInheritTranslate,
+                mParameter.mInherit & EmitterParameter::INHERIT_FLAG_PIVOT);
         }
 
         math::MTX34Trans(&mMtx, &mMtx, &mParameter.mTranslate);
-        math::MTX34RotXYZRad(&tmp, mParameter.mRotate.x, mParameter.mRotate.y,
-                             mParameter.mRotate.z);
+        MtxRotXYZRad(&tmp, mParameter.mRotate.x, mParameter.mRotate.y,
+                     mParameter.mRotate.z);
 
         math::MTX34Mult(&mMtx, &mMtx, &tmp);
-        math::MTX34Scale(&mMtx, &mMtx, &mParameter.mScale);
+        MtxScale(&mMtx, &mMtx, &mParameter.mScale);
 
         mMtxDirty = false;
     }

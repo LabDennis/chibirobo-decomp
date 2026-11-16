@@ -13,6 +13,9 @@ extern "C" {
 
 void GXGetVtxAttrFmt(GXVtxFmt fmt, GXAttr attr, GXCompCnt* cnt, GXCompType* type, u8* frac);
 
+static inline void GXColor1x16(u16 index) { GXWGFifo.u16 = index; }
+static inline void GXColor1x8(u8 index) { GXWGFifo.u8 = index; }
+static inline void GXColor3u8(u8 r, u8 g, u8 b) { GXWGFifo.u8 = r; GXWGFifo.u8 = g; GXWGFifo.u8 = b; }
 static inline void GXNormal1x16(u16 index) { GXWGFifo.u16 = index; }
 static inline void GXNormal1x8(u8 index) { GXWGFifo.u8 = index; }
 static inline void GXNormal3u16(u16 x, u16 y, u16 z) { GXWGFifo.u16 = x; GXWGFifo.u16 = y; GXWGFifo.u16 = z; }

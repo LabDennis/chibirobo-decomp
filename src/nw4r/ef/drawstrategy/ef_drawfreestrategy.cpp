@@ -3,23 +3,21 @@
 
 #include "nw4r/ef/ef_gx.h"
 
-#include <limits>
-
 namespace nw4r {
 namespace ef {
 
 static math::MTX34 CalcLocalTransform(f32 px, f32 py, f32 sx, f32 sy,
                                       const nw4r::math::MTX34& rRot);
 
-static math::MTX34 CalcRotate(Particle* pParticle, u8 axis);
+static inline math::MTX34 CalcRotate(Particle* pParticle, u8 axis);
 
-
-static u8 free_tex0_u8[] ATTRIBUTE_ALIGN(32) = {0x00, 0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x01};
+static u8 free_tex0_u8[] ATTRIBUTE_ALIGN(32) = {0x00, 0x01, 0x00, 0x00,
+                                                0x01, 0x00, 0x01, 0x01};
 
 DrawFreeStrategy::DrawFreeStrategy() {}
 
 static void DrawQuad(const math::MTX34& rMtx, const math::_VEC3* pPosArray,
-                     bool texCoord) {
+                     int texCoord) {
 
     math::VEC3 p0, p1, p2, p3;
 
@@ -35,22 +33,22 @@ static void DrawQuad(const math::MTX34& rMtx, const math::_VEC3* pPosArray,
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     {
         GXPosition(p0);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(0);
         }
 
         GXPosition(p1);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(1);
         }
 
         GXPosition(p2);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(2);
         }
 
         GXPosition(p3);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(3);
         }
     }
@@ -63,11 +61,14 @@ void DrawFreeStrategy::Draw(const DrawInfo& rInfo, ParticleManager* pManager) {
     const EmitterDrawSetting& rSetting =
         *pManager->mResource->GetEmitterDrawSetting();
 
+    int texCoord = mNumTexmap > 0 ? 1 : 0;
+
     math::MTX34 glbMtx;
     math::MTX34 posMtx;
 
     pManager->CalcGlobalMtx(&glbMtx);
-    math::MTX34Mult(&posMtx, rInfo.GetViewMtx(), &glbMtx);
+    rInfo.GetViewMtxZOffset(&posMtx);
+    math::MTX34Mult(&posMtx, &posMtx, &glbMtx);
     GXLoadPosMtxImm(posMtx, GX_PNMTX0);
 
     f32 px = rSetting.pivotX / 100.0f;
@@ -85,12 +86,12 @@ void DrawFreeStrategy::Draw(const DrawInfo& rInfo, ParticleManager* pManager) {
          pParticle = pGetNextFunc(pManager, pParticle)) {
 
         f32 sx = pParticle->Draw_GetSizeX();
-        if (sx < std::numeric_limits<f32>::epsilon()) {
+        if (sx < NW4R_MATH_FLT_EPSILON) {
             continue;
         }
 
         f32 sy = pParticle->Draw_GetSizeY();
-        if (sy < std::numeric_limits<f32>::epsilon()) {
+        if (sy < NW4R_MATH_FLT_EPSILON) {
             continue;
         }
 
@@ -113,7 +114,7 @@ void DrawFreeStrategy::Draw(const DrawInfo& rInfo, ParticleManager* pManager) {
         };
         // clang-format on
 
-        DrawQuad(locMtx, p, mNumTexmap > 0);
+        DrawQuad(locMtx, p, texCoord);
 
         if (rSetting.typeOption == EmitterDrawSetting::TYPE_CMN_CROSS) {
             // clang-format off
@@ -125,20 +126,18 @@ void DrawFreeStrategy::Draw(const DrawInfo& rInfo, ParticleManager* pManager) {
             };
             // clang-format on
 
-            DrawQuad(locMtx, px, mNumTexmap > 0);
+            DrawQuad(locMtx, px, texCoord);
         }
     }
 }
 
-void DrawFreeStrategy::InitGraphics(const DrawInfo& rInfo,
-                                    ParticleManager* pManager) {
+inline void DrawFreeStrategy::InitGraphics(const DrawInfo& rInfo,
+                                           ParticleManager* pManager) {
 
     const EmitterDrawSetting& rSetting =
         *pManager->mResource->GetEmitterDrawSetting();
 
-    InitTexture(rSetting);
-    InitTev(rSetting, rInfo);
-    InitColor(pManager, rSetting, rInfo);
+    InitGP(pManager, rSetting, rInfo);
 
     GXEnableTexOffsets(GX_TEXCOORD0, TRUE, TRUE);
 
@@ -171,28 +170,60 @@ static math::MTX34 CalcLocalTransform(f32 px, f32 py, f32 sx, f32 sy,
     // clang-format on
 }
 
-static math::MTX34 CalcRotate(Particle* pParticle, u8 axis) {
+static inline math::MTX34 CalcRotate(Particle* pParticle, u8 axis) {
 
     math::VEC3 rot;
     pParticle->Draw_GetRotate(&rot);
 
     f32 sx, cx;
-    math::SinCosRad(&sx, &cx, rot.x);
-
     f32 sy, cy;
-    math::SinCosRad(&sy, &cy, rot.y);
-
     f32 sz, cz;
-    math::SinCosRad(&sz, &cz, rot.z);
-
-    f32 sx_sy = sx * sy;
-    f32 cx_sy = cx * sy;
 
     // clang-format off
-    return math::MTX34(
-        cy * cz,  sx_sy * cz - cx * sz,  cx_sy * cz + sx * sz,  0.0f,
-        cy * sz,  sx_sy * sz + cx * cz,  cx_sy * sz - sx * cz,  0.0f,
-            -sy,               cy * sx,               cx * cy,  0.0f);
+    switch (axis) {
+    case AXIS_X: {
+        SinCosRad(&sx, &cx, rot.x);
+
+        return math::MTX34(
+            1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f,   cx,  -sx, 0.0f,
+            0.0f,   sx,   cx, 0.0f);
+    }
+
+    case AXIS_Y: {
+        SinCosRad(&sy, &cy, rot.y);
+
+        return math::MTX34(
+              cy, 0.0f,   sy, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f,
+             -sy, 0.0f,   cy, 0.0f);
+    }
+
+    case AXIS_Z: {
+        SinCosRad(&sz, &cz, rot.z);
+
+        return math::MTX34(
+              cz,  -sz, 0.0f, 0.0f,
+              sz,   cz, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f);
+    }
+
+    // 3 is not told apart from any other value: all three axes
+    case 3:
+    default: {
+        SinCosRad(&sx, &cx, rot.x);
+        SinCosRad(&sy, &cy, rot.y);
+        SinCosRad(&sz, &cz, rot.z);
+
+        f32 sx_sy = sx * sy;
+        f32 cx_sy = cx * sy;
+
+        return math::MTX34(
+            cy * cz,  sx_sy * cz - cx * sz,  cx_sy * cz + sx * sz,  0.0f,
+            cy * sz,  sx_sy * sz + cx * cz,  cx_sy * sz - sx * cz,  0.0f,
+                -sy,               cy * sx,               cx * cy,  0.0f);
+    }
+    }
     // clang-format on
 }
 

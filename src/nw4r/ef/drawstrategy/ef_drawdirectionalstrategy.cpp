@@ -11,7 +11,7 @@ static u8 directional_tex0_u8[] ATTRIBUTE_ALIGN(32) = {0x00, 0x01, 0x00, 0x00,
 DrawDirectionalStrategy::DrawDirectionalStrategy() {}
 
 static void DrawQuad(const math::MTX34& rMtx, const math::_VEC3* pPosArray,
-                     bool texCoord) {
+                     int texCoord) {
     math::VEC3 p0, p1, p2, p3;
 
     math::VEC3Transform(&p0, &rMtx,
@@ -26,22 +26,22 @@ static void DrawQuad(const math::MTX34& rMtx, const math::_VEC3* pPosArray,
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     {
         GXPosition(p0);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(0);
         }
 
         GXPosition(p1);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(1);
         }
 
         GXPosition(p2);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(2);
         }
 
         GXPosition(p3);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(3);
         }
     }
@@ -49,26 +49,26 @@ static void DrawQuad(const math::MTX34& rMtx, const math::_VEC3* pPosArray,
 }
 
 void DrawQuad(const math::VEC3& rP, const math::VEC3& rD1,
-              const math::VEC3& rD2, bool texCoord) {
+              const math::VEC3& rD2, int texCoord) {
     GXBegin(GX_QUADS, GX_VTXFMT0, 4);
     {
         GXPosition(rP - rD1);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(0);
         }
 
         GXPosition(rP - rD2);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(1);
         }
 
         GXPosition(rP + rD1);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(2);
         }
 
         GXPosition(rP + rD2);
-        if (texCoord) {
+        if (texCoord & 1) {
             GXTexCoord1x8(3);
         }
     }
@@ -100,7 +100,7 @@ inline math::MTX34 CalcRotate(Particle* pParticle, u8 axis) {
     switch (axis) {
     case 0: {
         if (rot.x != 0.0f) {
-            math::SinCosRad(&sinX, &cosX, -rot.x);
+            SinCosRad(&sinX, &cosX, -rot.x);
         }
 
         return math::MTX34(1.0f, 0.0f, 0.0f, 0.0f, //
@@ -110,7 +110,7 @@ inline math::MTX34 CalcRotate(Particle* pParticle, u8 axis) {
 
     case 1: {
         if (rot.y != 0.0f) {
-            math::SinCosRad(&sinY, &cosY, -rot.y);
+            SinCosRad(&sinY, &cosY, -rot.y);
         }
 
         return math::MTX34(cosY, 0.0f, sinY, 0.0f, //
@@ -120,7 +120,7 @@ inline math::MTX34 CalcRotate(Particle* pParticle, u8 axis) {
 
     case 2: {
         if (rot.z != 0.0f) {
-            math::SinCosRad(&sinZ, &cosZ, -rot.z);
+            SinCosRad(&sinZ, &cosZ, -rot.z);
         }
 
         return math::MTX34(cosZ, -sinZ, 0.0f, 0.0f, //
@@ -130,16 +130,16 @@ inline math::MTX34 CalcRotate(Particle* pParticle, u8 axis) {
 
     case 3:
     default: {
-        if (rot.x) {
-            math::SinCosRad(&sinX, &cosX, -rot.x);
+        if (rot.x != 0.0f) {
+            SinCosRad(&sinX, &cosX, -rot.x);
         }
 
-        if (rot.y) {
-            math::SinCosRad(&sinY, &cosY, -rot.y);
+        if (rot.y != 0.0f) {
+            SinCosRad(&sinY, &cosY, -rot.y);
         }
 
-        if (rot.z) {
-            math::SinCosRad(&sinZ, &cosZ, -rot.z);
+        if (rot.z != 0.0f) {
+            SinCosRad(&sinZ, &cosZ, -rot.z);
         }
 
         f32 sinXsinY = sinX * sinY;
@@ -209,32 +209,49 @@ void DrawDirectionalStrategy::DrawDirectional(const DrawInfo& rInfo,
     const EmitterDrawSetting& rSetting =
         *pManager->mResource->GetEmitterDrawSetting();
 
-    AheadContext context(*rInfo.GetViewMtx(), pManager);
+    math::MTX34 viewMtx;
+    rInfo.GetViewMtxZOffset(&viewMtx);
+
+    AheadContext context(viewMtx, pManager);
     CalcAheadFunc pCalcAheadFunc = GetCalcAheadFunc(pManager);
 
-    math::MTX34 globalMtx;
-    math::MTX34 posMtx;
-
-    pManager->CalcGlobalMtx(&globalMtx);
-    math::MTX34Mult(&posMtx, rInfo.GetViewMtx(), &globalMtx);
-    GXLoadPosMtxImm(posMtx, GX_PNMTX0);
-
-    math::MTX34 emitterMtx;
-    math::MTX34 invMtx;
-
-    pManager->mManagerEM->CalcGlobalMtx(&emitterMtx);
-    math::MTX34Inv(&invMtx, &globalMtx);
-    math::MTX34Mult(&emitterMtx, &invMtx, &emitterMtx);
+    bool texCoord = mNumTexmap > 0 ? true : false;
 
     math::VEC3 emitterAxisY;
     math::VEC3 emitterAxisZ;
 
-    emitterAxisY =
-        math::VEC3(emitterMtx._01, emitterMtx._11, emitterMtx._21);
-    emitterAxisZ =
-        math::VEC3(emitterMtx._02, emitterMtx._12, emitterMtx._22);
+    if (rSetting.typeDir == EmitterDrawSetting::DIR_NO_DESIGN_7) {
+        const math::MTX34& rGlbMtx = context.mCommon.mParticleManagerMtx;
 
-    Normalize(&emitterAxisZ);
+        math::MTX34 posMtx;
+        math::MTX34Mult(&posMtx, &viewMtx, &rGlbMtx);
+        GXLoadPosMtxImm(posMtx, GX_PNMTX0);
+
+        const math::MTX34& rInvMtx = context.mCommon.mParticleManagerMtxInv;
+
+        emitterAxisY = math::VEC3(rInvMtx._01, rInvMtx._11, rInvMtx._21);
+        emitterAxisZ = math::VEC3(rInvMtx._02, rInvMtx._12, rInvMtx._22);
+
+        Normalize(&emitterAxisZ);
+    } else {
+        const math::MTX34& rGlbMtx = context.mCommon.mParticleManagerMtx;
+
+        math::MTX34 posMtx;
+        math::MTX34Mult(&posMtx, &viewMtx, &rGlbMtx);
+        GXLoadPosMtxImm(posMtx, GX_PNMTX0);
+
+        math::MTX34 emitterMtx;
+        pManager->mManagerEM->CalcGlobalMtx(&emitterMtx);
+        math::MTX34Mult(&emitterMtx, &context.mCommon.mParticleManagerMtxInv,
+                        &emitterMtx);
+
+        emitterAxisY =
+            math::VEC3(emitterMtx._01, emitterMtx._11, emitterMtx._21);
+        emitterAxisZ =
+            math::VEC3(emitterMtx._02, emitterMtx._12, emitterMtx._22);
+
+        Normalize(&emitterAxisZ);
+    }
 
     for (Particle* pIt = GetYoungestParticle(pManager);
          pIt != NULL && pIt->mPrevAxis.x > 1.0f;
@@ -305,10 +322,10 @@ void DrawDirectionalStrategy::DrawDirectional(const DrawInfo& rInfo,
         math::MTX34 worldMtx;
         math::MTX34Mult(&worldMtx, &baseMtx, &localMtx);
 
-        DrawQuad(worldMtx, p, mNumTexmap > 0);
+        DrawQuad(worldMtx, p, texCoord);
 
         if (rSetting.typeOption == 1) {
-            DrawQuad(worldMtx, px, mNumTexmap > 0);
+            DrawQuad(worldMtx, px, texCoord);
         }
     }
 }
@@ -321,27 +338,28 @@ void DrawDirectionalStrategy::DrawDirectionalBillboard(
     const EmitterDrawSetting& rSetting =
         *pManager->mResource->GetEmitterDrawSetting();
 
-    AheadContext context(*rInfo.GetViewMtx(), pManager);
+    math::MTX34 viewMtx;
+    rInfo.GetViewMtxZOffset(&viewMtx);
+
+    AheadContext context(viewMtx, pManager);
     CalcAheadFunc pCalcAheadFunc = GetCalcAheadFunc(pManager);
 
-    math::MTX34 viewMtx;
+    bool texCoord = mNumTexmap > 0;
+
+    math::MTX34 mtx;
     math::MTX34 globalMtx;
 
     pManager->CalcGlobalMtx(&globalMtx);
-    math::MTX34Mult(&viewMtx, rInfo.GetViewMtx(), &globalMtx);
-    GXLoadPosMtxImm(const_cast<math::MTX34&>(mIdentityMtx), GX_PNMTX0);
+    math::MTX34Mult(&mtx, &viewMtx, &globalMtx);
+    // The SDK's GXLoadPosMtxImm takes a const matrix, our GX header does not yet
+    GXLoadPosMtxImm(
+        const_cast<math::MTX34::MtxRef>(
+            static_cast<math::MTX34::MtxRefConst>(mIdentityMtx)),
+        GX_PNMTX0);
 
-    f32 lx = math::FSqrt(viewMtx._00 * viewMtx._00 +
-                         viewMtx._10 * viewMtx._10 +
-                         viewMtx._20 * viewMtx._20);
-
-    f32 ly = math::FSqrt(viewMtx._01 * viewMtx._01 +
-                         viewMtx._11 * viewMtx._11 +
-                         viewMtx._21 * viewMtx._21);
-
-    f32 lz = math::FSqrt(viewMtx._02 * viewMtx._02 +
-                         viewMtx._12 * viewMtx._12 +
-                         viewMtx._22 * viewMtx._22);
+    f32 lx = MtxColVecLen(&mtx, 0);
+    f32 ly = MtxColVecLen(&mtx, 1);
+    f32 lz = MtxColVecLen(&mtx, 2);
 
     for (Particle* pIt = GetYoungestParticle(pManager);
          pIt != NULL && pIt->mPrevAxis.x > 1.0f;
@@ -395,7 +413,7 @@ void DrawDirectionalStrategy::DrawDirectionalBillboard(
         math::VEC3 ahead;
 
         pCalcAheadFunc(&ahead, &context, pIt);
-        math::VEC3TransformNormal(&ahead, &viewMtx, &ahead);
+        math::VEC3TransformNormal(&ahead, &mtx, &ahead);
 
         axisY = ahead;
         Normalize(&axisY);
@@ -419,7 +437,7 @@ void DrawDirectionalStrategy::DrawDirectionalBillboard(
         pIt->mPrevAxis = axisZ;
 
         math::VEC3 pos;
-        math::VEC3Transform(&pos, &viewMtx, &pIt->mParameter.mPosition);
+        math::VEC3Transform(&pos, &mtx, &pIt->mParameter.mPosition);
 
         math::MTX34 baseMtx(lx * axisX.x, ly * axisY.x, lz * axisZ.x, pos.x,
                             lx * axisX.y, ly * axisY.y, lz * axisZ.y, pos.y,
@@ -434,7 +452,7 @@ void DrawDirectionalStrategy::DrawDirectionalBillboard(
         math::VEC3 d2(worldMtx._00 - worldMtx._01, worldMtx._10 - worldMtx._11,
                       worldMtx._20 - worldMtx._21);
 
-        DrawQuad(center, d1, d2, mNumTexmap > 0);
+        DrawQuad(center, d1, d2, texCoord);
 
         if (rSetting.typeOption == 1) {
             math::VEC3 d1(worldMtx._01 + worldMtx._02,
@@ -444,7 +462,7 @@ void DrawDirectionalStrategy::DrawDirectionalBillboard(
                           worldMtx._11 - worldMtx._12,
                           worldMtx._21 - worldMtx._22);
 
-            DrawQuad(center, d1, d2, mNumTexmap > 0);
+            DrawQuad(center, d1, d2, texCoord);
         }
     }
 }
@@ -455,9 +473,7 @@ void DrawDirectionalStrategy::InitGraphics(const DrawInfo& rInfo,
     const EmitterDrawSetting& rSetting =
         *pManager->mResource->GetEmitterDrawSetting();
 
-    InitTexture(rSetting);
-    InitTev(rSetting, rInfo);
-    InitColor(pManager, rSetting, rInfo);
+    InitGP(pManager, rSetting, rInfo);
 
     GXEnableTexOffsets(GX_TEXCOORD0, TRUE, TRUE);
 
@@ -499,7 +515,8 @@ DrawDirectionalStrategy::GetCalcAheadFunc(ParticleManager* pManager) {
         return CalcAhead_Particle;
     }
 
-    case 5: {
+    case 5:
+    case 7: {
         return CalcAhead_NoDesign;
     }
 

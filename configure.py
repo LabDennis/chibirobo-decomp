@@ -1535,6 +1535,7 @@ if wii:
                 Object(NonMatching, "nw4r/ef/ef_effectsystem.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_emitter.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_animcurve.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_postfield.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_particle.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_particlemanager.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_resource.cpp"),
@@ -1559,6 +1560,7 @@ if wii:
                 Object(NonMatching, "nw4r/ef/drawstrategy/ef_drawpointstrategy.cpp"),
                 Object(NonMatching, "nw4r/ef/drawstrategy/ef_drawstripestrategy.cpp"),
                 Object(NonMatching, "nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.cpp"),
+                Object(NonMatching, "nw4r/ef/ef_res_emitter_ac.cpp"),
                 # nw4r::g3d (0x8025B5A4-0x80282CA0)
                 # nw4r::snd (0x80283EA8-0x802A5358)
                 Object(Matching, "nw4r/snd/snd_AxManager.cpp"),

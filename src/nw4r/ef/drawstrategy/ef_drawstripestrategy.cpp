@@ -1,9 +1,13 @@
 #include "nw4r/ef/drawstrategy/ef_drawstripestrategy.h"
 #include "nw4r/ef/drawstrategy/ef_drawstrategyimpl.h"
 #include "nw4r/ef/ef_drawinfo.h"
+#include "nw4r/ef/ef_effect.h"
+#include "nw4r/ef/ef_effectsystem.h"
+#include "nw4r/ef/ef_emitter.h"
 #include "nw4r/ef/ef_particle.h"
 #include "nw4r/ef/ef_particlemanager.h"
 #include "nw4r/ef/ef_res_emitter.h"
+#include "nw4r/ef/ef_util.h"
 #include "nw4r/math.h"
 
 #include "nw4r/ef/ef_gx.h"
@@ -18,7 +22,7 @@ DrawStripeStrategy::CalcAxisMtx(AheadContextStripe* pContext, int flags,
                                 Particle* pParticle, const math::VEC3& rAxisY,
                                 const math::VEC3& rPos) {
     math::VEC3 axisX;
-    if (!(flags & 2)) {
+    if (!(flags & FLAG_BILLBOARD)) {
         math::VEC3Cross(&axisX, &rAxisY, &pParticle->mPrevAxis);
     } else {
         math::VEC3Cross(&axisX, &rAxisY, &pContext->mScreenAxisZ);
@@ -44,8 +48,12 @@ inline math::MTX34 DrawStripeStrategy::CalcRotMtx(Particle* pParticle,
     pParticle->Draw_GetRotate(&rot);
 
     f32 sx = pParticle->Draw_GetSizeX();
-    f32 c = sx * math::CosRad(rot.y);
-    f32 s = sx * math::SinRad(rot.y);
+
+    f32 c, s;
+    SinCosRad(&s, &c, rot.y);
+
+    s *= sx;
+    c *= sx;
 
     return math::MTX34(c, 0.0f, -s, pivot - c * pivot, 0.0f, 1.0f, 0.0f,
                         0.0f, s, 0.0f, c, -s * pivot);
@@ -82,12 +90,12 @@ inline void DrawStripeStrategy::DrawParticle(AheadContextStripe* pContext, int f
     math::VEC3Transform(&p1, &mtx, &rP1);
 
     GXPosition3f32(p0.x, p0.y, p0.z);
-    if (flags & 1) {
+    if (flags & FLAG_TEXCOORD) {
         GXTexCoord2f32(1.0f, texCoord);
     }
 
     GXPosition3f32(p1.x, p1.y, p1.z);
-    if (flags & 1) {
+    if (flags & FLAG_TEXCOORD) {
         GXTexCoord2f32(0.0f, texCoord);
     }
 }
@@ -127,7 +135,7 @@ void DrawStripeStrategy::DrawStripe(AheadContextStripe* pContext, int flags,
     switch (GetStripeTexmapType(rSetting)) {
     case 0:
     default: {
-        texStep = 1.0f / (numParticle - 1);
+        texStep = math::FInv(static_cast<f32>(numParticle - 1));
         break;
     }
 
@@ -208,7 +216,7 @@ void DrawStripeStrategy::CalcVertexTube(VertexTube* pVertex,
     f32 sy = pParticle->Draw_GetSizeY();
 
     f32 s, c;
-    math::SinCosRad(&s, &c, rot.y);
+    SinCosRad(&s, &c, rot.y);
 
     math::MTX34 rotMtx(c * sx, 0.0f, -s * sy,
                        pivotX - pivotX * (c * sx) + pivotY * (s * sy), 0.0f,
@@ -231,11 +239,11 @@ void DrawStripeStrategy::DrawTubeSegment(const VertexTube& rV0,
                                          int numVertex,
                                          const Trigonometric* pTrigonometric) {
 
-    f32 texStep = 1.0f / numVertex;
+    f32 texStep = math::FInv(static_cast<f32>(numVertex));
 
     GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, numVertex * 2 + 2);
 
-    if (flags & 4) {
+    if (flags & FLAG_ELDERS_FIRST) {
         for (int i = 0; i <= numVertex; pTrigonometric++, i++) {
             f32 sin = pTrigonometric->mSin;
             f32 cos = pTrigonometric->mCos;
@@ -243,14 +251,14 @@ void DrawStripeStrategy::DrawTubeSegment(const VertexTube& rV0,
             GXPosition(rV0.mX * cos +
                        rV0.mZ * sin + rV0.mCenter);
 
-            if (flags & 1) {
+            if (flags & FLAG_TEXCOORD) {
                 GXTexCoord2f32(texStep * i, rV0.mTexCoord);
             }
 
             GXPosition(rV1.mX * cos +
                        rV1.mZ * sin + rV1.mCenter);
 
-            if (flags & 1) {
+            if (flags & FLAG_TEXCOORD) {
                 GXTexCoord2f32(texStep * i, rV1.mTexCoord);
             }
         }
@@ -262,14 +270,14 @@ void DrawStripeStrategy::DrawTubeSegment(const VertexTube& rV0,
             GXPosition(rV1.mX * cos +
                        rV1.mZ * sin + rV1.mCenter);
 
-            if (flags & 1) {
+            if (flags & FLAG_TEXCOORD) {
                 GXTexCoord2f32(texStep * i, rV1.mTexCoord);
             }
 
             GXPosition(rV0.mX * cos +
                        rV0.mZ * sin + rV0.mCenter);
 
-            if (flags & 1) {
+            if (flags & FLAG_TEXCOORD) {
                 GXTexCoord2f32(texStep * i, rV0.mTexCoord);
             }
         }
@@ -305,7 +313,7 @@ void DrawStripeStrategy::DrawStripeTube_ConnectNone(
     switch (GetStripeTexmapType(rSetting)) {
     case 0:
     default: {
-        texStep = 1.0f / (numParticle - 1);
+        texStep = math::FInv(static_cast<f32>(numParticle - 1));
         break;
     }
 
@@ -371,7 +379,7 @@ void DrawStripeStrategy::DrawStripeTube_ConnectRing(
     switch (GetStripeTexmapType(rSetting)) {
     case 0:
     default: {
-        texStep = 1.0f / numParticle;
+        texStep = math::FInv(static_cast<f32>(numParticle));
         break;
     }
 
@@ -446,7 +454,7 @@ void DrawStripeStrategy::DrawStripeTube_ConnectEmitter(
     switch (GetStripeTexmapType(rSetting)) {
     case 0:
     default: {
-        texStep = 1.0f / numParticle;
+        texStep = math::FInv(static_cast<f32>(numParticle));
         break;
     }
 
@@ -499,7 +507,7 @@ void DrawStripeStrategy::DrawStripeTube_ConnectEmitter(
 }
 
 void DrawStripeStrategy::DrawStripeTube(AheadContextStripe* pContext,
-                                        int flags) {
+                                        int flags, bool xfFlush) {
 
     const EmitterDrawSetting& rSetting =
         *pContext->mCommon.mParticleManager->mResource->GetEmitterDrawSetting();
@@ -536,24 +544,45 @@ void DrawStripeStrategy::DrawStripeTube(AheadContextStripe* pContext,
     case 0:
     default: {
         GXSetCullMode(GX_CULL_FRONT);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawStripeTube_ConnectNone(pContext, flags);
+
         GXSetCullMode(GX_CULL_BACK);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawStripeTube_ConnectNone(pContext, flags);
         break;
     }
 
     case 1: {
         GXSetCullMode(GX_CULL_FRONT);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawStripeTube_ConnectRing(pContext, flags);
+
         GXSetCullMode(GX_CULL_BACK);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawStripeTube_ConnectRing(pContext, flags);
         break;
     }
 
     case 2: {
         GXSetCullMode(GX_CULL_FRONT);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawStripeTube_ConnectEmitter(pContext, flags);
+
         GXSetCullMode(GX_CULL_BACK);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawStripeTube_ConnectEmitter(pContext, flags);
         break;
     }
@@ -572,7 +601,10 @@ void DrawStripeStrategy::Draw(const DrawInfo& rInfo,
         return;
     }
 
-    AheadContextStripe context(*rInfo.GetViewMtx(), pManager);
+    math::MTX34 viewMtx;
+    rInfo.GetViewMtxZOffset(&viewMtx);
+
+    AheadContextStripe context(viewMtx, pManager);
 
     math::VEC3 initAxis = GetInitialPrevAxis(rSetting, context);
 
@@ -588,24 +620,41 @@ void DrawStripeStrategy::Draw(const DrawInfo& rInfo,
 
     int drawOrder = rSetting.mFlags & EmitterDrawSetting::FLAG_DRAW_ORDER;
 
-    int flags =
-        (rSetting.typeOption == EmitterDrawSetting::ASSIST_ST_BILLBOARD ? 2
-                                                                         : 0) |
-        (drawOrder ? 4 : 0);
+    int flags = (rSetting.typeOption == EmitterDrawSetting::ASSIST_ST_BILLBOARD
+                     ? FLAG_BILLBOARD
+                     : 0) |
+                (drawOrder ? FLAG_ELDERS_FIRST : 0);
+
+    math::MTX34 posMtx;
+    rInfo.GetViewMtxZOffset(&posMtx);
+    math::MTX34Mult(&posMtx, &posMtx, &context.mCommon.mParticleManagerMtx);
+
+    if (flags & FLAG_BILLBOARD) {
+        math::MTX34 invMtx;
+
+        if (math::MTX34Inv(&invMtx, &posMtx)) {
+            context.mScreenAxisZ =
+                math::VEC3(invMtx._02, invMtx._12, invMtx._22);
+        } else {
+            context.mScreenAxisZ = math::VEC3(0.0f, 0.0f, 1.0f);
+        }
+    }
 
     int connect = rSetting.typeOption2 & 7;
 
     if ((connect == 1 && numParticle < 3) ||
         (connect == 0 && numParticle < 2)) {
 
+        int order = rSetting.mFlags & EmitterDrawSetting::FLAG_DRAW_ORDER;
+
         CalcAheadFuncStripe pCalcAheadFunc =
             reinterpret_cast<CalcAheadFuncStripe>(GetCalcAheadFunc(pManager));
 
         GetFirstDrawParticleFunc pGetFirstFunc =
-            GetGetFirstDrawParticleFunc(drawOrder);
+            GetGetFirstDrawParticleFunc(order);
 
         GetNextDrawParticleFunc pGetNextFunc =
-            GetGetNextDrawParticleFunc(drawOrder);
+            GetGetNextDrawParticleFunc(order);
 
         for (Particle* pParticle = pGetFirstFunc(pManager); pParticle != NULL;
              pParticle = pGetNextFunc(pManager, pParticle)) {
@@ -621,29 +670,16 @@ void DrawStripeStrategy::Draw(const DrawInfo& rInfo,
     }
 
     InitGraphics(rInfo, pManager);
-
-    flags |= mNumTexmap > 0 ? 1 : 0;
-
-    math::MTX34 posMtx;
-    math::MTX34Mult(&posMtx, rInfo.GetViewMtx(),
-                    &context.mCommon.mParticleManagerMtx);
     GXLoadPosMtxImm(posMtx, GX_PNMTX0);
 
-    if (flags & 2) {
-        math::MTX34 invMtx;
+    flags |= mNumTexmap > 0 ? FLAG_TEXCOORD : 0;
 
-        if (math::MTX34Inv(&invMtx, &posMtx)) {
-            context.mScreenAxisZ =
-                math::VEC3(invMtx._02, invMtx._12, invMtx._22);
-        } else {
-            context.mScreenAxisZ = math::VEC3(0.0f, 0.0f, 1.0f);
-        }
-    }
+    Particle* pFirst =
+        GetGetFirstDrawParticleFunc(rSetting.mFlags &
+                                    EmitterDrawSetting::FLAG_DRAW_ORDER)(
+            pManager);
 
-    SetupGP(GetGetFirstDrawParticleFunc(rSetting.mFlags &
-                                        EmitterDrawSetting::FLAG_DRAW_ORDER)(
-                pManager),
-            rSetting, rInfo, true, false);
+    SetupGP(pFirst, rSetting, rInfo, true, false);
 
     switch (rSetting.typeOption) {
     default: {
@@ -658,7 +694,15 @@ void DrawStripeStrategy::Draw(const DrawInfo& rInfo,
     }
 
     case EmitterDrawSetting::ASSIST_ST_TUBE: {
-        DrawStripeTube(&context, flags);
+        bool xfFlush = false;
+
+        if ((rSetting.mFlags & EmitterDrawSetting::FLAG_CLIP_DISABLE) ||
+            !pFirst->mParticleManager->mManagerEM->mManagerEF->mManagerES
+                 ->mXFFlushSafe) {
+            xfFlush = true;
+        }
+
+        DrawStripeTube(&context, flags, xfFlush);
         break;
     }
     }
@@ -669,36 +713,66 @@ DrawStripeStrategy::GetInitialPrevAxis(const EmitterDrawSetting& rSetting,
                                        const AheadContextStripe& rContext) {
     math::VEC3 axis;
 
-    switch (rSetting.typeOption2 & 0x38) {
-    case 0x08: {
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx,
-                                  &GetXUnitVec());
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mParticleManagerMtxInv,
-                                  &axis);
-        break;
-    }
+    if (rSetting.typeDir == EmitterDrawSetting::DIR_NO_DESIGN_7) {
+        const math::MTX34& rInvMtx = rContext.mCommon.mParticleManagerMtxInv;
 
-    case 0x00:
-    default: {
-        axis = rContext.mCommon.mEmitterAxisY;
-        return axis;
-    }
+        switch (rSetting.typeOption2 & 0x38) {
+        case 0x08: {
+            axis = math::VEC3(rInvMtx._00, rInvMtx._10, rInvMtx._20);
+            break;
+        }
 
-    case 0x10: {
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx,
-                                  &GetZUnitVec());
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mParticleManagerMtxInv,
-                                  &axis);
-        break;
-    }
+        case 0x00:
+        default: {
+            axis = math::VEC3(rInvMtx._01, rInvMtx._11, rInvMtx._21);
+            break;
+        }
 
-    case 0x18: {
-        math::VEC3 one(1.0f, 1.0f, 1.0f);
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx, &one);
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mParticleManagerMtxInv,
-                                  &axis);
-        break;
-    }
+        case 0x10: {
+            axis = math::VEC3(rInvMtx._02, rInvMtx._12, rInvMtx._22);
+            break;
+        }
+
+        case 0x18: {
+            axis = math::VEC3(rInvMtx._00, rInvMtx._10, rInvMtx._20) +
+                   math::VEC3(rInvMtx._01, rInvMtx._11, rInvMtx._21) +
+                   math::VEC3(rInvMtx._02, rInvMtx._12, rInvMtx._22);
+            break;
+        }
+        }
+    } else {
+        switch (rSetting.typeOption2 & 0x38) {
+        case 0x08: {
+            math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx,
+                                      &GetXUnitVec());
+            math::VEC3TransformNormal(
+                &axis, &rContext.mCommon.mParticleManagerMtxInv, &axis);
+            break;
+        }
+
+        case 0x00:
+        default: {
+            axis = rContext.mCommon.mEmitterAxisY;
+            return axis;
+        }
+
+        case 0x10: {
+            math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx,
+                                      &GetZUnitVec());
+            math::VEC3TransformNormal(
+                &axis, &rContext.mCommon.mParticleManagerMtxInv, &axis);
+            break;
+        }
+
+        case 0x18: {
+            math::VEC3 one(1.0f, 1.0f, 1.0f);
+            math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx,
+                                      &one);
+            math::VEC3TransformNormal(
+                &axis, &rContext.mCommon.mParticleManagerMtxInv, &axis);
+            break;
+        }
+        }
     }
 
     if (!Normalize(&axis)) {
@@ -730,7 +804,8 @@ DrawStripeStrategy::GetCalcAheadFunc(ParticleManager* pManager) {
         return reinterpret_cast<CalcAheadFunc>(CalcAhead_Particle_Stripe);
     }
 
-    case EmitterDrawSetting::AHEAD_CMN_NODESIGN: {
+    case EmitterDrawSetting::AHEAD_CMN_NODESIGN:
+    case EmitterDrawSetting::DIR_NO_DESIGN_7: {
         return CalcAhead_NoDesign;
     }
 

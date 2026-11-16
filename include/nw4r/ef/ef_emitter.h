@@ -30,6 +30,13 @@ struct EmitterInheritSetting {
         FLAG_INHERIT_ROT = (1 << 1),
     };
 
+    // alphaFuncPri/alphaFuncSec: what of the reference particle makes the alpha
+    enum AlphaFunc {
+        ALPHAFUNC_PRI = (1 << 0),
+        ALPHAFUNC_SEC = (1 << 1),
+        ALPHAFUNC_DRAW = (1 << 2), // flicker and modifier
+    };
+
     s16 speed; // at 0x0
     u8 scale;  // at 0x2
     u8 alpha;  // at 0x3
@@ -37,13 +44,16 @@ struct EmitterInheritSetting {
     u8 weight; // at 0x5
     u8 type;   // at 0x6
     u8 flag;   // at 0x7
+    u8 alphaFuncPri; // at 0x8
+    u8 alphaFuncSec; // at 0x9
 };
 
 class EmitterParameter {
 public:
     enum InheritFlag {
         INHERIT_FLAG_SCALE = (1 << 0),
-        INHERIT_FLAG_ROT = (1 << 1)
+        INHERIT_FLAG_ROT = (1 << 1),
+        INHERIT_FLAG_PIVOT = (1 << 2)
     };
 
 public:
@@ -97,12 +107,14 @@ public:
     Emitter* mParent;                      // at 0xF4
     Particle* mpReferenceParticle;         // at 0xF8
     EmitterInheritSetting mInheritSetting; // at 0xFC
+    math::VEC3 mGlobalPos;                 // at 0x108
+    math::VEC3 mPrevGlobalPos;             // at 0x114
 
 protected:
-    bool mMtxDirty; // at 0x104
+    bool mMtxDirty; // at 0x120
 
 public:
-    math::MTX34 mMtx; // at 0x108
+    math::MTX34 mMtx; // at 0x124
 
 public:
     Emitter();
@@ -116,8 +128,8 @@ public:
 
     virtual Emitter* CreateEmitter(EmitterResource* pResource,
                                    EmitterInheritSetting* pSetting,
-                                   Particle* pParticle,
-                                   u16 calcRemain); // at 0x14
+                                   Particle* pParticle, u16 calcRemain,
+                                   const math::VEC3* pPos); // at 0x14
 
     virtual void CalcEmitter();   // at 0x18
     virtual void CalcParticle();  // at 0x1C
@@ -133,13 +145,13 @@ public:
     void UpdateDatas(EmitterResource* pResource);
     bool InitializeDatas(EmitterResource* pResource, Effect* pEffect);
 
-    void CreateEmitterTmp(EmitterResource* pResource,
+    bool CreateEmitterTmp(EmitterResource* pResource,
                           EmitterInheritSetting* pSetting, Particle* pParticle,
-                          u16 calcRemain);
+                          u16 calcRemain, const math::VEC3* pPos);
 
     ParticleManager* FindParticleManager(EmitterResource* pResource,
                                          bool inheritS, bool inheritR,
-                                         s8 inheritT, u8 weight);
+                                         s8 inheritT, bool pivot, u8 weight);
 
     void Emission(ParticleManager* pManager, const math::MTX34* pSpace);
 
@@ -156,7 +168,7 @@ public:
 
     static math::MTX34* RestructMatrix(math::MTX34* pResult, math::MTX34* pOrig,
                                        bool inheritS, bool inheritR,
-                                       s8 inheritT);
+                                       s8 inheritT, bool pivot);
 
     bool GetFlagDisableCalc() const {
         return mParameter.mComFlags & EmitterDesc::CMN_FLAG_DISABLE_CALC;

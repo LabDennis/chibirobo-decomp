@@ -1,209 +1,19 @@
+#include "nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.h"
 #include "nw4r/ef/drawstrategy/ef_drawstrategyimpl.h"
 #include "nw4r/ef/ef_drawinfo.h"
+#include "nw4r/ef/ef_effect.h"
+#include "nw4r/ef/ef_effectsystem.h"
+#include "nw4r/ef/ef_emitter.h"
 #include "nw4r/ef/ef_particle.h"
 #include "nw4r/ef/ef_particlemanager.h"
 #include "nw4r/ef/ef_res_emitter.h"
+#include "nw4r/ef/ef_util.h"
 #include "nw4r/math.h"
 
 #include "nw4r/ef/ef_gx.h"
 
 namespace nw4r {
 namespace ef {
-
-// TODO(header): this declaration belongs in
-// include/nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.h. The class layout
-// and vtable are unchanged; the header version declares
-// GetGetFirstDrawParticleFunc/GetGetNextDrawParticleFunc overrides that the
-// binary's vtable does not have, and lacks the private members below.
-class DrawSmoothStripeStrategy : public DrawStrategyImpl {
-public:
-    struct Trigonometric {
-        f32 mCos; // at 0x0
-        f32 mSin; // at 0x4
-    };
-
-    struct Vertex {
-        math::VEC3 mVertex0; // at 0x0
-        math::VEC3 mVertex1; // at 0xC
-        f32 mTexCoord;       // at 0x18
-
-        Vertex();
-
-        Vertex(const math::VEC3& rVertex0, const math::VEC3& rVertex1,
-               f32 texCoord)
-            : mVertex0(rVertex0), mVertex1(rVertex1), mTexCoord(texCoord) {}
-    };
-
-    struct VertexTube {
-        math::VEC3 mCenter; // at 0x0
-        math::VEC3 mX;      // at 0xC
-        math::VEC3 mZ;      // at 0x18
-        f32 mTexCoord;      // at 0x24
-
-        VertexTube() {}
-
-        VertexTube(const math::VEC3& rCenter, const math::VEC3& rX,
-                   const math::VEC3& rZ, f32 texCoord)
-            : mCenter(rCenter), mX(rX), mZ(rZ), mTexCoord(texCoord) {}
-    };
-
-    struct AheadContextStripe : public AheadContext {
-        math::VEC3 mEmitterAxisX;      // at 0xBC
-        math::VEC3 mScreenAxisZ;       // at 0xC8
-        Trigonometric* mTrigonometric; // at 0xD4
-
-        AheadContextStripe(const math::MTX34& rViewMtx,
-                           ParticleManager* pManager)
-            : AheadContext(rViewMtx, pManager) {
-
-            math::VEC3 axisX(mCommon.mEmitterMtx._00, mCommon.mEmitterMtx._10,
-                             mCommon.mEmitterMtx._20);
-
-            math::VEC3TransformNormal(&mEmitterAxisX,
-                                      &mCommon.mParticleManagerMtxInv, &axisX);
-        }
-    };
-
-    typedef void (*CalcAheadFuncStripe)(math::VEC3* pAxisY,
-                                        AheadContextStripe* pContext,
-                                        Particle* pParticle);
-
-public:
-    DrawSmoothStripeStrategy();
-
-    virtual void Draw(const DrawInfo& rInfo,
-                      ParticleManager* pManager); // at 0xC
-
-    virtual CalcAheadFunc
-    GetCalcAheadFunc(ParticleManager* pManager); // at 0x18
-
-private:
-    void InitGraphics(const DrawInfo& rInfo, ParticleManager* pManager) {
-        const EmitterDrawSetting& rSetting =
-            *pManager->mResource->GetEmitterDrawSetting();
-
-        InitTexture(rSetting);
-        InitTev(rSetting, rInfo);
-        InitColor(pManager, rSetting, rInfo);
-
-        GXEnableTexOffsets(GX_TEXCOORD0, TRUE, TRUE);
-
-        GXClearVtxDesc();
-        GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
-
-        if (mNumTexmap > 0) {
-            GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
-        }
-
-        GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
-        GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_F32, 0);
-
-        GXSetCurrentMtx(GX_PNMTX0);
-    }
-
-    int GetDrawOrder(const EmitterDrawSetting& rSetting) const {
-        return rSetting.mFlags & EmitterDrawSetting::FLAG_DRAW_ORDER;
-    }
-
-    int GetStripeTexmapType(const EmitterDrawSetting& rSetting) const {
-        return rSetting.typeOption2 & 0xC0;
-    }
-
-    void CalcVertex(Vertex* pVertex, AheadContextStripe* pContext, int flags,
-                    Particle* pParticle, CalcAheadFuncStripe pCalcAheadFunc,
-                    const math::VEC3& rPos, const math::VEC3& rP0,
-                    const math::VEC3& rP1, f32 pivot, f32 texCoord);
-
-    void CalcVertexTube(VertexTube* pVertex, AheadContextStripe* pContext,
-                        int flags, Particle* pParticle,
-                        CalcAheadFuncStripe pCalcAheadFunc, f32 pivotX,
-                        f32 pivotY, f32 texCoord);
-
-    void DrawSection_BSpline(int numDiv, const Vertex& rV0, const Vertex& rV1,
-                             const Vertex& rV2, int flags);
-
-    void DrawSectionEnd_BSpline(const Vertex& rV0, const Vertex& rV1,
-                                const Vertex& rV2, int flags);
-
-    void DrawSectionTube_BSpline(int numDiv, int numVertex,
-                                 const VertexTube& rV0, const VertexTube& rV1,
-                                 const VertexTube& rV2, int flags,
-                                 const Trigonometric* pTrigonometric);
-
-    void DrawSmoothStripe_BSpline_ConnectNone(AheadContextStripe* pContext,
-                                              int numDiv, int flags,
-                                              const math::VEC3& rP0,
-                                              const math::VEC3& rP1);
-    void DrawSmoothStripe_BSpline_ConnectRing(AheadContextStripe* pContext,
-                                              int numDiv, int flags,
-                                              const math::VEC3& rP0,
-                                              const math::VEC3& rP1);
-    void DrawSmoothStripe_BSpline_ConnectEmitter(AheadContextStripe* pContext,
-                                                 int numDiv, int flags,
-                                                 const math::VEC3& rP0,
-                                                 const math::VEC3& rP1);
-
-    void DrawSmoothStripe_BSpline(AheadContextStripe* pContext, int numDiv,
-                                  int flags, const math::VEC3& rP0,
-                                  const math::VEC3& rP1) {
-        switch (pContext->mCommon.mParticleManager->mResource
-                    ->GetEmitterDrawSetting()
-                    ->typeOption2 &
-                7) {
-        case 0:
-        default: {
-            DrawSmoothStripe_BSpline_ConnectNone(pContext, numDiv, flags, rP0,
-                                                 rP1);
-            break;
-        }
-
-        case 1: {
-            DrawSmoothStripe_BSpline_ConnectRing(pContext, numDiv, flags, rP0,
-                                                 rP1);
-            break;
-        }
-
-        case 2: {
-            DrawSmoothStripe_BSpline_ConnectEmitter(pContext, numDiv, flags,
-                                                    rP0, rP1);
-            break;
-        }
-        }
-    }
-
-    void DrawSmoothStripeTube_BSpline_ConnectNone(AheadContextStripe* pContext,
-                                                  int numDiv, int flags);
-    void DrawSmoothStripeTube_BSpline_ConnectRing(AheadContextStripe* pContext,
-                                                  int numDiv, int flags);
-    void
-    DrawSmoothStripeTube_BSpline_ConnectEmitter(AheadContextStripe* pContext,
-                                                int numDiv, int flags);
-    void DrawSmoothStripeTube(AheadContextStripe* pContext, int numDiv,
-                              int flags);
-
-    math::VEC3 GetInitialPrevAxis(const EmitterDrawSetting& rSetting,
-                                  const AheadContextStripe& rContext);
-
-    static math::MTX34 CalcAxisMtx(AheadContextStripe* pContext, int flags,
-                                   Particle* pParticle,
-                                   const math::VEC3& rAxisY,
-                                   const math::VEC3& rPos);
-
-    static math::MTX34 CalcRotMtx(Particle* pParticle, f32 pivot);
-
-    static void CalcAhead_Particle_Stripe(math::VEC3* pAxisY,
-                                          AheadContextStripe* pContext,
-                                          Particle* pParticle);
-    static void CalcAhead_ParticleBoth_Stripe(math::VEC3* pAxisY,
-                                              AheadContextStripe* pContext,
-                                              Particle* pParticle);
-    static void CalcAhead_ParticleBoth_Ring(math::VEC3* pAxisY,
-                                            AheadContextStripe* pContext,
-                                            Particle* pParticle);
-    static void CalcAhead_ParticleBoth_Origin(math::VEC3* pAxisY,
-                                              AheadContextStripe* pContext,
-                                              Particle* pParticle);
-};
 
 static inline void CalcBSplineWeight(f32* pWeight, f32 t, f32 t2) {
     pWeight[0] = 0.5f + (0.5f * t2 - t);
@@ -219,7 +29,7 @@ DrawSmoothStripeStrategy::CalcAxisMtx(AheadContextStripe* pContext, int flags,
                                 Particle* pParticle, const math::VEC3& rAxisY,
                                 const math::VEC3& rPos) {
     math::VEC3 axisX;
-    if (!(flags & 2)) {
+    if (!(flags & FLAG_BILLBOARD)) {
         math::VEC3Cross(&axisX, &rAxisY, &pParticle->mPrevAxis);
     } else {
         math::VEC3Cross(&axisX, &rAxisY, &pContext->mScreenAxisZ);
@@ -245,8 +55,12 @@ inline math::MTX34 DrawSmoothStripeStrategy::CalcRotMtx(Particle* pParticle,
     pParticle->Draw_GetRotate(&rot);
 
     f32 sx = pParticle->Draw_GetSizeX();
-    f32 c = sx * math::CosRad(rot.y);
-    f32 s = sx * math::SinRad(rot.y);
+
+    f32 c, s;
+    SinCosRad(&s, &c, rot.y);
+
+    c *= sx;
+    s *= sx;
 
     return math::MTX34(c, 0.0f, -s, pivot - c * pivot, 0.0f, 1.0f, 0.0f,
                         0.0f, s, 0.0f, c, -s * pivot);
@@ -297,7 +111,7 @@ void DrawSmoothStripeStrategy::CalcVertexTube(VertexTube* pVertex,
     f32 sy = pParticle->Draw_GetSizeY();
 
     f32 s, c;
-    math::SinCosRad(&s, &c, rot.y);
+    SinCosRad(&s, &c, rot.y);
 
     math::MTX34 rotMtx(c * sx, 0.0f, -s * sy,
                        pivotX - pivotX * (c * sx) + pivotY * (s * sy), 0.0f,
@@ -337,12 +151,12 @@ static inline void DrawBSplineVertex(const math::VEC3& rVertex0,
                                      const math::VEC3& rVertex1, f32 texCoord,
                                      int flags) {
     GXPosition3f32(rVertex0.x, rVertex0.y, rVertex0.z);
-    if (flags & 1) {
+    if (flags & DrawSmoothStripeStrategy::FLAG_TEXCOORD) {
         GXTexCoord2f32(1.0f, texCoord);
     }
 
     GXPosition3f32(rVertex1.x, rVertex1.y, rVertex1.z);
-    if (flags & 1) {
+    if (flags & DrawSmoothStripeStrategy::FLAG_TEXCOORD) {
         GXTexCoord2f32(0.0f, texCoord);
     }
 }
@@ -352,7 +166,7 @@ void DrawSmoothStripeStrategy::DrawSection_BSpline(int numDiv,
                                                    const Vertex& rV1,
                                                    const Vertex& rV2,
                                                    int flags) {
-    f32 step = 1.0f / numDiv;
+    f32 step = math::FInv(static_cast<f32>(numDiv));
 
     for (int i = 0; i < numDiv; i++) {
         Vertex vertex;
@@ -408,8 +222,8 @@ void DrawSmoothStripeStrategy::DrawSectionTube_BSpline(
     int numDiv, int numVertex, const VertexTube& rV0, const VertexTube& rV1,
     const VertexTube& rV2, int flags, const Trigonometric* pTrigonometric) {
 
-    f32 step = 1.0f / numDiv;
-    f32 texStep = 1.0f / numVertex;
+    f32 step = math::FInv(static_cast<f32>(numDiv));
+    f32 texStep = math::FInv(static_cast<f32>(numVertex));
 
     VertexTube prev;
     math::VEC3 weight = CalcBSplineWeight(0.0f);
@@ -423,18 +237,18 @@ void DrawSmoothStripeStrategy::DrawSectionTube_BSpline(
 
         GXBegin(GX_TRIANGLESTRIP, GX_VTXFMT0, numVertex * 2 + 2);
 
-        if (flags & 4) {
+        if (flags & FLAG_ELDERS_FIRST) {
             for (int j = 0; j <= numVertex; j++) {
                 f32 sin = pTrigonometric[j].mSin;
                 f32 cos = pTrigonometric[j].mCos;
 
                 GXPosition(prev.mX * cos + prev.mZ * sin + prev.mCenter);
-                if (flags & 1) {
+                if (flags & FLAG_TEXCOORD) {
                     GXTexCoord2f32(texStep * j, prev.mTexCoord);
                 }
 
                 GXPosition(vertex.mX * cos + vertex.mZ * sin + vertex.mCenter);
-                if (flags & 1) {
+                if (flags & FLAG_TEXCOORD) {
                     GXTexCoord2f32(texStep * j, vertex.mTexCoord);
                 }
             }
@@ -444,12 +258,12 @@ void DrawSmoothStripeStrategy::DrawSectionTube_BSpline(
                 f32 cos = pTrigonometric[j].mCos;
 
                 GXPosition(vertex.mX * cos + vertex.mZ * sin + vertex.mCenter);
-                if (flags & 1) {
+                if (flags & FLAG_TEXCOORD) {
                     GXTexCoord2f32(texStep * j, vertex.mTexCoord);
                 }
 
                 GXPosition(prev.mX * cos + prev.mZ * sin + prev.mCenter);
-                if (flags & 1) {
+                if (flags & FLAG_TEXCOORD) {
                     GXTexCoord2f32(texStep * j, prev.mTexCoord);
                 }
             }
@@ -487,7 +301,7 @@ void DrawSmoothStripeStrategy::DrawSmoothStripe_BSpline_ConnectNone(
     switch (GetStripeTexmapType(rSetting)) {
     case 0:
     default: {
-        texStep = 1.0f / (numParticle - 1);
+        texStep = math::FInv(static_cast<f32>(numParticle - 1));
         break;
     }
 
@@ -674,7 +488,7 @@ void DrawSmoothStripeStrategy::DrawSmoothStripe_BSpline_ConnectEmitter(
     switch (GetStripeTexmapType(rSetting)) {
     case 0:
     default: {
-        texStep = 1.0f / numParticle;
+        texStep = math::FInv(static_cast<f32>(numParticle));
         break;
     }
 
@@ -778,7 +592,7 @@ void DrawSmoothStripeStrategy::DrawSmoothStripeTube_BSpline_ConnectNone(
     switch (GetStripeTexmapType(rSetting)) {
     case 0:
     default: {
-        texStep = 1.0f / (numParticle - 1);
+        texStep = math::FInv(static_cast<f32>(numParticle - 1));
         break;
     }
 
@@ -952,7 +766,7 @@ void DrawSmoothStripeStrategy::DrawSmoothStripeTube_BSpline_ConnectEmitter(
     switch (GetStripeTexmapType(rSetting)) {
     case 0:
     default: {
-        texStep = 1.0f / numParticle;
+        texStep = math::FInv(static_cast<f32>(numParticle));
         break;
     }
 
@@ -1029,7 +843,7 @@ void DrawSmoothStripeStrategy::DrawSmoothStripeTube_BSpline_ConnectEmitter(
 }
 
 void DrawSmoothStripeStrategy::DrawSmoothStripeTube(
-    AheadContextStripe* pContext, int numDiv, int flags) {
+    AheadContextStripe* pContext, int numDiv, int flags, bool xfFlush) {
 
     const EmitterDrawSetting& rSetting =
         *pContext->mCommon.mParticleManager->mResource->GetEmitterDrawSetting();
@@ -1066,24 +880,42 @@ void DrawSmoothStripeStrategy::DrawSmoothStripeTube(
     case 0:
     default: {
         GXSetCullMode(GX_CULL_FRONT);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawSmoothStripeTube_BSpline_ConnectNone(pContext, numDiv, flags);
         GXSetCullMode(GX_CULL_BACK);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawSmoothStripeTube_BSpline_ConnectNone(pContext, numDiv, flags);
         break;
     }
 
     case 1: {
         GXSetCullMode(GX_CULL_FRONT);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawSmoothStripeTube_BSpline_ConnectRing(pContext, numDiv, flags);
         GXSetCullMode(GX_CULL_BACK);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawSmoothStripeTube_BSpline_ConnectRing(pContext, numDiv, flags);
         break;
     }
 
     case 2: {
         GXSetCullMode(GX_CULL_FRONT);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawSmoothStripeTube_BSpline_ConnectEmitter(pContext, numDiv, flags);
         GXSetCullMode(GX_CULL_BACK);
+        if (xfFlush) {
+            DrawDummy(flags);
+        }
         DrawSmoothStripeTube_BSpline_ConnectEmitter(pContext, numDiv, flags);
         break;
     }
@@ -1102,7 +934,10 @@ void DrawSmoothStripeStrategy::Draw(const DrawInfo& rInfo,
         return;
     }
 
-    AheadContextStripe context(*rInfo.GetViewMtx(), pManager);
+    math::MTX34 viewMtx;
+    rInfo.GetViewMtxZOffset(&viewMtx);
+
+    AheadContextStripe context(viewMtx, pManager);
 
     math::VEC3 initAxis = GetInitialPrevAxis(rSetting, context);
 
@@ -1118,10 +953,25 @@ void DrawSmoothStripeStrategy::Draw(const DrawInfo& rInfo,
 
     int drawOrder = rSetting.mFlags & EmitterDrawSetting::FLAG_DRAW_ORDER;
 
-    int flags =
-        (rSetting.typeOption == EmitterDrawSetting::ASSIST_ST_BILLBOARD ? 2
-                                                                         : 0) |
-        (drawOrder ? 4 : 0);
+    int flags = (rSetting.typeOption == EmitterDrawSetting::ASSIST_ST_BILLBOARD
+                     ? FLAG_BILLBOARD
+                     : 0) |
+                (drawOrder ? FLAG_ELDERS_FIRST : 0);
+
+    math::MTX34 posMtx;
+    rInfo.GetViewMtxZOffset(&posMtx);
+    math::MTX34Mult(&posMtx, &posMtx, &context.mCommon.mParticleManagerMtx);
+
+    if (flags & FLAG_BILLBOARD) {
+        math::MTX34 invMtx;
+
+        if (math::MTX34Inv(&invMtx, &posMtx)) {
+            context.mScreenAxisZ =
+                math::VEC3(invMtx._02, invMtx._12, invMtx._22);
+        } else {
+            context.mScreenAxisZ = math::VEC3(0.0f, 0.0f, 1.0f);
+        }
+    }
 
     int connect = rSetting.typeOption2 & 7;
 
@@ -1151,29 +1001,16 @@ void DrawSmoothStripeStrategy::Draw(const DrawInfo& rInfo,
     }
 
     InitGraphics(rInfo, pManager);
-
-    flags |= mNumTexmap > 0 ? 1 : 0;
-
-    math::MTX34 posMtx;
-    math::MTX34Mult(&posMtx, rInfo.GetViewMtx(),
-                    &context.mCommon.mParticleManagerMtx);
     GXLoadPosMtxImm(posMtx, GX_PNMTX0);
 
-    if (flags & 2) {
-        math::MTX34 invMtx;
+    flags |= mNumTexmap > 0 ? FLAG_TEXCOORD : 0;
 
-        if (math::MTX34Inv(&invMtx, &posMtx)) {
-            context.mScreenAxisZ =
-                math::VEC3(invMtx._02, invMtx._12, invMtx._22);
-        } else {
-            context.mScreenAxisZ = math::VEC3(0.0f, 0.0f, 1.0f);
-        }
-    }
+    Particle* pFirst =
+        GetGetFirstDrawParticleFunc(rSetting.mFlags &
+                                    EmitterDrawSetting::FLAG_DRAW_ORDER)(
+            pManager);
 
-    SetupGP(GetGetFirstDrawParticleFunc(rSetting.mFlags &
-                                        EmitterDrawSetting::FLAG_DRAW_ORDER)(
-                pManager),
-            rSetting, rInfo, true, false);
+    SetupGP(pFirst, rSetting, rInfo, true, false);
 
     int numDiv = rSetting.typeOption1;
     if (numDiv == 0) {
@@ -1198,7 +1035,15 @@ void DrawSmoothStripeStrategy::Draw(const DrawInfo& rInfo,
     }
 
     case EmitterDrawSetting::ASSIST_ST_TUBE: {
-        DrawSmoothStripeTube(&context, numDiv, flags);
+        bool xfFlush = false;
+
+        if ((rSetting.mFlags & EmitterDrawSetting::FLAG_CLIP_DISABLE) ||
+            !pFirst->mParticleManager->mManagerEM->mManagerEF->mManagerES
+                 ->mXFFlushSafe) {
+            xfFlush = true;
+        }
+
+        DrawSmoothStripeTube(&context, numDiv, flags, xfFlush);
         break;
     }
     }
@@ -1209,36 +1054,66 @@ DrawSmoothStripeStrategy::GetInitialPrevAxis(const EmitterDrawSetting& rSetting,
                                        const AheadContextStripe& rContext) {
     math::VEC3 axis;
 
-    switch (rSetting.typeOption2 & 0x38) {
-    case 0x08: {
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx,
-                                  &GetXUnitVec());
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mParticleManagerMtxInv,
-                                  &axis);
-        break;
-    }
+    if (rSetting.typeDir == EmitterDrawSetting::DIR_NO_DESIGN_7) {
+        const math::MTX34& rInvMtx = rContext.mCommon.mParticleManagerMtxInv;
 
-    case 0x00:
-    default: {
-        axis = rContext.mCommon.mEmitterAxisY;
-        return axis;
-    }
+        switch (rSetting.typeOption2 & 0x38) {
+        case 0x08: {
+            axis = math::VEC3(rInvMtx._00, rInvMtx._10, rInvMtx._20);
+            break;
+        }
 
-    case 0x10: {
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx,
-                                  &GetZUnitVec());
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mParticleManagerMtxInv,
-                                  &axis);
-        break;
-    }
+        case 0x00:
+        default: {
+            axis = math::VEC3(rInvMtx._01, rInvMtx._11, rInvMtx._21);
+            break;
+        }
 
-    case 0x18: {
-        math::VEC3 one(1.0f, 1.0f, 1.0f);
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx, &one);
-        math::VEC3TransformNormal(&axis, &rContext.mCommon.mParticleManagerMtxInv,
-                                  &axis);
-        break;
-    }
+        case 0x10: {
+            axis = math::VEC3(rInvMtx._02, rInvMtx._12, rInvMtx._22);
+            break;
+        }
+
+        case 0x18: {
+            axis = math::VEC3(rInvMtx._00, rInvMtx._10, rInvMtx._20) +
+                   math::VEC3(rInvMtx._01, rInvMtx._11, rInvMtx._21) +
+                   math::VEC3(rInvMtx._02, rInvMtx._12, rInvMtx._22);
+            break;
+        }
+        }
+    } else {
+        switch (rSetting.typeOption2 & 0x38) {
+        case 0x08: {
+            math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx,
+                                      &GetXUnitVec());
+            math::VEC3TransformNormal(
+                &axis, &rContext.mCommon.mParticleManagerMtxInv, &axis);
+            break;
+        }
+
+        case 0x00:
+        default: {
+            axis = rContext.mCommon.mEmitterAxisY;
+            return axis;
+        }
+
+        case 0x10: {
+            math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx,
+                                      &GetZUnitVec());
+            math::VEC3TransformNormal(
+                &axis, &rContext.mCommon.mParticleManagerMtxInv, &axis);
+            break;
+        }
+
+        case 0x18: {
+            math::VEC3 one(1.0f, 1.0f, 1.0f);
+            math::VEC3TransformNormal(&axis, &rContext.mCommon.mEmitterMtx,
+                                      &one);
+            math::VEC3TransformNormal(
+                &axis, &rContext.mCommon.mParticleManagerMtxInv, &axis);
+            break;
+        }
+        }
     }
 
     if (!Normalize(&axis)) {
@@ -1270,7 +1145,8 @@ DrawSmoothStripeStrategy::GetCalcAheadFunc(ParticleManager* pManager) {
         return reinterpret_cast<CalcAheadFunc>(CalcAhead_Particle_Stripe);
     }
 
-    case EmitterDrawSetting::AHEAD_CMN_NODESIGN: {
+    case EmitterDrawSetting::AHEAD_CMN_NODESIGN:
+    case EmitterDrawSetting::DIR_NO_DESIGN_7: {
         return CalcAhead_NoDesign;
     }
 

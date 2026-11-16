@@ -34,6 +34,16 @@ private:
         FLAG_EXIST_CALC_REMAIN = (1 << 16),
     };
 
+public:
+    enum CalcOption {
+        // Only the billboard emitters are calculated
+        CALC_OPT_ONLY_BILLBOARD = (1 << 0),
+        // The frame was begun by an earlier call: no BeginCalc, the
+        // previous emitter positions stay
+        CALC_OPT_CONTINUE = (1 << 1),
+    };
+
+private:
     struct CallBack {
         typedef void (*PrevEmissionFunc)(Emitter* pEmitter,
                                          ParticleManager* pManager, int* pCount,
@@ -76,7 +86,7 @@ public:
         return CreateEmitter(res.ptr(), drawWeight, calcRemain);
     } // at 0x14
 
-    virtual void Calc(bool onlyBillboard);    // at 0x18
+    virtual void Calc(u32 option);            // at 0x18
     virtual void Draw(const DrawInfo& rInfo); // at 0x1C
 
     bool Closing(Emitter* pEmitter);

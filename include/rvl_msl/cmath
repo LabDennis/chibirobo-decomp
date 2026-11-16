@@ -41,6 +41,8 @@ inline float sinf(float x) { return ::sin(x); }
 inline float cosf(float x) { return ::cos(x); }
 inline float asinf(float x) { return ::asin(x); }
 inline float atan2f(float y, float x) { return ::atan2(y, x); }
+// MSL's inline fabsf: a double fabs cast back to float (fabs + frsp in retail, e.g. 0x80247E24)
+inline float fabsf(float x) { return static_cast<float>(fabsl(x)); }
 } // namespace std
 
 #endif

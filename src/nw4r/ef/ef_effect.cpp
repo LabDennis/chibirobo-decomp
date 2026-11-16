@@ -79,6 +79,11 @@ bool Effect::Closing(Emitter* pEmitter) {
 Emitter* Effect::CreateEmitter(EmitterResource* pResource, u8 drawWeight,
                                u16 calcRemain) {
 
+    if (!(pResource->GetEmitterDesc()->commonFlag &
+          EmitterDesc::CMN_FLAG_RELOCATED)) {
+        return NULL;
+    }
+
     Emitter* pEmitter = mManagerES->GetMemoryManager()->AllocEmitter();
     if (pEmitter == NULL) {
         return false;
@@ -140,8 +145,8 @@ u32 Effect::RetireParticleAll() {
     return num;
 }
 
-void Effect::Calc(bool onlyBillboard) {
-    if (onlyBillboard) {
+void Effect::Calc(u32 option) {
+    if (option & CALC_OPT_ONLY_BILLBOARD) {
         NW4R_UT_LIST_FOREACH (Emitter, it, mActivityList.mActiveList, {
             if (it->mLifeStatus == NW4R_EF_LS_ACTIVE ||
                 it->mLifeStatus == NW4R_EF_LS_WAIT) {
@@ -162,18 +167,22 @@ void Effect::Calc(bool onlyBillboard) {
         return;
     }
 
-    NW4R_UT_LIST_FOREACH (Emitter, pEmitter, mActivityList.mActiveList, {
-        if (pEmitter->mLifeStatus == NW4R_EF_LS_ACTIVE ||
-            pEmitter->mLifeStatus == NW4R_EF_LS_WAIT) {
+    if (!(option & CALC_OPT_CONTINUE)) {
+        NW4R_UT_LIST_FOREACH (Emitter, pEmitter, mActivityList.mActiveList, {
+            if (pEmitter->mLifeStatus == NW4R_EF_LS_ACTIVE ||
+                pEmitter->mLifeStatus == NW4R_EF_LS_WAIT) {
 
-            if (pEmitter->mEvalStatus == NW4R_EF_ES_DONE) {
-                pEmitter->mEvalStatus = NW4R_EF_ES_WAIT;
+                if (pEmitter->mEvalStatus == NW4R_EF_ES_DONE) {
+                    pEmitter->mEvalStatus = NW4R_EF_ES_WAIT;
+                }
             }
-        }
 
-        NW4R_UT_LIST_FOREACH (ParticleManager, pManager, pEmitter->mActivityList.mActiveList,
-                              { pManager->BeginCalc(false); });
-    });
+            pEmitter->mPrevGlobalPos = pEmitter->mGlobalPos;
+
+            NW4R_UT_LIST_FOREACH (ParticleManager, pManager, pEmitter->mActivityList.mActiveList,
+                                  { pManager->BeginCalc(false); });
+        });
+    }
 
     SetFlagExistCalcRemain(true);
 
@@ -287,6 +296,12 @@ void Effect::Calc(bool onlyBillboard) {
 
         NW4R_UT_LIST_FOREACH (ParticleManager, pManager, pEmitter->mActivityList.mActiveList,
                               { pManager->EndCalc(); });
+
+        math::MTX34 globalMtx;
+        pEmitter->CalcGlobalMtx(&globalMtx);
+        pEmitter->mGlobalPos.x = globalMtx._03;
+        pEmitter->mGlobalPos.y = globalMtx._13;
+        pEmitter->mGlobalPos.z = globalMtx._23;
     });
 }
 

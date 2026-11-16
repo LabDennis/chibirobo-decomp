@@ -36,14 +36,14 @@ void EmitterForm::CalcVelocity(math::VEC3* pVel, Emitter* pEmitter,
         f32 ry = pEmitter->mRandom.RandFloat() * NW4R_MATH_PI * 2;
         f32 rz = pEmitter->mRandom.RandFloat() * NW4R_MATH_PI * 2;
 
-        f32 sr = std::sinf(rx);
-        f32 cr = std::cosf(rx);
+        f32 sr, cr;
+        SinCosRad(&sr, &cr, rx);
 
-        f32 sp = std::sinf(ry);
-        f32 cp = std::cosf(ry);
+        f32 sp, cp;
+        SinCosRad(&sp, &cp, ry);
 
-        f32 sh = std::sinf(rz);
-        f32 ch = std::cosf(rz);
+        f32 sh, ch;
+        SinCosRad(&sh, &ch, rz);
 
         pVel->x +=
             (cr * sp * ch + sr * sh) * pEmitter->mParameter.mVelPowerRandomDir;
@@ -62,7 +62,7 @@ void EmitterForm::CalcVelocity(math::VEC3* pVel, Emitter* pEmitter,
     if (pEmitter->mParameter.mVelPowerSpecDir != 0.0f) {
         if (pEmitter->mParameter.mVelDiffusionSpecDir == 0.0f) {
             math::MTX34 mtx;
-            math::MTX34RotXYZRad(&mtx, pEmitter->mParameter.mVelSpecDir.x,
+            MtxRotXYZRad(&mtx, pEmitter->mParameter.mVelSpecDir.x,
                                  pEmitter->mParameter.mVelSpecDir.y,
                                  pEmitter->mParameter.mVelSpecDir.z);
 
@@ -76,14 +76,14 @@ void EmitterForm::CalcVelocity(math::VEC3* pVel, Emitter* pEmitter,
             math::MTX34 mtx;
 
             // clang-format off
-            math::MTX34RotXYZRad(&mtx,
+            MtxRotXYZRad(&mtx,
                 pEmitter->mRandom.RandFloat() * pEmitter->mParameter.mVelDiffusionSpecDir,
                 pEmitter->mRandom.RandFloat() * NW4R_MATH_PI * 2,
                 0.0f);
             // clang-format on
 
             math::MTX34 rotFromZ;
-            math::MTX34RotXYZRad(&rotFromZ, pEmitter->mParameter.mVelSpecDir.x,
+            MtxRotXYZRad(&rotFromZ, pEmitter->mParameter.mVelSpecDir.x,
                                  pEmitter->mParameter.mVelSpecDir.y,
                                  pEmitter->mParameter.mVelSpecDir.z);
 

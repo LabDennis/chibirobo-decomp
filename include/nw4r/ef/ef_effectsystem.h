@@ -26,17 +26,21 @@ public:
     DrawStrategyBuilder* mDrawStrategyBuilder; // at 0x8
     EmitFormBuilder* mEmitFormBuilder;         // at 0xC
     CreationQueue mCreationQueue;              // at 0x10
-    u32 mMaxGroupID;                           // at 0x5014
-    ActivityList* mActivityList;               // at 0x5018
-    Random mRandom;                            // at 0x501C
-    math::VEC3 mProcessCameraPos;              // at 0x5020
-    math::MTX34 mProcessCameraMtx;             // at 0x502C
-    f32 mProcessCameraFar;                     // at 0x505C
-    f32 mProcessCameraNear;                    // at 0x5060
-    bool mXFFlushSafe;                         // at 0x5064
+    u32 mMaxGroupID;                           // at 0xC014
+    ActivityList* mActivityList;               // at 0xC018
+    Random mRandom;                            // at 0xC01C
+    math::VEC3 mProcessCameraPos;              // at 0xC020
+    math::MTX34 mProcessCameraMtx;             // at 0xC02C
+    f32 mProcessCameraFar;                     // at 0xC05C
+    f32 mProcessCameraNear;                    // at 0xC060
+    bool mXFFlushSafe;                         // at 0xC064
 
-    static bool mDisplayVersion;
+    // Set once the version text is registered
+    static BOOL mDisplayVersion;
     static EffectSystem instance;
+
+private:
+    static void SwapEffect(ut::List* pList, Effect* pFront, Effect* pBack);
 
 public:
     static EffectSystem* GetInstance();
@@ -47,7 +51,8 @@ public:
     bool Initialize(u32 maxGroupID);
     bool Closing(Effect* pEffect);
 
-    Effect* CreateEffect(const char* pName, u32 groupID, u16 calcRemain);
+    Effect* CreateEffect(EmitterResource* pResource, u32 groupID,
+                         u16 calcRemain);
     u32 RetireEffect(Effect* pEffect);
 
     u32 RetireEffectAll(u32 groupID);
@@ -56,6 +61,12 @@ public:
 
     void Calc(u32 groupID, bool onlyBillboard);
     void Draw(const DrawInfo& rInfo, u32 groupID);
+
+    void SetProcessCamera(const math::VEC3& rPos, const math::MTX34& rMtx,
+                          f32 near, f32 far);
+
+    typedef bool (*EffectCompareFunc)(const Effect* pLhs, const Effect* pRhs);
+    void SortEffect(EffectCompareFunc pFunc, u32 groupID);
 
     MemoryManagerBase* GetMemoryManager() const {
         return mMemoryManager;

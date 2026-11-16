@@ -21,9 +21,10 @@ struct TextureData {
     u8 min_filt;     // at 0x15
     u8 mag_filt;     // at 0x16
     u8 reserved[1];  // at 0x17
-    // f32 lod_bias;    // at 0x18
-    u8* texture; // at 0x18
-    u8* tlut;    // at 0x1C
+    f32 lod_bias;    // at 0x18
+    u8* texture;     // at 0x1C
+    u8* tlut;        // at 0x20
+    u8 PADDING_0x24[0x40 - 0x24]; // image data starts on a 32-byte boundary
 };
 
 class ResTexture {
