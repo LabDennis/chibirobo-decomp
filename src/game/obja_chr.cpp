@@ -5051,7 +5051,10 @@ Vec XObjChr::GetCameraTarget()
 			start.z    = joint.z;
 			target     = start + (Vec) { 0, 10, 0 };
 		} else if (anim == 0x18) {
-			Vec offset = { mHang.mTargetOffset.x, -mHang.mTargetOffset.y, mHang.mTargetOffset.z };
+			Vec offset;
+			offset.x = mHang.mTargetOffset.x;
+			offset.y = -mHang.mTargetOffset.y;
+			offset.z = mHang.mTargetOffset.z;
 			Mtx rot;
 			PSMTXRotRad(rot, 'y', mMoveRotate.y);
 			PSMTXMultVec(rot, &offset, &offset);
@@ -5142,12 +5145,15 @@ Vec XObjChr::GetCameraTarget()
 				rate = .8f;
 			f32 leadX = mHeadOffset * (f32)sin(mMoveRotate.y);
 			f32 leadZ = mHeadOffset * (f32)cos(mMoveRotate.y);
-			target.x += leadX + (7.f * rate) * (mMoveTranslate.x - mLastPos.x);
-			target.z += leadZ + (7.f * rate) * (mMoveTranslate.z - mLastPos.z);
+			f32 moveX = (7.f * rate) * (mMoveTranslate.x - mLastPos.x);
+			f32 moveZ = (7.f * rate) * (mMoveTranslate.z - mLastPos.z);
+			target.x += leadX + moveX;
+			target.z += leadZ + moveZ;
 		}
 		f32* coord = &target.x;
+		f32* last  = mCameraTarget;
 		for (s32 i = 0; i < 3; ++i) {
-			f32& old = mCameraTarget[i];
+			f32& old = last[i];
 			if (ClassifyFloatBits(old) == FP_NAN) {
 				old = coord[i];
 				continue;
