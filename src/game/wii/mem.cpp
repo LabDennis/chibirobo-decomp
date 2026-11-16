@@ -28,8 +28,9 @@ STATIC_ASSERT(sizeof(MEMINFO) == 0x90);
 
 #define MEMINFO_MAX 0x400
 
-static MEMAllocator sAllocator1;
-static MEMAllocator sAllocator2;
+// the allocators over the two heaps, the model code allocates its scene objects through them
+MEMAllocator gWiiMem1Allocator;
+MEMAllocator gWiiPadAllocator;
 static MEMINFO sInfo[MEMINFO_MAX];
 MEMiHeapHead* gWiiMem1Heap;
 MEMiHeapHead* gWiiGameHeap;
@@ -64,7 +65,7 @@ void mm::InitMem1(void* start, u32 size)
 {
 	MEMiHeapHead* heap = MEMCreateExpHeapEx(start, size, MEM_HEAP_OPT_CLEAR_ALLOC | MEM_HEAP_OPT_DEBUG_FILL | MEM_HEAP_OPT_CAN_LOCK);
 	gWiiMem1Heap       = heap;
-	MEMInitAllocatorForExpHeap(&sAllocator1, heap, 0x20);
+	MEMInitAllocatorForExpHeap(&gWiiMem1Allocator, heap, 0x20);
 	OSSetArenaLo((u8*)start + size);
 }
 
@@ -76,7 +77,7 @@ void mm::InitMem2(void* start, u32 size)
 {
 	MEMiHeapHead* heap = MEMCreateExpHeapEx(start, size, MEM_HEAP_OPT_CLEAR_ALLOC | MEM_HEAP_OPT_DEBUG_FILL | MEM_HEAP_OPT_CAN_LOCK);
 	gWiiGameHeap       = heap;
-	MEMInitAllocatorForExpHeap(&sAllocator2, heap, 0x20);
+	MEMInitAllocatorForExpHeap(&gWiiPadAllocator, heap, 0x20);
 	OSSetMEM2ArenaLo((u8*)start + size);
 }
 

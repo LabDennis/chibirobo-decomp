@@ -1068,6 +1068,7 @@ game/wii/cobj.cpp:
 	extabindex start:0x80017474 end:0x80017714
 	.text start:0x802B6560 end:0x802BA4F4
 	.rodata start:0x802E56D8 end:0x802E59A0
+	.data start:0x80355EE0 end:0x80356090
 	.sdata2 start:0x805A7A78 end:0x805A7AA8
 
 game/wii/ceffect.cpp:
