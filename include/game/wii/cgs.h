@@ -21,7 +21,8 @@ public:
 	GXLogicOp mOp;      // _0C
 	// _10 vtable
 
-	GSBlendMode(GXBlendMode type, GXBlendFactor src, GXBlendFactor dst, GXLogicOp op)
+	GSBlendMode(GXBlendMode type, GXBlendFactor src, GXBlendFactor dst, GXLogicOp op) { Set(type, src, dst, op); }
+	void Set(GXBlendMode type, GXBlendFactor src, GXBlendFactor dst, GXLogicOp op)
 	{
 		mType = type;
 		mSrc  = src;
@@ -30,6 +31,8 @@ public:
 		GXSetBlendMode(type, src, dst, op);
 	}
 	virtual ~GSBlendMode() { } // _08
+
+	void Set(GSBlendMode src); // 0x802A9BAC
 };
 
 class GSZMode {
@@ -39,7 +42,8 @@ public:
 	GXBool mUpdate;  // _08
 	// _0C vtable
 
-	GSZMode(GXBool enable, GXCompare func, GXBool update)
+	GSZMode(GXBool enable, GXCompare func, GXBool update) { Set(enable, func, update); }
+	void Set(GXBool enable, GXCompare func, GXBool update)
 	{
 		mEnable = enable;
 		mFunc   = func;
@@ -47,6 +51,8 @@ public:
 		GXSetZMode(enable, func, update);
 	}
 	virtual ~GSZMode() { } // _08
+
+	void Set(GSZMode src); // 0x802A9BD8
 };
 
 class GSAlphaCompare {
@@ -58,7 +64,8 @@ public:
 	u8 mRef1;         // _10
 	// _14 vtable
 
-	GSAlphaCompare(GXCompare comp0, u8 ref0, GXAlphaOp op, GXCompare comp1, u8 ref1)
+	GSAlphaCompare(GXCompare comp0, u8 ref0, GXAlphaOp op, GXCompare comp1, u8 ref1) { Set(comp0, ref0, op, comp1, ref1); }
+	void Set(GXCompare comp0, u8 ref0, GXAlphaOp op, GXCompare comp1, u8 ref1)
 	{
 		mComp0 = comp0;
 		mRef0  = ref0;
@@ -68,6 +75,8 @@ public:
 		GXSetAlphaCompare(comp0, ref0, op, comp1, ref1);
 	}
 	virtual ~GSAlphaCompare() { } // _08
+
+	void Set(GSAlphaCompare src); // 0x802A9BFC
 };
 
 class GSColorUpdate {
@@ -75,12 +84,15 @@ public:
 	GXBool mEnable; // _00
 	// _04 vtable
 
-	GSColorUpdate(GXBool enable)
+	GSColorUpdate(GXBool enable) { Set(enable); }
+	void Set(GXBool enable)
 	{
 		mEnable = enable;
 		GXSetColorUpdate(enable);
 	}
 	virtual ~GSColorUpdate() { } // _08
+
+	void Set(GSColorUpdate src); // 0x802A9C30
 };
 
 class GSAlphaUpdate {
@@ -88,12 +100,15 @@ public:
 	GXBool mEnable; // _00
 	// _04 vtable
 
-	GSAlphaUpdate(GXBool enable)
+	GSAlphaUpdate(GXBool enable) { Set(enable); }
+	void Set(GXBool enable)
 	{
 		mEnable = enable;
 		GXSetAlphaUpdate(enable);
 	}
 	virtual ~GSAlphaUpdate() { } // _08
+
+	void Set(GSAlphaUpdate src); // 0x802A9C40
 };
 
 class GSDstAlpha {
@@ -102,13 +117,16 @@ public:
 	u8 mAlpha;      // _01
 	// _04 vtable
 
-	GSDstAlpha(GXBool enable, u8 alpha)
+	GSDstAlpha(GXBool enable, u8 alpha) { Set(enable, alpha); }
+	void Set(GXBool enable, u8 alpha)
 	{
 		mEnable = enable;
 		mAlpha  = alpha;
 		GXSetDstAlpha(enable, alpha);
 	}
 	virtual ~GSDstAlpha() { } // _08
+
+	void Set(GSDstAlpha src); // 0x802A9C50
 };
 
 class GSZCompLoc {
@@ -116,12 +134,15 @@ public:
 	GXBool mBeforeTex; // _00
 	// _04 vtable
 
-	GSZCompLoc(GXBool beforeTex)
+	GSZCompLoc(GXBool beforeTex) { Set(beforeTex); }
+	void Set(GXBool beforeTex)
 	{
 		mBeforeTex = beforeTex;
 		GXSetZCompLoc(beforeTex);
 	}
 	virtual ~GSZCompLoc() { } // _08
+
+	void Set(GSZCompLoc src); // 0x802A9C6C
 };
 
 class GSDither {
@@ -129,12 +150,15 @@ public:
 	GXBool mEnable; // _00
 	// _04 vtable
 
-	GSDither(GXBool enable)
+	GSDither(GXBool enable) { Set(enable); }
+	void Set(GXBool enable)
 	{
 		mEnable = enable;
 		GXSetDither(enable);
 	}
 	virtual ~GSDither() { } // _08
+
+	void Set(GSDither src); // 0x802A9C7C
 };
 
 class GSLineWidth {
@@ -143,13 +167,16 @@ public:
 	GXTexOffset mOffset; // _04
 	// _08 vtable
 
-	GSLineWidth(u8 width, GXTexOffset offset)
+	GSLineWidth(u8 width, GXTexOffset offset) { Set(width, offset); }
+	void Set(u8 width, GXTexOffset offset)
 	{
 		mWidth  = width;
 		mOffset = offset;
 		GXSetLineWidth(width, offset);
 	}
 	virtual ~GSLineWidth() { } // _08
+
+	void Set(GSLineWidth src); // 0x802A9C8C
 };
 
 class GSPointSize {
@@ -158,13 +185,16 @@ public:
 	GXTexOffset mOffset; // _04
 	// _08 vtable
 
-	GSPointSize(u8 size, GXTexOffset offset)
+	GSPointSize(u8 size, GXTexOffset offset) { Set(size, offset); }
+	void Set(u8 size, GXTexOffset offset)
 	{
 		mSize   = size;
 		mOffset = offset;
 		GXSetPointSize(size, offset);
 	}
 	virtual ~GSPointSize() { } // _08
+
+	void Set(GSPointSize src); // 0x802A9CA8
 };
 
 class GSCullMode {
@@ -172,12 +202,15 @@ public:
 	GXCullMode mMode; // _00
 	// _04 vtable
 
-	GSCullMode(GXCullMode mode)
+	GSCullMode(GXCullMode mode) { Set(mode); }
+	void Set(GXCullMode mode)
 	{
 		mMode = mode;
 		GXSetCullMode(mode);
 	}
 	virtual ~GSCullMode() { } // _08
+
+	void Set(GSCullMode src); // 0x802A9CC4
 };
 
 class GSClipMode {
@@ -185,12 +218,15 @@ public:
 	GXClipMode mMode; // _00
 	// _04 vtable
 
-	GSClipMode(GXClipMode mode)
+	GSClipMode(GXClipMode mode) { Set(mode); }
+	void Set(GXClipMode mode)
 	{
 		mMode = mode;
 		GXSetClipMode(mode);
 	}
 	virtual ~GSClipMode() { } // _08
+
+	void Set(GSClipMode src); // 0x802A9CD4
 };
 
 // the tev classes carry no stage, so they are applied later, by CGsTevStage
@@ -201,13 +237,16 @@ public:
 	GXChannelID mColor;  // _08
 	// _0C vtable
 
-	GSTevOrder(GXTexCoordID coord, GXTexMapID map, GXChannelID color)
+	GSTevOrder(GXTexCoordID coord, GXTexMapID map, GXChannelID color) { Set(coord, map, color); }
+	void Set(GXTexCoordID coord, GXTexMapID map, GXChannelID color)
 	{
 		mCoord = coord;
 		mMap   = map;
 		mColor = color;
 	}
 	virtual ~GSTevOrder() { } // _08
+
+	void Set(GSTevOrder src); // 0x802A9D9C
 };
 
 class GSTevColorOp {
@@ -219,7 +258,8 @@ public:
 	GXTevRegID mReg;   // _10
 	// _14 vtable
 
-	GSTevColorOp(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg)
+	GSTevColorOp(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg) { Set(op, bias, scale, clamp, reg); }
+	void Set(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg)
 	{
 		mOp    = op;
 		mScale = scale;
@@ -228,6 +268,8 @@ public:
 		mReg   = reg;
 	}
 	virtual ~GSTevColorOp() { } // _08
+
+	void Set(GSTevColorOp src); // 0x802A9F7C
 };
 
 class GSTevColorIn {
@@ -238,7 +280,8 @@ public:
 	GXTevColorArg mD; // _0C
 	// _10 vtable
 
-	GSTevColorIn(GXTevColorArg a, GXTevColorArg b, GXTevColorArg c, GXTevColorArg d)
+	GSTevColorIn(GXTevColorArg a, GXTevColorArg b, GXTevColorArg c, GXTevColorArg d) { Set(a, b, c, d); }
+	void Set(GXTevColorArg a, GXTevColorArg b, GXTevColorArg c, GXTevColorArg d)
 	{
 		mA = a;
 		mB = b;
@@ -246,6 +289,8 @@ public:
 		mD = d;
 	}
 	virtual ~GSTevColorIn() { } // _08
+
+	void Set(GSTevColorIn src); // 0x802A9FA8
 };
 
 class GSTevAlphaOp {
@@ -257,7 +302,8 @@ public:
 	GXTevRegID mReg;   // _10
 	// _14 vtable
 
-	GSTevAlphaOp(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg)
+	GSTevAlphaOp(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg) { Set(op, bias, scale, clamp, reg); }
+	void Set(GXTevOp op, GXTevBias bias, GXTevScale scale, GXBool clamp, GXTevRegID reg)
 	{
 		mOp    = op;
 		mScale = scale;
@@ -266,6 +312,8 @@ public:
 		mReg   = reg;
 	}
 	virtual ~GSTevAlphaOp() { } // _08
+
+	void Set(GSTevAlphaOp src); // 0x802A9FCC
 };
 
 class GSTevAlphaIn {
@@ -276,7 +324,8 @@ public:
 	GXTevAlphaArg mD; // _0C
 	// _10 vtable
 
-	GSTevAlphaIn(GXTevAlphaArg a, GXTevAlphaArg b, GXTevAlphaArg c, GXTevAlphaArg d)
+	GSTevAlphaIn(GXTevAlphaArg a, GXTevAlphaArg b, GXTevAlphaArg c, GXTevAlphaArg d) { Set(a, b, c, d); }
+	void Set(GXTevAlphaArg a, GXTevAlphaArg b, GXTevAlphaArg c, GXTevAlphaArg d)
 	{
 		mA = a;
 		mB = b;
@@ -284,6 +333,8 @@ public:
 		mD = d;
 	}
 	virtual ~GSTevAlphaIn() { } // _08
+
+	void Set(GSTevAlphaIn src); // 0x802A9FF8
 };
 
 class GSChanCtrl {
@@ -298,6 +349,10 @@ public:
 
 	GSChanCtrl(GXBool enable, GXColorSrc ambSrc, GXColorSrc matSrc, u32 lightMask, GXDiffuseFn diffFn, GXAttnFn attnFn)
 	{
+		Set(enable, ambSrc, matSrc, lightMask, diffFn, attnFn);
+	}
+	void Set(GXBool enable, GXColorSrc ambSrc, GXColorSrc matSrc, u32 lightMask, GXDiffuseFn diffFn, GXAttnFn attnFn)
+	{
 		mEnable    = enable;
 		mAmbSrc    = ambSrc;
 		mMatSrc    = matSrc;
@@ -308,235 +363,308 @@ public:
 	virtual ~GSChanCtrl() { } // _08
 };
 
+// The tev settings only CGsTevStage holds; nothing hands them around, so they have no constructor here.
+// Class names from RTTI.
+class GSTevMode {
+public:
+	GXTevMode mMode; // _00
+	// _04 vtable
+
+	virtual ~GSTevMode() { } // _08
+};
+
+class GSTevKColorSel {
+public:
+	GXTevKColorSel mSel; // _00
+	// _04 vtable
+
+	virtual ~GSTevKColorSel() { } // _08
+};
+
+class GSTevKAlphaSel {
+public:
+	GXTevKAlphaSel mSel; // _00
+	// _04 vtable
+
+	virtual ~GSTevKAlphaSel() { } // _08
+};
+
+class GSTevSwapMode {
+public:
+	GXTevSwapSel mRas; // _00
+	GXTevSwapSel mTex; // _04
+	// _08 vtable
+
+	virtual ~GSTevSwapMode() { } // _08
+};
+
+class GSTevSwapModeTable {
+public:
+	GXTevSwapSel mTable;   // _00
+	GXTevColorChan mRed;   // _04
+	GXTevColorChan mGreen; // _08
+	GXTevColorChan mBlue;  // _0C
+	GXTevColorChan mAlpha; // _10
+	// _14 vtable
+
+	virtual ~GSTevSwapModeTable() { } // _08
+};
+
+class GSTexGens {
+public:
+	u8 mNum; // _00
+	// _04 vtable
+
+	virtual ~GSTexGens() { } // _08
+};
+
+class GSTexCoordGen {
+public:
+	GXTexCoordID mCoord; // _00
+	GXTexGenType mFunc;  // _04
+	GXTexGenSrc mSrc;    // _08
+	u32 mMtx;            // _0C
+	// _10 vtable
+
+	virtual ~GSTexCoordGen() { } // _08
+};
+
 // The three kinds of state a CGs keeps a current one of. Their members are the GS* objects above, one after
-// the other; they are written out as plain fields here, with the GS* vtable words as gaps.
+// the other.
 
 // the pixel engine settings
 class CGsRenderState {
 public:
-	GXBlendMode mBlendType;   // _00
-	GXBlendFactor mSrcFactor; // _04
-	GXBlendFactor mDstFactor; // _08
-	GXLogicOp mLogicOp;       // _0C
-	u8 _10[4];
-	GXBool mZEnable;  // _14
-	GXCompare mZFunc; // _18
-	GXBool mZUpdate;  // _1C
-	u8 _1D[3];
-	u8 _20[4];
-	GXCompare mComp0; // _24
-	u8 mRef0;         // _28
-	u8 _29[3];
-	GXAlphaOp mAop;   // _2C
-	GXCompare mComp1; // _30
-	u8 mRef1;         // _34
-	u8 _35[0x3C - 0x35];
-	GXBool mColorUpdate; // _3C
-	u8 _3D[0x44 - 0x3D];
-	GXBool mAlphaUpdate; // _44
-	u8 _45[0x4C - 0x45];
-	GXBool mDstAlphaEnable; // _4C
-	u8 mDstAlpha;           // _4D
-	u8 _4E[0x54 - 0x4E];
-	GXBool mZCompLoc; // _54
-	u8 _55[0x64 - 0x55];
-	u8 mLineWidth;           // _64
-	GXTexOffset mLineOffset; // _68
-	u8 _6C[4];
-	u8 mPointSize;            // _70
-	GXTexOffset mPointOffset; // _74
-	u8 _78[4];
-	GXCullMode mCullMode; // _7C
-	u8 _80[4];
-	GXClipMode mClipMode; // _84
-	u8 _88[0x90 - 0x88];
+	GSBlendMode mBlendMode;       // _00
+	GSZMode mZMode;               // _14
+	GSAlphaCompare mAlphaCompare; // _24
+	GSColorUpdate mColorUpdate;   // _3C
+	GSAlphaUpdate mAlphaUpdate;   // _44
+	GSDstAlpha mDstAlpha;         // _4C
+	GSZCompLoc mZCompLoc;         // _54
+	GSDither mDither;             // _5C
+	GSLineWidth mLineWidth;       // _64
+	GSPointSize mPointSize;       // _70
+	GSCullMode mCullMode;         // _7C
+	GSClipMode mClipMode;         // _84
+	// _8C vtable
+
+	virtual ~CGsRenderState() { } // _08
 
 	void SetBlendMode(GXBlendMode type, GXBlendFactor src, GXBlendFactor dst, GXLogicOp op)
 	{
-		mBlendType = type;
-		mSrcFactor = src;
-		mDstFactor = dst;
-		mLogicOp   = op;
+		mBlendMode.mType = type;
+		mBlendMode.mSrc  = src;
+		mBlendMode.mDst  = dst;
+		mBlendMode.mOp   = op;
 		GXSetBlendMode(type, src, dst, op);
 	}
 	void SetZMode(GXBool enable, GXCompare func, GXBool update)
 	{
-		mZEnable = enable;
-		mZFunc   = func;
-		mZUpdate = update;
+		mZMode.mEnable = enable;
+		mZMode.mFunc   = func;
+		mZMode.mUpdate = update;
 		GXSetZMode(enable, func, update);
 	}
 	void SetColorUpdate(GXBool enable)
 	{
-		mColorUpdate = enable;
+		mColorUpdate.mEnable = enable;
 		GXSetColorUpdate(enable);
 	}
 	void SetAlphaUpdate(GXBool enable)
 	{
-		mAlphaUpdate = enable;
+		mAlphaUpdate.mEnable = enable;
 		GXSetAlphaUpdate(enable);
 	}
 	void SetDstAlpha(GXBool enable, u8 alpha)
 	{
-		mDstAlphaEnable = enable;
-		mDstAlpha       = alpha;
+		mDstAlpha.mEnable = enable;
+		mDstAlpha.mAlpha  = alpha;
 		GXSetDstAlpha(enable, alpha);
 	}
 	void SetZCompLoc(GXBool beforeTex)
 	{
-		mZCompLoc = beforeTex;
+		mZCompLoc.mBeforeTex = beforeTex;
 		GXSetZCompLoc(beforeTex);
 	}
 	void SetAlphaCompare(GXCompare comp0, u8 ref0, GXAlphaOp aop, GXCompare comp1, u8 ref1)
 	{
-		mComp0 = comp0;
-		mRef0  = ref0;
-		mAop   = aop;
-		mComp1 = comp1;
-		mRef1  = ref1;
+		mAlphaCompare.mComp0 = comp0;
+		mAlphaCompare.mRef0  = ref0;
+		mAlphaCompare.mOp    = aop;
+		mAlphaCompare.mComp1 = comp1;
+		mAlphaCompare.mRef1  = ref1;
 		GXSetAlphaCompare(comp0, ref0, aop, comp1, ref1);
 	}
 	void SetLineWidth(u8 width, GXTexOffset offset)
 	{
-		mLineWidth  = width;
-		mLineOffset = offset;
+		mLineWidth.mWidth  = width;
+		mLineWidth.mOffset = offset;
 		GXSetLineWidth(width, offset);
 	}
 	void SetPointSize(u8 pointSize, GXTexOffset offset)
 	{
-		mPointSize   = pointSize;
-		mPointOffset = offset;
+		mPointSize.mSize   = pointSize;
+		mPointSize.mOffset = offset;
 		GXSetPointSize(pointSize, offset);
 	}
 	void SetCullMode(GXCullMode mode)
 	{
-		mCullMode = mode;
+		mCullMode.mMode = mode;
 		GXSetCullMode(mode);
 	}
 	void SetClipMode(GXClipMode mode)
 	{
-		mClipMode = mode;
+		mClipMode.mMode = mode;
 		GXSetClipMode(mode);
 	}
-	void Apply(); // 0x802A9CE4
+	// takes over all twelve settings and sends each to GX
+	void Set(GSBlendMode blendMode, GSZMode zMode, GSAlphaCompare alphaCompare, GSColorUpdate colorUpdate, GSAlphaUpdate alphaUpdate,
+	         GSDstAlpha dstAlpha, GSZCompLoc zCompLoc, GSDither dither, GSLineWidth lineWidth, GSPointSize pointSize, GSCullMode cullMode,
+	         GSClipMode clipMode); // 0x802A997C
+	void Apply();                  // 0x802A9CE4
 };
+STATIC_ASSERT(sizeof(CGsRenderState) == 0x90);
 
-// in GXSetTevColorIn order
-struct WiiGsTevIn {
-	u32 mA; // _00
-	u32 mB; // _04
-	u32 mC; // _08
-	u32 mD; // _0C
-};
-
-// one texgen row of a tev stage, the SetTexGen arguments in order
-struct WiiGsTexGen {
-	u32 mCoord; // _00
-	u32 mFunc;  // _04
-	u32 mSrc;   // _08
-	u32 mMtx;   // _0C
-};
-
-// in GXSetTevColorOp order, as the GameCube GsTevOp. Every known call passes 0 for bias and scale, so
-// which of the two words is which is not confirmed
-struct WiiGsTevOp {
-	u32 mOp;    // _00
-	u32 mBias;  // _04
-	u32 mScale; // _08
-	u8 mClamp;  // _0C
-	u32 mReg;   // _10
-};
-
-// one tev stage: either one of the GXSetTevOp modes, or the color and alpha blocks
+// one tev stage: either one of the GXSetTevOp modes, or the color and alpha blocks. Stages chain
+// through mNext, and the first one of a chain also carries the swap table and the texgen
 class CGsTevStage {
 public:
-	u8 _00[4];
-	u32 mCoord; // _04
-	u32 mMap;   // _08
-	u32 mColor; // _0C
-	u8 _10[4];
-	BOOL mCustom;    // _14, set up from the blocks below instead of mMode
-	GXTevMode mMode; // _18
-	u8 _1C[4];
-	WiiGsTevOp mColorOp; // _20
-	u8 _34[4];
-	WiiGsTevIn mColorIn; // _38
-	u8 _48[4];
-	WiiGsTevOp mAlphaOp; // _4C
-	u8 _60[4];
-	WiiGsTevIn mAlphaIn; // _64
-	u8 _74[0xB8 - 0x74];
-	u8 mNumTexGens; // _B8
-	u8 _B9[0xC0 - 0xB9];
-	WiiGsTexGen mTexGen; // _C0
-	u8 _D0[0xE0 - 0xD0];
+	GXTevStageID mId;                  // _00
+	GSTevOrder mOrder;                 // _04
+	BOOL mCustom;                      // _14, set up from the blocks below instead of mMode
+	GSTevMode mMode;                   // _18
+	GSTevColorOp mColorOp;             // _20
+	GSTevColorIn mColorIn;             // _38
+	GSTevAlphaOp mAlphaOp;             // _4C
+	GSTevAlphaIn mAlphaIn;             // _64
+	GSTevKColorSel mKColorSel;         // _78
+	GSTevKAlphaSel mKAlphaSel;         // _80
+	GSTevSwapMode mSwapMode;           // _88
+	GSTevSwapModeTable mSwapModeTable; // _94
+	u8 _AC[0xB8 - 0xAC];
+	GSTexGens mTexGens;    // _B8
+	GSTexCoordGen mTexGen; // _C0
+	CGsTevStage* mNext;    // _D4
+	BOOL mIndirect;        // _D8, the stage keeps its indirect setup; otherwise Setup sets it direct
+	// _DC vtable
+
+	virtual ~CGsTevStage() { } // _08
 
 	void SetOrder(u32 coord, u32 map, u32 color)
 	{
-		mCoord = coord;
-		mMap   = map;
-		mColor = color;
+		mOrder.mCoord = (GXTexCoordID)coord;
+		mOrder.mMap   = (GXTexMapID)map;
+		mOrder.mColor = (GXChannelID)color;
 	}
 	void SetMode(GXTevMode mode)
 	{
-		mMode   = mode;
-		mCustom = FALSE;
+		mMode.mMode = mode;
+		mCustom     = FALSE;
 	}
 	void SetColorIn(u32 a, u32 b, u32 c, u32 d)
 	{
-		mColorIn.mA = a;
-		mColorIn.mB = b;
-		mColorIn.mC = c;
-		mColorIn.mD = d;
+		mColorIn.mA = (GXTevColorArg)a;
+		mColorIn.mB = (GXTevColorArg)b;
+		mColorIn.mC = (GXTevColorArg)c;
+		mColorIn.mD = (GXTevColorArg)d;
 		mCustom     = TRUE;
 	}
 	void SetColorOp(u32 op, u32 bias, u32 scale, u8 clamp, u32 reg)
 	{
-		mColorOp.mOp    = op;
-		mColorOp.mScale = scale;
-		mColorOp.mBias  = bias;
+		mColorOp.mOp    = (GXTevOp)op;
+		mColorOp.mScale = (GXTevScale)scale;
+		mColorOp.mBias  = (GXTevBias)bias;
 		mColorOp.mClamp = clamp;
-		mColorOp.mReg   = reg;
+		mColorOp.mReg   = (GXTevRegID)reg;
 		mCustom         = TRUE;
 	}
 	void SetAlphaIn(u32 a, u32 b, u32 c, u32 d)
 	{
-		mAlphaIn.mA = a;
-		mAlphaIn.mB = b;
-		mAlphaIn.mC = c;
-		mAlphaIn.mD = d;
+		mAlphaIn.mA = (GXTevAlphaArg)a;
+		mAlphaIn.mB = (GXTevAlphaArg)b;
+		mAlphaIn.mC = (GXTevAlphaArg)c;
+		mAlphaIn.mD = (GXTevAlphaArg)d;
 		mCustom     = TRUE;
 	}
 	void SetAlphaOp(u32 op, u32 bias, u32 scale, u8 clamp, u32 reg)
 	{
-		mAlphaOp.mOp    = op;
-		mAlphaOp.mScale = scale;
-		mAlphaOp.mBias  = bias;
+		mAlphaOp.mOp    = (GXTevOp)op;
+		mAlphaOp.mScale = (GXTevScale)scale;
+		mAlphaOp.mBias  = (GXTevBias)bias;
 		mAlphaOp.mClamp = clamp;
-		mAlphaOp.mReg   = reg;
+		mAlphaOp.mReg   = (GXTevRegID)reg;
 		mCustom         = TRUE;
 	}
-	void SetNumTexGens(u8 num) { mNumTexGens = num; }
+	void SetNumTexGens(u8 num) { mTexGens.mNum = num; }
 	void SetTexGen(u32 coord, u32 func, u32 src, u32 mtx)
 	{
-		mTexGen.mCoord = coord;
-		mTexGen.mFunc  = func;
-		mTexGen.mSrc   = src;
+		mTexGen.mCoord = (GXTexCoordID)coord;
+		mTexGen.mFunc  = (GXTexGenType)func;
+		mTexGen.mSrc   = (GXTexGenSrc)src;
 		mTexGen.mMtx   = mtx;
 	}
-	void Apply(); // 0x802AA0DC
+	// the stage with its order and blocks, everything else at its default and no next stage
+	void Set(GXTevStageID id, GSTevOrder order, GSTevColorOp colorOp, GSTevColorIn colorIn, GSTevAlphaOp alphaOp,
+	         GSTevAlphaIn alphaIn);  // 0x802A9DB8
+	void SetNext(CGsTevStage* next); // 0x802AA01C
+	s32 GetNum();                    // 0x802AA030, how many stages are in use when this is the last one
+	void Apply();                    // 0x802AA0DC, sends the whole chain
+	void Setup();                    // 0x802AA18C, sends this stage
 };
 STATIC_ASSERT(sizeof(CGsTevStage) == 0xE0);
 
+// one lighting channel, chained like the tev stages
 class CGsChannel {
 public:
-	u32 mId;    // _00
-	u8 mEnable; // _04
-	u8 _05[0x30 - 0x05];
+	GXChannelID mId;   // _00
+	GSChanCtrl mCtrl;  // _04
+	CColor mAmbColor;  // _20
+	CColor mMatColor;  // _28
 	CGsChannel* mNext; // _30
-	u8 _34[4];
+	// _34 vtable
 
-	void Apply(); // 0x802AA4CC
+	virtual ~CGsChannel() { } // _08
+
+	// a component is only written when it changes
+	void SetAmbColor(s32 r, s32 g, s32 b, s32 a)
+	{
+		if (mAmbColor.r != r) {
+			mAmbColor.r = r;
+		}
+		if (mAmbColor.g != g) {
+			mAmbColor.g = g;
+		}
+		if (mAmbColor.b != b) {
+			mAmbColor.b = b;
+		}
+		if (mAmbColor.a != a) {
+			mAmbColor.a = a;
+		}
+	}
+	void SetAmbColor(GXColor color) { SetAmbColor(color.r, color.g, color.b, color.a); }
+	void SetMatColor(s32 r, s32 g, s32 b, s32 a)
+	{
+		if (mMatColor.r != r) {
+			mMatColor.r = r;
+		}
+		if (mMatColor.g != g) {
+			mMatColor.g = g;
+		}
+		if (mMatColor.b != b) {
+			mMatColor.b = b;
+		}
+		if (mMatColor.a != a) {
+			mMatColor.a = a;
+		}
+	}
+	void SetMatColor(GXColor color) { SetMatColor(color.r, color.g, color.b, color.a); }
+	void SetCtrl(GXChannelID id, GSChanCtrl ctrl);                                // 0x802AA298
+	void Set(GXChannelID id, GSChanCtrl ctrl, GXColor ambient, GXColor material); // 0x802AA2D4
+	void SetNext(CGsChannel* next);                                               // 0x802AA418
+	s32 GetNum();                                                                 // 0x802AA42C, as CGsTevStage's
+	void Apply();                                                                 // 0x802AA4CC, sends the whole chain
+	void Setup();                                                                 // 0x802AA534, sends this channel
 };
 STATIC_ASSERT(sizeof(CGsChannel) == 0x38);
 
@@ -549,6 +677,11 @@ public:
 
 	// the SDK render mode with that index in the screen mode table
 	GXRenderModeObj* GetRenderMode(s32 mode); // 0x802A977C
+	void SetMode(s32 mode, u16 hor, u16 ver); // 0x802A9790, the mode with its overscan trimmed, and the copy settings
+	void Configure();                         // 0x802A9860, hands the mode to VI and to g3d
+	u32 GetXfbSize();                         // 0x802A9898, bytes of one external frame buffer
+	u16 GetXfbWidth();                        // 0x802A98EC
+	u16 GetXfbHeight();                       // 0x802A98F4, by TV format
 };
 STATIC_ASSERT(sizeof(CGsScreen) == 0x40);
 

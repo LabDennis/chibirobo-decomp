@@ -16,6 +16,11 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+// The screen, render state, tev stage and channel code sits in front of this file's own and is part
+// of the same translation unit: the asserts of cgs_scrn.cpp and cgs_chan.cpp share one string pool.
+#include "cgs_scrn.cpp"
+#include "cgs_chan.cpp"
+
 // sends whatever render, tev and channel state changed since the last draw
 static inline void SetupDrawState(CGs* gs)
 {
@@ -151,7 +156,7 @@ void DrawGsTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32 
 	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mTriangle.DrawLit(view, pos, color, count, type);
 	} else {
 		gs->mTriangle.Draw(view, pos, color, count, type);
@@ -163,7 +168,7 @@ void DrawGsColoredTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* po
 	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mTriangle.DrawLit(view, pos, color, count, type);
 	} else {
 		gs->mTriangle.Draw(view, pos, color, count, type);
@@ -175,7 +180,7 @@ void DrawGsTriangleVertices(CGs* gs, GXPrimitive type, Mtx view, PrimVertex* vtx
 	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mTriangle.DrawLit(view, vtx, count, type);
 	} else {
 		gs->mTriangle.Draw(view, vtx, count, type);
@@ -200,7 +205,7 @@ void DrawGsCircle(CGs* gs, u32 segments, u32 centerColor, u32 edgeColor, f32 x, 
 	SetupDrawState(gs);
 	SetFlatTransform(gs, &gs->mCircle, x, y, z, w, h, rx, ry, rz);
 	gs->mCircle.mFixedMtx = NULL;
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mCircle.DrawLit(gs->mCamera->mViewMtx, segments, centerColor, edgeColor);
 	} else {
 		gs->mCircle.Draw(gs->mCamera->mViewMtx, segments, centerColor, edgeColor);
@@ -213,7 +218,7 @@ void DrawGsQuad(CGs* gs, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, 
 	SetupDrawState(gs);
 	SetFlatTransform(gs, &gs->mTile, x, y, z, w, h, rx, ry, rz);
 	gs->mTile.mFixedMtx = NULL;
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mTile.DrawLit(gs->mCamera->mViewMtx, color0, color1, color2, color3);
 	} else {
 		gs->mTile.Draw(gs->mCamera->mViewMtx, color0, color1, color2, color3);
@@ -244,7 +249,7 @@ void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1, u32 color
 	SetFlatTransform(gs, &gs->mSprite2, x, y, z, w, h, rx, ry, rz);
 	gs->mSprite2.mTex      = tex;
 	gs->mSprite2.mFixedMtx = NULL;
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mSprite2.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, color0, color1, color2, color3);
 	} else {
 		gs->mSprite2.Draw(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, color0, color1, color2, color3);
@@ -544,7 +549,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 		gs->mCurTevStage->SetNumTexGens(0);
 	}
 	SetupDrawState(gs);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
 		for (s32 i = 0; i < count; i++) {
 			if (textChars[i].mHasBg) {
 				textChars[i].mBg.DrawLit(gs->mCamera->mViewMtx, textChars[i].mBg.mColor0, textChars[i].mBg.mColor1,
@@ -568,7 +573,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 		gs->mCurTevStage->SetTexGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0);
 	}
 	SetupDrawState(gs);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mEnable) {
+	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
 		for (s32 i = 0; i < count; i++) {
 			textChars[i].mSprite.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, textChars[i].mSprite.mColor0,
 			                             textChars[i].mSprite.mColor1, textChars[i].mSprite.mColor2, textChars[i].mSprite.mColor3);
