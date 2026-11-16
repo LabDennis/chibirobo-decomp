@@ -55,7 +55,7 @@ XObj* GetGameObjectByIndex(const CGame*, s32);
 void TryStartObjectEvent(CGame*, const void*, XObj*, s16, s16);
 BOOL IsEventScriptActive(const CGame*);
 Params* GetPlayerParamsByIndex(CGame*, s32);
-s32 GetInventoryCountByIndex(Params*, u32);
+s16 GetInventoryCountByIndex(Params*, u32);
 void SetPlayerStandAnim(XObjChr*, s32, f32);
 void SetClampedPlayerBattery(Params*, f32);
 HSD_Generator* CreateParticleByBankAndId(CGame*, s32, s32, u8, HSD_JObj*, BOOL);
@@ -86,16 +86,22 @@ static inline void HeldAnim(XObj* obj, s32 id, BOOL force = FALSE, f32 blend = 0
 {
 	obj->SetAnim(id, force, NULL, NULL, NULL, 0, 1, blend, 10);
 }
-static inline bool HasRoomForItem(XObj* item)
+static inline BOOL HasRoomForItem(XObj* item)
 {
-	s16 id   = GetObjectItemId(item);
-	s32 slot = FindOwnedInventoryItemIndex(GetPlayerParamsByIndex(&gGame, 0)->mInventory.mItems, id);
-	return slot < 0 || GetInventoryCountByIndex(GetPlayerParamsByIndex(&gGame, 0), slot) < 10;
+	BOOL room = TRUE;
+	s16 id    = GetObjectItemId(item);
+	s32 slot  = FindOwnedInventoryItemIndex(GetPlayerParamsByIndex(&gGame, 0)->mInventory.mItems, id);
+	if (slot >= 0 && GetInventoryCountByIndex(GetPlayerParamsByIndex(&gGame, 0), slot) >= 10)
+		room = FALSE; // ten of it already
+	return room;
 }
 
 static inline void LoadLiftItem(XActLift* act, s32 next)
 {
-	act->mPendingItem = act->mPendingItemId >= 0 ? SpawnObjectFromPlacementIndex(&gGame, act->mPendingItemId) : NULL;
+	if (act->mPendingItemId >= 0)
+		act->mPendingItem = SpawnObjectFromPlacementIndex(&gGame, act->mPendingItemId);
+	else
+		act->mPendingItem = NULL;
 	SetLiftActionState(act, next);
 }
 static inline void TakeLiftItem(XActLift* act, s32 anim, HSD_AObj* aobj, bool useCount)
@@ -115,7 +121,7 @@ static inline void TakeLiftItem(XActLift* act, s32 anim, HSD_AObj* aobj, bool us
 			if (useCount) {
 				s16 id         = GetObjectItemId(act->mTarget);
 				s32 count      = RemovePlayerInventoryItemCount(GetPlayerParamsByIndex(&gGame, 0), id, 1);
-				s32 difference = count - GetStageCollectionFlagBase(0);
+				s16 difference = count - GetStageCollectionFlagBase(0);
 				if (difference > 0)
 					act->mPendingItem->mPlacementParam1 = difference;
 			}
@@ -184,14 +190,21 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		}
 		// fall through
 	case 2:
-		act->mTimer -= frames;
-		if (!(act->mTimer <= 0))
+		if (!((act->mTimer -= frames) <= 0))
 			return;
 		SetLiftActionState(act, 3);
 		// fall through
 	case 3:
 		if (anim != 7) {
-			if (!act->mTarget || (s16)GetObjectPoolId(act->mTarget) != 8 || HasRoomForItem(act->mTarget)) {
+			// anything but an item he already has ten of
+			BOOL room = TRUE;
+			if (act->mTarget && (s16)GetObjectPoolId(act->mTarget) == 8) {
+				s16 id   = GetObjectItemId(act->mTarget);
+				s32 slot = FindOwnedInventoryItemIndex(GetPlayerParamsByIndex(&gGame, 0)->mInventory.mItems, id);
+				if (slot >= 0 && GetInventoryCountByIndex(GetPlayerParamsByIndex(&gGame, 0), slot) >= 10)
+					room = FALSE;
+			}
+			if (room) {
 				SetLiftTargetState(act, 1);
 				HeldAnim(act->mOwner, 7, TRUE, 1);
 			} else {
@@ -341,8 +354,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 		}
 		break;
 	case 12:
-		act->mTimer -= frames;
-		if (act->mTimer <= 0) {
+		if ((act->mTimer -= frames) <= 0) {
 			act->mTimer = 0;
 			if (act->mPlugTarget && !act->mPlugTarget->ReceivePlugPower(0)) {
 				SetLiftActionState(act, 14);
@@ -442,7 +454,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			SetLiftTargetState(act, 15);
 			SetPlayerStandAnim(act->mOwner, 17, 0);
 			if (act->mTarget && (s16)GetObjectPoolId(act->mTarget) == 8) {
-				s8 sound = (s8)GetItemSoundIndex(GetObjectItemId(act->mTarget), 1);
+				s8 sound = GetItemSoundIndex(GetObjectItemId(act->mTarget), 1);
 				if (sound >= 0)
 					PlayGameSound(&gGame.mSound, GetItemReleaseSoundId(sound), 255);
 			}
@@ -536,7 +548,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			SetLiftActionState(act, 32);
 		} else if (GetJointAnimationCurrentFrame(act->mOwner) > 10 && !act->mUseEffect) {
 			act->mUseEffectId = 47;
-			act->mUseEffect   = CreateParticleByBankAndId(&gGame, 1, 47, 1, act->mOwner->mJObj, FALSE);
+			act->mUseEffect   = CreateParticleByBankAndId(&gGame, 1, act->mUseEffectId, 1, act->mOwner->mJObj, FALSE);
 		}
 		break;
 	case 33:
@@ -3288,7 +3300,7 @@ HSD_Generator* CreateParticleByBankAndId(CGame* game, s32 bank, s32 id, u8 type,
  * @note Address: 0x800D4330
  * @note Size: 0x10
  */
-s32 GetInventoryCountByIndex(Params* params, u32 index)
+s16 GetInventoryCountByIndex(Params* params, u32 index)
 {
 	return params->mInventory.mItems[index].mCount;
 }
