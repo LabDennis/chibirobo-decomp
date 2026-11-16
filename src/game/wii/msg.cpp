@@ -889,9 +889,9 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 			f32 portraitX            = 44.0f * portraitScale + ((font->mWindowX - font->mWidth * 0.5f) - 40.0f - halfPortrait);
 			f32 portraitY            = 12.0f * portraitScale + (font->mHeight / 2.0f + font->mWindowY);
 			WiiTitleObject* portrait = NULL;
-			s32 objectCount          = gGame.mObjPoolCount;
-			s32 stride               = gGame.mObjPoolStride;
-			u8* objects              = gGame.mObjPoolObjects;
+			s32 objectCount          = gGame.mXObjs.mPools[10].mUsed;
+			s32 stride               = gGame.mXObjs.mPools[10].mStride;
+			u8* objects              = gGame.mXObjs.mPools[10].mObjects;
 			for (s32 i = 0; i < objectCount; i++) {
 				WiiTitleObject* obj = (WiiTitleObject*)(objects + i * stride);
 				if (obj->mStatus & 1) {

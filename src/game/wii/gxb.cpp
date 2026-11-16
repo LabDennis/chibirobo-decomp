@@ -853,8 +853,9 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes)
 	} work;
 	work.used    = 0;
 	work.visible = 0;
-	for (s32 i = 0; i < gGame.mItemCount; ++i) {
-		WiiTitleObject* object = (WiiTitleObject*)((u8*)gGame.mItems + i * gGame.mItemStride);
+	for (s32 i = 0; i < gGame.mXObjs.mPools[8].mUsed; ++i) {
+		WiiTitleObject* object
+		    = (WiiTitleObject*)((u8*)((WiiFlagSource*)gGame.mXObjs.mPools[8].mObjects) + i * gGame.mXObjs.mPools[8].mStride);
 		if (!(object->mStatus & 1) || !(object->mStatus & 0x10000))
 			continue;
 		if (!GetItemFlagsMasked(GetItem(object), 2) || (object->mStatus & 0x0400000000000000ULL))

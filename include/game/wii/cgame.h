@@ -21,6 +21,7 @@
 #include "game/inventory.h"
 #include "game/cstopwatch.h"
 #include "game/cmovie.h"
+#include "game/wii/xobjs.h"
 #
 
 class CCamera;
@@ -1118,35 +1119,15 @@ public:
 	u8 _AE18[0xAE34 - 0xAE18];
 	s32 _AE34; // _AE34, DrawHud draws nothing while a menu is open and this is set
 	u8 _AE38[0xAF58 - 0xAE38];
-	InfoScrn mInfoScrn;             // _AF58
-	WiiHomeMenu mHomeMenu;          // _B148
-	CEffectSystem mEffects;         // _B7A8
-	CEvtPtcl mEvtPtcl;              // _BCA8
-	CScrnQuake mQuake;              // _F6AC
-	u8 mXObjPools[0xF70C - 0xF6E4]; // _F6E4, where the XOBJS block starts: its first two XObjPools
-	WiiPlayerState* mPlayer;        // _F70C
-	u8 _F710[0xF71C - 0xF710];
-	s32 mPlayerStride; // _F71C, the size of one entry in the pool mPlayer points into
-	u8 _F720[0xF770 - 0xF720];
-	WiiFlagSource* mCoins; // _F770
-	u8 _F774[0xF784 - 0xF774];
-	WiiFlagSource* mItems; // _F784
-	s32 mItemCount;        // _F788, the item pool's objects in use
-	u8 _F78C[0xF794 - 0xF78C];
-	s32 mItemStride; // _F794
-	u8 _F798[0xF7AC - 0xF798];
-	// the spawn pool CMsgFont_Draw scans for the portrait object (kind 10); sits just before mObjects
-	u8* mObjPoolObjects; // _F7AC
-	s32 mObjPoolCount;   // _F7B0
-	u8 _F7B4[0xF7BC - 0xF7B4];
-	s32 mObjPoolStride; // _F7BC
-	u8 _F7C0[0xF874 - 0xF7C0];
-	WiiFlagSource* mDust; // _F874
-	u8 _F878[0xF8B0 - 0xF878];
-	WiiTitleObject* mObjects[0x400]; // _F8B0, the object table ResolveEventObjectId indexes
-	s32 mObjectCount;                // _108B0
-	s32 mLoadObjectIndex;            // _108B4
-	u8 _108B8[0x108C0 - 0x108B8];
+	InfoScrn mInfoScrn;     // _AF58
+	WiiHomeMenu mHomeMenu;  // _B148
+	CEffectSystem mEffects; // _B7A8
+	CEvtPtcl mEvtPtcl;      // _BCA8
+	CScrnQuake mQuake;      // _F6AC
+	// the objects, as on the GameCube: pool 0 is the scene camera, 2 chibi robo, 3 the stage map, 7 the coins, 8 the items,
+	// 10 the spawn pool CMsgFont_Draw scans for the portrait object, 20 the dust; mObjects is the table
+	// ResolveEventObjectId indexes. The coin, item and dust pools each lead with a WiiFlagSource
+	XOBJS mXObjs; // _F6E4
 	// [0] the objects in draw order, BuildObjectDrawList fills it; [1] the spawned objects the renderer walks, entries
 	// grouped in eights, CMsgFont_Init pushes its two cursors here; [2] the objects DrawScene draws and [3] the ones whose
 	// effects are drawn (the ones the mirrors show), BuildSceneDrawLists fills both each frame
@@ -1240,9 +1221,9 @@ public:
 	}
 
 	CMsg* GetMsg(s32 index) { return &mMsgs[index]; }
-	WiiPlayerState* GetPlayer() const { return mPlayer; }
+	WiiPlayerState* GetPlayer() const { return (WiiPlayerState*)mXObjs.mPools[2].mObjects; }
 	// 0x80037134, the sound code asks for player 0 through the pool
-	WiiPlayerState* GetPlayer(s32 index) { return (WiiPlayerState*)((u8*)mPlayer + index * mPlayerStride); }
+	WiiPlayerState* GetPlayer(s32 index) { return (WiiPlayerState*)(mXObjs.mPools[2].mObjects + index * mXObjs.mPools[2].mStride); }
 	s32 GetTimeMode() { return mTimeState.mMode; } // 0x800377B4
 	bool CanOpenHomeMenu() const { return IsMenuFree() && !mHomeMenu.IsOpen(); }
 	// interface text 3 is up over the frame (0x8002BBE0)
@@ -1256,8 +1237,7 @@ STATIC_ASSERT(sizeof(CGame) == 0xEE530);
 STATIC_ASSERT(offsetof(CGame, mScrnTex) == 0x57CC);
 STATIC_ASSERT(offsetof(CGame, mColor0) == 0x5908);
 STATIC_ASSERT(offsetof(CGame, mOutlineWidth) == 0x5974);
-STATIC_ASSERT(offsetof(CGame, mXObjPools) == 0xF6E4);
-STATIC_ASSERT(offsetof(CGame, mPlayerStride) == 0xF71C);
+STATIC_ASSERT(offsetof(CGame, mXObjs) == 0xF6E4);
 STATIC_ASSERT(offsetof(CGame, mScopeTimer) == 0xEC1AC);
 STATIC_ASSERT(offsetof(CGame, _D9B5C) == 0xD9B5C);
 STATIC_ASSERT(offsetof(CGame, mMemcardLoaded) == 0xEC180);

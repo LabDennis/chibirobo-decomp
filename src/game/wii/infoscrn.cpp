@@ -375,15 +375,15 @@ extern "C" void DrawObjectLoadingProgress(InfoScrn* scrn)
 		f32 leftX = (f32)(gPointerScreenWidth / 2);
 		f32 y0    = (f32)(gScreenSafeBottom - 12);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
-		if (gGame.mObjectCount > 0) {
+		if (gGame.mXObjs.mObjectCount > 0) {
 			f32 fill;
 			f32 max;
 			f32 tw;
 			f32 th;
 			f32 scale;
-			max   = gGame.mObjectCount;
-			scale = 1.0f / gGame.mObjectCount;
-			fill  = max * (gGame.mLoadObjectIndex * scale);
+			max   = gGame.mXObjs.mObjectCount;
+			scale = 1.0f / gGame.mXObjs.mObjectCount;
+			fill  = max * (gGame.mXObjs.mLoadObjectIndex * scale);
 			CTexObj tex;
 			if (sLoading.mAnim == sWalkAnim) {
 				if (sWalkAnim[sLoading.mFrame] == 0xFF) {

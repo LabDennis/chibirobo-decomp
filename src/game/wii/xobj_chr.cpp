@@ -153,7 +153,7 @@ f32 WrapPlayerActionAngle(f32 angle)
 
 s32 GetStageObjectCount(const CGame* game)
 {
-	return game->mObjectCount;
+	return game->mXObjs.mObjectCount;
 }
 
 f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to)
@@ -486,6 +486,11 @@ void SetPlayerRopeState(WiiPlayerState* chr, s32 state, XObj* target)
 	if (target != NULL) {
 		SetPlayerActionTarget(&chr->mRope, target);
 	}
+}
+
+void* GetObjectFromPool(const CGame* game, s32 pool, s32 index)
+{
+	return game->mXObjs.mPools[pool].Get(index);
 }
 
 UnkStageObj* GetIndexedCoordPlacement(const CoordInfo* info, s32 index)

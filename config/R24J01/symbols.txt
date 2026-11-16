@@ -173,6 +173,7 @@ __dt__4CMsgFv = .text:0x8002EF2C; // type:function size:0xD4
 __dt__8CMsgFontFv = .text:0x8002F000; // type:function size:0xCC
 __dt__15ObjArchiveTableFv = .text:0x8002F2E8; // type:function size:0x8C
 __dt__12MsgFontGlyphFv = .text:0x8002F0CC; // type:function size:0x6C
+__dt__5XOBJSFv = .text:0x8002F3E0; // type:function size:0x6C
 __dt__10CScrnQuakeFv = .text:0x8002F44C; // type:function size:0x8C
 __dt__8CEvtPtclFv = .text:0x8002F4D8; // type:function size:0x6C
 __dt__8InfoScrnFv = .text:0x8002F6F4; // type:function size:0x6C

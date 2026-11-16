@@ -141,7 +141,7 @@ static inline WiiStageInfo* GetStageInfo()
 // scene camera's own view
 static inline MtxP GetEffectView(CGame* game)
 {
-	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	bool scene         = false;
 	if (camera != NULL && (camera->mStatus.mFlags & 1) && camera->mScene != NULL && camera->mScene->_2888 != NULL) {
 		scene = true;
@@ -661,7 +661,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 	for (u32 i = 0; i < 6; i++) {
 		fn_802BE3A8(&game->mEffects, i, TRUE);
 	}
-	WiiPlayerState* player = game->mPlayer;
+	WiiPlayerState* player = game->GetPlayer();
 	for (s32 i = 0; i < 2; i++) {
 		CSound3DActor* actor          = ((AnimSfx*)player->mSfx)->mActors[i].mActor;
 		nw4r::snd::SoundHandle* sound = actor != NULL && actor->mHandle.IsAttachedSound() ? &actor->mHandle : NULL;
@@ -776,7 +776,7 @@ bool CObj::IsAnmScnEnd()
 // whether the scene camera's animation is done; without a scene of its own it always is
 extern "C" BOOL IsSceneCameraAnmEnd(CGame* game)
 {
-	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	if (camera != NULL && (camera->mStatus.mFlags & 1) && camera->mScene != NULL && camera->mScene->_2888 != NULL) {
 		return camera->IsAnmScnEnd();
 	}
@@ -792,7 +792,7 @@ extern "C" BOOL IsSceneCameraAnmEnd(CGame* game)
 // lets go of the scene camera's animation and puts the perspective camera back to its defaults
 extern "C" void StopSceneCameraAnm(CGame* game)
 {
-	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
 		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
 		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
@@ -812,7 +812,7 @@ extern "C" void StopSceneCameraAnm(CGame* game)
 // scene animations
 extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate)
 {
-	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	XObjScnCam* camera = (XObjScnCam*)game->mXObjs.mPools[0].mObjects;
 	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
 		nw4r::g3d::ResFile* file = &camera->mObject.m_resFile;
 		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
@@ -1101,8 +1101,8 @@ void CGame::DrawHud()
 		if (menuShown) {
 			return;
 		}
-		for (s32 i = 0; i < mObjectCount; i++) {
-			XObj* object = (XObj*)mObjects[i];
+		for (s32 i = 0; i < mXObjs.mObjectCount; i++) {
+			XObj* object = (XObj*)mXObjs.mObjects[i];
 			if (object->mStatus.mFlags & 1) {
 				object->DrawScreenOverlay();
 			}
@@ -1213,7 +1213,7 @@ void CGame::DrawScene()
 		return;
 	}
 	XObj* targets[2]       = { NULL, NULL };
-	WiiPlayerState* player = mPlayer;
+	WiiPlayerState* player = GetPlayer();
 	targets[0]             = player->mLiftPlugTarget;
 	if (targets[1] == NULL) {
 		targets[1] = player->mLift.mTarget;
@@ -1333,8 +1333,8 @@ extern "C" void RenderSubwindow(CGame* game)
 	}
 	if (game->BeginCamera(&subwin->mCamera)) {
 		GXSetScissor(0, 0, gPointerScreenWidth / 2, gPointerScreenHeight / 2);
-		for (s32 i = 0; i < game->mObjectCount; i++) {
-			XObj* obj = (XObj*)game->mObjects[i];
+		for (s32 i = 0; i < game->mXObjs.mObjectCount; i++) {
+			XObj* obj = (XObj*)game->mXObjs.mObjects[i];
 			bool draw = false;
 			if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 				if (obj->mStatus.mFlags & 0x2000000) {
@@ -1405,7 +1405,7 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 	}
 	if (game->BeginSceneCamera()) {
 		XObj* targets[2]       = { NULL, NULL };
-		WiiPlayerState* player = game->mPlayer;
+		WiiPlayerState* player = game->GetPlayer();
 		targets[0]             = player->mLiftPlugTarget;
 		if (targets[1] == NULL) {
 			targets[1] = player->mLift.mTarget;
@@ -1608,7 +1608,7 @@ void CGame::Draw()
 	RenderSubwindow(this);
 	RenderMirrorTextures(this);
 	RenderFloorReflection(this);
-	if (GetStatusFlags(0x40) && !(mPlayer->mStatus & 0x200000)) {
+	if (GetStatusFlags(0x40) && !(GetPlayer()->mStatus & 0x200000)) {
 		DrawObjectAlphaMask(this);
 	}
 	if (BeginSceneCamera()) {
@@ -1761,10 +1761,10 @@ void CGame::Draw()
 			}
 			DrawStageNameBubbles(this);
 			if (GetStatusFlags(0x400)) {
-				DrawPlayerEquipmentRings(mPlayer->_19EE4);
+				DrawPlayerEquipmentRings(GetPlayer()->_19EE4);
 			}
 			if (GetStatusFlags(0x800)) {
-				DrawOXMenu(&mPlayer->mOXMenu);
+				DrawOXMenu(&GetPlayer()->mOXMenu);
 			}
 			if (!mMotionControlCamera.IsAction(4)) {
 				fn_80094E90(&mEvt);
@@ -1805,8 +1805,8 @@ void CGame::Draw()
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
 	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
 	gGame.mGs.ResetZMode();
-	for (s32 i = 0; i < mObjectCount; i++) {
-		XObj* obj = (XObj*)mObjects[i];
+	for (s32 i = 0; i < mXObjs.mObjectCount; i++) {
+		XObj* obj = (XObj*)mXObjs.mObjects[i];
 		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 			ClearActiveObjectFloors(obj);
 		}

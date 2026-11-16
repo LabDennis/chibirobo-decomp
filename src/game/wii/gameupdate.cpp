@@ -216,7 +216,7 @@ void CGame::ResetNewGameState()
 	mScopeTimer          = 0.0f;
 	_EC2B4               = NAN;
 	_EC2C8               = -1.0f;
-	ResetPooledObjects((XObjPool*)mXObjPools);
+	ResetPooledObjects(mXObjs.mPools);
 	InitBatteryGauge(&mInfoScrn, GetPlayer()->mParams.mBattery);
 
 	mScrnTex.mAngle = 0.0f;
@@ -263,7 +263,7 @@ static inline BOOL IsStageBusy(CGame* game)
 	if (game->_41F0 > 0) {
 		if (--game->_41F0 <= 0) {
 			game->mLightList = game->mLights;
-			fn_800C5814((XObjPool*)game->mXObjPools);
+			fn_800C5814(game->mXObjs.mPools);
 		} else {
 			return TRUE;
 		}
@@ -566,7 +566,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 	s32 i;
 	switch (game->mSetupStep) {
 	case 0:
-		if (!fn_800C54A4((XObjPool*)game->mXObjPools)) {
+		if (!fn_800C54A4(game->mXObjs.mPools)) {
 			break;
 		}
 		if (game->mResetRequested) {
@@ -574,15 +574,15 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		}
 		game->mSetupStep++;
 	case 1: {
-		fn_800C7F70(*(void**)&game->mXObjPools[3 * 0x14]);
+		fn_800C7F70((void*)game->mXObjs.mPools[3].mObjects);
 		game->ClearStatusFlags(0x2000000000ULL);
 		game->ClearStatusFlags(0x8000000000ULL);
 		game->ClearStatusFlags(0x100000000000ULL);
 		game->mFloorReflect = FALSE;
 		mirror              = (FbMirror*)game->mMirrors;
 		mirrors             = 0;
-		for (i = 0; i < game->mObjectCount; i++) {
-			obj = (CMirrorObj*)game->mObjects[i];
+		for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+			obj = (CMirrorObj*)game->mXObjs.mObjects[i];
 			if (obj->mStatus & 1) {
 				if (!game->GetStatusFlags(0x2000000000ULL) && (obj->mStatus & 0x20000000)) {
 					game->SetStatusFlags(0x2000000000ULL); // the stage wants the floor reflection
@@ -627,17 +627,17 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		game->mSetupStep++;
 	}
 	case 2:
-		if (!fn_800CDC08(game->mPlayer)) {
+		if (!fn_800CDC08(game->GetPlayer())) {
 			break;
 		}
 		game->mSetupStep++;
 	case 3:
-		if (!fn_800CE4B0(game->mPlayer)) {
+		if (!fn_800CE4B0(game->GetPlayer())) {
 			break;
 		}
 		game->mSetupStep++;
 	case 4:
-		if (!fn_800CD700(game->mPlayer)) {
+		if (!fn_800CD700(game->GetPlayer())) {
 			break;
 		}
 		game->mSetupStep++;
@@ -674,7 +674,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		BuildObjectDrawList(game);
 		if (game->GetStatusFlags(0x2000000000ULL)) {
 			f32 fade        = GetStageInfo()->mMirrorFade / 100.0f;
-			CMirrorObj* map = *(CMirrorObj**)&game->mXObjPools[3 * 0x14];
+			CMirrorObj* map = (CMirrorObj*)game->mXObjs.mPools[3].mObjects;
 			if ((map->mStatus & 1) && fade > 0.0f) {
 				// the GameCube made the map translucent here, nothing is left of that
 			}
@@ -717,7 +717,7 @@ void CGame::SetupStageCamera(s32 mode)
 	if (GetStageCameraAreaRecords() && GetStageCameraInfoRecords()) {
 		((CCameraActionAreaExM*)mCameraActions.mTable[CAMACTION_AREA])->LoadAreaState();
 	}
-	((CCameraActionAnim*)mCameraActions.mTable[CAMACTION_ANIM])->SetObj(*(XObjCamera**)&mXObjPools[0]);
+	((CCameraActionAnim*)mCameraActions.mTable[CAMACTION_ANIM])->SetObj((XObjCamera*)mXObjs.mPools[0].mObjects);
 	mMotionControlCamera.Init();
 	if (mode == 1 || mode == 7) { // both modes start on the map camera
 		mMotionControlCamera.ChangeAction(7);
@@ -726,8 +726,8 @@ void CGame::SetupStageCamera(s32 mode)
 	} else {
 		mMotionControlCamera.ChangeAction(mode);
 	}
-	for (s32 i = 0; i < mObjectCount; i++) {
-		mMotionControlCamera.UpdateTarget((XObj*)mObjects[i]);
+	for (s32 i = 0; i < mXObjs.mObjectCount; i++) {
+		mMotionControlCamera.UpdateTarget((XObj*)mXObjs.mObjects[i]);
 	}
 	if (GetStatusFlags(0x100)) { // flag 0x100: a fresh roboeyes wipe
 		ClearStatusFlags(0x300);
@@ -799,7 +799,7 @@ CCamera* CBase::GetPerspectiveCamera()
  */
 // NONMATCHING: the object and the loop counter swap registers in both loops (r6/r8)
 // lists the objects in draw order: the ones with flag 0x4000 first, then the rest, then the player and
-// last the first object of pool 0. Each entry keeps the object's slot in mObjects
+// last the first object of pool 0. Each entry keeps the object's slot in mXObjs.mObjects
 extern "C" void BuildObjectDrawList(CGame* game)
 {
 	CMirrorObj* obj;
@@ -808,31 +808,31 @@ extern "C" void BuildObjectDrawList(CGame* game)
 		game->mDrawLists[0].mRefs[i].mObj = NULL;
 	}
 	game->mDrawLists[0].mCount = 0;
-	for (i = 0; i < game->mObjectCount; i++) {
-		obj = (CMirrorObj*)game->mObjects[i];
-		if (obj != (CMirrorObj*)game->mPlayer && obj != *(CMirrorObj**)&game->mXObjPools[0] && (obj->mStatus & 1)
+	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		obj = (CMirrorObj*)game->mXObjs.mObjects[i];
+		if (obj != (CMirrorObj*)game->GetPlayer() && obj != (CMirrorObj*)game->mXObjs.mPools[0].mObjects && (obj->mStatus & 1)
 		    && (obj->mStatus & 0x4000)) {
 			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
 			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = i;
 			game->mDrawLists[0].mCount++;
 		}
 	}
-	for (i = 0; i < game->mObjectCount; i++) {
-		obj = (CMirrorObj*)game->mObjects[i];
-		if (obj != (CMirrorObj*)game->mPlayer && obj != *(CMirrorObj**)&game->mXObjPools[0] && (obj->mStatus & 1)
+	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		obj = (CMirrorObj*)game->mXObjs.mObjects[i];
+		if (obj != (CMirrorObj*)game->GetPlayer() && obj != (CMirrorObj*)game->mXObjs.mPools[0].mObjects && (obj->mStatus & 1)
 		    && !(obj->mStatus & 0x4000)) {
 			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
 			game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = i;
 			game->mDrawLists[0].mCount++;
 		}
 	}
-	obj = (CMirrorObj*)game->mPlayer;
+	obj = (CMirrorObj*)game->GetPlayer();
 	if (obj->mStatus & 1) {
 		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
 		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = 0;
 		game->mDrawLists[0].mCount++;
 	}
-	obj = *(CMirrorObj**)&game->mXObjPools[0];
+	obj = (CMirrorObj*)game->mXObjs.mPools[0].mObjects;
 	if (obj->mStatus & 1) {
 		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mObj   = obj;
 		game->mDrawLists[0].mRefs[game->mDrawLists[0].mCount].mIndex = 0;
@@ -852,8 +852,8 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 	s32 i;
 	if (game->GetStatusFlags(0x8000000000ULL)) { // only while flag 0x8000000000 stands
 		CMotionControlCamera* camera = &game->mMotionControlCamera;
-		for (i = 0; i < game->mObjectCount; i++) {
-			obj = (XObj*)game->mObjects[i];
+		for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+			obj = (XObj*)game->mXObjs.mObjects[i];
 			if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 				if (!game->GetStatusFlags(0x100) && (obj->mStatus.mFlags & 0x80000000) && obj->IsOutsideCameraDepth(camera)) {
 					obj->mStatus.mFlags |= 0x1000000000000ULL; // out of depth: mirror-only
@@ -873,8 +873,8 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 	}
 	game->mDrawLists[3].mCount = 0;
 
-	for (i = 0; i < ((XObjPool*)game->mXObjPools)[3].mUsed; i++) {
-		obj = ((XObjPool*)game->mXObjPools)[3].Get(i);
+	for (i = 0; i < game->mXObjs.mPools[3].mUsed; i++) {
+		obj = game->mXObjs.mPools[3].Get(i);
 		if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && !(obj->mStatus.mFlags & 0xA00040)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
 				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mObj   = obj;
@@ -886,8 +886,8 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 			game->mDrawLists[3].mCount++;
 		}
 	}
-	for (i = 0; i < game->mObjectCount; i++) {
-		obj = (XObj*)game->mObjects[i];
+	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		obj = (XObj*)game->mXObjs.mObjects[i];
 		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && !(obj->mStatus.mFlags & 0xA00040)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
 				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mObj   = obj;
@@ -899,8 +899,8 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 			game->mDrawLists[3].mCount++;
 		}
 	}
-	for (i = 0; i < game->mObjectCount; i++) {
-		obj = (XObj*)game->mObjects[i];
+	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		obj = (XObj*)game->mXObjs.mObjects[i];
 		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && (obj->mStatus.mFlags & 0xA00000)
 		    && !(obj->mStatus.mFlags & 0x40)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
@@ -913,8 +913,8 @@ extern "C" void BuildSceneDrawLists(CGame* game)
 			game->mDrawLists[3].mCount++;
 		}
 	}
-	for (i = 0; i < game->mObjectCount; i++) {
-		obj = (XObj*)game->mObjects[i];
+	for (i = 0; i < game->mXObjs.mObjectCount; i++) {
+		obj = (XObj*)game->mXObjs.mObjects[i];
 		if (obj->GetPool() != 3 && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000) && (obj->mStatus.mFlags & 0x40)) {
 			if (!(obj->mStatus.mFlags & 0x1000000000000ULL)) {
 				game->mDrawLists[2].mRefs[game->mDrawLists[2].mCount].mObj   = obj;
@@ -1192,7 +1192,7 @@ void CGame::Update(u32 frames)
 		}
 		if (gGame.mGs._1BA8) {
 			WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
-			scene->vf034(scene->mPending, ((XObjPool*)mXObjPools)[3].Get(0)->mObject.m_pScnMdl);
+			scene->vf034(scene->mPending, mXObjs.mPools[3].Get(0)->mObject.m_pScnMdl);
 			StepSceneDraws(frames);
 		}
 		UpdateXSound(&gGame.mSound, frames);
@@ -1211,7 +1211,7 @@ void CGame::Update(u32 frames)
 			}
 			if (gGame.mGs._1BA8) {
 				WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
-				scene->vf034(scene->mPending, ((XObjPool*)mXObjPools)[3].Get(0)->mObject.m_pScnMdl);
+				scene->vf034(scene->mPending, mXObjs.mPools[3].Get(0)->mObject.m_pScnMdl);
 				StepSceneDraws(frames);
 			}
 			UpdateWiiHomeMenu(&mHomeMenu, frames);
@@ -1479,7 +1479,7 @@ void CGame::Update(u32 frames)
 		mMotionControlCamera.Update(frames);
 	}
 	if (!mHomeMenu.IsOpen()) {
-		XObj* camera = ((XObjPool*)mXObjPools)[0].Get(0);
+		XObj* camera = mXObjs.mPools[0].Get(0);
 		if (camera != NULL && (camera->mStatus.mFlags & 1) && ((XObjScnCam*)camera)->mScene != NULL
 		    && ((XObjScnCam*)camera)->mScene->_2888 != NULL) {
 			fn_800C7764(camera, GetCamera());
