@@ -8836,3 +8836,7 @@ TrigonGetVtxS8 = .text:0x802BC770; // type:function size:0x1EC
 TrigonGetVtxU16 = .text:0x802BC95C; // type:function size:0x1AC
 TrigonGetVtxS16 = .text:0x802BCB08; // type:function size:0x1C8
 TrigonGetVtxF32 = .text:0x802BCCD0; // type:function size:0x74
+Release__7CTrigonFv = .text:0x802BCD44; // type:function
+Check__7CTrigonFP3VeciPf = .text:0x802BCDCC; // type:function
+SearchNear__7CTrigonFP3VeciPf = .text:0x802BCEC8; // type:function
+Search__7CTrigonFP3VecPf = .text:0x802BD078; // type:function

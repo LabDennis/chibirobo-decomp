@@ -3,11 +3,16 @@
 // keeps them in source order, and the two selector switches stay functions of their own.
 // The readers are global functions as in the GameCube map (no local scope there either).
 // NONMATCHING: only the vertex readers and their selectors are reconstructed; the triangle
-// parser on the NW4R shapes, the vertex size scan, Create/Search/Check and the two
-// destructors with the counter global are not written yet. TrigonGetVtxS8 differs from
-// retail in register choice and load order only.
+// parser on the NW4R shapes, the vertex size scan, Create, the two destructors and the
+// counter global are not written yet. TrigonGetVtxS8 and SearchNear differ from retail
+// in register choice (SearchNear: retail adds i + at again for the result instead of
+// reusing the index it tested).
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "game/ctrigon.h"
+#include "game/mm.h"
+#include "game/ut.h"
 #include "Dolphin/gx.h"
+#include <math.h>
 
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* srcBase, Vec* dstBase, u32 count);
 
@@ -256,4 +261,144 @@ void TrigonGetVtxF32(const TRIGON_INFO* tri, Vec* out)
 	if (tri->mMtx) {
 		PSMTXMultVecArray(tri->mMtx, out, out, 3);
 	}
+}
+
+/**
+ * @note Address: 0x802BCD44
+ * @note Size: 0x88
+ */
+void CTrigon::Release()
+{
+	if (mCells != NULL) {
+		mm::Free(mCells);
+		mCells     = NULL;
+		mCellOrder = NULL;
+		mNumCells  = 0;
+	}
+	if (_2C != NULL) {
+		mm::Free(_2C);
+		_2C = NULL;
+	}
+	if (mTri != NULL) {
+		mm::Free(mTri);
+		mTri = NULL;
+	}
+	mNumMax = 0;
+	mNum    = 0;
+}
+
+/**
+ * @note Address: 0x802BCDCC
+ * @note Size: 0xFC
+ */
+// the triangle under pos, trying the one from last time first, then its cell, then all of them
+int CTrigon::Check(Vec* pos, int hint, f32* floorY)
+{
+	if (hint >= 0 && hint < mNum) {
+		Vec v[3];
+		mTri[hint].mGetVtx(&mTri[hint], v);
+		if (IsPointInsideTriangleXZ(pos, &v[0], &v[1], &v[2])) {
+			if (floorY != NULL) {
+				CVec hit;
+				IntersectVerticalLineWithTrianglePlane(pos, &v[0], &v[1], &v[2], &hit);
+				*floorY = hit.y;
+			}
+			return hint;
+		}
+		return SearchNear(pos, hint, floorY);
+	}
+	return Search(pos, floorY);
+}
+
+/**
+ * @note Address: 0x802BCEC8
+ * @note Size: 0x1B0
+ */
+// walks the hint's cell outward from the hint, one triangle above and one below per step
+int CTrigon::SearchNear(Vec* pos, int hint, f32* floorY)
+{
+	TRIGON_CELL* cell = &mCells[mTri[hint].mCell];
+	TRIGON_INFO* tri  = cell->mTri;
+	u32 num           = cell->mNum;
+	int found         = -1;
+	if (tri == NULL || num == 0) {
+		return -1;
+	}
+
+	Vec v[3];
+	int base = tri - mTri;
+	int at   = hint - base;
+	int i    = 0;
+	for (u32 n = 0; n < num; n++) {
+		if (at + i < num) {
+			TRIGON_INFO* t = &tri[at + i];
+			t->mGetVtx(t, v);
+			if (IsPointInsideTriangleXZ(pos, &v[0], &v[1], &v[2])) {
+				found = base + (i + at);
+				break;
+			}
+		}
+		if (at - i - 1 >= 0) {
+			TRIGON_INFO* t = &tri[at - i - 1];
+			t->mGetVtx(t, v);
+			if (IsPointInsideTriangleXZ(pos, &v[0], &v[1], &v[2])) {
+				found = at + base - i - 1;
+				break;
+			}
+		}
+		i++;
+		if (at + i >= num && at - i - 1 < 0) {
+			break;
+		}
+	}
+
+	if (found >= 0) {
+		if (floorY != NULL) {
+			CVec hit;
+			IntersectVerticalLineWithTrianglePlane(pos, &v[0], &v[1], &v[2], &hit);
+			*floorY = hit.y;
+		}
+	} else {
+		found = Search(pos, floorY);
+	}
+	return found;
+}
+
+/**
+ * @note Address: 0x802BD078
+ * @note Size: 0x1B4
+ */
+// every cell in mCellOrder: the highest floor at most 5 above pos wins
+int CTrigon::Search(Vec* pos, f32* floorY)
+{
+	f32 top   = 5.0f + pos->y;
+	f32 best  = NAN;
+	int found = -1;
+	for (int i = 0; i < mNumCells; i++) {
+		int cell         = mCellOrder[i];
+		TRIGON_INFO* tri = mCells[cell].mTri;
+		u32 num          = mCells[cell].mNum;
+		if (tri == NULL || num == 0) {
+			return found;
+		}
+		for (u32 j = 0; j < num; tri++, j++) {
+			Vec v[3];
+			tri->mGetVtx(tri, v);
+			if (IsPointInsideTriangleXZ(pos, &v[0], &v[1], &v[2])) {
+				CVec hit;
+				IntersectVerticalLineWithTrianglePlane(pos, &v[0], &v[1], &v[2], &hit);
+				if (__fpclassifyf(best) == FP_NAN || (hit.y < top && top - hit.y < best)) {
+					f32 dist = top - hit.y;
+					if (dist >= 0.0f) {
+						best = dist;
+					}
+					found = j + (mCells[cell].mTri - mTri);
+					if (floorY != NULL) {
+						*floorY = hit.y;
+					}
+				}
+			}
+		}
+	}
+	return found;
 }

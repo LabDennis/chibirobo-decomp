@@ -10,27 +10,56 @@ struct TRIGON_INFO;
 // fills out[3] with world space corners
 typedef void (*TrigonGetVtxFunc)(const TRIGON_INFO* tri, Vec* out);
 
-// the Wii triangle: the GameCube one without the sort distance; the getters read the
-// matrix at _10 and the fraction bits at _14. the rest is not recovered yet
+// the Wii triangle: the GameCube one without the sort distance, plus the grid cell it
+// sits in; the getters read the matrix at _10 and the fraction bits at _14
 struct TRIGON_INFO {
 	void* mVtx[3];            // _00, into the shape's position array
 	TrigonGetVtxFunc mGetVtx; // _0C
 	MtxP mMtx;                // _10, NULL when it's identity
 	u16 mFrac;                // _14
+	u16 mCell;                // _16, index into CTrigon::mCells
+	u8 _18[8];                // _18, not recovered yet
 };
+STATIC_ASSERT(sizeof(TRIGON_INFO) == 0x20);
 
-// Wii CTrigon - XObjMap keeps one at _9C8 and its ctor stores the vtable at
-// _9E8, so the Wii layout has 0x20 bytes of unrecovered fields ahead of it.
-// only the destructor is reconstructed so far: retail __dt__7CTrigonFv
-// (0x800BEB0C) is the minimal body
+// a run of triangles in mTri that share a grid cell
+struct TRIGON_CELL {
+	TRIGON_INFO* mTri; // _00
+	u32 mNum;          // _04
+	u8 _08[8];         // _08, not recovered yet
+};
+STATIC_ASSERT(sizeof(TRIGON_CELL) == 0x10);
+
+// Wii CTrigon: the GameCube pool plus a grid of cells over the floor. XObjMap keeps one
+// at _9AC; its ctor clears mTri and stores the vtable at _9E8. The destructor
+// (retail 0x800BEB0C) is the minimal body
 class CTrigon {
 public:
-	u8 _00[0x20]; // _00, the triangle pool fields are not recovered yet
-	// _20 vtable
+	TRIGON_INFO* mTri;   // _00
+	u32 mNum;            // _04
+	u32 mNumMax;         // _08
+	u32 _0C;             // _0C, Create's counters, not recovered yet
+	u32 _10;             // _10
+	Vec mMin;            // _14
+	Vec mMax;            // _20
+	void* _2C;           // _2C, freed by Release, not recovered yet
+	TRIGON_CELL* mCells; // _30
+	u16 mNumCells;       // _34
+	u16* mCellOrder;     // _38, the order Search walks the cells in
+	// _3C vtable
 
+	CTrigon()
+	    : mTri(NULL)
+	{
+	}
 	virtual ~CTrigon() { } // _08
+
+	void Release();
+	int Check(Vec* pos, int hint, f32* floorY);
+	int SearchNear(Vec* pos, int hint, f32* floorY);
+	int Search(Vec* pos, f32* floorY);
 };
-STATIC_ASSERT(sizeof(CTrigon) == 0x24);
+STATIC_ASSERT(sizeof(CTrigon) == 0x40);
 #else
 // the HSD headers have to come first, see game/hsd_jobj.h
 #include "game/hsd_jobj.h"

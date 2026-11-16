@@ -1333,9 +1333,7 @@ public:
 
 private:
 	u8 _9A8[4];
-	u32 _9AC;
-	u8 _9B0[0x18];
-	CTrigon mTrigon; // _9C8
+	CTrigon mTrigon; // _9AC
 	u8 _9EC[0x28];
 	XObjMapListA mListA[0x64]; // _A14
 	XObjMapListB mListB[0x64]; // _EC4
