@@ -1973,6 +1973,7 @@ extern "C" void DrawTitleHelpText(Title* menu)
  * @note Address: 0x8004DC94
  * @note Size: 0x174
  */
+// NONMATCHING: the two frame-count conversions of the drift step take each other's stack slot
 // one dust mote's drift cycle: a random delay, then it grows until it pops and respawns
 void fn_8004DC94(TitleDust* dust, u32 frames)
 {
@@ -1983,7 +1984,7 @@ void fn_8004DC94(TitleDust* dust, u32 frames)
 		break;
 	case 1:
 		if (--dust->mTimer < 0) {
-			dust->mState  = 2;
+			++dust->mState;
 			dust->mSpeedY = 1.0f;
 		}
 		break;
@@ -1994,8 +1995,7 @@ void fn_8004DC94(TitleDust* dust, u32 frames)
 			dust->mX      = rand() % gRingScreenWidth;
 			dust->mY      = rand() % gRingScreenHeight;
 			dust->mState  = 0;
-			dust->mSpeedX = 0.0f;
-			dust->mSpeedY = 0.0f;
+			dust->mSpeedX = dust->mSpeedY = 0.0f;
 		}
 		break;
 	}
