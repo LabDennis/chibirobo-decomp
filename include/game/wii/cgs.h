@@ -748,9 +748,13 @@ public:
 	WiiGsSceneObj* mSceneHead; // _1BA4, the list the scene pass drains
 	u8 _1BA8[0x2290 - 0x1BA8];
 
+	// whether the current state is the CGs's own; the draws only touch that one
+	bool IsOwnTevStage() const { return mCurTevStage == &mTevStages[0]; }
+	bool IsOwnChannel() const { return mCurChannel == &mChannels[0]; }
 	void Init(u32 renderStates, u32 tevStages, u32 channels, u32 texGens); // 0x802AA610
-	void SetScreenMode(s32 mode, s32 arg2, s32 arg3);                      // 0x802AAF6C
+	void SetScreenMode(s32 mode, u16 hor, u16 ver);                        // 0x802AAF6C, hor and ver trim the overscan
 	void InitFrameBuffers();                                               // 0x802AAF98
+	void StartFrameThread();                                               // 0x802AAFC0
 	// each takes the object to fill, or NULL for the CGs's own one, and makes it the current one
 	void SetRenderState(CGsRenderState* state, GSBlendMode blend, GSZMode zMode, GSAlphaCompare alphaCompare, GSColorUpdate colorUpdate,
 	                    GSAlphaUpdate alphaUpdate, GSDstAlpha dstAlpha, GSZCompLoc zCompLoc, GSDither dither, GSLineWidth lineWidth,
@@ -758,6 +762,9 @@ public:
 	void SetTevStage(CGsTevStage* stage, s32 index, GSTevOrder order, GSTevColorOp colorOp, GSTevColorIn colorIn, GSTevAlphaOp alphaOp,
 	                 GSTevAlphaIn alphaIn);                                                                   // 0x802AB1DC
 	void SetChannel(CGsChannel* channel, GXChannelID id, GSChanCtrl ctrl, GXColor ambient, GXColor material); // 0x802AB344
+	void ResetZMode();  // 0x802AB864, depth test and write and color update back on
+	void EndFrame();    // 0x802AB8CC, queues the frame's copy and waits for the retrace
+	void SwapBuffers(); // 0x802AB8F0
 };
 
 // GXSetFog's arguments, kept so the fog can be put back
@@ -826,6 +833,13 @@ struct WiiFbTexture {
 	BOOL mOwnsImage;  // _120, mImage came from the heap and is freed with the texture
 };
 STATIC_ASSERT(sizeof(WiiFbTexture) == 0x124);
+
+// The frame buffer queue in front of the screen code (0x802A90C8-0x802A977C), not reconstructed yet;
+// the names are ours
+void AllocFrameBuffers(u32 size); // 0x802A90C8, the two external frame buffers and the copy queues
+void StartFrameThread();          // 0x802A91FC
+void QueueFrameCopy();            // 0x802A92BC
+void SwapFrameBuffer();           // 0x802A93DC
 
 extern "C" {
 // image NULL allocates one under the given name

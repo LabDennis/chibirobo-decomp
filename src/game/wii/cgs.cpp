@@ -1,13 +1,15 @@
-// The Wii's cgs.cpp from the shape draws on, .text 0x802ABBD4-0x802AEA44: the GameCube cgs.cpp
+// The Wii's cgs.cpp from the screen mode on, .text 0x802A977C-0x802AEA44: the GameCube cgs.cpp
 // functions in the GameCube file's order, plus the Wii's own text helpers.
 //
-// NONMATCHING: DrawGsCircle, DrawGsQuad (99.9 %) and DrawGsTexturedQuad (97 %) read the camera's
-// bottom before its top for the flip test where we read top first; DrawGsTexturedQuad also reloads
-// mCurTevStage after comparing it. GetGlyph (99 %) and MeasureGameTextWidth (99 %) are structurally
-// identical and differ only in callee-saved colouring and in vtable/sdata2 referent placement;
-// DrawGsText (89 %) and DrawGsStrokeText (87 %) additionally diverge in float allocation and stack
-// frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held
-// constants). No behavioural difference in any of them.
+// NONMATCHING: DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %) read the camera's bottom
+// before its top for the flip test where we read top first (an inline for the test makes it worse).
+// GetXfbHeight (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue in front of
+// it, which shift its assert in the string pool. GetGlyph (99 %) and MeasureGameTextWidth (99 %) are
+// structurally identical and differ only in callee-saved colouring and in vtable/sdata2 referent
+// placement; DrawGsText (91 %) and DrawGsStrokeText (87 %) additionally diverge in float allocation and
+// stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held
+// constants). No behavioural difference in any of them. Not written yet: CGs::Init (0x802AA610), the
+// camera begin/end and scene list calls (0x802AB790-0x802AB864) and SetGsChannelMaterialAndLighting.
 
 #include "game/wii/cgs.h"
 #include "game/cfont.h"
@@ -15,6 +17,7 @@
 #include "game/wii/cgame.h"
 #include <stdarg.h>
 #include <stdio.h>
+#include "Dolphin/vi.h"
 
 // The screen, render state, tev stage and channel code sits in front of this file's own and is part
 // of the same translation unit: the asserts of cgs_scrn.cpp and cgs_chan.cpp share one string pool.
@@ -87,6 +90,109 @@ static inline void SetColor(CTile* tile, u32 color)
 	tile->mColor0 = tile->mColor1 = tile->mColor2 = tile->mColor3 = color;
 }
 
+void CGs::SetScreenMode(s32 mode, u16 hor, u16 ver)
+{
+	mScreen.SetMode(mode, hor, ver);
+	VISetBlack(TRUE);
+}
+
+void CGs::InitFrameBuffers()
+{
+	AllocFrameBuffers(mScreen.GetXfbSize());
+}
+
+void CGs::StartFrameThread()
+{
+	::StartFrameThread();
+}
+
+void CGs::SetRenderState(CGsRenderState* state, GSBlendMode blend, GSZMode zMode, GSAlphaCompare alphaCompare, GSColorUpdate colorUpdate,
+                         GSAlphaUpdate alphaUpdate, GSDstAlpha dstAlpha, GSZCompLoc zCompLoc, GSDither dither, GSLineWidth lineWidth,
+                         GSPointSize pointSize, GSCullMode cullMode, GSClipMode clipMode)
+{
+	if (state != NULL) {
+		mCurRenderState = state;
+	} else {
+		mCurRenderState = &mRenderState;
+	}
+	mCurRenderState->Set(blend, zMode, alphaCompare, colorUpdate, alphaUpdate, dstAlpha, zCompLoc, dither, lineWidth, pointSize, cullMode,
+	                     clipMode);
+}
+
+void CGs::SetTevStage(CGsTevStage* stage, s32 index, GSTevOrder order, GSTevColorOp colorOp, GSTevColorIn colorIn, GSTevAlphaOp alphaOp,
+                      GSTevAlphaIn alphaIn)
+{
+	if (stage != NULL) {
+		mCurTevStage = stage;
+	} else {
+		mCurTevStage = &mTevStages[0];
+	}
+	mCurTevStage->Set((GXTevStageID)index, order, colorOp, colorIn, alphaOp, alphaIn);
+}
+
+void CGs::SetChannel(CGsChannel* channel, GXChannelID id, GSChanCtrl ctrl, GXColor ambient, GXColor material)
+{
+	if (channel != NULL) {
+		mCurChannel = channel;
+		mCurChannel->Set(id, ctrl, ambient, material);
+		return;
+	}
+	switch (id) {
+	case GX_COLOR0:
+	case GX_COLOR1:
+	case GX_ALPHA0:
+	case GX_ALPHA1:
+		mChannels[id].Set(id, ctrl, ambient, material);
+		break;
+	case GX_COLOR0A0:
+		mChannels[0].Set(GX_COLOR0, ctrl, ambient, material);
+		mChannels[2].Set(GX_ALPHA0, ctrl, ambient, material);
+		break;
+	case GX_COLOR1A1:
+		mChannels[1].Set(GX_COLOR1, ctrl, ambient, material);
+		mChannels[3].Set(GX_ALPHA1, ctrl, ambient, material);
+		break;
+	}
+	// the color channels chain to their alpha halves
+	mCurChannel = &mChannels[0];
+	mCurChannel->SetNext(&mChannels[2]);
+}
+
+extern "C" void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable)
+{
+	if (gs->IsOwnChannel()) {
+		switch (chan) {
+		case GX_COLOR0:
+		case GX_ALPHA0:
+			gs->mChannels[chan].mCtrl.mEnable = enable;
+			break;
+		case GX_COLOR0A0:
+			gs->mChannels[0].mCtrl.mEnable = enable;
+			gs->mChannels[2].mCtrl.mEnable = enable;
+			break;
+		}
+	} else {
+		gs->mCurChannel->mCtrl.mEnable = enable;
+	}
+}
+
+void CGs::ResetZMode()
+{
+	mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_TRUE);
+	mCurRenderState->SetColorUpdate(GX_TRUE);
+}
+
+void CGs::EndFrame()
+{
+	QueueFrameCopy();
+	VIWaitForRetrace();
+}
+
+void CGs::SwapBuffers()
+{
+	SwapFrameBuffer();
+}
+
 extern "C" {
 u16 GXGetTexObjWidth(const GXTexObj* obj);
 u16 GXGetTexObjHeight(const GXTexObj* obj);
@@ -156,7 +262,7 @@ void DrawGsTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* pos, u32 
 	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mTriangle.DrawLit(view, pos, color, count, type);
 	} else {
 		gs->mTriangle.Draw(view, pos, color, count, type);
@@ -168,7 +274,7 @@ void DrawGsColoredTrianglePrimitive(CGs* gs, GXPrimitive type, Mtx view, Vec* po
 	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mTriangle.DrawLit(view, pos, color, count, type);
 	} else {
 		gs->mTriangle.Draw(view, pos, color, count, type);
@@ -180,7 +286,7 @@ void DrawGsTriangleVertices(CGs* gs, GXPrimitive type, Mtx view, PrimVertex* vtx
 	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
 	SetupDrawState(gs);
 	gs->mTriangle.Set(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mTriangle.DrawLit(view, vtx, count, type);
 	} else {
 		gs->mTriangle.Draw(view, vtx, count, type);
@@ -205,7 +311,7 @@ void DrawGsCircle(CGs* gs, u32 segments, u32 centerColor, u32 edgeColor, f32 x, 
 	SetupDrawState(gs);
 	SetFlatTransform(gs, &gs->mCircle, x, y, z, w, h, rx, ry, rz);
 	gs->mCircle.mFixedMtx = NULL;
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mCircle.DrawLit(gs->mCamera->mViewMtx, segments, centerColor, edgeColor);
 	} else {
 		gs->mCircle.Draw(gs->mCamera->mViewMtx, segments, centerColor, edgeColor);
@@ -218,7 +324,7 @@ void DrawGsQuad(CGs* gs, u32 color0, u32 color1, u32 color2, u32 color3, f32 x, 
 	SetupDrawState(gs);
 	SetFlatTransform(gs, &gs->mTile, x, y, z, w, h, rx, ry, rz);
 	gs->mTile.mFixedMtx = NULL;
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mTile.DrawLit(gs->mCamera->mViewMtx, color0, color1, color2, color3);
 	} else {
 		gs->mTile.Draw(gs->mCamera->mViewMtx, color0, color1, color2, color3);
@@ -229,7 +335,7 @@ void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1, u32 color
                         f32 ry, f32 rz)
 {
 	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
-	if (gs->mCurTevStage == &gs->mTevStages[0]) {
+	if (gs->IsOwnTevStage()) {
 		gs->mCurTevStage->SetOrder(GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
 		gs->mCurTevStage->SetNumTexGens(1);
 		gs->mCurTevStage->SetTexGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0);
@@ -249,13 +355,13 @@ void DrawGsTexturedQuad(CGs* gs, CTexObj* tex, u32 color0, u32 color1, u32 color
 	SetFlatTransform(gs, &gs->mSprite2, x, y, z, w, h, rx, ry, rz);
 	gs->mSprite2.mTex      = tex;
 	gs->mSprite2.mFixedMtx = NULL;
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
 		gs->mSprite2.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, color0, color1, color2, color3);
 	} else {
 		gs->mSprite2.Draw(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, color0, color1, color2, color3);
 	}
 
-	if (gs->mCurTevStage == &gs->mTevStages[0]) {
+	if (gs->IsOwnTevStage()) {
 		gs->mCurTevStage->SetOrder(GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
 		gs->mCurTevStage->SetNumTexGens(0);
 	}
@@ -543,13 +649,13 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 
 	// backgrounds first, flat color
 	SetGsChannelMaterialAndLighting(gs, GX_SRC_VTX, 0);
-	if (gs->mCurTevStage == &gs->mTevStages[0]) {
+	if (gs->IsOwnTevStage()) {
 		gs->mCurTevStage->SetOrder(GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
 		gs->mCurTevStage->SetMode(GX_PASSCLR);
 		gs->mCurTevStage->SetNumTexGens(0);
 	}
 	SetupDrawState(gs);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
 		for (s32 i = 0; i < count; i++) {
 			if (textChars[i].mHasBg) {
 				textChars[i].mBg.DrawLit(gs->mCamera->mViewMtx, textChars[i].mBg.mColor0, textChars[i].mBg.mColor1,
@@ -566,14 +672,14 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 	}
 
 	// then the characters, textured
-	if (gs->mCurTevStage == &gs->mTevStages[0]) {
+	if (gs->IsOwnTevStage()) {
 		gs->mCurTevStage->SetOrder(GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
 		gs->mCurTevStage->SetMode(GX_MODULATE);
 		gs->mCurTevStage->SetNumTexGens(1);
 		gs->mCurTevStage->SetTexGen(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_TEXMTX0);
 	}
 	SetupDrawState(gs);
-	if (gs->mCurChannel == &gs->mChannels[0] && gs->mChannels[0].mCtrl.mEnable) {
+	if (gs->IsOwnChannel() && gs->mChannels[0].mCtrl.mEnable) {
 		for (s32 i = 0; i < count; i++) {
 			textChars[i].mSprite.DrawLit(gs->mCamera->mViewMtx, GX_TEXMAP0, GX_TEXMTX0, GX_MTX2x4, textChars[i].mSprite.mColor0,
 			                             textChars[i].mSprite.mColor1, textChars[i].mSprite.mColor2, textChars[i].mSprite.mColor3);
@@ -585,7 +691,7 @@ extern "C" void DrawGsText(CGs* gs, u32 color, BOOL proportional, const char* te
 		}
 	}
 
-	if (gs->mCurTevStage == &gs->mTevStages[0]) {
+	if (gs->IsOwnTevStage()) {
 		gs->mCurTevStage->SetOrder(GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
 		gs->mCurTevStage->SetMode(GX_PASSCLR);
 		gs->mCurTevStage->SetNumTexGens(0);
