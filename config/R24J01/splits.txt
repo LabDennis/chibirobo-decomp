@@ -722,6 +722,11 @@ game/wii/inventory.cpp:
 	extabindex start:0x80014C30 end:0x80014C3C
 	.text start:0x80113910 end:0x801141C0
 
+game/wii/xobjhboxpart.cpp:
+	extab start:0x8000D814 end:0x8000D84C
+	extabindex start:0x80014D20 end:0x80014D5C
+	.text start:0x80116528 end:0x8011701C
+
 game/wii/xobjactorstop.cpp:
 	.text start:0x80138560 end:0x80138598
 
