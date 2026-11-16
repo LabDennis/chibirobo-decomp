@@ -280,8 +280,10 @@ static inline u16 ReadPCDialogueGlyph(const char* text)
 }
 #endif
 
-// NONMATCHING: same code size but retail schedules the large mode switch differently,
-// load/store order and regalloc differ throughout
+// NONMATCHING: retail calls CTexObj's constructor and destructor out of line (the only bl __ct__7CTexObjFv in
+// the game) while it expands every other inline: the original function alone was over the -inline auto budget.
+// Ours expands them; it takes 260 to 300 two-unit filler calls before it stops, so the source is still short of
+// retail's. The frame (0x10 smaller), the bss base held in r14 and regalloc follow from that
 BOOL MenuPC::Draw()
 {
 	if (Draw__5CMenuFv(this)) {
@@ -2862,6 +2864,7 @@ void MenuPC::State6(u32)
  * @note Address: 0x80051C60
  * @note Size: 0x5C
  */
+// NONMATCHING: scheduling only, retail loads the 1 of the bit mask before clrlwi
 extern "C" bool IsUtilibotStatusIconUnlocked()
 {
 	bool found = false;
@@ -9734,6 +9737,9 @@ static inline void DrawOverviewStats(MenuStatus* menu, s32 selected, f32 x, f32 
 	DrawPlayerStatusValue(0x99 - StatusTextureOffset, gGame.GetPlayer()->mParams.mScrap, selected == 4, statX,
 	                      40.0f + (8.0f + ((y - 80.0f) + 132.0f)), menu->mAlpha, menu->mPulsePhase);
 }
+// NONMATCHING: registers. Retail passes `selected == 0` and the others to DrawPlayerStatusValue as bool (srwi,
+// no extrwi mask), so its parameter is probably bool; declared bool here, the register allocation moves and the
+// function scores lower (90.2 -> 89.4), so it stays u8
 extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 {
 	if (menu->mMode == 9 || menu->mMode == 4) {
@@ -10147,6 +10153,9 @@ static inline void DrawDiscardOutline(MenuStatus* menu, f32 x, f32 y)
 		               (Vec) { left, bottom, depth }, (Vec) { left, top, depth } };
 	DrawGsLineStrip(&gGame.mGs, outline, (u32)(255.0f * menu->mAlpha) | 0xC8282800, 5);
 }
+// NONMATCHING: retail saves one float register more (f17, frame 0x10 bigger) and builds the outline's five
+// compound literals at falling stack addresses (0x38, 0x2c, 0x20, 0x14, 0x8); ours rise. Writing the outline in
+// place or with a literal depth does not change that
 extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 {
 	f32 wave = 2.0f * (f32)sin(0.017453292f * (((s32)((u32)menu->mAnimationFrame * 24)) % 360));
