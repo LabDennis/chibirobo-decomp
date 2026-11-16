@@ -178,7 +178,9 @@ public:
 	u8 mDirty;      // _44, the view matrix is out of date
 
 	void CalcEye();      // 0x802A855C
+	void CalcInterest(); // 0x802A8644
 	void CalcAngle();    // 0x802A8734
+	void CalcUp();       // 0x802A88D0
 	void CalcDistance(); // 0x802A896C, between the eye and the interest
 };
 
@@ -215,12 +217,12 @@ public:
 		mRight           = right;
 		mProjectionDirty = TRUE;
 	}
-	virtual void vf28();                           // _28
-	virtual void vf2C();                           // _2C
-	virtual void vf30();                           // _30
-	virtual void SetEye(f32 x, f32 y, f32 z);      // _34
-	virtual void SetInterest(f32 x, f32 y, f32 z); // _38
-	virtual void SetAngle(f32 x, f32 y, f32 z)     // _3C
+	virtual void SetProjectionSource(MtxP projection); // _28, an external projection matrix; clearing it rebuilds ours
+	virtual void vf2C();                               // _2C
+	virtual MtxP GetProjectionSource();                // _30
+	virtual void SetEye(f32 x, f32 y, f32 z);          // _34
+	virtual void SetInterest(f32 x, f32 y, f32 z);     // _38
+	virtual void SetAngle(f32 x, f32 y, f32 z)         // _3C
 	{
 		mView.mAngle.x = x;
 		mView.mAngle.y = y;
@@ -255,8 +257,8 @@ public:
 		mView.mAngle.x = x;
 		mView.mDirty   = TRUE;
 	}
-	virtual void vf60();          // _60
-	virtual void vf64(CMtxP view) // _64, points the camera at an external view matrix
+	virtual void SetAngleZ(f32 z); // _60
+	virtual void vf64(CMtxP view)  // _64, points the camera at an external view matrix
 	{
 		mViewSource = view;
 		if (view == NULL) {
@@ -264,7 +266,7 @@ public:
 		}
 	}
 	virtual void vf68();                                             // _68
-	virtual void vf6C();                                             // _6C
+	virtual CMtxP GetViewSource();                                   // _6C
 	virtual void CalcEye() { mView.CalcEye(); }                      // _70
 	virtual void CalcInterest();                                     // _74, Update calls it where the GameCube called CalcInterest
 	virtual void CalcAngle() { mView.CalcAngle(); }                  // _78
@@ -282,9 +284,9 @@ public:
 		mViewportDirty = TRUE;
 	}
 
-	u8 _04[0x4];
-	f32 mFov; // _08
-	u8 _0C[0x10 - 0x0C];
+	u8 mType;            // _04, 0 perspective, 1 frustum, 2 orthographic
+	f32 mFov;            // _08
+	f32 mAspect;         // _0C
 	f32 mNear;           // _10
 	f32 mFar;            // _14
 	f32 mTop;            // _18, ortho projection bounds, fed to C_MTXOrtho
@@ -293,18 +295,23 @@ public:
 	f32 mRight;          // _24
 	u8 mProjectionDirty; // _28, SetFov sets it - the projection matrix is rebuilt lazily
 	u8 _29[0x2C - 0x29];
-	Mtx44 mProjection; // _2C
-	u8 _6C[0x70 - 0x6C];
-	// _70, the projection as GXProject takes it, and at _8C what widens a projected x to the screen
-	f32 mProjectionv[7];
-	f32 mScale;
-	CCameraView mView; // _90
-	Mtx mViewMtx;      // _D8, the computed view matrix the 2D draws multiply into
-	u8 _108[0x118 - 0x108];
-	CMtxP mViewSource; // _118, an external view matrix the camera follows; clearing it dirties the view
-	f32 mViewport[6];  // _11C
-	u8 mViewportDirty; // _134
-	u8 _135[0x1F8 - 0x135];
+	Mtx44 mProjection;      // _2C
+	MtxP mProjectionSource; // _6C
+	f32 mIsOrtho;           // _70, 1.0 for the orthographic camera
+	f32 mProjParams[6];     // _74, the six entries of mProjection GXSetProjection takes
+	f32 mScale;             // _8C
+	CCameraView mView;      // _90
+	Mtx44 mViewMtx;         // _D8, the computed view matrix the 2D draws multiply into (the fourth row stays identity)
+	CMtxP mViewSource;      // _118, an external view matrix the camera follows; clearing it dirties the view
+	f32 mViewport[6];       // _11C
+	u8 mViewportDirty;      // _134
+	Mtx44 mViewportMtx;     // _138, clip space to the viewport's pixels
+	Mtx44 mScreenMtx;       // _178, viewport * projection * view
+	Mtx44 mScreenInv;       // _1B8
+
+	void InitView(const GXRenderModeObj* rmode); // 0x802A80FC, the view at its defaults and the full-screen viewport
+	BOOL SetCurrent();                           // 0x802A82FC, rebuilds whatever matrix is out of date
+	void EndCurrent();                           // 0x802A8558
 };
 STATIC_ASSERT(sizeof(CCamera) == 0x1F8);
 #ifndef offsetof

@@ -219,11 +219,11 @@ void CBase::Run(int argc, char** argv)
 {
 	Initialize(argc, argv);
 	Start();
-	gGame.mGs.fn_802AAFC0();
+	gGame.mGs.StartFrameThread();
 	VISetBlack(FALSE);
 	while (true) {
-		gGame.mGs.fn_802AB8CC();
-		gGame.mGs.fn_802AB8F0();
+		gGame.mGs.EndFrame();
+		gGame.mGs.SwapBuffers();
 		mRetraceStep = VIGetRetraceCount() - mLastRetrace;
 		mLastRetrace = VIGetRetraceCount();
 		if (mRetraceStep > 4) { // a hitch only counts four frames

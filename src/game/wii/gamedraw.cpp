@@ -243,7 +243,7 @@ void CGame::ProjectOffsetToScreen(const Vec* pos, f32* x, f32* y, f32* z, void* 
 	CCamera* cam = camera != NULL ? (CCamera*)camera : &gGame.mMotionControlCamera;
 	f32 sx;
 	Vec screen;
-	GXProject(pos->x, pos->y, pos->z, cam->mViewMtx, cam->mProjectionv, cam->mViewport, &sx, &screen.y, &screen.z);
+	GXProject(pos->x, pos->y, pos->z, cam->mViewMtx, &cam->mIsOrtho, cam->mViewport, &sx, &screen.y, &screen.z);
 	f32 scale = cam->mScale;
 	screen.x  = sx * scale;
 	if (x != NULL) {
@@ -474,7 +474,7 @@ CVec* XObj::GetPos()
  */
 void CBase::vf54()
 {
-	mGs.EndCamera();
+	EndGsCamera(&mGs);
 }
 
 /**
