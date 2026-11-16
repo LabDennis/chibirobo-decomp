@@ -146,6 +146,7 @@ fn_802AB81C__3CGsFPA4_fi = .text:0x802AB81C; // type:function size:0x44
 ResetPooledObjects = .text:0x800C5424; // type:function
 SetupStageCamera__5CGameFl = .text:0x8001DC88; // type:function size:0x1F0
 BuildObjectDrawList = .text:0x8001DF48; // type:function size:0x280
+__dt__9CoordInfoFv = .text:0x8001D514; // type:function size:0x6C
 BeforeUpdate__5CGameFv = .text:0x8001C7B0; // type:function size:0xD50
 __mi__4CVecCF3Vec = .text:0x80024A10; // type:function size:0x6C
 __dt__4CVecFv = .text:0x80024A7C; // type:function size:0x6C
