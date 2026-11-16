@@ -1377,6 +1377,9 @@ if wii:
                 Object(Matching, "nw4r/g3d/g3d_anmtexsrt.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_anmchr.cpp"),
                 Object(Matching, "nw4r/g3d/g3d_anmshp.cpp"),
+                # 44 of 44, not linked: AnmScnRes::GetNumLightSet is a header inline whose retail copy is
+                # fn_8009C3D4 in the game's range (slot 0x38 of the vtable at 0x803336D8); until that symbol
+                # carries the name the link keeps ours as well and everything behind moves by 8 bytes.
                 Object(NonMatching, "nw4r/g3d/g3d_anmscn.cpp"),
                 # 5 of 5, not linked: retail emits G3dObj's weak virtuals as IsDerivedFrom, GetTypeName, GetTypeObj
                 # (0x8026C5EC), this source as GetTypeName, GetTypeObj, IsDerivedFrom. xenoblade gets retail's

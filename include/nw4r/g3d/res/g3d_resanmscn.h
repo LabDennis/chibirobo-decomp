@@ -95,6 +95,14 @@ public:
     ResAnmFog GetResAnmFogByRefNumber(u32 refNumber) const;
     ResAnmCamera GetResAnmCameraByRefNumber(u32 refNumber) const;
 
+    int GetNumFrame() const {
+        return ref().info.numFrame;
+    }
+
+    AnmPolicy GetAnmPolicy() const {
+        return ref().info.policy;
+    }
+
     u16 GetResAnmFogMaxRefNumber() const {
         return ref().info.numResAnmFogData;
     }

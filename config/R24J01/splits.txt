@@ -1213,6 +1213,9 @@ nw4r/g3d/g3d_anmshp.cpp:
 
 nw4r/g3d/g3d_anmscn.cpp:
 	.text start:0x8026AFC4 end:0x8026C528
+	.rodata start:0x802E00C0 end:0x802E00E0
+	.data start:0x803336D8 end:0x803337F8
+	.sdata2 start:0x805A7390 end:0x805A73AC
 
 nw4r/g3d/g3d_obj.cpp:
 	.text start:0x8026C528 end:0x8026C644
