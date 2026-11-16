@@ -2494,6 +2494,60 @@ void Title::UpdateSelections()
 	}
 }
 
+/**
+ * @note Address: 0x8004EDFC
+ * @note Size: 0x480
+ */
+// NONMATCHING: read from retail's code; only the float registers of x, width, top and scale differ
+// the highlight bar behind an options line: a stretched middle and two caps from one texture, then the
+// same bar smaller in a dark shade, which retail draws without its left cap
+void fn_8004EDFC(Title* title, BOOL selected, f32 x, f32 y, f32 size, f32 width)
+{
+	f32 top   = y - 2.0f;
+	f32 scale = 1.0f;
+	f32 h     = size * scale;
+	u32 color;
+	if (selected && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
+		color = (u32)(255.0f * title->mOptionAlpha) | 0xFFB62800;
+	} else {
+		color = (u32)(255.0f * title->mOptionAlpha) | 0xFFFFFF00;
+	}
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	(&gGame.mTpl)->mTex.Init(&gGame.mTpl.mPalette->descriptorArray[118 - StatusTextureOffset], 0);
+	CTexObj tex = gGame.mTpl.mTex;
+	PSMTXScale(tex.mTexMtx.mMtx[2], 0.25f, 1.0f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.25f, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, 2.0f * scale + top, 0.0f, width, h, 0.0f, 0.0f, 0.0f);
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, (x - width * 0.5f) - 4.0f * scale, 2.0f * scale + top, 0.0f,
+	                   8.0f * scale, h, 0.0f, 0.0f, 0.0f);
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 4.0f * scale + (width * 0.5f + x), 2.0f * scale + top, 0.0f,
+	                   8.0f * scale, h, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+
+	scale = 0.8f;
+	h *= scale;
+	u32 shade = 200.0f * title->mOptionAlpha;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	PSMTXScale(tex.mTexMtx.mMtx[2], 0.25f, 1.0f, 1.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.25f, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, x, 2.0f * scale + top, 0.0f, width, h, 0.0f, 0.0f, 0.0f);
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
+	tex.mTexMtx.mDirty = TRUE;
+	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, 4.0f * scale + (width * 0.5f + x), 2.0f * scale + top, 0.0f,
+	                   8.0f * scale, h, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
 // the handlers UpdateTitleScreen's state 20 dispatches by mMode
 void (Title::*gTitleModeUpdates[])(u32) = {
 	NULL,
