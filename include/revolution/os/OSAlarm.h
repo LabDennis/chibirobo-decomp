@@ -47,6 +47,8 @@ void OSSetAbsAlarm(OSAlarm* alarm, OSTime time, OSAlarmHandler handler);
 void OSSetPeriodicAlarm(OSAlarm* alarm, OSTime start, OSTime period, OSAlarmHandler handler);
 void OSSetAlarmTag(OSAlarm* alarm, u32 tag);
 void OSCancelAlarms(u32 tag);
+void OSSetAlarmUserData(OSAlarm* alarm, void* userData);
+void* OSGetAlarmUserData(const OSAlarm* alarm);
 
 //////////////////////////////////
 
