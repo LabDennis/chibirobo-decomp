@@ -427,6 +427,18 @@ s32 GetDrawListCount(const CGame* game, s32 list)
 	return game->mDrawLists[list].mCount;
 }
 
+// the direction square to bc pointing from a toward the line, so out of the triangle abc
+void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out)
+{
+	Vec bc;
+	Vec ba;
+	Vec n;
+	PSVECSubtract(b, c, &bc);
+	PSVECSubtract(b, a, &ba);
+	PSVECCrossProduct(&ba, &bc, &n);
+	PSVECCrossProduct(&bc, &n, out);
+}
+
 f32 GetFloorYawRadians(XObjFloor* const* floors, s32 index)
 {
 	return DEG2RAD * (*floors)[index].mYawDegrees;
