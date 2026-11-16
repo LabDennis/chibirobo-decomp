@@ -8782,8 +8782,8 @@ BOOL MenuItem::Update(u32 frames)
 					mShowHelp = 1;
 					mHelp     = NULL;
 				}
-				mPrevSelection = mSelection;
 			}
+			mPrevSelection = mSelection;
 			if (pad.mPad->mTrigger & 0x100) {
 				s16 id     = sStatusItemTable.GetItem(mSelection);
 				s16 amount = sStatusItemTable.mItems[mSelection].mCount;
@@ -10447,8 +10447,8 @@ static inline void UpdateOwnedItemHelp(MenuStatus* menu)
 			menu->mShowHelp = 1;
 			menu->mHelp     = NULL;
 		}
-		menu->mPreviousItem = menu->mItem;
 	}
+	menu->mPreviousItem = menu->mItem;
 }
 
 void MenuStatus::State2(u32)
