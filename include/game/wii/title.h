@@ -56,10 +56,11 @@ public:
 };
 
 // the title's two objects, the cursor and the demo figure. The Wii XObj is not reconstructed: these are
-// its virtuals up to the one the title code calls, the unnamed ones only keep its place
+// its virtuals up to the one the title code calls, the unnamed ones only keep its place. Slot _08 is the destructor:
+// ~CMsg destroys CMsgFont's two through it (0x8002F1A4)
 class WiiTitleObject {
 public:
-	virtual void vf008();
+	virtual ~WiiTitleObject() { } // _08
 	virtual void vf00C();
 	virtual void vf010();
 	virtual void vf014();
