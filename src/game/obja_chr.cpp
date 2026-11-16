@@ -4564,13 +4564,16 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 		result = -1;
 		break;
 	case 303:
-		mRadar.mState = args[1] ? 1 : 2;
-		result        = -1;
+		if (args[1])
+			mRadar.mState = 1;
+		else
+			mRadar.mState = 2;
+		result = -1;
 		break;
 	case 400:
 		return mAttachmentRequest < 0;
 	case 450:
-		if ((u32)args[1] < 3)
+		if (args[1] >= 0 && args[1] < 3)
 			mSuits.mSpecial = args[1];
 		break;
 	case 451:
