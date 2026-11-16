@@ -1350,7 +1350,7 @@ if wii:
                 Object(NonMatching, "game/wii/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # -inline noauto like the engine files around it (cfile, ctpl, THPSimple): Update
                 # calls Stop where auto-inlining would expand it
-                Object(NonMatching, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(Matching, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
                 # member offsets are shared with the GameCube class (mEyeInterps _18C, mFovInterps
                 # _330, the interp pointers _44-_54); the Wii vtable re-orders the Vec& overloads
                 Object(NonMatching, "game/ccameraactionevt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
