@@ -1,0 +1,93 @@
+#ifndef NW4R_SND_FRAME_HEAP_H
+#define NW4R_SND_FRAME_HEAP_H
+#include "nw4r/types_nw4r.h"
+#include "nw4r/snd/snd_global.h"
+#include <cstddef>
+#include "nw4r/ut/ut_LinkList.h"
+#include "nw4r/ut/ut_algorithm.h"
+#include "nw4r/ut/ut_lock.h"
+#include "nw4r/ut/ut_FileStream.h"
+#include "revolution/mem.h"
+#include "revolution/mem_api.h"
+
+namespace nw4r {
+namespace snd {
+namespace detail {
+
+class FrameHeap {
+public:
+    typedef void (*FreeCallback)(void *pBuffer, u32 size, void *pCallbackArg);
+
+public:
+    FrameHeap();
+    ~FrameHeap();
+
+    bool Create(void *pBase, u32 size);
+    void Destroy();
+    void Clear();
+    void *Alloc(u32 size, FreeCallback pCallback, void *pCallbackArg);
+
+    int SaveState();
+    void LoadState(int id);
+
+    int GetCurrentLevel() const;
+    u32 GetFreeSize() const;
+
+    bool IsValid() const {
+        return mHandle != NULL;
+    }
+
+private:
+    struct Block {
+        NW4R_UT_LINKLIST_NODE_DECL(); // at 0x0
+        void *mpBuffer;           // at 0x8
+        u32 mSize;                // at 0xC
+        FreeCallback mCallback;   // at 0x10
+        void *mCallbackArg;       // at 0x14
+
+        Block(void *pBuffer2, u32 size, FreeCallback pCallback, void *pCallbackArg)
+            : mSize(size), mCallback(pCallback), mCallbackArg(pCallbackArg), mpBuffer(pBuffer2) {}
+
+        ~Block() {
+            if (mCallback != NULL) {
+                mCallback(mpBuffer, mSize, mCallbackArg);
+            }
+        }
+    };
+
+    NW4R_UT_LINKLIST_TYPEDEF_DECL(Block);
+
+    struct Section {
+        NW4R_UT_LINKLIST_NODE_DECL(); // at 0x0
+        BlockList mBlockList;     // at 0x8
+
+        ~Section() {
+            for (BlockList::Iterator it = mBlockList.GetEndIter(); it != mBlockList.GetBeginIter();) {
+                (--it)->~Block();
+            }
+        }
+
+        void AppendBlock(Block *pBlock) {
+            mBlockList.PushBack(pBlock);
+        }
+    };
+
+    NW4R_UT_LINKLIST_TYPEDEF_DECL(Section);
+
+    static const int BLOCK_BUFFER_SIZE = ALIGN_NEXT(sizeof(Block), 32);
+    static const int HEAP_ALIGN = 32;
+
+private:
+    bool NewSection();
+    void ClearSection();
+
+private:
+    MEMiHeapHead *mHandle;    // at 0x0
+    SectionList mSectionList; // at 0x4
+};
+
+} // namespace detail
+} // namespace snd
+} // namespace nw4r
+
+#endif

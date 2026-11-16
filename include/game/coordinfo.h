@@ -33,7 +33,21 @@ public:
 };
 
 // an entry of objTable or objTableEx, 0x18 bytes. the kind record an object points at
+#if defined(VERSION_R24J01)
+class ResourceFile;
+// what an object kind's objTable entry starts with, the archive its model is read from
+struct XObjSource {
+	const char* mName;      // _00
+	ResourceFile* mArchive; // _04
+	u32 _08;
+	struct Cache {
+		u32 address;
+		u32 size;
+	} mCache;
+};
+#else
 struct XObjSource;
+#endif
 struct UnkObjData {
 	XObjSource* mSource; // _00
 	u32 mModel;          // _04
@@ -78,7 +92,13 @@ public:
 	    , mPlacement(info.mPlacement)
 	{
 	}
+#if defined(VERSION_R24J01)
+	// the Wii object archive comes from a shared ResourceFile pool, claimed on Init
+	void Init(CoordInfo* info);
+	virtual ~AttrInfo() { } // _08, XObj's ctor stores __vt__8AttrInfo on the Wii too
+#else
 	virtual ~AttrInfo() { } // _08
+#endif
 };
 
 extern "C" UnkStageObj* GetStagePlacementByIndex(s32 i);

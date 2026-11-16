@@ -523,13 +523,15 @@ CVec CVec::operator*(Vec other) const
  * @note Address: 0x8008C274
  * @note Size: 0x558
  */
+// NONMATCHING: retail keeps index in the frame and reads it again for each of the floor's values, as if
+// its address were taken (a `const s32&` bound to it gives that code, 76.6 %); the helper that takes
+// the index by reference is not found.
 extern "C" CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offset)
 {
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return object->mMoveTranslate; // that flag off: no floor contact to compute
 
-	Vec none               = { 0.0f, 0.0f, 0.0f };
-	Vec displacement       = offset ? Vec(*offset) : Vec(none);
+	Vec displacement       = offset ? *offset : (Vec) { 0.0f, 0.0f, 0.0f };
 	Vec position           = object->mMoveTranslate + displacement;
 	Vec center             = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object->mFloors[index]));
 	Vec extent             = object->mMoveScale * ReadObjectFloorExtent(object->mFloors[index]);

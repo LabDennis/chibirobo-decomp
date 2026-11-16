@@ -530,11 +530,11 @@ static inline Vec FloorExtent(WiiTitleObject* obj, int i)
 extern "C" BOOL PushPlugCordPointFromObject(CVec* pos, WiiTitleObject* object, f32 radius)
 {
 	static f32 margin = 1.0f;
-	if (!(object->mFlags & 0x02000000))
+	if (!(object->mStatus & 0x0200000000000000ULL))
 		return FALSE;
-	if (object->mFlags & 0x0c000000)
+	if (object->mStatus & 0x0c00000000000000ULL)
 		return FALSE;
-	if (object->mFlags & 0x40000000)
+	if (object->mStatus & 0x4000000000000000ULL)
 		return FALSE;
 	CVec point, edge;
 	point.x     = pos->x;

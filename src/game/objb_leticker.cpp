@@ -227,14 +227,14 @@ BOOL TurnLetickerAndCheckClearance(XObjLeticker* lift, f32 angle)
 	if (pad.mPad->mButton & HSD_PAD_STICK_DOWN)
 		return TRUE;
 
-	CVec pos(second->mMoveTranslate);
 	f32 offset = 4.0f * (s32)(lift->mLevelProgress / 3.0f) + 0.5f;
-	pos.y      = 6.0f + (3.0f + (9.0f + (offset + HSD_JObjGetTranslationY(lift->mJObj))));
+	CVec pos((const Vec&)second->mMoveTranslate);
+	pos.y = 6.0f + (3.0f + (9.0f + (offset + HSD_JObjGetTranslationY(lift->mJObj))));
 	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* target = gGame.GetObject(i);
 		if (!(target->mStatus.mFlags & 1) || !(target->mStatus.mFlags & 0x10000))
 			continue;
-		if (target->mId == lift->mId || target->mId == first->mId || target->mId == second->mId)
+		if ((s32)lift->mId == (s32)target->mId || (s32)first->mId == (s32)target->mId || (s32)second->mId == (s32)target->mId)
 			continue;
 		XObjSource* source = target->mAttr.mObjData != NULL ? target->mAttr.mObjData->mSource : NULL;
 		if (source == NULL)
@@ -308,6 +308,8 @@ void XObjLeticker::OnUnplugged()
  * @note Address: 0x800E322C
  * @note Size: 0x8C4
  */
+// NONMATCHING: retail reads the four camera bounds before it stores the first, the code of a setter on the camera
+// action that takes them as arguments (98.2 % with one), and it reads mPowerTimer again for the start test.
 BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 {
 	if (gGame.GetPlayer()->mMoveTranslate.y < mMoveTranslate.y - 5.0f)
@@ -336,17 +338,19 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 		mPowered = TRUE;
 		mWaiting = FALSE;
 		if (mState != 3) {
-			CCameraActionLeticker& camera = gLetickerCameraAction;
-			gGame.mMotionControlCamera.PushAction(&camera);
-			camera.mTarget = &mStackTopPosition;
+			gGame.mMotionControlCamera.PushAction(&gLetickerCameraAction);
+			gLetickerCameraAction.mTarget = &mStackTopPosition;
 			if (mCameraBounded) {
-				camera.mBounded = true;
-				camera.mMinX    = mCameraMinX;
-				camera.mMaxX    = mCameraMaxX;
-				camera.mMinZ    = mCameraMinZ;
-				camera.mMaxZ    = mCameraMaxZ;
-				for (s32 i = 0; i < 4 && !CanTurn(&camera, camera.mAngle); ++i)
-					camera.mTurnTo = camera.mAngle += HALF_PI;
+				gLetickerCameraAction.mBounded = true;
+				gLetickerCameraAction.mMinX    = mCameraMinX;
+				gLetickerCameraAction.mMaxX    = mCameraMaxX;
+				gLetickerCameraAction.mMinZ    = mCameraMinZ;
+				gLetickerCameraAction.mMaxZ    = mCameraMaxZ;
+				for (s32 i = 0; i < 4; ++i) {
+					if (CanTurn(&gLetickerCameraAction, gLetickerCameraAction.mAngle))
+						break;
+					gLetickerCameraAction.mTurnTo = gLetickerCameraAction.mAngle += HALF_PI;
+				}
 			}
 		} else {
 			gGame.GetObject(mLinked[0])->mStatus.mFlags &= ~0x10000ULL;
@@ -371,8 +375,8 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 		mWaiting = FALSE;
 	}
 	++mPowerTimer;
-	f32 delta     = amount * mSpeedScale;
-	BOOL starting = mPowerTimer < 40;
+	amount *= mSpeedScale;
+	bool starting = mPowerTimer < 40;
 	switch (mState) {
 	case 1: // the lift
 		if (!(u8)TurnLetickerAndCheckClearance(this, angle)) {
@@ -397,7 +401,7 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 		mStackTopPosition = mMoveTranslate;
 		gGame.GetObject(mLinked[0])->SetPos(mMoveTranslate, 0);
 		gGame.GetObject(mLinked[0])->SetRotateY(mMoveRotate.y, 1.0f);
-		if (mMaxLevelProgress <= mLevelProgress + delta) {
+		if (mMaxLevelProgress <= mLevelProgress + amount) {
 			gGame.GetObject(mLinked[0])->mStatus.mFlags |= 0x10000ULL;
 			gGame.GetObject(mLinked[0])->SetAnim(1, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
 		} else {
@@ -410,13 +414,13 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 	if (gGame.GetPlayer()->mParams.mBattery <= 0.0f)
 		return FALSE;
 	if (pad.mPad->mButton & HSD_PAD_STICK_DOWN) {
-		mLevelProgress -= delta;
+		mLevelProgress -= amount;
 		if (mLevelProgress < 0.0f) {
 			mLevelProgress = 0.0f;
 			return starting;
 		}
 	} else {
-		mLevelProgress += delta;
+		mLevelProgress += amount;
 		if (mMaxLevelProgress <= mLevelProgress) {
 			mLevelProgress = mMaxLevelProgress;
 			return starting;
@@ -510,9 +514,19 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 		mCurrentLevel        = 0;
 		break;
 	case 1: {
-		mLevelProgress = count < 2 || !args[1] ? 0.0f : 10.0f * args[1];
-		mHeading       = count < 3 || !args[2] ? 0.0f : DEG2RAD * args[2];
-		bool setHeight = count >= 4 && args[3] != 0;
+		if (count < 2 || args[1] == 0)
+			mLevelProgress = 0.0f;
+		else
+			mLevelProgress = 10.0f * args[1];
+		if (count < 3 || args[2] == 0)
+			mHeading = 0.0f;
+		else
+			mHeading = DEG2RAD * args[2];
+		bool setHeight;
+		if (count < 4 || args[3] == 0)
+			setHeight = false;
+		else
+			setHeight = true;
 		if (mLinkedCount == 0) {
 #if !defined(VERSION_PAL)
 			OSReport("\x83\x8C\x83\x60\x83\x62\x83\x4A\x81\x5B\x83\x59\x82\xAA\x8F\x89\x8A\xFA\x89\xBB\x82\xB3\x82\xEA\x82\xC4\x82\xDC\x82"
@@ -526,7 +540,7 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 			XObj* top  = gGame.GetObject(mLinked[1]);
 			if (setHeight) {
 				mHeight       = 4.0f * (s32)(mLevelProgress / 3.0f) + 0.5f;
-				mCurrentLevel = mHeight * 0.25f;
+				mCurrentLevel = mHeight / 4.0f;
 			}
 			base->SetRotateY(mHeading + HSD_JObjGetRotationY(mJObj), 0.1f);
 			top->SetRotateY(mHeading + HSD_JObjGetRotationY(mJObj), 0.1f);
@@ -561,16 +575,26 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 		switch (args[1]) {
 		case 0:
 			return (s32)((9.0f + mLevelProgress) / 10.0f);
-		case 1:
-			return 90 * GetSide(mHeading);
+		case 1: // GetSide's quarters in degrees
+			if (Cos(0.7853982f) <= Cos(mHeading)) {
+				return 0;
+			} else if (Cos(mHeading) <= Cos(3.9269907f)) {
+				return 180;
+			} else if (0.0f < Sin(mHeading)) {
+				return 90;
+			} else {
+				return 270;
+			}
 		case 2:
-			return !(mLevelProgress < mMaxLevelProgress);
+			if (mLevelProgress < mMaxLevelProgress)
+				return FALSE;
+			return TRUE;
 		case 3:
 			return mPowered != 0;
 		case 4:
 			return (s32)(100.0f * mSpeedScale);
 		}
-		break;
+		// no break: a query the list doesn't have runs on into the settings
 	case 4:
 		switch (args[1]) {
 		case 0:
@@ -616,7 +640,8 @@ s32 XObjLeticker::HandleEventCommand(s32 count, s32* args)
 				break;
 			case 3:
 				if (count <= 2 || args[2]) {
-					player->mLift.SetState(1, &player->mPlug);
+					player->mLift.mState = 1;
+					player->mLift.SetTarget(&player->mPlug);
 					player->mLift.mTargetState = 0;
 				} else if (player->mLift.mTarget) {
 					player->mLift.mState = 6;

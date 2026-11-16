@@ -1,0 +1,10 @@
+#ifndef _RVL_MSL_CSTDARG
+#define _RVL_MSL_CSTDARG
+
+#include <stdarg.h>
+
+namespace std {
+using ::va_list;
+} // namespace std
+
+#endif

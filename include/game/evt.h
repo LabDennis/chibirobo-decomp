@@ -222,7 +222,36 @@ public:
 };
 STATIC_ASSERT(sizeof(CEvtData) == 0xC);
 
+#if defined(VERSION_R24J01)
+// the non-polymorphic field base of CStack, name from RTTI
+class CStackS32 {
+public:
+	CStackS32()
+	{
+		mBuf   = NULL;
+		mSize  = 0;
+		mCount = 0;
+	}
+
+	s32* mBuf;  // _00
+	s32 mCount; // _04
+	s32 mSize;  // _08
+};
+STATIC_ASSERT(sizeof(CStackS32) == 0xC);
+
 // a word stack, CEvt has three. name from RTTI
+class CStack : public CStackS32 {
+public:
+	CStack() { }
+
+	// _0C vtable
+
+	virtual ~CStack() { } // _08
+};
+#else
+// a word stack, CEvt has three. name from RTTI. The GameCube constructor stores the fields in
+// CGame::CGame in the order of a single class; with the CStackS32 base the Wii uses, that
+// constructor stops matching (100 to 99.9 %), so the split stays on the Wii side
 class CStack {
 public:
 	CStack()
@@ -239,6 +268,7 @@ public:
 
 	virtual ~CStack() { } // _08
 };
+#endif
 STATIC_ASSERT(sizeof(CStack) == 0x10);
 
 class CCameraMemento;
@@ -261,7 +291,12 @@ public:
 	s16 mUseValue;                  // _5C
 	s16 mHitValue;                  // _5E
 	CCameraMemento* mCameraMemento; // _60, private saved camera
+#if defined(VERSION_R24J01)
+	u32 _64; // _64, contents not yet recovered; the Wii's CEvt is one word longer
+	         // _68 vtable
+#else
 	// _64 vtable
+#endif
 
 	virtual ~CEvt() { } // _08
 
@@ -304,7 +339,11 @@ public:
 	s32 _cmd_WARP(u8 command, s32 step);
 	s32 _cmd_WIN(u8 command, s32 step);
 };
+#if defined(VERSION_R24J01)
+STATIC_ASSERT(sizeof(CEvt) == 0x6C);
+#else
 STATIC_ASSERT(sizeof(CEvt) == 0x68);
+#endif
 
 // the event globals, class names from RTTI. the evt tu's __sinit builds one of each
 

@@ -89,7 +89,11 @@ public:
 // an ARC image, files read while it's the current archive come out of it
 class CFileArchive : public CFile {
 public:
-	virtual ~CFileArchive() { }                                                   // _08 (weak)
+#if defined(VERSION_R24J01)
+	virtual ~CFileArchive();
+#else
+	virtual ~CFileArchive() { } // _08 (weak)
+#endif
 	virtual s32 ReadAsync(const char* path, u32 offset, u32 size, BOOL fromAram); // _14
 	virtual s32 GetResult();                                                      // _18
 	virtual BOOL ReadEx(const char* path, u32 offset, u32 size);                  // _24
@@ -108,5 +112,20 @@ public:
 	u32 mPos; // _EC
 };
 typedef char CFileText_size_check[sizeof(CFileText) == 0xF0 ? 1 : -1];
+
+#if defined(VERSION_R24J01)
+// a pooled resource file: GetResult counts a use, Close only really closes once they run out
+class ResourceFile : public CFile {
+public:
+	ResourceFile();
+	virtual ~ResourceFile();
+
+	virtual s32 GetResult(); // _18
+	virtual BOOL Close();    // _20
+
+	u32 mRefCount; // _EC
+};
+typedef char ResourceFile_size_check[sizeof(ResourceFile) == 0xF0 ? 1 : -1];
+#endif
 
 #endif

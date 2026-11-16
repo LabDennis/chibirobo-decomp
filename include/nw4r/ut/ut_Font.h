@@ -1,90 +1,91 @@
 #ifndef NW4R_UT_FONT_H
 #define NW4R_UT_FONT_H
+#include <nw4r/types_nw4r.h>
 
-#include <Dolphin/gx.h>
-#include <types.h>
+#include <nw4r/ut/ut_CharStrmReader.h>
 
-// nw4r::ut::Font, the base of the resource font classes, as shipped with the
-// Wii edition. The interface order is the retail vtable of CWiiFontFile at
-// 0x80332878 (base object vtables at 0x803327B0 and 0x8033281C).
+#include "Dolphin/gx.h"
 
 namespace nw4r {
 namespace ut {
 
-typedef u16 CharCode;
-typedef u16 GlyphIndex;
+enum FontEncoding {
+    FONT_ENCODING_UTF8,
+    FONT_ENCODING_UTF16,
+    FONT_ENCODING_SJIS,
+    FONT_ENCODING_CP1252,
 
-// the three byte result of GetCharWidths; a value struct returned packed in r3
+    FONT_ENCODING_MAX
+};
+
 struct CharWidths {
-	s8 left;       // _00
-	u8 glyphWidth; // _01
-	s8 charWidth;  // _02
+    s8 left;       // at 0x0
+    u8 glyphWidth; // at 0x1
+    s8 charWidth;  // at 0x2
 };
 
-// the glyph metrics GetGlyph fills for one character, as this build writes
-// them (vtable 0x80332878 slot _50, GetGlyphFromIndex at 0x80235948)
+// The field names are the ones the game's cfont.cpp reads (xenoblade has height, texFormat, texWidth,
+// texHeight, cellX, cellY).
 struct Glyph {
-	void* pTexture;    // _00
-	CharWidths widths; // _04
-	u8 cellHeight;     // _07
-	u32 sheetFormat;   // _08, GXTexFmt of the sheet the glyph is on
-	u16 sheetWidth;    // _0C
-	u16 sheetHeight;   // _0E
-	u16 x;             // _10, texel position inside the sheet
-	u16 y;             // _12
+    void* pTexture;    // at 0x0
+    CharWidths widths; // at 0x4
+    u8 cellHeight;     // at 0x7
+    u32 sheetFormat;   // at 0x8, GXTexFmt of the sheet the glyph is on
+    u16 sheetWidth;    // at 0xC
+    u16 sheetHeight;   // at 0xE
+    u16 x;             // at 0x10, texel position inside the sheet
+    u16 y;             // at 0x12
 };
 
+/******************************************************************************
+ *
+ * Font
+ *
+ ******************************************************************************/
 class Font {
 public:
-	enum Type {
-		TYPE_NULL,
-		TYPE_ROM,
-		TYPE_RESOURCE,
-	};
+    enum Type { TYPE_NULL, TYPE_ROM, TYPE_RESOURCE, TYPE_PAIR };
 
-	enum Encoding {
-		ENCODING_UTF8,
-		ENCODING_UTF16,
-		ENCODING_SJIS,
-		ENCODING_CP1252,
-		ENCODING_NUM,
-	};
+public:
+    Font() : mReadFunc(&CharStrmReader::ReadNextCharCP1252) {}
+    virtual ~Font() {} // at 0x8
 
-	typedef CharCode (Font::*CharStrmReader)(const void*);
+    virtual int GetWidth() const = 0;  // at 0xC
+    virtual int GetHeight() const = 0; // at 0x10
 
-	Font();
-	virtual ~Font();                                             // _08
-	virtual int GetWidth() const;                                // _0C
-	virtual int GetHeight() const;                               // _10
-	virtual int GetAscent() const;                               // _14
-	virtual int GetDescent() const;                              // _18
-	virtual int GetBaselinePos() const;                          // _1C
-	virtual int GetCellHeight() const;                           // _20
-	virtual int GetCellWidth() const;                            // _24
-	virtual int GetMaxCharWidth() const;                         // _28
-	virtual Type GetType() const;                                // _2C
-	virtual GXTexFmt GetTextureFormat() const;                   // _30
-	virtual int GetLineFeed() const;                             // _34
-	virtual const CharWidths GetDefaultCharWidths() const;       // _38
-	virtual void SetDefaultCharWidths(const CharWidths& widths); // _3C
-	virtual bool SetAlternateChar(CharCode c);                   // _40
-	virtual void SetLineFeed(int linefeed);                      // _44
-	virtual int GetCharWidth(CharCode c) const;                  // _48
-	virtual const CharWidths GetCharWidths(CharCode c) const;    // _4C
-	virtual void GetGlyph(Glyph* glyph, CharCode c) const;       // _50
-	virtual bool HasGlyph(CharCode c) const;                     // _54
-	virtual Encoding GetEncoding() const;                        // _58
+    virtual int GetAscent() const = 0;      // at 0x14
+    virtual int GetDescent() const = 0;     // at 0x18
+    virtual int GetBaselinePos() const = 0; // at 0x1C
 
-	// _04, set by InitReaderFunc; the constructor loads the entry the table
-	// at 0x80332810 holds, InitReaderFunc switches it per encoding
-	// (0x80235268, table 0x80332780). declared after the virtuals so the
-	// vtable pointer stays at the front, as in retail
-	CharStrmReader mReadFunc;
+    virtual int GetCellHeight() const = 0;   // at 0x20
+    virtual int GetCellWidth() const = 0;    // at 0x24
+    virtual int GetMaxCharWidth() const = 0; // at 0x28
 
-	// switch mReadFunc to the reader for the given encoding (0x80235268)
-	void InitReaderFunc(Encoding encoding);
+    virtual Type GetType() const = 0;              // at 0x2C
+    virtual GXTexFmt GetTextureFormat() const = 0; // at 0x30
+    virtual int GetLineFeed() const = 0;           // at 0x34
+
+    virtual CharWidths GetDefaultCharWidths() const = 0;              // at 0x38
+    virtual void SetDefaultCharWidths(const CharWidths& rWidths) = 0; // at 0x3C
+
+    virtual bool SetAlternateChar(u16 ch) = 0; // at 0x40
+    virtual void SetLineFeed(int lf) = 0;      // at 0x44
+
+    virtual int GetCharWidth(u16 ch) const = 0;             // at 0x48
+    virtual CharWidths GetCharWidths(u16 ch) const = 0;     // at 0x4C
+    virtual void GetGlyph(Glyph* pGlyph, u16 ch) const = 0; // at 0x50
+    virtual bool HasGlyph(u16 ch) const = 0;                // at 0x54
+    virtual FontEncoding GetEncoding() const = 0;           // at 0x58
+
+    void InitReaderFunc(FontEncoding encode);
+
+    CharStrmReader GetCharStrmReader() const {
+        return CharStrmReader(mReadFunc);
+    }
+
+private:
+    CharStrmReader::ReadFunc mReadFunc; // at 0x4
 };
-STATIC_ASSERT(sizeof(Font) == 0x10);
 
 } // namespace ut
 } // namespace nw4r

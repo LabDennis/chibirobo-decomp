@@ -1,4 +1,8 @@
+#if defined(VERSION_R24J01)
+#include "game/ccameraaction.h"
+#else
 #include "game/cgame.h"
+#endif
 
 /**
  * @note Address: 0x80015EF0

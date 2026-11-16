@@ -10,13 +10,16 @@
 extern "C" {
 #endif
 
-// KPADStatus, which the pad code declares as WiiPadSample (game/wii/cpad.h)
+// KPADStatus, which the pad code declares as WiiPadSample (game/wii/cpad.h). The library itself
+// includes revolution/kpad.h first and takes KPADStatus and Vec2 from there.
+#ifndef KPAD_H
 struct WiiPadSample;
 typedef struct WiiPadSample KPADStatus;
 
 typedef struct Vec2 {
 	f32 x, y;
 } Vec2;
+#endif
 
 // what the menu was closed with; HBMCalc returns HBM_SELECT_NULL while it is open
 typedef enum HBMSelectBtnNum {

@@ -48,7 +48,7 @@ s32 XObjHBox::ResetObjectState()
 	mLoadState   = 0;
 	mRing        = 0.0f;
 	XObj* part   = &mPart.mObj;
-	s32 result   = part->vf154();
+	s32 result   = part->ResetObjectState();
 	mPart.mHit   = 0.0f;
 	mPart.mRange = 5.0f;
 	mPart.mSfx   = 0;
@@ -69,7 +69,7 @@ BOOL XObjHBox::LoadFromPlacement(const CoordInfo& info)
 		++mLoadState;
 		// fall through, the part starts reading right away
 	case 1:
-		if (mPart.mObj.vf158(CoordInfo(GetSpawnData(0x26)))) {
+		if (mPart.mObj.LoadFromPlacement(CoordInfo(GetSpawnData(0x26)))) {
 			mPart.mObj.mStatus.mFlags &= ~0x10100ULL;
 			mPart.mObj.SetAnim(1, FALSE, 0.0f, 1.0f, 0.0f, 15.0f);
 			mPart.mObj.vf090(mMoveTranslate);
@@ -90,7 +90,7 @@ BOOL XObjHBox::LoadFromPlacement(const CoordInfo& info)
  */
 void XObjHBox::Release()
 {
-	mPart.mObj.vf040();
+	mPart.mObj.Release();
 	XObj::Release();
 	mLoadState = 0;
 }
@@ -147,13 +147,13 @@ void XObjHBox::UpdateObject(u32 frames)
 		s32 index                       = GetStagePlacementIndex(mCoord.mPlacement);
 		if (index > 0)
 			mEventScript = (u32)GetStageScriptByIndex(index);
-		mPart.mObj.vf164(frames);
+		mPart.mObj.UpdateObject(frames);
 	} else {
 		if (vf11C() == 1) {
-			if (ResetObjectState())
+			if (vf134())
 				PlayBoxAnim(this, 3);
 		} else if (vf11C() == 3) {
-			ResetObjectState();
+			vf134();
 		}
 		if (mRing > 0.0f) { // the hit ring fades
 			mRing -= 0.04f;
@@ -161,7 +161,7 @@ void XObjHBox::UpdateObject(u32 frames)
 				mRing = 0.0f;
 		}
 		if (!(mPart.mObj.mStatus.mFlags & 0x4000000000000000ULL)) {
-			mPart.mObj.vf164(frames);
+			mPart.mObj.UpdateObject(frames);
 			s32 id = mPart.mObj.vf11C();
 			if (id > 1) {
 				void* joint = mPart.mObj.vf22C("obj2");
@@ -172,21 +172,21 @@ void XObjHBox::UpdateObject(u32 frames)
 			}
 			switch (id) {
 			case 2:
-				if (mPart.mObj.ResetObjectState())
+				if (mPart.mObj.vf134())
 					PlayBoxAnim(&mPart.mObj, 3);
 				break;
 			case 3:
-				if (mPart.mObj.ResetObjectState())
+				if (mPart.mObj.vf134())
 					PlayBoxAnim(&mPart.mObj, 4);
 				break;
 			case 4:
-				if (mPart.mObj.ResetObjectState()) {
+				if (mPart.mObj.vf134()) {
 					PlayBoxAnim(&mPart.mObj, 5);
 					SpawnBoxEffect(this, 0x2b);
 				}
 				break;
 			case 5:
-				if (mPart.mObj.ResetObjectState()) {
+				if (mPart.mObj.vf134()) {
 					PlayBoxAnim(&mPart.mObj, 5);
 					mPart.mHit = 1.0f;
 					mStatus.mFlags |= 0x4000000000000000ULL;
@@ -198,7 +198,7 @@ void XObjHBox::UpdateObject(u32 frames)
 				mPart.mHit -= 0.04f * frames;
 				if (mPart.mHit <= 0.0f) {
 					mPart.mHit = 0.0f;
-					vf040();
+					Release();
 					return;
 				}
 				mPart.mObj.vf09C(1.12f * mPart.mHit);
@@ -212,9 +212,9 @@ void XObjHBox::UpdateObject(u32 frames)
  * @note Address: 0x80116FAC
  * @note Size: 0x5C
  */
-s32 XObjHBox::vf158(const CoordInfo& info)
+s32 XObjHBox::vf178(const CoordInfo& info)
 {
-	s32 result = XObj::vf158(info);
+	s32 result = XObj::vf178(info);
 	if (mPart.mObj.mStatus.mFlags & 0x10000)
 		result = mPart.mObj.vf178(info);
 	return result;
@@ -224,8 +224,8 @@ s32 XObjHBox::vf158(const CoordInfo& info)
  * @note Address: 0x80117008
  * @note Size: 0x14
  */
-void XObjHBox::vf164(u32 frames)
+void XObjHBox::vf184(u32 frames)
 {
 	if (mPart.mObj.mStatus.mFlags & 0x10000)
-		XObj::vf164(frames);
+		XObj::vf184(frames);
 }

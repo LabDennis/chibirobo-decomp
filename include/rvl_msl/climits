@@ -1,0 +1,6 @@
+#ifndef _RVL_MSL_CLIMITS
+#define _RVL_MSL_CLIMITS
+
+#include <limits.h>
+
+#endif

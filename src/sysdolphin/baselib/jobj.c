@@ -128,7 +128,6 @@ void HSD_JObjResetRST(HSD_JObj* jobj, HSD_Joint* joint)
 	if (jobj == NULL || joint == NULL) {
 		return;
 	}
-	JObjResetRST(jobj, joint);
 	if (!(jobj->flags & INSTANCE)) {
 		child_jobj  = jobj->child;
 		child_joint = joint->child;
@@ -138,6 +137,9 @@ void HSD_JObjResetRST(HSD_JObj* jobj, HSD_Joint* joint)
 			child_joint = child_joint != NULL ? child_joint->next : NULL;
 		}
 	}
+	// not in the dol. Retail emits HSD_JObjMtxIsDirty before HSD_JObjSetMtxDirty behind this function,
+	// last call first, so the node's own reset comes after the walk over its children
+	JObjResetRST(jobj, joint);
 }
 
 /**

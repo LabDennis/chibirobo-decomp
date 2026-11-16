@@ -1,0 +1,15 @@
+#ifndef _RVL_MSL_CSTDDEF
+#define _RVL_MSL_CSTDDEF
+
+#include <types.h>
+
+#ifndef offsetof
+#define offsetof(type, member) ((size_t) & (((type*)0)->member))
+#endif
+
+namespace std {
+using ::size_t;
+typedef unsigned long uintptr_t;
+} // namespace std
+
+#endif

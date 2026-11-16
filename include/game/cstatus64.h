@@ -6,8 +6,12 @@
 #if defined(VERSION_R24J01)
 class CBitStatus64 {
 public:
+	CBitStatus64() { mFlags = 0; }
+
 	u64 mFlags;
-	virtual ~CBitStatus64();
+	// _08 vtable
+
+	virtual ~CBitStatus64() { } // _08
 
 	// any of the mask's bits set, as the GameCube CStatus::Check; the ternary is what leaves retail's
 	// srawi of the compared 0 behind (0x800505DC)
@@ -17,7 +21,7 @@ STATIC_ASSERT(sizeof(CBitStatus64) == 0x10);
 
 class CStatus64 : public CBitStatus64 {
 public:
-	virtual ~CStatus64();
+	virtual ~CStatus64() { }
 };
 #else
 // CStatus with 64 flags, class name from RTTI. XObj keeps its state bits in one, so does CBase.

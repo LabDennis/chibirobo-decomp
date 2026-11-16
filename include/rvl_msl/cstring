@@ -1,0 +1,20 @@
+#ifndef _RVL_MSL_CSTRING
+#define _RVL_MSL_CSTRING
+
+#include <string.h>
+
+// not in include/stl/string.h
+extern "C" char* strncat(char* dst, const char* src, size_t n);
+
+namespace std {
+using ::memcmp;
+using ::memcpy;
+using ::memset;
+using ::strcmp;
+using ::strlen;
+using ::strncat;
+using ::strncmp;
+using ::strncpy;
+} // namespace std
+
+#endif

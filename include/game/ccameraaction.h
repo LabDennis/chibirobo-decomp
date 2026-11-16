@@ -12,8 +12,10 @@
 #include "game/video.h"
 #include "game/scrollroomdata.h"
 #if defined(VERSION_R24J01)
+#include "game/cscrn.h"
 class CCamera;
 class XObj;
+class XObjCamera;
 #endif
 
 // pal uses the current refresh rate, 50 or 60
@@ -24,18 +26,6 @@ class XObj;
 #endif
 
 // class names from RTTI, the rest is guessed
-
-// moves a vector from one value to another over time
-class CInterfaceVectorInterpolation {
-public:
-	// _00 vtable
-
-	virtual ~CInterfaceVectorInterpolation() { }        // _08
-	virtual bool Start(Vec from, Vec to, f32 time) = 0; // _0C
-	virtual bool Step(f32 dt)                      = 0; // _10, TRUE once it's done
-	virtual bool Update(u32 step, f32 dt)          = 0; // _14, TRUE once it's done
-	virtual Vec Get()                              = 0; // _18
-};
 
 // the same for one float
 class CInterfaceInterpolation {
@@ -49,39 +39,34 @@ public:
 	virtual f32 Get()                              = 0; // _18
 };
 
-// constant speed
-class CInterpolationLinear : public CInterfaceInterpolation {
+// moves a vector from one value to another over time
+class CInterfaceVectorInterpolation {
 public:
-	CInterpolationLinear() { }
-	virtual ~CInterpolationLinear() { }             // _08
-	virtual bool Start(f32 from, f32 to, f32 time); // _0C
-	virtual bool Step(f32 dt);                      // _10
-	virtual bool Update(u32 step, f32 dt);          // _14
-	virtual f32 Get();                              // _18
+	// _00 vtable
+
+	virtual ~CInterfaceVectorInterpolation() { }        // _08
+	virtual bool Start(Vec from, Vec to, f32 time) = 0; // _0C
+	virtual bool Step(f32 dt)                      = 0; // _10, TRUE once it's done
+	virtual bool Update(u32 step, f32 dt)          = 0; // _14, TRUE once it's done
+	virtual Vec Get()                              = 0; // _18
+};
+
+// moves 1/divisor of the way there every step, the dt is ignored
+class CInterpolationEaseOutDivide : public CInterfaceInterpolation {
+public:
+	CInterpolationEaseOutDivide() { }
+	virtual ~CInterpolationEaseOutDivide() { }         // _08
+	virtual bool Start(f32 from, f32 to, f32 divisor); // _0C
+	virtual bool Step(f32 dt);                         // _10, done once it moves less than 0.001
+	virtual bool Update(u32 step, f32 dt);             // _14
+	virtual f32 Get();                                 // _18
 
 	// _00 vtable
-	f32 mValue; // _04
-	f32 mSpeed; // _08
-	f32 mTime;  // _0C, time left
+	f32 mValue;   // _04
+	f32 mTarget;  // _08
+	f32 mDivisor; // _0C
 };
-STATIC_ASSERT(sizeof(CInterpolationLinear) == 0x10);
-
-// jumps straight to the end
-class CInterpolationNone : public CInterfaceInterpolation {
-public:
-	CInterpolationNone() { }
-	virtual ~CInterpolationNone() { }               // _08
-	virtual bool Start(f32 from, f32 to, f32 time); // _0C
-	virtual bool Step(f32 dt);                      // _10
-	virtual bool Update(u32 step, f32 dt);          // _14
-	virtual f32 Get();                              // _18
-
-	// _00 vtable
-	f32 mValue; // _04
-	f32 mSpeed; // _08
-	f32 mTime;  // _0C
-};
-STATIC_ASSERT(sizeof(CInterpolationNone) == 0x10);
+STATIC_ASSERT(sizeof(CInterpolationEaseOutDivide) == 0x10);
 
 class CInterpolationEaseInOut : public CInterfaceInterpolation {
 public:
@@ -122,24 +107,68 @@ public:
 };
 STATIC_ASSERT(sizeof(CInterpolationEaseOut) == 0x20);
 
-// moves 1/divisor of the way there every step, the dt is ignored
-class CInterpolationEaseOutDivide : public CInterfaceInterpolation {
+// jumps straight to the end
+class CInterpolationNone : public CInterfaceInterpolation {
 public:
-	CInterpolationEaseOutDivide() { }
-	virtual ~CInterpolationEaseOutDivide() { }         // _08
-	virtual bool Start(f32 from, f32 to, f32 divisor); // _0C
-	virtual bool Step(f32 dt);                         // _10, done once it moves less than 0.001
-	virtual bool Update(u32 step, f32 dt);             // _14
-	virtual f32 Get();                                 // _18
+	CInterpolationNone() { }
+	virtual ~CInterpolationNone() { }               // _08
+	virtual bool Start(f32 from, f32 to, f32 time); // _0C
+	virtual bool Step(f32 dt);                      // _10
+	virtual bool Update(u32 step, f32 dt);          // _14
+	virtual f32 Get();                              // _18
 
 	// _00 vtable
-	f32 mValue;   // _04
-	f32 mTarget;  // _08
-	f32 mDivisor; // _0C
+	f32 mValue; // _04
+	f32 mSpeed; // _08
+	f32 mTime;  // _0C
 };
-STATIC_ASSERT(sizeof(CInterpolationEaseOutDivide) == 0x10);
+STATIC_ASSERT(sizeof(CInterpolationNone) == 0x10);
+
+// constant speed
+class CInterpolationLinear : public CInterfaceInterpolation {
+public:
+	CInterpolationLinear() { }
+	virtual ~CInterpolationLinear() { }             // _08
+	virtual bool Start(f32 from, f32 to, f32 time); // _0C
+	virtual bool Step(f32 dt);                      // _10
+	virtual bool Update(u32 step, f32 dt);          // _14
+	virtual f32 Get();                              // _18
+
+	// _00 vtable
+	f32 mValue; // _04
+	f32 mSpeed; // _08
+	f32 mTime;  // _0C, time left
+};
+STATIC_ASSERT(sizeof(CInterpolationLinear) == 0x10);
 
 // the vector ones run one scalar interpolation per axis
+class CVectorEaseOutDivideInterpolation : public CInterfaceVectorInterpolation {
+public:
+	virtual ~CVectorEaseOutDivideInterpolation() { }   // _08
+	virtual bool Start(Vec from, Vec to, f32 divisor); // _0C
+	virtual bool Step(f32 dt);                         // _10
+	virtual bool Update(u32 step, f32 dt);             // _14
+	virtual Vec Get();                                 // _18
+
+	// _00 vtable
+	CInterpolationEaseOutDivide mAxes[3]; // _04
+	BOOL mXZDone;                         // _34, set once x and z are there
+};
+STATIC_ASSERT(sizeof(CVectorEaseOutDivideInterpolation) == 0x38);
+
+class CVectorNoneInterpolation : public CInterfaceVectorInterpolation {
+public:
+	virtual ~CVectorNoneInterpolation() { }         // _08
+	virtual bool Start(Vec from, Vec to, f32 time); // _0C
+	virtual bool Step(f32 dt);                      // _10
+	virtual bool Update(u32 step, f32 dt);          // _14
+	virtual Vec Get();                              // _18
+
+	// _00 vtable
+	CInterpolationNone mAxes[3]; // _04
+};
+STATIC_ASSERT(sizeof(CVectorNoneInterpolation) == 0x34);
+
 class CVectorLinearInterpolation : public CInterfaceVectorInterpolation {
 public:
 	virtual ~CVectorLinearInterpolation() { }       // _08
@@ -180,33 +209,6 @@ public:
 };
 STATIC_ASSERT(sizeof(CVectorEaseOutInterpolation) == 0x64);
 
-class CVectorNoneInterpolation : public CInterfaceVectorInterpolation {
-public:
-	virtual ~CVectorNoneInterpolation() { }         // _08
-	virtual bool Start(Vec from, Vec to, f32 time); // _0C
-	virtual bool Step(f32 dt);                      // _10
-	virtual bool Update(u32 step, f32 dt);          // _14
-	virtual Vec Get();                              // _18
-
-	// _00 vtable
-	CInterpolationNone mAxes[3]; // _04
-};
-STATIC_ASSERT(sizeof(CVectorNoneInterpolation) == 0x34);
-
-class CVectorEaseOutDivideInterpolation : public CInterfaceVectorInterpolation {
-public:
-	virtual ~CVectorEaseOutDivideInterpolation() { }   // _08
-	virtual bool Start(Vec from, Vec to, f32 divisor); // _0C
-	virtual bool Step(f32 dt);                         // _10
-	virtual bool Update(u32 step, f32 dt);             // _14
-	virtual Vec Get();                                 // _18
-
-	// _00 vtable
-	CInterpolationEaseOutDivide mAxes[3]; // _04
-	BOOL mXZDone;                         // _34, set once x and z are there
-};
-STATIC_ASSERT(sizeof(CVectorEaseOutDivideInterpolation) == 0x38);
-
 class CInterfaceCameraAction {
 public:
 	CVec mEye;        // _00
@@ -225,9 +227,15 @@ public:
 	virtual void SetCamera(CCamera* camera) { } // _18, takes eye, interest, angle, distance and fov
 	virtual void Init() { }                     // _1C
 	virtual void Draw() { }                     // _20, the action's markers over the room
-	virtual void DrawDebug2d() { }              // _24, debug text
-	virtual void DrawDebug3d() { }              // _28, debug shapes in the scene
-	virtual void SetEye(f32 x, f32 y, f32 z)    // _2C
+#if defined(VERSION_R24J01)
+	// the Wii builds carry one extra empty virtual between Draw and the debug draws
+	// (empty blr 0x80031EF0, at _24 in the retail vtables 0x8030DF08/0x8030DF80/0x8030E1D0/
+	// 0x8030E248/0x8030E338), so every slot below is +4 vs. the GameCube numbering in the comments
+	virtual void vf24() { } // _24
+#endif
+	virtual void DrawDebug2d() { }           // _24, debug text
+	virtual void DrawDebug3d() { }           // _28, debug shapes in the scene
+	virtual void SetEye(f32 x, f32 y, f32 z) // _2C
 	{
 		mEye.x = x;
 		mEye.y = y;
@@ -245,22 +253,6 @@ public:
 		mAngle.y = y;
 		mAngle.z = z;
 	}
-#if defined(VERSION_R24J01)
-	// R24J01: SetTarget opens the Vec& group, then eye, interest, angle. Retail tailcalls from
-	// CCameraActionEvt's *_Interp setters land on _3C/_40/_44, SetFov on _4C; _38's body calls _30
-	virtual void SetTarget(const Vec& target) { SetInterest(target.x, target.y, target.z); }           // _38
-	virtual void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }                               // _3C
-	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _40
-	virtual void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }                   // _44
-	virtual void SetDistance(f32 distance) { mDistance = distance; }                                   // _48
-	virtual void SetFov(f32 fov) { mFov = fov; }                                                       // _4C
-	virtual void SetAngleZ(f32 z) { mAngle.z = z; }                                                    // _50
-	virtual u32 GetMode() { return 0; }                                                                // _54
-	virtual u32 GetCameraFlags() { return mCameraFlags; }                                              // _58
-	virtual f32 GetFollowDivisor();                                                                    // _5C
-	virtual u32 GetInterestMode() { return 0; }                                                        // _60
-	virtual XObj* GetTarget() { return NULL; }                                                         // _64
-#else
 	virtual void SetEye(const Vec& eye) { SetEye(eye.x, eye.y, eye.z); }                               // _38
 	virtual void SetInterest(const Vec& interest) { SetInterest(interest.x, interest.y, interest.z); } // _3C
 	virtual void SetAngle(const Vec& angle) { SetAngle(angle.x, angle.y, angle.z); }                   // _40
@@ -272,7 +264,6 @@ public:
 	virtual f32 GetFollowDivisor();                                                                    // _58
 	virtual u32 GetInterestMode() { return 0; }                                                        // _5C
 	virtual XObj* GetTarget() { return NULL; }                                                         // _60
-#endif
 
 	// set the mode word along with the vector
 	void SetEye(const Vec& eye, u32 mode)
@@ -345,11 +336,11 @@ public:
 	virtual void SetCamera(CCamera* camera); // _18
 	virtual void Init();                     // _1C
 
-	void SetAngle_Interp(s32 mode, const Vec& angle, u32 axes, u32 type, BOOL relative, f32 time);
+	void SetAngle_Interp(s32 mode, Vec angle, u32 axes, u32 type, BOOL relative, f32 time);
 	void SetFov_Interp(s32 mode, f32 fov, f32 time);
-	void SetInterest_Interp(s32 mode, const Vec& interest, f32 time);
+	void SetInterest_Interp(s32 mode, Vec interest, f32 time);
 	void SetInterest_Interp(s32 mode, XObj* target, f32 time);
-	void SetEye_Interp(s32 mode, const Vec& eye, f32 time);
+	void SetEye_Interp(s32 mode, Vec eye, f32 time);
 };
 STATIC_ASSERT(sizeof(CCameraActionEvt) == 0x4E4);
 
@@ -792,25 +783,6 @@ public:
 };
 STATIC_ASSERT(sizeof(CCameraActionDefault) == 0x40);
 
-// follows the player from behind on a damped spring, the stick or dpad turns and zooms it
-class CCameraActionChase : public CInterfaceCameraAction {
-public:
-	XObj* mTarget;     // _40
-	f32 mRestDistance; // _44
-	f32 mDamping;      // _48
-	CVec mLastPos;     // _4C
-	CVec mPos;         // _5C, the point behind the target the eye is pulled to
-	u32 mMode;         // _6C
-
-	virtual void Update(u32 step);           // _10
-	virtual void Reset();                    // _14
-	virtual void SetCamera(CCamera* camera); // _18
-	virtual void Init();                     // _1C
-	virtual u32 GetCameraFlags();            // _54
-	virtual ~CCameraActionChase() { }
-};
-STATIC_ASSERT(sizeof(CCameraActionChase) == 0x70);
-
 // the room camera, it pans over the room with the stick and zooms with the c stick
 class CCameraActionScroll2 : public CInterfaceCameraAction {
 public:
@@ -845,21 +817,6 @@ public:
 };
 STATIC_ASSERT(sizeof(CCameraActionScroll2) == 0xAC);
 
-// plays a camera animation, copying an XObjCamera's camera every frame
-class CCameraActionAnim : public CInterfaceCameraAction {
-public:
-	CCamera* mCamera; // _40
-	XObjCamera* mObj; // _44
-
-	virtual void Update(u32 step);           // _10
-	virtual void SetCamera(CCamera* camera); // _18
-	virtual void Init();                     // _1C
-
-	void SetObj(XObjCamera* obj);
-	virtual ~CCameraActionAnim() { }
-};
-STATIC_ASSERT(sizeof(CCameraActionAnim) == 0x48);
-
 class CMotionControlCamera;
 
 extern "C" {
@@ -892,5 +849,165 @@ void SetMapCameraFovStep(CCameraActionMap* map, s32 index, f32 time);
 void SetAreaCameraHeightIndex(CMotionControlCamera* camera, s32 mode);
 }
 #endif // !defined(VERSION_R24J01)
+
+#if defined(VERSION_R24J01)
+class CScrnWipeTile;
+
+// one edge of the drag frame the Wii room camera draws round the screen. the texture
+// pointer addresses a GXTexObj inside the interface tpl
+struct ScrollEdgeQuad {
+	void* mTex;   // _00
+	f32 mX;       // _04
+	f32 mY;       // _08
+	f32 mUnk0C;   // _0C
+	f32 mUnk10;   // _10
+	f32 mScale;   // _14
+	f32 mRot;     // _18
+	f32 mUnk1C;   // _1C
+	BOOL mActive; // _20
+	BOOL mUnk24;  // _24
+};
+
+// the room camera: the nunchuk stick zooms, dragging with the pointer pans, and a wipe
+// plus an edge frame sit on top of the GameCube behavior
+class CCameraActionScroll2 : public CInterfaceCameraAction {
+public:
+	Vec* mCenterPtr;          // _40, always mCenter
+	Vec mCenter;              // _44
+	f32 mMinX;                // _50
+	f32 mMaxX;                // _54
+	f32 mMinZ;                // _58
+	f32 mMaxZ;                // _5C
+	f32 mMaxFov;              // _60
+	f32 mMinFov;              // _64
+	Vec mOffset;              // _68, eye minus interest
+	Vec mStart;               // _74, the interest it started from
+	BOOL mTurned;             // _80, the camera is turned a quarter round x in room 11
+	BOOL mFromStage;          // _84
+	u8 mSavedInfo[0x20];      // _88
+	BOOL mDragging;           // _A8, the drag button is held
+	f32 mDragDamping;         // _AC
+	CVec mDragVec;            // _B0, the pan impulse the drag left, damped toward zero
+	Vec mDragStart;           // _C0, the pointer position the drag started at
+	Vec mDragLast;            // _D0, the pointer position the last update saw
+	u8 _DC[0x44];             // _DC
+	Mtx mMtx;                 // _120
+	u8 _150[0x94];            // _150
+	ScrollEdgeQuad mQuads[4]; // _1E4
+	CScrnWipeTile mWipe;      // _284, its vptr lands at _2B4, behind CScrnColor's color data
+
+	virtual void Init();           // _1C
+	virtual void Update(u32 step); // _10
+	virtual void Reset();          // _14
+	virtual void Draw();           // _20, draws the markers over the room's objects
+	virtual void DrawDebug3d();    // _28
+	virtual u32 GetCameraFlags();  // _58
+
+	void SaveCamInfo(const void* info);
+	Scroll2Limits* GetLimits(s32 room);
+	void ShowObjs();
+	void HideObjs();
+	void ClearHideList();
+	BOOL AddHideObj(s32 id);
+	void DrawQuads();
+	BOOL IsFovUnderMax();
+	virtual ~CCameraActionScroll2() { }
+};
+
+// a camera that looks along the z axis at the player from a fixed distance, the remote's
+// dpad swaps between a near and a far one. the member layout is the GameCube one
+// (mStart _40 … mZoom _68 verified in retail), see game/wii/ccameraactionscroll.cpp
+class CCameraActionScroll : public CInterfaceCameraAction {
+public:
+	BOOL mStart;                               // _40, the next update places the camera from scratch
+	f32 mFarDistance;                          // _44
+	f32 mNearDistance;                         // _48
+	f32 mScrollFov;                            // _4C
+	CInterfaceInterpolation* mDistanceInterp;  // _50
+	CInterpolationEaseOutDivide mDistanceEase; // _54
+	u32 mInterestMode;                         // _64
+	s32 mZoom;                                 // _68, 0 near, 1 far
+
+	virtual void Update(u32 step);           // _10
+	virtual void Reset();                    // _14
+	virtual void SetCamera(CCamera* camera); // _18
+	virtual u32 GetInterestMode();           // _60
+
+	void SetZoomDistance(f32 distance)
+	{
+		mDistanceInterp = NULL;
+		SetDistance(distance);
+	}
+	void StartZoom(f32 distance)
+	{
+		mDistanceInterp = &mDistanceEase;
+		if (mDistanceInterp != NULL) {
+			mDistanceInterp->Start(mDistance, distance, 15.0f);
+		}
+	}
+	virtual ~CCameraActionScroll() { }
+};
+STATIC_ASSERT(sizeof(CCameraActionScroll) == 0x6C);
+
+// behind the player at an angle off its facing, same member layout as the GameCube one
+class CCameraActionLadr : public CInterfaceCameraAction {
+public:
+	f32 mAngle; // _40, added to the player's y rotation
+
+	virtual void Update(u32 step); // _10
+	virtual void Reset();          // _14
+	virtual u32 GetCameraFlags();  // _58
+	virtual Vec GetCameraTarget(); // _68, the player
+
+	void CalcEye(Vec* eye, f32 angle);
+	virtual ~CCameraActionLadr() { }
+};
+STATIC_ASSERT(sizeof(CCameraActionLadr) == 0x44);
+
+// just looks at the player, the camera keeps everything else
+class CCameraActionDefault : public CInterfaceCameraAction {
+public:
+	virtual void Update(u32 step); // _10
+	virtual ~CCameraActionDefault() { }
+};
+STATIC_ASSERT(sizeof(CCameraActionDefault) == 0x40);
+#endif // defined(VERSION_R24J01)
+
+// follows the player from behind on a damped spring, the stick or dpad turns and zooms it.
+// the member layout is shared with the Wii (mTarget _40 … mMode _6C verified in retail);
+// on the Wii mTarget points at the player object and the code casts to WiiPlayerState
+class CCameraActionChase : public CInterfaceCameraAction {
+public:
+	XObj* mTarget;     // _40
+	f32 mRestDistance; // _44
+	f32 mDamping;      // _48
+	CVec mLastPos;     // _4C
+	CVec mPos;         // _5C, the point behind the target the eye is pulled to
+	u32 mMode;         // _6C
+
+	virtual void Update(u32 step);           // _10
+	virtual void Reset();                    // _14
+	virtual void SetCamera(CCamera* camera); // _18
+	virtual void Init();                     // _1C
+	virtual u32 GetCameraFlags();            // _54
+	virtual ~CCameraActionChase() { }
+};
+STATIC_ASSERT(sizeof(CCameraActionChase) == 0x70);
+
+// plays a camera animation, copying an XObjCamera's camera every frame; the
+// layout is shared with the Wii (mCamera _40, mObj _44 verified in retail)
+class CCameraActionAnim : public CInterfaceCameraAction {
+public:
+	CCamera* mCamera; // _40
+	XObjCamera* mObj; // _44
+
+	virtual void Update(u32 step);           // _10
+	virtual void SetCamera(CCamera* camera); // _18
+	virtual void Init();                     // _1C
+
+	void SetObj(XObjCamera* obj);
+	virtual ~CCameraActionAnim() { }
+};
+STATIC_ASSERT(sizeof(CCameraActionAnim) == 0x48);
 
 #endif

@@ -39,6 +39,7 @@ public:
 	CVec operator/(f32 s) const; // in the dol, 0x8002442C
 
 	bool operator!=(Vec v) const { return x != v.x || y != v.y || z != v.z; }
+	bool operator==(Vec v) const { return x == v.x && y == v.y && z == v.z; }
 
 	void Set(f32 x, f32 y, f32 z)
 	{
@@ -80,6 +81,7 @@ public:
 	// any of the mask's bits set
 	// the ternary keeps the test and branch, a plain bool folds to a bare clrlwi in shun's CmdCheckOnOffFlag
 	bool Check(u32 mask) const { return (mFlags & mask) ? true : false; }
+	void Clear() { mFlags = 0; }
 };
 typedef char CStatus_size_check[sizeof(CStatus) == 0x8 ? 1 : -1];
 
@@ -99,11 +101,19 @@ struct _HSD_AObj;
 
 extern "C" {
 // walls, lines and triangles, mostly flat on the xz plane
+#if defined(VERSION_R24J01)
+int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* pos, Vec* contact,
+                                 Vec* push, int corners, f32 radius);
+int IntersectLineWithPlane(Vec* p0, Vec* p1, Vec* point, Vec* normal, Vec* out);
+// the Wii put the point first; the GameCube takes the triangle first
+int IntersectVerticalLineWithTrianglePlane(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* out);
+#else
 int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
                                  Vec* contact, f32* dist, f32 radius, f32 scale, int corners);
+int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec* out);
+#endif
 int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const Vec* d, Vec* out, int check);
 void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
-int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec* out);
 BOOL IsPointInsideQuadXZ(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* d);
 BOOL IsPointInsideTriangleXZ(Vec* pos, Vec* a, Vec* b, Vec* c);
 f32 SignedTriangleArea2XZ(Vec* a, Vec* b, Vec* c);
