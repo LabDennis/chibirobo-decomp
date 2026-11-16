@@ -304,10 +304,10 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 		else if (mHideKinds.mFlags & 4)
 			kind = 0xf8;
 		else if (mHideKinds.mFlags & 8) {
-			kind        = 0x2a3; // one level up from the mouth
+			kind = 0x2a3; // one level up from the mouth
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[5]) { 0, 0, 0, 0, 0 }, 5));
 		} else if (mHideKinds.mFlags & 0x20) {
-			kind        = 0x46f; // three levels up from the mouth
+			kind = 0x46f; // three levels up from the mouth
 			Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[3]) { 0, 0, 0 }, 3));
 		}
 		if (kind >= 0)
