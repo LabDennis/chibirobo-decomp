@@ -22,10 +22,10 @@ game/wii/init.cpp:
 	.sdata start:0x805A0D48 end:0x805A0D60
 	.sdata2 start:0x805A2B60 end:0x805A2BD8
 
-game/wii/soundbank.cpp:
-	extab start:0x80009064 end:0x8000906C
-	extabindex start:0x800120B0 end:0x800120BC
-	.text start:0x8003AA58 end:0x8003AB00
+game/wii/sound.cpp:
+	extab start:0x80008FEC end:0x80009104
+	extabindex start:0x80011FFC end:0x80012188
+	.text start:0x80036694 end:0x8003CEB0
 	.rodata start:0x802C6100 end:0x802C62B0
 	.data start:0x802E7170 end:0x802E7238
 
@@ -2707,9 +2707,3 @@ nw4r/g3d/g3d_calcvtx.cpp:
 
 game/wii/unit_8003366C.cpp:
 	.text start:0x8003366C end:0x800354DC
-
-game/wii/gamesound.cpp:
-	.text start:0x80036618 end:0x8003AA58
-
-game/wii/sound.cpp:
-	.text start:0x8003AB00 end:0x8003CEB0
