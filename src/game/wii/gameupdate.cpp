@@ -737,16 +737,6 @@ void CGame::SetupStageCamera(s32 mode)
 }
 
 /**
- * @note Address: 0x8001DE7C
- * @note Size: 0xC
- */
-// reloads the stage's camera area tables into the state all area actions share
-void CCameraActionAreaExM::LoadAreaState()
-{
-	LoadStageCameraAreaState(&gCameraAreaState);
-}
-
-/**
  * @note Address: 0x8001DE88
  * @note Size: 0x78
  */
