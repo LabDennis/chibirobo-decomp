@@ -111,7 +111,6 @@ f32 gTitleArrowGap[2] = { 30.0f, 0.0f };
 // how fast the file rows slide out to the file picked and back
 f32 gTitleFileSlideSpeed[2] = { 1.0f, 1.0f };
 
-// the outline offsets of the help text's letter shadows
 // the outline offsets of the name's letter shadows, then of the help text's
 f32 gTitleNameOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
 f32 gTitleNameOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
@@ -1729,7 +1728,9 @@ extern "C" void DrawTitleScreen(Title* title)
  * @note Address: 0x8004BC54
  * @note Size: 0x8F4
  */
-// NONMATCHING: read from retail's code; the float registers and spills differ
+// NONMATCHING: read from retail's code; the float registers and spills differ, and retail calls
+// GetLocalizedInterfaceText(300) once more before the heading and drops the result; OK works out
+// its pulsing size as DrawTitleEntry does but draws at the plain size, so okSize stays unused
 // the options page: the frame, its heading, the pointer and stick settings with their highlight bars and OK
 extern "C" void DrawTitleOptions(Title* title)
 {
@@ -1743,7 +1744,6 @@ extern "C" void DrawTitleOptions(Title* title)
 		u32 lit    = 0xFFB62800 | (u8)(255.0f * alpha);
 		DrawTexturedWindowFrame(160.0f * alpha, (u32)(255.0f * title->mOptionAlpha) | 0xFFFFFF00, cx, 223.0f - h * 0.5f, w, h, 1.0f, 1.0f,
 		                        1.0f);
-		GetLocalizedInterfaceText(300);
 		f32 size         = 24.0f * title->mOptionAlpha;
 		const char* text = GetLocalizedInterfaceText(300);
 		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
@@ -1816,9 +1816,7 @@ extern "C" void DrawTitleOptions(Title* title)
 
 		// OK pulses with the cursor's animation
 		f32 progress = title->mCursor[0].GetAnimId() == 1 ? title->mCursor[0].GetAnimFrame() / title->mCursor[0].GetAnimEndFrame() : 0.0f;
-		if (title->mOptionLine == 2) {
-			sin(4.712389f * progress);
-		}
+		f32 okSize   = 24.0f + (title->mOptionLine == 2 ? 2.0f * (f32)sin(4.712389f * progress) : 0.0f);
 		selected = false;
 		if (title->mOptionLine == 2 && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
 			selected = true;

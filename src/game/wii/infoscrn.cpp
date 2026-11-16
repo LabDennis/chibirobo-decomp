@@ -901,7 +901,8 @@ extern "C" void HideScrapCounter()
  * @note Address: 0x8008C1D4
  * @note Size: 0x14
  */
-// the scrap counter pulses again once it comes back on screen
+// the scrap counter pulses again once it comes back on screen; the hud is passed but unused (retail's
+// caller in title.cpp loads r3 with gGame + 0xAF58, CGame's mInfoScrn, at 0x800487F4)
 extern "C" void ResumeScrapCounterPulse(InfoScrn*)
 {
 	gHudScrapCounter.mState = 2;
