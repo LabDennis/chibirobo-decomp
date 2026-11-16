@@ -399,6 +399,19 @@ BOOL CanRadarActionSlideOnSlope(const XAction*)
 	return true;
 }
 
+Vec GetFloorExtent(XObjFloor* const* floors, s32 index)
+{
+	Vec extent = { (*floors)[index].mExtent[0] / 100.0f, (*floors)[index].mExtent[1] / 100.0f, (*floors)[index].mExtent[2] / 100.0f };
+	return extent;
+}
+
+Vec GetFloorCenterOffset(XObjFloor* const* floors, s32 index)
+{
+	Vec offset = { (*floors)[index].mCenterOffset[0] / 100.0f, (*floors)[index].mCenterOffset[1] / 100.0f,
+		           (*floors)[index].mCenterOffset[2] / 100.0f };
+	return offset;
+}
+
 XObj* GetDrawListObject(const CGame* game, s32 list, s32 index)
 {
 	return (XObj*)game->mDrawLists[list].mRefs[index].mObj;
@@ -412,6 +425,11 @@ s32 GetDrawListIndex(const CGame* game, s32 list, s32 index)
 s32 GetDrawListCount(const CGame* game, s32 list)
 {
 	return game->mDrawLists[list].mCount;
+}
+
+f32 GetFloorYawRadians(XObjFloor* const* floors, s32 index)
+{
+	return DEG2RAD * (*floors)[index].mYawDegrees;
 }
 
 f32 GetObjectHitFloorHeight(const XObj* object)
