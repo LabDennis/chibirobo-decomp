@@ -331,7 +331,7 @@ extern "C" void DrawGameHud(InfoScrn* scrn)
 	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
 	DrawScreenColorOverlay(&scrn->mFade, &gGame.mGs);
 	scrn->mWipe.Draw(&gGame.mGs, 0);
-	if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x200000000000022ULL) && !gGame.mMenuActive) {
+	if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x200000000000022ULL) && !gGame.mMenu.mActive) {
 		BOOL diskFail = FALSE;
 		if ((gGame.mDvdStatus || gGame.mPrevDvdStatus) && !gGame.mDiskOk) {
 			diskFail = TRUE;
@@ -375,15 +375,15 @@ extern "C" void DrawObjectLoadingProgress(InfoScrn* scrn)
 		f32 leftX = (f32)(gPointerScreenWidth / 2);
 		f32 y0    = (f32)(gScreenSafeBottom - 12);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
-		if (gGame.mObjectCount > 0) {
+		if (gGame.mXObjs.mObjectCount > 0) {
 			f32 fill;
 			f32 max;
 			f32 tw;
 			f32 th;
 			f32 scale;
-			max   = gGame.mObjectCount;
-			scale = 1.0f / gGame.mObjectCount;
-			fill  = max * (gGame.mLoadObjectIndex * scale);
+			max   = gGame.mXObjs.mObjectCount;
+			scale = 1.0f / gGame.mXObjs.mObjectCount;
+			fill  = max * (gGame.mXObjs.mLoadObjectIndex * scale);
 			CTexObj tex;
 			if (sLoading.mAnim == sWalkAnim) {
 				if (sWalkAnim[sLoading.mFrame] == 0xFF) {
@@ -554,7 +554,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		}
 		break;
 	case 2:
-		if (gGame.mEvtData.mScript)
+		if (gGame.mEvt.mData.mScript)
 			++h->mHudState;
 		break;
 	case 3:
@@ -565,7 +565,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		}
 		break;
 	case 4:
-		if (!gGame.mEvtData.mScript)
+		if (!gGame.mEvt.mData.mScript)
 			h->mHudState = 1;
 		break;
 	}
@@ -736,14 +736,14 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 	// menu), a day length on the clock and the clock not already running
 	bool timeMoves = false;
 	running        = FALSE;
-	if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x22) && !gGame.mMenuActive) {
+	if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x22) && !gGame.mMenu.mActive) {
 		BOOL diskFail = FALSE;
 		if ((gGame.mDvdStatus || gGame.mPrevDvdStatus) && !gGame.mDiskOk)
 			diskFail = TRUE;
 		if (!diskFail && !gGame.mResetRequested)
 			running = TRUE;
 	}
-	if (running && !gGame.mEvtData.mScript && !gGame.mMenuActive && !gGame.GetStatusFlags(0xC00) && gGame.mTimeState.mDuration > 0
+	if (running && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !gGame.GetStatusFlags(0xC00) && gGame.mTimeState.mDuration > 0
 	    && !gGame.mTimeState.mRunning) {
 		timeMoves = true;
 	}

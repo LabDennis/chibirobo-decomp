@@ -3,6 +3,8 @@
 // (0xFFFFxxxx on the GameCube), volumes are 0..1 floats and times are seconds. After the front end
 // come the sound banks, the sound picks PlayWiiSoundEffect makes, the message glyph sounds, the stage
 // reverb and the sounds of an object's anims (AnimSfx).
+// before cgame.h: xobj.h's nw4r::math stand-in gives way to the real one
+#include "nw4r/math/math_types.h"
 #include "game/wii/cgame.h"
 #include "game/wii/csound.h"
 #include "game/wii/csoundfx.h"
@@ -139,7 +141,7 @@ extern "C" void UpdateXSound(XSound* sound, s32 step)
 		sound->mCurrentMusicId = 0;
 	}
 	const s32 pitchFrames = sound->mMusicPitchFrames;
-	if (pitchFrames > 0 && sound->mMusicPitch != sound->mTargetMusicPitch && !gGame.mHomeMenu.IsActive() && !gGame.mMenuActive) {
+	if (pitchFrames > 0 && sound->mMusicPitch != sound->mTargetMusicPitch && !gGame.mHomeMenu.IsActive() && !gGame.mMenu.mActive) {
 		sound->mMusicPitch += (sound->mTargetMusicPitch - sound->mMusicPitch) / pitchFrames;
 		sound->mMusicPitchFrames -= step;
 		if (sound->mMusicPitchFrames <= 0) {
@@ -159,7 +161,7 @@ extern "C" void UpdateXSound(XSound* sound, s32 step)
 		}
 	}
 	// paused music comes back when mMusicResumeDelay runs out
-	if (sound->mMusicResumeDelay > 0 && !gGame.mHomeMenu.IsActive() && !gGame.mMenuActive) {
+	if (sound->mMusicResumeDelay > 0 && !gGame.mHomeMenu.IsActive() && !gGame.mMenu.mActive) {
 		if (!IsWiiSfxPlaying(sound, 0x1F9) && !IsWiiSfxPlaying(sound, 0x1FA) && !IsWiiSfxPlaying(sound, 0x1FB)) {
 			sound->mMusicResumeDelay -= step;
 		}
@@ -178,10 +180,10 @@ extern "C" void UpdateXSound(XSound* sound, s32 step)
 			StopWiiSfx(sound, 0xFF0000, 0.0f);
 		}
 	}
-	if (sound->mCooldown > 0 && !gGame.mHomeMenu.IsActive() && !gGame.mMenuActive) {
+	if (sound->mCooldown > 0 && !gGame.mHomeMenu.IsActive() && !gGame.mMenu.mActive) {
 		sound->mCooldown -= step;
 	}
-	if (sound->mQueueRead != sound->mQueueWrite && !gGame.mHomeMenu.IsActive() && !gGame.mMenuActive) {
+	if (sound->mQueueRead != sound->mQueueWrite && !gGame.mHomeMenu.IsActive() && !gGame.mMenu.mActive) {
 		if (sound->mMusicPitchFrames > 0) {
 			sound->mMusicPitchFrames -= step;
 		}

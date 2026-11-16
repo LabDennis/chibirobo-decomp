@@ -69,7 +69,10 @@ struct WiiSaveScanEntry {
 };
 STATIC_ASSERT(sizeof(WiiSaveScanEntry) == 0xa0);
 
-struct WiiSaveManager {
+// the save file, CGame's mSaveManager at _D9B80; class name from RTTI, its vtable sits at _125E4
+// (the constructor in 0x800332D8 stores it there and the CNand one at _94)
+class CSaveFile {
+public:
 	WiiGameSaveFile mFile;
 	u8 _94[0xa0 - sizeof(WiiGameSaveFile)];
 	WiiSaveScanEntry mScanEntries[10];
@@ -78,19 +81,24 @@ struct WiiSaveManager {
 	char mSlotPath[64];
 	NANDBanner mBanner;
 	s32 mJobStarted;
+	u8 _12524[0x125E4 - 0x12524];
+	// _125E4 vtable
+
+	virtual ~CSaveFile() { }
 };
+STATIC_ASSERT(sizeof(CSaveFile) == 0x125E8);
 
 extern "C" {
-void InitializeWiiSaveManager(WiiSaveManager* manager);
-void UpdateWiiSaveJob(WiiSaveManager* manager);
-int CheckWiiSaveBanner(WiiSaveManager* manager, bool removeInvalid);
-s32 WriteWiiSaveBanner(WiiSaveManager* manager);
-void StartWiiSaveSlotScan(WiiSaveManager* manager, int count);
-s32 WriteWiiSaveSlot(WiiSaveManager* manager, int slot, bool newGame);
-void StartWiiSaveSlotWrite(WiiSaveManager* manager, int slot, int newGame);
-s32 ReadWiiSaveSlot(WiiSaveManager* manager, int slot);
-void StartWiiSaveSlotRead(WiiSaveManager* manager, int slot);
-void StartWiiSaveSlotDelete(WiiSaveManager* manager, int slot);
+void InitializeWiiSaveManager(CSaveFile* manager);
+void UpdateWiiSaveJob(CSaveFile* manager);
+int CheckWiiSaveBanner(CSaveFile* manager, bool removeInvalid);
+s32 WriteWiiSaveBanner(CSaveFile* manager);
+void StartWiiSaveSlotScan(CSaveFile* manager, int count);
+s32 WriteWiiSaveSlot(CSaveFile* manager, int slot, bool newGame);
+void StartWiiSaveSlotWrite(CSaveFile* manager, int slot, int newGame);
+s32 ReadWiiSaveSlot(CSaveFile* manager, int slot);
+void StartWiiSaveSlotRead(CSaveFile* manager, int slot);
+void StartWiiSaveSlotDelete(CSaveFile* manager, int slot);
 }
 
 #endif

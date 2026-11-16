@@ -419,11 +419,30 @@ void CBase::Update(u32 frames)
 }
 
 /**
+ * @note Address: 0x800182C0
+ * @note Size: 0x8
+ */
+// the base game is ready once the font is read
+BOOL CBase::BeforeUpdate()
+{
+	return mGs.mFont.LoadResource();
+}
+
+/**
  * @note Address: 0x800182BC
  * @note Size: 0x4
  */
 void CBase::ResetNewGameState()
 {
+}
+
+/**
+ * @note Address: 0x8001829C
+ * @note Size: 0x20
+ */
+void CBase::InitFont(const char* path)
+{
+	mGs.mFont.Init(path, gGame.mLanguage != 0);
 }
 
 /**
@@ -445,8 +464,8 @@ void CBase::Start()
 		tpl.Bind(gCornerIconTplData);
 		mIconTpl = tpl;
 	}
-	InitGamePerspectiveCamera((CCamera*)mCameras[0], &gGame.mGs.mScreen);
-	InitGameOrthoCamera((CCamera*)mCameras[1], &gGame.mGs.mScreen);
+	InitGamePerspectiveCamera(&mCameras[0], &gGame.mGs.mScreen);
+	InitGameOrthoCamera(&mCameras[1], &gGame.mGs.mScreen);
 	InitFourLightSet(&mLights[0]);
 	InitTwoLightSet(&mLights[8]);
 	InitGameFog(&mFog);

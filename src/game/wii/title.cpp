@@ -943,15 +943,15 @@ void Title::State2(u32)
 					SetMode(25);
 					PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
 					StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
-					((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
+					gGame.mInfoScrn.mSelectedSaveSlot = mFile;
 					return;
 				}
 				if (gTitleSaveSlots[mFile].mStage == 14) {
 					HideName(this);
 					StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
-					mAlpha                                          = 0.0f;
-					mTargetPanelY                                   = -200.0f;
-					((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
+					mAlpha                            = 0.0f;
+					mTargetPanelY                     = -200.0f;
+					gGame.mInfoScrn.mSelectedSaveSlot = mFile;
 					PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
 					SetMode(25);
 					mState   = 13;
@@ -1166,7 +1166,7 @@ void Title::State5(u32)
 			SetMode(25);
 			PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
 			StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
-			((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
+			gGame.mInfoScrn.mSelectedSaveSlot = mFile;
 			return;
 		}
 		if (mChoice == 1 && IsConfirmPressed()) {
@@ -1244,9 +1244,9 @@ void Title::State26(u32)
 			SetMode(25);
 			PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
 			StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
-			((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
-			gGame.mResetRequested                           = true;
-			gGame.mResetType                                = 5;
+			gGame.mInfoScrn.mSelectedSaveSlot = mFile;
+			gGame.mResetRequested             = true;
+			gGame.mResetType                  = 5;
 			return;
 		}
 		if (mChoice == 1 && IsConfirmPressed()) {
@@ -1305,10 +1305,10 @@ void Title::State8(u32)
 	if (result == 0) {
 		HideName(this);
 		StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
-		mTargetPanelY                                   = -200.0f;
-		mAlpha                                          = 0.0f;
-		((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
-		ResumeScrapCounterPulse((InfoScrn*)gGame.mInfoScrn);
+		mTargetPanelY                     = -200.0f;
+		mAlpha                            = 0.0f;
+		gGame.mInfoScrn.mSelectedSaveSlot = mFile;
+		ResumeScrapCounterPulse(&gGame.mInfoScrn);
 		SetMode(25);
 		mState   = 13;
 		mTimeout = 10002;
@@ -1569,7 +1569,7 @@ void Title::State24(u32 frames)
 		SetMode(25);
 		PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
 		StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
-		((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
+		gGame.mInfoScrn.mSelectedSaveSlot = mFile;
 		break;
 	}
 }
@@ -1817,7 +1817,7 @@ extern "C" void DrawTitleOptions(Title* title)
 		// OK pulses with the cursor's animation
 		f32 progress = title->mCursor[0].GetAnimId() == 1 ? title->mCursor[0].GetAnimFrame() / title->mCursor[0].GetAnimEndFrame() : 0.0f;
 		f32 okSize   = 24.0f + (title->mOptionLine == 2 ? 2.0f * (f32)sin(4.712389f * progress) : 0.0f);
-		selected = false;
+		selected     = false;
 		if (title->mOptionLine == 2 && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
 			selected = true;
 		}

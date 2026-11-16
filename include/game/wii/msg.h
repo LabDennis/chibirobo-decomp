@@ -69,17 +69,17 @@ public:
 	s32 mStyle;       // _890
 	s32 mAlignment;   // _894
 	s32 mIconColumns; // _898
-	s32 _89C;         // _89C
-	// _8A0 vtable
+	// _89C vtable: CMsg's constructor stores it ahead of the last word, which it leaves alone
 
 	CMsgData()
 	{
 		mCursor      = NULL;
 		mIconColumns = 0;
-		_89C         = 0;
 	}
 
 	virtual ~CMsgData() { } // _08
+
+	s32 _8A0; // _8A0
 };
 STATIC_ASSERT(sizeof(CMsgData) == 0x8A4);
 

@@ -5,7 +5,7 @@
 
 // the object the title plays its demo scene through, its own camera and lights; the Wii's XObjDemo,
 // an XObj2D (class name and bases from RTTI, the three objects at Title _1388). The members follow the
-// GameCube's; the Wii camera and light types are not reconstructed, so their storage is a gap
+// GameCube's; the Wii camera type is not reconstructed, so its storage is a gap
 class XObjDemo : public XObj2D {
 public:
 	virtual ~XObjDemo() { }
@@ -20,7 +20,7 @@ public:
 	u8 _9B0[0xBA8 - 0x9B0]; // the camera
 	s32 mCameraAnim;        // _BA8, -1 for none
 	s32 mLightCount;        // _BAC
-	u8 _BB0[0xF10 - 0xBB0]; // the eight lights
+	CLight mLights[8];      // _BB0, built and destroyed with the demo
 	s32 mLightAnims[8];     // _F10
 };
 STATIC_ASSERT(sizeof(XObjDemo) == 0xF30);

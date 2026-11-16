@@ -153,7 +153,7 @@ f32 WrapPlayerActionAngle(f32 angle)
 
 s32 GetStageObjectCount(const CGame* game)
 {
-	return game->mObjectCount;
+	return game->mXObjs.mObjectCount;
 }
 
 f32 GetHeadingBetweenPositions(const Vec* from, const Vec* to)
@@ -399,6 +399,51 @@ BOOL CanRadarActionSlideOnSlope(const XAction*)
 	return true;
 }
 
+Vec GetFloorExtent(XObjFloor* const* floors, s32 index)
+{
+	Vec extent = { (*floors)[index].mExtent[0] / 100.0f, (*floors)[index].mExtent[1] / 100.0f, (*floors)[index].mExtent[2] / 100.0f };
+	return extent;
+}
+
+Vec GetFloorCenterOffset(XObjFloor* const* floors, s32 index)
+{
+	Vec offset = { (*floors)[index].mCenterOffset[0] / 100.0f, (*floors)[index].mCenterOffset[1] / 100.0f,
+		           (*floors)[index].mCenterOffset[2] / 100.0f };
+	return offset;
+}
+
+XObj* GetDrawListObject(const CGame* game, s32 list, s32 index)
+{
+	return (XObj*)game->mDrawLists[list].mRefs[index].mObj;
+}
+
+s32 GetDrawListIndex(const CGame* game, s32 list, s32 index)
+{
+	return game->mDrawLists[list].mRefs[index].mIndex;
+}
+
+s32 GetDrawListCount(const CGame* game, s32 list)
+{
+	return game->mDrawLists[list].mCount;
+}
+
+// the direction square to bc pointing from a toward the line, so out of the triangle abc
+void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out)
+{
+	Vec bc;
+	Vec ba;
+	Vec n;
+	PSVECSubtract(b, c, &bc);
+	PSVECSubtract(b, a, &ba);
+	PSVECCrossProduct(&ba, &bc, &n);
+	PSVECCrossProduct(&bc, &n, out);
+}
+
+f32 GetFloorYawRadians(XObjFloor* const* floors, s32 index)
+{
+	return DEG2RAD * (*floors)[index].mYawDegrees;
+}
+
 f32 GetObjectHitFloorHeight(const XObj* object)
 {
 	return object->mFloorHeights[object->mHitFloorIndex];
@@ -449,6 +494,60 @@ void SetPlayerActionState(XAction* action, s32 state)
 	action->mState = state;
 }
 
+void SetPlayerHangState(WiiPlayerState* chr, s32 state, XObj* target)
+{
+	SetPlayerActionState(&chr->mHang, state);
+	if (target != NULL) {
+		SetPlayerActionTarget(&chr->mHang, target);
+	}
+}
+
+void SetPlayerLadderState(WiiPlayerState* chr, s32 state, XObj* target)
+{
+	SetPlayerActionState(&chr->mLadder, state);
+	if (target != NULL) {
+		SetPlayerActionTarget(&chr->mLadder, target);
+	}
+}
+
+void SetPlayerRopeState(WiiPlayerState* chr, s32 state, XObj* target)
+{
+	SetPlayerActionState(&chr->mRope, state);
+	if (target != NULL) {
+		SetPlayerActionTarget(&chr->mRope, target);
+	}
+}
+
+XObj* GetGameObjectByIndex(const CGame* game, s32 index)
+{
+	return game->mXObjs.mObjects[index];
+}
+
+CVec* GetCameraAngles(CCamera* camera)
+{
+	return &camera->mView.mAngle;
+}
+
+CPadOne* GetPadForPort(CGame* game, u8 port)
+{
+	return &gWiiPads[port];
+}
+
+u64 GetHeldPadButtons(const CPadOne* pad, u64 mask)
+{
+	return pad->mButton & mask;
+}
+
+BOOL IsActionTargetFloorId(const XAction* action, s32 wanted)
+{
+	return action->mTarget->mFloors[action->mTargetFloor].mId == wanted;
+}
+
+void* GetObjectFromPool(const CGame* game, s32 pool, s32 index)
+{
+	return game->mXObjs.mPools[pool].Get(index);
+}
+
 UnkStageObj* GetIndexedCoordPlacement(const CoordInfo* info, s32 index)
 {
 	return info->mPlacement + index;
@@ -462,6 +561,12 @@ CoordInfo* GetObjectCoordInfo(XObj* object)
 void SetAttachmentCountById(AttachmentValues* values, s32 id, s32 value)
 {
 	values->SetCount(id, value);
+}
+
+// out of battery: the battery is flat and the gauge on screen has run down to it
+BOOL IsPlayerStopped(const WiiPlayerState* chr)
+{
+	return chr->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
 }
 
 u8 IsPlayerFlashingFromHit(WiiPlayerState* chr)

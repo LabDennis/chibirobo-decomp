@@ -91,7 +91,7 @@ static inline void DrawTimerLabel(f32 scale)
 	const f32 size = 20.0f;
 	f32 width      = MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size);
 	DrawGsQuad(&gGame.mGs, 0xFF, 0xFF, 0xFF, 0xFF, 320.0f, 40.0f, 0.0f, scale * (width - 4.0f), 12.0f, 0.0f, 0.0f, 0.0f);
-	f32 left = 320.0f - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size) * 0.5f;
+	f32 left = 320.0f - MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x5B), TRUE, size) / 2.0f;
 	for (int i = 0; i < 4; ++i)
 		DrawGsProportionalTextFormat(&gGame.mGs, 0xFF, GetLocalizedInterfaceText(0x5B), left + gStage02TimerOutlineX[i],
 		                             27.0f + gStage02TimerOutlineY[i], 0.0f, size, size);

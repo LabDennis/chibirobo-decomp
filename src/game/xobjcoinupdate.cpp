@@ -6,7 +6,7 @@
 
 extern "C" u32 GetPickupRewardValue(s32 index);
 
-static inline bool IsCoinItemInRange(const XObjCoin* coin, s32 first, s32 end)
+static inline bool IsCoinItemInRange(XObjCoin* coin, s32 first, s32 end)
 {
 	bool inRange = false;
 	if (coin->GetItem() >= first && coin->GetItem() < end)
@@ -46,8 +46,8 @@ s32 XObjCoin::OnPlayerContact(s32 unused, s32 value)
 		AddPlayerScrap(&player->mParams, scrap);
 		sound = 0x123;
 	} else if (IsCoinItemInRange(this, 200, 300)) { // items 200..299 are battery
-		Params& stats = player->mParams;
 		s32 reward    = GetPickupRewardValue(GetItem() - 193);
+		Params& stats = player->mParams;
 		stats.SetBattery(reward + stats.mBattery);
 		sound  = 0x8e;
 		effect = 20;
@@ -76,10 +76,10 @@ void XObjCoin::UpdateObject(u32 frames)
 		f32 speed;
 		if (mSpin >= 0.0f) {
 			mSpin += 4.0f * radians;
-			speed = (1.5f + (f32)sin(mSpin)) * 0.5f;
+			speed = (1.5f + (f32)sin(mSpin)) / 2.0f;
 		} else {
 			mSpin -= 4.0f * radians;
-			speed = -(1.5f + (f32)sin(mSpin)) * 0.5f;
+			speed = -(1.5f + (f32)sin(mSpin)) / 2.0f;
 		}
 		mMoveRotate.y += 8.0f * radians * speed * frames;
 	} else if (IsCoinItemInRange(this, 100, 200)) {
@@ -105,15 +105,16 @@ void XObjCoin::UpdateObject(u32 frames)
 				break;
 			}
 		} else {
-			if (mMoveScale.x == 0.0f && mMoveScale.y == 0.0f && mMoveScale.z == 0.0f)
+			if (mMoveScale == (Vec) { 0.0f, 0.0f, 0.0f })
 				Release();
-			mFade -= 0.02f * frames;
-			if (mFade <= 0.0f)
+			if ((mFade -= 0.02f * frames) <= 0.0f)
 				mFade = 0.0f;
 			PSVECScale(&mMoveScale, &mMoveScale, 1.12f * mFade);
 		}
 	}
 	switch (mParam0) {
+	case 0:
+		break;
 	case 1: // a dropped coin gets its heading and fall speed
 		mState      = 1;
 		mFallFrames = 0;
