@@ -420,7 +420,6 @@ const TexSrtAnmResult *AnmObjTexSrtRes::GetResult(TexSrtAnmResult *pResult, u32 
 
     if (id & (BINDING_UNDEFINED | BINDING_INVALID)) {
         pResult->flags = 0;
-        pResult->indFlags = 0;
         return pResult;
     }
 
@@ -489,7 +488,6 @@ void ApplyTexSrtAnmResult(ResTexSrt srt, const TexSrtAnmResult *pResult) {
 }
 
 void ApplyTexSrtAnmResult(ResTexSrt srt, ResMatIndMtxAndScale ind, const TexSrtAnmResult *pResult) {
-    // I need this to not inline :(
     ApplyTexSrtAnmResult(srt, pResult);
 
     u32 flags = pResult->indFlags;
@@ -506,12 +504,12 @@ void ApplyTexSrtAnmResult(ResTexSrt srt, ResMatIndMtxAndScale ind, const TexSrtA
         s8 scaleExp;
 
         f32 maxElem = 0.000000000000000001f;
-        maxElem = ut::Max(maxElem, ut::Abs(mtx._00));
-        maxElem = ut::Max(maxElem, ut::Abs(mtx._01));
-        maxElem = ut::Max(maxElem, ut::Abs(mtx._03));
-        maxElem = ut::Max(maxElem, ut::Abs(mtx._10));
-        maxElem = ut::Max(maxElem, ut::Abs(mtx._11));
-        maxElem = ut::Max(maxElem, ut::Abs(mtx._13));
+        maxElem = ut::Max(maxElem, math::FAbs(mtx._00));
+        maxElem = ut::Max(maxElem, math::FAbs(mtx._01));
+        maxElem = ut::Max(maxElem, math::FAbs(mtx._03));
+        maxElem = ut::Max(maxElem, math::FAbs(mtx._10));
+        maxElem = ut::Max(maxElem, math::FAbs(mtx._11));
+        maxElem = ut::Max(maxElem, math::FAbs(mtx._13));
 
         scaleExp = static_cast<s8>(math::FGetExpPart(maxElem) + 1);
         f32 invScale = std::ldexpf(1.0f, -scaleExp);

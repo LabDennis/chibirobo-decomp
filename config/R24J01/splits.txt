@@ -1098,10 +1098,10 @@ nw4r/g3d/res/g3d_resfile.cpp:
 	.text start:0x8025BA34 end:0x8025CF84
 
 nw4r/g3d/res/g3d_resmdl.cpp:
-	.text start:0x8025CF84 end:0x8025E494
+	.text start:0x8025CF84 end:0x8025E024
 
 nw4r/g3d/res/g3d_resshp.cpp:
-	.text start:0x8025E494 end:0x8025ED28
+	.text start:0x8025E024 end:0x8025ED28
 
 nw4r/g3d/res/g3d_restev.cpp:
 	.text start:0x8025ED28 end:0x8025F40C
@@ -1195,6 +1195,9 @@ nw4r/g3d/g3d_anmtexpat.cpp:
 
 nw4r/g3d/g3d_anmtexsrt.cpp:
 	.text start:0x80267CF4 end:0x80268770
+	.rodata start:0x802E0018 end:0x802E0048
+	.data start:0x80333448 end:0x803334D8
+	.sdata2 start:0x805A7348 end:0x805A7368
 
 nw4r/g3d/g3d_anmchr.cpp:
 	.text start:0x80268770 end:0x8026A668
