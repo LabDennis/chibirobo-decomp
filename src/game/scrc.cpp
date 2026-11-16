@@ -2195,7 +2195,6 @@ extern "C" void HandleSpiderCounterCommand(XObjActor3* actor)
  * @note Size: 0x420
  */
 // the robot gets on the actor at its first joint, or off it
-// NONMATCHING: the robot and the joint's vectors take each other's registers
 extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 {
 	CJObj joint;
@@ -2219,7 +2218,8 @@ extern "C" void HandleActorRiderCommand(XObjActor3* actor)
 			player->mPlayerStatus.mFlags |= 0x20000000;
 			player->mPlayerStatus.mFlags |= 7;
 			player->mPad.mReset = 1;
-			HSD_JObjClearMtxFlags(player->mJObj);
+			HSD_JObj* jobj      = player->mJObj;
+			HSD_JObjClearMtxFlags(jobj);
 			break;
 		}
 		actor->mEventCommand = 0;
