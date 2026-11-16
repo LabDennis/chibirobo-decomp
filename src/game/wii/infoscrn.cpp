@@ -6,6 +6,7 @@
 #include "game/wii/cpad.h"
 #include "game/wii/csound.h"
 #include "game/wii/title.h"
+#include "game/ut.h"
 #include <string.h>
 #include <math.h>
 
@@ -29,6 +30,10 @@ s32 gRefreshRate;
 s32 gScreenSafeLeft;
 s32 gScreenSafeBottom;
 s32 gPointerScreenWidth;
+s32 gPointerScreenHeight;
+Vec fn_800E5A2C(WiiPlayerState* player);
+Vec GetCornerIconPosition(CGame* game);
+bool IsUtilibotStatusIconUnlocked();
 void DrawHudPointCounter(InfoPoint* point);
 void DrawHudScanlines(InfoScrn* scrn);
 void InfoScrn_DrawTimer(InfoScrn* scrn);
@@ -931,6 +936,194 @@ extern "C" void AllowIdleHudCounters()
 }
 
 /**
+ * @note Address: 0x8008D5D8
+ * @note Size: 0x65C
+ */
+extern "C" void DrawHudGaugeIcon(InfoScrn* scrn)
+{
+	if (!gGame.GetStatusFlags(0x100)) {
+		f32 alpha = scrn->mObjectGaugeAlpha * gHudOpacityScale;
+		if (alpha > 0.0f) {
+			CTexObj tex;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[111], 0);
+			tex   = gGame.mTpl.mTex;
+			f32 w = GXGetTexObjWidth(&tex);
+			f32 h = GXGetTexObjHeight(&tex);
+			Vec pos;
+			if (scrn->mObjectGaugeParam == 0) {
+				pos = fn_800E5A2C(gGame.mPlayer);
+			} else {
+				CVec joint;
+				gGame.mPlayer->vf23C(&joint, "neck");
+				const Vec offset = { 0.0f, 2.0f, 0.0f };
+				pos              = joint + offset;
+			}
+			f32 sx;
+			f32 sy;
+			gGame.ProjectOffsetToScreen(&pos, &sx, &sy, NULL, NULL);
+			f32 x = 8.0f + (w * 0.5f + sx);
+			f32 y = sy - h * 0.5f - 8.0f;
+			if (scrn->mObjectGaugeParam == 1) {
+				x += 20.0f;
+				y += 10.0f;
+			}
+			u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[267], 0);
+			tex        = gGame.mTpl.mTex;
+			u16 th     = GXGetTexObjHeight(&tex);
+			u16 tw     = GXGetTexObjWidth(&tex);
+			s32 frames = tw / th;
+			s32 frame  = scrn->mFrameCount % 32;
+			s32 idx;
+			switch (scrn->mObjectGaugeParam) {
+			case 0:
+				idx = frame < 8 ? 1 : 0;
+				break;
+			case 1:
+				idx = frame < 8 ? 2 : 3;
+				break;
+			case 2:
+				idx = frame < 8 ? 1 : 4;
+				break;
+			case 3:
+				idx = scrn->mFrameCount % 14 < 10 ? 1 : 7;
+				break;
+			}
+			PSMTXTrans(tex.mTexMtx.mMtx[0], (f32)idx * (1.0f / (f32)frames), 0.0f, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f / (f32)frames, 1.0f, 1.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			u32 color2         = (u32)(255.0f * alpha) | 0xFFFFFF00;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, color2, color2, color2, color2, x, y - 4.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+	}
+}
+
+/**
+ * @note Address: 0x8008DC34
+ * @note Size: 0x4E8
+ */
+extern "C" void InfoScrn_DrawPlayerHudIcon(InfoScrn* scrn)
+{
+	f32 alpha = scrn->mPlayerIconAlpha * gHudOpacityScale;
+	if (alpha > 0.0f) {
+		CTexObj tex;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[111], 0);
+		tex     = gGame.mTpl.mTex;
+		f32 w   = GXGetTexObjWidth(&tex);
+		f32 h   = GXGetTexObjHeight(&tex);
+		Vec ofs = { 0.0f, 10.0f, 0.0f };
+		f32 sx;
+		f32 sy;
+		gGame.mPlayer->vf1D4(&ofs, &sx, &sy, 0, 0);
+		f32 x     = 6.0f + (w * 0.5f + sx);
+		f32 y     = sy - h * 0.5f - 6.0f;
+		u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[267], 0);
+		tex        = gGame.mTpl.mTex;
+		u16 th     = GXGetTexObjHeight(&tex);
+		u16 tw     = GXGetTexObjWidth(&tex);
+		s32 frames = tw / th;
+		s32 frame  = scrn->mFrameCount % 16;
+		s32 idx    = frame < 4 ? 5 : frame < 8 ? 6 : frame >= 12 ? 7 : 6;
+		PSMTXTrans(tex.mTexMtx.mMtx[0], (f32)idx * (1.0f / (f32)frames), 0.0f, 0.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f / (f32)frames, 1.0f, 1.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		u32 color2         = (u32)(255.0f * alpha) | 0xFFFFFF00;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color2, color2, color2, color2, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+}
+
+/**
+ * @note Address: 0x8008E11C
+ * @note Size: 0x8A0
+ */
+extern "C" void InfoScrn_DrawTimer(InfoScrn* scrn)
+{
+	f32 alpha = scrn->mTimerAlpha * gHudOpacityScale;
+	CTexObj tex;
+	if (alpha > 0.0f) {
+		u32 opacity   = 255.0f * alpha;
+		u32 top       = opacity | 0xEFEBC500;
+		u32 bottom    = opacity | 0xEDA83600;
+		f32 clock     = TimerFramesToHundredths(scrn->mTimer);
+		f32 rightEdge = 372.0f + ((f32)gPointerScreenWidth - 640.0f);
+		f32 step;
+		f32 w;
+		f32 h;
+		f32 smallW;
+		f32 smallH;
+		f32 s = 1.8f;
+		// mm:ss.hh as the six decimal digits mmsshh
+		f32 value = 10000.0f * (s32)(clock / 6000.0f) + (s32)clock % 6000;
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126], 0);
+		tex    = gGame.mTpl.mTex;
+		u16 tw = GXGetTexObjWidth(&tex);
+		w      = s * tw;
+		u16 th = GXGetTexObjHeight(&tex);
+		h      = s * (th / 10);
+		tw     = GXGetTexObjWidth(&tex);
+		smallW = 0.7f * (s * tw);
+		th     = GXGetTexObjHeight(&tex);
+		smallH = 0.7f * (s * (th / 10));
+		PSMTXScale(tex.mTexMtx.mMtx[2], 1.0f, 0.1f, 1.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		step               = 7.0f * w;
+		s32 digit;
+		for (s32 i = 0; i < 6; i++) {
+			f32 div = 1.0f;
+			if (i > 0) {
+				for (s32 j = 0; j < i; j++) {
+					div *= 10.0f;
+				}
+			}
+			digit = (s32)(value / div);
+			digit %= 10;
+			PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.1f * digit, 0.0f);
+			tex.mTexMtx.mDirty = TRUE;
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+			// digit i from the right: the hundredths (0, 1) are drawn smaller, the minutes (4, 5) make room for the colon,
+			// and the minutes' tens stay blank at 0
+			f32 ofs = 0.0f;
+			if (i == 0) {
+				ofs = -4.0f * s;
+			} else if (i == 1) {
+				ofs = -1.0f * s;
+			} else if (i == 4 || i == 5) {
+				ofs = -5.0f * s;
+			}
+			if (i == 5 && digit == 0) {
+				continue;
+			}
+			if (i < 2) {
+				DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, ofs + (step + (rightEdge - i * (w - 2.0f * s)) - 8.0f * s),
+				                   72.0f + 2.0f * s, 0.0f, smallW, smallH, 0.0f, 0.0f, 0.0f);
+			} else {
+				DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, ofs + (step + (rightEdge - i * (w - 2.0f * s)) - 8.0f * s),
+				                   72.0f, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
+			}
+			gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		}
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[130], 0);
+		tex        = gGame.mTpl.mTex;
+		u16 colonW = GXGetTexObjWidth(&tex);
+		u16 colonH = GXGetTexObjHeight(&tex);
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, rightEdge + 56.0f * s, 72.0f + 0.5f * s, 0.0f, 0.6f * (s * colonW),
+		                   0.6f * (s * colonH), 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+}
+
+/**
  * @note Address: 0x8008E9BC
  * @note Size: 0xC
  */
@@ -976,6 +1169,42 @@ extern "C" s32 InfoScrn_GetTimerHundredths(InfoScrn* scrn)
 extern "C" f32 TimerFramesToHundredths(f32 frames)
 {
 	return FramesToClock(frames);
+}
+
+/**
+ * @note Address: 0x8008EC74
+ * @note Size: 0x32C
+ */
+extern "C" void DrawHudScanlines(InfoScrn* scrn)
+{
+	f32 alpha = scrn->mScanlineAlpha;
+	if (alpha > 0.0f) {
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		u32 a                = 255.0f * alpha;
+		static f32 sScanline = 0.0f;
+		if (!gGame.mMenuActive) {
+			sScanline = 1.0f + sScanline;
+			if (sScanline >= 4.0f) {
+				sScanline = 0.0f;
+			}
+		}
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_SUBTRACT, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+		u32 color = a | 0x30303000;
+		for (s32 y = 0; y < gPointerScreenHeight; y += 4.0f) {
+			DrawGsLineSegment(&gGame.mGs, NULL, 0.0f, y + sScanline, 0.0f, color, (f32)gPointerScreenWidth, y + sScanline, 0.0f, color);
+		}
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+		for (int i = 9; i > 0; i--) {
+			gHudScanlineHistory[i] = gHudScanlineHistory[i - 1];
+		}
+		gHudScanlineHistory[0] = 0.0f;
+		gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+	}
 }
 
 static const char* sAscii = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}";
@@ -1292,4 +1521,438 @@ extern "C" void DrawHudRoundedRectangle(u32 color, f32 x, f32 y, f32 w, f32 h, f
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, pos, color, 65);
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+}
+
+/**
+ * @note Address: 0x8008F884
+ * @note Size: 0xB40
+ */
+extern "C" void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY)
+{
+	f32 angle  = 4.712389f * (1.0f - alpha);
+	f32 sx     = 4.0f * (f32)sin(angle);
+	f32 sy     = 4.0f * (f32)sin(angle);
+	f32 left   = x - width / 2.0f - 40.0f - sx;
+	f32 right  = sx + (40.0f + (x + width / 2.0f));
+	f32 top    = y - 8.0f - sy;
+	f32 bottom = sy + (8.0f + (y + height));
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 0xFF000000,
+	                 9.0f + (8.0f + right), 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f,
+	                 0xFF000000);
+	Vec pos[10] = {
+		(Vec) { x, y, 0.0f },
+		(Vec) { (1.0f + left), (8.0f + (1.0f + top)), 0.0f },
+		(Vec) { (8.0f + (1.0f + left)), (1.0f + top), 0.0f },
+		(Vec) { ((right - 1.0f) - 8.0f), (1.0f + top), 0.0f },
+		(Vec) { (right - 1.0f), (8.0f + (1.0f + top)), 0.0f },
+		(Vec) { (right - 1.0f), ((bottom - 1.0f) - 8.0f), 0.0f },
+		(Vec) { ((right - 1.0f) - 8.0f), (bottom - 1.0f), 0.0f },
+		(Vec) { (8.0f + (1.0f + left)), (bottom - 1.0f), 0.0f },
+		(Vec) { (1.0f + left), ((bottom - 1.0f) - 8.0f), 0.0f },
+		(Vec) { (1.0f + left), (8.0f + (1.0f + top)), 0.0f },
+	};
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, pos, color, 10);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LESS, GX_TRUE);
+	DrawGsCircle(&gGame.mGs, 16, color, color, (8.0f + (1.0f + left)), (8.0f + (1.0f + top)), 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+	DrawGsCircle(&gGame.mGs, 16, color, color, ((right - 1.0f) - 8.0f), (8.0f + (1.0f + top)), 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+	DrawGsCircle(&gGame.mGs, 16, color, color, (8.0f + (1.0f + left)), ((bottom - 1.0f) - 8.0f), 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+	DrawGsCircle(&gGame.mGs, 16, color, color, ((right - 1.0f) - 8.0f), ((bottom - 1.0f) - 8.0f), 0.0f, 16.0f, 16.0f, 0.0f, 0.0f, 0.0f);
+	u32 shadow = (u32)(64.0f * alpha);
+	for (int i = 0; i < 10; i++) {
+		pos[i].x += 9.0f;
+		pos[i].y += 9.0f;
+	}
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, pos, shadow, 10);
+	DrawGsCircle(&gGame.mGs, 16, shadow, shadow, (8.0f + (1.0f + (9.0f + left))), (8.0f + (1.0f + (9.0f + top))), 0.0f, 16.0f, 16.0f, 0.0f,
+	             0.0f, 0.0f);
+	DrawGsCircle(&gGame.mGs, 16, shadow, shadow, ((9.0f + right) - 1.0f - 8.0f), (8.0f + (1.0f + (9.0f + top))), 0.0f, 16.0f, 16.0f, 0.0f,
+	             0.0f, 0.0f);
+	DrawGsCircle(&gGame.mGs, 16, shadow, shadow, (8.0f + (1.0f + (9.0f + left))), ((9.0f + bottom) - 1.0f - 8.0f), 0.0f, 16.0f, 16.0f, 0.0f,
+	             0.0f, 0.0f);
+	DrawGsCircle(&gGame.mGs, 16, shadow, shadow, ((9.0f + right) - 1.0f - 8.0f), ((9.0f + bottom) - 1.0f - 8.0f), 0.0f, 16.0f, 16.0f, 0.0f,
+	             0.0f, 0.0f);
+	CTexObj tex;
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[115], 0);
+	tex    = gGame.mTpl.mTex;
+	f32 tw = GXGetTexObjWidth(&tex);
+	f32 th = GXGetTexObjHeight(&tex);
+	f32 w  = right - left - 128.0f;
+	if (w < 0.0f)
+		w = 0.0f;
+	f32 h = bottom - top - 64.0f;
+	if (h < 0.0f)
+		h = 0.0f;
+	f32 tiles[8][8] = {
+		{ 0.0f, 0.0f, .5f, .5f, (32.0f + left - 3.0f), (8.0f + ((16.0f + top) - 10.0f)), 64.0f, 32.0f },
+		{ .5f, 0.0f, 1.0f / tw, .5f, x, (8.0f + ((16.0f + top) - 10.0f)), (6.0f + w), 32.0f },
+		{ .5f, 0.0f, .5f, .5f, (3.0f + (right - 32.0f)), (8.0f + ((16.0f + top) - 10.0f)), 64.0f, 32.0f },
+		{ 0.0f, .5f, .5f, 1.0f / th, (32.0f + left - 3.0f), (4.0f + (height / 2.0f + y)), 64.0f, ((20.0f + h) - 8.0f) },
+		{ .5f, .5f, .5f, 1.0f / th, (3.0f + (right - 32.0f)), (4.0f + (height / 2.0f + y)), 64.0f, ((20.0f + h) - 8.0f) },
+		{ 0.0f, .5f, .5f, .5f, (32.0f + left - 3.0f), (10.0f + (bottom - 16.0f)), 64.0f, 32.0f },
+		{ .5f, .5f, 1.0f / tw, .5f, x, (10.0f + (bottom - 16.0f)), (6.0f + w), 32.0f },
+		{ .5f, .5f, .5f, .5f, (3.0f + (right - 32.0f)), (10.0f + (bottom - 16.0f)), 64.0f, 32.0f },
+	};
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LESS, GX_TRUE);
+	for (int i = 0; i < 8; i++) {
+		PSMTXTrans(tex.mTexMtx.mMtx[0], tiles[i][0], tiles[i][1], 0.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		PSMTXScale(tex.mTexMtx.mMtx[2], tiles[i][2], tiles[i][3], 1.0f);
+		tex.mTexMtx.mDirty = TRUE;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, textureColor, textureColor, textureColor, textureColor, tiles[i][4], tiles[i][5], 1.0f,
+		                   tiles[i][6], tiles[i][7], 0.0f, 0.0f, 0.0f);
+	}
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, 9.0f + (8.0f + right), top - 8.0f, -1.0f, 0xFF000000,
+	                 9.0f + (8.0f + right), 9.0f + (8.0f + bottom), -1.0f, 0xFF000000, left - 8.0f, 9.0f + (8.0f + bottom), -1.0f,
+	                 0xFF000000);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+}
+
+/**
+ * @note Address: 0x800903C4
+ * @note Size: 0x354
+ */
+extern "C" void InitHudPointCounter(InfoPoint* point, s32 id)
+{
+	point->mIndex       = id;
+	point->mPulseFrames = 0;
+	point->mSlideState  = 0;
+	point->mFadeState   = 0;
+	point->mSlideDelay  = 0;
+	point->mOpacity     = 0.0f;
+	for (int i = 0; i < 6; i++) {
+		point->mPos[i].x = (f32)gScreenSafeLeft - 204.0f;
+	}
+	for (int i = 0; i < 4; i++) {
+		point->mValue[i] = 0.0f;
+	}
+	point->mVisible             = 0;
+	point->mSuppressIdleDisplay = 0;
+	switch (point->mIndex) {
+	case INFOPOINT_ID + 2:
+		point->mResource = point->mIndex;
+		point->mPos[0].y = GetHudBottomEdge() - 58.0f - 40.0f;
+		point->mPos[1].y = GetHudBottomEdge() - 58.0f - 40.0f;
+		break;
+	case INFOPOINT_ID:
+		point->mResource = point->mIndex;
+		point->mPos[0].y = GetHudBottomEdge() - 58.0f;
+		point->mPos[1].y = GetHudBottomEdge() - 58.0f;
+		break;
+	case INFOPOINT_ID + 1:
+		point->mResource = point->mIndex;
+		point->mPos[0].y = 40.0f + (GetHudBottomEdge() - 58.0f);
+		point->mPos[1].y = 40.0f + (GetHudBottomEdge() - 58.0f);
+		break;
+	}
+	point->mState          = 0;
+	point->mIconAlphaScale = 0.0f;
+	point->_80             = 0;
+}
+
+// a quarter of the way there each frame, at least 1
+static inline f32 ApproachStep(f32 cur, f32 target)
+{
+	f32 step = (target - cur) / 4;
+	if (step < 0.0f) {
+		step = -step;
+	}
+	if (step <= 1.0f) {
+		step = 1.0f;
+	}
+	return step;
+}
+
+// the chibi-pc menu is open, the counters stay hidden under it
+static inline BOOL IsPcMenuOpen()
+{
+	CGame::WiiPcMenu* menu = gGame.mPcMenu;
+	return menu ? menu->IsOpen() : FALSE;
+}
+
+/**
+ * @note Address: 0x80090718
+ * @note Size: 0xE20
+ */
+extern "C" void UpdateHudPointValue(InfoPoint* point, u32 frames)
+{
+	switch (point->mIndex) {
+	case INFOPOINT_ID + 2:
+		point->mValue[1] = gGame.mPlayer->mParams.mExperience;
+		break;
+	case INFOPOINT_ID:
+		point->mValue[1] = gGame.mPlayer->mParams.mMoney;
+		break;
+	case INFOPOINT_ID + 1:
+		point->mValue[1] = gGame.mPlayer->mParams.mScrap;
+		break;
+	}
+
+	bool changed = false;
+	if (point->mValue[1] - point->mValue[0]) {
+		changed = true;
+	}
+	if (IsPcMenuOpen()) {
+		point->mValue[0]   = point->mValue[1];
+		point->mValue[2]   = point->mValue[3];
+		point->mPos[1].x   = (f32)gScreenSafeLeft - 204.0f;
+		point->mPos[0].x   = (f32)gScreenSafeLeft - 204.0f;
+		point->mPos[3].x   = (f32)gScreenSafeLeft - 204.0f;
+		point->mPos[2].x   = (f32)gScreenSafeLeft - 204.0f;
+		point->mPos[5].x   = (f32)gScreenSafeLeft - 204.0f;
+		point->mPos[4].x   = (f32)gScreenSafeLeft - 204.0f;
+		point->mSlideState = 0;
+		changed            = false;
+	} else {
+		f32 step = (point->mValue[1] - point->mValue[0]) / 4;
+		if (step < 0.0f) {
+			step = -step;
+		}
+		f32 speed = step;
+		if (step <= 1.0f) {
+			speed = 1.0f;
+		}
+		Approach(&point->mValue[0], &point->mValue[1], speed);
+		Approach(&point->mValue[2], &point->mValue[3], 1.0f);
+	}
+	Approach(&point->mPos[0].x, &point->mPos[1].x, ApproachStep(point->mPos[0].x, point->mPos[1].x));
+	Approach(&point->mPos[2].x, &point->mPos[3].x, ApproachStep(point->mPos[2].x, point->mPos[3].x));
+	Approach(&point->mPos[4].x, &point->mPos[5].x, ApproachStep(point->mPos[4].x, point->mPos[5].x));
+
+	// chibi robo has stood still for a second (his idle timer ran down), the counters slide in
+	bool empty = false;
+	if (0.0f == gGame.mPlayer->mIdleTimer) {
+		empty = true;
+	}
+	if (point->mSuppressIdleDisplay) {
+		empty = false;
+	}
+	Vec corner = GetCornerIconPosition(&gGame);
+	f32 rowY   = corner.y;
+	if (rowY > GetHudBottomEdge()) {
+		rowY = GetHudBottomEdge();
+	}
+	switch (point->mIndex) {
+	case INFOPOINT_ID + 2:
+		point->mPos[0].y = rowY - 58.0f - 40.0f;
+		point->mPos[1].y = rowY - 58.0f - 40.0f;
+		break;
+	case INFOPOINT_ID:
+		point->mPos[0].y = rowY - 58.0f;
+		point->mPos[1].y = rowY - 58.0f;
+		break;
+	case INFOPOINT_ID + 1:
+		point->mPos[0].y = 40.0f + (rowY - 58.0f);
+		point->mPos[1].y = 40.0f + (rowY - 58.0f);
+		break;
+	}
+
+	// 0 hidden; 1-3 he stands still: the ring, the digits and the icon slide in one after another and stay; 4-5 out again.
+	// 10-12 a count changed: in quicker, and out through 13-14 once 90 frames pass without a change
+	switch (point->mSlideState) {
+	case 0:
+		if (IsPcMenuOpen()) {
+			break;
+		}
+		if (empty) {
+			point->mPos[1].x   = (f32)gScreenSafeLeft + 22.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState++;
+		} else if (changed) {
+			point->mPos[1].x   = (f32)gScreenSafeLeft + 22.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState = 10;
+		}
+		break;
+	case 1:
+		point->mSlideDelay++;
+		if (point->mSlideDelay > 6) {
+			point->mPos[3].x   = (f32)gScreenSafeLeft + 22.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState++;
+		}
+		break;
+	case 2:
+		point->mSlideDelay++;
+		if (point->mSlideDelay > 6) {
+			point->mPos[5].x = (f32)gScreenSafeLeft + 22.0f;
+			point->mSlideState++;
+		}
+		break;
+	case 3:
+		if (!empty) {
+			point->mPos[1].x   = (f32)gScreenSafeLeft - 204.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState++;
+		}
+		break;
+	case 4:
+		if (changed) {
+			point->mPos[1].x   = (f32)gScreenSafeLeft + 22.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState = 10;
+		} else {
+			point->mSlideDelay++;
+			if (point->mSlideDelay > 6) {
+				point->mPos[5].x   = (f32)gScreenSafeLeft - 204.0f;
+				point->mSlideDelay = 0;
+				point->mSlideState++;
+			}
+		}
+		break;
+	case 5:
+		if (changed) {
+			point->mPos[1].x   = (f32)gScreenSafeLeft + 22.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState = 10;
+		} else {
+			point->mSlideDelay++;
+			if (point->mSlideDelay > 6) {
+				point->mPos[3].x   = (f32)gScreenSafeLeft - 204.0f;
+				point->mSlideState = 0;
+			}
+		}
+		break;
+	case 10:
+		point->mSlideDelay++;
+		if (point->mSlideDelay > 3) {
+			point->mPos[3].x   = (f32)gScreenSafeLeft + 22.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState++;
+		}
+		break;
+	case 11:
+		point->mSlideDelay++;
+		if (point->mSlideDelay > 3) {
+			point->mPos[5].x   = (f32)gScreenSafeLeft + 22.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState++;
+		}
+		break;
+	case 12:
+		if (empty) {
+			point->mSlideState = 3;
+		} else {
+			point->mSlideDelay++;
+			if (changed) {
+				point->mSlideDelay = 0;
+			}
+			if (point->mSlideDelay > 90) {
+				point->mPos[1].x   = (f32)gScreenSafeLeft - 204.0f;
+				point->mSlideDelay = 0;
+				point->mSlideState++;
+			}
+		}
+		break;
+	case 13:
+		if (changed) {
+			point->mPos[1].x   = (f32)gScreenSafeLeft + 22.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState = 10;
+		} else {
+			point->mSlideDelay++;
+			if (point->mSlideDelay > 6) {
+				point->mPos[5].x   = (f32)gScreenSafeLeft - 204.0f;
+				point->mSlideDelay = 0;
+				point->mSlideState++;
+			}
+		}
+		break;
+	case 14:
+		if (changed) {
+			point->mPos[1].x   = (f32)gScreenSafeLeft + 22.0f;
+			point->mSlideDelay = 0;
+			point->mSlideState = 10;
+		} else {
+			point->mSlideDelay++;
+			if (point->mSlideDelay > 6) {
+				point->mPos[3].x   = (f32)gScreenSafeLeft - 204.0f;
+				point->mSlideState = 0;
+			}
+		}
+		break;
+	}
+
+	if (point->mVisible) {
+		point->mPos[1].x   = (f32)gScreenSafeLeft + 22.0f;
+		point->mPos[3].x   = (f32)gScreenSafeLeft + 22.0f;
+		point->mPos[5].x   = (f32)gScreenSafeLeft + 22.0f;
+		point->mSlideDelay = 0;
+		point->mSlideState = 3;
+	}
+
+	switch (point->mFadeState) {
+	case 0:
+		point->mOpacity = 1.0f;
+		break;
+	case 1:
+		point->mOpacity = 1.0f;
+		break;
+	case 2:
+		point->mOpacity = 0.0f;
+		break;
+	case 3:
+		point->mOpacity += 0.08f * frames;
+		if (point->mOpacity >= 1.0f) {
+			point->mOpacity = 1.0f;
+		}
+		if (gGame.mEvtData.mScript) {
+			point->mFadeState = 4;
+		}
+		break;
+	case 4:
+		point->mOpacity -= 0.08f * frames;
+		if (point->mOpacity < 0.0f) {
+			point->mOpacity = 0.0f;
+		}
+		if (!gGame.mEvtData.mScript) {
+			point->mFadeState = 3;
+		}
+		break;
+	}
+
+	point->mIconAlphaScale = 1.0f;
+	switch (point->mIndex) {
+	case INFOPOINT_ID + 1:
+		if (IsUtilibotStatusIconUnlocked()) {
+			point->mState          = 0;
+			point->mPulseFrames    = 0;
+			point->mIconAlphaScale = 1.0f;
+			break;
+		}
+		// from 300 scrap the icon blinks, with a chime as it starts
+		switch (point->mState) {
+		case 0:
+			if (point->mValue[1] >= 300.0f) {
+				point->mState++;
+				point->mPulseFrames = 0;
+			}
+			break;
+		case 1:
+			point->mPulseFrames += frames;
+			point->mIconAlphaScale = sin(DEG2RAD * ((point->mPulseFrames * 6) % 360));
+			if (point->mIconAlphaScale > 0.0f) {
+				PlayWiiSoundEffect(&gGame.mSound, 0x1F0, 1.0f, 0.0f);
+				point->mState++;
+			}
+			break;
+		case 2:
+			point->mPulseFrames += frames;
+			point->mIconAlphaScale = sin(DEG2RAD * ((point->mPulseFrames * 6) % 360));
+			if (point->mValue[1] < 300.0f) {
+				point->mState = 0;
+			}
+			break;
+		case 3:
+			if (point->mValue[1] < 300.0f) {
+				point->mState = 0;
+			}
+			break;
+		}
+		break;
+	}
 }

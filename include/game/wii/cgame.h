@@ -304,7 +304,13 @@ struct WiiPlayerVtable {
 	void (*SetRotation)(WiiPlayerState* chr, f32 rotY);
 	void* _74[(0x90 - 0x74) / 4];
 	void (*SetPosition)(WiiPlayerState* chr, const Vec* pos);
-	void* _94[(0x244 - 0x94) / 4];
+	void* _94[(0x1D4 - 0x94) / 4];
+	// _1D4, projects a world position onto the screen, the GameCube's ProjectOffsetToScreen
+	void (*vf1D4)(WiiPlayerState* chr, const Vec* pos, f32* x, f32* y, s32, s32);
+	void* _1D8[(0x23C - 0x1D8) / 4];
+	// _23C, a named joint's world position
+	void (*vf23C)(WiiPlayerState* chr, Vec* out, const char* name);
+	void* _240;
 	const Vec* (*GetPosition)(WiiPlayerState* chr);
 };
 
@@ -335,7 +341,9 @@ struct WiiPlayerState {
 	WiiPlayerVtable* mVtable;
 	u8 _0004[0x64 - 0x04];
 	f32 mRotY; // _0064, mMoveRotate.y
-	u8 _0068[0x9920 - 0x68];
+	u8 _0068[0xA8C - 0x68];
+	f32 mIdleTimer; // _0A8C, the GameCube XObjChri's: 0 while he moves, counts up standing still
+	u8 _0A90[0x9920 - 0xA90];
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
@@ -354,6 +362,8 @@ struct WiiPlayerState {
 	s32 mItemTint;        // _1C998
 
 	const Vec* GetPosition() { return mVtable->GetPosition(this); }
+	void vf1D4(const Vec* pos, f32* x, f32* y, s32 a, s32 b) { mVtable->vf1D4(this, pos, x, y, a, b); }
+	void vf23C(Vec* out, const char* name) { mVtable->vf23C(this, out, name); }
 	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
@@ -399,7 +409,22 @@ public:
 	s32 mTitleState; // _5C74, the title screen's step, as the GameCube mTitle.mState
 	u8 _5C78[0xAE00 - 0x5C78];
 	BOOL mMenuActive; // _AE00, a menu is open, as the GameCube mMenu.mActive
-	u8 _AE04[0xAF58 - 0xAE04];
+	u8 _AE04[0xAE10 - 0xAE04];
+	// the chibi-pc menu the counters hide under, the GameCube's mMenu.mMenus[3]. the object's
+	// method-table pointer sits inside it at +0x14C (a second polymorphic base's vptr); slot
+	// +0x24 reports whether the menu is open, as UpdateHudPointValue calls it
+	struct WiiPcMenu;
+	struct WiiPcMenuMethods {
+		void* _00[0x24 / 4];
+		BOOL (*IsOpen)(WiiPcMenu* menu); // _24
+	};
+	struct WiiPcMenu {
+		u8 _00[0x14C];
+		WiiPcMenuMethods* mMethods; // _14C
+		BOOL IsOpen() { return mMethods->IsOpen(this); }
+	};
+	WiiPcMenu* mPcMenu; // _AE10
+	u8 _AE14[0xAF58 - 0xAE14];
 	// the object the InfoScrn_* HUD calls receive at +0xAF58; the Wii callbacks are
 	// empty stubs, so only its address is verified, not its layout
 	u8 mInfoScrn[0xB148 - 0xAF58]; // _AF58
