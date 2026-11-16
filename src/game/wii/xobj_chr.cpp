@@ -488,6 +488,26 @@ void SetPlayerRopeState(WiiPlayerState* chr, s32 state, XObj* target)
 	}
 }
 
+XObj* GetGameObjectByIndex(const CGame* game, s32 index)
+{
+	return game->mXObjs.mObjects[index];
+}
+
+CVec* GetCameraAngles(CCamera* camera)
+{
+	return &camera->mView.mAngle;
+}
+
+CPadOne* GetPadForPort(CGame* game, u8 port)
+{
+	return &gWiiPads[port];
+}
+
+u64 GetHeldPadButtons(const CPadOne* pad, u64 mask)
+{
+	return pad->mButton & mask;
+}
+
 void* GetObjectFromPool(const CGame* game, s32 pool, s32 index)
 {
 	return game->mXObjs.mPools[pool].Get(index);
