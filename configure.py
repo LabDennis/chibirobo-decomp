@@ -1247,7 +1247,7 @@ if wii:
                 # effects 0x802BD3B4-0x802BF9F8 (ceffect.cpp): only what does not go through nw4r::g3d
                 # or nw4r::ef is written, the rest waits on those libraries' headers
                 Object(NonMatching, "game/wii/cobj.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
-                Object(NonMatching, "game/wii/ceffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/wii/ceffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
                 # the frame buffer effects 0x802BF9F8-0x802C19B8 (fbeffect.cpp by its string pool):
                 # FbBase, FbBlur and FbEffect, the GameCube's CFbBlur and CFbOutline on a common base
                 Object(NonMatching, "game/wii/fbeffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),

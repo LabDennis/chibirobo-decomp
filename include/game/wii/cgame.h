@@ -1146,12 +1146,25 @@ public:
 		u8 _25C[0x268 - 0x25C];
 	};
 
-	u8 _00[0x8];
+	void* mMemoryPool;      // _00
+	void* mMemoryManager;   // _04
 	Resource mResources[2]; // _08
-	u8 _4D8[0x4FC - 0x4D8];
+	u32 mLightMask;         // _4D8
+	GXColor mLightColor;    // _4DC
+	GXColor _4E0;           // _4E0
+	u32 _4E4;               // _4E4
+	f32 _4E8;               // _4E8
+	f32 _4EC;               // _4EC
+	f32 _4F0;               // _4F0
+	f32 _4F4;               // _4F4
+	GXColor _4F8;           // _4F8
 	// _4FC vtable
 
 	virtual ~CEffectSystem() { }
+	void Init();
+	void RetireAll(u32 groupID, BOOL retireParticles);
+	void UpdateLights(CLight* light);
+	void SetFog(u32 param, const GXColor* color, f32 f1, f32 f2, f32 f3, f32 f4);
 };
 STATIC_ASSERT(sizeof(CEffectSystem) == 0x500);
 
