@@ -105,16 +105,16 @@ void CGame::ResetNewGameState()
 	mPlayTime            = 0.0f;
 	_EC1A4               = 0.0f;
 	_EC1A8               = 1.0f;
-	_EC1AC               = 0.0f;
+	mScopeTimer          = 0.0f;
 	_EC2B4               = NAN;
 	_EC2C8               = -1.0f;
 	ResetPooledObjects((XObjPool*)mXObjPools);
 	InitBatteryGauge((InfoScrn*)mInfoScrn, GetPlayer()->mParams.mBattery);
 
-	mScrnTexAngle = 0.0f;
-	StartScreenFade(&mScrnTexColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
-	StartScreenFade(&mColor0, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
-	StartScreenFade(&mColor1, 0, 0, 0, 0, 255, 255, 255, 0, 0.0f);
+	mScrnTex.mAngle = 0.0f;
+	StartScreenFade(&mScrnTex.mColor, 0, 0, 0, 0, 100, 100, 200, 0, 0.0f);
+	StartScreenFade(&mColor0.mColor, 0, 0, 0, 0, 0, 0, 0, 0, 0.0f);
+	StartScreenFade(&mColor1.mColor, 0, 0, 0, 0, 255, 255, 255, 0, 0.0f);
 	mOutlineWidthControl = 0;
 	mOutlineWidth        = 0.5f;
 	Vec zero             = { 0.0f, 0.0f, 0.0f };
@@ -256,7 +256,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		game->SetupStageCamera(GetStageInfo()->mCameraMode);
 		game->mLightList = NULL;
 		if (gGame.mGs.mSceneHead->_2888 == NULL) {
-			game->mLightList = (CLight*)game->mLights[0];
+			game->mLightList = game->mLights;
 		}
 		for (i = 0; i < 9; i++) {
 			gGame.mGs._1FE4[i]._18 = FALSE;
@@ -278,7 +278,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 			fn_802BE4D4(game->_B7A8, type, fogColor, startZ, endZ, nearZ, farZ);
 		} else {
 			GXColor none = { 0, 0, 0, 0 };
-			((CFog*)game->_40A8)->Init(GX_FOG_NONE, none, 0.0f, 0.0f, 0.0f, 0.0f);
+			game->mFog.Init(GX_FOG_NONE, none, 0.0f, 0.0f, 0.0f, 0.0f);
 			GXColor black = { 0, 0, 0, 0 };
 			fn_802BE4D4(game->_B7A8, GX_FOG_NONE, black, 0.0f, 0.0f, 0.0f, 0.0f);
 		}
@@ -383,7 +383,7 @@ CLight* CBase::GetLight()
 // the member behind the two cameras; cgame.h does not type that block yet
 CLight* CBase::GetDefaultLight()
 {
-	return (CLight*)mLights[0];
+	return mLights;
 }
 
 /**

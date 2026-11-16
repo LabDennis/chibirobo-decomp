@@ -971,51 +971,6 @@ public:
 	virtual ~CCameraActionDefault() { }
 };
 STATIC_ASSERT(sizeof(CCameraActionDefault) == 0x40);
-// the area action, CCameraActions holds it at _40. Of the Wii class only what its destructor
-// (0x8002ECD0) takes apart and its constructor (in 0x80034ACC) builds is verified: the interpolations sit
-// where the GameCube class has them
-class CCameraActionArea : public CCameraActionAreaExM {
-public:
-	u8 _40[0x70 - 0x40];
-	CVectorEaseInOutInterpolation mInterestEaseInOut;    // _70
-	CVectorLinearInterpolation mEyeLinear;               // _CC
-	CVectorEaseInOutInterpolation mEyeEaseInOut;         // _100
-	CVectorEaseOutInterpolation mEyeEaseOut;             // _15C
-	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _1C0
-	u8 _1F8[0x20C - 0x1F8];
-	CInterpolationLinear mFovLinear;               // _20C
-	CInterpolationEaseInOut mFovEaseInOut;         // _21C
-	CInterpolationEaseOut mFovEaseOut;             // _238
-	CInterpolationEaseOutDivide mFovEaseOutDivide; // _258
-	u8 _268[0x2FC - 0x268];
-
-	virtual ~CCameraActionArea() { } // _08, 0x8002ECD0
-	virtual void Update(u32 step);   // _10
-};
-STATIC_ASSERT(sizeof(CCameraActionArea) == 0x2FC);
-
-// the map action, CCameraActions holds it at _CE8; verified the same way through 0x8002E5C4
-class CCameraActionMap : public CCameraActionAreaExM {
-public:
-	u8 _40[0xC8 - 0x40];
-	CInterpolationEaseOutDivide mFovEaseOutDivide; // _C8
-	u8 _D8[0xDB8 - 0xD8];
-	CVectorEaseInOutInterpolation mTurnEaseInOut; // _DB8
-	CInterpolationEaseInOut mHeightEaseInOut;     // _E14
-	u8 _E30[0xE34 - 0xE30];
-	CInterpolationEaseInOut mAbsHeightEaseInOut; // _E34
-	u8 _E50[0xE68 - 0xE50];
-	CInterpolationEaseOutDivide mTargetHeightOffsetEase; // _E68
-	u8 _E78[0xE7C - 0xE78];
-	CInterpolationEaseInOut mEyeYOffsetEaseInOut; // _E7C
-	u8 _E98[0xF2C - 0xE98];
-	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _F2C
-	u8 _F64[0x128C - 0xF64];
-
-	virtual ~CCameraActionMap() { } // _08, 0x8002E5C4
-	virtual void Update(u32 step);  // _10
-};
-STATIC_ASSERT(sizeof(CCameraActionMap) == 0x128C);
 #endif // defined(VERSION_R24J01)
 
 // follows the player from behind on a damped spring, the stick or dpad turns and zooms it.

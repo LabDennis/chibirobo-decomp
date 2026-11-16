@@ -4,6 +4,7 @@
 #include "Dolphin/dvd.h"
 #include "Dolphin/gx.h"
 #include "revolution/mem.h"
+#include "nw4r/snd/snd_BasicSound.h"
 
 extern "C" {
 void OSResetStopwatch(void* sw);
@@ -26,6 +27,13 @@ extern s32 gRefreshRate;
 
 // set by the power button's callback, CBase::Update turns it into a shutdown request
 extern u8 gPowerButtonPressed;
+
+inline void CSoundTrackSlot::Stop(int fadeFrames)
+{
+	if (IsAttachedSound()) {
+		((nw4r::snd::detail::BasicSound*)mTrack)->Stop(fadeFrames);
+	}
+}
 
 inline void CSound::StopAllTracks(f32 fade)
 {

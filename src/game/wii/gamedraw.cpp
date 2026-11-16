@@ -263,7 +263,7 @@ void CGame::ProjectOffsetToScreen(const Vec* pos, f32* x, f32* y, f32* z, void* 
  */
 CLight* CBase::GetScreenLight()
 {
-	return (CLight*)mLights[8];
+	return &mLights[8];
 }
 
 /**
@@ -463,7 +463,7 @@ void CGame::Reset(u32 code)
  * @note Address: 0x80024CA8
  * @note Size: 0x8
  */
-const Vec* XObj::GetPosition()
+CVec* XObj::GetPos()
 {
 	return &mMoveTranslate;
 }

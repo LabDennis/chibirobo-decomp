@@ -12,7 +12,11 @@ class CTexObj;
 // one particle
 class CPtclOne {
 public:
-	BOOL mActive;    // _00
+#if defined(VERSION_R24J01)
+	bool mActive; // _00, one byte on the Wii
+#else
+	BOOL mActive; // _00
+#endif
 	CVec mPos;       // _04
 	CVec mSize;      // _14
 	CVec mVel;       // _24

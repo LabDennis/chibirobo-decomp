@@ -18,8 +18,8 @@ struct CSoundTrackSlot {
 	f32 mPanStep;      // _18
 	u8 _1C[4];
 
-	// mTrack is an nw4r::snd::SoundHandle (one pointer to the sound); these are its two inlines,
-	// spelled here because the nw4r headers do not compile under the game's include paths
+	// mTrack is an nw4r::snd::SoundHandle (one pointer to the sound); these are its two inlines
+	// (Stop is defined where it is used, behind nw4r/snd/snd_BasicSound.h)
 	bool IsAttachedSound() const { return mTrack != NULL; }
 	void Stop(int fadeFrames);
 };
@@ -93,10 +93,46 @@ STATIC_ASSERT(sizeof(CSound) == 0xB60);
 
 class XSound : public CSound {
 public:
-	u8 mPlaybackState[0x113C - 0xB60]; // Begins with CSoundFxReverbHiDpl2.
+	// the archive calls go straight to CSound; retail still has them as XSound's own vtable entries
+	virtual BOOL OpenArchive(const char* path, s32 initialGroup);
+	virtual BOOL OpenArchiveAsync(const char* path, s32 initialGroup);
+	virtual BOOL LoadGroup(s32 groupId);
+	virtual BOOL LoadGroupAsync(s32 groupId);
+
+	u8 mPlaybackState[0xF74 - 0xB60]; // Begins with CSoundFxReverbHiDpl2.
+	s32 mStartedSfx[32];              // _F74, ids started since the last update; zero means free
+	s32 mMusicPitchFrames;            // _FF4
+	s32 mAltSoundIndex;               // _FF8, the GameCube XSound's fields of the same names from here on
+	s32 mVoiceSeqIndex;               // _FFC
+	s32 mSoundSeqIndex;               // _1000
+	s32 mCooldown;                    // _1004
+	u8 _1008[0x100C - 0x1008];
+	u8 mQueueRead;  // _100C
+	u8 mQueueWrite; // _100D
+	u8 _100E[0x1018 - 0x100E];
+	s32 mQueuedSoundIds[64]; // _1018
+	s32 mLastQueuedSoundId;  // _1118
+	u8 _111C[0x1120 - 0x111C];
+	s32 mCurrentMusicId;     // _1120
+	f32 mMusicPitch;         // _1124, in cents; a float on the Wii
+	s16 mTargetMusicPitch;   // _1128
+	s32 _112C;               // _112C, written 0 when a music track starts
+	s32 mMusicResumeDelay;   // _1130
+	s32 mMusicFadeOutFrames; // _1134
+	s32 mPausedMusicId;      // _1138
 	f32 mMusicVolume;
 };
 STATIC_ASSERT(sizeof(XSound) == 0x1140);
+#ifndef offsetof
+#define offsetof(type, member) ((u32) & (((type*)0)->member))
+#endif
+STATIC_ASSERT(offsetof(XSound, mStartedSfx) == 0xF74);
+STATIC_ASSERT(offsetof(XSound, mAltSoundIndex) == 0xFF8);
+STATIC_ASSERT(offsetof(XSound, mQueuedSoundIds) == 0x1018);
+STATIC_ASSERT(offsetof(XSound, mMusicPitch) == 0x1124);
+STATIC_ASSERT(offsetof(XSound, mQueueRead) == 0x100C);
+STATIC_ASSERT(offsetof(XSound, mCurrentMusicId) == 0x1120);
+STATIC_ASSERT(offsetof(XSound, mPausedMusicId) == 0x1138);
 
 extern "C" {
 void InitAudio(CSound* sound, u32 heapSize);
@@ -109,17 +145,13 @@ void PauseWiiSfx(XSound* sound, s32 id, f32 fade);                 // 0x80039AA8
 void ResumeWiiSfx(XSound* sound, s32 id, f32 fade);                // 0x80039BD4
 void SetWiiSfxVolume(XSound* sound, s32 id, f32 volume, f32 fade); // 0x80039DB4
 BOOL LoadWiiSoundBankByName(XSound* sound, const char* name);
-// SoundArchivePlayer track helpers used by the SFX -2 (all tracks) paths
-void StopWiiSfxTrack(void* track, u32 frames);                  // 0x8028A04C
-s32 IsWiiSfxTrackPaused(void* track);                           // 0x8028A59C
-void SetWiiSfxTrackPaused(void* track, u32 paused, u32 frames); // 0x8028A234
-}
-
-inline void CSoundTrackSlot::Stop(int fadeFrames)
-{
-	if (IsAttachedSound()) {
-		StopWiiSfxTrack(mTrack, fadeFrames);
-	}
+// gamesound.cpp; the slot results are CSound::mTracks entries
+void UpdateXSound(XSound* sound, s32 step);                        // 0x800366EC
+CSoundTrackSlot* GetGameSoundSlot(XSound* sound, s32 sfx);         // 0x800394B0
+CSoundTrackSlot* GetGameMusicSlot(XSound* sound);                  // 0x80039924
+void SetGameSfxPitch(XSound* sound, s32 sfx, f32 cents, f32 fade); // 0x80039FDC
+void FadeInGameSfx(XSound* sound, s32 sfx, f32 fade);              // 0x8003A13C
+void FadeOutGameSfx(XSound* sound, s32 sfx, f32 fade);             // 0x8003A60C
 }
 
 #endif

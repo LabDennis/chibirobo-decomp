@@ -131,6 +131,11 @@ public:
 };
 STATIC_ASSERT(sizeof(FbMirror) == 0x37C);
 
+// the mirrors CGame holds. RTTI names the class "CGame::FbMirrorEx"; its vtable (0x802E5FF4) has FbMirror's five
+// functions and it adds no members, the constructor at 0x80035418 is the compiler's
+class CGame::FbMirrorEx : public FbMirror { };
+STATIC_ASSERT(sizeof(CGame::FbMirrorEx) == 0x37C);
+
 // the game's mirrors
 extern "C" FbMirror gFramebufferMirrors[5];
 
