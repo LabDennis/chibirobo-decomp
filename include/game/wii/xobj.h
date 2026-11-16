@@ -132,6 +132,51 @@ public:
 	}
 };
 
+// a resource file handle; NW_Obj keeps the scene resource's at its _00
+class ResFile {
+public:
+	void* mpData; // _00
+
+	bool HasResAnmScn() const;          // 0x8025C720
+	u32 GetResAnmScnNumEntries() const; // 0x8025C4EC
+};
+
+// a scene animation resource, as far as the game reads it
+struct ResAnmScnData {
+	u8 _00[0x34];
+	u16 mNumFrame; // _34
+};
+
+class ResAnmScn {
+public:
+	ResAnmScnData* mpData; // _00
+
+	bool IsValid() const { return mpData != NULL; }
+	ResAnmScnData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resanmscn_ac.h", 40, "%s::%s: Object not valid.", "ResAnmScn", "ref");
+		}
+		return *mpData;
+	}
+	u16 GetNumFrame() const { return ref().mNumFrame; }
+};
+
+// the played scene animation; the virtuals carry nw4r's order up to GetFrame, their parameters are not recovered
+class AnmScnRes {
+public:
+	virtual bool IsDerivedFrom();     // _08
+	virtual void G3dProc();           // _0C
+	virtual ~AnmScnRes();             // _10
+	virtual void GetTypeObj();        // _14
+	virtual void GetTypeName();       // _18
+	virtual void SetFrame(f32 frame); // _1C
+	virtual f32 GetFrame() const;     // _20
+
+	u8 _04[0x20 - 0x04];
+	ResAnmScn mRes; // _20
+};
+
 // the scene model, as far as the game reads it
 class ScnMdlSimple {
 public:
@@ -151,6 +196,8 @@ public:
 
 } // namespace g3d
 } // namespace nw4r
+
+class CCamera;
 
 // the Wii's CVec sibling: same {x,y,z,vtable} shape with its own vtable, base of
 // the Wii CObjVec (retail __ct__7CObjVecFv at 0x800BE7C0 stores the TVec vtable
@@ -216,7 +263,9 @@ public:
 	u32 _00;
 	u32 _04;                            // the model's nw4r::g3d::ResMdl
 	nw4r::g3d::ScnMdlSimple* m_pScnMdl; // _08, NULL without a model
-	u8 _0C[0x4C];
+	u8 _0C[0x4C - 0x0C];
+	nw4r::g3d::AnmScnRes* m_pAnmScn; // _4C, the scene animation, ReleaseWork frees it
+	u8 _50[0x58 - 0x50];
 
 	virtual ~NW_Obj() { } // _58
 };
@@ -366,8 +415,8 @@ public:
 	virtual void vf134();
 	virtual void SetAnmScn(u32 id, f32 frame, f32 rate); // _138
 	virtual void ReleaseModelWork();                     // _13C
-	virtual void vf140();
-	virtual void _unk_00C(); // _144, IScnObjCallback's
+	virtual bool IsAnmScnEnd();                          // _140, the scene animation has run out
+	virtual void _unk_00C();                             // _144, IScnObjCallback's
 	// the IScnObjCallback override: overriding a second base's virtual adds a slot here
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info); // _148
 
@@ -454,7 +503,8 @@ public:
 	virtual void vf1D4();
 	virtual f32 GetFloorXZExtent();   // _1D8
 	virtual f32 GetCollisionHeight(); // _1DC
-	virtual void vf1E0();
+	// _1E0, the object's bounds on screen under camera, the GameCube's; FALSE when it is out of view
+	virtual BOOL ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight);
 	virtual void vf1E4();
 	virtual s32 HandleEventCommand(s32 count, s32* args);                // _1E8
 	virtual const void* GetEventScript();                                // _1EC
@@ -568,7 +618,20 @@ STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 	};                                      \
 	STATIC_ASSERT(sizeof(name) == size)
 
-WII_XOBJ_DECL(XObjScnCam, 0x9C0);
+class WiiGsSceneObj;
+
+// the scene camera, pool 0's one object; the stage's scene it plays is at _9A8
+class XObjScnCam : public XObj {
+public:
+	XObjScnCam();
+	virtual ~XObjScnCam();
+
+	WiiGsSceneObj* mScene; // _9A8
+
+private:
+	u8 _9AC[0x9C0 - 0x9AC];
+};
+STATIC_ASSERT(sizeof(XObjScnCam) == 0x9C0);
 
 // the light object: its dtor (0x800BE828) destroys CLight[8] at _9AC, the
 // ctor (0x800BE364) is the XObj initialization plus that array

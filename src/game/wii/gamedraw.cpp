@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 extern "C" {
+void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 void* UpdateMovie(void* arg);
 char* FormatToStaticBuffer(const char* fmt, ...);
 const char* GetLocalizedInterfaceText(s32 id);
@@ -38,6 +39,8 @@ void ClearSoundEffects(XSound* sound, s32 frames);
 s32 GetWiiSaveSlotStage(WiiSaveManager* manager, int index);
 void ResetTitleScreenState(void* title);
 void fn_800848C0(void* menus); // the GameCube's ResetMenuGroup
+void fn_80084BF0(void* menus, s32 menu);
+BOOL fn_800C61C8();
 void ResetGameHudState(InfoScrn* scrn);
 u8* GetStageDisplayName(s32 index);
 extern GXColor gMessageFontDefaultColor;
@@ -46,6 +49,7 @@ s32 GetDefaultStageIndex();
 }
 
 extern s32 gRefreshRate;
+extern f32 gScreenWidthScale;
 // a sound id XObjSpiderSmall keeps while it fights (0x80128CD4), cleared once its tracks are let go
 extern u32 gSpiderSmallSoundId;
 extern s32 gPointerScreenWidth;
@@ -94,10 +98,10 @@ inline void CSound::StopAllTracks(f32 fade)
 	}
 }
 
-// the queued scene draws, sorted under the camera's view and popped one by one
-static inline void DrawSceneQueue(CCamera* camera)
+// the queued scene draws, sorted under view and popped one by one
+static inline void DrawSceneQueue(MtxP view)
 {
-	fn_802AEDEC(&gGame.mGs.mSceneHead, camera->mViewMtx);
+	fn_802AEDEC(&gGame.mGs.mSceneHead, view);
 	WiiGsSceneObj* obj = gGame.mGs.mSceneHead;
 	while (obj->mPending != 0) {
 		if (obj->mPending != 0) {
@@ -612,6 +616,75 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 }
 
 /**
+ * @note Address: 0x8002B1F4
+ * @note Size: 0xF4
+ */
+// NONMATCHING: retail rounds the frame through a double before it adds the rate
+// the scene animation is at its last frame, or will be within this step
+bool CObj::IsAnmScnEnd()
+{
+	f32 frame = mObject.m_pAnmScn != NULL ? mObject.m_pAnmScn->GetFrame() : 0.0f;
+	f32 end   = mObject.m_pAnmScn != NULL ? mObject.m_pAnmScn->mRes.GetNumFrame() - 1 : 0.0f;
+	return frame + mAnimRate[1] >= end;
+}
+
+/**
+ * @note Address: 0x8002B18C
+ * @note Size: 0x68
+ */
+// NONMATCHING: retail tests the live bit as a negated bool and keeps each check's result in a flag of its own,
+// the trace of inlines whose names are not known
+// whether the scene camera's animation is done; without a scene of its own it always is
+extern "C" BOOL IsSceneCameraAnmEnd(CGame* game)
+{
+	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	if (camera != NULL && (camera->mStatus.mFlags & 1) && camera->mScene != NULL && camera->mScene->_2888 != NULL) {
+		return camera->IsAnmScnEnd();
+	}
+	return TRUE;
+}
+
+/**
+ * @note Address: 0x8002B088
+ * @note Size: 0x104
+ */
+// NONMATCHING: retail tests the live bit as a negated bool and keeps each check's result in a flag of its own,
+// the trace of inlines whose names are not known
+// lets go of the scene camera's animation and puts the perspective camera back to its defaults
+extern "C" void StopSceneCameraAnm(CGame* game)
+{
+	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
+		nw4r::g3d::ResFile* file = (nw4r::g3d::ResFile*)&camera->mObject._00;
+		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
+			camera->ReleaseModelWork();
+			game->GetPerspectiveCamera()->Init(1.0f, 80000.0f, 30.0f, gScreenWidthScale, &gGame.mGs.mScreen);
+		}
+	}
+}
+
+/**
+ * @note Address: 0x8002AF94
+ * @note Size: 0xF4
+ */
+// NONMATCHING: retail tests the live bit as a negated bool and keeps each check's result in a flag of its own,
+// the trace of inlines whose names are not known
+// plays scene animation id on the scene camera from frame at rate; the camera, or NULL when it has no
+// scene animations
+extern "C" XObj* StartSceneCameraAnm(CGame* game, u32 id, f32 frame, f32 rate)
+{
+	XObjScnCam* camera = (XObjScnCam*)((XObjPool*)game->mXObjPools)[0].mObjects;
+	if (camera != NULL && (camera->mStatus.mFlags & 1)) {
+		nw4r::g3d::ResFile* file = (nw4r::g3d::ResFile*)&camera->mObject._00;
+		if (camera->mObject.m_pScnMdl != NULL && file->HasResAnmScn() && file->GetResAnmScnNumEntries() != 0) {
+			camera->SetAnmScn(id, frame, rate);
+			return camera;
+		}
+	}
+	return NULL;
+}
+
+/**
  * @note Address: 0x8002AEC8
  * @note Size: 0xCC
  */
@@ -860,7 +933,7 @@ void CGame::DrawScene()
 			obj->DrawObject();
 		}
 	}
-	DrawSceneQueue(GetCamera());
+	DrawSceneQueue(GetCamera()->mViewMtx);
 
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_FALSE);
 	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_TRUE);
@@ -871,7 +944,7 @@ void CGame::DrawScene()
 			obj->DrawObject();
 		}
 	}
-	DrawSceneQueue(GetCamera());
+	DrawSceneQueue(GetCamera()->mViewMtx);
 
 	gGame.mGs.mCurRenderState->SetColorUpdate(GX_TRUE);
 	for (s32 i = 0; i < mSceneRefCount; i++) {
@@ -887,7 +960,53 @@ void CGame::DrawScene()
 		}
 	}
 	CallStageModule(2, 0, NULL);
-	DrawSceneQueue(GetCamera());
+	DrawSceneQueue(GetCamera()->mViewMtx);
+}
+
+/**
+ * @note Address: 0x80026E28
+ * @note Size: 0x298
+ */
+// NONMATCHING: FbSubwin::Copy is a virtual call in retail (see ChangeGameStage)
+// draws the subwindow's view into its quarter of the screen and copies it: the 0x2000000 objects always,
+// the rest when they are in the subwindow camera's view
+extern "C" void RenderSubwindow(CGame* game)
+{
+	if (!game->GetStatusFlags(1) || !game->GetStatusFlags(0x100)) {
+		return;
+	}
+	if (game->mHomeMenu.IsRunning()) {
+		return;
+	}
+	bool menuShown = game->mMenuActive && game->_AE34;
+	if (menuShown) {
+		return;
+	}
+	FbSubwin* subwin = (FbSubwin*)game->mSubwin;
+	if (!(subwin->mAmount > 0.0f)) {
+		return;
+	}
+	if (game->BeginCamera(&subwin->mCamera)) {
+		GXSetScissor(0, 0, gPointerScreenWidth / 2, gPointerScreenHeight / 2);
+		for (s32 i = 0; i < game->mObjectCount; i++) {
+			XObj* obj = (XObj*)game->mObjects[i];
+			bool draw = false;
+			if ((obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
+				if (obj->mStatus.mFlags & 0x2000000) {
+					draw = true;
+				} else if (obj->ProjectVisibleBounds(NULL, NULL, &subwin->mCamera, obj->GetFloorXZExtent() * 0.5f,
+				                                     obj->GetCollisionHeight())) {
+					draw = true;
+				}
+			}
+			if (draw) {
+				obj->DrawObject();
+			}
+		}
+		DrawSceneQueue(NULL);
+		game->vf54();
+	}
+	subwin->Copy();
 }
 
 /**
@@ -966,6 +1085,86 @@ BOOL CBase::vf5C()
 void CGame::Reset(u32 code)
 {
 	CBase::Reset(code);
+}
+
+/**
+ * @note Address: 0x80024CC0
+ * @note Size: 0x38C
+ */
+// NONMATCHING: the effect manager is still bytes, so its two counts are read through casts; the strings
+// are addressed from the whole file's pool
+// carries out a requested reset once nothing is busy: without a disc it returns to the menu at once,
+// otherwise it waits for the HOME Menu, a suit change, the effects and the sound to settle. a reset to
+// the title from a running game changes the stage instead of restarting
+extern "C" void UpdateResetRequest(CGame* game)
+{
+	if (!game->mResetRequested || game->mSaveManager.mJobStarted) {
+		return;
+	}
+	if (!game->mDiskOk) {
+		if (game->mResetType == 2) {
+			game->Reset(2);
+		} else {
+			game->mResetRequested = false;
+			game->mPad.Clear();
+			game->Reset(4);
+		}
+		return;
+	}
+	if (game->GetStatusFlags(0x40)) {
+		game->ClearStatusFlags(0x40);
+	}
+	if (!game->mStageName.mActive) {
+		game->mStageName.mActive = FALSE;
+		for (s32 i = 0; i < 20; i++) {
+			game->mStageName.mChars[i].mScale = 0.0f;
+			game->mStageName.mChars[i].mWait  = 0.0f;
+			game->mStageName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
+			game->mStageName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
+		}
+	}
+	if (game->mHomeMenu.IsOpen()) {
+		return;
+	}
+	if (fn_800C61C8()) {
+		return;
+	}
+	if (game->GetPlayer()->mSuits.mLoadStep != 0) {
+		return;
+	}
+	// the effect manager's two live counts
+	if (*(s32*)&gGame._B7A8[0x8] != 0 || *(s32*)&gGame._B7A8[0x270] != 0) {
+		return;
+	}
+	if (gGame.mSound.mLoadPending) {
+		return;
+	}
+	game->mResetRequested = false;
+	game->mPad.Clear();
+	switch (game->mResetType) {
+	case 2:
+		game->Reset(2);
+		break;
+	case 4:
+		game->Reset(4);
+		break;
+	case 5:
+		game->Reset(5);
+		break;
+	case 3:
+		if (!game->mDiskOk) {
+			game->Reset(4);
+		} else if (game->mLoadStep <= 20) {
+			game->Reset(3);
+		} else {
+			fn_80084BF0(&game->mMenuActive, 6);
+			ChangeGameStage(game, 10000, TRUE);
+		}
+		break;
+	default:
+		OSPanic("game.cpp", 2979, "Unknown reset type - %d\n", game->mResetType);
+		break;
+	}
 }
 
 /**
