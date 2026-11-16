@@ -125,7 +125,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 	for (s32 i = 0; i < count; i++) {
 		CamAreaRecord* record        = &records[i];
 		CamCollisionPolygon& polygon = polygons[i];
-		CamAreaRecord* area          = CamAreaInfo(record).GetRecord();
+		CamAreaRecord* const& area   = CamAreaInfo(record).GetRecord();
 		if (area->mFlags & 0x80) // an event switched this area off
 			continue;
 		f32 top      = area->GetTop();
@@ -154,7 +154,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 		CVec best;
 		for (s32 i = 0; i < count; i++) {
 			CamCollisionPolygon& polygon = polygons[i];
-			CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
+			CamAreaRecord* const& area   = CamAreaInfo(&records[i]).GetRecord();
 			if (area->mFlags & 0x80)
 				continue;
 			f32 top      = area->GetTop();
@@ -185,7 +185,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 			candidateInside = false;
 			for (s32 i = 0; i < count; i++) {
 				CamCollisionPolygon& polygon = polygons[i];
-				CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
+				CamAreaRecord* const& area   = CamAreaInfo(&records[i]).GetRecord();
 				if (area->mFlags & 0x80)
 					continue;
 				f32 top      = area->GetTop();
@@ -201,7 +201,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 			if (candidateInside) {
 				for (s32 i = 0; i < count; i++) {
 					CamCollisionPolygon& polygon = polygons[i];
-					CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
+					CamAreaRecord* const& area   = CamAreaInfo(&records[i]).GetRecord();
 					if (area->mFlags & 0x80)
 						continue;
 					f32 top      = area->GetTop();
@@ -241,7 +241,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 		behind.y = target.y;
 		for (s32 i = 0; i < count; i++) {
 			CamCollisionPolygon& polygon = polygons[i];
-			CamAreaRecord* area          = CamAreaInfo(&records[i]).GetRecord();
+			CamAreaRecord* const& area   = CamAreaInfo(&records[i]).GetRecord();
 			if (area->mFlags & 0x80)
 				continue;
 			f32 top      = area->GetTop();
@@ -341,7 +341,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 	if (!previousInside) {
 		s32 insideCount = 0;
 		for (s32 i = 0; i < count; i++) {
-			CamAreaRecord* area = CamAreaInfo(&records[i]).GetRecord();
+			CamAreaRecord* const& area = CamAreaInfo(&records[i]).GetRecord();
 			if (area->mFlags & 0x80)
 				continue;
 			f32 top      = area->GetTop();
