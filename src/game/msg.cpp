@@ -7816,7 +7816,8 @@ extern "C" void CMsgData_Measure(CMsgData* data)
 			} else if (*p == MSG_CODE_ICON) {
 				CTexObj icon = GetMessageIconTexture();
 #if defined(VERSION_JP)
-				data->mWidths[data->mLineCount] += (size / 22.0f) * (GXGetTexObjWidth(&icon) / 14);
+				s32 iconWidth = GXGetTexObjWidth(&icon) / 14;
+				data->mWidths[data->mLineCount] += (size / 22.0f) * iconWidth;
 #else
 				data->mWidths[data->mLineCount] += 24.0f * (size / 22.0f);
 #endif
