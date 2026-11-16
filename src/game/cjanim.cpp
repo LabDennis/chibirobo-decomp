@@ -414,11 +414,11 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 		return FALSE;
 	if (mStatus.mFlags & 0x4000000000000000ULL)
 		return FALSE;
-	CVec from(start);
-	CVec extent;
+	CVec from(*(const CVec*)&start); // retail copies both ends word by word, as CVecs
 	from.y = 0;
-	Vec to = end;
-	to.y   = 0; // floors are tested flat on the ground plane
+	CVec to(*(const CVec*)&end);
+	to.y = 0; // floors are tested flat on the ground plane
+	CVec extent;
 
 	f32 rotation = mMoveRotate.y;
 	for (s32 i = 0; floors[i].mId != -1; ++i) {
