@@ -3845,58 +3845,59 @@ extern "C" void InitializeAttachmentMenuEntries(AttachmentValues* values)
  */
 extern "C" void DrawPlayerLookMarker(XObjChrLook* look)
 {
-	if (gGame.mMotionControlCamera.IsAction(CAMACTION_SCROLL2) || !(look->mFade > 0.0f))
-		return;
-	CTexObj tex;
-	f32 scale  = look->mFade + 0.5f * (f32)sin(PI * look->mFade);
-	tex        = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[111 - StatusTextureOffset], 0);
-	f32 width  = scale * GXGetTexObjWidth(&tex);
-	f32 height = scale * GXGetTexObjHeight(&tex);
-	Vec pos;
-	look->mObject->ProjectOffsetToScreen(&look->mOffset, &pos.x, &pos.y, NULL, NULL);
-	pos.x += 0.5f * width;
-	pos.y -= 0.5f * height;
-	pos.z = 0.0f;
-	pos.y += 4.0f * (f32)sin(DEG2RAD * look->mPhase);
+	if (!gGame.mMotionControlCamera.IsAction(CAMACTION_SCROLL2) && look->mFade > 0.0f) {
+		CTexObj tex;
+		f32 scale  = look->mFade + 0.5f * (f32)sin(PI * look->mFade);
+		tex        = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[111 - StatusTextureOffset], 0);
+		f32 width  = scale * GXGetTexObjWidth(&tex);
+		f32 height = scale * GXGetTexObjHeight(&tex);
+		Vec pos;
+		look->mObject->ProjectOffsetToScreen(&look->mOffset, &pos.x, &pos.y, NULL, NULL);
+		pos.x += width / 2.0f;
+		pos.y -= height / 2.0f;
+		pos.z = 0.0f;
+		pos.y += 4.0f * (f32)sin(DEG2RAD * look->mPhase);
 
-	SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 0);
-	SetGsAlphaCompare(gGame.mGs.mCurRenderMode, 4, 0, 0, 3, 255);
-	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	u32 color    = 0xFFFFFF00 | (u32)(255.0f * look->mFade);
-	Vec rotation = { 0.0f, 0.0f, 0.0f };
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, pos.x, pos.y, pos.z, width, height, rotation.x, rotation.y,
-	                   rotation.z);
-
-	f32 glow = look->mFade * (0.5f + 0.5f * (f32)sin(PI * look->mPulse));
-	if (glow < 0.0f)
-		glow = 0.0f;
-	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-	Vec maskRotation = { 0.0f, 0.0f, 0.0f };
-	DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, pos.x, pos.y, pos.z, 0.99f * width, 0.99f * height,
-	                   maskRotation.x, maskRotation.y, maskRotation.z);
-	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-	Vec glowRotation = { 0.0f, 0.0f, 0.0f };
-	color            = 0xFFFFFF00 | (u32)(255.0f * glow);
-	DrawGsQuad(&gGame.mGs, color, color, color, color, pos.x, pos.y, pos.z, width, height, glowRotation.x, glowRotation.y, glowRotation.z);
-
-	if (look->mMode >= 0) {
-		tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[look->mMode], 0);
+		SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 0);
+		SetGsAlphaCompare(gGame.mGs.mCurRenderMode, 4, 0, 0, 3, 255);
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		color = 0xFFFFFF00 | (u32)(255.0f * look->mFade);
-		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, pos.x, pos.y, pos.z, width, height, look->mTarget.x,
-		                   look->mTarget.y, look->mTarget.z);
+		u32 color    = 0xFFFFFF00 | (u32)(255.0f * look->mFade);
+		Vec rotation = { 0.0f, 0.0f, 0.0f };
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, pos.x, pos.y, pos.z, width, height, rotation.x, rotation.y,
+		                   rotation.z);
+
+		f32 glow = look->mFade * (0.5f + 0.5f * (f32)sin(PI * look->mPulse));
+		if (glow < 0.0f)
+			glow = 0.0f;
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
+		Vec maskRotation = { 0.0f, 0.0f, 0.0f };
+		DrawGsTexturedQuad(&gGame.mGs, &tex, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, 0xFFFFFF01, pos.x, pos.y, pos.z, 0.99f * width,
+		                   0.99f * height, maskRotation.x, maskRotation.y, maskRotation.z);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		Vec glowRotation = { 0.0f, 0.0f, 0.0f };
+		color            = 0xFFFFFF00 | (u32)(255.0f * glow);
+		DrawGsQuad(&gGame.mGs, color, color, color, color, pos.x, pos.y, pos.z, width, height, glowRotation.x, glowRotation.y,
+		           glowRotation.z);
+
+		if (look->mMode >= 0) {
+			tex = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[look->mMode], 0);
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+			color = 0xFFFFFF00 | (u32)(255.0f * look->mFade);
+			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, pos.x, pos.y, pos.z, width, height, look->mTarget.x,
+			                   look->mTarget.y, look->mTarget.z);
+		}
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
+		SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 1);
+		InvalidateCaptureGraphics(&gGame.mGs);
 	}
-	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
-	SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 1);
-	InvalidateCaptureGraphics(&gGame.mGs);
 }
 
 // steps the marker on what chibi robo looks at
@@ -8941,11 +8942,10 @@ extern "C" void SpawnPlayerDust(XObjChr* player, const Vec* origin)
 	position.y = origin->y;
 	f32 width  = 1.0f + (rand() % 200) / 200.0f;
 	Vec size;
-	size.x         = width;
-	size.y         = width;
-	size.z         = 1.0f;
-	Vec velocity   = { vx, vy, vz };
-	CPtclOne* dust = SpawnPoolParticle(&player->mDust.mPtcl, &position, &size, &velocity, 0xFFFFFFA0);
+	size.x = size.y = width;
+	size.z          = 1.0f;
+	Vec velocity    = { vx, vy, vz };
+	CPtclOne* dust  = SpawnPoolParticle(&player->mDust.mPtcl, &position, &size, &velocity, 0xFFFFFFA0);
 	if (dust != NULL) {
 		if (player->mGroundType == 10) {
 			dust->mAngle      = DEG2RAD * (rand() % 360);
