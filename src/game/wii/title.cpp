@@ -55,6 +55,8 @@ void DrawTitleOptions(Title* title);
 void DrawTexturedWindowFrame(u32 color, s32 a, f32 x, f32 y, f32 w, f32 h, f32 sx, f32 sy, f32 sz);
 // the options page's highlight bar behind a line (0x8004EDFC)
 void fn_8004EDFC(Title* title, BOOL selected, f32 x, f32 y, f32 size, f32 width);
+// the menus' highlight knob, line and arrow (0x8004E6EC)
+void fn_8004E6EC(Title* title, BOOL options, f32 x, f32 y, f32 alpha, f32 extent);
 void DrawTitleNameBubbles(Title* title);
 void fn_802AEDEC(WiiGsSceneObj** head, Mtx view);
 CCamera* InitGameOrthoCamera(CCamera* camera, GXRenderModeObj* mode);
@@ -104,6 +106,8 @@ const TitlePaletteEntry gTitlePalette[] = {
 const s32 gTitleLogoTextures[3] = { 0, 0, 0 };
 s32 gTitlePaletteIndex          = 3;
 s32 gTitleLogoIndex             = 1;
+// the gap between the highlight bar's end and the cursor arrow behind it
+f32 gTitleArrowGap[2] = { 30.0f, 0.0f };
 // how fast the file rows slide out to the file picked and back
 f32 gTitleFileSlideSpeed[2] = { 1.0f, 1.0f };
 
@@ -2491,6 +2495,79 @@ void Title::UpdateSelections()
 		} else {
 			mChoice = mLastChoice;
 		}
+	}
+}
+
+/**
+ * @note Address: 0x8004E6EC
+ * @note Size: 0x710
+ */
+// NONMATCHING: read from retail's code; retail keeps the arrow's 1.2 scale in a register for both sides
+// the menus' highlight: a round knob at the bar's start, a line along it and an arrow at its end. retail
+// still lays out a 64-segment ring for the knob and draws only the line's two points from it
+void fn_8004E6EC(Title* title, BOOL options, f32 x, f32 y, f32 alpha, f32 extent)
+{
+	if (alpha > 0.0f) {
+		gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+		CTexObj tex;
+		u32 color;
+		if (options == FALSE) {
+			color = 255.0f * alpha;
+		} else {
+			color = (u32)(255.0f * alpha) | 0xFFFFFF00;
+		}
+		f32 size;
+		if (options == FALSE) {
+			size = 28.0f;
+		} else {
+			size = 38.4f;
+		}
+		f32 radius  = 2.0f * (size * 0.5f);
+		f32 centreY = y - radius * 0.5f;
+		Vec ring[65];
+		for (s32 i = 0; i < 65; i++) {
+			f32 s     = sin(0.09817477f * i - HALF_PI);
+			f32 c     = cos(0.09817477f * i - HALF_PI);
+			ring[i].x = s * radius + x;
+			ring[i].y = -c * radius + centreY;
+			ring[i].z = 0.0f;
+		}
+		if (!options) {
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		} else {
+			gGame.mGs.mCurTevStage->SetMode(GX_BLEND);
+		}
+		(&gGame.mTpl)->mTex.Init(&gGame.mTpl.mPalette->descriptorArray[265 - StatusTextureOffset], 0);
+		tex = gGame.mTpl.mTex;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00,
+		                   (u32)(255.0f * alpha) | 0xFFFFFF00, (u32)(255.0f * alpha) | 0xFFFFFF00, x, 1.5f + ((centreY + radius) - 19.2f),
+		                   0.0f, 38.4f, 38.4f, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+		(&gGame.mTpl)->mTex.Init(&gGame.mTpl.mPalette->descriptorArray[126 - StatusTextureOffset], 0);
+		tex           = gGame.mTpl.mTex;
+		f32 lineWidth = GXGetTexObjWidth(&tex);
+		f32 arrowX    = x + (extent + gTitleArrowGap[0]);
+		ring[0].x     = x;
+		ring[0].y     = centreY + radius;
+		ring[1].x     = arrowX - 10.0f;
+		ring[1].y     = centreY + radius;
+		gGame.mGs.mCurRenderState->SetLineWidth(18, GX_TO_ONE);
+		DrawGsLineStrip(&gGame.mGs, ring, color, 2);
+		gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+		(&gGame.mTpl)->mTex.Init(&gGame.mTpl.mPalette->descriptorArray[156 - StatusTextureOffset], 0);
+		tex = gGame.mTpl.mTex;
+		if (!options) {
+			gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		} else {
+			gGame.mGs.mCurTevStage->SetMode(GX_BLEND);
+		}
+		f32 w = 1.2f * GXGetTexObjWidth(&tex);
+		f32 h = 1.2f * GXGetTexObjHeight(&tex);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800,
+		                   (u32)(255.0f * alpha) | 0xC8C8C800, (u32)(255.0f * alpha) | 0xC8C8C800, arrowX, ring[1].y, 0.0f, w, h, 0.0f,
+		                   0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 	}
 }
 
