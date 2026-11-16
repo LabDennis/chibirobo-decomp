@@ -6529,10 +6529,12 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	f32 scaleX = (font->mSize / 2.0f) * sx;
 	f32 scaleY = (-font->mSize / 2.0f) * sy;
 	font->mGlyphs[font->mCharCount].mSprite.SetScale(scaleX, scaleY, 1.0f);
-	f32 angle = font->mGlyphAngle;
+	f32 angle;
 	// a negative MSG_CODE_ROTATE angle: each glyph gets a random tilt between angle and -angle
-	if (!(angle >= 0.0f)) {
-		f32 range = 2.0f * angle;
+	if (font->mGlyphAngle >= 0.0f) {
+		angle = font->mGlyphAngle;
+	} else {
+		f32 range = 2.0f * font->mGlyphAngle;
 		if (range < 0.0f)
 			range = -range;
 		f32 delta = fmod((f32)rand(), RAD2DEG * range);
@@ -6545,9 +6547,9 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	font->mGlyphs[font->mCharCount].mScaleX = scaleX;
 	font->mGlyphs[font->mCharCount].mScaleY = scaleY;
 #if !defined(VERSION_JP)
-	if (!(angle <= PI)) {
-		angle = TWO_PI - angle;
-	}
+	// the tilt folded into 0 to PI
+	angle = angle <= PI ? angle : TWO_PI - angle;
+
 	font->mGlyphs[font->mCharCount].mWidthAdjust = (angle / PI) * (width - font->mSize);
 #endif
 	font->mGlyphs[font->mCharCount].mEffect = font->mEffect;
