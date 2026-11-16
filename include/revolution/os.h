@@ -6,6 +6,18 @@
 #include "revolution/os/OSAlarm.h"
 #include "Dolphin/os.h"
 
+#include <stdarg.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+void OSVReport(const char* msg, va_list list);
+
+#ifdef __cplusplus
+}
+#endif
+
 #ifndef ASSERTLINE
 #ifdef _DEBUG
 #define ASSERTLINE(exp, line) (void)((exp) || (OSPanic(__FILE__, line, "Failed assertion " #exp), 0))

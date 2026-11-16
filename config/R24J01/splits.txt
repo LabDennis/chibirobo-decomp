@@ -30,7 +30,7 @@ game/wii/soundbank.cpp:
 	.data start:0x802E7170 end:0x802E7238
 
 game/wii/gxb.cpp:
-	.text start:0x8003CEA0 end:0x80040E08
+	.text start:0x8003CEB0 end:0x80040E08
 
 game/roboeyeslens.cpp:
 	.text start:0x80040E08 end:0x80040E4C
@@ -180,10 +180,14 @@ game/THPSimple.cpp:
 	.sdata2 start:0x805A7B80 end:0x805A7B90
 
 game/cmovie.cpp:
+	extab start:0x80011140 end:0x80011178
+	extabindex start:0x80017A38 end:0x80017A8C
 	.text start:0x802C2278 end:0x802C269C
+	.rodata start:0x802E5E20 end:0x802E5E28
+	.sdata2 start:0x805A7B78 end:0x805A7B80
 
-game/cprimitive.cpp:
-	.text start:0x802AF8E0 end:0x802AFDA8
+game/wii/cprimitive.cpp:
+	.text start:0x802AF8B8 end:0x802B193C
 
 game/stage_data.cpp:
 	extab start:0x8000A210 end:0x8000A238
@@ -1019,9 +1023,9 @@ Runtime.PPCEABI.H/GCN_mem_alloc.c:
 	.rodata start:0x802DFDE0 end:0x802DFE50
 
 game/wii/cgs.cpp:
-	extab start:0x8001062C end:0x80010694
-	extabindex start:0x80016E74 end:0x80016EE0
-	.text start:0x802AD1C0 end:0x802AEA44
+	extab start:0x800101F4 end:0x80010694
+	extabindex start:0x80016B44 end:0x80016EE0
+	.text start:0x802A80FC end:0x802AEA44
 	.data start:0x80334D8C end:0x80334FF0
 	.rodata start:0x802E5160 end:0x802E51A8
 
@@ -1060,6 +1064,31 @@ game/wii/mem.cpp:
 	.rodata start:0x802E50C8 end:0x802E5150
 	.bss start:0x80576B88 end:0x8059ABA8
 	.sbss start:0x805A2858 end:0x805A2870
+
+game/wii/cobj.cpp:
+	extab start:0x80010AD8 end:0x80010CA8
+	extabindex start:0x80017474 end:0x80017714
+	.text start:0x802B6560 end:0x802BA4F4
+	.rodata start:0x802E56D8 end:0x802E59A0
+	.sdata2 start:0x805A7A78 end:0x805A7AA8
+
+game/wii/ceffect.cpp:
+	extab start:0x80010DF0 end:0x80011088
+	extabindex start:0x800177C8 end:0x80017924
+	.text start:0x802BD3B4 end:0x802BF9F8
+	.rodata start:0x802E5AC0 end:0x802E5C50
+	.sbss start:0x805A28B0 end:0x805A28C0
+	.sdata2 start:0x805A7AD8 end:0x805A7B08
+
+game/wii/fbeffect.cpp:
+	extab start:0x80011088 end:0x800110D0
+	extabindex start:0x80017924 end:0x80017990
+	.text start:0x802BF9F8 end:0x802C19B8
+	.rodata start:0x802E5C50 end:0x802E5CB0
+	.data start:0x80356620 end:0x80356690
+	.sdata start:0x805A1B10 end:0x805A1B28
+	.sbss start:0x805A28C0 end:0x805A28C8
+	.sdata2 start:0x805A7B08 end:0x805A7B78
 
 game/cmodule.cpp:
 	extab start:0x800110D0 end:0x800110E0
@@ -1161,6 +1190,9 @@ game/gameosreport.cpp:
 game/wii/fbmirror.cpp:
 	.text start:0x80019BF4 end:0x8001A704
 
+game/wii/gamedraw.cpp:
+	.text start:0x80024AE8 end:0x8002CFB8
+
 game/infopointdtor.cpp:
 	.text start:0x80092244 end:0x80092284
 
@@ -1182,10 +1214,8 @@ game/oxmenudtor.cpp:
 game/cpaddtor.cpp:
 	.text start:0x800365D8 end:0x80036618
 
-game/cspritedtor.cpp:
-	extab start:0x80007900 end:0x800079F0
-	extabindex start:0x80011A80 end:0x80011AC8
-	.text start:0x8002FE00 end:0x80030088
+game/wii/gamedtor.cpp:
+	.text start:0x8002CFB8 end:0x80030A54
 
 game/cpadexdtor.cpp:
 	.text start:0x80030A54 end:0x80030AC0
@@ -1209,6 +1239,9 @@ game/gamefbsubwincam.cpp:
 game/gameinit.cpp:
 	.text start:0x8001BB90 end:0x8001C2D8
 
+game/wii/gameupdate.cpp:
+	.text start:0x8001C2D8 end:0x80024AE8
+
 game/ctrigondtor.cpp:
 	.text start:0x800BEB0C end:0x800BEB4C
 
@@ -1218,6 +1251,9 @@ game/wii/xobj_ut.cpp:
 
 game/ctoon.cpp:
 	.text start:0x802BD294 end:0x802BD3B4
+
+game/wii/gamemain.cpp:
+	.text       start:0x80017BC0 end:0x80019A68
 
 game/wii/delete.cpp:
 	.text start:0x80019A68 end:0x80019AB4
@@ -1895,6 +1931,15 @@ nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.cpp:
 
 nw4r/ef/ef_res_emitter_ac.cpp:
 	.text start:0x8025B538 end:0x8025B5A4
+nw4r/db/db_console.cpp:
+	.text start:0x80235D54 end:0x80235E28
+
+nw4r/db/db_assert.cpp:
+	.text start:0x80235E28 end:0x802362B8
+	.data start:0x803328D8 end:0x80332958
+	.bss start:0x805307F0 end:0x80530820
+	.sdata start:0x805A18D0 end:0x805A18D8
+	.sbss start:0x805A2740 end:0x805A274C
 
 nw4r/math/math_arithmetic.cpp:
 	.text start:0x80282CA0 end:0x80282DDC
@@ -2117,6 +2162,7 @@ nw4r/snd/snd_SoundStartable.cpp:
 
 nw4r/snd/snd_SoundSystem.cpp:
 	.text start:0x8029AFAC end:0x8029B270
+	.data start:0x80334978 end:0x803349C0
 	.bss start:0x8055B480 end:0x805725C0
 	.ctors start:0x802C4644 end:0x802C4648
 	.sbss start:0x805A2820 end:0x805A2828
@@ -2400,3 +2446,278 @@ homebuttonLib/sound/seq.cpp:
 	.rodata start:0x802DEBD8 end:0x802DEBFC
 	.data start:0x80331CF8 end:0x80331D78
 	.bss start:0x8052DF88 end:0x8052DF90
+nw4r/g3d/res/g3d_rescommon.cpp:
+	.text start:0x8025B5A4 end:0x8025B734
+
+nw4r/g3d/res/g3d_resdict.cpp:
+	.text start:0x8025B734 end:0x8025BA34
+
+nw4r/g3d/res/g3d_resfile.cpp:
+	.text start:0x8025BA34 end:0x8025CF84
+	.data start:0x80333020 end:0x80333180
+
+nw4r/g3d/res/g3d_resmdl.cpp:
+	.text start:0x8025CF84 end:0x8025E024
+
+nw4r/g3d/res/g3d_resshp.cpp:
+	.text start:0x8025E024 end:0x8025ED28
+
+nw4r/g3d/res/g3d_restev.cpp:
+	.text start:0x8025ED28 end:0x8025F40C
+
+nw4r/g3d/res/g3d_resmat.cpp:
+	.text start:0x8025F40C end:0x80260EA4
+	.data start:0x80333190 end:0x803331E4
+	.sdata2 start:0x805A7230 end:0x805A7264
+
+nw4r/g3d/res/g3d_resvtx.cpp:
+	.text start:0x80260EA4 end:0x8026129C
+
+nw4r/g3d/res/g3d_restex.cpp:
+	.text start:0x8026129C end:0x80261438
+
+nw4r/g3d/res/g3d_resnode.cpp:
+	.text start:0x80261438 end:0x8026186C
+	.sdata2 start:0x805A7268 end:0x805A7274
+
+nw4r/g3d/res/g3d_resanm.cpp:
+	.text start:0x8026186C end:0x80261A98
+	.sdata2 start:0x805A7278 end:0x805A728C
+
+nw4r/g3d/res/g3d_resanmvis.cpp:
+	.text start:0x80261A98 end:0x80261BB8
+	.sdata2 start:0x805A7290 end:0x805A72A0
+
+nw4r/g3d/res/g3d_resanmclr.cpp:
+	.text start:0x80261BB8 end:0x80261D24
+	.sdata2 start:0x805A72A0 end:0x805A72B0
+
+nw4r/g3d/res/g3d_resanmtexpat.cpp:
+	.text start:0x80261D24 end:0x80262260
+
+nw4r/g3d/res/g3d_resanmtexsrt.cpp:
+	.text start:0x80262260 end:0x80262674
+	.sdata2 start:0x805A72B0 end:0x805A72B8
+
+nw4r/g3d/res/g3d_resanmchr.cpp:
+	.text start:0x80262674 end:0x8026430C
+	.rodata start:0x802DFF70 end:0x802DFF90
+	.sdata2 start:0x805A72B8 end:0x805A72D8
+
+nw4r/g3d/res/g3d_reslightset.cpp:
+	.text start:0x8026430C end:0x802644B0
+
+nw4r/g3d/res/g3d_resanmamblight.cpp:
+	.text start:0x802644B0 end:0x80264580
+	.sdata2 start:0x805A72D8 end:0x805A72E8
+
+nw4r/g3d/res/g3d_resanmlight.cpp:
+	.text start:0x80264580 end:0x80264978
+	.sdata2 start:0x805A72E8 end:0x805A72F8
+
+nw4r/g3d/res/g3d_resanmfog.cpp:
+	.text start:0x80264978 end:0x80264AD8
+	.sdata2 start:0x805A72F8 end:0x805A7308
+
+nw4r/g3d/res/g3d_resanmcamera.cpp:
+	.text start:0x80264AD8 end:0x80264DF0
+
+nw4r/g3d/res/g3d_resanmscn.cpp:
+	.text start:0x80264DF0 end:0x802659CC
+	.data start:0x80333200 end:0x803332A0
+
+nw4r/g3d/res/g3d_resanmshp.cpp:
+	.text start:0x802659CC end:0x80265B34
+	.sdata2 start:0x805A7308 end:0x805A730C
+
+nw4r/g3d/g3d_transform.cpp:
+	.text start:0x80265B34 end:0x80265E24
+	.sdata2 start:0x805A7310 end:0x805A7314
+
+nw4r/g3d/g3d_anmvis.cpp:
+	.text start:0x80265E24 end:0x80266544
+	.sdata start:0x805A1958 end:0x805A1960
+	.rodata start:0x802DFF90 end:0x802DFFB4
+	.data start:0x803332A0 end:0x80333328
+	.sdata2 start:0x805A7318 end:0x805A7328
+
+nw4r/g3d/g3d_anmclr.cpp:
+	.text start:0x80266544 end:0x802672C8
+	.rodata start:0x802DFFB8 end:0x802DFFE8
+	.data start:0x80333328 end:0x803333B8
+	.sdata2 start:0x805A7328 end:0x805A7338
+
+nw4r/g3d/g3d_anmtexpat.cpp:
+	.text start:0x802672C8 end:0x80267CF4
+	.rodata start:0x802DFFE8 end:0x802E0018
+	.data start:0x803333B8 end:0x80333448
+	.sdata2 start:0x805A7338 end:0x805A7348
+
+nw4r/g3d/g3d_anmtexsrt.cpp:
+	.text start:0x80267CF4 end:0x80268770
+	.rodata start:0x802E0018 end:0x802E0048
+	.data start:0x80333448 end:0x803334D8
+	.sdata2 start:0x805A7348 end:0x805A7368
+
+nw4r/g3d/g3d_anmchr.cpp:
+	.text start:0x80268770 end:0x8026A668
+	.rodata start:0x802E0048 end:0x802E0094
+	.data start:0x803334D8 end:0x80333638
+	.sdata2 start:0x805A7368 end:0x805A7380
+
+nw4r/g3d/g3d_anmshp.cpp:
+	.text start:0x8026A668 end:0x8026AFC4
+	.rodata start:0x802E0098 end:0x802E00BC
+	.data start:0x80333638 end:0x803336D8
+	.sdata2 start:0x805A7380 end:0x805A7390
+
+nw4r/g3d/g3d_anmscn.cpp:
+	.text start:0x8026AFC4 end:0x8026C528
+	.rodata start:0x802E00C0 end:0x802E00E0
+	.data start:0x803336D8 end:0x803337F8
+	.sdata2 start:0x805A7390 end:0x805A73AC
+
+nw4r/g3d/g3d_obj.cpp:
+	.text start:0x8026C528 end:0x8026C644
+
+nw4r/g3d/g3d_anmobj.cpp:
+	.text start:0x8026C644 end:0x8026C6FC
+	.sdata2 start:0x805A73B0 end:0x805A73B4
+	.rodata start:0x802E00F0 end:0x802E00FC
+	.sdata start:0x805A1960 end:0x805A1964
+
+nw4r/g3d/platform/g3d_gpu.cpp:
+	.text start:0x8026C6FC end:0x8026CC0C
+	.sdata2 start:0x805A73B8 end:0x805A73D0
+
+nw4r/g3d/platform/g3d_cpu.cpp:
+	.text start:0x8026CC0C end:0x8026CE30
+	.sdata2 start:0x805A73D0 end:0x805A73D4
+
+nw4r/g3d/g3d_state.cpp:
+	.text start:0x8026CE30 end:0x8027064C
+	.ctors start:0x802C4630 end:0x802C4634
+	.data start:0x80333818 end:0x80333830
+	.rodata start:0x802E0100 end:0x802E0130
+	.bss start:0x8053D0C0 end:0x8054267C
+	.sdata start:0x805A1968 end:0x805A1970
+	.sbss start:0x805A2798 end:0x805A27B8
+	.sdata2 start:0x805A73D8 end:0x805A7400
+
+nw4r/g3d/g3d_draw1mat1shp.cpp:
+	.text start:0x8027064C end:0x80271380
+	.rodata start:0x802E0130 end:0x802E0140
+	.sdata2 start:0x805A7400 end:0x805A7420
+
+nw4r/g3d/g3d_calcview.cpp:
+	.text start:0x80271380 end:0x8027355C
+	.sdata2 start:0x805A7420 end:0x805A742C
+	.rodata start:0x802E0140 end:0x802E015C
+
+nw4r/g3d/g3d_dcc.cpp:
+	.text start:0x8027355C end:0x80273638
+
+nw4r/g3d/g3d_workmem.cpp:
+	.text start:0x80273638 end:0x80273678
+	.bss start:0x80542680 end:0x8055A680
+
+nw4r/g3d/g3d_calcworld.cpp:
+	.text start:0x80273678 end:0x80274130
+	.data start:0x80333830 end:0x80333840
+	.sdata start:0x805A1970 end:0x805A1978
+	.sdata2 start:0x805A7430 end:0x805A7438
+
+nw4r/g3d/g3d_draw.cpp:
+	.text start:0x80274130 end:0x80275F8C
+	.sdata start:0x805A1978 end:0x805A1980
+	.sdata2 start:0x805A7438 end:0x805A7448
+
+nw4r/g3d/g3d_camera.cpp:
+	.text start:0x80275F8C end:0x80276EC4
+	.sdata2 start:0x805A7448 end:0x805A7478
+
+nw4r/g3d/dcc/g3d_basic.cpp:
+	.text start:0x80276EC4 end:0x80277188
+	.sdata2 start:0x805A7478 end:0x805A7484
+
+nw4r/g3d/dcc/g3d_maya.cpp:
+	.text start:0x80277188 end:0x80277E48
+	.rodata start:0x802E0160 end:0x802E0198
+	.sdata2 start:0x805A7488 end:0x805A749C
+
+nw4r/g3d/dcc/g3d_xsi.cpp:
+	.text start:0x80277E48 end:0x80278A08
+	.rodata start:0x802E0198 end:0x802E01D0
+	.sdata2 start:0x805A74A0 end:0x805A74AC
+
+nw4r/g3d/dcc/g3d_3dsmax.cpp:
+	.text start:0x80278A08 end:0x802794B8
+	.rodata start:0x802E01D0 end:0x802E0208
+	.sdata2 start:0x805A74B0 end:0x805A74C4
+
+nw4r/g3d/g3d_scnobj.cpp:
+	.text start:0x802794B8 end:0x8027AB88
+	.rodata start:0x802E0208 end:0x802E0238
+	.data start:0x80333840 end:0x80333908
+	.sbss start:0x805A27B8 end:0x805A27BC
+	.sdata2 start:0x805A74C8 end:0x805A74D0
+
+nw4r/g3d/g3d_scnroot.cpp:
+	.text start:0x8027AB88 end:0x8027C64C
+	.rodata start:0x802E0238 end:0x802E0248
+	.data start:0x80333908 end:0x80333978
+	.sdata start:0x805A1980 end:0x805A1990
+	.sdata2 start:0x805A74D0 end:0x805A74D8
+
+nw4r/g3d/g3d_scnmdlsmpl.cpp:
+	.text start:0x8027C64C end:0x8027E3D4
+	.rodata start:0x802E0248 end:0x802E025C
+	.data start:0x80333978 end:0x803339E8
+	.sdata start:0x805A1990 end:0x805A19A8
+	.sdata2 start:0x805A74D8 end:0x805A74DC
+
+nw4r/g3d/g3d_scnmdl.cpp:
+	.text start:0x8027E3D4 end:0x80280E94
+	.rodata start:0x802E0260 end:0x802E026C
+	.data start:0x803339E8 end:0x80333A30
+
+nw4r/g3d/g3d_calcmaterial.cpp:
+	.text start:0x80280E94 end:0x802812A4
+
+nw4r/g3d/g3d_init.cpp:
+	.text start:0x802812A4 end:0x802813A0
+	.data start:0x80333A30 end:0x80333A78
+	.sdata start:0x805A19A8 end:0x805A19AC
+
+nw4r/g3d/g3d_scnproc.cpp:
+	.text start:0x802813A0 end:0x80281690
+	.rodata start:0x802E0270 end:0x802E0280
+	.data start:0x80333A78 end:0x80333AAC
+	.sdata2 start:0x805A74E0 end:0x805A74E4
+
+nw4r/g3d/g3d_fog.cpp:
+	.text start:0x80281690 end:0x8028188C
+	.sdata2 start:0x805A74E8 end:0x805A74EC
+
+nw4r/g3d/g3d_light.cpp:
+	.text start:0x8028188C end:0x802824A8
+	.sdata2 start:0x805A74F0 end:0x805A751C
+
+nw4r/g3d/g3d_calcvtx.cpp:
+	.text start:0x802824A8 end:0x80282CA0
+	.sdata2 start:0x805A7520 end:0x805A7524
+
+game/wii/unit_8003366C.cpp:
+	.text start:0x8003366C end:0x800354DC
+
+game/wii/gamesound.cpp:
+	.text start:0x80036618 end:0x8003AA58
+
+game/wii/sound.cpp:
+	.text start:0x8003AB00 end:0x8003CEB0
+
+game/wii/unit_80040E4C.cpp:
+	.text start:0x80040E4C end:0x8004328C
+
+game/wii/unit_8004328C.cpp:
+	.text start:0x8004328C end:0x80044FD8

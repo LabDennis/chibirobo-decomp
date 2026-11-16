@@ -65,7 +65,11 @@ struct ColorInput {
     u8 mTevKColor[GX_MAX_KCOLOR];    // at 0x4
 };
 
-// TODO(kiwi) Why?
+// The resource file stores Lighting unaligned (mRadius at 0xA, mPosition at 0xE) inside
+// EmitterDrawSetting. wiiplay, ogws, wii-news-channel and NSMBW carry this pragma at the same
+// place. Without it mRadius moves to 0xC, everything behind Lighting shifts, 34 ef functions
+// read wrong offsets (ParticleManager::Initialize, InitTev, the billboard and directional draws)
+// and main.dol no longer matches.
 #pragma pack(push, 1)
 struct Lighting {
     enum Mode {

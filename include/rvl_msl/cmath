@@ -9,6 +9,7 @@ extern "C" double modf(double, double*);
 // the float versions are MSL's inline wrappers around the double routines
 inline float ceilf(float x) { return ceil(x); }
 inline float floorf(float x) { return floor(x); }
+inline float ldexpf(float x, int exp) { return ldexp(x, exp); }
 inline float fmodf(float x, float y) { return fmod(x, y); }
 inline float modff(float x, float* iptr)
 {
@@ -25,6 +26,7 @@ using ::ceilf;
 using ::floorf;
 using ::fmodf;
 using ::modff;
+using ::ldexpf;
 // include/stl/math.h declares the GameCube MSL's out-of-line tanf; the Wii MSL's is this wrapper (retail calls tan)
 inline float tanf(float x) { return tan(x); }
 } // namespace std

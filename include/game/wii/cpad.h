@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "Dolphin/vec.h"
+#include <nw4r/snd/snd_RemoteSpeakerManager.h>
 
 // Bit positions in the game's 64-bit button word.
 enum {
@@ -233,21 +234,6 @@ public:
 };
 STATIC_ASSERT(sizeof(CPad) == 0x8);
 
-struct RemoteSpeakerManager;
-// Prefix read by the input code. Channel selection and ownership stay with the speaker manager.
-struct RemoteSpeakerChannel {
-	u8 flags[8];
-	s32 state;
-};
-
-// what WPADProbe returns
-enum { WPAD_ERR_NONE = 0, WPAD_ERR_NO_CONTROLLER = -1, WPAD_ERR_BUSY = -2, WPAD_ERR_TRANSFER = -3 };
-
-extern "C" {
-s32 WPADProbe(s32 channel, u32* type);
-RemoteSpeakerManager* GetRemoteSpeakerManager();
-RemoteSpeakerChannel* GetRemoteSpeakerChannel(RemoteSpeakerManager*, s32 channel);
-}
 extern PADStatus gWiiGameCubePads[4];
 
 class CPadEx {

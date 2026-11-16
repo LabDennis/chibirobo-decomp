@@ -339,7 +339,7 @@ extern "C" bool UpdateWiiHomeMenu(WiiHomeMenu* menu, u32 frames)
 					CPadOne& pad = GetWiiPad(i);
 					if (pad.IsRemoteActive()) {
 						pad.DisableRemoteSpeaker();
-						while (GetRemoteSpeakerChannel(GetRemoteSpeakerManager(), pad.mPort)->state == 4)
+						while (nw4r::snd::detail::RemoteSpeakerManager::GetInstance().GetRemoteSpeaker(pad.mPort).IsAvailable())
 							OSYieldThread();
 						pad.EnableRemoteSpeaker();
 					}

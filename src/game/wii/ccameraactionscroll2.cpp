@@ -843,9 +843,9 @@ static void InitQuads(CCameraActionScroll2* camera)
 // NONMATCHING: render-state pokes and the colour path guessed from retail
 void CCameraActionScroll2::DrawQuads()
 {
-	gGame.mGs.mCurRenderState->mZEnable = GX_FALSE;
-	gGame.mGs.mCurRenderState->mZFunc   = GX_ALWAYS;
-	gGame.mGs.mCurRenderState->mZUpdate = GX_FALSE;
+	gGame.mGs.mCurRenderState->mZMode.mEnable = GX_FALSE;
+	gGame.mGs.mCurRenderState->mZMode.mFunc   = GX_ALWAYS;
+	gGame.mGs.mCurRenderState->mZMode.mUpdate = GX_FALSE;
 	GXSetZMode(GX_FALSE, GX_ALWAYS, GX_FALSE);
 	GXSetAlphaUpdate(GX_FALSE);
 	for (s32 i = 0; i < 4; i++) {
@@ -862,7 +862,7 @@ void CCameraActionScroll2::DrawQuads()
 	}
 	// the GameCube code pokes the tev ops after the quad loop; on the Wii they're structs
 	gGame.mGs.mCurTevStage->mColorOp.mOp = (GXTevOp)4;
-	gGame.mGs.mCurTevStage->mAlphaOp.mOp = (GXAlphaOp)0;
+	gGame.mGs.mCurTevStage->mAlphaOp.mOp = (GXTevOp)0;
 }
 
 /**

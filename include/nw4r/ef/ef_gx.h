@@ -24,7 +24,6 @@ static inline void GXPosition1x16(u16 index) { GXWGFifo.u16 = index; }
 static inline void GXPosition1x8(u8 index) { GXWGFifo.u8 = index; }
 static inline void GXPosition2s16(s16 x, s16 y) { GXWGFifo.s16 = x; GXWGFifo.s16 = y; }
 static inline void GXPosition2s8(s8 x, s8 y) { GXWGFifo.s8 = x; GXWGFifo.s8 = y; }
-static inline void GXPosition2u8(u8 x, u8 y) { GXWGFifo.u8 = x; GXWGFifo.u8 = y; }
 static inline void GXPosition3s8(s8 x, s8 y, s8 z) { GXWGFifo.s8 = x; GXWGFifo.s8 = y; GXWGFifo.s8 = z; }
 static inline void GXPosition3u8(u8 x, u8 y, u8 z) { GXWGFifo.u8 = x; GXWGFifo.u8 = y; GXWGFifo.u8 = z; }
 static inline void GXTexCoord1f32(f32 s) { GXWGFifo.f32 = s; }
