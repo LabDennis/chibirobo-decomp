@@ -522,11 +522,11 @@ void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 	DrawGsQuad(gs, 255, 255, 255, 255, mX, mY, 0.0f, mWidth, mHeight, 0.0f, 0.0f, mRotation);
 
 	Vec vertices[18] = {};
-	const f32 dx = edgeWidth * 0.5f, dy = edgeHeight * 0.5f;
-	f32 left = -mWidth * 0.5f, right = mWidth * 0.5f;
-	f32 outerLeft = -mWidth * 0.5f - dx, outerRight = mWidth * 0.5f + dx;
-	f32 top = -mHeight * 0.5f, bottom = mHeight * 0.5f;
-	f32 outerTop = -mHeight * 0.5f - dy, outerBottom = mHeight * 0.5f + dy;
+	const f32 dx = edgeWidth / 2.0f, dy = edgeHeight / 2.0f;
+	f32 left = -mWidth / 2.0f, right = mWidth / 2.0f;
+	f32 outerLeft = -mWidth / 2.0f - dx, outerRight = mWidth / 2.0f + dx;
+	f32 top = -mHeight / 2.0f, bottom = mHeight / 2.0f;
+	f32 outerTop = -mHeight / 2.0f - dy, outerBottom = mHeight / 2.0f + dy;
 	SetTileEdge(vertices, left, top, outerLeft, outerTop, outerRight, outerTop);
 	SetTileEdge(vertices + 4, right, top, outerRight, outerTop, outerRight, outerBottom);
 	SetTileEdge(vertices + 8, right, bottom, outerRight, outerBottom, outerLeft, outerBottom);
@@ -566,12 +566,12 @@ void CScrnWipe::Draw(CGs* gs, s32 mode)
 	for (s32 i = 0; i < 65; i++) {
 		f32 angle     = (TWO_PI / 64.0f) * i;
 		PrimVertex* v = &vertices[2 * i];
-		v[0].pos.x    = mX - mWidth * 0.5f * (f32)sin(angle);
-		v[0].pos.y    = mY + mHeight * 0.5f * (f32)cos(angle);
+		v[0].pos.x    = mX - mWidth / 2.0f * (f32)sin(angle);
+		v[0].pos.y    = mY + mHeight / 2.0f * (f32)cos(angle);
 		v[0].pos.z    = 0.0f;
 		v[0].color    = 255;
-		v[1].pos.x    = mX - (mWidth + edgeWidth) * 0.5f * (f32)sin(angle);
-		v[1].pos.y    = mY + (mHeight + edgeHeight) * 0.5f * (f32)cos(angle);
+		v[1].pos.x    = mX - (mWidth + edgeWidth) / 2.0f * (f32)sin(angle);
+		v[1].pos.y    = mY + (mHeight + edgeHeight) / 2.0f * (f32)cos(angle);
 		v[1].pos.z    = 0.0f;
 		v[1].color    = 0;
 	}
@@ -2400,7 +2400,7 @@ static inline s32 LoadStatusLines(Title* title, s32 id, f32 panelX, f32 panelY)
 static inline void DrawLoadText(const char* text, f32 center, f32 y, u32 color)
 {
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, 1, 21.0f);
-	DrawGsProportionalTextFormat(&gGame.mGs, color, text, center - width * 0.5f, y, 0.0f, 21.0f, 21.0f);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, center - width / 2.0f, y, 0.0f, 21.0f, 21.0f);
 }
 #endif
 static inline const char* LoadPromptText(s32 western, s32 japanese)
@@ -2438,7 +2438,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			f32 x = 49.0f + (194.0f * i + 77.0f), width = 154.0f;
 #else
 			f32 width = 154.0f + sSaveSlotExtraWidth;
-			f32 x     = 49.0f + ((width * .5f) + i * (40.0f + width)) - (3.0f * sSaveSlotExtraWidth) * .5f;
+			f32 x     = 49.0f + ((width / 2.0f) + i * (40.0f + width)) - (3.0f * sSaveSlotExtraWidth) / 2.0f;
 #endif
 			u8 selected = 0, empty = 0;
 			if (title->mFile == i)
@@ -2469,8 +2469,8 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mLoadAlpha), text, center - LoadHalfWidth(cells),
 			                             (21.0f + top) + title->mLoadOffset, 0.0f, 21.0f, 21.0f);
 #else
-			f32 top   = 8.0f + (356.0f - panelY);
 			u32 color = LoadTextColor(title->mLoadAlpha);
+			f32 top   = 8.0f + (356.0f - panelY);
 			DrawLoadText(LoadPromptText(0x94, 0), 320.0f, (top - 6.0f) + title->mLoadOffset, color);
 			DrawLoadText(LoadPromptText(0x95, 0), 320.0f, (21.0f + top) + title->mLoadOffset, color);
 #endif
@@ -2550,10 +2550,12 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	case 22:
 		lines = LoadStatusLines(title, 14, panelX, panelY);
 		break;
-	case 24:
+	case 24: {
+		f32 x = 320.0f + panelX, y = LoadPromptY(title, panelY);
 		if (title->mPhase == 0)
-			lines = LoadStatusLines(title, 4, panelX, panelY);
+			lines = LoadStatusAt(title, 4, x, y);
 		break;
+	}
 	case 25:
 		break;
 	}
@@ -2566,7 +2568,8 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mLoadAlpha), text, (320.0f + panelX) - LoadHalfWidth(cells),
 		                             LoadPromptY(title, panelY), 0.0f, 21.0f, 21.0f);
 #else
-		DrawLoadText(text, 320.0f, LoadPromptY(title, panelY), LoadTextColor(title->mLoadAlpha));
+		f32 y = LoadPromptY(title, panelY);
+		DrawLoadText(text, 320.0f, y, LoadTextColor(title->mLoadAlpha));
 #endif
 	}
 
@@ -2775,10 +2778,10 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32
 		if (selected)
 			tint = lit;
 		if (title->mSaveFound)
-			DrawGsProportionalTextFormat(&gGame.mGs, tint, text, 320.0f - width * .5f, (size - 24.0f) * .5f + (y - size), 0.0f, 24.0f,
+			DrawGsProportionalTextFormat(&gGame.mGs, tint, text, 320.0f - width / 2.0f, (size - 24.0f) / 2.0f + (y - size), 0.0f, 24.0f,
 			                             size);
 	} else {
-		f32 x = 320.0f - width * .5f, top = (size - 24.0f) * .5f + (y - size);
+		f32 x = 320.0f - width / 2.0f, top = (size - 24.0f) / 2.0f + (y - size);
 		bool selected = false;
 		if (title->mSelection == entry && (f32)title->mHighlightDelay >= FRAME_RATE)
 			selected = true;
@@ -2844,10 +2847,10 @@ extern "C" void DrawTitleScreen(Title* title)
 	if (title->mMenuAlpha > 0.0f) {
 		BeginTitleOverlay();
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		CTexObj& tex = title->mTex[footerTexture];
-		u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
+		u16 w = GXGetTexObjWidth(&title->mTex[footerTexture]), h = GXGetTexObjHeight(&title->mTex[footerTexture]);
 		u32 color = (u32)(255.0f * title->mMenuAlpha);
-		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 320.0f, 398.0f, 0, .6f * w, .6f * h, 0, 0, 0);
+		DrawGsTexturedQuad(&gGame.mGs, &title->mTex[footerTexture], color, color, color, color, 320.0f, 398.0f, 0, .6f * w, .6f * h, 0, 0,
+		                   0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
 	DrawPanelBackground<SavePanel>(title->mLoadAlpha + title->mOptionAlpha);
@@ -2893,7 +2896,7 @@ extern "C" void DrawTitleScreen(Title* title)
 		f32 widest = w0 > w1 ? w0 : w1;
 		w2         = w2 > widest ? w2 : widest;
 #endif
-		DrawTitleCursors(title, w2 * 0.5f, y);
+		DrawTitleCursors(title, w2 / 2.0f, y);
 	}
 	if (title->mState == 21) {
 		f32 y;
