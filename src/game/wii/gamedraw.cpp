@@ -1217,7 +1217,7 @@ void CGame::DrawScene()
 	WiiPlayerState* player = mPlayer;
 	targets[0]             = player->mLiftPlugTarget;
 	if (targets[1] == NULL) {
-		targets[1] = player->mLiftTarget;
+		targets[1] = player->mLift.mTarget;
 	}
 	gGame.mGs.mCurRenderState->SetAlphaUpdate(GX_FALSE);
 	for (s32 i = 0; i < mSceneRefCount; i++) {
@@ -1409,7 +1409,7 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 		WiiPlayerState* player = game->mPlayer;
 		targets[0]             = player->mLiftPlugTarget;
 		if (targets[1] == NULL) {
-			targets[1] = player->mLiftTarget;
+			targets[1] = player->mLift.mTarget;
 		}
 		fn_8027B6B8(gGame.mGs.mSceneHead, TRUE, 4);
 		GXSetNumTexGens(0);

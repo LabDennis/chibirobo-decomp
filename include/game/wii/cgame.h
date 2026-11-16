@@ -732,12 +732,24 @@ struct WiiOXMenu {
 	s32 mConfirmedIndex; // _1390
 };
 
-// one player action slot on the Wii player: only the state word at +4 is verified, the
-// camera reads it to tell whether the look controls are free
+// one player action slot on the Wii player, the GameCube's XAction: the same head, the camera reads mState to
+// tell whether the look controls are free, the action accessors of xobj_chr.cpp reach the rest
+struct WiiPlayerState;
 struct WiiPlayerAction {
 	u8 _00[4];
 	s32 mState; // _04
+	// _08 vtable
+
+	virtual void Init(WiiPlayerState* owner); // _08
+	virtual void Reset();                     // _0C
+
+	s32 mMoveDirection; // _0C
+	CVec mTargetOffset; // _10
+	XObj* mTarget;      // _20
+	s32 mTargetState;   // _24
+	s32 mTargetFloor;   // _28, the selected floor when the target was picked
 };
+STATIC_ASSERT(sizeof(WiiPlayerAction) == 0x2C);
 
 // the attachment ring's menu on the player at _19EE8, the GameCube's mMenu.mAtc. The HUD reads the
 // highlighted item's type; the item count is a bound, the menu only uses a handful
@@ -765,27 +777,28 @@ struct WiiPlayerState {
 	u64 mStatus; // _0150, the object status flags, as XObj's
 	u8 _0158[0x9CC - 0x158];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
-	u8 _09D0[0xAA0 - 0x9D0];
-	WiiPlayerAction mLift; // _0AA0, the carry action; its mState decides whether looking is free
-	u8 _0AA8[0xAC0 - 0xAA8];
-	XObj* mLiftTarget; // _0AC0, what he carries, the GameCube's mLift.mTarget
-	u8 _0AC4[0xAF0 - 0xAC4];
+	u8 _09D0[0xA90 - 0x9D0];
+	s32 mFlashTimer; // _0A90
+	u8 _0A94[0xA9C - 0xA94];
+	f32 mMoveSpeedScale;   // _0A9C
+	WiiPlayerAction mLift; // _0AA0, the carry action; its mState decides whether looking is free, mTarget is what he carries
+	u8 _0ACC[0xAF0 - 0xACC];
 	XObj* mLiftPlugTarget; // _0AF0, the GameCube's mLift.mPlugTarget
 	u8 _0AF4[0xB50 - 0xAF4];
 	WiiPlayerAction mHang; // _0B50
-	u8 _0B58[0xBA0 - 0xB58];
+	u8 _0B7C[0xBA0 - 0xB7C];
 	WiiPlayerAction mJump; // _0BA0
-	u8 _0BA8[0xBF4 - 0xBA8];
+	u8 _0BCC[0xBF4 - 0xBCC];
 	WiiPlayerAction mLadder; // _0BF4
-	u8 _0BFC[0xC38 - 0xBFC];
+	u8 _0C20[0xC38 - 0xC20];
 	WiiPlayerAction mRope; // _0C38
-	u8 _0C40[0xC78 - 0xC40];
+	u8 _0C64[0xC78 - 0xC64];
 	WiiPlayerAction mPush; // _0C78
-	u8 _0C80[0xCD0 - 0xC80];
+	u8 _0CA4[0xCD0 - 0xCA4];
 	WiiPlayerAction mTumble; // _0CD0
-	u8 _0CD8[0xD50 - 0xCD8];
+	u8 _0CFC[0xD50 - 0xCFC];
 	WiiPlayerAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
-	u8 _0D58[0x95AC - 0xD58];
+	u8 _0D7C[0x95AC - 0xD7C];
 	u8 mSfx[0x5C]; // _95AC, his AnimSfx (game/wii/animsfx.h, which needs this header)
 	u8 _9608[0x9920 - 0x9608];
 	s32 mAttachment;        // _9920, the AtcMenu pick
@@ -807,10 +820,11 @@ struct WiiPlayerState {
 	u8 _1A3F8[0x1A420 - 0x1A3F8];
 	WiiOXMenu mOXMenu; // _1A420
 	u8 _1B7B4[0x1C994 - 0x1B7B4];
-	s32 mSquirterContent; // _1C994
-	s32 mItemTint;        // _1C998
-	u8 _1C99C[0x1C9A4 - 0x1C99C];
-	s32 mGroundType; // _1C9A4, the floor he walks on, picks the footstep sounds
+	s32 mSquirterContent;  // _1C994
+	s32 mItemTint;         // _1C998
+	f32 mHeadOffset;       // _1C99C
+	BOOL mHeadOffsetReady; // _1C9A0
+	s32 mGroundType;       // _1C9A4, the floor he walks on, picks the footstep sounds
 
 	const Vec* GetPosition() { return mVtable->GetPosition(this); }
 	MtxP GetMtxPtr() { return mVtable->GetMtxPtr(this); }

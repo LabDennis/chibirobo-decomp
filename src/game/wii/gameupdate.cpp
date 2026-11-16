@@ -1518,7 +1518,7 @@ void CGame::Update(u32 frames)
 				CVec to(toPos);
 				CVec eye = GetCamera()->mView.mEye;
 				CVec muzzle(fn_8010BEE0(&GetPlayer()->mPopper));
-				XObj* held = GetPlayer()->mLift.mState == 0 ? NULL : GetPlayer()->mLiftTarget;
+				XObj* held = GetPlayer()->mLift.mState == 0 ? NULL : GetPlayer()->mLift.mTarget;
 				for (i = 0; i < mObjectRefCount; i++) {
 					XObj* obj = (XObj*)mObjectRefs[i].mObj;
 					if (obj == NULL) {

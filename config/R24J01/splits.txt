@@ -253,6 +253,9 @@ game/wii/homemenu.cpp:
 	.sbss start:0x805A1C38 end:0x805A1C40
 	.sdata2 start:0x805A4470 end:0x805A44D0
 
+game/wii/xobj_chr.cpp:
+	.text start:0x800C9E84 end:0x800E9D30
+
 game/ringmenupointer.cpp:
 	extab start:0x8000C4EC end:0x8000C4F4
 	extabindex start:0x80014534 end:0x80014540
