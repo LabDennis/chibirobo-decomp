@@ -17,6 +17,11 @@ extern "C" {
 GXBool GXGetCPUFifo(GXFifoObj* fifo);
 GXBool GXGetGPFifo(GXFifoObj* fifo);
 
+void GXInitTexObjUserData(GXTexObj* obj, void* user_data);
+void* GXGetTexObjUserData(const GXTexObj* obj);
+GXTexWrapMode GXGetTexObjWrapS(const GXTexObj* obj);
+GXTexWrapMode GXGetTexObjWrapT(const GXTexObj* obj);
+
 #ifdef __cplusplus
 }
 #endif

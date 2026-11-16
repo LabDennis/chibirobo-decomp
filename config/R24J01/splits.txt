@@ -2021,3 +2021,199 @@ nw4r/snd/snd_WsdPlayer.cpp:
 
 nw4r/snd/snd_adpcm.cpp:
 	.text start:0x802A52CC end:0x802A5358
+homebuttonLib/HBMFrameController.cpp:
+	.text start:0x80203864 end:0x80203A0C
+	.rodata start:0x802DE6B0 end:0x802DE6B8
+	.data start:0x8032DB18 end:0x8032DB40
+
+homebuttonLib/HBMAnmController.cpp:
+	.text start:0x80203A0C end:0x80203B18
+	.data start:0x8032DB40 end:0x8032DB88
+
+homebuttonLib/HBMGUIManager.cpp:
+	.text start:0x80203B18 end:0x802051AC
+	.rodata start:0x802DE6B8 end:0x802DE6C8
+	.data start:0x8032DB88 end:0x8032DDF8
+	.bss start:0x8052D170 end:0x8052D178
+
+homebuttonLib/HBMController.cpp:
+	.text start:0x802051AC end:0x80205CB0
+	.rodata start:0x802DE6C8 end:0x802DE6D8
+	.bss start:0x8052D178 end:0x8052D310
+
+homebuttonLib/HBMRemoteSpk.cpp:
+	.text start:0x80205CB0 end:0x8020657C
+	.data start:0x8032DDF8 end:0x8032DE28
+	.bss start:0x8052D310 end:0x8052D318
+
+homebuttonLib/HBMAxSound.cpp:
+	.text start:0x8020657C end:0x802070A8
+	.rodata start:0x802DE6D8 end:0x802DE70C
+	.data start:0x8032DE28 end:0x8032E178
+	.bss start:0x8052D318 end:0x8052D320
+
+homebuttonLib/HBMCommon.cpp:
+	.text start:0x802070A8 end:0x80207378
+	.data start:0x8032E178 end:0x8032E1C8
+	.bss start:0x8052D320 end:0x8052D330
+
+homebuttonLib/HBMBase.cpp:
+	.text start:0x80207378 end:0x8020F4A8
+	.rodata start:0x802DE710 end:0x802DEA70
+	.data start:0x8032E1C8 end:0x8032EEA8
+	.bss start:0x8052D330 end:0x8052D350
+
+homebuttonLib/nw4hbm/lyt/lyt_animation.cpp:
+	.text start:0x8020F4A8 end:0x80210044
+	.rodata start:0x802DEA70 end:0x802DEA90
+	.data start:0x8032EEA8 end:0x8032EF28
+
+homebuttonLib/nw4hbm/lyt/lyt_arcResourceAccessor.cpp:
+	.text start:0x80210044 end:0x802103D0
+	.data start:0x8032EF28 end:0x8032EFA8
+
+homebuttonLib/nw4hbm/lyt/lyt_bounding.cpp:
+	.ctors start:0x802C45F0 end:0x802C45F4
+	.text start:0x802103D0 end:0x80210534
+	.data start:0x8032EFA8 end:0x8032F090
+	.bss start:0x8052D350 end:0x8052D358
+
+homebuttonLib/nw4hbm/lyt/lyt_common.cpp:
+	.text start:0x80210534 end:0x80211348
+	.rodata start:0x802DEA90 end:0x802DEAA0
+	.bss start:0x8052D358 end:0x8052D380
+
+homebuttonLib/nw4hbm/lyt/lyt_drawInfo.cpp:
+	.text start:0x80211348 end:0x80211404
+	.rodata start:0x802DEAA0 end:0x802DEAA8
+	.data start:0x8032F090 end:0x8032F0C0
+
+homebuttonLib/nw4hbm/lyt/lyt_group.cpp:
+	.text start:0x80211404 end:0x80211730
+	.data start:0x8032F0C0 end:0x8032F0E8
+
+homebuttonLib/nw4hbm/lyt/lyt_layout.cpp:
+	.text start:0x80211730 end:0x802123DC
+	.rodata start:0x802DEAA8 end:0x802DEAB0
+	.data start:0x8032F0E8 end:0x8032F138
+	.bss start:0x8052D380 end:0x8052D388
+
+homebuttonLib/nw4hbm/lyt/lyt_material.cpp:
+	.text start:0x802123DC end:0x80215810
+	.rodata start:0x802DEAB0 end:0x802DEAE0
+	.data start:0x8032F138 end:0x8032F1C0
+
+homebuttonLib/nw4hbm/lyt/lyt_pane.cpp:
+	.ctors start:0x802C45F4 end:0x802C45F8
+	.text start:0x80215810 end:0x80216784
+	.rodata start:0x802DEAE0 end:0x802DEB00
+	.data start:0x8032F1C0 end:0x8032F228
+	.bss start:0x8052D388 end:0x8052D390
+
+homebuttonLib/nw4hbm/lyt/lyt_picture.cpp:
+	.ctors start:0x802C45F8 end:0x802C45FC
+	.text start:0x80216784 end:0x80216CBC
+	.rodata start:0x802DEB00 end:0x802DEB04
+	.data start:0x8032F228 end:0x8032F2C8
+	.bss start:0x8052D390 end:0x8052D398
+
+homebuttonLib/nw4hbm/lyt/lyt_resourceAccessor.cpp:
+	.text start:0x80216CBC end:0x80216D14
+	.data start:0x8032F2C8 end:0x8032F2E0
+
+homebuttonLib/nw4hbm/lyt/lyt_textBox.cpp:
+	.ctors start:0x802C45FC end:0x802C4600
+	.text start:0x80216D14 end:0x802183A8
+	.rodata start:0x802DEB08 end:0x802DEB20
+	.data start:0x8032F2E0 end:0x8032F390
+	.bss start:0x8052D398 end:0x8052D3A0
+
+homebuttonLib/nw4hbm/lyt/lyt_window.cpp:
+	.ctors start:0x802C4600 end:0x802C4604
+	.text start:0x802183A8 end:0x8021A858
+	.rodata start:0x802DEB20 end:0x802DEB38
+	.data start:0x8032F390 end:0x8032F478
+	.bss start:0x8052D3A0 end:0x8052D3A8
+
+homebuttonLib/nw4hbm/math/math_triangular.cpp:
+	.text start:0x8021A858 end:0x8021AADC
+	.rodata start:0x802DEB38 end:0x802DEB5C
+	.data start:0x8032F478 end:0x80330590
+
+homebuttonLib/nw4hbm/ut/ut_binaryFileFormat.cpp:
+	.text start:0x8021AADC end:0x8021AB50
+
+homebuttonLib/nw4hbm/ut/ut_CharStrmReader.cpp:
+	.text start:0x8021AB50 end:0x8021AC60
+
+homebuttonLib/nw4hbm/ut/ut_CharWriter.cpp:
+	.text start:0x8021AC60 end:0x8021C750
+	.rodata start:0x802DEB60 end:0x802DEB80
+	.bss start:0x8052D3A8 end:0x8052D3D0
+
+homebuttonLib/nw4hbm/ut/ut_Font.cpp:
+	.text start:0x8021C750 end:0x8021C7F8
+	.data start:0x80330590 end:0x803305C0
+
+homebuttonLib/nw4hbm/ut/ut_LinkList.cpp:
+	.text start:0x8021C7F8 end:0x8021C8F0
+
+homebuttonLib/nw4hbm/ut/ut_list.cpp:
+	.text start:0x8021C8F0 end:0x8021CA50
+
+homebuttonLib/nw4hbm/ut/ut_ResFont.cpp:
+	.text start:0x8021CA50 end:0x8021CD54
+	.data start:0x803305C0 end:0x803306A0
+
+homebuttonLib/nw4hbm/ut/ut_ResFontBase.cpp:
+	.text start:0x8021CD54 end:0x8021D324
+	.data start:0x803306A0 end:0x80330760
+
+homebuttonLib/nw4hbm/ut/ut_TagProcessorBase.cpp:
+	.text start:0x8021D324 end:0x8021DAF4
+	.rodata start:0x802DEB80 end:0x802DEB88
+	.data start:0x80330760 end:0x803307E8
+
+homebuttonLib/nw4hbm/ut/ut_TextWriterBase.cpp:
+	.ctors start:0x802C4604 end:0x802C4608
+	.text start:0x8021DAF4 end:0x8021F584
+	.rodata start:0x802DEB88 end:0x802DEBA0
+	.bss start:0x8052D3D0 end:0x8052D3F8
+
+homebuttonLib/sound/mix.cpp:
+	.text start:0x8021F584 end:0x80220EA4
+	.data start:0x803307E8 end:0x80331378
+	.bss start:0x8052D3F8 end:0x8052DAB4
+
+homebuttonLib/sound/syn.cpp:
+	.text start:0x80220EA4 end:0x80221318
+	.bss start:0x8052DAB8 end:0x8052DF84
+
+homebuttonLib/sound/synctrl.cpp:
+	.text start:0x80221318 end:0x802217B0
+	.data start:0x80331378 end:0x80331578
+
+homebuttonLib/sound/synenv.cpp:
+	.text start:0x802217B0 end:0x80221B94
+	.rodata start:0x802DEBA0 end:0x802DEBC0
+
+homebuttonLib/sound/synmix.cpp:
+	.text start:0x80221B94 end:0x80221CAC
+	.data start:0x80331578 end:0x80331908
+
+homebuttonLib/sound/synpitch.cpp:
+	.text start:0x80221CAC end:0x80221F1C
+	.rodata start:0x802DEBC0 end:0x802DEBD4
+	.data start:0x80331908 end:0x80331CF8
+
+homebuttonLib/sound/synsample.cpp:
+	.text start:0x80221F1C end:0x8022238C
+
+homebuttonLib/sound/synvoice.cpp:
+	.text start:0x8022238C end:0x8022252C
+
+homebuttonLib/sound/seq.cpp:
+	.text start:0x8022252C end:0x80222DEC
+	.rodata start:0x802DEBD8 end:0x802DEBFC
+	.data start:0x80331CF8 end:0x80331D78
+	.bss start:0x8052DF88 end:0x8052DF90
