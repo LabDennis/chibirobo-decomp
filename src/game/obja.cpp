@@ -246,6 +246,8 @@ static inline void FloorNormalAngle(const CVec& normal, Vec* out, f32& angle)
 		*out = normal;
 }
 
+// NONMATCHING: retail reads the quad corners through floors (lwzx off the held pointer) but the quad's yaw through
+// object->mFloors, keeps index * 32 apart from the pointer, and allocates registers differently
 extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut)
 {
 	CVec from(*pos);
@@ -253,12 +255,13 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 	CVec middle;
 	f32 angle = NAN;
 
-	Vec center   = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object, index));
-	Vec extent   = object->mMoveScale * ReadObjectFloorExtent(object, index);
-	f32 baseYaw  = object->mMoveRotate.y;
-	f32 floorYaw = DEG2RAD * object->mFloors[index].mYawDegrees;
-	f32 yaw      = baseYaw + floorYaw;
-	switch (object->mFloors[index].mId) {
+	Vec center        = object->mMoveScale * (object->mToppleOffset + ReadObjectFloorOffset(object, index));
+	Vec extent        = object->mMoveScale * ReadObjectFloorExtent(object, index);
+	XObjFloor* floors = object->mFloors;
+	f32 baseYaw       = object->mMoveRotate.y;
+	f32 floorYaw      = DEG2RAD * floors[index].mYawDegrees;
+	f32 yaw           = baseYaw + floorYaw;
+	switch (floors[index].mId) {
 	case 0:
 	case 1: { // a disc: face its center
 		Mtx world, local, rotate, scale, transform;
@@ -326,7 +329,7 @@ extern "C" f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 
 		Vec scale = object->mMoveScale * ReadObjectFloorExtent(object, index);
 
 		f32 baseAngle = object->mMoveRotate.y;
-		f32 turnAngle = DEG2RAD * object->mFloors[index].mYawDegrees;
+		f32 turnAngle = DEG2RAD * floors[index].mYawDegrees;
 		f32 angleY    = baseAngle + turnAngle;
 		PSMTXTrans(translate, object->mMoveTranslate.x, object->mMoveTranslate.y, object->mMoveTranslate.z);
 		PSMTXScale(scaling, scale.x, scale.y, scale.z);
