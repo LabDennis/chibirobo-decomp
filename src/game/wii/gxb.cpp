@@ -1248,7 +1248,7 @@ void HSD_MtxGetScale(Mtx m, Vec* out);
 }
 
 // the nw4r::g3d::ResMdl handle is the NW_Obj's second word, still untyped in xobj.h
-#define COBJ_RESMDL ((nw4r::g3d::ResMdl*)&mObject._04)
+#define COBJ_RESMDL (&mObject.m_resMdl)
 #define COBJ_NW_OBJ (&mObject)
 
 // the three steppers: each vec, its target and its speed lie as one CObjVec, which xobj.h still
