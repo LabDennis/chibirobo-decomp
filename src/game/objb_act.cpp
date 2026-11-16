@@ -844,72 +844,73 @@ void UpdatePushedObject(XActPush* act, u32 frames)
 	if (!act->mTargetState)
 		return;
 	XObj* target = act->mTarget;
-	if (!target || !(target->mStatus.mFlags & 1))
-		return;
-	switch (act->mTargetState) {
-	case 1: {
-		target->mStatus.mFlags |= 0x0800000000000000ULL;
-		Vec hand           = GetPlayerCarryJointWorldPosition(act->mOwner);
-		const CVec& diff   = target->mMoveTranslate - hand;
-		act->mTargetOffset = CVec(diff.x, diff.y, diff.z);
-		break;
-	}
-	case 2: {
-		Vec hand         = GetPlayerCarryJointWorldPosition(act->mOwner);
-		XObj* edgeObject = act->mTarget;
-		f32 angle        = WrapAngle(FacingPushEdge(edgeObject, act->mOwner) - edgeObject->mMoveRotate.y);
-		Mtx rotate;
-		PSMTXRotRad(rotate, 'y', angle);
-		CVec direction(0, 0, act->mMoveDirection);
-		PSMTXMultVec(rotate, &direction, &direction);
-		if ((angle > (90 * DEG2RAD - pushAngleTolerance) && angle < (90 * DEG2RAD + pushAngleTolerance))
-		    || (angle > (270 * DEG2RAD - pushAngleTolerance) && angle < (270 * DEG2RAD + pushAngleTolerance)))
-			act->mPushPositionClamped
-			    = SetClampedPushPositionXZ(target, &direction, 1, hand.x + act->mTargetOffset.x, hand.z + act->mTargetOffset.z);
-		else
-			act->mPushPositionClamped
-			    = SetClampedPushPositionXZ(target, &direction, 2, hand.x + act->mTargetOffset.x, hand.z + act->mTargetOffset.z);
-
-		target->OnPushDisplacement(target->mMoveTranslate - target->mLastPos);
-		if ((target->mStatus.mFlags & 0x4000000000ULL) && QueryObjectFloorHeight(target, 0.1f, 0.1f) < target->mMoveTranslate.y - 5.0f) {
-			target->mStatus.mFlags &= ~0x0800000000000000ULL;
-			Release(act);
-			XObjChr* owner = act->mOwner;
-			owner->SetAnim(17, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
-			owner->mIdleLoops = 3;
-			act->mState       = 0;
-			target->mStatus.mFlags |= 0x1000000000000000ULL;
-
-			Vec rotation = target->mMoveRotate, speed = target->mMoveRotate.mSpeed;
-			Vec extent = GetFloorExtent(target->mFloors);
-			f32 dx, dz;
-			if ((angle > (90 * DEG2RAD - pushAngleTolerance) && angle < (90 * DEG2RAD + pushAngleTolerance))) {
-				rotation.z -= HALF_PI;
-				speed.z = 0.1f;
-				dz      = 0;
-				dx      = extent.x * (2.0f / sqrtf(3.0f)) / 2.0f;
-			} else if ((angle > (270 * DEG2RAD - pushAngleTolerance) && angle < (270 * DEG2RAD + pushAngleTolerance))) {
-				rotation.z += HALF_PI;
-				speed.z = 0.1f;
-				dz      = 0;
-				dx      = -(extent.x * (2.0f / sqrtf(3.0f))) / 2.0f;
-			} else if ((angle > (0 * DEG2RAD - pushAngleTolerance) && angle < (0 * DEG2RAD + pushAngleTolerance))) {
-				rotation.x += HALF_PI;
-				speed.x = 0.1f;
-				dx      = 0;
-				dz      = extent.z * (2.0f / sqrtf(3.0f)) / 2.0f;
-			} else if ((angle > (180 * DEG2RAD - pushAngleTolerance) && angle < (180 * DEG2RAD + pushAngleTolerance))) {
-				rotation.x -= HALF_PI;
-				speed.x = 0.1f;
-				dx      = 0;
-				dz      = -(extent.z * (2.0f / sqrtf(3.0f))) / 2.0f;
-			}
-			target->mMoveRotate.mTarget.Set(rotation);
-			target->mMoveRotate.mSpeed.Set(speed);
-			target->mToppleOffset = CVec(dx, -(extent.y * (2.0f / sqrtf(3.0f))) / 2.0f, dz);
+	if (target != NULL && (target->mStatus.mFlags & 1)) {
+		switch (act->mTargetState) {
+		case 1: {
+			target->mStatus.mFlags |= 0x0800000000000000ULL;
+			Vec hand           = GetPlayerCarryJointWorldPosition(act->mOwner);
+			const CVec& diff   = target->mMoveTranslate - hand;
+			act->mTargetOffset = CVec(diff.x, diff.y, diff.z);
+			break;
 		}
-		break;
-	}
+		case 2: {
+			Vec hand         = GetPlayerCarryJointWorldPosition(act->mOwner);
+			XObj* edgeObject = act->mTarget;
+			f32 angle        = WrapAngle(FacingPushEdge(edgeObject, act->mOwner) - edgeObject->mMoveRotate.y);
+			Mtx rotate;
+			PSMTXRotRad(rotate, 'y', angle);
+			CVec direction(0, 0, act->mMoveDirection);
+			PSMTXMultVec(rotate, &direction, &direction);
+			if ((angle > (90 * DEG2RAD - pushAngleTolerance) && angle < (90 * DEG2RAD + pushAngleTolerance))
+			    || (angle > (270 * DEG2RAD - pushAngleTolerance) && angle < (270 * DEG2RAD + pushAngleTolerance)))
+				act->mPushPositionClamped
+				    = SetClampedPushPositionXZ(target, &direction, 1, hand.x + act->mTargetOffset.x, hand.z + act->mTargetOffset.z);
+			else
+				act->mPushPositionClamped
+				    = SetClampedPushPositionXZ(target, &direction, 2, hand.x + act->mTargetOffset.x, hand.z + act->mTargetOffset.z);
+
+			target->OnPushDisplacement(target->mMoveTranslate - target->mLastPos);
+			if ((target->mStatus.mFlags & 0x4000000000ULL)
+			    && QueryObjectFloorHeight(target, 0.1f, 0.1f) < target->mMoveTranslate.y - 5.0f) {
+				target->mStatus.mFlags &= ~0x0800000000000000ULL;
+				Release(act);
+				XObjChr* owner = act->mOwner;
+				owner->SetAnim(17, FALSE, NULL, NULL, NULL, 0, 1, 0, 10);
+				owner->mIdleLoops = 3;
+				act->mState       = 0;
+				target->mStatus.mFlags |= 0x1000000000000000ULL;
+
+				Vec rotation = target->mMoveRotate, speed = target->mMoveRotate.mSpeed;
+				Vec extent = GetFloorExtent(target->mFloors);
+				f32 dx, dz;
+				if ((angle > (90 * DEG2RAD - pushAngleTolerance) && angle < (90 * DEG2RAD + pushAngleTolerance))) {
+					rotation.z -= HALF_PI;
+					speed.z = 0.1f;
+					dz      = 0;
+					dx      = extent.x * (2.0f / sqrtf(3.0f)) / 2.0f;
+				} else if ((angle > (270 * DEG2RAD - pushAngleTolerance) && angle < (270 * DEG2RAD + pushAngleTolerance))) {
+					rotation.z += HALF_PI;
+					speed.z = 0.1f;
+					dz      = 0;
+					dx      = -(extent.x * (2.0f / sqrtf(3.0f))) / 2.0f;
+				} else if ((angle > (0 * DEG2RAD - pushAngleTolerance) && angle < (0 * DEG2RAD + pushAngleTolerance))) {
+					rotation.x += HALF_PI;
+					speed.x = 0.1f;
+					dx      = 0;
+					dz      = extent.z * (2.0f / sqrtf(3.0f)) / 2.0f;
+				} else if ((angle > (180 * DEG2RAD - pushAngleTolerance) && angle < (180 * DEG2RAD + pushAngleTolerance))) {
+					rotation.x -= HALF_PI;
+					speed.x = 0.1f;
+					dx      = 0;
+					dz      = -(extent.z * (2.0f / sqrtf(3.0f))) / 2.0f;
+				}
+				target->mMoveRotate.mTarget.Set(rotation);
+				target->mMoveRotate.mSpeed.Set(speed);
+				target->mToppleOffset = CVec(dx, -(extent.y * (2.0f / sqrtf(3.0f))) / 2.0f, dz);
+			}
+			break;
+		}
+		}
 	}
 }
 
