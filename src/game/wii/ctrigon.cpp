@@ -2,11 +2,10 @@
 // __sinit_\ctrigon_cpp). Unlike the GameCube file, whose functions sit in reverse, the Wii
 // keeps them in source order, and the two selector switches stay functions of their own.
 // The readers are global functions as in the GameCube map (no local scope there either).
-// NONMATCHING: only the vertex readers and their selectors are reconstructed; the triangle
-// parser on the NW4R shapes, Create, the two destructors and the
-// counter global are not written yet. TrigonGetVtxS8 and SearchNear differ from retail
-// in register choice (SearchNear: retail adds i + at again for the result instead of
-// reusing the index it tested).
+// NONMATCHING: the triangle parser on the NW4R shapes, the grid builder, Create and
+// _trigonChecker are not written yet (Create and the parser inline the g3d accessors with
+// their asserts). TrigonGetVtxS8 and SearchNear differ from retail in register choice
+// (SearchNear: retail adds i + at again for the result instead of reusing the tested index).
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "game/ctrigon.h"
 #include "game/mm.h"
@@ -15,6 +14,18 @@
 #include <math.h>
 
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* srcBase, Vec* dstBase, u32 count);
+
+// what the parser met in the display lists, one count per kind; Create clears it and
+// names the pool after it
+class _trigonCounter {
+public:
+	u32 mCount[11]; // _00
+	// _2C vtable
+
+	virtual ~_trigonCounter() { } // _08
+};
+
+static _trigonCounter sCounter;
 
 // returns the position array entry the index at dl points at; the 16 and 32 bit readers
 // step by the whole vertex (6 or 12 bytes), the byte readers by three
