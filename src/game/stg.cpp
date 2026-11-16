@@ -8037,7 +8037,8 @@ static inline f32 SaveNumberLabelX(f32 x, f32 offsetScale)
 #endif
 }
 
-// NONMATCHING: one fadds in the digit position has its operands the other way round (fadds f0, f24, f0)
+// NONMATCHING: one fadds in the separator position has its operands the other way round (retail fadds f0, f24, f0,
+// x first); x + 81 * 1.2, the constant first, 97.2 and a named sum all compile to the constant first
 extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f32 y, f32 alpha, f32 offsetScale, f32)
 {
 	if (!(alpha > 0.0f))
@@ -10207,6 +10208,9 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 
 extern "C" s32 GetAttachmentCountById(AttachmentValues*, s32);
 
+// NONMATCHING: the two ResetPCText expansions get their space[] slots the other way round (retail 0x8 for the
+// first, 0xC for the second), and retail keeps the bought entry in r31 and the player base in r29. Japan also
+// reuses the zero of the character loop for the history counter (one li less)
 void MenuPC::State3(u32 frames)
 {
 	MenuPC* menu = this;

@@ -87,6 +87,8 @@ void CCameraActionReset::Update(u32 step)
  * @note Address: 0x80147794
  * @note Size: 0x5DC
  */
+// NONMATCHING: frame and registers. Retail puts the roll-free angle at the bottom of the frame (0x2C), below the
+// GetCameraTarget return slot (0x44) and the eye copy (0x38), so it is not a named local; arg is in r30, camera in r29
 void CCameraActionReset::PreviousUpdate()
 {
 	Vec eye;
