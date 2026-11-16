@@ -26,6 +26,7 @@
 #include "revolution/mem.h"
 #include "revolution/sc.h"
 #include "nw4r/snd/snd_AxManager.h"
+#include "nw4r/math/math_types.h"
 
 // the expanded heap mm::InitMem1 creates over the MEM1 arena; every operator delete site reads it
 extern MEMiHeapHead* gWiiMem1Heap;
@@ -1774,11 +1775,11 @@ void CGame::Update(u32 frames)
  * @note Address: 0x80024A10
  * @note Size: 0x6C
  */
-// NONMATCHING: retail has the paired-single subtract inline here, nw4r::math::VEC3Sub from math_types.h; the
-// game's include path (include/stl) cannot take the nw4r headers, they want the Wii MSL's <cmath>
+// NONMATCHING: the subtract is nw4r::math::VEC3Sub, the paired-single inline, as in retail; retail
+// subtracts in a stack copy and copies that out, we build the result in the return slot
 CVec CVec::operator-(Vec other) const
 {
 	CVec result = *this;
-	PSVECSubtract(&result, &other, &result);
+	nw4r::math::VEC3Sub((nw4r::math::VEC3*)&result, (nw4r::math::VEC3*)&result, (nw4r::math::VEC3*)&other);
 	return result;
 }

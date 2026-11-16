@@ -607,6 +607,13 @@ extern "C" CCameraActionAreaEx gCameraAreaState;
 extern "C" {
 // the area camera's state, ccameraactionareaex.cpp
 s32 FindFirstCameraAreaContainingPoint(CamAreaState* state, Vec pos);
+void LoadStageCameraAreaState(CamAreaState* state);
+}
+
+// a weak copy on the Wii: retail keeps it behind CGame::SetupStageCamera (0x8001DE7C)
+inline void CCameraActionAreaExM::LoadAreaState()
+{
+	LoadStageCameraAreaState(&gCameraAreaState);
 }
 #endif
 

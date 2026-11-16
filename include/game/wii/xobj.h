@@ -793,7 +793,8 @@ public:
 class CObjVec : public TVec {
 public:
 	CObjVec();
-	u8 Step(u32 frames); // 0x802A7FB4
+	u8 Step(f32 frames); // 0x802A7FB4
+	bool IsMoving() const;
 
 	CVec mTarget; // _10
 	CVec mSpeed;  // _20
@@ -995,9 +996,9 @@ public:
 	virtual BOOL ReadAsync(ResourceFile* file, const char* path, u32 model, u32 flags, u32 offset, u32 size);                   // _38
 	virtual BOOL ReadCheck();                                                                                                   // _3C
 	virtual void Release();                                                                                                     // _40
-	virtual u8 StepTranslate(u32 frames);                                                                                       // _44
-	virtual u8 StepRotate(u32 frames);                                                                                          // _48
-	virtual u8 StepScale(u32 frames);                                                                                           // _4C
+	virtual u8 StepTranslate(f32 frames);                                                                                       // _44
+	virtual u8 StepRotate(f32 frames);                                                                                          // _48
+	virtual u8 StepScale(f32 frames);                                                                                           // _4C
 	virtual nw4r::g3d::ResNode GetResNode(const char* name);                                                                    // _50
 	virtual nw4r::g3d::ResNode GetResNode(u32 index);                                                                           // _54
 	virtual nw4r::g3d::ResNode GetResNode();     // _58, the first node
@@ -1342,9 +1343,7 @@ public:
 
 private:
 	u8 _9A8[4];
-	u32 _9AC;
-	u8 _9B0[0x18];
-	CTrigon mTrigon; // _9C8
+	CTrigon mTrigon; // _9AC
 	u8 _9EC[0x28];
 	XObjMapListA mListA[0x64]; // _A14
 	XObjMapListB mListB[0x64]; // _EC4

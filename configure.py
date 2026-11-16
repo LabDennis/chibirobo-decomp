@@ -1226,8 +1226,10 @@ if wii:
                 Object(Matching, "game/wii/homemenu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/title.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(NonMatching, "game/wii/menu.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # the hud unit 0x800870E8-0x80092244, ported from the GameCube's infoscrn.cpp:
-                # GetStatusFlags replaces mStatus.mFlags reads, the timer runs off gRefreshRate
+                # the hud unit 0x800870E8-0x80092308, ported from the GameCube's infoscrn.cpp:
+                # GetStatusFlags replaces mStatus.mFlags reads, the timer runs off gRefreshRate.
+                # Its file static counters bring the weak InfoPoint dtor and the static
+                # initializer at the end (retail addresses them off the unit's .bss start)
                 Object(NonMatching, "game/wii/infoscrn.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # no auto-inlining of the small file functions: under -inline auto the
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
@@ -1269,19 +1271,23 @@ if wii:
                 # cgs_chan.cpp, whose asserts share its string pool. No auto-inlining:
                 # retail calls DrawGsTriangleVertices from DrawGsVertexQuad and MeasureStrokeTextWidth
                 # from DrawGsStrokeText, both of which -inline auto folds into their one caller
-                Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
                 # the message system between evt.cpp's destructors and cpadact.cpp; the
                 # GameCube file's VERSION_JP branches are the reconstruction base
                 Object(NonMatching, "game/wii/msg.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
-                # the Wii's shared helper unit 0x802A5418-0x802A7478: Shift-JIS, HSD matrix
+                # the Wii's shared helper unit 0x802A5358-0x802A7478: Shift-JIS, HSD matrix
                 # and collision helpers from the GameCube's ut.cpp + mtx.c; the CVec
                 # operators and PSVEC calls stay calls, so no auto-inlining
-                Object(NonMatching, "game/wii/ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/wii/ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
                 # the Wii memory manager 0x802A7478-0x802A7FB4 (mem.cpp by its OSPanic file):
                 # the GameCube table allocator over a MEM2 arena plus InitMem1/InitMem2's two
                 # expanded heaps; the small helpers GetAllocSize/GetFreeSize stay calls, so
                 # no auto-inlining here either
                 Object(NonMatching, "game/wii/mem.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                # the map floor collision behind cobj.cpp, 0x802BA4F4-0x802BD294
+                Object(NonMatching, "game/wii/ctrigon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                # CObjVec::Step between mem.cpp and cgs.cpp, file name unknown
+                Object(Matching, "game/wii/cobjvec.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Equivalent, "game/wii/cpadact.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the out-of-line CCamera::SetAngle(const Vec&) copy plus a CThread global
                 # that nothing references - a port leftover
@@ -1298,7 +1304,7 @@ if wii:
                 Object(Matching, "game/wii/ccameraactionareaexm.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the global's __sinit stores the vtable and __construct_arrays mGroups[256] at _2034
                 # (retail 0x801542A0); CCameraActionAreaEx's layout is shared with the GameCube
-                Object(NonMatching, "game/ccameraactionareaexinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Matching, "game/ccameraactionareaexinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii file queries the player position through the vtable GetPosition and calls
                 # FindEnabledCameraAreaContainingPoint instead of open-coding the record loop; the
                 # DrawGs debug draws and the corner-Vec extern stay GameCube-only
@@ -1314,10 +1320,6 @@ if wii:
                 # CamAreaSlot ctor at its head is reconstructed so far
                 Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                # InfoPoint's dtor is the out-of-line definition; the GameCube file's hand-spelled
-                # weak copy stays for GC only (retail Wii body has no vtable store)
-                Object(NonMatching, "game/infopointdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
-                Object(NonMatching, "game/infopointinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # menu dtors: the GameCube files' hand-spelled weak copies stay GC-only; on Wii the
                 # classes keep inline/base dtors and the units define the out-of-line destructors
                 Object(Matching, "game/atcmenudtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),

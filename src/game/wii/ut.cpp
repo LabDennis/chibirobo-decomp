@@ -1,4 +1,4 @@
-// the Wii's helper unit, .text 0x802A5418-0x802A7478: the Shift-JIS, matrix and
+// the Wii's helper unit, .text 0x802A5358-0x802A7478: the Shift-JIS, matrix and
 // collision helpers the GameCube kept in game/ut.cpp, plus the HSD matrix
 // routines of sysdolphin/baselib/mtx.c folded in with it. Functions are in
 // retail order; the GameCube file's deferred-inline ordering does not apply.
@@ -9,14 +9,15 @@
 #include "game/cvec.h"
 #include "arithmetic.h"
 #include <math.h>
+#include <cmath>
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 extern "C" {
 // the Wii unit carries the two HSD matrix helpers itself; their GameCube twins
 // are sysdolphin/baselib/mtx.c. Its HSD_MtxSRT has no parent_scale argument and
-// stores the transpose of the GameCube result (the scale row per row, not per
-// column), the inverse rotation of the GameCube convention.
+// otherwise builds the GameCube matrix.
 void HSD_MtxGetScale(Mtx m, Vec* out);
 void HSD_MtxSRT(Mtx m, Vec* scale, Vec* rotation, Vec* translation);
 // the GameCube's static LinePlane inline plus its t-class return, a real
@@ -49,6 +50,28 @@ static const char* sFullWidthCharacters
 static char sFullWidthTextBuffer[0x80];
 // the formatted text, panics and the event debug lines all go through here
 static char sFormattedTextBuffer[0x100];
+
+// reads len hex digits, or the whole string when len is 0. any other character is skipped but
+// still counts toward len
+extern "C" u32 ParseHexDigits(const char* str, s32 len)
+{
+	u32 val = 0;
+	if (len == 0) {
+		len = strlen(str);
+	}
+	for (int i = 0; i < len; i++) {
+		char c = *str;
+		if (c >= '0' && c <= '9') {
+			val = val * 16 + (c - '0');
+		} else if (c >= 'A' && c <= 'F') {
+			val = val * 16 + (c - 'A' + 10);
+		} else if (c >= 'a' && c <= 'f') {
+			val = val * 16 + (c - 'a' + 10);
+		}
+		str++;
+	}
+	return val;
+}
 
 // src with each character from sHalfWidthCharacters swapped for its full width twin, the rest copied
 // as is. when dst is NULL the static buffer is used and returned
@@ -189,8 +212,8 @@ extern "C" void HSD_MtxGetScale(Mtx m, Vec* out)
 	}
 }
 
-// HSD_MtxSRT from sysdolphin/baselib/mtx.c, the Wii variant: no parent_scale
-// and the result stored transposed
+// HSD_MtxSRT from sysdolphin/baselib/mtx.c, the Wii variant: no parent_scale, and the
+// angles go through the Wii MSL's float sinf/cosf
 extern "C" void HSD_MtxSRT(Mtx m, Vec* scale, Vec* rotation, Vec* translation)
 {
 	float sin_x, sin_y, sin_z, cos_x, cos_y, cos_z;
@@ -198,25 +221,25 @@ extern "C" void HSD_MtxSRT(Mtx m, Vec* scale, Vec* rotation, Vec* translation)
 	float scale_yx, scale_yy, scale_yz;
 	float scale_zx, scale_zy, scale_zz;
 
-	sin_x = (float)sin(rotation->x);
-	cos_x = (float)cos(rotation->x);
-	sin_y = (float)sin(rotation->y);
-	cos_y = (float)cos(rotation->y);
-	sin_z = (float)sin(rotation->z);
-	cos_z = (float)cos(rotation->z);
+	sin_x = std::sinf(rotation->x);
+	cos_x = std::cosf(rotation->x);
+	sin_y = std::sinf(rotation->y);
+	cos_y = std::cosf(rotation->y);
+	sin_z = std::sinf(rotation->z);
+	cos_z = std::cosf(rotation->z);
 
-	scale_xx = scale_xy = scale_xz = scale->x;
-	scale_yx = scale_yy = scale_yz = scale->y;
-	scale_zx = scale_zy = scale_zz = scale->z;
+	scale_xx = scale_yx = scale_zx = scale->x;
+	scale_xy = scale_yy = scale_zy = scale->y;
+	scale_xz = scale_yz = scale_zz = scale->z;
 
 	m[0][0] = cos_z * (scale_xx * cos_y);
-	m[0][1] = sin_z * (scale_xy * cos_y);
-	m[0][2] = -scale_xz * sin_y;
-	m[1][0] = scale_yx * ((cos_z * (sin_x * sin_y)) - (cos_x * sin_z));
+	m[1][0] = sin_z * (scale_yx * cos_y);
+	m[2][0] = -scale_zx * sin_y;
+	m[0][1] = scale_xy * ((cos_z * (sin_x * sin_y)) - (cos_x * sin_z));
 	m[1][1] = scale_yy * ((sin_z * (sin_x * sin_y)) + (cos_x * cos_z));
-	m[1][2] = cos_y * (scale_yz * sin_x);
-	m[2][0] = scale_zx * ((cos_z * (cos_x * sin_y)) + (sin_x * sin_z));
-	m[2][1] = scale_zy * ((sin_z * (cos_x * sin_y)) - (sin_x * cos_z));
+	m[2][1] = cos_y * (scale_zy * sin_x);
+	m[0][2] = scale_xz * ((cos_z * (cos_x * sin_y)) + (sin_x * sin_z));
+	m[1][2] = scale_yz * ((sin_z * (cos_x * sin_y)) - (sin_x * cos_z));
 	m[2][2] = cos_y * (scale_zz * cos_x);
 	m[0][3] = translation->x;
 	m[1][3] = translation->y;
