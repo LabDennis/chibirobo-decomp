@@ -428,8 +428,9 @@ public:
 	void State23(u32 frames);
 	void State24(u32 frames);
 	void State25(u32 frames);
-	// the file-menu mode after State25, gTitleModeUpdates' last entry
-	void fn_80048418(u32 frames);
+	// the Wii's two modes past the GameCube's, gTitleModeUpdates' last entries (names ours, by the table)
+	void State26(u32 frames);
+	void State27(u32 frames);
 
 	void UpdateSelections();
 

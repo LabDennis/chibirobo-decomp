@@ -114,6 +114,19 @@ static inline void HideName(Title* title)
 	}
 }
 
+// the save file went away under the menu, which the NAND never does: back to the error screen
+// with the file records cleared, the GameCube's OnCardRemoved
+static inline void OnCardRemoved(Title* title)
+{
+	OSPanic("title.cpp", 0x1484, "ここにくるのはおかしい");
+	title->mResult = -3;
+	title->SetMode(9);
+	title->mOffset = -32.0f;
+	for (s32 i = 0; i < 3; i++) {
+		ResetSaveSlotRecord(&gTitleSaveSlots[i]);
+	}
+}
+
 // the pixel engine state every 2D draw on the title screen needs, the GameCube's BeginTitleOverlay
 static inline void BeginTitleOverlay()
 {
@@ -570,6 +583,129 @@ void Title::State1(u32 frames)
 }
 
 /**
+ * @note Address: 0x80047BB8
+ * @note Size: 0x258
+ */
+// the yes or no question before a file is started over: yes asks once more (State27), no goes back to
+// the files
+void Title::State3(u32)
+{
+	bool addPanes = true;
+	bool stick    = false;
+	if (mChoice != -1) {
+		mLastChoice = mChoice;
+	}
+	if (!mReady) {
+		OnCardRemoved(this);
+		return;
+	}
+	if (IsStickUsedOverPointer()) {
+		stick = true;
+	}
+	if (!stick) {
+		if (IsStickLeft()) {
+			if (mChoice > 0) {
+				mChoice--;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+				return;
+			}
+		} else if (IsStickRight()) {
+			if (mChoice < 1) {
+				mChoice++;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+				return;
+			}
+		}
+	}
+	if (IsConfirmPressed() && mChoice != -1) {
+		addPanes           = false;
+		mPanes[3].mPointed = false;
+		mPanes[3].mPicked  = false;
+		mPanes[4].mPointed = false;
+		mPanes[4].mPicked  = false;
+		switch (mChoice) {
+		case 0:
+			SetMode(27);
+			UpdateSelections();
+			PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+			return;
+		case 1:
+			SetMode(2);
+			UpdateSelections();
+			mChoice = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 243, 1.0f, 0.0f);
+			return;
+		}
+	}
+	if (addPanes) {
+		AddPointerPane(&gPointerPanes, &mPanes[3]);
+		AddPointerPane(&gPointerPanes, &mPanes[4]);
+	}
+}
+
+/**
+ * @note Address: 0x80047E10
+ * @note Size: 0x2A4
+ */
+// the yes or no question before a new game is written to the file picked: yes starts the write
+void Title::State27(u32)
+{
+	bool addPanes = true;
+	bool stick    = false;
+	if (mChoice != -1) {
+		mLastChoice = mChoice;
+	}
+	if (!mReady) {
+		OnCardRemoved(this);
+		return;
+	}
+	if (IsStickUsedOverPointer()) {
+		stick = true;
+	}
+	if (!stick) {
+		if (IsStickLeft()) {
+			if (mChoice > 0) {
+				mChoice--;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+				return;
+			}
+		} else if (IsStickRight()) {
+			if (mChoice < 1) {
+				mChoice++;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+				return;
+			}
+		}
+	}
+	if (IsConfirmPressed() && mChoice != -1) {
+		addPanes           = false;
+		mPanes[3].mPointed = false;
+		mPanes[3].mPicked  = false;
+		mPanes[4].mPointed = false;
+		mPanes[4].mPicked  = false;
+		switch (mChoice) {
+		case 0:
+			StartWiiSaveSlotWrite(&gGame.mSaveManager, mFile, FALSE);
+			SetMode(15);
+			mDelay = 1.5f * gRefreshRate;
+			PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+			mOffset = -32.0f;
+			return;
+		case 1:
+			SetMode(2);
+			UpdateSelections();
+			mChoice = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 243, 1.0f, 0.0f);
+			return;
+		}
+	}
+	if (addPanes) {
+		AddPointerPane(&gPointerPanes, &mPanes[3]);
+		AddPointerPane(&gPointerPanes, &mPanes[4]);
+	}
+}
+
+/**
  * @note Address: 0x800480B4
  * @note Size: 0x4
  */
@@ -578,11 +714,155 @@ void Title::State4(u32)
 }
 
 /**
- * @note Address: 0x80048418
+ * @note Address: 0x800480B8
+ * @note Size: 0x360
  */
-// the last gTitleModeUpdates entry, the file-menu mode past State25
-void Title::fn_80048418(u32)
+// the question after a save error: yes starts the game without saving, no goes back where the error
+// left the menu
+void Title::State5(u32)
 {
+	bool addPanes = true;
+	bool stick    = false;
+	if (mChoice != -1) {
+		mLastChoice = mChoice;
+	}
+	if (IsStickUsedOverPointer()) {
+		stick = true;
+	}
+	if (!stick) {
+		if (IsStickLeft()) {
+			if (mChoice > 0) {
+				mChoice--;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+			}
+		} else if (IsStickRight()) {
+			if (mChoice < 1) {
+				mChoice++;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+			}
+		}
+	}
+	if (IsConfirmPressed() && mChoice != -1) {
+		addPanes           = false;
+		mPanes[3].mPointed = false;
+		mPanes[3].mPicked  = false;
+		mPanes[4].mPointed = false;
+		mPanes[4].mPicked  = false;
+		if (mChoice == 0 && IsConfirmPressed()) {
+			HideName(this);
+			mTargetPanelY = -200.0f;
+			mOffset       = 0.0f;
+			mAlpha        = 0.0f;
+			mChoice       = 0;
+			mState        = 13;
+			SetMode(25);
+			PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+			StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
+			((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
+			return;
+		}
+		if (mChoice == 1 && IsConfirmPressed()) {
+			if (mShowMessage == 1) {
+				SetMode(19);
+				mOffset = 0.0f;
+			} else if (mResult == 0) {
+				OSPanic("title.cpp", 0x985, "エラーからこないことはない");
+				SetMode(2);
+				mChoice = 0;
+			} else if (mResult == -11 || mResult == -9) {
+				for (s32 i = 0; i < 3; i++) {
+					ResetSaveSlotRecord(&gTitleSaveSlots[i]);
+				}
+				StartWiiSaveSlotScan(&gGame.mSaveManager, 10);
+				SetMode(1);
+				mOffset = 0.0f;
+			} else {
+				SetMode(14);
+				mOffset = -32.0f;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+			return;
+		}
+	}
+	if (addPanes) {
+		AddPointerPane(&gPointerPanes, &mPanes[3]);
+		AddPointerPane(&gPointerPanes, &mPanes[4]);
+	}
+}
+
+/**
+ * @note Address: 0x80048418
+ * @note Size: 0x310
+ */
+// NONMATCHING: registers only, retail keeps this in r30 and the pane flag in r31
+// the same question when a save error came from the file menu: yes starts the game without saving and
+// has the game reset to the Wii Menu's data management when it ends (reset type 5), no goes back
+void Title::State26(u32)
+{
+	bool addPanes = true;
+	bool stick    = false;
+	if (mChoice != -1) {
+		mLastChoice = mChoice;
+	}
+	if (IsStickUsedOverPointer()) {
+		stick = true;
+	}
+	if (!stick) {
+		if (IsStickLeft()) {
+			if (mChoice > 0) {
+				mChoice--;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+			}
+		} else if (IsStickRight()) {
+			if (mChoice < 1) {
+				mChoice++;
+				PlayWiiSoundEffect(&gGame.mSound, 244, 1.0f, 0.0f);
+			}
+		}
+	}
+	if (IsConfirmPressed() && mChoice != -1) {
+		addPanes           = false;
+		mPanes[3].mPointed = false;
+		mPanes[3].mPicked  = false;
+		mPanes[4].mPointed = false;
+		mPanes[4].mPicked  = false;
+		if (mChoice == 0 && IsConfirmPressed()) {
+			HideName(this);
+			mTargetPanelY = -200.0f;
+			mOffset       = 0.0f;
+			mAlpha        = 0.0f;
+			mChoice       = 0;
+			mState        = 13;
+			SetMode(25);
+			PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+			StopWiiSfx(&gGame.mSound, 0xFF0003, 0.0f);
+			((InfoScrn*)gGame.mInfoScrn)->mSelectedSaveSlot = mFile;
+			gGame.mResetRequested                           = true;
+			gGame.mResetType                                = 5;
+			return;
+		}
+		if (mChoice == 1 && IsConfirmPressed()) {
+			if (mShowMessage == 1) {
+				SetMode(5);
+				mOffset = -32.0f;
+				UpdateSelections();
+			} else if (mResult == 0) {
+				OSPanic("title.cpp", 0xa5c, "エラーからこないことはない");
+				SetMode(2);
+				mChoice = 0;
+			} else {
+				SetMode(5);
+				mOffset = -32.0f;
+				UpdateSelections();
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 245, 1.0f, 0.0f);
+			return;
+		}
+	}
+	if (addPanes) {
+		AddPointerPane(&gPointerPanes, &mPanes[3]);
+		AddPointerPane(&gPointerPanes, &mPanes[4]);
+	}
 }
 
 /**
@@ -1488,5 +1768,6 @@ void (Title::*gTitleModeUpdates[])(u32) = {
 	&Title::State23,
 	&Title::State24,
 	&Title::State25,
-	&Title::fn_80048418,
+	&Title::State26,
+	&Title::State27,
 };
