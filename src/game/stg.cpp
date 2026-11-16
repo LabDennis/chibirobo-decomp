@@ -280,10 +280,12 @@ static inline u16 ReadPCDialogueGlyph(const char* text)
 }
 #endif
 
-// NONMATCHING: retail calls CTexObj's constructor and destructor out of line (the only bl __ct__7CTexObjFv in
-// the game) while it expands every other inline: the original function alone was over the -inline auto budget.
-// Ours expands them; it takes 260 to 300 two-unit filler calls before it stops, so the source is still short of
-// retail's. The frame (0x10 smaller), the bss base held in r14 and regalloc follow from that
+// NONMATCHING: the original was over the -inline auto budget on its own. Retail calls even CTexObj's constructor
+// and destructor (the only bl __ct__7CTexObjFv in the game), and the 23 getters right behind it in retail
+// (GetPlayerLevel to GetPCDialogueText, defined further down here) are the inlines it could not expand, while the
+// code of PCDigitDivisor, PCEaseCall and PCUsesFixedChoiceLabels is expanded, so it stood in the function itself.
+// Ours stays under the budget even with 260 two-unit filler calls; the frame (0x10 smaller), the bss base held in
+// r14 and the register allocation follow from that
 BOOL MenuPC::Draw()
 {
 	if (Draw__5CMenuFv(this)) {
