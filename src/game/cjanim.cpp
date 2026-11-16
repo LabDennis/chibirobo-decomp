@@ -418,12 +418,11 @@ BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 	from.y = 0;
 	CVec to(*(const CVec*)&end);
 	to.y = 0; // floors are tested flat on the ground plane
-	CVec extent;
 
 	f32 rotation = mMoveRotate.y;
 	for (s32 i = 0; floors[i].mId != -1; ++i) {
 		CVec center  = mMoveScale * (mToppleOffset + ReadFloorCoordinates(floors[i].mCenterOffset, gObjectFloorOffsetTemplate));
-		extent       = mMoveScale * ReadFloorCoordinates(floors[i].mExtent, lbl_80378148);
+		CVec extent  = mMoveScale * ReadFloorCoordinates(floors[i].mExtent, lbl_80378148);
 		f32 localYaw = FloorRotationRadians(floors[i].mYawDegrees);
 		f32 yaw      = rotation + localYaw;
 		switch (floors[i].mId) {
