@@ -1,5 +1,6 @@
 #include "game/wii/cgame.h"
 #include "game/cthread.h"
+#include "game/wii/xobj.h"
 #include "Dolphin/os.h"
 #include "Dolphin/vi.h"
 #include <string.h>
@@ -167,6 +168,22 @@ bool CGame::IsSystemMessage3Shown()
 }
 
 /**
+ * @note Address: 0x8002B2EC
+ * @note Size: 0x4
+ */
+void XObj::vf210()
+{
+}
+
+/**
+ * @note Address: 0x8002B2E8
+ * @note Size: 0x4
+ */
+void XObj::OnMicrophonePeak(s32, s32)
+{
+}
+
+/**
  * @note Address: 0x8002AEC8
  * @note Size: 0xCC
  */
@@ -199,12 +216,62 @@ CLight* CBase::GetScreenLight()
 }
 
 /**
+ * @note Address: 0x80027D44
+ * @note Size: 0x4
+ */
+void XObj::DrawObjectEffects()
+{
+}
+
+/**
+ * @note Address: 0x800270C8
+ * @note Size: 0x4C
+ */
+// NONMATCHING: retail calls the Wii MSL's out-of-line __fpclassifyf (0x8022A450); the MSL header the
+// game shares with the GameCube defines it inline
+f32 XObj::GetCollisionHeight()
+{
+	if (__fpclassifyf(mMaxFloorHeight) == FP_NAN) {
+		return 0.0f;
+	}
+	return mMaxFloorHeight - mMoveTranslate.y;
+}
+
+/**
+ * @note Address: 0x800270C0
+ * @note Size: 0x8
+ */
+f32 XObj::GetFloorXZExtent()
+{
+	return mFloorXZExtent;
+}
+
+/**
+ * @note Address: 0x8002694C
+ * @note Size: 0x10
+ */
+// the reflection pass draws it like any other view
+void XObj::DrawReflection(Mtx view)
+{
+	DrawWithView(view);
+}
+
+/**
  * @note Address: 0x800263C0
  * @note Size: 0x78
  */
 void CBase::SetScreenLight()
 {
 	SetLight(GetScreenLight(), GetScreenCamera()->mViewMtx, FALSE);
+}
+
+/**
+ * @note Address: 0x800263AC
+ * @note Size: 0x14
+ */
+void XObj::DrawObject()
+{
+	DrawWithView(NULL);
 }
 
 /**
@@ -235,6 +302,15 @@ void CGame::Reset(u32 code)
 }
 
 /**
+ * @note Address: 0x80024CA8
+ * @note Size: 0x8
+ */
+const Vec* XObj::GetPosition()
+{
+	return &mMoveTranslate;
+}
+
+/**
  * @note Address: 0x80024CA0
  * @note Size: 0x8
  */
@@ -260,6 +336,14 @@ BOOL CBase::BeginCamera(CCamera* camera)
 BOOL CBase::BeginSceneCamera()
 {
 	return BeginCamera(GetCamera());
+}
+
+/**
+ * @note Address: 0x80024BD4
+ * @note Size: 0x4
+ */
+void XObj::vf16C()
+{
 }
 
 /**
