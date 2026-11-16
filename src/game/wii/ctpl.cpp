@@ -36,8 +36,6 @@ void fn_8029A458(void* heap);
 void fn_8029A4AC(void* heap, s32 level);
 void fn_8029AFAC(u32 voices, u32 groups);
 void fn_8029B1AC();
-void fn_8028B274(void* track, f32 volume, u32 arg);
-void fn_8028B318(void* track, f32 pan);
 u32 fn_802958C0(void* actor, void* arg);
 void fn_80295914(void* actor, void* arg, void* data, u32 size);
 void fn_80295848(void* sound, f32 volume);
@@ -435,45 +433,37 @@ extern "C" void UpdateGameSound(CSound* sound, u32 step)
 		fn_8029A458(sound->mSoundHeap);
 	}
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mTracks[i].mTrack == NULL) {
+		if (!sound->mTracks[i].IsAttachedSound()) {
 			continue;
 		}
-		if (sound->mTracks[i].mTrack != NULL) {
+		if (sound->mTracks[i].IsAttachedSound()) {
 			if (sound->mTracks[i].mVolume < sound->mTracks[i].mVolumeTarget) {
 				sound->mTracks[i].mVolume += sound->mTracks[i].mVolumeStep * step;
 				if (sound->mTracks[i].mVolume > sound->mTracks[i].mVolumeTarget) {
 					sound->mTracks[i].mVolume = sound->mTracks[i].mVolumeTarget;
 				}
-				if (sound->mTracks[i].mTrack != NULL) {
-					fn_8028B274(sound->mTracks[i].mTrack, sound->mTracks[i].mVolume, 0);
-				}
+				sound->mTracks[i].nw4r::snd::SoundHandle::SetVolume(sound->mTracks[i].mVolume, 0);
 			} else if (sound->mTracks[i].mVolume > sound->mTracks[i].mVolumeTarget) {
 				sound->mTracks[i].mVolume += sound->mTracks[i].mVolumeStep * step;
 				if (sound->mTracks[i].mVolume < sound->mTracks[i].mVolumeTarget) {
 					sound->mTracks[i].mVolume = sound->mTracks[i].mVolumeTarget;
 				}
-				if (sound->mTracks[i].mTrack != NULL) {
-					fn_8028B274(sound->mTracks[i].mTrack, sound->mTracks[i].mVolume, 0);
-				}
+				sound->mTracks[i].nw4r::snd::SoundHandle::SetVolume(sound->mTracks[i].mVolume, 0);
 			}
 		}
-		if (sound->mTracks[i].mTrack != NULL) {
-			if (sound->mTracks[i].mPan < sound->mTracks[i].mPanTarget) {
-				sound->mTracks[i].mPan += sound->mTracks[i].mPanStep * step;
-				if (sound->mTracks[i].mPan > sound->mTracks[i].mPanTarget) {
-					sound->mTracks[i].mPan = sound->mTracks[i].mPanTarget;
+		if (sound->mTracks[i].IsAttachedSound()) {
+			if (sound->mTracks[i].mPitch < sound->mTracks[i].mPitchTarget) {
+				sound->mTracks[i].mPitch += sound->mTracks[i].mPitchStep * step;
+				if (sound->mTracks[i].mPitch > sound->mTracks[i].mPitchTarget) {
+					sound->mTracks[i].mPitch = sound->mTracks[i].mPitchTarget;
 				}
-				if (sound->mTracks[i].mTrack != NULL) {
-					fn_8028B318(sound->mTracks[i].mTrack, sound->mTracks[i].mPan);
+				sound->mTracks[i].nw4r::snd::SoundHandle::SetPitch(sound->mTracks[i].mPitch);
+			} else if (sound->mTracks[i].mPitch > sound->mTracks[i].mPitchTarget) {
+				sound->mTracks[i].mPitch += sound->mTracks[i].mPitchStep * step;
+				if (sound->mTracks[i].mPitch < sound->mTracks[i].mPitchTarget) {
+					sound->mTracks[i].mPitch = sound->mTracks[i].mPitchTarget;
 				}
-			} else if (sound->mTracks[i].mPan > sound->mTracks[i].mPanTarget) {
-				sound->mTracks[i].mPan += sound->mTracks[i].mPanStep * step;
-				if (sound->mTracks[i].mPan < sound->mTracks[i].mPanTarget) {
-					sound->mTracks[i].mPan = sound->mTracks[i].mPanTarget;
-				}
-				if (sound->mTracks[i].mTrack != NULL) {
-					fn_8028B318(sound->mTracks[i].mTrack, sound->mTracks[i].mPan);
-				}
+				sound->mTracks[i].nw4r::snd::SoundHandle::SetPitch(sound->mTracks[i].mPitch);
 			}
 		}
 	}
