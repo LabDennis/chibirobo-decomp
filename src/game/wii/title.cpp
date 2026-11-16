@@ -447,14 +447,70 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		OSTime stamps[3];
 		for (s32 i = 0; i < 3; ++i) {
 			WiiSaveScanEntry* entry = &gGame.mSaveManager.mScanEntries[i];
-			stamps[i]               = 0;
 			if (entry->mStatus & 1) {
-				stamps[i] = (entry->mStatus & 2) ? 0 : ((WiiSaveSlotHeader*)entry->mData)->mTimestamp;
+				stamps[i] = ((WiiSaveSlotHeader*)entry->mData)->mTimestamp;
+				if (entry->mStatus & 2) {
+					stamps[i] = 0;
+				}
+			} else {
+				stamps[i] = 0;
 			}
 		}
-		title->mFile = IndexOfLargestOfThree(stamps[0], stamps[1], stamps[2]);
-		// NONMATCHING: retail then walks the newest slot's saved mMenuControls back into
-		// mPointerOn/mStickOn and primes the file rows; that tail is not fully read yet
+		// the newest save's controls become the menu's, once per boot
+		WiiSaveSlotHeader* newest
+		    = (WiiSaveSlotHeader*)gGame.mSaveManager.mScanEntries[IndexOfLargestOfThree(stamps[0], stamps[1], stamps[2])].mData;
+		if (gGame.GetStatusFlags(0x4000)) {
+			BOOL pointer = newest->mMenuControls != 0 ? newest->mMenuControls & MenuControlPointer : TRUE;
+			if (pointer) {
+				title->mPointerOn = 1;
+				gGame.mMenuControls |= MenuControlPointer;
+			} else {
+				title->mPointerOn = 0;
+				gGame.mMenuControls &= ~MenuControlPointer;
+			}
+			BOOL stick = newest->mMenuControls != 0 ? newest->mMenuControls & MenuControlStick : FALSE;
+			if (stick) {
+				title->mStickOn = 1;
+				gGame.mMenuControls |= MenuControlStick;
+			} else {
+				title->mStickOn = 0;
+				gGame.mMenuControls &= ~MenuControlStick;
+			}
+			gGame.ClearStatusFlags(0x4000);
+		}
+		if (!gGame.IsSystemMessage3Shown()) {
+			PlayWiiSoundEffect(&gGame.mSound, 0xFF0003, 1.0f, 0.0f);
+		}
+		title->mState   = 10;
+		title->mTimeout = -1;
+		title->mTpl.CloseHandle();
+		title->mTpl.mTex.Init(&title->mTpl.mPalette->descriptorArray[0], 0);
+		title->mTex[0] = title->mTpl.mTex;
+		title->mTpl.mTex.Init(&title->mTpl.mPalette->descriptorArray[1], 0);
+		title->mTex[1] = title->mTpl.mTex;
+		title->mTpl.mTex.Init(&title->mTpl.mPalette->descriptorArray[2], 0);
+		title->mTex[2]     = title->mTpl.mTex;
+		title->mMenuAlpha  = 0.0f;
+		title->mTitleAlpha = 0.0f;
+		StartScreenFade(&gGame.mFade, 0, 0, 0, 255, gTitlePalette[gTitlePaletteIndex].background.r,
+		                gTitlePalette[gTitlePaletteIndex].background.g, gTitlePalette[gTitlePaletteIndex].background.b, 0, 0.5f);
+		for (s32 i = 0; i < 3; ++i) {
+			Vec pos                = { 0.0f, 0.0f, 100.0f };
+			pos.x                  = gPointerScreenWidth / 2;
+			pos.y                  = gPointerScreenHeight / 2 + 30;
+			title->mDemo[i].mState = 1;
+			title->mDemo[i].mLoop  = TRUE;
+			title->mDemo[i].SetPos(pos);
+			title->mDemo[i].SetAnim(0, TRUE, 0.0f, 1.0f, 0.0f, 15.0f);
+		}
+		// the cursors are dimmed to a third
+		CColor dim;
+		dim.Set(255, 255, 255, 255);
+		dim.Set((s32)(dim.r * 0.3f), (s32)(dim.g * 0.3f), (s32)(dim.b * 0.3f), (s32)(dim.a * 0.3f));
+		title->mCursor[1].SetAnimRate(0.0f);
+		title->mCursor[1].SetColor(0, dim.r, dim.g, dim.b, 0.0f);
+		title->mCursor[0].SetAnimRate(0.0f);
+		title->mCursor[0].SetColor(0, dim.r, dim.g, dim.b, 0.0f);
 		break;
 	}
 	case 10: {
