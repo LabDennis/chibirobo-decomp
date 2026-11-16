@@ -180,7 +180,7 @@ game/THPSimple.cpp:
 	.sdata2 start:0x805A7B80 end:0x805A7B90
 
 game/cmovie.cpp:
-	.text start:0x802C2278 end:0x802C2564
+	.text start:0x802C2278 end:0x802C269C
 
 game/cprimitive.cpp:
 	.text start:0x802AF8E0 end:0x802AFDA8
@@ -269,6 +269,18 @@ game/wii/cfile.cpp:
 	.sdata start:0x805A1A40 end:0x805A1A50
 	.sbss start:0x805A28A0 end:0x805A28A8
 	.sdata2 start:0x805A7A48 end:0x805A7A50
+
+game/wii/ctpl.cpp:
+	extab start:0x800109A0 end:0x80010AA0
+	extabindex start:0x800172B8 end:0x80017420
+	.text start:0x802B4DAC end:0x802B6094
+	.ctors start:0x802C465C end:0x802C4660
+	.rodata start:0x802E55C8 end:0x802E56C0
+	.data start:0x80355E10 end:0x80355EA0
+	.sdata start:0x805A1A50 end:0x805A1A58
+	.bss start:0x8059FF70 end:0x805A02B8
+	.sbss start:0x805A28A8 end:0x805A28B0
+	.sdata2 start:0x805A7A50 end:0x805A7A78
 
 game/wii/cresfile.cpp:
 	extab start:0x80010AA0 end:0x80010AD8
