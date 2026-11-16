@@ -40,162 +40,6 @@ struct XObjDrawList {
 	s32 mCount;          // _04
 };
 
-// Verified Wii fields accessed by the controller, stage, start-up and save code. The Wii CBase is larger
-// than the GameCube one, so its vtable sits at 0x41E4, right behind its data.
-class CBase {
-public:
-	u32 mTvFormat;            // _0000, 0 NTSC, 1 PAL, 2 M-PAL, 3 EURGB60
-	u8 mProgressive;          // _0004
-	CGs mGs;                  // _0008
-	CPadEx mPad;              // _2298
-	XSound mSound;            // _22A4
-	u32 mLastRetrace;         // _33E4
-	u32 mRetraceStep;         // _33E8
-	CStatus64 mStatus;        // _33F0
-	CTpl mIconTpl;            // _3400, the icons shown in the screen's corner; the first says the HOME Menu is not available
-	u8 mCameras[2][0x1F8];    // _35F8, CCamera[2] by ~CBase, bytes while CCamera is defined below: the perspective and the screen camera
-	CLight mLights[16];       // _39E8, the default set, the screen set starts at [8]
-	CFog mFog;                // _40A8
-	CStopwatch mStopwatch[2]; // _40C8, the whole frame, and the pad, BeforeUpdate and Draw
-	void* mMem1Base;          // _4148, 0x80000000
-	void* mMem1Start;         // _414C, the MEM1 arena's start before the heaps are made
-	void* mMem1ArenaLo;       // _4150
-	void* mMem1ArenaHi;       // _4154
-	void* mMem2ArenaLo;       // _4158
-	void* mMem2ArenaHi;       // _415C
-	u8 mLanguage;             // _4160
-	u8 mAspectRatio;          // _4161, SCGetAspectRatio: 0 is 4:3, 1 is 16:9
-	s32 mDvdStatus;           // _4164
-	s32 mPrevDvdStatus;       // _4168
-	BOOL mDiskOk;             // _416C
-	bool mDvdError;           // _4170, the drive stopped reading; cleared when it reads again
-	DVDCommandBlock mDiskCheckBlock; // _4174, DVDCheckDiskAsync runs on it once, its userData is &mDvdStatus
-	bool mDiskChecking;              // _41A4
-	u8 _41A5[0x41A8 - 0x41A5];
-	bool mResetRequested; // _41A8
-	s32 mResetType;       // _41AC, 3 restarts the game, 4 returns to the Wii Menu
-	u32 _41B0;            // _41B0, BeforeUpdate sets the low three bits once the loading screen may show
-	u32 mLastDeviceType;  // _41B4, pad 0's last mDeviceType the corner message saw
-	s32 mLastProbe;       // _41B8, and its last mProbeResult, -1 before the first frame
-	// _41BC, the interface text drawn over the frame, NULL when there is none, and its alpha at _41C8
-	const char* mSystemMessage;
-	u8 _41C0;
-	u8 _41C1;
-	u8 _41C2;
-	u8 _41C3;
-	bool mBatteryLow; // _41C4, the remote's battery is down to its last bar
-	u8 _41C5[0x41C8 - 0x41C5];
-	f32 mSystemMessageAlpha;
-	f32 mBatteryAlpha;        // _41CC, the low-battery icon fades in and out with mBatteryLow
-	f32 mBatteryBlink;        // _41D0, counts down from 1 while the icon is fully shown
-	f32 mSystemMessageBlink;  // _41D4, the same for the message
-	f32 mSystemMessageTarget; // _41D8, nonzero while the message should be up
-	f32 mNoRemoteFrames;      // _41DC, frames pad 0 has reported no remote, up to 10
-	CTexObj* _41E0;           // _41E0, BeforeUpdate points it at CGame's copy of misc.tpl's texture 261
-	// _41E4 vtable
-
-	virtual ~CBase() { }                            // _08
-	virtual void Initialize(int argc, char** argv); // _0C
-	virtual void Start();                           // _10, 0x80017D4C
-	virtual void ResetNewGameState();               // _14, CBase's is empty
-	virtual void vf18();
-	virtual bool BeforeUpdate();     // _1C
-	virtual void Update(u32 frames); // _20
-	// _24, _28 the scene through the main camera, _2C the screen-space layer, _30 retraces per frame
-	virtual void Draw();
-	virtual void DrawScene();
-	virtual void DrawHud();
-	virtual s32 FrameInterval();
-	virtual void SetStatusFlags(u64 mask);   // _34, 0x8001D5B4
-	virtual void ClearStatusFlags(u64 mask); // _38, 0x8001C78C
-	virtual void ToggleStatusFlags(u64 mask);
-	virtual u64 GetStatusFlags(u64 mask) const; // _40, the game's status flags under mask
-	virtual CCamera* GetPerspectiveCamera();
-	virtual CCamera* GetScreenCamera(); // _48, the orthographic camera the screen-space layer draws under
-	virtual CCamera* GetCamera();       // _4C, the scene camera - CGame's is mMotionControlCamera
-	virtual BOOL BeginCamera(CCamera* camera);
-	virtual void vf54(); // _54, ends the current render pass
-	virtual BOOL BeginSceneCamera();
-	virtual BOOL vf5C(); // _5C, begins a render pass; the draws between it and vf54 run only when it holds
-	// _60 mLights[0], _64 mLights[8], _68 GetDefaultLight unless overridden, _6C, _70 empty,
-	// _74 SetLight(GetLight(), the camera's view, TRUE), _78 the screen light under the screen camera
-	virtual CLight* GetDefaultLight();
-	virtual CLight* GetScreenLight();
-	virtual CLight* GetLight();
-	virtual void SetLight(CLight* light, MtxP view, BOOL flag);
-	virtual void vf70();
-	virtual void SetCameraLight();
-	virtual void SetScreenLight();
-	virtual void vf7C();
-	virtual void DrawDiscError(); // _80, the drive's error message over the frame while the disc cannot be read
-	virtual void Reset(u32 code);
-
-	void Run(int argc, char** argv); // 0x80017BD8, main's whole body
-	void UpdateDvdStatus();          // 0x80019428
-	void UpdateSystemMessage();      // 0x80018364, Update calls it first: the corner message and the battery icon
-
-	// the drive reports trouble and the disc is not back yet
-	bool IsDiscError() const { return (mDvdStatus != 0 || mPrevDvdStatus != 0) && !mDiskOk; }
-
-	// asks for a reset unless one is already on its way
-	void RequestReset(s32 type)
-	{
-		if (!mResetRequested) {
-			mResetRequested = true;
-			mResetType      = type;
-		}
-	}
-};
-
-// the time-of-day state, same fields as the GameCube EvtTimeState
-struct WiiTimeState {
-	s32 mMode;
-	f32 mTime;
-	f32 mDuration;
-	s32 mRunning;
-};
-STATIC_ASSERT(sizeof(WiiTimeState) == 0x10);
-
-// one letter of a name that pops in, the GameCube StageNameChar with two more words
-struct StageNameChar {
-	const char* mText; // _00
-	f32 mScale;        // _04
-	f32 mWait;         // _08
-	f32 mBob;          // _0C
-	f32 mTilt;         // _10
-	s32 _14;           // _14, StartStageNameBubbles clears both
-	f32 _18;           // _18
-};
-STATIC_ASSERT(sizeof(StageNameChar) == 0x1C);
-
-// the stage name drawn a letter at a time
-struct StageName {
-	BOOL mActive;             // _00
-	s32 mCount;               // _04
-	u32 mColor;               // _08
-	StageNameChar mChars[20]; // _0C
-};
-STATIC_ASSERT(sizeof(StageName) == 0x23C);
-
-class CInterfaceCameraAction;
-
-// the camera action table indices, same enum the GameCube camera uses
-enum {
-	CAMACTION_DEFAULT, // 0
-	CAMACTION_AREA,    // 1
-	CAMACTION_CHASE,   // 2
-	CAMACTION_EVT,     // 3
-	CAMACTION_SCROLL2, // 4
-	CAMACTION_EYE,     // 5
-	CAMACTION_ANIM,    // 6
-	CAMACTION_MAP,     // 7
-	CAMACTION_LADR,    // 8
-	CAMACTION_RESET,   // 9
-	CAMACTION_10,      // 10, always null
-	CAMACTION_SCROLL,  // 11
-	CAMACTION_NUM,
-};
-
 // where a camera looks from and at. The class has no RTTI of its own, so its name is made up
 class CCameraView {
 public:
@@ -347,6 +191,162 @@ STATIC_ASSERT(sizeof(CCamera) == 0x1F8);
 #define offsetof(type, member) ((u32) & (((type*)0)->member))
 #endif
 STATIC_ASSERT(offsetof(CCamera, mProjectionDirty) == 0x28);
+
+// Verified Wii fields accessed by the controller, stage, start-up and save code. The Wii CBase is larger
+// than the GameCube one, so its vtable sits at 0x41E4, right behind its data.
+class CBase {
+public:
+	u32 mTvFormat;                   // _0000, 0 NTSC, 1 PAL, 2 M-PAL, 3 EURGB60
+	u8 mProgressive;                 // _0004
+	CGs mGs;                         // _0008
+	CPadEx mPad;                     // _2298
+	XSound mSound;                   // _22A4
+	u32 mLastRetrace;                // _33E4
+	u32 mRetraceStep;                // _33E8
+	CStatus64 mStatus;               // _33F0
+	CTpl mIconTpl;                   // _3400, the icons shown in the screen's corner; the first says the HOME Menu is not available
+	CCamera mCameras[2];             // _35F8, the perspective and the screen camera
+	CLight mLights[16];              // _39E8, the default set, the screen set starts at [8]
+	CFog mFog;                       // _40A8
+	CStopwatch mStopwatch[2];        // _40C8, the whole frame, and the pad, BeforeUpdate and Draw
+	void* mMem1Base;                 // _4148, 0x80000000
+	void* mMem1Start;                // _414C, the MEM1 arena's start before the heaps are made
+	void* mMem1ArenaLo;              // _4150
+	void* mMem1ArenaHi;              // _4154
+	void* mMem2ArenaLo;              // _4158
+	void* mMem2ArenaHi;              // _415C
+	u8 mLanguage;                    // _4160
+	u8 mAspectRatio;                 // _4161, SCGetAspectRatio: 0 is 4:3, 1 is 16:9
+	s32 mDvdStatus;                  // _4164
+	s32 mPrevDvdStatus;              // _4168
+	BOOL mDiskOk;                    // _416C
+	bool mDvdError;                  // _4170, the drive stopped reading; cleared when it reads again
+	DVDCommandBlock mDiskCheckBlock; // _4174, DVDCheckDiskAsync runs on it once, its userData is &mDvdStatus
+	bool mDiskChecking;              // _41A4
+	u8 _41A5[0x41A8 - 0x41A5];
+	bool mResetRequested; // _41A8
+	s32 mResetType;       // _41AC, 3 restarts the game, 4 returns to the Wii Menu
+	u32 _41B0;            // _41B0, BeforeUpdate sets the low three bits once the loading screen may show
+	u32 mLastDeviceType;  // _41B4, pad 0's last mDeviceType the corner message saw
+	s32 mLastProbe;       // _41B8, and its last mProbeResult, -1 before the first frame
+	// _41BC, the interface text drawn over the frame, NULL when there is none, and its alpha at _41C8
+	const char* mSystemMessage;
+	u8 _41C0;
+	u8 _41C1;
+	u8 _41C2;
+	u8 _41C3;
+	bool mBatteryLow; // _41C4, the remote's battery is down to its last bar
+	u8 _41C5[0x41C8 - 0x41C5];
+	f32 mSystemMessageAlpha;
+	f32 mBatteryAlpha;        // _41CC, the low-battery icon fades in and out with mBatteryLow
+	f32 mBatteryBlink;        // _41D0, counts down from 1 while the icon is fully shown
+	f32 mSystemMessageBlink;  // _41D4, the same for the message
+	f32 mSystemMessageTarget; // _41D8, nonzero while the message should be up
+	f32 mNoRemoteFrames;      // _41DC, frames pad 0 has reported no remote, up to 10
+	CTexObj* _41E0;           // _41E0, BeforeUpdate points it at CGame's copy of misc.tpl's texture 261
+	// _41E4 vtable
+
+	virtual ~CBase() { }                            // _08
+	virtual void Initialize(int argc, char** argv); // _0C
+	virtual void Start();                           // _10, 0x80017D4C
+	virtual void ResetNewGameState();               // _14, CBase's is empty
+	virtual void vf18();
+	virtual bool BeforeUpdate();     // _1C
+	virtual void Update(u32 frames); // _20
+	// _24, _28 the scene through the main camera, _2C the screen-space layer, _30 retraces per frame
+	virtual void Draw();
+	virtual void DrawScene();
+	virtual void DrawHud();
+	virtual s32 FrameInterval();
+	virtual void SetStatusFlags(u64 mask);   // _34, 0x8001D5B4
+	virtual void ClearStatusFlags(u64 mask); // _38, 0x8001C78C
+	virtual void ToggleStatusFlags(u64 mask);
+	virtual u64 GetStatusFlags(u64 mask) const; // _40, the game's status flags under mask
+	virtual CCamera* GetPerspectiveCamera();
+	virtual CCamera* GetScreenCamera(); // _48, the orthographic camera the screen-space layer draws under
+	virtual CCamera* GetCamera();       // _4C, the scene camera - CGame's is mMotionControlCamera
+	virtual BOOL BeginCamera(CCamera* camera);
+	virtual void vf54(); // _54, ends the current render pass
+	virtual BOOL BeginSceneCamera();
+	virtual BOOL vf5C(); // _5C, begins a render pass; the draws between it and vf54 run only when it holds
+	// _60 mLights[0], _64 mLights[8], _68 GetDefaultLight unless overridden, _6C, _70 empty,
+	// _74 SetLight(GetLight(), the camera's view, TRUE), _78 the screen light under the screen camera
+	virtual CLight* GetDefaultLight();
+	virtual CLight* GetScreenLight();
+	virtual CLight* GetLight();
+	virtual void SetLight(CLight* light, MtxP view, BOOL flag);
+	virtual void vf70();
+	virtual void SetCameraLight();
+	virtual void SetScreenLight();
+	virtual void vf7C();
+	virtual void DrawDiscError(); // _80, the drive's error message over the frame while the disc cannot be read
+	virtual void Reset(u32 code);
+
+	void Run(int argc, char** argv); // 0x80017BD8, main's whole body
+	void UpdateDvdStatus();          // 0x80019428
+	void UpdateSystemMessage();      // 0x80018364, Update calls it first: the corner message and the battery icon
+
+	// the drive reports trouble and the disc is not back yet
+	bool IsDiscError() const { return (mDvdStatus != 0 || mPrevDvdStatus != 0) && !mDiskOk; }
+
+	// asks for a reset unless one is already on its way
+	void RequestReset(s32 type)
+	{
+		if (!mResetRequested) {
+			mResetRequested = true;
+			mResetType      = type;
+		}
+	}
+};
+
+// the time-of-day state, same fields as the GameCube EvtTimeState
+struct WiiTimeState {
+	s32 mMode;
+	f32 mTime;
+	f32 mDuration;
+	s32 mRunning;
+};
+STATIC_ASSERT(sizeof(WiiTimeState) == 0x10);
+
+// one letter of a name that pops in, the GameCube StageNameChar with two more words
+struct StageNameChar {
+	const char* mText; // _00
+	f32 mScale;        // _04
+	f32 mWait;         // _08
+	f32 mBob;          // _0C
+	f32 mTilt;         // _10
+	s32 _14;           // _14, StartStageNameBubbles clears both
+	f32 _18;           // _18
+};
+STATIC_ASSERT(sizeof(StageNameChar) == 0x1C);
+
+// the stage name drawn a letter at a time
+struct StageName {
+	BOOL mActive;             // _00
+	s32 mCount;               // _04
+	u32 mColor;               // _08
+	StageNameChar mChars[20]; // _0C
+};
+STATIC_ASSERT(sizeof(StageName) == 0x23C);
+
+class CInterfaceCameraAction;
+
+// the camera action table indices, same enum the GameCube camera uses
+enum {
+	CAMACTION_DEFAULT, // 0
+	CAMACTION_AREA,    // 1
+	CAMACTION_CHASE,   // 2
+	CAMACTION_EVT,     // 3
+	CAMACTION_SCROLL2, // 4
+	CAMACTION_EYE,     // 5
+	CAMACTION_ANIM,    // 6
+	CAMACTION_MAP,     // 7
+	CAMACTION_LADR,    // 8
+	CAMACTION_RESET,   // 9
+	CAMACTION_10,      // 10, always null
+	CAMACTION_SCROLL,  // 11
+	CAMACTION_NUM,
+};
 
 // what CreateMemento saves of the camera, the same class the GameCube version keeps
 class CCameraMemento {

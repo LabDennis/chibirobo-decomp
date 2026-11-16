@@ -445,8 +445,8 @@ void CBase::Start()
 		tpl.Bind(gCornerIconTplData);
 		mIconTpl = tpl;
 	}
-	InitGamePerspectiveCamera((CCamera*)mCameras[0], &gGame.mGs.mScreen);
-	InitGameOrthoCamera((CCamera*)mCameras[1], &gGame.mGs.mScreen);
+	InitGamePerspectiveCamera(&mCameras[0], &gGame.mGs.mScreen);
+	InitGameOrthoCamera(&mCameras[1], &gGame.mGs.mScreen);
 	InitFourLightSet(&mLights[0]);
 	InitTwoLightSet(&mLights[8]);
 	InitGameFog(&mFog);

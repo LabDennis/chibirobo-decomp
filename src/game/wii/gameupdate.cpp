@@ -790,7 +790,7 @@ CCamera* CBase::GetCamera()
  */
 CCamera* CBase::GetPerspectiveCamera()
 {
-	return (CCamera*)mCameras[0];
+	return &mCameras[0];
 }
 
 /**

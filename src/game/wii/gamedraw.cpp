@@ -1541,7 +1541,7 @@ void XObj::DrawObject()
  */
 CCamera* CBase::GetScreenCamera()
 {
-	return (CCamera*)mCameras[1];
+	return &mCameras[1];
 }
 
 /**
