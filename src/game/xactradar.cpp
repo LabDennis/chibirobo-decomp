@@ -55,6 +55,8 @@ static inline f32 TargetPitch(const Vec& from, const Vec& to)
 	return dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
 }
 
+// NONMATCHING: retail keeps the raw sin of the turn across the sin of the step and adds the wobble after it, we add it
+// at once; ShadeRadarBeam's loop counters get their own zero in retail
 extern "C" void DrawRadarTargetBeam(XActRadar* act)
 {
 	if (!(act->mFade > 0))
@@ -553,8 +555,7 @@ static inline void StartPopperTone(int sound)
  * @note Size: 0x150C
  */
 // NONMATCHING: the muzzle stands at both sites as retail's two copies of its data ask. left: at the charge site retail's two
-// results are expression temporaries behind the offset copy and the path (a reference binds them earlier), and the shot's
-// speed and range sit in f30/f29 above yaw, pitch and power
+// results are expression temporaries behind the offset copy and the path (a reference binds them earlier)
 void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 frames, f32, f32)
 {
 	BOOL rangeUpgrade, canCharge;

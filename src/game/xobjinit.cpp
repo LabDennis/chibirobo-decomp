@@ -36,6 +36,8 @@ static inline bool FitsInAram(CObjArchive* archive)
 	return gARAMCacheInfo.mBaseAddress + ((size + 31) & ~31u) < capacity;
 }
 
+// NONMATCHING: retail reads the placement defaults (initial) at 0xD4 into the file's shared .bss block
+// (lbl_80378080) through one base register; this unit holds only part of that file
 BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 {
 	BOOL ready = FALSE;

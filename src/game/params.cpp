@@ -10,6 +10,8 @@ void SpawnPlayerPointParticles(XObj* player, s32 type, s32 value);
  * @note Address: 0x800DCD30
  * @note Size: 0x140
  */
+// NONMATCHING: retail steps the item pointer in every unrolled copy (lhau), MWCC folds our steps into the offsets;
+// index, pointer and per-iteration pointer forms all give the folded code
 extern "C" s32 FindOwnedInventoryItemIndex(InventoryItem* entries, s16 id)
 {
 	for (u32 i = 0; i < 256; ++i) {

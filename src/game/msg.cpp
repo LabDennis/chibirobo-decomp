@@ -3586,6 +3586,8 @@ struct MsgWindowSlice {
  * @note Address: 0x80082970
  * @note Size: 0x2308
  */
+// NONMATCHING: our frame has one int to float slot more (0x10); japan's retail calls the CJObj constructor out of
+// line, its Draw has run out of inline budget there and ours has not
 extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 {
 	CMsgFont* font = (CMsgFont*)p;
