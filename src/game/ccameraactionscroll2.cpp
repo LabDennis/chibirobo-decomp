@@ -723,19 +723,19 @@ void CCameraActionScroll2::Draw()
 	f32 fade       = 255.0f;
 	// one caption line: retail keeps the line counter in a register and converts it for the y
 	for (s32 line = 0; line < 1; line++) {
-		u32 alpha = (u32)fade;
-		u32 white = alpha | 0xFFFFFF00;
-		f32 frame = CAPTION_ICON_FRAME * msg.mFrame;
-		captionX -= MeasureGameTextWidth(&gGame.mGs, msg.mText, 1, 20.0f);
+		const char* text = msg.mText;
+		u32 alpha        = (u32)fade;
+		u32 white        = alpha | 0xFFFFFF00;
+		f32 frame        = CAPTION_ICON_FRAME * msg.mFrame;
+		captionX -= MeasureGameTextWidth(&gGame.mGs, text, 1, 20.0f);
 		f32 captionY = 24.0f * line + 62.0f;
 		for (s32 i = 0; i < 4; i++) {
-			DrawGsProportionalTextFormat(&gGame.mGs, alpha, msg.mText, captionX + CAPTION_OUTLINE_X[i], captionY + CAPTION_OUTLINE_Y[i],
-			                             0.0f, 20.0f, 20.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, alpha, text, captionX + CAPTION_OUTLINE_X[i], captionY + CAPTION_OUTLINE_Y[i], 0.0f,
+			                             20.0f, 20.0f);
 		}
-		DrawGsProportionalTextFormat(&gGame.mGs, white, msg.mText, captionX, captionY, 0.0f, 20.0f, 20.0f);
+		DrawGsProportionalTextFormat(&gGame.mGs, white, text, captionX, captionY, 0.0f, 20.0f, 20.0f);
 
-		CTexObj icon;
-		icon = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
+		CTexObj icon = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
 		PSMTXScale(icon.mMtx[1], CAPTION_ICON_FRAME, 1.0f, 1.0f);
 		icon.mMtxDirty = TRUE;
 		PSMTXTrans(icon.mMtx[0], frame, 0.0f, 0.0f);
