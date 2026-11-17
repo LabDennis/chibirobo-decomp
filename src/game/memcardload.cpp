@@ -15,8 +15,8 @@ static inline BOOL ReadFailed(Memcard* card)
  */
 extern "C" BOOL ReadValidatedSaveIntoCardBuffer(Memcard* card)
 {
-	card->mState     = 12;
-	SaveFile* file   = &card->mFile;
+	card->mState   = 12;
+	SaveFile* file = &card->mFile;
 	s32 offset;
 	s32 copy;
 	SaveHeader* save = &file->mData.mHeader;

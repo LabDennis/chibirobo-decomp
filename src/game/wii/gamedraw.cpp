@@ -170,7 +170,8 @@ static inline void DrawSceneQueue(MtxP view)
 static inline CSoundHandle* FindTrack(u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && gGame.mSound.mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+		if (gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()
+		    && gGame.mSound.mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
 			return &gGame.mSound.mArchivePlayer.mTracks.mHandles[i];
 		}
 	}
@@ -181,7 +182,8 @@ static inline CSoundHandle* FindTrack(u32 id)
 static inline bool IsTrackPaused(u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && gGame.mSound.mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+		if (gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()
+		    && gGame.mSound.mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
 			return gGame.mSound.mArchivePlayer.mTracks.mHandles[i].IsPause();
 		}
 	}

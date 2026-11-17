@@ -33,7 +33,7 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		CTexObj bubble = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[138 - StatusTextureOffset], 0);
-		f32 zero = 0.0f;
+		f32 zero       = 0.0f;
 		u32 alpha;
 		f32 rot;
 		f32 tilt;
@@ -60,14 +60,14 @@ extern "C" void DrawStageNameBubbles(CGame* game)
 			CFont font;
 			s32 width;
 			CTexObj letter = *GetFontGlyphTexture(&font, game->mStageName.mChars[i].mText, &width);
-			bob       = 4.0f * (f32)sin(game->mStageName.mChars[i].mBob);
-			tilt      = sin(0.7f * game->mStageName.mChars[i].mTilt);
-			swell     = sin(3.1415927f * scale);
-			pop       = 0.2f * swell + (f32)sin(1.5707964f * scale);
-			x         = spacing * 0.5f + (spacing * i + (320.0f - spacing * game->mStageName.mCount / 2.0f));
-			alpha     = 255.0f * scale;
-			rot       = -(0.017453292f * (10.0f * tilt));
-			y         = 150.0f + bob;
+			bob            = 4.0f * (f32)sin(game->mStageName.mChars[i].mBob);
+			tilt           = sin(0.7f * game->mStageName.mChars[i].mTilt);
+			swell          = sin(3.1415927f * scale);
+			pop            = 0.2f * swell + (f32)sin(1.5707964f * scale);
+			x              = spacing * 0.5f + (spacing * i + (320.0f - spacing * game->mStageName.mCount / 2.0f));
+			alpha          = 255.0f * scale;
+			rot            = -(0.017453292f * (10.0f * tilt));
+			y              = 150.0f + bob;
 			DrawGsTexturedQuad(&gGame.mGs, &bubble, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, alpha | 0xFFFFFF00, x, y,
 			                   0.0f, glyphSize * (2.2f * pop), glyphSize * (2.2f * pop), zero, -zero, rot);
 			size   = glyphSize * (1.5f * pop);

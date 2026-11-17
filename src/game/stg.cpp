@@ -8083,10 +8083,10 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	}
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[icon], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	f32 w       = 0.6f * tex.GetWidth();
-	f32 h       = 0.6f * tex.GetHeight();
-	alpha       = 255.0f * alpha;
-	u32 color   = (u32)alpha | 0xC8C8C800;
+	f32 w     = 0.6f * tex.GetWidth();
+	f32 h     = 0.6f * tex.GetHeight();
+	alpha     = 255.0f * alpha;
+	u32 color = (u32)alpha | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCNumberDigits], 0);
 	w   = 1.2f * tex.GetWidth();

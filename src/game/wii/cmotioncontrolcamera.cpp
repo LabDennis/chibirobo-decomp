@@ -707,8 +707,8 @@ extern "C" WiiCameraPoint fn_8016A844(const WiiCameraCurve* curve, f32 t)
 	f32 basis1   = -2.0f * t3 + 3.0f * t2;
 	f32 tangent1 = t3 - t2;
 	WiiCameraPoint out;
-	out.x        = curve->mP0X * basis0 + curve->mT0X * tangent0 + curve->mP1X * basis1 + curve->mT1X * tangent1;
-	out.y        = curve->mP0Y * basis0 + curve->mT0Y * tangent0 + curve->mP1Y * basis1 + curve->mT1Y * tangent1;
+	out.x = curve->mP0X * basis0 + curve->mT0X * tangent0 + curve->mP1X * basis1 + curve->mT1X * tangent1;
+	out.y = curve->mP0Y * basis0 + curve->mT0Y * tangent0 + curve->mP1Y * basis1 + curve->mT1Y * tangent1;
 	return out;
 }
 

@@ -324,7 +324,10 @@ struct MatoList {
 	Mato mMatos[0x50];  // _2C, the targets, 0x50 slots, first _00 used
 };
 
-inline s32 Mato::GetPoints() const { return mList->mKindPoints[mKind]; }
+inline s32 Mato::GetPoints() const
+{
+	return mList->mKindPoints[mKind];
+}
 
 struct Shot {
 	Shot() { }
