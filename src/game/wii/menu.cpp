@@ -3,19 +3,90 @@
 // static initializer (0x8008502C), behind which only its weak destructors and this-adjusting thunks follow.
 // The pool holds "menu_item.cpp", "menu_status.cpp" and "menu_save.cpp", so those are files this one
 // includes; its own name is not in the binary, menu.cpp is ours.
-// NONMATCHING: most menu state, drawing and layout functions still have no source. CMenu::Close and
-// MenuMain::Close store the caller's r4 as the state (retail 0x80050D9C, 0x80050D18): unlike the GameCube's they
-// seem to take the state as a parameter, which their names in symbols.txt (no parameter) do not show; open.
+// NONMATCHING: most menu state, drawing and layout functions still have no source.
 #include "game/wii/menuutil.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/title.h"
 #include "game/globals.h"
 #include "game/evt.h"
+#include "game/cfont.h"
+#include "stl/math.h"
+#include <stdio.h>
+#include <string.h>
 
 extern "C" void LayoutMainMenuRows(MenuMain* menu);
+extern "C" void RebuildStageSelectList(MenuStageSelect* menu);
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
-extern "C" void DrawMenuWindow(MenuWindow* window);
+extern s32 gRefreshRate;
+
+extern s32 gScreenSafeLeft, gScreenSafeTop;
+extern "C" {
+char* GetStageFileName(s32 stage);
+char* GetStageName(s32 stage);
+char* GetStageDesc(s32 stage);
+char* FormatToStaticBuffer(const char* fmt, ...);
+}
+
+// the Wii's text is Japanese with the language setting at 0
+static inline bool IsJapanese()
+{
+	return gGame.mLanguage == 0;
+}
+
+static MenuMainItem sMainLines[] = {
+	{ "MAP SELECT", 5 }, { "\x01", -1 }, { "SAVE & LOAD", 6 }, { "SYSTEM MENU", 1 }, { NULL, 0 },
+};
+
+// the stages the stage select offers, in its order
+static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
+
+// NONMATCHING: register allocation and the order the corner temporaries are built. Unlike the GameCube's it
+// draws no texture, and it skips a window without size
+extern "C" void DrawMenuWindow(MenuWindow* window)
+{
+	if (window->mDrawAlpha > 0.0f && window->mWidth > 0.0f && window->mHeight > 0.0f) {
+		f32 width       = window->mWidth;
+		f32 height      = window->mHeight;
+		f32 x           = window->mX - width / 2.0f;
+		f32 y           = window->mY - height / 2.0f;
+		f32 dx          = 2.0f * (f32)sin(4.712389f * (1.0f - window->mDrawAlpha));
+		f32 dy          = 2.0f * (f32)sin(4.712389f * (1.0f - window->mDrawAlpha));
+		f32 z           = -10.0f;
+		Vec outline[18] = { (Vec) { x - dx, 8.0f + (y - dy), z },
+			                (Vec) { 8.0f + (x - dx), y - dy, z },
+			                (Vec) { dx + (x + width) - 8.0f, y - dy, z },
+			                (Vec) { dx + (x + width), 8.0f + (y - dy), z },
+			                (Vec) { dx + (x + width), dy + (y + height) - 8.0f, z },
+			                (Vec) { dx + (x + width) - 8.0f, dy + (y + height), z },
+			                (Vec) { 8.0f + (x - dx), dy + (y + height), z },
+			                (Vec) { x - dx, dy + (y + height) - 8.0f, z },
+			                (Vec) { x - dx, 8.0f + (y - dy), z },
+			                (Vec) { (6.0f + x) - dx, 8.0f + ((6.0f + y) - dy), z },
+			                (Vec) { 8.0f + ((6.0f + x) - dx), (6.0f + y) - dy, z },
+			                (Vec) { dx + (width + (6.0f + x)) - 8.0f, (6.0f + y) - dy, z },
+			                (Vec) { dx + (width + (6.0f + x)), 8.0f + ((6.0f + y) - dy), z },
+			                (Vec) { dx + (width + (6.0f + x)), dy + (height + (6.0f + y)) - 8.0f, z },
+			                (Vec) { dx + (width + (6.0f + x)) - 8.0f, dy + (height + (6.0f + y)), z },
+			                (Vec) { 8.0f + ((6.0f + x) - dx), dy + (height + (6.0f + y)), z },
+			                (Vec) { (6.0f + x) - dx, dy + (height + (6.0f + y)) - 8.0f, z },
+			                (Vec) { (6.0f + x) - dx, 8.0f + ((6.0f + y) - dy), z } };
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		u32 color = (u32)(255.0f * window->mDrawAlpha) | 0xD2D2D200;
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, outline, color, 9);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GEQUAL, GX_FALSE);
+		color = (u32)(96.0f * window->mDrawAlpha);
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, &outline[9], color, 9);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+		color = (u32)(255.0f * window->mDrawAlpha) | 0xFAFAFA00;
+		DrawGsLineStrip(&gGame.mGs, outline, color, 4);
+		DrawGsLineStrip(&gGame.mGs, &outline[7], color, 2);
+		color = (u32)(255.0f * window->mDrawAlpha) | 0x96969600;
+		DrawGsLineStrip(&gGame.mGs, &outline[3], color, 5);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+	}
+}
 
 bool MenuUtil::IsConfirmPressed()
 {
@@ -106,6 +177,67 @@ void CMenu::Reset()
 	mSuspendAlpha = 1.0f;
 }
 
+BOOL CMenu::Update(u32 frames)
+{
+	if (mSuspended) {
+		if (mSuspendFade != 0 && mSuspendAlpha > 0.0f) {
+			if ((mSuspendAlpha -= (1.0f / (0.2f * gRefreshRate)) * frames) < 0.0f) {
+				mSuspendAlpha = 0.0f;
+			}
+		}
+	} else if (mSuspendAlpha < 1.0f) {
+		if ((mSuspendAlpha += (1.0f / (0.2f * gRefreshRate)) * frames) > 1.0f) {
+			mSuspendAlpha = 1.0f;
+		}
+	}
+	if (!IsOpen()) {
+		return FALSE;
+	}
+	if (mSuspended) {
+		mAlpha             = mFade * mSuspendAlpha;
+		mWindow.mDrawAlpha = mAlpha;
+		return FALSE;
+	}
+	switch (mState) {
+	case 0:
+		break;
+	case 1:
+		mState = 2;
+	case 2:
+		mState = 3;
+		break;
+	case 3:
+		if (mFade < 1.0f) {
+			if ((mFade += (1.0f / (0.2f * gRefreshRate)) * frames) > 1.0f) {
+				mFade = 1.0f;
+			}
+		}
+		if (mFade >= 1.0f) {
+			mState = 4;
+		}
+		break;
+	case 4:
+		break;
+	case 5:
+		if (mFade > 0.0f) {
+			if ((mFade -= (1.0f / (0.2f * gRefreshRate)) * frames) < 0.0f) {
+				mFade = 0.0f;
+			}
+		}
+		if (0.0f == mFade) {
+			mState = 6;
+		}
+		mWindow.mOpen = FALSE;
+		break;
+	case 6:
+		mState = 0;
+		break;
+	}
+	mAlpha             = mFade * mSuspendAlpha;
+	mWindow.mDrawAlpha = mAlpha;
+	return mState;
+}
+
 BOOL CMenu::Draw()
 {
 	if (!IsOpen())
@@ -117,6 +249,54 @@ BOOL CMenu::Draw()
 	return TRUE;
 }
 
+extern "C" void LayoutMainMenuRows(MenuMain* menu)
+{
+	menu->mFontSize = 16.0f;
+	menu->mBaseRows = 0;
+	menu->mRowCount = 0.0f;
+	menu->mMaxWidth = 0.0f;
+	for (int i = 0;; i++) {
+		menu->mText[i] = sMainLines[i].mText;
+		if (menu->mText[i] == NULL) {
+			menu->mBaseRows = i;
+			menu->mRowCount = i;
+			break;
+		}
+		menu->mTextWidth[i] = MeasureGameTextWidth(&gGame.mGs, menu->mText[i], 1, menu->mFontSize);
+		if (menu->mTextWidth[i] > menu->mMaxWidth) {
+			menu->mMaxWidth = menu->mTextWidth[i];
+		}
+	}
+	int items = 0;
+	for (int k = 0; k < 5; k++) {
+		if (menu->mExtraRows[k].mText) {
+			items++;
+		}
+	}
+	int line = menu->mRowCount;
+	if (items > 0) {
+		menu->mText[line]      = "\x01";
+		menu->mTextWidth[line] = 1.0f;
+		line++;
+		for (int j = 0; j < items; j++) {
+			if (menu->mExtraRows[j].mText) {
+				menu->mText[line]      = menu->mExtraRows[j].mText;
+				menu->mTextWidth[line] = MeasureGameTextWidth(&gGame.mGs, menu->mText[line], 1, menu->mFontSize);
+				if (menu->mTextWidth[line] > menu->mMaxWidth) {
+					menu->mMaxWidth = menu->mTextWidth[line];
+				}
+				line++;
+			}
+		}
+		menu->mRowCount = line;
+	}
+	if (menu->mSelection >= menu->mRowCount) {
+		menu->mSelection = menu->mRowCount - 1.0f;
+	}
+	menu->mWindow.SetSize(60.0f + menu->mMaxWidth, menu->mRowCount * (2.0f + menu->mFontSize) + 24.0f);
+	menu->mWindow.SetPos(menu->mWindow.mWidth / 2 + gScreenSafeLeft, menu->mWindow.mHeight / 2 + gScreenSafeTop);
+}
+
 void MenuStageSelect::Init()
 {
 	CMenu::Init();
@@ -125,6 +305,94 @@ void MenuStageSelect::Init()
 void MenuMain::Init()
 {
 	CMenu::Init();
+}
+
+// NONMATCHING: retail compares the stage with its operands the other way round
+void MenuStageSelect::Open()
+{
+	mState = 1;
+	Resume();
+	mWindow.mOpen = TRUE;
+	if (gGame.GetStatusFlags(0x0008000000000000ULL)) {
+		mSelection = -1;
+		for (int i = 0; sStageOrder[i] >= 0; i++) {
+			if (sStageOrder[i] == gGame.mStage) {
+				mSelection = i;
+				break;
+			}
+		}
+		if (mSelection < 0) {
+			mSelection = 0;
+		}
+	} else {
+		mSelection = gGame.mStage;
+	}
+	RebuildStageSelectList(this);
+}
+
+static inline void FinishStageLabel(char* text)
+{
+	for (int i = 0; text[i]; i++) {
+		if (IsJapanese() && (IsSjisLead(text[i]) & 1)) {
+			if (text[++i] == 0) {
+				text[i - 1] = '.';
+				break;
+			}
+		}
+	}
+}
+
+static inline void MeasureStageLabels(MenuStageSelect* menu)
+{
+	menu->mRowCount = menu->mCount;
+	menu->mMaxWidth = 0.0f;
+	menu->mFontSize = 16.0f;
+	for (int i = 0; i < menu->mRowCount; i++) {
+		menu->mLabelWidth[i] = MeasureGameTextWidth(&gGame.mGs, menu->mLabels[i], 0, menu->mFontSize);
+		if (menu->mLabelWidth[i] > menu->mMaxWidth)
+			menu->mMaxWidth = menu->mLabelWidth[i];
+	}
+}
+
+// NONMATCHING: register allocation. The Wii still looks the file name up but no longer copies it into the label
+extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
+{
+	menu->mCount = 0;
+	for (int i = 0; i < 100; i++) {
+		menu->mLabels[i][0]  = 0;
+		menu->mLabelWidth[i] = 0.0f;
+	}
+	// with this status bit only the stages in sStageOrder; without it every room, a rule, then stages 100 and up
+	if (gGame.GetStatusFlags(0x0008000000000000ULL)) {
+		for (int i = 0; sStageOrder[i] >= 0; i++) {
+			GetStageFileName(sStageOrder[i]);
+			const char* format = IsJapanese() ? "(%2d)%-.20s" : "(%2d)%-.30s";
+			sprintf(menu->mLabels[i], format, sStageOrder[i],
+			        FormatToStaticBuffer("%s%s", GetStageName(sStageOrder[i]), GetStageDesc(sStageOrder[i])));
+			FinishStageLabel(menu->mLabels[i]);
+			menu->mCount++;
+		}
+		MeasureStageLabels(menu);
+		menu->mWindow.SetSize(60.0f + menu->mMaxWidth, (2.0f + menu->mFontSize) * menu->mRowCount + 24.0f);
+		menu->mWindow.SetPos(24.0f + (menu->mWindow.mWidth / 2.0f + gScreenSafeLeft),
+		                     24.0f + (menu->mWindow.mHeight / 2.0f + gScreenSafeTop));
+	} else {
+		menu->mCount = gGame.mRoomCount;
+		for (int i = 0; i < gGame.mRoomCount; i++) {
+			GetStageFileName(i);
+			sprintf(menu->mLabels[i], "(%2d)%-.18s", i, FormatToStaticBuffer("%s%s", GetStageName(i), GetStageDesc(i)));
+			FinishStageLabel(menu->mLabels[i]);
+		}
+		strcpy(menu->mLabels[menu->mCount], "\x01");
+		menu->mCount++;
+		for (int i = 100; GetStageFileName(i); i++) {
+			sprintf(menu->mLabels[menu->mCount], "%-8s(%2d)", GetStageFileName(i), i);
+			menu->mCount++;
+		}
+		MeasureStageLabels(menu);
+		menu->mWindow.SetSize(2.0f * (60.0f + menu->mMaxWidth), 20.0f * (2.0f + menu->mFontSize) + 24.0f);
+		menu->mWindow.SetPos(menu->mWindow.mWidth / 2.0f + gScreenSafeLeft, menu->mWindow.mHeight * 0.5f + gScreenSafeTop);
+	}
 }
 
 void MenuMain::Reset()
@@ -158,6 +426,20 @@ void MenuMain::Open()
 	gGame.SetStatusFlags(2);
 }
 
+void MenuMain::Close(s32 state)
+{
+	CMenu::Close(state);
+	PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+	gGame.ClearStatusFlags(2);
+}
+
+void CMenu::Close(s32 state)
+{
+	mState = state;
+	Resume();
+	mWindow.mOpen = FALSE;
+}
+
 void MenuMain::Resume()
 {
 	if (mSuspended) {
@@ -185,6 +467,43 @@ extern "C" void AddMainMenuExtraRow(MenuMain* menu, char* text, s32 id)
 		}
 	}
 	LayoutMainMenuRows(menu);
+}
+
+static inline f32 MenuRectStart(f32 center, f32 size)
+{
+	return center - size / 2;
+}
+
+static inline f32 MenuRectEnd(f32 center, f32 size)
+{
+	return size + MenuRectStart(center, size);
+}
+
+// NONMATCHING: register allocation of the corner coordinates
+extern "C" void DrawMenuRectWithShadow(CMenu* menu, u32 color, f32 x, f32 y, f32 width, f32 height)
+{
+	// The original evaluates both animation curves even though their values are unused.
+	sin(4.712389f * (1.0f - menu->mAlpha));
+	sin(4.712389f * (1.0f - menu->mAlpha));
+	f32 z           = -10.0f;
+	Vec outline[10] = { (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z },
+		                (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), z },
+		                (Vec) { MenuRectEnd(x, width), MenuRectEnd(y, height), z },
+		                (Vec) { MenuRectStart(x, width), MenuRectEnd(y, height), z },
+		                (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z },
+		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectStart(y, height), z },
+		                (Vec) { 6.0f + MenuRectEnd(x, width), 6.0f + MenuRectStart(y, height), z },
+		                (Vec) { 6.0f + MenuRectEnd(x, width), 6.0f + MenuRectEnd(y, height), z },
+		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectEnd(y, height), z },
+		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectStart(y, height), z } };
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, outline, color, 5);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GEQUAL, GX_FALSE);
+	u32 shadow = (u32)(128.0f * menu->mAlpha);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, &outline[5], shadow, 5);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+	gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 }
 
 extern "C" BOOL IsUtilibotStatusIconUnlocked()
