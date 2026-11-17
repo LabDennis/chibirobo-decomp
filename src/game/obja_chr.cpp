@@ -311,8 +311,30 @@ extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
 #if defined(VERSION_JP)
 extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
 
-static inline void DrawRingStrip(Mtx transform, u32 color, Vec* vertices, bool separate)
+extern "C" void DrawMenuRing(Mtx transform, f32 firstRadius, f32 secondRadius, u32 color, BOOL separate)
 {
+	Vec vertices[50];
+	for (s32 i = 0; i < 25; i++) {
+		f32 angle             = (TWO_PI / 24.0f) * i;
+		vertices[2 * i + 1].x = -(secondRadius * (f32)sin(angle));
+		vertices[2 * i + 1].y = secondRadius * (f32)cos(angle);
+		vertices[2 * i + 1].z = 10.0f;
+		vertices[2 * i].x     = -(firstRadius * (f32)sin(angle));
+		vertices[2 * i].y     = firstRadius * (f32)cos(angle);
+		vertices[2 * i].z     = 10.0f;
+	}
+	PSMTXMultVecArray(transform, vertices, vertices, 50);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
+
+	for (s32 i = 0; i < 25; i++) {
+		f32 angle             = (TWO_PI / 24.0f) * i;
+		vertices[2 * i + 1].x = -(firstRadius * (f32)sin(angle));
+		vertices[2 * i + 1].y = firstRadius * (f32)cos(angle);
+		vertices[2 * i + 1].z = 10.0f;
+		vertices[2 * i].x     = -(firstRadius * (f32)sin(angle));
+		vertices[2 * i].y     = firstRadius * (f32)cos(angle);
+		vertices[2 * i].z     = 0.0f;
+	}
 	PSMTXMultVecArray(transform, vertices, vertices, 50);
 	if (separate) {
 		for (s32 i = 0; i < 48; i += 2)
@@ -320,30 +342,23 @@ static inline void DrawRingStrip(Mtx transform, u32 color, Vec* vertices, bool s
 	} else {
 		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
 	}
-}
 
-static inline void BuildRingStrip(Vec* vertices, f32 firstRadius, f32 firstZ, f32 secondRadius, f32 secondZ)
-{
 	for (s32 i = 0; i < 25; i++) {
 		f32 angle             = (TWO_PI / 24.0f) * i;
 		vertices[2 * i + 1].x = -(secondRadius * (f32)sin(angle));
 		vertices[2 * i + 1].y = secondRadius * (f32)cos(angle);
-		vertices[2 * i + 1].z = secondZ;
-		vertices[2 * i].x     = -(firstRadius * (f32)sin(angle));
-		vertices[2 * i].y     = firstRadius * (f32)cos(angle);
-		vertices[2 * i].z     = firstZ;
+		vertices[2 * i + 1].z = 0.0f;
+		vertices[2 * i].x     = -(secondRadius * (f32)sin(angle));
+		vertices[2 * i].y     = secondRadius * (f32)cos(angle);
+		vertices[2 * i].z     = 10.0f;
 	}
-}
-
-extern "C" void DrawMenuRing(Mtx transform, f32 firstRadius, f32 secondRadius, u32 color, BOOL separate)
-{
-	Vec vertices[50];
-	BuildRingStrip(vertices, firstRadius, 10.0f, secondRadius, 10.0f);
-	DrawRingStrip(transform, color, vertices, false);
-	BuildRingStrip(vertices, firstRadius, 0.0f, firstRadius, 10.0f);
-	DrawRingStrip(transform, color, vertices, separate != FALSE);
-	BuildRingStrip(vertices, secondRadius, 10.0f, secondRadius, 0.0f);
-	DrawRingStrip(transform, color, vertices, separate != FALSE);
+	PSMTXMultVecArray(transform, vertices, vertices, 50);
+	if (separate) {
+		for (s32 i = 0; i < 48; i += 2)
+			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, &vertices[i], color, 4);
+	} else {
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
+	}
 }
 
 static inline void DrawOXCross(CGs* gs, u32 color, f32 x, f32 y, f32 rx, f32 ry, f32 rz, f32 width, f32 length, f32 depth)
