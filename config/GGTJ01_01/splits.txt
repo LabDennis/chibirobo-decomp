@@ -716,6 +716,7 @@ game/scrc.cpp:
 game/xobjactor3init.cpp:
 	.text       start:0x80116E80 end:0x80117118
 	.ctors      start:0x801FEF58 end:0x801FEF5C
+	.data       start:0x8022B758 end:0x8022BA48
 
 game/xobjactortoy.cpp:
 	.text       start:0x80117118 end:0x801249EC
