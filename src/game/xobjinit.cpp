@@ -25,15 +25,6 @@ static inline const char* ModelName(const AttrInfo& attr)
 {
 	return HasSource(attr) ? attr.mObjData->mSource->mName : NULL;
 }
-// records where the source's archive sits in ARAM; retail reads both values before the null checks,
-// so they arrive as arguments
-static inline void SetCache(AttrInfo& attr, u32 address, u32 size)
-{
-	if (attr.mObjData && attr.mObjData->mSource) {
-		attr.mObjData->mSource->mCache.address = address;
-		attr.mObjData->mSource->mCache.size    = size;
-	}
-}
 static inline u32 PaddedSize(CObjArchive* archive)
 {
 	return (archive->mFile.mSize + 31) & ~31u;
@@ -69,9 +60,8 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 		}
 		if (!mFloors) {
 			mFloors        = GetObjectCollisionList(info.mPlacement->mObjectId);
-			mFloorMasks[1] = 0;
-			mFloorMasks[0] = 0;
-			BOOL empty     = mFloors ? mFloors->mId == -1 : FALSE;
+			mFloorMasks[1] = mFloorMasks[0] = 0;
+			BOOL empty                      = mFloors ? mFloors->mId == -1 : FALSE;
 			if (empty) // a -1 id means no floor list
 				mFloors = NULL;
 		}
@@ -99,9 +89,11 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			sprintf(path, "%s.dat", name);
 			ready = Load(archive, path, model, flags, address, size);
 			if (ready) {
-				if ((flags & 2) && FitsInAram(archive))
-					SetCache(attr, gARAMCacheInfo.mBaseAddress, archive->mFile.mSize); // remember the ARAM copy
-				if (mm::GetName(archive->mFile.mBuffer)[1] != ' ') {                   // untagged archives get a state tag
+				if ((flags & 2) && FitsInAram(archive) && attr.mObjData && attr.mObjData->mSource) {
+					attr.mObjData->mSource->mCache.address = gARAMCacheInfo.mBaseAddress; // remember the ARAM copy
+					attr.mObjData->mSource->mCache.size    = archive->mFile.mSize;
+				}
+				if (mm::GetName(archive->mFile.mBuffer)[1] != ' ') { // untagged archives get a state tag
 					char label[64];
 					sprintf(label, "  %s", mm::GetName(archive->mFile.mBuffer));
 					if (flags & 2) {
@@ -119,7 +111,14 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 				if ((flags & 2) && FitsInAram(archive)) {
 					const char* cachedName = ModelName(attr);
 					s32 id                 = attr.mPlacement ? attr.mPlacement->mObjectId : -1;
-					gARAMCacheInfo.Add(PaddedSize(archive), id, cachedName);
+					u32 padded             = PaddedSize(archive);
+
+					gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].address  = gARAMCacheInfo.mBaseAddress;
+					gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].size     = padded;
+					gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].objectId = id;
+					gARAMCacheInfo.mEntries[gARAMCacheInfo.mCount].name     = cachedName;
+					++gARAMCacheInfo.mCount;
+					gARAMCacheInfo.mBaseAddress += padded;
 				}
 			}
 		}

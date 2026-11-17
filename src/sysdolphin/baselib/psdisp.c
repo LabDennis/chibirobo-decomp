@@ -143,18 +143,6 @@ typedef struct {
 	Mtx m;
 } psdisp_Mtx;
 
-// unreferenced scale/rotate/translate defaults; retail .rodata starts with them
-typedef struct {
-	Vec scale;
-	Quaternion rotate;
-	Vec translate;
-} psdisp_SRT;
-
-static const psdisp_SRT psdisp_srtDefault[2] = {
-	{ { 1.0F, 1.0F, 1.0F }, { 0.0F, 0.0F, 0.0F, 0.0F }, { 0.0F, 0.0F, 0.0F } },
-	{ { 1.0F, 1.0F, 1.0F }, { 0.0F, 0.0F, 0.0F, 0.0F }, { 0.0F, 0.0F, 0.0F } },
-};
-
 static const psdisp_Mtx psdisp_ident = { { { 1.0F, 0.0F, 0.0F, 0.0F }, { 0.0F, 1.0F, 0.0F, 0.0F }, { 0.0F, 0.0F, 1.0F, 0.0F } } };
 extern HSD_PSTexGroup** psTexGroupArray[64];
 /* size: 0x8 */
@@ -3074,6 +3062,8 @@ void psDispSub(HSD_Particle* pp, u32* cmdList)
  */
 void _psDispParticlesSub(s32 bankMask, s32 kind)
 {
+	// NONMATCHING: retail .rodata starts with a 0x50-byte block of six default Vecs from a header, so the offsets from the
+	// rodata base (psdisp_ident, the blend-mode message, "psdisp.c") are 0x50 higher there
 	s32 i;
 	HSD_Particle* opaHead;
 	HSD_Particle* xluHead;
