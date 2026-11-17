@@ -1044,12 +1044,9 @@ s32 CEvt::Evaluate()
 			break;
 		}
 		case 7:
-			if (gGame.mStatus.mFlags & 0x800000000ULL) {
-				u8 status = 0;
-				if (pad.mPad->mConnected)
-					status = GetPadRumbleStatus(pad.mPad->mPort);
-				result = status == 2;
-			} else
+			if ((gGame.mStatus.mFlags & 0x800000000ULL) && pad.mPad->mConnected)
+				result = GetPadRumbleStatus(pad.mPad->mPort) == 2;
+			else
 				result = 0;
 			break;
 		default:
