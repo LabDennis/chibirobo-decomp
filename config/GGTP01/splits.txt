@@ -492,13 +492,7 @@ game/objb_attach.cpp:
 	.text       start:0x800D7BFC end:0x800DA40C
 
 game/objb_plug.cpp:
-	.text       start:0x800DA40C end:0x800DBA98
-
-game/xobjplugrelease.cpp:
-	.text       start:0x800DBA98 end:0x800DBAE4
-
-game/xobjplugload.cpp:
-	.text       start:0x800DBAE4 end:0x800DC1E0
+	.text       start:0x800DA40C end:0x800DC1E0
 
 game/plugcordcollision.cpp:
 	.text       start:0x800DC1E0 end:0x800DC62C
