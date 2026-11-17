@@ -24,16 +24,6 @@ static inline void AttachPlugCord(XObjPlug* plug)
 	}
 }
 
-static inline void UpdateCordJoint(XObjPlug* plug, CJObj& joint)
-{
-	Mtx matrix;
-	PSMTXCopy(joint.GetMtx(), matrix);
-	plug->mCordJointPos = CVec(matrix[0][3], matrix[1][3], matrix[2][3]);
-	CVec tip(0, 0, 5); // the cord's far end sits 5 along the joint's z
-	PSMTXMultVec(matrix, &tip, &tip);
-	plug->mCordJointTip = tip;
-}
-
 } // extern "C"
 
 static inline void ClearWireAnim(XObjWireEff* object)
@@ -230,22 +220,34 @@ void XObjPlug::UpdateObject(u32 frames)
 	if (mStatus.mFlags & 1) {
 		GetPlayerPlugCordAnchorTransform(this, &mCordAnchor, NULL, NULL);
 		if (mStatus.mFlags & 0x0400000000000000ULL) {
+			Mtx matrix;
 			AttachPlugCord(this);
 			s32 path[] = { 0, 0 };
 			CJObj joint(FindJointByPath(mJObj, path, 2));
-			UpdateCordJoint(this, joint);
+			PSMTXCopy(joint.GetMtx(), matrix);
+			mCordJointPos = CVec(matrix[0][3], matrix[1][3], matrix[2][3]);
+			CVec tip(0, 0, 5); // the cord's far end sits 5 along the joint's z
+			PSMTXMultVec(matrix, &tip, &tip);
+			mCordJointTip = tip;
 		} else if (mConnection != 0) {
+			Mtx matrix;
 			AttachPlugCord(this);
 			s32 path[] = { 0, 0 };
 			CJObj joint(FindJointByPath(mJObj, path, 2));
-			UpdateCordJoint(this, joint);
+			PSMTXCopy(joint.GetMtx(), matrix);
+			mCordJointPos = CVec(matrix[0][3], matrix[1][3], matrix[2][3]);
+			CVec tip(0, 0, 5);
+			PSMTXMultVec(matrix, &tip, &tip);
+			mCordJointTip = tip;
 		} else if (mCordEndsPinned == 1) { // neither carried nor connected: unpin the ends
 			SetPlugCordEndpointSource(&mCord, 1, NULL);
 			SetPlugCordEndpointSource(&mCord, 2, NULL);
 			mCordEndsPinned = 0;
 		}
 		const Vec& tint = mColorStep[1].mValue;
-		mCord.mColor = mCord._60 = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8) | 0xff; // tint rgb at full alpha
+		u32 color    = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8) | 0xff; // tint rgb at full alpha
+		mCord.mColor = color;
+		mCord._60    = color;
 		UpdatePlugCordSimulation(&mCord, frames);
 	} else {
 		ResetObjectState();
@@ -254,7 +256,7 @@ void XObjPlug::UpdateObject(u32 frames)
 	if ((mStatus.mFlags & 1) && !(mStatus.mFlags & 0x0400000000000000ULL) && mConnection == 0) {
 		Vec pos = GetPlugCordPointPosition(&mCord, 18); // the plug follows the cord's free end
 		SetPos(pos, 0);
-		CVec tip, base, rot;
+		CVec tip, base, dir, rot, size; // dir and size are never read, the dol still constructs them
 		tip    = GetPlugCordPointPosition(&mCord, 19);
 		base   = GetPlugCordPointPosition(&mCord, 18);
 		rot.y  = atan2(tip.x - base.x, tip.z - base.z); // the heading of the cord's last span
@@ -265,13 +267,15 @@ void XObjPlug::UpdateObject(u32 frames)
 		SetRot(rot, 0);
 		Mtx matrix;
 		PSMTXCopy(HSD_JObjGetMtxPtr(mJObj), matrix);
-		Vec offset = { 0, -0.2f, 0 }; // sits 0.2 under the joint
+		static Vec hang = { 0, -0.2f, 0 }; // sits 0.2 under the joint
+		Vec offset      = hang;
 		PSMTXMultVec(matrix, &offset, &offset);
 		SetPos(offset, 0);
 		if (mWire.mSparkMode == 0) {
 			if (mWire.mSparkTimer < 0) {
-				CVec pos(mMoveTranslate);
-				CVec scale(0.5f, 0.5f, 0.5f);
+				Vec pos, scale;
+				pos          = mMoveTranslate;
+				scale        = CVec(0.5f, 0.5f, 0.5f);
 				Vec rotation = { 0, 0, 0 };
 				gGame.mParticle.CreateSRT(0x1001a, 1, pos, scale, rotation, FALSE);
 				mWire.mSparkTimer += HSD_Randi(10) + 16; // the next spark in 16 to 25 frames
