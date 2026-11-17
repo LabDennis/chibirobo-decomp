@@ -11,6 +11,7 @@ extern s32 gRefreshRate;
 #define PSVECAdd JMathInlineVEC::PSVECAdd
 #endif
 #include "game/gmath.h"
+#include "game/cvec.h"
 extern "C" {
 #include <dolphin/os.h>
 }
@@ -266,7 +267,7 @@ inline void TurnShortWay(f32& to, f32& from)
 	if (t != f) {
 		f32 diff = t - f;
 #if defined(VERSION_R24J01)
-		diff = fabs(diff); // the Wii build spells the absolute value through the library
+		diff = nw4r::math::FAbs(diff); // the Wii build takes the absolute value through nw4r
 #else
 		if (diff < 0.0f) {
 			diff = -diff;
@@ -285,6 +286,8 @@ inline void TurnShortWay(f32& to, f32& from)
 	}
 }
 
+// NONMATCHING (Wii): the copy of a non-relative angle loads x into f3 and z into f0, retail the
+// other way round (99.4%)
 /**
  * @note Address: 0x80142DE8
  * @note Size: 0x4B4
@@ -301,7 +304,7 @@ void CCameraActionEvt::SetAngle_Interp(s32 mode, Vec angle, u32 axes, u32 type, 
 	}
 	if (relative) { // relative angles add to the current ones
 		dest = mAngle;
-		PSVECAdd(&dest, (Vec*)&angle, &dest);
+		dest += angle;
 	}
 	if (!relative) {
 #if defined(VERSION_R24J01)
