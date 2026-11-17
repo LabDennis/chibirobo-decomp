@@ -4358,6 +4358,320 @@ extern "C" s32 GetPlayerAttachmentCount(XObjChr* chr, s32 type)
 	return GetAttachmentCountById(&chr->mAttachments, type);
 }
 
+static inline CTexObj& RingTexture(OctaMenu* menu, s32 index)
+{
+	s32 id = menu->GetItemIconTextureIndex(index);
+	return gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[id], 0);
+}
+
+static inline void DrawRingBandLines(f32 x0, f32 x1, f32 x2, f32 x3, f32 y0, f32 y1, u32 ink)
+{
+	DrawGsLineSegment(&gGame.mGs, NULL, x1, y0, 0, ink, x2, y1, 0, ink);
+	DrawGsLineSegment(&gGame.mGs, NULL, x0, y0, 0, 0xffffff00, x1, y1, 0, ink);
+	DrawGsLineSegment(&gGame.mGs, NULL, x2, y0, 0, ink, x3, y1, 0, 0xffffff00);
+}
+static inline void DrawRingQuad(CGs& gs, CTexObj& tex, u32 color, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rotZ = 0, f32 rotY = 0)
+{
+	DrawGsTexturedQuad(&gs, &tex, color, color, color, color, x, y, z, w, h, 0, rotY, rotZ);
+}
+
+/**
+ * @note Address: 0x80099224
+ * @note Size: 0x1DB0 (US/PAL), 0x1DC4 (JP)
+ */
+extern "C" void DrawEquipmentRing(OctaMenu* menu)
+{
+	if (!(menu->mFade > 0))
+		return;
+	f32 originX, originY;
+	f32 slotY[8], slotX[8];
+	// in first person the ring sits below the screen center
+	if (gGame.mStatus.mFlags & 0x100) {
+		originX = 320;
+		originY = 276;
+	} else if (menu->mMenuType == 3) {
+		originX = 320;
+		originY = 228;
+	} else {
+		Vec offset = { 0, 8.8f, 0 };
+		menu->mChr->ProjectOffsetToScreen(&offset, &originX, &originY, 0, NULL);
+	}
+	f32 fade = menu->mFade;
+	f32 scale;
+	// menu type 3 puts the items in a row that scrolls sideways, type 0 on a square, the others on a circle
+	if (menu->mMenuType == 3) {
+		for (s32 i = 0; i < 8; ++i) {
+			s32 slot = i - menu->mFirstVisibleItem;
+			if (slot < 0)
+				slot += 7;
+			slotY[i]                          = menu->mRowOffset + gEquipmentRowY[slot];
+			menu->mItems[i].mTargetSlotOffset = menu->mFade * gEquipmentRowX[slot];
+			if (menu->mFade < 1.f) {
+				menu->mItems[i].mSlotOffset = menu->mItems[i].mTargetSlotOffset;
+			} else {
+				if (menu->mItems[i].mSlotOffset < 0 && menu->mItems[i].mTargetSlotOffset == 3)
+					menu->mItems[i].mSlotOffset = 4;
+				else if (menu->mItems[i].mSlotOffset > 0 && menu->mItems[i].mTargetSlotOffset == -3)
+					menu->mItems[i].mSlotOffset = -4;
+				f32 step = menu->mItems[i].mTargetSlotOffset - menu->mItems[i].mSlotOffset;
+				if (step > 1) {
+					step                        = 1;
+					menu->mItems[i].mSlotOffset = menu->mItems[i].mTargetSlotOffset - 1;
+				}
+				if (step < -1) {
+					step                        = -1;
+					menu->mItems[i].mSlotOffset = menu->mItems[i].mTargetSlotOffset + 1;
+				}
+				menu->mItems[i].mSlotOffset += .4f * step;
+			}
+			slotX[i] = menu->mItems[i].mSlotOffset;
+		}
+		scale = 1.1f;
+	} else if (menu->mMenuType == 0) {
+		for (int i = 0; i < 8; ++i) {
+			slotY[i] = gEquipmentRingY[i];
+			slotX[i] = gEquipmentRingX[i];
+		}
+		scale = 1.1f;
+	} else {
+		for (s32 j = -1, i = 0; i < 8; ++j, ++i) {
+			f32 angle = (PI / 4.f) * j;
+			slotY[i]  = -1.f * (f32)cos(angle);
+			slotX[i]  = (f32)sin(angle);
+		}
+		scale = 1.35f;
+	}
+
+	for (s32 i = 0; i < 8; ++i) {
+		CTexObj tex = RingTexture(menu, i);
+		u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
+		gEquipmentIconWidth[i]  = 100.f;
+		gEquipmentIconHeight[i] = 100.f * ((f32)h / w);
+	}
+	s32 count = menu->mMenuType == 3 ? 7 : 8;
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsLineWidth(gGame.mGs.mCurRenderMode, 12, 5);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+	if (menu->mMenuType == 3) {
+		s32 start = menu->mFirstVisibleItem, last = (start + 6) % 7;
+		f32 itemSize = menu->mItems[start].mScale * (f32)sin((PI * .5f) * fade);
+		f32 radius   = 60.f + 20.f * itemSize;
+		f32 y0       = originY + (scale * slotY[start]) * radius;
+		f32 left     = originX + (-3.f * scale) * radius;
+		f32 y1       = originY + (scale * slotY[last]) * radius;
+		f32 right    = originX + (3.f * scale) * radius;
+		f32 half     = .7f * (itemSize * gEquipmentIconHeight[start]);
+
+		f32 labelY    = y0 + 24.f;
+		u32 fill      = (u32)(128.f * fade);
+		f32 highlight = 0;
+		for (s32 i = 0; i < count; ++i) {
+			if (menu->mItems[i].mHighlight > highlight)
+				highlight = menu->mItems[i].mHighlight;
+		}
+		// The vertex buffer also contains the strip below the icons for their labels.
+		u32 labelAlpha      = (u32)(128.f * highlight);
+		u32 clear           = 0;
+		PrimVertex band[24] = { { (Vec) { ((left - half) - 2.f * half), (y0 - half), 0 }, clear },
+			                    { (Vec) { (left - half), (y0 - half), 0 }, fill },
+			                    { (Vec) { (left - half), (y0 + half), 0 }, fill },
+			                    { (Vec) { ((left - half) - 2.f * half), (y0 + half), 0 }, clear },
+			                    { (Vec) { (left - half), (y0 - half), 0 }, fill },
+			                    { (Vec) { (right + half), (y0 - half), 0 }, fill },
+			                    { (Vec) { (right + half), (y0 + half), 0 }, fill },
+			                    { (Vec) { (left - half), (y0 + half), 0 }, fill },
+			                    { (Vec) { (right + half), (y0 - half), 0 }, fill },
+			                    { (Vec) { ((right + half) + 2.f * half), (y0 - half), 0 }, clear },
+			                    { (Vec) { ((right + half) + 2.f * half), (y0 + half), 0 }, clear },
+			                    { (Vec) { (right + half), (y0 + half), 0 }, fill },
+			                    { (Vec) { ((left - half) - 2.f * half), labelY, 0 }, clear },
+			                    { (Vec) { (left - half), labelY, 0 }, labelAlpha },
+			                    { (Vec) { (left - half), labelY + half, 0 }, labelAlpha },
+			                    { (Vec) { ((left - half) - 2.f * half), labelY + half, 0 }, clear },
+			                    { (Vec) { (left - half), labelY, 0 }, labelAlpha },
+			                    { (Vec) { (right + half), labelY, 0 }, labelAlpha },
+			                    { (Vec) { (right + half), labelY + half, 0 }, labelAlpha },
+			                    { (Vec) { (left - half), labelY + half, 0 }, labelAlpha },
+			                    { (Vec) { (right + half), labelY, 0 }, labelAlpha },
+			                    { (Vec) { ((right + half) + 2.f * half), labelY, 0 }, clear },
+			                    { (Vec) { ((right + half) + 2.f * half), labelY + half, 0 }, clear },
+			                    { (Vec) { (right + half), labelY + half, 0 }, labelAlpha } };
+		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band, 4);
+		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band + 4, 4);
+		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band + 8, 4);
+		u32 ink = 0xffffff00 | (u32)(255.f * fade);
+		DrawRingBandLines((left - half) - 2.f * half, left - half, right + half, (right + half) + 2.f * half, y0 - half, y1 - half, ink);
+		DrawRingBandLines((left - half) - 2.f * half, left - half, right + half, (right + half) + 2.f * half, y0 + half, y1 + half, ink);
+	}
+	CTexObj background = RingTexture(menu, -1);
+	for (s32 i = 0; i < count; ++i) {
+		CTexObj tex = RingTexture(menu, i);
+		f32 width = gEquipmentIconWidth[i], height = gEquipmentIconHeight[i];
+		sin(menu->mItems[i].mPulsePhase);
+		sin(menu->mItems[i]._0C);
+		sin(.5f * menu->mItems[i]._0C);
+		sin(.7f * menu->mItems[i]._0C);
+		f32 pulse;
+		if (menu->mMenuType == 3)
+			pulse = menu->mItems[i].mScale * (f32)sin((PI * .5f) * fade);
+		else
+			pulse = menu->mItems[i].mScale * (f32)sin(2.0943952f * fade);
+		f32 x, y;
+
+		if (menu->mMenuType == 3) {
+			y        = originY + 68.f * (scale * slotY[i]);
+			x        = originX + 68.f * (scale * slotX[i]);
+			s32 slot = i - menu->mFirstVisibleItem;
+			if (slot < 0)
+				slot += 7;
+			if (slot == 3) {
+				menu->mCursorY = y;
+				menu->mCursorX = menu->mFade < 1.f ? x : 320.f;
+			}
+		} else {
+			f32 radius = 60.f + 20.f * menu->mItems[i].mScale;
+			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
+			x          = originX + fade * (radius * (scale * slotX[i]));
+		}
+		if (menu->mFocus && menu->mMenuType != 3) {
+			if (menu->mMenuType == 0) {
+				y += 80.f * (slotY[i] * (f32)sin(PI * menu->mGlow));
+				x += 80.f * (slotX[i] * (f32)sin(PI * menu->mGlow));
+			} else {
+				y += 100.f * (slotY[i] * (f32)sin(PI * menu->mGlow));
+				x += 100.f * (slotX[i] * (f32)sin(PI * menu->mGlow));
+			}
+		}
+		f32 slot = menu->mItems[i].mSlotOffset;
+		f32 alpha;
+		if (slot >= 3.02f)
+			alpha = Abs(4.f - slot);
+		else if (slot <= -3.02f)
+			alpha = Abs(4.f + slot);
+		else
+			alpha = 1.f;
+		menu->GetItemColor(i);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		f32 iconAlpha = alpha;
+		if (menu->IsItemEquipped(i))
+			iconAlpha = alpha * .25f;
+		u32 color = 0xffffff00 | (u32)(255.f * alpha);
+		f32 size  = 1.2f * pulse;
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
+		SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 0);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		DrawRingQuad(gGame.mGs, background, color, x, y, 0, width * size, height * size);
+		DrawRingQuad(gGame.mGs, tex, 0xffffff00 | (u32)(255.f * iconAlpha), x, y, 0, width * size, height * size);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 1);
+		if (i == menu->mCursorIndex) {
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
+			f32 glow = fade * (.2f * (f32)sin(PI * menu->mPhase) + .2f);
+			if (glow < 0)
+				glow = 0;
+			u32 glowColor = 0xffffff00 | (u32)(255.f * glow);
+			DrawGsQuad(&gGame.mGs, glowColor, glowColor, glowColor, glowColor, x, y, 0, width * size, height * size, 0, 0, 0);
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+		}
+		// an item scrolling off one end of the row also shows at the other end
+		if (menu->mMenuType == 3 && (menu->mItems[i].mSlotOffset >= 3.02f || menu->mItems[i].mSlotOffset <= -3.02f)) {
+			f32 span = 7.f * scale;
+			if (menu->mItems[i].mSlotOffset >= 3.02f) {
+				x     = x - span * (20.f * menu->mItems[i].mScale + 60.f);
+				alpha = Abs(menu->mItems[i].mSlotOffset - 3.f);
+			} else if (menu->mItems[i].mSlotOffset <= -3.02f) {
+				x     = x + span * (20.f * menu->mItems[i].mScale + 60.f);
+				alpha = Abs(3.f + menu->mItems[i].mSlotOffset);
+			} else {
+				alpha = 1.f;
+			}
+			menu->GetItemColor(i);
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+			u32 wrapColor = 0xffffff00 | (u32)((255.f * fade) * alpha);
+			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+			DrawRingQuad(gGame.mGs, background, wrapColor, x, y, 0, size * width, size * height);
+			DrawRingQuad(gGame.mGs, tex, wrapColor, x, y, 0, size * width, size * height);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		}
+	}
+	SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 7, 0);
+	f32 zero = 0.0f;
+	for (s32 i = 0; i < count; ++i) {
+		OctaMenuItem& item = menu->mItems[i];
+		if (item.mHighlight == zero)
+			continue;
+		f32 width = gEquipmentIconWidth[i];
+		sin(2.0943952f * fade);
+		f32 x, y;
+		if (menu->mMenuType == 3) {
+			y = originY + 68.f * (scale * slotY[i]);
+			x = originX + 68.f * (scale * slotX[i]);
+		} else {
+			f32 radius = 60.f + 20.f * item.mScale;
+			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
+			x          = originX + fade * (radius * (scale * slotX[i]));
+		}
+		f32 highlight      = item.mHighlight;
+		const char* source = menu->GetItemLabel(i);
+		char label[128];
+		strcpy(label, source);
+		MeasureGameTextWidth(&gGame.mGs, label, TRUE, 22.f);
+		f32 baseline = 52.f + y;
+		f32 tileSize = 30.f;
+		f32 spacing  = tileSize;
+#if !defined(VERSION_JP)
+		spacing *= 0.9f;
+#endif
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		CTexObj tile       = RingTexture(menu, -2);
+		menu->mLabelLength = 0;
+		const char* p      = label;
+		for (s32 k = 0; k < (s32)ARRAY_SIZE(menu->mLabelChars) && *p; ++k, ++p) {
+			menu->mLabelChars[k].mText = p;
+			++menu->mLabelLength;
+			if (HelpTextIsJapanese() && (IsSjisLead((u8)*p) & 1))
+				++p;
+		}
+		f32 halfSpacing = 0.5f * spacing;
+		for (s32 k = 0; k < menu->mLabelLength; ++k) {
+			MenuHelpChar& ch = menu->mLabelChars[k];
+
+			if (!HelpTextIsJapanese() && strncmp(ch.mText, " ", 1) == 0)
+				continue;
+			CFont font;
+			s32 width;
+			CTexObj glyph = *GetFontGlyphTexture(&font, ch.mText, &width);
+			f32 bob       = 2.f * (f32)sin(ch.mAngle0);
+			f32 spin      = (f32)sin(.7f * ch.mAngle1);
+			f32 glow      = (f32)sin(PI * highlight);
+			f32 wave      = (f32)sin((PI * .5f) * highlight);
+			f32 cy        = baseline + bob;
+			f32 scale     = .2f * glow + wave;
+			f32 cx        = halfSpacing + (k * spacing + (x - (menu->mLabelLength * spacing) / 2.f));
+			f32 rotation  = -(DEG2RAD * (10.f * spin));
+
+			DrawRingQuad(gGame.mGs, tile, 0xffffff00 | (u32)(255.f * highlight), cx, cy, 1, tileSize * scale, tileSize * scale, rotation, -zero);
+			f32 glyphSize  = tileSize * (.8f * scale);
+			f32 glyphWidth = (width / 24.0f) * glyphSize;
+			f32 padding    = glyphSize - glyphWidth;
+
+			for (s32 j = 0; j < 4; ++j)
+				DrawRingQuad(gGame.mGs, glyph, (u32)(255.f * highlight), padding / 2.0f + (cx + gEquipmentOutlineX[j]),
+				             bob + (baseline + gEquipmentOutlineY[j]), 1, glyphSize, glyphSize, rotation, -zero);
+			DrawRingQuad(gGame.mGs, glyph, 0xfffffb00 | (u32)(255.f * highlight), padding / 2.0f + cx, cy, 1, glyphSize, glyphSize, rotation, -zero);
+		}
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	}
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
+}
+
 // OctaMenu::GetItemLabel, the base menu has no labels
 /**
  * @note Address: 0x8009AFD4
@@ -4984,320 +5298,6 @@ static inline BOOL ScriptLiftReady(XObjChr* player)
 	return request != 4 && request != 5 && request != 6 && request != 7 && (player->mLift.mState == 0 || player->mLift.mState == 4);
 }
 
-static inline CTexObj& RingTexture(OctaMenu* menu, s32 index)
-{
-	s32 id = menu->GetItemIconTextureIndex(index);
-	return gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[id], 0);
-}
-
-static inline void DrawRingBandLines(f32 x0, f32 x1, f32 x2, f32 x3, f32 y0, f32 y1, u32 ink)
-{
-	DrawGsLineSegment(&gGame.mGs, NULL, x1, y0, 0, ink, x2, y1, 0, ink);
-	DrawGsLineSegment(&gGame.mGs, NULL, x0, y0, 0, 0xffffff00, x1, y1, 0, ink);
-	DrawGsLineSegment(&gGame.mGs, NULL, x2, y0, 0, ink, x3, y1, 0, 0xffffff00);
-}
-static inline void DrawRingQuad(CGs& gs, CTexObj& tex, u32 color, f32 x, f32 y, f32 z, f32 w, f32 h, f32 rotZ = 0, f32 rotY = 0)
-{
-	DrawGsTexturedQuad(&gs, &tex, color, color, color, color, x, y, z, w, h, 0, rotY, rotZ);
-}
-
-/**
- * @note Address: 0x80099224
- * @note Size: 0x1DB0 (US/PAL), 0x1DC4 (JP)
- */
-extern "C" void DrawEquipmentRing(OctaMenu* menu)
-{
-	if (!(menu->mFade > 0))
-		return;
-	f32 originX, originY;
-	f32 slotY[8], slotX[8];
-	// in first person the ring sits below the screen center
-	if (gGame.mStatus.mFlags & 0x100) {
-		originX = 320;
-		originY = 276;
-	} else if (menu->mMenuType == 3) {
-		originX = 320;
-		originY = 228;
-	} else {
-		Vec offset = { 0, 8.8f, 0 };
-		menu->mChr->ProjectOffsetToScreen(&offset, &originX, &originY, 0, NULL);
-	}
-	f32 fade = menu->mFade;
-	f32 scale;
-	// menu type 3 puts the items in a row that scrolls sideways, type 0 on a square, the others on a circle
-	if (menu->mMenuType == 3) {
-		for (s32 i = 0; i < 8; ++i) {
-			s32 slot = i - menu->mFirstVisibleItem;
-			if (slot < 0)
-				slot += 7;
-			slotY[i]                          = menu->mRowOffset + gEquipmentRowY[slot];
-			menu->mItems[i].mTargetSlotOffset = menu->mFade * gEquipmentRowX[slot];
-			if (menu->mFade < 1.f) {
-				menu->mItems[i].mSlotOffset = menu->mItems[i].mTargetSlotOffset;
-			} else {
-				if (menu->mItems[i].mSlotOffset < 0 && menu->mItems[i].mTargetSlotOffset == 3)
-					menu->mItems[i].mSlotOffset = 4;
-				else if (menu->mItems[i].mSlotOffset > 0 && menu->mItems[i].mTargetSlotOffset == -3)
-					menu->mItems[i].mSlotOffset = -4;
-				f32 step = menu->mItems[i].mTargetSlotOffset - menu->mItems[i].mSlotOffset;
-				if (step > 1) {
-					step                        = 1;
-					menu->mItems[i].mSlotOffset = menu->mItems[i].mTargetSlotOffset - 1;
-				}
-				if (step < -1) {
-					step                        = -1;
-					menu->mItems[i].mSlotOffset = menu->mItems[i].mTargetSlotOffset + 1;
-				}
-				menu->mItems[i].mSlotOffset += .4f * step;
-			}
-			slotX[i] = menu->mItems[i].mSlotOffset;
-		}
-		scale = 1.1f;
-	} else if (menu->mMenuType == 0) {
-		for (int i = 0; i < 8; ++i) {
-			slotY[i] = gEquipmentRingY[i];
-			slotX[i] = gEquipmentRingX[i];
-		}
-		scale = 1.1f;
-	} else {
-		for (s32 j = -1, i = 0; i < 8; ++j, ++i) {
-			f32 angle = (PI / 4.f) * j;
-			slotY[i]  = -1.f * (f32)cos(angle);
-			slotX[i]  = (f32)sin(angle);
-		}
-		scale = 1.35f;
-	}
-
-	for (s32 i = 0; i < 8; ++i) {
-		CTexObj tex = RingTexture(menu, i);
-		u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
-		gEquipmentIconWidth[i]  = 100.f;
-		gEquipmentIconHeight[i] = 100.f * ((f32)h / w);
-	}
-	s32 count = menu->mMenuType == 3 ? 7 : 8;
-	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsLineWidth(gGame.mGs.mCurRenderMode, 12, 5);
-	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
-	if (menu->mMenuType == 3) {
-		s32 start = menu->mFirstVisibleItem, last = (start + 6) % 7;
-		f32 itemSize = menu->mItems[start].mScale * (f32)sin((PI * .5f) * fade);
-		f32 radius   = 60.f + 20.f * itemSize;
-		f32 y0       = originY + (scale * slotY[start]) * radius;
-		f32 left     = originX + (-3.f * scale) * radius;
-		f32 y1       = originY + (scale * slotY[last]) * radius;
-		f32 right    = originX + (3.f * scale) * radius;
-		f32 half     = .7f * (itemSize * gEquipmentIconHeight[start]);
-
-		f32 labelY    = y0 + 24.f;
-		u32 fill      = (u32)(128.f * fade);
-		f32 highlight = 0;
-		for (s32 i = 0; i < count; ++i) {
-			if (menu->mItems[i].mHighlight > highlight)
-				highlight = menu->mItems[i].mHighlight;
-		}
-		// The vertex buffer also contains the strip below the icons for their labels.
-		u32 labelAlpha      = (u32)(128.f * highlight);
-		u32 clear           = 0;
-		PrimVertex band[24] = { { (Vec) { ((left - half) - 2.f * half), (y0 - half), 0 }, clear },
-			                    { (Vec) { (left - half), (y0 - half), 0 }, fill },
-			                    { (Vec) { (left - half), (y0 + half), 0 }, fill },
-			                    { (Vec) { ((left - half) - 2.f * half), (y0 + half), 0 }, clear },
-			                    { (Vec) { (left - half), (y0 - half), 0 }, fill },
-			                    { (Vec) { (right + half), (y0 - half), 0 }, fill },
-			                    { (Vec) { (right + half), (y0 + half), 0 }, fill },
-			                    { (Vec) { (left - half), (y0 + half), 0 }, fill },
-			                    { (Vec) { (right + half), (y0 - half), 0 }, fill },
-			                    { (Vec) { ((right + half) + 2.f * half), (y0 - half), 0 }, clear },
-			                    { (Vec) { ((right + half) + 2.f * half), (y0 + half), 0 }, clear },
-			                    { (Vec) { (right + half), (y0 + half), 0 }, fill },
-			                    { (Vec) { ((left - half) - 2.f * half), labelY, 0 }, clear },
-			                    { (Vec) { (left - half), labelY, 0 }, labelAlpha },
-			                    { (Vec) { (left - half), labelY + half, 0 }, labelAlpha },
-			                    { (Vec) { ((left - half) - 2.f * half), labelY + half, 0 }, clear },
-			                    { (Vec) { (left - half), labelY, 0 }, labelAlpha },
-			                    { (Vec) { (right + half), labelY, 0 }, labelAlpha },
-			                    { (Vec) { (right + half), labelY + half, 0 }, labelAlpha },
-			                    { (Vec) { (left - half), labelY + half, 0 }, labelAlpha },
-			                    { (Vec) { (right + half), labelY, 0 }, labelAlpha },
-			                    { (Vec) { ((right + half) + 2.f * half), labelY, 0 }, clear },
-			                    { (Vec) { ((right + half) + 2.f * half), labelY + half, 0 }, clear },
-			                    { (Vec) { (right + half), labelY + half, 0 }, labelAlpha } };
-		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band, 4);
-		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band + 4, 4);
-		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band + 8, 4);
-		u32 ink = 0xffffff00 | (u32)(255.f * fade);
-		DrawRingBandLines((left - half) - 2.f * half, left - half, right + half, (right + half) + 2.f * half, y0 - half, y1 - half, ink);
-		DrawRingBandLines((left - half) - 2.f * half, left - half, right + half, (right + half) + 2.f * half, y0 + half, y1 + half, ink);
-	}
-	CTexObj background = RingTexture(menu, -1);
-	for (s32 i = 0; i < count; ++i) {
-		CTexObj tex = RingTexture(menu, i);
-		f32 width = gEquipmentIconWidth[i], height = gEquipmentIconHeight[i];
-		sin(menu->mItems[i].mPulsePhase);
-		sin(menu->mItems[i]._0C);
-		sin(.5f * menu->mItems[i]._0C);
-		sin(.7f * menu->mItems[i]._0C);
-		f32 pulse;
-		if (menu->mMenuType == 3)
-			pulse = menu->mItems[i].mScale * (f32)sin((PI * .5f) * fade);
-		else
-			pulse = menu->mItems[i].mScale * (f32)sin(2.0943952f * fade);
-		f32 x, y;
-
-		if (menu->mMenuType == 3) {
-			y        = originY + 68.f * (scale * slotY[i]);
-			x        = originX + 68.f * (scale * slotX[i]);
-			s32 slot = i - menu->mFirstVisibleItem;
-			if (slot < 0)
-				slot += 7;
-			if (slot == 3) {
-				menu->mCursorY = y;
-				menu->mCursorX = menu->mFade < 1.f ? x : 320.f;
-			}
-		} else {
-			f32 radius = 60.f + 20.f * menu->mItems[i].mScale;
-			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
-			x          = originX + fade * (radius * (scale * slotX[i]));
-		}
-		if (menu->mFocus && menu->mMenuType != 3) {
-			if (menu->mMenuType == 0) {
-				y += 80.f * (slotY[i] * (f32)sin(PI * menu->mGlow));
-				x += 80.f * (slotX[i] * (f32)sin(PI * menu->mGlow));
-			} else {
-				y += 100.f * (slotY[i] * (f32)sin(PI * menu->mGlow));
-				x += 100.f * (slotX[i] * (f32)sin(PI * menu->mGlow));
-			}
-		}
-		f32 slot = menu->mItems[i].mSlotOffset;
-		f32 alpha;
-		if (slot >= 3.02f)
-			alpha = Abs(4.f - slot);
-		else if (slot <= -3.02f)
-			alpha = Abs(4.f + slot);
-		else
-			alpha = 1.f;
-		menu->GetItemColor(i);
-		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-		f32 iconAlpha = alpha;
-		if (menu->IsItemEquipped(i))
-			iconAlpha = alpha * .25f;
-		u32 color = 0xffffff00 | (u32)(255.f * alpha);
-		f32 size  = 1.2f * pulse;
-		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-		SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 0);
-		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		DrawRingQuad(gGame.mGs, background, color, x, y, 0, width * size, height * size);
-		DrawRingQuad(gGame.mGs, tex, 0xffffff00 | (u32)(255.f * iconAlpha), x, y, 0, width * size, height * size);
-		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-		SetGsDepthCompareBeforeTexture(gGame.mGs.mCurRenderMode, 1);
-		if (i == menu->mCursorIndex) {
-			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 2, 0);
-			f32 glow = fade * (.2f * (f32)sin(PI * menu->mPhase) + .2f);
-			if (glow < 0)
-				glow = 0;
-			u32 glowColor = 0xffffff00 | (u32)(255.f * glow);
-			DrawGsQuad(&gGame.mGs, glowColor, glowColor, glowColor, glowColor, x, y, 0, width * size, height * size, 0, 0, 0);
-			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
-		}
-		// an item scrolling off one end of the row also shows at the other end
-		if (menu->mMenuType == 3 && (menu->mItems[i].mSlotOffset >= 3.02f || menu->mItems[i].mSlotOffset <= -3.02f)) {
-			f32 span = 7.f * scale;
-			if (menu->mItems[i].mSlotOffset >= 3.02f) {
-				x     = x - span * (20.f * menu->mItems[i].mScale + 60.f);
-				alpha = Abs(menu->mItems[i].mSlotOffset - 3.f);
-			} else if (menu->mItems[i].mSlotOffset <= -3.02f) {
-				x     = x + span * (20.f * menu->mItems[i].mScale + 60.f);
-				alpha = Abs(3.f + menu->mItems[i].mSlotOffset);
-			} else {
-				alpha = 1.f;
-			}
-			menu->GetItemColor(i);
-			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-			u32 wrapColor = 0xffffff00 | (u32)((255.f * fade) * alpha);
-			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
-			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			DrawRingQuad(gGame.mGs, background, wrapColor, x, y, 0, size * width, size * height);
-			DrawRingQuad(gGame.mGs, tex, wrapColor, x, y, 0, size * width, size * height);
-			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-		}
-	}
-	SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
-	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsChannelEnabled(&gGame.mGs, 0, 0);
-	SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 7, 0);
-	f32 zero = 0.0f;
-	for (s32 i = 0; i < count; ++i) {
-		OctaMenuItem& item = menu->mItems[i];
-		if (item.mHighlight == zero)
-			continue;
-		f32 width = gEquipmentIconWidth[i];
-		sin(2.0943952f * fade);
-		f32 x, y;
-		if (menu->mMenuType == 3) {
-			y = originY + 68.f * (scale * slotY[i]);
-			x = originX + 68.f * (scale * slotX[i]);
-		} else {
-			f32 radius = 60.f + 20.f * item.mScale;
-			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
-			x          = originX + fade * (radius * (scale * slotX[i]));
-		}
-		f32 highlight      = item.mHighlight;
-		const char* source = menu->GetItemLabel(i);
-		char label[128];
-		strcpy(label, source);
-		MeasureGameTextWidth(&gGame.mGs, label, TRUE, 22.f);
-		f32 baseline = 52.f + y;
-		f32 tileSize = 30.f;
-		f32 spacing  = tileSize;
-#if !defined(VERSION_JP)
-		spacing *= 0.9f;
-#endif
-		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		CTexObj tile       = RingTexture(menu, -2);
-		menu->mLabelLength = 0;
-		const char* p      = label;
-		for (s32 k = 0; k < (s32)ARRAY_SIZE(menu->mLabelChars) && *p; ++k, ++p) {
-			menu->mLabelChars[k].mText = p;
-			++menu->mLabelLength;
-			if (HelpTextIsJapanese() && (IsSjisLead((u8)*p) & 1))
-				++p;
-		}
-		f32 halfSpacing = 0.5f * spacing;
-		for (s32 k = 0; k < menu->mLabelLength; ++k) {
-			MenuHelpChar& ch = menu->mLabelChars[k];
-
-			if (!HelpTextIsJapanese() && strncmp(ch.mText, " ", 1) == 0)
-				continue;
-			CFont font;
-			s32 width;
-			CTexObj glyph = *GetFontGlyphTexture(&font, ch.mText, &width);
-			f32 bob       = 2.f * (f32)sin(ch.mAngle0);
-			f32 spin      = (f32)sin(.7f * ch.mAngle1);
-			f32 glow      = (f32)sin(PI * highlight);
-			f32 wave      = (f32)sin((PI * .5f) * highlight);
-			f32 cy        = baseline + bob;
-			f32 scale     = .2f * glow + wave;
-			f32 cx        = halfSpacing + (k * spacing + (x - (menu->mLabelLength * spacing) / 2.f));
-			f32 rotation  = -(DEG2RAD * (10.f * spin));
-
-			DrawRingQuad(gGame.mGs, tile, 0xffffff00 | (u32)(255.f * highlight), cx, cy, 1, tileSize * scale, tileSize * scale, rotation, -zero);
-			f32 glyphSize  = tileSize * (.8f * scale);
-			f32 glyphWidth = (width / 24.0f) * glyphSize;
-			f32 padding    = glyphSize - glyphWidth;
-
-			for (s32 j = 0; j < 4; ++j)
-				DrawRingQuad(gGame.mGs, glyph, (u32)(255.f * highlight), padding / 2.0f + (cx + gEquipmentOutlineX[j]),
-				             bob + (baseline + gEquipmentOutlineY[j]), 1, glyphSize, glyphSize, rotation, -zero);
-			DrawRingQuad(gGame.mGs, glyph, 0xfffffb00 | (u32)(255.f * highlight), padding / 2.0f + cx, cy, 1, glyphSize, glyphSize, rotation, -zero);
-		}
-		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-	}
-	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
-}
-
 // the script's object for an event command's id, NULL while no event script runs
 static inline XObj* FindEventObj(s32 id)
 {
@@ -5608,6 +5608,41 @@ extern "C" void SetObjectJointTranslationByPath(CJObj* object, s32 depth, s32* p
 {
 	CJObj joint(GetJointByPath(object->mJObj, path, depth));
 	joint.CJObj::SetTranslate(x, y, z, TRUE);
+}
+
+/**
+ * @note Address: 0x8009F7D0
+ * @note Size: 0x490
+ */
+extern "C" void SpawnPlayerDust(XObjChr* player, const Vec* origin)
+{
+	f32 angle = DEG2RAD * (rand() % 360);
+	f32 vx    = (rand() % 100) * (f32)sin(angle) / 1000.0f;
+	f32 vz    = (rand() % 100) * (f32)cos(angle) / 1000.0f;
+	f32 vy    = (rand() % 100) / 800.0f;
+	Vec position;
+	position.x = origin->x + 16.0f * (vx * (rand() % 100) / 100.0f);
+	position.z = origin->z + 16.0f * (vz * (rand() % 100) / 100.0f);
+	position.y = origin->y;
+	f32 width  = 1.0f + (rand() % 200) / 200.0f;
+	Vec size;
+	size.x = size.y = width;
+	size.z          = 1.0f;
+	Vec velocity    = { vx, vy, vz };
+	CPtclOne* dust  = SpawnPoolParticle(&player->mDust.mPtcl, &position, &size, &velocity, 0xFFFFFFA0);
+	if (dust != NULL) {
+		if (player->mGroundType == 10) {
+			dust->mAngle      = DEG2RAD * (rand() % 360);
+			dust->mAngleSpeed = DEG2RAD * (10 - rand() % 20);
+			dust->mColor      = 0xFFFFFFC8;
+			dust->mTex        = &player->mTex[1];
+		} else {
+			dust->mAngle      = DEG2RAD * (rand() % 360);
+			dust->mAngleSpeed = DEG2RAD * (20 - rand() % 40);
+			dust->mColor      = 0xFFFFFFA0;
+			dust->mTex        = &player->mTex[0];
+		}
+	}
 }
 
 // pool 9 objects decide for themselves whether chibi robo can reach them
@@ -6993,7 +7028,8 @@ extern "C" PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, FrameEvent
 	s32 anim = object->mAnimId;
 	FrameEventTime time;
 	if (frames != NULL) {
-		time = *frames;
+		time.mFrame     = frames->mFrame;
+		time.mLastFrame = frames->mLastFrame;
 	} else {
 		time.mFrame     = aobj != NULL ? HSD_AObjGetCurrentFrame(aobj) : 0.0f;
 		time.mLastFrame = time.mFrame - 1.0f;
@@ -9843,41 +9879,6 @@ extern "C" void ResetPlayerHeadOffset(XObjChr* chr)
 {
 	chr->mHeadOffset      = 5.0f;
 	chr->mHeadOffsetReady = 0;
-}
-
-/**
- * @note Address: 0x8009F7D0
- * @note Size: 0x490
- */
-extern "C" void SpawnPlayerDust(XObjChr* player, const Vec* origin)
-{
-	f32 angle = DEG2RAD * (rand() % 360);
-	f32 vx    = (rand() % 100) * (f32)sin(angle) / 1000.0f;
-	f32 vz    = (rand() % 100) * (f32)cos(angle) / 1000.0f;
-	f32 vy    = (rand() % 100) / 800.0f;
-	Vec position;
-	position.x = origin->x + 16.0f * (vx * (rand() % 100) / 100.0f);
-	position.z = origin->z + 16.0f * (vz * (rand() % 100) / 100.0f);
-	position.y = origin->y;
-	f32 width  = 1.0f + (rand() % 200) / 200.0f;
-	Vec size;
-	size.x = size.y = width;
-	size.z          = 1.0f;
-	Vec velocity    = { vx, vy, vz };
-	CPtclOne* dust  = SpawnPoolParticle(&player->mDust.mPtcl, &position, &size, &velocity, 0xFFFFFFA0);
-	if (dust != NULL) {
-		if (player->mGroundType == 10) {
-			dust->mAngle      = DEG2RAD * (rand() % 360);
-			dust->mAngleSpeed = DEG2RAD * (10 - rand() % 20);
-			dust->mColor      = 0xFFFFFFC8;
-			dust->mTex        = &player->mTex[1];
-		} else {
-			dust->mAngle      = DEG2RAD * (rand() % 360);
-			dust->mAngleSpeed = DEG2RAD * (20 - rand() % 40);
-			dust->mColor      = 0xFFFFFFA0;
-			dust->mTex        = &player->mTex[0];
-		}
-	}
 }
 
 #include "BuildSettings.h"
