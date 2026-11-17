@@ -1425,7 +1425,7 @@ public:
 class FbSubwin : public CFbTexEff {
 public:
 	BOOL mEnabled;   // _128, fades in while set, out while not
-	CStatus mFlags;  // _12C, Draw tests bit 2
+	CStatus32 mFlags; // _12C, Draw tests bit 2
 	f32 mAmount;     // _134, 0 to 1
 	f32 mRectX;      // _138, centre x of the window's rect on screen
 	f32 mRectY;      // _13C, centre y of the window's rect on screen
