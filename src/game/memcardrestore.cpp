@@ -70,8 +70,7 @@ extern "C" void RestoreGameSaveData(Memcard* card)
 	SaveData* save = &card->mFile.mData;
 	s32 stage      = save->mHeader.mStage;
 	if (stage >= 100) { // stages >= 100 are relative to the current stage count
-		stage += GetStageNum();
-		stage -= 99;
+		stage += GetStageNum() - 99;
 	}
 	gGame.mPrevStage           = gGame.mStage;
 	gGame.mStage               = stage;
