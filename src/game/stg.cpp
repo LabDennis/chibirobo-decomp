@@ -7644,7 +7644,7 @@ BOOL MenuSettings::Update(u32 frames)
 			} while (*mText[mSelection] == *"\x01");
 			PlayGameSound(&gGame.mSound, 0x87, 0xFF);
 		} else if (pad.mPad->mRepeat & 0xC0003) {
-			s32 extra = mSelection == 4;
+			s32 extra = mSelection == 4 ? 1 : 0;
 			if (pad.mPad->mRepeat & 0x40001) {
 				if (--mValues[mSelection] < 0)
 					mValues[mSelection] = extra + 1;
@@ -7665,11 +7665,11 @@ BOOL MenuSettings::Update(u32 frames)
 				else
 					gGame.mStatus.mFlags |= 0x0000004000000000ULL;
 			} else if (mSelection == 3) {
-				XObjChr* player = gGame.GetPlayer();
+				XObjPlugCord* cord = &gGame.GetPlayer()->mPlug.mCord;
 				if (mValues[mSelection])
-					player->mPlug.mCord.mFlags |= 8;
+					cord->mFlags |= 8;
 				else
-					player->mPlug.mCord.mFlags &= ~8;
+					cord->mFlags &= ~8;
 			} else if (mSelection == 4) {
 				SetRingMenuOption(&gGame.GetPlayer()->mMenu, mValues[mSelection]);
 			}
