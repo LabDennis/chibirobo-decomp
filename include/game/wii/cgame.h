@@ -954,7 +954,12 @@ struct MenuWindow {
 };
 STATIC_ASSERT(sizeof(MenuWindow) == 0x12C);
 
-class MenuCursor;
+// the hand that points at a menu's row; on the Wii a picture from the game's palette
+class MenuCursor {
+public:
+	u8 _00[0x4];
+	s32 mFrame; // _04, which of the cursor pictures (palette entry 248 on)
+};
 
 // one of the game's menus, the GameCube class of the same name with two more virtuals. Its state leads
 // the object and the vtable sits behind the members, at _14C; the menus MenuEx keeps derive from it.
@@ -1018,6 +1023,7 @@ public:
 	virtual void Init();
 	virtual void Reset();
 	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
 	virtual void Open();
 	virtual void Close(s32 state);
 	virtual void Resume();

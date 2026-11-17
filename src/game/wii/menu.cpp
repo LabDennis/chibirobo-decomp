@@ -34,6 +34,9 @@ char* GetStageDesc(s32 stage);
 char* FormatToStaticBuffer(const char* fmt, ...);
 void ApproachHudValue(f32* value, f32* target, f32 step);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
+u8* GetItemDescription(s32 id);
+s32 GetItemIconTextureIndex(s32 id);
+void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
 
 // the Wii's text is Japanese with the language setting at 0
@@ -641,6 +644,48 @@ extern "C" void AddMainMenuExtraRow(MenuMain* menu, char* text, s32 id)
 	LayoutMainMenuRows(menu);
 }
 
+// an item's card: its description, its name and its icon. NONMATCHING: only the place of "%s" in the string
+// pool, which depends on the strings of the functions before it that have no source yet
+extern "C" void DrawStatusItemDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale)
+{
+	CTexObj tex;
+	f32 iconHeight, iconWidth;
+	f32 width, height;
+	if (scale <= 0.0f)
+		return;
+	height    = 153.0f * scale;
+	width     = 254.0f * scale;
+	f32 top   = y - height / 2.0f;
+	u32 frame = (u32)(220.0f * alpha);
+	DrawTexturedWindowFrame(frame, (u32)(255.0f * alpha) | 0xFFFFFF00, x, top, width, height, alpha, 1.0f, 1.0f);
+	top += scale;
+	f32 fontSize   = 17.0f * scale;
+	f32 textOffset = 24.0f * scale;
+	char text[256];
+	sprintf(text, "%s", GetItemDescription(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00, text, x - width / 2.0f,
+	                             (4.0f * scale + (textOffset + (5.0f * fontSize + top))) - 6.0f * scale, 0.0f, fontSize, fontSize);
+	sprintf(text, "%s", GetItemName(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, 2.0f * scale + fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFAA0000, text, x - width / 2.0f,
+	                             (textOffset + (4.0f * fontSize + top)) - 6.0f * scale, 0.0f, 2.0f * scale + fontSize,
+	                             2.0f * scale + fontSize);
+	s32 icon = GetItemIconTextureIndex(id);
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[icon], 0);
+	tex        = gGame.mTpl.mTex;
+	iconWidth  = scale * GXGetTexObjWidth(&tex);
+	iconHeight = scale * GXGetTexObjHeight(&tex);
+	if (icon >= 0) {
+		f32 iconX = ((56.0f * scale + x) - 30.0f * scale) - 127.0f * scale;
+		f32 iconY = 46.0f * scale + top;
+		u32 color = (u32)(255.0f * alpha) | 0xFFFFFF00;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, iconX, iconY, 0.0f, iconWidth, iconHeight, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+}
+
 static inline f32 MenuRectStart(f32 center, f32 size)
 {
 	return center - size / 2;
@@ -751,6 +796,82 @@ BOOL MenuMain::Update(u32 frames)
 		}
 	}
 	return IsOpen();
+}
+
+// the two hands either side of the picked row and the frame round it
+static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scale)
+{
+	Vec border[6] = {
+		(Vec) { x - 8.0f, y - 1.0f, 0.0f },
+		(Vec) { 8.0f + (x + width), y - 1.0f, 0.0f },
+		(Vec) { 8.0f + (x + width), 1.0f + (y + height), 0.0f },
+		(Vec) { x - 8.0f, 1.0f + (y + height), 0.0f },
+		(Vec) { x - 8.0f, y - 1.0f, 0.0f },
+		(Vec) { 8.0f + (x + width), y - 1.0f, 0.0f },
+	};
+	DrawGsLineStrip(&gGame.mGs, &border[3], (u32)(255.0f * alpha) | 0x96969600, 3);
+	DrawGsLineStrip(&gGame.mGs, &border[1], (u32)(255.0f * alpha) | 0xFAFAFA00, 3);
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[cursor->mFrame + 248], 0);
+	CTexObj tex = gGame.mTpl.mTex;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
+	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, (x - 16.0f) - 4.0f, height / 2 + y, 0.0f,
+	                   24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
+	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, 4.0f + (16.0f + (x + width)), height / 2 + y,
+	                   0.0f, 24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+// NONMATCHING: register allocation; retail also keeps the cursor's 24 in a register for both hands
+BOOL MenuMain::Draw()
+{
+	if (CMenu::Draw()) {
+		f32 x     = mWindow.mX;
+		f32 y     = mWindow.mY;
+		f32 maxW  = mMaxWidth;
+		f32 lines = mRowCount;
+		f32 lineH = mFontSize;
+		for (int i = 0; i < lines; i++) {
+			u32 color;
+			if (i == mSelection) {
+				color = (u32)(255.0f * mAlpha) | 0x20202000;
+			} else {
+				color = (u32)(255.0f * mAlpha) | 0x40404000;
+			}
+			if (*mText[i] == *"\x01") {
+				f32 lineY  = y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * (0.5f + i);
+				f32 left   = x - (30.0f + maxW) / 2;
+				u32 shadow = (u32)(255.0f * mAlpha) | 0x96969600;
+				DrawGsLineSegment(&gGame.mGs, NULL, left, lineY, 0.0f, shadow, left + (30.0f + maxW), lineY, 0.0f, shadow);
+				u32 light = (u32)(255.0f * mAlpha) | 0xFAFAFA00;
+				DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + left, 1.0f + lineY, 0.0f, light, 1.0f + (left + (30.0f + maxW)), 1.0f + lineY,
+				                  0.0f, light);
+			} else {
+				DrawGsProportionalTextFormat(&gGame.mGs, color, mText[i], x - mMaxWidth / 2,
+				                             y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * i, 0.0f, lineH, lineH);
+			}
+		}
+		f32 cx = x - maxW / 2;
+		f32 cy = y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * mSelection;
+		f32 alpha;
+		if (sMenuStatus.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuStatus.mWindow.mDrawAlpha : 0.0f;
+		} else if (sMenuSFTest.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuSFTest.mWindow.mDrawAlpha : 0.0f;
+		} else if (sMenuStageSelect.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuStageSelect.mWindow.mDrawAlpha : 0.0f;
+		} else if (sMenuPC.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuPC.mWindow.mDrawAlpha : 0.0f;
+		} else if (sMenuSave.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuSave.mWindow.mDrawAlpha : 0.0f;
+		} else {
+			alpha = mAlpha;
+		}
+		DrawMenuSelectionCursor(mCursor, cx, cy, maxW, lineH, mAlpha, alpha);
+		return TRUE;
+	}
+	return FALSE;
 }
 
 void CMenu::Suspend(BOOL fade)
