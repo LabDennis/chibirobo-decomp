@@ -339,18 +339,19 @@ extern "C" HSD_MObj* HSD_DObjGetMObj__FP9_HSD_DObj(HSD_DObj* dobj)
  */
 // the first aobj of a material, or of its first texture when it has none, walking the tree like
 // FindJointAnimationInTree
+// NONMATCHING: the outermost level keeps aobj in r3 instead of r0, register allocation only
 extern "C" HSD_AObj* FindMaterialOrTextureAnimationInJointTree(HSD_JObj* jobj)
 {
 	HSD_AObj* aobj = NULL;
 	for (; jobj != NULL; jobj = jobj->child) {
 		for (HSD_DObj* dobj = HSD_JObjGetDObj(jobj); dobj != NULL; dobj = HSD_DObjGetNext(dobj)) {
 			HSD_MObj* mobj = HSD_DObjGetMObj(dobj);
-			if (mobj != NULL) {
-				if (mobj->aobj != NULL) {
+			if (mobj) {
+				if (mobj->aobj) {
 					return mobj->aobj;
 				}
 				HSD_TObj* tobj = HSD_MObjGetTObj(mobj);
-				if (tobj != NULL && tobj->aobj != NULL) {
+				if (tobj && tobj->aobj) {
 					return tobj->aobj;
 				}
 			}
@@ -633,14 +634,15 @@ extern "C" HSD_DObj* HSD_DObjGetNext__FP9_HSD_DObj(HSD_DObj* dobj)
  */
 // the first aobj on a dobj's first pobj, walking the tree like FindJointAnimationInTree. later pobjs
 // of a dobj aren't looked at
+// NONMATCHING: the outermost level keeps aobj in r3 instead of r0, register allocation only
 extern "C" HSD_AObj* FindPolygonAnimationInJointTree(HSD_JObj* jobj)
 {
 	HSD_AObj* aobj = NULL;
 	for (; jobj != NULL; jobj = jobj->child) {
 		for (HSD_DObj* dobj = HSD_JObjGetDObj(jobj); dobj != NULL; dobj = HSD_DObjGetNext(dobj)) {
 			HSD_PObj* pobj = HSD_DObjGetPObj(dobj);
-			if (pobj != NULL && (aobj = pobj->aobj) != NULL) {
-				return aobj;
+			if (pobj && pobj->aobj) {
+				return pobj->aobj;
 			}
 		}
 		if ((aobj = FindPolygonAnimationInJointTree(jobj->next)) != NULL) {
@@ -896,7 +898,7 @@ extern "C" HSD_AObj* FindPolygonAnimationInJointTree(HSD_JObj* jobj)
 // drops a jobj's own dobjs
 extern "C" inline void RemoveJointDisplayObjectsJP(HSD_JObj* jobj)
 {
-	if (jobj->u.dobj != NULL) {
+	if (jobj->u.dobj) {
 		HSD_DObjRemoveAll(jobj->u.dobj);
 		jobj->u.dobj = NULL;
 	}
