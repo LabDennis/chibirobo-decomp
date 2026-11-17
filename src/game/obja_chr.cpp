@@ -367,11 +367,6 @@ static inline void DrawOXCross(CGs* gs, u32 color, f32 x, f32 y, f32 rx, f32 ry,
 	DrawGsCube(gs, color, x, y, 50.0f, rx, ry, rz, length, width, depth);
 }
 
-static inline s32 PulseMarkColor(s32 channel, f32 spin)
-{
-	return channel * (0.8f + 0.1f * (f32)sin(1.2f * spin));
-}
-
 extern "C" void DrawOXMenu(OXMenu* menu)
 {
 	if (!(menu->mFade > 0.0f))
@@ -393,9 +388,6 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 	f32 yBase = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * (f32)sin(2.268928f * fade) - 21.0f;
 	SetGsChannelEnabled(&gGame.mGs, 0, 1);
 	f32 openAngle    = 2.0943952f * fade;
-	u32 edgeAlpha    = (u32)(150.0f * fade);
-	u32 selectedEdge = 0xffffff00 | edgeAlpha, otherEdge = 0x64646400 | edgeAlpha;
-	u32 alpha = (u32)(255.0f * fade);
 	for (s32 i = 0; i < 2; ++i) {
 		OXMenuMark& mark = menu->mMark[i];
 		f32 bob          = 4.0f * (f32)sin(mark.mSpin);
@@ -419,7 +411,7 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 0);
 		f32 crossSize = size + 0.02f;
-		u32 edgeColor = i == menu->mSelectedIndex ? selectedEdge : otherEdge;
+		u32 edgeColor = i == menu->mSelectedIndex ? 0xffffff00 | (u32)(150.0f * fade) : 0x64646400 | (u32)(150.0f * fade);
 		s32 mask      = 1 << i;
 		if (!(menu->mCrossMask & mask)) {
 			SetGsCullMode(gGame.mGs.mCurRenderMode, 1);
@@ -437,22 +429,23 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		s32 r, g, b;
 		if (!(menu->mCrossMask & mask)) {
 			r = 255;
-			g = b = 0;
+			g = 0;
+			b = 0;
 		} else {
 			r = 0;
 			g = 99;
 			b = 209;
 		}
 		if (i == menu->mSelectedIndex) {
-			r = PulseMarkColor(r, mark.mSpin);
-			g = PulseMarkColor(g, mark.mSpin);
-			b = PulseMarkColor(b, mark.mSpin);
+			r *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
+			g *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
+			b *= 0.8f + 0.1f * (f32)sin(1.2f * mark.mSpin);
 		} else {
 			r = (s32)(r * 0.5f);
 			g = (s32)(g * 0.5f);
 			b = (s32)(b * 0.5f);
 		}
-		u32 color = ((u32)r << 24) | ((u32)g << 16) | ((u32)b << 8) | alpha;
+		u32 color = ((u32)r << 24) | ((u32)g << 16) | ((u32)b << 8) | (u32)(255.0f * fade);
 		if (!(menu->mCrossMask & mask)) {
 			f32 radius = 74.0f * size;
 			DrawMenuRing(transform, radius, 0.6f * radius, color, TRUE);
