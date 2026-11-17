@@ -1983,6 +1983,7 @@ void MenuSave::State18(u32)
 				fn_80083350(this);
 			}
 			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			return;
 		}
 	}
 	if (addPanes) {
