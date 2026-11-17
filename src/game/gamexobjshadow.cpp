@@ -289,8 +289,8 @@ extern "C" void DrawObjectAlphaMask(CGame* game)
 
 		game->mGs.mCamera = game->GetCamera();
 		if (BeginGsCamera(game)) {
-			player           = game->GetPlayer();
 			XObj* targets[2] = { NULL, NULL };
+			player           = game->GetPlayer();
 			if (targets[0] == NULL) {
 				targets[0] = player->mLift.mPlugTarget;
 			}

@@ -1064,8 +1064,8 @@ BOOL MenuMain::Draw()
 				color = (u32)(255.0f * mAlpha) | 0x40404000;
 			}
 			if (*mText[i] == *"\x01") {
-				f32 left   = x - (30.0f + maxW) / 2;
 				f32 lineY  = y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * (0.5f + i);
+				f32 left   = x - (30.0f + maxW) / 2;
 				u32 shadow = (u32)(255.0f * mAlpha) | 0x96969600;
 				DrawGsLineSegment(&gGame.mGs, NULL, left, lineY, 0.0f, shadow, left + (30.0f + maxW), lineY, 0.0f, shadow);
 				u32 light = (u32)(255.0f * mAlpha) | 0xFAFAFA00;
