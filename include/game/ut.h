@@ -124,6 +124,30 @@ public:
 };
 typedef char CStatus_size_check[sizeof(CStatus) == 0x8 ? 1 : -1];
 
+#if defined(VERSION_R24J01)
+// the Wii splits the 32-bit CStatus like CStatus64 (cstatus64.h): RTTI names CStatus32, derived from CBitStatus32,
+// each with a vtable of its own (0x802E6948, 0x802E6960). The base's constructor clears the flags before the derived
+// vtable goes in, the order the inlined constructors show (FbSubwin, 0x80033E0C)
+class CBitStatus32 {
+public:
+	CBitStatus32() { mFlags = 0; }
+
+	u32 mFlags; // _00
+	// _04 vtable
+
+	virtual ~CBitStatus32() { } // _08
+
+	bool Check(u32 mask) const { return (mFlags & mask) ? true : false; }
+	void Clear() { mFlags = 0; }
+};
+
+class CStatus32 : public CBitStatus32 {
+public:
+	virtual ~CStatus32() { }
+};
+typedef char CStatus32_size_check[sizeof(CStatus32) == 0x8 ? 1 : -1];
+#endif
+
 #include "game/cstatus64.h"
 
 #if defined(VERSION_R24J01)
