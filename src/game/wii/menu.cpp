@@ -3,19 +3,141 @@
 // static initializer (0x8008502C), behind which only its weak destructors and this-adjusting thunks follow.
 // The pool holds "menu_item.cpp", "menu_status.cpp" and "menu_save.cpp", so those are files this one
 // includes; its own name is not in the binary, menu.cpp is ours.
-// NONMATCHING: most menu state, drawing and layout functions still have no source. CMenu::Close and
-// MenuMain::Close store the caller's r4 as the state (retail 0x80050D9C, 0x80050D18): unlike the GameCube's they
-// seem to take the state as a parameter, which their names in symbols.txt (no parameter) do not show; open.
+// NONMATCHING: most menu state, drawing and layout functions still have no source.
 #include "game/wii/menuutil.h"
 #include "game/wii/cgame.h"
+#include "game/wii/xobj.h"
+#include "game/wii/nandfile.h"
+#include "revolution/mem.h"
+#include "game/wii/saveslots.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/title.h"
 #include "game/globals.h"
 #include "game/evt.h"
+#include "game/cfont.h"
+#include "stl/math.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
 extern "C" void LayoutMainMenuRows(MenuMain* menu);
+extern "C" void RebuildStageSelectList(MenuStageSelect* menu);
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
-extern "C" void DrawMenuWindow(MenuWindow* window);
+extern s32 gRefreshRate;
+extern MEMiHeapHead* gWiiGameHeap;
+
+extern s32 gScreenSafeLeft, gScreenSafeTop;
+extern "C" {
+char* GetStageFileName(s32 stage);
+char* GetStageName(s32 stage);
+char* GetStageDesc(s32 stage);
+char* FormatToStaticBuffer(const char* fmt, ...);
+void ApproachHudValue(f32* value, f32* target, f32 step);
+void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
+u8* GetItemDescription(s32 id);
+s32 GetItemIconTextureIndex(s32 id);
+u8* GetStatusIconDescription(s32 id);
+s32 ConvertHudTextToFullWidth(char* text);
+u8* GetStatusOverviewDescription(s32 id);
+char* GetStatusOverviewLabel(s32 id);
+void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
+}
+
+// the Wii's text is Japanese with the language setting at 0
+static inline bool IsJapanese()
+{
+	return gGame.mLanguage == 0;
+}
+
+static MenuMainItem sMainLines[] = {
+	{ "MAP SELECT", 5 }, { "\x01", -1 }, { "SAVE & LOAD", 6 }, { "SYSTEM MENU", 1 }, { NULL, 0 },
+};
+
+// the file's menus, in their .bss order (0x8044577C on)
+static MenuMain sMenuMain;
+static MenuStageSelect sMenuStageSelect;
+static MenuSFTest sMenuSFTest;
+static MenuSFTestSub sMenuSFTestSub;
+static MenuSFTestErr sMenuSFTestErr;
+static MenuStatus sMenuStatus;
+static MenuItem sMenuItem;
+static MenuPC sMenuPC;
+static MenuSave sMenuSave;
+
+// the stages the stage select offers, in its order
+static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
+
+// the two hands either side of the picked row and the frame round it
+static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scale)
+{
+	Vec border[6] = {
+		(Vec) { x - 8.0f, y - 1.0f, 0.0f },
+		(Vec) { 8.0f + (x + width), y - 1.0f, 0.0f },
+		(Vec) { 8.0f + (x + width), 1.0f + (y + height), 0.0f },
+		(Vec) { x - 8.0f, 1.0f + (y + height), 0.0f },
+		(Vec) { x - 8.0f, y - 1.0f, 0.0f },
+		(Vec) { 8.0f + (x + width), y - 1.0f, 0.0f },
+	};
+	DrawGsLineStrip(&gGame.mGs, &border[3], (u32)(255.0f * alpha) | 0x96969600, 3);
+	DrawGsLineStrip(&gGame.mGs, &border[1], (u32)(255.0f * alpha) | 0xFAFAFA00, 3);
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[cursor->mFrame + 248], 0);
+	CTexObj tex = gGame.mTpl.mTex;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
+	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, (x - 16.0f) - 4.0f, height / 2 + y, 0.0f,
+	                   24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
+	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, 4.0f + (16.0f + (x + width)), height / 2 + y,
+	                   0.0f, 24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
+// NONMATCHING: register allocation and the order the corner temporaries are built. Unlike the GameCube's it
+// draws no texture, and it skips a window without size
+extern "C" void DrawMenuWindow(MenuWindow* window)
+{
+	if (window->mDrawAlpha > 0.0f && window->mWidth > 0.0f && window->mHeight > 0.0f) {
+		f32 width       = window->mWidth;
+		f32 height      = window->mHeight;
+		f32 x           = window->mX - width / 2.0f;
+		f32 y           = window->mY - height / 2.0f;
+		f32 dx          = 2.0f * (f32)sin(4.712389f * (1.0f - window->mDrawAlpha));
+		f32 dy          = 2.0f * (f32)sin(4.712389f * (1.0f - window->mDrawAlpha));
+		f32 z           = -10.0f;
+		Vec outline[18] = { (Vec) { x - dx, 8.0f + (y - dy), z },
+			                (Vec) { 8.0f + (x - dx), y - dy, z },
+			                (Vec) { dx + (x + width) - 8.0f, y - dy, z },
+			                (Vec) { dx + (x + width), 8.0f + (y - dy), z },
+			                (Vec) { dx + (x + width), dy + (y + height) - 8.0f, z },
+			                (Vec) { dx + (x + width) - 8.0f, dy + (y + height), z },
+			                (Vec) { 8.0f + (x - dx), dy + (y + height), z },
+			                (Vec) { x - dx, dy + (y + height) - 8.0f, z },
+			                (Vec) { x - dx, 8.0f + (y - dy), z },
+			                (Vec) { (6.0f + x) - dx, 8.0f + ((6.0f + y) - dy), z },
+			                (Vec) { 8.0f + ((6.0f + x) - dx), (6.0f + y) - dy, z },
+			                (Vec) { dx + (width + (6.0f + x)) - 8.0f, (6.0f + y) - dy, z },
+			                (Vec) { dx + (width + (6.0f + x)), 8.0f + ((6.0f + y) - dy), z },
+			                (Vec) { dx + (width + (6.0f + x)), dy + (height + (6.0f + y)) - 8.0f, z },
+			                (Vec) { dx + (width + (6.0f + x)) - 8.0f, dy + (height + (6.0f + y)), z },
+			                (Vec) { 8.0f + ((6.0f + x) - dx), dy + (height + (6.0f + y)), z },
+			                (Vec) { (6.0f + x) - dx, dy + (height + (6.0f + y)) - 8.0f, z },
+			                (Vec) { (6.0f + x) - dx, 8.0f + ((6.0f + y) - dy), z } };
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+		u32 color = (u32)(255.0f * window->mDrawAlpha) | 0xD2D2D200;
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, outline, color, 9);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GEQUAL, GX_FALSE);
+		color = (u32)(96.0f * window->mDrawAlpha);
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, &outline[9], color, 9);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+		gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+		color = (u32)(255.0f * window->mDrawAlpha) | 0xFAFAFA00;
+		DrawGsLineStrip(&gGame.mGs, outline, color, 4);
+		DrawGsLineStrip(&gGame.mGs, &outline[7], color, 2);
+		color = (u32)(255.0f * window->mDrawAlpha) | 0x96969600;
+		DrawGsLineStrip(&gGame.mGs, &outline[3], color, 5);
+		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+	}
+}
 
 bool MenuUtil::IsConfirmPressed()
 {
@@ -106,6 +228,67 @@ void CMenu::Reset()
 	mSuspendAlpha = 1.0f;
 }
 
+BOOL CMenu::Update(u32 frames)
+{
+	if (mSuspended) {
+		if (mSuspendFade != 0 && mSuspendAlpha > 0.0f) {
+			if ((mSuspendAlpha -= (1.0f / (0.2f * gRefreshRate)) * frames) < 0.0f) {
+				mSuspendAlpha = 0.0f;
+			}
+		}
+	} else if (mSuspendAlpha < 1.0f) {
+		if ((mSuspendAlpha += (1.0f / (0.2f * gRefreshRate)) * frames) > 1.0f) {
+			mSuspendAlpha = 1.0f;
+		}
+	}
+	if (!IsOpen()) {
+		return FALSE;
+	}
+	if (mSuspended) {
+		mAlpha             = mFade * mSuspendAlpha;
+		mWindow.mDrawAlpha = mAlpha;
+		return FALSE;
+	}
+	switch (mState) {
+	case 0:
+		break;
+	case 1:
+		mState = 2;
+	case 2:
+		mState = 3;
+		break;
+	case 3:
+		if (mFade < 1.0f) {
+			if ((mFade += (1.0f / (0.2f * gRefreshRate)) * frames) > 1.0f) {
+				mFade = 1.0f;
+			}
+		}
+		if (mFade >= 1.0f) {
+			mState = 4;
+		}
+		break;
+	case 4:
+		break;
+	case 5:
+		if (mFade > 0.0f) {
+			if ((mFade -= (1.0f / (0.2f * gRefreshRate)) * frames) < 0.0f) {
+				mFade = 0.0f;
+			}
+		}
+		if (0.0f == mFade) {
+			mState = 6;
+		}
+		mWindow.mOpen = FALSE;
+		break;
+	case 6:
+		mState = 0;
+		break;
+	}
+	mAlpha             = mFade * mSuspendAlpha;
+	mWindow.mDrawAlpha = mAlpha;
+	return mState;
+}
+
 BOOL CMenu::Draw()
 {
 	if (!IsOpen())
@@ -117,6 +300,54 @@ BOOL CMenu::Draw()
 	return TRUE;
 }
 
+extern "C" void LayoutMainMenuRows(MenuMain* menu)
+{
+	menu->mFontSize = 16.0f;
+	menu->mBaseRows = 0;
+	menu->mRowCount = 0.0f;
+	menu->mMaxWidth = 0.0f;
+	for (int i = 0;; i++) {
+		menu->mText[i] = sMainLines[i].mText;
+		if (menu->mText[i] == NULL) {
+			menu->mBaseRows = i;
+			menu->mRowCount = i;
+			break;
+		}
+		menu->mTextWidth[i] = MeasureGameTextWidth(&gGame.mGs, menu->mText[i], 1, menu->mFontSize);
+		if (menu->mTextWidth[i] > menu->mMaxWidth) {
+			menu->mMaxWidth = menu->mTextWidth[i];
+		}
+	}
+	int items = 0;
+	for (int k = 0; k < 5; k++) {
+		if (menu->mExtraRows[k].mText) {
+			items++;
+		}
+	}
+	int line = menu->mRowCount;
+	if (items > 0) {
+		menu->mText[line]      = "\x01";
+		menu->mTextWidth[line] = 1.0f;
+		line++;
+		for (int j = 0; j < items; j++) {
+			if (menu->mExtraRows[j].mText) {
+				menu->mText[line]      = menu->mExtraRows[j].mText;
+				menu->mTextWidth[line] = MeasureGameTextWidth(&gGame.mGs, menu->mText[line], 1, menu->mFontSize);
+				if (menu->mTextWidth[line] > menu->mMaxWidth) {
+					menu->mMaxWidth = menu->mTextWidth[line];
+				}
+				line++;
+			}
+		}
+		menu->mRowCount = line;
+	}
+	if (menu->mSelection >= menu->mRowCount) {
+		menu->mSelection = menu->mRowCount - 1.0f;
+	}
+	menu->mWindow.SetSize(60.0f + menu->mMaxWidth, menu->mRowCount * (2.0f + menu->mFontSize) + 24.0f);
+	menu->mWindow.SetPos(menu->mWindow.mWidth / 2 + gScreenSafeLeft, menu->mWindow.mHeight / 2 + gScreenSafeTop);
+}
+
 void MenuStageSelect::Init()
 {
 	CMenu::Init();
@@ -125,6 +356,305 @@ void MenuStageSelect::Init()
 void MenuMain::Init()
 {
 	CMenu::Init();
+}
+
+// NONMATCHING: retail compares the stage with its operands the other way round
+void MenuStageSelect::Open()
+{
+	mState = 1;
+	Resume();
+	mWindow.mOpen = TRUE;
+	if (gGame.GetStatusFlags(0x0008000000000000ULL)) {
+		mSelection = -1;
+		for (int i = 0; sStageOrder[i] >= 0; i++) {
+			if (sStageOrder[i] == gGame.mStage) {
+				mSelection = i;
+				break;
+			}
+		}
+		if (mSelection < 0) {
+			mSelection = 0;
+		}
+	} else {
+		mSelection = gGame.mStage;
+	}
+	RebuildStageSelectList(this);
+}
+
+static inline void FinishStageLabel(char* text)
+{
+	for (int i = 0; text[i]; i++) {
+		if (IsJapanese() && (IsSjisLead(text[i]) & 1)) {
+			if (text[++i] == 0) {
+				text[i - 1] = '.';
+				break;
+			}
+		}
+	}
+}
+
+static inline void MeasureStageLabels(MenuStageSelect* menu)
+{
+	menu->mRowCount = menu->mCount;
+	menu->mMaxWidth = 0.0f;
+	menu->mFontSize = 16.0f;
+	for (int i = 0; i < menu->mRowCount; i++) {
+		menu->mLabelWidth[i] = MeasureGameTextWidth(&gGame.mGs, menu->mLabels[i], 0, menu->mFontSize);
+		if (menu->mLabelWidth[i] > menu->mMaxWidth)
+			menu->mMaxWidth = menu->mLabelWidth[i];
+	}
+}
+
+// NONMATCHING: register allocation. The Wii still looks the file name up but no longer copies it into the label
+extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
+{
+	menu->mCount = 0;
+	for (int i = 0; i < 100; i++) {
+		menu->mLabels[i][0]  = 0;
+		menu->mLabelWidth[i] = 0.0f;
+	}
+	// with this status bit only the stages in sStageOrder; without it every room, a rule, then stages 100 and up
+	if (gGame.GetStatusFlags(0x0008000000000000ULL)) {
+		for (int i = 0; sStageOrder[i] >= 0; i++) {
+			GetStageFileName(sStageOrder[i]);
+			const char* format = IsJapanese() ? "(%2d)%-.20s" : "(%2d)%-.30s";
+			sprintf(menu->mLabels[i], format, sStageOrder[i],
+			        FormatToStaticBuffer("%s%s", GetStageName(sStageOrder[i]), GetStageDesc(sStageOrder[i])));
+			FinishStageLabel(menu->mLabels[i]);
+			menu->mCount++;
+		}
+		MeasureStageLabels(menu);
+		menu->mWindow.SetSize(60.0f + menu->mMaxWidth, (2.0f + menu->mFontSize) * menu->mRowCount + 24.0f);
+		menu->mWindow.SetPos(24.0f + (menu->mWindow.mWidth / 2.0f + gScreenSafeLeft),
+		                     24.0f + (menu->mWindow.mHeight / 2.0f + gScreenSafeTop));
+	} else {
+		menu->mCount = gGame.mRoomCount;
+		for (int i = 0; i < gGame.mRoomCount; i++) {
+			GetStageFileName(i);
+			sprintf(menu->mLabels[i], "(%2d)%-.18s", i, FormatToStaticBuffer("%s%s", GetStageName(i), GetStageDesc(i)));
+			FinishStageLabel(menu->mLabels[i]);
+		}
+		strcpy(menu->mLabels[menu->mCount], "\x01");
+		menu->mCount++;
+		for (int i = 100; GetStageFileName(i); i++) {
+			sprintf(menu->mLabels[menu->mCount], "%-8s(%2d)", GetStageFileName(i), i);
+			menu->mCount++;
+		}
+		MeasureStageLabels(menu);
+		menu->mWindow.SetSize(2.0f * (60.0f + menu->mMaxWidth), 20.0f * (2.0f + menu->mFontSize) + 24.0f);
+		menu->mWindow.SetPos(menu->mWindow.mWidth / 2.0f + gScreenSafeLeft, menu->mWindow.mHeight * 0.5f + gScreenSafeTop);
+	}
+}
+
+BOOL MenuStageSelect::Update(u32 frames)
+{
+	if (CMenu::Update(frames) == 4) {
+		CPad pad(0);
+		if (gWiiPointer.Check(PadActStickUp)) {
+			do {
+				if (--mSelection < 0) {
+					mSelection = mCount - 1;
+				}
+			} while (*mLabels[mSelection] == *"\x01");
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			do {
+				if (++mSelection > mCount - 1) {
+					mSelection = 0;
+				}
+			} while (*mLabels[mSelection] == *"\x01");
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickLeft)) {
+			// the full list stands in columns of 20 rows, left and right jump a column
+			if (mSelection - 20 >= 0 && *mLabels[mSelection - 20] != *"\x01") {
+				mSelection -= 20;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		} else if (gWiiPointer.Check(PadActStickRight)) {
+			if (mSelection + 20 < mCount && *mLabels[mSelection + 20] != *"\x01") {
+				mSelection += 20;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		} else if (gWiiPointer.Check(PadActCancel)) {
+			Close(5);
+			sMenuMain.Resume();
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			Close(5);
+			sMenuMain.Close(5);
+			// with the short list the rows are sStageOrder's entries, not stage numbers
+			if (gGame.GetStatusFlags(0x0008000000000000ULL)) {
+				ChangeGameStage(&gGame, sStageOrder[mSelection], 1);
+			} else {
+				ChangeGameStage(&gGame, mSelection, 1);
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+		}
+	}
+	return IsOpen();
+}
+
+static inline u8 StageRowBlue(int row, u8 normal, u8 current)
+{
+	if (gGame.GetStatusFlags(0x0008000000000000ULL))
+		return (u8)(sStageOrder[row] == gGame.mStage ? current : normal);
+	return (u8)(row == gGame.mStage ? current : normal);
+}
+
+// NONMATCHING: register allocation and the scheduling of the cursor position; the GameCube code otherwise
+BOOL MenuStageSelect::Draw()
+{
+	if (CMenu::Draw()) {
+		f32 cx       = mWindow.mX;
+		f32 cy       = mWindow.mY;
+		f32 maxWidth = mMaxWidth;
+		f32 fontSize = mFontSize;
+		f32 step     = 2.0f + fontSize;
+		f32 x        = 30.0f + (cx - mWindow.mWidth / 2);
+		for (int column = 0; column < 2; column++) {
+			f32 y = 12.0f + (cy - mWindow.mHeight / 2);
+			for (int row = 0; row < 20; row++) {
+				int index = column * 20 + row;
+				if (index > mCount)
+					break;
+				u32 color;
+				if (index == mSelection)
+					color = (0x20200000 | (StageRowBlue(index, 0x20, 0x80) << 8)) | (u32)(255.0f * mAlpha);
+				else
+					color = (0x64640000 | (StageRowBlue(index, 0x64, 0xC8) << 8)) | (u32)(255.0f * mAlpha);
+				if (mLabels[index][0] == *"\x01") {
+					// a "\x01" row is a rule: a dark line with a light one under it
+					u32 shadow = (u32)(255.0f * mAlpha) | 0x64646400;
+					DrawGsLineSegment(&gGame.mGs, NULL, (x - 15.0f), (fontSize / 2 + y), 0.0f, shadow, ((x - 15.0f) + (30.0f + maxWidth)),
+					                  (fontSize / 2 + y), 0.0f, shadow);
+					u32 light = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+					DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + (x - 15.0f), 1.0f + (fontSize / 2 + y), 0.0f, light,
+					                  1.0f + ((x - 15.0f) + (30.0f + maxWidth)), 1.0f + (fontSize / 2 + y), 0.0f, light);
+				} else {
+					DrawGsFixedWidthTextFormat(&gGame.mGs, color, mLabels[index], x, y, 0.0f, fontSize, fontSize);
+				}
+				y += step;
+			}
+			x += 60.0f + mMaxWidth;
+		}
+		if (!gGame.GetStatusFlags(0x0008000000000000ULL)) {
+			f32 top    = 12.0f + (cy - mWindow.mHeight / 2);
+			u32 shadow = (u32)(255.0f * mAlpha) | 0x64646400;
+			f32 bottom = 20.0f * step + top;
+			DrawGsLineSegment(&gGame.mGs, NULL, cx, top, 0.0f, shadow, cx, bottom, 0.0f, shadow);
+			u32 light = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+			DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + cx, 1.0f + top, 0.0f, light, 1.0f + cx, 1.0f + bottom, 0.0f, light);
+		}
+		DrawMenuSelectionCursor(mCursor, (mSelection / 20) * (60.0f + mMaxWidth) + (30.0f + (cx - mWindow.mWidth / 2)),
+		                        (mSelection % 20) * step + (12.0f + (cy - mWindow.mHeight / 2)), maxWidth, fontSize, mAlpha, mAlpha);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+void MenuSFTest::InitRows()
+{
+	if (mRows == NULL) {
+		mRows = (MenuTextRow*)MEMAllocFromExpHeapEx(gWiiGameHeap, sizeof(MenuTextRow) * 12, 4);
+	}
+	mFontSize = 16.0f;
+	mRowTotal = 0;
+	mMaxWidth = 0.0f;
+}
+
+// the save file test's line texts, ten slots, a spare and the free space line
+static char* sSFTestText[12];
+static char* sSFTestTextBuffer;
+
+// NONMATCHING: retail stores the buffer pointer two instructions earlier, among the line pointers
+void MenuSFTest::BuildRows()
+{
+	if (sSFTestTextBuffer == NULL) {
+		char* buffer = (char*)MEMAllocFromExpHeapEx(gWiiGameHeap, 1200, 4);
+		for (int i = 0; i < 12; i++) {
+			sSFTestText[i] = buffer + i * 100;
+		}
+		sSFTestTextBuffer = buffer;
+	}
+	InitRows();
+	for (int i = 0; i < 10; i++) {
+		strcpy(sSFTestText[i], "");
+		mRows[mRowTotal].mText  = sSFTestText[i];
+		mRows[mRowTotal].mWidth = MeasureGameTextWidth(&gGame.mGs, mRows[mRowTotal].mText, 0, mFontSize);
+		if (mRows[mRowTotal].mWidth > mMaxWidth) {
+			mMaxWidth = mRows[mRowTotal].mWidth;
+		}
+		mRowTotal++;
+	}
+	mRows[mRowTotal].mText  = "\x01";
+	mRows[mRowTotal].mWidth = MeasureGameTextWidth(&gGame.mGs, mRows[mRowTotal].mText, 1, mFontSize);
+	if (mRows[mRowTotal].mWidth > mMaxWidth) {
+		mMaxWidth = mRows[mRowTotal].mWidth;
+	}
+	mRowTotal++;
+	u32 blocks, inodes;
+	GetNandGameFreeSpace(&gGame.mSaveManager.mFile, &blocks, &inodes);
+	sprintf(sSFTestText[10], "FREE FSBLOCK:%4d   FREE INODE: %2d", blocks, inodes);
+	mRows[mRowTotal].mText  = sSFTestText[10];
+	mRows[mRowTotal].mWidth = MeasureGameTextWidth(&gGame.mGs, mRows[mRowTotal].mText, 0, mFontSize);
+	if (mRows[mRowTotal].mWidth > mMaxWidth) {
+		mMaxWidth = mRows[mRowTotal].mWidth;
+	}
+	mRowTotal++;
+	mMaxWidth = 532.0f;
+	mWindow.SetSize(60.0f + mMaxWidth, mRowTotal * (2.0f + mFontSize) + 24.0f);
+	mWindow.SetPos(8.0f + (mWindow.mWidth / 2 + gScreenSafeLeft), 24.0f + (mWindow.mHeight / 2 + gScreenSafeTop));
+}
+
+void MenuSFTest::Open()
+{
+	mState = 1;
+	Resume();
+	mWindow.mOpen = TRUE;
+	BuildRows();
+	StartOperation(1);
+	_168 = -1;
+}
+
+void MenuSFTest::Init()
+{
+	CMenu::Init();
+	InitRows();
+	StartOperation(0);
+}
+
+// NONMATCHING: retail adds the 1 past the terminator a few instructions later
+void MenuSFTest::StartOperation(s32 which)
+{
+	switch (which) {
+	case 0:
+		mOperation = 0;
+		break;
+	case 1:
+		StartWiiSaveSlotScan(&gGame.mSaveManager, 10);
+		mOperation = 1;
+		break;
+	case 2:
+		sprintf(mRows[mSelection].mText, "(%d) saving...", mSelection);
+		StartWiiSaveSlotWrite(&gGame.mSaveManager, mSelection, 0);
+		mOperation = 3;
+		break;
+	case 4:
+		sprintf(mRows[mSelection].mText, "(%d) loading...", mSelection);
+		StartWiiSaveSlotRead(&gGame.mSaveManager, mSelection);
+		mOperation = 5;
+		break;
+	case 6:
+		sprintf(mRows[mSelection].mText, "(%d) deleting...", mSelection);
+		StartWiiSaveSlotDelete(&gGame.mSaveManager, mSelection);
+		mOperation = 7;
+		break;
+	}
+	// a busy line ends in an empty second string
+	if (mOperation != 0) {
+		char* text = mRows[mSelection].mText;
+		sprintf(text + strlen(text) + 1, "");
+	}
 }
 
 void MenuMain::Reset()
@@ -158,6 +688,20 @@ void MenuMain::Open()
 	gGame.SetStatusFlags(2);
 }
 
+void MenuMain::Close(s32 state)
+{
+	CMenu::Close(state);
+	PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+	gGame.ClearStatusFlags(2);
+}
+
+void CMenu::Close(s32 state)
+{
+	mState = state;
+	Resume();
+	mWindow.mOpen = FALSE;
+}
+
 void MenuMain::Resume()
 {
 	if (mSuspended) {
@@ -187,6 +731,172 @@ extern "C" void AddMainMenuExtraRow(MenuMain* menu, char* text, s32 id)
 	LayoutMainMenuRows(menu);
 }
 
+// an item's card: its description, its name and its icon. NONMATCHING: only the place of "%s" in the string
+// pool, which depends on the strings of the functions before it that have no source yet
+extern "C" void DrawStatusItemDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale)
+{
+	CTexObj tex;
+	f32 iconHeight, iconWidth;
+	f32 width, height;
+	if (scale <= 0.0f)
+		return;
+	height    = 153.0f * scale;
+	width     = 254.0f * scale;
+	f32 top   = y - height / 2.0f;
+	u32 frame = (u32)(220.0f * alpha);
+	DrawTexturedWindowFrame(frame, (u32)(255.0f * alpha) | 0xFFFFFF00, x, top, width, height, alpha, 1.0f, 1.0f);
+	top += scale;
+	f32 fontSize   = 17.0f * scale;
+	f32 textOffset = 24.0f * scale;
+	char text[256];
+	sprintf(text, "%s", GetItemDescription(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00, text, x - width / 2.0f,
+	                             (4.0f * scale + (textOffset + (5.0f * fontSize + top))) - 6.0f * scale, 0.0f, fontSize, fontSize);
+	sprintf(text, "%s", GetItemName(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, 2.0f * scale + fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFAA0000, text, x - width / 2.0f,
+	                             (textOffset + (4.0f * fontSize + top)) - 6.0f * scale, 0.0f, 2.0f * scale + fontSize,
+	                             2.0f * scale + fontSize);
+	s32 icon = GetItemIconTextureIndex(id);
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[icon], 0);
+	tex        = gGame.mTpl.mTex;
+	iconWidth  = scale * GXGetTexObjWidth(&tex);
+	iconHeight = scale * GXGetTexObjHeight(&tex);
+	if (icon >= 0) {
+		f32 iconX = ((56.0f * scale + x) - 30.0f * scale) - 127.0f * scale;
+		f32 iconY = 46.0f * scale + top;
+		u32 color = (u32)(255.0f * alpha) | 0xFFFFFF00;
+		gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, iconX, iconY, 0.0f, iconWidth, iconHeight, 0.0f, 0.0f, 0.0f);
+		gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+	}
+}
+
+static inline f32 MenuRectStart(f32 center, f32 size)
+{
+	return center - size / 2;
+}
+
+static inline f32 MenuRectEnd(f32 center, f32 size)
+{
+	return size + MenuRectStart(center, size);
+}
+
+// a filled box with a dark and a light edge, the GameCube's DrawBeveledMenuRect; the Wii inlines it
+static inline void DrawBeveledMenuRect(u32 color, f32 x, f32 y, f32 z, f32 width, f32 height, f32 alpha)
+{
+	Vec fill[5]
+	    = { (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z }, (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), z },
+		    (Vec) { MenuRectEnd(x, width), MenuRectEnd(y, height), z }, (Vec) { MenuRectStart(x, width), MenuRectEnd(y, height), z },
+		    (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z } };
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, fill, color, 5);
+	Vec border[6] = {
+		(Vec) { MenuRectStart(x, width), MenuRectStart(y, height), 0.0f }, (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), 0.0f },
+		(Vec) { MenuRectEnd(x, width), MenuRectEnd(y, height), 0.0f },     (Vec) { MenuRectStart(x, width), MenuRectEnd(y, height), 0.0f },
+		(Vec) { MenuRectStart(x, width), MenuRectStart(y, height), 0.0f }, (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), 0.0f }
+	};
+	DrawGsLineStrip(&gGame.mGs, &border[3], (u32)(255.0f * alpha) | 0x64646400, 3);
+	DrawGsLineStrip(&gGame.mGs, &border[1], (u32)(255.0f * alpha) | 0xC8C8C800, 3);
+}
+
+// two byte text a character at a time, digits and narrow letters moved to the middle of their cell.
+// NONMATCHING: scheduling of the character copy and register allocation of the box corners
+extern "C" void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha)
+{
+	char* p;
+	u32 count;
+	int i;
+	count = strlen(text) / 2;
+	p     = text;
+	i     = 0;
+	for (; i < count; p += 2, i++) {
+		char c[3];
+		char buf[4];
+		c[0] = p[0];
+		c[1] = p[1];
+		c[2] = 0;
+		DrawBeveledMenuRect((u32)(128.0f * alpha) | 0xFFFFFF00, i * w + x, y, z, w, h, alpha);
+		u32 color = (u32)(255.0f * alpha) | 0x20202000;
+		f32 shift = 0.0f;
+		for (int digit = 0; digit < 10; digit++) {
+			sprintf(buf, "%d", digit);
+			ConvertHudTextToFullWidth(buf);
+			if (strcmp(c, buf) == 0) {
+				if (digit == 1) {
+					shift = 6.0f;
+				} else {
+					shift = 3.0f;
+				}
+				break;
+			}
+		}
+		for (int letter = 0; letter < 26; letter++) {
+			buf[0] = 'A' + letter;
+			buf[1] = 0;
+			ConvertHudTextToFullWidth(buf);
+			if (strcmp(c, buf) == 0) {
+				switch (letter) {
+				case 'B' - 'A':
+				case 'E' - 'A':
+				case 'F' - 'A':
+				case 'J' - 'A':
+				case 'K' - 'A':
+				case 'L' - 'A':
+				case 'P' - 'A':
+				case 'R' - 'A':
+				case 'S' - 'A':
+				case 'T' - 'A':
+					shift = 6.0f;
+					break;
+				case 'I' - 'A':
+					shift = 12.0f;
+					break;
+				case 'C' - 'A':
+				case 'H' - 'A':
+				case 'U' - 'A':
+				case 'X' - 'A':
+					shift = 4.5f;
+					break;
+				default:
+					shift = 3.0f;
+					break;
+				}
+				break;
+			}
+		}
+		DrawGsProportionalTextFormat(&gGame.mGs, color, c, shift + (i * w + x) - w / 2, y - h / 2, 0.0f, w, h);
+	}
+}
+
+// NONMATCHING: register allocation of the corner coordinates
+extern "C" void DrawMenuRectWithShadow(CMenu* menu, u32 color, f32 x, f32 y, f32 width, f32 height)
+{
+	// The original evaluates both animation curves even though their values are unused.
+	sin(4.712389f * (1.0f - menu->mAlpha));
+	sin(4.712389f * (1.0f - menu->mAlpha));
+	f32 z           = -10.0f;
+	Vec outline[10] = { (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z },
+		                (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), z },
+		                (Vec) { MenuRectEnd(x, width), MenuRectEnd(y, height), z },
+		                (Vec) { MenuRectStart(x, width), MenuRectEnd(y, height), z },
+		                (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z },
+		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectStart(y, height), z },
+		                (Vec) { 6.0f + MenuRectEnd(x, width), 6.0f + MenuRectStart(y, height), z },
+		                (Vec) { 6.0f + MenuRectEnd(x, width), 6.0f + MenuRectEnd(y, height), z },
+		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectEnd(y, height), z },
+		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectStart(y, height), z } };
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, outline, color, 5);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GEQUAL, GX_FALSE);
+	u32 shadow = (u32)(128.0f * menu->mAlpha);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, &outline[5], shadow, 5);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
+	gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
+}
+
 extern "C" BOOL IsUtilibotStatusIconUnlocked()
 {
 	BOOL found = FALSE;
@@ -195,6 +905,182 @@ extern "C" BOOL IsUtilibotStatusIconUnlocked()
 		found = TRUE;
 	}
 	return found;
+}
+
+// a status icon's card, the item card without the picture. NONMATCHING: the place of "%s" in the string pool
+extern "C" void DrawStatusIconDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale)
+{
+	// the original constructs a texture and counts its calls even when the card is closed
+	static u32 frame = 0;
+	++frame;
+	CTexObj tex;
+	f32 width, height;
+	if (scale <= 0.0f)
+		return;
+	height         = 153.0f * scale;
+	width          = 254.0f * scale;
+	f32 top        = y - height / 2.0f;
+	u32 frameColor = (u32)(220.0f * alpha);
+	DrawTexturedWindowFrame(frameColor, (u32)(255.0f * alpha) | 0xFFFFFF00, x, top, width, height, alpha, 1.0f, 1.0f);
+	top += scale;
+	f32 fontSize   = 17.0f * scale;
+	f32 textOffset = 24.0f * scale;
+	char text[256];
+	sprintf(text, "%s", GetStatusIconDescription(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00, text, x - width / 2.0f,
+	                             (4.0f * scale + (textOffset + (5.0f * fontSize + top))) - 6.0f * scale, 0.0f, fontSize, fontSize);
+	sprintf(text, "%s", GetStatusIconName(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, 2.0f * scale + fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFAA0000, text, x - width / 2.0f,
+	                             (textOffset + (4.0f * fontSize + top)) - 6.0f * scale, 0.0f, 2.0f * scale + fontSize,
+	                             2.0f * scale + fontSize);
+}
+
+// an overview entry's card. NONMATCHING: the place of "%s" in the string pool
+extern "C" void DrawStatusOverviewDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale)
+{
+	// the original constructs a texture and counts its calls even when the card is closed
+	static u32 frame = 0;
+	++frame;
+	CTexObj tex;
+	f32 width, height;
+	if (scale <= 0.0f)
+		return;
+	height         = 153.0f * scale;
+	width          = 254.0f * scale;
+	f32 top        = y - height / 2.0f;
+	u32 frameColor = (u32)(220.0f * alpha);
+	DrawTexturedWindowFrame(frameColor, (u32)(255.0f * alpha) | 0xFFFFFF00, x, top, width, height, alpha, 1.0f, 1.0f);
+	top += scale;
+	f32 fontSize   = 17.0f * scale;
+	f32 textOffset = 24.0f * scale;
+	char text[256];
+	sprintf(text, "%s", GetStatusOverviewDescription(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00, text, x - width / 2.0f,
+	                             (4.0f * scale + (textOffset + (5.0f * fontSize + top))) - 6.0f * scale, 0.0f, fontSize, fontSize);
+	sprintf(text, "%s", GetStatusOverviewLabel(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, 2.0f * scale + fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFAA0000, text, x - width / 2.0f,
+	                             (textOffset + (4.0f * fontSize + top)) - 6.0f * scale, 0.0f, 2.0f * scale + fontSize,
+	                             2.0f * scale + fontSize);
+}
+
+BOOL MenuMain::Update(u32 frames)
+{
+	if (CMenu::Update(frames) == 4) {
+		CPad pad(0);
+		s32 id = -1;
+		if (gWiiPointer.Check(PadActStickUp)) {
+			do {
+				if (--mSelection < 0) {
+					mSelection = mRowCount - 1.0f;
+				}
+			} while (*mText[mSelection] == *"\x01");
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			do {
+				if (++mSelection > mRowCount - 1.0f) {
+					mSelection = 0;
+				}
+			} while (*mText[mSelection] == *"\x01");
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(0x80) || gWiiPointer.Check(0x400) || gWiiPointer.Check(PadActCancel)) {
+			Close(5);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			if (mSelection < mBaseRows) {
+				id = sMainLines[mSelection].mAction;
+			} else {
+				// the rows past the divider (hence + 1) each hold an event script to run
+				Close(5);
+				StartOrQueueEventScript(&gGame.mEvt, (u8*)mExtraRows[mSelection - (mBaseRows + 1)].mAction, 0, -1, -1);
+			}
+		}
+		if (id >= 0) {
+			BOOL fade = TRUE;
+			switch (id) {
+			case 1:
+				sMenuStatus.Open();
+				break;
+			case 2:
+				sMenuItem.Open();
+				break;
+			case 6: // save & load
+				fade = FALSE;
+				sMenuSFTest.Open();
+				break;
+			case 5: // map select
+				fade = FALSE;
+				sMenuStageSelect.Open();
+				break;
+			case 3:
+				sMenuPC.Open();
+				break;
+			case 4:
+				sMenuSave.Open();
+				break;
+			}
+			if (id >= 0) {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				Suspend(fade);
+			} else {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			}
+		}
+	}
+	return IsOpen();
+}
+
+// NONMATCHING: register allocation; retail also keeps the cursor's 24 in a register for both hands
+BOOL MenuMain::Draw()
+{
+	if (CMenu::Draw()) {
+		f32 x     = mWindow.mX;
+		f32 y     = mWindow.mY;
+		f32 maxW  = mMaxWidth;
+		f32 lines = mRowCount;
+		f32 lineH = mFontSize;
+		for (int i = 0; i < lines; i++) {
+			u32 color;
+			if (i == mSelection) {
+				color = (u32)(255.0f * mAlpha) | 0x20202000;
+			} else {
+				color = (u32)(255.0f * mAlpha) | 0x40404000;
+			}
+			if (*mText[i] == *"\x01") {
+				f32 lineY  = y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * (0.5f + i);
+				f32 left   = x - (30.0f + maxW) / 2;
+				u32 shadow = (u32)(255.0f * mAlpha) | 0x96969600;
+				DrawGsLineSegment(&gGame.mGs, NULL, left, lineY, 0.0f, shadow, left + (30.0f + maxW), lineY, 0.0f, shadow);
+				u32 light = (u32)(255.0f * mAlpha) | 0xFAFAFA00;
+				DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + left, 1.0f + lineY, 0.0f, light, 1.0f + (left + (30.0f + maxW)), 1.0f + lineY,
+				                  0.0f, light);
+			} else {
+				DrawGsProportionalTextFormat(&gGame.mGs, color, mText[i], x - mMaxWidth / 2,
+				                             y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * i, 0.0f, lineH, lineH);
+			}
+		}
+		f32 cx = x - maxW / 2;
+		f32 cy = y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * mSelection;
+		f32 alpha;
+		if (sMenuStatus.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuStatus.mWindow.mDrawAlpha : 0.0f;
+		} else if (sMenuSFTest.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuSFTest.mWindow.mDrawAlpha : 0.0f;
+		} else if (sMenuStageSelect.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuStageSelect.mWindow.mDrawAlpha : 0.0f;
+		} else if (sMenuPC.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuPC.mWindow.mDrawAlpha : 0.0f;
+		} else if (sMenuSave.IsOpen()) {
+			alpha = mState == 4 ? 1.0f - sMenuSave.mWindow.mDrawAlpha : 0.0f;
+		} else {
+			alpha = mAlpha;
+		}
+		DrawMenuSelectionCursor(mCursor, cx, cy, maxW, lineH, mAlpha, alpha);
+		return TRUE;
+	}
+	return FALSE;
 }
 
 void CMenu::Suspend(BOOL fade)
@@ -245,6 +1131,286 @@ extern "C" bool IsSaveSlotIntact(const WiiMenuSaveSlot* slot)
 extern "C" const char* GetTitleAndSaveMenuText(s32 index)
 {
 	return GetLocalizedInterfaceText(index + 95);
+}
+
+void MenuPC::Init()
+{
+	CMenu::Init();
+	mDepositBalance = 0;
+	mDialogueNumber = 0;
+}
+
+// the shop's purchase history rows; the functions that fill them are in the file's second half
+static MenuPCItem sShopHistoryEntries[20];
+
+static void (MenuPC::*sPCStepHandlers[])(u32)
+    = { &MenuPC::State0, &MenuPC::State1, &MenuPC::State2, &MenuPC::State3, &MenuPC::State4,  &MenuPC::State5,
+	    &MenuPC::State6, &MenuPC::State7, &MenuPC::State8, &MenuPC::State9, &MenuPC::State10, &MenuPC::State11 };
+
+static inline void PCSlide(f32& value, f32& target, f32 speed)
+{
+	if (value > target) {
+		if ((value -= speed) < target)
+			value = target;
+	}
+	if (value < target) {
+		if ((value += speed) > target)
+			value = target;
+	}
+}
+
+static inline void PCEase(f32& value, f32& target)
+{
+	f32 rate = fabs((target - value) * 0.25f);
+	if (rate < 1.0f)
+		rate = 1.0f;
+	PCSlide(value, target, rate);
+}
+
+static inline void PCEaseCall(f32& value, f32& target)
+{
+	f32 rate = fabs((target - value) * 0.25f);
+	if (rate <= 1.0f)
+		rate = 1.0f;
+	ApproachHudValue(&value, &target, rate);
+}
+
+static inline XObj* PCWorldObject(s32 index)
+{
+	return gGame.mXObjs.mPools[22].Get(index);
+}
+
+// NONMATCHING: retail's absolute values in the easing are single precision, fabs adds an frsp each time
+BOOL MenuPC::Update(u32 frames)
+{
+	if (CMenu::Update(frames) == 4) {
+		PCEase(_19C, _1A4);
+		PCEase(mFrameHeight, mTargetFrameHeight);
+		PCSlide(mTextX, mTargetX, 6.0f * frames);
+		PCSlide(mTextY, mTargetY, 6.0f * frames);
+		ApproachHudValue(&mScroll, &mScrollTarget, 17.0f);
+		PCEaseCall(mMoneyDisplay.shown, mMoneyDisplay.target);
+		PCEaseCall(mScrapDisplay.shown, mScrapDisplay.target);
+		PCEaseCall(_428, _42C);
+		mTexScroll -= 0.008f * frames;
+		if (mMode > 1) {
+			switch (mTextPhase) {
+			case 0:
+				switch (mMode) {
+				case 3:
+				case 7:
+				case 10:
+					mTargetX = 140.0f;
+					break;
+				case 4:
+					mTargetX = 160.0f;
+					break;
+				default:
+					mTargetX = 180.0f;
+					break;
+				}
+				mTextPhase++;
+				break;
+			case 1:
+				if (mTextX == mTargetX) {
+					mTextY   = 129.0f;
+					mTargetY = 301.0f;
+					mTextPhase++;
+				}
+				break;
+			case 2:
+				if (mTextY == mTargetY) {
+					switch (mMode) {
+					case 3:
+					case 7:
+					case 10:
+						mTextX   = 140.0f;
+						mTargetX = 469.0f;
+						break;
+					case 4:
+						mTextX   = 160.0f;
+						mTargetX = 449.0f;
+						break;
+					default:
+						mTextX   = 210.0f;
+						mTargetX = 429.0f;
+						break;
+					}
+					mTextPhase++;
+				}
+				break;
+			case 3:
+				if (mTextX == mTargetX)
+					mTextPhase++;
+				break;
+			case 4:
+				break;
+			}
+		}
+		switch (mKeeperAnimStep) {
+		case 0:
+			mKeeperAnimId = 0;
+			break;
+		case 1:
+			mKeeperAnimId = 1;
+			break;
+		case 2:
+			mKeeperAnimId = 2;
+			break;
+		case 3:
+			mKeeperAnimId = 6;
+			break;
+		case 4:
+			mKeeperAnimId = 7;
+			break;
+		case 5:
+			mKeeperAnimId = 8;
+			break;
+		case 6:
+			mKeeperAnimId = 9;
+			break;
+		case 7:
+			mKeeperAnimId = 2;
+			break;
+		case 8:
+			mKeeperAnimId = 10;
+			break;
+		default:
+			mKeeperAnimId = 0;
+			break;
+		}
+		if (mPlayKeeperAnim == 1) {
+			for (s32 i = 0; i < 400; i++) {
+				XObj* obj = PCWorldObject(i);
+				switch (obj->GetKind()) {
+				case 120: // the shopkeeper
+					obj->SetAnim(mKeeperAnimId, 0, 0.0f, frames, 1.0f, 15.0f);
+					break;
+				}
+			}
+			mPlayKeeperAnim = 0;
+		}
+		// these steps play once: four frames before their end the next step starts
+		switch (mKeeperAnimStep) {
+		case 1:
+		case 2:
+		case 6:
+		case 8:
+			for (s32 i = 0; i < 400; i++) {
+				XObj* obj = PCWorldObject(i);
+				switch (obj->GetKind()) {
+				case 120: {
+					f32 current = obj->GetAnimFrame();
+					f32 end     = obj->GetAnimEndFrame();
+					if (end - 4.0f <= current) {
+						mKeeperAnimStep++;
+						mPlayKeeperAnim = 1;
+					}
+				} break;
+				}
+			}
+			break;
+		}
+		(this->*sPCStepHandlers[mMode])(frames);
+	}
+	return IsOpen();
+}
+
+static inline void ResetPCText(MenuPC* menu, s32 step)
+{
+	menu->mPrevMode  = menu->mMode;
+	menu->mMode      = step;
+	menu->mPhase     = 0;
+	menu->mTextPhase = 0;
+	menu->mTextX     = 210.0f;
+	menu->mTextY     = 129.0f;
+	menu->mTargetX   = menu->mTextX;
+	menu->mTargetY   = menu->mTextY;
+	ResetPCCharacters(menu);
+}
+
+void MenuPC::State0(u32)
+{
+	if (mShopOnly) {
+		ResetPCText(this, 3);
+	} else {
+		ResetPCText(this, 1);
+		mProgress       = 0.0f;
+		mTargetProgress = 1.0f;
+		switch (rand() % 2) {
+		case 0:
+			mSpeed = 0.04f;
+			break;
+		case 1:
+			mSpeed = 0.08f;
+			break;
+		}
+	}
+}
+
+void MenuPC::State1(u32 frames)
+{
+	switch (mPhase) {
+	case 0:
+		PlayWiiSoundEffect(&gGame.mSound, 0x35A, 1.0f, 0.0f);
+		mPhase++;
+		break;
+	case 1:
+		break;
+	}
+	ApproachHudValue(&mProgress, &mTargetProgress, mSpeed * frames);
+	if (mProgress >= 1.0f)
+		ResetPCText(this, 2);
+}
+
+static inline s16 MenuHistoryValue(int i)
+{
+	return sShopHistoryEntries[i].mCount;
+}
+
+static inline void RestorePCHistory(MenuPC* menu)
+{
+	if (menu->mHistoryCount > 0) {
+		for (int i = 0; i < menu->mHistoryCount; i++) {
+			gEventVars.mVars[menu->mHistoryStart + i + menu->mHistoryCount] = MenuHistoryValue(i);
+		}
+		gEventVars.mVars[196] = menu->mDepositBalance;
+	}
+}
+
+void MenuPC::State2(u32)
+{
+	CPad pad(0);
+	if (gWiiPointer.Check(PadActStickUp)) {
+		mChoice--;
+		if (mChoice < 0)
+			mChoice = mChoiceCount - 1;
+		PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+	} else if (gWiiPointer.Check(PadActStickDown)) {
+		mChoice++;
+		if (mChoice > mChoiceCount - 1)
+			mChoice = 0;
+		PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+	} else if (gWiiPointer.Check(PadActConfirm)) {
+		s32 step = mChoices[mChoice];
+		// the catalog (mode 7) only buzzes while it has nothing in it
+		if (step == 7) {
+			if (mCanSelect) {
+				ResetPCText(this, 7);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			} else {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			}
+		} else if (step >= 0) {
+			ResetPCText(this, step);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+		}
+	} else if (gWiiPointer.Check(PadActCancel)) {
+		// B: shrink the frame, mode 11 closes the pc once it is shut
+		ResetPCText(this, 11);
+		mTargetFrameHeight = 0.0f;
+		RestorePCHistory(this);
+	}
 }
 
 // the status and PC menus' empty states
