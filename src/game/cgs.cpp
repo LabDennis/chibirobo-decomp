@@ -4907,11 +4907,12 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 #if defined(VERSION_JP)
 	Mtx scale;
 	Mtx mtx;
+	f32 left = x + width * w * 0.5f;
 	if (gs->mCamera->projection_type == PROJ_ORTHO) {
-		PSMTXTrans(trans, x + width * w * 0.5f, y, z);
+		PSMTXTrans(trans, left, y, z);
 		PSMTXScale(scale, w, h, 1.0f);
 	} else {
-		PSMTXTrans(trans, x + width * w * 0.5f, y, z);
+		PSMTXTrans(trans, left, y, z);
 		PSMTXScale(scale, w, -h, 1.0f);
 	}
 	PSMTXConcat(trans, scale, mtx);
