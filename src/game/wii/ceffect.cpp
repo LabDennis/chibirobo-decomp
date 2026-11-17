@@ -257,8 +257,8 @@ void CEffectSystem::SetFog(u32 param, const GXColor* color, f32 f1, f32 f2, f32 
 // NONMATCHING: trailing return branch inversion (99.99%)
 bool EffectSortFunc(const nw4r::ef::Effect* op1, const nw4r::ef::Effect* op2)
 {
-	NW4R_ASSERT_PTR(op1);
-	NW4R_ASSERT_PTR(op2);
+	NW4R_ASSERT_PTR_FILELINE("ceffect.cpp", 401, op1);
+	NW4R_ASSERT_PTR_FILELINE("ceffect.cpp", 402, op2);
 
 	const nw4r::math::MTX34* m1 = op1->GetRootMtx();
 	const nw4r::math::MTX34* m2 = op2->GetRootMtx();
