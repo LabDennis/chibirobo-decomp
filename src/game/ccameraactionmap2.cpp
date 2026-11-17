@@ -1407,18 +1407,18 @@ extern "C" void SetMapCameraAnglesFromEyeAndInterest(CCameraActionMap* map)
  * @note Address: 0x8013AB5C
  * @note Size: 0x668
  */
+// NONMATCHING: retail destroys origin and direction right after the new position, before the eye height is set; the build
+// destroys them at the end with position
 void CCameraActionMap::UpdateTurn(u32 step)
 {
 	if (mTurnInterpolation != NULL) {
 		if (!mTurnInterpolation->Update(step, FRAME_TIME)) {
 			f32 radius = mOrbitRadius;
 			CVec position(mTurnInterpolation->Get());
-			{
-				CVec origin(mSpringTarget);
-				origin.y = 0.0f;
-				CVec direction((position - origin).Normalize());
-				position = origin + direction * radius;
-			}
+			CVec origin(mSpringTarget);
+			origin.y = 0.0f;
+			CVec direction((position - origin).Normalize());
+			position   = origin + direction * radius;
 			position.y = mEye.y;
 			mOrbitEye  = position;
 			mTargetEye = position;
