@@ -4462,10 +4462,12 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			break;
 		case 110: {
 			mPlug.mConnection = 0;
-			s32 path[]        = { 0 };
-			CJObj joint(GetJointByPath(mPlug.mJObj, path, 1));
-			joint.SetRotationX(0, 0);
-			joint.SetRotationZ(0, 0);
+			{
+				s32 path[] = { 0 };
+				CJObj joint(GetJointByPath(mPlug.mJObj, path, 1));
+				joint.SetRotationX(0, 0);
+				joint.SetRotationZ(0, 0);
+			}
 			result = -1;
 			break;
 		}
