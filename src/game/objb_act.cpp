@@ -805,12 +805,12 @@ static inline void PutAway(XActLift* act)
 
 extern "C" Vec lbl_8037C340;
 
-static inline Vec GetFloorExtent(const XObjFloor* floor)
+static inline Vec GetFloorExtent(XObjFloor* const* floors, s32 index)
 {
 	Vec value = lbl_8037C340;
-	value.x   = floor->mExtent[0] / 100.0f;
-	value.y   = floor->mExtent[1] / 100.0f;
-	value.z   = floor->mExtent[2] / 100.0f;
+	value.x   = (*floors)[index].mExtent[0] / 100.0f;
+	value.y   = (*floors)[index].mExtent[1] / 100.0f;
+	value.z   = (*floors)[index].mExtent[2] / 100.0f;
 	return value;
 }
 
@@ -879,7 +879,7 @@ void UpdatePushedObject(XActPush* act, u32 frames)
 				target->mStatus.mFlags |= 0x1000000000000000ULL;
 
 				Vec rotation = target->mMoveRotate, speed = target->mMoveRotate.mSpeed;
-				Vec extent = GetFloorExtent(target->mFloors);
+				Vec extent = GetFloorExtent(&target->mFloors, 0);
 				f32 dx, dz;
 				if ((angle > (90 * DEG2RAD - pushAngleTolerance) && angle < (90 * DEG2RAD + pushAngleTolerance))) {
 					rotation.z -= HALF_PI;
@@ -2163,12 +2163,12 @@ void HandleLadderActionInput(XActLadder* act, const CPadOne* pad, f32* weight)
 CVec GetPlayerFloorSlope(XObjChr*);
 extern Vec lbl_8037C334;
 
-static inline Vec GetFloorOffset(const XObjFloor* floor)
+static inline Vec GetFloorOffset(XObjFloor* const* floors, s32 index)
 {
 	Vec value = lbl_8037C334;
-	value.x   = floor->mCenterOffset[0] / 100.0f;
-	value.y   = floor->mCenterOffset[1] / 100.0f;
-	value.z   = floor->mCenterOffset[2] / 100.0f;
+	value.x   = (*floors)[index].mCenterOffset[0] / 100.0f;
+	value.y   = (*floors)[index].mCenterOffset[1] / 100.0f;
+	value.z   = (*floors)[index].mCenterOffset[2] / 100.0f;
 	return value;
 }
 
@@ -2415,12 +2415,13 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 					act->mArcStep = DEG2RAD * 12;
 				act->mForward = 5;
 				{
-					XObjChr* p = act->mOwner;
-					f32 radius = p->mMoveScale.x * GetFloorExtent(p->mFloors).x;
-					f32 height = .5f * (p->mMoveScale.x * (GetFloorOffset(p->mFloors).y + GetFloorExtent(p->mFloors).y));
+					f32 radius = act->mOwner->mMoveScale.x * GetFloorExtent(&act->mOwner->mFloors, 0).x;
+					f32 height = .5f
+					           * (act->mOwner->mMoveScale.x
+					              * (GetFloorOffset(&act->mOwner->mFloors, 0).y + GetFloorExtent(&act->mOwner->mFloors, 0).y));
 					Mtx rot;
-					PSMTXRotRad(rot, 'y', p->mMoveRotate.y);
-					Vec offset = act->mOwner->mMoveScale * GetFloorOffset(act->mOwner->mFloors);
+					PSMTXRotRad(rot, 'y', act->mOwner->mMoveRotate.y);
+					Vec offset = act->mOwner->mMoveScale * GetFloorOffset(&act->mOwner->mFloors, 0);
 					PSMTXMultVec(rot, &offset, &offset);
 					f32 yaw = act->mOwner->mMoveRotate.y;
 					f32 x   = 3.f * (f32)sin(yaw) + (offset.x + act->mOwner->mMoveTranslate.x);
@@ -3118,7 +3119,7 @@ extern "C" const Vec* GetScaledTargetFloorExtent(const XAction* act)
 {
 	const XObj* target = act->mTarget;
 	// the address of the product's temporary, as retail returns it (MWCC warns: not an lvalue)
-	return &(target->mMoveScale * GetFloorExtent(&target->mFloors[act->mTargetFloor]));
+	return &(target->mMoveScale * GetFloorExtent(&target->mFloors, act->mTargetFloor));
 }
 
 /**
@@ -3127,7 +3128,7 @@ extern "C" const Vec* GetScaledTargetFloorExtent(const XAction* act)
  */
 extern "C" f32 GetFirstFloorCollisionRadius(const XObj* object)
 {
-	return object->mMoveScale.x * GetFloorExtent(object->mFloors).x;
+	return object->mMoveScale.x * GetFloorExtent(&object->mFloors, 0).x;
 }
 
 /**
@@ -3570,8 +3571,8 @@ Vec GetTargetFloorPosition(XAction* act)
 {
 	if (act->mTarget != NULL) {
 		CVec position = act->mTarget->mMoveTranslate;
-		CVec offset   = act->mTarget->mMoveScale * GetFloorOffset(&act->mTarget->mFloors[act->mTargetFloor]);
-		CVec extent   = act->mTarget->mMoveScale * GetFloorExtent(&act->mTarget->mFloors[act->mTargetFloor]);
+		CVec offset   = act->mTarget->mMoveScale * GetFloorOffset(&act->mTarget->mFloors, act->mTargetFloor);
+		CVec extent   = act->mTarget->mMoveScale * GetFloorExtent(&act->mTarget->mFloors, act->mTargetFloor);
 		f32 yaw       = act->mTarget->mMoveRotate.y;
 		yaw += DEG2RAD * act->mTarget->mFloors[act->mTargetFloor].mYawDegrees;
 		Mtx translate, local, rotate, scale, result;
@@ -3601,9 +3602,10 @@ static inline u32 CheckHangClearance(XObj* obj, const CVec& from, const CVec& to
 
 void TryLeaveHang(XActHang* act)
 {
-	f32 radius     = act->mOwner->mMoveScale.x * GetFloorExtent(act->mOwner->mFloors).x;
-	f32 halfHeight = 0.5f * (act->mOwner->mMoveScale.x * (GetFloorOffset(act->mOwner->mFloors).y + GetFloorExtent(act->mOwner->mFloors).y));
-	Vec position   = GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 });
+	f32 radius = act->mOwner->mMoveScale.x * GetFloorExtent(&act->mOwner->mFloors, 0).x;
+	f32 halfHeight
+	    = 0.5f * (act->mOwner->mMoveScale.x * (GetFloorOffset(&act->mOwner->mFloors, 0).y + GetFloorExtent(&act->mOwner->mFloors, 0).y));
+	Vec position = GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 });
 	position.y += 0.5f;
 
 	u32 blockingHit = 0;
