@@ -6,6 +6,92 @@ double sqrt(double x);
 double sin(double x);
 double acos(double x);
 
+// The SDK's quat.c defines these ahead of C_QUATMtx. The game never calls them, so the linker
+// strips them, but their float literals are pooled first: that is why retail's .sdata2 holds
+// 1.0f before 0.0f (C_QUATNormalize's 0.00001f is stripped with it).
+
+void C_QUATAdd(const Quaternion* p, const Quaternion* q, Quaternion* r)
+{
+	r->x = p->x + q->x;
+	r->y = p->y + q->y;
+	r->z = p->z + q->z;
+	r->w = p->w + q->w;
+}
+
+void C_QUATSubtract(const Quaternion* p, const Quaternion* q, Quaternion* r)
+{
+	r->x = p->x - q->x;
+	r->y = p->y - q->y;
+	r->z = p->z - q->z;
+	r->w = p->w - q->w;
+}
+
+void C_QUATMultiply(const Quaternion* p, const Quaternion* q, Quaternion* pq)
+{
+	Quaternion* r;
+	Quaternion pqTmp;
+
+	if (p == pq || q == pq) {
+		r = &pqTmp;
+	} else {
+		r = pq;
+	}
+
+	r->w = p->w * q->w - p->x * q->x - p->y * q->y - p->z * q->z;
+	r->x = p->w * q->x + p->x * q->w + p->y * q->z - p->z * q->y;
+	r->y = p->w * q->y + p->y * q->w + p->z * q->x - p->x * q->z;
+	r->z = p->w * q->z + p->z * q->w + p->x * q->y - p->y * q->x;
+
+	if (r == &pqTmp) {
+		*pq = pqTmp;
+	}
+}
+
+void C_QUATScale(const Quaternion* q, Quaternion* r, f32 scale)
+{
+	r->x = q->x * scale;
+	r->y = q->y * scale;
+	r->z = q->z * scale;
+	r->w = q->w * scale;
+}
+
+f32 C_QUATDotProduct(const Quaternion* p, const Quaternion* q)
+{
+	return q->x * p->x + q->y * p->y + q->z * p->z + q->w * p->w;
+}
+
+void C_QUATNormalize(const Quaternion* src, Quaternion* unit)
+{
+	f32 mag;
+
+	mag = (src->x * src->x) + (src->y * src->y) + (src->z * src->z) + (src->w * src->w);
+	if (mag >= 0.00001f) {
+		mag     = 1.0f / (f32)sqrt(mag);
+		unit->x = src->x * mag;
+		unit->y = src->y * mag;
+		unit->z = src->z * mag;
+		unit->w = src->w * mag;
+	} else {
+		unit->x = unit->y = unit->z = unit->w = 0.0f;
+	}
+}
+
+void C_QUATInverse(const Quaternion* src, Quaternion* inv)
+{
+	f32 mag, norminv;
+
+	mag = (src->x * src->x) + (src->y * src->y) + (src->z * src->z) + (src->w * src->w);
+	if (mag == 0.0f) {
+		mag = 1.0f;
+	}
+
+	norminv = 1.0f / mag;
+	inv->x  = -src->x * norminv;
+	inv->y  = -src->y * norminv;
+	inv->z  = -src->z * norminv;
+	inv->w  = src->w * norminv;
+}
+
 void C_QUATMtx(Quaternion* r, const Mtx m)
 {
 	f32 tr, s, scale;
