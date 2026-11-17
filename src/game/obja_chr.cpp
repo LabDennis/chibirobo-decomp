@@ -4271,8 +4271,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			if (glow < 0)
 				glow = 0;
 			u32 glowColor = 0xffffff00 | (u32)(255.f * glow);
-			// retail multiplies the height again here instead of reusing the icon quads' product
-			DrawGsQuad(&gGame.mGs, glowColor, glowColor, glowColor, glowColor, x, y, 0, width * size, size * height, 0, 0, 0);
+			DrawGsQuad(&gGame.mGs, glowColor, glowColor, glowColor, glowColor, x, y, 0, width * size, height * size, 0, 0, 0);
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 		}
@@ -4458,12 +4457,10 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			break;
 		case 110: {
 			mPlug.mConnection = 0;
-			{
-				s32 path[] = { 0 };
-				CJObj joint(GetJointByPath(mPlug.mJObj, path, 1));
-				joint.SetRotationX(0, 0);
-				joint.SetRotationZ(0, 0);
-			}
+			s32 path[]        = { 0 };
+			CJObj joint(GetJointByPath(mPlug.mJObj, path, 1));
+			joint.SetRotationX(0, 0);
+			joint.SetRotationZ(0, 0);
 			result = -1;
 			break;
 		}

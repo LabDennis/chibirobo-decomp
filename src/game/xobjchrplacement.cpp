@@ -27,8 +27,7 @@ static inline void SampleRootOffset(XObjChr* player, s32 anim, CVec& offset)
 	SamplePlayerPose(player, anim);
 	s32 root[] = { 0 }; // the root joint
 	offset.Set(GetPlayerJointLocalTranslationByPath(player, 1, root));
-	s32 joint[] = { 0 }; // retail builds the path a second time to clear it
-	SetObjectJointTranslationByPath(player, 1, joint, 0.0f, 0.0f, 0.0f);
+	SetObjectJointTranslationByPath(player, 1, root, 0.0f, 0.0f, 0.0f);
 }
 
 static inline BOOL LoadPlayerModel(XObj& model, s32 id)
