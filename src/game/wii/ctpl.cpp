@@ -384,8 +384,8 @@ BOOL CSound::OpenArchiveAsync(const char* path, s32 initialGroup)
 	sLoaderArgs.mArg2  = initialGroup;
 	sLoader.mStack     = sLoaderStack;
 	sLoader.mStackSize = 0x1000;
-	OSCreateThread(&sLoader.mThread, OpenArchiveThreadProc, &sLoaderArgs, (u8*)sLoader.mStack + sLoader.mStackSize,
-	               sLoader.mStackSize, 0x10, 1);
+	OSCreateThread(&sLoader.mThread, OpenArchiveThreadProc, &sLoaderArgs, (u8*)sLoader.mStack + sLoader.mStackSize, sLoader.mStackSize,
+	               0x10, 1);
 	OSResumeThread(&sLoader.mThread);
 	mLoadPending = TRUE;
 	return TRUE;
@@ -472,9 +472,9 @@ void CSound3D::SetListener(f32 angle, const Vec* pos)
 {
 	nw4r::math::MTX34 mtx;
 	Vec up;
-	up.x     = 0.0f;
-	up.y     = 1.0f;
-	up.z     = 0.0f;
+	up.x = 0.0f;
+	up.y = 1.0f;
+	up.z = 0.0f;
 	nw4r::math::VEC3 look(pos->x + (f32)sin(angle), pos->y, pos->z + (f32)cos(angle));
 	C_MTXLookAt(mtx, pos, &up, look);
 	mListener.SetMatrix(mtx);

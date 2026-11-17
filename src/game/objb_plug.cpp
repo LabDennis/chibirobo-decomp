@@ -204,9 +204,9 @@ void XObjPlug::UpdateObject(u32 frames)
 			mCordEndsPinned = 0;
 		}
 		const Vec& tint = mColorStep[1].mValue;
-		u32 color    = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8) | 0xff; // tint rgb at full alpha
-		mCord.mColor = color;
-		mCord._60    = color;
+		u32 color       = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8) | 0xff; // tint rgb at full alpha
+		mCord.mColor    = color;
+		mCord._60       = color;
 		UpdatePlugCordSimulation(&mCord, frames);
 	} else {
 		ResetObjectState();

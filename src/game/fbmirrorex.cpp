@@ -29,7 +29,7 @@ void FbMirrorEx::Init()
 static inline s32 DrawCenteredLines(const char** lines, s32 color)
 {
 	s32 count = 0;
-	for (const char** line = lines; *line; line++, count++) {}
+	for (const char** line = lines; *line; line++, count++) { }
 	f32 height = 24.0f * count;
 	f32 top    = 224.0f - height / 2.0f;
 	for (s32 i = 0; i < count; ++i) {

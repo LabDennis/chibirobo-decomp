@@ -137,7 +137,7 @@ void CCameraActionReset::PreviousUpdate()
 			                             cameraEye.z, cameraInterest.x, cameraInterest.y, cameraInterest.z));
 		}
 
-		f32 time   = mTime;
+		f32 time = mTime;
 		SetEye_Interp(mMode, eye, time);
 
 		f32 fov = GetAreaCameraFovForHeightLevel(&gCameraAreaState, gCameraAreaState.mZoomLevel);

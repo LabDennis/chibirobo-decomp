@@ -13,9 +13,9 @@
 // a Vec from its parts, starting from zero
 static inline Vec MakeJObjVec(Vec v, f32 x, f32 y, f32 z)
 {
-	v.x   = x;
-	v.y   = y;
-	v.z   = z;
+	v.x = x;
+	v.y = y;
+	v.z = z;
 	return v;
 }
 

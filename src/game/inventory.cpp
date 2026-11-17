@@ -80,7 +80,7 @@ extern "C" s32 SetOrAddInventoryItemCount(Inventory* inventory, s16 id, s16 amou
 	if (index >= 0) {
 		inventory->mItems[index].mId = id;
 		if (add) {
-			s16 count = inventory->mItems[index].mCount > 0 ? inventory->mItems[index].mCount : 0;
+			s16 count                       = inventory->mItems[index].mCount > 0 ? inventory->mItems[index].mCount : 0;
 			inventory->mItems[index].mCount = count + amount;
 		} else {
 			inventory->mItems[index].mCount = amount;

@@ -3634,7 +3634,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		f32 windowAlpha  = font->mColor.a != 0 ? font->mAlpha : 0.0f;
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, right + 8.0f + 9.0f, top - 8.0f, -1.0f, 0xFF000000,
-		                 right + 8.0f + 9.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000);
+		                 right + 8.0f + 9.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f,
+		                 0xFF000000);
 
 		Vec fan[10] = { (Vec) { winX, winY, 0.0f },
 			            (Vec) { 1.0f + left, 8.0f + (1.0f + top), 0.0f },
@@ -3729,7 +3730,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
 		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, right + 8.0f + 9.0f, top - 8.0f, -1.0f, 0xFF000000,
-		                 right + 8.0f + 9.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000);
+		                 right + 8.0f + 9.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f,
+		                 0xFF000000);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 
 		if (font->mMode >= 0 && font->mMode < 1) {

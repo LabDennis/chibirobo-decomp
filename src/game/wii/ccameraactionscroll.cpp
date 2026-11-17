@@ -120,7 +120,7 @@ void CCameraActionScroll::Update(u32 step)
 		return;
 	}
 
-	mInterestMode      = 2;
+	mInterestMode        = 2;
 	s_bScrollUpLatched   = (gWiiPointer.mFlags & 0x40000000) != 0;
 	s_bScrollDownLatched = (gWiiPointer.mFlags & 0x80000000) != 0;
 	gWiiPointer.mFlags &= ~0x40000000ULL;

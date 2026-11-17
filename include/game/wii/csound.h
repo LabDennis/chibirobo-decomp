@@ -121,10 +121,10 @@ struct WiiSoundTracks {
 
 class CSoundArchivePlayer : public nw4r::snd::SoundArchivePlayer {
 public:
-	void* mSetupData;           // _EC
-	void* mSetupData2;          // _F0
-	WiiSoundTracks mTracks;     // _F4
-	u32 mReady;                 // _8F4
+	void* mSetupData;       // _EC
+	void* mSetupData2;      // _F0
+	WiiSoundTracks mTracks; // _F4
+	u32 mReady;             // _8F4
 };
 STATIC_ASSERT(sizeof(CSoundArchivePlayer) == 0x8F8);
 
