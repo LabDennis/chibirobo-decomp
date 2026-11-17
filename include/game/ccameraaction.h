@@ -786,6 +786,16 @@ public:
 	CCameraActionLeticker() { mTarget = NULL; }
 	virtual ~CCameraActionLeticker() { }
 
+	// keeps the eye inside the box
+	void SetBounds(f32 minX, f32 maxX, f32 minZ, f32 maxZ)
+	{
+		mBounded = true;
+		mMinX    = minX;
+		mMaxX    = maxX;
+		mMinZ    = minZ;
+		mMaxZ    = maxZ;
+	}
+
 	virtual void Update(u32 step);                  // _10
 	virtual void Reset();                           // _14
 	virtual u32 GetMode() { return 0; }             // _50 (weak)
