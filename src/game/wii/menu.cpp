@@ -897,6 +897,291 @@ void MenuPC::State6(u32)
 {
 }
 
+static inline s32 GetMoney()
+{
+	return gGame.GetPlayer()->mParams.mMoney;
+}
+
+static inline void DepositPCAmount(MenuPC* menu)
+{
+	s32 deposit = menu->mAmount;
+	s32 money   = GetMoney();
+	money -= deposit;
+	menu->mDepositBalance += deposit;
+	WiiPlayerParams* params = &gGame.GetPlayer()->mParams;
+	params->SetMoney(money);
+	menu->mMoneyDisplay.target = money;
+}
+
+// paying money in, the GameCube's digit entry worked with the stick
+void MenuPC::State9(u32)
+{
+	MenuPC* menu = this;
+	CPad pad(0); // unused, retail builds one here
+	s32 digits[7] = { 0, 0, 0, 0, 0, 0, 0 };
+	switch (menu->mPhase) {
+	case 0:
+		if (gWiiPointer.Check(PadActStickRight)) {
+			menu->mMoneyDigit--;
+			if (menu->mMoneyDigit < 0)
+				menu->mMoneyDigit = 4;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickLeft)) {
+			menu->mMoneyDigit++;
+			if (menu->mMoneyDigit > 4)
+				menu->mMoneyDigit = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			s32 value = 0;
+			for (s32 i = 0; i < 7; i++) {
+				if (i == 0)
+					digits[i] = menu->mAmount % 10;
+				else {
+					s32 power = 1;
+					for (s32 j = 0; j < i; j++)
+						power *= 10;
+					digits[i] = (menu->mAmount / power) % 10;
+				}
+			}
+			digits[menu->mMoneyDigit]--;
+			if (digits[menu->mMoneyDigit] < 0)
+				digits[menu->mMoneyDigit] = 9;
+			for (s32 i = 0; i < 7; i++) {
+				s32 power = 1;
+				if (i > 0) {
+					for (s32 j = 0; j < i; j++)
+						power *= 10;
+				}
+				value += power * digits[i];
+			}
+			menu->mAmount = value;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickUp)) {
+			s32 value = 0;
+			for (s32 i = 0; i < 7; i++) {
+				if (i == 0)
+					digits[i] = menu->mAmount % 10;
+				else {
+					s32 power = 1;
+					for (s32 j = 0; j < i; j++)
+						power *= 10;
+					digits[i] = (menu->mAmount / power) % 10;
+				}
+			}
+			digits[menu->mMoneyDigit]++;
+			if (digits[menu->mMoneyDigit] > 9)
+				digits[menu->mMoneyDigit] = 0;
+			for (s32 i = 0; i < 7; i++) {
+				s32 power = 1;
+				if (i > 0) {
+					for (s32 j = 0; j < i; j++)
+						power *= 10;
+				}
+				value += power * digits[i];
+			}
+			menu->mAmount = value;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActCancel)) {
+			ResetPCText(menu, 2);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			if (menu->mAmount > GetMoney()) {
+				menu->mAmount = GetMoney();
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				return;
+			}
+			if (menu->mAmount == 0) {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				return;
+			}
+			menu->mPhase = 1;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+		}
+		break;
+	case 1:
+		if (gWiiPointer.Check(PadActStickLeft)) {
+			if (menu->mYesNo > 0) {
+				menu->mYesNo--;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		} else if (gWiiPointer.Check(PadActStickRight)) {
+			if (menu->mYesNo < 1) {
+				menu->mYesNo++;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		}
+		if (gWiiPointer.Check(PadActConfirm)) {
+			switch (menu->mYesNo) {
+			case 0: {
+				DepositPCAmount(menu);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				menu->mPhase = 2;
+				break;
+			}
+			case 1:
+				menu->mPhase = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+				break;
+			}
+		} else if (gWiiPointer.Check(PadActCancel)) {
+			menu->mPhase = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		}
+		break;
+	case 2:
+		if (gWiiPointer.Check(PadActConfirm) || gWiiPointer.Check(PadActCancel)) {
+			menu->mPhase = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		}
+		break;
+	}
+}
+
+static inline s32 GetScrap()
+{
+	return gGame.GetPlayer()->mParams.mScrap;
+}
+
+static inline void RecyclePCAmount(MenuPC* menu)
+{
+	s32 scrap = GetScrap();
+	scrap -= menu->mAmount;
+	gGame.GetPlayer()->mParams.SetScrap(scrap);
+	s32 money = GetMoney();
+	money += menu->mAmount * menu->mScrapRate;
+	gGame.GetPlayer()->mParams.SetMoney(money);
+	menu->mScrapDisplay.target = scrap;
+	menu->mMoneyDisplay.target = money;
+}
+
+// recycling scrap into money at mScrapRate, the same digit entry
+void MenuPC::State10(u32)
+{
+	MenuPC* menu = this;
+	CPad pad(0); // unused, retail builds one here
+	s32 digits[7] = { 0, 0, 0, 0, 0, 0, 0 };
+	switch (menu->mPhase) {
+	case 0:
+		menu->mYesNo = -1;
+		if (gWiiPointer.Check(PadActStickRight)) {
+			menu->mScrapDigit--;
+			if (menu->mScrapDigit < 0)
+				menu->mScrapDigit = 4;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickLeft)) {
+			menu->mScrapDigit++;
+			if (menu->mScrapDigit > 4)
+				menu->mScrapDigit = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			s32 value = 0;
+			for (s32 i = 0; i < 5; i++) {
+				if (i == 0)
+					digits[i] = menu->mAmount % 10;
+				else {
+					s32 power = 1;
+					for (s32 j = 0; j < i; j++)
+						power *= 10;
+					digits[i] = (menu->mAmount / power) % 10;
+				}
+			}
+			digits[menu->mScrapDigit]--;
+			if (digits[menu->mScrapDigit] < 0)
+				digits[menu->mScrapDigit] = 9;
+			for (s32 i = 0; i < 5; i++) {
+				s32 power = 1;
+				if (i > 0) {
+					for (s32 j = 0; j < i; j++)
+						power *= 10;
+				}
+				value += power * digits[i];
+			}
+			menu->mAmount = value;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickUp)) {
+			s32 value = 0;
+			for (s32 i = 0; i < 5; i++) {
+				if (i == 0)
+					digits[i] = menu->mAmount % 10;
+				else {
+					s32 power = 1;
+					for (s32 j = 0; j < i; j++)
+						power *= 10;
+					digits[i] = (menu->mAmount / power) % 10;
+				}
+			}
+			digits[menu->mScrapDigit]++;
+			if (digits[menu->mScrapDigit] > 9)
+				digits[menu->mScrapDigit] = 0;
+			for (s32 i = 0; i < 5; i++) {
+				s32 power = 1;
+				if (i > 0) {
+					for (s32 j = 0; j < i; j++)
+						power *= 10;
+				}
+				value += power * digits[i];
+			}
+			menu->mAmount = value;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActCancel)) {
+			ResetPCText(menu, 2);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			if (menu->mAmount > GetScrap()) {
+				menu->mAmount = GetScrap();
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+				return;
+			}
+			if (menu->mAmount == 0) {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+				return;
+			}
+			menu->mPhase = 1;
+			menu->mYesNo = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+		}
+		break;
+	case 1:
+		if (gWiiPointer.Check(PadActStickUp)) {
+			if (menu->mYesNo > 0) {
+				menu->mYesNo--;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			if (menu->mYesNo < 1) {
+				menu->mYesNo++;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		}
+		if (gWiiPointer.Check(PadActConfirm)) {
+			switch (menu->mYesNo) {
+			case 0: {
+				RecyclePCAmount(menu);
+				menu->mYesNo = 2;
+				PlayWiiSoundEffect(&gGame.mSound, 0x35B, 1.0f, 0.0f);
+				menu->mPhase = 2;
+				break;
+			}
+			case 1:
+				menu->mPhase = 0;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+				break;
+			}
+		} else if (gWiiPointer.Check(PadActCancel)) {
+			menu->mPhase = 0;
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		}
+		break;
+	case 2:
+		if (gWiiPointer.Check(PadActConfirm) || gWiiPointer.Check(PadActCancel)) {
+			menu->mPhase = 0;
+			ResetPCText(menu, 2);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		}
+		break;
+	}
+}
+
 void MenuPC::State11(u32)
 {
 	MenuPC* menu = this;

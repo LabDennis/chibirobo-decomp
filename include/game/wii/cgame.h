@@ -1155,6 +1155,12 @@ public:
 	void State7(u32 frames);
 };
 
+// an amount the PC counts up or down to, the GameCube struct
+struct PCAmount {
+	f32 shown;
+	f32 target;
+};
+
 // its members sit four bytes behind the GameCube's, as CMenu's do (State4, State11, ResetPCCharacters)
 class MenuPC : public Menu {
 public:
@@ -1164,7 +1170,12 @@ public:
 	s32 mPhase; // _168
 	u8 _16C[0x170 - 0x16C];
 	s32 mTextPhase; // _170
-	u8 _174[0x1A0 - 0x174];
+	u8 _174[0x184 - 0x174];
+	s32 mYesNo;         // _184
+	s32 mMoneyDigit;    // _188
+	s32 mShopSelection; // _18C
+	s32 mScrapDigit;    // _190
+	u8 _194[0x1A0 - 0x194];
 	f32 mFrameHeight; // _1A0, closing ends at 2
 	u8 _1A4[0x1BC - 0x1A4];
 	s32 mCharIndex;          // _1BC
@@ -1185,13 +1196,21 @@ public:
 	u8 mPlayKeeperAnim;      // _378
 	u32 mNumberOffset;       // _37C
 	u8 mInsertsNumber;       // _380
-	u8 _381[0x434 - 0x381];
+	s32 mAmount;             // _384
+	s32 mDepositBalance;     // _388
+	u8 _38C[0x410 - 0x38C];
+	PCAmount mMoneyDisplay; // _410
+	PCAmount mScrapDisplay; // _418
+	u8 _420[0x430 - 0x420];
+	f32 mScrapRate; // _430
 	s32 mExitState; // _434, the game state it hands back
 
 	void State4(u32 frames);
 	void State5(u32 frames);
 	void State6(u32 frames);
 	void State8(u32 frames);
+	void State9(u32 frames);
+	void State10(u32 frames);
 	void State11(u32 frames);
 };
 STATIC_ASSERT(offsetof(MenuPC, mCharCopies) == 0x2F0);
