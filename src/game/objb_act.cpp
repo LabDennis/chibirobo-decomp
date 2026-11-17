@@ -3103,7 +3103,6 @@ void UpdateCarriedObjectPosition(XActLift* act, XObj* target)
  * @note Address: 0x800CE9A8
  * @note Size: 0x354
  */
-// NONMATCHING: stack order
 Vec GetLiftTargetContactOffset(const XActLift* act, const XObj* target)
 {
 	// a plug (24) is held by its end joint
