@@ -1770,36 +1770,11 @@ static inline bool RoundHangFloor(XActHang* act)
 {
 	return act->mTarget->mFloors[act->mTargetFloor].mId == 0;
 }
-static inline void SaveHangDistance(XActHang* act)
-{
-	CVec owner(act->mOwner->mMoveTranslate);
-	owner.y = 0;
-	CVec floor(GetTargetFloorPosition(act));
-	floor.y           = 0;
-	act->mFloorCenter = floor;
-	act->mDistance    = PSVECDistance(&owner, &floor);
-}
 static inline void RefreshHangFloor(XActHang* act)
 {
 	s32 floor = FindPlayerSupportingFloor(act->mOwner, 1, act->mTargetFloor);
 	if (floor >= 0)
 		act->mTargetFloor = floor;
-}
-static inline f32 RoundHangAngle(XActHang* act)
-{
-	CVec owner(act->mOwner->mMoveTranslate);
-	owner.y = 0;
-	CVec floor(GetTargetFloorPosition(act));
-	floor.y = 0;
-	return PI + (f32)atan2(floor.x - owner.x, floor.z - owner.z);
-}
-static inline void HangRootPosition(XActHang* act)
-{
-	s32 path[] = { 0 };
-	act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
-	RecordObjectPositionAndHeightChange(act->mOwner);
-	s32 reset[] = { 0 };
-	SetObjectJointTranslationByPath(act->mOwner, 1, reset, 0, 0, 0);
 }
 static inline void FinishHang(XActHang* act, f32 loop)
 {
@@ -1839,9 +1814,14 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			act->mState         = 5;
 			act->mMoveDirection = 0;
 			if (act->mTarget) {
-				if (RoundHangFloor(act))
-					SaveHangDistance(act);
-				else
+				if (RoundHangFloor(act)) {
+					CVec owner(act->mOwner->mMoveTranslate);
+					owner.y = 0;
+					CVec floor(GetTargetFloorPosition(act));
+					floor.y           = 0;
+					act->mFloorCenter = floor;
+					act->mDistance    = PSVECDistance(&owner, &floor);
+				} else
 					act->mOwner->SetPos(contact - normal * 4.f, 0);
 			}
 		} else if (act->mTarget) {
@@ -1868,8 +1848,15 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 		if (anim != 0x7a && anim != 0xca) {
 			if (act->mTarget) {
 				RefreshHangFloor(act);
-				f32 yaw               = RoundHangFloor(act) ? RoundHangAngle(act)
-				                                            : PI + GetObjectEdgeOutwardYaw(act->mTarget, &act->mOwner->mMoveTranslate, act->mTargetFloor);
+				f32 yaw;
+				if (RoundHangFloor(act)) {
+					CVec owner(act->mOwner->mMoveTranslate);
+					owner.y = 0;
+					CVec floor(GetTargetFloorPosition(act));
+					floor.y = 0;
+					yaw     = PI + (f32)atan2(floor.x - owner.x, floor.z - owner.z);
+				} else
+					yaw = PI + GetObjectEdgeOutwardYaw(act->mTarget, &act->mOwner->mMoveTranslate, act->mTargetFloor);
 				yaw                   = WrapAngle(yaw);
 				act->mHangStartOffset = act->mOwner->mMoveTranslate - act->mTarget->mMoveTranslate;
 				Vec pos               = act->mOwner->mMoveTranslate;
@@ -1928,9 +1915,13 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 				RefreshHangFloor(act);
 				CVec contact(0, 0, 0);
 				f32 yaw;
-				if (RoundHangFloor(act))
-					yaw = RoundHangAngle(act);
-				else {
+				if (RoundHangFloor(act)) {
+					CVec owner(act->mOwner->mMoveTranslate);
+					owner.y = 0;
+					CVec floor(GetTargetFloorPosition(act));
+					floor.y = 0;
+					yaw     = PI + (f32)atan2(floor.x - owner.x, floor.z - owner.z);
+				} else {
 					yaw = PI + GetFloorFacingAngle(act->mTarget, &act->mOwner->mMoveTranslate, act->mTargetFloor, 0, &contact, NULL);
 					if (__fpclassifyf(yaw) == FP_NAN) {
 						act->mOwner->mJump.mState = 2;
@@ -2003,8 +1994,14 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			HangAnim(act, 0x14);
 			act->mState         = 5;
 			act->mMoveDirection = 0;
-			if (act->mTarget && RoundHangFloor(act))
-				SaveHangDistance(act);
+			if (act->mTarget && RoundHangFloor(act)) {
+				CVec owner(act->mOwner->mMoveTranslate);
+				owner.y = 0;
+				CVec floor(GetTargetFloorPosition(act));
+				floor.y           = 0;
+				act->mFloorCenter = floor;
+				act->mDistance    = PSVECDistance(&owner, &floor);
+			}
 		}
 		break;
 	case 2:
@@ -2013,7 +2010,11 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			if (act->mTarget)
 				act->mOwner->SetRotationY(GetObjectEdgeOutwardYaw(act->mTarget, &act->mOwner->mMoveTranslate, act->mTargetFloor), 0);
 		} else if (aobj->flags & 0x44000000) {
-			HangRootPosition(act);
+			s32 path[] = { 0 };
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			RecordObjectPositionAndHeightChange(act->mOwner);
+			s32 reset[] = { 0 };
+			SetObjectJointTranslationByPath(act->mOwner, 1, reset, 0, 0, 0);
 			act->mOwner->SetRotationY(PI + act->mOwner->mMoveRotate.y, 0);
 			s32 p[] = { 0 };
 			SetJointYawByPath(act->mOwner, 1, p, 0);
@@ -2044,7 +2045,11 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 		if (anim != next)
 			HangAnim(act, next);
 		else if (aobj->flags & 0x44000000) {
-			HangRootPosition(act);
+			s32 path[] = { 0 };
+			act->mOwner->SetPos(GetEventJointWorldPosition(act->mOwner, 1, path), 0);
+			RecordObjectPositionAndHeightChange(act->mOwner);
+			s32 reset[] = { 0 };
+			SetObjectJointTranslationByPath(act->mOwner, 1, reset, 0, 0, 0);
 			FinishHang(act, 0);
 			act->mTarget = NULL;
 		}
