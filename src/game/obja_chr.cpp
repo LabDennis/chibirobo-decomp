@@ -4223,8 +4223,8 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		f32 x, y;
 
 		if (menu->mMenuType == 3) {
-			x        = originX + 68.f * (scale * slotX[i]);
 			y        = originY + 68.f * (scale * slotY[i]);
+			x        = originX + 68.f * (scale * slotX[i]);
 			s32 slot = i - menu->mFirstVisibleItem;
 			if (slot < 0)
 				slot += 7;
@@ -4234,8 +4234,8 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			}
 		} else {
 			f32 radius = 60.f + 20.f * menu->mItems[i].mScale;
-			x          = originX + fade * (radius * (scale * slotX[i]));
 			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
+			x          = originX + fade * (radius * (scale * slotX[i]));
 		}
 		if (menu->mMenuType != 3 && menu->mFocus) {
 			if (menu->mMenuType == 0) {
@@ -4407,9 +4407,10 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			SetRotationY(PI + target->mMoveRotate.y, 0);
 			HSD_AObj* anim = GetAObj(mJObj);
 			if (anim) {
+				s32 connection    = args[2];
 				mLift.mState      = 7;
 				mLift.mPlugTarget = target;
-				SetLiftPlugConnection(&mLift, args[2], FALSE);
+				SetLiftPlugConnection(&mLift, connection, FALSE);
 				do {
 					f32 end   = anim ? HSD_AObjGetEndFrame(anim) : 0;
 					f32 frame = anim ? HSD_AObjGetCurrentFrame(anim) : 0;
@@ -4518,7 +4519,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			mHeadTurn.mNeck.mLookAt = NULL;
 			return 0;
 		case 202:
-			return mHeadTurn.mNeck.mMode <= 0;
+			return mHeadTurn.mNeck.mMode <= 0 ? TRUE : FALSE;
 		case 300:
 			mRope.SetState(4, FindObj(args[1]));
 			result = -1;
@@ -4546,39 +4547,42 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			break;
 		case 451:
 			return mSuits.mSpecial;
-		case 503:
-			if (args[1] == 16) {
+		case 503: {
+			s32 item = args[1];
+			if (item == 16) {
 				RequestScriptAttachment(this, 4);
 				mScriptAttach = 1;
-			} else if (args[1] == 21) {
+			} else if (item == 21) {
 				RequestScriptAttachment(this, 5);
 				mScriptAttach = 1;
-			} else if (args[1] == 22) {
+			} else if (item == 22) {
 				RequestScriptAttachment(this, 6);
 				mScriptAttach = 1;
 			} else {
 				mLift.mState         = 24;
-				mLift.mPendingItemId = args[1];
+				mLift.mPendingItemId = item;
 			}
 			result = -1;
 			break;
+		}
 		case 513:
 			return ScriptLiftReady(this);
 		case 500:
 			// takes out an item he owns: the toothbrush (16), spoon (21), mug (22) and squirter (56) go on as attachments
 			// 4 to 7, anything else he lifts
 			if (FindOwnedInventoryItemIndex(mParams.mInventory.mItems, args[1]) >= 0) {
-				if (args[1] == 16) {
+				s32 item = args[1];
+				if (item == 16) {
 					RequestScriptAttachment(this, 4);
-				} else if (args[1] == 21) {
+				} else if (item == 21) {
 					RequestScriptAttachment(this, 5);
-				} else if (args[1] == 22) {
+				} else if (item == 22) {
 					RequestScriptAttachment(this, 6);
-				} else if (args[1] == 56) {
+				} else if (item == 56) {
 					RequestScriptAttachment(this, 7);
 				} else {
 					mLift.mState         = 20;
-					mLift.mPendingItemId = args[1];
+					mLift.mPendingItemId = item;
 				}
 			}
 			result = -1;

@@ -69,7 +69,7 @@ extern "C" void UpdatePlayerSuitChange(XObjChr* player)
 		player->SetColor(2, 255, 255, 255, 0.0f);
 		player->SetColor(2, 0, 0, 0, 0.5f);
 		const Vec& tint = player->mColorStep[0].mValue;
-		u32 color       = ((u32)tint.y << 16) | ((u32)tint.x << 24) | ((u32)tint.z << 8);
+		u32 color       = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8);
 		player->SetColor(0, color >> 24, color >> 16, color >> 8, 0.0f);
 		++player->mSuits.mChangeStep;
 		break;
