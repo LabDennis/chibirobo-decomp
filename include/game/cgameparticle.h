@@ -10,8 +10,10 @@
 // so each including unit gets these six Vecs at the start of its .rodata whether it calls the
 // helpers or not: { 1, 1, 1 }, { 0, 0, 0 }, { 0, 0, 0 } twice. Retail has exactly that 0x48-byte
 // block in front of 27 GameCube units (objb_attach, xobjactormama, evt, msg, xobjs, obja_chr,
-// ccameraactionmap2, ccameraactionscroll2, ...) and not in units that never make particles
-// (ccameraactioneye, objb_plug, objb_sound, ...). The Wii build drops the unreferenced copies.
+// ccameraactionmap2, ccameraactionscroll2, ...) and not in units that do not include this header
+// (ccameraactioneye, objb_plug, objb_sound, ...). It follows inclusion, not particle use: the camera
+// units make no particles and have it, objb_plug makes one directly and lacks it. The Wii build drops
+// the unreferenced copies.
 //
 // The bank/id helpers are the second triple: objb_act keeps out-of-line copies of both
 // (0x800D57F4 copies its { 1, 1, 1 } and { 0, 0, 0 } from block + 0x24/0x30, 0x800D593C its
