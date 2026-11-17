@@ -830,11 +830,14 @@ extern "C" void ApproachHudValue(f32* cur, f32* target, f32 step)
  * @note Size: 0xB4
  */
 // the point at the bottom of the screen the counters' sparkle effects rise from
+// NONMATCHING: retail converts gScreenSafeBottom for the clamp into the same stack slot (0x10) as
+// for the compare; this build takes a fresh one (0x18).
 extern "C" void GetHudPointParticleOrigin(InfoScrn* scrn, f32* x, f32* y)
 {
 	f32 xPos       = 22.0f + (f32)gScreenSafeLeft;
+	f32 rowY       = GetHudBottomEdge() - 64.0f - 40.0f;
 	f32 iconHeight = 18.0f;
-	f32 iconY      = GetHudBottomEdge() - 64.0f - 40.0f - iconHeight * 0.5f;
+	f32 iconY      = rowY - iconHeight / 2;
 	if (x) {
 		*x = xPos;
 	}
@@ -1029,10 +1032,11 @@ extern "C" s32 ConvertHudTextToFullWidth(char* text)
  * @note Address: 0x8008F080
  * @note Size: 0x34
  */
-// NONMATCHING: retail holds the gauge and scaled maximum in f0/f1; this source uses f2/f0.
+// NONMATCHING: retail loads the 10.0f into f1 and the max battery into f2; this source swaps them.
 extern "C" BOOL InfoScrn_IsBatteryGaugeFull(InfoScrn* scrn)
 {
-	return scrn->mBatteryGauge == 10.0f * gGame.GetPlayer()->mParams.mMaxBattery;
+	f32 full = 10.0f * gGame.GetPlayer()->mParams.mMaxBattery;
+	return scrn->mBatteryGauge == full;
 }
 
 /**
