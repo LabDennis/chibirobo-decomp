@@ -441,6 +441,139 @@ void MenuSave::State0(u32)
 	menu->SetMode(1);
 }
 
+// the file records cleared, as title.cpp's OnCardRemoved; State2, State3, State18 and State19 differ from retail only
+// in the panic messages' pool offsets (see State6)
+static inline void OnCardRemoved(MenuSave* menu)
+{
+	OSPanic("menu_save.cpp", 4221, "ここにくるのはおかしい");
+	menu->mResult = -3;
+	menu->SetMode(6);
+	menu->mOffset = -32.0f;
+	for (int i = 0; i < 3; i++) {
+		ResetSaveSlotRecord(&menu->mSlots[i]);
+	}
+}
+
+// picks the file to save to: a used one asks first (State3), an empty one is written, a full NAND says so (State11).
+// NONMATCHING: the panic message's pool offset (see State6) and which register keeps the pad flags for B
+void MenuSave::State2(u32)
+{
+	bool addPanes = true;
+	bool stick    = false;
+	if (mFile != -1) {
+		mStickFile = mFile;
+	}
+	if (!mReady) {
+		OnCardRemoved(this);
+		return;
+	}
+	if (IsStickUsedOverPointer()) {
+		stick = true;
+	}
+	if (!stick) {
+		if (IsStickLeft()) {
+			if (--mFile < 0) {
+				mFile = 2;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (IsStickRight()) {
+			if (++mFile > 2) {
+				mFile = 0;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		}
+	}
+	if (IsConfirmPressed() && mFile != -1) {
+		addPanes           = false;
+		mPanes[0].mPointed = false;
+		mPanes[0].mPicked  = false;
+		mPanes[1].mPointed = false;
+		mPanes[1].mPicked  = false;
+		mPanes[2].mPointed = false;
+		mPanes[2].mPicked  = false;
+		if (mSlots[mFile].mUsed == 1) {
+			SetMode(3);
+			fn_80083350(this);
+		} else if (mSlots[mFile]._44 == 1) {
+			StartWiiSaveSlotWrite(&gGame.mSaveManager, mFile, FALSE);
+			SetMode(5);
+			mDelay = 1.5f * gRefreshRate;
+		} else {
+			if (mSlots[mFile]._48 == 1) {
+				mResult = -9;
+			} else if (mSlots[mFile]._4C == 1) {
+				mResult = -11;
+			}
+			SetMode(11);
+			mOffset = -32.0f;
+		}
+		PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+	} else if (IsCancelPressed()) {
+		SetMode(16);
+		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		addPanes = false;
+	}
+	if (addPanes) {
+		for (int i = 0; i < 3; i++) {
+			AddPointerPane(&gPointerPanes, &mPanes[i]);
+		}
+	}
+}
+
+// the yes or no question before the game is written to the file picked
+void MenuSave::State3(u32)
+{
+	bool addPanes = true;
+	bool stick    = false;
+	if (mChoice != -1) {
+		mStickChoice = mChoice;
+	}
+	if (!mReady) {
+		OnCardRemoved(this);
+		return;
+	}
+	if (IsStickUsedOverPointer()) {
+		stick = true;
+	}
+	if (!stick) {
+		if (IsStickLeft()) {
+			if (mChoice > 0) {
+				mChoice--;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		} else if (IsStickRight()) {
+			if (mChoice < 1) {
+				mChoice++;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		}
+	}
+	if (IsConfirmPressed() && mChoice != -1) {
+		addPanes           = false;
+		mPanes[3].mPointed = false;
+		mPanes[3].mPicked  = false;
+		mPanes[4].mPointed = false;
+		mPanes[4].mPicked  = false;
+		switch (mChoice) {
+		case 0:
+			StartWiiSaveSlotWrite(&gGame.mSaveManager, mFile, FALSE);
+			SetMode(5);
+			mOffset = -32.0f;
+			mDelay  = 1.5f * gRefreshRate;
+			break;
+		case 1:
+			SetMode(2);
+			fn_80083350(this);
+			break;
+		}
+		PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+	}
+	if (addPanes) {
+		AddPointerPane(&gPointerPanes, &mPanes[3]);
+		AddPointerPane(&gPointerPanes, &mPanes[4]);
+	}
+}
+
 void MenuSave::State4(u32 frames)
 {
 	MenuSave* menu = this;
@@ -508,6 +641,130 @@ void MenuSave::State11(u32)
 void MenuSave::State12(u32)
 {
 	OSPanic("menu_save.cpp", 1741, "ガイドライン1.09-->1.10で削除したはずの遷移です");
+}
+
+// the yes or no question after a failed write: 0 leaves, 1 says why or scans the NAND again
+void MenuSave::State19(u32)
+{
+	bool addPanes = true;
+	bool stick    = false;
+	if (mChoice != -1) {
+		mStickChoice = mChoice;
+	}
+	if (IsStickUsedOverPointer()) {
+		stick = true;
+	}
+	if (!stick) {
+		if (IsStickLeft()) {
+			if (mChoice > 0) {
+				mChoice--;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		} else if (IsStickRight()) {
+			if (mChoice < 1) {
+				mChoice++;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		}
+	}
+	if (IsConfirmPressed() && mChoice != -1) {
+		addPanes           = false;
+		mPanes[3].mPointed = false;
+		mPanes[3].mPicked  = false;
+		mPanes[4].mPointed = false;
+		mPanes[4].mPicked  = false;
+		if (mChoice == 0) {
+			SetMode(16);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			return;
+		} else if (mChoice == 1) {
+			if (mShowMessage == TRUE) {
+				SetMode(13);
+				mOffset = 0.0f;
+			} else if (mResult == 0) {
+				OSPanic("menu_save.cpp", 1926, "エラーからこないことはない");
+				SetMode(2);
+				mChoice = 0;
+			} else if (mResult == -11 || mResult == -9) {
+				for (int i = 0; i < 3; i++) {
+					ResetSaveSlotRecord(&mSlots[i]);
+				}
+				StartWiiSaveSlotScan(&gGame.mSaveManager, 10);
+				SetMode(1);
+				mOffset = 0.0f;
+			} else {
+				for (int i = 0; i < 3; i++) {
+					ResetSaveSlotRecord(&mSlots[i]);
+				}
+				StartWiiSaveSlotScan(&gGame.mSaveManager, 10);
+				SetMode(1);
+				mOffset = 0.0f;
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			return;
+		}
+	}
+	if (addPanes) {
+		AddPointerPane(&gPointerPanes, &mPanes[3]);
+		AddPointerPane(&gPointerPanes, &mPanes[4]);
+	}
+}
+
+// the yes or no question after a full NAND: 0 leaves and resets the game once the menu is closed, 1 goes on to State19
+void MenuSave::State18(u32)
+{
+	bool addPanes = true;
+	bool stick    = false;
+	if (mChoice != -1) {
+		mStickChoice = mChoice;
+	}
+	if (IsStickUsedOverPointer()) {
+		stick = true;
+	}
+	if (!stick) {
+		if (IsStickLeft()) {
+			if (mChoice > 0) {
+				mChoice--;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		} else if (IsStickRight()) {
+			if (mChoice < 1) {
+				mChoice++;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		}
+	}
+	if (IsConfirmPressed() && mChoice != -1) {
+		addPanes           = false;
+		mPanes[3].mPointed = false;
+		mPanes[3].mPicked  = false;
+		mPanes[4].mPointed = false;
+		mPanes[4].mPicked  = false;
+		if (mChoice == 0) {
+			SetMode(16);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			mResetOnClose = TRUE;
+		} else if (mChoice == 1) {
+			if (mShowMessage == TRUE) {
+				SetMode(19);
+				mOffset = -32.0f;
+				fn_80083350(this);
+			} else if (mResult == 0) {
+				OSPanic("menu_save.cpp", 2108, "エラーからこないことはない");
+				SetMode(2);
+				mChoice = 0;
+			} else {
+				SetMode(19);
+				mOffset = -32.0f;
+				fn_80083350(this);
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+		}
+	}
+	if (addPanes) {
+		AddPointerPane(&gPointerPanes, &mPanes[3]);
+		AddPointerPane(&gPointerPanes, &mPanes[4]);
+	}
 }
 
 void MenuSave::State13(u32)
@@ -854,6 +1111,48 @@ extern "C" void fn_80083350(MenuSave* menu)
 		} else {
 			menu->mFile = menu->mStickFile;
 		}
+	}
+}
+
+// how many of the item chibi robo holds, the GameCube's. NONMATCHING: retail fetches the player again for the count
+// and walks the slots by a byte offset; ours keeps the first pointer (MarkAvailableStatusEntries inlines it nine times)
+extern "C" s16 GetPlayerItemCount(s16 id)
+{
+	const WiiPlayerState* player = gGame.GetPlayer();
+	s16 count                    = 0;
+	for (int i = 255; i >= 0; i--) {
+		if (id == player->mParams.mInventory.mItems[i].mId) {
+			count = gGame.GetPlayer()->mParams.mInventory.mItems[i].mCount;
+			break;
+		}
+	}
+	return count;
+}
+
+extern "C" void MarkAvailableStatusEntries(u8* available)
+{
+	available[0] = 1;
+	available[1] = 1;
+	available[2] = 1;
+	available[3] = 1;
+	available[4] = 1;
+	if (GetPlayerItemCount(0x35) > 0)
+		available[5] = 1;
+	if (GetPlayerItemCount(0x36) > 0)
+		available[6] = 1;
+	if (GetPlayerItemCount(0x3E) > 0)
+		available[7] = 1;
+	if (GetPlayerItemCount(0x9E) > 0)
+		available[8] = 1;
+	if (GetPlayerItemCount(8) > 0 || (gEventFlags.mFlags[29 / 32] & (1u << (29 % 32))))
+		available[9] = 1;
+	if (GetPlayerItemCount(0x30) > 0 || (gEventFlags.mFlags[30 / 32] & (1u << (30 % 32))))
+		available[10] = 1;
+	if (GetPlayerItemCount(0x6D) > 0 || (gEventFlags.mFlags[28 / 32] & (1u << (28 % 32))))
+		available[11] = 1;
+	if (gEventFlags.mFlags[1080 / 32] & (1u << (1080 % 32))) {
+		if (GetPlayerItemCount(0x7C) > 0 || (gEventFlags.mFlags[696 / 32] & (1u << (696 % 32))))
+			available[12] = 1;
 	}
 }
 

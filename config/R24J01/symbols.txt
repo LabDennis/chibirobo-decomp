@@ -8946,3 +8946,4 @@ State3__8MenuSaveFUl = .text:0x8007B2E8; // type:function size:0x3C0
 State5__8MenuSaveFUl = .text:0x8007B7A8; // type:function size:0x1B4
 State18__8MenuSaveFUl = .text:0x8007BED0; // type:function size:0x398
 State19__8MenuSaveFUl = .text:0x8007BAB0; // type:function size:0x420
+GetPlayerItemCount = .text:0x8008392C; // type:function size:0x70
