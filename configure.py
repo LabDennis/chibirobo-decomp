@@ -466,7 +466,10 @@ gamecube_libs = [
             Object(Matching, "game/cfiletextdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/gxa.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/sound.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/gxb.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline noauto, as retail shows: UpdateTitleScreen (JP 0x8002E548) calls StartScreenFade
+            # (JP 0x80023EC4, defined above it in this file) three times, where -inline auto expands all
+            # three; no other function of the unit changes with the flag
+            Object(NonMatching, "game/gxb.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
             Object(NonMatching, "game/stg.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/menu_cleanup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/infoscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
@@ -615,7 +618,10 @@ gamecube_libs = [
             Object(Matching, "game/cinterpolationeaseout.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             # one retail TU with gCameraAreaState, its __sinit and the CCameraActionAreaEx/CamAreaSlot dtors
             Object(NonMatching, "game/ccameraactionareaex.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(EquivalentFor(JP), "game/evt.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline deferred, as retail shows: the command handlers sit in reverse alphabetical order
+            # (JP _cmd_WIN 0x80072128 ... _cmd_ANIM 0x8007D81C), which is what deferred codegen does to a
+            # file written ANIM ... WIN; .rodata, .sdata2 and the jump tables follow the same order
+            Object(EquivalentFor(JP), "game/evt.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/msg.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/xobjs.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/ccameraactionarea.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
@@ -1303,7 +1309,7 @@ if wii:
                 # small and mid functions of both halves are reconstructed so far
                 # -inline noauto: retail calls SetMapCameraFovStep from the area's PreviousUpdate, auto-inlining expands it
                 # -i include/rvl_msl: nw4r::math's VEC3Dot, which the Wii inlines where the GameCube called PSVECDotProduct
-                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # menu dtors, Wii-only files: the GameCube's hand-spelled weak copies live in obja_chr.cpp; on Wii the
                 # classes keep inline/base dtors and the units define the out-of-line destructors
@@ -1336,7 +1342,7 @@ if wii:
                 # the event script runner, 0x8009453C-0x800A18B8 (wii_units.md Nr. 38)
                 # -inline noauto: retail calls EvalCmp (0x80097324) where auto-inlining expands it into _cmd_IF
                 # -i include/rvl_msl: the nw4r::ef handles of the event effects
-                Object(NonMatching, "game/wii/evt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/evt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
                 # chibi robo's action base, 0x800C6428-0x800C6584 (wii_units.md Nr. 57)
                 Object(NonMatching, "game/wii/xaction.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the player object, 0x800C9E84-0x800E9D30 (wii_units.md Nr. 60 and 61)
