@@ -172,10 +172,10 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 	if (!FindMapFloor(map, pos, &self->mFloorHit, NULL)) {
 		self->mFloorHit.mTriangle = -1;
 		self->mFloorHit.mTrigon   = -1;
-		self->mFloorHit.mHeight   = pos->y; // no map floor: use the object's own height
+		self->mFloorHit.mHeight   = self->mMoveTranslate.y; // no map floor: use the object's own height
 	}
 	f32 highest = self->mFloorHit.mHeight;
-	CVec contact, push;
+	CVec push, contact;
 	for (int i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
 		XObj* object = gGame.GetObject(i);
 		if (!(object->mStatus.mFlags & 1) || !(object->mStatus.mFlags & 0x10000) || (object->mStatus.mFlags & 0x100000))
@@ -194,7 +194,7 @@ extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 			if (ProbeObjectFloor(object, CVec(x, y, z), CVec(x, y, z), radius, height, &push, &contact, &floor) & 1) {
 				f32 floorHeight = object->mFloorHeights[object->mHitFloorIndex];
 				// only floors at most one unit overhead
-				if (__fpclassifyf(floorHeight) != FP_NAN && pos->y + 1.0f >= floorHeight && floorHeight >= highest)
+				if (__fpclassifyf(floorHeight) != FP_NAN && self->mMoveTranslate.y + 1.0f >= floorHeight && floorHeight >= highest)
 					highest = floorHeight;
 			}
 		}
