@@ -514,12 +514,10 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactorpapa.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactortao.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactordeca.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(MatchingFor(US, PAL), "game/ccameraactionareaexinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/infopointinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjflagsinit.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjactordtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/ccameraactionareaexdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/infopointdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjflagsdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjcoindtor.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -585,6 +583,7 @@ gamecube_libs = [
             # reverse of the Wii file's order (Wii: EaseInOut Start first; GC: last-to-first), which is
             # what deferred codegen does to one source; the Wii build of the same file has no deferred
             Object(Matching, "game/cinterpolationeaseout.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
+            # one retail TU with gCameraAreaState, its __sinit and the CCameraActionAreaEx/CamAreaSlot dtors
             Object(NonMatching, "game/ccameraactionareaex.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/evt.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/msg.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -1258,7 +1257,7 @@ if wii:
                 Object(Matching, "game/wii/ccameraactionareaexm.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the global's __sinit stores the vtable and __construct_arrays mGroups[256] at _2034
                 # (retail 0x801542A0); CCameraActionAreaEx's layout is shared with the GameCube
-                Object(Matching, "game/ccameraactionareaexinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Matching, "game/wii/ccameraactionareaexinit.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii file queries the player position through the vtable GetPosition and calls
                 # FindEnabledCameraAreaContainingPoint instead of open-coding the record loop; the
                 # DrawGs debug draws and the corner-Vec extern stay GameCube-only
@@ -1269,7 +1268,7 @@ if wii:
                 Object(NonMatching, "game/wii/xobjplugcord.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # on Wii the two destructors live alone here; CamAreaSlot's ctor is emitted as the
                 # first function of ccameraactionmap2.cpp (retail 0x80154310)
-                Object(Matching, "game/ccameraactionareaexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(Matching, "game/wii/ccameraactionareaexdtor.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii binary merged the area and map camera code into one file; the
                 # small and mid functions of both halves are reconstructed so far
                 # -inline noauto: retail calls SetMapCameraFovStep from the area's PreviousUpdate, auto-inlining expands it

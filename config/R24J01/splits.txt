@@ -1131,12 +1131,12 @@ game/cinterpolationeaseout.cpp:
 game/wii/ccameraactionareaexm.cpp:
 	.text start:0x80031FC4 end:0x80032038
 
-game/ccameraactionareaexinit.cpp:
+game/wii/ccameraactionareaexinit.cpp:
 	.text start:0x801542A0 end:0x80154310
 	.ctors start:0x802C45C0 end:0x802C45C4
 	.bss start:0x8045F468 end:0x804630A8
 
-game/ccameraactionareaexdtor.cpp:
+game/wii/ccameraactionareaexdtor.cpp:
 	.text start:0x801541F8 end:0x801542A0
 	.rodata start:0x802DB4C8 end:0x802DB4DC
 	.data start:0x8030DDA0 end:0x8030DDAC
