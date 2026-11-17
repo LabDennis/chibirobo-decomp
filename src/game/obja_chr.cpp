@@ -933,6 +933,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		SetObjectVectorAndTargetXYZ(&player->mSlopeMotion, 0, 0, 0);
 		SetVectorComponents(&player->mFloorSlope, 0, 0, 0);
 	}
+	XPad* pad = &player->mPad;
 	if (player->mInAir) {
 		if (player->mMoveTranslate.y == player->mFloorHit.mHeight) {
 			SetObjectYAndTarget(&player->mMoveTranslate, player->mFloorHit.mHeight);
@@ -1405,11 +1406,10 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		        || IsPlayerAttachmentEquipped(player, 3) || IsPlayerAttachmentEquipped(player, 4) || IsPlayerAttachmentEquipped(player, 5)
 		        || IsPlayerAttachmentEquipped(player, 6) || IsPlayerAttachmentEquipped(player, 7)
 		        || IsPlayerAttachmentEquipped(player, 8))) {
-			f32 magnitude = GetControlStickMagnitude(&player->mPad);
+			f32 magnitude = GetControlStickMagnitude(pad);
 			if (magnitude == 0 && player->mFloorContacts[4].objectIndex >= 0)
 				magnitude = 0.8f;
-			if (target && !GetMaskedObjectStatus(target, 0x0002000000000000ULL) && !GetHeldPadButtons(&player->mPad, PAD_BUTTON_B)
-			    && magnitude > 0) {
+			if (target && !GetMaskedObjectStatus(target, 0x0002000000000000ULL) && !GetHeldPadButtons(pad, PAD_BUTTON_B) && magnitude > 0) {
 				f32 threshold = FRAME_RATE * GetAutoActionHoldTime();
 				if (target == player->mGaugeTarget) {
 					if (GetAutoActionChargeRate() > 0)
