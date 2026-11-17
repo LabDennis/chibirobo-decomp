@@ -3558,7 +3558,7 @@ void MenuStatus::State1(u32 frames)
 				menu->mTargetX = 207.0f;
 				u32 color      = (u32)(255.0f * menu->mAlpha) | 0xFFFFFF00;
 				menu->mTitle.Set(GetLocalizedInterfaceText(StatusTitleText + 1), color);
-				s16 id              = sStatusItemTable.mItems[menu->mItem].mItem;
+				s16 id              = sStatusItemTable.GetItem(menu->mItem);
 				menu->mPreviousItem = menu->mItem;
 				if (id >= 0 && CountMenuItems() > 0) {
 					char* msg       = GetItemName(id);
@@ -4871,7 +4871,7 @@ void MenuItem::Open()
 	mTitle.Set(GetLocalizedInterfaceText(StatusTitleText + 1), color);
 	mShowHelp  = 0;
 	mNameAlpha = 0.0f;
-	s16 id     = sStatusItemTable.mItems[mSelection].mItem;
+	s16 id     = sStatusItemTable.GetItem(mSelection);
 	if (id >= 0 && CountMenuItems() > 0) {
 		mName     = GetItemName(id);
 		char* msg = GetItemName(id);
