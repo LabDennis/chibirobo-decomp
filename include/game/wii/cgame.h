@@ -22,6 +22,8 @@
 #include "game/cstopwatch.h"
 #include "game/cmovie.h"
 #include "game/wii/xobjs.h"
+#include "game/wii/xobj.h"
+#include "game/wii/xchrmenu.h"
 #
 
 class CCamera;
@@ -759,31 +761,6 @@ struct WiiPlayerSuits {
 	                 // the suit objects beyond here are not reconstructed
 };
 
-struct WiiPlayerState;
-// the vtable slots of the unreconstructed Wii player class that the save manager reaches:
-// +0x70 takes the rotation, +0x90 a position Vec, +0x244 returns it
-struct WiiPlayerVtable {
-	void* _00[0x70 / 4];
-	void (*SetRotation)(WiiPlayerState* chr, f32 rotY);
-	void* _74[(0x90 - 0x74) / 4];
-	void (*SetPosition)(WiiPlayerState* chr, const Vec* pos);
-	void* _94[(0xAC - 0x94) / 4];
-	// the camera actions read the object's world matrix through here; retail feeds the
-	// result straight into PSMTXCopy (0x80160F7C / 0x80161160)
-	MtxP (*GetMtxPtr)(WiiPlayerState* chr);
-	void* _B0[(0x1B0 - 0xB0) / 4];
-	// the camera actions reach the focus point here, the GameCube's XObj::GetCameraTarget
-	Vec (*GetCameraTarget)(WiiPlayerState* chr);
-	void* _1B4[(0x244 - 0x1B4) / 4];
-	const Vec* (*GetPosition)(WiiPlayerState* chr);
-	void* _248[(0x26C - 0x248) / 4];
-	// the ladder camera adds the object's facing to its orbit angle
-	f32 (*GetRotationY)(WiiPlayerState* chr);
-	void* _270[(0x28C - 0x270) / 4];
-	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
-	void (*vf28C)(WiiPlayerState* chr, s32 held);
-};
-
 // the cord wire object embedded in the player at +0xABC0, the GameCube's mPlug.mWire
 // (XObjWireEff). Its vtable shares the unreconstructed Wii object layout where +0x90 takes a
 // position Vec - the same slot the player's own vtable keeps it at
@@ -827,11 +804,23 @@ struct WiiCordWire {
 
 // the yes/no menu CMsg__cmd_QUESTION opens on the player, the GameCube's mOXMenu. its input poll
 // is HandleOXMenuInput at 0x800EF58C
+struct WiiOXMenuMark {
+	f32 mSpin;           // _00
+	f32 mTilt;           // _04
+	f32 mScale;          // _08
+	u8 _0C[0x9B8 - 0xC]; // the mark's own object, not reconstructed
+};
+STATIC_ASSERT(sizeof(WiiOXMenuMark) == 0x9B8);
 struct WiiOXMenu {
 	u8 _00[4];
-	s32 mStarted; // _04
-	u8 _08[0x1388];
-	s32 mConfirmedIndex; // _1390
+	s32 mStarted;           // _04
+	s32 mCrossMask;         // _08
+	s32 mSelectedIndex;     // _0C
+	u8 _10[0x18 - 0x10];    // _10
+	WiiOXMenuMark mMark[2]; // _18
+	XObj* mChr;             // _1388
+	f32 mStartRot;          // _138C, the chr's y rotation when it opened
+	s32 mConfirmedIndex;    // _1390
 };
 
 // one of chibi robo's actions on the Wii player, the GameCube's XAction (RTTI) with the same head: the camera reads
@@ -881,33 +870,37 @@ public:
 };
 STATIC_ASSERT(sizeof(XActTumble) == 0x48);
 
-// the attachment ring's menu on the player at _19EE8, the GameCube's mMenu.mAtc. The HUD reads the
-// highlighted item's type; the item count is a bound, the menu only uses a handful
-struct WiiAtcMenuItem {
-	s32 mType; // _00
-	u8 _04[0x24];
-};
-struct WiiAtcMenu {
-	s32 mCursorIndex;            // _00
-	u8 _04[0xC];                 // _04
-	WiiAtcMenuItem mItems[0x20]; // _10
-};
-
 class CSound3DActor;
 class XObj;
 
+// where chibi robo looks and the marker over it, the GameCube's XObjChrLook with the same head
+struct XObjChrLook {
+	BOOL mActive;  // _00
+	s32 mMode;     // _04
+	XObj* mObject; // _08
+	Vec mOffset;   // _0C
+	Vec mTarget;   // _18
+	f32 mFade;     // _24, the marker is shown while it is above 0
+	f32 mPhase;    // _28
+	f32 mPulse;    // _2C
+	BOOL _30;      // _30, set with mActive, cleared on its own
+};
+STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
+
 // one of the player's positioned sounds; ChangeGameStage stops both
-// the Wii player object: a different, larger class than the GameCube XObjChr. These are the members
-// the save manager reads and writes, at offsets verified against retail.
-struct WiiPlayerState {
-	WiiPlayerVtable* mVtable;
-	u8 _0004[0x64 - 0x04];
-	f32 mRotY; // _0064, mMoveRotate.y
-	u8 _0068[0x150 - 0x68];
-	u64 mStatus; // _0150, the object status flags, as XObj's
-	u8 _0158[0x9CC - 0x158];
+// the Wii player object: a different, larger class than the GameCube XObjChr, on the Wii XObj. These are the
+// members the player code reaches, at offsets verified against retail; its own virtuals start at _28C.
+// todo: it is the same class as xobj.h's XObjChr, whose pool still declares it with a padded tail
+struct WiiPlayerState : public XObj {
+	u8 _09A8[0x9CC - 0x9A8];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
-	u8 _09D0[0xA90 - 0x9D0];
+	u8 _09D0[0x9D4 - 0x9D0];
+	CObjVec mMotion; // _09D4, how he moves this frame
+	u8 _0A04[0xA20 - 0xA04];
+	s32 mFloorContactObjects[2]; // _0A20, the object under each floor group, -1 for none
+	u8 _0A28[0xA88 - 0xA28];
+	s32 mIdleLoops; // _0A88, idle anim loops before the next idle move
+	u8 _0A8C[0xA90 - 0xA8C];
 	s32 mFlashTimer; // _0A90
 	u8 _0A94[0xA9C - 0xA94];
 	f32 mMoveSpeedScale; // _0A9C
@@ -930,7 +923,12 @@ struct WiiPlayerState {
 	XAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
 	u8 _0D7C[0x95AC - 0xD7C];
 	u8 mSfx[0x5C]; // _95AC, his AnimSfx (game/wii/animsfx.h, which needs this header)
-	u8 _9608[0x9920 - 0x9608];
+	u8 _9608[0x96A0 - 0x9608];
+	s32 mBlinkWait;        // _96A0, frames until he blinks again
+	s32 mBlinkFrame;       // _96A4, where the eyelids are in a blink, -1 between blinks
+	s8 mBlinkAnims[0x240]; // _96A8, by anim id % 1000, set where he may blink
+	XObjChrLook mLook;     // _98E8
+	u8 _991C[0x9920 - 0x991C];
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
@@ -943,24 +941,24 @@ struct WiiPlayerState {
 	WiiCordWire mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
 	u8 _ABC4[0xDC50 - 0xABC4];
 	WiiPlayerSuits mSuits; // _DC50
-	u8 _DC64[0x19E9C - 0xDC64];
+	u8 _DC64[0x18BE8 - 0xDC64];
+	CPadOne mPad; // _18BE8, the pad he reads, the GameCube's mPad
+	u8 _19E90[0x19E9C - 0x19E90];
 	u8 mAttachments[0x48]; // _19E9C
-	u8 _19EE4[0x19EE8 - 0x19EE4];
-	WiiAtcMenu mAtcMenu; // _19EE8
-	u8 _1A3F8[0x1A420 - 0x1A3F8];
-	WiiOXMenu mOXMenu; // _1A420
-	u8 _1B7B4[0x1C994 - 0x1B7B4];
+	XObjChrMenu mMenu;     // _19EE4, the attachment and costume rings
+	WiiOXMenu mOXMenu;     // _1A420
+	u8 _1B7B4[0x1C990 - 0x1B7B4];
+	BOOL mBatteryDrains;   // _1C990, TRUE while his battery runs down and an empty battery stops him
 	s32 mSquirterContent;  // _1C994
 	s32 mItemTint;         // _1C998
 	f32 mHeadOffset;       // _1C99C
 	BOOL mHeadOffsetReady; // _1C9A0
 	s32 mGroundType;       // _1C9A4, the floor he walks on, picks the footstep sounds
+	u8 _1C9A8[0x1C9B8 - 0x1C9A8];
+	f32 _1C9B8[3]; // _1C9B8, read by index; the movement code tests [2] above 0
 
-	const Vec* GetPosition() { return mVtable->GetPosition(this); }
-	MtxP GetMtxPtr() { return mVtable->GetMtxPtr(this); }
-	Vec GetCameraTarget() { return mVtable->GetCameraTarget(this); }
-	f32 GetRotationY() { return mVtable->GetRotationY(this); }
-	void vf28C(s32 held) { mVtable->vf28C(this, held); }
+	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
+	virtual void vf28C(s32 held); // _28C, the first of XObjChr's own virtuals
 	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
@@ -968,6 +966,9 @@ struct WiiPlayerState {
 STATIC_ASSERT(offsetof(WiiPlayerState, mOXMenu) == 0x1A420);
 STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);
 STATIC_ASSERT(offsetof(WiiPlayerState, mSfx) == 0x95AC);
+STATIC_ASSERT(offsetof(WiiPlayerState, mLook) == 0x98E8);
+STATIC_ASSERT(offsetof(WiiPlayerState, mPad) == 0x18BE8);
+STATIC_ASSERT(offsetof(WiiPlayerState, mMenu) == 0x19EE4);
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8
 struct WiiFlagSource {

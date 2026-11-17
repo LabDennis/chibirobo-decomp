@@ -68,9 +68,9 @@ void CCameraActionLadr::Update(u32 step)
 void CCameraActionLadr::CalcEye(Vec* eye, f32 angle)
 {
 	*eye = GetCameraTarget();
-	eye->x -= 100.0f * (f32)sin(angle + gGame.GetPlayer()->GetRotationY()); // 100 back, 30 up, orbiting the yaw
+	eye->x -= 100.0f * (f32)sin(angle + gGame.GetPlayer()->GetRotY()); // 100 back, 30 up, orbiting the yaw
 	eye->y += 30.0f;
-	eye->z -= 100.0f * (f32)cos(angle + gGame.GetPlayer()->GetRotationY());
+	eye->z -= 100.0f * (f32)cos(angle + gGame.GetPlayer()->GetRotY());
 }
 
 /**

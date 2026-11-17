@@ -70,7 +70,7 @@ BOOL fn_800C54A4(XObjPool* pools);        // the objects' loading step, true onc
 void fn_800C7F70(void* map);              // takes the map object, the first of pool 3
 BOOL fn_800CDC08(WiiPlayerState* player); // three steps of the player's own setup, each true when done
 BOOL fn_800CE4B0(WiiPlayerState* player);
-BOOL fn_800CD700(WiiPlayerState* player);
+BOOL LoadPlayerAttachmentAnimation(WiiPlayerState* player);
 void fn_802BE414(void* obj, CLight* light);
 void fn_802BE4D4(void* obj, GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ);
 void fn_8027AE04(WiiGsSceneObj* scene, s32 index);
@@ -634,7 +634,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		}
 		game->mSetupStep++;
 	case 4:
-		if (!fn_800CD700(game->GetPlayer())) {
+		if (!LoadPlayerAttachmentAnimation(game->GetPlayer())) {
 			break;
 		}
 		game->mSetupStep++;
@@ -1003,7 +1003,7 @@ static inline void PickScopeTarget(CGame* game, ScopePick* scope, XObj* obj, XOb
 	         && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 	    && !(game->mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)game->mCameraActions.mTable[CAMACTION_MAP])->_11F8)
 	    && (obj->_18C >= 0 || (obj->GetPool() == 8 && obj != held))) {
-		f32 dist = PSVECDistance(obj->GetPos(), eye) - obj->mFloorXZExtent;
+		f32 dist = PSVECDistance(obj->GetPos(), eye) - obj->mFloorXZExtent[0];
 		if (scope->mObj == NULL || dist < scope->mDist) {
 			scope->mDist  = dist;
 			scope->mObj   = obj;
@@ -1496,8 +1496,8 @@ void CGame::Update(u32 frames)
 	// and the nearest to the eye camera for the scope's sounds
 	PointerPick pick = { NAN, NULL };
 	ScopePick scope  = { NAN, NULL, 0.0f, FALSE, 0 };
-	if (gWiiPointer.mPointerValid && GetStatusFlags(1) && (GetPlayer()->mPlayerFlags & 0x20000000)
-	    && !((XObjChrMenu*)GetPlayer()->_19EE4)->IsOpen() && mEvt.mData.mScript == NULL && !IsLoadStepRunning()) {
+	if (gWiiPointer.mPointerValid && GetStatusFlags(1) && (GetPlayer()->mPlayerFlags & 0x20000000) && !GetPlayer()->mMenu.IsOpen()
+	    && mEvt.mData.mScript == NULL && !IsLoadStepRunning()) {
 		// in tenths: popper parameter 0 is the range, 1 the range with the upgrade
 		f32 range = (s32)GetPopperParameter(FindOwnedInventoryItemIndex(GetPlayer()->mParams.mInventory.mItems, 0x36) >= 0) / 10.0f;
 		const Vec* pointer   = &gWiiPointer.mPointer;
@@ -1539,7 +1539,7 @@ void CGame::Update(u32 frames)
 						    && GetPlayer()->mLadder.mState == 0 && GetPlayer()->mRope.mState == 0 && GetPlayer()->mPush.mState == 0
 						    && GetPlayer()->mTumble.mState == 0 && !(obj->mStatus.mFlags & 0x40000) && obj->_18C != 1 && obj->_18C != 3
 						    && obj->_18C != 4 && obj->_18C != 10 && obj->_18C != 0x15 && obj->GetKind() != 0x324) {
-							f32 dist = PSVECDistance(&muzzle, &obj->mToppleOffset) - obj->mFloorXZExtent;
+							f32 dist = PSVECDistance(&muzzle, &obj->mToppleOffset) - obj->mFloorXZExtent[0];
 							// a 0x46F before a 0x6B wins regardless of the order, a 0x6B never displaces a 0x46F
 							if (obj->GetKind() == 0x46F && pick.mObj != NULL && pick.mObj->GetKind() == 0x6B) {
 								if (dist < range) {
@@ -1601,14 +1601,14 @@ void CGame::Update(u32 frames)
 		if (GetStatusFlags(0x100) && GetPlayer()->GetAttachment() == 2) {
 			AimAtPointer(this);
 		} else {
-			fn_800E8140(GetPlayer(), GetPlayer()->mRotY, 0.0f);
+			fn_800E8140(GetPlayer(), GetPlayer()->mMoveRotate.y, 0.0f);
 		}
 	} else if (GetStatusFlags(0x100) && GetPlayer()->GetAttachment() == 2) {
 		// the eye camera keeps the last aim while the pointer is briefly off the screen
 		if (mPointer._10C > 0.0f) {
 			AimAtPointer(this);
 		} else {
-			fn_800E8140(GetPlayer(), GetPlayer()->mRotY, 0.0f);
+			fn_800E8140(GetPlayer(), GetPlayer()->mMoveRotate.y, 0.0f);
 		}
 	}
 

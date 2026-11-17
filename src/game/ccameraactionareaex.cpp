@@ -350,8 +350,7 @@ extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 {
 	state->mPrevArea = state->mCurrentArea;
 #if defined(VERSION_R24J01)
-	Vec pos             = *gGame.GetPlayer()->GetPosition();
-	state->mCurrentArea = FindEnabledCameraAreaContainingPoint(state, pos);
+	state->mCurrentArea = FindEnabledCameraAreaContainingPoint(state, *gGame.GetPlayer()->GetPos());
 #else
 	Vec pos   = gGame.GetPlayer()->mMoveTranslate;
 	s32 index = -1;

@@ -1,19 +1,177 @@
 // The player object's file, .text 0x800C9E84-0x800E9D30: its .rodata names it "xobj_chr.cpp"
 // (wii_units.md Nr. 60 and 61), the GameCube's obja_chr.cpp. The functions come in the reverse of the
 // GameCube's order.
-// NONMATCHING: only the small accessors the GameCube file shares have source so far; the player's
-// update, draw and menu code is still to do. CanFallDuringLadderAction, CanFallDuringRopeAction and
-// CanCopterActionSlideOnSlope (74-81 %): retail starts each bool at TRUE and clears it, as an inlined
-// helper returning the first two compares would; this build tests the other way round.
+// NONMATCHING: the small accessors and helpers have source, the player's update, draw and menu code is
+// still to do. The state checks call the action accessors above them, which -inline auto expands.
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "game/attachmentvalues.h"
 #include "game/ringmenu.h"
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
+#include "game/wii/xchrmenu.h"
+#include "game/wii/csound.h"
+#include "game/playeranimationdata.h"
+#include "game/pointptcl.h"
+#include "game/mapfloorhit.h"
 #include "game/gmath.h"
 #include "game/globals.h"
 #include <math.h>
+#include <stdlib.h>
+
+extern "C" void ReleasePushAction(XAction* action);
+extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
+extern "C" BOOL IsTumbleActionState(const XAction* act, s32 wanted);
+
+static inline bool TestStatus(const XObj* object, u64 mask)
+{
+	return (u8)((object->mStatus.mFlags & mask) != 0);
+}
+
+// out of battery: the battery is flat and the gauge on screen has run down to it
+static inline bool IsStopped(const WiiPlayerState* chr)
+{
+	return chr->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
+}
+
+// out of battery and slumped over
+static inline bool IsDown(const WiiPlayerState* chr)
+{
+	bool ret = false;
+	if (IsPlayerStopped(chr)) {
+		if (chr->mBatteryDrains != 0) {
+			ret = true;
+		}
+	}
+	return ret;
+}
+
+static inline bool IsEventHeld(const WiiPlayerState* chr)
+{
+	bool ret = false;
+	if (gGame.GetStatusFlags(0x40000000) && IsDown(chr)) {
+		ret = true;
+	}
+	return ret;
+}
+
+static inline bool IsTumbling(const WiiPlayerState* chr)
+{
+	return IsTumbleActionState(&chr->mTumble, 4) || IsTumbleActionState(&chr->mTumble, 5) || IsTumbleActionState(&chr->mTumble, 6);
+}
+
+static inline void SpinMarks(WiiPlayerState& chr)
+{
+	for (int i = 0; i < 2; i++) {
+		chr.mOXMenu.mMark[i].mSpin  = DEG2RAD * (rand() % 360);
+		chr.mOXMenu.mMark[i].mTilt  = DEG2RAD * (rand() % 360);
+		chr.mOXMenu.mMark[i].mScale = 0.5f;
+	}
+}
+
+static inline u8 IsRopeState(const WiiPlayerState* chr, s32 state)
+{
+	return chr->mRope.mState == state;
+}
+
+static inline Vec FirstEdgePoint(const XObj* object, s32 index, f32 height)
+{
+	Vec point;
+	point.x = object->mMoveTranslate.x + object->mEdges[index].mFrom.x;
+	point.y = height;
+	point.z = object->mMoveTranslate.z + object->mEdges[index].mFrom.z;
+	return point;
+}
+
+static inline Vec SecondEdgePoint(const XObj* object, s32 index, f32 height)
+{
+	Vec point;
+	point.x = object->mMoveTranslate.x + object->mEdges[index].mTo.x;
+	point.y = height;
+	point.z = object->mMoveTranslate.z + object->mEdges[index].mTo.z;
+	return point;
+}
+
+static inline void FocusEquipmentRing(XObjChrMenu* menu)
+{
+	if (menu->mSel == 0) {
+		menu->mAtc.mFocus       = 0;
+		menu->mDrs.mFocus       = 1;
+		menu->mDrs.mCursorIndex = -1;
+	} else {
+		menu->mAtc.mFocus       = 1;
+		menu->mAtc.mCursorIndex = -1;
+		menu->mDrs.mFocus       = 0;
+	}
+	PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+}
+
+static inline void OpenMenus(WiiPlayerState* chr)
+{
+	gGame.SetStatusFlags(0x400ULL);
+	PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+	if (chr->mMenu.mSel == 0) {
+		chr->mMenu.mAtc.Open(0);
+		chr->mMenu.mDrs.Open(1);
+	} else {
+		chr->mMenu.mAtc.Open(1);
+		chr->mMenu.mDrs.Open(0);
+	}
+}
+
+// he stops where he is, and lets go of what he pushes
+static inline void StopMoving(WiiPlayerState* chr)
+{
+	chr->mMotion.x         = 0.0f;
+	chr->mMotion.y         = 0.0f;
+	chr->mMotion.z         = 0.0f;
+	chr->mMotion.mTarget.x = 0.0f;
+	chr->mMotion.mTarget.y = 0.0f;
+	chr->mMotion.mTarget.z = 0.0f;
+	chr->mMotion.mSpeed.x  = 0.0f;
+	chr->mMotion.mSpeed.y  = 0.0f;
+	chr->mMotion.mSpeed.z  = 0.0f;
+	chr->mMoveRotate.Set(chr->mMoveTarget1);
+	if (chr->mPush.mState != 0) {
+		ReleasePushAction(&chr->mPush);
+		chr->mPush.mState = 0;
+		chr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		chr->mIdleLoops = 3;
+	}
+}
+
+// the ground type of a map triangle, 0 for none
+static inline s32 GetMapTriangleFloorType(XObjMap* map, s32 tri)
+{
+	if (tri < 0)
+		return 0;
+	return map->mTrigon.mTri[tri].mFloorType;
+}
+
+// events wait while he lies there out of battery
+static inline bool IsEventBlocked(const WiiPlayerState* chr)
+{
+	bool ret = false;
+	if (IsEventHeld(chr) && IsTumbling(chr)) {
+		ret = true;
+	}
+	return ret;
+}
 
 extern "C" {
+u32 CheckStageFlag(s32 stage, u32 mask);
+BOOL IsCarryingMug(XAction* action);
+BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit);
+void UpdateHeldObject(XAction* action, u32 frames);
+void UpdatePushedObject(XAction* action, u32 frames);
+void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
+s32 GetClearLetickerApproachSide(XObj* object, const Vec* pos);
+void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
+BOOL IsLiftTargetPlug(XAction* action);
+BOOL fn_800CDC98(WiiPlayerState* player);
+void fn_800CDDC0(WiiPlayerState* player);
+extern PointPtcl gPointParticlePool[10];
+extern PointPtcl* gPointParticleSlots[10];
+extern s32 gRefreshRate;
 
 void SetVectorComponents(CVec* value, f32 x, f32 y, f32 z)
 {
@@ -25,9 +183,19 @@ void ClearObjectStatusFlags(XObj* object, u64 mask)
 	object->mStatus.mFlags &= ~mask;
 }
 
+XSound* GetGameSound(CGame* game)
+{
+	return &game->mSound;
+}
+
 BOOL HasPlayerActionTarget(const XAction* action)
 {
 	return action->mTarget != NULL;
+}
+
+s16 GetObjectCategory(const XObj* object)
+{
+	return object->GetCategory();
 }
 
 XObj* GetPlayerActionTarget(const XAction* action)
@@ -44,6 +212,18 @@ s32 GetObjectPlacementParam(const XObj* object, s32 index)
 {
 	const s32* entries = &object->mPlacementParam0;
 	return entries[index];
+}
+
+// stops him where he stands
+// NONMATCHING (99.6 %): retail loads the rotation target into f1-f3 the other way round
+void StopPlayerMotion(WiiPlayerState* chr)
+{
+	StopMoving(chr);
+}
+
+CVec* GetObjectVectorTarget(CObjVec* value)
+{
+	return &value->mTarget;
 }
 
 BOOL IsPushActionState(const XAction* act, s32 wanted)
@@ -69,6 +249,42 @@ u64 GetMaskedObjectStatus(const XObj* object, u64 mask)
 BOOL IsPlayerAttachmentEquipped(const WiiPlayerState* chr, s32 wanted)
 {
 	return (u8)(wanted == chr->GetAttachment());
+}
+
+// the attachment's animation is part of the player's own files here, so there's nothing to wait for
+BOOL LoadPlayerAttachmentAnimation(WiiPlayerState*)
+{
+	return TRUE;
+}
+
+BOOL fn_800CDDAC(const XObj* object)
+{
+	return (object->mStatus.mFlags & 1) != 0;
+}
+
+// the player's suit step of the stage setup: puts on the suit the save asked for, TRUE once it is on
+// NONMATCHING: retail recomputes the suits' address into r4 and reads mCurrent before mRequested
+BOOL fn_800CDC08(WiiPlayerState* player)
+{
+	if (player->mSuits.mLoadStep == 0) {
+		player->mSuits.mLoadStep = 1;
+	}
+	if (player->mSuits.mCurrent != player->mSuits.mRequested) {
+		player->mSuits.mCurrent    = player->mSuits.mRequested;
+		player->mSuits.mChangeStep = 1;
+	}
+	if (fn_800CDC98(player)) {
+		player->mSuits.mChangeStep = 0;
+		fn_800CDDC0(player);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+// reads the player's pad once more
+void fn_800CE48C(WiiPlayerState* player)
+{
+	player->mPad.Update(gWiiGameCubePads, 0);
 }
 
 void SetPlayerActionTarget(XAction* action, XObj* target)
@@ -100,9 +316,35 @@ void CopyVecToCVec(Vec* dst, const Vec* src)
 	dst->z = src->z;
 }
 
+BOOL IsPlayerRingMenuOpen(const XObjChrMenu* menu)
+{
+	return menu->IsOpen();
+}
+
+s32 IsGameMenuActive(const CGame* game)
+{
+	return game->mMenu.mActive;
+}
+
 BOOL IsTumbleActionState(const XAction* act, s32 wanted)
 {
 	return (u8)(wanted == act->mState);
+}
+
+BOOL IsEventScriptActive(const CGame* game)
+{
+	return game->mEvt.mData.mScript != NULL;
+}
+
+// 0 the stage he is on, 1 the one before
+s32 fn_800D168C(const CGame* game, s32 index)
+{
+	return (&game->mStage)[index];
+}
+
+u32 GetMaskedPlayerStatus(const WiiPlayerState* chr, u32 mask)
+{
+	return mask & chr->mPlayerFlags;
 }
 
 u32 GetMaskedPlayerStatusFlags(const WiiPlayerState* chr, u32 mask)
@@ -145,10 +387,332 @@ BOOL IsRadarActionState(const XAction* act, s32 wanted)
 	return (u8)(wanted == act->mState);
 }
 
+BOOL fn_800D1748(const WiiPlayerState* chr)
+{
+	return chr->_1C9B8[2] > 0.0f;
+}
+
+f32 fn_800D1764(const WiiPlayerState* chr, s32 index)
+{
+	return chr->_1C9B8[index];
+}
+
 f32 WrapPlayerActionAngle(f32 angle)
 {
 	angle = WrapAngle(angle);
 	return angle;
+}
+
+f32 GetVectorDistance(const Vec* a, const Vec* b)
+{
+	return PSVECDistance((Vec*)a, (Vec*)b);
+}
+
+// moves what he carries along and queues its model for the scene
+void fn_800D1A8C(WiiPlayerState* player, u32 frames)
+{
+	if (player->mLift.mTarget != NULL) {
+		UpdateHeldObject(&player->mLift, frames);
+		if (player->mLift.mTarget != NULL) {
+			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, player->mLift.mTarget->mObject.m_pScnMdl);
+		}
+	}
+}
+
+// the same for what he pushes
+void fn_800D1AF8(WiiPlayerState* player, u32 frames)
+{
+	if (player->mPush.mTarget != NULL) {
+		UpdatePushedObject(&player->mPush, frames);
+		if (player->mPush.mTarget != NULL) {
+			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, player->mPush.mTarget->mObject.m_pScnMdl);
+		}
+	}
+}
+
+void UpdatePlayerHeadOffset(WiiPlayerState* chr, u32 frames)
+{
+	if (chr->mHeadOffsetReady == 0 && gGame.mEvt.mData.mScript == NULL)
+		chr->mHeadOffsetReady = 1;
+	f32 current, target, rate;
+	if (IsPushActionState(&chr->mPush, 1) || IsPushActionState(&chr->mPush, 2)) {
+		if (chr->mPush.mMoveDirection == 1)
+			target = 8.0f;
+		else if (chr->mPush.mMoveDirection == -1)
+			target = -5.0f;
+		else
+			target = 0.0f;
+		rate = 0.4f;
+	} else if (gGame.mEvt.mData.mScript != NULL && chr->mHeadOffsetReady != 0) {
+		target = 0.0f;
+		rate   = 0.2f;
+	} else if (IsRopeState(chr, 1) || IsRopeState(chr, 2) || IsRopeState(chr, 3) || IsRopeState(chr, 4) || IsRopeState(chr, 5)
+	           || IsRopeState(chr, 6) || IsRopeState(chr, 7) || IsRopeState(chr, 8)) {
+		target = 0.0f;
+		rate   = 0.2f;
+	} else {
+		target = 5.0f;
+		rate   = 0.2f;
+	}
+	if (__fpclassifyf(target) != FP_NAN) {
+		current = chr->mHeadOffset;
+		if (current > target) {
+			const f32 next   = current - rate * frames;
+			chr->mHeadOffset = next;
+			if (next < target)
+				chr->mHeadOffset = target;
+		} else if (current < target) {
+			const f32 next   = current + rate * frames;
+			chr->mHeadOffset = next;
+			if (next > target)
+				chr->mHeadOffset = target;
+		}
+	}
+}
+
+void SpawnPlayerPointParticles(WiiPlayerState*, s32 type, s32 value)
+{
+	for (s32 i = 0; i < 10; ++i) {
+		if (gPointParticlePool[i].IsFree()) {
+			for (s32 j = 0; j < 10; ++j) {
+				if (gPointParticleSlots[j] == NULL) {
+					gPointParticleSlots[j] = &gPointParticlePool[i];
+					StartPointParticles(gPointParticleSlots[j], type, value);
+					return;
+				}
+			}
+			return;
+		}
+	}
+}
+
+// opens the rings unless an attachment or a suit is still changing
+static inline void OpenPlayerEquipmentRings(WiiPlayerState* chr)
+{
+	if (chr->mAttachmentRequest != -1)
+		return;
+	if (chr->mSuits.mChangeStep != 0)
+		return;
+	if (!chr->mMenu.IsOpen()) {
+		StopMoving(chr);
+		OpenMenus(chr);
+	} else if (chr->mMenu.IsClosing()) {
+		OpenMenus(chr);
+	}
+}
+
+// NONMATCHING (99 %): the rotation copy as in StopPlayerMotion, and both start the open flag at TRUE but
+// retail clears it through a cntlzw/rlwnm. value of mDrs.mOpen > 0 where this build branches on the compare
+void SelectPlayerEquipmentRing(WiiPlayerState* chr, s32 selection)
+{
+	if (selection >= 0) {
+		chr->mMenu.mPrevSel = chr->mMenu.mSel;
+		chr->mMenu.mSel     = selection;
+	}
+	if (chr->mMenu.IsOpening()) {
+		FocusEquipmentRing(&chr->mMenu);
+	} else {
+		OpenPlayerEquipmentRings(chr);
+	}
+}
+
+// closes both rings, 0 cancels, above 0 confirms, below 0 backs out
+void ClosePlayerEquipmentMenu(WiiPlayerState* chr, s32 result)
+{
+	if (result == 0) {
+		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		if (chr->mMenu.mAtc.mMenuType != 3)
+			chr->mMenu.mSel = chr->mMenu.mPrevSel;
+	} else if (result > 0) {
+		PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+	} else if (result < 0) {
+		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		if (chr->mMenu.mAtc.mMenuType != 3)
+			chr->mMenu.mSel = chr->mMenu.mPrevSel;
+	}
+	chr->mMenu.mAtc.Select(result);
+	chr->mMenu.mDrs.Select(result);
+}
+
+// opens the yes/no marks
+void OpenPlayerYesNoMenu(WiiPlayerState* chr, s32 crossMask, s32 selectedIndex)
+{
+	if (!chr->mOXMenu.mStarted) {
+		chr->mOXMenu.mStarted       = TRUE;
+		chr->mOXMenu.mCrossMask     = crossMask;
+		chr->mOXMenu.mStartRot      = chr->mOXMenu.mChr->mMoveRotate.y;
+		chr->mOXMenu.mSelectedIndex = selectedIndex;
+		SpinMarks(*chr);
+		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		chr->mOXMenu.mChr->SetAnim(0x5D, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		gGame.SetStatusFlags(0x800ULL);
+	}
+}
+
+// starts an object's event script unless chibi robo lies there out of battery
+// NONMATCHING: the event block check, as in IsPlayerBlockingEvents
+void TryStartObjectEvent(CGame* game, const void* script, XObj* owner, s16 first, s16 second)
+{
+	if (!IsEventBlocked(game->GetPlayer())) {
+		StartOrQueueEventScript(&game->mEvt, (u8*)script, owner, first, second);
+	}
+}
+
+BOOL IsObjectLiftable(const XObj* object)
+{
+	return TestStatus(object, 0x0000000100000000ULL);
+}
+
+BOOL IsObjectClimbableLedge(const XObj* object)
+{
+	return TestStatus(object, 0x0000000200000000ULL);
+}
+
+BOOL IsObjectLadder(const XObj* object)
+{
+	return TestStatus(object, 0x0000000800000000ULL);
+}
+
+// is position behind the object, within 60 degrees either side
+BOOL IsPositionBehindObject(void*, const Vec* pos, XObj* object)
+{
+	CVec* objectPos = object->GetPos();
+	f32 angle       = atan2(objectPos->x - pos->x, objectPos->z - pos->z);
+	angle           = WrapAngle(angle - object->mMoveRotate.y);
+	return angle >= 2.0f * PI / 3.0f && angle <= 4.0f * PI / 3.0f;
+}
+
+BOOL IsObjectRope(const XObj* object)
+{
+	return TestStatus(object, 0x0000001000000000ULL);
+}
+
+// a fourth contact kind after ladder and rope, the GameCube's fn_800B1E04; it always says no
+s32 fn_800D5680(void*)
+{
+	return 0;
+}
+
+BOOL IsObjectPushable(const XObj* object)
+{
+	return TestStatus(object, 0x0000008000000000ULL);
+}
+
+BOOL IsObjectPushableFromBack(const XObj*)
+{
+	return false;
+}
+
+// the heading out of the object across one floor's edge, from point
+// NONMATCHING (86 %): retail reads point->y ahead of the object's position, the rest is the same
+f32 GetObjectEdgeOutwardYaw(const XObj* object, Vec* point, s32 index)
+{
+	f32 height = point->y;
+	Vec first  = FirstEdgePoint(object, index, height);
+	Vec second = SecondEdgePoint(object, index, height);
+	CVec direction;
+	GetOutwardPerpendicularToEdge(point, &first, &second, &direction);
+	f32 angle = atan2(direction.x, direction.z);
+	angle     = WrapAngle(angle);
+	return angle;
+}
+
+CVec* GetObjectPreviousMoveTranslation(XObj* object)
+{
+	return &object->mLastPos;
+}
+
+void SetObjectVectorTargetX(CObjVec* value, f32 x)
+{
+	value->mTarget.x = x;
+}
+
+void SetObjectVectorTargetZ(CObjVec* value, f32 z)
+{
+	value->mTarget.z = z;
+}
+
+f32 GetVectorMagnitude(const Vec* value)
+{
+	return PSVECMag((Vec*)value);
+}
+
+Vec* GetObjectVectorCurrent(CObjVec* value)
+{
+	return value;
+}
+
+void SetObjectXAndTarget(CObjVec* value, f32 x)
+{
+	value->x         = x;
+	value->mTarget.x = x;
+}
+
+void SetObjectZAndTarget(CObjVec* value, f32 z)
+{
+	value->z         = z;
+	value->mTarget.z = z;
+}
+
+void* GetMapPoolEntry(const CGame* game, s32 index)
+{
+	s32 stride  = game->mXObjs.mPools[3].mStride;
+	u8* entries = game->mXObjs.mPools[3].mObjects;
+	return entries + index * stride;
+}
+
+BOOL CanFallDuringHangAction(const XActHang* act)
+{
+	return (act->mState == 0 || act->mState == 10);
+}
+
+BOOL CanFallDuringJumpAction(const XAction* act)
+{
+	return IsJumpActionState(act, 0) || IsJumpActionState(act, 2) || IsJumpActionState(act, 3) || IsJumpActionState(act, 4)
+	    || IsJumpActionState(act, 17);
+}
+
+BOOL CanFallDuringCopterAction(const XAction* act)
+{
+	return IsCopterActionState(act, 0) || IsCopterActionState(act, 3) || IsCopterActionState(act, 4) || IsCopterActionState(act, 7)
+	    || IsCopterActionState(act, 8) || IsCopterActionState(act, 5) || IsCopterActionState(act, 6) || IsCopterActionState(act, 9);
+}
+
+u32 CheckCurrentStageFlags(const CGame* game, u32 mask)
+{
+	return CheckStageFlag(game->mStage, mask);
+}
+
+// the object id of the placement, -1 without one, as XObj::GetKind reads it
+s32 fn_800DBD44(const AttrInfo* attr)
+{
+	return attr->mPlacement != NULL ? attr->mPlacement->mObjectId : -1;
+}
+
+AttrInfo* fn_800DBD60(XObj* object)
+{
+	return &object->mAttr;
+}
+
+BOOL fn_800DBD68(const XObj* object)
+{
+	return (object->mStatus.mFlags & 0x10001) == 0x10001;
+}
+
+// the map floor under pos, the search starting where the last hit was
+BOOL FindMapFloorBelow(XObjMap* map, const Vec* pos, const XObjMapHit* last, XObjMapHit* hit)
+{
+	return fn_800C98E0(map, pos, last->mTriangle, hit);
+}
+
+f32 GetObjectFloorXZExtent(const XObj* object, s32 index)
+{
+	return object->mFloorXZExtent[index];
+}
+
+BOOL HasObjectCustomLedgeHeight(const XObj* object)
+{
+	return TestStatus(object, 0x0000002000000000ULL);
 }
 
 s32 GetStageObjectCount(const CGame* game)
@@ -314,17 +878,12 @@ void SetObjectVerticalSpeed(CObjVec* value, f32 y)
 
 BOOL CanFallDuringLadderAction(const XAction* act)
 {
-	s32 state = act->mState;
-	bool idle = state == 0 || state == 10;
-	return idle || state == 11;
+	return IsLadderActionState(act, 0) || IsLadderActionState(act, 10) || IsLadderActionState(act, 11);
 }
 
 BOOL CanFallDuringRopeAction(const XAction* act)
 {
-	s32 state  = act->mState;
-	bool idle  = state == 0 || state == 9;
-	bool ended = idle || state == 10;
-	return ended || state == 11;
+	return IsRopeActionState(act, 0) || IsRopeActionState(act, 9) || IsRopeActionState(act, 10) || IsRopeActionState(act, 11);
 }
 
 BOOL CanFallDuringTumbleAction(const XAction* act)
@@ -385,8 +944,7 @@ BOOL CanTumbleActionSlideOnSlope(const XAction*)
 
 BOOL CanCopterActionSlideOnSlope(const XAction* act)
 {
-	bool idle = act->mState == 0 || act->mState == 6;
-	return idle || act->mState == 9;
+	return IsCopterActionState(act, 0) || IsCopterActionState(act, 6) || IsCopterActionState(act, 9);
 }
 
 BOOL CanPopperActionSlideOnSlope(const XAction*)
@@ -474,6 +1032,51 @@ f32 GetCopterDescentSpeedLimit()
 	return (s32)GetCopterParameter(2) / 100.0f;
 }
 
+s32 GetObjectPoolUsedCount(const CGame* game, s32 index)
+{
+	return game->mXObjs.mPools[index].mUsed;
+}
+
+BOOL IsPlayerLookMarkerVisible(const XObjChrLook* look)
+{
+	return look->mFade > 0.0f;
+}
+
+void DisablePlayerLook(XObjChrLook* look)
+{
+	look->mActive = FALSE;
+}
+
+void EnablePlayerLook(XObjChrLook* look)
+{
+	look->mActive = TRUE;
+	look->_30     = TRUE;
+}
+
+void SetPlayerLookMode(XObjChrLook* look, s32 mode)
+{
+	look->mMode = mode;
+}
+
+void SetLookTargetPosition(XObjChrLook* look, f32 x, f32 y, f32 z)
+{
+	Vec target;
+	target.x      = x;
+	target.y      = y;
+	target.z      = z;
+	look->mTarget = target;
+}
+
+void fn_800DBF70(XObjChrLook* look)
+{
+	look->_30 = FALSE;
+}
+
+BOOL IsObjectClimbableFromHang(XObj* object)
+{
+	return (u8)((object->mStatus.mFlags & 0x0000000400000000ULL) != 0);
+}
+
 f32 GetAutoActionHoldTime()
 {
 	return (f32)(s32)GetInteractionParameter(0) / 100.0f;
@@ -558,6 +1161,216 @@ CoordInfo* GetObjectCoordInfo(XObj* object)
 	return &object->mCoord;
 }
 
+// the eyelids: in the anims that allow it he blinks after a random wait, stepping the lids two frames at a time
+void fn_800DDF2C(WiiPlayerState* chr, s32 frames)
+{
+	if (chr->mBlinkAnims[chr->GetAnimId() % 1000]) {
+		if (chr->mBlinkWait > 0) {
+			if ((chr->mBlinkWait -= frames) < 0)
+				chr->mBlinkWait = 0;
+		}
+		if (chr->mBlinkWait == 0) {
+			if (chr->mBlinkFrame < 0)
+				chr->mBlinkFrame = 0;
+			else
+				chr->mBlinkFrame += 2;
+			if (chr->mBlinkFrame > 10) {
+				s32 wait         = 0.5f * gRefreshRate + rand() % gRefreshRate;
+				chr->mBlinkFrame = -1;
+				chr->mBlinkWait  = wait;
+			}
+		}
+	} else {
+		s32 wait         = 0.5f * gRefreshRate + rand() % gRefreshRate;
+		chr->mBlinkFrame = -1;
+		chr->mBlinkWait  = wait;
+	}
+}
+
+// fires on the frame it crosses mStart
+s32 FrameSoundOnStartFrame(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	if ((time->mLastFrame < event->mStart || time->mLastFrame > time->mFrame) && time->mFrame >= event->mStart)
+		return 1;
+	return 0;
+}
+
+// fires on the frame it crosses mStart or mEnd, a loop back counts as crossing
+s32 FrameSoundOnEitherBoundary(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	if (((time->mLastFrame < event->mStart || time->mLastFrame > time->mFrame) && time->mFrame >= event->mStart)
+	    || ((time->mLastFrame < event->mEnd || time->mLastFrame > time->mFrame) && time->mFrame >= event->mEnd))
+		return 1;
+	return 0;
+}
+
+// keep the sound playing until the anim ends
+s32 FrameSoundUntilAnimEnd(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	if (object->IsAnimDone()) {
+		if (IsWiiSfxPlaying(&gGame.mSound, event->mId))
+			return -1;
+	} else {
+		if (!IsWiiSfxPlaying(&gGame.mSound, event->mId))
+			return 1;
+	}
+	return 0;
+}
+
+// keep the sound playing inside the window only
+s32 FrameSoundInFrameWindow(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	if (time->mFrame >= event->mStart && time->mFrame < event->mEnd) {
+		if (!IsWiiSfxPlaying(&gGame.mSound, event->mId))
+			return 1;
+	} else {
+		if (IsWiiSfxPlaying(&gGame.mSound, event->mId))
+			return -1;
+	}
+	return 0;
+}
+
+// start while the sound isn't playing
+s32 FrameSoundStartIfSilent(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	return IsWiiSfxPlaying(&gGame.mSound, event->mId) ? FALSE : TRUE;
+}
+
+// stop once the sound is playing
+s32 FrameSoundStopIfPlaying(XObj* object, FrameEventTime* time, const FrameEvent* event)
+{
+	return IsWiiSfxPlaying(&gGame.mSound, event->mId) ? -1 : 0;
+}
+
+// the anim rate at the game's frame rate, 1.135 times faster in lift state 4 except for anim 0x13B
+// NONMATCHING: retail reads mLift.mState ahead of the prologue's stores
+f32 fn_800E32B8(WiiPlayerState* chr, s32 anim)
+{
+	f32 rate;
+	if (chr->mLift.mState == 4 && IsLiftTargetPlug(&chr->mLift) && anim != 0x13B) {
+		rate = 1.135f;
+	} else {
+		rate = 1.0f;
+	}
+	return rate * (60.0f / gRefreshRate);
+}
+
+// where the carried object hangs, in the world
+// NONMATCHING: only the name's place differs, retail pools it in the file's .rodata string table
+CVec fn_800E5A2C(XObj* player)
+{
+	return player->GetWorldPos("carry_obj_nll");
+}
+
+// and relative to its joint
+// NONMATCHING: as above, the name's place
+CVec fn_800E5A48(XObj* player)
+{
+	return player->GetJointTranslate("carry_obj_nll");
+}
+
+// how high the carried object sits: half again his scale, and with a mug the carry joint's height on top
+// except while the anims 10 and 11 lift and lower it
+// NONMATCHING: the joint name's place, as for fn_800E5A2C
+f32 fn_800E5BFC(WiiPlayerState* chr)
+{
+	f32 height = 1.5f * chr->mMoveScale.x;
+	if (IsCarryingMug(&chr->mLift) && !(chr->GetAnimId() == 11 && chr->GetAnimFrame() < 45.0f)
+	    && !(chr->GetAnimId() == 10 && chr->GetAnimFrame() > 22.0f)) {
+		CVec scale;
+		chr->GetJointScale(chr->FindResNode("carry_obj_nll"), &scale);
+		height += 4.0f * scale.x;
+	}
+	return height;
+}
+
+// between his eyes, a little behind them
+// NONMATCHING: the joint names' place, as for fn_800E5A2C
+Vec GetPlayerFirstPersonEyePosition(WiiPlayerState* chr)
+{
+	CVec first  = chr->GetJointPos("L_eye");
+	CVec second = chr->GetJointPos("R_eye");
+	Vec point   = first + (second - first) / 2.0f;
+	point.x -= 1.5f * (f32)sin(chr->mMoveRotate.y);
+	point.z -= 1.5f * (f32)cos(chr->mMoveRotate.y);
+	return point;
+}
+
+// NONMATCHING (92 %): retail keeps the held flag apart from the down flag, this build folds the two
+BOOL IsPlayerBlockingEvents(const WiiPlayerState* player)
+{
+	return IsEventBlocked(player);
+}
+
+// the event call 101: which side of a clear leticker he comes from, 1 for anything else
+// NONMATCHING: retail loads the data record ahead of the prologue's stores
+s32 GetCharacterObjectApproachResult(XObj* chr, XObj* object)
+{
+	return object->GetPool() == 9 ? GetClearLetickerApproachSide(object, chr->GetPos()) : 1;
+}
+
+// the highest floor of the object under a floor group that's still below chibi robo,
+// stops early on the preferred one, -1 for none. The contact flag is read off the group's own entry
+// NONMATCHING (94 %): retail recomputes owner + group inside the loop, this build hoists it
+s32 FindPlayerSupportingFloor(WiiPlayerState* chr, s32 group, s32 preferred)
+{
+	s32 result = -1;
+	if (chr->mFloorContactObjects[group] >= 0) {
+		XObj* owner = gGame.mXObjs.mObjects[chr->mFloorContactObjects[group]];
+		f32 best    = NAN;
+		for (int i = 0; owner->mFloors[i].mId != -1; i++) {
+			if ((owner->mFloors[group].mFlags & 1) && (owner->mFloorMasks[group] & (1 << i))) {
+				if ((fpclassify(best) == FP_NAN || owner->mFloorHeights[i] >= best)
+				    && owner->mFloorHeights[i] <= 1.0f + chr->mMoveTranslate.y) {
+					best   = owner->mFloorHeights[i];
+					result = i;
+					if (i == preferred)
+						break;
+				}
+			}
+		}
+	}
+	return result;
+}
+
+// the ground type under chibi robo, from what he hangs or climbs on, the object he stands
+// on, or else the map triangle under him. 13 and up count as none
+// NONMATCHING (95 %): retail keeps the u8 conversion as a clrlwi. where this build tests the lbz result directly
+s32 GetPlayerGroundType(WiiPlayerState* chr)
+{
+	s32 type = 0;
+	if (chr->mHang.mState == 5 && chr->mHang.mTarget != NULL) {
+		XObj* owner = chr->mHang.mTarget;
+		type        = owner->mFloors->mMaterial;
+	} else if (chr->mRope.mState == 5 && chr->mRope.mTarget != NULL) {
+		XObj* owner = chr->mRope.mTarget;
+		type        = owner->mFloors->mMaterial;
+	} else if (chr->mLadder.mState == 5 && chr->mLadder.mTarget != NULL) {
+		XObj* owner = chr->mLadder.mTarget;
+		type        = owner->mFloors->mMaterial;
+	} else if (chr->mFloorContactObjects[0] >= 0) {
+		XObj* owner = gGame.mXObjs.mObjects[chr->mFloorContactObjects[0]];
+		f32 best    = NAN;
+		for (s32 i = 0; owner->mFloors[i].mId != -1; ++i) {
+			if ((owner->mFloors[i].mFlags & 1) && (owner->mFloorMasks[0] & (1U << i))
+			    && (__fpclassifyf(best) == FP_NAN || owner->mFloorHeights[i] > best)) {
+				f32 height = owner->mFloorHeights[i];
+				if (height <= 1.0f + chr->mMoveTranslate.y) {
+					best = height;
+					type = owner->mFloors[i].mMaterial;
+				}
+			}
+		}
+	}
+	type = (u8)type;
+	if (type == 0 && chr->mFloorHit.mTriangle >= 0 && chr->mFloorHit.mTrigon >= 0) {
+		type = GetMapTriangleFloorType((XObjMap*)gGame.mXObjs.mPools[3].mObjects, chr->mFloorHit.mTriangle);
+	}
+	if (type >= 13)
+		type = 0;
+	return type;
+}
+
 void SetAttachmentCountById(AttachmentValues* values, s32 id, s32 value)
 {
 	values->SetCount(id, value);
@@ -566,7 +1379,7 @@ void SetAttachmentCountById(AttachmentValues* values, s32 id, s32 value)
 // out of battery: the battery is flat and the gauge on screen has run down to it
 BOOL IsPlayerStopped(const WiiPlayerState* chr)
 {
-	return chr->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
+	return IsStopped(chr);
 }
 
 u8 IsPlayerFlashingFromHit(WiiPlayerState* chr)

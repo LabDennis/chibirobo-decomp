@@ -10,6 +10,7 @@
 #include "game/coordinfo.h"
 #include "game/cstatus64.h"
 #include "game/ctrigon.h"
+#include "game/mapfloorhit.h"
 #include "game/evt.h"
 #include "game/ut.h"
 #include "game/wii/cgs.h"
@@ -1116,6 +1117,14 @@ public:
 };
 STATIC_ASSERT(sizeof(CObj) == 0x150);
 
+// one floor's edge, the GameCube's XObjEdge
+struct XObjEdge {
+	Vec mContactOffset; // _00
+	Vec mFrom;          // _0C
+	Vec mTo;            // _18
+};
+STATIC_ASSERT(sizeof(XObjEdge) == 0x24);
+
 class XObj : public CObj {
 public:
 	XObj();
@@ -1240,7 +1249,8 @@ public:
 	CoordInfo mCoord;   // _160
 	AttrInfo mAttr;     // _168
 	XObjFloor* mFloors; // _174, the object's collision floor list
-	u8 _178[0x188 - 0x178];
+	u32 mFloorMasks[2]; // _178, a bit per floor, one mask per group
+	u8 _180[0x188 - 0x180];
 	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
 	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
@@ -1249,11 +1259,10 @@ public:
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C
 	u8 _1AC[0x1B8 - 0x1AC];
-	f32 mLastAnimFrame; // _1B8, the frame the animation had after the last update
-	s32 mHitFloorIndex; // _1BC
-	u8 _1C0[0x640 - 0x1C0];
-	f32 mFloorXZExtent; // _640
-	u8 _644[0x648 - 0x644];
+	f32 mLastAnimFrame;       // _1B8, the frame the animation had after the last update
+	s32 mHitFloorIndex;       // _1BC
+	XObjEdge mEdges[32];      // _1C0, one per floor
+	f32 mFloorXZExtent[2];    // _640, [0] is GetFloorXZExtent's; xobj_chr.cpp reads them by index
 	f32 mFloorHeights[32];    // _648, a height per floor
 	f32 mMaxFloorHeight;      // _6C8, NAN while there is none
 	f32 mSelectedFloorHeight; // _6CC, highest active floor, NaN when none is active
@@ -1266,8 +1275,8 @@ public:
 	f32 mScreenLeft;   // _6E8
 	f32 mScreenRight;  // _6EC
 	u8 _6F0[0x6F8 - 0x6F0];
-	CVec mToppleOffset; // _6F8
-	u8 _708[0xC];
+	CVec mToppleOffset;       // _6F8
+	XObjMapHit mFloorHit;     // _708, the map floor under the object
 	CVec mVec714;             // _714
 	CEvt mEvt;                // _724
 	const void* mEventScript; // _790, the event script the object starts when used
@@ -1342,7 +1351,6 @@ public:
 	XObjMap();
 	virtual ~XObjMap();
 
-private:
 	u8 _9A8[4];
 	CTrigon mTrigon; // _9AC
 	u8 _9EC[0x28];

@@ -493,7 +493,7 @@ static inline void StepHudVisibility(s32& state, f32& alpha, u32 frames)
 static inline s32 HighlightedAttachment()
 {
 	WiiPlayerState* player = gGame.GetPlayer();
-	return player->mAtcMenu.mCursorIndex >= 0 ? player->mAtcMenu.mItems[player->mAtcMenu.mCursorIndex].mType : 0;
+	return player->mMenu.mAtc.mCursorIndex >= 0 ? player->mMenu.mAtc.mItems[player->mMenu.mAtc.mCursorIndex].mType : 0;
 }
 
 static inline void AdvanceHudIcon(InfoScrn* h)
