@@ -1632,9 +1632,9 @@ s32 CMotionControlCamera::GetActionType()
  * @note Address: 0x80149674
  * @note Size: 0x2C
  */
-bool CMotionControlCamera::IsAction(s32 type)
+BOOL CMotionControlCamera::IsAction(s32 type)
 {
-	return mAction == GetAction(type);
+	return mAction == GetAction(type) ? TRUE : FALSE;
 }
 // fn_80149674
 /*
