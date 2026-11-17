@@ -1084,6 +1084,9 @@ static inline void SyncRopePosition(XObjChr* owner)
  * @note Address: 0x800C5B98
  * @note Size: 0x1C78 (US)
  */
+// NONMATCHING: for the three target - last-position deltas retail copies the argument first and then reads act->mTarget
+// again for the operator's this, here the target loaded for the null test is reused; the 16-byte locals of the hang-start
+// branches still sit in a different order
 void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	switch (act->mState) {
@@ -1793,6 +1796,9 @@ static inline void FinishHang(XActHang* act, f32 loop)
  * @note Address: 0x800CBDCC
  * @note Size: 0x1CE8
  */
+// NONMATCHING: retail reads act->mOwner again after sin and cos for the round floor's step (here it stays in r28), keeps the
+// target test for the ladder and rope hand-over as a 0/1 value (neg; or; srwi.) and reads the owner again for the
+// distance in case 3
 void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 frame, f32 end)
 {
 	switch (act->mState) {

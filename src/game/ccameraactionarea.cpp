@@ -1010,6 +1010,7 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
  * @note Address: 0x80138ED8
  * @note Size: 0x6E0
  */
+// NONMATCHING: registers only. retail keeps the view yaw in f28 and best in f29, best taking 2 pi from the wrap's own load
 extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 {
 	CPad pad(0);
@@ -1610,6 +1611,8 @@ void CCameraActionArea::DrawDebug2d()
  * @note Address: 0x8013964C
  * @note Size: 0x544
  */
+// NONMATCHING: retail folds SetFovInterpolation's mode test for the zoom change (li r0, 4 then straight to the table) and
+// leaves the SetFov branch as dead code; this build still compares mode with 3. Saved registers follow from that
 void CCameraActionArea::Update(u32 step)
 {
 	if (gGame.mStatus.mFlags & 0xC00) {

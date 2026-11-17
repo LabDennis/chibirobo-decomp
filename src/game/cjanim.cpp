@@ -405,6 +405,8 @@ static inline f32 FloorRotationRadians(const s32& degrees)
 	return 0.017453292f * degrees;
 }
 
+// NONMATCHING: retail reads each floor field as floors + (i * 0x20 + offset) with lwzx, here floors + i * 0x20 is formed
+// once per pass; registers follow from that
 BOOL XObj::TestFloorCrossing(const Vec& start, const Vec& end)
 {
 	XObjFloor* floors = mFloors;
