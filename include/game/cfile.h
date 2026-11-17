@@ -27,16 +27,19 @@ public:
 	}
 
 	// _00 DVDFileInfo
+#if defined(VERSION_R24J01)
+	char mPath[0x81]; // _3C, CBase::Start's copy of a CTpl copies 0x81 bytes of it
+#else
 	char mPath[0x84]; // _3C
-	s32 mEntrynum;    // _C0
-	u32 mOffset;      // _C4
-	u32 mSize;        // _C8
-	void* mBuffer;    // _CC
-	s32 mResult;      // _D0, 1 while the read is running, then 0 or an error
+#endif
+	s32 mEntrynum; // _C0
+	u32 mOffset;   // _C4
+	u32 mSize;     // _C8
+	void* mBuffer; // _CC
+	s32 mResult;   // _D0, 1 while the read is running, then 0 or an error
 #if defined(VERSION_R24J01)
 	u8 mFromMemory; // _D4, mBuffer is the caller's memory, not read from disc
-	u8 mInArchive;  // _D5, read out of the current CFileArchive
-	u8 _D6[2];
+	u8 mInArchive;  // _D5, read out of the current CFileArchive (_D6 is padding: copies skip it)
 #else
 	CFileArchive* mArchive; // _D4
 #endif

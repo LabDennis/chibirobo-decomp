@@ -29,8 +29,8 @@ static inline bool IsShadowObj(XObj* obj, u64 mask)
 extern "C" void RenderSceneShadow(CGame* game)
 {
 	XObjChr* player;
-	XObj* target;
 	s32 i;
+	XObj* target;
 	XObj* obj;
 	if (game->mStatus.mFlags & 1) {
 		player = gGame.GetPlayer();
@@ -77,7 +77,8 @@ extern "C" void RenderSceneShadow(CGame* game)
 					}
 				}
 				Vec center = game->GetCamera()->mInterest;
-				shadow->AddRect(&center, 100.0f, -100.0f, -100.0f, 100.0f);
+				f32 size   = 100.0f;
+				shadow->AddRect(&center, size, -size, -size, size);
 				game->mGs.mCamera = shadow->StartRender();
 				if (BeginGsCamera(game)) {
 					SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);

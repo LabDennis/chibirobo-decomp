@@ -28,13 +28,7 @@ public:
 	s32 _80;                 // _80, written 0 in InitHudPointCounter, never read
 	                         // _84 vtable
 
-#if defined(VERSION_R24J01)
-	// the Wii build defines it out of line in infopointdtor.cpp; its emitted body has no
-	// vtable store - the compiler elides it for the empty body (retail 0x80092244)
-	virtual ~InfoPoint();
-#else
 	virtual ~InfoPoint() { } // _08 (weak)
-#endif
 };
 STATIC_ASSERT(sizeof(InfoPoint) == 0x88);
 

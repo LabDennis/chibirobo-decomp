@@ -22,18 +22,15 @@ game/wii/init.cpp:
 	.sdata start:0x805A0D48 end:0x805A0D60
 	.sdata2 start:0x805A2B60 end:0x805A2BD8
 
-game/wii/soundbank.cpp:
-	extab start:0x80009064 end:0x8000906C
-	extabindex start:0x800120B0 end:0x800120BC
-	.text start:0x8003AA58 end:0x8003AB00
+game/wii/sound.cpp:
+	extab start:0x80008FEC end:0x80009104
+	extabindex start:0x80011FFC end:0x80012188
+	.text start:0x80036694 end:0x8003CEB0
 	.rodata start:0x802C6100 end:0x802C62B0
 	.data start:0x802E7170 end:0x802E7238
 
 game/wii/gxb.cpp:
-	.text start:0x8003CEB0 end:0x80040E08
-
-game/roboeyeslens.cpp:
-	.text start:0x80040E08 end:0x80040E4C
+	.text start:0x8003CEB0 end:0x80044FD8
 
 revolution/EXI/EXIBios.c:
 	.text start:0x8017C0A8 end:0x8017D93C
@@ -241,10 +238,12 @@ game/wii/menu.cpp:
 	.sdata2 start:0x805A2F70 end:0x805A3350
 
 game/wii/infoscrn.cpp:
-	.text start:0x800870E8 end:0x80092244
+	.text start:0x800870E8 end:0x80092308
+	.ctors start:0x802C4594 end:0x802C4598
 	.rodata start:0x802C6AB8 end:0x802C6CFC
 	.sdata start:0x805A0EA8 end:0x805A0EC4
 	.sdata2 start:0x805A3350 end:0x805A34A8
+	.bss start:0x8044B7A8 end:0x8044C170
 
 game/wii/homemenu.cpp:
 	extab start:0x8000A6D0 end:0x8000A708
@@ -255,6 +254,15 @@ game/wii/homemenu.cpp:
 	.sdata start:0x805A0F50 end:0x805A0F80
 	.sbss start:0x805A1C38 end:0x805A1C40
 	.sdata2 start:0x805A4470 end:0x805A44D0
+
+game/wii/evt.cpp:
+	.text start:0x8009453C end:0x800A18B8
+
+game/wii/xaction.cpp:
+	.text start:0x800C6428 end:0x800C6584
+
+game/wii/xobj_chr.cpp:
+	.text start:0x800C9E84 end:0x800E9D30
 
 game/ringmenupointer.cpp:
 	extab start:0x8000C4EC end:0x8000C4F4
@@ -1023,9 +1031,10 @@ Runtime.PPCEABI.H/GCN_mem_alloc.c:
 	.rodata start:0x802DFDE0 end:0x802DFE50
 
 game/wii/cgs.cpp:
-	extab start:0x800101F4 end:0x80010694
-	extabindex start:0x80016B44 end:0x80016EE0
-	.text start:0x802A80FC end:0x802AEA44
+	extab start:0x800101F4 end:0x800106B4
+	extabindex start:0x80016B44 end:0x80016F10
+	.text start:0x802A80FC end:0x802AEBF0
+	.ctors start:0x802C4650 end:0x802C4654
 	.data start:0x80334D8C end:0x80334FF0
 	.rodata start:0x802E5160 end:0x802E51A8
 
@@ -1051,9 +1060,9 @@ game/wii/cfont.cpp:
 	.sdata2 start:0x805A7A28 end:0x805A7A48
 
 game/wii/ut.cpp:
-	extab start:0x8000FFCC end:0x800101A4
-	extabindex start:0x80016A3C end:0x80016ACC
-	.text start:0x802A5418 end:0x802A7478
+	extab start:0x8000FFC4 end:0x800101A4
+	extabindex start:0x80016A30 end:0x80016ACC
+	.text start:0x802A5358 end:0x802A7478
 	.rodata start:0x802E4EB0 end:0x802E50C8
 	.sdata start:0x805A19D0 end:0x805A19D8
 	.sdata2 start:0x805A7888 end:0x805A78C0
@@ -1065,11 +1074,21 @@ game/wii/mem.cpp:
 	.bss start:0x80576B88 end:0x8059ABA8
 	.sbss start:0x805A2858 end:0x805A2870
 
+game/wii/cobjvec.cpp:
+	.text start:0x802A7FB4 end:0x802A80FC
+	.sdata2 start:0x805A78C0 end:0x805A78C8
+
+game/wii/ctrigon.cpp:
+	.text start:0x802BA4F4 end:0x802BD294
+	.data start:0x80356090 end:0x80356268
+	.sdata2 start:0x805A7AA8 end:0x805A7AD0
+
 game/wii/cobj.cpp:
 	extab start:0x80010AD8 end:0x80010CA8
 	extabindex start:0x80017474 end:0x80017714
 	.text start:0x802B6560 end:0x802BA4F4
 	.rodata start:0x802E56D8 end:0x802E59A0
+	.data start:0x80355EE0 end:0x80356090
 	.sdata2 start:0x805A7A78 end:0x805A7AA8
 
 game/wii/ceffect.cpp:
@@ -1104,12 +1123,15 @@ game/wii/nandfile.cpp:
 
 game/cinterpolationeaseout.cpp:
 	.text start:0x80151D1C end:0x80151FCC
+	.sdata2 start:0x805A5CC8 end:0x805A5CD8
 
 game/wii/ccameraactionareaexm.cpp:
 	.text start:0x80031FC4 end:0x80032038
 
 game/ccameraactionareaexinit.cpp:
 	.text start:0x801542A0 end:0x80154310
+	.ctors start:0x802C45C0 end:0x802C45C4
+	.bss start:0x8045F468 end:0x804630A8
 
 game/ccameraactionareaexdtor.cpp:
 	.text start:0x801541F8 end:0x801542A0
@@ -1118,7 +1140,7 @@ game/ccameraactionareaexdtor.cpp:
 	.sdata start:0x805A1278 end:0x805A1280
 
 game/wii/ccameraactionmap2.cpp:
-	.text start:0x80154310 end:0x80154320
+	.text start:0x80154310 end:0x80160D30
 
 game/ccameraactionareaex.cpp:
 	.text start:0x80151FCC end:0x801541F8
@@ -1192,12 +1214,6 @@ game/wii/fbmirror.cpp:
 
 game/wii/gamedraw.cpp:
 	.text start:0x80024AE8 end:0x8002CFB8
-
-game/infopointdtor.cpp:
-	.text start:0x80092244 end:0x80092284
-
-game/infopointinit.cpp:
-	.text start:0x80092284 end:0x80092308
 
 game/atcmenudtor.cpp:
 	.text start:0x800C0F98 end:0x800C1018
@@ -1766,6 +1782,181 @@ nw4r/ut/ut_ResFont.cpp:
 	.text start:0x80235A50 end:0x80235D54
 	.data start:0x80332878 end:0x803328D4
 
+nw4r/ef/ef_draworder.cpp:
+	.text start:0x802362B8 end:0x802363C4
+	.data start:0x80332958 end:0x80332970
+
+nw4r/ef/ef_effect.cpp:
+	.text start:0x802363C4 end:0x80236F6C
+	.data start:0x80332970 end:0x80332990
+	.sdata2 start:0x805A6D70 end:0x805A6D78
+
+nw4r/ef/ef_effectsystem.cpp:
+	.text start:0x80236F6C end:0x80237988
+	.ctors start:0x802C461C end:0x802C4620
+	.data start:0x80332990 end:0x803329D8
+	.bss start:0x80530820 end:0x8053C938
+	.sdata start:0x805A18D8 end:0x805A18E0
+	.sbss start:0x805A2750 end:0x805A2760
+	.sdata2 start:0x805A6D78 end:0x805A6D80
+
+nw4r/ef/ef_emitter.cpp:
+	.text start:0x80237988 end:0x80239A7C
+	.data start:0x803329D8 end:0x80332A00
+	.sdata2 start:0x805A6D80 end:0x805A6DB8
+
+nw4r/ef/ef_animcurve.cpp:
+	.text start:0x80239A7C end:0x8023E9C4
+	.data start:0x80332A00 end:0x80332C00
+	.sdata2 start:0x805A6DB8 end:0x805A6DF0
+
+nw4r/ef/ef_postfield.cpp:
+	.text start:0x8023E9C4 end:0x80241FA0
+	.sdata2 start:0x805A6DF0 end:0x805A6E28
+
+nw4r/ef/ef_particle.cpp:
+	.text start:0x80241FA0 end:0x80242DC0
+	.data start:0x80332C00 end:0x80332C18
+	.sdata2 start:0x805A6E28 end:0x805A6E78
+
+nw4r/ef/ef_particlemanager.cpp:
+	.text start:0x80242DC0 end:0x802450FC
+	.ctors start:0x802C4620 end:0x802C4624
+	.data start:0x80332C18 end:0x80332C80
+	.bss start:0x8053C938 end:0x8053C968
+	.sbss start:0x805A2760 end:0x805A2768
+	.sdata2 start:0x805A6E78 end:0x805A6EC0
+
+nw4r/ef/ef_resource.cpp:
+	.text start:0x802450FC end:0x80245CD0
+	.ctors start:0x802C4624 end:0x802C4628
+	.bss start:0x8053C968 end:0x8053C988
+
+nw4r/ef/ef_util.cpp:
+	.text start:0x80245CD0 end:0x80246BA0
+	.sdata start:0x805A18E0 end:0x805A18E8
+	.sdata2 start:0x805A6EC0 end:0x805A6F08
+
+nw4r/ef/ef_handle.cpp:
+	.text start:0x80246BA0 end:0x80246C44
+
+nw4r/ef/ef_emitterform.cpp:
+	.text start:0x80246C44 end:0x802471E0
+	.sdata2 start:0x805A6F08 end:0x805A6F38
+
+nw4r/ef/ef_creationqueue.cpp:
+	.text start:0x802471E0 end:0x80247620
+
+nw4r/ef/emform/ef_emform.cpp:
+	.text start:0x80247620 end:0x802476D8
+	.ctors start:0x802C4628 end:0x802C462C
+	.data start:0x80332C80 end:0x80332CB8
+	.sbss start:0x805A2768 end:0x805A2788
+
+nw4r/ef/emform/ef_point.cpp:
+	.text start:0x802476D8 end:0x80247A20
+	.data start:0x80332CB8 end:0x80332CC8
+	.sdata2 start:0x805A6F38 end:0x805A6F68
+
+nw4r/ef/emform/ef_line.cpp:
+	.text start:0x80247A20 end:0x80247D58
+	.data start:0x80332CC8 end:0x80332CD8
+	.sdata2 start:0x805A6F68 end:0x805A6F90
+
+nw4r/ef/emform/ef_disc.cpp:
+	.text start:0x80247D58 end:0x8024828C
+	.data start:0x80332CD8 end:0x80332CE8
+	.sdata2 start:0x805A6F90 end:0x805A6FD8
+
+nw4r/ef/emform/ef_sphere.cpp:
+	.text start:0x8024828C end:0x80248AE0
+	.data start:0x80332CE8 end:0x80332CF8
+	.sdata2 start:0x805A6FD8 end:0x805A7028
+
+nw4r/ef/emform/ef_cylinder.cpp:
+	.text start:0x80248AE0 end:0x80249290
+	.data start:0x80332CF8 end:0x80332D08
+	.sdata2 start:0x805A7028 end:0x805A7070
+
+nw4r/ef/emform/ef_torus.cpp:
+	.text start:0x80249290 end:0x802498CC
+	.data start:0x80332D08 end:0x80332D18
+	.sdata2 start:0x805A7070 end:0x805A70B8
+
+nw4r/ef/emform/ef_cube.cpp:
+	.text start:0x802498CC end:0x8024B4F4
+	.data start:0x80332D18 end:0x80332D28
+	.sdata2 start:0x805A70B8 end:0x805A70F0
+
+nw4r/ef/drawstrategy/ef_drawstrategybuilder.cpp:
+	.text start:0x8024B4F4 end:0x8024B898
+	.data start:0x80332D28 end:0x80332D50
+	.bss start:0x8053C988 end:0x8053D018
+	.sbss start:0x805A2788 end:0x805A2790
+
+nw4r/ef/drawstrategy/ef_drawstrategyimpl.cpp:
+	.text start:0x8024B898 end:0x8024DB78
+	.ctors start:0x802C462C end:0x802C4630
+	.data start:0x80332D50 end:0x80332D68
+	.bss start:0x8053D018 end:0x8053D078
+	.sdata2 start:0x805A70F0 end:0x805A7120
+
+nw4r/ef/drawstrategy/ef_drawbillboardstrategy.cpp:
+	.text start:0x8024DB78 end:0x8024FC14
+	.data start:0x80332D68 end:0x80332D88
+	.sdata start:0x805A1900 end:0x805A1908
+	.sdata2 start:0x805A7120 end:0x805A7150
+
+nw4r/ef/drawstrategy/ef_drawdirectionalstrategy.cpp:
+	.text start:0x8024FC14 end:0x80251EF0
+	.rodata start:0x802DFE50 end:0x802DFEB0
+	.data start:0x80332D88 end:0x80332DC8
+	.sdata start:0x805A1920 end:0x805A1928
+	.sdata2 start:0x805A7150 end:0x805A7178
+
+nw4r/ef/drawstrategy/ef_drawfreestrategy.cpp:
+	.text start:0x80251EF0 end:0x802528D0
+	.rodata start:0x802DFEB0 end:0x802DFF10
+	.data start:0x80332DC8 end:0x80332DE0
+	.sdata start:0x805A1940 end:0x805A1948
+	.sdata2 start:0x805A7178 end:0x805A71A0
+
+nw4r/ef/drawstrategy/ef_drawlinestrategy.cpp:
+	.text start:0x802528D0 end:0x80252EB0
+	.data start:0x80332DE0 end:0x80332DF8
+	.sdata start:0x805A1948 end:0x805A1950
+	.sdata2 start:0x805A71A0 end:0x805A71B0
+
+nw4r/ef/drawstrategy/ef_drawpointstrategy.cpp:
+	.text start:0x80252EB0 end:0x80253300
+	.data start:0x80332DF8 end:0x80332E10
+	.sdata start:0x805A1950 end:0x805A1958
+	.sdata2 start:0x805A71B0 end:0x805A71C0
+
+nw4r/ef/drawstrategy/ef_drawstripestrategy.cpp:
+	.text start:0x80253300 end:0x802568B4
+	.data start:0x80332E10 end:0x80332F18
+	.sdata2 start:0x805A71C0 end:0x805A71F8
+
+nw4r/ef/drawstrategy/ef_drawsmoothstripestrategy.cpp:
+	.text start:0x802568B4 end:0x8025B538
+	.data start:0x80332F18 end:0x80333020
+	.bss start:0x8053D078 end:0x8053D0A8
+	.sbss start:0x805A2790 end:0x805A2798
+	.sdata2 start:0x805A71F8 end:0x805A7230
+
+nw4r/ef/ef_res_emitter_ac.cpp:
+	.text start:0x8025B538 end:0x8025B5A4
+nw4r/db/db_console.cpp:
+	.text start:0x80235D54 end:0x80235E28
+
+nw4r/db/db_assert.cpp:
+	.text start:0x80235E28 end:0x802362B8
+	.data start:0x803328D8 end:0x80332958
+	.bss start:0x805307F0 end:0x80530820
+	.sdata start:0x805A18D0 end:0x805A18D8
+	.sbss start:0x805A2740 end:0x805A274C
+
 nw4r/math/math_arithmetic.cpp:
 	.text start:0x80282CA0 end:0x80282DDC
 	.data start:0x80333AB0 end:0x803343C0
@@ -2279,6 +2470,7 @@ nw4r/g3d/res/g3d_resdict.cpp:
 
 nw4r/g3d/res/g3d_resfile.cpp:
 	.text start:0x8025BA34 end:0x8025CF84
+	.data start:0x80333020 end:0x80333180
 
 nw4r/g3d/res/g3d_resmdl.cpp:
 	.text start:0x8025CF84 end:0x8025E024
@@ -2306,6 +2498,7 @@ nw4r/g3d/res/g3d_resnode.cpp:
 
 nw4r/g3d/res/g3d_resanm.cpp:
 	.text start:0x8026186C end:0x80261A98
+	.sdata2 start:0x805A7278 end:0x805A728C
 
 nw4r/g3d/res/g3d_resanmvis.cpp:
 	.text start:0x80261A98 end:0x80261BB8
@@ -2421,6 +2614,11 @@ nw4r/g3d/g3d_state.cpp:
 	.text start:0x8026CE30 end:0x8027064C
 	.ctors start:0x802C4630 end:0x802C4634
 	.data start:0x80333818 end:0x80333830
+	.rodata start:0x802E0100 end:0x802E0130
+	.bss start:0x8053D0C0 end:0x8054267C
+	.sdata start:0x805A1968 end:0x805A1970
+	.sbss start:0x805A2798 end:0x805A27B8
+	.sdata2 start:0x805A73D8 end:0x805A7400
 
 nw4r/g3d/g3d_draw1mat1shp.cpp:
 	.text start:0x8027064C end:0x80271380
@@ -2430,6 +2628,7 @@ nw4r/g3d/g3d_draw1mat1shp.cpp:
 nw4r/g3d/g3d_calcview.cpp:
 	.text start:0x80271380 end:0x8027355C
 	.sdata2 start:0x805A7420 end:0x805A742C
+	.rodata start:0x802E0140 end:0x802E015C
 
 nw4r/g3d/g3d_dcc.cpp:
 	.text start:0x8027355C end:0x80273638
@@ -2440,12 +2639,14 @@ nw4r/g3d/g3d_workmem.cpp:
 
 nw4r/g3d/g3d_calcworld.cpp:
 	.text start:0x80273678 end:0x80274130
-	.data start:0x80333830 end:0x8033383C
+	.data start:0x80333830 end:0x80333840
 	.sdata start:0x805A1970 end:0x805A1978
 	.sdata2 start:0x805A7430 end:0x805A7438
 
 nw4r/g3d/g3d_draw.cpp:
 	.text start:0x80274130 end:0x80275F8C
+	.sdata start:0x805A1978 end:0x805A1980
+	.sdata2 start:0x805A7438 end:0x805A7448
 
 nw4r/g3d/g3d_camera.cpp:
 	.text start:0x80275F8C end:0x80276EC4
@@ -2472,9 +2673,17 @@ nw4r/g3d/dcc/g3d_3dsmax.cpp:
 
 nw4r/g3d/g3d_scnobj.cpp:
 	.text start:0x802794B8 end:0x8027AB88
+	.rodata start:0x802E0208 end:0x802E0238
+	.data start:0x80333840 end:0x80333908
+	.sbss start:0x805A27B8 end:0x805A27BC
+	.sdata2 start:0x805A74C8 end:0x805A74D0
 
 nw4r/g3d/g3d_scnroot.cpp:
 	.text start:0x8027AB88 end:0x8027C64C
+	.rodata start:0x802E0238 end:0x802E0248
+	.data start:0x80333908 end:0x80333978
+	.sdata start:0x805A1980 end:0x805A1990
+	.sdata2 start:0x805A74D0 end:0x805A74D8
 
 nw4r/g3d/g3d_scnmdlsmpl.cpp:
 	.text start:0x8027C64C end:0x8027E3D4
@@ -2516,15 +2725,3 @@ nw4r/g3d/g3d_calcvtx.cpp:
 
 game/wii/unit_8003366C.cpp:
 	.text start:0x8003366C end:0x800354DC
-
-game/wii/gamesound.cpp:
-	.text start:0x80036618 end:0x8003AA58
-
-game/wii/sound.cpp:
-	.text start:0x8003AB00 end:0x8003CEB0
-
-game/wii/unit_80040E4C.cpp:
-	.text start:0x80040E4C end:0x8004328C
-
-game/wii/unit_8004328C.cpp:
-	.text start:0x8004328C end:0x80044FD8

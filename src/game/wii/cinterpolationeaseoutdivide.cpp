@@ -140,23 +140,8 @@ bool CInterpolationNone::Update(u32 step, f32 dt)
 	return Step(dt);
 }
 
-/**
- * @note Address: 0x800331D4
- * @note Size: 0x90
- */
-BOOL CThread::Create(void* (*func)(void*), void* param, u32 stackSize, s32 priority, u16 attr)
-{
-	mStack     = (u8*)MEMAllocFromExpHeapEx(gWiiGameHeap, stackSize, 4);
-	mStackSize = stackSize;
-	if (OSCreateThread(&mThread, func, param, mStack + stackSize, stackSize, priority, attr)) {
-		mStackSize = stackSize;
-		return TRUE;
-	}
-	return FALSE;
-}
-
 // The weak virtuals of this unit that are written in their classes, and so are emitted by the file
-// that constructs gGame:
+// that constructs gGame (CThread::Create, 0x800331D4, among them):
 //   0x80033058 CFile::IsLoaded                          include/game/cfile.h
 //   0x80033080 CScrnWipeTile::Start                     include/game/cscrn.h
 //   0x80033084 CSoundFxReverbHiDpl2::SetParam           include/game/wii/csoundfx.h

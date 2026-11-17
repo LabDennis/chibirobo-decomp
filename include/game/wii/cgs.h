@@ -3,6 +3,7 @@
 
 #include "game/cprimitive.h"
 #include "game/ctpl.h"
+#include "game/cfont.h"
 #include "game/ut.h"
 #include <Dolphin/gx.h>
 
@@ -429,6 +430,23 @@ public:
 	virtual ~GSTevSwapModeTable() { } // _08
 };
 
+// the stage's constant colors, class names from RTTI; CGsTevStage's constructor (0x80033A74) stores
+// GSTevColor's vtable at _B0 and GSTevKColor's at _B4, which leaves the second no room for data
+class GSTevColor {
+public:
+	GXColor mColor; // _00, by its name; no reader checked yet
+	// _04 vtable
+
+	virtual ~GSTevColor() { } // _08
+};
+
+class GSTevKColor {
+public:
+	// _00 vtable
+
+	virtual ~GSTevKColor() { } // _08
+};
+
 class GSTexGens {
 public:
 	u8 mNum; // _00
@@ -561,11 +579,12 @@ public:
 	GSTevKAlphaSel mKAlphaSel;         // _80
 	GSTevSwapMode mSwapMode;           // _88
 	GSTevSwapModeTable mSwapModeTable; // _94
-	u8 _AC[0xB8 - 0xAC];
-	GSTexGens mTexGens;    // _B8
-	GSTexCoordGen mTexGen; // _C0
-	CGsTevStage* mNext;    // _D4
-	BOOL mIndirect;        // _D8, the stage keeps its indirect setup; otherwise Setup sets it direct
+	GSTevColor mColor;                 // _AC
+	GSTevKColor mKColor;               // _B4
+	GSTexGens mTexGens;                // _B8
+	GSTexCoordGen mTexGen;             // _C0
+	CGsTevStage* mNext;                // _D4
+	BOOL mIndirect;                    // _D8, the stage keeps its indirect setup; otherwise Setup sets it direct
 	// _DC vtable
 
 	virtual ~CGsTevStage() { } // _08
@@ -685,7 +704,7 @@ public:
 	virtual void vf028();
 	virtual void vf02C();
 	virtual void vf030();
-	virtual void vf034();
+	virtual void vf034(s32 index, void* model); // queues a model's draw
 	virtual void vf038(s32 index);
 
 	u8 _004[0xE4 - 0x004];
@@ -745,9 +764,10 @@ public:
 	Vec mTextRot;              // _1B94, the text rotation, cleared by the light setup
 	u32 mTextFont;             // _1BA0, the font argument handed to the glyph lookups
 	WiiGsSceneObj* mSceneHead; // _1BA4, the list the scene pass drains
-	u8 _1BA8[0x1FE4 - 0x1BA8];
+	BOOL _1BA8;                // _1BA8, Update queues the map's model on the list while it is set
+	u8 _1BAC[0x1FE4 - 0x1BAC];
 	WiiGsSlot _1FE4[9]; // _1FE4, FinalizeStageObjectSetup clears each one's three flags
-	u8 _214C[0x2290 - 0x214C];
+	CFont mFont;        // _214C, the game font; CBase::BeforeUpdate loads its resource
 
 	// whether the current state is the CGs's own; the draws only touch that one
 	bool IsOwnTevStage() const { return mCurTevStage == &mTevStages[0]; }

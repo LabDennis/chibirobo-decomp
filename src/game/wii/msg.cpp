@@ -74,7 +74,7 @@ extern "C" s32 ClassifyFloatBits(f32 value); // the Wii MSL's out-of-line __fpcl
 // ResolveEventObjectId (0x8009453C) reads the same two leading words as the GameCube CEvtData
 static inline WiiTitleObject* FindObj(s16 id)
 {
-	return gGame.mEvtData.mScript != NULL ? (WiiTitleObject*)ResolveEventObjectId((const CEvtData*)&gGame.mEvtData, id) : NULL;
+	return gGame.mEvt.mData.mScript != NULL ? (WiiTitleObject*)ResolveEventObjectId(&gGame.mEvt.mData, id) : NULL;
 }
 
 // read before stepping, the script can point into the message's own bytes
@@ -483,9 +483,9 @@ extern "C" void CMsgFont_Init(CMsgFont* font, u8* data, f32 x, f32 y, WiiTitleOb
 	font->mMode                      = mode;
 	for (s32 i = 0; i < 2; i++) {
 		font->mCursor[i].vf09C(0.0f);
-		gGame.mObjectRefs[gGame.mObjectRefCount].mObj   = &font->mCursor[i];
-		gGame.mObjectRefs[gGame.mObjectRefCount].mFlags = 0;
-		gGame.mObjectRefCount++;
+		gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount].mObj   = &font->mCursor[i];
+		gGame.mDrawLists[1].mRefs[gGame.mDrawLists[1].mCount].mIndex = 0;
+		gGame.mDrawLists[1].mCount++;
 	}
 	for (s32 i = 0; i < 400; i++) {
 		font->mGlyphs[i].mSprite.Init(0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f);
@@ -889,9 +889,9 @@ extern "C" void CMsgFont_Draw(CMsgFont* font, f32 lastAlpha)
 			f32 portraitX            = 44.0f * portraitScale + ((font->mWindowX - font->mWidth * 0.5f) - 40.0f - halfPortrait);
 			f32 portraitY            = 12.0f * portraitScale + (font->mHeight / 2.0f + font->mWindowY);
 			WiiTitleObject* portrait = NULL;
-			s32 objectCount          = gGame.mObjPoolCount;
-			s32 stride               = gGame.mObjPoolStride;
-			u8* objects              = gGame.mObjPoolObjects;
+			s32 objectCount          = gGame.mXObjs.mPools[10].mUsed;
+			s32 stride               = gGame.mXObjs.mPools[10].mStride;
+			u8* objects              = gGame.mXObjs.mPools[10].mObjects;
 			for (s32 i = 0; i < objectCount; i++) {
 				WiiTitleObject* obj = (WiiTitleObject*)(objects + i * stride);
 				if (obj->mStatus & 1) {
@@ -1610,12 +1610,12 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 					for (s32 i = 9; i >= 0; i--) {
 						result = result * 10 + msg->mDigits[i];
 					}
-					gGame.mSelectResult = result;
+					gGame.mEvt.mSelectResult = result;
 				} else if (gWiiPointer.Check(2)) {
 					msg->mFont.mBits.mFadeOut  = TRUE;
 					msg->mFont.mOtherSelection = -1;
 					PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
-					gGame.mSelectResult = -1;
+					gGame.mEvt.mSelectResult = -1;
 				}
 			} else if (msg->mStay != 0) {
 				if (msg->mStay == 1) {
@@ -1654,7 +1654,7 @@ extern "C" s32 CMsg__cmd_QUESTION(CMsg* msg)
 	CPad pad(0);
 	HandleOXMenuInput(&player->mOXMenu, &pad);
 	if (gWiiPointer.Check(1)) {
-		gGame.mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
+		gGame.mEvt.mSelectResult = gGame.GetPlayer()->mOXMenu.mConfirmedIndex;
 		return FALSE;
 	}
 	msg->mData.mCursor -= 3;
@@ -1774,7 +1774,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 			// is not folded there); the value is 0 either way
 			u32 frames = gRefreshRate * 0.0f;
 			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = (nw4r::snd::detail::BasicSound*)gGame.mSound.mTracks[i].mTrack;
+				nw4r::snd::detail::BasicSound* track = gGame.mSound.mTracks[i].detail_GetAttachedSound();
 				if (track != NULL)
 					track->Stop(frames);
 			}
@@ -1809,7 +1809,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 		if (sfx == -2) {
 			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
 			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = (nw4r::snd::detail::BasicSound*)gGame.mSound.mTracks[i].mTrack;
+				nw4r::snd::detail::BasicSound* track = gGame.mSound.mTracks[i].detail_GetAttachedSound();
 				if (track != NULL && !track->IsPause())
 					track->Pause(true, frames);
 			}
@@ -1821,7 +1821,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 		if (sfx == -2) {
 			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
 			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = (nw4r::snd::detail::BasicSound*)gGame.mSound.mTracks[i].mTrack;
+				nw4r::snd::detail::BasicSound* track = gGame.mSound.mTracks[i].detail_GetAttachedSound();
 				if (track != NULL && track->IsPause())
 					track->Pause(false, frames);
 			}

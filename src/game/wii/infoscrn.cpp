@@ -348,7 +348,7 @@ extern "C" void DrawGameHud(InfoScrn* scrn)
 	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
 	DrawScreenColorOverlay(&scrn->mFade, &gGame.mGs);
 	scrn->mWipe.Draw(&gGame.mGs, 0);
-	if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x200000000000022ULL) && !gGame.mMenuActive) {
+	if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x200000000000022ULL) && !gGame.mMenu.mActive) {
 		BOOL diskFail = FALSE;
 		if ((gGame.mDvdStatus || gGame.mPrevDvdStatus) && !gGame.mDiskOk) {
 			diskFail = TRUE;
@@ -392,15 +392,15 @@ extern "C" void DrawObjectLoadingProgress(InfoScrn* scrn)
 		f32 leftX = (f32)(gPointerScreenWidth / 2);
 		f32 y0    = (f32)(gScreenSafeBottom - 12);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
-		if (gGame.mObjectCount > 0) {
+		if (gGame.mXObjs.mObjectCount > 0) {
 			f32 fill;
 			f32 max;
 			f32 tw;
 			f32 th;
 			f32 scale;
-			max   = gGame.mObjectCount;
-			scale = 1.0f / gGame.mObjectCount;
-			fill  = max * (gGame.mLoadObjectIndex * scale);
+			max   = gGame.mXObjs.mObjectCount;
+			scale = 1.0f / gGame.mXObjs.mObjectCount;
+			fill  = max * (gGame.mXObjs.mLoadObjectIndex * scale);
 			CTexObj tex;
 			if (sLoading.mAnim == sWalkAnim) {
 				if (sWalkAnim[sLoading.mFrame] == 0xFF) {
@@ -571,7 +571,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		}
 		break;
 	case 2:
-		if (gGame.mEvtData.mScript)
+		if (gGame.mEvt.mData.mScript)
 			++h->mHudState;
 		break;
 	case 3:
@@ -582,7 +582,7 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 		}
 		break;
 	case 4:
-		if (!gGame.mEvtData.mScript)
+		if (!gGame.mEvt.mData.mScript)
 			h->mHudState = 1;
 		break;
 	}
@@ -753,14 +753,14 @@ extern "C" void UpdateHudIndicators(InfoScrn* h, u32 frames)
 	// menu), a day length on the clock and the clock not already running
 	bool timeMoves = false;
 	running        = FALSE;
-	if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x22) && !gGame.mMenuActive) {
+	if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x22) && !gGame.mMenu.mActive) {
 		BOOL diskFail = FALSE;
 		if ((gGame.mDvdStatus || gGame.mPrevDvdStatus) && !gGame.mDiskOk)
 			diskFail = TRUE;
 		if (!diskFail && !gGame.mResetRequested)
 			running = TRUE;
 	}
-	if (running && !gGame.mEvtData.mScript && !gGame.mMenuActive && !gGame.GetStatusFlags(0xC00) && gGame.mTimeState.mDuration > 0
+	if (running && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !gGame.GetStatusFlags(0xC00) && gGame.mTimeState.mDuration > 0
 	    && !gGame.mTimeState.mRunning) {
 		timeMoves = true;
 	}
@@ -1312,15 +1312,15 @@ extern "C" void DrawHudClock(InfoScrn* scrn)
 			f32 wave       = sin(DEG2RAD * ((s32)((u32)scrn->mTimeWarningTick * 12) % 360));
 			bool timeMoves = false;
 			BOOL running   = FALSE;
-			if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x20000000022ULL) && !gGame.mMenuActive) {
+			if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x20000000022ULL) && !gGame.mMenu.mActive) {
 				BOOL diskFail = FALSE;
 				if ((gGame.mDvdStatus || gGame.mPrevDvdStatus) && !gGame.mDiskOk)
 					diskFail = TRUE;
 				if (!diskFail && !gGame.mResetRequested)
 					running = TRUE;
 			}
-			if (running && !gGame.mEvtData.mScript && !gGame.mMenuActive && !gGame.GetStatusFlags(0xC00) && gGame.mTimeState.mDuration > 0
-			    && !gGame.mTimeState.mRunning) {
+			if (running && !gGame.mEvt.mData.mScript && !gGame.mMenu.mActive && !gGame.GetStatusFlags(0xC00)
+			    && gGame.mTimeState.mDuration > 0 && !gGame.mTimeState.mRunning) {
 				timeMoves = true;
 			}
 			if (timeMoves || time >= 1) {
@@ -1415,10 +1415,10 @@ extern "C" void DrawHudGaugeIcon(InfoScrn* scrn)
 			f32 h = GXGetTexObjHeight(&tex);
 			Vec pos;
 			if (scrn->mObjectGaugeParam == 0) {
-				pos = fn_800E5A2C(gGame.mPlayer);
+				pos = fn_800E5A2C(gGame.GetPlayer());
 			} else {
 				CVec joint;
-				gGame.mPlayer->vf23C(&joint, "neck");
+				gGame.GetPlayer()->vf23C(&joint, "neck");
 				const Vec offset = { 0.0f, 2.0f, 0.0f };
 				pos              = joint + offset;
 			}
@@ -1482,7 +1482,7 @@ extern "C" void InfoScrn_DrawPlayerHudIcon(InfoScrn* scrn)
 		Vec ofs = { 0.0f, 10.0f, 0.0f };
 		f32 sx;
 		f32 sy;
-		gGame.mPlayer->vf1D4(&ofs, &sx, &sy, 0, 0);
+		gGame.GetPlayer()->vf1D4(&ofs, &sx, &sy, 0, 0);
 		f32 x     = 6.0f + (w * 0.5f + sx);
 		f32 y     = sy - h * 0.5f - 6.0f;
 		u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
@@ -1648,7 +1648,7 @@ extern "C" void DrawHudScanlines(InfoScrn* scrn)
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 		u32 a                = 255.0f * alpha;
 		static f32 sScanline = 0.0f;
-		if (!gGame.mMenuActive) {
+		if (!gGame.mMenu.mActive) {
 			sScanline = 1.0f + sScanline;
 			if (sScanline >= 4.0f) {
 				sScanline = 0.0f;
@@ -1720,6 +1720,7 @@ extern "C" s32 ConvertHudTextToFullWidth(char* text)
  * @note Address: 0x8008F080
  * @note Size: 0x34
  */
+// NONMATCHING: retail holds the gauge and scaled maximum in f0/f1; this source uses f2/f0.
 extern "C" BOOL InfoScrn_IsBatteryGaugeFull(InfoScrn* scrn)
 {
 	return scrn->mBatteryGauge == 10.0f * gGame.GetPlayer()->mParams.mMaxBattery;
@@ -2133,7 +2134,7 @@ static inline f32 ApproachStep(f32 cur, f32 target)
 // the chibi-pc menu is open, the counters stay hidden under it
 static inline BOOL IsPcMenuOpen()
 {
-	CGame::WiiPcMenu* menu = gGame.mPcMenu;
+	CMenu* menu = gGame.mMenu.mMenus[3];
 	return menu ? menu->IsOpen() : FALSE;
 }
 
@@ -2145,13 +2146,13 @@ extern "C" void UpdateHudPointValue(InfoPoint* point, u32 frames)
 {
 	switch (point->mIndex) {
 	case INFOPOINT_ID + 2:
-		point->mValue[1] = gGame.mPlayer->mParams.mExperience;
+		point->mValue[1] = gGame.GetPlayer()->mParams.mExperience;
 		break;
 	case INFOPOINT_ID:
-		point->mValue[1] = gGame.mPlayer->mParams.mMoney;
+		point->mValue[1] = gGame.GetPlayer()->mParams.mMoney;
 		break;
 	case INFOPOINT_ID + 1:
-		point->mValue[1] = gGame.mPlayer->mParams.mScrap;
+		point->mValue[1] = gGame.GetPlayer()->mParams.mScrap;
 		break;
 	}
 
@@ -2188,7 +2189,7 @@ extern "C" void UpdateHudPointValue(InfoPoint* point, u32 frames)
 
 	// chibi robo has stood still for a second (his idle timer ran down), the counters slide in
 	bool empty = false;
-	if (0.0f == gGame.mPlayer->mIdleTimer) {
+	if (0.0f == gGame.GetPlayer()->mIdleTimer) {
 		empty = true;
 	}
 	if (point->mSuppressIdleDisplay) {
@@ -2363,7 +2364,7 @@ extern "C" void UpdateHudPointValue(InfoPoint* point, u32 frames)
 		if (point->mOpacity >= 1.0f) {
 			point->mOpacity = 1.0f;
 		}
-		if (gGame.mEvtData.mScript) {
+		if (gGame.mEvt.mData.mScript) {
 			point->mFadeState = 4;
 		}
 		break;
@@ -2372,7 +2373,7 @@ extern "C" void UpdateHudPointValue(InfoPoint* point, u32 frames)
 		if (point->mOpacity < 0.0f) {
 			point->mOpacity = 0.0f;
 		}
-		if (!gGame.mEvtData.mScript) {
+		if (!gGame.mEvt.mData.mScript) {
 			point->mFadeState = 3;
 		}
 		break;

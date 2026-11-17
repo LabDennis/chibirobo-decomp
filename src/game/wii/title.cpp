@@ -57,8 +57,6 @@ void OSFatal(GXColor fg, GXColor bg, const char* msg);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 void ApproachHudValue(f32* value, f32* target, f32 step);
 s32 IndexOfLargestOfThree(OSTime first, OSTime second, OSTime third);
-// the pending-animation count of the cursor object's queue member at _E8 (its type is not yet read)
-s32 fn_8025BCB8(void* queue);
 // one dust mote's per-frame update, the body of the GameCube UpdateTitleDust's loop
 void fn_8004DC94(TitleDust* dust, u32 frames);
 // the pane-event slots in Title's vtable
@@ -68,6 +66,17 @@ void fn_8004DF3C(Title* title, CbPane* pane);
 
 // the figure overrides call their XObj bases by name; XObj's own declaration is still pending
 class XObj;
+
+// the cursor object's member at _E8 is an nw4r::g3d::ResFile (one pointer); the game's headers do not
+// include the library's yet, so only the one method called here is declared
+namespace nw4r {
+namespace g3d {
+class ResFile {
+public:
+	u32 GetResAnmChrNumEntries() const;
+};
+} // namespace g3d
+} // namespace nw4r
 extern "C" {
 void ResetObjectState__4XObjFv(XObj* obj);
 s32 LoadFromPlacement__4XObjFRC9CoordInfo(XObj* obj, const CoordInfo& info);
@@ -76,11 +85,11 @@ void UpdateObject__4XObjFUl(XObj* obj, u32 frames);
 }
 
 // the slot-scan object inside CGame at _D9B80 and the save job's busy word at _EB0A0; the scan
-// object starts like WiiSaveManager (file, then the scan entries) but CGame's region is smaller,
+// object starts like CSaveFile (file, then the scan entries) but CGame's region is smaller,
 // so the members the title screen touches are reached by offset
-static inline WiiSaveManager* SaveScan()
+static inline CSaveFile* SaveScan()
 {
-	return (WiiSaveManager*)((u8*)&gGame + 0xD9B80);
+	return (CSaveFile*)((u8*)&gGame + 0xD9B80);
 }
 static inline s32* SaveBusy()
 {
@@ -237,7 +246,7 @@ extern "C" void DrawTitleScreen(Title* title)
 	}
 	if (((CBase*)&gGame)->vf5C()) {
 		for (s32 i = 0; i < 3; ++i) {
-			WiiTitleFigure& fig = title->mFigures[i];
+			XObjDemo& fig = title->mFigures[i];
 			if (fig.mState != 0 && (fig.mStatus & 1)) {
 				fig.vf174();
 			}
@@ -664,21 +673,21 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		}
 		break;
 	case 5:
-		if (title->mFigures[0].vf158(CoordInfo(GetSpawnData(0x31)))) {
+		if (title->mFigures[0].LoadFromPlacement(CoordInfo(GetSpawnData(0x31)))) {
 			title->mFigures[0].vf09C(6.0f);
 			title->mFigures[0].vf070(HALF_PI);
 			++title->mState;
 		}
 		break;
 	case 6:
-		if (title->mFigures[1].vf158(CoordInfo(GetSpawnData(0x32)))) {
+		if (title->mFigures[1].LoadFromPlacement(CoordInfo(GetSpawnData(0x32)))) {
 			title->mFigures[1].vf09C(6.0f);
 			title->mFigures[1].vf070(HALF_PI);
 			++title->mState;
 		}
 		break;
 	case 7:
-		if (title->mFigures[2].vf158(CoordInfo(GetSpawnData(0x33)))) {
+		if (title->mFigures[2].LoadFromPlacement(CoordInfo(GetSpawnData(0x33)))) {
 			title->mFigures[2].vf09C(6.0f);
 			title->mFigures[2].vf070(HALF_PI);
 			++title->mState;
@@ -760,7 +769,8 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 		title->mCursor.UpdateObject(frames);
 		title->mDemo.UpdateObject(frames);
 		UpdateTitleDust(title, frames);
-		if (title->mCursor.vf134() == 0 || title->mCursor.vf11C() == 0 || fn_8025BCB8((u8*)&title->mCursor + 0xE8) < 2) {
+		if (title->mCursor.vf134() == 0 || title->mCursor.vf11C() == 0
+		    || ((nw4r::g3d::ResFile*)((u8*)&title->mCursor + 0xE8))->GetResAnmChrNumEntries() < 2) {
 			title->mPulseAngle = 0;
 			switch (title->mSelection) {
 			case 0:
@@ -819,7 +829,7 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 	}
 	case 22:
 		for (s32 i = 0; i < 3; ++i) {
-			title->mFigures[i].vf040();
+			title->mFigures[i].Release();
 		}
 		title->mCursor.vf040();
 		title->mDemo.vf040();
@@ -1135,7 +1145,7 @@ void fn_8004DC94(TitleDust* dust, u32 frames)
  * @note Size: 0x64
  */
 // ResetObjectState: the figure's own bookkeeping goes back to blank
-void WiiTitleFigure::vf154()
+void XObjDemo::ResetObjectState()
 {
 	ResetObjectState__4XObjFv((XObj*)this);
 	mState      = 0;
@@ -1152,7 +1162,7 @@ void WiiTitleFigure::vf154()
  * @note Size: 0x2C
  */
 // LoadFromPlacement: the base call's result becomes a plain flag
-s32 WiiTitleFigure::vf158(const CoordInfo& info)
+s32 XObjDemo::LoadFromPlacement(const CoordInfo& info)
 {
 	return LoadFromPlacement__4XObjFRC9CoordInfo((XObj*)this, info) != 0;
 }
@@ -1162,9 +1172,15 @@ s32 WiiTitleFigure::vf158(const CoordInfo& info)
  * @note Size: 0x4
  */
 // Release
-void WiiTitleFigure::vf040()
+void XObjDemo::Release()
 {
 	Release__4XObjFv((XObj*)this);
+}
+
+// the screen fade has stopped, as in the GameCube's gxb.cpp
+static inline bool FadeDone()
+{
+	return 0.0f == gGame.mFade.mSpeed.r && 0.0f == gGame.mFade.mSpeed.g && 0.0f == gGame.mFade.mSpeed.b && 0.0f == gGame.mFade.mSpeed.a;
 }
 
 /**
@@ -1172,13 +1188,12 @@ void WiiTitleFigure::vf040()
  * @note Size: 0x78
  */
 // UpdateObject: state 2 waits for the screen fade to finish, then goes quiet
-void WiiTitleFigure::vf164(u32 frames)
+void XObjDemo::UpdateObject(u32 frames)
 {
 	if (mState == 0) {
 		return;
 	}
-	if (mState == 2 && gGame.mFade.mSpeed.r == 0.0f && gGame.mFade.mSpeed.g == 0.0f && gGame.mFade.mSpeed.b == 0.0f
-	    && gGame.mFade.mSpeed.a == 0.0f) {
+	if (mState == 2 && FadeDone()) {
 		mState = 0;
 		return;
 	}
@@ -1190,7 +1205,7 @@ void WiiTitleFigure::vf164(u32 frames)
  * @note Size: 0x24
  */
 // DrawObject front: only draws while the figure is live
-void WiiTitleFigure::vf174()
+void XObjDemo::vf174()
 {
 	if (mState != 0) {
 		vf178(0);

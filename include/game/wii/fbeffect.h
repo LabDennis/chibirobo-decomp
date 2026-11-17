@@ -54,8 +54,8 @@ public:
 	u8 mValid;    // _1A4
 
 	virtual void Init(u16 w, u16 h, void* buf, f32 aspect); // _08
-	// _0C (weak)
-	virtual void Init(const GXRenderModeObj* rmode, void* buf, f32 aspect) { Init(rmode->fbWidth, rmode->efbHeight, buf, aspect); }
+	// _0C, defined in game/wii/gameupdate.cpp
+	virtual void Init(const GXRenderModeObj* rmode, void* buf, f32 aspect);
 	virtual void Update(u32 frames); // _10
 	virtual void Draw();             // _14
 	virtual void Copy();             // _18
@@ -84,8 +84,8 @@ public:
 	f32 mZoom;             // _1C4
 
 	virtual void Init(u16 w, u16 h, void* buf, f32 aspect); // _08
-	// _0C (weak)
-	virtual void Init(const GXRenderModeObj* rmode, void* buf, f32 aspect) { Init(rmode->fbWidth, rmode->efbHeight, buf, aspect); }
+	// _0C, defined in game/wii/gameupdate.cpp
+	virtual void Init(const GXRenderModeObj* rmode, void* buf, f32 aspect);
 	virtual void Update(u32 frames); // _10
 	virtual void Draw() { }          // _14
 	virtual void Copy() { }          // _18
@@ -96,6 +96,21 @@ public:
 
 	// inlined:
 	void Copy(GXTexFmt format);
+	void SetLineColor(u8 r, u8 g, u8 b)
+	{
+		GXColor color = { r, g, b, 4 };
+		mColor0       = color;
+	}
+	void SetColor2(u8 r, u8 g, u8 b)
+	{
+		GXColor color = { r, g, b, 0x80 };
+		mColor2       = color;
+	}
+	void SetColor3(u8 r, u8 g, u8 b, u8 a)
+	{
+		GXColor color = { r, g, b, a };
+		mColor3       = color;
+	}
 };
 STATIC_ASSERT(sizeof(FbEffect) == 0x1C8);
 

@@ -25,24 +25,24 @@ void XObjChr::ResetObjectState()
 	ResetObjectState__4XObjFv(this);
 	SetPlayerEyeCameraJointsHidden(this, FALSE);
 	mMotion.Reset(0.0f, 0.0f, 0.0f);
-	mStick[1] = mStick[0] = mStick[3] = mStick[2] = 0.0f;
-	mHitObjectIndex = mActionObjectIndex = -1;
-	mFloorContacts[1].objectIndex = mFloorContacts[0].objectIndex = mFloorContacts[2].objectIndex = mFloorContacts[4].objectIndex = -1;
+	mStick[2] = mStick[3] = mStick[0] = mStick[1] = 0.0f;
+	mActionObjectIndex = mHitObjectIndex = -1;
+	mFloorContacts[4].objectIndex = mFloorContacts[2].objectIndex = mFloorContacts[0].objectIndex = mFloorContacts[1].objectIndex = -1;
 	mLastContactFloorIndex                                                                                                        = -1;
 	mNearDistance                                                                                                                 = 2.0f;
 	mLetickerIndex                                                                                                                = -1;
 	_A14                                                                                                                          = 0;
 	mLiftPlugFlags &= ~0x80;
-	mPressTimer = mAPressed = 0;
+	mAPressed = mPressTimer = 0;
 	mIdleLoops              = 0;
 	mIdleTimer              = 0.0f;
-	mFlashCount = mFlashTimer = 0;
+	mFlashTimer = mFlashCount = 0;
 	mHitStrength              = 0.0f;
 	mMoveSpeedScale           = 1.0f;
 	mHang.Init(this);
 	mHang.mStickAway = FALSE;
 	mJump.Init(this);
-	mJump.mTargetStrength = mJump.mStrength = 0.0f;
+	mJump.mStrength = mJump.mTargetStrength = 0.0f;
 	mLadder.Init(this);
 	mLadder.mBPressed = FALSE;
 	mRope.Init(this);
@@ -52,7 +52,7 @@ void XObjChr::ResetObjectState()
 	mCopter.mTime = FRAME_RATE;
 	InitializePlayerPopperAction(&mPopper, this);
 	InitRadarAction(&mRadar, this);
-	mFrameTime.mLastFrame = mFrameTime.mFrame = -1.0f;
+	mFrameTime.mFrame = mFrameTime.mLastFrame = -1.0f;
 	for (s32 i = 0; i < 4; ++i) {
 		mIdleJoints[i].mJObj       = NULL;
 		mIdleJoints[i].mAnimJoint  = NULL;
@@ -72,16 +72,16 @@ void XObjChr::ResetObjectState()
 	mLook.mObject = NULL;
 	Vec zero      = { 0.0f, 0.0f, 0.0f };
 	mLook.mOffset = zero;
-	mLook.mFade = mLook.mPhase = mLook.mPulse = 0.0f;
+	mLook.mPulse = mLook.mPhase = mLook.mFade = 0.0f;
 	mLook.mObject                             = this;
 	mAttachmentRequest                        = -1;
-	mAttachmentStep = mScriptAttach = mNextClimbType = mClimbType = 0;
+	mClimbType = mNextClimbType = mScriptAttach = mAttachmentStep = 0;
 	mFallDistance                                                 = 0.0f;
-	mCameraTarget[2] = mCameraTarget[1] = mCameraTarget[0] = NAN;
-	mCameraTargetMarginSetting = mCameraTargetMargin = 1.0f;
-	mHeldStickAngle = mMoveAngle = mHeldMoveAngle = NAN;
+	mCameraTarget[0] = mCameraTarget[1] = mCameraTarget[2] = NAN;
+	mCameraTargetMargin = mCameraTargetMarginSetting = 1.0f;
+	mHeldMoveAngle = mMoveAngle = mHeldStickAngle = NAN;
 	mBatteryWarningFrames                         = 0;
-	mBatteryWarningFade = mBatteryWarningAngle = 0.0f;
+	mBatteryWarningAngle = mBatteryWarningFade = 0.0f;
 	mGaugeTarget                               = 0;
 	mGaugeTime                                 = 0.0f;
 	mPlug.ResetObjectState();
@@ -94,7 +94,7 @@ void XObjChr::ResetObjectState()
 	mWalkHeading = NAN;
 	ClearRingHighlights(mMenu.mAtc);
 	ClearRingHighlights(mMenu.mDrs);
-	mMenu.mFade = mMenu.mCursorY = mMenu.mTargetY = 0.0f;
+	mMenu.mTargetY = mMenu.mCursorY = mMenu.mFade = 0.0f;
 	mOXMenu.mStarted                              = FALSE;
 	mOXMenu.mFade                                 = 0.0f;
 	mInAir                                        = TRUE;
@@ -102,11 +102,11 @@ void XObjChr::ResetObjectState()
 	for (s32 i = 0; i < 10; ++i) {
 		PointPtcl& p = gPointParticlePool[i];
 		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
-		p.display.mState = p.burst.mState = 0;
+		p.burst.mState = p.display.mState = 0;
 		gPointParticleSlots[i]            = NULL;
 	}
 	gPlayerSuitChangeEffect.Reset();
-	mIdleMode = mIdleModeTimer = mGroundType = 0;
+	mGroundType = mIdleModeTimer = mIdleMode = 0;
 	_158C4.Set(0.0f, 0.0f, 0.0f);
 	mHeadOffset      = 5.0f;
 	mHeadOffsetReady = FALSE;

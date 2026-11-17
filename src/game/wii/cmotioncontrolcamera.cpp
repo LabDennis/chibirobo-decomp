@@ -26,7 +26,7 @@ void StopPlayerMotion(WiiPlayerState* player);
 void SetPlayerEyeCameraJointsHidden(WiiPlayerState* player, BOOL hidden, f32 rotY, f32 unused);
 s32 PlayWiiSoundEffect(XSound* sound, s32 id, f32 volume, f32 pan);
 // the lift object's class is not reconstructed on Wii, only its state word is mapped
-BOOL IsCarryingMug(WiiPlayerAction* action);
+BOOL IsCarryingMug(XAction* action);
 // the player's pad re-read, PLAYER->mPad.Update(0) on the GameCube
 void fn_800CE48C(WiiPlayerState* player);
 }
@@ -166,7 +166,7 @@ void CMotionControlCamera::Update(u32 step)
 		return;
 	}
 
-	if (gGame.mEvtData.mScript == NULL && gGame.GetStatusFlags(0x1000000000000ULL)) {
+	if (gGame.mEvt.mData.mScript == NULL && gGame.GetStatusFlags(0x1000000000000ULL)) {
 		CCameraActionScroll2* room = (CCameraActionScroll2*)GetAction(CAMACTION_SCROLL2);
 		if (room->GetLimits(gGame.mStage) != NULL && !gGame.GetStatusFlags(0x600000000000C00ULL)) {
 			// the remote's button opens the room camera over the area, scroll and map cameras
@@ -203,7 +203,7 @@ void CMotionControlCamera::Update(u32 step)
 	}
 
 	BOOL look = FALSE;
-	if (((gWiiPointer.mFlags & 0x10000) || (gWiiPointer.mFlags & 0x2)) && gGame.mEvtData.mScript == NULL) {
+	if (((gWiiPointer.mFlags & 0x10000) || (gWiiPointer.mFlags & 0x2)) && gGame.mEvt.mData.mScript == NULL) {
 		// CBase::IsRunning's test, written out
 		bool running = false;
 		if (gGame.GetStatusFlags(1) && !gGame.GetStatusFlags(0x2000000000000022ULL)) {
@@ -672,16 +672,9 @@ f32 CMotionControlCamera::GetMapDistance()
  * @note Address: 0x8016A81C
  * @note Size: 0x28
  */
-// NONMATCHING: retail routes both clamps through bare bge/ble branches into one
-// shared f3->f2->f1 move chain; every spelling here folds the compares to cror or
-// early blr/beqlr instead (best seen: 67%)
 extern "C" f32 fn_8016A81C(f32 value, f32 min, f32 max)
 {
-	f32 result = min;
-	if (value >= min) {
-		result = value <= max ? value : max;
-	}
-	return result;
+	return value < min ? min : value > max ? max : value;
 }
 
 // the look response curves, two hermite segments a piece; the pointer look evaluates them

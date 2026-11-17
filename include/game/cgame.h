@@ -172,7 +172,7 @@ public:
 	virtual ~CBase();                               // _08
 	virtual void Initialize(int argc, char** argv); // _0C
 	virtual void Start();                           // _10
-	virtual bool BeforeUpdate();                    // _14
+	virtual BOOL BeforeUpdate();                    // _14
 	virtual void Update(u32 frames);                // _18
 	virtual void Draw();                            // _1C
 	virtual void DrawScene();                       // _20, the scene through the main camera
@@ -293,7 +293,7 @@ public:
 	virtual ~CGame();                               // _08
 	virtual void Initialize(int argc, char** argv); // _0C
 	virtual void Start();                           // _10
-	virtual bool BeforeUpdate();                    // _14
+	virtual BOOL BeforeUpdate();                    // _14
 	virtual void Update(u32 frames);                // _18
 	virtual void Draw();                            // _1C
 	virtual void DrawScene();                       // _20, the scene through the main camera

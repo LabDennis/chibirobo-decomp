@@ -333,7 +333,8 @@ extern "C" u8* GetItemName(s32 index)
 extern "C" u8* ResolveEventScriptOffset(u8* operand)
 {
 	// a globals operand resolves against the globals' script blob, a stage one against the stage data
-	if (IsGlobalScript(operand)) {
+	s32 isGlobal = IsGlobalScript(operand);
+	if (isGlobal != 0) {
 		u32 offset = ReadResourceOffset(operand);
 		return offset == 0 ? NULL : gGlobalScriptResources.mScripts + offset;
 	}

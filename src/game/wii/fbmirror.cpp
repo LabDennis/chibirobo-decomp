@@ -21,8 +21,13 @@ void* fn_8027E5CC(void* out, void* model, void* mat);
 void* fn_8027E3D4(void* search, s32 index);
 s32 fn_8025F66C(void* anms, s32 index);   // has anm
 void* fn_8025F638(void* anms, s32 index); // the nth 0x20-byte anm record
-void fn_80236070(const char* file, int line, const char* msg, ...);
 }
+
+namespace nw4r {
+namespace db {
+void Panic(const char* file, int line, const char* fmt, ...);
+}
+} // namespace nw4r
 
 /**
  * @note Address: 0x80019BF4
@@ -149,18 +154,18 @@ void FbMirror::SetMirror(CMirrorObj* obj)
 		return;
 	}
 	if (mat == NULL) { // ResMat::ref's validity check
-		fn_80236070("g3d_resmat_ac.h", 0x26D, "%s::%s: Object not valid.", "ResMat", "ref");
+		nw4r::db::Panic("g3d_resmat_ac.h", 0x26D, "%s::%s: Object not valid.", "ResMat", "ref");
 	}
 	void* search;
 	fn_8027E5CC(&search, mJoint->mF0, *(void**)((u8*)mat + 0xC));
 	void* scn = fn_8027E3D4(&search, 0);
 	if (scn == NULL) {
 		if (mat == NULL) { // ResMat::ref's validity check
-			fn_80236070("g3d_resmat_ac.h", 0x26D, "%s::%s: Object not valid.", "ResMat", "ref");
+			nw4r::db::Panic("g3d_resmat_ac.h", 0x26D, "%s::%s: Object not valid.", "ResMat", "ref");
 		}
 		scn = (u8*)mat + 0x40;
 		if (((u32)scn & 3) != 0) {
-			fn_80236070("g3d_resmat_ac.h", 0x28, "NW4R:Failed assertion !((u32)p & 0x3)");
+			nw4r::db::Panic("g3d_resmat_ac.h", 0x28, "NW4R:Failed assertion !((u32)p & 0x3)");
 		}
 	}
 	if (fn_8025F66C(&scn, 0)) {

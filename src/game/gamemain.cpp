@@ -25,7 +25,7 @@ extern u8 gGameLanguageMap[12];
  * @note Address: 0x8001552C
  * @note Size: 0x8
  */
-bool CBase::BeforeUpdate()
+BOOL CBase::BeforeUpdate()
 {
 	return TRUE;
 }
