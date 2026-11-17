@@ -414,7 +414,7 @@ void fn_800D1A8C(WiiPlayerState* player, u32 frames)
 	if (player->mLift.mTarget != NULL) {
 		UpdateHeldObject(&player->mLift, frames);
 		if (player->mLift.mTarget != NULL) {
-			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, player->mLift.mTarget->mObject.m_pScnMdl);
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mLift.mTarget->mObject.m_pScnMdl);
 		}
 	}
 }
@@ -425,7 +425,7 @@ void fn_800D1AF8(WiiPlayerState* player, u32 frames)
 	if (player->mPush.mTarget != NULL) {
 		UpdatePushedObject(&player->mPush, frames);
 		if (player->mPush.mTarget != NULL) {
-			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, player->mPush.mTarget->mObject.m_pScnMdl);
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, player->mPush.mTarget->mObject.m_pScnMdl);
 		}
 	}
 }

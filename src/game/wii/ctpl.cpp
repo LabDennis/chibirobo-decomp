@@ -437,9 +437,9 @@ extern "C" void UpdateGameSound(CSound* sound, u32 step)
 		sound->mSoundHeap.SaveState();
 	}
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mArchivePlayer.mTracks[i].IsAttachedSound()) {
-			sound->mArchivePlayer.mTracks[i].UpdateVolume(step);
-			sound->mArchivePlayer.mTracks[i].UpdatePitch(step);
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			sound->mArchivePlayer.mTracks.mHandles[i].UpdateVolume(step);
+			sound->mArchivePlayer.mTracks.mHandles[i].UpdatePitch(step);
 		}
 	}
 	sound->mArchivePlayer.Update();

@@ -153,8 +153,8 @@ inline void CSound::StopAllTracks(f32 fade)
 {
 	s32 frames = gRefreshRate * fade;
 	for (int i = 0; i < 0x40; ++i) {
-		if (mArchivePlayer.mTracks[i].IsAttachedSound()) {
-			mArchivePlayer.mTracks[i].Stop(frames);
+		if (mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			mArchivePlayer.mTracks.mHandles[i].Stop(frames);
 		}
 	}
 }
@@ -1641,8 +1641,8 @@ extern "C" void DrawTitleScreen(Title* title)
 			}
 		}
 		CCamera* camera = ((CBase*)&gGame)->GetScreenCamera();
-		fn_802AEDEC(&gGame.mGs.mSceneHead, camera->mViewMtx);
-		WiiGsSceneObj* obj = gGame.mGs.mSceneHead;
+		fn_802AEDEC(&gGame.mGs.mScene.mHead, camera->mViewMtx);
+		WiiGsSceneObj* obj = gGame.mGs.mScene.mHead;
 		while (obj->mPending != 0) {
 			obj->vf038(obj->mPending - 1);
 		}

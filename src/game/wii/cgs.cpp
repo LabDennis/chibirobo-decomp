@@ -815,7 +815,7 @@ extern "C" void SetGsChannelEnabled(CGs* gs, s32 chan, u8 enable)
 BOOL CGs::BeginCamera()
 {
 	if (mCamera->SetCurrent()) {
-		fn_802AEF34(&mSceneHead, mCamera, FALSE);
+		fn_802AEF34(&mScene.mHead, mCamera, FALSE);
 		return TRUE;
 	}
 	return FALSE;
@@ -823,7 +823,7 @@ BOOL CGs::BeginCamera()
 
 void CGs::fn_802AB81C(MtxP view, BOOL flag)
 {
-	mLight = fn_802AF1D0(&mSceneHead, mLight, view, flag);
+	mLight = fn_802AF1D0(&mScene.mHead, mLight, view, flag);
 }
 
 extern "C" void EndGsCamera(CGs* gs)

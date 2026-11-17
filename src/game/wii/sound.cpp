@@ -82,7 +82,7 @@ extern "C" void InitGameSound(XSound* sound, u32 heapSize)
 {
 	InitAudio(sound, heapSize);
 	// the reverb sits at the head of mPlaybackState; retail calls it through its CSoundFx base
-	CSoundFx* fx = &sound->mReverb;
+	CSoundFx* fx = &sound->mFx.mReverb;
 	fx->Setup(gSoundReverbParam);
 }
 
@@ -417,8 +417,8 @@ bool isAllSfx(XSound* sound, s32 sfx)
 static inline CSoundHandle* FindFreeSlot(CSound* sound)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (!sound->mArchivePlayer.mTracks[i].IsAttachedSound()) {
-			return &sound->mArchivePlayer.mTracks[i];
+		if (!sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound()) {
+			return &sound->mArchivePlayer.mTracks.mHandles[i];
 		}
 	}
 	return NULL;
@@ -659,8 +659,8 @@ extern "C" CSoundHandle* GetGameMusicSlot(XSound* sound)
 static inline void StopSound(XSound* sound, u32 id, s32 fadeFrames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mArchivePlayer.mTracks[i].IsAttachedSound() && sound->mArchivePlayer.mTracks[i].GetId() == id) {
-			sound->mArchivePlayer.mTracks[i].Stop(fadeFrames);
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && sound->mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			sound->mArchivePlayer.mTracks.mHandles[i].Stop(fadeFrames);
 		}
 	}
 }
@@ -683,9 +683,9 @@ extern "C" void StopWiiSfx(XSound* sound, s32 sfx, f32 fade)
 static inline void PauseSound(XSound* sound, u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mArchivePlayer.mTracks[i].IsAttachedSound() && sound->mArchivePlayer.mTracks[i].GetId() == id) {
-			if (!sound->mArchivePlayer.mTracks[i].IsPause()) {
-				sound->mArchivePlayer.mTracks[i].nw4r::snd::SoundHandle::Pause(true, 0);
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && sound->mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			if (!sound->mArchivePlayer.mTracks.mHandles[i].IsPause()) {
+				sound->mArchivePlayer.mTracks.mHandles[i].nw4r::snd::SoundHandle::Pause(true, 0);
 			}
 		}
 	}
@@ -708,9 +708,9 @@ extern "C" void PauseWiiSfx(XSound* sound, s32 sfx, f32 resumeDelay)
 static inline void ResumeSound(XSound* sound, u32 id, s32 fadeFrames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mArchivePlayer.mTracks[i].IsAttachedSound() && sound->mArchivePlayer.mTracks[i].GetId() == id) {
-			if (sound->mArchivePlayer.mTracks[i].IsPause()) {
-				sound->mArchivePlayer.mTracks[i].nw4r::snd::SoundHandle::Pause(false, fadeFrames);
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && sound->mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			if (sound->mArchivePlayer.mTracks.mHandles[i].IsPause()) {
+				sound->mArchivePlayer.mTracks.mHandles[i].nw4r::snd::SoundHandle::Pause(false, fadeFrames);
 			}
 		}
 	}
@@ -737,8 +737,8 @@ extern "C" void ResumeWiiSfx(XSound* sound, s32 sfx, f32 fade)
 static inline void SetSoundVolume(XSound* sound, u32 id, f32 volume, s32 frames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mArchivePlayer.mTracks[i].IsAttachedSound() && sound->mArchivePlayer.mTracks[i].GetId() == id) {
-			SetSlotVolume(&sound->mArchivePlayer.mTracks[i], volume, frames, TRUE);
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && sound->mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			SetSlotVolume(&sound->mArchivePlayer.mTracks.mHandles[i], volume, frames, TRUE);
 		}
 	}
 }
@@ -760,8 +760,8 @@ extern "C" void SetWiiSfxVolume(XSound* sound, s32 sfx, f32 volume, f32 fade)
 static inline void SetSoundPitch(XSound* sound, u32 id, f32 pitch, s32 frames)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (sound->mArchivePlayer.mTracks[i].IsAttachedSound() && sound->mArchivePlayer.mTracks[i].GetId() == id) {
-			SetSlotPitch(&sound->mArchivePlayer.mTracks[i], pitch, frames, TRUE);
+		if (sound->mArchivePlayer.mTracks.mHandles[i].IsAttachedSound() && sound->mArchivePlayer.mTracks.mHandles[i].GetId() == id) {
+			SetSlotPitch(&sound->mArchivePlayer.mTracks.mHandles[i], pitch, frames, TRUE);
 		}
 	}
 }
@@ -1365,9 +1365,9 @@ extern "C" void ApplyStageSoundEffects(XSound* sound)
 		gSoundReverbParam.earlyMode = 0;
 		gSoundReverbParam.fusedMode = 5;
 		gSoundReverbParam.fusedGain = 0.7f;
-		(static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mReverb))->SetParam(gSoundReverbParam);
+		(static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb))->SetParam(gSoundReverbParam);
 		nw4r::snd::detail::AxManager::GetInstance().AppendEffect(nw4r::snd::AUX_A,
-		                                                         static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mReverb));
+		                                                         static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb));
 		break;
 	case 0x17:
 		gSoundReverbParam.outGain   = 0.6f;
@@ -1375,9 +1375,9 @@ extern "C" void ApplyStageSoundEffects(XSound* sound)
 		gSoundReverbParam.earlyMode = 5;
 		gSoundReverbParam.fusedMode = 5;
 		gSoundReverbParam.fusedGain = 1.0f;
-		(static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mReverb))->SetParam(gSoundReverbParam);
+		(static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb))->SetParam(gSoundReverbParam);
 		nw4r::snd::detail::AxManager::GetInstance().AppendEffect(nw4r::snd::AUX_A,
-		                                                         static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mReverb));
+		                                                         static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb));
 		break;
 	case 0x18:
 		gSoundReverbParam.outGain   = 0.6f;
@@ -1385,9 +1385,9 @@ extern "C" void ApplyStageSoundEffects(XSound* sound)
 		gSoundReverbParam.earlyMode = 0;
 		gSoundReverbParam.fusedMode = 2;
 		gSoundReverbParam.fusedGain = 0.8f;
-		(static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mReverb))->SetParam(gSoundReverbParam);
+		(static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb))->SetParam(gSoundReverbParam);
 		nw4r::snd::detail::AxManager::GetInstance().AppendEffect(nw4r::snd::AUX_A,
-		                                                         static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mReverb));
+		                                                         static_cast<nw4r::snd::FxReverbHiDpl2*>(&sound->mFx.mReverb));
 		break;
 	}
 }

@@ -135,8 +135,8 @@ CInterfaceCameraAction* fn_80169674();
 // Retail expands it every time, the name is ours
 static inline void StepSceneDraws(u32 frames)
 {
-	fn_802AEDA0(&gGame.mGs.mSceneHead, frames);
-	WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
+	fn_802AEDA0(&gGame.mGs.mScene.mHead, frames);
+	WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 	while (scene->mPending != 0) {
 		if (scene->mPending != 0) {
 			scene->vf038(scene->mPending - 1);
@@ -637,7 +637,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 	case 5: {
 		game->SetupStageCamera(GetStageInfo()->mCameraMode);
 		game->mLightList = NULL;
-		if (gGame.mGs.mSceneHead->_2888 == NULL) {
+		if (gGame.mGs.mScene.mHead->_2888 == NULL) {
 			game->mLightList = game->mLights;
 		}
 		for (i = 0; i < 9; i++) {
@@ -647,8 +647,8 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		}
 		game->SetCameraLight();
 		game->mEffects.UpdateLights(gGame.mGs.mLight);
-		if (gGame.mGs.mSceneHead->_2888 != NULL) {
-			void* fog = fn_8027AE0C(gGame.mGs.mSceneHead, 0);
+		if (gGame.mGs.mScene.mHead->_2888 != NULL) {
+			void* fog = fn_8027AE0C(gGame.mGs.mScene.mHead, 0);
 			GXFogType type;
 			f32 startZ;
 			f32 endZ;
@@ -726,7 +726,7 @@ void CGame::SetupStageCamera(s32 mode)
 		ClearStatusFlags(0x300);
 		mRoboeyes.Start(0, 0, 0, 0, TRUE, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
 	}
-	fn_8027AE04(gGame.mGs.mSceneHead, 0);
+	fn_8027AE04(gGame.mGs.mScene.mHead, 0);
 }
 
 /**
@@ -1178,8 +1178,8 @@ void CGame::Update(u32 frames)
 			PauseGameSounds(this, 0.0f);
 			UpdateXSound(&gGame.mSound, frames);
 		}
-		if (gGame.mGs._1BA8) {
-			WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
+		if (gGame.mGs.mScene._04) {
+			WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 			scene->vf034(scene->mPending, mXObjs.mPools[3].Get(0)->mObject.m_pScnMdl);
 			StepSceneDraws(frames);
 		}
@@ -1197,8 +1197,8 @@ void CGame::Update(u32 frames)
 				PauseGameSounds(this, 0.0f);
 				UpdateXSound(&gGame.mSound, frames);
 			}
-			if (gGame.mGs._1BA8) {
-				WiiGsSceneObj* scene = gGame.mGs.mSceneHead;
+			if (gGame.mGs.mScene._04) {
+				WiiGsSceneObj* scene = gGame.mGs.mScene.mHead;
 				scene->vf034(scene->mPending, mXObjs.mPools[3].Get(0)->mObject.m_pScnMdl);
 				StepSceneDraws(frames);
 			}
@@ -1395,7 +1395,7 @@ void CGame::Update(u32 frames)
 	for (i = 0; i < mDrawLists[1].mCount; i++) {
 		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if (obj->mStatus.mFlags & 1) {
-			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, obj->mObject.m_pScnMdl);
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, obj->mObject.m_pScnMdl);
 		}
 	}
 	if (IsLoadStepRunning() && mLoadStep > 20 && (((XObj*)mPointer.mCursor)->mStatus.mFlags & 1)) { // the loading screen's robot
@@ -1405,7 +1405,7 @@ void CGame::Update(u32 frames)
 		}
 		robot->SetPos(gWiiPointer.mPointer.x, gWiiPointer.mPointer.y, 50.0f);
 		robot->UpdateObject(frames);
-		gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, robot->mObject.m_pScnMdl);
+		gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, robot->mObject.m_pScnMdl);
 	}
 	StepSceneDraws(frames);
 
@@ -1429,7 +1429,7 @@ void CGame::Update(u32 frames)
 	for (i = count; i < mDrawLists[1].mCount; i++) { // the ones the objects listed while they ran
 		XObj* obj = (XObj*)mDrawLists[1].mRefs[i].mObj;
 		if ((obj->mStatus.mFlags & 1) && !(obj->_188 && obj->mBaseMtxPtr == NULL)) {
-			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, obj->mObject.m_pScnMdl);
+			gGame.mGs.mScene.mHead->vf034(gGame.mGs.mScene.mHead->mPending, obj->mObject.m_pScnMdl);
 		}
 	}
 	StepSceneDraws(frames);
