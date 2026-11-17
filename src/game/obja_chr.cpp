@@ -2920,6 +2920,28 @@ XObjChrItemAnim gPlayerItemAnimationTable[] = {
 	{ -1, 0, { 0 }, 0.0f },
 };
 
+// closes both rings, 0 cancels, above 0 confirms, below 0 backs out
+/**
+ * @note Address: 0x80097284
+ * @note Size: 0xF4
+ */
+extern "C" void ClosePlayerEquipmentRings(XObjChrMenu* menu, s32 result)
+{
+	if (result == 0) {
+		PlayGameSound(&gGame.mSound, 0x86, 255);
+		if (menu->mAtc.mMenuType != 3)
+			menu->mSel = menu->mPrevSel;
+	} else if (result > 0) {
+		PlayGameSound(&gGame.mSound, 0x88, 255);
+	} else if (result < 0) {
+		PlayGameSound(&gGame.mSound, 0x86, 255);
+		if (menu->mAtc.mMenuType != 3)
+			menu->mSel = menu->mPrevSel;
+	}
+	menu->mAtc.Select(result);
+	menu->mDrs.Select(result);
+}
+
 // the battery is flat and the gauge on screen has run down to it, IsPlayerStopped
 static inline bool IsStopped(const XObjChr* chr)
 {
@@ -2934,13 +2956,8 @@ void XObjChr::UpdateObject(u32 frames)
 		pad->Update(frames);
 	else
 		pad->Clear();
-	if (mMenu.IsOpening() && mTumble.mState) {
-		PlayGameSound(&gGame.mSound, 0x86, 255);
-		if (mMenu.mAtc.mMenuType != 3)
-			mMenu.mSel = mMenu.mPrevSel;
-		mMenu.mAtc.Select(0);
-		mMenu.mDrs.Select(0);
-	}
+	if (mMenu.IsOpening() && mTumble.mState)
+		ClosePlayerEquipmentRings(&mMenu, 0);
 	mStick[1] = mStick[0];
 	mStick[3] = mStick[2];
 	mStick[0] = InputEnabled(&gGame) && !gGame.mEvt.mData.mScript ? GetControlStickMagnitude(pad) : 0.0f;
@@ -3186,14 +3203,9 @@ void XObjChr::UpdateObject(u32 frames)
 	UpdateSpiralTrail(&gPlayerSuitChangeEffect, frames);
 	if (mPad.mReset) {
 		turn.previousHeading = turn.heading;
-		f32 heading          = mMoveRotate.y;
-		while (heading < 0.0f)
-			heading += TWO_PI;
-		while (heading >= TWO_PI)
-			heading -= TWO_PI;
-		turn.heading        = heading;
-		turn.previousChange = turn.change;
-		turn.change         = heading - turn.previousHeading;
+		turn.heading         = WrapAngle(mMoveRotate.y);
+		turn.previousChange  = turn.change;
+		turn.change          = turn.heading - turn.previousHeading;
 		if (turn.change > PI)
 			turn.change -= TWO_PI;
 		else if (turn.change < -PI)
@@ -3761,28 +3773,6 @@ static const char* sAttachmentAnims[9] = {
 
 extern "C" {
 void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
-}
-
-// closes both rings, 0 cancels, above 0 confirms, below 0 backs out
-/**
- * @note Address: 0x80097284
- * @note Size: 0xF4
- */
-extern "C" void ClosePlayerEquipmentRings(XObjChrMenu* menu, s32 result)
-{
-	if (result == 0) {
-		PlayGameSound(&gGame.mSound, 0x86, 255);
-		if (menu->mAtc.mMenuType != 3)
-			menu->mSel = menu->mPrevSel;
-	} else if (result > 0) {
-		PlayGameSound(&gGame.mSound, 0x88, 255);
-	} else if (result < 0) {
-		PlayGameSound(&gGame.mSound, 0x86, 255);
-		if (menu->mAtc.mMenuType != 3)
-			menu->mSel = menu->mPrevSel;
-	}
-	menu->mAtc.Select(result);
-	menu->mDrs.Select(result);
 }
 
 extern "C" {
