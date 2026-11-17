@@ -37,8 +37,8 @@ public:
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
 	virtual void UpdateObject(u32 frames);                 // _A4
 
-	// todo: cleanup
-	XObjLightDesc* GetLightDesc(s32 i) { return (XObjLightDesc*)mArchive.mDesc[i + 1]; }
+	// todo: cleanup. GetLightDesc takes an int and GetLightAnimNum an s32, as in XObjLight
+	XObjLightDesc* GetLightDesc(int i) { return (XObjLightDesc*)mArchive.mDesc[i + 1]; }
 	s32 GetLightAnimNum(s32 i) { return mArchive.mNum[i + 2]; }
 	CLight* GetLights() { return mLightNum > 0 ? mLights : NULL; }
 };
