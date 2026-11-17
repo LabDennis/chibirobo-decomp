@@ -686,7 +686,6 @@ public:
 	CCameraActionChase mChase;                     // _33C
 	CCameraActionEvt mEvt;                         // _3AC
 	CCameraActionScroll2 mScroll2;                 // _890
-	u8 _B78[0xB7C - 0xB78];                        // _B78
 	CCameraActionEye mEye;                         // _B7C
 	CCameraActionAnim mAnim;                       // _CA0
 	CCameraActionMap mMap;                         // _CE8
