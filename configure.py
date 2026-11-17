@@ -526,7 +526,13 @@ gamecube_libs = [
             Object(Matching, "game/xobjspiderbossdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjlightdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjhboxdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjplugcord.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline deferred, as retail shows: the GameCube .text runs FindPlugCordFloor (0x800DB8A8) ...
+            # StartPlugCordNode (0x800DE180), the reverse of the Wii file's StartPlugCordNode-first order
+            # (0x80110C2C), and .bss/.sbss hold InitPlugCord's statics (gPlugCordPoints$1827, init$1830)
+            # before UpdatePlugCordSimulation's (floorHeight$1350, delta$1379) and PushPlugCordPointFromObject's
+            # (margin$1108), the reverse of their .text order. noauto: UpdatePlugCordNodes (0x800DDA30, 0x144)
+            # keeps StartPlugCordNode as a call, which -inline auto,deferred inlines (0x2F0)
+            Object(NonMatching, "game/xobjplugcord.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
             Object(Matching, "game/xobjspiderbossstop.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjdustevent.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/memcardheader.cpp", cflags=cflags_game),
