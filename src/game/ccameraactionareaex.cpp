@@ -101,6 +101,20 @@ static inline bool IsAreaEnd(CamAreaRecord* record)
 	return area.mRecord->_00 == -1;
 }
 
+// the record tables end in a -1 sentinel; retail reads the table through the state's member on every pass
+static inline s32 CountAreaRecords(CamAreaRecord*& records)
+{
+	s32 count = 0;
+	if (records == NULL)
+		return 0;
+	while (true) {
+		if (IsAreaEnd(&records[count]))
+			break;
+		++count;
+	}
+	return count;
+}
+
 /**
  * @note Address: 0x801353E4
  * @note Size: 0x50
@@ -243,7 +257,6 @@ extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 	Vec pos   = gGame.GetPlayer()->mMoveTranslate;
 	s32 index = -1;
 	for (s32 i = 1; i < state->mAreaCount; ++i) { // record 0 never counts
-
 		if (CamAreaInfo(&state->mAreaRecords[i]).IsCameraOff())
 			continue;
 		if (ContainsPoint(CamAreaInfo(&state->mAreaRecords[i]), pos)) {
@@ -539,34 +552,16 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
  * @note Address: 0x80137EB8
  * @note Size: 0x164
  */
-// NONMATCHING: retail reloads _1C and _24 from the state on every pass of the counting loops, as for a helper
-// that takes the table by reference; these loops keep the pointer in a register
 extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 {
 	state->mAreaExRecords = NULL;
 	state->mAreaExCount   = 0;
 	state->mAreaExRecords = GetStageCameraAreaExRecords();
-	s32 count             = 0;
-	if (state->mAreaExRecords != NULL) {
-		for (;;) { // the record table ends in a -1 sentinel
-			if (IsAreaEnd(&state->mAreaExRecords[count]))
-				break;
-			++count;
-		}
-	}
-	state->mAreaExCount = count;
-	state->mAreaRecords = NULL;
-	state->mAreaCount   = 0;
-	state->mAreaRecords = GetStageCameraAreaRecords();
-	count               = 0;
-	if (state->mAreaRecords != NULL) {
-		for (;;) { // the record table ends in a -1 sentinel
-			if (IsAreaEnd(&state->mAreaRecords[count]))
-				break;
-			++count;
-		}
-	}
-	state->mAreaCount  = count;
+	state->mAreaExCount   = CountAreaRecords(state->mAreaExRecords);
+	state->mAreaRecords   = NULL;
+	state->mAreaCount     = 0;
+	state->mAreaRecords   = GetStageCameraAreaRecords();
+	state->mAreaCount     = CountAreaRecords(state->mAreaRecords);
 	state->mCameraInfo = NULL;
 	state->mCameraInfo = GetStageCameraInfoRecords();
 	BuildCameraAreaGroups(state);
