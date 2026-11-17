@@ -8953,3 +8953,5 @@ ClearShopHistoryPage__FP10MenuPCPage = .text:0x8008399C; // type:function size:0
 ClearShopCatalogPage__FP10MenuPCPage = .text:0x80083EF0; // type:function size:0xEC
 gSaveTextOutlineX = .data:0x802E9778; // type:object size:0x10
 gSaveTextOutlineY = .data:0x802E9788; // type:object size:0x10
+sShopHistoryEntries = .bss:0x8044B538; // type:object size:0xA0 scope:local
+sShopCatalogEntries = .bss:0x8044B650; // type:object size:0xA0 scope:local

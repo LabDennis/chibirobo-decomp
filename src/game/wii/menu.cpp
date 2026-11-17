@@ -5,7 +5,8 @@
 // includes; its own name is not in the binary, menu.cpp is ours.
 // NONMATCHING: most menu state, drawing and layout functions still have no source. CMenu::Close and
 // MenuMain::Close store the caller's r4 as the state (retail 0x80050D9C, 0x80050D18): unlike the GameCube's they
-// seem to take the state as a parameter, which their names in symbols.txt (no parameter) do not show; open.
+// take the state as a parameter, which their names in symbols.txt (no parameter) do not show yet; cgame.h declares
+// Close(s32 state), MenuPC::State11 and MenuSave::State17 pass 5.
 #include "game/wii/menuutil.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cpadact.h"
@@ -23,6 +24,9 @@ extern "C" void DrawMenuWindow(MenuWindow* window);
 extern s32 gRingScreenWidth;
 
 static MenuMain sMenuMain;
+// what the PC shop sold and what it sells
+static MenuPCItem sShopHistoryEntries[20];
+static MenuPCItem sShopCatalogEntries[20];
 
 bool MenuUtil::IsConfirmPressed()
 {
@@ -1439,6 +1443,85 @@ void ClearStatusTable(MenuStatusTable* table)
 	}
 }
 
+// the status menu's page of 8 owned items, and the 4 before and after it, the GameCube's
+// NONMATCHING: register allocation only, as on the GameCube
+extern "C" void PopulateOwnedItemPage(MenuStatusTable* table)
+{
+	s32 count;
+	s16 num;
+	int i;
+	InventoryItem* pairs;
+	s16 id;
+	s32 n;
+	for (i = 0; i < 256; i++) {
+		table->mItems[i].mItem          = -1;
+		table->mItems[i].mCount         = -1;
+		table->mItems[i].mStatus.mFlags = 0;
+	}
+	n     = 0;
+	count = 0;
+	for (i = 255; i >= 0; i--) {
+		pairs                    = gGame.GetPlayer()->mParams.mInventory.mItems;
+		const InventoryItem& row = pairs[i];
+		id                       = row.mId;
+		num                      = row.mCount;
+		if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
+			if (count >= table->mPage * 4 && count < (table->mPage + 2) * 4) {
+				table->mItems[n].mItem  = id;
+				table->mItems[n].mCount = num;
+				if (++n >= 8) {
+					break;
+				}
+			}
+			count++;
+		}
+	}
+	n     = 0;
+	count = 0;
+	for (i = 0; i < 4; i++) {
+		table->mPrev[i].mItem          = -1;
+		table->mPrev[i].mCount         = -1;
+		table->mPrev[i].mStatus.mFlags = 0;
+		table->mNext[i].mItem          = -1;
+		table->mNext[i].mCount         = -1;
+		table->mNext[i].mStatus.mFlags = 0;
+	}
+	for (i = 255; i >= 0; i--) {
+		pairs                    = gGame.GetPlayer()->mParams.mInventory.mItems;
+		const InventoryItem& row = pairs[i];
+		id                       = row.mId;
+		num                      = row.mCount;
+		if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
+			if (count >= (table->mPage + 2) * 4 && count < (table->mPage + 4) * 4) {
+				table->mNext[n].mItem  = id;
+				table->mNext[n].mCount = num;
+				if (++n >= 4) {
+					break;
+				}
+			}
+			count++;
+		}
+	}
+	n     = 0;
+	count = 0;
+	for (i = 255; i >= 0; i--) {
+		pairs                    = gGame.GetPlayer()->mParams.mInventory.mItems;
+		const InventoryItem& row = pairs[i];
+		id                       = row.mId;
+		num                      = row.mCount;
+		if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
+			if (count >= (table->mPage - 1) * 4 && count < (table->mPage + 1) * 4) {
+				table->mPrev[n].mItem  = id;
+				table->mPrev[n].mCount = num;
+				if (++n >= 4) {
+					break;
+				}
+			}
+			count++;
+		}
+	}
+}
+
 // how many of the item chibi robo holds, the GameCube's. NONMATCHING: retail fetches the player again for the count
 // and walks the slots by a byte offset; ours keeps the first pointer (MarkAvailableStatusEntries inlines it nine times)
 extern "C" s16 GetPlayerItemCount(s16 id)
@@ -1475,6 +1558,97 @@ void ClearShopHistoryPage(MenuPCPage* page)
 	page->mNext[0].mIsAttachment = 0;
 }
 
+// the shop's page of 9 from what was bought, and the rows just before and after it, the GameCube's
+// NONMATCHING: register allocation only, as on the GameCube
+static inline void ClearShopHistoryRows(MenuPCPage* list)
+{
+	for (int i = 0; i < 20; i++) {
+		list->mRows[i].mItem         = -1;
+		list->mRows[i].mCount        = -1;
+		list->mRows[i].mPrice        = -1;
+		list->mRows[i].mIsAttachment = 0;
+		list->mIndex[i]              = -1;
+	}
+}
+
+extern "C" void PopulateShopHistoryPage(MenuPCPage* list)
+{
+	s32 count;
+	s32 n;
+	s16 price;
+	ClearShopHistoryRows(list);
+	count = 0;
+	n     = 0;
+	for (int i = 0; i < 20; i++) {
+		const MenuPCItem* entry = sShopHistoryEntries + i;
+		s16 itemId              = entry->mItem;
+		s16 stock               = entry->mCount;
+		price                   = entry->mPrice;
+		if (itemId >= 0 && stock >= 0) {
+			if (count >= list->mStart && count < list->mStart + 9 && n < 9) {
+				list->mRows[n].mItem  = itemId;
+				list->mRows[n].mCount = stock;
+				list->mRows[n].mPrice = price;
+				list->mIndex[n]       = i;
+				if (entry->mIsAttachment)
+					list->mRows[n].mIsAttachment = 1;
+				n++;
+			}
+			count++;
+		}
+	}
+	list->mPrev[0].mItem         = -1;
+	list->mPrev[0].mCount        = -1;
+	list->mPrev[0].mPrice        = -1;
+	list->mPrev[0].mIsAttachment = 0;
+	list->mNext[0].mItem         = -1;
+	list->mNext[0].mCount        = -1;
+	list->mNext[0].mPrice        = -1;
+	list->mNext[0].mIsAttachment = 0;
+	count                        = 0;
+	n                            = 0;
+	for (int i = 0; i < 20; i++) {
+		const MenuPCItem* entry = sShopHistoryEntries + i;
+		s16 itemId              = entry->mItem;
+		s16 stock               = entry->mCount;
+		price                   = entry->mPrice;
+		if (itemId >= 0 && stock >= 0) {
+			if (count >= list->mStart + 9 && count < list->mStart + 10) {
+				list->mNext[n].mItem  = itemId;
+				list->mNext[n].mCount = stock;
+				list->mNext[n].mPrice = price;
+				if (entry->mIsAttachment)
+					list->mNext[n].mIsAttachment = 1;
+				if (++n >= 1) {
+					break;
+				}
+			}
+			count++;
+		}
+	}
+	count = 0;
+	n     = 0;
+	for (int i = 0; i < 20; i++) {
+		const MenuPCItem* entry = sShopHistoryEntries + i;
+		s16 itemId              = entry->mItem;
+		s16 stock               = entry->mCount;
+		price                   = entry->mPrice;
+		if (itemId >= 0 && stock >= 0) {
+			if (count >= list->mStart - 1 && count < list->mStart) {
+				list->mPrev[n].mItem  = itemId;
+				list->mPrev[n].mCount = stock;
+				list->mPrev[n].mPrice = price;
+				if (entry->mIsAttachment)
+					list->mPrev[n].mIsAttachment = 1;
+				if (++n >= 1) {
+					break;
+				}
+			}
+			count++;
+		}
+	}
+}
+
 // empties the page of the shop's catalog, the GameCube's ClearPCShopPage<PriceList>
 void ClearShopCatalogPage(MenuPCPage* page)
 {
@@ -1492,6 +1666,84 @@ void ClearShopCatalogPage(MenuPCPage* page)
 	page->mNext[0].mItem         = -1;
 	page->mNext[0].mCount        = -1;
 	page->mNext[0].mPrice        = -1;
+}
+
+// the shop's page of 9 from the catalog, and the items just before and after it, the GameCube's
+// NONMATCHING: register allocation only, as on the GameCube
+extern "C" void PopulateShopCatalogPage(MenuPCPage* list)
+{
+	s32 count;
+	s32 n;
+	s16 price;
+	int i;
+	for (i = 0; i < 20; i++) {
+		list->mRows[i].mItem  = -1;
+		list->mRows[i].mCount = -1;
+		list->mRows[i].mPrice = -1;
+		list->mIndex[i]       = -1;
+	}
+	count = 0;
+	n     = 0;
+	for (i = 0; i < 20; i++) {
+		const MenuPCItem* entry = sShopCatalogEntries + i;
+		s16 itemId              = entry->mItem;
+		s16 stock               = entry->mCount;
+		price                   = entry->mPrice;
+		if (itemId >= 0 && stock >= 0) {
+			if (count >= list->mStart && count < list->mStart + 9 && n < 9) {
+				list->mRows[n].mItem  = itemId;
+				list->mRows[n].mCount = stock;
+				list->mRows[n].mPrice = price;
+				list->mIndex[n]       = i;
+				n++;
+			}
+			count++;
+		}
+	}
+	list->mPrev[0].mItem  = -1;
+	list->mPrev[0].mCount = -1;
+	list->mPrev[0].mPrice = -1;
+	list->mNext[0].mItem  = -1;
+	list->mNext[0].mCount = -1;
+	list->mNext[0].mPrice = -1;
+	n                     = 0;
+	count                 = 0;
+	for (i = 0; i < 20; i++) {
+		const MenuPCItem* entry = sShopCatalogEntries + i;
+		s16 itemId              = entry->mItem;
+		s16 stock               = entry->mCount;
+		price                   = entry->mPrice;
+		if (itemId >= 0 && stock >= 0) {
+			if (count >= list->mStart + 9 && count < list->mStart + 10) {
+				list->mNext[n].mItem  = itemId;
+				list->mNext[n].mCount = stock;
+				list->mNext[n].mPrice = price;
+				if (++n >= 1) {
+					break;
+				}
+			}
+			count++;
+		}
+	}
+	n     = 0;
+	count = 0;
+	for (i = 0; i < 20; i++) {
+		const MenuPCItem* entry = sShopCatalogEntries + i;
+		s16 itemId              = entry->mItem;
+		s16 stock               = entry->mCount;
+		price                   = entry->mPrice;
+		if (itemId >= 0 && stock >= 0) {
+			if (count >= list->mStart - 1 && count < list->mStart) {
+				list->mPrev[n].mItem  = itemId;
+				list->mPrev[n].mCount = stock;
+				list->mPrev[n].mPrice = price;
+				if (++n >= 1) {
+					break;
+				}
+			}
+			count++;
+		}
+	}
 }
 
 extern "C" void MarkAvailableStatusEntries(u8* available)
