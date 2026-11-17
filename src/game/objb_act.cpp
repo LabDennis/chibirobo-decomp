@@ -119,8 +119,7 @@ static inline void TakeLiftItem(XActLift* act, s32 anim, HSD_AObj* aobj, bool us
 			act->mPendingItem->SetScale(0, 0);
 			SetPlayerActionTarget(act, act->mPendingItem);
 			if (useCount) {
-				s16 id         = GetObjectItemId(act->mTarget);
-				s32 count      = RemovePlayerInventoryItemCount(GetPlayerParamsByIndex(&gGame, 0), id, 1);
+				s32 count      = RemovePlayerInventoryItemCount(GetPlayerParamsByIndex(&gGame, 0), GetObjectItemId(act->mTarget), 1);
 				s16 difference = count - GetStageCollectionFlagBase(0);
 				if (difference > 0)
 					act->mPendingItem->mPlacementParam1 = difference;
