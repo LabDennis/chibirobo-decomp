@@ -52,6 +52,43 @@ public:
 		}
 		nw4r::snd::SoundHandle::SetPitch(mPitch);
 	}
+	// one frame (of step) of the fades SetVolume/SetPitch started
+	void UpdateVolume(u32 step)
+	{
+		if (IsAttachedSound()) {
+			if (mVolume < mVolumeTarget) {
+				mVolume += mVolumeStep * step;
+				if (mVolume > mVolumeTarget) {
+					mVolume = mVolumeTarget;
+				}
+				nw4r::snd::SoundHandle::SetVolume(mVolume, 0);
+			} else if (mVolume > mVolumeTarget) {
+				mVolume += mVolumeStep * step;
+				if (mVolume < mVolumeTarget) {
+					mVolume = mVolumeTarget;
+				}
+				nw4r::snd::SoundHandle::SetVolume(mVolume, 0);
+			}
+		}
+	}
+	void UpdatePitch(u32 step)
+	{
+		if (IsAttachedSound()) {
+			if (mPitch < mPitchTarget) {
+				mPitch += mPitchStep * step;
+				if (mPitch > mPitchTarget) {
+					mPitch = mPitchTarget;
+				}
+				nw4r::snd::SoundHandle::SetPitch(mPitch);
+			} else if (mPitch > mPitchTarget) {
+				mPitch += mPitchStep * step;
+				if (mPitch < mPitchTarget) {
+					mPitch = mPitchTarget;
+				}
+				nw4r::snd::SoundHandle::SetPitch(mPitch);
+			}
+		}
+	}
 	f32 GetVolume() const { return mVolume; }
 	f32 GetPitch() const { return mPitch; }
 	f32 GetVolumeTarget() const { return mVolumeTarget; }
@@ -104,17 +141,13 @@ public:
 };
 STATIC_ASSERT(sizeof(WiiSound3D) == 0xA0);
 
-// a 3D sound source the manager registers; member names are ours
+// the WiiSound3D context as its 3D manager/listener calls see it; member names are ours
 class CSound3D {
 public:
-	void* mArg; // _00
-	u8 _04[4];
-	u8 mActor[0x0C]; // _08 nw4r actor data (fn_802958C0/fn_80295914)
-	u8 mNode[0x10];  // _14 link node; the insert passes &mNode[4]
-	u32 mFlags;      // _24
-	u8 _28[0x0C];
-	u8 mSound[0x64]; // _34 nw4r sound handle
-	u8 mList[4];     // _98
+	const nw4r::snd::SoundArchive* mArchive; // _00 the owner CSound's archive
+	void* mPlayer;                           // _04
+	CSound3DManager mManager;                // _08
+	nw4r::snd::Sound3DListener mListener;    // _34
 
 	void Init(void* arg);
 	void SetListener(f32 angle, const Vec* pos);
