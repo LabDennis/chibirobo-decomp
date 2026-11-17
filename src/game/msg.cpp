@@ -1242,7 +1242,8 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 				}
 			} else if (msg->mStay != 0) {
 				if (msg->mStay == 1) {
-					if (gGame.GetPlayer()->mOXMenu.mStarted < 0) {
+					BOOL started = gGame.GetPlayer()->mOXMenu.mStarted;
+					if (started && started < 0) {
 						msg->mStay++;
 					}
 				} else {
