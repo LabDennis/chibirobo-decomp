@@ -85,13 +85,14 @@ static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32
 	DrawGsLineStrip(&gGame.mGs, &border[1], (u32)(255.0f * alpha) | 0xFAFAFA00, 3);
 	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[cursor->mFrame + 248], 0);
 	CTexObj tex = gGame.mTpl.mTex;
+	f32 size    = 24.0f;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
 	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, (x - 16.0f) - 4.0f, height / 2 + y, 0.0f,
-	                   24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
+	                   size * scale, size * scale, 0.0f, 0.0f, 0.0f);
 	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
 	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, 4.0f + (16.0f + (x + width)), height / 2 + y,
-	                   0.0f, 24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
+	                   0.0f, size * scale, size * scale, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
@@ -882,26 +883,27 @@ extern "C" void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f
 	}
 }
 
-// NONMATCHING: register allocation of the corner coordinates
+// NONMATCHING: register allocation and order of the shadow's corner coordinates
 extern "C" void DrawMenuRectWithShadow(CMenu* menu, u32 color, f32 x, f32 y, f32 width, f32 height)
 {
 	// The original evaluates both animation curves even though their values are unused.
 	sin(4.712389f * (1.0f - menu->mAlpha));
 	sin(4.712389f * (1.0f - menu->mAlpha));
+	f32 offset      = 6.0f;
 	f32 z           = -10.0f;
 	Vec outline[10] = { (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z },
 		                (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), z },
 		                (Vec) { MenuRectEnd(x, width), MenuRectEnd(y, height), z },
 		                (Vec) { MenuRectStart(x, width), MenuRectEnd(y, height), z },
 		                (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z },
-		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectStart(y, height), z },
-		                (Vec) { 6.0f + MenuRectEnd(x, width), 6.0f + MenuRectStart(y, height), z },
-		                (Vec) { 6.0f + MenuRectEnd(x, width), 6.0f + MenuRectEnd(y, height), z },
-		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectEnd(y, height), z },
-		                (Vec) { 6.0f + MenuRectStart(x, width), 6.0f + MenuRectStart(y, height), z } };
+		                (Vec) { offset + MenuRectStart(x, width), offset + MenuRectStart(y, height), z },
+		                (Vec) { offset + MenuRectEnd(x, width), offset + MenuRectStart(y, height), z },
+		                (Vec) { offset + MenuRectEnd(x, width), offset + MenuRectEnd(y, height), z },
+		                (Vec) { offset + MenuRectStart(x, width), offset + MenuRectEnd(y, height), z },
+		                (Vec) { offset + MenuRectStart(x, width), offset + MenuRectStart(y, height), z } };
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, outline, color, 5);
-	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_GEQUAL, GX_FALSE);
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_NEQUAL, GX_FALSE);
 	u32 shadow = (u32)(128.0f * menu->mAlpha);
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, &outline[5], shadow, 5);
 	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_LEQUAL, GX_FALSE);
@@ -1044,7 +1046,8 @@ BOOL MenuMain::Update(u32 frames)
 	return IsOpen();
 }
 
-// NONMATCHING: register allocation; retail also keeps the cursor's 24 in a register for both hands
+// NONMATCHING: register allocation; retail keeps the cursor's y in the register of y and loads 1.0 ahead of the
+// sub menu's fade
 BOOL MenuMain::Draw()
 {
 	if (CMenu::Draw()) {
@@ -1061,8 +1064,8 @@ BOOL MenuMain::Draw()
 				color = (u32)(255.0f * mAlpha) | 0x40404000;
 			}
 			if (*mText[i] == *"\x01") {
-				f32 lineY  = y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * (0.5f + i);
 				f32 left   = x - (30.0f + maxW) / 2;
+				f32 lineY  = y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * (0.5f + i);
 				u32 shadow = (u32)(255.0f * mAlpha) | 0x96969600;
 				DrawGsLineSegment(&gGame.mGs, NULL, left, lineY, 0.0f, shadow, left + (30.0f + maxW), lineY, 0.0f, shadow);
 				u32 light = (u32)(255.0f * mAlpha) | 0xFAFAFA00;
@@ -1073,8 +1076,8 @@ BOOL MenuMain::Draw()
 				                             y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * i, 0.0f, lineH, lineH);
 			}
 		}
-		f32 cx = x - maxW / 2;
-		f32 cy = y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * mSelection;
+		x -= maxW / 2;
+		y = y - ((2.0f + lineH) * lines) / 2 + (2.0f + lineH) * mSelection;
 		f32 alpha;
 		if (sMenuStatus.IsOpen()) {
 			alpha = mState == 4 ? 1.0f - sMenuStatus.mWindow.mDrawAlpha : 0.0f;
@@ -1089,7 +1092,7 @@ BOOL MenuMain::Draw()
 		} else {
 			alpha = mAlpha;
 		}
-		DrawMenuSelectionCursor(mCursor, cx, cy, maxW, lineH, mAlpha, alpha);
+		DrawMenuSelectionCursor(mCursor, x, y, maxW, lineH, mAlpha, alpha);
 		return TRUE;
 	}
 	return FALSE;
