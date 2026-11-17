@@ -5804,12 +5804,6 @@ static inline u16 ShadeBatteryWarning(u32* colors, u32 color, f32 alpha, const X
 		}
 	return n;
 }
-static inline Vec WarningJointPosition(HSD_JObj* root, s32* path, s32 depth)
-{
-	Vec position;
-	HSD_MtxGetTranslate(HSD_JObjGetMtxPtr(FindJointByPath(root, path, depth)), &position);
-	return position;
-}
 
 /**
  * @note Address: 0x800A5C58
@@ -5826,9 +5820,9 @@ void XObjChr::DrawObjectEffects()
 	if (mBatteryWarningFade > 0) {
 		f32 radius     = 1.2f * PlayerCollisionRadius(this);
 		s32 fromPath[] = { 0, 1, 0, 0, 0 };
-		CVec from(WarningJointPosition(mJObj, fromPath, 5));
+		CVec from(GetJointPosition(FindJointByPath(mJObj, fromPath, 5)));
 		s32 toPath[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
-		CVec to(WarningJointPosition(mJObj, toPath, 8));
+		CVec to(GetJointPosition(FindJointByPath(mJObj, toPath, 8)));
 		if (mLift.mState && IsCarryingMug(&mLift)) {
 			from.x = mLift.mTarget->mMoveTranslate.x;
 			from.z = mLift.mTarget->mMoveTranslate.z;
