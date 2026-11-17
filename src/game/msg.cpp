@@ -3736,20 +3736,15 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 
 		if (font->mMode >= 0 && font->mMode < 1) {
 			if (font->mColor.a != 0) {
-#if defined(VERSION_PAL)
-				f32 displayScale = gGame.mGs.mScreen.mHeightScale;
-				u32 clipHeight   = (u32)(displayScale * (u32)(2.0f * ((8.0f + expandY) - 1.0f) + winHeight));
-#else
 				u32 clipHeight = (u32)(2.0f * ((8.0f + expandY) - 1.0f) + winHeight);
-#endif
-				u32 clipWidth = (u32)(2.0f * ((40.0f + expandX) - 1.0f) + winWidth);
+				u32 clipWidth  = (u32)(2.0f * ((40.0f + expandX) - 1.0f) + winWidth);
+				u32 clipY      = (u32)(1.0f + ((winY - 8.0f) - expandY));
+				u32 clipX      = (u32)(1.0f + (((winX - winWidth / 2.0f) - 40.0f - expandX) - halfPortrait));
 #if defined(VERSION_PAL)
-				u32 clipY = (u32)(displayScale * (u32)(1.0f + ((winY - 8.0f) - expandY)));
+				SetScaledScissor(clipX, clipY, clipWidth, clipHeight);
 #else
-				u32 clipY = (u32)(1.0f + ((winY - 8.0f) - expandY));
-#endif
-				u32 clipX = (u32)(1.0f + (((winX - winWidth / 2.0f) - 40.0f - expandX) - halfPortrait));
 				GXSetScissor(clipX, clipY, clipWidth, clipHeight);
+#endif
 			}
 			f32 portraitX   = 44.0f * portraitScale + ((winX - winWidth / 2.0f) - 40.0f - halfPortrait);
 			f32 portraitY   = 12.0f * portraitScale + (winHeight / 2.0f + winY);
