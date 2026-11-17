@@ -609,48 +609,11 @@ game/xobjplugrelease.cpp:
 game/xobjplugload.cpp:
 	.text       start:0x800DB1AC end:0x800DB8A8
 
-game/plugcordcollision.cpp:
-	.text       start:0x800DB8A8 end:0x800DBCF4
-
-game/plugcordpush.cpp:
-	.text       start:0x800DBCF4 end:0x800DC268
-
-game/xobjplugnodedraw.cpp:
-	.text       start:0x800DC268 end:0x800DC424
-
-game/xobjplugcorddraw.cpp:
-	.text       start:0x800DC424 end:0x800DC778
-
-game/plugcordsimulation.cpp:
-	.text       start:0x800DC778 end:0x800DD540
-
-game/xobjplugcordend.cpp:
-	.text       start:0x800DD540 end:0x800DD5A8
-
-game/xobjplugcordreset.cpp:
-	.text       start:0x800DD5A8 end:0x800DD814
-
 game/xobjplugcord.cpp:
-	.text       start:0x800DD814 end:0x800DD964
-	.bss        start:0x8035AA28 end:0x8035C234
-
-game/xobjplugcordpointctor.cpp:
-	.text       start:0x800DDA18 end:0x800DDA30
-
-game/xobjplugnodes.cpp:
-	.text       start:0x800DDA30 end:0x800DDB74
-
-game/plugcordpoints.cpp:
-	.text       start:0x800DDB74 end:0x800DE180
-
-game/xobjplugnode.cpp:
-	.text       start:0x800DE180 end:0x800DE370
-
-game/xobjplugcordpointpool.cpp:
-	.text       start:0x800DD964 end:0x800DD99C
-
-game/xobjplugcordpointdtor.cpp:
-	.text       start:0x800DD99C end:0x800DDA18
+	.text       start:0x800DB8A8 end:0x800DE370
+	.bss        start:0x8035AA10 end:0x8035C250
+	.sbss       start:0x806356A0 end:0x806356B8
+	.sdata2     start:0x80637BF8 end:0x80637C80
 
 game/inventory.cpp:
 	.text       start:0x800DE370 end:0x800DEA74
