@@ -4,8 +4,10 @@
 
 #include "revolution/gx/__gx.h"
 
-// NONMATCHING: retail holds the channel and texgen bit masks in r7 and r8 and the register address in
-// r6; here the mask takes r6 and the address r7 (same instructions). Inline helpers per group do not help.
+// NONMATCHING: same instructions; registers differ in the two loops. Retail: channel loop address r6 and
+// mask r7, texgen loop dual address r5 and pointer r7 with mask r8; here the channel mask takes r6 and the
+// address r7, the texgen mask r7, pointer r5 and dual address r8. A mask variable per group put the texgen
+// address in r6 as in retail.
 void __GXSetDirtyState(void) {
     u32 dState = __GXData->dirtyState;
 
@@ -31,65 +33,63 @@ void __GXSetDirtyState(void) {
     // the Wii shadows the XF colour, channel and texgen registers in GXData and sends the dirty ones here
     dState &= 0xFFFFFF00;
     if (dState != 0) {
-        u32 dirty;
-        u32 i;
+        u32 amb, chan, tex;
+        u32 i, addr;
 
-        dirty = dState & 0x00000F00;
-        if (dirty != 0) {
-            if (dirty & 0x00000100) {
+        amb = dState & 0x00000F00;
+        if (amb != 0) {
+            if (amb & 0x00000100) {
                 GX_WRITE_XF_REG(0xA, __GXData->ambColor[0]);
             }
-            if (dirty & 0x00000200) {
+            if (amb & 0x00000200) {
                 GX_WRITE_XF_REG(0xB, __GXData->ambColor[1]);
             }
-            if (dirty & 0x00000400) {
+            if (amb & 0x00000400) {
                 GX_WRITE_XF_REG(0xC, __GXData->matColor[0]);
             }
-            if (dirty & 0x00000800) {
+            if (amb & 0x00000800) {
                 GX_WRITE_XF_REG(0xD, __GXData->matColor[1]);
             }
         }
 
-        dirty = dState & 0x0100F000;
-        if (dirty != 0) {
-            u32 addr = 0x100E;
-
-            if (dirty & 0x01000000) {
+        chan = dState & 0x0100F000;
+        if (chan != 0) {
+            addr = 0x100E;
+            if (chan & 0x01000000) {
                 u32 nChans = GET_REG_FIELD(__GXData->genMode, 3, 4);
 
                 GX_WRITE_XF_REG(9, nChans);
             }
 
-            dirty = (dirty >> 12) & 0xF;
+            chan = (chan >> 12) & 0xF;
             i = 0;
-            while (dirty != 0) {
-                if (dirty & 1) {
+            while (chan != 0) {
+                if (chan & 1) {
                     GX_WRITE_U8(0x10);
                     GX_WRITE_U32(addr);
                     GX_WRITE_U32(__GXData->chanCtrl[i]);
                 }
-                dirty >>= 1;
+                chan >>= 1;
                 i++;
                 addr++;
             }
         }
 
-        dirty = dState & 0x02FF0000;
-        if (dirty != 0) {
-            u32 addr = 0x1040;
-
-            if (dirty & 0x02000000) {
+        tex = dState & 0x02FF0000;
+        if (tex != 0) {
+            addr = 0x1040;
+            if (tex & 0x02000000) {
                 u32 nTexGens = GET_REG_FIELD(__GXData->genMode, 4, 0);
 
                 GX_WRITE_XF_REG(0x3F, nTexGens);
             }
 
-            dirty = (dirty >> 16) & 0xFF;
+            tex = (tex >> 16) & 0xFF;
             i = 0;
-            while (dirty != 0) {
+            while (tex != 0) {
                 u32 dualAddr = addr + 0x10;
 
-                if (dirty & 1) {
+                if (tex & 1) {
                     GX_WRITE_U8(0x10);
                     GX_WRITE_U32(addr);
                     GX_WRITE_U32(__GXData->texGenCtrl[i]);
@@ -97,7 +97,7 @@ void __GXSetDirtyState(void) {
                     GX_WRITE_U32(dualAddr);
                     GX_WRITE_U32(__GXData->dualTexGenCtrl[i]);
                 }
-                dirty >>= 1;
+                tex >>= 1;
                 addr++;
                 i++;
             }
