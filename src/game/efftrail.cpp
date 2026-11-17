@@ -559,8 +559,8 @@ static inline void DrawPointQuad(CTexObj& tex, u32 top, u32 bottom, f32 x, f32 y
 	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, x, y, 0, w, h, 0, 0, rotation);
 }
 
-// NONMATCHING: retail's joint offset is an unnamed Vec below the GetPos copy, IsAction's result is tested as an int,
-// and the burst loop loads x and y after the sin calls and does not merge the two circle sizes
+// NONMATCHING: retail's joint offset is an unnamed Vec below the GetPos copy, and the burst loop loads x and y
+// after the sin calls and does not merge the two circle sizes
 extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 {
 	CMotionControlCamera& camera = gGame.mMotionControlCamera;
