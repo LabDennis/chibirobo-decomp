@@ -485,7 +485,12 @@ gamecube_libs = [
             Object(NonMatching, "game/xactradar.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xacttumble.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/objb_act.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/objb_attach.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline deferred, as retail shows: the .rodata path initializers are in reverse function order
+            # (sRadarPlacementPath 0x8020B4B8 of LoadFromPlacement 0x800D8858, then ActivatePlayerRadar's,
+            # GetRadarDishWorldPosition's, and SetRadarDishPitch's (0x800D767C) last at 0x8020B4E8), and the RTTI
+            # names come before the function literals ("CXObjIntp"/"XObjAttachment" ahead of the jobj.h assert
+            # strings in .rodata, "XObjOX"/"CJObj"/"CXObj"/"XObj" lbl_8065D858-870 ahead of the floats in .sdata2)
+            Object(NonMatching, "game/objb_attach.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/objb_plug.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/objb_sound.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjcoin.cpp", cflags=with_hsd_headers(cflags_game)),
