@@ -83,7 +83,8 @@ static inline f32 LinePlane(Vec* p0, Vec* p1, Vec* point, Vec* normal, Vec* out)
 	PSVECSubtract(p0, point, &rel);
 	PSVECSubtract(p1, p0, &dir);
 	f32 d = PSVECDotProduct(&dir, normal);
-	f32 t = -1.0f * (PSVECDotProduct(&rel, normal) / d);
+	f32 n = PSVECDotProduct(&rel, normal);
+	f32 t = -1.0f * (n / d);
 	PSVECScale(&dir, out, t);
 	PSVECAdd(out, p0, out);
 	return t;
