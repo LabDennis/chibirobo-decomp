@@ -1161,6 +1161,32 @@ CoordInfo* GetObjectCoordInfo(XObj* object)
 	return &object->mCoord;
 }
 
+// the eyelids: in the anims that allow it he blinks after a random wait, stepping the lids two frames at a time
+void fn_800DDF2C(WiiPlayerState* chr, s32 frames)
+{
+	if (chr->mBlinkAnims[chr->GetAnimId() % 1000]) {
+		if (chr->mBlinkWait > 0) {
+			if ((chr->mBlinkWait -= frames) < 0)
+				chr->mBlinkWait = 0;
+		}
+		if (chr->mBlinkWait == 0) {
+			if (chr->mBlinkFrame < 0)
+				chr->mBlinkFrame = 0;
+			else
+				chr->mBlinkFrame += 2;
+			if (chr->mBlinkFrame > 10) {
+				s32 wait         = 0.5f * gRefreshRate + rand() % gRefreshRate;
+				chr->mBlinkFrame = -1;
+				chr->mBlinkWait  = wait;
+			}
+		}
+	} else {
+		s32 wait         = 0.5f * gRefreshRate + rand() % gRefreshRate;
+		chr->mBlinkFrame = -1;
+		chr->mBlinkWait  = wait;
+	}
+}
+
 // fires on the frame it crosses mStart
 s32 FrameSoundOnStartFrame(XObj* object, FrameEventTime* time, const FrameEvent* event)
 {

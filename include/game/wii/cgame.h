@@ -858,8 +858,11 @@ struct WiiPlayerState : public XObj {
 	XAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
 	u8 _0D7C[0x95AC - 0xD7C];
 	u8 mSfx[0x5C]; // _95AC, his AnimSfx (game/wii/animsfx.h, which needs this header)
-	u8 _9608[0x98E8 - 0x9608];
-	XObjChrLook mLook; // _98E8
+	u8 _9608[0x96A0 - 0x9608];
+	s32 mBlinkWait;        // _96A0, frames until he blinks again
+	s32 mBlinkFrame;       // _96A4, where the eyelids are in a blink, -1 between blinks
+	s8 mBlinkAnims[0x240]; // _96A8, by anim id % 1000, set where he may blink
+	XObjChrLook mLook;     // _98E8
 	u8 _991C[0x9920 - 0x991C];
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none
