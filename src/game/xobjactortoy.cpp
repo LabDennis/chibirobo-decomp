@@ -8,7 +8,7 @@
 #include "game/gmath.h"
 #include "game/hsd_dobj.h"
 #include "game/heldpropmatrix.h"
-#include "game/srtdefaults.h"
+#include "game/cgameparticle.h"
 #include <math.h>
 #include <stdlib.h>
 extern "C" {
@@ -704,7 +704,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				toy->mKindCounter = 0;
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 };
-				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, sDefaultRotate, TRUE);
+				CreateParticle(&gGame, 0x5b, 1, toy->mMoveTranslate, scale, TRUE);
 			}
 			break;
 		case 10:
@@ -716,7 +716,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 };
-				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, sDefaultRotate, TRUE);
+				CreateParticle(&gGame, 0x5b, 1, toy->mMoveTranslate, scale, TRUE);
 				return;
 			}
 			break;
@@ -729,7 +729,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 };
-				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, sDefaultRotate, TRUE);
+				CreateParticle(&gGame, 0x5b, 1, toy->mMoveTranslate, scale, TRUE);
 				return;
 			}
 			break;
@@ -744,7 +744,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 };
-				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, sDefaultRotate, TRUE);
+				CreateParticle(&gGame, 0x5b, 1, toy->mMoveTranslate, scale, TRUE);
 				return;
 			}
 			break;
@@ -759,7 +759,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 };
-				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, sDefaultRotate, TRUE);
+				CreateParticle(&gGame, 0x5b, 1, toy->mMoveTranslate, scale, TRUE);
 				return;
 			}
 			break;
@@ -782,7 +782,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 };
-				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, sDefaultRotate, TRUE);
+				CreateParticle(&gGame, 0x5b, 1, toy->mMoveTranslate, scale, TRUE);
 				return;
 			}
 			break;
@@ -803,7 +803,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 };
-				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, sDefaultRotate, TRUE);
+				CreateParticle(&gGame, 0x5b, 1, toy->mMoveTranslate, scale, TRUE);
 				return;
 			}
 			break;
@@ -816,7 +816,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 };
-				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, sDefaultRotate, TRUE);
+				CreateParticle(&gGame, 0x5b, 1, toy->mMoveTranslate, scale, TRUE);
 				return;
 			}
 			break;
@@ -829,7 +829,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 };
-				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, sDefaultRotate, TRUE);
+				CreateParticle(&gGame, 0x5b, 1, toy->mMoveTranslate, scale, TRUE);
 				return;
 			}
 			break;
@@ -842,7 +842,7 @@ void XObjActorToy::ProcessPendingEvents(u32 frames)
 				HSD_JObjSetFlags(joint.mJObj, 0x10);
 				PlayGameSound(&gGame.mSound, 0xe0007, 255);
 				Vec scale = { 1, 1, 1 };
-				gGame.mParticle.CreateSRT(0x5b, 1, toy->mMoveTranslate, scale, sDefaultRotate, TRUE);
+				CreateParticle(&gGame, 0x5b, 1, toy->mMoveTranslate, scale, TRUE);
 				return;
 			}
 			break;
