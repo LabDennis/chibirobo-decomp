@@ -140,16 +140,16 @@ s32 gScrollCameraHiddenObjectStates[256];
  */
 inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, f32 alpha)
 {
-	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 	CTexObj tex;
 	f32 half = 0.5f;
 	tex      = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[index - StatusTextureOffset], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	f32 zoom = 1.0f; // never anything else, but it stops the divide being folded away
-	f32 w    = MARK_SCALE * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
-	f32 h    = MARK_SCALE * GXGetTexObjHeight(&tex) / zoom;
-	f32 cx   = w * half;
-	f32 cy   = -h * half;
+	f32 zoom  = 1.0f; // never anything else, but it stops the divide being folded away
+	f32 w     = MARK_SCALE * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
+	f32 h     = MARK_SCALE * GXGetTexObjHeight(&tex) / zoom;
+	f32 cx    = w * half;
+	f32 cy    = -h * half;
+	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + cx, y + cy, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
@@ -158,13 +158,13 @@ inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, f32 alpha)
 // draws a label sprite up and to the right of a marker; retail lays its CTexObj out below all of Draw's own, as an inline's
 inline void DrawScrollMapLabel(s32 index, f32 x, f32 y, f32 alpha)
 {
-	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 	CTexObj tex;
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[index - StatusTextureOffset], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	u16 w    = GXGetTexObjWidth(&tex);
-	u16 h    = GXGetTexObjHeight(&tex);
-	f32 zoom = 1.0f;
+	u16 w     = GXGetTexObjWidth(&tex);
+	u16 h     = GXGetTexObjHeight(&tex);
+	f32 zoom  = 1.0f;
+	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + 23.4f, y + -20.8f, 0.0f, MARK_SCALE * (1.1f * w) / zoom,
 	                   MARK_SCALE * h / zoom, 0.0f, 0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -721,11 +721,11 @@ void CCameraActionScroll2::Draw()
 	f32 slide      = HALF_PI; // a slide in, always at its end here
 	f32 captionX   = 100.0f * (1.0f - (f32)sin(slide)) + 576.0f;
 	f32 fade       = 255.0f;
-	u32 alpha      = (u32)fade;
-	u32 white      = alpha | 0xFFFFFF00;
-	f32 frame      = CAPTION_ICON_FRAME * msg.mFrame;
 	// one caption line: retail keeps the line counter in a register and converts it for the y
 	for (s32 line = 0; line < 1; line++) {
+		u32 alpha = (u32)fade;
+		u32 white = alpha | 0xFFFFFF00;
+		f32 frame = CAPTION_ICON_FRAME * msg.mFrame;
 		captionX -= MeasureGameTextWidth(&gGame.mGs, msg.mText, 1, 20.0f);
 		f32 captionY = 24.0f * line + 62.0f;
 		for (s32 i = 0; i < 4; i++) {
