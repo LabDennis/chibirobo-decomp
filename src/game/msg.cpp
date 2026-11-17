@@ -42,8 +42,9 @@ void ClearGameSoundQueue(void* sound, s32 id);
 // read before stepping, the script can point into the message's own bytes
 static inline u32 ReadMsgU8(CMsg* msg)
 {
-	u32 value = *msg->mData.mCursor;
-	msg->mData.mCursor++;
+	u8* cursor         = msg->mData.mCursor;
+	u32 value          = *cursor;
+	msg->mData.mCursor = cursor + 1;
 	return value;
 }
 
@@ -55,6 +56,14 @@ static inline CTexObj& GetMessageIconTexture()
 
 // script operands are little endian, literal colors are rgba bytes
 static inline s16 ReadMsgS16(CMsg* msg)
+{
+	u32 lo = ReadMsgU8(msg);
+	u32 hi = ReadMsgU8(msg);
+	return lo | (hi << 8);
+}
+
+// sfx fade lengths are unsigned frame counts
+static inline u16 ReadMsgU16(CMsg* msg)
 {
 	u32 lo = ReadMsgU8(msg);
 	u32 hi = ReadMsgU8(msg);
@@ -348,17 +357,17 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 		PlayGameSound(&gGame.mSound, sfx, 255);
 		break;
 	case 2: {
-		u16 frames = ReadMsgS16(msg);
+		u16 frames = ReadMsgU16(msg);
 		FadeOutGameSfx(&gGame.mSound, sfx, frames);
 		break;
 	}
 	case 3: {
-		u16 frames = ReadMsgS16(msg);
+		u16 frames = ReadMsgU16(msg);
 		FadeInGameSfx(&gGame.mSound, sfx, frames);
 		break;
 	}
 	case 4: {
-		u16 frames = ReadMsgS16(msg);
+		u16 frames = ReadMsgU16(msg);
 		s32 volume = ReadMsgU8(msg);
 		if (!IsGameSoundPlaying(&gGame.mSound, sfx)) {
 			PlayGameSound(&gGame.mSound, sfx, volume);
