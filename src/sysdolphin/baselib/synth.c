@@ -6335,6 +6335,8 @@ void HSD_SynthPStreamSetBeatCallback(s32 id, HSD_AudioBeatCallback callback, voi
  * @note Address: N/A
  * @note Size: 0x4D4
  */
+// NONMATCHING: retail .data has 0x44 zero bytes that nothing reads right before this function's two messages, so they
+// sit 0x44 higher there. Melee's synth.o ends its .data with the same block; what it was is not known.
 void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
 {
 	s32 i;
