@@ -2677,7 +2677,7 @@ extern "C" void DrawTitleOptions(Title* title)
 #endif
 		f32 size = 24.0f * title->mOptionAlpha;
 #if defined(VERSION_PAL)
-		top = (224.0f - (4.0f * (size * 0.5f) * 0.5f - size * 0.25f)) - h * 0.5f;
+		top = (224.0f - (4.0f * (size * 0.5f) * 0.5f - size * 0.25f)) - h / 2.0f;
 #endif
 		u32 color = IsLineLit(title, 0) ? lit : normal;
 #if defined(VERSION_JP)
