@@ -9467,11 +9467,20 @@ static inline const char* JapaneseCardSlotName(s32 channel)
 	return "";
 }
 
+static inline void GetJapaneseCardSlotName(s32 channel, const char*& slot)
+{
+	if (channel == 0)
+		slot = GetLocalizedInterfaceText(0x29);
+	else if (channel == 1)
+		slot = GetLocalizedInterfaceText(0x2A);
+}
+
 extern "C" s32 DrawJapaneseCardErrorMessage(s32 channel, s32 error, u8 retry, f32 x, f32 y, f32 size, f32 alpha)
 {
 	char text[256];
-	u32 color = (u32)(255.0f * alpha);
+	const char* slot;
 	s32 lines = 0;
+	u32 color = (u32)(255.0f * alpha);
 	switch (error) {
 	case CARD_RESULT_FATAL_ERROR:
 	case CARD_RESULT_CANCELED:
@@ -9504,21 +9513,23 @@ extern "C" s32 DrawJapaneseCardErrorMessage(s32 channel, s32 error, u8 retry, f3
 		break;
 	}
 	case CARD_RESULT_INSSPACE: {
-		DrawJapaneseCardLine(text, JapaneseCardSlotName(channel), 0x2B, x, y, size, color);
+		GetJapaneseCardSlotName(channel, slot);
+		DrawJapaneseCardLine(text, slot, 0x2B, x, y, size, color);
 		DrawJapaneseCardLine(text, 0x2C, x, y + size, size, color);
 		DrawJapaneseCardLine(text, 0x2D, x, 2.0f * size + y, size, color);
-		char blocks[16];
+		char blocks[12];
 		sprintf(blocks, "%d", 6);
 		DrawJapaneseCardLine(text, blocks, 0x2E, x, 3.0f * size + y, size, color);
 		lines = 4;
 		break;
 	}
 	case CARD_RESULT_WRONGDEVICE: {
-		const char* slot = JapaneseCardSlotName(channel);
 		if (retry) {
+			GetJapaneseCardSlotName(channel, slot);
 			DrawJapaneseCardLine(text, slot, 0x28, x, y, size, color);
 			lines = 1;
 		} else {
+			GetJapaneseCardSlotName(channel, slot);
 			DrawJapaneseCardLine(text, 0x0D, x, y, size, color);
 			DrawJapaneseCardLine(text, slot, 0x28, x, y + size, size, color);
 			DrawJapaneseCardLine(text, slot, 0x1B, x, 2.0f * size + y, size, color);
