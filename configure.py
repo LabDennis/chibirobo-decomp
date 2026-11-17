@@ -510,7 +510,11 @@ gamecube_libs = [
             Object(NonMatching, "game/scrc.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactortoy.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactorjenny.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjactormama.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline deferred, as retail shows: .rodata has ProcessPendingEvents' joint path initializers
+            # (0x8020CB58 {0,4,2,0,0,0}, 0x8020CB70 {0,4,0,0,0}) before UpdateAfterAnim's (0x8020CB9C-0x8020CBF8),
+            # while .text has UpdateAfterAnim (0x8012842C) before ProcessPendingEvents (0x8012A19C); deferred
+            # codegen emits the functions last-to-first but their initializers in source order
+            Object(NonMatching, "game/xobjactormama.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjactorpapa.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactortao.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactordeca.cpp", cflags=with_hsd_headers(cflags_game)),
