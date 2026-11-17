@@ -192,7 +192,7 @@ public:
 
 	XObjRadar();
 
-	virtual ~XObjRadar();                                  // _08 (weak)
+	virtual ~XObjRadar() { }                               // _08 (weak)
 	virtual void InitializeObject(u32 id);                 // _90
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _9C
 	virtual void UpdateObject(u32 frames);                 // _A4

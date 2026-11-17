@@ -489,13 +489,7 @@ game/objb_act.cpp:
 	.text       start:0x800C494C end:0x800D552C
 
 game/objb_attach.cpp:
-	.text       start:0x800D552C end:0x800D6F98
-
-game/xobjradarinit.cpp:
-	.text       start:0x800D6F98 end:0x800D6FE8
-
-game/xobjpopper.cpp:
-	.text       start:0x800D6FE8 end:0x800D7D3C
+	.text       start:0x800D552C end:0x800D7D3C
 
 game/objb_plug.cpp:
 	.text       start:0x800D7D3C end:0x800D93C8
