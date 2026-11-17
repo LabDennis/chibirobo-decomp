@@ -326,6 +326,8 @@ PaneComponent* PaneManager::getPaneComponentByPane(nw4hbm::lyt::Pane* pPane) {
 // &Bounding::typeInfo, which retail loads once at function entry (82.7 %). wii-ipl's
 // later file matches without the pragma, with List_GetNth(..., (u16)i); that form and
 // about twenty others give the guarded load here, under GC/3.0a5 and GC/3.0a5.2.
+// ogws: https://github.com/doldecomp/ogws/blob/e5a4d369011062fe243aa63f6c2e2853854c395d/src/homebuttonMiniLib/HBMGUIManager.cpp#L264
+// xenoblade: https://github.com/xbret/xenoblade/blob/ea25691b2029394ab777bda7060139e517a13cba/libs/RVL_SDK/src/revolution/hbm/HBMGUIManager.cpp#L263
 #pragma push
 #pragma opt_propagation off
 

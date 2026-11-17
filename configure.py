@@ -466,7 +466,7 @@ gamecube_libs = [
             Object(Matching, "game/cfiletextdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/gxa.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/sound.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/gxb.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
+            Object(NonMatching, "game/gxb.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/stg.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/menu_cleanup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/infoscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
@@ -608,7 +608,8 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjchrrestore.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjchrreset.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjplugnodes.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(EquivalentFor(JP), "game/xobjdust.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
+            # matched only under a per-unit -inline noauto; without it JP code is at 70 %
+            Object(NonMatching, "game/xobjdust.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjfree.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjdustbillboard.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardformat.cpp", cflags=cflags_game, extra_cflags=["-inline noauto"]),
@@ -630,12 +631,14 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjlight.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactorlook.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardjob.cpp"),
-            Object(Matching, "game/xobjactorse.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
+            # its data order matched only under a per-unit -inline deferred
+            Object(NonMatching, "game/xobjactorse.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjhboxpart.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjhbox.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(Matching, "game/cinterpolationeaseout.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
+            # its data order matched only under a per-unit -inline deferred
+            Object(NonMatching, "game/cinterpolationeaseout.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/ccameraactionareaex.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(EquivalentFor(JP), "game/evt.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
+            Object(EquivalentFor(JP), "game/evt.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/msg.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/xobjs.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/ccameraactionarea.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
@@ -1000,7 +1003,8 @@ gamecube_libs = [
             Object(Matching, "game/cshadow.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cgs.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cprimitive.cpp", extra_cflags=["-inline auto,deferred"]),
-            Object(Matching, "game/cpad.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
+            # its data order matched only under a per-unit -inline deferred
+            Object(NonMatching, "game/cpad.cpp", cflags=cflags_hsd_game),
             Object(NonMatching, "game/cfont.cpp"),
             Object(Matching, "game/cfile.cpp", extra_cflags=["-inline auto,deferred"], padding="small_data"),
             Object(Matching, "game/ctpl.cpp", extra_cflags=["-inline auto,deferred"]),
@@ -1136,15 +1140,19 @@ gamecube_libs = [
             Object(NonMatching, "rel/shun/shun.cpp"),
             Object(Matching, "rel/fafa.cpp"),
             Object(NonMatching, "rel/stage01/hamburg.cpp"),
-            Object(Matching, "rel/ana.cpp", extra_cflags=["-inline auto,deferred"]),
+            # matched only under a per-unit -inline auto,deferred; without it 77-79 % in stages 01/04/09
+            Object(NonMatching, "rel/ana.cpp"),
             Object(EquivalentFor(JP), "rel/stage02/fighter.cpp"),
-            Object(MatchingFor(US, JP), "rel/stage02/rouka.cpp", extra_cflags=["-inline auto,deferred"]),
-            Object(Matching, "rel/stage02/car.cpp", extra_cflags=["-inline auto,deferred"]),
+            # its data order matched only under a per-unit -inline deferred
+            Object(NonMatching, "rel/stage02/rouka.cpp"),
+            # its data order matched only under a per-unit -inline deferred
+            Object(NonMatching, "rel/stage02/car.cpp"),
             Object(NonMatching, "rel/stage03/decapanel.cpp"),
             Object(Matching, "rel/stage04/jenny.cpp"),
-            Object(NonMatching, "rel/trash.cpp", extra_cflags=["-inline auto,deferred"]),
+            Object(NonMatching, "rel/trash.cpp"),
             Object(Matching, "rel/stage06/parent.cpp"),
-            Object(Matching, "rel/stage07/living.cpp", extra_cflags=["-inline auto,deferred"]),
+            # its data order matched only under a per-unit -inline deferred
+            Object(NonMatching, "rel/stage07/living.cpp"),
             Object(Matching, "rel/stage08/stage08.cpp"),
             Object(Matching, "rel/stage09/ambient.cpp"),
             Object(Matching, "rel/stage11/haisui.cpp"),
@@ -1200,7 +1208,8 @@ if wii:
                 # so (its twelve functions fall to about 80 % under GC/3.0a5 with -ipa file).
                 # the GameCube file as it is: -inline deferred emits its functions last to first, which is
                 # retail's order (Load, Unload, Print); with -ipa file they come out first to last
-                Object(Matching, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline noauto,deferred"]),
+                # code matches; its data only under a per-unit -inline deferred (17 % without)
+                Object(NonMatching, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the generated tail (0x800942E8-0x8009453C) is the same compiler as the
                 # stage_data group: only GC/3.0a* emits __register_global_object for the
@@ -1232,26 +1241,26 @@ if wii:
                 # no auto-inlining of the small file functions: under -inline auto the
                 # compiler inlines OpenPath/GetResult/ReadAsync into their callers where
                 # retail keeps them as calls
-                Object(Matching, "game/wii/cfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(Matching, "game/wii/cfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii texture/tpl + sound unit 0x802B4DAC-0x802B6094 (ctpl.cpp by its GC
                 # file): CTexObj's quad draws, CTpl's TPL bind and the game's nw4r sound
                 # setup — loader threads, archive open/group load, track fades, 3D actor init
-                Object(NonMatching, "game/wii/ctpl.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/wii/ctpl.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the Wii-only resource file unit 0x802B6094-0x802B6560 (cresfile.cpp by its
                 # OSPanic file): ResourceFile's refcounted CFile, the CFileRequest state
                 # machine and CResFile's brres accessor over the nw4r walkers
-                Object(NonMatching, "game/wii/cresfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/wii/cresfile.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the model objects 0x802B6560-0x802BA4F4 (cobj.cpp by its assert file) and the particle
                 # effects 0x802BD3B4-0x802BF9F8 (ceffect.cpp): only what does not go through nw4r::g3d
                 # or nw4r::ef is written, the rest waits on those libraries' headers
-                Object(NonMatching, "game/wii/cobj.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
-                Object(NonMatching, "game/wii/ceffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/cobj.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
+                Object(NonMatching, "game/wii/ceffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the frame buffer effects 0x802BF9F8-0x802C19B8 (fbeffect.cpp by its string pool):
                 # FbBase, FbBlur and FbEffect, the GameCube's CFbBlur and CFbOutline on a common base
-                Object(NonMatching, "game/wii/fbeffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/wii/fbeffect.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the RFNU/RFNT font file loader + glyph cache between the console font paths;
                 # the small setup helpers stay calls in retail, so no auto-inlining here either
-                Object(Matching, "game/wii/cfont.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(Matching, "game/wii/cfont.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # init.cpp (the name is in its OSPanic call): InitTwoLightSet and InitFourLightSet
                 # copy their vectors through the registers retail uses under GC/3.0a3.2 to 3.0a5
                 # and through others under 3.0a5.2, and every Wii build is far off. -ipa file: the
@@ -1264,13 +1273,13 @@ if wii:
                 # keeps them as calls; IsGameCubePadActive is inline-declared and still inlined
                 # into Update (no bl, retail 0x802B2528), with its standalone copy at its own
                 # address (retail 0x802B1D84)
-                Object(Matching, "game/wii/cpad.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(Matching, "game/wii/cpad.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # cgs.cpp from the camera on, 0x802A80FC-0x802AEA44; it includes cgs_scrn.cpp and
                 # cgs_chan.cpp, whose asserts share its string pool. No auto-inlining:
                 # retail calls DrawGsTriangleVertices from DrawGsVertexQuad and MeasureStrokeTextWidth
                 # from DrawGsStrokeText, both of which -inline auto folds into their one caller
                 # -i include/rvl_msl: <cmath>'s std::sinf/cosf, which the Wii MSL provides
-                Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/cgs.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the message system between evt.cpp's destructors and cpadact.cpp; the
                 # GameCube file's VERSION_JP branches are the reconstruction base
                 Object(NonMatching, "game/wii/msg.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
@@ -1278,12 +1287,12 @@ if wii:
                 # and collision helpers from the GameCube's ut.cpp + mtx.c; the CVec
                 # operators and PSVEC calls stay calls, so no auto-inlining
                 # -i include/rvl_msl: <cmath>'s std::sinf/cosf, which the Wii MSL provides
-                Object(NonMatching, "game/wii/ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/ut.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # the Wii memory manager 0x802A7478-0x802A7FB4 (mem.cpp by its OSPanic file):
                 # the GameCube table allocator over a MEM2 arena plus InitMem1/InitMem2's two
                 # expanded heaps; the small helpers GetAllocSize/GetFreeSize stay calls, so
                 # no auto-inlining here either
-                Object(NonMatching, "game/wii/mem.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/wii/mem.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the map floor collision behind cobj.cpp, 0x802BA4F4-0x802BD294
                 # -i include/rvl_msl: math_api.h's out-of-line __fpclassifyf, as the Wii calls it
                 Object(NonMatching, "game/wii/ctrigon.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
@@ -1297,7 +1306,7 @@ if wii:
                 # retail has no call to StartWiiSaveJob (declared inline, inlined into its
                 # callers) while BuildWiiSaveBanner and CheckWiiSaveBanner are reached via
                 # bl - auto-inlining was off for the unit
-                Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/wii/savemanager.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # shared GameCube game units found on the Wii (wii_gc_pairs.txt)
                 Object(Matching, "game/cinterpolationeaseout.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # FindAreaContainingPoint takes Vec by value on the Wii (the retail caller copies all
@@ -1321,7 +1330,7 @@ if wii:
                 # small and mid functions of both halves are reconstructed so far
                 # -inline noauto: retail calls SetMapCameraFovStep from the area's PreviousUpdate, auto-inlining expands it
                 # -i include/rvl_msl: nw4r::math's VEC3Dot, which the Wii inlines where the GameCube called PSVECDotProduct
-                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/ccameraactionmap2.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 Object(Matching, "game/gameosreport.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # menu dtors: the GameCube files' hand-spelled weak copies stay GC-only; on Wii the
                 # classes keep inline/base dtors and the units define the out-of-line destructors
@@ -1354,13 +1363,13 @@ if wii:
                 # the event script runner, 0x8009453C-0x800A18B8 (wii_units.md Nr. 38)
                 # -inline noauto: retail calls EvalCmp (0x80097324) where auto-inlining expands it into _cmd_IF
                 # -i include/rvl_msl: the nw4r::ef handles of the event effects
-                Object(NonMatching, "game/wii/evt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto", "-i include/rvl_msl"]),
+                Object(NonMatching, "game/wii/evt.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-i include/rvl_msl"]),
                 # chibi robo's action base, 0x800C6428-0x800C6584 (wii_units.md Nr. 57)
                 Object(NonMatching, "game/wii/xaction.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the player object, 0x800C9E84-0x800E9D30 (wii_units.md Nr. 60 and 61)
                 Object(NonMatching, "game/wii/xobj_chr.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the helpers the GameCube file inlines stay calls in retail: no auto-inlining
-                Object(NonMatching, "game/wii/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
+                Object(NonMatching, "game/wii/cprimitive.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # -inline noauto like the engine files around it (cfile, ctpl, THPSimple): Update
                 # calls Stop where auto-inlining would expand it
                 Object(Matching, "game/cmovie.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file", "-inline noauto"]),
@@ -1431,7 +1440,7 @@ if wii:
                 # the game group's compiler with exceptions on and deferred inlining gives both. The object
                 # is byte-exact, but nothing calls _epilog and _unresolved: retail kept them through its
                 # linker script (the REL entry points), the linker here strips them, so it stays unlinked.
-                Object(Equivalent, "rel/module.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-inline auto,deferred"]),
+                Object(Equivalent, "rel/module.c", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),
                 # the Wii TU 0x80030AC0-0x80031FC4 (wii_units.md #16); the GameCube file's
                 # CInterfaceCameraAction and CVector*Interpolation classes map onto it
                 Object(NonMatching, "game/cinterfacecameraaction.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
@@ -2189,6 +2198,25 @@ if wii:
             ],
         },
     ]
+
+    # Retail's engine units sit in one block, 0x802A5358-0x802C19B8 (ut.cpp to fbeffect.cpp), and
+    # that block is built without auto-inlining: every unit in it scores the same or higher under
+    # -inline noauto than without it (cgs 53 -> 89 %, cfont 56 -> 100 %, cobj 68 -> 100 %), the ones
+    # with no auto-inline candidates (cobjvec, cresfile, ctrigon) included, while units outside it,
+    # such as params.cpp (100 -> 78 %) and sound.cpp (99 -> 44 %), lose. So the flag belongs to the
+    # block as a whole, the way a library built from its own makefile carries its own flags.
+    # Other decomps set -inline noauto for a whole library the same way:
+    # zeldaret/tp's framework library, https://github.com/zeldaret/tp/blob/c8fa8c9e2aab72cf4e5db0e5d1c84a9ea6ee6eb0/configure.py#L415-L422
+    # pikmin2's JAudio_DSP, https://github.com/projectPiki/pikmin2/blob/999140f3521e22619547d5d61862a6577ea73882/configure.py#L632
+    # Petari's JASDsp, https://github.com/SMGCommunity/Petari/blob/b135d455de9bb5ed32ceaa80ee49dfcbed0526c0/configure.py#L328
+    WII_NOAUTO_BLOCK = {
+        "game/wii/ut.cpp", "game/wii/mem.cpp", "game/wii/cobjvec.cpp", "game/wii/cgs.cpp",
+        "game/wii/cprimitive.cpp", "game/wii/cpad.cpp", "game/wii/cfont.cpp", "game/wii/cfile.cpp",
+        "game/wii/ctpl.cpp", "game/wii/cresfile.cpp", "game/wii/cobj.cpp", "game/wii/ctrigon.cpp",
+        "game/wii/ceffect.cpp", "game/wii/fbeffect.cpp",
+    }
+    for obj in (o for lib in config.libs for o in lib["objects"] if o.name in WII_NOAUTO_BLOCK):
+        obj.options["extra_cflags"] = [*obj.options["extra_cflags"], "-inline noauto"]
 
 # Optional callback to adjust link order. This can be used to add, remove, or reorder objects.
 # This is called once per module, with the module ID and the current link order.
