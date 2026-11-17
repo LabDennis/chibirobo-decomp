@@ -716,6 +716,11 @@ BOOL FindMapFloorBelow(XObjMap* map, const Vec* pos, const XObjMapHit* last, XOb
 	return fn_800C98E0(map, pos, last->mTriangle, hit);
 }
 
+f32 GetObjectFloorXZExtent(const XObj* object, s32 index)
+{
+	return object->mFloorXZExtent[index];
+}
+
 BOOL HasObjectCustomLedgeHeight(const XObj* object)
 {
 	return TestStatus(object, 0x0000002000000000ULL);

@@ -1258,11 +1258,10 @@ public:
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C
 	u8 _1AC[0x1B8 - 0x1AC];
-	f32 mLastAnimFrame;  // _1B8, the frame the animation had after the last update
-	s32 mHitFloorIndex;  // _1BC
-	XObjEdge mEdges[32]; // _1C0, one per floor
-	f32 mFloorXZExtent;  // _640
-	u8 _644[0x648 - 0x644];
+	f32 mLastAnimFrame;       // _1B8, the frame the animation had after the last update
+	s32 mHitFloorIndex;       // _1BC
+	XObjEdge mEdges[32];      // _1C0, one per floor
+	f32 mFloorXZExtent[2];    // _640, [0] is GetFloorXZExtent's; xobj_chr.cpp reads them by index
 	f32 mFloorHeights[32];    // _648, a height per floor
 	f32 mMaxFloorHeight;      // _6C8, NAN while there is none
 	f32 mSelectedFloorHeight; // _6CC, highest active floor, NaN when none is active

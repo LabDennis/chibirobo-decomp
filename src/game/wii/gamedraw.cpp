@@ -1461,7 +1461,7 @@ f32 XObj::GetCollisionHeight()
  */
 f32 XObj::GetFloorXZExtent()
 {
-	return mFloorXZExtent;
+	return mFloorXZExtent[0];
 }
 
 /**

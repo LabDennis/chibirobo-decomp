@@ -1006,7 +1006,7 @@ static inline void PickScopeTarget(CGame* game, ScopePick* scope, XObj* obj, XOb
 	         && ((CCameraActionArea*)game->mCameraActions.mTable[CAMACTION_AREA])->mControlEnabled != 0)
 	    && !(game->mMotionControlCamera.IsAction(CAMACTION_MAP) && ((CCameraActionMap*)game->mCameraActions.mTable[CAMACTION_MAP])->_11F8)
 	    && (obj->_18C >= 0 || (obj->GetPool() == 8 && obj != held))) {
-		f32 dist = PSVECDistance(obj->GetPos(), eye) - obj->mFloorXZExtent;
+		f32 dist = PSVECDistance(obj->GetPos(), eye) - obj->mFloorXZExtent[0];
 		if (scope->mObj == NULL || dist < scope->mDist) {
 			scope->mDist  = dist;
 			scope->mObj   = obj;
@@ -1542,7 +1542,7 @@ void CGame::Update(u32 frames)
 						    && GetPlayer()->mLadder.mState == 0 && GetPlayer()->mRope.mState == 0 && GetPlayer()->mPush.mState == 0
 						    && GetPlayer()->mTumble.mState == 0 && !(obj->mStatus.mFlags & 0x40000) && obj->_18C != 1 && obj->_18C != 3
 						    && obj->_18C != 4 && obj->_18C != 10 && obj->_18C != 0x15 && obj->GetKind() != 0x324) {
-							f32 dist = PSVECDistance(&muzzle, &obj->mToppleOffset) - obj->mFloorXZExtent;
+							f32 dist = PSVECDistance(&muzzle, &obj->mToppleOffset) - obj->mFloorXZExtent[0];
 							// a 0x46F before a 0x6B wins regardless of the order, a 0x6B never displaces a 0x46F
 							if (obj->GetKind() == 0x46F && pick.mObj != NULL && pick.mObj->GetKind() == 0x6B) {
 								if (dist < range) {
