@@ -4205,7 +4205,7 @@ u32 AtcMenu::GetItemColor(s32 index)
 		green = 32;
 		red   = 32;
 	} else if (mMenuType == 3) {
-		if (IsAttachment(mChr, mItems[index].mType)) {
+		if (mChr->GetAttachment() == mItems[index].mType) {
 			red   = 50;
 			green = 200;
 			blue  = 200;
@@ -4214,7 +4214,7 @@ u32 AtcMenu::GetItemColor(s32 index)
 			green = 50;
 			blue  = 200;
 		}
-	} else if (index == mCursorIndex && IsAttachment(mChr, mItems[index].mType)) {
+	} else if (index == mCursorIndex && mChr->GetAttachment() == mItems[index].mType) {
 		red   = 200;
 		green = 100;
 		blue  = 150;
@@ -4222,7 +4222,7 @@ u32 AtcMenu::GetItemColor(s32 index)
 		red   = 200;
 		green = 100;
 		blue  = 100;
-	} else if (IsAttachment(mChr, mItems[index].mType)) {
+	} else if (mChr->GetAttachment() == mItems[index].mType) {
 		red   = 50;
 		green = 200;
 		blue  = 200;
