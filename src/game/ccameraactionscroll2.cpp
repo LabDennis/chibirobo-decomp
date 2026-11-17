@@ -138,17 +138,18 @@ s32 gScrollCameraHiddenObjectStates[256];
  * @note Address: N/A
  * @note Size: ?
  */
-inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, u32 color)
+inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, f32 alpha)
 {
 	CTexObj tex;
 	f32 half = 0.5f;
 	tex      = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[index - StatusTextureOffset], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	f32 zoom = 1.0f; // never anything else, but it stops the divide being folded away
-	f32 w    = MARK_SCALE * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
-	f32 h    = MARK_SCALE * GXGetTexObjHeight(&tex) / zoom;
-	f32 cx   = w * half;
-	f32 cy   = -h * half;
+	f32 zoom  = 1.0f; // never anything else, but it stops the divide being folded away
+	f32 w     = MARK_SCALE * (1.1f * GXGetTexObjWidth(&tex)) / zoom;
+	f32 h     = MARK_SCALE * GXGetTexObjHeight(&tex) / zoom;
+	f32 cx    = w * half;
+	f32 cy    = -h * half;
+	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + cx, y + cy, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
@@ -236,6 +237,13 @@ void CCameraActionScroll2::ShowObjs()
 	}
 }
 
+static inline void SetPanCenter(CCameraActionScroll2* camera, Vec position)
+{
+	camera->mCenter.x = position.x;
+	camera->mCenter.y = position.y;
+	camera->mCenter.z = position.z;
+}
+
 // todo: cleanup
 /**
  * @note Address: N/A
@@ -247,12 +255,7 @@ inline void CalcLimits(CCameraActionScroll2* camera, Scroll2Limits* limits)
 	camera->mMinFov = limits->mMinFov;
 	f32 xBlend      = (camera->mFov - camera->mMinFov) / (camera->mMaxFov - camera->mMinFov);
 	// 0 keeps the narrow limits, 1 the wide ones; z is fully wide from mMidFov up
-	f32 zBlend;
-	if (camera->mFov > limits->mMidFov) {
-		zBlend = 1.0f;
-	} else {
-		zBlend = (camera->mFov - camera->mMinFov) / (limits->mMidFov - camera->mMinFov);
-	}
+	f32 zBlend    = camera->mFov > limits->mMidFov ? 1.0f : (camera->mFov - camera->mMinFov) / (limits->mMidFov - camera->mMinFov);
 	camera->mMinX = xBlend * (limits->mWideMinX - limits->mNarrowMinX) + limits->mNarrowMinX;
 	camera->mMaxX = xBlend * (limits->mWideMaxX - limits->mNarrowMaxX) + limits->mNarrowMaxX;
 	camera->mMinZ = zBlend * (limits->mWideMinZ - limits->mNarrowMinZ) + limits->mNarrowMinZ;
@@ -279,12 +282,13 @@ void CCameraActionScroll2::Reset()
 		mFromStage        = FALSE;
 		CamInfoData* data = GetStageCameraInfoRecords();
 		if (data != NULL) {
-			Vec interest = CamInfo(data).GetInterest();
-			interest.y += 170.0f;
-			SetInterest(interest);
-			Vec eye = CamInfo(data).GetEye();
-			eye.y += 170.0f;
-			SetEye(eye);
+			// both raised by 170 through the same local
+			Vec pos = CamInfo(data).GetInterest();
+			pos.y += 170.0f;
+			SetInterest(pos);
+			pos = CamInfo(data).GetEye();
+			pos.y += 170.0f;
+			SetEye(pos);
 			SetDistance(PSVECDistance(&mEye, &mInterest));
 			SetFov(CamInfo(data).GetFov());
 		}
@@ -299,20 +303,14 @@ void CCameraActionScroll2::Reset()
 		}
 	}
 
-	mStart.x    = mInterest.x;
-	mStart.y    = mInterest.y;
-	mStart.z    = mInterest.z;
-	CVec offset = mEye - mInterest;
-	mOffset.x   = offset.x;
-	mOffset.y   = offset.y;
-	mOffset.z   = offset.z;
-	CVec center = mInterest;
-	mCenter.x   = center.x;
-	mCenter.y   = center.y;
-	mCenter.z   = center.z;
-	mCenterPtr  = &mCenter;
-	CVec front  = CVec(0.0f, 0.0f, 1.0f);
-	mYaw        = atan2(mInterest.x - front.x, mInterest.z - front.z);
+	mStart.x = mInterest.x;
+	mStart.y = mInterest.y;
+	mStart.z = mInterest.z;
+	mOffset  = mEye - mInterest;
+	SetPanCenter(this, mInterest);
+	mCenterPtr = &mCenter;
+	CVec front = CVec(0.0f, 0.0f, 1.0f);
+	mYaw       = atan2(mInterest.x - front.x, mInterest.z - front.z);
 	CalcLimits(this, GetLimits(gGame.mStage));
 	Update(1);
 }
@@ -320,13 +318,6 @@ void CCameraActionScroll2::Reset()
 static inline Vec GetPanTarget(const CCameraActionScroll2* camera)
 {
 	return *camera->mCenterPtr;
-}
-
-static inline void SetPanCenter(CCameraActionScroll2* camera, Vec position)
-{
-	camera->mCenter.x = position.x;
-	camera->mCenter.y = position.y;
-	camera->mCenter.z = position.z;
 }
 
 // CVec's += takes a reference, this one copies b first like retail does here (as CalcSpring in ccameraactionchase.cpp)
@@ -356,7 +347,7 @@ void CCameraActionScroll2::Update(u32 step)
 	}
 
 	CPad pad(0);
-	if (pad.mPad->mSubStickY != 0.0f) {
+	if (pad.mPad->mSubStickY) {
 		f32 fov = mFov - 0.3f * pad.mPad->mSubStickY * step;
 		if (fov < mMinFov) {
 			fov = mMinFov;
@@ -473,8 +464,7 @@ void CCameraActionScroll2::Draw()
 	f32 blink     = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 4) % 360)));
 	f32 fastBlink = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 7) % 360)));
 
-	Vec pos   = { 0.0f, 0.0f, 0.0f };
-	u32 color = (u32)(255.0f * blink) | 0xC8C8C800;
+	Vec pos = { 0.0f, 0.0f, 0.0f };
 	for (s32 i = 0; i < 288; i++) {
 		XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 		if (!(obj->mStatus.mFlags & 0x10000)) {
@@ -485,20 +475,20 @@ void CCameraActionScroll2::Draw()
 		case 0x10E: {
 			Vec ofs = { 0.0f, 0.0f, 0.0f };
 			obj->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
-			DrawScrollMapMarker(162, x, y, color);
+			DrawScrollMapMarker(162, x, y, blink);
 			break;
 		}
 		case 0x9D: {
 			Vec ofs = { 0.0f, 0.0f, 0.0f };
 			obj->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
-			DrawScrollMapMarker(165, x, y, color);
+			DrawScrollMapMarker(165, x, y, blink);
 			break;
 		}
 		case 0x115:
 			if (obj->mStatus.mFlags & 0x10000) {
 				Vec ofs = { 0.0f, 0.0f, 0.0f };
 				obj->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
-				DrawScrollMapMarker(163, x, y, color);
+				DrawScrollMapMarker(163, x, y, blink);
 			}
 			break;
 		case 0xC:
@@ -627,13 +617,6 @@ void CCameraActionScroll2::Draw()
 	}
 
 	// with its particle running, a leticker's marker and its label blink in turn
-	u32 fastColor  = (u32)(255.0f * fastBlink) | 0xC8C8C800;
-	u32 fadedAlpha = (u32)(255.0f * (1.0f - fastBlink));
-#if defined(VERSION_PAL)
-	u32 labelColor = fadedAlpha | 0xFFD52C00;
-#else
-	u32 labelColor = fadedAlpha | 0xC8C8C800;
-#endif
 	for (s32 i = 0; i < 12; i++) {
 		XObjLeticker* obj = static_cast<XObjLeticker*>(gGame.mXObjs.mPools[9].Get(i));
 		switch ((obj)->GetKind()) {
@@ -651,37 +634,40 @@ void CCameraActionScroll2::Draw()
 		Vec ofs = { 0.0f, 0.0f, 0.0f };
 		obj->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
 		if (obj->mPtcl) {
-			DrawScrollMapMarker(163, x, y, fastColor);
+			DrawScrollMapMarker(163, x, y, fastBlink);
 
 			f32 markX = x;
 			f32 markY = y;
 #if defined(VERSION_PAL)
+			u32 fadedAlpha = (u32)(255.0f * (1.0f - fastBlink));
+			u32 labelColor = fadedAlpha | 0xFFD52C00;
 			for (s32 j = 0; j < 4; j++) {
 				DrawGsProportionalTextFormat(&gGame.mGs, fadedAlpha, GetLocalizedInterfaceText(0x115), markX + gScrollRoomData.markerX[j],
 				                             (-20.8f + (markY + gScrollRoomData.markerY[j])) - 11.0f, 0.0f, 22.0f, 22.0f);
 			}
-			DrawGsProportionalTextFormat(&gGame.mGs, labelColor, GetLocalizedInterfaceText(0x115), markX, (markY - 20.8f) - 11.0f, 0.0f,
+			DrawGsProportionalTextFormat(&gGame.mGs, labelColor, GetLocalizedInterfaceText(0x115), markX, (markY + -20.8f) - 11.0f, 0.0f,
 			                             22.0f, 22.0f);
 #else
 			CTexObj tex;
 			tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[161 - StatusTextureOffset], 0);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			u16 w    = GXGetTexObjWidth(&tex);
-			u16 h    = GXGetTexObjHeight(&tex);
-			f32 zoom = 1.0f;
+			u16 w          = GXGetTexObjWidth(&tex);
+			u16 h          = GXGetTexObjHeight(&tex);
+			f32 zoom       = 1.0f;
+			u32 labelColor = (u32)(255.0f * (1.0f - fastBlink)) | 0xC8C8C800;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, labelColor, labelColor, labelColor, labelColor, markX + 23.4f, markY + -20.8f, 0.0f,
 			                   MARK_SCALE * (1.1f * w) / zoom, MARK_SCALE * h / zoom, 0.0f, 0.0f, 0.0f);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 #endif
 		} else {
-			DrawScrollMapMarker(163, x, y, color);
+			DrawScrollMapMarker(163, x, y, blink);
 		}
 	}
 
 	{
 		Vec ofs = { 0.0f, 0.0f, 0.0f };
 		gGame.GetPlayer()->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
-		DrawScrollMapMarker(164, x, y, color);
+		DrawScrollMapMarker(164, x, y, blink);
 	}
 
 	// the arrow round the player points the way it faces
@@ -727,37 +713,40 @@ void CCameraActionScroll2::Draw()
 	f32 slide      = HALF_PI; // a slide in, always at its end here
 	f32 captionX   = 100.0f * (1.0f - (f32)sin(slide)) + 576.0f;
 	f32 fade       = 255.0f;
-	u32 alpha      = (u32)fade;
-	u32 white      = alpha | 0xFFFFFF00;
-	f32 frame      = CAPTION_ICON_FRAME * msg.mFrame;
-	captionX -= MeasureGameTextWidth(&gGame.mGs, msg.mText, 1, 20.0f);
-	s32 line     = 0;
-	f32 captionY = 24.0f * line + 62.0f;
-	for (s32 i = 0; i < 4; i++) {
-		DrawGsProportionalTextFormat(&gGame.mGs, alpha, msg.mText, captionX + CAPTION_OUTLINE_X[i], captionY + CAPTION_OUTLINE_Y[i], 0.0f,
-		                             20.0f, 20.0f);
-	}
-	DrawGsProportionalTextFormat(&gGame.mGs, white, msg.mText, captionX, captionY, 0.0f, 20.0f, 20.0f);
+	// one caption line: retail keeps the line counter in a register and converts it for the y
+	for (s32 line = 0; line < 1; line++) {
+		const char* text = msg.mText;
+		u32 alpha        = (u32)fade;
+		u32 white        = alpha | 0xFFFFFF00;
+		f32 frame        = CAPTION_ICON_FRAME * msg.mFrame;
+		captionX -= MeasureGameTextWidth(&gGame.mGs, text, 1, 20.0f);
+		f32 captionY = 24.0f * line + 62.0f;
+		for (s32 i = 0; i < 4; i++) {
+			DrawGsProportionalTextFormat(&gGame.mGs, alpha, text, captionX + CAPTION_OUTLINE_X[i], captionY + CAPTION_OUTLINE_Y[i], 0.0f,
+			                             20.0f, 20.0f);
+		}
+		DrawGsProportionalTextFormat(&gGame.mGs, white, text, captionX, captionY, 0.0f, 20.0f, 20.0f);
 
-	CTexObj icon;
-	icon = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
-	PSMTXScale(icon.mMtx[1], CAPTION_ICON_FRAME, 1.0f, 1.0f);
-	icon.mMtxDirty = TRUE;
-	PSMTXTrans(icon.mMtx[0], frame, 0.0f, 0.0f);
-	icon.mMtxDirty = TRUE;
-	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	DrawGsTexturedQuad(&gGame.mGs, &icon, white, white, white, white, captionX - 12.0f, captionY + 10.0f, 0.0f, 24.0f, 24.0f, 0.0f, 0.0f,
-	                   0.0f);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+		CTexObj icon = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[119 - StatusTextureOffset], 0);
+		PSMTXScale(icon.mMtx[1], CAPTION_ICON_FRAME, 1.0f, 1.0f);
+		icon.mMtxDirty = TRUE;
+		PSMTXTrans(icon.mMtx[0], frame, 0.0f, 0.0f);
+		icon.mMtxDirty = TRUE;
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		DrawGsTexturedQuad(&gGame.mGs, &icon, white, white, white, white, captionX - 12.0f, captionY + 10.0f, 0.0f, 24.0f, 24.0f, 0.0f,
+		                   0.0f, 0.0f);
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	}
 
 	if (gGame.mStage >= 0 && gGame.mStage < 10) {
 		static const s32 sRoomBaseCounts[10] = { 0, 9, 11, 4, 7, 0, 12, 9, 0, 8 };
 		s32 base                             = sRoomBaseCounts[gGame.mStage];
 		// script variables from 0x603 on hold a count per room
 		s32 count = gEventVars.mVars[0x603 + gGame.mStage];
+		// shown as count/base: the hundreds go left of the slash, the low two digits right of it
+		s32 value = base + count * 100;
 		if (base > 0) {
-			// shown as count/base: the hundreds go left of the slash, the low two digits right of it
-			DrawSeparatedStatusValue(0xAB - StatusTextureOffset, base + count * 100, false, 56.0f, 378.0f, 1.0f);
+			DrawSeparatedStatusValue(0xAB - StatusTextureOffset, value, false, 56.0f, 378.0f, 1.0f);
 		}
 	}
 }

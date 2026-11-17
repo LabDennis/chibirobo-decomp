@@ -680,14 +680,15 @@ public:
 
 	void SetFovInterpolation(s32 mode, f32 from, f32 to, f32 time)
 	{
+		s32 kind = mode;
 		if (mode == 5) {
-			mode = 4;
+			kind = 4;
 		}
-		if (mode == 3 || time <= 0.0f) {
+		if (kind == 3 || time <= 0.0f) {
 			mFovInterp = NULL;
 			SetFov(to);
 		} else {
-			mFovInterp = mFovInterps[mode];
+			mFovInterp = mFovInterps[kind];
 			if (mFovInterp != NULL) {
 				mFovInterp->Start(from, to, time);
 			}
