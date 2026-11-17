@@ -20,6 +20,8 @@
 #include <math.h>
 #include <stdlib.h>
 
+extern "C" void ReleasePushAction(XAction* action);
+
 static inline bool TestStatus(const XObj* object, u64 mask)
 {
 	return (u8)((object->mStatus.mFlags & mask) != 0);
@@ -93,6 +95,59 @@ static inline Vec SecondEdgePoint(const XObj* object, s32 index, f32 height)
 	return point;
 }
 
+static inline u8 IsMenuUp(WiiPlayerState* chr)
+{
+	return (u8)(chr->mMenu.mAtc.mOpen > 0 || chr->mMenu.mDrs.mOpen > 0);
+}
+
+static inline void FocusEquipmentRing(XObjChrMenu* menu)
+{
+	if (menu->mSel == 0) {
+		menu->mAtc.mFocus       = 0;
+		menu->mDrs.mFocus       = 1;
+		menu->mDrs.mCursorIndex = -1;
+	} else {
+		menu->mAtc.mFocus       = 1;
+		menu->mAtc.mCursorIndex = -1;
+		menu->mDrs.mFocus       = 0;
+	}
+	PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+}
+
+static inline void OpenMenus(WiiPlayerState* chr)
+{
+	gGame.SetStatusFlags(0x400ULL);
+	PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+	if (chr->mMenu.mSel == 0) {
+		chr->mMenu.mAtc.Open(0);
+		chr->mMenu.mDrs.Open(1);
+	} else {
+		chr->mMenu.mAtc.Open(1);
+		chr->mMenu.mDrs.Open(0);
+	}
+}
+
+// he stops where he is, and lets go of what he pushes
+static inline void StopMoving(WiiPlayerState* chr)
+{
+	chr->mMotion.x         = 0.0f;
+	chr->mMotion.y         = 0.0f;
+	chr->mMotion.z         = 0.0f;
+	chr->mMotion.mTarget.x = 0.0f;
+	chr->mMotion.mTarget.y = 0.0f;
+	chr->mMotion.mTarget.z = 0.0f;
+	chr->mMotion.mSpeed.x  = 0.0f;
+	chr->mMotion.mSpeed.y  = 0.0f;
+	chr->mMotion.mSpeed.z  = 0.0f;
+	chr->mMoveRotate.Set(chr->mMoveTarget1);
+	if (chr->mPush.mState != 0) {
+		ReleasePushAction(&chr->mPush);
+		chr->mPush.mState = 0;
+		chr->SetAnim(17, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		chr->mIdleLoops = 3;
+	}
+}
+
 // events wait while he lies there out of battery
 static inline bool IsEventBlocked(const WiiPlayerState* chr)
 {
@@ -157,6 +212,13 @@ s32 GetObjectPlacementParam(const XObj* object, s32 index)
 {
 	const s32* entries = &object->mPlacementParam0;
 	return entries[index];
+}
+
+// stops him where he stands
+// NONMATCHING (91 %): SetAnim goes through WiiPlayerVtable, retail's virtual call loads the slot into r12
+void StopPlayerMotion(WiiPlayerState* chr)
+{
+	StopMoving(chr);
 }
 
 CVec* GetObjectVectorTarget(CObjVec* value)
@@ -421,6 +483,36 @@ void SpawnPlayerPointParticles(WiiPlayerState*, s32 type, s32 value)
 			}
 			return;
 		}
+	}
+}
+
+// opens the rings unless an attachment or a suit is still changing
+static inline void OpenPlayerEquipmentRings(WiiPlayerState* chr)
+{
+	if (chr->mAttachmentRequest != -1)
+		return;
+	if (chr->mSuits.mChangeStep != 0)
+		return;
+	if (!chr->mMenu.IsOpen()) {
+		StopMoving(chr);
+		OpenMenus(chr);
+	} else if (chr->mMenu.IsClosing()) {
+		OpenMenus(chr);
+	}
+}
+
+// NONMATCHING (95 %): the SetAnim call through WiiPlayerVtable as in StopPlayerMotion, and retail
+// starts the ring-up flag at TRUE and the open flag at FALSE where this build does the reverse
+void SelectPlayerEquipmentRing(WiiPlayerState* chr, s32 selection)
+{
+	if (selection >= 0) {
+		chr->mMenu.mPrevSel = chr->mMenu.mSel;
+		chr->mMenu.mSel     = selection;
+	}
+	if (IsMenuUp(chr)) {
+		FocusEquipmentRing(&chr->mMenu);
+	} else {
+		OpenPlayerEquipmentRings(chr);
 	}
 }
 

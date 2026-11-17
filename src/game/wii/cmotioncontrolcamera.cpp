@@ -566,7 +566,7 @@ void CMotionControlCamera::StartEye()
 		PushAction(GetAction(CAMACTION_EYE));
 		StopPlayerMotion(PLAYER);
 		PLAYER->vf28C(1);
-		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mRotY, 0.0f);
+		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mMoveRotate.y, 0.0f);
 		gGame.mRoboeyes.StartTransition(0xFF, 0xFF, 0xFF, 0, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2, gPointerScreenHeight / 2, 550.0f,
 		                                500.0f, 430.0f, 400.0f, 0.15f, 0xFF, 0);
 		PlayWiiSoundEffect(&gGame.mSound, 0x71, 1.0f, 0.0f);
@@ -586,7 +586,7 @@ void CMotionControlCamera::EndEye()
 		PLAYER->vf28C(0);
 		// the second argument stays 1 in EndEye as well; whatever it selects happens in the
 		// joint state, not here
-		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mRotY, 0.0f);
+		SetPlayerEyeCameraJointsHidden(PLAYER, 1, PLAYER->mMoveRotate.y, 0.0f);
 		gGame.mRoboeyes.StartTransition(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, gPointerScreenWidth / 2, gPointerScreenHeight / 2, 430.0f,
 		                                400.0f, 550.0f, 500.0f, 0.2f, 0, 1);
 		PlayWiiSoundEffect(&gGame.mSound, 0x6F, 1.0f, 0.0f);

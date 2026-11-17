@@ -477,7 +477,7 @@ extern "C" void CaptureWiiSaveSlot(CSaveFile* manager, bool newGame)
 	// the Wii player class is not reconstructed; the +0x244 getter returns its position Vec
 	const Vec* pos = gGame.GetPlayer()->mVtable->GetPosition(gGame.GetPlayer());
 	CopyVec(manager->mSlot.mData.mPos, *pos);
-	manager->mSlot.mData.mRotY        = gGame.GetPlayer()->mRotY;
+	manager->mSlot.mData.mRotY        = gGame.GetPlayer()->mMoveRotate.y;
 	manager->mSlot.mData.mSpecialSuit = gGame.GetPlayer()->mSuits.mSpecial;
 	if (manager->mSlot.mHeader.mStatusFlags & 1) {
 		CMotionControlCamera* camera       = &gGame.mMotionControlCamera;

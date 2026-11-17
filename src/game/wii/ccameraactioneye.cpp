@@ -94,12 +94,12 @@ void CCameraActionEye::Reset()
 	mVecA0.z        = 0.0f;
 
 	Vec angle = { 0.05235988f, 0.0f, 0.0f };
-	angle.y   = gGame.GetPlayer()->mRotY;
+	angle.y   = gGame.GetPlayer()->mMoveRotate.y;
 	SetAngle(angle);
 	SetDistance(100.0f);
 	SetFov(40.0f);
 
-	mLook.Reset(0.05235988f, gGame.GetPlayer()->mRotY, 0.0f);
+	mLook.Reset(0.05235988f, gGame.GetPlayer()->mMoveRotate.y, 0.0f);
 	mB0         = 0.0f;
 	mVecB4.x    = 0.0f;
 	mVecB4.y    = 0.0f;
@@ -193,7 +193,7 @@ void CCameraActionEye::Update(u32 step)
 			} else {
 				mLook.mTarget.x = mOverride.x;
 			}
-			player->mVtable->SetRotation(player, player->mRotY - 0.034906585f * turn * step);
+			player->mVtable->SetRotation(player, player->mMoveRotate.y - 0.034906585f * turn * step);
 
 			zoom = pad.mSubStick.y;
 			if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {

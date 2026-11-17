@@ -1604,14 +1604,14 @@ void CGame::Update(u32 frames)
 		if (GetStatusFlags(0x100) && GetPlayer()->GetAttachment() == 2) {
 			AimAtPointer(this);
 		} else {
-			fn_800E8140(GetPlayer(), GetPlayer()->mRotY, 0.0f);
+			fn_800E8140(GetPlayer(), GetPlayer()->mMoveRotate.y, 0.0f);
 		}
 	} else if (GetStatusFlags(0x100) && GetPlayer()->GetAttachment() == 2) {
 		// the eye camera keeps the last aim while the pointer is briefly off the screen
 		if (mPointer._10C > 0.0f) {
 			AimAtPointer(this);
 		} else {
-			fn_800E8140(GetPlayer(), GetPlayer()->mRotY, 0.0f);
+			fn_800E8140(GetPlayer(), GetPlayer()->mMoveRotate.y, 0.0f);
 		}
 	}
 

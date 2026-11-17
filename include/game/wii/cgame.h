@@ -707,7 +707,9 @@ struct WiiPlayerVtable {
 	// the camera actions read the object's world matrix through here; retail feeds the
 	// result straight into PSMTXCopy (0x80160F7C / 0x80161160)
 	MtxP (*GetMtxPtr)(WiiPlayerState* chr);
-	void* _B0[(0x1B0 - 0xB0) / 4];
+	void* _B0[(0x108 - 0xB0) / 4];
+	void (*SetAnim)(WiiPlayerState* chr, s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate); // _108
+	void* _10C[(0x1B0 - 0x10C) / 4];
 	// the camera actions reach the focus point here, the GameCube's XObj::GetCameraTarget
 	Vec (*GetCameraTarget)(WiiPlayerState* chr);
 	void* _1B4[(0x244 - 0x1B4) / 4];
@@ -853,15 +855,20 @@ struct WiiPlayerState {
 	WiiPlayerVtable* mVtable;
 	u8 _0004[0x30 - 0x04];
 	CVec mMoveTranslate; // _0030, CObj's
-	u8 _0040[0x64 - 0x40];
-	f32 mRotY; // _0064, mMoveRotate.y
-	u8 _0068[0x150 - 0x68];
+	u8 _0040[0x60 - 0x40];
+	CVec mMoveRotate;  // _0060, CObj's
+	CVec mMoveTarget1; // _0070, where mMoveRotate turns to
+	u8 _0080[0x150 - 0x80];
 	u64 mStatus; // _0150, the object status flags, as XObj's
 	u8 _0158[0x9CC - 0x158];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
-	u8 _09D0[0xA20 - 0x9D0];
+	u8 _09D0[0x9D4 - 0x9D0];
+	CObjVec mMotion; // _09D4, how he moves this frame
+	u8 _0A04[0xA20 - 0xA04];
 	s32 mFloorContactObjects[2]; // _0A20, the object under each floor group, -1 for none
-	u8 _0A28[0xA90 - 0xA28];
+	u8 _0A28[0xA88 - 0xA28];
+	s32 mIdleLoops; // _0A88, idle anim loops before the next idle move
+	u8 _0A8C[0xA90 - 0xA8C];
 	s32 mFlashTimer; // _0A90
 	u8 _0A94[0xA9C - 0xA94];
 	f32 mMoveSpeedScale; // _0A9C
@@ -920,6 +927,10 @@ struct WiiPlayerState {
 	Vec GetCameraTarget() { return mVtable->GetCameraTarget(this); }
 	f32 GetRotationY() { return mVtable->GetRotationY(this); }
 	void vf28C(s32 held) { mVtable->vf28C(this, held); }
+	void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate)
+	{
+		mVtable->SetAnim(this, id, force, frame, rate, blend, blendRate);
+	}
 	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }
