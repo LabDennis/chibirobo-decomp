@@ -5,20 +5,12 @@
 struct CmdLineArgs {
 	s32 mStage;
 	s32 mSlot;
-#if defined(VERSION_R24J01)
-	// the Wii reads these out of the whole word
+	// u32 fields: the Wii's compiler reads them out of the whole word, the GameCube's a byte at a time
 	u32 mAttachmentMenuType : 2;
 	// Zero keeps the default level. Overrides store the configured level plus one.
 	u32 mCopterLevelOverride : 2;
 	u32 mPopperLevelOverride : 2;
 	u32 mRadarLevelOverride : 2;
-#else
-	u8 mAttachmentMenuType : 2;
-	// Zero keeps the default level. Overrides store the configured level plus one.
-	u8 mCopterLevelOverride : 2;
-	u8 mPopperLevelOverride : 2;
-	u8 mRadarLevelOverride : 2;
-#endif
 	u8 _09[3];
 	u32 mLiftPlugFlags;
 	s16 mAttachmentActionType;
