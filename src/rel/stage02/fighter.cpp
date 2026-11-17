@@ -289,6 +289,7 @@ struct Mato {
 	}
 
 	CVec GetPos() const { return mObj->mMoveTranslate; }
+	inline s32 GetPoints() const;
 
 	s32 mId;           // _00, id the stage script passed to AddMato; -1 when unused; returned by TakeDestroyedMatoId
 	UnkDolObj* mObj;   // _04, the dol actor this target is (UnkDolObj, an XObj); its mStatus bit 0x10000 marks it live
@@ -323,6 +324,8 @@ struct MatoList {
 	Mato mMatos[0x50];  // _2C, the targets, 0x50 slots, first _00 used
 };
 
+inline s32 Mato::GetPoints() const { return mList->mKindPoints[mKind]; }
+
 struct Shot {
 	Shot() { }
 	~Shot() { }
@@ -343,6 +346,8 @@ struct Shot {
 			mTrail[i] = mPos;
 		}
 	}
+
+	inline void Update(u32 dt);
 
 	u8 mActive;      // _00, shot in flight: set by Start, cleared when mTimer runs out, free slots are the ones with it false
 	u8 _01[0x3];     // _01
@@ -7394,6 +7399,42 @@ FighterPanels panels;
 s32 fireHoldFrames;
 u8* soundCueTable[2];
 
+// moves the shot along, or ends it and scores the hit when its time runs out. Retail tests mActive again right after
+// ShotList_Update's own test, the trace of this inline
+inline void Shot::Update(u32 dt)
+{
+	s32 j;
+
+	if (mActive) {
+		mTimer -= dt;
+		if (mTimer <= 0) {
+			Mato* item;
+			mActive = false;
+			item    = mTarget;
+			if (item != NULL) {
+				if (--item->mHitsLeft > 0) {
+					item->mPending = false;
+				} else if (item->mObj != NULL && (item->mObj->mStatus & 0x10000)) {
+					item->mList->mDestroyed = item;
+					item->mList->mScore += item->GetPoints();
+					shotEvents.mFlags |= 1;
+				}
+				mResult.mFlags |= 1;
+			} else {
+				mResult.mFlags |= 2;
+			}
+		} else {
+			mPos.x = mVelocity.x * dt + mPos.x;
+			mPos.y = mVelocity.y * dt + mPos.y;
+			mPos.z = mVelocity.z * dt + mPos.z;
+			for (j = 9; j > 0; j--) {
+				mTrail[j] = mTrail[j - 1];
+			}
+			mTrail[0] = mPos;
+		}
+	}
+}
+
 /**
  * @note Address: stage02 .text 0x5A48
  * @note Size: 0x2A0
@@ -7401,42 +7442,13 @@ u8* soundCueTable[2];
 extern "C" void ShotList_Update(ShotList* list, u32 dt)
 {
 	u32 i;
-	s32 j;
 
 	for (i = 0; i < 5; i++) {
 		Shot* entry = &list->mShots[i];
 		if (!entry->mActive) {
 			continue;
 		}
-		if (entry->mActive) {
-			entry->mTimer -= dt;
-			if (entry->mTimer <= 0) {
-				Mato* item;
-				entry->mActive = false;
-				item           = entry->mTarget;
-				if (item != NULL) {
-					if (--item->mHitsLeft > 0) {
-						item->mPending = false;
-					} else if (item->mObj != NULL && (item->mObj->mStatus & 0x10000)) {
-						item->mList->mDestroyed = item;
-						item->mList->mScore += item->mList->mKindPoints[item->mKind];
-						shotEvents.mFlags |= 1;
-					}
-					entry->mResult.mFlags |= 1;
-				} else {
-					entry->mResult.mFlags |= 2;
-				}
-			} else {
-				entry->mPos.x = entry->mVelocity.x * dt + entry->mPos.x;
-				entry->mPos.y = entry->mVelocity.y * dt + entry->mPos.y;
-				entry->mPos.z = entry->mVelocity.z * dt + entry->mPos.z;
-				for (j = 9; j > 0; j--) {
-					Vec* prev        = &entry->mTrail[j - 1];
-					entry->mTrail[j] = *prev;
-				}
-				entry->mTrail[0] = entry->mPos;
-			}
-		}
+		entry->Update(dt);
 		if (entry->mResult.mFlags & 1) {
 			list->mHitStreak++;
 			list->mMissStreak = 0;
