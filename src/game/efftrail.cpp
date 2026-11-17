@@ -427,8 +427,8 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		screenX = 320.0f;
 		screenY = 418.0f;
 	} else {
-		XObj* chr        = menu->mChr;
 		Vec offset       = { 0.0f, 0.0f, 0.0f };
+		XObj* chr        = menu->mChr;
 		OXJointPath path = { { 0, 1, 0, 1, 2, 0, 1 } };
 		offset.y         = GetEventJointWorldPosition(chr, 7, path.ids).y - chr->mMoveTranslate.y;
 		Vec anchor       = offset;
