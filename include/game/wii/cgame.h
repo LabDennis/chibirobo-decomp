@@ -851,13 +851,17 @@ STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 // the save manager reads and writes, at offsets verified against retail.
 struct WiiPlayerState {
 	WiiPlayerVtable* mVtable;
-	u8 _0004[0x64 - 0x04];
+	u8 _0004[0x30 - 0x04];
+	CVec mMoveTranslate; // _0030, CObj's
+	u8 _0040[0x64 - 0x40];
 	f32 mRotY; // _0064, mMoveRotate.y
 	u8 _0068[0x150 - 0x68];
 	u64 mStatus; // _0150, the object status flags, as XObj's
 	u8 _0158[0x9CC - 0x158];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
-	u8 _09D0[0xA90 - 0x9D0];
+	u8 _09D0[0xA20 - 0x9D0];
+	s32 mFloorContactObjects[2]; // _0A20, the object under each floor group, -1 for none
+	u8 _0A28[0xA90 - 0xA28];
 	s32 mFlashTimer; // _0A90
 	u8 _0A94[0xA9C - 0xA94];
 	f32 mMoveSpeedScale; // _0A9C

@@ -1248,7 +1248,8 @@ public:
 	CoordInfo mCoord;   // _160
 	AttrInfo mAttr;     // _168
 	XObjFloor* mFloors; // _174, the object's collision floor list
-	u8 _178[0x188 - 0x178];
+	u32 mFloorMasks[2]; // _178, a bit per floor, one mask per group
+	u8 _180[0x188 - 0x180];
 	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
 	u8 _189[0x18C - 0x189];
 	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none

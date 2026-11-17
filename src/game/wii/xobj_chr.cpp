@@ -14,6 +14,7 @@
 #include "game/wii/csound.h"
 #include "game/playeranimationdata.h"
 #include "game/pointptcl.h"
+#include "game/mapfloorhit.h"
 #include "game/gmath.h"
 #include "game/globals.h"
 #include <math.h>
@@ -104,6 +105,7 @@ static inline bool IsEventBlocked(const WiiPlayerState* chr)
 
 extern "C" {
 u32 CheckStageFlag(s32 stage, u32 mask);
+BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit);
 void UpdateHeldObject(XAction* action, u32 frames);
 void UpdatePushedObject(XAction* action, u32 frames);
 void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
@@ -614,6 +616,12 @@ AttrInfo* fn_800DBD60(XObj* object)
 BOOL fn_800DBD68(const XObj* object)
 {
 	return (object->mStatus.mFlags & 0x10001) == 0x10001;
+}
+
+// the map floor under pos, the search starting where the last hit was
+BOOL FindMapFloorBelow(XObjMap* map, const Vec* pos, const XObjMapHit* last, XObjMapHit* hit)
+{
+	return fn_800C98E0(map, pos, last->mTriangle, hit);
 }
 
 BOOL HasObjectCustomLedgeHeight(const XObj* object)
@@ -1167,6 +1175,29 @@ BOOL IsPlayerBlockingEvents(const WiiPlayerState* player)
 s32 GetCharacterObjectApproachResult(XObj* chr, XObj* object)
 {
 	return object->GetPool() == 9 ? GetClearLetickerApproachSide(object, chr->GetPos()) : 1;
+}
+
+// the highest floor of the object under a floor group that's still below chibi robo,
+// stops early on the preferred one, -1 for none. The contact flag is read off the group's own entry
+s32 FindPlayerSupportingFloor(WiiPlayerState* chr, s32 group, s32 preferred)
+{
+	s32 result = -1;
+	if (chr->mFloorContactObjects[group] >= 0) {
+		XObj* owner = gGame.mXObjs.mObjects[chr->mFloorContactObjects[group]];
+		f32 best    = NAN;
+		for (int i = 0; owner->mFloors[i].mId != -1; i++) {
+			if ((owner->mFloors[group].mFlags & 1) && (owner->mFloorMasks[group] & (1 << i))) {
+				if ((fpclassify(best) == FP_NAN || owner->mFloorHeights[i] >= best)
+				    && owner->mFloorHeights[i] <= 1.0f + chr->mMoveTranslate.y) {
+					best   = owner->mFloorHeights[i];
+					result = i;
+					if (i == preferred)
+						break;
+				}
+			}
+		}
+	}
+	return result;
 }
 
 void SetAttachmentCountById(AttachmentValues* values, s32 id, s32 value)
