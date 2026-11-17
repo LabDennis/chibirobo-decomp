@@ -785,8 +785,8 @@ void XObjActor3::Kind6(u32 frames)
 	case 1:
 		for (i = 0; i < 0x100; i++) {
 			InventoryItem* items = gGame.GetPlayer()->mParams.mInventory.mItems;
-			id                   = items[i].mId;
-			num                  = items[i].mCount;
+			id                   = items[i].GetId();
+			num                  = items[i].GetCount();
 			if (GetItemFlagsMasked(id, 4) && id >= 0 && num > 0) {
 				count++;
 			}
@@ -1288,15 +1288,13 @@ extern "C" void EnableSpiderBossPartByIndex(s32 n)
 // NONMATCHING: register allocation
 extern "C" void LaunchSpiderBossPartByIndex(s32 n)
 {
-	u8* data;
 	XObjActor3* obj;
-	s32 size;
+	s32 offset;
+	XObjPool& pool = gGame.mXObjs.mPools[5];
 	s32 count = 0;
 	s32 i;
-	size = gGame.mXObjs.mPools[5].mStride;
-	data = gGame.mXObjs.mPools[5].mObjects;
-	for (i = 0; i < 48; i++) {
-		obj = (XObjActor3*)(data + i * size);
+	for (i = 0, offset = 0; i < 48; ++i, offset += pool.mStride) {
+		obj = (XObjActor3*)(pool.mObjects + offset);
 		if (XObj::GetDataItem(obj->mAttr.mObjData) == 0xB) {
 			if (count == n && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 				LaunchSpiderBossPart(obj);
@@ -1696,8 +1694,10 @@ void XObjActor3::Kind13(u32 frames)
 extern "C" void CommandSpiderBossProjectiles(s32 mode)
 {
 	if (mode == 0) {
+		XObjActor3* obj;
+		XObjPool& pool = gGame.mXObjs.mPools[5];
 		for (s32 i = 0; i < 48; i++) {
-			XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+			obj = (XObjActor3*)pool.Get(i);
 			if (obj->GetKind() == 0x3E0 && (obj->mStatus.mFlags & 1)) {
 				obj->mActorFlags.mFlags &= ~4;
 				obj->mKindStep        = 0;
@@ -1706,8 +1706,10 @@ extern "C" void CommandSpiderBossProjectiles(s32 mode)
 		}
 	}
 	if (mode == 2) {
+		XObjActor3* obj;
+		XObjPool& pool = gGame.mXObjs.mPools[5];
 		for (s32 i = 0; i < 48; i++) {
-			XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+			obj = (XObjActor3*)pool.Get(i);
 			if (obj->GetKind() == 0x3E0 && (obj->mStatus.mFlags & 1) && obj->mActorFlags.Check(4)) {
 				obj->mActorFlags.mFlags &= ~4;
 				obj->mKindStep        = 20;
@@ -1844,12 +1846,12 @@ void XObjActor3::Kind15(u32 frames)
  * @note Address: 0x8010CDDC
  * @note Size: 0xA4
  */
-// NONMATCHING: regalloc
 extern "C" void ActivateWaitingKind43AActorsAtPosition(f32 x, f32 y, f32 z)
 {
 	XObjActor3* obj;
+	XObjPool& pool = gGame.mXObjs.mPools[5];
 	for (s32 i = 0; i < 48; i++) {
-		obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
+		obj = (XObjActor3*)pool.Get(i);
 		switch (obj->GetKind()) {
 		case 0x43A:
 			if ((obj->mStatus.mFlags & 1) && obj->mActorFlags.Check(4)) {
