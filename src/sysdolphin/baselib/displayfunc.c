@@ -38,6 +38,66 @@ extern void memset(void* ptr, s32 value, u32 size);
 extern void PSVECScale(f32 scale, Vec* src, Vec* dst);
 extern void PSMTXRotRad(Mtx m, char axis, f32 rad);
 
+// GX parts HSD_EraseRect needs that the HSD GX header leaves out
+#define GX_TEXCOORD0     0
+#define GX_TEXCOORD_NULL 0xFF
+#define GX_TEVSTAGE0     0
+#define GX_TG_MTX2x4     1
+#define GX_TG_TEX0       4
+#define GX_NONE          0
+#define GX_PASSCLR       4
+#define GX_ZT_DISABLE    0
+#define GX_ZT_REPLACE    2
+#define GX_ALWAYS        7
+#define GX_AOP_OR        1
+#define GX_BM_LOGIC      2
+#define GX_BL_ZERO       0
+#define GX_BL_ONE        1
+#define GX_LO_COPY       3
+#define GX_LIGHT_NULL    0
+#define GX_DF_NONE       0
+#define GX_AF_NONE       2
+#define GX_CLR_RGBA      1
+#define GX_TEX_ST        1
+#define GX_QUADS         0x80
+#define GX_WGPIPE        ((volatile u8*)0xCC008000)
+
+typedef struct _GXTexObj {
+	u8 pad[0x20];
+} GXTexObj;
+
+extern void GXInitTexObj(GXTexObj* obj, void* image, u16 width, u16 height, GXTexFmt format, u32 wrap_s, u32 wrap_t, u8 mipmap);
+extern void GXLoadTexObj(GXTexObj* obj, u32 map);
+extern void GXSetNumTexGens(u8 n);
+extern void GXSetTexCoordGen2(u32 dst, u32 func, u32 src, u32 mtx, u8 normalize, u32 postmtx);
+extern void GXSetZTexture(u32 op, u32 format, u32 bias);
+extern void GXSetChanCtrl(u32 chan, u8 enable, u32 amb_src, u32 mat_src, u32 light_mask, u32 diff_fn, u32 attn_fn);
+
+static inline void GXPosition3f32(f32 x, f32 y, f32 z)
+{
+	*(volatile f32*)GX_WGPIPE = x;
+	*(volatile f32*)GX_WGPIPE = y;
+	*(volatile f32*)GX_WGPIPE = z;
+}
+
+static inline void GXColor4u8(u8 r, u8 g, u8 b, u8 a)
+{
+	*(volatile u8*)GX_WGPIPE = r;
+	*(volatile u8*)GX_WGPIPE = g;
+	*(volatile u8*)GX_WGPIPE = b;
+	*(volatile u8*)GX_WGPIPE = a;
+}
+
+static inline void GXTexCoord2u8(u8 s, u8 t)
+{
+	*(volatile u8*)GX_WGPIPE = s;
+	*(volatile u8*)GX_WGPIPE = t;
+}
+
+static inline void GXEnd(void)
+{
+}
+
 HSD_ObjAllocData zlist_alloc_data;
 
 // .sbss comes out last declaration first, so these run backwards
@@ -665,6 +725,93 @@ void HSD_JObjDisp(HSD_JObj* jobj, Mtx vmtx, HSD_TrspMask trsp_mask, u32 rendermo
 void HSD_JObjSetSPtclCallback(void (*func)(s32, s32, s32, HSD_JObj*))
 {
 	sptcl_callback = func;
+}
+
+// The game never erases a rectangle, so the linker dropped the two functions below together with their data. Only
+// the depth texture's 32 byte alignment is left: it is why retail aligns this file's .data to 32.
+static GXColor erase_color = { 0, 0, 0, 0 };
+
+/**
+ * @note Address: N/A
+ * @note Size: ?
+ */
+void HSD_SetEraseColor(u8 r, u8 g, u8 b, u8 a)
+{
+	erase_color.r = r;
+	erase_color.g = g;
+	erase_color.b = b;
+	erase_color.a = a;
+}
+
+/**
+ * @note Address: N/A
+ * @note Size: ?
+ */
+void HSD_EraseRect(f32 top, f32 bottom, f32 left, f32 right, f32 z, s32 enable_color, s32 enable_alpha, s32 enable_depth)
+{
+	// a 4x4 Z8 texture at the far plane; GX wants textures 32 byte aligned
+	static u8 depth_image[4 * 4] __attribute__((aligned(32))) = {
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF,
+	};
+	GXTexObj texobj;
+	GXColor color;
+
+	if (!enable_color && !enable_alpha && !enable_depth) {
+		return;
+	}
+
+	GXSetNumTevStages(1);
+	if (enable_depth) {
+		GXInitTexObj(&texobj, depth_image, 4, 4, GX_TF_Z8, GX_REPEAT, GX_REPEAT, GX_DISABLE);
+		GXLoadTexObj(&texobj, GX_TEXMAP0);
+		GXSetNumTexGens(1);
+		GXSetTexCoordGen2(GX_TEXCOORD0, GX_TG_MTX2x4, GX_TG_TEX0, GX_IDENTITY, GX_NONE, GX_PTIDENTITY);
+		GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD0, GX_TEXMAP0, GX_COLOR0A0);
+		GXSetZTexture(GX_ZT_REPLACE, GX_TF_Z8, 0);
+	} else {
+		GXSetNumTexGens(0);
+		GXSetTevOrder(GX_TEVSTAGE0, GX_TEXCOORD_NULL, GX_TEXMAP_NULL, GX_COLOR0A0);
+	}
+	GXSetTevOp(GX_TEVSTAGE0, GX_PASSCLR);
+
+	GXSetCullMode(GX_CULL_NONE);
+	GXSetAlphaCompare(GX_ALWAYS, 0, GX_AOP_OR, GX_ALWAYS, 0);
+	GXSetZCompLoc(GX_TRUE);
+	GXSetZMode(GX_ENABLE, GX_ALWAYS, enable_depth ? GX_ENABLE : GX_DISABLE);
+	GXSetBlendMode(GX_BM_LOGIC, GX_BL_ONE, GX_BL_ZERO, GX_LO_COPY);
+	GXSetColorUpdate(enable_color ? GX_ENABLE : GX_DISABLE);
+	GXSetAlphaUpdate(enable_alpha ? GX_ENABLE : GX_DISABLE);
+	GXSetNumChans(1);
+	GXSetChanCtrl(GX_COLOR0A0, GX_DISABLE, GX_SRC_REG, GX_SRC_VTX, GX_LIGHT_NULL, GX_DF_NONE, GX_AF_NONE);
+
+	GXClearVtxDesc();
+	GXSetVtxDesc(GX_VA_POS, GX_DIRECT);
+	GXSetVtxDesc(GX_VA_CLR0, GX_DIRECT);
+	GXSetVtxDesc(GX_VA_TEX0, GX_DIRECT);
+	GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_POS, GX_POS_XYZ, GX_F32, 0);
+	GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_CLR0, GX_CLR_RGBA, GX_RGBA8, 0);
+	GXSetVtxAttrFmt(GX_VTXFMT0, GX_VA_TEX0, GX_TEX_ST, GX_U8, 0);
+	GXLoadPosMtxImm(HSD_identityMtx, GX_PNMTX0);
+	GXSetCurrentMtx(GX_PNMTX0);
+
+	color = erase_color;
+	GXBegin(GX_QUADS, GX_VTXFMT0, 4);
+	GXPosition3f32(left, top, z);
+	GXColor4u8(color.r, color.g, color.b, color.a);
+	GXTexCoord2u8(0, 0);
+	GXPosition3f32(right, top, z);
+	GXColor4u8(color.r, color.g, color.b, color.a);
+	GXTexCoord2u8(1, 0);
+	GXPosition3f32(right, bottom, z);
+	GXColor4u8(color.r, color.g, color.b, color.a);
+	GXTexCoord2u8(1, 1);
+	GXPosition3f32(left, bottom, z);
+	GXColor4u8(color.r, color.g, color.b, color.a);
+	GXTexCoord2u8(0, 1);
+	GXEnd();
+
+	GXSetZTexture(GX_ZT_DISABLE, GX_TF_Z8, 0);
+	HSD_StateInvalidate(HSD_STATE_ALL);
 }
 
 /**
