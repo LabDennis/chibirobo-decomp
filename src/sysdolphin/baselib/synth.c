@@ -891,6 +891,35 @@ s32 HSD_SynthSFXBankClear(s32 bankID)
 	return 0;
 }
 
+// The two sample-group relocation functions below were dead-stripped from the dol; their assert strings are still in
+// .data between HSD_SynthSFXLoad's and the pan table. The bodies are rebuilt from those strings, the line numbers are
+// unknown.
+static s32 sfxGroupDataReaddressCounter;
+
+/**
+ * @note Address: N/A
+ * @note Size: ?
+ */
+static void HSD_SynthSFXGroupDataReaddressCallback(int request, s32 args, void* buffer, BOOL cancelled)
+{
+	ASSERT_SYNTH(0, sfxGroupDataReaddressCounter > 0);
+	sfxGroupDataReaddressCounter--;
+}
+
+/**
+ * @note Address: N/A
+ * @note Size: ?
+ */
+void HSD_SynthSFXGroupDataReaddress(s32 bankID, HSD_SynthSFXGroup* group)
+{
+	ASSERT_SYNTH_REPORT(0, hsd_SynthSFXBank[bankID] + group->arsize <= hsd_SynthSFXBankHead[bankID + 1],
+	                    "Can't relocate SFX group; bank = %d; sfxgroup = %d\n", bankID, group->id);
+	sfxGroupDataReaddressCounter++;
+	HSD_DevComRequest(0, group->araddr, hsd_SynthSFXBank[bankID], group->arsize, 0x1B, 0, HSD_SynthSFXGroupDataReaddressCallback, 0);
+	group->araddr = hsd_SynthSFXBank[bankID];
+	hsd_SynthSFXBank[bankID] += group->arsize;
+}
+
 // surround pan curve, front gain by span
 static f32 lbl_8025BA10[0x100] = {
 	1.0f,          0.996429205f,   0.992854357f,   0.989275455f,  0.985692501f,  0.982105553f,  0.978514612f,  0.974919617f,  0.971320748f,
@@ -923,6 +952,9 @@ static f32 lbl_8025BA10[0x100] = {
 	0.0491993241f, 0.0451000854f,  0.0410006605f,  0.0369010717f, 0.0328013338f, 0.0287014581f, 0.024601467f,  0.0205013752f, 0.0164012015f,
 	0.0123009589f, 0.00820066687f, 0.00410034182f, 0.0f,
 };
+
+// HSD's shared mix block; this version's mix code builds its mixes on the stack and nothing reads it any more
+static AXPBMIX sSynthMix = { 0 };
 
 static AXPBSRC lbl_8050932C = { 1, 0, 0, { 0, 0, 0, 0 } };
 
@@ -6303,6 +6335,8 @@ void HSD_SynthPStreamSetBeatCallback(s32 id, HSD_AudioBeatCallback callback, voi
  * @note Address: N/A
  * @note Size: 0x4D4
  */
+// NONMATCHING: retail .data has 0x44 zero bytes that nothing reads right before this function's two messages, so they
+// sit 0x44 higher there. Melee's synth.o ends its .data with the same block; what it was is not known.
 void HSD_SynthInit(s32 heapSize, s32 pstNum, s32 pstBufNum)
 {
 	s32 i;
