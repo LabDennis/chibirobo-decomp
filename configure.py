@@ -1143,8 +1143,7 @@ gamecube_libs = [
             # matched only under a per-unit -inline auto,deferred; without it 77-79 % in stages 01/04/09
             Object(NonMatching, "rel/ana.cpp"),
             Object(EquivalentFor(JP), "rel/stage02/fighter.cpp"),
-            # its data order matched only under a per-unit -inline deferred
-            Object(NonMatching, "rel/stage02/rouka.cpp"),
+            Object(MatchingFor(US, JP), "rel/stage02/rouka.cpp"),
             # its data order matched only under a per-unit -inline deferred
             Object(NonMatching, "rel/stage02/car.cpp"),
             Object(NonMatching, "rel/stage03/decapanel.cpp"),
