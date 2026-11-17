@@ -24,6 +24,8 @@
 #include "game/wii/xobjs.h"
 #include "game/wii/xobj.h"
 #include "game/wii/xchrmenu.h"
+#include "game/wii/menuutil.h"
+#include "game/menuhelpchar.h"
 #
 
 class CCamera;
@@ -1020,11 +1022,12 @@ struct MenuWindow {
 };
 STATIC_ASSERT(sizeof(MenuWindow) == 0x12C);
 
-// the hand that points at a menu's row; on the Wii a picture from the game's palette
+// the hand that points at a menu's row, the cursor the menus share (MenuEx's); on the Wii a picture from the
+// game's palette, and only its blink is left (UpdateOpenMenus, 0x8008492C)
 class MenuCursor {
 public:
-	u8 _00[0x4];
-	s32 mFrame; // _04, which of the cursor pictures (palette entry 248 on)
+	s32 mTimer; // _00
+	s32 mFrame; // _04, 0 to 7, which of the cursor pictures (palette entry 248 on)
 };
 
 // one of the game's menus, the GameCube class of the same name with two more virtuals. Its state leads
@@ -1051,7 +1054,7 @@ public:
 	virtual BOOL Update(u32 frames); // _14
 	virtual BOOL Draw();             // _18
 	virtual void Open();             // _1C
-	virtual void Close(s32 state);   // _20, the GameCube's sets 5
+	virtual void Close(s32 state);   // _20, stores state as mState (0x80050D9C)
 	virtual BOOL IsOpen() { return mState != 0; }
 	virtual void Suspend(BOOL fade); // _28
 	virtual void Resume();           // _2C
@@ -1109,15 +1112,108 @@ public:
 STATIC_ASSERT(offsetof(MenuMain, mChannel) == 0x1D0);
 STATIC_ASSERT(offsetof(MenuStageSelect, mLabelWidth) == 0x1A60);
 
-class MenuSave : public CMenu {
+// a letter of a title that flies in, one after the other, the GameCube struct
+struct MenuTitleChar {
+	const char* mText; // _00
+	f32 mFade;         // _04
+	f32 mHold;         // _08, the letter fades out once this is 0
+	f32 mAngle0;       // _0C
+	f32 mAngle1;       // _10
+};
+STATIC_ASSERT(sizeof(MenuTitleChar) == 0x14);
+
+// a title of up to 20 letters, the GameCube struct
+struct MenuTitle {
+	BOOL mActive;             // _00
+	s32 mCount;               // _04
+	u32 mColor;               // _08
+	MenuTitleChar mChars[20]; // _0C
+};
+STATIC_ASSERT(sizeof(MenuTitle) == 0x19C);
+
+// the save menu, the GameCube class of the same name. Its RTTI has the pointer base this code calls MenuUtil
+// (the binary's MenuPad) at _15C; from mResult on the members sit 0x2C behind the GameCube's, the bigger save
+// records, and between mFile and mLastFile come the stick's copies of the file and yes/no choice, as Title has them
+class MenuSave : public Menu, public MenuUtil {
 public:
-	u8 _150[0x2C4 - 0x150];
-	s32 mLastFile; // _2C4, -1 for none
-	u8 _2C8[0x710 - 0x2C8];
+	f32 mPanelX;               // _160
+	f32 mPanelY;               // _164
+	f32 mTargetPanelX;         // _168
+	f32 mTargetPanelY;         // _16C
+	f32 _170;                  // _170
+	f32 mBannerSlide;          // _174
+	f32 _178;                  // _178
+	f32 mOffset;               // _17C
+	WiiMenuSaveSlot mSlots[3]; // _180, the three save files
+	u8 _27C[0x284 - 0x27C];
+	s32 mResult;               // _284, the save operation's result
+	s32 mMessage;              // _288
+	u8 mReady;                 // _28C
+	u8 mShowMessage;           // _28D
+	u8 mWrongDevice;           // _28E
+	u8 mSaved;                 // _28F
+	f32 mDrawAlpha;            // _290
+	f32 mTargetAlpha;          // _294, mDrawAlpha goes to it
+	s32 mMode;                 // _298, the state the table runs
+	s32 mPrevMode;             // _29C
+	u32 _2A0;                  // _2A0
+	s32 mPhase;                // _2A4
+	f32 mTime;                 // _2A8
+	s32 mDelay;                // _2AC
+	s32 mFile;                 // _2B0, the file picked, -1 with the pointer on none
+	s32 mStickFile;            // _2B4, the file the stick is on, mFile again when the pointer goes
+	s32 mNewestFile;           // _2B8
+	s32 mChoice;               // _2BC, yes or no, -1 with the pointer on neither
+	s32 mStickChoice;          // _2C0
+	s32 mLastFile;             // _2C4, -1 for none
+	s32 mChannel;              // _2C8, the GameCube's card slot
+	s32 mShowHelp;             // _2CC
+	f32 mHelpAlpha;            // _2D0
+	const char* mHelpText;     // _2D4
+	const char* mNextHelpText; // _2D8
+	f32 mTexScroll;            // _2DC
+	MenuTitle mTitle;          // _2E0
+	s32 mHelpCount;            // _47C
+	MenuHelpChar mBg[20];      // _480
+	u8 mResetOnClose;          // _570, closing asks the game for reset type 5
+	CbPane mPanes[5];          // _574, the three files, yes and no
+	f32 mFileAlpha[3];         // _704, each file's highlight
+
+	void SetMode(s32 mode)
+	{
+		mPrevMode = mMode;
+		mMode     = mode;
+		mPhase    = 0;
+	}
 
 	virtual void Reset();
+	virtual BOOL Update(u32 frames);
 	virtual void Open();
+
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+	void State5(u32 frames);
+	void State6(u32 frames);
+	void State7(u32 frames);
+	void State8(u32 frames);
+	void State9(u32 frames);
+	void State10(u32 frames);
+	void State11(u32 frames);
+	void State12(u32 frames);
+	void State13(u32 frames);
+	void State14(u32 frames);
+	void State15(u32 frames);
+	void State16(u32 frames);
+	void State17(u32 frames);
+	void State18(u32 frames);
+	void State19(u32 frames);
 };
+STATIC_ASSERT(offsetof(MenuSave, mPanelX) == 0x160);
+STATIC_ASSERT(offsetof(MenuSave, mLastFile) == 0x2C4);
+STATIC_ASSERT(offsetof(MenuSave, mResetOnClose) == 0x570);
 STATIC_ASSERT(sizeof(MenuSave) == 0x710);
 
 // the save file test menus, Wii only (RTTI); the first lists the save slots, the second what to do with one,
@@ -1166,6 +1262,43 @@ public:
 };
 STATIC_ASSERT(sizeof(MenuItem) == 0x78C);
 
+// a row of the status menu's item pages, the GameCube struct
+struct MenuStatusEntry {
+	s16 mItem;       // _00
+	s16 mCount;      // _02
+	CStatus mStatus; // _04
+};
+STATIC_ASSERT(sizeof(MenuStatusEntry) == 0xC);
+
+// the items the status screen pages through, the GameCube struct
+struct MenuStatusTable {
+	s32 mPage;                   // _00, in fours
+	MenuStatusEntry mItems[256]; // _04, the eight on screen
+	MenuStatusEntry mPrev[4];    // _C04, the four before them
+	MenuStatusEntry mNext[4];    // _C34, the four after
+};
+STATIC_ASSERT(sizeof(MenuStatusTable) == 0xC64);
+
+// a row of the PC shop's lists, the GameCube struct
+struct MenuPCItem {
+	s16 mItem;        // _00, -1 for an empty row
+	s16 mCount;       // _02, -1 for an empty row
+	s16 mPrice;       // _04
+	u8 mIsAttachment; // _06
+	u8 _07;           // _07
+};
+STATIC_ASSERT(sizeof(MenuPCItem) == 8);
+
+// the nine rows on screen and the ones just off either end, the GameCube struct
+struct MenuPCPage {
+	s32 mStart;           // _00, list index of the first row
+	MenuPCItem mRows[20]; // _04
+	s32 mIndex[20];       // _A4, list index of each row
+	MenuPCItem mPrev[1];  // _F4
+	MenuPCItem mNext[1];  // _FC
+};
+STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
+
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public CMenu {
 public:
@@ -1183,18 +1316,8 @@ struct PCAmount {
 	f32 shown;
 	f32 target;
 };
-
-// one row of the shop's lists, the GameCube struct of the same name
-struct MenuPCItem {
-	s16 mItem;        // _00, -1 for an empty row
-	s16 mCount;       // _02, -1 for an empty row
-	s16 mPrice;       // _04
-	u8 mIsAttachment; // _06
-	u8 _07;           // _07
-};
-
 // the chibi-pc shop, the GameCube class of the same name; its members sit four bytes further on because
-// Menu is a word longer here
+// Menu is a word longer here (State4, State11, ResetPCCharacters)
 class MenuPC : public Menu {
 public:
 	void State0(u32 frames);
@@ -1221,28 +1344,40 @@ public:
 	f32 mSpeed;     // _16C
 	s32 mTextPhase; // _170
 	s32 mChoice;    // _174
-	u8 _178[0x194 - 0x178];
+	u8 _178[0x184 - 0x178];
+	s32 mYesNo;             // _184
+	s32 mMoneyDigit;        // _188
+	s32 mShopSelection;     // _18C
+	s32 mScrapDigit;        // _190
 	f32 mProgress;          // _194
 	f32 mTargetProgress;    // _198
 	f32 _19C;               // _19C, eased toward _1A4
-	f32 mFrameHeight;       // _1A0, the frame quad grows to its target on opening and closes back
+	f32 mFrameHeight;       // _1A0, the frame quad grows to its target on opening and closes back to 2
 	f32 _1A4;               // _1A4
 	f32 mTargetFrameHeight; // _1A8
 	u8 _1AC[0x1BC - 0x1AC];
-	s32 mCharIndex;       // _1BC
-	u32 mGreetingVariant; // _1C0
-	f32 mTextX;           // _1C4
-	f32 mTextY;           // _1C8
-	f32 mTargetX;         // _1CC
-	f32 mTargetY;         // _1D0
-	u8 _1D4[0x370 - 0x1D4];
-	s32 mKeeperAnimStep; // _370, the shopkeeper's anim step
-	s32 mKeeperAnimId;   // _374, the anim for it
-	u8 mPlayKeeperAnim;  // _378, set the anim
-	u8 _379[0x388 - 0x379];
-	s32 mDepositBalance; // _388
-	s32 mHistoryStart;   // _38C
-	s32 mHistoryCount;   // _390
+	s32 mCharIndex;          // _1BC
+	u32 mGreetingVariant;    // _1C0
+	f32 mTextX;              // _1C4
+	f32 mTextY;              // _1C8
+	f32 mTargetX;            // _1CC
+	f32 mTargetY;            // _1D0
+	char mChars[80];         // _1D4, forty two byte sjis characters
+	u8 mTerminator;          // _224
+	f32 mCharX[40];          // _228
+	u8 mCharFlags[40];       // _2C8
+	char mCharCopies[40][3]; // _2F0, each character again as a string of its own
+	u32 mGlyphFrames;        // _368
+	u32 mNextGlyph;          // _36C
+	s32 mKeeperAnimStep;     // _370, the shopkeeper's anim step
+	s32 mKeeperAnimId;       // _374, the anim for it
+	u8 mPlayKeeperAnim;      // _378, set the anim
+	u32 mNumberOffset;       // _37C
+	u8 mInsertsNumber;       // _380
+	s32 mAmount;             // _384
+	s32 mDepositBalance;     // _388
+	s32 mHistoryStart;       // _38C
+	s32 mHistoryCount;       // _390
 	u8 _394[0x3A4 - 0x394];
 	u8 mShopOnly; // _3A4, opens straight into the item list and B closes
 	u8 _3A5[0x3A8 - 0x3A5];
@@ -1254,20 +1389,22 @@ public:
 	PCAmount mMoneyDisplay; // _410
 	PCAmount mScrapDisplay; // _418
 	u8 _420[0x428 - 0x420];
-	f32 _428; // _428, eased toward _42C
-	f32 _42C; // _42C
-	u8 _430[0x438 - 0x430];
-	u8 mCanSelect; // _438
+	f32 _428;       // _428, eased toward _42C
+	f32 _42C;       // _42C
+	f32 mScrapRate; // _430
+	s32 mExitState; // _434, the game state it hands back
+	u8 mCanSelect;  // _438
 	u8 _439[0x43C - 0x439];
 	s32 mChoices[4];  // _43C
 	s32 mChoiceCount; // _44C
 	f32 mTexScroll;   // _450
 };
+STATIC_ASSERT(offsetof(MenuPC, mYesNo) == 0x184);
+STATIC_ASSERT(offsetof(MenuPC, mCharCopies) == 0x2F0);
+STATIC_ASSERT(offsetof(MenuPC, mNumberOffset) == 0x37C);
 STATIC_ASSERT(offsetof(MenuPC, mShopOnly) == 0x3A4);
+STATIC_ASSERT(offsetof(MenuPC, mExitState) == 0x434);
 STATIC_ASSERT(offsetof(MenuPC, mTexScroll) == 0x450);
-
-// clears the shop keeper's line, 0x8006D2F0; the GameCube inlines it
-extern "C" void ResetPCCharacters(MenuPC* menu);
 
 // frame buffer effects that draw through a copied texture; the Wii base keeps the bigger
 // WiiFbTexture and drops mActive (WiiFbTexture::mOwnsImage took its slot), the vtable sits
@@ -1443,11 +1580,12 @@ struct ObjArchiveTable {
 
 // the menus and what they share, the GameCube class of the same name (RTTI); the constructor in 0x800332D8 stores
 // its vtable at _30, ahead of the Wii's further members, and builds the CTexObj at _50
+
 class MenuEx {
 public:
-	BOOL mActive;     // _00, a menu is open
-	CMenu* mMenus[5]; // _04, [0] is the main menu
-	u8 _18[0x30 - 0x18];
+	BOOL mActive;         // _00, a menu is open
+	CMenu* mMenus[9];     // _04, [0] is the main menu
+	MenuCursor mCursor;   // _28
 	virtual ~MenuEx() { } // _30 vtable
 	s32 _34;              // _34, DrawHud draws nothing while a menu is open and this is set
 	u8 _38[0x50 - 0x38];
