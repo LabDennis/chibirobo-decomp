@@ -603,7 +603,7 @@ void CCameraActionScroll2::Draw()
 			u32 cells = strlen(name) / 2 + 1;
 			if (cells < 4)
 				cells = 4;
-			DrawTexturedWindowFrame(0x141414A0, -1, (cells - 1) * 18.0f * 0.5f + nameX, nameY - 18.0f, 18.0f * (cells - 3), 18.0f, 1.0f,
+			DrawTexturedWindowFrame(0x141414A0, -1, (cells - 1) * 18.0f / 2.0f + nameX, nameY - 18.0f, 18.0f * (cells - 3), 18.0f, 1.0f,
 			                        1.0f, 1.0f);
 #else
 			f32 width = MeasureGameTextWidth(&gGame.mGs, name, 1, 18.0f) / 2.0f;

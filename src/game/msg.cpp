@@ -3560,16 +3560,6 @@ void InvalidateMessageDrawState(CGs* gs);
 #define MSG_OBJECT_OFFSET(offset) (offset)
 #endif
 
-#if defined(VERSION_PAL)
-static inline void MsgRestoreScissor(u32 x, u32 y, u32 width, u32 height)
-{
-	f32 displayScale = gGame.mGs.mScreen.mHeightScale;
-	u32 scaledHeight = (u32)(height * displayScale);
-	u32 scaledY      = (u32)(y * displayScale);
-	GXSetScissor(x, scaledY, width, scaledHeight);
-}
-#endif
-
 // one piece of the window frame, a texture window and where it goes
 struct MsgWindowSlice {
 	f32 u;      // _00
@@ -3771,9 +3761,9 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 					textOffset = 0.0f;
 				else {
 #endif
-					f32 scale       = (9.0f * portraitScale) * font->mAlpha;
 					Vec oldPosition = (Vec)portrait->mMoveTranslate;
 					Vec oldScale    = (Vec)portrait->mMoveScale;
+					f32 scale       = (9.0f * portraitScale) * font->mAlpha;
 					f32 oldYaw      = portrait->mMoveRotate.y;
 					CJObj joint(portrait->mJObj);
 					f32 depth = 80.0f * portraitScale;
@@ -3818,7 +3808,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 #endif
 			if (font->mColor.a != 0) {
 #if defined(VERSION_PAL)
-				MsgRestoreScissor(0, 0, 640, 448);
+				SetScaledScissor(0, 0, 640, 448);
 #else
 				GXSetScissor(0, 0, 640, 448);
 #endif
