@@ -1608,7 +1608,7 @@ void CGame::Draw()
 	RenderSubwindow(this);
 	RenderMirrorTextures(this);
 	RenderFloorReflection(this);
-	if (GetStatusFlags(0x40) && !(GetPlayer()->mStatus & 0x200000)) {
+	if (GetStatusFlags(0x40) && !(GetPlayer()->mStatus.mFlags & 0x200000)) {
 		DrawObjectAlphaMask(this);
 	}
 	if (BeginSceneCamera()) {

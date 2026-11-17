@@ -206,7 +206,7 @@ s32 GetObjectPlacementParam(const XObj* object, s32 index)
 }
 
 // stops him where he stands
-// NONMATCHING (91 %): SetAnim goes through WiiPlayerVtable, retail's virtual call loads the slot into r12
+// NONMATCHING (99.6 %): retail loads the rotation target into f1-f3 the other way round
 void StopPlayerMotion(WiiPlayerState* chr)
 {
 	StopMoving(chr);
@@ -492,8 +492,8 @@ static inline void OpenPlayerEquipmentRings(WiiPlayerState* chr)
 	}
 }
 
-// NONMATCHING (97 %): the SetAnim call through WiiPlayerVtable as in StopPlayerMotion, and retail
-// starts the open flag at FALSE where this build starts it at TRUE
+// NONMATCHING (99 %): the rotation copy as in StopPlayerMotion, and retail starts the open flag at FALSE
+// where this build starts it at TRUE
 void SelectPlayerEquipmentRing(WiiPlayerState* chr, s32 selection)
 {
 	if (selection >= 0) {

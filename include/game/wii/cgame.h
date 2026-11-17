@@ -22,6 +22,7 @@
 #include "game/cstopwatch.h"
 #include "game/cmovie.h"
 #include "game/wii/xobjs.h"
+#include "game/wii/xobj.h"
 #include "game/wii/xchrmenu.h"
 #
 
@@ -695,33 +696,6 @@ struct WiiPlayerSuits {
 	                 // the suit objects beyond here are not reconstructed
 };
 
-struct WiiPlayerState;
-// the vtable slots of the unreconstructed Wii player class that the save manager reaches:
-// +0x70 takes the rotation, +0x90 a position Vec, +0x244 returns it
-struct WiiPlayerVtable {
-	void* _00[0x70 / 4];
-	void (*SetRotation)(WiiPlayerState* chr, f32 rotY);
-	void* _74[(0x90 - 0x74) / 4];
-	void (*SetPosition)(WiiPlayerState* chr, const Vec* pos);
-	void* _94[(0xAC - 0x94) / 4];
-	// the camera actions read the object's world matrix through here; retail feeds the
-	// result straight into PSMTXCopy (0x80160F7C / 0x80161160)
-	MtxP (*GetMtxPtr)(WiiPlayerState* chr);
-	void* _B0[(0x108 - 0xB0) / 4];
-	void (*SetAnim)(WiiPlayerState* chr, s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate); // _108
-	void* _10C[(0x1B0 - 0x10C) / 4];
-	// the camera actions reach the focus point here, the GameCube's XObj::GetCameraTarget
-	Vec (*GetCameraTarget)(WiiPlayerState* chr);
-	void* _1B4[(0x244 - 0x1B4) / 4];
-	const Vec* (*GetPosition)(WiiPlayerState* chr);
-	void* _248[(0x26C - 0x248) / 4];
-	// the ladder camera adds the object's facing to its orbit angle
-	f32 (*GetRotationY)(WiiPlayerState* chr);
-	void* _270[(0x28C - 0x270) / 4];
-	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
-	void (*vf28C)(WiiPlayerState* chr, s32 held);
-};
-
 // the cord wire object embedded in the player at +0xABC0, the GameCube's mPlug.mWire
 // (XObjWireEff). Its vtable shares the unreconstructed Wii object layout where +0x90 takes a
 // position Vec - the same slot the player's own vtable keeps it at
@@ -849,18 +823,11 @@ struct XObjChrLook {
 STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
 
 // one of the player's positioned sounds; ChangeGameStage stops both
-// the Wii player object: a different, larger class than the GameCube XObjChr. These are the members
-// the save manager reads and writes, at offsets verified against retail.
-struct WiiPlayerState {
-	WiiPlayerVtable* mVtable;
-	u8 _0004[0x30 - 0x04];
-	CVec mMoveTranslate; // _0030, CObj's
-	u8 _0040[0x60 - 0x40];
-	CVec mMoveRotate;  // _0060, CObj's
-	CVec mMoveTarget1; // _0070, where mMoveRotate turns to
-	u8 _0080[0x150 - 0x80];
-	u64 mStatus; // _0150, the object status flags, as XObj's
-	u8 _0158[0x9CC - 0x158];
+// the Wii player object: a different, larger class than the GameCube XObjChr, on the Wii XObj. These are the
+// members the player code reaches, at offsets verified against retail; its own virtuals start at _28C.
+// todo: it is the same class as xobj.h's XObjChr, whose pool still declares it with a padded tail
+struct WiiPlayerState : public XObj {
+	u8 _09A8[0x9CC - 0x9A8];
 	u32 mPlayerFlags; // _09CC, the player status word; bit 0x20000000 lets the eye camera open
 	u8 _09D0[0x9D4 - 0x9D0];
 	CObjVec mMotion; // _09D4, how he moves this frame
@@ -922,15 +889,8 @@ struct WiiPlayerState {
 	u8 _1C9A8[0x1C9B8 - 0x1C9A8];
 	f32 _1C9B8[3]; // _1C9B8, read by index; the movement code tests [2] above 0
 
-	const Vec* GetPosition() { return mVtable->GetPosition(this); }
-	MtxP GetMtxPtr() { return mVtable->GetMtxPtr(this); }
-	Vec GetCameraTarget() { return mVtable->GetCameraTarget(this); }
-	f32 GetRotationY() { return mVtable->GetRotationY(this); }
-	void vf28C(s32 held) { mVtable->vf28C(this, held); }
-	void SetAnim(s32 id, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate)
-	{
-		mVtable->SetAnim(this, id, force, frame, rate, blend, blendRate);
-	}
+	// the eye camera takes and releases the player's motion through here: 1 in StartEye, 0 in EndEye
+	virtual void vf28C(s32 held); // _28C, the first of XObjChr's own virtuals
 	// the attachment chibi robo works with: the pending pick while the ring is closing, else the
 	// current one, as AtcMenu::ConfirmSelection in atcmenuselection.cpp computes it
 	s32 GetAttachment() const { return mAttachmentRequest >= 0 ? mAttachmentRequest : mAttachment; }

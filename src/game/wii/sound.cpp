@@ -1514,9 +1514,8 @@ void AnimSfx::vf08()
  * @note Address: 0x8003C740
  * @note Size: 0x4EC
  */
-// NONMATCHING: the owner's GetPosition goes through WiiPlayerVtable, a struct of function pointers (lwz r4 /
-// lwz r12,0x244(r4)); retail makes a virtual call (r12 twice), and the actor and loop pointer swap r17/r18
-// behind it. The stop loops also wait for the typed mTracks (see SelectFootstepSound).
+// NONMATCHING: the actor and loop pointer swap r17/r18 behind the owner's GetPos call, and the stop loops
+// wait for the typed mTracks (see SelectFootstepSound).
 void AnimSfx::Update(s32 anim, f32 frame, u8 vol)
 {
 	s32 prev = mAnimId;
@@ -1560,7 +1559,7 @@ void AnimSfx::Update(s32 anim, f32 frame, u8 vol)
 
 	// the actors follow the object and fade towards their volume and pitch
 	for (s32 i = 0; i < 6; i++) {
-		mActors[i].Update(mOwner->GetPosition());
+		mActors[i].Update(mOwner->GetPos());
 	}
 }
 

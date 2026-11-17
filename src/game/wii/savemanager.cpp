@@ -475,7 +475,7 @@ extern "C" void CaptureWiiSaveSlot(CSaveFile* manager, bool newGame)
 	memcpy(manager->mSlot.mData.mPlayerRecord, gGame.GetPlayer()->mAttachments, sizeof(manager->mSlot.mData.mPlayerRecord));
 	manager->mSlot.mData.mSuit = gGame.GetPlayer()->mSuits.mCurrent;
 	// the Wii player class is not reconstructed; the +0x244 getter returns its position Vec
-	const Vec* pos = gGame.GetPlayer()->mVtable->GetPosition(gGame.GetPlayer());
+	const Vec* pos = gGame.GetPlayer()->GetPos();
 	CopyVec(manager->mSlot.mData.mPos, *pos);
 	manager->mSlot.mData.mRotY        = gGame.GetPlayer()->mMoveRotate.y;
 	manager->mSlot.mData.mSpecialSuit = gGame.GetPlayer()->mSuits.mSpecial;
@@ -603,8 +603,8 @@ extern "C" void RestoreSavedPlayerAndCamera(CSaveFile* manager)
 {
 	// the Wii player class is not reconstructed; the +0x90 slot takes the position
 	// Vec, +0x70 the rotation
-	gGame.GetPlayer()->mVtable->SetPosition(gGame.GetPlayer(), &manager->mSlot.mData.mPos);
-	gGame.GetPlayer()->mVtable->SetRotation(gGame.GetPlayer(), manager->mSlot.mData.mRotY);
+	gGame.GetPlayer()->SetPos(manager->mSlot.mData.mPos);
+	gGame.GetPlayer()->SetRotationY(manager->mSlot.mData.mRotY);
 	ResetPlayerHeadOffset(gGame.GetPlayer());
 	ResetPlayerPlug(gGame.GetPlayer());
 	CMotionControlCamera* motion = &gGame.mMotionControlCamera;

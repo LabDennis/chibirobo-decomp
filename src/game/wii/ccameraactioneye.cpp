@@ -193,7 +193,7 @@ void CCameraActionEye::Update(u32 step)
 			} else {
 				mLook.mTarget.x = mOverride.x;
 			}
-			player->mVtable->SetRotation(player, player->mMoveRotate.y - 0.034906585f * turn * step);
+			player->SetRotationY(player->mMoveRotate.y - 0.034906585f * turn * step);
 
 			zoom = pad.mSubStick.y;
 			if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
