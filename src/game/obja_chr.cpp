@@ -5018,7 +5018,6 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		return;
 	f32 originX, originY;
 	f32 slotY[8], slotX[8];
-	f32 scale;
 	// in first person the ring sits below the screen center
 	if (gGame.mStatus.mFlags & 0x100) {
 		originX = 320;
@@ -5031,6 +5030,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		menu->mChr->ProjectOffsetToScreen(&offset, &originX, &originY, 0, NULL);
 	}
 	f32 fade = menu->mFade;
+	f32 scale;
 	// menu type 3 puts the items in a row that scrolls sideways, type 0 on a square, the others on a circle
 	if (menu->mMenuType == 3) {
 		for (s32 i = 0; i < 8; ++i) {
@@ -5067,7 +5067,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		}
 		scale = 1.1f;
 	} else {
-		for (s32 i = 0, j = -1; i < 8; ++i, ++j) {
+		for (s32 j = -1, i = 0; i < 8; ++j, ++i) {
 			f32 angle = (PI / 4.f) * j;
 			slotY[i]  = -1.f * (f32)cos(angle);
 			slotX[i]  = (f32)sin(angle);
@@ -5166,7 +5166,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			y          = 10.f + ((originY + fade * (radius * (scale * slotY[i]))) - (.5f * width) * .5f);
 			x          = originX + fade * (radius * (scale * slotX[i]));
 		}
-		if (menu->mMenuType != 3 && menu->mFocus) {
+		if (menu->mFocus && menu->mMenuType != 3) {
 			if (menu->mMenuType == 0) {
 				y += 80.f * (slotY[i] * (f32)sin(PI * menu->mGlow));
 				x += 80.f * (slotX[i] * (f32)sin(PI * menu->mGlow));
@@ -5217,14 +5217,16 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			} else if (menu->mItems[i].mSlotOffset <= -3.02f) {
 				x     = x + span * (20.f * menu->mItems[i].mScale + 60.f);
 				alpha = Abs(3.f + menu->mItems[i].mSlotOffset);
+			} else {
+				alpha = 1.f;
 			}
 			menu->GetItemColor(i);
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 			u32 wrapColor = 0xffffff00 | (u32)((255.f * fade) * alpha);
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			DrawRingQuad(gGame.mGs, background, wrapColor, x, y, 0, width * size, height * size);
-			DrawRingQuad(gGame.mGs, tex, wrapColor, x, y, 0, width * size, height * size);
+			DrawRingQuad(gGame.mGs, background, wrapColor, x, y, 0, size * width, size * height);
+			DrawRingQuad(gGame.mGs, tex, wrapColor, x, y, 0, size * width, size * height);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		}
 	}
@@ -5270,9 +5272,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			if (HelpTextIsJapanese() && (IsSjisLead((u8)*p) & 1))
 				++p;
 		}
-		f32 phase = PI * highlight, halfPhase = (PI * .5f) * highlight;
 		f32 halfSpacing = 0.5f * spacing;
-		u32 opacity     = (u32)(255.f * highlight);
 		for (s32 k = 0; k < menu->mLabelLength; ++k) {
 			MenuHelpChar& ch = menu->mLabelChars[k];
 
@@ -5283,22 +5283,22 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			CTexObj glyph = *GetFontGlyphTexture(&font, ch.mText, &width);
 			f32 bob       = 2.f * (f32)sin(ch.mAngle0);
 			f32 spin      = (f32)sin(.7f * ch.mAngle1);
-			f32 glow      = (f32)sin(phase);
-			f32 wave      = (f32)sin(halfPhase);
+			f32 glow      = (f32)sin(PI * highlight);
+			f32 wave      = (f32)sin((PI * .5f) * highlight);
 			f32 cy        = baseline + bob;
 			f32 scale     = .2f * glow + wave;
+			f32 cx        = halfSpacing + (k * spacing + (x - (menu->mLabelLength * spacing) / 2.f));
 			f32 rotation  = -(DEG2RAD * (10.f * spin));
 
-			f32 cx = halfSpacing + (k * spacing + (x - (menu->mLabelLength * spacing) / 2.f));
-			DrawRingQuad(gGame.mGs, tile, 0xffffff00 | opacity, cx, cy, 1, tileSize * scale, tileSize * scale, rotation, -zero);
+			DrawRingQuad(gGame.mGs, tile, 0xffffff00 | (u32)(255.f * highlight), cx, cy, 1, tileSize * scale, tileSize * scale, rotation, -zero);
 			f32 glyphSize  = tileSize * (.8f * scale);
 			f32 glyphWidth = (width / 24.0f) * glyphSize;
 			f32 padding    = glyphSize - glyphWidth;
 
 			for (s32 j = 0; j < 4; ++j)
-				DrawRingQuad(gGame.mGs, glyph, opacity, padding / 2.0f + (cx + gEquipmentOutlineX[j]),
+				DrawRingQuad(gGame.mGs, glyph, (u32)(255.f * highlight), padding / 2.0f + (cx + gEquipmentOutlineX[j]),
 				             bob + (baseline + gEquipmentOutlineY[j]), 1, glyphSize, glyphSize, rotation, -zero);
-			DrawRingQuad(gGame.mGs, glyph, 0xfffffb00 | opacity, padding / 2.0f + cx, cy, 1, glyphSize, glyphSize, rotation, -zero);
+			DrawRingQuad(gGame.mGs, glyph, 0xfffffb00 | (u32)(255.f * highlight), padding / 2.0f + cx, cy, 1, glyphSize, glyphSize, rotation, -zero);
 		}
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
