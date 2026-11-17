@@ -511,16 +511,12 @@ inline void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out)
 extern "C" int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* pos,
                                             Vec* contact, Vec* push, int corners, f32 radius)
 {
-	CVec from(*fromPos);
-	from.y = 0.0f;
-	CVec to(*toPos);
-	to.y     = 0.0f;
+	CVec from(fromPos->x, 0.0f, fromPos->z);
+	CVec to(toPos->x, 0.0f, toPos->z);
 	f32 len  = (to - from).Length();
 	CVec dir = (to - from).Normalize();
-	CVec a(*wallA);
-	a.y = 0.0f;
-	CVec b(*wallB);
-	b.y = 0.0f;
+	CVec a(wallA->x, 0.0f, wallA->z);
+	CVec b(wallB->x, 0.0f, wallB->z);
 	CVec n;
 	GetOutwardPerpendicularToEdge(&from, &a, &b, &n);
 	PSVECNormalize(&n, &n);
