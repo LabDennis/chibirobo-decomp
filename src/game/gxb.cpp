@@ -4389,13 +4389,10 @@ extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 			if ((title->_14 -= (1.f / (.5f * FRAME_RATE)) * frames) < 0)
 				title->_14 = 0;
 		}
-		if (title->mMenuAlpha == 0) {
-			bool faded = gGame.mFade.mSpeed.r == 0 && gGame.mFade.mSpeed.g == 0 && gGame.mFade.mSpeed.b == 0 && gGame.mFade.mSpeed.a == 0;
-			if (faded) {
-				GXColor black                   = { 0, 0, 0, 0 };
-				title->mState                   = 22;
-				HSD_VIData.current.vi.clear_clr = black;
-			}
+		if (title->mMenuAlpha == 0 && FadeDone()) {
+			title->mState                   = 22;
+			GXColor black                   = { 0, 0, 0, 0 };
+			HSD_VIData.current.vi.clear_clr = black;
 		}
 		break;
 	}
