@@ -1355,7 +1355,7 @@ inline void MenuSettings::Open()
 	mValues[0] = (gGame.mStatus.mFlags & 0x0000080000000000ULL) ? TRUE : FALSE;
 	mValues[1] = TRUE;
 	mValues[2] = (gGame.mStatus.mFlags & 0x0000004000000000ULL) ? TRUE : FALSE;
-	mValues[3] = (gGame.GetPlayer()->mPlug.mCord.mFlags >> 3) & 1;
+	mValues[3] = (gGame.GetPlayer()->mPlug.mCord.mFlags & 8) ? TRUE : FALSE;
 	mValues[4] = gGame.GetPlayer()->mMenu.mAtc.mMenuType;
 }
 #endif
