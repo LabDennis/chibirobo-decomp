@@ -1135,10 +1135,9 @@ extern "C" const char* GetTitleAndSaveMenuText(s32 index)
 
 void MenuPC::Init()
 {
-	MenuPC* menu = this;
-	menu->CMenu::Init();
-	menu->mDepositBalance = 0;
-	menu->mDialogueNumber = 0;
+	CMenu::Init();
+	mDepositBalance = 0;
+	mDialogueNumber = 0;
 }
 
 // the shop's purchase history rows; the functions that fill them are in the file's second half
@@ -1332,19 +1331,18 @@ static inline void ResetPCText(MenuPC* menu, s32 step)
 
 void MenuPC::State0(u32)
 {
-	MenuPC* menu = this;
-	if (menu->mShopOnly) {
-		ResetPCText(menu, 3);
+	if (mShopOnly) {
+		ResetPCText(this, 3);
 	} else {
-		ResetPCText(menu, 1);
-		menu->mProgress       = 0.0f;
-		menu->mTargetProgress = 1.0f;
+		ResetPCText(this, 1);
+		mProgress       = 0.0f;
+		mTargetProgress = 1.0f;
 		switch (rand() % 2) {
 		case 0:
-			menu->mSpeed = 0.04f;
+			mSpeed = 0.04f;
 			break;
 		case 1:
-			menu->mSpeed = 0.08f;
+			mSpeed = 0.08f;
 			break;
 		}
 	}
@@ -1352,18 +1350,17 @@ void MenuPC::State0(u32)
 
 void MenuPC::State1(u32 frames)
 {
-	MenuPC* menu = this;
-	switch (menu->mPhase) {
+	switch (mPhase) {
 	case 0:
 		PlayWiiSoundEffect(&gGame.mSound, 0x35A, 1.0f, 0.0f);
-		menu->mPhase++;
+		mPhase++;
 		break;
 	case 1:
 		break;
 	}
-	ApproachHudValue(&menu->mProgress, &menu->mTargetProgress, menu->mSpeed * frames);
-	if (menu->mProgress >= 1.0f)
-		ResetPCText(menu, 2);
+	ApproachHudValue(&mProgress, &mTargetProgress, mSpeed * frames);
+	if (mProgress >= 1.0f)
+		ResetPCText(this, 2);
 }
 
 static inline s16 MenuHistoryValue(int i)
@@ -1383,37 +1380,36 @@ static inline void RestorePCHistory(MenuPC* menu)
 
 void MenuPC::State2(u32)
 {
-	MenuPC* menu = this;
 	CPad pad(0);
 	if (gWiiPointer.Check(PadActStickUp)) {
-		menu->mChoice--;
-		if (menu->mChoice < 0)
-			menu->mChoice = menu->mChoiceCount - 1;
+		mChoice--;
+		if (mChoice < 0)
+			mChoice = mChoiceCount - 1;
 		PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 	} else if (gWiiPointer.Check(PadActStickDown)) {
-		menu->mChoice++;
-		if (menu->mChoice > menu->mChoiceCount - 1)
-			menu->mChoice = 0;
+		mChoice++;
+		if (mChoice > mChoiceCount - 1)
+			mChoice = 0;
 		PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
 	} else if (gWiiPointer.Check(PadActConfirm)) {
-		s32 step = menu->mChoices[menu->mChoice];
+		s32 step = mChoices[mChoice];
 		// the catalog (mode 7) only buzzes while it has nothing in it
 		if (step == 7) {
-			if (menu->mCanSelect) {
-				ResetPCText(menu, 7);
+			if (mCanSelect) {
+				ResetPCText(this, 7);
 				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
 			} else {
 				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
 			}
 		} else if (step >= 0) {
-			ResetPCText(menu, step);
+			ResetPCText(this, step);
 			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
 		}
 	} else if (gWiiPointer.Check(PadActCancel)) {
 		// B: shrink the frame, mode 11 closes the pc once it is shut
-		ResetPCText(menu, 11);
-		menu->mTargetFrameHeight = 0.0f;
-		RestorePCHistory(menu);
+		ResetPCText(this, 11);
+		mTargetFrameHeight = 0.0f;
+		RestorePCHistory(this);
 	}
 }
 
