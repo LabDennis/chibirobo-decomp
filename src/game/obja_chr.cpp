@@ -4899,21 +4899,20 @@ extern "C" s32 GetPlayerGroundType(XObjChr* chr)
 		XObj* owner = chr->mLadder.mTarget;
 		type        = owner->mFloors->mType;
 	} else if (chr->mFloorContacts[0].objectIndex >= 0) {
-		XObj* owner = gGame.mXObjs.mObjects[chr->mFloorContacts[0].objectIndex];
+		XObj* owner = gGame.GetObject(chr->mFloorContacts[0].objectIndex);
 		f32 best    = NAN;
 		for (s32 i = 0; owner->mFloors[i].mId != -1; ++i) {
 			if ((owner->mFloorMasks[0] & (1U << i)) && (__fpclassifyf(best) == FP_NAN || owner->mFloorHeights[i] > best)) {
-				f32 height = owner->mFloorHeights[i];
-				if (height <= 1.0f + chr->mMoveTranslate.y) {
-					best = height;
+				if (owner->mFloorHeights[i] <= 1.0f + chr->mMoveTranslate.y) {
+					best = owner->mFloorHeights[i];
 					type = owner->mFloors[i].mType;
 				}
 			}
 		}
 	}
 	type = (u8)type;
-	if (type == 0 && chr->mFloorHit.mTriangle >= 0 && (s32)chr->mFloorHit.mTrigon >= 0) {
-		type = GetMapTriangleFloorType((XObjMap*)gGame.mXObjs.mPools[3].mObjects, (s32)chr->mFloorHit.mTrigon, chr->mFloorHit.mTriangle);
+	if (type == 0 && chr->mFloorHit.mTriangle >= 0 && chr->mFloorHit.mTrigon >= 0) {
+		type = GetMapTriangleFloorType((XObjMap*)gGame.mXObjs.mPools[3].mObjects, chr->mFloorHit.mTrigon, chr->mFloorHit.mTriangle);
 	}
 	if (type >= 13)
 		type = 0;
