@@ -280,6 +280,15 @@ public:
 		mCameraFlags = mode;
 		SetInterest(interest);
 	}
+	// the roll goes through SetAngle so subclasses see it; the copy is this inline's local, which is why
+	// CCameraActionReset::PreviousUpdate's retail frame puts it below the caller's temporaries
+	void SetAngleZ(f32 z, u32 mode)
+	{
+		mCameraFlags = mode;
+		Vec angle    = mAngle;
+		angle.z      = z;
+		SetAngle(angle);
+	}
 };
 
 // base of the area, map and reset actions. fields from _40 on differ per subclass
@@ -374,7 +383,7 @@ public:
 	virtual u32 GetInterestMode();           // _5C
 	virtual XObj* GetTarget();               // _60
 
-	void SetEye_Interp(s32 mode, const Vec& eye, f32 time)
+	void SetEye_Interp(s32 mode, Vec eye, f32 time)
 	{
 		if (mode == 3 || time <= 0.0f) {
 			mEyeInterp = NULL;
