@@ -592,13 +592,12 @@ game/objb_act.cpp:
 	.text       start:0x800C661C end:0x800D72C4
 
 game/objb_attach.cpp:
-	.text       start:0x800D72C4 end:0x800D8D30
-
-game/xobjradarinit.cpp:
-	.text       start:0x800D8D30 end:0x800D8D80
-
-game/xobjpopper.cpp:
-	.text       start:0x800D8D80 end:0x800D9AD4
+	.text       start:0x800D72C4 end:0x800D9AD4
+	.rodata     start:0x8020B470 end:0x8020B5A8
+	.data       start:0x80227B68 end:0x80228320
+	.sdata      start:0x80634A10 end:0x80634A58
+	.sdata2     start:0x80637B20 end:0x80637B80
+	.sbss2      start:0x8063A4E8 end:0x8063A4F8
 
 game/objb_plug.cpp:
 	.text       start:0x800D9AD4 end:0x800DB160
