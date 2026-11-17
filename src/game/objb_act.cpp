@@ -404,8 +404,7 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			act->mPlugTarget = NULL;
 		}
 		break;
-	case 16: {
-		XObjPlug* plug = (XObjPlug*)act->mTarget;
+	case 16:
 		if (anim != 0xbf) {
 			HeldAnim(act->mOwner, 0xbf, FALSE, 1);
 			if (act->mPlugTarget)
@@ -417,18 +416,18 @@ void UpdateLiftActionAnimation(XActLift* act, s32 anim, HSD_AObj* aobj, u32 fram
 			act->mPlugTarget = NULL;
 			ResetPlayerPlugState((XObjPlug*)act->mTarget, TRUE);
 		} else if (frame > 142.0f) {
-			plug->mConnection = 0;
+			((XObjPlug*)act->mTarget)->mConnection = 0;
 		} else if (frame > 85.0f) {
-			if (plug->mConnection != -1) {
-				f32 remaining = act->mOwner->mParams.mBattery - 10.0f;
+			if (((XObjPlug*)act->mTarget)->mConnection != -1) {
+				Params* params = &act->mOwner->mParams;
+				f32 remaining  = params->mBattery - 10.0f;
 				if (remaining < 0)
 					remaining = 0;
-				SetClampedPlayerBattery(&act->mOwner->mParams, remaining);
+				SetClampedPlayerBattery(params, remaining);
 			}
 			((XObjPlug*)act->mTarget)->mConnection = -1;
 		}
 		break;
-	}
 	case 17:
 		ReleasePlugTarget(act, anim, aobj, 0xbd);
 		break;
