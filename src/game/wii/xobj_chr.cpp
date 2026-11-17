@@ -501,8 +501,8 @@ static inline void OpenPlayerEquipmentRings(WiiPlayerState* chr)
 	}
 }
 
-// NONMATCHING (99 %): the rotation copy as in StopPlayerMotion, and retail starts the open flag at FALSE
-// where this build starts it at TRUE
+// NONMATCHING (99 %): the rotation copy as in StopPlayerMotion, and both start the open flag at TRUE but
+// retail clears it through a cntlzw/rlwnm. value of mDrs.mOpen > 0 where this build branches on the compare
 void SelectPlayerEquipmentRing(WiiPlayerState* chr, s32 selection)
 {
 	if (selection >= 0) {
