@@ -201,7 +201,8 @@ static inline void UpdatePointer(CPadAct& act, const CPadOne& pad, u32 frames)
 			act.mPointer.x = x;
 			act.mPointer.y = y;
 			static f32 lastY;
-			if (fabs(y - lastY) > 40.0f) {
+			// a float fabs (nw4r::math::FAbs's, as in fbeffect.cpp): retail compares with a float 40, no frsp
+			if (__fabsf(y - lastY) > 40.0f) {
 				lastY = y;
 			}
 			act.mStablePointer.x = x;
