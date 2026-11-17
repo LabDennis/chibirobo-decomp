@@ -580,7 +580,6 @@ void CCameraActionMap::Update(u32 step)
 			}
 			if (_8C.y == _8C.mTarget.y && mNearestEyeEntry != NULL && mTurnBlocked == 0) {
 				StartMapCameraTurnInterpolation(this, 0);
-				goto checkCollision;
 			}
 		}
 	checkCollision:
