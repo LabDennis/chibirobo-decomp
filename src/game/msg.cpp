@@ -17,6 +17,7 @@
 #include <types.h>
 #include "game/cgame.h"
 #include "game/cgameutil.h"
+#include "game/cjobjset.h"
 
 extern "C" {
 #include <dolphin/os.h>
@@ -3576,8 +3577,8 @@ struct MsgWindowSlice {
  * @note Address: 0x80082970
  * @note Size: 0x2308
  */
-// NONMATCHING: our frame has one int to float slot more (0x10); japan's retail calls the CJObj constructor out of
-// line, its Draw has run out of inline budget there and ours has not
+// NONMATCHING: our frame has one int to float slot more (0x10) and the window slices schedule differently; the
+// unit's .rodata puts the fan template 12 bytes earlier than retail
 extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 {
 	CMsgFont* font = (CMsgFont*)p;
@@ -3623,10 +3624,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		f32 bottom       = expandY + (8.0f + (winY + winHeight));
 		f32 windowAlpha  = font->mColor.a != 0 ? font->mAlpha : 0.0f;
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-		f32 outerRight  = 9.0f + (8.0f + right);
-		f32 outerBottom = 9.0f + (8.0f + bottom);
-		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, outerRight, top - 8.0f, -1.0f, 0xFF000000, outerRight,
-		                 outerBottom, -1.0f, 0xFF000000, left - 8.0f, outerBottom, -1.0f, 0xFF000000);
+		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, right + 8.0f + 9.0f, top - 8.0f, -1.0f, 0xFF000000,
+		                 right + 8.0f + 9.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000);
 
 		Vec fan[10] = { (Vec) { winX, winY, 0.0f },
 			            (Vec) { 1.0f + left, 8.0f + (1.0f + top), 0.0f },
@@ -3720,8 +3719,8 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 		}
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
-		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, outerRight, top - 8.0f, -1.0f, 0xFF000000, outerRight,
-		                 outerBottom, -1.0f, 0xFF000000, left - 8.0f, outerBottom, -1.0f, 0xFF000000);
+		DrawGsVertexQuad(&gGame.mGs, left - 8.0f, top - 8.0f, -1.0f, 0xFF000000, right + 8.0f + 9.0f, top - 8.0f, -1.0f, 0xFF000000,
+		                 right + 8.0f + 9.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000, left - 8.0f, bottom + 8.0f + 9.0f, -1.0f, 0xFF000000);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 
 		if (font->mMode >= 0 && font->mMode < 1) {
@@ -3767,15 +3766,15 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 					f32 oldYaw      = portrait->mMoveRotate.y;
 					CJObj joint(portrait->mJObj);
 					f32 depth = 80.0f * portraitScale;
-					SetTranslate__5CJObjFfffl(&joint, portraitX, portraitY, depth, 1);
-					SetScale__5CJObjFfffl(&joint, scale, -scale, scale, 1);
-					SetRotationY__5CJObjFfl(&joint, 0.0f, 1);
+					joint.SetTranslate(portraitX, portraitY, depth, 1);
+					joint.SetScale(scale, -scale, scale, 1);
+					joint.SetRotationY(0.0f, 1);
 					HSD_JObjSetupMatrix(joint.mJObj);
 					s32 path[6] = { 0, 3, 0, 0, 0, 0 };
 					f32 height  = CJObj_GetJointWorldPositionByPath((CJObj*)portrait, 6, path).y;
-					SetTranslate__5CJObjFfffl(&joint, portraitX, portraitY + ((portraitY - height) - 12.0f), depth, 1);
-					SetScale__5CJObjFfffl(&joint, scale, -scale, scale, 1);
-					SetRotationY__5CJObjFfl(&joint, 0.0f, 1);
+					joint.SetTranslate(portraitX, portraitY + ((portraitY - height) - 12.0f), depth, 1);
+					joint.SetScale(scale, -scale, scale, 1);
+					joint.SetRotationY(0.0f, 1);
 					HSD_JObjSetFlags(portrait->mJObj, 8);
 					u32 oldColor                                      = *(u32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x168));
 					s32 oldMode                                       = *(s32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x164));
@@ -3789,7 +3788,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 				SetTranslate__5CJObjFRC3Vecl(&joint, oldPosition, 1);
 				SetScale__5CJObjFRC3Vecl(&joint, oldScale, 1);
 #endif
-					SetRotationY__5CJObjFfl(&joint, oldYaw, 1);
+					joint.SetRotationY(oldYaw, 1);
 					HSD_JObjClearFlags(portrait->mJObj, 8);
 					*(u32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x168)) = oldColor;
 					*(s32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x164)) = oldMode;
