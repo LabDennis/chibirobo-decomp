@@ -913,7 +913,7 @@ extern "C" void RemoveJointTreeDisplayObjects(HSD_JObj* jobj)
 {
 	RemoveJointDisplayObjectsJP(jobj);
 	if (!(jobj->flags & INSTANCE)) {
-		for (HSD_JObj* child = jobj->child; child != NULL; child = child->next) {
+		for (HSD_JObj* child = jobj->child; child; child = child->next) {
 			RemoveJointTreeDisplayObjects(child);
 		}
 	}
@@ -1902,8 +1902,10 @@ int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec
 	Vec normal;
 	CalcTriangleNormal(a, b, c, &normal);
 
-	Vec top    = { pos->x, 1.0f, pos->z };
-	Vec bottom = { pos->x, -1.0f, pos->z };
+	f32 x      = pos->x;
+	f32 z      = pos->z;
+	Vec top    = { x, 1.0f, z };
+	Vec bottom = { x, -1.0f, z };
 	f32 t      = LinePlane(&top, &bottom, a, &normal, out);
 
 	if (Abs(t) <= 0.00001f || Abs(1.0f - t) <= 0.00001f) {
