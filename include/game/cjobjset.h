@@ -20,6 +20,37 @@ static inline Vec MakeJObjVec(const Vec& zero, f32 x, f32 y, f32 z)
 	return v;
 }
 
+// the setters stand in the header's original order: Translate, Scale, Rotation. The compiler emits
+// the weak copies in the order it meets the definitions, and only this order gives the JP living
+// REL its retail layout byte for byte; no function in any edition changes score with it
+inline void CJObj::SetTranslate(f32 x, f32 y, f32 z, s32 force)
+{
+	if (force == 0) {
+		static Vec zero;
+		if (!(mTranslate != MakeJObjVec(zero, x, y, z))) {
+			return;
+		}
+	}
+	mTranslate.x = x;
+	mTranslate.y = y;
+	mTranslate.z = z;
+	HSD_JObjSetTranslate(mJObj, &mTranslate);
+}
+
+inline void CJObj::SetScale(f32 x, f32 y, f32 z, s32 force)
+{
+	if (force == 0) {
+		static Vec zero;
+		if (!(mScale != MakeJObjVec(zero, x, y, z))) {
+			return;
+		}
+	}
+	mScale.x = x;
+	mScale.y = y;
+	mScale.z = z;
+	HSD_JObjSetScale(mJObj, &mScale);
+}
+
 inline void CJObj::SetRotation(f32 x, f32 y, f32 z, s32 force)
 {
 	if (force == 0) {
@@ -41,34 +72,6 @@ inline void CJObj::SetRotation(f32 x, f32 y, f32 z, s32 force)
 		// a CVec passed off as a quaternion, w ends up being its vtable pointer
 		HSD_JObjSetRotation(mJObj, (Quaternion*)&mRotate);
 	}
-}
-
-inline void CJObj::SetScale(f32 x, f32 y, f32 z, s32 force)
-{
-	if (force == 0) {
-		static Vec zero;
-		if (!(mScale != MakeJObjVec(zero, x, y, z))) {
-			return;
-		}
-	}
-	mScale.x = x;
-	mScale.y = y;
-	mScale.z = z;
-	HSD_JObjSetScale(mJObj, &mScale);
-}
-
-inline void CJObj::SetTranslate(f32 x, f32 y, f32 z, s32 force)
-{
-	if (force == 0) {
-		static Vec zero;
-		if (!(mTranslate != MakeJObjVec(zero, x, y, z))) {
-			return;
-		}
-	}
-	mTranslate.x = x;
-	mTranslate.y = y;
-	mTranslate.z = z;
-	HSD_JObjSetTranslate(mJObj, &mTranslate);
 }
 
 #pragma pop

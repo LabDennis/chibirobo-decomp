@@ -24,6 +24,8 @@ public:
 	virtual ~CFont() { } // _08
 
 	void Init(const char* resPath, BOOL singleByte);
+	// reads the font file Init named; retail passes the font though only globals are touched. The name is ours
+	BOOL LoadResource();
 
 private:
 	// picks the built-in single byte font or the console ROM font for the

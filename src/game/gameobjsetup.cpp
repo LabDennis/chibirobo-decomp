@@ -253,7 +253,7 @@ static inline bool FadeStopped(const CScrnColor& fade)
 }
 
 // NONMATCHING: registers in the precache loop and the clock sum, and retail narrows the answer to a byte
-bool CGame::BeforeUpdate()
+BOOL CGame::BeforeUpdate()
 {
 	// Ready stages fall through. Pending reads resume at the same stage next frame.
 	switch (mLoadStep) {
@@ -403,7 +403,7 @@ bool CGame::BeforeUpdate()
 		StartScreenFade(&mFade, 0, 0, 0, 255, 0, 0, 0, 0, 0.5f);
 		StartOrQueueEventScript(&mEvt, GetStageEntryScript(), 0, -1, -1);
 		u32 minutes = GetStageEntryTimeComponent(1), hours = GetStageEntryTimeComponent(0);
-		_FF204 = (s32)(hours * 216000 + (minutes * 3600 + GetStageEntryTimeComponent(2) * 60)); // the clock, in frames
+		_FF204 = (s32)(hours * 216000 + minutes * 3600 + GetStageEntryTimeComponent(2) * 60); // the clock, in frames
 		mStatus.mFlags |= 1;
 		++mLoadStep;
 	}

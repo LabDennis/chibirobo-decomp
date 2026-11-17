@@ -238,10 +238,12 @@ game/wii/menu.cpp:
 	.sdata2 start:0x805A2F70 end:0x805A3350
 
 game/wii/infoscrn.cpp:
-	.text start:0x800870E8 end:0x80092244
+	.text start:0x800870E8 end:0x80092308
+	.ctors start:0x802C4594 end:0x802C4598
 	.rodata start:0x802C6AB8 end:0x802C6CFC
 	.sdata start:0x805A0EA8 end:0x805A0EC4
 	.sdata2 start:0x805A3350 end:0x805A34A8
+	.bss start:0x8044B7A8 end:0x8044C170
 
 game/wii/homemenu.cpp:
 	extab start:0x8000A6D0 end:0x8000A708
@@ -252,6 +254,15 @@ game/wii/homemenu.cpp:
 	.sdata start:0x805A0F50 end:0x805A0F80
 	.sbss start:0x805A1C38 end:0x805A1C40
 	.sdata2 start:0x805A4470 end:0x805A44D0
+
+game/wii/evt.cpp:
+	.text start:0x8009453C end:0x800A18B8
+
+game/wii/xaction.cpp:
+	.text start:0x800C6428 end:0x800C6584
+
+game/wii/xobj_chr.cpp:
+	.text start:0x800C9E84 end:0x800E9D30
 
 game/ringmenupointer.cpp:
 	extab start:0x8000C4EC end:0x8000C4F4
@@ -1049,9 +1060,9 @@ game/wii/cfont.cpp:
 	.sdata2 start:0x805A7A28 end:0x805A7A48
 
 game/wii/ut.cpp:
-	extab start:0x8000FFCC end:0x800101A4
-	extabindex start:0x80016A3C end:0x80016ACC
-	.text start:0x802A5418 end:0x802A7478
+	extab start:0x8000FFC4 end:0x800101A4
+	extabindex start:0x80016A30 end:0x80016ACC
+	.text start:0x802A5358 end:0x802A7478
 	.rodata start:0x802E4EB0 end:0x802E50C8
 	.sdata start:0x805A19D0 end:0x805A19D8
 	.sdata2 start:0x805A7888 end:0x805A78C0
@@ -1062,6 +1073,15 @@ game/wii/mem.cpp:
 	.rodata start:0x802E50C8 end:0x802E5150
 	.bss start:0x80576B88 end:0x8059ABA8
 	.sbss start:0x805A2858 end:0x805A2870
+
+game/wii/cobjvec.cpp:
+	.text start:0x802A7FB4 end:0x802A80FC
+	.sdata2 start:0x805A78C0 end:0x805A78C8
+
+game/wii/ctrigon.cpp:
+	.text start:0x802BA4F4 end:0x802BD294
+	.data start:0x80356090 end:0x80356268
+	.sdata2 start:0x805A7AA8 end:0x805A7AD0
 
 game/wii/cobj.cpp:
 	extab start:0x80010AD8 end:0x80010CA8
@@ -1103,12 +1123,15 @@ game/wii/nandfile.cpp:
 
 game/cinterpolationeaseout.cpp:
 	.text start:0x80151D1C end:0x80151FCC
+	.sdata2 start:0x805A5CC8 end:0x805A5CD8
 
 game/wii/ccameraactionareaexm.cpp:
 	.text start:0x80031FC4 end:0x80032038
 
 game/ccameraactionareaexinit.cpp:
 	.text start:0x801542A0 end:0x80154310
+	.ctors start:0x802C45C0 end:0x802C45C4
+	.bss start:0x8045F468 end:0x804630A8
 
 game/ccameraactionareaexdtor.cpp:
 	.text start:0x801541F8 end:0x801542A0
@@ -1117,7 +1140,7 @@ game/ccameraactionareaexdtor.cpp:
 	.sdata start:0x805A1278 end:0x805A1280
 
 game/wii/ccameraactionmap2.cpp:
-	.text start:0x80154310 end:0x80154320
+	.text start:0x80154310 end:0x80160D30
 
 game/ccameraactionareaex.cpp:
 	.text start:0x80151FCC end:0x801541F8
@@ -1191,12 +1214,6 @@ game/wii/fbmirror.cpp:
 
 game/wii/gamedraw.cpp:
 	.text start:0x80024AE8 end:0x8002CFB8
-
-game/infopointdtor.cpp:
-	.text start:0x80092244 end:0x80092284
-
-game/infopointinit.cpp:
-	.text start:0x80092284 end:0x80092308
 
 game/atcmenudtor.cpp:
 	.text start:0x800C0F98 end:0x800C1018

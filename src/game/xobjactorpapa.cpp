@@ -252,7 +252,8 @@ void XObjActorPapa::UpdateAfterAnim(u32 frames)
 	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj joint;
 	XObjChr* player = gGame.GetPlayer();
-	if (mHideKinds.mFlags & 0x3f) {
+	if (mHideKinds.Check(1) || mHideKinds.Check(2) || mHideKinds.Check(4) || mHideKinds.Check(8) || mHideKinds.Check(16)
+	    || mHideKinds.Check(32)) {
 		CVec position;
 		s32 kind = -1;
 		if (mHideKinds.Check(1)) {
@@ -387,8 +388,7 @@ void XObjActorPapa::UpdateAfterAnim(u32 frames)
 		CVec pos = joint.GetPos();
 		pos.y += 4;
 		player->SetPos(pos, 0);
-		s32 face[4] = { 0, 2, 0, 0 };
-		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, face, 4));
+		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, (s32[4]) { 0, 2, 0, 0 }, 4));
 		pos = joint.GetPos();
 		player->SetRotateY(atan2(pos.x - player->mMoveTranslate.x, pos.z - player->mMoveTranslate.z), 0);
 	}

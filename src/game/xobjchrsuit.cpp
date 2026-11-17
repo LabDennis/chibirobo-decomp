@@ -27,19 +27,17 @@ extern "C" void UpdatePlayerSuitChange(XObjChr* player)
 		gPlayerSuitChangeEffect.active = TRUE;
 		for (s32 i = 0; i < 2; ++i) {
 			for (s32 j = 0; j < 10; ++j) {
-				SuitParticle& particle = gPlayerSuitChangeEffect.rings[i][j];
-				Vec position           = { 0.0f, 0.5f, 0.0f };
-				particle.position      = position;
-				particle.scale         = 0.0f;
-				u32 green              = (u32)(rand() % 156 + 100) << 16;
-				u32 redGreen           = green | ((u32)(rand() % 156 + 100) << 24);
-				particle.color         = redGreen | ((u32)(rand() % 156 + 100) << 8);
-				particle.angle         = 0.0f;
+				Vec position                                 = { 0.0f, 0.5f, 0.0f };
+				gPlayerSuitChangeEffect.rings[i][j].position = position;
+				gPlayerSuitChangeEffect.rings[i][j].scale    = 0.0f;
+				gPlayerSuitChangeEffect.rings[i][j].color
+				    = ((u32)(rand() % 156 + 100) << 24) | ((u32)(rand() % 156 + 100) << 16) | ((u32)(rand() % 156 + 100) << 8);
+				gPlayerSuitChangeEffect.rings[i][j].angle = 0.0f;
 			}
 		}
 		gPlayerSuitChangeEffect.rings[0][0].scale = 1.0f;
-		gPlayerSuitChangeEffect.rings[1][0].scale = 1.0f;
 		gPlayerSuitChangeEffect.rings[0][0].angle = DEG2RAD * (rand() % 360);
+		gPlayerSuitChangeEffect.rings[1][0].scale = 1.0f;
 		gPlayerSuitChangeEffect.rings[1][0].angle = PI + gPlayerSuitChangeEffect.rings[0][0].angle;
 		PlayGameSound(&gGame.mSound, 0x45, 255);
 		++player->mSuits.mChangeStep;

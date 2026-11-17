@@ -117,8 +117,8 @@ struct OnOffWork {
 	CStatus mStatus; // _88, CStatus; bit 1 is what CmdCheckOnOffFlag reports, cleared by CmdResetOnOff
 };
 
-static SavedObjFlagList savedObjFlags;
 static OnOffWork onOffWork;
+static SavedObjFlagList savedObjFlags;
 
 extern "C" {
 s32 CmdSetJunkUnkoFlag(s32 cmd, s32 count, s32* args);

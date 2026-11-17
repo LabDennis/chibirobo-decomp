@@ -4550,6 +4550,9 @@ static const int PCBlueNumberIcon = 153, PCGoldNumberIcon = 152, PCNumberDigits 
 extern "C" void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value)
 {
 	CTexObj tex;
+#if defined(VERSION_JP)
+	f32 opacity;
+#endif
 	if (icon) {
 		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCBlueNumberIcon], 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
@@ -4565,8 +4568,8 @@ extern "C" void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, 
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
 #if defined(VERSION_JP)
-	alpha = 255.0f * alpha;
-	u8 a  = alpha;
+	opacity = 255.0f * alpha;
+	u8 a    = opacity;
 #else
 	u8 a = 255.0f * alpha;
 #endif
@@ -4595,7 +4598,7 @@ extern "C" void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, 
 		}
 	}
 #if defined(VERSION_JP)
-	DrawPCNumberSuffix(tex, 146, x, y, scale, alpha);
+	DrawPCNumberSuffix(tex, 146, x, y, scale, opacity);
 #endif
 }
 
@@ -4608,6 +4611,9 @@ extern "C" void DrawPCBlueNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, 
 extern "C" void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, f32 value)
 {
 	CTexObj tex;
+#if defined(VERSION_JP)
+	f32 opacity;
+#endif
 	if (icon) {
 		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCGoldNumberIcon], 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
@@ -4623,8 +4629,8 @@ extern "C" void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, 
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
 #if defined(VERSION_JP)
-	alpha = 255.0f * alpha;
-	u8 a  = alpha;
+	opacity = 255.0f * alpha;
+	u8 a    = opacity;
 #else
 	u8 a = 255.0f * alpha;
 #endif
@@ -4653,7 +4659,7 @@ extern "C" void DrawPCGoldNumber(bool icon, f32 x, f32 y, f32 alpha, f32 scale, 
 		}
 	}
 #if defined(VERSION_JP)
-	DrawPCNumberSuffix(tex, 142, x, y, scale, alpha);
+	DrawPCNumberSuffix(tex, 142, x, y, scale, opacity);
 #endif
 }
 

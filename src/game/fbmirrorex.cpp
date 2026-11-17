@@ -57,16 +57,15 @@ extern "C" void DrawScanModePrompt()
 {
 	if (!gVideoModePrompt.step)
 		return;
-	CGs& gs = gGame.mGs;
-	SetGsChannelEnabled(&gs, 0, 0);
-	SetGsColorUpdate(gs.mCurRenderMode, TRUE);
-	SetGsAlphaUpdate(gs.mCurRenderMode, FALSE);
-	SetGsAlphaCompare(gs.mCurRenderMode, 4, 0, 0, 3, 255);
-	SetGsBlendMode(gs.mCurRenderMode, 1, 4, 5, 15);
-	SetGsDepthMode(gs.mCurRenderMode, 0, 7, 0);
-	SetGsTevMode(gs.mCurTevStage, 0);
-	u8 alpha  = (u8)(s32)(255.0f * gVideoModePrompt.alpha);
-	u32 color = 0xffffff00 | alpha; // white text at the prompt's alpha
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	SetGsColorUpdate(gGame.mGs.mCurRenderMode, TRUE);
+	SetGsAlphaUpdate(gGame.mGs.mCurRenderMode, FALSE);
+	SetGsAlphaCompare(gGame.mGs.mCurRenderMode, 4, 0, 0, 3, 255);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 7, 0);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+	s32 alpha = 255.0f * gVideoModePrompt.alpha;
+	u32 color = 0xffffff00 | (u8)alpha; // white text at the prompt's alpha
 	switch (gVideoModePrompt.step) {
 	case 1: // the question and its fade-out
 	case 10: {
@@ -103,7 +102,7 @@ extern "C" void DrawScanModePrompt()
 		const u8 yesAlpha   = selected == 0 ? alpha : 0;
 		const u8 noAlpha    = selected == 1 ? alpha : 0;
 		const char* choices = FormatToStaticBuffer(format, yes, yesAlpha, "\\B00000000", no, noAlpha, "\\B00000000");
-		f32 width           = MeasureGameTextWidth(&gs, choices, TRUE, 24.0f);
+		f32 width           = MeasureGameTextWidth(&gGame.mGs, choices, TRUE, 24.0f);
 
 		const f32 y = 24.0f * (count - 1) + (224.0f - (24.0f * count) * 0.5f);
 		DrawGsProportionalTextFormat(&gGame.mGs, color, choices, 320.0f - width * 0.5f, y, 0.0f, 24.0f, 24.0f, yes, no);
@@ -118,7 +117,7 @@ extern "C" void DrawScanModePrompt()
 		break;
 	}
 	}
-	SetGsTevMode(gs.mCurTevStage, 4);
+	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
 // the pad as the progressive question reads it

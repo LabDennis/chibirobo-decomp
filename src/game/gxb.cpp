@@ -192,7 +192,7 @@ struct RoboeyesValue {
 	}
 };
 
-static inline void DrawRoboeyesLens(CGs* gs, Vec* points, f32 x, f32 y, f32 rx, f32 ry, u32 color, const f32* angles, bool right)
+static inline void DrawRoboeyesLens(CGs* gs, Vec* points, f32 x, f32 y, f32 rx, f32 ry, u32 color, u32 alpha, const f32* angles, bool right)
 {
 	for (s32 i = 0; i < 65; ++i) {
 		f32 a  = .09817477f * i;
@@ -211,10 +211,11 @@ static inline void DrawRoboeyesLens(CGs* gs, Vec* points, f32 x, f32 y, f32 rx, 
 			DrawGsLineSegment(gs, NULL, sx * rx + x, cy * ry + y, 0, trailColor, sx * (rx - 10.0f) + x, cy * (ry - 10.0f) + y, 0,
 			                  trailColor);
 		}
-		trailColor = (color & ~0xffU) | (u8)(s32)(0.5f * ((f32)(u8)color * (10 - i) / 10.0f));
+		trailColor = (color & ~0xffU) | (u8)(s32)(0.5f * ((f32)alpha * (10 - i) / 10.0f));
 	}
 }
 
+// NONMATCHING: retail keeps &gGame.mTpl.mTex in a register across the bracket loop
 void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)
@@ -225,7 +226,8 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	SetGsBlendMode(gs->mCurRenderMode, 1, 4, 5, 15);
 	SetGsDepthMode(gs->mCurRenderMode, 1, 7, 1);
 	SetGsDepthMode(gs->mCurRenderMode, 1, 7, 0);
-	static f32 scanline;
+	u32 alpha           = color & 0xff;
+	static f32 scanline = 0.0f;
 	if (!gGame.mMenu.mActive) {
 		if (++scanline >= 4.0f)
 			scanline = 0;
@@ -233,7 +235,7 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	SetGsBlendMode(gs->mCurRenderMode, 3, 4, 5, 15);
 	SetGsLineWidth(gs->mCurRenderMode, 12, 5);
 	if (mWidth >= mTargetWidth) {
-		u32 tint = 0x30303000 | (u8)color;
+		u32 tint = 0x30303000 | alpha;
 		for (s32 i = 0; i < 448; i += 4.0f) {
 			f32 line = i + scanline;
 			DrawGsLineSegment(gs, NULL, 0, line, 0, tint, 640, line, 0, tint);
@@ -248,7 +250,7 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	trail[0]                        = mRotation;
 	static RoboeyesValue separation = { 150, 150 }, lw = { width, width }, lh = { height, height }, rw = { width, width },
 	                     rh = { height, height }, focus = { 0, 0 };
-	static s32 state;
+	static s32 state = 0;
 	// 0: lenses apart at full size until attachment 2 is out, 1: they slide together, 2: the right lens
 	// shrinks to a half and the left to a sixth until it is put away, 3: back to full size, 4: apart again
 	switch (state) {
@@ -302,16 +304,17 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	f32 offset = separation.value;
 	f32 rx = .6f * (rw.value * .5f), ry = .6f * (rh.value * .5f);
 	Vec points[65];
-	DrawRoboeyesLens(gs, points, x - offset, y, .6f * (lw.value * .5f), .6f * (lh.value * .5f), color, trail, false);
-	DrawRoboeyesLens(gs, points, x + offset, y, rx, ry, color, trail, true);
+	DrawRoboeyesLens(gs, points, x - offset, y, .6f * (lw.value * .5f), .6f * (lh.value * .5f), color, alpha, trail, false);
+	DrawRoboeyesLens(gs, points, x + offset, y, rx, ry, color, alpha, trail, true);
 	if (state == 2) {
 		CTexObj tex;
-		static s32 frame;
+		static s32 frame = 0;
 		++frame;
-		u32 tint = 0xffffff00 | (u8)color;
+		u32 tint = 0xffffff00 | alpha;
 		for (s32 i = 0; i < 4; ++i) {
 			f32 a      = HALF_PI * i;
-			f32 radius = rx + 3.0f * (f32)sin(DEG2RAD * ((frame * 24) % 360));
+			f32 pulse  = 3.0f * (f32)sin(DEG2RAD * ((frame * 24) % 360));
+			f32 radius = rx + pulse;
 			f32 sx = (f32)sin(a), cy = (f32)cos(a);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 			CTpl& tpl = gGame.mTpl;

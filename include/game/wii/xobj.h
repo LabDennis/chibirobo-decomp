@@ -14,7 +14,19 @@
 #include "game/ut.h"
 #include "game/wii/cgs.h"
 #include "game/wii/cresfile.h"
+#include "game/wii/xobjs.h"
 #include "revolution/mem.h"
+
+// one of an object's floors, a list of them ends at an id of -1; the GameCube struct with the ground type split in two
+struct XObjFloor {
+	s16 mId;              // _00
+	u8 mMaterial;         // _02, ground types 13 and up count as none
+	u8 mFlags;            // _03, bit 0 includes this floor in contact tests, bit 1 in screen bounds
+	s32 mCenterOffset[3]; // _04, in hundredths
+	s32 mYawDegrees;      // _10
+	s32 mExtent[3];       // _14, in hundredths
+};
+STATIC_ASSERT(sizeof(XObjFloor) == 0x20);
 
 // the Wii XObj family, as far as xobj_ut.cpp's pool setup verifies it: names and
 // sizes come from the retail RTTI strings and the element strides the pool
@@ -38,7 +50,9 @@ void Panic(const char* file, int line, const char* fmt, ...);
 }
 
 // the parts of nw4r::math CObj's world callback uses; math_types.h itself needs the Wii MSL's
-// <cmath>, which the game's include path does not have yet
+// <cmath>, which the game's include path does not have yet (a unit built with include/rvl_msl that
+// includes it first gets the real one)
+#ifndef NW4R_MATH_TYPES_H
 namespace math {
 struct VEC3;
 struct MTX34 {
@@ -50,6 +64,7 @@ inline MTX34* MTX34RotXYZRad(MTX34* pMtx, f32 rx, f32 ry, f32 rz)
 	return MTX34RotXYZFIdx(pMtx, rx * (128.0f / 3.1415927f), ry * (128.0f / 3.1415927f), rz * (128.0f / 3.1415927f));
 }
 } // namespace math
+#endif
 
 namespace g3d {
 
@@ -300,11 +315,25 @@ public:
 	}
 };
 
+// a scene animation resource's data, as far as the game reads it
+struct ResAnmScnData {
+	u8 _00[0x34];
+	u16 mNumFrame; // _34
+};
+
 class ResAnmScn {
 public:
 	void* mpData; // _00
 
 	bool IsValid() const { return mpData != NULL; }
+	const ResAnmScnData& ref() const
+	{
+		if (!IsValid()) {
+			db::Panic("g3d_resanmscn_ac.h", 40, "%s::%s: Object not valid.", "ResAnmScn", "ref");
+		}
+		return *(const ResAnmScnData*)mpData;
+	}
+	u16 GetNumFrame() const { return ref().mNumFrame; }
 	bool Bind(const ResAnmScn scene); // 0x80265718
 	void Release();
 	bool Bind() { return Bind(*this); }
@@ -727,10 +756,21 @@ public:
 class AnmScnRes : public AnmScn {
 public:
 	static AnmScnRes* Construct(MEMAllocator* pAllocator, u32* pSize, ResAnmScn scn, bool cache);
+
+	u8 _0C[0x20 - 0x0C];
+	ResAnmScn mRes; // _20, the resource it plays; IsAnmScnEnd reads its frame count
+};
+
+// the scene root, as far as the game calls it: the current camera's handle is reduced to its data
+class ScnRoot {
+public:
+	MtxP GetCurrentCamera(); // 0x8027ADC8
 };
 
 } // namespace g3d
 } // namespace nw4r
+
+class CCamera;
 
 // the Wii's CVec sibling: same {x,y,z,vtable} shape with its own vtable, base of
 // the Wii CObjVec (retail __ct__7CObjVecFv at 0x800BE7C0 stores the TVec vtable
@@ -753,7 +793,8 @@ public:
 class CObjVec : public TVec {
 public:
 	CObjVec();
-	u8 Step(u32 frames); // 0x802A7FB4
+	u8 Step(f32 frames); // 0x802A7FB4
+	bool IsMoving() const;
 
 	CVec mTarget; // _10
 	CVec mSpeed;  // _20
@@ -955,9 +996,9 @@ public:
 	virtual BOOL ReadAsync(ResourceFile* file, const char* path, u32 model, u32 flags, u32 offset, u32 size);                   // _38
 	virtual BOOL ReadCheck();                                                                                                   // _3C
 	virtual void Release();                                                                                                     // _40
-	virtual u8 StepTranslate(u32 frames);                                                                                       // _44
-	virtual u8 StepRotate(u32 frames);                                                                                          // _48
-	virtual u8 StepScale(u32 frames);                                                                                           // _4C
+	virtual u8 StepTranslate(f32 frames);                                                                                       // _44
+	virtual u8 StepRotate(f32 frames);                                                                                          // _48
+	virtual u8 StepScale(f32 frames);                                                                                           // _4C
 	virtual nw4r::g3d::ResNode GetResNode(const char* name);                                                                    // _50
 	virtual nw4r::g3d::ResNode GetResNode(u32 index);                                                                           // _54
 	virtual nw4r::g3d::ResNode GetResNode();     // _58, the first node
@@ -973,11 +1014,19 @@ public:
 	virtual void SetScaleZ(f32 z);               // _80
 	virtual void SetPos(f32 x, f32 y, f32 z);    // _84
 	virtual void SetRot(f32 x, f32 y, f32 z);    // _88
-	virtual void SetScale(f32 x, f32 y, f32 z);  // _8C
-	virtual void SetPos(const Vec& pos);         // _90
-	virtual void SetRot(const Vec& rot);         // _94
-	virtual void SetScale(const Vec& scale);     // _98
-	virtual void vf9C();
+	virtual void SetScale(f32 x, f32 y, f32 z)   // _8C
+	{
+		mMoveScale.x   = x;
+		mMoveScale.y   = y;
+		mMoveScale.z   = z;
+		mMoveTarget2.x = x;
+		mMoveTarget2.y = y;
+		mMoveTarget2.z = z;
+	}
+	virtual void SetPos(const Vec& pos);     // _90
+	virtual void SetRot(const Vec& rot);     // _94
+	virtual void SetScale(const Vec& scale); // _98
+	virtual void SetScale(f32 scale) { SetScale(scale, scale, scale); }
 	virtual MtxP GetWorldMtx(nw4r::g3d::ResNode node);                                       // _A0, NULL without a model
 	virtual MtxP GetWorldMtx(const char* name);                                              // _A4
 	virtual MtxP GetWorldMtx(u32 index);                                                     // _A8
@@ -1008,18 +1057,22 @@ public:
 	virtual void SetAnim(const CObjAnim* anim, BOOL force, f32 frame, f32 rate, f32 blend, f32 blendRate); // _10C
 	virtual void ClearAnim();                                                                              // _110
 	virtual void SetAnimRate(f32 rate);                                                                    // _114
-	virtual void UpdateAnim(f32 speed); // _118, the GameCube's UpdateAnim
-	virtual void vf11C();
-	virtual f32 GetAnimRate(s32 index); // _120
-	virtual f32 GetAnimRate();          // _124
-	virtual f32 GetAnimFrame();         // _128
-	virtual f32 GetAnimEndFrame();      // _12C
-	virtual bool IsAnimEnd(f32 frames); // _130, the animation runs out within frames
-	virtual void vf134();
+	virtual void UpdateAnim(f32 speed);         // _118, the GameCube's UpdateAnim
+	virtual s32 GetAnimId() { return mAnimId; } // _11C
+	virtual f32 GetAnimRate(s32 index);         // _120
+	virtual f32 GetAnimRate();                  // _124
+	virtual f32 GetAnimFrame();                 // _128
+	virtual f32 GetAnimEndFrame();              // _12C
+	virtual bool IsAnimEnd(f32 frames);         // _130, the animation runs out within frames
+	virtual bool IsAnimDone()
+	{
+		f32 frame = GetAnimFrame();
+		return frame + mAnimRate[1] >= GetAnimEndFrame();
+	}
 	virtual void SetAnmScn(u32 id, f32 frame, f32 rate); // _138
 	virtual void ReleaseModelWork();                     // _13C
-	virtual void vf140();
-	virtual void _unk_00C(); // _144, IScnObjCallback's
+	virtual bool IsAnmScnEnd();                          // _140, the scene animation has run out
+	virtual void _unk_00C();                             // _144, IScnObjCallback's
 	// the IScnObjCallback override: overriding a second base's virtual adds a slot here
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info); // _148
 
@@ -1076,7 +1129,7 @@ public:
 	virtual void ResetObjectState();                       // _154
 	virtual BOOL LoadFromPlacement(const CoordInfo& info); // _158
 	virtual void vf15C();
-	virtual void vf160();
+	virtual void vf160() { mLastAnimFrame = GetAnimFrame(); }
 	virtual void UpdateObject(u32 frames); // _164
 	virtual void vf168();
 	virtual void vf16C(); // _16C, empty
@@ -1084,7 +1137,7 @@ public:
 	virtual void DrawObject();                                       // _174
 	virtual void DrawWithView(Mtx view);                             // _178
 	virtual void DrawReflection(Mtx view);                           // _17C
-	virtual void DrawGroundShadow();                                 // _180
+	virtual void DrawGroundShadow(f32 opacity);                      // _180
 	virtual void DrawGroundShadowAt(const Vec* origin, f32 opacity); // _184
 	virtual void DrawObjectEffects();                                // _188
 	virtual void DrawCollisionShapes();                              // _18C
@@ -1100,8 +1153,8 @@ public:
 	virtual void SetBaseMtx(Mtx mtx); // _1B4, keeps a copy of mtx and points mBaseMtxPtr at it
 	virtual void ClearBaseMtx();      // _1B8
 	virtual void vf1BC();
-	virtual void vf1C0();
-	virtual void vf1C4();
+	virtual void SetCullMode(s32 mode); // _1C0, the floor reflection draws with 1
+	virtual void ResetCullMode();       // _1C4, and puts it back after
 	virtual u32 TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 arg6,
 	                               s32 arg7);                         // _1C8
 	virtual s32 OnPlayerContact(s32 unused, s32 value);               // _1CC
@@ -1109,8 +1162,9 @@ public:
 	virtual void vf1D4();
 	virtual f32 GetFloorXZExtent();   // _1D8
 	virtual f32 GetCollisionHeight(); // _1DC
-	virtual void vf1E0();
-	virtual void vf1E4();
+	// _1E0, the object's bounds on screen under camera, the GameCube's; FALSE when it is out of view
+	virtual BOOL ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 radius, f32 objectHeight);
+	virtual BOOL IsOutsideCameraDepth(CCamera* camera);                  // _1E4, TRUE when the model lies outside the camera's depth range
 	virtual s32 HandleEventCommand(s32 count, s32* args);                // _1E8
 	virtual const void* GetEventScript();                                // _1EC
 	virtual void SetColor(s32 blend, u8 r, u8 g, u8 b, f32 time);        // _1F0
@@ -1119,9 +1173,11 @@ public:
 	virtual void OnHitFromPosition(const Vec& position, f32 strength);   // _1FC
 	virtual void OnSquirterHit(const Vec* contact, s32 value, s32 tint); // _200
 	virtual BOOL OnItemUsed(const Vec* position, s32 value);             // _204
-	virtual void vf208();
-	virtual void OnMicrophonePeak(s32 unused, s32 volume);    // _20C, empty
-	virtual void vf210();                                     // _210, empty
+	// _208, Update tells each live object every frame whether the pointer is on it, with the pointer's
+	// motion and speed on the screen
+	virtual void vf208(const Vec* pointer, const Vec* motion, BOOL over, f32 speed);
+	virtual void PauseSounds(f32 fade);                       // _20C, empty; PauseGameSounds calls it on every live object
+	virtual void ResumeSounds(f32 fade);                      // _210, empty; ResumeGameSounds' counterpart
 	virtual void OnMoveRequest();                             // _214, runs ahead of the three requests below
 	virtual void RequestRotationY(f32 y);                     // _218
 	virtual void RequestRotateY(f32 target, f32 speed);       // _21C
@@ -1163,16 +1219,53 @@ public:
 	virtual void ClearAnim();                                                                                                   // _110
 	virtual void ExecCallback_CALC_MAT(int timing, nw4r::g3d::ScnObj* obj, u32 param, void* info);                              // _148
 
-	CStatus64 mStatus; // _150
-	CoordInfo mCoord;  // _160
-	AttrInfo mAttr;    // _168
-	u8 _174[0x28];
-	CVec mLastPos; // _19C
-	u8 _1AC[0x640 - 0x1AC];
+	// the object's kind, -1 without its data record
+	s16 GetCategory() const
+	{
+		if (mAttr.mObjData != NULL) {
+			return mAttr.mObjData->GetCategory();
+		}
+		return -1;
+	}
+	// (_9C SetScale(f32) scales all three axes alike, _11C GetAnimId returns mAnimId, _134 IsAnimDone is TRUE once
+	// the next step passes the end frame; see the slot comments)
+	// which pool of XOBJS the object's data record puts it in, -1 before it has one (the GameCube XObj's inline)
+	s32 GetPool() const { return mAttr.mObjData != NULL ? GetObjDataPool(mAttr.mObjData) : -1; }
+	// the object id of its placement, -1 without one (the GameCube XObj's inline)
+	s32 GetKind() const { return mAttr.mPlacement != NULL ? mAttr.mPlacement->mObjectId : -1; }
+	// the item index its data record names, -1 before it has one (the GameCube XObj's inline)
+	s32 GetObjFlags() const { return mAttr.mObjData != NULL ? GetObjDataFlags(mAttr.mObjData) : -1; }
+
+	CStatus64 mStatus;  // _150
+	CoordInfo mCoord;   // _160
+	AttrInfo mAttr;     // _168
+	XObjFloor* mFloors; // _174, the object's collision floor list
+	u8 _178[0x188 - 0x178];
+	u8 _188; // _188, Update steps the object through vf16C alone while it is set and there is no base matrix
+	u8 _189[0x18C - 0x189];
+	s32 _18C; // _18C, Update lets the scope pick objects with it set (>= 0) and plays its sounds for them, -1 for none
+	u8 _190[0x194 - 0x190];
+	s32 mPlacementParam0; // _194, the placement entry's, copied on load; its meaning is up to the kind
+	s32 mPlacementParam1; // _198
+	CVec mLastPos;        // _19C
+	u8 _1AC[0x1B8 - 0x1AC];
+	f32 mLastAnimFrame; // _1B8, the frame the animation had after the last update
+	s32 mHitFloorIndex; // _1BC
+	u8 _1C0[0x640 - 0x1C0];
 	f32 mFloorXZExtent; // _640
-	u8 _644[0x6C8 - 0x644];
-	f32 mMaxFloorHeight; // _6C8, NAN while there is none
-	u8 _6CC[0x6F8 - 0x6CC];
+	u8 _644[0x648 - 0x644];
+	f32 mFloorHeights[32];    // _648, a height per floor
+	f32 mMaxFloorHeight;      // _6C8, NAN while there is none
+	f32 mSelectedFloorHeight; // _6CC, highest active floor, NaN when none is active
+	s32 mSelectedFloorIndex;  // _6D0
+	BOOL mScreenBoundsValid;  // _6D4, the four below hold the object's bounds on screen
+	u8 _6D8[4];
+	s32 _6DC;          // _6DC, set when the pointer swept across the bounds within one frame
+	f32 mScreenTop;    // _6E0
+	f32 mScreenBottom; // _6E4
+	f32 mScreenLeft;   // _6E8
+	f32 mScreenRight;  // _6EC
+	u8 _6F0[0x6F8 - 0x6F0];
 	CVec mToppleOffset; // _6F8
 	u8 _708[0xC];
 	CVec mVec714;             // _714
@@ -1200,7 +1293,32 @@ STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 	};                                 \
 	STATIC_ASSERT(sizeof(name) == size)
 
-WII_XOBJ_DECL(XObjScnCam, 0x9C0);
+// the same with the one virtual these classes add behind XObj's (_28C): CGame::DrawScene's last pass
+// calls it on the leticker, army and spider objects, each through its own class
+#define WII_XOBJ_DECL_LATE_DRAW(name, size) \
+	class name : public XObj {              \
+	public:                                 \
+		name();                             \
+		virtual ~name();                    \
+		virtual void DrawLate(); /* _28C */ \
+                                            \
+	private:                                \
+		u8 _tail[size - sizeof(XObj)];      \
+	};                                      \
+	STATIC_ASSERT(sizeof(name) == size)
+
+class WiiGsSceneObj;
+
+// the stage camera object, the first of pool 0: its scene (_9A8) brings the stage's own camera, lights and fog
+class XObjScnCam : public XObj {
+public:
+	XObjScnCam();
+	virtual ~XObjScnCam();
+
+	WiiGsSceneObj* mScene; // _9A8
+	u8 _9AC[0x9C0 - 0x9AC];
+};
+STATIC_ASSERT(sizeof(XObjScnCam) == 0x9C0);
 
 // the light object: its dtor (0x800BE828) destroys CLight[8] at _9AC, the
 // ctor (0x800BE364) is the XObj initialization plus that array
@@ -1225,9 +1343,7 @@ public:
 
 private:
 	u8 _9A8[4];
-	u32 _9AC;
-	u8 _9B0[0x18];
-	CTrigon mTrigon; // _9C8
+	CTrigon mTrigon; // _9AC
 	u8 _9EC[0x28];
 	XObjMapListA mListA[0x64]; // _A14
 	XObjMapListB mListB[0x64]; // _EC4
@@ -1239,56 +1355,20 @@ WII_XOBJ_DECL(XObjActor3, 0x21C8);
 WII_XOBJ_DECL(XObjSound, 0xA10);
 WII_XOBJ_DECL(XObjCoin, 0xA30);
 WII_XOBJ_DECL(XObjItem, 0x9B0);
-WII_XOBJ_DECL(XObjLeticker, 0xAC8);
+WII_XOBJ_DECL_LATE_DRAW(XObjLeticker, 0xAC8);
 WII_XOBJ_DECL(XObjActorToy, 0x2208);
 WII_XOBJ_DECL(XObjActorJenny, 0xD98);
 WII_XOBJ_DECL(XObjActorMama, 0xD88);
 WII_XOBJ_DECL(XObjActorPapa, 0xD90);
 WII_XOBJ_DECL(XObjActorTao, 0xDF8);
 WII_XOBJ_DECL(XObjActorDeca, 0xDA0);
-WII_XOBJ_DECL(XObjArmy, 0xB30);
-WII_XOBJ_DECL(XObjSpider, 0xDF8);
-WII_XOBJ_DECL(XObjSpiderSmall, 0xB50);
+WII_XOBJ_DECL_LATE_DRAW(XObjArmy, 0xB30);
+WII_XOBJ_DECL_LATE_DRAW(XObjSpider, 0xDF8);
+WII_XOBJ_DECL_LATE_DRAW(XObjSpiderSmall, 0xB50);
 WII_XOBJ_DECL(XObjSpiderBoss, 0xCE0);
 WII_XOBJ_DECL(XObjDust, 0xA00);
 WII_XOBJ_DECL(XObjHBox, 0x1368);
 WII_XOBJ_DECL(XObjFree, 0x9B8);
-
-// one of XOBJS's object pools, same layout as the GameCube one
-struct XObjPool {
-	u8* mObjects;      // _00
-	s32 mUsed;         // _04, objects handed out so far
-	s32 mCount;        // _08
-	const char* mName; // _0C
-	s32 mStride;       // _10, size of one object
-
-	void Set(void* objects, s32 count, const char* name, s32 stride)
-	{
-		mObjects = (u8*)objects;
-		mUsed    = 0;
-		mCount   = count;
-		mName    = name;
-		mStride  = stride;
-	}
-
-	XObj* Get(s32 i) const { return (XObj*)(mObjects + i * mStride); }
-};
-STATIC_ASSERT(sizeof(XObjPool) == 0x14);
-
-// the objects: a pool per kind and the table of the ones in use, same layout as
-// the GameCube XOBJS
-class XOBJS {
-public:
-	XObjPool mPools[0x17]; // _000
-	XObj* mObjects[0x400]; // _1CC, the object table
-	s32 mObjectCount;      // _11CC
-	s32 mLoadObjectIndex;  // _11D0
-	s32 mLoadState;        // _11D4, UpdateStageObjectLoading's state, 0 when idle
-	// _11D8 vtable
-
-	virtual ~XOBJS() { }
-};
-STATIC_ASSERT(sizeof(XOBJS) == 0x11DC);
 
 // a small shadow helper the unit defines; only its trivial dtor is verified so
 // far (retail 0x800BD66C, the deleting variant with no member calls)

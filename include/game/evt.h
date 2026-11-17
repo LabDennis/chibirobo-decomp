@@ -229,13 +229,13 @@ public:
 	CStackS32()
 	{
 		mBuf   = NULL;
-		mSize  = 0;
 		mCount = 0;
+		mSize  = 0;
 	}
 
 	s32* mBuf;  // _00
-	s32 mCount; // _04
-	s32 mSize;  // _08
+	s32 mSize;  // _04
+	s32 mCount; // _08, the Wii's commands push and pop through this word
 };
 STATIC_ASSERT(sizeof(CStackS32) == 0xC);
 

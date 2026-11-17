@@ -36,4 +36,26 @@ public:
 	bool IsStickUsedOverPointer();
 };
 
+struct WiiMenuSaveSlot {
+	u32 mUsed;           // _00
+	s32 mLevel;          // _04
+	f32 mBattery;        // _08
+	f32 mMaxBattery;     // _0C
+	u32 mMoney;          // _10
+	u32 mExp;            // _14
+	u32 mScrap;          // _18
+	u32 mRank;           // _1C
+	u32 mHours;          // _20
+	u32 mMinutes;        // _24
+	s32 mStage;          // _28
+	u32 mTimeMode;       // _2C
+	u8 _30[0x40 - 0x30]; // _30
+	s32 mState;          // _40
+	u32 _44;             // _44
+	u32 _48;             // _48
+	u32 _4C;             // _4C
+	u8 mActive;          // _50
+};
+STATIC_ASSERT(sizeof(WiiMenuSaveSlot) == 0x54);
+
 #endif
