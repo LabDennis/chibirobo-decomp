@@ -6958,7 +6958,8 @@ static inline void MeasureStageLabels(MenuStageSelect* menu)
  * @note Address: 0x80033A68
  * @note Size: 0x6A0
  */
-// NONMATCHING: register allocation
+// NONMATCHING: retail keeps a second counter in the file-name copy loop and indexes the label by offset in
+// FinishStageLabel where the build walks a pointer; the rest is register allocation.
 extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 {
 	menu->mCount = 0;
@@ -6968,12 +6969,12 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 	}
 	// with this status bit only the stages in sStageOrder; without it every room, a rule, then stages 100 and up
 	if (gGame.mStatus.mFlags & 0x0008000000000000ULL) {
-		for (s32* stage = sStageOrder; *stage >= 0; stage++) {
-			char* line         = menu->mLabels[menu->mCount];
-			int length         = CopyStageFileName(line, GetStageFileName(*stage));
+		int i = 0;
+		for (s32* stage = sStageOrder; *stage >= 0; stage++, i++) {
+			int length         = CopyStageFileName(menu->mLabels[i], GetStageFileName(*stage));
 			const char* format = IsJapanese() ? "(%2d) %-.20s" : "(%2d) %-.30s";
-			sprintf(line + length, format, *stage, FormatToStaticBuffer("%s%s", GetStageName(*stage), GetStageDesc(*stage)));
-			FinishStageLabel(line + length);
+			sprintf(menu->mLabels[i] + length, format, *stage, FormatToStaticBuffer("%s%s", GetStageName(*stage), GetStageDesc(*stage)));
+			FinishStageLabel(menu->mLabels[i] + length);
 			menu->mCount++;
 		}
 		MeasureStageLabels(menu);
@@ -6982,10 +6983,9 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 	} else {
 		menu->mCount = gGame.mRoomCount;
 		for (int i = 0; i < gGame.mRoomCount; i++) {
-			char* line = menu->mLabels[i];
-			int length = CopyStageFileName(line, GetStageFileName(i));
-			sprintf(line + length, "(%2d) %-.18s", i, FormatToStaticBuffer("%s%s", GetStageName(i), GetStageDesc(i)));
-			FinishStageLabel(line + length);
+			int length = CopyStageFileName(menu->mLabels[i], GetStageFileName(i));
+			sprintf(menu->mLabels[i] + length, "(%2d) %-.18s", i, FormatToStaticBuffer("%s%s", GetStageName(i), GetStageDesc(i)));
+			FinishStageLabel(menu->mLabels[i] + length);
 		}
 		strcpy(menu->mLabels[menu->mCount], "\x01");
 		menu->mCount++;
@@ -6999,7 +6999,7 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 	}
 }
 
-static inline u32 StageRowBlue(int row, u8 normal, u8 current)
+static inline u8 StageRowBlue(int row, u8 normal, u8 current)
 {
 	if (gGame.mStatus.mFlags & 0x0008000000000000ULL)
 		return (u8)(sStageOrder[row] == gGame.mStage ? current : normal);
@@ -7171,7 +7171,7 @@ BOOL MenuMCTest::Update(u32 frames)
 		Memcard* card = &gGame.mMemcard.mCard;
 		if (card->mBusy)
 			return IsOpen();
-		s32 result = card->mCard.mResult;
+		s32 result = gGame.mMemcard.mCard.mCard.mResult;
 		switch (mOperation) {
 		case 1: // the preview read finished: one line per file
 			for (int i = 0; i < mFileCount; i++) {
@@ -7194,14 +7194,14 @@ BOOL MenuMCTest::Update(u32 frames)
 						sprintf(mText[i], "(%d) none", i);
 				} else {
 					if (i == mFileCount / 2)
-						strcpy(mText[i], card->mCard.GetResultString(card->mCard.mResult));
+						strcpy(mText[i], gGame.mMemcard.mCard.mCard.GetResultString(gGame.mMemcard.mCard.mCard.mResult));
 					else
 						strcpy(mText[i], "");
 				}
 			}
 			if (result == 0)
-				sprintf(mText[mFileCount + 1], "SLOT: %c   FREE BLOCKS: %d   FREE ENTRIES: %d", sMenuMain.mChannel + 'A', card->mFreeBlocks,
-				        card->mFreeEntries);
+				sprintf(mText[mFileCount + 1], "SLOT: %c   FREE BLOCKS: %d   FREE ENTRIES: %d", sMenuMain.mChannel + 'A',
+				        gGame.mMemcard.mCard.mFreeBlocks, gGame.mMemcard.mCard.mFreeEntries);
 			mOperation = 0;
 			break;
 		case 3: // a save or a delete finished: read the list again
@@ -7213,7 +7213,7 @@ BOOL MenuMCTest::Update(u32 frames)
 				mOperation = 0;
 				for (int i = 0; i < mFileCount; i++) {
 					if (i == mFileCount / 2)
-						strcpy(mText[i], card->mCard.GetResultString(card->mCard.mResult));
+						strcpy(mText[i], gGame.mMemcard.mCard.mCard.GetResultString(gGame.mMemcard.mCard.mCard.mResult));
 					else
 						strcpy(mText[i], "");
 				}
@@ -7230,7 +7230,7 @@ BOOL MenuMCTest::Update(u32 frames)
 			} else {
 				for (int i = 0; i < mFileCount; i++) {
 					if (i == mFileCount / 2)
-						strcpy(mText[i], card->mCard.GetResultString(card->mCard.mResult));
+						strcpy(mText[i], gGame.mMemcard.mCard.mCard.GetResultString(gGame.mMemcard.mCard.mCard.mResult));
 					else
 						strcpy(mText[i], "");
 				}
@@ -8243,9 +8243,9 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	InitMenuSelectionBar(tex);
 	f32 barY = 2.0f + ((step / 2.0f + (step * selected + rowY)) - 2.0f * scale);
 	DrawMenuSelectionBar(tex, barX, barY, barW, barH, alpha, textureOffset, barColor);
-	MenuPCItem* items = kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries;
 	for (int i = 0; i < 9; i++)
 		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mRows[i], left, step * i + rowY, alpha, scale);
+	MenuPCItem* items = kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries;
 	if ((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mStart < PCShopMaxPage(items) - 1)
 		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mNext[0], left, 9.0f * step + rowY, alpha, scale);
 	CountPCShopItems(kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries);
@@ -9210,13 +9210,6 @@ static inline s32 SaveStatusLines(MenuSave* menu, s32 id, f32 panelX, f32 panelY
 {
 	return DrawSaveLinesAt(menu, id, SaveMessageX(panelX), SaveMessageY(menu, panelY));
 }
-static inline s32 DrawSavePhaseMessage(MenuSave* menu, s32 first, s32 next, f32 panelX, f32 panelY)
-{
-	f32 x = SaveMessageX(panelX), y = SaveMessageY(menu, panelY);
-	if (menu->mPhase == 0)
-		return DrawSaveLinesAt(menu, first, x, y);
-	return DrawSaveLinesAt(menu, next, x, y);
-}
 
 #if defined(VERSION_JP)
 static inline u32 SavePromptHalfWidth(u32 cells)
@@ -9233,6 +9226,8 @@ static inline void DrawSaveChoiceLabel(MenuSave* menu, s32 id, f32 x, f32 y)
 }
 #endif
 
+// NONMATCHING: retail computes 8.0f + labelY before the bar colour and adds 2.0f again at each quad of the
+// selection bar, the build passes one folded value; the rest is register allocation.
 BOOL MenuSave::Draw()
 {
 	if (CMenu::Draw()) {
@@ -9298,15 +9293,25 @@ BOOL MenuSave::Draw()
 		case 5:
 			lines = SaveStatusLines(this, 4, panelX, panelY);
 			break;
-		case 8:
-			lines = DrawSavePhaseMessage(this, 5, 6, panelX, panelY);
+		case 8: {
+			f32 x = SaveMessageX(panelX), y = SaveMessageY(this, panelY);
+			if (mPhase == 0)
+				lines = DrawSaveLinesAt(this, 5, x, y);
+			else
+				lines = DrawSaveLinesAt(this, 6, x, y);
 			break;
+		}
 		case 9:
 			lines = SaveStatusLines(this, 7, panelX, panelY);
 			break;
-		case 10:
-			lines = DrawSavePhaseMessage(this, 7, 9, panelX, panelY);
+		case 10: {
+			f32 x = SaveMessageX(panelX), y = SaveMessageY(this, panelY);
+			if (mPhase == 0)
+				lines = DrawSaveLinesAt(this, 7, x, y);
+			else
+				lines = DrawSaveLinesAt(this, 9, x, y);
 			break;
+		}
 		case 6:
 		case 11: {
 			f32 y = SaveMessageY(this, panelY);
@@ -9324,10 +9329,13 @@ BOOL MenuSave::Draw()
 #if defined(VERSION_JP)
 			lines = SaveStatusLines(this, 13, panelX, panelY);
 #else
+		{
+			f32 x = SaveMessageX(panelX), y = SaveMessageY(this, panelY);
 			if (mFormatCancelled == 1)
-				lines = SaveStatusLines(this, 17, panelX, panelY);
+				lines = DrawSaveLinesAt(this, 17, x, y);
 			else
-				lines = SaveStatusLines(this, 13, panelX, panelY);
+				lines = DrawSaveLinesAt(this, 13, x, y);
+		}
 #endif
 			break;
 		case 14:
@@ -9340,7 +9348,11 @@ BOOL MenuSave::Draw()
 		case 17:
 			break;
 		}
+#if defined(VERSION_JP)
+		if (lines <= 2)
+#else
 		if (lines < 2)
+#endif
 			lines = 2;
 		mOffset = -(lines - 2) * 21;
 		if (showMessage) {
@@ -9364,14 +9376,13 @@ BOOL MenuSave::Draw()
 				lineOffset = (lines - 2) * 21;
 #if defined(VERSION_JP)
 			sprintf(text, "%s", GetLocalizedInterfaceText(0x40));
-			u32 cells  = strlen(text) / 2;
-			f32 center = 320.0f + panelX;
+			u32 cells = strlen(text) / 2;
 
 			f32 barX;
 			if (mChoice == 0)
-				barX = ((32.0f + center) - SavePromptHalfWidth(cells)) - 2.0f;
+				barX = ((32.0f + (320.0f + panelX)) - SavePromptHalfWidth(cells)) - 2.0f;
 			else
-				barX = 60.0f + (10.0f + ((32.0f + center) - SavePromptHalfWidth(cells)));
+				barX = 60.0f + (10.0f + ((32.0f + (320.0f + panelX)) - SavePromptHalfWidth(cells)));
 			f32 barWidth = 0.9f * (3 * 21.0f);
 #else
 			f32 barX     = mChoice == 0 ? 281.25f : 358.75f;
@@ -10708,9 +10719,10 @@ extern "C" void DrawPCRecyclePanel(MenuPC* menu, s32 choice, f32 x, f32 y, f32 s
 #if !defined(VERSION_JP)
 	u16 iconWidth = GXGetTexObjWidth(&InitPCPanelTexture(144));
 #endif
+#if defined(VERSION_JP)
 	f32 numberX = places * (scale * digitWidth) + (120.0f * scale + originX);
-#if !defined(VERSION_JP)
-	numberX -= scale * (1.1f * iconWidth);
+#else
+	f32 numberX = (places * (scale * digitWidth) + (120.0f * scale + originX)) - scale * (1.1f * iconWidth);
 #endif
 	DrawPCGoldNumber(false, numberX, (originY + height), alpha, scale, money);
 #if defined(VERSION_JP)
@@ -10867,10 +10879,10 @@ extern "C" void DrawPCScrapPurchasePanel(s32 selected, s32 choice, f32 x, f32 y,
 	f32 iconX = 52.0f * scale + left, iconY = 48.0f * scale + top;
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	s32 icon;
-	if (id && (gEventFlags.mFlags[335 / 32] & (1u << (335 % 32))))
-		icon = 239;
-	else
+	if (id == 0 || !(gEventFlags.mFlags[335 / 32] & (1u << (335 % 32))))
 		icon = 238;
+	else
+		icon = 239;
 	tex   = InitPCPanelTexture(icon);
 	u16 w = tex.GetWidth(), h = tex.GetHeight();
 	DrawOverviewTexture(tex, white, iconX, iconY, scale * w, scale * h);
@@ -11003,6 +11015,9 @@ static inline void DrawPCRankingMask(f32 left, f32 top, f32 right, f32 bottom, f
 	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, vertices, color, 5);
 }
 
+// NONMATCHING: register allocation (retail keeps menu in r29 and numbers the loop colours differently); the four
+// phase-0 row loads index gPCRankingRows from one base where the build forms base+4 and base+8 once; retail also
+// has an unreachable branch in front of case 0.
 extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 {
 	if (alpha > 0) {
@@ -11020,15 +11035,15 @@ extern "C" void DrawPCRankings(MenuPC* menu, f32 x, f32 y, f32 alpha, f32 scale)
 				menu->mRankingRows[3] = gPCRankingRows[2];
 				menu->mRankingRows[2] = gPCRankingRows[1];
 				menu->mRankingRows[1] = gPCRankingRows[0];
-			} else {
-				ClearRankingRow(menu->mRankingRows[4]);
-				LoadRankingRow(menu, 3, 1);
-				LoadRankingRow(menu, 2, 2);
-				LoadRankingRow(menu, 1, 3);
-				LoadRankingRow(menu, 0, 4);
-				menu->mPhase++;
+				break;
 			}
-			break;
+			ClearRankingRow(menu->mRankingRows[4]);
+			LoadRankingRow(menu, 3, 1);
+			LoadRankingRow(menu, 2, 2);
+			LoadRankingRow(menu, 1, 3);
+			LoadRankingRow(menu, 0, 4);
+			menu->mPhase++;
+			// fall through: the scroll starts in the same frame
 		case 1:
 			for (int i = 0; i < 4; i++)
 				menu->mRankingOffsets[i] += 0.4f;
