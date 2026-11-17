@@ -6478,8 +6478,8 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 		icon.mMtxDirty = TRUE;
 		textureWidth   = (s32)font->mGlyphs[font->mCharCount].mTexture.Set(icon) / 14;
 #else
-		s32 index   = (u8)text[1];
 		s32 columns = font->mData->mIconColumns;
+		s32 index   = (u8)text[1];
 		if (index >= columns) {
 			index = columns - 1;
 		}
@@ -6494,8 +6494,9 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	} else {
 		textureWidth = font->mGlyphs[font->mCharCount].mSprite.mTex->SetChar(text);
 	}
-	f32 x = (width - textureWidth) / 2.0f + (11.0f + font->mCursorX + spacing);
-	f32 y = font->mCursorY + font->mData->mHeights[font->mLine] * 0.5f;
+	f32 margin = (width - textureWidth) / 2.0f;
+	f32 x      = margin + (11.0f + font->mCursorX + spacing);
+	f32 y      = font->mCursorY + font->mData->mHeights[font->mLine] / 2.0f;
 #if defined(VERSION_JP)
 	if ((u8)text[0] == MSG_CODE_ICON) {
 		font->mGlyphs[font->mCharCount].mSprite.SetTrans(x + 0.08f * textureWidth, y, 0.0f);
