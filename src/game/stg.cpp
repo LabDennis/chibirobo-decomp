@@ -6838,9 +6838,8 @@ extern "C" void DrawStatusHelpText(MenuStatus* menu)
 			u32 color    = (u32)opacity | 0xFFFFFF00;
 			DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero,
 			                   rotation);
-			scale          = 30.0f * (0.8f * scale);
-			f32 glyphWidth = width / 24.0f * scale;
-			f32 padding    = scale - glyphWidth;
+			scale       = 30.0f * (0.8f * scale);
+			f32 padding = HelpGlyphPadding(width, scale);
 			for (int j = 0; j < 4; j++) {
 				DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + gStatusHelpOutlineX[j] + padding / 2.0f,
 				                   bob + (384.0f + gStatusHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
@@ -7349,9 +7348,8 @@ BOOL MenuItem::Draw()
 					u32 color    = (u32)opacity | 0xFFFFFF00;
 					DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero,
 					                   rotation);
-					scale          = 30.0f * (0.8f * scale);
-					f32 glyphWidth = width / 24.0f * scale;
-					f32 padding    = scale - glyphWidth;
+					scale       = 30.0f * (0.8f * scale);
+					f32 padding = HelpGlyphPadding(width, scale);
 					for (int j = 0; j < 4; j++) {
 						DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + gItemHelpOutlineX[j] + padding / 2.0f,
 						                   bob + (384.0f + gItemHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
@@ -8083,10 +8081,10 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	}
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[icon], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	f32 w     = 0.6f * tex.GetWidth();
-	f32 h     = 0.6f * tex.GetHeight();
-	alpha     = 255.0f * alpha;
-	u32 color = (u32)alpha | 0xC8C8C800;
+	f32 w       = 0.6f * tex.GetWidth();
+	f32 h       = 0.6f * tex.GetHeight();
+	f32 opacity = 255.0f * alpha;
+	u32 color   = (u32)opacity | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCNumberDigits], 0);
 	w   = 1.2f * tex.GetWidth();
@@ -8094,7 +8092,7 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
 	f32 offset    = 12.0f + ((6.0f * (w - 3.0f * 1.2f) - 98.0f * 1.2f) - 12.0f);
-	u8 alphaByte  = alpha;
+	u8 alphaByte  = opacity;
 	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
 	for (int i = 0; i < 4; i++) {
 		f32 div = 1.0f;
