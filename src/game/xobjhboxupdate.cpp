@@ -43,7 +43,6 @@ void XObjHBox::UpdateObject(u32 frames)
 		PSMTXConcat(result, scale, result);
 		HSD_JObjCopyMtx(mJObj, result);
 	}
-	XObj* part = &mPart.mObj;
 	if (mStatus.mFlags & 0x2000000000000000ULL) { // the opening hit
 		mStatus.mFlags &= ~0x2000000000000000ULL;
 		HSD_JObjClearMtxFlags(mJObj);
@@ -57,12 +56,12 @@ void XObjHBox::UpdateObject(u32 frames)
 		PSMTXConcat(translation, yaw, result);
 		PSMTXConcat(result, scale, result);
 		HSD_JObjCopyMtx(mJObj, result);
-		part->mStatus.mFlags |= 0x10000ULL;
-		PlayBoxAnim(part, 2);
-		part->SetPos(mMoveTranslate, 0);
-		part->SetRotationY(DEG2RAD * (rand() % 360), 0);
+		mPart.mObj.mStatus.mFlags |= 0x10000ULL;
+		PlayBoxAnim(&mPart.mObj, 2);
+		mPart.mObj.SetPos(mMoveTranslate, 0);
+		mPart.mObj.SetRotationY(DEG2RAD * (rand() % 360), 0);
 		SpawnBoxEffect(this, 0x10021);
-		mFloors        = GetObjectCollisionList(part->mCoord.mPlacement->mObjectId);
+		mFloors        = GetObjectCollisionList(mPart.mObj.mCoord.mPlacement->mObjectId);
 		mFloorMasks[1] = mFloorMasks[0] = 0;
 		s32 index                       = GetStagePlacementIndex(mCoord.mPlacement);
 		if (index > 0)
@@ -77,43 +76,42 @@ void XObjHBox::UpdateObject(u32 frames)
 			HSD_JObjSetFlagsAll(mJObj, 0x10);
 	}
 	if (mRing > 0) { // the hit ring fades
-		mRing -= 0.04f;
-		if (mRing <= 0)
+		if ((mRing -= 0.04f) <= 0)
 			mRing = 0;
 	}
-	if (part->mStatus.mFlags & 0x4000000000000000ULL)
+	if (mPart.mObj.mStatus.mFlags & 0x4000000000000000ULL)
 		return;
-	part->UpdateObject(frames);
-	s32 id = part->mAnimId;
+	mPart.mObj.UpdateObject(frames);
+	s32 id = mPart.mObj.mAnimId;
 	if (id > 1) {
 		s32 path[2] = { 0, 0 };
-		CJObj joint(FindJointByPath(part->mJObj, path, 2));
+		CJObj joint(FindJointByPath(mPart.mObj.mJObj, path, 2));
 		Vec pos = joint.GetPos();
 		Vec rot;
 		HSD_MtxGetRotation(joint.GetMtx(), &rot);
 		SetPos(pos, 0);
 		SetRotationY(rot.y, 0);
 	}
-	HSD_AObj* anim = GetAObj(part->mJObj);
+	HSD_AObj* anim = GetAObj(mPart.mObj.mJObj);
 	if (anim) {
 		switch (id) {
 		case 2:
 			if (anim->flags & 0x44000000)
-				PlayBoxAnim(part, 3);
+				PlayBoxAnim(&mPart.mObj, 3);
 			break;
 		case 3:
 			if (anim->flags & 0x44000000)
-				PlayBoxAnim(part, 4);
+				PlayBoxAnim(&mPart.mObj, 4);
 			break;
 		case 4:
 			if (anim->flags & 0x44000000) {
-				PlayBoxAnim(part, 5);
+				PlayBoxAnim(&mPart.mObj, 5);
 				SpawnBoxEffect(this, 0x1002b);
 			}
 			break;
 		case 5:
 			if (anim->flags & 0x44000000) {
-				PlayBoxAnim(part, 6);
+				PlayBoxAnim(&mPart.mObj, 6);
 				mPart.mHit = 1;
 				mStatus.mFlags |= 0x4000000000000000ULL;
 			}
@@ -121,15 +119,14 @@ void XObjHBox::UpdateObject(u32 frames)
 		}
 	}
 	if (mStatus.mFlags & 0x4000000000000000ULL) { // shrinking out
-		part->SetAnimRate(0, 0x5a0);
-		mPart.mHit -= 0.04f * frames;
-		if (mPart.mHit <= 0) {
+		mPart.mObj.SetAnimRate(0, 0x5a0);
+		if ((mPart.mHit -= 0.04f * frames) <= 0) {
 			mPart.mHit = 0;
 			Release();
 			return;
 		}
 		s32 path[2] = { 0, 0 };
-		CJObj joint(FindJointByPath(part->mJObj, path, 2));
+		CJObj joint(FindJointByPath(mPart.mObj.mJObj, path, 2));
 		CVec scale;
 		HSD_JObjGetScale(joint.mJObj, &scale);
 		PSVECScale(&scale, &scale, 1.12f * mPart.mHit);

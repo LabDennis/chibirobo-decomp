@@ -61,7 +61,6 @@ void XObjFree::SetAnim(s32 id, BOOL force, void* jointAnim, void* matAnim, void*
  * @note Address: 0x800DD96C
  * @note Size: 0x220
  */
-// NONMATCHING: same shape as XObjHBox::DrawScreenOverlay; residual is unmapped .sdata2 literals
 void XObjFree::DrawScreenOverlay()
 {
 	XObj::DrawScreenOverlay();
@@ -74,9 +73,16 @@ void XObjFree::DrawScreenOverlay()
 		f32 outerRadius = 400.0f * (1.0f - effect);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 7, 0);
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
-		u32 color = (u32)(255.0f * effect) | 0xFFFFFF00;
-		DrawGsCircle(&gGame.mGs, 16, color, 0xFFFFFF00, x, y, 0.0f, innerRadius, innerRadius, 0.0f, 0.0f, 0.0f);
-		DrawGsCircle(&gGame.mGs, 16, color, 0xFFFFFF00, x, y, 0.0f, outerRadius, outerRadius, 0.0f, 0.0f, 0.0f);
+		// each ring is a loop over its width, and the width is one (the Wii build converts i the same way)
+		s32 i;
+		for (i = 0; i < 1; i++) {
+			DrawGsCircle(&gGame.mGs, 16, (u32)(255.0f * effect) | 0xFFFFFF00, 0xFFFFFF00, x, y, 0.0f, innerRadius + i, innerRadius + i,
+			             0.0f, 0.0f, 0.0f);
+		}
+		for (i = 0; i < 1; i++) {
+			DrawGsCircle(&gGame.mGs, 16, (u32)(255.0f * effect) | 0xFFFFFF00, 0xFFFFFF00, x, y, 0.0f, outerRadius + i, outerRadius + i,
+			             0.0f, 0.0f, 0.0f);
+		}
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
 	}

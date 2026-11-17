@@ -96,26 +96,28 @@ static inline void CopyVector(CVec& destination, const Vec& source)
 	destination.z = source.z;
 }
 
-// fills the wipe quad's corners from the frame's screen edges; z stays whatever the
-// initializer left
-static inline void SetWipeQuadScreenBounds(WipeQuad& quad)
+// the frame's screen edges into four corner points; their z stays what the caller set
+static inline void SetScreenCorners(Vec& topLeft, Vec& topRight, Vec& bottomRight, Vec& bottomLeft)
 {
-	quad.vertices[0].x = (f32)gScreenLeft;
-	quad.vertices[0].y = (f32)gScreenTop;
-	quad.vertices[1].x = (f32)gScreenRight;
-	quad.vertices[1].y = (f32)gScreenTop;
-	quad.vertices[2].x = (f32)gScreenRight;
-	quad.vertices[2].y = (f32)gScreenBottom;
-	quad.vertices[3].x = (f32)gScreenLeft;
-	quad.vertices[3].y = (f32)gScreenBottom;
+	topLeft.x     = (f32)gScreenLeft;
+	topLeft.y     = (f32)gScreenTop;
+	topRight.x    = (f32)gScreenRight;
+	topRight.y    = (f32)gScreenTop;
+	bottomRight.x = (f32)gScreenRight;
+	bottomRight.y = (f32)gScreenBottom;
+	bottomLeft.x  = (f32)gScreenLeft;
+	bottomLeft.y  = (f32)gScreenBottom;
 }
 
 static inline void BeginWipe(CGs* gs, s32 mode)
 {
 	if (mode) {
-		static const Vec corners[4] = { { 0, 0, -1 }, { 0, 0, -1 }, { 0, 0, -1 }, { 0, 0, -1 } };
-		WipeQuad quad               = { { corners[0], corners[1], corners[2], corners[3] } };
-		SetWipeQuadScreenBounds(quad);
+		Vec topLeft     = { 0.0f, 0.0f, -1.0f };
+		Vec topRight    = { 0.0f, 0.0f, -1.0f };
+		Vec bottomRight = { 0.0f, 0.0f, -1.0f };
+		Vec bottomLeft  = { 0.0f, 0.0f, -1.0f };
+		SetScreenCorners(topLeft, topRight, bottomRight, bottomLeft);
+		WipeQuad quad = { { topLeft, topRight, bottomRight, bottomLeft } };
 		gs->mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
 		DrawWipeQuad(gs, quad, 0);
 	}
@@ -127,9 +129,13 @@ static inline void BeginWipe(CGs* gs, s32 mode)
 
 static inline void FinishWipe(const CScrnWipe* wipe, CGs* gs, s32 mode)
 {
-	WipeQuad quad = { 0 };
-	SetWipeQuadScreenBounds(quad);
-	u32 color = ((u32)wipe->mColor.r << 24) | ((u32)wipe->mColor.g << 16) | ((u32)wipe->mColor.b << 8) | (u32)wipe->mColor.a;
+	Vec topLeft     = { 0.0f, 0.0f, 0.0f };
+	Vec topRight    = { 0.0f, 0.0f, 0.0f };
+	Vec bottomRight = { 0.0f, 0.0f, 0.0f };
+	Vec bottomLeft  = { 0.0f, 0.0f, 0.0f };
+	SetScreenCorners(topLeft, topRight, bottomRight, bottomLeft);
+	WipeQuad quad = { { topLeft, topRight, bottomRight, bottomLeft } };
+	u32 color     = ((u32)wipe->mColor.r << 24) | ((u32)wipe->mColor.g << 16) | ((u32)wipe->mColor.b << 8) | (u32)wipe->mColor.a;
 	if (mode)
 		gs->mCurRenderState->SetZMode(GX_TRUE, GX_LESS, GX_TRUE);
 	else
@@ -141,8 +147,12 @@ static inline void FinishWipe(const CScrnWipe* wipe, CGs* gs, s32 mode)
 
 static inline void BeginWipeMask(CGs* gs, f32 opacity)
 {
-	WipeQuad quad = { 0 };
-	SetWipeQuadScreenBounds(quad);
+	Vec topLeft     = { 0.0f, 0.0f, 0.0f };
+	Vec topRight    = { 0.0f, 0.0f, 0.0f };
+	Vec bottomRight = { 0.0f, 0.0f, 0.0f };
+	Vec bottomLeft  = { 0.0f, 0.0f, 0.0f };
+	SetScreenCorners(topLeft, topRight, bottomRight, bottomLeft);
+	WipeQuad quad = { { topLeft, topRight, bottomRight, bottomLeft } };
 	gs->mCurRenderState->SetDstAlpha(GX_FALSE, 0);
 	gs->mCurRenderState->SetColorUpdate(GX_FALSE);
 	gs->mCurRenderState->SetAlphaUpdate(GX_TRUE);
@@ -326,9 +336,13 @@ extern "C" void UpdateScreenFade(CScrnColor* color, u32 frames)
 extern "C" void DrawScreenColorOverlay(CScrnColor* color, CGs* gs)
 {
 	if (HasColor(color)) {
-		WipeQuad quad = { 0 };
-		SetWipeQuadScreenBounds(quad);
-		u32 packed = ((u32)color->mColor.r << 24) | ((u32)color->mColor.g << 16) | ((u32)color->mColor.b << 8) | (u32)color->mColor.a;
+		Vec topLeft     = { 0.0f, 0.0f, 0.0f };
+		Vec topRight    = { 0.0f, 0.0f, 0.0f };
+		Vec bottomRight = { 0.0f, 0.0f, 0.0f };
+		Vec bottomLeft  = { 0.0f, 0.0f, 0.0f };
+		SetScreenCorners(topLeft, topRight, bottomRight, bottomLeft);
+		WipeQuad quad = { { topLeft, topRight, bottomRight, bottomLeft } };
+		u32 packed    = ((u32)color->mColor.r << 24) | ((u32)color->mColor.g << 16) | ((u32)color->mColor.b << 8) | (u32)color->mColor.a;
 		SetGsChannelEnabled(gs, 0, 0);
 		gs->mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 		gs->mCurRenderState->SetZMode(GX_TRUE, GX_LESS, GX_FALSE);
@@ -486,9 +500,9 @@ void CScrnWipe::Update(u32 frames)
 	}
 }
 
-// NONMATCHING: the four Draw methods share the wipe quad/state scaffolding below. Retail
-// materializes an extra 48-byte stack copy of the quad (x/y copied, z written as 0) before
-// some DrawGsVertexQuad calls; the source behind that copy is undetermined.
+// NONMATCHING: the four Draw methods share the wipe quad/state scaffolding above (the screen quad is
+// four corner points copied into a WipeQuad, as retail's stack shows). What is left differs in the
+// frame (retail's is 0x20 smaller, one callee-saved float fewer) and in register choice.
 /**
  * @note Address: 0x8003E308
  * @note Size: 0xABC
@@ -794,7 +808,7 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	gs->mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_FALSE);
 	u32 alpha = color & 0xff;
 	static f32 scanline;
-	if (!gGame.mMenuActive) {
+	if (!gGame.mMenu.mActive) {
 		if (++scanline >= 4.0f)
 			scanline = 0;
 	}
@@ -827,7 +841,7 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes)
 {
 	if (!gGame.GetStatusFlags(0x100))
 		return;
-	if (gGame.mEvtData.mScript != NULL)
+	if (gGame.mEvt.mData.mScript != NULL)
 		return;
 	struct Label {
 		WiiTitleObject* object;
@@ -839,8 +853,9 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes)
 	} work;
 	work.used    = 0;
 	work.visible = 0;
-	for (s32 i = 0; i < gGame.mItemCount; ++i) {
-		WiiTitleObject* object = (WiiTitleObject*)((u8*)gGame.mItems + i * gGame.mItemStride);
+	for (s32 i = 0; i < gGame.mXObjs.mPools[8].mUsed; ++i) {
+		WiiTitleObject* object
+		    = (WiiTitleObject*)((u8*)((WiiFlagSource*)gGame.mXObjs.mPools[8].mObjects) + i * gGame.mXObjs.mPools[8].mStride);
 		if (!(object->mStatus & 1) || !(object->mStatus & 0x10000))
 			continue;
 		if (!GetItemFlagsMasked(GetItem(object), 2) || (object->mStatus & 0x0400000000000000ULL))
@@ -953,7 +968,7 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes)
 // single draws the left lens alone, already merged, without its trail
 void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f32 width, f32 height)
 {
-	if (gGame.mMenuActive)
+	if (gGame.mMenu.mActive)
 		return;
 	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
 	gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
@@ -965,11 +980,11 @@ void CScrnRoboeyes::DrawLenses(u32 single, u32 color, u32 alpha, f32 x, f32 y, f
 	}
 	if (gGame.GetPlayer()->GetAttachment() == 2) {
 		f32 fade;
-		if (gGame.mScopeTimer > 0.0f) {
-			if (gGame.mScopeTimer >= 5.0f)
+		if (gGame.mPointer.mScopeTimer > 0.0f) {
+			if (gGame.mPointer.mScopeTimer >= 5.0f)
 				fade = 0.0f;
 			else
-				fade = sinf(HALF_PI * (1.0f - (f32)fmod(gGame.mScopeTimer, 1.0)));
+				fade = sinf(HALF_PI * (1.0f - (f32)fmod(gGame.mPointer.mScopeTimer, 1.0)));
 		} else {
 			fade = 1.0f;
 		}
@@ -1781,7 +1796,7 @@ nw4r::g3d::ResNode CObj::GetRootResNode()
  * @note Address: 0x80043FA0
  * @note Size: 0x8
  */
-u8 CObj::StepScale(u32 frames)
+u8 CObj::StepScale(f32 frames)
 {
 	return ((CObjVec*)&mMoveScale)->Step(frames);
 }
@@ -1790,7 +1805,7 @@ u8 CObj::StepScale(u32 frames)
  * @note Address: 0x80043FA8
  * @note Size: 0x8
  */
-u8 CObj::StepRotate(u32 frames)
+u8 CObj::StepRotate(f32 frames)
 {
 	return ((CObjVec*)&mMoveRotate)->Step(frames);
 }
@@ -1799,7 +1814,7 @@ u8 CObj::StepRotate(u32 frames)
  * @note Address: 0x80043FB0
  * @note Size: 0x8
  */
-u8 CObj::StepTranslate(u32 frames)
+u8 CObj::StepTranslate(f32 frames)
 {
 	return ((CObjVec*)&mMoveTranslate)->Step(frames);
 }

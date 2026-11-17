@@ -356,6 +356,7 @@ game/infopointinit.cpp:
 
 game/globalresources.cpp:
 	.text       start:0x8006FFDC end:0x8007116C
+	.rodata     start:0x80208C60 end:0x80208C70 align:8
 	.data       start:0x80213C38 end:0x8021617C
 	.sdata      start:0x806347C8 end:0x806347CC
 

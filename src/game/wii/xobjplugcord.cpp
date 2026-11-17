@@ -2,6 +2,7 @@
 #include "game/wii/cgame.h"
 #include "game/wii/cgs.h"
 #include "game/wii/title.h"
+#include "game/wii/xobj.h"
 #include "game/mapfloorhit.h"
 #include "game/gmath.h"
 #include "game/cvec.h"
@@ -590,8 +591,8 @@ extern "C" BOOL PushPlugCordPointFromObject(CVec* pos, WiiTitleObject* object, f
  */
 extern "C" void PushPlugCordPointsFromObjects(XObjPlugCord* cord)
 {
-	for (s32 i = 0; i < gGame.mObjectCount; ++i) {
-		WiiTitleObject* object = gGame.mObjects[i];
+	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+		WiiTitleObject* object = (WiiTitleObject*)gGame.mXObjs.mObjects[i];
 		if (!(object->mStatus & 1) || !(object->mStatus & 0x10000) || object->mStatus & 0x100000
 		    || object == (WiiTitleObject*)gGame.GetPlayer())
 			continue;
@@ -613,15 +614,15 @@ extern "C" void PushPlugCordPointsFromObjects(XObjPlugCord* cord)
  */
 extern "C" f32 FindPlugCordFloor(XObjPlugCord* cord, Vec* pos, f32 radius, f32 height)
 {
-	if (!fn_800C98E0(gGame.mMap, pos, cord->mFloorHit.mTriangle, &cord->mFloorHit)) {
+	if (!fn_800C98E0(gGame.mXObjs.mPools[3].mObjects, pos, cord->mFloorHit.mTriangle, &cord->mFloorHit)) {
 		cord->mFloorHit.mTriangle = -1;
 		cord->mFloorHit.mTrigon   = -1;
 		cord->mFloorHit.mHeight   = pos->y;
 	}
 	f32 highest = cord->mFloorHit.mHeight;
 	CVec contact, push;
-	for (s32 i = 0; i < gGame.mObjectCount; ++i) {
-		WiiTitleObject* object = gGame.mObjects[i];
+	for (s32 i = 0; i < gGame.mXObjs.mObjectCount; ++i) {
+		WiiTitleObject* object = (WiiTitleObject*)gGame.mXObjs.mObjects[i];
 		if (!(object->mStatus & 1) || !(object->mStatus & 0x10000) || object->mStatus & 0x100000)
 			continue;
 		CVec* objectPos = object->vf244();

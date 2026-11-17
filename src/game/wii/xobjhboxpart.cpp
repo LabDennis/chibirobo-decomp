@@ -29,7 +29,7 @@ static inline void PlayBoxAnim(XObj* object, s32 id)
 static inline void SpawnBoxEffect(XObjHBox* box, u32 id)
 {
 	Vec rotation           = { 0.0f, 0.0f, 0.0f };
-	SpawnedEffect* spawned = (SpawnedEffect*)fn_800A11A4((u8*)&gGame + 0xBCA8, id, 1);
+	SpawnedEffect* spawned = (SpawnedEffect*)fn_800A11A4(&gGame.mEvtPtcl, id, 1);
 	if (spawned != NULL) {
 		spawned->mTranslate = box->mMoveTranslate;
 		spawned->mRotate    = rotation;
@@ -148,11 +148,11 @@ void XObjHBox::UpdateObject(u32 frames)
 			mEventScript = GetStageScriptByIndex(index);
 		mPart.mObj.UpdateObject(frames);
 	} else {
-		if (vf11C() == 1) {
-			if (vf134())
+		if (GetAnimId() == 1) {
+			if (IsAnimDone())
 				PlayBoxAnim(this, 3);
-		} else if (vf11C() == 3) {
-			vf134();
+		} else if (GetAnimId() == 3) {
+			IsAnimDone();
 		}
 		if (mRing > 0.0f) { // the hit ring fades
 			mRing -= 0.04f;
@@ -161,7 +161,7 @@ void XObjHBox::UpdateObject(u32 frames)
 		}
 		if (!(mPart.mObj.mStatus.mFlags & 0x4000000000000000ULL)) {
 			mPart.mObj.UpdateObject(frames);
-			s32 id = mPart.mObj.vf11C();
+			s32 id = mPart.mObj.GetAnimId();
 			if (id > 1) {
 				nw4r::g3d::ResNode joint = mPart.mObj.FindResNode("obj2");
 				Vec pos                  = mPart.mObj.GetJointPos(joint);
@@ -171,21 +171,21 @@ void XObjHBox::UpdateObject(u32 frames)
 			}
 			switch (id) {
 			case 2:
-				if (mPart.mObj.vf134())
+				if (mPart.mObj.IsAnimDone())
 					PlayBoxAnim(&mPart.mObj, 3);
 				break;
 			case 3:
-				if (mPart.mObj.vf134())
+				if (mPart.mObj.IsAnimDone())
 					PlayBoxAnim(&mPart.mObj, 4);
 				break;
 			case 4:
-				if (mPart.mObj.vf134()) {
+				if (mPart.mObj.IsAnimDone()) {
 					PlayBoxAnim(&mPart.mObj, 5);
 					SpawnBoxEffect(this, 0x2b);
 				}
 				break;
 			case 5:
-				if (mPart.mObj.vf134()) {
+				if (mPart.mObj.IsAnimDone()) {
 					PlayBoxAnim(&mPart.mObj, 5);
 					mPart.mHit = 1.0f;
 					mStatus.mFlags |= 0x4000000000000000ULL;

@@ -188,10 +188,11 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
 		if (IsLeadByte(code)) { // a lead byte takes the next byte along
 			code = (code << 8) | (u8)str[1];
 		}
-		image = NULL;
-		for (s32 i = 0; gFontGlyphRanges[i].glyphs != NULL; i++) {
-			if (code >= gFontGlyphRanges[i].first && code < gFontGlyphRanges[i].end) {
-				FontGlyph* glyph = &gFontGlyphRanges[i].glyphs[code - gFontGlyphRanges[i].first];
+		image                  = NULL;
+		FontGlyphRange* ranges = gFontGlyphRanges;
+		for (s32 i = 0; ranges[i].glyphs != NULL; i++) {
+			if (code >= ranges[i].first && code < ranges[i].end) {
+				FontGlyph* glyph = &ranges[i].glyphs[code - ranges[i].first];
 				image            = glyph;
 				advance          = glyph->width;
 				break;

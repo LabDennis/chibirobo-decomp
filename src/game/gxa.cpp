@@ -318,14 +318,15 @@ static inline BOOL StopSfx(XSound* sound, s32 sfx)
  */
 void AnimSfx::Update(s32 anim, f32 frame, u8 vol)
 {
+	XSound* sound;
 	s32 prev = mAnimId;
 
 	if (prev != anim) {
 		mAnimId = anim;
 		mFrame  = 0.0f;
 	}
+	sound = &gGame.mSound;
 	AnimSfxEvent* event;
-	XSound* sound = &gGame.mSound;
 	for (s32 i = 0; mEvents != NULL && (event = &mEvents[i])->mAnim >= 0; i++) { // the table ends at -1
 
 		if (event->mAnim == anim || event->mAnim == prev) {

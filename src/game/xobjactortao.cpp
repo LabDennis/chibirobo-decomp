@@ -309,9 +309,9 @@ void XObjActorTao::UpdateAfterAnim(u32 frames)
 	UpdateAfterAnim__9XObjActorFUl(this, frames);
 	CJObj joint;
 	if (mHideKinds.mFlags & 0x2f) {
+		CVec mouthPosition;
 		s32 mouth[6] = { 0, 0, 0, 0, 0, 0 };
 		Attach__5CJObjFP9_HSD_JObj(&joint, FindJointByPath(mJObj, mouth, 6));
-		CVec mouthPosition;
 		mouthPosition = joint.GetPos();
 		s32 kind      = -1;
 		if (mHideKinds.mFlags & 2)

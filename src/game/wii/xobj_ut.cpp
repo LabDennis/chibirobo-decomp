@@ -83,7 +83,6 @@ XObjLight::~XObjLight()
 }
 
 XObjMap::XObjMap()
-    : _9AC(0)
 {
 }
 

@@ -131,7 +131,7 @@ void CCameraActionScroll2::ClearHideList()
  * @note Size: 0x134
  */
 // NONMATCHING: the objects walk through WiiTitleObject on the Wii; the ids index
-// gGame.mObjects and the drawn bit lives in a 64-bit mask at _150
+// gGame.mXObjs.mObjects and the drawn bit lives in a 64-bit mask at _150
 void CCameraActionScroll2::HideObjs()
 {
 	s32* id    = gScrollCameraHiddenObjectIds;
@@ -140,7 +140,7 @@ void CCameraActionScroll2::HideObjs()
 		if (*id == -1) {
 			return;
 		}
-		WiiTitleObject* obj = gGame.mObjects[*id];
+		WiiTitleObject* obj = (WiiTitleObject*)gGame.mXObjs.mObjects[*id];
 		// 1: was drawn and is hidden now, 2: in use but not drawn, 0: missing or not in use
 		if (obj != NULL && (obj->mStatus & 1)) {
 			if (obj->mStatus & 0x10000) {
@@ -174,7 +174,7 @@ void CCameraActionScroll2::ShowObjs()
 			id++;
 			state++;
 		} else {
-			gGame.mObjects[*id]->mStatus |= 0x10000;
+			((WiiTitleObject*)gGame.mXObjs.mObjects[*id])->mStatus |= 0x10000;
 			id++;
 			state++;
 		}
@@ -503,8 +503,8 @@ void CCameraActionScroll2::Draw()
 	f32 fastBlink = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 7) % 360)));
 
 	Vec pos = { 0.0f, 0.0f, 0.0f };
-	for (s32 i = 0; i < gGame.mObjPoolCount; i++) {
-		WiiTitleObject* obj = (WiiTitleObject*)(gGame.mObjPoolObjects + i * gGame.mObjPoolStride);
+	for (s32 i = 0; i < gGame.mXObjs.mPools[10].mUsed; i++) {
+		WiiTitleObject* obj = (WiiTitleObject*)(gGame.mXObjs.mPools[10].mObjects + i * gGame.mXObjs.mPools[10].mStride);
 		if (!(obj->mStatus & 0x10000)) {
 			continue;
 		}
@@ -650,8 +650,8 @@ void CCameraActionScroll2::Draw()
 	u32 fastColor  = (u32)(255.0f * fastBlink) | 0xC8C8C800;
 	u32 fadedAlpha = (u32)(255.0f * (1.0f - fastBlink));
 	u32 labelColor = fadedAlpha | 0xC8C8C800;
-	for (s32 i = 0; i < gGame.mObjPoolCount; i++) {
-		WiiTitleObject* obj = (WiiTitleObject*)(gGame.mObjPoolObjects + i * gGame.mObjPoolStride);
+	for (s32 i = 0; i < gGame.mXObjs.mPools[10].mUsed; i++) {
+		WiiTitleObject* obj = (WiiTitleObject*)(gGame.mXObjs.mPools[10].mObjects + i * gGame.mXObjs.mPools[10].mStride);
 		switch (*(s32*)obj->mSpawnData) {
 		case 0xD3:
 		case 0x115:

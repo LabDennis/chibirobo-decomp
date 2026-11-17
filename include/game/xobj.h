@@ -39,6 +39,16 @@ public:
 };
 typedef char CAnmQueue_size_check[sizeof(CAnmQueue) == 0x88 ? 1 : -1];
 
+// one of an object's floors, a list of them ends at an id of -1
+struct XObjFloor {
+	s16 mId;              // _00
+	s16 mType;            // _02, ground type, 13 and up count as none
+	s32 mCenterOffset[3]; // _04, in hundredths
+	s32 mYawDegrees;      // _10
+	s32 mExtent[3];       // _14, in hundredths
+};
+typedef char XObjFloor_size_check[sizeof(XObjFloor) == 0x20 ? 1 : -1];
+
 // a floor's edge, offsets from the object's position
 struct XObjEdge {
 	Vec mContactOffset; // _00

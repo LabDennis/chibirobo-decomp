@@ -143,7 +143,7 @@ void CCameraActionEye::Update(u32 step)
 			ClampStick(x);
 			f32 y = pad.mSubStick.y;
 			ClampStick(y);
-			if (gGame.mEvtData.mScript != NULL || !PlayerCanLook()) {
+			if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
 				y = 0.0f;
 				x = y;
 			}
@@ -162,7 +162,7 @@ void CCameraActionEye::Update(u32 step)
 			ClampStick(turn);
 			f32 tilt = pad.mStick.y;
 			ClampStick(tilt);
-			if (gGame.mEvtData.mScript != NULL || !PlayerCanLook()) {
+			if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
 				tilt = 0.0f;
 				turn = tilt;
 			}
@@ -196,7 +196,7 @@ void CCameraActionEye::Update(u32 step)
 			player->mVtable->SetRotation(player, player->mRotY - 0.034906585f * turn * step);
 
 			zoom = pad.mSubStick.y;
-			if (gGame.mEvtData.mScript != NULL || !PlayerCanLook()) {
+			if (gGame.mEvt.mData.mScript != NULL || !PlayerCanLook()) {
 				zoom = 0.0f;
 			}
 			if (mOverride.z == 0.0f) {

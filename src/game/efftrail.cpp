@@ -260,27 +260,24 @@ extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 cou
 static inline void DrawRingStrip(Mtx transform, u32 color, Vec* vertices, bool separate)
 {
 	PSMTXMultVecArray(transform, vertices, vertices, 50);
-	CGs& gs = gGame.mGs;
 	if (separate) {
 		for (s32 i = 0; i < 48; i += 2)
-			DrawGsTrianglePrimitive(&gs, GX_TRIANGLESTRIP, gs.mCamera->mViewMtx, &vertices[i], color, 4);
+			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, &vertices[i], color, 4);
 	} else {
-		DrawGsTrianglePrimitive(&gs, GX_TRIANGLESTRIP, gs.mCamera->mViewMtx, vertices, color, 50);
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
 	}
 }
 
 static inline void BuildRingStrip(Vec* vertices, f32 firstRadius, f32 firstZ, f32 secondRadius, f32 secondZ)
 {
-	for (s32 i = 0; i <= 24; i++) {
-		f32 angle = (TWO_PI / 24.0f) * i;
-		Vec& a    = vertices[2 * i];
-		Vec& b    = vertices[2 * i + 1];
-		b.x       = -(secondRadius * (f32)sin(angle));
-		b.y       = secondRadius * (f32)cos(angle);
-		b.z       = secondZ;
-		a.x       = -(firstRadius * (f32)sin(angle));
-		a.y       = firstRadius * (f32)cos(angle);
-		a.z       = firstZ;
+	for (s32 i = 0; i < 25; i++) {
+		f32 angle             = (TWO_PI / 24.0f) * i;
+		vertices[2 * i + 1].x = -(secondRadius * (f32)sin(angle));
+		vertices[2 * i + 1].y = secondRadius * (f32)cos(angle);
+		vertices[2 * i + 1].z = secondZ;
+		vertices[2 * i].x     = -(firstRadius * (f32)sin(angle));
+		vertices[2 * i].y     = firstRadius * (f32)cos(angle);
+		vertices[2 * i].z     = firstZ;
 	}
 }
 
@@ -477,8 +474,7 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 			menu->mMark[kind].mObj.SetColor(0, 175, 175, 175, 0);
 			menu->mMark[kind].mObj.SetColor(1, 0, 0, 0, 0);
 		}
-		XObj& model = menu->mMark[kind].mObj;
-		model.UpdateObject(1);
+		menu->mMark[kind].mObj.UpdateObject(1);
 		InvalidateAll();
 		f32 scaleXZ = 74.0f * size, scaleY = -74.0f * size;
 		for (s32 j = 0; j < 8; ++j) {
@@ -489,26 +485,26 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 			MakeOXTransform(outline, x + dx, y + dy, rx, ry, rz);
 			PSMTXScale(scale, scaleXZ, scaleY, scaleXZ);
 			PSMTXConcat(outline, scale, outline);
-			HSD_JObjCopyMtx(model.mJObj, outline);
+			HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, outline);
 			f32 opacity = 0.3f * menu->mFade;
-			DrawOXModel(model, 0xffffff00, 0xffffff00, opacity);
+			DrawOXModel(menu->mMark[kind].mObj, 0xffffff00, 0xffffff00, opacity);
 		}
 		Mtx scale;
 		PSMTXScale(scale, scaleXZ, scaleY, scaleXZ);
 		PSMTXConcat(shape, scale, shape);
-		HSD_JObjCopyMtx(model.mJObj, shape);
-		DrawOXModel(model, gOXMenuMarkDiffuseColors[kind], 0x40404000, menu->mFade);
+		HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, shape);
+		DrawOXModel(menu->mMark[kind].mObj, gOXMenuMarkDiffuseColors[kind], 0x40404000, menu->mFade);
 		PSMTXConcat(label, scale, label);
 		InvalidateAll();
-		HSD_JObjCopyMtx(model.mJObj, label);
-		HSD_JObjSetupMatrix(model.mJObj);
+		HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, label);
+		HSD_JObjSetupMatrix(menu->mMark[kind].mObj.mJObj);
 		SetGsChannelEnabled(&gGame.mGs, 0, 0);
 		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 1, 1);
 		Vec textRot        = { rx, ry, rz };
 		gGame.mGs.mTextRot = textRot;
-		Vec pos            = GetEventJObjWorldPosition(&model, model.mJObj->child);
+		Vec pos            = GetEventJObjWorldPosition(&menu->mMark[kind].mObj, menu->mMark[kind].mObj.mJObj->child);
 		f32 fontSize       = 2.0f * (30.0f * size * size);
 		f32 left           = pos.x - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x104 + kind), TRUE, fontSize);
 		f32 top            = pos.y - 0.5f * fontSize;
