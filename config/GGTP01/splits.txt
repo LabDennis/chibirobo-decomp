@@ -491,48 +491,11 @@ game/objb_attach.cpp:
 game/objb_plug.cpp:
 	.text       start:0x800DA40C end:0x800DC1E0
 
-game/plugcordcollision.cpp:
-	.text       start:0x800DC1E0 end:0x800DC62C
-
-game/plugcordpush.cpp:
-	.text       start:0x800DC62C end:0x800DCBA0
-
-game/xobjplugnodedraw.cpp:
-	.text       start:0x800DCBA0 end:0x800DCD5C
-
-game/xobjplugcorddraw.cpp:
-	.text       start:0x800DCD5C end:0x800DD0B0
-
-game/plugcordsimulation.cpp:
-	.text       start:0x800DD0B0 end:0x800DDE78
-
-game/xobjplugcordend.cpp:
-	.text       start:0x800DDE78 end:0x800DDEE0
-
-game/xobjplugcordreset.cpp:
-	.text       start:0x800DDEE0 end:0x800DE14C
-
 game/xobjplugcord.cpp:
-	.text       start:0x800DE14C end:0x800DE29C
-	.bss        start:0x80383248 end:0x80384A54
-
-game/xobjplugcordpointctor.cpp:
-	.text       start:0x800DE350 end:0x800DE368
-
-game/xobjplugnodes.cpp:
-	.text       start:0x800DE368 end:0x800DE4AC
-
-game/plugcordpoints.cpp:
-	.text       start:0x800DE4AC end:0x800DEB0C
-
-game/xobjplugnode.cpp:
-	.text       start:0x800DEB0C end:0x800DECFC
-
-game/xobjplugcordpointpool.cpp:
-	.text       start:0x800DE29C end:0x800DE2D4
-
-game/xobjplugcordpointdtor.cpp:
-	.text       start:0x800DE2D4 end:0x800DE350
+	.text       start:0x800DC1E0 end:0x800DECFC
+	.bss        start:0x80383230 end:0x80384A70
+	.sbss       start:0x80662128 end:0x80662140
+	.sdata2     start:0x80664A50 end:0x80664AD8
 
 game/inventory.cpp:
 	.text       start:0x800DECFC end:0x800DF400
@@ -2243,3 +2206,4 @@ dolphin/thp/THPDec.c:
 
 dolphin/thp/THPAudio.c:
 	.text       start:0x801FFBD8 end:0x80200054
+
