@@ -1,10 +1,8 @@
 // The player object's file, .text 0x800C9E84-0x800E9D30: its .rodata names it "xobj_chr.cpp"
 // (wii_units.md Nr. 60 and 61), the GameCube's obja_chr.cpp. The functions come in the reverse of the
 // GameCube's order.
-// NONMATCHING: only the small accessors the GameCube file shares have source so far; the player's
-// update, draw and menu code is still to do. CanFallDuringLadderAction, CanFallDuringRopeAction and
-// CanCopterActionSlideOnSlope (74-81 %): retail starts each bool at TRUE and clears it, as an inlined
-// helper returning the first two compares would; this build tests the other way round.
+// NONMATCHING: the small accessors and helpers have source, the player's update, draw and menu code is
+// still to do. The state checks call the action accessors above them, which -inline auto expands.
 #include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "game/attachmentvalues.h"
 #include "game/ringmenu.h"
@@ -21,6 +19,8 @@
 #include <stdlib.h>
 
 extern "C" void ReleasePushAction(XAction* action);
+extern "C" BOOL IsPlayerStopped(const WiiPlayerState* chr);
+extern "C" BOOL IsTumbleActionState(const XAction* act, s32 wanted);
 
 static inline bool TestStatus(const XObj* object, u64 mask)
 {
@@ -37,7 +37,7 @@ static inline bool IsStopped(const WiiPlayerState* chr)
 static inline bool IsDown(const WiiPlayerState* chr)
 {
 	bool ret = false;
-	if (IsStopped(chr)) {
+	if (IsPlayerStopped(chr)) {
 		if (chr->mBatteryDrains != 0) {
 			ret = true;
 		}
@@ -56,11 +56,7 @@ static inline bool IsEventHeld(const WiiPlayerState* chr)
 
 static inline bool IsTumbling(const WiiPlayerState* chr)
 {
-	bool ret = false;
-	if (chr->mTumble.mState == 4 || chr->mTumble.mState == 5 || chr->mTumble.mState == 6) {
-		ret = true;
-	}
-	return ret;
+	return IsTumbleActionState(&chr->mTumble, 4) || IsTumbleActionState(&chr->mTumble, 5) || IsTumbleActionState(&chr->mTumble, 6);
 }
 
 static inline void SpinMarks(WiiPlayerState& chr)
@@ -93,11 +89,6 @@ static inline Vec SecondEdgePoint(const XObj* object, s32 index, f32 height)
 	point.y = height;
 	point.z = object->mMoveTranslate.z + object->mEdges[index].mTo.z;
 	return point;
-}
-
-static inline u8 IsMenuUp(WiiPlayerState* chr)
-{
-	return (u8)(chr->mMenu.mAtc.mOpen > 0 || chr->mMenu.mDrs.mOpen > 0);
 }
 
 static inline void FocusEquipmentRing(XObjChrMenu* menu)
@@ -501,15 +492,15 @@ static inline void OpenPlayerEquipmentRings(WiiPlayerState* chr)
 	}
 }
 
-// NONMATCHING (95 %): the SetAnim call through WiiPlayerVtable as in StopPlayerMotion, and retail
-// starts the ring-up flag at TRUE and the open flag at FALSE where this build does the reverse
+// NONMATCHING (97 %): the SetAnim call through WiiPlayerVtable as in StopPlayerMotion, and retail
+// starts the open flag at FALSE where this build starts it at TRUE
 void SelectPlayerEquipmentRing(WiiPlayerState* chr, s32 selection)
 {
 	if (selection >= 0) {
 		chr->mMenu.mPrevSel = chr->mMenu.mSel;
 		chr->mMenu.mSel     = selection;
 	}
-	if (IsMenuUp(chr)) {
+	if (chr->mMenu.IsOpening()) {
 		FocusEquipmentRing(&chr->mMenu);
 	} else {
 		OpenPlayerEquipmentRings(chr);
@@ -666,27 +657,16 @@ BOOL CanFallDuringHangAction(const XActHang* act)
 	return (act->mState == 0 || act->mState == 10);
 }
 
-// NONMATCHING (67-71 %): retail starts each bool at TRUE and clears it, as in CanFallDuringLadderAction
 BOOL CanFallDuringJumpAction(const XAction* act)
 {
-	s32 state = act->mState;
-	bool a    = state == 0 || state == 2;
-	bool b    = a || state == 3;
-	bool c    = b || state == 4;
-	return c || state == 17;
+	return IsJumpActionState(act, 0) || IsJumpActionState(act, 2) || IsJumpActionState(act, 3) || IsJumpActionState(act, 4)
+	    || IsJumpActionState(act, 17);
 }
 
-// NONMATCHING (67-71 %): retail starts each bool at TRUE and clears it, as in CanFallDuringLadderAction
 BOOL CanFallDuringCopterAction(const XAction* act)
 {
-	s32 state = act->mState;
-	bool a    = state == 0 || state == 3;
-	bool b    = a || state == 4;
-	bool c    = b || state == 7;
-	bool d    = c || state == 8;
-	bool e    = d || state == 5;
-	bool f    = e || state == 6;
-	return f || state == 9;
+	return IsCopterActionState(act, 0) || IsCopterActionState(act, 3) || IsCopterActionState(act, 4) || IsCopterActionState(act, 7)
+	    || IsCopterActionState(act, 8) || IsCopterActionState(act, 5) || IsCopterActionState(act, 6) || IsCopterActionState(act, 9);
 }
 
 u32 CheckCurrentStageFlags(const CGame* game, u32 mask)
@@ -889,17 +869,12 @@ void SetObjectVerticalSpeed(CObjVec* value, f32 y)
 
 BOOL CanFallDuringLadderAction(const XAction* act)
 {
-	s32 state = act->mState;
-	bool idle = state == 0 || state == 10;
-	return idle || state == 11;
+	return IsLadderActionState(act, 0) || IsLadderActionState(act, 10) || IsLadderActionState(act, 11);
 }
 
 BOOL CanFallDuringRopeAction(const XAction* act)
 {
-	s32 state  = act->mState;
-	bool idle  = state == 0 || state == 9;
-	bool ended = idle || state == 10;
-	return ended || state == 11;
+	return IsRopeActionState(act, 0) || IsRopeActionState(act, 9) || IsRopeActionState(act, 10) || IsRopeActionState(act, 11);
 }
 
 BOOL CanFallDuringTumbleAction(const XAction* act)
@@ -960,8 +935,7 @@ BOOL CanTumbleActionSlideOnSlope(const XAction*)
 
 BOOL CanCopterActionSlideOnSlope(const XAction* act)
 {
-	bool idle = act->mState == 0 || act->mState == 6;
-	return idle || act->mState == 9;
+	return IsCopterActionState(act, 0) || IsCopterActionState(act, 6) || IsCopterActionState(act, 9);
 }
 
 BOOL CanPopperActionSlideOnSlope(const XAction*)
@@ -1260,8 +1234,7 @@ CVec fn_800E5A48(XObj* player)
 	return player->GetJointTranslate("carry_obj_nll");
 }
 
-// NONMATCHING (45 %): retail keeps each inline's bool in a register of its own (stopped, down, held) and
-// tests the tumble states one compare at a time; this build folds them into one flag and a range check
+// NONMATCHING (92 %): retail keeps the held flag apart from the down flag, this build folds the two
 BOOL IsPlayerBlockingEvents(const WiiPlayerState* player)
 {
 	return IsEventBlocked(player);
@@ -1276,6 +1249,7 @@ s32 GetCharacterObjectApproachResult(XObj* chr, XObj* object)
 
 // the highest floor of the object under a floor group that's still below chibi robo,
 // stops early on the preferred one, -1 for none. The contact flag is read off the group's own entry
+// NONMATCHING (94 %): retail recomputes owner + group inside the loop, this build hoists it
 s32 FindPlayerSupportingFloor(WiiPlayerState* chr, s32 group, s32 preferred)
 {
 	s32 result = -1;
