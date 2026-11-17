@@ -55,7 +55,11 @@ static inline void Report(const char* format, s32 i = 0, const void* a = NULL, u
 
 } // namespace mm
 
-#define KB(x) ((x) / 1024.0f)
+// byte count in kilobytes for the reports
+static inline f32 KB(u32 x)
+{
+	return x / 1024.0f;
+}
 
 /**
  * @note Address: 0x802A7478
