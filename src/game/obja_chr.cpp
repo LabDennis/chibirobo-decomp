@@ -4759,7 +4759,8 @@ extern "C" void DrawPlayerLookMarker(XObjChrLook* look)
 		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, pos.x, pos.y, pos.z, width, height, rotation.x, rotation.y,
 		                   rotation.z);
 
-		f32 glow = look->mFade * (0.5f + 0.5f * (f32)sin(PI * look->mPulse));
+		f32 pulse = (f32)sin(PI * look->mPulse);
+		f32 glow  = look->mFade * (0.5f + 0.5f * pulse);
 		if (glow < 0.0f)
 			glow = 0.0f;
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 1);
