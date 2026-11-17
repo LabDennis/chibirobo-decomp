@@ -668,48 +668,9 @@ game/objb_sound.cpp:
 	.sdata      start:0x80634A88 end:0x80634AB0
 	.sdata2     start:0x80637C88 end:0x80637CB8
 
-game/xobjfree.cpp:
-	.text       start:0x800DF344 end:0x800DF8D0
-
-game/xobjfreeupdate.cpp:
-	.text       start:0x800DF8D0 end:0x800DFD7C
-
-game/xobjfreeevent.cpp:
-	.text       start:0x800DFD7C end:0x800E034C
-
-game/xobjdustpad.cpp:
-	.text       start:0x800E034C end:0x800E0538
-
-game/xobjdustbillboard.cpp:
-	.text       start:0x800E0538 end:0x800E0A68
-
-game/xobjdustevent.cpp:
-	.text       start:0x800E0A68 end:0x800E0DE4
-
-game/xobjdust.cpp:
-	.text       start:0x800E0DE4 end:0x800E16E4
+game/xobj.cpp:
+	.text       start:0x800DF344 end:0x800E3F84
 	.data       start:0x80228A30 end:0x80228B7C
-
-game/xobjhbox.cpp:
-	.text       start:0x800E16E4 end:0x800E1D18
-
-game/xobjhboxupdate.cpp:
-	.text       start:0x800E1D18 end:0x800E2C84
-
-game/xobjhboxpart.cpp:
-	.text       start:0x800E2C84 end:0x800E2EFC
-
-game/xobjcoinfall.cpp:
-	.text       start:0x800E2EFC end:0x800E3108
-
-game/xobjcoinparam.cpp:
-	.text       start:0x800E3108 end:0x800E3184
-
-game/xobjcoinupdate.cpp:
-	.text       start:0x800E3184 end:0x800E3BA4
-
-game/xobjcoin.cpp:
-	.text       start:0x800E3BA4 end:0x800E3F84
 
 game/xobjflagsdtor.cpp:
 	.text       start:0x800E3F84 end:0x800E4044
