@@ -1142,8 +1142,7 @@ gamecube_libs = [
             Object(NonMatching, "rel/stage01/hamburg.cpp"),
             Object(Matching, "rel/ana.cpp"),
             Object(EquivalentFor(JP), "rel/stage02/fighter.cpp"),
-            # its data order matched only under a per-unit -inline deferred
-            Object(NonMatching, "rel/stage02/rouka.cpp"),
+            Object(MatchingFor(US, JP), "rel/stage02/rouka.cpp"),
             # its data order matched only under a per-unit -inline deferred
             Object(NonMatching, "rel/stage02/car.cpp"),
             Object(NonMatching, "rel/stage03/decapanel.cpp"),
