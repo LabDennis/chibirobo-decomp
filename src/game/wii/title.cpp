@@ -201,7 +201,7 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 x, f32
 // inlines to __fabsf
 static inline void ApproachTitleOffset(f32& value, f32& target)
 {
-	f32 speed = __fabsf((target - value) * .25f);
+	f32 speed = __fabsf((target - value) / 4);
 	if (speed <= 1)
 		speed = 1;
 	ApproachHudValue(&value, &target, speed);
@@ -2156,7 +2156,7 @@ extern "C" void DrawTitleHelpText(Title* menu)
  * @note Address: 0x8004DC94
  * @note Size: 0x174
  */
-// NONMATCHING: the two frame-count conversions of the drift step take each other's stack slot
+// the fade is stepped before the growth: retail's .sdata2 has 0.009 (0x805A2EFC) ahead of 0.018
 // one dust mote's drift cycle: a random delay, then it grows until it pops and respawns
 void fn_8004DC94(TitleDust* dust, u32 frames)
 {
@@ -2172,8 +2172,8 @@ void fn_8004DC94(TitleDust* dust, u32 frames)
 		}
 		break;
 	case 2:
-		dust->mSpeedX += 0.018f * frames;
 		dust->mSpeedY -= 0.009f * frames;
+		dust->mSpeedX += 0.018f * frames;
 		if (dust->mSpeedX >= 2.0f) {
 			dust->mX      = rand() % gRingScreenWidth;
 			dust->mY      = rand() % gRingScreenHeight;
@@ -2271,11 +2271,12 @@ void fn_8004DF38()
 // a pane event clears whichever tracked index pointed at it; the slot sits in Title's vtable
 void fn_8004DF3C(Title* title, CbPane* pane)
 {
-	switch (pane->mKind) {
+	s32 kind = pane->mKind;
+	switch (kind) {
 	case 0:
 	case 1:
 	case 2:
-		if (title->mFile == pane->mKind && title->mFile != -1) {
+		if (title->mFile == kind && title->mFile != -1) {
 			title->mFile = -1;
 		}
 		break;
@@ -2283,7 +2284,7 @@ void fn_8004DF3C(Title* title, CbPane* pane)
 	case 4:
 		if (title->mMode == 3 || title->mMode == 4 || title->mMode == 5 || title->mMode == 26 || title->mMode == 27 || title->mMode == 6
 		    || title->mMode == 11) {
-			if (title->mChoice == pane->mKind - 3 && title->mChoice != -1) {
+			if (title->mChoice == kind - 3 && title->mChoice != -1) {
 				title->mChoice = -1;
 			}
 		}
@@ -2291,13 +2292,21 @@ void fn_8004DF3C(Title* title, CbPane* pane)
 	case 5:
 	case 6:
 	case 7:
-		if (title->mSelection == pane->mKind - 5 && title->mSelection != -1) {
+		if (title->mSelection == kind - 5 && title->mSelection != -1) {
 			title->mSelection = -1;
 		}
 		break;
 	}
-	if (title->mState == 21 && pane->mKind >= 8 && pane->mKind < 11 && title->mOptionLine != -1) {
-		title->mOptionLine = -1;
+	if (title->mState == 21) {
+		switch (pane->mKind) {
+		case 8:
+		case 9:
+		case 10:
+			if (title->mOptionLine != -1) {
+				title->mOptionLine = -1;
+			}
+			break;
+		}
 	}
 }
 
@@ -2521,7 +2530,7 @@ void fn_8004E6EC(Title* title, BOOL options, f32 x, f32 y, f32 alpha, f32 extent
 		} else {
 			size = 38.4f;
 		}
-		f32 radius  = 2.0f * (size * 0.5f);
+		f32 radius  = 2.0f * (size / 2);
 		f32 centreY = y - radius * 0.5f;
 		Vec ring[65];
 		for (s32 i = 0; i < 65; i++) {
@@ -2573,14 +2582,14 @@ void fn_8004E6EC(Title* title, BOOL options, f32 x, f32 y, f32 alpha, f32 extent
  * @note Address: 0x8004EDFC
  * @note Size: 0x480
  */
-// NONMATCHING: read from retail's code; only the float registers of x, width, top and scale differ
+// NONMATCHING: read from retail's code; only the order of the copies of x and width at the start differs
 // the highlight bar behind an options line: a stretched middle and two caps from one texture, then the
 // same bar smaller in a dark shade, which retail draws without its left cap
 void fn_8004EDFC(Title* title, BOOL selected, f32 x, f32 y, f32 size, f32 width)
 {
-	f32 top   = y - 2.0f;
+	y -= 2.0f;
 	f32 scale = 1.0f;
-	f32 h     = size * scale;
+	size *= scale;
 	u32 color;
 	if (selected && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
 		color = (u32)(255.0f * title->mOptionAlpha) | 0xFFB62800;
@@ -2594,32 +2603,32 @@ void fn_8004EDFC(Title* title, BOOL selected, f32 x, f32 y, f32 size, f32 width)
 	tex.mTexMtx.mDirty = TRUE;
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.25f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, 2.0f * scale + top, 0.0f, width, h, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, 2.0f * scale + y, 0.0f, width, size, 0.0f, 0.0f, 0.0f);
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, (x - width * 0.5f) - 4.0f * scale, 2.0f * scale + top, 0.0f,
-	                   8.0f * scale, h, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, (x - width / 2) - 4.0f * scale, 2.0f * scale + y, 0.0f,
+	                   8.0f * scale, size, 0.0f, 0.0f, 0.0f);
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 4.0f * scale + (width * 0.5f + x), 2.0f * scale + top, 0.0f,
-	                   8.0f * scale, h, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 4.0f * scale + (width / 2 + x), 2.0f * scale + y, 0.0f,
+	                   8.0f * scale, size, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 
 	scale = 0.8f;
-	h *= scale;
+	size *= scale;
 	u32 shade = 200.0f * title->mOptionAlpha;
 	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
 	PSMTXScale(tex.mTexMtx.mMtx[2], 0.25f, 1.0f, 1.0f);
 	tex.mTexMtx.mDirty = TRUE;
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.25f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, x, 2.0f * scale + top, 0.0f, width, h, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, x, 2.0f * scale + y, 0.0f, width, size, 0.0f, 0.0f, 0.0f);
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, 4.0f * scale + (width * 0.5f + x), 2.0f * scale + top, 0.0f,
-	                   8.0f * scale, h, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, 4.0f * scale + (width / 2 + x), 2.0f * scale + y, 0.0f,
+	                   8.0f * scale, size, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
