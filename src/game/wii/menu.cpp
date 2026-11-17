@@ -227,6 +227,68 @@ extern "C" void AddPointerPane(CbPaneList* list, CbPane* pane)
 	}
 }
 
+// a quad in one color, the GameCube's DrawSolidQuad
+static inline void DrawSolidQuad(CGs* gs, const Vec* quad, u32 color)
+{
+	DrawGsVertexQuad(gs, quad[0].x, quad[0].y, quad[0].z, color, quad[1].x, quad[1].y, quad[1].z, color, quad[2].x, quad[2].y, quad[2].z,
+	                 color, quad[3].x, quad[3].y, quad[3].z, color);
+}
+
+// the bar beside the shop's list, the GameCube's
+// NONMATCHING: retail keeps 172 and 4 in saved registers and needs two saved GPRs where ours takes five
+extern "C" void DrawPCShopScrollBar(f32 x, f32 y, f32 start, f32 end, f32 alpha, f32 /*scale*/)
+{
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	gGame.mGs.mCurRenderState->SetBlendMode(GX_BM_BLEND, GX_BL_SRCALPHA, GX_BL_INVSRCALPHA, GX_LO_SET);
+	gGame.mGs.mCurRenderState->SetZMode(GX_FALSE, GX_LEQUAL, GX_FALSE);
+	y               = 48.0f + (1.0f + y);
+	x               = 10.0f + (27.0f + (x - 4.0f));
+	f32 top         = 4.0f + y;
+	f32 bottom      = 172.0f + top;
+	f32 first       = 172.0f * start + top;
+	f32 last        = 172.0f * end + top;
+	Vec quads[4][4] = {};
+	quads[0][0].x   = x;
+	quads[0][0].y   = top;
+	quads[0][1].x   = 4.0f + x;
+	quads[0][1].y   = top;
+	quads[0][2].x   = 4.0f + x;
+	quads[0][2].y   = bottom;
+	quads[0][3].x   = x;
+	quads[0][3].y   = bottom;
+	quads[1][0].x   = x;
+	quads[1][0].y   = top;
+	quads[1][1].x   = 4.0f + x;
+	quads[1][1].y   = top;
+	quads[1][2].x   = 4.0f + x;
+	quads[1][2].y   = first;
+	quads[1][3].x   = x;
+	quads[1][3].y   = first;
+	quads[2][0].x   = x;
+	quads[2][0].y   = first;
+	quads[2][1].x   = 4.0f + x;
+	quads[2][1].y   = first;
+	quads[2][2].x   = 4.0f + x;
+	quads[2][2].y   = last;
+	quads[2][3].x   = x;
+	quads[2][3].y   = last;
+	quads[3][0].x   = x;
+	quads[3][0].y   = last;
+	quads[3][1].x   = 4.0f + x;
+	quads[3][1].y   = last;
+	quads[3][2].x   = 4.0f + x;
+	quads[3][2].y   = bottom;
+	quads[3][3].x   = x;
+	quads[3][3].y   = bottom;
+	DrawGsLineStrip(&gGame.mGs, quads[0], (u32)(255.0f * alpha) | 0xC8C8C800, 5);
+	gGame.mGs.mCurRenderState->SetLineWidth(6, GX_TO_ONE);
+	DrawSolidQuad(&gGame.mGs, quads[1], (u32)(255.0f * alpha));
+	DrawSolidQuad(&gGame.mGs, quads[2], (u32)(255.0f * alpha) | 0xFFB62800);
+	DrawSolidQuad(&gGame.mGs, quads[3], (u32)(255.0f * alpha));
+	DrawGsLineStrip(&gGame.mGs, quads[2], (u32)(255.0f * alpha) | 0xFFFFFF00, 5);
+	gGame.mGs.mCurRenderState->SetLineWidth(12, GX_TO_ONE);
+}
+
 extern "C" void ResetSaveSlotRecord(WiiMenuSaveSlot* slot)
 {
 	slot->mUsed       = 0;
