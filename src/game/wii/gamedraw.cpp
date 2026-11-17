@@ -1733,7 +1733,7 @@ void CGame::Draw()
 		if (!mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)) {
 			FbSubwin* subwin = &mSubwin;
 			if (GetStatusFlags(1) && GetStatusFlags(0x100) && !mHomeMenu.IsRunning() && !(mMenu.mActive && mMenu._34)
-			    && subwin->mAmount > 0.0f && !(subwin->mFlags & 4)) {
+			    && subwin->mAmount > 0.0f && !(subwin->mFlags.mFlags & 4)) {
 				subwin->Draw();
 			}
 			mRoboeyes.Draw(&gGame.mGs, 0);

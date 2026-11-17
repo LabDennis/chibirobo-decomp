@@ -60,7 +60,7 @@ void FbSubwin::Copy()
 // NaN dimensions select the circular frame. Explicit dimensions select the tiled frame.
 void FbSubwin::Draw()
 {
-	if (mFlags & 4)
+	if (mFlags.mFlags & 4)
 		return;
 	if (mAmount == 0.0f)
 		return;
@@ -88,7 +88,7 @@ void FbSubwin::Draw()
 		f32 top       = gScreenSafeTop + 13;
 		f32 x         = left + (tw * scale + 8) + (tw * scale) * 0.5f;
 		f32 y         = top + (th * scale) * 0.5f;
-		f32 aspect    = (f32)mWidth / (f32)mHeight;
+		f32 aspect    = (f32)mTexture.mWidth / (f32)mTexture.mHeight;
 		DrawCorner(0xff000000, x, y, 0, w, h);
 		gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_EQUAL, GX_FALSE);
 		gGame.mGs.mCurTevStage->SetMode((GXTevMode)0);

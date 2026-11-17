@@ -1,5 +1,5 @@
 #if defined(VERSION_R24J01)
-#include "game/ccameraaction.h"
+#include "game/wii/cgame.h"
 #else
 #include "game/cgame.h"
 #endif
