@@ -34,29 +34,25 @@ class NW4R_EF_MEMORY_MANAGER_CLASS : public ::nw4r::ef::MemoryManagerBase {
     };
 
     NW4R_EF_MEMORY_MANAGER_MEMBER_ACCESS;
-    int mLeastEffect;     // at 0x4
-    int mMaxEffect;       // at 0x8
-    TEffectOM* mEffectOM; // at 0xC
+    int mMaxEffect;       // at 0x4
+    TEffectOM* mEffectOM; // at 0x8
 
-    int mLeastEmitter;      // at 0x10
-    int mMaxEmitter;        // at 0x14
-    TEmitterOM* mEmitterOM; // at 0x18
+    int mMaxEmitter;        // at 0xC
+    TEmitterOM* mEmitterOM; // at 0x10
 
-    int mLeastParticleManager;              // at 0x1C
-    int mMaxParticleManager;                // at 0x20
-    TParticleManagerOM* mParticleManagerOM; // at 0x24
+    int mMaxParticleManager;                // at 0x14
+    TParticleManagerOM* mParticleManagerOM; // at 0x18
 
-    int mLeastParticle;       // at 0x28
-    int mMaxParticle;         // at 0x2C
-    TParticleOM* mParticleOM; // at 0x30
+    int mMaxParticle;         // at 0x1C
+    TParticleOM* mParticleOM; // at 0x20
 
-    void* mHeapStartAddr; // at 0x34
-    void* mHeapEndAddr;   // at 0x38
+    void* mHeapStartAddr; // at 0x24
+    void* mHeapEndAddr;   // at 0x28
 
-    MemInfo* mActiveMem;   // at 0x3C
-    MemInfo* mFreeMem;     // at 0x40
-    MemInfo* mFreeMemTail; // at 0x44
-    MemInfo* mAllChain;    // at 0x48
+    MemInfo* mActiveMem;   // at 0x2C
+    MemInfo* mFreeMem;     // at 0x30
+    MemInfo* mFreeMemTail; // at 0x34
+    MemInfo* mAllChain;    // at 0x38
 
 public:
     static u32 CalcMemorySize(u16 maxEffect, u16 maxEmitter,
@@ -83,15 +79,10 @@ public:
 
         u32 headerSize = ::nw4r::ut::RoundUp(sizeof(MemInfo), 32);
 
-        mLeastEffect = 0;
-        mLeastEmitter = 0;
-        mLeastParticleManager = 0;
-        mLeastParticle = 0;
-
-        mMaxEffect = 0;
-        mMaxEmitter = 0;
-        mMaxParticleManager = 0;
-        mMaxParticle = 0;
+        mMaxEffect = maxEffect;
+        mMaxEmitter = maxEmitter;
+        mMaxParticleManager = maxParticleManager;
+        mMaxParticle = maxParticle;
 
         mEffectOM = NULL;
         mEmitterOM = NULL;
@@ -109,16 +100,6 @@ public:
 
         NW4RAssert_FileLine("memorymanagertmp.h", 291, mHeapStartAddr < mHeapEndAddr && reinterpret_cast<u8*>(mHeapEndAddr) - reinterpret_cast<u8*>(mHeapStartAddr) > headerSize);
 
-        mLeastEffect = maxEffect;
-        mLeastEmitter = maxEmitter;
-        mLeastParticleManager = maxParticleManager;
-        mLeastParticle = maxParticle;
-
-        mMaxEffect = mLeastEffect;
-        mMaxEmitter = mLeastEmitter;
-        mMaxParticleManager = mLeastParticleManager;
-        mMaxParticle = mLeastParticle;
-
         mFreeMem = static_cast<MemInfo*>(mHeapStartAddr);
         mFreeMem->prev = NULL;
         mFreeMem->next = NULL;
@@ -132,7 +113,7 @@ public:
         mActiveMem = NULL;
 
         // clang-format off
-        int numEffects = mLeastEffect;
+        int numEffects = mMaxEffect;
         TEffect* pEffects = NULL;
 
         if (numEffects > 0) {
@@ -140,9 +121,9 @@ public:
         }
 
         mEffectOM = new (AllocHeap(sizeof(TEffectOM)))
-            TEffectOM(mLeastEffect, pEffects);
+            TEffectOM(mMaxEffect, pEffects);
 
-        int numEmitters = mLeastEmitter;
+        int numEmitters = mMaxEmitter;
         TEmitter* pEmitters = NULL;
 
         if (numEmitters > 0) {
@@ -150,9 +131,9 @@ public:
         }
 
         mEmitterOM = new (AllocHeap(sizeof(TEmitterOM)))
-            TEmitterOM(mLeastEmitter, pEmitters);
+            TEmitterOM(mMaxEmitter, pEmitters);
 
-        int numParticleManagers = mLeastParticleManager;
+        int numParticleManagers = mMaxParticleManager;
         TParticleManager* pParticleManagers = NULL;
 
         if (numParticleManagers > 0) {
@@ -160,9 +141,9 @@ public:
         }
 
         mParticleManagerOM = new (AllocHeap(sizeof(TParticleManagerOM)))
-            TParticleManagerOM(mLeastParticleManager, pParticleManagers);
+            TParticleManagerOM(mMaxParticleManager, pParticleManagers);
 
-        int numParticles = mLeastParticle;
+        int numParticles = mMaxParticle;
         TParticle* pParticles = NULL;
 
         if (numParticles > 0) {
@@ -170,7 +151,7 @@ public:
         }
 
         mParticleOM = new (AllocHeap(sizeof(TParticleOM)))
-            TParticleOM(mLeastParticle, pParticles);
+            TParticleOM(mMaxParticle, pParticles);
         // clang-format on
     }
 
