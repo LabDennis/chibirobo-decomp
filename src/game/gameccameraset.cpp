@@ -82,8 +82,7 @@ void CGame::Draw()
 		mGs.mCamera     = camera;
 		if (BeginGsCamera(this)) {
 #if defined(VERSION_PAL)
-			f32 scale = gGame.mGs.mScreen.mHeightScale;
-			GXSetScissor(0, (u32)(0.f * scale), 320, (u32)(224.f * scale));
+			SetScaledScissor(0, 0, 320, 224);
 #else
 			GXSetScissor(0, 0, 320, 224);
 #endif

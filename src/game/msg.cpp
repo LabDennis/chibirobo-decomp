@@ -17,6 +17,9 @@
 #include <types.h>
 #include "game/cgame.h"
 #include "game/cgameutil.h"
+#if !defined(VERSION_PAL)
+#include "game/cjobjset.h"
+#endif
 
 extern "C" {
 #include <dolphin/os.h>
@@ -3560,16 +3563,6 @@ void InvalidateMessageDrawState(CGs* gs);
 #define MSG_OBJECT_OFFSET(offset) (offset)
 #endif
 
-#if defined(VERSION_PAL)
-static inline void MsgRestoreScissor(u32 x, u32 y, u32 width, u32 height)
-{
-	f32 displayScale = gGame.mGs.mScreen.mHeightScale;
-	u32 scaledHeight = (u32)(height * displayScale);
-	u32 scaledY      = (u32)(y * displayScale);
-	GXSetScissor(x, scaledY, width, scaledHeight);
-}
-#endif
-
 // one piece of the window frame, a texture window and where it goes
 struct MsgWindowSlice {
 	f32 u;      // _00
@@ -3586,8 +3579,9 @@ struct MsgWindowSlice {
  * @note Address: 0x80082970
  * @note Size: 0x2308
  */
-// NONMATCHING: our frame has one int to float slot more (0x10); japan's retail calls the CJObj constructor out of
-// line, its Draw has run out of inline budget there and ours has not
+// NONMATCHING: our frame has one int to float slot more (0x10). The joint setters are members whose bodies
+// (cjobjset.h) weigh in the inline budget, which sends japan's CJObj constructor out of line as in retail;
+// europe's Draw stays under the budget with them, so there they are the out-of-line wrappers
 extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 {
 	CMsgFont* font = (CMsgFont*)p;
@@ -3777,15 +3771,27 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 					f32 oldYaw      = portrait->mMoveRotate.y;
 					CJObj joint(portrait->mJObj);
 					f32 depth = 80.0f * portraitScale;
+#if defined(VERSION_PAL)
 					SetTranslate__5CJObjFfffl(&joint, portraitX, portraitY, depth, 1);
 					SetScale__5CJObjFfffl(&joint, scale, -scale, scale, 1);
 					SetRotationY__5CJObjFfl(&joint, 0.0f, 1);
+#else
+				joint.SetTranslate(portraitX, portraitY, depth, 1);
+				joint.SetScale(scale, -scale, scale, 1);
+				joint.SetRotationY(0.0f, 1);
+#endif
 					HSD_JObjSetupMatrix(joint.mJObj);
 					s32 path[6] = { 0, 3, 0, 0, 0, 0 };
 					f32 height  = CJObj_GetJointWorldPositionByPath((CJObj*)portrait, 6, path).y;
+#if defined(VERSION_PAL)
 					SetTranslate__5CJObjFfffl(&joint, portraitX, portraitY + ((portraitY - height) - 12.0f), depth, 1);
 					SetScale__5CJObjFfffl(&joint, scale, -scale, scale, 1);
 					SetRotationY__5CJObjFfl(&joint, 0.0f, 1);
+#else
+				joint.SetTranslate(portraitX, portraitY + ((portraitY - height) - 12.0f), depth, 1);
+				joint.SetScale(scale, -scale, scale, 1);
+				joint.SetRotationY(0.0f, 1);
+#endif
 					HSD_JObjSetFlags(portrait->mJObj, 8);
 					u32 oldColor                                      = *(u32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x168));
 					s32 oldMode                                       = *(s32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x164));
@@ -3799,7 +3805,11 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 				SetTranslate__5CJObjFRC3Vecl(&joint, oldPosition, 1);
 				SetScale__5CJObjFRC3Vecl(&joint, oldScale, 1);
 #endif
+#if defined(VERSION_PAL)
 					SetRotationY__5CJObjFfl(&joint, oldYaw, 1);
+#else
+				joint.SetRotationY(oldYaw, 1);
+#endif
 					HSD_JObjClearFlags(portrait->mJObj, 8);
 					*(u32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x168)) = oldColor;
 					*(s32*)((u8*)portrait + MSG_OBJECT_OFFSET(0x164)) = oldMode;
@@ -3818,7 +3828,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 #endif
 			if (font->mColor.a != 0) {
 #if defined(VERSION_PAL)
-				MsgRestoreScissor(0, 0, 640, 448);
+				SetScaledScissor(0, 0, 640, 448);
 #else
 				GXSetScissor(0, 0, 640, 448);
 #endif
