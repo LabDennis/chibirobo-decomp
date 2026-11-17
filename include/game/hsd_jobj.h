@@ -336,7 +336,7 @@ inline HSD_JObj* FindJointByPath(HSD_JObj* jobj, s32* path, s32 depth)
 	if (!jobj) {
 		return NULL;
 	}
-	for (s32 i = 0; i < depth; path++, i++) {
+	for (s32 i = 0; i < depth; i++, path++) {
 		jobj = HSD_JObjGetChild(jobj);
 		for (s32 j = 0; j < *path; j++) {
 			jobj = HSD_JObjGetNext(jobj);

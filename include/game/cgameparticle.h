@@ -18,7 +18,8 @@
 // The bank/id helpers are the second triple: objb_act keeps out-of-line copies of both
 // (0x800D57F4 copies its { 1, 1, 1 } and { 0, 0, 0 } from block + 0x24/0x30, 0x800D593C its
 // rotation from + 0x3C), and xactradar inlines the scaled one (rotation from + 0x3C). The code
-// helpers in front are the first triple; no retail code is left that reads it.
+// helpers in front are the first triple: the toy's bursts in ProcessPendingEvents inline the scaled
+// one (rotation from + 0x18).
 
 inline HSD_Generator* CreateParticle(CGame* game, u32 code, s32 status, const Vec& pos, BOOL keep)
 {
