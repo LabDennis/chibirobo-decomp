@@ -35,6 +35,7 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state);
 extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32 unused);
 #if defined(VERSION_R24J01)
 extern "C" s32 FindEnabledCameraAreaContainingPoint(CCameraActionAreaEx* state, Vec pos);
+extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state, s32 index);
 #endif
 
 // inlined in retail: only an inlined copy puts the CamAreaInfo copy below its temporary on the stack
@@ -52,10 +53,9 @@ static inline s32 GetAreaMode(s32 index)
 		break;
 	case -1:
 	default:
-		f32 height = area.GetBottom();
-		if (height < -5.0f) // an unset action falls back on the area's bottom
+		if (area.GetBottom() < -5.0f) // an unset action falls back on the area's bottom
 			mode = 7;
-		else if (height >= -5.0f)
+		else if (area.GetBottom() >= -5.0f)
 			mode = 1;
 		break;
 	}
@@ -99,6 +99,20 @@ static inline bool IsAreaEnd(CamAreaRecord* record)
 {
 	CamAreaInfo area(record);
 	return area.mRecord->_00 == -1;
+}
+
+// the record tables end in a -1 sentinel; retail reads the table through the state's member on every pass
+static inline s32 CountAreaRecords(CamAreaRecord*& records)
+{
+	s32 count = 0;
+	if (records == NULL)
+		return 0;
+	while (true) {
+		if (IsAreaEnd(&records[count]))
+			break;
+		++count;
+	}
+	return count;
 }
 
 /**
@@ -213,10 +227,37 @@ extern "C" void BuildCameraAreaGroups(CCameraActionAreaEx* state)
  * @note Size: 0x10C
  */
 #if defined(VERSION_R24J01)
-// the Wii build passes the index itself; callers resolve the -1 map-camera case first
+// the Wii build splits it in two: this C++ step (0x80153A84) falls back on the map camera outside every area,
+// the C step below reads the area's action and is not inlined
+s32 GetCameraAreaMode(CCameraActionAreaEx* state)
+{
+	s32 index = state->mActiveArea;
+	if (index == -1)
+		return 7;
+	return GetCameraAreaMode(state, index);
+}
+
 extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state, s32 index)
 {
-	return GetAreaMode(index);
+	s32 mode;
+	CamAreaRecord* records = GetStageCameraAreaRecords();
+	CamAreaInfo area       = CamAreaInfo(&records[index]);
+	switch (area.mRecord->mCameraAction) {
+	case 1:
+		mode = 1;
+		break;
+	case 7:
+		mode = 7;
+		break;
+	case -1:
+	default:
+		if (area.GetBottom() < -5.0f) // an unset action falls back on the area's bottom
+			mode = 7;
+		else if (area.GetBottom() >= -5.0f)
+			mode = 1;
+		break;
+	}
+	return mode;
 }
 #else
 extern "C" s32 GetCameraAreaMode(CCameraActionAreaEx* state)
@@ -243,7 +284,6 @@ extern "C" void UpdateCameraAreaIndexFromPlayer(CCameraActionAreaEx* state, s32)
 	Vec pos   = gGame.GetPlayer()->mMoveTranslate;
 	s32 index = -1;
 	for (s32 i = 1; i < state->mAreaCount; ++i) { // record 0 never counts
-
 		if (CamAreaInfo(&state->mAreaRecords[i]).IsCameraOff())
 			continue;
 		if (ContainsPoint(CamAreaInfo(&state->mAreaRecords[i]), pos)) {
@@ -495,11 +535,7 @@ extern "C" void SetCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 ind
 		state->mCurrentArea = index;
 		state->mPrevArea    = index;
 		f32 fov;
-#if defined(VERSION_R24J01)
-		s32 mode = state->mActiveArea == -1 ? 7 : GetCameraAreaMode(state, state->mActiveArea);
-#else
 		s32 mode = GetCameraAreaMode(state);
-#endif
 		if (mode == 1) {
 			fov = CamInfo(&state->mCameraInfo[state->mGroups[state->mActiveArea].mEntries->mId]).GetFov();
 		} else {
@@ -520,11 +556,7 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
 		UpdateCameraAreaIndexFromPlayer(state, unused);
 		if (state->mPrevArea != state->mCurrentArea && state->mCurrentArea != -1) {
 			f32 fov;
-#if defined(VERSION_R24J01)
-			s32 mode = state->mActiveArea == -1 ? 7 : GetCameraAreaMode(state, state->mActiveArea);
-#else
 			s32 mode = GetCameraAreaMode(state);
-#endif
 			if (mode == 1) {
 				fov = CamInfo(&state->mCameraInfo[state->mGroups[state->mActiveArea].mEntries->mId]).GetFov();
 			} else {
@@ -539,47 +571,25 @@ extern "C" void UpdateCameraAreaIndexAndBaseFov(CCameraActionAreaEx* state, s32 
  * @note Address: 0x80137EB8
  * @note Size: 0x164
  */
-// NONMATCHING: retail reloads _1C and _24 from the state on every pass of the counting loops, as for a helper
-// that takes the table by reference; these loops keep the pointer in a register
 extern "C" void LoadStageCameraAreaState(CCameraActionAreaEx* state)
 {
 	state->mAreaExRecords = NULL;
 	state->mAreaExCount   = 0;
 	state->mAreaExRecords = GetStageCameraAreaExRecords();
-	s32 count             = 0;
-	if (state->mAreaExRecords != NULL) {
-		for (;;) { // the record table ends in a -1 sentinel
-			if (IsAreaEnd(&state->mAreaExRecords[count]))
-				break;
-			++count;
-		}
-	}
-	state->mAreaExCount = count;
-	state->mAreaRecords = NULL;
-	state->mAreaCount   = 0;
-	state->mAreaRecords = GetStageCameraAreaRecords();
-	count               = 0;
-	if (state->mAreaRecords != NULL) {
-		for (;;) { // the record table ends in a -1 sentinel
-			if (IsAreaEnd(&state->mAreaRecords[count]))
-				break;
-			++count;
-		}
-	}
-	state->mAreaCount  = count;
-	state->mCameraInfo = NULL;
-	state->mCameraInfo = GetStageCameraInfoRecords();
+	state->mAreaExCount   = CountAreaRecords(state->mAreaExRecords);
+	state->mAreaRecords   = NULL;
+	state->mAreaCount     = 0;
+	state->mAreaRecords   = GetStageCameraAreaRecords();
+	state->mAreaCount     = CountAreaRecords(state->mAreaRecords);
+	state->mCameraInfo    = NULL;
+	state->mCameraInfo    = GetStageCameraInfoRecords();
 	BuildCameraAreaGroups(state);
 	state->mCurrentArea = -1;
 	state->mPrevArea    = -1;
 	state->mActiveArea  = -1;
 	state->mBaseFov     = 30.5f;
-#if !defined(VERSION_PAL)
-#if defined(VERSION_R24J01)
-	OSReport("reset zoom lv = CAM_AREA_ZOOM_LV1\n");
-#else
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01) // the Wii build has neither report
 	OSReport(sCameraAreaZoomResetMessage);
-#endif
 #endif
 }
 
@@ -591,15 +601,8 @@ extern "C" void InitCameraAreaEntries(CCameraActionAreaEx* state)
 {
 	// the compiler emits its array dtor, CamAreaEntry's dtor and ctor at 0x80135C5C to 0x80135D10
 	static CamAreaEntry gCameraAreaEntries[2048];
-#if !defined(VERSION_PAL)
-#if defined(VERSION_R24J01)
-	OSReport("CCameraActionAreaEx :: "
-	         "\x83\x4A\x83\x81\x83\x89\x83\x66\x81\x5B\x83\x5E\x82\xCC\x83\x41\x83\x68\x83\x8C\x83\x58\x82\xCD"
-	         "0x%x\x82\xC5\x82\xB7\x81\x42\n",
-	         gCameraAreaEntries);
-#else
+#if !defined(VERSION_PAL) && !defined(VERSION_R24J01)
 	OSReport(sCameraAreaDataAddressFormat, gCameraAreaEntries);
-#endif
 #endif
 	for (int i = 0; i < 2048; ++i)
 		state->mEntryPool[i] = &gCameraAreaEntries[i];
