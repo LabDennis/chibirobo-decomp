@@ -188,9 +188,8 @@ static inline BOOL PreloadStageArchives(ARPreCache* cache)
 					break;
 				src->mCache.address = address;
 				src->mCache.size    = size;
-				u32 padded          = (size + 31) & ~31u; // aram blocks align to 32
 
-				gARAMCacheInfo.Add(padded, id, src->mName);
+				gARAMCacheInfo.Add(size, id, src->mName); // aram blocks align to 32
 				pair += 8;
 			}
 		}
