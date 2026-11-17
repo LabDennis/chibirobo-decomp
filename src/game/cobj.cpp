@@ -1658,6 +1658,8 @@ void CXObj::Attach(HSD_JObj* jobj)
  * @note Address: 0x801A2D68
  * @note Size: 0x1D0
  */
+// NONMATCHING: retail calls Attach out of line, -inline auto expands ours. Attach is bigger to the
+// compiler in retail: padding ours with 40 statements (not 25) makes it a call and this function 100 %.
 BOOL CXObj::ReadCheck()
 {
 	if (mLoadState == 1 && mArchive.ReadCheck()) {

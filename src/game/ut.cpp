@@ -345,17 +345,18 @@ extern "C" HSD_AObj* FindMaterialOrTextureAnimationInJointTree(HSD_JObj* jobj)
 	for (; jobj != NULL; jobj = jobj->child) {
 		for (HSD_DObj* dobj = HSD_JObjGetDObj(jobj); dobj != NULL; dobj = HSD_DObjGetNext(dobj)) {
 			HSD_MObj* mobj = HSD_DObjGetMObj(dobj);
-			if (mobj != NULL) {
-				if (mobj->aobj != NULL) {
-					return mobj->aobj;
+			if (mobj) {
+				if ((aobj = mobj->aobj)) {
+					return aobj;
 				}
 				HSD_TObj* tobj = HSD_MObjGetTObj(mobj);
-				if (tobj != NULL && tobj->aobj != NULL) {
-					return tobj->aobj;
+				if (tobj && (aobj = tobj->aobj)) {
+					return aobj;
 				}
 			}
 		}
-		if ((aobj = FindMaterialOrTextureAnimationInJointTree(jobj->next)) != NULL) {
+		aobj = FindMaterialOrTextureAnimationInJointTree(jobj->next);
+		if (aobj) {
 			break;
 		}
 	}
@@ -639,11 +640,12 @@ extern "C" HSD_AObj* FindPolygonAnimationInJointTree(HSD_JObj* jobj)
 	for (; jobj != NULL; jobj = jobj->child) {
 		for (HSD_DObj* dobj = HSD_JObjGetDObj(jobj); dobj != NULL; dobj = HSD_DObjGetNext(dobj)) {
 			HSD_PObj* pobj = HSD_DObjGetPObj(dobj);
-			if (pobj != NULL && (aobj = pobj->aobj) != NULL) {
+			if (pobj && (aobj = pobj->aobj)) {
 				return aobj;
 			}
 		}
-		if ((aobj = FindPolygonAnimationInJointTree(jobj->next)) != NULL) {
+		aobj = FindPolygonAnimationInJointTree(jobj->next);
+		if (aobj) {
 			break;
 		}
 	}
@@ -911,7 +913,7 @@ extern "C" void RemoveJointTreeDisplayObjects(HSD_JObj* jobj)
 {
 	RemoveJointDisplayObjectsJP(jobj);
 	if (!(jobj->flags & INSTANCE)) {
-		for (HSD_JObj* child = jobj->child; child != NULL; child = child->next) {
+		for (HSD_JObj* child = jobj->child; child; child = child->next) {
 			RemoveJointTreeDisplayObjects(child);
 		}
 	}
@@ -1900,8 +1902,10 @@ int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec
 	Vec normal;
 	CalcTriangleNormal(a, b, c, &normal);
 
-	Vec top    = { pos->x, 1.0f, pos->z };
-	Vec bottom = { pos->x, -1.0f, pos->z };
+	f32 x      = pos->x;
+	f32 z      = pos->z;
+	Vec top    = { x, 1.0f, z };
+	Vec bottom = { x, -1.0f, z };
 	f32 t      = LinePlane(&top, &bottom, a, &normal, out);
 
 	if (Abs(t) <= 0.00001f || Abs(1.0f - t) <= 0.00001f) {
@@ -2055,14 +2059,13 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 {
 	f32 abx = b->x - a->x;
 	f32 abz = b->z - a->z;
-	f32 cdz = d->z - c->z;
 	f32 acx = c->x - a->x;
 	f32 acz = c->z - a->z;
 
 	f32 sideC = abx * acz - abz * acx;
 	f32 sideD = abx * (d->z - a->z) - abz * (d->x - a->x);
-	f32 sideA = (d->x - c->x) * (a->z - c->z) - cdz * (a->x - c->x);
-	f32 sideB = (d->x - c->x) * (b->z - c->z) - cdz * (b->x - c->x);
+	f32 sideA = (d->x - c->x) * (a->z - c->z) - (d->z - c->z) * (a->x - c->x);
+	f32 sideB = (d->x - c->x) * (b->z - c->z) - (d->z - c->z) * (b->x - c->x);
 
 	int hit;
 	if (check == 1) {
@@ -2079,7 +2082,7 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 			out->z = a->z + (c->x - a->x) * ((b->z - a->z) / (b->x - a->x));
 		} else {
 			f32 slopeAB = abz / abx;
-			f32 slopeCD = cdz / (d->x - c->x);
+			f32 slopeCD = (d->z - c->z) / (d->x - c->x);
 			if (slopeAB == slopeCD) {
 				return 0;
 			}

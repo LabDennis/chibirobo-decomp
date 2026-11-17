@@ -805,12 +805,12 @@ static inline void PutAway(XActLift* act)
 
 extern "C" Vec lbl_8037C340;
 
-static inline Vec GetFloorExtent(const XObjFloor* floor)
+static inline Vec GetFloorExtent(XObjFloor* const* floors, s32 index)
 {
 	Vec value = lbl_8037C340;
-	value.x   = floor->mExtent[0] / 100.0f;
-	value.y   = floor->mExtent[1] / 100.0f;
-	value.z   = floor->mExtent[2] / 100.0f;
+	value.x   = (*floors)[index].mExtent[0] / 100.0f;
+	value.y   = (*floors)[index].mExtent[1] / 100.0f;
+	value.z   = (*floors)[index].mExtent[2] / 100.0f;
 	return value;
 }
 
@@ -879,7 +879,7 @@ void UpdatePushedObject(XActPush* act, u32 frames)
 				target->mStatus.mFlags |= 0x1000000000000000ULL;
 
 				Vec rotation = target->mMoveRotate, speed = target->mMoveRotate.mSpeed;
-				Vec extent = GetFloorExtent(target->mFloors);
+				Vec extent = GetFloorExtent(&target->mFloors, 0);
 				f32 dx, dz;
 				if ((angle > (90 * DEG2RAD - pushAngleTolerance) && angle < (90 * DEG2RAD + pushAngleTolerance))) {
 					rotation.z -= HALF_PI;
@@ -1042,6 +1042,24 @@ void ReleasePushAction(XActPush* act)
 
 void PositionPlayerAroundRopeTarget(XActRope*, f32);
 
+// header accessors (obja_chr emits copies); a read through them is not merged with a direct act->mTarget read
+static inline BOOL HasPlayerActionTarget(const XAction* action)
+{
+	return action->mTarget != NULL;
+}
+static inline XObj* GetPlayerActionTarget(const XAction* action)
+{
+	return action->mTarget;
+}
+static inline f32 GetFloorYawRadians(XObjFloor* const* floors, s32 index)
+{
+	return DEG2RAD * (*floors)[index].mYawDegrees;
+}
+static inline s32 GetActionTargetFloor(const XAction* action)
+{
+	return action->mTargetFloor;
+}
+
 static inline void RopeAnim(XActRope* act, s32 id, f32 loop, BOOL force = FALSE, f32 start = 0)
 {
 	act->mOwner->SetAnim(id, force, NULL, NULL, NULL, start, 1, loop, 10);
@@ -1067,9 +1085,7 @@ static inline void SyncRopePosition(XObjChr* owner)
  * @note Address: 0x800C5B98
  * @note Size: 0x1C78 (US)
  */
-// NONMATCHING: for the three target - last-position deltas retail copies the argument first and then reads act->mTarget
-// again for the operator's this, here the target loaded for the null test is reused; the 16-byte locals of the hang-start
-// branches still sit in a different order
+// NONMATCHING: the 16-byte locals of the hang-start branches still sit in a different order
 void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	switch (act->mState) {
@@ -1100,7 +1116,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			act->mState = 5;
 		} else {
 			if (act->mTarget) {
-				Vec delta = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+				Vec delta = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 				act->mPos.x += delta.x;
 				act->mPos.z += delta.z;
 				if (act->mDist > 0 && frame > 20) {
@@ -1153,7 +1169,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			act->mState = 5;
 		} else {
 			if (act->mTarget) {
-				CVec delta = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+				CVec delta = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 				act->mPos.x += delta.x;
 				act->mPos.z += delta.z;
 				if (act->mDist > 0 && frame > 80) {
@@ -1215,7 +1231,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			RopeAnim(act, 0x8c, 0);
 			act->mState = 5;
 		} else if (act->mTarget) {
-			Vec delta = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+			Vec delta = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 			act->mPos.x += delta.x;
 			act->mPos.z += delta.z;
 			if (act->mDist > 0) {
@@ -1409,7 +1425,6 @@ void HandleRopeActionInput(XActRope* act, const CPadOne* pad, f32* weight)
  * @note Address: 0x800C7BC4
  * @note Size: 0x1FB0
  */
-// NONMATCHING: the target is read once too few
 void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end)
 {
 	switch (act->mState) {
@@ -1441,7 +1456,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			act->mState = 5;
 		} else {
 			if (act->mTarget != NULL) {
-				Vec move = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+				Vec move = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 				act->mPos.x += move.x;
 				act->mPos.z += move.z;
 				if (act->mDist > 0.0f) {
@@ -1494,7 +1509,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			act->mState = 5;
 		} else {
 			if (act->mTarget != NULL) {
-				Vec move = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+				Vec move = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 				act->mPos.x += move.x;
 				act->mPos.z += move.z;
 				if (act->mDist > 0.0f && frame > 20.0f) {
@@ -1573,7 +1588,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			act->mState         = 5;
 			act->mMoveDirection = 0;
 		} else if (act->mTarget != NULL) {
-			Vec move = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+			Vec move = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 			act->mPos.x += move.x;
 			act->mPos.z += move.z;
 			if (act->mDist > 0.0f) {
@@ -1804,9 +1819,9 @@ static inline void FinishHang(XActHang* act, f32 loop)
  * @note Address: 0x800CBDCC
  * @note Size: 0x1CE8
  */
-// NONMATCHING: retail reads act->mOwner again after sin and cos for the round floor's step (here it stays in r28), keeps the
-// target test for the ladder and rope hand-over as a 0/1 value (neg; or; srwi.) and reads the owner again for the
-// distance in case 3
+// NONMATCHING: retail reads the owner again for the distance in case 3 (here the position copied into pos is reused)
+// and allocates registers around the ladder and rope hand-over tests differently (99.49 % with an XActHang* parameter,
+// which the header accessor shared by every action kind cannot have)
 void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 frame, f32 end)
 {
 	s32 state = act->mState;
@@ -1853,9 +1868,11 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 				CVec floor(GetTargetFloorPosition(act));
 				floor.y = 0;
 				if (PSVECDistance(&owner, &floor) < 4.f + radius) {
-					f32 yaw = act->mOwner->mMoveRotate.y;
-					act->mOwner->SetTranslateX(act->mOwner->mMoveTranslate.x - .2f * (f32)sin(yaw), 0);
-					act->mOwner->SetTranslateZ(act->mOwner->mMoveTranslate.z - .2f * (f32)cos(yaw), 0);
+					f32 yaw  = act->mOwner->mMoveRotate.y;
+					f32 sine = (f32)sin(yaw);
+					act->mOwner->SetTranslateX(act->mOwner->mMoveTranslate.x - .2f * sine, 0);
+					f32 cosine = (f32)cos(yaw);
+					act->mOwner->SetTranslateZ(act->mOwner->mMoveTranslate.z - .2f * cosine, 0);
 				}
 			} else {
 				CVec delta = (contact - normal * 4.f) - start;
@@ -1914,11 +1931,11 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			act->mState               = 0;
 			act->mTarget              = NULL;
 			ReleaseHangPlug(act);
-		} else if (act->mTarget && act->mTarget->mStatus.mFlags & 0x800000000ULL) {
+		} else if (HasPlayerActionTarget(act) && act->mTarget->mStatus.mFlags & 0x800000000ULL) {
 			act->mOwner->mLadder.SetState(3, act->mTarget);
 			act->mState  = 0;
 			act->mTarget = NULL;
-		} else if (act->mTarget && act->mTarget->mStatus.mFlags & 0x1000000000ULL) {
+		} else if (HasPlayerActionTarget(act) && act->mTarget->mStatus.mFlags & 0x1000000000ULL) {
 			act->mOwner->mRope.SetState(3, act->mTarget);
 			act->mState  = 0;
 			act->mTarget = NULL;
@@ -2158,12 +2175,12 @@ void HandleLadderActionInput(XActLadder* act, const CPadOne* pad, f32* weight)
 CVec GetPlayerFloorSlope(XObjChr*);
 extern Vec lbl_8037C334;
 
-static inline Vec GetFloorOffset(const XObjFloor* floor)
+static inline Vec GetFloorOffset(XObjFloor* const* floors, s32 index)
 {
 	Vec value = lbl_8037C334;
-	value.x   = floor->mCenterOffset[0] / 100.0f;
-	value.y   = floor->mCenterOffset[1] / 100.0f;
-	value.z   = floor->mCenterOffset[2] / 100.0f;
+	value.x   = (*floors)[index].mCenterOffset[0] / 100.0f;
+	value.y   = (*floors)[index].mCenterOffset[1] / 100.0f;
+	value.z   = (*floors)[index].mCenterOffset[2] / 100.0f;
 	return value;
 }
 
@@ -2410,12 +2427,13 @@ void UpdatePlayerJumpAction(XActJump* act, s32 anim, HSD_AObj* aobj, u32 frames,
 					act->mArcStep = DEG2RAD * 12;
 				act->mForward = 5;
 				{
-					XObjChr* p = act->mOwner;
-					f32 radius = p->mMoveScale.x * GetFloorExtent(p->mFloors).x;
-					f32 height = .5f * (p->mMoveScale.x * (GetFloorOffset(p->mFloors).y + GetFloorExtent(p->mFloors).y));
+					f32 radius = act->mOwner->mMoveScale.x * GetFloorExtent(&act->mOwner->mFloors, 0).x;
+					f32 height = .5f
+					           * (act->mOwner->mMoveScale.x
+					              * (GetFloorOffset(&act->mOwner->mFloors, 0).y + GetFloorExtent(&act->mOwner->mFloors, 0).y));
 					Mtx rot;
-					PSMTXRotRad(rot, 'y', p->mMoveRotate.y);
-					Vec offset = act->mOwner->mMoveScale * GetFloorOffset(act->mOwner->mFloors);
+					PSMTXRotRad(rot, 'y', act->mOwner->mMoveRotate.y);
+					Vec offset = act->mOwner->mMoveScale * GetFloorOffset(&act->mOwner->mFloors, 0);
 					PSMTXMultVec(rot, &offset, &offset);
 					f32 yaw = act->mOwner->mMoveRotate.y;
 					f32 x   = 3.f * (f32)sin(yaw) + (offset.x + act->mOwner->mMoveTranslate.x);
@@ -3113,7 +3131,7 @@ extern "C" const Vec* GetScaledTargetFloorExtent(const XAction* act)
 {
 	const XObj* target = act->mTarget;
 	// the address of the product's temporary, as retail returns it (MWCC warns: not an lvalue)
-	return &(target->mMoveScale * GetFloorExtent(&target->mFloors[act->mTargetFloor]));
+	return &(target->mMoveScale * GetFloorExtent(&target->mFloors, act->mTargetFloor));
 }
 
 /**
@@ -3122,7 +3140,7 @@ extern "C" const Vec* GetScaledTargetFloorExtent(const XAction* act)
  */
 extern "C" f32 GetFirstFloorCollisionRadius(const XObj* object)
 {
-	return object->mMoveScale.x * GetFloorExtent(object->mFloors).x;
+	return object->mMoveScale.x * GetFloorExtent(&object->mFloors, 0).x;
 }
 
 /**
@@ -3565,10 +3583,12 @@ Vec GetTargetFloorPosition(XAction* act)
 {
 	if (act->mTarget != NULL) {
 		CVec position = act->mTarget->mMoveTranslate;
-		CVec offset   = act->mTarget->mMoveScale * GetFloorOffset(&act->mTarget->mFloors[act->mTargetFloor]);
-		CVec extent   = act->mTarget->mMoveScale * GetFloorExtent(&act->mTarget->mFloors[act->mTargetFloor]);
-		f32 yaw       = act->mTarget->mMoveRotate.y;
-		yaw += DEG2RAD * act->mTarget->mFloors[act->mTargetFloor].mYawDegrees;
+		CVec offset
+		    = GetPlayerActionTarget(act)->mMoveScale * GetFloorOffset(&GetPlayerActionTarget(act)->mFloors, GetActionTargetFloor(act));
+		CVec extent
+		    = GetPlayerActionTarget(act)->mMoveScale * GetFloorExtent(&GetPlayerActionTarget(act)->mFloors, GetActionTargetFloor(act));
+		f32 yaw = act->mTarget->mMoveRotate.y;
+		yaw += GetFloorYawRadians(&GetPlayerActionTarget(act)->mFloors, GetActionTargetFloor(act));
 		Mtx translate, local, rotate, scale, result;
 		PSMTXTrans(translate, position.x, position.y, position.z);
 		PSMTXTrans(local, offset.x, offset.y, offset.z);
@@ -3596,9 +3616,10 @@ static inline u32 CheckHangClearance(XObj* obj, const CVec& from, const CVec& to
 
 void TryLeaveHang(XActHang* act)
 {
-	f32 radius     = act->mOwner->mMoveScale.x * GetFloorExtent(act->mOwner->mFloors).x;
-	f32 halfHeight = 0.5f * (act->mOwner->mMoveScale.x * (GetFloorOffset(act->mOwner->mFloors).y + GetFloorExtent(act->mOwner->mFloors).y));
-	Vec position   = GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 });
+	f32 radius = act->mOwner->mMoveScale.x * GetFloorExtent(&act->mOwner->mFloors, 0).x;
+	f32 halfHeight
+	    = 0.5f * (act->mOwner->mMoveScale.x * (GetFloorOffset(&act->mOwner->mFloors, 0).y + GetFloorExtent(&act->mOwner->mFloors, 0).y));
+	Vec position = GetEventJointWorldPosition(act->mOwner, 1, (s32[]) { 0 });
 	position.y += 0.5f;
 
 	u32 blockingHit = 0;
