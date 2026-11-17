@@ -7,6 +7,9 @@
 #include "game/wii/menuutil.h"
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
+#include "game/wii/nandfile.h"
+#include "revolution/mem.h"
+#include "game/wii/saveslots.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/title.h"
 #include "game/globals.h"
@@ -21,6 +24,7 @@ extern "C" void LayoutMainMenuRows(MenuMain* menu);
 extern "C" void RebuildStageSelectList(MenuStageSelect* menu);
 extern s32 gPointerScreenWidth, gPointerScreenHeight;
 extern s32 gRefreshRate;
+extern MEMiHeapHead* gWiiGameHeap;
 
 extern s32 gScreenSafeLeft, gScreenSafeTop;
 extern "C" {
@@ -29,6 +33,7 @@ char* GetStageName(s32 stage);
 char* GetStageDesc(s32 stage);
 char* FormatToStaticBuffer(const char* fmt, ...);
 void ApproachHudValue(f32* value, f32* target, f32 step);
+void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 }
 
 // the Wii's text is Japanese with the language setting at 0
@@ -40,6 +45,17 @@ static inline bool IsJapanese()
 static MenuMainItem sMainLines[] = {
 	{ "MAP SELECT", 5 }, { "\x01", -1 }, { "SAVE & LOAD", 6 }, { "SYSTEM MENU", 1 }, { NULL, 0 },
 };
+
+// the file's menus, in their .bss order (0x8044577C on)
+static MenuMain sMenuMain;
+static MenuStageSelect sMenuStageSelect;
+static MenuSFTest sMenuSFTest;
+static MenuSFTestSub sMenuSFTestSub;
+static MenuSFTestErr sMenuSFTestErr;
+static MenuStatus sMenuStatus;
+static MenuItem sMenuItem;
+static MenuPC sMenuPC;
+static MenuSave sMenuSave;
 
 // the stages the stage select offers, in its order
 static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
@@ -398,6 +414,159 @@ extern "C" void RebuildStageSelectList(MenuStageSelect* menu)
 	}
 }
 
+BOOL MenuStageSelect::Update(u32 frames)
+{
+	if (CMenu::Update(frames) == 4) {
+		CPad pad(0);
+		if (gWiiPointer.Check(PadActStickUp)) {
+			do {
+				if (--mSelection < 0) {
+					mSelection = mCount - 1;
+				}
+			} while (*mLabels[mSelection] == *"\x01");
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			do {
+				if (++mSelection > mCount - 1) {
+					mSelection = 0;
+				}
+			} while (*mLabels[mSelection] == *"\x01");
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickLeft)) {
+			// the full list stands in columns of 20 rows, left and right jump a column
+			if (mSelection - 20 >= 0 && *mLabels[mSelection - 20] != *"\x01") {
+				mSelection -= 20;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		} else if (gWiiPointer.Check(PadActStickRight)) {
+			if (mSelection + 20 < mCount && *mLabels[mSelection + 20] != *"\x01") {
+				mSelection += 20;
+				PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+			}
+		} else if (gWiiPointer.Check(PadActCancel)) {
+			Close(5);
+			sMenuMain.Resume();
+			PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			Close(5);
+			sMenuMain.Close(5);
+			// with the short list the rows are sStageOrder's entries, not stage numbers
+			if (gGame.GetStatusFlags(0x0008000000000000ULL)) {
+				ChangeGameStage(&gGame, sStageOrder[mSelection], 1);
+			} else {
+				ChangeGameStage(&gGame, mSelection, 1);
+			}
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+		}
+	}
+	return IsOpen();
+}
+
+void MenuSFTest::InitRows()
+{
+	if (mRows == NULL) {
+		mRows = (MenuTextRow*)MEMAllocFromExpHeapEx(gWiiGameHeap, sizeof(MenuTextRow) * 12, 4);
+	}
+	mFontSize = 16.0f;
+	mRowTotal = 0;
+	mMaxWidth = 0.0f;
+}
+
+// the save file test's line texts, ten slots, a spare and the free space line
+static char* sSFTestText[12];
+static char* sSFTestTextBuffer;
+
+// NONMATCHING: retail stores the buffer pointer two instructions earlier, among the line pointers
+void MenuSFTest::BuildRows()
+{
+	if (sSFTestTextBuffer == NULL) {
+		char* buffer = (char*)MEMAllocFromExpHeapEx(gWiiGameHeap, 1200, 4);
+		for (int i = 0; i < 12; i++) {
+			sSFTestText[i] = buffer + i * 100;
+		}
+		sSFTestTextBuffer = buffer;
+	}
+	InitRows();
+	for (int i = 0; i < 10; i++) {
+		strcpy(sSFTestText[i], "");
+		mRows[mRowTotal].mText  = sSFTestText[i];
+		mRows[mRowTotal].mWidth = MeasureGameTextWidth(&gGame.mGs, mRows[mRowTotal].mText, 0, mFontSize);
+		if (mRows[mRowTotal].mWidth > mMaxWidth) {
+			mMaxWidth = mRows[mRowTotal].mWidth;
+		}
+		mRowTotal++;
+	}
+	mRows[mRowTotal].mText  = "\x01";
+	mRows[mRowTotal].mWidth = MeasureGameTextWidth(&gGame.mGs, mRows[mRowTotal].mText, 1, mFontSize);
+	if (mRows[mRowTotal].mWidth > mMaxWidth) {
+		mMaxWidth = mRows[mRowTotal].mWidth;
+	}
+	mRowTotal++;
+	u32 blocks, inodes;
+	GetNandGameFreeSpace(&gGame.mSaveManager.mFile, &blocks, &inodes);
+	sprintf(sSFTestText[10], "FREE FSBLOCK:%4d   FREE INODE: %2d", blocks, inodes);
+	mRows[mRowTotal].mText  = sSFTestText[10];
+	mRows[mRowTotal].mWidth = MeasureGameTextWidth(&gGame.mGs, mRows[mRowTotal].mText, 0, mFontSize);
+	if (mRows[mRowTotal].mWidth > mMaxWidth) {
+		mMaxWidth = mRows[mRowTotal].mWidth;
+	}
+	mRowTotal++;
+	mMaxWidth = 532.0f;
+	mWindow.SetSize(60.0f + mMaxWidth, mRowTotal * (2.0f + mFontSize) + 24.0f);
+	mWindow.SetPos(8.0f + (mWindow.mWidth / 2 + gScreenSafeLeft), 24.0f + (mWindow.mHeight / 2 + gScreenSafeTop));
+}
+
+void MenuSFTest::Open()
+{
+	mState = 1;
+	Resume();
+	mWindow.mOpen = TRUE;
+	BuildRows();
+	StartOperation(1);
+	_168 = -1;
+}
+
+void MenuSFTest::Init()
+{
+	CMenu::Init();
+	InitRows();
+	StartOperation(0);
+}
+
+// NONMATCHING: retail adds the 1 past the terminator a few instructions later
+void MenuSFTest::StartOperation(s32 which)
+{
+	switch (which) {
+	case 0:
+		mOperation = 0;
+		break;
+	case 1:
+		StartWiiSaveSlotScan(&gGame.mSaveManager, 10);
+		mOperation = 1;
+		break;
+	case 2:
+		sprintf(mRows[mSelection].mText, "(%d) saving...", mSelection);
+		StartWiiSaveSlotWrite(&gGame.mSaveManager, mSelection, 0);
+		mOperation = 3;
+		break;
+	case 4:
+		sprintf(mRows[mSelection].mText, "(%d) loading...", mSelection);
+		StartWiiSaveSlotRead(&gGame.mSaveManager, mSelection);
+		mOperation = 5;
+		break;
+	case 6:
+		sprintf(mRows[mSelection].mText, "(%d) deleting...", mSelection);
+		StartWiiSaveSlotDelete(&gGame.mSaveManager, mSelection);
+		mOperation = 7;
+		break;
+	}
+	// a busy line ends in an empty second string
+	if (mOperation != 0) {
+		char* text = mRows[mSelection].mText;
+		sprintf(text + strlen(text) + 1, "");
+	}
+}
+
 void MenuMain::Reset()
 {
 	CMenu::Reset();
@@ -517,6 +686,71 @@ extern "C" BOOL IsUtilibotStatusIconUnlocked()
 		found = TRUE;
 	}
 	return found;
+}
+
+BOOL MenuMain::Update(u32 frames)
+{
+	if (CMenu::Update(frames) == 4) {
+		CPad pad(0);
+		s32 id = -1;
+		if (gWiiPointer.Check(PadActStickUp)) {
+			do {
+				if (--mSelection < 0) {
+					mSelection = mRowCount - 1.0f;
+				}
+			} while (*mText[mSelection] == *"\x01");
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(PadActStickDown)) {
+			do {
+				if (++mSelection > mRowCount - 1.0f) {
+					mSelection = 0;
+				}
+			} while (*mText[mSelection] == *"\x01");
+			PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+		} else if (gWiiPointer.Check(0x80) || gWiiPointer.Check(0x400) || gWiiPointer.Check(PadActCancel)) {
+			Close(5);
+		} else if (gWiiPointer.Check(PadActConfirm)) {
+			if (mSelection < mBaseRows) {
+				id = sMainLines[mSelection].mAction;
+			} else {
+				// the rows past the divider (hence + 1) each hold an event script to run
+				Close(5);
+				StartOrQueueEventScript(&gGame.mEvt, (u8*)mExtraRows[mSelection - (mBaseRows + 1)].mAction, 0, -1, -1);
+			}
+		}
+		if (id >= 0) {
+			BOOL fade = TRUE;
+			switch (id) {
+			case 1:
+				sMenuStatus.Open();
+				break;
+			case 2:
+				sMenuItem.Open();
+				break;
+			case 6: // save & load
+				fade = FALSE;
+				sMenuSFTest.Open();
+				break;
+			case 5: // map select
+				fade = FALSE;
+				sMenuStageSelect.Open();
+				break;
+			case 3:
+				sMenuPC.Open();
+				break;
+			case 4:
+				sMenuSave.Open();
+				break;
+			}
+			if (id >= 0) {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+				Suspend(fade);
+			} else {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			}
+		}
+	}
+	return IsOpen();
 }
 
 void CMenu::Suspend(BOOL fade)

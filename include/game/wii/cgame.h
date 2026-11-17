@@ -972,6 +972,8 @@ public:
 	f32 mSuspendAlpha;   // _148
 	// _14C vtable
 
+	~CMenu() { }
+
 	virtual void Init();             // _08
 	virtual void Reset();            // _0C
 	virtual BOOL LoadTexture();      // _10
@@ -1015,6 +1017,7 @@ public:
 
 	virtual void Init();
 	virtual void Reset();
+	virtual BOOL Update(u32 frames);
 	virtual void Open();
 	virtual void Close(s32 state);
 	virtual void Resume();
@@ -1023,6 +1026,7 @@ public:
 class MenuStageSelect : public Menu {
 public:
 	virtual void Init();
+	virtual BOOL Update(u32 frames);
 	virtual void Open();
 
 	s32 mCount;            // _15C
@@ -1036,16 +1040,70 @@ class MenuSave : public CMenu {
 public:
 	u8 _150[0x2C4 - 0x150];
 	s32 mLastFile; // _2C4, -1 for none
+	u8 _2C8[0x710 - 0x2C8];
 
 	virtual void Reset();
+	virtual void Open();
 };
+STATIC_ASSERT(sizeof(MenuSave) == 0x710);
+
+// the save file test menus, Wii only (RTTI); the first lists the save slots, the second what to do with one,
+// the third shows a save error. Only their sizes are known so far
+// one line of a save file test menu
+struct MenuTextRow {
+	char* mText; // _00
+	f32 mWidth;  // _04
+};
+
+class MenuSFTest : public Menu {
+public:
+	virtual void Init();
+	virtual void Open();
+	virtual ~MenuSFTest() { }
+	virtual void InitRows(); // _3C, 0x80052F98
+
+	void BuildRows();               // 0x80052FF8, the slot lines and the free space
+	void StartOperation(s32 which); // 0x80053540, 0 none, 1 scan, 2 save, 4 load, 6 delete
+
+	MenuTextRow* mRows; // _15C, twelve of them
+	s32 mRowTotal;      // _160
+	s32 mOperation;     // _164, the save manager job running, 0 when none
+	s32 _168;           // _168, -1 on opening
+};
+STATIC_ASSERT(sizeof(MenuSFTest) == 0x16C);
+
+class MenuSFTestSub : public Menu {
+public:
+	u8 _15C[0x164 - 0x15C];
+};
+STATIC_ASSERT(sizeof(MenuSFTestSub) == 0x164);
+
+class MenuSFTestErr : public Menu {
+public:
+	u8 _15C[0x164 - 0x15C];
+};
+STATIC_ASSERT(sizeof(MenuSFTestErr) == 0x164);
+
+// the item menu, the GameCube class of the same name
+class MenuItem : public CMenu {
+public:
+	virtual void Open();
+
+	u8 _150[0x78C - 0x150];
+};
+STATIC_ASSERT(sizeof(MenuItem) == 0x78C);
 
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public CMenu {
 public:
 	void State6(u32 frames);
 	void State7(u32 frames);
+
+	virtual void Open();
+
+	u8 _150[0x1958 - 0x150];
 };
+STATIC_ASSERT(sizeof(MenuStatus) == 0x1958);
 
 // a number the pc shows easing toward its value, the GameCube struct of the same name
 struct PCAmount {
@@ -1081,6 +1139,7 @@ public:
 
 	virtual void Init();
 	virtual BOOL Update(u32 frames);
+	virtual void Open();
 
 	s32 mMode;      // _15C
 	s32 mPrevMode;  // _160
