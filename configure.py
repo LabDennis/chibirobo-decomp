@@ -635,7 +635,7 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjhbox.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/cinterpolationeaseout.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/ccameraactionareaex.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(EquivalentFor(JP), "game/evt.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(EquivalentFor(JP), "game/evt.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/msg.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/xobjs.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/ccameraactionarea.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
