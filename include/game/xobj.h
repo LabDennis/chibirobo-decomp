@@ -135,7 +135,7 @@ public:
 	virtual HSD_AnimJoint* GetJointAnimation(s32 id);       // _F0, joint anim
 	virtual HSD_MatAnimJoint* GetMaterialAnimation(s32 id); // _F4, material anim
 	virtual HSD_ShapeAnimJoint* GetShapeAnimation(s32 id);  // _F8, shape anim
-	virtual u32 TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32 arg6,
+	virtual u32 TestFloorCollision(const Vec* from, const Vec* to, f32 radius, f32 height, Vec* push, Vec* contact, s32* cursor,
 	                               s32 arg7);                         // _FC, collision test
 	virtual s32 OnPlayerContact(s32 unused, s32 value);               // _100, the player touched or used the object
 	virtual BOOL TestFloorCrossing(const Vec& start, const Vec& end); // _104
