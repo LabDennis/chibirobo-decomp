@@ -4,8 +4,6 @@
 
 #include "revolution/gx/__gx.h"
 
-// NONMATCHING: same instructions; in the tail retail holds the FIFO address in r4 and the 0x61 opcode
-// in r5, here they take r8 and r9.
 void GXSetFog(GXFogType type, f32 startz, f32 endz, f32 nearz, f32 farz, GXColor color) {
     u32 fogclr;
     u32 fog0;
@@ -88,7 +86,6 @@ void GXSetFog(GXFogType type, f32 startz, f32 endz, f32 nearz, f32 farz, GXColor
     SET_REG_FIELD(0, fog0, 8, 11, (a_hex >> 23) & 0xFF);
     SET_REG_FIELD(0, fog0, 1, 19, (a_hex >> 31));
     SET_REG_FIELD(0, fog0, 8, 24, 0xEE);
-    GX_WRITE_RAS_REG(fog0);
 
     SET_REG_FIELD(0, fog3, 11, 0, (c_hex >> 12) & 0x7FF);
     SET_REG_FIELD(0, fog3, 8, 11, (c_hex >> 23) & 0xFF);
@@ -97,11 +94,13 @@ void GXSetFog(GXFogType type, f32 startz, f32 endz, f32 nearz, f32 farz, GXColor
     SET_REG_FIELD(0, fog3, 1, 20, proj);
     SET_REG_FIELD(0, fog3, 3, 21, fsel);
     SET_REG_FIELD(0, fog3, 8, 24, 0xF1);
-    GX_WRITE_RAS_REG(fog3);
 
     rgba = *(u32*)&color;
     SET_REG_FIELD(0, fogclr, 24, 0, rgba >> 8);
     SET_REG_FIELD(0, fogclr, 8, 24, 0xF2);
+
+    GX_WRITE_RAS_REG(fog0);
+    GX_WRITE_RAS_REG(fog3);
     GX_WRITE_RAS_REG(fogclr);
 
     __GXData->bpSentNot = 0;
