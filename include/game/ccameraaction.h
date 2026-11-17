@@ -491,7 +491,7 @@ public:
 	s32 CalcIntersectVec(const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
 	void Reset2();
 	void UpdateTurn(u32 step);
-	virtual ~CCameraActionMap();             // in the dol, 0x80009F20
+	virtual ~CCameraActionMap() { }          // weak, the dol copy is at 0x80009F24
 	virtual void PreviousUpdate();           // _0C
 	virtual void Update(u32 step);           // _10
 	virtual void Reset();                    // _14
