@@ -174,13 +174,6 @@ void psKillAllParticle(void);
 void DrawAnas(void);
 void UpdateAnas(u32 arg);
 void InitAnas(void);
-s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args);
-s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args);
-s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args);
-s32 CmdPlantTane(s32 cmd, s32 count, s32* args);
-s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args);
-s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args);
-s32 CmdAddAna(s32 cmd, s32 count, s32* args);
 
 s32 CmdPlaySoundAtActor(s32 cmd, s32 count, s32* args);
 s32 CmdCheckYakiResult(s32 cmd, s32 count, s32* args);
@@ -244,6 +237,15 @@ void HamObj_Update(HamObj* slot, u32 step);
 void HamObj_LowerStack(HamObj* slot);
 s32 HSD_Randi(s32 max);
 }
+
+// rel/ana.cpp, its script commands have C++ linkage
+s32 CmdAttachAnaToRobo(s32 cmd, s32 count, s32* args);
+s32 CmdSetAnaRotY(s32 cmd, s32 count, s32* args);
+s32 CmdSetAnaJObj(s32 cmd, s32 count, s32* args);
+s32 CmdPlantTane(s32 cmd, s32 count, s32* args);
+s32 CmdFindNearestAna(s32 cmd, s32 count, s32* args);
+s32 CmdSetTutiAna(s32 cmd, s32 count, s32* args);
+s32 CmdAddAna(s32 cmd, s32 count, s32* args);
 
 typedef void (*RelSlotFunc)(u32 arg);
 typedef s32 (*RelCmdFunc)(s32 cmd, s32 count, s32* args);
