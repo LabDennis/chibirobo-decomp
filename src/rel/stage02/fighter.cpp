@@ -763,8 +763,8 @@ inline void DrawCaption(s32 id, f32 x, f32 y, f32 scale)
 }
 
 // NONMATCHING: registers (the pool walk, the caption loop, digW/digH), the order of two literal
-// loads at PSMTXTrans, and where the digit loops set d = 0. Japan computes the scaled widths of the
-// time and gauge textures before SetGsTevMode where the others convert them after it.
+// loads at PSMTXTrans, and where the digit loops set d = 0. Japan, which has no captions, scales the
+// time and gauge textures into locals before SetGsTevMode where the others scale them in the call.
 extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 {
 	CTexObj tex;
@@ -853,10 +853,18 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 
 			// time
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x20), 0);
-			tw  = GXGetTexObjWidth(&tex);
-			th  = GXGetTexObjHeight(&tex);
+#if defined(VERSION_JP)
+			tw   = GXGetTexObjWidth(&tex);
+			digW = scale * tw;
+			th   = GXGetTexObjHeight(&tex);
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
+			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, digW, scale * th, 0.0f, 0.0f, 0.0f);
+#else
+			tw = GXGetTexObjWidth(&tex);
+			th = GXGetTexObjHeight(&tex);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 320.0f, 40.0f, 0.0f, scale * tw, scale * th, 0.0f, 0.0f, 0.0f);
+#endif
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 #if !defined(VERSION_JP)
 			{
@@ -917,10 +925,19 @@ extern "C" void DrawScoreHud(u32 score, u32 time, u32 gauge)
 
 			// gauge
 			tex = ((CTexObj*)(obj->_A6C))->Init((TPLDescriptor*)(obj->mPanelTplBuffer[2] + 0x28), 0);
-			tw  = GXGetTexObjWidth(&tex);
-			th  = GXGetTexObjHeight(&tex);
+#if defined(VERSION_JP)
+			tw   = GXGetTexObjWidth(&tex);
+			w    = scale * tw;
+			th   = GXGetTexObjHeight(&tex);
+			digH = scale * th;
+			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
+			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, w, digH, 0.0f, 0.0f, 0.0f);
+#else
+			tw = GXGetTexObjWidth(&tex);
+			th = GXGetTexObjHeight(&tex);
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 0);
 			DrawGsTexturedQuad(gGame, &tex, -1, -1, -1, -1, 100.0f, 44.0f, 0.0f, scale * tw, scale * th, 0.0f, 0.0f, 0.0f);
+#endif
 			SetGsTevMode(GAME_FIELD(void*, GS_TEV_STAGE), 4);
 #if !defined(VERSION_JP)
 			{
