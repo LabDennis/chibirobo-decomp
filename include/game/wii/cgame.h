@@ -1033,6 +1033,7 @@ class MenuStageSelect : public Menu {
 public:
 	virtual void Init();
 	virtual BOOL Update(u32 frames);
+	virtual BOOL Draw();
 	virtual void Open();
 
 	s32 mCount;            // _15C

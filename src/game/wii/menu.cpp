@@ -63,6 +63,31 @@ static MenuSave sMenuSave;
 // the stages the stage select offers, in its order
 static s32 sStageOrder[] = { 0, 5, 7, 1, 2, 4, 6, 0x12, 3, 9, 0x10, 0xB, 0x16, 0xD, 0xE, 0xA, -1 };
 
+// the two hands either side of the picked row and the frame round it
+static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scale)
+{
+	Vec border[6] = {
+		(Vec) { x - 8.0f, y - 1.0f, 0.0f },
+		(Vec) { 8.0f + (x + width), y - 1.0f, 0.0f },
+		(Vec) { 8.0f + (x + width), 1.0f + (y + height), 0.0f },
+		(Vec) { x - 8.0f, 1.0f + (y + height), 0.0f },
+		(Vec) { x - 8.0f, y - 1.0f, 0.0f },
+		(Vec) { 8.0f + (x + width), y - 1.0f, 0.0f },
+	};
+	DrawGsLineStrip(&gGame.mGs, &border[3], (u32)(255.0f * alpha) | 0x96969600, 3);
+	DrawGsLineStrip(&gGame.mGs, &border[1], (u32)(255.0f * alpha) | 0xFAFAFA00, 3);
+	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[cursor->mFrame + 248], 0);
+	CTexObj tex = gGame.mTpl.mTex;
+	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
+	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, (x - 16.0f) - 4.0f, height / 2 + y, 0.0f,
+	                   24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
+	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, 4.0f + (16.0f + (x + width)), height / 2 + y,
+	                   0.0f, 24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
+	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
+}
+
 // NONMATCHING: register allocation and the order the corner temporaries are built. Unlike the GameCube's it
 // draws no texture, and it skips a window without size
 extern "C" void DrawMenuWindow(MenuWindow* window)
@@ -465,6 +490,64 @@ BOOL MenuStageSelect::Update(u32 frames)
 	return IsOpen();
 }
 
+static inline u8 StageRowBlue(int row, u8 normal, u8 current)
+{
+	if (gGame.GetStatusFlags(0x0008000000000000ULL))
+		return (u8)(sStageOrder[row] == gGame.mStage ? current : normal);
+	return (u8)(row == gGame.mStage ? current : normal);
+}
+
+// NONMATCHING: register allocation and the scheduling of the cursor position; the GameCube code otherwise
+BOOL MenuStageSelect::Draw()
+{
+	if (CMenu::Draw()) {
+		f32 cx       = mWindow.mX;
+		f32 cy       = mWindow.mY;
+		f32 maxWidth = mMaxWidth;
+		f32 fontSize = mFontSize;
+		f32 step     = 2.0f + fontSize;
+		f32 x        = 30.0f + (cx - mWindow.mWidth / 2);
+		for (int column = 0; column < 2; column++) {
+			f32 y = 12.0f + (cy - mWindow.mHeight / 2);
+			for (int row = 0; row < 20; row++) {
+				int index = column * 20 + row;
+				if (index > mCount)
+					break;
+				u32 color;
+				if (index == mSelection)
+					color = (0x20200000 | (StageRowBlue(index, 0x20, 0x80) << 8)) | (u32)(255.0f * mAlpha);
+				else
+					color = (0x64640000 | (StageRowBlue(index, 0x64, 0xC8) << 8)) | (u32)(255.0f * mAlpha);
+				if (mLabels[index][0] == *"\x01") {
+					// a "\x01" row is a rule: a dark line with a light one under it
+					u32 shadow = (u32)(255.0f * mAlpha) | 0x64646400;
+					DrawGsLineSegment(&gGame.mGs, NULL, (x - 15.0f), (fontSize / 2 + y), 0.0f, shadow, ((x - 15.0f) + (30.0f + maxWidth)),
+					                  (fontSize / 2 + y), 0.0f, shadow);
+					u32 light = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+					DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + (x - 15.0f), 1.0f + (fontSize / 2 + y), 0.0f, light,
+					                  1.0f + ((x - 15.0f) + (30.0f + maxWidth)), 1.0f + (fontSize / 2 + y), 0.0f, light);
+				} else {
+					DrawGsFixedWidthTextFormat(&gGame.mGs, color, mLabels[index], x, y, 0.0f, fontSize, fontSize);
+				}
+				y += step;
+			}
+			x += 60.0f + mMaxWidth;
+		}
+		if (!gGame.GetStatusFlags(0x0008000000000000ULL)) {
+			f32 top    = 12.0f + (cy - mWindow.mHeight / 2);
+			u32 shadow = (u32)(255.0f * mAlpha) | 0x64646400;
+			f32 bottom = 20.0f * step + top;
+			DrawGsLineSegment(&gGame.mGs, NULL, cx, top, 0.0f, shadow, cx, bottom, 0.0f, shadow);
+			u32 light = (u32)(255.0f * mAlpha) | 0xC8C8C800;
+			DrawGsLineSegment(&gGame.mGs, NULL, 1.0f + cx, 1.0f + top, 0.0f, light, 1.0f + cx, 1.0f + bottom, 0.0f, light);
+		}
+		DrawMenuSelectionCursor(mCursor, (mSelection / 20) * (60.0f + mMaxWidth) + (30.0f + (cx - mWindow.mWidth / 2)),
+		                        (mSelection % 20) * step + (12.0f + (cy - mWindow.mHeight / 2)), maxWidth, fontSize, mAlpha, mAlpha);
+		return TRUE;
+	}
+	return FALSE;
+}
+
 void MenuSFTest::InitRows()
 {
 	if (mRows == NULL) {
@@ -796,31 +879,6 @@ BOOL MenuMain::Update(u32 frames)
 		}
 	}
 	return IsOpen();
-}
-
-// the two hands either side of the picked row and the frame round it
-static inline void DrawMenuSelectionCursor(MenuCursor* cursor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scale)
-{
-	Vec border[6] = {
-		(Vec) { x - 8.0f, y - 1.0f, 0.0f },
-		(Vec) { 8.0f + (x + width), y - 1.0f, 0.0f },
-		(Vec) { 8.0f + (x + width), 1.0f + (y + height), 0.0f },
-		(Vec) { x - 8.0f, 1.0f + (y + height), 0.0f },
-		(Vec) { x - 8.0f, y - 1.0f, 0.0f },
-		(Vec) { 8.0f + (x + width), y - 1.0f, 0.0f },
-	};
-	DrawGsLineStrip(&gGame.mGs, &border[3], (u32)(255.0f * alpha) | 0x96969600, 3);
-	DrawGsLineStrip(&gGame.mGs, &border[1], (u32)(255.0f * alpha) | 0xFAFAFA00, 3);
-	gGame.mTpl.mTex.Init(&gGame.mTpl.mPalette->descriptorArray[cursor->mFrame + 248], 0);
-	CTexObj tex = gGame.mTpl.mTex;
-	gGame.mGs.mCurTevStage->SetMode(GX_MODULATE);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
-	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, (x - 16.0f) - 4.0f, height / 2 + y, 0.0f,
-	                   24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
-	DrawGsTexturedQuad(&gGame.mGs, &tex, (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00,
-	                   (u32)(255.0f * scale) | 0xFFFFFF00, (u32)(255.0f * scale) | 0xFFFFFF00, 4.0f + (16.0f + (x + width)), height / 2 + y,
-	                   0.0f, 24.0f * scale, 24.0f * scale, 0.0f, 0.0f, 0.0f);
-	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 
 // NONMATCHING: register allocation; retail also keeps the cursor's 24 in a register for both hands
