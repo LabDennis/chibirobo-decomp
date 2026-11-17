@@ -1061,11 +1061,11 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 	}
 	{
 		Vec probePoint;
-		probePoint.x            = (player->mMoveTranslate.x + offset.x) + (0.5f * radius) * PlayerActionSine(player->mMoveRotate.y);
-		probePoint.z            = (player->mMoveTranslate.z + offset.z) + (0.5f * radius) * PlayerActionCosine(player->mMoveRotate.y);
-		probePoint.y            = player->mMoveTranslate.y;
-		f32 probeRadius         = 0.9f * radius;
-		player->mHitObjectIndex = player->mActionObjectIndex = player->mFloorContacts[2].objectIndex = -1;
+		probePoint.x    = (player->mMoveTranslate.x + offset.x) + (0.5f * radius) * PlayerActionSine(player->mMoveRotate.y);
+		probePoint.z    = (player->mMoveTranslate.z + offset.z) + (0.5f * radius) * PlayerActionCosine(player->mMoveRotate.y);
+		probePoint.y    = player->mMoveTranslate.y;
+		f32 probeRadius = 0.9f * radius;
+		player->mFloorContacts[2].objectIndex = player->mActionObjectIndex = player->mHitObjectIndex = -1;
 		f32 best = NAN, bestTagged = NAN;
 		for (s32 i = 0; i < GetStageObjectCount(&gGame); ++i) {
 			XObj* object = GetGameObjectByIndex(&gGame, i);
@@ -1858,7 +1858,7 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 			player->mPressTimer = 0;
 		}
 	} else
-		player->mPressTimer = player->mAPressed = 0;
+		player->mAPressed = player->mPressTimer = 0;
 	if (IsPlayerAttachmentEquipped(player, 2) && !IsEventScriptActive(&gGame)
 	    && (IsPopperActionState(&player->mPopper, 7) || IsPopperActionState(&player->mPopper, 8))
 	    && IsPopperFireAnimationSelected(&player->mPopperObj) && (pad->mTrigger & PAD_BUTTON_A))
@@ -2193,12 +2193,12 @@ void XObjChr::UpdateObject(u32 frames)
 			mLadder.mMoveDirection = 0;
 		else if (mPush.mState == 2 && mPush.mMoveDirection)
 			mPush.mMoveDirection = 0;
-		mMoveAngle = mHeldMoveAngle = NAN;
+		mHeldMoveAngle = mMoveAngle = NAN;
 	}
 	if (__fpclassifyf(mHeldMoveAngle) == FP_NAN)
 		mHeldStickAngle = mStick[2];
 	else if (Abs(mStick[2] - mHeldStickAngle) >= 3 * DEG2RAD) {
-		mMoveAngle = mHeldMoveAngle = NAN;
+		mHeldMoveAngle = mMoveAngle = NAN;
 		mHeldStickAngle             = mStick[2];
 	}
 	if (__fpclassifyf(mWalkHeading) != FP_NAN)
