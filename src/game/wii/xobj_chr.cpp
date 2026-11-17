@@ -323,6 +323,16 @@ BOOL IsRadarActionState(const XAction* act, s32 wanted)
 	return (u8)(wanted == act->mState);
 }
 
+BOOL fn_800D1748(const WiiPlayerState* chr)
+{
+	return chr->_1C9B8[2] > 0.0f;
+}
+
+f32 fn_800D1764(const WiiPlayerState* chr, s32 index)
+{
+	return chr->_1C9B8[index];
+}
+
 f32 WrapPlayerActionAngle(f32 angle)
 {
 	angle = WrapAngle(angle);
@@ -442,6 +452,15 @@ void OpenPlayerYesNoMenu(WiiPlayerState* chr, s32 crossMask, s32 selectedIndex)
 		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
 		chr->mOXMenu.mChr->SetAnim(0x5D, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
 		gGame.SetStatusFlags(0x800ULL);
+	}
+}
+
+// starts an object's event script unless chibi robo lies there out of battery
+// NONMATCHING: the event block check, as in IsPlayerBlockingEvents
+void TryStartObjectEvent(CGame* game, const void* script, XObj* owner, s16 first, s16 second)
+{
+	if (!IsEventBlocked(game->GetPlayer())) {
+		StartOrQueueEventScript(&game->mEvt, (u8*)script, owner, first, second);
 	}
 }
 

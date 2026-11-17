@@ -8856,6 +8856,7 @@ __vt__Q34nw4r2ef15EmitterFormLine = .data:0x80332CC8; // type:object size:0xC
 FSqrt__Q24nw4r4mathFf = .text:0x800D1610; // type:function size:0x7C scope:weak
 GetMaskedPlayerStatus = .text:0x800D169C; // type:function size:0xC
 GetVectorDistance = .text:0x800D1838; // type:function size:0x4
+TryStartObjectEvent = .text:0x800D53CC; // type:function size:0x148
 IsObjectLiftable = .text:0x800D5514; // type:function size:0x14
 IsObjectClimbableLedge = .text:0x800D5574; // type:function size:0x14
 IsObjectLadder = .text:0x800D5590; // type:function size:0x14
