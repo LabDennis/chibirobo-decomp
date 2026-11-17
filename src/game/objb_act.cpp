@@ -707,6 +707,10 @@ static inline void AddVec(CVec& a, Vec b)
 {
 	PSVECAdd(&a, &b, &a);
 }
+static inline void SubVec(CVec& a, Vec b)
+{
+	PSVECSubtract(&a, &b, &a);
+}
 
 // a held object of the given pool and kind
 static inline bool IsHolding(XAction* act)
@@ -1046,23 +1050,6 @@ static inline void RopeAnim(XActRope* act, s32 id, f32 loop, BOOL force = FALSE,
 {
 	act->mOwner->SetAnim(id, force, NULL, NULL, NULL, start, 1, loop, 10);
 }
-static inline void ApproachRope(XActRope* act, u32 frames, bool move, bool snap, f32 speed)
-{
-	if (!act->mTarget)
-		return;
-	Vec delta = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
-	act->mPos.x += delta.x;
-	act->mPos.z += delta.z;
-	if (act->mDist > 0 && move) {
-		if ((act->mDist -= speed * frames) < 0)
-			act->mDist = 0;
-		act->mOwner->SetTranslateX(act->mDist * (f32)sin(act->mAngle) + act->mPos.x, 0);
-		act->mOwner->SetTranslateZ(act->mDist * (f32)cos(act->mAngle) + act->mPos.z, 0);
-	} else if (snap) {
-		act->mOwner->SetTranslateX(act->mPos.x, 0);
-		act->mOwner->SetTranslateZ(act->mPos.z, 0);
-	}
-}
 static inline void ReleaseRopePlug(XActRope* act, f32 frame, f32 threshold)
 {
 	if (CheckStageFlag(gGame.mStage, 1)) {
@@ -1085,8 +1072,7 @@ static inline void SyncRopePosition(XObjChr* owner)
  * @note Size: 0x1C78 (US)
  */
 // NONMATCHING: for the three target - last-position deltas retail copies the argument first and then reads act->mTarget
-// again for the operator's this, here the target loaded for the null test is reused; the 16-byte locals of the hang-start
-// branches still sit in a different order
+// again for the operator's this, here the target loaded for the null test is reused
 void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	switch (act->mState) {
@@ -1106,8 +1092,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				Mtx matrix;
 				PSMTXRotRad(matrix, 'y', act->mOwner->mMoveRotate.y);
 				PSMTXMultVec(matrix, &offset, &offset);
-				Vec delta = offset;
-				PSVECSubtract(&rope, &delta, &rope);
+				SubVec(rope, offset);
 				act->mPos   = rope;
 				act->mDist  = PSVECDistance(&rope, &player);
 				act->mAngle = atan2(player.x - rope.x, player.z - rope.z);
@@ -1116,7 +1101,20 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			RopeAnim(act, 0x8c, 0);
 			act->mState = 5;
 		} else {
-			ApproachRope(act, frames, frame > 20, true, .2f);
+			if (act->mTarget) {
+				Vec delta = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+				act->mPos.x += delta.x;
+				act->mPos.z += delta.z;
+				if (act->mDist > 0 && frame > 20) {
+					if ((act->mDist -= .2f * frames) < 0)
+						act->mDist = 0;
+					act->mOwner->SetTranslateX(act->mDist * (f32)sin(act->mAngle) + act->mPos.x, 0);
+					act->mOwner->SetTranslateZ(act->mDist * (f32)cos(act->mAngle) + act->mPos.z, 0);
+				} else {
+					act->mOwner->SetTranslateX(act->mPos.x, 0);
+					act->mOwner->SetTranslateZ(act->mPos.z, 0);
+				}
+			}
 			ReleaseRopePlug(act, frame, 28);
 		}
 		break;
@@ -1218,8 +1216,20 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			SetJointTranslationFromVectorByPath(act->mOwner, 1, p3, act->mTargetOffset);
 			RopeAnim(act, 0x8c, 0);
 			act->mState = 5;
-		} else
-			ApproachRope(act, frames, true, true, .4f);
+		} else if (act->mTarget) {
+			Vec delta = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+			act->mPos.x += delta.x;
+			act->mPos.z += delta.z;
+			if (act->mDist > 0) {
+				if ((act->mDist -= .4f * frames) < 0)
+					act->mDist = 0;
+				act->mOwner->SetTranslateX(act->mDist * (f32)sin(act->mAngle) + act->mPos.x, 0);
+				act->mOwner->SetTranslateZ(act->mDist * (f32)cos(act->mAngle) + act->mPos.z, 0);
+			} else {
+				act->mOwner->SetTranslateX(act->mPos.x, 0);
+				act->mOwner->SetTranslateZ(act->mPos.z, 0);
+			}
+		}
 		break;
 	case 4:
 		RopeAnim(act, 0x8c, 1);
