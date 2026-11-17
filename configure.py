@@ -1184,9 +1184,10 @@ if wii:
     ]
     config.libs = [
         {
+            # -i include/rvl_msl: game/wii/csound.h holds the nw4r sound classes, whose headers need the Wii MSL
             "lib": "game",
             "mw_version": "Wii/1.3",
-            "cflags": [*wii_cflags, "-Cpp_exceptions off", "-RTTI on", "-str reuse,readonly"],
+            "cflags": [*wii_cflags, "-i include/rvl_msl", "-Cpp_exceptions off", "-RTTI on", "-str reuse,readonly"],
             "progress_category": "game",
             "objects": [
                 # Two groups of units. Those with an mw_version are built with GC/3.0a5 and -ipa file:

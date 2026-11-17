@@ -3,7 +3,19 @@
 
 #include "types.h"
 #include "Dolphin/mtx.h"
+// units that already have the shared Dolphin <dvd.h> keep its DVD types; the nw4r archive header would redeclare them
+#ifdef _DOLPHIN_DVD_H
+#ifndef _REVOLUTION_DVD_DVD_H
+#define _REVOLUTION_DVD_DVD_H
+#endif
+#endif
+#include "nw4r/snd/snd_DvdSoundArchive.h"
+#include "nw4r/snd/snd_Sound3DListener.h"
+#include "nw4r/snd/snd_Sound3DManager.h"
+#include "nw4r/snd/snd_SoundArchivePlayer.h"
 #include "nw4r/snd/snd_SoundHandle.h"
+#include "nw4r/snd/snd_SoundHeap.h"
+#include "game/wii/csoundfx.h"
 
 class CSound;
 
@@ -59,28 +71,38 @@ public:
 };
 STATIC_ASSERT(sizeof(CSoundHandle) == 0x20);
 
-// the nw4r archive player seen through the offsets this unit touches; CSound
-// holds its bytes flat, with the track table broken out as its own member
-class CSoundArchivePlayer {
+class CDvdSoundArchive : public nw4r::snd::DvdSoundArchive {
 public:
-	u8 _000[0xEC];
-	void* mSetupData;  // _EC
-	void* mSetupData2; // _F0
-	u8 _F4[0x800];
-	u32 mReady; // _8F4
+	void* mData; // _18C
+};
+STATIC_ASSERT(sizeof(CDvdSoundArchive) == 0x190);
+
+class CSoundArchivePlayer : public nw4r::snd::SoundArchivePlayer {
+public:
+	void* mSetupData;           // _EC
+	void* mSetupData2;          // _F0
+	CSoundHandle mTracks[0x40]; // _F4
+	u32 mReady;                 // _8F4
 };
 STATIC_ASSERT(sizeof(CSoundArchivePlayer) == 0x8F8);
 
+class CSoundHeap : public nw4r::snd::SoundHeap { };
+STATIC_ASSERT(sizeof(CSoundHeap) == 0x2C);
+
+class CSound3DManager : public nw4r::snd::Sound3DManager { };
+STATIC_ASSERT(sizeof(CSound3DManager) == 0x2C);
+
 // the embedded 3D context at CSound::_AC0, linking back to owner and player
-class CSound3DManager {
+class WiiSound3D {
 public:
-	CSound* mOwner; // _00
-	void* mPlayer;  // _04
-	u8 _08[0x98];
+	CSound* mOwner;                       // _00
+	void* mPlayer;                        // _04
+	CSound3DManager mManager;             // _08
+	nw4r::snd::Sound3DListener mListener; // _34
 
 	void Init(CSound* owner, void* player);
 };
-STATIC_ASSERT(sizeof(CSound3DManager) == 0xA0);
+STATIC_ASSERT(sizeof(WiiSound3D) == 0xA0);
 
 // a 3D sound source the manager registers; member names are ours
 class CSound3D {
@@ -101,15 +123,13 @@ public:
 
 class CSound {
 public:
-	u8 mDvdSoundArchive[0x190];                  // CDvdSoundArchive: path open, size@_124, data@_18C
-	u8 mArchivePlayer[0xF4];                     // CSoundArchivePlayer head
-	CSoundHandle mTracks[0x40];                  // the player's 64-track table
-	u8 mArchivePlayerTail[0x8F8 - 0xF4 - 0x800]; // through _A88
-	u8 mSoundHeap[0x2C];                         // CSoundHeap
-	u32 mSoundHeapSize;
-	u8 mLoadPending;
+	CDvdSoundArchive mDvdSoundArchive;  // _000
+	CSoundArchivePlayer mArchivePlayer; // _190
+	CSoundHeap mSoundHeap;              // _A88
+	u32 mSoundHeapSize;                 // _AB4
+	u8 mLoadPending;                    // _AB8
 
-	virtual ~CSound();
+	virtual ~CSound() { }
 	virtual BOOL OpenArchive(const char* path, s32 initialGroup);
 	virtual BOOL OpenArchiveAsync(const char* path, s32 initialGroup);
 	virtual BOOL LoadGroup(s32 groupId);
@@ -117,7 +137,7 @@ public:
 	virtual void RestoreHeapLevel(s32 level);
 	BOOL OpenArchiveFile(const char* path); // reads "<path>.brsar" into the archive's heap buffer
 
-	CSound3DManager mSound3DManager; // _AC0
+	WiiSound3D mSound3DManager; // _AC0
 
 	// stops every playing track over fade seconds; Reset and the message script's SFX -2 both expand it.
 	// Defined in gamemain.cpp: the files do not agree on gRefreshRate's type yet, so it cannot stand here
@@ -133,13 +153,14 @@ public:
 	virtual BOOL LoadGroup(s32 groupId);
 	virtual BOOL LoadGroupAsync(s32 groupId);
 
-	u8 mPlaybackState[0xF74 - 0xB60]; // Begins with CSoundFxReverbHiDpl2.
-	s32 mStartedSfx[32];              // _F74, ids started since the last update; zero means free
-	s32 mMusicPitchFrames;            // _FF4
-	s32 mAltSoundIndex;               // _FF8, the GameCube XSound's fields of the same names from here on
-	s32 mVoiceSeqIndex;               // _FFC
-	s32 mSoundSeqIndex;               // _1000
-	s32 mCooldown;                    // _1004
+	CSoundFxReverbHiDpl2 mReverb; // _B60
+	u8 mPlaybackState[0xF74 - 0xB60 - sizeof(CSoundFxReverbHiDpl2)];
+	s32 mStartedSfx[32];   // _F74, ids started since the last update; zero means free
+	s32 mMusicPitchFrames; // _FF4
+	s32 mAltSoundIndex;    // _FF8, the GameCube XSound's fields of the same names from here on
+	s32 mVoiceSeqIndex;    // _FFC
+	s32 mSoundSeqIndex;    // _1000
+	s32 mCooldown;         // _1004
 	u8 _1008[0x100C - 0x1008];
 	u8 mQueueRead;  // _100C
 	u8 mQueueWrite; // _100D

@@ -119,8 +119,8 @@ inline void CSound::StopAllTracks(f32 fade)
 {
 	s32 frames = gRefreshRate * fade;
 	for (int i = 0; i < 0x40; ++i) {
-		if (mTracks[i].IsAttachedSound()) {
-			mTracks[i].Stop(frames);
+		if (mArchivePlayer.mTracks[i].IsAttachedSound()) {
+			mArchivePlayer.mTracks[i].Stop(frames);
 		}
 	}
 }
@@ -172,8 +172,8 @@ static inline void DrawSceneQueue(MtxP view)
 static inline CSoundHandle* FindTrack(u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (gGame.mSound.mTracks[i].IsAttachedSound() && gGame.mSound.mTracks[i].GetId() == id) {
-			return &gGame.mSound.mTracks[i];
+		if (gGame.mSound.mArchivePlayer.mTracks[i].IsAttachedSound() && gGame.mSound.mArchivePlayer.mTracks[i].GetId() == id) {
+			return &gGame.mSound.mArchivePlayer.mTracks[i];
 		}
 	}
 	return NULL;
@@ -183,8 +183,8 @@ static inline CSoundHandle* FindTrack(u32 id)
 static inline bool IsTrackPaused(u32 id)
 {
 	for (int i = 0; i < 0x40; i++) {
-		if (gGame.mSound.mTracks[i].IsAttachedSound() && gGame.mSound.mTracks[i].GetId() == id) {
-			return gGame.mSound.mTracks[i].IsPause();
+		if (gGame.mSound.mArchivePlayer.mTracks[i].IsAttachedSound() && gGame.mSound.mArchivePlayer.mTracks[i].GetId() == id) {
+			return gGame.mSound.mArchivePlayer.mTracks[i].IsPause();
 		}
 	}
 	return false;
@@ -513,7 +513,7 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 	if (game->_D9B5C > 0 && --game->_D9B5C == 0) {
 		s32 frames = gRefreshRate * fade;
 		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks[i];
 			if (handle.IsAttachedSound() && handle.IsPause()) {
 				handle.Pause(false, frames);
 			}
@@ -536,7 +536,7 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 					s32 frames = gRefreshRate * 0.2f;
 					u32 id     = music & 0xFFFF;
 					for (int i = 0; i < 0x40; i++) {
-						nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
+						nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks[i];
 						if (handle.IsAttachedSound() && handle.GetId() == id && !handle.IsPause()) {
 							handle.Pause(true, frames);
 						}
@@ -546,7 +546,7 @@ extern "C" void ResumeGameSounds(CGame* game, f32 fade)
 		} else if (FindTrack(4) != NULL && IsTrackPaused(4)) {
 			s32 frames = gRefreshRate * fade;
 			for (int i = 0; i < 0x40; i++) {
-				nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
+				nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks[i];
 				if (handle.IsAttachedSound() && handle.GetId() == 4 && handle.IsPause()) {
 					handle.Pause(false, frames);
 				}
@@ -567,7 +567,7 @@ extern "C" void PauseGameSounds(CGame* game, f32 fade)
 	if (game->_D9B5C == 0) {
 		s32 frames = gRefreshRate * fade;
 		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks[i];
 			if (handle.IsAttachedSound() && !handle.IsPause()) {
 				handle.Pause(true, frames);
 			}
@@ -586,7 +586,7 @@ extern "C" void PauseGameSounds(CGame* game, f32 fade)
 	if (game->_D9B60 > 0 && FindTrack(4) != NULL && !IsTrackPaused(4)) {
 		s32 frames = gRefreshRate * fade;
 		for (int i = 0; i < 0x40; i++) {
-			nw4r::snd::SoundHandle& handle = gGame.mSound.mTracks[i];
+			nw4r::snd::SoundHandle& handle = gGame.mSound.mArchivePlayer.mTracks[i];
 			if (handle.IsAttachedSound() && handle.GetId() == 4 && !handle.IsPause()) {
 				handle.Pause(true, frames);
 			}

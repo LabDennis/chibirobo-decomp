@@ -305,9 +305,9 @@ BOOL CSound::OpenArchiveFile(const char* path)
 	char name[0x80];
 	sprintf(name, "%s.brsar", path);
 	if (fn_8028CF6C(this, name)) {
-		u32 size                          = *(u32*)&mDvdSoundArchive[0x124];
-		void* data                        = MEMAllocFromExpHeapEx(gWiiGameHeap, size, 0x20);
-		*(void**)&mDvdSoundArchive[0x18C] = data;
+		u32 size               = *(u32*)((u8*)&mDvdSoundArchive + 0x124);
+		void* data             = MEMAllocFromExpHeapEx(gWiiGameHeap, size, 0x20);
+		mDvdSoundArchive.mData = data;
 		return fn_8028D220(this, data, size);
 	}
 	return FALSE;
@@ -345,7 +345,7 @@ extern "C" void InitAudio(CSound* sound, u32 heapSize)
 	AIInit(NULL);
 	AXInit();
 	fn_8029AFAC(4, 3);
-	sound->mSound3DManager.Init(sound, sound->mArchivePlayer);
+	sound->mSound3DManager.Init(sound, &sound->mArchivePlayer);
 	sLoaderStack          = (u8*)MEMAllocFromExpHeapEx(gWiiGameHeap, 0x1000, 0x20);
 	sound->mSoundHeapSize = heapSize;
 	sound->mLoadPending   = FALSE;
@@ -364,10 +364,10 @@ BOOL CSound::OpenArchive(const char* path, s32 initialGroup)
 		if (OpenArchiveFile(path) == 0) {
 			return TRUE;
 		}
-		if (InitSoundArchivePlayer((CSoundArchivePlayer*)mArchivePlayer, this) == 0) {
+		if (InitSoundArchivePlayer(&mArchivePlayer, this) == 0) {
 			return TRUE;
 		}
-		if (InitSoundHeap(mSoundHeap, mSoundHeapSize) == 0) {
+		if (InitSoundHeap(&mSoundHeap, mSoundHeapSize) == 0) {
 			return TRUE;
 		}
 	}
@@ -400,11 +400,11 @@ struct CSoundGroup {
 
 BOOL CSound::LoadGroup(s32 groupId)
 {
-	if (fn_80299D64(mArchivePlayer, groupId, mSoundHeap, 0)) {
+	if (fn_80299D64(&mArchivePlayer, groupId, &mSoundHeap, 0)) {
 		for (u32 i = 0; i < fn_80295D88(this); i++) {
-			CSoundGroup* group = (CSoundGroup*)fn_80298978(mArchivePlayer, i);
+			CSoundGroup* group = (CSoundGroup*)fn_80298978(&mArchivePlayer, i);
 			if (group->mPriority < 0x40) {
-				fn_8029AC28(fn_80298978(mArchivePlayer, i), 0x40);
+				fn_8029AC28(fn_80298978(&mArchivePlayer, i), 0x40);
 			}
 		}
 		return TRUE;
@@ -426,7 +426,7 @@ BOOL CSound::LoadGroupAsync(s32 groupId)
 
 void CSound::RestoreHeapLevel(s32 level)
 {
-	fn_8029A4AC(mSoundHeap, level);
+	fn_8029A4AC(&mSoundHeap, level);
 }
 
 // NONMATCHING: track-slot loop uses the same offsets as retail but the compiler
@@ -435,47 +435,47 @@ extern "C" void UpdateGameSound(CSound* sound, u32 step)
 {
 	if (sound->mLoadPending && OSIsThreadTerminated(&sLoader.mThread)) {
 		sound->mLoadPending = FALSE;
-		fn_8029A458(sound->mSoundHeap);
+		fn_8029A458(&sound->mSoundHeap);
 	}
 	for (int i = 0; i < 0x40; i++) {
-		if (!sound->mTracks[i].IsAttachedSound()) {
+		if (!sound->mArchivePlayer.mTracks[i].IsAttachedSound()) {
 			continue;
 		}
-		if (sound->mTracks[i].IsAttachedSound()) {
-			if (sound->mTracks[i].mVolume < sound->mTracks[i].mVolumeTarget) {
-				sound->mTracks[i].mVolume += sound->mTracks[i].mVolumeStep * step;
-				if (sound->mTracks[i].mVolume > sound->mTracks[i].mVolumeTarget) {
-					sound->mTracks[i].mVolume = sound->mTracks[i].mVolumeTarget;
+		if (sound->mArchivePlayer.mTracks[i].IsAttachedSound()) {
+			if (sound->mArchivePlayer.mTracks[i].mVolume < sound->mArchivePlayer.mTracks[i].mVolumeTarget) {
+				sound->mArchivePlayer.mTracks[i].mVolume += sound->mArchivePlayer.mTracks[i].mVolumeStep * step;
+				if (sound->mArchivePlayer.mTracks[i].mVolume > sound->mArchivePlayer.mTracks[i].mVolumeTarget) {
+					sound->mArchivePlayer.mTracks[i].mVolume = sound->mArchivePlayer.mTracks[i].mVolumeTarget;
 				}
-				sound->mTracks[i].nw4r::snd::SoundHandle::SetVolume(sound->mTracks[i].mVolume, 0);
-			} else if (sound->mTracks[i].mVolume > sound->mTracks[i].mVolumeTarget) {
-				sound->mTracks[i].mVolume += sound->mTracks[i].mVolumeStep * step;
-				if (sound->mTracks[i].mVolume < sound->mTracks[i].mVolumeTarget) {
-					sound->mTracks[i].mVolume = sound->mTracks[i].mVolumeTarget;
+				sound->mArchivePlayer.mTracks[i].nw4r::snd::SoundHandle::SetVolume(sound->mArchivePlayer.mTracks[i].mVolume, 0);
+			} else if (sound->mArchivePlayer.mTracks[i].mVolume > sound->mArchivePlayer.mTracks[i].mVolumeTarget) {
+				sound->mArchivePlayer.mTracks[i].mVolume += sound->mArchivePlayer.mTracks[i].mVolumeStep * step;
+				if (sound->mArchivePlayer.mTracks[i].mVolume < sound->mArchivePlayer.mTracks[i].mVolumeTarget) {
+					sound->mArchivePlayer.mTracks[i].mVolume = sound->mArchivePlayer.mTracks[i].mVolumeTarget;
 				}
-				sound->mTracks[i].nw4r::snd::SoundHandle::SetVolume(sound->mTracks[i].mVolume, 0);
+				sound->mArchivePlayer.mTracks[i].nw4r::snd::SoundHandle::SetVolume(sound->mArchivePlayer.mTracks[i].mVolume, 0);
 			}
 		}
-		if (sound->mTracks[i].IsAttachedSound()) {
-			if (sound->mTracks[i].mPitch < sound->mTracks[i].mPitchTarget) {
-				sound->mTracks[i].mPitch += sound->mTracks[i].mPitchStep * step;
-				if (sound->mTracks[i].mPitch > sound->mTracks[i].mPitchTarget) {
-					sound->mTracks[i].mPitch = sound->mTracks[i].mPitchTarget;
+		if (sound->mArchivePlayer.mTracks[i].IsAttachedSound()) {
+			if (sound->mArchivePlayer.mTracks[i].mPitch < sound->mArchivePlayer.mTracks[i].mPitchTarget) {
+				sound->mArchivePlayer.mTracks[i].mPitch += sound->mArchivePlayer.mTracks[i].mPitchStep * step;
+				if (sound->mArchivePlayer.mTracks[i].mPitch > sound->mArchivePlayer.mTracks[i].mPitchTarget) {
+					sound->mArchivePlayer.mTracks[i].mPitch = sound->mArchivePlayer.mTracks[i].mPitchTarget;
 				}
-				sound->mTracks[i].nw4r::snd::SoundHandle::SetPitch(sound->mTracks[i].mPitch);
-			} else if (sound->mTracks[i].mPitch > sound->mTracks[i].mPitchTarget) {
-				sound->mTracks[i].mPitch += sound->mTracks[i].mPitchStep * step;
-				if (sound->mTracks[i].mPitch < sound->mTracks[i].mPitchTarget) {
-					sound->mTracks[i].mPitch = sound->mTracks[i].mPitchTarget;
+				sound->mArchivePlayer.mTracks[i].nw4r::snd::SoundHandle::SetPitch(sound->mArchivePlayer.mTracks[i].mPitch);
+			} else if (sound->mArchivePlayer.mTracks[i].mPitch > sound->mArchivePlayer.mTracks[i].mPitchTarget) {
+				sound->mArchivePlayer.mTracks[i].mPitch += sound->mArchivePlayer.mTracks[i].mPitchStep * step;
+				if (sound->mArchivePlayer.mTracks[i].mPitch < sound->mArchivePlayer.mTracks[i].mPitchTarget) {
+					sound->mArchivePlayer.mTracks[i].mPitch = sound->mArchivePlayer.mTracks[i].mPitchTarget;
 				}
-				sound->mTracks[i].nw4r::snd::SoundHandle::SetPitch(sound->mTracks[i].mPitch);
+				sound->mArchivePlayer.mTracks[i].nw4r::snd::SoundHandle::SetPitch(sound->mArchivePlayer.mTracks[i].mPitch);
 			}
 		}
 	}
-	fn_802985B4(sound->mArchivePlayer);
+	fn_802985B4(&sound->mArchivePlayer);
 }
 
-void CSound3DManager::Init(CSound* owner, void* player)
+void WiiSound3D::Init(CSound* owner, void* player)
 {
 	mOwner  = owner;
 	mPlayer = player;

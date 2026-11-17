@@ -18,6 +18,7 @@
 // byte, the u32 CMsgFont::mFlags bitfield word and the pointer-driven CMsg__cmd_QUESTION
 // path are Wii-specific and verified against retail.
 
+#include "nw4r/math/math_types.h"
 #include "game/wii/msg.h"
 #include "game/cfont.h"
 #include "game/coordinfo.h"
@@ -1774,7 +1775,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 			// is not folded there); the value is 0 either way
 			u32 frames = gRefreshRate * 0.0f;
 			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = gGame.mSound.mTracks[i].detail_GetAttachedSound();
+				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks[i].detail_GetAttachedSound();
 				if (track != NULL)
 					track->Stop(frames);
 			}
@@ -1809,7 +1810,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 		if (sfx == -2) {
 			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
 			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = gGame.mSound.mTracks[i].detail_GetAttachedSound();
+				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks[i].detail_GetAttachedSound();
 				if (track != NULL && !track->IsPause())
 					track->Pause(true, frames);
 			}
@@ -1821,7 +1822,7 @@ extern "C" s32 CMsg__cmd_SFX(CMsg* msg)
 		if (sfx == -2) {
 			u32 frames = (u32)((f32)gRefreshRate * 0.0f);
 			for (int i = 0; i < 0x40; ++i) {
-				nw4r::snd::detail::BasicSound* track = gGame.mSound.mTracks[i].detail_GetAttachedSound();
+				nw4r::snd::detail::BasicSound* track = gGame.mSound.mArchivePlayer.mTracks[i].detail_GetAttachedSound();
 				if (track != NULL && track->IsPause())
 					track->Pause(false, frames);
 			}
