@@ -438,9 +438,11 @@ extern "C" s32 CmdOpenDecaPanel(s32 cmd, s32 count, s32* args)
  * @note Address: stage03 .text 0xF4
  * @note Size: 0xBC8
  */
-// NONMATCHING: regalloc ties across the input and draw sections (754/754 insns)
+// NONMATCHING: the confirmed key char gets r25 instead of r24, and the key loop loads 0.9f before 255.0f (754/754 insns)
 extern "C" void DecaPanel_Update(DecaPanel* work)
 {
+	CTexObj* tex;
+
 	if (work->mState != 2) {
 		return;
 	}
@@ -545,17 +547,15 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 	}
 
 	if (work->mFade > 0.0f) {
-		DecaPanelKey* key;
-		f32 keyW, keyH, wideW, wideH;
+		f32 w1, h1, w2, h2; // sprite sizes, reused per texture
 		s32 i;
-		CTexObj* tex;
 
 		SetGsBlendMode(gGame.mCurRenderMode, 1, 4, 5, 15);
 		SetGsTevMode(gGame.mCurTevStage, 0);
 
-		key            = &decaPanelKeys[work->mCursorX + work->mCursorY * 3];
-		work->mTargetX = key->x;
-		work->mTargetY = key->y;
+		s32 idx        = work->mCursorX + work->mCursorY * 3;
+		work->mTargetX = decaPanelKeys[idx].x;
+		work->mTargetY = decaPanelKeys[idx].y;
 		// the cursor sprite chases the current key
 		work->mCurX += 0.8f * (work->mTargetX - work->mCurX);
 		work->mCurY += 0.8f * (work->mTargetY - work->mCurY);
@@ -569,10 +569,10 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		}
 
 		// tex1 is a 10-cell digit strip, one cell per key
-		keyW  = 0.9f * (work->mTexs[1].GetWidth() / 10);
-		keyH  = 0.9f * work->mTexs[1].GetHeight();
-		wideW = 0.9f * work->mTexs[2].GetWidth();
-		wideH = 0.9f * work->mTexs[2].GetHeight();
+		w1 = 0.9f * (work->mTexs[1].GetWidth() / 10);
+		h1 = 0.9f * work->mTexs[1].GetHeight();
+		w2 = 0.9f * work->mTexs[2].GetWidth();
+		h2 = 0.9f * work->mTexs[2].GetHeight();
 
 		// tex1's cell picks the digit, tex2 is the wide 'C'
 		DecaPanelKeySprite draws[12] = {
@@ -581,34 +581,33 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 			{ 1, 0.1f, 0.0f, 6, 0.0f, 0.0f }, { 1, 0.1f, 0.1f, 7, 0.0f, 0.0f },  { 1, 0.1f, 0.2f, 8, 0.0f, 0.0f },
 			{ 2, 1.0f, 0.0f, 9, 0.0f, 0.0f }, { 2, 1.0f, 0.0f, 10, 0.0f, 0.0f }, { 1, 0.1f, 0.1f * 9, 11, 0.0f, 0.0f },
 		};
-		draws[0].mW  = keyW;
-		draws[0].mH  = keyH;
-		draws[1].mW  = keyW;
-		draws[1].mH  = keyH;
-		draws[2].mW  = keyW;
-		draws[2].mH  = keyH;
-		draws[3].mW  = keyW;
-		draws[3].mH  = keyH;
-		draws[4].mW  = keyW;
-		draws[4].mH  = keyH;
-		draws[5].mW  = keyW;
-		draws[5].mH  = keyH;
-		draws[6].mW  = keyW;
-		draws[6].mH  = keyH;
-		draws[7].mW  = keyW;
-		draws[7].mH  = keyH;
-		draws[8].mW  = keyW;
-		draws[8].mH  = keyH;
-		draws[9].mW  = wideW;
-		draws[9].mH  = wideH;
-		draws[10].mW = wideW;
-		draws[10].mH = wideH;
-		draws[11].mW = keyW;
-		draws[11].mH = keyH;
+		draws[0].mW  = w1;
+		draws[0].mH  = h1;
+		draws[1].mW  = w1;
+		draws[1].mH  = h1;
+		draws[2].mW  = w1;
+		draws[2].mH  = h1;
+		draws[3].mW  = w1;
+		draws[3].mH  = h1;
+		draws[4].mW  = w1;
+		draws[4].mH  = h1;
+		draws[5].mW  = w1;
+		draws[5].mH  = h1;
+		draws[6].mW  = w1;
+		draws[6].mH  = h1;
+		draws[7].mW  = w1;
+		draws[7].mH  = h1;
+		draws[8].mW  = w1;
+		draws[8].mH  = h1;
+		draws[9].mW  = w2;
+		draws[9].mH  = h2;
+		draws[10].mW = w2;
+		draws[10].mH = h2;
+		draws[11].mW = w1;
+		draws[11].mH = h1;
 
 		for (i = 0; i < 12; i++) {
-			const u8& held = key->mChar;
-			if (work->mLocked && held == decaPanelKeys[i].mChar) {
+			if (work->mLocked && decaPanelKeys[idx].mChar == decaPanelKeys[i].mChar) {
 				continue; // the held key stays hidden
 			}
 			tex = &work->mTexs[draws[i].mTex];
@@ -629,8 +628,8 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		tex = &work->mTexs[4];
 		PSMTXScale(tex->mMtx[1], 0.1f, 1.0f, 1.0f);
 		tex->mMtxDirty = 1;
-		keyW           = 0.9f * (tex->GetWidth() / 10);
-		keyH           = 0.9f * tex->GetHeight();
+		w2             = 0.9f * (tex->GetWidth() / 10);
+		h2             = 0.9f * tex->GetHeight();
 		for (s32 i = 0; i < 6; i++) {
 			u8 ch = work->mDigits[i];
 			if (ch != ' ') {
@@ -639,20 +638,20 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 				u32 color      = FadeColor(work->mFade);
 				f32 x          = 0.9f * decaPanelDigitPos[i][0];
 				f32 y          = 0.9f * decaPanelDigitPos[i][1];
-				DrawGsTexturedQuad(&gGame, tex, color, color, color, color, 320.0f + x, 200.0f + y, 0.0f, keyW, keyH, 0.0f, 0.0f, 0.0f);
+				DrawGsTexturedQuad(&gGame, tex, color, color, color, color, 320.0f + x, 200.0f + y, 0.0f, w2, h2, 0.0f, 0.0f, 0.0f);
 			}
 		}
 
 		// tex3 is the cursor
 		tex  = &work->mTexs[3];
-		keyW = 0.9f * tex->GetWidth();
-		keyH = 0.9f * tex->GetHeight();
+		w1 = 0.9f * tex->GetWidth();
+		h1 = 0.9f * tex->GetHeight();
 		{
 			u32 color = FadeColor(work->mFade);
 			f32 x     = 0.9f * work->mCurX;
 			f32 y     = 0.9f * work->mCurY;
-			DrawGsTexturedQuad(&gGame, tex, color, color, color, color, keyW / 3.0f + (320.0f + x), keyH / 3.0f + (200.0f + y), 0.0f, keyW,
-			                   keyH, 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame, tex, color, color, color, color, w1 / 3.0f + (320.0f + x), h1 / 3.0f + (200.0f + y), 0.0f, w1,
+			                   h1, 0.0f, 0.0f, 0.0f);
 		}
 		SetGsTevMode(gGame.mCurTevStage, 4);
 	}
