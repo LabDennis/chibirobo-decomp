@@ -32,9 +32,10 @@ static BOOL __EXI2Sync(void)
 	return TRUE;
 }
 
-// NONMATCHING: 98.3 %, same instructions. Retail numbers the registers imm r29, bmem r28, type r27, size r26
-// and the read value r25; here type and size sit one lower and data above them. Tried: every order of the
-// five locals, the read value and bmem scoped to their block (87.7 %), xenoblade's block-scoped form (82 %).
+// NONMATCHING: 99.1 %, same instructions. Retail numbers the registers type r27, size r26 and the read value
+// r25; here data sits above the parameters (r27) and type and size one lower. At -O0 the order follows the
+// reference counts (decl order makes no difference), so retail's data seems to carry one reference fewer.
+// Tried: every order of the locals, data block-scoped or initialised, data set in the for header (comma temp).
 BOOL __EXI2Imm(void* mem, s32 size, u32 type)
 {
 	int i;
@@ -61,8 +62,7 @@ BOOL __EXI2Imm(void* mem, s32 size, u32 type)
 		data = EXI2_DATA;
 
 		for (j = 0; j < size; j++) {
-			*bmem = data >> (3 - j) * 8;
-			bmem++;
+			*bmem++ = data >> (3 - j) * 8;
 		}
 	}
 
