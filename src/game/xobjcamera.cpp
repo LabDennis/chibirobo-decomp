@@ -1,5 +1,13 @@
 #include "game/xobj.h"
 
+/**
+ * @note Address: 0x80092AA4
+ * @note Size: 0xDC
+ */
+XObjCamera::~XObjCamera()
+{
+}
+
 // the camera archive's first desc list, the cobj then its anims
 static inline HSD_CObjDesc* GetCObjDesc(XObjCamera* object)
 {

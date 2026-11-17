@@ -453,11 +453,8 @@ game/xobjinit.cpp:
 game/xobjinitialize.cpp:
 	.text       start:0x800929C4 end:0x80092AA4
 
-game/xobjcameradtor.cpp:
-	.text       start:0x80092AA4 end:0x80092B80
-
 game/xobjcamera.cpp:
-	.text       start:0x80092B80 end:0x80092DBC
+	.text       start:0x80092AA4 end:0x80092DBC
 
 game/xobjlightdtor.cpp:
 	.text       start:0x80092DBC end:0x80092E38
