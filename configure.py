@@ -2067,8 +2067,8 @@ if wii:
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mem_TRK.c"),
                 Object(Matching, "rvl_trk/string_TRK.c"),
                 Object(Matching, "rvl_trk/targimpl.c"),
-                # an assembled file in the original (no assembler here): four trap stubs, not linked
-                Object(NonMatching, "rvl_trk/targsupp.c"),
+                # an assembled file in the original: four trap stubs, built from targsupp.s
+                Object(Matching, "rvl_trk/targsupp.c", source="rvl_trk/targsupp.s"),
                 Object(Matching, "TRK_MINNOW_DOLPHIN/mpc_7xx_603e.c"),
                 Object(Matching, "rvl_trk/dolphin_trk.c"),
                 Object(Matching, "rvl_trk/main_TRK.c"),
