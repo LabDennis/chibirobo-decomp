@@ -1518,16 +1518,17 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 	f32 alpha = point->mOpacity * gHudOpacityScale;
 	if (alpha > 0.0f) {
 		CTexObj tex;
-		s32 len = 1;
+		s32 len;
 		f32 x0  = point->mPos[0].x;
 		f32 y0  = point->mPos[0].y;
 		f32 x2  = point->mPos[2].x;
 		f32 x4  = point->mPos[4].x;
-		while (true) {
-			if ((s32)(point->mValue[0] / Pow10(len)) == 0) {
+		for (len = 1;; len++) {
+			f32 div = 1.0f;
+			for (int j = 0; j < len; j++)
+				div *= 10.0f;
+			if ((s32)(point->mValue[0] / div) == 0)
 				break;
-			}
-			len++;
 		}
 
 		Vec pos[65];
