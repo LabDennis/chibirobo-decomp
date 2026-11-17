@@ -3002,9 +3002,9 @@ extern "C" void UpdateFighter(u32 dt)
 	}
 	FighterPanels_Update(&panels, dt);
 	// cue records {frame, sound id}; a cue fires when the flight frame crosses its frame
-	for (i = 0; i < GET_LE32(soundCueTable[0] + i * 8); i++) {
-		s32 frame = GET_LE32(soundCueTable[0] + i * 8);
-		s32 id    = GET_LE32(soundCueTable[0] + i * 8 + 4);
+	for (i = 0; i < GET_LE32(&soundCueTable[0][i * 8]); i++) {
+		s32 frame = GET_LE32(&soundCueTable[0][i * 8]);
+		s32 id    = GET_LE32(&soundCueTable[0][i * 8 + 4]);
 		if (fighterWork.mPrevFrame < (f32)frame && (f32)frame <= fighterWork.mFrame) {
 			PlayGameSound(sfx, id, 0xFF);
 		}

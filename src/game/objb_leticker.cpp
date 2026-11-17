@@ -309,7 +309,7 @@ void XObjLeticker::OnUnplugged()
  * @note Size: 0x8C4
  */
 // NONMATCHING: retail reads the four camera bounds before it stores the first, the code of a setter on the camera
-// action that takes them as arguments (98.2 % with one), and it reads mPowerTimer again for the start test.
+// action that takes them as arguments (98.2 % with one).
 BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 {
 	if (gGame.GetPlayer()->mMoveTranslate.y < mMoveTranslate.y - 5.0f)
@@ -374,8 +374,8 @@ BOOL XObjLeticker::ReceivePlugPower(f32 amount)
 		}
 		mWaiting = FALSE;
 	}
-	++mPowerTimer;
 	amount *= mSpeedScale;
+	++mPowerTimer;
 	bool starting = mPowerTimer < 40;
 	switch (mState) {
 	case 1: // the lift

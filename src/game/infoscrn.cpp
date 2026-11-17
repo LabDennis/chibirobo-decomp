@@ -1512,7 +1512,7 @@ extern "C" void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 
  * @note Address: 0x8006389C
  * @note Size: 0xB08
  */
-// NONMATCHING: float registers
+// NONMATCHING: float registers, and the int-to-float slots of tw and len trade places
 extern "C" void DrawHudPointCounter(InfoPoint* point)
 {
 	f32 alpha = point->mOpacity * gHudOpacityScale;
@@ -1550,7 +1550,8 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 		tex              = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[125 - StatusTextureOffset], 0);
 		u16 tw           = GXGetTexObjWidth(&tex);
 		f32 lineY        = cy + 12.0f * 1.2f;
-		point->mValue[3] = len * (1.2f * tw - 3.0f * 1.2f) + 34.0f;
+		f32 digitW       = 1.2f * tw;
+		point->mValue[3] = len * (digitW - 3.0f * 1.2f) + 34.0f;
 		pos[0].x         = x0;
 		pos[0].y         = lineY;
 		pos[1].x         = x0 + point->mValue[2];
@@ -1570,8 +1571,8 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 		tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[point->mResource], 0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 		f32 iconW = 0.8f * GXGetTexObjWidth(&tex);
-		f32 iconY = y0 - 9.0f;
 		f32 iconH = 0.8f * GXGetTexObjHeight(&tex);
+		f32 iconY = y0 - 9.0f;
 		if (point->mIndex == INFOPOINT_ID + 2) {
 			u32 ic = (u32)(a255 * point->mIconAlphaScale) | 0xC8C8C800;
 			DrawGsTexturedQuad(&gGame.mGs, &tex, ic, ic, ic, ic, x4, 4.0f + iconY, 0.0f, iconW, iconH, 0.0f, 0.0f, 0.0f);
@@ -1596,7 +1597,13 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 		u32 pinkB     = da | 0x5959FF00;
 		tex.mMtxDirty = TRUE;
 		for (int i = 0; i < 7; i++) {
-			s32 v = (s32)(point->mValue[0] / Pow10(i));
+			f32 div = 1.0f;
+			if (i > 0) {
+				for (int j = 0; j < i; j++) {
+					div *= 10.0f;
+				}
+			}
+			s32 v = point->mValue[0] / div;
 			if (i != 0 && v == 0) {
 				continue;
 			}
@@ -1714,13 +1721,13 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 	if (step <= 1)
 		step = 1;
 	ApproachHudValue(&h->mBatteryValue, &h->mBatteryTarget, step);
+	f32 gap        = 7.6f * scale;
+	f32 smallScale = .9f * scale, smallX = 7.9f * scale, largeX = 2.f * scale;
 	h->mBatteryGauge = h->mBatteryValue;
 	u32 digitAlpha   = (u32)(opacity * fade);
 	u32 red          = 0xff646400 | digitAlpha;
 	u32 green        = 0x89ff2900 | digitAlpha;
 	u32 gray         = 0x50505000 | digitAlpha;
-	f32 gap          = 7.6f * scale;
-	f32 smallScale = .9f * scale, smallX = 7.9f * scale, largeX = 2.f * scale;
 	for (int i = 0; i < 4; ++i) {
 		f32 digitScale = scale, offset = largeX;
 		if (target <= 0 && h->mBatteryValue <= 0 && h->mBatteryEmpty == 1)
@@ -1734,8 +1741,11 @@ extern "C" void DrawHudBatteryGauge(InfoScrn* h)
 		if (change != 0)
 			h->mDigitLastDelta[i] = change;
 		int divisor = 1;
-		for (int p = 0; p < i; ++p)
-			divisor *= 10;
+		if (i > 0) {
+			for (int p = 0; p < i; ++p) {
+				divisor *= 10;
+			}
+		}
 		int whole = (s32)h->mBatteryValue / divisor, digit = whole % 10;
 		if (h->mDigitValue[i] != digit) {
 			h->mDigitRoll[i]    = 0;
