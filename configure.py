@@ -1923,7 +1923,7 @@ if wii:
                 Object(NonMatching, "revolution/GX/GXTexture.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXBump.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXTev.c", cflags=wii_gx_cflags),
-                Object(NonMatching, "revolution/GX/GXPixel.c", cflags=wii_gx_cflags),
+                Object(Matching, "revolution/GX/GXPixel.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXDraw.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXDisplayList.c", cflags=wii_gx_cflags),
                 Object(Matching, "revolution/GX/GXTransform.c", cflags=[*wii_gx_cflags, '-pragma "optimizewithasm off"']),
