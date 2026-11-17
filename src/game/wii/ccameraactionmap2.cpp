@@ -1,8 +1,12 @@
+#include "nw4r/math/math_types.h"
 #include "game/ccameraaction.h"
 #if defined(VERSION_R24J01)
 #include "game/wii/cgame.h"
 #endif
 #include "game/gmath.h"
+#include "game/ut.h"
+#include <string.h>
+#include <math.h>
 extern "C" {
 #include <dolphin/os.h>
 }
@@ -122,15 +126,48 @@ static inline void SelectAreaCameraEntry(CCameraActionArea* area, s32 slotIndex,
 	ApplyAreaCameraEntry(area, entry, mode, 1, time);
 }
 
-// the GameCube's FindFacing, the entry of the slot that faces most along view; the Wii keeps it out of line
-extern "C" s32 fn_801559D0(CCameraActionArea* area, s32 slotIndex, const Vec& view);
+// the yaw of angle as a unit direction in the xz plane
+inline void YawDir(CVec& dir, const Vec& angle)
+{
+	CVec ang(angle);
+	f32 x = sin(ang.y);
+	f32 z = cos(ang.y);
+	dir.x = x;
+	dir.y = 0.0f;
+	dir.z = z;
+	PSVECNormalize(&dir, &dir);
+}
+
+// the entry of the slot that faces most along dir, the first when none does; the GameCube inlines it
+// NONMATCHING: the dot product's paired-single registers and the cos argument's load differ (97.7 %)
+s32 CCameraActionArea::FindFacing(s32 slotIndex, const Vec& dir)
+{
+	CVec look(dir.x, dir.y, dir.z);
+	CamAreaSlot* slot   = &gCameraAreaState.mGroups[slotIndex];
+	f32 best            = -1.0f;
+	s32 bestIndex       = -1;
+	CamAreaEntry* entry = slot->mEntries;
+	for (s32 i = 0; i < slot->mEntryCount; entry++, i++) {
+		CVec facing;
+		YawDir(facing, entry->mAngle);
+		f32 dot = nw4r::math::VEC3Dot((nw4r::math::VEC3*)&look, (nw4r::math::VEC3*)&facing);
+		if (dot > best) {
+			bestIndex = i;
+			best      = dot;
+		}
+	}
+	if (best == -1.0f) {
+		bestIndex = 0;
+	}
+	return bestIndex;
+}
 
 extern "C" void SelectAreaCameraEntryByViewDirection(CCameraActionArea* area, s32 mode, f32 time, s32 slotIndex)
 {
 	area->mControlEnabled = 1;
 	CVec view             = area->mInterest - area->mEye;
 	PSVECNormalize(&view, &view);
-	SelectAreaCameraEntry(area, slotIndex, fn_801559D0(area, slotIndex, view), mode, time);
+	SelectAreaCameraEntry(area, slotIndex, area->FindFacing(slotIndex, view), mode, time);
 }
 
 // NONMATCHING: retail copies both Vecs once more on the stack before SetInte_I (95.2 %)
@@ -187,7 +224,6 @@ extern "C" void SetMapCameraKeepPreviousEye(CCameraActionMap* map)
 	map->mKeepPreviousEye = TRUE;
 }
 
-extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Vec& from, const Vec& to, CamMapEntry* out, s32 type);
 extern "C" s32 FindEnabledCameraAreaContainingPoint(CamAreaState* state, Vec pos);
 extern "C" s32 SelectMapCameraArea(CCameraActionMap* map);
 extern "C" void StartMapCameraAreaHeightInterpolation(CCameraActionMap* map);
@@ -206,6 +242,108 @@ extern "C" void StartMapCameraTargetHeightInterpolation(CCameraActionMap* map, f
 		map->mTargetHeightOffsetInterp = &map->mTargetHeightOffsetEase;
 		map->mTargetHeightOffsetInterp->Start(from, to, time);
 	}
+}
+
+static inline s32 ClassifyAreaHeight(f32 y, f32 bottom, f32 top)
+{
+	if (y >= bottom && y <= top) {
+		return 1;
+	}
+	if (y < bottom) {
+		return -2;
+	}
+	if (y > top) {
+		return -1;
+	}
+	return 0;
+}
+
+// the outward normal of an area side from a to b, turned about the up or the down axis; the
+// GameCube inlines it into both intersection collectors
+static void GetMapAreaEdgeNormal(const Vec& a, const Vec& b, Vec* out, BOOL up)
+{
+	Vec axis;
+	if (up) {
+		Vec upAxis = { 0.0f, 1.0f, 0.0f };
+		axis       = upAxis;
+	} else {
+		Vec downAxis = { 0.0f, -1.0f, 0.0f };
+		axis         = downAxis;
+	}
+	Vec edge;
+	edge.x = a.x - b.x;
+	edge.z = a.z - b.z;
+	edge.y = 0.0f;
+	CVec normal;
+	C_VECCrossProduct(&axis, &edge, &normal);
+	PSVECNormalize(&normal, &normal);
+	*out = normal;
+}
+
+extern "C" s32 CollectMapCameraAreaIntersections(CCameraActionMap* map, const Vec& from, const Vec& to, CamMapEntry* out, s32 type)
+{
+	if (out == NULL) {
+		return -1;
+	}
+	memset(out, 0, 32 * sizeof(CamMapEntry));
+	CamAreaRecord* record;
+	s32 numRecords;
+	if (type == 0) {
+		record     = gCameraAreaState.mAreaExRecords;
+		numRecords = gCameraAreaState.mAreaExCount;
+	}
+	if (type == 1) {
+		record     = gCameraAreaState.mAreaRecords;
+		numRecords = gCameraAreaState.mAreaCount;
+	}
+	CamMapEntry* entry = out;
+	s32 count          = 0;
+	const s32(*corner)[2];
+	for (s32 i = 0; i < numRecords; i++) {
+		if (CamAreaInfo(record).IsCameraOff()) {
+			record++;
+			continue;
+		}
+		if (CamAreaInfo(record).UsesAreaCamera()) {
+			record++;
+			continue;
+		}
+		f32 top    = CamAreaInfo(record).GetTop();
+		f32 bottom = CamAreaInfo(record).GetBottom();
+		if (ClassifyAreaHeight(from.y, bottom, top) < 0 && ClassifyAreaHeight(to.y, bottom, top) < 0) {
+			record++;
+			continue;
+		}
+		corner = record->_04;
+		for (s32 side = 0; side < 4; side++) {
+			Vec a, b;
+			a.x = (*corner)[0] / 100.0f;
+			a.y = 0.0f;
+			a.z = (*corner)[1] / 100.0f;
+			++corner;
+			if (side == 3) {
+				corner = record->_04;
+			}
+			b.x       = (*corner)[0] / 100.0f;
+			b.y       = 0.0f;
+			b.z       = (*corner)[1] / 100.0f;
+			Vec end   = to;
+			Vec start = from;
+			Vec hit;
+			if (IntersectLinesXZ(&a, &b, &end, &start, &hit, 1)) {
+				Vec normal;
+				GetMapAreaEdgeNormal(a, b, &normal, FALSE);
+				count++;
+				entry->mPos         = hit;
+				entry->mSide        = side;
+				entry->mRecordIndex = i;
+				entry->mNormal      = normal;
+				entry++;
+			}
+		}
+		record++;
+	}
+	return count;
 }
 
 extern "C" s32 CountMapCameraAdjacentSideIntersections(CCameraActionMap* map, CamMapEntry* entry)
@@ -233,6 +371,40 @@ extern "C" s32 CountMapCameraAdjacentSideIntersections(CCameraActionMap* map, Ca
 		}
 	}
 	return count;
+}
+
+// NONMATCHING: retail reads a debug flag (sbss 0x805A1D08) after storing the speed and reloads it, and keeps
+// from and to in each other's registers (88.9 %)
+extern "C" BOOL TrySetMapCameraTargetYaw(CCameraActionMap* map, f32 yaw, f32 time, f32 unused)
+{
+	f32 oldYaw   = map->mTargetYaw;
+	f32 oldSpeed = map->mTurnSpeed;
+
+	map->mTargetYaw = WrapAngle(yaw);
+	f32 from        = WrapAngle(map->mAngle.y);
+	f32 to          = WrapAngle(yaw);
+
+	f32 diff = __fabsf(to - from);
+	if (diff > 0.0f) {
+		if (diff >= TWO_PI) {
+			diff -= TWO_PI;
+		}
+		if (diff > PI) {
+			if (to < from) {
+				to += TWO_PI;
+			} else {
+				to -= TWO_PI;
+			}
+		}
+	}
+
+	map->mTurnSpeed = __fabsf(to - from) / time;
+	if (map->mTurnSpeed < (2.0f * DEG2RAD)) {
+		map->mTargetYaw = oldYaw;
+		map->mTurnSpeed = oldSpeed;
+		return FALSE;
+	}
+	return TRUE;
 }
 
 extern "C" s32 FindNearestMapCameraEntry(CCameraActionMap* map, const Vec& pos)

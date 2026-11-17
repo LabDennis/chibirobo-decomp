@@ -8,6 +8,8 @@
 #include "game/evt.h"
 #include "game/evtqueue.h"
 #include "game/coordinfo.h"
+#include "game/inventory.h"
+#include "game/savedata.h"
 #include "game/globals.h"
 #include "game/ut.h"
 #include "game/cthread.h"
@@ -19,6 +21,7 @@ extern s32 gRefreshRate;
 extern f32 gScreenWidthScale;
 void StartGameMovie(CGame* game, const char* path, BOOL loop, u32 flags, f32 volume);
 void StopGameMovie(CGame* game);
+void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 }
 
 CEvtFlags gEventFlags;
@@ -96,6 +99,51 @@ static inline void CEvt_ForgetObjId(s16 id)
 static inline void CEvt_Warn(const char* msg)
 {
 	strlen(msg);
+}
+
+// ends the running script; the stage's own effects end with the main script
+static inline void CEvt_End(CEvt* evt)
+{
+	evt->mData.mScript = NULL;
+	// a window MSG left up for STAY is idle again
+	if (evt->mMsg != NULL && evt->mMsgState != 0) {
+		evt->mMsgState   = 0;
+		evt->mMsg->mIdle = 1;
+	}
+	Inventory* inventory = &gGame.GetPlayer()->mParams.mInventory;
+	inventory->mCompact  = TRUE;
+	CompactInventory(inventory);
+	if (evt->mOwner == NULL) {
+		if (gGame.mEffects.mResources[1].mNumEmitter != 0) {
+			for (s32 i = 0; i < 0x80; i++) {
+				EffectInstance* effect = (EffectInstance*)gEventPtcl.mEmitters[i];
+				if (!effect->IsFinished() && effect->group == 3) {
+					RetireEffect(&effect->handle, TRUE);
+				}
+			}
+			gGame.mEffects.Unload(1);
+		}
+	} else {
+		evt->mOwner->_9A4 = 0;
+	}
+	evt->mData.mScript = NULL;
+}
+
+/**
+ * @note Address: 0x800A0B0C
+ * @note Size: 0x19C
+ */
+s32 CEvt::_cmd_WARP(u8, s32)
+{
+	s32 stage    = CEvt_Evaluate(this);
+	s32 showName = CEvt_Evaluate(this);
+	// 10001 and 10002 are taken as is, 100 and up counts from the current stage
+	if (stage != 10001 && stage != 10002 && stage >= 100) {
+		stage += GetStageNum() - 99;
+	}
+	ChangeGameStage(&gGame, stage, showName);
+	CEvt_End(this);
+	return 1;
 }
 
 /**
@@ -269,6 +317,71 @@ s32 CEvt::_cmd_PUSHBP(u8, s32)
 }
 
 static BOOL EvalCmp(CEvt* evt);
+
+/**
+ * @note Address: 0x800978E4
+ * @note Size: 0x1EC
+ */
+s32 CEvt::_cmd_ABORT(u8, s32)
+{
+	if (mOwner == NULL) {
+		CEvtQueueEx* queue  = &gEventScriptQueue;
+		s32 idx             = queue->mRead;
+		u8* script          = queue->mScript[idx];
+		XObj* owner         = queue->mContext[idx];
+		s16 useValue        = queue->mUseValue[idx];
+		s16 hitValue        = queue->mHitValue[idx];
+		queue->mScript[idx] = 0;
+		queue->mRead        = (queue->mRead + 1) % 0x80;
+		if (script != 0) {
+			mData.mScript  = script;
+			mData.mContext = owner;
+			if (owner != NULL) {
+				owner->OnMoveRequest();
+			}
+			mUseValue = useValue;
+			mHitValue = hitValue;
+			return 0;
+		}
+	}
+	CEvt_End(this);
+	return 1;
+}
+
+/**
+ * @note Address: 0x800976C8
+ * @note Size: 0x21C
+ */
+s32 CEvt::_cmd_RETURN(u8, s32)
+{
+	if (mCalls.mCount != 0) {
+		mData.mScript = (u8*)mCalls.mBuf[--mCalls.mCount];
+		return 0;
+	}
+	// nothing to return to, end the script like ABORT
+	if (mOwner == NULL) {
+		CEvtQueueEx* queue  = &gEventScriptQueue;
+		s32 idx             = queue->mRead;
+		u8* script          = queue->mScript[idx];
+		XObj* owner         = queue->mContext[idx];
+		s16 useValue        = queue->mUseValue[idx];
+		s16 hitValue        = queue->mHitValue[idx];
+		queue->mScript[idx] = 0;
+		queue->mRead        = (queue->mRead + 1) % 0x80;
+		if (script != 0) {
+			mData.mScript  = script;
+			mData.mContext = owner;
+			if (owner != NULL) {
+				owner->OnMoveRequest();
+			}
+			mUseValue = useValue;
+			mHitValue = hitValue;
+			return 0;
+		}
+	}
+	CEvt_End(this);
+	return 1;
+}
 
 /**
  * @note Address: 0x800974E0

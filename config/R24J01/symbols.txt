@@ -8934,3 +8934,6 @@ _cmd_RETURN__4CEvtFUcl = .text:0x800976C8; // type:function size:0x21C
 _cmd_MENU__4CEvtFUcl = .text:0x8009C3DC; // type:function size:0x1D8
 _cmd_MSG__4CEvtFUcl = .text:0x8009CFF8; // type:function size:0x220
 _cmd_WARP__4CEvtFUcl = .text:0x800A0B0C; // type:function size:0x19C
+__sinit_\evt_cpp = .text:0x800A1568; // type:function size:0x350 scope:local
+GetMapAreaEdgeNormal__FRC3VecRC3VecP3Veci = .text:0x8015F35C; // type:function size:0x104 scope:local
+FindFacing__17CCameraActionAreaFlRC3Vec = .text:0x801559D0; // type:function size:0x158

@@ -569,6 +569,8 @@ public:
 	virtual void Reset();                    // _14
 	virtual void SetCamera(CCamera* camera); // _18
 
+	s32 FindFacing(s32 slotIndex, const Vec& dir);
+
 	// the vectors are passed by value, hence the copies
 	void SetInte_I(s32 mode, Vec from, Vec to, f32 time)
 	{
@@ -606,7 +608,9 @@ public:
 	// so that ~CCameraActions expands into it and the member destructors behind it are no longer emitted
 	// (gamedtor.cpp, an incomplete CGame), so they stay bytes until the rest of CGame is typed
 	u8 _8C[0x30];
-	u8 _BC[0xC8 - 0xBC];
+	f32 mTurnSpeed;                                // _BC, turn speed
+	f32 mTargetYaw;                                // _C0, wrapped target yaw
+	f32 _C4;                                       // _C4
 	CInterpolationEaseOutDivide mFovEaseOutDivide; // _C8
 	CVec mPreviousEye;                             // _D8
 	u8 _E8[0x4EC - 0xE8];
