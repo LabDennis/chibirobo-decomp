@@ -571,7 +571,12 @@ gamecube_libs = [
             Object(Matching, "game/memcardfile.cpp", cflags=cflags_game),
             Object(NonMatching, "game/params.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/inventory.cpp"),
-            Object(NonMatching, "game/xobjcamera.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline deferred, as retail shows: .sdata2 has the RTTI names "CJObj", "CXObj", "XObj"
+            # (lbl_8065D248..lbl_8065D258) before UpdateObject's 0.0f, "aobj.h" and u32->float double
+            # (lbl_8065D260..lbl_8065D278). Without deferred MWCC builds vtables/RTTI only at the end of
+            # the file, after every function's constants; deferred builds them first. There's no Wii build
+            # of this file
+            Object(NonMatching, "game/xobjcamera.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjlight.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjactorlook.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardjob.cpp"),
