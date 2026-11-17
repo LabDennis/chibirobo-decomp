@@ -59,7 +59,7 @@ extern "C" void DrawHudRoundedRectangle(u32 color, f32 x, f32 y, f32 w, f32 h, f
 
 static inline BOOL ProjectRoboeyesItem(XObj* object, f32* width, f32* height)
 {
-	f32 r = object->GetFloorXZExtent() * .5f;
+	f32 r = object->GetFloorXZExtent() / 2.0f;
 	if (r < 1.0f)
 		r = 1.0f;
 	f32 h = object->GetCollisionHeight();
@@ -80,7 +80,7 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 		Label entries[64];
 		u32 used, visible;
 	} work;
-	work.used = work.visible = 0;
+	work.visible = work.used = 0;
 	XObjPool& pool           = gGame.mXObjs.mPools[8];
 	for (s32 i = 0; i < pool.mUsed; ++i) {
 		XObj* object = pool.Get(i);
@@ -94,9 +94,10 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 			Vec offset                        = { 0, 0, 0 };
 			f32 x, y;
 			object->ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
-			y -= .5f * radius;
+			y -= radius / 2.0f;
 			f32 dx = 320.0f - x, dy = 224.0f - y;
-			work.entries[work.visible++].distance = sqrtf(dx * dx + dy * dy);
+			work.entries[work.visible].distance = sqrtf(dx * dx + dy * dy);
+			work.visible++;
 		}
 	}
 	CGs* gs = &base->mGs;
@@ -118,30 +119,29 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 			Vec offset = { 0, 0, 0 };
 			f32 x, y, z;
 			object->ProjectOffsetToScreen(&offset, &x, &y, &z, NULL);
-			y -= radius * .5f;
+			y -= radius / 2.0f;
 			const char* name = (const char*)GetItemName(object->GetItem());
 			f32 width        = 32.0f + MeasureGameTextWidth(gs, name, TRUE, 20);
-			const f32 angle  = 2.3561945f;
+			f32 angle        = 2.3561945f;
 			f32 startX = x + radius * (f32)sin(angle), startY = y + radius * (f32)cos(angle);
-			f32 endX = x + 1.7f * radius * (f32)sin(angle), left = endX, right = endX + width;
-			f32 endY = y + 1.7f * radius * (f32)cos(angle);
+			f32 endX = x + 1.7f * radius * (f32)sin(angle), endY = y + 1.7f * radius * (f32)cos(angle);
+			f32 left = endX, right = endX + width;
 			for (u32 j = 0; j < work.used; ++j) {
 				const Label& prior = work.entries[j];
-				f32 dy = endY - prior.y, dx = left - prior.left;
+				f32 dy             = endY - prior.y;
 				if (dy < 0)
 					dy = -dy;
+				f32 dx = left - prior.left;
 				if (dx < 0)
 					dx = -dx;
-				if (dy < 32 && dx < (left > prior.left ? prior.width : width)) {
-					endY         = prior.y - 33;
-					f32 distance = endY - startY;
-					if (distance < 0)
-						distance = -distance;
+				f32 room = left > prior.left ? prior.width : width;
+				if (dy < 32 && dx < room) {
+					endY = prior.y - 33;
 					if (left == right) {
-						endX = startX - distance * .5f;
+						endX = startX - Abs(endY - startY) / 2.0f;
 						left = right = endX - width;
 					} else {
-						endX  = startX + distance * .5f;
+						endX  = startX + Abs(endY - startY) / 2.0f;
 						left  = endX;
 						right = endX + width;
 					}
@@ -149,9 +149,10 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 					j = -1;
 				}
 			}
-			work.entries[work.used].y       = endY;
-			work.entries[work.used].left    = left;
-			work.entries[work.used++].width = width;
+			work.entries[work.used].y     = endY;
+			work.entries[work.used].left  = left;
+			work.entries[work.used].width = width;
+			work.used++;
 			if (pass == 0) {
 				f32 inner = radius + .1f * radius * (f32)sin(eyes->mPhase), outer = 1.2f * inner;
 				for (s32 k = 0; (f32)k < 16.0f; ++k) {
@@ -163,11 +164,10 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 				DrawGsLineSegment(gs, NULL, startX, startY, 0, gold, endX, endY, 0, gold);
 			}
 			if (pass == 1) {
-				DrawHudRoundedRectangle(160, left + width * .5f, endY - 16, width, 16, 1, 1);
+				DrawHudRoundedRectangle(160, left + width / 2.0f, endY - 16, width, 16, 1, 1);
 				DrawGsLineSegment(gs, NULL, endX, endY, 0, gold, right, endY, 0, gold);
 				s32 icon    = GetItemIconTextureIndex(object->GetItem());
-				CTpl& tpl   = gGame.mTpl;
-				CTexObj tex = tpl.mTex.Init(&((TPLPalette*)tpl.mBuffer)->descriptorArray[icon], 0);
+				CTexObj tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[icon], 0);
 				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, left + 16, endY - 16, 0, 32, 32, 0, 0, 0);
 				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -185,7 +185,7 @@ struct RoboeyesValue {
 	f32 value, target;
 	void Update()
 	{
-		f32 step = (target - value) * 0.5f;
+		f32 step = (target - value) / 2.0f;
 		if (step < 0)
 			step = -step;
 		ApproachHudValue(&value, &target, step);
@@ -1361,7 +1361,7 @@ s32 XObj::OnPlayerContact(s32 unused, s32 value)
  */
 s32 XObj::HandleEventCommand(s32 count, s32* args)
 {
-	for (s32 i = 0; i < count; ++i) { }
+	for (int i = 0; i < count; i++) { }
 	return 0;
 }
 
@@ -1956,6 +1956,8 @@ static inline bool FadeDone()
  * @note Address: 0x800280B4
  * @note Size: 0x244
  */
+// NONMATCHING: retail walks separate induction pointers for mArchive.mDesc and mLightAnims, as in
+// XObjLight and XObjMap::UpdateObject; this build shares one
 // XObjDemo's update, steps the camera and light anims with the model
 void XObjDemo::UpdateObject(u32 frames)
 {
