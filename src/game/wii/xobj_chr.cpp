@@ -139,6 +139,14 @@ static inline void StopMoving(WiiPlayerState* chr)
 	}
 }
 
+// the ground type of a map triangle, 0 for none
+static inline s32 GetMapTriangleFloorType(XObjMap* map, s32 tri)
+{
+	if (tri < 0)
+		return 0;
+	return map->mTrigon.mTri[tri].mFloorType;
+}
+
 // events wait while he lies there out of battery
 static inline bool IsEventBlocked(const WiiPlayerState* chr)
 {
@@ -1297,6 +1305,44 @@ s32 FindPlayerSupportingFloor(WiiPlayerState* chr, s32 group, s32 preferred)
 		}
 	}
 	return result;
+}
+
+// the ground type under chibi robo, from what he hangs or climbs on, the object he stands
+// on, or else the map triangle under him. 13 and up count as none
+// NONMATCHING (95 %): retail keeps the u8 conversion as a clrlwi. where this build tests the lbz result directly
+s32 GetPlayerGroundType(WiiPlayerState* chr)
+{
+	s32 type = 0;
+	if (chr->mHang.mState == 5 && chr->mHang.mTarget != NULL) {
+		XObj* owner = chr->mHang.mTarget;
+		type        = owner->mFloors->mMaterial;
+	} else if (chr->mRope.mState == 5 && chr->mRope.mTarget != NULL) {
+		XObj* owner = chr->mRope.mTarget;
+		type        = owner->mFloors->mMaterial;
+	} else if (chr->mLadder.mState == 5 && chr->mLadder.mTarget != NULL) {
+		XObj* owner = chr->mLadder.mTarget;
+		type        = owner->mFloors->mMaterial;
+	} else if (chr->mFloorContactObjects[0] >= 0) {
+		XObj* owner = gGame.mXObjs.mObjects[chr->mFloorContactObjects[0]];
+		f32 best    = NAN;
+		for (s32 i = 0; owner->mFloors[i].mId != -1; ++i) {
+			if ((owner->mFloors[i].mFlags & 1) && (owner->mFloorMasks[0] & (1U << i))
+			    && (__fpclassifyf(best) == FP_NAN || owner->mFloorHeights[i] > best)) {
+				f32 height = owner->mFloorHeights[i];
+				if (height <= 1.0f + chr->mMoveTranslate.y) {
+					best = height;
+					type = owner->mFloors[i].mMaterial;
+				}
+			}
+		}
+	}
+	type = (u8)type;
+	if (type == 0 && chr->mFloorHit.mTriangle >= 0 && chr->mFloorHit.mTrigon >= 0) {
+		type = GetMapTriangleFloorType((XObjMap*)gGame.mXObjs.mPools[3].mObjects, chr->mFloorHit.mTriangle);
+	}
+	if (type >= 13)
+		type = 0;
+	return type;
 }
 
 void SetAttachmentCountById(AttachmentValues* values, s32 id, s32 value)

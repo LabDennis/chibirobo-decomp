@@ -10,6 +10,7 @@
 #include "game/coordinfo.h"
 #include "game/cstatus64.h"
 #include "game/ctrigon.h"
+#include "game/mapfloorhit.h"
 #include "game/evt.h"
 #include "game/ut.h"
 #include "game/wii/cgs.h"
@@ -1274,8 +1275,8 @@ public:
 	f32 mScreenLeft;   // _6E8
 	f32 mScreenRight;  // _6EC
 	u8 _6F0[0x6F8 - 0x6F0];
-	CVec mToppleOffset; // _6F8
-	u8 _708[0xC];
+	CVec mToppleOffset;       // _6F8
+	XObjMapHit mFloorHit;     // _708, the map floor under the object
 	CVec mVec714;             // _714
 	CEvt mEvt;                // _724
 	const void* mEventScript; // _790, the event script the object starts when used
@@ -1349,7 +1350,6 @@ public:
 	XObjMap();
 	virtual ~XObjMap();
 
-private:
 	u8 _9A8[4];
 	CTrigon mTrigon; // _9AC
 	u8 _9EC[0x28];
