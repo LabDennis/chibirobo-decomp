@@ -193,6 +193,9 @@ u32 GetMaskedPlayerStatus(const XObjChr* chr, u32 mask);
 	ADD_OBJECT_MARKER(allowed, 0x40); \
 	ADD_OBJECT_MARKER(allowed, 0x80)
 
+// NONMATCHING: register numbers in the object loops; retail also jumps from the hang loop's two put-backs straight past the
+// `if (!supported)` test (here they set the flag and test it), branches twice after each leticker index test, and computes
+// marker & 0x80 again for the look mode instead of keeping the count chain's result
 extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32 speed, f32 direction)
 {
 	if (GetMaskedPlayerStatus(player, 0x80000000))
