@@ -3591,10 +3591,10 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 	f32& winWidth  = font->mWidth;
 	f32& winY      = font->mWindowY;
 	f32& winHeight = font->mHeight;
-	if (winX - winWidth * 0.5f < 16.0f)
-		winX = 16.0f + winWidth * 0.5f;
-	if (winX + winWidth * 0.5f > 624.0f)
-		winX = 624.0f - winWidth * 0.5f;
+	if (winX - winWidth / 2.0f < 16.0f)
+		winX = 16.0f + winWidth / 2.0f;
+	if (winX + winWidth / 2.0f > 624.0f)
+		winX = 624.0f - winWidth / 2.0f;
 	if (winY < 34.0f)
 		winY = 34.0f;
 	if (winY + winHeight > 414.0f)
@@ -3742,7 +3742,7 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 				u32 clipX = (u32)(1.0f + (((winX - winWidth / 2.0f) - 40.0f - expandX) - halfPortrait));
 				GXSetScissor(clipX, clipY, clipWidth, clipHeight);
 			}
-			f32 portraitX   = 44.0f * portraitScale + ((winX - winWidth * 0.5f) - 40.0f - halfPortrait);
+			f32 portraitX   = 44.0f * portraitScale + ((winX - winWidth / 2.0f) - 40.0f - halfPortrait);
 			f32 portraitY   = 12.0f * portraitScale + (winHeight / 2.0f + winY);
 			XObj* portrait  = NULL;
 			s32 objectCount = gGame.mXObjs.mPools[10].mUsed;
@@ -6452,7 +6452,7 @@ extern "C" void CMsgFont_AddChar(CMsgFont* font, const char* text)
 	// half the size change since the previous glyph; outside japan mPrevSize is NAN until the first one (CMsgFont_Init)
 	f32 spacing;
 #if defined(VERSION_JP)
-	spacing = (font->mSize - font->mPrevSize) * 0.5f;
+	spacing = (font->mSize - font->mPrevSize) / 2.0f;
 #else
 	if (__fpclassifyf(font->mPrevSize) == FP_NAN) {
 		spacing = 0.0f;
