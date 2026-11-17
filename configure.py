@@ -1824,7 +1824,7 @@ if wii:
                 Object(Matching, "revolution/OS/OSCache.c"),
                 Object(Matching, "revolution/OS/OSContext.c"),
                 Object(Matching, "revolution/OS/OSError.c"),
-                Object(NonMatching, "revolution/OS/OSInterrupt.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/OS/OSInterrupt.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/OS/OSFatal.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/OS/OSFont.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "dolphin/os/OSMessage.c"),
@@ -1892,7 +1892,7 @@ if wii:
                 Object(Matching, "revolution/AX/AXOut.c"),
                 Object(Matching, "revolution/AX/AXProf.c"),
                 Object(Matching, "revolution/AX/AXVPB.c"),
-                Object(Equivalent, "revolution/AX/AXSPB.c"),
+                Object(Matching, "revolution/AX/AXSPB.c"),
                 Object(Matching, "revolution/AXFX/AXFXReverbHi.c"),
                 Object(Equivalent, "revolution/AXFX/AXFXReverbHiExp.c"),
                 Object(Equivalent, "revolution/AXFX/AXFXReverbHiExpDpl2.c"),
@@ -1908,13 +1908,21 @@ if wii:
                 Object(Matching, "revolution/IPC/ipcProfile.c"),
                 Object(Matching, "revolution/NAND/nand.c"),
                 Object(Matching, "revolution/NAND/NANDOpenClose.c"),
-                Object(NonMatching, "revolution/NAND/NANDCore.c"),
+                Object(Matching, "revolution/NAND/NANDCore.c"),
                 Object(Matching, "revolution/NAND/NANDLogging.c"),
                 Object(Matching, "revolution/SC/scsystem.c"),
                 Object(Matching, "revolution/SC/scapi.c"),
                 Object(Matching, "revolution/SC/scapi_prdinfo.c"),
                 Object(NonMatching, "revolution/USB/usb.c"),
                 Object(Matching, "revolution/TPL/TPL.c"),
+                Object(Matching, "revolution/THP/THPDec.c"),
+                Object(Matching, "revolution/THP/THPAudio.c"),
+                Object(Matching, "revolution/OS/__ppc_eabi_init.cpp"),
+                # NdevExi2A (0x8017B5A4-0x8017C0A8) is built unoptimised and without inlining: all 31
+                # functions of both files show -O0 code (parameters kept on the stack, locals from r31
+                # down, every static helper a call); with the library's -O4,p none of them match.
+                Object(Matching, "revolution/NdevExi2A/DebuggerDriver.c", extra_cflags=["-O0", "-inline off"]),
+                Object(NonMatching, "revolution/NdevExi2A/exi2.c", extra_cflags=["-O0", "-inline off"]),
                 Object(Matching, "revolution/ESP/esp.c"),
                 # Both WPAD units take the library flags (-fp hardware): WPAD.c (76 functions) and
                 # WPADHIDParser.c (25) match and link with them, so Petari's -fp off for its WPAD.c of
@@ -1984,10 +1992,6 @@ if wii:
                 Object(NonMatching, "dolphin/os/OSExec.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSMemory.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSReset.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/os/__ppc_eabi_init.cpp", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(Equivalent, "dolphin/thp/THPDec.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(Equivalent, "dolphin/thp/THPAudio.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
-                Object(Equivalent, "dolphin/OdemuExi2/DebuggerDriver.c", cflags=cflags_sdk, extra_cflags=["-inline deferred"], mw_version="GC/1.2.5n"),
             ],
         },
         {

@@ -38,11 +38,8 @@ AXSTUDIO* __AXGetStudio(void)
 {
 	return &__AXStudio;
 }
-// NONMATCHING: retail writes *level into valueWords[0..1] with one 32-bit stw and clears both with one stw;
-// this version stores two halfwords, and register allocation differs. Taking the value as s32* (as pik1wii
-// does) matches both fades, but then the compiler inlines them 20 times into __AXPrintStudio, which retail
-// does not; pik1wii, pik2wii and ogws hold them out with a dont_inline pragma.
-void __AXDepopFadeMain(s32* level, u16* valueWords, s16* delta)
+
+void __AXDepopFadeMain(s32* level, s32* value, s16* delta)
 {
 	s32 average = *level / AX_SAMPLES_PER_FRAME;
 	if (average != 0) {
@@ -50,23 +47,17 @@ void __AXDepopFadeMain(s32* level, u16* valueWords, s16* delta)
 			average = DEPOP_MAX;
 		if (average < DEPOP_MIN)
 			average = DEPOP_MIN;
-		valueWords[0] = (u32)*level >> 16;
-		valueWords[1] = (u16)*level;
+		*value = *level;
 		*level -= average * AX_SAMPLES_PER_FRAME;
 		*delta = -average;
 	} else {
-		*level        = 0;
-		valueWords[0] = 0;
-		valueWords[1] = 0;
-		*delta        = 0;
+		*level = 0;
+		*value = 0;
+		*delta = 0;
 	}
 }
 
-// NONMATCHING: retail writes *level into valueWords[0..1] with one 32-bit stw and clears both with one stw;
-// this version stores two halfwords, and register allocation differs. Taking the value as s32* (as pik1wii
-// does) matches both fades, but then the compiler inlines them 20 times into __AXPrintStudio, which retail
-// does not; pik1wii, pik2wii and ogws hold them out with a dont_inline pragma.
-void __AXDepopFadeRmt(s32* level, u16* valueWords, s16* delta)
+void __AXDepopFadeRmt(s32* level, s32* value, s16* delta)
 {
 	s32 average = *level / AX_SAMPLES_PER_FRAME_RMT;
 	if (average != 0) {
@@ -74,45 +65,43 @@ void __AXDepopFadeRmt(s32* level, u16* valueWords, s16* delta)
 			average = DEPOP_MAX;
 		if (average < DEPOP_MIN)
 			average = DEPOP_MIN;
-		valueWords[0] = (u32)*level >> 16;
-		valueWords[1] = (u16)*level;
+		*value = *level;
 		*level -= average * AX_SAMPLES_PER_FRAME_RMT;
 		*delta = -average;
 	} else {
-		*level        = 0;
-		valueWords[0] = 0;
-		valueWords[1] = 0;
-		*delta        = 0;
+		*level = 0;
+		*value = 0;
+		*delta = 0;
 	}
 }
 
 void __AXPrintStudio(void)
 {
-	__AXDepopFadeMain(&__AXSpbAL, __AXStudio.L.value, &__AXStudio.L.delta);
-	__AXDepopFadeMain(&__AXSpbAR, __AXStudio.R.value, &__AXStudio.R.delta);
-	__AXDepopFadeMain(&__AXSpbAS, __AXStudio.S.value, &__AXStudio.S.delta);
+	__AXDepopFadeMain(&__AXSpbAL, (s32*)__AXStudio.L.value, &__AXStudio.L.delta);
+	__AXDepopFadeMain(&__AXSpbAR, (s32*)__AXStudio.R.value, &__AXStudio.R.delta);
+	__AXDepopFadeMain(&__AXSpbAS, (s32*)__AXStudio.S.value, &__AXStudio.S.delta);
 
-	__AXDepopFadeMain(&__AXSpbAAL, __AXStudio.AuxAL.value, &__AXStudio.AuxAL.delta);
-	__AXDepopFadeMain(&__AXSpbAAR, __AXStudio.AuxAR.value, &__AXStudio.AuxAR.delta);
-	__AXDepopFadeMain(&__AXSpbAAS, __AXStudio.AuxAS.value, &__AXStudio.AuxAS.delta);
+	__AXDepopFadeMain(&__AXSpbAAL, (s32*)__AXStudio.AuxAL.value, &__AXStudio.AuxAL.delta);
+	__AXDepopFadeMain(&__AXSpbAAR, (s32*)__AXStudio.AuxAR.value, &__AXStudio.AuxAR.delta);
+	__AXDepopFadeMain(&__AXSpbAAS, (s32*)__AXStudio.AuxAS.value, &__AXStudio.AuxAS.delta);
 
-	__AXDepopFadeMain(&__AXSpbABL, __AXStudio.AuxBL.value, &__AXStudio.AuxBL.delta);
-	__AXDepopFadeMain(&__AXSpbABR, __AXStudio.AuxBR.value, &__AXStudio.AuxBR.delta);
-	__AXDepopFadeMain(&__AXSpbABS, __AXStudio.AuxBS.value, &__AXStudio.AuxBS.delta);
+	__AXDepopFadeMain(&__AXSpbABL, (s32*)__AXStudio.AuxBL.value, &__AXStudio.AuxBL.delta);
+	__AXDepopFadeMain(&__AXSpbABR, (s32*)__AXStudio.AuxBR.value, &__AXStudio.AuxBR.delta);
+	__AXDepopFadeMain(&__AXSpbABS, (s32*)__AXStudio.AuxBS.value, &__AXStudio.AuxBS.delta);
 
-	__AXDepopFadeMain(&__AXSpbACL, __AXStudio.AuxCL.value, &__AXStudio.AuxCL.delta);
-	__AXDepopFadeMain(&__AXSpbACR, __AXStudio.AuxCR.value, &__AXStudio.AuxCR.delta);
-	__AXDepopFadeMain(&__AXSpbACS, __AXStudio.AuxCS.value, &__AXStudio.AuxCS.delta);
+	__AXDepopFadeMain(&__AXSpbACL, (s32*)__AXStudio.AuxCL.value, &__AXStudio.AuxCL.delta);
+	__AXDepopFadeMain(&__AXSpbACR, (s32*)__AXStudio.AuxCR.value, &__AXStudio.AuxCR.delta);
+	__AXDepopFadeMain(&__AXSpbACS, (s32*)__AXStudio.AuxCS.value, &__AXStudio.AuxCS.delta);
 
-	__AXDepopFadeRmt(&__AXSpbMain0, __AXStudio.Main0.value, &__AXStudio.Main0.delta);
-	__AXDepopFadeRmt(&__AXSpbMain1, __AXStudio.Main1.value, &__AXStudio.Main1.delta);
-	__AXDepopFadeRmt(&__AXSpbMain2, __AXStudio.Main2.value, &__AXStudio.Main2.delta);
-	__AXDepopFadeRmt(&__AXSpbMain3, __AXStudio.Main3.value, &__AXStudio.Main3.delta);
+	__AXDepopFadeRmt(&__AXSpbMain0, (s32*)__AXStudio.Main0.value, &__AXStudio.Main0.delta);
+	__AXDepopFadeRmt(&__AXSpbMain1, (s32*)__AXStudio.Main1.value, &__AXStudio.Main1.delta);
+	__AXDepopFadeRmt(&__AXSpbMain2, (s32*)__AXStudio.Main2.value, &__AXStudio.Main2.delta);
+	__AXDepopFadeRmt(&__AXSpbMain3, (s32*)__AXStudio.Main3.value, &__AXStudio.Main3.delta);
 
-	__AXDepopFadeRmt(&__AXSpbAux0, __AXStudio.Aux0.value, &__AXStudio.Aux0.delta);
-	__AXDepopFadeRmt(&__AXSpbAux1, __AXStudio.Aux1.value, &__AXStudio.Aux1.delta);
-	__AXDepopFadeRmt(&__AXSpbAux2, __AXStudio.Aux2.value, &__AXStudio.Aux2.delta);
-	__AXDepopFadeRmt(&__AXSpbAux3, __AXStudio.Aux3.value, &__AXStudio.Aux3.delta);
+	__AXDepopFadeRmt(&__AXSpbAux0, (s32*)__AXStudio.Aux0.value, &__AXStudio.Aux0.delta);
+	__AXDepopFadeRmt(&__AXSpbAux1, (s32*)__AXStudio.Aux1.value, &__AXStudio.Aux1.delta);
+	__AXDepopFadeRmt(&__AXSpbAux2, (s32*)__AXStudio.Aux2.value, &__AXStudio.Aux2.delta);
+	__AXDepopFadeRmt(&__AXSpbAux3, (s32*)__AXStudio.Aux3.value, &__AXStudio.Aux3.delta);
 
 	DCFlushRange(&__AXStudio, sizeof(AXSTUDIO));
 }
