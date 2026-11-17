@@ -4934,9 +4934,9 @@ extern "C" s32 GetPlayerGroundType(XObjChr* chr)
 extern "C" s32 FindPlayerSupportingFloor(XObjChr* chr, s32 group, s32 preferred)
 {
 	s32 result = -1;
+	f32 best   = NAN;
 	if (chr->mFloorContacts[group].objectIndex >= 0) {
 		XObj* owner = gGame.GetObject(chr->mFloorContacts[group].objectIndex);
-		f32 best    = NAN;
 		for (int i = 0; owner->mFloors[i].mId != -1; i++) {
 			if (owner->mFloorMasks[group] & (1 << i)) {
 				if ((fpclassify(best) == FP_NAN || owner->mFloorHeights[i] >= best)
