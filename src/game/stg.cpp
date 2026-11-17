@@ -6838,9 +6838,16 @@ extern "C" void DrawStatusHelpText(MenuStatus* menu)
 			u32 color    = (u32)opacity | 0xFFFFFF00;
 			DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero,
 			                   rotation);
-			scale       = 30.0f * (0.8f * scale);
-			f32 padding = HelpGlyphPadding(width, scale);
-			DrawHelpLetter(tex, x, y, bob, scale, padding, rotation, zero, opacity, gStatusHelpOutlineX, gStatusHelpOutlineY);
+			scale          = 30.0f * (0.8f * scale);
+			f32 glyphWidth = width / 24.0f * scale;
+			f32 padding    = scale - glyphWidth;
+			for (int j = 0; j < 4; j++) {
+				DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + gStatusHelpOutlineX[j] + padding / 2.0f,
+				                   bob + (384.0f + gStatusHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+			}
+			color = (u32)opacity | 0xFFFFFB00;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding / 2.0f, y, 1.0f, scale, scale, 0.0f, -zero,
+			                   rotation);
 		}
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -7342,9 +7349,16 @@ BOOL MenuItem::Draw()
 					u32 color    = (u32)opacity | 0xFFFFFF00;
 					DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero,
 					                   rotation);
-					scale       = 30.0f * (0.8f * scale);
-					f32 padding = HelpGlyphPadding(width, scale);
-					DrawHelpLetter(tex, x, y, bob, scale, padding, rotation, zero, opacity, gItemHelpOutlineX, gItemHelpOutlineY);
+					scale          = 30.0f * (0.8f * scale);
+					f32 glyphWidth = width / 24.0f * scale;
+					f32 padding    = scale - glyphWidth;
+					for (int j = 0; j < 4; j++) {
+						DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + gItemHelpOutlineX[j] + padding / 2.0f,
+						                   bob + (384.0f + gItemHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+					}
+					color = (u32)opacity | 0xFFFFFB00;
+					DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding / 2.0f, y, 1.0f, scale, scale, 0.0f, -zero,
+					                   rotation);
 				}
 			}
 			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -7865,9 +7879,15 @@ extern "C" void DrawSaveHelpText(MenuSave* menu)
 		rotation     = -(0.017453292f * (10.0f * rotation));
 		u32 color    = (u32)opacity | 0xFFFFFF00;
 		DrawGsTexturedQuad(&gGame.mGs, &blob, color, color, color, color, x, y, 1.0f, 30.0f * scale, 30.0f * scale, 0.0f, -zero, rotation);
-		scale       = 30.0f * (0.8f * scale);
-		f32 padding = HelpGlyphPadding(width, scale);
-		DrawHelpLetter(tex, x, y, bob, scale, padding, rotation, zero, opacity, gSaveHelpOutlineX, gSaveHelpOutlineY);
+		scale          = 30.0f * (0.8f * scale);
+		f32 glyphWidth = width / 24.0f * scale;
+		f32 padding    = scale - glyphWidth;
+		for (int j = 0; j < 4; j++) {
+			DrawGsTexturedQuad(&gGame.mGs, &tex, opacity, opacity, opacity, opacity, x + gSaveHelpOutlineX[j] + padding / 2.0f,
+			                   bob + (384.0f + gSaveHelpOutlineY[j]), 1.0f, scale, scale, 0.0f, -zero, rotation);
+		}
+		color = (u32)opacity | 0xFFFFFB00;
+		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + padding / 2.0f, y, 1.0f, scale, scale, 0.0f, -zero, rotation);
 	}
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
