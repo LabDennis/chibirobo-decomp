@@ -981,6 +981,27 @@ static void UpdateMenuTitle(MenuSave* menu, u32 frames)
 	}
 }
 
+// the outline the save file details are drawn with
+f32 gSaveTextOutlineX[4] = { -1.0f, 1.0f, 1.0f, -1.0f };
+f32 gSaveTextOutlineY[4] = { -1.0f, -1.0f, 1.0f, 1.0f };
+
+// a line of the save file details, centred on x and y over four dark copies, as the GameCube's gradient text.
+// NONMATCHING: retail keeps 0.8, 0.5 and the zero in saved registers across the whole function
+extern "C" void DrawSaveDetailText(const char* text, f32 x, f32 y, f32 size, f32 alpha)
+{
+	u32 bottom  = ((u8)(255.0f * alpha)) | 0xEDA83600;
+	u32 opacity = (u32)(255.0f * alpha);
+	f32 zero    = 0.0f;
+	for (int i = 0; i < 4; i++) {
+		f32 outlineY = (zero + (y + gSaveTextOutlineY[i])) - size * 0.8f * 0.5f;
+		f32 outlineX = x + gSaveTextOutlineX[i];
+		f32 width    = MeasureGameTextWidth(&gGame.mGs, text, 1, size * 0.8f);
+		DrawGsProportionalTextFormat(&gGame.mGs, opacity, text, outlineX - width * 0.5f, outlineY, 0.0f, size * 0.8f, size * 0.8f);
+	}
+	DrawGsProportionalTextFormat(&gGame.mGs, bottom, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size * 0.8f) * 0.5f,
+	                             (y + zero) - size * 0.8f * 0.5f, 0.0f, size * 0.8f, size * 0.8f);
+}
+
 extern "C" s32 IndexOfLargestOfThree(s64 a, s64 b, s64 c)
 {
 	if (a >= b) {
@@ -1114,6 +1135,25 @@ extern "C" void fn_80083350(MenuSave* menu)
 	}
 }
 
+// empties the status table, the GameCube's inline ClearStatusTable
+void ClearStatusTable(MenuStatusTable* table)
+{
+	table->mPage = 0;
+	for (int i = 0; i < 256; i++) {
+		table->mItems[i].mItem  = -1;
+		table->mItems[i].mCount = -1;
+		table->mItems[i].mStatus.Clear();
+	}
+	for (int i = 0; i < 4; i++) {
+		table->mPrev[i].mItem  = -1;
+		table->mPrev[i].mCount = -1;
+		table->mPrev[i].mStatus.Clear();
+		table->mNext[i].mItem  = -1;
+		table->mNext[i].mCount = -1;
+		table->mNext[i].mStatus.Clear();
+	}
+}
+
 // how many of the item chibi robo holds, the GameCube's. NONMATCHING: retail fetches the player again for the count
 // and walks the slots by a byte offset; ours keeps the first pointer (MarkAvailableStatusEntries inlines it nine times)
 extern "C" s16 GetPlayerItemCount(s16 id)
@@ -1127,6 +1167,46 @@ extern "C" s16 GetPlayerItemCount(s16 id)
 		}
 	}
 	return count;
+}
+
+// empties the page of things bought, the GameCube's ClearPCShopPage<ItemPriceList>
+void ClearShopHistoryPage(MenuPCPage* page)
+{
+	page->mStart = 0;
+	for (int i = 0; i < 20; i++) {
+		page->mRows[i].mItem         = -1;
+		page->mRows[i].mCount        = -1;
+		page->mRows[i].mPrice        = -1;
+		page->mRows[i].mIsAttachment = 0;
+		page->mIndex[i]              = -1;
+	}
+	page->mPrev[0].mItem         = -1;
+	page->mPrev[0].mCount        = -1;
+	page->mPrev[0].mPrice        = -1;
+	page->mPrev[0].mIsAttachment = 0;
+	page->mNext[0].mItem         = -1;
+	page->mNext[0].mCount        = -1;
+	page->mNext[0].mPrice        = -1;
+	page->mNext[0].mIsAttachment = 0;
+}
+
+// empties the page of the shop's catalog, the GameCube's ClearPCShopPage<PriceList>
+void ClearShopCatalogPage(MenuPCPage* page)
+{
+	page->mStart = 0;
+	for (int i = 0; i < 20; i++) {
+		page->mRows[i].mItem  = -1;
+		page->mRows[i].mCount = -1;
+		page->mRows[i].mPrice = -1;
+		page->mIndex[i]       = -1;
+	}
+	page->mPrev[0].mItem         = -1;
+	page->mPrev[0].mCount        = -1;
+	page->mPrev[0].mPrice        = -1;
+	page->mPrev[0].mIsAttachment = 0;
+	page->mNext[0].mItem         = -1;
+	page->mNext[0].mCount        = -1;
+	page->mNext[0].mPrice        = -1;
 }
 
 extern "C" void MarkAvailableStatusEntries(u8* available)

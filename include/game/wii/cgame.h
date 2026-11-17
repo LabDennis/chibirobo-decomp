@@ -1111,6 +1111,43 @@ STATIC_ASSERT(offsetof(MenuSave, mLastFile) == 0x2C4);
 STATIC_ASSERT(offsetof(MenuSave, mResetOnClose) == 0x570);
 STATIC_ASSERT(offsetof(MenuSave, mFileAlpha) == 0x704);
 
+// a row of the status menu's item pages, the GameCube struct
+struct MenuStatusEntry {
+	s16 mItem;       // _00
+	s16 mCount;      // _02
+	CStatus mStatus; // _04
+};
+STATIC_ASSERT(sizeof(MenuStatusEntry) == 0xC);
+
+// the items the status screen pages through, the GameCube struct
+struct MenuStatusTable {
+	s32 mPage;                   // _00, in fours
+	MenuStatusEntry mItems[256]; // _04, the eight on screen
+	MenuStatusEntry mPrev[4];    // _C04, the four before them
+	MenuStatusEntry mNext[4];    // _C34, the four after
+};
+STATIC_ASSERT(sizeof(MenuStatusTable) == 0xC64);
+
+// a row of the PC shop's lists, the GameCube struct
+struct MenuPCItem {
+	s16 mItem;        // _00, -1 for an empty row
+	s16 mCount;       // _02, -1 for an empty row
+	s16 mPrice;       // _04
+	u8 mIsAttachment; // _06
+	u8 _07;           // _07
+};
+STATIC_ASSERT(sizeof(MenuPCItem) == 8);
+
+// the nine rows on screen and the ones just off either end, the GameCube struct
+struct MenuPCPage {
+	s32 mStart;           // _00, list index of the first row
+	MenuPCItem mRows[20]; // _04
+	s32 mIndex[20];       // _A4, list index of each row
+	MenuPCItem mPrev[1];  // _F4
+	MenuPCItem mNext[1];  // _FC
+};
+STATIC_ASSERT(sizeof(MenuPCPage) == 0x104);
+
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public CMenu {
 public:
