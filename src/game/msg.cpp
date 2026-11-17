@@ -3765,9 +3765,9 @@ extern "C" void CMsgFont_Draw(void* p, f32 lastAlpha)
 					textOffset = 0.0f;
 				else {
 #endif
-					f32 scale       = (9.0f * portraitScale) * font->mAlpha;
 					Vec oldPosition = (Vec)portrait->mMoveTranslate;
 					Vec oldScale    = (Vec)portrait->mMoveScale;
+					f32 scale       = (9.0f * portraitScale) * font->mAlpha;
 					f32 oldYaw      = portrait->mMoveRotate.y;
 					CJObj joint(portrait->mJObj);
 					f32 depth = 80.0f * portraitScale;
