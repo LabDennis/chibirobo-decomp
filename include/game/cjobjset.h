@@ -11,9 +11,8 @@
 #pragma pool_data on
 
 // a Vec from its parts, starting from zero
-static inline Vec MakeJObjVec(const Vec& zero, f32 x, f32 y, f32 z)
+static inline Vec MakeJObjVec(Vec v, f32 x, f32 y, f32 z)
 {
-	Vec v = zero;
 	v.x   = x;
 	v.y   = y;
 	v.z   = z;
