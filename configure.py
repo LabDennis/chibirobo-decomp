@@ -380,7 +380,7 @@ gamecube_libs = [
             Object(Matching, "game/gamecobjarchive.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gamecmsg.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gamemsgcursor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(MatchingFor(JP), "game/gameccameraactions.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(Matching, "game/gameccameraactions.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/gameinterval.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/stagemicrophone.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/micaudio.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -430,7 +430,7 @@ gamecube_libs = [
             Object(Matching, "game/cstatusdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/logodtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjsdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(MatchingFor(JP), "game/cevtdtor.cpp", cflags=with_hsd_headers(cflags_game)),
+            Object(Matching, "game/cevtdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/csounddtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xsounddtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcarddtor.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -582,7 +582,7 @@ gamecube_libs = [
             # UpdateDriftingDust, which every GC compiler (2.0 to 2.7) auto-inlines by size alone under
             # -inline auto (JP code 70 % without the flag). Weaker evidence than the deferred units below:
             # a larger original body could also explain it, but no natural form does.
-            Object(EquivalentFor(JP), "game/xobjdust.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
+            Object(Equivalent, "game/xobjdust.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
             Object(NonMatching, "game/xobjfree.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjdustbillboard.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardformat.cpp", cflags=cflags_game, extra_cflags=["-inline noauto"]),
