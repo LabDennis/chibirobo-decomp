@@ -385,23 +385,8 @@ game/msgdataformat.cpp:
 	.text       start:0x800869AC end:0x80086F24
 	.data       start:0x802255F8 end:0x8022565C
 
-game/memcardcheck.cpp:
-	.text       start:0x80086F24 end:0x80087190
-
-game/memcardheader.cpp:
-	.text       start:0x80087190 end:0x80087508
-
-game/memcardload.cpp:
-	.text       start:0x80087508 end:0x80087854
-
-game/memcardfile.cpp:
-	.text       start:0x80087854 end:0x80087A4C
-
-game/memcardpos.cpp:
-	.text       start:0x80087A4C end:0x80087CC0
-
-game/memcardrestore.cpp:
-	.text       start:0x80087CC0 end:0x800880EC
+game/memcard.cpp:
+	.text       start:0x80086F24 end:0x800880EC
 
 game/memcardcapture.cpp:
 	.text       start:0x800880EC end:0x800884F0
