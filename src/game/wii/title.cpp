@@ -1729,9 +1729,9 @@ extern "C" void DrawTitleScreen(Title* title)
  * @note Address: 0x8004BC54
  * @note Size: 0x8F4
  */
-// NONMATCHING: read from retail's code; the float registers and spills differ, and retail calls
-// GetLocalizedInterfaceText(300) once more before the heading and drops the result; OK works out
-// its pulsing size as DrawTitleEntry does but draws at the plain size, so okSize stays unused
+// NONMATCHING: read from retail's code; the float registers and spills differ, and the two colors are
+// put together after the frame is drawn. The heading's text is fetched once more and dropped; OK works
+// out its pulsing size as DrawTitleEntry does but draws at the plain size, so okSize stays unused
 // the options page: the frame, its heading, the pointer and stick settings with their highlight bars and OK
 extern "C" void DrawTitleOptions(Title* title)
 {
@@ -1741,14 +1741,15 @@ extern "C" void DrawTitleOptions(Title* title)
 		f32 cy     = gPointerScreenHeight / 2;
 		f32 w      = (f32)(gPointerScreenWidth / 2) * alpha;
 		f32 h      = (f32)(gPointerScreenHeight / 2) * alpha;
-		u32 normal = 0xFFFFFF00 | (u8)(255.0f * alpha);
 		u32 lit    = 0xFFB62800 | (u8)(255.0f * alpha);
-		DrawTexturedWindowFrame(160.0f * alpha, (u32)(255.0f * title->mOptionAlpha) | 0xFFFFFF00, cx, 223.0f - h * 0.5f, w, h, 1.0f, 1.0f,
-		                        1.0f);
-		f32 size         = 24.0f * title->mOptionAlpha;
+		u32 normal = 0xFFFFFF00 | (u8)(255.0f * alpha);
+		u32 frame  = 160.0f * alpha;
+		DrawTexturedWindowFrame(frame, (u32)(255.0f * title->mOptionAlpha) | 0xFFFFFF00, cx, 223.0f - h / 2.0f, w, h, 1.0f, 1.0f, 1.0f);
+		const char* heading = GetLocalizedInterfaceText(300);
+		f32 size            = 24.0f * title->mOptionAlpha;
 		const char* text = GetLocalizedInterfaceText(300);
 		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, cx - textWidth * 0.5f, size + (cy - h * 0.5f), 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, cx - textWidth / 2.0f, size + (cy - h / 2.0f), 0.0f, size, size);
 
 		size        = 24.0f * title->mOptionAlpha;
 		f32 gap     = 8.0f;
@@ -1778,21 +1779,21 @@ extern "C" void DrawTitleOptions(Title* title)
 			selected = true;
 		}
 		u32 color = selected ? lit : normal;
-		DrawGsProportionalTextFormat(&gGame.mGs, color, GetLocalizedInterfaceText(0x11), cx - labelW - gap, 3.0f * size + (cy - h * 0.5f),
+		DrawGsProportionalTextFormat(&gGame.mGs, color, GetLocalizedInterfaceText(0x11), cx - labelW - gap, 3.0f * size + (cy - h / 2.0f),
 		                             0.0f, size, size);
 		selected = false;
 		if (title->mOptionLine == 0 && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
 			selected = true;
 		}
-		f32 valueX = gap + (cx + labelW) - barW * 0.5f;
-		fn_8004EDFC(title, selected, valueX, size * 0.5f + (3.0f * size + (cy - h * 0.5f)), size, barW);
+		f32 valueX = gap + (cx + labelW) - barW / 2.0f;
+		fn_8004EDFC(title, selected, valueX, size / 2.0f + (3.0f * size + (cy - h / 2.0f)), size, barW);
 		text       = title->mPointerOn ? GetLocalizedInterfaceText(0x12) : GetLocalizedInterfaceText(0x13);
 		u32 shadow = 100.0f * title->mOptionAlpha;
 		textWidth  = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, shadow, text, 2.0f + valueX - textWidth * 0.5f, 2.0f + (3.0f * size + (cy - h * 0.5f)),
+		DrawGsProportionalTextFormat(&gGame.mGs, shadow, text, 2.0f + valueX - textWidth / 2.0f, 2.0f + (3.0f * size + (cy - h / 2.0f)),
 		                             0.0f, size, size);
 		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, text, valueX - textWidth * 0.5f, 3.0f * size + (cy - h * 0.5f), 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, valueX - textWidth / 2.0f, 3.0f * size + (cy - h / 2.0f), 0.0f, size, size);
 
 		// the stick line
 		selected = false;
@@ -1800,20 +1801,20 @@ extern "C" void DrawTitleOptions(Title* title)
 			selected = true;
 		}
 		color = selected ? lit : normal;
-		DrawGsProportionalTextFormat(&gGame.mGs, color, GetLocalizedInterfaceText(0x14), cx - labelW - gap, 5.0f * size + (cy - h * 0.5f),
+		DrawGsProportionalTextFormat(&gGame.mGs, color, GetLocalizedInterfaceText(0x14), cx - labelW - gap, 5.0f * size + (cy - h / 2.0f),
 		                             0.0f, size, size);
 		selected = false;
 		if (title->mOptionLine == 1 && (f32)title->mHighlightDelay >= (f32)gRefreshRate) {
 			selected = true;
 		}
-		fn_8004EDFC(title, selected, valueX, size * 0.5f + (5.0f * size + (cy - h * 0.5f)), size, barW);
+		fn_8004EDFC(title, selected, valueX, size / 2.0f + (5.0f * size + (cy - h / 2.0f)), size, barW);
 		text      = title->mStickOn ? GetLocalizedInterfaceText(0x15) : GetLocalizedInterfaceText(0x16);
 		shadow    = 100.0f * title->mOptionAlpha;
 		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, shadow, text, 2.0f + valueX - textWidth * 0.5f, 2.0f + (5.0f * size + (cy - h * 0.5f)),
+		DrawGsProportionalTextFormat(&gGame.mGs, shadow, text, 2.0f + valueX - textWidth / 2.0f, 2.0f + (5.0f * size + (cy - h / 2.0f)),
 		                             0.0f, size, size);
 		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, text, valueX - textWidth * 0.5f, 5.0f * size + (cy - h * 0.5f), 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, valueX - textWidth / 2.0f, 5.0f * size + (cy - h / 2.0f), 0.0f, size, size);
 
 		// OK pulses with the cursor's animation
 		f32 progress = title->mCursor[0].GetAnimId() == 1 ? title->mCursor[0].GetAnimFrame() / title->mCursor[0].GetAnimEndFrame() : 0.0f;
@@ -1825,7 +1826,7 @@ extern "C" void DrawTitleOptions(Title* title)
 		color     = selected ? lit : normal;
 		text      = GetLocalizedInterfaceText(0x17);
 		textWidth = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
-		DrawGsProportionalTextFormat(&gGame.mGs, color, text, cx - textWidth * 0.5f, 7.0f * size + (cy - h * 0.5f), 0.0f, size, size);
+		DrawGsProportionalTextFormat(&gGame.mGs, color, text, cx - textWidth / 2.0f, 7.0f * size + (cy - h / 2.0f), 0.0f, size, size);
 	}
 }
 
