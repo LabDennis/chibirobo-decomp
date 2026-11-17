@@ -918,9 +918,9 @@ public:
 	BOOL mDragging;           // _A8, the drag button is held
 	f32 mDragDamping;         // _AC
 	CVec mDragVec;            // _B0, the pan impulse the drag left, damped toward zero
-	Vec mDragStart;           // _C0, the pointer position the drag started at
-	Vec mDragLast;            // _D0, the pointer position the last update saw
-	u8 _DC[0x44];             // _DC
+	CVec mDragStart;          // _C0, the pointer position the drag started at
+	CVec mDragLast;           // _D0, the pointer position the last update saw
+	u8 _E0[0x40];             // _E0
 	Mtx mMtx;                 // _120
 	u8 _150[0x94];            // _150
 	ScrollEdgeQuad mQuads[4]; // _1E4
