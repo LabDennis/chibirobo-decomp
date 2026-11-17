@@ -13,12 +13,6 @@ inline void operator delete(void* ptr) throw()
 	MEMFreeToExpHeap(gWiiMem1Heap, ptr);
 }
 
-// the original file defines ~CPadEx too (0x80030A54, cpadexdtor.cpp here) and expands the empty
-// body in ~CBase; this piece of the file sees it as an inline
-inline CPadEx::~CPadEx()
-{
-}
-
 /**
  * @note Address: 0x8002CFB8
  * @note Size: 0x264
@@ -26,7 +20,9 @@ inline CPadEx::~CPadEx()
 // NONMATCHING: retail destroys 36 members and CBase here, each with a call, and frees through
 // __dl__FPv: the function was over the compiler's inline budget. The members typed so far give
 // 15 of those calls; the rest are still padding in CGame (see cgame.h), so the offsets and the
-// call list fall short. ~CCameraActions (0x8002DD80) and ~CBase (0x80030088) match.
+// call list fall short. ~CCameraActions (0x8002DD80) matches. ~CBase (0x80030088) still differs:
+// retail expands the empty ~CPadEx, which the original file defines out of line (0x80030A54) and
+// which lives in cpadexdtor.cpp here, so this piece of the file can only call it.
 CGame::~CGame()
 {
 }
