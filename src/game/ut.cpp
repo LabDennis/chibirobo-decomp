@@ -2059,14 +2059,13 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 {
 	f32 abx = b->x - a->x;
 	f32 abz = b->z - a->z;
-	f32 cdz = d->z - c->z;
 	f32 acx = c->x - a->x;
 	f32 acz = c->z - a->z;
 
 	f32 sideC = abx * acz - abz * acx;
 	f32 sideD = abx * (d->z - a->z) - abz * (d->x - a->x);
-	f32 sideA = (d->x - c->x) * (a->z - c->z) - cdz * (a->x - c->x);
-	f32 sideB = (d->x - c->x) * (b->z - c->z) - cdz * (b->x - c->x);
+	f32 sideA = (d->x - c->x) * (a->z - c->z) - (d->z - c->z) * (a->x - c->x);
+	f32 sideB = (d->x - c->x) * (b->z - c->z) - (d->z - c->z) * (b->x - c->x);
 
 	int hit;
 	if (check == 1) {
@@ -2083,7 +2082,7 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 			out->z = a->z + (c->x - a->x) * ((b->z - a->z) / (b->x - a->x));
 		} else {
 			f32 slopeAB = abz / abx;
-			f32 slopeCD = cdz / (d->x - c->x);
+			f32 slopeCD = (d->z - c->z) / (d->x - c->x);
 			if (slopeAB == slopeCD) {
 				return 0;
 			}
