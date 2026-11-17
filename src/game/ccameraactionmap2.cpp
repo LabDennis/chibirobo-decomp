@@ -652,9 +652,8 @@ void CCameraActionMap::Update(u32 step)
 					lbl_8065B330 = 1;
 			}
 		}
-		f32 distance = GetHorizontalDistance(&mTargetEye, &mPrevTargetEye);
-		lbl_8065B354 = distance;
-		if (distance > lbl_8065B358)
+		lbl_8065B354 = GetHorizontalDistance(&mTargetEye, &mPrevTargetEye);
+		if (lbl_8065B354 > lbl_8065B358)
 			mEyeInterpTime = 0.0f;
 		else {
 			mEyeInterpTime = 3.0f;
