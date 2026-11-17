@@ -16,8 +16,13 @@ void HandleActorRiderCommand(XObjActor3* actor);
 }
 
 // hides the items of the kind, the 0x40B ones only
-static inline void HideItems(s32 kind)
+static inline void HideItems(XObjActor3* actor)
 {
+	s32 kind = -1;
+	if (actor->mActorFlags.Check(0x100)) { // a 0x40B item is on show
+		kind = 0x40B;
+		actor->mActorFlags.mFlags &= ~0x100;
+	}
 	if (kind >= 0) {
 		switch (kind) {
 		case 0x40B:
@@ -38,7 +43,7 @@ static inline void HideItems(s32 kind)
  */
 // the event commands: 100 carries another object at one of its joints, or lets go of all
 // of them, anything else is kept for the kind's function to read
-// NONMATCHING: argv[1] and the 0x40B item loop take other registers, as in game/xobjspider. retail loads argv[1]
+// NONMATCHING: argv[1] and the second 0x40B item loop's i and pool base take other registers, as in game/xobjspider. retail loads argv[1]
 // into r5 at the top and the OSReport passes it as its second %d; written as xobjspider does (a const local
 // passed to OSReport), the saved registers shift and the function drops to 98.4 %
 s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
@@ -122,12 +127,7 @@ s32 XObjActor3::HandleEventCommand(s32 argc, s32* argv)
 			case 0:
 				break;
 			case 1:
-				s32 kind = -1;
-				if (mActorFlags.Check(0x100)) { // a 0x40B item is on show
-					kind = 0x40B;
-					mActorFlags.mFlags &= ~0x100;
-				}
-				HideItems(kind);
+				HideItems(this);
 				switch (mEventArg1) {
 				case 0x40B:
 					for (s32 i = 0; i < 0x120; i++) {
