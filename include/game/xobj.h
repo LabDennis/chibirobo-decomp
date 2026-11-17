@@ -308,7 +308,7 @@ XObj* __dt__4XObjFv(XObj* object, s32 flags);
 BOOL LoadJointAnimationAsync(CJAnim* anim, const char* path);
 // the default OnHitFromPosition
 void OnHitFromPosition__4XObjFRC3Vecf(XObj* object, const Vec* position, f32 strength);
-CVec GetFloorContactPosition(XObj* object, s32 floor, const Vec* offset);
+CVec GetFloorContactPosition(const XObj* object, s32 floor, const Vec* offset);
 // the default SetColor
 f32 GetFloorFacingAngle(XObj* object, const Vec* pos, s32 index, s32 requireSegment, Vec* contact, Vec* normalOut);
 void UpdateObjectFloorHeights(XObj* object);

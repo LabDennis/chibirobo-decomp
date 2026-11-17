@@ -539,7 +539,7 @@ CVec CVec::operator*(Vec other) const
 // NONMATCHING: retail keeps index in the frame and reads it again for each of the floor's values, as if
 // its address were taken (a `const s32&` bound to it gives that code, 76.6 %); the helper that takes
 // the index by reference is not found.
-extern "C" CVec GetFloorContactPosition(XObj* object, s32 index, const Vec* offset)
+extern "C" CVec GetFloorContactPosition(const XObj* object, s32 index, const Vec* offset)
 {
 	if (!(object->mStatus.mFlags & 0x0200000000000000ULL))
 		return object->mMoveTranslate; // that flag off: no floor contact to compute
