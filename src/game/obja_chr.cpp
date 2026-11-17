@@ -6988,7 +6988,7 @@ extern "C" void UpdatePlayerActionAnimations(XObjChr* player, u32 frames)
 	}
 	for (XObjChrItemAnim* entry = gPlayerItemAnimationTable; entry->mItem >= 0; ++entry) {
 		if (entry->mItem == player->mSuits.mCurrent) {
-			HSD_JObj* joint = FindJointByPath(player->mJObj, entry->mPath, entry->mDepth);
+			HSD_JObj* joint = GetJointByPath(player->mJObj, entry->mPath, entry->mDepth);
 			if (GetAObj(joint) == NULL) {
 				XObj& suit                = player->mSuits.mObjects[player->mSuits.mCurrent];
 				HSD_AnimJoint* anim       = suit.mArchive.GetAnimJoint(0, entry->mDepth, entry->mPath);
