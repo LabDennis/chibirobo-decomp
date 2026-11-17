@@ -6710,28 +6710,12 @@ void DrawTumbleRing(XActTumbleFade*, const Vec&, f32);
 void PSMTXMultVecArray(const Mtx, const Vec*, Vec*, u32);
 }
 
-static inline u16 ShadeBatteryWarning(u32* colors, u32 color, f32 alpha, const XObjChr* player)
-{
-	u16 n = 0;
-	for (int turn = 0; turn < 4; ++turn)
-		for (int step = 0; step < 16; ++step) {
-			colors[n]     = color | (u32)(alpha * ((1.f / 128) * n) * player->mBatteryWarningFade);
-			colors[n + 1] = color;
-			n += 2;
-		}
-	for (int turn = 0; turn < 4; ++turn)
-		for (int step = 0; step < 16; ++step) {
-			colors[n]     = color | (u32)(alpha * (1.f - (1.f / 128) * (turn * 32 + step)) * player->mBatteryWarningFade);
-			colors[n + 1] = color;
-			n += 2;
-		}
-	return n;
-}
-
 /**
  * @note Address: 0x800A5C58
  * @note Size: 0x16A0
  */
+// NONMATCHING: float register coloring of the ring loop constants (retail f31 down from the angle step, here 1.0, 0 and the
+// wrap constants come first), and the fade load swaps registers with the product in the fade-out colour loops
 void XObjChr::DrawObjectEffects()
 {
 	if (gGame.mStatus.mFlags & 0x0040000000000000ULL)
@@ -6774,7 +6758,11 @@ void XObjChr::DrawObjectEffects()
 				vertices[n].x = (2.f * (1.f - mBatteryWarningFade) + radius) * (f32)sin(angle);
 				vertices[n].y = (2.f * (1.f - mBatteryWarningFade) + radius) * (f32)cos(angle);
 				vertices[n].z = z;
-				f32 wave      = WrapAngle(phase);
+				f32 wave      = phase;
+				while (wave < 0.0f)
+					wave += TWO_PI;
+				while (wave >= TWO_PI)
+					wave -= TWO_PI;
 				if (wave > PI)
 					wave = 0;
 				vertices[n + 1].x = vertices[n].x;
@@ -6785,11 +6773,35 @@ void XObjChr::DrawObjectEffects()
 				n += 2;
 			}
 		PSMTXMultVecArray(model, vertices, vertices, n);
-		n = ShadeBatteryWarning(colors, 0xff000000, 200, this);
+		n = 0;
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				colors[n]     = 0xff000000 | (u32)(200.f * ((1.f / 128) * n) * mBatteryWarningFade);
+				colors[n + 1] = 0xff000000;
+				n += 2;
+			}
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				colors[n]     = 0xff000000 | (u32)(200.f * (1.f - (1.f / 128) * (turn * 32 + step)) * mBatteryWarningFade);
+				colors[n + 1] = 0xff000000;
+				n += 2;
+			}
 		SetGsCullMode(gGame.mGs.mCurRenderMode, 0);
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, colors, n);
-		n = ShadeBatteryWarning(colors, 0xffffff00, 255, this);
+		n = 0;
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				colors[n]     = 0xffffff00 | (u32)(255.f * ((1.f / 128) * n) * mBatteryWarningFade);
+				colors[n + 1] = 0xffffff00;
+				n += 2;
+			}
+		for (int turn = 0; turn < 4; ++turn)
+			for (int step = 0; step < 16; ++step) {
+				colors[n]     = 0xffffff00 | (u32)(255.f * (1.f - (1.f / 128) * (turn * 32 + step)) * mBatteryWarningFade);
+				colors[n + 1] = 0xffffff00;
+				n += 2;
+			}
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
 		DrawGsColoredTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, colors, n);
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
