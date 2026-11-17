@@ -1043,6 +1043,10 @@ void ReleasePushAction(XActPush* act)
 void PositionPlayerAroundRopeTarget(XActRope*, f32);
 
 // header accessors (obja_chr emits copies); a read through them is not merged with a direct act->mTarget read
+static inline BOOL HasPlayerActionTarget(const XAction* action)
+{
+	return action->mTarget != NULL;
+}
 static inline XObj* GetPlayerActionTarget(const XAction* action)
 {
 	return action->mTarget;
@@ -1803,12 +1807,6 @@ static inline void RefreshHangFloor(XActHang* act)
 	if (floor >= 0)
 		act->mTargetFloor = floor;
 }
-// the ladder and rope hand-over test this once and keep the 0/1 result
-static inline BOOL HasHangTarget(XActHang* act)
-{
-	return act->mTarget != NULL;
-}
-
 static inline void FinishHang(XActHang* act, f32 loop)
 {
 	XObjChr* owner = act->mOwner;
@@ -1822,6 +1820,8 @@ static inline void FinishHang(XActHang* act, f32 loop)
  * @note Size: 0x1CE8
  */
 // NONMATCHING: retail reads the owner again for the distance in case 3 (here the position copied into pos is reused)
+// and allocates registers around the ladder and rope hand-over tests differently (99.49 % with an XActHang* parameter,
+// which the header accessor shared by every action kind cannot have)
 void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 frame, f32 end)
 {
 	s32 state = act->mState;
@@ -1931,11 +1931,11 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			act->mState               = 0;
 			act->mTarget              = NULL;
 			ReleaseHangPlug(act);
-		} else if (HasHangTarget(act) && act->mTarget->mStatus.mFlags & 0x800000000ULL) {
+		} else if (HasPlayerActionTarget(act) && act->mTarget->mStatus.mFlags & 0x800000000ULL) {
 			act->mOwner->mLadder.SetState(3, act->mTarget);
 			act->mState  = 0;
 			act->mTarget = NULL;
-		} else if (HasHangTarget(act) && act->mTarget->mStatus.mFlags & 0x1000000000ULL) {
+		} else if (HasPlayerActionTarget(act) && act->mTarget->mStatus.mFlags & 0x1000000000ULL) {
 			act->mOwner->mRope.SetState(3, act->mTarget);
 			act->mState  = 0;
 			act->mTarget = NULL;
