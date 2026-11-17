@@ -18,7 +18,7 @@ inline void CCameraActionArea::SetEye_I(s32 mode, Vec from, Vec to, f32 time)
 		OSPanic("ccameraactionarea.cpp", 660, "%s%s", "error ! : CCameraActionArea::SetEye_I()\n", "SetEye_I");
 		return;
 	}
-	CVec zero(0.0f, 0.0f, 0.0f); // retail builds this and never reads it
+	CVec(0.0f, 0.0f, 0.0f); // retail builds this temporary and drops it at once
 	SetEyeInterpolation(mode, from, to, time);
 }
 
