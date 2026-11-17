@@ -2441,28 +2441,25 @@ extern "C" void ExitHamburg(void)
  */
 extern "C" void InitHamburg(void)
 {
-	// NONMATCHING: regalloc/scheduling — the unrolled hamDishes init, the
-	// zero/one constant slots and the gasPlate scan setup are interleaved
-	// differently and land in different callee registers
-	s32 i;
-	s32 count;
-
-	for (i = 0; i < ARRAY_SIZE(hamObjs); i++) {
+	// NONMATCHING: regalloc/scheduling — the hamObjs base, the -1 and the
+	// hamDishes base land in other registers and the first hamDishes store
+	// is scheduled one slot later
+	for (s32 i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		hamObjs[i].mId         = -1;
 		hamObjs[i].mActor      = NULL;
 		hamObjs[i].mState      = NULL;
 		hamObjs[i].mYakiEffect = 0;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(hamDishes); i++) {
+	for (s32 i = 0; i < ARRAY_SIZE(hamDishes); i++) {
 		hamDishes[i].mId    = -1;
 		hamDishes[i].mActor = NULL;
 	}
 
 	CGame* game = &gGame;
-	count       = game->mXObjs.mObjectCount;
+	s32 count   = game->mXObjs.mObjectCount;
 	gasPlate    = NULL;
-	for (i = 0; gasPlate == NULL && i < count; i++) {
+	for (s32 i = 0; gasPlate == NULL && i < count; i++) {
 		Stage01Actor* actor = (Stage01Actor*)game->mXObjs.mObjects[i];
 		if ((actor->mStatus & 1) && actor->mCoord.mKind->mObjectId == 0x200) { // a live actor of the gas-plate kind
 			gasPlate = actor;
@@ -2472,7 +2469,7 @@ extern "C" void InitHamburg(void)
 		gasPlate->mStatus &= ~0x200000000ULL;
 	}
 
-	for (i = 0; i < ARRAY_SIZE(tempActors); i++) {
+	for (s32 i = 0; i < ARRAY_SIZE(tempActors); i++) {
 		tempActors[i] = NULL;
 	}
 	yakiResultFlags.mFlags = 0;

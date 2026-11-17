@@ -400,26 +400,12 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 extern "C" {
 void SetJointMaterialColorsAndAlpha(HSD_JObj*, f32**, s32);
 CVec GetEventJObjWorldPosition(CJObj*, HSD_JObj*);
-extern u32 gOXMenuMarkDiffuseColors[2];
+extern GXColor gOXMenuMarkDiffuseColors[2];
 extern f32 gOXMenuLabelOutlineX[4], gOXMenuLabelOutlineY[4];
 }
 
-static inline void MakeOXTransform(Mtx out, f32 x, f32 y, f32 rx, f32 ry, f32 rz)
+static inline void DrawOXModel(XObj& model, f32** args)
 {
-	Mtx move, pitch, yaw, roll;
-	PSMTXTrans(move, x, y, 50.0f);
-	PSMTXRotRad(pitch, 'x', rx);
-	PSMTXRotRad(yaw, 'y', ry);
-	PSMTXRotRad(roll, 'z', rz);
-	Mtx tmp;
-	PSMTXConcat(move, roll, tmp);
-	PSMTXConcat(tmp, pitch, tmp);
-	PSMTXConcat(tmp, yaw, out);
-}
-
-static inline void DrawOXModel(XObj& model, u32 diffuse, u32 ambient, f32& alpha)
-{
-	f32* args[] = { (f32*)&diffuse, (f32*)&ambient, &alpha };
 	if (model.mJObj)
 		HSD_JObjWalkTree(model.mJObj, SetJointMaterialColorsAndAlpha, args);
 	model.DrawObject();
@@ -429,6 +415,8 @@ static inline void DrawOXModel(XObj& model, u32 diffuse, u32 ambient, f32& alpha
 	BeginGsCamera(&gGame);
 }
 
+// NONMATCHING: retail's anchor offset is an unnamed Vec whose zeros sit after the joint path in .rodata, the label's
+// text rotation is unnamed too, and -74 is negated at run time; the frame and the calls match
 extern "C" void DrawOXMenu(OXMenu* menu)
 {
 	if (!(menu->mFade > 0.0f))
@@ -453,15 +441,29 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 	for (s32 i = 0; i < 2; ++i) {
 		OXMenuMark& mark = menu->mMark[i];
 		f32 bob          = 4.0f * (f32)sin(mark.mSpin);
-		f32 rx           = DEG2RAD * (10.0f * (f32)sin(mark.mTilt));
-		f32 ry           = DEG2RAD * (10.0f * (f32)sin(0.5f * mark.mTilt));
-		f32 rz           = DEG2RAD * (10.0f * (f32)sin(0.7f * mark.mTilt));
+		f32 pitch        = 10.0f * (f32)sin(mark.mTilt);
+		f32 yaw          = 10.0f * (f32)sin(0.5f * mark.mTilt);
+		f32 roll         = 10.0f * (f32)sin(0.7f * mark.mTilt);
 		f32 size         = mark.mScale * (f32)sin(openAngle);
 		f32 x = (gGame.mStatus.mFlags & 0x100ULL) ? screenX + (90.0f * i - 45.0f) : screenX + 1.2f * (fade * (90.0f * i - 45.0f));
 		f32 y = baseY + bob;
-		Mtx shape, label;
-		MakeOXTransform(shape, x, y, rx, ry, rz);
-		MakeOXTransform(label, x, y, 0, 0, 0);
+		Mtx translation, rotX, rotY, rotZ, transform, label;
+		PSMTXTrans(translation, x, y, 50.0f);
+		PSMTXRotRad(rotX, 'x', DEG2RAD * pitch);
+		PSMTXRotRad(rotY, 'y', DEG2RAD * yaw);
+		PSMTXRotRad(rotZ, 'z', DEG2RAD * roll);
+		PSMTXConcat(translation, rotZ, transform);
+		PSMTXConcat(transform, rotX, transform);
+		PSMTXConcat(transform, rotY, transform);
+		// the label faces the screen: same place, no rotation
+		Mtx labelTranslation, labelRotX, labelRotY, labelRotZ, labelTmp;
+		PSMTXTrans(labelTranslation, x, y, 50.0f);
+		PSMTXRotRad(labelRotX, 'x', 0);
+		PSMTXRotRad(labelRotY, 'y', 0);
+		PSMTXRotRad(labelRotZ, 'z', 0);
+		PSMTXConcat(labelTranslation, labelRotZ, labelTmp);
+		PSMTXConcat(labelTmp, labelRotX, labelTmp);
+		PSMTXConcat(labelTmp, labelRotY, label);
 		s32 kind = (menu->mCrossMask & (1 << i)) != 0;
 
 		if (i == menu->mSelectedIndex) {
@@ -477,21 +479,31 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		f32 scaleXZ = 74.0f * size, scaleY = -74.0f * size;
 		for (s32 j = 0; j < 8; ++j) {
 			f32 direction = (TWO_PI / 8.0f) * j;
-			f32 dy        = 2.0f * (f32)cos(direction);
-			f32 dx        = 3.0f * (f32)sin(direction);
-			Mtx outline, scale;
-			MakeOXTransform(outline, x + dx, y + dy, rx, ry, rz);
+			f32 cosine    = cos(direction);
+			f32 sine      = sin(direction);
+			Mtx outlineTranslation, outlineRotX, outlineRotY, outlineRotZ, outline, scale;
+			PSMTXTrans(outlineTranslation, x + 3.0f * sine, y + 2.0f * cosine, 50.0f);
+			PSMTXRotRad(outlineRotX, 'x', DEG2RAD * pitch);
+			PSMTXRotRad(outlineRotY, 'y', DEG2RAD * yaw);
+			PSMTXRotRad(outlineRotZ, 'z', DEG2RAD * roll);
+			PSMTXConcat(outlineTranslation, outlineRotZ, outline);
+			PSMTXConcat(outline, outlineRotX, outline);
+			PSMTXConcat(outline, outlineRotY, outline);
 			PSMTXScale(scale, scaleXZ, scaleY, scaleXZ);
 			PSMTXConcat(outline, scale, outline);
 			HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, outline);
-			f32 opacity = 0.3f * menu->mFade;
-			DrawOXModel(menu->mMark[kind].mObj, 0xffffff00, 0xffffff00, opacity);
+			GXColor diffuse = { 255, 255, 255, 0 }, ambient = { 255, 255, 255, 0 };
+			f32 alpha   = 0.3f * menu->mFade;
+			f32* args[] = { (f32*)&diffuse, (f32*)&ambient, &alpha };
+			DrawOXModel(menu->mMark[kind].mObj, args);
 		}
 		Mtx scale;
 		PSMTXScale(scale, scaleXZ, scaleY, scaleXZ);
-		PSMTXConcat(shape, scale, shape);
-		HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, shape);
-		DrawOXModel(menu->mMark[kind].mObj, gOXMenuMarkDiffuseColors[kind], 0x40404000, menu->mFade);
+		PSMTXConcat(transform, scale, transform);
+		HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, transform);
+		GXColor diffuse = gOXMenuMarkDiffuseColors[kind], ambient = { 64, 64, 64, 0 };
+		f32* args[] = { (f32*)&diffuse, (f32*)&ambient, &menu->mFade };
+		DrawOXModel(menu->mMark[kind].mObj, args);
 		PSMTXConcat(label, scale, label);
 		InvalidateAll();
 		HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, label);
@@ -500,7 +512,7 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
 		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 1, 1);
-		Vec textRot        = { rx, ry, rz };
+		Vec textRot        = { DEG2RAD * pitch, DEG2RAD * yaw, DEG2RAD * roll };
 		gGame.mGs.mTextRot = textRot;
 		Vec pos            = GetEventJObjWorldPosition(&menu->mMark[kind].mObj, menu->mMark[kind].mObj.mJObj->child);
 		f32 fontSize       = 2.0f * (30.0f * size * size);
@@ -547,6 +559,8 @@ static inline void DrawPointQuad(CTexObj& tex, u32 top, u32 bottom, f32 x, f32 y
 	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, x, y, 0, w, h, 0, 0, rotation);
 }
 
+// NONMATCHING: retail's joint offset is an unnamed Vec below the GetPos copy, IsAction's result is tested as an int,
+// and the burst loop loads x and y after the sin calls and does not merge the two circle sizes
 extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 {
 	CMotionControlCamera& camera = gGame.mMotionControlCamera;
@@ -640,10 +654,10 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 		digits.mMtxDirty = TRUE;
 		for (int i = display.mCount - 1; i >= 0; --i) {
 			const PointDigit& digit = display.digits[i];
-			f32 fade                = digit.fade;
-			if (!(fade > 0))
+			if (!(digit.fade > 0))
 				continue;
-			f32 px = 17.f * (display.mCount - 1 - i) + ((x + 8.5f) - display.mCount * 17.f * .5f);
+			f32 px = 17.f * (display.mCount - 1 - i) + ((x + 8.5f) - display.mCount * 17.f * .5f), py = y;
+			f32 fade = digit.fade;
 			if (fade > 1)
 				fade = 1;
 			f32 angle = PI * fade;
@@ -653,12 +667,12 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 			u8 alpha = (u8)(s32)(255 * fade);
 			u32 top = display.colors.mColor | alpha, bottom = display.colors.mColor2 | alpha;
 			if (digit.glyph == 76) { // the icon
-				DrawPointQuad(icon, alpha, alpha, px, y - rise, 1.2f * (19 + expand), 24 + expand, 0);
-				DrawPointQuad(icon, top, bottom, px, y - rise, 19 + expand, .8f * (24 + expand), 0);
+				DrawPointQuad(icon, alpha, alpha, px, py - rise, 1.2f * (19 + expand), 24 + expand, 0);
+				DrawPointQuad(icon, top, bottom, px, py - rise, 19 + expand, .8f * (24 + expand), 0);
 			} else {
 				PSMTXTrans(digits.mMtx[0], 0, .1f * digit.glyph, 0);
 				digits.mMtxDirty = TRUE;
-				DrawPointQuad(digits, top, bottom, px, y - rise, 19 + expand, 24 + expand, 0);
+				DrawPointQuad(digits, top, bottom, px, py - rise, 19 + expand, 24 + expand, 0);
 			}
 		}
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
