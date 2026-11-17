@@ -4085,7 +4085,7 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 	if (!(menu->mFade > 0))
 		return;
 	f32 originX, originY;
-	f32 slotX[8], slotY[8];
+	f32 slotY[8], slotX[8];
 	f32 scale;
 	// in first person the ring sits below the screen center
 	if (gGame.mStatus.mFlags & 0x100) {
@@ -4200,13 +4200,9 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band, 4);
 		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band + 4, 4);
 		DrawGsTriangleVertices(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, band + 8, 4);
-		left -= half;
-		right += half;
-		f32 x0 = left - 2.f * half, x3 = right + 2.f * half;
-		f32 top = y0 - half, bottom = y0 + half;
 		u32 ink = 0xffffff00 | (u32)(255.f * fade);
-		DrawRingBandLines(x0, left, right, x3, top, y1 - half, ink);
-		DrawRingBandLines(x0, left, right, x3, bottom, y1 + half, ink);
+		DrawRingBandLines((left - half) - 2.f * half, left - half, right + half, (right + half) + 2.f * half, y0 - half, y1 - half, ink);
+		DrawRingBandLines((left - half) - 2.f * half, left - half, right + half, (right + half) + 2.f * half, y0 + half, y1 + half, ink);
 	}
 	CTexObj background = RingTexture(menu, -1);
 	for (s32 i = 0; i < count; ++i) {
