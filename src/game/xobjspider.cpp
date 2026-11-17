@@ -210,7 +210,7 @@ static inline void PlaceWallSpider(XObjSpider* spider)
 	spider->mAreaPos.x = -52.0f;
 	spider->mAreaPos.y = 0.0f;
 	spider->mAreaPos.z = 0.0f;
-	spider->mAreaWidth = 2.0f * Abs(spider->mAreaPos.x);
+	spider->mAreaWidth = 2.0f * ABS(spider->mAreaPos.x);
 	spider->mAreaDepth = 0.0f;
 	spider->mWall      = 3;
 	spider->mWallPos.z = spider->mMoveTranslate.z;
@@ -249,14 +249,12 @@ extern "C" void ApplySpiderPlacement(XObjSpider* spider)
 			spider->mAreaWidth = 221.0f;
 			spider->mAreaDepth = 216.0f;
 			// shrinks the area to 90% around its center
-			f32 width          = spider->mAreaWidth;
-			f32 depth          = spider->mAreaDepth;
-			f32 centerX        = width * 0.5f + spider->mAreaPos.x;
-			f32 centerZ        = depth * 0.5f + spider->mAreaPos.z;
-			f32 scaledWidth    = width * 0.9f;
-			f32 scaledDepth    = depth * 0.9f;
-			spider->mAreaPos.x = centerX - scaledWidth * 0.5f;
-			spider->mAreaPos.z = centerZ - scaledDepth * 0.5f;
+			f32 scaledWidth    = spider->mAreaWidth * 0.9f;
+			f32 scaledDepth    = spider->mAreaDepth * 0.9f;
+			f32 centerX        = spider->mAreaWidth / 2.0f + spider->mAreaPos.x;
+			f32 centerZ        = spider->mAreaDepth / 2.0f + spider->mAreaPos.z;
+			spider->mAreaPos.x = centerX - scaledWidth / 2.0f;
+			spider->mAreaPos.z = centerZ - scaledDepth / 2.0f;
 			spider->mAreaWidth *= 0.9f;
 			spider->mAreaDepth *= 0.9f;
 		} else {
@@ -2004,11 +2002,8 @@ extern "C" void SpawnSpiderBounceCoin(Vec* position, Vec* target, s32 anim)
 {
 	if (gSpiderCoinBounceCount >= 11)
 		return;
-	u32 stride = gGame.mXObjs.mPools[7].mStride;
-	u8* pool   = gGame.mXObjs.mPools[7].mObjects;
-	u32 offset = 0;
-	for (s32 i = 0; i < 96; ++i, offset += stride) {
-		XObjCoin* coin = (XObjCoin*)(pool + offset);
+	for (s32 i = 0; i < 96; ++i) {
+		XObjCoin* coin = (XObjCoin*)gGame.mXObjs.mPools[XOBJS::COINS].Get(i);
 		if (coin->mStatus.mFlags & 1ULL) {
 			if (coin->GetKind() == 0x104) {
 				if ((coin->mStatus.mFlags & 1ULL) && !coin->mBouncing) {
