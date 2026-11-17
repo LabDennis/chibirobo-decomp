@@ -601,13 +601,14 @@ game/xobjpopper.cpp:
 	.text       start:0x800D8D80 end:0x800D9AD4
 
 game/objb_plug.cpp:
-	.text       start:0x800D9AD4 end:0x800DB160
-
-game/xobjplugrelease.cpp:
-	.text       start:0x800DB160 end:0x800DB1AC
-
-game/xobjplugload.cpp:
-	.text       start:0x800DB1AC end:0x800DB8A8
+	.text       start:0x800D9AD4 end:0x800DB8A8
+	.rodata     start:0x8020B5A8 end:0x8020B620
+	.data       start:0x80228320 end:0x80228640
+	.sdata      start:0x80634A58 end:0x80634A88
+	.sdata2     start:0x80637B80 end:0x80637BF8
+	.bss        start:0x8035A9F0 end:0x8035AA10
+	.sbss       start:0x80635698 end:0x806356A0
+	.sbss2      start:0x8063A4F8 end:0x8063A510
 
 game/plugcordcollision.cpp:
 	.text       start:0x800DB8A8 end:0x800DBCF4
