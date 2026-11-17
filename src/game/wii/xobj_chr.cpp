@@ -151,6 +151,7 @@ static inline bool IsEventBlocked(const WiiPlayerState* chr)
 
 extern "C" {
 u32 CheckStageFlag(s32 stage, u32 mask);
+BOOL IsCarryingMug(XAction* action);
 BOOL fn_800C98E0(XObjMap* map, const Vec* pos, s32 start, XObjMapHit* hit);
 void UpdateHeldObject(XAction* action, u32 frames);
 void UpdatePushedObject(XAction* action, u32 frames);
@@ -1232,6 +1233,33 @@ CVec fn_800E5A2C(XObj* player)
 CVec fn_800E5A48(XObj* player)
 {
 	return player->GetJointTranslate("carry_obj_nll");
+}
+
+// how high the carried object sits: half again his scale, and with a mug the carry joint's height on top
+// except while the anims 10 and 11 lift and lower it
+// NONMATCHING: the joint name's place, as for fn_800E5A2C
+f32 fn_800E5BFC(WiiPlayerState* chr)
+{
+	f32 height = 1.5f * chr->mMoveScale.x;
+	if (IsCarryingMug(&chr->mLift) && !(chr->GetAnimId() == 11 && chr->GetAnimFrame() < 45.0f)
+	    && !(chr->GetAnimId() == 10 && chr->GetAnimFrame() > 22.0f)) {
+		CVec scale;
+		chr->GetJointScale(chr->FindResNode("carry_obj_nll"), &scale);
+		height += 4.0f * scale.x;
+	}
+	return height;
+}
+
+// between his eyes, a little behind them
+// NONMATCHING: the joint names' place, as for fn_800E5A2C
+Vec GetPlayerFirstPersonEyePosition(WiiPlayerState* chr)
+{
+	CVec first  = chr->GetJointPos("L_eye");
+	CVec second = chr->GetJointPos("R_eye");
+	Vec point   = first + (second - first) / 2.0f;
+	point.x -= 1.5f * (f32)sin(chr->mMoveRotate.y);
+	point.z -= 1.5f * (f32)cos(chr->mMoveRotate.y);
+	return point;
 }
 
 // NONMATCHING (92 %): retail keeps the held flag apart from the down flag, this build folds the two
