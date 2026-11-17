@@ -2443,9 +2443,8 @@ extern "C" void ExitHamburg(void)
  */
 extern "C" void InitHamburg(void)
 {
-	// NONMATCHING: regalloc/scheduling — the hamObjs base, the -1 and the
-	// hamDishes base land in other registers and the first hamDishes store
-	// is scheduled one slot later
+	// NONMATCHING: regalloc — the gasPlate search keeps the actor, the
+	// mObjects walker and the count in other registers
 	for (s32 i = 0; i < ARRAY_SIZE(hamObjs); i++) {
 		hamObjs[i].mId         = -1;
 		hamObjs[i].mActor      = NULL;
@@ -2458,11 +2457,9 @@ extern "C" void InitHamburg(void)
 		hamDishes[i].mActor = NULL;
 	}
 
-	CGame* game = &gGame;
-	s32 count   = game->mXObjs.mObjectCount;
-	gasPlate    = NULL;
-	for (s32 i = 0; gasPlate == NULL && i < count; i++) {
-		Stage01Actor* actor = (Stage01Actor*)game->mXObjs.mObjects[i];
+	gasPlate = NULL;
+	for (s32 i = 0; gasPlate == NULL && i < gGame.mXObjs.mObjectCount; i++) {
+		Stage01Actor* actor = (Stage01Actor*)gGame.mXObjs.mObjects[i];
 		if ((actor->mStatus & 1) && actor->mCoord.mKind->mObjectId == 0x200) { // a live actor of the gas-plate kind
 			gasPlate = actor;
 		}
