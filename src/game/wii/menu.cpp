@@ -36,6 +36,9 @@ void ApproachHudValue(f32* value, f32* target, f32 step);
 void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 u8* GetItemDescription(s32 id);
 s32 GetItemIconTextureIndex(s32 id);
+u8* GetStatusIconDescription(s32 id);
+u8* GetStatusOverviewDescription(s32 id);
+char* GetStatusOverviewLabel(s32 id);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
 }
 
@@ -814,6 +817,66 @@ extern "C" BOOL IsUtilibotStatusIconUnlocked()
 		found = TRUE;
 	}
 	return found;
+}
+
+// a status icon's card, the item card without the picture. NONMATCHING: the place of "%s" in the string pool
+extern "C" void DrawStatusIconDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale)
+{
+	// the original constructs a texture and counts its calls even when the card is closed
+	static u32 frame = 0;
+	++frame;
+	CTexObj tex;
+	f32 width, height;
+	if (scale <= 0.0f)
+		return;
+	height         = 153.0f * scale;
+	width          = 254.0f * scale;
+	f32 top        = y - height / 2.0f;
+	u32 frameColor = (u32)(220.0f * alpha);
+	DrawTexturedWindowFrame(frameColor, (u32)(255.0f * alpha) | 0xFFFFFF00, x, top, width, height, alpha, 1.0f, 1.0f);
+	top += scale;
+	f32 fontSize   = 17.0f * scale;
+	f32 textOffset = 24.0f * scale;
+	char text[256];
+	sprintf(text, "%s", GetStatusIconDescription(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00, text, x - width / 2.0f,
+	                             (4.0f * scale + (textOffset + (5.0f * fontSize + top))) - 6.0f * scale, 0.0f, fontSize, fontSize);
+	sprintf(text, "%s", GetStatusIconName(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, 2.0f * scale + fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFAA0000, text, x - width / 2.0f,
+	                             (textOffset + (4.0f * fontSize + top)) - 6.0f * scale, 0.0f, 2.0f * scale + fontSize,
+	                             2.0f * scale + fontSize);
+}
+
+// an overview entry's card. NONMATCHING: the place of "%s" in the string pool
+extern "C" void DrawStatusOverviewDetails(s32 id, f32 x, f32 y, f32 alpha, f32 scale)
+{
+	// the original constructs a texture and counts its calls even when the card is closed
+	static u32 frame = 0;
+	++frame;
+	CTexObj tex;
+	f32 width, height;
+	if (scale <= 0.0f)
+		return;
+	height         = 153.0f * scale;
+	width          = 254.0f * scale;
+	f32 top        = y - height / 2.0f;
+	u32 frameColor = (u32)(220.0f * alpha);
+	DrawTexturedWindowFrame(frameColor, (u32)(255.0f * alpha) | 0xFFFFFF00, x, top, width, height, alpha, 1.0f, 1.0f);
+	top += scale;
+	f32 fontSize   = 17.0f * scale;
+	f32 textOffset = 24.0f * scale;
+	char text[256];
+	sprintf(text, "%s", GetStatusOverviewDescription(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFFFFF00, text, x - width / 2.0f,
+	                             (4.0f * scale + (textOffset + (5.0f * fontSize + top))) - 6.0f * scale, 0.0f, fontSize, fontSize);
+	sprintf(text, "%s", GetStatusOverviewLabel(id));
+	width = MeasureGameTextWidth(&gGame.mGs, text, 1, 2.0f * scale + fontSize);
+	DrawGsProportionalTextFormat(&gGame.mGs, (u32)(255.0f * alpha) | 0xFFAA0000, text, x - width / 2.0f,
+	                             (textOffset + (4.0f * fontSize + top)) - 6.0f * scale, 0.0f, 2.0f * scale + fontSize,
+	                             2.0f * scale + fontSize);
 }
 
 BOOL MenuMain::Update(u32 frames)
