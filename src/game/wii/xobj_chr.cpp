@@ -9,11 +9,18 @@
 #include "game/ringmenu.h"
 #include "game/wii/cgame.h"
 #include "game/wii/xobj.h"
+#include "game/wii/xchrmenu.h"
 #include "game/gmath.h"
 #include "game/globals.h"
 #include <math.h>
 
+static inline bool TestStatus(const XObj* object, u64 mask)
+{
+	return (u8)((object->mStatus.mFlags & mask) != 0);
+}
+
 extern "C" {
+u32 CheckStageFlag(s32 stage, u32 mask);
 
 void SetVectorComponents(CVec* value, f32 x, f32 y, f32 z)
 {
@@ -25,9 +32,19 @@ void ClearObjectStatusFlags(XObj* object, u64 mask)
 	object->mStatus.mFlags &= ~mask;
 }
 
+XSound* GetGameSound(CGame* game)
+{
+	return &game->mSound;
+}
+
 BOOL HasPlayerActionTarget(const XAction* action)
 {
 	return action->mTarget != NULL;
+}
+
+s16 GetObjectCategory(const XObj* object)
+{
+	return object->GetCategory();
 }
 
 XObj* GetPlayerActionTarget(const XAction* action)
@@ -44,6 +61,11 @@ s32 GetObjectPlacementParam(const XObj* object, s32 index)
 {
 	const s32* entries = &object->mPlacementParam0;
 	return entries[index];
+}
+
+CVec* GetObjectVectorTarget(CObjVec* value)
+{
+	return &value->mTarget;
 }
 
 BOOL IsPushActionState(const XAction* act, s32 wanted)
@@ -69,6 +91,17 @@ u64 GetMaskedObjectStatus(const XObj* object, u64 mask)
 BOOL IsPlayerAttachmentEquipped(const WiiPlayerState* chr, s32 wanted)
 {
 	return (u8)(wanted == chr->GetAttachment());
+}
+
+// the attachment's animation is part of the player's own files here, so there's nothing to wait for
+BOOL LoadPlayerAttachmentAnimation(WiiPlayerState*)
+{
+	return TRUE;
+}
+
+BOOL fn_800CDDAC(const XObj* object)
+{
+	return (object->mStatus.mFlags & 1) != 0;
 }
 
 void SetPlayerActionTarget(XAction* action, XObj* target)
@@ -100,9 +133,35 @@ void CopyVecToCVec(Vec* dst, const Vec* src)
 	dst->z = src->z;
 }
 
+BOOL IsPlayerRingMenuOpen(const XObjChrMenu* menu)
+{
+	return menu->IsOpen();
+}
+
+s32 IsGameMenuActive(const CGame* game)
+{
+	return game->mMenu.mActive;
+}
+
 BOOL IsTumbleActionState(const XAction* act, s32 wanted)
 {
 	return (u8)(wanted == act->mState);
+}
+
+BOOL IsEventScriptActive(const CGame* game)
+{
+	return game->mEvt.mData.mScript != NULL;
+}
+
+// 0 the stage he is on, 1 the one before
+s32 fn_800D168C(const CGame* game, s32 index)
+{
+	return (&game->mStage)[index];
+}
+
+u32 GetMaskedPlayerStatus(const WiiPlayerState* chr, u32 mask)
+{
+	return mask & chr->mPlayerFlags;
 }
 
 u32 GetMaskedPlayerStatusFlags(const WiiPlayerState* chr, u32 mask)
@@ -149,6 +208,122 @@ f32 WrapPlayerActionAngle(f32 angle)
 {
 	angle = WrapAngle(angle);
 	return angle;
+}
+
+f32 GetVectorDistance(const Vec* a, const Vec* b)
+{
+	return PSVECDistance((Vec*)a, (Vec*)b);
+}
+
+BOOL IsObjectLiftable(const XObj* object)
+{
+	return TestStatus(object, 0x0000000100000000ULL);
+}
+
+BOOL IsObjectClimbableLedge(const XObj* object)
+{
+	return TestStatus(object, 0x0000000200000000ULL);
+}
+
+BOOL IsObjectLadder(const XObj* object)
+{
+	return TestStatus(object, 0x0000000800000000ULL);
+}
+
+BOOL IsObjectRope(const XObj* object)
+{
+	return TestStatus(object, 0x0000001000000000ULL);
+}
+
+// a fourth contact kind after ladder and rope, the GameCube's fn_800B1E04; it always says no
+s32 fn_800D5680(void*)
+{
+	return 0;
+}
+
+BOOL IsObjectPushable(const XObj* object)
+{
+	return TestStatus(object, 0x0000008000000000ULL);
+}
+
+BOOL IsObjectPushableFromBack(const XObj*)
+{
+	return false;
+}
+
+CVec* GetObjectPreviousMoveTranslation(XObj* object)
+{
+	return &object->mLastPos;
+}
+
+void SetObjectVectorTargetX(CObjVec* value, f32 x)
+{
+	value->mTarget.x = x;
+}
+
+void SetObjectVectorTargetZ(CObjVec* value, f32 z)
+{
+	value->mTarget.z = z;
+}
+
+f32 GetVectorMagnitude(const Vec* value)
+{
+	return PSVECMag((Vec*)value);
+}
+
+Vec* GetObjectVectorCurrent(CObjVec* value)
+{
+	return value;
+}
+
+void SetObjectXAndTarget(CObjVec* value, f32 x)
+{
+	value->x         = x;
+	value->mTarget.x = x;
+}
+
+void SetObjectZAndTarget(CObjVec* value, f32 z)
+{
+	value->z         = z;
+	value->mTarget.z = z;
+}
+
+void* GetMapPoolEntry(const CGame* game, s32 index)
+{
+	s32 stride  = game->mXObjs.mPools[3].mStride;
+	u8* entries = game->mXObjs.mPools[3].mObjects;
+	return entries + index * stride;
+}
+
+BOOL CanFallDuringHangAction(const XActHang* act)
+{
+	return (act->mState == 0 || act->mState == 10);
+}
+
+u32 CheckCurrentStageFlags(const CGame* game, u32 mask)
+{
+	return CheckStageFlag(game->mStage, mask);
+}
+
+// the object id of the placement, -1 without one, as XObj::GetKind reads it
+s32 fn_800DBD44(const AttrInfo* attr)
+{
+	return attr->mPlacement != NULL ? attr->mPlacement->mObjectId : -1;
+}
+
+AttrInfo* fn_800DBD60(XObj* object)
+{
+	return &object->mAttr;
+}
+
+BOOL fn_800DBD68(const XObj* object)
+{
+	return (object->mStatus.mFlags & 0x10001) == 0x10001;
+}
+
+BOOL HasObjectCustomLedgeHeight(const XObj* object)
+{
+	return TestStatus(object, 0x0000002000000000ULL);
 }
 
 s32 GetStageObjectCount(const CGame* game)
@@ -472,6 +647,51 @@ f32 GetCopterDescentAcceleration()
 f32 GetCopterDescentSpeedLimit()
 {
 	return (s32)GetCopterParameter(2) / 100.0f;
+}
+
+s32 GetObjectPoolUsedCount(const CGame* game, s32 index)
+{
+	return game->mXObjs.mPools[index].mUsed;
+}
+
+BOOL IsPlayerLookMarkerVisible(const XObjChrLook* look)
+{
+	return look->mFade > 0.0f;
+}
+
+void DisablePlayerLook(XObjChrLook* look)
+{
+	look->mActive = FALSE;
+}
+
+void EnablePlayerLook(XObjChrLook* look)
+{
+	look->mActive = TRUE;
+	look->_30     = TRUE;
+}
+
+void SetPlayerLookMode(XObjChrLook* look, s32 mode)
+{
+	look->mMode = mode;
+}
+
+void SetLookTargetPosition(XObjChrLook* look, f32 x, f32 y, f32 z)
+{
+	Vec target;
+	target.x      = x;
+	target.y      = y;
+	target.z      = z;
+	look->mTarget = target;
+}
+
+void fn_800DBF70(XObjChrLook* look)
+{
+	look->_30 = FALSE;
+}
+
+BOOL IsObjectClimbableFromHang(XObj* object)
+{
+	return (u8)((object->mStatus.mFlags & 0x0000000400000000ULL) != 0);
 }
 
 f32 GetAutoActionHoldTime()

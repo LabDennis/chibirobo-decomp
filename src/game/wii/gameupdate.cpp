@@ -70,7 +70,7 @@ BOOL fn_800C54A4(XObjPool* pools);        // the objects' loading step, true onc
 void fn_800C7F70(void* map);              // takes the map object, the first of pool 3
 BOOL fn_800CDC08(WiiPlayerState* player); // three steps of the player's own setup, each true when done
 BOOL fn_800CE4B0(WiiPlayerState* player);
-BOOL fn_800CD700(WiiPlayerState* player);
+BOOL LoadPlayerAttachmentAnimation(WiiPlayerState* player);
 void fn_802BE414(void* obj, CLight* light);
 void fn_802BE4D4(void* obj, GXFogType type, const GXColor& color, f32 startZ, f32 endZ, f32 nearZ, f32 farZ);
 void fn_8027AE04(WiiGsSceneObj* scene, s32 index);
@@ -637,7 +637,7 @@ extern "C" BOOL FinalizeStageObjectSetup(CGame* game)
 		}
 		game->mSetupStep++;
 	case 4:
-		if (!fn_800CD700(game->GetPlayer())) {
+		if (!LoadPlayerAttachmentAnimation(game->GetPlayer())) {
 			break;
 		}
 		game->mSetupStep++;

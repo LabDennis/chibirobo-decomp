@@ -831,6 +831,20 @@ struct WiiAtcMenu {
 class CSound3DActor;
 class XObj;
 
+// where chibi robo looks and the marker over it, the GameCube's XObjChrLook with the same head
+struct XObjChrLook {
+	BOOL mActive;  // _00
+	s32 mMode;     // _04
+	XObj* mObject; // _08
+	Vec mOffset;   // _0C
+	Vec mTarget;   // _18
+	f32 mFade;     // _24, the marker is shown while it is above 0
+	f32 mPhase;    // _28
+	f32 mPulse;    // _2C
+	BOOL _30;      // _30, set with mActive, cleared on its own
+};
+STATIC_ASSERT(sizeof(XObjChrLook) == 0x34);
+
 // one of the player's positioned sounds; ChangeGameStage stops both
 // the Wii player object: a different, larger class than the GameCube XObjChr. These are the members
 // the save manager reads and writes, at offsets verified against retail.
@@ -865,7 +879,9 @@ struct WiiPlayerState {
 	XAction mPopper; // _0D50, the GameCube's mPopper; its first word is the owner
 	u8 _0D7C[0x95AC - 0xD7C];
 	u8 mSfx[0x5C]; // _95AC, his AnimSfx (game/wii/animsfx.h, which needs this header)
-	u8 _9608[0x9920 - 0x9608];
+	u8 _9608[0x98E8 - 0x9608];
+	XObjChrLook mLook; // _98E8
+	u8 _991C[0x9920 - 0x991C];
 	s32 mAttachment;        // _9920, the AtcMenu pick
 	s32 mAttachmentRequest; // _9924, -1 when there's none
 	s32 mAttachmentStep;    // _9928, how far the attachment change is
@@ -903,6 +919,7 @@ struct WiiPlayerState {
 STATIC_ASSERT(offsetof(WiiPlayerState, mOXMenu) == 0x1A420);
 STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);
 STATIC_ASSERT(offsetof(WiiPlayerState, mSfx) == 0x95AC);
+STATIC_ASSERT(offsetof(WiiPlayerState, mLook) == 0x98E8);
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8
 struct WiiFlagSource {
