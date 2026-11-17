@@ -501,7 +501,7 @@ extern "C" void DrawOXMenu(OXMenu* menu)
 	f32 fade  = menu->mFade;
 	f32 yBase = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * (f32)sin(2.268928f * fade) - 21.0f;
 	SetGsChannelEnabled(&gGame.mGs, 0, 1);
-	f32 openAngle    = 2.0943952f * fade;
+	f32 openAngle = 2.0943952f * fade;
 	for (s32 i = 0; i < 2; ++i) {
 		OXMenuMark& mark = menu->mMark[i];
 		f32 bob          = 4.0f * (f32)sin(mark.mSpin);
@@ -2579,12 +2579,13 @@ extern "C" void DrawPlayerEquipmentRings(XObjChrMenu* menu)
 
 	f32 edge = 608.0f + 100.0f * (1.0f - (f32)sin(HALF_PI * menu->mFade));
 	for (s32 row = 0; row < 2; ++row) {
-		s32 which     = order[menu->mSel][row];
-		f32 x         = edge - MeasureGameTextWidth(&gGame.mGs, hints[row].label, TRUE, 20.0f);
-		f32 y         = 46.0f + row * 24.0f;
+		s32 which = order[menu->mSel][row];
+		f32 x     = edge - MeasureGameTextWidth(&gGame.mGs, hints[row].label, TRUE, 20.0f);
+		f32 y     = 46.0f + row * 24.0f;
 		for (s32 j = 0; j < 4; ++j) {
 			u32 alpha = (u32)(255.0f * menu->mFade);
-			DrawGsProportionalTextFormat(&gGame.mGs, alpha, hints[which].label, x + gEquipmentHintOutlineX[j], y + gEquipmentHintOutlineY[j], 0.0f, 20.0f, 20.0f);
+			DrawGsProportionalTextFormat(&gGame.mGs, alpha, hints[which].label, x + gEquipmentHintOutlineX[j],
+			                             y + gEquipmentHintOutlineY[j], 0.0f, 20.0f, 20.0f);
 		}
 		u32 color = 0xFFFFFF00 | (u32)(255.0f * menu->mFade);
 		DrawGsProportionalTextFormat(&gGame.mGs, color, hints[which].label, x, y, 0.0f, 20.0f, 20.0f);
@@ -3360,7 +3361,8 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			f32 cx        = halfSpacing + (k * spacing + (x - (menu->mLabelLength * spacing) / 2.f));
 			f32 rotation  = -(DEG2RAD * (10.f * spin));
 
-			DrawRingQuad(gGame.mGs, tile, 0xffffff00 | (u32)(255.f * highlight), cx, cy, 1, tileSize * scale, tileSize * scale, rotation, -zero);
+			DrawRingQuad(gGame.mGs, tile, 0xffffff00 | (u32)(255.f * highlight), cx, cy, 1, tileSize * scale, tileSize * scale, rotation,
+			             -zero);
 			f32 glyphSize  = tileSize * (.8f * scale);
 			f32 glyphWidth = (width / 24.0f) * glyphSize;
 			f32 padding    = glyphSize - glyphWidth;
@@ -3368,7 +3370,8 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			for (s32 j = 0; j < 4; ++j)
 				DrawRingQuad(gGame.mGs, glyph, (u32)(255.f * highlight), padding / 2.0f + (cx + gEquipmentOutlineX[j]),
 				             bob + (baseline + gEquipmentOutlineY[j]), 1, glyphSize, glyphSize, rotation, -zero);
-			DrawRingQuad(gGame.mGs, glyph, 0xfffffb00 | (u32)(255.f * highlight), padding / 2.0f + cx, cy, 1, glyphSize, glyphSize, rotation, -zero);
+			DrawRingQuad(gGame.mGs, glyph, 0xfffffb00 | (u32)(255.f * highlight), padding / 2.0f + cx, cy, 1, glyphSize, glyphSize,
+			             rotation, -zero);
 		}
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
@@ -4221,8 +4224,7 @@ s32 XObjChr::HandleEventCommand(s32 count, s32* args)
 			return ScriptLiftReady(this);
 		case 501:
 			if (mLift.mTarget) {
-				if (GetAttachment() == 4 || GetAttachment() == 5 || GetAttachment() == 6 || GetAttachment() == 7
-				    || GetAttachment() == 8)
+				if (GetAttachment() == 4 || GetAttachment() == 5 || GetAttachment() == 6 || GetAttachment() == 7 || GetAttachment() == 8)
 					RequestScriptAttachment(this, 0);
 				else if (mLift.mTarget->GetCategory() == 8)
 					mLift.mState = 19;
@@ -6795,7 +6797,6 @@ extern "C" s32 FindNearbyPlayerInteraction(XObjChr* player, f32 extraRadius)
 	return best;
 }
 
-
 // Update the player movement, contacts and context-sensitive actions.
 // one action marker over the object: shown when the player can do that action there, or when the object's placement
 // sets its own markers and includes it; allowed limits the markers to the ones this kind of contact can show
@@ -8092,7 +8093,6 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 		}
 	}
 }
-
 
 /**
  * @note Address: 0x800B1B0C
@@ -10289,14 +10289,14 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 		// defined above in this file, so a helper wrapping it is no longer inlined here
 		SamplePlayerPose(this, 0x13);
 		{
-			s32 root[] = { 0 };
+			s32 root[]          = { 0 };
 			mHang.mTargetOffset = (Vec)GetPlayerJointLocalTranslationByPath(this, 1, root);
 			s32 path[]          = { 0 };
 			SetObjectJointTranslationByPath(this, 1, path, 0.0f, 0.0f, 0.0f);
 		}
 		SamplePlayerPose(this, 0x8A);
 		{
-			s32 root[] = { 0 };
+			s32 root[]          = { 0 };
 			mRope.mTargetOffset = (Vec)GetPlayerJointLocalTranslationByPath(this, 1, root);
 			s32 path[]          = { 0 };
 			SetObjectJointTranslationByPath(this, 1, path, 0.0f, 0.0f, 0.0f);

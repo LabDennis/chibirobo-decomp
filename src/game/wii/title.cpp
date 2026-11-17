@@ -1747,8 +1747,8 @@ extern "C" void DrawTitleOptions(Title* title)
 		DrawTexturedWindowFrame(frame, (u32)(255.0f * title->mOptionAlpha) | 0xFFFFFF00, cx, 223.0f - h / 2.0f, w, h, 1.0f, 1.0f, 1.0f);
 		const char* heading = GetLocalizedInterfaceText(300);
 		f32 size            = 24.0f * title->mOptionAlpha;
-		const char* text = GetLocalizedInterfaceText(300);
-		f32 textWidth    = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
+		const char* text    = GetLocalizedInterfaceText(300);
+		f32 textWidth       = MeasureGameTextWidth(&gGame.mGs, text, TRUE, size);
 		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, cx - textWidth / 2.0f, size + (cy - h / 2.0f), 0.0f, size, size);
 
 		size        = 24.0f * title->mOptionAlpha;
@@ -2607,12 +2607,12 @@ void fn_8004EDFC(Title* title, BOOL selected, f32 x, f32 y, f32 size, f32 width)
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, 2.0f * scale + y, 0.0f, width, size, 0.0f, 0.0f, 0.0f);
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.0f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, (x - width / 2) - 4.0f * scale, 2.0f * scale + y, 0.0f,
-	                   8.0f * scale, size, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, (x - width / 2) - 4.0f * scale, 2.0f * scale + y, 0.0f, 8.0f * scale,
+	                   size, 0.0f, 0.0f, 0.0f);
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 4.0f * scale + (width / 2 + x), 2.0f * scale + y, 0.0f,
-	                   8.0f * scale, size, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 4.0f * scale + (width / 2 + x), 2.0f * scale + y, 0.0f, 8.0f * scale,
+	                   size, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 
 	scale = 0.8f;
@@ -2628,8 +2628,8 @@ void fn_8004EDFC(Title* title, BOOL selected, f32 x, f32 y, f32 size, f32 width)
 	tex.mTexMtx.mDirty = TRUE;
 	PSMTXTrans(tex.mTexMtx.mMtx[0], 0.5f, 0.0f, 0.0f);
 	tex.mTexMtx.mDirty = TRUE;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, 4.0f * scale + (width / 2 + x), 2.0f * scale + y, 0.0f,
-	                   8.0f * scale, size, 0.0f, 0.0f, 0.0f);
+	DrawGsTexturedQuad(&gGame.mGs, &tex, shade, shade, shade, shade, 4.0f * scale + (width / 2 + x), 2.0f * scale + y, 0.0f, 8.0f * scale,
+	                   size, 0.0f, 0.0f, 0.0f);
 	gGame.mGs.mCurTevStage->SetMode(GX_PASSCLR);
 }
 

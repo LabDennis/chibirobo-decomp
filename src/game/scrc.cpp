@@ -1291,7 +1291,7 @@ extern "C" void LaunchSpiderBossPartByIndex(s32 n)
 	XObjActor3* obj;
 	s32 offset;
 	XObjPool& pool = gGame.mXObjs.mPools[5];
-	s32 count = 0;
+	s32 count      = 0;
 	s32 i;
 	for (i = 0, offset = 0; i < 48; ++i, offset += pool.mStride) {
 		obj = (XObjActor3*)(pool.mObjects + offset);

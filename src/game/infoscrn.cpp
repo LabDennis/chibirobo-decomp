@@ -1519,10 +1519,10 @@ extern "C" void DrawHudPointCounter(InfoPoint* point)
 	if (alpha > 0.0f) {
 		CTexObj tex;
 		s32 len;
-		f32 x0  = point->mPos[0].x;
-		f32 y0  = point->mPos[0].y;
-		f32 x2  = point->mPos[2].x;
-		f32 x4  = point->mPos[4].x;
+		f32 x0 = point->mPos[0].x;
+		f32 y0 = point->mPos[0].y;
+		f32 x2 = point->mPos[2].x;
+		f32 x4 = point->mPos[4].x;
 		for (len = 1;; len++) {
 			f32 div = 1.0f;
 			for (int j = 0; j < len; j++)

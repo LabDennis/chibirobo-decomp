@@ -1499,15 +1499,14 @@ extern "C" s32 CMsg__cmd_END(CMsg* msg)
 								hit = -1;
 							} else {
 								for (s32 i = 0; i < msg->mData.mLineCount; i++) {
-									s32 row = msg->mSelectedLine >= 0 ? (msg->mSelectedLine + i) % msg->mData.mLineCount : i;
+									s32 row    = msg->mSelectedLine >= 0 ? (msg->mSelectedLine + i) % msg->mData.mLineCount : i;
 									f32 rowTop = top + msg->mFont.mLineY[row];
 									f32 h      = msg->mData.mHeights[row];
 									f32 w      = 24.0f + msg->mData.mMaxWidth;
 									if (msg->mFont.mColor.a != 0) {
 										w = margin * 2.0f + width;
 									}
-									if (gWiiPointer.mPointer.x >= x - w / 2.0f
-									    && gWiiPointer.mPointer.x <= x + w / 2.0f
+									if (gWiiPointer.mPointer.x >= x - w / 2.0f && gWiiPointer.mPointer.x <= x + w / 2.0f
 									    && gWiiPointer.mPointer.y >= rowTop - h * 0.25f
 									    && gWiiPointer.mPointer.y <= rowTop + h + h * 0.25f) {
 										hit = row + 1;

@@ -643,15 +643,15 @@ extern "C" void DecaPanel_Update(DecaPanel* work)
 		}
 
 		// tex3 is the cursor
-		tex  = &work->mTexs[3];
-		w1 = 0.9f * tex->GetWidth();
-		h1 = 0.9f * tex->GetHeight();
+		tex = &work->mTexs[3];
+		w1  = 0.9f * tex->GetWidth();
+		h1  = 0.9f * tex->GetHeight();
 		{
 			u32 color = FadeColor(work->mFade);
 			f32 x     = 0.9f * work->mCurX;
 			f32 y     = 0.9f * work->mCurY;
-			DrawGsTexturedQuad(&gGame, tex, color, color, color, color, w1 / 3.0f + (320.0f + x), h1 / 3.0f + (200.0f + y), 0.0f, w1,
-			                   h1, 0.0f, 0.0f, 0.0f);
+			DrawGsTexturedQuad(&gGame, tex, color, color, color, color, w1 / 3.0f + (320.0f + x), h1 / 3.0f + (200.0f + y), 0.0f, w1, h1,
+			                   0.0f, 0.0f, 0.0f);
 		}
 		SetGsTevMode(gGame.mCurTevStage, 4);
 	}

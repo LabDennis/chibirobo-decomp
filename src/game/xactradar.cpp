@@ -1367,7 +1367,8 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
 	case 10: {
 		PlayTumbleAnimation(act->mOwner, 0xE6, 0.0f);
 		Vec offset = { 0.0f, 12.0f, 0.0f };
-		gGame.mParticle.CreateSRT(0x10005, 1, act->mOwner->mMoveTranslate + offset, act->mOwner->mMoveScale, (Vec) { 0.0f, 0.0f, 0.0f }, FALSE);
+		gGame.mParticle.CreateSRT(0x10005, 1, act->mOwner->mMoveTranslate + offset, act->mOwner->mMoveScale, (Vec) { 0.0f, 0.0f, 0.0f },
+		                          FALSE);
 		act->mState = 11;
 		break;
 	}
@@ -1389,12 +1390,12 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
 	case 14:
 		if (act->mOwner->mIdleModeTimer > 0) {
 			if (!act->mIdleParticle && TumbleStationary(act->mOwner->mMoveTranslate - (Vec)act->mOwner->mLastPos)) {
-				s32 effect = (rand() & 1) ? 0x26 : 0x28;
-				s32 height = act->mOwner->mLift.mState == 0 ? 2 : 4;
-				s32 path[] = { 0, 1, 0, 1, 2, 0, 1 };
-				act->mIdleParticle = gGame.mParticle.CreateSRT(effect | 0x10000, 1,
-				                                               GetEventJointWorldPosition(act->mOwner, 7, path) + (Vec) { 0.0f, height, 0.0f },
-				                                               act->mOwner->mMoveScale, (Vec) { 0.0f, 0.0f, 0.0f }, FALSE);
+				s32 effect         = (rand() & 1) ? 0x26 : 0x28;
+				s32 height         = act->mOwner->mLift.mState == 0 ? 2 : 4;
+				s32 path[]         = { 0, 1, 0, 1, 2, 0, 1 };
+				act->mIdleParticle = gGame.mParticle.CreateSRT(
+				    effect | 0x10000, 1, GetEventJointWorldPosition(act->mOwner, 7, path) + (Vec) { 0.0f, height, 0.0f },
+				    act->mOwner->mMoveScale, (Vec) { 0.0f, 0.0f, 0.0f }, FALSE);
 			}
 		} else {
 			act->mIdleParticle = NULL;

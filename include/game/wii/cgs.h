@@ -809,11 +809,11 @@ public:
 
 	virtual ~CGs() { } // _08
 
-	Vec mTextRot;              // _1B94, the text rotation, cleared by the light setup
-	u32 mTextFont;             // _1BA0, the font argument handed to the glyph lookups
-	WiiGsScene mScene;         // _1BA4
-	WiiGsSlot _1FE4[9];        // _1FE4, FinalizeStageObjectSetup clears each one's three flags
-	CFont mFont;               // _214C, the game font; CBase::BeforeUpdate loads its resource
+	Vec mTextRot;       // _1B94, the text rotation, cleared by the light setup
+	u32 mTextFont;      // _1BA0, the font argument handed to the glyph lookups
+	WiiGsScene mScene;  // _1BA4
+	WiiGsSlot _1FE4[9]; // _1FE4, FinalizeStageObjectSetup clears each one's three flags
+	CFont mFont;        // _214C, the game font; CBase::BeforeUpdate loads its resource
 
 	// whether the current state is the CGs's own; the draws only touch that one
 	bool IsOwnTevStage() const { return mCurTevStage == &mTevStages[0]; }

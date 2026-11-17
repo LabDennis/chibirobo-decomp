@@ -8383,7 +8383,7 @@ void CCameraActionMap::SetCamera(CCamera* camera)
 	lbl_8065B344      = 0;
 	mEyeYOffsetInterp = &mEyeYOffsetEaseInOut;
 	mEyeYOffsetEaseInOut.Start(0.0f, 0.0f, 1.0f);
-	mEyeYOffset       = 0.0f;
+	mEyeYOffset = 0.0f;
 	SetMapCameraPreviousInterest(this, mInterest);
 	// set by SetMapCameraKeepPreviousEye when memcardpos restores a saved camera: mPreviousEye then keeps camera->mEye.
 	// the FALSE store only runs while the flag is already clear, so nothing here resets it

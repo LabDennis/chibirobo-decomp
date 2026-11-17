@@ -1423,14 +1423,14 @@ public:
 // Wii FbSubwin: CFbTexEff with the fade state and its own perspective camera at _148.
 class FbSubwin : public CFbTexEff {
 public:
-	BOOL mEnabled;   // _128, fades in while set, out while not
+	BOOL mEnabled;    // _128, fades in while set, out while not
 	CStatus32 mFlags; // _12C, Draw tests bit 2
-	f32 mAmount;     // _134, 0 to 1
-	f32 mRectX;      // _138, centre x of the window's rect on screen
-	f32 mRectY;      // _13C, centre y of the window's rect on screen
-	f32 mRectWidth;  // _140, window width, NaN (with mRectHeight) picks the round frame
-	f32 mRectHeight; // _144, window height, NaN picks the round frame
-	CCamera mCamera; // _148
+	f32 mAmount;      // _134, 0 to 1
+	f32 mRectX;       // _138, centre x of the window's rect on screen
+	f32 mRectY;       // _13C, centre y of the window's rect on screen
+	f32 mRectWidth;   // _140, window width, NaN (with mRectHeight) picks the round frame
+	f32 mRectHeight;  // _144, window height, NaN picks the round frame
+	CCamera mCamera;  // _148
 
 	virtual void Init();
 	virtual void Reset();

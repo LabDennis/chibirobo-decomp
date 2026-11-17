@@ -3,18 +3,16 @@
 // order, plus the Wii's own text helpers.
 //
 // NONMATCHING: in the frame buffer queue QueueFrameCopy (99 %) and OnCopyDone (95 %) give the new
-// entry's address and the popped request other registers than retail. The perspective CCamera::Init (79 %) reads the frame buffer height before the
-// width for the aspect; CLight::GetPosition (83 %) tests
-// the light kind before it saves its registers and CLight::GetViewDirection (93 %) zeroes a second, unused vector on the stack.
-// DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %) read the camera's bottom before its top for the flip test where we read top
-// first (an inline for the test makes it worse). GetXfbHeight (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue
-// in front of it, which shift its assert in the string pool. GetGlyph (99 %) differs only in callee-saved colouring; DrawGsText (92 %)
-// and DrawGsStrokeText (87 %)
-// diverge in float allocation and stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held
-// constants). No behavioural difference in any of them. SetGsChannelMaterialAndLighting (93 %): retail colours the
-// light color's components for the color channel in other registers and computes the material components
-// where it tests them, not ahead of the tests.
-// Not written yet: CGs::Init (0x802AA610) and the scene list helper (0x802AB860).
+// entry's address and the popped request other registers than retail. The perspective CCamera::Init (79 %) reads the frame buffer height
+// before the width for the aspect; CLight::GetPosition (83 %) tests the light kind before it saves its registers and
+// CLight::GetViewDirection (93 %) zeroes a second, unused vector on the stack. DrawGsCircle, DrawGsQuad and DrawGsTexturedQuad (99.9 %)
+// read the camera's bottom before its top for the flip test where we read top first (an inline for the test makes it worse). GetXfbHeight
+// (cgs_scrn.cpp) waits for the two xfb name strings of the frame buffer queue in front of it, which shift its assert in the string pool.
+// GetGlyph (99 %) differs only in callee-saved colouring; DrawGsText (92 %) and DrawGsStrokeText (87 %) diverge in float allocation and
+// stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held constants). No behavioural difference
+// in any of them. SetGsChannelMaterialAndLighting (93 %): retail colours the light color's components for the color channel in other
+// registers and computes the material components where it tests them, not ahead of the tests. Not written yet: CGs::Init (0x802AA610) and
+// the scene list helper (0x802AB860).
 
 // the revolution GX header first: the Wii's FIFO getters take the object to fill. GXReadDrawSync gets
 // the same treatment, the Dolphin header under it declares it void

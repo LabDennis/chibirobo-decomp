@@ -101,7 +101,7 @@ BOOL XObj::LoadFromPlacement(const CoordInfo& info)
 			if (ready) {
 				if ((flags & 2) && FitsInAram(archive))
 					SetCache(attr, gARAMCacheInfo.mBaseAddress, archive->mFile.mSize); // remember the ARAM copy
-				if (mm::GetName(archive->mFile.mBuffer)[1] != ' ') { // untagged archives get a state tag
+				if (mm::GetName(archive->mFile.mBuffer)[1] != ' ') {                   // untagged archives get a state tag
 					char label[64];
 					sprintf(label, "  %s", mm::GetName(archive->mFile.mBuffer));
 					if (flags & 2) {
