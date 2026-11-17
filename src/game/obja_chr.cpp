@@ -813,9 +813,9 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			Vec boxCenter = { 0, 0, 0 };
 			PSMTXMultVec(transform, &boxCenter, &boxCenter);
 			f32 ratio   = extent.x / extent.z;
-			Vec boxRear = (Vec) { 0, 0, -1.0f + ratio };
+			Vec boxRear = { 0, 0, ratio - 1.0f };
 			PSMTXMultVec(transform, &boxRear, &boxRear);
-			Vec boxFront = (Vec) { 0, 0, 1.0f - ratio };
+			Vec boxFront = { 0, 0, 1.0f - ratio };
 			PSMTXMultVec(transform, &boxFront, &boxFront);
 			for (s32 i = 0; i < GetDrawListCount(&gGame, 0); ++i) {
 				XObj* object = GetDrawListObject(&gGame, 0, i);
