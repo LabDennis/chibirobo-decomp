@@ -7003,7 +7003,7 @@ extern "C" PlayerFrameParticle ProcessPlayerFrameEvents(XObj* object, FrameEvent
 				// sound 7 in anim 7 sounds like what he holds: an item (pool 8) by its own sound, anything else by its floor material
 				XObj* held = player->mLift.mTarget;
 				if ((s16)held->GetPool() == 8) {
-					s8 material = GetItemSoundIndex((s16)held->GetItem(), 0);
+					s8 material = GetItemSoundIndex(held->GetItem(), 0);
 					if (material >= 0)
 						PlayGameSound(&gGame.mSound, GetMaterialSoundId(material), event->mVolume);
 				} else {
