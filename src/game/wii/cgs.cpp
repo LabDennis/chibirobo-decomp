@@ -11,9 +11,9 @@
 // in front of it, which shift its assert in the string pool. GetGlyph (99 %) and MeasureGameTextWidth (99 %) are structurally identical and
 // differ only in callee-saved colouring and in vtable/sdata2 referent placement; DrawGsText (91 %) and DrawGsStrokeText (87 %) additionally
 // diverge in float allocation and stack frame size (retail spills ~0x10 more, plus two f64 spill slots the allocator gives us as held
-// constants). No behavioural difference in any of them. SetGsChannelMaterialAndLighting (90 %): retail copies the light's
-// color a second time for the alpha channel, colours its components in other registers and computes the
-// material components ahead of their tests.
+// constants). No behavioural difference in any of them. SetGsChannelMaterialAndLighting (93 %): retail colours the
+// light color's components for the color channel in other registers and computes the material components
+// where it tests them, not ahead of the tests.
 // Not written yet: CGs::Init (0x802AA610) and the scene list helper (0x802AB860).
 
 // the revolution GX header first: the Wii's FIFO getters take the object to fill. GXReadDrawSync gets
@@ -862,7 +862,7 @@ extern "C" s32 SetGsChannelMaterialAndLighting(CGs* gs, s32 matSrc, u32 rgba)
 			if (color0->mCtrl.mAmbSrc == GX_SRC_REG) {
 				for (CLight* light = gs->mLight; light != NULL; light = light->mNext) {
 					if ((u8)light->mFlags == 1) {
-						GXColor ambient = light->GetColor();
+						const GXColor& ambient = light->GetColor();
 						color0->mAmbColor.Set(ambient);
 						gs->mChannels[2].mAmbColor.Set(ambient);
 					}
