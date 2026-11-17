@@ -1826,7 +1826,7 @@ if wii:
                 Object(Matching, "revolution/OS/OSCache.c"),
                 Object(Matching, "revolution/OS/OSContext.c"),
                 Object(Matching, "revolution/OS/OSError.c"),
-                Object(NonMatching, "revolution/OS/OSInterrupt.c", mw_version="GC/3.0a5.2"),
+                Object(Matching, "revolution/OS/OSInterrupt.c", mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/OS/OSFatal.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "revolution/OS/OSFont.c", cflags=[*cflags_sdk_2004, "-use_lmw_stmw off"], mw_version="GC/3.0a5.2"),
                 Object(Matching, "dolphin/os/OSMessage.c"),
@@ -1919,6 +1919,7 @@ if wii:
                 Object(Matching, "revolution/TPL/TPL.c"),
                 Object(Matching, "revolution/THP/THPDec.c"),
                 Object(Matching, "revolution/THP/THPAudio.c"),
+                Object(Matching, "revolution/OS/__ppc_eabi_init.cpp"),
                 Object(Matching, "revolution/ESP/esp.c"),
                 # Both WPAD units take the library flags (-fp hardware): WPAD.c (76 functions) and
                 # WPADHIDParser.c (25) match and link with them, so Petari's -fp off for its WPAD.c of
@@ -1988,7 +1989,6 @@ if wii:
                 Object(NonMatching, "dolphin/os/OSExec.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSMemory.c", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(NonMatching, "dolphin/os/OSReset.c", cflags=cflags_sdk_2004, mw_version="GC/1.2.5n"),
-                Object(NonMatching, "dolphin/os/__ppc_eabi_init.cpp", cflags=cflags_sdk, mw_version="GC/1.2.5n"),
                 Object(Equivalent, "dolphin/OdemuExi2/DebuggerDriver.c", cflags=cflags_sdk, extra_cflags=["-inline deferred"], mw_version="GC/1.2.5n"),
             ],
         },

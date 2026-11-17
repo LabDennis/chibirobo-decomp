@@ -100,6 +100,8 @@ revolution/OS/OSFont.c:
 
 revolution/OS/OSInterrupt.c:
 	.text start:0x80186764 end:0x80186EE8
+	.data start:0x80310CD0 end:0x80310D00
+	.sbss start:0x805A1F08 end:0x805A1F1C
 
 revolution/OS/OSLink.c:
 	.text start:0x80186EE8 end:0x801878C4
@@ -1426,8 +1428,9 @@ revolution/OS/OSReset.c:
 	.sdata start:0x805A1410 end:0x805A1418
 	.sbss start:0x805A1F30 end:0x805A1F40
 
-dolphin/os/__ppc_eabi_init.cpp:
-	.text start:0x8018E5EC end:0x8018E654
+revolution/OS/__ppc_eabi_init.cpp:
+	.init start:0x800042E0 end:0x80004338
+	.text start:0x8018E5EC end:0x8018E6A0
 
 revolution/THP/THPDec.c:
 	.text start:0x801FF434 end:0x80202804
