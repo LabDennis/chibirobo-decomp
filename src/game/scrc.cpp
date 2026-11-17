@@ -1002,8 +1002,8 @@ static inline void BounceBossPart(XObjActor3* part, f32 speed)
 }
 
 // the spider boss's parts: each rides the boss at its orbit offset until launched, then bounces to a stop and blinks out
-// NONMATCHING: two `(48 - n) * .5f` products have their operands the other way round and case 5 picks other scratch
-// registers
+// the boss's rotation is read with its position but nothing uses it; its zero initializer still takes its place in .rodata
+// NONMATCHING: only the .rodata offsets differ, the unit's constants and strings are laid out differently from retail
 void XObjActor3::Kind11(u32 frames)
 {
 	CPad pad(0);
@@ -1012,14 +1012,15 @@ void XObjActor3::Kind11(u32 frames)
 		if (mActorFlags.mFlags & 4)
 			break;
 		Vec origin           = { 0, 0, 0 };
+		Vec rotation         = { 0, 0, 0 };
 		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
-			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
-			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
-			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
-			HSD_JObjGetRotationX(boss->mJObj);
-			HSD_JObjGetRotationY(boss->mJObj);
-			HSD_JObjGetRotationZ(boss->mJObj);
+			origin.x   = HSD_JObjGetTranslationX(boss->mJObj);
+			origin.y   = HSD_JObjGetTranslationY(boss->mJObj);
+			origin.z   = HSD_JObjGetTranslationZ(boss->mJObj);
+			rotation.x = HSD_JObjGetRotationX(boss->mJObj);
+			rotation.y = HSD_JObjGetRotationY(boss->mJObj);
+			rotation.z = HSD_JObjGetRotationZ(boss->mJObj);
 		}
 		switch (GetKind()) {
 		case 0x3cd:
@@ -1070,7 +1071,7 @@ void XObjActor3::Kind11(u32 frames)
 		default:
 			mOrbitDistance = 32;
 			mOrbitAngle    = DEG2RAD * (rand() % 360);
-			mOrbitHeight   = (48.f - (rand() % 1800) / 100) * .5f;
+			mOrbitHeight   = (48.f - (rand() % 1800) / 100) / 2;
 			break;
 		}
 		mOrbitX  = mOrbitDistance * (f32)sin(mOrbitAngle);
@@ -1200,16 +1201,17 @@ void XObjActor3::Kind11(u32 frames)
 		break;
 	case 5: {
 		CVec velocity;
-		XObjSpiderBoss* boss = GetSpiderBoss();
 		Vec origin           = { 0, 0, 0 };
+		Vec rotation         = { 0, 0, 0 };
+		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
-			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
-			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
-			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
-			HSD_JObjGetRotationX(boss->mJObj);
-			HSD_JObjGetRotationY(boss->mJObj);
-			HSD_JObjGetRotationZ(boss->mJObj);
-			mHeading = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
+			origin.x   = HSD_JObjGetTranslationX(boss->mJObj);
+			origin.y   = HSD_JObjGetTranslationY(boss->mJObj);
+			origin.z   = HSD_JObjGetTranslationZ(boss->mJObj);
+			rotation.x = HSD_JObjGetRotationX(boss->mJObj);
+			rotation.y = HSD_JObjGetRotationY(boss->mJObj);
+			rotation.z = HSD_JObjGetRotationZ(boss->mJObj);
+			mHeading   = atan2(boss->mMoveTranslate.x - mMoveTranslate.x, boss->mMoveTranslate.z - mMoveTranslate.z);
 		}
 		f32 dx = origin.x - mMoveTranslate.x, dy = origin.y - mMoveTranslate.y, dz = origin.z - mMoveTranslate.z;
 		if (sqrtf(dx * dx + dy * dy + dz * dz) < 16)
@@ -1223,18 +1225,19 @@ void XObjActor3::Kind11(u32 frames)
 	}
 	case 6: {
 		Vec origin           = { 0, 0, 0 };
+		Vec rotation         = { 0, 0, 0 };
 		XObjSpiderBoss* boss = GetSpiderBoss();
 		if ((boss->mStatus.mFlags & 1) && (boss->mStatus.mFlags & 0x10000)) {
-			origin.x = HSD_JObjGetTranslationX(boss->mJObj);
-			origin.y = HSD_JObjGetTranslationY(boss->mJObj);
-			origin.z = HSD_JObjGetTranslationZ(boss->mJObj);
-			HSD_JObjGetRotationX(boss->mJObj);
-			HSD_JObjGetRotationY(boss->mJObj);
-			HSD_JObjGetRotationZ(boss->mJObj);
+			origin.x   = HSD_JObjGetTranslationX(boss->mJObj);
+			origin.y   = HSD_JObjGetTranslationY(boss->mJObj);
+			origin.z   = HSD_JObjGetTranslationZ(boss->mJObj);
+			rotation.x = HSD_JObjGetRotationX(boss->mJObj);
+			rotation.y = HSD_JObjGetRotationY(boss->mJObj);
+			rotation.z = HSD_JObjGetRotationZ(boss->mJObj);
 		}
 		mOrbitAngle  = DEG2RAD * (rand() % 360);
 		mOrbitX      = 32 * (f32)sin(mOrbitAngle);
-		mOrbitHeight = (48.f - (rand() % 1800) / 100) * .5f;
+		mOrbitHeight = (48.f - (rand() % 1800) / 100) / 2;
 		mOrbitZ      = 32 * (f32)cos(mOrbitAngle);
 		mHeading     = atan2(origin.x - mMoveTranslate.x, origin.z - mMoveTranslate.z);
 		mStatus.mFlags |= 0x100000;
@@ -1438,15 +1441,11 @@ extern "C" void EnableSpiderBossCenterPart(void)
  * @note Size: 0x298
  */
 // jumps the first kind 0xC actor onto the holder's middle
-// NONMATCHING: register allocation
+// NONMATCHING: only the constants' and strings' relocations differ, the unit's data is not split out of retail
 extern "C" void LaunchSpiderBossCenterPart(void)
 {
-	u8* data;
-	s32 size;
-	size = gGame.mXObjs.mPools[5].mStride;
-	data = gGame.mXObjs.mPools[5].mObjects;
 	for (s32 i = 0; i < 48; i++) {
-		XObjActor3* obj = (XObjActor3*)(data + i * size);
+		XObjActor3* obj = (XObjActor3*)gGame.mXObjs.mPools[5].Get(i);
 		if (XObj::GetDataItem(obj->mAttr.mObjData) == 0xC && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 			XObj* holder = (XObj*)gGame.mXObjs.mPools[19].mObjects;
 			if ((holder->mStatus.mFlags & 1) && (holder->mStatus.mFlags & 0x10000) && obj->mKindStep == 1) {
