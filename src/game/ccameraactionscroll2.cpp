@@ -138,8 +138,9 @@ s32 gScrollCameraHiddenObjectStates[256];
  * @note Address: N/A
  * @note Size: ?
  */
-inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, u32 color)
+inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, f32 alpha)
 {
+	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 	CTexObj tex;
 	f32 half = 0.5f;
 	tex      = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[index - StatusTextureOffset], 0);
@@ -155,8 +156,9 @@ inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, u32 color)
 
 #if !defined(VERSION_PAL)
 // draws a label sprite up and to the right of a marker; retail lays its CTexObj out below all of Draw's own, as an inline's
-inline void DrawScrollMapLabel(s32 index, f32 x, f32 y, u32 color)
+inline void DrawScrollMapLabel(s32 index, f32 x, f32 y, f32 alpha)
 {
+	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
 	CTexObj tex;
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[index - StatusTextureOffset], 0);
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
@@ -479,8 +481,7 @@ void CCameraActionScroll2::Draw()
 	f32 blink     = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 4) % 360)));
 	f32 fastBlink = ABS((f32)sin(DEG2RAD * ((sOverlayFrameCount * 7) % 360)));
 
-	Vec pos   = { 0.0f, 0.0f, 0.0f };
-	u32 color = (u32)(255.0f * blink) | 0xC8C8C800;
+	Vec pos = { 0.0f, 0.0f, 0.0f };
 	for (s32 i = 0; i < 288; i++) {
 		XObj* obj = gGame.mXObjs.mPools[22].Get(i);
 		if (!(obj->mStatus.mFlags & 0x10000)) {
@@ -491,20 +492,20 @@ void CCameraActionScroll2::Draw()
 		case 0x10E: {
 			Vec ofs = { 0.0f, 0.0f, 0.0f };
 			obj->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
-			DrawScrollMapMarker(162, x, y, color);
+			DrawScrollMapMarker(162, x, y, blink);
 			break;
 		}
 		case 0x9D: {
 			Vec ofs = { 0.0f, 0.0f, 0.0f };
 			obj->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
-			DrawScrollMapMarker(165, x, y, color);
+			DrawScrollMapMarker(165, x, y, blink);
 			break;
 		}
 		case 0x115:
 			if (obj->mStatus.mFlags & 0x10000) {
 				Vec ofs = { 0.0f, 0.0f, 0.0f };
 				obj->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
-				DrawScrollMapMarker(163, x, y, color);
+				DrawScrollMapMarker(163, x, y, blink);
 			}
 			break;
 		case 0xC:
@@ -633,13 +634,6 @@ void CCameraActionScroll2::Draw()
 	}
 
 	// with its particle running, a leticker's marker and its label blink in turn
-	u32 fastColor  = (u32)(255.0f * fastBlink) | 0xC8C8C800;
-	u32 fadedAlpha = (u32)(255.0f * (1.0f - fastBlink));
-#if defined(VERSION_PAL)
-	u32 labelColor = fadedAlpha | 0xFFD52C00;
-#else
-	u32 labelColor = fadedAlpha | 0xC8C8C800;
-#endif
 	for (s32 i = 0; i < 12; i++) {
 		XObjLeticker* obj = static_cast<XObjLeticker*>(gGame.mXObjs.mPools[9].Get(i));
 		switch ((obj)->GetKind()) {
@@ -657,11 +651,13 @@ void CCameraActionScroll2::Draw()
 		Vec ofs = { 0.0f, 0.0f, 0.0f };
 		obj->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
 		if (obj->mPtcl) {
-			DrawScrollMapMarker(163, x, y, fastColor);
+			DrawScrollMapMarker(163, x, y, fastBlink);
 
 			f32 markX = x;
 			f32 markY = y;
 #if defined(VERSION_PAL)
+			u32 fadedAlpha = (u32)(255.0f * (1.0f - fastBlink));
+			u32 labelColor = fadedAlpha | 0xFFD52C00;
 			for (s32 j = 0; j < 4; j++) {
 				DrawGsProportionalTextFormat(&gGame.mGs, fadedAlpha, GetLocalizedInterfaceText(0x115), markX + gScrollRoomData.markerX[j],
 				                             (-20.8f + (markY + gScrollRoomData.markerY[j])) - 11.0f, 0.0f, 22.0f, 22.0f);
@@ -669,17 +665,17 @@ void CCameraActionScroll2::Draw()
 			DrawGsProportionalTextFormat(&gGame.mGs, labelColor, GetLocalizedInterfaceText(0x115), markX, (markY - 20.8f) - 11.0f, 0.0f,
 			                             22.0f, 22.0f);
 #else
-			DrawScrollMapLabel(161, markX, markY, labelColor);
+			DrawScrollMapLabel(161, markX, markY, 1.0f - fastBlink);
 #endif
 		} else {
-			DrawScrollMapMarker(163, x, y, color);
+			DrawScrollMapMarker(163, x, y, blink);
 		}
 	}
 
 	{
 		Vec ofs = { 0.0f, 0.0f, 0.0f };
 		gGame.GetPlayer()->ProjectOffsetToScreen(&ofs, &x, &y, NULL, 0);
-		DrawScrollMapMarker(164, x, y, color);
+		DrawScrollMapMarker(164, x, y, blink);
 	}
 
 	// the arrow round the player points the way it faces
