@@ -491,7 +491,13 @@ gamecube_libs = [
             # names come before the function literals ("CXObjIntp"/"XObjAttachment" ahead of the jobj.h assert
             # strings in .rodata, "XObjOX"/"CJObj"/"CXObj"/"XObj" lbl_8065D858-870 ahead of the floats in .sdata2)
             Object(NonMatching, "game/objb_attach.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
-            Object(NonMatching, "game/objb_plug.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline deferred, as retail shows: the GameCube .text runs SetDestinationAlpha (800D9E7C) ...
+            # InitializeObject (800DB81C), the exact reverse of the Wii file (InitializeObject 8010F944,
+            # SetPlugCordSpeed, ResetForNewGame, LoadFromPlacement, Release, GetPlayerPlugCordAnchorTransform,
+            # DrawWithView, DrawObjectEffects, SetDestinationAlpha 80110570); and XObjWireEff's base types,
+            # vtable and RTTI (80228368/8022838C, gTypeInfoXObjWireEff 80634A78) come before XObjPlug's
+            # (802284D4/802284F8, 80634A80), which only deferred codegen of the Wii-order source gives
+            Object(NonMatching, "game/objb_plug.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(EquivalentFor(JP), "game/objb_sound.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjcoin.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjletickerdtor.cpp", cflags=with_hsd_headers(cflags_game)),
