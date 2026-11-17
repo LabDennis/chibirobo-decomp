@@ -165,6 +165,7 @@ void XObj::SetColor(s32 index, u8 red, u8 green, u8 blue, f32 time)
  * @note Address: 0x8008A944
  * @note Size: 0x45C
  */
+// NONMATCHING: the map pointer and FindMapFloor's counter get each other's register (r29/r30)
 extern "C" f32 QueryObjectFloorHeight(XObj* self, f32 radius, f32 height)
 {
 	Vec* pos     = &self->mMoveTranslate;
