@@ -1276,7 +1276,8 @@ public:
 	CJArchive mArchive;  // _820
 	Mtx mBaseMtx;        // _968, SetBaseMtx's copy
 	MtxP mBaseMtxPtr;    // _998, NULL or mBaseMtx
-	u8 _99C[0xC];
+	u8 _99C[0x9A4 - 0x99C];
+	s32 _9A4; // _9A4, the end of a script it owns clears it
 };
 STATIC_ASSERT(sizeof(XObj) == 0x9A8);
 
