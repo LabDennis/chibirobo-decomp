@@ -766,7 +766,7 @@ extern "C" CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* pa
 {
 	// CJObj::mJObj, game/cjobj.h would pull 0x24 bytes of .rodata into this file
 #if defined(VERSION_JP)
-	return GetJointPosition(FindJointByPath(*(HSD_JObj**)obj, path, depth));
+	return GetJointPosition(GetJointByPath(*(HSD_JObj**)obj, path, depth));
 #else
 	return GetEventJObjWorldPosition(obj, GetJointByPath(*(HSD_JObj**)obj, path, depth));
 #endif
