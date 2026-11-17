@@ -466,7 +466,10 @@ gamecube_libs = [
             Object(Matching, "game/cfiletextdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/gxa.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/sound.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/gxb.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline noauto, as retail shows: UpdateTitleScreen (JP 0x8002E548) calls StartScreenFade
+            # (JP 0x80023EC4, defined above it in this file) three times, where -inline auto expands all
+            # three; no other function of the unit changes with the flag
+            Object(NonMatching, "game/gxb.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
             Object(NonMatching, "game/stg.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/menu_cleanup.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/infoscrn.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto,deferred"]),
