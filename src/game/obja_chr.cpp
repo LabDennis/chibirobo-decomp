@@ -14,7 +14,7 @@ s32 ClassifyFloatBits(f32 value);
 CObjVec* GetObjectMoveRotation(CXObj* object);
 BOOL IsActionTargetFloorId(const XAction* action, s32 wanted);
 void SetObjectYAndTarget(CObjVec* value, f32 y);
-f32 GetVectorDistance(const Vec* a, const Vec* b);
+f32 GetVectorDistance(const Vec& a, const Vec& b);
 u64 GetMaskedGameStatus(const CGame* game, u64 mask);
 f32 GetVectorMagnitude(const Vec* value);
 f32 PlayerActionSine(f32 angle);
@@ -354,7 +354,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				Vec* current = GetObjectVectorCurrent(&player->mMotion);
 				Vec* target  = GetObjectVectorTarget(&player->mMotion);
 				f32 rate     = GetPlayerAnimationRateMultiplier(player);
-				f32 distance = GetVectorDistance(current, target) / rate;
+				f32 distance = GetVectorDistance(*current, *target) / rate;
 				if (distance >= 3.0f) {
 					f32 difference = distance - 8.0f;
 					if (difference < 0)
@@ -486,12 +486,8 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				}
 			}
 			if (CheckCurrentStageFlags(&gGame, 1)) {
-				s32 path[2] = { 0, 0 };
-				f32 distance;
-				{
-					const CVec& joint = GetEventJointWorldPosition(&player->mPlug, 2, path);
-					distance          = GetVectorDistance(GetObjectMoveTranslation(player), &joint);
-				}
+				s32 path[2]  = { 0, 0 };
+				f32 distance = GetVectorDistance(*GetObjectMoveTranslation(player), GetEventJointWorldPosition(&player->mPlug, 2, path));
 				if (distance >= 34 && !IsEventScriptActive(&gGame)) {
 					PlayGameSound(GetGameSound(&gGame), 0x37, 255);
 					ResetPlayerPlugState(&player->mPlug, TRUE);
@@ -813,7 +809,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			Vec boxCenter = { 0, 0, 0 };
 			PSMTXMultVec(transform, &boxCenter, &boxCenter);
 			f32 ratio   = extent.x / extent.z;
-			Vec boxRear = { 0, 0, ratio - 1.0f };
+			Vec boxRear = { 0, 0, -1.0f + ratio };
 			PSMTXMultVec(transform, &boxRear, &boxRear);
 			Vec boxFront = { 0, 0, 1.0f - ratio };
 			PSMTXMultVec(transform, &boxFront, &boxFront);
@@ -1051,7 +1047,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 			const Vec* current    = GetObjectVectorCurrent(&player->mMotion);
 			const Vec* dustTarget = GetObjectVectorTarget(&player->mMotion);
 			f32 rate              = GetPlayerAnimationRateMultiplier(player);
-			f32 dustDistance      = GetVectorDistance(current, dustTarget) / rate;
+			f32 dustDistance      = GetVectorDistance(*current, *dustTarget) / rate;
 			if (dustDistance >= 3.0f) {
 				SpawnPlayerDust(player, GetObjectMoveTranslation(player));
 				if (dustDistance >= 5.0f && !IsGameSoundPlaying(GetGameSound(&gGame), 0x1b))
@@ -1124,7 +1120,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 				if (!IsObjectActive(object) || !GetMaskedObjectStatus(object, 0x10000) || !GetMaskedObjectStatus(object, 0x20)
 				    || !object->GetEventScript())
 					continue;
-				if (GetVectorDistance(GetObjectMoveTranslation(object), GetObjectMoveTranslation(player)) >= 18.0f)
+				if (GetVectorDistance(*GetObjectMoveTranslation(object), *GetObjectMoveTranslation(player)) >= 18.0f)
 					continue;
 				f32 yaw   = GetObjectMoveRotation(object)->y;
 				f32 angle = WrapPlayerActionAngle(
@@ -8196,9 +8192,9 @@ extern "C" BOOL IsTumbleActionState(const XActTumble* act, s32 wanted)
  * @note Address: 0x800B2FA0
  * @note Size: 0x20
  */
-extern "C" f32 GetVectorDistance(const Vec* a, const Vec* b)
+extern "C" f32 GetVectorDistance(const Vec& a, const Vec& b)
 {
-	return PSVECDistance((Vec*)a, (Vec*)b);
+	return PSVECDistance((Vec*)&a, (Vec*)&b);
 }
 
 /**
