@@ -608,8 +608,11 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjchrrestore.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjchrreset.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjplugnodes.cpp", cflags=with_hsd_headers(cflags_game)),
-            # matched only under a per-unit -inline noauto; without it JP code is at 70 %
-            Object(NonMatching, "game/xobjdust.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline noauto, as retail shows: it keeps CheckDustScatterHeading (0x238) as a call from
+            # UpdateDriftingDust, which every GC compiler (2.0 to 2.7) auto-inlines by size alone under
+            # -inline auto (JP code 70 % without the flag). Weaker evidence than the deferred units below:
+            # a larger original body could also explain it, but no natural form does.
+            Object(EquivalentFor(JP), "game/xobjdust.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline noauto"]),
             Object(NonMatching, "game/xobjfree.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjdustbillboard.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/memcardformat.cpp", cflags=cflags_game, extra_cflags=["-inline noauto"]),
@@ -634,8 +637,10 @@ gamecube_libs = [
             Object(Matching, "game/xobjactorse.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjhboxpart.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/xobjhbox.cpp", cflags=with_hsd_headers(cflags_game)),
-            # its data order matched only under a per-unit -inline deferred
-            Object(NonMatching, "game/cinterpolationeaseout.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline deferred, as retail shows: the GameCube file emits its functions and .sdata2 in the
+            # reverse of the Wii file's order (Wii: EaseInOut Start first; GC: last-to-first), which is
+            # what deferred codegen does to one source; the Wii build of the same file has no deferred
+            Object(Matching, "game/cinterpolationeaseout.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/ccameraactionareaex.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/evt.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/msg.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -1002,8 +1007,10 @@ gamecube_libs = [
             Object(Matching, "game/cshadow.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cgs.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cprimitive.cpp", extra_cflags=["-inline auto,deferred"]),
-            # its data order matched only under a per-unit -inline deferred
-            Object(NonMatching, "game/cpad.cpp", cflags=cflags_hsd_game),
+            # -inline deferred, as retail shows: .sdata2 has the RTTI name "CPadOne" (lbl_8065F670) before
+            # CPadEx::Init's and CPadOne::Clear's floats. Without deferred MWCC builds vtables/RTTI only at
+            # the end of the file, after every function's constants; deferred builds them first
+            Object(Matching, "game/cpad.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cfont.cpp"),
             Object(Matching, "game/cfile.cpp", extra_cflags=["-inline auto,deferred"], padding="small_data"),
             Object(Matching, "game/ctpl.cpp", extra_cflags=["-inline auto,deferred"]),
@@ -1142,14 +1149,19 @@ gamecube_libs = [
             Object(Matching, "rel/ana.cpp"),
             Object(EquivalentFor(JP), "rel/stage02/fighter.cpp"),
             Object(MatchingFor(US, JP), "rel/stage02/rouka.cpp"),
-            # its data order matched only under a per-unit -inline deferred
-            Object(NonMatching, "rel/stage02/car.cpp"),
+            # -inline deferred, as retail shows: callers come before callees that are still inlined into
+            # them (Terminate 0x69F8 inlines Car::Init 0x7608, UpdateCars 0x6F64 inlines CarRoot::Brake
+            # 0x7A88, StartCars 0x72FC inlines PlayerCarRoot::Start 0x7A28); without deferred MWCC only
+            # inlines callees defined earlier, so no definition order gives both
+            Object(Matching, "rel/stage02/car.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "rel/stage03/decapanel.cpp"),
             Object(Matching, "rel/stage04/jenny.cpp"),
             Object(NonMatching, "rel/trash.cpp"),
             Object(Matching, "rel/stage06/parent.cpp"),
-            # its data order matched only under a per-unit -inline deferred
-            Object(NonMatching, "rel/stage07/living.cpp"),
+            # -inline deferred, as retail shows: .rodata has the RTTI names "CVec", "Vec" before "CJObj" and
+            # the dtors after SetObj37, the layout deferred codegen gives; without it CVec's RTTI (no key
+            # function) is only built at the end of the file. rel/shun/shun.cpp shows the same pattern
+            Object(Matching, "rel/stage07/living.cpp", extra_cflags=["-inline auto,deferred"]),
             Object(Matching, "rel/stage08/stage08.cpp"),
             Object(Matching, "rel/stage09/ambient.cpp"),
             Object(Matching, "rel/stage11/haisui.cpp"),
