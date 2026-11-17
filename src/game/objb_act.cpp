@@ -1047,23 +1047,6 @@ static inline void RopeAnim(XActRope* act, s32 id, f32 loop, BOOL force = FALSE,
 {
 	act->mOwner->SetAnim(id, force, NULL, NULL, NULL, start, 1, loop, 10);
 }
-// the point round the rope where he hangs, half a unit behind it
-static inline void LocateRope(XActRope* act)
-{
-	CVec player(act->mOwner->mMoveTranslate);
-	player.y = 0;
-	CVec rope(act->mTarget->mMoveTranslate);
-	rope.y = 0;
-	CVec offset;
-	offset.Set(0, 0, -.5f);
-	Mtx matrix;
-	PSMTXRotRad(matrix, 'y', act->mTarget->mMoveRotate.y);
-	PSMTXMultVec(matrix, &offset, &offset);
-	AddVec(rope, offset);
-	act->mPos   = rope;
-	act->mDist  = PSVECDistance(&rope, &player);
-	act->mAngle = atan2(player.x - rope.x, player.z - rope.z);
-}
 static inline void ApproachRope(XActRope* act, u32 frames, bool move, bool snap, f32 speed)
 {
 	if (!act->mTarget)
@@ -1140,7 +1123,19 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			RopeAnim(act, 0x98, 0);
 			if (act->mTarget) {
 				act->mOwner->SetRotationY(WrapAngle(act->mTarget->mMoveRotate.y), 0);
-				LocateRope(act);
+				CVec player(act->mOwner->mMoveTranslate);
+				player.y = 0;
+				CVec rope(act->mTarget->mMoveTranslate);
+				rope.y = 0;
+				CVec offset;
+				offset.Set(0, 0, -.5f);
+				Mtx matrix;
+				PSMTXRotRad(matrix, 'y', act->mTarget->mMoveRotate.y);
+				PSMTXMultVec(matrix, &offset, &offset);
+				AddVec(rope, offset);
+				act->mPos   = rope;
+				act->mDist  = PSVECDistance(&rope, &player);
+				act->mAngle = atan2(player.x - rope.x, player.z - rope.z);
 			}
 		} else if (aobj->flags & 0x44000000) {
 			s32 path[] = { 0 };
@@ -1186,7 +1181,19 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				delta.y    = -delta.y;
 				act->mOwner->SetTranslateY(act->mOwner->mMoveTranslate.y + delta.y, 0);
 				RopeAnim(act, 0x85, 1);
-				LocateRope(act);
+				CVec player(act->mOwner->mMoveTranslate);
+				player.y = 0;
+				CVec rope(act->mTarget->mMoveTranslate);
+				rope.y = 0;
+				CVec offset;
+				offset.Set(0, 0, -.5f);
+				Mtx matrix;
+				PSMTXRotRad(matrix, 'y', act->mTarget->mMoveRotate.y);
+				PSMTXMultVec(matrix, &offset, &offset);
+				AddVec(rope, offset);
+				act->mPos   = rope;
+				act->mDist  = PSVECDistance(&rope, &player);
+				act->mAngle = atan2(player.x - rope.x, player.z - rope.z);
 			}
 			ReleaseRopePlug(act, 0, 0);
 		} else if (aobj->flags & 0x44000000) {
@@ -1346,8 +1353,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 		break;
 	}
 	if (act->mState == 5) {
-		s32 p[]         = { 0 };
-		HSD_JObj* joint = GetJointByPath(act->mOwner->mJObj, p, 1);
+		HSD_JObj* joint = GetJointByPath(act->mOwner->mJObj, (s32[]) { 0 }, 1);
 		if (joint)
 			act->mOwner->Push(joint, 2, act->mTargetOffset.y);
 	}
