@@ -289,6 +289,7 @@ public:
 	s32 mCameraAnim; // _B14, -1 when no anim is playing
 
 	XObjCamera();
+	virtual ~XObjCamera();
 	virtual void Release();
 	virtual void InitializeObject(u32 id);
 	virtual void ResetObjectState();
