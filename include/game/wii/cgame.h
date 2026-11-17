@@ -23,6 +23,7 @@
 #include "game/cmovie.h"
 #include "game/wii/xobjs.h"
 #include "game/wii/menuutil.h"
+#include "game/menuhelpchar.h"
 #
 
 class CCamera;
@@ -1040,30 +1041,38 @@ public:
 	f32 mOffset;               // _17C
 	WiiMenuSaveSlot mSlots[3]; // _180, the three save files
 	u8 _27C[0x284 - 0x27C];
-	s32 mResult;      // _284, the save operation's result
-	s32 mMessage;     // _288
-	u8 mReady;        // _28C
-	u8 mShowMessage;  // _28D
-	u8 mWrongDevice;  // _28E
-	u8 mSaved;        // _28F
-	f32 mDrawAlpha;   // _290
-	f32 mTargetAlpha; // _294, mDrawAlpha goes to it
-	s32 mMode;        // _298, the state the table runs
-	s32 mPrevMode;    // _29C
-	u32 _2A0;         // _2A0
-	s32 mPhase;       // _2A4
-	f32 mTime;        // _2A8
-	s32 mDelay;       // _2AC
-	s32 mFile;        // _2B0, the file picked, -1 with the pointer on none
-	s32 mStickFile;   // _2B4, the file the stick is on, mFile again when the pointer goes
-	s32 mNewestFile;  // _2B8
-	s32 mChoice;      // _2BC, yes or no, -1 with the pointer on neither
-	s32 mStickChoice; // _2C0
-	s32 mLastFile;    // _2C4, -1 for none
-	u8 _2C8[0x2E0 - 0x2C8];
-	MenuTitle mTitle; // _2E0
-	u8 _47C[0x570 - 0x47C];
-	u8 mResetOnClose; // _570, closing asks the game for reset type 5
+	s32 mResult;               // _284, the save operation's result
+	s32 mMessage;              // _288
+	u8 mReady;                 // _28C
+	u8 mShowMessage;           // _28D
+	u8 mWrongDevice;           // _28E
+	u8 mSaved;                 // _28F
+	f32 mDrawAlpha;            // _290
+	f32 mTargetAlpha;          // _294, mDrawAlpha goes to it
+	s32 mMode;                 // _298, the state the table runs
+	s32 mPrevMode;             // _29C
+	u32 _2A0;                  // _2A0
+	s32 mPhase;                // _2A4
+	f32 mTime;                 // _2A8
+	s32 mDelay;                // _2AC
+	s32 mFile;                 // _2B0, the file picked, -1 with the pointer on none
+	s32 mStickFile;            // _2B4, the file the stick is on, mFile again when the pointer goes
+	s32 mNewestFile;           // _2B8
+	s32 mChoice;               // _2BC, yes or no, -1 with the pointer on neither
+	s32 mStickChoice;          // _2C0
+	s32 mLastFile;             // _2C4, -1 for none
+	s32 mChannel;              // _2C8, the GameCube's card slot
+	s32 mShowHelp;             // _2CC
+	f32 mHelpAlpha;            // _2D0
+	const char* mHelpText;     // _2D4
+	const char* mNextHelpText; // _2D8
+	f32 mTexScroll;            // _2DC
+	MenuTitle mTitle;          // _2E0
+	s32 mHelpCount;            // _47C
+	MenuHelpChar mBg[20];      // _480
+	u8 mResetOnClose;          // _570, closing asks the game for reset type 5
+	CbPane mPanes[5];          // _574, the three files, yes and no
+	f32 mFileAlpha[3];         // _704, each file's highlight
 
 	void SetMode(s32 mode)
 	{
@@ -1073,9 +1082,15 @@ public:
 	}
 
 	virtual void Reset();
+	virtual BOOL Update(u32 frames);
+	virtual void Open();
 
 	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
 	void State4(u32 frames);
+	void State5(u32 frames);
 	void State6(u32 frames);
 	void State7(u32 frames);
 	void State8(u32 frames);
@@ -1088,10 +1103,13 @@ public:
 	void State15(u32 frames);
 	void State16(u32 frames);
 	void State17(u32 frames);
+	void State18(u32 frames);
+	void State19(u32 frames);
 };
 STATIC_ASSERT(offsetof(MenuSave, mPanelX) == 0x160);
 STATIC_ASSERT(offsetof(MenuSave, mLastFile) == 0x2C4);
 STATIC_ASSERT(offsetof(MenuSave, mResetOnClose) == 0x570);
+STATIC_ASSERT(offsetof(MenuSave, mFileAlpha) == 0x704);
 
 // the status and PC menus, the GameCube classes of the same names; only their empty states have source yet
 class MenuStatus : public CMenu {
@@ -1326,11 +1344,18 @@ struct ObjArchiveTable {
 
 // the menus and what they share, the GameCube class of the same name (RTTI); the constructor in 0x800332D8 stores
 // its vtable at _30, ahead of the Wii's further members, and builds the CTexObj at _50
+// the cursor the menus share, MenuEx's; on the Wii only its blink is left (UpdateOpenMenus, 0x8008492C)
+class MenuCursor {
+public:
+	s32 mTimer; // _00
+	s32 mFrame; // _04, 0 to 7
+};
+
 class MenuEx {
 public:
-	BOOL mActive;     // _00, a menu is open
-	CMenu* mMenus[5]; // _04, [0] is the main menu
-	u8 _18[0x30 - 0x18];
+	BOOL mActive;         // _00, a menu is open
+	CMenu* mMenus[9];     // _04, [0] is the main menu
+	MenuCursor mCursor;   // _28
 	virtual ~MenuEx() { } // _30 vtable
 	s32 _34;              // _34, DrawHud draws nothing while a menu is open and this is set
 	u8 _38[0x50 - 0x38];

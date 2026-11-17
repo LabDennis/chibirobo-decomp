@@ -12,9 +12,13 @@
 #include "game/wii/title.h"
 #include "game/globals.h"
 #include "game/evt.h"
+#include "game/cfont.h"
+#include <math.h>
+#include <stdlib.h>
 
 extern "C" void LayoutMainMenuRows(MenuMain* menu);
-extern s32 gPointerScreenWidth, gPointerScreenHeight;
+extern "C" void ApproachHudValue(f32* value, f32* target, f32 step);
+extern s32 gPointerScreenWidth, gPointerScreenHeight, gRefreshRate;
 extern "C" void DrawMenuWindow(MenuWindow* window);
 extern s32 gRingScreenWidth;
 
@@ -289,6 +293,143 @@ extern "C" const char* GetTitleAndSaveMenuText(s32 index)
 }
 
 extern "C" void fn_80083350(MenuSave* menu);
+static void SetMenuTitle(MenuSave* menu, const char* text, u32 color);
+static void UpdateMenuTitle(MenuSave* menu, u32 frames);
+extern f32 gTitleFileSlideSpeed[2];
+
+// NONMATCHING: retail converts this for gPointerPanes.mMenu in r4 and its 1 in r0, ours the other way round
+void MenuSave::Open()
+{
+	CMenu::Open();
+	gGame.SetStatusFlags(2);
+	mWindow.mWidth  = 0.0f;
+	mWindow.mHeight = 0.0f;
+	mWindow.mX      = 0.0f;
+	mWindow.mY      = 0.0f;
+	mPanelX         = -10.0f;
+	mPanelY         = -200.0f;
+	mTargetPanelX   = -10.0f;
+	mTargetPanelY   = 0.0f;
+	_170            = 0.0f;
+	mBannerSlide    = 0.0f;
+	_178            = 0.0f;
+	mOffset         = 0.0f;
+	mDrawAlpha      = 0.0f;
+	mTargetAlpha    = 1.0f;
+	mMode           = 0;
+	mPrevMode       = mMode;
+	mPhase          = 0;
+	mTime           = 0.0f;
+	mDelay          = 0;
+	if (mLastFile == -1) {
+		mFile = gGame.mInfoScrn.mSelectedSaveSlot;
+	} else {
+		mFile = mLastFile;
+	}
+	mStickFile   = mFile;
+	mNewestFile  = mFile;
+	mChoice      = 0;
+	mStickChoice = 0;
+	mResult      = 0;
+	mMessage     = 0;
+	mReady       = 0;
+	mShowMessage = 0;
+	mWrongDevice = 0;
+	mSaved       = 0;
+	mChannel     = 0;
+	mTexScroll   = 0.0f;
+	PlayWiiSoundEffect(&gGame.mSound, 0x1B8, 1.0f, 0.0f);
+	const char* title = GetLocalizedInterfaceText(99);
+	SetMenuTitle(this, title, (u32)(255.0f * mTargetAlpha) | 0xFFFFFF00);
+	mResetOnClose         = 0;
+	gPointerPanes.mMenu   = this;
+	gPointerPanes.mActive = TRUE;
+	for (int i = 0; i < 5; i++) {
+		mPanes[i].mPointed = FALSE;
+		mPanes[i].mPicked  = FALSE;
+	}
+	for (int i = 0; i < 3; i++) {
+		mFileAlpha[i] = 0.0f;
+	}
+}
+
+// the GameCube's PCEaseCall: a quarter of the way, at least 1 a frame. The float fabs is nw4r::math::FAbs's, as in
+// fbeffect.cpp; its header needs the Wii MSL's <cmath>, which the game's include path does not have yet
+static inline void PCEaseCall(f32& value, f32& target)
+{
+	f32 rate = __fabsf((target - value) * 0.25f);
+	if (rate <= 1.0f) {
+		rate = 1.0f;
+	}
+	ApproachHudValue(&value, &target, rate);
+}
+
+static void (MenuSave::*gSaveStepHandlers[])(u32)
+    = { &MenuSave::State0,  &MenuSave::State1,  &MenuSave::State2,  &MenuSave::State3,  &MenuSave::State4,
+	    &MenuSave::State5,  &MenuSave::State6,  &MenuSave::State7,  &MenuSave::State8,  &MenuSave::State9,
+	    &MenuSave::State10, &MenuSave::State11, &MenuSave::State12, &MenuSave::State13, &MenuSave::State14,
+	    &MenuSave::State15, &MenuSave::State16, &MenuSave::State17, &MenuSave::State18, &MenuSave::State19 };
+
+// NONMATCHING: the two eases multiply with the operands the other way round (f2 * f1 in retail)
+BOOL MenuSave::Update(u32 frames)
+{
+	if (CMenu::Update(frames) == 4) {
+		gPointerPanes.mCount = 0;
+		PCEaseCall(mPanelY, mTargetPanelY);
+		ApproachHudValue(&mDrawAlpha, &mTargetAlpha, 0.08f * frames);
+		PCEaseCall(mBannerSlide, mOffset);
+		mTexScroll -= 0.008f * frames;
+		UpdateMenuTitle(this, frames);
+		switch (mShowHelp) {
+		case 0:
+			break;
+		case 1:
+			mHelpAlpha = 0.0f;
+			mShowHelp++;
+			mHelpText = mNextHelpText;
+			break;
+		case 2:
+			mHelpAlpha += 0.04f * frames;
+			if (mHelpAlpha >= 1.0f) {
+				mHelpAlpha = 1.0f;
+				mShowHelp  = 0;
+			}
+			break;
+		}
+		if (mAlpha > 0.0f) {
+			for (int i = 0; i < 20; i++) {
+				mBg[i].mAngle0 += 0.08726646f * frames;
+				mBg[i].mAngle1 += 0.05235988f * frames;
+			}
+		}
+		for (int i = 0; i < 3; i++) {
+			if (mFile == i) {
+				if (mFileAlpha[i] < 1.0f) {
+					if ((mFileAlpha[i] += 0.1f * gTitleFileSlideSpeed[0] * frames) > 1.0f) {
+						mFileAlpha[i] = 1.0f;
+					}
+				}
+			} else if (mFileAlpha[i] > 0.0f) {
+				if ((mFileAlpha[i] -= 0.1f * gTitleFileSlideSpeed[1] * frames) < 0.0f) {
+					mFileAlpha[i] = 0.0f;
+				}
+			}
+		}
+		// the GameCube probed the card here; the NAND is always there
+		if (mMode != 1 && mMode != 5 && mMode != 9) {
+			mWrongDevice = FALSE;
+			mReady       = TRUE;
+			if (!mReady) {
+				mShowMessage = FALSE;
+			}
+		}
+		if (gGame.mSaveManager.mJobStarted) {
+			return IsOpen();
+		}
+		(this->*gSaveStepHandlers[mMode])(frames);
+	}
+	return IsOpen();
+}
 
 void MenuSave::State0(u32)
 {
@@ -512,6 +653,77 @@ void MenuPC::State11(u32)
 	}
 }
 
+// the GameCube's inline MenuTitle::Set: the letters come in one after the other; the lead byte test is spelled as
+// title.cpp has it. NONMATCHING: retail keeps the lead flag in r3 and both range results in r0, and r28/r29 swap
+static void SetMenuTitle(MenuSave* menu, const char* text, u32 color)
+{
+	const char* p        = text;
+	menu->mTitle.mActive = TRUE;
+	menu->mTitle.mCount  = 0;
+	if (text) {
+		menu->mTitle.mColor = color;
+		int i;
+		for (i = 0; i < 20 && *p; i++, p++) {
+			menu->mTitle.mChars[i].mText   = p;
+			menu->mTitle.mChars[i].mFade   = -0.2f * i;
+			menu->mTitle.mChars[i].mHold   = gRefreshRate;
+			menu->mTitle.mChars[i].mAngle0 = 0.017453292f * (rand() % 360);
+			menu->mTitle.mChars[i].mAngle1 = 0.017453292f * (rand() % 360);
+			menu->mTitle.mCount++;
+			if (gGame.mLanguage == 0) {
+				u8 c    = *p;
+				u8 lead = TRUE;
+				u8 a    = (c >= 0x81 && c <= 0x9F);
+				if (!a) {
+					u8 b = (c >= 0xE0 && c <= 0xFC);
+					if (!b) {
+						lead = FALSE;
+					}
+				}
+				if (lead) {
+					p++;
+				}
+			}
+		}
+		for (i = menu->mTitle.mCount; i < 20; i++) {
+			menu->mTitle.mChars[i].mText = NULL;
+			menu->mTitle.mChars[i].mFade = 0.0f;
+			menu->mTitle.mChars[i].mHold = 0.0f;
+		}
+	}
+}
+
+// the GameCube's UpdateMenuTitle, timed by the refresh rate
+static void UpdateMenuTitle(MenuSave* menu, u32 frames)
+{
+	if (menu->mTitle.mActive && menu->mTitle.mActive > 0) {
+		for (int i = 0; i < menu->mTitle.mCount; i++) {
+			if (menu->mTitle.mChars[i].mHold > 0.0f) {
+				if (menu->mTitle.mChars[i].mFade < 1.0f) {
+					if ((menu->mTitle.mChars[i].mFade += (1.0f / (0.3f * gRefreshRate)) * frames) > 1.0f) {
+						menu->mTitle.mChars[i].mFade = 1.0f;
+					}
+				}
+			} else if (menu->mTitle.mChars[i].mFade > 0.0f) {
+				if ((menu->mTitle.mChars[i].mFade -= (1.0f / (0.3f * gRefreshRate)) * frames) < 0.0f) {
+					menu->mTitle.mChars[i].mFade = 0.0f;
+				}
+			}
+		}
+		s32 shown = 0;
+		for (int i = 0; i < menu->mTitle.mCount; i++) {
+			if (menu->mTitle.mChars[i].mFade != 0.0f) {
+				shown++;
+				menu->mTitle.mChars[i].mAngle0 += 0.08726646f * frames;
+				menu->mTitle.mChars[i].mAngle1 += 0.05235988f * frames;
+			}
+		}
+		if (shown == 0) {
+			menu->mTitle.mActive = FALSE;
+		}
+	}
+}
+
 extern "C" s32 IndexOfLargestOfThree(s64 a, s64 b, s64 c)
 {
 	if (a >= b) {
@@ -641,6 +853,63 @@ extern "C" void fn_80083350(MenuSave* menu)
 			menu->mFile = -1;
 		} else {
 			menu->mFile = menu->mStickFile;
+		}
+	}
+}
+
+// the menus MenuEx keeps, the GameCube's menu group functions: the Wii has nine and its cursor only blinks.
+// LoadMenuGroupResources
+extern "C" BOOL fn_80084848(MenuEx* ex)
+{
+	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
+		if (ex->mMenus[i]) {
+			ex->mMenus[i]->LoadTexture();
+			ex->mMenus[i]->mCursor = &ex->mCursor;
+		}
+	}
+	return TRUE;
+}
+
+// ResetMenuGroup
+extern "C" void fn_800848C0(MenuEx* ex)
+{
+	ex->mCursor.mFrame = 0;
+	ex->mCursor.mTimer = 0;
+	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
+		if (ex->mMenus[i]) {
+			ex->mMenus[i]->Reset();
+		}
+	}
+}
+
+extern "C" void DrawOpenMenus(MenuEx* ex)
+{
+	if (ex->mActive) {
+		for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
+			if (ex->mMenus[i] && ex->mMenus[i]->IsOpen()) {
+				ex->mMenus[i]->Draw();
+			}
+		}
+	}
+}
+
+// opens one of the menus
+extern "C" void fn_80084B90(MenuEx* ex, s32 index)
+{
+	if (ex->mMenus[index]) {
+		ex->mMenus[index]->Open();
+		if (!ex->mActive) {
+			ex->mActive = TRUE;
+		}
+	}
+}
+
+// closes the open menus into the given state
+extern "C" void fn_80084BF0(MenuEx* ex, s32 state)
+{
+	for (int i = 0; i < (int)ARRAY_SIZE(ex->mMenus); i++) {
+		if (ex->mMenus[i] && ex->mMenus[i]->IsOpen()) {
+			ex->mMenus[i]->Close(state);
 		}
 	}
 }
