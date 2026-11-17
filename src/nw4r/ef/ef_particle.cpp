@@ -261,9 +261,7 @@ bool Particle::Initialize(u16 life, math::VEC3 pos, math::VEC3 vel,
     return true;
 }
 
-// NONMATCHING: retail loads mParticleManager one instruction earlier, before
-// the link register is stored; everything else is identical
-u8 Particle::Draw_GetAlphaFlick() {
+u8 Particle::Draw_GetAlphaFlick() const {
     const EmitterDesc* pDesc = mParticleManager->mResource->GetEmitterDesc();
     const EmitterDrawSetting& rSetting = pDesc->drawSetting;
 

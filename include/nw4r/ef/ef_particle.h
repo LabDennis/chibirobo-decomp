@@ -91,7 +91,7 @@ public:
     }
 
     // 0x80242B8C: the alpha flicker factor of this frame, 255 = none
-    u8 Draw_GetAlphaFlick();
+    u8 Draw_GetAlphaFlick() const;
 
     void GetColor(int layer, int index, GXColor* pColor) {
         pColor->r = mParameter.mColor[layer][index].r;
