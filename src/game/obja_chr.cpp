@@ -2923,7 +2923,13 @@ XObjChrItemAnim gPlayerItemAnimationTable[] = {
 // the battery is flat and the gauge on screen has run down to it, IsPlayerStopped
 static inline bool IsStopped(const XObjChr* chr)
 {
-	return chr->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
+	bool ret = false;
+	if (chr->mParams.mBattery <= 0.0f) {
+		if (InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn)) {
+			ret = true;
+		}
+	}
+	return ret;
 }
 
 void XObjChr::UpdateObject(u32 frames)
@@ -3348,11 +3354,7 @@ static inline bool IsEventHeld(const XObjChr* chr)
 
 static inline bool IsTumbling(const XObjChr* chr)
 {
-	bool ret = false;
-	if (chr->mTumble.mState == 4 || chr->mTumble.mState == 5 || chr->mTumble.mState == 6) {
-		ret = true;
-	}
-	return ret;
+	return chr->mTumble.mState == 4 || chr->mTumble.mState == 5 || chr->mTumble.mState == 6;
 }
 
 // events wait while he lies there out of battery
