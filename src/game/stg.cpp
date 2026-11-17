@@ -8065,8 +8065,8 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 	f32 w       = 0.6f * tex.GetWidth();
 	f32 h       = 0.6f * tex.GetHeight();
-	f32 opacity = 255.0f * alpha;
-	u32 color   = (u32)opacity | 0xC8C8C800;
+	alpha       = 255.0f * alpha;
+	u32 color   = (u32)alpha | 0xC8C8C800;
 	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x, y, 0.0f, w, h, 0.0f, 0.0f, 0.0f);
 	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[PCNumberDigits], 0);
 	w   = 1.2f * tex.GetWidth();
@@ -8074,7 +8074,7 @@ extern "C" void DrawSavePlayTime(s32 icon, s32 hours, s32 minutes, u8, f32 x, f3
 	PSMTXScale(tex.mMtx[1], 1.0f, 0.1f, 1.0f);
 	tex.mMtxDirty = TRUE;
 	f32 offset    = 12.0f + ((6.0f * (w - 3.0f * 1.2f) - 98.0f * 1.2f) - 12.0f);
-	u8 alphaByte  = opacity;
+	u8 alphaByte  = alpha;
 	u32 top = alphaByte | 0xEFEBC500, bottom = alphaByte | 0xEDA83600;
 	for (int i = 0; i < 4; i++) {
 		f32 div = 1.0f;
