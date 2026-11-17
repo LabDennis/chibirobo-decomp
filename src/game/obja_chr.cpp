@@ -6493,14 +6493,65 @@ void XObjChr::RegisterShadowObjects(CShadow* shadow)
 	HSD_ShadowAddObject(shadow->mShadow, (HSD_Obj*)mOXObj.mJObj);
 }
 
-// XObjChr::UpdateAnim
-/**
- * @note Address: 0x800A54FC
- * @note Size: 0x20
- */
-void XObjChr::UpdateAnim(u32 frames)
+static inline s32 ActionTargetPlacement(const XAction& action)
 {
-	CXObjIntp::UpdateAnim(frames);
+	if (action.mTarget != NULL) {
+		UnkStageObj* placement = action.mTarget->mCoord.mPlacement;
+		return GetStagePlacementIndex(placement);
+	}
+	return -1;
+}
+
+/**
+ * @note Address: 0x800A4678
+ * @note Size: 0x3E8
+ */
+void XObjChr::DrawDebugStatus()
+{
+	XObjChr* player = this;
+	s32 nearIndex   = player->mFloorContacts[4].objectIndex;
+	s32 hitIndex    = player->mHitObjectIndex;
+	s32 rideIndex   = player->mFloorContacts[0].objectIndex;
+	s32 eventIndex  = player->mFloorContacts[2].objectIndex;
+	s32 lift        = ActionTargetPlacement(player->mLift);
+	s32 hang        = ActionTargetPlacement(player->mHang);
+	s32 jump        = ActionTargetPlacement(player->mJump);
+	s32 ladder      = ActionTargetPlacement(player->mLadder);
+	s32 rope        = ActionTargetPlacement(player->mRope);
+	s32 push        = ActionTargetPlacement(player->mPush);
+	f32 floorHeight = NAN;
+	u32 flags       = 0;
+	s32 floor       = -1;
+	if (player->mFloorContacts[2].objectIndex >= 0) {
+		flags = (gGame.GetObject(player->mFloorContacts[2].objectIndex)->mStatus.mFlags >> 32) & 0xFF;
+	} else if (player->mHitObjectIndex >= 0) {
+		XObj* object = gGame.GetObject(player->mHitObjectIndex);
+		floorHeight  = object->mSelectedFloorHeight - player->mMoveTranslate.y;
+		floor        = object->mSelectedFloorIndex;
+		flags        = (object->mStatus.mFlags >> 32) & 0xFF;
+	}
+	s32 anim       = player->mAnimId;
+	HSD_AObj* aobj = GetAObj(player->mJObj);
+	f32 endFrame   = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
+	DrawGsStrokeTextFormat(&gGame.mGs, -56,
+	                       "\\B00000080POS(%6.2f,%6.2f,%6.2f) %3d %6.3f %6.3f\n%3d(%6.2f/%6.2f), %d\n\n"
+	                       "NEAR:%3d(%6.2f)\nHIT :%3d(%02X)\n    :%3d(%.2f)\nRIDE:%3d\nEVT :%3d\n\nACT :%2d\n"
+	                       "LIFT:%2d(%d)\nHANG:%2d(%d)\nJUMP:%2d(%d)\nLADR:%2d(%d)\nROPE:%2d(%d)\nPUSH:%2d(%d)\n"
+	                       "TMBL:%2d\nCOPT:%2d\nPOPP:%2d\nRADR:%2d\n",
+	                       16.0f, 30.0f, 0.0f, 11.0f, 12.0f, player->mMoveTranslate.x, player->mMoveTranslate.y, player->mMoveTranslate.z,
+	                       (s32)(RAD2DEG * player->mMoveRotate.y), player->mMoveSpeed, player->mMoveTranslate.mSpeed.y, anim,
+	                       player->mFrameTime.mFrame, endFrame, player->mIdleLoops, nearIndex, player->mNearDistance, hitIndex, flags,
+	                       floor, floorHeight, rideIndex, eventIndex, player->mAttachment, player->mLift.mState, lift, player->mHang.mState,
+	                       hang, player->mJump.mState, jump, player->mLadder.mState, ladder, player->mRope.mState, rope,
+	                       player->mPush.mState, push, player->mTumble.mState, player->mCopter.mState, player->mPopper.mState,
+	                       player->mRadar.mState);
+}
+
+extern "C" {
+void DrawRadarTargetBeam(XActRadar*);
+void DrawPopperShotParticles(XActPopper*);
+void DrawTumbleRing(XActTumbleFade*, const Vec&, f32);
+void PSMTXMultVecArray(const Mtx, const Vec*, Vec*, u32);
 }
 
 extern "C" void ClearActiveObjectFloors(XObj* object);
@@ -6633,6 +6684,16 @@ extern "C" void DrawPopperShotRings(XActPopper* act);
 extern "C" void DrawPlayerRadarEffects(XActRadar* act);
 extern "C" void DrawPointParticleDisplay(PointPtcl* points, f32 row);
 
+// XObjChr::UpdateAnim
+/**
+ * @note Address: 0x800A54FC
+ * @note Size: 0x20
+ */
+void XObjChr::UpdateAnim(u32 frames)
+{
+	CXObjIntp::UpdateAnim(frames);
+}
+
 static inline void DrawPlayerGauge(f32 x, const f32& y, f32 width, f32 fraction, u32 color)
 {
 	CGs* gs = &gGame.mGs;
@@ -6695,67 +6756,6 @@ void XObjChr::DrawScreenOverlay()
 				++row;
 		}
 	}
-}
-
-static inline s32 ActionTargetPlacement(const XAction& action)
-{
-	if (action.mTarget != NULL) {
-		UnkStageObj* placement = action.mTarget->mCoord.mPlacement;
-		return GetStagePlacementIndex(placement);
-	}
-	return -1;
-}
-
-/**
- * @note Address: 0x800A4678
- * @note Size: 0x3E8
- */
-void XObjChr::DrawDebugStatus()
-{
-	XObjChr* player = this;
-	s32 nearIndex   = player->mFloorContacts[4].objectIndex;
-	s32 hitIndex    = player->mHitObjectIndex;
-	s32 rideIndex   = player->mFloorContacts[0].objectIndex;
-	s32 eventIndex  = player->mFloorContacts[2].objectIndex;
-	s32 lift        = ActionTargetPlacement(player->mLift);
-	s32 hang        = ActionTargetPlacement(player->mHang);
-	s32 jump        = ActionTargetPlacement(player->mJump);
-	s32 ladder      = ActionTargetPlacement(player->mLadder);
-	s32 rope        = ActionTargetPlacement(player->mRope);
-	s32 push        = ActionTargetPlacement(player->mPush);
-	f32 floorHeight = NAN;
-	u32 flags       = 0;
-	s32 floor       = -1;
-	if (player->mFloorContacts[2].objectIndex >= 0) {
-		flags = (gGame.GetObject(player->mFloorContacts[2].objectIndex)->mStatus.mFlags >> 32) & 0xFF;
-	} else if (player->mHitObjectIndex >= 0) {
-		XObj* object = gGame.GetObject(player->mHitObjectIndex);
-		floorHeight  = object->mSelectedFloorHeight - player->mMoveTranslate.y;
-		floor        = object->mSelectedFloorIndex;
-		flags        = (object->mStatus.mFlags >> 32) & 0xFF;
-	}
-	s32 anim       = player->mAnimId;
-	HSD_AObj* aobj = GetAObj(player->mJObj);
-	f32 endFrame   = aobj != NULL ? HSD_AObjGetEndFrame(aobj) : 0.0f;
-	DrawGsStrokeTextFormat(&gGame.mGs, -56,
-	                       "\\B00000080POS(%6.2f,%6.2f,%6.2f) %3d %6.3f %6.3f\n%3d(%6.2f/%6.2f), %d\n\n"
-	                       "NEAR:%3d(%6.2f)\nHIT :%3d(%02X)\n    :%3d(%.2f)\nRIDE:%3d\nEVT :%3d\n\nACT :%2d\n"
-	                       "LIFT:%2d(%d)\nHANG:%2d(%d)\nJUMP:%2d(%d)\nLADR:%2d(%d)\nROPE:%2d(%d)\nPUSH:%2d(%d)\n"
-	                       "TMBL:%2d\nCOPT:%2d\nPOPP:%2d\nRADR:%2d\n",
-	                       16.0f, 30.0f, 0.0f, 11.0f, 12.0f, player->mMoveTranslate.x, player->mMoveTranslate.y, player->mMoveTranslate.z,
-	                       (s32)(RAD2DEG * player->mMoveRotate.y), player->mMoveSpeed, player->mMoveTranslate.mSpeed.y, anim,
-	                       player->mFrameTime.mFrame, endFrame, player->mIdleLoops, nearIndex, player->mNearDistance, hitIndex, flags,
-	                       floor, floorHeight, rideIndex, eventIndex, player->mAttachment, player->mLift.mState, lift, player->mHang.mState,
-	                       hang, player->mJump.mState, jump, player->mLadder.mState, ladder, player->mRope.mState, rope,
-	                       player->mPush.mState, push, player->mTumble.mState, player->mCopter.mState, player->mPopper.mState,
-	                       player->mRadar.mState);
-}
-
-extern "C" {
-void DrawRadarTargetBeam(XActRadar*);
-void DrawPopperShotParticles(XActPopper*);
-void DrawTumbleRing(XActTumbleFade*, const Vec&, f32);
-void PSMTXMultVecArray(const Mtx, const Vec*, Vec*, u32);
 }
 
 /**
