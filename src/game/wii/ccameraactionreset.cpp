@@ -74,10 +74,6 @@ void CCameraActionReset::SetCamera(CCamera* camera)
 	mInterestMode = 2;
 }
 
-// NONMATCHING: identical instruction stream, but the original stack frame is 0x90 and assigns
-// the temporaries in the order angle(0x20), target(0x2c), sret(0x38), cameraEye(0x48),
-// cameraInterest(0x58), eye(0x68); GC/3.0a5 gives us 0x80 with sret first. Untried spelling
-// change that could produce retail's slot order.
 /**
  * @note Address: 0x8016670C
  * @note Size: 0x494
@@ -86,10 +82,7 @@ void CCameraActionReset::PreviousUpdate()
 {
 	if (mState == 100) {
 		if (mAngle.z) { // drop any roll it came in with
-			mCameraFlags = 0x40010;
-			Vec angle    = mAngle;
-			angle.z      = 0.0f;
-			SetAngle(angle);
+			SetAngleZ(0.0f, 0x40010);
 		}
 		return;
 	}
@@ -145,8 +138,7 @@ void CCameraActionReset::PreviousUpdate()
 		}
 
 		f32 time   = mTime;
-		Vec target = eye;
-		SetEye_Interp(mMode, target, time);
+		SetEye_Interp(mMode, eye, time);
 
 		f32 fov = GetAreaCameraFovForHeightLevel(&gCameraAreaState, gCameraAreaState.mZoomLevel);
 		SetFov_Interp(mMode, fov, mTime);
