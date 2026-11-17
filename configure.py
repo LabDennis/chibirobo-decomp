@@ -519,7 +519,12 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactor3update.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjactor3release.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/scrc.cpp", cflags=with_hsd_headers(cflags_game)),
-            Object(NonMatching, "game/xobjactortoy.cpp", cflags=with_hsd_headers(cflags_game)),
+            # -inline deferred, as retail shows: .rodata has ProcessPendingEvents' joint paths (0x8020C418-0x8020C474)
+            # first, then UpdateToy6FJointSpin's (0x8020C580), UpdateToyJointExtension's (0x8020C610), StateCarry's
+            # (0x8020C760), StateHitRecovery's (0x8020C794) and StatePickUp's (0x8020C7D4), the exact reverse of .text
+            # (StatePickUp 0x80117BB4 ... ProcessPendingEvents 0x8012109C); .data's member-pointer constants run the same
+            # way, ResetActorState's (0x8022C5CC) first and StatePickUp's (0x8022C620) last
+            Object(NonMatching, "game/xobjactortoy.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjactorjenny.cpp", cflags=with_hsd_headers(cflags_game)),
             # -inline deferred, as retail shows: .rodata has ProcessPendingEvents' joint path initializers
             # (0x8020CB58 {0,4,2,0,0,0}, 0x8020CB70 {0,4,0,0,0}) before UpdateAfterAnim's (0x8020CB9C-0x8020CBF8),
