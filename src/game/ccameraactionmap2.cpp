@@ -663,9 +663,8 @@ void CCameraActionMap::Update(u32 step)
 		}
 		mPrevTargetEye.y = mTargetEye.y = mCurrentHeight;
 		SetEye(__ct__4CVecFfff(mEye.x, mTargetEye.y, mEye.z));
-		Vec target = mTargetEye;
-		if (mPrevTargetEye != target)
-			StartCameraEyeInterpolation(this, target, mEyeInterpTime);
+		if (mPrevTargetEye != mTargetEye)
+			StartCameraEyeInterpolation(this, mTargetEye, mEyeInterpTime);
 	}
 
 	UpdateCameraEyeInterpolation(this, step);
