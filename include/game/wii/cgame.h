@@ -1047,11 +1047,95 @@ public:
 	void State7(u32 frames);
 };
 
-class MenuPC : public CMenu {
-public:
-	void State6(u32 frames);
-	void State8(u32 frames);
+// a number the pc shows easing toward its value, the GameCube struct of the same name
+struct PCAmount {
+	f32 shown;
+	f32 target;
 };
+
+// one row of the shop's lists, the GameCube struct of the same name
+struct MenuPCItem {
+	s16 mItem;        // _00, -1 for an empty row
+	s16 mCount;       // _02, -1 for an empty row
+	s16 mPrice;       // _04
+	u8 mIsAttachment; // _06
+	u8 _07;           // _07
+};
+
+// the chibi-pc shop, the GameCube class of the same name; its members sit four bytes further on because
+// Menu is a word longer here
+class MenuPC : public Menu {
+public:
+	void State0(u32 frames);
+	void State1(u32 frames);
+	void State2(u32 frames);
+	void State3(u32 frames);
+	void State4(u32 frames);
+	void State5(u32 frames);
+	void State6(u32 frames);
+	void State7(u32 frames);
+	void State8(u32 frames);
+	void State9(u32 frames);
+	void State10(u32 frames);
+	void State11(u32 frames);
+
+	virtual void Init();
+	virtual BOOL Update(u32 frames);
+
+	s32 mMode;      // _15C
+	s32 mPrevMode;  // _160
+	u32 _164;       // _164
+	s32 mPhase;     // _168
+	f32 mSpeed;     // _16C
+	s32 mTextPhase; // _170
+	s32 mChoice;    // _174
+	u8 _178[0x194 - 0x178];
+	f32 mProgress;          // _194
+	f32 mTargetProgress;    // _198
+	f32 _19C;               // _19C, eased toward _1A4
+	f32 mFrameHeight;       // _1A0, the frame quad grows to its target on opening and closes back
+	f32 _1A4;               // _1A4
+	f32 mTargetFrameHeight; // _1A8
+	u8 _1AC[0x1BC - 0x1AC];
+	s32 mCharIndex;       // _1BC
+	u32 mGreetingVariant; // _1C0
+	f32 mTextX;           // _1C4
+	f32 mTextY;           // _1C8
+	f32 mTargetX;         // _1CC
+	f32 mTargetY;         // _1D0
+	u8 _1D4[0x370 - 0x1D4];
+	s32 mKeeperAnimStep; // _370, the shopkeeper's anim step
+	s32 mKeeperAnimId;   // _374, the anim for it
+	u8 mPlayKeeperAnim;  // _378, set the anim
+	u8 _379[0x388 - 0x379];
+	s32 mDepositBalance; // _388
+	s32 mHistoryStart;   // _38C
+	s32 mHistoryCount;   // _390
+	u8 _394[0x3A4 - 0x394];
+	u8 mShopOnly; // _3A4, opens straight into the item list and B closes
+	u8 _3A5[0x3A8 - 0x3A5];
+	u32 mDialogueNumber; // _3A8
+	u8 _3AC[0x400 - 0x3AC];
+	f32 mScroll;       // _400
+	f32 mScrollTarget; // _404
+	u8 _408[0x410 - 0x408];
+	PCAmount mMoneyDisplay; // _410
+	PCAmount mScrapDisplay; // _418
+	u8 _420[0x428 - 0x420];
+	f32 _428; // _428, eased toward _42C
+	f32 _42C; // _42C
+	u8 _430[0x438 - 0x430];
+	u8 mCanSelect; // _438
+	u8 _439[0x43C - 0x439];
+	s32 mChoices[4];  // _43C
+	s32 mChoiceCount; // _44C
+	f32 mTexScroll;   // _450
+};
+STATIC_ASSERT(offsetof(MenuPC, mShopOnly) == 0x3A4);
+STATIC_ASSERT(offsetof(MenuPC, mTexScroll) == 0x450);
+
+// clears the shop keeper's line, 0x8006D2F0; the GameCube inlines it
+extern "C" void ResetPCCharacters(MenuPC* menu);
 
 // Wii FbSubwin - partial: only the members below are verified, by the retail functions'
 // offsets (CreateFbTexture writes _04/_06, Init stores _58/_5C/_BC, the function-table

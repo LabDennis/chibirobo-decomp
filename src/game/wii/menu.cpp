@@ -6,6 +6,7 @@
 // NONMATCHING: most menu state, drawing and layout functions still have no source.
 #include "game/wii/menuutil.h"
 #include "game/wii/cgame.h"
+#include "game/wii/xobj.h"
 #include "game/wii/cpadact.h"
 #include "game/wii/title.h"
 #include "game/globals.h"
@@ -14,6 +15,7 @@
 #include "stl/math.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 extern "C" void LayoutMainMenuRows(MenuMain* menu);
 extern "C" void RebuildStageSelectList(MenuStageSelect* menu);
@@ -26,6 +28,7 @@ char* GetStageFileName(s32 stage);
 char* GetStageName(s32 stage);
 char* GetStageDesc(s32 stage);
 char* FormatToStaticBuffer(const char* fmt, ...);
+void ApproachHudValue(f32* value, f32* target, f32 step);
 }
 
 // the Wii's text is Japanese with the language setting at 0
@@ -564,6 +567,290 @@ extern "C" bool IsSaveSlotIntact(const WiiMenuSaveSlot* slot)
 extern "C" const char* GetTitleAndSaveMenuText(s32 index)
 {
 	return GetLocalizedInterfaceText(index + 95);
+}
+
+void MenuPC::Init()
+{
+	MenuPC* menu = this;
+	menu->CMenu::Init();
+	menu->mDepositBalance = 0;
+	menu->mDialogueNumber = 0;
+}
+
+// the shop's purchase history rows; the functions that fill them are in the file's second half
+static MenuPCItem sShopHistoryEntries[20];
+
+static void (MenuPC::*sPCStepHandlers[])(u32)
+    = { &MenuPC::State0, &MenuPC::State1, &MenuPC::State2, &MenuPC::State3, &MenuPC::State4,  &MenuPC::State5,
+	    &MenuPC::State6, &MenuPC::State7, &MenuPC::State8, &MenuPC::State9, &MenuPC::State10, &MenuPC::State11 };
+
+static inline void PCSlide(f32& value, f32& target, f32 speed)
+{
+	if (value > target) {
+		if ((value -= speed) < target)
+			value = target;
+	}
+	if (value < target) {
+		if ((value += speed) > target)
+			value = target;
+	}
+}
+
+static inline void PCEase(f32& value, f32& target)
+{
+	f32 rate = fabs((target - value) * 0.25f);
+	if (rate < 1.0f)
+		rate = 1.0f;
+	PCSlide(value, target, rate);
+}
+
+static inline void PCEaseCall(f32& value, f32& target)
+{
+	f32 rate = fabs((target - value) * 0.25f);
+	if (rate <= 1.0f)
+		rate = 1.0f;
+	ApproachHudValue(&value, &target, rate);
+}
+
+static inline XObj* PCWorldObject(s32 index)
+{
+	return gGame.mXObjs.mPools[22].Get(index);
+}
+
+// NONMATCHING: retail's absolute values in the easing are single precision, fabs adds an frsp each time
+BOOL MenuPC::Update(u32 frames)
+{
+	if (CMenu::Update(frames) == 4) {
+		PCEase(_19C, _1A4);
+		PCEase(mFrameHeight, mTargetFrameHeight);
+		PCSlide(mTextX, mTargetX, 6.0f * frames);
+		PCSlide(mTextY, mTargetY, 6.0f * frames);
+		ApproachHudValue(&mScroll, &mScrollTarget, 17.0f);
+		PCEaseCall(mMoneyDisplay.shown, mMoneyDisplay.target);
+		PCEaseCall(mScrapDisplay.shown, mScrapDisplay.target);
+		PCEaseCall(_428, _42C);
+		mTexScroll -= 0.008f * frames;
+		if (mMode > 1) {
+			switch (mTextPhase) {
+			case 0:
+				switch (mMode) {
+				case 3:
+				case 7:
+				case 10:
+					mTargetX = 140.0f;
+					break;
+				case 4:
+					mTargetX = 160.0f;
+					break;
+				default:
+					mTargetX = 180.0f;
+					break;
+				}
+				mTextPhase++;
+				break;
+			case 1:
+				if (mTextX == mTargetX) {
+					mTextY   = 129.0f;
+					mTargetY = 301.0f;
+					mTextPhase++;
+				}
+				break;
+			case 2:
+				if (mTextY == mTargetY) {
+					switch (mMode) {
+					case 3:
+					case 7:
+					case 10:
+						mTextX   = 140.0f;
+						mTargetX = 469.0f;
+						break;
+					case 4:
+						mTextX   = 160.0f;
+						mTargetX = 449.0f;
+						break;
+					default:
+						mTextX   = 210.0f;
+						mTargetX = 429.0f;
+						break;
+					}
+					mTextPhase++;
+				}
+				break;
+			case 3:
+				if (mTextX == mTargetX)
+					mTextPhase++;
+				break;
+			case 4:
+				break;
+			}
+		}
+		switch (mKeeperAnimStep) {
+		case 0:
+			mKeeperAnimId = 0;
+			break;
+		case 1:
+			mKeeperAnimId = 1;
+			break;
+		case 2:
+			mKeeperAnimId = 2;
+			break;
+		case 3:
+			mKeeperAnimId = 6;
+			break;
+		case 4:
+			mKeeperAnimId = 7;
+			break;
+		case 5:
+			mKeeperAnimId = 8;
+			break;
+		case 6:
+			mKeeperAnimId = 9;
+			break;
+		case 7:
+			mKeeperAnimId = 2;
+			break;
+		case 8:
+			mKeeperAnimId = 10;
+			break;
+		default:
+			mKeeperAnimId = 0;
+			break;
+		}
+		if (mPlayKeeperAnim == 1) {
+			for (s32 i = 0; i < 400; i++) {
+				XObj* obj = PCWorldObject(i);
+				switch (obj->GetKind()) {
+				case 120: // the shopkeeper
+					obj->SetAnim(mKeeperAnimId, 0, 0.0f, frames, 1.0f, 15.0f);
+					break;
+				}
+			}
+			mPlayKeeperAnim = 0;
+		}
+		// these steps play once: four frames before their end the next step starts
+		switch (mKeeperAnimStep) {
+		case 1:
+		case 2:
+		case 6:
+		case 8:
+			for (s32 i = 0; i < 400; i++) {
+				XObj* obj = PCWorldObject(i);
+				switch (obj->GetKind()) {
+				case 120: {
+					f32 current = obj->GetAnimFrame();
+					f32 end     = obj->GetAnimEndFrame();
+					if (end - 4.0f <= current) {
+						mKeeperAnimStep++;
+						mPlayKeeperAnim = 1;
+					}
+				} break;
+				}
+			}
+			break;
+		}
+		(this->*sPCStepHandlers[mMode])(frames);
+	}
+	return IsOpen();
+}
+
+static inline void ResetPCText(MenuPC* menu, s32 step)
+{
+	menu->mPrevMode  = menu->mMode;
+	menu->mMode      = step;
+	menu->mPhase     = 0;
+	menu->mTextPhase = 0;
+	menu->mTextX     = 210.0f;
+	menu->mTextY     = 129.0f;
+	menu->mTargetX   = menu->mTextX;
+	menu->mTargetY   = menu->mTextY;
+	ResetPCCharacters(menu);
+}
+
+void MenuPC::State0(u32)
+{
+	MenuPC* menu = this;
+	if (menu->mShopOnly) {
+		ResetPCText(menu, 3);
+	} else {
+		ResetPCText(menu, 1);
+		menu->mProgress       = 0.0f;
+		menu->mTargetProgress = 1.0f;
+		switch (rand() % 2) {
+		case 0:
+			menu->mSpeed = 0.04f;
+			break;
+		case 1:
+			menu->mSpeed = 0.08f;
+			break;
+		}
+	}
+}
+
+void MenuPC::State1(u32 frames)
+{
+	MenuPC* menu = this;
+	switch (menu->mPhase) {
+	case 0:
+		PlayWiiSoundEffect(&gGame.mSound, 0x35A, 1.0f, 0.0f);
+		menu->mPhase++;
+		break;
+	case 1:
+		break;
+	}
+	ApproachHudValue(&menu->mProgress, &menu->mTargetProgress, menu->mSpeed * frames);
+	if (menu->mProgress >= 1.0f)
+		ResetPCText(menu, 2);
+}
+
+static inline s16 MenuHistoryValue(int i)
+{
+	return sShopHistoryEntries[i].mCount;
+}
+
+static inline void RestorePCHistory(MenuPC* menu)
+{
+	if (menu->mHistoryCount > 0) {
+		for (int i = 0; i < menu->mHistoryCount; i++) {
+			gEventVars.mVars[menu->mHistoryStart + i + menu->mHistoryCount] = MenuHistoryValue(i);
+		}
+		gEventVars.mVars[196] = menu->mDepositBalance;
+	}
+}
+
+void MenuPC::State2(u32)
+{
+	MenuPC* menu = this;
+	CPad pad(0);
+	if (gWiiPointer.Check(PadActStickUp)) {
+		menu->mChoice--;
+		if (menu->mChoice < 0)
+			menu->mChoice = menu->mChoiceCount - 1;
+		PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+	} else if (gWiiPointer.Check(PadActStickDown)) {
+		menu->mChoice++;
+		if (menu->mChoice > menu->mChoiceCount - 1)
+			menu->mChoice = 0;
+		PlayWiiSoundEffect(&gGame.mSound, 0xF4, 1.0f, 0.0f);
+	} else if (gWiiPointer.Check(PadActConfirm)) {
+		s32 step = menu->mChoices[menu->mChoice];
+		// the catalog (mode 7) only buzzes while it has nothing in it
+		if (step == 7) {
+			if (menu->mCanSelect) {
+				ResetPCText(menu, 7);
+				PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+			} else {
+				PlayWiiSoundEffect(&gGame.mSound, 0xF2, 1.0f, 0.0f);
+			}
+		} else if (step >= 0) {
+			ResetPCText(menu, step);
+			PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+		}
+	} else if (gWiiPointer.Check(PadActCancel)) {
+		// B: shrink the frame, mode 11 closes the pc once it is shut
+		ResetPCText(menu, 11);
+		menu->mTargetFrameHeight = 0.0f;
+		RestorePCHistory(menu);
+	}
 }
 
 // the status and PC menus' empty states
