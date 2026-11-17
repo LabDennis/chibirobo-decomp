@@ -18,13 +18,6 @@
 #include "game/xobjsound.h"
 #include "game/xobjmap.h"
 
-// The readers follow the regional BSS prefix; the code reaches them relative to it.
-#if defined(VERSION_JP)
-u8 gObjectReaderBss[0x134];
-#else
-u8 gObjectReaderBss[0x140];
-#endif
-
 // the three reader threads, built by the file's static initializer
 XObjReadAll gAllObjectsReader;
 XObjReadOne gSingleObjectReader;
@@ -71,6 +64,8 @@ BOOL XObjRead::HasPendingReads()
  * @note Address: 0x80131D2C
  * @note Size: 0x280
  */
+// NONMATCHING: retail reaches the readers 0x140 (JP 0x134) bytes into the unit's .bss, behind the header-made
+// prefix every file's .bss starts with; this unit has no such prefix, so the offsets differ
 extern "C" BOOL HasPendingObjectReads()
 {
 	return gAllObjectsReader.HasPendingReads() || gSingleObjectReader.HasPendingReads() || gObjectAnimationReader.HasPendingReads();
@@ -804,6 +799,8 @@ extern "C" void ResetPooledObjects(XObjPool* pools)
  * @note Size: 0xDFC
  */
 // builds the 23 pools, numbers every object and starts the three reader threads
+// NONMATCHING: retail reaches the readers 0x140 (JP 0x134) bytes into the unit's .bss, behind the header-made
+// prefix every file's .bss starts with; this unit has no such prefix, so the offsets differ
 extern "C" void InitializeObjectPools(XOBJS* list)
 {
 	s32 id = 0;
