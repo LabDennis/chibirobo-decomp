@@ -20,6 +20,18 @@ extern "C" void DrawPlayerRadarEffects(XActRadar*)
 {
 }
 
+// the float forms of the MSL trig routines, which the game's math.h declares as functions
+extern "C" {
+inline f32 sinf(f32 x)
+{
+	return sin(x);
+}
+inline f32 cosf(f32 x)
+{
+	return cos(x);
+}
+}
+
 extern "C" CVec GetRadarDishWorldPosition(XObjRadar*);
 extern "C" void PSMTXMultVecArray(const Mtx, const Vec*, Vec*, u32);
 
@@ -31,15 +43,16 @@ static inline u32 PackRadarColor(const ScrnColorF& c)
 static inline u16 ShadeRadarBeam(XActRadar* act, u32* colors, u32 base)
 {
 	u16 n = 0;
-	for (int turn = 0; turn < 2; ++turn) {
-		for (int step = 0; step < 16; ++step) {
+	int turn, step;
+	for (turn = 0; turn < 2; ++turn) {
+		for (step = 0; step < 16; ++step) {
 			colors[n]     = base | (u8)(s32)(150.f * ((1.f / 64) * n) * act->mFade);
 			colors[n + 1] = base;
 			n += 2;
 		}
 	}
-	for (int turn = 0; turn < 6; ++turn) {
-		for (int step = 0; step < 16; ++step) {
+	for (turn = 0; turn < 6; ++turn) {
+		for (step = 0; step < 16; ++step) {
 			colors[n]     = base | (u8)(s32)(150.f * (1.f - (1.f / 192) * (turn * 32 + step)) * act->mFade);
 			colors[n + 1] = base;
 			n += 2;
@@ -55,8 +68,8 @@ static inline f32 TargetPitch(const Vec& from, const Vec& to)
 	return dy < 0 ? HALF_PI - pitch : pitch - HALF_PI;
 }
 
-// NONMATCHING: retail keeps the raw sin of the turn across the sin of the step and adds the wobble after it, we add it
-// at once; ShadeRadarBeam's loop counters get their own zero in retail
+// NONMATCHING: retail takes the yaw's z difference before the x one and numbers the float registers otherwise;
+// ShadeRadarBeam's loop counters get their own zero in retail
 extern "C" void DrawRadarTargetBeam(XActRadar* act)
 {
 	if (!(act->mFade > 0))
@@ -83,10 +96,8 @@ extern "C" void DrawRadarTargetBeam(XActRadar* act)
 	f32 z = 2, phase = act->mAngle[0];
 	for (int turn = 0; turn < 8; ++turn) {
 		for (int step = 0; step < 16; ++step) {
-			vertices[n].x
-			    = (.007f * n + 1) * ((f32)sin((TWO_PI / 16) * step) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
-			vertices[n].y
-			    = (.007f * n + 1) * ((f32)cos((TWO_PI / 16) * step) * (.1f * (f32)sin((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].x = (.007f * n + 1) * (sinf((TWO_PI / 16) * step) * (.1f * sinf((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
+			vertices[n].y = (.007f * n + 1) * (cosf((TWO_PI / 16) * step) * (.1f * sinf((TWO_PI / 16) * turn + act->mAngle[1]) + 1));
 			vertices[n].z = z;
 			f32 wave      = WrapAngle(phase);
 			if (wave > PI)
@@ -1312,6 +1323,8 @@ static inline bool TumbleStationary(const CVec& delta)
  * @note Address: 0x800C3A80
  * @note Size: 0x9E8
  */
+// NONMATCHING: retail copies both particle rotations from one zero Vec of its .rodata (away from this function's
+// other constants) into the lowest stack slots, and builds the event script call's arguments in other registers
 void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end)
 {
 	// 1 and 15 knock him over; 2 and 16 keep him down until a button or the idle timer, then 3 and
@@ -1353,8 +1366,8 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
 		break;
 	case 10: {
 		PlayTumbleAnimation(act->mOwner, 0xE6, 0.0f);
-		Vec offset = { 0.0f, 12.0f, 0.0f }, rotation = { 0.0f, 0.0f, 0.0f };
-		gGame.mParticle.CreateSRT(0x10005, 1, act->mOwner->mMoveTranslate + offset, act->mOwner->mMoveScale, rotation, FALSE);
+		Vec offset = { 0.0f, 12.0f, 0.0f };
+		gGame.mParticle.CreateSRT(0x10005, 1, act->mOwner->mMoveTranslate + offset, act->mOwner->mMoveScale, (Vec) { 0.0f, 0.0f, 0.0f }, FALSE);
 		act->mState = 11;
 		break;
 	}
@@ -1376,15 +1389,12 @@ void UpdatePlayerTumbleAnimation(XActTumble* act, s32 anim, HSD_AObj* aobj, u32 
 	case 14:
 		if (act->mOwner->mIdleModeTimer > 0) {
 			if (!act->mIdleParticle && TumbleStationary(act->mOwner->mMoveTranslate - (Vec)act->mOwner->mLastPos)) {
-				s32 effect = 0x28;
-				if (rand() & 1)
-					effect = 0x26;
+				s32 effect = (rand() & 1) ? 0x26 : 0x28;
 				s32 height = act->mOwner->mLift.mState == 0 ? 2 : 4;
 				s32 path[] = { 0, 1, 0, 1, 2, 0, 1 };
-				CVec pos   = GetEventJointWorldPosition(act->mOwner, 7, path);
-				Vec offset = { 0.0f, 0.0f, 0.0f }, rotation = { 0.0f, 0.0f, 0.0f };
-				offset.y           = height;
-				act->mIdleParticle = gGame.mParticle.CreateSRT(effect | 0x10000, 1, pos + offset, act->mOwner->mMoveScale, rotation, FALSE);
+				act->mIdleParticle = gGame.mParticle.CreateSRT(effect | 0x10000, 1,
+				                                               GetEventJointWorldPosition(act->mOwner, 7, path) + (Vec) { 0.0f, height, 0.0f },
+				                                               act->mOwner->mMoveScale, (Vec) { 0.0f, 0.0f, 0.0f }, FALSE);
 			}
 		} else {
 			act->mIdleParticle = NULL;
