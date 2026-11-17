@@ -59,7 +59,7 @@ extern "C" void DrawHudRoundedRectangle(u32 color, f32 x, f32 y, f32 w, f32 h, f
 
 static inline BOOL ProjectRoboeyesItem(XObj* object, f32* width, f32* height)
 {
-	f32 r = object->GetFloorXZExtent() * .5f;
+	f32 r = object->GetFloorXZExtent() / 2.0f;
 	if (r < 1.0f)
 		r = 1.0f;
 	f32 h = object->GetCollisionHeight();
@@ -80,7 +80,7 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 		Label entries[64];
 		u32 used, visible;
 	} work;
-	work.used = work.visible = 0;
+	work.visible = work.used = 0;
 	XObjPool& pool           = gGame.mXObjs.mPools[8];
 	for (s32 i = 0; i < pool.mUsed; ++i) {
 		XObj* object = pool.Get(i);
@@ -94,9 +94,10 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 			Vec offset                        = { 0, 0, 0 };
 			f32 x, y;
 			object->ProjectOffsetToScreen(&offset, &x, &y, NULL, NULL);
-			y -= .5f * radius;
+			y -= radius / 2.0f;
 			f32 dx = 320.0f - x, dy = 224.0f - y;
-			work.entries[work.visible++].distance = sqrtf(dx * dx + dy * dy);
+			work.entries[work.visible].distance = sqrtf(dx * dx + dy * dy);
+			work.visible++;
 		}
 	}
 	CGs* gs = &base->mGs;
@@ -118,30 +119,29 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 			Vec offset = { 0, 0, 0 };
 			f32 x, y, z;
 			object->ProjectOffsetToScreen(&offset, &x, &y, &z, NULL);
-			y -= radius * .5f;
+			y -= radius / 2.0f;
 			const char* name = (const char*)GetItemName(object->GetItem());
 			f32 width        = 32.0f + MeasureGameTextWidth(gs, name, TRUE, 20);
-			const f32 angle  = 2.3561945f;
+			f32 angle        = 2.3561945f;
 			f32 startX = x + radius * (f32)sin(angle), startY = y + radius * (f32)cos(angle);
-			f32 endX = x + 1.7f * radius * (f32)sin(angle), left = endX, right = endX + width;
-			f32 endY = y + 1.7f * radius * (f32)cos(angle);
+			f32 endX = x + 1.7f * radius * (f32)sin(angle), endY = y + 1.7f * radius * (f32)cos(angle);
+			f32 left = endX, right = endX + width;
 			for (u32 j = 0; j < work.used; ++j) {
 				const Label& prior = work.entries[j];
-				f32 dy = endY - prior.y, dx = left - prior.left;
+				f32 dy             = endY - prior.y;
 				if (dy < 0)
 					dy = -dy;
+				f32 dx = left - prior.left;
 				if (dx < 0)
 					dx = -dx;
-				if (dy < 32 && dx < (left > prior.left ? prior.width : width)) {
-					endY         = prior.y - 33;
-					f32 distance = endY - startY;
-					if (distance < 0)
-						distance = -distance;
+				f32 room = left > prior.left ? prior.width : width;
+				if (dy < 32 && dx < room) {
+					endY = prior.y - 33;
 					if (left == right) {
-						endX = startX - distance * .5f;
+						endX = startX - Abs(endY - startY) / 2.0f;
 						left = right = endX - width;
 					} else {
-						endX  = startX + distance * .5f;
+						endX  = startX + Abs(endY - startY) / 2.0f;
 						left  = endX;
 						right = endX + width;
 					}
@@ -149,9 +149,10 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 					j = -1;
 				}
 			}
-			work.entries[work.used].y       = endY;
-			work.entries[work.used].left    = left;
-			work.entries[work.used++].width = width;
+			work.entries[work.used].y     = endY;
+			work.entries[work.used].left  = left;
+			work.entries[work.used].width = width;
+			work.used++;
 			if (pass == 0) {
 				f32 inner = radius + .1f * radius * (f32)sin(eyes->mPhase), outer = 1.2f * inner;
 				for (s32 k = 0; (f32)k < 16.0f; ++k) {
@@ -163,11 +164,10 @@ extern "C" void DrawRoboeyesItemLabels(CScrnRoboeyes* eyes, CBase* base)
 				DrawGsLineSegment(gs, NULL, startX, startY, 0, gold, endX, endY, 0, gold);
 			}
 			if (pass == 1) {
-				DrawHudRoundedRectangle(160, left + width * .5f, endY - 16, width, 16, 1, 1);
+				DrawHudRoundedRectangle(160, left + width / 2.0f, endY - 16, width, 16, 1, 1);
 				DrawGsLineSegment(gs, NULL, endX, endY, 0, gold, right, endY, 0, gold);
 				s32 icon    = GetItemIconTextureIndex(object->GetItem());
-				CTpl& tpl   = gGame.mTpl;
-				CTexObj tex = tpl.mTex.Init(&((TPLPalette*)tpl.mBuffer)->descriptorArray[icon], 0);
+				CTexObj tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[icon], 0);
 				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
 				DrawGsTexturedQuad(&gGame.mGs, &tex, -1, -1, -1, -1, left + 16, endY - 16, 0, 32, 32, 0, 0, 0);
 				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
@@ -185,7 +185,7 @@ struct RoboeyesValue {
 	f32 value, target;
 	void Update()
 	{
-		f32 step = (target - value) * 0.5f;
+		f32 step = (target - value) / 2.0f;
 		if (step < 0)
 			step = -step;
 		ApproachHudValue(&value, &target, step);
@@ -215,7 +215,7 @@ static inline void DrawRoboeyesLens(CGs* gs, Vec* points, f32 x, f32 y, f32 rx, 
 	}
 }
 
-// NONMATCHING: retail keeps &gGame.mTpl.mTex in a register across the bracket loop
+// NONMATCHING: float registers only (retail keeps width and height in f19/f20, this build in f15/f16)
 void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)
@@ -272,8 +272,8 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	case 2:
 		lw.target = width / 6.0f;
 		lh.target = height / 6.0f;
-		rw.target = width * .5f;
-		rh.target = height * .5f;
+		rw.target = width / 2.0f;
+		rh.target = height / 2.0f;
 		if (gGame.GetPlayer()->GetAttachment() != 2) {
 			focus.target = 0;
 			state        = 3;
@@ -302,9 +302,9 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 	rw.Update();
 	rh.Update();
 	f32 offset = separation.value;
-	f32 rx = .6f * (rw.value * .5f), ry = .6f * (rh.value * .5f);
+	f32 rx = .6f * (rw.value / 2.0f), ry = .6f * (rh.value / 2.0f);
 	Vec points[65];
-	DrawRoboeyesLens(gs, points, x - offset, y, .6f * (lw.value * .5f), .6f * (lh.value * .5f), color, alpha, trail, false);
+	DrawRoboeyesLens(gs, points, x - offset, y, .6f * (lw.value / 2.0f), .6f * (lh.value / 2.0f), color, alpha, trail, false);
 	DrawRoboeyesLens(gs, points, x + offset, y, rx, ry, color, alpha, trail, true);
 	if (state == 2) {
 		CTexObj tex;
@@ -317,8 +317,7 @@ void CScrnRoboeyes::Draw(CGs* gs, s32 mode)
 			f32 radius = rx + pulse;
 			f32 sx = (f32)sin(a), cy = (f32)cos(a);
 			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-			CTpl& tpl = gGame.mTpl;
-			tex       = tpl.mTex.Init(&((TPLPalette*)tpl.mBuffer)->descriptorArray[128 - StatusTextureOffset], 0);
+			tex   = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[128 - StatusTextureOffset], 0);
 			u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
 			DrawGsTexturedQuad(&gGame.mGs, &tex, tint, tint, tint, tint, radius * sx + x, radius * cy + y, 0, 1.4f * (1.1f * w), 1.4f * h,
 			                   0, 0, a);
@@ -450,6 +449,8 @@ static inline void EndWipeMask(CGs* gs)
  * @note Address: 0x80021570
  * @note Size: 0x528
  */
+// NONMATCHING: retail adds the row's 20 after a separate multiply (fmuls, fadds) where this build
+// fuses it (fmadds), one instruction short
 void CScrnWipeCustom::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)
@@ -507,6 +508,8 @@ static inline void SetTileEdge(Vec* vertices, f32 x, f32 y, f32 outerX, f32 oute
  * @note Address: 0x800220DC
  * @note Size: 0x7C0
  */
+// NONMATCHING: retail computes each outer edge as its own fused half-plus-offset (fmadds/fmsubs)
+// where this build reuses the inner edge; the quad data also sits elsewhere in .rodata
 void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 {
 	if (!mActive)
@@ -522,11 +525,11 @@ void CScrnWipeTile::Draw(CGs* gs, s32 mode)
 	DrawGsQuad(gs, 255, 255, 255, 255, mX, mY, 0.0f, mWidth, mHeight, 0.0f, 0.0f, mRotation);
 
 	Vec vertices[18] = {};
-	const f32 dx = edgeWidth * 0.5f, dy = edgeHeight * 0.5f;
-	f32 left = -mWidth * 0.5f, right = mWidth * 0.5f;
-	f32 outerLeft = -mWidth * 0.5f - dx, outerRight = mWidth * 0.5f + dx;
-	f32 top = -mHeight * 0.5f, bottom = mHeight * 0.5f;
-	f32 outerTop = -mHeight * 0.5f - dy, outerBottom = mHeight * 0.5f + dy;
+	const f32 dx = edgeWidth / 2.0f, dy = edgeHeight / 2.0f;
+	f32 left = -mWidth / 2.0f, right = mWidth / 2.0f;
+	f32 outerLeft = -mWidth / 2.0f - dx, outerRight = mWidth / 2.0f + dx;
+	f32 top = -mHeight / 2.0f, bottom = mHeight / 2.0f;
+	f32 outerTop = -mHeight / 2.0f - dy, outerBottom = mHeight / 2.0f + dy;
 	SetTileEdge(vertices, left, top, outerLeft, outerTop, outerRight, outerTop);
 	SetTileEdge(vertices + 4, right, top, outerRight, outerTop, outerRight, outerBottom);
 	SetTileEdge(vertices + 8, right, bottom, outerRight, outerBottom, outerLeft, outerBottom);
@@ -566,12 +569,12 @@ void CScrnWipe::Draw(CGs* gs, s32 mode)
 	for (s32 i = 0; i < 65; i++) {
 		f32 angle     = (TWO_PI / 64.0f) * i;
 		PrimVertex* v = &vertices[2 * i];
-		v[0].pos.x    = mX - mWidth * 0.5f * (f32)sin(angle);
-		v[0].pos.y    = mY + mHeight * 0.5f * (f32)cos(angle);
+		v[0].pos.x    = mX - mWidth / 2.0f * (f32)sin(angle);
+		v[0].pos.y    = mY + mHeight / 2.0f * (f32)cos(angle);
 		v[0].pos.z    = 0.0f;
 		v[0].color    = 255;
-		v[1].pos.x    = mX - (mWidth + edgeWidth) * 0.5f * (f32)sin(angle);
-		v[1].pos.y    = mY + (mHeight + edgeHeight) * 0.5f * (f32)cos(angle);
+		v[1].pos.x    = mX - (mWidth + edgeWidth) / 2.0f * (f32)sin(angle);
+		v[1].pos.y    = mY + (mHeight + edgeHeight) / 2.0f * (f32)cos(angle);
 		v[1].pos.z    = 0.0f;
 		v[1].color    = 0;
 	}
@@ -1362,7 +1365,7 @@ s32 XObj::OnPlayerContact(s32 unused, s32 value)
  */
 s32 XObj::HandleEventCommand(s32 count, s32* args)
 {
-	for (s32 i = 0; i < count; ++i) { }
+	for (int i = 0; i < count; i++) { }
 	return 0;
 }
 
@@ -1957,6 +1960,8 @@ static inline bool FadeDone()
  * @note Address: 0x800280B4
  * @note Size: 0x244
  */
+// NONMATCHING: retail walks separate induction pointers for mArchive.mDesc and mLightAnims, as in
+// XObjLight and XObjMap::UpdateObject; this build shares one
 // XObjDemo's update, steps the camera and light anims with the model
 void XObjDemo::UpdateObject(u32 frames)
 {
@@ -2099,7 +2104,7 @@ extern "C" void DrawTitleHelpText(Title* menu)
 		f32 swell    = sin(PI * alpha);
 		f32 grow     = sin(HALF_PI * alpha);
 		f32 scale    = 0.2f * swell + grow;
-		f32 x        = 0.5f * spacing + (i * spacing + (320.0f - menu->mHelpCount * spacing * 0.5f));
+		f32 x        = spacing / 2.0f + (i * spacing + (320.0f - menu->mHelpCount * spacing / 2.0f));
 		f32 y        = 384.0f + bob;
 		rotation     = -(DEG2RAD * (10.0f * rotation));
 		u32 color    = (u32)opacity | 0xFFFFFF00;
@@ -2400,7 +2405,7 @@ static inline s32 LoadStatusLines(Title* title, s32 id, f32 panelX, f32 panelY)
 static inline void DrawLoadText(const char* text, f32 center, f32 y, u32 color)
 {
 	f32 width = MeasureGameTextWidth(&gGame.mGs, text, 1, 21.0f);
-	DrawGsProportionalTextFormat(&gGame.mGs, color, text, center - width * 0.5f, y, 0.0f, 21.0f, 21.0f);
+	DrawGsProportionalTextFormat(&gGame.mGs, color, text, center - width / 2.0f, y, 0.0f, 21.0f, 21.0f);
 }
 #endif
 static inline const char* LoadPromptText(s32 western, s32 japanese)
@@ -2438,7 +2443,7 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			f32 x = 49.0f + (194.0f * i + 77.0f), width = 154.0f;
 #else
 			f32 width = 154.0f + sSaveSlotExtraWidth;
-			f32 x     = 49.0f + ((width * .5f) + i * (40.0f + width)) - (3.0f * sSaveSlotExtraWidth) * .5f;
+			f32 x     = 49.0f + ((width / 2.0f) + i * (40.0f + width)) - (3.0f * sSaveSlotExtraWidth) / 2.0f;
 #endif
 			u8 selected = 0, empty = 0;
 			if (title->mFile == i)
@@ -2469,11 +2474,12 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 			DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mLoadAlpha), text, center - LoadHalfWidth(cells),
 			                             (21.0f + top) + title->mLoadOffset, 0.0f, 21.0f, 21.0f);
 #else
-			f32 top   = 8.0f + (356.0f - panelY);
 			u32 color = LoadTextColor(title->mLoadAlpha);
+			f32 top   = 8.0f + (356.0f - panelY);
 			DrawLoadText(LoadPromptText(0x94, 0), 320.0f, (top - 6.0f) + title->mLoadOffset, color);
 			DrawLoadText(LoadPromptText(0x95, 0), 320.0f, (21.0f + top) + title->mLoadOffset, color);
 #endif
+			lines = 2;
 		} else {
 			sprintf(text, "%s", LoadPromptText(0xbc, 0x12));
 			showMessage = true;
@@ -2550,10 +2556,12 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 	case 22:
 		lines = LoadStatusLines(title, 14, panelX, panelY);
 		break;
-	case 24:
+	case 24: {
+		f32 x = 320.0f + panelX, y = LoadPromptY(title, panelY);
 		if (title->mPhase == 0)
-			lines = LoadStatusLines(title, 4, panelX, panelY);
+			lines = LoadStatusAt(title, 4, x, y);
 		break;
+	}
 	case 25:
 		break;
 	}
@@ -2566,7 +2574,8 @@ extern "C" void DrawTitleLoadScreen(Title* title)
 		DrawGsProportionalTextFormat(&gGame.mGs, LoadTextColor(title->mLoadAlpha), text, (320.0f + panelX) - LoadHalfWidth(cells),
 		                             LoadPromptY(title, panelY), 0.0f, 21.0f, 21.0f);
 #else
-		DrawLoadText(text, 320.0f, LoadPromptY(title, panelY), LoadTextColor(title->mLoadAlpha));
+		f32 y = LoadPromptY(title, panelY);
+		DrawLoadText(text, 320.0f, y, LoadTextColor(title->mLoadAlpha));
 #endif
 	}
 
@@ -2634,7 +2643,9 @@ extern "C" void DrawTitleLoadScreen(Title* title)
  * @note Address: 0x80029760
  * @note Size: 0x69C
  */
-// NONMATCHING: float regalloc
+// NONMATCHING: retail converts a before the window frame and keeps it in r27 (stmw r27) for lit,
+// then converts alpha again for normal; this build folds both into one conversion after the call.
+// The rest is float register order
 // draws the options: a window, its title and the three lines, the picked one lit once the
 // window is open. the back line bobs while the cursor plays its anim
 extern "C" void DrawTitleOptions(Title* title)
@@ -2668,13 +2679,10 @@ extern "C" void DrawTitleOptions(Title* title)
 #if defined(VERSION_PAL)
 		top = (224.0f - (4.0f * (size * 0.5f) * 0.5f - size * 0.25f)) - h * 0.5f;
 #endif
-		u32 color = normal;
-		if (IsLineLit(title, 0)) {
-			color = lit;
-		}
+		u32 color = IsLineLit(title, 0) ? lit : normal;
 #if defined(VERSION_JP)
 		text     = GetLocalizedInterfaceText(0x49);
-		f32 half = size * 0.5f;
+		f32 half = size / 2.0f;
 		f32 left = 320.0f - 9.0f * half;
 		f32 y    = size + (4.0f * half + top);
 		DrawGsProportionalTextFormat(&gGame.mGs, color, text, size + left, y, 0.0f, size, size);
@@ -2702,12 +2710,9 @@ extern "C" void DrawTitleOptions(Title* title)
 		DrawGsProportionalTextFormat(&gGame.mGs, normal, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f, y, 0.0f, size,
 		                             size);
 
-		color = normal;
-		if (IsLineLit(title, 1)) {
-			color = lit;
-		}
-		text = GetLocalizedInterfaceText(0x13);
-		x    = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f - 8.0f;
+		color = IsLineLit(title, 1) ? lit : normal;
+		text  = GetLocalizedInterfaceText(0x13);
+		x     = 320.0f - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f - 8.0f;
 		DrawGsProportionalTextFormat(&gGame.mGs, color, text, x - MeasureGameTextWidth(&gGame.mGs, text, 1, size) / 2.0f,
 		                             y = size + (4.0f * (2.0f * (size / 2.0f)) + top), 0.0f, size, size);
 		text = title->mMono ? GetLocalizedInterfaceText(0x14) : GetLocalizedInterfaceText(0x15);
@@ -2775,10 +2780,10 @@ static inline f32 DrawTitleEntry(Title* title, s32 entry, s32 textId, f32 y, f32
 		if (selected)
 			tint = lit;
 		if (title->mSaveFound)
-			DrawGsProportionalTextFormat(&gGame.mGs, tint, text, 320.0f - width * .5f, (size - 24.0f) * .5f + (y - size), 0.0f, 24.0f,
+			DrawGsProportionalTextFormat(&gGame.mGs, tint, text, 320.0f - width / 2.0f, (size - 24.0f) / 2.0f + (y - size), 0.0f, 24.0f,
 			                             size);
 	} else {
-		f32 x = 320.0f - width * .5f, top = (size - 24.0f) * .5f + (y - size);
+		f32 x = 320.0f - width / 2.0f, top = (size - 24.0f) / 2.0f + (y - size);
 		bool selected = false;
 		if (title->mSelection == entry && (f32)title->mHighlightDelay >= FRAME_RATE)
 			selected = true;
@@ -2844,10 +2849,10 @@ extern "C" void DrawTitleScreen(Title* title)
 	if (title->mMenuAlpha > 0.0f) {
 		BeginTitleOverlay();
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		CTexObj& tex = title->mTex[footerTexture];
-		u16 w = GXGetTexObjWidth(&tex), h = GXGetTexObjHeight(&tex);
+		u16 w = GXGetTexObjWidth(&title->mTex[footerTexture]), h = GXGetTexObjHeight(&title->mTex[footerTexture]);
 		u32 color = (u32)(255.0f * title->mMenuAlpha);
-		DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, 320.0f, 398.0f, 0, .6f * w, .6f * h, 0, 0, 0);
+		DrawGsTexturedQuad(&gGame.mGs, &title->mTex[footerTexture], color, color, color, color, 320.0f, 398.0f, 0, .6f * w, .6f * h, 0, 0,
+		                   0);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 	}
 	DrawPanelBackground<SavePanel>(title->mLoadAlpha + title->mOptionAlpha);
@@ -2893,7 +2898,7 @@ extern "C" void DrawTitleScreen(Title* title)
 		f32 widest = w0 > w1 ? w0 : w1;
 		w2         = w2 > widest ? w2 : widest;
 #endif
-		DrawTitleCursors(title, w2 * 0.5f, y);
+		DrawTitleCursors(title, w2 / 2.0f, y);
 	}
 	if (title->mState == 21) {
 		f32 y;
@@ -3998,7 +4003,7 @@ static inline void ShowTitleChoice(Title* title, s32 id)
 			title->mName.mChars[i].mBob   = DEG2RAD * (rand() % 360);
 			title->mName.mChars[i].mTilt  = DEG2RAD * (rand() % 360);
 			title->mName.mCount++;
-			if (HelpTextIsJapanese() && IsSjisLead(*text))
+			if (HelpTextIsJapanese() && (IsSjisLead(*text) & 1))
 				text++;
 		}
 		for (s32 i = title->mName.mCount; i < 20; i++) {
@@ -4070,8 +4075,7 @@ static inline void TitleSelectionConfirmed(Title* title)
 /**
  * @note Address: 0x8002E8D0
  */
-// NONMATCHING: retail reaches the card's busy and found flags in two steps and turns the result of
-// the shift-jis test into 0 or 1 before it tests it
+// NONMATCHING: retail reaches the card's busy and found flags in two steps (addis 0xF, addis 1)
 extern "C" void UpdateTitleScreen(Title* title, u32 frames)
 {
 

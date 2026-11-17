@@ -188,8 +188,7 @@ void CCameraActionEye::Update(u32 step)
 			}
 			mLook.Step(step);
 
-			Vec look = { mLook.x, mLook.y, 0.0f };
-			SetAngle(EYE_PLAYER->mMoveRotate + look);
+			SetAngle(EYE_PLAYER->mMoveRotate + (Vec) { mLook.x, mLook.y, 0.0f });
 			SetFov(40.0f + mLook.z);
 
 			static f32 sPreviousZoomSpeed = 0.0f;
