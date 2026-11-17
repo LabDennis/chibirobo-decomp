@@ -416,7 +416,14 @@ CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* path);
 // start a script on evt, or park it in the queue while another one runs
 void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* owner, s16 useValue, s16 hitValue);
 void InitializeEventScriptContext(CEvt* evt, CMsg* message, XObj* owner);
+#if defined(VERSION_R24J01)
+void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal, BOOL clearEffects, BOOL clearQueue);
+BOOL LoadEventResources(CEvt* evt);
+void RegisterEventObjectId(CEvt* evt, s16 id, s16 index);
+void CEvt_Draw(CEvt* evt);
+#else
 void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal);
+#endif
 // runs the script on for step frames
 void CEvt_Update(CEvt* evt, s32 step);
 // the object an event refers to by id, -1 is the one running the script

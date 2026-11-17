@@ -14,6 +14,7 @@
 #include "Dolphin/mtx.h"
 #include "Dolphin/os.h"
 #include "game/wii/cgame.h"
+#include "game/wii/ceffect.h"
 #include "game/wii/cgs.h"
 #include "game/cptcl.h"
 #include "game/gmath.h"
@@ -291,18 +292,6 @@ bool EffectSortFunc(const nw4r::ef::Effect* op1, const nw4r::ef::Effect* op2)
 	}
 	return !res;
 }
-
-struct EffectInstance {
-	nw4r::ef::HandleBase handle; // _00
-	u32 _08;                     // _08
-	Vec pos;                     // _0C
-	Vec rot;                     // _18
-	Vec scale;                   // _24
-	u8 _30[0x60 - 0x30];         // _30
-	MtxP mtx;                    // _60
-	u16 _64;                     // _64
-	u8 _66[0x74 - 0x66];         // _66
-};
 
 // NONMATCHING: HandleBase in-place construction vs temporary copy assignment (92.30%)
 BOOL CreateEffectInstance(EffectInstance* inst, u32 emitterIdx, u32 groupID)

@@ -33,7 +33,6 @@ extern u8* gMovieUpdateThreadStack;
 s32 CallStageModule(s32 function, s32 count, s32* args);
 void fn_802AEDEC(WiiGsSceneObj** head, Mtx view); // sorts the queued scene draws under view, as title.cpp calls it
 void ClearMainMenuExtraRows(void* menu);
-void fn_80094904(void* evt, BOOL, BOOL, BOOL, BOOL); // resets the event state, the GameCube's ResetEventScriptState
 void ResetMsgState(CMsg* msg);
 void UnloadStageDataAndModule();
 BOOL fn_80246BD8(void* handle);                     // the emitter handle is valid
@@ -66,7 +65,6 @@ void DrawGameHud(InfoScrn* scrn);
 void DrawScreenColorOverlay(CScrnColor* color, CGs* gs);
 void DrawPlayerEquipmentRings(void* rings);
 void DrawOXMenu(WiiOXMenu* menu);
-void fn_80094E90(void* evt);
 void CMsg_Draw(CMsg* msg);
 void fn_80084C84(void* menus);
 void DrawObjectLoadingProgress(InfoScrn* scrn);
@@ -627,7 +625,7 @@ extern "C" void ChangeGameStage(CGame* game, s32 stage, BOOL showName)
 		game->mMovie.Stop();
 	}
 	ClearMainMenuExtraRows(game->mMenu.mMenus[0]);
-	fn_80094904(&game->mEvt, TRUE, TRUE, TRUE, TRUE); // the event state in front of mEvtData
+	ResetEventScriptState(&game->mEvt, TRUE, TRUE, TRUE, TRUE); // the event state in front of mEvtData
 	CMsg* msgs = game->mMsgs;
 	for (s32 i = 0; i < 2; i++) {
 		ResetMsgState(&msgs[i]);
@@ -1767,7 +1765,7 @@ void CGame::Draw()
 				DrawOXMenu(&GetPlayer()->mOXMenu);
 			}
 			if (!mMotionControlCamera.IsAction(4)) {
-				fn_80094E90(&mEvt);
+				CEvt_Draw(&mEvt);
 				CMsg* msgs = mMsgs;
 				for (s32 i = 0; i < 2; i++) {
 					CMsg_Draw(&msgs[i]);

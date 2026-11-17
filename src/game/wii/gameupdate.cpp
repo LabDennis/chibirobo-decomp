@@ -88,11 +88,9 @@ u32 GetStageEntryTimeComponent(s32 index);
 u32 CheckStageFlag(s32 stage, u32 flag);
 BOOL LoadStageByIndex(s32 stage);
 void ApplyStageClearColor();
-BOOL fn_80084848(void* menu);                        // the menus' resources, the GameCube's LoadMenuGroupResources
-void fn_8008492C(void* menu, s32 frames);            // steps the open menus
-BOOL fn_80094B04(CEvt* evt);                         // the GameCube's LoadEventResources
-void fn_800A10E4(CEvt* evt, s16 eventId, s16 index); // the GameCube's RegisterEventObjectId
-void fn_800C5814(XObjPool* pools);                   // reads the stage's objects in again
+BOOL fn_80084848(void* menu);             // the menus' resources, the GameCube's LoadMenuGroupResources
+void fn_8008492C(void* menu, s32 frames); // steps the open menus
+void fn_800C5814(XObjPool* pools);        // reads the stage's objects in again
 }
 
 extern s32 gRefreshRate;
@@ -110,7 +108,6 @@ void ResumeGameSounds(CGame* game, f32 fadeSeconds);
 void fn_80024CC0(CGame* game);                      // the frame's work at the start of gamedraw.cpp's range
 void fn_802AEDA0(WiiGsSceneObj** head, u32 frames); // steps the queued scene draws
 void fn_80084B90(void* menu, s32 index);            // opens one of the menus
-void fn_80094C20(CEvt* evt, u32 frames);            // the GameCube's CEvt_Update
 void CMsg_Update(CMsg* msg, u32 step);
 void UpdateBootLogos(Logo* logo, u32 frames);
 void UpdateTitleScreen(Title* title, u32 frames);
@@ -296,7 +293,7 @@ static inline BOOL LoadStageAndEventObjects(CGame* game)
 	if (LoadStageByIndex(game->mStage)) {
 		ApplyStageClearColor();
 		for (const StageEventObject* entry = GetStageEventObjectPairs(); entry->objectIndex >= 0; ++entry) { // the pairs end at a -1
-			fn_800A10E4(&game->mEvt, entry->eventId, entry->objectIndex);
+			RegisterEventObjectId(&game->mEvt, entry->eventId, entry->objectIndex);
 		}
 		Vec origin = { 0.0f, 0.0f, 0.0f };
 		((CSound3D*)&gGame.mSound.mSound3DManager)->SetListener(0.0f, &origin);
@@ -417,7 +414,7 @@ BOOL CGame::BeforeUpdate()
 			break;
 		++mLoadStep;
 	case 16:
-		if (!fn_80094B04(&mEvt))
+		if (!LoadEventResources(&mEvt))
 			break;
 		++mLoadStep;
 	case 17:
@@ -1312,7 +1309,7 @@ void CGame::Update(u32 frames)
 		}
 	}
 	if (!GetStatusFlags(0x200000000000002ULL)) {
-		fn_80094C20(&mEvt, frames);
+		CEvt_Update(&mEvt, frames);
 		for (i = 0; i < 2; i++) {
 			CMsg_Update(&mMsgs[i], frames);
 		}
