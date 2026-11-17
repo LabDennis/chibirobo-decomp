@@ -829,7 +829,7 @@ void XObj::UpdateObject(u32 frames)
 		UpdateObjectFloorHeights((XObj*)this);
 	}
 	if (mEvt.mData.mScript != NULL)
-		CEvt_Update(&mEvt, frames);
+		mEvt.Update(frames);
 }
 
 /**

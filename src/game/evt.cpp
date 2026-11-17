@@ -40,8 +40,6 @@ GXColor sEvtWindowDefaultColor = { 0x00, 0x00, 0x00, 0x80 };
 
 class CJObj;
 
-extern "C" void CEvt_EvalSet(CEvt* evt);
-extern "C" s32 CEvt_Evaluate(CEvt* evt);
 extern "C" void OSPanic(const char* file, int line, const char* msg, ...);
 
 // the event globals, in the order the file's static initializer builds them
@@ -114,388 +112,6 @@ EvtCmdEntry evtCmdTable[] = {
 XObj gEventScriptObject;
 CCameraMemento gEventCameraMementos[4];
 
-// the game object
-
-#define EVT_PLAYER (*gGame.GetPlayer())
-
-extern "C" s32 GetStageNum(void);
-
-// WARP, ABORT and RETURN all finish through this
-static inline void CEvt_End(CEvt* evt)
-{
-	evt->mData.mScript = 0;
-	// a window MSG left up for STAY is idle again
-	if (evt->mMsg != 0 && evt->mMsgState != 0) {
-		evt->mMsgState   = 0;
-		evt->mMsg->mIdle = 1;
-	}
-	Inventory* inventory = &EVT_PLAYER.mParams.mInventory;
-	inventory->mCompact  = TRUE;
-	CompactInventory(inventory);
-	evt->mData.mScript = 0;
-}
-
-#if defined(VERSION_PAL)
-// the refresh rate, 50 or 60
-#define FRAMES_PER_SEC gVideoFramesPerSecond
-#else
-#define FRAMES_PER_SEC 60
-#endif
-
-extern "C" s32 HSD_AudioPStreamStartChParam(const char* path, u8 vol, s32 channel);
-
-// LatchEventBeat is the stream beat callback, it latches the beat here for WAIT
-extern "C" void LatchEventBeat(s32 id, s32 beat, void* context);
-
-// the object registered under a script name from 10000 up, NULL unless it's in use
-static inline XObj* CEvt_FindObj(s16 id)
-{
-	for (s32 i = 0; i < gEventObjectIds.mCount; i++) {
-		if (gEventObjectIds.mEntry[i].mId == id) {
-			XObj* obj = gGame.mXObjs.mObjects[gEventObjectIds.mEntry[i].mIndex];
-			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
-				return obj;
-			}
-			return NULL;
-		}
-	}
-	return NULL;
-}
-
-// ids from 10000 up are script names, 0 and up slots in gGame.mXObjs, -1 the script's own object, anything lower a pointer
-static inline XObj* CEvt_GetObj(CEvt* evt, s16 id)
-{
-	if (id >= 10000) {
-		XObj* obj = CEvt_FindObj(id);
-		// redundant, but it's in the asm
-		if (obj == NULL) {
-			return NULL;
-		}
-		return obj;
-	}
-	if (id >= 0) {
-		return gGame.mXObjs.mObjects[id];
-	}
-	if (id == -1) {
-		return evt->mData.mContext;
-	}
-	return (XObj*)id;
-}
-
-static inline s16 CEvt_FindObjIndex(s16 id)
-{
-	for (s32 i = 0; i < gEventObjectIds.mCount; i++) {
-		if (gEventObjectIds.mEntry[i].mId == id) {
-			return gEventObjectIds.mEntry[i].mIndex;
-		}
-	}
-	return -1;
-}
-
-static inline void CEvt_ForgetObjId(s16 id)
-{
-	for (s32 i = 0; i < gEventObjectIds.mCount; i++) {
-		if (gEventObjectIds.mEntry[i].mId == id) {
-			for (s32 j = i; j < gEventObjectIds.mCount; j++) {
-				gEventObjectIds.mEntry[j].mId    = gEventObjectIds.mEntry[j + 1].mId;
-				gEventObjectIds.mEntry[j].mIndex = gEventObjectIds.mEntry[j + 1].mIndex;
-			}
-			gEventObjectIds.mCount--;
-		}
-	}
-}
-
-// the print is compiled out, only the length loops are left
-static inline void CEvt_Warn(const char* msg)
-{
-	size_t len = strlen(msg) + 13;
-	for (size_t i = 0; i < len; i++) { }
-	for (size_t i = 0; i < len; i++) { }
-}
-
-// the y angle that faces from toward to
-static inline f32 CEvt_Angle(const Vec& from, const Vec& to)
-{
-	return atan2(to.x - from.x, to.z - from.z);
-}
-
-// an entry in the game object's menu table, a CMenu (game/stg.h) with the same vtable
-struct UnkEvtMenu {
-	u8 _00[0x148]; // _00
-	// _148 vtable
-
-	virtual void Init();             // _08
-	virtual BOOL LoadTexture();      // _0C
-	virtual void Reset();            // _10
-	virtual BOOL Update(u32 frames); // _14
-	virtual BOOL Draw();             // _18
-	virtual void Open();             // _1C, MENU opens it with this
-};
-
-extern "C" void ClosePlayerEquipmentMenu(u8* player, s32 arg);
-
-// walked through the lobj next links
-
-extern "C" void SetStageCameraAnimation(XObj* obj, s32 anim, f32 frame);
-
-#define EVT_CAMERA_ACTION(type) (((CInterfaceCameraAction**)&gGame.mCameraActions.mTable)[type])
-
-// null when the pool is full
-static inline XObj* CEvt_Born(s32 index)
-{
-	CoordInfo info(GetSpawnData(index));
-	return (XObj*)SpawnObjectFromPlacement(&gGame.mXObjs, &info, 1, FALSE);
-}
-
-static inline void EvtQueue_Push(u8* script, XObj* owner, s16 useValue, s16 hitValue)
-{
-	s32 cursor = gEventScriptQueue.mRead;
-	for (s32 i = 0; i < 128; cursor++, i++) {
-		s32 index = cursor % 128;
-		if (gEventScriptQueue.mScript[index] == NULL) {
-			gEventScriptQueue.mScript[index]   = script;
-			gEventScriptQueue.mContext[index]  = owner;
-			gEventScriptQueue.mUseValue[index] = useValue;
-			gEventScriptQueue.mHitValue[index] = hitValue;
-			break;
-		}
-	}
-}
-
-static inline void CEvt_Attach(CEvt* evt, u8* script, XObj* owner, s16 useValue = -1, s16 hitValue = -1)
-{
-	if (script == NULL) {
-		return;
-	}
-	if (evt->mData.mScript != NULL && evt->mOwner == NULL) {
-		EvtQueue_Push(script, owner, useValue, hitValue);
-		return;
-	}
-	evt->mData.mScript  = NULL;
-	evt->mWaitTimer     = 0;
-	evt->mYesNoActive   = 0;
-	evt->mMenuActive    = 0;
-	evt->mCalls.mCount  = 0;
-	evt->mFrames.mCount = 0;
-	evt->mValues.mCount = 0;
-	if (evt->mOwner == NULL) {
-		gEventScriptQueue.mRead = 0;
-		for (u32 i = 0; i < 128; i++) {
-			gEventScriptQueue.mScript[i] = NULL;
-		}
-	}
-	evt->mSelectResult  = 0;
-	evt->mResult2       = 0;
-	evt->mMsgState      = 0;
-	evt->mUseValue      = -1;
-	evt->mHitValue      = -1;
-	evt->mData.mScript  = script;
-	evt->mData.mContext = (evt->mOwner != NULL) ? evt->mOwner : owner;
-	evt->mUseValue      = useValue;
-	evt->mHitValue      = hitValue;
-}
-
-// any other op leaves result alone
-static inline void Compare(BOOL& result, s32 opcode, s32 lhs, s32 rhs)
-{
-	u8 op = opcode;
-	if (op == EVT_EXPR_EQUAL) {
-		result = lhs == rhs;
-	}
-	if (op == EVT_EXPR_NOT_EQUAL) {
-		result = lhs != rhs;
-	}
-	if (op == EVT_EXPR_LESS) {
-		result = lhs < rhs;
-	}
-	if (op == EVT_EXPR_LESS_EQUAL) {
-		result = lhs <= rhs;
-	}
-	if (op == EVT_EXPR_GREATER) {
-		result = lhs > rhs;
-	}
-	if (op == EVT_EXPR_GREATER_EQUAL) {
-		result = lhs >= rhs;
-	}
-}
-
-// EvalSet inlines this too
-static inline bool EvalCmp(CEvt* evt)
-{
-	BOOL result = false;
-	u8 op       = *evt->mData.mScript;
-
-	switch (op) {
-	// anything that isn't a comparison is true when nonzero
-	case EVT_EXPR_NOT:
-	case EVT_EXPR_ADD:
-	case EVT_EXPR_SUB:
-	case EVT_EXPR_MUL:
-	case EVT_EXPR_DIV:
-	case EVT_EXPR_MOD:
-	case EVT_EXPR_AND:
-	case EVT_EXPR_OR:
-	case EVT_EXPR_XOR:
-	case EVT_EXPR_IMM16:
-	case EVT_EXPR_IMM32:
-	case EVT_EXPR_ADDRESS_OF:
-	case EVT_EXPR_STACK:
-	case EVT_EXPR_PARENT_STACK:
-	case EVT_EXPR_FLAG:
-	case EVT_EXPR_VAR:
-	case EVT_EXPR_RESULT1:
-	case EVT_EXPR_RESULT2:
-	case EVT_EXPR_PAD:
-	case EVT_EXPR_BATTERY:
-	case EVT_EXPR_MONEY:
-	case EVT_EXPR_ITEM:
-	case EVT_EXPR_ATC:
-	case EVT_EXPR_RANK:
-	case EVT_EXPR_EXP:
-	case EVT_EXPR_LEVEL:
-	case EVT_EXPR_HOLD:
-	case EVT_EXPR_MAP:
-	case EVT_EXPR_ACTOR_NAME:
-	case EVT_EXPR_ITEM_NAME:
-	case EVT_EXPR_TIME:
-	case EVT_EXPR_CURRENT_SUIT:
-	case EVT_EXPR_SCRAP:
-	case EVT_EXPR_CURRENT_ATC:
-	case EVT_EXPR_USE:
-	case EVT_EXPR_HIT:
-	case EVT_EXPR_STICKER_NAME:
-	case EVT_EXPR_OBJ:
-	case EVT_EXPR_RANDOM:
-	case EVT_EXPR_SIN:
-	case EVT_EXPR_COS:
-	case EVT_EXPR_ARRAY_ELEMENT:
-		result = CEvt_Evaluate(evt) != 0;
-		break;
-	case EVT_EXPR_EQUAL:
-	case EVT_EXPR_NOT_EQUAL:
-	case EVT_EXPR_LESS:
-	case EVT_EXPR_LESS_EQUAL:
-	case EVT_EXPR_GREATER:
-	case EVT_EXPR_GREATER_EQUAL: {
-		evt->mData.mScript++;
-		// the operand read second is the left side of the test
-		s32 rhs = CEvt_Evaluate(evt);
-		s32 lhs = CEvt_Evaluate(evt);
-		Compare(result, op, lhs, rhs);
-		break;
-	}
-	default:
-		OSPanic(__FILE__, 1330, "%s%s", FormatToStaticBuffer("Unknown EvalCmp op - %d\n", op), __FUNCTION__);
-		break;
-	}
-
-	return result;
-}
-
-#define EVT_PAD (&gGame.mPad.mPad[0])
-
-extern "C" {
-u8 GetPadRumbleStatus(u8 port);
-}
-
-static inline s32 EvtRead16(const u8* p)
-{
-	return p[0] + (p[1] << 8);
-}
-
-extern "C" CVec GetEventJObjWorldPosition(CJObj* obj, HSD_JObj* jobj);
-
-extern "C" s32 InfoScrn_IsBatteryGaugeFull(void* hud);
-extern "C" s32 HasCameraAnimation(XObj* obj);
-
-static inline void EvtWaitFor(CEvt* evt, u8 command, u8* start, s32 ready, s32& yield)
-{
-	if (command == EVT_CMD_WAIT) {
-		if (ready == 0) {
-			evt->mData.mScript = start;
-			yield              = 1;
-		}
-	} else
-		evt->mSelectResult = ready;
-}
-
-// a wipe is done once its size stops
-static inline bool EvtZero2(const CScrnWipe& wipe)
-{
-	bool done = false;
-	if (0.0f == wipe.mSpeedWidth && 0.0f == wipe.mSpeedHeight) {
-		done = true;
-	}
-	return done;
-}
-
-static inline bool EvtZero3(const f32* p)
-{
-	bool done = false;
-	if (0.0f == p[0] && 0.0f == p[1] && 0.0f == p[2]) {
-		done = true;
-	}
-	return done;
-}
-
-// a screen color is done once its speed is all zero
-static inline bool EvtZero4(const ScrnColorF& speed)
-{
-	return 0.0f == speed.r && 0.0f == speed.g && 0.0f == speed.b && 0.0f == speed.a;
-}
-
-extern "C" {
-void AddMainMenuExtraRow(void* object, s32 arg1, s32 arg2);
-}
-
-extern "C" {
-void InfoScrn_ApplyBatteryHudCommand(InfoScrn* scrn, u8 show, s32 mode);
-}
-
-struct EvtHudCommand {
-	u8 enabled; // _00
-	s32 mode;   // _04
-};
-
-static inline void ClearScript(CEvt* evt)
-{
-	evt->mData.mScript  = NULL;
-	evt->mWaitTimer     = 0;
-	evt->mYesNoActive   = 0;
-	evt->mMenuActive    = 0;
-	evt->mCalls.mCount  = 0;
-	evt->mFrames.mCount = 0;
-	evt->mValues.mCount = 0;
-}
-
-static inline void ClearQueue()
-{
-	gEventScriptQueue.mRead = 0;
-	for (u32 i = 0; i < 128; ++i) {
-		gEventScriptQueue.mScript[i] = NULL;
-	}
-}
-
-static inline void ClearResults(CEvt* evt)
-{
-	evt->mSelectResult = 0;
-	evt->mResult2      = 0;
-	evt->mMsgState     = 0;
-	evt->mUseValue     = -1;
-	evt->mHitValue     = -1;
-}
-
-// allocates a stack's buffer
-extern "C" void AllocateWordBuffer(CStack* stack, s32 capacity);
-
-static inline void ClearTimers()
-{
-	for (u32 i = 0; i < 10; ++i) {
-		gEventTimers.mFrames[i] = 0;
-		gEventTimers.mValue[i]  = 0;
-	}
-}
-
 static inline XObj* NamedObject(s16 id)
 {
 	for (s32 i = 0; i < gEventObjectIds.mCount; ++i) {
@@ -526,6 +142,25 @@ extern "C" XObj* ResolveEventObjectId(const CEvtData* data, s16 id)
 	if (id == -1)
 		return data->mContext;
 	return (XObj*)(s32)id;
+}
+
+static inline void ClearQueue()
+{
+	gEventScriptQueue.mRead = 0;
+	for (u32 i = 0; i < 128; ++i) {
+		gEventScriptQueue.mScript[i] = NULL;
+	}
+}
+
+// allocates a stack's buffer
+extern "C" void AllocateWordBuffer(CStack* stack, s32 capacity);
+
+static inline void ClearTimers()
+{
+	for (u32 i = 0; i < 10; ++i) {
+		gEventTimers.mFrames[i] = 0;
+		gEventTimers.mValue[i]  = 0;
+	}
 }
 
 /**
@@ -568,6 +203,26 @@ extern "C" void InitializeEventScriptContext(CEvt* evt, CMsg* message, XObj* own
 	evt->mHitValue     = -1;
 }
 
+static inline void ClearScript(CEvt* evt)
+{
+	evt->mData.mScript  = NULL;
+	evt->mWaitTimer     = 0;
+	evt->mYesNoActive   = 0;
+	evt->mMenuActive    = 0;
+	evt->mCalls.mCount  = 0;
+	evt->mFrames.mCount = 0;
+	evt->mValues.mCount = 0;
+}
+
+static inline void ClearResults(CEvt* evt)
+{
+	evt->mSelectResult = 0;
+	evt->mResult2      = 0;
+	evt->mMsgState     = 0;
+	evt->mUseValue     = -1;
+	evt->mHitValue     = -1;
+}
+
 /**
  * @note Address: 0x8007F040
  * @note Size: 0x154
@@ -598,6 +253,21 @@ extern "C" BOOL LoadEventResources(CEvt* evt)
 	return TRUE;
 }
 
+static inline void EvtQueue_Push(u8* script, XObj* owner, s16 useValue, s16 hitValue)
+{
+	s32 cursor = gEventScriptQueue.mRead;
+	for (s32 i = 0; i < 128; cursor++, i++) {
+		s32 index = cursor % 128;
+		if (gEventScriptQueue.mScript[index] == NULL) {
+			gEventScriptQueue.mScript[index]   = script;
+			gEventScriptQueue.mContext[index]  = owner;
+			gEventScriptQueue.mUseValue[index] = useValue;
+			gEventScriptQueue.mHitValue[index] = hitValue;
+			break;
+		}
+	}
+}
+
 /**
  * @note Address: 0x8007EEA4
  * @note Size: 0x194
@@ -620,30 +290,63 @@ extern "C" void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* owner, s16 
 	evt->mHitValue      = hitValue;
 }
 
+static inline void CEvt_Attach(CEvt* evt, u8* script, XObj* owner, s16 useValue = -1, s16 hitValue = -1)
+{
+	if (script == NULL) {
+		return;
+	}
+	if (evt->mData.mScript != NULL && evt->mOwner == NULL) {
+		EvtQueue_Push(script, owner, useValue, hitValue);
+		return;
+	}
+	evt->mData.mScript  = NULL;
+	evt->mWaitTimer     = 0;
+	evt->mYesNoActive   = 0;
+	evt->mMenuActive    = 0;
+	evt->mCalls.mCount  = 0;
+	evt->mFrames.mCount = 0;
+	evt->mValues.mCount = 0;
+	if (evt->mOwner == NULL) {
+		gEventScriptQueue.mRead = 0;
+		for (u32 i = 0; i < 128; i++) {
+			gEventScriptQueue.mScript[i] = NULL;
+		}
+	}
+	evt->mSelectResult  = 0;
+	evt->mResult2       = 0;
+	evt->mMsgState      = 0;
+	evt->mUseValue      = -1;
+	evt->mHitValue      = -1;
+	evt->mData.mScript  = script;
+	evt->mData.mContext = (evt->mOwner != NULL) ? evt->mOwner : owner;
+	evt->mUseValue      = useValue;
+	evt->mHitValue      = hitValue;
+}
+
 /**
  * @note Address: 0x8007E97C
  * @note Size: 0x528
  */
-extern "C" void CEvt_Update(CEvt* evt, s32 step)
+void CEvt::Update(s32 step)
 {
-	if (evt->mData.mScript != NULL) {
+	if (mData.mScript != NULL) {
 		s32 result = 0;
 		while (result == 0) {
-			s32 op = *evt->mData.mScript;
-			evt->mData.mScript++;
+			s32 op = *mData.mScript;
+			mData.mScript++;
 			u8 command = op;
 			for (s32 i = 1; i < 50; i++) {
 				if (command == evtCmdTable[i].command) {
-					result = (evt->*evtCmdTable[i].handler)(command, step);
+					result = (this->*evtCmdTable[i].handler)(command, step);
 					goto next;
 				}
 			}
-			OSPanic("evt.cpp", 558, "%s%s", FormatToStaticBuffer("Unknown event cmd - %d\n", command), "Update");
+			OSPanic("evt.cpp", 558, "%s%s", FormatToStaticBuffer("Unknown event cmd - %d\n", command), __FUNCTION__);
 		next:;
 		}
 	}
-	if (evt->mOwner == NULL && !(gGame.mStatus.mFlags & 0xC00)) {
-		if (evt->mData.mScript == NULL) {
+	if (mOwner == NULL && !(gGame.mStatus.mFlags & 0xC00)) {
+		if (mData.mScript == NULL) {
 			for (s32 i = 0; i < 10; i++) {
 				if (gEventTimers.mFrames[i] > 0) {
 					if ((gEventTimers.mFrames[i] -= step) <= 0) {
@@ -662,7 +365,7 @@ extern "C" void CEvt_Update(CEvt* evt, s32 step)
 				}
 			}
 		}
-		if (evt->mData.mScript == NULL) {
+		if (mData.mScript == NULL) {
 			CEvtQueueEx* queue    = &gEventScriptQueue;
 			s32 index             = queue->mRead;
 			u8* script            = queue->mScript[index];
@@ -672,7 +375,7 @@ extern "C" void CEvt_Update(CEvt* evt, s32 step)
 			queue->mScript[index] = NULL;
 			queue->mRead          = (queue->mRead + 1) % 128;
 			if (script != NULL) {
-				CEvt_Attach(evt, script, owner, useValue, hitValue);
+				CEvt_Attach(this, script, owner, useValue, hitValue);
 			}
 		}
 	}
@@ -1044,6 +747,8 @@ extern "C" void CEvt_Draw(CEvt* evt)
 {
 }
 
+extern "C" CVec GetEventJObjWorldPosition(CJObj* obj, HSD_JObj* jobj);
+
 /**
  * @note Address: 0x8007E8A0
  * @note Size: 0xD8
@@ -1134,14 +839,63 @@ extern "C" CVec GetEventJointWorldPosition(CJObj* obj, s32 depth, s32* path)
 	return CJObj_GetJointWorldPositionByPath(obj, depth, path);
 }
 
+// the game object
+#define EVT_PLAYER (*gGame.GetPlayer())
+
+extern "C" s32 GetStageNum(void);
+
+// the object registered under a script name from 10000 up, NULL unless it's in use
+static inline XObj* CEvt_FindObj(s16 id)
+{
+	for (s32 i = 0; i < gEventObjectIds.mCount; i++) {
+		if (gEventObjectIds.mEntry[i].mId == id) {
+			XObj* obj = gGame.mXObjs.mObjects[gEventObjectIds.mEntry[i].mIndex];
+			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
+				return obj;
+			}
+			return NULL;
+		}
+	}
+	return NULL;
+}
+
+// ids from 10000 up are script names, 0 and up slots in gGame.mXObjs, -1 the script's own object, anything lower a pointer
+static inline XObj* CEvt_GetObj(CEvt* evt, s16 id)
+{
+	if (id >= 10000) {
+		XObj* obj = CEvt_FindObj(id);
+		// redundant, but it's in the asm
+		if (obj == NULL) {
+			return NULL;
+		}
+		return obj;
+	}
+	if (id >= 0) {
+		return gGame.mXObjs.mObjects[id];
+	}
+	if (id == -1) {
+		return evt->mData.mContext;
+	}
+	return (XObj*)id;
+}
+
+extern "C" {
+u8 GetPadRumbleStatus(u8 port);
+}
+
+static inline s32 EvtRead16(const u8* p)
+{
+	return p[0] + (p[1] << 8);
+}
+
 /**
  * @note Address: 0x8007CAAC
  * @note Size: 0x1D1C
  */
-extern "C" s32 CEvt_Evaluate(CEvt* evt)
+s32 CEvt::Evaluate()
 {
-	s32 op = *evt->mData.mScript;
-	evt->mData.mScript++;
+	s32 op = *mData.mScript;
+	mData.mScript++;
 	s32 result;
 	Vec pos;
 	switch (op) {
@@ -1160,8 +914,8 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 	case EVT_EXPR_OR:
 	case EVT_EXPR_XOR: {
 		u8 binary = op;
-		s32 rhs   = CEvt_Evaluate(evt);
-		s32 lhs   = CEvt_Evaluate(evt);
+		s32 rhs   = Evaluate();
+		s32 lhs   = Evaluate();
 		if (binary == EVT_EXPR_EQUAL)
 			result = lhs == rhs;
 		if (binary == EVT_EXPR_NOT_EQUAL)
@@ -1193,22 +947,22 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		break;
 	}
 	case EVT_EXPR_NOT:
-		result = !CEvt_Evaluate(evt);
+		result = !Evaluate();
 		break;
 	case EVT_EXPR_IMM16:
-		result = (s16)EvtRead16(evt->mData.mScript);
-		evt->mData.mScript += 2;
+		result = (s16)EvtRead16(mData.mScript);
+		mData.mScript += 2;
 		break;
 	case EVT_EXPR_IMM32: {
-		s32 value = ReadResourceOffset(evt->mData.mScript);
-		evt->mData.mScript += 4;
+		s32 value = ReadResourceOffset(mData.mScript);
+		mData.mScript += 4;
 		result = value;
 		break;
 	}
 	case EVT_EXPR_ADDRESS_OF: {
-		s32 offset = ReadResourceOffset(evt->mData.mScript);
-		evt->mData.mScript += 4;
-		s32 library = IsGlobalEventScript(evt->mData.mScript);
+		s32 offset = ReadResourceOffset(mData.mScript);
+		mData.mScript += 4;
+		s32 library = IsGlobalEventScript(mData.mScript);
 		if (library != 0)
 			result = (s32)(GetGlobalScriptTable(library) + offset);
 		else
@@ -1216,20 +970,20 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		break;
 	}
 	case EVT_EXPR_STACK: {
-		s32 index = *evt->mData.mScript;
-		evt->mData.mScript++;
-		result = evt->mValues.mBuf[index + evt->mFrames.mBuf[evt->mFrames.mCount - 1]];
+		s32 index = *mData.mScript;
+		mData.mScript++;
+		result = mValues.mBuf[index + mFrames.mBuf[mFrames.mCount - 1]];
 		break;
 	}
 	case EVT_EXPR_PARENT_STACK: {
-		s32 index = *evt->mData.mScript;
-		evt->mData.mScript++;
-		s32 frame = evt->mFrames.mCount - 2;
-		result    = evt->mValues.mBuf[index + evt->mFrames.mBuf[frame]];
+		s32 index = *mData.mScript;
+		mData.mScript++;
+		s32 frame = mFrames.mCount - 2;
+		result    = mValues.mBuf[index + mFrames.mBuf[frame]];
 		break;
 	}
 	case EVT_EXPR_FLAG:
-		result = CEvt_Evaluate(evt);
+		result = Evaluate();
 		if (result >= 0 && result < 4096) {
 			if (gEventFlags.mFlags[(u32)result >> 5] & (1U << (result & 31)))
 				result = 1;
@@ -1242,23 +996,23 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		else if (result == -3)
 			result = (gGame.mStatus.mFlags & 0x8000000000000ULL) ? 1 : 0;
 		else
-			OSPanic("evt.cpp", 686, "%s%s", FormatToStaticBuffer("Invalid Evaluate flg[%d] - 0~%d\n", result, 4096), "Evaluate");
+			OSPanic("evt.cpp", 686, "%s%s", FormatToStaticBuffer("Invalid Evaluate flg[%d] - 0~%d\n", result, 4096), __FUNCTION__);
 		break;
 	case EVT_EXPR_VAR:
-		result = CEvt_Evaluate(evt);
+		result = Evaluate();
 		if (result >= 0 && result < 2048)
 			result = gEventVars.mVars[result];
 		else
-			OSPanic("evt.cpp", 694, "%s%s", FormatToStaticBuffer("Invalid Evaluate var[%d] - 0~%d\n", result, 2048), "Evaluate");
+			OSPanic("evt.cpp", 694, "%s%s", FormatToStaticBuffer("Invalid Evaluate var[%d] - 0~%d\n", result, 2048), __FUNCTION__);
 		break;
 	case EVT_EXPR_RESULT1:
-		result = evt->mSelectResult;
+		result = mSelectResult;
 		break;
 	case EVT_EXPR_RESULT2:
-		result = evt->mResult2;
+		result = mResult2;
 		break;
 	case EVT_EXPR_PAD: {
-		result = CEvt_Evaluate(evt);
+		result = Evaluate();
 		CPad pad(0);
 		switch (result) {
 		case 0:
@@ -1299,19 +1053,19 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 				result = 0;
 			break;
 		default:
-			OSPanic("evt.cpp", 737, "%s%s", FormatToStaticBuffer("Invalid Evaluate pad[%d] - 0~7\n", result), "Evaluate");
+			OSPanic("evt.cpp", 737, "%s%s", FormatToStaticBuffer("Invalid Evaluate pad[%d] - 0~7\n", result), __FUNCTION__);
 			break;
 		}
 		break;
 	}
 	case EVT_EXPR_BATTERY:
-		result = CEvt_Evaluate(evt);
+		result = Evaluate();
 		if (result == 0)
 			result = 100.0f * EVT_PLAYER.mParams.mBattery;
 		else if (result == 1)
 			result = 100.0f * EVT_PLAYER.mParams.mMaxBattery;
 		else
-			OSPanic("evt.cpp", 750, "%s%s", FormatToStaticBuffer("Invalid Evaluate battery[%d] - 0~1\n", result), "Evaluate");
+			OSPanic("evt.cpp", 750, "%s%s", FormatToStaticBuffer("Invalid Evaluate battery[%d] - 0~1\n", result), __FUNCTION__);
 		break;
 	case EVT_EXPR_MONEY:
 		result = EVT_PLAYER.mParams.mMoney;
@@ -1320,21 +1074,21 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		result = EVT_PLAYER.mParams.mScrap;
 		break;
 	case EVT_EXPR_ITEM:
-		result = CEvt_Evaluate(evt);
+		result = Evaluate();
 		if (result >= 0 && result < 159) {
 			s32 index = FindOwnedInventoryItemIndex(EVT_PLAYER.mParams.mInventory.mItems, result);
 			result    = index >= 0 ? EVT_PLAYER.mParams.mInventory.mItems[index].mCount : 0;
 		} else
-			OSPanic("evt.cpp", 769, "%s%s", FormatToStaticBuffer("Invalid Evaluate item[%d] - 0~%d\n", result, 159), "Evaluate");
+			OSPanic("evt.cpp", 769, "%s%s", FormatToStaticBuffer("Invalid Evaluate item[%d] - 0~%d\n", result, 159), __FUNCTION__);
 		break;
 	case EVT_EXPR_ATC:
-		result = CEvt_Evaluate(evt);
+		result = Evaluate();
 		if (result >= 0 && result < 9) {
 			result = GetAttachmentCountById(&EVT_PLAYER.mAttachments, result);
 			if (result < 0)
 				result = 0;
 		} else
-			OSPanic("evt.cpp", 778, "%s%s", FormatToStaticBuffer("Invalid Evaluate atc[%d] - 0~%d\n", result, 9), "Evaluate");
+			OSPanic("evt.cpp", 778, "%s%s", FormatToStaticBuffer("Invalid Evaluate atc[%d] - 0~%d\n", result, 9), __FUNCTION__);
 		break;
 	case EVT_EXPR_CURRENT_SUIT:
 		result = EVT_PLAYER.mSuits.mCurrent;
@@ -1362,16 +1116,16 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		break;
 	}
 	case EVT_EXPR_USE:
-		result = evt->mUseValue;
+		result = mUseValue;
 		break;
 	case EVT_EXPR_HIT:
-		result = evt->mHitValue;
+		result = mHitValue;
 		break;
 	case EVT_EXPR_CURRENT_ATC:
 		result = EVT_PLAYER.GetAttachment();
 		break;
 	case EVT_EXPR_MAP:
-		result = CEvt_Evaluate(evt);
+		result = Evaluate();
 		if (result >= 0 && result <= 1) {
 			// 0 the stage, 1 the one before it: the two fields are read as an array
 			s32 stage = (&gGame.mStage)[result];
@@ -1379,22 +1133,22 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 			if (stage > GetStageNum())
 				result = stage - GetStageNum() + 99;
 		} else
-			OSPanic("evt.cpp", 827, "%s%s", FormatToStaticBuffer("Invalid Evaluate map[%d] - 0~1\n", result), "Evaluate");
+			OSPanic("evt.cpp", 827, "%s%s", FormatToStaticBuffer("Invalid Evaluate map[%d] - 0~1\n", result), __FUNCTION__);
 		break;
 	case EVT_EXPR_ACTOR_NAME:
-		result = CEvt_Evaluate(evt);
+		result = Evaluate();
 		if (result >= 20000)
 			result -= 20000;
 		result = (s32)GetActorName(result);
 		break;
 	case EVT_EXPR_ITEM_NAME:
-		result = (s32)GetItemName(CEvt_Evaluate(evt));
+		result = (s32)GetItemName(Evaluate());
 		break;
 	case EVT_EXPR_STICKER_NAME:
-		result = (s32)GetStatusIconName(CEvt_Evaluate(evt));
+		result = (s32)GetStatusIconName(Evaluate());
 		break;
 	case EVT_EXPR_TIME:
-		result = CEvt_Evaluate(evt);
+		result = Evaluate();
 		if (result == 0)
 			result = gGame.mTimeState.mMode;
 		else if (result == 1)
@@ -1402,10 +1156,10 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		else if (result == 2)
 			result = 100.0f * gGame.mTimeState.mDuration;
 		else
-			OSPanic("evt.cpp", 854, "%s%s", FormatToStaticBuffer("Invalid Evaluate time[%d] - 0~2\n", result), "Evaluate");
+			OSPanic("evt.cpp", 854, "%s%s", FormatToStaticBuffer("Invalid Evaluate time[%d] - 0~2\n", result), __FUNCTION__);
 		break;
 	case EVT_EXPR_OBJ:
-		result = CEvt_Evaluate(evt);
+		result = Evaluate();
 		switch (result) {
 		case EVT_ATOM_ANIM:
 		case EVT_ATOM_DIR:
@@ -1415,7 +1169,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		case 235:
 		case 247:
 		case 248: {
-			XObj* obj = CEvt_GetObj(evt, CEvt_Evaluate(evt));
+			XObj* obj = CEvt_GetObj(this, Evaluate());
 			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 				switch (result) {
 				case EVT_ATOM_ANIM:
@@ -1460,9 +1214,9 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		case EVT_ATOM_BONEZ:
 		case 249:
 		case 250: {
-			u8* data  = (u8*)CEvt_Evaluate(evt);
+			u8* data  = (u8*)Evaluate();
 			s32 id    = (s16)EvtRead16(data);
-			XObj* obj = CEvt_GetObj(evt, id);
+			XObj* obj = CEvt_GetObj(this, id);
 			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 				s32 depth = (s16)EvtRead16(data + 2);
 				data += 4;
@@ -1501,9 +1255,9 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 			break;
 		}
 		case EVT_ATOM_DIRTO: {
-			u8* data   = (u8*)CEvt_Evaluate(evt);
-			XObj* from = CEvt_GetObj(evt, (s16)EvtRead16(data));
-			XObj* to   = CEvt_GetObj(evt, (s16)EvtRead16(data + 2));
+			u8* data   = (u8*)Evaluate();
+			XObj* from = CEvt_GetObj(this, (s16)EvtRead16(data));
+			XObj* to   = CEvt_GetObj(this, (s16)EvtRead16(data + 2));
 			if (from != NULL && (from->mStatus.mFlags & 1) && to != NULL && (to->mStatus.mFlags & 1)) {
 				f32 angle = (f32)atan2(to->mMoveTranslate.x - from->mMoveTranslate.x, to->mMoveTranslate.z - from->mMoveTranslate.z);
 				result    = RAD2DEG * WrapAngle(angle - from->mMoveRotate.y);
@@ -1512,9 +1266,9 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 			break;
 		}
 		case EVT_ATOM_DISTANCE: {
-			u8* data   = (u8*)CEvt_Evaluate(evt);
-			XObj* from = CEvt_GetObj(evt, (s16)EvtRead16(data));
-			XObj* to   = CEvt_GetObj(evt, (s16)EvtRead16(data + 2));
+			u8* data   = (u8*)Evaluate();
+			XObj* from = CEvt_GetObj(this, (s16)EvtRead16(data));
+			XObj* to   = CEvt_GetObj(this, (s16)EvtRead16(data + 2));
 			if (from != NULL && (from->mStatus.mFlags & 1) && to != NULL && (to->mStatus.mFlags & 1)) {
 				result = 100.0f * PSVECDistance(&from->mMoveTranslate, &to->mMoveTranslate);
 			} else
@@ -1522,29 +1276,29 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 			break;
 		}
 		default:
-			OSPanic("evt.cpp", 977, "%s%s", FormatToStaticBuffer("Invalid Evaluate obj(...,%d)\n", result), "Evaluate");
+			OSPanic("evt.cpp", 977, "%s%s", FormatToStaticBuffer("Invalid Evaluate obj(...,%d)\n", result), __FUNCTION__);
 			break;
 		}
 		break;
 	case EVT_EXPR_RANDOM: {
-		s32 max = CEvt_Evaluate(evt);
+		s32 max = Evaluate();
 		result  = rand() % (max + 1);
 		break;
 	}
 	case EVT_EXPR_SIN:
-		result = 100.0f * (f32)sin(DEG2RAD * (CEvt_Evaluate(evt) / 100.0f));
+		result = 100.0f * (f32)sin(DEG2RAD * (Evaluate() / 100.0f));
 		break;
 	case EVT_EXPR_COS:
-		result = 100.0f * (f32)cos(DEG2RAD * (CEvt_Evaluate(evt) / 100.0f));
+		result = 100.0f * (f32)cos(DEG2RAD * (Evaluate() / 100.0f));
 		break;
 	case EVT_EXPR_ARRAY_ELEMENT: {
 		// the element size in bytes, negative for signed elements, then the index and the array
-		result     = (s8)CEvt_Evaluate(evt);
-		s32 index  = CEvt_Evaluate(evt);
+		result     = (s8)Evaluate();
+		s32 index  = Evaluate();
 		s32 stride = result;
 		if ((s8)result < 0)
 			stride = -result;
-		u8* p = (u8*)CEvt_Evaluate(evt) + index * stride;
+		u8* p = (u8*)Evaluate() + index * stride;
 		switch (result) {
 		case 1:
 			result = *p;
@@ -1569,11 +1323,37 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
 		break;
 	}
 	default:
-		OSPanic("evt.cpp", 1023, "%s%s", FormatToStaticBuffer("Unknown Evaluate op - %d\n", op), "Evaluate");
+		OSPanic("evt.cpp", 1023, "%s%s", FormatToStaticBuffer("Unknown Evaluate op - %d\n", op), __FUNCTION__);
 		break;
 	}
 	return result;
 }
+
+// any other op leaves result alone
+static inline void Compare(BOOL& result, s32 opcode, s32 lhs, s32 rhs)
+{
+	u8 op = opcode;
+	if (op == EVT_EXPR_EQUAL) {
+		result = lhs == rhs;
+	}
+	if (op == EVT_EXPR_NOT_EQUAL) {
+		result = lhs != rhs;
+	}
+	if (op == EVT_EXPR_LESS) {
+		result = lhs < rhs;
+	}
+	if (op == EVT_EXPR_LESS_EQUAL) {
+		result = lhs <= rhs;
+	}
+	if (op == EVT_EXPR_GREATER) {
+		result = lhs > rhs;
+	}
+	if (op == EVT_EXPR_GREATER_EQUAL) {
+		result = lhs >= rhs;
+	}
+}
+
+#define EVT_PAD (&gGame.mPad.mPad[0])
 
 /*
     stwu     r1, -0x140(r1)
@@ -1678,10 +1458,10 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     b        .L_8007E5FC
 .L_8007CC14:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r29, r3
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi.  r0, r28, 24
     bne      .L_8007CC3C
     subf     r0, r3, r29
@@ -1778,7 +1558,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     xor      r31, r3, r29
     b        .L_8007E7A4
 .L_8007CD70:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cntlzw   r0, r3
     extrwi   r31, r0, 8, 19
     b        .L_8007E7A4
@@ -1865,7 +1645,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lwzx     r31, r3, r0
     b        .L_8007E7A4
 .L_8007CEB0:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr.      r31, r3
     blt      .L_8007CEF8
     cmpwi    r31, 0x1000
@@ -1946,7 +1726,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     bl       OSPanic
     b        .L_8007E7A4
 .L_8007CFD0:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr.      r31, r3
     blt      .L_8007CFF8
     cmpwi    r31, 0x800
@@ -1978,7 +1758,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lwz      r31, 0x14(r30)
     b        .L_8007E7A4
 .L_8007D040:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     addi     r3, r1, 0x1c
     mr       r31, r0
@@ -2207,7 +1987,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     stw      r0, 0x20(r1)
     b        .L_8007E7A4
 .L_8007D35C:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr.      r31, r3
     bne      .L_8007D398
     lis      r3, gGame@ha
@@ -2268,7 +2048,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lwz      r31, -0x699c(r3)
     b        .L_8007E7A4
 .L_8007D43C:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr.      r31, r3
     blt      .L_8007D498
     cmpwi    r31, 0x9f
@@ -2308,7 +2088,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     bl       OSPanic
     b        .L_8007E7A4
 .L_8007D4D0:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr.      r31, r3
     blt      .L_8007D514
     cmpwi    r31, 0x9
@@ -2452,7 +2232,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lwz      r31, -0x6a30(r3)
     b        .L_8007E7A4
 .L_8007D6B4:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr.      r31, r3
     blt      .L_8007D6FC
     cmpwi    r31, 0x1
@@ -2485,7 +2265,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     bl       OSPanic
     b        .L_8007E7A4
 .L_8007D730:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r31, r3
     cmpwi    r31, 0x4e20
     blt      .L_8007D744
@@ -2496,17 +2276,17 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     mr       r31, r3
     b        .L_8007E7A4
 .L_8007D754:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     bl       GetItemName
     mr       r31, r3
     b        .L_8007E7A4
 .L_8007D764:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     bl       GetStatusIconName
     mr       r31, r3
     b        .L_8007E7A4
 .L_8007D774:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr.      r31, r3
     bne      .L_8007D794
     lis      r3, gGame@ha
@@ -2555,7 +2335,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     bl       OSPanic
     b        .L_8007E7A4
 .L_8007D828:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r31, r3
     cmpwi    r31, 0xe4
     beq      .L_8007E324
@@ -2589,7 +2369,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     bge      .L_8007DB9C
 .L_8007D898:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r3, r3
     cmpwi    r3, 0x2710
     blt      .L_8007D95C
@@ -2808,7 +2588,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     b        .L_8007E7A4
 .L_8007DB9C:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lbz      r0, 0x1(r3)
     lbz      r4, 0x0(r3)
     slwi     r0, r0, 8
@@ -3130,7 +2910,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     b        .L_8007E7A4
 .L_8007E054:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lbz      r0, 0x1(r3)
     lbz      r4, 0x0(r3)
     slwi     r0, r0, 8
@@ -3332,7 +3112,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     b        .L_8007E7A4
 .L_8007E324:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lbz      r0, 0x1(r3)
     lbz      r4, 0x0(r3)
     slwi     r0, r0, 8
@@ -3524,7 +3304,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     bl       OSPanic
     b        .L_8007E7A4
 .L_8007E5DC:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r28, r3
     bl       rand
     addi     r4, r28, 0x1
@@ -3533,7 +3313,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     subf     r31, r0, r3
     b        .L_8007E7A4
 .L_8007E5FC:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x124(r1)
@@ -3554,7 +3334,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lwz      r31, 0x12c(r1)
     b        .L_8007E7A4
 .L_8007E64C:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x12c(r1)
@@ -3575,10 +3355,10 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     lwz      r31, 0x124(r1)
     b        .L_8007E7A4
 .L_8007E69C:
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsb    r31, r3
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsb.   r0, r31
     mr       r29, r3
     mr       r28, r31
@@ -3586,7 +3366,7 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
     neg      r28, r31
 .L_8007E6C0:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mullw    r4, r29, r28
     addi     r0, r31, 0x4
     cmplwi   r0, 0x8
@@ -3665,9 +3445,9 @@ extern "C" s32 CEvt_Evaluate(CEvt* evt)
  * @note Address: 0x8007C054
  * @note Size: 0xA58
  */
-extern "C" void CEvt_EvalSet(CEvt* evt)
+void CEvt::EvalSet()
 {
-	s32 code = *evt->mData.mScript;
+	s32 code = *mData.mScript;
 	u8 op    = code;
 	s32 value;
 	switch (op) {
@@ -3677,7 +3457,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 	case EVT_EXPR_LESS_EQUAL:
 	case EVT_EXPR_GREATER:
 	case EVT_EXPR_GREATER_EQUAL:
-		value = EvalCmp(evt);
+		value = EvalCmp();
 		break;
 	case EVT_EXPR_ADD_ASSIGN:
 	case EVT_EXPR_SUB_ASSIGN:
@@ -3687,10 +3467,10 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 	case EVT_EXPR_AND_ASSIGN:
 	case EVT_EXPR_OR_ASSIGN:
 	case EVT_EXPR_XOR_ASSIGN: {
-		evt->mData.mScript++;
-		s32 rhs         = CEvt_Evaluate(evt);
-		u8* destination = evt->mData.mScript;
-		value           = CEvt_Evaluate(evt);
+		mData.mScript++;
+		s32 rhs         = Evaluate();
+		u8* destination = mData.mScript;
+		value           = Evaluate();
 		if (op == EVT_EXPR_ADD_ASSIGN)
 			value += rhs;
 		else if (op == EVT_EXPR_SUB_ASSIGN)
@@ -3707,25 +3487,25 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			value |= rhs;
 		else if (op == EVT_EXPR_XOR_ASSIGN)
 			value ^= rhs;
-		evt->mData.mScript = destination;
+		mData.mScript = destination;
 		break;
 	}
 	default:
-		value = CEvt_Evaluate(evt);
+		value = Evaluate();
 		break;
 	}
 	{
-		s32 op = *evt->mData.mScript;
-		evt->mData.mScript++;
+		s32 op = *mData.mScript;
+		mData.mScript++;
 		s32 index;
 		switch (op) {
 		case EVT_EXPR_STACK:
-			index = *evt->mData.mScript;
-			evt->mData.mScript++;
-			evt->mValues.mBuf[index + evt->mFrames.mBuf[evt->mFrames.mCount - 1]] = value;
+			index = *mData.mScript;
+			mData.mScript++;
+			mValues.mBuf[index + mFrames.mBuf[mFrames.mCount - 1]] = value;
 			break;
 		case EVT_EXPR_FLAG:
-			index = CEvt_Evaluate(evt);
+			index = Evaluate();
 			if (index >= 0 && index < 4096) {
 				if (value != 0) {
 					gEventFlags.mFlags[(u32)index >> 5] |= 1U << (index & 31);
@@ -3734,25 +3514,25 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 				}
 			} else if (index == -2 || index == -1) { // Evaluate's read-only flags, setting one does nothing
 			} else if (index != -3) {
-				OSPanic("evt.cpp", 1107, "%s%s", FormatToStaticBuffer("Invalid EvalSet flag[%d] - 0~%d\n", index, 4096), "EvalSet");
+				OSPanic("evt.cpp", 1107, "%s%s", FormatToStaticBuffer("Invalid EvalSet flag[%d] - 0~%d\n", index, 4096), __FUNCTION__);
 			}
 			break;
 		case EVT_EXPR_VAR:
-			index = CEvt_Evaluate(evt);
+			index = Evaluate();
 			if (index >= 0 && index < 2048) {
 				gEventVars.mVars[index] = value;
 			} else {
-				OSPanic("evt.cpp", 1116, "%s%s", FormatToStaticBuffer("Invalid EvalSet var[%d] - 0~%d\n", index, 2048), "EvalSet");
+				OSPanic("evt.cpp", 1116, "%s%s", FormatToStaticBuffer("Invalid EvalSet var[%d] - 0~%d\n", index, 2048), __FUNCTION__);
 			}
 			break;
 		case EVT_EXPR_RESULT1:
-			evt->mSelectResult = value;
+			mSelectResult = value;
 			break;
 		case EVT_EXPR_RESULT2:
-			evt->mResult2 = value;
+			mResult2 = value;
 			break;
 		case EVT_EXPR_PAD:
-			index = CEvt_Evaluate(evt);
+			index = Evaluate();
 			// pad[7] is the rumble, it only runs with the rumble option (0x800000000) on: 1 starts it, 0 stops it,
 			// anything else is the address of a rumble list for HSD_PadRumbleAdd
 			if (index == 7) {
@@ -3772,11 +3552,11 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 					}
 				}
 			} else {
-				OSPanic("evt.cpp", 1144, "%s%s", FormatToStaticBuffer("Invalid EvalSet pad[%d] - %d\n", index, 7), "EvalSet");
+				OSPanic("evt.cpp", 1144, "%s%s", FormatToStaticBuffer("Invalid EvalSet pad[%d] - %d\n", index, 7), __FUNCTION__);
 			}
 			break;
 		case EVT_EXPR_BATTERY:
-			index = CEvt_Evaluate(evt);
+			index = Evaluate();
 			if (index == 0) {
 				EVT_PLAYER.mParams.SetBattery(value / 100.0f);
 			} else if (index == 1) {
@@ -3789,7 +3569,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 					stats->mMaxBattery = 999.9f;
 				stats->SetBattery(stats->mBattery);
 			} else {
-				OSPanic("evt.cpp", 1157, "%s%s", FormatToStaticBuffer("Invalid EvalSet battery[%d] - 0~1\n", index), "EvalSet");
+				OSPanic("evt.cpp", 1157, "%s%s", FormatToStaticBuffer("Invalid EvalSet battery[%d] - 0~1\n", index), __FUNCTION__);
 			}
 			break;
 		case EVT_EXPR_MONEY:
@@ -3799,19 +3579,19 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			AddPlayerScrap(&EVT_PLAYER.mParams, value - EVT_PLAYER.mParams.mScrap);
 			break;
 		case EVT_EXPR_ITEM:
-			index = CEvt_Evaluate(evt);
+			index = Evaluate();
 			if (index >= 0 && index < 159) {
 				SetOrAddInventoryItemCount(&EVT_PLAYER.mParams.mInventory, index, value, 0);
 			} else {
-				OSPanic("evt.cpp", 1176, "%s%s", FormatToStaticBuffer("Invalid EvalSet item[%d] - 0~%d\n", index, 159), "EvalSet");
+				OSPanic("evt.cpp", 1176, "%s%s", FormatToStaticBuffer("Invalid EvalSet item[%d] - 0~%d\n", index, 159), __FUNCTION__);
 			}
 			break;
 		case EVT_EXPR_ATC:
-			index = CEvt_Evaluate(evt);
+			index = Evaluate();
 			if (index >= 0 && index < 9) {
 				SetAttachmentCountById(&EVT_PLAYER.mAttachments, index, value);
 			} else {
-				OSPanic("evt.cpp", 1185, "%s%s", FormatToStaticBuffer("Invalid EvalSet atc[%d] - 0~%d\n", index, 9), "EvalSet");
+				OSPanic("evt.cpp", 1185, "%s%s", FormatToStaticBuffer("Invalid EvalSet atc[%d] - 0~%d\n", index, 9), __FUNCTION__);
 			}
 			break;
 		case EVT_EXPR_CURRENT_SUIT: {
@@ -3840,7 +3620,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			break;
 		}
 		case EVT_EXPR_TIME:
-			index = CEvt_Evaluate(evt);
+			index = Evaluate();
 			if (index == 0) {
 				gGame.mTimeState.mMode    = value;
 				gGame.mTimeState.mTime    = 0.0f;
@@ -3851,7 +3631,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 			} else if (index == 2) {
 				gGame.mTimeState.mDuration = value / 100.0f;
 			} else {
-				OSPanic("evt.cpp", 1234, "%s%s", FormatToStaticBuffer("Invalid EvalSet time[%d] - 0~2\n", index), "EvalSet");
+				OSPanic("evt.cpp", 1234, "%s%s", FormatToStaticBuffer("Invalid EvalSet time[%d] - 0~2\n", index), __FUNCTION__);
 			}
 			break;
 		case EVT_EXPR_HOLD:
@@ -3867,7 +3647,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 		case EVT_EXPR_COS:
 			break;
 		default:
-			OSPanic("evt.cpp", 1245, "%s%s", FormatToStaticBuffer("Unknown EvalSet op - %d\n", op), "EvalSet");
+			OSPanic("evt.cpp", 1245, "%s%s", FormatToStaticBuffer("Unknown EvalSet op - %d\n", op), __FUNCTION__);
 			break;
 		}
 	}
@@ -3923,7 +3703,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     bge      .L_8007C1E0
 .L_8007C0FC:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     neg      r0, r3
     or       r0, r0, r3
     srwi     r27, r0, 31
@@ -3931,10 +3711,10 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 .L_8007C114:
     addi     r0, r5, 0x1
     stw      r0, 0x4(r28)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r31, r3
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi.  r0, r29, 24
     bne      .L_8007C140
     subf     r0, r3, r31
@@ -4004,11 +3784,11 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
 .L_8007C218:
     addi     r0, r5, 0x1
     stw      r0, 0x4(r28)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lwz      r26, 0x4(r28)
     mr       r27, r3
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r0, r29, 24
     mr       r31, r3
     cmplwi   r0, 0xf
@@ -4056,7 +3836,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     b        .L_8007C2D4
 .L_8007C2C8:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r31, r3
 .L_8007C2D4:
     lwz      r3, 0x4(r28)
@@ -4134,7 +3914,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     b        .L_8007CA98
 .L_8007C3D8:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmpwi    r3, 0x0
     blt      .L_8007C448
     cmpwi    r3, 0x1000
@@ -4183,7 +3963,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     b        .L_8007CA98
 .L_8007C490:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmpwi    r3, 0x0
     blt      .L_8007C4BC
     cmpwi    r3, 0x800
@@ -4215,7 +3995,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     b        .L_8007CA98
 .L_8007C500:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmpwi    r3, 0x7
     bne      .L_8007C5BC
     lis      r3, gGame@ha
@@ -4280,7 +4060,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     b        .L_8007CA98
 .L_8007C5F0:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmpwi    r3, 0x0
     bne      .L_8007C67C
     xoris    r3, r31, 0x8000
@@ -4412,7 +4192,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     b        .L_8007CA98
 .L_8007C7C4:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmpwi    r3, 0x0
     blt      .L_8007C808
     cmpwi    r3, 0x9f
@@ -4444,7 +4224,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     b        .L_8007CA98
 .L_8007C83C:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmpwi    r3, 0x0
     blt      .L_8007C87C
     cmpwi    r3, 0x9
@@ -4533,7 +4313,7 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     b        .L_8007CA98
 .L_8007C984:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmpwi    r3, 0x0
     bne      .L_8007C9B8
     lis      r3, gGame@ha
@@ -4613,13 +4393,86 @@ extern "C" void CEvt_EvalSet(CEvt* evt)
     blr
 */
 
+// EvalSet inlines this too
+inline bool CEvt::EvalCmp()
+{
+	BOOL result = false;
+	u8 op       = *mData.mScript;
+
+	switch (op) {
+	// anything that isn't a comparison is true when nonzero
+	case EVT_EXPR_NOT:
+	case EVT_EXPR_ADD:
+	case EVT_EXPR_SUB:
+	case EVT_EXPR_MUL:
+	case EVT_EXPR_DIV:
+	case EVT_EXPR_MOD:
+	case EVT_EXPR_AND:
+	case EVT_EXPR_OR:
+	case EVT_EXPR_XOR:
+	case EVT_EXPR_IMM16:
+	case EVT_EXPR_IMM32:
+	case EVT_EXPR_ADDRESS_OF:
+	case EVT_EXPR_STACK:
+	case EVT_EXPR_PARENT_STACK:
+	case EVT_EXPR_FLAG:
+	case EVT_EXPR_VAR:
+	case EVT_EXPR_RESULT1:
+	case EVT_EXPR_RESULT2:
+	case EVT_EXPR_PAD:
+	case EVT_EXPR_BATTERY:
+	case EVT_EXPR_MONEY:
+	case EVT_EXPR_ITEM:
+	case EVT_EXPR_ATC:
+	case EVT_EXPR_RANK:
+	case EVT_EXPR_EXP:
+	case EVT_EXPR_LEVEL:
+	case EVT_EXPR_HOLD:
+	case EVT_EXPR_MAP:
+	case EVT_EXPR_ACTOR_NAME:
+	case EVT_EXPR_ITEM_NAME:
+	case EVT_EXPR_TIME:
+	case EVT_EXPR_CURRENT_SUIT:
+	case EVT_EXPR_SCRAP:
+	case EVT_EXPR_CURRENT_ATC:
+	case EVT_EXPR_USE:
+	case EVT_EXPR_HIT:
+	case EVT_EXPR_STICKER_NAME:
+	case EVT_EXPR_OBJ:
+	case EVT_EXPR_RANDOM:
+	case EVT_EXPR_SIN:
+	case EVT_EXPR_COS:
+	case EVT_EXPR_ARRAY_ELEMENT:
+		result = Evaluate() != 0;
+		break;
+	case EVT_EXPR_EQUAL:
+	case EVT_EXPR_NOT_EQUAL:
+	case EVT_EXPR_LESS:
+	case EVT_EXPR_LESS_EQUAL:
+	case EVT_EXPR_GREATER:
+	case EVT_EXPR_GREATER_EQUAL: {
+		mData.mScript++;
+		// the operand read second is the left side of the test
+		s32 rhs = Evaluate();
+		s32 lhs = Evaluate();
+		Compare(result, op, lhs, rhs);
+		break;
+	}
+	default:
+		OSPanic(__FILE__, 1330, "%s%s", FormatToStaticBuffer("Unknown EvalCmp op - %d\n", op), __FUNCTION__);
+		break;
+	}
+
+	return result;
+}
+
 /**
  * @note Address: 0x8007C030
  * @note Size: 0x24
  */
 s32 CEvt::_cmd_SET(u8, s32)
 {
-	CEvt_EvalSet(this);
+	EvalSet();
 	return 0;
 }
 
@@ -4630,7 +4483,7 @@ s32 CEvt::_cmd_SET(u8, s32)
 s32 CEvt::_cmd_IF(u8, s32)
 {
 	// a true test skips the 4 byte jump offset, a false one takes it
-	if (EvalCmp(this)) {
+	if (EvalCmp()) {
 		mData.mScript += 4;
 	} else {
 		mData.mScript = ResolveEventScriptOffset(mData.mScript);
@@ -4678,7 +4531,7 @@ s32 CEvt::_cmd_IF(u8, s32)
     bge      .L_8007BFBC
 .L_8007BED8:
     mr       r3, r29
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     neg      r0, r3
     or       r0, r0, r3
     srwi     r28, r0, 31
@@ -4686,10 +4539,10 @@ s32 CEvt::_cmd_IF(u8, s32)
 .L_8007BEF0:
     addi     r0, r5, 0x1
     stw      r0, 0x4(r29)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r31, r3
     mr       r3, r29
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi.  r0, r30, 24
     bne      .L_8007BF1C
     subf     r0, r3, r31
@@ -4813,7 +4666,7 @@ s32 CEvt::_cmd_POPBP(u8, s32)
  */
 s32 CEvt::_cmd_SETSP(u8, s32)
 {
-	mValues.mBuf[mValues.mCount++] = CEvt_Evaluate(this);
+	mValues.mBuf[mValues.mCount++] = Evaluate();
 	return 0;
 }
 
@@ -4851,6 +4704,21 @@ s32 CEvt::_cmd_LIB(u8, s32)
 	mData.mScript                = p + 2;
 	mData.mScript                = GetGlobalScriptByIndex(idx);
 	return 0;
+}
+
+// WARP, ABORT and RETURN all finish through this
+static inline void CEvt_End(CEvt* evt)
+{
+	evt->mData.mScript = 0;
+	// a window MSG left up for STAY is idle again
+	if (evt->mMsg != 0 && evt->mMsgState != 0) {
+		evt->mMsgState   = 0;
+		evt->mMsg->mIdle = 1;
+	}
+	Inventory* inventory = &EVT_PLAYER.mParams.mInventory;
+	inventory->mCompact  = TRUE;
+	CompactInventory(inventory);
+	evt->mData.mScript = 0;
 }
 
 /**
@@ -4912,16 +4780,24 @@ s32 CEvt::_cmd_ABORT(u8, s32)
 	return 1;
 }
 
+// the print is compiled out, only the length loops are left
+static inline void CEvt_Warn(const char* msg)
+{
+	size_t len = strlen(msg) + 13;
+	for (size_t i = 0; i < len; i++) { }
+	for (size_t i = 0; i < len; i++) { }
+}
+
 /**
  * @note Address: 0x8007B48C
  * @note Size: 0x5F0
  */
 s32 CEvt::_cmd_ANIM(u8 command, s32)
 {
-	s16 id    = CEvt_Evaluate(this);
+	s16 id    = Evaluate();
 	XObj* obj = CEvt_GetObj(this, id);
 	for (s32 count = 0;; count++) {
-		s32 anim = CEvt_Evaluate(this);
+		s32 anim = Evaluate();
 		if (anim == -1) {
 			break;
 		}
@@ -4963,7 +4839,7 @@ s32 CEvt::_cmd_ANIM(u8 command, s32)
     stmw     r23, 0x1c(r1)
     mr       r30, r3
     mr       r31, r4
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r0, r3
     cmpwi    r0, 0x2710
     blt      .L_8007B568
@@ -5039,7 +4915,7 @@ s32 CEvt::_cmd_ANIM(u8 command, s32)
     mr       r28, r0
 .L_8007B5A8:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r5, r3
     cmpwi    r5, -0x1
     beq      .L_8007BA64
@@ -5382,15 +5258,15 @@ s32 CEvt::_cmd_ANIM(u8 command, s32)
  */
 s32 CEvt::_cmd_ANIM2(u8 command, s32)
 {
-	s16 id    = CEvt_Evaluate(this);
+	s16 id    = Evaluate();
 	XObj* obj = CEvt_GetObj(this, id);
 	for (s32 count = 0;; count++) {
-		s32 anim = CEvt_Evaluate(this);
+		s32 anim = Evaluate();
 		if (anim == -1) {
 			break;
 		}
-		u16 frame = CEvt_Evaluate(this);
-		s16 rate  = CEvt_Evaluate(this);
+		u16 frame = Evaluate();
+		s16 rate  = Evaluate();
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL) {
 				CEvt_Warn(FormatToStaticBuffer("anim2(%d, %d,%d,%d) ... obj(%d) is collision!", id, anim, frame, rate, id));
@@ -5428,7 +5304,7 @@ s32 CEvt::_cmd_ANIM2(u8 command, s32)
     stmw     r21, 0x24(r1)
     mr       r30, r3
     mr       r31, r4
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r0, r3
     cmpwi    r0, 0x2710
     blt      .L_8007AF38
@@ -5504,15 +5380,15 @@ s32 CEvt::_cmd_ANIM2(u8 command, s32)
     mr       r28, r0
 .L_8007AF78:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r26, r3
     cmpwi    r26, -0x1
     beq      .L_8007B474
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r25, r3, 16
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmplwi   r29, 0x0
     extsh    r24, r3
     beq      .L_8007B3A8
@@ -5863,10 +5739,10 @@ s32 CEvt::_cmd_ANIM2(u8 command, s32)
  */
 s32 CEvt::_cmd_ATTACH(u8 command, s32)
 {
-	s16 id    = CEvt_Evaluate(this);
+	s16 id    = Evaluate();
 	XObj* obj = CEvt_GetObj(this, id);
 	if (command == EVT_CMD_ATTACH) {
-		u8* script = (u8*)CEvt_Evaluate(this);
+		u8* script = (u8*)Evaluate();
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			CEvt_Attach(&obj->mEvt, script, mOwner);
 		} else {
@@ -5887,6 +5763,13 @@ s32 CEvt::_cmd_ATTACH(u8 command, s32)
 	return 0;
 }
 
+// null when the pool is full
+static inline XObj* CEvt_Born(s32 index)
+{
+	CoordInfo info(GetSpawnData(index));
+	return (XObj*)SpawnObjectFromPlacement(&gGame.mXObjs, &info, 1, FALSE);
+}
+
 /*
     stwu     r1, -0x20(r1)
     mflr     r0
@@ -5897,7 +5780,7 @@ s32 CEvt::_cmd_ATTACH(u8 command, s32)
     mr       r29, r4
     stw      r28, 0x10(r1)
     mr       r28, r3
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r30, r3
     cmpwi    r30, 0x2710
     blt      .L_8007AA34
@@ -5972,7 +5855,7 @@ s32 CEvt::_cmd_ATTACH(u8 command, s32)
     cmplwi   r0, 0x14
     bne      .L_8007AD04
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmplwi   r31, 0x0
     beq      .L_8007AC50
     lwz      r0, 0x228(r31)
@@ -6254,16 +6137,16 @@ s32 CEvt::_cmd_ATTACH(u8 command, s32)
  */
 s32 CEvt::_cmd_BORN(u8, s32)
 {
-	s16 id    = CEvt_Evaluate(this);
-	s16 type  = CEvt_Evaluate(this);
-	f32 x     = CEvt_Evaluate(this) / 100.0f;
-	f32 y     = CEvt_Evaluate(this) / 100.0f;
-	f32 z     = CEvt_Evaluate(this) / 100.0f;
-	s16 rot   = CEvt_Evaluate(this);
-	f32 sx    = CEvt_Evaluate(this) / 100.0f;
-	f32 sy    = CEvt_Evaluate(this) / 100.0f;
-	f32 sz    = CEvt_Evaluate(this) / 100.0f;
-	s32 arg   = CEvt_Evaluate(this);
+	s16 id    = Evaluate();
+	s16 type  = Evaluate();
+	f32 x     = Evaluate() / 100.0f;
+	f32 y     = Evaluate() / 100.0f;
+	f32 z     = Evaluate() / 100.0f;
+	s16 rot   = Evaluate();
+	f32 sx    = Evaluate() / 100.0f;
+	f32 sy    = Evaluate() / 100.0f;
+	f32 sz    = Evaluate() / 100.0f;
+	s32 arg   = Evaluate();
 	XObj* obj = CEvt_FindObj(id);
 	if (obj == NULL) {
 		obj = CEvt_Born(type + 0x16);
@@ -6290,6 +6173,10 @@ s32 CEvt::_cmd_BORN(u8, s32)
 	return 0;
 }
 
+extern "C" {
+void AddMainMenuExtraRow(void* object, s32 arg1, s32 arg2);
+}
+
 // CEvt::_cmd_BORN
 /*
     stwu     r1, -0xc0(r1)
@@ -6309,13 +6196,13 @@ s32 CEvt::_cmd_BORN(u8, s32)
     psq_st   f26, 0x68(r1), 0, qr0
     stmw     r26, 0x48(r1)
     mr       r26, r3
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r29, r3
     mr       r3, r26
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r28, r3
     mr       r3, r26
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x14(r1)
@@ -6326,7 +6213,7 @@ s32 CEvt::_cmd_BORN(u8, s32)
     lfd      f1, 0x10(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x1c(r1)
@@ -6337,7 +6224,7 @@ s32 CEvt::_cmd_BORN(u8, s32)
     lfd      f1, 0x18(r1)
     fsubs    f1, f1, f2
     fdivs    f30, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x24(r1)
@@ -6348,10 +6235,10 @@ s32 CEvt::_cmd_BORN(u8, s32)
     lfd      f1, 0x20(r1)
     fsubs    f1, f1, f2
     fdivs    f29, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r27, r3
     mr       r3, r26
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x2c(r1)
@@ -6362,7 +6249,7 @@ s32 CEvt::_cmd_BORN(u8, s32)
     lfd      f1, 0x28(r1)
     fsubs    f1, f1, f2
     fdivs    f28, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x34(r1)
@@ -6373,7 +6260,7 @@ s32 CEvt::_cmd_BORN(u8, s32)
     lfd      f1, 0x30(r1)
     fsubs    f1, f1, f2
     fdivs    f27, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x3c(r1)
@@ -6384,7 +6271,7 @@ s32 CEvt::_cmd_BORN(u8, s32)
     lfd      f1, 0x38(r1)
     fsubs    f1, f1, f2
     fdivs    f26, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lis      r4, gEventObjectIds@ha
     mr       r31, r3
     addi     r30, r4, gEventObjectIds@l
@@ -6624,7 +6511,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 	u16 length = EvtRead16(begin);
 	mData.mScript += 2;
 	u8* end      = begin + length;
-	s16 id       = CEvt_Evaluate(this);
+	s16 id       = Evaluate();
 	XObj* target = CEvt_GetObj(this, id);
 	s32 count    = 0;
 	s32 args[24];
@@ -6632,7 +6519,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
 		if (mData.mScript >= end)
 			break;
 		if (i < 24) {
-			args[i] = CEvt_Evaluate(this);
+			args[i] = Evaluate();
 			count++;
 		}
 	}
@@ -7014,6 +6901,11 @@ s32 CEvt::_cmd_CALL(u8, s32)
 	return yield;
 }
 
+// walked through the lobj next links
+extern "C" void SetStageCameraAnimation(XObj* obj, s32 anim, f32 frame);
+
+#define EVT_CAMERA_ACTION(type) (((CInterfaceCameraAction**)&gGame.mCameraActions.mTable)[type])
+
 /**
  * @note Address: 0x80078754
  * @note Size: 0x1D38
@@ -7039,7 +6931,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
     stw      r0, 0x4(r3)
     clrlwi   r0, r4, 16
     add      r23, r7, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r4, r3
     cmpwi    r4, 0x2710
     blt      .L_80078860
@@ -7120,7 +7012,7 @@ s32 CEvt::_cmd_CALL(u8, s32)
     cmpwi    r27, 0x18
     bge      .L_800788C8
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     stw      r3, 0x0(r25)
     addi     r24, r24, 0x1
 .L_800788C8:
@@ -9097,13 +8989,13 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 	CCameraActionEvt* action   = (CCameraActionEvt*)EVT_CAMERA_ACTION(CAMACTION_EVT);
 	CCameraActionAreaExM* area = (CCameraActionAreaExM*)EVT_CAMERA_ACTION(CAMACTION_AREA);
 	CCameraActionReset* reset  = (CCameraActionReset*)EVT_CAMERA_ACTION(CAMACTION_RESET);
-	u16 command                = CEvt_Evaluate(this);
+	u16 command                = Evaluate();
 	switch (command) {
 	case EVT_ATOM_AREA: {
-		s32 areaIndex = CEvt_Evaluate(this);
-		s32 entry     = CEvt_Evaluate(this);
-		s32 mode      = CEvt_Evaluate(this);
-		f32 time      = CEvt_Evaluate(this) / 100.0f;
+		s32 areaIndex = Evaluate();
+		s32 entry     = Evaluate();
+		s32 mode      = Evaluate();
+		f32 time      = Evaluate() / 100.0f;
 		if (GetStageCameraInfoRecords() != NULL && area->IsCameraArea(areaIndex) != 0) {
 			CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 			camera->ChangeAction(CAMACTION_AREA);
@@ -9116,11 +9008,11 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		break;
 	}
 	case EVT_ATOM_POS: {
-		f32 x    = CEvt_Evaluate(this) / 100.0f;
-		f32 y    = CEvt_Evaluate(this) / 100.0f;
-		f32 z    = CEvt_Evaluate(this) / 100.0f;
-		s32 mode = CEvt_Evaluate(this);
-		f32 time = CEvt_Evaluate(this) / 100.0f;
+		f32 x    = Evaluate() / 100.0f;
+		f32 y    = Evaluate() / 100.0f;
+		f32 z    = Evaluate() / 100.0f;
+		s32 mode = Evaluate();
+		f32 time = Evaluate() / 100.0f;
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
 		action->mCameraFlags = 11;
 		action->SetEye_Interp(mode, (Vec) { x, y, z }, time);
@@ -9130,10 +9022,10 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 	case 243:
 	case 251:
 	case 252: {
-		s32 axis      = CEvt_Evaluate(this);
-		f32 degrees   = CEvt_Evaluate(this);
-		s32 mode      = CEvt_Evaluate(this);
-		f32 time      = CEvt_Evaluate(this) / 100.0f;
+		s32 axis      = Evaluate();
+		f32 degrees   = Evaluate();
+		s32 mode      = Evaluate();
+		f32 time      = Evaluate() / 100.0f;
 		u32 type      = command == 240 ? 2 : 1;
 		BOOL relative = command == 251 || command == 252;
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
@@ -9154,20 +9046,20 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		break;
 	}
 	case EVT_ATOM_INTEREST: {
-		f32 x    = CEvt_Evaluate(this) / 100.0f;
-		f32 y    = CEvt_Evaluate(this) / 100.0f;
-		f32 z    = CEvt_Evaluate(this) / 100.0f;
-		s32 mode = CEvt_Evaluate(this);
-		f32 time = CEvt_Evaluate(this) / 100.0f;
+		f32 x    = Evaluate() / 100.0f;
+		f32 y    = Evaluate() / 100.0f;
+		f32 z    = Evaluate() / 100.0f;
+		s32 mode = Evaluate();
+		f32 time = Evaluate() / 100.0f;
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
 		action->mCameraFlags = 11;
 		action->SetInterest_Interp(mode, (Vec) { x, y, z }, time);
 		break;
 	}
 	case EVT_ATOM_OBJ: {
-		s32 id    = CEvt_Evaluate(this);
-		s32 mode  = CEvt_Evaluate(this);
-		f32 time  = CEvt_Evaluate(this) / 100.0f;
+		s32 id    = Evaluate();
+		s32 mode  = Evaluate();
+		f32 time  = Evaluate() / 100.0f;
 		XObj* obj = CEvt_GetObj(this, (s16)id);
 		if (obj != NULL) {
 			Vec target = obj->GetCameraTarget();
@@ -9180,7 +9072,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		break;
 	}
 	case EVT_ATOM_LEAD: {
-		s32 id    = CEvt_Evaluate(this);
+		s32 id    = Evaluate();
 		XObj* obj = CEvt_GetObj(this, (s16)id);
 		if (obj != NULL) {
 			gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
@@ -9192,23 +9084,23 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		break;
 	}
 	case EVT_ATOM_DISTANCE:
-		CEvt_Evaluate(this);
-		CEvt_Evaluate(this);
-		CEvt_Evaluate(this);
+		Evaluate();
+		Evaluate();
+		Evaluate();
 		break;
 	case EVT_ATOM_FOV: {
-		f32 fov  = CEvt_Evaluate(this);
-		s32 mode = CEvt_Evaluate(this);
-		f32 time = CEvt_Evaluate(this) / 100.0f;
+		f32 fov  = Evaluate();
+		s32 mode = Evaluate();
+		f32 time = Evaluate() / 100.0f;
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_EVT);
 		action->mCameraFlags = action->GetCameraFlags() | 8;
 		action->SetFov_Interp(mode, fov, time);
 		break;
 	}
 	case EVT_ATOM_ANIM: {
-		s32 anim = CEvt_Evaluate(this);
-		CEvt_Evaluate(this);
-		CEvt_Evaluate(this);
+		s32 anim = Evaluate();
+		Evaluate();
+		Evaluate();
 		gGame.mMotionControlCamera.ChangeAction(CAMACTION_ANIM);
 		// pool 0's object is the XObjCamera the anim camera plays
 		XObj* obj = (XObj*)gGame.mXObjs.mPools[0].mObjects;
@@ -9218,8 +9110,8 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		break;
 	}
 	case EVT_ATOM_RESET: {
-		s32 mode                     = CEvt_Evaluate(this);
-		f32 time                     = CEvt_Evaluate(this) / 100.0f;
+		s32 mode                     = Evaluate();
+		f32 time                     = Evaluate() / 100.0f;
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		if (camera->IsAction(CAMACTION_EVT)) {
 			reset->mMode      = mode;
@@ -9244,7 +9136,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 	case EVT_ATOM_SAVE: {
 		CMotionControlCamera* camera = &gGame.mMotionControlCamera;
 		camera->EndEye();
-		s32 slot = CEvt_Evaluate(this);
+		s32 slot = Evaluate();
 		if (slot >= 0) {
 			camera->CreateMemento(&gEventCameraMementos[slot]);
 		} else {
@@ -9253,7 +9145,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		break;
 	}
 	case EVT_ATOM_LOAD: {
-		s32 slot = CEvt_Evaluate(this);
+		s32 slot = Evaluate();
 		if (slot >= 0) {
 			gGame.mMotionControlCamera.SetMemento(&gEventCameraMementos[slot]);
 		} else if (mCameraMemento != NULL) {
@@ -9263,7 +9155,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		break;
 	}
 	case 238: { // area camera zoom level, passed negated; values above 0 do nothing
-		s32 zoom = CEvt_Evaluate(this);
+		s32 zoom = Evaluate();
 		if (zoom <= 0) {
 			s32 sign = zoom >> 31;
 			SetAreaCameraHeightIndex(&gGame.mMotionControlCamera, (zoom ^ sign) - sign);
@@ -9271,7 +9163,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 		break;
 	}
 	case 232: // first-person controls
-		switch (CEvt_Evaluate(this)) {
+		switch (Evaluate()) {
 		case -1:
 			gGame.mStatus.mFlags &= ~0x80ULL;
 			break;
@@ -9285,17 +9177,17 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
 			gGame.mMotionControlCamera.StartEye();
 			break;
 		case 2: {
-			f32 degrees                                                        = CEvt_Evaluate(this);
+			f32 degrees                                                        = Evaluate();
 			((CCameraActionEye*)EVT_CAMERA_ACTION(CAMACTION_EYE))->mOverride.y = DEG2RAD * degrees;
 			break;
 		}
 		case 3: {
-			f32 degrees                                                        = CEvt_Evaluate(this);
+			f32 degrees                                                        = Evaluate();
 			((CCameraActionEye*)EVT_CAMERA_ACTION(CAMACTION_EYE))->mOverride.x = DEG2RAD * degrees;
 			break;
 		}
 		case 4: {
-			f32 fov                                                            = CEvt_Evaluate(this);
+			f32 fov                                                            = Evaluate();
 			((CCameraActionEye*)EVT_CAMERA_ACTION(CAMACTION_EYE))->mOverride.z = fov;
 			break;
 		}
@@ -9335,7 +9227,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     lwz      r31, 0x7df8(r25)
     lwz      r29, 0x7df0(r25)
     lwz      r27, 0x7e10(r25)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r26, r3, 16
     subi     r0, r26, 0xcc
     cmplwi   r0, 0x30
@@ -9349,19 +9241,19 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     bctr
 .L_800778DC:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r30
     mr       r26, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r30
     mr       r27, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r30
     mr       r28, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xac(r1)
@@ -9403,7 +9295,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_800779B0:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xac(r1)
@@ -9414,7 +9306,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     lfd      f1, 0xa8(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xb4(r1)
@@ -9425,7 +9317,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     lfd      f1, 0xb0(r1)
     fsubs    f1, f1, f2
     fdivs    f30, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xbc(r1)
@@ -9436,11 +9328,11 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     lfd      f1, 0xb8(r1)
     fsubs    f1, f1, f2
     fdivs    f29, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r30
     mr       r25, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc4(r1)
@@ -9481,10 +9373,10 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_80077AE4:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r29, r3
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc4(r1)
@@ -9493,11 +9385,11 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     stw      r0, 0xc0(r1)
     lfd      f0, 0xc0(r1)
     fsubs    f28, f0, f1
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r30
     mr       r27, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r0, r3, 0x8000
     lis      r3, 0x4330
     stw      r0, 0xbc(r1)
@@ -9614,7 +9506,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_80077CE0:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc4(r1)
@@ -9625,7 +9517,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     lfd      f1, 0xc0(r1)
     fsubs    f1, f1, f2
     fdivs    f28, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xbc(r1)
@@ -9636,7 +9528,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     lfd      f1, 0xb8(r1)
     fsubs    f1, f1, f2
     fdivs    f29, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xb4(r1)
@@ -9647,11 +9539,11 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     lfd      f1, 0xb0(r1)
     fsubs    f1, f1, f2
     fdivs    f30, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r30
     mr       r25, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xac(r1)
@@ -9692,15 +9584,15 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_80077E14:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r30
     mr       r26, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r30
     mr       r27, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc4(r1)
@@ -9864,7 +9756,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_80078080:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r29, r3
     cmpwi    r29, 0x2710
     blt      .L_80078144
@@ -10002,15 +9894,15 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_80078264:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     b        .L_8007871C
 .L_80078280:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc4(r1)
@@ -10019,11 +9911,11 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     stw      r0, 0xc0(r1)
     lfd      f0, 0xc0(r1)
     fsubs    f28, f0, f1
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r30
     mr       r25, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xbc(r1)
@@ -10054,13 +9946,13 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_8007832C:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r30
     mr       r25, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lis      r3, gGame@ha
     li       r4, 0x6
     addi     r3, r3, gGame@l
@@ -10089,10 +9981,10 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_800783B4:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r26, r3
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc4(r1)
@@ -10156,7 +10048,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     mr       r3, r25
     bl       fn_80148B78
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmpwi    r3, 0x0
     blt      .L_800784E0
     lis      r4, gEventCameraMementos@ha
@@ -10174,7 +10066,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_800784F4:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmpwi    r3, 0x0
     blt      .L_8007852C
     lis      r5, gGame@ha
@@ -10201,7 +10093,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_80078558:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr.      r0, r3
     bgt      .L_8007871C
     lis      r3, gGame@ha
@@ -10215,7 +10107,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_8007858C:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     addi     r0, r3, 0x2
     cmplwi   r0, 0x6
     bgt      .L_8007871C
@@ -10260,7 +10152,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_8007862C:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc4(r1)
@@ -10278,7 +10170,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_80078670:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc4(r1)
@@ -10296,7 +10188,7 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
     b        .L_8007871C
 .L_800786B4:
     mr       r3, r30
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc4(r1)
@@ -10345,13 +10237,13 @@ s32 CEvt::_cmd_CAMERA(u8, s32)
  */
 s32 CEvt::_cmd_COLOR(u8, s32)
 {
-	s16 id    = CEvt_Evaluate(this);
+	s16 id    = Evaluate();
 	XObj* obj = CEvt_GetObj(this, id);
-	u16 mode  = CEvt_Evaluate(this);
-	u8 r      = CEvt_Evaluate(this);
-	u8 g      = CEvt_Evaluate(this);
-	u8 b      = CEvt_Evaluate(this);
-	f32 time  = CEvt_Evaluate(this) / 100.0f;
+	u16 mode  = Evaluate();
+	u8 r      = Evaluate();
+	u8 g      = Evaluate();
+	u8 b      = Evaluate();
+	f32 time  = Evaluate() / 100.0f;
 	if (obj == (XObj*)-2) { // id -2: every object in use that has a model
 		for (s32 i = 0; i < gGame.mXObjs.mObjectCount; i++) {
 			XObj* current = gGame.mXObjs.mObjects[i];
@@ -10389,6 +10281,13 @@ s32 CEvt::_cmd_COLOR(u8, s32)
 	return 0;
 }
 
+#if defined(VERSION_PAL)
+// the refresh rate, 50 or 60
+#define FRAMES_PER_SEC gVideoFramesPerSecond
+#else
+#define FRAMES_PER_SEC 60
+#endif
+
 /*
     stwu     r1, -0x40(r1)
     mflr     r0
@@ -10399,7 +10298,7 @@ s32 CEvt::_cmd_COLOR(u8, s32)
     lis      r4, lbl_80207FA0@ha
     mr       r24, r3
     addi     r31, r4, lbl_80207FA0@l
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r29, r3
     cmpwi    r29, 0x2710
     blt      .L_800772F0
@@ -10471,19 +10370,19 @@ s32 CEvt::_cmd_COLOR(u8, s32)
     mr       r30, r29
 .L_80077328:
     mr       r3, r24
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r28, r3, 16
     mr       r3, r24
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r27, r3, 24
     mr       r3, r24
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r26, r3, 24
     mr       r3, r24
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r25, r3, 24
     mr       r3, r24
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r0, r3, 0x8000
     lis      r3, 0x4330
     stw      r0, 0xc(r1)
@@ -10849,7 +10748,7 @@ s32 CEvt::_cmd_COLOR(u8, s32)
  */
 s32 CEvt::_cmd_DIR(u8 command, s32)
 {
-	s16 id    = CEvt_Evaluate(this);
+	s16 id    = Evaluate();
 	XObj* obj = CEvt_GetObj(this, id);
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 		XObjChr* player = gGame.GetPlayer();
@@ -10857,7 +10756,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 			CancelPlayerPushAction(&player->mPush);
 	}
 	if (command == EVT_CMD_DIR) {
-		s16 direction = CEvt_Evaluate(this);
+		s16 direction = Evaluate();
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			obj->SetRotationY(DEG2RAD * direction, 0);
 			gGame.mMotionControlCamera.UpdateTarget(obj);
@@ -10872,15 +10771,15 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 			}
 		}
 	} else {
-		u16 mode = CEvt_Evaluate(this);
+		u16 mode = Evaluate();
 		s32 direction;
 		switch (mode) {
 		case EVT_ATOM_DIR:
-			direction = (s16)CEvt_Evaluate(this);
+			direction = (s16)Evaluate();
 			break;
 		case EVT_ATOM_POS: {
-			f32 x = CEvt_Evaluate(this) / 100.0f;
-			f32 z = CEvt_Evaluate(this) / 100.0f;
+			f32 x = Evaluate() / 100.0f;
+			f32 z = Evaluate() / 100.0f;
 			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 				direction = RAD2DEG * (f32)atan2(x - obj->mMoveTranslate.x, z - obj->mMoveTranslate.z);
 			} else {
@@ -10889,7 +10788,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 			break;
 		}
 		case EVT_ATOM_OBJ: {
-			s16 targetId = CEvt_Evaluate(this);
+			s16 targetId = Evaluate();
 			XObj* target = CEvt_GetObj(this, targetId);
 			if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 				if (target != NULL && (target->mStatus.mFlags & 1)) {
@@ -10922,8 +10821,8 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
 			OSPanic(__FILE__, line, "%s%s", FormatToStaticBuffer("mdir(obj, %d,...) - unresolved!\n", mode), __FUNCTION__);
 			break;
 		}
-		f32 time = CEvt_Evaluate(this) / 100.0f;
-		s32 anim = CEvt_Evaluate(this);
+		f32 time = Evaluate() / 100.0f;
+		s32 anim = Evaluate();
 		if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 			if (obj->mJObj == NULL) {
 				CEvt_Warn(FormatToStaticBuffer("mdir(%d, %d, %d, %d, %d) ... obj(%d) is collision!", id, mode, (s16)direction,
@@ -10980,7 +10879,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
     mr       r25, r3
     mr       r26, r4
     addi     r31, r5, lbl_80207FA0@l
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r28, r3
     cmpwi    r28, 0x2710
     blt      .L_800766EC
@@ -11076,7 +10975,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
     cmplwi   r0, 0x1b
     bne      .L_80076868
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmplwi   r30, 0x0
     extsh    r6, r3
     beq      .L_800771EC
@@ -11135,7 +11034,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
     b        .L_800771EC
 .L_80076868:
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r0, r3, 16
     cmpwi    r0, 0xd0
     mr       r29, r0
@@ -11153,12 +11052,12 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
     b        .L_80076E48
 .L_800768A8:
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r27, r3
     b        .L_80076E78
 .L_800768B8:
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc(r1)
@@ -11169,7 +11068,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
     lfd      f1, 0x8(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x14(r1)
@@ -11257,7 +11156,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
     b        .L_80076E78
 .L_80076A20:
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r5, r3
     cmpwi    r5, 0x2710
     blt      .L_80076AE4
@@ -11572,7 +11471,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
     bl       OSPanic
 .L_80076E78:
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x14(r1)
@@ -11583,7 +11482,7 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
     lfd      f1, 0x10(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmplwi   r30, 0x0
     mr       r26, r3
     beq      .L_800771EC
@@ -11829,9 +11728,9 @@ s32 CEvt::_cmd_DIR(u8 command, s32)
  */
 s32 CEvt::_cmd_DISP(u8, s32)
 {
-	s16 id    = CEvt_Evaluate(this);
+	s16 id    = Evaluate();
 	XObj* obj = CEvt_GetObj(this, id);
-	u8 on     = CEvt_Evaluate(this);
+	u8 on     = Evaluate();
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 		XObj* held = gGame.GetPlayer()->mLift.mTarget;
 		if (held != NULL && obj == held && (obj->mStatus.mFlags & 0x0000400000000000)) {
@@ -11848,13 +11747,36 @@ s32 CEvt::_cmd_DISP(u8, s32)
 	return 0;
 }
 
+static inline s16 CEvt_FindObjIndex(s16 id)
+{
+	for (s32 i = 0; i < gEventObjectIds.mCount; i++) {
+		if (gEventObjectIds.mEntry[i].mId == id) {
+			return gEventObjectIds.mEntry[i].mIndex;
+		}
+	}
+	return -1;
+}
+
+static inline void CEvt_ForgetObjId(s16 id)
+{
+	for (s32 i = 0; i < gEventObjectIds.mCount; i++) {
+		if (gEventObjectIds.mEntry[i].mId == id) {
+			for (s32 j = i; j < gEventObjectIds.mCount; j++) {
+				gEventObjectIds.mEntry[j].mId    = gEventObjectIds.mEntry[j + 1].mId;
+				gEventObjectIds.mEntry[j].mIndex = gEventObjectIds.mEntry[j + 1].mIndex;
+			}
+			gEventObjectIds.mCount--;
+		}
+	}
+}
+
 /**
  * @note Address: 0x80075EAC
  * @note Size: 0x400
  */
 s32 CEvt::_cmd_KILL(u8, s32)
 {
-	s16 id    = CEvt_Evaluate(this);
+	s16 id    = Evaluate();
 	XObj* obj = CEvt_GetObj(this, id);
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 		XObj* held = gGame.GetPlayer()->mLift.mTarget;
@@ -11887,7 +11809,7 @@ s32 CEvt::_cmd_KILL(u8, s32)
  */
 s32 CEvt::_cmd_LIGHT(u8, s32)
 {
-	s32 index     = CEvt_Evaluate(this);
+	s32 index     = Evaluate();
 	CLight* light = gGame.mLightList;
 	for (s32 i = 0; i < index; i++) {
 		light = (CLight*)light->next;
@@ -11896,12 +11818,12 @@ s32 CEvt::_cmd_LIGHT(u8, s32)
 		}
 	}
 
-	u16 type = CEvt_Evaluate(this);
+	u16 type = Evaluate();
 	switch (type) {
 	case EVT_ATOM_COLOR: {
-		u8 r            = CEvt_Evaluate(this);
-		u8 g            = CEvt_Evaluate(this);
-		u8 b            = CEvt_Evaluate(this);
+		u8 r            = Evaluate();
+		u8 g            = Evaluate();
+		u8 b            = Evaluate();
 		light->mColor.r = r;
 		light->mColor.g = g;
 		light->mColor.b = b;
@@ -11911,15 +11833,15 @@ s32 CEvt::_cmd_LIGHT(u8, s32)
 	}
 	case EVT_ATOM_POS: {
 		// positions come in hundredths
-		f32 x = CEvt_Evaluate(this) / 100.0f;
-		f32 y = CEvt_Evaluate(this) / 100.0f;
-		light->SetPosition(x, y, CEvt_Evaluate(this) / 100.0f);
+		f32 x = Evaluate() / 100.0f;
+		f32 y = Evaluate() / 100.0f;
+		light->SetPosition(x, y, Evaluate() / 100.0f);
 		break;
 	}
 	case EVT_ATOM_INTEREST: {
-		f32 x = CEvt_Evaluate(this) / 100.0f;
-		f32 y = CEvt_Evaluate(this) / 100.0f;
-		light->SetInterest(x, y, CEvt_Evaluate(this) / 100.0f);
+		f32 x = Evaluate() / 100.0f;
+		f32 y = Evaluate() / 100.0f;
+		light->SetInterest(x, y, Evaluate() / 100.0f);
 		break;
 	}
 	default:
@@ -11933,6 +11855,21 @@ s32 CEvt::_cmd_LIGHT(u8, s32)
 	return 0;
 }
 
+// an entry in the game object's menu table, a CMenu (game/stg.h) with the same vtable
+struct UnkEvtMenu {
+	u8 _00[0x148]; // _00
+	// _148 vtable
+
+	virtual void Init();             // _08
+	virtual BOOL LoadTexture();      // _0C
+	virtual void Reset();            // _10
+	virtual BOOL Update(u32 frames); // _14
+	virtual BOOL Draw();             // _18
+	virtual void Open();             // _1C, MENU opens it with this
+};
+
+extern "C" void ClosePlayerEquipmentMenu(u8* player, s32 arg);
+
 /**
  * @note Address: 0x80075A80
  * @note Size: 0x19C
@@ -11942,7 +11879,7 @@ s32 CEvt::_cmd_MENU(u8, s32)
 	s32 ret = 0;
 	// rewind to here until the menu closes
 	u8* cmd = mData.mScript - 1;
-	s32 id  = CEvt_Evaluate(this);
+	s32 id  = Evaluate();
 	if (mMenuActive != 0) {
 		if (gGame.mMenu.mActive != 0) {
 			mData.mScript = cmd;
@@ -11952,7 +11889,7 @@ s32 CEvt::_cmd_MENU(u8, s32)
 		}
 	} else if (id == 1000) {
 		// equipment rings: ring 0 (attachments) or 1 (costumes) gets the cursor, opening them if needed; below 0 closes them
-		s32 ring = CEvt_Evaluate(this);
+		s32 ring = Evaluate();
 		if (ring >= 0) {
 			SelectPlayerEquipmentRing(&EVT_PLAYER, ring);
 		} else {
@@ -11966,8 +11903,8 @@ s32 CEvt::_cmd_MENU(u8, s32)
 			}
 		}
 	} else if (id == 1001) {
-		s32 atcItem                                            = CEvt_Evaluate(this);
-		s32 drsItem                                            = CEvt_Evaluate(this);
+		s32 atcItem                                            = Evaluate();
+		s32 drsItem                                            = Evaluate();
 		gGame.GetPlayer()->mMenu.mAtc.mPendingFirstVisibleItem = atcItem;
 		gGame.GetPlayer()->mMenu.mDrs.mPendingFirstVisibleItem = drsItem;
 	} else {
@@ -11995,12 +11932,12 @@ s32 CEvt::_cmd_MENU(u8, s32)
  */
 s32 CEvt::_cmd_MOVE(u8, s32)
 {
-	s16 id       = CEvt_Evaluate(this);
+	s16 id       = Evaluate();
 	XObj* obj    = CEvt_GetObj(this, id);
-	f32 distance = CEvt_Evaluate(this) / 100.0f;
-	f32 time     = CEvt_Evaluate(this) / 100.0f;
-	s32 anim     = CEvt_Evaluate(this);
-	s16 dir      = CEvt_Evaluate(this);
+	f32 distance = Evaluate() / 100.0f;
+	f32 time     = Evaluate() / 100.0f;
+	s32 anim     = Evaluate();
+	s16 dir      = Evaluate();
 	// only a shown object moves (DISP sets 0x10000), a hidden one is skipped without a warning
 	if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 		if (obj->mJObj == NULL) {
@@ -12048,6 +11985,12 @@ s32 CEvt::_cmd_MOVE(u8, s32)
 	return 0;
 }
 
+// the y angle that faces from toward to
+static inline f32 CEvt_Angle(const Vec& from, const Vec& to)
+{
+	return atan2(to.x - from.x, to.z - from.z);
+}
+
 /*
     stwu     r1, -0x70(r1)
     mflr     r0
@@ -12060,7 +12003,7 @@ s32 CEvt::_cmd_MOVE(u8, s32)
     psq_st   f29, 0x48(r1), 0, qr0
     stmw     r27, 0x2c(r1)
     mr       r28, r3
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r30, r3
     cmpwi    r30, 0x2710
     blt      .L_80075540
@@ -12132,7 +12075,7 @@ s32 CEvt::_cmd_MOVE(u8, s32)
     mr       r31, r30
 .L_80075578:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x1c(r1)
@@ -12143,7 +12086,7 @@ s32 CEvt::_cmd_MOVE(u8, s32)
     lfd      f1, 0x18(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x24(r1)
@@ -12154,11 +12097,11 @@ s32 CEvt::_cmd_MOVE(u8, s32)
     lfd      f1, 0x20(r1)
     fsubs    f1, f1, f2
     fdivs    f29, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r28
     mr       r29, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmplwi   r31, 0x0
     extsh    r28, r3
     beq      .L_80075970
@@ -12489,14 +12432,14 @@ s32 CEvt::_cmd_MOVE(u8, s32)
  */
 s32 CEvt::_cmd_MOVETO(u8, s32)
 {
-	s16 id    = CEvt_Evaluate(this);
+	s16 id    = Evaluate();
 	XObj* obj = CEvt_GetObj(this, id);
-	f32 x     = CEvt_Evaluate(this) / 100.0f;
-	f32 y     = CEvt_Evaluate(this) / 100.0f;
-	f32 z     = CEvt_Evaluate(this) / 100.0f;
-	f32 time  = CEvt_Evaluate(this) / 100.0f;
-	s32 anim  = CEvt_Evaluate(this);
-	s16 dir   = CEvt_Evaluate(this);
+	f32 x     = Evaluate() / 100.0f;
+	f32 y     = Evaluate() / 100.0f;
+	f32 z     = Evaluate() / 100.0f;
+	f32 time  = Evaluate() / 100.0f;
+	s32 anim  = Evaluate();
+	s16 dir   = Evaluate();
 	// only a shown object moves (DISP sets 0x10000), a hidden one is skipped without a warning
 	if (obj != NULL && (obj->mStatus.mFlags & 1) && (obj->mStatus.mFlags & 0x10000)) {
 		if (obj->mJObj == NULL) {
@@ -12572,7 +12515,7 @@ s32 CEvt::_cmd_MOVETO(u8, s32)
     psq_st   f28, 0xa8(r1), 0, qr0
     stmw     r27, 0x8c(r1)
     mr       r28, r3
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r30, r3
     cmpwi    r30, 0x2710
     blt      .L_80074DE8
@@ -12644,7 +12587,7 @@ s32 CEvt::_cmd_MOVETO(u8, s32)
     mr       r31, r30
 .L_80074E20:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x64(r1)
@@ -12655,7 +12598,7 @@ s32 CEvt::_cmd_MOVETO(u8, s32)
     lfd      f1, 0x60(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x6c(r1)
@@ -12666,7 +12609,7 @@ s32 CEvt::_cmd_MOVETO(u8, s32)
     lfd      f1, 0x68(r1)
     fsubs    f1, f1, f2
     fdivs    f30, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x74(r1)
@@ -12677,7 +12620,7 @@ s32 CEvt::_cmd_MOVETO(u8, s32)
     lfd      f1, 0x70(r1)
     fsubs    f1, f1, f2
     fdivs    f29, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x7c(r1)
@@ -12688,11 +12631,11 @@ s32 CEvt::_cmd_MOVETO(u8, s32)
     lfd      f1, 0x78(r1)
     fsubs    f1, f1, f2
     fdivs    f28, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r28
     mr       r29, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmplwi   r31, 0x0
     extsh    r28, r3
     beq      .L_8007533C
@@ -13077,7 +13020,7 @@ s32 CEvt::_cmd_MOVETO(u8, s32)
  */
 s32 CEvt::_cmd_MOVIE(u8, s32)
 {
-	const char* path = (const char*)CEvt_Evaluate(this);
+	const char* path = (const char*)Evaluate();
 	if (path != NULL) {
 #if defined(VERSION_PAL)
 		// at 50hz europe plays its own 25 fps cut of the movie
@@ -13087,11 +13030,11 @@ s32 CEvt::_cmd_MOVIE(u8, s32)
 			path = buf;
 		}
 #endif
-		s32 x     = CEvt_Evaluate(this);
-		s32 y     = CEvt_Evaluate(this);
-		s32 w     = CEvt_Evaluate(this);
-		s32 h     = CEvt_Evaluate(this);
-		s32 flags = CEvt_Evaluate(this);
+		s32 x     = Evaluate();
+		s32 y     = Evaluate();
+		s32 w     = Evaluate();
+		s32 h     = Evaluate();
+		s32 flags = Evaluate();
 		// x and y are the center, the rect wants the corner
 		x -= w / 2;
 		y -= h / 2;
@@ -13114,23 +13057,23 @@ s32 CEvt::_cmd_MOVIE(u8, s32)
     stw      r0, 0x44(r1)
     stmw     r26, 0x28(r1)
     mr       r26, r3
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr.      r27, r3
     beq      .L_80074CD0
     mr       r3, r26
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r28, r3
     mr       r3, r26
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r29, r3
     mr       r3, r26
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r30, r3
     mr       r3, r26
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r31, r3
     mr       r3, r26
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     srwi     r4, r30, 31
     srwi     r0, r31, 31
     add      r4, r4, r30
@@ -13257,11 +13200,11 @@ s32 CEvt::_cmd_MSG(u8 cmd, s32)
  */
 s32 CEvt::_cmd_POS(u8, s32)
 {
-	s16 id    = CEvt_Evaluate(this);
+	s16 id    = Evaluate();
 	XObj* obj = CEvt_GetObj(this, id);
-	f32 x     = CEvt_Evaluate(this) / 100.0f;
-	f32 y     = CEvt_Evaluate(this) / 100.0f;
-	f32 z     = CEvt_Evaluate(this) / 100.0f;
+	f32 x     = Evaluate() / 100.0f;
+	f32 y     = Evaluate() / 100.0f;
+	f32 z     = Evaluate() / 100.0f;
 	if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 		obj->SetPos(x, y, z, 0);
 		// mLastPos is overwritten below, so flag the floor heights as stale for UpdateObject
@@ -13303,7 +13246,7 @@ s32 CEvt::_cmd_POS(u8, s32)
     stw      r30, 0x28(r1)
     stw      r29, 0x24(r1)
     mr       r29, r3
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r30, r3
     cmpwi    r30, 0x2710
     blt      .L_80074738
@@ -13375,7 +13318,7 @@ s32 CEvt::_cmd_POS(u8, s32)
     mr       r31, r30
 .L_80074770:
     mr       r3, r29
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc(r1)
@@ -13386,7 +13329,7 @@ s32 CEvt::_cmd_POS(u8, s32)
     lfd      f1, 0x8(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x14(r1)
@@ -13397,7 +13340,7 @@ s32 CEvt::_cmd_POS(u8, s32)
     lfd      f1, 0x10(r1)
     fsubs    f1, f1, f2
     fdivs    f30, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x1c(r1)
@@ -13568,30 +13511,30 @@ s32 CEvt::_cmd_PRINTF(u8, s32)
  */
 s32 CEvt::_cmd_PTCL(u8, s32)
 {
-	u32 code = CEvt_Evaluate(this);
-	s16 type = CEvt_Evaluate(this);
+	u32 code = Evaluate();
+	s16 type = Evaluate();
 	Vec translate, scale;
 	if (type == EVT_ATOM_POS) {
-		translate.x  = CEvt_Evaluate(this) / 100.0f;
-		translate.y  = CEvt_Evaluate(this) / 100.0f;
-		translate.z  = CEvt_Evaluate(this) / 100.0f;
-		scale.x      = CEvt_Evaluate(this) / 100.0f;
-		scale.y      = CEvt_Evaluate(this) / 100.0f;
-		scale.z      = CEvt_Evaluate(this) / 100.0f;
-		f32 angle    = CEvt_Evaluate(this);
+		translate.x  = Evaluate() / 100.0f;
+		translate.y  = Evaluate() / 100.0f;
+		translate.z  = Evaluate() / 100.0f;
+		scale.x      = Evaluate() / 100.0f;
+		scale.y      = Evaluate() / 100.0f;
+		scale.z      = Evaluate() / 100.0f;
+		f32 angle    = Evaluate();
 		Vec rotation = { 0.0f, 0.0f, 0.0f };
 		rotation.y   = DEG2RAD * angle;
 		(&gGame.mParticle)->CreateSRT(code, 1, translate, scale, rotation, TRUE);
 	} else if (type == EVT_ATOM_OBJ) {
-		s16 id      = CEvt_Evaluate(this);
+		s16 id      = Evaluate();
 		XObj* obj   = CEvt_GetObj(this, id);
-		translate.x = CEvt_Evaluate(this) / 100.0f;
-		translate.y = CEvt_Evaluate(this) / 100.0f;
-		translate.z = CEvt_Evaluate(this) / 100.0f;
-		scale.x     = CEvt_Evaluate(this) / 100.0f;
-		scale.y     = CEvt_Evaluate(this) / 100.0f;
-		scale.z     = CEvt_Evaluate(this) / 100.0f;
-		f32 angle   = CEvt_Evaluate(this);
+		translate.x = Evaluate() / 100.0f;
+		translate.y = Evaluate() / 100.0f;
+		translate.z = Evaluate() / 100.0f;
+		scale.x     = Evaluate() / 100.0f;
+		scale.y     = Evaluate() / 100.0f;
+		scale.z     = Evaluate() / 100.0f;
+		f32 angle   = Evaluate();
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			translate    = obj->mMoveTranslate + translate;
 			Vec rotation = { 0.0f, 0.0f, 0.0f };
@@ -13601,14 +13544,14 @@ s32 CEvt::_cmd_PTCL(u8, s32)
 			CEvt_Warn(FormatToStaticBuffer("ptcl(..., @OBJ, %d, ...) obj(%d) killed!", id, id));
 		}
 	} else if (type == EVT_ATOM_LEAD) {
-		s16 id    = CEvt_Evaluate(this);
+		s16 id    = Evaluate();
 		XObj* obj = CEvt_GetObj(this, id);
-		s32 depth = CEvt_Evaluate(this);
+		s32 depth = Evaluate();
 		if (depth > 16)
 			depth = 16;
 		s32 path[16];
 		for (s32 i = 0; i < depth; i++) {
-			path[i] = CEvt_Evaluate(this);
+			path[i] = Evaluate();
 		}
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL) {
@@ -13642,16 +13585,16 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     lis      r4, lbl_80207FA0@ha
     mr       r25, r3
     addi     r31, r4, lbl_80207FA0@l
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r25
     mr       r28, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r4, r3
     cmpwi    r4, 0xcf
     bne      .L_80073E14
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x9c(r1)
@@ -13663,7 +13606,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x48(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xa4(r1)
@@ -13675,7 +13618,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x4c(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xac(r1)
@@ -13687,7 +13630,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x50(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xb4(r1)
@@ -13699,7 +13642,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x3c(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xbc(r1)
@@ -13711,7 +13654,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x40(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc4(r1)
@@ -13723,7 +13666,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x44(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xcc(r1)
@@ -13756,7 +13699,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     cmpwi    r4, 0xd0
     bne      .L_800741DC
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r29, r3
     cmpwi    r29, 0x2710
     blt      .L_80073EE0
@@ -13828,7 +13771,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     mr       r30, r29
 .L_80073F18:
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xcc(r1)
@@ -13840,7 +13783,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x48(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xc4(r1)
@@ -13852,7 +13795,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x4c(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xbc(r1)
@@ -13864,7 +13807,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x50(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xb4(r1)
@@ -13876,7 +13819,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x3c(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xac(r1)
@@ -13888,7 +13831,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x40(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0xa4(r1)
@@ -13900,7 +13843,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     fsubs    f1, f1, f2
     fdivs    f0, f1, f0
     stfs     f0, 0x44(r1)
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x9c(r1)
@@ -14016,7 +13959,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     cmpwi    r4, 0xdc
     bne      .L_800745A4
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r27, r3
     cmpwi    r27, 0x2710
     blt      .L_800742A8
@@ -14088,7 +14031,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     mr       r30, r27
 .L_800742E0:
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r26, r3
     cmpwi    r26, 0x10
     ble      .L_800742F8
@@ -14100,7 +14043,7 @@ s32 CEvt::_cmd_PTCL(u8, s32)
     b        .L_8007431C
 .L_80074308:
     mr       r3, r25
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     stw      r3, 0x0(r24)
     addi     r24, r24, 0x4
     addi     r23, r23, 0x1
@@ -14337,12 +14280,12 @@ s32 CEvt::_cmd_PTCL(u8, s32)
  */
 s32 CEvt::_cmd_READ(u8, s32)
 {
-	u16 type = CEvt_Evaluate(this);
+	u16 type = Evaluate();
 	switch (type) {
 	case EVT_ATOM_ANIM: {
-		s16 id     = CEvt_Evaluate(this);
+		s16 id     = Evaluate();
 		XObj* obj  = CEvt_GetObj(this, id);
-		char* path = (char*)CEvt_Evaluate(this);
+		char* path = (char*)Evaluate();
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL) {
 				CEvt_Warn(FormatToStaticBuffer("read(@ANIM, %d, %s) ... obj(%d) is collision!", id, path, id));
@@ -14361,9 +14304,9 @@ s32 CEvt::_cmd_READ(u8, s32)
 		break;
 	}
 	case EVT_ATOM_SFX: {
-		s16 id           = CEvt_Evaluate(this);
+		s16 id           = Evaluate();
 		XObj* obj        = CEvt_GetObj(this, id); // looked up and not used
-		const char* name = (const char*)CEvt_Evaluate(this);
+		const char* name = (const char*)Evaluate();
 		RegisterGameSoundName(&gGame.mSound, name);
 		break;
 	}
@@ -14395,7 +14338,7 @@ s32 CEvt::_cmd_READ(u8, s32)
     stw      r29, 0x14(r1)
     stw      r28, 0x10(r1)
     mr       r28, r3
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r0, r3, 16
     cmpwi    r0, 0xdd
     mr       r4, r0
@@ -14406,7 +14349,7 @@ s32 CEvt::_cmd_READ(u8, s32)
     b        .L_80073BE8
 .L_800737B4:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r29, r3
     cmpwi    r29, 0x2710
     blt      .L_80073878
@@ -14478,7 +14421,7 @@ s32 CEvt::_cmd_READ(u8, s32)
     mr       r30, r29
 .L_800738B0:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmplwi   r30, 0x0
     mr       r28, r3
     beq      .L_80073A98
@@ -14666,7 +14609,7 @@ s32 CEvt::_cmd_READ(u8, s32)
     b        .L_80073C14
 .L_80073B48:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r4, r3
     cmpwi    r4, 0x2710
     blt      .L_80073BC4
@@ -14700,7 +14643,7 @@ s32 CEvt::_cmd_READ(u8, s32)
     bdnz     .L_80073B74
 .L_80073BC4:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lis      r4, gGame@ha
     addi     r5, r4, gGame@l
     mr       r4, r3
@@ -14738,11 +14681,11 @@ s32 CEvt::_cmd_READ(u8, s32)
  */
 s32 CEvt::_cmd_SCALE(u8 cmd, s32)
 {
-	s16 id    = CEvt_Evaluate(this);
+	s16 id    = Evaluate();
 	XObj* obj = CEvt_GetObj(this, id);
-	f32 x     = CEvt_Evaluate(this) / 100.0f;
-	f32 y     = CEvt_Evaluate(this) / 100.0f;
-	f32 z     = CEvt_Evaluate(this) / 100.0f;
+	f32 x     = Evaluate() / 100.0f;
+	f32 y     = Evaluate() / 100.0f;
+	f32 z     = Evaluate() / 100.0f;
 	if (cmd == EVT_CMD_SCALE) {
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			obj->SetScale(x, y, z, 0);
@@ -14752,7 +14695,7 @@ s32 CEvt::_cmd_SCALE(u8 cmd, s32)
 			CEvt_Warn(FormatToStaticBuffer("scale(%d, ...) obj(%d) killed!", id, id));
 		}
 	} else {
-		f32 time = CEvt_Evaluate(this) / 100.0f;
+		f32 time = Evaluate() / 100.0f;
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL) {
 				CEvt_Warn(FormatToStaticBuffer("mscale(%d, %d,%d,%d) ... obj(%d) is collision!", id, (s32)(100.0f * x), (s32)(100.0f * y),
@@ -14781,6 +14724,15 @@ s32 CEvt::_cmd_SCALE(u8 cmd, s32)
 	return 0;
 }
 
+extern "C" {
+void InfoScrn_ApplyBatteryHudCommand(InfoScrn* scrn, u8 show, s32 mode);
+}
+
+struct EvtHudCommand {
+	u8 enabled; // _00
+	s32 mode;   // _04
+};
+
 /*
     stwu     r1, -0xd0(r1)
     mflr     r0
@@ -14798,7 +14750,7 @@ s32 CEvt::_cmd_SCALE(u8 cmd, s32)
     mr       r27, r3
     mr       r28, r4
     addi     r31, r5, lbl_80207FA0@l
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r29, r3
     cmpwi    r29, 0x2710
     blt      .L_8007321C
@@ -14870,7 +14822,7 @@ s32 CEvt::_cmd_SCALE(u8 cmd, s32)
     mr       r30, r29
 .L_80073254:
     mr       r3, r27
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x5c(r1)
@@ -14881,7 +14833,7 @@ s32 CEvt::_cmd_SCALE(u8 cmd, s32)
     lfd      f1, 0x58(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x64(r1)
@@ -14892,7 +14844,7 @@ s32 CEvt::_cmd_SCALE(u8 cmd, s32)
     lfd      f1, 0x60(r1)
     fsubs    f1, f1, f2
     fdivs    f30, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r0, r3, 0x8000
     lis      r3, 0x4330
     stw      r0, 0x6c(r1)
@@ -14985,7 +14937,7 @@ s32 CEvt::_cmd_SCALE(u8 cmd, s32)
     b        .L_80073730
 .L_800733FC:
     mr       r3, r27
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x6c(r1)
@@ -15232,52 +15184,52 @@ s32 CEvt::_cmd_SCALE(u8 cmd, s32)
  */
 s32 CEvt::_cmd_SCRN(u8, s32)
 {
-	u16 mode = CEvt_Evaluate(this);
+	u16 mode = Evaluate();
 	switch (mode) {
 	case EVT_ATOM_FADE: {
-		u8 r0    = CEvt_Evaluate(this);
-		u8 g0    = CEvt_Evaluate(this);
-		u8 b0    = CEvt_Evaluate(this);
-		u8 a0    = CEvt_Evaluate(this);
-		u8 r1    = CEvt_Evaluate(this);
-		u8 g1    = CEvt_Evaluate(this);
-		u8 b1    = CEvt_Evaluate(this);
-		u8 a1    = CEvt_Evaluate(this);
-		f32 time = CEvt_Evaluate(this) / 100.0f;
+		u8 r0    = Evaluate();
+		u8 g0    = Evaluate();
+		u8 b0    = Evaluate();
+		u8 a0    = Evaluate();
+		u8 r1    = Evaluate();
+		u8 g1    = Evaluate();
+		u8 b1    = Evaluate();
+		u8 a1    = Evaluate();
+		f32 time = Evaluate() / 100.0f;
 		StartScreenFade(&gGame.mFade, r0, g0, b0, a0, r1, g1, b1, a1, time);
 		break;
 	}
 	case EVT_ATOM_MONO: {
-		u8 r0    = CEvt_Evaluate(this);
-		u8 g0    = CEvt_Evaluate(this);
-		u8 b0    = CEvt_Evaluate(this);
-		u8 a0    = CEvt_Evaluate(this);
-		u8 r1    = CEvt_Evaluate(this);
-		u8 g1    = CEvt_Evaluate(this);
-		u8 b1    = CEvt_Evaluate(this);
-		u8 a1    = CEvt_Evaluate(this);
-		f32 time = CEvt_Evaluate(this) / 100.0f;
+		u8 r0    = Evaluate();
+		u8 g0    = Evaluate();
+		u8 b0    = Evaluate();
+		u8 a0    = Evaluate();
+		u8 r1    = Evaluate();
+		u8 g1    = Evaluate();
+		u8 b1    = Evaluate();
+		u8 a1    = Evaluate();
+		f32 time = Evaluate() / 100.0f;
 		StartScreenFade(&gGame.mColor0.mColor, r0, g0, b0, a0, r1, g1, b1, a1, time);
 		break;
 	}
 	case EVT_ATOM_WIPE: {
-		s32 type = CEvt_Evaluate(this);
-		s32 open = CEvt_Evaluate(this);
-		s32 x    = CEvt_Evaluate(this);
-		s32 y    = CEvt_Evaluate(this);
-		s32 w0   = CEvt_Evaluate(this);
-		s32 h0   = CEvt_Evaluate(this);
-		u8 r0    = CEvt_Evaluate(this);
-		u8 g0    = CEvt_Evaluate(this);
-		u8 b0    = CEvt_Evaluate(this);
-		u8 a0    = CEvt_Evaluate(this);
-		s32 w1   = CEvt_Evaluate(this);
-		s32 h1   = CEvt_Evaluate(this);
-		u8 r1    = CEvt_Evaluate(this);
-		u8 g1    = CEvt_Evaluate(this);
-		u8 b1    = CEvt_Evaluate(this);
-		u8 a1    = CEvt_Evaluate(this);
-		f32 time = CEvt_Evaluate(this) / 100.0f;
+		s32 type = Evaluate();
+		s32 open = Evaluate();
+		s32 x    = Evaluate();
+		s32 y    = Evaluate();
+		s32 w0   = Evaluate();
+		s32 h0   = Evaluate();
+		u8 r0    = Evaluate();
+		u8 g0    = Evaluate();
+		u8 b0    = Evaluate();
+		u8 a0    = Evaluate();
+		s32 w1   = Evaluate();
+		s32 h1   = Evaluate();
+		u8 r1    = Evaluate();
+		u8 g1    = Evaluate();
+		u8 b1    = Evaluate();
+		u8 a1    = Evaluate();
+		f32 time = Evaluate() / 100.0f;
 		switch (type) {
 		case 0:
 			StartScreenWipeColorTransition(&gGame.mWipeCircle, r0, g0, b0, a0, r1, g1, b1, x, y, w0, h0, w1, h1, time, a1, !open);
@@ -15312,50 +15264,50 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 		break;
 	}
 	case EVT_ATOM_LETTERBOX: {
-		s32 open    = CEvt_Evaluate(this);
+		s32 open    = Evaluate();
 		s32 height0 = open ? 448 : 314;
-		u8 r0       = CEvt_Evaluate(this);
-		u8 g0       = CEvt_Evaluate(this);
-		u8 b0       = CEvt_Evaluate(this);
-		u8 a0       = CEvt_Evaluate(this);
+		u8 r0       = Evaluate();
+		u8 g0       = Evaluate();
+		u8 b0       = Evaluate();
+		u8 a0       = Evaluate();
 		s32 height1 = open ? 314 : 448;
-		u8 r1       = CEvt_Evaluate(this);
-		u8 g1       = CEvt_Evaluate(this);
-		u8 b1       = CEvt_Evaluate(this);
-		u8 a1       = CEvt_Evaluate(this);
-		f32 time    = CEvt_Evaluate(this) / 100.0f;
+		u8 r1       = Evaluate();
+		u8 g1       = Evaluate();
+		u8 b1       = Evaluate();
+		u8 a1       = Evaluate();
+		f32 time    = Evaluate() / 100.0f;
 		StartScreenWipeColorTransition(&gGame.mWipeTile1, r0, g0, b0, a0, r1, g1, b1, 320.0f, 200.0f, 640.0f, height0, 640.0f, height1,
 		                               time, a1, !open);
 		break;
 	}
 	case EVT_ATOM_HUD:
-		switch (CEvt_Evaluate(this)) {
+		switch (Evaluate()) {
 		case EVT_HUD_BATTERY: {
-			s32 index                 = CEvt_Evaluate(this);
+			s32 index                 = Evaluate();
 			EvtHudCommand commands[8] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 0, 2 }, { 1, 2 }, { 0, 3 }, { 1, 3 } };
 			InfoScrn_ApplyBatteryHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode);
 			break;
 		}
 		case EVT_HUD_CLOCK: {
-			s32 index                 = CEvt_Evaluate(this);
+			s32 index                 = Evaluate();
 			EvtHudCommand commands[8] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 }, { 1, 2 }, { 1, 3 }, { 0, 4 }, { 1, 4 } };
 			InfoScrn_ApplyClockHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode, 0);
 			break;
 		}
 		case EVT_HUD_SCORE: {
-			s32 index                 = CEvt_Evaluate(this);
+			s32 index                 = Evaluate();
 			EvtHudCommand commands[4] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
 			InfoScrn_ApplyScoreHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode);
 			break;
 		}
 		case 3:
-			CEvt_Evaluate(this);
-			CEvt_Evaluate(this);
-			CEvt_Evaluate(this);
-			CEvt_Evaluate(this);
+			Evaluate();
+			Evaluate();
+			Evaluate();
+			Evaluate();
 			break;
 		case EVT_HUD_TIMER: {
-			s32 index = CEvt_Evaluate(this);
+			s32 index = Evaluate();
 			if (index >= 0) {
 				EvtHudCommand commands[4] = { { 0, 0 }, { 1, 0 }, { 0, 1 }, { 1, 1 } };
 				InfoScrn_ApplyTimerHudCommand(&gGame.mInfoScrn, commands[index].enabled, commands[index].mode);
@@ -15368,7 +15320,7 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 					InfoScrn_HideTimer(&gGame.mInfoScrn);
 					break;
 				case -3: {
-					s32 hundredths = CEvt_Evaluate(this);
+					s32 hundredths = Evaluate();
 					InfoScrn_SetTimerHundredths(&gGame.mInfoScrn, hundredths);
 					break;
 				}
@@ -15382,11 +15334,11 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 		}
 		break;
 	case EVT_ATOM_ZBLUR: {
-		u8 a0       = CEvt_Evaluate(this);
-		u8 a1       = CEvt_Evaluate(this);
-		s32 offsetX = CEvt_Evaluate(this);
-		s32 offsetY = CEvt_Evaluate(this);
-		f32 time    = CEvt_Evaluate(this) / 100.0f;
+		u8 a0       = Evaluate();
+		u8 a1       = Evaluate();
+		s32 offsetX = Evaluate();
+		s32 offsetY = Evaluate();
+		f32 time    = Evaluate() / 100.0f;
 		f32 start   = a0 / 255.0f;
 		f32 end     = a1 / 255.0f;
 		f32 step;
@@ -15407,13 +15359,13 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 		break;
 	}
 	case EVT_ATOM_SHAKE: {
-		f32 x0   = CEvt_Evaluate(this) / 100.0f;
-		f32 y0   = CEvt_Evaluate(this) / 100.0f;
-		f32 z0   = CEvt_Evaluate(this) / 100.0f;
-		f32 x1   = CEvt_Evaluate(this) / 100.0f;
-		f32 y1   = CEvt_Evaluate(this) / 100.0f;
-		f32 z1   = CEvt_Evaluate(this) / 100.0f;
-		f32 time = CEvt_Evaluate(this) / 100.0f;
+		f32 x0   = Evaluate() / 100.0f;
+		f32 y0   = Evaluate() / 100.0f;
+		f32 z0   = Evaluate() / 100.0f;
+		f32 x1   = Evaluate() / 100.0f;
+		f32 y1   = Evaluate() / 100.0f;
+		f32 z1   = Evaluate() / 100.0f;
+		f32 time = Evaluate() / 100.0f;
 		StartScreenShake(&gGame.mQuake, x0, y0, z0, x1, y1, z1, time);
 		break;
 	}
@@ -15429,6 +15381,9 @@ s32 CEvt::_cmd_SCRN(u8, s32)
 	return 0;
 }
 
+// LatchEventBeat is the stream beat callback, it latches the beat here for WAIT
+extern "C" void LatchEventBeat(s32 id, s32 beat, void* context);
+
 /**
  * @note Address: 0x80072214
  * @note Size: 0x10
@@ -15440,14 +15395,16 @@ extern "C" void LatchEventBeat(s32 id, s32 beat, void* context)
 	latch->mBeat        = beat;
 }
 
+extern "C" s32 HSD_AudioPStreamStartChParam(const char* path, u8 vol, s32 channel);
+
 /**
  * @note Address: 0x80071F38
  * @note Size: 0x2DC
  */
 s32 CEvt::_cmd_SFX(u8, s32)
 {
-	s32 sfx  = CEvt_Evaluate(this);
-	s16 type = CEvt_Evaluate(this);
+	s32 sfx  = Evaluate();
+	s16 type = Evaluate();
 
 	switch (type) {
 	case EVT_SFX_STOP:
@@ -15469,17 +15426,17 @@ s32 CEvt::_cmd_SFX(u8, s32)
 		AXDriverSetAllStreamParams(LatchEventBeat, &gEventBeatLatch);
 		break;
 	case EVT_SFX_FADE_OUT:
-		FadeOutGameSfx(&gGame.mSound, sfx, CEvt_Evaluate(this) * 2);
+		FadeOutGameSfx(&gGame.mSound, sfx, Evaluate() * 2);
 		break;
 	case EVT_SFX_FADE_IN:
-		FadeInGameSfx(&gGame.mSound, sfx, CEvt_Evaluate(this) * 2);
+		FadeInGameSfx(&gGame.mSound, sfx, Evaluate() * 2);
 		break;
 	case EVT_SFX_FADE: {
 		XSound* sound;
 		u16 frames;
 		u8 vol;
-		frames = CEvt_Evaluate(this) * 2;
-		vol    = CEvt_Evaluate(this);
+		frames = Evaluate() * 2;
+		vol    = Evaluate();
 		sound  = &gGame.mSound;
 		if (!IsGameSoundPlaying(sound, sfx)) {
 			PlayGameSound(sound, sfx, vol);
@@ -15526,11 +15483,11 @@ s32 CEvt::_cmd_SFX(u8, s32)
     stw      r29, 0x14(r1)
     stw      r28, 0x10(r1)
     mr       r28, r3
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     mr       r0, r3
     mr       r3, r28
     mr       r31, r0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r0, r3
     cmpwi    r0, 0x4
     mr       r5, r0
@@ -15601,7 +15558,7 @@ s32 CEvt::_cmd_SFX(u8, s32)
     b        .L_800721F0
 .L_80072064:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lis      r4, gGame@ha
     clrlslwi r5, r3, 17, 1
     addi     r3, r4, gGame@l
@@ -15612,7 +15569,7 @@ s32 CEvt::_cmd_SFX(u8, s32)
     b        .L_800721F0
 .L_8007208C:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lis      r4, gGame@ha
     clrlslwi r5, r3, 17, 1
     addi     r3, r4, gGame@l
@@ -15623,10 +15580,10 @@ s32 CEvt::_cmd_SFX(u8, s32)
     b        .L_800721F0
 .L_800720B4:
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlslwi r29, r3, 17, 1
     mr       r3, r28
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lis      r5, gGame@ha
     mr       r4, r31
     addi     r5, r5, gGame@l
@@ -15727,8 +15684,8 @@ s32 CEvt::_cmd_SFX(u8, s32)
 s32 CEvt::_cmd_TIMER(u8, s32)
 {
 	// first arg is in seconds
-	s32 frames = CEvt_Evaluate(this) * FRAMES_PER_SEC;
-	s32 script = CEvt_Evaluate(this);
+	s32 frames = Evaluate() * FRAMES_PER_SEC;
+	s32 script = Evaluate();
 	// a count of 0 marks a free slot that never fires
 	if (frames == 0) {
 		frames = 1;
@@ -15743,6 +15700,46 @@ s32 CEvt::_cmd_TIMER(u8, s32)
 	return 0;
 }
 
+extern "C" s32 InfoScrn_IsBatteryGaugeFull(void* hud);
+
+extern "C" s32 HasCameraAnimation(XObj* obj);
+
+static inline void EvtWaitFor(CEvt* evt, u8 command, u8* start, s32 ready, s32& yield)
+{
+	if (command == EVT_CMD_WAIT) {
+		if (ready == 0) {
+			evt->mData.mScript = start;
+			yield              = 1;
+		}
+	} else
+		evt->mSelectResult = ready;
+}
+
+// a wipe is done once its size stops
+static inline bool EvtZero2(const CScrnWipe& wipe)
+{
+	bool done = false;
+	if (0.0f == wipe.mSpeedWidth && 0.0f == wipe.mSpeedHeight) {
+		done = true;
+	}
+	return done;
+}
+
+static inline bool EvtZero3(const f32* p)
+{
+	bool done = false;
+	if (0.0f == p[0] && 0.0f == p[1] && 0.0f == p[2]) {
+		done = true;
+	}
+	return done;
+}
+
+// a screen color is done once its speed is all zero
+static inline bool EvtZero4(const ScrnColorF& speed)
+{
+	return 0.0f == speed.r && 0.0f == speed.g && 0.0f == speed.b && 0.0f == speed.a;
+}
+
 /**
  * @note Address: 0x80070304
  * @note Size: 0x1B9C
@@ -15751,10 +15748,10 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 {
 	u8* start = mData.mScript - 1;
 	s32 yield = 0;
-	u16 mode  = CEvt_Evaluate(this);
+	u16 mode  = Evaluate();
 	switch (mode) {
 	case EVT_ATOM_TIME: {
-		s32 duration = CEvt_Evaluate(this);
+		s32 duration = Evaluate();
 		if (command == EVT_CMD_WAIT) {
 			if (mWaitTimer == 0) {
 				// duration is in hundredths of a second, mWaitTimer counts hundredths of a frame
@@ -15799,9 +15796,9 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 			mSelectResult = 1;
 		break;
 	case EVT_ATOM_ANIM: {
-		s16 id    = CEvt_Evaluate(this);
+		s16 id    = Evaluate();
 		XObj* obj = CEvt_GetObj(this, id);
-		f32 frame = CEvt_Evaluate(this);
+		f32 frame = Evaluate();
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
 				CEvt_Warn(FormatToStaticBuffer("wait(@ANIM, %d) ... obj(%d) is collision!", id, id));
@@ -15824,7 +15821,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		break;
 	}
 	case EVT_ATOM_DIR: {
-		s16 id    = CEvt_Evaluate(this);
+		s16 id    = Evaluate();
 		XObj* obj = CEvt_GetObj(this, id);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
@@ -15838,7 +15835,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		break;
 	}
 	case EVT_ATOM_MOVE: {
-		s16 id    = CEvt_Evaluate(this);
+		s16 id    = Evaluate();
 		XObj* obj = CEvt_GetObj(this, id);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
@@ -15853,7 +15850,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		break;
 	}
 	case EVT_ATOM_SCALE: {
-		s16 id    = CEvt_Evaluate(this);
+		s16 id    = Evaluate();
 		XObj* obj = CEvt_GetObj(this, id);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
@@ -15867,10 +15864,10 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		break;
 	}
 	case EVT_ATOM_SFX:
-		EvtWaitFor(this, command, start, !IsGameSoundPlaying(&gGame.mSound, CEvt_Evaluate(this)), yield);
+		EvtWaitFor(this, command, start, !IsGameSoundPlaying(&gGame.mSound, Evaluate()), yield);
 		break;
 	case EVT_ATOM_COLOR: {
-		s16 id    = CEvt_Evaluate(this);
+		s16 id    = Evaluate();
 		XObj* obj = CEvt_GetObj(this, id);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
@@ -15889,7 +15886,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		break;
 	}
 	case EVT_ATOM_REAL: {
-		s32 index = CEvt_Evaluate(this);
+		s32 index = Evaluate();
 		if (index == 1)
 			EvtWaitFor(this, command, start, InfoScrn_IsBatteryGaugeFull(&gGame.mInfoScrn), yield);
 		else {
@@ -15934,7 +15931,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		break;
 	}
 	case EVT_ATOM_READ: {
-		s16 id    = CEvt_Evaluate(this);
+		s16 id    = Evaluate();
 		XObj* obj = CEvt_GetObj(this, id);
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (obj->mJObj == NULL)
@@ -15972,7 +15969,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		break;
 	}
 	case EVT_ATOM_MOVIE: {
-		s32 frame = CEvt_Evaluate(this);
+		s32 frame = Evaluate();
 		s32 ready = gGame.mMovie.mMovie.mState == 0;
 		if (!ready && frame >= 0)
 			ready = gGame.mMovie.mMovie.mFrame >= frame;
@@ -16025,7 +16022,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     addi     r29, r7, lbl_80207FA0@l
     subi     r28, r6, 0x1
     li       r27, 0x0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r3, r3, 16
     subi     r0, r3, 0xc8
     cmplwi   r0, 0x2e
@@ -16039,7 +16036,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     bctr
 .L_8007036C:
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r0, r30, 24
     cmplwi   r0, 0x2e
     bne      .L_80070448
@@ -16279,7 +16276,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     b        .L_80071E80
 .L_800706D8:
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r25, r3
     cmpwi    r25, 0x2710
     blt      .L_8007079C
@@ -16351,7 +16348,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     mr       r26, r25
 .L_800707D4:
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x2c(r1)
@@ -16592,7 +16589,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     b        .L_80071E80
 .L_80070B14:
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r4, r3
     cmpwi    r4, 0x2710
     blt      .L_80070BD8
@@ -16803,7 +16800,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     b        .L_80071E80
 .L_80070DF0:
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r4, r3
     cmpwi    r4, 0x2710
     blt      .L_80070EB4
@@ -17031,7 +17028,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     b        .L_80071E80
 .L_8007110C:
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r4, r3
     cmpwi    r4, 0x2710
     blt      .L_800711D0
@@ -17242,7 +17239,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     b        .L_80071E80
 .L_800713E8:
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lis      r4, gGame@ha
     addi     r5, r4, gGame@l
     mr       r4, r3
@@ -17264,7 +17261,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     b        .L_80071E80
 .L_80071438:
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r4, r3
     cmpwi    r4, 0x2710
     blt      .L_800714FC
@@ -17504,7 +17501,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     b        .L_80071E80
 .L_8007177C:
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     cmpwi    r3, 0x1
     bne      .L_800717C8
     lis      r3, gGame@ha
@@ -17648,7 +17645,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     b        .L_80071E80
 .L_80071980:
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r4, r3
     cmpwi    r4, 0x2710
     blt      .L_80071A44
@@ -17951,7 +17948,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
     b        .L_80071E80
 .L_80071DA4:
     mr       r3, r31
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lis      r4, gGame@ha
     addi     r4, r4, gGame@l
     addis    r4, r4, 0x10
@@ -18027,8 +18024,8 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
  */
 s32 CEvt::_cmd_WARP(u8, s32)
 {
-	s32 stage    = CEvt_Evaluate(this);
-	s32 showName = CEvt_Evaluate(this);
+	s32 stage    = Evaluate();
+	s32 showName = Evaluate();
 	// 10000 and 20000 are taken as is, 100 and up counts from the current stage
 	if (stage != 10000 && stage != 20000 && stage >= 100) {
 		stage += GetStageNum() - 99;
@@ -18044,10 +18041,10 @@ s32 CEvt::_cmd_WARP(u8, s32)
  */
 s32 CEvt::_cmd_WIN(u8, s32)
 {
-	switch ((u16)CEvt_Evaluate(this)) {
+	switch ((u16)Evaluate()) {
 	case EVT_ATOM_POS: {
-		f32 x = CEvt_Evaluate(this);
-		f32 y = CEvt_Evaluate(this);
+		f32 x = Evaluate();
+		f32 y = Evaluate();
 		if (mMsg != NULL) {
 			mMsg->SetWindowPosition(x, y);
 		}
@@ -18059,11 +18056,11 @@ s32 CEvt::_cmd_WIN(u8, s32)
 		}
 		break;
 	case EVT_ATOM_OBJ: {
-		s16 id    = CEvt_Evaluate(this);
+		s16 id    = Evaluate();
 		XObj* obj = CEvt_GetObj(this, id);
-		f32 x     = CEvt_Evaluate(this) / 100.0f;
-		f32 y     = CEvt_Evaluate(this) / 100.0f;
-		f32 z     = CEvt_Evaluate(this) / 100.0f;
+		f32 x     = Evaluate() / 100.0f;
+		f32 y     = Evaluate() / 100.0f;
+		f32 z     = Evaluate() / 100.0f;
 		if (obj != NULL && (obj->mStatus.mFlags & 1)) {
 			if (mMsg != NULL) {
 				mMsg->SetWindowAnchor(obj, x, y, z);
@@ -18074,10 +18071,10 @@ s32 CEvt::_cmd_WIN(u8, s32)
 		break;
 	}
 	case EVT_ATOM_COLOR: {
-		u8 r = CEvt_Evaluate(this);
-		u8 g = CEvt_Evaluate(this);
-		u8 b = CEvt_Evaluate(this);
-		u8 a = CEvt_Evaluate(this);
+		u8 r = Evaluate();
+		u8 g = Evaluate();
+		u8 b = Evaluate();
+		u8 a = Evaluate();
 		if (mMsg != NULL) {
 			GXColor color      = sEvtWindowColorTemplate;
 			color.r            = r;
@@ -18117,7 +18114,7 @@ s32 CEvt::_cmd_WIN(u8, s32)
     stw      r29, 0x34(r1)
     stw      r28, 0x30(r1)
     mr       r29, r3
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r0, r3, 16
     cmpwi    r0, 0xdb
     beq      .L_80070140
@@ -18138,7 +18135,7 @@ s32 CEvt::_cmd_WIN(u8, s32)
     b        .L_800701E4
 .L_8006FE00:
     mr       r3, r29
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x14(r1)
@@ -18147,7 +18144,7 @@ s32 CEvt::_cmd_WIN(u8, s32)
     stw      r0, 0x10(r1)
     lfd      f0, 0x10(r1)
     fsubs    f31, f0, f1
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x1c(r1)
@@ -18186,7 +18183,7 @@ s32 CEvt::_cmd_WIN(u8, s32)
     b        .L_800701E4
 .L_8006FEB8:
     mr       r3, r29
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     extsh    r30, r3
     cmpwi    r30, 0x2710
     blt      .L_8006FF7C
@@ -18258,7 +18255,7 @@ s32 CEvt::_cmd_WIN(u8, s32)
     mr       r31, r30
 .L_8006FFB4:
     mr       r3, r29
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x1c(r1)
@@ -18269,7 +18266,7 @@ s32 CEvt::_cmd_WIN(u8, s32)
     lfd      f1, 0x18(r1)
     fsubs    f1, f1, f2
     fdivs    f31, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x14(r1)
@@ -18280,7 +18277,7 @@ s32 CEvt::_cmd_WIN(u8, s32)
     lfd      f1, 0x10(r1)
     fsubs    f1, f1, f2
     fdivs    f30, f1, f0
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     xoris    r3, r3, 0x8000
     lis      r0, 0x4330
     stw      r3, 0x24(r1)
@@ -18366,16 +18363,16 @@ s32 CEvt::_cmd_WIN(u8, s32)
     b        .L_800701E4
 .L_80070140:
     mr       r3, r29
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r30, r3, 24
     mr       r3, r29
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r31, r3, 24
     mr       r3, r29
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     clrlwi   r28, r3, 24
     mr       r3, r29
-    bl       CEvt_Evaluate
+    bl       Evaluate__4CEvtFv
     lwz      r4, 0x54(r29)
     clrlwi   r3, r3, 24
     cmplwi   r4, 0x0
