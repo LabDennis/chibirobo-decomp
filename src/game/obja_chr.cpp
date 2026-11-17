@@ -4364,8 +4364,9 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 
 			f32 cx = halfSpacing + (k * spacing + (x - (menu->mLabelLength * spacing) / 2.f));
 			DrawRingQuad(gGame.mGs, tile, 0xffffff00 | opacity, cx, cy, 1, tileSize * scale, tileSize * scale, rotation, -zero);
-			f32 glyphSize = tileSize * (.8f * scale);
-			f32 padding   = HelpGlyphPadding(width, glyphSize);
+			f32 glyphSize  = tileSize * (.8f * scale);
+			f32 glyphWidth = (width / 24.0f) * glyphSize;
+			f32 padding    = glyphSize - glyphWidth;
 
 			for (s32 j = 0; j < 4; ++j)
 				DrawRingQuad(gGame.mGs, glyph, opacity, padding / 2.0f + (cx + gEquipmentOutlineX[j]),
