@@ -911,7 +911,7 @@ extern "C" void RemoveJointTreeDisplayObjects(HSD_JObj* jobj)
 {
 	RemoveJointDisplayObjectsJP(jobj);
 	if (!(jobj->flags & INSTANCE)) {
-		for (HSD_JObj* child = jobj->child; child != NULL; child = child->next) {
+		for (HSD_JObj* child = jobj->child; child; child = child->next) {
 			RemoveJointTreeDisplayObjects(child);
 		}
 	}

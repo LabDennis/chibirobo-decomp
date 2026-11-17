@@ -158,7 +158,7 @@ static inline bool IsLeadByte(u8 c)
 	return (c >= 0x81 && c <= 0x9F) || (c >= 0xE0 && c <= 0xFC); // the SJIS lead byte ranges
 }
 
-static inline bool UseGlyphCache()
+static inline BOOL UseGlyphCache()
 {
 #if defined(VERSION_JP)
 	return gFontEncoding == OS_FONT_ENCODE_SJIS;
