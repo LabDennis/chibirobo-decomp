@@ -10242,8 +10242,8 @@ static inline void SetAttachmentParent(XObjChr* player, XObjAttachment& attachme
  * @note Address: 0x800B97FC
  * @note Size: 0x1584
  */
-// NONMATCHING: retail builds a second CVec from each sampled offset before it stores it (a copy made from the Vec part),
-// and walks the idle joints with other registers
+// NONMATCHING: stack slots of the tumble path, the joint table and the CVec copies of the sampled offsets differ,
+// and a few register picks (idle joint walk, attachment walk, the light level conversion)
 BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 {
 	u32 flags[] = { mStatus.mFlags & 0x800000, mStatus.mFlags & 0x200000, mStatus.mFlags & 0x40, mStatus.mFlags & 0x20000,
@@ -10255,26 +10255,28 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 			break;
 		CJObj::SetRotationY(0.0f, TRUE);
 		SamplePlayerPose(this, 8);
-		mLift.mTargetOffset.Set(GetPlayerCarryJointLocalTranslation(this));
+		mLift.mTargetOffset = (Vec)GetPlayerCarryJointLocalTranslation(this);
 		// the root joint's offset in the hang and rope poses; SetObjectJointTranslationByPath is
 		// defined above in this file, so a helper wrapping it is no longer inlined here
 		SamplePlayerPose(this, 0x13);
 		{
 			s32 root[] = { 0 };
-			mHang.mTargetOffset.Set(GetPlayerJointLocalTranslationByPath(this, 1, root));
-			SetObjectJointTranslationByPath(this, 1, root, 0.0f, 0.0f, 0.0f);
+			mHang.mTargetOffset = (Vec)GetPlayerJointLocalTranslationByPath(this, 1, root);
+			s32 path[]          = { 0 };
+			SetObjectJointTranslationByPath(this, 1, path, 0.0f, 0.0f, 0.0f);
 		}
 		SamplePlayerPose(this, 0x8A);
 		{
 			s32 root[] = { 0 };
-			mRope.mTargetOffset.Set(GetPlayerJointLocalTranslationByPath(this, 1, root));
-			SetObjectJointTranslationByPath(this, 1, root, 0.0f, 0.0f, 0.0f);
+			mRope.mTargetOffset = (Vec)GetPlayerJointLocalTranslationByPath(this, 1, root);
+			s32 path[]          = { 0 };
+			SetObjectJointTranslationByPath(this, 1, path, 0.0f, 0.0f, 0.0f);
 		}
 		SamplePlayerPose(this, 0x36);
 		s32 tumble[]          = { 0, 1, 0, 1, 2, 0, 1 };
 		mTumble.mFade.mOffset = GetEventJointWorldPosition(this, 7, tumble) - mMoveTranslate;
-		mTumble.mFade.mActive = FALSE;
 		mTumble.mFade.mAmount = 0.0f;
+		mTumble.mFade.mActive = FALSE;
 		CJObj::SetRotationY(mMoveRotate.y, TRUE);
 		SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
 		mIdleLoops = 3;
@@ -10293,7 +10295,7 @@ BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
 			s32 branch3Child1[] = { 0, 1, 0, 1, 2, 0, 0, 3, 1 };
 			joints[3].nodes     = branch3Child1;
 			for (int i = 0; i < 4; ++i) { // two branch tips each on branches 1 and 3
-				mIdleJoints[i].mJObj       = FindJointByPath(mJObj, joints[i].nodes, joints[i].depth);
+				mIdleJoints[i].mJObj       = GetJointByPath(mJObj, joints[i].nodes, joints[i].depth);
 				mIdleJoints[i].mAnimJoint  = mArchive.GetAnimJoint(14, joints[i].depth, joints[i].nodes);
 				mIdleJoints[i].mLastAdHead = NULL;
 			}
