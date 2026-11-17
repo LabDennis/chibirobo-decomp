@@ -15860,9 +15860,11 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		}
 		break;
 	}
-	case EVT_ATOM_SFX:
-		EvtWaitFor(this, command, start, !IsGameSoundPlaying(&gGame.mSound, Evaluate()), yield);
+	case EVT_ATOM_SFX: {
+		s32 sfx = Evaluate();
+		EvtWaitFor(this, command, start, !IsGameSoundPlaying(&gGame.mSound, sfx), yield);
 		break;
+	}
 	case EVT_ATOM_COLOR: {
 		s16 id    = Evaluate();
 		XObj* obj = CEvt_GetObj(this, id);
