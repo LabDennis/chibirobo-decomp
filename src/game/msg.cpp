@@ -6390,12 +6390,13 @@ extern "C" void CMsgFont_Update(CMsgFont* font, u32 step)
 			}
 		}
 		if (font->mSelectedLine >= 0) {
-			f32 width = font->mFitLine ? font->mData->mWidths[font->mSelectedLine] : font->mData->mMaxWidth;
+			CTexObj& line = font->mTexs.mTex[MSG_TEX_LINE];
+			f32 width     = font->mFitLine ? font->mData->mWidths[font->mSelectedLine] : font->mData->mMaxWidth;
 			font->mCurLineY += 0.8f * (font->mLineY[font->mSelectedLine] - font->mCurLineY);
 			font->mCurLineWidth += 0.7f * (width - font->mCurLineWidth);
 			font->mTexOffset -= 0.008f * step;
-			PSMTXTrans(font->mTexs.mTex[MSG_TEX_LINE].mMtx[0], font->mTexOffset, 0.0f, 0.0f);
-			font->mTexs.mTex[MSG_TEX_LINE].mMtxDirty = TRUE;
+			PSMTXTrans(line.mMtx[0], font->mTexOffset, 0.0f, 0.0f);
+			line.mMtxDirty = TRUE;
 		}
 		if (font->mBlink) {
 			// CMsgFont_Draw fades the button prompt with sin(mBlinkPhase): 6 degrees a frame, wrapped at PI, a pulse every 30 frames
