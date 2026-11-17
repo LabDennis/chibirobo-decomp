@@ -269,11 +269,7 @@ public:
 	void SetEye(const Vec& eye, u32 mode)
 	{
 		mCameraFlags = mode;
-#if defined(VERSION_R24J01)
-		SetEye(eye.x, eye.y, eye.z);
-#else
 		SetEye(eye);
-#endif
 	}
 	void SetInterest(const Vec& interest, u32 mode)
 	{
