@@ -64,7 +64,7 @@ void fn_8028175C(void** fog, GXFogType* type, f32* startZ, f32* endZ, f32* nearZ
 void DrawTitleScreen(Title* title);
 void DrawGameHud(InfoScrn* scrn);
 void DrawScreenColorOverlay(CScrnColor* color, CGs* gs);
-void DrawPlayerEquipmentRings(void* rings);
+void DrawPlayerEquipmentRings(XObjChrMenu* rings);
 void DrawOXMenu(WiiOXMenu* menu);
 void fn_80094E90(void* evt);
 void CMsg_Draw(CMsg* msg);
@@ -1761,7 +1761,7 @@ void CGame::Draw()
 			}
 			DrawStageNameBubbles(this);
 			if (GetStatusFlags(0x400)) {
-				DrawPlayerEquipmentRings(GetPlayer()->_19EE4);
+				DrawPlayerEquipmentRings(&GetPlayer()->mMenu);
 			}
 			if (GetStatusFlags(0x800)) {
 				DrawOXMenu(&GetPlayer()->mOXMenu);

@@ -5,6 +5,7 @@
 // update, draw and menu code is still to do. CanFallDuringLadderAction, CanFallDuringRopeAction and
 // CanCopterActionSlideOnSlope (74-81 %): retail starts each bool at TRUE and clears it, as an inlined
 // helper returning the first two compares would; this build tests the other way round.
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
 #include "game/attachmentvalues.h"
 #include "game/ringmenu.h"
 #include "game/wii/cgame.h"
@@ -16,6 +17,7 @@
 #include "game/gmath.h"
 #include "game/globals.h"
 #include <math.h>
+#include <stdlib.h>
 
 static inline bool TestStatus(const XObj* object, u64 mask)
 {
@@ -58,6 +60,20 @@ static inline bool IsTumbling(const WiiPlayerState* chr)
 	return ret;
 }
 
+static inline void SpinMarks(WiiPlayerState& chr)
+{
+	for (int i = 0; i < 2; i++) {
+		chr.mOXMenu.mMark[i].mSpin  = DEG2RAD * (rand() % 360);
+		chr.mOXMenu.mMark[i].mTilt  = DEG2RAD * (rand() % 360);
+		chr.mOXMenu.mMark[i].mScale = 0.5f;
+	}
+}
+
+static inline u8 IsRopeState(const WiiPlayerState* chr, s32 state)
+{
+	return chr->mRope.mState == state;
+}
+
 static inline Vec FirstEdgePoint(const XObj* object, s32 index, f32 height)
 {
 	Vec point;
@@ -88,6 +104,8 @@ static inline bool IsEventBlocked(const WiiPlayerState* chr)
 
 extern "C" {
 u32 CheckStageFlag(s32 stage, u32 mask);
+void UpdateHeldObject(XAction* action, u32 frames);
+void UpdatePushedObject(XAction* action, u32 frames);
 void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
 s32 GetClearLetickerApproachSide(XObj* object, const Vec* pos);
 void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
@@ -316,6 +334,68 @@ f32 GetVectorDistance(const Vec* a, const Vec* b)
 	return PSVECDistance((Vec*)a, (Vec*)b);
 }
 
+// moves what he carries along and queues its model for the scene
+void fn_800D1A8C(WiiPlayerState* player, u32 frames)
+{
+	if (player->mLift.mTarget != NULL) {
+		UpdateHeldObject(&player->mLift, frames);
+		if (player->mLift.mTarget != NULL) {
+			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, player->mLift.mTarget->mObject.m_pScnMdl);
+		}
+	}
+}
+
+// the same for what he pushes
+void fn_800D1AF8(WiiPlayerState* player, u32 frames)
+{
+	if (player->mPush.mTarget != NULL) {
+		UpdatePushedObject(&player->mPush, frames);
+		if (player->mPush.mTarget != NULL) {
+			gGame.mGs.mSceneHead->vf034(gGame.mGs.mSceneHead->mPending, player->mPush.mTarget->mObject.m_pScnMdl);
+		}
+	}
+}
+
+void UpdatePlayerHeadOffset(WiiPlayerState* chr, u32 frames)
+{
+	if (chr->mHeadOffsetReady == 0 && gGame.mEvt.mData.mScript == NULL)
+		chr->mHeadOffsetReady = 1;
+	f32 current, target, rate;
+	if (IsPushActionState(&chr->mPush, 1) || IsPushActionState(&chr->mPush, 2)) {
+		if (chr->mPush.mMoveDirection == 1)
+			target = 8.0f;
+		else if (chr->mPush.mMoveDirection == -1)
+			target = -5.0f;
+		else
+			target = 0.0f;
+		rate = 0.4f;
+	} else if (gGame.mEvt.mData.mScript != NULL && chr->mHeadOffsetReady != 0) {
+		target = 0.0f;
+		rate   = 0.2f;
+	} else if (IsRopeState(chr, 1) || IsRopeState(chr, 2) || IsRopeState(chr, 3) || IsRopeState(chr, 4) || IsRopeState(chr, 5)
+	           || IsRopeState(chr, 6) || IsRopeState(chr, 7) || IsRopeState(chr, 8)) {
+		target = 0.0f;
+		rate   = 0.2f;
+	} else {
+		target = 5.0f;
+		rate   = 0.2f;
+	}
+	if (__fpclassifyf(target) != FP_NAN) {
+		current = chr->mHeadOffset;
+		if (current > target) {
+			const f32 next   = current - rate * frames;
+			chr->mHeadOffset = next;
+			if (next < target)
+				chr->mHeadOffset = target;
+		} else if (current < target) {
+			const f32 next   = current + rate * frames;
+			chr->mHeadOffset = next;
+			if (next > target)
+				chr->mHeadOffset = target;
+		}
+	}
+}
+
 void SpawnPlayerPointParticles(WiiPlayerState*, s32 type, s32 value)
 {
 	for (s32 i = 0; i < 10; ++i) {
@@ -329,6 +409,39 @@ void SpawnPlayerPointParticles(WiiPlayerState*, s32 type, s32 value)
 			}
 			return;
 		}
+	}
+}
+
+// closes both rings, 0 cancels, above 0 confirms, below 0 backs out
+void ClosePlayerEquipmentMenu(WiiPlayerState* chr, s32 result)
+{
+	if (result == 0) {
+		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		if (chr->mMenu.mAtc.mMenuType != 3)
+			chr->mMenu.mSel = chr->mMenu.mPrevSel;
+	} else if (result > 0) {
+		PlayWiiSoundEffect(&gGame.mSound, 0xF5, 1.0f, 0.0f);
+	} else if (result < 0) {
+		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		if (chr->mMenu.mAtc.mMenuType != 3)
+			chr->mMenu.mSel = chr->mMenu.mPrevSel;
+	}
+	chr->mMenu.mAtc.Select(result);
+	chr->mMenu.mDrs.Select(result);
+}
+
+// opens the yes/no marks
+void OpenPlayerYesNoMenu(WiiPlayerState* chr, s32 crossMask, s32 selectedIndex)
+{
+	if (!chr->mOXMenu.mStarted) {
+		chr->mOXMenu.mStarted       = TRUE;
+		chr->mOXMenu.mCrossMask     = crossMask;
+		chr->mOXMenu.mStartRot      = chr->mOXMenu.mChr->mMoveRotate.y;
+		chr->mOXMenu.mSelectedIndex = selectedIndex;
+		SpinMarks(*chr);
+		PlayWiiSoundEffect(&gGame.mSound, 0xF3, 1.0f, 0.0f);
+		chr->mOXMenu.mChr->SetAnim(0x5D, FALSE, 0.0f, 1.0f, 0.0f, 10.0f);
+		gGame.SetStatusFlags(0x800ULL);
 	}
 }
 

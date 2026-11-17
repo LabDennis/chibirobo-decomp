@@ -22,6 +22,7 @@
 #include "game/cstopwatch.h"
 #include "game/cmovie.h"
 #include "game/wii/xobjs.h"
+#include "game/wii/xchrmenu.h"
 #
 
 class CCamera;
@@ -762,11 +763,23 @@ struct WiiCordWire {
 
 // the yes/no menu CMsg__cmd_QUESTION opens on the player, the GameCube's mOXMenu. its input poll
 // is HandleOXMenuInput at 0x800EF58C
+struct WiiOXMenuMark {
+	f32 mSpin;           // _00
+	f32 mTilt;           // _04
+	f32 mScale;          // _08
+	u8 _0C[0x9B8 - 0xC]; // the mark's own object, not reconstructed
+};
+STATIC_ASSERT(sizeof(WiiOXMenuMark) == 0x9B8);
 struct WiiOXMenu {
 	u8 _00[4];
-	s32 mStarted; // _04
-	u8 _08[0x1388];
-	s32 mConfirmedIndex; // _1390
+	s32 mStarted;           // _04
+	s32 mCrossMask;         // _08
+	s32 mSelectedIndex;     // _0C
+	u8 _10[0x18 - 0x10];    // _10
+	WiiOXMenuMark mMark[2]; // _18
+	XObj* mChr;             // _1388
+	f32 mStartRot;          // _138C, the chr's y rotation when it opened
+	s32 mConfirmedIndex;    // _1390
 };
 
 // one of chibi robo's actions on the Wii player, the GameCube's XAction (RTTI) with the same head: the camera reads
@@ -815,18 +828,6 @@ public:
 	u8 _44[0x48 - 0x44];  // _44, the GameCube's idle particle
 };
 STATIC_ASSERT(sizeof(XActTumble) == 0x48);
-
-// the attachment ring's menu on the player at _19EE8, the GameCube's mMenu.mAtc. The HUD reads the
-// highlighted item's type; the item count is a bound, the menu only uses a handful
-struct WiiAtcMenuItem {
-	s32 mType; // _00
-	u8 _04[0x24];
-};
-struct WiiAtcMenu {
-	s32 mCursorIndex;            // _00
-	u8 _04[0xC];                 // _04
-	WiiAtcMenuItem mItems[0x20]; // _10
-};
 
 class CSound3DActor;
 class XObj;
@@ -898,10 +899,8 @@ struct WiiPlayerState {
 	CPadOne mPad; // _18BE8, the pad he reads, the GameCube's mPad
 	u8 _19E90[0x19E9C - 0x19E90];
 	u8 mAttachments[0x48]; // _19E9C
-	u8 _19EE4[0x19EE8 - 0x19EE4];
-	WiiAtcMenu mAtcMenu; // _19EE8
-	u8 _1A3F8[0x1A420 - 0x1A3F8];
-	WiiOXMenu mOXMenu; // _1A420
+	XObjChrMenu mMenu;     // _19EE4, the attachment and costume rings
+	WiiOXMenu mOXMenu;     // _1A420
 	u8 _1B7B4[0x1C990 - 0x1B7B4];
 	BOOL mBatteryDrains;   // _1C990, TRUE while his battery runs down and an empty battery stops him
 	s32 mSquirterContent;  // _1C994
@@ -924,6 +923,7 @@ STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);
 STATIC_ASSERT(offsetof(WiiPlayerState, mSfx) == 0x95AC);
 STATIC_ASSERT(offsetof(WiiPlayerState, mLook) == 0x98E8);
 STATIC_ASSERT(offsetof(WiiPlayerState, mPad) == 0x18BE8);
+STATIC_ASSERT(offsetof(WiiPlayerState, mMenu) == 0x19EE4);
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8
 struct WiiFlagSource {

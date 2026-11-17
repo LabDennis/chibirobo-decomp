@@ -1499,8 +1499,8 @@ void CGame::Update(u32 frames)
 	// and the nearest to the eye camera for the scope's sounds
 	PointerPick pick = { NAN, NULL };
 	ScopePick scope  = { NAN, NULL, 0.0f, FALSE, 0 };
-	if (gWiiPointer.mPointerValid && GetStatusFlags(1) && (GetPlayer()->mPlayerFlags & 0x20000000)
-	    && !((XObjChrMenu*)GetPlayer()->_19EE4)->IsOpen() && mEvt.mData.mScript == NULL && !IsLoadStepRunning()) {
+	if (gWiiPointer.mPointerValid && GetStatusFlags(1) && (GetPlayer()->mPlayerFlags & 0x20000000) && !GetPlayer()->mMenu.IsOpen()
+	    && mEvt.mData.mScript == NULL && !IsLoadStepRunning()) {
 		// in tenths: popper parameter 0 is the range, 1 the range with the upgrade
 		f32 range = (s32)GetPopperParameter(FindOwnedInventoryItemIndex(GetPlayer()->mParams.mInventory.mItems, 0x36) >= 0) / 10.0f;
 		const Vec* pointer   = &gWiiPointer.mPointer;
