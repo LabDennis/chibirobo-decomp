@@ -1206,10 +1206,8 @@ if wii:
                 #   and lowers one by 0.01 (CPadAct::Update, 94.76 to 94.75).
                 # The units without an mw_version keep the library's Wii/1.3: nandfile.cpp matches only
                 # so (its twelve functions fall to about 80 % under GC/3.0a5 with -ipa file).
-                # the GameCube file as it is: -inline deferred emits its functions last to first, which is
-                # retail's order (Load, Unload, Print); with -ipa file they come out first to last
-                # code matches; its data only under a per-unit -inline deferred (17 % without)
-                Object(NonMatching, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),
+                # the Wii file defines Load, Unload, Print in that order (the GameCube one the reverse)
+                Object(Matching, "game/cmodule.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on"]),
                 Object(Equivalent, "game/ringmenupointer.cpp", mw_version="GC/3.0a5", extra_cflags=["-Cpp_exceptions on", "-ipa file"]),
                 # the generated tail (0x800942E8-0x8009453C) is the same compiler as the
                 # stage_data group: only GC/3.0a* emits __register_global_object for the
