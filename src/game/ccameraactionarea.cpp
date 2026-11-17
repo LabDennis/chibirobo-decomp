@@ -57,27 +57,6 @@ inline s32 FindFacing(const Vec& dir, s32 slotIndex)
 	return bestIndex;
 }
 
-// FindFacing for the current slot, picking into the area's entry index as it goes
-inline void SelectFacing(CCameraActionArea* area, const Vec& dir)
-{
-	CVec look(dir);
-	CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
-	f32 best            = -1.0f;
-	CamAreaEntry* entry = slot->mEntries;
-	for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
-		CVec facing;
-		YawDir(facing, entry->mAngle);
-		f32 dot = PSVECDotProduct(&look, &facing);
-		if (dot > best) {
-			area->mEntryIndex = i;
-			best              = dot;
-		}
-	}
-	if (best == -1.0f) {
-		area->mEntryIndex = 0;
-	}
-}
-
 extern "C" void SelectAreaCameraEntry(CCameraActionArea* area, s32 slotIndex, s32 entryIndex, s32 mode, f32 time);
 extern "C" void ApplyAreaCameraEntry(CCameraActionArea* area, CamAreaEntry* entry, s32 mode, s32 adjustFov, f32 time);
 
@@ -1011,6 +990,7 @@ extern "C" void ResumeAreaCameraControl(CCameraActionArea* area)
  * @note Size: 0x6E0
  */
 // NONMATCHING: registers only. retail keeps the view yaw in f28 and best in f29, best taking 2 pi from the wrap's own load
+// and lays the facing loop's look and facing vectors out below the function's other locals
 extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 {
 	CPad pad(0);
@@ -1094,7 +1074,22 @@ extern "C" s32 UpdateAreaCameraEntrySelection(CCameraActionArea* area)
 		} else {
 			YawDir(dir, area->mEntry->mAngle);
 		}
-		SelectFacing(area, dir);
+		CVec look(dir);
+		CamAreaSlot* slot   = &gCameraAreaState.mGroups[gCameraAreaState.mActiveArea];
+		f32 best            = -1.0f;
+		CamAreaEntry* entry = slot->mEntries;
+		for (s32 i = 0; i < slot->mEntryCount; i++, entry++) {
+			CVec facing;
+			YawDir(facing, entry->mAngle);
+			f32 dot = PSVECDotProduct(&look, &facing);
+			if (dot > best) {
+				area->mEntryIndex = i;
+				best              = dot;
+			}
+		}
+		if (best == -1.0f) {
+			area->mEntryIndex = 0;
+		}
 	}
 	area->mEntry = &gCameraAreaState.mGroups[slotIndex].mEntries[area->mEntryIndex];
 	return area->mEntry->mId;

@@ -707,10 +707,6 @@ static inline void AddVec(CVec& a, Vec b)
 {
 	PSVECAdd(&a, &b, &a);
 }
-static inline void SubVec(CVec& a, Vec b)
-{
-	PSVECSubtract(&a, &b, &a);
-}
 
 // a held object of the given pool and kind
 static inline bool IsHolding(XAction* act)
@@ -1072,7 +1068,8 @@ static inline void SyncRopePosition(XObjChr* owner)
  * @note Size: 0x1C78 (US)
  */
 // NONMATCHING: for the three target - last-position deltas retail copies the argument first and then reads act->mTarget
-// again for the operator's this, here the target loaded for the null test is reused
+// again for the operator's this, here the target loaded for the null test is reused; the 16-byte locals of the hang-start
+// branches still sit in a different order
 void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	switch (act->mState) {
@@ -1092,7 +1089,8 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 				Mtx matrix;
 				PSMTXRotRad(matrix, 'y', act->mOwner->mMoveRotate.y);
 				PSMTXMultVec(matrix, &offset, &offset);
-				SubVec(rope, offset);
+				Vec delta = offset;
+				PSVECSubtract(&rope, &delta, &rope);
 				act->mPos   = rope;
 				act->mDist  = PSVECDistance(&rope, &player);
 				act->mAngle = atan2(player.x - rope.x, player.z - rope.z);

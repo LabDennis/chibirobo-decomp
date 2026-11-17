@@ -154,23 +154,6 @@ inline void DrawScrollMapMarker(s32 index, f32 x, f32 y, f32 alpha)
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
-#if !defined(VERSION_PAL)
-// draws a label sprite up and to the right of a marker; retail lays its CTexObj out below all of Draw's own, as an inline's
-inline void DrawScrollMapLabel(s32 index, f32 x, f32 y, f32 alpha)
-{
-	CTexObj tex;
-	tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[index - StatusTextureOffset], 0);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-	u16 w     = GXGetTexObjWidth(&tex);
-	u16 h     = GXGetTexObjHeight(&tex);
-	f32 zoom  = 1.0f;
-	u32 color = (u32)(255.0f * alpha) | 0xC8C8C800;
-	DrawGsTexturedQuad(&gGame.mGs, &tex, color, color, color, color, x + 23.4f, y + -20.8f, 0.0f, MARK_SCALE * (1.1f * w) / zoom,
-	                   MARK_SCALE * h / zoom, 0.0f, 0.0f, 0.0f);
-	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
-}
-#endif
-
 // the functions sit in reverse address order: -inline deferred emits a file's functions last to first
 /**
  * @note Address: 0x801469A8
@@ -665,7 +648,16 @@ void CCameraActionScroll2::Draw()
 			DrawGsProportionalTextFormat(&gGame.mGs, labelColor, GetLocalizedInterfaceText(0x115), markX, (markY + -20.8f) - 11.0f, 0.0f,
 			                             22.0f, 22.0f);
 #else
-			DrawScrollMapLabel(161, markX, markY, 1.0f - fastBlink);
+			CTexObj tex;
+			tex = (&gGame.mTpl)->mTex.Init(&((TPLPalette*)(&gGame.mTpl)->mBuffer)->descriptorArray[161 - StatusTextureOffset], 0);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+			u16 w          = GXGetTexObjWidth(&tex);
+			u16 h          = GXGetTexObjHeight(&tex);
+			f32 zoom       = 1.0f;
+			u32 labelColor = (u32)(255.0f * (1.0f - fastBlink)) | 0xC8C8C800;
+			DrawGsTexturedQuad(&gGame.mGs, &tex, labelColor, labelColor, labelColor, labelColor, markX + 23.4f, markY + -20.8f, 0.0f,
+			                   MARK_SCALE * (1.1f * w) / zoom, MARK_SCALE * h / zoom, 0.0f, 0.0f, 0.0f);
+			SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 #endif
 		} else {
 			DrawScrollMapMarker(163, x, y, blink);
