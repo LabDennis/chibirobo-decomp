@@ -678,7 +678,7 @@ class CGsScreen : public GXRenderModeObj {
 public:
 	// _3C vtable
 
-	virtual ~CGsScreen(); // _08
+	virtual ~CGsScreen() { } // _08
 
 	// the SDK render mode with that index in the screen mode table
 	GXRenderModeObj* GetRenderMode(s32 mode); // 0x802A977C
