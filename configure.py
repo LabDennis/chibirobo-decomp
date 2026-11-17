@@ -488,17 +488,17 @@ gamecube_libs = [
             Object(NonMatching, "game/xactradar.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xacttumble.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/objb_act.cpp", cflags=with_hsd_headers(cflags_game)),
-            # -inline deferred, as retail shows: the .rodata path initializers are in reverse function order
+            # -inline deferred, as retail shows (JP addresses): the .rodata path initializers are in reverse function order
             # (sRadarPlacementPath 0x8020B4B8 of LoadFromPlacement 0x800D8858, then ActivatePlayerRadar's,
             # GetRadarDishWorldPosition's, and SetRadarDishPitch's (0x800D767C) last at 0x8020B4E8), and the RTTI
             # names come before the function literals ("CXObjIntp"/"XObjAttachment" ahead of the jobj.h assert
-            # strings in .rodata, "XObjOX"/"CJObj"/"CXObj"/"XObj" lbl_8065D858-870 ahead of the floats in .sdata2)
+            # strings in .rodata, "XObjOX"/"CJObj"/"CXObj"/"XObj" 0x80637B20-38 ahead of the floats in .sdata2)
             Object(NonMatching, "game/objb_attach.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
-            # -inline deferred, as retail shows: the GameCube .text runs SetDestinationAlpha (800D9E7C) ...
-            # InitializeObject (800DB81C), the exact reverse of the Wii file (InitializeObject 8010F944,
+            # -inline deferred, as retail shows: the GameCube .text (JP addresses) runs SetDestinationAlpha (800D9E7C) ...
+            # InitializeObject (800DB81C), the exact reverse of the Wii file (R24J01: InitializeObject 8010F944,
             # SetPlugCordSpeed, ResetForNewGame, LoadFromPlacement, Release, GetPlayerPlugCordAnchorTransform,
             # DrawWithView, DrawObjectEffects, SetDestinationAlpha 80110570); and XObjWireEff's base types,
-            # vtable and RTTI (80228368/8022838C, gTypeInfoXObjWireEff 80634A78) come before XObjPlug's
+            # vtable and RTTI (JP 80228368/8022838C, gTypeInfoXObjWireEff 80634A78) come before XObjPlug's
             # (802284D4/802284F8, 80634A80), which only deferred codegen of the Wii-order source gives
             Object(NonMatching, "game/objb_plug.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(EquivalentFor(JP), "game/objb_sound.cpp", cflags=with_hsd_headers(cflags_game)),
@@ -522,14 +522,14 @@ gamecube_libs = [
             Object(NonMatching, "game/xobjactor3update.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjactor3release.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(NonMatching, "game/scrc.cpp", cflags=with_hsd_headers(cflags_game)),
-            # -inline deferred, as retail shows: .rodata has ProcessPendingEvents' joint paths (0x8020C418-0x8020C474)
+            # -inline deferred, as retail shows (JP addresses): .rodata has ProcessPendingEvents' joint paths (0x8020C418-0x8020C474)
             # first, then UpdateToy6FJointSpin's (0x8020C580), UpdateToyJointExtension's (0x8020C610), StateCarry's
             # (0x8020C760), StateHitRecovery's (0x8020C794) and StatePickUp's (0x8020C7D4), the exact reverse of .text
             # (StatePickUp 0x80117BB4 ... ProcessPendingEvents 0x8012109C); .data's member-pointer constants run the same
             # way, ResetActorState's (0x8022C5CC) first and StatePickUp's (0x8022C620) last
             Object(NonMatching, "game/xobjactortoy.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/xobjactorjenny.cpp", cflags=with_hsd_headers(cflags_game)),
-            # -inline deferred, as retail shows: .rodata has ProcessPendingEvents' joint path initializers
+            # -inline deferred, as retail shows (JP addresses): .rodata has ProcessPendingEvents' joint path initializers
             # (0x8020CB58 {0,4,2,0,0,0}, 0x8020CB70 {0,4,0,0,0}) before UpdateAfterAnim's (0x8020CB9C-0x8020CBF8),
             # while .text has UpdateAfterAnim (0x8012842C) before ProcessPendingEvents (0x8012A19C); deferred
             # codegen emits the functions last-to-first but their initializers in source order
@@ -549,9 +549,9 @@ gamecube_libs = [
             Object(Matching, "game/xobjspiderbossdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjlightdtor.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(Matching, "game/xobjhboxdtor.cpp", cflags=with_hsd_headers(cflags_game)),
-            # -inline deferred, as retail shows: the GameCube .text runs FindPlugCordFloor (0x800DB8A8) ...
+            # -inline deferred, as retail shows: the GameCube .text (JP addresses) runs FindPlugCordFloor (0x800DB8A8) ...
             # StartPlugCordNode (0x800DE180), the reverse of the Wii file's StartPlugCordNode-first order
-            # (0x80110C2C), and .bss/.sbss hold InitPlugCord's statics (gPlugCordPoints$1827, init$1830)
+            # (R24J01 0x80110C2C), and .bss/.sbss hold InitPlugCord's statics (gPlugCordPoints$1827, init$1830)
             # before UpdatePlugCordSimulation's (floorHeight$1350, delta$1379) and PushPlugCordPointFromObject's
             # (margin$1108), the reverse of their .text order. noauto: UpdatePlugCordNodes (0x800DDA30, 0x144)
             # keeps StartPlugCordNode as a call, which -inline auto,deferred inlines (0x2F0)
@@ -601,8 +601,8 @@ gamecube_libs = [
             Object(NonMatching, "game/params.cpp", cflags=with_hsd_headers(cflags_game)),
             Object(EquivalentFor(JP), "game/inventory.cpp"),
             # -inline deferred, as retail shows: .sdata2 has the RTTI names "CJObj", "CXObj", "XObj"
-            # (lbl_8065D248..lbl_8065D258) before UpdateObject's 0.0f, "aobj.h" and u32->float double
-            # (lbl_8065D260..lbl_8065D278). Without deferred MWCC builds vtables/RTTI only at the end of
+            # (US 0x8065D248..0x8065D258) before UpdateObject's 0.0f, "aobj.h" and u32->float double
+            # (US 0x8065D260..0x8065D278). Without deferred MWCC builds vtables/RTTI only at the end of
             # the file, after every function's constants; deferred builds them first. There's no Wii build
             # of this file
             Object(NonMatching, "game/xobjcamera.cpp", cflags=with_hsd_headers(cflags_game), extra_cflags=["-inline auto,deferred"]),
@@ -986,7 +986,7 @@ gamecube_libs = [
             Object(Matching, "game/cshadow.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cgs.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
             Object(NonMatching, "game/cprimitive.cpp", extra_cflags=["-inline auto,deferred"]),
-            # -inline deferred, as retail shows: .sdata2 has the RTTI name "CPadOne" (lbl_8065F670) before
+            # -inline deferred, as retail shows: .sdata2 has the RTTI name "CPadOne" (US 0x8065F670) before
             # CPadEx::Init's and CPadOne::Clear's floats. Without deferred MWCC builds vtables/RTTI only at
             # the end of the file, after every function's constants; deferred builds them first
             Object(Matching, "game/cpad.cpp", cflags=cflags_hsd_game, extra_cflags=["-inline auto,deferred"]),
@@ -1122,7 +1122,7 @@ gamecube_libs = [
             Object(EquivalentFor(JP), "rel/stage02/fighter.cpp"),
             Object(MatchingFor(US, JP), "rel/stage02/rouka.cpp"),
             # -inline deferred, as retail shows: callers come before callees that are still inlined into
-            # them (Terminate 0x69F8 inlines Car::Init 0x7608, UpdateCars 0x6F64 inlines CarRoot::Brake
+            # them (JP offsets: Terminate 0x69F8 inlines Car::Init 0x7608, UpdateCars 0x6F64 inlines CarRoot::Brake
             # 0x7A88, StartCars 0x72FC inlines PlayerCarRoot::Start 0x7A28); without deferred MWCC only
             # inlines callees defined earlier, so no definition order gives both
             Object(Matching, "rel/stage02/car.cpp", extra_cflags=["-inline auto,deferred"]),
