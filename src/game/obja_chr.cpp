@@ -1728,29 +1728,31 @@ extern "C" f32 UpdatePlayerActions(XObjChr* player, u32 frames)
 							// NONMATCHING: the other releases still take the height and compare it with zero (0x878 to 0x8A0 in
 							// GGTE01, both ways of the compare lead to the same place); here the compiler drops the unused value
 							f32 height = Abs(object->mSelectedFloorHeight - player->mMoveTranslate.y);
+							if (height != 0) {
 #if defined(VERSION_JP)
-							if (height != 0 && (gGame.mStatus.mFlags & 0x80000000000ULL)) {
 								if (height >= 12 && height <= 12.5f) {
-									ReleaseCarriedTarget(player);
-									SetHangActionState(&player->mHang, 1);
-									SetPlayerActionTarget(&player->mHang, object);
-								} else if (height <= 4) {
-									ReleaseCarriedTarget(player);
-									SetPlayerActionState(&player->mJump, 8);
-									SetPlayerActionTarget(&player->mJump, object);
-								} else if (height <= 8) {
-									ReleaseCarriedTarget(player);
-									SetPlayerActionState(&player->mJump, 11);
-									SetPlayerActionTarget(&player->mJump, object);
-								} else if (height <= 12.5f) {
-									ReleaseCarriedTarget(player);
-									SetPlayerActionState(&player->mJump, 14);
-									SetPlayerActionTarget(&player->mJump, object);
+									if (gGame.mStatus.mFlags & 0x80000000000ULL) {
+										ReleaseCarriedTarget(player);
+										SetHangActionState(&player->mHang, 1);
+										SetPlayerActionTarget(&player->mHang, object);
+									}
+								} else if (gGame.mStatus.mFlags & 0x80000000000ULL) {
+									if (height <= 4) {
+										ReleaseCarriedTarget(player);
+										SetPlayerActionState(&player->mJump, 8);
+										SetPlayerActionTarget(&player->mJump, object);
+									} else if (height <= 8) {
+										ReleaseCarriedTarget(player);
+										SetPlayerActionState(&player->mJump, 11);
+										SetPlayerActionTarget(&player->mJump, object);
+									} else if (height <= 12.5f) {
+										ReleaseCarriedTarget(player);
+										SetPlayerActionState(&player->mJump, 14);
+										SetPlayerActionTarget(&player->mJump, object);
+									}
 								}
-							}
-#else
-							if (height != 0) { }
 #endif
+							}
 						} else if (IsObjectLadder(object))
 							ChooseClimbAction(player, object, use.mode, true);
 						else if (IsObjectRope(object))
@@ -7044,8 +7046,12 @@ static inline BOOL IsNearbyInteractionTarget(XObjChr* player, XObj* object, f32 
 			eligible = TRUE;
 		if ((flags & 0x0000000200000000ULL) && (gGame.mStatus.mFlags & 0x0000080000000000ULL)) {
 			f32 difference = Abs(object->mSelectedFloorHeight - player->mMoveTranslate.y);
-			if (difference != 0.0f && difference <= 12.5f)
-				eligible = TRUE;
+			if (difference != 0.0f) {
+				if (difference >= 12 && difference <= 12.5f)
+					eligible = TRUE; // a ledge to hang from
+				else if (difference <= 12.5f)
+					eligible = TRUE; // low enough to jump up
+			}
 		} else
 #endif
 		    if (flags & 0x0000000800000000ULL) {
