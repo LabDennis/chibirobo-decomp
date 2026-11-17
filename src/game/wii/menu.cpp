@@ -370,7 +370,6 @@ void MenuMain::Init()
 	CMenu::Init();
 }
 
-// NONMATCHING: retail compares the stage with its operands the other way round
 void MenuStageSelect::Open()
 {
 	mState = 1;
@@ -378,8 +377,9 @@ void MenuStageSelect::Open()
 	mWindow.mOpen = TRUE;
 	if (gGame.GetStatusFlags(0x0008000000000000ULL)) {
 		mSelection = -1;
-		for (int i = 0; sStageOrder[i] >= 0; i++) {
-			if (sStageOrder[i] == gGame.mStage) {
+		s32* stage = sStageOrder;
+		for (int i = 0; *stage >= 0; stage++, i++) {
+			if (*stage == gGame.mStage) {
 				mSelection = i;
 				break;
 			}
@@ -1280,7 +1280,7 @@ static inline void PCEase(f32& value, f32& target)
 // fbeffect.cpp; its header needs the Wii MSL's <cmath>, which the game's include path does not have yet
 static inline void PCEaseCall(f32& value, f32& target)
 {
-	f32 rate = __fabsf((target - value) * 0.25f);
+	f32 rate = __fabsf((target - value) / 4.0f);
 	if (rate <= 1.0f) {
 		rate = 1.0f;
 	}
