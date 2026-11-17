@@ -4909,7 +4909,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 #if defined(VERSION_JP)
 	Mtx scale;
 	Mtx mtx;
-	f32 left = x + width * w * 0.5f;
+	f32 left = x + width * w / 2.0f;
 	if (gs->mCamera->projection_type == PROJ_ORTHO) {
 		PSMTXTrans(trans, left, y, z);
 		PSMTXScale(scale, w, h, 1.0f);
@@ -4924,7 +4924,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 	Mtx rotZ;
 	Mtx scale;
 	Mtx mtx;
-	PSMTXTrans(trans, x + width * w * 0.5f, y, z);
+	PSMTXTrans(trans, x + width * w / 2.0f, y, z);
 	PSMTXRotRad(rotX, 'x', gs->mTextRot.x);
 	PSMTXRotRad(rotY, 'y', gs->mTextRot.y);
 	PSMTXRotRad(rotZ, 'z', gs->mTextRot.z);
@@ -4945,11 +4945,11 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 	f32 unit;
 	if (gs->mBillboardEnabled) {
 		BuildBillboardMatrixFromUp(mtx, mtx);
-		startX = width * 0.5f;
+		startX = width / 2.0f;
 		curY   = 0.0f;
 		unit   = -1.0f;
 	} else {
-		startX = -width * 0.5f;
+		startX = -width / 2.0f;
 		curY   = 0.0f;
 		unit   = 1.0f;
 	}
