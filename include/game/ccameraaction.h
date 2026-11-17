@@ -524,8 +524,9 @@ struct CamAreaRecord {
 	s32 mBottom;       // _28, lower height in hundredths
 	s16 mCameraAction; // _2C, the CAMACTION the area switches to: 1 area camera, 7 map camera, -1 lets the bottom height pick (below -5 is
 	                   // map); the map camera skips the 1s, evt -44/-45 enable or disable every record with a given value
-	u16 mFlags;        // _2E, flags. 4 marks a camera area, events toggle 0x80 to turn it off
-	u8 _30[0x4];       // _30
+	u16 mFlags;  // _2E, flags. 4 marks a camera area, events toggle 0x80 to turn it off; on an AreaEx record 1 lets the map camera turn
+	             // round it
+	u8 _30[0x4]; // _30
 
 	f32 GetTop() const { return mTop / 100.0f; }
 	f32 GetBottom() const { return mBottom / 100.0f; }
@@ -549,6 +550,11 @@ public:
 		return flags != 0;
 	}
 	u16 IsDisabled() const { return mRecord->mFlags & 0x80; }
+	bool AllowsTurn() const
+	{
+		u16 flags = mRecord->mFlags & 1;
+		return flags != 0;
+	}
 	f32 GetTop() const { return mRecord->mTop / 100.0f; }
 	f32 GetBottom() const { return mRecord->mBottom / 100.0f; }
 

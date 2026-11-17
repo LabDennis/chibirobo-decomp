@@ -147,7 +147,7 @@ int IntersectLineWithPlane(Vec* p0, Vec* p1, Vec* point, Vec* normal, Vec* out);
 // the Wii put the point first; the GameCube takes the triangle first
 int IntersectVerticalLineWithTrianglePlane(Vec* pos, Vec* a, Vec* b, Vec* c, Vec* out);
 #else
-int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
+u32 ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
                                  Vec* contact, f32* dist, f32 radius, f32 scale, int corners);
 int IntersectVerticalLineWithTrianglePlane(Vec* a, Vec* b, Vec* c, Vec* pos, Vec* out);
 #endif

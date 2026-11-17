@@ -2056,14 +2056,13 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 	f32 abx = b->x - a->x;
 	f32 abz = b->z - a->z;
 	f32 cdz = d->z - c->z;
-	f32 cdx = d->x - c->x;
 	f32 acx = c->x - a->x;
 	f32 acz = c->z - a->z;
 
 	f32 sideC = abx * acz - abz * acx;
 	f32 sideD = abx * (d->z - a->z) - abz * (d->x - a->x);
-	f32 sideA = cdx * (a->z - c->z) - cdz * (a->x - c->x);
-	f32 sideB = cdx * (b->z - c->z) - cdz * (b->x - c->x);
+	f32 sideA = (d->x - c->x) * (a->z - c->z) - cdz * (a->x - c->x);
+	f32 sideB = (d->x - c->x) * (b->z - c->z) - cdz * (b->x - c->x);
 
 	int hit;
 	if (check == 1) {
@@ -2080,7 +2079,7 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 			out->z = a->z + (c->x - a->x) * ((b->z - a->z) / (b->x - a->x));
 		} else {
 			f32 slopeAB = abz / abx;
-			f32 slopeCD = cdz / cdx;
+			f32 slopeCD = cdz / (d->x - c->x);
 			if (slopeAB == slopeCD) {
 				return 0;
 			}
@@ -2236,7 +2235,7 @@ extern "C" int IntersectLinesXZ(const Vec* a, const Vec* b, const Vec* c, const 
 // wall and push what's left of the move. returns 0 for no hit, 1 when it got stopped
 // and 3 when it bounced, then push is the move reflected off the wall times scale
 // the wall's two ends get checked like posts, corners picks the softer version of that
-extern "C" int ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
+extern "C" u32 ResolveCircleWallCollisionXZ(const Vec* fromPos, const Vec* toPos, const Vec* wallA, const Vec* wallB, Vec* push, Vec* pos,
                                             Vec* contact, f32* dist, f32 radius, f32 scale, int corners)
 {
 	CVec from(*fromPos);

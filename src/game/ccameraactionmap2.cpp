@@ -112,7 +112,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 	CVec target((const Vec&)interest);
 	CVec old((const Vec&)previous);
 	CVec candidate((const Vec&)eye);
-	if (!(target != (Vec)old))
+	if (target == (Vec)old)
 		return false;
 
 	CamAreaRecord* records        = gCameraAreaState.mAreaExRecords;
@@ -293,10 +293,8 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 								TrySetUnobstructedMapCameraYaw(map, (f32)atan2(candidate.x - old.x, candidate.z - old.z));
 							}
 						} else {
-							s32 difference = nearestSide - crossedSide;
-							if (difference < 0)
-								difference = -difference;
-							if (nearestSide != crossedSide && difference % 2 != 0) {
+							if (nearestSide != crossedSide
+							    && (nearestSide - crossedSide < 0 ? -(nearestSide - crossedSide) : nearestSide - crossedSide) % 2 != 0) {
 								candidate.Set(firstHit);
 								candidate.y = eye.y;
 							} else {
@@ -310,9 +308,9 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 					}
 				}
 			} else if (crossedSide >= 0) {
-				Vec& a = polygon.point[crossedSide];
-				Vec& b = polygon.point[crossedSide + 1];
 				if (*mode == 1) {
+					Vec& a = polygon.point[crossedSide];
+					Vec& b = polygon.point[crossedSide + 1];
 					CVec hit;
 					GetOutwardPerpendicularToEdge(&old, &a, &b, &normal);
 					if (CameraEdgeIntersect(old, old + (Vec)normal, a, b, hit, 1)) {
@@ -325,6 +323,8 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 					ResetMapCameraInterpolation(map);
 					changed = true;
 				} else {
+					Vec& a = polygon.point[crossedSide];
+					Vec& b = polygon.point[crossedSide + 1];
 					CVec direction, hit;
 					GetOutwardPerpendicularToEdge(&candidate, &a, &b, &direction);
 					if (CameraEdgeIntersect(candidate, candidate + (Vec)direction, a, b, hit, 1)) {
@@ -360,7 +360,7 @@ extern "C" BOOL ResolveMapCameraEyeCollision(CCameraActionMap* map, CVec& eye, c
 			}
 		}
 	}
-	eye.Set(candidate);
+	eye = candidate;
 	return changed;
 }
 
@@ -567,11 +567,7 @@ void CCameraActionMap::Update(u32 step)
 				else if (adjacent == 0)
 					mTurnBlocked = 1;
 				else {
-					s32 allowsTurn;
-					{
-						CamAreaInfo area(&gCameraAreaState.mAreaExRecords[mNearestEyeEntry->mRecordIndex]);
-						allowsTurn = (area.mRecord->mFlags & 1) != 0;
-					}
+					bool allowsTurn = CamAreaInfo(&gCameraAreaState.mAreaExRecords[mNearestEyeEntry->mRecordIndex]).AllowsTurn();
 					if (allowsTurn)
 						mTurnBlocked = 0;
 					else

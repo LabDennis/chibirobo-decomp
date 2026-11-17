@@ -5,8 +5,6 @@
  * @note Address: 0x80092E38
  * @note Size: 0xC8
  */
-// NONMATCHING: retail walks a second induction pointer for GetLightDesc where this
-// version uses the loop index for both lookups.
 void XObjLight::UpdateObject(u32 frames)
 {
 	if ((s32)GetEnvData()[4] == 2) {
@@ -40,8 +38,8 @@ void XObjLight::Release()
  * @note Address: 0x80092F98
  * @note Size: 0x14C
  */
-// NONMATCHING: regalloc — retail keeps one more copy of the object pointer live and walks
-// a second induction pointer for GetLightDesc where this uses the loop index.
+// NONMATCHING: regalloc only, the registers for the Init call's light mask (1 << (7 - i))
+// and the desc pointer are taken in another order.
 BOOL XObjLight::LoadFromPlacement(const CoordInfo& info)
 {
 	if (LoadFromPlacement__4XObjFRC9CoordInfo(this, &info)) {
