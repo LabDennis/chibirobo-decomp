@@ -10,9 +10,9 @@ BOOL AXDriverResumeTrack(s32 track);
 BOOL AXDriverSetAllStreamVolumes(u8 vol, u16 frames);
 BOOL AXDriverPauseAllStreams(void);
 BOOL AXDriverResumeAllStreams(void);
-BOOL HSD_AudioSFXSetVolumeByID(s32 sfx, u8 vol, u16 frames);
+BOOL HSD_AudioSFXSetVolumeByID(int sfx, u8 vol, u16 frames);
 BOOL AXDriverResumeSfx(s32 sfx);
-s32 HSD_AudioSFXCountByID(s32 sfx);
+s32 HSD_AudioSFXCountByID(int sfx);
 }
 
 // guess: ids with high half 0xFFFF (but not -1) mean "every sfx", stops all slots
