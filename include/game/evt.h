@@ -59,7 +59,7 @@ enum EvtCmd {
 	EVT_CMD_MOVIE  = 49,
 };
 
-// expression ops that CEvt_Evaluate, EvalSet and EvalCmp switch on. names follow unplug,
+// expression ops that Evaluate, EvalSet and EvalCmp switch on. names follow unplug,
 // the game's panic text only spells a few of them, flg, var, pad, battery, item, atc,
 // map and time
 enum EvtExpr {
@@ -338,6 +338,12 @@ public:
 	s32 _cmd_TIMER(u8 command, s32 step);
 	s32 _cmd_WARP(u8 command, s32 step);
 	s32 _cmd_WIN(u8 command, s32 step);
+
+	s32 Evaluate();
+	void EvalSet();
+	bool EvalCmp();
+	// runs the script on for step frames
+	void Update(s32 step);
 };
 #if defined(VERSION_R24J01)
 STATIC_ASSERT(sizeof(CEvt) == 0x6C);
@@ -417,8 +423,6 @@ CVec CJObj_GetJointWorldPositionByPath(CJObj* obj, s32 depth, s32* path);
 void StartOrQueueEventScript(CEvt* evt, u8* script, XObj* owner, s16 useValue, s16 hitValue);
 void InitializeEventScriptContext(CEvt* evt, CMsg* message, XObj* owner);
 void ResetEventScriptState(CEvt* evt, BOOL clearTimers, BOOL clearGlobal);
-// runs the script on for step frames
-void CEvt_Update(CEvt* evt, s32 step);
 // the object an event refers to by id, -1 is the one running the script
 XObj* ResolveEventObjectId(const CEvtData* data, s16 id);
 }

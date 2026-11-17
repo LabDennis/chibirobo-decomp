@@ -40,6 +40,14 @@ public:
 		if (mBattery > mMaxBattery)
 			mBattery = mMaxBattery;
 	}
+	void SetMaxBattery(f32 value)
+	{
+		mMaxBattery = value > 0.0f ? value : 0.0f;
+		if (mMaxBattery < 0.0f)
+			mMaxBattery = 0.0f;
+		if (mMaxBattery > 999.9f)
+			mMaxBattery = 999.9f;
+	}
 
 	// money and scrap stay between 0 and 99999
 	void SetMoney(s32 value)

@@ -144,7 +144,7 @@ void CGame::Update(u32 frames)
 		}
 	}
 	if (!(mStatus.mFlags & 2)) {
-		CEvt_Update(&mEvt, frames);
+		mEvt.Update(frames);
 		for (i = 0; i < 2; i++) {
 			CMsg_Update(&mCMsgs[i], frames);
 		}
