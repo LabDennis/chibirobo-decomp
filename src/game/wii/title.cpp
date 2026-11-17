@@ -27,6 +27,7 @@
 // DrawTitleHelpText (82 %) the calls, the quad arguments and the float formulas are retail's, but the
 // glyph loop's float scheduling and register pressure differ: retail saves r15 and folds the padding
 // subtraction and the outline negations into fmsubs/fneg where this build moves and reloads.
+#include "nw4r/math/math_types.h"
 #include "game/wii/title.h"
 #include "game/wii/cgame.h"
 #include "game/wii/cgs.h"
@@ -152,8 +153,8 @@ inline void CSound::StopAllTracks(f32 fade)
 {
 	s32 frames = gRefreshRate * fade;
 	for (int i = 0; i < 0x40; ++i) {
-		if (mTracks[i].IsAttachedSound()) {
-			mTracks[i].Stop(frames);
+		if (mArchivePlayer.mTracks[i].IsAttachedSound()) {
+			mArchivePlayer.mTracks[i].Stop(frames);
 		}
 	}
 }

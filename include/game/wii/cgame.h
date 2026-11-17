@@ -561,10 +561,8 @@ public:
 	CVec mSpringPrevTarget; // _60
 	CVec mSpringTarget;     // _70
 	u8 _80[0x8C - 0x80];
-	// _8C and _11FC: the constructor (0x80034ACC) builds a CObjVec at each; typed, they tip ~CGame's inline budget
-	// so that ~CCameraActions expands into it and the member destructors behind it are no longer emitted
-	// (gamedtor.cpp, an incomplete CGame), so they stay bytes until the rest of CGame is typed
-	u8 _8C[0x30];
+	// _8C and _11FC: the constructor (0x80034ACC) builds a CObjVec at each
+	CObjVec _8C;
 	u8 _BC[0xC8 - 0xBC];
 	CInterpolationEaseOutDivide mFovEaseOutDivide; // _C8
 	CVec mPreviousEye;                             // _D8
@@ -597,7 +595,7 @@ public:
 	u8 _11EC[0x11F8 - 0x11EC];
 	u8 _11F8; // _11F8, set while the map action wants the pointer's cursor
 	u8 _11F9[0x11FC - 0x11F9];
-	u8 _11FC[0x30];
+	CObjVec _11FC;
 	u8 _122C[0x128C - 0x122C];
 
 	virtual ~CCameraActionMap() { } // _08, 0x8002E5C4
@@ -1018,39 +1016,6 @@ public:
 	void State8(u32 frames);
 };
 
-// Wii FbSubwin - partial: only the members below are verified, by the retail functions'
-// offsets (CreateFbTexture writes _04/_06, Init stores _58/_5C/_BC, the function-table
-// pointer is at _124, four bytes later than the GameCube class because WiiFbTexture is
-// one word bigger, _128/_134 are the fade state, the camera is embedded at _148). The
-// gaps stay unverified.
-class FbSubwin {
-public:
-	u8 _000[0x4];
-	u16 mWidth;    // _04, written by CreateFbTexture
-	u16 mHeight;   // _06, written by CreateFbTexture
-	u8 _008[0x50]; // unverified (rest of the WiiFbTexture head)
-	u8 mTexDirty;  // _58, texture-matrix flag, set TRUE around the matrix writes
-	u8 _059[0x3];
-	Mtx mTexMtx[4]; // _5C, the texture's matrices; Init writes [0] and [2]
-	u8 _11C[0x8];
-	void (**mVtable)(FbSubwin*); // _124
-	BOOL mEnabled;               // _128, fades in while set, out while not
-	u32 mFlags;                  // _12C, Draw tests bit 2
-	u8 _130[0x4];
-	f32 mAmount;     // _134, 0 to 1
-	f32 mRectX;      // _138, centre x of the window's rect on screen
-	f32 mRectY;      // _13C, centre y of the window's rect on screen
-	f32 mRectWidth;  // _140, window width, NaN (with mRectHeight) picks the round frame
-	f32 mRectHeight; // _144, window height, NaN picks the round frame
-	CCamera mCamera; // _148
-
-	void Init();
-	void Reset();
-	void Update(u32 frames);
-	void Copy();
-	void Draw();
-};
-
 // frame buffer effects that draw through a copied texture; the Wii base keeps the bigger
 // WiiFbTexture and drops mActive (WiiFbTexture::mOwnsImage took its slot), the vtable sits
 // at _124 right behind the texture.
@@ -1065,6 +1030,29 @@ public:
 	virtual void Update(u32 frames); // _14
 	virtual void Draw();             // _18
 };
+
+// Wii FbSubwin: CFbTexEff with the fade state and its own perspective camera at _148.
+class FbSubwin : public CFbTexEff {
+public:
+	BOOL mEnabled;   // _128, fades in while set, out while not
+	CStatus mFlags;  // _12C, Draw tests bit 2
+	f32 mAmount;     // _134, 0 to 1
+	f32 mRectX;      // _138, centre x of the window's rect on screen
+	f32 mRectY;      // _13C, centre y of the window's rect on screen
+	f32 mRectWidth;  // _140, window width, NaN (with mRectHeight) picks the round frame
+	f32 mRectHeight; // _144, window height, NaN picks the round frame
+	CCamera mCamera; // _148
+
+	virtual void Init();
+	virtual void Reset();
+	virtual void Copy();
+	virtual void Update(u32 frames);
+	virtual void Draw();
+};
+STATIC_ASSERT(offsetof(FbSubwin, mEnabled) == 0x128);
+STATIC_ASSERT(offsetof(FbSubwin, mAmount) == 0x134);
+STATIC_ASSERT(offsetof(FbSubwin, mCamera) == 0x148);
+STATIC_ASSERT(sizeof(FbSubwin) == 0x340);
 
 // the model object a mirror binds to: a stage object's scene carrier. Only what the retail
 // functions prove is filled in - the vtable's _50 finds a node by name ("mirror" is the
