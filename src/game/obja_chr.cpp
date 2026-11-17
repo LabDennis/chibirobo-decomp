@@ -697,7 +697,7 @@ extern "C" void UpdatePlayerMovementAndContacts(XObjChr* player, u32 frames, f32
 						f32 top = GetObjectHitFloorHeight(object);
 						if (ClassifyFloatBits(top) != FP_NAN && player->mMoveTranslate.y + 1.0f >= top)
 							continue;
-						BOOL separated;
+						u32 separated;
 						{
 							const CVec& difference = player->mMoveTranslate - contact;
 							separated              = GetVectorMagnitude(&difference) > 1.5f;
