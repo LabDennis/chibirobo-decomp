@@ -4888,6 +4888,8 @@ static inline f32 MeasureStrokeTextWidth(CGs* gs, const char* text)
  * @note Address: 0x801943FC
  * @note Size: 0xBD8
  */
+// NONMATCHING: the measuring loop sign-extends each character as it stores it (retail moves the raw
+// byte), and retail reloads the character in the default case and both stroke bytes in the loop
 extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f32 y, f32 z, f32 w, f32 h)
 {
 	if (gs->mCurRenderMode == &gs->mRenderMode) {
@@ -4972,13 +4974,14 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 
 	// second pass draws, each character is one unit wide in the scaled space
 	TextGlyph glyph;
-	glyph.mColor   = color;
-	glyph.mBgColor = 0;
+	glyph.mColor    = color;
+	glyph.mBgColor  = 0;
+	const char* str = glyph.mStr;
 	while ((text = GetGlyph(gs, text, &glyph)) != NULL) {
-		if (glyph.mStr[0] == 0) {
+		if (*str == 0) {
 			continue;
 		}
-		if (glyph.mStr[0] == '\n') {
+		if (*str == '\n') {
 			curX = startX;
 			curY += 1.0f;
 			continue;
@@ -4991,7 +4994,7 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 			DebugVertex(curX, 1.0f + curY, glyph.mBgColor);
 		}
 		s32 index = -1;
-		switch (glyph.mStr[0]) {
+		switch (*str) {
 		// the 0.35 and 0.85 here are a bit off in retail, probably sums the compiler folded
 		case '.':
 			GXBegin(GX_POINTS, 0, 1);
@@ -5044,12 +5047,12 @@ extern "C" void DrawGsStrokeText(CGs* gs, u32 color, const char* text, f32 x, f3
 			index = 46;
 			break;
 		default:
-			if (glyph.mStr[0] >= '0' && glyph.mStr[0] <= '9') {
-				index = glyph.mStr[0] - '0';
-			} else if (glyph.mStr[0] >= 'A' && glyph.mStr[0] <= 'Z') {
-				index = glyph.mStr[0] - 'A' + 10;
-			} else if (glyph.mStr[0] >= 'a' && glyph.mStr[0] <= 'z') {
-				index = glyph.mStr[0] - 'a' + 10;
+			if (*str >= '0' && *str <= '9') {
+				index = *str - '0';
+			} else if (*str >= 'A' && *str <= 'Z') {
+				index = *str - 'A' + 10;
+			} else if (*str >= 'a' && *str <= 'z') {
+				index = *str - 'a' + 10;
 			}
 			break;
 		}
