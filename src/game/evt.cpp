@@ -15716,7 +15716,7 @@ static inline void EvtWaitFor(CEvt* evt, u8 command, u8* start, s32 ready, s32& 
 static inline bool EvtZero2(const CScrnWipe& wipe)
 {
 	bool done = false;
-	if (0.0f == wipe.mSpeedWidth && 0.0f == wipe.mSpeedHeight) {
+	if (wipe.mSpeedWidth == 0.0f && wipe.mSpeedHeight == 0.0f) {
 		done = true;
 	}
 	return done;
@@ -15725,7 +15725,7 @@ static inline bool EvtZero2(const CScrnWipe& wipe)
 static inline bool EvtZero3(const f32* p)
 {
 	bool done = false;
-	if (0.0f == p[0] && 0.0f == p[1] && 0.0f == p[2]) {
+	if (p[0] == 0.0f && p[1] == 0.0f && p[2] == 0.0f) {
 		done = true;
 	}
 	return done;
@@ -15734,7 +15734,7 @@ static inline bool EvtZero3(const f32* p)
 // a screen color is done once its speed is all zero
 static inline bool EvtZero4(const ScrnColorF& speed)
 {
-	return 0.0f == speed.r && 0.0f == speed.g && 0.0f == speed.b && 0.0f == speed.a;
+	return speed.r == 0.0f && speed.g == 0.0f && speed.b == 0.0f && speed.a == 0.0f;
 }
 
 /**
@@ -15943,7 +15943,7 @@ s32 CEvt::_cmd_WAIT(u8 command, s32 step)
 		break;
 	}
 	case EVT_ATOM_ZBLUR:
-		EvtWaitFor(this, command, start, !(0.0f != gGame.mBlur.mSpeed), yield);
+		EvtWaitFor(this, command, start, !(gGame.mBlur.mSpeed != 0.0f), yield);
 		break;
 	case EVT_ATOM_SHAKE:
 		EvtWaitFor(this, command, start, EvtZero3(&gGame.mQuake.mShake[2].x) != 0, yield);
