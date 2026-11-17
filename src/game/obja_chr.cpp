@@ -2292,7 +2292,9 @@ void XObjChr::UpdateObject(u32 frames)
 			turn.total = 0.0f;
 		} else {
 			turn.total += turn.change;
-			if (turn.change * turn.previousChange <= 0.0f || Abs(turn.change) < 10.0f * DEG2RAD)
+			if (turn.change * turn.previousChange <= 0.0f)
+				turn.total = 0.0f;
+			else if (Abs(turn.change) < 10.0f * DEG2RAD)
 				turn.total = 0.0f;
 		}
 		s32 turns = (s32)(turn.total / TWO_PI);
@@ -4277,7 +4279,8 @@ extern "C" void DrawEquipmentRing(OctaMenu* menu)
 			if (glow < 0)
 				glow = 0;
 			u32 glowColor = 0xffffff00 | (u32)(255.f * glow);
-			DrawGsQuad(&gGame.mGs, glowColor, glowColor, glowColor, glowColor, x, y, 0, width * size, height * size, 0, 0, 0);
+			// retail multiplies the height again here instead of reusing the icon quads' product
+			DrawGsQuad(&gGame.mGs, glowColor, glowColor, glowColor, glowColor, x, y, 0, width * size, size * height, 0, 0, 0);
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 			SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
 		}
