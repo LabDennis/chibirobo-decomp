@@ -1585,6 +1585,8 @@ revolution/OS/OSLaunch.c:
 
 revolution/MTX/quat.c:
 	.text start:0x8018FEA0 end:0x80190208
+	.rodata start:0x802DDF08 end:0x802DDF18
+	.sdata2 start:0x805A64C0 end:0x805A64D0
 
 revolution/DVD/dvdfs.c:
 	.text start:0x80190208 end:0x80190830

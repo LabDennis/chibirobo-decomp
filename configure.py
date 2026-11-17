@@ -1877,7 +1877,7 @@ if wii:
                 Object(Matching, "revolution/OS/OSNandbootInfo.c"),
                 Object(Matching, "revolution/OS/OSPlayTime.c"),
                 Object(Matching, "revolution/OS/OSLaunch.c"),
-                Object(NonMatching, "revolution/MTX/quat.c"),
+                Object(Matching, "revolution/MTX/quat.c"),
                 Object(Matching, "revolution/DVD/dvdfs.c"),
                 Object(Matching, "revolution/DVD/dvd.c"),
                 Object(Matching, "revolution/DVD/dvderror.c"),
