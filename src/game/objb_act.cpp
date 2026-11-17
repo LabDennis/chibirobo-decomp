@@ -1801,7 +1801,8 @@ static inline void FinishHang(XActHang* act, f32 loop)
 // distance in case 3
 void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 frame, f32 end)
 {
-	switch (act->mState) {
+	s32 state = act->mState;
+	switch (state) {
 	case 1: {
 		static CVec contact, normal, start;
 		if (anim != 0x13) {
@@ -2052,7 +2053,7 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 	// climbing up, TryLeaveHang picks the other climb (7) one time in eight
 	case 6:
 	case 7: {
-		int next = act->mState == 7 ? 0x7d : 0x17;
+		int next = state == 7 ? 0x7d : 0x17;
 		if (anim != next)
 			HangAnim(act, next);
 		else if (aobj->flags & 0x44000000) {
