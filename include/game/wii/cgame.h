@@ -521,30 +521,70 @@ class CCameraActionArea : public CCameraActionAreaExM {
 public:
 	virtual void DrawDebug3d(); // _28, 0x80156E58
 
-	u8 _40[0x5C - 0x40];
-	s32 mControlEnabled; // _5C, with _2D0 set the area action keeps the pointer's cursor up
-	u8 _60[0x64 - 0x60];
-	XObj* mTarget; // _64
-	u8 _68[0x70 - 0x68];
+	f32 mTransitionTime;                                 // _40
+	s32 mKeepViewDirection;                              // _44, set by SetCamera: pick entries by the current view until one is applied
+	BOOL mForceApply;                                    // _48, apply mEntry even if its id is unchanged
+	s32 mEntryIndex;                                     // _4C
+	s32 mPrevEntryIndex;                                 // _50
+	CamAreaEntry* mEntry;                                // _54
+	CamAreaEntry* mPrevEntry;                            // _58
+	s32 mControlEnabled;                                 // _5C, with _2D0 set the area action keeps the pointer's cursor up
+	BOOL mPadControlEnabled;                             // _60
+	XObj* mTarget;                                       // _64
+	CInterfaceVectorInterpolation* mEyeInterp;           // _68
+	CInterfaceInterpolation* mFovInterp;                 // _6C
 	CVectorEaseInOutInterpolation mInterestEaseInOut;    // _70
 	CVectorLinearInterpolation mEyeLinear;               // _CC
 	CVectorEaseInOutInterpolation mEyeEaseInOut;         // _100
 	CVectorEaseOutInterpolation mEyeEaseOut;             // _15C
 	CVectorEaseOutDivideInterpolation mEyeEaseOutDivide; // _1C0
-	u8 _1F8[0x20C - 0x1F8];
-	CInterpolationLinear mFovLinear;               // _20C
-	CInterpolationEaseInOut mFovEaseInOut;         // _21C
-	CInterpolationEaseOut mFovEaseOut;             // _238
-	CInterpolationEaseOutDivide mFovEaseOutDivide; // _258
-	u8 _268[0x2D0 - 0x268];
+	CInterfaceVectorInterpolation* mEyeInterps[5];       // _1F8
+	CInterpolationLinear mFovLinear;                     // _20C
+	CInterpolationEaseInOut mFovEaseInOut;               // _21C
+	CInterpolationEaseOut mFovEaseOut;                   // _238
+	CInterpolationEaseOutDivide mFovEaseOutDivide;       // _258
+	CInterfaceInterpolation* mFovInterps[5];             // _268
+	CInterfaceVectorInterpolation* mInterestInterp;      // _27C
+	CInterfaceVectorInterpolation* mInterestInterps[5];  // _280, by mode
+	// _294 to _2FC: the Wii's pointer controls, Reset and SetCamera clear them; the names are not recovered
+	u8 _294[0x2A8 - 0x294];
+	f32 _2A8;
+	u8 _2AC[0x2C0 - 0x2AC];
+	f32 _2C0;
+	u8 _2C4[0x2CC - 0x2C4];
+	f32 _2CC;
 	u8 _2D0;
-	u8 _2D1[0x2FC - 0x2D1];
+	u8 _2D1;
+	u8 _2D2;
+	Vec _2D4;
+	u8 _2E0[0x2E8 - 0x2E0];
+	s32 _2E8;
+	s32 _2EC;
+	u8 _2F0[0x2F8 - 0x2F0];
+	s32 _2F8;
 
-	virtual ~CCameraActionArea() { } // _08, 0x8002ECD0
-	virtual void Update(u32 step);   // _10
-	virtual u32 GetCameraFlags();    // _58
-	virtual u32 GetInterestMode();   // _60
-	virtual XObj* GetTarget();       // _64
+	virtual ~CCameraActionArea() { }         // _08, 0x8002ECD0
+	virtual void PreviousUpdate();           // _0C
+	virtual void Update(u32 step);           // _10
+	virtual void Reset();                    // _14
+	virtual void SetCamera(CCamera* camera); // _18
+
+	// the vectors are passed by value, hence the copies
+	void SetInte_I(s32 mode, Vec from, Vec to, f32 time)
+	{
+		if (mode == 3 || time <= 0.0f) {
+			mInterestInterp = NULL;
+			SetInterest(to);
+			return;
+		}
+		mInterestInterp = mInterestInterps[mode];
+		if (mInterestInterp != NULL) {
+			mInterestInterp->Start(from, to, time);
+		}
+	}
+	virtual u32 GetCameraFlags();  // _58
+	virtual u32 GetInterestMode(); // _60
+	virtual XObj* GetTarget();     // _64
 };
 STATIC_ASSERT(sizeof(CCameraActionArea) == 0x2FC);
 
@@ -554,10 +594,11 @@ class CCameraActionMap : public CCameraActionAreaExM {
 public:
 	virtual void DrawDebug3d(); // _28, 0x8015F34C
 
-	s32 mInterestMode; // _40, what GetInterestMode returns
-	u8 _44[0x48 - 0x44];
+	s32 mInterestMode;      // _40, what GetInterestMode returns
+	XObj* mTarget;          // _44, the object the camera looks at
 	CVec mPreviousInterest; // _48
-	u8 _58[0x60 - 0x58];
+	f32 mRestDistance;      // _58
+	f32 mSpringDamping;     // _5C
 	CVec mSpringPrevTarget; // _60
 	CVec mSpringTarget;     // _70
 	u8 _80[0x8C - 0x80];
@@ -568,12 +609,30 @@ public:
 	u8 _BC[0xC8 - 0xBC];
 	CInterpolationEaseOutDivide mFovEaseOutDivide; // _C8
 	CVec mPreviousEye;                             // _D8
-	u8 _E8[0xDA4 - 0xE8];
-	s32 mPrevMapArea; // _DA4
-	s32 mMapArea;     // _DA8
-	u8 _DAC[0xDB8 - 0xDAC];
-	CVectorEaseInOutInterpolation mTurnEaseInOut; // _DB8
-	CInterpolationEaseInOut mHeightEaseInOut;     // _E14
+	u8 _E8[0x4EC - 0xE8];
+	s32 mInsideCllCount;                               // _4EC
+	s32 mInsideCll0;                                   // _4F0
+	s32 mInsideCll1;                                   // _4F4
+	s32 mInsideCll2;                                   // _4F8
+	u8 _4FC[0x570 - 0x4FC];                            // _4FC
+	CamMapEntry mIntersectionEntries[32];              // _570
+	s32 mIntersectionCount;                            // _970
+	CamMapEntry* mNearestTargetEntry;                  // _974
+	s32 mNearestTargetIndex;                           // _978
+	CamMapEntry* mNearestEyeEntry;                     // _97C
+	s32 mNearestEyeIndex;                              // _980
+	Vec mSideStart;                                    // _984, one end of the picked side
+	Vec mSideEnd;                                      // _990, the other end
+	s32 mSideSign;                                     // _99C, 1 or -1, which way round they are
+	CamMapEntry mAreaIntersections[32];                // _9A0
+	s32 mAreaIntersectionCount;                        // _DA0, count of mAreaIntersections
+	s32 mPrevMapArea;                                  // _DA4
+	s32 mMapArea;                                      // _DA8
+	s32 mPadControlEnabled;                            // _DAC
+	s32 _DB0;                                          // _DB0
+	CInterfaceVectorInterpolation* mTurnInterpolation; // _DB4
+	CVectorEaseInOutInterpolation mTurnEaseInOut;      // _DB8
+	CInterpolationEaseInOut mHeightEaseInOut;          // _E14
 	u8 _E30[0xE34 - 0xE30];
 	CInterpolationEaseInOut mAbsHeightEaseInOut; // _E34
 	u8 _E50[0xE64 - 0xE50];
@@ -601,7 +660,9 @@ public:
 	u8 _122C[0x128C - 0x122C];
 
 	virtual ~CCameraActionMap() { } // _08, 0x8002E5C4
+	virtual void PreviousUpdate();  // _0C
 	virtual void Update(u32 step);  // _10
+	virtual void Reset();           // _14
 	virtual u32 GetCameraFlags();   // _58
 	virtual f32 GetFollowDivisor(); // _5C
 	virtual u32 GetInterestMode();  // _60

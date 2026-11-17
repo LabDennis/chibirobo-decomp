@@ -402,7 +402,6 @@ public:
 STATIC_ASSERT(sizeof(CCameraActionReset) == 0x208);
 
 // GameCube layout pending the Wii one
-#if !defined(VERSION_R24J01)
 // an entry in CCameraActionMap's mIntersectionEntries and mAreaIntersections lists
 struct CamMapEntry {
 	Vec mPos;         // _00, a position
@@ -410,6 +409,8 @@ struct CamMapEntry {
 	s32 mSide;        // _10
 	Vec mNormal;      // _14
 };
+
+#if !defined(VERSION_R24J01)
 
 // the map action, CCameraActions holds it at _99C
 class CCameraActionMap : public CCameraActionAreaExM {
