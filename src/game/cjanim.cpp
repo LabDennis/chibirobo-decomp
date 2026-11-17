@@ -341,9 +341,8 @@ BOOL XObj::ProjectVisibleBounds(f32* width, f32* height, CCamera* camera, f32 ra
 	GXProject(radius * sine + mMoveTranslate.x, mMoveTranslate.y + objectHeight, radius * cosine + mMoveTranslate.z, view, projection,
 	          viewport, &unusedX, &top, &depth);
 #if defined(VERSION_PAL)
-	f32 scale = 448.0f / (&gGame.mGs.mScreen)->xfbHeight;
-	bottom *= scale;
-	top *= scale;
+	bottom *= 448.0f / (&gGame.mGs.mScreen)->xfbHeight;
+	top *= 448.0f / (&gGame.mGs.mScreen)->xfbHeight;
 #endif
 	if (left >= 0.0f && right < 640.0f && bottom >= 0.0f && top < 448.0f && depth > 0.0f && depth < 1.0f) {
 		if (width != NULL) {
