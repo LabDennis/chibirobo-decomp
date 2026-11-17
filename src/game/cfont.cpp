@@ -477,7 +477,7 @@ extern "C" CTexObj* GetFontGlyphTexture(CFont* font, const char* str, s32* width
  * @note Address: 0x8019EC40
  * @note Size: 0x738
  */
-// NONMATCHING: the strings sit further into retail's .rodata, and the glyph range loop swaps r29 and r30
+// NONMATCHING: retail's .rodata starts with 0x18 unreferenced zero bytes, so every template and string sits 0x18 further in
 #if defined(VERSION_JP)
 void CFont::Init()
 #else
@@ -494,27 +494,28 @@ void CFont::Init(BOOL builtin)
 			gActiveFontHeader = (OSFontHeader*)mm::Alloc((size + 31) & ~31, "(font I2)");
 			if (gActiveFontHeader == NULL) {
 				OSReport("\n!!!HALT!!!\n");
-				OSPanic("cfont.cpp", FONT_INIT_LINE(71, 65), "%s%s", "not enough memory for ROM font\n", "Init");
+				OSPanic("cfont.cpp", FONT_INIT_LINE(71, 65), "%s%s", "not enough memory for ROM font\n", __FUNCTION__);
 			}
 			size       = UseGlyphCache() ? OS_FONT_ROM_SIZE_SJIS : OS_FONT_ROM_SIZE_ANSI;
 			void* temp = mm::Alloc((size + 31) & ~31, "(temp)");
 			if (temp == NULL) {
 				OSReport("\n!!!HALT!!!\n");
-				OSPanic("cfont.cpp", FONT_INIT_LINE(77, 71), "%s%s", "not enough memory for ROM font(temp)\n", "Init");
+				OSPanic("cfont.cpp", FONT_INIT_LINE(77, 71), "%s%s", "not enough memory for ROM font(temp)\n", __FUNCTION__);
 			}
 			if (OSLoadFont(gActiveFontHeader, temp) == 0) {
 				OSReport("\n!!!HALT!!!\n");
-				OSPanic("cfont.cpp", FONT_INIT_LINE(81, 75), "%s%s", "internal error on OSLoadFont()\n", "Init");
+				OSPanic("cfont.cpp", FONT_INIT_LINE(81, 75), "%s%s", "internal error on OSLoadFont()\n", __FUNCTION__);
 			}
 			mm::Free(temp, 1);
 
-			for (FontGlyphRange* range = gFontGlyphRanges; range->first != range->end; range++) {
-				range->glyphs = (FontGlyph*)mm::Alloc((range->end - range->first) * sizeof(FontGlyph),
-				                                      FormatToStaticBuffer("(%04X~%04X)", range->first, range->end));
-				if (range->glyphs != NULL) {
-					u16 code         = range->first;
-					FontGlyph* glyph = range->glyphs;
-					s32 count        = range->end - range->first;
+			for (s32 r = 0; gFontGlyphRanges[r].first != gFontGlyphRanges[r].end; r++) {
+				gFontGlyphRanges[r].glyphs
+				    = (FontGlyph*)mm::Alloc((gFontGlyphRanges[r].end - gFontGlyphRanges[r].first) * sizeof(FontGlyph),
+				                            FormatToStaticBuffer("(%04X~%04X)", gFontGlyphRanges[r].first, gFontGlyphRanges[r].end));
+				if (gFontGlyphRanges[r].glyphs != NULL) {
+					u16 code         = gFontGlyphRanges[r].first;
+					FontGlyph* glyph = gFontGlyphRanges[r].glyphs;
+					s32 count        = gFontGlyphRanges[r].end - gFontGlyphRanges[r].first;
 					for (s32 i = 0; i < count; i++, glyph++, code++) { // pre-render the whole range
 						// big endian, single byte characters are the low byte
 						char* str = code & 0xFF00 ? (char*)&code : (char*)&code + 1;
@@ -528,7 +529,9 @@ void CFont::Init(BOOL builtin)
 				} else {
 					OSReport("\n!!!HALT!!!\n");
 					OSPanic("cfont.cpp", FONT_INIT_LINE(105, 99), "%s%s",
-					        FormatToStaticBuffer("not enough memory for static image (%04X~%04X)\n", range->first, range->end), "Init");
+					        FormatToStaticBuffer("not enough memory for static image (%04X~%04X)\n", gFontGlyphRanges[r].first,
+					                             gFontGlyphRanges[r].end),
+					        __FUNCTION__);
 				}
 			}
 			FontGlyphCache* cache = &gDynamicFontGlyphCache;
@@ -540,7 +543,7 @@ void CFont::Init(BOOL builtin)
 				}
 			} else {
 				OSReport("\n!!!HALT!!!\n");
-				OSPanic("cfont.cpp", FONT_INIT_LINE(118, 112), "%s%s", "not enough memory for dynamic image\n", "Init");
+				OSPanic("cfont.cpp", FONT_INIT_LINE(118, 112), "%s%s", "not enough memory for dynamic image\n", __FUNCTION__);
 			}
 #if !defined(VERSION_JP)
 		} else if (gUseSingleByteFont) {
@@ -551,11 +554,11 @@ void CFont::Init(BOOL builtin)
 			gActiveFontHeader = (OSFontHeader*)mm::Alloc(size, "(font I4)");
 			if (gActiveFontHeader == NULL) {
 				OSReport("\n!!!HALT!!!\n");
-				OSPanic("cfont.cpp", FONT_INIT_LINE(131, 120), "%s%s", "not enough memory for ROM font\n", "Init");
+				OSPanic("cfont.cpp", FONT_INIT_LINE(131, 120), "%s%s", "not enough memory for ROM font\n", __FUNCTION__);
 			}
 			if (!OSInitFont(gActiveFontHeader)) {
 				OSReport("\n!!!HALT!!!\n");
-				OSPanic("cfont.cpp", FONT_INIT_LINE(135, 124), "%s%s", "internal error on OSInitFont()\n", "Init");
+				OSPanic("cfont.cpp", FONT_INIT_LINE(135, 124), "%s%s", "internal error on OSInitFont()\n", __FUNCTION__);
 			}
 		}
 	}
