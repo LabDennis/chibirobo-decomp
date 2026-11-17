@@ -1042,6 +1042,20 @@ void ReleasePushAction(XActPush* act)
 
 void PositionPlayerAroundRopeTarget(XActRope*, f32);
 
+// header accessors (obja_chr emits copies); a read through them is not merged with a direct act->mTarget read
+static inline XObj* GetPlayerActionTarget(const XAction* action)
+{
+	return action->mTarget;
+}
+static inline f32 GetFloorYawRadians(XObjFloor* const* floors, s32 index)
+{
+	return DEG2RAD * (*floors)[index].mYawDegrees;
+}
+static inline s32 GetActionTargetFloor(const XAction* action)
+{
+	return action->mTargetFloor;
+}
+
 static inline void RopeAnim(XActRope* act, s32 id, f32 loop, BOOL force = FALSE, f32 start = 0)
 {
 	act->mOwner->SetAnim(id, force, NULL, NULL, NULL, start, 1, loop, 10);
@@ -1067,9 +1081,7 @@ static inline void SyncRopePosition(XObjChr* owner)
  * @note Address: 0x800C5B98
  * @note Size: 0x1C78 (US)
  */
-// NONMATCHING: for the three target - last-position deltas retail copies the argument first and then reads act->mTarget
-// again for the operator's this, here the target loaded for the null test is reused; the 16-byte locals of the hang-start
-// branches still sit in a different order
+// NONMATCHING: the 16-byte locals of the hang-start branches still sit in a different order
 void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32)
 {
 	switch (act->mState) {
@@ -1100,7 +1112,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			act->mState = 5;
 		} else {
 			if (act->mTarget) {
-				Vec delta = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+				Vec delta = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 				act->mPos.x += delta.x;
 				act->mPos.z += delta.z;
 				if (act->mDist > 0 && frame > 20) {
@@ -1153,7 +1165,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			act->mState = 5;
 		} else {
 			if (act->mTarget) {
-				CVec delta = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+				CVec delta = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 				act->mPos.x += delta.x;
 				act->mPos.z += delta.z;
 				if (act->mDist > 0 && frame > 80) {
@@ -1215,7 +1227,7 @@ void UpdatePlayerRopeAction(XActRope* act, s32 anim, HSD_AObj* aobj, u32 frames,
 			RopeAnim(act, 0x8c, 0);
 			act->mState = 5;
 		} else if (act->mTarget) {
-			Vec delta = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+			Vec delta = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 			act->mPos.x += delta.x;
 			act->mPos.z += delta.z;
 			if (act->mDist > 0) {
@@ -1409,7 +1421,6 @@ void HandleRopeActionInput(XActRope* act, const CPadOne* pad, f32* weight)
  * @note Address: 0x800C7BC4
  * @note Size: 0x1FB0
  */
-// NONMATCHING: the target is read once too few
 void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 frames, f32 frame, f32 end)
 {
 	switch (act->mState) {
@@ -1441,7 +1452,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			act->mState = 5;
 		} else {
 			if (act->mTarget != NULL) {
-				Vec move = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+				Vec move = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 				act->mPos.x += move.x;
 				act->mPos.z += move.z;
 				if (act->mDist > 0.0f) {
@@ -1494,7 +1505,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			act->mState = 5;
 		} else {
 			if (act->mTarget != NULL) {
-				Vec move = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+				Vec move = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 				act->mPos.x += move.x;
 				act->mPos.z += move.z;
 				if (act->mDist > 0.0f && frame > 20.0f) {
@@ -1573,7 +1584,7 @@ void UpdateLadderActionAnimation(XActLadder* act, s32 anim, HSD_AObj* aobj, u32 
 			act->mState         = 5;
 			act->mMoveDirection = 0;
 		} else if (act->mTarget != NULL) {
-			Vec move = act->mTarget->mMoveTranslate - act->mTarget->mLastPos;
+			Vec move = GetPlayerActionTarget(act)->mMoveTranslate - act->mTarget->mLastPos;
 			act->mPos.x += move.x;
 			act->mPos.z += move.z;
 			if (act->mDist > 0.0f) {
@@ -3561,19 +3572,6 @@ void InitializePlayerLiftAction(XActLift* act, XObjChr* owner)
 	act->mTimer         = 0.0f;
 	act->mPendingItemId = -1;
 	ResetPlayerLiftAction(act);
-}
-
-static inline XObj* GetPlayerActionTarget(const XAction* action)
-{
-	return action->mTarget;
-}
-static inline f32 GetFloorYawRadians(XObjFloor* const* floors, s32 index)
-{
-	return DEG2RAD * (*floors)[index].mYawDegrees;
-}
-static inline s32 GetActionTargetFloor(const XAction* action)
-{
-	return action->mTargetFloor;
 }
 
 /**
