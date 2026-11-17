@@ -18,8 +18,9 @@ public:
 	CLight mLights[8];  // _984, from desc lists 1 to 8
 	s32 mLightAnims[8]; // _2444
 
-	// todo: cleanup
-	XObjLightDesc* GetLightDesc(s32 i) { return (XObjLightDesc*)mArchive.mDesc[i + 1]; }
+	// todo: cleanup. GetLightDesc takes an int and GetLightAnimNum an s32: with the two index
+	// types the loops walk mDesc and mNum with induction pointers of their own, as retail does
+	XObjLightDesc* GetLightDesc(int i) { return (XObjLightDesc*)mArchive.mDesc[i + 1]; }
 	s32 GetLightAnimNum(s32 i) { return mArchive.mNum[i + 2]; }
 	CLight* GetLights() { return mLightNum > 0 ? mLights : NULL; }
 
