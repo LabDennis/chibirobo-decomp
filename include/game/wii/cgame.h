@@ -894,13 +894,16 @@ struct WiiPlayerState {
 	WiiCordWire mCordWire; // _ABC0, the plug cord's spark wire, the GameCube's mPlug.mWire
 	u8 _ABC4[0xDC50 - 0xABC4];
 	WiiPlayerSuits mSuits; // _DC50
-	u8 _DC64[0x19E9C - 0xDC64];
+	u8 _DC64[0x18BE8 - 0xDC64];
+	CPadOne mPad; // _18BE8, the pad he reads, the GameCube's mPad
+	u8 _19E90[0x19E9C - 0x19E90];
 	u8 mAttachments[0x48]; // _19E9C
 	u8 _19EE4[0x19EE8 - 0x19EE4];
 	WiiAtcMenu mAtcMenu; // _19EE8
 	u8 _1A3F8[0x1A420 - 0x1A3F8];
 	WiiOXMenu mOXMenu; // _1A420
-	u8 _1B7B4[0x1C994 - 0x1B7B4];
+	u8 _1B7B4[0x1C990 - 0x1B7B4];
+	BOOL mBatteryDrains;   // _1C990, TRUE while his battery runs down and an empty battery stops him
 	s32 mSquirterContent;  // _1C994
 	s32 mItemTint;         // _1C998
 	f32 mHeadOffset;       // _1C99C
@@ -920,6 +923,7 @@ STATIC_ASSERT(offsetof(WiiPlayerState, mOXMenu) == 0x1A420);
 STATIC_ASSERT(offsetof(WiiPlayerState, mGroundType) == 0x1C9A4);
 STATIC_ASSERT(offsetof(WiiPlayerState, mSfx) == 0x95AC);
 STATIC_ASSERT(offsetof(WiiPlayerState, mLook) == 0x98E8);
+STATIC_ASSERT(offsetof(WiiPlayerState, mPad) == 0x18BE8);
 
 // the coin, item and dust collections each hold a pointer to their 0x80 flag words at +0x9A8
 struct WiiFlagSource {

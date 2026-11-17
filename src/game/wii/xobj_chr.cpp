@@ -22,8 +22,73 @@ static inline bool TestStatus(const XObj* object, u64 mask)
 	return (u8)((object->mStatus.mFlags & mask) != 0);
 }
 
+// out of battery: the battery is flat and the gauge on screen has run down to it
+static inline bool IsStopped(const WiiPlayerState* chr)
+{
+	return chr->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
+}
+
+// out of battery and slumped over
+static inline bool IsDown(const WiiPlayerState* chr)
+{
+	bool ret = false;
+	if (IsStopped(chr)) {
+		if (chr->mBatteryDrains != 0) {
+			ret = true;
+		}
+	}
+	return ret;
+}
+
+static inline bool IsEventHeld(const WiiPlayerState* chr)
+{
+	bool ret = false;
+	if (gGame.GetStatusFlags(0x40000000) && IsDown(chr)) {
+		ret = true;
+	}
+	return ret;
+}
+
+static inline bool IsTumbling(const WiiPlayerState* chr)
+{
+	bool ret = false;
+	if (chr->mTumble.mState == 4 || chr->mTumble.mState == 5 || chr->mTumble.mState == 6) {
+		ret = true;
+	}
+	return ret;
+}
+
+static inline Vec FirstEdgePoint(const XObj* object, s32 index, f32 height)
+{
+	Vec point;
+	point.x = object->mMoveTranslate.x + object->mEdges[index].mFrom.x;
+	point.y = height;
+	point.z = object->mMoveTranslate.z + object->mEdges[index].mFrom.z;
+	return point;
+}
+
+static inline Vec SecondEdgePoint(const XObj* object, s32 index, f32 height)
+{
+	Vec point;
+	point.x = object->mMoveTranslate.x + object->mEdges[index].mTo.x;
+	point.y = height;
+	point.z = object->mMoveTranslate.z + object->mEdges[index].mTo.z;
+	return point;
+}
+
+// events wait while he lies there out of battery
+static inline bool IsEventBlocked(const WiiPlayerState* chr)
+{
+	bool ret = false;
+	if (IsEventHeld(chr) && IsTumbling(chr)) {
+		ret = true;
+	}
+	return ret;
+}
+
 extern "C" {
 u32 CheckStageFlag(s32 stage, u32 mask);
+void GetOutwardPerpendicularToEdge(Vec* a, Vec* b, Vec* c, Vec* out);
 s32 GetClearLetickerApproachSide(XObj* object, const Vec* pos);
 void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount);
 BOOL IsLiftTargetPlug(XAction* action);
@@ -132,6 +197,12 @@ BOOL fn_800CDC08(WiiPlayerState* player)
 		return TRUE;
 	}
 	return FALSE;
+}
+
+// reads the player's pad once more
+void fn_800CE48C(WiiPlayerState* player)
+{
+	player->mPad.Update(gWiiGameCubePads, 0);
 }
 
 void SetPlayerActionTarget(XAction* action, XObj* target)
@@ -304,6 +375,20 @@ BOOL IsObjectPushable(const XObj* object)
 BOOL IsObjectPushableFromBack(const XObj*)
 {
 	return false;
+}
+
+// the heading out of the object across one floor's edge, from point
+// NONMATCHING (86 %): retail reads point->y ahead of the object's position, the rest is the same
+f32 GetObjectEdgeOutwardYaw(const XObj* object, Vec* point, s32 index)
+{
+	f32 height = point->y;
+	Vec first  = FirstEdgePoint(object, index, height);
+	Vec second = SecondEdgePoint(object, index, height);
+	CVec direction;
+	GetOutwardPerpendicularToEdge(point, &first, &second, &direction);
+	f32 angle = atan2(direction.x, direction.z);
+	angle     = WrapAngle(angle);
+	return angle;
 }
 
 CVec* GetObjectPreviousMoveTranslation(XObj* object)
@@ -924,6 +1009,27 @@ f32 fn_800E32B8(WiiPlayerState* chr, s32 anim)
 	return rate * (60.0f / gRefreshRate);
 }
 
+// where the carried object hangs, in the world
+// NONMATCHING: only the name's place differs, retail pools it in the file's .rodata string table
+CVec fn_800E5A2C(XObj* player)
+{
+	return player->GetWorldPos("carry_obj_nll");
+}
+
+// and relative to its joint
+// NONMATCHING: as above, the name's place
+CVec fn_800E5A48(XObj* player)
+{
+	return player->GetJointTranslate("carry_obj_nll");
+}
+
+// NONMATCHING (45 %): retail keeps each inline's bool in a register of its own (stopped, down, held) and
+// tests the tumble states one compare at a time; this build folds them into one flag and a range check
+BOOL IsPlayerBlockingEvents(const WiiPlayerState* player)
+{
+	return IsEventBlocked(player);
+}
+
 // the event call 101: which side of a clear leticker he comes from, 1 for anything else
 // NONMATCHING: retail loads the data record ahead of the prologue's stores
 s32 GetCharacterObjectApproachResult(XObj* chr, XObj* object)
@@ -939,7 +1045,7 @@ void SetAttachmentCountById(AttachmentValues* values, s32 id, s32 value)
 // out of battery: the battery is flat and the gauge on screen has run down to it
 BOOL IsPlayerStopped(const WiiPlayerState* chr)
 {
-	return chr->mParams.mBattery <= 0.0f && InfoScrn_IsBatteryGaugeEmpty(&gGame.mInfoScrn);
+	return IsStopped(chr);
 }
 
 u8 IsPlayerFlashingFromHit(WiiPlayerState* chr)

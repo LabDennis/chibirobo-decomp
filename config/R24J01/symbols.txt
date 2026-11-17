@@ -8862,6 +8862,7 @@ IsObjectLadder = .text:0x800D5590; // type:function size:0x14
 IsObjectRope = .text:0x800D566C; // type:function size:0x14
 IsObjectPushable = .text:0x800D5690; // type:function size:0x14
 IsObjectPushableFromBack = .text:0x800D56AC; // type:function size:0x8
+GetObjectEdgeOutwardYaw = .text:0x800D56B4; // type:function size:0x130
 GetObjectPreviousMoveTranslation = .text:0x800DB5E8; // type:function size:0x8
 SetObjectVectorTargetX = .text:0x800DB640; // type:function size:0x8
 SetObjectVectorTargetZ = .text:0x800DB650; // type:function size:0x8

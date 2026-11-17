@@ -1116,6 +1116,14 @@ public:
 };
 STATIC_ASSERT(sizeof(CObj) == 0x150);
 
+// one floor's edge, the GameCube's XObjEdge
+struct XObjEdge {
+	Vec mContactOffset; // _00
+	Vec mFrom;          // _0C
+	Vec mTo;            // _18
+};
+STATIC_ASSERT(sizeof(XObjEdge) == 0x24);
+
 class XObj : public CObj {
 public:
 	XObj();
@@ -1249,10 +1257,10 @@ public:
 	s32 mPlacementParam1; // _198
 	CVec mLastPos;        // _19C
 	u8 _1AC[0x1B8 - 0x1AC];
-	f32 mLastAnimFrame; // _1B8, the frame the animation had after the last update
-	s32 mHitFloorIndex; // _1BC
-	u8 _1C0[0x640 - 0x1C0];
-	f32 mFloorXZExtent; // _640
+	f32 mLastAnimFrame;  // _1B8, the frame the animation had after the last update
+	s32 mHitFloorIndex;  // _1BC
+	XObjEdge mEdges[32]; // _1C0, one per floor
+	f32 mFloorXZExtent;  // _640
 	u8 _644[0x648 - 0x644];
 	f32 mFloorHeights[32];    // _648, a height per floor
 	f32 mMaxFloorHeight;      // _6C8, NAN while there is none
