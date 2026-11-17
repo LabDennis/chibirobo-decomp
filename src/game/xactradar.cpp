@@ -554,8 +554,8 @@ static inline void StartPopperTone(int sound)
  * @note Address: 0x800C0090
  * @note Size: 0x150C
  */
-// NONMATCHING: the muzzle stands at both sites as retail's two copies of its data ask. left: at the charge site retail's two
-// results are expression temporaries behind the offset copy and the path (a reference binds them earlier)
+// NONMATCHING: the muzzle stands at both sites as retail's two copies of its data ask. left: the int to float slots of
+// power and speed are swapped, and the target loop and the free-shot loop take their registers in another order
 void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 frames, f32, f32)
 {
 	BOOL rangeUpgrade, canCharge;
@@ -584,15 +584,9 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 					PSMTXConcat(rotY, rotX, rot);
 					Vec offset = { 1.087597f, -1.056235f, 4.978912f };
 					PSMTXMultVec(rot, &offset, &offset);
-					const CVec& v = camera.mEye + offset;
-					pos.x         = v.x;
-					pos.y         = v.y;
-					pos.z         = v.z;
+					pos = camera.mEye + offset;
 				} else {
-					const CVec& v = CJObj_GetJointWorldPositionByPath(&act->mOwner->mPopperObj, 4, (s32[4]) { 0, 1, 0, 0 });
-					pos.x         = v.x;
-					pos.y         = v.y;
-					pos.z         = v.z;
+					pos = CJObj_GetJointWorldPositionByPath(&act->mOwner->mPopperObj, 4, (s32[4]) { 0, 1, 0, 0 });
 				}
 				act->mCharge.mState = 1;
 				act->mCharge.mPos   = pos;
@@ -722,14 +716,11 @@ void UpdatePlayerPopperAction(XActPopper* act, s32 anim, HSD_AObj* aobj, u32 fra
 				}
 				XObjChr* p = act->mOwner;
 				if (p->mBatteryDrains) {
-					f32 battery = p->mParams.mBattery - act->mShotStrength;
+					Params& params = p->mParams;
+					f32 battery    = params.mBattery - act->mShotStrength;
 					if (battery < 0)
 						battery = 0;
-					p->mParams.mBattery = battery > 0 ? battery : 0;
-					if (p->mParams.mBattery < 0)
-						p->mParams.mBattery = 0;
-					if (p->mParams.mBattery > p->mParams.mMaxBattery)
-						p->mParams.mBattery = p->mParams.mMaxBattery;
+					params.SetBattery(battery);
 				}
 				s32 kind = GetAttachmentCountById(&act->mOwner->mAttachments, 2);
 				if (target)
