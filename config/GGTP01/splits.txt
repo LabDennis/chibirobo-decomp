@@ -872,20 +872,8 @@ game/xobjactorjenny.cpp:
 	.text       start:0x80125618 end:0x80128C28
 
 game/xobjactormama.cpp:
-	.text       start:0x80128C28 end:0x8012AA1C
+	.text       start:0x80128C28 end:0x8012BB28
 	.sdata2     start:0x8066573C end:0x80665740 align:4
-
-game/xobjactormamaupdate.cpp:
-	.text       start:0x8012AA1C end:0x8012AA3C
-
-game/mamadrop.cpp:
-	.text       start:0x8012AA3C end:0x8012ADC8
-
-game/xobjactormamahide.cpp:
-	.text       start:0x8012ADC8 end:0x8012BA78
-
-game/mamareset.cpp:
-	.text       start:0x8012BA78 end:0x8012BB28
 
 game/xobjactorpapa.cpp:
 	.text       start:0x8012BB28 end:0x8012F064
