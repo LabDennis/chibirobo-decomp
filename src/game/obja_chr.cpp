@@ -616,8 +616,20 @@ static inline void DrawPointQuad(CTexObj& tex, u32 top, u32 bottom, f32 x, f32 y
 	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, x, y, 0, w, h, 0, 0, rotation);
 }
 
-// NONMATCHING: retail's joint offset is an unnamed Vec below the GetPos copy, and the burst loop loads x and y
-// after the sin calls and does not merge the two circle sizes
+// the float forms of the MSL trig routines, which the game's math.h declares as functions
+extern "C" {
+inline f32 sinf(f32 x)
+{
+	return sin(x);
+}
+inline f32 cosf(f32 x)
+{
+	return cos(x);
+}
+}
+
+// NONMATCHING: retail's joint offset is an unnamed Vec below the GetPos copy, the two circle sizes are not
+// merged, and a few registers in the digit loop differ
 extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 {
 	CMotionControlCamera& camera = gGame.mMotionControlCamera;
@@ -648,25 +660,25 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 			if (!(p.mFade > 0 && p.mFade < 1))
 				continue;
 			if (display.mAmount >= 0) {
-				x = centerX + 300 * (f32)sin(p.mAngle);
-				y = centerY + 300 * (f32)cos(p.mAngle);
+				x = centerX + 300 * sinf(p.mAngle);
+				y = centerY + 300 * cosf(p.mAngle);
 			}
 			f32 phase = p.mFade;
 			if (phase > 1)
 				phase = 1;
-			f32 alpha = sin(PI * p.mFade); // strongest halfway through the fade
+			f32 alpha = sinf(PI * p.mFade); // strongest halfway through the fade
 			if (alpha > 1)
 				alpha = 1;
-			f32 angle = PI * phase, arc = 1.5f * (f32)sin(angle);
-			f32 px = x + (centerX - x) * (1 - (f32)sin(angle * .5f)), py = y + (centerY - y) * (1 - (f32)sin(angle * .5f));
+			f32 angle = PI * phase, arc = 1.5f * sinf(angle);
+			f32 px = x + (centerX - x) * (1 - sinf(angle / 2)), py = y + (centerY - y) * (1 - sinf(angle / 2));
 			if (p.mState > 0 || display.mAmount < 0) {
 				f32 a  = (2 * PI / burst.mNum) * i;
-				f32 tx = x + 200 * (f32)sin(a), ty = y + 200 * (f32)cos(a);
-				px = x + (tx - x) * (1 - (f32)sin(angle * .5f));
-				py = y + (ty - y) * (1 - (f32)sin(angle * .5f));
+				f32 tx = x + 200 * sinf(a), ty = y + 200 * cosf(a);
+				px = x + (tx - x) * (1 - sinf(angle / 2));
+				py = y + (ty - y) * (1 - sinf(angle / 2));
 			}
-			f32 dx = p.mSpeed * (arc * (f32)sin(p.mAngle)), dy = p.mSpeed * (arc * (f32)cos(p.mAngle));
-			f32 shrink = 1 - (f32)sin(angle * .5f), rotation = PI * p.mAngle;
+			f32 dx = p.mSpeed * (arc * sinf(p.mAngle)), dy = p.mSpeed * (arc * cosf(p.mAngle));
+			f32 shrink = 1 - sinf(angle / 2), rotation = PI * p.mAngle;
 			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
 			if (p.mState > 0) { // a polygon with mState sides
 				u32 color = p.mColor | (u8)(s32)(128 * alpha);
@@ -687,10 +699,11 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 					tex      = PointTexture(gGame.mTpl.mTex, 153);
 					rotation = 0;
 				}
+				shrink /= 2;
 				radius    = 44;
 				u32 color = display.mAmount >= 0 ? (0xffffff00 | (u32)(200 * alpha)) : (0xff000000 | (u32)(128 * alpha));
 				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-				f32 size = 46 - (shrink * .5f) * radius;
+				f32 size = (2 + radius) - shrink * radius;
 				DrawPointQuad(tex, color, color, px + dx, py + dy, size, size, rotation);
 				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 				p.mLastScreenX = px + dx;
@@ -713,12 +726,12 @@ extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
 			const PointDigit& digit = display.digits[i];
 			if (!(digit.fade > 0))
 				continue;
-			f32 px = 17.f * (display.mCount - 1 - i) + ((x + 8.5f) - display.mCount * 17.f * .5f), py = y;
+			f32 px = 17.f * (display.mCount - 1 - i) + ((x + 8.5f) - display.mCount * 17.f / 2), py = y;
 			f32 fade = digit.fade;
 			if (fade > 1)
 				fade = 1;
 			f32 angle = PI * fade;
-			f32 rise = 8 * (f32)sin(angle), expand = 16 * (f32)cos(angle * .5f);
+			f32 rise = 8 * sinf(angle), expand = 16 * cosf(angle / 2);
 			if (display.mState == 3)
 				expand = 0;
 			u8 alpha = (u8)(s32)(255 * fade);
