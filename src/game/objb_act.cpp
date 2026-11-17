@@ -3563,6 +3563,19 @@ void InitializePlayerLiftAction(XActLift* act, XObjChr* owner)
 	ResetPlayerLiftAction(act);
 }
 
+static inline XObj* GetPlayerActionTarget(const XAction* action)
+{
+	return action->mTarget;
+}
+static inline f32 GetFloorYawRadians(XObjFloor* const* floors, s32 index)
+{
+	return DEG2RAD * (*floors)[index].mYawDegrees;
+}
+static inline s32 GetActionTargetFloor(const XAction* action)
+{
+	return action->mTargetFloor;
+}
+
 /**
  * @note Address: 0x800D5190
  * @note Size: 0x39C
@@ -3571,10 +3584,12 @@ Vec GetTargetFloorPosition(XAction* act)
 {
 	if (act->mTarget != NULL) {
 		CVec position = act->mTarget->mMoveTranslate;
-		CVec offset   = act->mTarget->mMoveScale * GetFloorOffset(&act->mTarget->mFloors, act->mTargetFloor);
-		CVec extent   = act->mTarget->mMoveScale * GetFloorExtent(&act->mTarget->mFloors, act->mTargetFloor);
-		f32 yaw       = act->mTarget->mMoveRotate.y;
-		yaw += DEG2RAD * act->mTarget->mFloors[act->mTargetFloor].mYawDegrees;
+		CVec offset
+		    = GetPlayerActionTarget(act)->mMoveScale * GetFloorOffset(&GetPlayerActionTarget(act)->mFloors, GetActionTargetFloor(act));
+		CVec extent
+		    = GetPlayerActionTarget(act)->mMoveScale * GetFloorExtent(&GetPlayerActionTarget(act)->mFloors, GetActionTargetFloor(act));
+		f32 yaw = act->mTarget->mMoveRotate.y;
+		yaw += GetFloorYawRadians(&GetPlayerActionTarget(act)->mFloors, GetActionTargetFloor(act));
 		Mtx translate, local, rotate, scale, result;
 		PSMTXTrans(translate, position.x, position.y, position.z);
 		PSMTXTrans(local, offset.x, offset.y, offset.z);
