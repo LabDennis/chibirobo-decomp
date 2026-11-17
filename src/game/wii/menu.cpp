@@ -37,6 +37,7 @@ void ChangeGameStage(CGame* game, s32 stage, BOOL showName);
 u8* GetItemDescription(s32 id);
 s32 GetItemIconTextureIndex(s32 id);
 u8* GetStatusIconDescription(s32 id);
+s32 ConvertHudTextToFullWidth(char* text);
 u8* GetStatusOverviewDescription(s32 id);
 char* GetStatusOverviewLabel(s32 id);
 void DrawTexturedWindowFrame(u32 color, u32 textureColor, f32 x, f32 y, f32 width, f32 height, f32 alpha, f32 scaleX, f32 scaleY);
@@ -780,6 +781,93 @@ static inline f32 MenuRectStart(f32 center, f32 size)
 static inline f32 MenuRectEnd(f32 center, f32 size)
 {
 	return size + MenuRectStart(center, size);
+}
+
+// a filled box with a dark and a light edge, the GameCube's DrawBeveledMenuRect; the Wii inlines it
+static inline void DrawBeveledMenuRect(u32 color, f32 x, f32 y, f32 z, f32 width, f32 height, f32 alpha)
+{
+	Vec fill[5]
+	    = { (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z }, (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), z },
+		    (Vec) { MenuRectEnd(x, width), MenuRectEnd(y, height), z }, (Vec) { MenuRectStart(x, width), MenuRectEnd(y, height), z },
+		    (Vec) { MenuRectStart(x, width), MenuRectStart(y, height), z } };
+	gGame.mGs.mCurRenderState->SetZMode(GX_TRUE, GX_ALWAYS, GX_TRUE);
+	DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLEFAN, gGame.mGs.mCamera->mViewMtx, fill, color, 5);
+	Vec border[6] = {
+		(Vec) { MenuRectStart(x, width), MenuRectStart(y, height), 0.0f }, (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), 0.0f },
+		(Vec) { MenuRectEnd(x, width), MenuRectEnd(y, height), 0.0f },     (Vec) { MenuRectStart(x, width), MenuRectEnd(y, height), 0.0f },
+		(Vec) { MenuRectStart(x, width), MenuRectStart(y, height), 0.0f }, (Vec) { MenuRectEnd(x, width), MenuRectStart(y, height), 0.0f }
+	};
+	DrawGsLineStrip(&gGame.mGs, &border[3], (u32)(255.0f * alpha) | 0x64646400, 3);
+	DrawGsLineStrip(&gGame.mGs, &border[1], (u32)(255.0f * alpha) | 0xC8C8C800, 3);
+}
+
+// two byte text a character at a time, digits and narrow letters moved to the middle of their cell.
+// NONMATCHING: scheduling of the character copy and register allocation of the box corners
+extern "C" void DrawDoubleByteMenuText(char* text, f32 x, f32 y, f32 z, f32 w, f32 h, f32 alpha)
+{
+	char* p;
+	u32 count;
+	int i;
+	count = strlen(text) / 2;
+	p     = text;
+	i     = 0;
+	for (; i < count; p += 2, i++) {
+		char c[3];
+		char buf[4];
+		c[0] = p[0];
+		c[1] = p[1];
+		c[2] = 0;
+		DrawBeveledMenuRect((u32)(128.0f * alpha) | 0xFFFFFF00, i * w + x, y, z, w, h, alpha);
+		u32 color = (u32)(255.0f * alpha) | 0x20202000;
+		f32 shift = 0.0f;
+		for (int digit = 0; digit < 10; digit++) {
+			sprintf(buf, "%d", digit);
+			ConvertHudTextToFullWidth(buf);
+			if (strcmp(c, buf) == 0) {
+				if (digit == 1) {
+					shift = 6.0f;
+				} else {
+					shift = 3.0f;
+				}
+				break;
+			}
+		}
+		for (int letter = 0; letter < 26; letter++) {
+			buf[0] = 'A' + letter;
+			buf[1] = 0;
+			ConvertHudTextToFullWidth(buf);
+			if (strcmp(c, buf) == 0) {
+				switch (letter) {
+				case 'B' - 'A':
+				case 'E' - 'A':
+				case 'F' - 'A':
+				case 'J' - 'A':
+				case 'K' - 'A':
+				case 'L' - 'A':
+				case 'P' - 'A':
+				case 'R' - 'A':
+				case 'S' - 'A':
+				case 'T' - 'A':
+					shift = 6.0f;
+					break;
+				case 'I' - 'A':
+					shift = 12.0f;
+					break;
+				case 'C' - 'A':
+				case 'H' - 'A':
+				case 'U' - 'A':
+				case 'X' - 'A':
+					shift = 4.5f;
+					break;
+				default:
+					shift = 3.0f;
+					break;
+				}
+				break;
+			}
+		}
+		DrawGsProportionalTextFormat(&gGame.mGs, color, c, shift + (i * w + x) - w / 2, y - h / 2, 0.0f, w, h);
+	}
 }
 
 // NONMATCHING: register allocation of the corner coordinates
