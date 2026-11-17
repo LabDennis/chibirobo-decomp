@@ -478,109 +478,15 @@ game/ctrigondtor.cpp:
 game/obja_map.cpp:
 	.text       start:0x80095008 end:0x80095974
 
-game/drsmenudtor.cpp:
-	.text       start:0x80095974 end:0x800959D0
-
-game/octamenureset.cpp:
-	.text       start:0x800959D0 end:0x80095A0C
-
-game/efftrail.cpp:
-	.text       start:0x80095A0C end:0x80098D04
-
 game/obja_chr.cpp:
-	.text       start:0x80098D04 end:0x800B9740
-	.bss        start:0x803568EC end:0x8035A864 align:4
-
-game/xobjcurrentedge.cpp:
-	.text       start:0x800B9740 end:0x800B97A4
-
-game/xobjchrrestore.cpp:
-	.text       start:0x800B97A4 end:0x800B9A04
-
-game/xobjchrreset.cpp:
-	.text       start:0x800B9A04 end:0x800B9BFC
-	.sdata2     start:0x80637650 end:0x80637668
-
-game/xobjchrsuitjoints.cpp:
-	.text       start:0x800B9BFC end:0x800BAD6C
-
-game/xobjchritem.cpp:
-	.text       start:0x800BAD6C end:0x800BAFDC
-
-game/xobjchrsuit.cpp:
-	.text       start:0x800BAFDC end:0x800BB600
-
-game/xobjchratcanim.cpp:
-	.text       start:0x800BB600 end:0x800BB6A4
-
-game/xobjchrplacement.cpp:
-	.text       start:0x800BB6A4 end:0x800BCAF0
-
-game/xobjchrstop.cpp:
-	.text       start:0x800BCAF0 end:0x800BCBE0
-
-game/xobjchrattachmentchange.cpp:
-	.text       start:0x800BCBE0 end:0x800BD140
-
-game/xobjchrjointrot.cpp:
-	.text       start:0x800BD140 end:0x800BD478
-
-game/xaction.cpp:
-	.text       start:0x800BD478 end:0x800BD4EC
-
-game/xobjchrresetstate.cpp:
-	.text       start:0x800BD4EC end:0x800BDAEC
-
-game/xactioninit.cpp:
-	.text       start:0x800BDAEC end:0x800BDB1C
-
-game/xobjchrdisplay.cpp:
-	.text       start:0x800BDB1C end:0x800BE1E8
-
-game/atcmenudtor.cpp:
-	.text       start:0x800BE1E8 end:0x800BE28C
-
-game/xobjchrdtor.cpp:
-	.text       start:0x800BE28C end:0x800BE908
-
-game/xactpoppershotdtor.cpp:
-	.text       start:0x800BE908 end:0x800BE99C
-
-game/xobjplugdtor.cpp:
-	.text       start:0x800BE99C end:0x800BEA44
-
-game/xobjplugcordnodedtor.cpp:
-	.text       start:0x800BEA44 end:0x800BEAD4
-
-game/xobjwireeffdtor.cpp:
-	.text       start:0x800BEAD4 end:0x800BEB34
-
-game/xobjcopterdtor.cpp:
-	.text       start:0x800BEB34 end:0x800BEB94
-
-game/xobjattachmentdtor.cpp:
-	.text       start:0x800BEB94 end:0x800BEBF4
-
-game/xobjpopperdtor.cpp:
-	.text       start:0x800BEBF4 end:0x800BEC54
-
-game/xobjradardtor.cpp:
-	.text       start:0x800BEC54 end:0x800BECB4
-
-game/xobjoxdtor.cpp:
-	.text       start:0x800BECB4 end:0x800BED14
-
-game/xpaddtor.cpp:
-	.text       start:0x800BEE74 end:0x800BEF60
-
-game/oxmenudtor.cpp:
-	.text       start:0x800BEF60 end:0x800BEFA8
-
-game/cptcldtor.cpp:
-	.text       start:0x800BEFA8 end:0x800BEFF0
-
-game/xobjfloorheight.cpp:
-	.text       start:0x800BED14 end:0x800BEE74
+	.text       start:0x80095974 end:0x800BEFF0
+	.rodata     start:0x8020A080 end:0x8020B290
+	.data       start:0x80225730 end:0x802278B8
+	.bss        start:0x803567B8 end:0x8035A868
+	.sdata      start:0x80634928 end:0x80634A10
+	.sbss       start:0x80635678 end:0x80635690
+	.sdata2     start:0x806375A8 end:0x80637960
+	.sbss2      start:0x8063A2A0 end:0x8063A360
 
 game/xactradar.cpp:
 	.text       start:0x800BEFF0 end:0x800C65DC

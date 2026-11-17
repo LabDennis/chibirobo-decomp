@@ -1,3 +1,918 @@
+#include "Version.h"
+
+#include "game/octamenu.h"
+
+void operator delete(void* object);
+extern "C" {
+extern void* __vt__7DrsMenu[];
+extern void* __vt__8OctaMenu[];
+}
+
+// todo: cleanup, the vtable is right before _280
+static inline void SetVtable(OctaMenu* menu, void** vtable)
+{
+	((void***)&menu->mMenuType)[-1] = vtable;
+}
+
+// todo: weak copy
+/**
+ * @note Address: 0x80093B7C
+ * @note Size: 0x5C
+ */
+extern "C" DrsMenu* __dt__7DrsMenuFv(DrsMenu* menu, s32 flags)
+{
+	if (menu != NULL) {
+		SetVtable(menu, __vt__7DrsMenu);
+		// ~OctaMenu, inlined with its own null check
+		if (menu != NULL)
+			SetVtable(menu, __vt__8OctaMenu);
+		if ((s16)flags > 0)
+			::operator delete(menu);
+	}
+	return menu;
+}
+
+#include "game/octamenu.h"
+
+// todo: weak copy
+/**
+ * @note Address: 0x80093BD8
+ * @note Size: 0x30
+ */
+void OctaMenu::OpenActive()
+{
+	Open(0);
+}
+
+// todo: weak copy
+/**
+ * @note Address: 0x80093C08
+ * @note Size: 0xC
+ */
+void OctaMenu::FinishClose()
+{
+	mOpen = 0;
+}
+
+#include "game/xobjchrstate.h"
+#include "game/hsd_dobj.h"
+#include "game/xobjmap.h"
+#include "game/xpad.h"
+#include "game/cgame.h"
+#include "game/cgameutil.h"
+#include "game/cjobjset.h"
+#include "game/globals.h"
+#include "game/pointptcl.h"
+#include <stdlib.h>
+
+STATIC_ASSERT(sizeof(SuitParticle) == 0x18);
+STATIC_ASSERT(sizeof(SuitChangeEffect) == 0x1E4);
+
+/**
+ * @note Address: 0x80093C14
+ * @note Size: 0x490
+ */
+// NONMATCHING: retail keeps the halo's width and height in two registers (f28 is a copy of f29). Its frame has the four
+// rotation vectors as unnamed objects in the order they are used, each with its own zero template: literals handed to
+// a circle call that takes the position and the rotation as Vecs gives that frame (97.7 %), the call itself is not found.
+extern "C" void DrawSpiralTrail(SuitChangeEffect* trail, const CVec& origin)
+{
+	if (!trail->active) {
+		return;
+	}
+
+	gGame.mGs.mBillboardEnabled = 1;
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, TRUE, 3, FALSE);
+	SetupAll(FALSE);
+
+	Vec top  = origin;
+	f32 peak = 0.0f;
+	for (s32 i = 0; i < 2; ++i) {
+		for (s32 j = 0; j < 10; ++j) {
+			SuitParticle& point = trail->rings[i][j];
+			if (point.scale > peak) {
+				peak = point.scale;
+			}
+			if (point.position.y > top.y) {
+				top.y = point.position.y;
+			}
+		}
+	}
+
+	f32 size = 15.0f * peak; // the halo at the trail's top
+
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	Vec outerRotation = { 0.0f, 0.0f, 0.0f };
+	DrawGsCircle(&gGame.mGs, 32, 0xFFFFFF00 | (u32)(64.0f * peak), 0xFFFFFF00, top.x, top.y, top.z, size, size, outerRotation.x,
+	             outerRotation.y, outerRotation.z);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+	Vec innerRotation = { 0.0f, 0.0f, 0.0f };
+	DrawGsCircle(&gGame.mGs, 32, 0xFFFFFF00 | (u32)(255.0f * peak), 0xFFFFFF00, top.x, top.y, top.z, size, size, innerRotation.x,
+	             innerRotation.y, innerRotation.z);
+
+	for (s32 i = 0; i < 2; ++i) {
+		for (s32 j = 0; j < 10; ++j) {
+			SuitParticle& point = trail->rings[i][j];
+			// each point: a wide glow disc under a solid core
+			Vec pos        = origin + point.position;
+			f32 radius     = 4.0f * point.scale;
+			f32 angle      = point.angle;
+			const u32 edge = point.color;
+			u32 center     = edge;
+			center |= (u8)(s32)(255.0f * point.scale);
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 2, 4, 15);
+			Vec glowRotation = { 0.0f, 0.0f, 0.0f };
+			glowRotation.z   = 4.0f * angle;
+			DrawGsCircle(&gGame.mGs, 6, 0xFFFFFF20, 0xFFFFFF00, pos.x, pos.y, pos.z, 2.5f * radius, 2.5f * radius, glowRotation.x,
+			             glowRotation.y, glowRotation.z);
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+			Vec coreRotation = { 0.0f, 0.0f, 0.0f };
+			coreRotation.z   = 4.0f * angle;
+			DrawGsCircle(&gGame.mGs, 3, center, edge, pos.x, pos.y, pos.z, radius, radius, coreRotation.x, coreRotation.y, coreRotation.z);
+		}
+	}
+	gGame.mGs.mBillboardEnabled = 0;
+}
+
+/**
+ * @note Address: 0x800940A4
+ * @note Size: 0x298
+ */
+extern "C" void UpdateSpiralTrail(SuitChangeEffect* trail, u32 frames)
+{
+	if (trail->active != 0) {
+		f32 total = 0.0f;
+		for (int i = 0; i < 2; i++) {
+			SuitParticle* point = trail->rings[i];
+			for (int j = 9; j > 0; j--) { // the ring shifts down one slot
+				point[j].position.x = point[j - 1].position.x;
+				point[j].position.y = point[j - 1].position.y;
+				point[j].position.z = point[j - 1].position.z;
+				point[j].scale      = point[j - 1].scale;
+				point[j].angle      = point[j - 1].angle;
+			}
+			// the head shrinks and rises until nothing is left
+			if ((point[0].scale -= 0.02f * frames) <= 0.0f)
+				point[0].scale = 0.0f;
+			point[0].angle += DEG2RAD * 9.0f * frames;
+			f32 sine            = sin(point[0].angle);
+			point[0].position.x = point[0].scale * (15.0f * ((1.0f - point[0].scale) * sine));
+			f32 cosine          = cos(point[0].angle);
+			point[0].position.z = point[0].scale * (15.0f * ((1.0f - point[0].scale) * cosine));
+			point[0].position.y += 0.3f * frames;
+			for (int j = 0; j < 10; j++)
+				total += point[j].scale;
+		}
+		if (total == 0.0f)
+			trail->active = 0;
+	}
+}
+
+/**
+ * @note Address: 0x80095AD8
+ * @note Size: 0x1F8
+ */
+extern "C" void StartPointParticles(PointPtcl* ptcl, s32 type, s32 amount)
+{
+	ptcl->mType           = type;
+	ptcl->display.mState  = 1;
+	ptcl->display.mAmount = amount;
+	switch (ptcl->mType) {
+	case 0: // a negative amount draws in red
+		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
+		ptcl->display.colors.mColor2 = amount >= 0 ? 0xE037EE00 : 0xFF000000;
+		ptcl->burst.mNum             = __abs(amount);
+		if (ptcl->burst.mNum > 40)
+			ptcl->burst.mNum = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = -1; // -1 draws texture 154
+		break;
+	case 2:
+		ptcl->display.colors.mColor  = amount >= 0 ? 0xEFEBC500 : 0xFF000000;
+		ptcl->display.colors.mColor2 = amount >= 0 ? 0xEDA83600 : 0xFF000000;
+		ptcl->burst.mNum             = __abs(amount);
+		if (ptcl->burst.mNum > 40)
+			ptcl->burst.mNum = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = -2; // -2 draws texture 152
+		break;
+	case 3:
+		ptcl->display.colors.mColor  = amount >= 0 ? 0xCECEFF00 : 0xFF000000;
+		ptcl->display.colors.mColor2 = amount >= 0 ? 0x5959FF00 : 0xFF000000;
+		ptcl->burst.mNum             = __abs(amount);
+		if (ptcl->burst.mNum > 40)
+			ptcl->burst.mNum = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = -3; // -3 draws texture 153
+		break;
+	default:
+		ptcl->display.colors.mColor  = 0xFFFFFF00;
+		ptcl->display.colors.mColor2 = 0xFFFFFF00;
+		ptcl->burst.mNum             = 40;
+		for (s32 i = 0; i < ptcl->burst.mNum; ++i)
+			ptcl->burst.mPtcls[i].mState = 5; // a positive state is a polygon's sides
+		break;
+	}
+}
+
+extern "C" void UpdatePointParticleDisplay(PointPtcl* ptcl, u32 frames)
+{
+	PointDisplay& display = ptcl->display;
+	PointBurst& burst     = ptcl->burst;
+	if (display.mState == 1) { // build the digit strip
+		s32 value      = display.mAmount < 0 ? -display.mAmount : display.mAmount;
+		display.mCount = 0;
+		while (display.mCount < 10) {
+			display.digits[display.mCount].glyph = value % 10;
+			value /= 10;
+			++display.mCount;
+			if (!value)
+				break;
+		}
+		if (ptcl->mType == 1) {
+			display.digits[display.mCount].glyph = 76; // glyph 76 is the icon
+			++display.mCount;
+		}
+		for (s32 i = display.mCount - 1; i >= 0; --i)
+			display.digits[display.mCount - 1 - i].fade = 0.15f * -i; // the digits come in staggered
+		display.mState = 2;
+		burst.mState   = 1;
+		for (s32 i = 0; i < burst.mNum; ++i) {
+			PointPtclOne& particle = burst.mPtcls[i];
+			particle.mColor        = (100 + rand() % 156) << 24 | (100 + rand() % 156) << 16 | (100 + rand() % 156) << 8;
+			particle.mFade         = 1.0f + 0.02f * i;
+			// Retail consumes a random angle before assigning the evenly spaced directions, and stores the fade a second time.
+			particle.mAngle = DEG2RAD * (rand() % 360);
+			particle.mFade  = 1.0f + 0.02f * i;
+			if (display.mAmount >= 0) {
+				particle.mAngularSpeed = DEG2RAD * ((3000 - rand() % 6000) / 500.f);
+				particle.mSpeed        = -(10000 + rand() % 10000) / 200.f;
+			} else {
+				particle.mAngularSpeed = DEG2RAD * ((3000 - rand() % 6000) / 1000.f);
+				particle.mSpeed        = (10000 + rand() % 10000) / 200.f;
+			}
+			particle.mAngle     = DEG2RAD * ((360 / burst.mNum) * i);
+			particle.mLastAngle = 0;
+		}
+	} else if (display.mState == 2) { // fading in
+		s32 moving = 0;
+		for (s32 i = display.mCount - 1; i >= 0; --i) {
+			f32& fade = display.digits[i].fade;
+			if (fade < 1.f) {
+				if ((fade += 0.08f * frames) > 1.f)
+					fade = 1.f;
+				++moving;
+			}
+		}
+		if (!moving) {
+			display.mState = 3;
+			for (s32 i = display.mCount - 1; i >= 0; --i)
+				display.digits[display.mCount - 1 - i].fade = 1.f + 0.15f * i;
+#if defined(VERSION_PAL)
+			display.holdFrames = 0.2f * gVideoFramesPerSecond;
+#else
+			display.holdFrames = 12.f;
+#endif
+		}
+	} else if (display.mState == 3) { // hold, then fade out
+		if (display.holdFrames > 0.f) {
+			if ((display.holdFrames -= frames) <= 0.f)
+				display.holdFrames = 0.f;
+		} else {
+			s32 moving = 0;
+			for (s32 i = display.mCount - 1; i >= 0; --i) {
+				f32& fade = display.digits[i].fade;
+				if (fade > 0.f) {
+					if ((fade -= 0.08f * frames) < 0.f)
+						fade = 0.f;
+					++moving;
+				}
+			}
+			if (!moving)
+				display.mState = 0;
+		}
+	}
+	if (burst.mState == 1) {
+		s32 moving = 0;
+		for (s32 i = 0; i < burst.mNum; ++i) {
+			PointPtclOne& particle = burst.mPtcls[i];
+			if (particle.mFade > 0.f) {
+				if ((particle.mFade -= 0.015f * frames) < 0.f)
+					particle.mFade = 0.f;
+				++moving;
+			}
+			particle.mAngle += particle.mAngularSpeed * frames;
+		}
+		if (!moving)
+			burst.mState = 0;
+	}
+}
+
+#if defined(VERSION_JP)
+extern "C" void PSMTXMultVecArray(const Mtx m, const Vec* src, Vec* dst, u32 count);
+
+static inline void DrawRingStrip(Mtx transform, u32 color, Vec* vertices, bool separate)
+{
+	PSMTXMultVecArray(transform, vertices, vertices, 50);
+	if (separate) {
+		for (s32 i = 0; i < 48; i += 2)
+			DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, &vertices[i], color, 4);
+	} else {
+		DrawGsTrianglePrimitive(&gGame.mGs, GX_TRIANGLESTRIP, gGame.mGs.mCamera->mViewMtx, vertices, color, 50);
+	}
+}
+
+static inline void BuildRingStrip(Vec* vertices, f32 firstRadius, f32 firstZ, f32 secondRadius, f32 secondZ)
+{
+	for (s32 i = 0; i < 25; i++) {
+		f32 angle             = (TWO_PI / 24.0f) * i;
+		vertices[2 * i + 1].x = -(secondRadius * (f32)sin(angle));
+		vertices[2 * i + 1].y = secondRadius * (f32)cos(angle);
+		vertices[2 * i + 1].z = secondZ;
+		vertices[2 * i].x     = -(firstRadius * (f32)sin(angle));
+		vertices[2 * i].y     = firstRadius * (f32)cos(angle);
+		vertices[2 * i].z     = firstZ;
+	}
+}
+
+extern "C" void DrawMenuRing(Mtx transform, f32 firstRadius, f32 secondRadius, u32 color, BOOL separate)
+{
+	Vec vertices[50];
+	BuildRingStrip(vertices, firstRadius, 10.0f, secondRadius, 10.0f);
+	DrawRingStrip(transform, color, vertices, false);
+	BuildRingStrip(vertices, firstRadius, 0.0f, firstRadius, 10.0f);
+	DrawRingStrip(transform, color, vertices, separate != FALSE);
+	BuildRingStrip(vertices, secondRadius, 10.0f, secondRadius, 0.0f);
+	DrawRingStrip(transform, color, vertices, separate != FALSE);
+}
+
+static inline void DrawOXCross(CGs* gs, u32 color, f32 x, f32 y, f32 rx, f32 ry, f32 rz, f32 width, f32 length, f32 depth)
+{
+	DrawGsCube(gs, color, x, y, 50.0f, rx, ry, rz, width, length, depth);
+	DrawGsCube(gs, color, x, y, 50.0f, rx, ry, rz, length, width, depth);
+}
+
+static inline s32 PulseMarkColor(s32 channel, f32 spin)
+{
+	return channel * (0.8f + 0.1f * (f32)sin(1.2f * spin));
+}
+
+extern "C" void DrawOXMenu(OXMenu* menu)
+{
+	if (!(menu->mFade > 0.0f))
+		return;
+
+	f32 screenX, screenY;
+	if (gGame.mStatus.mFlags & 0x100ULL) {
+		screenX = 320.0f;
+		screenY = 418.0f;
+	} else {
+		XObj* chr        = menu->mChr;
+		Vec offset       = { 0.0f, 0.0f, 0.0f };
+		OXJointPath path = { { 0, 1, 0, 1, 2, 0, 1 } };
+		offset.y         = GetEventJointWorldPosition(chr, 7, path.ids).y - chr->mMoveTranslate.y;
+		Vec anchor       = offset;
+		menu->mChr->ProjectOffsetToScreen(&anchor, &screenX, &screenY, NULL, NULL);
+	}
+	f32 fade  = menu->mFade;
+	f32 yBase = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * (f32)sin(2.268928f * fade) - 21.0f;
+	SetGsChannelEnabled(&gGame.mGs, 0, 1);
+	f32 openAngle    = 2.0943952f * fade;
+	u32 edgeAlpha    = (u32)(150.0f * fade);
+	u32 selectedEdge = 0xffffff00 | edgeAlpha, otherEdge = 0x64646400 | edgeAlpha;
+	u32 alpha = (u32)(255.0f * fade);
+	for (s32 i = 0; i < 2; ++i) {
+		OXMenuMark& mark = menu->mMark[i];
+		f32 bob          = 4.0f * (f32)sin(mark.mSpin);
+		f32 pitch        = 10.0f * (f32)sin(mark.mTilt);
+		f32 yaw          = 10.0f * (f32)sin(0.5f * mark.mTilt);
+		f32 roll         = 10.0f * (f32)sin(0.7f * mark.mTilt);
+		f32 size         = mark.mScale * (f32)sin(openAngle);
+
+		f32 x = (gGame.mStatus.mFlags & 0x100ULL) ? screenX + (90.0f * i - 45.0f) : screenX + fade * (90.0f * i - 45.0f);
+		f32 y = yBase + bob;
+		Mtx translation, rotX, rotY, rotZ, transform;
+		PSMTXTrans(translation, x, y, 50.0f);
+		PSMTXRotRad(rotX, 'x', DEG2RAD * pitch);
+		PSMTXRotRad(rotY, 'y', DEG2RAD * yaw);
+		PSMTXRotRad(rotZ, 'z', DEG2RAD * roll);
+		PSMTXConcat(translation, rotZ, transform);
+		PSMTXConcat(transform, rotX, transform);
+		PSMTXConcat(transform, rotY, transform);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 0);
+		f32 crossSize = size + 0.02f;
+		u32 edgeColor = i == menu->mSelectedIndex ? selectedEdge : otherEdge;
+		s32 mask      = 1 << i;
+		if (!(menu->mCrossMask & mask)) {
+			SetGsCullMode(gGame.mGs.mCurRenderMode, 1);
+			f32 radius = 74.0f * size;
+			DrawMenuRing(transform, 1.05f * radius, 0.55f * radius, edgeColor, FALSE);
+		} else {
+			f32 radius = 74.0f * crossSize;
+			DrawOXCross(&gGame.mGs, edgeColor, x, y, DEG2RAD * pitch, DEG2RAD * yaw, DEG2RAD * (45.0f + roll), 0.36f * radius,
+			            2.0f * radius, 0.3f * (74.0f * size));
+		}
+		SetGsChannelEnabled(&gGame.mGs, 0, 1);
+		SetGsCullMode(gGame.mGs.mCurRenderMode, 1);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 1, 1);
+		s32 r, g, b;
+		if (!(menu->mCrossMask & mask)) {
+			r = 255;
+			g = b = 0;
+		} else {
+			r = 0;
+			g = 99;
+			b = 209;
+		}
+		if (i == menu->mSelectedIndex) {
+			r = PulseMarkColor(r, mark.mSpin);
+			g = PulseMarkColor(g, mark.mSpin);
+			b = PulseMarkColor(b, mark.mSpin);
+		} else {
+			r = (s32)(r * 0.5f);
+			g = (s32)(g * 0.5f);
+			b = (s32)(b * 0.5f);
+		}
+		u32 color = ((u32)r << 24) | ((u32)g << 16) | ((u32)b << 8) | alpha;
+		if (!(menu->mCrossMask & mask)) {
+			f32 radius = 74.0f * size;
+			DrawMenuRing(transform, radius, 0.6f * radius, color, TRUE);
+		} else {
+			f32 radius = 74.0f * size;
+			DrawOXCross(&gGame.mGs, color, x, y, DEG2RAD * pitch, DEG2RAD * yaw, DEG2RAD * (45.0f + roll), 0.3f * radius, 2.0f * radius,
+			            0.3f * radius);
+		}
+	}
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
+}
+#else
+
+extern "C" {
+void SetJointMaterialColorsAndAlpha(HSD_JObj*, f32**, s32);
+CVec GetEventJObjWorldPosition(CJObj*, HSD_JObj*);
+extern GXColor gOXMenuMarkDiffuseColors[2];
+extern f32 gOXMenuLabelOutlineX[4], gOXMenuLabelOutlineY[4];
+}
+
+static inline void DrawOXModel(XObj& model, f32** args)
+{
+	if (model.mJObj)
+		HSD_JObjWalkTree(model.mJObj, SetJointMaterialColorsAndAlpha, args);
+	model.DrawObject();
+	EndGsCamera(&gGame.mGs);
+	CBase* game       = &gGame;
+	gGame.mGs.mCamera = game->GetScreenCamera();
+	BeginGsCamera(&gGame);
+}
+
+// NONMATCHING: retail's anchor offset is an unnamed Vec whose zeros sit after the joint path in .rodata, the label's
+// text rotation is unnamed too, and -74 is negated at run time; the frame and the calls match
+extern "C" void DrawOXMenu(OXMenu* menu)
+{
+	if (!(menu->mFade > 0.0f))
+		return;
+	f32 screenX, screenY;
+	if (gGame.mStatus.mFlags & 0x100ULL) {
+		screenX = 320.0f;
+		screenY = 418.0f;
+	} else {
+		Vec offset       = { 0.0f, 0.0f, 0.0f };
+		XObj* chr        = menu->mChr;
+		OXJointPath path = { { 0, 1, 0, 1, 2, 0, 1 } };
+		offset.y         = GetEventJointWorldPosition(chr, 7, path.ids).y - chr->mMoveTranslate.y;
+		Vec anchor       = offset;
+		menu->mChr->ProjectOffsetToScreen(&anchor, &screenX, &screenY, NULL, NULL);
+	}
+	f32 fade  = menu->mFade;
+	f32 baseY = (gGame.mStatus.mFlags & 0x100ULL) ? screenY - 56.0f : screenY - 70.0f * (f32)sin(2.268928f * fade) - 42.0f;
+	SetGsChannelEnabled(&gGame.mGs, 0, 1);
+	f32 openAngle = 2.0943952f * fade;
+	u32 alpha = (u32)(255.0f * fade), textColor = 0xf0f0f000 | alpha;
+	for (s32 i = 0; i < 2; ++i) {
+		OXMenuMark& mark = menu->mMark[i];
+		f32 bob          = 4.0f * (f32)sin(mark.mSpin);
+		f32 pitch        = 10.0f * (f32)sin(mark.mTilt);
+		f32 yaw          = 10.0f * (f32)sin(0.5f * mark.mTilt);
+		f32 roll         = 10.0f * (f32)sin(0.7f * mark.mTilt);
+		f32 size         = mark.mScale * (f32)sin(openAngle);
+		f32 x = (gGame.mStatus.mFlags & 0x100ULL) ? screenX + (90.0f * i - 45.0f) : screenX + 1.2f * (fade * (90.0f * i - 45.0f));
+		f32 y = baseY + bob;
+		Mtx translation, rotX, rotY, rotZ, transform, label;
+		PSMTXTrans(translation, x, y, 50.0f);
+		PSMTXRotRad(rotX, 'x', DEG2RAD * pitch);
+		PSMTXRotRad(rotY, 'y', DEG2RAD * yaw);
+		PSMTXRotRad(rotZ, 'z', DEG2RAD * roll);
+		PSMTXConcat(translation, rotZ, transform);
+		PSMTXConcat(transform, rotX, transform);
+		PSMTXConcat(transform, rotY, transform);
+		// the label faces the screen: same place, no rotation
+		Mtx labelTranslation, labelRotX, labelRotY, labelRotZ, labelTmp;
+		PSMTXTrans(labelTranslation, x, y, 50.0f);
+		PSMTXRotRad(labelRotX, 'x', 0);
+		PSMTXRotRad(labelRotY, 'y', 0);
+		PSMTXRotRad(labelRotZ, 'z', 0);
+		PSMTXConcat(labelTranslation, labelRotZ, labelTmp);
+		PSMTXConcat(labelTmp, labelRotX, labelTmp);
+		PSMTXConcat(labelTmp, labelRotY, label);
+		s32 kind = (menu->mCrossMask & (1 << i)) != 0;
+
+		if (i == menu->mSelectedIndex) {
+			menu->mMark[kind].mObj.SetColor(0, 255, 255, 255, 0);
+			u8 pulse = (s32)(64.0f * (0.5f * (f32)sin(1.2f * mark.mSpin) + 0.5f));
+			menu->mMark[kind].mObj.SetColor(1, pulse, pulse, pulse, 0);
+		} else {
+			menu->mMark[kind].mObj.SetColor(0, 175, 175, 175, 0);
+			menu->mMark[kind].mObj.SetColor(1, 0, 0, 0, 0);
+		}
+		menu->mMark[kind].mObj.UpdateObject(1);
+		InvalidateAll();
+		f32 scaleXZ = 74.0f * size, scaleY = -74.0f * size;
+		for (s32 j = 0; j < 8; ++j) {
+			f32 direction = (TWO_PI / 8.0f) * j;
+			f32 cosine    = cos(direction);
+			f32 sine      = sin(direction);
+			Mtx outlineTranslation, outlineRotX, outlineRotY, outlineRotZ, outline, scale;
+			PSMTXTrans(outlineTranslation, x + 3.0f * sine, y + 2.0f * cosine, 50.0f);
+			PSMTXRotRad(outlineRotX, 'x', DEG2RAD * pitch);
+			PSMTXRotRad(outlineRotY, 'y', DEG2RAD * yaw);
+			PSMTXRotRad(outlineRotZ, 'z', DEG2RAD * roll);
+			PSMTXConcat(outlineTranslation, outlineRotZ, outline);
+			PSMTXConcat(outline, outlineRotX, outline);
+			PSMTXConcat(outline, outlineRotY, outline);
+			PSMTXScale(scale, scaleXZ, scaleY, scaleXZ);
+			PSMTXConcat(outline, scale, outline);
+			HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, outline);
+			GXColor diffuse = { 255, 255, 255, 0 }, ambient = { 255, 255, 255, 0 };
+			f32 alpha   = 0.3f * menu->mFade;
+			f32* args[] = { (f32*)&diffuse, (f32*)&ambient, &alpha };
+			DrawOXModel(menu->mMark[kind].mObj, args);
+		}
+		Mtx scale;
+		PSMTXScale(scale, scaleXZ, scaleY, scaleXZ);
+		PSMTXConcat(transform, scale, transform);
+		HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, transform);
+		GXColor diffuse = gOXMenuMarkDiffuseColors[kind], ambient = { 64, 64, 64, 0 };
+		f32* args[] = { (f32*)&diffuse, (f32*)&ambient, &menu->mFade };
+		DrawOXModel(menu->mMark[kind].mObj, args);
+		PSMTXConcat(label, scale, label);
+		InvalidateAll();
+		HSD_JObjCopyMtx(menu->mMark[kind].mObj.mJObj, label);
+		HSD_JObjSetupMatrix(menu->mMark[kind].mObj.mJObj);
+		SetGsChannelEnabled(&gGame.mGs, 0, 0);
+		SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+		SetGsDepthMode(gGame.mGs.mCurRenderMode, 0, 1, 1);
+		Vec textRot        = { DEG2RAD * pitch, DEG2RAD * yaw, DEG2RAD * roll };
+		gGame.mGs.mTextRot = textRot;
+		Vec pos            = GetEventJObjWorldPosition(&menu->mMark[kind].mObj, menu->mMark[kind].mObj.mJObj->child);
+		f32 fontSize       = 2.0f * (30.0f * size * size);
+		f32 left           = pos.x - 0.5f * MeasureGameTextWidth(&gGame.mGs, GetLocalizedInterfaceText(0x104 + kind), TRUE, fontSize);
+		f32 top            = pos.y - 0.5f * fontSize;
+		for (s32 j = 0; j < 4; ++j)
+			DrawGsProportionalTextFormat(&gGame.mGs, alpha, GetLocalizedInterfaceText(0x104 + kind),
+			                             2.0f + (left + gOXMenuLabelOutlineX[j]), 2.0f + (top + gOXMenuLabelOutlineY[j]), pos.z, fontSize,
+			                             fontSize);
+		DrawGsProportionalTextFormat(&gGame.mGs, textColor, GetLocalizedInterfaceText(0x104 + kind), left, top, pos.z, fontSize, fontSize);
+	}
+	SetGsChannelEnabled(&gGame.mGs, 0, 0);
+	SetGsCullMode(gGame.mGs.mCurRenderMode, 2);
+	SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
+}
+#endif
+
+extern "C" void GXProject(f32, f32, f32, const Mtx, const f32*, const f32*, f32*, f32*, f32*);
+
+static inline void ProjectPoint(const CCamera& camera, const Vec& pos, f32* x, f32* y)
+{
+	f32 sx, sy, sz;
+	GXProject(pos.x, pos.y, pos.z, camera.mViewMtx, camera.mProjection, camera.mViewport, &sx, &sy, &sz);
+	if (x)
+		*x = sx;
+#if defined(VERSION_PAL)
+	if (y)
+		*y = 448.f * sy / gGame.mGs.mScreen.xfbHeight;
+#else
+	if (y)
+		*y = sy;
+#endif
+}
+
+static inline CTexObj& PointTexture(CTexObj& texture, int id)
+{
+	CTpl& tpl = gGame.mTpl;
+	return texture.Init(&((TPLPalette*)tpl.mBuffer)->descriptorArray[id - StatusTextureOffset], 0);
+}
+
+static inline void DrawPointQuad(CTexObj& tex, u32 top, u32 bottom, f32 x, f32 y, f32 w, f32 h, f32 rotation)
+{
+	DrawGsTexturedQuad(&gGame.mGs, &tex, top, top, bottom, bottom, x, y, 0, w, h, 0, 0, rotation);
+}
+
+// NONMATCHING: retail's joint offset is an unnamed Vec below the GetPos copy, and the burst loop loads x and y
+// after the sin calls and does not merge the two circle sizes
+extern "C" void DrawPointParticleDisplay(PointPtcl* ptcl, f32 row)
+{
+	CMotionControlCamera& camera = gGame.mMotionControlCamera;
+	if (camera.IsAction(4)) // that camera action hides the points
+		return;
+	PointDisplay& display = ptcl->display;
+	PointBurst& burst     = ptcl->burst;
+	XObjChr* player       = gGame.GetPlayer();
+	CVec origin           = player->GetPos();
+	Vec jointOffset       = { 0, 0, 0 };
+	s32 path[]            = { 0, 1, 0, 1, 2, 0, 1 };
+	jointOffset.y         = GetEventJointWorldPosition(player, 7, path).y - origin.y;
+	Vec offset            = jointOffset;
+	offset.y += 4.5f;
+	Vec half = offset;
+	half.y *= .5f;
+	f32 x, y, centerX, centerY;
+	ProjectPoint(camera.mCamera, origin + half, &centerX, &centerY);
+	if (display.mAmount < 0) {
+		ProjectPoint(camera.mCamera, origin + offset, &x, &y);
+		y -= 19.8f * row;
+	}
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 7, 0);
+	if (burst.mState) {
+		f32 radius = 64;
+		for (int i = 0; i < burst.mNum; ++i) {
+			PointPtclOne& p = burst.mPtcls[i];
+			if (!(p.mFade > 0 && p.mFade < 1))
+				continue;
+			if (display.mAmount >= 0) {
+				x = centerX + 300 * (f32)sin(p.mAngle);
+				y = centerY + 300 * (f32)cos(p.mAngle);
+			}
+			f32 phase = p.mFade;
+			if (phase > 1)
+				phase = 1;
+			f32 alpha = sin(PI * p.mFade); // strongest halfway through the fade
+			if (alpha > 1)
+				alpha = 1;
+			f32 angle = PI * phase, arc = 1.5f * (f32)sin(angle);
+			f32 px = x + (centerX - x) * (1 - (f32)sin(angle * .5f)), py = y + (centerY - y) * (1 - (f32)sin(angle * .5f));
+			if (p.mState > 0 || display.mAmount < 0) {
+				f32 a  = (2 * PI / burst.mNum) * i;
+				f32 tx = x + 200 * (f32)sin(a), ty = y + 200 * (f32)cos(a);
+				px = x + (tx - x) * (1 - (f32)sin(angle * .5f));
+				py = y + (ty - y) * (1 - (f32)sin(angle * .5f));
+			}
+			f32 dx = p.mSpeed * (arc * (f32)sin(p.mAngle)), dy = p.mSpeed * (arc * (f32)cos(p.mAngle));
+			f32 shrink = 1 - (f32)sin(angle * .5f), rotation = PI * p.mAngle;
+			SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+			if (p.mState > 0) { // a polygon with mState sides
+				u32 color = p.mColor | (u8)(s32)(128 * alpha);
+				DrawGsCircle(&gGame.mGs, p.mState, color, color, px + dx, py + dy, 0, (2 + radius) - shrink * radius,
+				             (2 + radius) - shrink * radius, 0, 0, rotation);
+			} else if (p.mState < 0) {
+				CTexObj tex;
+				if (p.mState == -1) { // texture 154, turned toward where it was last frame
+					tex = PointTexture(gGame.mTpl.mTex, 154);
+					if (p.mLastScreenX == px + dx && p.mLastScreenY == py + dy)
+						rotation = p.mLastAngle;
+					else
+						rotation = (f32)atan2(p.mLastScreenX - (px + dx), p.mLastScreenY - (py + dy)) - .52359879f;
+				} else if (p.mState == -2) {
+					tex      = PointTexture(gGame.mTpl.mTex, 152);
+					rotation = 0;
+				} else if (p.mState == -3) {
+					tex      = PointTexture(gGame.mTpl.mTex, 153);
+					rotation = 0;
+				}
+				radius    = 44;
+				u32 color = display.mAmount >= 0 ? (0xffffff00 | (u32)(200 * alpha)) : (0xff000000 | (u32)(128 * alpha));
+				SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+				f32 size = 46 - (shrink * .5f) * radius;
+				DrawPointQuad(tex, color, color, px + dx, py + dy, size, size, rotation);
+				SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+				p.mLastScreenX = px + dx;
+				p.mLastScreenY = py + dy;
+				p.mLastAngle   = rotation;
+			}
+		}
+		SetGsBlendMode(gGame.mGs.mCurRenderMode, 1, 4, 5, 15);
+	}
+	if (display.mState && ptcl->mType != 1) {
+		ProjectPoint(camera.mCamera, origin + offset, &x, &y);
+		y -= 19.8f * row;
+		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
+		CTexObj& texture = gGame.mTpl.mTex;
+		CTexObj icon = PointTexture(texture, 127), digits = PointTexture(texture, 125);
+		// the digit atlas is the digits 0-9 in a column
+		PSMTXScale(digits.mMtx[1], 1, .1f, 1);
+		digits.mMtxDirty = TRUE;
+		for (int i = display.mCount - 1; i >= 0; --i) {
+			const PointDigit& digit = display.digits[i];
+			if (!(digit.fade > 0))
+				continue;
+			f32 px = 17.f * (display.mCount - 1 - i) + ((x + 8.5f) - display.mCount * 17.f * .5f), py = y;
+			f32 fade = digit.fade;
+			if (fade > 1)
+				fade = 1;
+			f32 angle = PI * fade;
+			f32 rise = 8 * (f32)sin(angle), expand = 16 * (f32)cos(angle * .5f);
+			if (display.mState == 3)
+				expand = 0;
+			u8 alpha = (u8)(s32)(255 * fade);
+			u32 top = display.colors.mColor | alpha, bottom = display.colors.mColor2 | alpha;
+			if (digit.glyph == 76) { // the icon
+				DrawPointQuad(icon, alpha, alpha, px, py - rise, 1.2f * (19 + expand), 24 + expand, 0);
+				DrawPointQuad(icon, top, bottom, px, py - rise, 19 + expand, .8f * (24 + expand), 0);
+			} else {
+				PSMTXTrans(digits.mMtx[0], 0, .1f * digit.glyph, 0);
+				digits.mMtxDirty = TRUE;
+				DrawPointQuad(digits, top, bottom, px, py - rise, 19 + expand, 24 + expand, 0);
+			}
+		}
+		SetGsTevMode(gGame.mGs.mCurTevStage, 4);
+	}
+	SetGsDepthMode(gGame.mGs.mCurRenderMode, 1, 3, 0);
+}
+
+// fades in and out over 0.3 seconds
+#if defined(VERSION_PAL)
+#define OX_FADE_STEP (1.0f / (0.3f * gVideoFramesPerSecond))
+#else
+#define OX_FADE_STEP (1.0f / 18.0f)
+#endif
+
+extern "C" {
+void ShowOXCircle(XObjOX* object);
+void ShowOXCross(XObjOX* object);
+}
+
+/**
+ * @note Address: 0x80096B90
+ * @note Size: 0x2A8
+ */
+extern "C" void UpdateOXMenuTransition(OXMenu* menu, u32 frames)
+{
+	if (menu->mStarted > 0) { // coming up
+		if (menu->mFade < 1.0f) {
+			f32 fade    = menu->mFade + OX_FADE_STEP * frames;
+			menu->mFade = fade;
+			if (fade >= 1.0f)
+				menu->mFade = 1.0f;
+		}
+	} else if (menu->mStarted < 0) { // going down
+		if (menu->mFade > 0.0f) {
+			f32 fade    = menu->mFade - OX_FADE_STEP * frames;
+			menu->mFade = fade;
+			if (fade <= 0.0f)
+				menu->mFade = 0.0f;
+		}
+		if (0.0f == menu->mFade) {
+			s32 anim = menu->mChr->mAnimId;
+			if (anim != 0x78 && anim != 0xEF && anim != 0x13B) {
+				menu->mStarted = 0;
+				gGame.mStatus.mFlags &= ~0x800ULL;
+				menu->mChr->SetRotateY(menu->mStartRot, DEG2RAD * 12.0f);
+				XObjChr* chr = gGame.GetPlayer();
+				chr->mPad.Update(0);
+			}
+		}
+	}
+	if (menu->mFade > 0.0f) {
+		f32 spin = DEG2RAD * 8.0f * frames;
+		f32 tilt = DEG2RAD * 3.0f * frames;
+		f32 grow = 0.05f * frames;
+		for (s32 i = 0; i < 2; ++i) {
+			OXMenuMark* mark = &menu->mMark[i];
+			mark->mSpin += spin;
+			mark->mTilt += tilt;
+			if (i == menu->mSelectedIndex) {
+				f32 scale    = mark->mScale + grow;
+				mark->mScale = scale;
+				if (scale > 0.8f)
+					mark->mScale = 0.8f;
+			} else {
+				f32 scale    = mark->mScale - grow;
+				mark->mScale = scale;
+				if (scale < 0.5f)
+					mark->mScale = 0.5f;
+			}
+#if !defined(VERSION_JP)
+			mark->mObj.UpdateObject(frames);
+#endif
+		}
+	}
+}
+
+// OXMenu's input, left and right pick, a confirms
+
+/**
+ * @note Address: 0x80096E38
+ * @note Size: 0x2AC
+ */
+extern "C" void HandleOXMenuInput(OXMenu* menu, CPad* pad)
+{
+	if (menu->mStarted > 0) {
+		if (!(gGame.mStatus.mFlags & 0x100ULL)) {
+			menu->mChr->SetRotateY(PI + gGame.mMotionControlCamera.mCamera.mAngle.y, DEG2RAD * 8.0f);
+		}
+		// the flag decides whether the dpad counts too or just the stick
+		u32 next     = (gGame.mStatus.mFlags & 0x80000000ULL) ? 0x80000 : 0x80002;
+		u32 previous = (gGame.mStatus.mFlags & 0x80000000ULL) ? 0x40000 : 0x40001;
+		if (pad->mPad->mRepeat & next) {
+			if (menu->mSelectedIndex + 1 < 2) {
+				menu->mSelectedIndex = menu->mSelectedIndex + 1;
+				PlayGameSound(&gGame.mSound, 0x87, 255);
+			}
+		} else if (pad->mPad->mRepeat & previous) {
+			if (menu->mSelectedIndex - 1 >= 0) {
+				menu->mSelectedIndex = menu->mSelectedIndex - 1;
+				PlayGameSound(&gGame.mSound, 0x87, 255);
+			}
+		}
+		// the neck turns twenty degrees toward the picked side
+		f32 angle                    = menu->mSelectedIndex == 0 ? -(DEG2RAD * 20.0f) : DEG2RAD * 20.0f;
+		XObjChr* chr                 = (XObjChr*)menu->mChr;
+		chr->mHeadTurn.mNeck.mMode   = 1;
+		chr->mHeadTurn.mNeck.mTarget = angle;
+		if (!(gGame.mStatus.mFlags & 0x20ULL) && 1.0f == menu->mFade && (pad->mPad->mTrigger & 0x100)) { // the A button
+			menu->mStarted = -1;
+			PlayGameSound(&gGame.mSound, 0x88, 255);
+			menu->mConfirmedIndex = menu->mSelectedIndex;
+			menu->mChr->SetAnim(0x78, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+			if (!(menu->mCrossMask & (1U << menu->mConfirmedIndex))) {
+				ShowOXCircle(&((XObjChr*)menu->mChr)->mOXObj);
+			} else {
+				ShowOXCross(&((XObjChr*)menu->mChr)->mOXObj);
+			}
+			chr                          = (XObjChr*)menu->mChr;
+			chr->mHeadTurn.mNeck.mMode   = 2;
+			chr->mHeadTurn.mNeck.mTarget = 0.0f;
+			chr->mHeadTurn.mNeck.mLookAt = NULL;
+		}
+	}
+}
+
+#if defined(VERSION_JP)
+/**
+ * @note Address: JP 0x80098CF8
+ * @note Size: 0xC
+ */
+// the japanese settings menu sets both rings' option at once
+extern "C" void SetRingMenuOption(XObjChrMenu* menu, s32 value)
+{
+	menu->mAtc.mMenuType = value;
+	menu->mDrs.mMenuType = value;
+}
+#endif
+
+#if !defined(VERSION_JP)
+#include "game/hsd_jobj.h"
+#include "game/hsd_dobj.h"
+
+// joint walk callback, args are the diffuse and ambient colors and the alpha
+/**
+ * @note Address: 0x800970E4
+ * @note Size: 0xE0
+ */
+extern "C" void SetJointMaterialColorsAndAlpha(HSD_JObj* joint, f32** arguments, s32 type)
+{
+	GXColor diffuse = *(GXColor*)arguments[0];
+	GXColor ambient = *(GXColor*)arguments[1];
+	f32 alpha       = *arguments[2];
+	for (HSD_DObj* draw = HSD_JObjGetDObj(joint); draw != NULL; draw = HSD_DObjGetNext(draw)) {
+		HSD_MObj* material = HSD_DObjGetMObj(draw);
+		if (material != NULL) {
+			HSD_MObjSetDiffuseColor(material, diffuse.r, diffuse.g, diffuse.b);
+			SetMaterialAmbientColor(material, ambient.r, ambient.g, ambient.b);
+			HSD_MObjSetAlpha(material, alpha);
+		}
+	}
+}
+
+// joint walk callback, makes every material translucent
+/**
+ * @note Address: 0x800971C4
+ * @note Size: 0xC0
+ */
+extern "C" void EnableJointMaterialTranslucency(HSD_JObj* joint, f32** arguments, s32 type)
+{
+	HSD_JObjModifyFlags(joint, 0x20080000, 0x701C0000);
+	for (HSD_DObj* draw = HSD_JObjGetDObj(joint); draw != NULL; draw = HSD_DObjGetNext(draw)) {
+		HSD_DObjModifyFlags(draw, 4, 0xE);
+		HSD_MObj* material = HSD_DObjGetMObj(draw);
+		if (material != NULL) {
+			HSD_MObjSetFlags(material, 0x60000000);
+			HSD_MObjClearFlags(material, 8);
+		}
+		if (draw != NULL)
+			HSD_MObjCompileTev(draw->mobj);
+	}
+}
+#endif
+
 #include "game/hsd_jobj.h"
 #include "game/xchr.h"
 #include "game/playeranimationdata.h"
@@ -8938,4 +9853,1339 @@ extern "C" void SpawnPlayerDust(XObjChr* player, const Vec* origin)
 			dust->mTex        = &player->mTex[0];
 		}
 	}
+}
+
+#include "BuildSettings.h"
+#include "game/hsd_jobj.h"
+#include "game/xobj.h"
+
+extern "C" const Vec* GetCurrentEdgeWorldOffsetPosition(const XObj* object)
+{
+	const Vec edge = object->mEdges[object->mSelectedFloorIndex].mContactOffset;
+#ifdef BUGFIX
+	static Vec position;
+	position = object->mMoveTranslate + edge;
+	return &position;
+#else
+	// Retail returns a pointer into its expired stack frame. The player immediately copies all three coordinates.
+	return &static_cast<const Vec&>(object->mMoveTranslate + edge);
+#endif
+}
+
+#include "game/xchr.h"
+#include "game/xobjs.h"
+#include "game/cgame.h"
+#include "game/stagedata.h"
+
+/**
+ * @note Address: 0x800B78FC
+ * @note Size: 0x260
+ */
+// picks up again what he was holding before the reset, true once it's back in his hands
+extern "C" BOOL RestorePlayerHeldItem(XObjChr* chr)
+{
+	if (chr->mLift.mState != 0) {
+		XObj* target = chr->mLift.mTarget;
+		if (target != NULL) {
+			if ((s16)target->GetPool() == 24) {
+				chr->mLift.mTarget      = &chr->mPlug;
+				chr->mLift.mTargetFloor = chr->mLift.mTarget->mSelectedFloorIndex;
+				chr->mPlug.mStatus.mFlags |= 0x0400000000000000ULL;
+				chr->SetAnim(8, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+				return TRUE;
+			}
+		}
+		ResetPlayerLiftAction(&chr->mLift);
+	}
+
+	s16 id = chr->mSavedTarget;
+	if (id >= 0) {
+		XObj* loaded        = SpawnObjectFromPlacement(&gGame.mXObjs, &CoordInfo(GetStageObjectPlacementByIndex(id)), 0, TRUE);
+		chr->mPendingTarget = loaded;
+		chr->mSavedTarget   = -1;
+	}
+	if (chr->mPendingTarget != NULL) {
+		if (!(chr->mPendingTarget->mStatus.mFlags & 0x0040000000000000ULL)) {
+			ResetPlayerLiftAction(&chr->mLift);
+			chr->mLift.mState = 4;
+			chr->mLift.SetTarget(chr->mPendingTarget);
+			chr->mLift.mTargetState = 4;
+			chr->mLift.mTarget->SetAnim(chr->mSavedTargetAnim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			chr->mLift.mTarget->mStatus.mFlags |= 0x0400000000000000ULL;
+			chr->SetAnim(8, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			chr->mPendingTarget = NULL;
+			if (IsCarryingSquirter(&chr->mLift)) {
+				ApplyPlayerItemTintToTarget(&chr->mLift);
+			}
+			return TRUE;
+		}
+	} else {
+		return TRUE;
+	}
+	return FALSE;
+}
+
+#include "game/xchr.h"
+#include "game/evt.h"
+
+/**
+ * @note Address: 0x800B7B5C
+ * @note Size: 0x1F8
+ */
+// puts him back to a clean state, keeps what he was holding to pick it up again after
+void XObjChr::Release()
+{
+	mPlayerStatus.mFlags = 0;
+	mPlayerStatus.mFlags |= 0x20000000;
+	mPlayerStatus.mFlags |= 7;
+	mPad.mReset    = TRUE;
+	HSD_JObj* jobj = mJObj;
+	if (jobj != NULL) {
+		HSD_JObjClearMtxFlags(jobj);
+	}
+
+	if (mLift.mState != 0) {
+		XObj* target = mLift.mTarget;
+		if (target != NULL) {
+			if ((s16)target->GetPool() == 8) {
+				mSavedTarget      = target->GetObjFlags();
+				mSavedTargetAnim  = mLift.mTarget->mAnimId;
+				mSavedTargetState = mLift.mTargetState;
+			}
+		}
+	} else {
+		switch (GetAttachment()) {
+		case 4:
+		case 5:
+		case 6:
+		case 7:
+			mAttachment = 0;
+			break;
+		}
+	}
+
+	mAnim.Release();
+	mAttachmentAnim.Release();
+	mSuitAnim.Release();
+	RemovePlayerSuit(this);
+	if (mEvt.mData.mScript != NULL) {
+		ResetEventScriptState(&mEvt, TRUE, FALSE);
+	}
+}
+
+#include "game/xchr.h"
+#include "game/animframe.h"
+#include "game/cgame.h"
+#include "game/xobjchr.h"
+
+extern "C" void SetPlayerPopperMountHidden(XObj* player, BOOL hidden);
+
+// the joint a rotation turns, found from its object's root
+static inline void BindRotationJoint(CJointRot& rotation, s32* path, s32 depth)
+{
+	if (rotation.mObj) {
+		rotation.mJoint = FindJointByPath(rotation.mObj->mJObj, path, depth);
+	}
+}
+
+/**
+ * @note Address: 0x800B7D54
+ * @note Size: 0xAFC
+ */
+// NONMATCHING: regalloc, the path walks hold the joint and the path pointer in each other's register; the stack matches
+extern "C" void ApplyPlayerSuit(XObjChr* player)
+{
+	if ((player->mStatus.mFlags & 1) && player->mSuits.mJoints[player->mSuits.mCurrent]) {
+		player->ClearAnim();
+		player->ApplyTransform();
+		if (player->GetAttachment() == 2)
+			SetPlayerPopperMountHidden(player, FALSE);
+		HSD_JObj* mount = FindJointByPath(player->mJObj, (s32[3]) { 0, 1, 0 }, 3);
+		mount->child    = player->mSuits.mJoints[player->mSuits.mCurrent]; // graft the suit's joint tree
+		for (HSD_JObj* child = mount->child; child; child = child->next)
+			child->parent = mount;
+		struct JointPath {
+			s32 depth;
+			s32* indices;
+		};
+		JointPath joints[] = { { 9, NULL }, { 9, NULL }, { 9, NULL }, { 9, NULL } };
+		s32 path0[]        = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
+		joints[0].indices  = path0;
+		s32 path1[]        = { 0, 1, 0, 1, 2, 0, 0, 1, 1 };
+		joints[1].indices  = path1;
+		s32 path2[]        = { 0, 1, 0, 1, 2, 0, 0, 3, 0 };
+		joints[2].indices  = path2;
+		s32 path3[]        = { 0, 1, 0, 1, 2, 0, 0, 3, 1 };
+		joints[3].indices  = path3;
+		for (s32 i = 0; i < 4; ++i) // the suit's four idle joints
+			player->mIdleJoints[i].mJObj = FindJointByPath(player->mJObj, joints[i].indices, joints[i].depth);
+		{ // the suit's attachment, tool and popper mount points
+			player->mAttachmentJoint = FindJointByPath(player->mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 5 }, 8);
+			player->mCopterObj.SetParent(FindJointByPath(player->mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8), FALSE);
+			player->mPopperObj.SetParent(FindJointByPath(player->mJObj, (s32[5]) { 0, 1, 0, 1, 3 }, 5), FALSE);
+			player->mRadarObj.SetParent(FindJointByPath(player->mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8), FALSE);
+			player->mOXObj.SetParent(FindJointByPath(player->mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8), FALSE);
+		}
+		BindRotationJoint(player->mJointRot, (s32[5]) { 0, 1, 0, 1, 2 }, 5);
+		BindRotationJoint(player->mHeadTurn.mNeck, (s32[5]) { 0, 1, 0, 1, 2 }, 5);
+		BindRotationJoint(player->mHeadTurn.mHead, (s32[5]) { 0, 1, 0, 1, 2 }, 5);
+		if (!(gGame.mStatus.mFlags & 0x100))
+			SetPlayerEyeCameraJointsHidden(player, FALSE);
+		if (player->GetAttachment() == 2) // hide the popper mount again
+			SetPlayerPopperMountHidden(player, TRUE);
+		player->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+		player->mIdleLoops = 3;
+	}
+}
+
+/**
+ * @note Address: 0x800B8850
+ * @note Size: 0x674
+ */
+// NONMATCHING: identical instruction stream; only regalloc and scheduling differ
+extern "C" void RemovePlayerSuit(XObjChr* player)
+{
+	s32 anim  = player->mAnimId;
+	f32 frame = GetAnimFrame(player->mJObj);
+	player->ClearAnim();
+	player->ApplyTransform();
+
+	HSD_JObj* mount = FindJointByPath(player->mJObj, (s32[3]) { 0, 1, 0 }, 3);
+	mount->child    = player->mSuits.mJoints[0]; // restore slot 0's joints
+	for (HSD_JObj* child = mount->child; child; child = child->next)
+		child->parent = mount;
+	player->SetAnim(anim, TRUE, NULL, NULL, NULL, frame, 1.0f, 1.0f, 10.0f);
+
+	{
+		player->mAttachmentJoint = FindJointByPath(player->mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 5 }, 8);
+		player->mCopterObj.SetParent(FindJointByPath(player->mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8), FALSE);
+		player->mPopperObj.SetParent(FindJointByPath(player->mJObj, (s32[5]) { 0, 1, 0, 1, 3 }, 5), FALSE);
+		player->mRadarObj.SetParent(FindJointByPath(player->mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8), FALSE);
+		player->mOXObj.SetParent(FindJointByPath(player->mJObj, (s32[8]) { 0, 1, 0, 1, 2, 0, 0, 4 }, 8), FALSE);
+	}
+
+	XObj& suit = player->mSuits.mObjects[player->mSuits.mCurrent];
+	if (suit.mStatus.mFlags & 1) // release the suit object if loaded
+		suit.Release();
+	if (player->mSuits.mJoints[player->mSuits.mCurrent])
+		player->mSuits.mJoints[player->mSuits.mCurrent] = NULL;
+	player->mSuitAnim.Release();
+}
+
+#include "game/xobjchritem.h"
+
+/**
+ * @note Address: 0x800B8EC4
+ * @note Size: 0x270
+ */
+// loads the item he's asked to hold, true once it's ready
+// NONMATCHING: registers only, in the inlined FindJointByPath: retail walks the joint in r8 and the path in r9
+extern "C" BOOL LoadRequestedHeldItem(XObjChr* chr)
+{
+	if (chr->mSuits.mLoadStep == 0)
+		chr->mSuits.mLoadStep = 1;
+	if (chr->mSuits.mCurrent != chr->mSuits.mRequested) {
+		chr->mSuits.mChangeStep = TRUE;
+		chr->mSuits.mCurrent    = chr->mSuits.mRequested;
+	}
+	if (LoadPlayerSuitItem(chr)) {
+		chr->mSuits.mChangeStep = FALSE;
+		ApplyPlayerSuit(chr);
+		return TRUE;
+	}
+	return FALSE;
+}
+
+#include "game/xobjchritem.h"
+#include "game/xobjchrstate.h"
+#include "game/cgame.h"
+#include "game/gmath.h"
+#include "game/video.h"
+#include <stdlib.h>
+
+extern "C" {
+extern f32 gPlayerSuitChangeTimer;
+}
+
+static inline bool SuitFadeFinished(const XObjChr* player)
+{
+	const Vec& speed = player->mColorStep[1].mSpeed;
+	return speed.x == 0.0f && speed.y == 0.0f && speed.z == 0.0f;
+}
+
+/**
+ * @note Address: 0x800B9134
+ * @note Size: 0x624
+ */
+extern "C" void UpdatePlayerSuitChange(XObjChr* player)
+{
+	switch (player->mSuits.mChangeStep) {
+	case 1:
+		player->SetColor(2, 255, 255, 255, 0.5f);
+		gPlayerSuitChangeEffect.active = TRUE;
+		for (s32 i = 0; i < 2; ++i) {
+			for (s32 j = 0; j < 10; ++j) {
+				Vec position                                 = { 0.0f, 0.5f, 0.0f };
+				gPlayerSuitChangeEffect.rings[i][j].position = position;
+				gPlayerSuitChangeEffect.rings[i][j].scale    = 0.0f;
+				gPlayerSuitChangeEffect.rings[i][j].color
+				    = ((u32)(rand() % 156 + 100) << 24) | ((u32)(rand() % 156 + 100) << 16) | ((u32)(rand() % 156 + 100) << 8);
+				gPlayerSuitChangeEffect.rings[i][j].angle = 0.0f;
+			}
+		}
+		gPlayerSuitChangeEffect.rings[0][0].scale = 1.0f;
+		gPlayerSuitChangeEffect.rings[0][0].angle = DEG2RAD * (rand() % 360);
+		gPlayerSuitChangeEffect.rings[1][0].scale = 1.0f;
+		gPlayerSuitChangeEffect.rings[1][0].angle = PI + gPlayerSuitChangeEffect.rings[0][0].angle;
+		PlayGameSound(&gGame.mSound, 0x45, 255);
+		++player->mSuits.mChangeStep;
+		break;
+	case 2:
+		if (SuitFadeFinished(player))
+			++player->mSuits.mChangeStep;
+		break;
+	case 3:
+		if (player->mSuits.mCurrent != 0) {
+			RemovePlayerSuit(player);
+			player->SetColor(2, 255, 255, 255, 0.0f);
+		}
+		player->mSuits.mCurrent  = player->mSuits.mRequested;
+		player->mSuits.mLoadStep = 1;
+		++player->mSuits.mChangeStep;
+		gPlayerSuitChangeTimer = 0.5f * FRAME_RATE;
+		// fall through
+	case 4:
+		gPlayerSuitChangeTimer -= 2.0f;
+		if (gPlayerSuitChangeTimer <= 0.0f)
+			gPlayerSuitChangeTimer = 0.0f;
+		if (!LoadPlayerSuitItem(player) || gPlayerSuitChangeTimer != 0.0f)
+			break;
+		++player->mSuits.mChangeStep;
+		// fall through
+	case 5: {
+		ApplyPlayerSuit(player);
+		player->SetColor(2, 255, 255, 255, 0.0f);
+		player->SetColor(2, 0, 0, 0, 0.5f);
+		const Vec& tint = player->mColorStep[0].mValue;
+		u32 color       = ((u32)tint.x << 24) | ((u32)tint.y << 16) | ((u32)tint.z << 8);
+		player->SetColor(0, color >> 24, color >> 16, color >> 8, 0.0f);
+		++player->mSuits.mChangeStep;
+		break;
+	}
+	case 6:
+		if (SuitFadeFinished(player))
+			player->mSuits.mChangeStep = 0;
+		break;
+	}
+}
+
+#include "game/xchr.h"
+
+// the animation file of each attachment
+const char* gAttachmentAnimationPaths[] = {
+	NULL, "cb_robo_6.dat", "cb_robo_7.dat", "cb_robo_8.dat", "cb_robo_9.dat", "cb_robo_10.dat", "cb_robo_11.dat", "cb_robo_12.dat", NULL,
+};
+
+/**
+ * @note Address: 0x800B9758
+ * @note Size: 0xA4
+ */
+// reads the attachment's anims, true once they're in
+extern "C" BOOL LoadPlayerAttachmentAnimation(XObjChr* chr)
+{
+	const char* path = gAttachmentAnimationPaths[chr->mAttachment];
+	if (path != NULL) {
+		if (LoadJointAnimationAsync(&chr->mAttachmentAnim, path)) {
+			chr->SetAnim(17, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+			return TRUE;
+		}
+		return FALSE;
+	}
+	return TRUE;
+}
+
+#include "game/xchr.h"
+#include "game/cgame.h"
+#include "game/xobjmap.h"
+
+extern "C" {
+CVec GetPlayerJointLocalTranslationByPath(CJObj* object, s32 depth, s32* path);
+void SetObjectJointTranslationByPath(CJObj* object, s32 depth, s32* path, f32 x, f32 y, f32 z);
+BOOL IsStageDataLoaded();
+void EnableJointMaterialTranslucency(HSD_JObj* joint, f32** args, s32 type);
+void ShowIdlePlayerCopter(XObjCopter* copter);
+void ShowIdlePlayerRadar(XObjRadar* radar);
+}
+
+static inline void SamplePlayerPose(XObjChr* player, s32 anim)
+{
+	player->SetAnim(anim, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+	if (anim == 0x13) { // sampled at the anim's last frame
+		HSD_AObj* jointAnim = GetAObj(player->mJObj);
+		f32 end             = jointAnim != NULL ? HSD_AObjGetEndFrame(jointAnim) : 0.0f;
+		player->SetAnim(anim, TRUE, NULL, NULL, NULL, end, 1.0f, 1.0f, 10.0f);
+	}
+	player->UpdateAnim(0);
+}
+
+static inline BOOL LoadPlayerModel(XObj& model, s32 id)
+{
+	return model.LoadFromPlacement(CoordInfo(GetSpawnData(id)));
+}
+
+static inline void SetAttachmentParent(XObjChr* player, XObjAttachment& attachment, s32* path, int depth)
+{
+	attachment.SetParent(FindJointByPath(player->mJObj, path, depth), TRUE);
+}
+
+/**
+ * @note Address: 0x800B97FC
+ * @note Size: 0x1584
+ */
+// NONMATCHING: retail builds a second CVec from each sampled offset before it stores it (a copy made from the Vec part),
+// and walks the idle joints with other registers
+BOOL XObjChr::LoadFromPlacement(const CoordInfo& info)
+{
+	u32 flags[] = { mStatus.mFlags & 0x800000, mStatus.mFlags & 0x200000, mStatus.mFlags & 0x40, mStatus.mFlags & 0x20000,
+		            mStatus.mFlags & 0x400000 };
+	// Each ready model falls through to the next load. A pending one resumes at the same step.
+	switch (mLoadStep) {
+	case 0: {
+		if (!LoadFromPlacement__4XObjFRC9CoordInfo(this, &info))
+			break;
+		CJObj::SetRotationY(0.0f, TRUE);
+		SamplePlayerPose(this, 8);
+		mLift.mTargetOffset.Set(GetPlayerCarryJointLocalTranslation(this));
+		// the root joint's offset in the hang and rope poses; SetObjectJointTranslationByPath is
+		// defined above in this file, so a helper wrapping it is no longer inlined here
+		SamplePlayerPose(this, 0x13);
+		{
+			s32 root[] = { 0 };
+			mHang.mTargetOffset.Set(GetPlayerJointLocalTranslationByPath(this, 1, root));
+			SetObjectJointTranslationByPath(this, 1, root, 0.0f, 0.0f, 0.0f);
+		}
+		SamplePlayerPose(this, 0x8A);
+		{
+			s32 root[] = { 0 };
+			mRope.mTargetOffset.Set(GetPlayerJointLocalTranslationByPath(this, 1, root));
+			SetObjectJointTranslationByPath(this, 1, root, 0.0f, 0.0f, 0.0f);
+		}
+		SamplePlayerPose(this, 0x36);
+		s32 tumble[]          = { 0, 1, 0, 1, 2, 0, 1 };
+		mTumble.mFade.mOffset = GetEventJointWorldPosition(this, 7, tumble) - mMoveTranslate;
+		mTumble.mFade.mActive = FALSE;
+		mTumble.mFade.mAmount = 0.0f;
+		CJObj::SetRotationY(mMoveRotate.y, TRUE);
+		SetAnim(0x11, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+		mIdleLoops = 3;
+		{
+			struct JointPath {
+				s32 depth;
+				s32* nodes;
+			};
+			JointPath joints[]  = { { 9, NULL }, { 9, NULL }, { 9, NULL }, { 9, NULL } };
+			s32 branch1Child0[] = { 0, 1, 0, 1, 2, 0, 0, 1, 0 };
+			joints[0].nodes     = branch1Child0;
+			s32 branch1Child1[] = { 0, 1, 0, 1, 2, 0, 0, 1, 1 };
+			joints[1].nodes     = branch1Child1;
+			s32 branch3Child0[] = { 0, 1, 0, 1, 2, 0, 0, 3, 0 };
+			joints[2].nodes     = branch3Child0;
+			s32 branch3Child1[] = { 0, 1, 0, 1, 2, 0, 0, 3, 1 };
+			joints[3].nodes     = branch3Child1;
+			for (int i = 0; i < 4; ++i) { // two branch tips each on branches 1 and 3
+				mIdleJoints[i].mJObj       = FindJointByPath(mJObj, joints[i].nodes, joints[i].depth);
+				mIdleJoints[i].mAnimJoint  = mArchive.GetAnimJoint(14, joints[i].depth, joints[i].nodes);
+				mIdleJoints[i].mLastAdHead = NULL;
+			}
+			s32 attachment[]     = { 0, 1, 0, 1, 2, 0, 0, 5 };
+			mAttachmentJoint     = FindJointByPath(mJObj, attachment, 8);
+			s32 animationPath[]  = { 0, 1, 0, 1, 2, 0, 0, 5 };
+			mAttachmentJointAnim = mArchive.GetAnimJoint(0x4A, 8, animationPath);
+			if (!mSuits.mJoints[0]) {
+				s32 suit[]        = { 0, 1, 0, 0 };
+				mSuits.mJoints[0] = FindJointByPath(mJObj, suit, 4);
+			}
+		}
+		mStatus.mFlags |= 0x0000200000000000ULL;
+		++mLoadStep;
+	}
+	case 1: // the plug
+		if (!LoadPlayerModel(mPlug, 15))
+			break;
+		++mLoadStep;
+	case 2: { // the copter
+
+		if (!LoadPlayerModel(mCopterObj, 17))
+			break;
+		s32 path[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
+		SetAttachmentParent(this, mCopterObj, path, 8);
+		++mLoadStep;
+	}
+	case 3: { // the popper
+
+		if (!LoadPlayerModel(mPopperObj, 18))
+			break;
+		s32 path[] = { 0, 1, 0, 1, 3 };
+		SetAttachmentParent(this, mPopperObj, path, 5);
+		++mLoadStep;
+	}
+	case 4: { // the radar
+
+		if (!LoadPlayerModel(mRadarObj, 19))
+			break;
+		s32 path[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
+		SetAttachmentParent(this, mRadarObj, path, 8);
+		++mLoadStep;
+	}
+	case 5: {
+
+#if defined(VERSION_JP)
+		const s32 modelId = 20;
+#else
+		const s32 modelId = 44;
+#endif
+		if (!LoadPlayerModel(mOXObj, modelId))
+			break;
+		s32 path[] = { 0, 1, 0, 1, 2, 0, 0, 4 };
+		SetAttachmentParent(this, mOXObj, path, 8);
+		++mLoadStep;
+	}
+	case 6:
+#if !defined(VERSION_JP)
+		switch (mOXMenu.mLoadStep) {
+		case 0:
+			if (!LoadPlayerModel(mOXMenu.mMark[0].mObj, 45))
+				break;
+			if (mOXMenu.mMark[0].mObj.mJObj) // the circle (O) model draws translucent
+				HSD_JObjWalkTree(mOXMenu.mMark[0].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
+			++mOXMenu.mLoadStep;
+		case 1:
+			if (!LoadPlayerModel(mOXMenu.mMark[1].mObj, 46))
+				break;
+			if (mOXMenu.mMark[1].mObj.mJObj) // the cross (X) model draws translucent
+				HSD_JObjWalkTree(mOXMenu.mMark[1].mObj.mJObj, EnableJointMaterialTranslucency, NULL);
+			++mOXMenu.mLoadStep;
+		case 2:
+			++mOXMenu.mLoadStep;
+		}
+		if ((s32)mOXMenu.mLoadStep <= 1)
+			break;
+#endif
+		++mLoadStep;
+	case 7:
+		++mLoadStep;
+	case 8:
+		++mLoadStep;
+	case 9:
+		ApplyMaterialPresets(flags);
+		if ((mStatus.mFlags & 0x01000000) && IsStageDataLoaded())
+			EnableLighting(GetEnvData()[9] / 100.0f);
+		++mLoadStep;
+	case 10: {
+		TPLDescriptor* textures = ((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray;
+		mTex[0]                 = gGame.mTpl.mTex.Init(&textures[122 - StatusTextureOffset], 0);
+		mTex[1]                 = gGame.mTpl.mTex.Init(&((TPLPalette*)gGame.mTpl.mBuffer)->descriptorArray[123 - StatusTextureOffset], 0);
+		++mLoadStep;
+	}
+	case 11:
+		++mLoadStep;
+	case 12:
+		if (GetAttachment() == 1)
+			ShowIdlePlayerCopter(&mCopterObj);
+		else if (GetAttachment() == 2)
+			mPopper.mState = 3;
+		else if (GetAttachment() == 3)
+			ShowIdlePlayerRadar(&mRadarObj);
+		++mLoadStep;
+	}
+	if (mLoadStep > 12) {
+		mLoadStep = 0;
+		return TRUE;
+	}
+	return FALSE;
+}
+
+#include "game/xchr.h"
+
+/**
+ * @note Address: 0x800BAD80
+ * @note Size: 0x2C
+ */
+extern "C" CVec GetPlayerJointLocalTranslationByPath(CJObj* object, s32 depth, s32* path)
+{
+	return CJObj_GetJointLocalTranslationByPath(object, depth, path);
+}
+
+/**
+ * @note Address: 0x800BADAC
+ * @note Size: 0xC4
+ */
+// stops him where he stands
+extern "C" void StopPlayerMotion(XObjChr* chr)
+{
+	chr->mMotion.x         = 0.0f;
+	chr->mMotion.y         = 0.0f;
+	chr->mMotion.z         = 0.0f;
+	chr->mMotion.mTarget.x = 0.0f;
+	chr->mMotion.mTarget.y = 0.0f;
+	chr->mMotion.mTarget.z = 0.0f;
+	chr->mMotion.mSpeed.x  = 0.0f;
+	chr->mMotion.mSpeed.y  = 0.0f;
+	chr->mMotion.mSpeed.z  = 0.0f;
+	chr->mMoveRotate.Set(chr->mMoveRotate.mTarget);
+	if (chr->mPush.mState != 0) {
+		ReleasePushAction(&chr->mPush);
+		chr->mPush.mState = 0;
+		chr->SetAnim(17, FALSE, NULL, NULL, NULL, 0.0f, 1.0f, 0.0f, 10.0f);
+		chr->mIdleLoops = 3;
+	}
+}
+
+#include "game/cgame.h"
+#include "game/xchr.h"
+#include "game/xobjflags.h"
+
+extern "C" {
+void SetPlayerPopperMountHidden(XObj*, BOOL);
+void SetObjectJointTranslationByPath(CJObj*, s32, s32*, f32, f32, f32);
+void SetJointYawByPath(CXObj*, s32, s32*, f32);
+void ResetPopperCharge(XActPopperCharge*);
+void ResetTumbleAction(XActTumble*);
+void ResetPlayerRadarAction(XActRadar*);
+}
+
+static inline void StopAttachmentSound(s32 id)
+{
+	if (IsGameSoundPlaying(&gGame.mSound, id))
+		StopGameSfx(&gGame.mSound, id);
+}
+
+static inline void ResetAttachmentJoint(XObjChr* player)
+{
+	HSD_JObj* const& joint = player->mAttachmentJoint;
+	s32 path[]             = { 0, 1, 0, 1, 2, 0, 0, 5 };
+	HSD_AnimJoint* anim    = player->mArchive.GetAnimJoint(0x814, 8, path);
+	HSD_JObjAddAnimAll(joint, anim, NULL, NULL);
+	HSD_JObjReqAnimAll(joint, 0.0f);
+	HSD_JObjClearFlagsAll(joint, 0x20000);
+	HSD_JObjAnimAll(joint);
+}
+
+/**
+ * @note Address: 0x800BAE70
+ * @note Size: 0x560
+ */
+extern "C" void ResetPlayerAttachment(XObjChr* player, s32 nextAnimation)
+{
+	switch (player->GetAttachment()) {
+	case 1:
+		StopAttachmentSound(8);
+		player->mCopterObj.Hide();
+		ResetAttachmentJoint(player);
+		break;
+	case 2:
+		StopAttachmentSound(0x186);
+		StopAttachmentSound(0x18B);
+		player->mPopperObj.Hide();
+		SetPlayerPopperMountHidden(player, FALSE);
+		ResetPopperCharge(&player->mPopper.mCharge);
+		break;
+	case 3:
+		StopAttachmentSound(0x18C);
+		StopAttachmentSound(0x18D);
+		StopAttachmentSound(0x18E);
+		player->mRadarObj.Hide();
+		ResetAttachmentJoint(player);
+		break;
+	case 4:
+	case 5:
+	case 6:
+	case 7:
+	default:
+		if (player->mLift.mTarget) {
+			if ((s16)player->mLift.mTarget->GetPool() == 8) {
+				Inventory* inventory = &gGame.GetPlayer()->mParams.mInventory;
+				SetOrAddInventoryItemCount(inventory, player->mLift.mTarget->GetItem(), 1, TRUE);
+				((XObjItem*)player->mLift.mTarget)->SetFlag();
+			}
+			if ((s16)player->mLift.mTarget->GetPool() != 24)
+				player->mLift.mTarget->Release();
+		}
+	}
+	ResetPlayerLiftAction(&player->mLift);
+	player->mHang.Reset();
+	player->mJump.Reset();
+	player->mLadder.Reset();
+	player->mRope.Reset();
+	ReleasePushAction(&player->mPush);
+	ResetTumbleAction(&player->mTumble);
+	player->mCopter.Reset();
+	player->mPopper.Reset();
+	ResetPlayerRadarAction(&player->mRadar);
+	if (player->mJObj) {
+		s32 path[] = { 0 };
+		SetObjectJointTranslationByPath(player, 1, path, 0.0f, 0.0f, 0.0f);
+		s32 root[] = { 0 };
+		SetJointYawByPath(player, 1, root, 0.0f);
+	}
+	player->mAttachment                   = 0;
+	player->mAttachmentRequest            = -1;
+	player->mAttachmentStep               = 0;
+	player->mScriptAttach                 = 0;
+	player->mNextClimbType                = 0;
+	player->mClimbType                    = 0;
+	player->mHitObjectIndex               = -1;
+	player->mActionObjectIndex            = -1;
+	player->mFloorContacts[2].objectIndex = -1;
+	gGame.mParticle.Kill(0x15);
+	if (nextAnimation >= 0)
+		player->SetAnim(nextAnimation, TRUE, NULL, NULL, NULL, 0.0f, 1.0f, 1.0f, 10.0f);
+	player->mFallDistance = 0.0f;
+}
+
+#include "game/cobj.h"
+#include "game/cjobjinlineattach.h"
+
+/**
+ * @note Address: 0x800BB3D0
+ * @note Size: 0x338
+ */
+extern "C" void SetJointYawByPath(CXObj* object, s32 count, s32* path, f32 angle)
+{
+	CJObj joint(GetJointByPath(object->mJObj, path, count));
+	joint.SetRotationY(angle, 1);
+}
+
+#include "game/xobjflags.h"
+#include "game/xact.h"
+#include "game/xobjattachment.h"
+
+/**
+ * @note Address: 0x800BB708
+ * @note Size: 0x18
+ */
+// XAction::Reset
+void XAction::Reset()
+{
+	mState         = 0;
+	mMoveDirection = 0;
+	mTarget        = NULL;
+	mTargetState   = 0;
+}
+
+/**
+ * @note Address: 0x800BB720
+ * @note Size: 0x8
+ */
+s32 XObjFlags::GetFlagIndex()
+{
+	return mPlacementParam1;
+}
+
+/**
+ * @note Address: 0x800BB728
+ * @note Size: 0x54
+ */
+// XObjAttachment::Hide
+void XObjAttachment::Hide()
+{
+	mVisible = FALSE;
+	if (mStatus.mFlags & 1ULL)
+		HSD_JObjSetFlagsAll(mJObj, 0x10);
+}
+
+#include "game/xobjchrstate.h"
+#include "game/video.h"
+#include <math.h>
+
+extern "C" {
+void SetPlayerEyeCameraJointsHidden(XObj*, BOOL);
+void InitializePlayerPopperAction(XActPopper*, XObjChr*);
+void InitRadarAction(XActRadar*, XObjChr*);
+}
+
+static inline void ClearRingHighlights(OctaMenu& ring)
+{
+	ring.mOpen = 0;
+	ring.mFade = 0.0f;
+	for (s32 i = 0; i < 8; ++i)
+		ring.mItems[i].mHighlight = 0.0f;
+}
+
+/**
+ * @note Address: 0x800BB77C
+ * @note Size: 0x600
+ */
+void XObjChr::ResetObjectState()
+{
+	ResetObjectState__4XObjFv(this);
+	SetPlayerEyeCameraJointsHidden(this, FALSE);
+	mMotion.Reset(0.0f, 0.0f, 0.0f);
+	mStick[2] = mStick[3] = mStick[0] = mStick[1] = 0.0f;
+	mActionObjectIndex = mHitObjectIndex = -1;
+	mFloorContacts[4].objectIndex = mFloorContacts[2].objectIndex = mFloorContacts[0].objectIndex = mFloorContacts[1].objectIndex = -1;
+	mLastContactFloorIndex                                                                                                        = -1;
+	mNearDistance                                                                                                                 = 2.0f;
+	mLetickerIndex                                                                                                                = -1;
+	_A14                                                                                                                          = 0;
+	mLiftPlugFlags &= ~0x80;
+	mAPressed = mPressTimer = 0;
+	mIdleLoops              = 0;
+	mIdleTimer              = 0.0f;
+	mFlashTimer = mFlashCount = 0;
+	mHitStrength              = 0.0f;
+	mMoveSpeedScale           = 1.0f;
+	mHang.Init(this);
+	mHang.mStickAway = FALSE;
+	mJump.Init(this);
+	mJump.mStrength = mJump.mTargetStrength = 0.0f;
+	mLadder.Init(this);
+	mLadder.mBPressed = FALSE;
+	mRope.Init(this);
+	mPush.Init(this);
+	mTumble.Init(this);
+	mCopter.Init(this);
+	mCopter.mTime = FRAME_RATE;
+	InitializePlayerPopperAction(&mPopper, this);
+	InitRadarAction(&mRadar, this);
+	mFrameTime.mFrame = mFrameTime.mLastFrame = -1.0f;
+	for (s32 i = 0; i < 4; ++i) {
+		mIdleJoints[i].mJObj       = NULL;
+		mIdleJoints[i].mAnimJoint  = NULL;
+		mIdleJoints[i].mLastAdHead = NULL;
+	}
+	mIdleJointCooldown   = 0;
+	mAttachmentJoint     = NULL;
+	mAttachmentJointAnim = NULL;
+	s32 joint[]          = { 0, 1, 0, 1, 2 };
+	mJointRot.Init(this, 5, joint, 'y');
+	s32 neck[] = { 0, 1, 0, 1, 2 };
+	mHeadTurn.mNeck.Init(this, 5, neck, 'y');
+	s32 head[] = { 0, 1, 0, 1, 2 };
+	mHeadTurn.mHead.Init(this, 5, head, 'z');
+	mLook.mActive = FALSE;
+	mLook.mMode   = -1;
+	mLook.mObject = NULL;
+	Vec zero      = { 0.0f, 0.0f, 0.0f };
+	mLook.mOffset = zero;
+	mLook.mPulse = mLook.mPhase = mLook.mFade = 0.0f;
+	mLook.mObject                             = this;
+	mAttachmentRequest                        = -1;
+	mClimbType = mNextClimbType = mScriptAttach = mAttachmentStep = 0;
+	mFallDistance                                                 = 0.0f;
+	mCameraTarget[0] = mCameraTarget[1] = mCameraTarget[2] = NAN;
+	mCameraTargetMargin = mCameraTargetMarginSetting = 1.0f;
+	mHeldMoveAngle = mMoveAngle = mHeldStickAngle = NAN;
+	mBatteryWarningFrames                         = 0;
+	mBatteryWarningAngle = mBatteryWarningFade = 0.0f;
+	mGaugeTarget                               = NULL;
+	mGaugeTime                                 = 0.0f;
+	mPlug.ResetObjectState();
+	mCopterObj.ResetObjectState();
+	mPopperObj.ResetObjectState();
+	mRadarObj.ResetObjectState();
+	mOXObj.ResetObjectState();
+	for (s32 i = 0; i < 9; ++i)
+		mSuits.mObjects[i].ResetObjectState();
+	mWalkHeading = NAN;
+	ClearRingHighlights(mMenu.mAtc);
+	ClearRingHighlights(mMenu.mDrs);
+	mMenu.mTargetY = mMenu.mCursorY = mMenu.mFade = 0.0f;
+	mOXMenu.mStarted                              = FALSE;
+	mOXMenu.mFade                                 = 0.0f;
+	mInAir                                        = TRUE;
+	InitParticlePool(&mDust.mPtcl, mDust.mPtcls, sizeof(mDust.mPtcls[0]), ARRAY_SIZE(mDust.mPtcls));
+	for (s32 i = 0; i < 10; ++i) {
+		PointPtcl& p = gPointParticlePool[i];
+		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
+		p.burst.mState = p.display.mState = 0;
+		gPointParticleSlots[i]            = NULL;
+	}
+	gPlayerSuitChangeEffect.Reset();
+	mGroundType = mIdleModeTimer = mIdleMode = 0;
+	_158C4.Set(0.0f, 0.0f, 0.0f);
+	mHeadOffset      = 5.0f;
+	mHeadOffsetReady = FALSE;
+}
+
+#include "game/xact.h"
+
+/**
+ * @note Address: 0x800BBD7C
+ * @note Size: 0x30
+ */
+// XAction::Init
+extern "C" void Init__7XActionFP7XObjChr(XAction* action, XObjChr* owner)
+{
+	action->mOwner = owner;
+	action->Reset();
+}
+
+#include "game/xobjchrstate.h"
+#include "game/cmdline.h"
+#include <math.h>
+
+extern "C" {
+void SetPlayerPopperMountHidden(XObj*, BOOL);
+void InitializePlayerLiftAction(XActLift*, XObjChr*);
+void RefreshAttachmentMenuEntries(AttachmentValues*);
+void InitializeAttachmentMenuEntries(AttachmentValues*);
+}
+
+static inline void ResetRingMode(OctaMenu& ring)
+{
+	ring.mOpen        = 0;
+	ring.mCursorIndex = 0;
+	u32 mode          = gCmdLineArgs.mAttachmentMenuType;
+	if (mode <= 3)
+		ring.mMenuType = mode;
+	else
+		ring.mMenuType = 0; // types above 3 fall back to 0
+	ring.mFocus    = 0;
+	ring.mHeadTurn = NAN;
+}
+
+/**
+ * @note Address: 0x800BBDAC
+ * @note Size: 0x338
+ */
+void XObjChr::ResetForNewGame()
+{
+	ResetPlayerStats(&mParams);
+	mAttachment           = 0;
+	mLiftPlugFlags        = gCmdLineArgs.mLiftPlugFlags;
+	mAttachmentActionType = gCmdLineArgs.mAttachmentActionType;
+	mToolActionType       = gCmdLineArgs.mToolActionType;
+	SetPlayerPopperMountHidden(this, FALSE);
+	InitializePlayerLiftAction(&mLift, this);
+	mPlug.ResetForNewGame();
+	mCopterObj.ResetForNewGame();
+	mPopperObj.ResetForNewGame();
+	mRadarObj.ResetForNewGame();
+	mOXObj.ResetForNewGame();
+	mSuits.mLoadStep   = 0;
+	mSuits.mChangeStep = 0;
+	mSuits.mRequested  = 0;
+	mSuits.mCurrent    = 0;
+	mSuits.mSpecial    = 0;
+	for (s32 i = 0; i < 9; ++i)
+		mSuits.mObjects[i].ResetForNewGame();
+	ApplyPlayerSuit(this);
+	mPad.mReset = TRUE;
+	RefreshAttachmentMenuEntries(&mAttachments);
+	ResetRingMode(mMenu.mAtc);
+	ResetRingMode(mMenu.mDrs);
+	mMenu.mPrevSel         = 0;
+	mMenu.mSel             = 0;
+	mOXMenu.mSelectedIndex = 0;
+#if !defined(VERSION_JP)
+	mOXMenu.mLoadStep = 0;
+#endif
+	_15890           = 0;
+	mSavedTarget     = -1;
+	mPendingTarget   = NULL;
+	mBatteryDrains   = TRUE;
+	mSquirterContent = 0;
+	mItemTintWord    = -1;
+	for (s32 i = 0; i < 10; ++i) {
+		PointPtcl& p = gPointParticlePool[i];
+		GetHudPointParticleOrigin(&gGame.mInfoScrn, &p.mStartY, &p.mStartX);
+		p.display.mState = 0;
+		p.burst.mState   = 0;
+	}
+	gPlayerSuitChangeEffect.Reset();
+	mPlayerStatus.mFlags = 0;
+	mPlayerStatus.mFlags = 0;
+	mPlayerStatus.mFlags |= 0x20000000;
+	mPlayerStatus.mFlags |= 7; // the give-control-back flags
+	mPad.mReset = TRUE;
+}
+
+static inline void SetupPlayerRing(OctaMenu& ring, XObjChr* owner, f32 direction)
+{
+	ring.mChr = owner;
+	ResetRingMode(ring);
+	ring.mRowOffset               = 0.0f;
+	ring.mFirstVisibleItem        = 0;
+	ring.mPendingFirstVisibleItem = -1;
+	ring._10                      = direction;
+}
+
+static inline void SetRingItems(OctaMenu& ring, s32 a, s32 b, s32 c, s32 d, s32 e, s32 f, s32 g, s32 h)
+{
+	ring.mItems[0].mType = a;
+	ring.mItems[1].mType = b;
+	ring.mItems[2].mType = c;
+	ring.mItems[3].mType = d;
+	ring.mItems[4].mType = e;
+	ring.mItems[5].mType = f;
+	ring.mItems[6].mType = g;
+	ring.mItems[7].mType = h;
+}
+
+/**
+ * @note Address: 0x800BC0E4
+ * @note Size: 0x39C
+ */
+void XObjChr::InitializeObject(u32 id)
+{
+	InitializeObject__4XObjFUl(this, id);
+	mLook.mActive = FALSE;
+	mLook.mMode   = -1;
+	mLook.mObject = NULL;
+	Vec zero      = { 0.0f, 0.0f, 0.0f };
+	mLook.mOffset = zero;
+	mLook.mPulse = mLook.mPhase = mLook.mFade = 0.0f;
+	mLoadStep                                 = 0;
+	mPlug.InitializeObject(id);
+	mCopterObj.InitializeObject(id);
+	mPopperObj.InitializeObject(id);
+	mRadarObj.InitializeObject(id);
+	mOXObj.InitializeObject(id);
+	InitializeAttachmentMenuEntries(&mAttachments);
+	SetupPlayerRing(mMenu.mAtc, this, -1.0f);
+	SetRingItems(mMenu.mAtc, 1, 2, 3, 4, 6, 5, 7, 8); // the attachment ring, items in ring order
+	mMenu.mAtc.mRowOffset        = -1.5f;
+	mMenu.mAtc.mFirstVisibleItem = 4;
+	SetupPlayerRing(mMenu.mDrs, this, 1.0f);
+	if (mMenu.mDrs.mMenuType == 3) { // the costume ring; menu type 3 gets its own order
+		SetRingItems(mMenu.mDrs, 1, 4, 6, 3, 2, 7, 8, 5);
+	} else {
+		SetRingItems(mMenu.mDrs, 3, 5, 4, 1, 6, 8, 7, 2);
+	}
+	mMenu.mDrs.mRowOffset        = 0.9f;
+	mMenu.mDrs.mFirstVisibleItem = 4;
+	mMenu.mPrevSel               = 0;
+	mMenu.mSel                   = 0;
+	mOXMenu.mChr                 = this;
+	mOXMenu.mSelectedIndex       = 0;
+#if !defined(VERSION_JP)
+	mOXMenu.mLoadStep = 0;
+#endif
+	for (s32 i = 0; i < 9; ++i) { // every suit model
+		mSuits.mObjects[i].InitializeObject(id);
+		mSuits.mJoints[i] = NULL;
+	}
+	mPad.Init(0);
+	ResetForNewGame();
+	mAttachmentAnim.Clear();
+	mSuitAnim.Clear();
+}
+
+#include "game/octamenu.h"
+
+void operator delete(void* object);
+extern "C" {
+extern void* __vt__7AtcMenu[];
+extern void* __vt__8OctaMenu[];
+}
+
+/**
+ * @note Address: 0x800BC480
+ * @note Size: 0x5C
+ */
+// todo: weak copy
+extern "C" AtcMenu* __dt__7AtcMenuFv(AtcMenu* menu, s32 flags)
+{
+	if (menu != NULL) {
+		SetVtable(menu, __vt__7AtcMenu);
+		menu->OctaMenu::~OctaMenu();
+		if ((s16)flags > 0)
+			::operator delete(menu);
+	}
+	return menu;
+}
+
+/**
+ * @note Address: 0x800BC4DC
+ * @note Size: 0x48
+ */
+// todo: weak copy
+extern "C" OctaMenu* __dt__8OctaMenuFv(OctaMenu* menu, s32 flags)
+{
+	if (menu != NULL) {
+		SetVtable(menu, __vt__8OctaMenu);
+		if ((s16)flags > 0)
+			::operator delete(menu);
+	}
+	return menu;
+}
+
+#include "game/xchr.h"
+
+/**
+ * @note Address: 0x800BC524
+ * @note Size: 0x694
+ */
+// NONMATCHING: retail reaches the XObjChr, DrsMenu, OctaMenu and AtcMenu vtables through its file's
+// .data base (lbl_802260C8 + 0x1E20 etc.), so they are defined in the same file; this build still
+// loads each by name and needs one register less
+XObjChr::~XObjChr()
+{
+}
+
+#include "game/xact.h"
+
+/**
+ * @note Address: 0x800BCBB8
+ * @note Size: 0x94
+ */
+XActPopperShot::~XActPopperShot()
+{
+}
+
+#include "game/xobjattachment.h"
+#include "PowerPC_EABI_Support/Runtime/MWCPlusLib.h"
+
+void operator delete(void* object);
+extern "C" {
+extern void* __vt__8XObjPlug[];
+XObjWireEff* __dt__11XObjWireEffFv(XObjWireEff* wire, s32 flags);
+void* __dt__16XObjPlugCordNodeFv(void* object, s32 flags);
+}
+
+// todo: cleanup, stand-ins for the cord's own dtors
+static inline void DestroyNodes(XObjPlugCordNodes* nodes)
+{
+	if (nodes != NULL)
+		__destroy_arr(nodes, (ConstructorDestructor*)__dt__16XObjPlugCordNodeFv, sizeof(XObjPlugCordNode), 10);
+}
+
+static inline void DestroyCord(XObjPlugCord* cord)
+{
+	if (cord != NULL) {
+		DestroyNodes(&cord->mNodes);
+		cord->mPull.CVec::~CVec();
+	}
+}
+
+/**
+ * @note Address: 0x800BCC4C
+ * @note Size: 0xA8
+ */
+// todo: weak copy
+extern "C" XObjPlug* __dt__8XObjPlugFv(XObjPlug* plug, s32 flags)
+{
+	if (plug != NULL) {
+		*(void***)((u8*)plug + 0x34) = __vt__8XObjPlug;
+		__dt__11XObjWireEffFv(&plug->mWire, -1);
+		DestroyCord(&plug->mCord);
+		__dt__4XObjFv(plug, 0);
+		if ((s16)flags > 0)
+			::operator delete(plug);
+	}
+	return plug;
+}
+
+#include "game/xobjattachment.h"
+
+/**
+ * @note Address: 0x800BCCF4
+ * @note Size: 0x90
+ */
+XObjPlugCordNode::~XObjPlugCordNode()
+{
+}
+
+#include "game/xobjattachment.h"
+
+void operator delete(void* object);
+extern "C" {
+extern void* __vt__11XObjWireEff[];
+}
+
+/**
+ * @note Address: 0x800BCD84
+ * @note Size: 0x60
+ */
+// todo: weak copy
+extern "C" XObjWireEff* __dt__11XObjWireEffFv(XObjWireEff* object, s32 flags)
+{
+	if (object != NULL) {
+		*(void***)((u8*)object + 0x34) = __vt__11XObjWireEff;
+		__dt__4XObjFv((XObj*)object, 0);
+		if ((s16)flags > 0)
+			::operator delete(object);
+	}
+	return object;
+}
+
+// ~XObjCopter (0x800BCDE4), ~XObjAttachment (0x800BCE44), ~XObjPopper (0x800BCEA4) and
+// ~XObjOX (0x800BCF64) are the compiler's weak copies of the inline header dtors, emitted
+// because ~XObjChr calls them; hand-spelled here they would inline ~XObjAttachment
+#include "game/xobjattachment.h"
+
+void operator delete(void* object);
+extern "C" {
+extern void* __vt__9XObjRadar[];
+XObjAttachment* __dt__14XObjAttachmentFv(XObjAttachment* object, s32 flags);
+}
+
+/**
+ * @note Address: 0x800BCF04
+ * @note Size: 0x60
+ */
+// todo: weak copy
+extern "C" XObjRadar* __dt__9XObjRadarFv(XObjRadar* object, s32 flags)
+{
+	if (object != NULL) {
+		*(void***)((u8*)object + 0x34) = __vt__9XObjRadar;
+		__dt__14XObjAttachmentFv(object, 0);
+		if ((s16)flags > 0)
+			::operator delete(object);
+	}
+	return object;
+}
+
+#if !defined(VERSION_JP)
+#include "game/octamenu.h"
+
+/**
+ * @note Address: 0x800BCFC4
+ * @note Size: 0x58
+ */
+OXMenuMark::~OXMenuMark()
+{
+}
+#endif
+
+#include "game/xobj.h"
+#include "game/xobjchr.h"
+
+static inline Vec FloorCenterOffset(const XObjFloor* record)
+{
+	Vec value = gPlayerFloorCenterDefault;
+	value.x   = record->mCenterOffset[0] / 100.0f;
+	value.y   = record->mCenterOffset[1] / 100.0f;
+	value.z   = record->mCenterOffset[2] / 100.0f;
+	return value;
+}
+
+static inline Vec FloorExtent(const XObjFloor* record)
+{
+	Vec value = gPlayerFloorExtentDefault;
+	value.x   = record->mExtent[0] / 100.0f;
+	value.y   = record->mExtent[1] / 100.0f;
+	value.z   = record->mExtent[2] / 100.0f;
+	return value;
+}
+
+/**
+ * @note Address: 0x800BD01C
+ * @note Size: 0x160
+ */
+extern "C" f32 GetCollisionHeight__7XObjChrFv(const XObj* object)
+{
+	return object->mMoveScale.x * (FloorCenterOffset(object->mFloors).y + FloorExtent(object->mFloors).y);
+}
+
+#include "game/xpad.h"
+
+void operator delete(void* object);
+extern "C" {
+extern void* __vt__9CJointRot[];
+extern void* __vt__6Params[];
+extern void* __vt__4XPad[];
+
+/**
+ * @note Address: 0x800BD17C
+ * @note Size: 0x48
+ */
+// CJointRot::~CJointRot, cobj.h can't come in with cpad.h
+// todo: weak copy
+void* __dt__9CJointRotFv(void* object, s32 flags)
+{
+	if (object != NULL) {
+		*(void***)((u8*)object + 0x1C) = __vt__9CJointRot;
+		if ((s16)flags > 0)
+			::operator delete(object);
+	}
+	return object;
+}
+
+/**
+ * @note Address: 0x800BD1C4
+ * @note Size: 0x48
+ */
+// Params::~Params, its vtable is its last word
+// todo: weak copy
+void* __dt__6ParamsFv(void* object, s32 flags)
+{
+	if (object != NULL) {
+		*(void***)((u8*)object + 0x440) = __vt__6Params;
+		if ((s16)flags > 0)
+			::operator delete(object);
+	}
+	return object;
+}
+
+/**
+ * @note Address: 0x800BD20C
+ * @note Size: 0x5C
+ */
+// todo: weak copy
+XPad* __dt__4XPadFv(XPad* pad, s32 flags)
+{
+	if (pad != NULL) {
+		*(void***)((u8*)pad + sizeof(CPadOne) - 4) = __vt__4XPad;
+		pad->CPadOne::~CPadOne();
+		if ((s16)flags > 0)
+			::operator delete(pad);
+	}
+	return pad;
+}
+}
+
+#include "game/octamenu.h"
+#include "PowerPC_EABI_Support/Runtime/MWCPlusLib.h"
+
+void operator delete(void* object);
+extern "C" {
+extern void* __vt__6OXMenu[];
+void* __dt__10OXMenuMarkFv(void* object, s32 flags);
+}
+
+/**
+ * @note Address: 0x800BD268
+ * @note Size: 0x70
+ */
+// todo: weak copy
+extern "C" OXMenu* __dt__6OXMenuFv(OXMenu* menu, s32 flags)
+{
+	if (menu != NULL) {
+		// the vtable is its last word
+		*(void***)((u8*)menu + sizeof(OXMenu) - 4) = __vt__6OXMenu;
+#if !defined(VERSION_JP)
+		__destroy_arr(menu->mMark, (ConstructorDestructor*)__dt__10OXMenuMarkFv, sizeof(OXMenuMark), 2);
+#endif
+		if ((s16)flags > 0)
+			::operator delete(menu);
+	}
+	return menu;
+}
+
+extern "C" {
+#include <dolphin/mtx/vec.h>
+}
+#include "game/cptcl.h"
+
+void operator delete(void* object);
+extern "C" {
+extern void* __vt__5CPtcl[];
+
+/**
+ * @note Address: 0x800BD2D8
+ * @note Size: 0x48
+ */
+// CPtcl::~CPtcl
+// todo: weak copy
+CPtcl* __dt__5CPtclFv(CPtcl* ptcl, s32 flags)
+{
+	if (ptcl != NULL) {
+		*(void***)((u8*)ptcl + sizeof(CPtcl) - 4) = __vt__5CPtcl;
+		if ((s16)flags > 0)
+			::operator delete(ptcl);
+	}
+	return ptcl;
+}
 }
