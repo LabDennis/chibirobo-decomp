@@ -911,18 +911,14 @@ game/cinterpolationeaseout.cpp:
 	.sdata2     start:0x806659E0 end:0x806659F0
 
 game/ccameraactionareaex.cpp:
-	.text       start:0x80137BF0 end:0x8013A898
-
-game/ccameraactionareaexinit.cpp:
-	.text       start:0x8013A898 end:0x8013A904
+	.text       start:0x80137BF0 end:0x8013A9D8
 	.ctors      start:0x802000A4 end:0x802000A8
-	.bss        start:0x805A73C0 end:0x805AB000
-
-game/ccameraactionareaexdtor.cpp:
-	.text       start:0x8013A904 end:0x8013A9D8
-	.rodata     start:0x80212F40 end:0x80212F54
+	.rodata     start:0x80212F08 end:0x80212F54
 	.data       start:0x80234F48 end:0x80234F60
+	.bss        start:0x805A727C end:0x805C7010
 	.sdata      start:0x806618D8 end:0x806618E8
+	.sbss       start:0x806621C0 end:0x806621D0
+	.sdata2     start:0x806659F0 end:0x80665A48
 
 game/ccameraactionarea.cpp:
 	.text       start:0x8013A9D8 end:0x8013C5DC
