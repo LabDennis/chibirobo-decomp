@@ -1524,7 +1524,7 @@ if wii:
                 # nw4r::ef (0x802362B8-0x8025B5A4), version text of 23.1.2009; after wiiplay's older ef (8.6.2007)
                 # NonMatching: emitter, util and smooth stripe have 100 % code but their literal pools
                 # differ from retail (emitter 8 bytes shorter, util and postfield in another order,
-                # smooth stripe .sdata2/.sbss); animcurve, postfield, particle and particlemanager
+                # smooth stripe .sdata2/.sbss); animcurve, postfield and particlemanager
                 # have open functions (see // NONMATCHING in the files).
                 Object(Matching, "nw4r/ef/ef_draworder.cpp"),
                 Object(Matching, "nw4r/ef/ef_effect.cpp"),
@@ -1532,7 +1532,7 @@ if wii:
                 Object(NonMatching, "nw4r/ef/ef_emitter.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_animcurve.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_postfield.cpp"),
-                Object(NonMatching, "nw4r/ef/ef_particle.cpp"),
+                Object(Matching, "nw4r/ef/ef_particle.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_particlemanager.cpp"),
                 Object(Matching, "nw4r/ef/ef_resource.cpp"),
                 Object(NonMatching, "nw4r/ef/ef_util.cpp"),
