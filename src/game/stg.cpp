@@ -280,8 +280,12 @@ static inline u16 ReadPCDialogueGlyph(const char* text)
 }
 #endif
 
-// NONMATCHING: same code size but retail schedules the large mode switch differently,
-// load/store order and regalloc differ throughout
+// NONMATCHING: the original was over the -inline auto budget on its own. Retail calls even CTexObj's constructor
+// and destructor (the only bl __ct__7CTexObjFv in the game), and the 23 getters right behind it in retail
+// (GetPlayerLevel to GetPCDialogueText, defined further down here) are the inlines it could not expand, while the
+// code of PCDigitDivisor, PCEaseCall and PCUsesFixedChoiceLabels is expanded, so it stood in the function itself.
+// Ours stays under the budget even with 260 two-unit filler calls; the frame (0x10 smaller), the bss base held in
+// r14 and the register allocation follow from that
 BOOL MenuPC::Draw()
 {
 	if (Draw__5CMenuFv(this)) {
@@ -2862,12 +2866,13 @@ void MenuPC::State6(u32)
  * @note Address: 0x80051C60
  * @note Size: 0x5C
  */
-extern "C" BOOL IsUtilibotStatusIconUnlocked()
+// NONMATCHING: scheduling only, retail loads the 1 of the bit mask before clrlwi
+extern "C" bool IsUtilibotStatusIconUnlocked()
 {
-	BOOL found = FALSE;
+	bool found = false;
 	u32 id     = GetStatusIconEventFlagId(3);
 	if (gEventFlags.mFlags[id / 32] & (1u << (id % 32))) {
-		found = TRUE;
+		found = true;
 	}
 	return found;
 }
@@ -7947,7 +7952,7 @@ extern "C" void DrawPCPriceRow(s16 id, s16 count, s16 value, f32 x, f32 y, f32 a
 
 extern "C" u8* GetAttachmentName(s32 id);
 
-extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, bool attachment, f32 x, f32 y, f32 alpha, f32 scale)
+extern "C" void DrawPCItemPriceRow(s16 id, s16 count, s16 value, u8 attachment, f32 x, f32 y, f32 alpha, f32 scale)
 {
 #if defined(VERSION_JP)
 	const int rowTexture = 144, digitTexture = 123;
@@ -8238,15 +8243,14 @@ void DrawPCShopList(s32 selected, f32 x, f32 y, f32 textureOffset, f32 alpha, f3
 	InitMenuSelectionBar(tex);
 	f32 barY = 2.0f + ((step / 2.0f + (step * selected + rowY)) - 2.0f * scale);
 	DrawMenuSelectionBar(tex, barX, barY, barW, barH, alpha, textureOffset, barColor);
-	MenuPCPage& page  = kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage;
 	MenuPCItem* items = kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries;
 	for (int i = 0; i < 9; i++)
-		DrawPCListRow<kind>(page.mRows[i], left, step * i + rowY, alpha, scale);
-	if (page.mStart < PCShopMaxPage(items) - 1)
-		DrawPCListRow<kind>(page.mNext[0], left, 9.0f * step + rowY, alpha, scale);
+		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mRows[i], left, step * i + rowY, alpha, scale);
+	if ((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mStart < PCShopMaxPage(items) - 1)
+		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mNext[0], left, 9.0f * step + rowY, alpha, scale);
 	CountPCShopItems(kind == ItemPriceList ? sShopHistoryEntries : sShopCatalogEntries);
-	if (page.mStart > 0)
-		DrawPCListRow<kind>(page.mPrev[0], left, rowY - step, alpha, scale);
+	if ((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mStart > 0)
+		DrawPCListRow<kind>((kind == ItemPriceList ? gShopHistoryPage : gShopCatalogPage).mPrev[0], left, rowY - step, alpha, scale);
 #if defined(VERSION_JP)
 	DrawPCListMask(97.0f, 40.0f, opacity | 0x0A0A0A00);
 	DrawPCListMask(292.5f, 40.0f, opacity | 0x0A0A0A00);
@@ -8493,11 +8497,7 @@ void MenuPC::Open()
 	mChoices[mChoiceCount] = 7; // mode 7, the Utilibot catalog
 	mChoiceCount++;
 	// mode 10, recycling scrap into money, comes with status icon 3
-	int flag      = GetStatusIconEventFlagId(3);
-	bool unlocked = false;
-	if (gEventFlags.mFlags[flag >> 5] & (1u << (flag & 31)))
-		unlocked = true;
-	if (unlocked) {
+	if (IsUtilibotStatusIconUnlocked()) {
 		mChoices[mChoiceCount] = 10;
 		mChoiceCount++;
 	}
@@ -8512,16 +8512,20 @@ void MenuPC::Open()
 	PopulateShopHistoryPage(&gShopHistoryPage);
 	ClearPCShopPage<PriceList>();
 	PopulateShopCatalogPage(&gShopCatalogPage);
-	mScroll             = 0;
-	mScrollTarget       = 0;
-	mMoneyDisplay.shown = mMoneyDisplay.target = GetMoney();
-	mScrapDisplay.shown = mScrapDisplay.target = GetScrap();
-	mDepositDisplay.shown                      = mDepositBalance;
-	mDepositDisplay.target                     = mDepositBalance;
-	_424                                       = 0;
-	_428                                       = 0;
-	mScrapRate                                 = 1;
-	mExitState                                 = -1;
+	mScroll                = 0;
+	mScrollTarget          = 0;
+	s32 money              = GetMoney();
+	mMoneyDisplay.shown    = money;
+	mMoneyDisplay.target   = money;
+	s32 scrap              = GetScrap();
+	mScrapDisplay.shown    = scrap;
+	mScrapDisplay.target   = scrap;
+	mDepositDisplay.shown  = mDepositBalance;
+	mDepositDisplay.target = mDepositBalance;
+	_424                   = 0;
+	_428                   = 0;
+	mScrapRate             = 1;
+	mExitState             = -1;
 	StopGameSfx(&gGame.mSound, 0x30007);
 	gGame.mStatus.mFlags |= 2;
 }
@@ -9157,10 +9161,11 @@ static inline void DrawMenuBannerStrip(CTexObj& tex, f32 x, f32 y, f32 height, f
 extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha, f32 slide)
 {
 	CTexObj tex;
+	f32 height = 88.0f;
 	sBannerScrollX -= 0.008f;
 	sBannerScrollY -= 0.008f;
 
-	DrawMenuBannerStrip(tex, x, y + 10.0f, 88.0f, alpha);
+	DrawMenuBannerStrip(tex, x, y + 10.0f, height, alpha);
 	if (title) {
 		char text[256];
 		sprintf(text, "%s", title);
@@ -9170,7 +9175,7 @@ extern "C" void DrawMenuBannerPanels(const char* title, f32 x, f32 y, f32 alpha,
 		DrawDoubleByteMenuText(text, 8.0f + left, 8.0f + (15.0f + textTop), -10.0f, 30.0f, 30.0f, alpha);
 	}
 	f32 bottomY = (356.0f - y) - 6.0f + slide;
-	f32 height  = 88.0f - slide;
+	height -= slide;
 	if (height < 8.0f)
 		height = 8.0f;
 	DrawMenuBannerStrip(tex, x, bottomY, height, alpha);
@@ -9734,6 +9739,11 @@ static inline void DrawOverviewStats(MenuStatus* menu, s32 selected, f32 x, f32 
 	DrawPlayerStatusValue(0x99 - StatusTextureOffset, gGame.GetPlayer()->mParams.mScrap, selected == 4, statX,
 	                      40.0f + (8.0f + ((y - 80.0f) + 132.0f)), menu->mAlpha, menu->mPulsePhase);
 }
+// NONMATCHING: registers. Retail passes `selected == 0` and the others to DrawPlayerStatusValue as bool (srwi,
+// no extrwi mask), so its parameter is probably bool; declared bool here, the register allocation moves and the
+// function scores lower (90.2 -> 89.4), so it stays u8. Retail also adds the -12.0f column shift as an operand
+// (fadds with -12, and the first quad's x is 0.0f + that sum), so the shift and the zero probably came in as
+// inline parameters; a local shift folds to fsubs 12, a literal + -12.0f keeps the fadds but not the 0.0f
 extern "C" void DrawPlayerStatusOverview(MenuStatus* menu)
 {
 	if (menu->mMode == 9 || menu->mMode == 4) {
@@ -10124,11 +10134,6 @@ extern "C" void DrawSeparatedStatusValue(s32 icon, s32 value, bool selected, f32
 	SetGsTevMode(gGame.mGs.mCurTevStage, 4);
 }
 
-// The atlas is measured twice; the discard dialog uses the enlarged sample.
-static inline f32 DiscardDigitExtent(s32 normal, s32 enlarged, f32 mix)
-{
-	return (1.0f - mix) * normal + (1.4f * mix) * enlarged;
-}
 static inline void DrawDiscardDigit(MenuStatus* menu, CTexObj& tex, s32 digit, f32 x, f32 y, f32 width, f32 height, f32 alpha)
 {
 	PSMTXTrans(tex.mMtx[0], 0, 0.1f * digit, 0);
@@ -10147,6 +10152,9 @@ static inline void DrawDiscardOutline(MenuStatus* menu, f32 x, f32 y)
 		               (Vec) { left, bottom, depth }, (Vec) { left, top, depth } };
 	DrawGsLineStrip(&gGame.mGs, outline, (u32)(255.0f * menu->mAlpha) | 0xC8282800, 5);
 }
+// NONMATCHING: retail saves one float register more (f17, frame 0x10 bigger) and builds the outline's five
+// compound literals at falling stack addresses (0x38, 0x2c, 0x20, 0x14, 0x8); ours rise. Writing the outline in
+// place or with a literal depth does not change that
 extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 {
 	f32 wave = 2.0f * (f32)sin(0.017453292f * (((s32)((u32)menu->mAnimationFrame * 24)) % 360));
@@ -10181,11 +10189,11 @@ extern "C" void DrawDiscardCountPanel(MenuStatus* menu)
 	case 1: {
 		LoadOverviewTexture(tex, 125);
 		SetGsTevMode(gGame.mGs.mCurTevStage, 0);
-		s32 count  = menu->mCount;
-		u16 firstW = tex.GetWidth(), secondW = tex.GetWidth();
-		f32 width  = DiscardDigitExtent(firstW, secondW, 1);
-		u16 firstH = tex.GetHeight(), secondH = tex.GetHeight();
-		f32 height = DiscardDigitExtent(firstH / 10, secondH / 10, 1);
+		s32 count = menu->mCount;
+		// the atlas is measured twice, a blend between the plain and the enlarged digit with the enlarged one picked
+		f32 mix    = 1.0f;
+		f32 width  = (1.0f - mix) * tex.GetWidth() + (1.4f * mix) * tex.GetWidth();
+		f32 height = (1.0f - mix) * (tex.GetHeight() / 10) + (1.4f * mix) * (tex.GetHeight() / 10);
 		PSMTXScale(tex.mMtx[1], 1, 0.1f, 1);
 		tex.mMtxDirty = TRUE;
 		if (count >= 10) {
