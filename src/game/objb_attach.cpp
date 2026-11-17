@@ -205,12 +205,12 @@ BOOL XObjRadar::LoadFromPlacement(const CoordInfo& info)
 		if (__fpclassifyf(mYaw) == FP_NAN) { // unset: the placement's joint supplies it
 			s32 path[] = { 0 };
 			joint.Attach(FindJointByPath(mJObj, path, 1));
-			mYaw = HSD_JObjGetRotationY(joint.mJObj);
+			mYaw = joint.GetRotationY();
 		}
 		if (__fpclassifyf(mPitch) == FP_NAN) { // same for the pitch
 			s32 path[] = { 0, 0, 0, 0 };
 			joint.Attach(FindJointByPath(mJObj, path, 4));
-			mPitch = HSD_JObjGetRotationX(joint.mJObj);
+			mPitch = joint.GetRotationX();
 		}
 	}
 	return loaded;
