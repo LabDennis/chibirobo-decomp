@@ -7517,7 +7517,7 @@ void MenuSound::Init()
 			mMaxWidth = mTextWidth[i];
 	}
 	mWindow.SetSize(60.0f + mMaxWidth, mRowCount * (2.0f + mFontSize) + 24.0f);
-	mWindow.SetPos(24.0f + (mWindow.mWidth * 0.5f + 16.0f), 24.0f + (mWindow.mHeight * 0.5f + 30.0f));
+	mWindow.SetPos(24.0f + (mWindow.mWidth / 2 + 16.0f), 24.0f + (mWindow.mHeight / 2 + 30.0f));
 	mSelection = 0;
 	if (mSelection < 0 || mRowCount <= mSelection)
 		mSelection = 0;
@@ -7537,7 +7537,7 @@ void MenuSettings::Init()
 			mMaxWidth = mTextWidth[i];
 	}
 	mWindow.SetSize(60.0f + mMaxWidth, mRowCount * (2.0f + mFontSize) + 24.0f);
-	mWindow.SetPos(24.0f + (mWindow.mWidth * 0.5f + 16.0f), 24.0f + (mWindow.mHeight * 0.5f + 30.0f));
+	mWindow.SetPos(24.0f + (mWindow.mWidth / 2 + 16.0f), 24.0f + (mWindow.mHeight / 2 + 30.0f));
 	mSelection = 0;
 }
 #endif
