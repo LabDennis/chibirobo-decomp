@@ -707,7 +707,8 @@ void CScrnRoboeyes::StartTransition(u8 r, u8 g, u8 b, u8 a, u8 targetR, u8 targe
 	}
 	if (mHideWhenDone && SizeStopped(this))
 		mActive = FALSE;
-	if (hideWhenDone)
+	// a wipe that stays up starts its lenses over at its size
+	if (!hideWhenDone)
 		ResetLensState(width, height);
 }
 
