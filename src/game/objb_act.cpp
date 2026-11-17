@@ -1792,6 +1792,12 @@ static inline void RefreshHangFloor(XActHang* act)
 	if (floor >= 0)
 		act->mTargetFloor = floor;
 }
+// the ladder and rope hand-over test this once and keep the 0/1 result
+static inline BOOL HasHangTarget(XActHang* act)
+{
+	return act->mTarget != NULL;
+}
+
 static inline void FinishHang(XActHang* act, f32 loop)
 {
 	XObjChr* owner = act->mOwner;
@@ -1804,9 +1810,8 @@ static inline void FinishHang(XActHang* act, f32 loop)
  * @note Address: 0x800CBDCC
  * @note Size: 0x1CE8
  */
-// NONMATCHING: retail reads act->mOwner again after sin and cos for the round floor's step (here it stays in r28), keeps the
-// target test for the ladder and rope hand-over as a 0/1 value (neg; or; srwi.) and reads the owner again for the
-// distance in case 3
+// NONMATCHING: retail reads act->mOwner again after sin and cos for the round floor's step (here it stays in r28) and reads
+// the owner again for the distance in case 3
 void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 frame, f32 end)
 {
 	s32 state = act->mState;
@@ -1914,11 +1919,11 @@ void UpdatePlayerHangAction(XActHang* act, s32 anim, HSD_AObj* aobj, u32, f32 fr
 			act->mState               = 0;
 			act->mTarget              = NULL;
 			ReleaseHangPlug(act);
-		} else if (act->mTarget && act->mTarget->mStatus.mFlags & 0x800000000ULL) {
+		} else if (HasHangTarget(act) && act->mTarget->mStatus.mFlags & 0x800000000ULL) {
 			act->mOwner->mLadder.SetState(3, act->mTarget);
 			act->mState  = 0;
 			act->mTarget = NULL;
-		} else if (act->mTarget && act->mTarget->mStatus.mFlags & 0x1000000000ULL) {
+		} else if (HasHangTarget(act) && act->mTarget->mStatus.mFlags & 0x1000000000ULL) {
 			act->mOwner->mRope.SetState(3, act->mTarget);
 			act->mState  = 0;
 			act->mTarget = NULL;
