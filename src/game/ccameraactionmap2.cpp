@@ -1408,48 +1408,40 @@ extern "C" void SetMapCameraAnglesFromEyeAndInterest(CCameraActionMap* map)
  * @note Address: 0x8013AB5C
  * @note Size: 0x668
  */
-extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step)
+void CCameraActionMap::UpdateTurn(u32 step)
 {
-	if (map->mTurnInterpolation != NULL) {
-		if (!map->mTurnInterpolation->Update(step, FRAME_TIME)) {
-			f32 radius = map->mOrbitRadius;
-			CVec position(map->mTurnInterpolation->Get());
-			CVec origin(map->mSpringTarget);
-			origin.y        = 0.0f;
-			position        = origin + CVec((position - origin).Normalize()) * radius;
-			position.y      = map->mEye.y;
-			map->mOrbitEye  = position;
-			map->mTargetEye = position;
+	if (mTurnInterpolation != NULL) {
+		if (!mTurnInterpolation->Update(step, FRAME_TIME)) {
+			f32 radius = mOrbitRadius;
+			CVec position(mTurnInterpolation->Get());
+			{
+				CVec origin(mSpringTarget);
+				origin.y = 0.0f;
+				CVec direction((position - origin).Normalize());
+				position = origin + direction * radius;
+			}
+			position.y = mEye.y;
+			mOrbitEye  = position;
+			mTargetEye = position;
 
-			f32 dz    = map->mInterest.z - map->mEye.z;
-			f32 dx    = map->mInterest.x - map->mEye.x;
-			f32 dy    = map->mInterest.y - map->mEye.y;
-			f32 pitch = atan2(sqrtf(dx * dx + dz * dz), sqrtf(dy * dy));
-			Vec angle;
-			angle.x = dy < 0.0f ? HALF_PI - pitch : pitch - HALF_PI;
-			angle.y = atan2(map->mInterest.x - map->mEye.x, map->mInterest.z - map->mEye.z);
-			angle.z = 0.0f;
-			map->SetAngle(angle);
-			if (__fpclassifyf(map->mAngle.x) == FP_NAN || __fpclassifyf(map->mAngle.y) == FP_NAN
-			    || __fpclassifyf(map->mAngle.z) == FP_NAN) {
+			SetMapCameraAnglesFromEyeAndInterest(this);
+			if (__fpclassifyf(mAngle.x) == FP_NAN || __fpclassifyf(mAngle.y) == FP_NAN || __fpclassifyf(mAngle.z) == FP_NAN) {
 				OSPanic("ccameraactionmap2.cpp", 3980, "%s%s",
 				        FormatToStaticBuffer("EYE(%f, %f, %f)ANG(%f, %f, %f)DIST(%f)CAMSTAT(%8X)CAMSTATPRE(%8X)UNDER "
 				                             "OP(%d)HANG(%d(%d))TGTEYE(%f, %f, %f)TGTEYE_PRE(%f, %f, %f)INTERP CAM(0x%x)INTERP "
 				                             "TURN(0x%x)POS_CAMMODE(%f, %f, %f)ANG_CAMMODE(%f, %f, %f)ANG_CAMMODE_PRE(%f, %f, %f)FIX(%d)\n",
-				                             map->mEye.x, map->mEye.y, map->mEye.z, map->mAngle.x, map->mAngle.y, map->mAngle.z,
-				                             map->mDistance, map->mStatus.mFlags, map->mPreviousStatus.mFlags, map->mManualInput,
-				                             lbl_8065B340, lbl_8065B33C, map->mTargetEye.x, map->mTargetEye.y, map->mTargetEye.z,
-				                             map->mPrevTargetEye.x, map->mPrevTargetEye.y, map->mPrevTargetEye.z, map->mEyeInterp,
-				                             map->mTurnInterpolation, map->mOrbitEye.x, map->mOrbitEye.y, map->mOrbitEye.z,
-				                             map->mOrbitAngle.x, map->mOrbitAngle.y, map->mOrbitAngle.z, map->mPrevOrbitAngle.x,
-				                             map->mPrevOrbitAngle.y, map->mPrevOrbitAngle.z, lbl_8065B338),
-				        "UpdateTurn");
+				                             mEye.x, mEye.y, mEye.z, mAngle.x, mAngle.y, mAngle.z, mDistance, mStatus.mFlags,
+				                             mPreviousStatus.mFlags, mManualInput, lbl_8065B340, lbl_8065B33C, mTargetEye.x, mTargetEye.y,
+				                             mTargetEye.z, mPrevTargetEye.x, mPrevTargetEye.y, mPrevTargetEye.z, mEyeInterp,
+				                             mTurnInterpolation, mOrbitEye.x, mOrbitEye.y, mOrbitEye.z, mOrbitAngle.x, mOrbitAngle.y,
+				                             mOrbitAngle.z, mPrevOrbitAngle.x, mPrevOrbitAngle.y, mPrevOrbitAngle.z, lbl_8065B338),
+				        __FUNCTION__);
 			}
-			map->mOrbitAngle  = map->mAngle;
-			map->mManualInput = 1;
+			mOrbitAngle  = mAngle;
+			mManualInput = 1;
 		} else {
-			map->mStatus.mFlags &= ~4;
-			map->mTurnInterpolation = NULL;
+			mStatus.mFlags &= ~4;
+			mTurnInterpolation = NULL;
 		}
 	}
 }
@@ -3203,8 +3195,6 @@ extern "C" void SetMapCameraFovStep(CCameraActionMap* map, s32 zoomLevel, f32 ti
 	SetFovStep(map, zoomLevel, time);
 }
 
-extern "C" void UpdateMapCameraTurnInterpolation(CCameraActionMap* map, u32 step);
-
 /**
  * @note Address: 0x8013C614
  * @note Size: 0x524
@@ -3242,7 +3232,7 @@ extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
 			SetMapCameraModeFlags(map, 0x20002);
 		}
 	}
-	UpdateMapCameraTurnInterpolation(map, step);
+	map->UpdateTurn(step);
 	s32 zoomLevel     = gCameraAreaState.mZoomLevel;
 	s32 prevZoomLevel = gCameraAreaState.mPrevZoomLevel;
 	s32 newZoomLevel  = zoomLevel;
@@ -3523,7 +3513,7 @@ extern "C" void UpdateMapCameraPadControls(CCameraActionMap* map, u32 step)
 .L_8013C988:
     mr       r3, r28
     mr       r4, r29
-    bl       UpdateMapCameraTurnInterpolation
+    bl       UpdateTurn__16CCameraActionMapFUl
     lwz      r3, 0x8(r1)
     lis      r4, gCameraAreaState@ha
     addi     r27, r4, gCameraAreaState@l
