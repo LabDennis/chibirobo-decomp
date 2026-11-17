@@ -1,6 +1,9 @@
 // Screen shakes, fades and the wipe family's shared code, ported to the Wii. The Wii added
 // mScaleToWidescreen plus the SetDimensions/Start/StartTransition virtuals, the safe area's
 // screen edges and a real refresh rate where the GameCube used FRAME_RATE.
+// the Wii MSL's math_api.h ahead of nw4r's math_types.h, as gamedraw.cpp has them
+#include "rvl_msl/PowerPC_EABI_Support/MSL_C/MSL_Common/math_api.h"
+#include "nw4r/math/math_types.h"
 #include "types.h"
 #include "game/cscrn.h"
 #include "game/screenwipegeometry.h"
@@ -1183,7 +1186,6 @@ void CPtclDust2::Draw(CGs* gs)
  * @note Address: 0x80042F84
  * @note Size: 0x158
  */
-// NONMATCHING: Move's add uses six float registers where retail's VEC3Add uses three, see Move
 void CPtclDust3::Update(u32 frames)
 {
 	if (!mActive) {
@@ -1201,7 +1203,8 @@ void CPtclDust3::Update(u32 frames)
 			return;
 		}
 	}
-	Move(mPos, (mVel * 1.0f) * (f32)frames);
+	Vec offset = (mVel * 1.0f) * (f32)frames;
+	nw4r::math::VEC3Add((nw4r::math::VEC3*)&mPos, (nw4r::math::VEC3*)&mPos, (nw4r::math::VEC3*)&offset);
 	mAngle += mAngleSpeed;
 }
 
